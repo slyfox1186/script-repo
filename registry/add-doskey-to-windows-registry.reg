@@ -1,0 +1,14 @@
+Windows Registry Editor Version 5.00
+
+; you must create your own list of doskeys in the
+; folder 'C:\Windows\System32' and name the file 'macros.doskey'
+
+Windows Registry Editor Version 5.00
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Command Processor]
+"CompletionChar"=dword:00000006
+"DefaultColor"=dword:00000000
+"EnableExtensions"=dword:00000001
+"PathCompletionChar"=dword:00000004
+"Autorun"="DOSKEY /MACROFILE=\"C:\\Windows\\System32\\macros.doskey\""
+
