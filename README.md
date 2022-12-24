@@ -14,3 +14,4 @@
   - Powershell
   - Shell / Bash
   - Windows Registry.
+  - XML
