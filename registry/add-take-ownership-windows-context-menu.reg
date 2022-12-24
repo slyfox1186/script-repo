@@ -1,0 +1,538 @@
+Windows Registry Editor Version 5.00
+
+; ADD TAKE OWNERSHIP TO THE WINDOWS EXPLORER CONTEXT MENU
+; RIGHT CLICK ANY FILE AND LOCATE THE ENTRY "Take ownership". IT WILL OPEN A SUB-MENU FULL OF OPTIONS.
+
+; SAVE THIS FILE WITH A .reg EXTENSION AND RUN THE FILE WITH ADMIN PRIVILEGES
+
+; TO REMOVE THIS MENU SEE: https://pastebin.com/T70Eke6v
+
+; START REGISTRY COMMANDS BELOW
+
+; [*]
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership]
+"MUIVerb"="Take ownership"
+"Icon"="imageres.dll,77"
+"HasLUAShield"=""
+"SubCommands"=""
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell]
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\01View_Owner]
+@="Display current owner"
+"Icon"="imageres.dll,-1029"
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\01View_Owner\command]
+@="powershell.exe -NoP -W Normal -NoExit -C \"Get-ACL \\\"%1\\\" | Format-List -Property Owner\""
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\02Set_Administrators]
+@="Change to Administrators"
+"Icon"="C:\\Users\\jholl\\OneDrive\\Documents\\06-Icons-and-Shortcuts\\Self-Made-Icons\\administrator2.ico"
+"CommandFlags"=dword:00000020
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\02Set_Administrators\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Administrators\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Administrators\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\03Set_Everyone]
+@="Change to Everyone"
+"Icon"="imageres.dll,-5356"
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\03Set_Everyone\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Everyone\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Everyone\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\04Set_SYSTEM]
+@="Change to SYSTEM"
+"Icon"="imageres.dll,-107"
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\04Set_SYSTEM\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"SYSTEM\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"SYSTEM\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\05Set_TrustedInstaller]
+@="Change to TrustedInstaller"
+"Icon"="C:\\Users\\jholl\\OneDrive\\Documents\\06-Icons-and-Shortcuts\\Imageres\\ico106.ico"
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\05Set_TrustedInstaller\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"NT Service\\TrustedInstaller\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"NT Service\\TrustedInstaller\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\06Set_User]
+@="Change to User"
+"Icon"="imageres.dll,-5373"
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\06Set_User\command]
+@=hex(2):70,00,6f,00,77,00,65,00,72,00,73,00,68,00,65,00,6c,00,6c,00,2e,00,65,\
+  00,78,00,65,00,20,00,2d,00,4e,00,6f,00,50,00,20,00,2d,00,57,00,20,00,48,00,\
+  69,00,64,00,64,00,65,00,6e,00,20,00,2d,00,43,00,20,00,22,00,53,00,74,00,61,\
+  00,72,00,74,00,2d,00,50,00,72,00,6f,00,63,00,65,00,73,00,73,00,20,00,63,00,\
+  6d,00,64,00,2e,00,65,00,78,00,65,00,20,00,2d,00,57,00,69,00,6e,00,64,00,6f,\
+  00,77,00,53,00,74,00,79,00,6c,00,65,00,20,00,4d,00,61,00,78,00,69,00,6d,00,\
+  69,00,7a,00,65,00,64,00,20,00,2d,00,41,00,72,00,67,00,73,00,20,00,27,00,2f,\
+  00,54,00,3a,00,30,00,41,00,20,00,2f,00,44,00,20,00,2f,00,43,00,20,00,69,00,\
+  63,00,61,00,63,00,6c,00,73,00,2e,00,65,00,78,00,65,00,20,00,5c,00,22,00,25,\
+  00,31,00,5c,00,22,00,20,00,2f,00,73,00,65,00,74,00,6f,00,77,00,6e,00,65,00,\
+  72,00,20,00,5c,00,22,00,25,00,55,00,53,00,45,00,52,00,4e,00,41,00,4d,00,45,\
+  00,25,00,5c,00,22,00,20,00,2f,00,54,00,20,00,2f,00,43,00,20,00,2f,00,4c,00,\
+  20,00,26,00,20,00,54,00,49,00,4d,00,45,00,4f,00,55,00,54,00,20,00,32,00,20,\
+  00,3e,00,4e,00,55,00,4c,00,27,00,20,00,2d,00,56,00,65,00,72,00,62,00,20,00,\
+  52,00,75,00,6e,00,41,00,73,00,22,00,00,00
+"IsolatedCommand"=hex(2):70,00,6f,00,77,00,65,00,72,00,73,00,68,00,65,00,6c,00,\
+  6c,00,2e,00,65,00,78,00,65,00,20,00,2d,00,4e,00,6f,00,50,00,20,00,2d,00,57,\
+  00,20,00,48,00,69,00,64,00,64,00,65,00,6e,00,20,00,2d,00,43,00,20,00,22,00,\
+  53,00,74,00,61,00,72,00,74,00,2d,00,50,00,72,00,6f,00,63,00,65,00,73,00,73,\
+  00,20,00,63,00,6d,00,64,00,2e,00,65,00,78,00,65,00,20,00,2d,00,57,00,69,00,\
+  6e,00,64,00,6f,00,77,00,53,00,74,00,79,00,6c,00,65,00,20,00,4d,00,61,00,78,\
+  00,69,00,6d,00,69,00,7a,00,65,00,64,00,20,00,2d,00,41,00,72,00,67,00,73,00,\
+  20,00,27,00,2f,00,54,00,3a,00,30,00,41,00,20,00,2f,00,44,00,20,00,2f,00,43,\
+  00,20,00,69,00,63,00,61,00,63,00,6c,00,73,00,2e,00,65,00,78,00,65,00,20,00,\
+  5c,00,22,00,25,00,31,00,5c,00,22,00,20,00,2f,00,73,00,65,00,74,00,6f,00,77,\
+  00,6e,00,65,00,72,00,20,00,5c,00,22,00,25,00,55,00,53,00,45,00,52,00,4e,00,\
+  41,00,4d,00,45,00,25,00,5c,00,22,00,20,00,2f,00,54,00,20,00,2f,00,43,00,20,\
+  00,2f,00,4c,00,20,00,26,00,20,00,54,00,49,00,4d,00,45,00,4f,00,55,00,54,00,\
+  20,00,32,00,20,00,3e,00,4e,00,55,00,4c,00,27,00,20,00,2d,00,56,00,65,00,72,\
+  00,62,00,20,00,52,00,75,00,6e,00,41,00,73,00,22,00,00,00
+
+; [DIRECTORY]
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership]
+"MUIVerb"="Take ownership"
+"AppliesTo"="NOT (System.ItemPathDisplay:=\"C:\\Users\" OR System.ItemPathDisplay:=\"C:\\ProgramData\" OR System.ItemPathDisplay:=\"C:\\Windows\" OR System.ItemPathDisplay:=\"C:\\Windows\\System32\" OR System.ItemPathDisplay:=\"C:\\Program Files\" OR System.ItemPathDisplay:=\"C:\\Program Files (x86)\")"
+"HasLUAShield"=""
+"NoWorkingDirectory"=""
+"Position"="Middle"
+"SubCommands"=""
+"Icon"="imageres.dll,77"
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell]
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\01View_Owner]
+@="Display current owner"
+"Icon"="imageres.dll,-1029"
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\01View_Owner\command]
+@="powershell.exe -NoP -W Normal -NoExit -C \"Get-ACL \\\"%1\\\" | Format-List -Property Owner\""
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\02Set_Administrators]
+@="Change to Administrators"
+"Icon"="C:\\Users\\jholl\\OneDrive\\Documents\\06-Icons-and-Shortcuts\\Self-Made-Icons\\administrator2.ico"
+"CommandFlags"=dword:00000020
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\02Set_Administrators\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Administrators\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Administrators\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\03Set_Everyone]
+@="Change to Everyone"
+"Icon"="imageres.dll,-5356"
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\03Set_Everyone\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Everyone\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Everyone\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\04Set_SYSTEM]
+@="Change to SYSTEM"
+"Icon"="imageres.dll,-107"
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\04Set_SYSTEM\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"SYSTEM\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"SYSTEM\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\05Set_TrustedInstaller]
+@="Change to TrustedInstaller"
+"Icon"="C:\\Users\\jholl\\OneDrive\\Documents\\06-Icons-and-Shortcuts\\Imageres\\ico106.ico"
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\05Set_TrustedInstaller\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"NT Service\\TrustedInstaller\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"NT Service\\TrustedInstaller\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\06Set_User]
+@="Change to User"
+"Icon"="imageres.dll,-5373"
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\06Set_User\command]
+@=hex(2):70,00,6f,00,77,00,65,00,72,00,73,00,68,00,65,00,6c,00,6c,00,2e,00,65,\
+  00,78,00,65,00,20,00,2d,00,4e,00,6f,00,50,00,20,00,2d,00,57,00,20,00,48,00,\
+  69,00,64,00,64,00,65,00,6e,00,20,00,2d,00,43,00,20,00,22,00,53,00,74,00,61,\
+  00,72,00,74,00,2d,00,50,00,72,00,6f,00,63,00,65,00,73,00,73,00,20,00,63,00,\
+  6d,00,64,00,2e,00,65,00,78,00,65,00,20,00,2d,00,57,00,69,00,6e,00,64,00,6f,\
+  00,77,00,53,00,74,00,79,00,6c,00,65,00,20,00,4d,00,61,00,78,00,69,00,6d,00,\
+  69,00,7a,00,65,00,64,00,20,00,2d,00,41,00,72,00,67,00,73,00,20,00,27,00,2f,\
+  00,54,00,3a,00,30,00,41,00,20,00,2f,00,44,00,20,00,2f,00,43,00,20,00,69,00,\
+  63,00,61,00,63,00,6c,00,73,00,2e,00,65,00,78,00,65,00,20,00,5c,00,22,00,25,\
+  00,31,00,5c,00,22,00,20,00,2f,00,73,00,65,00,74,00,6f,00,77,00,6e,00,65,00,\
+  72,00,20,00,5c,00,22,00,25,00,55,00,53,00,45,00,52,00,4e,00,41,00,4d,00,45,\
+  00,25,00,5c,00,22,00,20,00,2f,00,54,00,20,00,2f,00,43,00,20,00,2f,00,4c,00,\
+  20,00,26,00,20,00,54,00,49,00,4d,00,45,00,4f,00,55,00,54,00,20,00,32,00,20,\
+  00,3e,00,4e,00,55,00,4c,00,27,00,20,00,2d,00,56,00,65,00,72,00,62,00,20,00,\
+  52,00,75,00,6e,00,41,00,73,00,22,00,00,00
+"IsolatedCommand"=hex(2):70,00,6f,00,77,00,65,00,72,00,73,00,68,00,65,00,6c,00,\
+  6c,00,2e,00,65,00,78,00,65,00,20,00,2d,00,4e,00,6f,00,50,00,20,00,2d,00,57,\
+  00,20,00,48,00,69,00,64,00,64,00,65,00,6e,00,20,00,2d,00,43,00,20,00,22,00,\
+  53,00,74,00,61,00,72,00,74,00,2d,00,50,00,72,00,6f,00,63,00,65,00,73,00,73,\
+  00,20,00,63,00,6d,00,64,00,2e,00,65,00,78,00,65,00,20,00,2d,00,57,00,69,00,\
+  6e,00,64,00,6f,00,77,00,53,00,74,00,79,00,6c,00,65,00,20,00,4d,00,61,00,78,\
+  00,69,00,6d,00,69,00,7a,00,65,00,64,00,20,00,2d,00,41,00,72,00,67,00,73,00,\
+  20,00,27,00,2f,00,54,00,3a,00,30,00,41,00,20,00,2f,00,44,00,20,00,2f,00,43,\
+  00,20,00,69,00,63,00,61,00,63,00,6c,00,73,00,2e,00,65,00,78,00,65,00,20,00,\
+  5c,00,22,00,25,00,31,00,5c,00,22,00,20,00,2f,00,73,00,65,00,74,00,6f,00,77,\
+  00,6e,00,65,00,72,00,20,00,5c,00,22,00,25,00,55,00,53,00,45,00,52,00,4e,00,\
+  41,00,4d,00,45,00,25,00,5c,00,22,00,20,00,2f,00,54,00,20,00,2f,00,43,00,20,\
+  00,2f,00,4c,00,20,00,26,00,20,00,54,00,49,00,4d,00,45,00,4f,00,55,00,54,00,\
+  20,00,32,00,20,00,3e,00,4e,00,55,00,4c,00,27,00,20,00,2d,00,56,00,65,00,72,\
+  00,62,00,20,00,52,00,75,00,6e,00,41,00,73,00,22,00,00,00
+
+; [DRIVE]
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership]
+"MUIVerb"="Take ownership"
+"NoWorkingDrive"=""
+"AppliesTo"="NOT (System.ItemPathDisplay:=\"C:\\\")"
+"HasLUAShield"=""
+"Position"="Middle"
+"Extended"=-
+"SubCommands"=""
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell]
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\01View_Owner]
+@="Display current owner"
+"Icon"="imageres.dll,-1029"
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\01View_Owner\command]
+@="powershell.exe -NoP -W Normal -NoExit -C \"Get-ACL \\\"%1\\\" | Format-List -Property Owner\""
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\02Set_Administrators]
+@="Change to Administrators"
+"Icon"="C:\\Users\\jholl\\OneDrive\\Documents\\06-Icons-and-Shortcuts\\Self-Made-Icons\\administrator2.ico"
+"CommandFlags"=dword:00000020
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\02Set_Administrators\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Administrators\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Administrators\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\03Set_Everyone]
+@="Change to Everyone"
+"Icon"="imageres.dll,-5356"
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\03Set_Everyone\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Everyone\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Everyone\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\04Set_SYSTEM]
+@="Change to SYSTEM"
+"Icon"="imageres.dll,-107"
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\04Set_SYSTEM\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"SYSTEM\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"SYSTEM\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\05Set_TrustedInstaller]
+@="Change to TrustedInstaller"
+"Icon"="C:\\Users\\jholl\\OneDrive\\Documents\\06-Icons-and-Shortcuts\\Imageres\\ico106.ico"
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\05Set_TrustedInstaller\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"NT Service\\TrustedInstaller\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"NT Service\\TrustedInstaller\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\06Set_User]
+@="Change to User"
+"Icon"="imageres.dll,-5373"
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\06Set_User\command]
+@=hex(2):70,00,6f,00,77,00,65,00,72,00,73,00,68,00,65,00,6c,00,6c,00,2e,00,65,\
+  00,78,00,65,00,20,00,2d,00,4e,00,6f,00,50,00,20,00,2d,00,57,00,20,00,48,00,\
+  69,00,64,00,64,00,65,00,6e,00,20,00,2d,00,43,00,20,00,22,00,53,00,74,00,61,\
+  00,72,00,74,00,2d,00,50,00,72,00,6f,00,63,00,65,00,73,00,73,00,20,00,63,00,\
+  6d,00,64,00,2e,00,65,00,78,00,65,00,20,00,2d,00,57,00,69,00,6e,00,64,00,6f,\
+  00,77,00,53,00,74,00,79,00,6c,00,65,00,20,00,4d,00,61,00,78,00,69,00,6d,00,\
+  69,00,7a,00,65,00,64,00,20,00,2d,00,41,00,72,00,67,00,73,00,20,00,27,00,2f,\
+  00,54,00,3a,00,30,00,41,00,20,00,2f,00,44,00,20,00,2f,00,43,00,20,00,69,00,\
+  63,00,61,00,63,00,6c,00,73,00,2e,00,65,00,78,00,65,00,20,00,5c,00,22,00,25,\
+  00,31,00,5c,00,22,00,20,00,2f,00,73,00,65,00,74,00,6f,00,77,00,6e,00,65,00,\
+  72,00,20,00,5c,00,22,00,25,00,55,00,53,00,45,00,52,00,4e,00,41,00,4d,00,45,\
+  00,25,00,5c,00,22,00,20,00,2f,00,54,00,20,00,2f,00,43,00,20,00,2f,00,4c,00,\
+  20,00,26,00,20,00,54,00,49,00,4d,00,45,00,4f,00,55,00,54,00,20,00,32,00,20,\
+  00,3e,00,4e,00,55,00,4c,00,27,00,20,00,2d,00,56,00,65,00,72,00,62,00,20,00,\
+  52,00,75,00,6e,00,41,00,73,00,22,00,00,00
+"IsolatedCommand"=hex(2):70,00,6f,00,77,00,65,00,72,00,73,00,68,00,65,00,6c,00,\
+  6c,00,2e,00,65,00,78,00,65,00,20,00,2d,00,4e,00,6f,00,50,00,20,00,2d,00,57,\
+  00,20,00,48,00,69,00,64,00,64,00,65,00,6e,00,20,00,2d,00,43,00,20,00,22,00,\
+  53,00,74,00,61,00,72,00,74,00,2d,00,50,00,72,00,6f,00,63,00,65,00,73,00,73,\
+  00,20,00,63,00,6d,00,64,00,2e,00,65,00,78,00,65,00,20,00,2d,00,57,00,69,00,\
+  6e,00,64,00,6f,00,77,00,53,00,74,00,79,00,6c,00,65,00,20,00,4d,00,61,00,78,\
+  00,69,00,6d,00,69,00,7a,00,65,00,64,00,20,00,2d,00,41,00,72,00,67,00,73,00,\
+  20,00,27,00,2f,00,54,00,3a,00,30,00,41,00,20,00,2f,00,44,00,20,00,2f,00,43,\
+  00,20,00,69,00,63,00,61,00,63,00,6c,00,73,00,2e,00,65,00,78,00,65,00,20,00,\
+  5c,00,22,00,25,00,31,00,5c,00,22,00,20,00,2f,00,73,00,65,00,74,00,6f,00,77,\
+  00,6e,00,65,00,72,00,20,00,5c,00,22,00,25,00,55,00,53,00,45,00,52,00,4e,00,\
+  41,00,4d,00,45,00,25,00,5c,00,22,00,20,00,2f,00,54,00,20,00,2f,00,43,00,20,\
+  00,2f,00,4c,00,20,00,26,00,20,00,54,00,49,00,4d,00,45,00,4f,00,55,00,54,00,\
+  20,00,32,00,20,00,3e,00,4e,00,55,00,4c,00,27,00,20,00,2d,00,56,00,65,00,72,\
+  00,62,00,20,00,52,00,75,00,6e,00,41,00,73,00,22,00,00,00
+
+Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership]
+"MUIVerb"="Take ownership"
+"Icon"="imageres.dll,77"
+"HasLUAShield"=""
+"SubCommands"=""
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell]
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\01View_Owner]
+@="Display current owner"
+"Icon"="imageres.dll,-1029"
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\01View_Owner\command]
+@="powershell.exe -NoP -W Normal -NoExit -C \"Get-ACL \\\"%1\\\" | Format-List -Property Owner\""
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\02Set_Administrators]
+@="Change to Administrators"
+"Icon"="C:\\Users\\jholl\\OneDrive\\Documents\\06-Icons-and-Shortcuts\\Self-Made-Icons\\administrator2.ico"
+"CommandFlags"=dword:00000020
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\02Set_Administrators\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Administrators\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Administrators\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\03Set_Everyone]
+@="Change to Everyone"
+"Icon"="imageres.dll,-5356"
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\03Set_Everyone\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Everyone\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Everyone\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\04Set_SYSTEM]
+@="Change to SYSTEM"
+"Icon"="imageres.dll,-107"
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\04Set_SYSTEM\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"SYSTEM\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"SYSTEM\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\05Set_TrustedInstaller]
+@="Change to TrustedInstaller"
+"Icon"="C:\\Users\\jholl\\OneDrive\\Documents\\06-Icons-and-Shortcuts\\Imageres\\ico106.ico"
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\05Set_TrustedInstaller\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"NT Service\\TrustedInstaller\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"NT Service\\TrustedInstaller\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\06Set_User]
+@="Change to User"
+"Icon"="imageres.dll,-5373"
+
+[HKEY_CLASSES_ROOT\*\shell\Take_Ownership\shell\06Set_User\command]
+@=hex(2):70,00,6f,00,77,00,65,00,72,00,73,00,68,00,65,00,6c,00,6c,00,2e,00,65,\
+  00,78,00,65,00,20,00,2d,00,4e,00,6f,00,50,00,20,00,2d,00,57,00,20,00,48,00,\
+  69,00,64,00,64,00,65,00,6e,00,20,00,2d,00,43,00,20,00,22,00,53,00,74,00,61,\
+  00,72,00,74,00,2d,00,50,00,72,00,6f,00,63,00,65,00,73,00,73,00,20,00,63,00,\
+  6d,00,64,00,2e,00,65,00,78,00,65,00,20,00,2d,00,57,00,69,00,6e,00,64,00,6f,\
+  00,77,00,53,00,74,00,79,00,6c,00,65,00,20,00,4d,00,61,00,78,00,69,00,6d,00,\
+  69,00,7a,00,65,00,64,00,20,00,2d,00,41,00,72,00,67,00,73,00,20,00,27,00,2f,\
+  00,54,00,3a,00,30,00,41,00,20,00,2f,00,44,00,20,00,2f,00,43,00,20,00,69,00,\
+  63,00,61,00,63,00,6c,00,73,00,2e,00,65,00,78,00,65,00,20,00,5c,00,22,00,25,\
+  00,31,00,5c,00,22,00,20,00,2f,00,73,00,65,00,74,00,6f,00,77,00,6e,00,65,00,\
+  72,00,20,00,5c,00,22,00,25,00,55,00,53,00,45,00,52,00,4e,00,41,00,4d,00,45,\
+  00,25,00,5c,00,22,00,20,00,2f,00,54,00,20,00,2f,00,43,00,20,00,2f,00,4c,00,\
+  20,00,26,00,20,00,54,00,49,00,4d,00,45,00,4f,00,55,00,54,00,20,00,32,00,20,\
+  00,3e,00,4e,00,55,00,4c,00,27,00,20,00,2d,00,56,00,65,00,72,00,62,00,20,00,\
+  52,00,75,00,6e,00,41,00,73,00,22,00,00,00
+"IsolatedCommand"=hex(2):70,00,6f,00,77,00,65,00,72,00,73,00,68,00,65,00,6c,00,\
+  6c,00,2e,00,65,00,78,00,65,00,20,00,2d,00,4e,00,6f,00,50,00,20,00,2d,00,57,\
+  00,20,00,48,00,69,00,64,00,64,00,65,00,6e,00,20,00,2d,00,43,00,20,00,22,00,\
+  53,00,74,00,61,00,72,00,74,00,2d,00,50,00,72,00,6f,00,63,00,65,00,73,00,73,\
+  00,20,00,63,00,6d,00,64,00,2e,00,65,00,78,00,65,00,20,00,2d,00,57,00,69,00,\
+  6e,00,64,00,6f,00,77,00,53,00,74,00,79,00,6c,00,65,00,20,00,4d,00,61,00,78,\
+  00,69,00,6d,00,69,00,7a,00,65,00,64,00,20,00,2d,00,41,00,72,00,67,00,73,00,\
+  20,00,27,00,2f,00,54,00,3a,00,30,00,41,00,20,00,2f,00,44,00,20,00,2f,00,43,\
+  00,20,00,69,00,63,00,61,00,63,00,6c,00,73,00,2e,00,65,00,78,00,65,00,20,00,\
+  5c,00,22,00,25,00,31,00,5c,00,22,00,20,00,2f,00,73,00,65,00,74,00,6f,00,77,\
+  00,6e,00,65,00,72,00,20,00,5c,00,22,00,25,00,55,00,53,00,45,00,52,00,4e,00,\
+  41,00,4d,00,45,00,25,00,5c,00,22,00,20,00,2f,00,54,00,20,00,2f,00,43,00,20,\
+  00,2f,00,4c,00,20,00,26,00,20,00,54,00,49,00,4d,00,45,00,4f,00,55,00,54,00,\
+  20,00,32,00,20,00,3e,00,4e,00,55,00,4c,00,27,00,20,00,2d,00,56,00,65,00,72,\
+  00,62,00,20,00,52,00,75,00,6e,00,41,00,73,00,22,00,00,00
+
+; [DIRECTORY]
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership]
+"MUIVerb"="Take ownership"
+"AppliesTo"="NOT (System.ItemPathDisplay:=\"C:\\Users\" OR System.ItemPathDisplay:=\"C:\\ProgramData\" OR System.ItemPathDisplay:=\"C:\\Windows\" OR System.ItemPathDisplay:=\"C:\\Windows\\System32\" OR System.ItemPathDisplay:=\"C:\\Program Files\" OR System.ItemPathDisplay:=\"C:\\Program Files (x86)\")"
+"HasLUAShield"=""
+"NoWorkingDirectory"=""
+"Position"="Middle"
+"SubCommands"=""
+"Icon"="imageres.dll,77"
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell]
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\01View_Owner]
+@="Display current owner"
+"Icon"="imageres.dll,-1029"
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\01View_Owner\command]
+@="powershell.exe -NoP -W Normal -NoExit -C \"Get-ACL \\\"%1\\\" | Format-List -Property Owner\""
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\02Set_Administrators]
+@="Change to Administrators"
+"Icon"="C:\\Users\\jholl\\OneDrive\\Documents\\06-Icons-and-Shortcuts\\Self-Made-Icons\\administrator2.ico"
+"CommandFlags"=dword:00000020
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\02Set_Administrators\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Administrators\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Administrators\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\03Set_Everyone]
+@="Change to Everyone"
+"Icon"="imageres.dll,-5356"
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\03Set_Everyone\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Everyone\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Everyone\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\04Set_SYSTEM]
+@="Change to SYSTEM"
+"Icon"="imageres.dll,-107"
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\04Set_SYSTEM\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"SYSTEM\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"SYSTEM\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\05Set_TrustedInstaller]
+@="Change to TrustedInstaller"
+"Icon"="C:\\Users\\jholl\\OneDrive\\Documents\\06-Icons-and-Shortcuts\\Imageres\\ico106.ico"
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\05Set_TrustedInstaller\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"NT Service\\TrustedInstaller\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"NT Service\\TrustedInstaller\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\06Set_User]
+@="Change to User"
+"Icon"="imageres.dll,-5373"
+
+[HKEY_CLASSES_ROOT\Directory\shell\Take_Ownership\shell\06Set_User\command]
+@=hex(2):70,00,6f,00,77,00,65,00,72,00,73,00,68,00,65,00,6c,00,6c,00,2e,00,65,\
+  00,78,00,65,00,20,00,2d,00,4e,00,6f,00,50,00,20,00,2d,00,57,00,20,00,48,00,\
+  69,00,64,00,64,00,65,00,6e,00,20,00,2d,00,43,00,20,00,22,00,53,00,74,00,61,\
+  00,72,00,74,00,2d,00,50,00,72,00,6f,00,63,00,65,00,73,00,73,00,20,00,63,00,\
+  6d,00,64,00,2e,00,65,00,78,00,65,00,20,00,2d,00,57,00,69,00,6e,00,64,00,6f,\
+  00,77,00,53,00,74,00,79,00,6c,00,65,00,20,00,4d,00,61,00,78,00,69,00,6d,00,\
+  69,00,7a,00,65,00,64,00,20,00,2d,00,41,00,72,00,67,00,73,00,20,00,27,00,2f,\
+  00,54,00,3a,00,30,00,41,00,20,00,2f,00,44,00,20,00,2f,00,43,00,20,00,69,00,\
+  63,00,61,00,63,00,6c,00,73,00,2e,00,65,00,78,00,65,00,20,00,5c,00,22,00,25,\
+  00,31,00,5c,00,22,00,20,00,2f,00,73,00,65,00,74,00,6f,00,77,00,6e,00,65,00,\
+  72,00,20,00,5c,00,22,00,25,00,55,00,53,00,45,00,52,00,4e,00,41,00,4d,00,45,\
+  00,25,00,5c,00,22,00,20,00,2f,00,54,00,20,00,2f,00,43,00,20,00,2f,00,4c,00,\
+  20,00,26,00,20,00,54,00,49,00,4d,00,45,00,4f,00,55,00,54,00,20,00,32,00,20,\
+  00,3e,00,4e,00,55,00,4c,00,27,00,20,00,2d,00,56,00,65,00,72,00,62,00,20,00,\
+  52,00,75,00,6e,00,41,00,73,00,22,00,00,00
+"IsolatedCommand"=hex(2):70,00,6f,00,77,00,65,00,72,00,73,00,68,00,65,00,6c,00,\
+  6c,00,2e,00,65,00,78,00,65,00,20,00,2d,00,4e,00,6f,00,50,00,20,00,2d,00,57,\
+  00,20,00,48,00,69,00,64,00,64,00,65,00,6e,00,20,00,2d,00,43,00,20,00,22,00,\
+  53,00,74,00,61,00,72,00,74,00,2d,00,50,00,72,00,6f,00,63,00,65,00,73,00,73,\
+  00,20,00,63,00,6d,00,64,00,2e,00,65,00,78,00,65,00,20,00,2d,00,57,00,69,00,\
+  6e,00,64,00,6f,00,77,00,53,00,74,00,79,00,6c,00,65,00,20,00,4d,00,61,00,78,\
+  00,69,00,6d,00,69,00,7a,00,65,00,64,00,20,00,2d,00,41,00,72,00,67,00,73,00,\
+  20,00,27,00,2f,00,54,00,3a,00,30,00,41,00,20,00,2f,00,44,00,20,00,2f,00,43,\
+  00,20,00,69,00,63,00,61,00,63,00,6c,00,73,00,2e,00,65,00,78,00,65,00,20,00,\
+  5c,00,22,00,25,00,31,00,5c,00,22,00,20,00,2f,00,73,00,65,00,74,00,6f,00,77,\
+  00,6e,00,65,00,72,00,20,00,5c,00,22,00,25,00,55,00,53,00,45,00,52,00,4e,00,\
+  41,00,4d,00,45,00,25,00,5c,00,22,00,20,00,2f,00,54,00,20,00,2f,00,43,00,20,\
+  00,2f,00,4c,00,20,00,26,00,20,00,54,00,49,00,4d,00,45,00,4f,00,55,00,54,00,\
+  20,00,32,00,20,00,3e,00,4e,00,55,00,4c,00,27,00,20,00,2d,00,56,00,65,00,72,\
+  00,62,00,20,00,52,00,75,00,6e,00,41,00,73,00,22,00,00,00
+
+; [DRIVE]
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership]
+"MUIVerb"="Take ownership"
+"NoWorkingDrive"=""
+"AppliesTo"="NOT (System.ItemPathDisplay:=\"C:\\\")"
+"HasLUAShield"=""
+"Position"="Middle"
+"Extended"=-
+"SubCommands"=""
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell]
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\01View_Owner]
+@="Display current owner"
+"Icon"="imageres.dll,-1029"
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\01View_Owner\command]
+@="powershell.exe -NoP -W Normal -NoExit -C \"Get-ACL \\\"%1\\\" | Format-List -Property Owner\""
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\02Set_Administrators]
+@="Change to Administrators"
+"Icon"="C:\\Users\\jholl\\OneDrive\\Documents\\06-Icons-and-Shortcuts\\Self-Made-Icons\\administrator2.ico"
+"CommandFlags"=dword:00000020
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\02Set_Administrators\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Administrators\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Administrators\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\03Set_Everyone]
+@="Change to Everyone"
+"Icon"="imageres.dll,-5356"
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\03Set_Everyone\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Everyone\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"Everyone\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\04Set_SYSTEM]
+@="Change to SYSTEM"
+"Icon"="imageres.dll,-107"
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\04Set_SYSTEM\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"SYSTEM\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"SYSTEM\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\05Set_TrustedInstaller]
+@="Change to TrustedInstaller"
+"Icon"="C:\\Users\\jholl\\OneDrive\\Documents\\06-Icons-and-Shortcuts\\Imageres\\ico106.ico"
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\05Set_TrustedInstaller\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"NT Service\\TrustedInstaller\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls \\\"%1\\\" /setowner \\\"NT Service\\TrustedInstaller\\\" /T /C /L & TIMEOUT 2 >NUL' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\06Set_User]
+@="Change to User"
+"Icon"="imageres.dll,-5373"
+
+[HKEY_CLASSES_ROOT\Drive\shell\Take_Ownership\shell\06Set_User\command]
+@=hex(2):70,00,6f,00,77,00,65,00,72,00,73,00,68,00,65,00,6c,00,6c,00,2e,00,65,\
+  00,78,00,65,00,20,00,2d,00,4e,00,6f,00,50,00,20,00,2d,00,57,00,20,00,48,00,\
+  69,00,64,00,64,00,65,00,6e,00,20,00,2d,00,43,00,20,00,22,00,53,00,74,00,61,\
+  00,72,00,74,00,2d,00,50,00,72,00,6f,00,63,00,65,00,73,00,73,00,20,00,63,00,\
+  6d,00,64,00,2e,00,65,00,78,00,65,00,20,00,2d,00,57,00,69,00,6e,00,64,00,6f,\
+  00,77,00,53,00,74,00,79,00,6c,00,65,00,20,00,4d,00,61,00,78,00,69,00,6d,00,\
+  69,00,7a,00,65,00,64,00,20,00,2d,00,41,00,72,00,67,00,73,00,20,00,27,00,2f,\
+  00,54,00,3a,00,30,00,41,00,20,00,2f,00,44,00,20,00,2f,00,43,00,20,00,69,00,\
+  63,00,61,00,63,00,6c,00,73,00,2e,00,65,00,78,00,65,00,20,00,5c,00,22,00,25,\
+  00,31,00,5c,00,22,00,20,00,2f,00,73,00,65,00,74,00,6f,00,77,00,6e,00,65,00,\
+  72,00,20,00,5c,00,22,00,25,00,55,00,53,00,45,00,52,00,4e,00,41,00,4d,00,45,\
+  00,25,00,5c,00,22,00,20,00,2f,00,54,00,20,00,2f,00,43,00,20,00,2f,00,4c,00,\
+  20,00,26,00,20,00,54,00,49,00,4d,00,45,00,4f,00,55,00,54,00,20,00,32,00,20,\
+  00,3e,00,4e,00,55,00,4c,00,27,00,20,00,2d,00,56,00,65,00,72,00,62,00,20,00,\
+  52,00,75,00,6e,00,41,00,73,00,22,00,00,00
+"IsolatedCommand"=hex(2):70,00,6f,00,77,00,65,00,72,00,73,00,68,00,65,00,6c,00,\
+  6c,00,2e,00,65,00,78,00,65,00,20,00,2d,00,4e,00,6f,00,50,00,20,00,2d,00,57,\
+  00,20,00,48,00,69,00,64,00,64,00,65,00,6e,00,20,00,2d,00,43,00,20,00,22,00,\
+  53,00,74,00,61,00,72,00,74,00,2d,00,50,00,72,00,6f,00,63,00,65,00,73,00,73,\
+  00,20,00,63,00,6d,00,64,00,2e,00,65,00,78,00,65,00,20,00,2d,00,57,00,69,00,\
+  6e,00,64,00,6f,00,77,00,53,00,74,00,79,00,6c,00,65,00,20,00,4d,00,61,00,78,\
+  00,69,00,6d,00,69,00,7a,00,65,00,64,00,20,00,2d,00,41,00,72,00,67,00,73,00,\
+  20,00,27,00,2f,00,54,00,3a,00,30,00,41,00,20,00,2f,00,44,00,20,00,2f,00,43,\
+  00,20,00,69,00,63,00,61,00,63,00,6c,00,73,00,2e,00,65,00,78,00,65,00,20,00,\
+  5c,00,22,00,25,00,31,00,5c,00,22,00,20,00,2f,00,73,00,65,00,74,00,6f,00,77,\
+  00,6e,00,65,00,72,00,20,00,5c,00,22,00,25,00,55,00,53,00,45,00,52,00,4e,00,\
+  41,00,4d,00,45,00,25,00,5c,00,22,00,20,00,2f,00,54,00,20,00,2f,00,43,00,20,\
+  00,2f,00,4c,00,20,00,26,00,20,00,54,00,49,00,4d,00,45,00,4f,00,55,00,54,00,\
+  20,00,32,00,20,00,3e,00,4e,00,55,00,4c,00,27,00,20,00,2d,00,56,00,65,00,72,\
+  00,62,00,20,00,52,00,75,00,6e,00,41,00,73,00,22,00,00,00
