@@ -1,0 +1,58 @@
+Windows Registry Editor Version 5.00
+
+; This is tested on Windows 10, if you have another version I have no idea what the outcome could be.
+; RUN THIS AT YOUR OWN RISK
+; ALWAYS make BACKUPS of your registry before running any reg files!
+
+; The purpose of this is to reset the registry keys for exe files back to their "fresh install" status.
+; The hope is it fixes issues such as taskbar pin errors not starting files or programs when clicked on.
+
+; Save this using a .reg extension and run the file as an administrator.
+
+; I believe any results should be immediate, however, a reboot never hurts just to make sure.
+
+[-HKEY_CLASSES_ROOT\.exe]
+[HKEY_CLASSES_ROOT\.exe]
+@="exefile"
+"Content Type"="application/x-msdownload"
+
+[HKEY_CLASSES_ROOT\.exe\PersistentHandler]
+@="{098f2470-bae0-11cd-b579-08002b30bfeb}"
+
+[-HKEY_CLASSES_ROOT\exefile]
+[HKEY_CLASSES_ROOT\exefile]
+@="Application"
+"EditFlags"=hex:38,07,00,00
+"FriendlyTypeName"=hex(2):40,00,25,00,53,00,79,00,73,00,74,00,65,00,6d,00,52,\
+  00,6f,00,6f,00,74,00,25,00,5c,00,53,00,79,00,73,00,74,00,65,00,6d,00,33,00,\
+  32,00,5c,00,73,00,68,00,65,00,6c,00,6c,00,33,00,32,00,2e,00,64,00,6c,00,6c,\
+  00,2c,00,2d,00,31,00,30,00,31,00,35,00,36,00,00,00
+
+[HKEY_CLASSES_ROOT\exefile\DefaultIcon]
+@="%1"
+
+[HKEY_CLASSES_ROOT\exefile\shell]
+
+[HKEY_CLASSES_ROOT\exefile\shell\Open]
+"EditFlags"=hex:00,00,00,00
+
+[HKEY_CLASSES_ROOT\exefile\shell\open\command]
+@="\"%1\" %*"
+"IsolatedCommand"="\"%1\" %*"
+
+[HKEY_CLASSES_ROOT\exefile\shell\RunAs]
+"HasLUAShield"=""
+
+[HKEY_CLASSES_ROOT\exefile\shell\RunAs\command]
+@="\"%1\" %*"
+"IsolatedCommand"="\"%1\" %*"
+
+[HKEY_CLASSES_ROOT\exefile\shell\runasuser]
+@="@shell32.dll,-50944"
+"Extended"=""
+"SuppressionPolicyEx"="{F211AA05-D4DF-4370-A2A0-9F19C09756A7}"
+
+[HKEY_CLASSES_ROOT\exefile\shell\runasuser\command]
+"DelegateExecute"="{ea72d00e-4960-42fa-ba92-7792a7944c1d}"
+
+[-HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.exe]
