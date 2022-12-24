@@ -1,10 +1,14 @@
-REM SAVE FILE AS "RESET_NETWORK.BAT" TO YOUR DESKTOP
-REM RIGHT CLICK FILE AND SELECT RUN AS ADMINISTRATOR
-
 @ECHO OFF
 SETLOCAL
 COLOR 0A
 TITLE RESET NETWORK CONNECTION
+
+:------------------------------------------------------------------------------
+
+REM SAVE FILE AS "RESET_NETWORK.BAT" TO YOUR DESKTOP
+REM RIGHT CLICK FILE AND SELECT RUN AS ADMINISTRATOR
+
+:------------------------------------------------------------------------------
 
 IPCONFIG /RELEASE
 IPCONFIG /RELEASE6
@@ -19,7 +23,8 @@ IPCONFIG /RENEW
 IPCONFIG /RENEW6
 IPCONFIG /ALL
 
+:------------------------------------------------------------------------------
+
 ECHO.
 TITLE [ Done ] RESET NETWORK CONNECTION
 PAUSE
-EXIT
