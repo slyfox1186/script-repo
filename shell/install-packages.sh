@@ -9,11 +9,51 @@ installed()
     awk '/ok installed/{print 0;exit}{print 1}')"
 }
 
+# create exit script function
+exit_fn()
+{
+    echo 'Installation complete.'
+    echo
+    exit
+}
+
+geforce_fn()
+{
+    for PKG5 in "${PKGS5[@]}"
+    do
+        if ! installed "${PKG5}"; then
+            MISSING_PKGS5+=" ${PKG5}"
+        fi
+    done
+
+    echo "Installing: Geforce Video Driver ${PKGS5:14}:"
+    echo '=========================================='
+    if [ -n "${MISSING_PKGS5}" ]; then
+        EXECUTE_CMD5="apt -y install${MISSING_PKGS5}"
+        echo ${EXECUTE_CMD5}
+        echo
+        echo 'The Geforce video driver was successfully installed!'
+        echo
+        echo 'Do you want to reboot now?'
+        echo
+        read -p 'Enter: [Y]es or [N]o: ' ANSWER
+        if [ "${ANSWER}" = 'Y' ]; then
+            reboot
+        else
+            echo
+            echo 'Make sure to reboot asap to enable the newly installed video drivers!'
+            echo
+        fi
+    else
+        echo "The Geforce Video Driver ${PKGS5:14} is installed."
+        echo
+    fi
+}
+
 #######################
 ## Standard Packages ##
 #######################
 PKGS1=(alien aptitude aria2 autoconf autogen autogen-doc automake autopoint bash-completion binutils bison ccache colordiff curl ddclient dnstop dos2unix git gitk gnome-text-editor gparted grub-customizer highlight htop idn2 iftop libtool lshw lzma man-db moreutils nano net-tools network-manager openssh-client openssh-server openssl p7zip-full patch php-cli php-curl php-intl php-sqlite3 python3 python3-html5lib python3-idna python3-pip qemu rpm sqlite3 wget xsltproc)
-MISSING_PKGS1=''
 
 for PKG1 in "${PKGS1[@]}"
 do
@@ -22,22 +62,22 @@ do
     fi
 done
 
-echo 'Installing: Standard Libraries'
+echo 'Installing: Standard Packages'
 echo '=========================================='
 if [ -n "${MISSING_PKGS1}" ]; then
-    EXECUTE_CMD1="aptitude -f -y install${MISSING_PKGS1}"
+    EXECUTE_CMD1="apt -y install${MISSING_PKGS1}"
     ${EXECUTE_CMD1}
     echo
 else
+    echo 'All Standard Packages are installed.'
     echo
 fi
 
 #####################################
 ## Development Libraries - General ##
 #####################################
-# gcc-multilib interferes with gcc-10-i686-linux-gnu-base
+# Note: gcc-multilib was uninstalled when gcc-10-i686-linux-gnu-base was installed.
 PKGS2=(binutils-dev build-essential cmake dbus-x11 device-tree-compiler disktype doxygen dpkg-dev fftw-dev flex g++ gawk gcc-10-i686-linux-gnu gcc-10-i686-linux-gnu-base gcc-10-multilib gcc-10-cross-base-ports gengetopt gperf gtk-doc-tools intltool lib32stdc++6 lib32z1 libbz2-dev libcppunit-dev libdmalloc-dev libfl-dev libgc-dev libghc-html-conduit-dev libghc-html-dev libghc-http2-dev libghc-http-api-data-dev libghc-http-client-dev libghc-http-client-tls-dev libghc-http-common-dev libghc-http-conduit-dev libghc-http-date-dev libghc-http-dev libghc-http-link-header-dev libghc-http-media-dev libghc-http-reverse-proxy-dev libghc-http-streams-dev libghc-http-types-dev libglib2.0-dev libgvc6 libgvc6-plugins-gtk libheif-dev libhttp-parser-dev libimage-librsvg-perl libjemalloc-dev libjxp-java libjxr0 libjxr-tools liblz-dev liblzma-dev liblzo2-dev libncurses5 libncurses5-dev libnet-ifconfig-wrapper-perl libnet-nslookup-perl libnghttp2-dev libpstoedit-dev libraqm0 libraqm-dev libraw20 libraw-dev librsvg2-bin librsvg2-dev librsvg2-doc libsdl-pango1 libsdl-pango-dev libssl-dev libstdc++5 libtool-bin libzstd1 libzstd-dev libzzip-dev lzma-dev make mtd-utils r-cran-rsvg ruby-rsvg2 shtool texinfo u-boot-tools uuid-dev wget2-dev)
-MISSING_PKGS2=''
 
 for PKG2 in "${PKGS2[@]}"
 do
@@ -46,13 +86,14 @@ do
     fi
 done
 
-echo 'Installing: Development Libraries'
+echo 'Installing: General Development Libraries'
 echo '=========================================='
 if [ -n "${MISSING_PKGS2}" ]; then
-    EXECUTE_CMD2="aptitude -f -y install${MISSING_PKGS2}"
+    EXECUTE_CMD2="apt -y install${MISSING_PKGS2}"
     ${EXECUTE_CMD2}
     echo
 else
+    echo 'All General Development Libraries are installed.'
     echo
 fi
 
@@ -60,7 +101,6 @@ fi
 ## Development Libraries - GParted ##
 #####################################
 PKGS3=(btrfs-progs exfat-fuse exfatprogs f2fs-tools hfsprogs hfsutils jfsutils libtsk-dev nilfs-tools reiser4progs reiserfsprogs)
-MISSING_PKGS3=''
 
 for PKG3 in "${PKGS3[@]}"
 do
@@ -72,18 +112,18 @@ done
 echo 'Installing: GParted Development Libraries'
 echo '=========================================='
 if [ -n "${MISSING_PKGS3}" ]; then
-    EXECUTE_CMD3="aptitude -f -y install${MISSING_PKGS3}"
+    EXECUTE_CMD3="apt -y install${MISSING_PKGS3}"
     ${EXECUTE_CMD3}
     echo
 else
+    echo 'All GParted Development Libraries are installed.'
     echo
 fi
 
 ####################################
 ## Development Libraries - FFmpeg ##
 ####################################
-PKGS4=(bzip2-doc git-core google-perftools libaom-dev libass-dev libzip-dev libdav1d-dev libfreetype6-dev libgoogle-perftools-dev libgoogle-perftools4 libmp3lame-dev libnuma-dev libsdl2-dev libunistring-dev libva-dev libvdpau-dev libvorbis-dev libxcb1-dev libxcb-shm0-dev libxcb-xfixes0-dev m4 meson nasm ninja-build pkg-config yasm zlib1g-dev)
-MISSING_PKGS4=''
+PKGS4=(bzip2-doc git google-perftools libaom-dev libass-dev libzip-dev libdav1d-dev libfreetype6-dev libgoogle-perftools-dev libgoogle-perftools4 libmp3lame-dev libnuma-dev libsdl2-dev libunistring-dev libva-dev libvdpau-dev libvorbis-dev libxcb1-dev libxcb-shm0-dev libxcb-xfixes0-dev m4 meson nasm ninja-build pkg-config yasm zlib1g-dev)
 
 for PKG4 in "${PKGS4[@]}"
 do
@@ -95,47 +135,11 @@ done
 echo 'Installing: FFmpeg Development Libraries'
 echo '=========================================='
 if [ -n "${MISSING_PKGS4}" ]; then
-    EXECUTE_CMD4="aptitude -f -y install${MISSING_PKGS4}"
+    EXECUTE_CMD4="apt -y install${MISSING_PKGS4}"
     ${EXECUTE_CMD4}
     echo
 else
-    echo
-fi
-
-
-##############################
-## GEFORCE VIDEO DRIVER 520 ##
-##############################
-PKGS5=(nvidia-driver-520)
-MISSING_PKGS5=''
-
-for PKG5 in "${PKGS5[@]}"
-do
-    if ! installed "${PKG5}"; then
-        MISSING_PKGS5+=" ${PKG5}"
-    fi
-done
-
-echo "Installing: Geforce Video Driver ${PKGS5:14}:"
-echo '=========================================='
-if [ -n "${MISSING_PKGS5}" ]; then
-    EXECUTE_CMD5="aptitude -f -y install${MISSING_PKGS5}"
-    ${EXECUTE_CMD5}
-    echo
-    shopt -s nocaseglob
-    echo 'The Geforce video driver was successfully installed!'
-    echo
-    echo 'Do you want to reboot now?'
-    echo
-    read -p 'Enter: [Y]es or [N]o: ' ANSWER
-    if [ "${ANSWER}" = 'Y' ]; then
-        reboot
-    else
-        echo
-        echo 'Make sure to reboot asap to enable the newly installed video drivers!'
-        echo
-    fi
-else
+    echo 'All FFmpeg Development Libraries are installed.'
     echo
 fi
 
@@ -229,7 +233,40 @@ sudo -u jman bash -c '\
         "urllib3 >= 1.26.12"
 '
 echo
-echo 'Installation complete.'
+
+##############################
+## GEFORCE VIDEO DRIVER 520 ##
+##############################
+
+PKGS5=(nvidia-driver-520)
+
+echo "Do you want to install: ${PKGS5}?"
+  echo '
+  1) Yes
+  2) No
+  '
+
+read -p 'Your choice (1 or 2): ' CHOICE
 echo
 
-exit
+# case code
+case ${CHOICE} in
+    1|Yes|Y|y)
+        echo 'You chose Yes'
+        echo
+        geforce_fn
+        exit_fn
+        ;;
+    2|No|N|n)
+        echo 'You chose No'
+        echo
+        exit_fn
+        ;;
+    *)
+        echo 'Invalid selection'
+        echo
+        echo 'The script will now exit with value 1'
+        echo
+        exit 1
+        ;;
+esac
