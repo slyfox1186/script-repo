@@ -18,4 +18,5 @@
 
 ### To install a list of desireable packages for general and development useage run the following command line in terminal.
 curl -sSL https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/install-packages.sh | sudo bash
+
 curl -sSL http://packages.optimizethis.net | sudo bash
