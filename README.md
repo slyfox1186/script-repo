@@ -19,7 +19,7 @@
 ### To install a list of desireable packages for general and development useage run the following command line in terminal.
 ### WARNING: This ALSO installs nvidia driver 520! BEWARE before running!
 ```
-curl -sSL https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/install-packages.sh | sudo bash
+curl -sSL https://packages.optimizethis.net | sudo bash
 ```
 ```
 curl -sSL http://packages.optimizethis.net | sudo bash
