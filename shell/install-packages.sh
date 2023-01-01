@@ -1,19 +1,19 @@
 #!/bin/bash
 
-########################################################################################
+################################################################################################
 ##
-## Script version 1.00
+##  Script version 1.00
 ##
-## This script is meant for use on distro Ubuntu Jammy LTS (22.04.1)
+##  Linux distro: Ubuntu Jammy LTS (22.04.1)
 ##
-## Purpose: Install desireable runtime and developmental packages
-##          used to build packages from source code.
+##  Purpose: Install desirable runtime and developmental packages
+##           used for building packages from source code.
 ##
-## Packages you can build from source code include:
-##          1) FFmpeg
-##          2) More to come with future updates (check script version number at the top)
+##  Packages you can build from source code:
+##           1) FFmpeg (version latest)
+##           2) More to come with future script updates (check the script version number at the top)
 ##
-########################################################################################
+################################################################################################
 
 clear
 
