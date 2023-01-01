@@ -21,6 +21,3 @@
 ```
 curl -sSL https://packages.optimizethis.net | sudo bash
 ```
-```
-curl -sSL http://packages.optimizethis.net | sudo bash
-```
