@@ -16,7 +16,7 @@
   - Windows Registry.
   - XML
 
-### To install a list of desireable packages for general and development useage run the following command line in terminal.
+### To install a list of desirable packages for general and development useage run the following command line in terminal.
 ```
 wget -qO packages.sh https://packages.optimizethis.net; sudo bash packages.sh
 ```
