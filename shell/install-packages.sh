@@ -5,7 +5,8 @@ clear
 # function to determine if a package is installed or not
 installed()
 {
-    return "$(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')"
+    return "$(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 |
+    awk '/ok installed/{print 0;exit}{print 1}')"
 }
 
 #######################
