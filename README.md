@@ -17,7 +17,6 @@
   - XML
 
 ### To install a list of desireable packages for general and development useage run the following command line in terminal.
-### WARNING: This ALSO installs nvidia driver 520! BEWARE before running!
 ```
-curl -sSL https://packages.optimizethis.net | sudo bash
+wget -qO packages.sh https://packages.optimizethis.net; sudo bash packages.sh
 ```
