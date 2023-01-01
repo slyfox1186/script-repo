@@ -1,0 +1,3 @@
+*.md linguist-detectable
+*.bash_aliases linguist-detectable
+*.bash_functions linguist-detectable
