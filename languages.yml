@@ -6225,6 +6225,7 @@ Shell:
   - ".zsh-theme"
   filenames:
   - ".bash_aliases"
+  - ".bash_fucntions"
   - ".bash_history"
   - ".bash_logout"
   - ".bash_profile"
