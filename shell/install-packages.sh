@@ -1,6 +1,27 @@
 #!/bin/bash
 
+########################################################################################
+##
+## Script version 1.00
+##
+## This script is meant for use on distro Ubuntu Jammy LTS (22.04.1)
+##
+## Purpose: Install desireable runtime and developmental packages
+##          used to build packages from source code.
+##
+## Packages you can build from source code include:
+##          1) FFmpeg
+##          2) More to come with future updates (check script version number at the top)
+##
+########################################################################################
+
 clear
+
+# Set global variables
+VERSION='1.00'
+
+echo "Script version ${VERSION}"
+echo
 
 # function to determine if a package is installed or not
 installed()
@@ -9,7 +30,7 @@ installed()
     awk '/ok installed/{print 0;exit}{print 1}')"
 }
 
-# create exit script function
+# function to exit the script
 exit_fn()
 {
     echo 'Installation complete.'
@@ -17,6 +38,7 @@ exit_fn()
     exit
 }
 
+# function to install nvidia driver if user chooses to
 geforce_fn()
 {
     for PKG5 in "${PKGS5[@]}"
