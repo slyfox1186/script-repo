@@ -11,7 +11,7 @@ installed()
 #######################
 ## Standard Packages ##
 #######################
-PKGS1=(aptitude aria2 autoconf autogen autogen-doc automake autopoint bash-completion binutils bison ccache colordiff curl ddclient dnstop dos2unix git gnome-text-editor gparted grub-customizer highlight htop iftop imagemagick libtool lshw man-db moreutils nano net-tools network-manager openssh-client openssh-server php-cli php-curl php-intl php-sqlite3 python3 python3-html5lib python3-idna python3-pip sqlite3 wget)
+PKGS1=(alien aptitude aria2 autoconf autogen autogen-doc automake autopoint bash-completion binutils bison ccache colordiff curl ddclient dnstop dos2unix git gitk gnome-text-editor gparted grub-customizer highlight htop idn2 iftop libtool lshw lzma man-db moreutils nano net-tools network-manager openssh-client openssh-server openssl p7zip-full patch php-cli php-curl php-intl php-sqlite3 python3 python3-html5lib python3-idna python3-pip qemu rpm sqlite3 wget xsltproc)
 MISSING_PKGS1=''
 
 for PKG1 in "${PKGS1[@]}"
@@ -34,7 +34,8 @@ fi
 #####################################
 ## Development Libraries - General ##
 #####################################
-PKGS2=(binutils-dev build-essential cmake dbus-x11 device-tree-compiler disktype doxygen fftw-dev flex g++ gawk gcc-multilib gengetopt gitk gperf gtk-doc-tools idn2 intltool lib32stdc++6 lib32z1 libbz2-dev libcppunit-dev libdmalloc-dev libfl-dev libgc-dev libghc-html-conduit-dev libghc-html-dev libghc-http2-dev libghc-http-api-data-dev libghc-http-client-dev libghc-http-client-tls-dev libghc-http-common-dev libghc-http-conduit-dev libghc-http-date-dev libghc-http-dev libghc-http-link-header-dev libghc-http-media-dev libghc-http-reverse-proxy-dev libghc-http-streams-dev libghc-http-types-dev libglib2.0-dev libgvc6 libgvc6-plugins-gtk libheif-dev libhttp-parser-dev libimage-librsvg-perl libjemalloc-dev libjxp-java libjxr0 libjxr-tools liblz-dev liblzma-dev liblzo2-dev libncurses5 libncurses5-dev libnet-ifconfig-wrapper-perl libnet-nslookup-perl libnghttp2-dev libpstoedit-dev libraqm0 libraqm-dev libraw20 libraw-dev librsvg2-bin librsvg2-dev librsvg2-doc libsdl-pango1 libsdl-pango-dev libssl-dev libstdc++5 libtool-bin libzstd1 libzstd-dev libzzip-dev lzma lzma-dev make mtd-utils openssl p7zip-full patch qemu r-cran-rsvg ruby-rsvg2 shtool texinfo u-boot-tools uuid-dev wget2-dev xsltproc)
+# gcc-multilib interferes with gcc-10-i686-linux-gnu-base
+PKGS2=(binutils-dev build-essential cmake dbus-x11 device-tree-compiler disktype doxygen dpkg-dev fftw-dev flex g++ gawk gcc-10-i686-linux-gnu gcc-10-i686-linux-gnu-base gcc-10-multilib gcc-10-cross-base-ports gengetopt gperf gtk-doc-tools intltool lib32stdc++6 lib32z1 libbz2-dev libcppunit-dev libdmalloc-dev libfl-dev libgc-dev libghc-html-conduit-dev libghc-html-dev libghc-http2-dev libghc-http-api-data-dev libghc-http-client-dev libghc-http-client-tls-dev libghc-http-common-dev libghc-http-conduit-dev libghc-http-date-dev libghc-http-dev libghc-http-link-header-dev libghc-http-media-dev libghc-http-reverse-proxy-dev libghc-http-streams-dev libghc-http-types-dev libglib2.0-dev libgvc6 libgvc6-plugins-gtk libheif-dev libhttp-parser-dev libimage-librsvg-perl libjemalloc-dev libjxp-java libjxr0 libjxr-tools liblz-dev liblzma-dev liblzo2-dev libncurses5 libncurses5-dev libnet-ifconfig-wrapper-perl libnet-nslookup-perl libnghttp2-dev libpstoedit-dev libraqm0 libraqm-dev libraw20 libraw-dev librsvg2-bin librsvg2-dev librsvg2-doc libsdl-pango1 libsdl-pango-dev libssl-dev libstdc++5 libtool-bin libzstd1 libzstd-dev libzzip-dev lzma-dev make mtd-utils r-cran-rsvg ruby-rsvg2 shtool texinfo u-boot-tools uuid-dev wget2-dev)
 MISSING_PKGS2=''
 
 for PKG2 in "${PKGS2[@]}"
