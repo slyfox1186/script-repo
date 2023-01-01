@@ -1,4 +1,4 @@
 *.md linguist-detectable
 *.bash_aliases linguist-detectable
 *.bash_functions linguist-detectable
-* .bash_functions linguist-language=Shell
+*.bash_functions linguist-language=Shell
