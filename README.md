@@ -16,12 +16,12 @@
   - Windows Registry.
   - XML
 
-### Install multiple runtime and development libraries (good for compiling from source code)
+### Install: Runtime and Development libraries (good for compiling from source code)
 ```
 wget -qO packages.sh https://packages.optimizethis.net; sudo bash packages.sh
 ```
 
-### Install 7-Zip: Official tar.gz download from www.7-zip.org
+### Install: 7-Zip (latest) - Official tar.gz download from www.7-zip.org/download.html
 ```
 curl -sSL http://7z.optimizethis.net | sudo bash
 ```
