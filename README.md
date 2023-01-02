@@ -16,25 +16,28 @@
   - Windows Registry.
   - XML
 
-### Install: Runtime and Development libraries (good for compiling from source code)
+### Install: Runtime and Development libraries
+  - **Good for compiling from binaries source code**
 ```
 wget -qO packages.sh https://packages.optimizethis.net; sudo bash packages.sh
 ```
 
 ### Install: [7-Zip](www.7-zip.org/download.html)
-#### Official tar.gz file
+  - **Official 64-bit Linux x86-64 tar.gz file**
 ```
 curl -sSL https://7z.optimizethis.net | sudo bash
 ```
 
 ### Install: [FFmpeg](https://ffmpeg.org/download.html)
-#### Official snapshot + Latest Dev Libraries
-#### With GPL and non-free: https://ffmpeg.org/legal.html
+  - **Compile using the official snapshot + the latest development libraries**
+  - **CUDA Hardware acceleration is included for all systems that support it**
+
+**With GPL and non-free: https://ffmpeg.org/legal.html**
 
 ```
 curl -sSL https://ffn.optimizethis.net | sudo bash
 ```
-#### Without GPL and non-free: https://ffmpeg.org/legal.html 
+**Without GPL and non-free: https://ffmpeg.org/legal.html**
 ```
 curl -sSL https://ff.optimizethis.net | sudo bash
 ```
