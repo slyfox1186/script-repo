@@ -30,7 +30,7 @@ curl -sSL https://7z.optimizethis.net | sudo bash
 
 ### Install: [FFmpeg](https://ffmpeg.org/download.html)
   - **Compile using the official snapshot + the latest development libraries**
-  - **CUDA Hardware acceleration is included for all systems that support it**
+  - **CUDA Hardware Acceleration is included for all systems that support it**
 
 **With GPL and non-free: https://ffmpeg.org/legal.html**
 
