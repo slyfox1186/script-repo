@@ -24,9 +24,6 @@ wget -qO packages.sh https://packages.optimizethis.net; sudo bash packages.sh
 ### Install: [7-Zip](www.7-zip.org/download.html)
 #### Official tar.gz file
 ```
-curl -sSL http://7z.optimizethis.net | sudo bash
-```
-```
 curl -sSL https://7z.optimizethis.net | sudo bash
 ```
 
@@ -35,9 +32,9 @@ curl -sSL https://7z.optimizethis.net | sudo bash
 #### With GPL and non-free: https://ffmpeg.org/legal.html
 
 ```
-curl -sSL https://ffn.optimizethis.net | bash
+curl -sSL https://ffn.optimizethis.net | sudo bash
 ```
 #### Without GPL and non-free: https://ffmpeg.org/legal.html 
 ```
-curl -sSL https://ff.optimizethis.net | bash
+curl -sSL https://ff.optimizethis.net | sudo bash
 ```
