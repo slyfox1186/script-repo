@@ -30,7 +30,7 @@ tar -xf "${TAR_FILE}" -C "${OUPUT_DIR}"
 if tar -xf "${TAR_FILE}" -C "${OUPUT_DIR}"; then
     # CD INTO OUTPUT DIRECTORY
     cd '7z2201' || exit 1
-    
+
     # COPY STATIC FILE TO /usr/bin/7z
     sudo cp '7zzs' "${OUTPUT_FILE}"
 
@@ -43,11 +43,24 @@ if tar -xf "${TAR_FILE}" -C "${OUPUT_DIR}"; then
 fi
 
 TEST_VERSION="$('/usr/bin/7z' | grep --color -Ewo '[0-9]+\.[0-9]+')"
+clear
 
 # PRINT THE NEW 7Z VERSION AND STATS
-if [ -n "${TEST_VERSION}" ]; then
-    clear
-    echo 'The new 7zip version is:' "${TEST_VERSION}"
-else
+if [ -z "${TEST_VERSION}" ]; then
+    # THE INSTALLATION HAS FAILED. PLEASE CREATE A SUPPORT TICKET TO ALERT THE REPO OWNER https://github.com/slyfox1186/script-repo/issues
     echo 'Failed to install 7zip.'
+    echo
+    echo 'Please create a support ticket to alert the repo owner: https://github.com/slyfox1186/script-repo/issues'
+
+    exit 1
 fi
+
+# ALERT THE USER OF A SUCCESSFUL INSTALLATION
+echo "7-zip v${TEST_VERSION} was succesfully installed."
+echo
+echo 'The static file is located at /usr/bin/7z and requires no other files to execute.'
+echo
+echo 'Enter '\''7z'\'' to print the help menu.'
+echo
+
+exit
