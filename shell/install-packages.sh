@@ -62,13 +62,13 @@ exit_fn()
 }
 
 
-apt_choice1_fn()
+apt1_fn()
 {
     clear
     sudo apt autoremove -y
 }
 
-apt_choice2_fn()
+apt2_fn()
 {
     clear
     sudo apt clean
@@ -86,7 +86,7 @@ cleanup_fn()
 
             sudo apt autoremove -y
             '
-            apt_choice1_fn
+            apt1_fn
             exit_fn
             ;;
         2)
@@ -97,7 +97,7 @@ cleanup_fn()
             sudo apt autoclean
             sudo apt autoremove -y
             '
-            apt_choice2_fn
+            apt2_fn
             exit_fn
             ;;
         3)
