@@ -29,6 +29,7 @@
 ##           1) You must run this script twice due to certain libraries needing to be installed
 ##              before the other packages have the required files to install themselves
 ##
+##
 #######################################################################################################
 
 clear
@@ -371,12 +372,11 @@ PKGS5=(nvidia-driver-520)
 
 clear
 echo
-printf "Error: %s\n" "Do you want to install?:" "${PKGS5[@]}"
+printf "Error: %s\n" "Do you want to install?:" "${PKGS5}"
 echo '
 1) Yes
 2) No
 '
-
 read -p 'Your choices are (1 or 2): ' ANSWER2
 echo
 
