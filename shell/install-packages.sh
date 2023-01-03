@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#######################################################################################################
+######################################################################################################
 ##
 ##  Script Version: 2.00
 ##
@@ -15,8 +15,8 @@
 ##
 ##  Development Binaries Supported:
 ##
-##           1) FFmpeg (snapshot)
-##           2) ImageMagick (latest)
+##           1) FFmpeg (latest stable)
+##           2) ImageMagick (latest stable)
 ##
 ##  Updates: v2.0)
 ##
@@ -24,19 +24,19 @@
 ##           2) Replaced inferior packages with ones that have more functionality
 ##           3) Added synaptic (apt packaged manager)
 ##           4) Added batcat (cat command replacement)
+##           5) Added pipenv (virtual environment to run pip packages)
 ##
 ##  Instructions:
 ##
 ##           1) You must run this script twice due to certain libraries needing to be installed
 ##              before the other packages have the required files to install themselves
 ##
-##
-#######################################################################################################
+######################################################################################################
 
 clear
 
 # VERIFY THE SCRIPT HAS ROOT ACCESS BEFORE CONTINUING
-if [[ "${EUID}" > '0' ]]; then
+if [[ "${EUID}" -gt '0' ]]; then
     echo 'You must run this script as root/sudo'
     exit 1
 fi
@@ -57,8 +57,13 @@ installed()
 # function to exit the script
 exit_fn()
 {
-    echo 'Installation complete.'
+    echo 'Script complete.'
     echo
+    echo 'Removing the temporary install script in 5 seconds.'
+    echo
+    echo 'Press Ctrl+[Z or C] to prevent the install script from being removed.'
+    sleep 5
+    rm "${0}"
     exit
 }
 
@@ -153,7 +158,7 @@ geforce_fn()
     echo '=========================================='
     if [ -n "${MISSING_PKGS5}" ]; then
         EXECUTE_CMD5="apt -y install${MISSING_PKGS5}"
-        echo ${EXECUTE_CMD5}
+        echo "${EXECUTE_CMD5}"
         echo
         echo 'The Geforce video driver was successfully installed!'
         echo
@@ -185,7 +190,7 @@ fi
 #######################
 ## Standard Packages ##
 #######################
-PKGS1=(alien aptitude aria2 autoconf autogen autogen-doc automake autopoint bash-completion bat binutils bison ccache colordiff curl ddclient dnstop dos2unix git gitk gnome-text-editor gparted grub-customizer gufw highlight htop idn2 iftop libtool lshw lzma man-db moreutils nano net-tools network-manager openssh-client openssh-server openssl p7zip-full patch pcregrep pcre2-utils php-cli php-curl php-intl php-sqlite3 python3 python3-html5lib python3-idna python3-pip qemu rpm sqlite3 synaptic wget xsltproc)
+PKGS1=(alien aptitude aria2 autoconf autogen autogen-doc automake autopoint bash-completion bat binutils bison ccache colordiff curl ddclient dnstop dos2unix git gitk gnome-text-editor gparted grub-customizer gufw highlight htop idn2 iftop lshw lzma man-db moreutils nano net-tools network-manager openssh-client openssh-server openssl p7zip-full patch pcregrep pcre2-utils php-cli php-curl php-intl php-sqlite3 pipenv python3 python3-html5lib python3-idna python3-pip qemu rpm sqlite3 synaptic wget xsltproc)
 
 for PKG1 in "${PKGS1[@]}"
 do
@@ -208,7 +213,7 @@ fi
 #####################################
 ## Development Libraries - General ##
 #####################################
-PKGS2=(binutils-dev build-essential cmake dbus-x11 device-tree-compiler disktype doxygen dpkg-dev fftw-dev flex g++ gawk gcc-multilib gcc-10-multilib gcc-10-cross-base-ports gengetopt gperf gtk-doc-tools intltool lib32stdc++6 lib32z1 libbz2-dev libcppunit-dev libdmalloc-dev libfl-dev libgc-dev libghc-html-conduit-dev libghc-html-dev libghc-http2-dev libghc-http-api-data-dev libghc-http-client-dev libghc-http-client-tls-dev libghc-http-common-dev libghc-http-conduit-dev libghc-http-date-dev libghc-http-dev libghc-http-link-header-dev libghc-http-media-dev libghc-http-reverse-proxy-dev libghc-http-streams-dev libghc-http-types-dev libglib2.0-dev libgvc6 libgvc6-plugins-gtk libheif-dev libhttp-parser-dev libimage-librsvg-perl libjemalloc-dev libjxp-java libjxr0 libjxr-tools liblz-dev liblzma-dev liblzo2-dev libncurses5 libncurses5-dev libnet-ifconfig-wrapper-perl libnet-nslookup-perl libnghttp2-dev libpstoedit-dev libraqm0 libraqm-dev libraw20 libraw-dev librsvg2-bin librsvg2-dev librsvg2-doc libsdl-pango1 libsdl-pango-dev libssl-dev libstdc++5 libtool-bin libzstd1 libzstd-dev libzzip-dev lzma-dev make mtd-utils r-cran-rsvg ruby-rsvg2 shtool texinfo u-boot-tools uuid-dev wget2-dev)
+PKGS2=(autodep8 automake1.11 autopkgtest autoproject bcpp bind9-dev binutils-dev binutils-multiarch binutils-multiarch-dev bisonc++ build-essential calc-dev cargo ccbuild ccdiff clang clang-11 clang-12 clang-13 clang-14 clang-format clang-format-11 clang-format-12 clang-format-13 clang-format-14 clang-tidy clang-tidy-11 clang-tidy-12 clang-tidy-13 clang-tidy-14 clang-tools cmake cmake-extras copyright-update cppcheck-gui cpplint crossbuild-essential-amd64 cutils dbus-x11 debcargo device-tree-compiler devscripts diffstat disktype doxygen dpkg-dev dput erlang-base erlang-ssh erlang-ssl erlang-syntax-tools erlang-tools fasm fastboot fftw-dev flex g++ gawk gcc-10-cross-base-ports gcc-10-multilib gcc12-cross-base gccgo-10 gccgo-11 gccgo-12 gccgo-9 gcc-multilib gcc-opt gengetopt gobjc++-10-multilib gobjc++-12 gobjc++-12-multilib golang gperf gtk-doc-tools intltool lib32stdc++6 lib32z1 libbz2-dev libcppunit-dev libdmalloc-dev libfl-dev libgc-dev libghc-html-conduit-dev libghc-html-dev libghc-http2-dev libghc-http-api-data-dev libghc-http-client-dev libghc-http-client-tls-dev libghc-http-common-dev libghc-http-conduit-dev libghc-http-date-dev libghc-http-dev libghc-http-link-header-dev libghc-http-media-dev libghc-http-reverse-proxy-dev libghc-http-streams-dev libghc-http-types-dev libglib2.0-dev libgvc6 libgvc6-plugins-gtk libheif-dev libhttp-parser-dev libimage-librsvg-perl libjemalloc-dev libjxp-java libjxr0 libjxr-tools liblz-dev liblzma-dev liblzo2-dev libmimalloc2.0 libmimalloc-dev libncurses5 libncurses5-dev libnet-ifconfig-wrapper-perl libnet-nslookup-perl libnghttp2-dev libperl-dev libpstoedit-dev libraqm0 libraqm-dev libraw20 libraw-dev librsvg2-bin librsvg2-dev librsvg2-doc librust-jemalloc-sys-dev librust-malloc-buf-dev libsdl-pango1 libsdl-pango-dev libssl-dev libstdc++5 libtalloc-dev libtbbmalloc2 libtool libtool-bin libzstd1 libzstd-dev libzzip-dev lintian linux-source llvm llvm-13 lzma-dev make mono-devel mtd-utils python3-talloc-dev r-cran-rsvg repo ripper ruby-all-dev ruby-dev ruby-rsvg2 rustc rust-src shtool tcl-dev texinfo tk-dev tkpng tty-share u-boot-tools ui-auto uuid-dev wget2-dev zipalign)
 
 for PKG2 in "${PKGS2[@]}"
 do
@@ -374,8 +379,8 @@ PKGS5=(nvidia-driver-520)
 clear
 echo "Do you want to install: ${PKGS5}?"
 echo '
-1) Yes
-2) No
+    1) Yes
+    2) No
 '
 
 read -pr 'Your choices are (1 or 2): ' ANSWER2
