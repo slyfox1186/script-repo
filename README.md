@@ -36,9 +36,9 @@ wget -qO 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
 **With GPL and non-free: https://ffmpeg.org/legal.html**
 
 ```
-curl -sSL https://ffn.optimizethis.net | sudo bash
+wget -qO ffn.sh https://ffn.optimizethis.net; sudo bash ffn.sh
 ```
 **Without GPL and non-free: https://ffmpeg.org/legal.html**
 ```
-curl -sSL https://ff.optimizethis.net | sudo bash
+wget -qO ff.sh https://ff.optimizethis.net; sudo bash ff.sh
 ```
