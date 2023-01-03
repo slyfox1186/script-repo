@@ -50,8 +50,7 @@ echo
 # function to determine if a package is installed or not
 installed()
 {
-    return "$(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 |
-    awk '/ok installed/{print 0;exit}{print 1}')"
+    return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1|awk '/ok installed/{print 0;exit}{print 1}')
 }
 
 # function to exit the script
@@ -147,24 +146,23 @@ geforce_menu_fn()
 # function to install nvidia driver if user chooses to
 geforce_fn()
 {
-    for PKG5 in "${PKGS5[@]}"
+    for PKG in "${PKGS[@]}"
     do
-        if ! installed "${PKG5}"; then
-            MISSING_PKGS5+=" ${PKG5}"
+        if ! installed "${PKG}"; then
+            MISSING_PKGS+=" ${PKG}"
         fi
     done
 
-    echo "Installing: Geforce Video Driver ${PKGS5:14}:"
+    echo "Installing: Geforce Video Driver ${PKGS:14}:"
     echo '=========================================='
-    if [ -n "${MISSING_PKGS5}" ]; then
-        EXECUTE_CMD5="apt -y install${MISSING_PKGS5}"
-        echo "${EXECUTE_CMD5}"
+    if [ -n "${MISSING_PKGS}" ]; then
+        apt -y install${MISSING_PKGS}
         echo
         echo 'The Geforce video driver was successfully installed!'
         echo
         echo 'Do you want to reboot now?'
         echo
-        read -pr 'Enter: [Y]es or [N]o: ' ANSWER1
+        read -p 'Enter: [Y]es or [N]o: ' ANSWER1
 
         if [ "${ANSWER1}" = 'Y' ]; then
             reboot
@@ -175,10 +173,16 @@ geforce_fn()
         fi
 
     else
-        echo "The Geforce Video Driver ${PKGS5:14} is already installed."
+        echo "The Geforce Video Driver ${PKGS:14} is already installed."
         echo
     fi
 }
+
+installed()
+{
+    return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1|awk '/ok installed/{print 0;exit}{print 1}')
+}
+
 
 ###################
 ## INSTALL PPA'S ##
@@ -190,94 +194,90 @@ fi
 #######################
 ## Standard Packages ##
 #######################
-PKGS1=(alien aptitude aria2 autoconf autogen autogen-doc automake autopoint bash-completion bat binutils bison ccache colordiff curl ddclient dnstop dos2unix git gitk gnome-text-editor gparted grub-customizer gufw highlight htop idn2 iftop lshw lzma man-db moreutils nano net-tools network-manager openssh-client openssh-server openssl p7zip-full patch pcregrep pcre2-utils php-cli php-curl php-intl php-sqlite3 pipenv python3 python3-html5lib python3-idna python3-pip qemu rpm sqlite3 synaptic wget xsltproc)
+PKGS=(alien aptitude aria2 autoconf autogen autogen-doc automake autopoint bash-completion bat binutils bison ccache colordiff curl ddclient dnstop dos2unix git gitk gnome-text-editor gnome-tweaks gparted grub-customizer gufw highlight htop idn2 iftop lshw lzma man-db moreutils nano net-tools network-manager openssh-client openssh-server openssl p7zip-full patch pcre2-utils pcregrep php-cli php-curl php-intl php-sqlite3 pipenv python3 python3-html5lib python3-idna python3-pip qemu rpm sqlite3 synaptic wget xsltproc)
 
-for PKG1 in "${PKGS1[@]}"
+for PKG in "${PKGS[@]}"
 do
-    if ! installed "${PKG1}"; then
-        MISSING_PKGS1+=" ${PKG1}"
+    if ! installed "${PKG}"; then
+        MISSING_PKGS+=" ${PKG}"
     fi
 done
 
 echo 'Installing: Standard Packages'
 echo '=========================================='
-if [ -n "${MISSING_PKGS1}" ]; then
-    EXECUTE_CMD1="apt -y install${MISSING_PKGS1}"
-    ${EXECUTE_CMD1}
+if [ -n "${MISSING_PKGS}" ]; then
+    apt -y install${MISSING_PKGS}
     echo
 else
-    echo 'All Standard Packages are installed.'
+    echo 'All Standard runtimes are installed.'
     echo
 fi
+unset MISSING_PKGS
 
-#####################################
-## Development Libraries - General ##
-#####################################
-PKGS2=(autodep8 automake1.11 autopkgtest autoproject bcpp bind9-dev binutils-dev binutils-multiarch binutils-multiarch-dev bisonc++ build-essential calc-dev cargo ccbuild ccdiff clang clang-11 clang-12 clang-13 clang-14 clang-format clang-format-11 clang-format-12 clang-format-13 clang-format-14 clang-tidy clang-tidy-11 clang-tidy-12 clang-tidy-13 clang-tidy-14 clang-tools cmake cmake-extras copyright-update cppcheck-gui cpplint crossbuild-essential-amd64 cutils dbus-x11 debcargo device-tree-compiler devscripts diffstat disktype doxygen dpkg-dev dput erlang-base erlang-ssh erlang-ssl erlang-syntax-tools erlang-tools fasm fastboot fftw-dev flex g++ gawk gcc-10-cross-base-ports gcc-10-multilib gccgo-10 gccgo-11 gccgo-12 gccgo-9 gcc-multilib gcc-opt gengetopt gobjc++-10-multilib gobjc++-12 gobjc++-12-multilib golang gperf gtk-doc-tools intltool lib32stdc++6 lib32z1 libbz2-dev libcppunit-dev libdmalloc-dev libfl-dev libgc-dev libghc-html-conduit-dev libghc-html-dev libghc-http2-dev libghc-http-api-data-dev libghc-http-client-dev libghc-http-client-tls-dev libghc-http-common-dev libghc-http-conduit-dev libghc-http-date-dev libghc-http-dev libghc-http-link-header-dev libghc-http-media-dev libghc-http-reverse-proxy-dev libghc-http-streams-dev libghc-http-types-dev libglib2.0-dev libgvc6 libgvc6-plugins-gtk libheif-dev libhttp-parser-dev libimage-librsvg-perl libjemalloc-dev libjxp-java libjxr0 libjxr-tools liblz-dev liblzma-dev liblzo2-dev libmimalloc2.0 libmimalloc-dev libncurses5 libncurses5-dev libnet-ifconfig-wrapper-perl libnet-nslookup-perl libnghttp2-dev libperl-dev libpstoedit-dev libraqm0 libraqm-dev libraw20 libraw-dev librsvg2-bin librsvg2-dev librsvg2-doc librust-jemalloc-sys-dev librust-malloc-buf-dev libsdl-pango1 libsdl-pango-dev libssl-dev libstdc++5 libtalloc-dev libtbbmalloc2 libtool libtool-bin libzstd1 libzstd-dev libzzip-dev lintian linux-source llvm llvm-13 lzma-dev make mono-devel mtd-utils python3-talloc-dev r-cran-rsvg repo ripper ruby-all-dev ruby-dev ruby-rsvg2 rustc rust-src shtool tcl-dev texinfo tk-dev tkpng tty-share u-boot-tools ui-auto uuid-dev wget2-dev zipalign)
+PKGS=(autodep8 automake1.11 autopkgtest autoproject bcpp bind9-dev binutils-dev binutils-multiarch binutils-multiarch-dev bisonc++ build-essential calc-dev cargo ccbuild ccdiff clang clang-11 clang-12 clang-13 clang-14 clang-format clang-format-11 clang-format-12 clang-format-13 clang-format-14 clang-tidy clang-tidy-11 clang-tidy-12 clang-tidy-13 clang-tidy-14 clang-tools cmake cmake-extras copyright-update cppcheck-gui cpplint crossbuild-essential-amd64 cutils dbus-x11 debcargo device-tree-compiler devscripts diffstat disktype doxygen dpkg-dev dput erlang-base erlang-ssh erlang-ssl erlang-syntax-tools erlang-tools fasm fastboot fftw-dev flex g++ gawk gcc-10-cross-base-ports gcc-10-multilib gccgo-10 gccgo-11 gccgo-12 gccgo-9 gcc-multilib gcc-opt gengetopt gobjc++-10-multilib gobjc++-12 gobjc++-12-multilib golang gperf gtk-doc-tools intltool ir.lv2 lib32stdc++6 lib32z1 libbz2-dev libcppunit-dev libdmalloc-dev libfl-dev libgc-dev libghc-html-conduit-dev libghc-html-dev libghc-http2-dev libghc-http-api-data-dev libghc-http-client-dev libghc-http-client-tls-dev libghc-http-common-dev libghc-http-conduit-dev libghc-http-date-dev libghc-http-dev libghc-http-link-header-dev libghc-http-media-dev libghc-http-reverse-proxy-dev libghc-http-streams-dev libghc-http-types-dev libglib2.0-dev libgvc6 libgvc6-plugins-gtk libheif-dev libhttp-parser-dev libimage-librsvg-perl libjemalloc-dev libjxp-java libjxr0 libjxr-tools liblilv-dev liblvm2-dev liblz-dev liblzma-dev liblzo2-dev libmimalloc2.0 libmimalloc-dev libnabrit-dev libncurses5 libncurses5-dev libnet-ifconfig-wrapper-perl libnet-nslookup-perl libnghttp2-dev libperl-dev libpstoedit-dev libraqm0 libraqm-dev libraw20 libraw-dev librsvg2-bin librsvg2-dev librsvg2-doc librust-jemalloc-sys-dev librust-malloc-buf-dev libsdl-pango1 libsdl-pango-dev libsratom-dev libssl-dev libstdc++5 libsuil-0-0 libtalloc-dev libtbbmalloc2 libtool libtool-bin libvslvm-dev libzstd1 libzstd-dev libzzip-dev lilv-utils lintian linux-source llvm llvm-13 llvm-dev lv2-dev lv2file lv2vocoder lzma-dev make mono-devel mtd-utils python3-talloc-dev r-cran-rsvg repo ripper ruby-all-dev ruby-dev ruby-rsvg2 rustc rust-src shtool tcl-dev texinfo tk-dev tkpng tty-share u-boot-tools ui-auto uuid-dev wget2-dev zipalign)
 
-for PKG2 in "${PKGS2[@]}"
+for PKG in ${PKGS[@]}
 do
-    if ! installed "${PKG2}"; then
-        MISSING_PKGS2+=" ${PKG2}"
+if ! installed "${PKG}"; then
+        MISSING_PKGS+=" ${PKG}"
     fi
 done
 
-echo 'Installing: General Development Libraries'
+echo 'Installing: General Dev Libraries'
 echo '=========================================='
-if [ -n "${MISSING_PKGS2}" ]; then
-    EXECUTE_CMD2="apt -y install${MISSING_PKGS2}"
-    ${EXECUTE_CMD2}
+if [ -n "${MISSING_PKGS}" ]; then
+    apt -y install${MISSING_PKGS}
     echo
 else
-    echo 'All General Development Libraries are installed.'
+    echo 'All General Dev Libraries are installed.'
     echo
 fi
+unset MISSING_PKGS
 
 #####################################
 ## Development Libraries - GParted ##
 #####################################
-PKGS3=(btrfs-progs exfat-fuse exfatprogs f2fs-tools hfsprogs hfsutils jfsutils libtsk-dev nilfs-tools reiser4progs reiserfsprogs)
+PKGS=(btrfs-progs exfat-fuse exfatprogs f2fs-tools hfsprogs hfsutils jfsutils libtsk-dev nilfs-tools reiser4progs reiserfsprogs)
 
-for PKG3 in "${PKGS3[@]}"
+for PKG in "${PKGS[@]}"
 do
-    if ! installed "${PKG3}"; then
-        MISSING_PKGS3+=" ${PKG3}"
+    if ! installed "${PKG}"; then
+        MISSING_PKGS+=" ${PKG}"
     fi
 done
 
 echo 'Installing: GParted Development Libraries'
 echo '=========================================='
-if [ -n "${MISSING_PKGS3}" ]; then
-    EXECUTE_CMD3="apt -y install${MISSING_PKGS3}"
-    ${EXECUTE_CMD3}
+if [ -n "${MISSING_PKGS}" ]; then
+    apt -y install${MISSING_PKGS}
     echo
 else
     echo 'All GParted Development Libraries are installed.'
     echo
 fi
+unset MISSING_PKGS
 
 ####################################
 ## Development Libraries - FFmpeg ##
 ####################################
-PKGS4=(bzip2-doc git google-perftools libaom-dev libass-dev libzip-dev libdav1d-dev libfreetype6-dev libgoogle-perftools-dev libgoogle-perftools4 libmp3lame-dev libnuma-dev libsdl2-dev libunistring-dev libva-dev libvdpau-dev libvorbis-dev libxcb1-dev libxcb-shm0-dev libxcb-xfixes0-dev m4 meson nasm ninja-build pkg-config yasm zlib1g-dev)
+PKGS=(bzip2-doc git google-perftools libaom-dev libass-dev libzip-dev libdav1d-dev libfreetype6-dev libgoogle-perftools-dev libgoogle-perftools4 libmp3lame-dev libnuma-dev libsdl2-dev libunistring-dev libva-dev libvdpau-dev libvorbis-dev libxcb1-dev libxcb-shm0-dev libxcb-xfixes0-dev m4 meson nasm ninja-build pkg-config yasm zlib1g-dev)
 
-for PKG4 in "${PKGS4[@]}"
+for PKG in "${PKGS[@]}"
 do
-    if ! installed "${PKG4}"; then
-        MISSING_PKGS4+=" ${PKG4}"
+    if ! installed "${PKG}"; then
+        MISSING_PKGS+=" ${PKG}"
     fi
-done
 
 echo 'Installing: FFmpeg Development Libraries'
 echo '=========================================='
-if [ -n "${MISSING_PKGS4}" ]; then
-    EXECUTE_CMD4="apt -y install${MISSING_PKGS4}"
-    ${EXECUTE_CMD4}
+if [ -n "${MISSING_PKGS}" ]; then
+    apt -y install${MISSING_PKGS}
     echo
 else
     echo 'All FFmpeg Development Libraries are installed.'
     echo
 fi
+unset MISSING_PKGS
 
 ###########################
 ## Upgrade: Python3 pip3 ##
@@ -374,16 +374,16 @@ echo
 ## GEFORCE VIDEO DRIVER 520 ##
 ##############################
 
-PKGS5=(nvidia-driver-520)
+PKGS=(nvidia-driver-520)
 
 clear
-echo "Do you want to install: ${PKGS5}?"
+echo "Do you want to install: ${PKGS}?"
 echo '
     1) Yes
     2) No
 '
 
-read -pr 'Your choices are (1 or 2): ' ANSWER2
+read -p 'Your choices are (1 or 2): ' ANSWER2
 echo
 
 geforce_menu_fn "${ANSWER2}"
@@ -399,7 +399,7 @@ Do you want to run: sudo apt
 2) clean | autoclean | autoremove
 3) exit menu
 '
-read -pr 'Your choices are (1 to 3): ' ANSWER3
+read -p 'Your choices are (1 to 3): ' ANSWER3
 echo
 
 cleanup_fn "${ANSWER3}"
