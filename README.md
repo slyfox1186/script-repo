@@ -18,7 +18,7 @@
 
 ### Install: Runtime and Development libraries
   - **Good for compiling binaries from source code**
-  - - **You must run the script twice to install all packages available**
+  - **You must run the script twice to install all packages available**
 ```
 wget -qO pkgs.sh https://pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
