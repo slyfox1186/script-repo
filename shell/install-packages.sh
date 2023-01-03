@@ -4,7 +4,9 @@
 ##
 ##  Script Version: 2.00
 ##
-##  Distro Target: Ubuntu Jammy LTS (22.04.1)
+##  Distro Targets:
+##
+##           1) Ubuntu Jammy LTS (22.04.1)
 ##
 ##  Script Purpose:
 ##
