@@ -372,7 +372,6 @@ PKGS5=(nvidia-driver-520)
 
 clear
 echo
-# printf "\n Failed to create dir %s" "$1";
 printf "Input Required:\n\nDo you want to install %s?\n" "${PKGS5}"
 echo '
 1) Yes
