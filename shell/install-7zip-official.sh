@@ -56,5 +56,7 @@ echo 'The static file is located at /usr/bin/7z and requires no other files to e
 echo
 echo 'Enter '\''7z'\'' to print the help menu.'
 echo
+echo
 
+read -p 'Done. Script completed.'
 exit
