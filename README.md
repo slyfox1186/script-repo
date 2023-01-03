@@ -42,3 +42,12 @@ wget -qO ffn.sh https://ffn.optimizethis.net; sudo bash ffn.sh
 ```
 wget -qO ff.sh https://ff.optimizethis.net; sudo bash ff.sh
 ```
+
+### Create ssh key pair and export to remote computer
+ 1. **Prompt user with instructions**
+    - **Main Menu:**
+      1. **Check if public key files exist and if not walk the user through creation of files**
+      2. **Walkthrough the user copying their ssh public key to a remote computer**
+```
+wget -qO ssh-keys.sh https://ssh-keys.optimizethis.net; bash ssh-keys.sh
+```
