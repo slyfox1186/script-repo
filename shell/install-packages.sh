@@ -1,28 +1,49 @@
 #!/bin/bash
 
-################################################################################################
+#####################################################################################################################
 ##
-##  Script version 1.00
+##  Script Version: 2.00
 ##
-##  Linux distro: Ubuntu Jammy LTS (22.04.1)
+##  Distro Target: Ubuntu Jammy LTS (22.04.1)
 ##
-##  Purpose: Install desirable runtime and developmental packages
-##           used for building packages from source code.
+##  Script Purpose:
 ##
-##  Packages you can build from source code:
-##           1) FFmpeg (version latest)
-##           2) More to come with future script updates (check the script version number at the top)
+##           1) Install the most useful runtime packages (popular)
+##           2) Install development packages that can be used to compile specific programs from source
 ##
-################################################################################################
+##  Development Binaries Supported:
+##
+##           1) FFmpeg (snapshot)
+##           2) ImageMagick (latest)
+##
+##  Updates: v2.0)
+##
+##           1) Added new functions and user menus
+##           2) Replaced inferior packages with ones that have more functionality
+##           3) Added Synaptic package manager
+##
+##  Instructions:
+##
+##           1) You must run this script twice due to certain libraries needing to be installed
+##              before the other packages have the required files to install themselves
+##
+##
+#####################################################################################################################
 
 clear
 
-# Set global variables
-VERSION='1.00'
+# VERIFY THE SCRIPT HAS ROOT ACCESS BEFORE CONTINUING
+if [[ "${EUID}" > '0' ]]; then
+    echo 'You must run this script as root/sudo'
+    exit 1
+fi
 
+# SET VARIABLES
+VERSION='2.00'
 echo "Script version ${VERSION}"
 echo
 
+# FUNCTION TO DETERMINE IF A
 # function to determine if a package is installed or not
 installed()
 {
@@ -36,6 +57,83 @@ exit_fn()
     echo 'Installation complete.'
     echo
     exit
+}
+
+
+apt_choice1_fn()
+{
+    clear
+    sudo apt autoremove -y
+}
+
+apt_choice2_fn()
+{
+    clear
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt autoremove -y
+}
+
+cleanup_fn()
+{
+    # case code
+    case ${1} in
+        1)
+            echo '
+            You chose:
+
+            sudo apt autoremove -y
+            '
+            apt_choice1_fn
+            exit_fn
+            ;;
+        2)
+            echo '
+            You chose:
+
+            sudo apt clean
+            sudo apt autoclean
+            sudo apt autoremove -y
+            '
+            apt_choice2_fn
+            exit_fn
+            ;;
+        3)
+            echo 'You chose to exit.'
+            echo
+            exit_fn
+            ;;
+        *)
+            echo 'Invalid selection'
+            sleep 2
+            clear
+            cleanup_fn
+            ;;
+    esac
+}
+
+geforce_menu_fn()
+{
+    # case code
+    case ${1} in
+        1|Yes|Y|y)
+            echo 'You chose install the Geforce Drivers'
+            echo
+            geforce_fn
+            return
+            ;;
+        2|No|N|n)
+            echo 'You chose not to install the Geforce Drivers'
+            echo
+            return
+            ;;
+        *)
+            echo 'Invalid selection'
+            sleep 2
+            clear
+            geforce_menu_fn
+            ;;
+    esac
 }
 
 # function to install nvidia driver if user chooses to
@@ -58,24 +156,33 @@ geforce_fn()
         echo
         echo 'Do you want to reboot now?'
         echo
-        read -p 'Enter: [Y]es or [N]o: ' ANSWER
-        if [ "${ANSWER}" = 'Y' ]; then
+        read -p 'Enter: [Y]es or [N]o: ' ANSWER1
+
+        if [ "${ANSWER1}" = 'Y' ]; then
             reboot
         else
             echo
             echo 'Make sure to reboot asap to enable the newly installed video drivers!'
             echo
         fi
+
     else
-        echo "The Geforce Video Driver ${PKGS5:14} is installed."
+        echo "The Geforce Video Driver ${PKGS5:14} is already installed."
         echo
     fi
 }
 
+###################
+## INSTALL PPA'S ##
+###################
+if ! which grub-customizer >/dev/null 2>&1; then
+    add-apt-repository ppa:'danielrichter2007/grub-customizer' -y
+fi
+
 #######################
 ## Standard Packages ##
 #######################
-PKGS1=(alien aptitude aria2 autoconf autogen autogen-doc automake autopoint bash-completion binutils bison ccache colordiff curl ddclient dnstop dos2unix git gitk gnome-text-editor gparted grub-customizer highlight htop idn2 iftop libtool lshw lzma man-db moreutils nano net-tools network-manager openssh-client openssh-server openssl p7zip-full patch php-cli php-curl php-intl php-sqlite3 python3 python3-html5lib python3-idna python3-pip qemu rpm sshpass sqlite3 wget xsltproc)
+PKGS1=(alien aptitude aria2 autoconf autogen autogen-doc automake autopoint bash-completion binutils bison ccache colordiff curl ddclient dnstop dos2unix git gitk gnome-text-editor gparted grub-customizer highlight htop idn2 iftop libtool lshw lzma man-db moreutils nano net-tools network-manager openssh-client openssh-server openssl p7zip-full patch pcregrep pcre2-utils php-cli php-curl php-intl php-sqlite3 python3 python3-html5lib python3-idna python3-pip qemu rpm sqlite3 synaptic wget xsltproc)
 
 for PKG1 in "${PKGS1[@]}"
 do
@@ -98,8 +205,7 @@ fi
 #####################################
 ## Development Libraries - General ##
 #####################################
-# Note: gcc-multilib was uninstalled when gcc-10-i686-linux-gnu-base was installed.
-PKGS2=(binutils-dev build-essential cmake dbus-x11 device-tree-compiler disktype doxygen dpkg-dev fftw-dev flex g++ gawk gcc-10-i686-linux-gnu gcc-10-i686-linux-gnu-base gcc-10-multilib gcc-10-cross-base-ports gengetopt gperf gtk-doc-tools intltool lib32stdc++6 lib32z1 libbz2-dev libcppunit-dev libdmalloc-dev libfl-dev libgc-dev libghc-html-conduit-dev libghc-html-dev libghc-http2-dev libghc-http-api-data-dev libghc-http-client-dev libghc-http-client-tls-dev libghc-http-common-dev libghc-http-conduit-dev libghc-http-date-dev libghc-http-dev libghc-http-link-header-dev libghc-http-media-dev libghc-http-reverse-proxy-dev libghc-http-streams-dev libghc-http-types-dev libglib2.0-dev libgvc6 libgvc6-plugins-gtk libheif-dev libhttp-parser-dev libimage-librsvg-perl libjemalloc-dev libjxp-java libjxr0 libjxr-tools liblz-dev liblzma-dev liblzo2-dev libncurses5 libncurses5-dev libnet-ifconfig-wrapper-perl libnet-nslookup-perl libnghttp2-dev libpstoedit-dev libraqm0 libraqm-dev libraw20 libraw-dev librsvg2-bin librsvg2-dev librsvg2-doc libsdl-pango1 libsdl-pango-dev libssl-dev libstdc++5 libtool-bin libzstd1 libzstd-dev libzzip-dev lzma-dev make mtd-utils r-cran-rsvg ruby-rsvg2 shtool texinfo u-boot-tools uuid-dev wget2-dev)
+PKGS2=(binutils-dev build-essential cmake dbus-x11 device-tree-compiler disktype doxygen dpkg-dev fftw-dev flex g++ gawk gcc-multilib gcc-10-multilib gcc-10-cross-base-ports gengetopt gperf gtk-doc-tools intltool lib32stdc++6 lib32z1 libbz2-dev libcppunit-dev libdmalloc-dev libfl-dev libgc-dev libghc-html-conduit-dev libghc-html-dev libghc-http2-dev libghc-http-api-data-dev libghc-http-client-dev libghc-http-client-tls-dev libghc-http-common-dev libghc-http-conduit-dev libghc-http-date-dev libghc-http-dev libghc-http-link-header-dev libghc-http-media-dev libghc-http-reverse-proxy-dev libghc-http-streams-dev libghc-http-types-dev libglib2.0-dev libgvc6 libgvc6-plugins-gtk libheif-dev libhttp-parser-dev libimage-librsvg-perl libjemalloc-dev libjxp-java libjxr0 libjxr-tools liblz-dev liblzma-dev liblzo2-dev libncurses5 libncurses5-dev libnet-ifconfig-wrapper-perl libnet-nslookup-perl libnghttp2-dev libpstoedit-dev libraqm0 libraqm-dev libraw20 libraw-dev librsvg2-bin librsvg2-dev librsvg2-doc libsdl-pango1 libsdl-pango-dev libssl-dev libstdc++5 libtool-bin libzstd1 libzstd-dev libzzip-dev lzma-dev make mtd-utils r-cran-rsvg ruby-rsvg2 shtool texinfo u-boot-tools uuid-dev wget2-dev)
 
 for PKG2 in "${PKGS2[@]}"
 do
@@ -262,33 +368,30 @@ echo
 
 PKGS5=(nvidia-driver-520)
 
+clear
 echo "Do you want to install: ${PKGS5}?"
-  echo '
-  1) Yes
-  2) No
-  '
+echo '
+1) Yes
+2) No
+'
 
-read -p 'Your choice (1 or 2): ' CHOICE
+read -p 'Your choices are (1 or 2): ' ANSWER2
 echo
 
-# case code
-case ${CHOICE} in
-    1|Yes|Y|y)
-        echo 'You chose Yes'
-        echo
-        geforce_fn
-        exit_fn
-        ;;
-    2|No|N|n)
-        echo 'You chose No'
-        echo
-        exit_fn
-        ;;
-    *)
-        echo 'Invalid selection'
-        echo
-        echo 'The script will now exit with value 1'
-        echo
-        exit 1
-        ;;
-esac
+geforce_menu_fn "${ANSWER2}"
+
+#####################################
+## PROMPT USER TO CLEANUP PACKAGES ##
+#####################################
+
+clear
+echo '
+Do you want to run: sudo apt
+1) autoremove
+2) clean | autoclean | autoremove
+3) exit menu
+'
+read -p 'Your choices are (1 to 3): ' ANSWER3
+echo
+
+cleanup_fn "${ANSWER3}"
