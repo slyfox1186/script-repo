@@ -2,12 +2,6 @@
 
 clear
 
-# VERIFY THAT THE SCRIPT IS RUNNING WITH ROOT ACCESS
-if [[ "${EUID}" -gt '0' ]]; then
-    echo 'You must run this script as root/sudo'
-    exit 1
-fi
-
 # SET VARIABLES
 VERSION='7z2201'
 TAR_FILE="${PWD}/${VERSION}.tar.xz"
