@@ -7,7 +7,7 @@
 3. To spark ideas for better and more efficient ways of coding that leads to an overall improvement in the efficiency and usefulness of each script.
 4. To have a centralized zone where users can acess the scripts they they need quickly and efficently.
  
-### Current script languages that are included
+### Included languages
   - AutoHotkey
   - Batch
   - Powershell
