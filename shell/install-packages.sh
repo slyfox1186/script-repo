@@ -22,7 +22,8 @@
 ##
 ##           1) Added new functions and user menus
 ##           2) Replaced inferior packages with ones that have more functionality
-##           3) Added Synaptic package manager
+##           3) Added synaptic (apt packaged manager)
+##           4) Added batcat (cat command replacement)
 ##
 ##  Instructions:
 ##
@@ -35,7 +36,7 @@
 clear
 
 # VERIFY THE SCRIPT HAS ROOT ACCESS BEFORE CONTINUING
-if [[ "${EUID}" -gt '0' ]]; then
+if [[ "${EUID}" > '0' ]]; then
     echo 'You must run this script as root/sudo'
     exit 1
 fi
@@ -152,13 +153,13 @@ geforce_fn()
     echo '=========================================='
     if [ -n "${MISSING_PKGS5}" ]; then
         EXECUTE_CMD5="apt -y install${MISSING_PKGS5}"
-        ${EXECUTE_CMD5}
+        echo ${EXECUTE_CMD5}
         echo
         echo 'The Geforce video driver was successfully installed!'
         echo
         echo 'Do you want to reboot now?'
         echo
-        read -p 'Enter: [Y]es or [N]o: ' ANSWER1
+        read -pr 'Enter: [Y]es or [N]o: ' ANSWER1
 
         if [ "${ANSWER1}" = 'Y' ]; then
             reboot
@@ -184,7 +185,7 @@ fi
 #######################
 ## Standard Packages ##
 #######################
-PKGS1=(alien aptitude aria2 autoconf autogen autogen-doc automake autopoint bash-completion binutils bison ccache colordiff curl ddclient dnstop dos2unix git gitk gnome-text-editor gparted grub-customizer highlight htop idn2 iftop libtool lshw lzma man-db moreutils nano net-tools network-manager openssh-client openssh-server openssl p7zip-full patch pcregrep pcre2-utils php-cli php-curl php-intl php-sqlite3 python3 python3-html5lib python3-idna python3-pip qemu rpm sqlite3 synaptic wget xsltproc)
+PKGS1=(alien aptitude aria2 autoconf autogen autogen-doc automake autopoint bash-completion bat binutils bison ccache colordiff curl ddclient dnstop dos2unix git gitk gnome-text-editor gparted grub-customizer gufw highlight htop idn2 iftop libtool lshw lzma man-db moreutils nano net-tools network-manager openssh-client openssh-server openssl p7zip-full patch pcregrep pcre2-utils php-cli php-curl php-intl php-sqlite3 python3 python3-html5lib python3-idna python3-pip qemu rpm sqlite3 synaptic wget xsltproc)
 
 for PKG1 in "${PKGS1[@]}"
 do
@@ -371,13 +372,13 @@ echo
 PKGS5=(nvidia-driver-520)
 
 clear
-echo
-printf "Input Required:\n\nDo you want to install %s?\n" "${PKGS5}"
+echo "Do you want to install: ${PKGS5}?"
 echo '
 1) Yes
 2) No
 '
-read -p 'Your choices are (1 or 2): ' ANSWER2
+
+read -pr 'Your choices are (1 or 2): ' ANSWER2
 echo
 
 geforce_menu_fn "${ANSWER2}"
@@ -393,7 +394,7 @@ Do you want to run: sudo apt
 2) clean | autoclean | autoremove
 3) exit menu
 '
-read -p 'Your choices are (1 to 3): ' ANSWER3
+read -pr 'Your choices are (1 to 3): ' ANSWER3
 echo
 
 cleanup_fn "${ANSWER3}"
