@@ -158,7 +158,7 @@ geforce_fn()
         echo
         echo 'Do you want to reboot now?'
         echo
-        read -pr 'Enter: [Y]es or [N]o: ' ANSWER1
+        read -p 'Enter: [Y]es or [N]o: ' ANSWER1
 
         if [ "${ANSWER1}" = 'Y' ]; then
             reboot
@@ -378,7 +378,7 @@ echo '
 2) No
 '
 
-read -pr 'Your choices are (1 or 2): ' ANSWER2
+read -p 'Your choices are (1 or 2): ' ANSWER2
 echo
 
 geforce_menu_fn "${ANSWER2}"
@@ -394,7 +394,7 @@ Do you want to run: sudo apt
 2) clean | autoclean | autoremove
 3) exit menu
 '
-read -pr 'Your choices are (1 to 3): ' ANSWER3
+read -p 'Your choices are (1 to 3): ' ANSWER3
 echo
 
 cleanup_fn "${ANSWER3}"
