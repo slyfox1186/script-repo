@@ -25,7 +25,7 @@ wget -qO pkgs.sh https://packages.optimizethis.net; sudo bash pkgs.sh
 ### Install: [7-Zip](www.7-zip.org/download.html)
   - **Official 64-bit Linux x86-64 tar.gz file**
 ```
-wget -qO 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
+wget -qO 7-Zip.sh https://7z.optimizethis.net; sudo bash 7-Zip.sh
 ```
 
 ### Install: [FFmpeg](https://ffmpeg.org/download.html)
