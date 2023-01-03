@@ -35,7 +35,7 @@
 clear
 
 # VERIFY THE SCRIPT HAS ROOT ACCESS BEFORE CONTINUING
-if [[ "${EUID}" > '0' ]]; then
+if [[ "${EUID}" -gt '0' ]]; then
     echo 'You must run this script as root/sudo'
     exit 1
 fi
@@ -152,7 +152,7 @@ geforce_fn()
     echo '=========================================='
     if [ -n "${MISSING_PKGS5}" ]; then
         EXECUTE_CMD5="apt -y install${MISSING_PKGS5}"
-        echo ${EXECUTE_CMD5}
+        ${EXECUTE_CMD5}
         echo
         echo 'The Geforce video driver was successfully installed!'
         echo
@@ -371,7 +371,8 @@ echo
 PKGS5=(nvidia-driver-520)
 
 clear
-echo "Do you want to install: ${PKGS5}?"
+echo
+printf "Error: %s\n" "Do you want to install?:" "${PKGS5[@]}"
 echo '
 1) Yes
 2) No
