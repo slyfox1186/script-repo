@@ -12,7 +12,7 @@
   - Batch
   - Powershell
   - Shell / Bash
-  - Windows Registry.
+  - Windows Registry
   - XML
 
 ## Install: Runtime and Development libraries (Large Version - Packed full of apt packages with lots of dev packages for source code compiling)
