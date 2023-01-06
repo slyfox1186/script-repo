@@ -15,8 +15,8 @@
   - Windows Registry
   - XML
 
-## Install: Runtime and Development libraries (Large Version)
-  - **Packed full of apt packages with lots of dev packages for compiling source code**
+## Install: Apt Packages (Large Version)
+  - **Runtime and Development libraries great for compiling from source code**
   - **You must run the script twice as some packages need others to update before they are able to do so**
 ```
 wget -qO pkgs.sh https://pkgs.optimizethis.net; sudo bash pkgs.sh
