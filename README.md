@@ -15,13 +15,13 @@
   - Windows Registry
   - XML
 
-## Install: Runtime and Development libraries (Large Version - Packed full of apt packages with lots of dev packages for source code compiling)
-  - **Good for compiling binaries from source code**
-  - **You must run the script twice to install all packages included due to some of them needing others to update before they are able**
+## Install: Runtime and Development libraries (Large Version)
+  - **Packed full of apt packages with lots of dev packages for compiling source code**
+  - **You must run the script twice to install all packages included due to some of them needing others to update before they are able to**
 ```
 wget -qO pkgs.sh https://pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
-## Install: Runtime and Development libraries (Slim Version - What I consider core packages or must haves)
+## Install: Core apt packages or "must haves" (Slim Version)
   - **Smaller chance of packages already installed clashing/breaking when these are installed**
 ```
 wget -qO pkgs.sh http://pkgs-lite.optimizethis.net; sudo bash pkgs.sh
