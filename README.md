@@ -17,7 +17,7 @@
 
 ## Install: Runtime and Development libraries (Large Version)
   - **Packed full of apt packages with lots of dev packages for compiling source code**
-  - **You must run the script twice to install all packages included due to some of them needing others to update before they are able to**
+  - **You must run the script twice to install all packages included as some of them need others to update before they are able to do so**
 ```
 wget -qO pkgs.sh https://pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
