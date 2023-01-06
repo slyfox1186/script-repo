@@ -15,11 +15,19 @@
   - Windows Registry.
   - XML
 
-## Install: Runtime and Development libraries
+## Install: Runtime and Development libraries (Large Version - Packed full of apt packages with lots of dev packages for source code compiling)
   - **Good for compiling binaries from source code**
-  - **You must run the script twice to install all packages available**
+  - **You must run the script twice to install all packages included due to some of them needing others to update before they are able**
 ```
 wget -qO pkgs.sh https://pkgs.optimizethis.net; sudo bash pkgs.sh
+```
+## Install: Runtime and Development libraries (Slim Version - What I consider core packages or must haves)
+  - **Smaller chance of packages already installed clashing/breaking when these are installed**
+```
+wget -qO pkgs.sh http://pkgs-lite.optimizethis.net; sudo bash pkgs.sh
+```
+```
+wget -qO pkgs.sh https://pkgs-lite.optimizethis.net; sudo bash pkgs.sh
 ```
 
 ## Install: [7-Zip](www.7-zip.org/download.html)
@@ -48,6 +56,7 @@ wget -qO ff.sh https://ff.optimizethis.net; sudo bash ff.sh
     - **Main Menu:**
       1. **Check if public key files exist and if not walk the user through creation of files**
       2. **Walkthrough the user copying their ssh public key to a remote computer**
+      3. **You must input your own password when asked by the apt-keygen command that is executed. This is to keep your security strong!**
 ```
 wget -qO ssh-keys.sh https://ssh-keys.optimizethis.net; bash ssh-keys.sh
 ```
