@@ -18,6 +18,7 @@
 ## Install: Apt Packages (Large Version)
   - **Runtime and Development libraries great for compiling from source code**
   - **You must run the script twice as some packages need others to update before they are able to do so**
+  - **Due to the large amount of packages set to be installed the likelyhood of package conflict should be considered**
 ```
 wget -qO pkgs.sh https://pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
