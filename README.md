@@ -21,8 +21,9 @@
 ```
 wget -qO pkgs.sh https://pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
-## Install: Core apt packages or "must haves" (Slim Version)
-  - **Smaller chance of packages already installed clashing/breaking when these are installed**
+## Install: Apt Packages (Slim Version)
+  - **What I personally consider core apt packages or "must haves" that everyone should consider installing**
+  - **There should be a smaller chance of package conflictusing this list**
 ```
 wget -qO pkgs.sh http://pkgs-lite.optimizethis.net; sudo bash pkgs.sh
 ```
