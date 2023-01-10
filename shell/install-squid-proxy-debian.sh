@@ -2,14 +2,8 @@
 
 clear
 
-# INSTALL SQUID IF NOT ALREADY
-if ! which squid; then
-	echo 'You must install squid proxy server for this script to function.'
-	echo
-	echo 'Press enter to run '\''apt install squid'\'''
-	clear
-	apt install squid
-fi
+# YOU NEED TO CUSTOMIZE EACH VARIABLE BELOW WITH YOUR OWN VALUES TO OPTIMIZE SQUID'S PERFORMANCE
+# YOU CAN ADD, REMOVE, OR MODIFY THIS SCRIPT AS NEEDED
 
 # CHECK SQUID CURRENT STATUS
 systemctl status squid.service
@@ -17,17 +11,12 @@ if ! systemctl status squid.service; then
     echo -e "Squid service needs to be running to continue! Starting Squid now!\\n"
     sleep 2
     service squid start
-    if ! service squid start; then
-		exit 1
-	fi
+    if ! service squid start; then exit 1; fi
 else
     echo
     read -t 10 -p 'Sleeping 10 seconds. Press enter to continue.'
     clear
 fi
-
-# ADD PROXY INFO TO APT COMMAND
-APT_CONF='/etc/apt/apt.conf.d/30-proxy.conf'
 
 # SET DEFAULT USER/OWNER OF SQUID (THE UBUNTU AND DEBIAN DEFAULT IS PROXY)
 SQUID_USER='proxy'
@@ -45,7 +34,7 @@ CACHE_SWP_LOW='90'
 # MEMORY CACHE MODE options [ always | disk ]
 MEM_CACHE_MODE='always'
 # CACHE MEMORY TRANSIT FILE ALLOCATION MAX SIZE LIMIT (CAN BE INCREASED)
-CACHE_MEM='512 MB'
+CACHE_MEM='1258 MB'
 
 # LIMIT CLIENT REQUESTS BUFFER SIZE
 CLIENT_RQST_BFR_SIZE='512 KB'
@@ -57,21 +46,15 @@ CLIENT_RQST_BFR_SIZE='512 KB'
 DNS_V4_FIRST='on'
 
 # FIREWALLD PROGRAM PORTS
-PORT_PIHOLE='4711/tcp'
 PORT_SQUID='3128/tcp'
+PORT_PIHOLE='4711/tcp'
 
-# FIREWALLD SSH PORTS
-SSH_JMACBOOK='26500/tcp'
-SSH_PIHOLE='24500/tcp'
-SSH_QNAS='25500/tcp'
-
-# FIREWALLD SERVICES
+# FIREWALLD SERVICES (THIS SHOULD BE CONSIDERED AT HOME SETTINGS WHERE YOU TRUST THE COMPUTERS ACCESSABLE TO YOUR NETWORK)
 SVC01='dhcp'
 SVC02='dhcpv6'
-SVC03='dhcpv6-client'
-SVC04='dns'
-SVC05='http'
-SVC06='ssh'
+SVC03='dns'
+SVC04='http'
+SVC05='ssh'
 
 # SQUID BASIC AUTHORIZATION LIBRARIES
 LIB1_SQUID='/usr/lib/squid3/basic_ncsa_auth'
@@ -9325,44 +9308,18 @@ umask 022
 # no artificial limit on the number of concurrent spare attempts
 EOF
 
-# SET APT PROXY RULES
-if [ -f "${APT_CONF}" ]; then
-cat > "${APT_CONF}" <<'EOF'
-Acquire::http::proxy "http://${SERVER_IP}:${PORT_SQUID::4}/";
-Acquire::ftp::proxy "ftp://${SERVER_IP}:${PORT_SQUID::4}/";
-EOF
-fi
-
 # CREATE WHITELIST
 if [ ! -f "${SQUID_WHITELIST}" ]; then touch "${SQUID_WHITELIST}"; fi
 cat > "${SQUID_WHITELIST}" <<'EOF' && echo -e "The whitelist was created successfully!" || echo -e "The whitelist failed to create."
-debian.org
-discord.com
-epicgames.com
-github.com
-gmail.com
-google.com
-imgur.com
-jefftek.net
-linuxcontainers.org
-live.com
-mail.google.com
-microsoft.com
-optimizethis.net
-pinterest.com
-qnap.com
-reddit.com
-reuters.com
-serverfault.com
-squid-cache.org
-tracker.network
-ubuntu.com
-yahoo.com
+<replace with your own list>
+site.com
+www.site.com
 EOF
 
 # CREATE BLACKLIST
 if [ -f "${SQUID_BLACKLIST}" ]; then touch "${SQUID_BLACKLIST}" ;fi
 cat > "${SQUID_BLACKLIST}" <<'EOF' && echo -e "The blacklist was created successfully!\\n" || echo -e "The blacklist failed to create.\\n"
+<replace with your own list>
 .bytedance.com
 .tiktok.com
 .xyz
@@ -9381,11 +9338,11 @@ echo '[1] Add firewalld rules'
 echo -e "[2] Skip\\n"
 read -p 'Enter a number: ' uChoice
 echo
-if [[ "${uChoice}" == '1' ]]; then
-    firewall-cmd --permanent --add-service={"${SVC01}","${SVC02}","${SVC03}","${SVC04}","${SVC05}","${SVC06}"}
+if [[ "${uChoice}" == "1" ]]; then
+    firewall-cmd --permanent --add-service={"${SVC01}","${SVC02}","${SVC03}","${SVC04}","${SVC05}"}
     firewall-cmd --add-zone=squid-custom
     firewall-cmd --permanent --zone=squid-custom --add-interface=lo
-    firewall-cmd --permanent --zone=squid-custom --add-port={"${PORT_SQUID}","${PORT_PIHOLE}","${SSH_PIHOLE}","${SSH_QNAS}","${SSH_JMACBOOK}"}
+    firewall-cmd --permanent --zone=squid-custom --add-port={"${PORT_SQUID}","${PORT_PIHOLE}"}
     firewall-cmd --set-default-zone=squid-custom
     firewall-cmd --reload
     echo
@@ -9396,4 +9353,4 @@ else
 fi
 
 # RESTART SQUID VIA SYSTEMCTL
-'/etc/init.d/squid' restart && echo -e "\\nSquid restarted succesfully!\\n" || echo -e "\\nSquid failed to restart!\\n"
+'/etc/init.d/squid' restart && echo -e "\\nSquid restarted successfully!\\n" || echo -e "\\nSquid failed to restart!\\n"
