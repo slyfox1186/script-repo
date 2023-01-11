@@ -26,9 +26,6 @@ wget -qO pkgs.sh https://pkgs.optimizethis.net; sudo bash pkgs.sh
   - **What I personally consider core apt packages or "must haves" that everyone should consider installing**
   - **There should be a smaller chance of package conflict using this list**
 ```
-wget -qO pkgs-lite.sh http://pkgs-lite.optimizethis.net; sudo bash pkgs-lite.sh
-```
-```
 wget -qO pkgs-lite.sh https://pkgs-lite.optimizethis.net; sudo bash pkgs-lite.sh
 ```
 
