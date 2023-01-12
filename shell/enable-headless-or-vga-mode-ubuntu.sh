@@ -15,6 +15,12 @@ clear
 
 FILE='/etc/default/grub'
 
+if [ ! "${FILE}" ]; then
+    echo "The main file: ${FILE} was not found."
+    echo
+    exit 1
+fi
+
 echo '[1] Headless Mode'
 echo '[2] VGA Mode'
 echo '[3] Exit'
