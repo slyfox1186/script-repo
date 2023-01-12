@@ -1,48 +1,53 @@
-#!/bin/sudo bash
+#!/bin/bash
 
 clear
 
-echo -e "This script will allow the user to quickly switch Ubuntu Desktop"
-echo -e "into it's VGA or Headless Client mode as dictated by the startup"
-echo -e "commands located in /etc/default/grub.\\n"
-echo -e "This has been only tested on my pc using Ubuntu Jammy 22.04.1"
-echo -e "Please run this script at your own risk as I assume none.\\n"
-read -p 'Press Enter to continue.'
-
+echo 'This script will allow the user to quickly switch Ubuntu Desktop'
+echo 'into it'\''s VGA or Headless Client mode as dictated by the startup'
+echo 'commands located in /etc/default/grub.'
+echo
+echo 'This has been only tested on my pc using Ubuntu Jammy 22.04.1'
+echo
+echo 'Run this script at your own risk as I assume none.'
+echo
+read -p 'Press enter to continue.'
 clear
 
 FILE='/etc/default/grub'
 
 echo '[1] Headless Mode'
 echo '[2] VGA Mode'
-echo -e "[3] Exit\\n"
-read -p 'Enter a number: ' i
+echo '[3] Exit'
+echo
+read -p 'Your choices are ( 1 to 3): ' i
 
 clear
 
-if [[ "$i" -eq "1"  ]]; then sudo sed -i 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="3"/g' $FILE
-elif [[ "$i" -eq "2"  ]]; then sudo sed -i 's/GRUB_CMDLINE_LINUX="3"/GRUB_CMDLINE_LINUX=""/g' $FILE
-elif [[ "$i" -eq "3"  ]]; then clear; ls -hF1AX --group-directories-first --color; exit
+if [[ "${i}" -eq '1'  ]]; then sed -i 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="3"/g' "${FILE}"
+elif [[ "${i}" -eq '2'  ]]; then sed -i 's/GRUB_CMDLINE_LINUX="3"/GRUB_CMDLINE_LINUX=""/g' "${FILE}"
+elif [[ "${i}" -eq '3'  ]]; then clear; \ls -1AhFv --group-directories-first --color; exit
 else
-    echo '[i] Input Error: Please from choose one of the following numbers:'
-    echo -e "    [1] , [2] , [3]\\n"
-    read -p 'Press Enter to start over or Ctrl+C to exit. '
-    clear; sudo bash "$0"
-    exit 1
+    echo 'Input error: enter a number (1 to 3)'
+    echo
+    read -p 'Press enter to start over or Ctrl+Z to exit: '
+    clear
+    bash "${0}"
 fi
 
-clear; unset i
+clear
+unset i
 
-echo -e "Do you want to update grub?\\n"
+echo 'Do you want to update grub?'
+echo
 echo '[1] Yes'
-echo -e "[2] No\\n"
+echo '[2] No'
+echo
 read -p 'Enter a number: ' i
 
 clear
 
-if [[ "$i" -eq "1"  ]]; then
-    sudo update-grub
+if ! update-grub; then
+    echo 'The update-grub command failed.'
     echo
-elif [[ "$i" -eq "2"  ]]; then echo ''; fi
-
-unset i
+    exit 1
+fi
