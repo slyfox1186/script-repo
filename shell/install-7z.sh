@@ -3,7 +3,7 @@
 clear
 
 # VERIFY THE SCRIPT HAS ROOT ACCESS BEFORE CONTINUING
-if [[ "${EUID}" -gt '0' ]]; then
+if [ "${EUID}" -gt '0' ]; then
     echo 'You must run this script as root/sudo'
     echo
     exit 1
@@ -15,9 +15,30 @@ DOWNLOAD_FILE="${VERSION}.tar.xz"
 DONWLOAD_DIR='7z'
 OUTPUT_FILE='/usr/bin/7z'
 
+echo '[i] Choose your os architechture'
+echo
+echo '[1] Linux x64'
+echo '[2] Linux x86'
+echo '[3] ARM x64'
+echo '[4] ARM x86'
+echo '[5] Source Code'
+echo '[6] Exit'
+echo
+read -p 'Your choices are (1 to 6): ' OS_TYPE
+clear
+
+# Parse user input
+if [ "${OS_TYPE}" == '1' ]; then URL='linux-x64.tar.xz'
+elif [ "${OS_TYPE}" == '2' ]; then URL='linux-x86.tar.xz'
+elif [ "${OS_TYPE}" == '3' ]; then URL='linux-arm64.tar.xz'
+elif [ "${OS_TYPE}" == '4' ]; then URL='linux-arm.tar.xz'
+elif [ "${OS_TYPE}" == '5' ]; then URL='src.tar.xz'
+elif [ "${OS_TYPE}" == '6' ]; then exit
+fi
+
 # DOWNLOAD THE CUDA DEBIAN FILE IF NOT EXIST
 if [ ! -f "${DOWNLOAD_FILE}" ]; then
-    wget -cqO "${DOWNLOAD_FILE}" "https://www.7-zip.org/a/${VERSION}-linux-x64.tar.xz"
+    wget -4cqO "${DOWNLOAD_FILE}" "https://www.7-zip.org/a/${VERSION}-${URL}"
 fi
 
 # UPACKAGE THE CUDA DEBIAN FILE
@@ -27,10 +48,13 @@ if [ ! -f "${DOWNLOAD_FILE}" ]; then
     exit 1
 fi
 
-# CREATE OUTPUT DIRECOTRY BEFORE UNCOMPRESSING WITH THE TAR COMMAND
-if [ ! -d "${DONWLOAD_DIR}" ]; then
-    mkdir -p "${DONWLOAD_DIR}"
+# DELETE ANY FILES LEFTOVER FROM PRIOR RUNS
+if [ -d "${DONWLOAD_DIR}" ]; then
+    rm -fr "${DONWLOAD_DIR}"
 fi
+
+# CREATE OUTPUT DIRECOTRY BEFORE UNCOMPRESSING WITH THE TAR COMMAND
+mkdir -p "${DONWLOAD_DIR}"
 
 # EXTRACT FILES INTO DIRECTORY '7Z'
 tar -xf "${DOWNLOAD_FILE}" -C "${DONWLOAD_DIR}"
