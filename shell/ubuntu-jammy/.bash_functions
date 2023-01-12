@@ -74,8 +74,8 @@ untar()
                 7z x -o"${PWD}/${file%%.*}" "${PWD}/${file}"
                 ;;
             bz2|gz|xz)
-                jflag=""
-                [[ "${EXT}" == 'bz2' ]] && jflag="j"
+                jflag=''
+                [[ "${EXT}" == 'bz2' ]] && jflag='j'
                 tar -xvf$jflag "${PWD}/${file}" -C "${PWD}/${file%%.*}"
                 ;;
         esac
