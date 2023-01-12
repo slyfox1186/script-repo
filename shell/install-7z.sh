@@ -28,12 +28,12 @@ read -p 'Your choices are (1 to 6): ' OS_TYPE
 clear
 
 # Parse user input
-if [ "${OS_TYPE}" == '1' ]; then URL='linux-x64.tar.xz'
-elif [ "${OS_TYPE}" == '2' ]; then URL='linux-x86.tar.xz'
-elif [ "${OS_TYPE}" == '3' ]; then URL='linux-arm64.tar.xz'
-elif [ "${OS_TYPE}" == '4' ]; then URL='linux-arm.tar.xz'
-elif [ "${OS_TYPE}" == '5' ]; then URL='src.tar.xz'
-elif [ "${OS_TYPE}" == '6' ]; then exit
+if [ "${OS_TYPE}" -eq '1' ]; then URL='linux-x64.tar.xz'
+elif [ "${OS_TYPE}" -eq '2' ]; then URL='linux-x86.tar.xz'
+elif [ "${OS_TYPE}" -eq '3' ]; then URL='linux-arm64.tar.xz'
+elif [ "${OS_TYPE}" -eq '4' ]; then URL='linux-arm.tar.xz'
+elif [ "${OS_TYPE}" -eq '5' ]; then URL='src.tar.xz'
+elif [ "${OS_TYPE}" -eq '6' ]; then exit
 fi
 
 # DOWNLOAD THE CUDA DEBIAN FILE IF NOT EXIST
