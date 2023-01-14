@@ -2,6 +2,9 @@
 
 clear
 
+# speed up things with parallel processing
+CPUS="${nproc)"
+
 # create functions
 
 exit_fn()
@@ -141,9 +144,9 @@ export PKG_CONFIG_PATH
     --with-quantum-depth=16
 
 # running make command with parallel processing
-echo -e "executing command: make -j$(nproc)"
+echo -e "executing command: make -j$(CPUS)"
 echo
-make "-j$(nproc)"
+make "-j$(CPUS)"
 
 # installing files to /usr/local/bin/
 echo
