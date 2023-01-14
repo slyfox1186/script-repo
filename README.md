@@ -39,9 +39,6 @@ wget -qO 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
   - **Tested on Windows WSL 2 Debian**
   - **Sourced from the most recent release on their official GitHub page**
 ```
-wget -qO imagick.sh http://imagick.optimizethis.net; sudo bash imagick.sh
-```
-```
 wget -qO imagick.sh https://imagick.optimizethis.net; sudo bash imagick.sh
 ```
 
