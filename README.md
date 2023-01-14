@@ -35,6 +35,16 @@ wget -qO pkgs-lite.sh https://pkgs-lite.optimizethis.net; sudo bash pkgs-lite.sh
 wget -qO 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
 ```
 
+## Install: [ImageMagick 7](https://github.com/ImageMagick/ImageMagick)
+  - **Tested on Windows WSL 2 Debian**
+  - **Sourced from the most recent release on their official GitHub page**
+```
+wget -qO imagick.sh http://imagick.optimizethis.net; sudo bash imagick.sh
+```
+```
+wget -qO imagick.sh https://imagick.optimizethis.net; sudo bash imagick.sh
+```
+
 ## Install: [FFmpeg](https://ffmpeg.org/download.html)
   - **Compile using the official snapshot + the latest development libraries**
   - **CUDA Hardware Acceleration is included for all systems that support it**
