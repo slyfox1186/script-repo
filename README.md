@@ -30,7 +30,7 @@ wget -qO pkgs-lite.sh https://pkgs-lite.optimizethis.net; sudo bash pkgs-lite.sh
 ```
 
 ## Install: [7-Zip](www.7-zip.org/download.html)
-  - **Official 64-bit Linux x86-64 tar.gz file**
+  - **Choose your architechture**
   - **Linux x64**
   - **Linux x86**
   - **ARM x64**
