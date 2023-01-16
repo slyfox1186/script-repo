@@ -72,7 +72,7 @@ cd ../ || exit 1
 ##
 ## start imagemagick build
 ##
-
+clear
 echo
 echo 'Starting ImageMagick Build'
 echo '=========================='
