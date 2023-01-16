@@ -78,4 +78,5 @@ fi
 "${OUTPUT_FILE}" | head -n 2 | cut -d " " -f1,3 | awk 'NF' | xargs printf "%s: v%s\n" "${@}"
 
 # REMOVE LEFTOVER DIRECTORY
+cd ../
 rm -fr "${FILE}" "${DIR}"
