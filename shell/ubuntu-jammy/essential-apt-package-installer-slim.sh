@@ -37,7 +37,7 @@ fi
 echo
 echo 'Installing: Development Packages'
 echo '=========================================='
-PKGS=(alien aptitude aria2 bat build-essential colordiff curl dbus-x11 dos2unix gedit-plugins gir1.2-gtksource-3.0 git git-all gnome-tweaks gparted grub-customizer htop iftop man-db net-tools network-manager openssh-client openssh-server p7zip-rar php-sqlite3 pipenv python3-idna python3-pip sqlite3 synaptic unzip xournalpp wget)
+PKGS=(alien aptitude aria2 bat build-essential colordiff curl dbus-x11 dos2unix gedit-plugins gir1.2-gtksource-3.0 git git-all gnome-tweaks gparted grub-customizer htop iftop man-db net-tools network-manager openssh-client openssh-server php-sqlite3 pipenv python3-idna python3-pip sqlite3 synaptic unzip xournalpp wget)
 
 for PKG in ${PKGS[@]}
 do
