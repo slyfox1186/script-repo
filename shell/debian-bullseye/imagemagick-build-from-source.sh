@@ -34,7 +34,7 @@ del_files_fn()
 }
 
 echo 'Starting libpng12 build'
-echo '=========================='
+echo '======================='
 echo
 sleep 3
 
