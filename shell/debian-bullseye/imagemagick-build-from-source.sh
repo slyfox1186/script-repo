@@ -36,6 +36,7 @@ del_files_fn()
 echo 'Starting libpng12 build'
 echo '=========================='
 echo
+sleep 3
 
 # set variables for libpng12
 LVER='1.2.59'
