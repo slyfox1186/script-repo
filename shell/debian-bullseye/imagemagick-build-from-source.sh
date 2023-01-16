@@ -2,10 +2,12 @@
 
 clear
 
-# speed up things with parallel processing
+## speed up things with parallel processing
 CPUS="$(nproc)"
 
-# create functions
+##
+## create functions
+##
 
 exit_fn()
 {
@@ -67,6 +69,10 @@ sudo make install
 # change working directory back to parent folder
 cd ../ || exit 1
 
+##
+## start imagemagick build
+##
+
 echo
 echo 'Starting ImageMagick Build'
 echo '=========================='
@@ -81,7 +87,7 @@ echo
 echo 'You must install most of these for the build to succeed.'
 echo
 apt install \
-	build-essential \
+    build-essential \
     lib*malloc-dev \
     libgl2ps-dev \
     libglib2.0* \
