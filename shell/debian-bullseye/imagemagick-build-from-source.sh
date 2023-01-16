@@ -1,5 +1,13 @@
 #!/bin/bash
 
+###############################################################
+##
+##  GitHub: https://github.com/slyfox1186/script-repo
+##
+##	This script will build ImageMagick 7 with malloc libraries
+##  which can greatly speed up it's overall efficiency.
+##
+
 clear
 
 # speed up things with parallel processing
