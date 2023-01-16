@@ -159,6 +159,7 @@ echo
 sudo make install
 
 # ldconfig must be run next in order to update file changes or the magick command will not work
+echo
 echo 'executing: ldconfig /usr/local/lib to update file changes.'
 echo '=========================================================='
 echo
@@ -179,6 +180,7 @@ fi
 cd ../ || exit 1
 
 # prompt user to clean up build files
+echo
 echo 'Input Required: File cleanup.'
 echo '============================='
 echo
