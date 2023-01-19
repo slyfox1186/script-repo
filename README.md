@@ -6,23 +6,27 @@
 2. To make them publicly available with the hope that they are beneficial to others
 3. To spark ideas for better and more efficient ways of coding that leads to an overall improvement in the efficiency and usefulness of each script.
 4. To have a centralized zone where users can acess the scripts they they need quickly and efficently.
- 
-### Included languages
-  - AutoHotkey
-  - Batch
-  - Powershell
-  - Shell / Bash
-  - Windows Registry
-  - XML
 
-## Install: Apt Packages (Large Version)
+### Included languages
+
+------ 
+ -   [x] AutoHotkey
+ -   [x] Batch
+ -   [x] Powershell
+ -   [x] Shell / Bash
+ -   [x] Windows Registry
+ -   [x] XML
+
+
+
+## Install: Apt Packages (large List)
   - **Runtime and Development libraries great for compiling from source code**
   - **You must run the script twice as some packages need others to update before they are able to do so**
   - **Due to the large amount of packages set to be installed the likelyhood of package conflict should be considered**
 ```
 wget -qO pkgs.sh https://pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
-## Install: Apt Packages (Slim Version)
+## Install: Apt Packages (Lite List)
   - **What I personally consider core apt packages or "must haves" that everyone should consider installing**
   - **There should be a smaller chance of package conflict using this list**
 ```
