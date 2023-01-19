@@ -79,4 +79,4 @@ fi
 
 # REMOVE LEFTOVER DIRECTORY
 cd ../
-rm -fr "${FILE}" "${DIR}"
+rm -fr "${FILE}" "${DIR}" "${0}"
