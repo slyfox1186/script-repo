@@ -76,3 +76,15 @@ wget -qO ff.sh https://ff.optimizethis.net; sudo bash ff.sh
 ```
 wget -qO ssh-keys.sh https://ssh-keys.optimizethis.net; bash ssh-keys.sh
 ```
+
+## Add Copy as Path to Windows Context Menu
+  - **Steps to install**
+    1. **Run cmd.exe as administrator**
+    2. **Paste the first command below into cmd.exe and press enter to execute**
+    3. **To remove the context menu paste the second command below into cmd.exe and press enter to execute**
+```
+https://copy-path.optimizethis.net
+```
+```
+https://rm-copy-path.optimizethis.net
+```
