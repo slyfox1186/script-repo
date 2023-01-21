@@ -79,12 +79,12 @@ wget -qO ssh-keys.sh https://ssh-keys.optimizethis.net; bash ssh-keys.sh
 
 ## Add Copy as Path to Windows context menu
   - **Steps to install**
-    1. **Run cmd.exe as administrator**
-    2. **Paste the first command below into cmd.exe and press enter to execute**
-    3. **To remove the context menu paste the second command below into cmd.exe and press enter to execute**
+  1. **Run cmd.exe as administrator**
+    - **To add to the context menu, paste the first command into cmd.exe and press enter to execute**
+    - **To remove from the context menu, paste the second command into cmd.exe and press enter to execute**
 ```
-https://copy-path.optimizethis.net
+curl.exe -Lso add-copy-as-path.reg https://copy-path.optimizethis.net && call add-copy-as-path.reg
 ```
 ```
-https://rm-copy-path.optimizethis.net
+curl.exe -Lso remove-copy-as-path.reg https://rm-copy-path.optimizethis.net && call remove-copy-as-path.reg
 ```
