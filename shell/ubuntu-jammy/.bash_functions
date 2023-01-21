@@ -8,15 +8,15 @@
 # hello or world will not show at the output
 # to see the generated functions, replace eval with echo below
 # the 'tr' filter makes sure no spurious empty lines pass from some commands
-_supress()
+_suppress()
 {
     eval "${1}() { \$(which ${1}) \"\$@\" 2>&1 | tr -d '\r' | grep -v \"${2}\"; }"
 }
 
 # _supress all && _supress gedit && _supress gnome-terminal && _supress firefox
-_supress gedit          "Gtk-WARNING\|connect to accessibility bus"
-_supress gnome-terminal "accessibility bus\|stop working with a future version"
-_supress firefox        "g_slice_set_config"
+_suppress gedit          "Gtk-WARNING\|connect to accessibility bus"
+_suppress gnome-terminal "accessibility bus\|stop working with a future version"
+_suppress firefox        "g_slice_set_config"
 
 ###########################
 ## linux kernel commands ##
