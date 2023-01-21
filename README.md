@@ -50,13 +50,13 @@ wget -qO 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
 ```
 wget -qO imagick.sh https://imagick.optimizethis.net; sudo bash imagick.sh
 ```
+## ImageMagick: [Optimize JPG Images](https://github.com/slyfox1186/imagemagick-optimize-jpg)
 
 ## Install: [FFmpeg](https://ffmpeg.org/download.html)
   - **Compile using the official snapshot + the latest development libraries**
   - **CUDA Hardware Acceleration is included for all systems that support it**
 
 **With GPL and non-free: https://ffmpeg.org/legal.html**
-
 ```
 wget -qO ffn.sh https://ffn.optimizethis.net; sudo bash ffn.sh
 ```
