@@ -66,7 +66,7 @@ wget -qO ffn.sh https://ffn.optimizethis.net; sudo bash ffn.sh
 wget -qO ff.sh https://ff.optimizethis.net; sudo bash ff.sh
 ```
 
-## Create ssh key pair and export to remote computer
+## Create SSH key pairs and export the public key to a remote computer
 
  1. **Prompt user with instructions**
     - **Main Menu:**
@@ -77,7 +77,7 @@ wget -qO ff.sh https://ff.optimizethis.net; sudo bash ff.sh
 wget -qO ssh-keys.sh https://ssh-keys.optimizethis.net; bash ssh-keys.sh
 ```
 
-## Add Copy as Path to Windows Context Menu
+## Add Copy as Path to Windows context menu
   - **Steps to install**
     1. **Run cmd.exe as administrator**
     2. **Paste the first command below into cmd.exe and press enter to execute**
