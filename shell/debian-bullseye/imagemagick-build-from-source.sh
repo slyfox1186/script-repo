@@ -36,7 +36,7 @@ del_files_fn()
 echo 'Starting libpng12 build'
 echo '======================='
 echo
-sleep 3
+sleep 2
 
 # set variables for libpng12
 LVER='1.2.59'
@@ -78,7 +78,7 @@ echo
 echo 'Starting ImageMagick Build'
 echo '=========================='
 echo
-sleep 3
+sleep 2
 
 # these are required and extra optional packages for imagemagick to build succesfully
 echo
