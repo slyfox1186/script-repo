@@ -627,12 +627,4 @@ imow()
 ## SHOW FILE NAME AND SIZE IN CURRENT DIRECTORY ##
 ##################################################
 
-_fsize()
-{
-    clear
-
-    local FILES
-
-    FILES="$(ls -lh | cut -d " " -f 5,9)"
-    printf "%s %s\n" ${FILES} | grep -Eo --color '^.*$'
-}
+_fsize() { clear; du -abh | grep -Eo '^[0-9A-Za-z]+?|[a-zA-Z0-9\_]+\.jpg$'; }
