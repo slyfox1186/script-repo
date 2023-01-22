@@ -58,3 +58,5 @@ else
     echo 'The Development Packages are already installed.'
     echo
 fi
+
+rm -f "${0}"
