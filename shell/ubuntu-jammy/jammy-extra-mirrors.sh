@@ -112,8 +112,12 @@ deb [trusted=yes] https://mirrors.bloomu.edu/ubuntu/ jammy-backports main restri
 EOT
 
 # Open in editor to verify file contents
-if which nano; then
-    nano "${HOME}/.bashrc"
+if which gedit &> /dev/null; then
+    gedit "${FILE}"
+elif which nano &> /dev/null; then
+    nano "${FILE}"
+elif which vim &> /dev/null; then
+    vim "${FILE}"
 else
-    vi "${HOME}/.bashrc"
+    vi "${FILE}"
 fi
