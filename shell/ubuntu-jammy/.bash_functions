@@ -634,6 +634,5 @@ _fsize()
     local FILES
 
     FILES="$(ls -lh | cut -d " " -f 5,9)"
-    printf "Size: %s %s\n" ${FILES}
+    printf "Size: %s %s\n" ${FILES} | grep -Eo --color '^.*$'
 }
-_fsize
