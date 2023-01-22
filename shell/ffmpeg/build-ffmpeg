@@ -1013,7 +1013,7 @@ fi
 ## HWaccel library ##
 #####################
 
-if which 'nvcc'; then
+if which 'nvcc' &> /dev/null; then
     if build 'nv-codec' '8.1.24.14'; then
         download 'https://github.com/FFmpeg/nv-codec-headers/releases/download/n8.1.24.14/nv-codec-headers-8.1.24.14.tar.gz'
         execute make PREFIX="${WORKSPACE}"
