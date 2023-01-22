@@ -17,6 +17,15 @@ cat <<EOT > "${FILE}"
 ### IF YOU USE ALL THE LISTS YOU CAN RUN INTO APT COMMAND ISSUES THAT
 ###    STATE THERE ARE TOO MANY FILES AND WHAT NOT. JUST AN FYI FOR YOU.
 #
+#######################
+##  Default Mirrors  ##
+#######################
+#
+deb http://archive.ubuntu.com/ubuntu/ jammy main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu/ jammy-updates main restricted universe multiverse
+deb http://security.ubuntu.com/ubuntu/ jammy-security main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu/ jammy-backports main restricted universe multiverse
+#
 #########################################
 ##                                     ##
 ##  20Gbps mirrors [ unsecured HTTP ]  ##
