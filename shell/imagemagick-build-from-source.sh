@@ -148,12 +148,14 @@ export PKG_CONFIG_PATH
 
 # running make command with parallel processing
 echo "executing command: make -j$(CPUS)"
+echo '================================='
 echo
 make "-j$(CPUS)"
 
 # installing files to /usr/local/bin/
 echo
 echo 'executing command: sudo make install'
+echo '===================================='
 echo
 sudo make install
 
