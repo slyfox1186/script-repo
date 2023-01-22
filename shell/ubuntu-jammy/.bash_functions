@@ -626,13 +626,14 @@ imow()
 ##################################################
 ## SHOW FILE NAME AND SIZE IN CURRENT DIRECTORY ##
 ##################################################
+
 _fsize()
 {
     clear
 
-    local INPUT1 INPUT2
+    local FILES
 
-    INPUT1="$(ls -lh | cut -d " " -f 5,11)"
-    INPUT2="${INPUT1} ${INPUT2}"
-    printf "Size: %s\nName: %s\n" ${INPUT2}
+    FILES="$(ls -lh | cut -d " " -f 5,9)"
+    printf "Size: %s %s\n" ${FILES}
 }
+_fsize
