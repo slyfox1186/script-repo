@@ -200,8 +200,9 @@ library_exists()
 # confirm a build has completed function
 build_done() { echo "${2}" > "${PACKAGES}/${1}.done"; }
 
-verify_binary_type() {
-    if ! command_exists "file"; then
+verify_binary_type()
+{
+    if ! command_exists 'file'; then
         return
     fi
 
@@ -209,11 +210,11 @@ verify_binary_type() {
     echo
     case ${BINARY_TYPE} in
     'Mach-O 64-bit executable arm64')
-    echo "Successfully built Apple Silicon (M1) for ${OSTYPE}: ${BINARY_TYPE}"
-    ;;
+        echo "Successfully built Apple Silicon (M1) for ${OSTYPE}: ${BINARY_TYPE}"
+         ;;
     *)
-    echo "Successfully built binary for ${OSTYPE}: ${BINARY_TYPE}"
-    ;;
+          echo "Successfully built binary for ${OSTYPE}: ${BINARY_TYPE}"
+          ;;
     esac
 }
 
@@ -376,6 +377,8 @@ cuda_fn()
 	read -p 'Your choices are (1 to 7): ' CUDA_DIST
 	clear
 	if [[ "${CUDA_DIST}" -eq '1' ]]; then
+		PATH="${PATH}:/usr/local/cuda-12.0"
+		export PATH
 		wget --show progress -cq https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-debian10-12-0-local_12.0.0-525.60.13-1_amd64.deb
 		sudo dpkg -i cuda-repo-debian10-12-0-local_12.0.0-525.60.13-1_amd64.deb
 		sudo cp /var/cuda-repo-debian10-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
@@ -383,12 +386,16 @@ cuda_fn()
 		sudo apt-get update
 		sudo apt-get -y install cuda
 	elif [[ "${CUDA_DIST}" -eq '2' ]]; then
+		PATH="${PATH}:/usr/local/cuda-12.0"
+		export PATH
 		wget --show progress -cq https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-debian11-12-0-local_12.0.0-525.60.13-1_amd64.deb
 		sudo dpkg -i cuda-repo-debian11-12-0-local_12.0.0-525.60.13-1_amd64.deb
 		sudo cp /var/cuda-repo-debian11-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
 		sudo add-apt-repository contrib
 		sudo apt-get update
 		sudo apt-get -y install cuda
+		PATH="${PATH}:/usr/local/cuda-12.0"
+		export PATH
 	elif [[ "${CUDA_DIST}" -eq '3' ]]; then
 		wget --show progress -cq https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
 		sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
@@ -397,6 +404,8 @@ cuda_fn()
 		sudo cp /var/cuda-repo-ubuntu1804-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
 		sudo apt-get update
 		sudo apt-get -y install cuda
+		PATH="${PATH}:/usr/local/cuda-12.0"
+		export PATH
 	elif [[ "${CUDA_DIST}" -eq '4' ]]; then
 		wget --show progress -cq https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin
 		sudo mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600
@@ -405,6 +414,8 @@ cuda_fn()
 		sudo cp /var/cuda-repo-ubuntu2004-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
 		sudo apt-get update
 		sudo apt-get -y install cuda
+		PATH="${PATH}:/usr/local/cuda-12.0"
+		export PATH
 	elif [[ "${CUDA_DIST}" -eq '5' ]]; then
 		wget --show progress -cq https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin
 		sudo mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
@@ -413,6 +424,8 @@ cuda_fn()
 		sudo cp /var/cuda-repo-ubuntu2204-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
 		sudo apt-get update
 		sudo apt-get -y install cuda
+		PATH="${PATH}:/usr/local/cuda-12.0"
+		export PATH
 	elif [[ "${CUDA_DIST}" -eq '6' ]]; then
 		wget --show progress -cq https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin
 		sudo mv cuda-wsl-ubuntu.pin /etc/apt/preferences.d/cuda-repository-pin-600
@@ -422,6 +435,7 @@ cuda_fn()
 		sudo apt-get update
 		sudo apt-get -y install cuda
 		PATH="${PATH}:/usr/local/cuda-12.0"
+		export PATH
 	elif [[ "${CUDA_DIST}" -eq '7' ]]; then
 		return 0
 	fi
@@ -431,8 +445,8 @@ cuda_fn()
 ## Install CUDA
 ##
 
-if ! which nvcc; then
-	echo
+if ! which nvcc &> /dev/null; then
+    echo
     echo 'You don'\''t have the CUDA toolkit installed OR you don'\''t have it in your $PATH.'
     echo
     echo 'Do you want to install it?'
@@ -463,18 +477,19 @@ fi
 ## Geforce CUDA Required Developement Packages
 ##
 
-CUDA_PKGS=(build-essential libc6 libc6-dev libnuma1 libnuma-dev libtool unzip wget)
+echo
+echo 'Installing: Geforce CUDA Required Developement Packages'
+echo '=========================================='
 
-for CUDA_PKG in "${CUDA_PKGS[@]}"
+CUDA_PKGS=(build-essential libc6 libc6-dev libnuma-dev libnuma1 libtool unzip wget)
+
+for CUDA_PKG in ${CUDA_PKGS[@]}
 do
     if ! installed "${CUDA_PKG}"; then
         MISSING_CUDA_PKGS+=" ${CUDA_PKG}"
     fi
 done
 
-echo
-echo 'Installing: Geforce CUDA Required Developement Packages'
-echo '=========================================='
 if [ -n "${MISSING_CUDA_PKGS}" ]; then
     sudo apt install "${MISSING_CUDA_PKGS}"
 else
