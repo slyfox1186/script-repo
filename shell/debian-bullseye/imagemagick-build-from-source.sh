@@ -27,8 +27,8 @@ del_files_fn()
     if [[ "${1}" -eq '1' ]]; then exit_fn
     elif [[ "${1}" -eq '2' ]]; then rm -fr "${2}" "${3}" "${4}" "${5}"
     else
-        echo 'inpur error: bad user input... exiting script.'
-        echo
+        echo 'error: bad user input... exiting script.'
+        sleep 4
         exit_fn
     fi
 }
@@ -73,7 +73,6 @@ cd ../ || exit 1
 ##
 ## start imagemagick build
 ##
-clear
 echo
 echo 'Starting ImageMagick Build'
 echo '=========================='
@@ -168,10 +167,10 @@ ldconfig /usr/local/lib
 
 # showing the newly installed magick version
 if ! magick --version 2>/dev/null; then
-    echo 'error: the script tried to execute the command '\''magick --version'\'' and it failed.'
+    clear
+    echo 'error: the script failed to execute the command '\''magick --version'\''.'
     echo
     echo 'info: try running the command manually to see if it will work, otherwise make a support ticket.'
-    echo ''
     echo
     exit 1
 fi
