@@ -76,7 +76,7 @@ untar()
             bz2|gz|xz)
                 jflag=''
                 [[ "${EXT}" == 'bz2' ]] && jflag='j'
-                tar -xvf$jflag "${PWD}/${file}" -C "${PWD}/${file%%.*}"
+                tar -xvf${jflag} "${PWD}/${file}" -C "${PWD}/${file%%.*}"
                 ;;
         esac
     done
@@ -109,15 +109,15 @@ mdir()
 {
     clear
 
-    local i
+    local DIR
 
     if [[ -z "${1}" ]]; then
-        read -p 'Enter directory name: ' i
+        read -p 'Enter directory name: ' DIR
         clear
-        mkdir -p "${PWD}/${i}"
-        cd "${PWD}/${i}" || exit 1
+        mkdir -pv "${PWD}/${DIR}"
+        cd "${PWD}/${DIR}" || exit 1
     else
-        mkdir -p "${1}"
+        mkdir -pv "${1}"
         cd "${PWD}/${1}" || exit 1
     fi
 
@@ -139,36 +139,44 @@ rmdf()
 {
     clear
     perl -i -lne 's/\s*$//; print if ! $x{$_}++' "${1}"
-    nano "${1}"
+    gedit "${1}"
 }
 
 ###################
 ## FILE COMMANDS ##
 ###################
 
-# MOVE FILE
-mv_file()
+# COPY FILE
+cp_file()
 {
-    if [ ! -d "${HOME}/tmp" ]; then mkdir -pv "${HOME}/tmp"; fi
+    clear
+
+    if [ ! -d "${HOME}/tmp" ]; then
+        mkdir -pv "${HOME}/tmp"
+    fi
 
     cp "${1}" "${HOME}/tmp/${1}"
 
     chown -R "${USER}":"${USER}" "${HOME}/tmp/${1}"
-    chmod -R +rwx "${HOME}/tmp/${1}"
+    chmod -R 744 "${HOME}/tmp/${1}"
 
     clear
     cl
 }
 
 # MOVE FOLDER
-mv_folder()
+mv_file()
 {
-    if [ ! -d "${HOME}/tmp" ]; then mkdir -p "${HOME}/tmp"; fi
+    clear
+
+    if [ ! -d "${HOME}/tmp" ]; then
+        mkdir -pv "${HOME}/tmp"
+    fi
 
     mv "${1}" "${HOME}/tmp/${1}"
 
     chown -R "${USER}":"${USER}" "${HOME}/tmp/${1}"
-    chmod -R +rwx "${HOME}/tmp/${1}"
+    chmod -R 744 "${HOME}/tmp/${1}"
 
     cl
 }
@@ -263,7 +271,7 @@ da()
 {
     if [ ! -d "${HOME}/tmp" ]; then mkdir -p "${HOME}/tmp"; fi
     dpkg --get-selections > "${HOME}/tmp/installed-packages.txt"
-    nano "${HOME}/tmp/installed-packages.txt"
+    gedit "${HOME}/tmp/installed-packages.txt"
 }
 
 df()
@@ -278,7 +286,7 @@ df()
 showpackages()
 {
     dpkg --get-selections | grep -v deinstall > "${HOME}/tmp/packages.list"
-    nano "${HOME}/tmp/packages.list"
+    gedit "${HOME}/tmp/packages.list"
 }
 
 # PIPE ALL DEVELOPMENT PACKAGES NAMES TO FILE
@@ -289,7 +297,7 @@ getdev()
     grep "\-dev" |
     cut -d ' ' -f1 |
     sort > 'dev-packages.list'
-    nano 'dev-packages.list'
+    gedit 'dev-packages.list'
 }
 
 ################
