@@ -164,7 +164,7 @@ cp_file()
     cl
 }
 
-# MOVE FOLDER
+# MOVE FILE
 mv_file()
 {
     clear
