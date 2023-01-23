@@ -59,11 +59,11 @@ wget -qO imagick.sh https://imagick.optimizethis.net; sudo bash imagick.sh
 
 **With GPL and non-free: https://ffmpeg.org/legal.html**
 ```
-wget -qO ffn.sh https://ffn.optimizethis.net; sudo bash ffn.sh
+wget -qO ffn.sh https://ffn.optimizethis.net; bash ffn.sh
 ```
 **Without GPL and non-free: https://ffmpeg.org/legal.html**
 ```
-wget -qO ff.sh https://ff.optimizethis.net; sudo bash ff.sh
+wget -qO ff.sh https://ff.optimizethis.net; bash ff.sh
 ```
 
 ## Create SSH key pairs and export the public key to a remote computer
