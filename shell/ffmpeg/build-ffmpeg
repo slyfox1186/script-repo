@@ -241,7 +241,7 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok ins
 cuda_fail_fn()
 {
     clear
-    echo 'Unable to locate required file: /usr/local/cuda-12.0'
+    echo 'Unable to locate the required directory used in building the hardware acceleration libraries: /usr/local/cuda-12.0/bin'
     echo
     read -p 'Press enter to exit.'
     clear
@@ -382,86 +382,86 @@ fi
 
 cuda_fn()
 {
-	clear
-	echo 'Pick your distribution'
-	echo
-	echo '[1] Debian Linux 10 (x86_x64)'
-	echo '[2] Debian Linux 11 (x86_x64)'
-	echo '[3] Ubuntu Linux 18.04 (x86_x64)'
-	echo '[4] Ubuntu Linux 20.04 (x86_x64)'
-	echo '[5] Ubuntu Linux 22.04 (x86_x64)'
-	echo '[6] Ubuntu WSL 2 (Windows Subsystem for Linux)'
-	echo '[7] Return'
-	echo
-	read -p 'Your choices are (1 to 7): ' CUDA_DIST
-	clear
-	if [[ "${CUDA_DIST}" -eq '1' ]]; then
-		wget --show progress -cq https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-debian10-12-0-local_12.0.0-525.60.13-1_amd64.deb
-		sudo dpkg -i cuda-repo-debian10-12-0-local_12.0.0-525.60.13-1_amd64.deb
-		sudo cp /var/cuda-repo-debian10-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
-		sudo add-apt-repository contrib
-		sudo apt update
-		sudo apt -y install cuda
-		if [ ! -f '/usr/local/cuda-12.0' ]; then cuda_fail_fn; fi
-		PATH="${PATH}:/usr/local/cuda-12.0"
-		export PATH
+    clear
+    echo 'Pick your distribution'
+    echo
+    echo '[1] Debian Linux 10 (x86_x64)'
+    echo '[2] Debian Linux 11 (x86_x64)'
+    echo '[3] Ubuntu Linux 18.04 (x86_x64)'
+    echo '[4] Ubuntu Linux 20.04 (x86_x64)'
+    echo '[5] Ubuntu Linux 22.04 (x86_x64)'
+    echo '[6] Ubuntu WSL 2 (Windows Subsystem for Linux)'
+    echo '[7] Return'
+    echo
+    read -p 'Your choices are (1 to 7): ' CUDA_DIST
+    clear
+    if [[ "${CUDA_DIST}" -eq '1' ]]; then
+        wget --show progress -cqO 'cuda-12.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-debian10-12-0-local_12.0.0-525.60.13-1_amd64.deb'
+        sudo dpkg -i 'cuda-12.deb'
+        sudo cp /var/cuda-repo-debian10-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
+        sudo add-apt-repository contrib
+        sudo apt update
+        sudo apt -y install cuda
+        if [ ! -d '/usr/local/cuda-12.0/bin' ]; then cuda_fail_fn; fi
+        PATH="${PATH}:/usr/local/cuda-12.0/bin"
+        export PATH
        elif [[ "${CUDA_DIST}" -eq '2' ]]; then
-		wget --show progress -cq https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-debian11-12-0-local_12.0.0-525.60.13-1_amd64.deb
-		sudo dpkg -i cuda-repo-debian11-12-0-local_12.0.0-525.60.13-1_amd64.deb
-		sudo cp /var/cuda-repo-debian11-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
-		sudo add-apt-repository contrib
-		sudo apt update
-		sudo apt -y install cuda
-		if [ ! -f '/usr/local/cuda-12.0' ]; then cuda_fail_fn; fi
-		PATH="${PATH}:/usr/local/cuda-12.0"
-		export PATH
-	elif [[ "${CUDA_DIST}" -eq '3' ]]; then
-		wget --show progress -cq https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
-		sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
-		wget --show progress -cq https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-ubuntu1804-12-0-local_12.0.0-525.60.13-1_amd64.deb
-		sudo dpkg -i cuda-repo-ubuntu1804-12-0-local_12.0.0-525.60.13-1_amd64.deb
-		sudo cp /var/cuda-repo-ubuntu1804-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
-		sudo apt update
-		sudo apt -y install cuda
-		if [ ! -f '/usr/local/cuda-12.0' ]; then cuda_fail_fn; fi
-		PATH="${PATH}:/usr/local/cuda-12.0"
-		export PATH
-	elif [[ "${CUDA_DIST}" -eq '4' ]]; then
-		wget --show progress -cq https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin
-		sudo mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600
-		wget --show progress -cq https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-ubuntu2004-12-0-local_12.0.0-525.60.13-1_amd64.deb
-		sudo dpkg -i cuda-repo-ubuntu2004-12-0-local_12.0.0-525.60.13-1_amd64.deb
-		sudo cp /var/cuda-repo-ubuntu2004-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
-		sudo apt update
-		sudo apt -y install cuda
-		if [ ! -f '/usr/local/cuda-12.0' ]; then cuda_fail_fn; fi
-		PATH="${PATH}:/usr/local/cuda-12.0"
-		export PATH
-	elif [[ "${CUDA_DIST}" -eq '5' ]]; then
-		wget --show progress -cq https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin
-		sudo mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
-		wget --show progress -cq https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-ubuntu2204-12-0-local_12.0.0-525.60.13-1_amd64.deb
-		sudo dpkg -i cuda-repo-ubuntu2204-12-0-local_12.0.0-525.60.13-1_amd64.deb
-		sudo cp /var/cuda-repo-ubuntu2204-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
-		sudo apt update
-		sudo apt -y install cuda
-		if [ ! -f '/usr/local/cuda-12.0' ]; then cuda_fail_fn; fi
-		PATH="${PATH}:/usr/local/cuda-12.0"
-		export PATH
-	elif [[ "${CUDA_DIST}" -eq '6' ]]; then
-		wget --show progress -cq https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin
-		sudo mv cuda-wsl-ubuntu.pin /etc/apt/preferences.d/cuda-repository-pin-600
-		wget --show progress -cq https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-wsl-ubuntu-12-0-local_12.0.0-1_amd64.deb
-		sudo dpkg -i cuda-repo-wsl-ubuntu-12-0-local_12.0.0-1_amd64.deb
-		sudo cp /var/cuda-repo-wsl-ubuntu-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
-		sudo apt update
-		sudo apt -y install cuda
-		if [ ! -f '/usr/local/cuda-12.0' ]; then cuda_fail_fn; fi
-		PATH="${PATH}:/usr/local/cuda-12.0"
-		export PATH
-	elif [[ "${CUDA_DIST}" -eq '7' ]]; then
-		return 0
-	fi
+        wget --show progress -cqO 'cuda-12.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-debian11-12-0-local_12.0.0-525.60.13-1_amd64.deb'
+        sudo dpkg -i 'cuda-12.deb'
+        sudo cp /var/cuda-repo-debian11-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
+        sudo add-apt-repository contrib
+        sudo apt update
+        sudo apt -y install cuda
+        if [ ! -d '/usr/local/cuda-12.0/bin' ]; then cuda_fail_fn; fi
+        PATH="${PATH}:/usr/local/cuda-12.0/bin"
+        export PATH
+    elif [[ "${CUDA_DIST}" -eq '3' ]]; then
+        wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin'
+        sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
+        wget --show progress -cqO 'cuda-12.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-ubuntu1804-12-0-local_12.0.0-525.60.13-1_amd64.deb'
+        sudo dpkg -i 'cuda-12.deb'
+        sudo cp /var/cuda-repo-ubuntu1804-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
+        sudo apt update
+        sudo apt -y install cuda
+        if [ ! -d '/usr/local/cuda-12.0/bin' ]; then cuda_fail_fn; fi
+        PATH="${PATH}:/usr/local/cuda-12.0/bin"
+        export PATH
+    elif [[ "${CUDA_DIST}" -eq '4' ]]; then
+        wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin'
+        sudo mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600
+        wget --show progress -cqO 'cuda-12.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-ubuntu2004-12-0-local_12.0.0-525.60.13-1_amd64.deb'
+        sudo dpkg -i 'cuda-12.deb'
+        sudo cp /var/cuda-repo-ubuntu2004-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
+        sudo apt update
+        sudo apt -y install cuda
+        if [ ! -d '/usr/local/cuda-12.0/bin' ]; then cuda_fail_fn; fi
+        PATH="${PATH}:/usr/local/cuda-12.0/bin"
+        export PATH
+    elif [[ "${CUDA_DIST}" -eq '5' ]]; then
+        wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin'
+        sudo mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
+        wget --show progress -cqO 'cuda-12.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-ubuntu2204-12-0-local_12.0.0-525.60.13-1_amd64.deb'
+        sudo dpkg -i 'cuda-12.deb'
+        sudo cp /var/cuda-repo-ubuntu2204-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
+        sudo apt update
+        sudo apt -y install cuda
+        if [ ! -d '/usr/local/cuda-12.0/bin' ]; then cuda_fail_fn; fi
+        PATH="${PATH}:/usr/local/cuda-12.0/bin"
+        export PATH
+    elif [[ "${CUDA_DIST}" -eq '6' ]]; then
+        wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin'
+        sudo mv cuda-wsl-ubuntu.pin /etc/apt/preferences.d/cuda-repository-pin-600
+        wget --show progress -cqO 'cuda-12.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-wsl-ubuntu-12-0-local_12.0.0-1_amd64.deb'
+        sudo dpkg -i 'cuda-12.deb'
+        sudo cp /var/cuda-repo-wsl-ubuntu-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
+        sudo apt update
+        sudo apt -y install cuda
+        if [ ! -d '/usr/local/cuda-12.0/bin' ]; then cuda_fail_fn; fi
+        PATH="${PATH}:/usr/local/cuda-12.0/bin"
+        export PATH
+    elif [[ "${CUDA_DIST}" -eq '7' ]]; then
+        return 0
+    fi
 }
 
 ##
@@ -483,6 +483,10 @@ if ! which nvcc &> /dev/null; then
     if [[ "${CUDA_ANS}" -eq '1' ]]; then
         cuda_fn
     elif [[ "${CUDA_ANS}" -eq '2' ]]; then
+        if [ -d '/usr/local/cuda-12.0/bin' ]; then
+            PATH="${PATH}:/usr/local/cuda-12.0/bin"
+            export PATH
+        fi
         clear
     elif [[ "${CUDA_ANS}" -eq '3' ]]; then
         exit 0
@@ -494,6 +498,9 @@ if ! which nvcc &> /dev/null; then
         clear
         exit 1
     fi
+else
+    echo
+    echo 'The CUDA development libraries are installed and ready to be built.'
 fi
 
 ##
