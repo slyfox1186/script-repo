@@ -238,6 +238,17 @@ cleanup()
 # function to determine if a package is installed or not
 installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
+cuda_fail_fn()
+{
+    clear
+    echo 'Unable to locate required file: /usr/local/cuda-12.0'
+    echo
+    read -p 'Press enter to exit.'
+    clear
+    echo
+    exit 1
+}
+
 # print the options available when manually running the script
 usage()
 {
@@ -385,23 +396,23 @@ cuda_fn()
 	read -p 'Your choices are (1 to 7): ' CUDA_DIST
 	clear
 	if [[ "${CUDA_DIST}" -eq '1' ]]; then
-		PATH="${PATH}:/usr/local/cuda-12.0"
-		export PATH
 		wget --show progress -cq https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-debian10-12-0-local_12.0.0-525.60.13-1_amd64.deb
 		sudo dpkg -i cuda-repo-debian10-12-0-local_12.0.0-525.60.13-1_amd64.deb
 		sudo cp /var/cuda-repo-debian10-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
 		sudo add-apt-repository contrib
-		sudo apt-get update
-		sudo apt-get -y install cuda
-	elif [[ "${CUDA_DIST}" -eq '2' ]]; then
+		sudo apt update
+		sudo apt -y install cuda
+		if [ ! -f '/usr/local/cuda-12.0' ]; then cuda_fail_fn; fi
 		PATH="${PATH}:/usr/local/cuda-12.0"
 		export PATH
+       elif [[ "${CUDA_DIST}" -eq '2' ]]; then
 		wget --show progress -cq https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-debian11-12-0-local_12.0.0-525.60.13-1_amd64.deb
 		sudo dpkg -i cuda-repo-debian11-12-0-local_12.0.0-525.60.13-1_amd64.deb
 		sudo cp /var/cuda-repo-debian11-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
 		sudo add-apt-repository contrib
-		sudo apt-get update
-		sudo apt-get -y install cuda
+		sudo apt update
+		sudo apt -y install cuda
+		if [ ! -f '/usr/local/cuda-12.0' ]; then cuda_fail_fn; fi
 		PATH="${PATH}:/usr/local/cuda-12.0"
 		export PATH
 	elif [[ "${CUDA_DIST}" -eq '3' ]]; then
@@ -410,8 +421,9 @@ cuda_fn()
 		wget --show progress -cq https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-ubuntu1804-12-0-local_12.0.0-525.60.13-1_amd64.deb
 		sudo dpkg -i cuda-repo-ubuntu1804-12-0-local_12.0.0-525.60.13-1_amd64.deb
 		sudo cp /var/cuda-repo-ubuntu1804-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
-		sudo apt-get update
-		sudo apt-get -y install cuda
+		sudo apt update
+		sudo apt -y install cuda
+		if [ ! -f '/usr/local/cuda-12.0' ]; then cuda_fail_fn; fi
 		PATH="${PATH}:/usr/local/cuda-12.0"
 		export PATH
 	elif [[ "${CUDA_DIST}" -eq '4' ]]; then
@@ -420,8 +432,9 @@ cuda_fn()
 		wget --show progress -cq https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-ubuntu2004-12-0-local_12.0.0-525.60.13-1_amd64.deb
 		sudo dpkg -i cuda-repo-ubuntu2004-12-0-local_12.0.0-525.60.13-1_amd64.deb
 		sudo cp /var/cuda-repo-ubuntu2004-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
-		sudo apt-get update
-		sudo apt-get -y install cuda
+		sudo apt update
+		sudo apt -y install cuda
+		if [ ! -f '/usr/local/cuda-12.0' ]; then cuda_fail_fn; fi
 		PATH="${PATH}:/usr/local/cuda-12.0"
 		export PATH
 	elif [[ "${CUDA_DIST}" -eq '5' ]]; then
@@ -430,8 +443,9 @@ cuda_fn()
 		wget --show progress -cq https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-ubuntu2204-12-0-local_12.0.0-525.60.13-1_amd64.deb
 		sudo dpkg -i cuda-repo-ubuntu2204-12-0-local_12.0.0-525.60.13-1_amd64.deb
 		sudo cp /var/cuda-repo-ubuntu2204-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
-		sudo apt-get update
-		sudo apt-get -y install cuda
+		sudo apt update
+		sudo apt -y install cuda
+		if [ ! -f '/usr/local/cuda-12.0' ]; then cuda_fail_fn; fi
 		PATH="${PATH}:/usr/local/cuda-12.0"
 		export PATH
 	elif [[ "${CUDA_DIST}" -eq '6' ]]; then
@@ -440,8 +454,9 @@ cuda_fn()
 		wget --show progress -cq https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-wsl-ubuntu-12-0-local_12.0.0-1_amd64.deb
 		sudo dpkg -i cuda-repo-wsl-ubuntu-12-0-local_12.0.0-1_amd64.deb
 		sudo cp /var/cuda-repo-wsl-ubuntu-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
-		sudo apt-get update
-		sudo apt-get -y install cuda
+		sudo apt update
+		sudo apt -y install cuda
+		if [ ! -f '/usr/local/cuda-12.0' ]; then cuda_fail_fn; fi
 		PATH="${PATH}:/usr/local/cuda-12.0"
 		export PATH
 	elif [[ "${CUDA_DIST}" -eq '7' ]]; then
