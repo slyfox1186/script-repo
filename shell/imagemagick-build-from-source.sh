@@ -33,6 +33,33 @@ del_files_fn()
     fi
 }
 
+# function to determine if a package is installed or not
+installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
+
+##
+## Required Developement Packages
+##
+
+echo
+echo 'Installing: libpng-12 required developement packages'
+echo '=========================================='
+
+CUDA_PKGS=(build-essential libc6 libc6-dev libnuma-dev libnuma1 libtool unzip wget)
+
+for CUDA_PKG in ${CUDA_PKGS[@]}
+do
+    if ! installed "${CUDA_PKG}"; then
+        MISSING_CUDA_PKGS+=" ${CUDA_PKG}"
+    fi
+done
+
+if [ -n "${MISSING_CUDA_PKGS}" ]; then
+    sudo apt install "${MISSING_CUDA_PKGS}"
+else
+    echo 'The developement libraries required for libpng-12 have already been installed.'
+    echo
+fi
+
 echo 'Starting libpng12 build'
 echo '======================='
 echo
