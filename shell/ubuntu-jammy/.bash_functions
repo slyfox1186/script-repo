@@ -1,13 +1,3 @@
-# generates a function named $1 which:
-# - executes $(which $1) [with args]
-# - suppresses output lines which match $2
-# e.g. adding: _supress echo "hello\|world"
-# will generate this function:
-# echo() { $(which echo) "$@" 2>&1 | tr -d '\r' | grep -v "hello\|world"; }
-# and from now on, using echo will work normally except that lines with
-# hello or world will not show at the output
-# to see the generated functions, replace eval with echo below
-# the 'tr' filter makes sure no spurious empty lines pass from some commands
 _suppress()
 {
     eval "${1}() { \$(which ${1}) \"\$@\" 2>&1 | tr -d '\r' | grep -v \"${2}\"; }"
@@ -580,42 +570,42 @@ imow()
 
     clear
 
-    local i ANSWER
+    local answer i wxh
 
     echo 'This will overwrite the files, continue?'
     echo
     echo '[1] Yes'
     echo '[2] No'
     echo
-    read -p 'Your choices are (1 or 2): ' ANSWER
+    read -p 'Your choices are (1 or 2): ' answer
     clear
 
-    if [[ "${ANSWER}" -eq '1' ]]; then
+    if [[ "${answer}" -eq '1' ]]; then
         clear
-    elif [[ "${ANSWER}" -eq '2' ]]; then
+    elif [[ "${answer}" -eq '2' ]]; then
         return
     fi
 
     # find all jpg files and create temporary cache files from them
-    for i in *.jpg; do
-        echo -e "\\nCreating two temporary cache files: ${i%%.jpg}.mpc + ${i%%.jpg}.cache\\n"
-        dimension="$(identify -format '%wx%h' "${i}")"
-        convert "${i}" -monitor -filter Triangle -define filter:support=2 -thumbnail $dimension -strip \
+    for pics in *.{jpg,JPG,jpeg,JPEG,png,PNG}
+    do
+        echo -e "\\nCreating two temporary cache files: ${pics%%.jpg}.mpc + ${pics%%.jpg}.cache\\n"
+        wxh="$(identify -format '%wx%h' "${pics}")"
+        convert "${pics}" -monitor -filter Triangle -define filter:support=2 -thumbnail "${wxh}" \
         -unsharp 0.25x0.08+8.3+0.045 -dither None -posterize 136 -quality 82 -define jpeg:fancy-upsampling=off \
-        -auto-level -enhance -interlace none -colorspace sRGB "/tmp/${i%%.jpg}.mpc"
-        clear
-        for i in /tmp/*.mpc; do
-        # find the temporary cache files created above and output optimized jpg files
-            if [ -f "${i}" ]; then
-                echo -e "\\nOverwriting orignal file with optimized self: ${i} >> ${i%%.mpc}.jpg\\n"
-                convert "${i}" -monitor "${i%%.mpc}.jpg"
-                # overwrite the original image with it's optimized version
-                # by moving it from the tmp directory to the source directory
-                if [ -f "${i%%.mpc}.jpg" ]; then
-                    mv "${i%%.mpc}.jpg" "$PWD"
+        -define png:compression-filter=5 -define png:compression-level=9 -define png:compression-strategy=1 \
+        -define png:exclude-chunk=all -interlace none -colorspace sRGB "/tmp/${pics%%.jpg}.mpc"
+        echo
+        for i in /tmp/*.mpc
+        do
+            if [ -f "${pics}" ]; then
+                echo -e "\\nOverwriting orignal file with optimized self: ${pics} >> ${pics%%.mpc}.jpg\\n"
+                convert "${pics}" -monitor "${pics%%.mpc}.jpg"
+                if [ -f "${pics%%.mpc}.jpg" ]; then
+                    mv "${pics%%.mpc}.jpg" "${PWD}"
                     # delete both cache files before continuing
-                    rm "${i}"
-                    rm "${i%%.mpc}.cache"
+                    rm "${pics}"
+                    rm "${pics%%.mpc}.cache"
                     clear
                 fi
             fi
@@ -627,4 +617,4 @@ imow()
 ## SHOW FILE NAME AND SIZE IN CURRENT DIRECTORY ##
 ##################################################
 
-_fsize() { clear; du -abh | grep -Eo '^[0-9A-Za-z]+?|[a-zA-Z0-9\_]+\.jpg$'; }
+fsize() { clear; du -abh | grep -Eo '^[0-9A-Za-z\.]*|[a-zA-Z0-9\_]+\.jpg$'; }
