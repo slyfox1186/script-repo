@@ -10,6 +10,13 @@ IF NOT "%1"=="MAX" START /MAX CMD /D /C %0 MAX & GOTO :EOF
 
 :------------------------------------------------------------------------------------------------------------------------------------
 
+REM PICK THE CORRECT POWERSHELL EXE TO USE
+IF EXIST "%ProgramFiles%\PowerShell\7\pwsh.exe" (SET EXE=pwsh.exe) ELSE (SET EXE=powershell.exe)
+
+:------------------------------------------------------------------------------------------------------------------------------------
+
+REM EDIT THIS VARIABLE TO MATCH THE LINUX DISTRIBUTION YOU WISH TO USE
+REM YOU CAN FIND THE DISTRIBUTION NAMES BY RUNNING wsl.exe -l --all
 ECHO Available Distros to choose from below
 ECHO Press enter to continue when done selecting
 ECHO=
@@ -34,7 +41,7 @@ ECHO "NoWorkingDirectory"^=""
 ECHO "Extended"^=-
 ECHO=
 ECHO [HKEY_CLASSES_ROOT\*\shell\WSL\command]
-ECHO @^="powershell.exe -NoP -NoL -W Hidden -C \"Start-Process wt.exe -Args ^'-w new-tab -M -d \"%%W\" wsl.exe -d %DIST%^' -Verb RunAs"
+ECHO @^="%EXE% -NoP -NoL -W Hidden -C \"Start-Process wt.exe -Args ^'-w new-tab -M -d \"%%W\" wsl.exe -d %DIST%^' -Verb RunAs"
 ECHO=
 ECHO=
 ECHO ^; [ DesktopBackground ]
@@ -46,7 +53,7 @@ ECHO "NoWorkingDirectory"^=""
 ECHO "Extended"^=-
 ECHO=
 ECHO [HKEY_CLASSES_ROOT\DesktopBackground\shell\WSL\command]
-ECHO @^="powershell.exe -NoP -NoL -W Hidden -C \"Start-Process wt.exe -Args ^'-w new-tab -M -d \"%%V\" wsl.exe -d %DIST%^' -Verb RunAs"
+ECHO @^="%EXE% -NoP -NoL -W Hidden -C \"Start-Process wt.exe -Args ^'-w new-tab -M -d \"%%V\" wsl.exe -d %DIST%^' -Verb RunAs"
 ECHO=
 ECHO=
 ECHO ^; [ Directory\Background ]
@@ -58,7 +65,7 @@ ECHO "NoWorkingDirectory"^=""
 ECHO "Extended"^=-
 ECHO=
 ECHO [HKEY_CLASSES_ROOT\Directory\Background\shell\WSL\command]
-ECHO @^="powershell.exe -NoP -NoL -W Hidden -C \"Start-Process wt.exe -Args ^'-w new-tab -M -d \"%%V\" wsl.exe -d %DIST%^' -Verb RunAs"
+ECHO @^="%EXE% -NoP -NoL -W Hidden -C \"Start-Process wt.exe -Args ^'-w new-tab -M -d \"%%V\" wsl.exe -d %DIST%^' -Verb RunAs"
 ECHO=
 ECHO=
 ECHO ^; [ Directory ]
@@ -70,7 +77,7 @@ ECHO "NoWorkingDirectory"^=""
 ECHO "Extended"^=-
 ECHO=
 ECHO [HKEY_CLASSES_ROOT\Directory\shell\WSL\command]
-ECHO @^="powershell.exe -NoP -NoL -W Hidden -C \"Start-Process wt.exe -Args ^'-w new-tab -M -d \"%%V\" wsl.exe -d %DIST%^' -Verb RunAs"
+ECHO @^="%EXE% -NoP -NoL -W Hidden -C \"Start-Process wt.exe -Args ^'-w new-tab -M -d \"%%V\" wsl.exe -d %DIST%^' -Verb RunAs"
 ECHO=
 ECHO=
 ECHO ^; [ Drive ]
@@ -82,7 +89,7 @@ ECHO "NoWorkingDirectory"^=""
 ECHO "Extended"^=-
 ECHO=
 ECHO [HKEY_CLASSES_ROOT\Drive\shell\WSL\command]
-ECHO @^="powershell.exe -NoP -NoL -W Hidden -C \"Start-Process wt.exe -Args ^'-w new-tab -M -d \"%%V\\\" wsl.exe -d %DIST%^' -Verb RunAs"
+ECHO @^="%EXE% -NoP -NoL -W Hidden -C \"Start-Process wt.exe -Args ^'-w new-tab -M -d \"%%V\\\" wsl.exe -d %DIST%^' -Verb RunAs"
 )>"%TMP%\wsl.reg"
 
 :------------------------------------------------------------------------------------------------------------------------------------
