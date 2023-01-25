@@ -22,7 +22,6 @@
     Update 4:      v4.1 (12.02.22)
                    Removed an unnecessary duplicate step.
 
-
     Update 5:      v4.2 (01.25.23)
                    Fixed a regex issue where URLs whith sub domains would not match correctly.
 
