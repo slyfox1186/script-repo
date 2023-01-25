@@ -22,11 +22,12 @@
     Update 4:      v4.1 (12.02.22)
                    Removed an unnecessary duplicate step.
 
+
     Update 5:      v4.2 (01.25.23)
                    Fixed a regex issue where URLs whith sub domains would not match correctly.
 
     Test:          google.com
-                   battle.net
+                   battle.net 
                    https://test.xyz   ; this should not work as it is not icluded in the list of acceptable names below.
                    www.yahoo.com
                    https://stackoverflow.com/users/10572786/slyfox1186
@@ -48,22 +49,22 @@
 
     ; task: list the types of primary domains you want regex to attempt to match.
     ; info: change the below domains as needed.
-    _Domains := [   .com
-                ,   .de
-                ,   .gov
-                ,   .io
-                ,   .jp
-                ,   .net
-                ,   .org
-                ,   .to
-                ,   .tv
-                ,   .uk   ]
+        _Domains := [   .com
+                    ,   .de
+                    ,   .gov
+                    ,   .io
+                    ,   .jp
+                    ,   .net
+                    ,   .org
+                    ,   .to
+                    ,   .tv
+                    ,   .uk   ]
 
     ; test each of the primary domain above with regex expressions for any matches.
     for each, _Domain in _Domains
     {
         RegExMatch(Clipboard, "\.[a-z]{2,3}$|.*$", _isMatch)
-        RegExMatch(Clipboard, "\.[a-z]+[$]*", _isMatchEnd)
+        RegExMatch(Clipboard, "(\.(com|de|gov|io|jp|net|org|to|tv|uk))[$]*", _isMatchEnd)
         while (_isMatchEnd = _Domain)
         {
             run, "%_Browser%" --new-tab "%_isMatch%",, max, _wpid
@@ -110,7 +111,7 @@
 
     Clipboard := trim(Clipboard) ; trim the ends of the string again
 
-    msgbox, run, "%_Browser%" --new-tab "https://google.com/search?q=%Clipboard%",, max, _wpid
+    run, "%_Browser%" --new-tab "https://google.com/search?q=%Clipboard%",, max, _wpid
     WinWait, ahk_pid %_wpid%,, 2
     WinSet, Top,, ahk_pid %_wpid%
     WinActivate, ahk_pid %_wpid%
