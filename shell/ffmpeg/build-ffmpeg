@@ -1150,7 +1150,9 @@ read -p 'Your choices are (1 or 2): ' CLEAN
 clear
 
 if [[ "${CLEAN}" -eq '1' ]]; then
-    bash <(curl -s 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ffmpeg/build-ffmpeg') --cleanup
+    cd "${PWD}" || exit 1
+    CMD="$(find . -type f -name ff*.sh)"
+    "${CMD:2}" --cleanup
     rm ff*.sh
     exit_fn
 elif [[ "${CLEAN}" -eq '2' ]]; then
