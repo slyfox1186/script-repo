@@ -137,7 +137,7 @@ sudo apt install \
     pstoedit
 
 # set variables for imagemagick
-IMVER='7.1.0-57'
+IMVER='7.1.0-58'
 IMURL="https://github.com/ImageMagick/ImageMagick/archive/refs/tags/${IMVER}.tar.gz"
 IMDIR="ImageMagick-${IMVER}"
 IMTAR="${IMDIR}.tar.gz"
