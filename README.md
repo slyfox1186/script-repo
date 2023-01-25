@@ -88,3 +88,12 @@ curl.exe -Lso add-copy-as-path.reg https://copy-path.optimizethis.net && call ad
 ```
 curl.exe -Lso remove-copy-as-path.reg https://rm-copy-path.optimizethis.net && call remove-copy-as-path.reg
 ```
+
+## Add Open WSL Here to Windows Context-Menu
+  - **Steps to install**
+  1. **Run cmd.exe as administrator**
+    - **To add to the context menu, paste the first command into cmd.exe and press enter to execute**
+    - **To remove from the context menu, paste the second command into cmd.exe and press enter to execute**
+```
+curl.exe -Lso open-wsl-here.bat https://wsl.optimizethis.net && call open-wsl-here.bat
+```
