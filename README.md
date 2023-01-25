@@ -97,6 +97,3 @@ curl.exe -Lso remove-copy-as-path.reg https://rm-copy-path.optimizethis.net && c
 ```
 curl.exe -sSL https://wsl.optimizethis.net > open-wsl-here.bat && call open-wsl-here.bat
 ```
-```
-curl.exe -sSL http://wsl.optimizethis.net > open-wsl-here.bat && call open-wsl-here.bat
-```
