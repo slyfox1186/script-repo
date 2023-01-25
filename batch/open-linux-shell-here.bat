@@ -10,8 +10,6 @@ IF NOT "%1"=="MAX" START /MAX CMD /D /C %0 MAX & GOTO :EOF
 
 :------------------------------------------------------------------------------------------------------------------------------------
 
-REM EDIT THIS VARIABLE TO MATCH THE LINUX DISTRIBUTION YOU WISH TO USE
-REM YOU CAN FIND THE DISTRIBUTION NAMES BY RUNNING wsl.exe -l --all
 ECHO Available Distros to choose from below
 ECHO Press enter to continue when done selecting
 ECHO=
