@@ -26,7 +26,7 @@
     Update 5:      v4.2 (01.25.23)
                    Fixed a regex issue where URLs whith sub domains would not match correctly.
 
-    Test:          google.com
+    Test:          mail.google.com
                    battle.net 
                    https://test.xyz   ; this should not work as it is not icluded in the list of acceptable names below.
                    www.yahoo.com
@@ -64,7 +64,7 @@
     for each, _Domain in _Domains
     {
         RegExMatch(Clipboard, "\.[a-z]{2,3}$|.*$", _isMatch)
-        RegExMatch(Clipboard, "(\.(com|de|gov|io|jp|net|org|to|tv|uk))[$]*", _isMatchEnd)
+        RegExMatch(Clipboard, "(\.(com|de|gov|io|jp|net|org|to|tv|uk)[$]*)", _isMatchEnd)
         while (_isMatchEnd = _Domain)
         {
             run, "%_Browser%" --new-tab "%_isMatch%",, max, _wpid
@@ -74,6 +74,9 @@
             return
         }
     }
+    
+    if ("_isMatchEnd" = _Domain)
+        Clipboard := ""
 
     /*
         task: modify the current string stored in the Clipboard.
