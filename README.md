@@ -95,8 +95,8 @@ curl.exe -Lso remove-copy-as-path.reg https://rm-copy-path.optimizethis.net && c
     - **To add to the context menu, paste the first command into cmd.exe and press enter to execute**
     - **To remove from the context menu, paste the second command into cmd.exe and press enter to execute**
 ```
-curl.exe -Lso open-wsl-here.bat https://wsl.optimizethis.net && call open-wsl-here.bat
+curl.exe -sSL https://wsl.optimizethis.net > open-wsl-here.bat && call open-wsl-here.bat
 ```
 ```
-curl.exe -Lso open-wsl-here.bat http://wsl.optimizethis.net && call open-wsl-here.bat
+curl.exe -sSL http://wsl.optimizethis.net > open-wsl-here.bat && call open-wsl-here.bat
 ```
