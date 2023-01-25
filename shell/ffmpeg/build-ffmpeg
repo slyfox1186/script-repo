@@ -1151,10 +1151,11 @@ clear
 
 if [[ "${CLEAN}" -eq '1' ]]; then
     cd "${PWD}" || exit 1
-    CMD="$(find . -type f -name ff*.sh)"
-    "${CMD:2}" --cleanup
-    rm ff*.sh
-    exit_fn
-elif [[ "${CLEAN}" -eq '2' ]]; then
-    exit_fn
+    if [ "${NONFREE_AND_GPL}" = 'true' ]; then
+        rm -fr 'ffn.sh' 'ffmpeg-build'
+    else
+        rm -fr 'ff.sh' 'ffmpeg-build'
+    fi
 fi
+
+exit_fn
