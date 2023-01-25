@@ -111,90 +111,10 @@
 
     clipboard := trim(clipboard) ; trim the ends of the string again
 
-    MsgBox, run, "%_browser%" --new-tab "https://google.com/search?q=%clipboard%",, max, _wpid
+    run, "%_browser%" --new-tab "https://google.com/search?q=%clipboard%",, max, _wpid
     WinWait, ahk_pid %_wpid%,, 2
     WinSet, Top,, ahk_pid %_wpid%
     WinActivate, ahk_pid %_wpid%
 }
 return
 
-; ARIA2 CHROME EXTENSION paste + .mp4
-
-^!+7::
-{
-    _win := "ahk_class Chrome_WidgetWin_1 ahk_exe chrome.exe"
-    WinGet, _wPID, PID, % _win
-    WinGet, _wID, ID, % _win
-    win := _win . " ahk_pid " . _wPID . " ahk_id " . _wID
-    If WinExist(win) && WinActive(win) || !WinActive(win)
-    {
-        _paste := Clipboard . ".mp4"
-        SendInput, % _paste
-        Sleep, 75
-        Send, {Enter}
-        Sleep, 100
-        SendInput, ^{w}
-    }
-}
-
-; ARIA2 CHROME EXTENSION Pics.7z
-
-^!+8::
-{
-    SetControlDelay, 50
-    SetKeyDelay, 50
-    _wAria2 := "AriaNg ahk_class Chrome_WidgetWin_1 ahk_exe chrome.exe"
-    _win := "ahk_class Chrome_WidgetWin_1 ahk_exe chrome.exe"
-    WinGet, _wPID, PID, % _win
-    WinGet, _wID, ID, % _win
-    win := _win . " ahk_pid " . _wPID . " ahk_id " . _wID
-    If WinExist(win) && WinActive(win) || !WinActive(win)
-    {
-        Click
-        WinWaitActive, %_wAria2%,, 2
-        Sleep, 2000
-        Send, {Tab 4}
-        Sleep, 50
-        Send, {Down}
-        Sleep, 50
-        SendInput, {Enter}
-        Sleep, 50
-        Send, {Tab}
-        Sleep, 50
-        BlockInput, On
-        SendRaw, Pics.zip
-        BlockInput, Off
-        Sleep, 50
-        SendInput, {Enter}
-        Sleep, 50
-        SendInput, ^{w}
-        Sleep, 50
-        SendInput, ^{w}
-    }
-}
-
-/*____________________________________________________________________________________
-    MAKE THE REFRESH KEYBOARD SHORTCUT INTO REFRESH WITHOUT CACHE
-
-*/
-
-~^r::
-{
-    _win := "ahk_class Chrome_WidgetWin_1 ahk_exe chrome.exe"
-    WinGetTitle, _wTitle, % _win
-    WinGet, _wPID, PID, % _win
-    win := _wTitle . " " . _win .  " ahk_pid " . _wPID
-    if WinExist(win) && WinActive(win)
-    {
-        send, {RCtrl Down}{F5 Down}
-        sleep, 5
-        send, {F5 Up}{RCtrl Up}
-    }
-    else
-    {
-        send, {RCtrl Down}
-        sleep, 5
-        send, {RCtrl Up}
-    }
-}
-return
