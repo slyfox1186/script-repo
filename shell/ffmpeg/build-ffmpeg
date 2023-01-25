@@ -64,6 +64,16 @@ fi
 ## FUNCTIONS
 ##
 
+exit_fn()
+{
+    clear
+    echo 'The script has finished!'
+    echo
+    echo 'Make sure to start this repository to show your suppport!'
+    echo
+    exit 0
+}
+
 make_dir()
 {
     remove_dir "${1}"
@@ -1131,4 +1141,18 @@ echo '=================================================================='
 ffmpeg -version
 echo
 
-exit
+echo 'Do you want to clean up the build files?'
+echo
+echo '[1] Yes'
+echo '[2] No'
+echo
+read -p 'Your choices are (1 or 2): ' CLEAN
+clear
+
+if [[ "${CLEAN}" -eq '1' ]]; then
+    bash <(curl -s 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ffmpeg/build-ffmpeg') --cleanup
+    rm ff*.sh
+    exit_fn
+elif [[ "${CLEAN}" -eq '2' ]]; then
+    exit_fn
+fi
