@@ -117,4 +117,3 @@
     WinActivate, ahk_pid %_wpid%
 }
 return
-
