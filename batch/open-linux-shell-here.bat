@@ -101,6 +101,6 @@ ECHO The script has finished!
 ECHO=
 ECHO Give the context-menu a try by right clicking on a folder, file, drive, or desktop/folder background.
 ECHO
-ECHO The menu will say ""
+ECHO The menu will say "Open WSL Here"
 ECHO=
 SET /P "DUMMY=Press enter to exit: "
