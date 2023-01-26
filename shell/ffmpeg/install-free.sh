@@ -31,7 +31,7 @@ command_exists()
     return 0
 }
 
-TARGET='ffmpeg-build'
+BUILD_DIR='ffmpeg-build'
 
 if ! command_exists 'curl'; then
     echo 'curl command not installed.'
@@ -43,11 +43,11 @@ echo 'ffmpeg-build-script-downloader v0.1'
 echo '===================================='
 echo
 
-echo 'First we create the ffmpeg build directory' "${TARGET}"
+echo 'First we create the ffmpeg build directory' "${BUILD_DIR}"
 echo '========================================================'
 echo
-make_dir "${TARGET}"
-cd "${TARGET}" || exit 1
+make_dir "${BUILD_DIR}"
+cd "${BUILD_DIR}" || exit 1
 
 echo 'Now we download and execute the build script'
 echo '============================================'
