@@ -104,7 +104,7 @@ download()
 
     if [ ! -f "${DOWNLOAD_PATH}/${DOWNLOAD_FILE}" ]; then
         echo "Downloading ${1} as ${DOWNLOAD_FILE}"
-        curl -Lso "${DOWNLOAD_PATH}/${DOWNLOAD_FILE}" "${1}"
+        curl -Lo "${DOWNLOAD_PATH}/${DOWNLOAD_FILE}" "${1}"
 
         EXITCODE="${?}"
         if [ "${EXITCODE}" -ne '0' ]; then
@@ -113,7 +113,7 @@ download()
             echo
             read -t 10 -p 'Press enter to skip waiting.'
             echo
-            curl -Lso "${DOWNLOAD_PATH}/${DOWNLOAD_FILE}" "${1}"
+            curl -Lo "${DOWNLOAD_PATH}/${DOWNLOAD_FILE}" "${1}"
         fi
 
         EXITCODE="${?}"
