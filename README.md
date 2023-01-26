@@ -79,18 +79,17 @@ wget -qO ssh-keys.sh https://ssh-keys.optimizethis.net; bash ssh-keys.sh
 ## $\textcolor{green}{\text{Add}}\textcolor{yellow}{\text{ Copy as Path}}\textcolor{green}{\text{ to Windows Context-Menu}}$
   1. **Run cmd.exe as administrator**
   2. **To add to the context menu, paste the first command into cmd.exe and press enter to execute**
-  3. **To remove from the context menu, paste the second command into cmd.exe and press enter to execute**
 ```
 curl.exe -Lso add-copy-as-path.reg https://copy-path.optimizethis.net && call add-copy-as-path.reg
 ```
+  - **To remove from the context menu, paste the next command into cmd.exe and press enter to execute**
 ```
 curl.exe -Lso remove-copy-as-path.reg https://rm-copy-path.optimizethis.net && call remove-copy-as-path.reg
 ```
 
 ## $\textcolor{green}{\text{Add}}\textcolor{yellow}{\text{ Open WSL Here}}\textcolor{green}{\text{ to Windows Context-Menu}}$
   1. **Run cmd.exe as administrator**
-  2. **To add to the context menu, paste the first command into cmd.exe and press enter to execute**
-  3. **To remove from the context menu, paste the second command into cmd.exe and press enter to execute**
+  2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
 ```
 curl.exe -sSL https://wsl.optimizethis.net > open-wsl-here.bat && call open-wsl-here.bat
 ```
