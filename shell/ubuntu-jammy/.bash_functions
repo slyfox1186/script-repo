@@ -533,11 +533,28 @@ rmf()
 #################
 ## IMAGEMAGICK ##
 #################
-imo()
+
+imow()
 {
+
     clear
 
-    local i
+    local i ANSWER
+
+    echo 'This will overwrite the files, continue?'
+    echo
+    echo '[1] Yes'
+    echo '[2] No'
+    echo
+    read -p 'Your choices are (1 or 2): ' ANSWER
+    clear
+
+    if [[ "${ANSWER}" -eq '1' ]]; then
+        clear
+    elif [[ "${ANSWER}" -eq '2' ]]; then
+        return
+    fi
+
     # find all jpg files and create temporary cache files from them
     for i in *.jpg; do
         echo -e "\\nCreating two temporary cache files: ${i%%.jpg}.mpc + ${i%%.jpg}.cache\\n"
@@ -558,54 +575,6 @@ imo()
                     # delete both cache files before continuing
                     rm "${i}"
                     rm "${i%%.mpc}.cache"
-                    clear
-                fi
-            fi
-        done
-    done
-}
-
-imow()
-{
-
-    clear
-
-    local answer i wxh
-
-    echo 'This will overwrite the files, continue?'
-    echo
-    echo '[1] Yes'
-    echo '[2] No'
-    echo
-    read -p 'Your choices are (1 or 2): ' answer
-    clear
-
-    if [[ "${answer}" -eq '1' ]]; then
-        clear
-    elif [[ "${answer}" -eq '2' ]]; then
-        return
-    fi
-
-    # find all jpg files and create temporary cache files from them
-    for pics in *.{jpg,JPG,jpeg,JPEG,png,PNG}
-    do
-        echo -e "\\nCreating two temporary cache files: ${pics%%.jpg}.mpc + ${pics%%.jpg}.cache\\n"
-        wxh="$(identify -format '%wx%h' "${pics}")"
-        convert "${pics}" -monitor -filter Triangle -define filter:support=2 -thumbnail "${wxh}" \
-        -unsharp 0.25x0.08+8.3+0.045 -dither None -posterize 136 -quality 82 -define jpeg:fancy-upsampling=off \
-        -define png:compression-filter=5 -define png:compression-level=9 -define png:compression-strategy=1 \
-        -define png:exclude-chunk=all -interlace none -colorspace sRGB "/tmp/${pics%%.jpg}.mpc"
-        echo
-        for i in /tmp/*.mpc
-        do
-            if [ -f "${pics}" ]; then
-                echo -e "\\nOverwriting orignal file with optimized self: ${pics} >> ${pics%%.mpc}.jpg\\n"
-                convert "${pics}" -monitor "${pics%%.mpc}.jpg"
-                if [ -f "${pics%%.mpc}.jpg" ]; then
-                    mv "${pics%%.mpc}.jpg" "${PWD}"
-                    # delete both cache files before continuing
-                    rm "${pics}"
-                    rm "${pics%%.mpc}.cache"
                     clear
                 fi
             fi
