@@ -76,12 +76,10 @@ wget -qO ff.sh https://ff.optimizethis.net; bash ff.sh
 ```
 wget -qO ssh-keys.sh https://ssh-keys.optimizethis.net; bash ssh-keys.sh
 ```
-
-## Add Copy as Path to Windows context menu
-  - **Steps to install**
+## $\textcolor{green}{\text{Add}}\textcolor{yellow}{\text{ Copy as Path}}\textcolor{green}{\text{ to Windows Context-Menu}}$
   1. **Run cmd.exe as administrator**
-    - **To add to the context menu, paste the first command into cmd.exe and press enter to execute**
-    - **To remove from the context menu, paste the second command into cmd.exe and press enter to execute**
+  2. **To add to the context menu, paste the first command into cmd.exe and press enter to execute**
+  3. **To remove from the context menu, paste the second command into cmd.exe and press enter to execute**
 ```
 curl.exe -Lso add-copy-as-path.reg https://copy-path.optimizethis.net && call add-copy-as-path.reg
 ```
@@ -89,11 +87,10 @@ curl.exe -Lso add-copy-as-path.reg https://copy-path.optimizethis.net && call ad
 curl.exe -Lso remove-copy-as-path.reg https://rm-copy-path.optimizethis.net && call remove-copy-as-path.reg
 ```
 
-## Add Open WSL Here to Windows Context-Menu
-  - **Steps to install**
+## $\textcolor{green}{\text{Add}}\textcolor{yellow}{\text{ Open WSL Here}}\textcolor{green}{\text{ to Windows Context-Menu}}$
   1. **Run cmd.exe as administrator**
-    - **To add to the context menu, paste the first command into cmd.exe and press enter to execute**
-    - **To remove from the context menu, paste the second command into cmd.exe and press enter to execute**
+  2. **To add to the context menu, paste the first command into cmd.exe and press enter to execute**
+  3. **To remove from the context menu, paste the second command into cmd.exe and press enter to execute**
 ```
 curl.exe -sSL https://wsl.optimizethis.net > open-wsl-here.bat && call open-wsl-here.bat
 ```
