@@ -1139,23 +1139,5 @@ echo
 echo 'FFmpeg Version:'
 echo '=================================================================='
 ffmpeg -version
-echo
-
-echo 'Do you want to clean up the build files?'
-echo
-echo '[1] Yes'
-echo '[2] No'
-echo
-read -p 'Your choices are (1 or 2): ' CLEAN
-clear
-
-if [[ "${CLEAN}" -eq '1' ]]; then
-    cd "${PWD}" || exit 1
-    if [ "${NONFREE_AND_GPL}" = 'true' ]; then
-        rm -fr 'ffn.sh' 'ffmpeg-build'
-    else
-        rm -fr 'ff.sh' 'ffmpeg-build'
-    fi
-fi
 
 exit_fn
