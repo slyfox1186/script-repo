@@ -413,9 +413,6 @@ cuda_fn()
         sudo add-apt-repository contrib
         sudo apt update
         sudo apt -y install cuda
-        if [ ! -d '/usr/local/cuda-12.0/bin' ]; then cuda_fail_fn; fi
-        PATH="${PATH}:/usr/local/cuda-12.0/bin"
-        export PATH
        elif [[ "${CUDA_DIST}" -eq '2' ]]; then
         wget --show progress -cqO 'cuda-12.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-debian11-12-0-local_12.0.0-525.60.13-1_amd64.deb'
         sudo dpkg -i 'cuda-12.deb'
@@ -423,9 +420,6 @@ cuda_fn()
         sudo add-apt-repository contrib
         sudo apt update
         sudo apt -y install cuda
-        if [ ! -d '/usr/local/cuda-12.0/bin' ]; then cuda_fail_fn; fi
-        PATH="${PATH}:/usr/local/cuda-12.0/bin"
-        export PATH
     elif [[ "${CUDA_DIST}" -eq '3' ]]; then
         wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin'
         sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
@@ -434,9 +428,6 @@ cuda_fn()
         sudo cp /var/cuda-repo-ubuntu1804-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
         sudo apt update
         sudo apt -y install cuda
-        if [ ! -d '/usr/local/cuda-12.0/bin' ]; then cuda_fail_fn; fi
-        PATH="${PATH}:/usr/local/cuda-12.0/bin"
-        export PATH
     elif [[ "${CUDA_DIST}" -eq '4' ]]; then
         wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin'
         sudo mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600
@@ -445,9 +436,6 @@ cuda_fn()
         sudo cp /var/cuda-repo-ubuntu2004-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
         sudo apt update
         sudo apt -y install cuda
-        if [ ! -d '/usr/local/cuda-12.0/bin' ]; then cuda_fail_fn; fi
-        PATH="${PATH}:/usr/local/cuda-12.0/bin"
-        export PATH
     elif [[ "${CUDA_DIST}" -eq '5' ]]; then
         wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin'
         sudo mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
@@ -456,9 +444,6 @@ cuda_fn()
         sudo cp /var/cuda-repo-ubuntu2204-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
         sudo apt update
         sudo apt -y install cuda
-        if [ ! -d '/usr/local/cuda-12.0/bin' ]; then cuda_fail_fn; fi
-        PATH="${PATH}:/usr/local/cuda-12.0/bin"
-        export PATH
     elif [[ "${CUDA_DIST}" -eq '6' ]]; then
         wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin'
         sudo mv cuda-wsl-ubuntu.pin /etc/apt/preferences.d/cuda-repository-pin-600
@@ -467,12 +452,16 @@ cuda_fn()
         sudo cp /var/cuda-repo-wsl-ubuntu-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
         sudo apt update
         sudo apt -y install cuda
-        if [ ! -d '/usr/local/cuda-12.0/bin' ]; then cuda_fail_fn; fi
-        PATH="${PATH}:/usr/local/cuda-12.0/bin"
-        export PATH
     elif [[ "${CUDA_DIST}" -eq '7' ]]; then
         return 0
     fi
+
+    if [ ! -d '/usr/local/cuda-12.0/bin' ]; then
+        cuda_fail_fn
+    fi
+
+    PATH="${PATH}:/usr/local/cuda-12.0/bin"
+    export PATH
 }
 
 cuda_additional_fn()
@@ -771,7 +760,7 @@ if ${NONFREE_AND_GPL}; then
         execute make "-j${CPUS}"
 
         mv 'libx265.a' 'libx265_main.a'
-        
+
         execute ar -M <<EOF
 CREATE libx265.a
 ADDLIB libx265_main.a
