@@ -67,11 +67,11 @@ wget -qO ff.sh https://ff.optimizethis.net; bash ff.sh
 
 ## $\textcolor{yellow}{\text{Install}}\textcolor{magenta}{\text{ Media Players}}$
   - **Included Media Players**
-    - **VLC**
-    - **Kodi**
-    - **SMPlayer**
-    - **GNOME Videos (Totem)**
-    - **Bomi**
+    - $\textcolor{cyan}{\text{VLC}}$
+    - $\textcolor{cyan}{\text{Kodi}}$
+    - $\textcolor{cyan}{\text{SMPlayer}}$
+    - $\textcolor{cyan}{\text{GNOME Videos (Totem)}}$
+    - $\textcolor{cyan}{\text{Bomi}}$
     
 ## Create SSH key pairs and export the public key to a remote computer
 
