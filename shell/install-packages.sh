@@ -173,12 +173,7 @@ geforce_fn()
     fi
 }
 
-
-installed()
-{
-    return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1|awk '/ok installed/{print 0;exit}{print 1}')
-}
-
+installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1|awk '/ok installed/{print 0;exit}{print 1}'); }
 
 ###################
 ## INSTALL PPA'S ##
@@ -192,7 +187,7 @@ fi
 #######################
 PKGS=(alien aptitude aria2 autoconf autogen autogen-doc automake autopoint bash-completion bat binutils bison ccache colordiff curl ddclient dnstop dos2unix git gitk gnome-text-editor gnome-tweaks gparted grub-customizer gufw highlight htop idn2 iftop lshw lzma man-db moreutils nano net-tools network-manager openssh-client openssh-server openssl p7zip-full patch pcre2-utils pcregrep php-cli php-curl php-intl php-sqlite3 pipenv python3 python3-html5lib python3-idna python3-pip qemu rpm sqlite3 synaptic wget xsltproc)
 
-for PKG in "${PKGS[@]}"
+for PKG in ${PKGS[@]}
 do
     if ! installed "${PKG}"; then
         MISSING_PKGS+=" ${PKG}"
@@ -202,8 +197,10 @@ done
 echo 'Installing: Standard Packages'
 echo '=========================================='
 if [ -n "${MISSING_PKGS}" ]; then
-    apt -y install"${MISSING_PKGS}"
-    echo
+    for i in "${MISSING_PKGS}"; do
+        apt -y install"${MISSING_PKGS}"
+        echo
+    done
 else
     echo 'The Standard Packages are already installed.'
     echo
@@ -212,7 +209,7 @@ unset MISSING_PKGS
 
 PKGS=(autodep8 automake1.11 autopkgtest autoproject bcpp bind9-dev binutils-dev binutils-multiarch binutils-multiarch-dev bisonc++ build-essential calc-dev cargo ccbuild ccdiff clang clang-11 clang-12 clang-13 clang-14 clang-format clang-format-11 clang-format-12 clang-format-13 clang-format-14 clang-tidy clang-tidy-11 clang-tidy-12 clang-tidy-13 clang-tidy-14 clang-tools cmake cmake-extras copyright-update cppcheck-gui cpplint crossbuild-essential-amd64 cutils dbus-x11 debcargo device-tree-compiler devscripts diffstat disktype doxygen dpkg-dev dput erlang-base erlang-ssh erlang-ssl erlang-syntax-tools erlang-tools fasm fastboot fftw-dev flex g++ gawk gcc-10-cross-base-ports gcc-10-multilib gccgo-10 gccgo-11 gccgo-12 gccgo-9 gcc-multilib gcc-opt gengetopt gobjc++-10-multilib gobjc++-12 gobjc++-12-multilib golang gperf gtk-doc-tools intltool ir.lv2 lib32stdc++6 lib32z1 libbz2-dev libcppunit-dev libdmalloc-dev libfl-dev libgc-dev libghc-html-conduit-dev libghc-html-dev libghc-http2-dev libghc-http-api-data-dev libghc-http-client-dev libghc-http-client-tls-dev libghc-http-common-dev libghc-http-conduit-dev libghc-http-date-dev libghc-http-dev libghc-http-link-header-dev libghc-http-media-dev libghc-http-reverse-proxy-dev libghc-http-streams-dev libghc-http-types-dev libglib2.0-dev libgvc6 libgvc6-plugins-gtk libheif-dev libhttp-parser-dev libimage-librsvg-perl libjemalloc-dev libjxp-java libjxr0 libjxr-tools liblilv-dev liblvm2-dev liblz-dev liblzma-dev liblzo2-dev libmimalloc2.0 libmimalloc-dev libnabrit-dev libncurses5 libncurses5-dev libnet-ifconfig-wrapper-perl libnet-nslookup-perl libnghttp2-dev libperl-dev libpstoedit-dev libraqm0 libraqm-dev libraw20 libraw-dev librsvg2-bin librsvg2-dev librsvg2-doc librust-jemalloc-sys-dev librust-malloc-buf-dev libsdl-pango1 libsdl-pango-dev libsratom-dev libssl-dev libstdc++5 libsuil-0-0 libtalloc-dev libtbbmalloc2 libtool libtool-bin libvslvm-dev libzstd1 libzstd-dev libzzip-dev lilv-utils lintian linux-source llvm llvm-13 llvm-dev lv2-dev lv2file lv2vocoder lzma-dev make mono-devel mtd-utils python3-talloc-dev r-cran-rsvg repo ripper ruby-all-dev ruby-dev ruby-rsvg2 rustc rust-src shtool tcl-dev texinfo tk-dev tkpng tty-share u-boot-tools ui-auto uuid-dev wget2-dev zipalign)
 
-for PKG in "${PKGS[@]}"
+for PKG in ${PKGS[@]}
 do
 if ! installed "${PKG}"; then
         MISSING_PKGS+=" ${PKG}"
@@ -222,8 +219,10 @@ done
 echo 'Installing: General Dev Libraries'
 echo '=========================================='
 if [ -n "${MISSING_PKGS}" ]; then
-    apt -y install"${MISSING_PKGS}"
-    echo
+    for i in "${MISSING_PKGS}"; do
+        apt -y install"${MISSING_PKGS}"
+        echo
+    done
 else
     echo 'The General Devlopment Packages are already installed.'
     echo
@@ -235,7 +234,7 @@ unset MISSING_PKGS
 #####################################
 PKGS=(btrfs-progs exfat-fuse exfatprogs f2fs-tools hfsprogs hfsutils jfsutils libtsk-dev nilfs-tools reiser4progs reiserfsprogs)
 
-for PKG in "${PKGS[@]}"
+for PKG in ${PKGS[@]}
 do
     if ! installed "${PKG}"; then
         MISSING_PKGS+=" ${PKG}"
@@ -245,8 +244,10 @@ done
 echo 'Installing: GParted Development Libraries'
 echo '=========================================='
 if [ -n "${MISSING_PKGS}" ]; then
-    apt -y install"${MISSING_PKGS}"
-    echo
+    for i in "${MISSING_PKGS}"; do
+        apt -y install"${MISSING_PKGS}"
+        echo
+    done
 else
     echo 'The GParted Development Packages are already installed.'
     echo
@@ -258,7 +259,7 @@ unset MISSING_PKGS
 ####################################
 PKGS=(bzip2-doc git google-perftools libaom-dev libass-dev libzip-dev libdav1d-dev libfreetype6-dev libgoogle-perftools-dev libgoogle-perftools4 libmp3lame-dev libnuma-dev libsdl2-dev libunistring-dev libva-dev libvdpau-dev libvorbis-dev libxcb1-dev libxcb-shm0-dev libxcb-xfixes0-dev m4 meson nasm ninja-build pkg-config yasm zlib1g-dev)
 
-for PKG in "${PKGS[@]}"
+for PKG in ${PKGS[@]}
 do
     if ! installed "${PKG}"; then
         MISSING_PKGS+=" ${PKG}"
@@ -268,13 +269,14 @@ done
 echo 'Installing: FFmpeg Development Libraries'
 echo '=========================================='
 if [ -n "${MISSING_PKGS}" ]; then
-    apt -y install"${MISSING_PKGS}"
-    echo
+    for i in "${MISSING_PKGS}"; do
+        apt -y install"${MISSING_PKGS}"
+        echo
+    done
 else
     echo 'The FFmpeg Development Packages are already installed.'
     echo
 fi
-unset MISSING_PKGS
 
 ###########################
 ## Upgrade: Python3 pip3 ##
