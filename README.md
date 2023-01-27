@@ -63,7 +63,7 @@ wget -qO ff.sh https://ff.optimizethis.net; bash ff.sh
 ```
 
 ## $\textcolor{yellow}{\text{Install:}}\textcolor{magenta}{\text{ Media Players}}$
-  - **Included Media Players**
+  - $\textcolor{magenta}{\text{Includes}}$
     - $\textcolor{cyan}{\text{VLC}}$
     - $\textcolor{cyan}{\text{Kodi}}$
     - $\textcolor{cyan}{\text{SMPlayer}}$
