@@ -69,7 +69,7 @@ exit_fn()
     echo
     echo 'The script has finished!'
     echo
-    echo 'Make sure to start this repository to show your suppport!'
+    echo 'Make sure to star this repository to show your suppport!'
     echo
     exit 0
 }
@@ -747,10 +747,10 @@ if [ -z "${FIND_LIBNUMA}" ]; then
 fi
 
 if ${NONFREE_AND_GPL}; then
-    if build 'x265' '3.5'; then
-        download 'https://github.com/videolan/x265/archive/refs/tags/3.4.tar.gz' 'x265-3.5.tar.gz' # This is actually 3.4 if looking at x265Version.txt
+    if build 'x265' '3.4'; then
+        download 'https://github.com/videolan/x265/archive/refs/tags/3.4.tar.gz' 'x265-3.4.tar.gz'
         cd 'build/linux' || exit 1
-        rm -rf {8,10,12}bit 2>/dev/null
+        rm -fr {8,10,12}bit 2>/dev/null
         mkdir -p {8,10,12}bit
         cd '12bit' || exit 1
         echo '$ making 12bit binaries'
@@ -772,7 +772,7 @@ if ${NONFREE_AND_GPL}; then
 
         mv 'libx265.a' 'libx265_main.a'
         
-            execute ar -M <<EOF
+        execute ar -M <<EOF
 CREATE libx265.a
 ADDLIB libx265_main.a
 ADDLIB libx265_main10.a
