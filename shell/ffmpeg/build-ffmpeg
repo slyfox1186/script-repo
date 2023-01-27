@@ -522,19 +522,29 @@ echo
 echo 'Installing: Geforce CUDA Required Developement Packages'
 echo '=========================================='
 
-CUDA_PKGS=(build-essential libc6 libc6-dev libnuma-dev libnuma1 libtool unzip wget)
+PKGS=(build-essential libc6 libc6-dev libnuma-dev libnuma1 libtool unzip wget)
 
-for CUDA_PKG in ${CUDA_PKGS[@]}
+for PKG in ${PKGS[@]}
 do
-    if ! installed "${CUDA_PKG}"; then
-        MISSING_CUDA_PKGS+=" ${CUDA_PKG}"
+    if ! installed "${PKG}"; then
+        MISSING_PKGS+=" ${PKG}"
     fi
 done
 
-if [ -n "${MISSING_CUDA_PKGS}" ]; then
-    sudo apt install "${MISSING_CUDA_PKGS}"
+##
+## Geforce CUDA Required Developement Packages
+##
+
+if [ -n "${MISSING_PKGS}" ]; then
+    clear
+    echo 'These packages are required to enable hardware acceleration.'
+    echo
+    for i in "${MISSING_PKGS}"
+    do
+        sudo apt install ${i}
+    done
 else
-    echo 'The Geforce developement libraries required for hardware acceleration have been installed.'
+    echo 'The Geforce developement libraries are already installed.'
 fi
 
 ##
@@ -1097,6 +1107,7 @@ download "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/${FFMPEG_VERSION}.ta
     --disable-debug \
     --disable-doc \
     --disable-shared \
+    --enable-libfdk-aac \
     --enable-pthreads \
     --enable-static \
     --enable-small \
