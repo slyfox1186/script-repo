@@ -37,7 +37,7 @@ fi
 
 PROGNAME="${0:2}"
 # FFmpeg v5.1.2 Codename: Riemann
-FFMPEG_VERSION='5.1.2'
+FFMPEG_VERSION='c0bc804e552bf6b21ae7da9cfeefe7405e380add'
 SCRIPT_VERSION='2.00'
 PACKAGES="${PWD}"/packages
 WORKSPACE="${PWD}"/workspace
@@ -104,7 +104,7 @@ download()
 
     if [ ! -f "${DOWNLOAD_PATH}/${DOWNLOAD_FILE}" ]; then
         echo "Downloading ${1} as ${DOWNLOAD_FILE}"
-        curl -Lo "${DOWNLOAD_PATH}/${DOWNLOAD_FILE}" "${1}"
+        curl --progress-bar -Lso "${DOWNLOAD_PATH}/${DOWNLOAD_FILE}" "${1}"
 
         EXITCODE="${?}"
         if [ "${EXITCODE}" -ne '0' ]; then
@@ -113,7 +113,7 @@ download()
             echo
             read -t 10 -p 'Press enter to skip waiting.'
             echo
-            curl -Lo "${DOWNLOAD_PATH}/${DOWNLOAD_FILE}" "${1}"
+            curl --progress-bar -Lso "${DOWNLOAD_PATH}/${DOWNLOAD_FILE}" "${1}"
         fi
 
         EXITCODE="${?}"
@@ -949,7 +949,7 @@ if build 'libtheora' '1.1.1'; then
     chmod +x 'configure.patched'
     mv 'configure.patched' 'configure'
     rm 'config.guess'
-    curl -Lso 'config.guess' 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+    curl --progress-bar -Lso 'config.guess' 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
     chmod +x 'config.guess'
     execute ./configure --prefix="${WORKSPACE}" --with-ogg-libraries="${WORKSPACE}"/lib --with-ogg-includes="${WORKSPACE}"/include/ \
     --with-vorbis-libraries="${WORKSPACE}"/lib --with-vorbis-includes="${WORKSPACE}"/include/ --enable-static --disable-shared \
@@ -1091,7 +1091,7 @@ CONFIGURE_OPTIONS+=('--enable-amf')
 ##
 
 build 'ffmpeg' "${FFMPEG_VERSION}"
-download "https://github.com/FFmpeg/FFmpeg/archive/refs/heads/release/$FFMPEG_VERSION.tar.gz" "FFmpeg-release-$FFMPEG_VERSION.tar.gz"
+download "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/${FFMPEG_VERSION}.tar.gz" "FFmpeg-release-$FFMPEG_VERSION.tar.gz"
 ./configure \
     "${CONFIGURE_OPTIONS[@]}" \
     --disable-debug \
