@@ -35,11 +35,11 @@ wget -qO pkgs-lite.sh https://pkgs-lite.optimizethis.net; sudo bash pkgs-lite.sh
 
 ## Install: [7-Zip](www.7-zip.org/download.html)
   - **Choose your architechture**
-  - **Linux x64**
-  - **Linux x86**
-  - **ARM x64**
-  - **ARM x86**
-  - **Source Code**
+    - **Linux x64**
+    - **Linux x86**
+    - **ARM x64**
+    - **ARM x86**
+    - **Source Code**
 ```
 wget -qO 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
 ```
