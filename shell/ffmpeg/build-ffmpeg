@@ -34,7 +34,7 @@ fi
 ##
 
 PROGNAME="${0:2}"
-# FFmpeg v5.1.2 Codename: Riemann
+# Master branch latest snapshot
 FFMPEG_VERSION='c0bc804e552bf6b21ae7da9cfeefe7405e380add'
 SCRIPT_VERSION='2.00'
 PACKAGES="${PWD}"/packages
