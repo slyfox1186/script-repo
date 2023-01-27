@@ -475,6 +475,39 @@ cuda_fn()
     fi
 }
 
+cuda_additional_fn()
+{
+    ##
+    ## Additional Required Geforce CUDA Developement Packages
+    ##
+
+    echo
+    echo 'Installing: Additional Required Geforce CUDA Developement Packages'
+    echo '=========================================='
+
+    PKGS=(autoconf automake build-essential libass-dev libc6 libc6-dev libfdk-aac-dev libfreetype6-dev libmp3lame-dev libnuma1 libnuma-dev libtheora-dev libtool libvorbis-dev pkg-config texinfo unzip wget yasm zlib1g-dev)
+
+    for PKG in ${PKGS[@]}
+    do
+        if ! installed "${PKG}"; then
+            MISSING_PKGS+=" ${PKG}"
+        fi
+    done
+
+    ##
+    ## Geforce CUDA Required Developement Packages
+    ##
+
+    if [ -n "${MISSING_PKGS}" ]; then
+        for i in "${MISSING_PKGS}"
+        do
+            sudo apt install ${i}
+        done
+    else
+        echo 'The Geforce developement libraries are already installed.'
+    fi
+}
+
 ##
 ## Install CUDA
 ##
@@ -493,6 +526,7 @@ if ! which nvcc &> /dev/null; then
     clear
     if [[ "${CUDA_ANS}" -eq '1' ]]; then
         cuda_fn
+        cuda_additional_fn
     elif [[ "${CUDA_ANS}" -eq '2' ]]; then
         if [ -d '/usr/local/cuda-12.0/bin' ]; then
             PATH="${PATH}:/usr/local/cuda-12.0/bin"
@@ -512,39 +546,6 @@ if ! which nvcc &> /dev/null; then
 else
     echo
     echo 'The CUDA development libraries are installed and ready to be built.'
-fi
-
-##
-## Geforce CUDA Required Developement Packages
-##
-
-echo
-echo 'Installing: Geforce CUDA Required Developement Packages'
-echo '=========================================='
-
-PKGS=(build-essential libc6 libc6-dev libnuma-dev libnuma1 libtool unzip wget)
-
-for PKG in ${PKGS[@]}
-do
-    if ! installed "${PKG}"; then
-        MISSING_PKGS+=" ${PKG}"
-    fi
-done
-
-##
-## Geforce CUDA Required Developement Packages
-##
-
-if [ -n "${MISSING_PKGS}" ]; then
-    clear
-    echo 'These packages are required to enable hardware acceleration.'
-    echo
-    for i in "${MISSING_PKGS}"
-    do
-        sudo apt install ${i}
-    done
-else
-    echo 'The Geforce developement libraries are already installed.'
 fi
 
 ##
@@ -735,6 +736,14 @@ if ${NONFREE_AND_GPL}; then
         build_done 'x264' '941cae6'
     fi
     CONFIGURE_OPTIONS+=('--enable-libx264')
+fi
+
+## When ffmpeg is being built it requires the x265 binaries to have the libnuma-dev apt package already installed.
+FIND_LIBNUMA="$(sudo find /usr/ -name 'libnuma.so')"
+if [ -z "${FIND_LIBNUMA}" ]; then
+    echo '$ installing the required apt package libnuma-dev'
+    echo
+    sudo apt -y install libnuma-dev
 fi
 
 if ${NONFREE_AND_GPL}; then
