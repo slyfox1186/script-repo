@@ -96,7 +96,7 @@ download()
     DOWNLOAD_FILE="${2:-"${1##*/}"}"
 
     if [[ "${DOWNLOAD_FILE}" =~ tar. ]]; then
-        TARGET_DIR="${DOWNLOAD_FILE%.*}"#
+        TARGET_DIR="${DOWNLOAD_FILE%.*}"
         TARGET_DIR="${3:-"${TARGET_DIR%.*}"}"
     else
         TARGET_DIR="${3:-"${DOWNLOAD_FILE%.*}"}"
@@ -104,7 +104,7 @@ download()
 
     if [ ! -f "${DOWNLOAD_PATH}/${DOWNLOAD_FILE}" ]; then
         echo "Downloading ${1} as ${DOWNLOAD_FILE}"
-        curl --progress-bar -Lso "${DOWNLOAD_PATH}/${DOWNLOAD_FILE}" "${1}"
+        curl -Lso "${DOWNLOAD_PATH}/${DOWNLOAD_FILE}" "${1}"
 
         EXITCODE="${?}"
         if [ "${EXITCODE}" -ne '0' ]; then
@@ -113,7 +113,7 @@ download()
             echo
             read -t 10 -p 'Press enter to skip waiting.'
             echo
-            curl --progress-bar -Lso "${DOWNLOAD_PATH}/${DOWNLOAD_FILE}" "${1}"
+            curl -Lso "${DOWNLOAD_PATH}/${DOWNLOAD_FILE}" "${1}"
         fi
 
         EXITCODE="${?}"
@@ -816,7 +816,8 @@ fi
 
 if build 'av1' 'bcfe6fb'; then
   # libaom bcfe6fb == v3.5.0
-    download 'https://aomedia.googlesource.com/aom/+archive/bcfe6fbfed315f83ee8a95465c654ee8078dbff9.tar.gz' 'av1.tar.gz' 'av1'
+    download 'https://aomedia.googlesource.com/aom/+archive/2621615dfb7a6db45522c47f7495868d2fe01379.tar.gz' 'av1.tar.gz' 'av1'
+    # download 'https://aomedia.googlesource.com/aom/+archive/bcfe6fbfed315f83ee8a95465c654ee8078dbff9.tar.gz' 'av1.tar.gz' 'av1'
     make_dir "${PACKAGES}/aom_build"
     cd "${PACKAGES}/aom_build" || exit 1
     execute cmake -DENABLE_TESTS='0' -DENABLE_EXAMPLES='0' -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR='lib' "${PACKAGES}"/av1
@@ -948,7 +949,7 @@ if build 'libtheora' '1.1.1'; then
     chmod +x 'configure.patched'
     mv 'configure.patched' 'configure'
     rm 'config.guess'
-    curl --progress-bar -Lso 'config.guess' 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+    curl -Lso 'config.guess' 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
     chmod +x 'config.guess'
     execute ./configure --prefix="${WORKSPACE}" --with-ogg-libraries="${WORKSPACE}"/lib --with-ogg-includes="${WORKSPACE}"/include/ \
     --with-vorbis-libraries="${WORKSPACE}"/lib --with-vorbis-includes="${WORKSPACE}"/include/ --enable-static --disable-shared \
