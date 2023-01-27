@@ -141,7 +141,7 @@ geforce_menu_fn()
 # function to install nvidia driver if user chooses to
 geforce_fn()
 {
-    for PKG in "${PKGS[@]}"
+    for PKG in ${PKGS[@]}
     do
         if ! installed "${PKG}"; then
             MISSING_PKGS+=" ${PKG}"
