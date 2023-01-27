@@ -96,7 +96,7 @@ download()
     DOWNLOAD_FILE="${2:-"${1##*/}"}"
 
     if [[ "${DOWNLOAD_FILE}" =~ tar. ]]; then
-        TARGET_DIR="${DOWNLOAD_FILE%.*}"
+        TARGET_DIR="${DOWNLOAD_FILE%.*}"#
         TARGET_DIR="${3:-"${TARGET_DIR%.*}"}"
     else
         TARGET_DIR="${3:-"${DOWNLOAD_FILE%.*}"}"
@@ -816,8 +816,7 @@ fi
 
 if build 'av1' 'bcfe6fb'; then
   # libaom bcfe6fb == v3.5.0
-    download 'https://aomedia.googlesource.com/aom/+archive/2621615dfb7a6db45522c47f7495868d2fe01379.tar.gz' 'av1.tar.gz' 'av1'
-    # download 'https://aomedia.googlesource.com/aom/+archive/bcfe6fbfed315f83ee8a95465c654ee8078dbff9.tar.gz' 'av1.tar.gz' 'av1'
+    download 'https://aomedia.googlesource.com/aom/+archive/bcfe6fbfed315f83ee8a95465c654ee8078dbff9.tar.gz' 'av1.tar.gz' 'av1'
     make_dir "${PACKAGES}/aom_build"
     cd "${PACKAGES}/aom_build" || exit 1
     execute cmake -DENABLE_TESTS='0' -DENABLE_EXAMPLES='0' -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR='lib' "${PACKAGES}"/av1
