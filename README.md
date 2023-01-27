@@ -8,7 +8,6 @@
 4. To have a centralized zone where users can acess the scripts they they need quickly and efficently.
 
 ### Included languages
-
 ------ 
  -   [x] AutoHotkey
  -   [x] Batch
@@ -17,23 +16,21 @@
  -   [x] Windows Registry
  -   [x] XML
 
-
-
-## Install: Apt Packages (large List)
+## $\textcolor{yellow}{\text{Install:}}\textcolor{magenta}{\text{ Apt Packages}}$
   - **Runtime and Development libraries great for compiling from source code**
   - **You must run the script twice as some packages need others to update before they are able to do so**
   - **Due to the large amount of packages set to be installed the likelyhood of package conflict should be considered**
 ```
 wget -qO pkgs.sh https://pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
-## Install: Apt Packages (Lite List)
+## $\textcolor{yellow}{\text{Install:}}\textcolor{magenta}{\text{ Apt Packages (Lite List)}}$
   - **What I personally consider core apt packages or "must haves" that everyone should consider installing**
   - **There should be a smaller chance of package conflict using this list**
 ```
 wget -qO pkgs-lite.sh https://pkgs-lite.optimizethis.net; sudo bash pkgs-lite.sh
 ```
 
-## Install: [7-Zip](www.7-zip.org/download.html)
+## $\textcolor{yellow}{\text{Install:}}$ [7-Zip](www.7-zip.org/download.html)
   - **Choose your architechture**
     - **Linux x64**
     - **Linux x86**
@@ -44,7 +41,7 @@ wget -qO pkgs-lite.sh https://pkgs-lite.optimizethis.net; sudo bash pkgs-lite.sh
 wget -qO 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
 ```
 
-## Install: [ImageMagick 7](https://github.com/ImageMagick/ImageMagick)
+## $\textcolor{yellow}{\text{Install:}}$ [ImageMagick 7](https://github.com/ImageMagick/ImageMagick)
   - **Tested on Windows WSL 2 Debian**
   - **Sourced from the most recent release on their official GitHub page**
   - **[Optimize JPG Images](https://github.com/slyfox1186/imagemagick-optimize-jpg)**
@@ -52,7 +49,7 @@ wget -qO 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
 wget -qO imagick.sh https://imagick.optimizethis.net; sudo bash imagick.sh
 ```
 
-## Install: [FFmpeg](https://ffmpeg.org/download.html)
+## $\textcolor{yellow}{\text{Install:}}$ [FFmpeg](https://ffmpeg.org/download.html)
   - **Compile using the official snapshot + the latest development libraries**
   - **CUDA Hardware Acceleration is included for all systems that support it**
 
@@ -65,7 +62,7 @@ wget -qO ffn.sh https://ffn.optimizethis.net; bash ffn.sh
 wget -qO ff.sh https://ff.optimizethis.net; bash ff.sh
 ```
 
-## $\textcolor{yellow}{\text{Install}}\textcolor{magenta}{\text{ Media Players}}$
+## $\textcolor{yellow}{\text{Install:}}\textcolor{magenta}{\text{ Media Players}}$
   - **Included Media Players**
     - $\textcolor{cyan}{\text{VLC}}$
     - $\textcolor{cyan}{\text{Kodi}}$
@@ -86,7 +83,7 @@ wget -qO players.sh http://players.optimizethis.net; bash players.sh
 ```
 wget -qO ssh-keys.sh https://ssh-keys.optimizethis.net; bash ssh-keys.sh
 ```
-## $\textcolor{green}{\text{Add}}\textcolor{yellow}{\text{ Copy as Path}}\textcolor{green}{\text{ to}}\textcolor{magenta}{\text{ Windows Context Menu}}$
+## $\textcolor{magenta}{\text{Add}}\textcolor{yellow}{\text{ Copy as Path}}\textcolor{magenta}{\text{ to}}\textcolor{magenta}{\text{ Windows Context Menu}}$
   1. **Run cmd.exe as administrator**
   2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
 ```
@@ -97,7 +94,7 @@ curl.exe -Lso add-copy-as-path.reg https://copy-path.optimizethis.net && call ad
 curl.exe -Lso remove-copy-as-path.reg https://rm-copy-path.optimizethis.net && call remove-copy-as-path.reg
 ```
 
-## $\textcolor{green}{\text{Add}}\textcolor{yellow}{\text{ Open WSL Here}}\textcolor{green}{\text{ to}}\textcolor{magenta}{\text{ Windows Context Menu}}$
+## $\textcolor{magenta}{\text{Add}}\textcolor{yellow}{\text{ Open WSL Here}}\textcolor{magenta}{\text{ to}}\textcolor{magenta}{\text{ Windows Context Menu}}$
   1. **Run cmd.exe as administrator**
   2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
 ```
