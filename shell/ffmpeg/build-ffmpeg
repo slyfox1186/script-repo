@@ -66,7 +66,7 @@ fi
 
 exit_fn()
 {
-    clear
+    echo
     echo 'The script has finished!'
     echo
     echo 'Make sure to start this repository to show your suppport!'
