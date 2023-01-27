@@ -1,3 +1,7 @@
+###########################################
+## suppress warning messages in terminal ##
+###########################################
+
 _suppress() { eval "${1}() { \$(which ${1}) \"\$@\" 2>&1 | tr -d '\r' | grep -v \"${2}\"; }"; }
 
 # _supress gedit && _supress gnome-terminal && _supress firefox
