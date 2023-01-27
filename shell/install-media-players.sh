@@ -108,4 +108,5 @@ fi
 echo
 echo 'Installation completed.'
 echo
+sudo rm "${0}"
 exit 0
