@@ -123,7 +123,8 @@ download()
             exit 1
         fi
 
-        echo '... Done'
+        echo 'Download Complete'
+        echo
     else
         echo "${DOWNLOAD_FILE} has already downloaded."
 fi
