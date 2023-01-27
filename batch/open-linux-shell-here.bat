@@ -15,8 +15,6 @@ IF EXIST "%ProgramFiles%\PowerShell\7\pwsh.exe" (SET EXE=pwsh.exe) ELSE (SET EXE
 
 :------------------------------------------------------------------------------------------------------------------------------------
 
-REM EDIT THIS VARIABLE TO MATCH THE LINUX DISTRIBUTION YOU WISH TO USE
-REM YOU CAN FIND THE DISTRIBUTION NAMES BY RUNNING wsl.exe -l --all
 ECHO Available Distros to choose from below
 ECHO Press enter to continue when done selecting
 ECHO=
