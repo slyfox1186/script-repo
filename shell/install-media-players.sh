@@ -65,6 +65,7 @@ if [[ "${ANSWER}" -eq '1' ]]; then
         if ! which vlc &> /dev/null; then
             fail_fn 'VLC Media Player'
         fi
+fi
 elif [[ "${ANSWER}" -eq '2' ]]; then
     echo 'Installing Kodi Media Player'
     echo
