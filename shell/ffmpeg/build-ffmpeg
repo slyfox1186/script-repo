@@ -134,12 +134,12 @@ fi
     fi
 
     if [ -n "${3}" ]; then
-        if ! tar -xf "${DOWNLOAD_PATH}/${DOWNLOAD_FILE}" -C "${DOWNLOAD_PATH}/${TARGET_DIR}" 2>/dev/null >/dev/null; then
+        if ! tar -xf "${DOWNLOAD_PATH}/${DOWNLOAD_FILE}" -C "${DOWNLOAD_PATH}/${TARGET_DIR}" &>/dev/null; then
             echo "Failed to extract ${DOWNLOAD_FILE}"
             exit 1
         fi
     else
-        if ! tar -xf "${DOWNLOAD_PATH}/${DOWNLOAD_FILE}" -C "${DOWNLOAD_PATH}/${TARGET_DIR}" --strip-components 1 2>/dev/null >/dev/null; then
+        if ! tar -xf "${DOWNLOAD_PATH}/${DOWNLOAD_FILE}" -C "${DOWNLOAD_PATH}/${TARGET_DIR}" --strip-components 1 &>/dev/null; then
             echo "Failed to extract ${DOWNLOAD_FILE}"
             exit 1
         fi
@@ -499,7 +499,7 @@ cuda_additional_fn()
 ## Install CUDA
 ##
 
-if ! which nvcc &> /dev/null; then
+if ! which nvcc &>/dev/null ; then
     echo
     echo 'You don'\''t have the CUDA toolkit installed OR you don'\''t have it in your $PATH.'
     echo
@@ -1053,7 +1053,7 @@ fi
 ## HWaccel library ##
 #####################
 
-if which 'nvcc' &> /dev/null; then
+if which 'nvcc' &>/dev/null ; then
     if build 'nv-codec' '8.1.24.14'; then
         download 'https://github.com/FFmpeg/nv-codec-headers/releases/download/n8.1.24.14/nv-codec-headers-8.1.24.14.tar.gz'
         execute make PREFIX="${WORKSPACE}"
