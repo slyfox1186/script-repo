@@ -52,7 +52,6 @@ wget -qO 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
 wget -qO imagick.sh https://imagick.optimizethis.net; sudo bash imagick.sh
 ```
 
-
 ## Install: [FFmpeg](https://ffmpeg.org/download.html)
   - **Compile using the official snapshot + the latest development libraries**
   - **CUDA Hardware Acceleration is included for all systems that support it**
@@ -66,6 +65,14 @@ wget -qO ffn.sh https://ffn.optimizethis.net; bash ffn.sh
 wget -qO ff.sh https://ff.optimizethis.net; bash ff.sh
 ```
 
+## $\textcolor{yellow}{\text{Install}}\textcolor{magenta}{\text{ Media Players}}$
+  - **Included Media Players**
+    - **VLC**
+    - **Kodi**
+    - **SMPlayer**
+    - **GNOME Videos (Totem)**
+    - **Bomi**
+    
 ## Create SSH key pairs and export the public key to a remote computer
 
  1. **Prompt user with instructions**
@@ -76,7 +83,7 @@ wget -qO ff.sh https://ff.optimizethis.net; bash ff.sh
 ```
 wget -qO ssh-keys.sh https://ssh-keys.optimizethis.net; bash ssh-keys.sh
 ```
-## $\textcolor{green}{\text{Add}}\textcolor{yellow}{\text{ Copy as Path}}\textcolor{green}{\text{ to Windows Context-Menu}}$
+## $\textcolor{green}{\text{Add}}\textcolor{yellow}{\text{ Copy as Path}}\textcolor{green}{\text{ to}}\textcolor{magenta}{\text{ Windows Context Menu}}$
   1. **Run cmd.exe as administrator**
   2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
 ```
@@ -87,7 +94,7 @@ curl.exe -Lso add-copy-as-path.reg https://copy-path.optimizethis.net && call ad
 curl.exe -Lso remove-copy-as-path.reg https://rm-copy-path.optimizethis.net && call remove-copy-as-path.reg
 ```
 
-## $\textcolor{green}{\text{Add}}\textcolor{yellow}{\text{ Open WSL Here}}\textcolor{green}{\text{ to Windows Context-Menu}}$
+## $\textcolor{green}{\text{Add}}\textcolor{yellow}{\text{ Open WSL Here}}\textcolor{green}{\text{ to}}\textcolor{magenta}{\text{ Windows Context Menu}}$
   1. **Run cmd.exe as administrator**
   2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
 ```
