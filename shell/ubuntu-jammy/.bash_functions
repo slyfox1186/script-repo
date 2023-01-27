@@ -1,9 +1,6 @@
-_suppress()
-{
-    eval "${1}() { \$(which ${1}) \"\$@\" 2>&1 | tr -d '\r' | grep -v \"${2}\"; }"
-}
+_suppress() { eval "${1}() { \$(which ${1}) \"\$@\" 2>&1 | tr -d '\r' | grep -v \"${2}\"; }"; }
 
-# _supress all && _supress gedit && _supress gnome-terminal && _supress firefox
+# _supress gedit && _supress gnome-terminal && _supress firefox
 _suppress gedit          "Gtk-WARNING\|connect to accessibility bus"
 _suppress gnome-terminal "accessibility bus\|stop working with a future version"
 _suppress firefox        "g_slice_set_config"
