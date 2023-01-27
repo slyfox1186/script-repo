@@ -25,6 +25,7 @@ fail_fn()
     echo
     echo 'Please put in a support ticket.'
     echo
+    sudo rm "${0}"
     exit 1
 }
 
