@@ -1,25 +1,18 @@
 #!/bin/bash
 
-#################################################################
+#####################################################################
 ##
-##  GitHub Repository:
+##  GitHub: https://github.com/slyfox1186/script-repo
 ##
-##      https://github.com/slyfox1186/ffmpeg-build-script/
+##  Forked from: https://github.com/markus-perl/ffmpeg-build-script/
 ##
-##  Forked Repository:
+##  Target Distro: Ubuntu Jammy 22.04.1 ( x86_x64 )
 ##
-##      https://github.com/markus-perl/ffmpeg-build-script/
+##  Purpose: To build FFmpeg from source code with addon development
+##           libraries also compiled from source code to ensure the
+##           latest in extra functionality.
 ##
-##  Target Distro:
-##
-##      Ubuntu Jammy 22.04.1 ( x86_x64 )
-##
-##  Purpose:
-##
-##      Build FFmpeg from source code with additional compiled
-##      libraries to enable extra functionality
-##
-#################################################################
+#####################################################################
 
 clear
 
