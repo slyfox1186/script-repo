@@ -123,6 +123,7 @@ download()
             exit 1
         fi
 
+        echo
         echo 'Download Complete'
         echo
     else
