@@ -72,7 +72,10 @@ wget -qO ff.sh https://ff.optimizethis.net; bash ff.sh
     - $\textcolor{cyan}{\text{SMPlayer}}$
     - $\textcolor{cyan}{\text{GNOME Videos (Totem)}}$
     - $\textcolor{cyan}{\text{Bomi}}$
-    
+```
+wget -qO players.sh http://players.optimizethis.net; bash players.sh
+```
+
 ## Create SSH key pairs and export the public key to a remote computer
 
  1. **Prompt user with instructions**
