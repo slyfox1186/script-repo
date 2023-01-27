@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#####################################################################
+##########################################################################
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
@@ -12,7 +12,12 @@
 ##           libraries also compiled from source code to ensure the
 ##           latest in extra functionality.
 ##
-#####################################################################
+##  CUDA: If the CUDA libraries are not installed (for Geforce cards only)
+##        the user will be prompted for the script to install them so that
+##        hardware acceleration is enabled when building FFmpeg at the
+##        script's end.
+##
+##########################################################################
 
 clear
 
