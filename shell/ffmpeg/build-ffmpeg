@@ -532,7 +532,7 @@ if ! which nvcc &>/dev/null ; then
     fi
 else
     echo
-    echo 'The CUDA development libraries are installed and ready to be built.'
+    echo 'The cuda-toolkit-12-0 packages are installed and ready to be built.'
 fi
 
 ##
