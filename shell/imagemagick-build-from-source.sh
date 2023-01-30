@@ -11,13 +11,17 @@
 ##           image processor. It can blur, sharpen, warp, reduce,
 ##           file size, ect... It is fantastic.
 ##
-## Last Updated: 01.30.23
+## Last Updated: 01.25.23
 ##
 #################################################################
 
 clear
 
-VERSION='7.1.0-60'
+##
+## Latest ImageMagick Version
+##
+
+VERSION='7.1.0-59'
 
 ## speed up things with parallel processing
 CPUS="$(nproc)"
