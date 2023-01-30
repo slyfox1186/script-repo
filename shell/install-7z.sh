@@ -11,7 +11,13 @@
 
 clear
 
-# VERSIONIFY THE SCRIPT HAS ROOT ACCESS BEFORE CONTINUING
+# SET VARIABLES
+VERSION='7z2201'
+TAR_FILE="${VERSION}.tar.xz"
+DIR='7z'
+OUTPUT_FILE='/usr/bin/7z'
+
+# VERIFY THE SCRIPT HAS ROOT ACCESS BEFORE CONTINUING
 if [ "${EUID}" -gt '0' ]; then
     echo 'You must run this script as root/sudo'
     echo
@@ -31,12 +37,6 @@ fail_fn()
     echo
     exit 1
 }
-
-# SET VARIABLES
-VERSION='7z2201'
-FILE="${VERSION}.tar.xz"
-DIR='7z'
-OUTPUT_FILE='/usr/bin/7z'
 
 echo '[i] Choose your os architechture'
 echo
@@ -60,18 +60,18 @@ elif [ "${OS_TYPE}" -eq '6' ]; then exit
 fi
 
 # DOWNLOAD THE CUDA DEBIAN FILE IF NOT EXIST
-if [ ! -f "${FILE}" ]; then
-    wget --show-progress -cqO "${FILE}" "https://www.7-zip.org/a/${VERSION}-${URL}"
+if [ ! -f "${TAR_FILE}" ]; then
+    wget --show-progress -cqO "${TAR_FILE}" "https://www.7-zip.org/a/${VERSION}-${URL}"
 fi
 
-# DELETE ANY FILES LEFTOVERSION FROM PRIOR RUNS
+# DELETE ANY FILES LEFTOVER FROM PRIOR RUNS
 if [ -d "${DIR}" ]; then rm -fr "${DIR}"; fi
 
 # CREATE AN OUTPUT FOLDER FOR THE TAR COMMAND
 mkdir -p "${DIR}"
 
 # EXTRACT FILES INTO DIRECTORY '7Z'
-if ! tar -xf "${FILE}" -C "${DIR}"; then
+if ! tar -xf "${TAR_FILE}" -C "${DIR}"; then
     fail_fn 'The script was unable to find the downloaded file.'
 fi
 
@@ -85,12 +85,12 @@ if ! cp -f '7zzs' "${OUTPUT_FILE}"; then
     fail_fn "The script was unable to copy the file '7zzs' to '${OUTPUT_FILE}'"
 fi
 
-# RUN THE COMMAND '7Z' TO SHOW ITS OUTPUT AND CONFIRM THAT EVERSIONYTHING WORKED AS EXPECTED
+# RUN THE COMMAND '7Z' TO SHOW ITS OUTPUT AND CONFIRM THAT EVERTHING WORKS AS EXPECTED
 clear
 echo '7-zip has been updated to:'
 "${OUTPUT_FILE}" | head -n 2 | cut -d " " -f3 | awk 'NF' | xargs printf "v%s\n" "${@}"
 echo
 
-# REMOVE LEFTOVER DIRECTORY
+# REMOVE LEFTOVER FILES
 cd ../ || exit 1
-rm -fr "${FILE}" "${DIR}" "${0}"
+rm -fr "${TAR_FILE}" "${DIR}" "${0}"
