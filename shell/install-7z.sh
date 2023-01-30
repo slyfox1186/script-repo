@@ -1,17 +1,40 @@
 #!/bin/bash
 
+##############################################################################
+##
+## GitHub: https://github.com/slyfox1186/script-repo
+##
+## Purpose: Install the latest 7-zip package across multiple OS types.
+##          The user will be prompted to choose the OS type before installing.
+##
+#########################################################
+
 clear
 
-# VERIFY THE SCRIPT HAS ROOT ACCESS BEFORE CONTINUING
+# VERSIONIFY THE SCRIPT HAS ROOT ACCESS BEFORE CONTINUING
 if [ "${EUID}" -gt '0' ]; then
     echo 'You must run this script as root/sudo'
     echo
     exit 1
 fi
 
+##
+## Create Functions
+##
+
+fail_fn()
+{
+    clear
+    echo "${1}"
+    echo
+    echo 'Please create a support ticket: https://github.com/slyfox1186/script-repo/issues'
+    echo
+    exit 1
+}
+
 # SET VARIABLES
-VER='7z2201'
-FILE="${VER}.tar.xz"
+VERSION='7z2201'
+FILE="${VERSION}.tar.xz"
 DIR='7z'
 OUTPUT_FILE='/usr/bin/7z'
 
@@ -38,43 +61,29 @@ fi
 
 # DOWNLOAD THE CUDA DEBIAN FILE IF NOT EXIST
 if [ ! -f "${FILE}" ]; then
-    wget -4cqO "${FILE}" "https://www.7-zip.org/a/${VER}-${URL}"
+    wget --show-progress -cqO "${FILE}" "https://www.7-zip.org/a/${VERSION}-${URL}"
 fi
 
-# UNCOMPRESS THE XZ FILE
-if [ ! -f "${FILE}" ]; then
-    echo 'The script was unable to find the downloaded file.'
-    echo
-    exit 1
-fi
-
-# DELETE ANY FILES LEFTOVER FROM PRIOR RUNS
-if [ -d "${DIR}" ]; then
-    rm -fr "${DIR}"
-fi
-
-# CREATE AN OUTPUT DIRECTORY BEFORE UNCOMPRESSING WITH THE TAR COMMAND
+# DELETE ANY FILES LEFTOVERSION FROM PRIOR RUNS
+if [ -d "${DIR}" ]; then rm -fr "${DIR}"; fi
 mkdir -p "${DIR}"
 
 # EXTRACT FILES INTO DIRECTORY '7Z'
-tar -xf "${FILE}" -C "${DIR}"
+if ! tar -xf "${FILE}" -C "${DIR}"; then
+    fail_fn 'The script was unable to find the downloaded file.'
+fi
 
 # CD INTO DIRECTORY
 if ! cd "${DIR}"; then
-    echo
-    echo -e "Can't cd into the 7z folder. Check your tar command."
-    echo
-    exit 1
+    fail_fn "The script was unable to cd into the '${DIR}' folder."
 fi
 
 # COPY THE FILE TO ITS DESTINATION OR THROW AN ERROR IF THE COPYING OF THE FILE FAILS
 if ! cp -f '7zzs' "${OUTPUT_FILE}"; then
-    echo "The script was unable to copy the file '7zzs' to '${OUTPUT_FILE}'"
-    echo
-    exit 1
+    fail_fn "The script was unable to copy the file '7zzs' to '${OUTPUT_FILE}'"
 fi
 
-# RUN THE COMMAND '7Z' TO SHOW ITS OUTPUT AND CONFIRM THAT EVERYTHING WORKED AS EXPECTED
+# RUN THE COMMAND '7Z' TO SHOW ITS OUTPUT AND CONFIRM THAT EVERSIONYTHING WORKED AS EXPECTED
 "${OUTPUT_FILE}" | head -n 2 | cut -d " " -f1,3 | awk 'NF' | xargs printf "%s: v%s\n" "${@}"
 
 # REMOVE LEFTOVER DIRECTORY
