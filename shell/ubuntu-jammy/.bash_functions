@@ -540,6 +540,8 @@ rmf()
 #################
 ## IMAGEMAGICK ##
 #################
+
+# OPTIMIZE WITHOUT OVERWRITING THE ORIGINAL IMAGES
 imo()
 {
     clear
@@ -572,49 +574,48 @@ imo()
     done
 }
 
+# OPTIMIZE AND OVERWRITE THE ORIGINAL IMAGES
 imow()
 {
 
     clear
 
-    local i TMP_DIR
+    local i DIMENSIONS RANDOM_DIR
 
     # find all jpg files and create temporary cache files from them
     for i in *.jpg
     do
-        TMP_DIR="$(mktemp --directory)"
-        "${TMP_DIR}"
-        echo -e "\\nCreating two temporary cache files: ${i%%.jpg}.mpc + ${i%%.jpg}.cache\\n"
-        dimension="$(identify -format '%wx%h' "${i}")"
-        convert "${i}" -monitor -filter Triangle -define filter:support=2 -thumbnail $dimension -strip \
+        # create random direcotories in case you are running this function more than once at the same time. it prevents cross-over.
+        RANDOM_DIR="$(mktemp --directory)"
+        "${RANDOM_DIR}" 2>/dev/null
+        echo -e "\\nCreating two temporary cache files: ${RANDOM_DIR}/${i%%.jpg}.mpc + ${RANDOM_DIR}/${i%%.jpg}.cache\\n"
+        DIMENSIONS="$(identify -format '%wx%h' "${i}")"
+        convert "${i}" -monitor -filter Triangle -define filter:support=2 -thumbnail "${DIMENSIONS}" -strip \
         -unsharp 0.25x0.08+8.3+0.045 -dither None -posterize 136 -quality 82 -define jpeg:fancy-upsampling=off \
-        -auto-level -enhance -interlace none -colorspace sRGB "${TMP_DIR}/${i%%.jpg}.mpc"
+        -define png:compression-filter=5 -define png:compression-level=9 -define png:compression-strategy=1 \
+        -define png:exclude-chunk=all -auto-level -enhance -interlace none -colorspace sRGB "${RANDOM_DIR}/${i%%.jpg}.mpc"
         clear
-        for i in "${TMP_DIR}"/*.mpc
+        for i in "${RANDOM_DIR}"/*.mpc
         do
-            # find the temporary cache files created above and output optimized jpg files
             if [ -f "${i}" ]; then
                 echo -e "\\nOverwriting orignal file with optimized self: ${i} >> ${i%%.mpc}.jpg\\n"
                 convert "${i}" -monitor "${i%%.mpc}.jpg"
-                # overwrite the original image with it's optimized version
-                # by moving it from the tmp directory to the source directory
                 if [ -f "${i%%.mpc}.jpg" ]; then
                     mv "${i%%.mpc}.jpg" "${PWD}"
-                    # delete both cache files before continuing
-                    rm "${i}"
-                    rm "${i%%.mpc}.cache"
-                    rm -fr "${TMP_DIR}"
+                    rm -fr "${RANDOM_DIR}"
                     clear
                 fi
             fi
         done
     done
 
+    # The text-to-speech below requries the following packages:
+    # sudo apt -y install festival festvox-us-slt-hts
     if [ "${?}" -eq '0' ]; then
-        spd-say -t female2 -w "Image converstion complete."
-        exit 0
+        festival -b '(voice_cmu_us_slt_arctic_hts)' '(SayText "The image conversion has completed.")'
+        return 0
     else
-        spd-say -t female2 -w "Image converstion failed."
+        festival -b '(voice_cmu_us_slt_arctic_hts)' '(SayText "The image conversion has failed.")'
         return 1
     fi
 }
