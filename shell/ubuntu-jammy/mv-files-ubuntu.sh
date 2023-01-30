@@ -38,3 +38,6 @@ do
         vi "${FILES}"
     fi
 done
+
+# remove installer script
+sudo rm "${0}"
