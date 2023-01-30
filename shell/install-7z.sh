@@ -5,17 +5,14 @@
 ## GitHub: https://github.com/slyfox1186/script-repo
 ##
 ## Purpose: Install the latest 7-zip package across multiple OS types.
-##          The user will be prompted to choose the OS type before installing.
+##          The user will be prompted to select their OS architecture before
+##          installing.
+##
+## Updated: 01.30.23
 ##
 #########################################################
 
 clear
-
-# SET VARIABLES
-VERSION='7z2201'
-TAR_FILE="${VERSION}.tar.xz"
-DIR='7z'
-OUTPUT_FILE='/usr/bin/7z'
 
 # VERIFY THE SCRIPT HAS ROOT ACCESS BEFORE CONTINUING
 if [ "${EUID}" -gt '0' ]; then
@@ -23,6 +20,12 @@ if [ "${EUID}" -gt '0' ]; then
     echo
     exit 1
 fi
+
+# SET VARIABLES
+VERSION='7z2201'
+TAR_FILE="${VERSION}.tar.xz"
+DIR='7z'
+OUTPUT_FILE='/usr/bin/7z'
 
 ##
 ## Create Functions
@@ -72,17 +75,17 @@ mkdir -p "${DIR}"
 
 # EXTRACT FILES INTO DIRECTORY '7Z'
 if ! tar -xf "${TAR_FILE}" -C "${DIR}"; then
-    fail_fn 'The script was unable to find the downloaded file.'
+    fail_fn 'The script was unable to find the download file.'
 fi
 
 # CD INTO DIRECTORY
 if ! cd "${DIR}"; then
-    fail_fn "The script was unable to cd into the '${DIR}' folder."
+    fail_fn "The script was unable to cd into '${DIR}'."
 fi
 
 # COPY THE FILE TO ITS DESTINATION OR THROW AN ERROR IF THE COPYING OF THE FILE FAILS
 if ! cp -f '7zzs' "${OUTPUT_FILE}"; then
-    fail_fn "The script was unable to copy the file '7zzs' to '${OUTPUT_FILE}'"
+    fail_fn "The script was unable to copy the static file '7zzs' to '${OUTPUT_FILE}'"
 fi
 
 # RUN THE COMMAND '7Z' TO SHOW ITS OUTPUT AND CONFIRM THAT EVERTHING WORKS AS EXPECTED
