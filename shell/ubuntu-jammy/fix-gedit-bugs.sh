@@ -16,5 +16,3 @@ echo
 echo 'All you have to do is close and restart gedit with sudo and the changes should take effect.'
 echo
 read -p 'Press enter to exit.'
-
-exit
