@@ -2,7 +2,7 @@
 
 ##########################################################
 ##
-## GitHub: https://github.com/slyfox1186
+## GitHub: https://github.com/slyfox1186/script-repo
 ##
 ## Install Packages Lite Version
 ##
@@ -38,8 +38,8 @@ exit_fn()
     echo 'The script has finished!'
     echo '============================'
     echo
-    echo 'Make sure to star this repository to show your suppport!'
-    echo 'https://github.com/slyfox1186/'
+    echo 'Make sure to star this repository to show your support!'
+    echo 'https://github.com/slyfox1186/script-repo/'
     echo
     # REMOVE THE INSTALLER SCRIPT ITSELF
     rm -f "${0}"
@@ -73,7 +73,7 @@ else
     echo 'All PPA Repositories have been installed.'
     echo
 fi
-sleep 3
+sleep 2
 clear
 
 ##########################
@@ -84,7 +84,7 @@ echo
 echo 'Installing: APT Packages'
 echo '=============================='
 echo
-sleep 3
+sleep 2
 
 PKGS=(alien aptitude aria2 autoconf autogen automake bat binutils bison build-essential ccdiff clang clang-tools cmake cmake-extras colordiff crossbuild-essential-amd64 curl dbus-x11 ddclient disktype dos2unix flex g++ gawk gcc-multilib gedit gedit-plugins gir1.2-gtksource-3.0 git git-all gnome-tweaks gnustep-gui-runtime golang gparted gperf grub-customizer gufw htop idn2 iftop libbz2-dev libdmalloc-dev libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev liblilv-dev liblvm2-dev liblz-dev liblzma-dev liblzo2-dev libmimalloc2.0 libmimalloc-dev libncurses5 libncurses5-dev libnet-nslookup-perl libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev librust-malloc-buf-dev libsdl-pango-dev libsox-dev libsox-fmt-all libsoxr-dev libsratom-dev libssl-dev libtalloc-dev libtbbmalloc2 libtool libtool-bin libzstd-dev libzzip-dev linux-source llvm llvm-dev lshw lv2-dev lzma-dev make man-db mono-devel nano net-tools network-manager npm openssh-client openssh-server openssl pcregrep php-cli php-curl php-intl php-sqlite3 pipenv python3 python3-idna python3-pip python3-talloc-dev rpm ruby-all-dev sqlite3 synaptic texinfo tk-dev tty-share unzip uuid-dev wget wget2-dev)
 
@@ -100,11 +100,11 @@ if [ -n "${MISSING_PKGS}" ]; then
     do
         apt -y install ${i}
     done
-    echo
+    clear
     echo 'Any missing packages have been installed.'
 else
-    echo
-    echo 'All of the packages were already installed.'
+    clear
+    echo 'All packages were already installed.'
 fi
 
 sleep 3
