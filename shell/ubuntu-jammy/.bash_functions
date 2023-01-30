@@ -1,13 +1,18 @@
-###########################################
-## suppress warning messages in terminal ##
-###########################################
-
+# generates a function named $1 which:
+# - executes $(which $1) [with args]
+# - suppresses output lines which match $2
+# e.g. adding: _suppress echo "hello\|world"
+# will generate this function:
+# echo() { $(which echo) "$@" 2>&1 | tr -d '\r' | grep -v "hello\|world"; }
+# and from now on, using echo will work normally except that lines with
+# hello or world will not show at the output
+# to see the generated functions, replace eval with echo below
+# the 'tr' filter makes sure no spurious empty lines pass from some commands
 _suppress() { eval "${1}() { \$(which ${1}) \"\$@\" 2>&1 | tr -d '\r' | grep -v \"${2}\"; }"; }
 
-# _supress gedit && _supress gnome-terminal && _supress firefox
-_suppress gedit          "Gtk-WARNING\|connect to accessibility bus"
-_suppress gnome-terminal "accessibility bus\|stop working with a future version"
-_suppress firefox        "g_slice_set_config"
+_suppress firefox
+_suppress gedit
+_suppress gnome-terminal
 
 ###########################
 ## linux kernel commands ##
@@ -33,7 +38,7 @@ ffind()
         read -p 'Please enter the file type [ d|f|blank ]: ' myType
         echo
         read -p 'Please enter the folder path to start from: ' myPath
-        clear
+        clear; ls -1AhFv --color --group-directories-first
         if [ -z "${myType}" ]; then
             find "${myPath}" -name "${myFile}" 2>/dev/null | xargs -I{} echo {}
         else
@@ -85,7 +90,7 @@ mf()
 
     if [ -z "${1}" ]; then
         read -p 'Enter file name: ' i
-        clear
+        clear; ls -1AhFv --color --group-directories-first
         if [ ! -f "${i}" ]; then touch "${i}"; fi
         chmod 744 "${i}"
     else
@@ -93,7 +98,7 @@ mf()
         chmod 744 "${1}"
     fi
 
-    cl
+    clear; ls -1AhFv --color --group-directories-first
 }
 
 mdir()
@@ -104,15 +109,15 @@ mdir()
 
     if [[ -z "${1}" ]]; then
         read -p 'Enter directory name: ' DIR
-        clear
-        mkdir -pv "${PWD}/${DIR}"
+        clear; ls -1AhFv --color --group-directories-first
+        mkdir -p  "${PWD}/${DIR}"
         cd "${PWD}/${DIR}" || exit 1
     else
-        mkdir -pv "${1}"
+        mkdir -p "${1}"
         cd "${PWD}/${1}" || exit 1
     fi
 
-    cl
+    clear; ls -1AhFv --color --group-directories-first
 }
 
 ##################
@@ -137,13 +142,16 @@ rmdf()
 ## FILE COMMANDS ##
 ###################
 
+# COPY TO CLIPBOARD
+
+
 # COPY FILE
 cp_file()
 {
     clear
 
     if [ ! -d "${HOME}/tmp" ]; then
-        mkdir -pv "${HOME}/tmp"
+        mkdir -p "${HOME}/tmp"
     fi
 
     cp "${1}" "${HOME}/tmp/${1}"
@@ -151,8 +159,7 @@ cp_file()
     chown -R "${USER}":"${USER}" "${HOME}/tmp/${1}"
     chmod -R 744 "${HOME}/tmp/${1}"
 
-    clear
-    cl
+    clear; ls -1AhFv --color --group-directories-first
 }
 
 # MOVE FILE
@@ -161,7 +168,7 @@ mv_file()
     clear
 
     if [ ! -d "${HOME}/tmp" ]; then
-        mkdir -pv "${HOME}/tmp"
+        mkdir -p "${HOME}/tmp"
     fi
 
     mv "${1}" "${HOME}/tmp/${1}"
@@ -169,7 +176,7 @@ mv_file()
     chown -R "${USER}":"${USER}" "${HOME}/tmp/${1}"
     chmod -R 744 "${HOME}/tmp/${1}"
 
-    cl
+    clear; ls -1AhFv --color --group-directories-first
 }
 
 ##################
@@ -192,6 +199,7 @@ update()
     clear
     apt update
     apt-get -y dist-upgrade
+    apt-get -y install ubuntu-advantage-tools
     apt -y full-upgrade
     apt clean
     apt -y autoremove
@@ -235,8 +243,8 @@ toa()
 
     chown -R "${USER}":"${USER}" "${PWD}"
     chmod -R 744 "${PWD}"
-    clear
-    cl
+
+    clear; ls -1AhFv --color --group-directories-first
 }
 
 #################
@@ -245,16 +253,14 @@ toa()
 fix()
 {
     clear
-    apt --fix-missing install
+    apt --fix-broken install
     apt --fix-missing update
     apt -y install
     dpkg --configure -a
-    apt clean
     apt -y autoremove
+    apt clean
     apt autoclean
     apt -y purge
-    if [ -f '/var/lib/apt/lists/lock' ];then sudo rm -f '/var/lib/apt/lists/lock'; fi
-    if [ -f '/var/cache/apt/archives/lock' ];then sudo rm -f '/var/cache/apt/archives/lock'; fi
     apt update
 }
 
@@ -361,7 +367,7 @@ new_key()
 # export the public ssh key stored inside a private ssh key
 keytopub()
 {
-    clear
+    clear; ls -1AhFv --color --group-directories-first
 
     local oPub oKey
 
@@ -403,18 +409,21 @@ cdsys() { pushd "${HOME}/system" || exit 1; cl; }
 sbrc()
 {
     clear
+
     source "${HOME}/.bashrc" && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
     sleep 1
-    cl
+
+    clear; ls -1AhFv --color --group-directories-first
 }
 
 spro()
 {
     clear
+
     source "${HOME}/.profile" && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
     sleep 1
-    clear
-    cl
+
+    clear; ls -1AhFv --color --group-directories-first
 }
 
 ####################
@@ -470,13 +479,10 @@ myip()
     echo "External IP (WAN) address: ${WAN}"
 }
 
-# FIND AND KILL PROCESSES BY PID OR NAME
-tkpid() { clear; ps aux | grep "${@}"; }
-
 # WGET COMMAND
 mywget()
 {
-    clear
+    clear; ls -1AhFv --color --group-directories-first
 
     local oFile URL
 
@@ -506,10 +512,10 @@ rmd()
         read -p 'Please enter the directory name to remove: ' i
         clear
         sudo rm -r "${i}"
-        cl
+        clear
     else
         sudo rm -r "${1}"
-        cl
+        clear
     fi
 }
 
@@ -524,38 +530,21 @@ rmf()
         read -p 'Please enter the file name to remove: ' i
         clear
         sudo rm "${i}"
-        cl
+        clear
     else
         sudo rm "${1}"
-        cl
+        clear
     fi
 }
 
 #################
 ## IMAGEMAGICK ##
 #################
-
-imow()
+imo()
 {
-
     clear
 
-    local i ANSWER
-
-    echo 'This will overwrite the files, continue?'
-    echo
-    echo '[1] Yes'
-    echo '[2] No'
-    echo
-    read -p 'Your choices are (1 or 2): ' ANSWER
-    clear
-
-    if [[ "${ANSWER}" -eq '1' ]]; then
-        clear
-    elif [[ "${ANSWER}" -eq '2' ]]; then
-        return
-    fi
-
+    local i
     # find all jpg files and create temporary cache files from them
     for i in *.jpg; do
         echo -e "\\nCreating two temporary cache files: ${i%%.jpg}.mpc + ${i%%.jpg}.cache\\n"
@@ -583,8 +572,75 @@ imow()
     done
 }
 
+imow()
+{
+
+    clear
+
+    local i
+
+    # find all jpg files and create temporary cache files from them
+    for i in *.jpg
+    do
+        echo -e "\\nCreating two temporary cache files: ${i%%.jpg}.mpc + ${i%%.jpg}.cache\\n"
+        dimension="$(identify -format '%wx%h' "${i}")"
+        convert "${i}" -monitor -filter Triangle -define filter:support=2 -thumbnail $dimension -strip \
+        -unsharp 0.25x0.08+8.3+0.045 -dither None -posterize 136 -quality 82 -define jpeg:fancy-upsampling=off \
+        -auto-level -enhance -interlace none -colorspace sRGB "/tmp/${i%%.jpg}.mpc"
+        clear
+        for i in /tmp/*.mpc
+        do
+            # find the temporary cache files created above and output optimized jpg files
+            if [ -f "${i}" ]; then
+                echo -e "\\nOverwriting orignal file with optimized self: ${i} >> ${i%%.mpc}.jpg\\n"
+                convert "${i}" -monitor "${i%%.mpc}.jpg"
+                # overwrite the original image with it's optimized version
+                # by moving it from the tmp directory to the source directory
+                if [ -f "${i%%.mpc}.jpg" ]; then
+                    mv "${i%%.mpc}.jpg" "$PWD"
+                    # delete both cache files before continuing
+                    rm "${i}"
+                    rm "${i%%.mpc}.cache"
+                    clear
+                fi
+            fi
+        done
+    done
+
+    if [ "${?}" -eq '0' ]; then
+        spd-say -t female2 -w "Image converstion complete."
+        exit 0
+    else
+        spd-say -t female2 -w "Image converstion failed."
+        return 1
+    fi
+}
+
 ##################################################
 ## SHOW FILE NAME AND SIZE IN CURRENT DIRECTORY ##
 ##################################################
 
-fsize() { clear; du -abh | grep -Eo '^[0-9A-Za-z\.]*|[a-zA-Z0-9\_]+\.jpg$'; }
+fs() { clear; du --max-depth=1 -abh | grep -Eo '^[0-9A-Za-z\.]*|[a-zA-Z0-9\_]+\.jpg$'; }
+
+big_img()
+{
+    clear
+    sudo find . -size +10M -type f -name *.jpg 2>/dev/null
+}
+
+###########################
+## SHOW NVME TEMPERATURE ##
+###########################
+
+nvme_temp()
+{
+    clear
+
+    local N0 N1 N2
+
+    N0="$(sudo nvme smart-log /dev/nvme0n1)"
+    N1="$(sudo nvme smart-log /dev/nvme1n1)"
+    N2="$(sudo nvme smart-log /dev/nvme2n1)"
+
+    printf "nvme0n1:\n\n%s\n\nnvme1n1:\n\n%s\n\nnvme2n1:\n\n%s\n\n" "${N0}" "${N1}" "${N2}"
+}
