@@ -1,6 +1,23 @@
 #!/bin/bash
 
+#################################################################
+##
+## GitHub: https://github.com/slyfox1186
+##
+## Purpose: Builds ImageMagick 7 from source code that is
+##          obtained from their official GitHub page.
+##
+## Function: ImageMagick is the leading open source command line
+##           image processor. It can blur, sharpen, warp, reduce,
+##           file size, ect... It is fantastic.
+##
+## Last Updated: 01.30.23
+##
+#################################################################
+
 clear
+
+VERSION='7.1.0-60'
 
 ## speed up things with parallel processing
 CPUS="$(nproc)"
@@ -137,9 +154,8 @@ sudo apt install \
     pstoedit
 
 # set variables for imagemagick
-IMVER='7.1.0-58'
-IMURL="https://github.com/ImageMagick/ImageMagick/archive/refs/tags/${IMVER}.tar.gz"
-IMDIR="ImageMagick-${IMVER}"
+IMURL="https://github.com/ImageMagick/ImageMagick/archive/refs/tags/${VERSION}.tar.gz"
+IMDIR="ImageMagick-${VERSION}"
 IMTAR="${IMDIR}.tar.gz"
 
 # download imagemagick source code
