@@ -102,11 +102,9 @@ if [ -n "${MISSING_PKGS}" ]; then
     done
     echo
     echo 'Any missing packages have been installed.'
-    echo
 else
     echo
     echo 'All of the packages were already installed.'
-    echo
 fi
 
 sleep 3
