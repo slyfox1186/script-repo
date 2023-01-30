@@ -84,7 +84,10 @@ if ! cp -f '7zzs' "${OUTPUT_FILE}"; then
 fi
 
 # RUN THE COMMAND '7Z' TO SHOW ITS OUTPUT AND CONFIRM THAT EVERSIONYTHING WORKED AS EXPECTED
-"${OUTPUT_FILE}" | head -n 2 | cut -d " " -f1,3 | awk 'NF' | xargs printf "%s: v%s\n" "${@}"
+clear
+echo '7-zip has been updated to:'
+"${OUTPUT_FILE}" | head -n 2 | cut -d " " -f3 | awk 'NF' | xargs printf "v%s\n" "${@}"
+echo
 
 # REMOVE LEFTOVER DIRECTORY
 cd ../
