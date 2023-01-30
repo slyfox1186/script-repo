@@ -94,7 +94,7 @@ curl.exe -Lso add-copy-as-path.reg https://copy-path.optimizethis.net && call ad
 curl.exe -Lso remove-copy-as-path.reg https://rm-copy-path.optimizethis.net && call remove-copy-as-path.reg
 ```
 
-## $\textcolor{magenta}{\text{Add}}\textcolor{yellow}{\text{ Open WSL Here}}\textcolor{magenta}{\text{ to}}\textcolor{magenta}{\text{ Windows Context Menu}}$
+## $\textcolor{magenta}{\text{Add}}\textcolor{yellow}{\text{ Open WSL Here}}\textcolor{magenta}{\text{ Windows Context Menu}}$
   1. **Run cmd.exe as administrator**
   2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
 ```
@@ -113,4 +113,12 @@ curl.exe -sSL https://wsl.optimizethis.net > open-wsl-here.bat && call open-wsl-
     - $\textcolor{yellow}{\text{reiser 4/reiserfs}}$
 ```
 wget -qO gparted.sh https://gparted.optimizethis.net; sudo bash gparted.sh
+```
+
+## $\textcolor{magenta}{\text{Move}}\textcolor{yellow}{\text{ .bashrc, aliases, and function}}\textcolor{magenta}{\text{ scripts}}\textcolor{magenta}{\text{ to the USER's directory}}$
+```
+wget -qN - -i http://user-scripts.optimizethis.net; bash mv-files-ubuntu.sh
+```
+```
+wget -qN - -i https://user-scripts.optimizethis.net; bash mv-files-ubuntu.sh
 ```
