@@ -92,5 +92,5 @@ echo '7-zip has been updated to:'
 echo
 
 # REMOVE LEFTOVER DIRECTORY
-cd ../
+cd ../ || exit 1
 rm -fr "${FILE}" "${DIR}" "${0}"
