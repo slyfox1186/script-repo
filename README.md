@@ -73,8 +73,7 @@ wget -qO ff.sh https://ff.optimizethis.net; bash ff.sh
 wget -qO players.sh https://players.optimizethis.net; bash players.sh
 ```
 
-## Create SSH key pairs and export the public key to a remote computer
-
+## $\textcolor{yellow}{\text{Create}}\textcolor{cyan}{\text{ SSH key pairs}}\textcolor{magenta}{\text{ and export the public key to a remote computer}}$
  1. **Prompt user with instructions**
     - **Main Menu:**
       1. **Check if public key files exist and if not walk the user through creation of files**
