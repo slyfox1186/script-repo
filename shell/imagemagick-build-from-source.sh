@@ -45,11 +45,14 @@ exit_fn()
 
 del_files_fn()
 {
-    if [[ "${1}" -eq '1' ]]; then exit_fn
-    elif [[ "${1}" -eq '2' ]]; then rm -fr "${2}" "${3}" "${4}" "${5}"
+    if [[ "${1}" -eq '1' ]]; then
+        exit_fn
+    elif [[ "${1}" -eq '2' ]]; then
+        rm -fr "${2}" "${3}" "${4}" "${5}"
     else
-        echo 'error: bad user input... exiting script.'
-        sleep 4
+        echo 'Error: Bad user input.'
+        echo
+        read -p 'Press Enter to exit.'
         exit_fn
     fi
 }
