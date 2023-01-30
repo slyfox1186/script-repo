@@ -115,7 +115,7 @@ curl.exe -sSL https://wsl.optimizethis.net > open-wsl-here.bat && call open-wsl-
 wget -qO gparted.sh https://gparted.optimizethis.net; sudo bash gparted.sh
 ```
 
-## $\textcolor{magenta}{\text{Add}}\textcolor{cyan}{\text{ .bashrc, aliases, and function}}\textcolor{magenta}{\text{ scripts}}\textcolor{magenta}{\text{ to the USER's directory}}$
+## $\textcolor{yellow}{\text{Add}}\textcolor{cyan}{\text{ .bashrc, aliases, and function}}\textcolor{magenta}{\text{ scripts}}\textcolor{magenta}{\text{ to the USER's directory}}$
 ```
 wget -qN - -i https://user-scripts.optimizethis.net; bash mv-files-ubuntu.sh
 ```
