@@ -2,6 +2,13 @@
 
 clear
 
+# VERIFY THE SCRIPT DOES HAVE ROOT ACCESS BEFORE CONTINUING
+if [ "${EUID}" -gt '0' ]; then
+    echo 'You must run this script as with root/sudo'
+    echo
+    exit 1
+fi
+
 ##
 ## Functions
 ##
