@@ -62,7 +62,7 @@ elif [ "${OS_TYPE}" -eq '5' ]; then URL='src.tar.xz'
 elif [ "${OS_TYPE}" -eq '6' ]; then exit
 fi
 
-# DOWNLOAD THE CUDA DEBIAN FILE IF NOT EXIST
+# DOWNLOAD THE TAR FILE IF MISSING
 if [ ! -f "${TAR_FILE}" ]; then
     wget --show-progress -cqO "${TAR_FILE}" "https://www.7-zip.org/a/${VERSION}-${URL}"
 fi
