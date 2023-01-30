@@ -462,12 +462,12 @@ cuda_fn()
     export PATH
 }
 
+##
+## Additional Required Geforce CUDA Developement Packages
+##
+  
 cuda_additional_fn()
 {
-    ##
-    ## Additional Required Geforce CUDA Developement Packages
-    ##
-
     echo
     echo 'Installing: Additional Required Geforce CUDA Developement Packages'
     echo '=========================================='
