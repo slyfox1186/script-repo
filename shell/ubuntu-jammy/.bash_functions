@@ -1,13 +1,7 @@
-# generates a function named $1 which:
-# - executes $(which $1) [with args]
-# - suppresses output lines which match $2
-# e.g. adding: _suppress echo "hello\|world"
-# will generate this function:
-# echo() { $(which echo) "$@" 2>&1 | tr -d '\r' | grep -v "hello\|world"; }
-# and from now on, using echo will work normally except that lines with
-# hello or world will not show at the output
-# to see the generated functions, replace eval with echo below
-# the 'tr' filter makes sure no spurious empty lines pass from some commands
+##################################################################################
+## WHEN LAUNCHING CERTAIN PROGRAMS FROM TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
+##################################################################################
+
 _suppress() { eval "${1}() { \$(which ${1}) \"\$@\" 2>&1 | tr -d '\r' | grep -v \"${2}\"; }"; }
 
 _suppress firefox
