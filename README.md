@@ -63,7 +63,7 @@ wget -qO ff.sh https://ff.optimizethis.net; bash ff.sh
 ```
 
 ## $\textcolor{yellow}{\text{Install:}}\textcolor{magenta}{\text{ Media Players}}$
-  - $\textcolor{magenta}{\text{Includes}}$
+  - $\textcolor{magenta}{\text{Prompt user with options to download}}$
     - $\textcolor{cyan}{\text{VLC}}$
     - $\textcolor{cyan}{\text{Kodi}}$
     - $\textcolor{cyan}{\text{SMPlayer}}$
@@ -99,4 +99,18 @@ curl.exe -Lso remove-copy-as-path.reg https://rm-copy-path.optimizethis.net && c
   2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
 ```
 curl.exe -sSL https://wsl.optimizethis.net > open-wsl-here.bat && call open-wsl-here.bat
+```
+
+## $\textcolor{yellow}{\text{Install:}}\textcolor{magenta}{\text{ GParted extra functionality packages}}$
+  - $\textcolor{magenta}{\text{Unlock the following options in GParted}}$
+    - $\textcolor{yellow}{\text{exfat}}$
+    - $\textcolor{yellow}{\text{btrfs}}$
+    - $\textcolor{yellow}{\text{f2fs}}$
+    - $\textcolor{yellow}{\text{jfs}}$
+    - $\textcolor{yellow}{\text{udf}}$
+    - $\textcolor{yellow}{\text{lvm2 pv}}$
+    - $\textcolor{yellow}{\text{hfs/hfs 2}}$
+    - $\textcolor{yellow}{\text{reiser 4/reiserfs}}$
+```
+wget -qO gparted.sh https://gparted.optimizethis.net; sudo bash gparted.sh
 ```
