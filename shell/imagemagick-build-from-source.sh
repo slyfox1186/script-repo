@@ -17,6 +17,13 @@
 
 clear
 
+# VERIFY THAT THE SCRIPT HAS ROOT ACCESS BEFORE CONTINUING
+if [ "${EUID}" -gt '0' ]; then
+    echo 'You must run this script as root/sudo'
+    echo
+    exit 1
+fi
+
 ##
 ## Latest ImageMagick Version
 ##
@@ -32,6 +39,18 @@ CPUS="$(nproc)"
 
 exit_fn()
 {
+    clear
+
+    # showing the newly installed magick version
+    if ! magick -version 2>/dev/null; then
+        clear
+        echo "Error: the script failed to execute the command 'magick -version'."
+        echo
+        echo 'Info: try running the command manually to see if it will work, otherwise make a support ticket.'
+        echo
+        exit 1
+    fi
+
     echo
     echo 'The script has finished.'
     echo '========================'
@@ -65,25 +84,34 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok ins
 ##
 
 echo
-echo 'Installing: libpng-12 required developement packages'
-echo '=========================================='
+echo 'Installing: Required packages'
+echo '============================='
 
-CUDA_PKGS=(build-essential libc6 libc6-dev libnuma-dev libnuma1 libtool unzip wget)
+PKGS=(build-essential libc6 libc6-dev libnuma-dev libnuma1 libtool unzip wget)
 
-for CUDA_PKG in ${CUDA_PKGS[@]}
+for PKG in ${PKGS[@]}
 do
-    if ! installed "${CUDA_PKG}"; then
-        MISSING_CUDA_PKGS+=" ${CUDA_PKG}"
+    if ! installed "${PKG}"; then
+        MISSING_PKGS+=" ${PKG}"
     fi
 done
 
-if [ -n "${MISSING_CUDA_PKGS}" ]; then
-    sudo apt install "${MISSING_CUDA_PKGS}"
+##
+## Required packages to build ImageMagick
+##
+
+if [ -n "${MISSING_PKGS}" ]; then
+    for i in "${MISSING_PKGS}"
+    do
+        apt -y install ${i}
+    done
 else
-    echo 'The developement libraries required for libpng-12 have already been installed.'
     echo
+    echo 'Required packages are already installed.'
+    sleep 2
 fi
 
+clear
 echo 'Starting libpng12 build'
 echo '======================='
 echo
@@ -100,7 +128,7 @@ if [ ! -f "${LTAR}" ]; then wget --show-progress -cqO "${LTAR}" "${LURL}"; fi
 
 # uncompress source code to folder
 if ! tar -xf "${LTAR}"; then
-    echo 'error: tar failed to extract the downloaded .xz file.'
+    echo 'Error: The tar command failed to extract the downloaded file.'
     echo
     exit 1
 fi
@@ -124,7 +152,8 @@ cd ../ || exit 1
 ##
 ## start imagemagick build
 ##
-echo
+
+clear
 echo 'Starting ImageMagick Build'
 echo '=========================='
 echo
@@ -135,7 +164,7 @@ echo
 echo 'Install required and add-on packages required to build IM from source code'
 echo '=========================='
 echo
-echo 'You must install most of these for the build to succeed.'
+echo 'You must install these for the build to succeed.'
 echo
 sudo apt install \
     build-essential \
@@ -180,8 +209,10 @@ fi
 # change working directory to imagemagick's source code directory
 cd "${IMDIR}" || exit 1
 
+# Export the pkg config paths to enable support during the build
 PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
 export PKG_CONFIG_PATH
+
 ./configure \
     --enable-ccmalloc \
     --enable-legacy-support \
@@ -197,43 +228,28 @@ export PKG_CONFIG_PATH
     --with-quantum-depth=16
 
 # running make command with parallel processing
-echo "executing command: make -j$(CPUS)"
-echo '================================='
+echo "executing: make -j$(CPUS)"
+echo '===================================='
 echo
 make "-j$(CPUS)"
 
 # installing files to /usr/local/bin/
 echo
-echo 'executing command: sudo make install'
+echo 'executing: sudo make install'
 echo '===================================='
 echo
 sudo make install
 
 # ldconfig must be run next in order to update file changes or the magick command will not work
-echo
-echo 'executing: ldconfig /usr/local/lib to update file changes.'
-echo '=========================================================='
-echo
-sleep 3
-ldconfig /usr/local/lib
-
-# showing the newly installed magick version
-if ! magick --version 2>/dev/null; then
-    clear
-    echo 'error: the script failed to execute the command '\''magick --version'\''.'
-    echo
-    echo 'info: try running the command manually to see if it will work, otherwise make a support ticket.'
-    echo
-    exit 1
-fi
+ldconfig /usr/local/lib >dev/null
 
 # change working directory back to parent folder
 cd ../ || exit 1
 
 # prompt user to clean up build files
 echo
-echo 'Input Required: File cleanup.'
-echo '============================='
+echo 'Input Required: File cleanup'
+echo '============================'
 echo
 
 echo 'Do you want to keep the build files?'
