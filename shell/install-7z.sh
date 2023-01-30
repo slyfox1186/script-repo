@@ -41,7 +41,7 @@ fail_fn()
     exit 1
 }
 
-echo '[i] Choose your os architechture'
+echo '[i] Choose the OS architecture'
 echo
 echo '[1] Linux x64'
 echo '[2] Linux x86'
