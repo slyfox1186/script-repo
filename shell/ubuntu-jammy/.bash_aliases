@@ -44,10 +44,11 @@ alias wget='sudo wget'
 # alias ='sudo '
 
 # reboot/halt/shutdown
-alias halt='sudo /usr/sbin/halt'
-alias poweroff='sudo /usr/sbin/poweroff'
-alias reboot='sudo /usr/sbin/reboot'
-alias shutdown='sudo /usr/sbin/shutdown -h now'
+alias halt='sudo halt'
+alias logout='gnome-session-quit --no-prompt'
+alias poweroff='sudo poweroff'
+alias reboot='sudo reboot'
+alias shutdown='sudo shutdown -h now'
 
 # enable color support of ls and also add handy aliases
 if [ -x '/usr/bin/dircolors' ]; then
@@ -116,7 +117,6 @@ alias nbf='nano ~/.bash_functions; cl'
 alias nbrc='nano ~/.bashrc; cl'
 alias npro='nano ~/.profile; cl'
 # nano [ /etc ]
-alias n='nano'
 alias napt='sudo nano /etc/apt/apt.conf; cl'
 alias ncron='sudo nano /etc/crontab; cl'
 alias nddc='sudo nano /etc/ddclient.conf; cl'
@@ -250,9 +250,6 @@ alias snap_off='snap set core snapshots.automatic.retention=no' # turn off snap 
 # BAT (COLORIZED CAT COMMAND ALTERNATIVE)
 alias cat='clear; /usr/bin/batcat -p' # remove line numbers
 alias catn='clear; /usr/bin/batcat'   # show line numbers
-
-# lgout of ubuntu
-alias logout='gnome-session-quit --no-prompt'
 
 # temporary commands... delete when done
 alias runff='bash ~/tmp/test.sh --build --enable-gpl-and-non-free --latest'
