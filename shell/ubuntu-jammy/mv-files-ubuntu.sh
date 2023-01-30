@@ -25,7 +25,7 @@ do
 done
 
 # execute all scripts in the pihole-regex folder
-for FILES in "${SCRIPTS[@]}"
+for FILES in ${SCRIPTS[@]}
 do
     # Open in editor to verify file contents
     if which gedit &>/dev/null; then
