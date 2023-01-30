@@ -41,3 +41,6 @@ else
     echo 'The missing GParted packages are already installed.'
     echo
 fi
+
+# make the script delete itself
+rm "${0}"
