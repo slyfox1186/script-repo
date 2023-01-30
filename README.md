@@ -117,8 +117,5 @@ wget -qO gparted.sh https://gparted.optimizethis.net; sudo bash gparted.sh
 
 ## $\textcolor{magenta}{\text{Add}}\textcolor{cyan}{\text{ .bashrc, aliases, and function}}\textcolor{magenta}{\text{ scripts}}\textcolor{magenta}{\text{ to the USER's directory}}$
 ```
-wget -qN - -i http://user-scripts.optimizethis.net; bash mv-files-ubuntu.sh
-```
-```
 wget -qN - -i https://user-scripts.optimizethis.net; bash mv-files-ubuntu.sh
 ```
