@@ -66,8 +66,10 @@ exit_fn()
 {
     echo
     echo 'The script has finished!'
+    echo '=============================='
     echo
     echo 'Make sure to star this repository to show your suppport!'
+    echo 'https://github.com/slyfox1186/'
     echo
     exit 0
 }
