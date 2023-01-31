@@ -116,6 +116,7 @@
             do
                 apt -y install ${i}
             done
+            clear
             echo 'The ImageMagick Development Libraries have been installed.'
         else
             clear
