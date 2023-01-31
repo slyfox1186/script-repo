@@ -4,17 +4,9 @@
 
 _suppress() { eval "${1}() { \$(which ${1}) \"\$@\" 2>&1 | tr -d '\r' | grep -v \"${2}\"; }"; }
 
-_suppress firefox
-_suppress gedit
-_suppress gnome-terminal
-
-###########################
-## linux kernel commands ##
-###########################
-
-kernel_list() { clear; ls "/usr/src/linux-headers-$(uname -r)"; }
-kernel_search() { clear; apt search "linux-headers-$(uname -r)"; }
-kernel_update() { clear; apt install "linux-headers-$(uname -r)"; }
+_suppress gedit          "Gtk-WARNING\|connect to accessibility bus"
+_suppress gnome-terminal "accessibility bus\|stop working with a future version"
+_suppress firefox        "g_slice_set_config"
 
 ###################
 ## FIND COMMANDS ##
@@ -24,22 +16,21 @@ ffind()
 {
     clear
 
-    local myFile myPath myType
+    local FILE FPATH TYPE
 
-    if [ -z "${1}" ]; then
-        read -p 'Please enter the file name to search for: ' myFile
-        echo
-        read -p 'Please enter the file type [ d|f|blank ]: ' myType
-        echo
-        read -p 'Please enter the folder path to start from: ' myPath
-        clear; ls -1AhFv --color --group-directories-first
-        if [ -z "${myType}" ]; then
-            find "${myPath}" -name "${myFile}" 2>/dev/null | xargs -I{} echo {}
-        else
-            find "${myPath}" -type "${myType}" -name "${myFile}" 2>/dev/null | xargs -I{} echo {}
-        fi
+    read -p 'Enter a file to search for: ' FILE
+    echo
+    read -p 'Enter the type of file ( d|f|blank): ' TYPE
+    echo
+    read -p 'Enter the search path: ' FPATH
+    clear
+
+    if [ -z "${TYPE}" ]; then
+        find "${FPATH}" -name "${FILE}" 2>/dev/null | xargs -I{} echo {}
+    elif [ -z "${TYPE}" ] && [ -z "${FPATH}" ]; then
+        find . -name "${FILE}" 2>/dev/null | xargs -I{} echo {}
     else
-        find "${1}" -name "${2}" 2>/dev/null | xargs -I{} echo {}
+        find "${FPATH}" -type "${TYPE}" -name "${FILE}" 2>/dev/null | xargs -I{} echo {}
     fi
 }
 
@@ -84,7 +75,7 @@ mf()
 
     if [ -z "${1}" ]; then
         read -p 'Enter file name: ' i
-        clear; ls -1AhFv --color --group-directories-first
+        clear
         if [ ! -f "${i}" ]; then touch "${i}"; fi
         chmod 744 "${i}"
     else
@@ -103,7 +94,7 @@ mdir()
 
     if [[ -z "${1}" ]]; then
         read -p 'Enter directory name: ' DIR
-        clear; ls -1AhFv --color --group-directories-first
+        clear
         mkdir -p  "${PWD}/${DIR}"
         cd "${PWD}/${DIR}" || exit 1
     else
@@ -140,7 +131,7 @@ rmdf()
 
 
 # COPY FILE
-cp_file()
+cpf()
 {
     clear
 
@@ -157,7 +148,7 @@ cp_file()
 }
 
 # MOVE FILE
-mv_file()
+mvf()
 {
     clear
 
@@ -199,6 +190,21 @@ update()
     apt -y autoremove
     apt autoclean
     apt -y purge
+}
+
+# FIX BROKEN APT PACKAGES
+fix()
+{
+    clear
+    apt --fix-broken install
+    apt --fix-missing update
+    apt -y install
+    dpkg --configure -a
+    apt -y autoremove
+    apt clean
+    apt autoclean
+    apt -y purge
+    apt update
 }
 
 # FIX MISSING GPNU KEYS USED TO UPDATE PACKAGES
@@ -244,46 +250,18 @@ toa()
 #################
 # DPKG COMMANDS #
 #################
-fix()
-{
-    clear
-    apt --fix-broken install
-    apt --fix-missing update
-    apt -y install
-    dpkg --configure -a
-    apt -y autoremove
-    apt clean
-    apt autoclean
-    apt -y purge
-    apt update
-}
-
-da()
-{
-    if [ ! -d "${HOME}/tmp" ]; then mkdir -p "${HOME}/tmp"; fi
-    dpkg --get-selections > "${HOME}/tmp/installed-packages.txt"
-    gedit "${HOME}/tmp/installed-packages.txt"
-}
-
-df()
-{
-    clear
-    dpkg -l |
-    sort |
-    grep -i "${@}"
-}
 
 ## SHOW ALL INSTALLED PACKAGES
-showpackages()
+showpkgs()
 {
-    dpkg --get-selections | grep -v deinstall > "${HOME}/tmp/packages.list"
-    gedit "${HOME}/tmp/packages.list"
+    dpkg --get-selections |
+    grep -v deinstall > "${HOME}"/tmp/packages.list
+    gedit "${HOME}"/tmp/packages.list
 }
 
 # PIPE ALL DEVELOPMENT PACKAGES NAMES TO FILE
 getdev()
 {
-    apt-cache search dev |
     apt-cache search dev |
     grep "\-dev" |
     cut -d ' ' -f1 |
@@ -309,11 +287,11 @@ new_key()
     echo '[i] Choose the key bit size'
     echo '[i] Values encased in() are recommended'
 
-    if [ "${TYPE}" == 'rsa' ]; then
+    if [[ "${TYPE}" == 'rsa' ]]; then
         echo -e "[i] rsa: [ 512 | 1024 | (2048) | 4096 ]\\n"
-    elif [ "${TYPE}" == 'dsa' ]; then
+    elif [[ "${TYPE}" == 'dsa' ]]; then
         echo -e "[i] dsa: [ (1024) | 2048 ]\\n"
-    elif [ "${TYPE}" == 'ecdsa' ]; then
+    elif [[ "${TYPE}" == 'ecdsa' ]]; then
         echo -e "[i] ecdsa: [ (256) | 384 | 521 ]\\n"
     fi
 
@@ -346,7 +324,7 @@ new_key()
     ssh-keygen -q -b "${BITS}" -t "${TYPE}" -N "${PASS}" -C "${COMMENT}" -f "${NAME}"
 
     chmod 600 "$PWD/${NAME}"
-    chmod 644 "$PWD/${NAME}.pub"
+    chmod 644 "$PWD/${NAME}".pub
     clear
 
     echo -e "[i] File: $PWD/${NAME}\\n"
@@ -378,8 +356,8 @@ keytopub()
     fi
     ssh-keygen -b '4096' -y -f "${oKey}" > "${oPub}"
     chmod 644 "${oPub}"
-    cp "${oPub}" "${HOME}/.ssh/authorized_keys"
-    chmod 600 "${HOME}/.ssh/authorized_keys"
+    cp "${oPub}" "${HOME}"/.ssh/authorized_keys
+    chmod 600 "${HOME}"/.ssh/authorized_keys
     unset "${oKey}"
     unset "${oPub}"
 }
@@ -394,7 +372,7 @@ gzip() { clear; gzip -d "${@}"; }
 show_time() { clear; date +%r | cut -d " " -f1-2 | grep -E '^.*$'; }
 
 # CHANGE DIRECTORY
-cdsys() { pushd "${HOME}/system" || exit 1; cl; }
+cdsys() { pushd "${HOME}"/system || exit 1; cl; }
 
 ##################
 ## SOURCE FILES ##
@@ -404,7 +382,7 @@ sbrc()
 {
     clear
 
-    source "${HOME}/.bashrc" && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
+    source "${HOME}"/.bashrc && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
     sleep 1
 
     clear; ls -1AhFv --color --group-directories-first
@@ -414,7 +392,7 @@ spro()
 {
     clear
 
-    source "${HOME}/.profile" && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
+    source "${HOME}"/.profile && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
     sleep 1
 
     clear; ls -1AhFv --color --group-directories-first
@@ -429,10 +407,7 @@ aria2_on()
 {
     clear
 
-    # aria2c --conf-path="${HOME}/.aria2/aria2.conf"
-
-
-    if aria2c --conf-path="${HOME}/.aria2/aria2.conf"; then
+    if aria2c --conf-path="${HOME}"/.aria2/aria2.conf; then
         echo -e "\\nCommand Executed Successfully\\n"
     else
         echo -e "\\nCommand Failed\\n"
@@ -574,42 +549,48 @@ imow()
 
     clear
 
-    local i DIMENSIONS RANDOM_DIR
+    local i DIMENSIONS RANDOM
 
     # find all jpg files and create temporary cache files from them
     for i in *.jpg
     do
         # create random direcotories in case you are running this function more than once at the same time. it prevents cross-over.
-        RANDOM_DIR="$(mktemp --directory)"
-        "${RANDOM_DIR}" 2>/dev/null
-        echo -e "\\nCreating two temporary cache files: ${RANDOM_DIR}/${i%%.jpg}.mpc + ${RANDOM_DIR}/${i%%.jpg}.cache\\n"
+        RANDOM="$(mktemp --directory)"
+        "${RANDOM}" 2>/dev/null
+        echo -e "\\nCreating two temporary cache files: ${RANDOM}/${i%%.jpg}.mpc + ${RANDOM}/${i%%.jpg}.cache\\n"
         DIMENSIONS="$(identify -format '%wx%h' "${i}")"
-        convert "${i}" -monitor -filter Triangle -define filter:support=2 -thumbnail "${DIMENSIONS}" -strip \
-        -unsharp 0.25x0.08+8.3+0.045 -dither None -posterize 136 -quality 82 -define jpeg:fancy-upsampling=off \
-        -define png:compression-filter=5 -define png:compression-level=9 -define png:compression-strategy=1 \
-        -define png:exclude-chunk=all -auto-level -enhance -interlace none -colorspace sRGB "${RANDOM_DIR}/${i%%.jpg}.mpc"
+        convert "${i}" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "${DIMENSIONS}" -strip \
+        -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize '136' -quality '82' -define jpeg:fancy-upsampling='off' \
+        -define png:compression-filter='5' -define png:compression-level='9' -define png:compression-strategy='1' \
+        -define png:exclude-chunk='all' -auto-level -enhance -interlace 'none' -colorspace 'sRGB' "${RANDOM}/${i%%.jpg}.mpc"
         clear
-        for i in "${RANDOM_DIR}"/*.mpc
+        for i in "${RANDOM}"/*.mpc
         do
             if [ -f "${i}" ]; then
                 echo -e "\\nOverwriting orignal file with optimized self: ${i} >> ${i%%.mpc}.jpg\\n"
                 convert "${i}" -monitor "${i%%.mpc}.jpg"
                 if [ -f "${i%%.mpc}.jpg" ]; then
                     mv "${i%%.mpc}.jpg" "${PWD}"
-                    rm -fr "${RANDOM_DIR}"
+                    rm -fr "${RANDOM}"
                     clear
+                else
+                    clear
+                    echo 'Error: Unable to find the optimized image and therfore can'\''t overwrite the original.'
+                    echo
+                    exit 1
                 fi
             fi
         done
     done
 
     # The text-to-speech below requries the following packages:
-    # sudo apt -y install festival festvox-us-slt-hts
+    # pip install gTTS
+    # sudo apt -y install sox libsox-fmt-all
     if [ "${?}" -eq '0' ]; then
-        festival -b '(voice_cmu_us_slt_arctic_hts)' '(SayText "The image conversion has completed.")'
+        gtts-cli -l en 'Image conversion complete.' | play -t mp3 - &>/dev/null
         return 0
     else
-        festival -b '(voice_cmu_us_slt_arctic_hts)' '(SayText "The image conversion has failed.")'
+        gtts-cli -l en 'Image conversion failed.' | play -t mp3 - &>/dev/null
         return 1
     fi
 }
@@ -653,3 +634,9 @@ rftn()
     sudo rm -fr "${HOME}"/.cache/thumbnails/*
     ls -al "${HOME}"/.cache/thumbnails
 }
+
+#######################
+## NAUTILUS COMMANDS ##
+#######################
+
+nopen() { nohup nautilus -w "${1}" &>/dev/null &; }
