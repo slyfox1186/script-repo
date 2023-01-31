@@ -44,4 +44,4 @@ do
 done
 
 # remove installer script
-sudo rm "${0}"
+rm "${0}"
