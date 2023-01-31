@@ -16,21 +16,21 @@ ffind()
 {
     clear
 
-    local FILE FPATH TYPE
+    local file path type
 
-    read -p 'Enter a file to search for: ' FILE
+    read -p 'Enter a file to search for: ' file
     echo
-    read -p 'Enter the type of file ( d|f|blank): ' TYPE
+    read -p 'Enter the type of file (d|f|blank): ' type
     echo
-    read -p 'Enter the search path: ' FPATH
+    read -p 'Enter the search path: ' path
     clear
 
-    if [ -z "${TYPE}" ]; then
-        find "${FPATH}" -name "${FILE}" 2>/dev/null | xargs -I{} echo {}
-    elif [ -z "${TYPE}" ] && [ -z "${FPATH}" ]; then
-        find . -name "${FILE}" 2>/dev/null | xargs -I{} echo {}
+    if [ -z "${type}" ]; then
+        find "${path}" -name "${file}" 2>/dev/null | xargs -I{} echo {}
+    elif [ -z "${type}" ] && [ -z "${path}" ]; then
+        find . -name "${file}" 2>/dev/null | xargs -I{} echo {}
     else
-        find "${FPATH}" -type "${TYPE}" -name "${FILE}" 2>/dev/null | xargs -I{} echo {}
+        find "${path}" -type "${type}" -name "${file}" 2>/dev/null | xargs -I{} echo {}
     fi
 }
 
@@ -42,21 +42,21 @@ untar()
 {
     clear
 
-    local EXT
+    local ext
 
     for file in *.*
     do
-        EXT="${i##*.}"
+        ext="${i##*.}"
 
         [[ ! -d "${PWD}/${file%%.*}" ]] && mkdir -p "${PWD}/${file%%.*}"
 
-        case "${EXT}" in
+        case "${ext}" in
             7z|zip)
                 7z x -o"${PWD}/${file%%.*}" "${PWD}/${file}"
                 ;;
             bz2|gz|xz)
                 jflag=''
-                [[ "${EXT}" == 'bz2' ]] && jflag='j'
+                [[ "${ext}" == 'bz2' ]] && jflag='j'
                 tar -xvf${jflag} "${PWD}/${file}" -C "${PWD}/${file%%.*}"
                 ;;
         esac
@@ -90,13 +90,13 @@ mdir()
 {
     clear
 
-    local DIR
+    local dir
 
     if [[ -z "${1}" ]]; then
-        read -p 'Enter directory name: ' DIR
+        read -p 'Enter directory name: ' dir
         clear
-        mkdir -p  "${PWD}/${DIR}"
-        cd "${PWD}/${DIR}" || exit 1
+        mkdir -p  "${PWD}/${dir}"
+        cd "${PWD}/${dir}" || exit 1
     else
         mkdir -p "${1}"
         cd "${PWD}/${1}" || exit 1
@@ -115,7 +115,7 @@ rmd() { clear; awk '!seen[${0}]++' "${1}"; }
 # REMOVE CONSECUTIVE DUPLICATE LINES: OUTPUTS TO TERMINAL
 rmdc() { clear; awk 'f!=${0}&&f=${0}' "${1}"; }
 
-# REMOVE ALL DUPLICATE LINES AND REMOVES TRAILING SPACES BEFORE COMPARING: REPLACES THE FILE
+# REMOVE ALL DUPLICATE LINES AND REMOVES TRAILING SPACES BEFORE COMPARING: REPLACES THE file
 rmdf()
 {
     clear
@@ -124,13 +124,13 @@ rmdf()
 }
 
 ###################
-## FILE COMMANDS ##
+## file COMMANDS ##
 ###################
 
 # COPY TO CLIPBOARD
 
 
-# COPY FILE
+# COPY file
 cpf()
 {
     clear
@@ -147,7 +147,7 @@ cpf()
     clear; ls -1AhFv --color --group-directories-first
 }
 
-# MOVE FILE
+# MOVE file
 mvf()
 {
     clear
@@ -212,21 +212,21 @@ fix_key()
 {
     clear
 
-    local FILE URL
+    local file url
 
     if [[ -z "${1}" ]] && [[ -z "${2}" ]]; then
-        read -p 'Enter the file name to store in /etc/apt/trusted.gpg.d: ' FILE
+        read -p 'Enter the file name to store in /etc/apt/trusted.gpg.d: ' file
         echo
-        read -p 'Enter the gpg key URL: ' URL
+        read -p 'Enter the gpg key url: ' url
         clear
     else
-        FILE="${1}"
-        URL="${2}"
+        file="${1}"
+        url="${2}"
     fi
 
-    curl -S# "${URL}" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/${FILE}"
+    curl -S# "${url}" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/${file}"
     
-    if curl -S# "${URL}" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/${FILE}"; then
+    if curl -S# "${url}" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/${file}"; then
         echo 'The key was successfully added!'
     else
         echo 'The key FAILED to add!'
@@ -259,7 +259,7 @@ showpkgs()
     gedit "${HOME}"/tmp/packages.list
 }
 
-# PIPE ALL DEVELOPMENT PACKAGES NAMES TO FILE
+# PIPE ALL DEVELOPMENT PACKAGES NAMES TO file
 getdev()
 {
     apt-cache search dev |
@@ -278,60 +278,60 @@ new_key()
 {
     clear
 
-    local BITS COMMENT NAME PASS TYPE
+    local bits comment name pass type
 
     echo -e "Encryption type: [ rsa | dsa | ecdsa ]\\n"
-    read -p 'Your choice: ' TYPE
+    read -p 'Your choice: ' type
     clear
 
     echo '[i] Choose the key bit size'
     echo '[i] Values encased in() are recommended'
 
-    if [[ "${TYPE}" == 'rsa' ]]; then
+    if [[ "${type}" == 'rsa' ]]; then
         echo -e "[i] rsa: [ 512 | 1024 | (2048) | 4096 ]\\n"
-    elif [[ "${TYPE}" == 'dsa' ]]; then
+    elif [[ "${type}" == 'dsa' ]]; then
         echo -e "[i] dsa: [ (1024) | 2048 ]\\n"
-    elif [[ "${TYPE}" == 'ecdsa' ]]; then
+    elif [[ "${type}" == 'ecdsa' ]]; then
         echo -e "[i] ecdsa: [ (256) | 384 | 521 ]\\n"
     fi
 
-    read -p 'Your choice: ' BITS
+    read -p 'Your choice: ' bits
     clear
 
     echo '[i] Choose a password'
     echo -e "[i] For no password just press enter\\n"
-    read -p 'Your choice: ' PASS
+    read -p 'Your choice: ' pass
     clear
 
     echo '[i] Choose a comment'
     echo -e "[i] For no comment just press enter\\n"
-    read -p 'Your choice: ' COMMENT
+    read -p 'Your choice: ' comment
     clear
 
     echo -e "[i] Enter the ssh key name\\n"
-    read -p 'Your choice: ' NAME
+    read -p 'Your choice: ' name
     clear
 
     echo -e "[i] Your choices\\n"
-    echo -e "[i] Type: ${TYPE}"
-    echo -e "[i] Bits: ${BITS}"
-    echo -e "[i] Password: ${PASS}"
-    echo -e "[i] Comment: ${COMMENT}"
-    echo -e "[i] Key Name: ${NAME}\\n"
+    echo -e "[i] Type: ${type}"
+    echo -e "[i] bits: ${bits}"
+    echo -e "[i] Password: ${pass}"
+    echo -e "[i] comment: ${comment}"
+    echo -e "[i] Key name: ${name}\\n"
     read -p 'Press enter to continue or ^c to exit'
     clear
 
-    ssh-keygen -q -b "${BITS}" -t "${TYPE}" -N "${PASS}" -C "${COMMENT}" -f "${NAME}"
+    ssh-keygen -q -b "${bits}" -t "${type}" -N "${pass}" -C "${comment}" -f "${name}"
 
-    chmod 600 "$PWD/${NAME}"
-    chmod 644 "$PWD/${NAME}".pub
+    chmod 600 "$PWD/${name}"
+    chmod 644 "$PWD/${name}".pub
     clear
 
-    echo -e "[i] File: $PWD/${NAME}\\n"
-    cat "$PWD/${NAME}"
+    echo -e "file: $PWD/${name}\\n"
+    cat "$PWD/${name}"
 
-    echo -e "\\n[i] File: $PWD/${NAME}.pub\\n"
-    cat "$PWD/${NAME}.pub"
+    echo -e "\\nfile: $PWD/${name}.pub\\n"
+    cat "$PWD/${name}.pub"
 
     echo
 }
@@ -341,25 +341,25 @@ keytopub()
 {
     clear; ls -1AhFv --color --group-directories-first
 
-    local oPub oKey
+    local opub okey
 
     echo -e "Enter the full paths for each file\\n"
-    read -p 'Private key: ' oKey
-    read -p 'Public key: ' oPub
+    read -p 'Private key: ' okey
+    read -p 'Public key: ' opub
     clear
-    if [ -f "${oKey}" ]; then
-        chmod 600 "${oKey}"
+    if [ -f "${okey}" ]; then
+        chmod 600 "${okey}"
     else
-        echo -e "Warning: file missing = ${oKey}\\n"
+        echo -e "Warning: file missing = ${okey}\\n"
         read -p 'Press Enter to exit.'
         exit 1
     fi
-    ssh-keygen -b '4096' -y -f "${oKey}" > "${oPub}"
-    chmod 644 "${oPub}"
-    cp "${oPub}" "${HOME}"/.ssh/authorized_keys
+    ssh-keygen -b '4096' -y -f "${okey}" > "${opub}"
+    chmod 644 "${opub}"
+    cp "${opub}" "${HOME}"/.ssh/authorized_keys
     chmod 600 "${HOME}"/.ssh/authorized_keys
-    unset "${oKey}"
-    unset "${oPub}"
+    unset "${okey}"
+    unset "${opub}"
 }
 
 # install colordiff package :)
@@ -422,30 +422,30 @@ aria2()
 {
     clear
 
-    local FILE LINK
+    local file link
 
     if [[ -z "${1}" ]] && [[ -z "${2}" ]]; then
-        read -p 'Enter the output file name: ' FILE
+        read -p 'Enter the output file name: ' file
         echo
-        read -p 'Enter the download URL: ' LINK
+        read -p 'Enter the download url: ' link
         clear
     else
-        FILE="${1}"
-        LINK="${2}"
+        file="${1}"
+        link="${2}"
     fi
 
-    aria2c --out="${FILE}" "${LINK}"
+    aria2c --out="${file}" "${link}"
 }
 
-# PRINT LAN/WAN IP
+# PRINT lan/wan IP
 myip()
 {
     clear
-    LAN="$(hostname -I)"
-    WAN="$(dig +short myip.opendns.com @resolver1.opendns.com)"
+    lan="$(hostname -I)"
+    wan="$(dig +short myip.opendns.com @resolver1.opendns.com)"
     clear
-    echo "Internal IP (LAN) address: ${LAN}"
-    echo "External IP (WAN) address: ${WAN}"
+    echo "Internal IP (lan) address: ${lan}"
+    echo "External IP (wan) address: ${wan}"
 }
 
 # WGET COMMAND
@@ -453,14 +453,14 @@ mywget()
 {
     clear; ls -1AhFv --color --group-directories-first
 
-    local oFile URL
+    local outfile url
 
     if [ -z "${1}" ] || [ -z "${2}" ]; then
-        read -p 'Please enter the output file name: ' oFile
+        read -p 'Please enter the output file name: ' outfile
         echo
-        read -p 'Please enter the URL: ' URL
+        read -p 'Please enter the url: ' url
         clear
-        wget --out-file="${oFile}" "${URL}"
+        wget --out-file="${outfile}" "${url}"
     else
         wget --out-file="${1}" "${2}"
     fi
@@ -488,7 +488,7 @@ rmd()
     fi
 }
 
-# RM FILE
+# RM file
 rmf()
 {
     clear
@@ -519,8 +519,8 @@ imo()
     # find all jpg files and create temporary cache files from them
     for i in *.jpg; do
         echo -e "\\nCreating two temporary cache files: ${i%%.jpg}.mpc + ${i%%.jpg}.cache\\n"
-        dimension="$(identify -format '%wx%h' "${i}")"
-        convert "${i}" -monitor -filter Triangle -define filter:support=2 -thumbnail $dimension -strip \
+        dimensions="$(identify -format '%wx%h' "${i}")"
+        convert "${i}" -monitor -filter Triangle -define filter:support=2 -thumbnail "${dimensions}" -strip \
         -unsharp 0.25x0.08+8.3+0.045 -dither None -posterize 136 -quality 82 -define jpeg:fancy-upsampling=off \
         -auto-level -enhance -interlace none -colorspace sRGB "/tmp/${i%%.jpg}.mpc"
         clear
@@ -549,29 +549,29 @@ imow()
 
     clear
 
-    local i DIMENSIONS RANDOM
+    local i dimensions random
 
     # find all jpg files and create temporary cache files from them
     for i in *.jpg
     do
         # create random direcotories in case you are running this function more than once at the same time. it prevents cross-over.
-        RANDOM="$(mktemp --directory)"
-        "${RANDOM}" 2>/dev/null
-        echo -e "\\nCreating two temporary cache files: ${RANDOM}/${i%%.jpg}.mpc + ${RANDOM}/${i%%.jpg}.cache\\n"
-        DIMENSIONS="$(identify -format '%wx%h' "${i}")"
-        convert "${i}" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "${DIMENSIONS}" -strip \
+        random="$(mktemp --directory)"
+        "${random}" 2>/dev/null
+        echo -e "\\nCreating two temporary cache files: ${random}/${i%%.jpg}.mpc + ${random}/${i%%.jpg}.cache\\n"
+        dimensions="$(identify -format '%wx%h' "${i}")"
+        convert "${i}" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "${dimensions}" -strip \
         -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize '136' -quality '82' -define jpeg:fancy-upsampling='off' \
         -define png:compression-filter='5' -define png:compression-level='9' -define png:compression-strategy='1' \
-        -define png:exclude-chunk='all' -auto-level -enhance -interlace 'none' -colorspace 'sRGB' "${RANDOM}/${i%%.jpg}.mpc"
+        -define png:exclude-chunk='all' -auto-level -enhance -interlace 'none' -colorspace 'sRGB' "${random}/${i%%.jpg}.mpc"
         clear
-        for i in "${RANDOM}"/*.mpc
+        for i in "${random}"/*.mpc
         do
             if [ -f "${i}" ]; then
                 echo -e "\\nOverwriting orignal file with optimized self: ${i} >> ${i%%.mpc}.jpg\\n"
                 convert "${i}" -monitor "${i%%.mpc}.jpg"
                 if [ -f "${i%%.mpc}.jpg" ]; then
                     mv "${i%%.mpc}.jpg" "${PWD}"
-                    rm -fr "${RANDOM}"
+                    rm -fr "${random}"
                     clear
                 else
                     clear
@@ -587,7 +587,7 @@ imow()
     # pip install gTTS
     # sudo apt -y install sox libsox-fmt-all
     if [ "${?}" -eq '0' ]; then
-        gtts-cli -l en 'Image conversion complete.' | play -t mp3 - &>/dev/null
+        gtts-cli -l en 'Image conversion completed.' | play -t mp3 - &>/dev/null
         return 0
     else
         gtts-cli -l en 'Image conversion failed.' | play -t mp3 - &>/dev/null
@@ -596,7 +596,7 @@ imow()
 }
 
 ##################################################
-## SHOW FILE NAME AND SIZE IN CURRENT DIRECTORY ##
+## SHOW file name AND SIZE IN CURRENT DIRECTORY ##
 ##################################################
 
 fs() { clear; du --max-depth=1 -abh | grep -Eo '^[0-9A-Za-z\.]*|[a-zA-Z0-9\_]+\.jpg$'; }
@@ -615,13 +615,13 @@ nvme_temp()
 {
     clear
 
-    local N0 N1 N2
+    local n0 n1 n2
 
-    N0="$(sudo nvme smart-log /dev/nvme0n1)"
-    N1="$(sudo nvme smart-log /dev/nvme1n1)"
-    N2="$(sudo nvme smart-log /dev/nvme2n1)"
+    n0="$(sudo nvme smart-log /dev/nvme0n1)"
+    n1="$(sudo nvme smart-log /dev/nvme1n1)"
+    n2="$(sudo nvme smart-log /dev/nvme2n1)"
 
-    printf "nvme0n1:\n\n%s\n\nnvme1n1:\n\n%s\n\nnvme2n1:\n\n%s\n\n" "${N0}" "${N1}" "${N2}"
+    printf "nvme0n1:\n\n%s\n\nnvme1n1:\n\n%s\n\nnvme2n1:\n\n%s\n\n" "${n0}" "${n1}" "${n2}"
 }
 
 #############################
