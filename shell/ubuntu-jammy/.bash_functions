@@ -639,4 +639,7 @@ rftn()
 ## NAUTILUS COMMANDS ##
 #######################
 
-nopen() { nohup nautilus -w "${1}" &>/dev/null &; }
+nopen()
+{
+    nohup nautilus -w "${1}" &>/dev/null &
+}
