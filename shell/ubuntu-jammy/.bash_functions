@@ -546,42 +546,46 @@ imo()
 # OPTIMIZE AND OVERWRITE THE ORIGINAL IMAGES
 imow()
 {
-    local boilerplate dims mpc new old rc tdir
-    tdir="$(mktemp --directory)" 
-    boilerplate=( -monitor -filter 'Triangle' -define filter:support='2' 
-        -strip -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize '136'
-        -quality '82' -define jpeg:fancy-upsampling='off' 
-        -define png:compression-filter='5' -define png:compression-level='9'
-        -define png:compression-strategy='1' -define png:exclude-chunk='all'
-        -auto-level -enhance -interlace 'none' -colorspace 'sRGB' )
-    for old in *.[Jj][Pp][Gg]
-    do dims="$(identify -format '%wx%h' "${old}")"
-    if convert "${old}" "${boilerplate[@]}" -thumbnail "${dims}" "${tdir}/${old%.???}.mpc" > "${tdir}/convert-mpc.out"
-    then for mpc in "${tdir}"/*.mpc
-        do new="${mpc%.mpc}.jpg"
-            if convert "${mpc}" -monitor "$new" > "${tdir}/convert-jpg.out"
-            then echo "Replacing ${old} with optimized version $new"
-                if mv "$new" "${PWD}"
-                    then [[ "${old}" == "$new" ]] || rm -f "${old}"
-                    rm -fr "${tdir:?safety check}/*.*" # can't expand to rm -fr /*
-                else rc="${?}";
-                    echo "Cannot mv '$new' to '${PWD}': error ${rc}; aborting" >&2
-                    exit "${rc}"
+
+    clear
+
+    local i dimensions random
+
+    # find all jpg files and create temporary cache files from them
+    for i in *.jpg
+    do
+        # create random direcotories in case you are running this function more than once at the same time. it prevents cross-over.
+        random="$(mktemp --directory)"
+        "${random}" 2>/dev/null
+        echo -e "\\nCreating two temporary cache files: ${random}/${i%%.jpg}.mpc + ${random}/${i%%.jpg}.cache\\n"
+        dimensions="$(identify -format '%wx%h' "${i}")"
+        convert "${i}" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "${dimensions}" -strip \
+        -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize '136' -quality '82' -define jpeg:fancy-upsampling='off' \
+        -define png:compression-filter='5' -define png:compression-level='9' -define png:compression-strategy='1' \
+        -define png:exclude-chunk='all' -auto-level -enhance -interlace 'none' -colorspace 'sRGB' "${random}/${i%%.jpg}.mpc"
+        clear
+        for i in "${random}"/*.mpc
+        do
+            if [ -f "${i}" ]; then
+                echo -e "\\nOverwriting orignal file with optimized self: ${i} >> ${i%%.mpc}.jpg\\n"
+                convert "${i}" -monitor "${i%%.mpc}.jpg"
+                if [ -f "${i%%.mpc}.jpg" ]; then
+                    mv "${i%%.mpc}.jpg" "${PWD}"
+                    rm -fr "${random}"
+                    clear
+                else
+                    clear
+                    echo 'Error: Unable to find the optimized image and therfore can'\''t overwrite the original.'
+                    echo
+                    exit 1
                 fi
-            else rc="${?}"
-                echo "convert error ${rc} on ${mpc}; c.f. ${tdir} - aborting." >&2
-                exit "${rc}"
-             fi
-          done
-    else rc="${?}"
-        echo "convert error ${rc} on ${old}; c.f. ${tdir} - aborting." >&2
-        exit "${rc}"
-    fi
+            fi
+        done
     done
-    rm -fr "${tdir}"
 
     # The text-to-speech below requries the following packages:
-    # pip install gTTS; sudo apt -y install sox libsox-fmt-all
+    # pip install gTTS
+    # sudo apt -y install sox libsox-fmt-all
     if [ "${?}" -eq '0' ]; then
         gtts-cli -l en 'Image conversion completed.' | play -t mp3 - &>/dev/null
         return 0
