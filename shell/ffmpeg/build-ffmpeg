@@ -285,7 +285,8 @@ gpu_arch_fn()
     echo
 
     local gpu_answer
-    
+
+    echo
     echo 'We need to tune the build to match your specific Nvidia GPU card which will maximize the hardware acceleration performance.'
     echo '==========================================================================================================================='
     echo
