@@ -45,6 +45,7 @@ alias logout='gnome-session-quit --no-prompt'
 alias poweroff='sudo poweroff'
 alias reboot='sudo reboot'
 alias shutdown='sudo shutdown -h now'
+alias reboot-uefi='sudo systemctl reboot --firmware-setup'
 
 # enable color support of ls and also add handy aliases
 if [ -x '/usr/bin/dircolors' ]; then
@@ -228,7 +229,7 @@ alias psarch='clear; dpkg --print-architecture'
 alias psusb='lsblk -a | sort > ~/usb.txt'
 
 # remove bom
-alias rmb="sed -i '1s/^\xEF\xBB\xBF//' "$1""
+alias rmb="sed -i '1s/^\xEF\xBB\xBF//' ${1}"
 
 # get system architechture
 alias showarch='dpkg --print-architecture'
@@ -238,6 +239,7 @@ alias ddcu='ddclient -daemon=0 -debug -verbose -noquiet'
 
 # find and kill process by pid or name
 alias tk='kill -9'
+alias tka='killall -9'
 
 # SNAP COMMANDS
 alias snap_on='snap set core snapshots.automatic.retention=yes' # turn on snap automatic snapshots
@@ -254,3 +256,14 @@ alias runff='bash ~/tmp/test.sh --build --enable-gpl-and-non-free --latest'
 alias nc='nordvpn connect United_States Atlanta'
 alias nqc='nordvpn connect'
 alias nd='nordvpn disconnect'
+
+# watch commands (system monitoring)
+alias wmem='clear; watch free -m'
+alias wtemp='clear; watch sensors'
+alias wgpu='clear; watch ndivia-smi'
+
+# UBUNTU VERSION
+alias uver="clear; lsb_release -a | grep -Eo '^Des.*\s*[A-Za-z.*]$'"
+
+# FIX GPG KEY ERRORS DURING APT UPDATE THAT SHOWS THEY ARE "DEPRECIATED"
+alias fix_gpg='sudo cp /etc/apt/trusted.gpg /etc/apt/trusted.gpg.d'
