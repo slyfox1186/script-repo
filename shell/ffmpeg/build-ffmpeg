@@ -17,6 +17,10 @@
 ##        hardware acceleration is enabled when building FFmpeg at the
 ##        script's end.
 ##
+##  Updated: 02.02.23
+##
+##  Version: 1.1
+##
 ##########################################################################
 
 clear
@@ -35,7 +39,7 @@ fi
 
 PROGNAME="${0:2}"
 # Master branch latest snapshot
-FFMPEG_VERSION='c0bc804e552bf6b21ae7da9cfeefe7405e380add'
+FFMPEG_VERSION='7d49fef8b426041e22fde77771b435d9411241a0'
 SCRIPT_VERSION='2.00'
 PACKAGES="${PWD}"/packages
 WORKSPACE="${PWD}"/workspace
@@ -1105,8 +1109,8 @@ CONFIGURE_OPTIONS+=('--enable-amf')
 ## BUILD FFMPEG
 ##
 
-build 'ffmpeg' "${FFMPEG_VERSION}"
-download "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/${FFMPEG_VERSION}.tar.gz" "FFmpeg-release-$FFMPEG_VERSION.tar.gz"
+build 'ffmpeg' "${FFMPEG_VERSION::-33}"
+download "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/${FFMPEG_VERSION}.tar.gz" "FFmpeg-snapshot-${FFMPEG_VERSION}.tar.gz"
 # shellcheck disable=SC2086
 ./configure \
     "${CONFIGURE_OPTIONS[@]}" \
