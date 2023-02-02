@@ -463,7 +463,8 @@ cuda_fn()
     # UPDATE THE APT PACKAGES THEN INSTALL THE CUDA-SDK-TOOLKIT
     sudo apt update
     sudo apt -y install cuda
-
+    
+    # CHECK IF THE CUDA FOLDER EXISTS TO ENSURE IT WAS INSTALLED
     if [ ! -d '/usr/local/cuda-12.0/bin' ]; then
         cuda_fail_fn
     else
@@ -473,7 +474,7 @@ cuda_fn()
 }
 
 ##
-## Additional Required Geforce CUDA Developement Packages
+## ADDITIONAL REQUIRED GEFORCE CUDA DEVELOPEMENT PACKAGES
 ##
   
 cuda_additional_fn()
@@ -491,10 +492,6 @@ cuda_additional_fn()
         fi
     done
 
-    ##
-    ## Geforce CUDA Required Developement Packages
-    ##
-
     if [ -n "${MISSING_PKGS}" ]; then
         for i in "${MISSING_PKGS}"
         do
@@ -506,7 +503,7 @@ cuda_additional_fn()
 }
 
 ##
-## Install CUDA
+## INSTALL CUDA
 ##
 
 if ! which nvcc &>/dev/null ; then
@@ -546,7 +543,7 @@ else
 fi
 
 ##
-## build tools
+## BUILD TOOLS
 ##
 
 if build 'giflib' '5.2.1'; then
@@ -679,10 +676,12 @@ if command_exists 'python3'; then
     if command_exists 'pip3'; then
         # meson and ninja can be installed via pip3
         execute pip3 install pip setuptools --quiet --upgrade --no-cache-dir --disable-pip-version-check
-        for i in meson ninja; do
+        for i in meson ninja
+        do
             if ! command_exists "${i}"; then
                 execute pip3 install "${i}" --quiet --upgrade --no-cache-dir --disable-pip-version-check
             fi
+        export PATH="${PATH}:${HOME}/Library/Python/3.9/bin"
         done
     fi
     if command_exists 'meson'; then
@@ -724,27 +723,27 @@ fi
 
 if ${NONFREE_AND_GPL}; then
 
-    if build 'x264' '941cae6'; then
-        download 'https://code.videolan.org/videolan/x264/-/archive/941cae6d1d6d6344c9a1d27440eaf2872b18ca9a/x264-941cae6d1d6d6344c9a1d27440eaf2872b18ca9a.tar.gz' 'x264-941cae6.tar.gz'
-        cd "${PACKAGES}/x264-941cae6" || exit 1
+    if build 'x264' 'eaa68fa'; then
+        download 'https://code.videolan.org/videolan/x264/-/archive/eaa68fad9e5d201d42fde51665f2d137ae96baf0/x264-eaa68fad9e5d201d42fde51665f2d137ae96baf0.tar.gz' 'x264-eaa68fa.tar.gz'
+        cd "${PACKAGES}/x264-eaa68fa" || exit 1
         execute ./configure --prefix="${WORKSPACE}" --enable-static --enable-pic CXXFLAGS="-fPIC ${CXXFLAGS}"
         execute make "-j${CPUS}"
         execute make install
         execute make install-lib-static
-        build_done 'x264' '941cae6'
+        build_done 'x264' 'eaa68fa'
     fi
     CONFIGURE_OPTIONS+=('--enable-libx264')
 fi
 
-## When ffmpeg is being built it requires the x265 binaries to have the libnuma-dev apt package already installed.
-FIND_LIBNUMA="$(sudo find /usr/ -name 'libnuma.so')"
-if [ -z "${FIND_LIBNUMA}" ]; then
-    echo '$ installing the required apt package libnuma-dev'
-    echo
-    sudo apt -y install libnuma-dev
-fi
-
 if ${NONFREE_AND_GPL}; then
+    ## When ffmpeg is being built it requires the x265 binaries to have the libnuma-dev apt package already installed.
+    FIND_LIBNUMA="$(sudo find /usr/ -name 'libnuma.so')"
+    if [ -z "${FIND_LIBNUMA}" ]; then
+        echo '$ Installing the required apt package libnuma-dev'
+        echo
+        sudo apt -y install libnuma-dev
+    fi
+
     if build 'x265' '3.4'; then
         download 'https://github.com/videolan/x265/archive/refs/tags/3.4.tar.gz' 'x265-3.4.tar.gz'
         cd 'build/linux' || exit 1
@@ -784,7 +783,7 @@ EOF
             sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "${WORKSPACE}"/lib/pkgconfig/x265.pc
         fi
 
-        build_done 'x265' '3.5'
+        build_done 'x265' '3.4'
     fi
     CONFIGURE_OPTIONS+=('--enable-libx265')
 fi
@@ -801,7 +800,7 @@ CONFIGURE_OPTIONS+=('--enable-libvpx')
 
 if ${NONFREE_AND_GPL}; then
     if build 'xvidcore' '1.3.7'; then
-        download 'https://downloads.xvid.com/downloads/xvidcore-1.3.7.tar.gz'
+        download 'https://downloads.xvid.com/downloads/xvidcore-1.3.7.tar.bz2'
         cd 'build/generic' || exit 1
         execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
         execute make "-j${CPUS}"
@@ -831,7 +830,7 @@ if ${NONFREE_AND_GPL}; then
     CONFIGURE_OPTIONS+=('--enable-libvidstab')
 fi
 
-if build 'av1' 'bcfe6fb'; then
+if build 'av1' '2621615'; then
   # libaom bcfe6fb == v3.5.0
     download 'https://aomedia.googlesource.com/aom/+archive/2621615dfb7a6db45522c47f7495868d2fe01379.tar.gz' 'av1.tar.gz' 'av1'
     # download 'https://aomedia.googlesource.com/aom/+archive/bcfe6fbfed315f83ee8a95465c654ee8078dbff9.tar.gz' 'av1.tar.gz' 'av1'
@@ -840,7 +839,7 @@ if build 'av1' 'bcfe6fb'; then
     execute cmake -DENABLE_TESTS='0' -DENABLE_EXAMPLES='0' -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR='lib' "${PACKAGES}"/av1
     execute make "-j${CPUS}"
     execute make install
-    build_done 'av1' '9904efe'
+    build_done 'av1' '2621615'
 fi
 CONFIGURE_OPTIONS+=('--enable-libaom')
 
@@ -857,7 +856,7 @@ fi
 CONFIGURE_OPTIONS+=('--enable-libzimg')
 
 ##
-## audio libraries
+## AUDIO LIBRARIES
 ##
 
 if command_exists 'python3'; then
@@ -872,18 +871,18 @@ if command_exists 'python3'; then
             build_done 'lv2' '1.18.10'
         fi
         if build 'waflib' 'aeef9f5'; then
-            download 'https://gitlab.com/drobilla/autowaf/-/archive/aeef9f5fdf416d9b68c61c75de7dae409f1ac6a4/autowaf-aeef9f5fdf416d9b68c61c75de7dae409f1ac6a4.tar.gz' 'autowaf.tar.gz'
+            download 'https://gitlab.com/drobilla/autowaf/-/archive/aeef9f5fdf416d9b68c61c75de7dae409f1ac6a4/autowaf-aeef9f5fdf416d9b68c61c75de7dae409f1ac6a4.tar.bz2' 'autowaf.tar.bz2'
             build_done 'waflib' 'aeef9f5'
         fi
-        if build 'serd' '0.30.16'; then
-            download 'https://gitlab.com/drobilla/serd/-/archive/v0.30.16/serd-v0.30.16.tar.gz' 'serd-v0.30.16.tar.gz'
+        if build 'serd' 'b4ac1ec'; then
+            download 'https://gitlab.com/drobilla/serd/-/archive/b4ac1ec675b79cd05ed7ff2eda8f41002f3a51ef/serd-b4ac1ec675b79cd05ed7ff2eda8f41002f3a51ef.tar.bz2' 'serd-vb4ac1ec.tar.bz2'
             execute meson build --prefix="${WORKSPACE}" --buildtype='release' --default-library='static' --libdir="${WORKSPACE}"/lib
             execute ninja -C build
             execute ninja -C build install
-            build_done 'serd' '0.30.16'
+            build_done 'serd' 'b4ac1ec'
         fi
         if build 'pcre' '8.45'; then
-            download 'https://altushost-swe.dl.sourceforge.net/project/pcre/pcre/8.45/pcre-8.45.tar.gz' 'pcre-8.45.tar.gz'
+            download 'https://cfhcable.dl.sourceforge.net/project/pcre/pcre/8.45/pcre-8.45.tar.bz2' 'pcre-8.45.tar.bz2'
             execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
             execute make "-j${CPUS}"
             execute make install
@@ -896,12 +895,12 @@ if command_exists 'python3'; then
             execute ninja -C build install
             build_done 'sord' '0.16.14'
         fi
-        if build 'sratom' '0.6.14'; then
-            download 'https://gitlab.com/lv2/sratom/-/archive/v0.6.14/sratom-v0.6.14.tar.gz' 'sratom-v0.6.14.tar.gz'
+        if build 'sratom' '58418e5'; then
+            download 'https://gitlab.com/lv2/sratom/-/archive/58418e5be2a491faa44d6d1c8d57052b1444814a/sratom-58418e5be2a491faa44d6d1c8d57052b1444814a.tar.bz2' 'sratom-v58418e5.tar.bz2'
             execute meson build --prefix="${WORKSPACE}" --buildtype='release' --default-library='static' --libdir="${WORKSPACE}"/lib
             execute ninja -C build
             execute ninja -C build install
-            build_done 'sratom' '0.6.14'
+            build_done 'sratom' '58418e5'
         fi
         if build 'lilv' '0.24.20'; then
             download 'https://gitlab.com/lv2/lilv/-/archive/v0.24.20/lilv-v0.24.20.tar.gz' 'lilv-v0.24.20.tar.gz'
@@ -1009,40 +1008,39 @@ if build 'libpng' '1.6.39'; then
     build_done 'libpng' '1.6.39'
 fi
 
-## does not compile on monterey -> _PrintGifError
-
 if build 'libwebp' '1.2.2'; then
+    # libwebp can fail to compile on Ubuntu if these flags were left set to CFLAGS
     CPPFLAGS=
-    download 'https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.2.2.tar.gz'
-    execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static --disable-dependency-tracking \
-    --disable-gl --with-zlib-include="${WORKSPACE}"/include/ --with-zlib-lib="${WORKSPACE}"/lib
+    download 'https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.2.2.tar.gz' 'libwebp-1.2.2.tar.gz'
+    execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static --disable-dependency-tracking\
+        --disable-gl --with-zlib-include="${WORKSPACE}"/include/ --with-zlib-lib="${WORKSPACE}"/lib
     make_dir build
     cd 'build' || exit 1
     execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
-    -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON' ../
+        -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON' ../
     execute make "-j${CPUS}"
     execute make install
 
     build_done 'libwebp' '1.2.2'
 fi
-CONFIGURE_OPTIONS+=('--enable-libwebp')
+  CONFIGURE_OPTIONS+=('--enable-libwebp')
 
 ##
-## other libraries
+## OTHER LIBRARIES
 ##
 
-if build 'libsdl' '2.0.20'; then
-    download 'https://www.libsdl.org/release/SDL2-2.0.20.tar.gz'
+if build 'libsdl' '2.26.2'; then
+    download 'https://www.libsdl.org/release/SDL2-2.26.2.tar.gz'
     execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
     execute make "-j${CPUS}"
     execute make install
 
-    build_done 'libsdl' '2.0.20'
+    build_done 'libsdl' '2.26.2'
 fi
 
 if ${NONFREE_AND_GPL}; then
-    if build 'srt' '1.4.3'; then
-        download 'https://github.com/Haivision/srt/archive/v1.4.3.tar.gz' 'srt-1.4.3.tar.gz'
+    if build 'srt' '1.5.1'; then
+        download 'https://github.com/Haivision/srt/archive/refs/tags/v1.5.1.tar.gz' 'srt-1.5.1.tar.gz'
         export OPENSSL_ROOT_DIR="${WORKSPACE}"
         export OPENSSL_LIB_DIR="${WORKSPACE}"/lib
         export OPENSSL_INCLUDE_DIR="${WORKSPACE}"/include/
@@ -1054,7 +1052,7 @@ if ${NONFREE_AND_GPL}; then
             sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "${WORKSPACE}"/lib/pkgconfig/srt.pc
         fi
 
-        build_done 'srt' '1.4.3'
+        build_done 'srt' '1.5.1'
     fi
         CONFIGURE_OPTIONS+=('--enable-libsrt')
 fi
@@ -1065,11 +1063,11 @@ fi
 #####################
 
 if which 'nvcc' &>/dev/null ; then
-    if build 'nv-codec' '8.1.24.14'; then
-        download 'https://github.com/FFmpeg/nv-codec-headers/releases/download/n8.1.24.14/nv-codec-headers-8.1.24.14.tar.gz'
+    if build 'nv-codec' '11.1.5.2'; then
+        download 'https://github.com/FFmpeg/nv-codec-headers/releases/download/n11.1.5.2/nv-codec-headers-11.1.5.2.tar.gz'
         execute make PREFIX="${WORKSPACE}"
         execute make install PREFIX="${WORKSPACE}"
-        build_done 'nv-codec' '8.1.24.14'
+        build_done 'nv-codec' '11.1.5.2'
     fi
     CFLAGS+=' -I/usr/local/cuda-12/include'
     LDFLAGS+=' -L/usr/local/cuda-12/lib64'
@@ -1094,17 +1092,17 @@ if [ -z "${LDEXEFLAGS}" ]; then
     fi
 fi
 
-if build 'amf' '1.4.28'; then
-    download 'https://github.com/GPUOpen-LibrariesAndSDKs/AMF/archive/refs/tags/v1.4.28.tar.gz' 'AMF-1.4.28.tar.gz' 'AMF-1.4.28'
+if build 'amf' '1.4.29'; then
+    download 'https://github.com/GPUOpen-LibrariesAndSDKs/AMF/archive/refs/tags/v1.4.29.tar.gz' 'AMF-1.4.29.tar.gz' 'AMF-1.4.29'
     execute rm -rf "${WORKSPACE}"/include/AMF
     execute mkdir -p "${WORKSPACE}"/include/AMF
-    execute cp -fr "${PACKAGES}"/AMF-1.4.28/AMF-1.4.28/amf/public/include/* "${WORKSPACE}"/include/AMF/
-    build_done 'amf' '1.4.28'
+    execute cp -fr "${PACKAGES}"/AMF-1.4.29/AMF-1.4.29/amf/public/include/* "${WORKSPACE}"/include/AMF/
+    build_done 'amf' '1.4.29'
 fi
 CONFIGURE_OPTIONS+=('--enable-amf')
 
 ##
-## FFmpeg
+## BUILD FFMPEG
 ##
 
 build 'ffmpeg' "${FFMPEG_VERSION}"
