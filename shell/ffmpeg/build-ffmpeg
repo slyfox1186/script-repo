@@ -510,6 +510,11 @@ cuda_fn()
     sudo apt update
     sudo apt -y install cuda
     
+    # REMOVE LEFTOVER DEB FILE
+    if [ -f 'cuda-12.1.deb' ]; then
+        sudo rm 'cuda-12.1.deb'
+    fi
+    
     # CHECK IF THE CUDA FOLDER EXISTS TO ENSURE IT WAS INSTALLED
     if [ ! -d '/usr/local/cuda-12.0/bin' ]; then
         cuda_fail_fn
