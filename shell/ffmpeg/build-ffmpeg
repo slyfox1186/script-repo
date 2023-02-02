@@ -72,7 +72,7 @@ exit_fn()
     echo 'The script has finished!'
     echo '=============================='
     echo
-    echo 'Make sure to star this repository to show your suppport!'
+    echo 'Make sure to star this repository to show your support!'
     echo 'https://github.com/slyfox1186/script-repo/'
     echo
     exit 0
@@ -370,7 +370,7 @@ while ((${#} > 0)); do
         fi
         if [[ "${1}" == '--full-static' ]]; then
             if [[ "${ostype}" == 'darwin'* ]]; then
-                echo 'Error: A full static binary can only be build on Linux.'
+                echo 'Error: A full static binary can only be built on Linux.'
                 exit 1
             fi
         LDEXEFLAGS='-static'
@@ -519,7 +519,7 @@ cuda_fn()
 }
 
 ##
-## ADDITIONAL REQUIRED GEFORCE CUDA DEVELOPEMENT PACKAGES
+## ADDITIONAL REQUIRED GEFORCE CUDA DEVELOPMENT PACKAGES
 ##
   
 cuda_additional_fn()
@@ -553,7 +553,7 @@ cuda_additional_fn()
 
 if ! which 'nvcc' &>/dev/null ; then
     echo
-    echo 'You don'\''t have the CUDA toolkit installed OR you don'\''t have it in your $PATH variable.'
+    echo 'You don'\''t have the cuda-sdk-toolkit installed OR you don'\''t have it in your $PATH variable.'
     echo
     echo 'Do you want to install it and/or add it to your $PATH?'
     echo
@@ -562,7 +562,7 @@ if ! which 'nvcc' &>/dev/null ; then
     echo '[3] Don'\''t do either and continue the build'
     echo
     read -p 'Your choices are (1 to 3): ' cuda_ans
-    clear
+    echo
     if [[ "${cuda_ans}" -eq '1' ]]; then
         cuda_fn
         cuda_additional_fn
@@ -571,13 +571,13 @@ if ! which 'nvcc' &>/dev/null ; then
             PATH="${PATH}:/usr/local/cuda-12.0/bin"
             export PATH
         else
-            echo 'The script was unable to add it to your $PATH because the a required folder is missing: /usr/local/cuda-12.0/bin'
+            echo 'The script was unable to add it to your $PATH because a required folder is missing: /usr/local/cuda-12.0/bin'
             echo
             read -p 'Press enter to continue the build.'
-            clear
+            echo
         fi
     elif [[ "${cuda_ans}" -eq '3' ]]; then
-        clear
+        echo
     else
         clear
         echo 'Error: Bad user input!'
@@ -908,9 +908,7 @@ configure_options+=('--enable-libzimg')
 ##
 
 if command_exists 'python3'; then
-
     if command_exists 'meson'; then
-
         if build 'lv2' '1.18.10'; then
             download 'https://lv2plug.in/spec/lv2-1.18.10.tar.xz' 'lv2-1.18.10.tar.xz'
             execute meson build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
@@ -958,7 +956,6 @@ if command_exists 'python3'; then
             build_done 'lilv' '0.24.20'
         fi
         CFLAGS+=" -I${workspace}/include/lilv-0"
-
         configure_options+=('--enable-lv2')
     fi
 fi
