@@ -549,17 +549,16 @@ imow()
 
     clear
 
-    local i dimensions random
+    local i dims random
 
     # find all jpg files and create temporary cache files from them
     for i in *.jpg
     do
         # create random direcotories in case you are running this function more than once at the same time. it prevents cross-over.
         random="$(mktemp --directory)"
-        "${random}" 2>/dev/null
         echo -e "\\nCreating two temporary cache files: ${random}/${i%%.jpg}.mpc + ${random}/${i%%.jpg}.cache\\n"
-        dimensions="$(identify -format '%wx%h' "${i}")"
-        convert "${i}" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "${dimensions}" -strip \
+        dims="$(identify -format '%wx%h' "${i}")"
+        convert "${i}" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "${dims}" -strip \
         -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize '136' -quality '82' -define jpeg:fancy-upsampling='off' \
         -define png:compression-filter='5' -define png:compression-level='9' -define png:compression-strategy='1' \
         -define png:exclude-chunk='all' -auto-level -enhance -interlace 'none' -colorspace 'sRGB' "${random}/${i%%.jpg}.mpc"
@@ -584,8 +583,7 @@ imow()
     done
 
     # The text-to-speech below requries the following packages:
-    # pip install gTTS
-    # sudo apt -y install sox libsox-fmt-all
+    # pip install gTTS; sudo apt -y install sox libsox-fmt-all
     if [ "${?}" -eq '0' ]; then
         gtts-cli -l en 'Image conversion completed.' | play -t mp3 - &>/dev/null
         return 0
