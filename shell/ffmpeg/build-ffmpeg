@@ -407,61 +407,53 @@ cuda_fn()
     read -p 'Your choices are (1 to 7): ' CUDA_DIST
     clear
     if [[ "${CUDA_DIST}" -eq '1' ]]; then
-        wget --show progress -cqO 'cuda-12.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-debian10-12-0-local_12.0.0-525.60.13-1_amd64.deb'
-        sudo dpkg -i 'cuda-12.deb'
+        wget --show progress -cqO 'cuda-12.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.1/local_installers/cuda-repo-debian10-12-0-local_12.0.1-525.85.12-1_amd64.deb'
+        sudo dpkg -i 'cuda-12.1.deb'
         sudo cp /var/cuda-repo-debian10-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
         sudo add-apt-repository contrib
-        sudo apt update
-        sudo apt -y install cuda
        elif [[ "${CUDA_DIST}" -eq '2' ]]; then
-        wget --show progress -cqO 'cuda-12.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-debian11-12-0-local_12.0.0-525.60.13-1_amd64.deb'
-        sudo dpkg -i 'cuda-12.deb'
+        wget --show progress -cqO 'cuda-12.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.1/local_installers/cuda-repo-debian11-12-0-local_12.0.1-525.85.12-1_amd64.deb'
+        sudo dpkg -i 'cuda-12.1.deb'
         sudo cp /var/cuda-repo-debian11-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
         sudo add-apt-repository contrib
-        sudo apt update
-        sudo apt -y install cuda
     elif [[ "${CUDA_DIST}" -eq '3' ]]; then
         wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin'
-        sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
-        wget --show progress -cqO 'cuda-12.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-ubuntu1804-12-0-local_12.0.0-525.60.13-1_amd64.deb'
-        sudo dpkg -i 'cuda-12.deb'
+        sudo mv 'cuda-ubuntu1804.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
+        wget --show progress -cqO 'cuda-12.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-ubuntu1804-12-0-local_12.0.0-525.60.13-1_amd64.deb'
+        sudo dpkg -i 'cuda-12.1.deb'
         sudo cp /var/cuda-repo-ubuntu1804-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
-        sudo apt update
-        sudo apt -y install cuda
     elif [[ "${CUDA_DIST}" -eq '4' ]]; then
         wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin'
-        sudo mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600
-        wget --show progress -cqO 'cuda-12.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-ubuntu2004-12-0-local_12.0.0-525.60.13-1_amd64.deb'
-        sudo dpkg -i 'cuda-12.deb'
+        sudo mv 'cuda-ubuntu2004.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
+        wget --show progress -cqO 'cuda-12.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-ubuntu2004-12-0-local_12.0.0-525.60.13-1_amd64.deb'
+        sudo dpkg -i 'cuda-12.1.deb'
         sudo cp /var/cuda-repo-ubuntu2004-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
-        sudo apt update
-        sudo apt -y install cuda
     elif [[ "${CUDA_DIST}" -eq '5' ]]; then
         wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin'
-        sudo mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
-        wget --show progress -cqO 'cuda-12.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-ubuntu2204-12-0-local_12.0.0-525.60.13-1_amd64.deb'
-        sudo dpkg -i 'cuda-12.deb'
+        sudo mv 'cuda-ubuntu2204.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
+        wget --show progress -cqO 'cuda-12.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.1/local_installers/cuda-repo-ubuntu2204-12-0-local_12.0.1-525.85.12-1_amd64.deb'
+        sudo dpkg -i 'cuda-12.1.deb'
         sudo cp /var/cuda-repo-ubuntu2204-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
-        sudo apt update
-        sudo apt -y install cuda
     elif [[ "${CUDA_DIST}" -eq '6' ]]; then
         wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin'
-        sudo mv cuda-wsl-ubuntu.pin /etc/apt/preferences.d/cuda-repository-pin-600
-        wget --show progress -cqO 'cuda-12.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-wsl-ubuntu-12-0-local_12.0.0-1_amd64.deb'
-        sudo dpkg -i 'cuda-12.deb'
+        sudo mv 'cuda-wsl-ubuntu.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
+        wget --show progress -cqO 'cuda-12.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.1/local_installers/cuda-repo-wsl-ubuntu-12-0-local_12.0.1-1_amd64.deb'
+        sudo dpkg -i 'cuda-12.1.deb'
         sudo cp /var/cuda-repo-wsl-ubuntu-12-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
-        sudo apt update
-        sudo apt -y install cuda
     elif [[ "${CUDA_DIST}" -eq '7' ]]; then
         return 0
     fi
 
+    # UPDATE THE APT PACKAGES THEN INSTALL THE CUDA-SDK-TOOLKIT
+    sudo apt update
+    sudo apt -y install cuda
+
     if [ ! -d '/usr/local/cuda-12.0/bin' ]; then
         cuda_fail_fn
+    else
+        PATH="${PATH}:/usr/local/cuda-12.0/bin"
+        export PATH
     fi
-
-    PATH="${PATH}:/usr/local/cuda-12.0/bin"
-    export PATH
 }
 
 ##
@@ -534,7 +526,7 @@ if ! which nvcc &>/dev/null ; then
     fi
 else
     echo
-    echo 'The cuda-toolkit-12-0 packages are installed and ready to be built.'
+    echo 'The cuda-sdk-toolkit v12.0-update-1 packages are installed and ready to be built.'
 fi
 
 ##
@@ -654,12 +646,12 @@ else
     CONFIGURE_OPTIONS+=('--enable-gmp' '--enable-gnutls')
 fi
 
-if build 'cmake' '3.25.1'; then
-    download 'https://github.com/Kitware/CMake/releases/download/v3.25.1/cmake-3.25.1.tar.gz'
+if build 'cmake' '3.25.2'; then
+    download 'https://github.com/Kitware/CMake/releases/download/v3.25.2/cmake-3.25.2.tar.gz'
     execute ./configure --prefix="${WORKSPACE}" --parallel="${CPUS}" -- -DCMAKE_USE_OPENSSL='OFF'
     execute make "-j${CPUS}"
     execute make install
-    build_done 'cmake' '3.25.1'
+    build_done 'cmake' '3.25.2'
 fi
 
 ##
@@ -704,11 +696,12 @@ if build 'svtav1' '1.4.1'; then
     CONFIGURE_OPTIONS+=('--enable-libsvtav1')
 
 if command_exists 'cargo'; then
-    if build 'rav1e' '0.5.0-beta'; then
+    if build 'rav1e' '0.6.3'; then
         execute cargo install --version "0.9.14+cargo-0.66" cargo-c
-        download 'https://github.com/xiph/rav1e/archive/refs/tags/v0.5.0-beta.tar.gz'
+        download 'https://github.com/xiph/rav1e/archive/refs/tags/v0.6.3.tar.gz'
+        # download 'https://github.com/xiph/rav1e/archive/refs/tags/v0.5.0-beta.tar.gz'
         execute cargo cinstall --prefix="${WORKSPACE}" --library-type='staticlib' --crt-static --release
-        build_done 'rav1e' '0.5.0-beta'
+        build_done 'rav1e' '0.6.3'
     fi
     CONFIGURE_OPTIONS+=('--enable-librav1e')
 fi
@@ -1062,8 +1055,8 @@ if which 'nvcc' &>/dev/null ; then
         execute make install PREFIX="${WORKSPACE}"
         build_done 'nv-codec' '8.1.24.14'
     fi
-    CFLAGS+=' -I/usr/local/cuda/include'
-    LDFLAGS+=' -L/usr/local/cuda/lib64'
+    CFLAGS+=' -I/usr/local/cuda-12/include'
+    LDFLAGS+=' -L/usr/local/cuda-12/lib64'
     CONFIGURE_OPTIONS+=('--enable-cuda-nvcc' '--enable-cuvid' '--enable-nvenc' '--enable-cuda-llvm')
 
     if [ -z "${LDEXEFLAGS}" ]; then
@@ -1071,7 +1064,7 @@ if which 'nvcc' &>/dev/null ; then
     fi
 
     # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/ # CONFIGURE_OPTIONS+=('--nvccflags=-gencode arch=compute_52,code=sm_52')
-    CONFIGURE_OPTIONS+=('--nvccflags=-gencode arch=compute_75,code=sm_75')
+    CONFIGURE_OPTIONS+=('--nvccflags=-gencode arch=compute_87,code=sm_87')
 fi
 
 # Vaapi doesn't work well with static links FFmpeg.
@@ -1089,7 +1082,7 @@ if build 'amf' '1.4.28'; then
     download 'https://github.com/GPUOpen-LibrariesAndSDKs/AMF/archive/refs/tags/v1.4.28.tar.gz' 'AMF-1.4.28.tar.gz' 'AMF-1.4.28'
     execute rm -rf "${WORKSPACE}"/include/AMF
     execute mkdir -p "${WORKSPACE}"/include/AMF
-    execute cp -r "${PACKAGES}"/AMF-1.4.28/AMF-1.4.28/amf/public/include/* "${WORKSPACE}"/include/AMF/
+    execute cp -fr "${PACKAGES}"/AMF-1.4.28/AMF-1.4.28/amf/public/include/* "${WORKSPACE}"/include/AMF/
     build_done 'amf' '1.4.28'
 fi
 CONFIGURE_OPTIONS+=('--enable-amf')
@@ -1100,6 +1093,7 @@ CONFIGURE_OPTIONS+=('--enable-amf')
 
 build 'ffmpeg' "${FFMPEG_VERSION}"
 download "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/${FFMPEG_VERSION}.tar.gz" "FFmpeg-release-$FFMPEG_VERSION.tar.gz"
+# shellcheck disable=SC2086
 ./configure \
     "${CONFIGURE_OPTIONS[@]}" \
     --disable-debug \
