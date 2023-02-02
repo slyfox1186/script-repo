@@ -641,3 +641,35 @@ nopen()
 {
     nohup nautilus -w "${1}" &>/dev/null &
 }
+
+#####################
+## FFMPEG COMMANDS ##
+#####################
+
+cuda_purge()
+{
+    clear
+
+    local answer
+
+    echo 'Do you want to completely remove the cuda-sdk-toolkit?'
+    echo
+    echo 'WARNING: Do not reboot your PC without reinstalling the nvidia-driver first!'
+    echo
+    echo '[1] Yes'
+    echo '[2] Exit'
+    echo
+    read -p 'Your choices are (1 or 2): ' answer
+    clear
+
+    if [[ "${answer}" -eq '1' ]]; then
+        echo 'Purging the cuda-sdk-toolkit from your computer.'
+        echo '================================================'
+        echo
+        sudo apt-get -y --purge remove "*cublas*" "cuda*" "nsight*" 
+        sudo apt -y autoremove
+        sudo apt update
+    elif [[ "${answer}" -eq '2' ]]; then
+        return 0
+    fi
+}
