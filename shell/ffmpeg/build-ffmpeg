@@ -1108,11 +1108,11 @@ fi
 #####################
 
 if which 'nvcc' &>/dev/null ; then
-    if build 'nv-codec' '11.1.5.2'; then
-        download 'https://github.com/FFmpeg/nv-codec-headers/releases/download/n11.1.5.2/nv-codec-headers-11.1.5.2.tar.gz'
+    if build 'nv-codec' '8.1.24.14'; then
+        download 'https://github.com/FFmpeg/nv-codec-headers/releases/download/n8.1.24.14/nv-codec-headers-8.1.24.14.tar.gz'
         execute make PREFIX="${workspace}"
         execute make install PREFIX="${workspace}"
-        build_done 'nv-codec' '11.1.5.2'
+        build_done 'nv-codec' '8.1.24.14'
     fi
     CFLAGS+=' -I/usr/local/cuda-12/include'
     LDFLAGS+=' -L/usr/local/cuda-12/lib64'
