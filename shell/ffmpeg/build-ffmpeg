@@ -66,12 +66,28 @@ exit_fn()
 {
     echo
     echo 'The script has finished!'
-    echo '=============================='
+    echo '====================================================================='
     echo
     echo 'Make sure to star this repository to show your suppport!'
-    echo 'https://github.com/slyfox1186/'
+    echo 'https://github.com/slyfox1186/script-repo/'
     echo
     exit 0
+}
+
+ff_version_fn()
+{
+    echo
+    echo 'Build completed.'
+    echo
+    echo 'The binaries can be found in the following locations.'
+    echo
+    echo 'ffmpeg: ' "${INSTALLDIR}/ffmpeg"
+    echo 'ffprobe: ' "${INSTALLDIR}/ffprobe"
+    echo 'ffplay: ' "${INSTALLDIR}/ffplay"
+    echo
+    echo 'FFmpeg Version:'
+    echo '====================================================================='
+    ffmpeg -version
 }
 
 make_dir()
@@ -1132,17 +1148,5 @@ if [ ! -f "${INSTALLDIR}/ffmpeg" ] || [ ! -f "${INSTALLDIR}/ffprobe" ] || [ ! -f
     exit 1
 fi
 
-echo
-echo 'Build completed.'
-echo
-echo 'The binaries can be found in the following locations.'
-echo
-echo 'ffmpeg: ' "${INSTALLDIR}/ffmpeg"
-echo 'ffprobe: ' "${INSTALLDIR}/ffprobe"
-echo 'ffplay: ' "${INSTALLDIR}/ffplay"
-echo
-echo 'FFmpeg Version:'
-echo '=================================================================='
-ffmpeg -version
-
+ff_version_fn
 exit_fn
