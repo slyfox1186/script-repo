@@ -69,7 +69,8 @@ fi
 exit_fn()
 {
     echo
-    echo 'The script has finished!'
+    echo '=============================='
+    echo '   The script has finished!   '
     echo '=============================='
     echo
     echo 'Make sure to star this repository to show your support!'
@@ -81,16 +82,21 @@ exit_fn()
 ff_version_fn()
 {
     echo
-    echo 'Build completed.'
-    echo
-    echo 'The binaries can be found in the following locations.'
-    echo
-    echo "ffmpeg: ${install_dir}/ffmpeg"
-    echo "ffprobe: ${install_dir}/ffprobe"
-    echo "ffplay: ${install_dir}/ffplay"
-    echo
-    echo 'FFmpeg Version:'
     echo '=============================='
+    echo '       Build completed        '
+    echo '=============================='
+    echo
+    echo '========================================================'
+    echo '  The binaries can be found in the following locations  '
+    echo '========================================================'
+    echo
+    echo " ffmpeg:  ${install_dir}/ffmpeg"
+    echo " ffprobe: ${install_dir}/ffprobe"
+    echo " ffplay:  ${install_dir}/ffplay"
+    echo
+    echo '==============================='
+    echo '        FFmpeg Version         '
+    echo '==============================='
     echo
     ffmpeg -version
 }
@@ -293,7 +299,7 @@ gpu_arch_fn()
 
     echo
     echo 'Tune the build to match your specific Nvidia GPU which will maximize the performance output.'
-    echo '==========================================================================================================================='
+    echo '============================================================================================'
     echo
     echo 'Please select your GPU'\''s architecture.'
     echo
