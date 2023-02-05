@@ -100,6 +100,7 @@ make_dir()
     remove_dir "${1}"
     if ! mkdir "${1}"; then
         printf "\n Failed to create dir %s" "${1}"
+        echo
         exit 1
     fi
 }
@@ -141,6 +142,7 @@ download()
         if [ "${exitcode}" -ne '0' ]; then
             echo
             echo "Failed to download ${1}. Exitcode ${exitcode}"
+            echo
             exit 1
         fi
 
@@ -159,11 +161,13 @@ fi
     if [ -n "${3}" ]; then
         if ! tar -xf "${download_path}/${download_file}" -C "${download_path}/${targetdir}" &>/dev/null; then
             echo "Failed to extract ${download_file}"
+            echo
             exit 1
         fi
     else
         if ! tar -xf "${download_path}/${download_file}" -C "${download_path}/${targetdir}" --strip-components 1 &>/dev/null; then
             echo "Failed to extract ${download_file}"
+            echo
             exit 1
         fi
     fi
@@ -191,6 +195,7 @@ execute()
         echo "${output}"
         echo
         echo "Failed to Execute ${*}" >&2
+        echo
         exit 1
     fi
 }
@@ -372,6 +377,7 @@ while ((${#} > 0)); do
         if [[ "${1}" == '--full-static' ]]; then
             if [[ "${ostype}" == 'darwin'* ]]; then
                 echo 'Error: A full static binary can only be built on Linux.'
+                echo
                 exit 1
             fi
         LDEXEFLAGS='-static'
@@ -383,6 +389,7 @@ while ((${#} > 0)); do
         ;;
     *)
         usage
+        echo
         exit 1
         ;;
     esac
@@ -391,6 +398,7 @@ done
 if [ -z "${bflag}" ]; then
     if [ -z "${cflag}" ]; then
         usage
+        echo
         exit 1
     fi
     exit 0
@@ -428,16 +436,19 @@ export PKG_CONFIG_PATH
 
 if ! command_exists 'make'; then
     echo 'The '\''make'\'' package is not installed. It is required for this script to run.'
+    echo
     exit 1
 fi
 
 if ! command_exists 'g++'; then
     echo 'The '\''g++'\'' package is not installed. It is required for this script to run.'
+    echo
     exit 1
 fi
 
 if ! command_exists 'curl'; then
     echo 'The '\''curl'\'' package is not installed. It is required for this script to run.'
+    echo
     exit 1
 fi
 
@@ -739,28 +750,28 @@ if command_exists 'python3'; then
         done
     fi
     if command_exists 'meson'; then
-        if build 'dav1d' '1.0.0'; then
-            download 'https://code.videolan.org/videolan/dav1d/-/archive/1.0.0/dav1d-1.0.0.tar.gz'
+        if build 'dav1d' '77b3955'; then
+            download 'https://code.videolan.org/videolan/dav1d/-/archive/77b3955537c716acbbdf4bfc46ec2f6b0ccd683a/dav1d-77b3955537c716acbbdf4bfc46ec2f6b0ccd683a.tar.gz'
             make_dir build
             execute meson build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
             execute ninja -C build
             execute ninja -C build install
-            build_done 'dav1d' '1.0.0'
+            build_done 'dav1d' '77b3955'
         fi
         configure_options+=('--enable-libdav1d')
     fi
 fi
 
-if build 'svtav1' '1.4.1'; then
+if build 'svtav1' 'd5e1e2a'; then
     # Last known working commit which passed CI Tests from HEAD branch
-    download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v1.4.1/SVT-AV1-v1.4.1.tar.gz' 'svtav1-1.4.1.tar.gz'
-    cd "${packages}"/svtav1-1.4.1//Build/linux || exit 1
+    download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/d5e1e2a586020854733f6b0806064d0c900c88d2/SVT-AV1-d5e1e2a586020854733f6b0806064d0c900c88d2.tar.gz' 'svtav1-d5e1e2a.tar.gz'
+    cd "${packages}"/svtav1-d5e1e2a//Build/linux || exit 1
     execute cmake -DCMAKE_INSTALL_PREFIX="${workspace}" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' ../.. -G 'Unix Makefiles' -DCMAKE_BUILD_TYPE='Release'
     execute make "-j${cpus}"
     execute make install
     execute cp 'SvtAv1Enc.pc' "${workspace}"/lib/pkgconfig/
     execute cp 'SvtAv1Dec.pc' "${workspace}"/lib/pkgconfig/
-    build_done 'svtav1' '1.4.1'
+    build_done 'svtav1' 'd5e1e2a'
     fi
     configure_options+=('--enable-libsvtav1')
 
@@ -768,7 +779,6 @@ if command_exists 'cargo'; then
     if build 'rav1e' '0.6.3'; then
         execute cargo install --version '0.9.14+cargo-0.66' cargo-c
         download 'https://github.com/xiph/rav1e/archive/refs/tags/v0.6.3.tar.gz'
-        # download 'https://github.com/xiph/rav1e/archive/refs/tags/v0.5.0-beta.tar.gz'
         execute cargo cinstall --prefix="${workspace}" --library-type='staticlib' --crt-static --release
         build_done 'rav1e' '0.6.3'
     fi
@@ -885,15 +895,15 @@ if ${nonfree_and_gpl}; then
     configure_options+=('--enable-libvidstab')
 fi
 
-if build 'av1' '2621615'; then
+if build 'av1' '7be63ce'; then
   # libaom bcfe6fb == v3.5.0
-    download 'https://aomedia.googlesource.com/aom/+archive/2621615dfb7a6db45522c47f7495868d2fe01379.tar.gz' 'av1.tar.gz' 'av1'
+    download 'https://aomedia.googlesource.com/aom/+archive/7be63cef996e6b09c0bfa0057334a5cba5d027c8.tar.gz' 'av1.tar.gz' 'av1'
     make_dir "${packages}/aom_build"
     cd "${packages}"/aom_build || exit 1
     execute cmake -DENABLE_TESTS='0' -DENABLE_EXAMPLES='0' -DCMAKE_INSTALL_PREFIX="${workspace}" -DCMAKE_INSTALL_LIBDIR='lib' "${packages}"/av1
     execute make "-j${cpus}"
     execute make install
-    build_done 'av1' '2621615'
+    build_done 'av1' '7be63ce'
 fi
 configure_options+=('--enable-libaom')
 
@@ -923,11 +933,11 @@ if command_exists 'python3'; then
             build_done 'lv2' '1.18.10'
         fi
         if build 'waflib' 'aeef9f5'; then
-            download 'https://gitlab.com/drobilla/autowaf/-/archive/aeef9f5fdf416d9b68c61c75de7dae409f1ac6a4/autowaf-aeef9f5fdf416d9b68c61c75de7dae409f1ac6a4.tar.bz2' 'autowaf.tar.bz2'
+            download 'https://gitlab.com/drobilla/autowaf/-/archive/aeef9f5fdf416d9b68c61c75de7dae409f1ac6a4/autowaf-aeef9f5fdf416d9b68c61c75de7dae409f1ac6a4.tar.bz2' 'autowaf-aeef9f5.tar.bz2'
             build_done 'waflib' 'aeef9f5'
         fi
         if build 'serd' 'b4ac1ec'; then
-            download 'https://gitlab.com/drobilla/serd/-/archive/b4ac1ec675b79cd05ed7ff2eda8f41002f3a51ef/serd-b4ac1ec675b79cd05ed7ff2eda8f41002f3a51ef.tar.bz2' 'serd-vb4ac1ec.tar.bz2'
+            download 'https://gitlab.com/drobilla/serd/-/archive/b4ac1ec675b79cd05ed7ff2eda8f41002f3a51ef/serd-b4ac1ec675b79cd05ed7ff2eda8f41002f3a51ef.tar.bz2' 'serd-b4ac1ec.tar.bz2'
             execute meson build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
             execute ninja -C build
             execute ninja -C build install
@@ -947,16 +957,17 @@ if command_exists 'python3'; then
             execute ninja -C build install
             build_done 'sord' '0.16.14'
         fi
-        if build 'sratom' '0.6.14'; then
-            download 'https://gitlab.com/lv2/sratom/-/archive/v0.6.14/sratom-v0.6.14.tar.gz' 'sratom-v0.6.14.tar.gz'
+        if build 'sratom' '58418e5'; then
+            download 'https://gitlab.com/lv2/sratom/-/archive/58418e5be2a491faa44d6d1c8d57052b1444814a/sratom-58418e5be2a491faa44d6d1c8d57052b1444814a.tar.bz2'  'sratom-58418e5.tar.bz2'
+            # download 'https://gitlab.com/lv2/sratom/-/archive/v0.6.14/sratom-v0.6.14.tar.gz' 'sratom-v0.6.14.tar.gz'
             execute meson build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
             execute ninja -C build
             execute ninja -C build install
-            build_done 'sratom' '0.6.14'
+            build_done 'sratom' '58418e5'
         fi
         if build 'lilv' '0.24.20'; then
             download 'https://gitlab.com/lv2/lilv/-/archive/v0.24.20/lilv-v0.24.20.tar.gz' 'lilv-v0.24.20.tar.gz'
-              execute meson build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
+            execute meson build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
             execute ninja -C build
             execute ninja -C build install
             build_done 'lilv' '0.24.20'
@@ -1003,7 +1014,8 @@ fi
 
 if build 'libvorbis' '1.3.7'; then
     download 'https://ftp.osuosl.org/pub/xiph/releases/vorbis/libvorbis-1.3.7.tar.xz'
-    execute ./configure --prefix="${workspace}" --with-ogg-libraries="${workspace}"/lib --with-ogg-includes="${workspace}"/include/ --enable-static --disable-shared --disable-oggtest
+    execute ./configure --prefix="${workspace}" --with-ogg-libraries="${workspace}"/lib \
+        --with-ogg-includes="${workspace}"/include/ --enable-static --disable-shared --disable-oggtest
     execute make "-j${cpus}"
     execute make install
     build_done 'libvorbis' '1.3.7'
@@ -1063,10 +1075,9 @@ if build 'libwebp' '1.2.2'; then
     # libwebp can fail to compile on Ubuntu if these flags were left set to CFLAGS
     CPPFLAGS=
     download 'https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.2.2.tar.gz' 'libwebp-1.2.2.tar.gz'
-    execute ./configure --prefix="${workspace}" --disable-shared --enable-static --disable-dependency-tracking \
-        --disable-gl --with-zlib-include="${workspace}"/include/ --with-zlib-lib="${workspace}"/lib
+    execute ./configure --prefix="${workspace}" --disable-shared --enable-static --disable-dependency-tracking --disable-gl --with-zlib-include="${workspace}"/include/ --with-zlib-lib="${workspace}"/lib
     make_dir build
-    cd 'build' || exit 1
+    cd 'build'|| exit 1
     execute cmake -DCMAKE_INSTALL_PREFIX="${workspace}" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
         -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON' ../
     execute make "-j${cpus}"
@@ -1120,8 +1131,8 @@ if which 'nvcc' &>/dev/null ; then
         execute make install PREFIX="${workspace}"
         build_done 'nv-codec' '8.1.24.14'
     fi
-    CFLAGS+=' -I/usr/local/cuda-12/include'
-    LDFLAGS+=' -L/usr/local/cuda-12/lib64'
+    CFLAGS+=' -I/usr/local/cuda-12.0/include'
+    LDFLAGS+=' -L/usr/local/cuda-12.0/lib64'
     configure_options+=('--enable-cuda-nvcc' '--enable-cuvid' '--enable-nvenc' '--enable-cuda-llvm')
 
     if [ -z "${LDEXEFLAGS}" ]; then
