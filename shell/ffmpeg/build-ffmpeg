@@ -39,7 +39,7 @@ fi
 
 progname="${0:2}"
 # Master branch latest snapshot
-ffmpeg_version='7d49fef8b426041e22fde77771b435d9411241a0'
+ffmpeg_version='bdc76f467f5caaa15b3bd11cbe6c52cc8f2f45b1'
 script_version='2.20'
 packages="${PWD}"/packages
 workspace="${PWD}"/workspace
