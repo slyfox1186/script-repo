@@ -682,3 +682,23 @@ cuda_purge()
         return 0
     fi
 }
+
+##############################
+## LIST LARGE FILES BY TYPE ##
+##############################
+
+large_files)
+{
+    clear
+
+    local answer
+
+    echo 'Input the file extension to search for without a dot: '
+    echo
+    read -p 'Enter your choice: ' answer
+    clear
+    find "${PWD}" -type f -name "*.${answer}" -printf '%h\n' | sort -u -o 'large-files.txt'
+    if [ -f 'large-files.txt' ]; then
+        sudo gedit 'large-files.txt'
+    fi
+}
