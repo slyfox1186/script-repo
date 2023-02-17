@@ -687,7 +687,7 @@ cuda_purge()
 ## LIST LARGE FILES BY TYPE ##
 ##############################
 
-large_files)
+large_files()
 {
     clear
 
