@@ -11,7 +11,7 @@
     ##           image processor. It can blur, sharpen, warp, reduce,
     ##           file size, ect... It is fantastic.
     ##
-    ## Last Updated: 01.30.23
+    ## Last Updated: 02.16.23
     ##
     #################################################################
 
@@ -32,7 +32,8 @@
     ## IMAGEMAGICK VERSION
     ##
 
-    IMVER='7.1.0-60'
+    SCRIPT_VER='1.62'
+    IMVER='7.1.0-62'
     LVER='1.2.59'
 
     ######################
@@ -171,7 +172,7 @@
     ##
 
     clear
-    echo 'Starting ImageMagick Build'
+    echo "Starting ImageMagick Build Version: ${SCRIPT_VER}"
     echo '=============================='
     echo
     sleep 2
