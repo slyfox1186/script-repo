@@ -551,6 +551,10 @@ imow()
 
     local i dimensions random
 
+    # Delete any leftover temp folders in the /tmp directory. caused by stopping the loop pre-maturely.
+    if [ -d /tmp/tmp.* ] ; then
+        sudo rm -fr /tmp/tmp.*
+    fi
     # find all jpg files and create temporary cache files from them
     for i in *.jpg
     do
