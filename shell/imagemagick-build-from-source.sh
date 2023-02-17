@@ -172,7 +172,7 @@
     ##
 
     clear
-    echo "Starting ImageMagick Build Version: ${SCRIPT_VER}"
+    echo "Starting ImageMagick Build v${SCRIPT_VER}"
     echo '=============================='
     echo
     sleep 2
