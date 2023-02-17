@@ -549,16 +549,17 @@ imow()
 
     clear
 
-    local i dims random
+    local i dimensions random
 
     # find all jpg files and create temporary cache files from them
     for i in *.jpg
     do
         # create random direcotories in case you are running this function more than once at the same time. it prevents cross-over.
         random="$(mktemp --directory)"
+        "${random}" 2>/dev/null
         echo -e "\\nCreating two temporary cache files: ${random}/${i%%.jpg}.mpc + ${random}/${i%%.jpg}.cache\\n"
-        dims="$(identify -format '%wx%h' "${i}")"
-        convert "${i}" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "${dims}" -strip \
+        dimensions="$(identify -format '%wx%h' "${i}")"
+        convert "${i}" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "${dimensions}" -strip \
         -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize '136' -quality '82' -define jpeg:fancy-upsampling='off' \
         -define png:compression-filter='5' -define png:compression-level='9' -define png:compression-strategy='1' \
         -define png:exclude-chunk='all' -auto-level -enhance -interlace 'none' -colorspace 'sRGB' "${random}/${i%%.jpg}.mpc"
@@ -570,13 +571,17 @@ imow()
                 convert "${i}" -monitor "${i%%.mpc}.jpg"
                 if [ -f "${i%%.mpc}.jpg" ]; then
                     mv "${i%%.mpc}.jpg" "${PWD}"
-                    rm -fr "${random}"
-                    clear
+                    for v in "${i}"
+                    do
+                        v_endnoslash="${v%/}"
+                        rm -fr "${v_endnoslash%/*}"
+                        clear
+                    done
                 else
                     clear
-                    echo 'Error: Unable to find the optimized image and therfore can'\''t overwrite the original.'
+                    echo 'Error: Unable to find the optimized image and therfore unable to overwrite the original.'
                     echo
-                    exit 1
+                    return 1
                 fi
             fi
         done
