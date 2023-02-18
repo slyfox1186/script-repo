@@ -40,6 +40,7 @@ fi
 progname="${0:2}"
 # Master branch snapshot
 ffmpeg_version='59a9727c241aa50f18e713dbabbdd5cf3d379411'
+cuda_version='12.0 Update 1'
 script_version='2.21'
 packages="${PWD}"/packages
 workspace="${PWD}"/workspace
@@ -611,7 +612,7 @@ if ! which 'nvcc' &>/dev/null ; then
     fi
 else
     echo
-    echo 'The cuda-sdk-toolkit '\''v12.0 Update 1'\'' package is already installed and ready to be built.'
+    echo "The cuda-sdk-toolkit \"v${cuda_version}\" is already up to date."
 fi
 
 ##
