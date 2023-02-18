@@ -2,7 +2,7 @@
 
     #################################################################
     ##
-    ## GITHUB: HTTPS://GITHUB.COM/SLYFOX1186
+    ## GitHub: https://github.com/slyfox1186
     ##
     ## PURPOSE: BUILDS IMAGEMAGICK 7 FROM SOURCE CODE THAT IS
     ##          OBTAINED FROM THE OFFICIAL IMAGEMAGICK GITHUB PAGE.
@@ -11,7 +11,7 @@
     ##           IMAGE PROCESSOR. IT CAN BLUR, SHARPEN, WARP, REDUCE
     ##           FILE SIZE, ECT... IT IS FANTASTIC.
     ##
-    ## LAST UPDATED: 02.16.23
+    ## LAST UPDATED: 02.18.23
     ##
     #################################################################
 
@@ -32,7 +32,7 @@
     ## VERSION INFORMATION VARIABLES
     ##
 
-    script_ver='1.62'
+    script_ver='1.63'
     imver='7.1.0-62'
     pngver='1.2.59'
 
