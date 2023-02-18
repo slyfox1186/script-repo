@@ -32,7 +32,7 @@
     ## VERSION INFORMATION VARIABLES
     ##
 
-    script_ver='1.63'
+    sver='1.63'
     imver='7.1.0-62'
     pngver='1.2.59'
 
@@ -198,7 +198,7 @@
     #############################
 
     echo
-    echo "ImagickMagick Build: v${script_ver}"
+    echo "ImagickMagick Build: v${sver}"
     echo '============================'
     echo
     sleep 3
