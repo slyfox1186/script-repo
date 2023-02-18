@@ -33,8 +33,8 @@
     ##
 
     sver='1.63'
-    imver='7.1.0-62'
-    pngver='1.2.59'
+    iver='7.1.0-65'
+    pver='1.2.59'
 
     ######################
     ## CREATE FUNCTIONS ##
@@ -53,19 +53,20 @@
             clear
             echo "Error: the script failed to execute the command 'magick -version'."
             echo
-            echo 'Info: try running the command manually to see if it will work.'
+            echo 'Instructions: Try running the command manually'
             echo
-            echo 'If needed, create a support ticket: https://github.com/slyfox1186/script-repo/issues'
+            echo 'To create a support ticket visit: https://github.com/slyfox1186/script-repo/issues'
             echo
             exit 1
         fi
 
         echo
-        echo 'The script has finished.'
-        echo '=========================='
+        echo 'The script has completed'
+        echo '========================='
         echo
         echo 'Make sure to star this repository to show your support!'
         echo 'https://github.com/slyfox1186/script-repo'
+        echo
         echo
         rm -f "${0}"
         exit 0
@@ -82,9 +83,10 @@
         elif [[ "${1}" -eq '2' ]]; then
             exit_fn
         else
-            echo 'Error: Bad user input.'
+            echo 'Error: Bad user input'
+            echo '======================'
             echo
-            read -p 'Press Enter to exit.'
+            read -p 'Press enter to exit'
             exit_fn
         fi
     }
@@ -100,9 +102,11 @@
     extract_fail_fn()
     {
         clear
-        echo 'Error: The tar command failed to extract any files.'
+        echo 'Error: The tar command failed to extract any files'
+        echo '==================================================='
         echo
-        echo 'Please create a support ticket: https://github.com/slyfox1186/script-repo/issues'
+        echo 'To create a support ticket visit: https://github.com/slyfox1186/script-repo/issues'
+        echo '==================================================================================='
         echo
         exit 1
     }
@@ -113,8 +117,8 @@
     magick_packages_fn()
     {
         clear
-        echo 'Installing: ImageMagick Developement Packages'
-        echo '=============================================='
+        echo 'Installing: IM'\''s Required Developement Libraries'
+        echo '===================================================='
         sleep 3
 
         pkgs=(autoconf automake build-essential google-perftools libc-devtools libcpu-features-dev libcrypto++-dev libdmalloc-dev libdmalloc5 libgc-dev libgc1 libgl2ps-dev libglib2.0-dev libgoogle-perftools-dev libgoogle-perftools4 libheif-dev libjemalloc-dev libjemalloc2 libjpeg-dev libmagickcore-6.q16hdri-dev libmimalloc-dev libmimalloc2.0 libopenjp2-7-dev libpng++-dev libpng-dev libpng-tools libpng16-16 libpstoedit-dev libraw-dev librust-bzip2-dev librust-jpeg-decoder+default-dev libtcmalloc-minimal4 libtiff-dev libtool libwebp-dev libzip-dev pstoedit)
@@ -132,23 +136,23 @@
                 apt -y install ${i}
             done
             clear
-            echo 'The ImageMagick Development Libraries have been installed.'
+            echo 'IM'\''s Required Development Libraries were installed'
         else
-            echo 'The ImageMagick Development Libraries are already installed.'
+            echo 'IM'\''s Required Development Libraries are already installed'
         fi
         sleep 3
         clear
     }
 
     clear
-    echo "Starting libpng12 Build: v${pngver}"
+    echo "Starting libpng12 Build: v${pver}"
     echo '===================================='
     echo
     sleep 3
 
     # SET LIBPNG12 VARIABLES
-    pngurl="https://sourceforge.net/projects/libpng/files/libpng12/${pngver}/libpng-${pngver}.tar.xz/download"
-    pngdir="libpng-${pngver}"
+    pngurl="https://sourceforge.net/projects/libpng/files/libpng12/${pver}/libpng-${pver}.tar.xz/download"
+    pngdir="libpng-${pver}"
     pngtar="${pngdir}.tar.xz"
 
     # DOWNLOAD LIBPNG12 SOURCE CODE
@@ -213,7 +217,7 @@
 
     # SET VARIABLES FOR IMAGEMAGICK
     imurl='https://imagemagick.org/archive/ImageMagick.tar.gz'
-    imdir="ImageMagick-${imver}"
+    imdir="ImageMagick-${iver}"
     imtar="${imdir}.tar.gz"
 
     # DOWNLOAD IMAGEMAGICK SOURCE CODE
