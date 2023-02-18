@@ -49,7 +49,7 @@ CFLAGS="-I${workspace}"/include
 LDFLAGS="-L${workspace}"/lib
 LDEXEFLAGS=''
 EXTRALIBS='-ldl -lpthread -lm -lz'
-configure_options=()
+config_options=()
 nonfree_and_gpl='false'
 latest='false'
 
@@ -67,19 +67,6 @@ fi
 ## FUNCTIONS
 ##
 
-exit_fn()
-{
-    echo
-    echo '=============================='
-    echo '   The script has finished!   '
-    echo '=============================='
-    echo
-    echo 'Make sure to star this repository to show your support!'
-    echo 'https://github.com/slyfox1186/script-repo/'
-    echo
-    exit 0
-}
-
 ff_version_fn()
 {
     echo
@@ -87,9 +74,9 @@ ff_version_fn()
     echo '       Build completed        '
     echo '=============================='
     echo
-    echo '========================================================'
-    echo '  The binaries can be found in the following locations  '
-    echo '========================================================'
+    echo '============================================================'
+    echo '  The binary files can be found in the following locations  '
+    echo '============================================================'
     echo
     echo " ffmpeg:  ${install_dir}/ffmpeg"
     echo " ffprobe: ${install_dir}/ffprobe"
@@ -100,6 +87,16 @@ ff_version_fn()
     echo '==============================='
     echo
     ffmpeg -version
+
+    echo
+    echo '=============================='
+    echo '   The script has finished!   '
+    echo '=============================='
+    echo
+    echo 'Make sure to star this repository to show your support!'
+    echo 'https://github.com/slyfox1186/script-repo/'
+    echo
+    exit 0
 }
 
 make_dir()
@@ -189,6 +186,18 @@ fi
         exit 1
     )
 
+}
+
+error_fn()
+{
+    echo
+    echo 'Please create a support ticket to get assistance fixing errors.'
+    echo
+    echo 'https://github.com/slyfox1186/script-repo/issues'
+    echo
+    read -p 'Press enter to exit.'
+    echo
+    exit 1
 }
 
 execute()
@@ -285,11 +294,8 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok ins
 cuda_fail_fn()
 {
     clear
-    echo 'Unable to locate the required directory used in building the hardware acceleration libraries: /usr/local/cuda-12.0/bin'
-    echo
-    read -p 'Press enter to exit.'
-    echo
-    exit 1
+    echo 'Error: Unable to locate the required hardware acceleration library: /usr/local/cuda-12.0/bin/'
+    error_fn
 }
 
 gpu_arch_fn()
@@ -373,8 +379,8 @@ while ((${#} > 0)); do
             bflag='-b'
         fi
         if [[ "${1}" == '--enable-gpl-and-non-free' ]]; then
-            configure_options+=('--enable-nonfree')
-            configure_options+=('--enable-gpl')
+            config_options+=('--enable-nonfree')
+            config_options+=('--enable-gpl')
             nonfree_and_gpl='true'
         fi
         if [[ "${1}" == '--cleanup' || "${1}" =~ '-c' && ! "${1}" =~ '--' ]]; then
@@ -474,51 +480,51 @@ fi
 cuda_fn()
 {
     clear
-    echo 'Pick your distribution'
+    echo 'Pick your current linux distro from the list below:'
     echo
-    echo '[1] Debian Linux 10 (x86_x64)'
-    echo '[2] Debian Linux 11 (x86_x64)'
-    echo '[3] Ubuntu Linux 18.04 (x86_x64)'
-    echo '[4] Ubuntu Linux 20.04 (x86_x64)'
-    echo '[5] Ubuntu Linux 22.04 (x86_x64)'
+    echo '[1] Debian 10 (x86_x64)'
+    echo '[2] Debian 11 (x86_x64)'
+    echo '[3] Ubuntu 18.04 (x86_x64)'
+    echo '[4] Ubuntu 20.04 (x86_x64)'
+    echo '[5] Ubuntu 22.04 (x86_x64)'
     echo '[6] Ubuntu WSL 2 (Windows Subsystem for Linux)'
     echo '[7] Return'
     echo
     read -p 'Your choices are (1 to 7): ' cuda_dist
     clear
     if [[ "${cuda_dist}" -eq '1' ]]; then
-        wget --show progress -cqO 'cuda-12.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.1/local_installers/cuda-repo-debian10-12-0-local_12.0.1-525.85.12-1_amd64.deb'
-        sudo dpkg -i 'cuda-12.1.deb'
+        wget --show progress -cqO 'cuda-12-u1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.1/local_installers/cuda-repo-debian10-12-0-local_12.0.1-525.85.12-1_amd64.deb'
+        sudo dpkg -i 'cuda-12-u1.deb'
         sudo cp /var/cuda-repo-debian10-12-0-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
         sudo add-apt-repository contrib
        elif [[ "${cuda_dist}" -eq '2' ]]; then
-        wget --show progress -cqO 'cuda-12.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.1/local_installers/cuda-repo-debian11-12-0-local_12.0.1-525.85.12-1_amd64.deb'
-        sudo dpkg -i 'cuda-12.1.deb'
+        wget --show progress -cqO 'cuda-12-u1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.1/local_installers/cuda-repo-debian11-12-0-local_12.0.1-525.85.12-1_amd64.deb'
+        sudo dpkg -i 'cuda-12-u1.deb'
         sudo cp /var/cuda-repo-debian11-12-0-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
         sudo add-apt-repository contrib
     elif [[ "${cuda_dist}" -eq '3' ]]; then
         wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin'
         sudo mv 'cuda-ubuntu1804.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-        wget --show progress -cqO 'cuda-12.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-ubuntu1804-12-0-local_12.0.0-525.60.13-1_amd64.deb'
-        sudo dpkg -i 'cuda-12.1.deb'
+        wget --show progress -cqO 'cuda-12-u1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-ubuntu1804-12-0-local_12.0.0-525.60.13-1_amd64.deb'
+        sudo dpkg -i 'cuda-12-u1.deb'
         sudo cp /var/cuda-repo-ubuntu1804-12-0-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
     elif [[ "${cuda_dist}" -eq '4' ]]; then
         wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin'
         sudo mv 'cuda-ubuntu2004.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-        wget --show progress -cqO 'cuda-12.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-ubuntu2004-12-0-local_12.0.0-525.60.13-1_amd64.deb'
-        sudo dpkg -i 'cuda-12.1.deb'
+        wget --show progress -cqO 'cuda-12-u1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda-repo-ubuntu2004-12-0-local_12.0.0-525.60.13-1_amd64.deb'
+        sudo dpkg -i 'cuda-12-u1.deb'
         sudo cp /var/cuda-repo-ubuntu2004-12-0-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
     elif [[ "${cuda_dist}" -eq '5' ]]; then
         wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin'
         sudo mv 'cuda-ubuntu2204.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-        wget --show progress -cqO 'cuda-12.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.1/local_installers/cuda-repo-ubuntu2204-12-0-local_12.0.1-525.85.12-1_amd64.deb'
-        sudo dpkg -i 'cuda-12.1.deb'
+        wget --show progress -cqO 'cuda-12-u1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.1/local_installers/cuda-repo-ubuntu2204-12-0-local_12.0.1-525.85.12-1_amd64.deb'
+        sudo dpkg -i 'cuda-12-u1.deb'
         sudo cp /var/cuda-repo-ubuntu2204-12-0-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
     elif [[ "${cuda_dist}" -eq '6' ]]; then
         wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin'
         sudo mv 'cuda-wsl-ubuntu.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-        wget --show progress -cqO 'cuda-12.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.1/local_installers/cuda-repo-wsl-ubuntu-12-0-local_12.0.1-1_amd64.deb'
-        sudo dpkg -i 'cuda-12.1.deb'
+        wget --show progress -cqO 'cuda-12-u1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.0.1/local_installers/cuda-repo-wsl-ubuntu-12-0-local_12.0.1-1_amd64.deb'
+        sudo dpkg -i 'cuda-12-u1.deb'
         sudo cp /var/cuda-repo-wsl-ubuntu-12-0-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
     elif [[ "${cuda_dist}" -eq '7' ]]; then
         return 0
@@ -529,8 +535,8 @@ cuda_fn()
     sudo apt -y install cuda
     
     # REMOVE LEFTOVER DEB FILE
-    if [ -f 'cuda-12.1.deb' ]; then
-        sudo rm 'cuda-12.1.deb'
+    if [ -f 'cuda-12-u1.deb' ]; then
+        sudo rm 'cuda-12-u1.deb'
     fi
     
     # CHECK IF THE CUDA FOLDER EXISTS TO ENSURE IT WAS INSTALLED
@@ -605,10 +611,7 @@ if ! which 'nvcc' &>/dev/null ; then
     else
         clear
         echo 'Error: Bad user input!'
-        echo
-        read -p 'Press enter to exit.'
-        echo
-        exit 1
+        error_fn
     fi
 else
     echo
@@ -695,12 +698,12 @@ fi
 if ${nonfree_and_gpl}; then
     if build 'openssl' '1.1.1s'; then
         download 'https://www.openssl.org/source/openssl-1.1.1s.tar.gz'
-        execute ./config --prefix="${workspace}" --openssldir="${workspace}" --with-zlib-include="${workspace}"/include/ --with-zlib-lib="${workspace}"/lib no-shared zlib
+        execute ./config --prefix="${workspace}" --openssldir="${workspace}" \
         execute make "-j${cpus}"
         execute make install_sw
         build_done 'openssl' '1.1.1s'
     fi
-    configure_options+=('--enable-openssl')
+    config_options+=('--enable-openssl')
 else
     if build 'gmp' '6.2.1'; then
         download 'https://ftp.gnu.org/gnu/gmp/gmp-6.2.1.tar.xz'
@@ -728,7 +731,7 @@ else
         execute make install
         build_done 'gnutls' '3.7.8'
     fi
-    configure_options+=('--enable-gmp' '--enable-gnutls')
+    config_options+=('--enable-gmp' '--enable-gnutls')
 fi
 
 if build 'cmake' '3.25.2'; then
@@ -765,7 +768,7 @@ if command_exists 'python3'; then
             execute ninja -C build install
             build_done 'dav1d' '77b3955'
         fi
-        configure_options+=('--enable-libdav1d')
+        config_options+=('--enable-libdav1d')
     fi
 fi
 
@@ -780,7 +783,7 @@ if build 'svtav1' 'd5e1e2a'; then
     execute cp 'SvtAv1Dec.pc' "${workspace}"/lib/pkgconfig/
     build_done 'svtav1' 'd5e1e2a'
     fi
-    configure_options+=('--enable-libsvtav1')
+    config_options+=('--enable-libsvtav1')
 
 if command_exists 'cargo'; then
     if build 'rav1e' '0.6.3'; then
@@ -789,7 +792,7 @@ if command_exists 'cargo'; then
         execute cargo cinstall --prefix="${workspace}" --library-type='staticlib' --crt-static --release
         build_done 'rav1e' '0.6.3'
     fi
-    configure_options+=('--enable-librav1e')
+    config_options+=('--enable-librav1e')
 fi
 
 if ${nonfree_and_gpl}; then
@@ -803,7 +806,7 @@ if ${nonfree_and_gpl}; then
         execute make install-lib-static
         build_done 'x264' 'eaa68fa'
     fi
-    configure_options+=('--enable-libx264')
+    config_options+=('--enable-libx264')
 fi
 
 if ${nonfree_and_gpl}; then
@@ -823,15 +826,18 @@ if ${nonfree_and_gpl}; then
         rm -fr {8,10,12}bit 2>/dev/null
         mkdir -p {8,10,12}bit
         cd '12bit' || exit 1
+        echo
         echo '$ making 12bit binaries'
         execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="${workspace}" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' \
             -DHIGH_BIT_DEPTH='ON' -DENABLE_HDR10_PLUS='ON' -DEXPORT_C_API='OFF' -DENABLE_CLI='OFF' -DMAIN12='ON'
         execute make "-j${cpus}"
+        echo
         echo '$ making 10bit binaries'
         cd ../'10bit' || exit 1
         execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="${workspace}" -DENABLE_SHARED='OFF' \
             -DBUILD_SHARED_LIBS='OFF' -DHIGH_BIT_DEPTH='ON' -DENABLE_HDR10_PLUS='ON' -DEXPORT_C_API='OFF' -DENABLE_CLI='OFF'
         execute make "-j${cpus}"
+        echo
         echo '$ making 8bit binaries'
         cd ../'8bit' || exit 1
         ln -sf ../'10bit/libx265.a' 'libx265_main10.a'
@@ -858,7 +864,7 @@ EOF
 
         build_done 'x265' '3.4'
     fi
-    configure_options+=('--enable-libx265')
+    config_options+=('--enable-libx265')
 fi
 
 if build 'libvpx' '1.12.0'; then
@@ -868,7 +874,7 @@ if build 'libvpx' '1.12.0'; then
     execute make install
     build_done 'libvpx' '1.12.0'
 fi
-configure_options+=('--enable-libvpx')
+config_options+=('--enable-libvpx')
 
 if ${nonfree_and_gpl}; then
     if build 'xvidcore' '1.3.7'; then
@@ -888,7 +894,7 @@ if ${nonfree_and_gpl}; then
 
         build_done 'xvidcore' '1.3.7'
     fi
-    configure_options+=('--enable-libxvid')
+    config_options+=('--enable-libxvid')
 fi
 
 if ${nonfree_and_gpl}; then
@@ -899,7 +905,7 @@ if ${nonfree_and_gpl}; then
         execute make install
         build_done 'vid_stab' '1.1.0'
     fi
-    configure_options+=('--enable-libvidstab')
+    config_options+=('--enable-libvidstab')
 fi
 
 if build 'av1' '7be63ce'; then
@@ -912,7 +918,7 @@ if build 'av1' '7be63ce'; then
     execute make install
     build_done 'av1' '7be63ce'
 fi
-configure_options+=('--enable-libaom')
+config_options+=('--enable-libaom')
 
 if build 'zimg' '3.0.4'; then
     download 'https://github.com/sekrit-twc/zimg/archive/refs/tags/release-3.0.4.tar.gz' 'zimg-3.0.4.tar.gz' 'zimg'
@@ -924,7 +930,7 @@ if build 'zimg' '3.0.4'; then
     execute make install
     build_done 'zimg' '3.0.4'
 fi
-configure_options+=('--enable-libzimg')
+config_options+=('--enable-libzimg')
 
 ##
 ## AUDIO LIBRARIES
@@ -980,7 +986,7 @@ if command_exists 'python3'; then
             build_done 'lilv' '0.24.20'
         fi
         CFLAGS+=" -I${workspace}/include/lilv-0"
-        configure_options+=('--enable-lv2')
+        config_options+=('--enable-lv2')
     fi
 fi
 
@@ -991,7 +997,7 @@ if build 'opencore' '0.1.6'; then
     execute make install
     build_done 'opencore' '0.1.6'
 fi
-configure_options+=('--enable-libopencore_amrnb' '--enable-libopencore_amrwb')
+config_options+=('--enable-libopencore_amrnb' '--enable-libopencore_amrwb')
 
 if build 'lame' '3.100'; then
     download 'https://sourceforge.net/projects/lame/files/lame/3.100/lame-3.100.tar.gz/download?use_mirror=gigenet' 'lame-3.100.tar.gz'
@@ -1000,7 +1006,7 @@ if build 'lame' '3.100'; then
     execute make install
     build_done 'lame' '3.100'
 fi
-configure_options+=('--enable-libmp3lame')
+config_options+=('--enable-libmp3lame')
 
 if build 'opus' '1.3.1'; then
     download 'https://archive.mozilla.org/pub/opus/opus-1.3.1.tar.gz'
@@ -1009,7 +1015,7 @@ if build 'opus' '1.3.1'; then
     execute make install
     build_done 'opus' '1.3.1'
 fi
-configure_options+=('--enable-libopus')
+config_options+=('--enable-libopus')
 
 if build 'libogg' '1.3.5'; then
     download 'https://ftp.osuosl.org/pub/xiph/releases/ogg/libogg-1.3.5.tar.xz'
@@ -1027,7 +1033,7 @@ if build 'libvorbis' '1.3.7'; then
     execute make install
     build_done 'libvorbis' '1.3.7'
 fi
-configure_options+=('--enable-libvorbis')
+config_options+=('--enable-libvorbis')
 
 if build 'libtheora' '1.1.1'; then
     download 'https://ftp.osuosl.org/pub/xiph/releases/theora/libtheora-1.1.1.tar.gz'
@@ -1044,7 +1050,7 @@ if build 'libtheora' '1.1.1'; then
     execute make install
     build_done 'libtheora' '1.1.1'
 fi
-configure_options+=('--enable-libtheora')
+config_options+=('--enable-libtheora')
 
 if ${nonfree_and_gpl}; then
     if build 'fdk_aac' '2.0.2'; then
@@ -1054,7 +1060,7 @@ if ${nonfree_and_gpl}; then
         execute make install
         build_done 'fdk_aac' '2.0.2'
     fi
-    configure_options+=('--enable-libfdk-aac')
+    config_options+=('--enable-libfdk-aac')
 fi
 
 ##
@@ -1063,7 +1069,8 @@ fi
 
 if build 'libtiff' '4.5.0'; then
     download 'https://download.osgeo.org/libtiff/tiff-4.5.0.tar.xz'
-    execute ./configure --prefix="${workspace}" --disable-shared --enable-static --disable-dependency-tracking --disable-lzma --disable-webp --disable-zstd --without-x
+    execute ./configure --prefix="${workspace}" --disable-shared --enable-static --disable-dependency-tracking \
+        --disable-lzma --disable-webp --disable-zstd --without-x
     execute make "-j${cpus}"
     execute make install
     build_done 'libtiff' '4.5.0'
@@ -1082,7 +1089,8 @@ if build 'libwebp' '1.2.2'; then
     # libwebp can fail to compile on Ubuntu if these flags were left set to CFLAGS
     CPPFLAGS=
     download 'https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.2.2.tar.gz' 'libwebp-1.2.2.tar.gz'
-    execute ./configure --prefix="${workspace}" --disable-shared --enable-static --disable-dependency-tracking --disable-gl --with-zlib-include="${workspace}"/include/ --with-zlib-lib="${workspace}"/lib
+    execute ./configure --prefix="${workspace}" --disable-shared --enable-static --disable-dependency-tracking \
+        --disable-gl --with-zlib-include="${workspace}"/include/ --with-zlib-lib="${workspace}"/lib
     make_dir build
     cd 'build'|| exit 1
     execute cmake -DCMAKE_INSTALL_PREFIX="${workspace}" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
@@ -1092,7 +1100,7 @@ if build 'libwebp' '1.2.2'; then
 
     build_done 'libwebp' '1.2.2'
 fi
-  configure_options+=('--enable-libwebp')
+  config_options+=('--enable-libwebp')
 
 ##
 ## OTHER LIBRARIES
@@ -1103,7 +1111,6 @@ if build 'libsdl' '2.26.2'; then
     execute ./configure --prefix="${workspace}" --disable-shared --enable-static
     execute make "-j${cpus}"
     execute make install
-
     build_done 'libsdl' '2.26.2'
 fi
 
@@ -1120,10 +1127,9 @@ if ${nonfree_and_gpl}; then
         if [ -n "${LDEXEFLAGS}" ]; then
             sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "${workspace}"/lib/pkgconfig/srt.pc
         fi
-
         build_done 'srt' '1.5.1'
     fi
-        configure_options+=('--enable-libsrt')
+        config_options+=('--enable-libsrt')
 fi
 
 
@@ -1140,15 +1146,15 @@ if which 'nvcc' &>/dev/null ; then
     fi
     CFLAGS+=' -I/usr/local/cuda-12.0/include'
     LDFLAGS+=' -L/usr/local/cuda-12.0/lib64'
-    configure_options+=('--enable-cuda-nvcc' '--enable-cuvid' '--enable-nvenc' '--enable-cuda-llvm')
+    config_options+=('--enable-cuda-nvcc' '--enable-cuvid' '--enable-nvenc' '--enable-cuda-llvm')
 
     if [ -z "${LDEXEFLAGS}" ]; then
-        configure_options+=('--enable-libnpp')
+        config_options+=('--enable-libnpp')
     fi
 
     gpu_arch_fn
-    # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/ # configure_options+=('--nvccflags=-gencode arch=compute_52,code=sm_52')
-    configure_options+=("--nvccflags=-gencode arch=${gpu_arch}")
+    # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/ # config_options+=('--nvccflags=-gencode arch=compute_52,code=sm_52')
+    config_options+=("--nvccflags=-gencode arch=${gpu_arch}")
 fi
 
 # Vaapi doesn't work well with static links FFmpeg.
@@ -1158,7 +1164,7 @@ if [ -z "${LDEXEFLAGS}" ]; then
         if build 'vaapi' '1'; then
             build_done 'vaapi' '1'
         fi
-        configure_options+=('--enable-vaapi')
+        config_options+=('--enable-vaapi')
     fi
 fi
 
@@ -1169,7 +1175,7 @@ if build 'amf' '1.4.29'; then
     execute cp -fr "${packages}"/AMF-1.4.29/AMF-1.4.29/amf/public/include/* "${workspace}"/include/AMF/
     build_done 'amf' '1.4.29'
 fi
-configure_options+=('--enable-amf')
+config_options+=('--enable-amf')
 
 ##
 ## BUILD FFMPEG
@@ -1179,7 +1185,7 @@ build 'ffmpeg' "${ffmpeg_version::-33}"
 download "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/${ffmpeg_version}.tar.gz" "FFmpeg-snapshot-${ffmpeg_version}.tar.gz"
 # shellcheck disable=SC2086
 ./configure \
-    "${configure_options[@]}" \
+    "${config_options[@]}" \
     --disable-debug \
     --disable-doc \
     --disable-shared \
@@ -1217,4 +1223,3 @@ if [ ! -f "${install_dir}/ffmpeg" ] || [ ! -f "${install_dir}/ffprobe" ] || [ ! 
 fi
 
 ff_version_fn
-exit_fn
