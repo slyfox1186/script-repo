@@ -240,7 +240,7 @@ export PKG_CONFIG_PATH
     echo "executing: make -j$(nproc --all)"
     echo '==================================='
     echo
-    make "-j$(nproc -all)"
+    make "-j$(nproc --all)"
 
     # INSTALLING FILES TO /usr/local/bin/
     echo
