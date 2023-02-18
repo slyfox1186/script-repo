@@ -32,16 +32,16 @@
     ## IMAGEMAGICK VERSION
     ##
 
-    SCRIPT_VER='1.62'
-    IMVER='7.1.0-62'
-    LVER='1.2.59'
+    script_ver='1.62'
+    imver='7.1.0-62'
+    pngver='1.2.59'
 
     ######################
     ## CREATE FUNCTIONS ##
     ######################
 
     ##
-    ## EXIT SCRIPT
+    ## EXIT SCRIPT FUNCTION
     ##
 
     exit_fn()
@@ -72,7 +72,7 @@
     }
 
     ##
-    ## DELETE FILES
+    ## DELETE FILES FUNCTION
     ##
 
     del_files_fn()
@@ -89,11 +89,22 @@
         fi
     }
 
-    # function to determine if a package is installed or not
+    # FUNCTION TO DETERMINE IF A PACKAGE IS INSTALLED OR NOT
     installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
+    # FAILED DOWNLOAD/EXTRACTIONS FUNCTION
+    extract_fail_fn()
+    {
+        clear
+        echo 'Error: The tar command failed to extract any files.'
+        echo
+        echo 'Please create a support ticket: https://github.com/slyfox1186/script-repo/issues'
+        echo
+        exit 1
+    }
+
     ##
-    ## Required ImageMagick Developement Packages
+    ## REQUIRED IMAGEMAGICK DEVELOPEMENT PACKAGES
     ##
         
     magick_packages_fn()
@@ -120,7 +131,6 @@
             clear
             echo 'The ImageMagick Development Libraries have been installed.'
         else
-            clear
             echo 'The ImageMagick Development Libraries are already installed.'
         fi
         
@@ -134,26 +144,23 @@
     echo
     sleep 2
 
-    # set variables for libpng12
-    LURL="https://sourceforge.net/projects/libpng/files/libpng12/${LVER}/libpng-${LVER}.tar.xz/download"
-    LDIR="libpng-${LVER}"
-    LTAR="${LDIR}.tar.xz"
+    # SET VARIABLES FOR LIBPNG12
+    pngurl="https://sourceforge.net/projects/libpng/files/libpng12/${pngver}/libpng-${pngver}.tar.xz/download"
+    pngdir="libpng-${pngver}"
+    pngtar="${pngdir}.tar.xz"
 
-    # download libpng12 source code
-    if [ ! -f "${LTAR}" ]; then wget --show-progress -cqO "${LTAR}" "${LURL}"; fi
+    # DOWNLOAD LIBPNG12 SOURCE CODE
+    if [ ! -f "${pngtar}" ]; then
+        wget --show-progress -cqO "${pngtar}" "${pngurl}"
+    fi
 
-    # uncompress source code to folder
-    if ! tar -xf "${LTAR}"; then
-        clear
-        echo 'Error: The tar command failed to extract the downloaded file.'
-        echo
-        echo 'Please create a support ticket: https://github.com/slyfox1186/script-repo/issues'
-        echo
-        exit 1
+    # UNCOMPRESS SOURCE CODE TO FOLDER
+    if ! tar -xf "${pngtar}"; then
+        extract_fail_fn
     fi
 
     # CHANGE WORKING DIRECTORY TO LIBPNG'S SOURCE CODE DIRECTORY
-    cd "${LDIR}" || exit 1
+    cd "${pngdir}" || exit 1
 
     # NEED TO RUN AUTOGEN SCRIPT FIRST SINCE THIS IS A WAY NEWER SYSTEM THAN THESE FILES ARE USED TO
     ./autogen.sh
@@ -167,49 +174,44 @@
     # CHANGE WORKING DIRECTORY BACK TO PARENT FOLDER
     cd ../ || exit 1
 
-    ##
-    ## START IMAGEMAGICK BUILD
-    ##
+    #############################
+    ## START IMAGEMAGICK BUILD ##
+    #############################
 
     clear
-    echo "Starting ImageMagick Build v${SCRIPT_VER}"
+    echo "Starting ImageMagick Build: v${script_ver}"
     echo '=============================='
     echo
-    sleep 2
+    sleep 3
 
     # REQUIRED + EXTRA OPTIONAL PACKAGES FOR IMAGEMAGICK TO BUILD SUCCESSFULLY
     magick_packages_fn
 
     # SET VARIABLES FOR IMAGEMAGICK
-    IMURL='https://imagemagick.org/archive/ImageMagick.tar.gz'
-    IMDIR="ImageMagick-${IMVER}"
-    IMTAR="${IMDIR}.tar.gz"
+    imurl='https://imagemagick.org/archive/ImageMagick.tar.gz'
+    imdir="ImageMagick-${imver}"
+    imtar="${imdir}.tar.gz"
 
     # DOWNLOAD IMAGEMAGICK SOURCE CODE
-    if [ ! -f "${IMTAR}" ]; then
+    if [ ! -f "${imtar}" ]; then
         echo 'Downloading ImageMagick Source Code'
         echo '======================================'
         echo
-        wget --show-progress -cqO "${IMTAR}" "${IMURL}"
+        wget --show-progress -cqO "${imtar}" "${imurl}"
         clear
     fi
 
     # CREATE OUTPUT FOLDER FOR TAR FILES
-    if [ ! -d "${IMDIR}" ]; then
-        mkdir -p "${IMDIR}"
+    if [ ! -d "${imdir}" ]; then
+        mkdir -p "${imdir}"
     fi
 
     # UNCOMPRESS SOURCE CODE TO FOLDER
-    if ! tar -xf "${IMTAR}"; then
-        clear
-        echo 'Error: The tar command failed to extract any files'
-        echo
-        echo 'Please create a support ticket: https://github.com/slyfox1186/script-repo/issues'
-        echo
-        exit 1
+    if ! tar -xf "${imtar}"; then
+        extract_fail_fn
     fi
 
-    cd "${IMDIR}" || exit 1
+    cd "${imdir}" || exit 1
 
     # EXPORT THE PKG CONFIG PATHS TO ENABLE SUPPORT DURING THE BUILD
     PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
@@ -259,5 +261,5 @@
     read -p 'Your choices are (1 or 2): ' ANSWER
     clear
 
-    del_files_fn "${ANSWER}" "${LDIR}" "${IMDIR}" "${LTAR}" "${IMTAR}"
+    del_files_fn "${ANSWER}" "${pngdir}" "${imdir}" "${pngtar}" "${imtar}"
     exit_fn
