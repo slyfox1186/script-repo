@@ -51,11 +51,10 @@
         # SHOW THE NEWLY INSTALLED MAGICK VERSION
         if ! magick -version 2>/dev/null; then
             clear
-            echo "Error: the script failed to execute the command 'magick -version'."
+            echo 'Error: The script failed to execute the command "magick -version"'
             echo
-            echo 'Instructions: Try running the command manually'
-            echo
-            echo 'To create a support ticket visit: https://github.com/slyfox1186/script-repo/issues'
+            echo 'Try running the command manually first and then if you need additional support'
+            echo 'create a support ticket by visiting: https://github.com/slyfox1186/script-repo/issues'
             echo
             exit 1
         fi
