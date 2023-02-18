@@ -139,10 +139,10 @@
     }
 
     clear
-    echo 'Starting libpng12 build'
-    echo '=========================='
+    echo "Starting libpng12 Build: v${pngver}"
+    echo '===================================='
     echo
-    sleep 2
+    sleep 3
 
     # SET VARIABLES FOR LIBPNG12
     pngurl="https://sourceforge.net/projects/libpng/files/libpng12/${pngver}/libpng-${pngver}.tar.xz/download"
