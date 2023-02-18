@@ -2,16 +2,16 @@
 
     #################################################################
     ##
-    ## GitHub: https://github.com/slyfox1186
+    ## GITHUB: HTTPS://GITHUB.COM/SLYFOX1186
     ##
-    ## Purpose: Builds ImageMagick 7 from source code that is
-    ##          obtained from their official GitHub page.
+    ## PURPOSE: BUILDS IMAGEMAGICK 7 FROM SOURCE CODE THAT IS
+    ##          OBTAINED FROM THE OFFICIAL IMAGEMAGICK GITHUB PAGE.
     ##
-    ## Function: ImageMagick is the leading open source command line
-    ##           image processor. It can blur, sharpen, warp, reduce,
-    ##           file size, ect... It is fantastic.
+    ## FUNCTION: IMAGEMAGICK IS THE LEADING OPEN SOURCE COMMAND LINE
+    ##           IMAGE PROCESSOR. IT CAN BLUR, SHARPEN, WARP, REDUCE
+    ##           FILE SIZE, ECT... IT IS FANTASTIC.
     ##
-    ## Last Updated: 02.16.23
+    ## LAST UPDATED: 02.16.23
     ##
     #################################################################
 
@@ -29,7 +29,7 @@
     fi
 
     ##
-    ## IMAGEMAGICK VERSION
+    ## VERSION INFORMATION VARIABLES
     ##
 
     script_ver='1.62'
@@ -114,17 +114,17 @@
         echo '=============================================='
         sleep 3
 
-        PKGS=(autoconf automake build-essential google-perftools libc-devtools libcpu-features-dev libcrypto++-dev libdmalloc-dev libdmalloc5 libgc-dev libgc1 libgl2ps-dev libglib2.0-dev libgoogle-perftools-dev libgoogle-perftools4 libheif-dev libjemalloc-dev libjemalloc2 libjpeg-dev libmagickcore-6.q16hdri-dev libmimalloc-dev libmimalloc2.0 libopenjp2-7-dev libpng++-dev libpng-dev libpng-tools libpng16-16 libpstoedit-dev libraw-dev librust-bzip2-dev librust-jpeg-decoder+default-dev libtcmalloc-minimal4 libtiff-dev libtool libwebp-dev libzip-dev pstoedit)
+        pkgs=(autoconf automake build-essential google-perftools libc-devtools libcpu-features-dev libcrypto++-dev libdmalloc-dev libdmalloc5 libgc-dev libgc1 libgl2ps-dev libglib2.0-dev libgoogle-perftools-dev libgoogle-perftools4 libheif-dev libjemalloc-dev libjemalloc2 libjpeg-dev libmagickcore-6.q16hdri-dev libmimalloc-dev libmimalloc2.0 libopenjp2-7-dev libpng++-dev libpng-dev libpng-tools libpng16-16 libpstoedit-dev libraw-dev librust-bzip2-dev librust-jpeg-decoder+default-dev libtcmalloc-minimal4 libtiff-dev libtool libwebp-dev libzip-dev pstoedit)
 
-        for PKG in ${PKGS[@]}
+        for pkg in ${pkgs[@]}
         do
-            if ! installed "${PKG}"; then
-                MISSING_PKGS+=" ${PKG}"
+            if ! installed "${pkg}"; then
+                missing_pkgs+=" ${pkg}"
             fi
         done
         
-        if [ -n "${MISSING_PKGS-}" ]; then
-            for i in "${MISSING_PKGS}"
+        if [ -n "${missing_pkgs-}" ]; then
+            for i in "${missing_pkgs}"
             do
                 apt -y install ${i}
             done
@@ -213,7 +213,7 @@
 
     cd "${imdir}" || exit 1
 
-    # EXPORT THE PKG CONFIG PATHS TO ENABLE SUPPORT DURING THE BUILD
+    # EXPORT THE pkg CONFIG PATHS TO ENABLE SUPPORT DURING THE BUILD
     PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
     export PKG_CONFIG_PATH
 
