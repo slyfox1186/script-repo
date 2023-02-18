@@ -197,7 +197,7 @@
     ## START IMAGEMAGICK BUILD ##
     #############################
 
-    clear
+    echo
     echo "ImagickMagick Build: v${script_ver}"
     echo '============================'
     echo
@@ -206,7 +206,7 @@
     echo 'Installing: delegate support software'
     echo '======================================='
     echo
-    sleep 3
+    sleep 2
 
     # REQUIRED + EXTRA OPTIONAL PACKAGES FOR IMAGEMAGICK TO BUILD SUCCESSFULLY
     magick_packages_fn
