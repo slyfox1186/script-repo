@@ -133,7 +133,6 @@
         else
             echo 'The ImageMagick Development Libraries are already installed.'
         fi
-        
         sleep 3
         clear
     }
