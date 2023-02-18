@@ -214,8 +214,13 @@
     cd "${imdir}" || exit 1
 
     # EXPORT THE pkg CONFIG PATHS TO ENABLE SUPPORT DURING THE BUILD
-    PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
-    export PKG_CONFIG_PATH
+
+PKG_CONFIG_PATH="\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/pkgconfig:\
+/usr/share/pkgconfig
+"
+export PKG_CONFIG_PATH
 
     ./configure \
         --enable-ccmalloc \
@@ -258,8 +263,8 @@
     echo '[1] Yes'
     echo '[2] No'
     echo
-    read -p 'Your choices are (1 or 2): ' ANSWER
+    read -p 'Your choices are (1 or 2): ' answer
     clear
 
-    del_files_fn "${ANSWER}" "${pngdir}" "${imdir}" "${pngtar}" "${imtar}"
+    del_files_fn "${answer}" "${pngdir}" "${imdir}" "${pngtar}" "${imtar}"
     exit_fn
