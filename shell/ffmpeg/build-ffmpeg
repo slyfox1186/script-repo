@@ -67,7 +67,7 @@ fi
 ## FUNCTIONS
 ##
 
-ff_version_fn()
+exit_fn()
 {
     echo
     echo '=============================='
@@ -1222,4 +1222,4 @@ if [ ! -f "${install_dir}/ffmpeg" ] || [ ! -f "${install_dir}/ffprobe" ] || [ ! 
     exit 1
 fi
 
-ff_version_fn
+exit_fn
