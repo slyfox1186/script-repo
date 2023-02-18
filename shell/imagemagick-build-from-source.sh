@@ -89,10 +89,14 @@
         fi
     }
 
-    # FUNCTION TO DETERMINE IF A PACKAGE IS INSTALLED OR NOT
+    ##
+    ## FUNCTION TO DETERMINE IF A PACKAGE IS INSTALLED OR NOT
+    ##
     installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
-    # FAILED DOWNLOAD/EXTRACTIONS FUNCTION
+    ##
+    ## FAILED DOWNLOAD/EXTRACTIONS FUNCTION
+    ##
     extract_fail_fn()
     {
         clear
@@ -106,7 +110,6 @@
     ##
     ## REQUIRED IMAGEMAGICK DEVELOPEMENT PACKAGES
     ##
-        
     magick_packages_fn()
     {
         clear
@@ -122,7 +125,7 @@
                 missing_pkgs+=" ${pkg}"
             fi
         done
-        
+
         if [ -n "${missing_pkgs-}" ]; then
             for i in "${missing_pkgs}"
             do
@@ -143,7 +146,7 @@
     echo
     sleep 3
 
-    # SET VARIABLES FOR LIBPNG12
+    # SET LIBPNG12 VARIABLES
     pngurl="https://sourceforge.net/projects/libpng/files/libpng12/${pngver}/libpng-${pngver}.tar.xz/download"
     pngdir="libpng-${pngver}"
     pngtar="${pngdir}.tar.xz"
@@ -153,21 +156,38 @@
         wget --show-progress -cqO "${pngtar}" "${pngurl}"
     fi
 
-    # UNCOMPRESS SOURCE CODE TO FOLDER
+    ##
+    ## UNCOMPRESS SOURCE CODE TO OUTPUT FOLDER
+    ##
     if ! tar -xf "${pngtar}"; then
         extract_fail_fn
     fi
 
-    # CHANGE WORKING DIRECTORY TO LIBPNG'S SOURCE CODE DIRECTORY
+    # CHANGE THE WORKING DIRECTORY TO LIBPNG'S SOURCE CODE PARENT FOLDER
     cd "${pngdir}" || exit 1
 
     # NEED TO RUN AUTOGEN SCRIPT FIRST SINCE THIS IS A WAY NEWER SYSTEM THAN THESE FILES ARE USED TO
+    echo
+    echo 'Executing: autogen.sh script'
+    echo '============================='
+    echo
+    sleep 2
     ./autogen.sh
 
     # RUN CONFIGURE SCRIPT
+    echo
+    echo 'Executing: ./configure script'
+    echo '=============================='
+    echo
+    sleep 3
     ./configure --prefix='/usr/local'
 
     # INSTALL LIBPNG12
+    echo
+    echo 'Executing: make install command'
+    echo '================================'
+    echo
+    sleep 3
     make install
 
     # CHANGE WORKING DIRECTORY BACK TO PARENT FOLDER
@@ -178,8 +198,13 @@
     #############################
 
     clear
-    echo "Starting ImageMagick Build: v${script_ver}"
-    echo '=============================='
+    echo "ImagickMagick Build: v${script_ver}"
+    echo '============================'
+    echo
+    sleep 3
+    echo
+    echo 'Installing: delegate support software'
+    echo '======================================='
     echo
     sleep 3
 
@@ -193,8 +218,8 @@
 
     # DOWNLOAD IMAGEMAGICK SOURCE CODE
     if [ ! -f "${imtar}" ]; then
-        echo 'Downloading ImageMagick Source Code'
-        echo '======================================'
+        echo 'Downloading: IM Source Code'
+        echo '============================'
         echo
         wget --show-progress -cqO "${imtar}" "${imurl}"
         clear
@@ -213,14 +238,13 @@
     cd "${imdir}" || exit 1
 
     # EXPORT THE pkg CONFIG PATHS TO ENABLE SUPPORT DURING THE BUILD
+    PKG_CONFIG_PATH='/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig'
+    export PKG_CONFIG_PATH
 
-PKG_CONFIG_PATH="\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/share/pkgconfig
-"
-export PKG_CONFIG_PATH
-
+    echo
+    echo 'Executing: configure script'
+    echo '============================'
+    echo
     ./configure \
         --enable-ccmalloc \
         --enable-legacy-support \
@@ -236,16 +260,18 @@ export PKG_CONFIG_PATH
         --with-quantum-depth=16
 
     # RUNNING MAKE COMMAND WITH PARALLEL PROCESSING
-    echo "executing: make -j$(nproc --all)"
-    echo '==================================='
+    echo "executing: make -j$(nproc)"
+    echo '============================'
     echo
-    make "-j$(nproc --all)"
+    sleep 3
+    make "-j$(nproc)"
 
     # INSTALLING FILES TO /usr/local/bin/
     echo
     echo 'executing: make install'
-    echo '==================================='
+    echo '========================'
     echo
+    sleep 3
     make install
 
     # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE MAGICK COMMAND WILL NOT WORK
@@ -262,8 +288,8 @@ export PKG_CONFIG_PATH
     echo '[1] Yes'
     echo '[2] No'
     echo
-    read -p 'Your choices are (1 or 2): ' answer
+    read -p 'Your choices are (1 or 2): ' clnup
     clear
 
-    del_files_fn "${answer}" "${pngdir}" "${imdir}" "${pngtar}" "${imtar}"
+    del_files_fn "${clnup}" "${pngdir}" "${imdir}" "${pngtar}" "${imtar}"
     exit_fn
