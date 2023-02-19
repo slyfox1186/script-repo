@@ -42,7 +42,7 @@ progname="${0:2}"
 ffmpeg_ver='59a9727c241aa50f18e713dbabbdd5cf3d379411'
 cuda_ver='12.0 Update 1'
 script_ver='2.21'
-pkgs="${PWD}"/pkgs
+packages="${PWD}"/packages
 workspace="${PWD}"/workspace
 install_dir='/usr/bin'
 CFLAGS="-I${workspace}"/include
@@ -69,7 +69,6 @@ fi
 
 exit_fn()
 {
-    echo
     echo '=============================='
     echo '   The script has finished!   '
     echo '=============================='
@@ -112,26 +111,24 @@ cleanup_fn()
 ff_ver_fn()
 {
     echo
-    echo '=============================='
-    echo '       Build completed        '
-    echo '=============================='
+    echo '===================================='
+    echo '       FFmpeg Build Complete        '
+    echo '===================================='
     echo
-    echo '============================================================'
-    echo '  The binary files can be found in the following locations  '
+    echo '  The binary files can be found in the following locations'
     echo
     echo "  ffmpeg:  ${install_dir}/ffmpeg"
     echo "  ffprobe: ${install_dir}/ffprobe"
     echo "  ffplay:  ${install_dir}/ffplay"
-    echo '============================================================'
     echo
-    echo '==============================='
-    echo '        FFmpeg Version         '
-    echo '==============================='
+    echo '================================='
+    echo '       FFmpeg'\''s Version       '
+    echo '================================='
     echo
     ffmpeg -version
-
     echo
     read -p 'Press enter to continue.'
+    clear
     cleanup_fn
 }
 
@@ -155,7 +152,7 @@ remove_dir() {
 download()
 {
 
-    dl_path="${pkgs}"
+    dl_path="${packages}"
     dl_file="${2:-"${1##*/}"}"
 
     if [[ "${dl_file}" =~ tar. ]]; then
@@ -260,15 +257,15 @@ build()
     echo "building ${1} - version ${2}"
     echo '===================================='
 
-    if [ -f "${pkgs}/${1}.done" ]; then
-        if grep -Fx "${2}" "${pkgs}/${1}.done" >/dev/null; then
-            echo "${1} version ${2} already built. Remove ${pkgs}/${1}.done lockfile to rebuild it."
+    if [ -f "${packages}/${1}.done" ]; then
+        if grep -Fx "${2}" "${packages}/${1}.done" >/dev/null; then
+            echo "${1} version ${2} already built. Remove ${packages}/${1}.done lockfile to rebuild it."
             return 1
         elif ${latest}; then
             echo "${1} is outdated and will be rebuilt using version ${2}"
             return 0
         else
-            echo "${1} is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove ${pkgs}/${1}.done lockfile."
+            echo "${1} is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove ${packages}/${1}.done lockfile."
             return 1
         fi
     fi
@@ -296,7 +293,7 @@ library_exists()
 }
 
 # confirm a build has completed function
-build_done() { echo "${2}" > "${pkgs}/${1}.done"; }
+build_done() { echo "${2}" > "${packages}/${1}.done"; }
 
 verify_binary_type()
 {
@@ -319,7 +316,7 @@ verify_binary_type()
 # cleanup all files function
 cleanup()
 {
-    remove_dir "${pkgs}"
+    remove_dir "${packages}"
     remove_dir "${workspace}"
     echo 'Cleanup finished.'
     echo
@@ -338,10 +335,8 @@ cuda_fail_fn()
 gpu_arch_fn()
 {
     echo
+    local gpu_ans
 
-    local gpu_answer
-
-    echo
     echo 'Tune the build to match your specific Nvidia GPU which will maximize the performance output.'
     echo '============================================================================================'
     echo
@@ -354,20 +349,19 @@ gpu_arch_fn()
     echo '[5] Lovelace | Geforce RTX [4080, 4090, 6000]'
     echo '[6] Hopper   | GH100'
     echo
-    read -p 'Your choices are (1 to 6): ' gpu_answer
-    echo
+    read -p 'Your choices are (1 to 6): ' gpu_ans
     
-    if [[ "${gpu_answer}" -eq '1' ]]; then
+    if [[ "${gpu_ans}" -eq '1' ]]; then
         gpu_arch='compute_61,code=sm_61'
-    elif [[ "${gpu_answer}" -eq '2' ]]; then
+    elif [[ "${gpu_ans}" -eq '2' ]]; then
         gpu_arch='compute_70,code=sm_70'
-    elif [[ "${gpu_answer}" -eq '3' ]]; then
+    elif [[ "${gpu_ans}" -eq '3' ]]; then
         gpu_arch='compute_75,code=sm_75'
-    elif [[ "${gpu_answer}" -eq '4' ]]; then
+    elif [[ "${gpu_ans}" -eq '4' ]]; then
         gpu_arch='compute_86,code=sm_86'
-    elif [[ "${gpu_answer}" -eq '5' ]]; then
+    elif [[ "${gpu_ans}" -eq '5' ]]; then
         gpu_arch='compute_89,code=sm_89'
-    elif [[ "${gpu_answer}" -eq '6' ]]; then
+    elif [[ "${gpu_ans}" -eq '6' ]]; then
         gpu_arch='compute_90,code=sm_90'
     else
         echo 'Error: Bad user input.'
@@ -392,7 +386,7 @@ usage()
     echo '            --enable-gpl-and-non-free    Enable GPL and non-free codecs    - https://ffmpeg.org/legal.html'
     echo '    -c, --cleanup                                    Remove all working dirs'
     echo '            --latest                                     Build latest version of dependencies if newer available'
-    echo '            --full-static                            Build a full static FFmpeg binary (eg. glibc, pthreads etc...) **only Linux**'
+    echo '            gpu_arch_fn--full-static                            Build a full static FFmpeg binary (eg. glibc, pthreads etc...) **only Linux**'
     echo '                                                                 Note: Because of the NSS (Name Service Switch), glibc does not recommend static links.'
     echo
 }
@@ -467,7 +461,7 @@ if [ -n "${LDEXEFLAGS}" ]; then
     echo
 fi
 
-mkdir -p "${pkgs}"
+mkdir -p "${packages}"
 mkdir -p "${workspace}"
 
 PATH="${workspace}/bin:${PATH}"
@@ -668,7 +662,7 @@ fi
 
 if build 'giflib' '5.2.1'; then
     download 'https://netcologne.dl.sourceforge.net/project/giflib/giflib-5.2.1.tar.gz'
-    cd "${pkgs}"/giflib-5.2.1 || exit 1
+    cd "${packages}"/giflib-5.2.1 || exit 1
     #multicore build disabled for this library
     execute make
     execute make PREFIX="${workspace}" install
@@ -820,7 +814,7 @@ fi
 if build 'svtav1' 'd5e1e2a'; then
     # Last known working commit which passed CI Tests from HEAD branch
     download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/d5e1e2a586020854733f6b0806064d0c900c88d2/SVT-AV1-d5e1e2a586020854733f6b0806064d0c900c88d2.tar.gz' 'svtav1-d5e1e2a.tar.gz'
-    cd "${pkgs}"/svtav1-d5e1e2a//Build/linux || exit 1
+    cd "${packages}"/svtav1-d5e1e2a//Build/linux || exit 1
     execute cmake -DCMAKE_INSTALL_PREFIX="${workspace}" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' ../.. -G 'Unix Makefiles' -DCMAKE_BUILD_TYPE='Release'
     execute make "-j${cpus}"
     execute make install
@@ -844,7 +838,7 @@ if ${nonfree}; then
 
     if build 'x264' 'eaa68fa'; then
         download 'https://code.videolan.org/videolan/x264/-/archive/eaa68fad9e5d201d42fde51665f2d137ae96baf0/x264-eaa68fad9e5d201d42fde51665f2d137ae96baf0.tar.gz' 'x264-eaa68fa.tar.gz'
-        cd "${pkgs}"/x264-eaa68fa || exit 1
+        cd "${packages}"/x264-eaa68fa || exit 1
         execute ./configure --prefix="${workspace}" --enable-static --enable-pic CXXFLAGS="-fPIC ${CXXFLAGS}"
         execute make "-j${cpus}"
         execute make install
@@ -865,24 +859,22 @@ if ${nonfree}; then
         echo
     fi
 
-    if build 'x265' '3.4'; then
-        download 'https://github.com/videolan/x265/archive/refs/tags/3.4.tar.gz' 'x265-3.4.tar.gz'
-        cd 'build/linux' || exit 1
+    if build 'x265' '3.5'; then
+        # download 'https://github.com/videolan/x265/archive/refs/tags/3.4.tar.gz' 'x265-3.4.tar.gz'
+        git clone -q 'https://bitbucket.org/multicoreware/x265_git.git' "${packages}/x265-3.5"
+        cd "${packages}/x265-3.5/build/linux" || exit 1
         rm -fr {8,10,12}bit 2>/dev/null
         mkdir -p {8,10,12}bit
         cd '12bit' || exit 1
-        echo
         echo '$ making 12bit binaries'
         execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="${workspace}" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' \
             -DHIGH_BIT_DEPTH='ON' -DENABLE_HDR10_PLUS='ON' -DEXPORT_C_API='OFF' -DENABLE_CLI='OFF' -DMAIN12='ON'
         execute make "-j${cpus}"
-        echo
         echo '$ making 10bit binaries'
         cd ../'10bit' || exit 1
         execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="${workspace}" -DENABLE_SHARED='OFF' \
             -DBUILD_SHARED_LIBS='OFF' -DHIGH_BIT_DEPTH='ON' -DENABLE_HDR10_PLUS='ON' -DEXPORT_C_API='OFF' -DENABLE_CLI='OFF'
         execute make "-j${cpus}"
-        echo
         echo '$ making 8bit binaries'
         cd ../'8bit' || exit 1
         ln -sf ../'10bit/libx265.a' 'libx265_main10.a'
@@ -907,7 +899,7 @@ EOF
             sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "${workspace}"/lib/pkgconfig/x265.pc
         fi
 
-        build_done 'x265' '3.4'
+        build_done 'x265' '3.5'
     fi
     cnf_ops+=('--enable-libx265')
 fi
@@ -956,9 +948,9 @@ fi
 if build 'av1' '7be63ce'; then
   # libaom bcfe6fb == v3.5.0
     download 'https://aomedia.googlesource.com/aom/+archive/7be63cef996e6b09c0bfa0057334a5cba5d027c8.tar.gz' 'av1.tar.gz' 'av1'
-    make_dir "${pkgs}/aom_build"
-    cd "${pkgs}"/aom_build || exit 1
-    execute cmake -DENABLE_TESTS='0' -DENABLE_EXAMPLES='0' -DCMAKE_INSTALL_PREFIX="${workspace}" -DCMAKE_INSTALL_LIBDIR='lib' "${pkgs}"/av1
+    make_dir "${packages}/aom_build"
+    cd "${packages}"/aom_build || exit 1
+    execute cmake -DENABLE_TESTS='0' -DENABLE_EXAMPLES='0' -DCMAKE_INSTALL_PREFIX="${workspace}" -DCMAKE_INSTALL_LIBDIR='lib' "${packages}"/av1
     execute make "-j${cpus}"
     execute make install
     build_done 'av1' '7be63ce'
@@ -1217,7 +1209,7 @@ if build 'amf' '1.4.29'; then
     download 'https://github.com/GPUOpen-LibrariesAndSDKs/AMF/archive/refs/tags/v1.4.29.tar.gz' 'AMF-1.4.29.tar.gz' 'AMF-1.4.29'
     execute rm -rf "${workspace}"/include/AMF
     execute mkdir -p "${workspace}"/include/AMF
-    execute cp -fr "${pkgs}"/AMF-1.4.29/AMF-1.4.29/amf/public/include/* "${workspace}"/include/AMF/
+    execute cp -fr "${packages}"/AMF-1.4.29/AMF-1.4.29/amf/public/include/* "${workspace}"/include/AMF/
     build_done 'amf' '1.4.29'
 fi
 cnf_ops+=('--enable-amf')
