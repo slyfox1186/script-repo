@@ -602,6 +602,18 @@ imow()
     fi
 }
 
+# DOWNSAMPLE IMAGES AT 50% OF ORIGINAL DIMENSIONS SHARPER SETTINGS
+im50()
+{
+    clear
+    local i
+
+    for i in *.jpg
+    do
+        convert "${i}" -monitor -colorspace sRGB -filter 'LanczosRadius' -distort Resize 50% -colorspace sRGB "${i}"
+    done
+}
+
 ##################################################
 ## SHOW file name AND SIZE IN CURRENT DIRECTORY ##
 ##################################################
