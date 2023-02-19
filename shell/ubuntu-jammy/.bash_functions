@@ -549,7 +549,7 @@ imow()
 
     clear
 
-    local i dimensions random
+    local i dimensions random v v_endnoslash
 
     # Delete any leftover temp folders in the /tmp directory. caused by stopping the loop pre-maturely.
     if [ -d /tmp/tmp.* ] ; then
@@ -574,11 +574,11 @@ imow()
                 echo -e "\\nOverwriting orignal file with optimized self: ${i} >> ${i%%.mpc}.jpg\\n"
                 convert "${i}" -monitor "${i%%.mpc}.jpg"
                 if [ -f "${i%%.mpc}.jpg" ]; then
-                    mv "${i%%.mpc}.jpg" "${PWD}"
+                    sudo mv "${i%%.mpc}.jpg" "${PWD}"
                     for v in "${i}"
                     do
                         v_endnoslash="${v%/}"
-                        rm -fr "${v_endnoslash%/*}"
+                        sudo rm -fr "${v_endnoslash%/*}"
                         clear
                     done
                 else
