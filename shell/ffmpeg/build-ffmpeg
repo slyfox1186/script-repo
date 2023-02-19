@@ -118,11 +118,11 @@ ff_ver_fn()
     echo
     echo '============================================================'
     echo '  The binary files can be found in the following locations  '
-    echo '============================================================'
     echo
-    echo " ffmpeg:  ${install_dir}/ffmpeg"
-    echo " ffprobe: ${install_dir}/ffprobe"
-    echo " ffplay:  ${install_dir}/ffplay"
+    echo "  ffmpeg:  ${install_dir}/ffmpeg"
+    echo "  ffprobe: ${install_dir}/ffprobe"
+    echo "  ffplay:  ${install_dir}/ffplay"
+    echo '============================================================'
     echo
     echo '==============================='
     echo '        FFmpeg Version         '
