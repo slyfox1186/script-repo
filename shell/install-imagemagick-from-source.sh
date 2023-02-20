@@ -11,7 +11,7 @@
     ##           IMAGE PROCESSOR. IT CAN BLUR, SHARPEN, WARP, REDUCE
     ##           FILE SIZE, ECT... IT IS FANTASTIC.
     ##
-    ## LAST UPDATED: 02.18.23
+    ## LAST UPDATED: 02.19.23
     ##
     #################################################################
 
@@ -32,8 +32,8 @@
     ## VERSION INFORMATION VARIABLES
     ##
 
-    sver='1.63'
-    iver='7.1.0-65'
+    sver='1.64'
+    iver='7.1.0-63 (Beta)'
     pver='1.2.59'
 
     ######################
@@ -136,11 +136,11 @@
                 apt -y install ${i}
             done
             clear
-            echo 'IM'\''s Required Development Libraries were successfully installed'
-        echo '======================================================================'
+            echo 'IM'\''s Dev Libraries were successfully installed'
+        echo '=========================================================='
         else
-            echo 'IM'\''s Required Development Libraries are already installed'
-        echo '================================================================'
+            echo 'IM'\''s Dev Libraries are already installed'
+        echo '===================================================='
         fi
         sleep 2
         clear
@@ -209,7 +209,7 @@
     echo
     sleep 2
     echo
-    echo 'Installing: delegate support software'
+    echo 'Installing: Delegate Support Software'
     echo '=========================================='
     echo
     sleep 2
@@ -218,30 +218,19 @@
     magick_packages_fn
 
     # SET VARIABLES FOR IMAGEMAGICK
-    imurl='https://imagemagick.org/archive/ImageMagick.tar.gz'
+    imurl='https://github.com/ImageMagick/ImageMagick.git'
     imdir="ImageMagick-${iver}"
-    imtar="${imdir}.tar.gz"
+    imtar="ImageMagick-7.1.0-65.tar.gz"
 
     # DOWNLOAD IMAGEMAGICK SOURCE CODE
     if [ ! -f "${imtar}" ]; then
         echo 'Downloading: IM Source Code'
         echo '==============================='
         echo
-        wget --show-progress -cqO "${imtar}" "${imurl}"
-        clear
+        sudo git clone "${imurl}" "${imdir}"
+        cd "${imdir}" || exit 1
+        echo
     fi
-
-    # CREATE OUTPUT FOLDER FOR TAR FILES
-    if [ ! -d "${imdir}" ]; then
-        mkdir -p "${imdir}"
-    fi
-
-    # UNCOMPRESS SOURCE CODE TO FOLDER
-    if ! tar -xf "${imtar}"; then
-        extract_fail_fn
-    fi
-
-    cd "${imdir}" || exit 1
 
     # EXPORT THE pkg CONFIG PATHS TO ENABLE SUPPORT DURING THE BUILD
     PKG_CONFIG_PATH='/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig'
@@ -281,7 +270,7 @@
     make install
 
     # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE MAGICK COMMAND WILL NOT WORK
-    ldconfig /usr/local/lib >/dev/null
+    ldconfig /usr/local/lib
 
     # CD BACK TO THE PARENT FOLDER
     cd ../ || exit 1
