@@ -26,8 +26,15 @@ wget -qO pkgs.sh https://pkgs.optimizethis.net; sudo bash pkgs.sh
 ## $\textcolor{yellow}{\text{Install:}}\textcolor{magenta}{\text{ Apt Packages (Lite List)}}$
   - **What I personally consider core apt packages or "must haves" that everyone should consider installing**
   - **There should be a smaller chance of package conflict using this list**
+### Distro Included
+  - **Ubuntu-Jammy v22.04.02**
 ```
-wget -qO pkgs-lite.sh https://pkgs-lite.optimizethis.net; sudo bash pkgs-lite.sh
+wget -qO jammy-apt-pkgs-lite.sh https://jammy-apt-pkgs-lite.optimizethis.net; sudo bash jammy-apt-pkgs-lite.sh
+```
+
+  - **Ubuntu-Focal v22.04.05**
+```
+wget -qO focal-apt-pkgs-lite.sh https://focal-apt-pkgs-lite.optimizethis.net; sudo bash focal-apt-pkgs-lite.sh
 ```
 
 ## $\textcolor{yellow}{\text{Install:}}$ [7-Zip](www.7-zip.org/download.html)
@@ -57,7 +64,7 @@ wget -qO imagick.sh https://imagick.optimizethis.net; sudo bash imagick.sh
 wget -qO ffn.sh https://ffn.optimizethis.net; bash ffn.sh
 ```
 **Without GPL and non-free: https://ffmpeg.org/legal.html**
-```
+```ubuntu
 wget -qO ff.sh https://ff.optimizethis.net; bash ff.sh
 ```
 
