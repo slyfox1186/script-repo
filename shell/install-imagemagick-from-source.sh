@@ -118,7 +118,7 @@
         clear
         echo 'Installing: IM'\''s Required Developement Libraries'
         echo '===================================================='
-        sleep 3
+        sleep 2
 
         pkgs=(autoconf automake build-essential google-perftools libc-devtools libcpu-features-dev libcrypto++-dev libdmalloc-dev libdmalloc5 libgc-dev libgc1 libgl2ps-dev libglib2.0-dev libgoogle-perftools-dev libgoogle-perftools4 libheif-dev libjemalloc-dev libjemalloc2 libjpeg-dev libmagickcore-6.q16hdri-dev libmimalloc-dev libmimalloc2.0 libopenjp2-7-dev libpng++-dev libpng-dev libpng-tools libpng16-16 libpstoedit-dev libraw-dev librust-bzip2-dev librust-jpeg-decoder+default-dev libtcmalloc-minimal4 libtiff-dev libtool libwebp-dev libzip-dev pstoedit)
 
@@ -139,7 +139,7 @@
         else
             echo 'IM'\''s Required Development Libraries are already installed'
         fi
-        sleep 3
+        sleep 2
         clear
     }
 
@@ -147,7 +147,7 @@
     echo "Starting libpng12 Build: v${pver}"
     echo '===================================='
     echo
-    sleep 3
+    sleep 2
 
     # SET LIBPNG12 VARIABLES
     pngurl="https://sourceforge.net/projects/libpng/files/libpng12/${pver}/libpng-${pver}.tar.xz/download"
@@ -182,7 +182,7 @@
     echo 'Executing: ./configure script'
     echo '=============================='
     echo
-    sleep 3
+    sleep 2
     ./configure --prefix='/usr/local'
 
     # INSTALL LIBPNG12
@@ -190,7 +190,7 @@
     echo 'Executing: make install command'
     echo '================================'
     echo
-    sleep 3
+    sleep 2
     make install
 
     # CHANGE WORKING DIRECTORY BACK TO PARENT FOLDER
@@ -204,7 +204,7 @@
     echo "ImagickMagick Build: v${sver}"
     echo '============================'
     echo
-    sleep 3
+    sleep 2
     echo
     echo 'Installing: delegate support software'
     echo '======================================='
@@ -266,7 +266,7 @@
     echo "executing: make -j$(nproc)"
     echo '============================'
     echo
-    sleep 3
+    sleep 2
     make "-j$(nproc)"
 
     # INSTALLING FILES TO /usr/local/bin/
@@ -274,7 +274,7 @@
     echo 'executing: make install'
     echo '========================'
     echo
-    sleep 3
+    sleep 2
     make install
 
     # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE MAGICK COMMAND WILL NOT WORK
