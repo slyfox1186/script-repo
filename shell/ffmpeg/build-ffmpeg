@@ -586,8 +586,8 @@ cuda_fn()
 cuda_add_fn()
 {
     echo
-    echo 'Installing: Additional Required Geforce CUDA Developement Packages'
-    echo '===================================================================='
+    echo 'Installing Geforce CUDA Developement APT packages'
+    echo '====================================================='
 
     addons=(autoconf automake build-essential libass-dev libc6 libc6-dev libfdk-aac-dev libfreetype6-dev libmp3lame-dev libnuma1 libnuma-dev libtheora-dev libtool libvorbis-dev pkg-config texinfo unzip wget yasm zlib1g-dev)
 
@@ -603,16 +603,14 @@ cuda_add_fn()
         do
             sudo apt install ${pkg}
         done
-        echo 'Status: The Required Geforce CUDA Developement Libraries were installed'
-        echo '========================================================================='
-        sleep 3
-        echo
+        echo 'The Geforce CUDA Developement Libraries were successfully installed'
+        echo '======================================================================='
     else
-        echo 'Status: The Required Geforce CUDA Developement Libraries are already installed'
-        echo '================================================================================'
-        sleep 3
-        echo
+        echo 'The Geforce CUDA Dev Libraries are already installed'
+        echo '========================================================'
     fi
+    sleep 3
+    echo
 }
 
 ##
