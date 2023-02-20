@@ -270,7 +270,7 @@
     make install
 
     # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE MAGICK COMMAND WILL NOT WORK
-    ldconfig /usr/local/lib
+    ldconfig /usr/local/lib >/dev/null
 
     # CD BACK TO THE PARENT FOLDER
     cd ../ || exit 1
