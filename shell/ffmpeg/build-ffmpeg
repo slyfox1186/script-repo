@@ -1222,7 +1222,9 @@ cnf_ops+=('--enable-amf')
 ##
 
 build 'ffmpeg' "${ffmpeg_ver::-33}"
-download "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/${ffmpeg_ver}.tar.gz" "FFmpeg-snapshot-${ffmpeg_ver}.tar.gz"
+# download "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/${ffmpeg_ver}.tar.gz" "FFmpeg-snapshot-${ffmpeg_ver}.tar.gz"
+git clone -q 'https://github.com/FFmpeg/FFmpeg.git' "${packages}/ffmpeg-v${ffmpeg_ver}"
+cd "${packages}/ffmpeg-v${ffmpeg_ver}" || exit 1
 # shellcheck disable=SC2086
 ./configure \
     "${cnf_ops[@]}" \
@@ -1252,14 +1254,18 @@ sudo cp -f "${workspace}/bin/ffprobe" "${install_dir}/ffprobe"
 sudo cp -f "${workspace}/bin/ffplay" "${install_dir}/ffplay"
 
 # CHECK THAT FILES WERE COPIED TO THE ${install_dir}
-if [ ! -f "${install_dir}/ffmpeg" ] || [ ! -f "${install_dir}/ffprobe" ] || [ ! -f "${install_dir}/ffplay" ]; then
-    printf \
-    "Failed to copy: %s to ${install_dir}\nFailed to copy: %s to ${install_dir}\nFailed to copy: %s to ${install_dir}\n" \
-    "${install_dir}/ffmpeg" \
-    "${install_dir}/ffprobe" \
-    "${install_dir}/ffplay"
+    if [ ! -f "${install_dir}/ffmpeg" ]; then
+        echo "Failed to copy: ffmpeg to ${install_dir}/"
+    fi
+    if [ ! -f "${install_dir}/ffprobe" ]; then
+        echo "Failed to copy: ffprobe to ${install_dir}/"
+    fi
+    if [ ! -f "${install_dir}/ffplay" ]; then
+        echo "Failed to copy: ffplay to ${install_dir}/"
+    fi
     echo
-    exit 1
+    cleanup_fn
+    exit_fn
 fi
 
 ff_ver_fn
