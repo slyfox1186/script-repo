@@ -52,16 +52,17 @@
         if ! magick -version 2>/dev/null; then
             clear
             echo 'Error: The script failed to execute the command "magick -version"'
+            echo '====================================================================='
             echo
-            echo 'Try running the command manually first and then if you need additional support'
-            echo 'create a support ticket by visiting: https://github.com/slyfox1186/script-repo/issues'
+            echo 'Try running the command manually first and then create a support ticket by visiting:'
+            echo 'https://github.com/slyfox1186/script-repo/issues'
             echo
             exit 1
         fi
 
         echo
         echo 'The script has completed'
-        echo '========================='
+        echo '============================'
         echo
         echo 'Make sure to star this repository to show your support!'
         echo 'https://github.com/slyfox1186/script-repo'
@@ -83,7 +84,7 @@
             exit_fn
         else
             echo 'Error: Bad user input'
-            echo '======================'
+            echo '========================='
             echo
             read -p 'Press enter to exit'
             exit_fn
@@ -102,10 +103,10 @@
     {
         clear
         echo 'Error: The tar command failed to extract any files'
-        echo '==================================================='
+        echo '====================================================='
         echo
         echo 'To create a support ticket visit: https://github.com/slyfox1186/script-repo/issues'
-        echo '==================================================================================='
+        echo '====================================================================================='
         echo
         exit 1
     }
@@ -117,7 +118,7 @@
     {
         clear
         echo 'Installing: IM'\''s Required Developement Libraries'
-        echo '===================================================='
+        echo '======================================================'
         sleep 2
 
         pkgs=(autoconf automake build-essential google-perftools libc-devtools libcpu-features-dev libcrypto++-dev libdmalloc-dev libdmalloc5 libgc-dev libgc1 libgl2ps-dev libglib2.0-dev libgoogle-perftools-dev libgoogle-perftools4 libheif-dev libjemalloc-dev libjemalloc2 libjpeg-dev libmagickcore-6.q16hdri-dev libmimalloc-dev libmimalloc2.0 libopenjp2-7-dev libpng++-dev libpng-dev libpng-tools libpng16-16 libpstoedit-dev libraw-dev librust-bzip2-dev librust-jpeg-decoder+default-dev libtcmalloc-minimal4 libtiff-dev libtool libwebp-dev libzip-dev pstoedit)
@@ -135,9 +136,11 @@
                 apt -y install ${i}
             done
             clear
-            echo 'IM'\''s Required Development Libraries were installed'
+            echo 'IM'\''s Required Development Libraries were successfully installed'
+        echo '======================================================================'
         else
             echo 'IM'\''s Required Development Libraries are already installed'
+        echo '================================================================'
         fi
         sleep 2
         clear
@@ -145,7 +148,7 @@
 
     clear
     echo "Starting libpng12 Build: v${pver}"
-    echo '===================================='
+    echo '======================================'
     echo
     sleep 2
 
@@ -172,7 +175,7 @@
     # NEED TO RUN AUTOGEN SCRIPT FIRST SINCE THIS IS A WAY NEWER SYSTEM THAN THESE FILES ARE USED TO
     echo
     echo 'Executing: autogen.sh script'
-    echo '============================='
+    echo '================================='
     echo
     sleep 2
     ./autogen.sh
@@ -180,7 +183,7 @@
     # RUN CONFIGURE SCRIPT
     echo
     echo 'Executing: ./configure script'
-    echo '=============================='
+    echo '================================='
     echo
     sleep 2
     ./configure --prefix='/usr/local'
@@ -188,7 +191,7 @@
     # INSTALL LIBPNG12
     echo
     echo 'Executing: make install command'
-    echo '================================'
+    echo '==================================='
     echo
     sleep 2
     make install
@@ -202,12 +205,12 @@
 
     echo
     echo "ImagickMagick Build: v${sver}"
-    echo '============================'
+    echo '=================================='
     echo
     sleep 2
     echo
     echo 'Installing: delegate support software'
-    echo '======================================='
+    echo '=========================================='
     echo
     sleep 2
 
@@ -222,7 +225,7 @@
     # DOWNLOAD IMAGEMAGICK SOURCE CODE
     if [ ! -f "${imtar}" ]; then
         echo 'Downloading: IM Source Code'
-        echo '============================'
+        echo '==============================='
         echo
         wget --show-progress -cqO "${imtar}" "${imurl}"
         clear
@@ -246,7 +249,7 @@
 
     echo
     echo 'Executing: configure script'
-    echo '============================'
+    echo '==============================='
     echo
     ./configure \
         --enable-ccmalloc \
@@ -264,7 +267,7 @@
 
     # RUNNING MAKE COMMAND WITH PARALLEL PROCESSING
     echo "executing: make -j$(nproc)"
-    echo '============================'
+    echo '=============================='
     echo
     sleep 2
     make "-j$(nproc)"
@@ -272,7 +275,7 @@
     # INSTALLING FILES TO /usr/local/bin/
     echo
     echo 'executing: make install'
-    echo '========================'
+    echo '==========================='
     echo
     sleep 2
     make install
@@ -286,7 +289,7 @@
     # PROMPT USER TO CLEAN UP BUILD FILES
     echo
     echo 'Do you want to remove the build files?'
-    echo '======================================'
+    echo '=========================================='
     echo
     echo '[1] Yes'
     echo '[2] No'
