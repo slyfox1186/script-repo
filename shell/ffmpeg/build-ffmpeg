@@ -6,7 +6,7 @@
 ##
 ##  Forked from: https://github.com/markus-perl/ffmpeg-build-script/
 ##
-##  Target Distro: Ubuntu Jammy 22.04.1 ( x86_x64 )
+##  Target Distro: Ubuntu Focal 20.04.5 ( x86_x64 )
 ##
 ##  Purpose: To build FFmpeg from source code with addon development
 ##           libraries also compiled from source code to ensure the
@@ -17,9 +17,9 @@
 ##        hardware acceleration is enabled when building FFmpeg at the
 ##        script's end.
 ##
-##  Updated: 02.18.23
+##  Updated: 02.19.23
 ##
-##  Version: 2.21
+##  Script Version: 2.22
 ##
 ##########################################################################
 
@@ -41,7 +41,7 @@ progname="${0:2}"
 # Master branch snapshot
 ffmpeg_ver='59a9727c241aa50f18e713dbabbdd5cf3d379411'
 cuda_ver='12.0 Update 1'
-script_ver='2.21'
+script_ver='2.22'
 packages="${PWD}"/packages
 workspace="${PWD}"/workspace
 install_dir='/usr/bin'
