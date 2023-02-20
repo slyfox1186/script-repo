@@ -60,16 +60,17 @@ ppa_repo='danielrichter2007/grub-customizer'
 
 if ! grep -q "^deb .*${ppa_repo}" /etc/apt/sources.list /etc/apt/sources.list.d/*; then
     echo "Now installing ppa:${ppa_repo}"
+    echo '==================================='
     echo
     add-apt-repository ppa:"${ppa_repo}"
     echo
     echo 'Updating: APT packages'
-    echo '======================='
+    echo '=========================='
     echo
     if sudo apt-get update &> /dev/null; then 
         echo
         echo "The PPA Repo has been installed: ${ppa_repo}"
-        echo '=============================================='
+        echo '================================================'
         echo
     fi
 fi
@@ -82,7 +83,7 @@ clear
 
 echo
 echo 'Installing: APT Packages'
-echo '=========================='
+echo '============================'
 echo
 sleep 2
 
@@ -101,10 +102,12 @@ if [ -n "${missing_pkgs}" ]; then
         apt -y install ${i}
     done
     clear
-    echo 'Any missing packages have been installed.'
+    echo 'Missing APT packages have been installed'
+    echo '============================================='
 else
     clear
-    echo 'All packages were already installed.'
+    echo 'APT packages are already installed'
+    echo '======================================'
 fi
 
 sleep 3
