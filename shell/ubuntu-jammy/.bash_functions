@@ -546,27 +546,32 @@ imo()
 # OPTIMIZE AND OVERWRITE THE ORIGINAL IMAGES
 imow()
 {
-
     clear
-
     local i dimensions random v v_endnoslash
 
     # Delete any leftover temp folders in the /tmp directory. caused by stopping the loop pre-maturely.
-    if [ -d /tmp/tmp.* ] ; then
-        sudo rm -fr /tmp/tmp.*
-    fi
+     for dir in /tmp/tmp.*
+    do
+        if [ -e "${dir}" ]; then
+            rm -r "${dir}"
+            break
+        fi
+    done
+
     # find all jpg files and create temporary cache files from them
     for i in *.jpg
     do
-        # create random direcotories in case you are running this function more than once at the same time. it prevents cross-over.
+        # create a variable to hold a randomized directory name to protect against crossover if running
+        # this function more than once at a time
         random="$(mktemp --directory)"
-        "${random}" 2>/dev/null
+        # create random direcotories in case you are running this function more than once at the same time. it prevents cross-over.
+        echo "current directory: ${PWD}"
         echo -e "\\nCreating two temporary cache files: ${random}/${i%%.jpg}.mpc + ${random}/${i%%.jpg}.cache\\n"
         dimensions="$(identify -format '%wx%h' "${i}")"
         convert "${i}" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "${dimensions}" -strip \
-        -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize '136' -quality '82' -define jpeg:fancy-upsampling='off' \
-        -define png:compression-filter='5' -define png:compression-level='9' -define png:compression-strategy='1' \
-        -define png:exclude-chunk='all' -auto-level -enhance -interlace 'none' -colorspace 'sRGB' "${random}/${i%%.jpg}.mpc"
+            -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize '136' -quality '82' -define jpeg:fancy-upsampling='off' \
+            -define png:compression-filter='5' -define png:compression-level='9' -define png:compression-strategy='1' \
+            -define png:exclude-chunk='all' -auto-level -enhance -interlace 'none' -colorspace 'sRGB' "${random}/${i%%.jpg}.mpc"
         clear
         for i in "${random}"/*.mpc
         do
@@ -574,11 +579,11 @@ imow()
                 echo -e "\\nOverwriting orignal file with optimized self: ${i} >> ${i%%.mpc}.jpg\\n"
                 convert "${i}" -monitor "${i%%.mpc}.jpg"
                 if [ -f "${i%%.mpc}.jpg" ]; then
-                    sudo mv "${i%%.mpc}.jpg" "${PWD}"
+                    mv "${i%%.mpc}.jpg" "${PWD}"
                     for v in "${i}"
                     do
                         v_endnoslash="${v%/}"
-                        sudo rm -fr "${v_endnoslash%/*}"
+                        rm -fr "${v_endnoslash%/*}"
                         clear
                     done
                 else
