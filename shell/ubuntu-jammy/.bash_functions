@@ -565,7 +565,7 @@ imow()
         # this function more than once at a time
         random="$(mktemp --directory)"
         # create random direcotories in case you are running this function more than once at the same time. it prevents cross-over.
-        echo "current directory: ${PWD}"
+        echo "Working directory: ${PWD}"
         echo -e "\\nCreating two temporary cache files: ${random}/${i%%.jpg}.mpc + ${random}/${i%%.jpg}.cache\\n"
         dimensions="$(identify -format '%wx%h' "${i}")"
         convert "${i}" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "${dimensions}" -strip \
