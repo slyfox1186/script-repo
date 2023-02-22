@@ -553,7 +553,7 @@ imow()
     find . -name "*:Zone.Identifier" -type f -delete
 
     # Delete any leftover temp folders in the /tmp directory. caused by stopping the loop pre-maturely.
-     for dir in /tmp/tmp.*
+    for dir in /tmp/tmp.*
     do
         if [ -e "${dir}" ]; then
             rm -r "${dir}"
