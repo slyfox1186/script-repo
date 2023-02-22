@@ -557,7 +557,6 @@ imow()
     do
         if [ -e "${dir}" ]; then
             rm -r "${dir}"
-            break
         fi
     done
 
