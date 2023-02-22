@@ -549,6 +549,9 @@ imow()
     clear
     local i dimensions random v v_endnoslash
 
+    # Delete any useless zone idenfier files that spawn from copying a file from windows ntfs into a WSL directory
+    find . -name "*:Zone.Identifier" -type f -delete
+
     # Delete any leftover temp folders in the /tmp directory. caused by stopping the loop pre-maturely.
      for dir in /tmp/tmp.*
     do
