@@ -585,7 +585,9 @@ imow()
         for i in "${random}"/*.mpc
         do
             if [ -f "${i}" ]; then
-                echo -e "\\nOverwriting orignal file with optimized self: ${i} >> ${i%%.mpc}.jpg\\n"
+                echo
+                echo -e "Overwriting orignal file with optimized self: ${i} >> ${i%%.mpc}.jpg"
+                echo
                 convert "${i}" -monitor "${i%%.mpc}.jpg"
                 if [ -f "${i%%.mpc}.jpg" ]; then
                     mv "${i%%.mpc}.jpg" "${PWD}"
