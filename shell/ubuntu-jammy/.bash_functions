@@ -575,7 +575,6 @@ imow()
         echo
         echo '========================================================================================================'
         echo
-        return
         dimensions="$(identify -format '%wx%h' "${i}")"
         convert "${i}" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "${dimensions}" -strip \
             -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize '136' -quality '82' -define jpeg:fancy-upsampling='off' \
