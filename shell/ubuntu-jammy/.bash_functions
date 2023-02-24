@@ -547,13 +547,13 @@ imo()
 imow()
 {
     clear
-    local i dimensions random v v_endnoslash
+    local i dimensions random v v_noslash
 
     # Delete any useless zone idenfier files that spawn from copying a file from windows ntfs into a WSL directory
     find . -name "*:Zone.Identifier" -type f -delete
 
     # Delete any leftover temp folders in the /tmp directory. caused by stopping the loop pre-maturely.
-    for dir in /tmp/tmp.*
+     for dir in /tmp/tmp.*
     do
         if [ -e "${dir}" ]; then
             rm -r "${dir}"
@@ -567,8 +567,15 @@ imow()
         # this function more than once at a time
         random="$(mktemp --directory)"
         # create random direcotories in case you are running this function more than once at the same time. it prevents cross-over.
-        echo "Working directory: ${PWD}"
-        echo -e "\\nCreating temporary cache files: ${random}/${i%%.jpg}.mpc + ${random}/${i%%.jpg}.cache\\n"
+        echo '========================================================================================================'
+        echo
+        echo "Working Directory: ${PWD}"
+        echo
+        printf "Converting: %s\n             >> %s\n              >> %s\n" "${i}" "${i%%.jpg}.mpc" "${i%%.jpg}.cache"
+        echo
+        echo '========================================================================================================'
+        echo
+        return
         dimensions="$(identify -format '%wx%h' "${i}")"
         convert "${i}" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "${dimensions}" -strip \
             -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize '136' -quality '82' -define jpeg:fancy-upsampling='off' \
@@ -584,13 +591,13 @@ imow()
                     mv "${i%%.mpc}.jpg" "${PWD}"
                     for v in "${i}"
                     do
-                        v_endnoslash="${v%/}"
-                        rm -fr "${v_endnoslash%/*}"
+                        v_noslash="${v%/}"
+                        rm -fr "${v_noslash%/*}"
                         clear
                     done
                 else
                     clear
-                    echo 'Error: Unable to find the optimized image and therfore unable to overwrite the original.'
+                    echo 'Error: Unable to find the optimized image.'
                     echo
                     return 1
                 fi
