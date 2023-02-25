@@ -550,7 +550,7 @@ imow()
     local i dimensions random v v_noslash
 
     # Delete any useless zone idenfier files that spawn from copying a file from windows ntfs into a WSL directory
-    find . -name "*:Zone.Identifier" -type f -delete
+    find . -name "*:Zone.Identifier" -type f -delete 2>/dev/null
 
     # find all jpg files and create temporary cache files from them
     for i in *.jpg
