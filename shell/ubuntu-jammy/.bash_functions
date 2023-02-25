@@ -558,7 +558,6 @@ imow()
         # create a variable to hold a randomized directory name to protect against crossover if running
         # this function more than once at a time
         random="$(mktemp --directory)"
-        # create random direcotories in case you are running this function more than once at the same time. it prevents cross-over.
         echo '========================================================================================================'
         echo
         echo "Working Directory: ${PWD}"
