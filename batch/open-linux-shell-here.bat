@@ -39,7 +39,7 @@ ECHO "NoWorkingDirectory"^=""
 ECHO "Extended"^=-
 ECHO=
 ECHO [HKEY_CLASSES_ROOT\*\shell\WSL\command]
-ECHO @^="%EXE% -NoP -NoL -W Hidden -C \"Start-Process wt.exe -Args ^'-w new-tab -M -d \"%%W\" wsl.exe -d %DIST%^' -Verb RunAs"
+ECHO @^="%EXE% -NoP -NoL -W Hidden -C \"Start-Process wt.exe -Args ^'-w new-tab -M -d \\\"%%W\\\" wsl.exe -d %DIST%^' -Verb RunAs\""
 ECHO=
 ECHO=
 ECHO ^; [ DesktopBackground ]
@@ -51,7 +51,7 @@ ECHO "NoWorkingDirectory"^=""
 ECHO "Extended"^=-
 ECHO=
 ECHO [HKEY_CLASSES_ROOT\DesktopBackground\shell\WSL\command]
-ECHO @^="%EXE% -NoP -NoL -W Hidden -C \"Start-Process wt.exe -Args ^'-w new-tab -M -d \"%%V\" wsl.exe -d %DIST%^' -Verb RunAs"
+ECHO @^="%EXE% -NoP -NoL -W Hidden -C \"Start-Process wt.exe -Args ^'-w new-tab -M -d \\\"%%V\\\" wsl.exe -d %DIST%^' -Verb RunAs\""
 ECHO=
 ECHO=
 ECHO ^; [ Directory\Background ]
@@ -63,7 +63,7 @@ ECHO "NoWorkingDirectory"^=""
 ECHO "Extended"^=-
 ECHO=
 ECHO [HKEY_CLASSES_ROOT\Directory\Background\shell\WSL\command]
-ECHO @^="%EXE% -NoP -NoL -W Hidden -C \"Start-Process wt.exe -Args ^'-w new-tab -M -d \"%%V\" wsl.exe -d %DIST%^' -Verb RunAs"
+ECHO @^="%EXE% -NoP -NoL -W Hidden -C \"Start-Process wt.exe -Args ^'-w new-tab -M -d \\\"%%V\\\" wsl.exe -d %DIST%^' -Verb RunAs\""
 ECHO=
 ECHO=
 ECHO ^; [ Directory ]
@@ -75,7 +75,7 @@ ECHO "NoWorkingDirectory"^=""
 ECHO "Extended"^=-
 ECHO=
 ECHO [HKEY_CLASSES_ROOT\Directory\shell\WSL\command]
-ECHO @^="%EXE% -NoP -NoL -W Hidden -C \"Start-Process wt.exe -Args ^'-w new-tab -M -d \"%%V\" wsl.exe -d %DIST%^' -Verb RunAs"
+ECHO @^="%EXE% -NoP -NoL -W Hidden -C \"Start-Process wt.exe -Args ^'-w new-tab -M -d \\\"%%V\\\" wsl.exe -d %DIST%^' -Verb RunAs\""
 ECHO=
 ECHO=
 ECHO ^; [ Drive ]
@@ -87,7 +87,7 @@ ECHO "NoWorkingDirectory"^=""
 ECHO "Extended"^=-
 ECHO=
 ECHO [HKEY_CLASSES_ROOT\Drive\shell\WSL\command]
-ECHO @^="%EXE% -NoP -NoL -W Hidden -C \"Start-Process wt.exe -Args ^'-w new-tab -M -d \"%%V\\\" wsl.exe -d %DIST%^' -Verb RunAs"
+ECHO @^="%EXE% -NoP -NoL -W Hidden -C \"Start-Process wt.exe -Args ^'-w new-tab -M -d \\\"%%V\\\" wsl.exe -d %DIST%^' -Verb RunAs\""
 )>"%TMP%\wsl.reg"
 
 :------------------------------------------------------------------------------------------------------------------------------------
