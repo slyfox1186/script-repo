@@ -558,13 +558,13 @@ imow()
         # create a variable to hold a randomized directory name to protect against crossover if running
         # this function more than once at a time
         random="$(mktemp --directory)"
-        echo '==========================================================================================================================='
+        echo '========================================================================================================='
         echo
         echo "Working Directory: ${PWD}"
         echo
         printf "Converting: %s\n             >> %s\n              >> %s\n" "${i}" "${i%%.jpg}.mpc" "${i%%.jpg}.cache"
         echo
-        echo '==========================================================================================================================='
+        echo '========================================================================================================='
         echo
         dimensions="$(identify -format '%wx%h' "${i}")"
         convert "${i}" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "${dimensions}" -strip \
