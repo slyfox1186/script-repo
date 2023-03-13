@@ -737,13 +737,13 @@ if build 'libtool' '2.4.7'; then
 fi
 
 if ${nonfree}; then
-    if build 'openssl' '1.1.1s'; then
-        download 'https://www.openssl.org/source/openssl-1.1.1s.tar.gz'
+    if build 'openssl' '1.1.1t'; then
+        download 'https://www.openssl.org/source/openssl-1.1.1t.tar.gz'
         execute ./config --prefix="${workspace}" --openssldir="${workspace}" \
             --with-zlib-include="${workspace}"/include/ --with-zlib-lib="${workspace}"/lib no-shared zlib
         execute make "-j${cpus}"
         execute make install_sw
-        build_done 'openssl' '1.1.1s'
+        build_done 'openssl' '1.1.1t'
     fi
     cnf_ops+=('--enable-openssl')
 else
@@ -764,24 +764,24 @@ else
         build_done 'nettle' '3.8.1'
     fi
 
-    if build 'gnutls' '3.7.8'; then
-        download 'https://www.gnupg.org/ftp/gcrypt/gnutls/v3.7/gnutls-3.7.8.tar.xz'
+    if build 'gnutls' '3.7.9'; then
+        download 'https://www.gnupg.org/ftp/gcrypt/gnutls/v3.7/gnutls-3.7.9.tar.xz'
         execute ./configure --prefix="${workspace}" --disable-shared --enable-static --disable-doc --disable-tools \
             --disable-cxx --disable-tests --disable-gtk-doc-html --disable-libdane --disable-nls --enable-local-libopts \
             --disable-guile --with-included-libtasn1 --with-included-unistring --without-p11-kit CPPFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}"
         execute make "-j${cpus}"
         execute make install
-        build_done 'gnutls' '3.7.8'
+        build_done 'gnutls' '3.7.9'
     fi
     cnf_ops+=('--enable-gmp' '--enable-gnutls')
 fi
 
-if build 'cmake' '3.25.2'; then
-    download 'https://github.com/Kitware/CMake/releases/download/v3.25.2/cmake-3.25.2.tar.gz'
+if build 'cmake' '3.25.3'; then
+    download 'https://github.com/Kitware/CMake/releases/download/v3.25.3/cmake-3.25.3.tar.gz'
     execute ./configure --prefix="${workspace}" --parallel="${cpus}" -- -DCMAKE_USE_OPENSSL='OFF'
     execute make "-j${cpus}"
     execute make install
-    build_done 'cmake' '3.25.2'
+    build_done 'cmake' '3.25.3'
 fi
 
 ##
@@ -1221,6 +1221,12 @@ cnf_ops+=('--enable-amf')
 ## BUILD FFMPEG
 ##
 
+# REMOVE ANY FILES FROM PRIOR RUNS
+if [ -d "${packages}/ffmpeg-latest" ]; then
+    rm -fr "${packages}/ffmpeg-latest"
+fi
+
+# CLONE FFMPEG FROM THE LATEST GIT RELEASE
 build 'ffmpeg' 'latest'
 git clone -q 'https://github.com/FFmpeg/FFmpeg.git' "${packages}/ffmpeg-latest"
 cd "${packages}/ffmpeg-latest" || exit 1
