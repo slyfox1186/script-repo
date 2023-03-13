@@ -948,15 +948,15 @@ if ${nonfree}; then
     cnf_ops+=('--enable-libvidstab')
 fi
 
-if build 'av1' '7be63ce'; then
-  # libaom bcfe6fb == v3.5.0
-    download 'https://aomedia.googlesource.com/aom/+archive/7be63cef996e6b09c0bfa0057334a5cba5d027c8.tar.gz' 'av1.tar.gz' 'av1'
+if build 'av1' 'b3e0d3e'; then
+  # libaom b3e0d3e == v3.6.0
+    download 'https://aomedia.googlesource.com/aom/+archive/b3e0d3e9c031bedbab10be456c55359d4be82d27.tar.gz' 'av1.tar.gz' 'av1'
     make_dir "${packages}/aom_build"
     cd "${packages}"/aom_build || exit 1
     execute cmake -DENABLE_TESTS='0' -DENABLE_EXAMPLES='0' -DCMAKE_INSTALL_PREFIX="${workspace}" -DCMAKE_INSTALL_LIBDIR='lib' "${packages}"/av1
     execute make "-j${cpus}"
     execute make install
-    build_done 'av1' '7be63ce'
+    build_done 'av1' 'b3e0d3e'
 fi
 cnf_ops+=('--enable-libaom')
 
