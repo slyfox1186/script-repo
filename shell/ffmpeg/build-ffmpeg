@@ -729,7 +729,7 @@ if build 'automake' '1.16.5'; then
 fi
 
 if build 'libtool' '2.4.7'; then
-    download 'https://mirror.vern.cc/gnu/libtool/libtool-2.4.7.tar.xz'
+    download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
     execute ./configure --prefix="${workspace}" --enable-static --disable-shared
     execute make "-j${cpus}"
     execute make install
