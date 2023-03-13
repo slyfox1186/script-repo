@@ -57,6 +57,7 @@ exit_fn()
         echo 'Try running the command manually first and if needed create a support ticket by visiting:'
         echo 'https://github.com/slyfox1186/script-repo/issues'
         echo
+        rm -f "${0}"
         exit 1
     fi
 
@@ -66,7 +67,6 @@ exit_fn()
     echo
     echo 'Make sure to star this repository to show your support!'
     echo 'https://github.com/slyfox1186/script-repo'
-    echo
     echo
     rm -f "${0}"
     exit 0
