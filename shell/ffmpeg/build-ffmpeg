@@ -672,7 +672,7 @@ else
         cuda_fn
         cuda_add_fn
     elif [[ "${cuda_choice}" -eq '2' ]]; then
-        echo
+        echo 'Continuing the build...'
     fi
 fi
 
