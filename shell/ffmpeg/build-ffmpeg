@@ -967,10 +967,10 @@ fi
 
 if build 'av1' 'b3e0d3e'; then
   # libaom b3e0d3e1 == v3.6.0
-    download 'https://aomedia.googlesource.com/aom/+archive/b3e0d3e9c031bedbab10be456c55359d4be82d27.tar.gz' 'av1.tar.gz' 'av1'
-    make_dir "${packages}/aom_build"
+    download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/master/SVT-AV1-master.tar.bz2' 'av1.tar.gz' 'av1'
+    make_dir "${packages}"/aom_build
     cd "${packages}"/aom_build || exit 1
-    execute cmake -DENABLE_TESTS='0' -DENABLE_EXAMPLES='0' -DCMAKE_INSTALL_PREFIX="${workspace}" -DCMAKE_INSTALL_LIBDIR='lib' "${packages}"/av1
+    execute cmake -DENABLE_TESTS='0' -DENABLE_EXAMPLES='0' -DCMAKE_INSTALL_PREFIX="${workspace}" -DCMAKE_INSTALL_LIBDIR='lib' "${packages}"/svtav1-cb8830a/SVT-AV1-master
     execute make "-j${cpus}"
     execute make install
     build_done 'av1' 'b3e0d3e'
