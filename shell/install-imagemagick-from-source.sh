@@ -138,7 +138,7 @@ magick_packages_fn()
     else
         echo
         echo 'IM'\''s Dev Libraries are already installed'
-        echo '===================================================='
+        echo '============================================='
     fi
     sleep 2
 }
