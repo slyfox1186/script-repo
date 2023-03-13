@@ -1244,7 +1244,9 @@ cd "${packages}/ffmpeg-latest" || exit 1
     --prefix="${workspace}" \
     --extra-version="${EXTRA_VERSION}"
 
+# EXECUTE MAKE WITH PARELLEL PROCESSING
 execute make "-j${cpus}"
+# EXECUTE MAKE INSTALL
 execute make install
 
 # MOVE BINARIES TO '/usr/bin'
