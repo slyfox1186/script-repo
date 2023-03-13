@@ -6,7 +6,7 @@
 ##
 ##  FORKED FROM: https://github.com/markus-perl/ffmpeg-build-script/
 ##
-##  TARGET DISTRO: UBUNTU JAMMY 22.04.2 (x86_x64)
+##  TARGET DISTRO: UBUNTU JAMMY 22.04.2 ( x86_x64 )
 ##
 ##  PURPOSE: TO BUILD FFMPEG FROM SOURCE CODE WITH ADDON DEVELOPMENT
 ##           LIBRARIES ALSO COMPILED FROM SOURCE CODE TO ENSURE THE
@@ -606,13 +606,12 @@ cuda_add_fn()
         do
             sudo apt install ${pkg}
         done
-        echo 'Status: The Required Geforce CUDA Developement Libraries were installed'
-        echo '========================================================================='
+        echo 'The Required Geforce CUDA Developement Libraries were installed.'
         sleep 3
         echo
     else
-        echo 'Status: The Required Geforce CUDA Developement Libraries are already installed'
-        echo '================================================================================'
+        echo
+        echo 'The Required Geforce CUDA Developement Libraries are already installed.'
         sleep 3
         echo
     fi
