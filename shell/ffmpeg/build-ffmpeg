@@ -881,8 +881,8 @@ if ${nonfree}; then
         cd ../'8bit' || exit 1
         ln -sf ../'10bit/libx265.a' 'libx265_main10.a'
         ln -sf ../'12bit/libx265.a' 'libx265_main12.a'
-        execute cmake ../../../'source' -DCMAKE_INSTALL_PREFIX="${workspace}" -DENABLE_SHARED='OFF' \
-            -DBUILD_SHARED_LIBS='OFF' -DEXTRA_LIB='x265_main10.a;x265_main12.a;-ldl' -DEXTRA_LINK_FLAGS='-L.' -DLINKED_10BIT='ON' -DLINKED_12BIT='ON'
+        execute cmake ../../../'source' -DCMAKE_INSTALL_PREFIX="${workspace}" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' \
+            -DEXTRA_LIB='x265_main10.a;x265_main12.a;-ldl' -DEXTRA_LINK_FLAGS='-L.' -DLINKED_10BIT='ON' -DLINKED_12BIT='ON'
         execute make "-j${cpus}"
         # MUST RENAME THIS FILE
         mv 'libx265.a' 'libx265_main.a'
@@ -907,12 +907,12 @@ EOF
     cnf_ops+=('--enable-libx265')
 fi
 
-if build 'libvpx' '1.12.0'; then
-    download 'https://github.com/webmproject/libvpx/archive/refs/tags/v1.12.0.tar.gz' 'libvpx-1.12.0.tar.gz'
+if build 'libvpx' '1.13.0'; then
+    download 'https://github.com/webmproject/libvpx/archive/refs/tags/v1.13.0.tar.gz' 'libvpx-1.13.0.tar.gz'
     execute ./configure --prefix="${workspace}" --disable-unit-tests --disable-shared --disable-examples --as='yasm'
     execute make "-j${cpus}"
     execute make install
-    build_done 'libvpx' '1.12.0'
+    build_done 'libvpx' '1.13.0'
 fi
 cnf_ops+=('--enable-libvpx')
 
