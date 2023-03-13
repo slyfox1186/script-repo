@@ -219,6 +219,7 @@ imtar="ImageMagick-${imver}.tar.gz"
 
 # DOWNLOAD IMAGEMAGICK SOURCE CODE
 if [ ! -f "${imtar}" ]; then
+    echo
     echo 'Downloading: IM Source Code'
     echo '============================='
     echo
