@@ -1160,17 +1160,17 @@ fi
 ## OTHER LIBRARIES
 ##
 
-if build 'libsdl' '2.26.2'; then
-    download 'https://www.libsdl.org/release/SDL2-2.26.2.tar.gz'
+if build 'libsdl' '2.26.4'; then
+    download 'https://www.libsdl.org/release/SDL2-2.26.4.tar.gz'
     execute ./configure --prefix="${workspace}" --disable-shared --enable-static
     execute make "-j${cpus}"
     execute make install
-    build_done 'libsdl' '2.26.2'
+    build_done 'libsdl' '2.26.4'
 fi
 
 if ${nonfree}; then
-    if build 'srt' '1.5.1'; then
-        download 'https://github.com/Haivision/srt/archive/refs/tags/v1.5.1.tar.gz' 'srt-1.5.1.tar.gz'
+    if build 'srt' '1.5.2-rc.1'; then
+        download 'https://github.com/Haivision/srt/archive/refs/tags/v1.5.2-rc.1.tar.gz' 'srt-1.5.2-rc.1.tar.gz'
         export OPENSSL_ROOT_DIR="${workspace}"
         export OPENSSL_LIB_DIR="${workspace}"/lib
         export OPENSSL_INCLUDE_DIR="${workspace}"/include/
@@ -1181,7 +1181,7 @@ if ${nonfree}; then
         if [ -n "${LDEXEFLAGS}" ]; then
             sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "${workspace}"/lib/pkgconfig/srt.pc
         fi
-        build_done 'srt' '1.5.1'
+        build_done 'srt' '1.5.2-rc.1'
     fi
         cnf_ops+=('--enable-libsrt')
 fi
