@@ -514,7 +514,7 @@ fi
 cuda_fn()
 {
     clear
-    echo 'Pick your current linux distro from the list below:'
+    echo 'Pick your Linux distro from the list below:'
     echo
     echo '[1] Debian 10 (x86_x64)'
     echo '[2] Debian 11 (x86_x64)'
@@ -965,15 +965,15 @@ if ${nonfree}; then
     cnf_ops+=('--enable-libvidstab')
 fi
 
-if build 'av1' 'b3e0d3e'; then
-  # libaom b3e0d3e1 == v3.6.0
-    download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/master/SVT-AV1-master.tar.bz2' 'av1.tar.gz' 'av1'
+if build 'av1' '34c4c3f7'; then
+  # libaom bcfe6fb == v3.5.0
+    download 'https://aomedia.googlesource.com/aom/+archive/34c4c3f7e6d95fe3785cd3dc810dc39ec649224e.tar.gz' 'av1.tar.gz' 'av1'
     make_dir "${packages}"/aom_build
     cd "${packages}"/aom_build || exit 1
-    execute cmake -DENABLE_TESTS='0' -DENABLE_EXAMPLES='0' -DCMAKE_INSTALL_PREFIX="${workspace}" -DCMAKE_INSTALL_LIBDIR='lib' "${packages}"/svtav1-cb8830a/SVT-AV1-master
+    execute cmake -DENABLE_TESTS='0' -DENABLE_EXAMPLES='0' -DCMAKE_INSTALL_PREFIX="${workspace}" -DCMAKE_INSTALL_LIBDIR='lib' "${packages}"/av1
     execute make "-j${cpus}"
     execute make install
-    build_done 'av1' 'b3e0d3e'
+    build_done 'av1' '34c4c3f7'
 fi
 cnf_ops+=('--enable-libaom')
 
