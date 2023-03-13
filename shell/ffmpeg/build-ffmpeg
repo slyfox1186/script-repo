@@ -659,7 +659,7 @@ if ! which 'nvcc' &>/dev/null ; then
 else
     echo
     echo "The cuda-sdk-toolkit \"v${cuda_ver}\" is already installed."
-    echo '==================================================='
+    echo '====================================================='
     echo
     echo 'Do you want to update/reinstall it?'
     echo
