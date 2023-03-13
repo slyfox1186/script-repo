@@ -222,6 +222,7 @@ if [ ! -f "${imtar}" ]; then
     echo
     echo 'Downloading: IM Source Code'
     echo '============================='
+    sleep 2
     echo
     wget --show-progress -cqO "${imtar}" "${imurl}"
     echo
