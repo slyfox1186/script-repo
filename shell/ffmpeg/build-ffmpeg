@@ -1289,6 +1289,9 @@ if [ ! -f "${install_dir}/ffplay" ]; then
     echo "Failed to copy: ffplay to ${install_dir}/"
 fi
 
+# DISPLAY FFMPEG'S VERSION
 ff_ver_fn
+# PROMPT THE USER TO CLEANUP THE BUILD FILES
 cleanup_fn
+# SHOW THE END OF SCRIPT MESSAGE
 exit_fn
