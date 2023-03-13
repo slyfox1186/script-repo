@@ -39,7 +39,7 @@ fi
 
 progname="${0:2}"
 # Master branch snapshot
-ffmpeg_ver='59a9727c241aa50f18e713dbabbdd5cf3d379411'
+ffmpeg_ver='N-110004-g1231003c3c'
 cuda_ver='12.0 Update 1'
 script_ver='2.21'
 packages="${PWD}"/packages
@@ -688,12 +688,12 @@ if build 'yasm' '1.3.0'; then
     build_done 'yasm' '1.3.0'
 fi
 
-if build 'nasm' '2.16.01'; then
-    download 'https://www.nasm.us/pub/nasm/releasebuilds/2.16.01/nasm-2.16.01.tar.xz'
+if build 'nasm' '2.16.02rc1'; then
+    download 'https://www.nasm.us/pub/nasm/releasebuilds/2.16.02rc1/nasm-2.16.02rc1.tar.xz'
     execute ./configure --prefix="${workspace}" --disable-shared --enable-static
     execute make "-j${cpus}"
     execute make install
-    build_done 'nasm' '2.16.01'
+    build_done 'nasm' '2.16.02rc1'
 fi
 
 if build 'zlib' '1.2.13'; then
@@ -1221,7 +1221,7 @@ cnf_ops+=('--enable-amf')
 ## BUILD FFMPEG
 ##
 
-build 'ffmpeg' "${ffmpeg_ver::-33}"
+build 'ffmpeg' "${ffmpeg_ver}"
 # download "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/${ffmpeg_ver}.tar.gz" "FFmpeg-snapshot-${ffmpeg_ver}.tar.gz"
 git clone -q 'https://github.com/FFmpeg/FFmpeg.git' "${packages}/ffmpeg-v${ffmpeg_ver}"
 cd "${packages}/ffmpeg-v${ffmpeg_ver}" || exit 1
@@ -1254,18 +1254,14 @@ sudo cp -f "${workspace}/bin/ffprobe" "${install_dir}/ffprobe"
 sudo cp -f "${workspace}/bin/ffplay" "${install_dir}/ffplay"
 
 # CHECK THAT FILES WERE COPIED TO THE ${install_dir}
-    if [ ! -f "${install_dir}/ffmpeg" ]; then
-        echo "Failed to copy: ffmpeg to ${install_dir}/"
-    fi
-    if [ ! -f "${install_dir}/ffprobe" ]; then
-        echo "Failed to copy: ffprobe to ${install_dir}/"
-    fi
-    if [ ! -f "${install_dir}/ffplay" ]; then
-        echo "Failed to copy: ffplay to ${install_dir}/"
-    fi
-    echo
-    cleanup_fn
-    exit_fn
+if [ ! -f "${install_dir}/ffmpeg" ]; then
+    echo "Failed to copy: ffmpeg to ${install_dir}/"
+fi
+if [ ! -f "${install_dir}/ffprobe" ]; then
+    echo "Failed to copy: ffprobe to ${install_dir}/"
+fi
+if [ ! -f "${install_dir}/ffplay" ]; then
+    echo "Failed to copy: ffplay to ${install_dir}/"
 fi
 
 ff_ver_fn
