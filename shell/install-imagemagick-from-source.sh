@@ -217,8 +217,6 @@ imurl="https://github.com/ImageMagick/ImageMagick/archive/refs/tags/${imver}.tar
 imdir="ImageMagick-${imver}"
 imtar="ImageMagick-${imver}.tar.gz"
 
-https://github.com/ImageMagick/ImageMagick/archive/refs/tags/7.1.1-3.tar.gz
-
 # DOWNLOAD IMAGEMAGICK SOURCE CODE
 if [ ! -f "${imtar}" ]; then
     echo 'Downloading: IM Source Code'
