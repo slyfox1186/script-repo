@@ -1292,4 +1292,3 @@ fi
 ff_ver_fn
 cleanup_fn
 exit_fn
-git clone git://git.savannah.gnu.org/libtool.git
