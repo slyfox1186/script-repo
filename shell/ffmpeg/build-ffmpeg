@@ -839,14 +839,14 @@ fi
 
 if ${nonfree}; then
 
-    if build 'x264' 'eaa68fa'; then
-        download 'https://code.videolan.org/videolan/x264/-/archive/eaa68fad9e5d201d42fde51665f2d137ae96baf0/x264-eaa68fad9e5d201d42fde51665f2d137ae96baf0.tar.gz' 'x264-eaa68fa.tar.gz'
-        cd "${packages}"/x264-eaa68fa || exit 1
+    if build 'x264' 'eaa68fad'; then
+        download 'https://code.videolan.org/videolan/x264/-/archive/eaa68fad9e5d201d42fde51665f2d137ae96baf0/x264-eaa68fad9e5d201d42fde51665f2d137ae96baf0.tar.gz' 'x264-eaa68fad.tar.gz'
+        cd "${packages}"/x264-eaa68fad || exit 1
         execute ./configure --prefix="${workspace}" --enable-static --enable-pic CXXFLAGS="-fPIC ${CXXFLAGS}"
         execute make "-j${cpus}"
         execute make install
         execute make install-lib-static
-        build_done 'x264' 'eaa68fa'
+        build_done 'x264' 'eaa68fad'
     fi
     cnf_ops+=('--enable-libx264')
 fi
@@ -862,9 +862,9 @@ if ${nonfree}; then
         echo
     fi
 
-    if build 'x265' '3.5'; then
-        git clone -q 'https://bitbucket.org/multicoreware/x265_git.git' "${packages}/x265-3.5"
-        cd "${packages}/x265-3.5/build/linux" || exit 1
+    if build 'x265' '3.4'; then
+        git clone -q 'https://bitbucket.org/multicoreware/x265_git.git' "${packages}/x265-3.4"
+        cd "${packages}/x265-3.4/build/linux" || exit 1
         rm -fr {8,10,12}bit 2>/dev/null
         mkdir -p {8,10,12}bit
         cd '12bit' || exit 1
@@ -902,7 +902,7 @@ EOF
             sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "${workspace}"/lib/pkgconfig/x265.pc
         fi
 
-        build_done 'x265' '3.5'
+        build_done 'x265' '3.4'
     fi
     cnf_ops+=('--enable-libx265')
 fi
