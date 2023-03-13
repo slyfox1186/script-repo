@@ -814,16 +814,16 @@ if command_exists 'python3'; then
     fi
 fi
 
-if build 'svtav1' 'd5e1e2a'; then
+if build 'svtav1' 'cb8830a'; then
     # LAST KNOWN WORKING COMMIT WHICH PASSED CI TESTS FROM HEAD BRANCH
-    download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/d5e1e2a586020854733f6b0806064d0c900c88d2/SVT-AV1-d5e1e2a586020854733f6b0806064d0c900c88d2.tar.gz' 'svtav1-d5e1e2a.tar.gz'
-    cd "${packages}"/svtav1-d5e1e2a//Build/linux || exit 1
+    download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/cb8830a55a529f539161348582ebe8bacb858e86/SVT-AV1-cb8830a55a529f539161348582ebe8bacb858e86.tar.gz' 'svtav1-cb8830a.tar.gz'
+    cd "${packages}"/svtav1-cb8830a//Build/linux || exit 1
     execute cmake -DCMAKE_INSTALL_PREFIX="${workspace}" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' ../.. -G 'Unix Makefiles' -DCMAKE_BUILD_TYPE='Release'
     execute make "-j${cpus}"
     execute make install
     execute cp 'SvtAv1Enc.pc' "${workspace}"/lib/pkgconfig/
     execute cp 'SvtAv1Dec.pc' "${workspace}"/lib/pkgconfig/
-    build_done 'svtav1' 'd5e1e2a'
+    build_done 'svtav1' 'cb8830a'
     fi
     cnf_ops+=('--enable-libsvtav1')
 
