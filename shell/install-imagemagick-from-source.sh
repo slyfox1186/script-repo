@@ -228,15 +228,22 @@ if [ ! -f "${imtar}" ]; then
     echo
 fi
 
+##
+## UNCOMPRESS SOURCE CODE TO OUTPUT FOLDER
+##
+if ! tar -xf "${imtar}"; then
+    extract_fail_fn
+fi
+
 # EXTRACT TAR AND CD INTO DIRECTORY
 if [ ! -d "${imdir}" ]; then
     mkdir -p "${imdir}"
 else
-    tar -xf "${imtar}" -C "${imdir}"
-    cd "${imdir}/${imdir}" || exit 1
+    tar -xf "${imtar}"
+    cd "${imdir}" || exit 1
 fi
 
-# EXPORT THE pkg CONFIG PATHS TO ENABLE SUPPORT DURING THE BUILD
+# EXPORT THE PKG CONFIG PATHS TO ENABLE SUPPORT DURING THE BUILD
 PKG_CONFIG_PATH='/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig'
 export PKG_CONFIG_PATH
 
@@ -277,7 +284,7 @@ make install
 ldconfig /usr/local/lib 2>/dev/null
 
 # CD BACK TO THE PARENT FOLDER
-cd ../.. || exit 1
+cd .. || exit 1
 
 # PROMPT USER TO CLEAN UP BUILD FILES
 echo
