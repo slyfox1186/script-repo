@@ -938,12 +938,12 @@ if ${nonfree}; then
 fi
 
 if ${nonfree}; then
-    if build 'vid_stab' '1.1.0'; then
-        download 'https://github.com/georgmartius/vid.stab/archive/v1.1.0.tar.gz' 'vid.stab-1.1.0.tar.gz'
+    if build 'vid_stab' '1.1.1'; then
+        download 'https://github.com/georgmartius/vid.stab/archive/refs/tags/v1.1.1.tar.gz' 'vid.stab-1.1.1.tar.gz'
         execute cmake -DBUILD_SHARED_LIBS='OFF' -DCMAKE_INSTALL_PREFIX="${workspace}" -DUSE_OMP='OFF' -DENABLE_SHARED='OFF' .
         execute make
         execute make install
-        build_done 'vid_stab' '1.1.0'
+        build_done 'vid_stab' '1.1.1'
     fi
     cnf_ops+=('--enable-libvidstab')
 fi
