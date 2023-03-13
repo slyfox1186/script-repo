@@ -657,7 +657,25 @@ if ! which 'nvcc' &>/dev/null ; then
     fi
 else
     echo
-    echo "The cuda-sdk-toolkit \"v${cuda_ver}\" is already up to date."
+    echo "The cuda-sdk-toolkit \"v${cuda_ver}\" is already installed."
+    echo '==================================================='
+    echo
+    echo 'Do you want to update/reinstall it?'
+    echo
+    echo '[1] Yes'
+    echo '[2] No'
+    echo
+    read -p 'Your choices are (1 or 2): ' cuda_choice
+    echo
+    if [[ "${cuda_choice}" -eq '1' ]]; then
+        cuda_fn
+        cuda_add_fn
+    elif [[ "${cuda_choice}" -eq '2' ]]; then
+        echo
+        echo 'Continuing the build...'
+        sleep 2
+        echo
+    fi
 fi
 
 ##
