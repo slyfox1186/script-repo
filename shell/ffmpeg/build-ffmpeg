@@ -1221,10 +1221,9 @@ cnf_ops+=('--enable-amf')
 ## BUILD FFMPEG
 ##
 
-build 'ffmpeg' "${ffmpeg_ver}"
-# download "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/${ffmpeg_ver}.tar.gz" "FFmpeg-snapshot-${ffmpeg_ver}.tar.gz"
-git clone -q 'https://github.com/FFmpeg/FFmpeg.git' "${packages}/ffmpeg-v${ffmpeg_ver}"
-cd "${packages}/ffmpeg-v${ffmpeg_ver}" || exit 1
+build 'ffmpeg' 'latest'
+git clone -q 'https://github.com/FFmpeg/FFmpeg.git' "${packages}/ffmpeg-latest"
+cd "${packages}/ffmpeg-latest" || exit 1
 # shellcheck disable=SC2086
 ./configure \
     "${cnf_ops[@]}" \
