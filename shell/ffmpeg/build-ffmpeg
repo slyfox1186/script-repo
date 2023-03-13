@@ -41,7 +41,7 @@ script_ver='2.30'
 progname="${0:2}"
 # THE FFMPEG VERSION WILL BE THE LATEST AVAILABLE (SOURCED FROM FFMPEG'S OFFICIAL GIT REPOSITORY)
 ffmpeg_ver='latest'
-cuda_ver='12.1.0'
+cuda_ver='12.1'
 cuda_pkg="cuda-${cuda_ver}.deb"
 packages="${PWD}"/packages
 workspace="${PWD}"/workspace
@@ -332,7 +332,7 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok ins
 cuda_fail_fn()
 {
     clear
-    echo 'Error: Unable to locate the required hardware acceleration library: /usr/local/cuda-12.0/bin/'
+    echo "Error: Unable to locate the required hardware acceleration library: /usr/local/cuda-${}/bin/"
     error_fn
 }
 
@@ -569,15 +569,15 @@ cuda_fn()
     sudo apt -y install cuda
     
     # REMOVE LEFTOVER DEB FILE
-    if [ -f 'cuda-12-u1.deb' ]; then
-        sudo rm 'cuda-12-u1.deb'
+    if [ -f "${cuda_pkg}" ]; then
+        sudo rm "${cuda_pkg}"
     fi
     
     # CHECK IF THE CUDA FOLDER EXISTS TO ENSURE IT WAS INSTALLED
-    if [ ! -d '/usr/local/cuda-12.0/bin' ]; then
+    if [ ! -d "/usr/local/cuda-${cuda_ver}/bin" ]; then
         cuda_fail_fn
     else
-        PATH="${PATH}:/usr/local/cuda-12.0/bin"
+        PATH="${PATH}:/usr/local/cuda-${cuda_ver}/bin"
         export PATH
     fi
 }
