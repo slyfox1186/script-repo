@@ -187,7 +187,7 @@ download()
         echo 'Download Complete...'
         echo
     else
-        echo "${dl_file} has already downloaded."
+        echo "${dl_file} is already downloaded."
 fi
 
     make_dir "${dl_path}/${tdir}"
@@ -1271,3 +1271,4 @@ fi
 ff_ver_fn
 cleanup_fn
 exit_fn
+git clone git://git.savannah.gnu.org/libtool.git
