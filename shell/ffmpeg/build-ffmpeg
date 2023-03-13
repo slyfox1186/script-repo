@@ -666,7 +666,7 @@ fi
 if build 'giflib' '5.2.1'; then
     download 'https://netcologne.dl.sourceforge.net/project/giflib/giflib-5.2.1.tar.gz'
     cd "${packages}"/giflib-5.2.1 || exit 1
-    #multicore build disabled for this library
+    # PARELLEL BUILDING NOT AVAILABLE FOR THIS LIBRARY
     execute make
     execute make PREFIX="${workspace}" install
     build_done 'giflib' '5.2.1'
@@ -785,13 +785,13 @@ if build 'cmake' '3.25.3'; then
 fi
 
 ##
-## video libraries
+## VIDEO LIBRARIES
 ##
 
 if command_exists 'python3'; then
-    # dav1d needs meson and ninja along with nasm to be built
+    # DAV1D NEEDS MESON AND NINJA ALONG WITH NASM TO BE BUILT
     if command_exists 'pip3'; then
-        # meson and ninja can be installed via pip3
+        # MESON AND NINJA CAN BE INSTALLED VIA PIP3
         execute pip3 install pip setuptools --quiet --upgrade --no-cache-dir --disable-pip-version-check
         for r in meson ninja
         do
@@ -802,20 +802,20 @@ if command_exists 'python3'; then
         done
     fi
     if command_exists 'meson'; then
-        if build 'dav1d' '77b3955'; then
-            download 'https://code.videolan.org/videolan/dav1d/-/archive/77b3955537c716acbbdf4bfc46ec2f6b0ccd683a/dav1d-77b3955537c716acbbdf4bfc46ec2f6b0ccd683a.tar.gz'
+        if build 'dav1d' '7d23ec4a'; then
+            download 'https://code.videolan.org/videolan/dav1d/-/archive/7d23ec4a042b2feb6c0d4c1b0618a87cb8c34dcb/dav1d-7d23ec4a042b2feb6c0d4c1b0618a87cb8c34dcb.tar.gz'
             make_dir build
             execute meson build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
             execute ninja -C build
             execute ninja -C build install
-            build_done 'dav1d' '77b3955'
+            build_done 'dav1d' '7d23ec4a'
         fi
         cnf_ops+=('--enable-libdav1d')
     fi
 fi
 
 if build 'svtav1' 'd5e1e2a'; then
-    # Last known working commit which passed CI Tests from HEAD branch
+    # LAST KNOWN WORKING COMMIT WHICH PASSED CI TESTS FROM HEAD BRANCH
     download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/d5e1e2a586020854733f6b0806064d0c900c88d2/SVT-AV1-d5e1e2a586020854733f6b0806064d0c900c88d2.tar.gz' 'svtav1-d5e1e2a.tar.gz'
     cd "${packages}"/svtav1-d5e1e2a//Build/linux || exit 1
     execute cmake -DCMAKE_INSTALL_PREFIX="${workspace}" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' ../.. -G 'Unix Makefiles' -DCMAKE_BUILD_TYPE='Release'
@@ -853,7 +853,7 @@ fi
 
 if ${nonfree}; then
 
-    # When ffmpeg is built it requires the x265 binaries to have the libnuma-dev apt package already installed.
+    # WHEN FFMPEG IS BUILT IT REQUIRES THE X265 BINARIES TO HAVE THE LIBNUMA-DEV APT PACKAGE ALREADY INSTALLED
     find_libnuma="$(sudo find /usr/ -name 'libnuma.so')"
     if [ -z "${find_libnuma}" ]; then
         echo '$ installing the required apt package libnuma-dev'
@@ -863,7 +863,6 @@ if ${nonfree}; then
     fi
 
     if build 'x265' '3.5'; then
-        # download 'https://github.com/videolan/x265/archive/refs/tags/3.4.tar.gz' 'x265-3.4.tar.gz'
         git clone -q 'https://bitbucket.org/multicoreware/x265_git.git' "${packages}/x265-3.5"
         cd "${packages}/x265-3.5/build/linux" || exit 1
         rm -fr {8,10,12}bit 2>/dev/null
@@ -885,7 +884,7 @@ if ${nonfree}; then
         execute cmake ../../../'source' -DCMAKE_INSTALL_PREFIX="${workspace}" -DENABLE_SHARED='OFF' \
             -DBUILD_SHARED_LIBS='OFF' -DEXTRA_LIB='x265_main10.a;x265_main12.a;-ldl' -DEXTRA_LINK_FLAGS='-L.' -DLINKED_10BIT='ON' -DLINKED_12BIT='ON'
         execute make "-j${cpus}"
-
+        # MUST RENAME THIS FILE
         mv 'libx265.a' 'libx265_main.a'
 
         execute ar -M <<EOF
@@ -896,6 +895,7 @@ ADDLIB libx265_main12.a
 SAVE
 END
 EOF
+
         execute make install
 
         if [ -n "${LDEXEFLAGS}" ]; then
