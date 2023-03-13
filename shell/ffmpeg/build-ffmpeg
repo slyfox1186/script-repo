@@ -90,13 +90,16 @@ cleanup_fn()
     echo '[1] Yes'
     echo '[2] No'
     echo
-    read -p 'Your choices are (1 or 2): ' clean_ans
+    read -p 'Your choices are (1 or 2): ' cleanup_ans
     clear
 
-        if [[ "${clean_ans}" -eq '1' ]]; then
+        if [[ "${cleanup_ans}" -eq '1' ]]; then
             rm -fr "${packages}" "${workspace}"
+            if [ -f "${cuda_pkg}" ]; then
+                rm -f "${cuda_pkg}"
+            fi
             exit_fn
-        elif [[ "${clean_ans}" -eq '2' ]]; then
+        elif [[ "${cleanup_ans}" -eq '2' ]]; then
             exit_fn
         else
             echo 'Error: Bad user input'
@@ -121,9 +124,9 @@ ff_ver_fn()
     echo "  ffprobe: ${install_dir}/ffprobe"
     echo "  ffplay:  ${install_dir}/ffplay"
     echo
-    echo '================================='
-    echo '       FFmpeg'\''s Version       '
-    echo '================================='
+    echo '============================'
+    echo '       FFmpeg Version       '
+    echo '============================'
     echo
     ffmpeg -version
     echo
