@@ -8,10 +8,11 @@
 
     Purpose:
     - This will open Windows' WSL terminal to the active file explorer folder or if no active window is found, C:\Windows\System32
-    
+
     Instructions:
     - You need to replace the below variable "_osName" with the wsl distribution of your choosing.
       - To find the available distros run (wsl -l --all) using powershell to get a list of available options
+    - This script uses
 */
 
 !w::_OpenWSLHere()
@@ -20,6 +21,14 @@ _OpenWSLHere()
 {
 
     _osName := "Ubuntu-22.04"
+
+    _pshell1 := A_ProgramFiles . "\PowerShell\7\pwsh.exe"
+    _pshell2 := A_windir . "\System32\WindowsPowerShell\v1.0\powershell.exe"
+
+    If FileExist(_pshell1)
+        _myexe := _pshell1
+    Else
+        _myexe := _pshell2
 
     ; OPEN CMD.EXE USING THE ACTIVE EXPLORER WINDOW'S FOLDER PATH
     If WinExist("ahk_class CabinetWClass ahk_exe explorer.exe")
@@ -55,9 +64,9 @@ _OpenWSLHere()
             _pwd := RegExReplace(_pwd, "/", "\")
         }
     If (_pwd = "")
-        Run, "%A_ProgramFiles%\PowerShell\7\pwsh.exe" -NoP -NoL -W Hidden -C "Start-Process wt.exe -Args '-w new-tab -M -d \"%A_windir%\System32\" wsl.exe -d %_osName%' -Verb RunAs",, Max, _wPID
+        Run, %_myexe% -NoP -NoL -W Hidden -C "Start-Process wt.exe -Args '-w new-tab -M -d \"%A_windir%\System32\" wsl.exe -d %_osName%' -Verb RunAs",, Hide, _wPID
     Else
-        Run, "%A_ProgramFiles%\PowerShell\7\pwsh.exe" -NoP -NoL -W Hidden -C "Start-Process wt.exe -Args '-w new-tab -M -d \"%_pwd%\" wsl.exe -d %_osName%' -Verb RunAs",, Max, _wPID
+        Run, %_myexe% -NoP -NoL -W Hidden -C "Start-Process wt.exe -Args '-w new-tab -M -d \"%_pwd%\" wsl.exe -d %_osName%' -Verb RunAs",, Hide, _wPID
     _wPID := "ahk_pid " . _wPID
     WinWait, %_winPID%,, 2
     WinActivate, %_winPID%
