@@ -47,7 +47,7 @@ _OpenWSLHere()
                 _pwd := StrReplace(_pwd, "'", "''")
         }
 
-    ; Converted both run commands to expression format
+    ; Execute powershell.exe or pwsh.exe (if installed) through cmd.exe to open the Terminal App using the active folder path
     If (_pwd = "")
         Run, cmd.exe /D /C START "" "%_myexe%" -NoP -W Hidden -C "Start-Process wt.exe -Args '-w new-tab -M -d \"~\" wsl.exe -d \"%_osName%\"' -Verb RunAs",, Hide, _wPID
     Else
