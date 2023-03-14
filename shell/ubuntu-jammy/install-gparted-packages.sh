@@ -23,22 +23,22 @@ echo 'Installing: Missing GParted Packages'
 echo '===================================='
 echo
 
-PKGS=(exfat-fuse exfatprogs f2fs-tools hfsplus hfsprogs hfsutils jfsutils lvm2 nilfs-tools ntfs2btrfs ntfs-3g reiser4progs reiserfsprogs udftools xfsprogs)
+pkgs=(exfat-fuse exfatprogs f2fs-tools hfsplus hfsprogs hfsutils jfsutils lvm2 nilfs-tools ntfs2btrfs ntfs-3g reiser4progs reiserfsprogs udftools xfsprogs)
 
-for PKG in ${PKGS[@]}
+for pkg in ${pkgs[@]}
 do
-    if ! installed "${PKG}"; then
-        MISSING_PKGS+=" ${PKG}"
+    if ! installed "${pkg}"; then
+        missing_pkgs+=" ${pkg}"
     fi
 done
 
-if [ -n "${MISSING_PKGS}" ]; then
-    for i in "${MISSING_PKGS}"
+if [ -n "${missing_pkgs}" ]; then
+    for i in "${missing_pkgs}"
     do
         apt install ${i}
     done
 else
-    echo 'The missing GParted packages are already installed.'
+    echo 'The GParted packages are already installed.'
     echo
 fi
 
