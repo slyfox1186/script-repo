@@ -7,7 +7,7 @@
     - Looking for a coder? You found him. Contact me on GitHub.
 
     Purpose:
-    - This will open Windows' WSL terminal to the active file explorer folder or if no active window is found, C:\Windows\System32
+    - This will open Windows' WSL terminal to the active file explorer folder or if no active window is found, %windir%\System32
 
     Instructions:
     - You need to replace the below variable "_osName" with the wsl distribution of your choosing.
