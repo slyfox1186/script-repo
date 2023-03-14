@@ -55,5 +55,5 @@ _OpenWSLHere()
         Run, % _myexe " -NoP -W Hidden -C ""Start-Process wt.exe -Args '-w new-tab -M -d \""" _pwd "\"" wsl.exe -d " _osName "' -Verb RunAs",, Hide, _wPID
     
     _wPID := "ahk_pid " _wPID
-    WinActivate, % _wPID, 2
+    WinActivate, %_wPID%, 2
 }
