@@ -12,7 +12,6 @@
     Instructions:
     - You need to replace the below variable "_osName" with the wsl distribution of your choosing.
       - To find the available distros run (wsl -l --all) using powershell to get a list of available options
-    - This script uses
 */
 
 !w::_OpenWSLHere()
