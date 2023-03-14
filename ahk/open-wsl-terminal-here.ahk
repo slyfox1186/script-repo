@@ -19,7 +19,6 @@
 
 _OpenWSLHere()
 {
-
     _osName := "Ubuntu-22.04"
 
     _pshell1 := A_ProgramFiles . "\PowerShell\7\pwsh.exe"
