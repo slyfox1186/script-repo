@@ -7,9 +7,9 @@ if [ -f 'index.html' ]; then sudo rm 'index.html'; fi
 if [ -f 'urls.txt' ]; then sudo rm 'urls.txt'; fi
 
 # define variables
-SCRIPTS='.bash_aliases .bash_functions .bashrc'
+scripts='.bash_aliases .bash_functions .bashrc'
 # If the shell scripts exist, move them to the pihole-regex dir
-for i in ${SCRIPTS[@]}
+for i in ${scripts[@]}
 do
     if [ -f "${i}" ]; then
         mv -f "${i}" "${HOME}"
@@ -28,17 +28,17 @@ do
 done
 
 # execute all scripts in the pihole-regex folder
-for FILES in ${SCRIPTS[@]}
+for files in ${scripts[@]}
 do
-    if [ -f "${HOME}/${FILES}" ]; then
+    if [ -f "${HOME}/${files}" ]; then
         if which gedit &>/dev/null; then
-            gedit "${HOME}/${FILES}"
+            gedit "${HOME}/${files}"
         elif which nano &>/dev/null; then
-            nano "${HOME}/${FILES}"
+            nano "${HOME}/${files}"
         elif which vim &>/dev/null; then
-            vim "${HOME}/${FILES}"
+            vim "${HOME}/${files}"
         else
-            vi "${FILES}"
+            vi "${files}"
         fi
     fi
 done
