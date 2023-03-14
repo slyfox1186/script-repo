@@ -43,7 +43,7 @@ _OpenWSLHere()
                 _hex := "%" Format("{1:X}", Ord(A_LoopField))
                 ; Replace any hex tokens with their actual chars
                 ,_pwd := StrReplace(_pwd, _hex, A_LoopField)
-                ; a path that contains a single quote must be doubled for the command line below to work properly
+                ; single quotes must be doubled for the command line below to work properly
                 _pwd := StrReplace(_pwd, "'", "''")
         }
 
