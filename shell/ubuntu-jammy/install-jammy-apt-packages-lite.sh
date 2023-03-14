@@ -64,7 +64,7 @@ if ! grep -q "^deb .*${ppa_repo}" /etc/apt/sources.list /etc/apt/sources.list.d/
     echo
     add-apt-repository ppa:"${ppa_repo}"
     echo
-    sudo apt-get update &> /dev/null; then 
+    sudo apt-get update
     sleep 2
 fi
 
