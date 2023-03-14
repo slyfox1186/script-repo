@@ -24,13 +24,10 @@ _OpenWSLHere()
     Static _osName := "Ubuntu-22.04"
     Static convert := " !#$%&'()-.*:?@[]^_``{|}~/"
 
-    _pshell1 := A_ProgramFiles . "\PowerShell\7\pwsh.exe"
-    _pshell2 := A_windir . "\System32\WindowsPowerShell\v1.0\powershell.exe"
-
-    If FileExist(_pshell1)
-        _myexe := _pshell1
+    If FileExist(A_ProgramFiles . "\PowerShell\7\pwsh.exe")
+        _myexe := A_ProgramFiles . "\PowerShell\7\pwsh.exe"
     Else
-        _myexe := _pshell2
+        _myexe := A_windir . "\System32\WindowsPowerShell\v1.0\powershell.exe"
 
     If WinExist("ahk_class CabinetWClass ahk_exe explorer.exe")
         _winHwnd := WinActive()
