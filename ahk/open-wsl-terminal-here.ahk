@@ -8,8 +8,9 @@
 
     Purpose:
     - This will open Windows' WSL terminal to the active file explorer folder or if no active window is found, C:\Windows\System32
-    - You need to modify the below variable "_osName" to the wsl distribution of your choosing. (run wsl -l --all using powershell to get a list of available options)
-
+    
+    Instructions:
+    - You need to replace the below variable "_osName" with the wsl distribution of your choosing. to find the available distros run (wsl -l --all) using powershell to get a list of available options
 */
 
 !w::_OpenWSLHere()
