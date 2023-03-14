@@ -22,7 +22,7 @@ _OpenWSLHere()
 {
     ; Static vars so vars are not recreated each time
     Static _osName := "Ubuntu-22.04"
-    Static convert := " !#$%&'()-.*:?@[]^_``{|}~/"
+    Static _convert := " !#$%&'()-.*:?@[]^_``{|}~/"
 
     If FileExist(A_ProgramFiles . "\PowerShell\7\pwsh.exe")
         _myexe := A_ProgramFiles . "\PowerShell\7\pwsh.exe"
@@ -38,7 +38,7 @@ _OpenWSLHere()
             ; Get the string
             _pwd := SubStr(win.LocationURL, 9)
             ; Loop through the convert characters
-            Loop, Parse, % convert
+            Loop, Parse, % _convert
                 ; Create a %_hex token using ord value of convert chars
                 _hex := "%" Format("{1:X}", Ord(A_LoopField))
                 ; Replace any hex tokens with their actual chars
