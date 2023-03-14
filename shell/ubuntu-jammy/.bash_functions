@@ -577,7 +577,9 @@ imow()
             if [ -f "${i}" ]; then
                 convert "${i}" -monitor "${i%%.mpc}.jpg"
                 if [ -f "${i%%.mpc}.jpg" ]; then
-                    mv "${i%%.mpc}.jpg" "${PWD}"
+                    CWD="$(echo "${i}" | sed 's:.*/::')"
+                    mv "${i%%.mpc}.jpg" "${PWD}/${CWD%%.*}-IM.jpg"
+                    rm -f "${PWD}/${CWD%%.*}.jpg"
                     for v in "${i}"
                     do
                         v_noslash="${v%/}"
