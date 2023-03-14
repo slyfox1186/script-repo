@@ -56,5 +56,4 @@ _OpenWSLHere()
     
     _wPID := "ahk_pid " _wPID
     WinActivate, % _wPID, 2
-    WinWaitActive, % _winPID
 }
