@@ -1,5 +1,5 @@
 /*____________________________________________________________________________________
-    [ OpenTERMINALHere ]
+    [ OpenWSLHere ]
 
     By: SlyFox1186
     Pastebin: https://pastebin.com/u/slyfox1186
