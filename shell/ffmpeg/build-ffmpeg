@@ -854,7 +854,6 @@ if command_exists 'cargo'; then
 fi
 
 if ${nonfree}; then
-
     if build 'x264' 'eaa68fad'; then
         download 'https://code.videolan.org/videolan/x264/-/archive/eaa68fad9e5d201d42fde51665f2d137ae96baf0/x264-eaa68fad9e5d201d42fde51665f2d137ae96baf0.tar.gz' 'x264-eaa68fad.tar.gz'
         cd "${packages}"/x264-eaa68fad || exit 1
