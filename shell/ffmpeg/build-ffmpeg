@@ -606,15 +606,15 @@ cuda_add_fn()
         do
             sudo apt install ${pkg}
         done
-        echo 'The Required Geforce CUDA Developement Libraries were installed.'
-        sleep 3
         echo
+        echo 'The Required Geforce CUDA Developement Libraries were installed.'
     else
         echo
         echo 'The Required Geforce CUDA Developement Libraries are already installed.'
-        sleep 3
-        echo
     fi
+
+    echo
+    sleep 3
 }
 
 ##
