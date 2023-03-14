@@ -6,7 +6,7 @@
     GitHub: https://github.com/slyfox1186/
 
     Purpose:
-    - This will open Windows' WSL terminal to the active file explorer folder or if no active window is found, %windir%\System32
+    - This will open Windows' WSL terminal to the active file explorer folder or if no active window is found, open the user's $HOME folder
 
     Instructions:
     - You need to replace the below variable "_osName" with the wsl distribution of your choosing.
