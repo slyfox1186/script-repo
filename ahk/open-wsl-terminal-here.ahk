@@ -2,27 +2,28 @@
     [ OpenTERMINALHere ]
 
     By: SlyFox1186
-    Pastebin: https://pastebin.com/u/slyfox1186
+    Pastebin: 
     GitHub: https://github.com/slyfox1186/
     - Looking for a coder? You found him. Contact me on GitHub.
 
     Purpose:
-    - This will open Windows' WSL terminal to the active file explorer folder.
-    - If necessary modify the below variable "_osName" to the wsl dist you have installed.
+    - This will open Windows' WSL terminal to the active file explorer folder or if no active window is found, C:\Windows\System32
+    - You need to modify the below variable "_osName" to the wsl distribution of your choosing. (run wsl -l --all using powershell to get a list of available options)
+
 */
 
-!x::_OpenWSLHere()
+!w::_OpenWSLHere()
 
 _OpenWSLHere()
 {
 
-_osName := "Ubuntu"
+    _osName := "Ubuntu-22.04"
 
     ; OPEN CMD.EXE USING THE ACTIVE EXPLORER WINDOW'S FOLDER PATH
-    If winexist("ahk_class CabinetWClass ahk_exe explorer.exe")
+    If WinExist("ahk_class CabinetWClass ahk_exe explorer.exe")
         _winHwnd := WinActive()
     For win in ComObjCreate("Shell.Application").Windows
-        if (win.HWND = _winHwnd)
+        If (win.HWND = _winHwnd)
         {
             _pwd := SubStr(win.LocationURL, 9)
             _pwd := RegExReplace(_pwd, "%20", " ")
@@ -51,12 +52,12 @@ _osName := "Ubuntu"
             _pwd := RegExReplace(_pwd, "%7E", "~")
             _pwd := RegExReplace(_pwd, "/", "\")
         }
-    Run, "%A_windir%\System32\wsl.exe" -d %_osName% --cd "%_pwd%",, Max, _wPID
-    _winPID := "ahk_pid " . _wPID
+    If (_pwd = "")
+        Run, "%A_ProgramFiles%\PowerShell\7\pwsh.exe" -NoP -NoL -W Hidden -C "Start-Process wt.exe -Args '-w new-tab -M -d \"%A_windir%\System32\" wsl.exe -d %_osName%' -Verb RunAs",, Max, _wPID
+    Else
+        Run, "%A_ProgramFiles%\PowerShell\7\pwsh.exe" -NoP -NoL -W Hidden -C "Start-Process wt.exe -Args '-w new-tab -M -d \"%_pwd%\" wsl.exe -d %_osName%' -Verb RunAs",, Max, _wPID
+    _wPID := "ahk_pid " . _wPID
     WinWait, %_winPID%,, 2
     WinActivate, %_winPID%
-    Sleep, 500
-    if !WinExist(_winPID)
-        MsgBox, Script Error:`r`rYou may need to change the variable '_osName' to the name of the distribution you have installed.`r`rExamples: Debian, Ubuntu, or other.`r`rRemember the explorer.exe window must be the ACTIVE window when you activate the hotkey!
 }
-return
+Return
