@@ -1,6 +1,11 @@
-; #################
-; #  OpenCMDHere  #
-; #################
+/*____________________________________________________________________________________
+    [ OpenCMDHere ]
+    By: SlyFox1186
+    Pastebin: https://pastebin.com/u/slyfox1186
+    GitHub: https://github.com/slyfox1186/
+    Purpose:
+    - This will open cmd.exe to the active file explorer folder or if no active window is found, %windir%\System32
+*/
 
 ; Defines script as a v1 script
 #Requires AutoHotkey <2.0
