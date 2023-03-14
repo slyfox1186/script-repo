@@ -638,11 +638,11 @@ if ! which 'nvcc' &>/dev/null ; then
         cuda_fn
         cuda_add_fn
     elif [[ "${cuda_ans}" -eq '2' ]]; then
-        if [ -d '/usr/local/cuda-12.0/bin' ]; then
-            PATH="${PATH}:/usr/local/cuda-12.0/bin"
+        if [ -d '/usr/local/cuda-12.1/bin' ]; then
+            PATH="${PATH}:/usr/local/cuda-12.1/bin"
             export PATH
         else
-            echo 'The script was unable to add it to your $PATH because a required folder is missing: /usr/local/cuda-12.0/bin'
+            echo 'The script was unable to add it to your $PATH because a required folder is missing: /usr/local/cuda-12.1/bin'
             echo
             read -p 'Press enter to continue the build.'
             echo
@@ -1208,8 +1208,8 @@ if which 'nvcc' &>/dev/null ; then
         execute make install PREFIX="${workspace}"
         build_done 'nv-codec' '12.0.16.0'
     fi
-    CFLAGS+=' -I/usr/local/cuda-12.0/include'
-    LDFLAGS+=' -L/usr/local/cuda-12.0/lib64'
+    CFLAGS+=' -I/usr/local/cuda-12.1/include'
+    LDFLAGS+=' -L/usr/local/cuda-12.1/lib64'
     cnf_ops+=('--enable-cuda-nvcc' '--enable-cuvid' '--enable-nvenc' '--enable-cuda-llvm')
 
     if [ -z "${LDEXEFLAGS}" ]; then
