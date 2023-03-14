@@ -92,11 +92,11 @@ if [ -n "${missing_pkgs}" ]; then
     do
         apt -y install ${i}
     done
-    clear
+    echo
     echo 'Missing APT packages have been installed'
     echo '============================================='
 else
-    clear
+    echo
     echo 'APT packages are already installed'
     echo '======================================'
 fi
