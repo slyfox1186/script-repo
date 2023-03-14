@@ -64,18 +64,9 @@ if ! grep -q "^deb .*${ppa_repo}" /etc/apt/sources.list /etc/apt/sources.list.d/
     echo
     add-apt-repository ppa:"${ppa_repo}"
     echo
-    echo 'Updating: APT packages'
-    echo '=========================='
-    echo
-    if sudo apt-get update &> /dev/null; then 
-        echo
-        echo "The PPA Repo has been installed: ${ppa_repo}"
-        echo '================================================'
-        echo
-    fi
+    sudo apt-get update &> /dev/null; then 
+    sleep 2
 fi
-sleep 2
-clear
 
 ##########################
 ## INSTALL APT PACKAGES ##
