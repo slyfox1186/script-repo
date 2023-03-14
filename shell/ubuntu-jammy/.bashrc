@@ -101,7 +101,7 @@ PATH=\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/local/cuda-12.0/bin:\
+/usr/local/cuda-12.1/bin:\
 /snap/bin:\
 "${HOME}"/.local/bin
 export PATH
