@@ -175,15 +175,14 @@ echo 'Executing: autogen.sh script'
 echo '=============================='
 echo
 sleep 2
-./autogen.sh
+./autogen.sh &> /dev/null
 
-# RUN CONFIGURE SCRIPT
 echo
 echo 'Executing: ./configure script'
 echo '==============================='
 echo
 sleep 2
-./configure --prefix='/usr/local'
+./configure --prefix='/usr/local' &> /dev/null
 
 # INSTALL LIBPNG12
 echo
@@ -191,7 +190,7 @@ echo 'Executing: make install'
 echo '========================='
 echo
 sleep 2
-make install
+make install &> /dev/null
 
 # CHANGE WORKING DIRECTORY BACK TO PARENT FOLDER
 cd ../ || exit 1
@@ -263,14 +262,15 @@ echo
     --with-modules \
     --with-perl \
     --with-tcmalloc \
-    --with-quantum-depth=16
+    --with-quantum-depth=16 \
+    &> /dev/null
 
 # RUNNING MAKE COMMAND WITH PARALLEL PROCESSING
 echo "executing: make -j$(nproc)"
 echo '============================'
 echo
 sleep 2
-make "-j$(nproc)"
+make "-j$(nproc)" &> /dev/null
 
 # INSTALLING FILES TO /usr/local/bin/
 echo
@@ -278,7 +278,7 @@ echo 'executing: make install'
 echo '========================='
 echo
 sleep 2
-make install
+make install &> /dev/null
 
 # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE MAGICK COMMAND WILL NOT WORK
 ldconfig /usr/local/lib 2>/dev/null
