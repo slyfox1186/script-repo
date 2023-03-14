@@ -31,7 +31,7 @@ _OpenWSLHere()
 
     If WinExist("ahk_class CabinetWClass ahk_exe explorer.exe")
         _winHwnd := WinActive()
-    
+
     For win in ComObjCreate("Shell.Application").Windows
         If (win.HWND = _winHwnd)
         {
@@ -43,14 +43,16 @@ _OpenWSLHere()
                 _hex := "%" Format("{1:X}", Ord(A_LoopField))
                 ; Replace any hex tokens with their actual chars
                 ,_pwd := StrReplace(_pwd, _hex, A_LoopField)
+                ; a path that contains a single quote must be doubled for the command line below to work properly
+                _pwd := StrReplace(_pwd, "'", "''")
         }
-    
+
     ; Converted both run commands to expression format
     If (_pwd = "")
-        Run, % _myexe " -NoP -W Hidden -C ""Start-Process wt.exe -Args '-w new-tab -M -d \""" A_windir "\System32\"" wsl.exe -d " _osName "' -Verb RunAs",, Hide, _wPID
+        Run, cmd.exe /D /C START "" "%_myexe%" -NoP -W Hidden -C "Start-Process wt.exe -Args '-w new-tab -M -d \"~\" wsl.exe -d \"%_osName%\"' -Verb RunAs",, Hide, _wPID
     Else
-        Run, % _myexe " -NoP -W Hidden -C ""Start-Process wt.exe -Args '-w new-tab -M -d \""" _pwd "\"" wsl.exe -d " _osName "' -Verb RunAs",, Hide, _wPID
-    
+        Run, cmd.exe /D /C START "" "%_myexe%" -NoP -W Hidden -C "Start-Process wt.exe -Args '-w new-tab -M -d \"%_pwd%\" wsl.exe -d \"%_osName%\"' -Verb RunAs",, Hide, _wPID
+
     _wPID := "ahk_pid " _wPID
     WinActivate, % _wPID
 }
