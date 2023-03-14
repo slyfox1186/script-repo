@@ -2,7 +2,7 @@
     [ OpenTERMINALHere ]
 
     By: SlyFox1186
-    Pastebin: 
+    Pastebin: https://pastebin.com/u/slyfox1186
     GitHub: https://github.com/slyfox1186/
     - Looking for a coder? You found him. Contact me on GitHub.
 
