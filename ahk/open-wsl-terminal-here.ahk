@@ -63,9 +63,9 @@ _OpenWSLHere()
             _pwd := RegExReplace(_pwd, "/", "\")
         }
     If (_pwd = "")
-        Run, %_myexe% -NoP -NoL -W Hidden -C "Start-Process wt.exe -Args '-w new-tab -M -d \"%A_windir%\System32\" wsl.exe -d %_osName%' -Verb RunAs",, Hide, _wPID
+        Run, %_myexe% -NoP -W Hidden -C "Start-Process wt.exe -Args '-w new-tab -M -d \"%A_windir%\System32\" wsl.exe -d %_osName%' -Verb RunAs",, Hide, _wPID
     Else
-        Run, %_myexe% -NoP -NoL -W Hidden -C "Start-Process wt.exe -Args '-w new-tab -M -d \"%_pwd%\" wsl.exe -d %_osName%' -Verb RunAs",, Hide, _wPID
+        Run, %_myexe% -NoP -W Hidden -C "Start-Process wt.exe -Args '-w new-tab -M -d \"%_pwd%\" wsl.exe -d %_osName%' -Verb RunAs",, Hide, _wPID
     _wPID := "ahk_pid " . _wPID
     WinWait, %_winPID%,, 2
     WinActivate, %_winPID%
