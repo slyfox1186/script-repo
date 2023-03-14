@@ -17,12 +17,6 @@
 ##        HARDWARE ACCELERATION IS ENABLED WHEN BUILDING FFMPEG AT THE
 ##        SCRIPT'S END.
 ##
-##  IMPORTANT INFO: IF YOU HAVE PREVISOULY INSTALLED ANY OF THE PACKAGES THIS
-##                  SCRIPT BUILDS USING THE 'apt install' COMMAND IT CAN
-##                  POTENTIALLY CAUSE OVERLAP ISSUES WHEN RUNNING PKG-CONFIG.
-##                  IF A PACKAGE THROWS AN ERROR UNINSTALL ANY OVERLAPPING
-##                  LIBRARIES USING "apt remove"
-##
 ##  UPDATED ON: 03.14.23
 ##
 ##  SCRIPT VERSION: 2.30
@@ -663,8 +657,8 @@ if ! which 'nvcc' &>/dev/null ; then
     fi
 else
     echo
-    echo "The cuda-sdk-toolkit \"v${cuda_ver}\" is already installed."
-    echo '====================================================='
+    echo "The cuda-sdk-toolkit v${cuda_ver} is already installed."
+    echo '================================================='
     echo
     echo 'Do you want to update/reinstall it?'
     echo
