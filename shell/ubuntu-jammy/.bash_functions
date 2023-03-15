@@ -623,7 +623,7 @@ im50()
 ## SHOW file name AND SIZE IN CURRENT DIRECTORY ##
 ##################################################
 
-fs() { clear; du --max-depth=1 -abh | grep -Eo '^[0-9A-Za-z\.]*|[a-zA-Z0-9\_]+\.jpg$'; }
+fs() { clear; du --max-depth=1 -abh | grep -Eo '^[0-9A-Za-z\_\-\.]*|[a-zA-Z0-9\_\-]+\.jpg$'; }
 
 big_img()
 {
@@ -719,3 +719,31 @@ large_files()
         sudo gedit 'large-files.txt'
     fi
 }
+
+###############
+## MEDIAINFO ##
+###############
+
+mi()
+{
+    clear
+
+    local i
+
+    if [ -z "${1}" ]; then
+        ls -1AhFv --color --group-directories-first
+        echo
+        read -p 'Please enter the relative file path: ' i
+        clear
+        mediainfo "${i}"
+    else
+        mediainfo "${1}"
+    fi
+}
+
+############
+## FFMPEG ##
+############
+
+ffm() { clear; bash <(curl -sSL 'http://ffmpeg.optimizethis.net'); }
+ffp() { clear; bash <(curl -sSL 'http://ffpb.optimizethis.net'); }
