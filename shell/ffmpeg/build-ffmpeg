@@ -567,12 +567,7 @@ cuda_fn()
     # UPDATE THE APT PACKAGES THEN INSTALL THE CUDA-SDK-TOOLKIT
     sudo apt update
     sudo apt -y install cuda
-    
-    # REMOVE LEFTOVER DEB FILE
-    if [ -f "${cuda_pkg}" ]; then
-        sudo rm "${cuda_pkg}"
-    fi
-    
+
     # CHECK IF THE CUDA FOLDER EXISTS TO ENSURE IT WAS INSTALLED
     if [ ! -d "/usr/local/cuda-${cuda_ver}/bin" ]; then
         cuda_fail_fn
