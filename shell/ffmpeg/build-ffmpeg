@@ -101,13 +101,13 @@ cleanup_fn()
     echo '[1] Yes'
     echo '[2] No'
     echo
-    read -p 'Your choices are (1 or 2): ' cleanup_answer
+    read -p 'Your choices are (1 or 2): ' cleanup_ans
     clear
 
-        if [[ "${cleanup_answer}" -eq '1' ]]; then
-            rm -fr "${packages}" "${workspace}" "${0}"
+        if [[ "${cleanup_ans}" -eq '1' ]]; then
+            cleanup
             exit_fn
-        elif [[ "${cleanup_answer}" -eq '2' ]]; then
+        elif [[ "${cleanup_ans}" -eq '2' ]]; then
             exit_fn
         else
             echo 'Error: Bad user input'
@@ -153,9 +153,17 @@ make_dir()
     fi
 }
 
-remove_dir() {
+remove_file()
+{
+    if [ -f "${1}" ]; then
+        rm -f "${1}"
+    fi
+}
+
+remove_dir()
+{
     if [ -d "${1}" ]; then
-        rm -r "${1}"
+        rm -fr "${1}"
     fi
 }
 
@@ -326,9 +334,8 @@ verify_binary_type()
 # CLEANUP ALL FILES FUNCTION
 cleanup()
 {
-    remove_dir "${packages}"
-    remove_dir "${workspace}"
-    rm -f "${0}" "${4}"
+    remove_dir "${parent_dir}"
+    remove_file "${0}"
     echo 'Cleanup finished.'
     echo
 }
