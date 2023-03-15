@@ -53,4 +53,4 @@ echo 'Now we download and execute the build script'
 echo '============================================'
 echo
 
-bash <(curl -sSL 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ffmpeg/build-ffmpeg') --build --enable-gpl-and-non-free --latest "${build_dir}"
+bash <(curl -sSL 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ffmpeg/build-ffmpeg') --build --enable-gpl-and-non-free --latest
