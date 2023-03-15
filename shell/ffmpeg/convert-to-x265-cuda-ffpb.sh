@@ -99,7 +99,7 @@ ffpb \
     "${file_out}"
 
 if [ "${?}" -lt '1' ]; then
-    google_speech "Video conversion completed"
+    google_speech "Video conversion completed" 2>/dev/null
 else
-    google_speech "Video conversion failed"
+    google_speech "Video conversion failed" 2>/dev/null
 fi
