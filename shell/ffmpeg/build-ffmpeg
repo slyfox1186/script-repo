@@ -135,7 +135,6 @@ ff_ver_fn()
     cleanup_fn
 }
 
-
 make_dir()
 {
     remove_dir "${1}"
