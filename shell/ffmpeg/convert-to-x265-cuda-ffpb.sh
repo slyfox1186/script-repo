@@ -72,7 +72,7 @@ echo
 
 # EXECUTE FFMPEG
 
-echo ffpb \
+ffpb \
     -y \
     -threads '0' \
     -hide_banner \
