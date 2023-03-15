@@ -20,11 +20,11 @@ video="$(find . -type f -name *.mp4 -exec echo '{}' +)"
 for v in "${video:2}"
 do
     # STORES THE CURRENT VIDEO WIDTH, ASPECT RATIO, PROFILE, BIT RATE, AND TOTAL DURATION IN VARIABLES FOR USE LATER IN THE FFMPEG COMMAND LINE
-    AR="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 -pretty "${v}" 2>/dev/null)"
-    LN="$(ffprobe -hide_banner -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${v}" 2>/dev/null)"
-    MR="$(ffprobe -hide_banner -show_entries format=bit_rate -of default=nk=1:nw=1 -pretty "${v}" 2>/dev/null)"
-    VH="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 -pretty "${v}" 2>/dev/null)"
-    VW="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 -pretty "${v}" 2>/dev/null)"
+    ar="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 -pretty "${v}" 2>/dev/null)"
+    ln="$(ffprobe -hide_banner -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${v}" 2>/dev/null)"
+    mr="$(ffprobe -hide_banner -show_entries format=bit_rate -of default=nk=1:nw=1 -pretty "${v}" 2>/dev/null)"
+    vh="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 -pretty "${v}" 2>/dev/null)"
+    vw="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 -pretty "${v}" 2>/dev/null)"
 done
 
 # MODIFY VARS TO GET FILE INPUT AND OUTPUT NAMES
@@ -32,7 +32,7 @@ file="${v}"
 file_out="${file%.*} (x265).mp4"
 
 # TRIM THE STRINGS
-trim_back="${MR::-11}"
+trim_back="${mr::-11}"
 trim_front="${trim_back:3}"
 
 # GETS THE INPUT VIDEOS MAX DATARATE AND APPLIES LOGIC TO DETERMINE BITRATE, BUFSIZE, AND MAXRATE VARIABLES
@@ -42,7 +42,7 @@ bitrate="${br::-3}"
 maxrate="$(( ${bitrate} * 2 ))"
 bc_bf="$(bc <<< "scale=2 ; ${br} * 2")"
 bufsize="${bc_bf::-3}"
-length="$(( ${LN::-7} / 60 ))"
+length="$(( ${ln::-7} / 60 ))"
 length+=" Minutes"
 
 # ECHO THE STORED VARIABLES THAT CONTAIN THE VIDEOS STATS
@@ -52,8 +52,8 @@ echo "Input File:      ${file}"
 echo
 echo "Output File:     ${file_out}"
 echo
-echo "Dimensions:      ${VW}x${VH}"
-echo "Aspect Ratio:    ${AR}"
+echo "Dimensions:      ${vw}x${vh}"
+echo "Aspect Ratio:    ${ar}"
 echo
 echo "Maxrate:         ${maxrate}"k
 echo "Bufsize:         ${bufsize}"k
