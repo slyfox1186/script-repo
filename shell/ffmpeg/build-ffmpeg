@@ -1,12 +1,5 @@
 #!/bin/bash
 
-echo "${1}"
-echo "${2}"
-echo "${3}"
-echo "${4}"
-
-read -p 'testing script'
-
 ##########################################################################
 ##
 ##  GITHUB: https://github.com/slyfox1186/script-repo
@@ -62,6 +55,14 @@ EXTRALIBS='-ldl -lpthread -lm -lz'
 cnf_ops=()
 nonfree='false'
 latest='false'
+
+##
+## DEFINE PARENT DIRECTORY FROM PASSED VARIABLES
+##
+
+if [ -n "${4}" ]; then
+    parent_dir="${4}"
+fi
 
 ##
 ## SET THE AVAILABLE CPU COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -327,7 +328,7 @@ cleanup()
 {
     remove_dir "${packages}"
     remove_dir "${workspace}"
-    rm -f "${0}"
+    rm -f "${0}" "${4}"
     echo 'Cleanup finished.'
     echo
 }
