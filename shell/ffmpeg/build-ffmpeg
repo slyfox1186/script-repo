@@ -93,13 +93,13 @@ cleanup_fn()
     echo '[1] Yes'
     echo '[2] No'
     echo
-    read -p 'Your choices are (1 or 2): ' cleanup_ans
+    read -p 'Your choices are (1 or 2): ' cleanup_answer
     clear
 
-        if [[ "${cleanup_ans}" -eq '1' ]]; then
-            cleanup
+        if [[ "${cleanup_answer}" -eq '1' ]]; then
+            rm -fr "${packages}" "${workspace}" "${0}"
             exit_fn
-        elif [[ "${cleanup_ans}" -eq '2' ]]; then
+        elif [[ "${cleanup_answer}" -eq '2' ]]; then
             exit_fn
         else
             echo 'Error: Bad user input'
@@ -135,6 +135,7 @@ ff_ver_fn()
     cleanup_fn
 }
 
+
 make_dir()
 {
     remove_dir "${1}"
@@ -145,17 +146,9 @@ make_dir()
     fi
 }
 
-remove_file()
-{
-    if [ -f "${1}" ]; then
-        rm -f "${1}"
-    fi
-}
-
-remove_dir()
-{
+remove_dir() {
     if [ -d "${1}" ]; then
-        rm -fr "${1}"
+        rm -r "${1}"
     fi
 }
 
@@ -326,11 +319,8 @@ verify_binary_type()
 # CLEANUP ALL FILES FUNCTION
 cleanup()
 {
-    echo "${PWD}"
-    cd ..
-    echo "${PWD}"
-    read -p 'Press enter to continue.'
-    remove_file "${0}"
+    remove_dir "${packages}"
+    remove_dir "${workspace}"
     echo 'Cleanup finished.'
     echo
 }
@@ -431,7 +421,12 @@ while ((${#} > 0)); do
             cleanup
         fi
         if [[ "${1}" == '--full-static' ]]; then
-            LDEXEFLAGS='-static'
+            if [[ "${ostype}" == 'darwin'* ]]; then
+                echo 'Error: A full static binary can only be built on Linux.'
+                echo
+                exit 1
+            fi
+        LDEXEFLAGS='-static'
         fi
         if [[ "${1}" == '--latest' ]]; then
             latest='true'
