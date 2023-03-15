@@ -367,6 +367,7 @@ gpu_arch_fn()
     elif [[ "${gpu_ans}" -eq '6' ]]; then
         gpu_arch='compute_90,code=sm_90'
     else
+        echo
         echo 'Error: Bad user input.'
         echo
         echo 'Press enter to start over.'
