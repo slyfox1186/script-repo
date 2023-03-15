@@ -821,7 +821,7 @@ if command_exists 'python3'; then
     fi
     if command_exists 'meson'; then
         if build 'dav1d' '7d23ec4a'; then
-            download 'https://code.videolan.org/videolan/dav1d/-/archive/7d23ec4a042b2feb6c0d4c1b0618a87cb8c34dcb/dav1d-7d23ec4a042b2feb6c0d4c1b0618a87cb8c34dcb.tar.gz'
+            download 'https://code.videolan.org/videolan/dav1d/-/archive/7d23ec4a042b2feb6c0d4c1b0618a87cb8c34dcb/dav1d-7d23ec4a042b2feb6c0d4c1b0618a87cb8c34dcb.tar.gz' 'dav1d-7d23ec4a.tar.gz'
             make_dir build
             execute meson setup build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
             execute ninja -C build
