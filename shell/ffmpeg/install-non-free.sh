@@ -31,7 +31,7 @@ command_exists()
     return 0
 }
 
-BUILD_DIR="${PWD}/ffmpeg-build"
+build_dir="${PWD}/ffmpeg-build"
 
 if ! command_exists 'curl'; then
     echo 'curl command not installed.'
@@ -46,11 +46,11 @@ echo
 echo 'First we create the ffmpeg build directory' "${BUILD_DIR}"
 echo '========================================================'
 echo
-make_dir "${BUILD_DIR}"
-cd "${BUILD_DIR}" || exit 1
+make_dir "${build_dir}"
+cd "${build_dir}" || exit 1
 
 echo 'Now we download and execute the build script'
 echo '============================================'
 echo
 
-bash <(curl -sSL 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ffmpeg/build-ffmpeg') --build --enable-gpl-and-non-free --latest
+bash <(curl -sSL 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ffmpeg/build-ffmpeg') --build --enable-gpl-and-non-free --latest "${build_dir}"
