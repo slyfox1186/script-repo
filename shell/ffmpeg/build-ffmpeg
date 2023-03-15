@@ -87,22 +87,19 @@ cleanup_fn()
 {
     # PROMPT USER TO CLEAN UP BUILD FILES
     echo
-    echo 'Do you want to remove all of the build files?'
-    echo '=============================================='
+    echo 'Do you want to cleanup the build files?'
+    echo '========================================='
     echo
     echo '[1] Yes'
     echo '[2] No'
     echo
-    read -p 'Your choices are (1 or 2): ' cleanup_ans
+    read -p 'Your choices are (1 or 2): ' cleanup_answer
     clear
 
-        if [[ "${cleanup_ans}" -eq '1' ]]; then
-            rm -fr "${packages}" "${workspace}"
-            if [ -f "${cuda_pkg}" ]; then
-                rm -f "${cuda_pkg}"
-            fi
+        if [[ "${cleanup_answer}" -eq '1' ]]; then
+            rm -fr "${packages}" "${workspace}" "${0}"
             exit_fn
-        elif [[ "${cleanup_ans}" -eq '2' ]]; then
+        elif [[ "${cleanup_answer}" -eq '2' ]]; then
             exit_fn
         else
             echo 'Error: Bad user input'
