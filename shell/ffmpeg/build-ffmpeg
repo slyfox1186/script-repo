@@ -669,7 +669,7 @@ else
     echo '[2] No'
     echo
     read -p 'Your choices are (1 or 2): ' cuda_choice
-    echo
+    clear
     if [[ "${cuda_choice}" -eq '1' ]]; then
         cuda_fn
         cuda_add_fn
