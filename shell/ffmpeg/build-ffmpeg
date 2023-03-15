@@ -334,7 +334,10 @@ verify_binary_type()
 # CLEANUP ALL FILES FUNCTION
 cleanup()
 {
-    remove_dir "${parent_dir}"
+    echo "${PWD}"
+    cd ..
+    echo "${PWD}"
+    read -p 'Press enter to continue.'
     remove_file "${0}"
     echo 'Cleanup finished.'
     echo
