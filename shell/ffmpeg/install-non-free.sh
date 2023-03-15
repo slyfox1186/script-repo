@@ -31,7 +31,7 @@ command_exists()
     return 0
 }
 
-BUILD_DIR='ffmpeg-build'
+BUILD_DIR="${PWD}/ffmpeg-build"
 
 if ! command_exists 'curl'; then
     echo 'curl command not installed.'
