@@ -450,7 +450,7 @@ if [ -z "${bflag}" ]; then
     exit 0
 fi
 
-echo "Using ${cpus} processors for parallel processing to speed up the make jobs building speed."
+echo "The script will utilize ${cpus} cpu cores for parallel processing to accelerate the build speed."
 echo
 
 if ${nonfree}; then
