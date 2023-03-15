@@ -2,26 +2,25 @@
 
 ##########################################################################
 ##
-##  GITHUB: https://github.com/slyfox1186/script-repo
+##  GitHub: https://github.com/slyfox1186/script-repo
 ##
-##  FORKED FROM: https://github.com/markus-perl/ffmpeg-build-script/
+##  Forked: https://github.com/markus-perl/ffmpeg-build-script/
 ##
-##  TARGET DISTRO: DEBIAN BASED (UBUNTU etc.)
+##  Supported Distro: Debian based (Ubuntu etc...)
 ##
-##  TARGET ARCHITECTURE: x86_x64
+##  Supported architecture: x86_x64
 ##
-##  PURPOSE: TO BUILD FFMPEG FROM SOURCE CODE WITH ADDON DEVELOPMENT
-##           LIBRARIES ALSO COMPILED FROM SOURCE CODE TO ENSURE THE
-##           LATEST IN EXTRA FUNCTIONALITY.
+##  Purpose: To build FFmpeg from source code with addon development
+##           Libraries also compiled from source code to ensure the
+##           Latest in extra functionality.
 ##
-##  CUDA: IF THE CUDA LIBRARIES ARE NOT INSTALLED (FOR GEFORCE CARDS ONLY)
-##        THE USER WILL BE PROMPTED FOR THE SCRIPT TO INSTALL THEM SO THAT
-##        HARDWARE ACCELERATION IS ENABLED WHEN BUILDING FFMPEG AT THE
-##        SCRIPT'S END.
+##  Cuda: If the CUDA libraries are not installed (for GeForce cards only)
+##        the user will be prompted for the script to install them so that
+##        hardware acceleration is enabled when compiling FFmpeg.
 ##
-##  UPDATED: 03.14.23
+##  Updated: 03.14.23
 ##
-##  VERSION: 2.30
+##  Version: 2.30
 ##
 ##########################################################################
 
