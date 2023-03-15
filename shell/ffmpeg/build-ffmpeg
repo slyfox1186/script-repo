@@ -57,14 +57,6 @@ nonfree='false'
 latest='false'
 
 ##
-## DEFINE PARENT DIRECTORY FROM PASSED VARIABLES
-##
-
-if [ -n "${4}" ]; then
-    parent_dir="${4}"
-fi
-
-##
 ## SET THE AVAILABLE CPU COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
 ##
 
