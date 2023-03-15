@@ -81,7 +81,6 @@ ffmpeg \
     -b:v "${bitrate}"k \
     -bufsize:v "${bufsize}"k \
     -bf:v '3' \
-    -maxrate:v "${maxrate}"k \
     -b_ref_mode:v 'middle' \
     -qmin:v '0' \
     -qmax:v '99' \
@@ -98,17 +97,3 @@ if [ "${?}" -lt '1' ]; then
 else
     google_speech "Video conversion failed"
 fi
-
-exit 0
-
-# -loglevel 8
-# -ss "%START%"
-# -to "%TO%"
-
-clear; ffmpeg -h decoder=h264_cuvid
-clear; ffmpeg -h encoder=h264_nvenc
-clear; ffmpeg -h encoder=hevc_nvenc
-clear; ffmpeg -pix_fmts
-
-clear; ffprobe -h
-clear; mediainfo --Help
