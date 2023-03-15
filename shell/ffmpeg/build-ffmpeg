@@ -93,13 +93,13 @@ cleanup_fn()
     echo '[1] Yes'
     echo '[2] No'
     echo
-    read -p 'Your choices are (1 or 2): ' cleanup_answer
+    read -p 'Your choices are (1 or 2): ' cleanup_ans
     clear
 
-        if [[ "${cleanup_answer}" -eq '1' ]]; then
-            rm -fr "${packages}" "${workspace}" "${0}"
+        if [[ "${cleanup_ans}" -eq '1' ]]; then
+            cleanup
             exit_fn
-        elif [[ "${cleanup_answer}" -eq '2' ]]; then
+        elif [[ "${cleanup_ans}" -eq '2' ]]; then
             exit_fn
         else
             echo 'Error: Bad user input'
@@ -135,7 +135,6 @@ ff_ver_fn()
     cleanup_fn
 }
 
-
 make_dir()
 {
     remove_dir "${1}"
@@ -146,9 +145,17 @@ make_dir()
     fi
 }
 
-remove_dir() {
+remove_file()
+{
+    if [ -f "${1}" ]; then
+        rm -f "${1}"
+    fi
+}
+
+remove_dir()
+{
     if [ -d "${1}" ]; then
-        rm -r "${1}"
+        rm -fr "${1}"
     fi
 }
 
@@ -319,8 +326,11 @@ verify_binary_type()
 # CLEANUP ALL FILES FUNCTION
 cleanup()
 {
-    remove_dir "${packages}"
-    remove_dir "${workspace}"
+    echo "${PWD}"
+    cd ..
+    echo "${PWD}"
+    read -p 'Press enter to continue.'
+    remove_file "${0}"
     echo 'Cleanup finished.'
     echo
 }
@@ -330,8 +340,14 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok ins
 
 cuda_fail_fn()
 {
-    clear
-    echo "Error: Unable to locate the required hardware acceleration library: /usr/local/cuda-${}/bin/"
+    echo '======================================================'
+    echo '                    Script error:'
+    echo '======================================================'
+    echo
+    echo "Unable to locate directory: /usr/local/cuda-${cuda_ver}/bin/"
+    echo
+    read -p 'Press enter to exit.'
+    echo
     error_fn
 }
 
@@ -340,6 +356,7 @@ gpu_arch_fn()
     echo
     local gpu_ans
 
+    echo '============================================================================================'
     echo 'Tune the build to match your specific Nvidia GPU which will maximize the performance output.'
     echo '============================================================================================'
     echo
@@ -352,6 +369,7 @@ gpu_arch_fn()
     echo '[5] Lovelace | Geforce RTX [4080, 4090, 6000]'
     echo '[6] Hopper   | GH100'
     echo
+
     read -p 'Your choices are (1 to 6): ' gpu_ans
     
     if [[ "${gpu_ans}" -eq '1' ]]; then
@@ -388,7 +406,7 @@ usage()
     echo '            --enable-gpl-and-non-free    Enable GPL and non-free codecs    - https://ffmpeg.org/legal.html'
     echo '    -c, --cleanup                                    Remove all working dirs'
     echo '            --latest                                     Build latest version of dependencies if newer available'
-    echo '            gpu_arch_fn--full-static                            Build a full static FFmpeg binary (eg. glibc, pthreads etc...) **only Linux**'
+    echo '            --full-static                            Build a full static FFmpeg binary (eg. glibc, pthreads etc...) **only Linux**'
     echo '                                                                 Note: Because of the NSS (Name Service Switch), glibc does not recommend static links.'
     echo
 }
@@ -508,7 +526,7 @@ fi
 
 cuda_fn()
 {
-    clear
+    echo
     echo 'Pick your Linux distro from the list below:'
     echo
     echo '[1] Debian 10 (x86_x64)'
@@ -562,7 +580,7 @@ cuda_fn()
     # UPDATE THE APT PACKAGES THEN INSTALL THE CUDA-SDK-TOOLKIT
     sudo apt update
     sudo apt -y install cuda
-
+    
     # CHECK IF THE CUDA FOLDER EXISTS TO ENSURE IT WAS INSTALLED
     if [ ! -d "/usr/local/cuda-${cuda_ver}/bin" ]; then
         cuda_fail_fn
@@ -603,7 +621,6 @@ cuda_add_fn()
         echo 'The Required Geforce CUDA Developement Libraries are already installed.'
     fi
 
-    echo
     sleep 3
 }
 
@@ -640,7 +657,7 @@ if ! which 'nvcc' &>/dev/null ; then
     elif [[ "${cuda_ans}" -eq '3' ]]; then
         echo
     else
-        clear
+        echo
         echo 'Error: Bad user input!'
         echo '======================='
         error_fn
@@ -1205,6 +1222,7 @@ if which 'nvcc' &>/dev/null ; then
     fi
 
     gpu_arch_fn
+
     # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/ # cnf_ops+=('--nvccflags=-gencode arch=compute_52,code=sm_52')
     cnf_ops+=("--nvccflags=-gencode arch=${gpu_arch}")
 fi
