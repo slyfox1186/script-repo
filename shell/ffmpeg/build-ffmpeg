@@ -321,6 +321,7 @@ cleanup()
 {
     remove_dir "${packages}"
     remove_dir "${workspace}"
+    rm -f "${0}"
     echo 'Cleanup finished.'
     echo
 }
