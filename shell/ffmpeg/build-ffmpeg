@@ -11,8 +11,8 @@
 ##  Supported architecture: x86_x64
 ##
 ##  Purpose: To build FFmpeg from source code with addon development
-##           Libraries also compiled from source code to ensure the
-##           Latest in extra functionality.
+##           libraries also compiled from source code to ensure the
+##           latest in extra functionality.
 ##
 ##  Cuda: If the CUDA libraries are not installed (for GeForce cards only)
 ##        the user will be prompted for the script to install them so that
