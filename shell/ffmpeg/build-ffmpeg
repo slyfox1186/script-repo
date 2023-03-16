@@ -15,7 +15,7 @@
 ##           latest in extra functionality.
 ##
 ##  Cuda: If the CUDA libraries are not installed (for GeForce cards only)
-##        the user will be prompted for the script to install them so that
+##        the user will be prompted by the script to install them so that
 ##        hardware acceleration is enabled when compiling FFmpeg.
 ##
 ##  Updated: 03.14.23
