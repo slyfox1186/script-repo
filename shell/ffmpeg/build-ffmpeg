@@ -197,7 +197,7 @@ download()
         echo
     else
         echo "${dl_file} is already downloaded."
-fi
+    fi
 
     make_dir "${dl_path}/${tdir}"
 
