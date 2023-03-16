@@ -40,7 +40,7 @@
         }
     }
 
-    If ("_isMatchEnd" = _Domain)
+    If (_isMatchEnd = _Domain)
         Clipboard := ""
 
     /*
