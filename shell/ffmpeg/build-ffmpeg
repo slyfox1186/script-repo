@@ -507,12 +507,14 @@ cuda_fn()
     echo
     echo 'Pick your Linux distro from the list below:'
     echo
-    echo '[1] Debian 10 (x86_x64)'
-    echo '[2] Debian 11 (x86_x64)'
-    echo '[3] Ubuntu 18.04 (x86_x64)'
-    echo '[4] Ubuntu 20.04 (x86_x64)'
-    echo '[5] Ubuntu 22.04 (x86_x64)'
-    echo '[6] Ubuntu WSL 2 (Windows Subsystem for Linux)'
+    echo 'Supported architecture: x86_x64'
+    echo
+    echo '[1] Debian 10'
+    echo '[2] Debian 11'
+    echo '[3] Ubuntu 18.04'
+    echo '[4] Ubuntu 20.04'
+    echo '[5] Ubuntu 22.04'
+    echo '[6] Ubuntu Windows (WSL)'
     echo '[7] Skip this'
     echo
     read -p 'Your choices are (1 to 7): ' cuda_dist
