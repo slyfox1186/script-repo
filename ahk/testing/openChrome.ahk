@@ -30,7 +30,7 @@
     For Each, _Domain in _Domains
     {
         RegExMatch(Clipboard, "\.[a-z]{2,3}$|.*$", _isMatch)
-        RegExMatch(Clipboard, "(\.(com|de|gov|io|jp|net|org|to|tv|uk)[$]*)", _isMatchEnd)
+        RegExMatch(Clipboard, "(\.(com|de|gov|io|jp|net|org|to|tv|uk)[$]*)", _isEndMatch)
         While (_isMatchEnd = _Domain)
         {
             Run, "C:\Program Files\Google\Chrome Beta\Application\chrome.exe" --new-tab %_isMatch%,, Max
@@ -40,7 +40,7 @@
         }
     }
 
-    If (_isMatchEnd = _Domain)
+    If (_isEndMatch = _Domain)
         Clipboard := ""
 
     /*
