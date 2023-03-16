@@ -334,9 +334,9 @@ gpu_arch_fn()
     echo
     local gpu_ans
 
-    echo '============================================================================================'
-    echo 'Tune the build to match your specific Nvidia GPU which will maximize the performance output.'
-    echo '============================================================================================'
+    echo '============================================================================================='
+    echo ' Tune the build to match your specific Nvidia GPU which will maximize the performance output'
+    echo '============================================================================================='
     echo
     echo 'Please select your GPU'\''s architecture.'
     echo
