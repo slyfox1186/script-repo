@@ -307,7 +307,8 @@ build_done() { echo "${2}" > "${packages}/${1}.done"; }
 # CLEANUP ALL FILES FUNCTION
 cleanup()
 {
-    remove_dir "${PWD}"
+    cd ..
+    remove_dir 'ffmpeg-build'
     remove_file "${0}"
     echo 'Cleanup finished.'
     echo
