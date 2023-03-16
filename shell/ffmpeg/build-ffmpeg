@@ -81,7 +81,6 @@ exit_fn()
     exit 0
 }
 
-
 cleanup_fn()
 {
     # PROMPT USER TO CLEAN UP BUILD FILES
