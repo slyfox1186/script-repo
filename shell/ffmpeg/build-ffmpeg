@@ -304,24 +304,6 @@ library_exists()
 # CONFIRM A BUILD HAS COMPLETED FUNCTION
 build_done() { echo "${2}" > "${packages}/${1}.done"; }
 
-verify_binary_type()
-{
-    if ! command_exists 'file'; then
-        return
-    fi
-
-    binary_type=$(file "${workspace}"/bin/ffmpeg | sed -n 's/^.*\:\ \(.*$\)/\1/p')
-    echo
-    case ${binary_type} in
-    'Mach-O 64-bit executable arm64')
-        echo "Successfully built Apple Silicon (M1) for ${ostype}: ${binary_type}"
-         ;;
-    *)
-          echo "Successfully built binary for ${ostype}: ${binary_type}"
-          ;;
-    esac
-}
-
 # CLEANUP ALL FILES FUNCTION
 cleanup()
 {
