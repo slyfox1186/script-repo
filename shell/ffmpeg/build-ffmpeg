@@ -263,7 +263,7 @@ execute()
 build()
 {
     echo
-    echo "compiling ${1} - version ${2}"
+    echo "building ${1} - version ${2}"
     echo '===================================='
 
     if [ -f "${packages}/${1}.done" ]; then
