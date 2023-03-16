@@ -1230,8 +1230,8 @@ cnf_ops+=('--enable-amf')
 ##
 
 # REMOVE ANY FILES FROM PRIOR RUNS
-if [ -d "${packages}/ffmpeg-latest" ]; then
-    rm -fr "${packages}/ffmpeg-latest"
+if [ -d "${packages}/ffmpeg-${ffmpeg_ver}" ]; then
+    rm -fr "${packages}/ffmpeg-${ffmpeg_ver}"
 fi
 
 # CLONE FFMPEG FROM THE LATEST GIT RELEASE
