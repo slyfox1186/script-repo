@@ -95,19 +95,19 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' cleanup_ans
     clear
 
-        if [[ "${cleanup_ans}" -eq '1' ]]; then
-            cleanup
-            exit_fn
-        elif [[ "${cleanup_ans}" -eq '2' ]]; then
-            exit_fn
-        else
-            echo 'Error: Bad user input'
-            echo '======================'
-            echo
-            read -p 'Press enter to try again.'
-            clear
-            cleanup_fn
-        fi
+    if [[ "${cleanup_ans}" -eq '1' ]]; then
+        cleanup
+        exit_fn
+    elif [[ "${cleanup_ans}" -eq '2' ]]; then
+        exit_fn
+    else
+        echo 'Error: Bad user input'
+        echo '======================'
+        echo
+        read -p 'Press enter to try again.'
+        clear
+        cleanup_fn
+    fi
 }
 
 ff_ver_fn()
