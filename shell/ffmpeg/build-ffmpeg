@@ -308,7 +308,8 @@ build_done() { echo "${2}" > "${packages}/${1}.done"; }
 cleanup()
 {
     cd ..
-    remove_dir 'ffmpeg-build'
+    remove_dir "${packages}"
+    remove_dir "${workspace}"
     remove_file "${0}"
     echo 'Cleanup finished.'
     echo
