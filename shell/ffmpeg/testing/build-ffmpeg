@@ -180,8 +180,6 @@ download()
             echo
             echo "Failed to download ${1}. Exitcode ${ec}. Retrying in 10 seconds"
             echo
-            read -t 10 -p 'Press enter to skip waiting.'
-            echo
             curl -Lso "${dl_path}/${dl_file}" "${1}"
         fi
 
