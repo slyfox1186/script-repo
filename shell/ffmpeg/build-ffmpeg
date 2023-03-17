@@ -825,7 +825,7 @@ if build 'svtav1' 'cb8830a'; then
     execute cp 'SvtAv1Enc.pc' "${workspace}"/lib/pkgconfig/
     execute cp 'SvtAv1Dec.pc' "${workspace}"/lib/pkgconfig/
     build_done 'svtav1' 'cb8830a'
-    fi
+fi
     cnf_ops+=('--enable-libsvtav1')
 
 if command_exists 'cargo'; then
