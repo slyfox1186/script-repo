@@ -10,10 +10,6 @@ IF NOT "%1"=="MAX" START /MAX CMD /D /C %0 MAX & GOTO :EOF
 
 :--------------------------------------------------------------------------------
 
-REM YOU CAN SET THE FULL PATH OF 7z.exe HERE IF YOU WISH.
-REM IF YOU DECIDE TO USE THIS VARIABLE YOU MUST REPLACE 7z.exe
-REM IN THE BELOW COMMAND WITH %SZIP%
-
 SET SZIP="%ProgramFiles%\7-Zip\7z.exe"
 
 :--------------------------------------------------------------------------------
