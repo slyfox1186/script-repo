@@ -852,15 +852,6 @@ if ${nonfree}; then
 fi
 
 if ${nonfree}; then
-    # WHEN FFMPEG IS BUILT IT REQUIRES THE X265 BINARIES TO HAVE THE LIBNUMA-DEV APT PACKAGE ALREADY INSTALLED
-    find_libnuma="$(sudo find /usr/ -name 'libnuma.so')"
-    if [ -z "${find_libnuma}" ]; then
-        echo '$ installing the required apt package libnuma-dev'
-        echo
-        sudo apt -y install libnuma-dev
-        echo
-    fi
-
     if build 'x265' '3.4'; then
         git clone -q 'https://bitbucket.org/multicoreware/x265_git.git' "${packages}/x265-3.4"
         cd "${packages}/x265-3.4/build/linux" || exit 1
