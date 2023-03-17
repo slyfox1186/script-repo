@@ -9,7 +9,7 @@
     ClipWait, 2 ; wait for that input to come through for no more than 2.5 second
 
     If (ErrorLevel)
-        Clipboard := _ClipSaved ; If nothing is saved in the Clipboard from the clipwait command then use the current Clipboards contents
+        Clipboard := _ClipSaved ; If nothing is saved in the Clipboard from the clipwait command then use then use the text stored in ClipSaved variable
 
     Clipboard := Trim(Clipboard) ; Trim both ends of the string found in Clipboard
 
