@@ -44,13 +44,17 @@ fail_fn()
     exit 1
 }
 
+version_fn()
+{
+    show_ver="$("${output_file}" | head -n 2 | cut -d " " -f3 | awk 'NF' | xargs printf "v%s\n" "${@}")"
+    echo -e "\\n7-zip has been updated to:" "${show_ver}"
+}
+
 cleanup_fn()
 {
-    echo 'Do you want to cleanup the download files before exiting?'
-    echo
+    echo -e "\\nDo you want to cleanup the download files before exiting?\\n"
     echo '[1] Yes'
-    echo '[2] No'
-    echo
+    echo -e "[2] No\\n"
     read -p 'Your choices are (1 or 2): ' choice
     clear
 
@@ -95,9 +99,7 @@ if ! cp -f '7zzs' "${output_file}"; then
 fi
 
 # Run the command '7z' to show its output and confirm that everthing works as expected
-echo -e "\\n7-zip has been updated to:"
-"${output_file}" | head -n 2 | cut -d " " -f3 | awk 'NF' | xargs printf "v%s\n" "${@}"
-echo
+version_fn
 
 # Prompt the user to cleanup files
 cleanup_fn
