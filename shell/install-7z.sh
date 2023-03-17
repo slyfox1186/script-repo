@@ -8,7 +8,7 @@
 ##          The user will be prompted to select their OS architecture before
 ##          installing.
 ##
-## Updated: 03.17.23
+## Updated: 01.30.23
 ##
 #########################################################
 
@@ -88,13 +88,8 @@ if ! tar -xf "${tar_file}" -C "${target_dir}"; then
     fail_fn 'The script was unable to find the download file.'
 fi
 
-# cd into directory
-if ! cd "${target_dir}"; then
-    fail_fn "The script was unable to cd into '${target_dir}'."
-fi
-
 # Copy the file to its destination or throw an error if the copying of the file fails
-if ! cp -f '7zzs' "${output_file}"; then
+if ! cp -f "${target_dir}/7zzs" "${output_file}"; then
     fail_fn "The script was unable to copy the static file '7zzs' to '${output_file}'"
 fi
 
