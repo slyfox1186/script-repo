@@ -778,12 +778,12 @@ else
     cnf_ops+=('--enable-gmp' '--enable-gnutls')
 fi
 
-if build 'cmake' '3.25.3'; then
-    download 'https://github.com/Kitware/CMake/releases/download/v3.25.3/cmake-3.25.3.tar.gz'
+if build 'cmake' '3.26.0'; then
+    download 'https://github.com/Kitware/CMake/releases/download/v3.26.0/cmake-3.26.0.tar.gz'
     execute ./configure --prefix="${workspace}" --parallel="${cpus}" -- -DCMAKE_USE_OPENSSL='OFF'
     execute make "-j${cpus}"
     execute make install
-    build_done 'cmake' '3.25.3'
+    build_done 'cmake' '3.26.0'
 fi
 
 ##
