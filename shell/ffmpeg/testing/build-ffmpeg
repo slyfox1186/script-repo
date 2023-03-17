@@ -231,6 +231,53 @@ download()
 
 }
 
+git_download()
+{
+    dl_path="${packages}"
+    dl_url="${1}"
+    dl_file="${2}"
+    tdir="${dl_path}/${dl_file}"
+
+    # first download attempt
+    if [ ! -d "${tdir}" ]; then
+        echo "Downloading ${dl_file}"
+        git clone -q "${dl_url}" "${tdir}"
+
+        # try download once more if first attempt failed
+        ec="${?}"
+        if [ "${ec}" -ne '0' ]; then
+            echo
+            echo "Failed to download ${2}. Exitcode ${ec}. Retrying in 10 seconds"
+            echo
+            read -t 10 -p 'Press enter to skip waiting.'
+            echo
+            git clone -q "${dl_url}" "${tdir}"
+        fi
+
+        # check if second download attempt was successful
+        ec="${?}"
+        if [ "${ec}" -ne '0' ]; then
+            echo
+            echo "Failed to download ${2}. Exitcode ${ec}"
+            echo
+            exit 1
+        fi
+
+        echo 'Download Complete...'
+        echo
+    else
+        echo "${dl_file} is already downloaded."
+    fi
+
+    cd "${tdir}" || (
+        echo 'Script error!'
+        echo
+        echo "Unable to change the working directory to ${}"
+        echo
+        exit 1
+    )
+}
+
 error_fn()
 {
     echo
@@ -350,7 +397,7 @@ gpu_arch_fn()
     echo
 
     read -p 'Your choices are (1 to 6): ' gpu_ans
-    
+
     if [[ "${gpu_ans}" -eq '1' ]]; then
         gpu_arch='compute_61,code=sm_61'
     elif [[ "${gpu_ans}" -eq '2' ]]; then
@@ -561,7 +608,7 @@ cuda_fn()
     # UPDATE THE APT PACKAGES THEN INSTALL THE CUDA-SDK-TOOLKIT
     sudo apt update
     sudo apt -y install cuda
-    
+
     # CHECK IF THE CUDA FOLDER EXISTS TO ENSURE IT WAS INSTALLED
     if [ ! -d "/usr/local/cuda-${cuda_ver}/bin" ]; then
         cuda_fail_fn
@@ -574,14 +621,14 @@ cuda_fn()
 ##
 ## ADDITIONAL REQUIRED GEFORCE CUDA DEVELOPMENT PACKAGES
 ##
-  
+
 cuda_add_fn()
 {
     echo
     echo 'Installing: Additional Required Geforce CUDA Developement Packages'
     echo '===================================================================='
 
-    addons=(autoconf automake build-essential libass-dev libc6 libc6-dev libfdk-aac-dev libfreetype6-dev libmp3lame-dev libnuma1 libnuma-dev libtheora-dev libtool libvorbis-dev pkg-config texinfo unzip wget yasm zlib1g-dev)
+    addons=(autoconf automake build-essential libass-dev libc6 libc6-dev libfdk-aac-dev libfreetype6-dev libmp3lame-dev libnuma1 libnuma-dev libtheora-dev libtool libvorbis-dev pkg-config texinfo unzip wget)
 
     for pkg in ${addons[@]}
     do
@@ -683,7 +730,8 @@ if build 'pkg-config' '0.29.2'; then
 fi
 
 if build 'yasm' '1.3.0'; then
-    download 'https://github.com/yasm/yasm/releases/download/v1.3.0/yasm-1.3.0.tar.gz'
+    git_download 'https://github.com/yasm/yasm.git' 'yasm-git'
+    execute ./autogen.sh
     execute ./configure --prefix="${workspace}"
     execute make "-j${cpus}"
     execute make install
@@ -691,7 +739,8 @@ if build 'yasm' '1.3.0'; then
 fi
 
 if build 'nasm' '2.16.02rc1'; then
-    download 'https://www.nasm.us/pub/nasm/releasebuilds/2.16.02rc1/nasm-2.16.02rc1.tar.xz'
+    git_download 'https://github.com/netwide-assembler/nasm.git' 'nasm-git'
+    execute ./autogen.sh
     execute ./configure --prefix="${workspace}" --disable-shared --enable-static
     execute make "-j${cpus}"
     execute make install
