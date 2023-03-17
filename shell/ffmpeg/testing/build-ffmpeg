@@ -231,7 +231,7 @@ download()
 
 }
 
-git_download()
+download_git()
 {
     dl_path="${packages}"
     dl_url="${1}"
@@ -546,6 +546,37 @@ if ! command_exists 'python3'; then
     echo 'The '\''python3'\'' command was not found. The '\''Lv2'\'' filter and '\''dav1d'\'' decoder will not be available.'
 fi
 
+
+##
+## ADDITIONAL REQUIRED PACKAGES
+##
+
+add_pkgs_fn()
+{
+    echo
+    echo 'Installing: Additional Required Packages'
+    echo '=========================================='
+
+    addons=(asciidoc xmlto)
+
+    for pkg in ${addons[@]}
+    do
+        if ! installed "${pkg}"; then
+            missing_pkgs+=" ${pkg}"
+        fi
+    done
+
+    if [ -n "${missing_pkgs}" ]; then
+        for pkg in "${missing_pkgs}"
+        do
+            sudo apt -y install ${pkg}
+        done
+        echo 'The required additional libraries were installed.'
+    else
+        echo 'The required additional libraries are already installed.'
+    fi
+}
+
 ##
 ## CUDA FUNCTIONS
 ##
@@ -709,6 +740,12 @@ else
 fi
 
 ##
+## Install additional packages
+##
+
+add_pkgs_fn
+
+##
 ## BUILD TOOLS
 ##
 
@@ -729,46 +766,45 @@ if build 'pkg-config' '0.29.2'; then
     build_done 'pkg-config' '0.29.2'
 fi
 
-if build 'yasm' '1.3.0'; then
-    git_download 'https://github.com/yasm/yasm.git' 'yasm-git'
+if build 'yasm' 'git'; then
+    download_git 'https://github.com/yasm/yasm.git' 'yasm-git'
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}"
     execute make "-j${cpus}"
     execute make install
-    build_done 'yasm' '1.3.0'
+    build_done 'yasm' 'git'
 fi
 
 if build 'nasm' '2.16.02rc1'; then
-    git_download 'https://github.com/netwide-assembler/nasm.git' 'nasm-git'
-    execute ./autogen.sh
+    download 'https://www.nasm.us/pub/nasm/releasebuilds/2.16.02rc1/nasm-2.16.02rc1.tar.xz'
     execute ./configure --prefix="${workspace}" --disable-shared --enable-static
     execute make "-j${cpus}"
     execute make install
     build_done 'nasm' '2.16.02rc1'
 fi
 
-if build 'zlib' '1.2.13'; then
-    download 'https://zlib.net/fossils/zlib-1.2.13.tar.gz'
+if build 'zlib' 'git'; then
+    download_git 'https://github.com/madler/zlib.git' 'zlib-git'
     execute ./configure --static --prefix="${workspace}"
     execute make "-j${cpus}"
     execute make install
-    build_done 'zlib' '1.2.13'
+    build_done 'zlib' 'git'
 fi
 
-if build 'm4' '1.4.19'; then
-    download 'https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.xz'
+if build 'm4' 'latest'; then
+    download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
     execute ./configure --prefix="${workspace}"
     execute make "-j${cpus}"
     execute make install
-    build_done 'm4' '1.4.19'
+    build_done 'm4' 'latest'
 fi
 
-if build 'autoconf' '2.71'; then
-    download 'https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.xz'
+if build 'autoconf' 'latest'; then
+    download 'https://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz'
     execute ./configure --prefix="${workspace}"
     execute make "-j${cpus}"
     execute make install
-    build_done 'autoconf' '2.71'
+    build_done 'autoconf' 'latest'
 fi
 
 if build 'automake' '1.16.5'; then
@@ -788,13 +824,13 @@ if build 'libtool' '2.4.7'; then
 fi
 
 if ${nonfree}; then
-    if build 'openssl' '1.1.1t'; then
-        download 'https://www.openssl.org/source/openssl-1.1.1t.tar.gz'
+    if build 'openssl' '3.1.0'; then
+        download 'https://www.openssl.org/source/openssl-3.1.0.tar.gz'
         execute ./config --prefix="${workspace}" --openssldir="${workspace}" \
             --with-zlib-include="${workspace}"/include/ --with-zlib-lib="${workspace}"/lib no-shared zlib
         execute make "-j${cpus}"
         execute make install_sw
-        build_done 'openssl' '1.1.1t'
+        build_done 'openssl' '3.1.0'
     fi
     cnf_ops+=('--enable-openssl')
 else
@@ -827,14 +863,13 @@ else
     cnf_ops+=('--enable-gmp' '--enable-gnutls')
 fi
 
-if build 'cmake' '3.25.3'; then
-    download 'https://github.com/Kitware/CMake/releases/download/v3.25.3/cmake-3.25.3.tar.gz'
+if build 'cmake' 'git'; then
+    download_git 'https://github.com/Kitware/CMake.git' 'cmake-git'
     execute ./configure --prefix="${workspace}" --parallel="${cpus}" -- -DCMAKE_USE_OPENSSL='OFF'
     execute make "-j${cpus}"
     execute make install
-    build_done 'cmake' '3.25.3'
+    build_done 'cmake' 'git'
 fi
-
 ##
 ## VIDEO LIBRARIES
 ##
@@ -853,13 +888,13 @@ if command_exists 'python3'; then
         done
     fi
     if command_exists 'meson'; then
-        if build 'dav1d' '7d23ec4a'; then
-            download 'https://code.videolan.org/videolan/dav1d/-/archive/7d23ec4a042b2feb6c0d4c1b0618a87cb8c34dcb/dav1d-7d23ec4a042b2feb6c0d4c1b0618a87cb8c34dcb.tar.gz' 'dav1d-7d23ec4a.tar.gz'
+        if build 'dav1d' 'git'; then
+            download_git 'https://github.com/videolan/dav1d.git' 'dav1d-git'
             make_dir build
             execute meson setup build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
             execute ninja -C build
             execute ninja -C build install
-            build_done 'dav1d' '7d23ec4a'
+            build_done 'dav1d' 'git'
         fi
         cnf_ops+=('--enable-libdav1d')
     fi
@@ -867,49 +902,39 @@ fi
 
 if build 'svtav1' 'cb8830a'; then
     download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/cb8830a55a529f539161348582ebe8bacb858e86/SVT-AV1-cb8830a55a529f539161348582ebe8bacb858e86.tar.gz' 'svtav1-cb8830a.tar.gz'
-    cd "${packages}"/svtav1-cb8830a//Build/linux || exit 1
+    cd "${packages}"/svtav1-cb8830a/Build/linux || exit 1
     execute cmake -DCMAKE_INSTALL_PREFIX="${workspace}" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' ../.. -G 'Unix Makefiles' -DCMAKE_BUILD_TYPE='Release'
     execute make "-j${cpus}"
     execute make install
     execute cp 'SvtAv1Enc.pc' "${workspace}"/lib/pkgconfig/
     execute cp 'SvtAv1Dec.pc' "${workspace}"/lib/pkgconfig/
     build_done 'svtav1' 'cb8830a'
-    fi
-    cnf_ops+=('--enable-libsvtav1')
+fi
+cnf_ops+=('--enable-libsvtav1')
 
 if command_exists 'cargo'; then
-    if build 'rav1e' '0.6.3'; then
+    if build 'rav1e' 'git'; then
         execute cargo install --version '0.9.14+cargo-0.66' cargo-c
-        download 'https://github.com/xiph/rav1e/archive/refs/tags/v0.6.3.tar.gz'
+        download_git 'https://github.com/xiph/rav1e.git' 'rav1e-git'
         execute cargo cinstall --prefix="${workspace}" --library-type='staticlib' --crt-static --release
-        build_done 'rav1e' '0.6.3'
+        build_done 'rav1e' 'git'
     fi
     cnf_ops+=('--enable-librav1e')
 fi
 
 if ${nonfree}; then
-    if build 'x264' 'eaa68fad'; then
-        download 'https://code.videolan.org/videolan/x264/-/archive/eaa68fad9e5d201d42fde51665f2d137ae96baf0/x264-eaa68fad9e5d201d42fde51665f2d137ae96baf0.tar.gz' 'x264-eaa68fad.tar.gz'
-        cd "${packages}"/x264-eaa68fad || exit 1
+    if build 'x264' 'git'; then
+        download_git 'https://code.videolan.org/videolan/x264.git' 'x264-git'
         execute ./configure --prefix="${workspace}" --enable-static --enable-pic CXXFLAGS="-fPIC ${CXXFLAGS}"
         execute make "-j${cpus}"
         execute make install
         execute make install-lib-static
-        build_done 'x264' 'eaa68fad'
+        build_done 'x264' 'git'
     fi
     cnf_ops+=('--enable-libx264')
 fi
 
 if ${nonfree}; then
-    # WHEN FFMPEG IS BUILT IT REQUIRES THE X265 BINARIES TO HAVE THE LIBNUMA-DEV APT PACKAGE ALREADY INSTALLED
-    find_libnuma="$(sudo find /usr/ -name 'libnuma.so')"
-    if [ -z "${find_libnuma}" ]; then
-        echo '$ installing the required apt package libnuma-dev'
-        echo
-        sudo apt -y install libnuma-dev
-        echo
-    fi
-
     if build 'x265' '3.4'; then
         git clone -q 'https://bitbucket.org/multicoreware/x265_git.git' "${packages}/x265-3.4"
         cd "${packages}/x265-3.4/build/linux" || exit 1
@@ -955,12 +980,12 @@ EOF
     cnf_ops+=('--enable-libx265')
 fi
 
-if build 'libvpx' '1.13.0'; then
-    download 'https://github.com/webmproject/libvpx/archive/refs/tags/v1.13.0.tar.gz' 'libvpx-1.13.0.tar.gz'
+if build 'libvpx' 'git'; then
+    download_git 'https://github.com/webmproject/libvpx.git' 'libvpx-git'
     execute ./configure --prefix="${workspace}" --disable-unit-tests --disable-shared --disable-examples --as='yasm'
     execute make "-j${cpus}"
     execute make install
-    build_done 'libvpx' '1.13.0'
+    build_done 'libvpx' 'git'
 fi
 cnf_ops+=('--enable-libvpx')
 
@@ -986,25 +1011,24 @@ if ${nonfree}; then
 fi
 
 if ${nonfree}; then
-    if build 'vid_stab' '1.1.1'; then
-        download 'https://github.com/georgmartius/vid.stab/archive/refs/tags/v1.1.1.tar.gz' 'vid.stab-1.1.1.tar.gz'
+    if build 'vid_stab' 'git'; then
+        download_git 'https://github.com/georgmartius/vid.stab.git' 'vid.stab-git'
         execute cmake -DBUILD_SHARED_LIBS='OFF' -DCMAKE_INSTALL_PREFIX="${workspace}" -DUSE_OMP='OFF' -DENABLE_SHARED='OFF' .
         execute make
         execute make install
-        build_done 'vid_stab' '1.1.1'
+        build_done 'vid_stab' 'git'
     fi
     cnf_ops+=('--enable-libvidstab')
 fi
 
-if build 'av1' '34c4c3f7'; then
-  # libaom bcfe6fb == v3.5.0
-    download 'https://aomedia.googlesource.com/aom/+archive/34c4c3f7e6d95fe3785cd3dc810dc39ec649224e.tar.gz' 'av1.tar.gz' 'av1'
+if build 'av1' 'git'; then
+    download_git 'https://aomedia.googlesource.com/aom' 'av1'
     make_dir "${packages}"/aom_build
     cd "${packages}"/aom_build || exit 1
     execute cmake -DENABLE_TESTS='0' -DENABLE_EXAMPLES='0' -DCMAKE_INSTALL_PREFIX="${workspace}" -DCMAKE_INSTALL_LIBDIR='lib' "${packages}"/av1
     execute make "-j${cpus}"
     execute make install
-    build_done 'av1' '34c4c3f7'
+    build_done 'av1' 'git'
 fi
 cnf_ops+=('--enable-libaom')
 
@@ -1026,58 +1050,59 @@ cnf_ops+=('--enable-libzimg')
 
 if command_exists 'python3'; then
     if command_exists 'meson'; then
-        if build 'lv2' '1.18.10'; then
-            download 'https://lv2plug.in/spec/lv2-1.18.10.tar.xz' 'lv2-1.18.10.tar.xz'
+        if build 'lv2' 'git'; then
+            download_git 'https://github.com/lv2/lv2.git' 'lv2-git'
             execute meson setup build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
             execute ninja -C build
             execute ninja -C build install
-            build_done 'lv2' '1.18.10'
+            build_done 'lv2' 'git'
         fi
-        if build 'waflib' 'aeef9f5f'; then
-            download 'https://gitlab.com/drobilla/autowaf/-/archive/aeef9f5fdf416d9b68c61c75de7dae409f1ac6a4/autowaf-aeef9f5fdf416d9b68c61c75de7dae409f1ac6a4.tar.bz2' 'autowaf-aeef9f5f.tar.bz2'
-            build_done 'waflib' 'aeef9f5f'
+        if build 'waflib' 'git'; then
+            download_git 'https://gitlab.com/drobilla/autowaf.git' 'autowaf-git'
+            build_done 'waflib' 'git'
         fi
-        if build 'serd' '61d53637'; then
-            download 'https://gitlab.com/drobilla/serd/-/archive/61d53637dc62d15f9b3d1fa9e69891313c465c35/serd-61d53637dc62d15f9b3d1fa9e69891313c465c35.tar.bz2' 'serd-61d53637.tar.bz2'
+        if build 'serd' 'git'; then
+            download_git 'https://gitlab.com/drobilla/serd.git' 'serd-git'
             execute meson setup build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
             execute ninja -C build
             execute ninja -C build install
-            build_done 'serd' '61d53637'
+            build_done 'serd' 'git'
         fi
-        if build 'pcre' '8.45'; then
-            download 'https://cfhcable.dl.sourceforge.net/project/pcre/pcre/8.45/pcre-8.45.tar.bz2' 'pcre-8.45.tar.bz2'
+        if build 'pcre' 'git'; then
+            download_git 'https://github.com/luvit/pcre.git' 'pcre-git'
+            execute autoreconf -f -i
             execute ./configure --prefix="${workspace}" --disable-shared --enable-static
             execute make "-j${cpus}"
             execute make install
-            build_done 'pcre' '8.45'
+            build_done 'pcre' 'git'
         fi
-        if build 'zix' '262d4a15'; then
-            download 'https://gitlab.com/drobilla/zix/-/archive/262d4a1522c38be0588746e874159da5c7bb457d/zix-262d4a1522c38be0588746e874159da5c7bb457d.tar.bz2' 'zix-262d4a15.tar.gz'
+        if build 'zix' 'git'; then
+            download_git 'https://gitlab.com/drobilla/zix.git' 'zix-git'
             execute meson setup build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
             execute ninja -C build
             execute ninja -C build install
-            build_done 'zix' '262d4a15'
+            build_done 'zix' 'git'
         fi
-        if build 'sord' '0.16.14'; then
-            download 'http://download.drobilla.net/sord-0.16.14.tar.xz' 'sord-0.16.14.tar.gz'
+        if build 'sord' 'git'; then
+            download_git 'https://gitlab.com/drobilla/sord.git' 'sord-git'
             execute meson setup build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
             execute ninja -C build
             execute ninja -C build install
-            build_done 'sord' '0.16.14'
+            build_done 'sord' 'git'
         fi
-        if build 'sratom' 'b1643412'; then
-            download 'https://gitlab.com/lv2/sratom/-/archive/b1643412ef03f41fc174f076daff39ade0999bf2/sratom-b1643412ef03f41fc174f076daff39ade0999bf2.tar.bz2'  'sratom-b1643412.tar.bz2'
+        if build 'sratom' 'git'; then
+            download_git 'https://gitlab.com/lv2/sratom.git'  'sratom-git'
             execute meson setup build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
             execute ninja -C build
             execute ninja -C build install
-            build_done 'sratom' 'b1643412'
+            build_done 'sratom' 'git'
         fi
-        if build 'lilv' '0.24.20'; then
-            download 'https://gitlab.com/lv2/lilv/-/archive/v0.24.20/lilv-v0.24.20.tar.gz' 'lilv-v0.24.20.tar.gz'
+        if build 'lilv' 'git'; then
+            download_git 'https://gitlab.com/lv2/lilv.git' 'lilv-git'
             execute meson setup build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
             execute ninja -C build
             execute ninja -C build install
-            build_done 'lilv' '0.24.20'
+            build_done 'lilv' 'git'
         fi
         CFLAGS+=" -I${workspace}/include/lilv-0"
         cnf_ops+=('--enable-lv2')
@@ -1102,35 +1127,39 @@ if build 'lame' '3.100'; then
 fi
 cnf_ops+=('--enable-libmp3lame')
 
-if build 'opus' '1.3.1'; then
-    download 'https://archive.mozilla.org/pub/opus/opus-1.3.1.tar.gz'
+if build 'opus' 'git'; then
+    download_git 'https://gitlab.xiph.org/xiph/opus.git' 'opus-git'
+    execute ./autogen.sh
     execute ./configure --prefix="${workspace}" --disable-shared --enable-static
     execute make "-j${cpus}"
     execute make install
-    build_done 'opus' '1.3.1'
+    build_done 'opus' 'git'
 fi
 cnf_ops+=('--enable-libopus')
 
-if build 'libogg' '1.3.5'; then
-    download 'https://ftp.osuosl.org/pub/xiph/releases/ogg/libogg-1.3.5.tar.xz'
+if build 'libogg' 'git'; then
+    download_git 'https://github.com/xiph/ogg.git' 'ogg-git'
+    execute ./autogen.sh
     execute ./configure --prefix="${workspace}" --disable-shared --enable-static
     execute make "-j${cpus}"
     execute make install
-    build_done 'libogg' '1.3.5'
+    build_done 'libogg' 'git'
 fi
 
-if build 'libvorbis' '1.3.7'; then
-    download 'https://ftp.osuosl.org/pub/xiph/releases/vorbis/libvorbis-1.3.7.tar.xz'
+if build 'libvorbis' 'git'; then
+    download_git 'https://github.com/xiph/vorbis.git' 'vorbis-git'
+    execute ./autogen.sh
     execute ./configure --prefix="${workspace}" --with-ogg-libraries="${workspace}"/lib \
         --with-ogg-includes="${workspace}"/include/ --enable-static --disable-shared --disable-oggtest
     execute make "-j${cpus}"
     execute make install
-    build_done 'libvorbis' '1.3.7'
+    build_done 'libvorbis' 'git'
 fi
 cnf_ops+=('--enable-libvorbis')
 
-if build 'libtheora' '1.1.1'; then
-    download 'https://ftp.osuosl.org/pub/xiph/releases/theora/libtheora-1.1.1.tar.gz'
+if build 'libtheora' 'git'; then
+    download_git 'https://github.com/xiph/theora.git' 'theora-git'
+    execute ./autogen.sh
     sed "s/-fforce-addr//g" 'configure' >'configure.patched'
     chmod +x 'configure.patched'
     mv 'configure.patched' 'configure'
@@ -1142,17 +1171,18 @@ if build 'libtheora' '1.1.1'; then
         --disable-oggtest --disable-vorbistest --disable-examples --disable-asm --disable-spec
     execute make "-j${cpus}"
     execute make install
-    build_done 'libtheora' '1.1.1'
+    build_done 'libtheora' 'git'
 fi
 cnf_ops+=('--enable-libtheora')
 
 if ${nonfree}; then
-    if build 'fdk_aac' '2.0.2'; then
-        download 'https://sourceforge.net/projects/opencore-amr/files/fdk-aac/fdk-aac-2.0.2.tar.gz/download?use_mirror=gigenet' 'fdk-aac-2.0.2.tar.gz'
+    if build 'fdk_aac' 'git'; then
+        download_git 'https://github.com/mstorsjo/fdk-aac.git' 'fdk_aac-git'
+        execute ./autogen.sh
         execute ./configure --prefix="${workspace}" --disable-shared --enable-static --enable-pic
         execute make "-j${cpus}"
         execute make install
-        build_done 'fdk_aac' '2.0.2'
+        build_done 'fdk_aac' 'git'
     fi
     cnf_ops+=('--enable-libfdk-aac')
 fi
@@ -1161,27 +1191,30 @@ fi
 ## IMAGE LIBRARIES
 ##
 
-if build 'libtiff' '4.5.0'; then
-    download 'https://download.osgeo.org/libtiff/tiff-4.5.0.tar.xz'
+if build 'libtiff' 'git'; then
+    download_git 'https://gitlab.com/libtiff/libtiff.git' 'libtiff-git'
+    execute ./autogen.sh
     execute ./configure --prefix="${workspace}" --disable-shared --enable-static --disable-dependency-tracking \
         --disable-lzma --disable-webp --disable-zstd --without-x
     execute make "-j${cpus}"
     execute make install
-    build_done 'libtiff' '4.5.0'
+    build_done 'libtiff' 'git'
 fi
-if build 'libpng' '1.6.39'; then
-    download 'https://versaweb.dl.sourceforge.net/project/libpng/libpng16/1.6.39/libpng-1.6.39.tar.xz' 'libpng-1.6.39.tar.xz'
+
+if build 'libpng' 'git'; then
+    download_git 'https://github.com/glennrp/libpng' 'libpng-git'
     export LDFLAGS="${LDFLAGS}"
     export CPPFLAGS="${CFLAGS}"
+    execute autoreconf -f -i
     execute ./configure --prefix="${workspace}" --disable-shared --enable-static
     execute make "-j${cpus}"
     execute make install
-    build_done 'libpng' '1.6.39'
+    build_done 'libpng' 'git'
 fi
 
 if build 'libwebp' '1.2.2'; then
     # libwebp can fail to compile on ubuntu if cflags are set
-    # version 1.3.0 and 1.2.4 fail to build successfully
+    # versions 1.2.4 and 1.3.0 fail when building ffmpeg
     CPPFLAGS=
     download 'https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.2.2.tar.gz' 'libwebp-1.2.2.tar.gz'
     execute ./configure --prefix="${workspace}" --disable-shared --enable-static --disable-dependency-tracking \
@@ -1195,7 +1228,7 @@ if build 'libwebp' '1.2.2'; then
 
     build_done 'libwebp' '1.2.2'
 fi
-  cnf_ops+=('--enable-libwebp')
+cnf_ops+=('--enable-libwebp')
 
 ##
 ## OTHER LIBRARIES
@@ -1210,8 +1243,8 @@ if build 'libsdl' '2.26.4'; then
 fi
 
 if ${nonfree}; then
-    if build 'srt' '1.5.2-rc.1'; then
-        download 'https://github.com/Haivision/srt/archive/refs/tags/v1.5.2-rc.1.tar.gz' 'srt-1.5.2-rc.1.tar.gz'
+    if build 'srt' 'git'; then
+        download_git 'https://github.com/Haivision/srt.git' 'srt-git'
         export OPENSSL_ROOT_DIR="${workspace}"
         export OPENSSL_LIB_DIR="${workspace}"/lib
         export OPENSSL_INCLUDE_DIR="${workspace}"/include/
@@ -1222,26 +1255,26 @@ if ${nonfree}; then
         if [ -n "${LDEXEFLAGS}" ]; then
             sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "${workspace}"/lib/pkgconfig/srt.pc
         fi
-        build_done 'srt' '1.5.2-rc.1'
+        build_done 'srt' 'git'
     fi
         cnf_ops+=('--enable-libsrt')
 fi
-
 
 #####################
 ## HWaccel library ##
 #####################
 
 if which 'nvcc' &>/dev/null ; then
-    if build 'nv-codec' '12.0.16.0'; then
+    if build 'nv-codec' 'git'; then
         # PRIOR VERSION USED '8.1.24.14'
-        download 'https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.0.16.0/nv-codec-headers-12.0.16.0.tar.gz'
+        download_git 'https://github.com/FFmpeg/nv-codec-headers.git' 'nv-codec-headers-git'
         execute make PREFIX="${workspace}"
         execute make install PREFIX="${workspace}"
-        build_done 'nv-codec' '12.0.16.0'
+        build_done 'nv-codec' 'git'
     fi
-    CFLAGS+=' -I/usr/local/cuda-12.1/include'
-    LDFLAGS+=' -L/usr/local/cuda-12.1/lib64'
+    local_cuda_dir="$(find /usr/local -type d -name cuda-*1)"
+    CFLAGS+=" -I${local_cuda_dir}/include"
+    LDFLAGS+=" -L${local_cuda_dir}/lib64"
     cnf_ops+=('--enable-cuda-nvcc' '--enable-cuvid' '--enable-nvenc' '--enable-cuda-llvm')
 
     if [ -z "${LDEXEFLAGS}" ]; then
@@ -1265,12 +1298,12 @@ if [ -z "${LDEXEFLAGS}" ]; then
     fi
 fi
 
-if build 'amf' '1.4.29'; then
-    download 'https://github.com/GPUOpen-LibrariesAndSDKs/AMF/archive/refs/tags/v1.4.29.tar.gz' 'AMF-1.4.29.tar.gz' 'AMF-1.4.29'
+if build 'amf' 'git'; then
+    download_git 'https://github.com/GPUOpen-LibrariesAndSDKs/AMF.git' 'AMF-git'
     execute rm -rf "${workspace}"/include/AMF
     execute mkdir -p "${workspace}"/include/AMF
-    execute cp -fr "${packages}"/AMF-1.4.29/AMF-1.4.29/amf/public/include/* "${workspace}"/include/AMF/
-    build_done 'amf' '1.4.29'
+    execute cp -fr "${packages}"/AMF-git/amf/public/include/* "${workspace}"/include/AMF/
+    build_done 'amf' 'git'
 fi
 cnf_ops+=('--enable-amf')
 
