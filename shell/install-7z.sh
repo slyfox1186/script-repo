@@ -62,12 +62,14 @@ cleanup_fn()
     clear
 
     if [ "${choice}" = '1' ]; then
-        rm -r "${target_dir}"/* "${tar_file}" "${0}"
+        cd "${target_dir}"
+        rm -r readme.txt License.txt History.txt 7zz 7zzs MANUAL
+        cd ..
+        rm "${tar_file}" "${0}"
     fi
 
     return 0
 }
-
 
 # Detect arcitecture
 case "$(uname -m)" in 
