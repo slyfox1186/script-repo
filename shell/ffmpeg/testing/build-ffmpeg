@@ -96,7 +96,7 @@ cleanup_fn()
     clear
 
     if [[ "${cleanup_ans}" -eq '1' ]]; then
-        cleanup
+        cleanup_build
         exit_fn
     elif [[ "${cleanup_ans}" -eq '2' ]]; then
         exit_fn
@@ -350,10 +350,10 @@ library_exists()
 build_done() { echo "${2}" > "${packages}/${1}.done"; }
 
 # CLEANUP ALL FILES FUNCTION
-cleanup()
+cleanup_build()
 {
-    cd ..
-    remove_dir 'ffmpeg-build'
+    remove_dir "${packages}"
+    remove_dir "${workspace}"
     remove_file "${0}"
     echo 'Cleanup finished.'
     echo
@@ -460,7 +460,7 @@ while ((${#} > 0)); do
         fi
         if [[ "${1}" == '--cleanup' || "${1}" =~ '-c' && ! "${1}" =~ '--' ]]; then
             cflag='-c'
-            cleanup
+            cleanup_build
         fi
         if [[ "${1}" == '--full-static' ]]; then
             LDEXEFLAGS='-static'
