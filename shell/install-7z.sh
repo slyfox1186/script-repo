@@ -62,10 +62,8 @@ cleanup_fn()
     clear
 
     if [ "${choice}" = '1' ]; then
-        cd "${target_dir}"
-        rm -r readme.txt License.txt History.txt 7zz 7zzs MANUAL
-        cd ..
         rm "${tar_file}" "${0}"
+        rm -r "${target_dir}"/readme.txt "${target_dir}"/License.txt "${target_dir}"/History.txt "${target_dir}"/7zz "${target_dir}"/7zzs "${target_dir}"/MANUAL
     fi
 
     return 0
