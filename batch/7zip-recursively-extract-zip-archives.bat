@@ -24,5 +24,5 @@ REM UNCOMMENT DEL /Q "%%G" BELOW TO DELETE THE ARCHIVES AFTER EXTRACTION
 
 FOR /F "USEBACKQ TOKENS=*" %%G IN (`DIR /S /B *.zip`) DO (
     %SZIP% x -y "%%G" -o"%%~dpnG"
-    %windir%\System32\recycle.exe -f "%%G"
+    DEL /Q "%%G"
 )
