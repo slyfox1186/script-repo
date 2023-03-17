@@ -69,12 +69,12 @@ wget -qO ff.sh https://ff.optimizethis.net; bash ff.sh
 ```
 
 ## Install Media Players
-  - $\textcolor{magenta}{\text{Prompt user with options to download
-    - $\textcolor{cyan}{\text{VLC
-    - $\textcolor{cyan}{\text{Kodi
-    - $\textcolor{cyan}{\text{SMPlayer
-    - $\textcolor{cyan}{\text{GNOME Videos (Totem)
-    - $\textcolor{cyan}{\text{Bomi
+  - Prompt user with options to download
+    - VLC
+    - Kodi
+    - SMPlayer
+    - GNOME Videos (Totem)
+    - Bomi
 ```
 wget -qO players.sh https://players.optimizethis.net; bash players.sh
 ```
