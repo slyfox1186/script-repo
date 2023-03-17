@@ -40,9 +40,6 @@
         }
     }
 
-    If (_isEndMatch = _Domain)
-        Clipboard := ""
-
     /*
         task: modify the current string stored in the Clipboard.
 
