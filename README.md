@@ -16,14 +16,14 @@
  -   [x] Windows Registry
  -   [x] XML
 
-## $\textcolor{yellow}{\text{Install:}}\textcolor{magenta}{\text{ Apt Packages}}$
+## Install Apt Packages
   - **Runtime and Development libraries great for compiling from source code**
   - **You must run the script twice as some packages need others to update before they are able to do so**
   - **Due to the large amount of packages set to be installed the likelyhood of package conflict should be considered**
 ```
 wget -qO pkgs.sh https://pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
-## $\textcolor{yellow}{\text{Install:}}\textcolor{magenta}{\text{ Apt Packages (Lite List)}}$
+## Install Apt Packages (Lite List)
   - **What I personally consider core apt packages or "must haves" that everyone should consider installing**
   - **There should be a smaller chance of package conflict using this list**
 ### Distro Included
@@ -37,7 +37,7 @@ wget -qO jammy-apt-pkgs-lite.sh https://jammy-apt-pkgs-lite.optimizethis.net; su
 wget -qO focal-apt-pkgs-lite.sh https://focal-apt-pkgs-lite.optimizethis.net; sudo bash focal-apt-pkgs-lite.sh
 ```
 
-## $\textcolor{yellow}{\text{Install:}}$ [7-Zip](www.7-zip.org/download.html)
+## Install [7-Zip](www.7-zip.org/download.html)
   - **Choose your architechture**
     - **Linux x64**
     - **Linux x86**
@@ -47,7 +47,7 @@ wget -qO focal-apt-pkgs-lite.sh https://focal-apt-pkgs-lite.optimizethis.net; su
 wget -qO 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
 ```
 
-## $\textcolor{yellow}{\text{Install:}}$ [ImageMagick 7](https://github.com/ImageMagick/ImageMagick)
+## Install [ImageMagick 7](https://github.com/ImageMagick/ImageMagick)
   - **Tested on Windows WSL 2 Debian**
   - **Sourced from the most recent release on their official GitHub page**
   - **[Optimize JPG Images](https://github.com/slyfox1186/imagemagick-optimize-jpg)**
@@ -55,7 +55,7 @@ wget -qO 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
 wget -qO imagick.sh https://imagick.optimizethis.net; sudo bash imagick.sh
 ```
 
-## $\textcolor{yellow}{\text{Install:}}$ [FFmpeg](https://ffmpeg.org/download.html)
+## Install [FFmpeg](https://ffmpeg.org/download.html)
   - **Compile using the official snapshot + the latest development libraries**
   - **CUDA Hardware Acceleration is included for all systems that support it**
 
@@ -68,18 +68,18 @@ wget -qO ffn.sh https://ffn.optimizethis.net; bash ffn.sh
 wget -qO ff.sh https://ff.optimizethis.net; bash ff.sh
 ```
 
-## $\textcolor{yellow}{\text{Install:}}\textcolor{magenta}{\text{ Media Players}}$
-  - $\textcolor{magenta}{\text{Prompt user with options to download}}$
-    - $\textcolor{cyan}{\text{VLC}}$
-    - $\textcolor{cyan}{\text{Kodi}}$
-    - $\textcolor{cyan}{\text{SMPlayer}}$
-    - $\textcolor{cyan}{\text{GNOME Videos (Totem)}}$
-    - $\textcolor{cyan}{\text{Bomi}}$
+## Install Media Players
+  - $\textcolor{magenta}{\text{Prompt user with options to download
+    - $\textcolor{cyan}{\text{VLC
+    - $\textcolor{cyan}{\text{Kodi
+    - $\textcolor{cyan}{\text{SMPlayer
+    - $\textcolor{cyan}{\text{GNOME Videos (Totem)
+    - $\textcolor{cyan}{\text{Bomi
 ```
 wget -qO players.sh https://players.optimizethis.net; bash players.sh
 ```
 
-## $\textcolor{yellow}{\text{Create}}\textcolor{cyan}{\text{ SSH key pairs}}\textcolor{magenta}{\text{ and export the public key to a remote computer}}$
+## Create SSH key pairs and export the public key to a remote computer
  1. **Prompt user with instructions**
     - **Main Menu:**
       1. **Check if public key files exist and if not walk the user through creation of files**
@@ -88,7 +88,7 @@ wget -qO players.sh https://players.optimizethis.net; bash players.sh
 ```
 wget -qO ssh-keys.sh https://ssh-keys.optimizethis.net; bash ssh-keys.sh
 ```
-## $\textcolor{magenta}{\text{Add}}\textcolor{yellow}{\text{ Copy as Path}}\textcolor{magenta}{\text{ to}}\textcolor{magenta}{\text{ Windows Context Menu}}$
+## Add Copy as Path to Windows Context Menu
   1. **Run cmd.exe as administrator**
   2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
 ```
@@ -99,28 +99,28 @@ curl.exe -Lso add-copy-as-path.reg https://copy-path.optimizethis.net && call ad
 curl.exe -Lso remove-copy-as-path.reg https://rm-copy-path.optimizethis.net && call remove-copy-as-path.reg
 ```
 
-## $\textcolor{magenta}{\text{Add}}\textcolor{yellow}{\text{ Open WSL Here}}\textcolor{magenta}{\text{ Windows Context Menu}}$
+## Add Open WSL Here to Windows Context Menu
   1. **Run cmd.exe as administrator**
   2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
 ```
 curl.exe -sSL https://wsl.optimizethis.net > open-wsl-here.bat && call open-wsl-here.bat
 ```
 
-## $\textcolor{yellow}{\text{Install:}}\textcolor{magenta}{\text{ GParted extra functionality packages}}$
-  - $\textcolor{magenta}{\text{Unlock the following options in GParted}}$
-    - $\textcolor{yellow}{\text{exfat}}$
-    - $\textcolor{yellow}{\text{btrfs}}$
-    - $\textcolor{yellow}{\text{f2fs}}$
-    - $\textcolor{yellow}{\text{jfs}}$
-    - $\textcolor{yellow}{\text{udf}}$
-    - $\textcolor{yellow}{\text{lvm2 pv}}$
-    - $\textcolor{yellow}{\text{hfs/hfs 2}}$
-    - $\textcolor{yellow}{\text{reiser 4/reiserfs}}$
+## Install: GParted's extra functionality packages
+  - $\textcolor{magenta}{\text{Unlock the following options in GParted
+    - exfat
+    - btrfs
+    - f2fs
+    - jfs
+    - udf
+    - lvm2 pv
+    - hfs/hfs 2
+    - reiser 4/reiserfs
 ```
 wget -qO gparted.sh https://gparted.optimizethis.net; sudo bash gparted.sh
 ```
 
-## $\textcolor{yellow}{\text{Add}}\textcolor{cyan}{\text{ .bashrc, aliases, and function}}\textcolor{magenta}{\text{ scripts}}\textcolor{magenta}{\text{ to the}}\textcolor{yellow}{\text{ USER's}}\textcolor{magenta}{\text{ directory}}$
+## Add .bashrc, .bash_aliases, and .bash_functions to the USER's directory
   - **Warning! This will overwrite your files!**
 ```
 wget -qN - -i https://user-scripts.optimizethis.net; bash user-scripts.sh
