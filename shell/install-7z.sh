@@ -14,17 +14,20 @@
 
 clear
 
-# VERIFY THE SCRIPT HAS ROOT ACCESS BEFORE CONTINUING
-if [ "${EUID}" -gt '0' ]; then
+# Verify the script has root access before continuing
+if [ "${EUID}" -ne '0' ]; then
     echo 'You must run this script as root/sudo'
     echo
-    exit 1
+    exec sudo bash "${0}" "${@}"
 fi
 
-# SET VARIABLES
+##
+## Set variables
+##
+
 version='7z2201'
 tar_file="${version}.tar.xz"
-target_dir='7z'
+target_dir='7z-build'
 output_file='/usr/bin/7z'
 
 ##
@@ -41,57 +44,60 @@ fail_fn()
     exit 1
 }
 
-echo '[i] Choose the OS architecture'
-echo
-echo '[1] Linux x64'
-echo '[2] Linux x86'
-echo '[3] ARM x64'
-echo '[4] ARM x86'
-echo '[5] Exit'
-echo
-read -p 'Your choices are (1 to 5): ' os_type
-clear
+cleanup_fn()
+{
+    echo 'Do you want to cleanup the download files before exiting?'
+    echo
+    echo '[1] Yes'
+    echo '[2] No'
+    echo
+    read -p 'Your choices are (1 or 2): ' choice
+    clear
 
-# Parse user input
-if [ "${os_type}" -eq '1' ]; then url='linux-x64.tar.xz'
-elif [ "${os_type}" -eq '2' ]; then url='linux-x86.tar.xz'
-elif [ "${os_type}" -eq '3' ]; then url='linux-arm64.tar.xz'
-elif [ "${os_type}" -eq '4' ]; then url='linux-arm.tar.xz'
-elif [ "${os_type}" -eq '5' ]; then exit
-fi
+    if [ "${choice}" = '1' ]; then
+        cd ../ || exit 1
+        rm -r "${target_dir}" "${tar_file}" "${0}"
+    fi
 
-# DOWNLOAD THE TAR FILE IF MISSING
+    return 0
+}
+
+# Detect arcitecture
+case "$(uname -m)" in 
+      x86_64)          url='linux-x64.tar.xz';;
+      i386|i686)       url='linux-x86.tar.xz';;
+      aarch64*|armv8*) url='linux-arm64.tar.xz';;
+      arm|armv7*)      url='linux-arm.tar.xz';;
+      *) fail_fn "Unrecognized architecture '$(uname -m)'";;
+esac
+
+# Download the tar file if missing
 if [ ! -f "${tar_file}" ]; then
-    wget --show-progress -cqO "${tar_file}" "https://www.7-zip.org/a/${version}-${url}"
+   wget --show-progress -cqO "${tar_file}" "https://www.7-zip.org/a/${version}-${url}"
 fi
 
-# DELETE ANY FILES LEFTOVER FROM PRIOR RUNS
-if [ -d "${target_dir}" ]; then rm -fr "${target_dir}"; fi
-
-# CREATE AN OUTPUT FOLDER FOR THE TAR COMMAND
+# Create an output folder for the tar command
 mkdir -p "${target_dir}"
 
-# EXTRACT FILES INTO DIRECTORY '7Z'
+# Extract files into directory '7z'
 if ! tar -xf "${tar_file}" -C "${target_dir}"; then
     fail_fn 'The script was unable to find the download file.'
 fi
 
-# CD INTO DIRECTORY
+# cd into directory
 if ! cd "${target_dir}"; then
     fail_fn "The script was unable to cd into '${target_dir}'."
 fi
 
-# COPY THE FILE TO ITS DESTINATION OR THROW AN ERROR IF THE COPYING OF THE FILE FAILS
+# Copy the file to its destination or throw an error if the copying of the file fails
 if ! cp -f '7zzs' "${output_file}"; then
     fail_fn "The script was unable to copy the static file '7zzs' to '${output_file}'"
 fi
 
-# RUN THE COMMAND '7Z' TO SHOW ITS OUTPUT AND CONFIRM THAT EVERTHING WORKS AS EXPECTED
-clear
-echo '7-zip has been updated to:'
+# Run the command '7z' to show its output and confirm that everthing works as expected
+echo -e "\\n7-zip has been updated to:"
 "${output_file}" | head -n 2 | cut -d " " -f3 | awk 'NF' | xargs printf "v%s\n" "${@}"
 echo
 
-# REMOVE LEFTOVER FILES
-cd ../ || exit 1
-rm -fr "${tar_file}" "${target_dir}" "${0}"
+# Prompt the user to cleanup files
+cleanup_fn
