@@ -33,7 +33,7 @@
         RegExMatch(Clipboard, "(\.(com|de|gov|io|jp|net|org|to|tv|uk)[$]*)", _isEndMatch)
         While (_isEndMatch = _Domain)
         {
-            Run, "C:\Program Files\Google\Chrome Beta\Application\chrome.exe" --new-tab %_isMatch%,, Max
+            Run, %_Browser% --new-tab %_isMatch%,, Max
             WinWait, ahk_exe chrome.exe
             WinActivate, ahk_exe chrome.exe
             Return
@@ -58,7 +58,7 @@
 
     Clipboard := Trim(Clipboard) ; Trim the ends of the string again
 
-    Run, "C:\Program Files\Google\Chrome Beta\Application\chrome.exe" --new-tab https://google.com/search?q=%Clipboard%,, Max
+    Run, %_Browser% --new-tab https://google.com/search?q=%Clipboard%,, Max
     WinWait, ahk_exe chrome.exe
     WinActivate, ahk_exe chrome.exe
 }
