@@ -31,7 +31,7 @@
     {
         RegExMatch(Clipboard, "\.[a-z]{2,3}$|.*$", _isMatch)
         RegExMatch(Clipboard, "(\.(com|de|gov|io|jp|net|org|to|tv|uk)[$]*)", _isEndMatch)
-        While (_isMatchEnd = _Domain)
+        While (_isEndMatch = _Domain)
         {
             Run, "C:\Program Files\Google\Chrome Beta\Application\chrome.exe" --new-tab %_isMatch%,, Max
             WinWait, ahk_exe chrome.exe
