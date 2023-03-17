@@ -34,6 +34,7 @@ output_file='/usr/bin/7z'
 ## Create Functions
 ##
 
+# Script failure function
 fail_fn()
 {
     clear
@@ -44,12 +45,14 @@ fail_fn()
     exit 1
 }
 
+# Print the 7z version
 version_fn()
 {
     show_ver="$("${output_file}" | head -n 2 | cut -d " " -f3 | awk 'NF' | xargs printf "v%s\n" "${@}")"
     echo -e "\\n7-zip has been updated to:" "${show_ver}"
 }
 
+# Cleanup some of the download files
 cleanup_fn()
 {
     echo -e "\\nDo you want to cleanup the download files before exiting?\\n"
@@ -59,12 +62,12 @@ cleanup_fn()
     clear
 
     if [ "${choice}" = '1' ]; then
-        cd ../ || exit 1
-        rm -r "${tar_file}" "${0}"
+        rm -r "${target_dir}"/* "${tar_file}" "${0}"
     fi
 
     return 0
 }
+
 
 # Detect arcitecture
 case "$(uname -m)" in 
