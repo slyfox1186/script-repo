@@ -1169,7 +1169,6 @@ if ${nonfree}; then
         cnf_ops+=('--enable-libsrt')
 fi
 
-
 #####################
 ## HWaccel library ##
 #####################
