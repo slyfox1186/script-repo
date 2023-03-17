@@ -2,7 +2,7 @@
 {
 
     _Browser := "C:\Program Files\Google\Chrome Beta\Application\chrome.exe"
-    setcontroldelay, -1 ; make sure the script is running as fast as possible
+    SetControlDelay, -1 ; make sure the script is running as fast as possible
     _ClipSaved := ClipboardAll ; save current Clipboard contents to its own variable
     Clipboard := "" ; empty the Clipboard
     SendInput, ^c ; make Clipboard ready to receive any possible input
