@@ -1137,7 +1137,7 @@ if build 'libwebp' '1.2.2'; then
 
     build_done 'libwebp' '1.2.2'
 fi
-  cnf_ops+=('--enable-libwebp')
+cnf_ops+=('--enable-libwebp')
 
 ##
 ## OTHER LIBRARIES
