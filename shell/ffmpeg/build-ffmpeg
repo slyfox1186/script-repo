@@ -307,7 +307,6 @@ build_done() { echo "${2}" > "${packages}/${1}.done"; }
 # CLEANUP ALL FILES FUNCTION
 cleanup()
 {
-    cd ..
     remove_dir "${packages}"
     remove_dir "${workspace}"
     remove_file "${0}"
