@@ -60,7 +60,7 @@ cleanup_fn()
 
     if [ "${choice}" = '1' ]; then
         cd ../ || exit 1
-        rm -r "${target_dir}" "${tar_file}" "${0}"
+        rm -r "${tar_file}" "${0}"
     fi
 
     return 0
