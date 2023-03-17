@@ -58,7 +58,7 @@
 
     Clipboard := Trim(Clipboard) ; Trim the ends of the string again
 
-    Run, %_Browser% --new-tab https://google.com/search?q=%Clipboard%,, Max
+    Run, %_Browser% --new-tab https://google.com/search?q="%Clipboard%",, Max
     WinWait, ahk_exe chrome.exe
     WinActivate, ahk_exe chrome.exe
 }
