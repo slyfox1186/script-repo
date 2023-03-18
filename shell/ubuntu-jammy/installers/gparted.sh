@@ -4,7 +4,7 @@ clear
 
 # Verify the script has root access before continuing
 if [ "${EUID}" -ne '0' ]; then
-    echo 'You must run this script as root/sudo'
+    echo '$ You must run this script as root/sudo'
     echo
     exec sudo bash "${0}" "${@}"
 fi
@@ -19,10 +19,6 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok ins
 ## Install Missing Gparted Packages
 ##
 
-echo 'Installing: Missing GParted Packages'
-echo '===================================='
-echo
-
 pkgs=(exfat-fuse exfatprogs f2fs-tools hfsplus hfsprogs hfsutils jfsutils lvm2 nilfs-tools ntfs2btrfs ntfs-3g reiser4progs reiserfsprogs udftools xfsprogs)
 
 for pkg in ${pkgs[@]}
@@ -33,14 +29,13 @@ do
 done
 
 if [ -n "${missing_pkgs}" ]; then
+    echo '$ Installing missing packages'
+    echo
     for i in "${missing_pkgs}"
-    do
-        apt -y install ${i}
-    done
+        do
+            apt -y install ${i}
+        done
 else
-    echo 'The GParted packages are already installed.'
+    echo '$ The packages are already installed.'
     echo
 fi
-
-# make the script delete itself
-rm "${0}"
