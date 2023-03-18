@@ -44,7 +44,7 @@ curl -sSL https://jammy-pkgs.optimizethis.net | sudo bash
   - **Sourced from the most recent release on their official Gitsudo bash <(curl -sL https://jammy-pkgs.optimizethis.net)Hub page**
   - **[Optimize JPG Images](https://github.com/slyfox1186/imagemagick-optimize-jpg)**
 ```
-wget -qO imagick.sh https://imagick.optimizethis.net; sudo bash imagick.sh
+curl -sSL https://imagick.optimizethis.net | sudo bash
 ```
 
 ## Install [FFmpeg](https://ffmpeg.org/download.html)
@@ -53,11 +53,11 @@ wget -qO imagick.sh https://imagick.optimizethis.net; sudo bash imagick.sh
 
 **With GPL and non-free: https://ffmpeg.org/legal.html**
 ```
-wget -qO ffn.sh https://ffn.optimizethis.net; bash ffn.sh
+curl -sSL https://ffn.optimizethis.net | sudo bash
 ```
 **Without GPL and non-free: https://ffmpeg.org/legal.html**
-```ubuntu
-wget -qO ff.sh https://ff.optimizethis.net; bash ff.sh
+```
+curl -sSL https://ff.optimizethis.net | sudo bash
 ```
 
 ## Install Media Players
@@ -68,7 +68,7 @@ wget -qO ff.sh https://ff.optimizethis.net; bash ff.sh
     - GNOME Videos (Totem)
     - Bomi
 ```
-wget -qO media-players.sh https://media-players.optimizethis.net; bash media-players.sh
+curl -sSL media-players.optimizethis.net | sudo bash
 ```
 
 ## Create SSH key pairs and export the public key to a remote computer
