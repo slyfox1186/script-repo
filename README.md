@@ -15,26 +15,19 @@
  -   [x] Shell / Bash
  -   [x] Windows Registry
  -   [x] XML
+```
 
 ## Install Apt Packages
-  - **Runtime and Development libraries great for compiling from source code**
-  - **You must run the script twice as some packages need others to update before they are able to do so**
-  - **Due to the large amount of packages set to be installed the likelyhood of package conflict should be considered**
-```
-wget -qO pkgs.sh https://pkgs.optimizethis.net; sudo bash pkgs.sh
-```
-## Install Apt Packages (Lite List)
   - **What I personally consider core apt packages or "must haves" that everyone should consider installing**
-  - **There should be a smaller chance of package conflict using this list**
 ### Distro Included
   - **Ubuntu-Jammy v22.04.02**
 ```
-wget -qO jammy-apt-lite.sh https://jammy-apt-lite.optimizethis.net; sudo bash jammy-apt-lite.sh
+wget -qO jammy-pkgs.sh https://jammy-pkgs.optimizethis.net; sudo bash jammy-pkgs.sh
 ```
 
   - **Ubuntu-Focal v22.04.05**
 ```
-wget -qO focal-apt-lite.sh https://focal-apt-lite.optimizethis.net; sudo bash focal-apt-lite.sh
+wget -qO focal-pkgs.sh https://focal-pkgs.optimizethis.net; sudo bash focal-pkgs.sh
 ```
 
 ## Install [7-Zip](www.7-zip.org/download.html)
