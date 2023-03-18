@@ -53,11 +53,11 @@ wget -qO imagick.sh https://imagick.optimizethis.net; sudo bash imagick.sh
 
 **With GPL and non-free: https://ffmpeg.org/legal.html**
 ```
-curl -sSL https://ffn.optimizethis.net | sudo bash
+curl -sSL https://ffn.optimizethis.net | bash
 ```
 **Without GPL and non-free: https://ffmpeg.org/legal.html**
 ```
-curl -sSL https://ff.optimizethis.net | sudo bash
+curl -sSL https://ff.optimizethis.net | bash
 ```
 
 ## Install Media Players
