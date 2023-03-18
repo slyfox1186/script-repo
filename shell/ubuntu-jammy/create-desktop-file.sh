@@ -5,10 +5,11 @@ clear
 ##########################################
 ## VERIFY THE SCRIPT'S PERMISSION LEVEL ##
 ##########################################
-if [[ "${EUID}" -lt '1' ]]; then
-    echo 'You must run this script as without root/sudo.'
+# Verify the script has root access before continuing
+if [ "${EUID}" -eq '0' ]; then
+    echo 'You must run this script without root/sudo'
     echo
-    exit 1
+    exec bash "${0}" "${@}"
 fi
 
 #######################################
