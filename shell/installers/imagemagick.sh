@@ -16,20 +16,16 @@
 #################################################################
 
 clear
-set -u
 
-##
-## VERIFY THAT THE SCRIPT HAS ROOT ACCESS BEFORE CONTINUING
-##
-
-if [ "${EUID}" -gt '0' ]; then
+# verify the script does not have root access before continuing
+if [ "${EUID}" -ne '0' ]; then
     echo 'You must run this script as root/sudo'
     echo
-    exit 1
+    exec sudo bash "${0}" "${@}"
 fi
 
 ##
-## VERSION INFORMATION VARIABLES
+## VARIABLES
 ##
 
 sver='1.70'
@@ -40,10 +36,7 @@ pver='1.2.59'
 ## CREATE FUNCTIONS ##
 ######################
 
-##
 ## EXIT SCRIPT FUNCTION
-##
-
 exit_fn()
 {
     clear
@@ -52,7 +45,6 @@ exit_fn()
     if ! magick -version 2>/dev/null; then
         clear
         echo 'Error: The script failed to execute the command "magick -version"'
-        echo '====================================================================='
         echo
         echo 'Try running the command manually first and if needed create a support ticket by visiting:'
         echo 'https://github.com/slyfox1186/script-repo/issues'
@@ -63,7 +55,6 @@ exit_fn()
 
     echo
     echo 'The script has completed'
-    echo '============================'
     echo
     echo 'Make sure to star this repository to show your support!'
     echo 'https://github.com/slyfox1186/script-repo'
@@ -72,10 +63,7 @@ exit_fn()
     exit 0
 }
 
-##
 ## DELETE FILES FUNCTION
-##
-
 del_files_fn()
 {
     if [[ "${1}" -eq '1' ]]; then
@@ -84,37 +72,28 @@ del_files_fn()
     elif [[ "${1}" -eq '2' ]]; then
         exit_fn
     else
-        echo 'Error: Bad user input'imtar
-        echo '========================='
+        echo 'Error: Bad user input'
         echo
         read -p 'Press enter to exit'
         exit_fn
     fi
 }
 
-##
 ## FUNCTION TO DETERMINE IF A PACKAGE IS INSTALLED OR NOT
-##
 installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
-##
 ## FAILED DOWNLOAD/EXTRACTIONS FUNCTION
-##
 extract_fail_fn()
 {
     clear
     echo 'Error: The tar command failed to extract any files'
-    echo '====================================================='
     echo
     echo 'To create a support ticket visit: https://github.com/slyfox1186/script-repo/issues'
-    echo '====================================================================================='
     echo
     exit 1
 }
 
-##
 ## REQUIRED IMAGEMAGICK DEVELOPEMENT PACKAGES
-##
 magick_packages_fn()
 {
 
@@ -132,23 +111,16 @@ magick_packages_fn()
         do
             apt -y install ${i}
         done
-        echo
-        echo 'IM'\''s Dev Libraries were successfully installed'
-        echo '=========================================================='
+        echo '$ the required packages were successfully installed'
     else
-        echo
-        echo 'IM'\''s Dev Libraries are already installed'
-        echo '============================================='
+        echo '$ the required packages are already installed'
     fi
     sleep 2
 }
 
+echo '$ building libpng12'
+echo '============================'
 echo
-echo "Starting libpng12 Build: v${pver}"
-echo '======================================'
-echo
-sleep 2
-
 # SET LIBPNG12 VARIABLES
 pngurl="https://sourceforge.net/projects/libpng/files/libpng12/${pver}/libpng-${pver}.tar.xz/download"
 pngdir="libpng-${pver}"
@@ -156,12 +128,12 @@ pngtar="${pngdir}.tar.xz"
 
 # DOWNLOAD LIBPNG12 SOURCE CODE
 if [ ! -f "${pngtar}" ]; then
+    echo
+    echo '$ wget'
     wget --show-progress -cqO "${pngtar}" "${pngurl}"
 fi
 
-##
-## UNCOMPRESS SOURCE CODE TO OUTPUT FOLDER
-##
+echo '$ extracting files'
 if ! tar -xf "${pngtar}"; then
     extract_fail_fn
 fi
@@ -170,26 +142,13 @@ fi
 cd "${pngdir}" || exit 1
 
 # NEED TO RUN AUTOGEN SCRIPT FIRST SINCE THIS IS A WAY NEWER SYSTEM THAN THESE FILES ARE USED TO
-echo
-echo 'Executing: autogen.sh script'
-echo '=============================='
-echo
-sleep 2
+echo '$ executing ./autogen.sh script'
 ./autogen.sh &> /dev/null
-
-echo
-echo 'Executing: ./configure script'
-echo '==============================='
-echo
-sleep 2
+echo '$ executing ./configure script'
 ./configure --prefix='/usr/local' &> /dev/null
 
 # INSTALL LIBPNG12
-echo
-echo 'Executing: make install'
-echo '========================='
-echo
-sleep 2
+echo '$ executing make install'
 make install &> /dev/null
 
 # CHANGE WORKING DIRECTORY BACK TO PARENT FOLDER
@@ -200,13 +159,7 @@ cd ../ || exit 1
 #############################
 
 echo
-echo "Installing ImagickMagick: v${imver}"
-echo '====================================='
-sleep 2
-echo
-echo 'Installing: IM'\''s Required Developement Libraries'
-echo '====================================================='
-sleep 2
+echo '$ installing required packages'
 
 # REQUIRED + EXTRA OPTIONAL PACKAGES FOR IMAGEMAGICK TO BUILD SUCCESSFULLY
 magick_packages_fn
@@ -218,18 +171,12 @@ imtar="ImageMagick-${imver}.tar.gz"
 
 # DOWNLOAD IMAGEMAGICK SOURCE CODE
 if [ ! -f "${imtar}" ]; then
-    echo
-    echo 'Downloading: IM Source Code'
-    echo '============================='
-    sleep 2
-    echo
+    echo '$ downloading imagemagick'
     wget --show-progress -cqO "${imtar}" "${imurl}"
     echo
 fi
 
-##
 ## UNCOMPRESS SOURCE CODE TO OUTPUT FOLDER
-##
 if ! tar -xf "${imtar}"; then
     extract_fail_fn
 fi
@@ -247,9 +194,10 @@ PKG_CONFIG_PATH='/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/sha
 export PKG_CONFIG_PATH
 
 echo
-echo 'Executing: configure script'
-echo '============================='
+echo '$ building imagemagick'
+echo '============================'
 echo
+echo '$ executing ./configure'
 ./configure \
     --enable-ccmalloc \
     --enable-legacy-support \
@@ -266,18 +214,11 @@ echo
     &> /dev/null
 
 # RUNNING MAKE COMMAND WITH PARALLEL PROCESSING
-echo "executing: make -j$(nproc)"
-echo '============================'
-echo
-sleep 2
+echo "\$ executing make -j$(nproc)"
 make "-j$(nproc)" &> /dev/null
 
 # INSTALLING FILES TO /usr/local/bin/
-echo
-echo 'executing: make install'
-echo '========================='
-echo
-sleep 2
+echo '$ executing make install'
 make install &> /dev/null
 
 # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE MAGICK COMMAND WILL NOT WORK
@@ -288,13 +229,12 @@ cd .. || exit 1
 
 # PROMPT USER TO CLEAN UP BUILD FILES
 echo
-echo 'Do you want to remove the build files?'
-echo '========================================'
+echo '$ do you want to remove the build files?'
 echo
-echo '[1] Yes'
-echo '[2] No'
+echo '$ [1] yes'
+echo '$ [2] no'
 echo
-read -p 'Your choices are (1 or 2): ' cleanup
+read -p '$ your choices are (1 or 2): ' cleanup
 clear
 
 del_files_fn "${cleanup}" "${pngdir}" "${imdir}" "${pngtar}" "${imtar}"
