@@ -15,16 +15,15 @@
  -   [x] Shell / Bash
  -   [x] Windows Registry
  -   [x] XML
-```
+------ 
 
 ## Install Apt Packages
-  - **What I personally consider core apt packages or "must haves" that everyone should consider installing**
+  - **What I consider to be core apt packages or "must haves" that everyone should consider installing**
 ### Distro Included
   - **Ubuntu-Jammy v22.04.02**
 ```
 wget -qO jammy-pkgs.sh https://jammy-pkgs.optimizethis.net; sudo bash jammy-pkgs.sh
 ```
-
   - **Ubuntu-Focal v22.04.05**
 ```
 wget -qO focal-pkgs.sh https://focal-pkgs.optimizethis.net; sudo bash focal-pkgs.sh
@@ -100,7 +99,7 @@ curl.exe -sSL https://wsl.optimizethis.net > open-wsl-here.bat && call open-wsl-
 ```
 
 ## Install: GParted's extra functionality packages
-  - $\textcolor{magenta}{\text{Unlock the following options in GParted
+  - Unlock the following options in GParted
     - exfat
     - btrfs
     - f2fs
