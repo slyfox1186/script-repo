@@ -68,7 +68,7 @@ curl -sSL https://ff.optimizethis.net | sudo bash
     - GNOME Videos (Totem)
     - Bomi
 ```
-curl -sSL media-players.optimizethis.net | sudo bash
+curl -sSL https://media-players.optimizethis.net | sudo bash
 ```
 
 ## Create SSH key pairs and export the public key to a remote computer
