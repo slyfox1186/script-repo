@@ -29,12 +29,12 @@ wget -qO pkgs.sh https://pkgs.optimizethis.net; sudo bash pkgs.sh
 ### Distro Included
   - **Ubuntu-Jammy v22.04.02**
 ```
-wget -qO jammy-apt-pkgs-lite.sh https://jammy-apt-pkgs-lite.optimizethis.net; sudo bash jammy-apt-pkgs-lite.sh
+wget -qO jammy-apt-lite.sh https://jammy-apt-lite.optimizethis.net; sudo bash jammy-apt-lite.sh
 ```
 
   - **Ubuntu-Focal v22.04.05**
 ```
-wget -qO focal-apt-pkgs-lite.sh https://focal-apt-pkgs-lite.optimizethis.net; sudo bash focal-apt-pkgs-lite.sh
+wget -qO focal-apt-lite.sh https://focal-apt-lite.optimizethis.net; sudo bash focal-apt-lite.sh
 ```
 
 ## Install [7-Zip](www.7-zip.org/download.html)
