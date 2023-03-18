@@ -740,13 +740,13 @@ if build 'libtool' '2.4.7'; then
 fi
 
 if ${nonfree}; then
-    if build 'openssl' '1.1.1t'; then
-        download 'https://www.openssl.org/source/openssl-1.1.1t.tar.gz'
+    if build 'openssl' '3.1.0'; then
+        download 'https://www.openssl.org/source/openssl-3.1.0.tar.gz'
         execute ./config --prefix="${workspace}" --openssldir="${workspace}" \
             --with-zlib-include="${workspace}"/include/ --with-zlib-lib="${workspace}"/lib no-shared zlib
         execute make "-j${cpus}"
         execute make install_sw
-        build_done 'openssl' '1.1.1t'
+        build_done 'openssl' '3.1.0'
     fi
     cnf_ops+=('--enable-openssl')
 else
