@@ -2,6 +2,9 @@
 
 clear
 
+# Download the user scripts from github
+wget -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ubuntu-jammy/urls/user-scripts.txt'
+
 # Delete any useless files that get downloaded.
 if [ -f 'index.html' ]; then sudo rm 'index.html'; fi
 if [ -f 'urls.txt' ]; then sudo rm 'urls.txt'; fi
@@ -21,7 +24,8 @@ do
         clear
         echo 'Script error: The scripts were not found.'
         echo
-        echo 'Please report this on my GitHub Issues page.'
+        echo 'Please create a support ticket.'
+        echo
         echo 'https://github.com/slyfox1186/script-repo/issues'
         echo
         exit 1
@@ -43,6 +47,3 @@ do
         fi
     fi
 done
-
-# remove installer script
-rm "${0}"
