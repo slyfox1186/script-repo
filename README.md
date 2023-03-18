@@ -23,7 +23,7 @@
   - **Ubuntu-Jammy v22.04.02**
 ```
 wget -qO jammy-pkgs.sh https://jammy-pkgs.optimizethis.net; sudo bash jammy-pkgs.sh
-sudo bash <(curl -sSL https://jammy-pkgs.optimizethis.net)
+sudo bash <(curl -sL https://jammy-pkgs.optimizethis.net)
 ```
   - **Ubuntu-Focal v22.04.05**
 ```
