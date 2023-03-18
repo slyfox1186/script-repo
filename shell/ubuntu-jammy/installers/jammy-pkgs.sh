@@ -17,11 +17,11 @@
 
 clear
 
-# VERIFY THE SCRIPT HAS ROOT ACCESS BEFORE CONTINUING
-if [[ "${EUID}" -gt '0' ]]; then
+# Verify the script has root access before continuing
+if [ "${EUID}" -ne '0' ]; then
     echo 'You must run this script as root/sudo'
     echo
-    exit 1
+    exec sudo bash "${0}" "${@}"
 fi
 
 ######################
