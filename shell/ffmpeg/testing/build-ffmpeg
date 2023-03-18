@@ -285,7 +285,7 @@ github_api_fn()
     net_timeout='5'
     github_repo="${1}"
     curl_cmd=$(curl -m "${net_timeout}" --request GET \
-        --url "https://api.github.com/" --header "Authorization: Bearer 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" \
+        --url "https://api.github.com/" --header "Authorization: Bearer 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" \
         --header "X-GitHub-Api-Version: 2022-11-28" \
         -Ls "https://api.github.com/repos/${github_repo}/releases?per_page=1")
     if [ "${?}" -eq '0' ]; then
@@ -294,11 +294,8 @@ github_api_fn()
     fi
 }
 
-gitlab_api1_fn()
+gitlab_api_fn()
 {
-
-    
-
     # SCRAPE GITLAB WEBSITE FOR LATEST REPO VERSION
     net_timeout='5'
     gitlab_repo="${1}"
@@ -309,24 +306,36 @@ gitlab_api1_fn()
     fi
 }
 
-gitlab_api2_fn()
+gitlab_api_svt_fn()
 {
     # SCRAPE GITLAB WEBSITE FOR LATEST REPO VERSION
     net_timeout='5'
     gitlab_repo="${1}"
     curl_cmd=$(curl -m "${net_timeout}" -Ls https://gitlab.com/api/v4/projects/${gitlab_repo}/repository/branches?)
     if [ "${?}" -eq "0" ]; then
-        gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[0].commit.id')
-        gitlab_sver=$(echo "${curl_cmd}" | jq -r '.[0].commit.short_id')
+        gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[3].commit.id')
+        gitlab_sver=$(echo "${curl_cmd}" | jq -r '.[3].commit.short_id')
     fi
 }
 
-videolan_api_fn()
+videolan_api_tags_fn()
 {
     # SCRAPE VIDEOLAN WEBSITE FOR LATEST REPO VERSION
     net_timeout='5'
     videolan_repo="${1}"
     curl_cmd=$(curl -m "${net_timeout}" -Ls https://code.videolan.org/api/v4/projects/${videolan_repo}/repository/tags?)
+    if [ "${?}" -eq "0" ]; then
+        videolan_ver=$(echo "${curl_cmd}" | jq -r '.[0].commit.id')
+        videolan_sver=$(echo "${curl_cmd}" | jq -r '.[0].commit.short_id')
+    fi
+}
+
+videolan_api_branches_fn()
+{
+    # SCRAPE VIDEOLAN WEBSITE FOR LATEST REPO VERSION
+    net_timeout='5'
+    videolan_repo="${1}"
+    curl_cmd=$(curl -m "${net_timeout}" -Ls https://code.videolan.org/api/v4/projects/${videolan_repo}/repository/branches?)
     if [ "${?}" -eq "0" ]; then
         videolan_ver=$(echo "${curl_cmd}" | jq -r '.[0].commit.id')
         videolan_sver=$(echo "${curl_cmd}" | jq -r '.[0].commit.short_id')
@@ -776,7 +785,7 @@ if build 'giflib' '5.2.1'; then
     build_done 'giflib' '5.2.1'
 fi
 
-gitlab_api1_fn '953'
+gitlab_api_fn '953'
 if build 'pkg-config' "${gitlab_sver}"; then
     download "https://gitlab.freedesktop.org/pkg-config/pkg-config/-/archive/${gitlab_ver}/pkg-config-${gitlab_ver}.tar.gz" "pkg-config-${gitlab_sver}.tar.gz"
     execute ./autogen.sh
@@ -886,7 +895,7 @@ else
     cnf_ops+=('--enable-gmp' '--enable-gnutls')
 fi
 
-github_api_fn 'Kitware/CMake'
+github_api_fn 'Kitware/CMake' 2>/dev/null
 if build 'cmake' "${github_ver}"; then
     download_git 'https://github.com/Kitware/CMake.git' "cmake-${github_ver}"
     execute ./configure --prefix="${workspace}" --parallel="${cpus}" -- -DCMAKE_USE_OPENSSL='OFF'
@@ -913,7 +922,7 @@ if command_exists 'python3'; then
         done
     fi
     if command_exists 'meson'; then
-        videolan_api_fn '198'
+        videolan_api_tags_fn '198'
         if build 'dav1d' "${videolan_sver}"; then
             download "https://code.videolan.org/videolan/dav1d/-/archive/${videolan_ver}/dav1d-${videolan_ver}.tar.gz" "dav1d-${videolan_sver}.tar.gz"
             make_dir build
@@ -926,7 +935,7 @@ if command_exists 'python3'; then
     fi
 fi
 
-gitlab_api2_fn '24327400'
+gitlab_api_svt_fn '24327400'
 if build 'svtav1' "${gitlab_sver}"; then
     download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/${gitlab_ver}/SVT-AV1-${gitlab_ver}.tar.gz" "svtav1-${gitlab_sver}.tar.gz"
     cd "${packages}"/svtav1-${gitlab_sver}//Build/linux || exit 1
@@ -939,25 +948,27 @@ if build 'svtav1' "${gitlab_sver}"; then
 fi
 cnf_ops+=('--enable-libsvtav1')
 
+github_api_fn 'xiph/rav1e' 2>/dev/null
 if command_exists 'cargo'; then
-    if build 'rav1e' 'p20230314'; then
+    if build 'rav1e' "${github_ver}"; then
         execute cargo install --version '0.9.14+cargo-0.66' cargo-c
-        download 'https://github.com/xiph/rav1e/archive/refs/tags/p20230314.tar.gz'
+        download_git 'https://github.com/xiph/rav1e.git' "rav1e-${github_ver}"
         execute cargo cinstall --prefix="${workspace}" --library-type='staticlib' --crt-static --release
-        build_done 'rav1e' 'p20230314'
+        build_done 'rav1e' "${github_ver}"
     fi
     cnf_ops+=('--enable-librav1e')
 fi
 
 if ${nonfree}; then
-    if build 'x264' 'eaa68fad'; then
-        download 'https://code.videolan.org/videolan/x264/-/archive/eaa68fad9e5d201d42fde51665f2d137ae96baf0/x264-eaa68fad9e5d201d42fde51665f2d137ae96baf0.tar.gz' 'x264-eaa68fad.tar.gz'
-        cd "${packages}"/x264-eaa68fad || exit 1
+    videolan_api_branches_fn '536'
+    if build 'x264' "${videolan_sver}"; then
+        download "https://code.videolan.org/videolan/x264/-/archive/${videolan_ver}/x264-${videolan_ver}.tar.gz" "x264-${videolan_sver}.tar.gz"
+        cd "${packages}/x264-${videolan_sver}" || exit 1
         execute ./configure --prefix="${workspace}" --enable-static --enable-pic CXXFLAGS="-fPIC ${CXXFLAGS}"
         execute make "-j${cpus}"
         execute make install
         execute make install-lib-static
-        build_done 'x264' 'eaa68fad'
+        build_done 'x264' "${videolan_sver}"
     fi
     cnf_ops+=('--enable-libx264')
 fi
