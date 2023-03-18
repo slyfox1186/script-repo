@@ -242,7 +242,7 @@ download_git()
     # first download attempt
     if [ ! -d "${tdir}" ]; then
         echo "Downloading ${dl_file}"
-        git clone -q "${dl_url}" "${tdir}"
+        sudo git clone -q "${dl_url}" "${tdir}"
 
         # try download once more if first attempt failed
         ec="${?}"
@@ -252,7 +252,7 @@ download_git()
             echo
             read -t 10 -p 'Press enter to skip waiting.'
             echo
-            git clone -q "${dl_url}" "${tdir}"
+            sudo git clone -q "${dl_url}" "${tdir}"
         fi
 
         # check if second download attempt was successful
@@ -285,7 +285,7 @@ github_api_fn()
     net_timeout='5'
     github_repo="${1}"
     curl_cmd=$(curl -m "${net_timeout}" --request GET \
-        --url "https://api.github.com/" --header "Authorization: Bearer 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" \
+        --url "https://api.github.com/" --header "Authorization: Bearer <github token>" \
         --header "X-GitHub-Api-Version: 2022-11-28" \
         -Ls "https://api.github.com/repos/${github_repo}/releases?per_page=1")
     if [ "${?}" -eq '0' ]; then
@@ -315,6 +315,30 @@ gitlab_api_svt_fn()
     if [ "${?}" -eq "0" ]; then
         gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[3].commit.id')
         gitlab_sver=$(echo "${curl_cmd}" | jq -r '.[3].commit.short_id')
+    fi
+}
+
+gitlab_api_waf_fn()
+{
+    # SCRAPE GITLAB WEBSITE FOR LATEST REPO VERSION
+    net_timeout='5'
+    gitlab_repo="${1}"
+    curl_cmd=$(curl -m "${net_timeout}" -Ls https://gitlab.com/api/v4/projects/${gitlab_repo}/repository/branches?)
+    if [ "${?}" -eq "0" ]; then
+        gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[2].commit.id')
+        gitlab_sver=$(echo "${curl_cmd}" | jq -r '.[2].commit.short_id')
+    fi
+}
+
+gitlab_api_serd_fn()
+{
+    # SCRAPE GITLAB WEBSITE FOR LATEST REPO VERSION
+    net_timeout='5'
+    gitlab_repo="${1}"
+    curl_cmd=$(curl -m "${net_timeout}" -Ls https://gitlab.com/api/v4/projects/${gitlab_repo}/repository/branches?)
+    if [ "${?}" -eq "0" ]; then
+        gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[8].commit.id')
+        gitlab_sver=$(echo "${curl_cmd}" | jq -r '.[8].commit.short_id')
     fi
 }
 
@@ -1051,7 +1075,7 @@ fi
 
 if ${nonfree}; then
     if build 'vid_stab' '1.1.1'; then
-        download 'https://github.com/georgmartius/vid.stab/archive/refs/tags/v1.1.1.tar.gz' 'vid.stab-1.1.1.tar.gz'
+        download_git 'https://github.com/georgmartius/vid.stab.git' 'vid.stab-1.1.1.tar.gz'
         execute cmake -DBUILD_SHARED_LIBS='OFF' -DCMAKE_INSTALL_PREFIX="${workspace}" -DUSE_OMP='OFF' -DENABLE_SHARED='OFF' .
         execute make
         execute make install
@@ -1060,15 +1084,14 @@ if ${nonfree}; then
     cnf_ops+=('--enable-libvidstab')
 fi
 
-if build 'av1' 'fa2ff85f'; then
-  # libaom bcfe6fb == v3.5.0
-    download 'https://aomedia.googlesource.com/aom/+archive/fa2ff85f8963b37be9d74f6b5fd597c6ec1a6021.tar.gz' 'av1.tar.gz' 'av1'
+if build 'av1' 'git'; then
+    download_git 'https://aomedia.googlesource.com/aom' 'av1'
     make_dir "${packages}"/aom_build
     cd "${packages}"/aom_build || exit 1
     execute cmake -DENABLE_TESTS='0' -DENABLE_EXAMPLES='0' -DCMAKE_INSTALL_PREFIX="${workspace}" -DCMAKE_INSTALL_LIBDIR='lib' "${packages}"/av1
     execute make "-j${cpus}"
     execute make install
-    build_done 'av1' 'fa2ff85f'
+    build_done 'av1' 'git'
 fi
 cnf_ops+=('--enable-libaom')
 
@@ -1097,16 +1120,18 @@ if command_exists 'python3'; then
             execute ninja -C build install
             build_done 'lv2' '1.18.10'
         fi
-        if build 'waflib' 'aeef9f5f '; then
-            download 'https://gitlab.com/drobilla/autowaf/-/archive/aeef9f5fdf416d9b68c61c75de7dae409f1ac6a4/autowaf-aeef9f5fdf416d9b68c61c75de7dae409f1ac6a4.tar.bz2' 'autowaf-aeef9f5f.tar.bz2'
-            build_done 'waflib' 'aeef9f5f'
+        gitlab_api_waf_fn '11853324'
+        if build 'waflib' "${gitlab_sver}"; then
+            download "https://gitlab.com/drobilla/autowaf/-/archive/${gitlab_ver}/autowaf-${gitlab_ver}.tar.bz2" "autowaf-${gitlab_sver}.tar.bz2"
+            build_done 'waflib' "${gitlab_sver}"
         fi
-        if build 'serd' '61d53637'; then
-            download 'https://gitlab.com/drobilla/serd/-/archive/61d53637dc62d15f9b3d1fa9e69891313c465c35/serd-61d53637dc62d15f9b3d1fa9e69891313c465c35.tar.bz2' 'serd-61d53637.tar.bz2'
+        gitlab_api_serd_fn '5048975'
+        if build 'serd' "${gitlab_sver}"; then
+            download "https://gitlab.com/drobilla/serd/-/archive/${gitlab_ver}/serd-${gitlab_ver}.tar.bz2" "serd-${gitlab_sver}.tar.bz2"
             execute meson setup build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
             execute ninja -C build
             execute ninja -C build install
-            build_done 'serd' '61d53637'
+            build_done 'serd' "${gitlab_sver}"
         fi
         if build 'pcre' '8.45'; then
             download 'https://cfhcable.dl.sourceforge.net/project/pcre/pcre/8.45/pcre-8.45.tar.bz2' 'pcre-8.45.tar.bz2'
@@ -1194,8 +1219,8 @@ if build 'libvorbis' '1.3.7'; then
 fi
 cnf_ops+=('--enable-libvorbis')
 
-if build 'libtheora' '1.1.1'; then
-    download 'https://ftp.osuosl.org/pub/xiph/releases/theora/libtheora-1.1.1.tar.gz'
+if build 'libtheora' "${github_ver}"; then
+    download 'https://ftp.osuosl.org/pub/xiph/releases/theora/libtheora-"${github_ver}".tar.gz'
     sed "s/-fforce-addr//g" 'configure' >'configure.patched'
     chmod +x 'configure.patched'
     mv 'configure.patched' 'configure'
@@ -1207,7 +1232,7 @@ if build 'libtheora' '1.1.1'; then
         --disable-oggtest --disable-vorbistest --disable-examples --disable-asm --disable-spec
     execute make "-j${cpus}"
     execute make install
-    build_done 'libtheora' '1.1.1'
+    build_done 'libtheora' "${github_ver}"
 fi
 cnf_ops+=('--enable-libtheora')
 
