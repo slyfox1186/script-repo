@@ -22,11 +22,11 @@
 ### Distro Included
   - **Ubuntu-Jammy v22.04.02**
 ```
-curl -ssL https://jammy-pkgs.optimizethis.net | sudo bash
+curl -sSL https://jammy-pkgs.optimizethis.net | sudo bash
 ```
   - **Ubuntu-Focal v22.04.05**
 ```
-curl -ssL https://focal-pkgs.optimizethis.net | sudo bash
+curl -sSL https://focal-pkgs.optimizethis.net | sudo bash
 ```
 
 ## Install [7-Zip](www.7-zip.org/download.html)
