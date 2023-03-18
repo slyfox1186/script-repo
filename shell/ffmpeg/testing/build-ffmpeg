@@ -281,30 +281,55 @@ download_git()
 
 github_api_fn()
 {
-    # SCRAPE GITHUB WEBSITE FOR LATEST INFO
+    # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     net_timeout='5'
     github_repo="${1}"
-    curl_cmd=$(curl -m "${net_timeout}" \
-        --request GET \
-        --url "https://api.github.com/" \
-        --header "Authorization: Bearer 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" \
+    curl_cmd=$(curl -m "${net_timeout}" --request GET \
+        --url "https://api.github.com/" --header "Authorization: Bearer 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" \
         --header "X-GitHub-Api-Version: 2022-11-28" \
         -Ls "https://api.github.com/repos/${github_repo}/releases?per_page=1")
-    if [ "${?}" -eq "0" ]; then
+    if [ "${?}" -eq '0' ]; then
         github_ver=$(echo "${curl_cmd}" | jq -r '.[].tag_name')
         github_ver=${github_ver#v}
     fi
 }
 
-gitlab_api_fn()
+gitlab_api1_fn()
 {
-    # SCRAPE GITHUB WEBSITE FOR LATEST INFO
+
+    
+
+    # SCRAPE GITLAB WEBSITE FOR LATEST REPO VERSION
     net_timeout='5'
     gitlab_repo="${1}"
     curl_cmd=$(curl -m "${net_timeout}" -Ls https://gitlab.freedesktop.org/api/v4/projects/${gitlab_repo}/repository/tags?)
     if [ "${?}" -eq "0" ]; then
         gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[0].commit.id')
         gitlab_sver=$(echo "${curl_cmd}" | jq -r '.[0].commit.short_id')
+    fi
+}
+
+gitlab_api2_fn()
+{
+    # SCRAPE GITLAB WEBSITE FOR LATEST REPO VERSION
+    net_timeout='5'
+    gitlab_repo="${1}"
+    curl_cmd=$(curl -m "${net_timeout}" -Ls https://gitlab.com/api/v4/projects/${gitlab_repo}/repository/branches?)
+    if [ "${?}" -eq "0" ]; then
+        gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[0].commit.id')
+        gitlab_sver=$(echo "${curl_cmd}" | jq -r '.[0].commit.short_id')
+    fi
+}
+
+videolan_api_fn()
+{
+    # SCRAPE VIDEOLAN WEBSITE FOR LATEST REPO VERSION
+    net_timeout='5'
+    videolan_repo="${1}"
+    curl_cmd=$(curl -m "${net_timeout}" -Ls https://code.videolan.org/api/v4/projects/${videolan_repo}/repository/tags?)
+    if [ "${?}" -eq "0" ]; then
+        videolan_ver=$(echo "${curl_cmd}" | jq -r '.[0].commit.id')
+        videolan_sver=$(echo "${curl_cmd}" | jq -r '.[0].commit.short_id')
     fi
 }
 
@@ -751,7 +776,7 @@ if build 'giflib' '5.2.1'; then
     build_done 'giflib' '5.2.1'
 fi
 
-gitlab_api_fn '953'
+gitlab_api1_fn '953'
 if build 'pkg-config' "${gitlab_sver}"; then
     download "https://gitlab.freedesktop.org/pkg-config/pkg-config/-/archive/${gitlab_ver}/pkg-config-${gitlab_ver}.tar.gz" "pkg-config-${gitlab_sver}.tar.gz"
     execute ./autogen.sh
@@ -760,13 +785,15 @@ if build 'pkg-config' "${gitlab_sver}"; then
     execute make install
     build_done 'pkg-config' "${gitlab_sver}"
 fi
-exit
-if build 'yasm' '1.3.0'; then
-    download 'https://github.com/yasm/yasm/releases/download/v1.3.0/yasm-1.3.0.tar.gz'
+
+github_api_fn 'yasm/yasm' 2>/dev/null
+if build 'yasm' "${github_ver}"; then
+    download_git 'https://github.com/yasm/yasm.git' "yasm-${github_ver}"
+    execute ./autogen.sh
     execute ./configure --prefix="${workspace}"
     execute make "-j${cpus}"
     execute make install
-    build_done 'yasm' '1.3.0'
+    build_done 'yasm' "${github_ver}"
 fi
 
 if build 'nasm' '2.16.02rc1'; then
@@ -777,12 +804,13 @@ if build 'nasm' '2.16.02rc1'; then
     build_done 'nasm' '2.16.02rc1'
 fi
 
-if build 'zlib' '1.2.13'; then
-    download 'https://zlib.net/fossils/zlib-1.2.13.tar.gz'
+github_api_fn 'madler/zlib' 2>/dev/null
+if build 'zlib' "${github_ver}"; then
+    download 'https://github.com/madler/zlib.git' "zlib-${github_ver}"
     execute ./configure --static --prefix="${workspace}"
     execute make "-j${cpus}"
     execute make install
-    build_done 'zlib' '1.2.13'
+    build_done 'zlib' "${github_ver}"
 fi
 
 if build 'm4' '1.4.19'; then
@@ -818,13 +846,14 @@ if build 'libtool' '2.4.7'; then
 fi
 
 if ${nonfree}; then
-    if build 'openssl' '3.1.0'; then
-        download 'https://www.openssl.org/source/openssl-3.1.0.tar.gz'
+    github_api_fn 'openssl/openssl' 2>/dev/null
+    if build 'openssl' "${github_ver}"; then
+        download_git 'https://github.com/openssl/openssl.git' "openssl-${github_ver}"
         execute ./config --prefix="${workspace}" --openssldir="${workspace}" \
             --with-zlib-include="${workspace}"/include/ --with-zlib-lib="${workspace}"/lib no-shared zlib
         execute make "-j${cpus}"
         execute make install_sw
-        build_done 'openssl' '3.1.0'
+        build_done 'openssl' "${github_ver}"
     fi
     cnf_ops+=('--enable-openssl')
 else
@@ -857,12 +886,13 @@ else
     cnf_ops+=('--enable-gmp' '--enable-gnutls')
 fi
 
-if build 'cmake' '3.26.0'; then
-    download 'https://github.com/Kitware/CMake/releases/download/v3.26.0/cmake-3.26.0.tar.gz'
+github_api_fn 'Kitware/CMake'
+if build 'cmake' "${github_ver}"; then
+    download_git 'https://github.com/Kitware/CMake.git' "cmake-${github_ver}"
     execute ./configure --prefix="${workspace}" --parallel="${cpus}" -- -DCMAKE_USE_OPENSSL='OFF'
     execute make "-j${cpus}"
     execute make install
-    build_done 'cmake' '3.26.0'
+    build_done 'cmake' "${github_ver}"
 fi
 
 ##
@@ -883,27 +913,29 @@ if command_exists 'python3'; then
         done
     fi
     if command_exists 'meson'; then
-        if build 'dav1d' '7d23ec4a'; then
-            download 'https://code.videolan.org/videolan/dav1d/-/archive/7d23ec4a042b2feb6c0d4c1b0618a87cb8c34dcb/dav1d-7d23ec4a042b2feb6c0d4c1b0618a87cb8c34dcb.tar.gz' 'dav1d-7d23ec4a.tar.gz'
+        videolan_api_fn '198'
+        if build 'dav1d' "${videolan_sver}"; then
+            download "https://code.videolan.org/videolan/dav1d/-/archive/${videolan_ver}/dav1d-${videolan_ver}.tar.gz" "dav1d-${videolan_sver}.tar.gz"
             make_dir build
             execute meson setup build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
             execute ninja -C build
             execute ninja -C build install
-            build_done 'dav1d' '7d23ec4a'
+            build_done 'dav1d' "${videolan_sver}"
         fi
         cnf_ops+=('--enable-libdav1d')
     fi
 fi
 
-if build 'svtav1' '72fd3d47'; then
-    download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/72fd3d479b315fbf6bd1d7e80dec7afe42037819/SVT-AV1-72fd3d479b315fbf6bd1d7e80dec7afe42037819.tar.gz' 'svtav1-72fd3d47.tar.gz'
-    cd "${packages}"/svtav1-72fd3d47//Build/linux || exit 1
+gitlab_api2_fn '24327400'
+if build 'svtav1' "${gitlab_sver}"; then
+    download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/${gitlab_ver}/SVT-AV1-${gitlab_ver}.tar.gz" "svtav1-${gitlab_sver}.tar.gz"
+    cd "${packages}"/svtav1-${gitlab_sver}//Build/linux || exit 1
     execute cmake -DCMAKE_INSTALL_PREFIX="${workspace}" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' ../.. -G 'Unix Makefiles' -DCMAKE_BUILD_TYPE='Release'
     execute make "-j${cpus}"
     execute make install
     execute cp 'SvtAv1Enc.pc' "${workspace}"/lib/pkgconfig/
     execute cp 'SvtAv1Dec.pc' "${workspace}"/lib/pkgconfig/
-    build_done 'svtav1' '72fd3d47'
+    build_done 'svtav1' "${gitlab_sver}"
 fi
 cnf_ops+=('--enable-libsvtav1')
 
