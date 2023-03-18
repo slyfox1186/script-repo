@@ -1,4 +1,4 @@
 https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ubuntu-jammy/.bash_aliases
 https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ubuntu-jammy/.bash_functions
 https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ubuntu-jammy/.bashrc
-https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ubuntu-jammy/user-scripts.sh
+https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ubuntu-jammy/installers/user-scripts.sh
