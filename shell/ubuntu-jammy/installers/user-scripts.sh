@@ -47,3 +47,14 @@ do
         fi
     fi
 done
+
+del_files='index.html urls.html user-scripts.sh user-scripts.txt'
+
+# delete useless files that were downloaded
+for i in ${del_files[@]}
+do
+    if [ -f "${i}" ]; then
+        rm "${i}"
+    fi
+done
+
