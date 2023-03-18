@@ -36,7 +36,7 @@ curl -sSL https://focal-pkgs.optimizethis.net | sudo bash
     - **ARM x64**
     - **ARM x86**
 ```
-curl -sSL https://7z.optimizethis.net | sudo bash
+wget -qO 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
 ```
 
 ## Install [ImageMagick 7](https://github.com/ImageMagick/ImageMagick)
