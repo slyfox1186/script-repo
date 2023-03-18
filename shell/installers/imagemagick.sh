@@ -120,9 +120,9 @@ fi
 cd "${pngdir}" || exit 1
 
 # NEED TO RUN AUTOGEN SCRIPT FIRST SINCE THIS IS A WAY NEWER SYSTEM THAN THESE FILES ARE USED TO
-echo '$ executing ./autogen.sh script'
+echo '$ executing ./autogen.sh'
 ./autogen.sh &> /dev/null
-echo '$ executing ./configure script'
+echo '$ executing ./configure'
 ./configure --prefix='/usr/local' &> /dev/null
 
 # INSTALL LIBPNG12
