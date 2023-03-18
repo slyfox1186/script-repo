@@ -35,7 +35,7 @@ done
 if [ -n "${missing_pkgs}" ]; then
     for i in "${missing_pkgs}"
     do
-        apt install ${i}
+        apt -y install ${i}
     done
 else
     echo 'The GParted packages are already installed.'
