@@ -117,3 +117,9 @@ curl -sSL https://gparted.optimizethis.net | sudo bash
 ```
 curl -sSL https://user-scripts.optimizethis.net | sudo bash
 ```
+
+## Install extra download mirros for apt package manager
+  - **Warning! This will overwrite your files!**
+```
+curl -sSL https://jammy-mirrors.optimizethis.net | sudo bash
+```
