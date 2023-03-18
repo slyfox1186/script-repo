@@ -61,22 +61,6 @@ exit_fn()
     exit 0
 }
 
-## DELETE FILES FUNCTION
-del_files_fn()
-{
-    if [[ "${1}" -eq '1' ]]; then
-        rm -fr "${0}" "${2}" "${3}" "${4}" "${5}"
-        exit_fn
-    elif [[ "${1}" -eq '2' ]]; then
-        exit_fn
-    else
-        echo 'Error: Bad user input'
-        echo
-        read -p 'Press enter to exit'
-        exit_fn
-    fi
-}
-
 ## FUNCTION TO DETERMINE IF A PACKAGE IS INSTALLED OR NOT
 installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
@@ -113,11 +97,10 @@ magick_packages_fn()
     else
         echo '$ the required packages are already installed'
     fi
-    sleep 2
 }
 
 echo '$ building libpng12'
-echo '============================'
+echo '================================'
 echo
 # SET LIBPNG12 VARIABLES
 pngurl="https://sourceforge.net/projects/libpng/files/libpng12/${pver}/libpng-${pver}.tar.xz/download"
@@ -126,12 +109,9 @@ pngtar="${pngdir}.tar.xz"
 
 # DOWNLOAD LIBPNG12 SOURCE CODE
 if [ ! -f "${pngtar}" ]; then
-    echo
-    echo '$ wget'
     wget --show-progress -cqO "${pngtar}" "${pngurl}"
 fi
 
-echo '$ extracting files'
 if ! tar -xf "${pngtar}"; then
     extract_fail_fn
 fi
@@ -158,6 +138,8 @@ cd ../ || exit 1
 
 echo
 echo '$ installing required packages'
+echo '================================'
+echo
 
 # REQUIRED + EXTRA OPTIONAL PACKAGES FOR IMAGEMAGICK TO BUILD SUCCESSFULLY
 magick_packages_fn
@@ -193,7 +175,7 @@ export PKG_CONFIG_PATH
 
 echo
 echo '$ building imagemagick'
-echo '============================'
+echo '================================'
 echo
 echo '$ executing ./configure'
 ./configure \
