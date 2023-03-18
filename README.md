@@ -78,26 +78,8 @@ wget -qO media-players.sh https://media-players.optimizethis.net; bash media-pla
       2. **Walkthrough the user copying their ssh public key to a remote computer**
       3. **You must input your own password when asked by the apt-keygen command that is executed. This is to keep your security strong!**
 ```
-wget -qO ssh-keys.sh https://ssh-keys.optimizethis.net; bash ssh-keys.sh
+curl -sSL https://ssh-keys.optimizethis.net | sudo bash
 ```
-## Add Copy as Path to Windows Context Menu
-  1. **Run cmd.exe as administrator**
-  2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
-```
-curl.exe -Lso add-copy-as-path.reg https://copy-path.optimizethis.net && call add-copy-as-path.reg
-```
-  - **To remove from the context menu, paste the next command into cmd.exe and press enter to execute**
-```
-curl.exe -Lso remove-copy-as-path.reg https://rm-copy-path.optimizethis.net && call remove-copy-as-path.reg
-```
-
-## Add Open WSL Here to Windows Context Menu
-  1. **Run cmd.exe as administrator**
-  2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
-```
-curl.exe -sSL https://wsl.optimizethis.net > open-wsl-here.bat && call open-wsl-here.bat
-```
-
 ## Install: GParted's extra functionality packages
   - Unlock the following options in GParted
     - exfat
@@ -122,4 +104,22 @@ curl -sSL https://user-scripts.optimizethis.net | sudo bash
   - **Warning! This will overwrite your files!**
 ```
 curl -sSL https://jammy-mirrors.optimizethis.net | sudo bash
+```
+
+## Add Copy as Path to Windows Context Menu
+  1. **Run cmd.exe as administrator**
+  2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
+```
+curl.exe -Lso add-copy-as-path.reg https://copy-path.optimizethis.net && call add-copy-as-path.reg
+```
+  - **To remove from the context menu, paste the next command into cmd.exe and press enter to execute**
+```
+curl.exe -Lso remove-copy-as-path.reg https://rm-copy-path.optimizethis.net && call remove-copy-as-path.reg
+```
+
+## Add Open WSL Here to Windows Context Menu
+  1. **Run cmd.exe as administrator**
+  2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
+```
+curl.exe -sSL https://wsl.optimizethis.net > open-wsl-here.bat && call open-wsl-here.bat
 ```
