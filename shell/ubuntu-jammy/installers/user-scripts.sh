@@ -8,7 +8,8 @@ if [ -f 'urls.txt' ]; then sudo rm 'urls.txt'; fi
 
 # define variables
 scripts='.bash_aliases .bash_functions .bashrc'
-# If the shell scripts exist, move them to the pihole-regex dir
+
+# If the shell scripts exist, move them to the users home directory
 for i in ${scripts[@]}
 do
     if [ -f "${i}" ]; then
