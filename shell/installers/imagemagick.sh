@@ -44,12 +44,11 @@ exit_fn()
     # SHOW THE NEWLY INSTALLED MAGICK VERSION
     if ! magick -version 2>/dev/null; then
         clear
-        echo 'Error: The script failed to execute the command "magick -version"'
+        echo '$ error the script failed to execute the command "magick -version"'
         echo
-        echo 'Try running the command manually first and if needed create a support ticket by visiting:'
-        echo 'https://github.com/slyfox1186/script-repo/issues'
+        echo '$ Try running the command manually first and if needed create a support ticket by visiting:'
+        echo '$ https://github.com/slyfox1186/script-repo/issues'
         echo
-        rm -f "${0}"
         exit 1
     fi
 
@@ -59,7 +58,6 @@ exit_fn()
     echo 'Make sure to star this repository to show your support!'
     echo 'https://github.com/slyfox1186/script-repo'
     echo
-    rm -f "${0}"
     exit 0
 }
 
@@ -67,7 +65,7 @@ exit_fn()
 del_files_fn()
 {
     if [[ "${1}" -eq '1' ]]; then
-        rm -fr "${2}" "${3}" "${4}" "${5}"
+        rm -fr "${0}" "${2}" "${3}" "${4}" "${5}"
         exit_fn
     elif [[ "${1}" -eq '2' ]]; then
         exit_fn
