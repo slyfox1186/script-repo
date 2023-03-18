@@ -48,9 +48,8 @@ do
     fi
 done
 
+# delete useless files that were downloaded with the curl command
 del_files='index.html urls.html user-scripts.sh user-scripts.txt'
-
-# delete useless files that were downloaded
 for i in ${del_files[@]}
 do
     if [ -f "${i}" ]; then
