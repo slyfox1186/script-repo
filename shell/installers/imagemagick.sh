@@ -136,6 +136,7 @@ fi
 cd "${pngdir}" || exit 1
 
 # NEED TO RUN AUTOGEN SCRIPT FIRST SINCE THIS IS A WAY NEWER SYSTEM THAN THESE FILES ARE USED TO
+echo
 echo '$ executing ./autogen.sh'
 ./autogen.sh &> /dev/null
 echo '$ executing ./configure'
@@ -160,6 +161,10 @@ echo
 # REQUIRED + EXTRA OPTIONAL PACKAGES FOR IMAGEMAGICK TO BUILD SUCCESSFULLY
 magick_packages_fn
 
+echo
+echo '$ building imagemagick'
+echo '================================'
+
 # SET VARIABLES FOR IMAGEMAGICK
 imurl="https://github.com/ImageMagick/ImageMagick/archive/refs/tags/${imver}.tar.gz"
 imdir="ImageMagick-${imver}"
@@ -167,7 +172,6 @@ imtar="ImageMagick-${imver}.tar.gz"
 
 # DOWNLOAD IMAGEMAGICK SOURCE CODE
 if [ ! -f "${imtar}" ]; then
-    echo '$ downloading imagemagick'
     echo
     wget --show-progress -cqO "${imtar}" "${imurl}"
     echo
@@ -190,10 +194,6 @@ fi
 PKG_CONFIG_PATH='/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig'
 export PKG_CONFIG_PATH
 
-echo
-echo '$ building imagemagick'
-echo '================================'
-echo
 echo '$ executing ./configure'
 ./configure \
     --enable-ccmalloc \
