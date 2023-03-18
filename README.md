@@ -68,7 +68,7 @@ wget -qO ff.sh https://ff.optimizethis.net; bash ff.sh
     - GNOME Videos (Totem)
     - Bomi
 ```
-wget -qO players.sh https://players.optimizethis.net; bash players.sh
+wget -qO media-players.sh https://media-players.optimizethis.net; bash media-players.sh
 ```
 
 ## Create SSH key pairs and export the public key to a remote computer
