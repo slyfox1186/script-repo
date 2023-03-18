@@ -22,7 +22,6 @@
 ### Distro Included
   - **Ubuntu-Jammy v22.04.02**
 ```
-wget -qO jammy-pkgs.sh https://jammy-pkgs.optimizethis.net; sudo bash jammy-pkgs.sh
 sudo bash <(curl -sL https://jammy-pkgs.optimizethis.net)
 ```
   - **Ubuntu-Focal v22.04.05**
@@ -42,7 +41,7 @@ wget -qO 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
 
 ## Install [ImageMagick 7](https://github.com/ImageMagick/ImageMagick)
   - **Tested on Windows WSL 2 Debian**
-  - **Sourced from the most recent release on their official GitHub page**
+  - **Sourced from the most recent release on their official Gitsudo bash <(curl -sL https://jammy-pkgs.optimizethis.net)Hub page**
   - **[Optimize JPG Images](https://github.com/slyfox1186/imagemagick-optimize-jpg)**
 ```
 wget -qO imagick.sh https://imagick.optimizethis.net; sudo bash imagick.sh
