@@ -35,21 +35,17 @@ fi
 exit_fn()
 {
     echo
-    echo 'The script has finished!'
-    echo '============================'
+    echo '$ The script has finished!'
     echo
-    echo 'Make sure to star this repository to show your support!'
-    echo 'https://github.com/slyfox1186/script-repo/'
+    echo '$ Make sure to star this repository to show your support!'
+    echo '$ https://github.com/slyfox1186/script-repo/'
     echo
     # REMOVE THE INSTALLER SCRIPT ITSELF
     rm -f "${0}"
     exit 0
 }
 
-##
-## FUNCTION TO CHECK INSTALLED PACKAGES AGAINST
-##
-
+## Check for installed packages
 installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
 ##############################
@@ -59,8 +55,7 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok ins
 ppa_repo='danielrichter2007/grub-customizer'
 
 if ! grep -q "^deb .*${ppa_repo}" /etc/apt/sources.list /etc/apt/sources.list.d/*; then
-    echo "Now installing ppa:${ppa_repo}"
-    echo '==================================='
+    echo "\$ executing ppa:${ppa_repo}"
     echo
     add-apt-repository ppa:"${ppa_repo}"
     echo
@@ -73,8 +68,7 @@ fi
 ##########################
 
 echo
-echo 'Installing: APT Packages'
-echo '============================'
+echo '$ executing apt'
 echo
 sleep 2
 
@@ -93,12 +87,10 @@ if [ -n "${missing_pkgs}" ]; then
         apt -y install ${i}
     done
     echo
-    echo 'Any missing APT packages were installed'
-    echo '========================================'
+    echo '$ any missing apt packages were installed'
 else
     echo
-    echo 'The APT packages are already installed'
-    echo '======================================='
+    echo '$ the apt packages are already installed'
 fi
 sleep 3
 
