@@ -27,12 +27,13 @@
 
 clear
 
-# VERIFY THE SCRIPT DOES NOT HAVE ROOT ACCESS BEFORE CONTINUING
-# THIS CAN CAUSE ISSUES USING THE 'IF WHICH' COMMANDS WHEN RUN AS ROOT
-if [ "${EUID}" -lt '1' ]; then
-    echo 'You must run this script WITHOUT root/sudo'
+# verify the script does not have root access before continue
+# this can cause issues using the 'if which' commands when run as root
+# verify the script does not have root access before continuing
+if [ "${EUID}" -eq '0' ]; then
+    echo 'You must run this script without root/sudo'
     echo
-    exit 1
+    exec bash "${0}" "${@}"
 fi
 
 ##
