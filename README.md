@@ -109,11 +109,11 @@ curl.exe -sSL https://wsl.optimizethis.net > open-wsl-here.bat && call open-wsl-
     - hfs/hfs 2
     - reiser 4/reiserfs
 ```
-wget -qO gparted.sh https://gparted.optimizethis.net; sudo bash gparted.sh
+curl -sSL https://gparted.optimizethis.net | sudo bash
 ```
 
 ## Add .bashrc, .bash_aliases, and .bash_functions to the USER's directory
   - **Warning! This will overwrite your files!**
 ```
-wget -qN - -i https://user-scripts.optimizethis.net; bash user-scripts.sh
+curl -sSL https://user-scripts.optimizethis.net | sudo bash
 ```
