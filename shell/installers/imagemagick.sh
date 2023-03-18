@@ -61,6 +61,22 @@ exit_fn()
     exit 0
 }
 
+## DELETE FILES FUNCTION
+del_files_fn()
+{
+    if [[ "${1}" -eq '1' ]]; then
+        rm -fr "${0}" "${2}" "${3}" "${4}" "${5}"
+        exit_fn
+    elif [[ "${1}" -eq '2' ]]; then
+        exit_fn
+    else
+        echo 'Error: Bad user input'
+        echo
+        read -p 'Press enter to exit'
+        exit_fn
+    fi
+}
+
 ## FUNCTION TO DETERMINE IF A PACKAGE IS INSTALLED OR NOT
 installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
@@ -152,6 +168,7 @@ imtar="ImageMagick-${imver}.tar.gz"
 # DOWNLOAD IMAGEMAGICK SOURCE CODE
 if [ ! -f "${imtar}" ]; then
     echo '$ downloading imagemagick'
+    echo
     wget --show-progress -cqO "${imtar}" "${imurl}"
     echo
 fi
