@@ -1092,6 +1092,7 @@ cnf_ops+=('--enable-libtheora')
 if ${nonfree}; then
     if build 'fdk_aac' '2.0.2'; then
         download 'https://sourceforge.net/projects/opencore-amr/files/fdk-aac/fdk-aac-2.0.2.tar.gz/download?use_mirror=gigenet' 'fdk-aac-2.0.2.tar.gz'
+        execute ./autogen.sh
         execute ./configure --prefix="${workspace}" --disable-shared --enable-static --enable-pic
         execute make "-j${cpus}"
         execute make install
