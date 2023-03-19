@@ -594,7 +594,7 @@ cuda_add_fn()
     if [ -n "${missing_pkgs}" ]; then
         for pkg in "${missing_pkgs}"
         do
-            sudo apt install ${pkg}
+            sudo apt -y install ${pkg}
         done
         echo 'The Required Geforce CUDA Developement Libraries were installed.'
     else
