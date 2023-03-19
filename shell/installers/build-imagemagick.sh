@@ -102,18 +102,18 @@ execute()
 build()
 {
     echo
-    echo "building ${1} - version ${2}"
+    echo "\$ building ${1} - version ${2}"
     echo '========================================'
 
     if [ -f "${packages}/${1}.done" ]; then
         if grep -Fx "${2}" "${packages}/${1}.done" >/dev/null; then
-            echo "${1} version ${2} already built. Remove ${packages}/${1}.done lockfile to rebuild it."
+            echo "\$ ${1} version ${2} already built. Remove ${packages}/${1}.done lockfile to rebuild it."
             return 1
         elif ${latest}; then
-            echo "${1} is outdated and will be rebuilt using version ${2}"
+            echo "\$ ${1} is outdated and will be rebuilt using version ${2}"
             return 0
         else
-            echo "${1} is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove ${packages}/${1}.done lockfile."
+            echo "\$ ${1} is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove ${packages}/${1}.done lockfile."
             return 1
         fi
     fi
@@ -186,10 +186,10 @@ download()
             exit 1
         fi
 
-        echo 'Download Complete...'
+        echo '\$ Download Complete...'
         echo
     else
-        echo "${dl_file} is already downloaded."
+        echo "\$ ${dl_file} is already downloaded."
     fi
 
     make_dir "${dl_path}/${tdir}"
@@ -200,24 +200,24 @@ download()
 
     if [ -n "${3}" ]; then
         if ! tar -xf "${dl_path}/${dl_file}" -C "${dl_path}/${tdir}" &>/dev/null; then
-            echo "Failed to extract ${dl_file}"
+            echo "\$ Failed to extract ${dl_file}"
             echo
             exit 1
         fi
     else
         if ! tar -xf "${dl_path}/${dl_file}" -C "${dl_path}/${tdir}" --strip-components 1 &>/dev/null; then
-            echo "Failed to extract ${dl_file}"
+            echo "\$ Failed to extract ${dl_file}"
             echo
             exit 1
         fi
     fi
 
-    echo "Extracted ${dl_file}"
+    echo "\$ Extracted ${dl_file}"
 
     cd "${dl_path}/${tdir}" || (
-        echo 'Script error!'
+        echo '\$ Script error!'
         echo
-        echo "Unable to change the working directory to ${tdir}"
+        echo "\$ Unable to change the working directory to ${tdir}"
         echo
         exit 1
     )
@@ -255,9 +255,9 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok ins
 extract_fail_fn()
 {
     clear
-    echo 'Error: The tar command failed to extract any files'
+    echo '\$ Error: The tar command failed to extract any files'
     echo
-    echo 'To create a support ticket visit: https://github.com/slyfox1186/script-repo/issues'
+    echo '\$ To create a support ticket visit: https://github.com/slyfox1186/script-repo/issues'
     echo
     exit 1
 }
