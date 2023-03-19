@@ -62,18 +62,6 @@ packages="${PWD}"/packages
 exit_fn()
 {
     clear
-
-    # show the newly installed magick version
-    if ! magick -version 2>/dev/null; then
-        clear
-        echo '$ error the script failed to execute the command "magick -version"'
-        echo
-        echo '$ Try running the command manually first and if needed create a support ticket by visiting:'
-        echo '$ https://github.com/slyfox1186/script-repo/issues'
-        echo
-        exit 1
-    fi
-
     echo
     echo 'The script has completed'
     echo
@@ -125,9 +113,7 @@ build_done() { echo "${2}" > "${packages}/${1}.done"; }
 
 cleanup_fn()
 {
- 
-    # prompt user to clean up build files
-    clear
+    echo
     echo '$ Do you want to remove the build files?'
     echo
     echo '[1] Yes'
@@ -401,6 +387,17 @@ fi
 
 # ldconfig must be run next in order to update file changes or the magick command will not work
 ldconfig /usr/local/lib 2>/dev/null
+
+    # show the newly installed magick version
+    if ! magick -version 2>/dev/null; then
+        clear
+        echo '$ error the script failed to execute the command "magick -version"'
+        echo
+        echo '$ Try running the command manually first and if needed create a support ticket by visiting:'
+        echo '$ https://github.com/slyfox1186/script-repo/issues'
+        echo
+        exit 1
+    fi
 
 # prompt the user to cleanup the build files
 cleanup_fn
