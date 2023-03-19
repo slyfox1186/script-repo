@@ -24,6 +24,20 @@ if [ "${EUID}" -ne '0' ]; then
     exec sudo bash "${0}" "${@}"
 fi
 
+##
+## Set the available cpu count for parallel processing (speeds up the build process)
+##
+
+if [ -f '/proc/cpuinfo' ]; then
+    cpus="$(grep -c processor '/proc/cpuinfo')"
+else
+    cpus="$(nproc --all)"
+fi
+
+##
+## Create Functions
+##
+
 # find the latest version by querying github's api
 github_api_fn()
 {
@@ -37,22 +51,16 @@ github_api_fn()
     fi
 }
 
-# pass the github repo name to the function to find it's current release
+# call the github_api_fn function to get the latest version of imagemagick
 github_api_fn 'ImageMagick/ImageMagick' 2>/dev/null
 
 # set variables
-sver='2.00'
-imver="${github_ver}"
-pver='1.2.59'
-imurl="https://github.com/ImageMagick/ImageMagick/archive/refs/tags/${imver}.tar.gz"
-imdir="ImageMagick-${imver}"
-imtar="ImageMagick-${imver}.tar.gz"
+progname='ImageMagick'
+script_ver='2.00'
+packages="${PWD}"/packages
+png_ver='1.2.59'
+magick_ver="${github_ver}"
 
-##
-## create functions
-##
-
-## exit script
 exit_fn()
 {
     clear
@@ -77,19 +85,171 @@ exit_fn()
     exit 0
 }
 
-## delete files
-del_files_fn()
+execute()
 {
-    if [[ "${1}" -eq '1' ]]; then
-        rm -fr "${0}" "${2}" "${3}" "${4}" "${5}"
+    echo "$ ${*}"
+
+    output=$("${@}" 2>&1)
+
+    # shellcheck disable=SC2181
+    if [ "${?}" -ne '0' ]; then
+        echo "${output}"
+        echo
+        echo "Failed to Execute ${*}" >&2
+        echo
+        exit 1
+    fi
+}
+
+build()
+{
+    echo
+    echo "building ${1} - version ${2}"
+    echo '======================================'
+
+    if [ -f "${packages}/${1}.done" ]; then
+        if grep -Fx "${2}" "${packages}/${1}.done" >/dev/null; then
+            echo "${1} version ${2} already built. Remove ${packages}/${1}.done lockfile to rebuild it."
+            return 1
+        elif ${latest}; then
+            echo "${1} is outdated and will be rebuilt using version ${2}"
+            return 0
+        else
+            echo "${1} is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove ${packages}/${1}.done lockfile."
+            return 1
+        fi
+    fi
+
+    return 0
+}
+
+build_done() { echo "${2}" > "${packages}/${1}.done"; }
+
+cleanup_fn()
+{
+ 
+    # prompt user to clean up build files
+    clear
+    echo '$ Do you want to remove the build files?'
+    echo
+    echo '[1] Yes'
+    echo '[2] No'
+    echo
+    read -p 'Your choices are (1 or 2): ' cleanup_choice
+    clear
+
+    if [[ "${cleanup_choice}" -eq '1' ]]; then
+        remove_file "${packages}/libpng-1.2.59.tar.xz"
+        remove_file "${packages}/ImageMagick-${magick_ver}.tar.gz"
+        remove_file '*.done'
+        remove_dir "${packages}/libpng-1.2.59"
+        remove_dir "${packages}/ImageMagick-${magick_ver}"
         exit_fn
     elif [[ "${1}" -eq '2' ]]; then
         exit_fn
     else
-        echo 'Error: Bad user input'
+        echo 'Bad user input'
         echo
-        read -p 'Press enter to exit'
-        exit_fn
+        read -p 'Press enter to try again.'
+        clear
+        cleanup_fn
+    fi
+}
+
+download()
+{
+
+    dl_path="${packages}"
+    dl_file="${2:-"${1##*/}"}"
+
+    if [[ "${dl_file}" =~ tar. ]]; then
+        tdir="${dl_file%.*}"
+        tdir="${3:-"${tdir%.*}"}"
+    else
+        tdir="${3:-"${dl_file%.*}"}"
+    fi
+
+    if [ ! -f "${dl_path}/${dl_file}" ]; then
+        echo "Downloading ${1} as ${dl_file}"
+        curl -Lso "${dl_path}/${dl_file}" "${1}"
+
+        ec="${?}"
+        if [ "${ec}" -ne '0' ]; then
+            echo
+            echo "Failed to download ${1}. Exitcode ${ec}. Retrying in 10 seconds"
+            echo
+            read -t 10 -p 'Press enter to skip waiting.'
+            echo
+            curl -Lso "${dl_path}/${dl_file}" "${1}"
+        fi
+
+        ec="${?}"
+        if [ "${ec}" -ne '0' ]; then
+            echo
+            echo "Failed to download ${1}. Exitcode ${ec}"
+            echo
+            exit 1
+        fi
+
+        echo 'Download Complete...'
+        echo
+    else
+        echo "${dl_file} is already downloaded."
+    fi
+
+    make_dir "${dl_path}/${tdir}"
+
+    if [[ "${dl_file}" == *'patch'* ]]; then
+        return
+    fi
+
+    if [ -n "${3}" ]; then
+        if ! tar -xf "${dl_path}/${dl_file}" -C "${dl_path}/${tdir}" &>/dev/null; then
+            echo "Failed to extract ${dl_file}"
+            echo
+            exit 1
+        fi
+    else
+        if ! tar -xf "${dl_path}/${dl_file}" -C "${dl_path}/${tdir}" --strip-components 1 &>/dev/null; then
+            echo "Failed to extract ${dl_file}"
+            echo
+            exit 1
+        fi
+    fi
+
+    echo "Extracted ${dl_file}"
+
+    cd "${dl_path}/${tdir}" || (
+        echo 'Script error!'
+        echo
+        echo "Unable to change the working directory to ${tdir}"
+        echo
+        exit 1
+    )
+
+}
+
+make_dir()
+{
+    remove_dir "${1}"
+    if ! mkdir "${1}"; then
+        printf "\n Failed to create dir %s" "${1}"
+        echo
+        exit 1
+    fi
+}
+
+remove_file()
+{
+    if [ -f "${1}" ]; then
+        rm -f "${1}"
+    fi
+}
+
+remove_dir()
+{
+    if [ -d "${1}" ]; then
+        rm -fr "${1}"
     fi
 }
 
@@ -111,7 +271,7 @@ extract_fail_fn()
 magick_packages_fn()
 {
 
-    pkgs=(autoconf automake build-essential google-perftools jq libc-devtools libcpu-features-dev libcrypto++-dev libdmalloc-dev libdmalloc5 libgc-dev libgc1 libgl2ps-dev libglib2.0-dev libgoogle-perftools-dev libgoogle-perftools4 libheif-dev libjemalloc-dev libjemalloc2 libjpeg-dev libmagickcore-6.q16hdri-dev libmimalloc-dev libmimalloc2.0 libopenjp2-7-dev libpng++-dev libpng-dev libpng-tools libpng16-16 libpstoedit-dev libraw-dev librust-bzip2-dev librust-jpeg-decoder+default-dev libtcmalloc-minimal4 libtiff-dev libtool libwebp-dev libzip-dev pstoedit)
+    pkgs='autoconf automake build-essential google-perftools jq libc-devtools libcpu-features-dev libcrypto++-dev libdmalloc-dev libdmalloc5 libgc-dev libgc1 libgl2ps-dev libglib2.0-dev libgoogle-perftools-dev libgoogle-perftools4 libheif-dev libjemalloc-dev libjemalloc2 libjpeg-dev libmagickcore-6.q16hdri-dev libmimalloc-dev libmimalloc2.0 libopenjp2-7-dev libpng++-dev libpng-dev libpng-tools libpng16-16 libpstoedit-dev libraw-dev librust-bzip2-dev librust-jpeg-decoder+default-dev libtcmalloc-minimal4 libtiff-dev libtool libwebp-dev libzip-dev pstoedit'
 
     for pkg in ${pkgs[@]}
     do
@@ -133,74 +293,71 @@ magick_packages_fn()
     fi
 }
 
-echo '$ installing required packages'
-echo '================================'
+# PRINT THE OPTIONS AVAILABLE WHEN MANUALLY RUNNING THE SCRIPT
+usage()
+{
+    echo "Usage: ${progname} [options]"
+    echo
+    echo 'Options:'
+    echo '    -h, --help                                           Display usage information'
+    echo '            --version                                    Display version information'
+    echo '    -b, --build                                          Starts the build process'
+    echo '    -c, --cleanup                                        Remove all working dirs'
+    echo
+}
 
-# required + extra optional packages for imagemagick to build successfully
+echo "imagemagick-build-script v${script_ver}"
+echo '======================================'
+echo
+
+while ((${#} > 0)); do
+    case ${1} in
+    -h | --help)
+        usage
+        exit 0
+        ;;
+    --version)
+        echo current magick version: "${magick_ver}"
+        echo
+        exit 0
+        ;;
+    -*)
+        if [[ "${1}" == '--build' || "${1}" =~ '-b' ]]; then
+            bflag='-b'
+        fi
+        if [[ "${1}" == '--cleanup' || "${1}" =~ '-c' && ! "${1}" =~ '--' ]]; then
+            cflag='-c'
+            cleanup_fn
+        fi
+        shift
+        ;;
+    *)
+        usage
+        echo
+        exit 1
+        ;;
+    esac
+done
+
+echo "This script will utilize ${cpus} cpu cores for parallel processing to accelerate the build speed."
+echo
+
+if [ -z "${bflag}" ]; then
+    if [ -z "${cflag}" ]; then
+        usage
+        echo
+        exit 1
+    fi
+    exit 0
+fi
+
+echo '$ installing required packages'
+echo '======================================'
+
+# required + extra functionality packages for imagemagick
 magick_packages_fn
 
-echo '$ building libpng12'
-echo '================================'
-# set libpng12 variables
-pngurl="https://sourceforge.net/projects/libpng/files/libpng12/${pver}/libpng-${pver}.tar.xz/download"
-pngdir="libpng-${pver}"
-pngtar="${pngdir}.tar.xz"
-
-# download libpng12 source code
-if [ ! -f "${pngtar}" ]; then
-    echo '$ downloading libpng12'
-    wget -cqO "${pngtar}" "${pngurl}"
-    echo '$ download complete'
-fi
-
-if ! tar -xf "${pngtar}"; then
-    extract_fail_fn
-fi
-
-# change the working directory to libpng's source code parent folder
-cd "${pngdir}" || exit 1
-
-# need to run autogen script first since this is a way newer system than these files are used to
-echo '$ executing ./autogen.sh'
-./autogen.sh &> /dev/null
-echo '$ executing ./configure'
-./configure --prefix='/usr/local' &> /dev/null
-
-# install libpng12
-echo '$ executing make install'
-make install &> /dev/null
-
-# change working directory back to parent folder
-cd ../ || exit 1
-
-##
-## start imagemagick build
-##
-
-echo
-echo '$ building imagemagick'
-echo '================================'
-
-# download the latest imagemagick source code
-if [ ! -f "${imtar}" ]; then
-    echo '$ downloading imagemagick'
-    wget -cqO "${imtar}" "${imurl}"
-    echo '$ download complete'
-    echo
-fi
-
-## uncompress source code to output folder
-if ! tar -xf "${imtar}"; then
-    extract_fail_fn
-fi
-
-# extract tar and cd into directory
-if [ ! -d "${imdir}" ]; then
-    mkdir -p "${imdir}"
-else
-    tar -xf "${imtar}"
-    cd "${imdir}" || exit 1
-fi
+mkdir -p "${packages}"
 
 # export the pkg config paths to enable support during the build
 PKG_CONFIG_PATH="\
@@ -210,43 +367,53 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-echo '$ executing ./configure'
-./configure \
-    --enable-ccmalloc \
-    --enable-legacy-support \
-    --with-autotrace \
-    --with-dmalloc \
-    --with-flif \
-    --with-gslib \
-    --with-heic \
-    --with-jemalloc \
-    --with-modules \
-    --with-perl \
-    --with-tcmalloc \
-    --with-quantum-depth=16 &> /dev/null
+##
+## start libpng12 build
+##
 
-# running make command with parallel processing
-echo "\$ executing make -j$(nproc)"
-make "-j$(nproc)" &> /dev/null
+if build 'libpng12' "${png_ver}"; then
+    download "https://sourceforge.net/projects/libpng/files/libpng12/1.2.59/libpng-1.2.59.tar.xz/download" 'libpng-1.2.59.tar.xz'
+    # parellel building not available for this library
+    execute ./autogen.sh
+    execute ./configure --prefix='/usr/local'
+    execute make install
+    build_done 'libpng12' "${png_ver}"
+fi
 
-# installing files to /usr/local/bin
-echo '$ executing make install'
-make install &> /dev/null
+##
+## start imagemagick build
+##
+
+if build 'imagemagick' "${magick_ver}"; then
+    download "https://github.com/ImageMagick/ImageMagick/archive/refs/tags/${magick_ver}.tar.gz" "ImageMagick-${magick_ver}.tar.gz"
+    execute ./configure \
+        --enable-ccmalloc \
+        --enable-legacy-support \
+        --with-autotrace \
+        --with-dmalloc \
+        --with-flif \
+        --with-gslib \
+        --with-heic \
+        --with-jemalloc \
+        --with-modules \
+        --with-perl \
+        --with-tcmalloc \
+        --with-quantum-depth=16
+    execute make "-j${cpus}"
+    execute make install
+    build_done 'imagemagick' "${magick_ver}"
+fi
+
+# download the latest imagemagick source code
+if [ ! -f "ImageMagick-${magick_ver}.tar.gz" ]; then
+    echo '$ downloading imagemagick'
+    wget -cqO "ImageMagick-${magick_ver}.tar.gz" "https://github.com/ImageMagick/ImageMagick/archive/refs/tags/${magick_ver}.tar.gz"
+    echo '$ download complete'
+    echo
+fi
 
 # ldconfig must be run next in order to update file changes or the magick command will not work
 ldconfig /usr/local/lib 2>/dev/null
 
-# cd back to the parent folder
-cd .. || exit 1
-
-# prompt user to clean up build files
-clear
-echo '$ Do you want to remove the build files?'
-echo
-echo '[1] Yes'
-echo '[2] No'
-echo
-read -p 'Your choices are (1 or 2): ' cleanup
-clear
-
-del_files_fn "${cleanup}" "${pngdir}" "${imdir}" "${pngtar}" "${imtar}"
+# prompt the user to cleanup the build files
+cleanup_fn
