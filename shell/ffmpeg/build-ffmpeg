@@ -239,7 +239,7 @@ download_git()
     dl_file="${2}"
     tdir="${dl_path}/${dl_file}"
 
-    # first download attempt
+    # first downx264load attempt
     if [ ! -d "${tdir}" ]; then
         echo "Downloading ${dl_file}"
         sudo git clone -q "${dl_url}" "${tdir}"
@@ -300,6 +300,18 @@ videolan_api_tags_fn()
     net_timeout='5'
     videolan_repo="${1}"
     curl_cmd=$(curl -m "${net_timeout}" -Ls https://code.videolan.org/api/v4/projects/${videolan_repo}/repository/tags?)
+    if [ "${?}" -eq "0" ]; then
+        videolan_ver=$(echo "${curl_cmd}" | jq -r '.[].commit.id')
+        videolan_sver=$(echo "${curl_cmd}" | jq -r '.[].commit.short_id')
+    fi
+}
+
+videolan_api_branches_fn()
+{
+    # SCRAPE VIDEOLAN WEBSITE FOR LATEST REPO VERSION
+    net_timeout='5'
+    videolan_repo="${1}"
+    curl_cmd=$(curl -m "${net_timeout}" -Ls https://code.videolan.org/api/v4/projects/${videolan_repo}/repository/branches?)
     if [ "${?}" -eq "0" ]; then
         videolan_ver=$(echo "${curl_cmd}" | jq -r '.[].commit.id')
         videolan_sver=$(echo "${curl_cmd}" | jq -r '.[].commit.short_id')
@@ -814,13 +826,14 @@ if build 'libtool' '2.4.7'; then
 fi
 
 if ${nonfree}; then
-    if build 'openssl' '3.1.0'; then
-        download 'https://www.openssl.org/source/openssl-3.1.0.tar.gz'
+    github_api_fn 'openssl/openssl' 2>/dev/null
+    if build 'openssl' "${github_ver}"; then
+        download_git 'https://github.com/openssl/openssl.git' "openssl-${github_ver}"
         execute ./config --prefix="${workspace}" --openssldir="${workspace}" \
             --with-zlib-include="${workspace}"/include/ --with-zlib-lib="${workspace}"/lib no-shared zlib
         execute make "-j${cpus}"
         execute make install_sw
-        build_done 'openssl' '3.1.0'
+        build_done 'openssl' "${github_ver}"
     fi
     cnf_ops+=('--enable-openssl')
 else
@@ -916,14 +929,15 @@ if command_exists 'cargo'; then
 fi
 
 if ${nonfree}; then
-    if build 'x264' 'eaa68fad'; then
-        download 'https://code.videolan.org/videolan/x264/-/archive/eaa68fad9e5d201d42fde51665f2d137ae96baf0/x264-eaa68fad9e5d201d42fde51665f2d137ae96baf0.tar.gz' 'x264-eaa68fad.tar.gz'
-        cd "${packages}"/x264-eaa68fad || exit 1
+    videolan_api_branches_fn '536'
+    if build 'x264' "${videolan_sver}"; then
+        download "https://code.videolan.org/videolan/x264/-/archive/${videolan_ver}/x264-${videolan_ver}.tar.gz" "x264-${videolan_sver}.tar.gz"
+        cd "${packages}/x264-${videolan_sver}" || exit 1
         execute ./configure --prefix="${workspace}" --enable-static --enable-pic CXXFLAGS="-fPIC ${CXXFLAGS}"
         execute make "-j${cpus}"
         execute make install
         execute make install-lib-static
-        build_done 'x264' 'eaa68fad'
+        build_done 'x264' "${videolan_sver}"
     fi
     cnf_ops+=('--enable-libx264')
 fi
