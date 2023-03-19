@@ -367,7 +367,7 @@ export PKG_CONFIG_PATH
 ##
 
 if build 'libpng12' "${png_ver}"; then
-    download "https://sourceforge.net/projects/libpng/files/libpng12/1.2.59/libpng-1.2.59.tar.xz/download" 'libpng-1.2.59.tar.xz'
+    download "https://sourceforge.net/projects/libpng/files/libpng12/${png_ver}/libpng-${png_ver}.tar.xz/download" "libpng-${png_ver}.tar.xz"
     # parellel building not available for this library
     execute ./autogen.sh
     execute ./configure --prefix='/usr/local'
