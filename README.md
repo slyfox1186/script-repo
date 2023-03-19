@@ -51,7 +51,7 @@ wget -qO 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
 ------
 ## Install [ImageMagick 7](https://github.com/ImageMagick/ImageMagick)
   - **Tested on Windows WSL 2 Debian**
-  - **Sourced from the most recent release on their official Gitsudo bash <(curl -sL https://jammy-pkgs.optimizethis.net)Hub page**
+  - **Sourced from the most recent release on their official Git**
   - **[Optimize JPG Images](https://github.com/slyfox1186/imagemagick-optimize-jpg)**
 ```
 wget -qO magick.sh https://imagick-helper.optimizethis.net; sudo bash magick.sh
