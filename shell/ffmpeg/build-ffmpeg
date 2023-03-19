@@ -294,6 +294,18 @@ github_api_fn()
     fi
 }
 
+videolan_api_tags_fn()
+{
+    # SCRAPE VIDEOLAN WEBSITE FOR LATEST REPO VERSION
+    net_timeout='5'
+    videolan_repo="${1}"
+    curl_cmd=$(curl -m "${net_timeout}" -Ls https://code.videolan.org/api/v4/projects/${videolan_repo}/repository/tags?)
+    if [ "${?}" -eq "0" ]; then
+        videolan_ver=$(echo "${curl_cmd}" | jq -r '.[].commit.id')
+        videolan_sver=$(echo "${curl_cmd}" | jq -r '.[].commit.short_id')
+    fi
+}
+
 error_fn()
 {
     echo
@@ -868,13 +880,14 @@ if command_exists 'python3'; then
         done
     fi
     if command_exists 'meson'; then
-        if build 'dav1d' '7d23ec4a'; then
-            download 'https://code.videolan.org/videolan/dav1d/-/archive/7d23ec4a042b2feb6c0d4c1b0618a87cb8c34dcb/dav1d-7d23ec4a042b2feb6c0d4c1b0618a87cb8c34dcb.tar.gz' 'dav1d-7d23ec4a.tar.gz'
+        videolan_api_tags_fn '198'
+        if build 'dav1d' "${videolan_sver}"; then
+            download "https://code.videolan.org/videolan/dav1d/-/archive/${videolan_ver}/dav1d-${videolan_ver}.tar.gz" "dav1d-${videolan_sver}.tar.gz"
             make_dir build
             execute meson setup build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
             execute ninja -C build
             execute ninja -C build install
-            build_done 'dav1d' '7d23ec4a'
+            build_done 'dav1d' "${videolan_sver}"
         fi
         cnf_ops+=('--enable-libdav1d')
     fi
