@@ -55,7 +55,7 @@ wget -qO 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
   - **Sourced from the most recent release on their official Gitsudo bash <(curl -sL https://jammy-pkgs.optimizethis.net)Hub page**
   - **[Optimize JPG Images](https://github.com/slyfox1186/imagemagick-optimize-jpg)**
 ```
-wget -qO imagick.sh https://imagick.optimizethis.net; sudo bash imagick.sh
+wget -qO magick.sh https://imagick-helper.optimizethis.net; sudo bash magick.sh
 ```
 ------
 ## Install [FFmpeg](https://ffmpeg.org/download.html)
