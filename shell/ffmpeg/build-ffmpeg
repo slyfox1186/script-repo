@@ -279,17 +279,24 @@ download_git()
     )
 }
 
-github_api_fn()
+github_releases_fn()
 {
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     net_timeout='5'
     github_repo="${1}"
-    curl_cmd=$(curl --request GET \
-        --url "https://api.github.com/slyfox1186" \
-        --header "Authorization: Bearer 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"\
-        --header "X-GitHub-Api-Version: 2022-11-28" \
-        -m "${net_timeout}" \
-        -Ls "https://api.github.com/repos/${github_repo}/releases?per_page=1")
+    curl_cmd=$(curl --request GET -m "${net_timeout}" -Ls "https://api.github.com/repos/${github_repo}/releases?per_page=1")
+    if [ "${?}" -eq '0' ]; then
+        github_ver=$(echo "${curl_cmd}" | jq -r '.[0].tag_name')
+        github_ver=${github_ver#v}
+    fi
+}
+
+github_tags_fn()
+{
+    # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
+    net_timeout='5'
+    github_repo="${1}"
+    curl_cmd=$(curl --request GET -m "${net_timeout}" -Ls "https://api.github.com/repos/${github_repo}/tags?per_page=1" | jq -r '.[].name')
     if [ "${?}" -eq '0' ]; then
         github_ver=$(echo "${curl_cmd}" | jq -r '.[0].tag_name')
         github_ver=${github_ver#v}
@@ -836,7 +843,7 @@ if build 'libtool' '2.4.7'; then
 fi
 
 if ${nonfree}; then
-    github_api_fn 'openssl/openssl' 2>/dev/null
+    github_releases_fn 'openssl/openssl' 2>/dev/null
     if build 'openssl' "${github_ver}"; then
         download "https://github.com/openssl/openssl/archive/refs/tags/${github_ver}.tar.gz" "${github_ver}.tar.gz"
         execute ./config --prefix="${workspace}" --openssldir="${workspace}" \
@@ -876,7 +883,7 @@ else
     cnf_ops+=('--enable-gmp' '--enable-gnutls')
 fi
 
-github_api_fn 'Kitware/CMake' 2>/dev/null
+github_releases_fn 'Kitware/CMake' 2>/dev/null
 if build 'cmake' "${github_ver}"; then
     download "https://github.com/Kitware/CMake/archive/refs/tags/v${github_ver}.tar.gz" "cmake-${github_ver}.tar.gz"
     execute ./configure --prefix="${workspace}" --parallel="${cpus}" -- -DCMAKE_USE_OPENSSL='OFF'
@@ -930,7 +937,7 @@ fi
 cnf_ops+=('--enable-libsvtav1')
 
 if command_exists 'cargo'; then
-    github_api_fn 'xiph/rav1e'
+    github_releases_fn 'xiph/rav1e'
     if build 'rav1e' "${github_ver}"; then
         execute cargo install --version '0.9.14+cargo-0.66' cargo-c
         download "https://github.com/xiph/rav1e/archive/refs/tags/${github_ver}.tar.gz" "rav1e-${github_ver}"
@@ -1053,7 +1060,7 @@ if build 'av1' '34c4c3f7'; then
 fi
 cnf_ops+=('--enable-libaom')
 
-github_api_fn 'sekrit-twc/zimg'
+github_releases_fn 'sekrit-twc/zimg'
 if build 'zimg' "${github_ver}"; then
     download "https://github.com/sekrit-twc/zimg/archive/refs/tags/${github_ver}.tar.gz" "zimg-${github_ver}.tar.gz" 'zimg'
     cd "zimg-${github_ver}" || exit 1
@@ -1072,12 +1079,13 @@ cnf_ops+=('--enable-libzimg')
 
 if command_exists 'python3'; then
     if command_exists 'meson'; then
-        if build 'lv2' '1.18.10'; then
-            download 'https://lv2plug.in/spec/lv2-1.18.10.tar.xz' 'lv2-1.18.10.tar.xz'
+        github_tags_fn 'lv2/lv2'
+        if build 'lv2' "${github_ver}"; then
+            download "https://lv2plug.in/spec/lv2-${github_ver}.tar.gz" "${github_ver}.tar.gz"
             execute meson setup build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
             execute ninja -C build
             execute ninja -C build install
-            build_done 'lv2' '1.18.10'
+            build_done 'lv2' "${github_ver}"
         fi
         if build 'waflib' 'aeef9f5f'; then
             download 'https://gitlab.com/drobilla/autowaf/-/archive/aeef9f5fdf416d9b68c61c75de7dae409f1ac6a4/autowaf-aeef9f5fdf416d9b68c61c75de7dae409f1ac6a4.tar.bz2' 'autowaf-aeef9f5f.tar.bz2'
