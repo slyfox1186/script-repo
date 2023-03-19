@@ -349,8 +349,8 @@ videolan_api_tags_fn()
     videolan_repo="${1}"
     curl_cmd=$(curl -m "${net_timeout}" -Ls https://code.videolan.org/api/v4/projects/${videolan_repo}/repository/tags?)
     if [ "${?}" -eq "0" ]; then
-        videolan_ver=$(echo "${curl_cmd}" | jq -r '.[0].commit.id')
-        videolan_sver=$(echo "${curl_cmd}" | jq -r '.[0].commit.short_id')
+        videolan_ver=$(echo "${curl_cmd}" | jq -r '.[].commit.id')
+        videolan_sver=$(echo "${curl_cmd}" | jq -r '.[].commit.short_id')
     fi
 }
 
@@ -361,8 +361,8 @@ videolan_api_branches_fn()
     videolan_repo="${1}"
     curl_cmd=$(curl -m "${net_timeout}" -Ls https://code.videolan.org/api/v4/projects/${videolan_repo}/repository/branches?)
     if [ "${?}" -eq "0" ]; then
-        videolan_ver=$(echo "${curl_cmd}" | jq -r '.[0].commit.id')
-        videolan_sver=$(echo "${curl_cmd}" | jq -r '.[0].commit.short_id')
+        videolan_ver=$(echo "${curl_cmd}" | jq -r '.[].commit.id')
+        videolan_sver=$(echo "${curl_cmd}" | jq -r '.[].commit.short_id')
     fi
 }
 
