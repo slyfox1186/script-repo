@@ -11,17 +11,18 @@ if [ "${EUID}" -ne '0' ]; then
     exec sudo bash "${0}" "${@}"
 fi
 
-echo -e "\$ Imagemagick Build Script Downloader v1.0\\n"
-echo -e "\$ Creating build directory\\n"
+echo -e "\$ imagemagick-build-script downloader v1.0\\n"
+
+echo -e "\$ creating the build directory\\n"
 
 if ! mkdir "${PWD}/imagick-build"; then            
-    printf '\n Failed to create dir %s' "${1}"
+    printf '\n failed to create dir %s' "${PWD}/imagick-build"
     echo
     exit 1
 fi
 
 cd "${PWD}/imagick-build" || exit 1
 
-echo -e "\$ Download and execute the build script\\n"
+echo -e "\$ download and execute the build script\\n"
 
 bash <(curl -sSL 'https://imagick.optimizethis.net') --build
