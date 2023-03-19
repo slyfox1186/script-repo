@@ -40,7 +40,7 @@ curl -sSL https://jammy-mirrors.optimizethis.net | sudo bash
 ```
 ------
 ## Install [7-Zip](www.7-zip.org/download.html)
-  - **Choose your architechture**
+  - **Auto installs based on your os architecture. No user input required.**
     - **Linux x64**
     - **Linux x86**
     - **ARM x64**
