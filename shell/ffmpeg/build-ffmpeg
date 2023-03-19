@@ -565,6 +565,12 @@ if ! command_exists 'curl'; then
     exit 1
 fi
 
+if ! command_exists 'jq'; then
+    echo 'The '\''jq'\'' package is not installed. It is required for this script to run.'
+    echo
+    exit 1
+fi
+
 if ! command_exists 'cargo'; then
     echo 'The '\''cargo'\'' command was not found. rav1e encoder will not be available.'
 fi
