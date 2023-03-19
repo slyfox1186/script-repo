@@ -18,11 +18,11 @@
 
 ## Install Apt Packages
   - **What I consider to be core apt packages or "must haves" that everyone should consider installing**
-  - **Ubuntu-Jammy v22.04.02**
+1. **Ubuntu-Jammy v22.04.02**
 ```
 wget -qO pkgs.sh https://jammy-pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
-  - **Ubuntu-Focal v22.04.05**
+2. **Ubuntu-Focal v22.04.05**
 ```
 wget -qO pkgs.sh https://focal-pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
