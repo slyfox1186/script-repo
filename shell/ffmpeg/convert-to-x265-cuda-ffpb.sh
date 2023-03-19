@@ -65,33 +65,31 @@ echo
 
 # EXECUTE FFMPEG
 
-ffpb \
-    -y \
-    -threads '0' \
-    -hide_banner \
-    -hwaccel_output_format 'cuda' \
-    -i "${file}" \
-    -pix_fmt 'p010le' \
-    -movflags 'frag_keyframe+empty_moov' \
-    -c:v 'hevc_nvenc' \
-    -preset:v 'medium' \
-    -profile:v 'main' \
-    -rc:v 'vbr' \
-    -b:v "${bitrate}"k \
-    -bufsize:v "${bufsize}"k \
-    -bf:v '3' \
-    -b_ref_mode:v 'middle' \
-    -qmin:v '0' \
-    -qmax:v '99' \
-    -temporal-aq:v '1' \
-    -rc-lookahead:v '20' \
-    -i_qfactor:v '0.75' \
-    -b_qfactor:v '1.1' \
-    -c:a copy \
-    "${file_out}"
-
-if [ "${?}" -lt '1' ]; then
-    google_speech "Video conversion completed" 2>/dev/null
-else
+if ! ffpb \
+        -y \
+        -threads '0' \
+        -hide_banner \
+        -hwaccel_output_format 'cuda' \
+        -i "${file}" \
+        -pix_fmt 'p010le' \
+        -movflags 'frag_keyframe+empty_moov' \
+        -c:v 'hevc_nvenc' \
+        -preset:v 'medium' \
+        -profile:v 'main' \
+        -rc:v 'vbr' \
+        -b:v "${bitrate}"k \
+        -bufsize:v "${bufsize}"k \
+        -bf:v '3' \
+        -b_ref_mode:v 'middle' \
+        -qmin:v '0' \
+        -qmax:v '99' \
+        -temporal-aq:v '1' \
+        -rc-lookahead:v '20' \
+        -i_qfactor:v '0.75' \
+        -b_qfactor:v '1.1' \
+        -c:a copy \
+        "${file_out}"; then
     google_speech "Video conversion failed" 2>/dev/null
+else
+    google_speech "Video conversion completed" 2>/dev/null
 fi
