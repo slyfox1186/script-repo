@@ -57,9 +57,9 @@ github_api_fn 'ImageMagick/ImageMagick' 2>/dev/null
 # set variables
 progname='ImageMagick'
 script_ver='2.00'
-packages="${PWD}"/packages
 png_ver='1.2.59'
 magick_ver="${github_ver}"
+packages="${PWD}"/packages
 
 exit_fn()
 {
