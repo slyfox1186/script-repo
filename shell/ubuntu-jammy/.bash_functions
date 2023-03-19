@@ -562,7 +562,7 @@ imow()
         echo
         echo "Working Directory: ${PWD}"
         echo
-        printf "Converting: %s\n             >> %s\n              >> %s\n" "${i}" "${i%%.jpg}.mpc" "${i%%.jpg}.cache"
+        printf "Converting: %s\n             >> %s\n              >> %s\n               >> %s\n" "${i}" "${i%%.jpg}.mpc" "${i%%.jpg}.cache" "${i%%.jpg}-IM.jpg"
         echo
         echo '========================================================================================================='
         echo
