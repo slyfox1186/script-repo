@@ -125,15 +125,22 @@ magick_packages_fn()
         do
             apt -y install ${i}
         done
-        echo 'The required packages were successfully installed'
+        echo '$ The required packages were successfully installed'
+        echo
     else
-        echo 'The required packages are already installed'
+        echo '$ The required packages are already installed'
+        echo
     fi
 }
 
+echo '$ installing required packages'
+echo '================================'
+
+# required + extra optional packages for imagemagick to build successfully
+magick_packages_fn
+
 echo '$ building libpng12'
 echo '================================'
-echo
 # set libpng12 variables
 pngurl="https://sourceforge.net/projects/libpng/files/libpng12/${pver}/libpng-${pver}.tar.xz/download"
 pngdir="libpng-${pver}"
@@ -141,7 +148,9 @@ pngtar="${pngdir}.tar.xz"
 
 # download libpng12 source code
 if [ ! -f "${pngtar}" ]; then
-    wget --show-progress -cqO "${pngtar}" "${pngurl}"
+    echo '$ downloading libpng12'
+    wget -cqO "${pngtar}" "${pngurl}"
+    echo '$ download complete'
 fi
 
 if ! tar -xf "${pngtar}"; then
@@ -152,7 +161,6 @@ fi
 cd "${pngdir}" || exit 1
 
 # need to run autogen script first since this is a way newer system than these files are used to
-echo
 echo '$ executing ./autogen.sh'
 ./autogen.sh &> /dev/null
 echo '$ executing ./configure'
@@ -170,21 +178,14 @@ cd ../ || exit 1
 ##
 
 echo
-echo '$ installing required packages'
-echo '================================'
-echo
-
-# required + extra optional packages for imagemagick to build successfully
-magick_packages_fn
-
-echo
 echo '$ building imagemagick'
 echo '================================'
 
 # download the latest imagemagick source code
 if [ ! -f "${imtar}" ]; then
-    echo
-    wget --show-progress -cqO "${imtar}" "${imurl}"
+    echo '$ downloading imagemagick'
+    wget -cqO "${imtar}" "${imurl}"
+    echo '$ download complete'
     echo
 fi
 
