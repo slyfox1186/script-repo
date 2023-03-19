@@ -89,7 +89,7 @@ if ! ffmpeg \
         -b_qfactor:v '1.1' \
         -c:a copy \
         "${file_out}"; then
-        google_speech "Video conversion failed" 2>/dev/null
+    google_speech "Video conversion failed" 2>/dev/null
 else
     google_speech "Video conversion completed" 2>/dev/null
 fi
