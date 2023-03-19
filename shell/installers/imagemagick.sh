@@ -32,7 +32,7 @@ github_api_fn()
     github_repo="${1}"
     curl_cmd=$(curl -m "${net_timeout}" -Ls "https://api.github.com/repos/${github_repo}/releases?per_page=1")
     if [ "${?}" -eq '0' ]; then
-        github_ver=$(echo "${curl_cmd}" | jq -r '.[].tag_name')
+        github_ver=$(echo "${curl_cmd}" | jq -r '.[].name')
         github_ver=${github_ver#v}
     fi
 }
