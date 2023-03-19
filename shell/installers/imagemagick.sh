@@ -2,16 +2,16 @@
 
 #################################################################
 ##
-## GitHub: https://github.com/slyfox1186
+## github: https://github.com/slyfox1186
 ##
-## PURPOSE: BUILDS IMAGEMAGICK 7 FROM SOURCE CODE THAT IS
-##          OBTAINED FROM THE OFFICIAL IMAGEMAGICK GITHUB PAGE.
+## purpose: builds imagemagick 7 from source code that is
+##          obtained from the official imagemagick github page.
 ##
-## FUNCTION: IMAGEMAGICK IS THE LEADING OPEN SOURCE COMMAND LINE
-##           IMAGE PROCESSOR. IT CAN BLUR, SHARPEN, WARP, REDUCE
-##           FILE SIZE, ECT... IT IS FANTASTIC.
+## function: imagemagick is the leading open source command line
+##           image processor. it can blur, sharpen, warp, reduce
+##           file size, ect... it is fantastic.
 ##
-## LAST UPDATED: 03.18.23
+## updated: 03.18.23
 ##
 #################################################################
 
@@ -24,10 +24,10 @@ if [ "${EUID}" -ne '0' ]; then
     exec sudo bash "${0}" "${@}"
 fi
 
-# FIND THE LATEST VERSION BY QUERYING GITHUB'S API
+# find the latest version by querying github's api
 github_api_fn()
 {
-    # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
+    # scrape github website for latest repo version
     net_timeout='5'
     github_repo="${1}"
     curl_cmd=$(curl -m "${net_timeout}" -Ls "https://api.github.com/repos/${github_repo}/releases?per_page=1")
@@ -37,24 +37,27 @@ github_api_fn()
     fi
 }
 
-# PASS THE GITHUB REPO NAME TO THE FUNCTION TO FIND IT'S CURRENT RELEASE
+# pass the github repo name to the function to find it's current release
 github_api_fn 'ImageMagick/ImageMagick' 2>/dev/null
 
-# SET VARIABLES
+# set variables
 sver='2.00'
 imver="${github_ver}"
 pver='1.2.59'
+imurl="https://github.com/ImageMagick/ImageMagick/archive/refs/tags/${imver}.tar.gz"
+imdir="ImageMagick-${imver}"
+imtar="ImageMagick-${imver}.tar.gz"
 
 ##
-## CREATE FUNCTIONS
+## create functions
 ##
 
-## EXIT SCRIPT
+## exit script
 exit_fn()
 {
     clear
 
-    # SHOW THE NEWLY INSTALLED MAGICK VERSION
+    # show the newly installed magick version
     if ! magick -version 2>/dev/null; then
         clear
         echo '$ error the script failed to execute the command "magick -version"'
@@ -74,7 +77,7 @@ exit_fn()
     exit 0
 }
 
-## DELETE FILES FUNCTION
+## delete files
 del_files_fn()
 {
     if [[ "${1}" -eq '1' ]]; then
@@ -90,10 +93,10 @@ del_files_fn()
     fi
 }
 
-## FUNCTION TO DETERMINE IF A PACKAGE IS INSTALLED OR NOT
+## determine if a package is installed or not
 installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
-## FAILED DOWNLOAD/EXTRACTIONS FUNCTION
+## failed download/extraction
 extract_fail_fn()
 {
     clear
@@ -104,7 +107,7 @@ extract_fail_fn()
     exit 1
 }
 
-## REQUIRED IMAGEMAGICK DEVELOPEMENT PACKAGES
+## required imagemagick developement packages
 magick_packages_fn()
 {
 
@@ -122,21 +125,21 @@ magick_packages_fn()
         do
             apt -y install ${i}
         done
-        echo '$ the required packages were successfully installed'
+        echo 'The required packages were successfully installed'
     else
-        echo '$ the required packages are already installed'
+        echo 'The required packages are already installed'
     fi
 }
 
 echo '$ building libpng12'
 echo '================================'
 echo
-# SET LIBPNG12 VARIABLES
+# set libpng12 variables
 pngurl="https://sourceforge.net/projects/libpng/files/libpng12/${pver}/libpng-${pver}.tar.xz/download"
 pngdir="libpng-${pver}"
 pngtar="${pngdir}.tar.xz"
 
-# DOWNLOAD LIBPNG12 SOURCE CODE
+# download libpng12 source code
 if [ ! -f "${pngtar}" ]; then
     wget --show-progress -cqO "${pngtar}" "${pngurl}"
 fi
@@ -145,57 +148,52 @@ if ! tar -xf "${pngtar}"; then
     extract_fail_fn
 fi
 
-# CHANGE THE WORKING DIRECTORY TO LIBPNG'S SOURCE CODE PARENT FOLDER
+# change the working directory to libpng's source code parent folder
 cd "${pngdir}" || exit 1
 
-# NEED TO RUN AUTOGEN SCRIPT FIRST SINCE THIS IS A WAY NEWER SYSTEM THAN THESE FILES ARE USED TO
+# need to run autogen script first since this is a way newer system than these files are used to
 echo
 echo '$ executing ./autogen.sh'
 ./autogen.sh &> /dev/null
 echo '$ executing ./configure'
 ./configure --prefix='/usr/local' &> /dev/null
 
-# INSTALL LIBPNG12
+# install libpng12
 echo '$ executing make install'
 make install &> /dev/null
 
-# CHANGE WORKING DIRECTORY BACK TO PARENT FOLDER
+# change working directory back to parent folder
 cd ../ || exit 1
 
-#############################
-## START IMAGEMAGICK BUILD ##
-#############################
+##
+## start imagemagick build
+##
 
 echo
 echo '$ installing required packages'
 echo '================================'
 echo
 
-# REQUIRED + EXTRA OPTIONAL PACKAGES FOR IMAGEMAGICK TO BUILD SUCCESSFULLY
+# required + extra optional packages for imagemagick to build successfully
 magick_packages_fn
 
 echo
 echo '$ building imagemagick'
 echo '================================'
 
-# SET VARIABLES FOR IMAGEMAGICK
-imurl="https://github.com/ImageMagick/ImageMagick/archive/refs/tags/${imver}.tar.gz"
-imdir="ImageMagick-${imver}"
-imtar="ImageMagick-${imver}.tar.gz"
-
-# DOWNLOAD IMAGEMAGICK SOURCE CODE
+# download the latest imagemagick source code
 if [ ! -f "${imtar}" ]; then
     echo
     wget --show-progress -cqO "${imtar}" "${imurl}"
     echo
 fi
 
-## UNCOMPRESS SOURCE CODE TO OUTPUT FOLDER
+## uncompress source code to output folder
 if ! tar -xf "${imtar}"; then
     extract_fail_fn
 fi
 
-# EXTRACT TAR AND CD INTO DIRECTORY
+# extract tar and cd into directory
 if [ ! -d "${imdir}" ]; then
     mkdir -p "${imdir}"
 else
@@ -203,7 +201,7 @@ else
     cd "${imdir}" || exit 1
 fi
 
-# EXPORT THE PKG CONFIG PATHS TO ENABLE SUPPORT DURING THE BUILD
+# export the pkg config paths to enable support during the build
 PKG_CONFIG_PATH="\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/lib/pkgconfig:\
@@ -226,28 +224,28 @@ echo '$ executing ./configure'
     --with-tcmalloc \
     --with-quantum-depth=16 &> /dev/null
 
-# RUNNING MAKE COMMAND WITH PARALLEL PROCESSING
+# running make command with parallel processing
 echo "\$ executing make -j$(nproc)"
 make "-j$(nproc)" &> /dev/null
 
-# INSTALLING FILES TO /usr/local/bin/
+# installing files to /usr/local/bin
 echo '$ executing make install'
 make install &> /dev/null
 
-# LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE MAGICK COMMAND WILL NOT WORK
+# ldconfig must be run next in order to update file changes or the magick command will not work
 ldconfig /usr/local/lib 2>/dev/null
 
-# CD BACK TO THE PARENT FOLDER
+# cd back to the parent folder
 cd .. || exit 1
 
-# PROMPT USER TO CLEAN UP BUILD FILES
+# prompt user to clean up build files
 echo
-echo '$ do you want to remove the build files?'
+echo '$ Do you want to remove the build files?'
 echo
-echo '$ [1] yes'
-echo '$ [2] no'
+echo '[1] Yes'
+echo '[2] No'
 echo
-read -p '$ your choices are (1 or 2): ' cleanup
+read -p 'Your choices are (1 or 2): ' cleanup
 clear
 
 del_files_fn "${cleanup}" "${pngdir}" "${imdir}" "${pngtar}" "${imtar}"
