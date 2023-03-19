@@ -404,14 +404,6 @@ if build 'imagemagick' "${magick_ver}"; then
     build_done 'imagemagick' "${magick_ver}"
 fi
 
-# download the latest imagemagick source code
-if [ ! -f "ImageMagick-${magick_ver}.tar.gz" ]; then
-    echo '$ downloading imagemagick'
-    wget -cqO "ImageMagick-${magick_ver}.tar.gz" "https://github.com/ImageMagick/ImageMagick/archive/refs/tags/${magick_ver}.tar.gz"
-    echo '$ download complete'
-    echo
-fi
-
 # ldconfig must be run next in order to update file changes or the magick command will not work
 ldconfig /usr/local/lib 2>/dev/null
 
