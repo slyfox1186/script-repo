@@ -15,8 +15,8 @@ echo -e "\$ imagemagick-build-script downloader v1.0\\n"
 
 echo -e "\$ creating the build directory\\n"
 
-if ! mkdir "${PWD}/imagick-build"; then            
-    printf '\n failed to create dir %s' "${PWD}/imagick-build"
+if ! mkdir "${PWD}/imagick-build"; then
+    printf '\nfailed to create dir: %s' "${PWD}/imagick-build"
     echo
     exit 1
 fi
