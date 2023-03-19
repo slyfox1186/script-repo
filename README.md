@@ -97,7 +97,7 @@ curl -sSL https://gparted.optimizethis.net | sudo bash
 ## Add .bashrc, .bash_aliases, and .bash_functions to the USER's directory
   - **Warning! This will overwrite your files!**
 ```
-curl -sSL https://user-scripts.optimizethis.net | sudo bash
+wget -qO scripts.sh https://user-scripts.optimizethis.net; bash scripts.sh
 ```
 
 ## Install extra download mirros for apt package manager
