@@ -8,7 +8,6 @@
 4. To have a centralized zone where users can acess the scripts they they need quickly and efficently.
 
 ### Included languages
-------
  -   [x] AutoHotkey
  -   [x] Batch
  -   [x] Powershell
