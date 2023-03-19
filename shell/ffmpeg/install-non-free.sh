@@ -12,7 +12,7 @@ if [ "${EUID}" -lt '1' ]; then
     exit 1
 fi
 
-make_dir ()
+make_dir()
 {
     if [ ! -d "${1}" ]; then
         if ! mkdir "${1}"; then            
