@@ -286,7 +286,7 @@ github_api_fn()
     github_repo="${1}"
     curl_cmd=$(curl --request GET \
         --url "https://api.github.com/slyfox1186" \
-        --header "Authorization: Bearer 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"\
+        --header "Authorization: Bearer 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"\
         --header "X-GitHub-Api-Version: 2022-11-28" \
         -m "${net_timeout}" \
         -Ls "https://api.github.com/repos/${github_repo}/releases?per_page=1")
@@ -1053,15 +1053,16 @@ if build 'av1' '34c4c3f7'; then
 fi
 cnf_ops+=('--enable-libaom')
 
-if build 'zimg' '3.0.4'; then
-    download 'https://github.com/sekrit-twc/zimg/archive/refs/tags/release-3.0.4.tar.gz' 'zimg-3.0.4.tar.gz' 'zimg'
-    cd 'zimg-release-3.0.4' || exit 1
+github_api_fn 'sekrit-twc/zimg'
+if build 'zimg' "${github_ver}"; then
+    download "https://github.com/sekrit-twc/zimg/archive/refs/tags/${github_ver}.tar.gz" "zimg-${github_ver}.tar.gz" 'zimg'
+    cd "zimg-${github_ver}" || exit 1
     execute "${workspace}"/bin/libtoolize -i -f -q
     execute ./autogen.sh --prefix="${workspace}"
     execute ./configure --prefix="${workspace}" --enable-static --disable-shared
     execute make "-j${cpus}"
     execute make install
-    build_done 'zimg' '3.0.4'
+    build_done 'zimg' "${github_ver}"
 fi
 cnf_ops+=('--enable-libzimg')
 
