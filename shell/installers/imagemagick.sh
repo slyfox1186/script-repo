@@ -239,7 +239,7 @@ ldconfig /usr/local/lib 2>/dev/null
 cd .. || exit 1
 
 # prompt user to clean up build files
-echo
+clear
 echo '$ Do you want to remove the build files?'
 echo
 echo '[1] Yes'
