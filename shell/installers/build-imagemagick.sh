@@ -139,11 +139,8 @@ cleanup_fn()
     clear
 
     if [[ "${cleanup_choice}" -eq '1' ]]; then
-        remove_file "${packages}/libpng-1.2.59.tar.xz"
-        remove_file "${packages}/ImageMagick-${magick_ver}.tar.gz"
-        remove_file '*.done'
-        remove_dir "${packages}/libpng-1.2.59"
-        remove_dir "${packages}/ImageMagick-${magick_ver}"
+        remove_dir "${packages}"
+        remove_file "${0}"
         exit_fn
     elif [[ "${1}" -eq '2' ]]; then
         exit_fn
