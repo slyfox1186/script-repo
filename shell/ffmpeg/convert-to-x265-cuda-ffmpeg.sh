@@ -7,6 +7,12 @@ if ! which bc &> /dev/null; then
     sudo apt -y install bc
 fi
 
+# INSTALL FFPB IF NOT INSTALLED
+get_pkg="$(pip list | grep -Eo '^ffpb')"
+if [ -z "${get_pkg}" ]; then
+    pip install ffpb
+fi
+
 # DELETE LEFTOVER FILES
 del_this="$(du -ah | grep -Eo '\..*\(.*\)\.mp4')"
 
@@ -89,7 +95,9 @@ ffmpeg \
     -i_qfactor:v '0.75' \
     -b_qfactor:v '1.1' \
     -fps_mode vfr \
-    -c:a copy \
+    -c:a fdK_aac \
+    -qmin:a 1 \
+    -qmax:a 4 \
     "${file_out}"
 
 if [ "${?}" -lt '1' ]; then
