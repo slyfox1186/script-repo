@@ -43,7 +43,7 @@ echo 'ffmpeg-build-script-downloader v0.1'
 echo '===================================='
 echo
 
-echo 'First we create the ffmpeg build directory' "${BUILD_DIR}"
+echo 'First we create the ffmpeg build directory' "${build_dir}"
 echo '========================================================'
 echo
 make_dir "${build_dir}"
