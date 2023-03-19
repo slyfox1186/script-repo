@@ -696,7 +696,7 @@ if ! which 'nvcc' &>/dev/null ; then
     echo '[3] Don'\''t do either and continue the build'
     echo
     read -p 'Your choices are (1 to 3): ' cuda_ans
-    echo
+    clear
     if [[ "${cuda_ans}" -eq '1' ]]; then
         cuda_fn
         cuda_add_fn
