@@ -599,10 +599,10 @@ imow()
     # The text-to-speech below requries the following packages:
     # pip install gTTS; sudo apt -y install sox libsox-fmt-all
     if [ "${?}" -eq '0' ]; then
-        gtts-cli -l en 'Image conversion completed.' | play -t mp3 - &>/dev/null
+        google_speech 'Image conversion completed.'
         return 0
     else
-        gtts-cli -l en 'Image conversion failed.' | play -t mp3 - &>/dev/null
+        google_speech 'Image conversion failed.'
         return 1
     fi
 }
