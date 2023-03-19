@@ -301,10 +301,6 @@ usage()
     echo
 }
 
-echo "imagemagick-build-script v${script_ver}"
-echo '======================================'
-echo
-
 while ((${#} > 0)); do
     case ${1} in
     -h | --help)
@@ -334,9 +330,6 @@ while ((${#} > 0)); do
     esac
 done
 
-echo "This script will utilize ${cpus} cpu cores for parallel processing to accelerate the build speed."
-echo
-
 if [ -z "${bflag}" ]; then
     if [ -z "${cflag}" ]; then
         usage
@@ -346,13 +339,20 @@ if [ -z "${bflag}" ]; then
     exit 0
 fi
 
-echo '$ installing required packages'
-echo '======================================'
+echo "\$ imagemagick-build-script v${script_ver}"
+echo '========================================='
+echo
+
+echo "\$ this script will utilize ${cpus} cpu cores for parallel processing to accelerate the build speed."
+echo
+
+# create the packages directory
+mkdir -p "${packages}"
 
 # required + extra functionality packages for imagemagick
+echo '$ installing required packages'
+echo '========================================='
 magick_packages_fn
-
-mkdir -p "${packages}"
 
 # export the pkg config paths to enable support during the build
 PKG_CONFIG_PATH="\
