@@ -95,7 +95,9 @@ ffpb \
     -i_qfactor:v '0.75' \
     -b_qfactor:v '1.1' \
     -fps_mode vfr \
-    -c:a copy \
+    -c:a fdK_aac \
+    -qmin:a 1 \
+    -qmax:a 4 \
     "${file_out}"
 
 if [ "${?}" -lt '1' ]; then
