@@ -11,7 +11,7 @@
 ##           IMAGE PROCESSOR. IT CAN BLUR, SHARPEN, WARP, REDUCE
 ##           FILE SIZE, ECT... IT IS FANTASTIC.
 ##
-## LAST UPDATED: 03.15.23
+## LAST UPDATED: 03.18.23
 ##
 #################################################################
 
@@ -24,19 +24,78 @@ if [ "${EUID}" -ne '0' ]; then
     exec sudo bash "${0}" "${@}"
 fi
 
-##
-## VARIABLES
-##
+download_git()
+{
+    dl_path="${packages}"
+    dl_url="${1}"
+    dl_file="${2}"
+    tdir="${dl_path}/${dl_file}"
 
-sver='1.70'
-imver='7.1.1-3'
+    # first download attempt
+    if [ ! -d "${tdir}" ]; then
+        echo "Downloading ${dl_file}"
+        sudo git clone -q "${dl_url}" "${tdir}"
+
+        # try download once more if first attempt failed
+        ec="${?}"
+        if [ "${ec}" -ne '0' ]; then
+            echo
+            echo "Failed to download ${2}. Exitcode ${ec}. Retrying in 10 seconds"
+            echo
+            read -t 10 -p 'Press enter to skip waiting.'
+            echo
+            sudo git clone -q "${dl_url}" "${tdir}"
+        fi
+
+        # check if second download attempt was successful
+        ec="${?}"
+        if [ "${ec}" -ne '0' ]; then
+            echo
+            echo "Failed to download ${2}. Exitcode ${ec}"
+            echo
+            exit 1
+        fi
+
+        echo 'Download Complete...'
+        echo
+    else
+        echo "${dl_file} is already downloaded."
+    fi
+
+    cd "${tdir}" || (
+        echo 'Script error!'
+        echo
+        echo "Unable to change the working directory to ${}"
+        echo
+        exit 1
+    )
+}
+
+github_api_fn()
+{
+    # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
+    net_timeout='5'
+    github_repo="${1}"
+    curl_cmd=$(curl -m "${net_timeout}" -Ls "https://api.github.com/repos/${github_repo}/releases?per_page=1")
+    if [ "${?}" -eq '0' ]; then
+        github_ver=$(echo "${curl_cmd}" | jq -r '.[].tag_name')
+        github_ver=${github_ver#v}
+    fi
+}
+
+# PASS THE GITHUB REPO NAME TO THE FUNCTION TO FIND IT'S CURRENT RELEASE
+github_api_fn 'ImageMagick/ImageMagick' 2>/dev/null
+
+# SET VARIABLES
+sver='2.00'
+imver="${github_ver}"
 pver='1.2.59'
 
-######################
-## CREATE FUNCTIONS ##
-######################
+##
+## CREATE FUNCTIONS
+##
 
-## EXIT SCRIPT FUNCTION
+## EXIT SCRIPT
 exit_fn()
 {
     clear
@@ -191,7 +250,11 @@ else
 fi
 
 # EXPORT THE PKG CONFIG PATHS TO ENABLE SUPPORT DURING THE BUILD
-PKG_CONFIG_PATH='/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig'
+PKG_CONFIG_PATH="\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/pkgconfig:\
+/usr/share/pkgconfig:\
+"
 export PKG_CONFIG_PATH
 
 echo '$ executing ./configure'
@@ -207,8 +270,7 @@ echo '$ executing ./configure'
     --with-modules \
     --with-perl \
     --with-tcmalloc \
-    --with-quantum-depth=16 \
-    &> /dev/null
+    --with-quantum-depth=16 &> /dev/null
 
 # RUNNING MAKE COMMAND WITH PARALLEL PROCESSING
 echo "\$ executing make -j$(nproc)"
