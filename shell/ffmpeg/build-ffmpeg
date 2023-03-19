@@ -11,7 +11,7 @@
 ##
 ##  Supported architecture: x86_x64
 ##
-##  Purpose: To build FFmpeg from source code with addon development
+##  Purpose: Build FFmpeg from source code with addon development
 ##           libraries also compiled from source code to ensure the
 ##           latest in extra functionality.
 ##
