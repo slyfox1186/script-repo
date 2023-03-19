@@ -94,7 +94,10 @@ cleanup_fn()
     clear
 
     if [[ "${cleanup_ans}" -eq '1' ]]; then
-        cleanup
+        remove_dir "${packages}"
+        remove_dir "${workspace}"
+        remove_file "${0}"
+        echo 'cleanup finished.'
         exit_fn
     elif [[ "${cleanup_ans}" -eq '2' ]]; then
         exit_fn
@@ -388,16 +391,6 @@ library_exists()
 # CONFIRM A BUILD HAS COMPLETED FUNCTION
 build_done() { echo "${2}" > "${packages}/${1}.done"; }
 
-# CLEANUP ALL FILES FUNCTION
-cleanup()
-{
-    remove_dir "${packages}"
-    remove_dir "${workspace}"
-    remove_file "${0}"
-    echo 'Cleanup finished.'
-    echo
-}
-
 # FUNCTION TO DETERMINE IF A PACKAGE IS INSTALLED OR NOT
 installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
@@ -499,7 +492,7 @@ while ((${#} > 0)); do
         fi
         if [[ "${1}" == '--cleanup' || "${1}" =~ '-c' && ! "${1}" =~ '--' ]]; then
             cflag='-c'
-            cleanup
+            cleanup_fn
         fi
         if [[ "${1}" == '--full-static' ]]; then
             LDEXEFLAGS='-static'
