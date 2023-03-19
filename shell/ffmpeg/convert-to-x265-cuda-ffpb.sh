@@ -15,7 +15,7 @@ if [ -n "${del_this:2}" ]; then
 fi
 
 # CAPTURE THE VIDEO WITHOUT (X265).MP4 AS THE ENDING
-video="$(find . -type f -name '*.mp4' -exec echo '{}' +)"
+video="$(find . -maxdepth 1 -type f -name '*.mp4' -exec echo '{}' +)"
 
 for v in "${video:2}"
 do
