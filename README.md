@@ -18,7 +18,6 @@
 
 ## Install Apt Packages
   - **What I consider to be core apt packages or "must haves" that everyone should consider installing**
-### Distro Included
   - **Ubuntu-Jammy v22.04.02**
 ```
 wget -qO pkgs.sh https://jammy-pkgs.optimizethis.net; sudo bash pkgs.sh
