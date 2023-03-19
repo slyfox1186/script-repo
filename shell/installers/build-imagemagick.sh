@@ -105,7 +105,7 @@ build()
 {
     echo
     echo "building ${1} - version ${2}"
-    echo '======================================'
+    echo '========================================'
 
     if [ -f "${packages}/${1}.done" ]; then
         if grep -Fx "${2}" "${packages}/${1}.done" >/dev/null; then
