@@ -29,7 +29,6 @@ clear
 
 # verify the script does not have root access before continue
 # this can cause issues using the 'if which' commands when run as root
-# verify the script does not have root access before continuing
 if [ "${EUID}" -eq '0' ]; then
     echo 'You must run this script without root/sudo'
     echo
