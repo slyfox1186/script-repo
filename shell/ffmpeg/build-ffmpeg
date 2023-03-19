@@ -814,7 +814,7 @@ fi
 if ${nonfree}; then
     github_api_fn 'openssl/openssl' 2>/dev/null
     if build 'openssl' "${github_ver}"; then
-        download_git 'https://github.com/openssl/openssl.git' "openssl-${github_ver}"
+        download "https://github.com/openssl/openssl/archive/refs/tags/${github_ver}.tar.gz" "${github_ver}.tar.gz"
         execute ./config --prefix="${workspace}" --openssldir="${workspace}" \
             --with-zlib-include="${workspace}"/include/ --with-zlib-lib="${workspace}"/lib no-shared zlib
         execute make "-j${cpus}"
