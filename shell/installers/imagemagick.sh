@@ -24,53 +24,7 @@ if [ "${EUID}" -ne '0' ]; then
     exec sudo bash "${0}" "${@}"
 fi
 
-download_git()
-{
-    dl_path="${packages}"
-    dl_url="${1}"
-    dl_file="${2}"
-    tdir="${dl_path}/${dl_file}"
-
-    # first download attempt
-    if [ ! -d "${tdir}" ]; then
-        echo "Downloading ${dl_file}"
-        sudo git clone -q "${dl_url}" "${tdir}"
-
-        # try download once more if first attempt failed
-        ec="${?}"
-        if [ "${ec}" -ne '0' ]; then
-            echo
-            echo "Failed to download ${2}. Exitcode ${ec}. Retrying in 10 seconds"
-            echo
-            read -t 10 -p 'Press enter to skip waiting.'
-            echo
-            sudo git clone -q "${dl_url}" "${tdir}"
-        fi
-
-        # check if second download attempt was successful
-        ec="${?}"
-        if [ "${ec}" -ne '0' ]; then
-            echo
-            echo "Failed to download ${2}. Exitcode ${ec}"
-            echo
-            exit 1
-        fi
-
-        echo 'Download Complete...'
-        echo
-    else
-        echo "${dl_file} is already downloaded."
-    fi
-
-    cd "${tdir}" || (
-        echo 'Script error!'
-        echo
-        echo "Unable to change the working directory to ${}"
-        echo
-        exit 1
-    )
-}
-
+# FIND THE LATEST VERSION BY QUERYING GITHUB'S API
 github_api_fn()
 {
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
