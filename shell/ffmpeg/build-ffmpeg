@@ -275,7 +275,7 @@ download_git()
     )
 }
 
-github_fn()
+github_releases_1_fn()
 {
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     net_timeout='5'
@@ -287,7 +287,7 @@ github_fn()
     fi
 }
 
-github_releases_fn()
+github_releases_2_fn()
 {
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     net_timeout='5'
@@ -852,7 +852,7 @@ if build 'libtool' '2.4.7'; then
 fi
 
 if ${nonfree}; then
-    github_fn 'openssl/openssl' 2>/dev/null
+    github_releases_1_fn 'openssl/openssl' 2>/dev/null
     if build 'openssl' "${github_ver}"; then
         download "https://github.com/openssl/openssl/archive/refs/tags/${github_ver}.tar.gz" "${github_ver}.tar.gz"
         execute ./config --prefix="${workspace}" --openssldir="${workspace}" \
@@ -892,7 +892,7 @@ else
     cnf_ops+=('--enable-gmp' '--enable-gnutls')
 fi
 
-github_fn 'Kitware/CMake' 2>/dev/null
+github_releases_1_fn 'Kitware/CMake' 2>/dev/null
 if build 'cmake' "${github_ver}"; then
     download "https://github.com/Kitware/CMake/archive/refs/tags/v${github_ver}.tar.gz" "cmake-${github_ver}.tar.gz"
     execute ./configure --prefix="${workspace}" --parallel="${cpus}" -- -DCMAKE_USE_OPENSSL='OFF'
@@ -946,7 +946,7 @@ fi
 cnf_ops+=('--enable-libsvtav1')
 
 if command_exists 'cargo'; then
-    github_fn 'xiph/rav1e'
+    github_releases_1_fn 'xiph/rav1e'
     if build 'rav1e' "${github_ver}"; then
         execute cargo install --version '0.9.14+cargo-0.66' cargo-c
         download "https://github.com/xiph/rav1e/archive/refs/tags/${github_ver}.tar.gz" "rav1e-${github_ver}"
@@ -1069,7 +1069,7 @@ if build 'av1' '34c4c3f7'; then
 fi
 cnf_ops+=('--enable-libaom')
 
-github_releases_fn 'sekrit-twc/zimg'
+github_releases_2_fn 'sekrit-twc/zimg'
 if build 'zimg' "${github_ver}"; then
     download "https://github.com/sekrit-twc/zimg/archive/refs/tags/release-${github_ver}.tar.gz" "zimg-${github_ver}.tar.gz"
     execute "${workspace}"/bin/libtoolize -i -f -q
@@ -1294,6 +1294,27 @@ fi
 ## HWaccel library ##
 #####################
 
+# Vaapi doesn't work well with static links FFmpeg.
+if [ -z "${LDEXEFLAGS}" ]; then
+    # If the libva development SDK is installed, enable vaapi.
+    if library_exists 'libva'; then
+        if build 'vaapi' '1'; then
+            build_done 'vaapi' '1'
+        fi
+        cnf_ops+=('--enable-vaapi')
+    fi
+fi
+
+if build 'amf' '1.4.29'; then
+    download 'https://github.com/GPUOpen-LibrariesAndSDKs/AMF/archive/refs/tags/v1.4.29.tar.gz' 'AMF-1.4.29.tar.gz' 'AMF-1.4.29'
+    execute rm -rf "${workspace}"/include/AMF
+    execute mkdir -p "${workspace}"/include/AMF
+    execute cp -fr "${packages}"/AMF-1.4.29/AMF-1.4.29/amf/public/include/* "${workspace}"/include/AMF/
+    build_done 'amf' '1.4.29'
+fi
+cnf_ops+=('--enable-amf')
+
+
 if which 'nvcc' &>/dev/null ; then
     if build 'nv-codec' '12.0.16.0'; then
         # PRIOR VERSION USED '8.1.24.14'
@@ -1315,26 +1336,6 @@ if which 'nvcc' &>/dev/null ; then
     # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
     cnf_ops+=("--nvccflags=-gencode arch=${gpu_arch}")
 fi
-
-# Vaapi doesn't work well with static links FFmpeg.
-if [ -z "${LDEXEFLAGS}" ]; then
-    # If the libva development SDK is installed, enable vaapi.
-    if library_exists 'libva'; then
-        if build 'vaapi' '1'; then
-            build_done 'vaapi' '1'
-        fi
-        cnf_ops+=('--enable-vaapi')
-    fi
-fi
-
-if build 'amf' '1.4.29'; then
-    download 'https://github.com/GPUOpen-LibrariesAndSDKs/AMF/archive/refs/tags/v1.4.29.tar.gz' 'AMF-1.4.29.tar.gz' 'AMF-1.4.29'
-    execute rm -rf "${workspace}"/include/AMF
-    execute mkdir -p "${workspace}"/include/AMF
-    execute cp -fr "${packages}"/AMF-1.4.29/AMF-1.4.29/amf/public/include/* "${workspace}"/include/AMF/
-    build_done 'amf' '1.4.29'
-fi
-cnf_ops+=('--enable-amf')
 
 ##
 ## BUILD FFMPEG
