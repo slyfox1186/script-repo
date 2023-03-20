@@ -23,4 +23,4 @@ cd "${PWD}/imagick-build" || exit 1
 
 echo -e "\$ download and execute the build script\\n"
 
-bash <(curl -sSL 'https://imagick-build.optimizethis.net') --build
+bash <(curl -sSL 'https://magick-build.optimizethis.net') --build
