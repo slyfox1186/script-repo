@@ -323,7 +323,7 @@ if [ -z "${bflag}" ]; then
     exit 0
 fi
 
-echo "\$ ImageMagick Build Script v${script_ver}"
+echo "ImageMagick Build Script v${script_ver}"
 echo '========================================='
 echo
 
@@ -331,7 +331,7 @@ echo "This script will use ${cpus} cpu cores for parallel processing to accelera
 echo
 
 # Required + extra functionality packages for imagemagick
-echo '$ Installing required packages'
+echo 'Installing required packages'
 echo '========================================='
 magick_packages_fn
 
