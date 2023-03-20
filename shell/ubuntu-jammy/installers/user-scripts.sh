@@ -15,14 +15,14 @@ scripts='.bash_aliases .bash_functions .bashrc'
 # If the shell scripts exist, move them to the users home directory
 for i in ${scripts[@]}
 do
-    if [ -f "${i}" ]; then
-        mv -f "${i}" "${HOME}"
-        if [ -f "${HOME}/${i}" ]; then
+    if [ -f "${PWD}/${i}" ]; then
+        mv -f "${PWD}/${i}" "${HOME}"
+        if [ -f "${PWD}/${HOME}/${i}" ]; then
             sudo chown "${USER}":"${USER}" "${HOME}/${i}"
         fi
     else
         clear
-        echo 'Script error: The scripts were not found.'
+        echo 'The scripts were failed to download.'
         echo
         echo 'Please create a support ticket.'
         echo
