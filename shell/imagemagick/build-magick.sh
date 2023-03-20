@@ -1,23 +1,26 @@
 #!/bin/bash
 
-#################################################################
+#############################################################################
 ##
-## github: https://github.com/slyfox1186
+## GitHub: https://github.com/slyfox1186
 ##
-## purpose: builds imagemagick 7 from source code that is
-##          obtained from the official imagemagick github page.
+## Purpose: Builds ImageMagick 7 from source code obtained
+##          from the official ImageMagick GitHub repository.
 ##
-## function: imagemagick is the leading open source command line
-##           image processor. it can blur, sharpen, warp, reduce
-##           file size, ect... it is fantastic.
+## Function: ImageMagick is the leading open source command line
+##           image processor. It can blur, sharpen, warp, reduce
+##           file size, ect... The possibilities are vast and wide.
 ##
-## updated: 03.18.23
+## Method: The script will search GitHub for the latest released version
+##         and upon execution, will import the info into the script for use
 ##
-#################################################################
+## Updated: 03.19.23
+##
+#############################################################################
 
 # verify the script does not have root access before continuing
 if [ "${EUID}" -ne '0' ]; then
-    echo '$ You must run this script as root/sudo'
+    echo 'You must run this script as root/sudo'
     exec sudo bash "${0}" "${@}"
 fi
 
