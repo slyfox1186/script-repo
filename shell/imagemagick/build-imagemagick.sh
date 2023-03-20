@@ -17,8 +17,7 @@
 
 # verify the script does not have root access before continuing
 if [ "${EUID}" -ne '0' ]; then
-    echo 'You must run this script as root/sudo'
-    echo
+    echo '$ You must run this script as root/sudo'
     exec sudo bash "${0}" "${@}"
 fi
 
@@ -90,18 +89,18 @@ execute()
 build()
 {
     echo
-    echo "\$ building ${1} - version ${2}"
+    echo "Building ${1} - version ${2}"
     echo '========================================'
 
     if [ -f "${packages}/${1}.done" ]; then
         if grep -Fx "${2}" "${packages}/${1}.done" >/dev/null; then
-            echo "\$ ${1} version ${2} already built. Remove ${packages}/${1}.done lockfile to rebuild it."
+            echo "${1} version ${2} already built. Remove ${packages}/${1}.done lockfile to rebuild it."
             return 1
         elif ${latest}; then
-            echo "\$ ${1} is outdated and will be rebuilt using version ${2}"
+            echo "${1} is outdated and will be rebuilt using version ${2}"
             return 0
         else
-            echo "\$ ${1} is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove ${packages}/${1}.done lockfile."
+            echo "${1} is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove ${packages}/${1}.done lockfile."
             return 1
         fi
     fi
@@ -114,7 +113,7 @@ build_done() { echo "${2}" > "${packages}/${1}.done"; }
 cleanup_fn()
 {
     echo
-    echo '$ Do you want to remove the build files?'
+    echo 'Do you want to remove the build files?'
     echo
     echo '[1] Yes'
     echo '[2] No'
@@ -129,7 +128,7 @@ cleanup_fn()
     elif [[ "${1}" -eq '2' ]]; then
         exit_fn
     else
-        echo 'Bad user input'
+        echo 'Bad user input...'
         echo
         read -p 'Press enter to try again.'
         clear
@@ -167,15 +166,15 @@ download()
         ec="${?}"
         if [ "${ec}" -ne '0' ]; then
             echo
-            echo "Failed to download ${1}. Exitcode ${ec}"
+            echo "Failed to download: ${1}. Exitcode ${ec}"
             echo
             exit 1
         fi
 
-        echo '\$ Download Complete...'
+        echo 'Download Complete...'
         echo
     else
-        echo "\$ ${dl_file} is already downloaded."
+        echo "${dl_file} is already downloaded."
     fi
 
     make_dir "${dl_path}/${tdir}"
@@ -186,24 +185,22 @@ download()
 
     if [ -n "${3}" ]; then
         if ! tar -xf "${dl_path}/${dl_file}" -C "${dl_path}/${tdir}" &>/dev/null; then
-            echo "\$ Failed to extract ${dl_file}"
+            echo "Failed to extract: ${dl_file}"
             echo
             exit 1
         fi
     else
         if ! tar -xf "${dl_path}/${dl_file}" -C "${dl_path}/${tdir}" --strip-components 1 &>/dev/null; then
-            echo "\$ Failed to extract ${dl_file}"
+            echo "Failed to extract: ${dl_file}"
             echo
             exit 1
         fi
     fi
 
-    echo "\$ Extracted ${dl_file}"
+    echo "Extracted ${dl_file}"
 
     cd "${dl_path}/${tdir}" || (
-        echo '\$ Script error!'
-        echo
-        echo "\$ Unable to change the working directory to ${tdir}"
+        echo "Error: Unable to change the working directory to: ${tdir}"
         echo
         exit 1
     )
@@ -214,7 +211,7 @@ make_dir()
 {
     remove_dir "${1}"
     if ! mkdir "${1}"; then
-        printf "\n Failed to create dir %s" "${1}"
+        printf "\nFailed to create dir %s" "${1}"
         echo
         exit 1
     fi
@@ -241,9 +238,7 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok ins
 extract_fail_fn()
 {
     clear
-    echo '\$ Error: The tar command failed to extract any files'
-    echo
-    echo '\$ To create a support ticket visit: https://github.com/slyfox1186/script-repo/issues'
+    printf "%s\n\n%s\n\n%s\n\n" 'The tar command failed to extract any files.' 'Please create a support ticket at the address below' 'https://github.com/slyfox1186/script-repo/issues'
     echo
     exit 1
 }
@@ -266,10 +261,10 @@ magick_packages_fn()
         do
             apt -y install ${i}
         done
-        echo '$ The required packages were successfully installed'
+        echo 'The required packages were successfully installed'
         echo
     else
-        echo '$ The required packages are already installed'
+        echo 'The required packages are already installed'
         echo
     fi
 }
@@ -294,7 +289,7 @@ while ((${#} > 0)); do
         exit 0
         ;;
     --version)
-        echo current magick version: "${magick_ver}"
+        echo "Current magick version: ${magick_ver}"
         echo
         exit 0
         ;;
@@ -325,22 +320,19 @@ if [ -z "${bflag}" ]; then
     exit 0
 fi
 
-echo "\$ imagemagick-build-script v${script_ver}"
+echo "\$ ImageMagick Build Script v${script_ver}"
 echo '========================================='
 echo
 
-echo "\$ this script will utilize ${cpus} cpu cores for parallel processing to accelerate the build speed."
+echo "This script will use ${cpus} cpu cores for parallel processing to accelerate the building speed."
 echo
 
-# create the packages directory
-mkdir -p "${packages}"
-
-# required + extra functionality packages for imagemagick
-echo '$ installing required packages'
+# Required + extra functionality packages for imagemagick
+echo '$ Installing required packages'
 echo '========================================='
 magick_packages_fn
 
-# export the pkg config paths to enable support during the build
+# Export the pkg-config paths to enable support during the build
 PKG_CONFIG_PATH="\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/lib/pkgconfig:\
@@ -348,8 +340,11 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
+# Create the packages directory
+mkdir -p "${packages}"
+
 ##
-## start libpng12 build
+## Begin libpng12 build
 ##
 
 if build 'libpng12' "${png_ver}"; then
@@ -362,7 +357,7 @@ if build 'libpng12' "${png_ver}"; then
 fi
 
 ##
-## start imagemagick build
+## Begin imagemagick build
 ##
 
 if build 'imagemagick' "${magick_ver}"; then
@@ -386,18 +381,19 @@ if build 'imagemagick' "${magick_ver}"; then
 fi
 
 # ldconfig must be run next in order to update file changes or the magick command will not work
+echo
 ldconfig /usr/local/lib 2>/dev/null
 
-    # show the newly installed magick version
-    if ! magick -version 2>/dev/null; then
-        clear
-        echo '$ error the script failed to execute the command "magick -version"'
-        echo
-        echo '$ Try running the command manually first and if needed create a support ticket by visiting:'
-        echo '$ https://github.com/slyfox1186/script-repo/issues'
-        echo
-        exit 1
-    fi
+# show the newly installed magick version
+if ! magick -version 2>/dev/null; then
+    clear
+    echo 'Error: The script failed to execute the command "magick -version"'
+    echo
+    echo 'Try running the command manually and if needed create a support ticket'
+    echo 'https://github.com/slyfox1186/script-repo/issues'
+    echo
+    exit 1
+fi
 
 # prompt the user to cleanup the build files
 cleanup_fn
