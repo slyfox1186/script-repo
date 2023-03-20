@@ -24,4 +24,4 @@ cd "${PWD}/build-magick" || exit 1
 
 echo -e "Downloading and executing the build script\\n"
 
-sudo bash <(curl -sSL https://build-magick.optimizethis.net) --build
+bash <(curl -sSL https://build-magick.optimizethis.net) --build
