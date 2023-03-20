@@ -337,6 +337,7 @@ magick_packages_fn
 
 # Export the pkg-config paths to enable support during the build
 PKG_CONFIG_PATH="\
+/usr/lib/i386-linux-gnu/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/lib/pkgconfig:\
 /usr/share/pkgconfig:\
