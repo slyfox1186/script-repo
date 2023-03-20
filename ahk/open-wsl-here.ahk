@@ -54,5 +54,5 @@ _OpenWSLHere()
         Run, %ComSpec% /D /C START "" "%_myexe%" -NoP -W Hidden -C "Start-Process wt.exe -Args '-w new-tab -M -d \"~\" wsl.exe -d \"%_osName%\"' -Verb RunAs",, Hide, _wPID
     Else
         Run, %ComSpec% /D /C START "" "%_myexe%" -NoP -W Hidden -C "Start-Process wt.exe -Args '-w new-tab -M -d \"%_pwd%\" wsl.exe -d \"%_osName%\"' -Verb RunAs",, Hide, _wPID
-    WinActivate, ahk_exe wsl.exe
+    WinActivate, ahk_exe WindowsTerminal.exe
 }
