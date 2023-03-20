@@ -275,7 +275,7 @@ download_git()
     )
 }
 
-github_releases_fn()
+github_fn()
 {
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     net_timeout='5'
@@ -287,7 +287,7 @@ github_releases_fn()
     fi
 }
 
-github_releases_trim_fn()
+github_releases_fn()
 {
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     net_timeout='5'
@@ -852,7 +852,7 @@ if build 'libtool' '2.4.7'; then
 fi
 
 if ${nonfree}; then
-    github_releases_fn 'openssl/openssl' 2>/dev/null
+    github_fn 'openssl/openssl' 2>/dev/null
     if build 'openssl' "${github_ver}"; then
         download "https://github.com/openssl/openssl/archive/refs/tags/${github_ver}.tar.gz" "${github_ver}.tar.gz"
         execute ./config --prefix="${workspace}" --openssldir="${workspace}" \
@@ -892,7 +892,7 @@ else
     cnf_ops+=('--enable-gmp' '--enable-gnutls')
 fi
 
-github_releases_fn 'Kitware/CMake' 2>/dev/null
+github_fn 'Kitware/CMake' 2>/dev/null
 if build 'cmake' "${github_ver}"; then
     download "https://github.com/Kitware/CMake/archive/refs/tags/v${github_ver}.tar.gz" "cmake-${github_ver}.tar.gz"
     execute ./configure --prefix="${workspace}" --parallel="${cpus}" -- -DCMAKE_USE_OPENSSL='OFF'
@@ -946,7 +946,7 @@ fi
 cnf_ops+=('--enable-libsvtav1')
 
 if command_exists 'cargo'; then
-    github_releases_fn 'xiph/rav1e'
+    github_fn 'xiph/rav1e'
     if build 'rav1e' "${github_ver}"; then
         execute cargo install --version '0.9.14+cargo-0.66' cargo-c
         download "https://github.com/xiph/rav1e/archive/refs/tags/${github_ver}.tar.gz" "rav1e-${github_ver}"
@@ -1069,7 +1069,7 @@ if build 'av1' '34c4c3f7'; then
 fi
 cnf_ops+=('--enable-libaom')
 
-github_releases_trim_fn 'sekrit-twc/zimg'
+github_releases_fn 'sekrit-twc/zimg'
 if build 'zimg' "${github_ver}"; then
     download "https://github.com/sekrit-twc/zimg/archive/refs/tags/release-${github_ver}.tar.gz" "zimg-${github_ver}.tar.gz"
     execute "${workspace}"/bin/libtoolize -i -f -q
