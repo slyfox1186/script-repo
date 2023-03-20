@@ -94,7 +94,7 @@ build()
 {
     echo
     echo "Building ${1} - version ${2}"
-    echo '========================================'
+    echo '=========================================='
 
     if [ -f "${packages}/${1}.done" ]; then
         if grep -Fx "${2}" "${packages}/${1}.done" >/dev/null; then
@@ -325,7 +325,7 @@ if [ -z "${bflag}" ]; then
 fi
 
 echo "ImageMagick Build Script v${script_ver}"
-echo '========================================='
+echo '=========================================='
 echo
 
 echo "This script will use ${cpus} cpu cores for parallel processing to accelerate the building speed."
@@ -333,7 +333,7 @@ echo
 
 # Required + extra functionality packages for imagemagick
 echo 'Installing required packages'
-echo '========================================='
+echo '=========================================='
 magick_packages_fn
 
 # Export the pkg-config paths to enable support during the build
