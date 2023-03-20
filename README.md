@@ -30,7 +30,7 @@ wget -qO pkgs.sh https://focal-pkgs.optimizethis.net; sudo bash pkgs.sh
 ## Add .bashrc, .bash_aliases, and .bash_functions to the USER's directory
   - **Warning! This will overwrite your files!**
 ```
-wget -qO scripts.sh https://scripts.optimizethis.net; sudo bash scripts.sh
+wget -qO scripts.sh https://scripts.optimizethis.net; bash scripts.sh
 ```
 ------
 ## Install download mirrors to sources.list
