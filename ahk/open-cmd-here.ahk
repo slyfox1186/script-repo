@@ -1,14 +1,21 @@
 /*____________________________________________________________________________________
-    [ OpenCMDHere ]
-    By: SlyFox1186
-    Pastebin: https://pastebin.com/u/slyfox1186
-    GitHub: https://github.com/slyfox1186/
+    OpenCMDHere
+
+    By:
+    - SlyFox1186
+
+    Pastebin:
+    - https://pastebin.com/u/slyfox1186
+
+    GitHub:
+    - https://github.com/slyfox1186/
 
     Purpose:
     - This will open cmd.exe to the active file explorer folder or if no active window is found, %windir%\System32
+    
 */
 
-; Defines script as a v1 script
+; Defined as a v1 script
 #Requires AutoHotkey <2.0
 
 !c::_OpenCMDHere()
@@ -35,7 +42,7 @@ _OpenCMDHere()
         }
 
     ; Converted both run commands to expression format
-    Run, %A_WinDir%\System32\cmd.exe /E:ON /T:0A /K PROMPT $P$G$_$G, % _pwd ? _pwd : "%A_windir%\System32\", Max
+    Run, %ComSpec% /E:ON /T:0A /K PROMPT $P$G$_$G, % _pwd ? _pwd : "%A_windir%\System32\", Max
     _winPID := "ahk_pid " . _wPID
     WinActivate, % _winPID
     WinMove, %_winPID%,,,, %A_ScreenWidth%, %A_ScreenHeight%
