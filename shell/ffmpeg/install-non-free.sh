@@ -6,9 +6,10 @@ clear
 
 # VERIFY THE SCRIPT DOES NOT HAVE ROOT ACCESS BEFORE CONTINUING
 # THIS CAN CAUSE ISSUES USING THE 'IF WHICH' COMMANDS IF RUN AS ROOT
-if [ "${EUID}" -lt '1' ]; then
+if [ "${EUID}" -ne '0' ]; then
     echo 'You must run this script WITHOUT root/sudo'
     echo
+    exec bash "${0}" "${@}"
     exit 1
 fi
 
@@ -16,7 +17,7 @@ make_dir()
 {
     if [ ! -d "${1}" ]; then
         if ! mkdir "${1}"; then            
-            printf '\n Failed to create dir %s' "${1}";
+            printf '\nFailed to create directory: %s' "${1}";
             exit 1
         fi
     fi    
@@ -40,17 +41,19 @@ if ! command_exists 'curl'; then
 fi
 
 echo 'ffmpeg-build-script-downloader v0.1'
-echo '===================================='
+echo '============================================='
 echo
 
-echo 'First we create the ffmpeg build directory' "${build_dir}"
-echo '========================================================'
+echo 'First we create the ffmpeg build directory'
+echo '=============================================='
 echo
+
 make_dir "${build_dir}"
+
 cd "${build_dir}" || exit 1
 
 echo 'Now we download and execute the build script'
-echo '============================================'
+echo '=============================================='
 echo
 
-bash <(curl -sSL 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ffmpeg/build-ffmpeg') --build --enable-gpl-and-non-free --latest
+bash <(curl -sSL 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ffmpeg/build-ffmpeg') -b --enable-gpl-and-non-free --latest
