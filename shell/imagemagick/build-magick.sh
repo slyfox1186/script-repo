@@ -18,15 +18,6 @@
 ##
 #############################################################################
 
-mycwd="${2}"
-
-echo "${mycwd}"
-echo
-echo "${cwd}"
-echo
-echo "${2}"
-echo
-
 # verify the script does not have root access before continuing
 if [ "${EUID}" -ne '0' ]; then
     echo 'You must run this script as root/sudo'
