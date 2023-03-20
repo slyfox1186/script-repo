@@ -27,4 +27,4 @@ echo -e "Executing the build script\\n"
 # cd into the build directory
 cd "${PWD}/build-magick" || exit 1
 
-bash <(curl -sSL https://build-magick.optimizethis.net) --build "${cwd}"
+bash <(curl -sSL https://build-magick.optimizethis.net) --build
