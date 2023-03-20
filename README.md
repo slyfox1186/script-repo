@@ -54,7 +54,7 @@ wget -qO 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
   - **Tested on Windows WSL 2 Debian/Ubuntu**
   - **[Optimize JPG Images](https://github.com/slyfox1186/imagemagick-optimize-jpg)**
 ```
-wget -qO magick.sh https://imagick-helper.optimizethis.net; sudo bash magick.sh
+wget -qO magick.sh https://imagick.optimizethis.net; sudo bash magick.sh
 ```
 ------
 ## Install [FFmpeg](https://ffmpeg.org/download.html)
