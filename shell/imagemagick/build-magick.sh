@@ -363,7 +363,7 @@ fi
 ## Begin imagemagick build
 ##
 
-if build 'imagemagick' "${magick_ver}"; then
+if build 'ImageMagick' "${magick_ver}"; then
     download "https://github.com/ImageMagick/ImageMagick/archive/refs/tags/${magick_ver}.tar.gz" "ImageMagick-${magick_ver}.tar.gz"
     execute ./configure \
         --enable-ccmalloc \
@@ -380,7 +380,7 @@ if build 'imagemagick' "${magick_ver}"; then
         --with-quantum-depth=16
     execute make "-j${cpus}"
     execute make install
-    build_done 'imagemagick' "${magick_ver}"
+    build_done 'ImageMagick' "${magick_ver}"
 fi
 
 # ldconfig must be run next in order to update file changes or the magick command will not work
