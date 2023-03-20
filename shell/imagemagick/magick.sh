@@ -9,10 +9,12 @@ if [ "${EUID}" -ne '0' ]; then
     exec sudo bash "${0}" "${@}"
 fi
 
+CWD="${PWD}"
+
 echo 'Imagemagick Build Script Downloader v1.0'
 echo '=========================================='
-echo
-echo -e "Creating the build directory\\n"
+
+echo -e "Creating the build directory"
 
 if ! mkdir "${PWD}/build-magick"; then
     printf '\nFailure to create the build directory: %s' "${PWD}/build-magick"
@@ -20,9 +22,9 @@ if ! mkdir "${PWD}/build-magick"; then
     exit 1
 fi
 
+echo -e "Executing the build script\\n"
+
 # cd into the build directory
 cd "${PWD}/build-magick" || exit 1
 
-echo -e "Executing the build script\\n"
-
-bash <(curl -sSL https://build-magick.optimizethis.net) --build
+bash <(curl -sSL https://build-magick.optimizethis.net) --build "${cwd}"
