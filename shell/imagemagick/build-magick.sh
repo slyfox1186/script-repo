@@ -351,8 +351,7 @@ mkdir -p "${packages}"
 ##
 
 if build 'libpng12' "${png_ver}"; then
-    download "https://sourceforge.net/projects/libpng/files/libpng12/${png_ver}/libpng-${png_ver}.tar.xz/download" "libpng-${png_ver}.tar.xz"
-    # parellel building not available for this library
+    download "https://github.com/glennrp/libpng/archive/refs/tags/v${png_ver}.tar.gz" "libpng-${png_ver}.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix='/usr/local'
     execute make install
