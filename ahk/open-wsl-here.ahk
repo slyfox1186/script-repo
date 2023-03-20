@@ -25,8 +25,6 @@ _OpenWSLHere()
     ; Static vars so vars are not recreated each time
     Static _convert := " !#$%&'()-.*:?@[]^_``{|}~/"
     Static _osName := "Ubuntu-22.04"
-    Static _wt := "C:\Users\jholl\AppData\Local\Microsoft\WindowsApps\wt.exe"
-    Static _wsl := "C:\Windows\System32\wsl.exe"
 
     If FileExist(A_ProgramFiles . "\PowerShell\7\pwsh.exe")
         _myexe := A_ProgramFiles . "\PowerShell\7\pwsh.exe"
@@ -53,8 +51,8 @@ _OpenWSLHere()
 
     ; Converted both run commands to expression format
     If (_pwd = "")
-        Run, %ComSpec% /D /C START "" "%_myexe%" -NoP -W Hidden -C "Start-Process %_wt% -Args '-w new-tab -M -d \"~\" %_wsl% -d \"%_osName%\"' -Verb RunAs",, Hide, _wPID
+        Run, %ComSpec% /D /C START "" "%_myexe%" -NoP -W Hidden -C "Start-Process wt.exe -Args '-w new-tab -M -d \"~\" wsl.exe -d \"%_osName%\"' -Verb RunAs",, Hide, _wPID
     Else
-        Run, %ComSpec% /D /C START "" "%_myexe%" -NoP -W Hidden -C "Start-Process %_wt% -Args '-w new-tab -M -d \"%_pwd%\" %_wsl% -d \"%_osName%\"' -Verb RunAs",, Hide, _wPID
+        Run, %ComSpec% /D /C START "" "%_myexe%" -NoP -W Hidden -C "Start-Process wt.exe -Args '-w new-tab -M -d \"%_pwd%\" wsl.exe -d \"%_osName%\"' -Verb RunAs",, Hide, _wPID
     WinActivate, ahk_exe wsl.exe
 }
