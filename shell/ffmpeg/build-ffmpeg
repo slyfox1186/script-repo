@@ -19,9 +19,9 @@
 ##        the user will be prompted by the script to install them so that
 ##        hardware acceleration is enabled when compiling FFmpeg.
 ##
-##  Updated: 03.14.23
+##  Updated: 03.21.23
 ##
-##  Version: 2.30
+##  Version: 3.00
 ##
 ##########################################################################
 
@@ -37,7 +37,7 @@ fi
 ## DEFINE VARIABLES
 ##
 
-script_ver='2.30'
+script_ver='3.00'
 progname="${0:2}"
 # The FFmpeg version will be the latest available (sourced from FFmpeg's official git repository)
 ffmpeg_ver='latest'
