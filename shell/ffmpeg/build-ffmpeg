@@ -78,7 +78,6 @@ exit_fn()
 
 cleanup_fn()
 {
-    # PROMPT USER TO CLEAN UP BUILD FILES
     echo
     echo 'Do you want to clean up the build files?'
     echo '========================================='
@@ -275,46 +274,38 @@ download_git()
     )
 }
 
-github_releases_1_fn()
+git_1_fn()
 {
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     net_timeout='5'
     github_repo="${1}"
-    curl_cmd=$(curl -m "${net_timeout}" -Ls "https://api.github.com/repos/${github_repo}/releases?per_page=1")
-    if [ "${?}" -eq '0' ]; then
-        github_ver=$(echo "${curl_cmd}" | jq -r '.[0].tag_name')
-        github_ver=${github_ver#v}
-    fi
-}
-
-github_releases_2_fn()
-{
-    # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
-    net_timeout='5'
-    github_repo="${1}"
-    curl_cmd=$(curl -m "${net_timeout}" -Ls "https://api.github.com/repos/${github_repo}/releases?per_page=1")
-    if [ "${?}" -eq '0' ]; then
-        github_ver=$(echo "${curl_cmd}" | jq -r '.[0].name')
-        github_ver=${github_ver#release-}
-        github_ver=${github_ver#v}
-    fi
-}
-
-github_tags_fn()
-{
-    # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
-    net_timeout='5'
-    github_repo="${1}"
-    curl_cmd=$(curl -m "${net_timeout}" -Ls "https://api.github.com/repos/${github_repo}/tags?per_page=1")
+    github_url="${2}"
+    curl_cmd=$(curl --request GET \
+        --url "https://api.github.com/slyfox1186" \
+        --header "Authorization: Bearer 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" \
+        --header "X-GitHub-Api-Version: 2022-11-28" \
+        -m "${net_timeout}" \
+        -Ls "https://api.github.com/repos/${github_repo}/${github_url}?per_page=1")
     if [ "${?}" -eq '0' ]; then
         github_ver=$(echo "${curl_cmd}" | jq -r '.[].name')
         github_ver=${github_ver#v}
+        github_tar=$(echo "${curl_cmd}" | jq -r '.[].tarball_url')
     fi
 }
 
-gitlab_svt_fn()
+git_2_fn()
 {
-    # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
+    net_timeout='5'
+    videolan_repo="${1}"
+    curl_cmd=$(curl -m "${net_timeout}" -Ls "https://code.videolan.org/api/v4/projects/${videolan_repo}/repository/branches?")
+    if [ "${?}" -eq "0" ]; then
+        videolan_ver=$(echo "${curl_cmd}" | jq -r '.[0].commit.id')
+        videolan_sver=$(echo "${curl_cmd}" | jq -r '.[0].commit.short_id')
+    fi
+}
+
+git_svt_fn()
+{
     net_timeout='5'
     gitlab_repo="${1}"
     curl_cmd=$(curl -m "${net_timeout}" -Ls "https://gitlab.com/api/v4/projects/${gitlab_repo}/repository/branches?search=&")
@@ -325,28 +316,56 @@ gitlab_svt_fn()
     fi
 }
 
-videolan_api_tags_fn()
+git_tiff_fn()
 {
-    # SCRAPE VIDEOLAN WEBSITE FOR LATEST REPO VERSION
     net_timeout='5'
-    videolan_repo="${1}"
-    curl_cmd=$(curl -m "${net_timeout}" -Ls "https://code.videolan.org/api/v4/projects/${videolan_repo}/repository/tags?")
-    if [ "${?}" -eq "0" ]; then
-        videolan_ver=$(echo "${curl_cmd}" | jq -r '.[0].commit.id')
-        videolan_sver=$(echo "${curl_cmd}" | jq -r '.[0].commit.short_id')
+    gitlab_repo="${1}"
+    curl_cmd=$(curl -m "${net_timeout}" -Ls "https://gitlab.com/api/v4/projects/${gitlab_repo}/repository/branches?search=&")
+    if [ "${?}" -eq '0' ]; then
+        gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[3].commit.id')
+        gitlab_ver=${gitlab_ver#v}
+        gitlab_sver=$(echo "${curl_cmd}" | jq -r '.[3].commit.short_id')
     fi
 }
 
-videolan_x264_fn()
+git_ver_fn()
 {
-    # SCRAPE VIDEOLAN WEBSITE FOR LATEST REPO VERSION
-    net_timeout='5'
-    videolan_repo="${1}"
-    curl_cmd=$(curl -m "${net_timeout}" -Ls "https://code.videolan.org/api/v4/projects/${videolan_repo}/repository/branches?")
-    if [ "${?}" -eq "0" ]; then
-        videolan_ver=$(echo "${curl_cmd}" | jq -r '.[0].commit.id')
-        videolan_sver=$(echo "${curl_cmd}" | jq -r '.[0].commit.short_id')
+    local v_tag v_url
+
+    v_url="${1}"
+    v_tag="${2}"
+
+    if [ -n "${3}" ]; then
+        v_flag="${3}"
     fi
+
+    if [  "${v_flag}" = 'T' ]; then
+        if [ "${v_tag}" = '1' ]; then url_tag='git_1_fn' gv_url='tags'
+        elif [ "${v_tag}" = '2' ]; then url_tag='git_2_fn'; gv_url='tags'
+        elif [ "${v_tag}" = '3' ]; then url_tag='git_3_fn'; gv_url='tags'
+        elif [ "${v_tag}" = '4' ]; then url_tag='git_4_fn';  gv_url='tags'
+        elif [ "${v_tag}" = '5' ]; then url_tag='git_svt_fn'; gv_url='tags'
+        elif [ "${v_tag}" = '6' ]; then url_tag='git_tiff_fn'; gv_url='tags'
+        fi
+    elif [  "${v_flag}" = 'R' ]; then
+        if [ "${v_tag}" = '1' ]; then url_tag='git_1_fn'; gv_url='releases'
+        elif [ "${v_tag}" = '2' ]; then url_tag='git_2_fn'; gv_url='releases'
+        elif [ "${v_tag}" = '3' ]; then url_tag='git_3_fn'; gv_url='releases'
+        elif [ "${v_tag}" = '4' ]; then url_tag='git_4_fn'; gv_url='releases'
+        elif [ "${v_tag}" = '5' ]; then url_tag='git_svt_fn'; gv_url='releases'
+        elif [ "${v_tag}" = '6' ]; then url_tag='git_tiff_fn'; gv_url='releases'
+        fi
+    fi
+
+    if [ "${v_tag}" = '1' ]; then url_tag='git_1_fn'
+    elif [ "${v_tag}" = '2' ]; then url_tag='git_2_fn'
+    elif [ "${v_tag}" = '3' ]; then url_tag='git_3_fn'
+    elif [ "${v_tag}" = '4' ]; then url_tag='git_4_fn'
+    elif [ "${v_tag}" = '5' ]; then url_tag='git_svt_fn'
+    elif [ "${v_tag}" = '6' ]; then url_tag='git_tiff_fn'
+    fi
+    
+    "${url_tag}" "${v_url}" "${gv_url}" 2>/dev/null
 }
 
 error_fn()
@@ -377,7 +396,6 @@ execute()
     fi
 }
 
-# BUILD COMMAND FUNCTION
 build()
 {
     echo
@@ -419,10 +437,8 @@ library_exists()
     return 0
 }
 
-# CONFIRM A BUILD HAS COMPLETED FUNCTION
 build_done() { echo "${2}" > "${packages}/${1}.done"; }
 
-# FUNCTION TO DETERMINE IF A PACKAGE IS INSTALLED OR NOT
 installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
 cuda_fail_fn()
@@ -440,10 +456,9 @@ cuda_fail_fn()
 
 gpu_arch_fn()
 {
-    echo
     local gpu_ans
 
-    echo '============================================================================================='
+    echo
     echo ' Tune the build to match your specific Nvidia GPU which will maximize the performance output'
     echo '============================================================================================='
     echo
@@ -581,6 +596,9 @@ ${workspace}\lib\pkgconfig:\
 "
 export PKG_CONFIG_PATH
 
+LD_LIBRARY_PATH="${workspace}\lib\pkgconfig"
+export LD_LIBRARY_PATH
+
 if ! command_exists 'make'; then
     echo 'The '\''make'\'' package is not installed. It is required for this script to run.'
     echo
@@ -612,9 +630,6 @@ fi
 if ! command_exists 'python3'; then
     echo 'The '\''python3'\'' command was not found. The '\''Lv2'\'' filter and '\''dav1d'\'' decoder will not be available.'
 fi
-
-##
-##
 
 cuda_fn()
 {
@@ -685,18 +700,18 @@ cuda_fn()
 }
 
 ##
-## ADDITIONAL REQUIRED GEFORCE CUDA DEVELOPMENT PACKAGES
+## required build packages
 ##
   
-cuda_add_fn()
+build_pkgs_fn()
 {
     echo
-    echo 'Installing: Additional Required Geforce CUDA Developement Packages'
-    echo '===================================================================='
+    echo 'Installing required build packages'
+    echo '==================================='
 
-    addons=(autoconf automake build-essential libass-dev libc6 libc6-dev libfdk-aac-dev libfreetype6-dev libmp3lame-dev libnuma1 libnuma-dev libtheora-dev libtool libvorbis-dev pkg-config texinfo unzip wget yasm zlib1g-dev)
+    pkgs=(help2man jq)
 
-    for pkg in ${addons[@]}
+    for pkg in ${pkgs[@]}
     do
         if ! installed "${pkg}"; then
             missing_pkgs+=" ${pkg}"
@@ -708,12 +723,40 @@ cuda_add_fn()
         do
             sudo apt -y install ${pkg}
         done
-        echo 'The Required Geforce CUDA Developement Libraries were installed.'
+        echo 'The required build packages were installed.'
     else
-        echo 'The Required Geforce CUDA Developement Libraries are already installed.'
+        echo 'The required build packages are already installed.'
     fi
+}
 
-    sleep 3
+##
+## ADDITIONAL REQUIRED GEFORCE CUDA DEVELOPMENT PACKAGES
+##
+  
+cuda_add_fn()
+{
+    echo
+    echo 'Installing: Additional Required Geforce CUDA Developement Packages'
+    echo '===================================================================='
+
+    pkgs=(autoconf automake build-essential libass-dev libc6 libc6-dev libfdk-aac-dev libfreetype6-dev libmp3lame-dev libnuma1 libnuma-dev libtheora-dev libtool libvorbis-dev pkg-config texinfo unzip wget yasm zlib1g-dev)
+
+    for pkg in ${pkgs[@]}
+    do
+        if ! installed "${pkg}"; then
+            missing_pkgs+=" ${pkg}"
+        fi
+    done
+
+    if [ -n "${missing_pkgs}" ]; then
+        for pkg in "${missing_pkgs}"
+        do
+            sudo apt -y install ${pkg}
+        done
+        echo 'The required Geforce CUDA Developement Libraries were installed.'
+    else
+        echo 'The required Geforce CUDA Developement Libraries are already installed.'
+    fi
 }
 
 ##
@@ -778,6 +821,8 @@ fi
 ## BUILD TOOLS
 ##
 
+build_pkgs_fn
+
 if build 'giflib' '5.2.1'; then
     download 'https://netcologne.dl.sourceforge.net/project/giflib/giflib-5.2.1.tar.gz'
     cd "${packages}"/giflib-5.2.1 || exit 1
@@ -787,36 +832,40 @@ if build 'giflib' '5.2.1'; then
     build_done 'giflib' '5.2.1'
 fi
 
-if build 'pkg-config' '0.29.2'; then
-    download 'https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz'
+git_ver_fn 'freedesktop/pkg-config' '1' 'T'
+if build 'pkg-config' "${github_ver}"; then
+    download "https://pkgconfig.freedesktop.org/releases/${github_ver}.tar.gz" "${github_ver}.tar.gz"
     execute ./configure --silent --prefix="${workspace}" --with-pc-path="${workspace}"/lib/pkgconfig --with-internal-glib
     execute make "-j${cpus}"
     execute make install
-    build_done 'pkg-config' '0.29.2'
+    build_done 'pkg-config' "${github_ver}"
 fi
 
-if build 'yasm' '1.3.0'; then
-    download 'https://github.com/yasm/yasm/releases/download/v1.3.0/yasm-1.3.0.tar.gz'
+git_ver_fn 'yasm/yasm' '1' 'T'
+if build 'yasm' "${github_ver}"; then
+    download "https://github.com/yasm/yasm/releases/download/v${github_ver}/yasm-${github_ver}.tar.gz" "yasm-${github_ver}.tar.gz"
     execute ./configure --prefix="${workspace}"
     execute make "-j${cpus}"
     execute make install
-    build_done 'yasm' '1.3.0'
+    build_done 'yasm' "${github_ver}"
 fi
 
 if build 'nasm' '2.16.02rc1'; then
-    download 'https://www.nasm.us/pub/nasm/releasebuilds/2.16.02rc1/nasm-2.16.02rc1.tar.xz'
+    https://github.com/netwide-assembler/nasm/archive/refs/tags/nasm-2.16.02rc1.tar.gz
+    download "https://www.nasm.us/pub/nasm/releasebuilds/2.16.02rc1/nasm-2.16.02rc1.tar.xz" "nasm-${github_ver}.tar.gz"
     execute ./configure --prefix="${workspace}" --disable-shared --enable-static
     execute make "-j${cpus}"
     execute make install
     build_done 'nasm' '2.16.02rc1'
 fi
 
-if build 'zlib' '1.2.13'; then
-    download 'https://zlib.net/fossils/zlib-1.2.13.tar.gz'
+git_ver_fn 'madler/zlib' '1' 'T'
+if build 'zlib' "${github_ver}"; then
+    download "${github_tar}" "zlib-${github_ver}"
     execute ./configure --static --prefix="${workspace}"
     execute make "-j${cpus}"
     execute make install
-    build_done 'zlib' '1.2.13'
+    build_done 'zlib' "${github_ver}"
 fi
 
 if build 'm4' '1.4.19'; then
@@ -852,9 +901,9 @@ if build 'libtool' '2.4.7'; then
 fi
 
 if ${nonfree}; then
-    github_releases_1_fn 'openssl/openssl' 2>/dev/null
+    git_ver_fn 'openssl/openssl' '1' 'R'
     if build 'openssl' "${github_ver}"; then
-        download "https://github.com/openssl/openssl/archive/refs/tags/${github_ver}.tar.gz" "${github_ver}.tar.gz"
+        download "${github_tar}" "${github_ver}.tar.gz"
         execute ./config --prefix="${workspace}" --openssldir="${workspace}" \
             --with-zlib-include="${workspace}"/include/ --with-zlib-lib="${workspace}"/lib no-shared zlib
         execute make "-j${cpus}"
@@ -880,21 +929,21 @@ else
         build_done 'nettle' '3.8.1'
     fi
 
-    if build 'gnutls' '3.7.9'; then
-        download 'https://www.gnupg.org/ftp/gcrypt/gnutls/v3.7/gnutls-3.7.9.tar.xz'
+    if build 'gnutls' '3.8.0'; then
+        download 'https://www.gnupg.org/ftp/gcrypt/gnutls/v3.8/gnutls-3.8.0.tar.xz'
         execute ./configure --prefix="${workspace}" --disable-shared --enable-static --disable-doc --disable-tools \
             --disable-cxx --disable-tests --disable-gtk-doc-html --disable-libdane --disable-nls --enable-local-libopts \
             --disable-guile --with-included-libtasn1 --with-included-unistring --without-p11-kit CPPFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}"
         execute make "-j${cpus}"
         execute make install
-        build_done 'gnutls' '3.7.9'
+        build_done 'gnutls' '3.8.0'
     fi
     cnf_ops+=('--enable-gmp' '--enable-gnutls')
 fi
 
-github_releases_1_fn 'Kitware/CMake' 2>/dev/null
+git_ver_fn 'Kitware/CMake' '1' 'T'
 if build 'cmake' "${github_ver}"; then
-    download "https://github.com/Kitware/CMake/archive/refs/tags/v${github_ver}.tar.gz" "cmake-${github_ver}.tar.gz"
+    download "${github_tar}" "cmake-${github_ver}.tar.gz"
     execute ./configure --prefix="${workspace}" --parallel="${cpus}" -- -DCMAKE_USE_OPENSSL='OFF'
     execute make "-j${cpus}"
     execute make install
@@ -919,7 +968,7 @@ if command_exists 'python3'; then
         done
     fi
     if command_exists 'meson'; then
-        videolan_x264_fn '198'
+        git_ver_fn '198' '2'
         if build 'dav1d' "${videolan_sver}"; then
             download "https://code.videolan.org/videolan/dav1d/-/archive/${videolan_ver}/${videolan_ver}.tar.gz" "dav1d-${videolan_sver}.tar.gz"
             make_dir build
@@ -932,11 +981,11 @@ if command_exists 'python3'; then
     fi
 fi
 
-gitlab_svt_fn '24327400'
+git_ver_fn '24327400' '5'
 if build 'svtav1' "${gitlab_sver}"; then
     download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/${gitlab_ver}/SVT-AV1-${gitlab_ver}.tar.gz" "svtav1-${gitlab_sver}.tar.gz"
-    cd "${packages}"/svtav1-${gitlab_sver}//Build/linux || exit 1
-    execute cmake -DCMAKE_INSTALL_PREFIX="${workspace}" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' ../.. -G 'Unix Makefiles' -DCMAKE_BUILD_TYPE='Release'
+    cd "${packages}/svtav1-${gitlab_sver}//Build/linux" || exit 1
+    execute cmake -DCMAKE_INSTALL_PREFIX="${workspace}" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' ../.. -G 'Unix Makefiles' -DCMAKE_BUILD_TYPE='Release' -DENABLE_EXAMPLES='OFF'
     execute make "-j${cpus}"
     execute make install
     execute cp 'SvtAv1Enc.pc' "${workspace}"/lib/pkgconfig/
@@ -946,10 +995,10 @@ fi
 cnf_ops+=('--enable-libsvtav1')
 
 if command_exists 'cargo'; then
-    github_releases_1_fn 'xiph/rav1e'
+    git_ver_fn 'xiph/rav1e' '1' 'T'
     if build 'rav1e' "${github_ver}"; then
         execute cargo install --version '0.9.14+cargo-0.66' cargo-c
-        download "https://github.com/xiph/rav1e/archive/refs/tags/${github_ver}.tar.gz" "rav1e-${github_ver}"
+        download "${github_tar}" "rav1e-${github_ver}.tar.gz"
         execute cargo cinstall --prefix="${workspace}" --library-type='staticlib' --crt-static --release
         build_done 'rav1e' "${github_ver}"
     fi
@@ -957,7 +1006,7 @@ if command_exists 'cargo'; then
 fi
 
 if ${nonfree}; then
-    videolan_x264_fn '536'
+    git_ver_fn '536' '2'
     if build 'x264' "${videolan_sver}"; then
         download "https://code.videolan.org/videolan/x264/-/archive/${videolan_ver}/x264-${videolan_ver}.tar.gz" "x264-${videolan_sver}.tar.gz"
         cd "${packages}/x264-${videolan_sver}" || exit 1
@@ -1069,9 +1118,9 @@ if build 'av1' '34c4c3f7'; then
 fi
 cnf_ops+=('--enable-libaom')
 
-github_releases_2_fn 'sekrit-twc/zimg'
+git_ver_fn 'sekrit-twc/zimg' '1' 'T'
 if build 'zimg' "${github_ver}"; then
-    download "https://github.com/sekrit-twc/zimg/archive/refs/tags/release-${github_ver}.tar.gz" "zimg-${github_ver}.tar.gz"
+    download "${github_tar}" "zimg-${github_ver}.tar.gz"
     execute "${workspace}"/bin/libtoolize -i -f -q
     execute ./autogen.sh --prefix="${workspace}"
     execute ./configure --prefix="${workspace}" --enable-static --disable-shared
@@ -1087,9 +1136,9 @@ cnf_ops+=('--enable-libzimg')
 
 if command_exists 'python3'; then
     if command_exists 'meson'; then
-        github_tags_fn 'lv2/lv2'
+        git_ver_fn 'lv2/lv2' '1' 'T'
         if build 'lv2' "${github_ver}"; then
-            download "https://github.com/lv2/lv2/archive/refs/tags/v${github_ver}.tar.gz" "lv2-${github_ver}.tar.gz"
+            download "${github_tar}" "lv2-${github_ver}.tar.gz"
             execute meson setup build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
             execute ninja -C build
             execute ninja -C build install
@@ -1173,27 +1222,32 @@ if build 'opus' '1.3.1'; then
 fi
 cnf_ops+=('--enable-libopus')
 
-if build 'libogg' '1.3.5'; then
-    download 'https://ftp.osuosl.org/pub/xiph/releases/ogg/libogg-1.3.5.tar.xz'
+git_ver_fn 'xiph/ogg' '1' 'T'
+if build 'libogg' "${github_ver}"; then
+    download "${github_tar}" "libogg-${github_ver}.tar.gz"
+    execute ./autogen.sh
     execute ./configure --prefix="${workspace}" --disable-shared --enable-static
     execute make "-j${cpus}"
     execute make install
-    build_done 'libogg' '1.3.5'
+    build_done 'libogg' "${github_ver}"
 fi
 
-if build 'libvorbis' '1.3.7'; then
-    download 'https://ftp.osuosl.org/pub/xiph/releases/vorbis/libvorbis-1.3.7.tar.xz'
+git_ver_fn 'xiph/vorbis' '1' 'T'
+if build 'libvorbis' "${github_ver}"; then
+    download "${github_tar}" "libvorbis-${github_ver}.tar.gz"
+    execute ./autogen.sh
     execute ./configure --prefix="${workspace}" --with-ogg-libraries="${workspace}"/lib \
         --with-ogg-includes="${workspace}"/include/ --enable-static --disable-shared --disable-oggtest
     execute make "-j${cpus}"
     execute make install
-    build_done 'libvorbis' '1.3.7'
+    build_done 'libvorbis' "${github_ver}"
 fi
 cnf_ops+=('--enable-libvorbis')
 
 if build 'libtheora' '1.1.1'; then
-    download 'https://ftp.osuosl.org/pub/xiph/releases/theora/libtheora-1.1.1.tar.gz'
-    sed "s/-fforce-addr//g" 'configure' >'configure.patched'
+    download 'https://github.com/xiph/theora/archive/refs/tags/v1.1.1.tar.gz' 'libtheora-1.1.1.tar.gz'
+    execute ./autogen.sh
+    sed 's/-fforce-addr//g' 'configure' >'configure.patched'
     chmod +x 'configure.patched'
     mv 'configure.patched' 'configure'
     rm 'config.guess'
@@ -1209,13 +1263,14 @@ fi
 cnf_ops+=('--enable-libtheora')
 
 if ${nonfree}; then
-    if build 'fdk_aac' '2.0.2'; then
-        download 'https://sourceforge.net/projects/opencore-amr/files/fdk-aac/fdk-aac-2.0.2.tar.gz/download?use_mirror=gigenet' 'fdk-aac-2.0.2.tar.gz'
+    git_ver_fn 'mstorsjo/fdk-aac' '1' 'T'
+    if build 'fdk_aac' "${github_ver}"; then
+        download "https://github.com/mstorsjo/fdk-aac/archive/refs/tags/v${github_ver}.tar.gz" "fdk_aac-${github_ver}.tar.gz"
         execute ./autogen.sh
-        execute ./configure --prefix="${workspace}" --disable-shared --enable-static --enable-pic
+        execute ./configure --prefix="${workspace}" --disable-shared --enable-static --enable-pic --bindir=${workspace}/bin CXXFLAGS=' -fno-exceptions -fno-rtti'
         execute make "-j${cpus}"
         execute make install
-        build_done 'fdk_aac' '2.0.2'
+        build_done 'fdk_aac' "${github_ver}"
     fi
     cnf_ops+=('--enable-libfdk-aac')
 fi
@@ -1224,6 +1279,7 @@ fi
 ## IMAGE LIBRARIES
 ##
 
+git_ver_fn '4720790' '4'
 if build 'libtiff' '4.5.0'; then
     download 'https://download.osgeo.org/libtiff/tiff-4.5.0.tar.xz'
     execute ./configure --prefix="${workspace}" --disable-shared --enable-static --disable-dependency-tracking \
@@ -1273,8 +1329,9 @@ if build 'libsdl' '2.26.4'; then
 fi
 
 if ${nonfree}; then
-    if build 'srt' '1.5.2-rc.1'; then
-        download 'https://github.com/Haivision/srt/archive/refs/tags/v1.5.2-rc.1.tar.gz' 'srt-1.5.2-rc.1.tar.gz'
+    git_ver_fn 'Haivision/srt' '1' 'T'
+    if build 'srt' "${github_ver}"; then
+        download "${github_tar}" "srt-${github_ver}.tar.gz"
         export OPENSSL_ROOT_DIR="${workspace}"
         export OPENSSL_LIB_DIR="${workspace}"/lib
         export OPENSSL_INCLUDE_DIR="${workspace}"/include/
@@ -1285,7 +1342,7 @@ if ${nonfree}; then
         if [ -n "${LDEXEFLAGS}" ]; then
             sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "${workspace}"/lib/pkgconfig/srt.pc
         fi
-        build_done 'srt' '1.5.2-rc.1'
+        build_done 'srt' "${github_ver}"
     fi
         cnf_ops+=('--enable-libsrt')
 fi
@@ -1305,27 +1362,47 @@ if [ -z "${LDEXEFLAGS}" ]; then
     fi
 fi
 
-if build 'amf' '1.4.29'; then
-    download 'https://github.com/GPUOpen-LibrariesAndSDKs/AMF/archive/refs/tags/v1.4.29.tar.gz' 'AMF-1.4.29.tar.gz' 'AMF-1.4.29'
+git_ver_fn 'GPUOpen-LibrariesAndSDKs/AMF' '1' 'T'
+if build 'amf' "${github_ver}"; then
+    download "${github_tar}" "AMF-${github_ver}.tar.gz"
     execute rm -rf "${workspace}"/include/AMF
     execute mkdir -p "${workspace}"/include/AMF
-    execute cp -fr "${packages}"/AMF-1.4.29/AMF-1.4.29/amf/public/include/* "${workspace}"/include/AMF/
-    build_done 'amf' '1.4.29'
+    execute cp -fr "${packages}"/AMF-${github_ver}/amf/public/include/* "${workspace}"/include/AMF/
+    build_done 'amf' "${github_ver}"
 fi
 cnf_ops+=('--enable-amf')
 
+git_ver_fn 'fraunhoferhhi/vvenc' '1' 'T'
+if build 'vvenc' "${github_ver}"; then
+    download "${github_tar}" "vvenc-${github_ver}.tar.gz"
+    execute cmake -S . -B build/release-static -DCMAKE_INSTALL_PREFIX="${workspace}" \
+        -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release'
+    execute cmake --build build/release-static -j
+    build_done 'vvenc' "${github_ver}"
+fi
+cnf_ops+=('--enable-nvenc')
+
+git_ver_fn 'fraunhoferhhi/vvdec' '1' 'T'
+if build 'vvdec' "${github_ver}"; then
+    download "${github_tar}" "vvdec-${github_ver}.tar.gz"
+    execute cmake -S . -B build/release-static -DCMAKE_INSTALL_PREFIX="${workspace}" \
+        -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release'
+    execute cmake --build build/release-static -j
+    build_done 'vvdec' "${github_ver}"
+fi
+cnf_ops+=('--enable-nvdec')
 
 if which 'nvcc' &>/dev/null ; then
-    if build 'nv-codec' '12.0.16.0'; then
-        # PRIOR VERSION USED '8.1.24.14'
-        download 'https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.0.16.0/nv-codec-headers-12.0.16.0.tar.gz'
+    git_ver_fn 'FFmpeg/nv-codec-headers' '1' 'T'
+    if build 'nv-codec' "${github_ver}"; then
+        download "${github_tar}" "nv-codec-${github_ver}.tar.gz"
         execute make PREFIX="${workspace}"
         execute make install PREFIX="${workspace}"
-        build_done 'nv-codec' '12.0.16.0'
+        build_done 'nv-codec' "${github_ver}"
     fi
     CFLAGS+=' -I/usr/local/cuda-12.1/include'
     LDFLAGS+=' -L/usr/local/cuda-12.1/lib64'
-    cnf_ops+=('--enable-cuda-nvcc' '--enable-cuvid' '--enable-nvenc' '--enable-cuda-llvm')
+    cnf_ops+=('--enable-cuda-nvcc' '--enable-cuvid' '--enable-cuda-llvm')
 
     if [ -z "${LDEXEFLAGS}" ]; then
         cnf_ops+=('--enable-libnpp')
@@ -1347,9 +1424,8 @@ if [ -d "${packages}/ffmpeg-${ffmpeg_ver}" ]; then
 fi
 
 # CLONE FFMPEG FROM THE LATEST GIT RELEASE
-build 'ffmpeg' "${ffmpeg_ver}"
-git clone -q 'https://github.com/FFmpeg/FFmpeg.git' "${packages}/ffmpeg-${ffmpeg_ver}"
-cd "${packages}/ffmpeg-${ffmpeg_ver}" || exit 1
+build 'ffmpeg' 'n6.1-dev'
+download 'https://github.com/FFmpeg/FFmpeg/archive/refs/tags/n6.1-dev.tar.gz' 'ffmpeg-n6.1-dev.tar.gz'
 ./configure \
     "${cnf_ops[@]}" \
     --disable-debug \
