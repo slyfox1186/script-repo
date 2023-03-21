@@ -274,13 +274,13 @@ download_git()
     )
 }
 
-git_1_fn()
+github_1_fn()
 {
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     net_timeout='5'
     github_repo="${1}"
     github_url="${2}"
-    curl_cmd=$(curl -m "${net_timeout}" -Ls "https://api.github.com/repos/${github_repo}/${github_url}?per_page=1")
+    curl_cmd=$(curl -m "${net_timeout}"  -Ls "https://api.github.com/repos/${github_repo}/${github_url}?per_page=1")
     if [ "${?}" -eq '0' ]; then
         github_ver=$(echo "${curl_cmd}" | jq -r '.[].name')
         github_ver=${github_ver#v}
@@ -288,7 +288,7 @@ git_1_fn()
     fi
 }
 
-git_2_fn()
+github_2_fn()
 {
     net_timeout='5'
     videolan_repo="${1}"
@@ -299,11 +299,11 @@ git_2_fn()
     fi
 }
 
-git_svt_fn()
+gitlab_3_fn()
 {
     net_timeout='5'
     gitlab_repo="${1}"
-    curl_cmd=$(curl -m "${net_timeout}" -Ls "https://gitlab.com/api/v4/projects/${gitlab_repo}/repository/branches?search=&")
+    curl_cmd=$(curl -m "${net_timeout}" -Ls "https://gitlab.com/api/v4/projects/${gitlab_repo}/repository/branches?")
     if [ "${?}" -eq '0' ]; then
         gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[3].commit.id')
         gitlab_ver=${gitlab_ver#v}
@@ -311,15 +311,25 @@ git_svt_fn()
     fi
 }
 
-git_tiff_fn()
+gitlab_4_fn()
 {
-    net_timeout='5'
+    net_timeout='7'
     gitlab_repo="${1}"
-    curl_cmd=$(curl -m "${net_timeout}" -Ls "https://gitlab.com/api/v4/projects/${gitlab_repo}/repository/branches?search=&")
+    curl_cmd=$(curl -m "${net_timeout}" -Ls "https://gitlab.com/api/v4/projects/${gitlab_repo}/repository/tags")
     if [ "${?}" -eq '0' ]; then
-        gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[3].commit.id')
+        gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[0] | .name'  )
         gitlab_ver=${gitlab_ver#v}
         gitlab_sver=$(echo "${curl_cmd}" | jq -r '.[3].commit.short_id')
+    fi
+}
+
+gitlab_5_fn()
+{
+    net_timeout='7'
+    gitlab_repo="${1}"
+    curl_cmd=$(curl -Ss --request GET "https://gitlab.freedesktop.org/api/v4/projects/${gitlab_repo}/repository/tags?")
+    if [ "${?}" -eq '0' ]; then
+        gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[0] | .name')
     fi
 }
 
@@ -335,29 +345,20 @@ git_ver_fn()
     fi
 
     if [  "${v_flag}" = 'T' ]; then
-        if [ "${v_tag}" = '1' ]; then url_tag='git_1_fn' gv_url='tags'
-        elif [ "${v_tag}" = '2' ]; then url_tag='git_2_fn'; gv_url='tags'
-        elif [ "${v_tag}" = '3' ]; then url_tag='git_3_fn'; gv_url='tags'
-        elif [ "${v_tag}" = '4' ]; then url_tag='git_4_fn';  gv_url='tags'
-        elif [ "${v_tag}" = '5' ]; then url_tag='git_svt_fn'; gv_url='tags'
-        elif [ "${v_tag}" = '6' ]; then url_tag='git_tiff_fn'; gv_url='tags'
+        if [ "${v_tag}" = '1' ]; then url_tag='github_1_fn' gv_url='tags'
+        elif [ "${v_tag}" = '2' ]; then url_tag='github_2_fn'; gv_url='tags'
         fi
     elif [  "${v_flag}" = 'R' ]; then
-        if [ "${v_tag}" = '1' ]; then url_tag='git_1_fn'; gv_url='releases'
-        elif [ "${v_tag}" = '2' ]; then url_tag='git_2_fn'; gv_url='releases'
-        elif [ "${v_tag}" = '3' ]; then url_tag='git_3_fn'; gv_url='releases'
-        elif [ "${v_tag}" = '4' ]; then url_tag='git_4_fn'; gv_url='releases'
-        elif [ "${v_tag}" = '5' ]; then url_tag='git_svt_fn'; gv_url='releases'
-        elif [ "${v_tag}" = '6' ]; then url_tag='git_tiff_fn'; gv_url='releases'
+        if [ "${v_tag}" = '1' ]; then url_tag='github_1_fn'; gv_url='releases'
+        elif [ "${v_tag}" = '2' ]; then url_tag='github_2_fn'; gv_url='releases'
         fi
     fi
 
-    if [ "${v_tag}" = '1' ]; then url_tag='git_1_fn'
-    elif [ "${v_tag}" = '2' ]; then url_tag='git_2_fn'
-    elif [ "${v_tag}" = '3' ]; then url_tag='git_3_fn'
-    elif [ "${v_tag}" = '4' ]; then url_tag='git_4_fn'
-    elif [ "${v_tag}" = '5' ]; then url_tag='git_svt_fn'
-    elif [ "${v_tag}" = '6' ]; then url_tag='git_tiff_fn'
+    if [ "${v_tag}" = '1' ]; then url_tag='github_1_fn'
+    elif [ "${v_tag}" = '2' ]; then url_tag='github_2_fn'
+    elif [ "${v_tag}" = '3' ]; then url_tag='gitlab_3_fn'
+    elif [ "${v_tag}" = '4' ]; then url_tag='gitlab_4_fn'
+    elif [ "${v_tag}" = '5' ]; then url_tag='gitlab_5_fn'
     fi
     
     "${url_tag}" "${v_url}" "${gv_url}" 2>/dev/null
@@ -704,7 +705,7 @@ build_pkgs_fn()
     echo 'Installing required build packages'
     echo '==================================='
 
-    pkgs=(help2man jq)
+    pkgs=(g++ gcc gtk-doc-tools help2man jq libcairo2-dev libfreetype6-dev libglib2.0-dev pkg-config ragel)
 
     for pkg in ${pkgs[@]}
     do
@@ -976,16 +977,16 @@ if command_exists 'python3'; then
     fi
 fi
 
-git_ver_fn '24327400' '5'
-if build 'svtav1' "${gitlab_sver}"; then
-    download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/${gitlab_ver}/SVT-AV1-${gitlab_ver}.tar.gz" "svtav1-${gitlab_sver}.tar.gz"
-    cd "${packages}/svtav1-${gitlab_sver}//Build/linux" || exit 1
+git_ver_fn '24327400' '4'
+if build 'svtav1' "${gitlab_ver}"; then
+    download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v${gitlab_ver}/SVT-AV1-v${gitlab_ver}.tar.gz" "SVT-AV1-v${gitlab_ver}.tar.gz"
+    cd "${packages}/SVT-AV1-v${gitlab_ver}//Build/linux" || exit 1
     execute cmake -DCMAKE_INSTALL_PREFIX="${workspace}" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' ../.. -G 'Unix Makefiles' -DCMAKE_BUILD_TYPE='Release' -DENABLE_EXAMPLES='OFF'
     execute make "-j${cpus}"
     execute make install
     execute cp 'SvtAv1Enc.pc' "${workspace}"/lib/pkgconfig/
     execute cp 'SvtAv1Dec.pc' "${workspace}"/lib/pkgconfig/
-    build_done 'svtav1' "${gitlab_sver}"
+    build_done 'svtav1' "${gitlab_ver}"
 fi
 cnf_ops+=('--enable-libsvtav1')
 
@@ -1275,14 +1276,24 @@ fi
 ##
 
 git_ver_fn '4720790' '4'
-if build 'libtiff' '4.5.0'; then
-    download 'https://download.osgeo.org/libtiff/tiff-4.5.0.tar.xz'
-    execute ./configure --prefix="${workspace}" --disable-shared --enable-static --disable-dependency-tracking \
-        --disable-lzma --disable-webp --disable-zstd --without-x
+if build 'libtiff' "${gitlab_ver}"; then
+    download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/${gitlab_ver}/freetype-${gitlab_ver}.tar.gz" "freetype-${gitlab_ver}.tar.gz"
+    execute ./configure --prefix="${workspace}" --disable-shared --enable-static
     execute make "-j${cpus}"
     execute make install
-    build_done 'libtiff' '4.5.0'
+    build_done 'libtiff' "${gitlab_ver}"
 fi
+
+git_ver_fn '7950' '5'
+if build 'freetype' "${gitlab_ver}"; then
+    download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/${gitlab_ver}/freetype-${gitlab_ver}.tar.gz"
+    execute ./autogen.sh
+    execute ./configure --prefix="${workspace}" --disable-shared --enable-static
+    execute make "-j${cpus}"
+    execute make install
+    build_done 'freetype' "${gitlab_ver}"
+fi
+
 if build 'libpng' '1.6.39'; then
     download 'https://versaweb.dl.sourceforge.net/project/libpng/libpng16/1.6.39/libpng-1.6.39.tar.xz' 'libpng-1.6.39.tar.xz'
     export LDFLAGS="${LDFLAGS}"
@@ -1314,6 +1325,41 @@ cnf_ops+=('--enable-libwebp')
 ##
 ## OTHER LIBRARIES
 ##
+
+if command_exists 'meson'; then
+    git_ver_fn 'harfbuzz/harfbuzz' '1' 'R'
+    if build 'harfbuzz' "${github_ver}"; then
+        download "${github_tar}" "harfbuzz-${github_ver}.tar.gz"
+        execute meson setup build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
+        execute ./configure --prefix="${workspace}" --disable-shared --enable-static
+        execute ninja -C build
+        execute ninja -C build install
+        build_done 'harfbuzz' "${github_ver}"
+    fi
+    cnf_ops+=('--enable-libass')
+fi
+
+git_ver_fn 'libass/libass' '1' 'T'
+if build 'libass' "${github_ver}"; then
+    download "${github_tar}" "libass-${github_ver}.tar.gz"
+    execute ./autogen.sh
+    execute ./configure --prefix="${workspace}" --disable-shared --enable-static
+    execute make "-j${cpus}"
+    execute make install
+    build_done 'libass' "${github_ver}"
+fi
+cnf_ops+=('--enable-libass')
+
+git_ver_fn '7950' '5'
+if build 'freetype' "${gitlab_ver}"; then
+    download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/${gitlab_ver}/freetype-${gitlab_ver}.tar.gz" "freetype-${gitlab_sver}.tar.gz"
+    execute ./autogen.sh
+    execute ./configure --prefix="${workspace}" --disable-shared --enable-static
+    execute make "-j${cpus}"
+    execute make install
+    build_done 'freetype' "${gitlab_ver}"
+fi
+cnf_ops+=('--enable-freetype')
 
 if build 'libsdl' '2.26.4'; then
     download 'https://www.libsdl.org/release/SDL2-2.26.4.tar.gz'
