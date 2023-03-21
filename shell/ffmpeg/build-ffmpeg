@@ -238,7 +238,7 @@ download_git()
     # first downx264load attempt
     if [ ! -d "${tdir}" ]; then
         echo "Downloading ${dl_file}"
-        sudo git clone -q "${dl_url}" "${tdir}"
+        git clone -q "${dl_url}" "${tdir}"
 
         # try download once more if first attempt failed
         ec="${?}"
@@ -248,7 +248,7 @@ download_git()
             echo
             read -t 10 -p 'Press enter to skip waiting.'
             echo
-            sudo git clone -q "${dl_url}" "${tdir}"
+            git clone -q "${dl_url}" "${tdir}"
         fi
 
         # check if second download attempt was successful
