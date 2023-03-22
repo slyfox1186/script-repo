@@ -13,8 +13,6 @@
 ## If you think there should be modification of the list
 ## Please create a support ticket under the Issues tab.
 ##
-## Updated: 03.22.23
-##
 ##########################################################
 
 clear
@@ -34,11 +32,12 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok ins
 
 exit_fn()
 {
-    printf "\\n%s\\n\\n%s\\n\n%s\\n\\n" \
-    '$ The script has finished!' \
-    '$ Make sure to star this repository to show your support!' \
-    '$ https://github.com/slyfox1186/script-repo/'
-    rm "${0}"
+    printf "\\n%s\\n%s\\n\n%s\\n\n%s\\n\\n" \
+    'Script complete!' \
+    '====================' \
+    'Make sure to star this repository to show your support!' \
+    'https://github.com/slyfox1186/script-repo/'
+    # rm "${0}"
     exit 0
 }
 
@@ -58,10 +57,8 @@ pkgs_fn()
         do
             apt -y install ${i}
         done
-        echo
         echo '$ Any missing apt packages were installed'
     else
-        echo
         echo '$ The apt packages are already installed'
     fi
 }
