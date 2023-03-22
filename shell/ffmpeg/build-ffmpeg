@@ -1,32 +1,31 @@
 #!/bin/bash
-# shellcheck disable=SC2162
+# shellcheck disable=SC2016,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
 
-##########################################################################
+#################################################################################
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
 ##  Forked: https://github.com/markus-perl/ffmpeg-build-script/
 ##
-##  Supported Distro: Debian-based (Ubuntu etc...)
+##  Supported Distros: Debian-based ( Debian, Ubuntu, etc. )
 ##
 ##  Supported architecture: x86_x64
 ##
 ##  Purpose: Build FFmpeg from source code with addon development
 ##           libraries also compiled from source code to ensure the
-##           latest in extra functionality.
+##           latest in extra functionality
 ##
-##  Cuda: If the CUDA libraries are not installed (for GeForce cards only)
-##        the user will be prompted by the script to install them so that
-##        hardware acceleration is enabled when compiling FFmpeg.
+##  Cuda:    If the cuda libraries are not installed (for geforce cards only)
+##           the user will be prompted by the script to install them so that
+##           hardware acceleration is enabled when compiling FFmpeg
 ##
 ##  Updated: 03.21.23
 ##
-##  Version: 3.00
+##  Version: 3.10
 ##
-##########################################################################
+#################################################################################
 
-# verify the script does not have root access before continue
-# this can cause issues using the 'if which' commands when run as root
+# verify the script does not have root access before continuing
 if [ "${EUID}" -eq '0' ]; then
     echo 'You must run this script without root/sudo'
     echo
@@ -34,13 +33,13 @@ if [ "${EUID}" -eq '0' ]; then
 fi
 
 ##
-## DEFINE VARIABLES
+## define variables
 ##
 
-script_ver='3.00'
+script_ver='3.10'
 progname="${0:2}"
-# The FFmpeg version will be the latest available (sourced from FFmpeg's official git repository)
-ffmpeg_ver='latest'
+# FFmpeg is sourced from the official github repository
+ffmpeg_ver='n6.1-dev'
 cuda_ver='12.1'
 packages="${PWD}"/packages
 workspace="${PWD}"/workspace
@@ -54,7 +53,7 @@ nonfree='false'
 latest='false'
 
 ##
-## SET THE AVAILABLE CPU COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
+## set the available cpu count for parallel processing (speeds up the build process)
 ##
 
 if [ -f '/proc/cpuinfo' ]; then
@@ -63,9 +62,9 @@ else
     cpus="$(nproc --all)"
 fi
 
-######################
-## DEFINE FUNCTIONS ##
-######################
+##
+## define functions
+##
 
 exit_fn()
 {
@@ -161,54 +160,46 @@ download()
     dl_file="${2:-"${1##*/}"}"
 
     if [[ "${dl_file}" =~ tar. ]]; then
-        tdir="${dl_file%.*}"
-        tdir="${3:-"${tdir%.*}"}"
+        target_dir="${dl_file%.*}"
+        target_dir="${3:-"${target_dir%.*}"}"
     else
-        tdir="${3:-"${dl_file%.*}"}"
+        target_dir="${3:-"${dl_file%.*}"}"
     fi
 
     if [ ! -f "${dl_path}/${dl_file}" ]; then
         echo "Downloading ${1} as ${dl_file}"
-        curl -Lso "${dl_path}/${dl_file}" "${1}"
-
-        ec="${?}"
-        if [ "${ec}" -ne '0' ]; then
+        if ! curl -Lso "${dl_path}/${dl_file}" "${1}"; then
             echo
-            echo "Failed to download ${1}. Exitcode ${ec}. Retrying in 10 seconds"
+            echo "The script failed to download \"${1}\" and will try again in 10 seconds"
+            sleep 10
             echo
-            read -t 10 -p 'Press enter to skip waiting.'
-            echo
-            curl -Lso "${dl_path}/${dl_file}" "${1}"
+            if ! curl -Lso "${dl_path}/${dl_file}" "${1}"; then
+                echo
+                echo "The script failed to download \"${1}\" two times and will exit the build"
+                echo
+                echo 'Please create a support ticket'
+                echo
+                echo 'https://github.com/slyfox1186/script-repo/issues'
+                echo
+                exit 1
+            fi
         fi
-
-        ec="${?}"
-        if [ "${ec}" -ne '0' ]; then
-            echo
-            echo "Failed to download ${1}. Exitcode ${ec}"
-            echo
-            exit 1
-        fi
-
-        echo 'Download Complete...'
+        echo 'Download Completed'
         echo
     else
-        echo "${dl_file} is already downloaded."
+        echo "${dl_file} is already downloaded"
     fi
 
-    make_dir "${dl_path}/${tdir}"
-
-    if [[ "${dl_file}" == *'patch'* ]]; then
-        return
-    fi
+    make_dir "${dl_path}/${target_dir}"
 
     if [ -n "${3}" ]; then
-        if ! tar -xf "${dl_path}/${dl_file}" -C "${dl_path}/${tdir}" &>/dev/null; then
+        if ! tar -xf "${dl_path}/${dl_file}" -C "${dl_path}/${target_dir}" &>/dev/null; then
             echo "Failed to extract ${dl_file}"
             echo
             exit 1
         fi
     else
-        if ! tar -xf "${dl_path}/${dl_file}" -C "${dl_path}/${tdir}" --strip-components 1 &>/dev/null; then
+        if ! tar -xf "${dl_path}/${dl_file}" -C "${dl_path}/${target_dir}" --strip-components 1 &>/dev/null; then
             echo "Failed to extract ${dl_file}"
             echo
             exit 1
@@ -217,10 +208,10 @@ download()
 
     echo "Extracted ${dl_file}"
 
-    cd "${dl_path}/${tdir}" || (
+    cd "${dl_path}/${target_dir}" || (
         echo 'Script error!'
         echo
-        echo "Unable to change the working directory to ${tdir}"
+        echo "Unable to change the working directory to ${target_dir}"
         echo
         exit 1
     )
@@ -232,44 +223,41 @@ download_git()
     dl_path="${packages}"
     dl_url="${1}"
     dl_file="${2}"
-    tdir="${dl_path}/${dl_file}"
+    target_dir="${dl_path}/${dl_file}"
 
-    # first downx264load attempt
-    if [ ! -d "${tdir}" ]; then
+    # first download attempt
+    if [ ! -d "${target_dir}" ]; then
         echo "Downloading ${dl_file}"
-        git clone -q "${dl_url}" "${tdir}"
-
-        # try download once more if first attempt failed
-        ec="${?}"
-        if [ "${ec}" -ne '0' ]; then
+        if ! git clone -q "${dl_url}" "${target_dir}"; then
             echo
-            echo "Failed to download ${2}. Exitcode ${ec}. Retrying in 10 seconds"
+            echo "The script failed to download \"${dl_file}\" and will try again in 10 seconds"
+            sleep 10
             echo
-            read -t 10 -p 'Press enter to skip waiting.'
-            echo
-            git clone -q "${dl_url}" "${tdir}"
+            if ! git clone -q "${dl_url}" "${target_dir}"; then
+                echo
+                echo "The script failed to download \"${dl_file}\" two times and will exit the build"
+                echo
+                echo 'Please create a support ticket'
+                echo
+                echo 'https://github.com/slyfox1186/script-repo/issues'
+                echo
+                exit 1
+            fi
         fi
-
-        # check if second download attempt was successful
-        ec="${?}"
-        if [ "${ec}" -ne '0' ]; then
-            echo
-            echo "Failed to download ${2}. Exitcode ${ec}"
-            echo
-            exit 1
-        fi
-
-        echo 'Download Complete...'
+        echo 'Download Complete'
         echo
     else
-        echo "${dl_file} is already downloaded."
+        echo "${dl_file} is already downloaded"
     fi
 
-    cd "${tdir}" || (
+    cd "${target_dir}" || (
         echo 'Script error!'
         echo
-        echo "Unable to change the working directory to ${}"
+        echo "Unable to change the working directory to ${target_dir}"
         echo
+        echo 'Please create a support ticket'
+        echo
+        echo 'https://github.com/slyfox1186/script-repo/issues'
         exit 1
     )
 }
@@ -280,10 +268,13 @@ github_1_fn()
     net_timeout='5'
     github_repo="${1}"
     github_url="${2}"
-    curl_cmd=$(curl -m "${net_timeout}"  -Ls "https://api.github.com/repos/${github_repo}/${github_url}?per_page=1")
+    curl_cmd=$(curl -m "${net_timeout}" -Ls "https://api.github.com/repos/${github_repo}/${github_url}?per_page=1")
     if [ "${?}" -eq '0' ]; then
+        github_all=$(echo "${curl_cmd}" | jq -r '.')
         github_ver=$(echo "${curl_cmd}" | jq -r '.[].name')
         github_ver=${github_ver#v}
+        github_ver_ossl=$(echo "${curl_cmd}" | jq -r '.[].name')
+        github_ver_ossl=${github_ver_ossl#OpenSSL }
         github_tar=$(echo "${curl_cmd}" | jq -r '.[].tarball_url')
     fi
 }
@@ -292,8 +283,7 @@ github_2_fn()
 {
     net_timeout='5'
     videolan_repo="${1}"
-    curl_cmd=$(curl -m "${net_timeout}" -Ls "https://code.videolan.org/api/v4/projects/${videolan_repo}/repository/branches?")
-    if [ "${?}" -eq "0" ]; then
+    if curl_cmd=$(curl -m "${net_timeout}" -Ls "https://code.videolan.org/api/v4/projects/${videolan_repo}/repository/branches?"); then
         videolan_ver=$(echo "${curl_cmd}" | jq -r '.[0].commit.id')
         videolan_sver=$(echo "${curl_cmd}" | jq -r '.[0].commit.short_id')
     fi
@@ -303,8 +293,7 @@ gitlab_3_fn()
 {
     net_timeout='5'
     gitlab_repo="${1}"
-    curl_cmd=$(curl -m "${net_timeout}" -Ls "https://gitlab.com/api/v4/projects/${gitlab_repo}/repository/branches?")
-    if [ "${?}" -eq '0' ]; then
+    if curl_cmd=$(curl -m "${net_timeout}" -Ls "https://gitlab.com/api/v4/projects/${gitlab_repo}/repository/branches?"); then
         gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[3].commit.id')
         gitlab_ver=${gitlab_ver#v}
         gitlab_sver=$(echo "${curl_cmd}" | jq -r '.[3].commit.short_id')
@@ -313,10 +302,9 @@ gitlab_3_fn()
 
 gitlab_4_fn()
 {
-    net_timeout='7'
+    net_timeout='5'
     gitlab_repo="${1}"
-    curl_cmd=$(curl -m "${net_timeout}" -Ls "https://gitlab.com/api/v4/projects/${gitlab_repo}/repository/tags")
-    if [ "${?}" -eq '0' ]; then
+    if curl_cmd=$(curl -m "${net_timeout}" -Ls "https://gitlab.com/api/v4/projects/${gitlab_repo}/repository/tags"); then
         gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[0] | .name'  )
         gitlab_ver=${gitlab_ver#v}
         gitlab_sver=$(echo "${curl_cmd}" | jq -r '.[3].commit.short_id')
@@ -325,11 +313,30 @@ gitlab_4_fn()
 
 gitlab_5_fn()
 {
-    net_timeout='7'
+    net_timeout='5'
     gitlab_repo="${1}"
-    curl_cmd=$(curl -Ss --request GET "https://gitlab.freedesktop.org/api/v4/projects/${gitlab_repo}/repository/tags?")
-    if [ "${?}" -eq '0' ]; then
+    if curl_cmd=$(curl -Ss --request GET "https://gitlab.freedesktop.org/api/v4/projects/${gitlab_repo}/repository/tags?"); then
         gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[0] | .name')
+    fi
+}
+
+gitlab_x265_6_fn()
+{
+    net_timeout='5'
+    gitlab_repo="${1}"
+    if curl_cmd="$(curl \
+        -sSL 'https://bitbucket.org/!api/2.0/repositories/multicoreware/x265_git/effective-branching-model')"; then
+        gitlab_ver=$(echo "${curl_cmd}" | jq '.development.branch.target' | grep -Eo '[0-9]+[0-9a-z]+[^"]')
+    fi
+}
+
+gitlab_7_fn()
+{
+    net_timeout='5'
+    gitlab_repo="${1}"
+    if curl_cmd=$(curl -Ss --request GET "https://gitlab.gnome.org/api/v4/projects/${gitlab_repo}/repository/tags?"); then
+        gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[0] | .name')
+        gitlab_ver=${gitlab_ver#v}
     fi
 }
 
@@ -339,10 +346,18 @@ git_ver_fn()
 
     v_url="${1}"
     v_tag="${2}"
-
+ 
     if [ -n "${3}" ]; then
         v_flag="${3}"
     fi
+
+    if [ "${v_flag}" = 'X' ]; then
+        url_tag='gitlab_x265_6_fn'
+        "${url_tag}" 2>/dev/null
+
+        return 0
+    fi
+    
 
     if [  "${v_flag}" = 'T' ]; then
         if [ "${v_tag}" = '1' ]; then url_tag='github_1_fn' gv_url='tags'
@@ -359,8 +374,9 @@ git_ver_fn()
     elif [ "${v_tag}" = '3' ]; then url_tag='gitlab_3_fn'
     elif [ "${v_tag}" = '4' ]; then url_tag='gitlab_4_fn'
     elif [ "${v_tag}" = '5' ]; then url_tag='gitlab_5_fn'
+    elif [ "${v_tag}" = '7' ]; then url_tag='gitlab_7_fn'
     fi
-    
+
     "${url_tag}" "${v_url}" "${gv_url}" 2>/dev/null
 }
 
@@ -469,7 +485,7 @@ gpu_arch_fn()
     echo
 
     read -p 'Your choices are (1 to 6): ' gpu_ans
-    
+
     if [[ "${gpu_ans}" -eq '1' ]]; then
         gpu_arch='compute_61,code=sm_61'
     elif [[ "${gpu_ans}" -eq '2' ]]; then
@@ -685,7 +701,7 @@ cuda_fn()
     # UPDATE THE APT PACKAGES THEN INSTALL THE CUDA-SDK-TOOLKIT
     sudo apt update
     sudo apt -y install cuda
-    
+
     # CHECK IF THE CUDA FOLDER EXISTS TO ENSURE IT WAS INSTALLED
     if [ ! -d "/usr/local/cuda-${cuda_ver}/bin" ]; then
         cuda_fail_fn
@@ -698,14 +714,14 @@ cuda_fn()
 ##
 ## required build packages
 ##
-  
+
 build_pkgs_fn()
 {
     echo
-    echo 'Installing required build packages'
-    echo '==================================='
+    echo 'Installing required development packages'
+    echo '=========================================='
 
-    pkgs=(g++ gcc gtk-doc-tools help2man jq libcairo2-dev libfreetype6-dev libglib2.0-dev pkg-config ragel)
+    pkgs=(g++ gcc gtk-doc-tools help2man jq libcairo2-dev libcdio-paranoia-dev libcurl4-gnutls-dev libglib2.0-dev libmusicbrainz5-dev libtinyxml2-dev pkg-config ragel)
 
     for pkg in ${pkgs[@]}
     do
@@ -719,23 +735,23 @@ build_pkgs_fn()
         do
             sudo apt -y install ${pkg}
         done
-        echo 'The required build packages were installed.'
+        echo 'The required development packages were installed.'
     else
-        echo 'The required build packages are already installed.'
+        echo 'The required development packages are already installed.'
     fi
 }
 
 ##
 ## ADDITIONAL REQUIRED GEFORCE CUDA DEVELOPMENT PACKAGES
 ##
-  
+
 cuda_add_fn()
 {
     echo
-    echo 'Installing: Additional Required Geforce CUDA Developement Packages'
-    echo '===================================================================='
+    echo 'Installing required cuda developement packages'
+    echo '================================================'
 
-    pkgs=(autoconf automake build-essential libass-dev libc6 libc6-dev libfdk-aac-dev libfreetype6-dev libmp3lame-dev libnuma1 libnuma-dev libtheora-dev libtool libvorbis-dev pkg-config texinfo unzip wget yasm zlib1g-dev)
+    pkgs=(autoconf automake build-essential libc6 libc6-dev libnuma1 libnuma-dev texinfo unzip wget)
 
     for pkg in ${pkgs[@]}
     do
@@ -749,9 +765,9 @@ cuda_add_fn()
         do
             sudo apt -y install ${pkg}
         done
-        echo 'The required Geforce CUDA Developement Libraries were installed.'
+        echo 'The required cuda developement packages were installed'
     else
-        echo 'The required Geforce CUDA Developement Libraries are already installed.'
+        echo 'The required cuda developement packages are already installed'
     fi
 }
 
@@ -761,14 +777,14 @@ cuda_add_fn()
 
 if ! which 'nvcc' &>/dev/null ; then
     echo
-    echo 'You don'\''t have the cuda-sdk-toolkit installed OR you don'\''t have it in your PATH variable.'
-    echo '==============================================================================================='
+    echo 'The cuda-sdk-toolkit isn'\''t installed or it is not in $PATH'
+    echo '==============================================================='
     echo
-    echo 'Do you want to install it and/or add it to your PATH?'
+    echo 'What do you want to do next?'
     echo
-    echo '[1] Install it and add it to my PATH'
-    echo '[2] Just add it to my PATH'
-    echo '[3] Don'\''t do either and continue the build'
+    echo '[1] Install the toolkit and add it to $PATH'
+    echo '[2] Only add it to $PATH'
+    echo '[3] Continue the build'
     echo
     read -p 'Your choices are (1 to 3): ' cuda_ans
     clear
@@ -780,10 +796,11 @@ if ! which 'nvcc' &>/dev/null ; then
             PATH="${PATH}:/usr/local/cuda-12.1/bin"
             export PATH
         else
-            echo 'The script was unable to add it to your $PATH because a required folder is missing: /usr/local/cuda-12.1/bin'
+            echo 'The script was unable to add cuda to your $PATH because the required folder was not found: /usr/local/cuda-12.1/bin'
             echo
-            read -p 'Press enter to continue the build.'
+            read -p 'Press enter to exit'
             echo
+            exit 1
         fi
     elif [[ "${cuda_ans}" -eq '3' ]]; then
         echo
@@ -898,13 +915,13 @@ fi
 
 if ${nonfree}; then
     git_ver_fn 'openssl/openssl' '1' 'R'
-    if build 'openssl' "${github_ver}"; then
-        download "${github_tar}" "${github_ver}.tar.gz"
+    if build 'openssl' "${github_ver_ossl}"; then
+        download "${github_tar}" "openssl-${github_ver_ossl}.tar.gz"
         execute ./config --prefix="${workspace}" --openssldir="${workspace}" \
             --with-zlib-include="${workspace}"/include/ --with-zlib-lib="${workspace}"/lib no-shared zlib
         execute make "-j${cpus}"
         execute make install_sw
-        build_done 'openssl' "${github_ver}"
+        build_done 'openssl' "${github_ver_ossl}"
     fi
     cnf_ops+=('--enable-openssl')
 else
@@ -979,8 +996,8 @@ fi
 
 git_ver_fn '24327400' '4'
 if build 'svtav1' "${gitlab_ver}"; then
-    download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v${gitlab_ver}/SVT-AV1-v${gitlab_ver}.tar.gz" "SVT-AV1-v${gitlab_ver}.tar.gz"
-    cd "${packages}/SVT-AV1-v${gitlab_ver}//Build/linux" || exit 1
+    download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v${gitlab_ver}/SVT-AV1-v${gitlab_ver}.tar.bz2" "SVT-AV1-v${gitlab_ver}.tar.bz2"
+    cd "${PWD}/Build/linux" || exit 1
     execute cmake -DCMAKE_INSTALL_PREFIX="${workspace}" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' ../.. -G 'Unix Makefiles' -DCMAKE_BUILD_TYPE='Release' -DENABLE_EXAMPLES='OFF'
     execute make "-j${cpus}"
     execute make install
@@ -1016,9 +1033,10 @@ if ${nonfree}; then
 fi
 
 if ${nonfree}; then
-    if build 'x265' '3.4'; then
-        git clone -q 'https://bitbucket.org/multicoreware/x265_git.git' "${packages}/x265-3.4"
-        cd "${packages}/x265-3.4/build/linux" || exit 1
+    git_ver_fn 'x265_git' '6' 'X'
+    if build 'x265' "${gitlab_ver:0:7}"; then
+        download "https://bitbucket.org/multicoreware/x265_git/get/${gitlab_ver}.tar.bz2" "x265-${gitlab_ver:0:8}.tar.bz2"
+        cd "${PWD}/build/linux" || exit 1
         rm -fr {8,10,12}bit 2>/dev/null
         mkdir -p {8,10,12}bit
         cd '12bit' || exit 1
@@ -1052,21 +1070,31 @@ EOF
 
         execute make install
 
-        if [ -n "${LDEXEFLAGS}" ]; then
-            sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "${workspace}"/lib/pkgconfig/x265.pc
-        fi
+        if [ -n "${LDEXEFLAGS}" ]; then sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "${workspace}"/lib/pkgconfig/x265.pc; fi
 
-        build_done 'x265' '3.4'
+        build_done 'x265' "${gitlab_ver:0:7}"
     fi
     cnf_ops+=('--enable-libx265')
 fi
 
-if build 'libvpx' '1.13.0'; then
-    download 'https://github.com/webmproject/libvpx/archive/refs/tags/v1.13.0.tar.gz' 'libvpx-1.13.0.tar.gz'
+git_ver_fn 'OpenVisualCloud/SVT-HEVC' '1' 'R'
+if build 'SVT-HEVC' "${github_ver}"; then
+    download "${github_tar}" "SVT-HEVC-${github_ver}.tar.gz"
+    make_dir Build
+    cd "${PWD}"/Build || exit 1
+    execute cmake .. -DCMAKE_INSTALL_PREFIX="${workspace}" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' -DCMAKE_BUILD_TYPE='Release'
+    execute make "-j${cpus}"
+    execute make install    
+    build_done 'SVT-HEVC' "${github_ver}"
+fi
+
+git_ver_fn 'webmproject/libvpx' '1' 'T'
+if build 'libvpx' "${github_ver}"; then
+    download "${github_tar}" "libvpx-${github_ver}.tar.gz"
     execute ./configure --prefix="${workspace}" --disable-unit-tests --disable-shared --disable-examples --as='yasm'
     execute make "-j${cpus}"
     execute make install
-    build_done 'libvpx' '1.13.0'
+    build_done 'libvpx' "${github_ver}"
 fi
 cnf_ops+=('--enable-libvpx')
 
@@ -1092,25 +1120,25 @@ if ${nonfree}; then
 fi
 
 if ${nonfree}; then
-    if build 'vid_stab' '1.1.1'; then
-        download 'https://github.com/georgmartius/vid.stab/archive/refs/tags/v1.1.1.tar.gz' 'vid.stab-1.1.1.tar.gz'
+    git_ver_fn 'georgmartius/vid.stab' '1' 'T'
+    if build 'vid_stab' "${github_ver}"; then
+        download "https://github.com/georgmartius/vid.stab/archive/refs/tags/v${github_ver}.tar.gz" "vid.stab-${github_ver}.tar.gz"
         execute cmake -DBUILD_SHARED_LIBS='OFF' -DCMAKE_INSTALL_PREFIX="${workspace}" -DUSE_OMP='OFF' -DENABLE_SHARED='OFF' .
-        execute make
+        execute make "-j${cpus}"
         execute make install
-        build_done 'vid_stab' '1.1.1'
+        build_done 'vid_stab' "${github_ver}"
     fi
     cnf_ops+=('--enable-libvidstab')
 fi
 
-if build 'av1' '34c4c3f7'; then
-  # libaom bcfe6fb == v3.5.0
-    download 'https://aomedia.googlesource.com/aom/+archive/34c4c3f7e6d95fe3785cd3dc810dc39ec649224e.tar.gz' 'av1.tar.gz' 'av1'
+if build 'av1' '3.6.0'; then
+    download 'https://aomedia.googlesource.com/aom/+archive/3c65175b1972da4a1992c1dae2365b48d13f9a8d.tar.gz' 'av1-3.6.0.tar.gz' 'av1'
     make_dir "${packages}"/aom_build
     cd "${packages}"/aom_build || exit 1
     execute cmake -DENABLE_TESTS='0' -DENABLE_EXAMPLES='0' -DCMAKE_INSTALL_PREFIX="${workspace}" -DCMAKE_INSTALL_LIBDIR='lib' "${packages}"/av1
     execute make "-j${cpus}"
     execute make install
-    build_done 'av1' '34c4c3f7'
+    build_done 'av1' '3.6.0'
 fi
 cnf_ops+=('--enable-libaom')
 
@@ -1179,12 +1207,13 @@ if command_exists 'python3'; then
             execute ninja -C build install
             build_done 'sratom' 'b1643412'
         fi
-        if build 'lilv' '0.24.20'; then
-            download 'https://gitlab.com/lv2/lilv/-/archive/v0.24.20/lilv-v0.24.20.tar.gz' 'lilv-v0.24.20.tar.gz'
+        git_ver_fn '11853176' '4'
+        if build 'lilv' "${gitlab_ver}"; then
+            download "https://gitlab.com/lv2/lilv/-/archive/v0.24.20/lilv-v0.24.20.tar.gz" "lilv-v0.24.20.tar.gz"
             execute meson setup build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
             execute ninja -C build
             execute ninja -C build install
-            build_done 'lilv' '0.24.20'
+            build_done 'lilv' "${gitlab_ver}"
         fi
         CFLAGS+=" -I${workspace}/include/lilv-0"
         cnf_ops+=('--enable-lv2')
@@ -1209,12 +1238,14 @@ if build 'lame' '3.100'; then
 fi
 cnf_ops+=('--enable-libmp3lame')
 
-if build 'opus' '1.3.1'; then
-    download 'https://archive.mozilla.org/pub/opus/opus-1.3.1.tar.gz'
+git_ver_fn 'xiph/opus' '1' 'T'
+if build 'opus' "${github_ver}"; then
+    download "${github_tar}" "opus-${github_ver}"
+    execute ./autogen.sh
     execute ./configure --prefix="${workspace}" --disable-shared --enable-static
     execute make "-j${cpus}"
     execute make install
-    build_done 'opus' '1.3.1'
+    build_done 'opus' "${github_ver}"
 fi
 cnf_ops+=('--enable-libopus')
 
@@ -1263,7 +1294,7 @@ if ${nonfree}; then
     if build 'fdk_aac' "${github_ver}"; then
         download "https://github.com/mstorsjo/fdk-aac/archive/refs/tags/v${github_ver}.tar.gz" "fdk_aac-${github_ver}.tar.gz"
         execute ./autogen.sh
-        execute ./configure --prefix="${workspace}" --disable-shared --enable-static --enable-pic --bindir=${workspace}/bin CXXFLAGS=' -fno-exceptions -fno-rtti'
+        execute ./configure --prefix="${workspace}" --disable-shared --enable-static --enable-pic --bindir="${workspace}"/bin CXXFLAGS=' -fno-exceptions -fno-rtti'
         execute make "-j${cpus}"
         execute make install
         build_done 'fdk_aac' "${github_ver}"
@@ -1277,7 +1308,8 @@ fi
 
 git_ver_fn '4720790' '4'
 if build 'libtiff' "${gitlab_ver}"; then
-    download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/${gitlab_ver}/freetype-${gitlab_ver}.tar.gz" "freetype-${gitlab_ver}.tar.gz"
+    download "https://gitlab.com/libtiff/libtiff/-/archive/v${gitlab_ver}/libtiff-v${gitlab_ver}.tar.bz2" "libtiff-v${gitlab_ver}.tar.bz2"
+    execute ./autogen.sh
     execute ./configure --prefix="${workspace}" --disable-shared --enable-static
     execute make "-j${cpus}"
     execute make install
@@ -1286,22 +1318,24 @@ fi
 
 git_ver_fn '7950' '5'
 if build 'freetype' "${gitlab_ver}"; then
-    download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/${gitlab_ver}/freetype-${gitlab_ver}.tar.gz"
+    download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/${gitlab_ver}/freetype-${gitlab_ver}.tar.bz2" "freetype-${gitlab_ver}.tar.bz2"
+    execute ./autogen.sh
+    make_dir build
+    execute meson setup build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
+    execute ninja -C build
+    execute ninja -C build install
+    build_done 'freetype' "${gitlab_ver}"
+fi
+
+if build 'libpng' "${github_ver}"; then
+    download "${github_tar}" "libpng-${github_ver}.tar.gz"
+    export LDFLAGS="${LDFLAGS}"
+    export CPPFLAGS="${CFLAGS}"
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}" --disable-shared --enable-static
     execute make "-j${cpus}"
     execute make install
-    build_done 'freetype' "${gitlab_ver}"
-fi
-
-if build 'libpng' '1.6.39'; then
-    download 'https://versaweb.dl.sourceforge.net/project/libpng/libpng16/1.6.39/libpng-1.6.39.tar.xz' 'libpng-1.6.39.tar.xz'
-    export LDFLAGS="${LDFLAGS}"
-    export CPPFLAGS="${CFLAGS}"
-    execute ./configure --prefix="${workspace}" --disable-shared --enable-static
-    execute make "-j${cpus}"
-    execute make install
-    build_done 'libpng' '1.6.39'
+    build_done 'libpng' "${github_ver}"
 fi
 
 if build 'libwebp' '1.2.2'; then
@@ -1309,15 +1343,15 @@ if build 'libwebp' '1.2.2'; then
     # version 1.3.0 and 1.2.4 fail to build successfully
     CPPFLAGS=
     download 'https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.2.2.tar.gz' 'libwebp-1.2.2.tar.gz'
+    execute ./autogen.sh
     execute ./configure --prefix="${workspace}" --disable-shared --enable-static --disable-dependency-tracking \
         --disable-gl --with-zlib-include="${workspace}"/include/ --with-zlib-lib="${workspace}"/lib
     make_dir build
     cd 'build'|| exit 1
     execute cmake -DCMAKE_INSTALL_PREFIX="${workspace}" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
-        -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON' ../
+        -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON' -DWEBP_BUILD_CWEBP=ON -DWEBP_BUILD_DWEBP=ON ../
     execute make "-j${cpus}"
     execute make install
-
     build_done 'libwebp' '1.2.2'
 fi
 cnf_ops+=('--enable-libwebp')
@@ -1326,17 +1360,80 @@ cnf_ops+=('--enable-libwebp')
 ## OTHER LIBRARIES
 ##
 
+git_ver_fn '1665' '7'
+if build 'libxml2' "${gitlab_ver}"; then
+    CFLAGS+=" -DLIBXML_STATIC_FOR_DLL -DNOLIBTOOL"
+    download "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v${gitlab_ver}/libxml2-v${gitlab_ver}.tar.bz2" "libxml2-v${gitlab_ver}.tar.bz2"
+    execute ./autogen.sh
+    execute ./configure --prefix="${workspace}" --disable-shared --enable-static
+    execute make "-j${cpus}"
+    execute make install
+    build_done 'libxml2' "${gitlab_ver}"
+fi
+cnf_ops+=('--enable-libxml2')
+
+git_ver_fn 'MediaArea/ZenLib' '1' 'R'
+if build 'ZenLib' "${github_ver}"; then
+    download "${github_tar}" "ZenLib-${github_ver}.tar.gz"
+    cd "${PWD}"/Project/CMake || exit 1
+    execute cmake -DCMAKE_INSTALL_PREFIX="${workspace}" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
+        -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON'
+    execute make "-j${cpus}"
+    execute make install
+    build_done 'ZenLib' "${github_ver}"
+fi
+
+git_ver_fn 'MediaArea/MediaInfoLib' '1' 'R'
+if build 'MediaInfoLib' "${github_ver}"; then
+    download "${github_tar}" "MediaInfoLib-${github_ver}.tar.gz"
+    cd "${PWD}"/Project/CMake || exit 1
+    execute cmake . -DCMAKE_INSTALL_PREFIX="${workspace}" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
+        -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON' -DENABLE_APPS='OFF' \
+        -DUSE_STATIC_LIBSTDCXX='ON' -DBUILD_ZLIB='OFF' -DBUILD_ZENLIB='OFF'
+    execute make install
+    build_done 'MediaInfoLib' "${github_ver}"
+fi
+
+git_ver_fn 'MediaArea/MediaInfo' '1' 'T'
+if build 'MediaInfoCLI' "${github_ver}"; then
+    download "${github_tar}" "MediaInfoCLI-${github_ver}.tar.gz"
+    cd "${PWD}"/Project/GNU/CLI || exit 1
+    execute ./autogen.sh
+    execute ./configure --prefix="${workspace}" --enable-staticlibs
+    build_done 'MediaInfoCLI' "${github_ver}"
+fi
+
 if command_exists 'meson'; then
     git_ver_fn 'harfbuzz/harfbuzz' '1' 'R'
     if build 'harfbuzz' "${github_ver}"; then
         download "${github_tar}" "harfbuzz-${github_ver}.tar.gz"
+        execute ./autogen.sh
         execute meson setup build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
         execute ./configure --prefix="${workspace}" --disable-shared --enable-static
         execute ninja -C build
         execute ninja -C build install
         build_done 'harfbuzz' "${github_ver}"
     fi
-    cnf_ops+=('--enable-libass')
+fi
+
+if build 'c2man' 'current'; then
+    download_git 'https://github.com/fribidi/c2man.git' 'c2man'
+    execute ./Configure -des
+    execute make depend
+    execute make "-j${cpus}"
+    execute sudo make install
+    build_done 'c2man' 'current'
+fi
+
+git_ver_fn 'fribidi/fribidi' '1' 'R'
+if build 'fribidi' "${github_ver}"; then
+    download "${github_tar}" "fribidi-${github_ver}.tar.gz"
+    execute ./autogen.sh
+    make_dir build
+    execute meson setup build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
+        execute ninja -C build
+        execute ninja -C build install
+    build_done 'fribidi' "${github_ver}"
 fi
 
 git_ver_fn 'libass/libass' '1' 'T'
@@ -1352,21 +1449,22 @@ cnf_ops+=('--enable-libass')
 
 git_ver_fn '7950' '5'
 if build 'freetype' "${gitlab_ver}"; then
-    download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/${gitlab_ver}/freetype-${gitlab_ver}.tar.gz" "freetype-${gitlab_sver}.tar.gz"
+    download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/${gitlab_ver}/freetype-${gitlab_ver}.tar.bz2" "freetype-${gitlab_ver}.tar.bz2"
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}" --disable-shared --enable-static
     execute make "-j${cpus}"
     execute make install
     build_done 'freetype' "${gitlab_ver}"
 fi
-cnf_ops+=('--enable-freetype')
 
-if build 'libsdl' '2.26.4'; then
-    download 'https://www.libsdl.org/release/SDL2-2.26.4.tar.gz'
+git_ver_fn 'libsdl-org/SDL' '1' 'R'
+if build 'libsdl' "${github_ver}"; then
+    download "${github_tar}" "libsdl-${github_ver}.tar.gz"
+    execute ./autogen.sh
     execute ./configure --prefix="${workspace}" --disable-shared --enable-static
     execute make "-j${cpus}"
     execute make install
-    build_done 'libsdl' '2.26.4'
+    build_done 'libsdl' "${github_ver}"
 fi
 
 if ${nonfree}; then
@@ -1383,6 +1481,7 @@ if ${nonfree}; then
         if [ -n "${LDEXEFLAGS}" ]; then
             sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "${workspace}"/lib/pkgconfig/srt.pc
         fi
+
         build_done 'srt' "${github_ver}"
     fi
         cnf_ops+=('--enable-libsrt')
@@ -1408,7 +1507,7 @@ if build 'amf' "${github_ver}"; then
     download "${github_tar}" "AMF-${github_ver}.tar.gz"
     execute rm -rf "${workspace}"/include/AMF
     execute mkdir -p "${workspace}"/include/AMF
-    execute cp -fr "${packages}"/AMF-${github_ver}/amf/public/include/* "${workspace}"/include/AMF/
+    execute cp -fr "${packages}"/AMF-"${github_ver}"/amf/public/include/* "${workspace}"/include/AMF/
     build_done 'amf' "${github_ver}"
 fi
 cnf_ops+=('--enable-amf')
@@ -1465,18 +1564,20 @@ if [ -d "${packages}/ffmpeg-${ffmpeg_ver}" ]; then
 fi
 
 # CLONE FFMPEG FROM THE LATEST GIT RELEASE
-build 'ffmpeg' 'n6.1-dev'
-download 'https://github.com/FFmpeg/FFmpeg/archive/refs/tags/n6.1-dev.tar.gz' 'ffmpeg-n6.1-dev.tar.gz'
+build 'ffmpeg' "${ffmpeg_ver}"
+download "https://github.com/FFmpeg/FFmpeg/archive/refs/tags/${ffmpeg_ver}.tar.gz" "ffmpeg-${ffmpeg_ver}.tar.gz"
 ./configure \
     "${cnf_ops[@]}" \
     --disable-debug \
     --disable-doc \
     --disable-shared \
-    --enable-libfdk-aac \
     --enable-pthreads \
     --enable-static \
     --enable-small \
     --enable-version3 \
+    --enable-opencl \
+    --enable-openssl \
+    --cpu="${cpus}" \
     --extra-cflags="${CFLAGS}" \
     --extra-ldexeflags="${LDEXEFLAGS}" \
     --extra-ldflags="${LDFLAGS}" \
@@ -1492,11 +1593,17 @@ execute make "-j${cpus}"
 execute make install
 
 # MOVE BINARIES TO '/usr/bin'
-sudo cp -f "${workspace}/bin/ffmpeg" "${install_dir}/ffmpeg"
-sudo cp -f "${workspace}/bin/ffprobe" "${install_dir}/ffprobe"
-sudo cp -f "${workspace}/bin/ffplay" "${install_dir}/ffplay"
+if which 'sudo' &>/dev/null; then
+    sudo cp -f "${workspace}/bin/ffmpeg" "${install_dir}/ffmpeg"
+    sudo cp -f "${workspace}/bin/ffprobe" "${install_dir}/ffprobe"
+    sudo cp -f "${workspace}/bin/ffplay" "${install_dir}/ffplay"
+else
+    cp -f "${workspace}/bin/ffmpeg" "${install_dir}/ffmpeg"
+    cp -f "${workspace}/bin/ffprobe" "${install_dir}/ffprobe"
+    cp -f "${workspace}/bin/ffplay" "${install_dir}/ffplay"
+fi
 
-# CHECK THAT FILES WERE COPIED TO THE ${install_dir}
+# CHECK THAT FILES WERE COPIED TO THE INSTALL DIRECTORY
 if [ ! -f "${install_dir}/ffmpeg" ]; then
     echo "Failed to copy: ffmpeg to ${install_dir}/"
 fi
