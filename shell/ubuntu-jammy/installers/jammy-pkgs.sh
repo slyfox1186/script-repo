@@ -94,9 +94,8 @@ ppa_fn()
         fi
     done
 
-    apt update
-
     if [ -n "$apt_ppa" ]; then
+        apt update
         sudo apt -y install $apt_ppa
         echo
         echo '$ Any missing ppa repositories were installed'
