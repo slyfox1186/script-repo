@@ -43,7 +43,15 @@ exit_fn()
 
 pkgs_fn()
 {
-    pkgs='alien aptitude aria2 autoconf autogen automake bat binutils bison build-essential ccdiff clang clang-tools cmake cmake-extras colordiff curl dbus-x11 ddclient dconf-editor disktype dos2unix flex g++ gawk gcc-multilib gedit gedit-plugins gir1.2-gtksource-3.0 git git-all gnome-tweaks gnustep-gui-runtime golang gparted gperf grub-customizer gufw htop idn2 iftop iw libbz2-dev libdmalloc-dev libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev liblz-dev liblzma-dev liblzo2-dev libmimalloc2.0 libmimalloc-dev libncurses5 libncurses5-dev libnet-nslookup-perl libnuma-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev librust-malloc-buf-dev libsdl-pango-dev libsox-dev libsox-fmt-all libsox-fmt-mp3 libsoxr-dev libssl-dev libtalloc-dev libtbbmalloc2 libtool libtool-bin libzstd-dev libzzip-dev linux-source lm-sensors lshw lzma-dev make man-db mono-devel nano netplan.io net-tools network-manager npm openssh-client openssh-server openssl pcregrep php-cli php-sqlite3 pipenv psensor python3 python3-idna python3-pip python3-talloc-dev rpm ruby-all-dev shellcheck sox sqlite3 synaptic texinfo tk-dev trash-cli tty-share unzip uuid-dev wget xclip xsel'
+    pkgs=(alien aptitude aria2 autoconf autogen automake bat binutils bison build-essential ccdiff clang clang-tools cmake cmake-extras colordiff \
+    curl dbus-x11 ddclient dconf-editor disktype dos2unix flex g++ gawk gcc-multilib gedit gedit-plugins gir1.2-gtksource-3.0 git git-all \
+    gnome-tweaks gnustep-gui-runtime golang gparted gperf grub-customizer gufw htop idn2 iftop iw libbz2-dev libdmalloc-dev libglib2.0-dev \
+    libgvc6 libheif-dev libjemalloc-dev liblz-dev liblzma-dev liblzo2-dev libmimalloc2.0 libmimalloc-dev libncurses5 libncurses5-dev \
+    libnet-nslookup-perl libnuma-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev \
+    librust-malloc-buf-dev libsdl-pango-dev libsox-dev libsox-fmt-all libsox-fmt-mp3 libsoxr-dev libssl-dev libtalloc-dev libtbbmalloc2 \
+    libtool libtool-bin libzstd-dev libzzip-dev linux-source lm-sensors lshw lzma-dev make man-db mono-devel nano netplan.io net-tools \
+    network-manager npm openssh-client openssh-server openssl pcregrep php-cli php-sqlite3 pipenv psensor python3 python3-idna python3-pip \
+    python3-talloc-dev rpm ruby-all-dev shellcheck sox sqlite3 synaptic texinfo tk-dev trash-cli tty-share unzip uuid-dev wget xclip xsel)
 
     for pkg in ${pkgs[@]}
     do
@@ -57,8 +65,10 @@ pkgs_fn()
         do
             apt -y install ${i}
         done
+        echo
         echo '$ Any missing apt packages were installed'
     else
+        echo
         echo '$ The apt packages are already installed'
     fi
 }
@@ -90,9 +100,11 @@ ppa_fn()
         sudo apt -y install $apt_ppa
         echo
         echo '$ Any missing ppa repositories were installed'
+        echo
     else
         echo
         echo '$ The ppa repositories are already installed'
+        echo
     fi
 }
 
