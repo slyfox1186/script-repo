@@ -70,9 +70,20 @@ exit_fn()
 {
     echo
     echo 'Make sure to star this repository to show your support!'
+    echo
     echo 'https://github.com/slyfox1186/script-repo/'
     echo
     exit 0
+}
+
+fail_fn()
+{
+    echo
+    echo 'Please create a support ticket'
+    echo
+    echo 'https://github.com/slyfox1186/script-repo/issues'
+    echo
+    exit 1
 }
 
 cleanup_fn()
@@ -155,7 +166,6 @@ remove_dir()
 
 download()
 {
-
     dl_path="${packages}"
     dl_file="${2:-"${1##*/}"}"
 
@@ -206,7 +216,7 @@ download()
         fi
     fi
 
-    echo "Extracted ${dl_file}"
+    echo "File extracted: ${dl_file}"
 
     cd "${dl_path}/${target_dir}" || (
         echo 'Script error!'
@@ -215,7 +225,6 @@ download()
         echo
         exit 1
     )
-
 }
 
 download_git()
@@ -236,11 +245,7 @@ download_git()
             if ! git clone -q "${dl_url}" "${target_dir}"; then
                 echo
                 echo "The script failed to download \"${dl_file}\" two times and will exit the build"
-                echo
-                echo 'Please create a support ticket'
-                echo
-                echo 'https://github.com/slyfox1186/script-repo/issues'
-                echo
+                fail_fn
                 exit 1
             fi
         fi
@@ -254,15 +259,12 @@ download_git()
         echo 'Script error!'
         echo
         echo "Unable to change the working directory to ${target_dir}"
-        echo
-        echo 'Please create a support ticket'
-        echo
-        echo 'https://github.com/slyfox1186/script-repo/issues'
+        fail_fn
         exit 1
     )
 }
 
-github_1_fn()
+git_1_fn()
 {
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     net_timeout='5'
@@ -270,16 +272,17 @@ github_1_fn()
     github_url="${2}"
     curl_cmd=$(curl -m "${net_timeout}" -Ls "https://api.github.com/repos/${github_repo}/${github_url}?per_page=1")
     if [ "${?}" -eq '0' ]; then
-        github_all=$(echo "${curl_cmd}" | jq -r '.')
-        github_ver=$(echo "${curl_cmd}" | jq -r '.[].name')
-        github_ver=${github_ver#v}
-        github_ver_ossl=$(echo "${curl_cmd}" | jq -r '.[].name')
-        github_ver_ossl=${github_ver_ossl#OpenSSL }
-        github_tar=$(echo "${curl_cmd}" | jq -r '.[].tarball_url')
+        g_ver=$(echo "${curl_cmd}" | jq -r '.[0].name')
+        g_ver=${g_ver#v}
+        g_ver_ssl=$(echo "${curl_cmd}" | jq -r '.[0].name')
+        g_ver_ssl=${g_ver_ssl#OpenSSL }
+        g_ver_pkg=$(echo "${curl_cmd}" | jq -r '.[0].name')
+        g_ver_pkg=${g_ver_pkg#pkg-config-}
+        g_url=$(echo "${curl_cmd}" | jq -r '.[0].tarball_url')
     fi
 }
 
-github_2_fn()
+git_2_fn()
 {
     net_timeout='5'
     videolan_repo="${1}"
@@ -289,7 +292,7 @@ github_2_fn()
     fi
 }
 
-gitlab_3_fn()
+git_3_fn()
 {
     net_timeout='5'
     gitlab_repo="${1}"
@@ -300,27 +303,27 @@ gitlab_3_fn()
     fi
 }
 
-gitlab_4_fn()
+git_4_fn()
 {
     net_timeout='5'
     gitlab_repo="${1}"
     if curl_cmd=$(curl -m "${net_timeout}" -Ls "https://gitlab.com/api/v4/projects/${gitlab_repo}/repository/tags"); then
-        gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[0] | .name'  )
+        gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[0].name'  )
         gitlab_ver=${gitlab_ver#v}
         gitlab_sver=$(echo "${curl_cmd}" | jq -r '.[3].commit.short_id')
     fi
 }
 
-gitlab_5_fn()
+git_5_fn()
 {
     net_timeout='5'
     gitlab_repo="${1}"
-    if curl_cmd=$(curl -Ss --request GET "https://gitlab.freedesktop.org/api/v4/projects/${gitlab_repo}/repository/tags?"); then
-        gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[0] | .name')
+    if curl_cmd=$(curl -Ss "https://gitlab.freedesktop.org/api/v4/projects/${gitlab_repo}/repository/tags?"); then
+        gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[0].name')
     fi
 }
 
-gitlab_x265_6_fn()
+git_6_fn()
 {
     net_timeout='5'
     gitlab_repo="${1}"
@@ -330,12 +333,12 @@ gitlab_x265_6_fn()
     fi
 }
 
-gitlab_7_fn()
+git_7_fn()
 {
     net_timeout='5'
     gitlab_repo="${1}"
-    if curl_cmd=$(curl -Ss --request GET "https://gitlab.gnome.org/api/v4/projects/${gitlab_repo}/repository/tags?"); then
-        gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[0] | .name')
+    if curl_cmd=$(curl -Ss "https://gitlab.gnome.org/api/v4/projects/${gitlab_repo}/repository/tags?"); then
+        gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[0].name')
         gitlab_ver=${gitlab_ver#v}
     fi
 }
@@ -352,44 +355,44 @@ git_ver_fn()
     fi
 
     if [ "${v_flag}" = 'X' ]; then
-        url_tag='gitlab_x265_6_fn'
+        url_tag='git_6_fn'
         "${url_tag}" 2>/dev/null
 
         return 0
     fi
     
 
-    if [  "${v_flag}" = 'T' ]; then
-        if [ "${v_tag}" = '1' ]; then url_tag='github_1_fn' gv_url='tags'
-        elif [ "${v_tag}" = '2' ]; then url_tag='github_2_fn'; gv_url='tags'
-        fi
-    elif [  "${v_flag}" = 'R' ]; then
-        if [ "${v_tag}" = '1' ]; then url_tag='github_1_fn'; gv_url='releases'
-        elif [ "${v_tag}" = '2' ]; then url_tag='github_2_fn'; gv_url='releases'
-        fi
+    if [  "${v_flag}" = 'T' ] && [  "${v_tag}" = '1' ]; then
+        url_tag='git_1_fn' gv_url='tags'
+    elif [ "${v_flag}" = 'T' ] && [  "${v_tag}" = '2' ]; then
+        url_tag='git_2_fn' gv_url='tags'
     fi
 
-    if [ "${v_tag}" = '1' ]; then url_tag='github_1_fn'
-    elif [ "${v_tag}" = '2' ]; then url_tag='github_2_fn'
-    elif [ "${v_tag}" = '3' ]; then url_tag='gitlab_3_fn'
-    elif [ "${v_tag}" = '4' ]; then url_tag='gitlab_4_fn'
-    elif [ "${v_tag}" = '5' ]; then url_tag='gitlab_5_fn'
-    elif [ "${v_tag}" = '7' ]; then url_tag='gitlab_7_fn'
+    if [  "${v_flag}" = 'R' ] && [  "${v_tag}" = '1' ]; then
+        url_tag='git_1_fn'; gv_url='releases'
+    elif [ "${v_flag}" = 'R' ] && [  "${v_tag}" = '2' ]; then
+        url_tag='git_2_fn'; gv_url='releases'
     fi
+
+    case "${v_flag}" in 
+        3)          url_tag='git_3_fn';;
+        4)          url_tag='git_4_fn';;
+        5)          url_tag='git_5_fn';;
+        6)          url_tag='git_6_fn';;
+        7)          url_tag='git_7_fn';;
+        *)          echo 'Bad user input';;
+    esac
+
+    case "${v_tag}" in 
+        3)          url_tag='git_3_fn';;
+        4)          url_tag='git_4_fn';;
+        5)          url_tag='git_5_fn';;
+        6)          url_tag='git_6_fn';;
+        7)          url_tag='git_7_fn';;
+        *)          echo 'Bad user input';;
+    esac
 
     "${url_tag}" "${v_url}" "${gv_url}" 2>/dev/null
-}
-
-error_fn()
-{
-    echo
-    echo 'Please create a support ticket to get assistance fixing errors.'
-    echo
-    echo 'https://github.com/slyfox1186/script-repo/issues'
-    echo
-    read -p 'Press enter to exit.'
-    echo
-    exit 1
 }
 
 execute()
@@ -462,8 +465,8 @@ cuda_fail_fn()
     echo "Unable to locate directory: /usr/local/cuda-${cuda_ver}/bin/"
     echo
     read -p 'Press enter to exit.'
-    echo
-    error_fn
+    clear
+    fail_fn
 }
 
 gpu_arch_fn()
@@ -808,7 +811,7 @@ if ! which 'nvcc' &>/dev/null ; then
         echo
         echo 'Error: Bad user input!'
         echo '======================='
-        error_fn
+        fail_fn
     fi
 else
     echo
