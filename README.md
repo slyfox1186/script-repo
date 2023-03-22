@@ -16,7 +16,7 @@
  -   [x] XML
 ------
 
-## Install Apt Packages
+## Install apt and ppa packages
   - **What I consider to be core apt packages or "must haves" that everyone should consider installing**
 1. **Ubuntu-Jammy v22.04.02**
 ```
