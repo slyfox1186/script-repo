@@ -36,7 +36,7 @@ exit_fn()
     '$ The script has finished!' \
     '$ Make sure to star this repository to show your support!' \
     '$ https://github.com/slyfox1186/script-repo/'
-    # rm "${0}"
+    rm "${0}"
     exit 0
 }
 
