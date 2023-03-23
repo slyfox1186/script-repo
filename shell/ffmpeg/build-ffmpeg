@@ -245,7 +245,6 @@ download_git()
                 echo
                 echo "The script failed to download \"${dl_file}\" two times and will exit the build"
                 fail_fn
-                exit 1
             fi
         fi
         echo 'Download Complete'
@@ -259,7 +258,6 @@ download_git()
         echo
         echo "Unable to change the working directory to ${target_dir}"
         fail_fn
-        exit 1
     )
 }
 
@@ -269,7 +267,11 @@ git_1_fn()
     net_timeout='5'
     github_repo="${1}"
     github_url="${2}"
-    curl_cmd=$(curl --m "${net_timeout}" -Ls "https://api.github.com/repos/${github_repo}/${github_url}?per_page=1")
+    curl_cmd=$(curl --url "https://api.github.com/slyfox1186" \
+        --header "Authorization: Bearer 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" \
+        --header "X-GitHub-Api-Version: 2022-11-28" \
+        -m "${net_timeout}" \
+        -sSL "https://api.github.com/repos/${github_repo}/${github_url}?per_page=1")
     if [ "${?}" -eq '0' ]; then
         g_ver=$(echo "${curl_cmd}" | jq -r '.[0].name')
         g_ver=${g_ver#v}
@@ -285,7 +287,7 @@ git_2_fn()
 {
     net_timeout='5'
     videolan_repo="${1}"
-    if curl_cmd=$(curl -m "${net_timeout}" -Ls "https://code.videolan.org/api/v4/projects/${videolan_repo}/repository/branches?"); then
+    if curl_cmd=$(curl -m "${net_timeout}" -sSL "https://code.videolan.org/api/v4/projects/${videolan_repo}/repository/branches?"); then
         videolan_ver=$(echo "${curl_cmd}" | jq -r '.[0].commit.id')
         videolan_sver=$(echo "${curl_cmd}" | jq -r '.[0].commit.short_id')
     fi
@@ -295,7 +297,7 @@ git_3_fn()
 {
     net_timeout='5'
     gitlab_repo="${1}"
-    if curl_cmd=$(curl -m "${net_timeout}" -Ls "https://gitlab.com/api/v4/projects/${gitlab_repo}/repository/branches?"); then
+    if curl_cmd=$(curl -m "${net_timeout}" -sSL "https://gitlab.com/api/v4/projects/${gitlab_repo}/repository/branches?"); then
         gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[3].commit.id')
         gitlab_ver=${gitlab_ver#v}
         gitlab_sver=$(echo "${curl_cmd}" | jq -r '.[3].commit.short_id')
@@ -306,7 +308,7 @@ git_4_fn()
 {
     net_timeout='5'
     gitlab_repo="${1}"
-    if curl_cmd=$(curl -m "${net_timeout}" -Ls "https://gitlab.com/api/v4/projects/${gitlab_repo}/repository/tags"); then
+    if curl_cmd=$(curl -m "${net_timeout}" -sSL "https://gitlab.com/api/v4/projects/${gitlab_repo}/repository/tags"); then
         gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[0].name'  )
         gitlab_ver=${gitlab_ver#v}
         gitlab_sver=$(echo "${curl_cmd}" | jq -r '.[3].commit.short_id')
@@ -317,7 +319,7 @@ git_5_fn()
 {
     net_timeout='5'
     gitlab_repo="${1}"
-    if curl_cmd=$(curl -Ss "https://gitlab.freedesktop.org/api/v4/projects/${gitlab_repo}/repository/tags?"); then
+    if curl_cmd=$(curl -m "${net_timeout}" -sSL "https://gitlab.freedesktop.org/api/v4/projects/${gitlab_repo}/repository/tags?"); then
         gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[0].name')
     fi
 }
@@ -326,9 +328,8 @@ git_6_fn()
 {
     net_timeout='5'
     gitlab_repo="${1}"
-    if curl_cmd="$(curl \
-        -sSL 'https://bitbucket.org/!api/2.0/repositories/multicoreware/x265_git/effective-branching-model')"; then
-        gitlab_ver=$(echo "${curl_cmd}" | jq '.development.branch.target' | grep -Eo '[0-9]+[0-9a-z]+[^"]')
+    if curl_cmd="$(curl -sSL 'https://bitbucket.org/!api/2.0/repositories/multicoreware/x265_git/effective-branching-model')"; then
+        gitlab_ver=$(echo "${curl_cmd}" | jq '.development.branch.target' | grep -Eo '[0-9a-z][0-9a-z]+' | sort | head -n 1)
     fi
 }
 
@@ -336,7 +337,7 @@ git_7_fn()
 {
     net_timeout='5'
     gitlab_repo="${1}"
-    if curl_cmd=$(curl -Ss "https://gitlab.gnome.org/api/v4/projects/${gitlab_repo}/repository/tags?"); then
+    if curl_cmd=$(curl -sSL "https://gitlab.gnome.org/api/v4/projects/${gitlab_repo}/repository/tags?"); then
         gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[0].name')
         gitlab_ver=${gitlab_ver#v}
     fi
@@ -373,7 +374,8 @@ git_ver_fn()
         url_tag='git_2_fn'; gv_url='releases'
     fi
 
-    case "${v_flag}" in 
+    case "${v_flag}" in
+        2)          url_tag='git_2_fn';;
         3)          url_tag='git_3_fn';;
         4)          url_tag='git_4_fn';;
         5)          url_tag='git_5_fn';;
@@ -382,6 +384,7 @@ git_ver_fn()
     esac
 
     case "${v_tag}" in 
+        2)          url_tag='git_2_fn';;
         3)          url_tag='git_3_fn';;
         4)          url_tag='git_4_fn';;
         5)          url_tag='git_5_fn';;
@@ -846,12 +849,12 @@ if build 'giflib' '5.2.1'; then
 fi
 
 git_ver_fn 'freedesktop/pkg-config' '1' 'T'
-if build 'pkg-config' "${g_ver}"; then
+if build 'pkg-config' "${g_ver_pkg}"; then
     download "https://pkgconfig.freedesktop.org/releases/${g_ver}.tar.gz" "${g_ver}.tar.gz"
     execute ./configure --silent --prefix="${workspace}" --with-pc-path="${workspace}"/lib/pkgconfig --with-internal-glib
     execute make "-j${cpus}"
     execute make install
-    build_done 'pkg-config' "${g_ver}"
+    build_done 'pkg-config' "${g_ver_pkg}"
 fi
 
 git_ver_fn 'yasm/yasm' '1' 'T'
@@ -1023,22 +1026,22 @@ fi
 
 if ${nonfree}; then
     git_ver_fn '536' '2'
-    if build 'x264' "eaa68fad"; then
-        download https://code.videolan.org/videolan/x264/-/archive/eaa68fad9e5d201d42fde51665f2d137ae96baf0/x264-eaa68fad9e5d201d42fde51665f2d137ae96baf0.tar.bz2 "x264-eaa68fad.tar.bz2"
+    if build 'x264' "${videolan_sver}"; then
+        download https://code.videolan.org/videolan/x264/-/archive/${videolan_ver}/x264-${videolan_ver}.tar.bz2 "x264-${videolan_sver}.tar.bz2"
         cd "${packages}/x264-${videolan_sver}" || exit 1
         execute ./configure --prefix="${workspace}" --enable-static --enable-pic CXXFLAGS="-fPIC ${CXXFLAGS}"
         execute make "-j${cpus}"
         execute make install
         execute make install-lib-static
-        build_done 'x264' "eaa68fad"
+        build_done 'x264' "${videolan_sver}"
     fi
     cnf_ops+=('--enable-libx264')
 fi
 
 if ${nonfree}; then
     git_ver_fn 'x265_git' '6' 'X'
-    if build 'x265' "c07d076c"; then
-        download "https://bitbucket.org/multicoreware/x265_git/get/c07d076cf20ab41d8077a804dda70fdbc3b97386.tar.bz2" "x265-c07d076cf20ab41d8077a804dda70fdbc3b97386.tar.bz2"
+    if build 'x265' "${gitlab_ver:0:7}"; then
+        download "https://bitbucket.org/multicoreware/x265_git/get/${gitlab_ver}.tar.bz2" "x265-${gitlab_ver:0:7}.tar.bz2"
         cd "${PWD}/build/linux" || exit 1
         rm -fr {8,10,12}bit 2>/dev/null
         mkdir -p {8,10,12}bit
@@ -1075,7 +1078,7 @@ EOF
 
         if [ -n "${LDEXEFLAGS}" ]; then sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "${workspace}"/lib/pkgconfig/x265.pc; fi
 
-        build_done 'x265' "c07d076c"
+        build_done 'x265' "${gitlab_ver:0:7}"
     fi
     cnf_ops+=('--enable-libx265')
 fi
