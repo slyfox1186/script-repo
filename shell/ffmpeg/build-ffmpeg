@@ -262,7 +262,7 @@ download_git()
 }
 
 # PULL THE LATEST VERSIONS OF EACH PACKAGE FROM THE WEBSITE API
-net_timeout='5'
+net_timeout='10'
 
 git_1_fn()
 {
@@ -840,17 +840,19 @@ install_cuda_fn()
 }
 
 ##
-## INSTALL CUDA
+## install cuda
 ##
 
 install_cuda_fn
 
 ##
-## BUILD TOOLS
+## build tools
 ##
 
+# install required apt packages
 build_pkgs_fn
 
+# begin source code building
 if build 'giflib' '5.2.1'; then
     download 'https://netcologne.dl.sourceforge.net/project/giflib/giflib-5.2.1.tar.gz'
     cd "${packages}"/giflib-5.2.1 || exit 1
@@ -1332,7 +1334,7 @@ if ${nonfree}; then
 fi
 
 ##
-## IMAGE LIBRARIES
+## image libraries
 ##
 
 git_ver_fn '4720790' '4'
@@ -1369,7 +1371,7 @@ fi
 
 if build 'libwebp' '1.2.2'; then
     # libwebp can fail to compile on ubuntu if cflags are set
-    # version 1.3.0 and 1.2.4 fail to build successfully
+    # version 1.3.0, 1.2.4, and 1.2.3 fail to build successfully
     CPPFLAGS=
     download 'https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.2.2.tar.gz' 'libwebp-1.2.2.tar.gz'
     execute ./autogen.sh
@@ -1388,16 +1390,6 @@ cnf_ops+=('--enable-libwebp')
 ##
 ## other libraries
 ##
-
-git_ver_fn 'khronosgroup/opencl-headers' '1' 'R'
-if build 'opencl' "${g_ver}"; then
-    CFLAGS+=" -DLIBXML_STATIC_FOR_DLL -DNOLIBTOOL"
-    download "${g_url}" "opencl-${g_ver}.tar.gz"
-    execute cmake -S . -B build -DCMAKE_INSTALL_PREFIX="${workspace}"
-    execute cmake --build build --target install
-    build_done 'opencl' "${gitlab_ver}"
-fi
-cnf_ops+=('--enable-opencl')
 
 git_ver_fn 'MediaArea/ZenLib' '1' 'R'
 if build 'ZenLib' "${g_ver}"; then
@@ -1518,6 +1510,16 @@ fi
 ## HWaccel library ##
 #####################
 
+git_ver_fn 'khronosgroup/opencl-headers' '1' 'R'
+if build 'opencl' "${g_ver}"; then
+    CFLAGS+=" -DLIBXML_STATIC_FOR_DLL -DNOLIBTOOL"
+    download "${g_url}" "opencl-${g_ver}.tar.gz"
+    execute cmake -S . -B build -DCMAKE_INSTALL_PREFIX="${workspace}"
+    execute cmake --build build --target install
+    build_done 'opencl' "${gitlab_ver}"
+fi
+cnf_ops+=('--enable-opencl')
+
 # Vaapi doesn't work well with static links FFmpeg.
 if [ -z "${LDEXEFLAGS}" ]; then
     # If the libva development SDK is installed, enable vaapi.
@@ -1593,7 +1595,6 @@ fi
 # CLONE FFMPEG FROM THE LATEST GIT RELEASE
 build 'ffmpeg' "${ffmpeg_ver}"
 download "https://github.com/FFmpeg/FFmpeg/archive/refs/heads/release/${ffmpeg_ver}.tar.gz" "FFmpeg-release-${ffmpeg_ver}.tar.gz"
-# download "https://github.com/FFmpeg/FFmpeg/archive/refs/tags/${ffmpeg_ver}.tar.gz" "ffmpeg-${ffmpeg_ver}.tar.gz"
 ./configure \
     "${cnf_ops[@]}" \
     --disable-debug \
