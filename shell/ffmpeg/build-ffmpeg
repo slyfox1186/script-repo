@@ -261,8 +261,11 @@ download_git()
     )
 }
 
-# PULL THE LATEST VERSIONS OF EACH PACKAGE FROM THE WEBSITE API
-net_timeout='5'
+##
+## PULL THE LATEST VERSIONS OF EACH PACKAGE FROM THE WEBSITE API
+##
+
+net_timeout='10'
 
 git_1_fn()
 {
@@ -598,7 +601,7 @@ PATH="${workspace}/bin:${PATH}"
 export PATH
 
 PKG_CONFIG_PATH="\
-${workspace}\lib\pkgconfig:\
+${workspace}/lib/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib/pkgconfig:\
 /usr/local/share/pkgconfig:\
@@ -772,64 +775,78 @@ cuda_add_fn()
     fi
 }
 
+install_cuda_fn()
+{
+    local cuda_ans cuda_choice
+
+    if ! which 'nvcc' &>/dev/null ; then
+        echo
+        echo 'The cuda-sdk-toolkit isn'\''t installed or it is not in $PATH'
+        echo '==============================================================='
+        echo
+        echo 'What do you want to do next?'
+        echo
+        echo '[1] Install the toolkit and add it to $PATH'
+        echo '[2] Only add it to $PATH'
+        echo '[3] Continue the build'
+        echo
+        read -p 'Your choices are (1 to 3): ' cuda_ans
+        clear
+        if [[ "${cuda_ans}" -eq '1' ]]; then
+            cuda_fn
+            cuda_add_fn
+        elif [[ "${cuda_ans}" -eq '2' ]]; then
+            if [ -d '/usr/local/cuda-12.1/bin' ]; then
+                PATH="${PATH}:/usr/local/cuda-12.1/bin"
+                export PATH
+            else
+                echo 'The script was unable to add cuda to your $PATH because the required folder was not found: /usr/local/cuda-12.1/bin'
+                echo
+                read -p 'Press enter to exit'
+                echo
+                exit 1
+            fi
+        elif [[ "${cuda_ans}" -eq '3' ]]; then
+            echo
+        else
+            echo
+            echo 'Error: Bad user input!'
+            echo '======================='
+            fail_fn
+        fi
+    else
+        echo
+        echo "The cuda-sdk-toolkit v${cuda_ver} is already installed."
+        echo '================================================='
+        echo
+        echo 'Do you want to update/reinstall it?'
+        echo
+        echo '[1] Yes'
+        echo '[2] No'
+        echo
+        read -p 'Your choices are (1 or 2): ' cuda_choice
+        clear
+        if [[ "${cuda_choice}" -eq '1' ]]; then
+            cuda_fn
+            cuda_add_fn
+        elif [[ "${cuda_choice}" -eq '2' ]]; then
+            echo 'Continuing the build...'
+        else
+            echo
+            echo 'Bad user input.'
+            echo
+            read -p 'Press enter to try again.'
+            clear
+            install_cuda_fn
+        fi
+    fi
+}
+
 ##
 ## INSTALL CUDA
 ##
 
-if ! which 'nvcc' &>/dev/null ; then
-    echo
-    echo 'The cuda-sdk-toolkit isn'\''t installed or it is not in $PATH'
-    echo '==============================================================='
-    echo
-    echo 'What do you want to do next?'
-    echo
-    echo '[1] Install the toolkit and add it to $PATH'
-    echo '[2] Only add it to $PATH'
-    echo '[3] Continue the build'
-    echo
-    read -p 'Your choices are (1 to 3): ' cuda_ans
-    clear
-    if [[ "${cuda_ans}" -eq '1' ]]; then
-        cuda_fn
-        cuda_add_fn
-    elif [[ "${cuda_ans}" -eq '2' ]]; then
-        if [ -d '/usr/local/cuda-12.1/bin' ]; then
-            PATH="${PATH}:/usr/local/cuda-12.1/bin"
-            export PATH
-        else
-            echo 'The script was unable to add cuda to your $PATH because the required folder was not found: /usr/local/cuda-12.1/bin'
-            echo
-            read -p 'Press enter to exit'
-            echo
-            exit 1
-        fi
-    elif [[ "${cuda_ans}" -eq '3' ]]; then
-        echo
-    else
-        echo
-        echo 'Error: Bad user input!'
-        echo '======================='
-        fail_fn
-    fi
-else
-    echo
-    echo "The cuda-sdk-toolkit v${cuda_ver} is already installed."
-    echo '================================================='
-    echo
-    echo 'Do you want to update/reinstall it?'
-    echo
-    echo '[1] Yes'
-    echo '[2] No'
-    echo
-    read -p 'Your choices are (1 or 2): ' cuda_choice
-    clear
-    if [[ "${cuda_choice}" -eq '1' ]]; then
-        cuda_fn
-        cuda_add_fn
-    elif [[ "${cuda_choice}" -eq '2' ]]; then
-        echo 'Continuing the build...'
-    fi
-fi
+install_cuda_fn
 
 ##
 ## BUILD TOOLS
@@ -849,7 +866,7 @@ fi
 git_ver_fn 'freedesktop/pkg-config' '1' 'T'
 if build 'pkg-config' "${g_ver_pkg}"; then
     download "https://pkgconfig.freedesktop.org/releases/${g_ver}.tar.gz" "${g_ver}.tar.gz"
-    execute ./configure --silent --prefix="${workspace}" --with-pc-path="${workspace}"/lib/pkgconfig --with-internal-glib
+    execute ./configure --silent --prefix="${workspace}" --with-pc-path="${workspace}"/lib/pkgconfig/ --with-internal-glib
     execute make "-j${cpus}"
     execute make install
     build_done 'pkg-config' "${g_ver_pkg}"
@@ -997,7 +1014,7 @@ fi
 
 git_ver_fn '24327400' '4'
 if build 'svtav1' "${gitlab_ver}"; then
-    download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v${gitlab_ver}/SVT-AV1-v${gitlab_ver}.tar.bz2" "SVT-AV1-v${gitlab_ver}.tar.bz2"
+    download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v${gitlab_ver}/SVT-AV1-v${gitlab_ver}.tar.bz2" "SVT-AV1-${gitlab_ver}.tar.bz2"
     cd "${PWD}/Build/linux" || exit 1
     execute cmake -DCMAKE_INSTALL_PREFIX="${workspace}" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' ../.. -G 'Unix Makefiles' -DCMAKE_BUILD_TYPE='Release' -DENABLE_EXAMPLES='OFF'
     execute make "-j${cpus}"
@@ -1224,7 +1241,7 @@ if command_exists 'python3'; then
         fi
         git_ver_fn '11853176' '4'
         if build 'lilv' "${gitlab_ver}"; then
-            download "https://gitlab.com/lv2/lilv/-/archive/v0.24.20/lilv-v0.24.20.tar.gz" "lilv-v0.24.20.tar.gz"
+            download "https://gitlab.com/lv2/lilv/-/archive/v0.24.20/lilv-v0.24.20.tar.gz" "lilv-0.24.20.tar.gz"
             execute meson setup build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib
             execute ninja -C build
             execute ninja -C build install
@@ -1255,7 +1272,7 @@ cnf_ops+=('--enable-libmp3lame')
 
 git_ver_fn 'xiph/opus' '1' 'T'
 if build 'opus' "${g_ver}"; then
-    download "${g_url}" "opus-${g_ver}"
+    download "${g_url}" "opus-${g_ver}.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}" --disable-shared --enable-static
     execute make "-j${cpus}"
@@ -1323,7 +1340,7 @@ fi
 
 git_ver_fn '4720790' '4'
 if build 'libtiff' "${gitlab_ver}"; then
-    download "https://gitlab.com/libtiff/libtiff/-/archive/v${gitlab_ver}/libtiff-v${gitlab_ver}.tar.bz2" "libtiff-v${gitlab_ver}.tar.bz2"
+    download "https://gitlab.com/libtiff/libtiff/-/archive/v${gitlab_ver}/libtiff-v${gitlab_ver}.tar.bz2" "libtiff-${gitlab_ver}.tar.bz2"
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}" --disable-shared --enable-static
     execute make "-j${cpus}"
@@ -1375,15 +1392,13 @@ cnf_ops+=('--enable-libwebp')
 ## other libraries
 ##
 
-git_ver_fn '1665' '7'
-if build 'libxml2' "${gitlab_ver}"; then
+git_ver_fn 'khronosgroup/opencl-headers' '1' 'R'
+if build 'opencl' "${g_ver}"; then
     CFLAGS+=" -DLIBXML_STATIC_FOR_DLL -DNOLIBTOOL"
-    download "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v${gitlab_ver}/libxml2-v${gitlab_ver}.tar.bz2" "libxml2-v${gitlab_ver}.tar.bz2"
-    execute ./autogen.sh
-    execute ./configure --prefix="${workspace}" --disable-shared --enable-static
-    execute make "-j${cpus}"
-    execute make install
-    build_done 'libxml2' "${gitlab_ver}"
+    download "${g_url}" "opencl-${g_ver}.tar.gz"
+    execute cmake -S . -B build -DCMAKE_INSTALL_PREFIX="${workspace}"
+    execute cmake --build build --target install
+    build_done 'opencl' "${gitlab_ver}"
 fi
 cnf_ops+=('--enable-libxml2')
 
@@ -1592,7 +1607,6 @@ download "https://github.com/FFmpeg/FFmpeg/archive/refs/heads/release/${ffmpeg_v
     --enable-small \
     --enable-version3 \
     --enable-opencl \
-    --enable-openssl \
     --cpu="${cpus}" \
     --extra-cflags="${CFLAGS}" \
     --extra-ldexeflags="${LDEXEFLAGS}" \
