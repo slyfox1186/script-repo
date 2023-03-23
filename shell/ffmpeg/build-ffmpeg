@@ -261,10 +261,12 @@ download_git()
     )
 }
 
+# PULL THE LATEST VERSIONS OF EACH PACKAGE FROM THE WEBSITE API
+net_timeout='5'
+
 git_1_fn()
 {
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
-    net_timeout='5'
     github_repo="${1}"
     github_url="${2}"
     curl_cmd=$(curl -m "${net_timeout}" -sSL "https://api.github.com/repos/${github_repo}/${github_url}?per_page=1")
@@ -281,9 +283,9 @@ git_1_fn()
 
 git_2_fn()
 {
-    net_timeout='5'
     videolan_repo="${1}"
-    if curl_cmd=$(curl -m "${net_timeout}" -sSL "https://code.videolan.org/api/v4/projects/${videolan_repo}/repository/branches?"); then
+    if curl_cmd=$(curl -m "${net_timeout}" \
+        -sSL "https://code.videolan.org/api/v4/projects/${videolan_repo}/repository/branches?"); then
         videolan_ver=$(echo "${curl_cmd}" | jq -r '.[0].commit.id')
         videolan_sver=$(echo "${curl_cmd}" | jq -r '.[0].commit.short_id')
     fi
@@ -291,9 +293,9 @@ git_2_fn()
 
 git_3_fn()
 {
-    net_timeout='5'
     gitlab_repo="${1}"
-    if curl_cmd=$(curl -m "${net_timeout}" -sSL "https://gitlab.com/api/v4/projects/${gitlab_repo}/repository/branches?"); then
+    if curl_cmd=$(curl -m "${net_timeout}" \
+        -sSL "https://gitlab.com/api/v4/projects/${gitlab_repo}/repository/branches?"); then
         gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[3].commit.id')
         gitlab_ver=${gitlab_ver#v}
         gitlab_sver=$(echo "${curl_cmd}" | jq -r '.[3].commit.short_id')
@@ -302,9 +304,9 @@ git_3_fn()
 
 git_4_fn()
 {
-    net_timeout='5'
     gitlab_repo="${1}"
-    if curl_cmd=$(curl -m "${net_timeout}" -sSL "https://gitlab.com/api/v4/projects/${gitlab_repo}/repository/tags"); then
+    if curl_cmd=$(curl -m "${net_timeout}" \
+        -sSL "https://gitlab.com/api/v4/projects/${gitlab_repo}/repository/tags"); then
         gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[0].name'  )
         gitlab_ver=${gitlab_ver#v}
         gitlab_sver=$(echo "${curl_cmd}" | jq -r '.[3].commit.short_id')
@@ -313,27 +315,27 @@ git_4_fn()
 
 git_5_fn()
 {
-    net_timeout='5'
     gitlab_repo="${1}"
-    if curl_cmd=$(curl -m "${net_timeout}" -sSL "https://gitlab.freedesktop.org/api/v4/projects/${gitlab_repo}/repository/tags?"); then
+    if curl_cmd=$(curl -m "${net_timeout}" \
+        -sSL "https://gitlab.freedesktop.org/api/v4/projects/${gitlab_repo}/repository/tags?"); then
         gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[0].name')
     fi
 }
 
 git_6_fn()
 {
-    net_timeout='5'
     gitlab_repo="${1}"
-    if curl_cmd="$(curl -sSL 'https://bitbucket.org/!api/2.0/repositories/multicoreware/x265_git/effective-branching-model')"; then
+    if curl_cmd="$(curl -m "${net_timeout}" \
+        -sSL 'https://bitbucket.org/!api/2.0/repositories/multicoreware/x265_git/effective-branching-model')"; then
         gitlab_ver=$(echo "${curl_cmd}" | jq '.development.branch.target' | grep -Eo '[0-9a-z][0-9a-z]+' | sort | head -n 1)
     fi
 }
 
 git_7_fn()
 {
-    net_timeout='5'
     gitlab_repo="${1}"
-    if curl_cmd=$(curl -sSL "https://gitlab.gnome.org/api/v4/projects/${gitlab_repo}/repository/tags?"); then
+    if curl_cmd=$(curl -m "${net_timeout}" \
+        -sSL "https://gitlab.gnome.org/api/v4/projects/${gitlab_repo}/repository/tags?"); then
         gitlab_ver=$(echo "${curl_cmd}" | jq -r '.[0].name')
         gitlab_ver=${gitlab_ver#v}
     fi
