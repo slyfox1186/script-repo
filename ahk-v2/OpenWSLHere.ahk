@@ -16,7 +16,7 @@
     Instructions:
     - You need to replace the below variable "_osName" with the wsl distribution of your choosing.
       - To find the available distros run "wsl.exe -l --all" using PowerShell to get a list of available options
- 
+
     Updated:
     - 03.24.23
 
@@ -27,21 +27,20 @@
 _OpenWSLHere()
 {
     ; Static vars so vars are not recreated each time
-    Static _convert := " !#$%&'()-.*:?@[]^_``{|}~/"
-    Static _osName := "Ubuntu-22.04"
-    Static _wt := "C:\Users\jholl\AppData\Local\Microsoft\WindowsApps\wt.exe"
-    Static _wsl := "C:\Windows\System32\wsl.exe"
+    Static convert := " !#$%&'()-.*:?@[]^_``{|}~/"
+    Static osName := "Ubuntu-22.04"
+    Static wt := "C:\Users\jholl\AppData\Local\Microsoft\WindowsApps\wt.exe"
 
     if FileExist(A_ProgramFiles . "\PowerShell\7\pwsh.exe")
-        _myexe := A_ProgramFiles . "\PowerShell\7\pwsh.exe"
+        myexe := A_ProgramFiles . "\PowerShell\7\pwsh.exe"
     else
-        _myexe := A_WinDir . "\System32\WindowsPowerShell\v1.0\powershell.exe"
+        myexe := A_WinDir . "\System32\WindowsPowerShell\v1.0\powershell.exe"
 
     if WinActive("ahk_class CabinetWClass ahk_exe explorer.exe")
         winObj := ComObject("Shell.Application").Windows
     Else
     {
-        Run A_ComSpec ' /D /C START "" "' _myexe '" -NoP -W Hidden -C "Start-Process wt.exe -Args `'-w new-tab -M -d \"~\" wsl.exe -d \"' _osName '\"`' -Verb RunAs'
+        Run A_ComSpec ' /D /C START "" "' myexe '" -NoP -W Hidden -C "Start-Process wt.exe -Args `'-w new-tab -M -d \"~\" wsl.exe -d \"' osName '\"`' -Verb RunAs'
         Return
     }
 
@@ -50,7 +49,7 @@ _OpenWSLHere()
             ; Get the string
             pwd := SubStr(win.LocationURL, 9)
             ; Loop through the convert characters
-            Loop Parse, _convert
+            Loop Parse, convert
                 ; Create a %hex token using ord value of convert chars
                 hex := Format("{:X}" , Ord(A_LoopField))
                 ; Replace any hex tokens with their actual chars
@@ -62,5 +61,5 @@ _OpenWSLHere()
      }
 
     ; Converted both run commands to expression format
-        Run A_ComSpec ' /D /C START "" "' _myexe '" -NoP -W Hidden -C "Start-Process wt.exe -Args `'-w new-tab -M -d \"' pwd '\" wsl.exe -d \"' _osName '\"`' -Verb RunAs'
+        Run A_ComSpec ' /D /C START "" "' myexe '" -NoP -W Hidden -C "Start-Process wt.exe -Args `'-w new-tab -M -d \"' pwd '\" wsl.exe -d \"' osName '\"`' -Verb RunAs'
 }
