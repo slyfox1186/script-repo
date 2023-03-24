@@ -11,11 +11,15 @@
     - https://pastebin.com/u/slyfox1186
     
     Purpose:
-    - This will open Windows' WSL terminal to the active file explorer folder or if no active window is found, %windir%\System32
+    - This will open Windows' WSL terminal to the active file explorer folder or if no active window is found, %A_WinDir%\System32
 
     Instructions:
     - You need to replace the below variable "_osName" with the wsl distribution of your choosing.
       - To find the available distros run "wsl.exe -l --all" using PowerShell to get a list of available options
+ 
+    Updated:
+    - 03.24.23
+
 */
 
 !w::_OpenWSLHere()
@@ -28,13 +32,19 @@ _OpenWSLHere()
     Static _wt := "C:\Users\jholl\AppData\Local\Microsoft\WindowsApps\wt.exe"
     Static _wsl := "C:\Windows\System32\wsl.exe"
 
-    If FileExist(A_ProgramFiles . "\PowerShell\7\pwsh.exe")
+    if FileExist(A_ProgramFiles . "\PowerShell\7\pwsh.exe")
         _myexe := A_ProgramFiles . "\PowerShell\7\pwsh.exe"
-    Else
-        _myexe := A_windir . "\System32\WindowsPowerShell\v1.0\powershell.exe"
+    else
+        _myexe := A_WinDir . "\System32\WindowsPowerShell\v1.0\powershell.exe"
 
-    If WinExist("ahk_class CabinetWClass ahk_exe explorer.exe")
+    if WinActive("ahk_class CabinetWClass ahk_exe explorer.exe")
         winObj := ComObject("Shell.Application").Windows
+    Else
+    {
+        Run A_ComSpec ' /D /C START "" "' _myexe '" -NoP -W Hidden -C "Start-Process wt.exe -Args `'-w new-tab -M -d \"~\" wsl.exe -d \"' _osName '\"`' -Verb RunAs'
+        Return
+    }
+
     For win in winObj
     {
             ; Get the string
@@ -52,9 +62,5 @@ _OpenWSLHere()
      }
 
     ; Converted both run commands to expression format
-    len := StrLen(pwd)
-    If (len < 0)
-        Run A_ComSpec ' /D /C START "" "' _myexe '" -NoP -W Hidden -C "Start-Process wt.exe -Args `'-w new-tab -M -d \"~\" wsl.exe -d \"' _osName '\"`' -Verb RunAs'
-    Else
         Run A_ComSpec ' /D /C START "" "' _myexe '" -NoP -W Hidden -C "Start-Process wt.exe -Args `'-w new-tab -M -d \"' pwd '\" wsl.exe -d \"' _osName '\"`' -Verb RunAs'
 }
