@@ -4,14 +4,14 @@ clear
 
 # REQUIRED PACKAGES
 if ! which bc &> /dev/null; then
-    sudo apt -y install bc
+    sudo apt install bc
 fi
 
 # DELETE LEFTOVER FILES
-del_this="$(du -ah | grep -Eo '\..*\(.*\)\.mp4')"
+del_this="$(du -ah --max-depth=1 | grep -Eo '\..*\(.*\)\.mp4')"
 
 if [ -n "${del_this:2}" ]; then
-    sudo rm "${del_this:2}"
+    rm "${del_this:2}"
 fi
 
 # CAPTURE THE VIDEO WITHOUT (X265).MP4 AS THE ENDING
@@ -79,7 +79,7 @@ if ! ffmpeg \
         -rc:v 'vbr' \
         -b:v "${bitrate}"k \
         -bufsize:v "${bufsize}"k \
-        -bf:v '3' \
+        -bf:v '4' \
         -b_ref_mode:v 'middle' \
         -qmin:v '0' \
         -qmax:v '99' \
