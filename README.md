@@ -18,14 +18,11 @@
 
 ## Install apt and ppa packages
   - **What I consider to be core apt packages or "must haves" that everyone should consider installing**
-1. **Ubuntu-Jammy v22.04.02**
+**Ubuntu**
 ```
 wget -qO pkgs.sh https://jammy-pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
-2. **Ubuntu-Focal v22.04.05**
-```
-wget -qO pkgs.sh https://focal-pkgs.optimizethis.net; sudo bash pkgs.sh
-```
+
 ------
 ## Add .bashrc, .bash_aliases, and .bash_functions to the USER's directory
   - **Warning! This will overwrite your files!**
