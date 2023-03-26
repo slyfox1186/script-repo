@@ -1343,8 +1343,9 @@ if build 'libvorbis' "$g_ver"; then
 fi
 cnf_ops+=('--enable-libvorbis')
 
-if build 'libtheora' '1.1.1'; then
-    download 'https://github.com/xiph/theora/archive/refs/tags/v1.1.1.tar.gz' 'libtheora-1.1.1.tar.gz'
+git_ver_fn 'xiph/theora' '1' 'T'
+if build 'libtheora' "$g_ver"; then
+    download "$g_url" "libtheora-$g_ver.tar.gz"
     execute ./autogen.sh
     sed 's/-fforce-addr//g' 'configure' >'configure.patched'
     chmod +x 'configure.patched'
@@ -1357,7 +1358,7 @@ if build 'libtheora' '1.1.1'; then
         --disable-oggtest --disable-vorbistest --disable-examples --disable-asm --disable-spec
     execute make -j "$cpus"
     execute make install
-    build_done 'libtheora' '1.1.1'
+    build_done 'libtheora' "$g_ver"
 fi
 cnf_ops+=('--enable-libtheora')
 
@@ -1388,6 +1389,7 @@ if build 'libtiff' "$gitlab_ver"; then
     build_done 'libtiff' "$gitlab_ver"
 fi
 
+git_ver_fn 'glennrp/libpng' '1' 'T'
 if build 'libpng' "$g_ver"; then
     download "$g_url" "libpng-$g_ver.tar.gz"
     export LDFLAGS="$LDFLAGS"
@@ -1517,6 +1519,18 @@ if build 'libass' "$g_ver"; then
     build_done 'libass' "$g_ver"
 fi
 cnf_ops+=('--enable-libass')
+
+git_ver_fn '890' '5'
+if build 'fontconfig' "$gitlab_ver"; then
+    extracommands=(-D{harfbuzz,png,bzip2,brotli,zlib,tests}"=disabled")
+    download "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/$gitlab_ver/fontconfig-$gitlab_ver.tar.bz2" "fontconfig-$gitlab_ver.tar.bz2"
+    execute ./autogen.sh
+    execute ./configure --prefix="$workspace" --sysconfdir="$workspace"/etc/ --mandir="$workspace"/share/man/
+    execute make -j "$cpus"
+    execute make install
+    build_done 'fontconfig' "$gitlab_ver"
+fi
+cnf_ops+=('--enable-libfontconfig')
 
 git_ver_fn '7950' '5'
 if build 'freetype' "$gitlab_ver"; then
