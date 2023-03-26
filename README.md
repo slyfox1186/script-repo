@@ -33,9 +33,17 @@ wget -qO scripts.sh https://scripts.optimizethis.net; bash scripts.sh
 ------
 ## Install download mirrors to sources.list
   - **Warning! This will overwrite your files!**
+
+#### Ubuntu Jammy
 ```
 curl -sSL https://jammy-mirrors.optimizethis.net | sudo bash
 ```
+#### Ubuntu Bionic
+
+```
+curl -sSL https://bionic-mirrors.optimizethis.net | sudo bash
+```
+
 ------
 ## Install [7-Zip](www.7-zip.org/download.html)
   - **Auto installs based on your os architecture. No user input required.**
