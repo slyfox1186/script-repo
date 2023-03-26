@@ -1500,11 +1500,12 @@ cnf_ops+=('--enable-libass')
 
 git_ver_fn '7950' '5'
 if build 'freetype' "$gitlab_ver"; then
+    extracommands=(-D{harfbuzz,png,bzip2,brotli,zlib,tests}"=disabled")
     download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/$gitlab_ver/freetype-$gitlab_ver.tar.bz2" "freetype-$gitlab_ver.tar.bz2"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --disable-shared --enable-static
-    execute make -j "$cpus"
-    execute make install
+    execute cmake -S . -B build/release-static -DCMAKE_INSTALL_PREFIX="$workspace" \
+        -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release' "${extracommands[@]}"
+    execute cmake --build build/release-static -j
     build_done 'freetype' "$gitlab_ver"
 fi
 
