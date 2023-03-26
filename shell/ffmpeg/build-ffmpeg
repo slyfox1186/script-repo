@@ -1020,7 +1020,7 @@ if command_exists 'python3'; then
         if build 'dav1d' "$videolan_sver"; then
             download "https://code.videolan.org/videolan/dav1d/-/archive/$videolan_ver/$videolan_ver.tar.gz" "dav1d-$videolan_sver.tar.gz"
             make_dir build
-            execute meson setup build --prefix="$workspace" --buildtype='Release' --default-library='static' --libdir="$workspace"/lib
+            execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
             execute ninja -C build
             execute ninja -C build install
             build_done 'dav1d' "$videolan_sver"
@@ -1215,7 +1215,7 @@ if command_exists 'python3'; then
         git_ver_fn 'lv2/lv2' '1' 'T'
         if build 'lv2' "$g_ver"; then
             download "$g_url" "lv2-$g_ver.tar.gz"
-            execute meson setup build --prefix="$workspace" --buildtype='Release' --default-library='static' --libdir="$workspace"/lib
+            execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
             execute ninja -C build
             execute ninja -C build install
             build_done 'lv2' "$g_ver"
@@ -1226,7 +1226,7 @@ if command_exists 'python3'; then
         fi
         if build 'serd' '61d53637'; then
             download 'https://gitlab.com/drobilla/serd/-/archive/61d53637dc62d15f9b3d1fa9e69891313c465c35/serd-61d53637dc62d15f9b3d1fa9e69891313c465c35.tar.bz2' 'serd-61d53637.tar.bz2'
-            execute meson setup build --prefix="$workspace" --buildtype='Release' --default-library='static' --libdir="$workspace"/lib
+            execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
             execute ninja -C build
             execute ninja -C build install
             build_done 'serd' '61d53637'
@@ -1240,21 +1240,21 @@ if command_exists 'python3'; then
         fi
         if build 'zix' '262d4a15'; then
             download 'https://gitlab.com/drobilla/zix/-/archive/262d4a1522c38be0588746e874159da5c7bb457d/zix-262d4a1522c38be0588746e874159da5c7bb457d.tar.bz2' 'zix-262d4a15.tar.gz'
-            execute meson setup build --prefix="$workspace" --buildtype='Release' --default-library='static' --libdir="$workspace"/lib
+            execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
             execute ninja -C build
             execute ninja -C build install
             build_done 'zix' '262d4a15'
         fi
         if build 'sord' '0.16.14'; then
             download 'http://download.drobilla.net/sord-0.16.14.tar.xz' 'sord-0.16.14.tar.gz'
-            execute meson setup build --prefix="$workspace" --buildtype='Release' --default-library='static' --libdir="$workspace"/lib
+            execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
             execute ninja -C build
             execute ninja -C build install
             build_done 'sord' '0.16.14'
         fi
         if build 'sratom' 'b1643412'; then
             download 'https://gitlab.com/lv2/sratom/-/archive/b1643412ef03f41fc174f076daff39ade0999bf2/sratom-b1643412ef03f41fc174f076daff39ade0999bf2.tar.bz2'  'sratom-b1643412.tar.bz2'
-            execute meson setup build --prefix="$workspace" --buildtype='Release' --default-library='static' --libdir="$workspace"/lib
+            execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
             execute ninja -C build
             execute ninja -C build install
             build_done 'sratom' 'b1643412'
@@ -1262,7 +1262,7 @@ if command_exists 'python3'; then
         git_ver_fn '11853176' '4'
         if build 'lilv' "$gitlab_ver"; then
             download "https://gitlab.com/lv2/lilv/-/archive/v0.24.20/lilv-v0.24.20.tar.gz" "lilv-0.24.20.tar.gz"
-            execute meson setup build --prefix="$workspace" --buildtype='Release' --default-library='static' --libdir="$workspace"/lib
+            execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
             execute ninja -C build
             execute ninja -C build install
             build_done 'lilv' "$gitlab_ver"
@@ -1459,7 +1459,7 @@ if command_exists 'meson'; then
     if build 'harfbuzz' "$g_ver"; then
         download "$g_url" "harfbuzz-$g_ver.tar.gz"
         execute ./autogen.sh
-        execute meson setup build --prefix="$workspace" --buildtype='Release' --default-library='static' --libdir="$workspace"/lib
+        execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
         execute ./configure --prefix="$workspace" --disable-shared --enable-static
         execute ninja -C build
         execute ninja -C build install
@@ -1481,7 +1481,7 @@ if build 'fribidi' "$g_ver"; then
     download "$g_url" "fribidi-$g_ver.tar.gz"
     execute ./autogen.sh
     make_dir build
-    execute meson setup build --prefix="$workspace" --buildtype='Release' --default-library='static' --libdir="$workspace"/lib
+    execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
         execute ninja -C build
         execute ninja -C build install
     build_done 'fribidi' "$g_ver"
