@@ -884,7 +884,7 @@ git_ver_fn 'freedesktop/pkg-config' '1' 'T'
 if build 'pkg-config' "${g_ver_pkg}"; then
     download "https://pkgconfig.freedesktop.org/releases/$g_ver.tar.gz" "$g_ver_pkg.tar.gz"
     execute ./configure --silent --prefix="$workspace" --with-pc-path="$workspace"/lib/pkgconfig/ --with-internal-glib
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'pkg-config' "${g_ver_pkg}"
 fi
@@ -893,7 +893,7 @@ git_ver_fn 'yasm/yasm' '1' 'T'
 if build 'yasm' "$g_ver"; then
     download "https://github.com/yasm/yasm/releases/download/v$g_ver/yasm-$g_ver.tar.gz" "yasm-$g_ver.tar.gz"
     execute ./configure --prefix="$workspace"
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'yasm' "$g_ver"
 fi
@@ -902,7 +902,7 @@ if build 'nasm' '2.16.02rc1'; then
     https://github.com/netwide-assembler/nasm/archive/refs/tags/nasm-2.16.02rc1.tar.gz
     download "https://www.nasm.us/pub/nasm/releasebuilds/2.16.02rc1/nasm-2.16.02rc1.tar.xz" "nasm-$g_ver.tar.gz"
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'nasm' '2.16.02rc1'
 fi
@@ -911,7 +911,7 @@ git_ver_fn 'madler/zlib' '1' 'T'
 if build 'zlib' "$g_ver"; then
     download "$g_url" "zlib-$g_ver"
     execute ./configure --static --prefix="$workspace"
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'zlib' "$g_ver"
 fi
@@ -919,7 +919,7 @@ fi
 if build 'm4' '1.4.19'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.xz'
     execute ./configure --prefix="$workspace"
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'm4' '1.4.19'
 fi
@@ -927,7 +927,7 @@ fi
 if build 'autoconf' '2.71'; then
     download 'https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.xz'
     execute ./configure --prefix="$workspace"
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'autoconf' '2.71'
 fi
@@ -935,7 +935,7 @@ fi
 if build 'automake' '1.16.5'; then
     download 'https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
     execute ./configure --prefix="$workspace"
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'automake' '1.16.5'
 fi
@@ -943,7 +943,7 @@ fi
 if build 'libtool' '2.4.7'; then
     download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
     execute ./configure --prefix="$workspace" --enable-static --disable-shared
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'libtool' '2.4.7'
 fi
@@ -954,7 +954,7 @@ if $nonfree; then
         download "$g_url" "openssl-$g_ver_ssl.tar.gz"
         execute ./config --prefix="$workspace" --openssldir="$workspace" \
             --with-zlib-include="$workspace"/include/ --with-zlib-lib="$workspace"/lib no-shared zlib
-        execute make "-j$cpus"
+        execute make -j "$cpus"
         execute make install_sw
         build_done 'openssl' "$g_ver_ssl"
     fi
@@ -963,7 +963,7 @@ else
     if build 'gmp' '6.2.1'; then
         download 'https://ftp.gnu.org/gnu/gmp/gmp-6.2.1.tar.xz'
         execute ./configure --prefix="$workspace" --disable-shared --enable-static
-        execute make "-j$cpus"
+        execute make -j "$cpus"
         execute make install
         build_done 'gmp' '6.2.1'
     fi
@@ -972,7 +972,7 @@ else
         download 'https://ftp.gnu.org/gnu/nettle/nettle-3.8.1.tar.gz'
         execute ./configure --prefix="$workspace" --disable-shared --enable-static --disable-openssl \
             --disable-documentation --libdir="$workspace"/lib CPPFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS"
-        execute make "-j$cpus"
+        execute make -j "$cpus"
         execute make install
         build_done 'nettle' '3.8.1'
     fi
@@ -982,7 +982,7 @@ else
         execute ./configure --prefix="$workspace" --disable-shared --enable-static --disable-doc --disable-tools \
             --disable-cxx --disable-tests --disable-gtk-doc-html --disable-libdane --disable-nls --enable-local-libopts \
             --disable-guile --with-included-libtasn1 --with-included-unistring --without-p11-kit CPPFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS"
-        execute make "-j$cpus"
+        execute make -j "$cpus"
         execute make install
         build_done 'gnutls' '3.8.0'
     fi
@@ -993,7 +993,7 @@ git_ver_fn 'Kitware/CMake' '1' 'T'
 if build 'cmake' "$g_ver"; then
     download "$g_url" "cmake-$g_ver.tar.gz"
     execute ./configure --prefix="$workspace" --parallel="$cpus" -- -DCMAKE_USE_OPENSSL='OFF'
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'cmake' "$g_ver"
 fi
@@ -1035,7 +1035,7 @@ if build 'svtav1' "$gitlab_ver"; then
     cd "$PWD/Build/linux" || exit 1
     execute cmake -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' \
         ../.. -G 'Unix Makefiles' -DCMAKE_BUILD_TYPE='Release' -DENABLE_EXAMPLES='OFF'
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     execute cp 'SvtAv1Enc.pc' "$workspace"/lib/pkgconfig/
     execute cp 'SvtAv1Dec.pc' "$workspace"/lib/pkgconfig/
@@ -1063,7 +1063,7 @@ if $nonfree; then
         download "https://code.videolan.org/videolan/x264/-/archive/$videolan_ver/x264-$videolan_ver.tar.bz2" "x264-$videolan_sver.tar.bz2"
         cd "$packages/x264-$videolan_sver" || exit 1
         execute ./configure --prefix="$workspace" --enable-static --enable-pic CXXFLAGS="-fPIC ${CXXFLAGS}"
-        execute make "-j$cpus"
+        execute make -j "$cpus"
         execute make install
         execute make install-lib-static
         build_done 'x264' "$videolan_sver"
@@ -1082,19 +1082,19 @@ if $nonfree; then
         echo '$ making 12bit binaries'
         execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' \
             -DHIGH_BIT_DEPTH='ON' -DENABLE_HDR10_PLUS='ON' -DEXPORT_C_API='OFF' -DENABLE_CLI='OFF' -DMAIN12='ON'
-        execute make "-j$cpus"
+        execute make -j "$cpus"
         echo '$ making 10bit binaries'
         cd ../'10bit' || exit 1
         execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' \
             -DBUILD_SHARED_LIBS='OFF' -DHIGH_BIT_DEPTH='ON' -DENABLE_HDR10_PLUS='ON' -DEXPORT_C_API='OFF' -DENABLE_CLI='OFF'
-        execute make "-j$cpus"
+        execute make -j "$cpus"
         echo '$ making 8bit binaries'
         cd ../'8bit' || exit 1
         ln -sf ../'10bit/libx265.a' 'libx265_main10.a'
         ln -sf ../'12bit/libx265.a' 'libx265_main12.a'
         execute cmake ../../../'source' -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' \
             -DEXTRA_LIB='x265_main10.a;x265_main12.a;-ldl' -DEXTRA_LINK_FLAGS='-L.' -DLINKED_10BIT='ON' -DLINKED_12BIT='ON'
-        execute make "-j$cpus"
+        execute make -j "$cpus"
         # must rename this file
         mv 'libx265.a' 'libx265_main.a'
 
@@ -1124,7 +1124,7 @@ if build 'SVT-HEVC' "$g_ver"; then
     make_dir Build
     cd "$PWD"/Build || exit 1
     execute cmake .. -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' -DCMAKE_BUILD_TYPE='Release'
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'SVT-HEVC' "$g_ver"
 fi
@@ -1133,7 +1133,7 @@ git_ver_fn 'webmproject/libvpx' '1' 'T'
 if build 'libvpx' "$g_ver"; then
     download "$g_url" "libvpx-$g_ver.tar.gz"
     execute ./configure --prefix="$workspace" --disable-unit-tests --disable-shared --disable-examples --as='yasm'
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'libvpx' "$g_ver"
 fi
@@ -1144,7 +1144,7 @@ if $nonfree; then
         download 'https://downloads.xvid.com/downloads/xvidcore-1.3.7.tar.bz2'
         cd 'build/generic' || exit 1
         execute ./configure --prefix="$workspace" --disable-shared --enable-static
-        execute make "-j$cpus"
+        execute make -j "$cpus"
         execute make install
 
         if [[ -f "$workspace"/lib/libxvidcore.4.dylib ]]; then
@@ -1165,7 +1165,7 @@ if $nonfree; then
     if build 'vid_stab' "$g_ver"; then
         download "https://github.com/georgmartius/vid.stab/archive/refs/tags/v$g_ver.tar.gz" "vid.stab-$g_ver.tar.gz"
         execute cmake -DBUILD_SHARED_LIBS='OFF' -DCMAKE_INSTALL_PREFIX="$workspace" -DUSE_OMP='OFF' -DENABLE_SHARED='OFF' .
-        execute make "-j$cpus"
+        execute make -j "$cpus"
         execute make install
         build_done 'vid_stab' "$g_ver"
     fi
@@ -1177,7 +1177,7 @@ if build 'av1' '3.6.0'; then
     make_dir "$packages"/aom_build
     cd "$packages"/aom_build || exit 1
     execute cmake -DENABLE_TESTS='0' -DENABLE_EXAMPLES='0' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' "$packages"/av1
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'av1' '3.6.0'
 fi
@@ -1189,7 +1189,7 @@ if build 'zimg' "$g_ver"; then
     execute "$workspace"/bin/libtoolize -i -f -q
     execute ./autogen.sh --prefix="$workspace"
     execute ./configure --prefix="$workspace" --enable-static --disable-shared
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'zimg' "$g_ver"
 fi
@@ -1201,7 +1201,7 @@ if build 'avif' "$g_ver"; then
     execute cmake -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' \
         -DENABLE_STATIC='ON' -DAVIF_ENABLE_WERROR='OFF' -DAVIF_CODEC_DAV1D='ON' -DAVIF_CODEC_AOM='ON' \
         -DAVIF_BUILD_APPS='ON' "$avif_tag"
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'avif' "$g_ver"
 fi
@@ -1234,7 +1234,7 @@ if command_exists 'python3'; then
         if build 'pcre' '8.45'; then
             download 'https://cfhcable.dl.sourceforge.net/project/pcre/pcre/8.45/pcre-8.45.tar.bz2' 'pcre-8.45.tar.bz2'
             execute ./configure --prefix="$workspace" --disable-shared --enable-static
-            execute make "-j$cpus"
+            execute make -j "$cpus"
             execute make install
             build_done 'pcre' '8.45'
         fi
@@ -1275,7 +1275,7 @@ fi
 if build 'opencore' '0.1.6'; then
     download 'https://netactuate.dl.sourceforge.net/project/opencore-amr/opencore-amr/opencore-amr-0.1.6.tar.gz' 'opencore-amr-0.1.6.tar.gz'
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'opencore' '0.1.6'
 fi
@@ -1284,7 +1284,7 @@ cnf_ops+=('--enable-libopencore_amrnb' '--enable-libopencore_amrwb')
 if build 'lame' '3.100'; then
     download 'https://sourceforge.net/projects/lame/files/lame/3.100/lame-3.100.tar.gz/download?use_mirror=gigenet' 'lame-3.100.tar.gz'
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'lame' '3.100'
 fi
@@ -1295,7 +1295,7 @@ if build 'opus' "$g_ver"; then
     download "$g_url" "opus-$g_ver.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'opus' "$g_ver"
 fi
@@ -1306,7 +1306,7 @@ if build 'libogg' "$g_ver"; then
     download "$g_url" "libogg-$g_ver.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'libogg' "$g_ver"
 fi
@@ -1317,7 +1317,7 @@ if build 'libvorbis' "$g_ver"; then
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --with-ogg-libraries="$workspace"/lib \
         --with-ogg-includes="$workspace"/include/ --enable-static --disable-shared --disable-oggtest
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'libvorbis' "$g_ver"
 fi
@@ -1335,7 +1335,7 @@ if build 'libtheora' '1.1.1'; then
     execute ./configure --prefix="$workspace" --with-ogg-libraries="$workspace"/lib --with-ogg-includes="$workspace"/include/ \
         --with-vorbis-libraries="$workspace"/lib --with-vorbis-includes="$workspace"/include/ --enable-static --disable-shared \
         --disable-oggtest --disable-vorbistest --disable-examples --disable-asm --disable-spec
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'libtheora' '1.1.1'
 fi
@@ -1347,7 +1347,7 @@ if $nonfree; then
         download "https://github.com/mstorsjo/fdk-aac/archive/refs/tags/v$g_ver.tar.gz" "fdk_aac-$g_ver.tar.gz"
         execute ./autogen.sh
         execute ./configure --prefix="$workspace" --disable-shared --enable-static --enable-pic --bindir="$workspace"/bin CXXFLAGS=' -fno-exceptions -fno-rtti'
-        execute make "-j$cpus"
+        execute make -j "$cpus"
         execute make install
         build_done 'fdk_aac' "$g_ver"
     fi
@@ -1363,7 +1363,7 @@ if build 'libtiff' "$gitlab_ver"; then
     download "https://gitlab.com/libtiff/libtiff/-/archive/v$gitlab_ver/libtiff-v$gitlab_ver.tar.bz2" "libtiff-$gitlab_ver.tar.bz2"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'libtiff' "$gitlab_ver"
 fi
@@ -1374,7 +1374,7 @@ if build 'libpng' "$g_ver"; then
     export CPPFLAGS="$CFLAGS"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'libpng' "$g_ver"
 fi
@@ -1391,7 +1391,7 @@ if build 'libwebp' '1.2.2'; then
     cd 'build'|| exit 1
     execute cmake -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
         -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON' -DWEBP_BUILD_CWEBP=ON -DWEBP_BUILD_DWEBP=ON ../
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'libwebp' '1.2.2'
 fi
@@ -1406,7 +1406,7 @@ if build 'udfread' "$videolan_sver"; then
     download "https://code.videolan.org/videolan/libudfread/-/archive/$videolan_ver/libudfread-$videolan_ver.tar.bz2" "udfread-$videolan_sver.tar.bz2"
     execute autoreconf -fiv
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'udfread' "$videolan_sver"
 fi
@@ -1416,7 +1416,7 @@ if build 'libbluray' "$videolan_sver"; then
     download "https://code.videolan.org/videolan/libbluray/-/archive/$videolan_ver/$videolan_ver.tar.gz" "libbluray-$videolan_sver.tar.gz"
     execute autoreconf -fiv
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'libbluray' "$videolan_sver"
 fi
@@ -1429,7 +1429,7 @@ if build 'zenLib' "$g_ver"; then
     cd "$PWD"/Project/CMake || exit 1
     execute cmake -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
         -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON'
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'zenLib' "$g_ver"
 fi
@@ -1471,7 +1471,7 @@ if build 'c2man' 'current'; then
     download_git 'https://github.com/fribidi/c2man.git' 'c2man'
     execute ./Configure -des
     execute make depend
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute sudo make install
     build_done 'c2man' 'current'
 fi
@@ -1492,7 +1492,7 @@ if build 'libass' "$g_ver"; then
     download "$g_url" "libass-$g_ver.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'libass' "$g_ver"
 fi
@@ -1503,7 +1503,7 @@ if build 'freetype' "$gitlab_ver"; then
     download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/$gitlab_ver/freetype-$gitlab_ver.tar.bz2" "freetype-$gitlab_ver.tar.bz2"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'freetype' "$gitlab_ver"
 fi
@@ -1513,7 +1513,7 @@ if build 'libsdl' "$g_ver"; then
     download "$g_url" "libsdl-$g_ver.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
-    execute make "-j$cpus"
+    execute make -j "$cpus"
     execute make install
     build_done 'libsdl' "$g_ver"
 fi
@@ -1647,7 +1647,7 @@ download "https://github.com/FFmpeg/FFmpeg/archive/refs/tags/$ffmpeg_ver.tar.gz"
     --extra-version="$EXTRA_VERSION"
 
 # EXECUTE MAKE WITH PARALLEL PROCESSING
-execute make "-j$cpus"
+execute make -j "$cpus"
 # EXECUTE MAKE INSTALL
 execute make install
 
