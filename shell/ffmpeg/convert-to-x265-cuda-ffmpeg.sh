@@ -4,12 +4,12 @@ clear
 
 # REQUIRED PACKAGES
 if ! which bc &> /dev/null; then
-    sudo apt -y install bc
+    sudo apt -y install bc &>/dev/null
 fi
 
 # INSTALL PYTHON3 GOOGLE SPEECH TO ANNOUNCE WHEN THE CONVERSION HAS COMPLETED
 if ! pip show google_speech &>/dev/null; then
-    pip install google_speech
+    pip install google_speech &>/dev/null
 fi
 
 # DELETE FILES PROM PRIOR RUNS
