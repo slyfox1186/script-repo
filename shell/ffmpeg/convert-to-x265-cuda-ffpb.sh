@@ -8,7 +8,7 @@ if ! which bc &> /dev/null; then
 fi
 
 # INSTALL PYTHON3 GOOGLE SPEECH TO ANNOUNCE WHEN THE CONVERSION HAS COMPLETED
-if ! pip install google_speech &>/dev/null; then
+if ! pip show google_speech &>/dev/null; then
     pip install google_speech
 fi
 
@@ -18,7 +18,6 @@ del_this="$(du -ah --max-depth=1 | grep -Eo '[\/].*\(x265\)\.(mp4|mkv)$' | grep 
 menu_fn()
     {
     if [ -n "${del_this}" ]; then
-
         echo -ne "
 Do you want to delete this video before continuing?: ${del_this}
 
@@ -61,15 +60,15 @@ video="$(find . -maxdepth 1 -type f \( -iname \*.mp4 -o -iname \*.mkv \) -exec e
 for v in "${video:2}"
 do
     # STORES THE CURRENT VIDEO WIDTH, ASPECT RATIO, PROFILE, BIT RATE, AND TOTAL DURATION IN VARIABLES FOR USE LATER IN THE FFMPEG COMMAND LINE
-    aspect_ratio="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 -pretty "${v}" 2>/dev/null)"
-    file_length="$(ffprobe -hide_banner -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${v}" 2>/dev/null)"
-    max_rate="$(ffprobe -hide_banner -show_entries format=bit_rate -of default=nk=1:nw=1 -pretty "${v}" 2>/dev/null)"
-    file_height="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 -pretty "${v}" 2>/dev/null)"
-    file_width="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 -pretty "${v}" 2>/dev/null)"
+    aspect_ratio="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 -pretty "$v" 2>/dev/null)"
+    file_length="$(ffprobe -hide_banner -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$v" 2>/dev/null)"
+    max_rate="$(ffprobe -hide_banner -show_entries format=bit_rate -of default=nk=1:nw=1 -pretty "$v" 2>/dev/null)"
+    file_height="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 -pretty "$v" 2>/dev/null)"
+    file_width="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 -pretty "$v" 2>/dev/null)"
 done
 
 # MODIFY VARS TO GET FILE INPUT AND OUTPUT NAMES
-file_in="${v}"
+file_in="$v"
 file_ext="${file_in#*.}"
 file_out="${file_in%.*} (x265).$file_ext"
 
@@ -97,21 +96,21 @@ echo "DIMENSIONS:      $file_width"'x'"$file_height"
 echo "ASPECT RATIO:    ${aspect_ratio}"
 echo
 echo "MAXRATE:         ${maxrate}"k
-echo "bufsize:         ${bufsize}"k
-echo "bitrate:         ${bitrate}"k
+echo "BUFSIZE:         ${bufsize}"k
+echo "BITRATE:         ${bitrate}"k
 echo
 echo "LENGTH:          ${length}"
 echo
 echo ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 echo
-exit
+
 # EXECUTE FFMPEG
 if ffpb \
         -y \
         -threads '0' \
         -hide_banner \
         -hwaccel_output_format 'cuda' \
-        -i "${file}" \
+        -i "${file_in}" \
         -pix_fmt 'p010le' \
         -movflags 'frag_keyframe+empty_moov' \
         -c:v 'hevc_nvenc' \
