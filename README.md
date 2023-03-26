@@ -18,6 +18,7 @@
 
 ## Install apt and ppa packages
   - **What I consider to be core apt packages or "must haves" that everyone should consider installing**
+
 **Ubuntu**
 ```
 wget -qO pkgs.sh https://jammy-pkgs.optimizethis.net; sudo bash pkgs.sh
