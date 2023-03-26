@@ -79,7 +79,7 @@ if ! ffpb \
         -rc:v 'vbr' \
         -b:v "${bitrate}"k \
         -bufsize:v "${bufsize}"k \
-        -bf:v '3' \
+        -bf:v '4' \
         -b_ref_mode:v 'middle' \
         -qmin:v '0' \
         -qmax:v '99' \
