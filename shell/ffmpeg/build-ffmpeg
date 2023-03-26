@@ -881,12 +881,12 @@ if build 'giflib' '5.2.1'; then
 fi
 
 git_ver_fn 'freedesktop/pkg-config' '1' 'T'
-if build 'pkg-config' "${g_ver_pkg}"; then
+if build 'pkg-config' "$g_ver"; then
     download "https://pkgconfig.freedesktop.org/releases/$g_ver.tar.gz" "$g_ver_pkg.tar.gz"
     execute ./configure --silent --prefix="$workspace" --with-pc-path="$workspace"/lib/pkgconfig/ --with-internal-glib
     execute make -j "$cpus"
     execute make install
-    build_done 'pkg-config' "${g_ver_pkg}"
+    build_done 'pkg-config' "$g_ver"
 fi
 
 git_ver_fn 'yasm/yasm' '1' 'T'
