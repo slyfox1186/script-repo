@@ -19,7 +19,7 @@
 ## Install apt and ppa packages
   - **What I consider to be core apt packages or "must haves" that everyone should consider installing**
 
-**Ubuntu**
+**Ubuntu Jammy 22.04.02**
 ```
 wget -qO pkgs.sh https://jammy-pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
