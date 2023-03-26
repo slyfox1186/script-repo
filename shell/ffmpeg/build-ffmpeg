@@ -1221,6 +1221,17 @@ if build 'avif' "$g_ver"; then
     build_done 'avif' "$g_ver"
 fi
 
+git_ver_fn 'ultravideo/kvazaar' '1' 'T'
+if build 'kvazaar' "$g_ver"; then
+    download "$g_url" "kvazaar-$g_ver.tar.gz"
+    execute ./autogen.sh
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared
+    execute make -j "$cpus"
+    execute make install
+    build_done 'kvazaar' "$g_ver"
+fi
+cnf_ops+=('--enable-libkvazaar')
+
 ##
 ## audio libraries
 ##
@@ -1508,7 +1519,7 @@ if build 'fribidi' "$g_ver"; then
         execute ninja -C build install
     build_done 'fribidi' "$g_ver"
 fi
-
+cnf_ops+=('--enable-libfribidi')
 git_ver_fn 'libass/libass' '1' 'T'
 if build 'libass' "$g_ver"; then
     download "$g_url" "libass-$g_ver.tar.gz"
