@@ -19,11 +19,14 @@ menu_fn()
     {
     if [ -n "${del_this}" ]; then
         echo -ne "
-Do you want to delete this video before continuing?: ${del_this}
+You must delete this video or the encoder will fail...
+
+${del_this}
+
+Do you want to delete this video before continuing?
 
 1) Yes
-2) No
-3) Exit
+2) No and exit
 
 Choose an option:  "
         read -r ans
@@ -33,18 +36,16 @@ Choose an option:  "
                 clear
                 ;;
             2)
-                clear
-                ;;
-            3)
                 echo
                 echo 'exiting...'
                 echo
                 exit 0
                 ;;
             *)
-                echo 'error: bad user input.'
                 echo
-                echo 'exiting...'
+                echo 'Error: Bad user input'
+                echo
+                echo 'Exiting...'
                 echo
                 exit 1
                 ;;
