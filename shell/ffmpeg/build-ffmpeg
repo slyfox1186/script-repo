@@ -269,7 +269,7 @@ git_1_fn()
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     github_repo="$1"
     github_url="$2"
-    curl_cmd=$(curl -m "$net_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url?per_page=1")
+    curl_cmd=$(curl -m "$net_timeout"  -sSL "https://api.github.com/repos/$github_repo/$github_url?per_page=1")
     if [ "$?" -eq '0' ]; then
         g_ver=$(echo "$curl_cmd" | jq -r '.[0].name')
         g_ver=${g_ver#v}
@@ -1508,6 +1508,7 @@ if build 'freetype' "$gitlab_ver"; then
     execute cmake --build build/release-static -j
     build_done 'freetype' "$gitlab_ver"
 fi
+cnf_ops+=('--enable-libfreetype')
 
 git_ver_fn 'libsdl-org/SDL' '1' 'R'
 if build 'libsdl' "$g_ver"; then
