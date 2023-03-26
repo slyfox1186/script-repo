@@ -269,7 +269,7 @@ git_1_fn()
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     github_repo="$1"
     github_url="$2"
-    curl_cmd=$(curl -m "$net_timeout"  -sSL "https://api.github.com/repos/$github_repo/$github_url?per_page=1")
+    curl_cmd=$(curl -m "$net_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url?per_page=1")
     if [ "$?" -eq '0' ]; then
         g_ver=$(echo "$curl_cmd" | jq -r '.[0].name')
         g_ver=${g_ver#v}
@@ -307,9 +307,9 @@ git_4_fn()
     gitlab_repo="$1"
     if curl_cmd=$(curl -m "$net_timeout" \
         -sSL "https://gitlab.com/api/v4/projects/$gitlab_repo/repository/tags"); then
-        gitlab_ver=$(echo "$curl_cmd" | jq -r '.[0].name'  )
+        gitlab_ver=$(echo "$curl_cmd" | jq -r '.[0].name')
         gitlab_ver=${gitlab_ver#v}
-        gitlab_sver=$(echo "$curl_cmd" | jq -r '.[3].commit.short_id')
+        gitlab_sver=$(echo "$curl_cmd" | jq -r '.[0].commit.short_id')
     fi
 }
 
@@ -338,6 +338,28 @@ git_7_fn()
         -sSL "https://gitlab.gnome.org/api/v4/projects/$gitlab_repo/repository/tags?"); then
         gitlab_ver=$(echo "$curl_cmd" | jq -r '.[0].name')
         gitlab_ver=${gitlab_ver#v}
+    fi
+}
+
+git_8_fn()
+{
+    gitlab_repo="$1"
+    if curl_cmd=$(curl -m "$net_timeout" \
+        -sSL "https://gitlab.com/api/v4/projects/$gitlab_repo/repository/branches?"); then
+        gitlab_ver=$(echo "$curl_cmd" | jq -r '.[0].commit.id')
+        gitlab_ver=${gitlab_ver#v}
+        gitlab_sver=$(echo "$curl_cmd" | jq -r '.[0].commit.short_id')
+    fi
+}
+
+git_9_fn()
+{
+    gitlab_repo="$1"
+    if curl_cmd=$(curl -m "$net_timeout" \
+        -sSL "https://gitlab.com/api/v4/projects/$gitlab_repo/repository/branches?"); then
+        gitlab_ver=$(echo "$curl_cmd" | jq -r '.[0].commit.id')
+        gitlab_ver=${gitlab_ver#v}
+        gitlab_sver=$(echo "$curl_cmd" | jq -r '.[0].commit.short_id')
     fi
 }
 
@@ -372,15 +394,6 @@ git_ver_fn()
         url_tag='git_2_fn'; gv_url='releases'
     fi
 
-    case "$v_flag" in
-        2)          url_tag='git_2_fn';;
-        3)          url_tag='git_3_fn';;
-        4)          url_tag='git_4_fn';;
-        5)          url_tag='git_5_fn';;
-        6)          url_tag='git_6_fn';;
-        7)          url_tag='git_7_fn';;
-    esac
-
     case "$v_tag" in
         2)          url_tag='git_2_fn';;
         3)          url_tag='git_3_fn';;
@@ -388,6 +401,8 @@ git_ver_fn()
         5)          url_tag='git_5_fn';;
         6)          url_tag='git_6_fn';;
         7)          url_tag='git_7_fn';;
+        8)          url_tag='git_8_fn';;
+        9)          url_tag='git_9_fn';;
     esac
 
     "$url_tag" "$v_url" "$gv_url" 2>/dev/null
@@ -881,12 +896,12 @@ if build 'giflib' '5.2.1'; then
 fi
 
 git_ver_fn 'freedesktop/pkg-config' '1' 'T'
-if build 'pkg-config' "$g_ver"; then
-    download "https://pkgconfig.freedesktop.org/releases/$g_ver.tar.gz" "$g_ver_pkg.tar.gz"
+if build 'pkg-config' "$g_ver_pkg"; then
+    download "https://pkgconfig.freedesktop.org/releases/$g_ver.tar.gz" "$g_ver.tar.gz"
     execute ./configure --silent --prefix="$workspace" --with-pc-path="$workspace"/lib/pkgconfig/ --with-internal-glib
     execute make -j "$cpus"
     execute make install
-    build_done 'pkg-config' "$g_ver"
+    build_done 'pkg-config' "$g_ver_pkg"
 fi
 
 git_ver_fn 'yasm/yasm' '1' 'T'
@@ -898,13 +913,13 @@ if build 'yasm' "$g_ver"; then
     build_done 'yasm' "$g_ver"
 fi
 
-if build 'nasm' '2.16.02rc1'; then
+if build 'nasm' '2.16.01'; then
     https://github.com/netwide-assembler/nasm/archive/refs/tags/nasm-2.16.02rc1.tar.gz
-    download "https://www.nasm.us/pub/nasm/releasebuilds/2.16.02rc1/nasm-2.16.02rc1.tar.xz" "nasm-$g_ver.tar.gz"
+    download "https://www.nasm.us/pub/nasm/releasebuilds/2.16.01/nasm-2.16.01.tar.xz" "nasm-$g_ver.tar.gz"
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
     execute make -j "$cpus"
     execute make install
-    build_done 'nasm' '2.16.02rc1'
+    build_done 'nasm' '2.16.01'
 fi
 
 git_ver_fn 'madler/zlib' '1' 'T'
@@ -1018,7 +1033,7 @@ if command_exists 'python3'; then
     if command_exists 'meson'; then
         git_ver_fn '198' '2'
         if build 'dav1d' "$videolan_sver"; then
-            download "https://code.videolan.org/videolan/dav1d/-/archive/$videolan_ver/$videolan_ver.tar.gz" "dav1d-$videolan_sver.tar.gz"
+            download "https://code.videolan.org/videolan/dav1d/-/archive/$videolan_ver/$videolan_ver.tar.bz2" "dav1d-$videolan_sver.tar.bz2"
             make_dir build
             execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
             execute ninja -C build
@@ -1172,14 +1187,14 @@ if $nonfree; then
     cnf_ops+=('--enable-libvidstab')
 fi
 
-if build 'av1' '3.6.0'; then
-    download 'https://aomedia.googlesource.com/aom/+archive/3c65175b1972da4a1992c1dae2365b48d13f9a8d.tar.gz' 'av1-3.6.0.tar.gz' 'av1'
+if build 'av1' '1d9b065'; then
+    download 'https://aomedia.googlesource.com/aom/+archive/1d9b065c79427f09eb4a96b34f66e2ba06671573.tar.gz' 'av1-1d9b065.tar.gz' 'av1'
     make_dir "$packages"/aom_build
     cd "$packages"/aom_build || exit 1
     execute cmake -DENABLE_TESTS='0' -DENABLE_EXAMPLES='0' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' "$packages"/av1
     execute make -j "$cpus"
     execute make install
-    build_done 'av1' '3.6.0'
+    build_done 'av1' '1d9b065'
 fi
 cnf_ops+=('--enable-libaom')
 
@@ -1220,16 +1235,18 @@ if command_exists 'python3'; then
             execute ninja -C build install
             build_done 'lv2' "$g_ver"
         fi
-        if build 'waflib' 'aeef9f5f'; then
-            download 'https://gitlab.com/drobilla/autowaf/-/archive/aeef9f5fdf416d9b68c61c75de7dae409f1ac6a4/autowaf-aeef9f5fdf416d9b68c61c75de7dae409f1ac6a4.tar.bz2' 'autowaf-aeef9f5f.tar.bz2'
-            build_done 'waflib' 'aeef9f5f'
+        git_ver_fn '7131569' '8'
+        if build 'waflib' "$gitlab_sver"; then
+            download "https://gitlab.com/ita1024/waf/-/archive/$gitlab_ver/waf-$gitlab_ver.tar.bz2" "autowaf-$gitlab_sver.tar.bz2"
+            build_done 'waflib' "$gitlab_sver"
         fi
-        if build 'serd' '61d53637'; then
-            download 'https://gitlab.com/drobilla/serd/-/archive/61d53637dc62d15f9b3d1fa9e69891313c465c35/serd-61d53637dc62d15f9b3d1fa9e69891313c465c35.tar.bz2' 'serd-61d53637.tar.bz2'
+        git_ver_fn '5048975' '4'
+        if build 'serd' "$gitlab_ver"; then
+            download "https://gitlab.com/drobilla/serd/-/archive/v$gitlab_ver/serd-v$gitlab_ver.tar.bz2" "serd-$gitlab_ver.tar.bz2"
             execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
             execute ninja -C build
             execute ninja -C build install
-            build_done 'serd' '61d53637'
+            build_done 'serd' "$gitlab_ver"
         fi
         if build 'pcre' '8.45'; then
             download 'https://cfhcable.dl.sourceforge.net/project/pcre/pcre/8.45/pcre-8.45.tar.bz2' 'pcre-8.45.tar.bz2'
@@ -1238,30 +1255,33 @@ if command_exists 'python3'; then
             execute make install
             build_done 'pcre' '8.45'
         fi
-        if build 'zix' '262d4a15'; then
-            download 'https://gitlab.com/drobilla/zix/-/archive/262d4a1522c38be0588746e874159da5c7bb457d/zix-262d4a1522c38be0588746e874159da5c7bb457d.tar.bz2' 'zix-262d4a15.tar.gz'
+        git_ver_fn '14889806' '9'
+        if build 'zix' "$gitlab_sver"; then
+            download "https://gitlab.com/drobilla/zix/-/archive/$gitlab_ver/zix-$gitlab_ver.tar.bz2" "zix-$gitlab_sver.tar.bz2"
             execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
             execute ninja -C build
             execute ninja -C build install
-            build_done 'zix' '262d4a15'
+            build_done 'zix' "$gitlab_sver"
         fi
-        if build 'sord' '0.16.14'; then
-            download 'http://download.drobilla.net/sord-0.16.14.tar.xz' 'sord-0.16.14.tar.gz'
+        git_ver_fn '11853362' '4'
+        if build 'sord' "$gitlab_ver"; then
+            download "https://gitlab.com/drobilla/sord/-/archive/v$gitlab_ver/sord-v$gitlab_ver.tar.bz2"
             execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
             execute ninja -C build
             execute ninja -C build install
-            build_done 'sord' '0.16.14'
+            build_done 'sord' "$gitlab_ver"
         fi
-        if build 'sratom' 'b1643412'; then
-            download 'https://gitlab.com/lv2/sratom/-/archive/b1643412ef03f41fc174f076daff39ade0999bf2/sratom-b1643412ef03f41fc174f076daff39ade0999bf2.tar.bz2'  'sratom-b1643412.tar.bz2'
+        git_ver_fn '11853194' '4'
+        if build 'sratom' "$gitlab_ver"; then
+            download "https://gitlab.com/lv2/sratom/-/archive/v$gitlab_ver/sratom-v$gitlab_ver.tar.bz2" "sratom-$gitlab_ver.tar.bz2"
             execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
             execute ninja -C build
             execute ninja -C build install
-            build_done 'sratom' 'b1643412'
+            build_done 'sratom' "$gitlab_ver"
         fi
         git_ver_fn '11853176' '4'
         if build 'lilv' "$gitlab_ver"; then
-            download "https://gitlab.com/lv2/lilv/-/archive/v0.24.20/lilv-v0.24.20.tar.gz" "lilv-0.24.20.tar.gz"
+            download "https://gitlab.com/lv2/lilv/-/archive/v$gitlab_ver/lilv-v$gitlab_ver.tar.gz" "lilv-0.24.20.tar.gz"
             execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
             execute ninja -C build
             execute ninja -C build install
