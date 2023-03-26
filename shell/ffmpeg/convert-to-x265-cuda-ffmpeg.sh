@@ -2,12 +2,12 @@
 
 clear
 
-# REQUIRED PACKAGES
+# REQUIRED - BASIC CALCULATOR
 if ! which bc &> /dev/null; then
     sudo apt -y install bc &>/dev/null
 fi
 
-# INSTALL PYTHON3 GOOGLE SPEECH TO ANNOUNCE WHEN THE CONVERSION HAS COMPLETED
+# REQUIRED - INSTALL PYTHON3 GOOGLE SPEECH TO ANNOUNCE WHEN THE CONVERSION HAS COMPLETED
 if ! pip show google_speech &>/dev/null; then
     pip install google_speech &>/dev/null
 fi
