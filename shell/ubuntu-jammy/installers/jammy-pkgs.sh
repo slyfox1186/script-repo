@@ -45,7 +45,7 @@ pkgs_fn()
 {
     pkgs=(alien aptitude aria2 autoconf autogen automake bat binutils bison build-essential ccdiff clang clang-tools cmake cmake-extras colordiff \
           curl dbus-x11 ddclient dconf-editor disktype dos2unix flex g++ gawk gcc-multilib gedit gedit-plugins gir1.2-gtksource-3.0 git git-all \
-          gnome-tweaks gnustep-gui-runtime golang gparted gperf grub-customizer gufw htop idn2 iftop iw libbz2-dev libdmalloc-dev libglib2.0-dev \
+          gnome-tweaks gnustep-gui-runtime golang gparted gperf grub-customizer gufw htop idn2 iftop iw jq libbz2-dev libdmalloc-dev libglib2.0-dev \
           libgvc6 libheif-dev libjemalloc-dev liblz-dev liblzma-dev liblzo2-dev libmimalloc2.0 libmimalloc-dev libncurses5 libncurses5-dev \
           libnet-nslookup-perl libnuma-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev \
           librust-malloc-buf-dev libsdl-pango-dev libsox-dev libsox-fmt-all libsox-fmt-mp3 libsoxr-dev libssl-dev libtalloc-dev libtbbmalloc2 \
