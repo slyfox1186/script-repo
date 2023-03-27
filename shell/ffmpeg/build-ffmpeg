@@ -269,7 +269,13 @@ git_1_fn()
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     github_repo="$1"
     github_url="$2"
-    curl_cmd=$(curl -m "$net_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url?per_page=1")
+    curl_cmd=$(curl \
+        -m "$net_timeout" \
+        --request GET \
+        --url "https://api.github.com/slyfox1186" \
+        --header "Authorization: Bearer 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" \
+        --header "X-GitHub-Api-Version: 2022-11-28" \
+        -sSL "https://api.github.com/repos/$github_repo/$github_url?per_page=1")
     if [ "$?" -eq '0' ]; then
         g_ver=$(echo "$curl_cmd" | jq -r '.[0].name')
         g_ver=${g_ver#v}
@@ -363,9 +369,48 @@ git_9_fn()
     fi
 }
 
+git_10_fn()
+{
+    gitlab_repo="$1"
+    if curl_cmd=$(curl -m "$net_timeout" \
+        -sSL "https://git.archive.org/api/v4/projects/$gitlab_repo/repository/tags?"); then
+        gitlab_ver=$(echo "$curl_cmd" | jq -r '.[0].name')
+        gitlab_ver=${gitlab_ver#v}
+    fi
+}
+
+git_11_fn()
+{
+    # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
+    github_repo="$1"
+    github_url="$2"
+    if curl_cmd=$(curl \
+        -m "$net_timeout" \
+        --request GET \
+        --url "https://api.github.com/slyfox1186" \
+        --header "Authorization: Bearer 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" \
+        --header "X-GitHub-Api-Version: 2022-11-28" \
+        -sSL "https://api.github.com/repos/$github_repo/$github_url?"); then
+        g_full=$(echo "$curl_cmd" | jq -r '.')
+        g_ver=$(echo "$curl_cmd" | jq -r '.[0].name')
+        g_url=$(echo "$curl_cmd" | jq -r '.[0].tarball_url')
+    fi
+}
+
+git_12_fn()
+{
+    videolan_repo="$1"
+    if curl_cmd=$(curl \
+        -m "$net_timeout" \
+        -sSL "https://code.videolan.org/api/v4/projects/$videolan_repo/repository/tags?"); then
+        videolan_sver=$(echo "$curl_cmd" | jq -r '.[0].name')
+        videolan_sver=${videolan_sver#v}
+    fi
+}
+
 git_ver_fn()
 {
-    local v_tag v_url
+    local v_flag v_tag
 
     v_url="$1"
     v_tag="$2"
@@ -381,11 +426,12 @@ git_ver_fn()
         return 0
     fi
 
-
     if [  "$v_flag" = 'T' ] && [  "$v_tag" = '1' ]; then
         url_tag='git_1_fn' gv_url='tags'
     elif [ "$v_flag" = 'T' ] && [  "$v_tag" = '2' ]; then
         url_tag='git_2_fn' gv_url='tags'
+    elif [ "$v_flag" = 'T' ] && [  "$v_tag" = '11' ]; then
+        url_tag='git_11_fn' gv_url='tags'
     fi
 
     if [  "$v_flag" = 'R' ] && [  "$v_tag" = '1' ]; then
@@ -403,6 +449,9 @@ git_ver_fn()
         7)          url_tag='git_7_fn';;
         8)          url_tag='git_8_fn';;
         9)          url_tag='git_9_fn';;
+       10)          url_tag='git_10_fn';;
+       11)          url_tag='git_11_fn';;
+       12)          url_tag='git_12_fn';;
     esac
 
     "$url_tag" "$v_url" "$gv_url" 2>/dev/null
@@ -630,6 +679,18 @@ $workspace/lib/pkgconfig:\
 "
 export PKG_CONFIG_PATH
 
+PKG_CONFIG="\
+$workspace/lib/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/local/share/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/pkgconfig:\
+/usr/share/pkgconfig:\
+/usr/lib64/pkgconfig\
+"
+export PKG_CONFIG
+
 LD_LIBRARY_PATH="$workspace/lib/pkgconfig"
 export LD_LIBRARY_PATH
 
@@ -744,8 +805,8 @@ build_pkgs_fn()
 
     pkgs=(ant g++ gcc gtk-doc-tools help2man javacc jq junit \
           libcairo2-dev libcdio-paranoia-dev libcurl4-gnutls-dev \
-          libglib2.0-dev libmusicbrainz5-dev libtinyxml2-dev \
-          openjdk-17-jdk pkg-config ragel)
+          libglib2.0-dev libmusicbrainz5-dev libopus-dev \
+          libtinyxml2-dev openjdk-17-jdk pkg-config ragel)
 
     for pkg in ${pkgs[@]}
     do
@@ -897,7 +958,7 @@ fi
 
 git_ver_fn 'freedesktop/pkg-config' '1' 'T'
 if build 'pkg-config' "$g_ver_pkg"; then
-    download "https://pkgconfig.freedesktop.org/releases/$g_ver.tar.gz" "$g_ver.tar.gz"
+    download "https://pkgconfig.freedesktop.org/releases/$g_ver.tar.gz"
     execute ./configure --silent --prefix="$workspace" --with-pc-path="$workspace"/lib/pkgconfig/ --with-internal-glib
     execute make -j "$cpus"
     execute make install
@@ -906,17 +967,17 @@ fi
 
 git_ver_fn 'yasm/yasm' '1' 'T'
 if build 'yasm' "$g_ver"; then
-    download "https://github.com/yasm/yasm/releases/download/v$g_ver/yasm-$g_ver.tar.gz" "yasm-$g_ver.tar.gz"
+    download "https://github.com/yasm/yasm/releases/download/v$g_ver/yasm-$g_ver.tar.gz"
     execute ./configure --prefix="$workspace"
     execute make -j "$cpus"
     execute make install
     build_done 'yasm' "$g_ver"
 fi
-
+git_ver_fn 'netwide-assembler/nasm' '11' 'T'
 if build 'nasm' '2.16.01'; then
-    https://github.com/netwide-assembler/nasm/archive/refs/tags/nasm-2.16.02rc1.tar.gz
-    download "https://www.nasm.us/pub/nasm/releasebuilds/2.16.01/nasm-2.16.01.tar.xz" "nasm-$g_ver.tar.gz"
-    execute ./configure --prefix="$workspace" --disable-shared --enable-static
+    download 'https://www.nasm.us/pub/nasm/releasebuilds/2.16.01/nasm-2.16.01.tar.xz'
+    execute sh ./autogen.sh
+    execute sh ./configure --prefix="$workspace" --enable-static --disable-shared
     execute make -j "$cpus"
     execute make install
     build_done 'nasm' '2.16.01'
@@ -932,7 +993,7 @@ if build 'zlib' "$g_ver"; then
 fi
 
 if build 'm4' '1.4.19'; then
-    download 'https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.xz'
+    download 'https://git.savannah.gnu.org/cgit/m4.git/snapshot/m4-1.4.19.tar.gz'
     execute ./configure --prefix="$workspace"
     execute make -j "$cpus"
     execute make install
@@ -976,15 +1037,16 @@ if $nonfree; then
     cnf_ops+=('--enable-openssl')
 else
     if build 'gmp' '6.2.1'; then
-        download 'https://ftp.gnu.org/gnu/gmp/gmp-6.2.1.tar.xz'
+        download 'https://ftp.gnu.org/gnu/gmp/gmp-6.2.1.tar.xz' 'gmp-6.2.1.tar.xz'
         execute ./configure --prefix="$workspace" --disable-shared --enable-static
         execute make -j "$cpus"
         execute make install
         build_done 'gmp' '6.2.1'
     fi
-
+    cnf_ops+=('--enable-gmp')
+    
     if build 'nettle' '3.8.1'; then
-        download 'https://ftp.gnu.org/gnu/nettle/nettle-3.8.1.tar.gz'
+        download 'https://ftp.gnu.org/gnu/nettle/nettle-3.8.1.tar.gz' 'nettle-3.8.1.tar.gz'
         execute ./configure --prefix="$workspace" --disable-shared --enable-static --disable-openssl \
             --disable-documentation --libdir="$workspace"/lib CPPFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS"
         execute make -j "$cpus"
@@ -993,7 +1055,7 @@ else
     fi
 
     if build 'gnutls' '3.8.0'; then
-        download 'https://www.gnupg.org/ftp/gcrypt/gnutls/v3.8/gnutls-3.8.0.tar.xz'
+        download 'https://www.gnupg.org/ftp/gcrypt/gnutls/v3.8/gnutls-3.8.0.tar.xz' 'gnutls-3.8.0.tar.xz'
         execute ./configure --prefix="$workspace" --disable-shared --enable-static --disable-doc --disable-tools \
             --disable-cxx --disable-tests --disable-gtk-doc-html --disable-libdane --disable-nls --enable-local-libopts \
             --disable-guile --with-included-libtasn1 --with-included-unistring --without-p11-kit CPPFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS"
@@ -1001,7 +1063,7 @@ else
         execute make install
         build_done 'gnutls' '3.8.0'
     fi
-    cnf_ops+=('--enable-gmp' '--enable-gnutls')
+    cnf_ops+=('--enable-gnutls')
 fi
 
 git_ver_fn 'Kitware/CMake' '1' 'T'
@@ -1142,6 +1204,18 @@ if build 'SVT-HEVC' "$g_ver"; then
     execute make -j "$cpus"
     execute make install
     build_done 'SVT-HEVC' "$g_ver"
+fi
+
+git_ver_fn 'OpenVisualCloud/SVT-VP9' '1' 'T'
+if build 'SVT-VP9' "$g_ver"; then
+    download "https://github.com/OpenVisualCloud/SVT-VP9/archive/refs/tags/v$g_ver.tar.gz" "SVT-VP9-$g_ver.tar.gz"
+    cd 'Build/linux' || exit 1
+    execute ./build.sh -xi static
+    cd ../.. || exit 1
+    execute cmake -S . -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' -DCMAKE_BUILD_TYPE='Release'
+    execute sudo cmake --build build --target install
+    execute sudo chmod +x "$workspace/bin/SvtVp9EncApp"
+    build_done 'SVT-VP9' "$g_ver"
 fi
 
 git_ver_fn 'webmproject/libvpx' '1' 'T'
@@ -1300,7 +1374,18 @@ if command_exists 'python3'; then
         fi
         CFLAGS+=" -I$workspace/include/lilv-0"
         cnf_ops+=('--enable-lv2')
+
+        git_ver_fn 'xiph/flac' '11' 'T'
+        if build 'flac' "$g_ver"; then
+            download "$g_url" "flac-$g_ver.tar.gz"
+            execute ./autogen.sh --prefix="$workspace"
+            execute ./configure --prefix="$workspace" --enable-static --disable-shared
+            execute make -j "$cpus"
+            execute make install
+            build_done 'flac' "$g_ver"
+        fi
     fi
+
 fi
 
 if build 'opencore' '0.1.6'; then
@@ -1394,19 +1479,16 @@ git_ver_fn '4720790' '4'
 if build 'libtiff' "$gitlab_ver"; then
     download "https://gitlab.com/libtiff/libtiff/-/archive/v$gitlab_ver/libtiff-v$gitlab_ver.tar.bz2" "libtiff-$gitlab_ver.tar.bz2"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --disable-shared --enable-static
-    execute make -j "$cpus"
-    execute make install
+    execute cmake -S . -B build -DCMAKE_INSTALL_PREFIX="$workspace" -D{webp,jbig,UNIX,lerc}=OFF
+    execute cmake --build build --target install
     build_done 'libtiff' "$gitlab_ver"
 fi
 
 git_ver_fn 'glennrp/libpng' '1' 'T'
 if build 'libpng' "$g_ver"; then
     download "$g_url" "libpng-$g_ver.tar.gz"
-    export LDFLAGS="$LDFLAGS"
-    export CPPFLAGS="$CFLAGS"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --disable-shared --enable-static
+    execute ./configure --prefix="$workspace" --disable-shared --enable-static CPPFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS"
     execute make -j "$cpus"
     execute make install
     build_done 'libpng' "$g_ver"
@@ -1520,6 +1602,7 @@ if build 'fribidi' "$g_ver"; then
     build_done 'fribidi' "$g_ver"
 fi
 cnf_ops+=('--enable-libfribidi')
+
 git_ver_fn 'libass/libass' '1' 'T'
 if build 'libass' "$g_ver"; then
     download "$g_url" "libass-$g_ver.tar.gz"
@@ -1533,7 +1616,6 @@ cnf_ops+=('--enable-libass')
 
 git_ver_fn '890' '5'
 if build 'fontconfig' "$gitlab_ver"; then
-    extracommands=(-D{harfbuzz,png,bzip2,brotli,zlib,tests}"=disabled")
     download "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/$gitlab_ver/fontconfig-$gitlab_ver.tar.bz2" "fontconfig-$gitlab_ver.tar.bz2"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --sysconfdir="$workspace"/etc/ --mandir="$workspace"/share/man/
@@ -1667,8 +1749,8 @@ fi
 ##
 
 # REMOVE ANY FILES FROM PRIOR RUNS
-if [ -d "$packages/ffmpeg-$ffmpeg_ver" ]; then
-    rm -fr "$packages/ffmpeg-$ffmpeg_ver"
+if [ -d "$packages/FFmpeg-$ffmpeg_ver" ]; then
+    rm -fr "$packages/FFmpeg-$ffmpeg_ver"
 fi
 
 # CLONE FFMPEG FROM THE LATEST GIT RELEASE
