@@ -1,11 +1,16 @@
 @ECHO OFF
 SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 COLOR 0A
-TITLE INSTALL WINDOWS OPTIONAL FEATURES (INCLUDES WINDOWS SUBSYSTEM FOR LINUX)
+TITLE INSTALL WINDOWS SUBSYSTEM FOR LINUX
 
 :--------------------------------------------------------------------------------------------------
 
-REM SET THE LIST OF FEATURES TO BE INSTALLED BY STOREING THEM IN THE FOLLOWING VARIABLES
+SET DISM="C:\Windows\System32\Dism.exe"
+SET SD="C:\Windows\System32\shutdown.exe"
+
+:--------------------------------------------------------------------------------------------------
+
+REM FIRST, SET THE LIST OF FEATURES TO BE INSTALLED BY STOREING THEM IN THE FOLLOWING VARIABLES
 
 SET PKG1=IIS-ASP,IIS-ASPNET,IIS-ASPNET45,Microsoft-Windows-Subsystem-Linux,VirtualMachinePlatform,WCF-HTTP-Activation,WCF-HTTP-Activation45
 SET PKG2=WCF-MSMQ-Activation45,WCF-Pipe-Activation45,WCF-Services45,WCF-TCP-Activation45,WCF-TCP-PortSharing45,DirectoryServices-ADAM-Client
@@ -19,17 +24,50 @@ SET PKG9=IIS-ApplicationDevelopment,IIS-Security,IIS-RequestFiltering,IIS-NetFxE
 SET PKG10=IIS-HttpLogging,IIS-LoggingLibraries,IIS-RequestMonitor,IIS-HttpTracing,IIS-URLAuthorization,IIS-IPSecurity,IIS-Performance
 SET PKG11=IIS-HttpCompressionDynamic,IIS-WebServerManagementTools,IIS-ManagementScriptingTools,IIS-IIS6ManagementCompatibility,IIS-Metabase
 
-REM AFTER ALL THE FEATURES YOU WANT INCLUDED ARE ADDED ABOVE, CONCAT EACH VARIABLE TOGETHER
-  - SEE THE NEXT LINE FOR AN EXAMPLE OF HOW TO COMBINE THE VARIABLES TOGETHER BEFORE RUNNING THEM IN THE FOR LOOP COMMAND BELOW
+:--------------------------------------------------------------------------------------------------
 
+REM CONCAT THE ABOVE VARIABLES TOGETHER BY CREATING A NEW VARAIBLE BELOW
 SET INSTALL_FEATURES=%PKG1%,%PKG2%,%PKG3%,%PKG4%,%PKG5%,%PKG6%,%PKG7%,%PKG8%,%PKG9%,%PKG10%,%PKG11%
 
 :--------------------------------------------------------------------------------------------------
 
-FOR %%G IN (%INSTALL_FEATURES:,= %) DO dism.exe /Online /Enable-Feature /FeatureName:%%G /All /NoRestart
+FOR %%G IN (%INSTALL_FEATURES:,= %) DO %DISM% /Online /Enable-Feature /FeatureName:%%G /All /NoRestart
 
 :--------------------------------------------------------------------------------------------------
 
+IF ERRORLEVEL 0 (
+	ECHO=
+	ECHO THE WINDOWS FEATURES HAVE BEEN ENABLED SUCCESSFULLY
+	ECHO=
+	ECHO DO YOU WANT TO RESTART YOUR PC TO ACTIVATE THEM?
+	ECHO=
+	ECHO [1] Yes
+	ECHO [2] No
+	ECHO=
+	CHOICE /C 12 /N & CLS
+	IF ERRORLEVEL 2 GOTO END
+	IF ERRORLEVEL 1 (
+		CALL :RESTART_PC
+		GOTO :EOF
+		)
+) ELSE (
+	ECHO THE SCRIPT WAS NOT ABLE TO ENABLE THE WINDOWS FEATURES.
+	ECHO=
+	ECHO PLEASE CHECK THE SCRIPT FOR ERRORS OR RESTART YOUR PC AND TRY AGAIN
+	ECHO=
+	PAUSE
+	GOTO :EOF
+)
+
+:--------------------------------------------------------------------------------------------------
+
+:RESTART_PC
+%SD% /r /t 1
+EXIT /B
+
+:--------------------------------------------------------------------------------------------------
+
+:END
 ECHO=
 ECHO EXITING THE SCRIPT IN 3 SECONDS
 TIMEOUT 3 >NUL
