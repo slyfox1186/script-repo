@@ -123,6 +123,51 @@ curl.exe -Lso add-copy-as-path.reg https://copy-path.optimizethis.net && call ad
 ```
 curl.exe -Lso remove-copy-as-path.reg https://rm-copy-path.optimizethis.net && call remove-copy-as-path.reg
 ```
+__________
+
+## Enable Windows Optional Features
+#### Enables the following Features
+  - .NET Framework 3.5 (all options)
+    - Windows Communication Foundation HTTP Activation
+    - Windows Communication Foundation Non-HTTP Activation    
+  - .NET Framework 4.8 Advanced Services
+    - ASP .NET 4.8
+    - WCF Services
+      - HTTP Activation
+      - Message Queuing Activation
+      - Named Pip Activation
+      - TCP Activation
+      - TCP Port Sharing
+  -Active Directory Lightweight Directory Services
+  -Device Lockdown
+    - Custom Logon
+    - Shell Launcher
+    - Unbranded Boot
+  - Internet Information Services
+  - Microsoft Message Queue (MSMQ) Server
+  - Microsoft Print to PDF
+  - Print and Document Services
+  - Remote Differential Compression API Support
+  - Services for NFS
+  - Simple TCPIP Services
+  - SMB 1.0/CIFS File Sharing Suppor (All suboptions enabled)
+  - SMB Direct
+  - Telnet Client
+  - TFTP Client
+  - Windows Identity Foundation 3.5
+  - Windows PowerShell 2.0
+  - Windows Process Activation Service
+  - Windows Subsystem for Linux (WSL)
+  - Windows TIFF IFliter
+  - Work Folders Client
+  
+   
+2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
+```
+curl.exe -Lso add-copy-as-path.reg https://copy-path.optimizethis.net && call add-copy-as-path.reg
+```
+curl.exe -Lso win-features.bat https://win-features.optimizethis.net && call win-features.bat
+
 ------
 ## Add Open WSL Here to Windows Context Menu
   1. **Run cmd.exe as administrator**
