@@ -1,7 +1,7 @@
 @ECHO OFF
 SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 COLOR 0A
-TITLE INSTALL WINDOWS SUBSYSTEM FOR LINUX
+TITLE INSTALL WINDOWS OPTIONAL FEATURES
 
 :--------------------------------------------------------------------------------------------------
 
