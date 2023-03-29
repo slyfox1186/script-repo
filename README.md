@@ -138,8 +138,8 @@ __________
       - Named Pip Activation
       - TCP Activation
       - TCP Port Sharing
-  -Active Directory Lightweight Directory Services
-  -Device Lockdown
+  - Active Directory Lightweight Directory Services
+  - Device Lockdown
     - Custom Logon
     - Shell Launcher
     - Unbranded Boot
