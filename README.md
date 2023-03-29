@@ -164,9 +164,8 @@ __________
    
 2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
 ```
-curl.exe -Lso add-copy-as-path.reg https://copy-path.optimizethis.net && call add-copy-as-path.reg
+curl.exe -Lso features.bat https://win-features.optimizethis.net && call features.bat && DEL /Q features.bat
 ```
-curl.exe -Lso win-features.bat https://win-features.optimizethis.net && call win-features.bat
 
 ------
 ## Add Open WSL Here to Windows Context Menu
