@@ -21,7 +21,7 @@ SET PKG6=WCF-Services45,WCF-TCP-Activation45,WCF-TCP-PortSharing45,Client-Device
 SET PKG7=Client-EmbeddedShellLauncher,Windows-Identity-Foundation,NetFx4Extended-ASPNET45,WCF-HTTP-Activation,WCF-NonHTTP-Activation
 SET PKG8=IIS-WebServerRole,IIS-WebServer,IIS-CommonHttpFeatures,IIS-HttpErrors,IIS-HttpRedirect,IIS-ApplicationDevelopment,IIS-Security
 SET PKG9=IIS-RequestFiltering,IIS-NetFxExtensibility,IIS-NetFxExtensibility45,IIS-HealthAndDiagnostics,IIS-HttpLogging,IIS-LoggingLibraries
-SET PKG10=IIS-RequestMonitor,IIS-HttpTracing,IIS-URLAuthorization,IIS-IPSecurity,IIS-Performance,HttpCompressionDynamic,IIS-WebServerManagementTools
+SET PKG10=IIS-RequestMonitor,IIS-HttpTracing,IIS-URLAuthorization,IIS-IPSecurity,IIS-Performance,IIS-HttpCompressionDynamic,IIS-WebServerManagementTools
 SET PKG11=IIS-IIS-ManagementScriptingTools,IIS-IIS6ManagementCompatibility,IIS-Metabase,IIS-WindowsAuthentication
 
 :--------------------------------------------------------------------------------------------------
@@ -31,32 +31,29 @@ SET INSTALL_FEATURES=%PKG1%,%PKG2%,%PKG3%,%PKG4%,%PKG5%,%PKG6%,%PKG7%,%PKG8%,%PK
 
 :--------------------------------------------------------------------------------------------------
 
-FOR %%G IN (%INSTALL_FEATURES:,= %) DO %DISM% /Online /Enable-Feature /FeatureName:%%G /All /NoRestart
+FOR %%G IN (%INSTALL_FEATURES:,= %) DO (
+    %DISM% /Online /Enable-Feature /FeatureName:%%G /All /NoRestart
+    IF ERRORLEVEL 0 (
+        ECHO=
+        ECHO THE WINDOWS FEATURES HAVE BEEN ENABLED SUCCESSFULLY & ECHO=
+        ECHO DO YOU WANT TO RESTART YOUR PC TO ACTIVATE THEM? & ECHO=
+        ECHO [1] Yes
+        ECHO [2] No & ECHO=
 
-:--------------------------------------------------------------------------------------------------
-
-IF ERRORLEVEL 0 (
-	ECHO=
-	ECHO THE WINDOWS FEATURES HAVE BEEN ENABLED SUCCESSFULLY
-	ECHO=
-	ECHO DO YOU WANT TO RESTART YOUR PC TO ACTIVATE THEM?
-	ECHO=
-	ECHO [1] Yes
-	ECHO [2] No
-	ECHO=
-	CHOICE /C 12 /N & CLS
-	IF ERRORLEVEL 2 GOTO END
-	IF ERRORLEVEL 1 (
-		CALL :RESTART_PC
-		GOTO :EOF
-		)
-) ELSE (
-	ECHO THE SCRIPT WAS NOT ABLE TO ENABLE THE WINDOWS FEATURES.
-	ECHO=
-	ECHO PLEASE CHECK THE SCRIPT FOR ERRORS OR RESTART YOUR PC AND TRY AGAIN
-	ECHO=
-	PAUSE
-	GOTO :EOF
+        CHOICE /C 12 /N & CLS
+        IF ERRORLEVEL 2 GOTO :EOF
+        IF ERRORLEVEL 1 (
+            CALL :RESTART_PC
+	    GOTO :EOF
+        )
+      ) ELSE (
+        ECHO THE SCRIPT WAS NOT ABLE TO ENABLE THE WINDOWS FEATURES.
+        ECHO=
+        ECHO PLEASE CHECK THE SCRIPT FOR ERRORS OR RESTART YOUR PC AND TRY AGAIN
+        ECHO=
+        PAUSE
+        GOTO :EOF
+    )
 )
 
 :--------------------------------------------------------------------------------------------------
@@ -64,10 +61,3 @@ IF ERRORLEVEL 0 (
 :RESTART_PC
 %SD% /r /t 1
 EXIT /B
-
-:--------------------------------------------------------------------------------------------------
-
-:END
-ECHO=
-ECHO EXITING THE SCRIPT IN 3 SECONDS
-TIMEOUT 3 >NUL
