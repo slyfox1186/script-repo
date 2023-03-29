@@ -18,11 +18,11 @@ SET PKG3=WCF-Pipe-Activation45,SimpleTCP,SMB1Protocol,SMB1Protocol-Client,SMB1Pr
 SET PKG4=TFTP,TIFFIFilter,Printing-Foundation-Features,Printing-Foundation-InternetPrinting-Client,NFS-Administration,ServicesForNFS-ClientOnly
 SET PKG5=WAS-WindowsActivationService,WorkFolders-Client,WCF-HTTP-Activation,WCF-HTTP-Activation45,WCF-MSMQ-Activation45,WCF-NonHTTP-Activation
 SET PKG6=WCF-Services45,WCF-TCP-Activation45,WCF-TCP-PortSharing45,Client-DeviceLockdown,Client-EmbeddedBootExp,Client-EmbeddedLogon
-SET PKG7=Client-EmbeddedShellLauncher,Deployment Image Servicing and Management tool,Windows-Identity-Foundation,NetFx4Extended-ASPNET45
-SET PKG8=WCF-HTTP-Activation,WCF-NonHTTP-Activation,IIS-WebServerRole,IIS-WebServer,IIS-CommonHttpFeatures,IIS-HttpErrors,IIS-HttpRedirect
-SET PKG9=IIS-ApplicationDevelopment,IIS-Security,IIS-RequestFiltering,IIS-NetFxExtensibility,IIS-NetFxExtensibility45,IIS-HealthAndDiagnostics
-SET PKG10=IIS-HttpLogging,IIS-LoggingLibraries,IIS-RequestMonitor,IIS-HttpTracing,IIS-URLAuthorization,IIS-IPSecurity,IIS-Performance
-SET PKG11=IIS-HttpCompressionDynamic,IIS-WebServerManagementTools,IIS-ManagementScriptingTools,IIS-IIS6ManagementCompatibility,IIS-Metabase
+SET PKG7=Client-EmbeddedShellLauncher,Windows-Identity-Foundation,NetFx4Extended-ASPNET45,WCF-HTTP-Activation,WCF-NonHTTP-Activation
+SET PKG8=IIS-WebServerRole,IIS-WebServer,IIS-CommonHttpFeatures,IIS-HttpErrors,IIS-HttpRedirect,IIS-ApplicationDevelopment,IIS-Security
+SET PKG9=IIS-RequestFiltering,IIS-NetFxExtensibility,IIS-NetFxExtensibility45,IIS-HealthAndDiagnostics,IIS-HttpLogging,IIS-LoggingLibraries
+SET PKG10=IIS-RequestMonitor,IIS-HttpTracing,IIS-URLAuthorization,IIS-IPSecurity,IIS-Performance,HttpCompressionDynamic,IIS-WebServerManagementTools
+SET PKG11=IIS-IIS-ManagementScriptingTools,IIS-IIS6ManagementCompatibility,IIS-Metabase,IIS-WindowsAuthentication
 
 :--------------------------------------------------------------------------------------------------
 
