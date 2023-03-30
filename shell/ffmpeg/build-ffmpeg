@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2016,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
+# shellcheck disable=SC2016,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317,SC2034,SC2093
 
 #################################################################################
 ##
@@ -25,13 +25,6 @@
 ##
 #################################################################################
 
-# verify the script does not have root access before continuing
-if [ "$EUID" -eq '0' ]; then
-    echo 'You must run this script without root/sudo'
-    echo
-    exec /usr/bin/bash "$0" "$@"
-fi
-
 ##
 ## define variables
 ##
@@ -50,29 +43,6 @@ EXTRALIBS='-ldl -lpthread -lm -lz'
 cnf_ops=()
 nonfree='false'
 latest='false'
-
-##
-## Get the CPU thread count for use in parallel processing
-##
-
-cpu_thread_cnt_fn()
-{
-    if [ -f '/proc/cpuinfo' ]; then
-        cpu_threads="$(grep -c ^processor '/proc/cpuinfo')"
-    else
-        cpu_threads="$(nproc --all)"
-    fi
-}
-
-cpu_thread_cnt_fn
-
-##
-## Get the CPU core count for use in parallel processing
-##
-
-cpu_core_cnt_fn() { cpu_cores="$(grep ^cpu\\scores '/proc/cpuinfo' | uniq | awk '{print $4}')"; }
-
-cpu_core_cnt_fn
 
 ##
 ## define functions
@@ -207,9 +177,13 @@ download()
             fi
         fi
         echo 'Download Completed'
-        echo
     else
+        echo
         echo "$dl_file is already downloaded"
+    fi
+
+    if [ -d "$dl_path/$target_dir" ]; then
+        remove_dir "$dl_path/$target_dir"
     fi
 
     make_dir "$dl_path/$target_dir"
@@ -228,7 +202,7 @@ download()
         fi
     fi
 
-    echo "File extracted: $dl_file"
+    echo -e "File extracted: $dl_file\\n"
 
     cd "$dl_path/$target_dir" || (
         echo 'Script error!'
@@ -263,6 +237,7 @@ download_git()
         echo 'Download Complete'
         echo
     else
+        echo
         echo "$dl_file is already downloaded"
     fi
 
@@ -282,7 +257,13 @@ git_1_fn()
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     github_repo="$1"
     github_url="$2"
-    if curl_cmd=$(curl -m "$net_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url?per_page=1"); then
+    if curl_cmd=$(curl \
+        -m "$net_timeout" \
+        --request GET \
+        --url "https://api.github.com/slyfox1186" \
+        --header "Authorization: Bearer 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" \
+        --header "X-GitHub-Api-Version: 2022-11-28" \
+        -sSL "https://api.github.com/repos/$github_repo/$github_url?per_page=1"); then
         g_ver=$(echo "$curl_cmd" | jq -r '.[0].name')
         g_ver=${g_ver#v}
         g_ver_ssl=$(echo "$curl_cmd" | jq -r '.[0].name')
@@ -291,6 +272,8 @@ git_1_fn()
         g_ver_pkg=${g_ver_pkg#pkg-config-}
         g_ver_zimg=$(echo "$curl_cmd" | jq -r '.[0].name')
         g_ver_zimg=${g_ver_zimg#release-}
+        g_ver_libva=$(echo "$curl_cmd" | jq -r '.[0].name')
+        g_ver_libva=${g_ver_libva#Libva }
         g_url=$(echo "$curl_cmd" | jq -r '.[0].tarball_url')
     fi
 }
@@ -366,7 +349,13 @@ git_9_fn()
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     github_repo="$1"
     github_url="$2"
-    if curl_cmd=$(curl -m "$net_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url?per_page=1"); then
+    if curl_cmd=$(curl \
+        -m "$net_timeout" \
+        --request GET \
+        --url "https://api.github.com/slyfox1186" \
+        --header "Authorization: Bearer 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" \
+        --header "X-GitHub-Api-Version: 2022-11-28" \
+        -sSL "https://api.github.com/repos/$github_repo/$github_url?per_page=1"); then
         g_ver=$(echo "$curl_cmd" | jq -r '.[0].name')
         g_url=$(echo "$curl_cmd" | jq -r '.[0].tarball_url')
     fi
@@ -434,7 +423,7 @@ execute()
 {
     echo "$ $*"
 
-    if ! output=$("$@" 2>&1); then
+    if ! output=$("$@" &>/dev/null); then
         echo "$output"
         echo
         echo "Failed to Execute $*" >&2
@@ -447,7 +436,7 @@ build()
 {
     echo
     echo "building $1 - version $2"
-    echo '===================================='
+    echo '======================================'
 
     if [ -f "$packages/$1.done" ]; then
         if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
@@ -666,7 +655,9 @@ $workspace/lib/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/lib/pkgconfig:\
 /usr/share/pkgconfig:\
-/usr/lib64/pkgconfig\
+/usr/lib64/pkgconfig:\
+/usr/lib/gcc:\
+/usr/share/gcc\
 "
 export PKG_CONFIG_PATH
 
@@ -722,50 +713,50 @@ cuda_fn()
     read -p 'Your choices are (1 to 7): ' cuda_dist
     clear
     if [[ "$cuda_dist" -eq '1' ]]; then
-        wget --show progress -cqO "cuda-$cuda_ver.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-debian10-12-1-local_12.1.0-530.30.02-1_amd64.deb'
-        sudo dpkg -i "cuda-$cuda_ver.deb"
-        sudo cp /var/cuda-repo-debian10-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
-        sudo add-apt-repository contrib
+        wget --show progress -cqO cuda-$cuda_ver.deb 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-debian10-12-1-local_12.1.0-530.30.02-1_amd64.deb'
+        dpkg -i cuda-$cuda_ver.deb
+        cp /var/cuda-repo-debian10-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
+        add-apt-repository contrib
        elif [[ "$cuda_dist" -eq '2' ]]; then
-        wget --show progress -cqO "cuda-$cuda_ver.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-debian11-12-1-local_12.1.0-530.30.02-1_amd64.deb'
-        sudo dpkg -i "cuda-$cuda_ver.deb"
-        sudo cp /var/cuda-repo-debian11-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
-        sudo add-apt-repository contrib
+        wget --show progress -cqO cuda-$cuda_ver.deb 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-debian11-12-1-local_12.1.0-530.30.02-1_amd64.deb'
+        dpkg -i cuda-$cuda_ver.deb
+        cp /var/cuda-repo-debian11-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
+        add-apt-repository contrib
     elif [[ "$cuda_dist" -eq '3' ]]; then
         wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin'
-        sudo mv 'cuda-ubuntu1804.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-        wget --show progress -cqO "cuda-$cuda_ver.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-ubuntu1804-12-1-local_12.1.0-530.30.02-1_amd64.deb'
-        sudo dpkg -i "cuda-$cuda_ver.deb"
-        sudo cp /var/cuda-repo-ubuntu1804-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
+        mv 'cuda-ubuntu1804.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
+        wget --show progress -cqO cuda-$cuda_ver.deb 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-ubuntu1804-12-1-local_12.1.0-530.30.02-1_amd64.deb'
+        dpkg -i cuda-$cuda_ver.deb
+        cp /var/cuda-repo-ubuntu1804-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
     elif [[ "$cuda_dist" -eq '4' ]]; then
         wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin'
-        sudo mv 'cuda-ubuntu2004.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-        wget --show progress -cqO "cuda-$cuda_ver.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-ubuntu2004-12-1-local_12.1.0-530.30.02-1_amd64.deb'
-        sudo dpkg -i "cuda-$cuda_ver.deb"
-        sudo cp /var/cuda-repo-ubuntu2004-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
+        mv 'cuda-ubuntu2004.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
+        wget --show progress -cqO cuda-$cuda_ver.deb 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-ubuntu2004-12-1-local_12.1.0-530.30.02-1_amd64.deb'
+        dpkg -i cuda-$cuda_ver.deb
+        cp /var/cuda-repo-ubuntu2004-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
     elif [[ "$cuda_dist" -eq '5' ]]; then
         wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin'
-        sudo mv 'cuda-ubuntu2204.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-        wget --show progress -cqO "cuda-$cuda_ver.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-ubuntu2204-12-1-local_12.1.0-530.30.02-1_amd64.deb'
-        sudo dpkg -i "cuda-$cuda_ver.deb"
-        sudo cp /var/cuda-repo-ubuntu2204-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
+        mv 'cuda-ubuntu2204.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
+        wget --show progress -cqO cuda-$cuda_ver.deb 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-ubuntu2204-12-1-local_12.1.0-530.30.02-1_amd64.deb'
+        dpkg -i cuda-$cuda_ver.deb
+        cp /var/cuda-repo-ubuntu2204-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
     elif [[ "$cuda_dist" -eq '6' ]]; then
         wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin'
-        sudo mv 'cuda-wsl-ubuntu.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-        wget --show progress -cqO "cuda-$cuda_ver.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-wsl-ubuntu-12-1-local_12.1.0-1_amd64.deb'
-        sudo dpkg -i "cuda-$cuda_ver.deb"
-        sudo cp /var/cuda-repo-wsl-ubuntu-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
+        mv 'cuda-wsl-ubuntu.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
+        wget --show progress -cqO cuda-$cuda_ver.deb 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-wsl-ubuntu-12-1-local_12.1.0-1_amd64.deb'
+        dpkg -i cuda-$cuda_ver.deb
+        cp /var/cuda-repo-wsl-ubuntu-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
     elif [[ "$cuda_dist" -eq '7' ]]; then
         return 0
     fi
 
     # UPDATE THE APT PACKAGES THEN INSTALL THE CUDA-SDK-TOOLKIT
-    sudo apt update
-    sudo apt -y install cuda
+    apt update
+    apt -y install cuda
 
     # CHECK IF THE CUDA FOLDER EXISTS TO ENSURE IT WAS INSTALLED
-    iscuda="$(sudo find /usr/local/ -type f -name nvcc)"
-    cudaPATH="$(sudo find /usr/local/ -type f -name nvcc | grep -Eo '^.*\/bi[n]?')"
+    iscuda="$(find /usr/local/ -type f -name 'nvcc')"
+    cudaPATH="$(find /usr/local/ -type f -name 'nvcc' | grep -Eo '^.*\/bi[n]?')"
 
     if [ -z "$cudaPATH" ]; then
         cuda_fail_fn
@@ -774,6 +765,16 @@ cuda_fn()
         export PATH
     fi
 }
+
+## Get the CPU thread count for use in parallel processing
+if [ -f '/proc/cpuinfo' ]; then
+    cpu_threads="$(grep -c ^processor '/proc/cpuinfo')"
+else
+    cpu_threads="$(nproc --all)"
+fi
+
+## Get the CPU core count for use in parallel processing
+cpu_cores="$(grep ^cpu\\scores '/proc/cpuinfo' | uniq | awk '{print $4}')"
 
 ##
 ## required build packages
@@ -785,10 +786,10 @@ build_pkgs_fn()
     echo 'Installing required development packages'
     echo '=========================================='
 
-    pkgs=(ant g++ gcc gtk-doc-tools help2man javacc jq junit \
-          libcairo2-dev libcdio-paranoia-dev libcurl4-gnutls-dev \
-          libglib2.0-dev libmusicbrainz5-dev libopus-dev \
-          libtinyxml2-dev openjdk-17-jdk pkg-config ragel)
+    pkgs=(ant automake cmake g++ gcc git gtk-doc-tools help2man javacc \
+          jq junit libcairo2-dev libcdio-paranoia-dev libcurl4-gnutls-dev \
+          libdrm-dev libglib2.0-dev libmusicbrainz5-dev libopus-dev \
+          libtinyxml2-dev libtool meson openjdk-17-jdk pkg-config ragel)
 
     for pkg in ${pkgs[@]}
     do
@@ -800,7 +801,7 @@ build_pkgs_fn()
     if [ -n "$missing_pkgs" ]; then
         for pkg in "$missing_pkgs"
         do
-            if sudo apt -y install $pkg; then
+            if apt -y install $pkg; then
                 echo 'The required development packages were installed.'
             else
                 echo 'The required development packages failed to install'
@@ -835,7 +836,7 @@ cuda_add_fn()
     if [ -n "$missing_pkgs" ]; then
         for pkg in "$missing_pkgs"
         do
-            sudo apt -y install $pkg
+            apt -y install $pkg
         done
         echo 'The required cuda developement packages were installed'
     else
@@ -847,8 +848,8 @@ install_cuda_fn()
 {
     local cuda_ans cuda_choice
 
-    iscuda="$(sudo find /usr/local/ -type f -name nvcc)"
-    cudaPATH="$(sudo find /usr/local/ -type f -name nvcc | grep -Eo '^.*\/bi[n]?')"
+    iscuda="$(find /usr/local/ -type f -name 'nvcc')"
+    cudaPATH="$(find /usr/local/ -type f -name 'nvcc' | grep -Eo '^.*\/bi[n]?')"
 
     if [ -z "$iscuda" ]; then
         echo
@@ -867,7 +868,7 @@ install_cuda_fn()
             cuda_fn
             cuda_add_fn
         elif [[ "$cuda_ans" -eq '2' ]]; then
-            if [ -d '/usr/local/cuda-12.1/bin' ]; then
+            if [ -d "$cudaPATH" ]; then
                 PATH="$PATH:$cudaPATH"
                 export PATH
             else
@@ -955,7 +956,7 @@ if build 'yasm' "$g_ver"; then
     execute make install
     build_done 'yasm' "$g_ver"
 fi
-git_ver_fn 'netwide-assembler/nasm' '11' 'T'
+git_ver_fn 'netwide-assembler/nasm' '9' 'T'
 if build 'nasm' '2.16.01'; then
     download 'https://www.nasm.us/pub/nasm/releasebuilds/2.16.01/nasm-2.16.01.tar.xz'
     execute sh ./autogen.sh
@@ -1026,7 +1027,7 @@ else
         build_done 'gmp' '6.2.1'
     fi
     cnf_ops+=('--enable-gmp')
-    
+
     if build 'nettle' '3.8.1'; then
         download 'https://ftp.gnu.org/gnu/nettle/nettle-3.8.1.tar.gz' 'nettle-3.8.1.tar.gz'
         execute ./configure --prefix="$workspace" --disable-shared --enable-static --disable-openssl \
@@ -1138,16 +1139,16 @@ if $nonfree; then
         rm -fr {8,10,12}bit 2>/dev/null
         mkdir -p {8,10,12}bit
         cd '12bit' || exit 1
-        echo '$ making 12bit binaries'
+        echo -e "\\n\$ making 12bit binaries"
         execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' \
             -DHIGH_BIT_DEPTH='ON' -DENABLE_HDR10_PLUS='ON' -DEXPORT_C_API='OFF' -DENABLE_CLI='OFF' -DMAIN12='ON'
         execute make -j "$cpu_threads"
-        echo '$ making 10bit binaries'
+        echo -e "\\n\$ making 10bit binaries"
         cd ../'10bit' || exit 1
         execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' \
             -DBUILD_SHARED_LIBS='OFF' -DHIGH_BIT_DEPTH='ON' -DENABLE_HDR10_PLUS='ON' -DEXPORT_C_API='OFF' -DENABLE_CLI='OFF'
         execute make -j "$cpu_threads"
-        echo '$ making 8bit binaries'
+        echo -e "\\n\$ making 8bit binaries"
         cd ../'8bit' || exit 1
         ln -sf ../'10bit/libx265.a' 'libx265_main10.a'
         ln -sf ../'12bit/libx265.a' 'libx265_main12.a'
@@ -1193,14 +1194,14 @@ if build 'SVT-VP9' "$g_ver"; then
     download "https://github.com/OpenVisualCloud/SVT-VP9/archive/refs/tags/v$g_ver.tar.gz" "SVT-VP9-$g_ver.tar.gz"
     cd 'Build/linux' || exit 1
     execute ./build.sh -xi static
-    cd ../.. || exit 1
+    cd '../..' || exit 1
     execute cmake -S . -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' -DCMAKE_BUILD_TYPE='Release'
-    execute sudo cmake --build build --target install
-    execute sudo chmod +x "$workspace/bin/SvtVp9EncApp"
+    execute cmake --build build --target install
+    execute chmod +x "$workspace"/bin/SvtVp9EncApp
     build_done 'SVT-VP9' "$g_ver"
 fi
 
-git_ver_fn 'webmproject/libvpx' '11' 'T'
+git_ver_fn 'webmproject/libvpx' '9' 'T'
 if build 'libvpx' "$g_ver"; then
     download "$g_url" "libvpx-$g_ver.tar.gz"
     execute ./configure --prefix="$workspace" --disable-unit-tests --disable-shared --disable-examples --as='yasm'
@@ -1211,8 +1212,8 @@ fi
 cnf_ops+=('--enable-libvpx')
 
 if $nonfree; then
-    if build 'xvidcore' '1.3.7'; then
-        download 'https://downloads.xvid.com/downloads/xvidcore-1.3.7.tar.bz2'
+    if build 'xvidcore' 'git'; then
+        download_git 'https://github.com/gpac-buildbot/xvidcore.git' 'xvidcore-git'
         cd 'build/generic' || exit 1
         execute ./configure --prefix="$workspace" --disable-shared --enable-static
         execute make -j "$cpu_threads"
@@ -1226,7 +1227,7 @@ if $nonfree; then
             execute rm "$workspace"/lib/libxvidcore.so*
         fi
 
-        build_done 'xvidcore' '1.3.7'
+        build_done 'xvidcore' 'git'
     fi
     cnf_ops+=('--enable-libxvid')
 fi
@@ -1234,7 +1235,7 @@ fi
 if $nonfree; then
     git_ver_fn 'georgmartius/vid.stab' '1' 'T'
     if build 'vid_stab' "$g_ver"; then
-        download "https://github.com/georgmartius/vid.stab/archive/refs/tags/v$g_ver.tar.gz" "vid.stab-$g_ver.tar.gz"
+        download "$g_url" "vid.stab-$g_ver.tar.gz"
         execute cmake -DBUILD_SHARED_LIBS='OFF' -DCMAKE_INSTALL_PREFIX="$workspace" -DUSE_OMP='OFF' -DENABLE_SHARED='OFF' .
         execute make -j "$cpu_threads"
         execute make install
@@ -1243,14 +1244,14 @@ if $nonfree; then
     cnf_ops+=('--enable-libvidstab')
 fi
 
-if build 'av1' '1d9b065'; then
-    download 'https://aomedia.googlesource.com/aom/+archive/1d9b065c79427f09eb4a96b34f66e2ba06671573.tar.gz' 'av1-1d9b065.tar.gz' 'av1'
+if build 'av1' '39f5013'; then
+    download 'https://aomedia.googlesource.com/aom/+archive/39f50137f189ef57f4c58778f1b11d6806e58fdf.tar.gz' 'av1-39f5013.tar.gz' 'av1'
     make_dir "$packages"/aom_build
     cd "$packages"/aom_build || exit 1
     execute cmake -DENABLE_TESTS='0' -DENABLE_EXAMPLES='0' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' "$packages"/av1
     execute make -j "$cpu_threads"
     execute make install
-    build_done 'av1' '1d9b065'
+    build_done 'av1' '39f5013'
 fi
 cnf_ops+=('--enable-libaom')
 
@@ -1294,7 +1295,7 @@ cnf_ops+=('--enable-libkvazaar')
 
 if command_exists 'python3'; then
     if command_exists 'meson'; then
-    
+
         git_ver_fn 'lv2/lv2' '1' 'T'
         if build 'lv2' "$g_ver"; then
             download "$g_url" "lv2-$g_ver.tar.gz"
@@ -1303,13 +1304,13 @@ if command_exists 'python3'; then
             execute ninja -C build install
             build_done 'lv2' "$g_ver"
         fi
-        
+
         git_ver_fn '7131569' '4'
         if build 'waflib' "$gitlab_sver"; then
             download "https://gitlab.com/ita1024/waf/-/archive/$gitlab_ver/waf-$gitlab_ver.tar.bz2" "autowaf-$gitlab_sver.tar.bz2"
             build_done 'waflib' "$gitlab_sver"
         fi
-        
+
         git_ver_fn '5048975' '4'
         if build 'serd' "$gitlab_ver"; then
             download "https://gitlab.com/drobilla/serd/-/archive/v$gitlab_ver/serd-v$gitlab_ver.tar.bz2" "serd-$gitlab_ver.tar.bz2"
@@ -1318,7 +1319,7 @@ if command_exists 'python3'; then
             execute ninja -C build install
             build_done 'serd' "$gitlab_ver"
         fi
-        
+
         git_ver_fn 'PCRE2Project/pcre2' '9' 'R'
         case_lower="$(echo "$g_ver" | tr "[:upper:]" "[:lower:]")"
         if build 'pcre2' "$case_lower"; then
@@ -1329,7 +1330,7 @@ if command_exists 'python3'; then
             execute make install
             build_done 'pcre2' "$case_lower"
         fi
-        
+
         git_ver_fn '14889806' '3'
         if build 'zix' "$gitlab_sver0"; then
             download "https://gitlab.com/drobilla/zix/-/archive/$gitlab_ver0/zix-$gitlab_ver0.tar.bz2" "zix-$gitlab_sver0.tar.bz2"
@@ -1338,17 +1339,16 @@ if command_exists 'python3'; then
             execute ninja -C build install
             build_done 'zix' "$gitlab_sver0"
         fi
-        
+
         git_ver_fn '11853362' '4'
         if build 'sord' "$gitlab_ver"; then
-            download "https://gitlab.com/drobilla/sord/-/archive/v0.16.14/sord-v0.16.14.tar.bz2"
             download "https://gitlab.com/drobilla/sord/-/archive/v$gitlab_ver/sord-v$gitlab_ver.tar.bz2" "sord-$gitlab_ver.tar.bz2"
             execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
             execute ninja -C build
             execute ninja -C build install
             build_done 'sord' "$gitlab_ver"
         fi
-        
+
         git_ver_fn '11853194' '4'
         if build 'sratom' "$gitlab_ver"; then
             download "https://gitlab.com/lv2/sratom/-/archive/v$gitlab_ver/sratom-v$gitlab_ver.tar.bz2" "sratom-$gitlab_ver.tar.bz2"
@@ -1368,25 +1368,17 @@ if command_exists 'python3'; then
         fi
         CFLAGS+=" -I$workspace/include/lilv-0"
         cnf_ops+=('--enable-lv2')
-
-        git_ver_fn 'xiph/flac' '11' 'T'
-        if build 'flac' "$g_ver"; then
-            download "$g_url" "flac-$g_ver.tar.gz"
-            execute ./autogen.sh --prefix="$workspace"
-            execute ./configure --prefix="$workspace" --enable-static --disable-shared
-            execute make -j "$cpu_threads"
-            execute make install
-            build_done 'flac' "$g_ver"
-        fi
     fi
 fi
 
-if build 'opencore' '0.1.6'; then
-    download 'https://netactuate.dl.sourceforge.net/project/opencore-amr/opencore-amr/opencore-amr-0.1.6.tar.gz' 'opencore-amr-0.1.6.tar.gz'
+git_ver_fn 'acidanthera/OpenCorePkg' '9' 'R'
+if build 'opencore' 'git'; then
+    download_git 'git://git.code.sf.net/p/opencore-amr/code' 'opencore-amr-git'
+    execute autoreconf -fiv
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
     execute make -j "$cpu_threads"
     execute make install
-    build_done 'opencore' '0.1.6'
+    build_done 'opencore' 'git'
 fi
 cnf_ops+=('--enable-libopencore_amrnb' '--enable-libopencore_amrwb')
 
@@ -1534,9 +1526,10 @@ cnf_ops+=('--enable-libbluray')
 git_ver_fn 'mediaarea/zenLib' '1' 'R'
 if build 'zenLib' "$g_ver"; then
     download "$g_url" "zenLib-$g_ver.tar.gz"
-    cd "$PWD"/Project/CMake || exit 1
-    execute cmake -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
-        -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON'
+    cd 'Project/CMake' || exit 1
+    execute cmake . -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
+        -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON' -DENABLE_APPS='OFF' \
+        -DUSE_STATIC_LIBSTDCXX='ON' -DBUILD_ZLIB='ON'
     execute make -j "$cpu_threads"
     execute make install
     build_done 'zenLib' "$g_ver"
@@ -1545,7 +1538,7 @@ fi
 git_ver_fn 'MediaArea/MediaInfoLib' '1' 'R'
 if build 'MediaInfoLib' "$g_ver"; then
     download "$g_url" "MediaInfoLib-$g_ver.tar.gz"
-    cd "$PWD"/Project/CMake || exit 1
+    cd 'Project/CMake' || exit 1
     execute cmake . -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
         -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON' -DENABLE_APPS='OFF' \
         -DUSE_STATIC_LIBSTDCXX='ON' -DBUILD_ZLIB='OFF' -DBUILD_ZENLIB='OFF'
@@ -1556,7 +1549,7 @@ fi
 git_ver_fn 'MediaArea/MediaInfo' '1' 'T'
 if build 'MediaInfoCLI' "$g_ver"; then
     download "$g_url" "MediaInfoCLI-$g_ver.tar.gz"
-    cd "$PWD"/Project/GNU/CLI || exit 1
+    cd 'Project/GNU/CLI' || exit 1
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --enable-staticlibs
     build_done 'MediaInfoCLI' "$g_ver"
@@ -1580,7 +1573,7 @@ if build 'c2man' 'current'; then
     execute ./Configure -des
     execute make depend
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'c2man' 'current'
 fi
 
@@ -1660,13 +1653,23 @@ if $nonfree; then
         cnf_ops+=('--enable-libsrt')
 fi
 
+git_ver_fn '1665' '7'
+if build 'libxml2' "$gitlab_ver"; then
+    download "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v$gitlab_ver/libxml2-v$gitlab_ver.tar.bz2" "libxml2-$gitlab_ver.tar.bz2"
+    execute ./autogen.sh
+    execute ./configure --prefix="$workspace" --disable-shared --enable-static
+    execute make -j "$cpu_threads"
+    execute make install
+    build_done 'libxml2' "$gitlab_ver"
+fi
+cnf_ops+=('--enable-libxml2')
+
 #####################
 ## HWaccel library ##
 #####################
 
 git_ver_fn 'khronosgroup/opencl-headers' '1' 'R'
 if build 'opencl' "$g_ver"; then
-    CFLAGS+=" -DLIBXML_STATIC_FOR_DLL -DNOLIBTOOL"
     download "$g_url" "opencl-$g_ver.tar.gz"
     execute cmake -S . -B build -DCMAKE_INSTALL_PREFIX="$workspace"
     execute cmake --build build --target install
@@ -1677,12 +1680,19 @@ cnf_ops+=('--enable-opencl')
 # Vaapi doesn't work well with static links FFmpeg.
 if [ -z "$LDEXEFLAGS" ]; then
     # If the libva development SDK is installed, enable vaapi.
-    if library_exists 'libva'; then
-        if build 'vaapi' '1'; then
-            build_done 'vaapi' '1'
-        fi
-        cnf_ops+=('--enable-vaapi')
+    git_ver_fn 'intel/libva' '1' 'R' 
+    if build 'libva' "$g_ver_libva"; then
+        download "$g_url" "libva-$g_ver_libva.tar.gz"
+        execute ./autogen.sh --prefix=/usr --libdir=/usr/lib/x86_64-linux-gnu
+        execute make -j "$cpu_threads"
+        execute sudo make install
+        build_done 'libva' "$g_ver_libva"
     fi
+
+    if build 'vaapi' '1'; then
+        build_done 'vaapi' '1'
+    fi
+    cnf_ops+=('--enable-vaapi')
 fi
 
 git_ver_fn 'GPUOpen-LibrariesAndSDKs/AMF' '1' 'T'
@@ -1738,7 +1748,6 @@ if which 'nvcc' &>/dev/null ; then
     ##
     ## https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
     ##
-    
     cnf_ops+=("--nvccflags=-gencode arch=$gpu_arch")
 fi
 
@@ -1750,9 +1759,6 @@ fi
 if [ -d "$packages/FFmpeg-$ffmpeg_ver" ]; then
     rm -fr "$packages/FFmpeg-$ffmpeg_ver"
 fi
-
-# get this computers cpu core count to pass to ffmpeg during it's build
-cpu_core_cnt_fn
 
 # CLONE FFMPEG FROM THE LATEST GIT RELEASE
 build 'ffmpeg' "$ffmpeg_ver"
@@ -1766,6 +1772,7 @@ download "https://github.com/FFmpeg/FFmpeg/archive/refs/tags/$ffmpeg_ver.tar.gz"
     --enable-static \
     --enable-small \
     --enable-version3 \
+    --enable-linux-perf \
     --cpu="$cpu_cores" \
     --extra-cflags="$CFLAGS" \
     --extra-ldexeflags="$LDEXEFLAGS" \
@@ -1782,25 +1789,14 @@ execute make -j "$cpu_threads"
 execute make install
 
 # MOVE BINARIES TO '/usr/bin'
-if which 'sudo' &>/dev/null; then
-    sudo cp -f "$workspace/bin/ffmpeg" "$install_dir/ffmpeg"
-    sudo cp -f "$workspace/bin/ffprobe" "$install_dir/ffprobe"
-    sudo cp -f "$workspace/bin/ffplay" "$install_dir/ffplay"
-else
-    cp -f "$workspace/bin/ffmpeg" "$install_dir/ffmpeg"
-    cp -f "$workspace/bin/ffprobe" "$install_dir/ffprobe"
-    cp -f "$workspace/bin/ffplay" "$install_dir/ffplay"
+if ! cp -f "$workspace/bin/ffmpeg" "$install_dir/ffmpeg"; then
+    echo "ffmpeg failed to copy to: $install_dir/ffmpeg"
 fi
-
-# CHECK THAT FILES WERE COPIED TO THE INSTALL DIRECTORY
-if [ ! -f "$install_dir/ffmpeg" ]; then
-    echo "Failed to copy: ffmpeg to $install_dir/"
+if ! cp -f "$workspace/bin/ffprobe" "$install_dir/ffprobe"; then
+    echo "ffprobe failed to copy to: $install_dir/ffprobe"
 fi
-if [ ! -f "$install_dir/ffprobe" ]; then
-    echo "Failed to copy: ffprobe to $install_dir/"
-fi
-if [ ! -f "$install_dir/ffplay" ]; then
-    echo "Failed to copy: ffplay to $install_dir/"
+if ! cp -f "$workspace/bin/ffplay" "$install_dir/ffplay"; then
+    echo "ffplay failed to copy to: $install_dir/ffplay"
 fi
 
 # DISPLAY FFMPEG'S VERSION
