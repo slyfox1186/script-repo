@@ -257,13 +257,7 @@ git_1_fn()
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     github_repo="$1"
     github_url="$2"
-    if curl_cmd=$(curl \
-        -m "$net_timeout" \
-        --request GET \
-        --url "https://api.github.com/slyfox1186" \
-        --header "Authorization: Bearer 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" \
-        --header "X-GitHub-Api-Version: 2022-11-28" \
-        -sSL "https://api.github.com/repos/$github_repo/$github_url?per_page=1"); then
+    if curl_cmd=$(curl -m "$net_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url?per_page=1"); then
         g_ver=$(echo "$curl_cmd" | jq -r '.[0].name')
         g_ver=${g_ver#v}
         g_ver_ssl=$(echo "$curl_cmd" | jq -r '.[0].name')
@@ -349,13 +343,7 @@ git_9_fn()
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     github_repo="$1"
     github_url="$2"
-    if curl_cmd=$(curl \
-        -m "$net_timeout" \
-        --request GET \
-        --url "https://api.github.com/slyfox1186" \
-        --header "Authorization: Bearer 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" \
-        --header "X-GitHub-Api-Version: 2022-11-28" \
-        -sSL "https://api.github.com/repos/$github_repo/$github_url?per_page=1"); then
+    if curl_cmd=$(curl -m "$net_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url?per_page=1"); then
         g_ver=$(echo "$curl_cmd" | jq -r '.[0].name')
         g_url=$(echo "$curl_cmd" | jq -r '.[0].tarball_url')
     fi
