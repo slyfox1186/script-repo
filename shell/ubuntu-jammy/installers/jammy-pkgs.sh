@@ -78,7 +78,7 @@ ppa_fn()
 {
     local i missing_pkgs pkg pkgs ppa_repo
 
-    ppa_repo='danielrichter2007/grub-customizer videolan/master-daily'
+    ppa_repo='danielrichter2007/grub-customizer videolan/master-daily git-core/ppa'
 
     for pkg in ${ppa_repo[@]}
     do
@@ -88,8 +88,9 @@ ppa_fn()
             for i in "$pkg"
             do
                 case "$i" in
-                    'danielrichter2007/grub-customizer') apt_ppa+='grub-customizer';;
-                    'videolan/master-daily') apt_ppa+=' vlc';;
+                    'danielrichter2007/grub-customizer')      apt_ppa+='grub-customizer';;
+                    'videolan/master-daily')                  apt_ppa+=' vlc';;
+                    'git')                                    apt_ppa+=' git';;
                  esac
             done
         fi
@@ -97,7 +98,7 @@ ppa_fn()
 
     if [ -n "$apt_ppa" ]; then
         apt update
-        sudo apt -y install $apt_ppa
+        apt -y install $apt_ppa
         echo
         echo '$ Any missing ppa repositories were installed'
         echo
