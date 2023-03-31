@@ -956,7 +956,7 @@ fi
 
 git_ver_fn 'madler/zlib' '1' 'T'
 if build 'zlib' "$g_ver"; then
-    download "$g_url" "zlib-$g_ver"
+    download "$g_url" "zlib-$g_ver.tar.gz"
     execute ./configure --static --prefix="$workspace"
     execute make -j "$cpu_threads"
     execute make install
