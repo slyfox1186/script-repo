@@ -62,18 +62,19 @@ pkgs_fn()
             missing_pkgs+=" ${pkg}"
         fi
     done
-
-    if [ -n "${missing_pkgs}" ]; then
-        for i in "${missing_pkgs}"
+    
+    if [ -z "${missing_pkgs}" ]; then
+        echo 'The requried apt packages were already installed.'
+        return
+    fi
+    
+    for i in "${missing_pkgs}"
         do
             apt -y install ${i}
         done
-        echo
-        echo '$ Any missing apt packages were installed'
-    else
-        echo
-        echo '$ The apt packages are already installed'
-    fi
+    echo
+    echo '$ Any missing apt packages were installed'
+    
 }
 
 ppa_fn()
