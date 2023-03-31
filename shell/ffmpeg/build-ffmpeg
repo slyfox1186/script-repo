@@ -129,7 +129,7 @@ ff_ver_fn()
 make_dir()
 {
     remove_dir "$1"
-    if ! mkdir "$1"; then
+    if ! mkdir -p "$1"; then
         printf "\n Failed to create dir %s" "$1"
         echo
         exit 1
@@ -625,8 +625,8 @@ if [ -n "$LDEXEFLAGS" ]; then
 fi
 
 # create the output directories
-mkdir -p "$packages"
-mkdir -p "$workspace"
+make_dir "$packages"
+make_dir "$workspace"
 
 # set global variables
 JAVA_HOME='/usr/lib/jvm/java-17-openjdk-amd64'
@@ -657,8 +657,8 @@ $workspace/lib/pkgconfig:\
 export PKG_CONFIG_PATH
 
 LD_LIBRARY_PATH="\
-$packages/pkg-config-0.29.2\
-$workspace/lib/pkgconfig:\
+$packages/pkg-config-0.29.2:\
+$workspace/lib/pkgconfig\
 "
 export LD_LIBRARY_PATH
 
