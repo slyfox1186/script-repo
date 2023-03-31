@@ -19,13 +19,17 @@
 ## Install apt and ppa packages
   - **What I consider to be core apt packages or "must haves" that everyone should consider installing**
 
-**Ubuntu Jammy 22.04.02 & Debian 10 / 11**
+**Ubuntu Jammy 22.04.02**
 ```
 wget -qO pkgs.sh https://jammy-pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
 **Ubuntu Focal 20.04.05**
 ```
 wget -qO pkgs.sh https://focal-pkgs.optimizethis.net; sudo bash pkgs.sh
+```
+**Debian 10 / 11**
+```
+wget -qO pkgs.sh https://debian-pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
 
 ------
