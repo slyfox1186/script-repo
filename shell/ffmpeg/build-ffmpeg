@@ -284,6 +284,7 @@ git_2_fn()
 git_3_fn()
 {
     gitlab_repo="$1"
+    
     if curl_cmd=$(curl -m "$net_timeout" -sSL "https://gitlab.com/api/v4/projects/$gitlab_repo/repository/branches?"); then
         gitlab_ver0=$(echo "$curl_cmd" | jq -r '.[0].commit.id')
         gitlab_ver0=${gitlab_ver0#v}
@@ -380,7 +381,7 @@ git_ver_fn()
         url_tag='git_1_fn' gv_url='tags'
     elif [ "$v_flag" = 'T' ] && [  "$v_tag" = '2' ]; then
         url_tag='git_2_fn' gv_url='tags'
-    elif [ "$v_flag" = 'T' ] && [  "$v_tag" = '11' ]; then
+    elif [ "$v_flag" = 'T' ] && [  "$v_tag" = '9' ]; then
         url_tag='git_9_fn' gv_url='tags'
     fi
 
@@ -1189,7 +1190,7 @@ if build 'SVT-VP9' "$g_ver"; then
     build_done 'SVT-VP9' "$g_ver"
 fi
 
-git_ver_fn 'webmproject/libvpx' '9' 'T'
+git_ver_fn 'webmproject/libvpx' '1' 'T'
 if build 'libvpx' "$g_ver"; then
     download "$g_url" "libvpx-$g_ver.tar.gz"
     execute ./configure --prefix="$workspace" --disable-unit-tests --disable-shared --disable-examples --as='yasm'
@@ -1201,10 +1202,10 @@ cnf_ops+=('--enable-libvpx')
 
 if $nonfree; then
     if build 'xvidcore' '1.3.7'; then
-        download 'https://downloads.xvid.com/downloads/xvidcore-1.3.7.tar.bz2'
+        download 'https://downloads.xvid.com/downloads/xvidcore-1.3.7.tar.bz2' 'xvidcore-1.3.7.tar.bz2'
         cd 'build/generic' || exit 1
         execute ./configure --prefix="$workspace" --disable-shared --enable-static
-        execute make -j "$cpus"
+        execute make -j "$cpu_threads"
         execute make install
 
         if [[ -f "$workspace"/lib/libxvidcore.4.dylib ]]; then
