@@ -74,15 +74,15 @@ esac
 
 # alias definitions
 if [ -f "${HOME}/.bash_aliases" ]; then
-    source "${HOME}/.bash_aliases"
+    . "${HOME}/.bash_aliases"
 fi
 
 # enable programmable completion features
 if ! shopt -oq posix; then
   if [ -f '/usr/share/bash-completion/bash_completion' ]; then
-    source '/usr/share/bash-completion/bash_completion'
+    . '/usr/share/bash-completion/bash_completion'
   elif [ -f '/etc/bash_completion' ]; then
-    source '/etc/bash_completion'
+    . '/etc/bash_completion'
   fi
 fi
 
@@ -90,7 +90,7 @@ fi
 
 # function definitions
 if [ -f "${HOME}/.bash_functions" ]; then
-    source "${HOME}/.bash_functions"
+    . "${HOME}/.bash_functions"
 fi
 
 # custom user vars
@@ -123,3 +123,7 @@ export THREADS
 
 CPUS="$((THREADS/2))"
 export CPUS
+
+_suppress gedit
+_suppress gnome-terminal
+_suppress firefox
