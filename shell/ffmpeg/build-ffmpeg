@@ -701,46 +701,46 @@ cuda_fn()
     read -p 'Your choices are (1 to 7): ' cuda_dist
     clear
     if [[ "$cuda_dist" -eq '1' ]]; then
-        wget --show progress -cqO cuda-$cuda_ver.deb 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-debian10-12-1-local_12.1.0-530.30.02-1_amd64.deb'
-        dpkg -i cuda-$cuda_ver.deb
-        cp /var/cuda-repo-debian10-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
-        add-apt-repository contrib
+        wget --show progress -cqO "cuda-$cuda_ver.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-debian10-12-1-local_12.1.0-530.30.02-1_amd64.deb'
+        sudo dpkg -i "cuda-$cuda_ver.deb"
+        sudo cp /var/cuda-repo-debian10-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
+        sudo add-apt-repository contrib
        elif [[ "$cuda_dist" -eq '2' ]]; then
-        wget --show progress -cqO cuda-$cuda_ver.deb 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-debian11-12-1-local_12.1.0-530.30.02-1_amd64.deb'
-        dpkg -i cuda-$cuda_ver.deb
-        cp /var/cuda-repo-debian11-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
-        add-apt-repository contrib
+        wget --show progress -cqO "cuda-$cuda_ver.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-debian11-12-1-local_12.1.0-530.30.02-1_amd64.deb'
+        sudo dpkg -i "cuda-$cuda_ver.deb"
+        sudo sudo cp /var/cuda-repo-debian11-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
+        sudo add-apt-repository contrib
     elif [[ "$cuda_dist" -eq '3' ]]; then
         wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin'
-        mv 'cuda-ubuntu1804.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-        wget --show progress -cqO cuda-$cuda_ver.deb 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-ubuntu1804-12-1-local_12.1.0-530.30.02-1_amd64.deb'
-        dpkg -i cuda-$cuda_ver.deb
-        cp /var/cuda-repo-ubuntu1804-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
+        sudo mv 'cuda-ubuntu1804.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
+        wget --show progress -cqO "cuda-$cuda_ver.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-ubuntu1804-12-1-local_12.1.0-530.30.02-1_amd64.deb'
+        sudo dpkg -i "cuda-$cuda_ver.deb"
+        sudo cp /var/cuda-repo-ubuntu1804-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
     elif [[ "$cuda_dist" -eq '4' ]]; then
         wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin'
-        mv 'cuda-ubuntu2004.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-        wget --show progress -cqO cuda-$cuda_ver.deb 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-ubuntu2004-12-1-local_12.1.0-530.30.02-1_amd64.deb'
-        dpkg -i cuda-$cuda_ver.deb
-        cp /var/cuda-repo-ubuntu2004-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
+        sudo mv 'cuda-ubuntu2004.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
+        wget --show progress -cqO "cuda-$cuda_ver.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-ubuntu2004-12-1-local_12.1.0-530.30.02-1_amd64.deb'
+        sudo dpkg -i "cuda-$cuda_ver.deb"
+        sudo cp /var/cuda-repo-ubuntu2004-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
     elif [[ "$cuda_dist" -eq '5' ]]; then
         wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin'
-        mv 'cuda-ubuntu2204.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-        wget --show progress -cqO cuda-$cuda_ver.deb 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-ubuntu2204-12-1-local_12.1.0-530.30.02-1_amd64.deb'
-        dpkg -i cuda-$cuda_ver.deb
-        cp /var/cuda-repo-ubuntu2204-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
+        sudo mv 'cuda-ubuntu2204.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
+        wget --show progress -cqO "cuda-$cuda_ver.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-ubuntu2204-12-1-local_12.1.0-530.30.02-1_amd64.deb'
+        sudo dpkg -i "cuda-$cuda_ver.deb"
+        sudo cp /var/cuda-repo-ubuntu2204-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
     elif [[ "$cuda_dist" -eq '6' ]]; then
         wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin'
-        mv 'cuda-wsl-ubuntu.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-        wget --show progress -cqO cuda-$cuda_ver.deb 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-wsl-ubuntu-12-1-local_12.1.0-1_amd64.deb'
-        dpkg -i cuda-$cuda_ver.deb
-        cp /var/cuda-repo-wsl-ubuntu-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
+        sudo mv 'cuda-wsl-ubuntu.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
+        wget --show progress -cqO "cuda-$cuda_ver.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-wsl-ubuntu-12-1-local_12.1.0-1_amd64.deb'
+        sudo dpkg -i "cuda-$cuda_ver.deb"
+        sudo cp /var/cuda-repo-wsl-ubuntu-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
     elif [[ "$cuda_dist" -eq '7' ]]; then
         return 0
     fi
 
     # UPDATE THE APT PACKAGES THEN INSTALL THE CUDA-SDK-TOOLKIT
-    apt update
-    apt -y install cuda
+    sudo apt update
+    sudo apt -y install cuda
 
     # CHECK IF THE CUDA FOLDER EXISTS TO ENSURE IT WAS INSTALLED
     iscuda="$(find /usr/local/ -type f -name 'nvcc')"
@@ -789,7 +789,7 @@ build_pkgs_fn()
     if [ -n "$missing_pkgs" ]; then
         for pkg in "$missing_pkgs"
         do
-            if apt -y install $pkg; then
+            if sudo apt -y install $pkg; then
                 echo 'The required development packages were installed.'
             else
                 echo 'The required development packages failed to install'
@@ -824,7 +824,7 @@ cuda_add_fn()
     if [ -n "$missing_pkgs" ]; then
         for pkg in "$missing_pkgs"
         do
-            apt -y install $pkg
+            sudo apt -y install $pkg
         done
         echo 'The required cuda developement packages were installed'
     else
