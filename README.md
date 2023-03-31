@@ -19,7 +19,7 @@
 ## Install apt and ppa packages
   - **What I consider to be core apt packages or "must haves" that everyone should consider installing**
 
-**Ubuntu Jammy 22.04.02**
+**Ubuntu Jammy 22.04.02 & Debian 10/11**
 ```
 wget -qO pkgs.sh https://jammy-pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
@@ -39,7 +39,7 @@ wget -qO scripts.sh https://scripts.optimizethis.net; bash scripts.sh
 ## Install download mirrors to sources.list
   - **Warning! This will overwrite your files!**
 
-#### Ubuntu Jammy & Debian 10/11
+#### Ubuntu Jammy
 ```
 curl -sSL https://jammy-mirrors.optimizethis.net | sudo bash
 ```
