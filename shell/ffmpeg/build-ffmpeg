@@ -344,7 +344,7 @@ git_9_fn()
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     github_repo="$1"
     github_url="$2"
-    if curl_cmd=$(curl -m "$net_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url?per_page=1"); then
+        if curl_cmd=$(curl -m "$net_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url?per_page=1"); then
         g_ver=$(echo "$curl_cmd" | jq -r '.[0].name')
         g_url=$(echo "$curl_cmd" | jq -r '.[0].tarball_url')
     fi
@@ -483,7 +483,13 @@ gpu_arch_fn()
 {
     local gpu_name gpu_type
 
-    gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -r | head -n 1)"
+    is_wsl="$(echo $(uname -a) | grep -Eo 'WSL2')"
+    
+    if [ -n "$is_wsl" ]; then
+        sudo apt -q -y install nvidia-utils-525
+    fi
+    
+    gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort | head -n 1)"
 
     case "$gpu_name" in
         'NVIDIA GeForce GT 1010')         gpu_type='1';;
@@ -945,7 +951,7 @@ if build 'yasm' "$g_ver"; then
     execute make install
     build_done 'yasm' "$g_ver"
 fi
-git_ver_fn 'netwide-assembler/nasm' '9' 'T'
+
 if build 'nasm' '2.16.01'; then
     download 'https://www.nasm.us/pub/nasm/releasebuilds/2.16.01/nasm-2.16.01.tar.xz'
     execute sh ./autogen.sh
@@ -1557,13 +1563,13 @@ if command_exists 'meson'; then
     fi
 fi
 
-if build 'c2man' 'current'; then
+if build 'c2man' '2.0'; then
     download_git 'https://github.com/fribidi/c2man.git' 'c2man'
     execute ./Configure -des
     execute make depend
     execute make -j "$cpu_threads"
-    execute make install
-    build_done 'c2man' 'current'
+    execute sudo make install
+    build_done 'c2man' '2.0'
 fi
 
 git_ver_fn 'fribidi/fribidi' '1' 'R'
@@ -1572,8 +1578,8 @@ if build 'fribidi' "$g_ver"; then
     execute ./autogen.sh
     make_dir build
     execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
-        execute ninja -C build
-        execute ninja -C build install
+    execute ninja -C build
+    execute ninja -C build install
     build_done 'fribidi' "$g_ver"
 fi
 cnf_ops+=('--enable-libfribidi')
@@ -1688,7 +1694,7 @@ git_ver_fn 'GPUOpen-LibrariesAndSDKs/AMF' '1' 'T'
 if build 'amf' "$g_ver"; then
     download "$g_url" "AMF-$g_ver.tar.gz"
     execute rm -rf "$workspace"/include/AMF
-    execute mkdir -p "$workspace"/include/AMF
+    make_dir "$workspace"/include/AMF
     execute cp -fr "$packages"/AMF-"$g_ver"/amf/public/include/* "$workspace"/include/AMF/
     build_done 'amf' "$g_ver"
 fi
