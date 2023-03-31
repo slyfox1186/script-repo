@@ -862,6 +862,43 @@ rm_py()
     done
 }
 
+# REMOVE DIRECTORIES
+rm_dir()
+{
+    local del_ans i
+    clear
+
+    for i in '*/'
+    do
+        echo ${i[@]}
+        echo
+        echo 'Do you want to delete these files?'
+        echo
+        echo '[1] Yes'
+        echo '[2] No'
+        echo
+        read -p 'Your choices are (1 or 2): ' del_ans
+        clear
+        case "$del_ans" in
+            1)
+                sudo rm -fr ${i[@]}
+                cl
+                break
+                ;;
+            2)
+                break
+                ;;
+            *)
+                clear
+                echo 'Error: Bad user input. Try the command again.'
+                echo
+                break
+                ;;
+        esac
+    done
+}
+
+
 ##########################
 ## XCLIP COPY AND PASTE ##
 ##########################
