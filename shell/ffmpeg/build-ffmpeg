@@ -1200,11 +1200,11 @@ fi
 cnf_ops+=('--enable-libvpx')
 
 if $nonfree; then
-    if build 'xvidcore' 'git'; then
-        download_git 'https://github.com/gpac-buildbot/xvidcore.git' 'xvidcore-git'
+    if build 'xvidcore' '1.3.7'; then
+        download 'https://downloads.xvid.com/downloads/xvidcore-1.3.7.tar.bz2'
         cd 'build/generic' || exit 1
         execute ./configure --prefix="$workspace" --disable-shared --enable-static
-        execute make -j "$cpu_threads"
+        execute make -j "$cpus"
         execute make install
 
         if [[ -f "$workspace"/lib/libxvidcore.4.dylib ]]; then
@@ -1215,7 +1215,7 @@ if $nonfree; then
             execute rm "$workspace"/lib/libxvidcore.so*
         fi
 
-        build_done 'xvidcore' 'git'
+        build_done 'xvidcore' '1.3.7'
     fi
     cnf_ops+=('--enable-libxvid')
 fi
