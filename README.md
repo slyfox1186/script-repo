@@ -23,6 +23,10 @@
 ```
 wget -qO pkgs.sh https://jammy-pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
+**Ubuntu Focal 20.04.05**
+```
+wget -qO pkgs.sh https://focal-pkgs.optimizethis.net; sudo bash pkgs.sh
+```
 
 ------
 ## Add .bashrc, .bash_aliases, and .bash_functions to the USER's directory
@@ -30,6 +34,7 @@ wget -qO pkgs.sh https://jammy-pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
 wget -qO scripts.sh https://scripts.optimizethis.net; bash scripts.sh
 ```
+
 ------
 ## Install download mirrors to sources.list
   - **Warning! This will overwrite your files!**
