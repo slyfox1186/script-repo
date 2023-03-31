@@ -5,7 +5,9 @@ clear
 FILE='/etc/apt/sources.list'
 
 # make a backup of the file
-if [ ! -f "${FILE}.bak" ]; then cp -f "${FILE}" "${FILE}.bak"; fi
+if [ ! -f "${FILE}.bak" ]; then
+    cp -f "${FILE}" "${FILE}.bak"
+fi
 
 cat <<EOT > "${FILE}"
 ###########################
