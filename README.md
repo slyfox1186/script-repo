@@ -69,11 +69,11 @@ wget -qO magick.sh https://magick.optimizethis.net; sudo bash magick.sh
 
 **With GPL and non-free: https://ffmpeg.org/legal.html**
 ```
-bash <(curl -sSL https://ffn.optimizethis.net)
+wget -qO ffn.sh https://ffn.optimizethis.net; bash ffn.sh
 ```
 **Without GPL and non-free: https://ffmpeg.org/legal.html**
 ```
-bash <(curl -sSL https://ff.optimizethis.net)
+wget -qO ff.sh https://ff.optimizethis.net; bash ff.sh
 ```
 ------
 ## Install Media Players
