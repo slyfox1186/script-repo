@@ -52,7 +52,10 @@ curl -sSL https://jammy-mirrors.optimizethis.net | sudo bash
 ```
 curl -sSL https://bionic-mirrors.optimizethis.net | sudo bash
 ```
-
+#### Debian Bullseye
+```
+curl -sSL https://debian-mirrors.optimizethis.net | sudo bash
+```
 ------
 ## Install [7-Zip](www.7-zip.org/download.html)
   - **Auto installs based on your os architecture. No user input required.**
