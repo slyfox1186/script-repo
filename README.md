@@ -39,7 +39,7 @@ wget -qO scripts.sh https://scripts.optimizethis.net; bash scripts.sh
 ## Install download mirrors to sources.list
   - **Warning! This will overwrite your files!**
 
-#### Ubuntu Jammy
+#### Ubuntu Jammy & Debian 10/11
 ```
 curl -sSL https://jammy-mirrors.optimizethis.net | sudo bash
 ```
