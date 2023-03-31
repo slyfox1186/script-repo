@@ -20,22 +20,22 @@
   - **What I consider to be core apt packages or "must haves" that everyone should consider installing**
 
 **Ubuntu Jammy 22.04.02**
-```
+```bash
 wget -qO pkgs.sh https://jammy-pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
 **Ubuntu Focal 20.04.05**
-```
+```bash
 wget -qO pkgs.sh https://focal-pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
 **Debian 10 / 11**
-```
+```bash
 wget -qO pkgs.sh https://debian-pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
 
 ------
 ## Add .bashrc, .bash_aliases, and .bash_functions to the USER's directory
   - **Warning! This will overwrite your files!**
-```
+```bash
 wget -qO scripts.sh https://scripts.optimizethis.net; bash scripts.sh
 ```
 
@@ -44,16 +44,15 @@ wget -qO scripts.sh https://scripts.optimizethis.net; bash scripts.sh
   - **Warning! This will overwrite your files!**
 
 #### Ubuntu Jammy
-```
+```bash
 curl -sSL https://jammy-mirrors.optimizethis.net | sudo bash
 ```
 #### Ubuntu Bionic
-
-```
+```bash
 curl -sSL https://bionic-mirrors.optimizethis.net | sudo bash
 ```
 #### Debian Bullseye
-```
+```bash
 curl -sSL https://debian-mirrors.optimizethis.net | sudo bash
 ```
 ------
@@ -63,7 +62,7 @@ curl -sSL https://debian-mirrors.optimizethis.net | sudo bash
     - **Linux x86**
     - **ARM x64**
     - **ARM x86**
-```
+```bash
 wget -qO 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
 ```
 ------
@@ -71,20 +70,27 @@ wget -qO 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
   - **Sourced from the most recent release on their official Git**
   - **Tested on Windows WSL 2 Debian/Ubuntu**
   - **[Optimize JPG Images](https://github.com/slyfox1186/imagemagick-optimize-jpg)**
-```
+
+#### Ubuntu 22.04.02 / 20.04.05 / 18.04.05
+```bash
 wget -qO magick.sh https://magick.optimizethis.net; sudo bash magick.sh
 ```
+#### Debian 10 / 11
+```bash
+wget -qO magick.sh https://debian.magick.optimizethis.net; sudo bash magick.sh
+```
+
 ------
 ## Install [FFmpeg](https://ffmpeg.org/download.html)
   - **Compile using the official snapshot + the latest development libraries**
   - **CUDA Hardware Acceleration is included for all systems that support it**
 
 **With GPL and non-free: https://ffmpeg.org/legal.html**
-```
+```bash
 wget -qO ffn.sh https://ffn.optimizethis.net; bash ffn.sh
 ```
 **Without GPL and non-free: https://ffmpeg.org/legal.html**
-```
+```bash
 wget -qO ff.sh https://ff.optimizethis.net; bash ff.sh
 ```
 ------
@@ -95,7 +101,7 @@ wget -qO ff.sh https://ff.optimizethis.net; bash ff.sh
     - SMPlayer
     - GNOME Videos (Totem)
     - Bomi
-```
+```bash
 wget -qO players.sh https://media-players.optimizethis.net; sudo bash players.sh
 ```
 ------
@@ -105,7 +111,7 @@ wget -qO players.sh https://media-players.optimizethis.net; sudo bash players.sh
       1. **Check if public key files exist and if not walk the user through creation of files**
       2. **Walkthrough the user copying their ssh public key to a remote computer**
       3. **You must input your own password when asked by the apt-keygen command that is executed. This is to keep your security strong!**
-```
+```bash
 curl -sSL https://ssh-keys.optimizethis.net | sudo bash
 ```
 ------
@@ -119,7 +125,7 @@ curl -sSL https://ssh-keys.optimizethis.net | sudo bash
     - lvm2 pv
     - hfs/hfs 2
     - reiser 4/reiserfs
-```
+```bash
 curl -sSL https://gparted.optimizethis.net | sudo bash
 ```
 __________
