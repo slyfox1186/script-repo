@@ -81,6 +81,10 @@ ppa_fn()
 {
     local i missing_pkgs pkg pkgs ppa_repo
 
+    if [ ! -d '/etc/apt/sources.list.d' ]; then
+        mkdir -p '/etc/apt/sources.list.d'
+    fi
+
     ppa_repo='danielrichter2007/grub-customizer videolan/master-daily git-core/ppa'
 
     for pkg in ${ppa_repo[@]}
