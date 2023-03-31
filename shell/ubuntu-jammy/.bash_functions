@@ -1,3 +1,4 @@
+
 ##################################################################################
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 ##################################################################################
@@ -747,3 +748,126 @@ mi()
 
 ffm() { clear; bash <(curl -sSL 'http://ffmpeg.optimizethis.net'); }
 ffp() { clear; bash <(curl -sSL 'http://ffpb.optimizethis.net'); }
+
+
+############################
+## DEL FILES BY EXTENSION ##
+############################
+
+# SHELL FILES
+rm_sh()
+{
+    local del_ans i
+    clear
+
+    for i in '*.sh'
+    do
+        echo ${i[@]}
+        echo
+        echo 'Do you want to delete these files?'
+        echo
+        echo '[1] Yes'
+        echo '[2] No'
+        echo
+        read -p 'Your choices are (1 or 2): ' del_ans
+        clear
+        case "$del_ans" in
+            1)
+                sudo rm -r ${i[@]}
+                cl
+                break
+                ;;
+            2)
+                break
+                ;;
+            *)
+                clear
+                echo 'Error: Bad user input. Try the command again.'
+                echo
+                break
+                ;;
+        esac
+    done
+}
+
+# TAR FILES
+rm_tar()
+{
+    local del_ans i
+    clear
+
+    for i in '*.tar'
+    do
+        echo ${i[@]}
+        echo
+        echo 'Do you want to delete these files?'
+        echo
+        echo '[1] Yes'
+        echo '[2] No'
+        echo
+        read -p 'Your choices are (1 or 2): ' del_ans
+        clear
+        case "$del_ans" in
+            1)
+                sudo rm -r ${i[@]}
+                cl
+                break
+                ;;
+            2)
+                break
+                ;;
+            *)
+                clear
+                echo 'Error: Bad user input. Try the command again.'
+                echo
+                break
+                ;;
+        esac
+    done
+}
+
+# PYTHON FILES
+rm_py()
+{
+    local del_ans i
+    clear
+
+    for i in '*.py'
+    do
+        echo ${i[@]}
+        echo
+        echo 'Do you want to delete these files?'
+        echo
+        echo '[1] Yes'
+        echo '[2] No'
+        echo
+        read -p 'Your choices are (1 or 2): ' del_ans
+        clear
+        case "$del_ans" in
+            1)
+                sudo rm -r ${i[@]}
+                cl
+                break
+                ;;
+            2)
+                break
+                ;;
+            *)
+                clear
+                echo 'Error: Bad user input. Try the command again.'
+                echo
+                break
+                ;;
+        esac
+    done
+}
+
+##########################
+## XCLIP COPY AND PASTE ##
+##########################
+
+cp_text() { echo "$@" | xclip -sel clip; }
+
+cp_file() { cat "$1" | xclip -sel clip; }
+
+pclip() { xclip -sel clip -o; }
