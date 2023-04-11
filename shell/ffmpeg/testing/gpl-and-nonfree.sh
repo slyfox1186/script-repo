@@ -428,7 +428,7 @@ build()
     echo '======================================'
 
     if [ -f "$packages/$1.done" ]; then
-        if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
+        if grep -Fx "$2" "$packages/$1.done" &>/dev/null; then
             echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
             return 1
         elif $latest; then
@@ -1097,8 +1097,11 @@ fi
 
 git_ver_fn 'Kitware/CMake' '1' 'T'
 if build 'cmake' "$g_ver"; then
+    export DXSDK_DIR ACLOCAL_PATH PKG_CONFIG PKG_CONFIG_PATH CFLAGS CXXFLAGS LDFLAGS
     download "$g_url" "cmake-$g_ver.tar.gz"
-    execute ./configure --prefix="$workspace" --parallel="$cpu_threads" -- -DCMAKE_USE_OPENSSL='OFF'
+    execute ./configure --prefix="$workspace" --parallel="$cpu_threads" \
+        CXXFLAGS="${CFLAGS}" LDFLAGS="$LDFLAGS" \
+        -- -DCMAKE_USE_OPENSSL='ON'
     execute make -j "$cpu_threads"
     execute make install
     build_done 'cmake' "$g_ver"
@@ -1754,9 +1757,9 @@ cnf_ops+=('--enable-amf')
 git_ver_fn 'fraunhoferhhi/vvenc' '1' 'T'
 if build 'vvenc' "$g_ver"; then
     download "$g_url" "vvenc-$g_ver.tar.gz"
-    execute cmake -S . -B build/release-static -DCMAKE_INSTALL_PREFIX="$workspace" \
+    execute cmake -S . -B 'build/release-static' -DCMAKE_INSTALL_PREFIX="$workspace" \
         -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release'
-    execute cmake --build build/release-static -j
+    execute cmake --build 'build/release-static' -j
     build_done 'vvenc' "$g_ver"
 fi
 cnf_ops+=('--enable-nvenc')
@@ -1764,19 +1767,19 @@ cnf_ops+=('--enable-nvenc')
 git_ver_fn 'fraunhoferhhi/vvdec' '1' 'T'
 if build 'vvdec' "$g_ver"; then
     download "$g_url" "vvdec-$g_ver.tar.gz"
-    execute cmake -S . -B build/release-static -DCMAKE_INSTALL_PREFIX="$workspace" \
-        -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release'
-    execute cmake --build build/release-static -j
+    execute cmake -S . -B 'build/release-static' -DCMAKE_INSTALL_PREFIX="$workspace" --log-level='DEBUG' \
+        -DVVENC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release'
+    execute cmake --build 'build/release-static' -j
     build_done 'vvdec' "$g_ver"
 fi
 cnf_ops+=('--enable-nvdec')
 
-if which 'nvcc'; then
+if which 'nvcc' &>/dev/null; then
     git_ver_fn 'FFmpeg/nv-codec-headers' '1' 'T'
     if build 'nv-codec' "$g_ver"; then
         download "$g_url" "nv-codec-$g_ver.tar.gz"
         execute make PREFIX="$workspace"
-        execute make install PREFIX="$workspace"
+        execute make PREFIX="$workspace/usr" install
         build_done 'nv-codec' "$g_ver"
     fi
     CFLAGS+=' -I/usr/local/cuda-12.1/include'
