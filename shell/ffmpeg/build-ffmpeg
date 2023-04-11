@@ -344,7 +344,7 @@ git_9_fn()
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     github_repo="$1"
     github_url="$2"
-        if curl_cmd=$(curl -m  "$net_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url?per_page=1"); then
+    if curl_cmd=$(curl -m  "$net_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url?per_page=1"); then
         g_ver=$(echo "$curl_cmd" | jq -r '.[0].name')
         g_url=$(echo "$curl_cmd" | jq -r '.[0].tarball_url')
     fi
@@ -428,7 +428,7 @@ build()
     echo '======================================'
 
     if [ -f "$packages/$1.done" ]; then
-        if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
+        if grep -Fx "$2" "$packages/$1.done" &>/dev/null; then
             echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
             return 1
         elif $latest; then
@@ -640,25 +640,76 @@ $PATH\
 "
 export PATH
 
+##
+## find dirs: /usr/local/lib/
+##
+
+# set vars
+test_arch_local_dir="$(sudo find /usr/local/lib/ -maxdepth 1 -type d -name pkgconfig)"
+# dir: pkgconfig
+if [ -n "$test_arch_local_dir" ]; then
+    arch_local_dir="$test_arch_local_dir"
+fi
+
+##
+## find dirs: /usr/lib/
+##
+
+# set vars
+test_arch_lib_dir1="$(sudo find /usr/lib/x86_64-linux-gnu -maxdepth 1 -type d -name pkgconfig)"
+test_arch_lib_dir2="$(sudo find /usr/lib/ -maxdepth 1 -type d -name pkgconfig)"
+test_arch_lib_dir3="$(sudo find /usr/lib/ -maxdepth 1 -type d -name gcc)"
+
+# dir: pkgconfig 1
+if [ -n "$test_arch_lib_dir1" ]; then
+    arch_lib_dir1="$test_arch_lib_dir1"
+else
+    arch_lib_dir1='/usr/lib/i386-linux-gnu/pkgconfig'
+fi
+
+# dir: pkgconfig 2
+if [ -n "$test_arch_lib_dir2" ]; then
+    arch_lib_dir2="$test_arch_lib_dir2"
+fi
+# dir: gcc
+if [ -n "$test_arch_lib_dir3" ]; then
+    arch_lib_dir3="$test_arch_lib_dir3"
+fi
+
+##
+## find dirs: /usr/share/
+##
+
+# set vars
+test_arch_share_dir1="$(sudo find /usr/share/ -maxdepth 1 -type d -name pkgconfig)"
+test_arch_share_dir2="$(sudo find /usr/share/ -maxdepth 1 -type d -name gcc)"
+# dir: pkgconfig
+if [ -n "$test_arch_share_dir1" ]; then
+    arch_share_dir1="$test_arch_share_dir1"
+fi
+# dir: gcc
+if [ -n "$test_arch_share_dir2" ]; then
+    arch_share_dir2="$test_arch_share_dir2"
+fi
+
+git_ver_fn 'freedesktop/pkg-config' '1' 'T'
+
 # set the pkg-config path
 PKG_CONFIG_PATH="\
-$packages/pkg-config-0.29.2:\
+$packages/pkg-config-$g_ver_pkg:\
 $workspace/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/gcc:\
-/usr/share/gcc\
+$arch_local_dir:\
+$arch_lib_dir1:\
+$arch_lib_dir2:\
+$arch_lib_dir3:\
+$arch_share_dir1:\
+$arch_share_dir2\
 "
 export PKG_CONFIG_PATH
 
 LD_LIBRARY_PATH="\
-$packages/pkg-config-0.29.2\
-$workspace/lib/pkgconfig:\
+$packages/pkg-config-0.29.2:\
+$workspace/lib/pkgconfig\
 "
 export LD_LIBRARY_PATH
 
@@ -1046,8 +1097,9 @@ fi
 
 git_ver_fn 'Kitware/CMake' '1' 'T'
 if build 'cmake' "$g_ver"; then
+    export DXSDK_DIR ACLOCAL_PATH PKG_CONFIG PKG_CONFIG_PATH CFLAGS CXXFLAGS LDFLAGS
     download "$g_url" "cmake-$g_ver.tar.gz"
-    execute ./configure --prefix="$workspace" --parallel="$cpu_threads" -- -DCMAKE_USE_OPENSSL='OFF'
+    execute ./configure --prefix="$workspace" --parallel="$cpu_threads" -- -DCMAKE_USE_OPENSSL='ON'
     execute make -j "$cpu_threads"
     execute make install
     build_done 'cmake' "$g_ver"
@@ -1678,7 +1730,7 @@ if [ -z "$LDEXEFLAGS" ]; then
     git_ver_fn 'intel/libva' '1' 'R' 
     if build 'libva' "$g_ver_libva"; then
         download "$g_url" "libva-$g_ver_libva.tar.gz"
-        execute ./autogen.sh --prefix=/usr --libdir=/usr/lib/x86_64-linux-gnu
+        execute ./autogen.sh --prefix="$workspace" --libdir='/usr/x86_64-linux-gnu/lib'
         execute make -j "$cpu_threads"
         execute sudo make install
         build_done 'libva' "$g_ver_libva"
@@ -1703,9 +1755,9 @@ cnf_ops+=('--enable-amf')
 git_ver_fn 'fraunhoferhhi/vvenc' '1' 'T'
 if build 'vvenc' "$g_ver"; then
     download "$g_url" "vvenc-$g_ver.tar.gz"
-    execute cmake -S . -B build/release-static -DCMAKE_INSTALL_PREFIX="$workspace" \
+    execute cmake -S . -B 'build/release-static' -DCMAKE_INSTALL_PREFIX="$workspace" \
         -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release'
-    execute cmake --build build/release-static -j
+    execute cmake --build 'build/release-static' -j
     build_done 'vvenc' "$g_ver"
 fi
 cnf_ops+=('--enable-nvenc')
@@ -1713,19 +1765,19 @@ cnf_ops+=('--enable-nvenc')
 git_ver_fn 'fraunhoferhhi/vvdec' '1' 'T'
 if build 'vvdec' "$g_ver"; then
     download "$g_url" "vvdec-$g_ver.tar.gz"
-    execute cmake -S . -B build/release-static -DCMAKE_INSTALL_PREFIX="$workspace" \
-        -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release'
-    execute cmake --build build/release-static -j
+    execute cmake -S . -B 'build/release-static' -DCMAKE_INSTALL_PREFIX="$workspace" --log-level='DEBUG' \
+        -DVVENC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release'
+    execute cmake --build 'build/release-static' -j
     build_done 'vvdec' "$g_ver"
 fi
 cnf_ops+=('--enable-nvdec')
 
-if which 'nvcc'; then
+if which 'nvcc' &>/dev/null; then
     git_ver_fn 'FFmpeg/nv-codec-headers' '1' 'T'
     if build 'nv-codec' "$g_ver"; then
         download "$g_url" "nv-codec-$g_ver.tar.gz"
         execute make PREFIX="$workspace"
-        execute make install PREFIX="$workspace"
+        execute make PREFIX="$workspace/usr" install
         build_done 'nv-codec' "$g_ver"
     fi
     CFLAGS+=' -I/usr/local/cuda-12.1/include'
@@ -1760,6 +1812,7 @@ build 'ffmpeg' "$ffmpeg_ver"
 download "https://github.com/FFmpeg/FFmpeg/archive/refs/tags/$ffmpeg_ver.tar.gz" "FFmpeg-$ffmpeg_ver.tar.gz"
 ./configure \
     "${cnf_ops[@]}" \
+    --arch="$(uname -m)" \
     --disable-debug \
     --disable-doc \
     --disable-shared \
