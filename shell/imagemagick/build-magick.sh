@@ -150,14 +150,14 @@ get_version_fn()
     if which 'jq' &>/dev/null; then
         printf "%s\n\n%s\n\n" \
             "The latest version of ImageMagick is: $magick_ver" \
-            "To install execute: sudo bash $scipt_name --build"
+            "To install execute: bash $scipt_name --build"
         exit 0
     else
         printf "%s\n\n%s\n\n%s\n\n%s\n\n" \
             'The required package "jq" must be installed for this command to work.' \
             'Excute one of the following commands to install.' \
-            'sudo apt install jq' \
-            "sudo bash $scipt_name"
+            'apt install jq' \
+            "bash $scipt_name"
         exit 1
     fi
 }
@@ -169,7 +169,7 @@ make_dir()
             "Failed to remove the directory: $PWD/$1"
         exit 1
     fi
-    if ! mkdir "$1"; then
+    if ! mkdir -pv "$1"; then
         printf "%s\n\n" \
             "Failed to create the directory: $PWD/$1"
         exit 1
@@ -333,19 +333,11 @@ if [ -z "$bflag" ]; then
 fi
 
 clear
-echo 'Starting the build process...'
-echo
-echo "ImageMagick Build Script v$script_ver"
-echo '=========================================='
-echo
-
-echo "This script will use ($cpus cpu cores) for parallel processing to accelerate the build speed."
+echo "This script will utilize ($cpus cpu cores) for parallel processing to accelerate the building speed."
 echo
 
 # Required + extra functionality packages for imagemagick
 echo 'Installing required packages'
-echo '=========================================='
-echo
 magick_packages_fn
 
 # Export the pkg-config paths to enable support during the build
