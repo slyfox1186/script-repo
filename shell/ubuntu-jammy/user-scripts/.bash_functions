@@ -1,13 +1,16 @@
-
 ##################################################################################
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 ##################################################################################
 
-_suppress() { eval "${1}() { \$(which ${1}) \"\$@\" 2>&1 | tr -d '\r' | grep -v \"${2}\"; }"; }
+ged()
+{
+    gedit "$@" &>/dev/null
+}
 
-_suppress gedit          "Gtk-WARNING\|connect to accessibility bus"
-_suppress gnome-terminal "accessibility bus\|stop working with a future version"
-_suppress firefox        "g_slice_set_config"
+geds()
+{
+    sudo gedit "$@" &>/dev/null
+}
 
 ###################
 ## FIND COMMANDS ##
@@ -746,165 +749,41 @@ mi()
 ## FFMPEG ##
 ############
 
+cdff() { clear; cd "$HOME/tmp/ffmpeg-build"; cl; }
 ffm() { clear; bash <(curl -sSL 'http://ffmpeg.optimizethis.net'); }
 ffp() { clear; bash <(curl -sSL 'http://ffpb.optimizethis.net'); }
 
+####################
+## LIST PPA REPOS ##
+####################
 
-############################
-## DEL FILES BY EXTENSION ##
-############################
-
-# SHELL FILES
-rm_sh()
+listppas()
 {
-    local del_ans i
     clear
 
-    for i in '*.sh'
-    do
-        echo ${i[@]}
-        echo
-        echo 'Do you want to delete these files?'
-        echo
-        echo '[1] Yes'
-        echo '[2] No'
-        echo
-        read -p 'Your choices are (1 or 2): ' del_ans
-        clear
-        case "$del_ans" in
-            1)
-                sudo rm -r ${i[@]}
-                cl
-                break
-                ;;
-            2)
-                break
-                ;;
-            *)
-                clear
-                echo 'Error: Bad user input. Try the command again.'
-                echo
-                break
-                ;;
-        esac
+    local APT HOST USER PPA ENTRY
+
+    for APT in `find /etc/apt/ -name \*.list`; do
+        grep -Po "(?<=^deb\s).*?(?=#|$)" $APT | while read ENTRY ; do
+            HOST=`echo $ENTRY | cut -d/ -f3`
+            USER=`echo $ENTRY | cut -d/ -f4`
+            PPA=`echo $ENTRY | cut -d/ -f5`
+            #echo sudo apt-add-repository ppa:$USER/$PPA
+            if [ "ppa.launchpad.net" = "$HOST" ]; then
+                echo sudo apt-add-repository ppa:$USER/$PPA
+            else
+                echo sudo apt-add-repository \'$ENTRY\'
+            fi
+        done
     done
 }
 
-# TAR FILES
-rm_tar()
+#########################
+## NVIDIA-SMI COMMANDS ##
+#########################
+
+monitor_gpu()
 {
-    local del_ans i
     clear
-
-    for i in '*.tar'
-    do
-        echo ${i[@]}
-        echo
-        echo 'Do you want to delete these files?'
-        echo
-        echo '[1] Yes'
-        echo '[2] No'
-        echo
-        read -p 'Your choices are (1 or 2): ' del_ans
-        clear
-        case "$del_ans" in
-            1)
-                sudo rm -r ${i[@]}
-                cl
-                break
-                ;;
-            2)
-                break
-                ;;
-            *)
-                clear
-                echo 'Error: Bad user input. Try the command again.'
-                echo
-                break
-                ;;
-        esac
-    done
+    nvidia-smi dmon
 }
-
-# PYTHON FILES
-rm_py()
-{
-    local del_ans i
-    clear
-
-    for i in '*.py'
-    do
-        echo ${i[@]}
-        echo
-        echo 'Do you want to delete these files?'
-        echo
-        echo '[1] Yes'
-        echo '[2] No'
-        echo
-        read -p 'Your choices are (1 or 2): ' del_ans
-        clear
-        case "$del_ans" in
-            1)
-                sudo rm -r ${i[@]}
-                cl
-                break
-                ;;
-            2)
-                break
-                ;;
-            *)
-                clear
-                echo 'Error: Bad user input. Try the command again.'
-                echo
-                break
-                ;;
-        esac
-    done
-}
-
-# REMOVE DIRECTORIES
-rm_dir()
-{
-    local del_ans i
-    clear
-
-    for i in '*/'
-    do
-        echo ${i[@]}
-        echo
-        echo 'Do you want to delete these files?'
-        echo
-        echo '[1] Yes'
-        echo '[2] No'
-        echo
-        read -p 'Your choices are (1 or 2): ' del_ans
-        clear
-        case "$del_ans" in
-            1)
-                sudo rm -fr ${i[@]}
-                cl
-                break
-                ;;
-            2)
-                break
-                ;;
-            *)
-                clear
-                echo 'Error: Bad user input. Try the command again.'
-                echo
-                break
-                ;;
-        esac
-    done
-}
-
-
-##########################
-## XCLIP COPY AND PASTE ##
-##########################
-
-cp_text() { echo "$@" | xclip -sel clip; }
-
-cp_file() { cat "$1" | xclip -sel clip; }
-
-pclip() { xclip -sel clip -o; }
