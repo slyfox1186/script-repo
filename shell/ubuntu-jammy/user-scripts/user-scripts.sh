@@ -3,31 +3,28 @@
 clear
 
 # Download the user scripts from github
-wget -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ubuntu-jammy/urls/user-scripts.txt'
+wget -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ubuntu-jammy/user-scripts/user-scripts.txt'
 
-# Delete any useless files that get downloaded.
-if [ -f 'index.html' ]; then sudo rm 'index.html'; fi
-if [ -f 'urls.txt' ]; then sudo rm 'urls.txt'; fi
+# Delete all files except those that start with a '.' or end with '.sh'
+find . ! \( -name '\.*' -o -name '*.sh' \) -type f -delete 2>/dev/null
 
 # define variables
-scripts='.bash_aliases .bash_functions .bashrc'
+scripts=(.bash_aliases .bash_functions .bashrc)
 
 # If the shell scripts exist, move them to the users home directory
-for i in ${scripts[@]}
+for script in ${scripts[@]}
 do
-    if [ -f "${PWD}/${i}" ]; then
-        mv -f "${PWD}/${i}" "${HOME}"
-        if [ -f "${PWD}/${HOME}/${i}" ]; then
-            sudo chown "${USER}":"${USER}" "${HOME}/${i}"
+    if [ -f "$PWD/$script" ]; then
+        mv -f "$PWD/$script" "$HOME"
+        if [ -f "$PWD/$HOME/$script" ]; then
+            chown "$USER":"$USER" "$HOME/$script"
         fi
     else
         clear
-        echo 'The scripts were failed to download.'
-        echo
-        echo 'Please create a support ticket.'
-        echo
-        echo 'https://github.com/slyfox1186/script-repo/issues'
-        echo
+        printf "%s\n\n%s\n\n%s\n\n" \
+            'The scripts were failed to download.' \
+            'Please create a support ticket.' \
+            'https://github.com/slyfox1186/script-repo/issues'
         exit 1
     fi
 done
@@ -35,25 +32,15 @@ done
 # execute all scripts in the pihole-regex folder
 for files in ${scripts[@]}
 do
-    if [ -f "${HOME}/${files}" ]; then
+    if [ -f "$HOME/$files" ]; then
         if which gedit &>/dev/null; then
-            gedit "${HOME}/${files}"
+            gedit "$HOME/$files"
         elif which nano &>/dev/null; then
-            nano "${HOME}/${files}"
+            nano "$HOME/$files"
         elif which vim &>/dev/null; then
-            vim "${HOME}/${files}"
+            vim "$HOME/$files"
         else
-            vi "${files}"
+            vi "$files"
         fi
     fi
 done
-
-# delete useless files that were downloaded with the curl command
-del_files='index.html urls.html user-scripts.sh user-scripts.txt'
-for i in ${del_files[@]}
-do
-    if [ -f "${i}" ]; then
-        rm "${i}"
-    fi
-done
-
