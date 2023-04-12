@@ -53,9 +53,9 @@ pkgs_fn()
           librust-malloc-buf-dev libsdl-pango-dev libsox-dev libsoxr-dev libssl-dev libtalloc-dev libtbbmalloc2 \
           libtool libtool-bin libzstd-dev libzzip-dev linux-source lm-sensors lshw lvm2 lzma-dev make man-db \
           mono-devel nano net-tools netplan.io network-manager nilfs-tools npm ntfs-3g ntfs2btrfs openssh-client \
-          openssh-server openssl pcregrep php-cli php-sqlite3 pipenv plocate psensor python3 python3-pip reiser4progs \
+          openssh-server openssl pcregrep php-cli php-sqlite3 pipenv plocate ppa-purge psensor python3 python3-pip \
           reiserfsprogs rpm ruby-all-dev shellcheck sox sqlite3 synaptic texinfo tk-dev trash-cli tty-share udftools \
-          unzip uuid-dev wget xclip xfsprogs xsel)
+          reiser4progs unzip uuid-dev wget xclip xfsprogs xsel)
 
     for pkg in ${pkgs[@]}
     do
