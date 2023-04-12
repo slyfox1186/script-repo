@@ -1710,28 +1710,6 @@ if [ -z "$LDEXEFLAGS" ]; then
     fi
 fi
 
-git_ver_fn 'intel/libva' '1' 'R'
-if build 'libva' "$g_ver_libva"; then
-    download "$g_url" "libva-$g_ver_libva.tar.gz"
-    execute ./autogen.sh --prefix="$workspace" --libdir='/usr/lib/x86_64-linux-gnu'
-    execute make -j "$cpu_threads"
-    execute sudo make install
-    build_done 'libva' "$g_ver_libva"
-fi
-
-git_ver_fn 'freedesktop/vdpau-driver' '1' 'T'
-if build 'vdpau' "$g_ver"; then
-    PKG_CONFIG_PATH="$packages/libva-2.18.0/pkgconfig:$PKG_CONFIG_PATH"
-    export PKG_CONFIG_PATH
-    
-    download "$g_url" "vdpau-$g_ver.tar.gz"
-    execute ./autogen.sh --prefix="/home/jman/tmp/ffmpeg-build/workspace" --enable-static --disable-shared
-    execute make -j "$cpu_threads"
-    execute make install
-    build_done 'vdpau' "$g_ver"
-fi
-cnf_ops+=('--enable-vdpau')
-
 git_ver_fn 'GPUOpen-LibrariesAndSDKs/AMF' '1' 'T'
 if build 'amf' "$g_ver"; then
     download "$g_url" "AMF-$g_ver.tar.gz"
