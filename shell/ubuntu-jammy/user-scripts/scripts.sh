@@ -3,7 +3,7 @@
 clear
 
 # Download the user scripts from github
-wget -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ubuntu-jammy/user-scripts/user-scripts.txt'
+wget -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ubuntu-jammy/user-scripts/scripts.txt'
 
 # Delete all files except those that start with a '.' or end with '.sh'
 find . ! \( -name '\.*' -o -name '*.sh' \) -type f -delete 2>/dev/null
