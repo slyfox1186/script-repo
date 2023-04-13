@@ -45,8 +45,8 @@ pkgs_fn()
 {
     pkgs=(alien aptitude aria2 autoconf autogen automake bat binutils bison build-essential ccdiff clang \
           clang-tools cmake cmake-extras colordiff curl dbus dbus-x11 dconf-editor ddclient disktype dos2unix \
-          exfat-fuse exfatprogs f2fs-tools flex g++ gawk gcc-multilib gedit gedit-plugins gir1.2-gtksource-3.0 \
-          git-all gnome-tweaks gnustep-gui-runtime golang gparted gperf grub-customizer gufw hfsplus hfsprogs \
+          exfat-fuse exfatprogs f2fs-tools flex g++ gawk gedit gedit-plugins gir1.2-gtksource-3.0 git-all \
+          gnome-tweaks gnustep-gui-runtime golang gparted gperf grub-customizer gufw hfsplus hfsprogs \
           hfsutils htop idn2 iftop iw jfsutils jq libbz2-dev libdmalloc-dev libglib2.0-dev libgvc6 libheif-dev \
           libjemalloc-dev liblz-dev liblzma-dev liblzo2-dev libmimalloc-dev libncurses5-dev libnet-nslookup-perl \
           libnuma-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev \
@@ -54,7 +54,7 @@ pkgs_fn()
           libtool libtool-bin libzstd-dev libzzip-dev linux-source lm-sensors lshw lvm2 lzma-dev make man-db \
           mono-devel nano net-tools netplan.io network-manager nilfs-tools npm ntfs-3g ntfs2btrfs openssh-client \
           openssh-server openssl pcregrep php-cli php-sqlite3 pipenv plocate ppa-purge psensor python3 python3-pip \
-          reiserfsprogs rpm ruby-all-dev shellcheck sox sqlite3 synaptic texinfo tk-dev trash-cli tty-share udftools \
+          reiserfsprogs rpm ruby-all-dev shellcheck sox sqlite3 synaptic texinfo trash-cli tty-share udftools \
           reiser4progs unzip uuid-dev wget xclip xfsprogs xsel)
 
     for pkg in ${pkgs[@]}
@@ -96,7 +96,6 @@ ppa_fn()
             do
                 case "$i" in
                     'danielrichter2007/grub-customizer')      apt_ppa+='grub-customizer';;
-                    'videolan/master-daily')                  apt_ppa+=' vlc';;
                     'git')                                    apt_ppa+=' git';;
                  esac
             done
