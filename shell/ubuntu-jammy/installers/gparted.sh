@@ -3,9 +3,7 @@
 clear
 
 # Verify the script has root access before continuing
-if [ "${EUID}" -ne '0' ]; then
-    echo '$ You must run this script as root/sudo'
-    echo
+if [ "$EUID" -ne '0' ]; then
     exec sudo bash "${0}" "${@}"
 fi
 
@@ -23,15 +21,15 @@ pkgs=(exfat-fuse exfatprogs f2fs-tools hfsplus hfsprogs hfsutils jfsutils lvm2 n
 
 for pkg in ${pkgs[@]}
 do
-    if ! installed "${pkg}"; then
-        missing_pkgs+=" ${pkg}"
+    if ! installed "$pkg"; then
+        missing_pkgs+=" $pkg"
     fi
 done
 
-if [ -n "${missing_pkgs}" ]; then
+if [ -n "$missing_pkgs" ]; then
     echo '$ Installing missing packages'
     echo
-    for i in "${missing_pkgs}"
+    for i in "$missing_pkgs"
         do
             apt -y install ${i}
         done
