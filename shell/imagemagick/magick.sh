@@ -6,25 +6,23 @@ clear
 
 # Verify the script has root access before continuing
 if [ "${EUID}" -ne '0' ]; then
-    exec sudo bash "${0}" "${@}"
+    exec sudo bash "$0" "$@"
 fi
-
-CWD="${PWD}"
 
 echo 'Imagemagick Build Script Downloader v1.0'
 echo '=========================================='
 
-echo -e "Creating the build directory"
+echo -e "Now creating the temporary output build directory..."
 
-if ! mkdir "${PWD}/build-magick"; then
-    printf '\nFailure to create the build directory: %s' "${PWD}/build-magick"
-    echo
+if ! mkdir -p "$PWD/build-magick"; then
+    printf '\n%s\n\n' "Failure to create the build directory: $PWD/build-magick"                   
     exit 1
 fi
 
-echo -e "Executing the build script\\n"
+printf "%s\n\n" \
+    'Executing the master build script'
 
-# cd into the build directory
-cd "${PWD}/build-magick" || exit 1
+# change into the temporary build directory, and run the master install script
+cd "$PWD/build-magick" || exit 1
 
 bash <(curl -sSL https://build-magick.optimizethis.net) --build
