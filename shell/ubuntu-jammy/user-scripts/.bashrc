@@ -101,7 +101,6 @@ PATH=\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/local/cuda-12.1/bin:\
 /snap/bin:\
 "${HOME}"/.local/bin
 export PATH
@@ -123,7 +122,3 @@ export THREADS
 
 CPUS="$((THREADS/2))"
 export CPUS
-
-_suppress gedit
-_suppress gnome-terminal
-_suppress firefox
