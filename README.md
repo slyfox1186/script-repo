@@ -45,15 +45,15 @@ wget -qO scripts.sh https://scripts.optimizethis.net; bash scripts.sh
 
 #### Ubuntu Jammy
 ```bash
-curl -sSL https://jammy-mirrors.optimizethis.net | sudo bash
+wget -qO mirrors.sh https://jammy-mirrors.optimizethis.net; sudo bash mirrors.sh
 ```
 #### Ubuntu Bionic
 ```bash
-curl -sSL https://bionic-mirrors.optimizethis.net | sudo bash
+wget -qO mirrors.sh https://bionic-mirrors.optimizethis.net; sudo bash mirrors.sh
 ```
 #### Debian Bullseye
 ```bash
-curl -sSL https://debian-mirrors.optimizethis.net | sudo bash
+wget -qO mirrors.sh https://debian-mirrors.optimizethis.net; sudo bash mirrors.sh
 ```
 ------
 ## Install [7-Zip](www.7-zip.org/download.html)
