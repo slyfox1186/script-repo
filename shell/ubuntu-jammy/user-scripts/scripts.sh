@@ -17,7 +17,7 @@ do
     if [ -f "$PWD/$script" ]; then
         mv -f "$PWD/$script" "$HOME"
         if [ -f "$PWD/$HOME/$script" ]; then
-            chown "$USER":"$USER" "$HOME/$script"
+            sudo chown "$USER":"$USER" "$HOME/$script"
         fi
     else
         clear
