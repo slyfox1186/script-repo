@@ -19,11 +19,6 @@
 ##
 #############################################################################
 
-# verify the script does not have root access before continuing
-if [ "$EUID" -ne '0' ]; then
-    exec sudo bash "$0" "$@"
-fi
-
 ##
 ## Set the available cpu count for parallel processing (speeds up the build process)
 ##
