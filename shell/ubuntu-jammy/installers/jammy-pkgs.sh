@@ -18,7 +18,7 @@
 clear
 
 # Verify the script has root access before continuing
-if [ "${EUID}" -ne '0' ]; then
+if [ "$EUID" -ne '0' ]; then
     echo 'You must run this script as root/sudo'
     echo
     exec sudo bash "${0}" "${@}"
@@ -59,17 +59,16 @@ pkgs_fn()
 
     for pkg in ${pkgs[@]}
     do
-        if ! installed "${pkg}"; then
-            missing_pkgs+=" ${pkg}"
+        if ! installed "$pkg"; then
+            missing_pkgs+=" $pkg"
         fi
     done
 
-    if [ -n "${missing_pkgs}" ]; then
-        for i in "${missing_pkgs}"
+    if [ -n "$missing_pkgs" ]; then
+        for i in "$missing_pkgs"
         do
             apt -y install ${i}
         done
-        echo
         echo '$ Any missing apt packages were installed'
     else
         echo
@@ -85,7 +84,7 @@ ppa_fn()
         mkdir -p '/etc/apt/sources.list.d'
     fi
 
-    ppa_repo='danielrichter2007/grub-customizer videolan/master-daily git-core/ppa'
+    ppa_repo='danielrichter2007/grub-customizer git-core/ppa'
 
     for pkg in ${ppa_repo[@]}
     do
