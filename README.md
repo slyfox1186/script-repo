@@ -112,7 +112,7 @@ wget -qO players.sh https://media-players.optimizethis.net; sudo bash players.sh
       2. **Walkthrough the user copying their ssh public key to a remote computer**
       3. **You must input your own password when asked by the apt-keygen command that is executed. This is to keep your security strong!**
 ```bash
-curl -sSL https://ssh-keys.optimizethis.net | sudo bash
+wget -qO ssh-keys.sh https://ssh-keys.optimizethis.net; sudo bash ssh-keys.sh
 ```
 ------
 ## Install: GParted's extra functionality packages
@@ -126,7 +126,8 @@ curl -sSL https://ssh-keys.optimizethis.net | sudo bash
     - hfs/hfs 2
     - reiser 4/reiserfs
 ```bash
-curl -sSL https://gparted.optimizethis.net | sudo bash
+wget -qO gparted.sh https://gparted.optimizethis.net; sudo bash gparted.sh
+
 ```
 __________
 
