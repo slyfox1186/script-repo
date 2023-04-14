@@ -17,7 +17,7 @@ ffind()
 {
     clear
 
-    local file path type
+    local file find_path type
 
     read -p 'Enter a file to search for: ' file
     echo
@@ -26,12 +26,12 @@ ffind()
     read -p 'Enter the search path: ' path
     clear
 
-    if [ -z "${type}" ]; then
-        find "${path}" -name "${file}" -exec echo {} +
-    elif [ -z "${type}" ] && [ -z "${path}" ]; then
-        find . -name "${file}" -exec echo {} +
+    if [ -z "$type" ]; then
+        find "$find_path" -name "$file" -exec echo {} +
+    elif [ -z "$type" ] && [ -z "$find_path" ]; then
+        find . -name "$file" -exec echo {} +
     else
-        find "${path}" -type "${type}" -name "${file}" -exec echo {} +
+        find "$find_path" -type "$type" -name "$file" -exec echo {} +
     fi
 }
 
@@ -43,29 +43,33 @@ untar()
 {
     clear
 
-    local ext
+    local ext file
 
     for file in *.*
     do
-        ext="${i##*.}"
+        ext="${file##*.}"
 
-        [[ ! -d "${PWD}/${file%%.*}" ]] && mkdir -p "${PWD}/${file%%.*}"
-
-        case "${ext}" in
+        case "$ext" in
             7z|zip)
-                7z x -o"${PWD}/${file%%.*}" "${PWD}/${file}"
+                7z x -o"$PWD/${file%%.*}" "$PWD/$file"
                 ;;
             bz2|gz|xz)
                 jflag=''
-                [[ "${ext}" == 'bz2' ]] && jflag='j'
-                tar -xvf${jflag} "${PWD}/${file}" -C "${PWD}/${file%%.*}"
+                [[ "$ext" == 'bz2' ]] && jflag='j'
+                mkdir -p "$PWD/${file%%.*}"
+                tar -xf${jflag} "$PWD/$file" -C "$PWD/${file%%.*}"
+                ;;
+            *)
+                printf "%s\n\n%s\n\n" \
+                    'No archives to extract were found.' \
+                    'Make sure you run this function in the same directory as the archives'
                 ;;
         esac
     done
 }
 
 ##################
-## CREATE FILES ## 
+## CREATE FILES ##
 ##################
 
 mf()
@@ -96,11 +100,11 @@ mdir()
     if [[ -z "${1}" ]]; then
         read -p 'Enter directory name: ' dir
         clear
-        mkdir -p  "${PWD}/${dir}"
-        cd "${PWD}/${dir}" || exit 1
+        mkdir -p  "$PWD/${dir}"
+        cd "$PWD/${dir}" || exit 1
     else
         mkdir -p "${1}"
-        cd "${PWD}/${1}" || exit 1
+        cd "$PWD/${1}" || exit 1
     fi
 
     clear; ls -1AhFv --color --group-directories-first
@@ -225,9 +229,9 @@ fix_key()
         url="${2}"
     fi
 
-    curl -S# "${url}" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/${file}"
-    
-    if curl -S# "${url}" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/${file}"; then
+    curl -S# "${url}" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/$file"
+
+    if curl -S# "${url}" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/$file"; then
         echo 'The key was successfully added!'
     else
         echo 'The key FAILED to add!'
@@ -242,8 +246,8 @@ toa()
 {
     clear
 
-    chown -R "${USER}":"${USER}" "${PWD}"
-    chmod -R 744 "${PWD}"
+    chown -R "${USER}":"${USER}" "$PWD"
+    chmod -R 744 "$PWD"
 
     clear; ls -1AhFv --color --group-directories-first
 }
@@ -288,11 +292,11 @@ new_key()
     echo '[i] Choose the key bit size'
     echo '[i] Values encased in() are recommended'
 
-    if [[ "${type}" == 'rsa' ]]; then
+    if [[ "$type" == 'rsa' ]]; then
         echo -e "[i] rsa: [ 512 | 1024 | (2048) | 4096 ]\\n"
-    elif [[ "${type}" == 'dsa' ]]; then
+    elif [[ "$type" == 'dsa' ]]; then
         echo -e "[i] dsa: [ (1024) | 2048 ]\\n"
-    elif [[ "${type}" == 'ecdsa' ]]; then
+    elif [[ "$type" == 'ecdsa' ]]; then
         echo -e "[i] ecdsa: [ (256) | 384 | 521 ]\\n"
     fi
 
@@ -314,7 +318,7 @@ new_key()
     clear
 
     echo -e "[i] Your choices\\n"
-    echo -e "[i] Type: ${type}"
+    echo -e "[i] Type: $type"
     echo -e "[i] bits: ${bits}"
     echo -e "[i] Password: ${pass}"
     echo -e "[i] comment: ${comment}"
@@ -322,7 +326,7 @@ new_key()
     read -p 'Press enter to continue or ^c to exit'
     clear
 
-    ssh-keygen -q -b "${bits}" -t "${type}" -N "${pass}" -C "${comment}" -f "${name}"
+    ssh-keygen -q -b "${bits}" -t "$type" -N "${pass}" -C "${comment}" -f "${name}"
 
     chmod 600 "$PWD/${name}"
     chmod 644 "$PWD/${name}".pub
@@ -435,7 +439,7 @@ aria2()
         link="${2}"
     fi
 
-    aria2c --out="${file}" "${link}"
+    aria2c --out="$file" "${link}"
 }
 
 # PRINT lan/wan IP
@@ -561,7 +565,7 @@ imow()
         random="$(mktemp --directory)"
         echo '========================================================================================================='
         echo
-        echo "Working Directory: ${PWD}"
+        echo "Working Directory: $PWD"
         echo
         printf "Converting: %s\n             >> %s\n              >> %s\n               >> %s\n" "${i}" "${i%%.jpg}.mpc" "${i%%.jpg}.cache" "${i%%.jpg}-IM.jpg"
         echo
@@ -579,8 +583,8 @@ imow()
                 convert "${cached}" -monitor "${cached%%.mpc}.jpg"
                 if [ -f "${cached%%.mpc}.jpg" ]; then
                     CWD="$(${cached//s:.*/::})"
-                    mv "${cached%%.mpc}.jpg" "${PWD}/${CWD%%.*}-IM.jpg"
-                    rm -f "${PWD}/${CWD%%.*}.jpg"
+                    mv "${cached%%.mpc}.jpg" "$PWD/${CWD%%.*}-IM.jpg"
+                    rm -f "$PWD/${CWD%%.*}.jpg"
                     for v in ${cached}
                     do
                         v_noslash="${v%/}"
@@ -692,7 +696,7 @@ cuda_purge()
         echo 'Purging the cuda-sdk-toolkit from your computer.'
         echo '================================================'
         echo
-        sudo apt-get -y --purge remove "*cublas*" "cuda*" "nsight*" 
+        sudo apt-get -y --purge remove "*cublas*" "cuda*" "nsight*"
         sudo apt -y autoremove
         sudo apt update
     elif [[ "${answer}" -eq '2' ]]; then
@@ -714,7 +718,7 @@ large_files()
     echo
     read -p 'Enter your choice: ' answer
     clear
-    find "${PWD}" -type f -name "*.${answer}" -printf '%h\n' | sort -u -o 'large-files.txt'
+    find "$PWD" -type f -name "*.${answer}" -printf '%h\n' | sort -u -o 'large-files.txt'
     if [ -f 'large-files.txt' ]; then
         sudo gedit 'large-files.txt'
     fi
