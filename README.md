@@ -98,6 +98,11 @@ wget -qO ffn.sh https://ffn.optimizethis.net; bash ffn.sh
 wget -qO ff.sh https://ff.optimizethis.net; bash ff.sh
 ```
 ------
+## Install a Squid Proxy Server for home use
+```bash
+wget -qO squid.sh https://squid-proxy.optimizethis.net; sudo bash squid.sh
+```
+------
 ## Install Media Players
   - Prompt user with options to download
     - VLC
