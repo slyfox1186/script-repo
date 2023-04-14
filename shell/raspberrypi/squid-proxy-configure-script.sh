@@ -1663,7 +1663,6 @@ auth_param basic program $basic_ncsa_auth $squid_passwords $squid_whitelist $squ
 auth_param basic realm proxy
 auth_param basic children 5
 acl authenticated proxy_auth REQUIRED
-acl authenticated src 192.168.0.0/16
 acl github dstdomain .github.com
 cache deny github
 
@@ -9352,10 +9351,10 @@ if ! which 'htpasswd'; then
 fi
 
 # RUN HTPASSWD TO CREATE PASSWORD FOR USE
-if [ ! -f "$squid_passwd" ]; then
-    htpasswd -c "$squid_passwd" 'squid' && echo -e "\\nThe squid passwd file was created successfully!" || echo -e "\\nThe squid passwd file failed to create."
+if [ ! -f "$squid_passwords" ]; then
+    htpasswd -c "$squid_passwords" 'squid' && echo -e "\\nThe squid passwd file was created successfully!" || echo -e "\\nThe squid passwd file failed to create."
     echo
-    cat "$squid_passwd"
+    cat "$squid_passwords"
     echo
 fi
 
