@@ -1,4 +1,0 @@
-https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ubuntu-jammy/user-scripts/.bash_aliases
-https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ubuntu-jammy/user-scripts/.bash_functions
-https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ubuntu-jammy/user-scripts/.bashrc
-https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ubuntu-jammy/user-scripts/scripts.sh
