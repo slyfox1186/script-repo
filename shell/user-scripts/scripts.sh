@@ -3,19 +3,12 @@
 clear
 
 # make a tmporary random directory
-random_dir="/tmp/$(mktemp --directory)"
+random_dir="$(mktemp --directory)"
 
-if [ ! -d "$random_dir" ]; then
-    clear
-    printf "%s\n\n%s\n\n%s\n\n" \
-        "The temporary directory was not found: $random_dir" \
-        'Please create a support ticket.' \
-        'https://github.com/slyfox1186/script-repo/issues'
-    exit 1
-fi
+static_dir="$random_dir"
 
 # Change the working directory into the random directory to avoid deleting unintended files
-cd "$random_dir"
+cd "$static_dir" || exit 1
 
 # Download the user scripts from GitHub
 wget -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/user-scripts/scripts.txt'
@@ -29,33 +22,28 @@ scriptArray=(.bash_aliases .bash_functions .bashrc)
 # If the scripts exist, move each one to the users home directory
 for script in ${scriptArray[@]}
 do
-    if [ -f "$script" ]; then
-        mv -f "$script" "$HOME"
-        if [ -f "$HOME/$script" ]; then
-            sudo chown "$USER":"$USER" "$HOME/$script"
-        fi
-    else
-        clear
-        printf "%s\n\n%s\n\n%s\n\n" \
-            'The scripts were failed to download.' \
-            'Please create a support ticket.' \
-            'https://github.com/slyfox1186/script-repo/issues'
+    if ! mv -f "$PWD/$script" "$HOME"; then
+        echo 'Failed: 1'
+        echo
+        exit 1
+    fi
+    if ! sudo chown "$USER":"$USER" "$HOME/$script"; then
+        echo 'Failed: 1'
+        echo
         exit 1
     fi
 done
 
 # Open each script that is now in each user's home folder with an editor
-for script in "$HOME"/${scripts[@]}
+for i in ${scriptArray[@]}
 do
-    if [ -f "$script" ]; then
-        if which gedit &>/dev/null; then
-            gedit "$script"
-        elif which nano &>/dev/null; then
-            nano "$script"
-        elif which vim &>/dev/null; then
-            vim "$script"
-        else
-            vi "$script"
-        fi
+    if which gedit &>/dev/null; then
+        gedit "$HOME/$i"
+    elif which nano &>/dev/null; then
+        nano "$HOME/$i"
+    elif which vim &>/dev/null; then
+        vim "$HOME/$i"
+    else
+        vi "$HOME/$i"
     fi
 done
