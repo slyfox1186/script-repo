@@ -15,7 +15,6 @@ untar()
                 clear
                 echo "extracting 1: $file"
                 read -p 'Press enter to continue.'
-                clear
                 7z x -o"$PWD/${file%%.*}" "$PWD/$file"
                 ;;
             bz2|gz|xz)
@@ -24,7 +23,6 @@ untar()
                 clear
                 echo "extracting 2: $file"
                 read -p 'Press enter to continue.'
-                clear
                 tar -xf${jflag} "$PWD/$file" -C "$PWD/${file%%.*}"
                 ;;
             *)
@@ -35,3 +33,5 @@ untar()
         esac
     done
 }
+untar
+cl
