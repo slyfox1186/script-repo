@@ -47,7 +47,7 @@ pkgs_fn()
           autoconf autogen automake bat binutils bison build-essential ccdiff checkinstall \
           clang clang-tools cmake cmake-extras colordiff curl cvs dbus dbus-x11 dconf-editor \
           ddclient debhelper devscripts dh-make disktype dos2unix fakeroot flex g++ gawk gcc \
-          gedit gedit-plugins dpkg-dev exfat-fuse exfatprogs f2fs-tools gir1.2-gtksource-3.0 git \
+          gedit gedit-plugins dpkg-dev exfat-fuse exfatprogs f2fs-tools flatpak gir1.2-gtksource-3.0 git \
           git-all git-buildpackage gnome-tweaks gnustep-gui-runtime golang gparted gperf grub-customizer \
           gufw hfsplus hfsprogs hfsutils htop idn2 iftop iw jfsutils jq libbz2-dev libdmalloc-dev \
           libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev liblz-dev liblzma-dev liblzo2-dev libmimalloc-dev \
