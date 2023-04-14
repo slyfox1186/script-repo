@@ -25,6 +25,10 @@ fi
 # SET DEFAULT USER/OWNER OF SQUID (THE UBUNTU AND DEBIAN DEFAULT IS PROXY)
 SQUID_USER='proxy'
 
+# SET HOW LONG SQUID WAITS TO FULLY SHUTDOWN AFTER RECEVING A SIGTERM COMMAND
+# THE UNITS ARE IN SECONDS AND THE DEFAULT IS 30
+squid_timeout='5'
+
 ####################
 ## CACHE SETTINGS ##
 ####################
@@ -1732,6 +1736,10 @@ cache_effective_user ${SQUID_USER}
 
 http_accel_surrogate_remote on
 esi_parser expat
+
+# SET HOW LONG SQUID WAITS TO FULLY SHUTDOWN AFTER RECEIVING A SIGTERM COMMAND
+# THE DEFAULT IS 30 SECONDS
+shutdown_lifetime ${squid_timeout}
 
 #
 ############################
@@ -6489,7 +6497,7 @@ coredump_dir /var/spool/squid
 #    during shutdown mode.  Any active clients after this many
 #    seconds will receive a 'timeout' message.
 #Default:
-# shutdown_lifetime 30 seconds
+# shutdown_lifetime 30
 
 # ADMINISTRATIVE PARAMETERS
 # -----------------------------------------------------------------------------
