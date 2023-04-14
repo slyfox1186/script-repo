@@ -17,6 +17,14 @@ if [ ! -d '/etc/squid' ]; then
     mkdir -p '/etc/squid'
 fi
 
+# VERIFY IF THE FILE squid.conf ALREADY EXISTS WHICH WILL DETERMINE HOW
+# WE RECONFIGURE SQUID TO USE ANY UPDATES TO THE FILE ITSELF
+if [ -f '/etc/squid/squid.conf' ]; then
+    run_squid='squid -k reconfigure'
+else
+    run_squid="$(/etc/init.d/squid restart && echo -e "\\nSquid restarted successfully!\\n" || echo -e "\\nSquid failed to restart!\\n")"
+fi
+
 # CHECK SQUID CURRENT STATUS
 if ! systemctl status squid.service; then
     echo 'The squid service needs to be running to continue.'
@@ -9326,31 +9334,27 @@ umask 022
 # no artificial limit on the number of concurrent spare attempts
 EOF
 
-# CREATE whitelist
-if [ ! -f "$squid_whitelist" ]; then
-    touch "$squid_whitelist"
-fi
+# Create whitelist
 cat > "$squid_whitelist" <<'EOF' && echo -e "The whitelist was created successfully!" || echo -e "The whitelist failed to create."
+.github.com
 .google.com
 .yahoo.com
 EOF
 
-# CREATE blacklist
-if [ -f "$squid_blacklist" ]; then
-    touch "$squid_blacklist"
-fi
+# Create blacklist
 cat > "$squid_blacklist" <<'EOF' && echo -e "The blacklist was created successfully!\\n" || echo -e "The blacklist failed to create.\\n"
 .bytedance.com
 .tiktok.com
 .xyz
 EOF
 
-# INSTALL HTPASSWD COMMAND IF NOT ALREADY
+# Install apache2-utils if required so the user can create
+# create a password for the user profile that controls the squid proxy
 if ! which 'htpasswd'; then
     apt install -y apache2-utils
 fi
 
-# RUN HTPASSWD TO CREATE PASSWORD FOR USE
+# RUN HTPASSWD TO CREATE PASSWORD FILE FOR THE USER ACCOUNT THAT OWNS THE SQUID PROXY SERVER
 if [ ! -f "$squid_passwords" ]; then
     htpasswd -c "$squid_passwords" 'squid' && echo -e "\\nThe squid passwd file was created successfully!" || echo -e "\\nThe squid passwd file failed to create."
     echo
@@ -9397,5 +9401,5 @@ else
     clear
 fi
 
-# RESTART SQUID VIA SYSTEMCTL
-exec '/etc/init.d/squid' restart && echo -e "\\nSquid restarted successfully!\\n" || echo -e "\\nSquid failed to restart!\\n"
+# CONFIGURE SQUID TO USE THE SQUID.CONF FILE CREATED/UPDATED BY THIS SCRIPT
+$run_squid
