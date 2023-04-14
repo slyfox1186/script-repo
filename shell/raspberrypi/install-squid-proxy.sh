@@ -26,8 +26,9 @@ fi
 SQUID_USER='proxy'
 
 # SET HOW LONG SQUID WAITS TO FULLY SHUTDOWN AFTER RECEVING A SIGTERM COMMAND
-# THE UNITS ARE IN SECONDS AND THE DEFAULT IS 30
-squid_timeout='5'
+# THE NUMBERS MUST COMBINED WITH TIME UNITS OF MEASUREMENT AKA 'seconds, minutes, hours'
+# THE DEFAULT IS 30 SECONDS
+shutdown_timeout='5 seconds'
 
 ####################
 ## CACHE SETTINGS ##
@@ -1739,7 +1740,7 @@ esi_parser expat
 
 # SET HOW LONG SQUID WAITS TO FULLY SHUTDOWN AFTER RECEIVING A SIGTERM COMMAND
 # THE DEFAULT IS 30 SECONDS
-shutdown_lifetime ${squid_timeout}
+shutdown_lifetime ${shutdown_timeout}
 
 #
 ############################
