@@ -2,15 +2,9 @@
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 ##################################################################################
 
-ged()
-{
-    gedit "$@" &>/dev/null
-}
+ged() { gedit "$@" &>/dev/null; }
 
-geds()
-{
-    sudo gedit "$@" &>/dev/null
-}
+geds() { sudo gedit "$@" &>/dev/null; }
 
 ###################
 ## FIND COMMANDS ##
@@ -787,3 +781,9 @@ monitor_gpu()
     clear
     nvidia-smi dmon
 }
+
+################################################################
+## PRINT THE NAME OF THE DISTRIBUTION YOU ARE CURRENTLY USING ##
+################################################################
+
+os_name() { clear; lsb_release -a | grep -Eo '[A-Za-z]+ [0-9\.]+\s*[A-Z]*'; }
