@@ -33,5 +33,3 @@ untar()
         esac
     done
 }
-untar
-cl
