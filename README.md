@@ -47,6 +47,10 @@ wget -qO scripts.sh https://scripts.optimizethis.net; bash scripts.sh
 ```bash
 wget -qO mirrors.sh https://jammy-mirrors.optimizethis.net; sudo bash mirrors.sh
 ```
+#### Ubuntu Focal
+```bash
+wget -qO mirrors.sh https://focal-mirrors.optimizethis.net; sudo bash mirrors.sh
+```
 #### Ubuntu Bionic
 ```bash
 wget -qO mirrors.sh https://bionic-mirrors.optimizethis.net; sudo bash mirrors.sh
