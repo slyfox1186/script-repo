@@ -47,3 +47,8 @@ do
         vi "$HOME/$i"
     fi
 done
+
+# Remove the installer script itself
+if [ -f 'scripts.sh' ]; then
+    sudo rm 'scripts.sh'
+fi
