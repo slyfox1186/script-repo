@@ -33,8 +33,12 @@ wget -qO pkgs.sh https://debian-pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
 
 ------
-## Add .bashrc, .bash_aliases, and .bash_functions to the USER's directory
+## Add custom user scripts the the user's home directory
   - **Warning! This will overwrite your files!**
+  - **Files Included**
+    - .bashrc
+    - .bash_aliases
+    - .bash_functions
 ```bash
 wget -qO scripts.sh https://scripts.optimizethis.net; bash scripts.sh
 ```
