@@ -1,3 +1,6 @@
+#!/bin/bash
+#shellcheck disable=SC2162,SC1091,SC2317
+
 ##################################################################################
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 ##################################################################################
@@ -24,11 +27,11 @@ ffind()
     clear
 
     if [ -z "${type}" ]; then
-        find "${path}" -name "${file}" 2>/dev/null | xargs -I{} echo {}
+        find "${path}" -name "${file}" -exec echo {} +
     elif [ -z "${type}" ] && [ -z "${path}" ]; then
-        find . -name "${file}" 2>/dev/null | xargs -I{} echo {}
+        find . -name "${file}" -exec echo {} +
     else
-        find "${path}" -type "${type}" -name "${file}" 2>/dev/null | xargs -I{} echo {}
+        find "${path}" -type "${type}" -name "${file}" -exec echo {} +
     fi
 }
 
@@ -522,18 +525,18 @@ imo()
         -unsharp 0.25x0.08+8.3+0.045 -dither None -posterize 136 -quality 82 -define jpeg:fancy-upsampling=off \
         -auto-level -enhance -interlace none -colorspace sRGB "/tmp/${i%%.jpg}.mpc"
         clear
-        for i in /tmp/*.mpc; do
+        for cfile in /tmp/*.mpc; do
         # find the temporary cache files created above and output optimized jpg files
-            if [ -f "${i}" ]; then
-                echo -e "\\nOverwriting orignal file with optimized self: ${i} >> ${i%%.mpc}.jpg\\n"
-                convert "${i}" -monitor "${i%%.mpc}.jpg"
+            if [ -f "${cfile}" ]; then
+                echo -e "\\nOverwriting orignal file with optimized self: ${cfile} >> ${cfile%%.mpc}.jpg\\n"
+                convert "${cfile}" -monitor "${cfile%%.mpc}.jpg"
                 # overwrite the original image with it's optimized version
                 # by moving it from the tmp directory to the source directory
-                if [ -f "${i%%.mpc}.jpg" ]; then
-                    mv "${i%%.mpc}.jpg" "$PWD"
+                if [ -f "${cfile%%.mpc}.jpg" ]; then
+                    mv "${cfile%%.mpc}.jpg" "$PWD"
                     # delete both cache files before continuing
-                    rm "${i}"
-                    rm "${i%%.mpc}.cache"
+                    rm "${cfile}"
+                    rm "${cfile%%.mpc}.cache"
                     clear
                 fi
             fi
@@ -570,15 +573,15 @@ imow()
             -define png:compression-filter='5' -define png:compression-level='9' -define png:compression-strategy='1' \
             -define png:exclude-chunk='all' -auto-level -enhance -interlace 'none' -colorspace 'sRGB' "${random}/${i%%.jpg}.mpc"
         clear
-        for i in "${random}"/*.mpc
+        for cached in "${random}"/*.mpc
         do
-            if [ -f "${i}" ]; then
-                convert "${i}" -monitor "${i%%.mpc}.jpg"
-                if [ -f "${i%%.mpc}.jpg" ]; then
-                    CWD="$(echo "${i}" | sed 's:.*/::')"
-                    mv "${i%%.mpc}.jpg" "${PWD}/${CWD%%.*}-IM.jpg"
+            if [ -f "${cached}" ]; then
+                convert "${cached}" -monitor "${cached%%.mpc}.jpg"
+                if [ -f "${cached%%.mpc}.jpg" ]; then
+                    CWD="$(${cached//s:.*/::})"
+                    mv "${cached%%.mpc}.jpg" "${PWD}/${CWD%%.*}-IM.jpg"
                     rm -f "${PWD}/${CWD%%.*}.jpg"
-                    for v in "${i}"
+                    for v in ${cached}
                     do
                         v_noslash="${v%/}"
                         rm -fr "${v_noslash%/*}"
@@ -596,8 +599,7 @@ imow()
 
     # The text-to-speech below requries the following packages:
     # pip install gTTS; sudo apt -y install sox libsox-fmt-all
-    if [ "${?}" -eq '0' ]; then
-        google_speech 'Image conversion completed.'
+    if google_speech 'Image conversion completed.'; then
         return 0
     else
         google_speech 'Image conversion failed.'
@@ -626,7 +628,7 @@ fs() { clear; du --max-depth=1 -abh | grep -Eo '^[0-9A-Za-z\_\-\.]*|[a-zA-Z0-9\_
 big_img()
 {
     clear
-    sudo find . -size +10M -type f -name *.jpg 2>/dev/null
+    sudo find . -size +10M -type f -name '*.jpg' 2>/dev/null
 }
 
 ###########################
@@ -743,7 +745,7 @@ mi()
 ## FFMPEG ##
 ############
 
-cdff() { clear; cd "$HOME/tmp/ffmpeg-build"; cl; }
+cdff() { clear; cd "$HOME/tmp/ffmpeg-build" || exit 1; cl; }
 ffm() { clear; bash <(curl -sSL 'http://ffmpeg.optimizethis.net'); }
 ffp() { clear; bash <(curl -sSL 'http://ffpb.optimizethis.net'); }
 
@@ -757,16 +759,18 @@ listppas()
 
     local APT HOST USER PPA ENTRY
 
-    for APT in `find /etc/apt/ -name \*.list`; do
-        grep -Po "(?<=^deb\s).*?(?=#|$)" $APT | while read ENTRY ; do
-            HOST=`echo $ENTRY | cut -d/ -f3`
-            USER=`echo $ENTRY | cut -d/ -f4`
-            PPA=`echo $ENTRY | cut -d/ -f5`
+    for APT in $(find /etc/apt/ -type f -name \*.list)
+    do
+        grep -Po "(?<=^deb\s).*?(?=#|$)" "$APT" | while read ENTRY
+        do
+            HOST="$(echo "$ENTRY" | cut -d/ -f3)"
+            USER="$(echo "$ENTRY" | cut -d/ -f4)"
+            PPA="$(echo "$ENTRY" | cut -d/ -f5)"
             #echo sudo apt-add-repository ppa:$USER/$PPA
             if [ "ppa.launchpad.net" = "$HOST" ]; then
-                echo sudo apt-add-repository ppa:$USER/$PPA
+                echo sudo apt-add-repository ppa:"$USER/$PPA"
             else
-                echo sudo apt-add-repository \'$ENTRY\'
+                echo sudo apt-add-repository \'deb "$ENTRY"\'
             fi
         done
     done
@@ -776,10 +780,14 @@ listppas()
 ## NVIDIA-SMI COMMANDS ##
 #########################
 
-monitor_gpu() { clear; nvidia-smi dmon }
+monitor_gpu() { clear; nvidia-smi dmon; }
 
 ################################################################
 ## PRINT THE NAME OF THE DISTRIBUTION YOU ARE CURRENTLY USING ##
 ################################################################
 
-os_name() { clear; lsb_release -a | grep -Eo '[A-Za-z]+ [0-9\.]+\s*[A-Z]*'; }
+os_name()
+{
+    clear
+    eval lsb_release -a | grep -Eo '[A-Za-z]+ [0-9\.]+\s*[A-Z]*'
+}
