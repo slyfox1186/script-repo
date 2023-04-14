@@ -776,11 +776,7 @@ listppas()
 ## NVIDIA-SMI COMMANDS ##
 #########################
 
-monitor_gpu()
-{
-    clear
-    nvidia-smi dmon
-}
+monitor_gpu() { clear; nvidia-smi dmon }
 
 ################################################################
 ## PRINT THE NAME OF THE DISTRIBUTION YOU ARE CURRENTLY USING ##
