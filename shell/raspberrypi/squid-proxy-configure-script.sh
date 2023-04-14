@@ -1461,9 +1461,6 @@ acl Safe_ports port 563                         # commonly used (at least at one
 acl Safe_ports port 591                         # filemaker
 acl Safe_ports port 777                         # multiling http
 
-acl allowed_sites dstdomain $squid_whitelist    # site whitelist file
-acl blocked_sites dstdomain $squid_blacklist    # site blacklist file
-
 # Set all connections in the following IP range to allow access to squid's cache
 
 #  TAG: proxy_protocol_access
@@ -1667,7 +1664,7 @@ include /etc/squid/conf.d/*
 ##
 
 include /etc/squid/conf.d/*
-auth_param basic program $basic_ncsa_auth $squid_passwords $squid_whitelist $squid_blacklist
+auth_param basic program $basic_ncsa_auth $squid_passwords
 auth_param basic realm proxy
 auth_param basic children 5
 acl authenticated proxy_auth REQUIRED
@@ -9334,20 +9331,6 @@ umask 022
 # no artificial limit on the number of concurrent spare attempts
 EOF
 
-# Create whitelist
-cat > "$squid_whitelist" <<'EOF' && echo -e "The whitelist was created successfully!" || echo -e "The whitelist failed to create."
-.github.com
-.google.com
-.yahoo.com
-EOF
-
-# Create blacklist
-cat > "$squid_blacklist" <<'EOF' && echo -e "The blacklist was created successfully!\\n" || echo -e "The blacklist failed to create.\\n"
-.bytedance.com
-.tiktok.com
-.xyz
-EOF
-
 # Install apache2-utils if required so the user can create
 # create a password for the user profile that controls the squid proxy
 if ! which 'htpasswd'; then
@@ -9392,8 +9375,6 @@ if [[ "$uChoice" -eq '1' ]]; then
     ufw allow '67/udp'
     ufw allow '80/tcp'
     ufw allow '546:547/udp'
-    ufw allow "$squid_port"
-    ufw allow "$pihole_port"
     echo
     read -t 5 -p 'Sleeping for 5 seconds. Press enter to skip ahead.'
     clear
