@@ -55,7 +55,7 @@ pkgs_fn()
           librsvg2-dev librust-jemalloc-sys-dev librust-malloc-buf-dev libsdl-pango-dev libsox-dev libsoxr-dev \
           libssl-dev libtalloc-dev libtbbmalloc2 libtool libtool-bin libzstd-dev libzzip-dev "linux-headers-$(uname -r)" \
           linux-source lm-sensors lshw lvm2 lzma-dev make man-db mercurial mono-devel nano netplan.io net-tools \
-          network-manager nilfs-tools npm ntfs2btrfs ntfs-3g openssh-client openssh-server openssl patchutils \
+          network-manager nilfs-tools npm ntfs2btrfs ntfs-3g nvme-cli openssh-client openssh-server openssl patchutils \
           pbuilder pcregrep php-cli php-sqlite3 pipenv plocate ppa-purge pristine-tar psensor python3 python3-pip \
           quilt reiser4progs reiserfsprogs rpm ruby-all-dev samba shellcheck smbclient sox sqlite3 subversion \
           synaptic texinfo tofrodos trash-cli tty-share udftools unzip uuid-dev wget xclip xfsprogs xsel yasm)
