@@ -1,4 +1,3 @@
-#!/bin/bash
 #shellcheck disable=SC2162,SC1091,SC2317
 
 ##################################################################################
@@ -9,6 +8,7 @@ ged() { gedit "$@" &>/dev/null; }
 
 geds() { sudo gedit "$@" &>/dev/null; }
 
+
 ###################
 ## FIND COMMANDS ##
 ###################
@@ -17,21 +17,25 @@ ffind()
 {
     clear
 
-    local file find_path type
+    local fname fpath ftype
 
-    read -p 'Enter a file to search for: ' file
+    read -p 'Enter the name to search for: ' fname
     echo
-    read -p 'Enter the type of file (d|f|blank): ' type
+    read -p 'Enter a type of file (d|f|blank): ' ftype
     echo
-    read -p 'Enter the search path: ' path
+    read -p 'Enter the starting path: ' fpath
     clear
 
-    if [ -z "$type" ]; then
-        find "$find_path" -name "$file" -exec echo {} +
-    elif [ -z "$type" ] && [ -z "$find_path" ]; then
-        find . -name "$file" -exec echo {} +
+    if [ -z "$ftype" ] && [ -n "$fpath" ] || [ -z "$fpath" ]; then
+        sudo find "$fpath" -iname "$fname" -exec echo {} \;
+    elif [ -n "$ftype" ] && [ -n "$fpath" ] || [ -z "$fpath" ]; then
+        sudo find "$fpath" -type "$ftype" -iname "$fname" -exec echo {} \;
+    elif [ -z "$ftype" ] && [ "$fpath" = '.' ] || [ "$fpath" = '.' ]; then
+        sudo find . -iname "$fname" -exec echo {} \;
+    elif [ -n "$ftype" ] && [ "$fpath" = '.' ] || [ "$fpath" = '.' ]; then
+        sudo find . -type "$ftype" -iname "$fname" -exec echo {} \;
     else
-        find "$find_path" -type "$type" -name "$file" -exec echo {} +
+        sudo find "$fpath" -type "$ftype" -iname "$fname" -exec echo {} \;
     fi
 }
 
@@ -47,7 +51,7 @@ untar()
 
     for file in *.*
     do
-        ext="${file##*.}"
+        ext="${file##*.}" && mkdir -p "$PWD/${file%%.*}"
 
         case "$ext" in
             7z|zip)
@@ -56,8 +60,7 @@ untar()
             bz2|gz|xz)
                 jflag=''
                 [[ "$ext" == 'bz2' ]] && jflag='j'
-                mkdir -p "$PWD/${file%%.*}"
-                tar -xf${jflag} "$PWD/$file" -C "$PWD/${file%%.*}"
+                tar -xf$jflag "$PWD/$file" -C "$PWD/${file%%.*}"
                 ;;
             *)
                 printf "%s\n\n%s\n\n" \
@@ -78,14 +81,14 @@ mf()
 
     local i
 
-    if [ -z "${1}" ]; then
+    if [ -z "$1" ]; then
         read -p 'Enter file name: ' i
         clear
-        if [ ! -f "${i}" ]; then touch "${i}"; fi
-        chmod 744 "${i}"
+        if [ ! -f "$i" ]; then touch "$i"; fi
+        chmod 744 "$i"
     else
-        if [ ! -f "${1}" ]; then touch "${1}"; fi
-        chmod 744 "${1}"
+        if [ ! -f "$1" ]; then touch "$1"; fi
+        chmod 744 "$1"
     fi
 
     clear; ls -1AhFv --color --group-directories-first
@@ -97,14 +100,14 @@ mdir()
 
     local dir
 
-    if [[ -z "${1}" ]]; then
+    if [[ -z "$1" ]]; then
         read -p 'Enter directory name: ' dir
         clear
-        mkdir -p  "$PWD/${dir}"
-        cd "$PWD/${dir}" || exit 1
+        mkdir -p  "$PWD/$dir"
+        cd "$PWD/$dir" || exit 1
     else
-        mkdir -p "${1}"
-        cd "$PWD/${1}" || exit 1
+        mkdir -p "$1"
+        cd "$PWD/$1" || exit 1
     fi
 
     clear; ls -1AhFv --color --group-directories-first
@@ -115,17 +118,17 @@ mdir()
 ##################
 
 # REMOVED ALL DUPLICATE LINES: OUTPUTS TO TERMINAL
-rmd() { clear; awk '!seen[${0}]++' "${1}"; }
+rmd() { clear; awk '!seen[${0}]++' "$1"; }
 
 # REMOVE CONSECUTIVE DUPLICATE LINES: OUTPUTS TO TERMINAL
-rmdc() { clear; awk 'f!=${0}&&f=${0}' "${1}"; }
+rmdc() { clear; awk 'f!=${0}&&f=${0}' "$1"; }
 
 # REMOVE ALL DUPLICATE LINES AND REMOVES TRAILING SPACES BEFORE COMPARING: REPLACES THE file
 rmdf()
 {
     clear
-    perl -i -lne 's/\s*$//; print if ! $x{$_}++' "${1}"
-    gedit "${1}"
+    perl -i -lne 's/\s*$//; print if ! $x{$_}++' "$1"
+    ged "$1"
 }
 
 ###################
@@ -140,14 +143,14 @@ cpf()
 {
     clear
 
-    if [ ! -d "${HOME}/tmp" ]; then
-        mkdir -p "${HOME}/tmp"
+    if [ ! -d "$HOME/tmp" ]; then
+        mkdir -p "$HOME/tmp"
     fi
 
-    cp "${1}" "${HOME}/tmp/${1}"
+    cp "$1" "$HOME/tmp/$1"
 
-    chown -R "${USER}":"${USER}" "${HOME}/tmp/${1}"
-    chmod -R 744 "${HOME}/tmp/${1}"
+    chown -R "$USER":"$USER" "$HOME/tmp/$1"
+    chmod -R 744 "$HOME/tmp/$1"
 
     clear; ls -1AhFv --color --group-directories-first
 }
@@ -157,14 +160,14 @@ mvf()
 {
     clear
 
-    if [ ! -d "${HOME}/tmp" ]; then
-        mkdir -p "${HOME}/tmp"
+    if [ ! -d "$HOME/tmp" ]; then
+        mkdir -p "$HOME/tmp"
     fi
 
-    mv "${1}" "${HOME}/tmp/${1}"
+    mv "$1" "$HOME/tmp/$1"
 
-    chown -R "${USER}":"${USER}" "${HOME}/tmp/${1}"
-    chmod -R 744 "${HOME}/tmp/${1}"
+    chown -R "${USER}":"${USER}" "$HOME/tmp/$1"
+    chmod -R 744 "$HOME/tmp/$1"
 
     clear; ls -1AhFv --color --group-directories-first
 }
@@ -172,6 +175,12 @@ mvf()
 ##################
 ## APT COMMANDS ##
 ##################
+
+# DOWNLOAD AN APT PACKAGE + ALL ITS DEPENDENCIES IN ONE GO
+
+function apt-download { wget -c $(apt-get install --reinstall --print-uris -qq $1 | cut -d"'" -f2); }
+
+
 
 # CLEAN
 clean()
@@ -212,6 +221,65 @@ fix()
     apt update
 }
 
+listd()
+{
+    clear
+    local search_cache
+
+    if [ -n "$1" ]; then
+        apt list *$1*-dev | awk -F'/' '{print $1}'
+    else
+        read -p 'Enter the string to search: ' search_cache
+        clear
+        apt list *$1*-dev | awk -F'/' '{print $1}'
+    fi
+}
+
+
+list()
+{
+    clear
+    local search_cache
+
+    if [ -n "$1" ]; then
+        apt list *$1* | awk -F'/' '{print $1}'
+    else
+        read -p 'Enter the string to search: ' search_cache
+        clear
+        apt list *$1* | awk -F'/' '{print $1}'
+    fi
+}
+
+# USE APTITUDE TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
+asearch()
+{
+    clear
+    local search_cache
+
+    if [ -n "$1" ]; then
+        aptitude search "$1 ~i" -F "%p"
+    else
+        read -p 'Enter the string to search: ' search_cache
+        clear
+        aptitude search "$1 ~i" -F "%p"
+    fi
+}
+
+# USE APT CACHE TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
+csearch()
+{
+    clear
+    local search_cache
+
+    if [ -n "$1" ]; then
+        apt-cache search --names-only "$1.*" | awk '{print $1}'
+    else
+        read -p 'Enter the string to search: ' search_cache
+        clear
+        apt-cache search --names-only "$search_cache.*" | awk '{print $1}'
+    fi
+}
+
 # FIX MISSING GPNU KEYS USED TO UPDATE PACKAGES
 fix_key()
 {
@@ -219,19 +287,19 @@ fix_key()
 
     local file url
 
-    if [[ -z "${1}" ]] && [[ -z "${2}" ]]; then
+    if [[ -z "$1" ]] && [[ -z "$2" ]]; then
         read -p 'Enter the file name to store in /etc/apt/trusted.gpg.d: ' file
         echo
         read -p 'Enter the gpg key url: ' url
         clear
     else
-        file="${1}"
-        url="${2}"
+        file="$1"
+        url="$2"
     fi
 
-    curl -S# "${url}" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/$file"
+    curl -S# "$url" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/$file"
 
-    if curl -S# "${url}" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/$file"; then
+    if curl -S# "$url" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/$file"; then
         echo 'The key was successfully added!'
     else
         echo 'The key FAILED to add!'
@@ -246,7 +314,7 @@ toa()
 {
     clear
 
-    chown -R "${USER}":"${USER}" "$PWD"
+    chown -R "$USER":"$USER" "$PWD"
     chmod -R 744 "$PWD"
 
     clear; ls -1AhFv --color --group-directories-first
@@ -260,8 +328,8 @@ toa()
 showpkgs()
 {
     dpkg --get-selections |
-    grep -v deinstall > "${HOME}"/tmp/packages.list
-    gedit "${HOME}"/tmp/packages.list
+    grep -v deinstall > "$HOME"/tmp/packages.list
+    ged "$HOME"/tmp/packages.list
 }
 
 # PIPE ALL DEVELOPMENT PACKAGES NAMES TO file
@@ -271,7 +339,7 @@ getdev()
     grep "\-dev" |
     cut -d ' ' -f1 |
     sort > 'dev-packages.list'
-    gedit 'dev-packages.list'
+    ged 'dev-packages.list'
 }
 
 ################
@@ -319,24 +387,24 @@ new_key()
 
     echo -e "[i] Your choices\\n"
     echo -e "[i] Type: $type"
-    echo -e "[i] bits: ${bits}"
-    echo -e "[i] Password: ${pass}"
-    echo -e "[i] comment: ${comment}"
-    echo -e "[i] Key name: ${name}\\n"
+    echo -e "[i] bits: $bits"
+    echo -e "[i] Password: $pass"
+    echo -e "[i] comment: $comment"
+    echo -e "[i] Key name: $name\\n"
     read -p 'Press enter to continue or ^c to exit'
     clear
 
-    ssh-keygen -q -b "${bits}" -t "$type" -N "${pass}" -C "${comment}" -f "${name}"
+    ssh-keygen -q -b "$bits" -t "$type" -N "$pass" -C "$comment" -f "$name"
 
-    chmod 600 "$PWD/${name}"
-    chmod 644 "$PWD/${name}".pub
+    chmod 600 "$PWD/$name"
+    chmod 644 "$PWD/$name".pub
     clear
 
-    echo -e "file: $PWD/${name}\\n"
-    cat "$PWD/${name}"
+    echo -e "file: $PWD/$name\\n"
+    cat "$PWD/$name"
 
-    echo -e "\\nfile: $PWD/${name}.pub\\n"
-    cat "$PWD/${name}.pub"
+    echo -e "\\nfile: $PWD/$name.pub\\n"
+    cat "$PWD/$name.pub"
 
     echo
 }
@@ -352,32 +420,32 @@ keytopub()
     read -p 'Private key: ' okey
     read -p 'Public key: ' opub
     clear
-    if [ -f "${okey}" ]; then
-        chmod 600 "${okey}"
+    if [ -f "$okey" ]; then
+        chmod 600 "$okey"
     else
-        echo -e "Warning: file missing = ${okey}\\n"
+        echo -e "Warning: file missing = $okey\\n"
         read -p 'Press Enter to exit.'
         exit 1
     fi
-    ssh-keygen -b '4096' -y -f "${okey}" > "${opub}"
-    chmod 644 "${opub}"
-    cp "${opub}" "${HOME}"/.ssh/authorized_keys
-    chmod 600 "${HOME}"/.ssh/authorized_keys
-    unset "${okey}"
-    unset "${opub}"
+    ssh-keygen -b '4096' -y -f "$okey" > "$opub"
+    chmod 644 "$opub"
+    cp "$opub" "$HOME"/.ssh/authorized_keys
+    chmod 600 "$HOME"/.ssh/authorized_keys
+    unset "$okey"
+    unset "$opub"
 }
 
 # install colordiff package :)
-cdiff() { clear; colordiff "${1}" "${2}"; }
+cdiff() { clear; colordiff "$1" "$2"; }
 
 # GZIP
-gzip() { clear; gzip -d "${@}"; }
+gzip() { clear; gzip -d "$@"; }
 
 # get system time
 show_time() { clear; date +%r | cut -d " " -f1-2 | grep -E '^.*$'; }
 
 # CHANGE DIRECTORY
-cdsys() { pushd "${HOME}"/system || exit 1; cl; }
+cdsys() { pushd "$HOME"/system || exit 1; cl; }
 
 ##################
 ## SOURCE FILES ##
@@ -387,7 +455,7 @@ sbrc()
 {
     clear
 
-    source "${HOME}"/.bashrc && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
+    source "$HOME"/.bashrc && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
     sleep 1
 
     clear; ls -1AhFv --color --group-directories-first
@@ -397,7 +465,7 @@ spro()
 {
     clear
 
-    source "${HOME}"/.profile && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
+    source "$HOME"/.profile && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
     sleep 1
 
     clear; ls -1AhFv --color --group-directories-first
@@ -412,7 +480,7 @@ aria2_on()
 {
     clear
 
-    if aria2c --conf-path="${HOME}"/.aria2/aria2.conf; then
+    if aria2c --conf-path="$HOME"/.aria2/aria2.conf; then
         echo -e "\\nCommand Executed Successfully\\n"
     else
         echo -e "\\nCommand Failed\\n"
@@ -429,17 +497,17 @@ aria2()
 
     local file link
 
-    if [[ -z "${1}" ]] && [[ -z "${2}" ]]; then
+    if [[ -z "$1" ]] && [[ -z "$2" ]]; then
         read -p 'Enter the output file name: ' file
         echo
         read -p 'Enter the download url: ' link
         clear
     else
-        file="${1}"
-        link="${2}"
+        file="$1"
+        link="$2"
     fi
 
-    aria2c --out="$file" "${link}"
+    aria2c --out="$file" "$link"
 }
 
 # PRINT lan/wan IP
@@ -449,8 +517,8 @@ myip()
     lan="$(hostname -I)"
     wan="$(dig +short myip.opendns.com @resolver1.opendns.com)"
     clear
-    echo "Internal IP (lan) address: ${lan}"
-    echo "External IP (wan) address: ${wan}"
+    echo "Internal IP (lan) address: $lan"
+    echo "External IP (wan) address: $wan"
 }
 
 # WGET COMMAND
@@ -460,14 +528,14 @@ mywget()
 
     local outfile url
 
-    if [ -z "${1}" ] || [ -z "${2}" ]; then
+    if [ -z "$1" ] || [ -z "$2" ]; then
         read -p 'Please enter the output file name: ' outfile
         echo
         read -p 'Please enter the url: ' url
         clear
-        wget --out-file="${outfile}" "${url}"
+        wget --out-file="$outfile" "$url"
     else
-        wget --out-file="${1}" "${2}"
+        wget --out-file="$1" "$2"
     fi
 }
 
@@ -482,13 +550,13 @@ rmd()
 
     local i
 
-    if [ -z "${1}" ] || [ -z "${2}" ]; then
+    if [ -z "$1" ] || [ -z "$2" ]; then
         read -p 'Please enter the directory name to remove: ' i
         clear
-        sudo rm -r "${i}"
+        sudo rm -r "$i"
         clear
     else
-        sudo rm -r "${1}"
+        sudo rm -r "$1"
         clear
     fi
 }
@@ -500,13 +568,13 @@ rmf()
 
     local i
 
-    if [ -z "${1}" ]; then
+    if [ -z "$1" ]; then
         read -p 'Please enter the file name to remove: ' i
         clear
-        sudo rm "${i}"
+        sudo rm "$i"
         clear
     else
-        sudo rm "${1}"
+        sudo rm "$1"
         clear
     fi
 }
@@ -524,22 +592,22 @@ imo()
     # find all jpg files and create temporary cache files from them
     for i in *.jpg; do
         echo -e "\\nCreating two temporary cache files: ${i%%.jpg}.mpc + ${i%%.jpg}.cache\\n"
-        dimensions="$(identify -format '%wx%h' "${i}")"
-        convert "${i}" -monitor -filter Triangle -define filter:support=2 -thumbnail "${dimensions}" -strip \
+        dimensions="$(identify -format '%wx%h' "$i")"
+        convert "$i" -monitor -filter Triangle -define filter:support=2 -thumbnail "$dimensions" -strip \
         -unsharp 0.25x0.08+8.3+0.045 -dither None -posterize 136 -quality 82 -define jpeg:fancy-upsampling=off \
         -auto-level -enhance -interlace none -colorspace sRGB "/tmp/${i%%.jpg}.mpc"
         clear
         for cfile in /tmp/*.mpc; do
         # find the temporary cache files created above and output optimized jpg files
-            if [ -f "${cfile}" ]; then
-                echo -e "\\nOverwriting orignal file with optimized self: ${cfile} >> ${cfile%%.mpc}.jpg\\n"
-                convert "${cfile}" -monitor "${cfile%%.mpc}.jpg"
+            if [ -f "$cfile" ]; then
+                echo -e "\\nOverwriting orignal file with optimized self: $cfile >> ${cfile%%.mpc}.jpg\\n"
+                convert "$cfile" -monitor "${cfile%%.mpc}.jpg"
                 # overwrite the original image with it's optimized version
                 # by moving it from the tmp directory to the source directory
                 if [ -f "${cfile%%.mpc}.jpg" ]; then
                     mv "${cfile%%.mpc}.jpg" "$PWD"
                     # delete both cache files before continuing
-                    rm "${cfile}"
+                    rm "$cfile"
                     rm "${cfile%%.mpc}.cache"
                     clear
                 fi
@@ -567,25 +635,25 @@ imow()
         echo
         echo "Working Directory: $PWD"
         echo
-        printf "Converting: %s\n             >> %s\n              >> %s\n               >> %s\n" "${i}" "${i%%.jpg}.mpc" "${i%%.jpg}.cache" "${i%%.jpg}-IM.jpg"
+        printf "Converting: %s\n             >> %s\n              >> %s\n               >> %s\n" "$i" "${i%%.jpg}.mpc" "${i%%.jpg}.cache" "${i%%.jpg}-IM.jpg"
         echo
         echo '========================================================================================================='
         echo
-        dimensions="$(identify -format '%wx%h' "${i}")"
-        convert "${i}" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "${dimensions}" -strip \
+        dimensions="$(identify -format '%wx%h' "$i")"
+        convert "$i" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "$dimensions" -strip \
             -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize '136' -quality '82' -define jpeg:fancy-upsampling='off' \
             -define png:compression-filter='5' -define png:compression-level='9' -define png:compression-strategy='1' \
-            -define png:exclude-chunk='all' -auto-level -enhance -interlace 'none' -colorspace 'sRGB' "${random}/${i%%.jpg}.mpc"
+            -define png:exclude-chunk='all' -auto-level -enhance -interlace 'none' -colorspace 'sRGB' "$random/${i%%.jpg}.mpc"
         clear
-        for cached in "${random}"/*.mpc
+        for cached in "$random"/*.mpc
         do
-            if [ -f "${cached}" ]; then
-                convert "${cached}" -monitor "${cached%%.mpc}.jpg"
+            if [ -f "$cached" ]; then
+                convert "$cached" -monitor "${cached%%.mpc}.jpg"
                 if [ -f "${cached%%.mpc}.jpg" ]; then
                     CWD="$(${cached//s:.*/::})"
                     mv "${cached%%.mpc}.jpg" "$PWD/${CWD%%.*}-IM.jpg"
                     rm -f "$PWD/${CWD%%.*}.jpg"
-                    for v in ${cached}
+                    for v in $cached
                     do
                         v_noslash="${v%/}"
                         rm -fr "${v_noslash%/*}"
@@ -619,7 +687,7 @@ im50()
 
     for i in *.jpg
     do
-        convert "${i}" -monitor -colorspace sRGB -filter 'LanczosRadius' -distort Resize 50% -colorspace sRGB "${i}"
+        convert "$i" -monitor -colorspace sRGB -filter 'LanczosRadius' -distort Resize 50% -colorspace sRGB "$i"
     done
 }
 
@@ -649,7 +717,7 @@ nvme_temp()
     n1="$(sudo nvme smart-log /dev/nvme1n1)"
     n2="$(sudo nvme smart-log /dev/nvme2n1)"
 
-    printf "nvme0n1:\n\n%s\n\nnvme1n1:\n\n%s\n\nnvme2n1:\n\n%s\n\n" "${n0}" "${n1}" "${n2}"
+    printf "nvme0n1:\n\n%s\n\nnvme1n1:\n\n%s\n\nnvme2n1:\n\n%s\n\n" "$n0" "$n1" "$n2"
 }
 
 #############################
@@ -659,8 +727,8 @@ nvme_temp()
 rftn()
 {
     clear
-    sudo rm -fr "${HOME}"/.cache/thumbnails/*
-    ls -al "${HOME}"/.cache/thumbnails
+    sudo rm -fr "$HOME"/.cache/thumbnails/*
+    ls -al "$HOME"/.cache/thumbnails
 }
 
 #######################
@@ -669,7 +737,7 @@ rftn()
 
 nopen()
 {
-    nohup nautilus -w "${1}" &>/dev/null &
+    nohup nautilus -w "$1" &>/dev/null &
 }
 
 #####################
@@ -692,14 +760,14 @@ cuda_purge()
     read -p 'Your choices are (1 or 2): ' answer
     clear
 
-    if [[ "${answer}" -eq '1' ]]; then
+    if [[ "$answer" -eq '1' ]]; then
         echo 'Purging the cuda-sdk-toolkit from your computer.'
         echo '================================================'
         echo
         sudo apt-get -y --purge remove "*cublas*" "cuda*" "nsight*"
         sudo apt -y autoremove
         sudo apt update
-    elif [[ "${answer}" -eq '2' ]]; then
+    elif [[ "$answer" -eq '2' ]]; then
         return 0
     fi
 }
@@ -718,9 +786,9 @@ large_files()
     echo
     read -p 'Enter your choice: ' answer
     clear
-    find "$PWD" -type f -name "*.${answer}" -printf '%h\n' | sort -u -o 'large-files.txt'
+    find "$PWD" -type f -name "*.$answer" -printf '%h\n' | sort -u -o 'large-files.txt'
     if [ -f 'large-files.txt' ]; then
-        sudo gedit 'large-files.txt'
+        sudo ged 'large-files.txt'
     fi
 }
 
@@ -734,14 +802,14 @@ mi()
 
     local i
 
-    if [ -z "${1}" ]; then
+    if [ -z "$1" ]; then
         ls -1AhFv --color --group-directories-first
         echo
         read -p 'Please enter the relative file path: ' i
         clear
-        mediainfo "${i}"
+        mediainfo "$i"
     else
-        mediainfo "${1}"
+        mediainfo "$1"
     fi
 }
 
@@ -761,20 +829,20 @@ listppas()
 {
     clear
 
-    local APT HOST USER PPA ENTRY
+    local _apt host user ppa entry
 
-    for APT in $(find /etc/apt/ -type f -name \*.list)
+    for _apt in $(find /etc/apt/ -type f -name \*.list)
     do
-        grep -Po "(?<=^deb\s).*?(?=#|$)" "$APT" | while read ENTRY
+        grep -Po "(?<=^deb\s).*?(?=#|$)" "$_apt" | while read entry
         do
-            HOST="$(echo "$ENTRY" | cut -d/ -f3)"
-            USER="$(echo "$ENTRY" | cut -d/ -f4)"
-            PPA="$(echo "$ENTRY" | cut -d/ -f5)"
-            #echo sudo apt-add-repository ppa:$USER/$PPA
-            if [ "ppa.launchpad.net" = "$HOST" ]; then
-                echo sudo apt-add-repository ppa:"$USER/$PPA"
+            host="$(echo "$entry" | cut -d/ -f3)"
+            user="$(echo "$entry" | cut -d/ -f4)"
+            ppa="$(echo "$entry" | cut -d/ -f5)"
+            #echo sudo apt-add-repository ppa:$user/$ppa
+            if [ "ppa.launchpad.net" = "$host" ]; then
+                echo sudo apt-add-repository ppa:"$user/$ppa"
             else
-                echo sudo apt-add-repository \'deb "$ENTRY"\'
+                echo sudo apt-add-repository \'deb "$entry"\'
             fi
         done
     done
