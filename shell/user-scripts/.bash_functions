@@ -1,13 +1,17 @@
 #shellcheck disable=SC2162,SC1091,SC2317
 
+#########################################
+## SET SUDO TO RUN AS THE CURRENT USER ##
+#########################################
+
+sudo() { $(which sudo) -H -u "$USER" "$@"; }
+
 ##################################################################################
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 ##################################################################################
 
-ged() { gedit "$@" &>/dev/null; }
-
-geds() { sudo gedit "$@" &>/dev/null; }
-
+gedit() { $(which gedit) "$@" &>/dev/null; }
+geds() { /usr/bin/sudo /usr/bin/gedit "$@"; }
 
 ###################
 ## FIND COMMANDS ##
@@ -863,7 +867,6 @@ os_name()
     clear
     eval lsb_release -a | grep -Eo '[A-Za-z]+ [0-9\.]+\s*[A-Z]*'
 }
-
 
 ##############################################
 ## MONITOR CPU AND MOTHERBOARD TEMPERATURES ##
