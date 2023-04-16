@@ -863,3 +863,31 @@ os_name()
     clear
     eval lsb_release -a | grep -Eo '[A-Za-z]+ [0-9\.]+\s*[A-Z]*'
 }
+
+
+##############################################
+## MONITOR CPU AND MOTHERBOARD TEMPERATURES ##
+##############################################
+
+hw_mon()
+{
+    clear
+
+    local found
+
+    # install lm-sensors if not already
+    if ! which lm-sensors &>/dev/null; then
+        sudo apt -y install lm-sensors
+    fi
+
+    # add modprobe to system startup tasks if not already added    
+    found="$(grep -o 'drivetemp' '/etc/modules')"
+    if [ -z "$found" ]; then
+        echo 'drivetemp' | sudo tee -a '/etc/modules'
+    else
+        sudo modprobe drivetemp
+    fi
+
+    sudo watch -n1 sensors
+
+}
