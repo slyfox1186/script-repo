@@ -2,12 +2,22 @@
 
 clear
 
+fname='/etc/apt/sources.list'
+
+# make a backup of the file
+if [ ! -f "$fname.bak" ]; then cp -f "$fname" "$fname.bak"; fi
+
+cat <<EOT > "$fname"
+#!/bin/bash
+
+clear
+
 FILE='/etc/apt/sources.list'
 
 # make a backup of the file
-if [ ! -f "${FILE}.bak" ]; then cp -f "${FILE}" "${FILE}.bak"; fi
+if [ ! -f "$fname.bak" ]; then cp -f "$fname" "$fname.bak"; fi
 
-cat <<EOT > "${FILE}"
+cat <<EOT > "$fname"
 ##      UBUNTU JAMMY
 ##
 ##        v22.04.1
@@ -71,12 +81,25 @@ deb-src http://mirror.pit.teraswitch.com/ubuntu/ jammy-backports main restricted
 EOT
 
 # Open in editor to verify file contents
-if which gedit &> /dev/null; then
-    gedit "${FILE}"
-elif which nano &> /dev/null; then
-    nano "${FILE}"
-elif which vim &> /dev/null; then
-    vim "${FILE}"
+if which gedit &>/dev/null; then
+    gedit "$fname"
+elif which nano &>/dev/null; then
+    nano "$fname"
+elif which vim &>/dev/null; then
+    vim "$fname"
 else
-    vi "${FILE}"
+    vi "$fname"
+fi
+
+EOT
+
+# Open in editor to verify file contents
+if which gedit &>/dev/null; then
+    gedit "$fname"
+elif which nano &>/dev/null; then
+    nano "$fname"
+elif which vim &>/dev/null; then
+    vim "$fname"
+else
+    vi "$fname"
 fi
