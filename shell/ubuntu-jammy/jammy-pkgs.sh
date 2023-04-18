@@ -32,33 +32,38 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok ins
 
 exit_fn()
 {
-    printf "\\n%s\\n%s\\n\n%s\\n\n%s\\n\\n" \
-    'Script complete!' \
-    '====================' \
-    'Make sure to star this repository to show your support!' \
-    'https://github.com/slyfox1186/script-repo/'
+    printf "\n%s\n%s\n%s\n%s\n\n" \
+    "$1" \
+    "$2" \
+    '[i] Make sure to star this repository to show your support!' \
+    '[i] https://github.com/slyfox1186/script-repo/'
     # rm "${0}"
     exit 0
 }
 
 pkgs_fn()
 {
-    pkgs=(alien apt-config-auto-update apt-file aptitude aria2 apt-config-auto-update apt-file \
-          autoconf autogen automake bat binutils bison build-essential ccdiff checkinstall \
-          clang clang-tools cmake cmake-extras colordiff curl cvs dbus dbus-x11 dconf-editor \
-          ddclient debhelper devscripts dh-make disktype dos2unix fakeroot flex g++ gawk gcc \
-          gedit gedit-plugins dpkg-dev exfat-fuse exfatprogs f2fs-tools flatpak gir1.2-gtksource-3.0 git \
-          git-all git-buildpackage gnome-tweaks gnustep-gui-runtime golang gparted gperf grub-customizer \
-          gufw hfsplus hfsprogs hfsutils htop idn2 iftop iw jfsutils jq libbz2-dev libdmalloc-dev \
-          libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev liblz-dev liblzma-dev liblzo2-dev libmimalloc-dev \
-          libncurses5-dev libnet-nslookup-perl libnuma-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev \
-          librsvg2-dev librust-jemalloc-sys-dev librust-malloc-buf-dev libsdl-pango-dev libsox-dev libsoxr-dev \
-          libssl-dev libtalloc-dev libtbbmalloc2 libtool libtool-bin libzstd-dev libzzip-dev "linux-headers-$(uname -r)" \
-          linux-source lm-sensors lshw lvm2 lzma-dev make man-db mercurial mono-devel nano netplan.io net-tools \
-          network-manager nilfs-tools npm ntfs2btrfs ntfs-3g nvme-cli openssh-client openssh-server openssl patchutils \
-          pbuilder pcregrep php-cli php-sqlite3 pipenv plocate ppa-purge pristine-tar psensor python3 python3-pip \
-          quilt reiser4progs reiserfsprogs rpm ruby-all-dev samba shellcheck smbclient sox sqlite3 subversion \
-          synaptic texinfo tofrodos trash-cli tty-share udftools unzip uuid-dev wget xclip xfsprogs xsel yasm)
+    pkgs=(alien apt-file aptitude aria2 autoconf autogen automake bat binutils \
+          bison build-essential ccdiff checkinstall clang clang-tools cmake \
+          cmake-extras colordiff curl cvs dbus dbus-x11 dconf-editor ddclient \
+          debhelper devscripts dh-make disktype dos2unix dpkg-dev exfat-fuse \
+          exfatprogs f2fs-tools fakeroot flatpak flex g++ gawk gcc gedit gedit-plugins \
+          gir1.2-gtksource-3.0 git git-all git-buildpackage gnome-shell-extension-manager \
+          gnome-tweaks gnustep-gui-runtime golang gparted gperf grub-customizer \
+          gufw hfsplus hfsprogs hfsutils htop idn2 iftop iw jfsutils jq libbz2-dev \
+          libdmalloc-dev libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev liblz-dev \
+          liblzma-dev liblzo2-dev libmimalloc-dev libncurses5-dev libnet-nslookup-perl \
+          libnuma-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev \
+          librust-jemalloc-sys-dev librust-malloc-buf-dev libsdl-pango-dev libsox-dev \
+          libsoxr-dev libssl-dev libtalloc-dev libtbbmalloc2 libtool libtool-bin \
+          libzstd-dev libzzip-dev "linux-headers-$(uname -r)" linux-source lm-sensors \
+          lshw lvm2 lzma-dev make man-db mercurial meson mono-devel nano netplan.io \
+          net-tools network-manager nilfs-tools npm ntfs2btrfs ntfs-3g nvme-cli \
+          openssh-client openssh-server openssl patchutils pbuilder pcregrep php-cli \
+          php-sqlite3 pipenv plank plocate ppa-purge pristine-tar psensor python3 \
+          python3-pip quilt reiser4progs reiserfsprogs rpm ruby-all-dev samba shellcheck \
+          smbclient sox sqlite3 subversion synaptic texinfo tofrodos trash-cli tty-share \
+          udftools unzip uuid-dev wget xclip xfsprogs xsel yasm)
 
     for pkg in ${pkgs[@]}
     do
@@ -72,11 +77,11 @@ pkgs_fn()
         do
             apt -y install ${i}
         done
-        echo '$ Any missing apt packages were installed'
+        exit_msg2='[i] Any missing apt packages were installed'
     else
-        echo
-        echo '$ The apt packages are already installed'
+        exit_msg2='[i] The apt packages are already installed'
     fi
+    exit_fn "$exit_msg1" "$exit_msg2"
 }
 
 ppa_fn()
@@ -107,13 +112,9 @@ ppa_fn()
     if [ -n "$apt_ppa" ]; then
         apt update
         apt -y install $apt_ppa
-        echo
-        echo '$ Any missing ppa repositories were installed'
-        echo
+        exit_msg1='[i] Any missing ppa repositories were installed'
     else
-        echo
-        echo '$ The ppa repositories are already installed'
-        echo
+        exit_msg1='[i] The ppa repositories are already installed'
     fi
 }
 
