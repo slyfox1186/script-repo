@@ -414,13 +414,7 @@ git_1_fn()
     github_repo="$1"
     github_url="$2"
 
-    if curl_cmd="$(curl \
-        -m "$curl_timeout" \
-        --request GET \
-        --url "https://api.github.com/slyfox1186" \
-        --header "Authorization: Bearer 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" \
-        --header "X-GitHub-Api-Version: 2022-11-28" \
-        -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
 
         g_ver=$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)
         g_ver=${g_ver#v}
