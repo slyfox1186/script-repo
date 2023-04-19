@@ -90,16 +90,3 @@ elif which vim &>/dev/null; then
 else
     vi "$fname"
 fi
-
-EOT
-
-# Open in editor to verify file contents
-if which gedit &>/dev/null; then
-    gedit "$fname"
-elif which nano &>/dev/null; then
-    nano "$fname"
-elif which vim &>/dev/null; then
-    vim "$fname"
-else
-    vi "$fname"
-fi
