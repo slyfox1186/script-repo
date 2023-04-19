@@ -57,7 +57,7 @@ pkgs_fn()
           librust-jemalloc-sys-dev librust-malloc-buf-dev libsdl-pango-dev libsox-dev \
           libsoxr-dev libssl-dev libtalloc-dev libtbbmalloc2 libtool libtool-bin \
           libzstd-dev libzzip-dev "linux-headers-$(uname -r)" linux-source lm-sensors \
-          lshw lvm2 lzma-dev make man-db mercurial meson mono-devel nano netplan.io \
+          lsb-core lshw lvm2 lzma-dev make man-db mercurial meson mono-devel nano netplan.io \
           net-tools network-manager nilfs-tools npm ntfs2btrfs ntfs-3g nvme-cli \
           openssh-client openssh-server openssl patchutils pbuilder pcregrep php-cli \
           php-sqlite3 pipenv plank plocate ppa-purge pristine-tar psensor python3 \
