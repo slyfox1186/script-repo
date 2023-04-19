@@ -38,6 +38,7 @@ fail_fn()
     echo
     echo 'https://github.com/slyfox1186/script-repo/issues'
     echo
+    sudo rm "$0"
     exit 1
 }
 
