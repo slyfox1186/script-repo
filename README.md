@@ -22,7 +22,6 @@
 **Ubuntu Jammy 22.04.02**
 ```bash
 wget -qO pkgs.sh https://jammy-pkgs.optimizethis.net; sudo bash pkgs.sh
-curl -sSL https://jammy-pkgs.optimizethis.net | sudo bash
 ```
 **Ubuntu Focal 20.04.05**
 ```bash
@@ -50,19 +49,19 @@ wget -qO scripts.sh https://scripts.optimizethis.net; bash scripts.sh
 
 #### Ubuntu Jammy
 ```bash
-wget -qO mirrors.sh https://jammy-mirrors.optimizethis.net; sudo bash mirrors.sh
+curl -sSL https://jammy-mirrors.optimizethis.net | sudo bash
 ```
 #### Ubuntu Focal
 ```bash
-wget -qO mirrors.sh https://focal-mirrors.optimizethis.net; sudo bash mirrors.sh
+curl -sSL https://focal-mirrors.optimizethis.net | sudo bash
 ```
 #### Ubuntu Bionic
 ```bash
-wget -qO mirrors.sh https://bionic-mirrors.optimizethis.net; sudo bash mirrors.sh
+curl -sSL https://bionic-mirrors.optimizethis.net | sudo bash
 ```
 #### Debian Bullseye
 ```bash
-wget -qO mirrors.sh https://debian-mirrors.optimizethis.net; sudo bash mirrors.sh
+curl -sSL https://debian-mirrors.optimizethis.net | sudo bash
 ```
 ------
 ## Install [7-Zip](www.7-zip.org/download.html)
