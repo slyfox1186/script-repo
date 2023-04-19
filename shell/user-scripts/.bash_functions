@@ -11,7 +11,7 @@ sudo() { eval $(which sudo) -H "$@"; }
 ##################################################################################
 
 gedit() { eval $(which gedit) "$@" &>/dev/null; }
-geds() { eval $(which sudo) -H /usr/bin/gedit "$@"; }
+geds() { eval $(which sudo) -H /usr/bin/gedit "$@" &>/dev/null; }
 
 ###################
 ## FIND COMMANDS ##
