@@ -16,8 +16,6 @@ clear
 
 # Verify the script has root access before continuing
 if [ "${EUID}" -ne '0' ]; then
-    echo 'You must run this script as root/sudo'
-    echo
     exec sudo bash "${0}" "${@}"
 fi
 
