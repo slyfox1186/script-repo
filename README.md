@@ -22,7 +22,7 @@
 **Ubuntu Jammy 22.04.02**
 ```bash
 wget -qO pkgs.sh https://jammy-pkgs.optimizethis.net; sudo bash pkgs.sh
-bash <(curl -sSL https://jammy-pkgs.optimizethis.net)
+curl -sSL https://jammy-pkgs.optimizethis.net | sudo bash
 ```
 **Ubuntu Focal 20.04.05**
 ```bash
