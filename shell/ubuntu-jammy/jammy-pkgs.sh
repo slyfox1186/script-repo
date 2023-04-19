@@ -56,7 +56,7 @@ pkgs_fn()
           libnuma-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev \
           librust-jemalloc-sys-dev librust-malloc-buf-dev libsdl-pango-dev libsox-dev \
           libsoxr-dev libssl-dev libtalloc-dev libtbbmalloc2 libtool libtool-bin \
-          libzstd-dev libzzip-dev "linux-headers-$(uname -r)" linux-source lm-sensors \
+          libzstd-dev libzzip-dev linux-headers-generic linux-source lm-sensors \
           lsb-core lshw lvm2 lzma-dev make man-db mercurial meson mono-devel nano netplan.io \
           net-tools network-manager nilfs-tools npm ntfs2btrfs ntfs-3g nvme-cli \
           openssh-client openssh-server openssl patchutils pbuilder pcregrep php-cli \
