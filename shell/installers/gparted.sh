@@ -17,7 +17,8 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok ins
 ## Install Missing Gparted Packages
 ##
 
-pkgs=(exfat-fuse exfatprogs f2fs-tools gparted hfsplus hfsprogs hfsutils jfsutils lvm2 nilfs-tools ntfs2btrfs ntfs-3g reiser4progs reiserfsprogs udftools xfsprogs)
+pkgs=(exfat-fuse exfatprogs f2fs-tools gparted hfsplus hfsprogs hfsutils jfsutils \
+      lvm2 nilfs-tools ntfs2btrfs ntfs-3g reiser4progs reiserfsprogs udftools xfsprogs)
 
 for pkg in ${pkgs[@]}
 do
