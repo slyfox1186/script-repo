@@ -4,14 +4,14 @@
 ## SET SUDO TO RUN AS THE CURRENT USER ##
 #########################################
 
-sudo() { $(which sudo) -H -u "$USER" "$@"; }
+sudo() { eval $(which sudo) -H "$@"; }
 
 ##################################################################################
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 ##################################################################################
 
-gedit() { $(which gedit) "$@" &>/dev/null; }
-geds() { /usr/bin/sudo /usr/bin/gedit "$@"; }
+gedit() { eval $(which gedit) "$@" &>/dev/null; }
+geds() { eval $(which sudo) -H /usr/bin/gedit "$@"; }
 
 ###################
 ## FIND COMMANDS ##
