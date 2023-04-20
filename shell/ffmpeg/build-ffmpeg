@@ -214,30 +214,6 @@ download()
     cd "$dl_path/$target_dir" || fail_fn "Unable to change the working directory to $target_dir"
 }
 
-git_cmd()
-{
-    git_with_args="\"$1\""
-    target_dir="$2"
-    if [ ! -d "$target_dir" ]; then
-        echo "Downloading $dl_file"
-        if ! git clone -q $git_with_args "$target_dir"; then
-            echo
-            echo "The script failed to download \"$dl_file\" and will try again in 10 seconds"
-            sleep 10
-            echo
-            if ! git clone -q $git_with_args "$target_dir"; then
-                fail_fn "The script failed to download \"$dl_file\" two times and will exit the build"
-            fi
-        fi
-        echo 'Download Complete'
-        echo
-    else
-        echo "$dl_file is already downloaded"
-    fi
-
-    cd "$target_dir" || fail_fn "Unable to change the working directory to $target_dir"
-}
-
 download_git()
 {
     dl_path="$packages"
@@ -252,7 +228,9 @@ download_git()
     fi
 
     # first download attempt
-    if [ ! -d "$target_dir" ]; then
+    if [ -d "$target_dir" ]; then
+        sudo rm -fr "$target_dir"
+    else
         echo "Downloading $dl_file"
         if ! git clone -q "$dl_url" "$target_dir"; then
             echo
@@ -265,8 +243,6 @@ download_git()
         fi
         echo 'Download Complete'
         echo
-    else
-        echo "$dl_file is already downloaded"
     fi
 
     cd "$target_dir" || fail_fn "Unable to change the working directory to $target_dir"
@@ -935,7 +911,8 @@ fi
 
 git_ver_fn 'freedesktop/pkg-config' '1' 'T'
 if build 'pkg-config' "$g_pkg"; then
-    download "https://pkgconfig.freedesktop.org/releases/$g_ver.tar.gz" "$g_ver.tar.gz"
+    download_git 'https://github.com/freedesktop/pkg-config.git' "$g_ver"
+    execute ./autogen.sh
     execute ./configure --silent --prefix="$workspace" --with-pc-path="$workspace"/lib/pkgconfig/ --with-internal-glib
     execute make -j "$cpu_threads"
     execute make install
@@ -1691,7 +1668,7 @@ cnf_ops+=('--enable-nvenc')
 
 git_ver_fn 'fraunhoferhhi/vvdec' '1' 'T'
 if build 'vvdec' "$g_ver"; then
-    download "$g_url" "vvdec-$g_ver.tar.gz"
+    download_git 'https://github.com/fraunhoferhhi/vvdec.git' "vvdec-$g_ver"
     execute cmake -S . -B build/release-static -DCMAKE_INSTALL_PREFIX="$workspace" \
         -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release'
     execute cmake --build build/release-static -j
@@ -1701,11 +1678,11 @@ cnf_ops+=('--enable-nvdec')
 
 if which 'nvcc' &>/dev/null ; then
     git_ver_fn 'FFmpeg/nv-codec-headers' '1' 'T'
-    if build 'nv-codec' 'git'; then
-        download_git 'https://github.com/FFmpeg/nv-codec-headers.git' "nv-codec-git"
+    if build 'nv-codec' "$g_ver"; then
+        download_git 'https://github.com/FFmpeg/nv-codec-headers.git' "nv-codec-$g_ver"
         execute make PREFIX="$workspace"
         execute make install PREFIX="$workspace"
-        build_done 'nv-codec' 'git'
+        build_done 'nv-codec' "$g_ver"
     fi
     CFLAGS+=" -I/usr/local/cuda-12.1/targets/x86_64-linux/include -I/usr/local/cuda-12.1/include -I$workspace/usr/include -I$packages/nv-codec-n12.0.16.0/include"
     export CFLAGS
@@ -1736,9 +1713,11 @@ fi
 # CLONE FFMPEG FROM THE LATEST GIT RELEASE
 build 'FFmpeg' 'git'
 download_git 'https://git.ffmpeg.org/ffmpeg.git' 'FFmpeg-git'
+echo '$ ./configure'
 ./configure \
         "${cnf_ops[@]}" \
         --arch="$(uname -m)" \
+        --prefix="$workspace" \
         --disable-debug \
         --disable-doc \
         --disable-shared \
@@ -1753,8 +1732,7 @@ download_git 'https://git.ffmpeg.org/ffmpeg.git' 'FFmpeg-git'
         --extra-ldflags="$LDFLAGS" \
         --extra-libs="$EXTRALIBS" \
         --pkgconfigdir="$workspace/lib/pkgconfig" \
-        --pkg-config-flags='--static' \
-        --prefix="$workspace"
+        --pkg-config-flags='--static'
 
 # EXECUTE MAKE WITH PARALLEL PROCESSING
 execute make -j "$cpu_threads"
