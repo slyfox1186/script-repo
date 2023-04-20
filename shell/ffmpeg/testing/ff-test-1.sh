@@ -29,8 +29,8 @@
 ## define variables
 ##
 
+# FFmpeg version: Whatever the latest Git pull from: https://git.ffmpeg.org/gitweb/ffmpeg.git
 progname="${0:2}"
-ffmpeg_ver='n4.4.4'
 script_ver='3.3'
 cuda_ver='12.1'
 packages="$PWD"/packages
@@ -200,16 +200,12 @@ download()
     make_dir "$dl_path/$target_dir"
 
     if [ -n "$3" ]; then
-        if ! tar xf "$dl_path/$dl_file" -C "$dl_path/$target_dir" &>/dev/null; then
-            echo "Failed to extract $dl_file"
-            echo
-            fail_fn
+        if ! tar -xvf "$dl_path/$dl_file" -C "$dl_path/$target_dir" @>/dev/null; then
+            fail_fn "Failed to extract $dl_file"
         fi
     else
-        if ! tar xf "$dl_path/$dl_file" -C "$dl_path/$target_dir" &>/dev/null; then
-            echo "Failed to extract $dl_file"
-            echo
-            fail_fn
+        if ! tar -xvf "$dl_path/$dl_file" -C "$dl_path/$target_dir" --strip-components 1 @>/dev/null; then
+            fail_fn "Failed to extract $dl_file"
         fi
     fi
 
@@ -220,9 +216,26 @@ download()
 
 git_cmd()
 {
-    git_args="$*"
+    git_with_args="\"$1\""
+    target_dir="$2"
+    if [ ! -d "$target_dir" ]; then
+        echo "Downloading $dl_file"
+        if ! git clone -q $git_with_args "$target_dir"; then
+            echo
+            echo "The script failed to download \"$dl_file\" and will try again in 10 seconds"
+            sleep 10
+            echo
+            if ! git clone -q $git_with_args "$target_dir"; then
+                fail_fn "The script failed to download \"$dl_file\" two times and will exit the build"
+            fi
+        fi
+        echo 'Download Complete'
+        echo
+    else
+        echo "$dl_file is already downloaded"
+    fi
 
-    git $git_args
+    cd "$target_dir" || fail_fn "Unable to change the working directory to $target_dir"
 }
 
 download_git()
@@ -230,7 +243,13 @@ download_git()
     dl_path="$packages"
     dl_url="$1"
     dl_file="$2"
+    dl_args="$3"
     target_dir="$dl_path/$dl_file"
+
+    if [ -n "$dl_args" ]; then
+        git_cmd "$dl_url $dl_args" "$target_dir"
+        return 0
+    fi
 
     # first download attempt
     if [ ! -d "$target_dir" ]; then
@@ -241,9 +260,7 @@ download_git()
             sleep 10
             echo
             if ! git clone -q "$dl_url" "$target_dir"; then
-                echo
-                echo "The script failed to download \"$dl_file\" two times and will exit the build"
-                fail_fn
+                fail_fn "The script failed to download \"$dl_file\" two times and will exit the build"
             fi
         fi
         echo 'Download Complete'
@@ -252,12 +269,7 @@ download_git()
         echo "$dl_file is already downloaded"
     fi
 
-    cd "$target_dir" || (
-        echo 'Script error!'
-        echo
-        echo "Unable to change the working directory to $target_dir"
-        fail_fn
-    )
+    cd "$target_dir" || fail_fn "Unable to change the working directory to $target_dir"
 }
 
 # PULL THE LATEST VERSIONS OF EACH PACKAGE FROM THE WEBSITE API
@@ -272,25 +284,10 @@ git_1_fn()
     if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
-        g_ver_jq="$(echo "$curl_cmd" | jq -r '.[0].name')"
-        g_ver_jq="${g_ver_jq#jq-}"
-        g_ver_lcsm2="$(echo "$curl_cmd" | jq -r '.[0].name')"
-        g_ver_lcsm2="${g_ver_lcsm2#Little CMS }"
-        g_ver_ssl="$(echo "$curl_cmd" | jq -r '.[0].name')"
-        g_ver_ssl="${g_ver_ssl#OpenSSL }"
-        g_ver_pkg="$(echo "$curl_cmd" | jq -r '.[0].name')"
-        g_ver_pkg="${g_ver_pkg#pkg-config-}"
-        g_ver_zimg="$(echo "$curl_cmd" | jq -r '.[0].name')"
-        g_ver_zimg="${g_ver_zimg#release-}"
-        g_ver_libva="$(echo "$curl_cmd" | jq -r '.[0].name')"
-        g_ver_libva="${g_ver_libva#Libva }"
-        g_ver_llvm="$(echo "$curl_cmd" | jq -r '.[0].name')"
-        g_ver_llvm="${g_ver_llvm#LLVM }"
-        g_ver_ltd="$(echo "$curl_cmd" | jq -r '.[0].name')"
-        g_ver_ltd="${g_ver_llvm#libltdl-}"
-        g_ver_gpdl="${g_ver#Ghostscript/GhostPDL }"
-        g_url_gpdl="$(echo "$curl_cmd" | jq -r '.[0].assets[3].browser_download_url')"
-        g_url_gs="$(echo "$curl_cmd" | jq -r '.[0].assets[5].browser_download_url')"
+        g_ssl="$(echo "$curl_cmd" | jq -r '.[0].name')"
+        g_ssl="${g_ssl#OpenSSL }"
+        g_pkg="$(echo "$curl_cmd" | jq -r '.[0].name')"
+        g_pkg="${g_pkg#pkg-config-}"
         g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url')"
     fi
 }
@@ -367,15 +364,13 @@ git_ver_fn()
     v_url="$1"
     v_tag="$2"
 
-    if [ -n "$3" ]; then
-        v_flag="$3"
-    fi
+    if [ -n "$3" ]; then v_flag="$3"; fi
 
     if [ "$v_flag" = 'B' ] && [  "$v_tag" = '2' ]; then
         url_tag='git_2_fn' gv_url='branches'
     elif [ "$v_flag" = 'B' ] && [  "$v_tag" = '3' ]; then
         url_tag='git_3_fn' gv_url='branches'
-    fi  
+    fi
 
     if [ "$v_flag" = 'X' ] && [  "$v_tag" = '5' ]; then
         url_tag='git_5_fn'
@@ -414,7 +409,7 @@ execute()
     echo "$ $*"
 
     if ! output=$("$@" 2>&1); then
-        fail_fn "Failed to Execute $*" 
+        fail_fn "Failed to Execute $*"
     fi
 }
 
@@ -469,7 +464,7 @@ cuda_fail_fn()
     echo '                    Script error:'
     echo '======================================================'
     echo
-    echo "Unable to locate directory: /usr/local/cuda-$cuda_ver/bin/"
+    echo "Unable to locate directory: /usr/local/cuda-12.1/bin/"
     echo
     read -p 'Press enter to exit.'
     clear
@@ -579,7 +574,7 @@ while (($# > 0)); do
             bflag='-b'
         fi
         if [[ "$1" == '--enable-gpl-and-non-free' ]]; then
-            cnf_ops+=('--enable-nonfree_and_gpl')
+            cnf_ops+=('--enable-nonfree')
             cnf_ops+=('--enable-gpl')
             nonfree_and_gpl='true'
         fi
@@ -681,58 +676,67 @@ fi
 
 cuda_fn()
 {
-    echo
-    echo 'Pick your Linux distro from the list below:'
-    echo
-    echo 'Supported architecture: x86_x64'
-    echo
-    echo '[1] Debian 10'
-    echo '[2] Debian 11'
-    echo '[3] Ubuntu 18.04'
-    echo '[4] Ubuntu 20.04'
-    echo '[5] Ubuntu 22.04'
-    echo '[6] Ubuntu Windows (WSL)'
-    echo '[7] Skip this'
-    echo
-    read -p 'Your choices are (1 to 7): ' cuda_dist
-    echo
-    if [[ "$cuda_dist" -eq '1' ]]; then
-        wget --show progress -cqO "cuda-$cuda_ver.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-debian10-12-1-local_12.1.0-530.30.02-1_amd64.deb'
-        sudo dpkg -i "cuda-$cuda_ver.deb"
-        sudo cp /var/cuda-repo-debian10-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
-        sudo add-apt-repository contrib
-       elif [[ "$cuda_dist" -eq '2' ]]; then
-        wget --show progress -cqO "cuda-$cuda_ver.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-debian11-12-1-local_12.1.0-530.30.02-1_amd64.deb'
-        sudo dpkg -i "cuda-$cuda_ver.deb"
-        sudo cp /var/cuda-repo-debian11-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
-        sudo add-apt-repository contrib
-    elif [[ "$cuda_dist" -eq '3' ]]; then
-        wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin'
-        sudo mv 'cuda-ubuntu1804.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-        wget --show progress -cqO "cuda-$cuda_ver.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-ubuntu1804-12-1-local_12.1.0-530.30.02-1_amd64.deb'
-        sudo dpkg -i "cuda-$cuda_ver.deb"
-        sudo cp /var/cuda-repo-ubuntu1804-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
-    elif [[ "$cuda_dist" -eq '4' ]]; then
-        wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin'
-        sudo mv 'cuda-ubuntu2004.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-        wget --show progress -cqO "cuda-$cuda_ver.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-ubuntu2004-12-1-local_12.1.0-530.30.02-1_amd64.deb'
-        sudo dpkg -i "cuda-$cuda_ver.deb"
-        sudo cp /var/cuda-repo-ubuntu2004-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
-    elif [[ "$cuda_dist" -eq '5' ]]; then
-        wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin'
-        sudo mv 'cuda-ubuntu2204.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-        wget --show progress -cqO "cuda-$cuda_ver.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-ubuntu2204-12-1-local_12.1.0-530.30.02-1_amd64.deb'
-        sudo dpkg -i "cuda-$cuda_ver.deb"
-        sudo cp /var/cuda-repo-ubuntu2204-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
-    elif [[ "$cuda_dist" -eq '6' ]]; then
-        wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin'
-        sudo mv 'cuda-wsl-ubuntu.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-        wget --show progress -cqO "cuda-$cuda_ver.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-wsl-ubuntu-12-1-local_12.1.0-1_amd64.deb'
-        sudo dpkg -i "cuda-$cuda_ver.deb"
-        sudo cp /var/cuda-repo-wsl-ubuntu-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
-    elif [[ "$cuda_dist" -eq '7' ]]; then
-        return 0
-    fi
+    printf "\n%s\n\n%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n\n" \
+        'Pick your Linux distro from the list below:' \
+        'Supported architecture: x86_x64' \
+        '[1] Debian 10' \
+        '[2] Debian 11' \
+        '[3] Ubuntu 18.04' \
+        '[4] Ubuntu 20.04' \
+        '[5] Ubuntu 22.04' \
+        '[6] Ubuntu Windows (WSL)' \
+        '[7] Skip this'
+
+    read -p 'Your choices are (1 to 7): ' c_dist
+
+    case "$c_dist" in
+        1)
+            wget --show progress -cqO "cuda-12.1.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-debian10-12-1-local_12.1.0-530.30.02-1_amd64.deb'
+            sudo dpkg -i "cuda-12.1.deb"
+            sudo cp /var/cuda-repo-debian10-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
+            sudo add-apt-repository contrib
+            ;;
+        2)
+            wget --show progress -cqO "cuda-12.1.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-debian11-12-1-local_12.1.0-530.30.02-1_amd64.deb'
+            sudo dpkg -i "cuda-12.1.deb"
+            sudo cp /var/cuda-repo-debian11-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
+            sudo add-apt-repository contrib
+            ;;
+        3)
+            wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin'
+            sudo mv 'cuda-ubuntu1804.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
+            wget --show progress -cqO "cuda-12.1.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-ubuntu1804-12-1-local_12.1.0-530.30.02-1_amd64.deb'
+            sudo dpkg -i "cuda-12.1.deb"
+            sudo cp /var/cuda-repo-ubuntu1804-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
+            ;;
+        4)
+            wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin'
+            sudo mv 'cuda-ubuntu2004.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
+            wget --show progress -cqO "cuda-12.1.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-ubuntu2004-12-1-local_12.1.0-530.30.02-1_amd64.deb'
+            sudo dpkg -i "cuda-12.1.deb"
+            sudo cp /var/cuda-repo-ubuntu2004-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
+            ;;
+        5)
+            wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin'
+            sudo mv 'cuda-ubuntu2204.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
+            wget --show progress -cqO "cuda-12.1.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-ubuntu2204-12-1-local_12.1.0-530.30.02-1_amd64.deb'
+            sudo dpkg -i "cuda-12.1.deb"
+            sudo cp /var/cuda-repo-ubuntu2204-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
+            ;;
+        6)
+            wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin'
+            sudo mv 'cuda-wsl-ubuntu.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
+            wget --show progress -cqO "cuda-12.1.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-wsl-ubuntu-12-1-local_12.1.0-1_amd64.deb'
+            sudo dpkg -i "cuda-12.1.deb"
+            sudo cp /var/cuda-repo-wsl-ubuntu-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
+            ;;
+        7)
+            exit_fn
+            ;;
+        *)
+            fail_fn 'Bad User Input. Run the script again.'
+            ;;
+    esac
 
     # UPDATE THE APT PACKAGES THEN INSTALL THE CUDA-SDK-TOOLKIT
     sudo apt update
@@ -745,7 +749,7 @@ cuda_fn()
     if [ -z "$cudaPATH" ]; then
         cuda_fail_fn
     else
-        PATH="$PATH:$cudaPATH"
+        PATH="$cudaPATH:$PATH"
         export PATH
     fi
 }
@@ -764,8 +768,8 @@ build_pkgs_fn()
           gtk-doc-tools git-all help2man javacc jq junit libcairo2-dev \
           libcdio-paranoia-dev libcurl4-gnutls-dev libglib2.0-dev \
           libmusicbrainz5-dev libtinyxml2-dev texi2html openjdk-17-jdk \
-          pkg-config ragel yasm)
- 
+          pkg-config ragel scons yasm)
+
     for pkg in ${pkgs[@]}
     do
         if ! installed "$pkg"; then
@@ -784,6 +788,7 @@ build_pkgs_fn()
                 exit 1
             fi
         done
+    else
         echo 'The required development packages are already installed.'
     fi
 }
@@ -863,7 +868,7 @@ install_cuda_fn()
         fi
     else
         echo
-        echo "The cuda-sdk-toolkit v$cuda_ver is already installed."
+        echo "The cuda-sdk-toolkit v12.1 is already installed."
         echo '================================================='
         echo
         echo 'Do you want to update/reinstall it?'
@@ -909,6 +914,15 @@ build_pkgs_fn
 ## being source code building
 ##
 
+git_test()
+{
+    git_url="$1"
+    git_dir="$2"
+    git_url+=" $3"
+    eval "git clone '$git_url' $git_dir/"
+}
+
+
 # begin source code building
 if build 'giflib' '5.2.1'; then
     download 'https://netcologne.dl.sourceforge.net/project/giflib/giflib-5.2.1.tar.gz'
@@ -920,12 +934,12 @@ if build 'giflib' '5.2.1'; then
 fi
 
 git_ver_fn 'freedesktop/pkg-config' '1' 'T'
-if build 'pkg-config' "$g_ver_pkg"; then
+if build 'pkg-config' "$g_pkg"; then
     download "https://pkgconfig.freedesktop.org/releases/$g_ver.tar.gz" "$g_ver.tar.gz"
     execute ./configure --silent --prefix="$workspace" --with-pc-path="$workspace"/lib/pkgconfig/ --with-internal-glib
     execute make -j "$cpu_threads"
     execute make install
-    build_done 'pkg-config' "$g_ver_pkg"
+    build_done 'pkg-config' "$g_pkg"
 fi
 
 git_ver_fn 'yasm/yasm' '1' 'T'
@@ -988,12 +1002,12 @@ fi
 
 if $nonfree_and_gpl; then
     git_ver_fn 'openssl/openssl' '1' 'R'
-    if build 'openssl' "$g_ver_ssl"; then
-        download "$g_url" "openssl-$g_ver_ssl.tar.gz"
+    if build 'openssl' "$g_ssl"; then
+        download "$g_url" "openssl-$g_ssl.tar.gz"
         execute ./config --prefix="$workspace" --openssldir="$workspace" --with-zlib-include="$workspace"/include/ --with-zlib-lib="$workspace"/lib no-shared zlib
         execute make -j "$cpu_threads"
         execute make install_sw
-        build_done 'openssl' "$g_ver_ssl"
+        build_done 'openssl' "$g_ssl"
     fi
     cnf_ops+=('--enable-openssl')
 else
@@ -1092,7 +1106,7 @@ if command_exists 'cargo'; then
         build_done 'rav1e' "$g_ver"
     fi
     avif_tag='-DAVIF_CODEC_RAV1E=ON'
-    cnf_ops+=('--enable-li  brav1e')
+    cnf_ops+=('--enable-librav1e')
 else
     avif_tag='-DAVIF_CODEC_RAV1E=OFF'
 fi
@@ -1269,11 +1283,13 @@ if command_exists 'python3'; then
             execute ninja -C build install
             build_done 'lv2' "$g_ver"
         fi
+
         git_ver_fn '7131569' '3' 'T'
         if build 'waflib' "$g_ver"; then
             download "https://gitlab.com/ita1024/waf/-/archive/$g_ver/waf-$g_ver.tar.bz2" "autowaf-$g_ver.tar.bz2"
             build_done 'waflib' "$g_ver"
         fi
+
         git_ver_fn '5048975' '3' 'T'
         if build 'serd' "$g_ver"; then
             download "https://gitlab.com/drobilla/serd/-/archive/v$g_ver/serd-v$g_ver.tar.bz2" "serd-$g_ver.tar.bz2"
@@ -1282,6 +1298,7 @@ if command_exists 'python3'; then
             execute ninja -C build install
             build_done 'serd' "$g_ver"
         fi
+
         git_ver_fn 'PCRE2Project/pcre2' '1' 'R'
         pcre2_lower_case="$(echo "$g_ver" | tr "[:upper:]" "[:lower:]")"
         if build 'pcre2' "$pcre2_lower_case"; then
@@ -1292,6 +1309,7 @@ if command_exists 'python3'; then
             execute make install
             build_done 'pcre2' "$pcre2_lower_case"
         fi
+
         git_ver_fn '14889806' '3' 'B'
         if build 'zix' "$g_sver1"; then
             download "https://gitlab.com/drobilla/zix/-/archive/$g_ver1/zix-$g_ver1.tar.bz2" "zix-$g_sver1.tar.bz2"
@@ -1300,6 +1318,7 @@ if command_exists 'python3'; then
             execute ninja -C build install
             build_done 'zix' "$g_sver1"
         fi
+
         git_ver_fn '11853362' '3' 'T'
         if build 'sord' "$g_ver"; then
             download "https://gitlab.com/drobilla/sord/-/archive/v$g_ver/sord-v$g_ver.tar.bz2"
@@ -1309,6 +1328,7 @@ if command_exists 'python3'; then
             execute ninja -C build install
             build_done 'sord' "$g_ver"
         fi
+
         git_ver_fn '11853194' '3' 'T'
         if build 'sratom' "$g_ver"; then
             download "https://gitlab.com/lv2/sratom/-/archive/v$g_ver/sratom-v$g_ver.tar.bz2" "sratom-$g_ver.tar.bz2"
@@ -1317,6 +1337,7 @@ if command_exists 'python3'; then
             execute ninja -C build install
             build_done 'sratom' "$g_ver"
         fi
+
         git_ver_fn '11853176' '3' 'T'
         if build 'lilv' "$g_ver"; then
             download "https://gitlab.com/lv2/lilv/-/archive/v$g_ver/lilv-v$g_ver.tar.bz2" "lilv-$g_ver.tar.bz2"
@@ -1439,11 +1460,11 @@ if build 'libpng' "$g_ver"; then
     build_done 'libpng' "$g_ver"
 fi
 
-if build 'libwebp' '761f49c'; then
+if build 'libwebp' 'git'; then
     # libwebp can fail to compile on ubuntu if cflags are set
     # version 1.3.0, 1.2.4, and 1.2.3 fail to build successfully
     CPPFLAGS=
-    download 'https://chromium.googlesource.com/webm/libwebp/+archive/761f49c3ab1c91b8e911840a4f6f246308b7c242.tar.gz' 'libwebp-761f49c.tar.gz'
+    download_git 'https://chromium.googlesource.com/webm/libwebp' 'libwebp-git'
     execute ./autogen.sh
     make_dir build
     cd build || exit 1
@@ -1451,12 +1472,10 @@ if build 'libwebp' '761f49c'; then
         -DCMAKE_INSTALL_BINDIR='bin' -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON' -DWEBP_BUILD_CWEBP='ON' -DWEBP_BUILD_DWEBP='ON' ../
     execute make -j "$cpu_threads"
     execute sudo make install
-    build_done 'libwebp' '761f49c'
+    build_done 'libwebp' 'git'
 fi
 cnf_ops+=('--enable-libwebp')
-echo
-echo 'Finished.'
-exit
+
 ##
 ## other libraries
 ##
@@ -1465,7 +1484,7 @@ git_ver_fn '363' '2' 'T'
 if build 'udfread' "$g_ver1"; then
     download "https://code.videolan.org/videolan/libudfread/-/archive/$g_ver1/libudfread-$g_ver1.tar.bz2" "udfread-$g_ver1.tar.bz2"
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --disable-shared --enable-static
+    execute ./configure --prefix="$workspace" --disable-shared --enable-static --with-pic --with-gnu-ld
     execute make -j "$cpu_threads"
     execute make install
     build_done 'udfread' "$g_ver1"
@@ -1501,6 +1520,7 @@ if build 'MediaInfoLib' "$g_ver"; then
     execute cmake . -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
         -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON' -DENABLE_APPS='OFF' \
         -DUSE_STATIC_LIBSTDCXX='ON' -DBUILD_ZLIB='OFF' -DBUILD_ZENLIB='OFF'
+    execute make -j "$cpu_threads"
     execute make install
     build_done 'MediaInfoLib' "$g_ver"
 fi
@@ -1527,26 +1547,37 @@ if command_exists 'meson'; then
     fi
 fi
 
-if build 'c2man' 'current'; then
-    download_git 'https://github.com/fribidi/c2man.git' 'c2man'
-    execute ./Configure -des
+if build 'c2man' 'git'; then
+    download_git 'https://github.com/fribidi/c2man.git' 'c2man-git'
+    execute ./Configure -desO -D prefix="$workspace" -D bin="$workspace/bin" -D bash='/bin/bash' -D cc='/usr/lib/ccache/cc' \
+        -D d_gnu='/usr/lib/x86_64-linux-gnu' -D find='/usr/bin/find' -D gcc='/usr/lib/ccache/gcc' -D gzip='/usr/bin/gzip' \
+        -D installmansrc="$workspace/share/man" -D ldflags=" -L $workspace/lib -L/usr/local/lib" -D less='/usr/bin/less' \
+        -D libpth="$workspace/lib /usr/local/lib /lib /usr/lib" \
+        -D locincpth="$workspace/include /usr/local/include /opt/local/include /usr/gnu/include /opt/gnu/include /usr/GNU/include /opt/GNU/include" \
+        -D yacc='/usr/bin/yacc' -D loclibpth="$workspace/lib /usr/local/lib /opt/local/lib /usr/gnu/lib /opt/gnu/lib /usr/GNU/lib /opt/GNU/lib" \
+        -D make='/usr/bin/make' -D more='/usr/bin/more' -D osname='Ubuntu' -D perl='/usr/bin/perl' -D privlib="$workspace/lib/c2man" \
+        -D privlibexp="$workspace/lib/c2man" -D sleep='/usr/bin/sleep' -D tail='/usr/bin/tail' -D tar='/usr/bin/tar' -D uuname='Linux' \
+        -D vi='/usr/bin/vi' -D zip='/usr/bin/zip'
     execute make depend
     execute make -j "$cpu_threads"
     execute sudo make install
-    build_done 'c2man' 'current'
+    build_done 'c2man' 'git'
 fi
 
 git_ver_fn 'fribidi/fribidi' '1' 'R'
 if build 'fribidi' "$g_ver"; then
+    if [ -f "fribidi-$g_ver.tar.gz" ]; then
+        sudo rm "fribidi-$g_ver.tar.gz"
+    fi
     download "$g_url" "fribidi-$g_ver.tar.gz"
-    execute ./autogen.sh
-    make_dir build
-    execute meson build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
-        execute ninja -C build
-        execute ninja -C build install
+    execute meson build --prefix="/home/jman/tmp/ffmpeg/workspace" --strip --backend ninja --optimization 3 \
+        --pkg-config-path="$PKG_CONFIG_PATH"--buildtype='release' --default-library='static' --libdir="/home/jman/tmp/ffmpeg/workspace"/lib
+    execute ninja -C build
+    execute ninja -C build install
     build_done 'fribidi' "$g_ver"
 fi
 cnf_ops+=('--enable-libfribidi')
+
 git_ver_fn 'libass/libass' '1' 'T'
 if build 'libass' "$g_ver"; then
     download "$g_url" "libass-$g_ver.tar.gz"
@@ -1647,6 +1678,7 @@ if build 'amf' "$g_ver"; then
 fi
 cnf_ops+=('--enable-amf')
 
+
 git_ver_fn 'fraunhoferhhi/vvenc' '1' 'T'
 if build 'vvenc' "$g_ver"; then
     download "$g_url" "vvenc-$g_ver.tar.gz"
@@ -1666,6 +1698,15 @@ if build 'vvdec' "$g_ver"; then
     build_done 'vvdec' "$g_ver"
 fi
 cnf_ops+=('--enable-nvdec')
+
+if build 'opengl' 'current'; then
+    download_git 'https://chromium.googlesource.com/angle/angle' 'opengl-git'
+    execute ./Configure -des
+    execute make depend
+    execute make -j "$cpu_threads"
+    execute sudo make install
+    build_done 'opengl' 'current'
+fi
 
 if which 'nvcc' &>/dev/null ; then
     git_ver_fn 'FFmpeg/nv-codec-headers' '1' 'T'
@@ -1697,13 +1738,13 @@ fi
 ##
 
 # REMOVE ANY FILES FROM PRIOR RUNS
-if [ -d "$packages/ffmpeg-$ffmpeg_ver" ]; then
-    rm -fr "$packages/ffmpeg-$ffmpeg_ver"
+if [ -d "$packages/FFmpeg-git" ]; then
+    rm -fr "$packages/FFmpeg-git"
 fi
 
 # CLONE FFMPEG FROM THE LATEST GIT RELEASE
-build 'ffmpeg' "$ffmpeg_ver"
-download "https://github.com/FFmpeg/FFmpeg/archive/refs/tags/$ffmpeg_ver.tar.gz" "FFmpeg-$ffmpeg_ver.tar.gz"
+build 'FFmpeg' 'git'
+download_git 'https://git.ffmpeg.org/ffmpeg.git' 'FFmpeg-git'
 ./configure \
         "${cnf_ops[@]}" \
         --arch="$(uname -m)" \
