@@ -47,11 +47,11 @@ pkgs_fn()
           bison build-essential ccdiff checkinstall clang clang-tools cmake \
           cmake-extras colordiff curl cvs dbus dbus-x11 dconf-editor ddclient \
           debhelper devscripts dh-make disktype dos2unix dpkg-dev exfat-fuse \
-          exfatprogs f2fs-tools fakeroot flatpak flex g++ gawk gcc gedit gedit-plugins \
-          gir1.2-gtksource-3.0 git git-all git-buildpackage gnome-shell-extension-manager \
-          gnome-tweaks gnustep-gui-runtime golang gparted gperf grub-customizer \
-          gufw hfsplus hfsprogs hfsutils htop idn2 iftop iw jfsutils jq libbz2-dev \
-          libdmalloc-dev libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev liblz-dev \
+          exfatprogs f2fs-tools fakeroot flatpak flex gcc gcc-12 g++ g++-12 \
+          gawk gcc gedit gedit-plugins gir1.2-gtksource-3.0 git git-all git-buildpackage \
+          gnome-shell-extension-manager gnome-tweaks gnustep-gui-runtime golang gparted \
+          gperf grub-customizer gufw hfsplus hfsprogs hfsutils htop idn2 iftop iw jfsutils \
+          jq libbz2-dev libdmalloc-dev libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev liblz-dev \
           liblzma-dev liblzo2-dev libmimalloc-dev libncurses5-dev libnet-nslookup-perl \
           libnuma-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev \
           librust-jemalloc-sys-dev librust-malloc-buf-dev libsdl-pango-dev libsox-dev \
@@ -72,16 +72,18 @@ pkgs_fn()
         fi
     done
 
-    if [ -n "$missing_pkgs" ]; then
+    if [ -n "$missing_pkgs-" ]; then
         for i in "$missing_pkgs"
         do
-            apt -y install ${i}
+            apt -y install $i
         done
-        exit_msg2='[i] Any missing apt packages were installed'
+        printf "\n%s\n\n%s\n\n" \
+            'The required packages were successfully installed.' \
+            'Please execute the script again to finish installing ImageMagick.'
+        exit 0
     else
-        exit_msg2='[i] The apt packages are already installed'
+        echo 'The required packages are already installed.'
     fi
-    exit_fn "$exit_msg1" "$exit_msg2"
 }
 
 ppa_fn()
