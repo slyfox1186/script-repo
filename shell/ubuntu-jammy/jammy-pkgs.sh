@@ -48,7 +48,7 @@ pkgs_fn()
           cmake-extras colordiff curl cvs dbus dbus-x11 dconf-editor ddclient \
           debhelper devscripts dh-make disktype dos2unix dpkg-dev exfat-fuse \
           exfatprogs f2fs-tools fakeroot flatpak flex gcc gcc-12 g++ g++-12 \
-          gawk gcc gedit gedit-plugins gir1.2-gtksource-3.0 git git-all git-buildpackage \
+          gawk gcc gedit gedit-plugins gh gir1.2-gtksource-3.0 git git-all git-buildpackage \
           git-hub gnome-shell-extension-manager gnome-tweaks gnustep-gui-runtime golang gparted \
           gperf grub-customizer gufw hfsplus hfsprogs hfsutils htop idn2 iftop iw jfsutils \
           jq libbz2-dev libdmalloc-dev libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev liblz-dev \
