@@ -972,7 +972,7 @@ fi
 
 pre_check_ver 'pkgconf/pkgconf' '1' 'T'
 if build 'pkg-config' "$g_ver"; then
-    download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "$g_ver.tar.gz"
+    download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "pkg-config-$g_ver.tar.gz"
     execute ./autogen.sh
     execute ./configure --silent --prefix="$workspace" --with-pc-path="$workspace"/lib/pkgconfig/ --with-internal-glib
     execute make -j "$cpu_threads"
