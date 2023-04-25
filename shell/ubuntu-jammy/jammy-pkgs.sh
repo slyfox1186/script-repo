@@ -44,7 +44,7 @@ exit_fn()
 pkgs_fn()
 {
     pkgs=(alien apt-file aptitude aria2 autoconf autogen automake bat binutils \
-          bison build-essential ccdiff checkinstall clang clang-tools cmake \
+          bison build-essential ccache ccdiff checkinstall clang clang-tools cmake \
           cmake-extras cmake-qt-gui colordiff cpu-checker curl cvs dbus dbus-x11 \
           dconf-editor ddclient debhelper devscripts dh-make disktype dos2unix dpkg-dev \
           exfat-fuse exfatprogs f2fs-tools fakeroot flatpak flex gcc gcc-12 g++ g++-12 \
