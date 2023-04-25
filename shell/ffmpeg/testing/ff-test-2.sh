@@ -433,7 +433,6 @@ pre_check_ver()
         git_ver_fn "$github_repo" "$git_ver" "$git_url_type"
         g_ver="${g_ver##*-}"
     else
-        echo 'gver = g_nocheck'
         g_ver="${check_ver##*-}"
     fi
 }
@@ -971,7 +970,7 @@ fi
 
 pre_check_ver 'pkgconf/pkgconf' '1' 'T'
 if build 'pkg-config' "$g_ver"; then
-    download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "$g_ver.tar.gz"
+    download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "pkgconf-$g_ver.tar.gz"
     execute ./autogen.sh
     execute ./configure --silent --prefix="$workspace" --with-pc-path="$workspace"/lib/pkgconfig/ --with-internal-glib
     execute make -j "$cpu_threads"
@@ -1080,10 +1079,10 @@ fi
 
 pre_check_ver 'kitware/cmake' '1' 'T'
 if build 'cmake' "$g_ver" "$packages/$1.done"; then
-    download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "cmake-$g_ver.tar.gz"
+    download "https://github.com/kitware/cmake/archive/refs/tags/v$g_ver.tar.gz" "cmake-$g_ver.tar.gz"
     execute ./configure --prefix="$workspace" --parallel="$cpu_threads" --enable-ccache -- -DCMAKE_USE_OPENSSL='OFF'
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'cmake' "$g_ver"
 fi
 
@@ -1126,7 +1125,7 @@ git_ver_fn '24327400' '3' 'T'
 if build 'svtav1' "$g_ver"; then
     download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v$g_ver/SVT-AV1-v$g_ver.tar.bz2" "SVT-AV1-$g_ver.tar.bz2"
     cd Build/linux || exit 1
-    execute cmake -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' ../.. -G'Unix Makefiles' -DCMAKE_BUILD_TYPE='Release'
+    execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' ../.. -G'Unix Makefiles' -DCMAKE_BUILD_TYPE='Release'
     execute make -j "$cpu_threads"
     execute make install
     execute cp 'SvtAv1Enc.pc' "$workspace"/lib/pkgconfig/
@@ -1138,15 +1137,15 @@ cnf_ops+=('--enable-libsvtav1')
 if command_exists 'cargo'; then
     pre_check_ver 'xiph/rav1e' '1' 'T'
     if build 'rav1e' "$g_ver"; then
+        download "https://github.com/xiph/rav1e/archive/refs/tags/v$g_ver.tar.gz" "rav1e-$g_ver.tar.gz"
         execute cargo install --version '0.9.14+cargo-0.66' cargo-c
-        download "$g_url" "rav1e-$g_ver.tar.gz"
         execute cargo cinstall --prefix="$workspace" --library-type='staticlib' --crt-static --release
         build_done 'rav1e' "$g_ver"
     fi
-    avif_tag='-DAVIF_CODEC_RAV1E=ON'
+    avif_tag='-DAVIF_CODEC_RAV1E='ON''
     cnf_ops+=('--enable-librav1e')
 else
-    avif_tag='-DAVIF_CODEC_RAV1E=OFF'
+    avif_tag='-DAVIF_CODEC_RAV1E='OFF''
 fi
 
 if $nonfree_and_gpl; then
@@ -1254,7 +1253,7 @@ if $nonfree_and_gpl; then
     pre_check_ver 'georgmartius/vid.stab' '1' 'T'
     if build 'vid_stab' "$g_ver"; then
         download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "vid.stab-$g_ver.tar.gz"
-        execute cmake -DBUILD_SHARED_LIBS='OFF' -DCMAKE_INSTALL_PREFIX="$workspace" -DUSE_OMP='OFF' -DENABLE_SHARED='OFF' .
+        execute cmake -S . -DBUILD_SHARED_LIBS='OFF' -DCMAKE_INSTALL_PREFIX="$workspace" -DUSE_OMP='OFF' -DENABLE_SHARED='OFF' .
         execute make -j "$cpu_threads"
         execute make install
         build_done 'vid_stab' "$g_ver"
@@ -1266,7 +1265,7 @@ if build 'av1' '5711b50'; then
     download 'https://aomedia.googlesource.com/aom/+archive/5711b50eebe392119defd2a2a262bffef05e8507.tar.gz' 'av1.tar.gz' 'av1'
     make_dir "$packages"/aom_build
     cd "$packages"/aom_build || exit 1
-    execute cmake -DENABLE_TESTS='0' -DENABLE_EXAMPLES='0' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' "$packages"/av1
+    execute cmake -S . -DENABLE_TESTS='0' -DENABLE_EXAMPLES='0' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' "$packages"/av1
     execute make -j "$cpu_threads"
     execute make install
     build_done 'av1' '5711b50'
@@ -1276,7 +1275,7 @@ cnf_ops+=('--enable-libaom')
 pre_check_ver 'sekrit-twc/zimg' '1' 'T'
 if build 'zimg' "$g_ver"; then
     download "https://github.com/sekrit-twc/zimg/archive/refs/tags/release-$g_ver.tar.gz" "zimg-$g_ver.tar.gz"
-    execute "$workspace"/bin/libtoolize -i -f -q
+    execute "$workspace"/bin/libtoolize -ifq
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --enable-static --disable-shared
     execute make -j "$cpu_threads"
@@ -1286,7 +1285,7 @@ fi
 cnf_ops+=('--enable-libzimg')
 
 if build "libpng" '1.6.39'; then
-    download_git 'https://github.com/glennrp/libpng.git' 'libpng-1.6.39'
+    download "https://github.com/glennrp/libpng/releases/tag/v1.6.39" 'libpng-1.6.39.tar.gz'
     export LDFLAGS="${LDFLAGS}"
     export CPPFLAGS="${CFLAGS}"
     execute autoreconf -fi
@@ -1296,15 +1295,15 @@ if build "libpng" '1.6.39'; then
   build_done "libpng" '1.6.39'
 fi
 
+export CC='gcc' CXX='g++'
 pre_check_ver 'AOMediaCodec/libavif' '1' 'T'
 if build 'avif' "$g_ver"; then
     export CFLAGS+="-I$CFLAGS -I$workspace/include"
     download "https://github.com/AOMediaCodec/libavif/archive/refs/tags/v$g_ver.tar.gz" "avif-$g_ver.tar.gz"
-    execute cmake -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' \
-        -DENABLE_STATIC='ON' -DAVIF_ENABLE_WERROR='OFF' -DAVIF_CODEC_DAV1D='ON' -DAVIF_CODEC_AOM='ON' -G'Unix Makefiles' \
-        -DAVIF_BUILD_APPS='ON' "$avif_tag"
-    execute make -j "$cpu_threads"
-    execute make install
+    execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DAVIF_CODEC_AOM='ON' -DAVIF_CODEC_AOM='ON' \
+        -DAVIF_CODEC_DAV1D='ON' -DAVIF_CODEC_RAV1E='ON' -DAVIF_CODEC_SVT='ON' -DBUILD_SHARED_LIBS=OFF -G'Ninja'
+    ninja
+    ninja install
     build_done 'avif' "$g_ver"
 fi
 
@@ -1372,7 +1371,7 @@ if command_exists 'python3'; then
         git_ver_fn '11853362' '3' 'T'
         if build 'sord' "$g_ver"; then
             download "https://gitlab.com/drobilla/sord/-/archive/v$g_ver/sord-v$g_ver.tar.bz2" "sord-$g_ver.tar.bz2"
-            meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' \
+            execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' \
                 --libdir="$workspace"/lib  --pkg-config-path="$workspace"/lib/pkgconfig
             execute ninja -C build
             execute ninja -C build install
@@ -1425,7 +1424,7 @@ pre_check_ver 'xiph/opus' '1' 'T'
 if build 'opus' "$g_ver"; then
     download "https://github.com/xiph/opus/archive/refs/tags/v$g_ver.tar.gz" "opus-$g_ver.tar.gz"
     execute ./autogen.sh
-    execute cmake -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' \
+    execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' \
         -DENABLE_STATIC='ON' -G'Unix Makefiles'
     execute make -j "$cpu_threads"
     execute make install
@@ -1509,7 +1508,7 @@ if build 'libwebp' 'git'; then
     execute autoreconf -fi
     make_dir build
     cd build || exit 1
-    execute cmake -DCMAKE_INSTALL_PREFIX="/home/jman/tmp/ffmpeg/workspace" -DCMAKE_INSTALL_LIBDIR='lib' \
+    execute cmake -S . -DCMAKE_INSTALL_PREFIX="/home/jman/tmp/ffmpeg/workspace" -DCMAKE_INSTALL_LIBDIR='lib' \
         -DCMAKE_INSTALL_BINDIR='bin' -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON' -DWEBP_BUILD_CWEBP='ON' -DWEBP_BUILD_DWEBP='ON' ../
     execute make -j "$cpu_threads"
     execute sudo make install
@@ -1547,7 +1546,7 @@ pre_check_ver 'mediaarea/zenLib' '1' 'T'
 if build 'zenLib' "$g_ver"; then
     download "https://github.com/MediaArea/ZenLib/archive/refs/tags/v$g_ver.tar.gz" "zenLib-$g_ver.tar.gz"
     cd Project/CMake || exit 1
-    execute cmake -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
+    execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
         -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON'
     execute make -j "$cpu_threads"
     execute make install
@@ -1646,9 +1645,9 @@ if build 'freetype' "$g_ver"; then
     extracommands=(-D{harfbuzz,png,bzip2,brotli,zlib,tests}"=disabled")
     download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/$g_ver/freetype-$g_ver.tar.bz2" "freetype-$g_ver.tar.bz2"
     execute ./autogen.sh
-    execute cmake -S . -B build/release-static -DCMAKE_INSTALL_PREFIX="$workspace" \
+    execute cmake -S . --B build/release-static -DCMAKE_INSTALL_PREFIX="$workspace" \
         -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release' "${extracommands[@]}"
-    execute cmake --build build/release-static -j "$cpu_threads"
+    execute cmake -S . --build build/release-static -j "$cpu_threads"
     build_done 'freetype' "$g_ver"
 fi
 cnf_ops+=('--enable-libfreetype')
@@ -1692,8 +1691,8 @@ pre_check_ver 'khronosgroup/opencl-headers' '1' 'T'
 if build 'opencl' "$g_ver"; then
     CFLAGS+=" -DLIBXML_STATIC_FOR_DLL -DNOLIBTOOL"
     download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "opencl-$g_ver.tar.gz"
-    execute cmake -S . -B build -DCMAKE_INSTALL_PREFIX="$workspace"
-    execute cmake --build build --target install
+    execute cmake -S . --B build -DCMAKE_INSTALL_PREFIX="$workspace"
+    execute cmake -S . --build build --target install
     build_done 'opencl' "$g_ver"
 fi
 cnf_ops+=('--enable-opencl')
@@ -1722,9 +1721,9 @@ cnf_ops+=('--enable-amf')
 pre_check_ver 'fraunhoferhhi/vvenc' '1' 'T'
 if build 'vvenc' "$g_ver"; then
     download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "vvenc-$g_ver.tar.gz"
-    execute cmake -S . -B build/release-static -DCMAKE_INSTALL_PREFIX="$workspace" \
+    execute cmake -S . --B build/release-static -DCMAKE_INSTALL_PREFIX="$workspace" \
         -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release'
-    execute cmake --build build/release-static -j "$cpu_threads"
+    execute cmake -S . --build build/release-static -j "$cpu_threads"
     build_done 'vvenc' "$g_ver"
 fi
 cnf_ops+=('--enable-nvenc')
@@ -1732,9 +1731,9 @@ cnf_ops+=('--enable-nvenc')
 pre_check_ver 'fraunhoferhhi/vvdec' '1' 'T'
 if build 'vvdec' "$g_ver"; then
     download_git 'https://github.com/fraunhoferhhi/vvdec.git' "vvdec-$g_ver"
-    execute cmake -S . -B build/release-static -DCMAKE_INSTALL_PREFIX="$workspace" \
+    execute cmake -S . --B build/release-static -DCMAKE_INSTALL_PREFIX="$workspace" \
         -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release'
-    execute cmake --build build/release-static -j "$cpu_threads"
+    execute cmake -S . --build build/release-static -j "$cpu_threads"
     build_done 'vvdec' "$g_ver"
 fi
 cnf_ops+=('--enable-nvdec')
