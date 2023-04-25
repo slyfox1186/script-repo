@@ -971,7 +971,7 @@ if build 'pkg-config' "$g_ver"; then
     execute ./autogen.sh
     execute ./configure --silent --prefix="$workspace" --with-pc-path="$workspace"/lib/pkgconfig/ --with-internal-glib
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'pkg-config' "$g_ver"
 fi
 
@@ -981,7 +981,7 @@ if build 'yasm' "$g_ver"; then
     execute ./autogen.sh
     execute ./configure --prefix="$workspace"
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'yasm' "$g_ver"
 fi
 
@@ -989,7 +989,7 @@ if build 'nasm' '2.16.02rc1'; then
     download "https://www.nasm.us/pub/nasm/releasebuilds/2.16.02rc1/nasm-2.16.02rc1.tar.xz" "nasm-2.16.02rc1.tar.xz"
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'nasm' '2.16.02rc1'
 fi
 
@@ -998,7 +998,7 @@ if build 'zlib' "$g_ver"; then
     download "https://github.com/madler/zlib/releases/download/v$g_ver/zlib-$g_ver.tar.gz" "zlib-$g_ver.tar.gz"
     execute ./configure --static --prefix="$workspace"
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'zlib' "$g_ver"
 fi
 
@@ -1006,7 +1006,7 @@ if build 'm4' '1.4.19'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.xz' 'm4-1.4.19.tar.xz'
     execute ./configure --prefix="$workspace" --enable-c++ --with-dmalloc
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'm4' '1.4.19'
 fi
 
@@ -1014,7 +1014,7 @@ if build 'autoconf' '2.71'; then
     download 'https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.xz' 'autoconf-2.71.tar.xz'
     execute ./configure --prefix="$workspace"
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'autoconf' '2.71'
 fi
 
@@ -1022,7 +1022,7 @@ if build 'automake' '1.16.5'; then
     download 'https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz' 'automake-1.16.5.tar.xz'
     execute ./configure --prefix="$workspace"
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'automake' '1.16.5'
 fi
 
@@ -1030,7 +1030,7 @@ if build 'libtool' '2.4.7'; then
     download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz' 'libtool-2.4.7.tar.xz'
     execute ./configure --prefix="$workspace" --enable-static --disable-shared
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'libtool' '2.4.7'
 fi
 
@@ -1040,7 +1040,7 @@ if $nonfree_and_gpl; then
         download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "openssl-$g_ver.tar.gz"
         execute ./config --prefix="$workspace" --openssldir="$workspace" --with-zlib-include="$workspace"/include/ --with-zlib-lib="$workspace"/lib no-shared zlib
         execute make -j "$cpu_threads"
-        execute sudo make install_sw
+        execute make install_sw
         build_done 'openssl' "$g_ver"
     fi
     cnf_ops+=('--enable-openssl')
@@ -1049,7 +1049,7 @@ else
         download 'https://ftp.gnu.org/gnu/gmp/gmp-6.2.1.tar.xz'
         execute ./configure --prefix="$workspace" --disable-shared --enable-static
         execute make -j "$cpu_threads"
-        execute sudo make install
+        execute make install
         build_done 'gmp' '6.2.1'
     fi
 
@@ -1058,7 +1058,7 @@ else
         execute ./configure --prefix="$workspace" --disable-shared --enable-static --disable-openssl \
             --disable-documentation --libdir="$workspace"/lib CPPFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS"
         execute make -j "$cpu_threads"
-        execute sudo make install
+        execute make install
         build_done 'nettle' '3.8.1'
     fi
 
@@ -1068,7 +1068,7 @@ else
             --disable-cxx --disable-tests --disable-gtk-doc-html --disable-libdane --disable-nls --enable-local-libopts \
             --disable-guile --with-included-libtasn1 --with-included-unistring --without-p11-kit CPPFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS"
         execute make -j "$cpu_threads"
-        execute sudo make install
+        execute make install
         build_done 'gnutls' '3.8.0'
     fi
     cnf_ops+=('--enable-gmp' '--enable-gnutls')
@@ -1079,7 +1079,7 @@ if build 'cmake' "$g_ver" "$packages/$1.done"; then
     download "https://github.com/kitware/cmake/archive/refs/tags/v$g_ver.tar.gz" "cmake-$g_ver.tar.gz"
     execute ./configure --prefix="$workspace" --parallel="$cpu_threads" --enable-ccache -- -DCMAKE_USE_OPENSSL='OFF'
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'cmake' "$g_ver"
 fi
 
@@ -1118,7 +1118,7 @@ if build 'svtav1' "$g_ver"; then
     execute cmake -S . -B Build/linux -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='OFF' ../.. -G'Unix Makefiles' -DCMAKE_BUILD_TYPE='Release'
     cd Build/linux || exit 1
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     execute sudo cp 'SvtAv1Enc.pc' "$workspace"/lib/pkgconfig/
     execute sudo cp 'SvtAv1Dec.pc' "$workspace"/lib/pkgconfig/
     build_done 'svtav1' "$g_ver"
@@ -1145,8 +1145,8 @@ if $nonfree_and_gpl; then
         download "https://code.videolan.org/videolan/x264/-/archive/$g_ver/x264-$g_ver.tar.bz2" "x264-$g_sver.tar.bz2"
         execute ./configure --prefix="$workspace" --enable-static --enable-pic CXXFLAGS="-fPIC $CXXFLAGS"
         execute make -j "$cpu_threads"
-        execute sudo make install
-        execute sudo make install-lib-static
+        execute make install
+        execute make install-lib-static
         build_done 'x264' "$g_sver"
     fi
     cnf_ops+=('--enable-libx264')
@@ -1187,7 +1187,7 @@ SAVE
 END
 EOF
 
-        execute sudo make install
+        execute make install
 
         if [ -n "$LDEXEFLAGS" ]; then
             sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "$workspace/lib/pkgconfig/x265.pc"
@@ -1205,7 +1205,7 @@ if build 'SVT-HEVC' "$g_ver"; then
     cd "$PWD"/Build || exit 1
     execute cmake .. -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' -DCMAKE_BUILD_TYPE='Release'
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'SVT-HEVC' "$g_ver"
 fi
 
@@ -1214,7 +1214,7 @@ if build 'libvpx' "$g_ver"; then
     download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "libvpx-$g_ver.tar.gz"
     execute ./configure --prefix="$workspace" --disable-unit-tests --disable-shared --disable-examples --as='yasm'
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'libvpx' "$g_ver"
 fi
 cnf_ops+=('--enable-libvpx')
@@ -1225,7 +1225,7 @@ if $nonfree_and_gpl; then
         cd 'build/generic' || exit 1
         execute ./configure --prefix="$workspace" --disable-shared --enable-static
         execute make -j "$cpu_threads"
-        execute sudo make install
+        execute make install
 
         if [[ -f "$workspace"/lib/libxvidcore.4.dylib ]]; then
             execute sudo rm "$workspace"/lib/libxvidcore.4.dylib
@@ -1246,7 +1246,7 @@ if $nonfree_and_gpl; then
         download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "vid.stab-$g_ver.tar.gz"
         execute cmake -S . -DBUILD_SHARED_LIBS='OFF' -DCMAKE_INSTALL_PREFIX="$workspace" -DUSE_OMP='OFF' -DENABLE_SHARED='OFF' .
         execute make -j "$cpu_threads"
-        execute sudo make install
+        execute make install
         build_done 'vid_stab' "$g_ver"
     fi
     cnf_ops+=('--enable-libvidstab')
@@ -1258,7 +1258,7 @@ if build 'av1' '5711b50'; then
     cd "$packages"/aom_build || exit 1
     execute cmake -S . -DENABLE_TESTS='0' -DENABLE_EXAMPLES='0' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' "$packages"/av1
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'av1' '5711b50'
 fi
 cnf_ops+=('--enable-libaom')
@@ -1271,7 +1271,7 @@ if build 'zimg' "$g_ver"; then
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --enable-static --disable-shared
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'zimg' "$g_ver"
 fi
 cnf_ops+=('--enable-libzimg')
@@ -1283,7 +1283,7 @@ if build "libpng" '1.6.39'; then
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
   build_done "libpng" '1.6.39'
 fi
 
@@ -1305,7 +1305,7 @@ if build 'kvazaar' "$g_ver"; then
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --enable-static --disable-shared
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'kvazaar' "$g_ver"
 fi
 cnf_ops+=('--enable-libkvazaar')
@@ -1346,7 +1346,7 @@ if command_exists 'python3'; then
             execute ./autogen.sh
             execute ./configure --prefix="$workspace" --disable-shared --enable-static
             execute make -j "$cpu_threads"
-            execute sudo make install
+            execute make install
             build_done 'pcre2' "$g_ver"
         fi
 
@@ -1398,7 +1398,7 @@ if build 'opencore' '0.1.6'; then
     download 'https://master.dl.sourceforge.net/project/opencore-amr/opencore-amr/opencore-amr-0.1.6.tar.gz?viasf=1' 'opencore-amr-0.1.6.tar.gz'
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'opencore' '0.1.6'
 fi
 cnf_ops+=('--enable-libopencore_amrnb' '--enable-libopencore_amrwb')
@@ -1407,7 +1407,7 @@ if build 'lame' '3.100'; then
     download 'https://sourceforge.net/projects/lame/files/lame/3.100/lame-3.100.tar.gz/download?use_mirror=gigenet' 'lame-3.100.tar.gz'
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'lame' '3.100'
 fi
 cnf_ops+=('--enable-libmp3lame')
@@ -1419,7 +1419,7 @@ if build 'opus' "$g_ver"; then
     execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' \
         -DENABLE_STATIC='ON' -G'Unix Makefiles'
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'opus' "$g_ver"
 fi
 cnf_ops+=('--enable-libopus')
@@ -1430,7 +1430,7 @@ if build 'libogg' "$g_ver"; then
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'libogg' "$g_ver"
 fi
 
@@ -1441,7 +1441,7 @@ if build 'libvorbis' "$g_ver"; then
     execute ./configure --prefix="$workspace" --with-ogg-libraries="$workspace"/lib \
         --with-ogg-includes="$workspace"/include --enable-static --disable-shared --disable-oggtest
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'libvorbis' "$g_ver"
 fi
 cnf_ops+=('--enable-libvorbis')
@@ -1460,7 +1460,7 @@ if build 'libtheora' '1.0'; then
         --with-vorbis-libraries="$workspace"/lib --with-vorbis-includes="$workspace"/include/ --enable-static --disable-shared \
         --disable-oggtest --disable-vorbistest --disable-examples --disable-asm --disable-spec
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'libtheora' '1.0'
 fi
 cnf_ops+=('--enable-libtheora')
@@ -1472,7 +1472,7 @@ if $nonfree_and_gpl; then
         execute ./autogen.sh
         execute ./configure --prefix="$workspace" --disable-shared --enable-static --enable-pic --bindir="$workspace"/bin CXXFLAGS=' -fno-exceptions -fno-rtti'
         execute make -j "$cpu_threads"
-        execute sudo make install
+        execute make install
         build_done 'fdk_aac' "$g_ver"
     fi
     cnf_ops+=('--enable-libfdk-aac')
@@ -1488,7 +1488,7 @@ if build 'libtiff' "$g_ver"; then
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'libtiff' "$g_ver"
 fi
 
@@ -1506,7 +1506,7 @@ if build 'libwebp' 'git'; then
         -DWEBP_BUILD_WEBPINFO:BOOL="0" -DCMAKE_INSTALL_PREFIX:PATH="/home/jman/tmp/ffmpeg/ffmpeg-build/workspace" -DZLIB_INCLUDE_DIR:PATH="/usr/include" \
         -DWEBP_BUILD_VWEBP:BOOL="0" -DCMAKE_INSTALL_DOCDIR:PATH="" -G'Unix Makefiles'
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'libwebp' 'git'
 fi
 cnf_ops+=('--enable-libwebp')
@@ -1521,7 +1521,7 @@ if build 'udfread' "$g_ver1"; then
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" --disable-shared --enable-static --with-pic --with-gnu-ld
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'udfread' "$g_ver1"
 fi
 
@@ -1531,7 +1531,7 @@ if build 'libbluray' "$g_ver1"; then
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'libbluray' "$g_ver1"
 fi
 unset JAVA_HOME
@@ -1544,7 +1544,7 @@ if build 'zenLib' "$g_ver"; then
     execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
         -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON'
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'zenLib' "$g_ver"
 fi
 
@@ -1556,7 +1556,7 @@ if build 'MediaInfoLib' "$g_ver"; then
         -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON' -DENABLE_APPS='OFF' \
         -DUSE_STATIC_LIBSTDCXX='ON' -DBUILD_ZLIB='OFF' -DBUILD_ZENLIB='OFF'
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'MediaInfoLib' "$g_ver"
 fi
 
@@ -1594,7 +1594,7 @@ if build 'c2man' 'git'; then
         -D vi='/usr/bin/vi' -D zip='/usr/bin/zip'
     execute make depend
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'c2man' 'git'
 fi
 
@@ -1618,7 +1618,7 @@ if build 'libass' "$g_ver"; then
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'libass' "$g_ver"
 fi
 cnf_ops+=('--enable-libass')
@@ -1630,7 +1630,7 @@ if build 'fontconfig' "$g_ver"; then
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --sysconfdir="$workspace"/etc/ --mandir="$workspace"/share/man/
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'fontconfig' "$g_ver"
 fi
 cnf_ops+=('--enable-libfontconfig')
@@ -1653,7 +1653,7 @@ if build 'libsdl' "$g_ver"; then
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'libsdl' "$g_ver"
 fi
 
@@ -1667,7 +1667,7 @@ if $nonfree_and_gpl; then
         execute cmake . -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
             -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON' -DENABLE_APPS='OFF' -DUSE_STATIC_LIBSTDCXX='ON'
         execute make -j "$cpu_threads"
-        execute sudo make install
+        execute make install
 
         if [ -n "$LDEXEFLAGS" ]; then
             sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "$workspace"/lib/pkgconfig/srt.pc
@@ -1718,7 +1718,7 @@ if which 'nvcc' &>/dev/null ; then
     if build 'nv-codec' "$g_ver"; then
         download_git 'https://github.com/FFmpeg/nv-codec-headers.git' "nv-codec-$g_ver"
         execute make PREFIX="$workspace" -j "$cpu_threads"
-        execute sudo make install PREFIX="$workspace"
+        execute make install PREFIX="$workspace"
         build_done 'nv-codec' "$g_ver"
     fi
     CFLAGS+=" -I/usr/local/cuda-12.1/targets/x86_64-linux/include -I/usr/local/cuda-12.1/include -I$workspace/usr/include -I$packages/nv-codec-n12.0.16.0/include"
@@ -1771,7 +1771,7 @@ execute ./configure \
         --pkg-config-flags='--static'
 
 execute make -j "$cpu_threads"
-execute sudo make install
+execute make install
 
 # MOVE BINARIES TO '/usr/bin'
 if which 'sudo' &>/dev/null; then
