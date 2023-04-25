@@ -9,7 +9,7 @@
 ##
 ##  Supported Distros: Debian-based ( Debian, Ubuntu, etc. )
 ##
-##  Supported architecture: x86_x64
+##  Supported architecture: x86_64
 ##
 ##  Purpose: Build FFmpeg from source code with addon development
 ##           libraries also compiled from source code to ensure the
@@ -711,7 +711,7 @@ cuda_fn()
 {
     printf "\n%s\n\n%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n\n" \
         'Pick your Linux distro from the list below:' \
-        'Supported architecture: x86_x64' \
+        'Supported architecture: x86_64' \
         '[1] Debian 10' \
         '[2] Debian 11' \
         '[3] Ubuntu 18.04' \
