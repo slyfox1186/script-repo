@@ -1508,9 +1508,9 @@ if build 'libwebp' 'git'; then
     execute autoreconf -fi
     execute cmake -S . -DWEBP_ENABLE_SWAP_16BIT_CSP:BOOL="1" -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL="1" \
         -DCMAKE_MODULE_LINKER_FLAGS_RELEASE:STRING="Release" -DCMAKE_INSTALL_PREFIX:PATH="$workspace" \
-        -DCMAKE_INSTALL_SBINDIR:PATH="sbin" -DCMAKE_INSTALL_SHAREDSTATEDIR:PATH="com" -G'Ninja'
-    execute ninja
-    execute ninja install
+        -DCMAKE_INSTALL_SBINDIR:PATH="sbin" -DCMAKE_INSTALL_SHAREDSTATEDIR:PATH="com" -G'Unix Makefiles'
+    execute make -j "$cpu_threads"
+    execute sudo make install
     build_done 'libwebp' 'git'
 fi
 cnf_ops+=('--enable-libwebp')
