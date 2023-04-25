@@ -9,7 +9,7 @@ clear
 if [ "${EUID}" -eq '0' ]; then
     echo 'You must run this script WITHOUT root/sudo'
     echo
-    exec bash "${0}" "${@}"
+    exit 1
 fi
 
 make_dir()
