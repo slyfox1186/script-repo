@@ -1456,7 +1456,7 @@ cnf_ops+=('--enable-libvorbis')
 
 pre_check_ver 'xiph/theora' '1' 'T'
 if build 'libtheora' "$g_ver"; then
-    download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "libtheora-$g_ver.tar.gz"
+    download "https://github.com/xiph/theora/releases/tag/v$g_ver" "libtheora-$g_ver.tar.gz"
     execute autoreconf -isf
     sed 's/-fforce-addr//g' 'configure' >'configure.patched'
     chmod +x 'configure.patched'
@@ -1506,11 +1506,11 @@ if build 'libwebp' 'git'; then
     CPPFLAGS=
     download_git 'https://chromium.googlesource.com/webm/libwebp' 'libwebp-git'
     execute autoreconf -fi
-    execute cmake -S . -DWEBP_ENABLE_SWAP_16BIT_CSP:BOOL="1" -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL="1" \
-        -DCMAKE_MODULE_LINKER_FLAGS_RELEASE:STRING="Release" -DCMAKE_INSTALL_PREFIX:PATH="$workspace" \
-        -DCMAKE_INSTALL_SBINDIR:PATH="sbin" -DCMAKE_INSTALL_SHAREDSTATEDIR:PATH="com" -G'Unix Makefiles'
-    execute make -j "$cpu_threads"
-    execute sudo make install
+    execute cmake -S . -DWEBP_ENABLE_SWAP_16BIT_CSP:BOOL=1 -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=1 \
+        -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -DCMAKE_INSTALL_SBINDIR:PATH=sbin \
+        -DCMAKE_INSTALL_SHAREDSTATEDIR:PATH=com -G'Ninja'
+    execute ninja
+    execute ninja install
     build_done 'libwebp' 'git'
 fi
 cnf_ops+=('--enable-libwebp')
