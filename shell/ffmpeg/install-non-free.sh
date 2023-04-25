@@ -58,7 +58,7 @@ echo
 wget -qO 'build-ffmpeg' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ffmpeg/build-ffmpeg'
 
 if [ -f build-ffmpeg ]; then
-    bash build-ffmpeg -b --enable-gpl-and-non-free --latest
+    sudo bash build-ffmpeg -b --enable-gpl-and-non-free --latest
 else
     echo 'file not found: build-ffmpeg'
 fi
