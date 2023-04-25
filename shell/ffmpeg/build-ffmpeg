@@ -643,12 +643,10 @@ echo
 
 if "$nonfree_and_gpl"; then
     echo 'The script has been configured to run with GPL and non-free codecs enabled'
-    echo
 fi
 
 if [ -n "$LDEXEFLAGS" ]; then
     echo 'The script has been configured to run in full static mode.'
-    echo
 fi
 
 # set global variables
