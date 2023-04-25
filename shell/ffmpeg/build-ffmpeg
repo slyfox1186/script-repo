@@ -399,9 +399,6 @@ git_ver_fn()
         7)          url_tag='git_7_fn';;
     esac
 
-    parent_dir="$(dirname "$PWD")"
-    sudo chown -R "$USER":"$USER" "$parent_dir"
-
     "$url_tag" "$v_url" "$gv_url" 2>/dev/null
 }
 
@@ -427,9 +424,6 @@ pre_check_ver()
     github_repo="$1"
     git_ver="$2"
     git_url_type="$3"
-
-    parent_dir="$(dirname "$PWD")"
-    sudo chown -R "$USER":"$USER" "$parent_dir"
 
     check_version "$github_repo"
     if [ "$g_nocheck" -eq '1' ]; then
@@ -697,6 +691,10 @@ if ! command_exists 'curl'; then
     fail_pkg_fn 'curl'
 fi
 
+if ! command_exists 'jq'; then
+    fail_pkg_fn 'jq'
+fi
+
 if ! command_exists 'cargo'; then
     echo 'The '\''cargo'\'' command was not found.'
     echo
@@ -803,8 +801,8 @@ build_pkgs_fn()
           clang clang-tools cmake cmake-curses-gui cmake-extras cmake-qt-gui curl dbus dbus-x11 dos2unix \
           flex flexc++ freeglut3-dev g++ g++-11 g++-12 gawk gcc gcc-11 gcc-12 gh git-all gnustep-gui-runtime \
           golang gtk-doc-tools help2man javacc jfsutils jq junit libbz2-dev libcairo2-dev libcdio-paranoia-dev \
-          libcurl4-gnutls-dev libdmalloc-dev libglib2.0-dev libgoogle-perftools-dev libgvc6 libheif-dev libjemalloc-dev \
-          liblz-dev liblzma-dev liblzo2-dev libmimalloc-dev libmusicbrainz5-dev libncurses5-dev libnet-nslookup-perl \
+          libcurl4-gnutls-dev libdmalloc-dev libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev liblz-dev \
+          liblzma-dev liblzo2-dev libmimalloc-dev libmusicbrainz5-dev libncurses5-dev libnet-nslookup-perl \
           libnuma-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev \
           librust-malloc-buf-dev libsox-dev libsoxr-dev libssl-dev libtalloc-dev libtbbmalloc2 libtinyxml2-dev \
           libtool libtool-bin libyuv-dev libzstd-dev libzzip-dev lsb-core lshw lvm2 lzma-dev make man-db mercurial \
@@ -888,7 +886,7 @@ install_cuda_fn()
             cuda_fn
             cuda_add_fn
         elif [[ "$cuda_ans" -eq '2' ]]; then
-            if [ -d "$cudaPATH" ]; then
+            if [ -d '/usr/local/cuda-12.1/bin' ]; then
                 PATH="$PATH:$cudaPATH"
                 export PATH
             else
@@ -1008,14 +1006,6 @@ if build 'zlib' "$g_ver"; then
     build_done 'zlib' "$g_ver"
 fi
 
-if build 'gperf' '3.1'; then
-    download 'http://ftp.gnu.org/pub/gnu/gperf/gperf-3.1.tar.gz' 'gperf-3.1.tar.gz'
-    execute ./configure --prefix="$workspace" --disable-shared --enable-static
-    execute make -j "$cpu_threads"
-    execute sudo make install
-    build_done 'gperf' '3.1'
-fi
-
 if build 'm4' '1.4.19'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.xz'
     execute ./configure --prefix="$workspace" --enable-c++ --with-dmalloc
@@ -1109,23 +1099,17 @@ if command_exists 'python3'; then
         if [ -z "$pip_tools_pkg" ]; then
             execute pip3 install pip setuptools --quiet --upgrade --no-cache-dir --disable-pip-version-check
         fi
-    for r in meson ninja
-    do
-        if ! command_exists $r; then
-            execute pip3 install $r --quiet --upgrade --no-cache-dir --disable-pip-version-check
-        fi
-        export PATH="$PATH:${HOME}/Library/Python/3.9/bin"
-    done
     fi
     if command_exists 'meson'; then
         git_ver_fn '198' '2' 'T'
         if build 'dav1d' "$g_sver"; then
             download "https://code.videolan.org/videolan/dav1d/-/archive/$g_ver/$g_ver.tar.bz2" "dav1d-$g_sver.tar.bz2"
-            make_dir build
             CFLAGSBACKUP="$CFLAGS"
-            execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
+            make_dir build
+            execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' \
+                --libdir="$workspace"/lib --strip
             execute ninja -C build
-            execute ninja -C build install
+            execute sudo ninja -C build install
             build_done 'dav1d' "$g_sver"
         fi
         cnf_ops+=('--enable-libdav1d')
@@ -1307,15 +1291,15 @@ if build "libpng" '1.6.39'; then
   build_done "libpng" '1.6.39'
 fi
 
+export CC='gcc' CXX='g++'
 pre_check_ver 'AOMediaCodec/libavif' '1' 'T'
 if build 'avif' "$g_ver"; then
     export CFLAGS+="-I$CFLAGS -I$workspace/include"
-    download "https://codeload.github.com/AOMediaCodec/libavif/tar.gz/refs/tags/v$g_ver" "avif-$g_ver.tar.gz"
-    execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' \
-        -DENABLE_STATIC='ON' -DAVIF_ENABLE_WERROR='OFF' -DAVIF_CODEC_DAV1D='ON' -DAVIF_CODEC_AOM='ON' \
-        -DAVIF_BUILD_APPS='ON' "$avif_tag"
-    execute make -j "$cpu_threads"
-    execute sudo make install
+    download "https://github.com/AOMediaCodec/libavif/archive/refs/tags/v$g_ver.tar.gz" "avif-$g_ver.tar.gz"
+    execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DAVIF_CODEC_AOM='ON' -DAVIF_CODEC_AOM='ON' \
+        -DAVIF_CODEC_DAV1D='ON' -DAVIF_CODEC_RAV1E='ON' -DAVIF_CODEC_SVT='ON' -DBUILD_SHARED_LIBS='OFF' -G'Ninja'
+    ninja
+    ninja install
     build_done 'avif' "$g_ver"
 fi
 
@@ -1341,7 +1325,7 @@ if command_exists 'python3'; then
             download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "lv2-$g_ver.tar.gz"
             execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
             execute ninja -C build
-            execute ninja -C build install
+            execute sudo ninja -C build install
             build_done 'lv2' "$g_ver"
         fi
 
@@ -1356,7 +1340,7 @@ if command_exists 'python3'; then
             download "https://gitlab.com/drobilla/serd/-/archive/v$g_ver/serd-v$g_ver.tar.bz2" "serd-$g_ver.tar.bz2"
             execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
             execute ninja -C build
-            execute ninja -C build install
+            execute sudo ninja -C build install
             build_done 'serd' "$g_ver"
         fi
 
@@ -1376,7 +1360,7 @@ if command_exists 'python3'; then
             execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' \
                 --backend 'ninja' --pkg-config-path="$workspace"/lib/pkgconfig
             execute ninja -C build
-            execute ninja -C build install
+            execute sudo ninja -C build install
             build_done 'zix' "$g_sver1"
         fi
 
@@ -1386,7 +1370,7 @@ if command_exists 'python3'; then
             execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' \
                 --libdir="$workspace"/lib  --pkg-config-path="$workspace"/lib/pkgconfig
             execute ninja -C build
-            execute ninja -C build install
+            execute sudo ninja -C build install
             build_done 'sord' "$g_ver"
         fi
 
@@ -1396,7 +1380,7 @@ if command_exists 'python3'; then
             execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' \
                 --libdir="$workspace"/lib --pkg-config-path="$workspace"/lib/pkgconfig
             execute ninja -C build
-            execute ninja -C build install
+            execute sudo ninja -C build install
             build_done 'sratom' "$g_ver"
         fi
 
@@ -1406,7 +1390,7 @@ if command_exists 'python3'; then
             execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' \
                 --libdir="$workspace"/lib --pkg-config-path="$workspace"/lib/pkgconfig
             execute ninja -C build
-            execute ninja -C build install
+            execute sudo ninja -C build install
             build_done 'lilv' "$g_ver"
         fi
         CFLAGS+=" -I$workspace/include/lilv-0"
@@ -1594,10 +1578,9 @@ if command_exists 'meson'; then
     if build 'harfbuzz' "$g_ver"; then
         download "https://github.com/harfbuzz/harfbuzz/archive/refs/tags/$g_ver.tar.gz" "harfbuzz-$g_ver.tar.gz"
         execute ./autogen.sh
-        execute meson setup build --prefix="/home/jman/tmp/ffmpeg-build/workspace" --buildtype='release' \
-            --default-library='static' --libdir=/home/jman/tmp/ffmpeg-build/workspace/lib --strip
+        execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
         execute ninja -C build
-        execute ninja -C build install
+        execute sudo ninja -C build install
         build_done 'harfbuzz' "$g_ver"
     fi
 fi
@@ -1621,14 +1604,18 @@ fi
 
 pre_check_ver 'fribidi/fribidi' '1' 'T'
 if build 'fribidi' "$g_ver"; then
-    download "https://codeload.github.com/fribidi/fribidi/tar.gz/refs/tags/v$g_ver" "fribidi-$g_ver.tar.gz"
-    execute meson build --prefix="/home/jman/tmp/ffmpeg/workspace" --strip --backend ninja --optimization 3 \
+    if [ -f "fribidi-$g_ver.tar.gz" ]; then
+        sudo rm "fribidi-$g_ver.tar.gz"
+    fi
+    download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "fribidi-$g_ver.tar.gz"
+    execute meson setup build --prefix="/home/jman/tmp/ffmpeg/workspace" --strip --backend ninja --optimization 3 \
         --pkg-config-path="$PKG_CONFIG_PATH"--buildtype='release' --default-library='static' --libdir="/home/jman/tmp/ffmpeg/workspace"/lib
     execute ninja -C build
-    execute ninja -C build install
+    execute sudo ninja -C build install
     build_done 'fribidi' "$g_ver"
 fi
 cnf_ops+=('--enable-libfribidi')
+
 pre_check_ver 'libass/libass' '1' 'T'
 if build 'libass' "$g_ver"; then
     download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "libass-$g_ver.tar.gz"
@@ -1732,7 +1719,7 @@ cnf_ops+=('--enable-amf')
 
 pre_check_ver 'fraunhoferhhi/vvenc' '1' 'T'
 if build 'vvenc' "$g_ver"; then
-    download "https://codeload.github.com/fraunhoferhhi/vvenc/tar.gz/refs/tags/v$g_ver" "vvenc-$g_ver.tar.gz"
+    download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "vvenc-$g_ver.tar.gz"
     execute cmake -B 'build/release-static' -DCMAKE_INSTALL_PREFIX="$workspace" \
         -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release'
     execute cmake --build 'build/release-static' -j "$cpu_threads"
@@ -1770,10 +1757,7 @@ if which 'nvcc' &>/dev/null ; then
     fi
 
     gpu_arch_fn
-    clear
-    echo "--nvccflags=-gencode arch=$gpu_arch"
-    echo
-    exit
+
     # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
     cnf_ops+=("--nvccflags=-gencode arch=$gpu_arch")
 fi
