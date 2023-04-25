@@ -654,6 +654,7 @@ export PATH
 
 # set the pkg-config path
 PKG_CONFIG_PATH="\
+$workspace/lib/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib/pkgconfig:\
 /usr/local/share/pkgconfig:\
@@ -663,6 +664,13 @@ PKG_CONFIG_PATH="\
 /usr/lib64/pkgconfig\
 "
 export PKG_CONFIG_PATH
+
+LD_LIBRARY_PATH="\
+$workspace/include:\
+/usr/include:\
+/usr/local/include\
+"
+export LD_LIBRARY_PATH
 
 if ! command_exists 'make'; then
     fail_pkg_fn 'make'
@@ -952,6 +960,7 @@ fi
 check_version 'pkgconf/pkgconf'
 if [ "$g_nocheck" -eq '1' ]; then
     git_ver_fn 'pkgconf/pkgconf' '1' 'T'
+    g_ver="${g_ver##*-}"
 else
     echo 'gver = g_nocheck'
     g_ver="$check_ver"
@@ -968,6 +977,7 @@ fi
 check_version 'yasm/yasm'
 if [ "$g_nocheck" -eq '1' ]; then
     git_ver_fn 'yasm/yasm' '1' 'T'
+    g_ver="${g_ver##*-}"
 else
     clear
     echo 'gver = g_nocheck'
@@ -993,6 +1003,7 @@ fi
 check_version 'madler/zlib'
 if [ "$g_nocheck" -eq '1' ]; then
     git_ver_fn 'madler/zlib' '1' 'T'
+    g_ver="${g_ver##*-}"
 else
     echo 'gver = g_nocheck'
     g_ver="${check_ver##*-}"
@@ -1041,6 +1052,7 @@ if $nonfree_and_gpl; then
     check_version 'openssl/openssl'
     if [ "$g_nocheck" -eq '1' ]; then
         git_ver_fn 'openssl/openssl' '1' 'R'
+        g_ver="${g_ver##*-}"
     else
         echo 'gver = g_nocheck'
         g_ver="${check_ver##*-}"
@@ -1086,6 +1098,7 @@ fi
 check_version 'kitware/cmake'
 if [ "$g_nocheck" -eq '1' ]; then
     git_ver_fn 'kitware/cmake' '1' 'T'
+    g_ver="${g_ver##*-}"
 else
     echo 'gver = g_nocheck'
     g_ver="${check_ver##*-}"
@@ -1150,6 +1163,7 @@ if command_exists 'cargo'; then
     check_version 'xiph/rav1e'
     if [ "$g_nocheck" -eq '1' ]; then
         git_ver_fn 'xiph/rav1e' '1' 'T'
+        g_ver="${g_ver##*-}"
     else
         echo 'gver = g_nocheck'
         g_ver="${check_ver##*-}"
@@ -1228,6 +1242,7 @@ fi
 check_version 'openvisualcloud/svt-hevc'
 if [ "$g_nocheck" -eq '1' ]; then
     git_ver_fn 'openvisualcloud/svt-hevc' '1' 'R'
+    g_ver="${g_ver##*-}"
 else
     echo 'gver = g_nocheck'
     g_ver="${check_ver##*-}"
@@ -1245,6 +1260,7 @@ fi
 check_version 'webmproject/libvpx'
 if [ "$g_nocheck" -eq '1' ]; then
     git_ver_fn 'webmproject/libvpx' '1' 'T'
+    g_ver="${g_ver##*-}"
 else
     echo 'gver = g_nocheck'
     g_ver="${check_ver##*-}"
@@ -1282,6 +1298,7 @@ fi
 check_version 'georgmartius/vid.stab'
     if [ "$g_nocheck" -eq '1' ]; then
         git_ver_fn 'georgmartius/vid.stab' '1' 'T'
+        g_ver="${g_ver##*-}"
     else
         echo 'gver = g_nocheck'
         g_ver="${check_ver##*-}"
@@ -1311,12 +1328,13 @@ cnf_ops+=('--enable-libaom')
 check_version 'sekrit-twc/zimg'
 if [ "$g_nocheck" -eq '1' ]; then
     git_ver_fn 'sekrit-twc/zimg' '1' 'T'
+    g_ver="${g_ver##*-}"
 else
     echo 'gver = g_nocheck'
     g_ver="${check_ver##*-}"
 fi
 if build 'zimg' "$g_ver"; then
-    download "$g_url" "zimg-$g_ver.tar.gz"
+    download "https://github.com/sekrit-twc/zimg/archive/refs/tags/release-$g_ver.tar.gz" "zimg-$g_ver.tar.gz"
     execute "$workspace"/bin/libtoolize -i -f -q
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --enable-static --disable-shared
@@ -1326,19 +1344,21 @@ if build 'zimg' "$g_ver"; then
 fi
 cnf_ops+=('--enable-libzimg')
 
-if build "libpng" "1.6.39"; then
-    download "https://gigenet.dl.sourceforge.net/project/libpng/libpng16/1.6.39/libpng-1.6.39.tar.gz" "libpng-1.6.39.tar.gz"
+if build "libpng" '1.6.39'; then
+    download_git 'https://github.com/glennrp/libpng.git' 'libpng-1.6.39'
     export LDFLAGS="${LDFLAGS}"
     export CPPFLAGS="${CFLAGS}"
-    execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+    execute autoreconf -fi
+    execute ./configure --prefix="$workspace" --disable-shared --enable-static
     execute make -j "$cpu_threads"
     execute sudo make install
-  build_done "libpng" "1.6.39"
+  build_done "libpng" '1.6.39'
 fi
 
 check_version 'AOMediaCodec/libavif'
 if [ "$g_nocheck" -eq '1' ]; then
     git_ver_fn 'AOMediaCodec/libavif' '1' 'T'
+    g_ver="${g_ver##*-}"
 else
     echo 'gver = g_nocheck'
     g_ver="${check_ver##*-}"
@@ -1346,7 +1366,7 @@ fi
 if build 'avif' "$g_ver"; then
     export CFLAGS+="-I$CFLAGS -I$workspace/include"
     download "https://github.com/AOMediaCodec/libavif/archive/refs/tags/v$g_ver.tar.gz" "avif-$g_ver.tar.gz"
-    cmake -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' \
+    execute cmake -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' \
         -DENABLE_STATIC='ON' -DAVIF_ENABLE_WERROR='OFF' -DAVIF_CODEC_DAV1D='ON' -DAVIF_CODEC_AOM='ON' -G'Unix Makefiles' \
         -DAVIF_BUILD_APPS='ON' "$avif_tag"
     execute make -j "$cpu_threads"
@@ -1357,6 +1377,7 @@ fi
 check_version 'ultravideo/kvazaar'
 if [ "$g_nocheck" -eq '1' ]; then
     git_ver_fn 'ultravideo/kvazaar' '1' 'T'
+    g_ver="${g_ver##*-}"
 else
     echo 'gver = g_nocheck'
     g_ver="${check_ver##*-}"
@@ -1380,7 +1401,9 @@ if command_exists 'python3'; then
         check_version 'lv2/lv2'
         if [ "$g_nocheck" -eq '1' ]; then
             git_ver_fn 'lv2/lv2' '1' 'T'
+            g_ver="${g_ver##*-}"
         else
+            echo
             echo 'gver = g_nocheck'
             g_ver="${check_ver##*-}"
         fi
@@ -1410,7 +1433,9 @@ if command_exists 'python3'; then
         check_version 'pcre2project/pcre2'
         if [ "$g_nocheck" -eq '1' ]; then
             git_ver_fn 'pcre2project/pcre2' '1' 'T'
+            g_ver="${g_ver##*-}"
         else
+            echo
             echo 'gver = g_nocheck'
             g_ver="${check_ver##*-}"
         fi
@@ -1423,16 +1448,11 @@ if command_exists 'python3'; then
             build_done 'pcre2' "$g_ver"
         fi
 
-        check_version 'drobilla/zix'
-        if [ "$g_nocheck" -eq '1' ]; then
-            git_ver_fn 'drobilla/zix' '1' 'T'
-        else
-            echo 'gver = g_nocheck'
-            g_ver="${check_ver##*-}"
-        fi
+        git_ver_fn '14889806' '3' 'B'
         if build 'zix' "$g_sver1"; then
-            download "$g_url" "zix-$g_sver1.tar.gz"
-            execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib --includedir="${workspace}"/include
+            download "https://gitlab.com/drobilla/zix/-/archive/$g_ver1/zix-$g_ver1.tar.bz2" "zix-$g_sver1.tar.bz2"
+            execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' \
+                --backend 'ninja' --pkg-config-path="$workspace"/lib/pkgconfig
             execute ninja -C build
             execute ninja -C build install
             build_done 'zix' "$g_sver1"
@@ -1440,20 +1460,19 @@ if command_exists 'python3'; then
 
         git_ver_fn '11853362' '3' 'T'
         if build 'sord' "$g_ver"; then
-            download 'https://gitlab.com/drobilla/sord/-/archive/master/sord-master.tar.bz2' "sord-$g_ver.tar.bz2"
-            meson setup build --prefix="${workspace}" --buildtype='release' --default-library='static' --libdir="${workspace}"/lib --includedir="${workspace}"/include/zix-0
-            ninja -C build
+            download "https://gitlab.com/drobilla/sord/-/archive/v$g_ver/sord-v$g_ver.tar.bz2" "sord-$g_ver.tar.bz2"
+            meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' \
+                --libdir="$workspace"/lib  --pkg-config-path="$workspace"/lib/pkgconfig
+            execute ninja -C build
             execute ninja -C build install
             build_done 'sord' "$g_ver"
         fi
 
-echo
-exit
-
         git_ver_fn '11853194' '3' 'T'
         if build 'sratom' "$g_ver"; then
             download "https://gitlab.com/lv2/sratom/-/archive/v$g_ver/sratom-v$g_ver.tar.bz2" "sratom-$g_ver.tar.bz2"
-            execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
+            execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' \
+                --libdir="$workspace"/lib --pkg-config-path="$workspace"/lib/pkgconfig
             execute ninja -C build
             execute ninja -C build install
             build_done 'sratom' "$g_ver"
@@ -1462,7 +1481,8 @@ exit
         git_ver_fn '11853176' '3' 'T'
         if build 'lilv' "$g_ver"; then
             download "https://gitlab.com/lv2/lilv/-/archive/v$g_ver/lilv-v$g_ver.tar.bz2" "lilv-$g_ver.tar.bz2"
-            execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
+            execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' \
+                --libdir="$workspace"/lib --pkg-config-path="$workspace"/lib/pkgconfig
             execute ninja -C build
             execute ninja -C build install
             build_done 'lilv' "$g_ver"
@@ -1490,18 +1510,35 @@ if build 'lame' '3.100'; then
 fi
 cnf_ops+=('--enable-libmp3lame')
 
-git_ver_fn 'xiph/opus' '1' 'T'
+check_version 'xiph/opus'
+if [ "$g_nocheck" -eq '1' ]; then
+    git_ver_fn 'xiph/opus' '1' 'T'
+    g_ver="${g_ver##*-}"
+else
+    echo
+    echo 'gver = g_nocheck'
+    g_ver="${check_ver##*-}"
+fi
 if build 'opus' "$g_ver"; then
-    download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "opus-$g_ver.tar.gz"
+    download "https://github.com/xiph/opus/archive/refs/tags/v$g_ver.tar.gz" "opus-$g_ver.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --disable-shared --enable-static
+    execute cmake -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' \
+        -DENABLE_STATIC='ON' -G'Unix Makefiles'
     execute make -j "$cpu_threads"
     execute make install
     build_done 'opus' "$g_ver"
 fi
 cnf_ops+=('--enable-libopus')
 
-git_ver_fn 'xiph/ogg' '1' 'T'
+check_version 'xiph/ogg'
+if [ "$g_nocheck" -eq '1' ]; then
+    git_ver_fn 'xiph/ogg' '1' 'T'
+    g_ver="${g_ver##*-}"
+else
+    echo
+    echo 'gver = g_nocheck'
+    g_ver="${check_ver##*-}"
+fi
 if build 'libogg' "$g_ver"; then
     download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "libogg-$g_ver.tar.gz"
     execute ./autogen.sh
@@ -1511,22 +1548,38 @@ if build 'libogg' "$g_ver"; then
     build_done 'libogg' "$g_ver"
 fi
 
-git_ver_fn 'xiph/vorbis' '1' 'T'
+check_version 'xiph/vorbis'
+if [ "$g_nocheck" -eq '1' ]; then
+    git_ver_fn 'xiph/vorbis' '1' 'T'
+    g_ver="${g_ver##*-}"
+else
+    echo
+    echo 'gver = g_nocheck'
+    g_ver="${check_ver##*-}"
+fi
 if build 'libvorbis' "$g_ver"; then
-    download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "libvorbis-$g_ver.tar.gz"
+    download "https://github.com/xiph/vorbis/archive/refs/tags/v$g_ver.tar.gz" "libvorbis-$g_ver.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --with-ogg-libraries="$workspace"/lib \
-        --with-ogg-includes="$workspace"/include/ --enable-static --disable-shared --disable-oggtest
+        --with-ogg-includes="$workspace"/include --enable-static --disable-shared --disable-oggtest
     execute make -j "$cpu_threads"
     execute make install
     build_done 'libvorbis' "$g_ver"
 fi
 cnf_ops+=('--enable-libvorbis')
 
-git_ver_fn 'xiph/theora' '1' 'T'
+check_version 'xiph/theora'
+if [ "$g_nocheck" -eq '1' ]; then
+    git_ver_fn 'xiph/theora' '1' 'T'
+    g_ver="${g_ver##*-}"
+else
+    echo
+    echo 'gver = g_nocheck'
+    g_ver="${check_ver##*-}"
+fi
 if build 'libtheora' "$g_ver"; then
     download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "libtheora-$g_ver.tar.gz"
-    execute ./autogen.sh
+    execute autoreconf -isf
     sed 's/-fforce-addr//g' 'configure' >'configure.patched'
     chmod +x 'configure.patched'
     mv 'configure.patched' 'configure'
@@ -1536,14 +1589,22 @@ if build 'libtheora' "$g_ver"; then
     execute ./configure --prefix="$workspace" --with-ogg-libraries="$workspace"/lib --with-ogg-includes="$workspace"/include/ \
         --with-vorbis-libraries="$workspace"/lib --with-vorbis-includes="$workspace"/include/ --enable-static --disable-shared \
         --disable-oggtest --disable-vorbistest --disable-examples --disable-asm --disable-spec
-    execute make -j "$cpu_threads"
+    make -j "$cpu_threads"
     execute make install
     build_done 'libtheora' "$g_ver"
 fi
 cnf_ops+=('--enable-libtheora')
 
 if $nonfree_and_gpl; then
-    git_ver_fn 'mstorsjo/fdk-aac' '1' 'T'
+check_version 'mstorsjo/fdk-aac'
+    if [ "$g_nocheck" -eq '1' ]; then
+        git_ver_fn 'mstorsjo/fdk-aac' '1' 'T'
+        g_ver="${g_ver##*-}"
+    else
+        echo
+        echo 'gver = g_nocheck'
+        g_ver="${check_ver##*-}"
+    fi
     if build 'fdk_aac' "$g_ver"; then
         download "https://github.com/mstorsjo/fdk-aac/archive/refs/tags/v$g_ver.tar.gz" "fdk_aac-$g_ver.tar.gz"
         execute ./autogen.sh
@@ -1611,10 +1672,18 @@ fi
 unset JAVA_HOME
 cnf_ops+=('--enable-libbluray')
 
-git_ver_fn 'mediaarea/zenLib' '1' 'R'
+check_version 'mediaarea/zenLib'
+if [ "$g_nocheck" -eq '1' ]; then
+    git_ver_fn 'mediaarea/zenLib' '1' 'T'
+    g_ver="${g_ver##*-}"
+else
+    echo
+    echo 'gver = g_nocheck'
+    g_ver="${check_ver##*-}"
+fi
 if build 'zenLib' "$g_ver"; then
-    download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "zenLib-$g_ver.tar.gz"
-    cd "$PWD"/Project/CMake || exit 1
+    download "https://github.com/MediaArea/ZenLib/archive/refs/tags/v$g_ver.tar.gz" "zenLib-$g_ver.tar.gz"
+    cd Project/CMake || exit 1
     execute cmake -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
         -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON'
     execute make -j "$cpu_threads"
@@ -1622,10 +1691,18 @@ if build 'zenLib' "$g_ver"; then
     build_done 'zenLib' "$g_ver"
 fi
 
-git_ver_fn 'MediaArea/MediaInfoLib' '1' 'R'
+check_version 'MediaArea/MediaInfoLib'
+if [ "$g_nocheck" -eq '1' ]; then
+    git_ver_fn 'MediaArea/MediaInfoLib' '1' 'T'
+    g_ver="${g_ver##*-}"
+else
+    echo
+    echo 'gver = g_nocheck'
+    g_ver="${check_ver##*-}"
+fi
 if build 'MediaInfoLib' "$g_ver"; then
-    download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "MediaInfoLib-$g_ver.tar.gz"
-    cd "$PWD"/Project/CMake || exit 1
+    download "https://github.com/MediaArea/MediaInfoLib/archive/refs/tags/v$g_ver.tar.gz" "MediaInfoLib-$g_ver.tar.gz"
+    cd Project/CMake || exit 1
     execute cmake . -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
         -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON' -DENABLE_APPS='OFF' \
         -DUSE_STATIC_LIBSTDCXX='ON' -DBUILD_ZLIB='OFF' -DBUILD_ZENLIB='OFF'
@@ -1634,7 +1711,14 @@ if build 'MediaInfoLib' "$g_ver"; then
     build_done 'MediaInfoLib' "$g_ver"
 fi
 
-git_ver_fn 'MediaArea/MediaInfo' '1' 'T'
+check_version 'MediaArea/MediaInfo'
+if [ "$g_nocheck" -eq '1' ]; then
+    git_ver_fn 'MediaArea/MediaInfo' '1' 'T'
+    g_ver="${g_ver##*-}"
+else
+    echo 'gver = g_nocheck'
+    g_ver="${check_ver##*-}"
+fi
 if build 'MediaInfoCLI' "$g_ver"; then
     download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "MediaInfoCLI-$g_ver.tar.gz"
     cd "$PWD"/Project/GNU/CLI || exit 1
@@ -1644,9 +1728,17 @@ if build 'MediaInfoCLI' "$g_ver"; then
 fi
 
 if command_exists 'meson'; then
-    git_ver_fn 'harfbuzz/harfbuzz' '1' 'R'
+    check_version 'harfbuzz/harfbuzz'
+    if [ "$g_nocheck" -eq '1' ]; then
+        git_ver_fn 'harfbuzz/harfbuzz' '1' 'R'
+        g_ver="${g_ver##*-}"
+    else
+        echo
+        echo 'gver = g_nocheck'
+        g_ver="${check_ver##*-}"
+    fi
     if build 'harfbuzz' "$g_ver"; then
-        download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "harfbuzz-$g_ver.tar.gz"
+        download "https://github.com/harfbuzz/harfbuzz/archive/refs/tags/$g_ver.tar.gz" "harfbuzz-$g_ver.tar.gz"
         execute ./autogen.sh
         execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
         execute ./configure --prefix="$workspace" --disable-shared --enable-static
@@ -1673,7 +1765,15 @@ if build 'c2man' 'git'; then
     build_done 'c2man' 'git'
 fi
 
-git_ver_fn 'fribidi/fribidi' '1' 'R'
+check_version 'fribidi/fribidi'
+if [ "$g_nocheck" -eq '1' ]; then
+    git_ver_fn 'fribidi/fribidi' '1' 'T'
+    g_ver="${g_ver##*-}"
+else
+    echo
+    echo 'gver = g_nocheck'
+    g_ver="${check_ver##*-}"
+fi
 if build 'fribidi' "$g_ver"; then
     if [ -f "fribidi-$g_ver.tar.gz" ]; then
         sudo rm "fribidi-$g_ver.tar.gz"
@@ -1687,7 +1787,15 @@ if build 'fribidi' "$g_ver"; then
 fi
 cnf_ops+=('--enable-libfribidi')
 
-git_ver_fn 'libass/libass' '1' 'T'
+check_version 'libass/libass'
+if [ "$g_nocheck" -eq '1' ]; then
+    git_ver_fn 'libass/libass' '1' 'T'
+    g_ver="${g_ver##*-}"
+else
+    echo
+    echo 'gver = g_nocheck'
+    g_ver="${check_ver##*-}"
+fi
 if build 'libass' "$g_ver"; then
     download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "libass-$g_ver.tar.gz"
     execute ./autogen.sh
@@ -1717,14 +1825,22 @@ if build 'freetype' "$g_ver"; then
     execute ./autogen.sh
     execute cmake -S . -B build/release-static -DCMAKE_INSTALL_PREFIX="$workspace" \
         -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release' "${extracommands[@]}"
-    execute cmake --build build/release-static -j
+    execute cmake --build build/release-static -j "$cpu_threads"
     build_done 'freetype' "$g_ver"
 fi
 cnf_ops+=('--enable-libfreetype')
 
-git_ver_fn 'libsdl-org/SDL' '1' 'R'
+check_version 'libsdl-org/SDL'
+if [ "$g_nocheck" -eq '1' ]; then
+    git_ver_fn 'libsdl-org/SDL' '1' 'R'
+    g_ver="${g_ver##*-}"
+else
+    echo
+    echo 'gver = g_nocheck'
+    g_ver="${check_ver##*-}"
+fi
 if build 'libsdl' "$g_ver"; then
-    download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "libsdl-$g_ver.tar.gz"
+    download "https://github.com/libsdl-org/SDL/archive/refs/tags/release-$g_ver.tar.gz" "libsdl-$g_ver.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
     execute make -j "$cpu_threads"
@@ -1733,14 +1849,22 @@ if build 'libsdl' "$g_ver"; then
 fi
 
 if $nonfree_and_gpl; then
-    git_ver_fn 'Haivision/srt' '1' 'T'
+    check_version 'Haivision/srt'
+    if [ "$g_nocheck" -eq '1' ]; then
+        git_ver_fn 'Haivision/srt' '1' 'T'
+    else
+        echo
+        echo 'gver = g_nocheck'
+        g_ver="${check_ver##srt-}"
+    fi
     if build 'srt' "$g_ver"; then
-        download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "srt-$g_ver.tar.gz"
+        download "https://github.com/Haivision/srt/archive/refs/heads/master.tar.gz" "srt-$g_ver.tar.gz"
         export OPENSSL_ROOT_DIR="$workspace"
         export OPENSSL_LIB_DIR="$workspace"/lib
         export OPENSSL_INCLUDE_DIR="$workspace"/include/
         execute cmake . -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
             -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON' -DENABLE_APPS='OFF' -DUSE_STATIC_LIBSTDCXX='ON'
+        execute make -j "$cpu_threads"
         execute make install
 
         if [ -n "$LDEXEFLAGS" ]; then
@@ -1756,7 +1880,14 @@ fi
 ## HWaccel library ##
 #####################
 
-git_ver_fn 'khronosgroup/opencl-headers' '1' 'R'
+check_version 'khronosgroup/opencl-headers'
+if [ "$g_nocheck" -eq '1' ]; then
+    git_ver_fn 'khronosgroup/opencl-headers' '1' 'T'
+    g_ver="${g_ver##*-}"
+else
+    echo 'gver = g_nocheck'
+    g_ver="${check_ver##*-}"
+fi
 if build 'opencl' "$g_ver"; then
     CFLAGS+=" -DLIBXML_STATIC_FOR_DLL -DNOLIBTOOL"
     download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "opencl-$g_ver.tar.gz"
@@ -1777,7 +1908,14 @@ if [ -z "$LDEXEFLAGS" ]; then
     fi
 fi
 
-git_ver_fn 'GPUOpen-LibrariesAndSDKs/AMF' '1' 'T'
+check_version 'GPUOpen-LibrariesAndSDKs/AMF'
+if [ "$g_nocheck" -eq '1' ]; then
+    git_ver_fn 'GPUOpen-LibrariesAndSDKs/AMF' '1' 'T'
+    g_ver="${g_ver##*-}"
+else
+    echo 'gver = g_nocheck'
+    g_ver="${check_ver##*-}"
+fi
 if build 'amf' "$g_ver"; then
     download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "AMF-$g_ver.tar.gz"
     execute rm -fr "$workspace"/include/AMF
@@ -1787,29 +1925,49 @@ if build 'amf' "$g_ver"; then
 fi
 cnf_ops+=('--enable-amf')
 
-
-git_ver_fn 'fraunhoferhhi/vvenc' '1' 'T'
+check_version 'fraunhoferhhi/vvenc'
+if [ "$g_nocheck" -eq '1' ]; then
+    git_ver_fn 'fraunhoferhhi/vvenc' '1' 'T'
+    g_ver="${g_ver##*-}"
+else
+    echo 'gver = g_nocheck'
+    g_ver="${check_ver##*-}"
+fi
 if build 'vvenc' "$g_ver"; then
     download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "vvenc-$g_ver.tar.gz"
     execute cmake -S . -B build/release-static -DCMAKE_INSTALL_PREFIX="$workspace" \
         -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release'
-    execute cmake --build build/release-static -j
+    execute cmake --build build/release-static -j "$cpu_threads"
     build_done 'vvenc' "$g_ver"
 fi
 cnf_ops+=('--enable-nvenc')
 
-git_ver_fn 'fraunhoferhhi/vvdec' '1' 'T'
+check_version 'fraunhoferhhi/vvdec'
+if [ "$g_nocheck" -eq '1' ]; then
+    git_ver_fn 'fraunhoferhhi/vvdec' '1' 'T'
+    g_ver="${g_ver##*-}"
+else
+    echo 'gver = g_nocheck'
+    g_ver="${check_ver##*-}"
+fi
 if build 'vvdec' "$g_ver"; then
     download_git 'https://github.com/fraunhoferhhi/vvdec.git' "vvdec-$g_ver"
     execute cmake -S . -B build/release-static -DCMAKE_INSTALL_PREFIX="$workspace" \
         -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release'
-    execute cmake --build build/release-static -j
+    execute cmake --build build/release-static -j "$cpu_threads"
     build_done 'vvdec' "$g_ver"
 fi
 cnf_ops+=('--enable-nvdec')
 
 if which 'nvcc' &>/dev/null ; then
-    git_ver_fn 'FFmpeg/nv-codec-headers' '1' 'T'
+    check_version 'FFmpeg/nv-codec-headers'
+    if [ "$g_nocheck" -eq '1' ]; then
+        git_ver_fn 'FFmpeg/nv-codec-headers' '1' 'T'
+        g_ver="${g_ver##*-}"
+    else
+        echo 'gver = g_nocheck'
+        g_ver="${check_ver##*-}"
+    fi
     if build 'nv-codec' "$g_ver"; then
         download_git 'https://github.com/FFmpeg/nv-codec-headers.git' "nv-codec-$g_ver"
         execute make PREFIX="$workspace"
@@ -1844,7 +2002,7 @@ fi
 
 # CLONE FFMPEG FROM THE LATEST GIT RELEASE
 build 'FFmpeg' 'git'
-download_git 'https://git.ffmpeg.org/ffmpeg.git' 'FFmpeg-git'
+download 'https://github.com/FFmpeg/FFmpeg/archive/refs/heads/master.tar.gz' 'FFmpeg-git.tar.gz'
 echo '$ ./configure'
 ./configure \
         "${cnf_ops[@]}" \
