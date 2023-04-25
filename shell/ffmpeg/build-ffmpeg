@@ -1298,8 +1298,8 @@ if build 'avif' "$g_ver"; then
     download "https://github.com/AOMediaCodec/libavif/archive/refs/tags/v$g_ver.tar.gz" "avif-$g_ver.tar.gz"
     execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DAVIF_CODEC_AOM='ON' -DAVIF_CODEC_AOM='ON' \
         -DAVIF_CODEC_DAV1D='ON' -DAVIF_CODEC_RAV1E='ON' -DAVIF_CODEC_SVT='ON' -DBUILD_SHARED_LIBS='OFF' -G'Ninja'
-    ninja
-    ninja install
+    execute ninja
+    execute ninja install
     build_done 'avif' "$g_ver"
 fi
 
