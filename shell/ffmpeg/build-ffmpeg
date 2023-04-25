@@ -399,6 +399,9 @@ git_ver_fn()
         7)          url_tag='git_7_fn';;
     esac
 
+    parent_dir="$(dirname "$PWD")"
+    sudo chown -R "$USER":"$USER" "$parent_dir"
+
     "$url_tag" "$v_url" "$gv_url" 2>/dev/null
 }
 
@@ -424,6 +427,9 @@ pre_check_ver()
     github_repo="$1"
     git_ver="$2"
     git_url_type="$3"
+
+    parent_dir="$(dirname "$PWD")"
+    sudo chown -R "$USER":"$USER" "$parent_dir"
 
     check_version "$github_repo"
     if [ "$g_nocheck" -eq '1' ]; then
@@ -797,8 +803,8 @@ build_pkgs_fn()
           clang clang-tools cmake cmake-curses-gui cmake-extras cmake-qt-gui curl dbus dbus-x11 dos2unix \
           flex flexc++ freeglut3-dev g++ g++-11 g++-12 gawk gcc gcc-11 gcc-12 gh git-all gnustep-gui-runtime \
           golang gtk-doc-tools help2man javacc jfsutils jq junit libbz2-dev libcairo2-dev libcdio-paranoia-dev \
-          libcurl4-gnutls-dev libdmalloc-dev libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev liblz-dev \
-          liblzma-dev liblzo2-dev libmimalloc-dev libmusicbrainz5-dev libncurses5-dev libnet-nslookup-perl \
+          libcurl4-gnutls-dev libdmalloc-dev libglib2.0-dev libgoogle-perftools-dev libgvc6 libheif-dev libjemalloc-dev \
+          liblz-dev liblzma-dev liblzo2-dev libmimalloc-dev libmusicbrainz5-dev libncurses5-dev libnet-nslookup-perl \
           libnuma-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev \
           librust-malloc-buf-dev libsox-dev libsoxr-dev libssl-dev libtalloc-dev libtbbmalloc2 libtinyxml2-dev \
           libtool libtool-bin libyuv-dev libzstd-dev libzzip-dev lsb-core lshw lvm2 lzma-dev make man-db mercurial \
@@ -1000,6 +1006,14 @@ if build 'zlib' "$g_ver"; then
     execute make -j "$cpu_threads"
     execute sudo make install
     build_done 'zlib' "$g_ver"
+fi
+
+if build 'gperf' '3.1'; then
+    download 'http://ftp.gnu.org/pub/gnu/gperf/gperf-3.1.tar.gz' 'gperf-3.1.tar.gz'
+    execute ./configure --prefix="$workspace" --disable-shared --enable-static
+    execute make -j "$cpu_threads"
+    execute sudo make install
+    build_done 'gperf' '3.1'
 fi
 
 if build 'm4' '1.4.19'; then
@@ -1580,7 +1594,8 @@ if command_exists 'meson'; then
     if build 'harfbuzz' "$g_ver"; then
         download "https://github.com/harfbuzz/harfbuzz/archive/refs/tags/$g_ver.tar.gz" "harfbuzz-$g_ver.tar.gz"
         execute ./autogen.sh
-        execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' --libdir="$workspace"/lib
+        execute meson setup build --prefix="/home/jman/tmp/ffmpeg-build/workspace" --buildtype='release' \
+            --default-library='static' --libdir=/home/jman/tmp/ffmpeg-build/workspace/lib --strip
         execute ninja -C build
         execute ninja -C build install
         build_done 'harfbuzz' "$g_ver"
@@ -1606,18 +1621,14 @@ fi
 
 pre_check_ver 'fribidi/fribidi' '1' 'T'
 if build 'fribidi' "$g_ver"; then
-    if [ -f "fribidi-$g_ver.tar.gz" ]; then
-        sudo rm "fribidi-$g_ver.tar.gz"
-    fi
-    download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "fribidi-$g_ver.tar.gz"
-    execute meson setup build --prefix="/home/jman/tmp/ffmpeg/workspace" --strip --backend ninja --optimization 3 \
+    download "https://codeload.github.com/fribidi/fribidi/tar.gz/refs/tags/v$g_ver" "fribidi-$g_ver.tar.gz"
+    execute meson build --prefix="/home/jman/tmp/ffmpeg/workspace" --strip --backend ninja --optimization 3 \
         --pkg-config-path="$PKG_CONFIG_PATH"--buildtype='release' --default-library='static' --libdir="/home/jman/tmp/ffmpeg/workspace"/lib
     execute ninja -C build
     execute ninja -C build install
     build_done 'fribidi' "$g_ver"
 fi
 cnf_ops+=('--enable-libfribidi')
-
 pre_check_ver 'libass/libass' '1' 'T'
 if build 'libass' "$g_ver"; then
     download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "libass-$g_ver.tar.gz"
