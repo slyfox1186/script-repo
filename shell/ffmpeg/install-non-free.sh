@@ -1713,26 +1713,6 @@ if build 'amf' "$g_ver"; then
 fi
 cnf_ops+=('--enable-amf')
 
-pre_check_ver 'fraunhoferhhi/vvenc' '1' 'T'
-if build 'vvenc' "$g_ver"; then
-    download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "vvenc-$g_ver.tar.gz"
-    execute cmake -B 'build/release-static' -DCMAKE_INSTALL_PREFIX="$workspace" \
-        -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release'
-    execute cmake --build 'build/release-static' -j "$cpu_threads"
-    build_done 'vvenc' "$g_ver"
-fi
-cnf_ops+=('--enable-nvenc')
-
-pre_check_ver 'fraunhoferhhi/vvdec' '1' 'T'
-if build 'vvdec' "$g_ver"; then
-    download_git 'https://github.com/fraunhoferhhi/vvdec.git' "vvdec-$g_ver"
-    execute cmake -B 'build/release-static' -DCMAKE_INSTALL_PREFIX="$workspace" \
-        -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release'
-    execute cmake --build 'build/release-static' -j "$cpu_threads"
-    build_done 'vvdec' "$g_ver"
-fi
-cnf_ops+=('--enable-nvdec')
-
 if which 'nvcc' &>/dev/null ; then
     pre_check_ver 'FFmpeg/nv-codec-headers' '1' 'T'
     if build 'nv-codec' "$g_ver"; then
