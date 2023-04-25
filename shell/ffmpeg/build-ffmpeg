@@ -937,7 +937,7 @@ install_cuda_fn()
 ## install cuda
 ##
 
-clear
+echo
 install_cuda_fn
 
 ##
