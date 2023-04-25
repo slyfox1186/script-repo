@@ -1007,7 +1007,7 @@ if build 'zlib' "$g_ver"; then
 fi
 
 if build 'm4' '1.4.19'; then
-    download 'https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.xz'
+    download 'https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.xz' 'm4-1.4.19.tar.xz'
     execute ./configure --prefix="$workspace" --enable-c++ --with-dmalloc
     execute make -j "$cpu_threads"
     execute sudo make install
@@ -1015,7 +1015,7 @@ if build 'm4' '1.4.19'; then
 fi
 
 if build 'autoconf' '2.71'; then
-    download 'https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.xz'
+    download 'https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.xz' 'autoconf-2.71.tar.xz'
     execute ./configure --prefix="$workspace"
     execute make -j "$cpu_threads"
     execute sudo make install
@@ -1023,7 +1023,7 @@ if build 'autoconf' '2.71'; then
 fi
 
 if build 'automake' '1.16.5'; then
-    download 'https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
+    download 'https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz' 'automake-1.16.5.tar.xz'
     execute ./configure --prefix="$workspace"
     execute make -j "$cpu_threads"
     execute sudo make install
@@ -1031,7 +1031,7 @@ if build 'automake' '1.16.5'; then
 fi
 
 if build 'libtool' '2.4.7'; then
-    download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
+    download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz' 'libtool-2.4.7.tar.xz'
     execute ./configure --prefix="$workspace" --enable-static --disable-shared
     execute make -j "$cpu_threads"
     execute sudo make install
@@ -1119,12 +1119,12 @@ fi
 git_ver_fn '24327400' '3' 'T'
 if build 'svtav1' "$g_ver"; then
     download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v$g_ver/SVT-AV1-v$g_ver.tar.bz2" "SVT-AV1-$g_ver.tar.bz2"
+    execute cmake -S . -B Build/linux -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='OFF' ../.. -G'Unix Makefiles' -DCMAKE_BUILD_TYPE='Release'
     cd Build/linux || exit 1
-    execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' ../.. -G'Unix Makefiles' -DCMAKE_BUILD_TYPE='Release'
     execute make -j "$cpu_threads"
     execute sudo make install
-    execute cp 'SvtAv1Enc.pc' "$workspace"/lib/pkgconfig/
-    execute cp 'SvtAv1Dec.pc' "$workspace"/lib/pkgconfig/
+    execute sudo cp 'SvtAv1Enc.pc' "$workspace"/lib/pkgconfig/
+    execute sudo cp 'SvtAv1Dec.pc' "$workspace"/lib/pkgconfig/
     build_done 'svtav1' "$g_ver"
 fi
 cnf_ops+=('--enable-libsvtav1')
