@@ -1301,7 +1301,7 @@ if build 'avif' "$g_ver"; then
     export CFLAGS+="-I$CFLAGS -I$workspace/include"
     download "https://github.com/AOMediaCodec/libavif/archive/refs/tags/v$g_ver.tar.gz" "avif-$g_ver.tar.gz"
     execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DAVIF_CODEC_AOM='ON' -DAVIF_CODEC_AOM='ON' \
-        -DAVIF_CODEC_DAV1D='ON' -DAVIF_CODEC_RAV1E='ON' -DAVIF_CODEC_SVT='ON' -DBUILD_SHARED_LIBS=OFF -G'Ninja'
+        -DAVIF_CODEC_DAV1D='ON' -DAVIF_CODEC_RAV1E='ON' -DAVIF_CODEC_SVT='ON' -DBUILD_SHARED_LIBS='OFF' -G'Ninja'
     ninja
     ninja install
     build_done 'avif' "$g_ver"
@@ -1506,12 +1506,11 @@ if build 'libwebp' 'git'; then
     CPPFLAGS=
     download_git 'https://chromium.googlesource.com/webm/libwebp' 'libwebp-git'
     execute autoreconf -fi
-    make_dir build
-    cd build || exit 1
-    execute cmake -S . -DCMAKE_INSTALL_PREFIX="/home/jman/tmp/ffmpeg/workspace" -DCMAKE_INSTALL_LIBDIR='lib' \
-        -DCMAKE_INSTALL_BINDIR='bin' -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON' -DWEBP_BUILD_CWEBP='ON' -DWEBP_BUILD_DWEBP='ON' ../
-    execute make -j "$cpu_threads"
-    execute sudo make install
+    execute cmake -S . -DWEBP_ENABLE_SWAP_16BIT_CSP:BOOL="1" -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL="1" \
+        -DCMAKE_MODULE_LINKER_FLAGS_RELEASE:STRING="Release" -DCMAKE_INSTALL_PREFIX:PATH="$workspace" \
+        -DCMAKE_INSTALL_SBINDIR:PATH="sbin" -DCMAKE_INSTALL_SHAREDSTATEDIR:PATH="com" -G'Ninja'
+    execute ninja
+    execute ninja install
     build_done 'libwebp' 'git'
 fi
 cnf_ops+=('--enable-libwebp')
@@ -1645,9 +1644,9 @@ if build 'freetype' "$g_ver"; then
     extracommands=(-D{harfbuzz,png,bzip2,brotli,zlib,tests}"=disabled")
     download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/$g_ver/freetype-$g_ver.tar.bz2" "freetype-$g_ver.tar.bz2"
     execute ./autogen.sh
-    execute cmake -S . --B build/release-static -DCMAKE_INSTALL_PREFIX="$workspace" \
+    execute cmake --B build/release-static -DCMAKE_INSTALL_PREFIX="$workspace" \
         -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release' "${extracommands[@]}"
-    execute cmake -S . --build build/release-static -j "$cpu_threads"
+    execute cmake --build build/release-static -j "$cpu_threads"
     build_done 'freetype' "$g_ver"
 fi
 cnf_ops+=('--enable-libfreetype')
