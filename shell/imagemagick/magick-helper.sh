@@ -14,8 +14,8 @@ echo '=========================================='
 
 echo -e "Now creating the temporary output build directory..."
 
-if ! mkdir -p "$PWD/build-magick"; then
-    printf '\n%s\n\n' "Failure to create the build directory: $PWD/build-magick"                   
+if ! mkdir -p "$PWD/magick-build"; then
+    printf '\n%s\n\n' "Failure to create the build directory: $PWD/magick-build"                   
     exit 1
 fi
 
@@ -23,6 +23,6 @@ printf "%s\n\n" \
     'Executing the master build script'
 
 # change into the temporary build directory, and run the master install script
-cd "$PWD/build-magick" || exit 1
+cd "$PWD/magick-build" || exit 1
 
 bash <(curl -sSL https://build-magick.optimizethis.net) --build
