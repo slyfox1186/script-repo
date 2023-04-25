@@ -226,11 +226,6 @@ download_git()
     dl_args="$3"
     target_dir="$dl_path/$dl_file"
 
-    if [ -n "$dl_args" ]; then
-        git_cmd "$dl_url $dl_args" "$target_dir"
-        return 0
-    fi
-
     # first download attempt
     if [ -d "$target_dir" ]; then
         sudo rm -fr "$target_dir"
@@ -696,10 +691,6 @@ if ! command_exists 'curl'; then
     fail_pkg_fn 'curl'
 fi
 
-if ! command_exists 'jq'; then
-    fail_pkg_fn 'jq'
-fi
-
 if ! command_exists 'cargo'; then
     echo 'The '\''cargo'\'' command was not found.'
     echo
@@ -802,11 +793,16 @@ build_pkgs_fn()
     echo 'Installing required development packages'
     echo '=========================================='
 
-    pkgs=(ant build-essential cmake cmake-curses-gui flex flexc++ g++ gcc \
-          gtk-doc-tools git-all help2man javacc jq junit libcairo2-dev \
-          libcdio-paranoia-dev libcurl4-gnutls-dev libglib2.0-dev \
-          libmusicbrainz5-dev libtinyxml2-dev texi2html openjdk-17-jdk \
-          pkg-config ragel scons yasm)
+    pkgs=(ant autoconf autogen automake binutils bison build-essential ccache ccdiff checkinstall \
+          clang clang-tools cmake cmake-curses-gui cmake-extras cmake-qt-gui curl dbus dbus-x11 dos2unix \
+          flex flexc++ freeglut3-dev g++ g++-11 g++-12 gawk gcc gcc-11 gcc-12 gh git-all gnustep-gui-runtime \
+          golang gtk-doc-tools help2man javacc jfsutils jq junit libbz2-dev libcairo2-dev libcdio-paranoia-dev \
+          libcurl4-gnutls-dev libdmalloc-dev libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev liblz-dev \
+          liblzma-dev liblzo2-dev libmimalloc-dev libmusicbrainz5-dev libncurses5-dev libnet-nslookup-perl \
+          libnuma-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev \
+          librust-malloc-buf-dev libsox-dev libsoxr-dev libssl-dev libtalloc-dev libtbbmalloc2 libtinyxml2-dev \
+          libtool libtool-bin libyuv-dev libzstd-dev libzzip-dev lsb-core lshw lvm2 lzma-dev make man-db mercurial \
+          nano openjdk-17-jdk pkg-config python3 python3-pip ragel scons sox texi2html texinfo yasm)
 
     for pkg in ${pkgs[@]}
     do
@@ -881,7 +877,7 @@ install_cuda_fn()
         echo '[3] Continue the build'
         echo
         read -p 'Your choices are (1 to 3): ' cuda_ans
-        clear
+        echo
         if [[ "$cuda_ans" -eq '1' ]]; then
             cuda_fn
             cuda_add_fn
@@ -915,7 +911,7 @@ install_cuda_fn()
         echo '[2] No'
         echo
         read -p 'Your choices are (1 or 2): ' cuda_choice
-        clear
+        echo
         if [[ "$cuda_choice" -eq '1' ]]; then
             cuda_fn
             cuda_add_fn
@@ -1508,11 +1504,15 @@ if build 'libwebp' 'git'; then
     CPPFLAGS=
     download_git 'https://chromium.googlesource.com/webm/libwebp' 'libwebp-git'
     execute autoreconf -fi
-    execute cmake -S . -DWEBP_ENABLE_SWAP_16BIT_CSP:BOOL=1 -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=1 \
-        -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -DCMAKE_INSTALL_SBINDIR:PATH=sbin \
-        -DCMAKE_INSTALL_SHAREDSTATEDIR:PATH=com -G'Ninja'
-    execute ninja
-    execute ninja install
+    execute cmake -S . -DCMAKE_INSTALL_MANDIR:PATH="" -DCMAKE_C_FLAGS_RELEASE:STRING="-O3 -DNDEBUG" -DWEBP_BUILD_EXTRAS:BOOL="0" \
+        -DWEBP_BUILD_LIBWEBPMUX:BOOL="0" -DZLIB_LIBRARY_DEBUG:FILEPATH="ZLIB_LIBRARY_DEBUG-NOTFOUND" -DCMAKE_INSTALL_INCLUDEDIR:PATH="include" \
+        -DCMAKE_INSTALL_LOCALEDIR:PATH="" -DWEBP_LINK_STATIC:BOOL="0" -DWEBP_BUILD_GIF2WEBP:BOOL="0" -DWEBP_BUILD_IMG2WEBP:BOOL="0" \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL="1" -DWEBP_BUILD_DWEBP:BOOL="0" -DWEBP_BUILD_CWEBP:BOOL="0" -DWEBP_BUILD_ANIM_UTILS:BOOL="0" \
+        -DWEBP_BUILD_WEBPMUX:BOOL="0" -DCMAKE_C_FLAGS:STRING="" -DWEBP_ENABLE_SWAP_16BIT_CSP:BOOL="0" -DCMAKE_SHARED_LINKER_FLAGS_RELEASE:STRING="" \
+        -DWEBP_BUILD_WEBPINFO:BOOL="0" -DCMAKE_INSTALL_PREFIX:PATH="/home/jman/tmp/ffmpeg/ffmpeg-build/workspace" -DZLIB_INCLUDE_DIR:PATH="/usr/include" \
+        -DWEBP_BUILD_VWEBP:BOOL="0" -DCMAKE_INSTALL_DOCDIR:PATH="" -G'Unix Makefiles'
+    execute make -j "$cpu_threads"
+    execute sudo make install
     build_done 'libwebp' 'git'
 fi
 cnf_ops+=('--enable-libwebp')
