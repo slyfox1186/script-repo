@@ -45,7 +45,7 @@ pkgs_fn()
 {
     pkgs=(alien apt-file aptitude aria2 autoconf autogen automake bat binutils \
           bison build-essential ccdiff checkinstall clang clang-tools cmake \
-          cmake-extras colordiff curl cvs dbus dbus-x11 dconf-editor ddclient \
+          cmake-extras cmake-qt-gui colordiff curl cvs dbus dbus-x11 dconf-editor ddclient \
           debhelper devscripts dh-make disktype dos2unix dpkg-dev exfat-fuse \
           exfatprogs f2fs-tools fakeroot flatpak flex gcc gcc-12 g++ g++-12 \
           gawk gcc gedit gedit-plugins gh gir1.2-gtksource-3.0 git git-all git-buildpackage \
