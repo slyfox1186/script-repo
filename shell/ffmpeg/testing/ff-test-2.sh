@@ -154,14 +154,14 @@ make_dir()
 remove_file()
 {
     if [ -f "$1" ]; then
-        rm -f "$1"
+        sudo rm -f "$1"
     fi
 }
 
 remove_dir()
 {
     if [ -d "$1" ]; then
-        rm -fr "$1"
+        sudo rm -fr "$1"
     fi
 }
 
@@ -962,7 +962,7 @@ git_test()
 
 # begin source code building
 if build 'giflib' '5.2.1'; then
-    download 'https://netcologne.dl.sourceforge.net/project/giflib/giflib-5.2.1.tar.gz' 'giflib-5.2.1.tar.gz'
+    download 'https://cfhcable.dl.sourceforge.net/project/giflib/giflib-5.2.1.tar.gz' 'giflib-5.2.1.tar.gz'
     # PARELLEL BUILDING NOT AVAILABLE FOR THIS LIBRARY
     execute make
     execute make PREFIX="$workspace" install
@@ -1506,8 +1506,8 @@ if build 'libwebp' 'git'; then
     # version 1.3.0, 1.2.4, and 1.2.3 fail to build successfully
     CPPFLAGS=
     download_git 'https://chromium.googlesource.com/webm/libwebp' 'libwebp-git'
-    make_dir build
     execute autoreconf -fi
+    make_dir build
     cd build || exit 1
     execute cmake -DCMAKE_INSTALL_PREFIX="/home/jman/tmp/ffmpeg/workspace" -DCMAKE_INSTALL_LIBDIR='lib' \
         -DCMAKE_INSTALL_BINDIR='bin' -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON' -DWEBP_BUILD_CWEBP='ON' -DWEBP_BUILD_DWEBP='ON' ../
