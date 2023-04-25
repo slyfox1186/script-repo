@@ -888,7 +888,7 @@ install_cuda_fn()
             cuda_fn
             cuda_add_fn
         elif [[ "$cuda_ans" -eq '2' ]]; then
-            if [ -d '/usr/local/cuda-12.1/bin' ]; then
+            if [ -d "$cudaPATH" ]; then
                 PATH="$PATH:$cudaPATH"
                 export PATH
             else
@@ -1732,7 +1732,7 @@ cnf_ops+=('--enable-amf')
 
 pre_check_ver 'fraunhoferhhi/vvenc' '1' 'T'
 if build 'vvenc' "$g_ver"; then
-    download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "vvenc-$g_ver.tar.gz"
+    download "https://codeload.github.com/fraunhoferhhi/vvenc/tar.gz/refs/tags/v$g_ver" "vvenc-$g_ver.tar.gz"
     execute cmake -B 'build/release-static' -DCMAKE_INSTALL_PREFIX="$workspace" \
         -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release'
     execute cmake --build 'build/release-static' -j "$cpu_threads"
@@ -1770,7 +1770,10 @@ if which 'nvcc' &>/dev/null ; then
     fi
 
     gpu_arch_fn
-
+    clear
+    echo "--nvccflags=-gencode arch=$gpu_arch"
+    echo
+    exit
     # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
     cnf_ops+=("--nvccflags=-gencode arch=$gpu_arch")
 fi
