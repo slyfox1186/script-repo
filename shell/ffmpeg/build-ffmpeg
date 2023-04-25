@@ -1454,7 +1454,7 @@ cnf_ops+=('--enable-libvorbis')
 
 pre_check_ver 'xiph/theora' '1' 'T'
 if build 'libtheora' "$g_ver"; then
-    download "https://github.com/xiph/theora/releases/tag/v$g_ver" "libtheora-$g_ver.tar.gz"
+    download "https://github.com/xiph/theora/archive/refs/tags/v$g_ver.tar.gz" "libtheora-$g_ver.tar.gz"
     execute autoreconf -isf
     sed 's/-fforce-addr//g' 'configure' >'configure.patched'
     chmod +x 'configure.patched'
