@@ -30,7 +30,9 @@ if ! systemctl status squid.service; then
     echo 'The squid service needs to be running to continue.'
     echo
     echo 'The script will attempt to start squid now... please be patient.'
-elif ! service squid start; then
+    sudo service squid start
+fi
+if ! service squid start; then
     echo 'The script was unable to start the squid service. You should manually change any errors'
     echo 'in the squid.conf file which is usually located in "/etc/squid/squid.conf"'
     echo
