@@ -19,9 +19,9 @@
 ##           the user will be prompted by the script to install them so that
 ##           hardware acceleration is enabled when compiling FFmpeg
 ##
-##  Updated: 04.24.23
+##  Updated: 04.13.23
 ##
-##  Version: 4.0
+##  Version: 3.3
 ##
 #################################################################################
 
@@ -31,14 +31,14 @@
 
 # FFmpeg version: Whatever the latest Git pull from: https://git.ffmpeg.org/gitweb/ffmpeg.git
 progname="${0:2}"
-script_ver='4.0'
+script_ver='3.3'
 cuda_ver='12.1'
 packages="$PWD"/packages
 workspace="$PWD"/workspace
 install_dir='/usr/bin'
 CFLAGS="-I$workspace/include -I/usr/local"
 LDFLAGS="-L$workspace"/lib
-LDEXEFLAGS=
+LDEXEFLAGS=''
 EXTRALIBS='-ldl -lpthread -lm -lz'
 cnf_ops=()
 nonfree_and_gpl='false'
@@ -271,13 +271,7 @@ git_1_fn()
     github_url="$2"
     github_repo_name="$(echo $github_repo | sed -e 's|.*/||')"
 
-    if curl_cmd="$(curl \
-                     -m "$curl_timeout" \
-                    --request GET \
-                    --url "https://api.github.com/slyfox1186" \
-                    --header "Authorization: Bearer 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" \
-                    --header "X-GitHub-Api-Version: 2022-11-28" \
-                    -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
         g_ssl="${g_ver#OpenSSL }"
@@ -435,6 +429,7 @@ pre_check_ver()
     git_url_type="$3"
 
     check_version "$github_repo"
+
     if [ "$g_nocheck" -eq '1' ]; then
         git_ver_fn "$github_repo" "$git_ver" "$git_url_type"
         g_ver="${g_ver##*-}"
