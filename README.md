@@ -97,10 +97,7 @@ wget -qO magick.sh https://debian.magick.optimizethis.net; sudo bash magick.sh
 ```bash
 wget -qO ffn.sh https://ffn.optimizethis.net; bash ffn.sh
 ```
-**Without GPL and non-free: https://ffmpeg.org/legal.html**
-```bash
-wget -qO ff.sh https://ff.optimizethis.net; bash ff.sh
-```
+
 ------
 ## Install [Squid Proxy Server](http://www.squid-cache.org/) for home use
 ```bash
