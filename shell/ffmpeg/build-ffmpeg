@@ -1232,11 +1232,11 @@ if $nonfree_and_gpl; then
         execute sudo make install
 
         if [[ -f "$workspace"/lib/libxvidcore.4.dylib ]]; then
-            execute rm "$workspace"/lib/libxvidcore.4.dylib
+            execute sudo rm "$workspace"/lib/libxvidcore.4.dylib
         fi
 
         if [[ -f "$workspace"/lib/libxvidcore.so ]]; then
-            execute rm "$workspace"/lib/libxvidcore.so*
+            execute sudo rm "$workspace"/lib/libxvidcore.so*
         fi
 
         build_done 'xvidcore' '1.3.7'
