@@ -1,4 +1,4 @@
-4#!/bin/bash
+#!/bin/bash
 # shellcheck disable=SC2016,SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
 
 #################################################################################
@@ -19,9 +19,9 @@
 ##           the user will be prompted by the script to install them so that
 ##           hardware acceleration is enabled when compiling FFmpeg
 ##
-##  Updated: 04.24.23
+##  Updated: 04.13.23
 ##
-##  Version: 4.0
+##  Version: 3.3
 ##
 #################################################################################
 
@@ -31,7 +31,7 @@
 
 # FFmpeg version: Whatever the latest Git pull from: https://git.ffmpeg.org/gitweb/ffmpeg.git
 progname="${0:2}"
-script_ver='4.0'
+script_ver='3.3'
 cuda_ver='12.1'
 packages="$PWD"/packages
 workspace="$PWD"/workspace
@@ -429,12 +429,10 @@ pre_check_ver()
     git_url_type="$3"
 
     check_version "$github_repo"
-
     if [ "$g_nocheck" -eq '1' ]; then
         git_ver_fn "$github_repo" "$git_ver" "$git_url_type"
         g_ver="${g_ver##*-}"
     else
-        echo 'gver = g_nocheck'
         g_ver="${check_ver##*-}"
     fi
 }
@@ -730,43 +728,43 @@ cuda_fn()
 
     case "$c_dist" in
         1)
-            wget --show progress -cqO "cuda-12.1.1.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-debian10-12-1-local_12.1.1-530.30.02-1_amd64.deb'
-            sudo dpkg -i "cuda-12.1.1.deb"
+            wget --show progress -cqO "cuda-12.1.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-debian10-12-1-local_12.1.0-530.30.02-1_amd64.deb'
+            sudo dpkg -i "cuda-12.1.deb"
             sudo cp /var/cuda-repo-debian10-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             sudo add-apt-repository contrib
             ;;
         2)
-            wget --show progress -cqO "cuda-12.1.1.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-debian11-12-1-local_12.1.1-530.30.02-1_amd64.deb'
-            sudo dpkg -i "cuda-12.1.1.deb"
+            wget --show progress -cqO "cuda-12.1.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-debian11-12-1-local_12.1.0-530.30.02-1_amd64.deb'
+            sudo dpkg -i "cuda-12.1.deb"
             sudo cp /var/cuda-repo-debian11-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             sudo add-apt-repository contrib
             ;;
         3)
             wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin'
             sudo mv 'cuda-ubuntu1804.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-            wget --show progress -cqO "cuda-12.1.1.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-ubuntu1804-12-1-local_12.1.1-530.30.02-1_amd64.deb'
-            sudo dpkg -i "cuda-12.1.1.deb"
+            wget --show progress -cqO "cuda-12.1.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-ubuntu1804-12-1-local_12.1.0-530.30.02-1_amd64.deb'
+            sudo dpkg -i "cuda-12.1.deb"
             sudo cp /var/cuda-repo-ubuntu1804-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             ;;
         4)
             wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin'
             sudo mv 'cuda-ubuntu2004.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-            wget --show progress -cqO "cuda-12.1.1.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-ubuntu2004-12-1-local_12.1.1-530.30.02-1_amd64.deb'
-            sudo dpkg -i "cuda-12.1.1.deb"
+            wget --show progress -cqO "cuda-12.1.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-ubuntu2004-12-1-local_12.1.0-530.30.02-1_amd64.deb'
+            sudo dpkg -i "cuda-12.1.deb"
             sudo cp /var/cuda-repo-ubuntu2004-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             ;;
         5)
             wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin'
             sudo mv 'cuda-ubuntu2204.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-            wget --show progress -cqO "cuda-12.1.1.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-ubuntu2204-12-1-local_12.1.1-530.30.02-1_amd64.deb'
-            sudo dpkg -i "cuda-12.1.1.deb"
+            wget --show progress -cqO "cuda-12.1.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-ubuntu2204-12-1-local_12.1.0-530.30.02-1_amd64.deb'
+            sudo dpkg -i "cuda-12.1.deb"
             sudo cp /var/cuda-repo-ubuntu2204-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             ;;
         6)
             wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin'
             sudo mv 'cuda-wsl-ubuntu.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-            wget --show progress -cqO "cuda-12.1.1.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-wsl-ubuntu-12-1-local_12.1.1-1_amd64.deb'
-            sudo dpkg -i "cuda-12.1.1.deb"
+            wget --show progress -cqO "cuda-12.1.deb" 'https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-wsl-ubuntu-12-1-local_12.1.0-1_amd64.deb'
+            sudo dpkg -i "cuda-12.1.deb"
             sudo cp /var/cuda-repo-wsl-ubuntu-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             ;;
         7)
@@ -972,7 +970,7 @@ fi
 
 pre_check_ver 'pkgconf/pkgconf' '1' 'T'
 if build 'pkg-config' "$g_ver"; then
-    download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "pkg-config-$g_ver.tar.gz"
+    download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "pkgconf-$g_ver.tar.gz"
     execute ./autogen.sh
     execute ./configure --silent --prefix="$workspace" --with-pc-path="$workspace"/lib/pkgconfig/ --with-internal-glib
     execute make -j "$cpu_threads"
@@ -1081,10 +1079,10 @@ fi
 
 pre_check_ver 'kitware/cmake' '1' 'T'
 if build 'cmake' "$g_ver" "$packages/$1.done"; then
-    download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "cmake-$g_ver.tar.gz"
+    download "https://github.com/kitware/cmake/archive/refs/tags/v$g_ver.tar.gz" "cmake-$g_ver.tar.gz"
     execute ./configure --prefix="$workspace" --parallel="$cpu_threads" --enable-ccache -- -DCMAKE_USE_OPENSSL='OFF'
     execute make -j "$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'cmake' "$g_ver"
 fi
 
@@ -1127,7 +1125,7 @@ git_ver_fn '24327400' '3' 'T'
 if build 'svtav1' "$g_ver"; then
     download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v$g_ver/SVT-AV1-v$g_ver.tar.bz2" "SVT-AV1-$g_ver.tar.bz2"
     cd Build/linux || exit 1
-    execute cmake -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' ../.. -G'Unix Makefiles' -DCMAKE_BUILD_TYPE='Release'
+    execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' ../.. -G'Unix Makefiles' -DCMAKE_BUILD_TYPE='Release'
     execute make -j "$cpu_threads"
     execute make install
     execute cp 'SvtAv1Enc.pc' "$workspace"/lib/pkgconfig/
@@ -1139,15 +1137,15 @@ cnf_ops+=('--enable-libsvtav1')
 if command_exists 'cargo'; then
     pre_check_ver 'xiph/rav1e' '1' 'T'
     if build 'rav1e' "$g_ver"; then
+        download "https://github.com/xiph/rav1e/archive/refs/tags/v$g_ver.tar.gz" "rav1e-$g_ver.tar.gz"
         execute cargo install --version '0.9.14+cargo-0.66' cargo-c
-        download "$g_url" "rav1e-$g_ver.tar.gz"
         execute cargo cinstall --prefix="$workspace" --library-type='staticlib' --crt-static --release
         build_done 'rav1e' "$g_ver"
     fi
-    avif_tag='-DAVIF_CODEC_RAV1E=ON'
+    avif_tag='-DAVIF_CODEC_RAV1E='ON''
     cnf_ops+=('--enable-librav1e')
 else
-    avif_tag='-DAVIF_CODEC_RAV1E=OFF'
+    avif_tag='-DAVIF_CODEC_RAV1E='OFF''
 fi
 
 if $nonfree_and_gpl; then
@@ -1255,7 +1253,7 @@ if $nonfree_and_gpl; then
     pre_check_ver 'georgmartius/vid.stab' '1' 'T'
     if build 'vid_stab' "$g_ver"; then
         download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "vid.stab-$g_ver.tar.gz"
-        execute cmake -DBUILD_SHARED_LIBS='OFF' -DCMAKE_INSTALL_PREFIX="$workspace" -DUSE_OMP='OFF' -DENABLE_SHARED='OFF' .
+        execute cmake -S . -DBUILD_SHARED_LIBS='OFF' -DCMAKE_INSTALL_PREFIX="$workspace" -DUSE_OMP='OFF' -DENABLE_SHARED='OFF' .
         execute make -j "$cpu_threads"
         execute make install
         build_done 'vid_stab' "$g_ver"
@@ -1267,7 +1265,7 @@ if build 'av1' '5711b50'; then
     download 'https://aomedia.googlesource.com/aom/+archive/5711b50eebe392119defd2a2a262bffef05e8507.tar.gz' 'av1.tar.gz' 'av1'
     make_dir "$packages"/aom_build
     cd "$packages"/aom_build || exit 1
-    execute cmake -DENABLE_TESTS='0' -DENABLE_EXAMPLES='0' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' "$packages"/av1
+    execute cmake -S . -DENABLE_TESTS='0' -DENABLE_EXAMPLES='0' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' "$packages"/av1
     execute make -j "$cpu_threads"
     execute make install
     build_done 'av1' '5711b50'
@@ -1277,7 +1275,7 @@ cnf_ops+=('--enable-libaom')
 pre_check_ver 'sekrit-twc/zimg' '1' 'T'
 if build 'zimg' "$g_ver"; then
     download "https://github.com/sekrit-twc/zimg/archive/refs/tags/release-$g_ver.tar.gz" "zimg-$g_ver.tar.gz"
-    execute "$workspace"/bin/libtoolize -i -f -q
+    execute "$workspace"/bin/libtoolize -ifq
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --enable-static --disable-shared
     execute make -j "$cpu_threads"
@@ -1287,7 +1285,7 @@ fi
 cnf_ops+=('--enable-libzimg')
 
 if build "libpng" '1.6.39'; then
-    download_git 'https://github.com/glennrp/libpng.git' 'libpng-1.6.39'
+    download "https://github.com/glennrp/libpng/releases/tag/v1.6.39" 'libpng-1.6.39.tar.gz'
     export LDFLAGS="${LDFLAGS}"
     export CPPFLAGS="${CFLAGS}"
     execute autoreconf -fi
@@ -1297,15 +1295,15 @@ if build "libpng" '1.6.39'; then
   build_done "libpng" '1.6.39'
 fi
 
+export CC='gcc' CXX='g++'
 pre_check_ver 'AOMediaCodec/libavif' '1' 'T'
 if build 'avif' "$g_ver"; then
     export CFLAGS+="-I$CFLAGS -I$workspace/include"
     download "https://github.com/AOMediaCodec/libavif/archive/refs/tags/v$g_ver.tar.gz" "avif-$g_ver.tar.gz"
-    execute cmake -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' \
-        -DENABLE_STATIC='ON' -DAVIF_ENABLE_WERROR='OFF' -DAVIF_CODEC_DAV1D='ON' -DAVIF_CODEC_AOM='ON' -G'Unix Makefiles' \
-        -DAVIF_BUILD_APPS='ON' "$avif_tag"
-    execute make -j "$cpu_threads"
-    execute make install
+    execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DAVIF_CODEC_AOM='ON' -DAVIF_CODEC_AOM='ON' \
+        -DAVIF_CODEC_DAV1D='ON' -DAVIF_CODEC_RAV1E='ON' -DAVIF_CODEC_SVT='ON' -DBUILD_SHARED_LIBS='OFF' -G'Ninja'
+    ninja
+    ninja install
     build_done 'avif' "$g_ver"
 fi
 
@@ -1373,7 +1371,7 @@ if command_exists 'python3'; then
         git_ver_fn '11853362' '3' 'T'
         if build 'sord' "$g_ver"; then
             download "https://gitlab.com/drobilla/sord/-/archive/v$g_ver/sord-v$g_ver.tar.bz2" "sord-$g_ver.tar.bz2"
-            meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' \
+            execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' \
                 --libdir="$workspace"/lib  --pkg-config-path="$workspace"/lib/pkgconfig
             execute ninja -C build
             execute ninja -C build install
@@ -1426,7 +1424,7 @@ pre_check_ver 'xiph/opus' '1' 'T'
 if build 'opus' "$g_ver"; then
     download "https://github.com/xiph/opus/archive/refs/tags/v$g_ver.tar.gz" "opus-$g_ver.tar.gz"
     execute ./autogen.sh
-    execute cmake -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' \
+    execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' \
         -DENABLE_STATIC='ON' -G'Unix Makefiles'
     execute make -j "$cpu_threads"
     execute make install
@@ -1508,12 +1506,11 @@ if build 'libwebp' 'git'; then
     CPPFLAGS=
     download_git 'https://chromium.googlesource.com/webm/libwebp' 'libwebp-git'
     execute autoreconf -fi
-    make_dir build
-    cd build || exit 1
-    execute cmake -DCMAKE_INSTALL_PREFIX="/home/jman/tmp/ffmpeg/workspace" -DCMAKE_INSTALL_LIBDIR='lib' \
-        -DCMAKE_INSTALL_BINDIR='bin' -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON' -DWEBP_BUILD_CWEBP='ON' -DWEBP_BUILD_DWEBP='ON' ../
-    execute make -j "$cpu_threads"
-    execute sudo make install
+    execute cmake -S . -DWEBP_ENABLE_SWAP_16BIT_CSP:BOOL="1" -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL="1" \
+        -DCMAKE_MODULE_LINKER_FLAGS_RELEASE:STRING="Release" -DCMAKE_INSTALL_PREFIX:PATH="$workspace" \
+        -DCMAKE_INSTALL_SBINDIR:PATH="sbin" -DCMAKE_INSTALL_SHAREDSTATEDIR:PATH="com" -G'Ninja'
+    execute ninja
+    execute ninja install
     build_done 'libwebp' 'git'
 fi
 cnf_ops+=('--enable-libwebp')
@@ -1548,7 +1545,7 @@ pre_check_ver 'mediaarea/zenLib' '1' 'T'
 if build 'zenLib' "$g_ver"; then
     download "https://github.com/MediaArea/ZenLib/archive/refs/tags/v$g_ver.tar.gz" "zenLib-$g_ver.tar.gz"
     cd Project/CMake || exit 1
-    execute cmake -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
+    execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
         -DCMAKE_INSTALL_INCLUDEDIR='include' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON'
     execute make -j "$cpu_threads"
     execute make install
@@ -1647,9 +1644,9 @@ if build 'freetype' "$g_ver"; then
     extracommands=(-D{harfbuzz,png,bzip2,brotli,zlib,tests}"=disabled")
     download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/$g_ver/freetype-$g_ver.tar.bz2" "freetype-$g_ver.tar.bz2"
     execute ./autogen.sh
-    execute cmake -S . -B build/release-static -DCMAKE_INSTALL_PREFIX="$workspace" \
-        -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release' "${extracommands[@]}"
-    execute cmake --build build/release-static -j "$cpu_threads"
+    execute cmake -B 'build/release-static' -DCMAKE_INSTALL_PREFIX="$workspace" -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' \
+        -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release' "${extracommands[@]}"
+    execute cmake --build 'build/release-static' -j "$cpu_threads"
     build_done 'freetype' "$g_ver"
 fi
 cnf_ops+=('--enable-libfreetype')
@@ -1693,7 +1690,7 @@ pre_check_ver 'khronosgroup/opencl-headers' '1' 'T'
 if build 'opencl' "$g_ver"; then
     CFLAGS+=" -DLIBXML_STATIC_FOR_DLL -DNOLIBTOOL"
     download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "opencl-$g_ver.tar.gz"
-    execute cmake -S . -B build -DCMAKE_INSTALL_PREFIX="$workspace"
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace"
     execute cmake --build build --target install
     build_done 'opencl' "$g_ver"
 fi
@@ -1723,9 +1720,9 @@ cnf_ops+=('--enable-amf')
 pre_check_ver 'fraunhoferhhi/vvenc' '1' 'T'
 if build 'vvenc' "$g_ver"; then
     download "https://github.com/$github_repo/archive/refs/heads/master.tar.gz" "vvenc-$g_ver.tar.gz"
-    execute cmake -S . -B build/release-static -DCMAKE_INSTALL_PREFIX="$workspace" \
+    execute cmake -B 'build/release-static' -DCMAKE_INSTALL_PREFIX="$workspace" \
         -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release'
-    execute cmake --build build/release-static -j "$cpu_threads"
+    execute cmake --build 'build/release-static' -j "$cpu_threads"
     build_done 'vvenc' "$g_ver"
 fi
 cnf_ops+=('--enable-nvenc')
@@ -1733,9 +1730,9 @@ cnf_ops+=('--enable-nvenc')
 pre_check_ver 'fraunhoferhhi/vvdec' '1' 'T'
 if build 'vvdec' "$g_ver"; then
     download_git 'https://github.com/fraunhoferhhi/vvdec.git' "vvdec-$g_ver"
-    execute cmake -S . -B build/release-static -DCMAKE_INSTALL_PREFIX="$workspace" \
+    execute cmake -B 'build/release-static' -DCMAKE_INSTALL_PREFIX="$workspace" \
         -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release'
-    execute cmake --build build/release-static -j "$cpu_threads"
+    execute cmake --build 'build/release-static' -j "$cpu_threads"
     build_done 'vvdec' "$g_ver"
 fi
 cnf_ops+=('--enable-nvdec')
