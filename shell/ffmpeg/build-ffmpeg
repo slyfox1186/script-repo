@@ -274,6 +274,8 @@ git_1_fn()
     if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
+        g_ver3="$(echo "$curl_cmd" | jq -r '.[3].name')"
+        g_ver3="${g_ver3#v}"
         g_ssl="${g_ver#OpenSSL }"
         g_pkg="${g_ver#pkg-config-}"
         g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url')"
@@ -432,6 +434,7 @@ pre_check_ver()
     if [ "$g_nocheck" -eq '1' ]; then
         git_ver_fn "$github_repo" "$git_ver" "$git_url_type"
         g_ver="${g_ver##*-}"
+        g_ver3="${g_ver3##*-}"
     else
         g_ver="${check_ver##*-}"
     fi
@@ -1271,6 +1274,7 @@ fi
 cnf_ops+=('--enable-libaom')
 
 pre_check_ver 'sekrit-twc/zimg' '1' 'T'
+
 if build 'zimg' "$g_ver"; then
     download "https://github.com/sekrit-twc/zimg/archive/refs/tags/release-$g_ver.tar.gz" "zimg-$g_ver.tar.gz"
     execute "$workspace"/bin/libtoolize -ifq
@@ -1453,9 +1457,9 @@ fi
 cnf_ops+=('--enable-libvorbis')
 
 pre_check_ver 'xiph/theora' '1' 'T'
-if build 'libtheora' "$g_ver"; then
-    download "https://github.com/xiph/theora/archive/refs/tags/v$g_ver.tar.gz" "libtheora-$g_ver.tar.gz"
-    execute autoreconf -isf
+if build 'libtheora' '1.0'; then
+    download "https://codeload.github.com/xiph/theora/tar.gz/refs/tags/v1.0" "libtheora-1.0.tar.gz"
+    execute ./autogen.sh
     sed 's/-fforce-addr//g' 'configure' >'configure.patched'
     chmod +x 'configure.patched'
     mv 'configure.patched' 'configure'
@@ -1467,7 +1471,7 @@ if build 'libtheora' "$g_ver"; then
         --disable-oggtest --disable-vorbistest --disable-examples --disable-asm --disable-spec
     execute make -j "$cpu_threads"
     execute make install
-    build_done 'libtheora' "$g_ver"
+    build_done 'libtheora' '1.0'
 fi
 cnf_ops+=('--enable-libtheora')
 
