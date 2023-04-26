@@ -17,9 +17,9 @@
 ##           the user will be prompted by the script to install them so that
 ##           hardware acceleration is enabled when compiling FFmpeg
 ##
-##  Updated: 04.26.23
+##  Updated: 04.25.23
 ##
-##  Version: 4.1
+##  Version: 4.0
 ##
 #################################################################################
 
@@ -29,7 +29,7 @@
 
 # FFmpeg version: Whatever the latest Git pull from: https://git.ffmpeg.org/gitweb/ffmpeg.git
 progname="${0:2}"
-script_ver='4.1'
+script_ver='4.0'
 cuda_ver='12.1.1'
 packages="$PWD"/packages
 workspace="$PWD"/workspace
@@ -175,8 +175,8 @@ download()
         target_dir="${3:-"${dl_file%.*}"}"
     fi
 
-    if [ -f "$dl_path/$dl_file" ]; then
-        sudo chown $USER:$USER "$dl_path/$dl_file"
+    if [ -d "$dl_path/$target_dir" ]; then
+        remove_dir "$dl_path/$target_dir"
     fi
 
     if [ ! -f "$dl_path/$dl_file" ]; then
