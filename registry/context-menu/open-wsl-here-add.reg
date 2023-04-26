@@ -4,7 +4,7 @@ Windows Registry Editor Version 5.00
 
 [HKEY_CLASSES_ROOT\*\shell\WSL]
 @="Open Linux Here"
-"Icon"="C:\\Windows\\System32\\wsl.exe"
+"Icon"="wsl.exe"
 "NoWorkingDirectory"=""
 "Extended"=-
 
@@ -16,7 +16,7 @@ Windows Registry Editor Version 5.00
 
 [HKEY_CLASSES_ROOT\DesktopBackground\shell\WSL]
 @="Open Linux Here"
-"Icon"="C:\\Windows\\System32\\wsl.exe"
+"Icon"="wsl.exe"
 "NoWorkingDirectory"=""
 "Extended"=-
 
@@ -31,7 +31,7 @@ Windows Registry Editor Version 5.00
 
 [HKEY_CLASSES_ROOT\Directory\Background\shell\WSL]
 @="Open Linux Here"
-"Icon"="C:\\Windows\\System32\\wsl.exe"
+"Icon"="wsl.exe"
 "NoWorkingDirectory"=""
 "Extended"=-
 
@@ -46,7 +46,7 @@ Windows Registry Editor Version 5.00
 
 [HKEY_CLASSES_ROOT\Directory\shell\WSL]
 @="Open Linux Here"
-"Icon"="C:\\Windows\\System32\\wsl.exe"
+"Icon"="wsl.exe"
 "NoWorkingDirectory"=""
 "Extended"=-
 
@@ -61,7 +61,7 @@ Windows Registry Editor Version 5.00
 
 [HKEY_CLASSES_ROOT\Drive\shell\WSL]
 @="Open Linux Here"
-"Icon"="C:\\Windows\\System32\\wsl.exe"
+"Icon"="wsl.exe"
 "NoWorkingDirectory"=""
 "Extended"=-
 
