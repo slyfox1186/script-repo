@@ -4,7 +4,7 @@ Windows Registry Editor Version 5.00
 "MUIVerb"="Take ownership"
 "Icon"="imageres.dll,77"
 "HasLUAShield"=""
-"Extended"=-
+"Extended"=""
 "SubCommands"=""
 
 [HKEY_CLASSES_ROOT\AllFilesystemObjects\shell\Take_Ownership\shell\01View_Owner]
