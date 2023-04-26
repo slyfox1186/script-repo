@@ -309,10 +309,6 @@ git_3_fn()
         g_ver1="$(echo "$curl_cmd" | jq -r '.[0].commit.id')"
         g_ver1="${g_ver1#v}"
         g_sver1="$(echo "$curl_cmd" | jq -r '.[0].commit.short_id')"
-
-        g_ver2="$(echo "$curl_cmd" | jq -r '.[3].commit.id')"
-        g_ver2="${g_ver2#v}"
-        g_sver2="$(echo "$curl_cmd" | jq -r '.[3].commit.short_id')"
     fi
 }
 
