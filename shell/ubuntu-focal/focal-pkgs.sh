@@ -43,19 +43,18 @@ exit_fn()
 
 pkgs_fn()
 {
-    pkgs=(alien aptitude aria2 autoconf autogen automake bat binutils bison build-essential \
-          ccdiff clang clang-tools cmake cmake-extras colordiff curl dbus dbus-x11 dconf-editor \
-          ddclient disktype dos2unix exfat-fuse f2fs-tools flex g++ gawk gcc-multilib gedit gedit-plugins \
-          gir1.2-gtksource-3.0 git-all gnome-tweaks gnustep-gui-runtime golang gparted gperf grub-customizer \
-          gufw hfsplus hfsprogs hfsutils htop idn2 iftop iw jfsutils jq libbz2-dev libdmalloc-dev libglib2.0-dev \
-          libgvc6 libheif-dev libjemalloc-dev liblz-dev liblzma-dev liblzo2-dev libncurses5-dev libnet-nslookup-perl \
-          libnuma-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev \
-          librust-malloc-buf-dev libsdl-pango-dev libsox-dev libsoxr-dev libssl-dev libtalloc-dev libtool \
-          libtool-bin libvmmalloc-dev libvmmalloc1 libzstd-dev libzzip-dev linux-source lm-sensors lshw lvm2 \
-          lzma-dev make man-db mono-devel nano net-tools netplan.io network-manager nilfs-tools npm ntfs-3g \
-          openssh-client openssh-server openssl pcregrep php-cli php-sqlite3 pipenv psensor python3 python3-pip \
-          reiser4progs reiserfsprogs rpm ruby-all-dev shellcheck sox sqlite3 synaptic texinfo tk-dev trash-cli \
-          udftools unzip uuid-dev wget xclip xfsprogs xsel)
+    pkgs=(alien apt-file aptitude aria2 autoconf autogen automake bat binutils bison build-essential ccache ccdiff checkinstall clang \
+          clang-tools cmake cmake-extras cmake-qt-gui colordiff cpu-checker curl cvs dbus dbus-x11 dconf-editor ddclient debhelper devscripts \
+          dh-make disktype dos2unix dpkg-dev exfat-fuse f2fs-tools fakeroot flatpak flex g++ gawk gcc gcc-multilib gedit gedit-plugins \
+          gir1.2-gtksource-3.0 git git-all git-buildpackage gnome-tweaks gnustep-gui-runtime golang gparted gperf grub-customizer gufw \
+          hfsplus hfsprogs hfsutils htop idn2 iftop iw jfsutils jq libbz2-dev libdmalloc-dev libglib2.0-dev libgvc6 libheif-dev \
+          libjemalloc-dev liblz-dev liblzma-dev liblzo2-dev libncurses5-dev libnet-nslookup-perl libnuma-dev libperl-dev libpstoedit-dev \
+          libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev librust-malloc-buf-dev libsdl-pango-dev libsox-dev libsoxr-dev \
+          libssl-dev libtalloc-dev libtool libtool-bin libvmmalloc-dev libvmmalloc1 libzstd-dev libzzip-dev lien linux-headers-generic \
+          linux-source lm-sensors lsb-core lshw lvm2 lzma-dev make man-db mercurial meson mono-devel nano net-tools netplan.io network-manager \
+          nilfs-tools npm ntfs-3g nvme-cli openssh-client openssh-server openssl patchutils pbuilder pcregrep php-cli php-sqlite3 pipenv plank \
+          ppa-purge pristine-tar psensor python3 python3-pip quilt reiser4progs reiserfsprogs rpm ruby-all-dev samba shellcheck smbclient sox \
+          sqlite3 subversion synaptic texinfo tk-dev tofrodos trash-cli udftools unzip uuid-dev wget xclip xfsprogs xsel yasm)
 
     for pkg in ${pkgs[@]}
     do
