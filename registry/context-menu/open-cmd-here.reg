@@ -3,7 +3,7 @@ Windows Registry Editor Version 5.00
 ; ADD OPEN CMD AS ADMINISTRATOR TO WINDOWS EXPLORER CONTEXT MENU
 
 [HKEY_CLASSES_ROOT\*\shell\CMDAsAdmin]
-@="CMD Here"
+@="Open CMD Here"
 "Icon"="imageres.dll,-5324"
 "HasLUAShield"=""
 "Position"="Middle"
@@ -12,10 +12,10 @@ Windows Registry Editor Version 5.00
 "SeparatorAfter"=""
 
 [HKEY_CLASSES_ROOT\*\shell\CMDAsAdmin\command]
-@="cmd.exe /D /C ECHO|SET/P=\"%W\"|powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -Args '/D /C \"\"\"PUSHD',$([char]34+$Input+[char]34),'^&^& START /MAX cmd.exe /K\"\"\"PROMPT $P$G$_$G' -Verb RunAs\""
+@="cmd.exe /D /C ECHO|SET/P=\"%W\"|powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -Args '/D /C \"\"\"PUSHD',$([char]34+$Input+[char]34),'^&^& START /MAX cmd.exe /T:0A /K\"\"\"PROMPT $P$G$_$G' -Verb RunAs\""
 
 [HKEY_CLASSES_ROOT\DesktopBackground\Shell\CMDAsAdmin]
-@="CMD Here"
+@="Open CMD Here"
 "Icon"="imageres.dll,-5324"
 "HasLUAShield"=""
 "Position"="Middle"
@@ -24,10 +24,10 @@ Windows Registry Editor Version 5.00
 "SeparatorAfter"=""
 
 [HKEY_CLASSES_ROOT\DesktopBackground\Shell\CMDAsAdmin\command]
-@="cmd.exe /D /C ECHO|SET/P=\"%V\"|powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -Args '/D /C, \"\"\"PUSHD',$([char]34+$Input+[char]34),'^&^& START /MAX cmd.exe /K\"\"\"PROMPT $P$G$_$G' -Verb RunAs\""
+@="cmd.exe /D /C ECHO|SET/P=\"%V\"|powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -Args '/D /C, \"\"\"PUSHD',$([char]34+$Input+[char]34),'^&^& START /MAX cmd.exe /T:0A /K\"\"\"PROMPT $P$G$_$G' -Verb RunAs\""
 
 [HKEY_CLASSES_ROOT\Directory\shell\CMDAsAdmin]
-@="CMD Here"
+@="Open CMD Here"
 "Icon"="imageres.dll,-5324"
 "HasLUAShield"=""
 "Position"="Middle"
@@ -36,10 +36,10 @@ Windows Registry Editor Version 5.00
 "SeparatorAfter"=""
 
 [HKEY_CLASSES_ROOT\Directory\shell\CMDAsAdmin\command]
-@="cmd.exe /D /C ECHO|SET/P=\"%L\"|powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -Args '/D /C \"\"\"PUSHD',$([char]34+$Input+[char]34),'^&^& START /MAX cmd.exe /K\"\"\"PROMPT $P$G$_$G' -Verb RunAs\""
+@="cmd.exe /D /C ECHO|SET/P=\"%1\"|powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -Args '/D /C \"\"\"PUSHD',$([char]34+$Input+[char]34),'^&^& START /MAX cmd.exe /T:0A /K\"\"\"PROMPT $P$G$_$G' -Verb RunAs\""
 
 [HKEY_CLASSES_ROOT\Directory\Background\shell\CMDAsAdmin]
-@="CMD Here"
+@="Open CMD Here"
 "Icon"="imageres.dll,-5324"
 "HasLUAShield"=""
 "Position"="Middle"
@@ -48,10 +48,10 @@ Windows Registry Editor Version 5.00
 "SeparatorAfter"=""
 
 [HKEY_CLASSES_ROOT\Directory\Background\shell\CMDAsAdmin\command]
-@="cmd.exe /D /C ECHO|SET/P=\"%V\"|powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -Args '/D /C \"\"\"PUSHD',$([char]34+$Input+[char]34),'^&^& START /MAX cmd.exe /K\"\"\"PROMPT $P$G$_$G' -Verb RunAs\""
+@="cmd.exe /D /C ECHO|SET/P=\"%V\"|powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -Args '/D /C \"\"\"PUSHD',$([char]34+$Input+[char]34),'^&^& START /MAX cmd.exe /T:0A /K\"\"\"PROMPT $P$G$_$G' -Verb RunAs\""
 
 [HKEY_CLASSES_ROOT\Drive\shell\CMDAsAdmin]
-@="CMD Here"
+@="Open CMD Here"
 "Icon"="imageres.dll,-5324"
 "HasLUAShield"=""
 "Position"="Middle"
@@ -60,10 +60,10 @@ Windows Registry Editor Version 5.00
 "SeparatorAfter"=""
 
 [HKEY_CLASSES_ROOT\Drive\shell\CMDAsAdmin\command]
-@="cmd.exe /D /C ECHO|SET/P=\"%L\"|powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -Args '/D /C \"\"\"PUSHD',$([char]34+$Input+[char]34),'^&^& START /MAX cmd.exe /K\"\"\"PROMPT $P$G$_$G' -Verb RunAs\""
+@="cmd.exe /D /C ECHO|SET/P=\"%1\"|powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -Args '/D /C \"\"\"PUSHD',$([char]34+$Input+[char]34),'^&^& START /MAX cmd.exe /T:0A /K\"\"\"PROMPT $P$G$_$G' -Verb RunAs\""
 
 [HKEY_CLASSES_ROOT\LibraryFolder\background\shell\CMDAsAdmin]
-@="CMD Here"
+@="Open CMD Here"
 "Icon"="imageres.dll,-5324"
 "HasLUAShield"=""
 "Position"="Middle"
@@ -72,7 +72,7 @@ Windows Registry Editor Version 5.00
 "SeparatorAfter"=""
 
 [HKEY_CLASSES_ROOT\LibraryFolder\background\shell\CMDAsAdmin\command]
-@="cmd.exe /D /C ECHO|SET/P=\"%V\"|powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -Args '/D /C \"\"\"PUSHD',$([char]34+$Input+[char]34),'^&^& START /MAX cmd.exe /K\"\"\"PROMPT $P$G$_$G' -Verb RunAs\""
+@="cmd.exe /D /C ECHO|SET/P=\"%V\"|powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -Args '/D /C \"\"\"PUSHD',$([char]34+$Input+[char]34),'^&^& START /MAX cmd.exe /T:0A /K\"\"\"PROMPT $P$G$_$G' -Verb RunAs\""
 
 ; To allow mapped drives to be available in command prompt
 [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System]
