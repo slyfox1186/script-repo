@@ -57,7 +57,7 @@ curl -sSL https://focal-mirrors.optimizethis.net | sudo bash
 ```
 #### Ubuntu Bionic
 ```bash
-curl -sSL https://bionic-mirrors.optimizethis.net | sudo bash
+curl -Lso mirrors.sh https://bionic-mirrors.optimizethis.net; sudo bash mirrors.sh
 ```
 #### Debian Bullseye
 ```bash
