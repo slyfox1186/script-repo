@@ -1,6 +1,6 @@
 /*_____________________________________________________________________________________
 
-  This will on activation fo the following:
+  This will on activation on the following:
   
   1. Open a program if it doesn't exist already.
   2. Active a program if it exists but is not active.
