@@ -1,0 +1,9 @@
+Windows Registry Editor Version 5.00
+
+; Enable Windows 10 Default Context Menu in Windows 11
+
+; Restart explorer to take effect
+
+[HKEY_CURRENT_USER\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32]
+@=""
+
