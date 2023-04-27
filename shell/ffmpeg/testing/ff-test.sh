@@ -260,6 +260,7 @@ git_1_fn()
         g_ver="${g_ver#v}"
         g_ver3="$(echo "$curl_cmd" | jq -r '.[3].name')"
         g_ver3="${g_ver3#v}"
+        g_ver="${g_ver#OpenJPEG }"
         g_ver="${g_ver#OpenSSL }"
         g_ver="${g_ver#pkg-config-}"
         g_ver="${g_ver#lcms}"
@@ -784,7 +785,7 @@ build_pkgs_fn()
     pkgs=(ant autoconf autogen automake binutils bison build-essential ccache ccdiff checkinstall clang \
           clang-tools cmake cmake-curses-gui cmake-extras cmake-qt-gui curl dbus dbus-x11 dos2unix flex \
           flexc++ freeglut3-dev g++ g++-11 g++-12 gawk gcc gcc-11 gcc-12 gh git-all gnustep-gui-runtime \
-          golang gtk-doc-tools help2man javacc jfsutils jq junit libbz2-dev libcairo2-dev libcdio-paranoia-dev \
+          golang gtk-doc-tools help2man javacc jfsutils jq junit libavif-dev libbz2-dev libcairo2-dev libcdio-paranoia-dev \
           libcurl4-gnutls-dev libdmalloc-dev libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev liblz-dev \
           liblzma-dev liblzo2-dev libmathic-dev libmimalloc-dev libmusicbrainz5-dev libncurses5-dev libnet-nslookup-perl \
           libnuma-dev libopencv-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev \
@@ -1548,6 +1549,20 @@ fi
 ## image libraries
 ##
 
+pre_check_ver 'uclouvain/openjpeg' '1' 'R'
+if build 'openjpeg' "$g_ver"; then
+    download "https://codeload.github.com/uclouvain/openjpeg/tar.gz/refs/tags/v$g_ver" "openjpeg-$g_ver.tar.gz"
+    make_dir 'build'
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX:PATH="$workspace"  -DCMAKE_BUILD_TYPE='Release' -DBUILD_TESTING='OFF' -DCPACK_BINARY_FREEBSD='ON' \
+        -DBUILD_THIRDPARTY='ON' -DCPACK_SOURCE_RPM='ON' -DCPACK_SOURCE_ZIP='ON' \
+        -DCPACK_BINARY_IFW='ON' -DBUILD_SHARED_LIBS='OFF' -DCPACK_BINARY_DEB='ON' -DCPACK_BINARY_TBZ2='ON' -DCPACK_BINARY_NSIS='ON' \
+        -DCPACK_BINARY_RPM='ON' -DCPACK_BINARY_TXZ='ON' -DCMAKE_EXPORT_COMPILE_COMMANDS='ON' -G 'Ninja'
+    execute ninja -C build
+    execute ninja -C build install
+    build_done 'openjpeg' "$g_ver"
+fi
+cnf_ops+=('--enable-libopenjpeg')
+    
 git_ver_fn '4720790' '3' 'T'
 if build 'libtiff' "$g_ver"; then
     download "https://gitlab.com/libtiff/libtiff/-/archive/v$g_ver/libtiff-v$g_ver.tar.bz2" "libtiff-$g_ver.tar.bz2"
@@ -1584,6 +1599,20 @@ cnf_ops+=('--enable-libwebp')
 ##
 ## other libraries
 ##
+
+git_ver_fn '1665' '6' 'T'
+if build 'xml2' "$g_ver"; then
+    download "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v$g_ver/libxml2-v$g_ver.tar.bz2" "xml2-$g_ver.tar.bz2"
+    make_dir build
+    execute cmake -B build -DBUILD_SHARED_LIBS='OFF' -DCMAKE_EXPORT_COMPILE_COMMANDS='OFF' -DCMAKE_INSTALL_PREFIX:PATH="/home/jman/tmp/ff1/workspace" \
+        -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCPACK_BINARY_DEB='ON' -DCPACK_BINARY_FREEBSD='ON' -DCPACK_BINARY_IFW='ON' -DCPACK_BINARY_NSIS='ON' \
+        -DCPACK_BINARY_RPM='ON' -DCPACK_BINARY_TBZ2='ON' -DCPACK_BINARY_TXZ='ON' -DCPACK_SOURCE_RPM='ON' -DCPACK_SOURCE_ZIP='ON' \
+        -DHWY_LIBRARY:FILEPATH="/usr/lib/x86_64-linux-gnu/libhwy.so" -DOPENGL_opengl_LIBRARY:FILEPATH="/usr/lib/x86_64-linux-gnu/libglut.a" -G 'Ninja'
+    execute ninja -C build
+    execute sudo ninja -C build install
+    build_done 'xml2' "$g_ver"
+fi
+cnf_ops+=('--enable-libxml2')
 
 pre_check_ver 'mm2/Little-CMS' '1' 'T'
 if build 'lcms' "$g_ver"; then
