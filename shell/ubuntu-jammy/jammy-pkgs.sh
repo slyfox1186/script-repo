@@ -18,7 +18,7 @@
 clear
 
 # Verify the script has root access before continuing
-if [ "$EUID" -ne '0' ]; then
+if [ $EUID -ne 0 ]; then
     echo 'You must run this script as root/sudo'
     echo
     exit 1
@@ -57,8 +57,8 @@ pkgs_fn()
           librust-jemalloc-sys-dev librust-malloc-buf-dev libsdl-pango-dev libsox-dev \
           libsoxr-dev libssl-dev libtalloc-dev libtbbmalloc2 libtool libtool-bin \
           libzstd-dev libzzip-dev linux-headers-generic linux-source lm-sensors \
-          lsb-core lshw lvm2 lzma-dev make man-db mercurial meson mono-devel nano netplan.io \
-          net-tools network-manager nilfs-tools npm ntfs2btrfs ntfs-3g nvme-cli \
+          lsb-core lshw lvm2 lzma-dev mainline make man-db mercurial meson mono-devel nano \
+          netplan.io net-tools network-manager nilfs-tools npm ntfs2btrfs ntfs-3g nvme-cli \
           openssh-client openssh-server openssl patchutils pbuilder pcregrep php-cli \
           php-sqlite3 pipenv plank plocate ppa-purge pristine-tar psensor python3 \
           python3-pip quilt reiser4progs reiserfsprogs rpm ruby-all-dev samba shellcheck \
@@ -94,7 +94,7 @@ ppa_fn()
         mkdir -p '/etc/apt/sources.list.d'
     fi
 
-    ppa_repo='danielrichter2007/grub-customizer git-core/ppa'
+    ppa_repo='cappelikan/ppa danielrichter2007/grub-customizer git-core/ppa'
 
     for pkg in ${ppa_repo[@]}
     do
@@ -104,8 +104,8 @@ ppa_fn()
             for i in "$pkg"
             do
                 case "$i" in
-                    'danielrichter2007/grub-customizer')      apt_ppa+='grub-customizer';;
-                    'git')                                    apt_ppa+=' git';;
+                        'danielrichter2007/grub-customizer')        apt_ppa+='grub-customizer';;
+                        'git')                                      apt_ppa+=' git';;
                  esac
             done
         fi
