@@ -248,12 +248,11 @@ curl_timeout='5'
 
 git_1_fn()
 {
-    local github_repo github_url github_repo_name
+    local github_repo github_url ${github_repo##*/}
 
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     github_repo="$1"
     github_url="$2"
-    github_repo_name="$(echo $github_repo | sed -e 's|.*/||')"
 
     if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
@@ -267,14 +266,7 @@ git_1_fn()
         g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url')"
     fi
 
-    if [ -n "$g_ver" ]; then
-        g_ver="$g_ver"
-    fi
-    if [ -n "$g_ver" ]; then
-        g_ver="$g_ver"
-    fi
-
-    echo "$github_repo_name-$g_ver" >> "$ver_file_tmp"
+    echo "$${github_repo##*/}-$g_ver" >> "$ver_file_tmp"
     awk '!NF || !seen[$0]++' "$latest_txt_tmp" > "$ver_file"
 }
 
@@ -392,12 +384,11 @@ git_ver_fn()
 check_version()
 {
     github_repo="$1"
-    github_repo_name="$(echo $github_repo | sed -e 's|.*/||')"
     latest_txt_tmp="$ver_file_tmp"
     latest_txt="$ver_file"
 
     awk '!NF || !seen[$0]++' "$latest_txt_tmp" > "$latest_txt"
-    check_ver="$(grep -Eo "$github_repo_name-[0-9\.]+" "$latest_txt" | sort | head -n1)"
+    check_ver="$(grep -Eo "$${github_repo##*/}-[0-9\.]+" "$latest_txt" | sort | head -n1)"
 
         if [ -n "$check_ver" ]; then
             g_nocheck='0'
@@ -950,7 +941,7 @@ ffmpeg_install_check()
 {
     ff_binaries=(ffmpeg ffprobe ffplay)
 
-    for i in "$ff_binaries"
+    for i in ${ff_binaries[@]}
     do
         if [ ! -f "/usr/bin/$i" ]; then
             echo "Failed to copy: /usr/bin/$i"
@@ -1200,10 +1191,10 @@ if command_exists 'cargo'; then
         execute cargo cinstall --prefix="$workspace" --library-type='staticlib' --crt-static --release
         build_done 'rav1e' "$g_ver"
     fi
-    avif_tag='-DAVIF_CODEC_RAV1E='ON''
+    avif_tag='-DAVIF_CODEC_RAV1E=ON'
     cnf_ops+=('--enable-librav1e')
 else
-    avif_tag='-DAVIF_CODEC_RAV1E='OFF''
+    avif_tag='-DAVIF_CODEC_RAV1E=OFF'
 fi
 
 if $nonfree_and_gpl; then
