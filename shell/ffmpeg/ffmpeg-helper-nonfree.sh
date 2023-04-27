@@ -6,7 +6,7 @@ clear
 
 # VERIFY THE SCRIPT DOES NOT HAVE ROOT ACCESS BEFORE CONTINUING
 # THIS CAN CAUSE ISSUES USING THE 'IF WHICH' COMMANDS IF RUN AS ROOT
-if [ $EUID -eq 0 ]; then
+if [ "$EUID" -eq '0' ]; then
     echo 'You must run this script WITHOUT root/sudo'
     echo
     exit 1
