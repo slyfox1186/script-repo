@@ -1587,7 +1587,6 @@ if build 'libwebp' 'git'; then
         -DWEBP_BUILD_WEBPMUX='OFF' -DWEBP_ENABLE_SWAP_16BIT_CSP='OFF' -DWEBP_BUILD_WEBPINFO='OFF' -DZLIB_INCLUDE_DIR:PATH="/usr/include" \
         -DWEBP_BUILD_VWEBP='OFF' -G 'Ninja' 
     execute ninja -C build all
-    execute ninja -C build
     execute ninja -C build install
     build_done 'libwebp' 'git'
 fi
