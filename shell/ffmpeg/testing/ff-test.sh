@@ -796,7 +796,7 @@ build_pkgs_fn()
           golang gtk-doc-tools help2man javacc jfsutils jq junit libbz2-dev libcairo2-dev libcdio-paranoia-dev \
           libcurl4-gnutls-dev libdmalloc-dev libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev liblz-dev \
           liblzma-dev liblzo2-dev libmathic-dev libmimalloc-dev libmusicbrainz5-dev libncurses5-dev libnet-nslookup-perl \
-          libnuma-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev \
+          libnuma-dev libopencv-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev \
           librust-malloc-buf-dev libsox-dev libsoxr-dev libssl-dev libtalloc-dev libtbbmalloc2 libtinyxml2-dev \
           libtool libtool-bin libyuv-dev libzstd-dev libzzip-dev lsb-core lshw lvm2 lzma-dev make man-db mercurial \
           meson nano ninja-build openjdk-17-jdk pkg-config python3 python3-pip ragel scons sox texi2html texinfo xmlto yasm)
@@ -925,6 +925,48 @@ install_cuda_fn()
             install_cuda_fn
         fi
     fi
+}
+
+ffmpeg_install_choice()
+{
+    printf "%s\n\n%s\n%s\n\n" \
+        'Would you like to install the FFmpeg binaries system-wide? [/usr/bin]' \
+        '[1] Yes ' \
+        '[2] No'
+
+    read -p 'Your choices are (1 or 2): ' install_choice
+    echo
+
+    case "$install_choice" in
+            1)
+                sudo cp -f "$workspace/bin/ffmpeg" "$install_dir/ffmpeg"
+                sudo cp -f "$workspace/bin/ffprobe" "$install_dir/ffprobe"
+                sudo cp -f "$workspace/bin/ffplay" "$install_dir/ffplay"
+                ;;
+            2)
+                printf "\n%s\n\n%s\n\n" \
+                    'The FFmpeg binaries are inside the directory below' \
+                    "$workspace/bin" 
+                read -p 'Press enter to continue.'
+                ;;
+            *)
+                echo 'Bad user input. Press enter to try again.'
+                clear
+                ffmpeg_install_choice
+                ;;
+    esac
+}
+
+ffmpeg_install_check()
+{
+    ff_binaries=(ffmpeg ffprobe ffplay)
+
+    for i in "$ff_binaries"
+    do
+        if [ ! -f "/usr/bin/$i" ]; then
+            echo "Failed to copy: /usr/bin/$i"
+        fi
+    done
 }
 
 ##
@@ -1555,6 +1597,16 @@ cnf_ops+=('--enable-libwebp')
 ## other libraries
 ##
 
+pre_check_ver 'avisynth/avisynthplus' '1' 'T'
+if build 'avisynth' "$g_ver"; then
+    download_git 'https://github.com/AviSynth/AviSynthPlus.git' "avisynth-$g_ver"
+    execute cmake -S . -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -G'Ninja'
+    execute ninja
+    execute ninja install
+    build_done 'avisynth' "$g_ver"
+fi
+cnf_ops+=('--enable-avisynth')
+
 git_ver_fn '363' '2' 'T'
 if build 'udfread' "$g_ver1"; then
     download "https://code.videolan.org/videolan/libudfread/-/archive/$g_ver1/libudfread-$g_ver1.tar.bz2" "udfread-$g_ver1.tar.bz2"
@@ -1761,10 +1813,15 @@ if which 'nvcc' &>/dev/null ; then
         execute make install PREFIX="$workspace"
         build_done 'nv-codec' "$g_ver"
     fi
-    CFLAGS+=" -I/usr/local/cuda-12.1/targets/x86_64-linux/include -I/usr/local/cuda-12.1/include -I$workspace/usr/include -I$packages/nv-codec-n12.0.16.0/include"
-    export CFLAGS
-    LDFLAGS+=' -L/usr/local/cuda-12.1/targets/x86_64-linux/lib -L/usr/local/cuda-12.1/lib64'
-    export LDFLAGS
+
+    cuda_link_dir="$(sudo find /usr/local -type d -name cuda-* | grep -Eo '^.*cuda-[0-9\.]+$' | sort -r | head -n1)"
+
+    if [ -z "$cuda_link_dir" ]; then
+        cuda_link_dir='/usr/local/cuda'
+    fi
+
+    CFLAGS+=" -I$cuda_link_dir/include"
+    LDFLAGS+=" -L$uda_linking_dir/lib64"
     LDPATH='-lcudart'
     cnf_ops+=('--enable-cuda-nvcc' '--enable-cuvid' '--enable-cuda-llvm')
 
@@ -1787,9 +1844,7 @@ build 'FFmpeg' 'git'
 download_git 'https://git.ffmpeg.org/ffmpeg.git' 'FFmpeg-git'
 echo '$ ./configure'
 ./configure \
-        --arch='x86_64' \
         "${cnf_ops[@]}" \
-        --arch="$(uname -m)" \
         --prefix="$workspace" \
         --disable-debug \
         --disable-doc \
@@ -1799,42 +1854,29 @@ echo '$ ./configure'
         --enable-small \
         --enable-version3 \
         --enable-ffnvcodec \
+        --arch="$(uname -m)" \
         --cpu="$cpu_cores" \
         --extra-cflags="$CFLAGS" \
         --extra-ldexeflags="$LDEXEFLAGS" \
         --extra-ldflags="$LDFLAGS" \
         --extra-libs="$EXTRALIBS" \
-        --pkgconfigdir="$workspace/lib/pkgconfig" \
+        --pkgconfigdir="$workspace"/lib/pkgconfig \
         --pkg-config-flags='--static'
 
 execute make -j "$cpu_threads"
 execute make install
 
-# MOVE BINARIES TO '/usr/bin'
-if which 'sudo' &>/dev/null; then
-    sudo cp -f "$workspace/bin/ffmpeg" "$install_dir/ffmpeg"
-    sudo cp -f "$workspace/bin/ffprobe" "$install_dir/ffprobe"
-    sudo cp -f "$workspace/bin/ffplay" "$install_dir/ffplay"
-else
-    cp -f "$workspace/bin/ffmpeg" "$install_dir/ffmpeg"
-    cp -f "$workspace/bin/ffprobe" "$install_dir/ffprobe"
-    cp -f "$workspace/bin/ffplay" "$install_dir/ffplay"
-fi
+# PROMPT THE USER TO INSTALL THE FFMPEG BINARIES SYSTEM-WIDE
+ffmpeg_install_choice
 
 # CHECK THAT FILES WERE COPIED TO THE INSTALL DIRECTORY
-if [ ! -f "$install_dir/ffmpeg" ]; then
-    echo "Failed to copy: ffmpeg to $install_dir/"
-fi
-if [ ! -f "$install_dir/ffprobe" ]; then
-    echo "Failed to copy: ffprobe to $install_dir/"
-fi
-if [ ! -f "$install_dir/ffplay" ]; then
-    echo "Failed to copy: ffplay to $install_dir/"
-fi
+ffmpeg_install_check
 
 # DISPLAY FFMPEG'S VERSION
 ff_ver_fn
+
 # PROMPT THE USER TO CLEAN UP THE BUILD FILES
 cleanup_fn
+
 # DISPLAY A MESSAGE AT THE SCRIPT'S END
 exit_fn
