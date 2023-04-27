@@ -17,9 +17,9 @@
 ##           the user will be prompted by the script to install them so that
 ##           hardware acceleration is enabled when compiling FFmpeg
 ##
-##  Updated: 04.25.23
+##  Updated: 04.27.23
 ##
-##  Version: 4.0
+##  Version: 4.1
 ##
 #################################################################################
 
@@ -29,7 +29,7 @@
 
 # FFmpeg version: Whatever the latest Git pull from: https://git.ffmpeg.org/gitweb/ffmpeg.git
 progname="${0:2}"
-script_ver='4.0'
+script_ver='4.1'
 cuda_ver='12.1.1'
 packages="$PWD"/packages
 workspace="$PWD"/workspace
@@ -119,16 +119,6 @@ cleanup_fn()
 
 ff_ver_fn()
 {
-    echo
-    echo '===================================='
-    echo '       FFmpeg Build Complete        '
-    echo '===================================='
-    echo
-    echo 'The binary files can be found in the following locations'
-    echo
-    echo "ffmpeg:  $install_dir/ffmpeg"
-    echo "ffprobe: $install_dir/ffprobe"
-    echo "ffplay:  $install_dir/ffplay"
     echo
     echo '============================'
     echo '       FFmpeg Version       '
@@ -270,16 +260,18 @@ git_1_fn()
         g_ver="${g_ver#v}"
         g_ver3="$(echo "$curl_cmd" | jq -r '.[3].name')"
         g_ver3="${g_ver3#v}"
-        g_ssl="${g_ver#OpenSSL }"
-        g_pkg="${g_ver#pkg-config-}"
+        g_ver="${g_ver#OpenJPEG }"
+        g_ver="${g_ver#OpenSSL }"
+        g_ver="${g_ver#pkg-config-}"
+        g_ver="${g_ver#lcms}"
         g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url')"
     fi
 
-    if [ -n "$g_pkg" ]; then
-        g_ver="$g_pkg"
+    if [ -n "$g_ver" ]; then
+        g_ver="$g_ver"
     fi
-    if [ -n "$g_ssl" ]; then
-        g_ver="$g_ssl"
+    if [ -n "$g_ver" ]; then
+        g_ver="$g_ver"
     fi
 
     echo "$github_repo_name-$g_ver" >> "$ver_file_tmp"
@@ -793,10 +785,10 @@ build_pkgs_fn()
     pkgs=(ant autoconf autogen automake binutils bison build-essential ccache ccdiff checkinstall clang \
           clang-tools cmake cmake-curses-gui cmake-extras cmake-qt-gui curl dbus dbus-x11 dos2unix flex \
           flexc++ freeglut3-dev g++ g++-11 g++-12 gawk gcc gcc-11 gcc-12 gh git-all gnustep-gui-runtime \
-          golang gtk-doc-tools help2man javacc jfsutils jq junit libbz2-dev libcairo2-dev libcdio-paranoia-dev \
+          golang gtk-doc-tools help2man javacc jfsutils jq junit libavif-dev libbz2-dev libcairo2-dev libcdio-paranoia-dev \
           libcurl4-gnutls-dev libdmalloc-dev libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev liblz-dev \
-          liblzma-dev liblzo2-dev libmimalloc-dev libmusicbrainz5-dev libncurses5-dev libnet-nslookup-perl \
-          libnuma-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev \
+          liblzma-dev liblzo2-dev libmathic-dev libmimalloc-dev libmusicbrainz5-dev libncurses5-dev libnet-nslookup-perl \
+          libnuma-dev libopencv-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev \
           librust-malloc-buf-dev libsox-dev libsoxr-dev libssl-dev libtalloc-dev libtbbmalloc2 libtinyxml2-dev \
           libtool libtool-bin libyuv-dev libzstd-dev libzzip-dev lsb-core lshw lvm2 lzma-dev make man-db mercurial \
           meson nano ninja-build openjdk-17-jdk pkg-config python3 python3-pip ragel scons sox texi2html texinfo xmlto yasm)
@@ -804,12 +796,12 @@ build_pkgs_fn()
     for pkg in ${pkgs[@]}
     do
         if ! installed "$pkg"; then
-            missing_pkgs+=" $pkg"
+            missing_vers+=" $pkg"
         fi
     done
 
-    if [ -n "$missing_pkgs" ]; then
-        for pkg in "$missing_pkgs"
+    if [ -n "$missing_vers" ]; then
+        for pkg in "$missing_vers"
         do
             if sudo apt install $pkg; then
                 echo 'The required development packages were installed.'
@@ -840,12 +832,12 @@ cuda_add_fn()
     for pkg in ${pkgs[@]}
     do
         if ! installed "$pkg"; then
-            missing_pkgs+=" $pkg"
+            missing_vers+=" $pkg"
         fi
     done
 
-    if [ -n "$missing_pkgs" ]; then
-        for pkg in "$missing_pkgs"
+    if [ -n "$missing_vers" ]; then
+        for pkg in "$missing_vers"
         do
             sudo apt -y install $pkg
         done
@@ -927,6 +919,45 @@ install_cuda_fn()
     fi
 }
 
+ffmpeg_install_choice()
+{
+    printf "%s\n\n%s\n%s\n\n" \
+        'Would you like to install the FFmpeg binaries system-wide? [/usr/bin]' \
+        '[1] Yes ' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' install_choice
+
+    case "$install_choice" in
+            1)
+                sudo cp -f "$workspace/bin/ffmpeg" "$install_dir/ffmpeg"
+                sudo cp -f "$workspace/bin/ffprobe" "$install_dir/ffprobe"
+                sudo cp -f "$workspace/bin/ffplay" "$install_dir/ffplay"
+                ;;
+            2)
+                printf "\n%s\n\n%s\n" \
+                    'The FFmpeg binaries are located:' \
+                    "$workspace/bin" 
+                ;;
+            *)
+                echo 'Bad user input. Press enter to try again.'
+                clear
+                ffmpeg_install_choice
+                ;;
+    esac
+}
+
+ffmpeg_install_check()
+{
+    ff_binaries=(ffmpeg ffprobe ffplay)
+
+    for i in "$ff_binaries"
+    do
+        if [ ! -f "/usr/bin/$i" ]; then
+            echo "Failed to copy: /usr/bin/$i"
+        fi
+    done
+}
+
 ##
 ## install cuda
 ##
@@ -952,6 +983,8 @@ git_test()
     git_url+=" $3"
     eval "git clone '$git_url' $git_dir/"
 }
+
+export CC='gcc-12' CXX='g++-12'
 
 # begin source code building
 if build 'giflib' '5.2.1'; then
@@ -1006,20 +1039,23 @@ if build 'm4' '1.4.19'; then
     build_done 'm4' '1.4.19'
 fi
 
-if build 'autoconf' '2.71'; then
-    download 'https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.xz' 'autoconf-2.71.tar.xz'
+if build 'autoconf' 'git'; then
+    download_git 'https://git.savannah.gnu.org/git/autoconf.git' 'autoconf-git'
+    execute autoreconf -fi
     execute ./configure --prefix="$workspace"
     execute make -j "$cpu_threads"
     execute make install
-    build_done 'autoconf' '2.71'
+    build_done 'autoconf' 'git'
 fi
 
-if build 'automake' '1.16.5'; then
-    download 'https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz' 'automake-1.16.5.tar.xz'
+if build 'automake' 'git'; then
+    download_git 'https://git.savannah.gnu.org/git/automake.git' 'automake-git'
+    execute ./bootstrap
+    execute autoreconf -fi
     execute ./configure --prefix="$workspace"
     execute make -j "$cpu_threads"
     execute make install
-    build_done 'automake' '1.16.5'
+    build_done 'automake' 'git'
 fi
 
 if build 'libtool' '2.4.7'; then
@@ -1107,11 +1143,47 @@ if command_exists 'python3'; then
     fi
 fi
 
+pre_check_ver 'google/googletest' '1' 'T'
+if build 'googletest' "$g_ver"; then
+    download "https://codeload.github.com/google/googletest/tar.gz/refs/tags/v$g_ver" "googletest-$g_ver.tar.gz"
+    make_dir build
+    cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace"  -DBUILD_GMOCK='OFF'
+    execute make -j "$cpu_threads"
+    execute make install
+    build_done 'googletest' "$g_ver"
+fi
+
+if build 'abseil' 'git'; then
+    download_git 'https://github.com/abseil/abseil-cpp.git' 'abseil-git'
+    cmake -S .  -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -DCMAKE_EXPORT_COMPILE_COMMANDS='ON' -DABSL_PROPAGATE_CXX_STD='ON' -G 'Ninja'
+    cmake --build . --target all --parallel='32'
+    execute ninja
+    execute ninja install
+    build_done 'abseil' 'git'
+fi
+
+if build 'libgav1' 'git'; then
+    # version 1.3.0, 1.2.4, and 1.2.3 fail to build successfully
+    CPPFLAGS=
+    download_git 'https://chromium.googlesource.com/codecs/libgav1' 'libgav1-git'
+    make_dir libgav1_build
+    execute git -C "$packages/libgav1-git" clone -b '20220623.0' --depth '1' 'https://github.com/abseil/abseil-cpp.git' 'third_party/abseil-cpp'
+    execute cmake -B 'libgav1_build' -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -DCMAKE_EXPORT_COMPILE_COMMANDS='ON' -DABSL_ENABLE_INSTALL='ON' \
+        -DABSL_PROPAGATE_CXX_STD='ON' -DCMAKE_INSTALL_SBINDIR:PATH="sbin" -G 'Ninja'
+    execute cmake -B 'third_party/abseil-cpp' -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -DCMAKE_EXPORT_COMPILE_COMMANDS='ON' -DABSL_ENABLE_INSTALL='ON' \
+        -DABSL_PROPAGATE_CXX_STD='ON' -DCMAKE_INSTALL_SBINDIR:PATH="sbin" -G 'Ninja'
+    execute ninja -C libgav1_build
+    execute ninja -C libgav1_build install
+    execute ninja -C third_party/abseil-cpp
+    execute ninja -C third_party/abseil-cpp install
+    build_done 'libgav1' 'git'
+fi
+
 git_ver_fn '24327400' '3' 'T'
 if build 'svtav1' "$g_ver"; then
     download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v$g_ver/SVT-AV1-v$g_ver.tar.bz2" "SVT-AV1-$g_sver.tar.bz2"
-    execute cmake -S . -B Build/linux -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='OFF' ../.. -G'Unix Makefiles' -DCMAKE_BUILD_TYPE='Release'
-    cd Build/linux || exit 1
+    execute cmake -S . -B Build/linux -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='OFF' ../.. -G 'Unix Makefiles' -DCMAKE_BUILD_TYPE='Release'
+    cd 'Build/linux' || exit 1
     execute make -j "$cpu_threads"
     execute make install
     execute cp 'SvtAv1Enc.pc' "$workspace"/lib/pkgconfig/
@@ -1282,7 +1354,7 @@ if build "libpng" '1.6.39'; then
   build_done "libpng" '1.6.39'
 fi
 
-export CC='gcc' CXX='g++'
+
 pre_check_ver 'AOMediaCodec/libavif' '1' 'T'
 if build 'avif' "$g_ver"; then
     export CFLAGS+="-I$CFLAGS -I$workspace/include"
@@ -1412,7 +1484,7 @@ if build 'opus' "$g_ver"; then
     download "https://github.com/xiph/opus/archive/refs/tags/v$g_ver.tar.gz" "opus-$g_ver.tar.gz"
     execute ./autogen.sh
     execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' \
-        -DENABLE_STATIC='ON' -G'Unix Makefiles'
+        -DENABLE_STATIC='ON' -G 'Unix Makefiles'
     execute make -j "$cpu_threads"
     execute make install
     build_done 'opus' "$g_ver"
@@ -1477,6 +1549,20 @@ fi
 ## image libraries
 ##
 
+pre_check_ver 'uclouvain/openjpeg' '1' 'R'
+if build 'openjpeg' "$g_ver"; then
+    download "https://codeload.github.com/uclouvain/openjpeg/tar.gz/refs/tags/v$g_ver" "openjpeg-$g_ver.tar.gz"
+    make_dir 'build'
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX:PATH="$workspace"  -DCMAKE_BUILD_TYPE='Release' -DBUILD_TESTING='OFF' -DCPACK_BINARY_FREEBSD='ON' \
+        -DBUILD_THIRDPARTY='ON' -DCPACK_SOURCE_RPM='ON' -DCPACK_SOURCE_ZIP='ON' \
+        -DCPACK_BINARY_IFW='ON' -DBUILD_SHARED_LIBS='OFF' -DCPACK_BINARY_DEB='ON' -DCPACK_BINARY_TBZ2='ON' -DCPACK_BINARY_NSIS='ON' \
+        -DCPACK_BINARY_RPM='ON' -DCPACK_BINARY_TXZ='ON' -DCMAKE_EXPORT_COMPILE_COMMANDS='ON' -G 'Ninja'
+    execute ninja -C build
+    execute ninja -C build install
+    build_done 'openjpeg' "$g_ver"
+fi
+cnf_ops+=('--enable-libopenjpeg')
+    
 git_ver_fn '4720790' '3' 'T'
 if build 'libtiff' "$g_ver"; then
     download "https://gitlab.com/libtiff/libtiff/-/archive/v$g_ver/libtiff-v$g_ver.tar.bz2" "libtiff-$g_ver.tar.bz2"
@@ -1493,15 +1579,19 @@ if build 'libwebp' 'git'; then
     CPPFLAGS=
     download_git 'https://chromium.googlesource.com/webm/libwebp' 'libwebp-git'
     execute autoreconf -fi
-    execute cmake -S . -DCMAKE_INSTALL_MANDIR:PATH="" -DCMAKE_C_FLAGS_RELEASE:STRING="-O3 -DNDEBUG" -DWEBP_BUILD_EXTRAS:BOOL="0" \
-        -DWEBP_BUILD_LIBWEBPMUX:BOOL="0" -DZLIB_LIBRARY_DEBUG:FILEPATH="ZLIB_LIBRARY_DEBUG-NOTFOUND" -DCMAKE_INSTALL_INCLUDEDIR:PATH="include" \
-        -DCMAKE_INSTALL_LOCALEDIR:PATH="" -DWEBP_LINK_STATIC:BOOL="0" -DWEBP_BUILD_GIF2WEBP:BOOL="0" -DWEBP_BUILD_IMG2WEBP:BOOL="0" \
-        -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL="1" -DWEBP_BUILD_DWEBP:BOOL="0" -DWEBP_BUILD_CWEBP:BOOL="0" -DWEBP_BUILD_ANIM_UTILS:BOOL="0" \
-        -DWEBP_BUILD_WEBPMUX:BOOL="0" -DCMAKE_C_FLAGS:STRING="" -DWEBP_ENABLE_SWAP_16BIT_CSP:BOOL="0" -DCMAKE_SHARED_LINKER_FLAGS_RELEASE:STRING="" \
-        -DWEBP_BUILD_WEBPINFO:BOOL="0" -DCMAKE_INSTALL_PREFIX:PATH="/home/jman/tmp/ffmpeg/ffmpeg-build/workspace" -DZLIB_INCLUDE_DIR:PATH="/usr/include" \
-        -DWEBP_BUILD_VWEBP:BOOL="0" -DCMAKE_INSTALL_DOCDIR:PATH="" -G'Unix Makefiles'
-    execute make -j "$cpu_threads"
-    execute make install
+    make_dir build
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -DBUILD_SHARED_LIBS='OFF' -DCMAKE_BUILD_TYPE='Release' \
+        -DCMAKE_C_FLAGS_RELEASE:STRING="-O3 -DNDEBUG" -DWEBP_BUILD_EXTRAS='OFF' -DWEBP_BUILD_LIBWEBPMUX='OFF' \
+        -DCMAKE_INSTALL_INCLUDEDIR:PATH="include" -DWEBP_LINK_STATIC='OFF' -DWEBP_BUILD_GIF2WEBP='OFF' -DWEBP_BUILD_IMG2WEBP='OFF' \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL='1' -DWEBP_BUILD_DWEBP='OFF' -DWEBP_BUILD_CWEBP='OFF' -DWEBP_BUILD_ANIM_UTILS='OFF' \
+        -DWEBP_BUILD_WEBPMUX='OFF' -DWEBP_ENABLE_SWAP_16BIT_CSP='OFF' -DWEBP_BUILD_WEBPINFO='OFF' -DZLIB_INCLUDE_DIR:PATH="/usr/include" \
+        -DWEBP_BUILD_VWEBP='OFF' -G 'Ninja'
+    execute git checkout '15a91ab'
+    execute ninja -C build 'sharpyuv'
+    execute git checkout 'f9fda6e7'
+    execute ninja -C build 'yuv'
+    execute ninja -C build
+    execute ninja -C build install
     build_done 'libwebp' 'git'
 fi
 cnf_ops+=('--enable-libwebp')
@@ -1509,6 +1599,55 @@ cnf_ops+=('--enable-libwebp')
 ##
 ## other libraries
 ##
+
+git_ver_fn '1665' '6' 'T'
+if build 'xml2' "$g_ver"; then
+    download "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v$g_ver/libxml2-v$g_ver.tar.bz2" "xml2-$g_ver.tar.bz2"
+    make_dir build
+    execute cmake -B build -DBUILD_SHARED_LIBS='OFF' -DCMAKE_EXPORT_COMPILE_COMMANDS='OFF' -DCMAKE_INSTALL_PREFIX:PATH="/home/jman/tmp/ff1/workspace" \
+        -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCPACK_BINARY_DEB='ON' -DCPACK_BINARY_FREEBSD='ON' -DCPACK_BINARY_IFW='ON' -DCPACK_BINARY_NSIS='ON' \
+        -DCPACK_BINARY_RPM='ON' -DCPACK_BINARY_TBZ2='ON' -DCPACK_BINARY_TXZ='ON' -DCPACK_SOURCE_RPM='ON' -DCPACK_SOURCE_ZIP='ON' \
+        -DHWY_LIBRARY:FILEPATH="/usr/lib/x86_64-linux-gnu/libhwy.so" -DOPENGL_opengl_LIBRARY:FILEPATH="/usr/lib/x86_64-linux-gnu/libglut.a" -G 'Ninja'
+    execute ninja -C build
+    execute sudo ninja -C build install
+    build_done 'xml2' "$g_ver"
+fi
+cnf_ops+=('--enable-libxml2')
+
+pre_check_ver 'mm2/Little-CMS' '1' 'T'
+if build 'lcms' "$g_ver"; then
+    download "https://github.com/mm2/Little-CMS/archive/refs/tags/lcms$g_ver.tar.gz" "lcms-$g_ver.tar.gz"
+    make_dir 'build'
+    execute ./autogen.sh
+    execute ./configure --prefix="$workspace" --disable-shared --enable-static
+    execute make -j "$cpu_threads"
+    execute make install
+    build_done 'lcms' "$g_ver"
+fi
+cnf_ops+=('--enable-lcms2')
+
+pre_check_ver 'dyne/frei0r' '1' 'T'
+if build 'frei0r' "$g_ver"; then
+    download "https://github.com/dyne/frei0r/archive/refs/tags/v$g_ver.tar.gz" "frei0r-$g_ver.tar.gz"
+    make_dir 'build'
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -DWITHOUT_OPENCV='OFF' \
+        -DCMAKE_CXX_COMPILER_RANLIB:FILEPATH="/usr/bin/gcc-ranlib-12" -DCMAKE_CXX_FLAGS_DEBUG:STRING="-g" -DCMAKE_EXPORT_COMPILE_COMMANDS='ON' \
+        -DWEBP_ENABLE_SWAP_16BIT_CSP='ON' -G 'Ninja'
+    execute ninja -C 'build'
+    execute ninja -C 'build' install
+    build_done 'frei0r' "$g_ver"
+fi
+cnf_ops+=('--enable-frei0r')
+
+pre_check_ver 'avisynth/avisynthplus' '1' 'T'
+if build 'avisynth' "$g_ver"; then
+    download_git 'https://github.com/AviSynth/AviSynthPlus.git' "avisynth-$g_ver"
+    execute cmake -S . -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -G'Ninja'
+    execute ninja
+    execute ninja install
+    build_done 'avisynth' "$g_ver"
+fi
+cnf_ops+=('--enable-avisynth')
 
 git_ver_fn '363' '2' 'T'
 if build 'udfread' "$g_ver1"; then
@@ -1716,11 +1855,20 @@ if which 'nvcc' &>/dev/null ; then
         execute make install PREFIX="$workspace"
         build_done 'nv-codec' "$g_ver"
     fi
-    CFLAGS+=" -I/usr/local/cuda-12.1/targets/x86_64-linux/include -I/usr/local/cuda-12.1/include -I$workspace/usr/include -I$packages/nv-codec-n12.0.16.0/include"
+
+    cuda_link_dir="$(sudo find /usr/local -type d -name cuda-* | grep -Eo '^.*cuda-[0-9\.]+$' | sort -r | head -n1)"
+
+    if [ -z "$cuda_link_dir" ]; then
+        cuda_link_dir='/usr/local/cuda'
+    fi
+
+    CFLAGS+=" -I$cuda_link_dir/targets/x86_64-linux/include -I$cuda_link_dir/include -I$workspace/usr/include -I$packages/nv-codec-n12.0.16.0/include"
     export CFLAGS
-    LDFLAGS+=' -L/usr/local/cuda-12.1/targets/x86_64-linux/lib -L/usr/local/cuda-12.1/lib64'
+    LDFLAGS+=" -L$cuda_link_dir/targets/x86_64-linux/lib -L$cuda_link_dir/lib64"
     export LDFLAGS
-    LDPATH='-lcudart'
+    LDPATH+=' -lcudart'
+    export LDPATH
+
     cnf_ops+=('--enable-cuda-nvcc' '--enable-cuvid' '--enable-cuda-llvm')
 
     if [ -z "$LDEXEFLAGS" ]; then
@@ -1742,9 +1890,7 @@ build 'FFmpeg' 'git'
 download_git 'https://git.ffmpeg.org/ffmpeg.git' 'FFmpeg-git'
 echo '$ ./configure'
 ./configure \
-        --arch='x86_64' \
         "${cnf_ops[@]}" \
-        --arch="$(uname -m)" \
         --prefix="$workspace" \
         --disable-debug \
         --disable-doc \
@@ -1754,42 +1900,29 @@ echo '$ ./configure'
         --enable-small \
         --enable-version3 \
         --enable-ffnvcodec \
+        --arch="$(uname -m)" \
         --cpu="$cpu_cores" \
         --extra-cflags="$CFLAGS" \
         --extra-ldexeflags="$LDEXEFLAGS" \
         --extra-ldflags="$LDFLAGS" \
         --extra-libs="$EXTRALIBS" \
-        --pkgconfigdir="$workspace/lib/pkgconfig" \
+        --pkgconfigdir="$workspace"/lib/pkgconfig \
         --pkg-config-flags='--static'
 
 execute make -j "$cpu_threads"
 execute make install
 
-# MOVE BINARIES TO '/usr/bin'
-if which 'sudo' &>/dev/null; then
-    sudo cp -f "$workspace/bin/ffmpeg" "$install_dir/ffmpeg"
-    sudo cp -f "$workspace/bin/ffprobe" "$install_dir/ffprobe"
-    sudo cp -f "$workspace/bin/ffplay" "$install_dir/ffplay"
-else
-    cp -f "$workspace/bin/ffmpeg" "$install_dir/ffmpeg"
-    cp -f "$workspace/bin/ffprobe" "$install_dir/ffprobe"
-    cp -f "$workspace/bin/ffplay" "$install_dir/ffplay"
-fi
+# PROMPT THE USER TO INSTALL THE FFMPEG BINARIES SYSTEM-WIDE
+ffmpeg_install_choice
 
 # CHECK THAT FILES WERE COPIED TO THE INSTALL DIRECTORY
-if [ ! -f "$install_dir/ffmpeg" ]; then
-    echo "Failed to copy: ffmpeg to $install_dir/"
-fi
-if [ ! -f "$install_dir/ffprobe" ]; then
-    echo "Failed to copy: ffprobe to $install_dir/"
-fi
-if [ ! -f "$install_dir/ffplay" ]; then
-    echo "Failed to copy: ffplay to $install_dir/"
-fi
+ffmpeg_install_check
 
 # DISPLAY FFMPEG'S VERSION
 ff_ver_fn
+
 # PROMPT THE USER TO CLEAN UP THE BUILD FILES
 cleanup_fn
+
 # DISPLAY A MESSAGE AT THE SCRIPT'S END
 exit_fn
