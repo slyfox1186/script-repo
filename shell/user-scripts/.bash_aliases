@@ -267,3 +267,6 @@ alias uver="clear; lsb_release -a | grep -Eo '^Des.*\s*[A-Za-z.*]$'"
 
 # FIX GPG KEY ERRORS DURING APT UPDATE THAT SHOWS THEY ARE "DEPRECIATED"
 alias fix_gpg='sudo cp /etc/apt/trusted.gpg /etc/apt/trusted.gpg.d'
+
+# WATCH COMMAND
+alias cwatch='watch -n1 ccache --print-stats'
