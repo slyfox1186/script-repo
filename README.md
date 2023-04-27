@@ -81,11 +81,11 @@ wget -qO 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
 
 #### Ubuntu 22.04.02 / 20.04.05 / 18.04.05
 ```bash
-wget -qO magick.sh https://magick.optimizethis.net; sudo bash magick.sh
+wget -qO build-magick https://magick.optimizethis.net; sudo bash build-magick
 ```
 #### Debian 10 / 11
 ```bash
-wget -qO magick.sh https://debian.magick.optimizethis.net; sudo bash magick.sh
+wget -qO build-magick https://debian.magick.optimizethis.net; sudo bash build-magick
 ```
 
 ------
