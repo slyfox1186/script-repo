@@ -120,16 +120,6 @@ cleanup_fn()
 ff_ver_fn()
 {
     echo
-    echo '===================================='
-    echo '       FFmpeg Build Complete        '
-    echo '===================================='
-    echo
-    echo 'The binary files can be found in the following locations'
-    echo
-    echo "ffmpeg:  $install_dir/ffmpeg"
-    echo "ffprobe: $install_dir/ffprobe"
-    echo "ffplay:  $install_dir/ffplay"
-    echo
     echo '============================'
     echo '       FFmpeg Version       '
     echo '============================'
@@ -270,16 +260,17 @@ git_1_fn()
         g_ver="${g_ver#v}"
         g_ver3="$(echo "$curl_cmd" | jq -r '.[3].name')"
         g_ver3="${g_ver3#v}"
-        g_ssl="${g_ver#OpenSSL }"
-        g_pkg="${g_ver#pkg-config-}"
+        g_ver="${g_ver#OpenSSL }"
+        g_ver="${g_ver#pkg-config-}"
+        g_ver="${g_ver#lcms}"
         g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url')"
     fi
 
-    if [ -n "$g_pkg" ]; then
-        g_ver="$g_pkg"
+    if [ -n "$g_ver" ]; then
+        g_ver="$g_ver"
     fi
-    if [ -n "$g_ssl" ]; then
-        g_ver="$g_ssl"
+    if [ -n "$g_ver" ]; then
+        g_ver="$g_ver"
     fi
 
     echo "$github_repo_name-$g_ver" >> "$ver_file_tmp"
@@ -804,12 +795,12 @@ build_pkgs_fn()
     for pkg in ${pkgs[@]}
     do
         if ! installed "$pkg"; then
-            missing_pkgs+=" $pkg"
+            missing_vers+=" $pkg"
         fi
     done
 
-    if [ -n "$missing_pkgs" ]; then
-        for pkg in "$missing_pkgs"
+    if [ -n "$missing_vers" ]; then
+        for pkg in "$missing_vers"
         do
             if sudo apt install $pkg; then
                 echo 'The required development packages were installed.'
@@ -840,12 +831,12 @@ cuda_add_fn()
     for pkg in ${pkgs[@]}
     do
         if ! installed "$pkg"; then
-            missing_pkgs+=" $pkg"
+            missing_vers+=" $pkg"
         fi
     done
 
-    if [ -n "$missing_pkgs" ]; then
-        for pkg in "$missing_pkgs"
+    if [ -n "$missing_vers" ]; then
+        for pkg in "$missing_vers"
         do
             sudo apt -y install $pkg
         done
@@ -933,9 +924,7 @@ ffmpeg_install_choice()
         'Would you like to install the FFmpeg binaries system-wide? [/usr/bin]' \
         '[1] Yes ' \
         '[2] No'
-
     read -p 'Your choices are (1 or 2): ' install_choice
-    echo
 
     case "$install_choice" in
             1)
@@ -944,10 +933,9 @@ ffmpeg_install_choice()
                 sudo cp -f "$workspace/bin/ffplay" "$install_dir/ffplay"
                 ;;
             2)
-                printf "\n%s\n\n%s\n\n" \
-                    'The FFmpeg binaries are inside the directory below' \
+                printf "\n%s\n\n%s\n" \
+                    'The FFmpeg binaries are located:' \
                     "$workspace/bin" 
-                read -p 'Press enter to continue.'
                 ;;
             *)
                 echo 'Bad user input. Press enter to try again.'
@@ -1179,9 +1167,9 @@ if build 'libgav1' 'git'; then
     download_git 'https://chromium.googlesource.com/codecs/libgav1' 'libgav1-git'
     make_dir libgav1_build
     execute git -C "$packages/libgav1-git" clone -b '20220623.0' --depth '1' 'https://github.com/abseil/abseil-cpp.git' 'third_party/abseil-cpp'
-    execute cmake -B 'libgav1_build' -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -DCMAKE_EXPORT_COMPILE_COMMANDS='ON' -DABSL_ENABLE_INSTALL:BOOL="1" \
+    execute cmake -B 'libgav1_build' -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -DCMAKE_EXPORT_COMPILE_COMMANDS='ON' -DABSL_ENABLE_INSTALL='ON' \
         -DABSL_PROPAGATE_CXX_STD='ON' -DCMAKE_INSTALL_SBINDIR:PATH="sbin" -G 'Ninja'
-    execute cmake -B 'third_party/abseil-cpp' -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -DCMAKE_EXPORT_COMPILE_COMMANDS='ON' -DABSL_ENABLE_INSTALL:BOOL="1" \
+    execute cmake -B 'third_party/abseil-cpp' -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -DCMAKE_EXPORT_COMPILE_COMMANDS='ON' -DABSL_ENABLE_INSTALL='ON' \
         -DABSL_PROPAGATE_CXX_STD='ON' -DCMAKE_INSTALL_SBINDIR:PATH="sbin" -G 'Ninja'
     execute ninja -C libgav1_build
     execute ninja -C libgav1_build install
@@ -1597,6 +1585,31 @@ cnf_ops+=('--enable-libwebp')
 ## other libraries
 ##
 
+pre_check_ver 'mm2/Little-CMS' '1' 'T'
+if build 'lcms' "$g_ver"; then
+    download "https://github.com/mm2/Little-CMS/archive/refs/tags/lcms$g_ver.tar.gz" "lcms-$g_ver.tar.gz"
+    make_dir 'build'
+    execute ./autogen.sh
+    execute ./configure --prefix="$workspace" --disable-shared --enable-static
+    execute make -j "$cpu_threads"
+    execute make install
+    build_done 'lcms' "$g_ver"
+fi
+cnf_ops+=('--enable-lcms2')
+
+pre_check_ver 'dyne/frei0r' '1' 'T'
+if build 'frei0r' "$g_ver"; then
+    download "https://github.com/dyne/frei0r/archive/refs/tags/v$g_ver.tar.gz" "frei0r-$g_ver.tar.gz"
+    make_dir 'build'
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -DWITHOUT_OPENCV='OFF' \
+        -DCMAKE_CXX_COMPILER_RANLIB:FILEPATH="/usr/bin/gcc-ranlib-12" -DCMAKE_CXX_FLAGS_DEBUG:STRING="-g" -DCMAKE_EXPORT_COMPILE_COMMANDS='ON' \
+        -DWEBP_ENABLE_SWAP_16BIT_CSP='ON' -G 'Ninja'
+    execute ninja -C 'build'
+    execute ninja -C 'build' install
+    build_done 'frei0r' "$g_ver"
+fi
+cnf_ops+=('--enable-frei0r')
+
 pre_check_ver 'avisynth/avisynthplus' '1' 'T'
 if build 'avisynth' "$g_ver"; then
     download_git 'https://github.com/AviSynth/AviSynthPlus.git' "avisynth-$g_ver"
@@ -1820,9 +1833,13 @@ if which 'nvcc' &>/dev/null ; then
         cuda_link_dir='/usr/local/cuda'
     fi
 
-    CFLAGS+=" -I$cuda_link_dir/include"
-    LDFLAGS+=" -L$uda_linking_dir/lib64"
-    LDPATH='-lcudart'
+    CFLAGS+=" -I$cuda_link_dir/targets/x86_64-linux/include -I$cuda_link_dir/include -I$workspace/usr/include -I$packages/nv-codec-n12.0.16.0/include"
+    export CFLAGS
+    LDFLAGS+=" -L$cuda_link_dir/targets/x86_64-linux/lib -L$cuda_link_dir/lib64"
+    export LDFLAGS
+    LDPATH+=' -lcudart'
+    export LDPATH
+
     cnf_ops+=('--enable-cuda-nvcc' '--enable-cuvid' '--enable-cuda-llvm')
 
     if [ -z "$LDEXEFLAGS" ]; then
