@@ -1583,13 +1583,10 @@ if build 'libwebp' 'git'; then
     execute cmake -B build -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -DBUILD_SHARED_LIBS='OFF' -DCMAKE_BUILD_TYPE='Release' \
         -DCMAKE_C_FLAGS_RELEASE:STRING="-O3 -DNDEBUG" -DWEBP_BUILD_EXTRAS='OFF' -DWEBP_BUILD_LIBWEBPMUX='OFF' \
         -DCMAKE_INSTALL_INCLUDEDIR:PATH="include" -DWEBP_LINK_STATIC='OFF' -DWEBP_BUILD_GIF2WEBP='OFF' -DWEBP_BUILD_IMG2WEBP='OFF' \
-        -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL='1' -DWEBP_BUILD_DWEBP='OFF' -DWEBP_BUILD_CWEBP='OFF' -DWEBP_BUILD_ANIM_UTILS='OFF' \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL='1' -DWEBP_BUILD_DWEBP='ON' -DWEBP_BUILD_CWEBP='ON' -DWEBP_BUILD_ANIM_UTILS='OFF' \
         -DWEBP_BUILD_WEBPMUX='OFF' -DWEBP_ENABLE_SWAP_16BIT_CSP='OFF' -DWEBP_BUILD_WEBPINFO='OFF' -DZLIB_INCLUDE_DIR:PATH="/usr/include" \
-        -DWEBP_BUILD_VWEBP='OFF' -G 'Ninja'
-    execute git checkout '15a91ab'
-    execute ninja -C build 'sharpyuv'
-    execute git checkout 'f9fda6e7'
-    execute ninja -C build 'yuv'
+        -DWEBP_BUILD_VWEBP='OFF' -G 'Ninja' 
+    ninja -C build 'all'
     execute ninja -C build
     execute ninja -C build install
     build_done 'libwebp' 'git'
