@@ -491,10 +491,10 @@ cuda_fail_fn()
 
 gpu_arch_fn()
 {
-    is_wsl="$( uname -a | grep -Eo 'WSL2')"
+    is_wsl="$(uname -a | grep -Eo 'WSL2')"
 
     if [ -n "$is_wsl" ]; then
-        sudo apt -q -y install nvidia-utils-525
+        sudo apt -y install nvidia-utils-525 &>/dev/null
     fi
 
     gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -r | head -n 1)"
@@ -871,7 +871,7 @@ install_cuda_fn()
             cuda_fn
             cuda_add_fn
         elif [[ "$cuda_ans" -eq '2' ]]; then
-            if [ -d '/usr/local/cuda-12.1/bin' ]; then
+            if [ -d "$cudaPATH" ]; then
                 PATH="$PATH:$cudaPATH"
                 export PATH
             else
@@ -1562,7 +1562,7 @@ if build 'openjpeg' "$g_ver"; then
     build_done 'openjpeg' "$g_ver"
 fi
 cnf_ops+=('--enable-libopenjpeg')
-    
+
 git_ver_fn '4720790' '3' 'T'
 if build 'libtiff' "$g_ver"; then
     download "https://gitlab.com/libtiff/libtiff/-/archive/v$g_ver/libtiff-v$g_ver.tar.bz2" "libtiff-$g_ver.tar.bz2"
@@ -1586,7 +1586,7 @@ if build 'libwebp' 'git'; then
         -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL='1' -DWEBP_BUILD_DWEBP='ON' -DWEBP_BUILD_CWEBP='ON' -DWEBP_BUILD_ANIM_UTILS='OFF' \
         -DWEBP_BUILD_WEBPMUX='OFF' -DWEBP_ENABLE_SWAP_16BIT_CSP='OFF' -DWEBP_BUILD_WEBPINFO='OFF' -DZLIB_INCLUDE_DIR:PATH="/usr/include" \
         -DWEBP_BUILD_VWEBP='OFF' -G 'Ninja' 
-    ninja -C build 'all'
+    ninja -C build all
     execute ninja -C build
     execute ninja -C build install
     build_done 'libwebp' 'git'
@@ -1618,7 +1618,7 @@ if build 'lcms' "$g_ver"; then
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
     execute make -j "$cpu_threads"
-    execute make install
+    execute sudo make install
     build_done 'lcms' "$g_ver"
 fi
 cnf_ops+=('--enable-lcms2')
@@ -1844,7 +1844,7 @@ if build 'amf' "$g_ver"; then
 fi
 cnf_ops+=('--enable-amf')
 
-if which 'nvcc' &>/dev/null ; then
+if which 'nvcc' &>/dev/null; then
     pre_check_ver 'FFmpeg/nv-codec-headers' '1' 'T'
     if build 'nv-codec' "$g_ver"; then
         download "https://codeload.github.com/FFmpeg/nv-codec-headers/tar.gz/refs/tags/$g_ver" "nv-codec-$g_ver.tar.gz"
@@ -1853,15 +1853,9 @@ if which 'nvcc' &>/dev/null ; then
         build_done 'nv-codec' "$g_ver"
     fi
 
-    cuda_link_dir="$(sudo find /usr/local -type d -name cuda-* | grep -Eo '^.*cuda-[0-9\.]+$' | sort -r | head -n1)"
-
-    if [ -z "$cuda_link_dir" ]; then
-        cuda_link_dir='/usr/local/cuda'
-    fi
-
-    CFLAGS+=" -I$cuda_link_dir/targets/x86_64-linux/include -I$cuda_link_dir/include -I$workspace/usr/include -I$packages/nv-codec-n12.0.16.0/include"
+    CFLAGS+=" -I/usr/local/cuda-12/targets/x86_64-linux/include -I/usr/local/cuda-12/include -I$workspace/usr/include -I$packages/nv-codec-n12.0.16.0/include"
     export CFLAGS
-    LDFLAGS+=" -L$cuda_link_dir/targets/x86_64-linux/lib -L$cuda_link_dir/lib64"
+    LDFLAGS+=" -L/usr/local/cuda-12/targets/x86_64-linux/lib -L/usr/local/cuda-12/lib64"
     export LDFLAGS
     LDPATH+=' -lcudart'
     export LDPATH
