@@ -169,7 +169,7 @@ download()
     if [ ! -f "$dl_path/$dl_file" ]; then
         echo "Downloading $dl_url as $dl_file"
         url_down_test="$dl_url"
-        is_down="$(curl -sSLI "$url_down_test")"
+        is_down="$(curl -4LIs "$url_down_test")"
         if [ -z "$is_down" ]; then
             echo 'The download link was unresponsive.'
             echo
@@ -177,12 +177,12 @@ download()
             sleep 10
             echo
         fi
-        if ! curl -Lso "$dl_path/$dl_file" "$dl_url"; then
+        if ! curl -4Lso "$dl_path/$dl_file" "$dl_url"; then
             echo
             echo "The script failed to download \"$dl_url\" and will try again in 10 seconds"
             sleep 10
             echo
-            if ! curl -Lso "$dl_path/$dl_file" "$dl_url"; then
+            if ! curl -4Lso "$dl_path/$dl_file" "$dl_url"; then
                 echo
                 echo "The script failed to download \"$dl_url\" two times and will exit the build"
                 echo
@@ -227,7 +227,7 @@ download_git()
     if [ ! -d "$target_dir" ]; then
         echo "Downloading $dl_file"
         url_down_test="$dl_url"
-        is_down="$(curl -sSLI "$url_down_test")"
+        is_down="$(curl -4LIs "$url_down_test")"
         if [ -z "$is_down" ]; then
             echo 'The git server was unresponsive.'
             echo
@@ -727,42 +727,42 @@ cuda_fn()
 
     case "$c_dist" in
         1)
-            wget --show progress -cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-debian10-12-1-local_12.1.1-530.30.02-1_amd64.deb'
+            wget --show progress -4cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-debian10-12-1-local_12.1.1-530.30.02-1_amd64.deb'
             sudo dpkg -i 'cuda-12.1.1.deb'
             sudo cp /var/cuda-repo-debian10-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             sudo add-apt-repository contrib
             ;;
         2)
-            wget --show progress -cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-debian11-12-1-local_12.1.1-530.30.02-1_amd64.deb'
+            wget --show progress -4cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-debian11-12-1-local_12.1.1-530.30.02-1_amd64.deb'
             sudo dpkg -i 'cuda-12.1.1.deb'
             sudo cp /var/cuda-repo-debian11-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             sudo add-apt-repository contrib
             ;;
         3)
-            wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin'
+            wget --show progress -4cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin'
             sudo mv 'cuda-ubuntu1804.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-            wget --show progress -cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-ubuntu1804-12-1-local_12.1.1-530.30.02-1_amd64.deb'
+            wget --show progress -4cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-ubuntu1804-12-1-local_12.1.1-530.30.02-1_amd64.deb'
             sudo dpkg -i 'cuda-12.1.1.deb'
             sudo cp /var/cuda-repo-ubuntu1804-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             ;;
         4)
-            wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin'
+            wget --show progress -4cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin'
             sudo mv 'cuda-ubuntu2004.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-            wget --show progress -cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-ubuntu2004-12-1-local_12.1.1-530.30.02-1_amd64.deb'
+            wget --show progress -4cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-ubuntu2004-12-1-local_12.1.1-530.30.02-1_amd64.deb'
             sudo dpkg -i 'cuda-12.1.1.deb'
             sudo cp /var/cuda-repo-ubuntu2004-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             ;;
         5)
-            wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin'
+            wget --show progress -4cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin'
             sudo mv 'cuda-ubuntu2204.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-            wget --show progress -cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-ubuntu2204-12-1-local_12.1.1-530.30.02-1_amd64.deb'
+            wget --show progress -4cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-ubuntu2204-12-1-local_12.1.1-530.30.02-1_amd64.deb'
             sudo dpkg -i 'cuda-12.1.1.deb'
             sudo cp /var/cuda-repo-ubuntu2204-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             ;;
         6)
-            wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin'
+            wget --show progress -4cq 'https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin'
             sudo mv 'cuda-wsl-ubuntu.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-            wget --show progress -cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-wsl-ubuntu-12-1-local_12.1.1-1_amd64.deb'
+            wget --show progress -4cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-wsl-ubuntu-12-1-local_12.1.1-1_amd64.deb'
             sudo dpkg -i 'cuda-12.1.1.deb'
             sudo cp /var/cuda-repo-wsl-ubuntu-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             ;;
@@ -1570,7 +1570,7 @@ if build 'libtheora' '1.0'; then
     chmod +x 'configure.patched'
     execute mv 'configure.patched' 'configure'
     execute rm 'config.guess'
-    execute curl -Lso 'config.guess' 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+    execute curl -4Lso 'config.guess' 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
     chmod +x 'config.guess'
     execute ./configure --prefix="$workspace" --with-ogg-libraries="$workspace"/lib --with-ogg-includes="$workspace"/include \
         --with-vorbis-libraries="$workspace"/lib --with-vorbis-includes="$workspace"/include --enable-static --disable-shared \
