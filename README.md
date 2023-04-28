@@ -101,7 +101,7 @@ curl -4Lso ffn.sh https://ffn.optimizethis.net; bash ffn.sh
 ```
 ------
 
-## Install [CMake v3.26.3](https://cmake.org/)
+## Install [CMake](https://cmake.org/) v3.26.3
   - Supported OS
     - Debian 10 / 11
     - Ubuntu 18.04 / 20.04 / 22.04
