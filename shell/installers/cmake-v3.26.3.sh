@@ -64,16 +64,18 @@ cd 'cmake-3.26.3' || exit 1
 ## run the bootstrap file to generate any required install files
 ##
 
-./bootstrap --parallel="$(nproc --all)" --generator='Ninja' --enable-ccache --prefix='/usr/local'
+./bootstrap --parallel="$(nproc --all)" --generator='Ninja' --enable-ccache --prefix='/usr/local' @>/dev/null
 
 ##
 ## run the ninja commands to install cmake system-wide
 ##
 
-if ninja; then
+if ninja @>/dev/null; then
     if sudo ninja install; then
-        echo
+        clear
         echo 'CMake v3.26.3 has successfully been installed.'
+        echo
+        cmake --version
     else
         echo
         echo 'Ninja failed to install CMake.'
