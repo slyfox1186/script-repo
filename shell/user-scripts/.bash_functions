@@ -11,7 +11,7 @@ sudo() { eval $(which sudo) -H "$@"; }
 ##################################################################################
 
 gedit() { eval $(which gedit) "$@" &>/dev/null; }
-geds() { eval $(which sudo) -H /usr/bin/gedit "$@" &>/dev/null; }
+geds() { eval $(which sudo) -H -u root /usr/bin/gedit "$@" &>/dev/null; }
 
 ###################
 ## FIND COMMANDS ##
@@ -30,17 +30,15 @@ ffind()
     read -p 'Enter the starting path: ' fpath
     clear
 
-    if [ -z "$ftype" ] && [ -n "$fpath" ] || [ -z "$fpath" ]; then
-        sudo find "$fpath" -iname "$fname" -exec echo {} \;
-    elif [ -n "$ftype" ] && [ -n "$fpath" ] || [ -z "$fpath" ]; then
-        sudo find "$fpath" -type "$ftype" -iname "$fname" -exec echo {} \;
-    elif [ -z "$ftype" ] && [ "$fpath" = '.' ] || [ "$fpath" = '.' ]; then
-        sudo find . -iname "$fname" -exec echo {} \;
-    elif [ -n "$ftype" ] && [ "$fpath" = '.' ] || [ "$fpath" = '.' ]; then
-        sudo find . -type "$ftype" -iname "$fname" -exec echo {} \;
-    else
-        sudo find "$fpath" -type "$ftype" -iname "$fname" -exec echo {} \;
-    fi
+    if [ -n "$fname" ] && [ -z "$ftype" ] && [ -z "$fpath" ]; then
+        sudo find . -iname "$fname" | while read line; do echo "$line"; done
+    elif [ -n "$fname" ] && [ -n "$ftype" ] && [ -n "$fpath" ]; then
+        sudo find "$fpath" -type "$ftype" -iname "$fname" | while read line; do echo "$line"; done
+    elif [ -n "$fname" ] && [ -z "$ftype" ] && [ "$fpath" = '.' ]; then
+        sudo find . -iname "$fname" | while read line; do echo "$line"; done
+    elif [ -n "$fname" ] && [ -n "$ftype" ] && [ "$fpath" = '.' ]; then
+        sudo find . -type "$ftype" -iname "$fname" | while read line; do echo "$line"; done
+     fi
 }
 
 ######################
@@ -893,4 +891,36 @@ hw_mon()
 
     sudo watch -n1 sensors
 
+}
+
+#####################
+## FFMPEG COMMANDS ##
+#####################
+
+ffr() { bash "$1" -b --latest --enable-gpl-and-non-free; }
+
+###################
+## 7ZIP COMMANDS ##
+###################
+
+# create a max compressed settings tar.gz file
+7z_gz()
+{
+    clear
+
+    local spath dpath
+
+    read -p 'Please enter the source folder path: ' spath
+    echo
+    read -p 'Please enter the destination archive path (w/o extension): ' dpath
+    clear
+    if [ ! -f "$dpath".tar.gz ]; then
+        7z a -ttar -so -an "$spath" | 7z a -mx9 -mpass1 -si "$dpath".tar.gz
+        exit 0
+    else
+        echo 'The output file already exists.'
+        echo
+        echo 'Please choose another output name or delete the file.'
+        echo
+        exit 1
 }
