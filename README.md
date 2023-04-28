@@ -21,15 +21,15 @@
 
 **Ubuntu Jammy 22.04.02**
 ```bash
-curl -LSso pkgs.sh https://jammy-pkgs.optimizethis.net; sudo bash pkgs.sh
+curl -Lso pkgs.sh https://jammy-pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
 **Ubuntu Focal 20.04.05**
 ```bash
-curl -LSso pkgs.sh https://focal-pkgs.optimizethis.net; sudo bash pkgs.sh
+curl -Lso pkgs.sh https://focal-pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
 **Debian 10 / 11**
 ```bash
-curl -LSso pkgs.sh https://debian-pkgs.optimizethis.net; sudo bash pkgs.sh
+curl -Lso pkgs.sh https://debian-pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
 ------
 
@@ -40,7 +40,7 @@ curl -LSso pkgs.sh https://debian-pkgs.optimizethis.net; sudo bash pkgs.sh
     - .bash_aliases
     - .bash_functions
 ```bash
-curl -LSso scripts.sh https://scripts.optimizethis.net; bash scripts.sh
+curl -Lso scripts.sh https://scripts.optimizethis.net; bash scripts.sh
 ```
 ------
 
@@ -57,7 +57,7 @@ curl -sSL https://focal-mirrors.optimizethis.net | sudo bash
 ```
 #### Ubuntu Bionic
 ```bash
-curl -LSso mirrors.sh https://bionic-mirrors.optimizethis.net; sudo bash mirrors.sh
+curl -Lso mirrors.sh https://bionic-mirrors.optimizethis.net; sudo bash mirrors.sh
 ```
 #### Debian Bullseye
 ```bash
@@ -72,7 +72,7 @@ curl -sSL https://debian-mirrors.optimizethis.net | sudo bash
     - **ARM x64**
     - **ARM x86**
 ```bash
-curl -LSso 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
+curl -Lso 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
 ```
 ------
 
@@ -83,11 +83,11 @@ curl -LSso 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
 
 #### Ubuntu 22.04.02 / 20.04.05 / 18.04.05
 ```bash
-curl -LSso build-magick https://magick.optimizethis.net; sudo bash build-magick
+curl -Lso build-magick https://magick.optimizethis.net; sudo bash build-magick
 ```
 #### Debian 10 / 11
 ```bash
-curl -LSso build-magick https://debian.magick.optimizethis.net; sudo bash build-magick
+curl -Lso build-magick https://debian.magick.optimizethis.net; sudo bash build-magick
 ```
 ------
 
@@ -97,7 +97,7 @@ curl -LSso build-magick https://debian.magick.optimizethis.net; sudo bash build-
 
 **With GPL and non-free: https://ffmpeg.org/legal.html**
 ```bash
-curl -LSso ffn.sh https://ffn.optimizethis.net; bash ffn.sh
+curl -Lso ffn.sh https://ffn.optimizethis.net; bash ffn.sh
 ```
 ------
 
@@ -108,13 +108,13 @@ curl -LSso ffn.sh https://ffn.optimizethis.net; bash ffn.sh
     - Other debian style distros may work as well
 
 ```bash
-curl -LSso cmake.sh https://cmake.optimizethis.net; bash cmake.sh
+curl -Lso cmake.sh https://cmake.optimizethis.net; bash cmake.sh
 ````
 ------
 
 ## Install [Squid Proxy Server](http://www.squid-cache.org/) for home use
 ```bash
-curl -LSso squid.sh https://squid-proxy.optimizethis.net; sudo bash squid.sh
+curl -Lso squid.sh https://squid-proxy.optimizethis.net; sudo bash squid.sh
 ```
 ------
 
@@ -126,7 +126,7 @@ curl -LSso squid.sh https://squid-proxy.optimizethis.net; sudo bash squid.sh
     - GNOME Videos (Totem)
     - Bomi
 ```bash
-curl -LSso players.sh https://media-players.optimizethis.net; sudo bash players.sh
+curl -Lso players.sh https://media-players.optimizethis.net; sudo bash players.sh
 ```
 ------
 
@@ -137,7 +137,7 @@ curl -LSso players.sh https://media-players.optimizethis.net; sudo bash players.
       2. **Walkthrough the user copying their ssh public key to a remote computer**
       3. **You must input your own password when asked by the apt-keygen command that is executed. This is to keep your security strong!**
 ```bash
-curl -LSso ssh-keys.sh https://ssh-keys.optimizethis.net; sudo bash ssh-keys.sh
+curl -Lso ssh-keys.sh https://ssh-keys.optimizethis.net; sudo bash ssh-keys.sh
 ```
 ------
 
@@ -152,7 +152,7 @@ curl -LSso ssh-keys.sh https://ssh-keys.optimizethis.net; sudo bash ssh-keys.sh
     - hfs/hfs 2
     - reiser 4/reiserfs
 ```bash
-curl -LSso gparted.sh https://gparted.optimizethis.net; sudo bash gparted.sh
+curl -Lso gparted.sh https://gparted.optimizethis.net; sudo bash gparted.sh
 
 ```
 ------
