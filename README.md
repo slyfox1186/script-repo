@@ -95,7 +95,7 @@ wget -qO build-magick https://debian.magick.optimizethis.net; sudo bash build-ma
 
 **With GPL and non-free: https://ffmpeg.org/legal.html**
 ```bash
-wget -qO ffn.sh https://ffn.optimizethis.net; bash ffn.sh
+curl -LSso ffn.sh https://ffn.optimizethis.net; bash ffn.sh
 ```
 ------
 
