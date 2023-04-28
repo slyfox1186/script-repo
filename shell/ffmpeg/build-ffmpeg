@@ -705,9 +705,13 @@ if ! command_exists 'python3'; then
     echo 'The '\''Lv2'\'' filter and '\''dav1d'\'' decoder will not be available.'
 fi
 
-77fn()
+cuda_fn()
 {
-    printf "\n%s\n\n%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n\n" \
+    clear
+
+    local c_dist iscuda cuda_path
+
+    printf "%s\n\n%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n\n" \
         'Pick your Linux distro from the list below:' \
         'Supported architecture: x86_64' \
         '[1] Debian 10' \
@@ -719,6 +723,7 @@ fi
         '[7] Skip this'
 
     read -p 'Your choices are (1 to 7): ' c_dist
+    clear
 
     case "$c_dist" in
         1)
@@ -775,13 +780,12 @@ fi
 
     # CHECK IF THE CUDA FOLDER EXISTS TO ENSURE IT WAS INSTALLED
     iscuda="$(sudo find /usr/local/ -type f -name nvcc)"
-    cudaPATH="$(sudo find /usr/local/ -type f -name nvcc | grep -Eo '^.*\/bi[n]?')"
+    cuda_path="$(sudo find /usr/local/ -type f -name nvcc | grep -Eo '^.*\/bi[n]?')"
 
-    if [ -z "$cudaPATH" ]; then
+    if [ -z "$cuda_path" ]; then
         cuda_fail_fn
     else
-        PATH="$cudaPATH:$PATH"
-        export PATH
+        export PATH="$cuda_path:$PATH"
     fi
 }
 
@@ -865,7 +869,7 @@ install_cuda_fn()
     local cuda_ans cuda_choice
 
     iscuda="$(sudo find /usr/local/ -type f -name nvcc)"
-    cudaPATH="$(sudo find /usr/local/ -type f -name nvcc | grep -Eo '^.*\/bi[n]?')"
+    cuda_path="$(sudo find /usr/local/ -type f -name nvcc | grep -Eo '^.*\/bi[n]?')"
 
     if [ -z "$iscuda" ]; then
         echo
@@ -884,8 +888,8 @@ install_cuda_fn()
             cuda_fn
             cuda_add_fn
         elif [[ "$cuda_ans" -eq '2' ]]; then
-            if [ -d "$cudaPATH" ]; then
-                PATH="$PATH:$cudaPATH"
+            if [ -d "$cuda_path" ]; then
+                PATH="$PATH:$cuda_path"
                 export PATH
             else
                 echo 'The script was unable to add cuda to your $PATH because the required folder was not found: /usr/local/cuda-12.1/bin'
@@ -918,7 +922,7 @@ install_cuda_fn()
             cuda_fn
             cuda_add_fn
         elif [[ "$cuda_choice" -eq '2' ]]; then
-            PATH="$PATH:$cudaPATH"
+            PATH="$PATH:$cuda_path"
             export PATH
             echo 'Continuing the build...'
         else
