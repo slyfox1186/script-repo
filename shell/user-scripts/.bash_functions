@@ -4,7 +4,7 @@
 ## SET SUDO TO RUN AS THE CURRENT USER ##
 #########################################
 
-sudo() { eval $(which sudo) -H "$@"; }
+sudo() { eval $(which sudo) -H -u root "$@"; }
 
 ##################################################################################
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
@@ -137,9 +137,6 @@ rmdf()
 ## file COMMANDS ##
 ###################
 
-# COPY TO CLIPBOARD
-
-
 # COPY file
 cpf()
 {
@@ -179,10 +176,7 @@ mvf()
 ##################
 
 # DOWNLOAD AN APT PACKAGE + ALL ITS DEPENDENCIES IN ONE GO
-
-function apt-download { wget -c $(apt-get install --reinstall --print-uris -qq $1 | cut -d"'" -f2); }
-
-
+apt_dl() { wget -c "$(apt-get install --reinstall --print-uris -qq $1 | cut -d"'" -f2)"; }
 
 # CLEAN
 clean()
@@ -407,7 +401,6 @@ new_key()
 
     echo -e "\\nfile: $PWD/$name.pub\\n"
     cat "$PWD/$name.pub"
-
     echo
 }
 
@@ -699,11 +692,7 @@ im50()
 
 fs() { clear; du --max-depth=1 -abh | grep -Eo '^[0-9A-Za-z\_\-\.]*|[a-zA-Z0-9\_\-]+\.jpg$'; }
 
-big_img()
-{
-    clear
-    sudo find . -size +10M -type f -name '*.jpg' 2>/dev/null
-}
+big_img() { clear; sudo find . -size +10M -type f -name '*.jpg' 2>/dev/null; }
 
 ###########################
 ## SHOW NVME TEMPERATURE ##
@@ -860,11 +849,7 @@ monitor_gpu() { clear; nvidia-smi dmon; }
 ## PRINT THE NAME OF THE DISTRIBUTION YOU ARE CURRENTLY USING ##
 ################################################################
 
-os_name()
-{
-    clear
-    eval lsb_release -a | grep -Eo '[A-Za-z]+ [0-9\.]+\s*[A-Z]*'
-}
+os_name() { clear; eval lsb_release -a | grep -Eo '[A-Za-z]+ [0-9\.]+\s*[A-Z]*'; }
 
 ##############################################
 ## MONITOR CPU AND MOTHERBOARD TEMPERATURES ##
@@ -890,7 +875,6 @@ hw_mon()
     fi
 
     sudo watch -n1 sensors
-
 }
 
 #####################
@@ -914,13 +898,15 @@ ffr() { bash "$1" -b --latest --enable-gpl-and-non-free; }
     echo
     read -p 'Please enter the destination archive path (w/o extension): ' dpath
     clear
+
     if [ ! -f "$dpath".tar.gz ]; then
         7z a -ttar -so -an "$spath" | 7z a -mx9 -mpass1 -si "$dpath".tar.gz
         exit 0
     else
-        echo 'The output file already exists.'
-        echo
-        echo 'Please choose another output name or delete the file.'
-        echo
-        exit 1
+        clear
+        printf "%s\n\n%s\n\n" \
+        'The output file already exists.' \
+        'Please choose another output name or delete the file.'
+        exit 1 &>/dev/null
+    fi
 }
