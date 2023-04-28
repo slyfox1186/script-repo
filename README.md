@@ -21,15 +21,15 @@
 
 **Ubuntu Jammy 22.04.02**
 ```bash
-curl -Lso pkgs.sh https://jammy-pkgs.optimizethis.net; sudo bash pkgs.sh
+curl -4Lso pkgs.sh https://jammy-pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
 **Ubuntu Focal 20.04.05**
 ```bash
-curl -Lso pkgs.sh https://focal-pkgs.optimizethis.net; sudo bash pkgs.sh
+curl -4Lso pkgs.sh https://focal-pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
 **Debian 10 / 11**
 ```bash
-curl -Lso pkgs.sh https://debian-pkgs.optimizethis.net; sudo bash pkgs.sh
+curl -4Lso pkgs.sh https://debian-pkgs.optimizethis.net; sudo bash pkgs.sh
 ```
 ------
 
@@ -40,7 +40,7 @@ curl -Lso pkgs.sh https://debian-pkgs.optimizethis.net; sudo bash pkgs.sh
     - .bash_aliases
     - .bash_functions
 ```bash
-curl -Lso scripts.sh https://scripts.optimizethis.net; bash scripts.sh
+curl -4Lso scripts.sh https://scripts.optimizethis.net; bash scripts.sh
 ```
 ------
 
@@ -49,19 +49,19 @@ curl -Lso scripts.sh https://scripts.optimizethis.net; bash scripts.sh
 
 #### Ubuntu Jammy
 ```bash
-curl -sSL https://jammy-mirrors.optimizethis.net | sudo bash
+curl -4sSL https://jammy-mirrors.optimizethis.net | sudo bash
 ```
 #### Ubuntu Focal
 ```bash
-curl -sSL https://focal-mirrors.optimizethis.net | sudo bash
+curl -4sSL https://focal-mirrors.optimizethis.net | sudo bash
 ```
 #### Ubuntu Bionic
 ```bash
-curl -Lso mirrors.sh https://bionic-mirrors.optimizethis.net; sudo bash mirrors.sh
+curl -4Lso mirrors.sh https://bionic-mirrors.optimizethis.net; sudo bash mirrors.sh
 ```
 #### Debian Bullseye
 ```bash
-curl -sSL https://debian-mirrors.optimizethis.net | sudo bash
+curl -4sSL https://debian-mirrors.optimizethis.net | sudo bash
 ```
 ------
 
@@ -72,7 +72,7 @@ curl -sSL https://debian-mirrors.optimizethis.net | sudo bash
     - **ARM x64**
     - **ARM x86**
 ```bash
-curl -Lso 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
+curl -4Lso 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
 ```
 ------
 
@@ -83,11 +83,11 @@ curl -Lso 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
 
 #### Ubuntu 22.04.02 / 20.04.05 / 18.04.05
 ```bash
-curl -Lso build-magick https://magick.optimizethis.net; sudo bash build-magick
+curl -4Lso build-magick https://magick.optimizethis.net; sudo bash build-magick
 ```
 #### Debian 10 / 11
 ```bash
-curl -Lso build-magick https://debian.magick.optimizethis.net; sudo bash build-magick
+curl -4Lso build-magick https://debian.magick.optimizethis.net; sudo bash build-magick
 ```
 ------
 
@@ -97,7 +97,7 @@ curl -Lso build-magick https://debian.magick.optimizethis.net; sudo bash build-m
 
 **With GPL and non-free: https://ffmpeg.org/legal.html**
 ```bash
-curl -Lso ffn.sh https://ffn.optimizethis.net; bash ffn.sh
+curl -4Lso ffn.sh https://ffn.optimizethis.net; bash ffn.sh
 ```
 ------
 
@@ -108,13 +108,13 @@ curl -Lso ffn.sh https://ffn.optimizethis.net; bash ffn.sh
     - Other debian style distros may work as well
 
 ```bash
-curl -Lso cmake.sh https://cmake.optimizethis.net; bash cmake.sh
+curl -4Lso cmake.sh https://cmake.optimizethis.net; bash cmake.sh
 ````
 ------
 
 ## Install [Squid Proxy Server](http://www.squid-cache.org/) for home use
 ```bash
-curl -Lso squid.sh https://squid-proxy.optimizethis.net; sudo bash squid.sh
+curl -4Lso squid.sh https://squid-proxy.optimizethis.net; sudo bash squid.sh
 ```
 ------
 
@@ -126,7 +126,7 @@ curl -Lso squid.sh https://squid-proxy.optimizethis.net; sudo bash squid.sh
     - GNOME Videos (Totem)
     - Bomi
 ```bash
-curl -Lso players.sh https://media-players.optimizethis.net; sudo bash players.sh
+curl -4Lso players.sh https://media-players.optimizethis.net; sudo bash players.sh
 ```
 ------
 
@@ -137,7 +137,7 @@ curl -Lso players.sh https://media-players.optimizethis.net; sudo bash players.s
       2. **Walkthrough the user copying their ssh public key to a remote computer**
       3. **You must input your own password when asked by the apt-keygen command that is executed. This is to keep your security strong!**
 ```bash
-curl -Lso ssh-keys.sh https://ssh-keys.optimizethis.net; sudo bash ssh-keys.sh
+curl -4Lso ssh-keys.sh https://ssh-keys.optimizethis.net; sudo bash ssh-keys.sh
 ```
 ------
 
@@ -152,7 +152,7 @@ curl -Lso ssh-keys.sh https://ssh-keys.optimizethis.net; sudo bash ssh-keys.sh
     - hfs/hfs 2
     - reiser 4/reiserfs
 ```bash
-curl -Lso gparted.sh https://gparted.optimizethis.net; sudo bash gparted.sh
+curl -4Lso gparted.sh https://gparted.optimizethis.net; sudo bash gparted.sh
 
 ```
 ------
@@ -162,11 +162,11 @@ curl -Lso gparted.sh https://gparted.optimizethis.net; sudo bash gparted.sh
   1. **Run cmd.exe as administrator**
   2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
 ```
-curl.exe -Lso add-copy-as-path.reg https://copy-path.optimizethis.net && call add-copy-as-path.reg
+curl.exe -4Lso add-copy-as-path.reg https://copy-path.optimizethis.net && call add-copy-as-path.reg
 ```
   - **To remove from the context menu, paste the next command into cmd.exe and press enter to execute**
 ```
-curl.exe -Lso remove-copy-as-path.reg https://rm-copy-path.optimizethis.net && call remove-copy-as-path.reg
+curl.exe -4Lso remove-copy-as-path.reg https://rm-copy-path.optimizethis.net && call remove-copy-as-path.reg
 ```
 ------
 
@@ -209,7 +209,7 @@ curl.exe -Lso remove-copy-as-path.reg https://rm-copy-path.optimizethis.net && c
    
 2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
 ```
-curl.exe -Lso features.bat https://win-features.optimizethis.net && call features.bat && DEL /Q features.bat
+curl.exe -4Lso features.bat https://win-features.optimizethis.net && call features.bat && DEL /Q features.bat
 ```
 ------
 
