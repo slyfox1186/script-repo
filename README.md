@@ -97,13 +97,25 @@ wget -qO build-magick https://debian.magick.optimizethis.net; sudo bash build-ma
 ```bash
 wget -qO ffn.sh https://ffn.optimizethis.net; bash ffn.sh
 ```
-
 ------
+
+## Install [CMake](https://cmake.org/) v3.26.3
+  - Supported OS
+    - Debian 10 / 11
+    - Ubuntu 18.04 / 20.04 / 22.04
+    - Other debian style distros may work as well
+
+```bash
+curl -Lso cmake.sh https://cmake.optimizethis.net; bash cmake.sh
+````
+------
+
 ## Install [Squid Proxy Server](http://www.squid-cache.org/) for home use
 ```bash
 wget -qO squid.sh https://squid-proxy.optimizethis.net; sudo bash squid.sh
 ```
 ------
+
 ## Install Media Players
   - Prompt user with options to download
     - VLC
