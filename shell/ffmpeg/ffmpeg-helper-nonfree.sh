@@ -55,7 +55,7 @@ echo 'Downloading and executing the build script'
 echo '============================================='
 echo
 
-wget -qO 'build-ffmpeg' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ffmpeg/build-ffmpeg'
+curl -LSso 'build-ffmpeg' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ffmpeg/build-ffmpeg'
 
 if [ -f build-ffmpeg ]; then
     bash 'build-ffmpeg' --build --enable-gpl-and-non-free --latest
