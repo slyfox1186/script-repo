@@ -21,7 +21,7 @@ fi
 ## define global variables
 ##
 
-parent_dir="$PWD"/python3.11.3-build
+parent_dir="$PWD"/python-build
 tar_url='https://github.com/python/cpython/archive/refs/tags/v3.11.3.tar.gz'
 
 ##
@@ -56,7 +56,7 @@ cleanup_fn()
             1)
                     cd "$parent_dir" || exit 1
                     cd ../ || exit 1
-                    sudo rm -r 'python3.11.3-build'
+                    sudo rm -r 'python-build'
                     exit_fn
                     ;;
             2)
