@@ -134,9 +134,10 @@ cd "$packages"/cmake-3.26.3 || exit 1
 ## run the bootstrap file to generate any required install files
 ##
 
-echo
-echo 'This might take a minute... please be patient'
-./bootstrap --prefix='/usr/local' --parallel="$(nproc --all)" --enable-ccache --generator='Ninja' &>/dev/null
+printf "\n%s\n\n%s\n\n" \
+    'This might take a minute... please be patient' \
+    "\$ ./bootstrap --prefix=/usr/local --parallel=$(nproc --all) --enable-ccache --generator=Ninja"
+./bootstrap --prefix=/usr/local --parallel="$(nproc --all)" --enable-ccache --generator=Ninja &>/dev/null
 
 ##
 ## run the ninja commands to install cmake system-wide
@@ -149,7 +150,5 @@ if ninja &>/dev/null; then
         success_fn 'CMake has successfully been installed.'
     fi
 else
-    echo 'Ninja failed to generate the install files.'
-    echo
-    exit 1
+    fail_fn 'Ninja failed to generate the install files.'
 fi
