@@ -276,7 +276,6 @@ git_1_fn()
     github_repo_name="$(echo $github_repo | sed -e 's|.*/||')"
 
     if [ "$github_url" = 'releases/latest' ]; then
-        # Latest token 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
         if curl_cmd="$(curl -m "$curl_timeout" -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
             g_url="$(echo "$curl_cmd" | jq -r '.tarball_url')"
             g_ver="${g_url##*/}"
