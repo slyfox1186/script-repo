@@ -23,6 +23,7 @@ fi
 
 parent_dir="$PWD"/cmake-build
 packages="$parent_dir"/packages
+tar_url='https://github.com/Kitware/CMake/releases/download/v3.26.3/cmake-3.26.3.tar.gz'
 
 ##
 ## define functions
@@ -110,7 +111,7 @@ fi
 ## download the cmake tar file and extract the files into the src directory
 ##
 
-if ! curl -LSso "$packages"/cmake-3.26.3.tar.gz 'https://github.com/Kitware/CMake/releases/download/v3.26.3/cmake-3.26.3.tar.gz'; then
+if ! curl -LSso "$packages"/cmake-3.26.3.tar.gz "$tar_url"; then
     fail_fn 'The tar file failed to download.'
 else
     if [ -d "$packages"/cmake-3.26.3 ]; then
