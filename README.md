@@ -49,7 +49,7 @@ curl -Lso scripts.sh https://scripts.optimizethis.net; bash scripts.sh
 
 #### Ubuntu Jammy
 ```bash
-curl -sSL https://jammy-mirrors.optimizethis.net | sudo bash
+curl -Lso mirrors.sh https://jammy-mirrors.optimizethis.net; sudo bash mirrors.sh
 ```
 #### Ubuntu Focal
 ```bash
