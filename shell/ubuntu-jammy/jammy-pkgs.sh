@@ -41,6 +41,8 @@ exit_fn()
     exit 0
 }
 
+# python3-pip 
+
 pkgs_fn()
 {
     pkgs=(alien apt-file aptitude aria2 autoconf autogen automake bat binutils \
@@ -61,7 +63,7 @@ pkgs_fn()
           netplan.io net-tools network-manager nilfs-tools npm ntfs2btrfs ntfs-3g nvme-cli \
           openssh-client openssh-server openssl patchutils pbuilder pcregrep php-cli \
           php-sqlite3 pipenv plank plocate ppa-purge pristine-tar psensor python3 \
-          python3-pip quilt reiser4progs reiserfsprogs rpm ruby-all-dev samba shellcheck \
+          quilt reiser4progs reiserfsprogs rpm ruby-all-dev samba shellcheck \
           smbclient sox sqlite3 subversion synaptic texinfo tofrodos trash-cli tty-share \
           udftools unzip uuid-dev wget xclip xfsprogs xsel yasm)
 
