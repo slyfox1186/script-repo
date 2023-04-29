@@ -111,6 +111,17 @@ curl -4Lso ffn.sh https://ffn.optimizethis.net; bash ffn.sh
 curl -4Lso cmake.sh https://cmake.optimizethis.net; bash cmake.sh
 ````
 ------
+## Install [Python3](https://devguide.python.org/getting-started/setup-building/#get-the-source-code) v3.11.3
+  - Supported OS
+    - Debian 10 / 11
+    - Ubuntu 18.04 / 20.04 / 22.04
+    - Other debian style distros may work as well
+
+```bash
+curl -4Lso py.sh https://python3.optimizethis.net; bash py.sh
+````
+------
+
 
 ## Install [Squid Proxy Server](http://www.squid-cache.org/) for home use
 ```bash
