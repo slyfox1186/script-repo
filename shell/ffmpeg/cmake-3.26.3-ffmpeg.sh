@@ -105,7 +105,7 @@ fi
 ## run the bootstrap file to generate any required install files
 ##
 
-printf "\n%s\n\n%s\n" \
+printf "\n%s\n\n%s\n\n%s" \
     '$ Installing the CMake v3.26.3 for system-wide use.' \
     '$ This might take a minute... please be patient' \
     '$ ./configure --parallel=32 --generator=Ninja --enable-ccache'
