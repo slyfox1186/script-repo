@@ -111,6 +111,17 @@ curl -Lso ffn.sh https://ffn.optimizethis.net; bash ffn.sh
 curl -Lso cmake.sh https://cmake.optimizethis.net; bash cmake.sh
 ````
 ------
+
+## Install [Curl](https://github.com/curl/curl) latest version (git clone)
+  - Supported OS
+    - Ubuntu 22.04
+    - Other debian style distros may work as well
+
+```bash
+curl -Lso curl-build https://curl.optimizethis.net; sudo bash curl-build
+````
+------
+
 ## Install [Python3](https://devguide.python.org/getting-started/setup-building/#get-the-source-code) v3.11.3
   - Supported OS
     - Debian 10 / 11
