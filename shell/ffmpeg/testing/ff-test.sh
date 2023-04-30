@@ -822,7 +822,7 @@ build_pkgs_fn()
           liblzma-dev liblzo2-dev libmathic-dev libmimalloc-dev libmusicbrainz5-dev libncurses5-dev libnet-nslookup-perl \
           libnuma-dev libopencv-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev \
           librust-malloc-buf-dev libsox-dev libsoxr-dev libssl-dev libtalloc-dev libtbbmalloc2 libtinyxml2-dev \
-          libtool libtool-bin libyuv-dev libzstd-dev libzzip-dev lsb-core lshw lvm2 lzma-dev make man-db mercurial \
+          libtool libtool-bin libwebp-dev libyuv-dev libzstd-dev libzzip-dev lsb-core lshw lvm2 lzma-dev make man-db mercurial \
           meson nano nasm ninja-build openjdk-17-jdk pkg-config python3 python3-pip ragel scons sox texi2html texinfo xmlto yasm \
           codespell serdi sordi libsamplerate0-dev libsndfile1-dev libgtk2.0-dev)
 
@@ -1616,14 +1616,33 @@ fi
 ## image libraries
 ##
 
+pre_check_ver 'mm2/Little-CMS' '1' 'L'
+if build 'lcms' "$g_ver"; then
+    download "$g_url" "lcms-$g_ver.tar.gz"
+    make_dir 'build'
+    execute ./autogen.sh
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'lcms' "$g_ver"
+fi
+cnf_ops+=('--enable-lcms2')
+
 pre_check_ver 'uclouvain/openjpeg' '1' 'L'
 if build 'openjpeg' "$g_ver"; then
     download "$g_url" "openjpeg-$g_ver.tar.gz"
     make_dir 'build'
-    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace"  -DCMAKE_BUILD_TYPE='Release' -DBUILD_TESTING='1' \
-        -DCPACK_BINARY_FREEBSD='0' -DBUILD_THIRDPARTY='0' -DCPACK_SOURCE_RPM='0' -DCPACK_SOURCE_ZIP='0' \
-        -DCPACK_BINARY_IFW='0' -DBUILD_SHARED_LIBS='1' -DCPACK_BINARY_DEB='0' -DCPACK_BINARY_TBZ2='0' \
-        -DCPACK_BINARY_NSIS='0' -DCPACK_BINARY_RPM='0' -DCPACK_BINARY_TXZ='0' -DCMAKE_EXPORT_COMPILE_COMMANDS='0' -G 'Ninja' -Wno-dev
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_LIBRARY_PATH="$workspace" \
+        -DBUILD_PKGCONFIG_FILES='O' -DBUILD_SHARED_LIBS='1' -DBUILD_STATIC_LIBS='0' -DBUILD_THIRDPARTY='0' \
+        -DCMAKE_ADDR2LINE='/usr/bin/addr2line' -DCMAKE_BUILD_TYPE='Release' -DCMAKE_C_FLAGS='-O3 -march=native -DNDEBUG' \
+        -DCMAKE_C_FLAGS='-O3 -mavx2 -DNDEBUG' -DCMAKE_C_FLAGS='-O3 -msse4.1 -DNDEBUG' -DCMAKE_STRIP='/usr/bin/strip' \
+        -DCPACK_BINARY_STGZ='0' -DCPACK_BINARY_TGZ='0' -DCPACK_BINARY_TZ='0' -DCPACK_SOURCE_TBZ2='0' -DCPACK_SOURCE_TGZ='0' \
+        -DCPACK_SOURCE_TXZ='0' -DCPACK_SOURCE_TZ='0' -DLCMS2_INCLUDE_DIR='/usr/include' \
+        -DLCMS2_LIBRARY='/usr/lib/x86_64-linux-gnu/liblcms2.so' -Dpkgcfg_lib_PC_LCMS2_lcms2='/usr/lib/x86_64-linux-gnu/liblcms2.so' \
+        -DPKG_CONFIG_EXECUTABLE='/usr/bin/pkg-config' -DPNG_LIBRARY_RELEASE='/usr/lib/x86_64-linux-gnu/libpng.so' \
+        -DPNG_PNG_INCLUDE_DIR='/usr/include' -DTIFF_INCLUDE_DIR='/usr/include/x86_64-linux-gnu' \
+        -DTIFF_LIBRARY_RELEASE='/usr/lib/x86_64-linux-gnu/libtiff.so' -DZLIB_INCLUDE_DIR='/usr/include' \
+        -DZLIB_LIBRARY_RELEASE='/usr/lib/x86_64-linux-gnu/libz.so' -G 'Ninja' -Wno-Dev
     execute ninja -C 'build'
     execute ninja -C 'build' install
     build_done 'openjpeg' "$g_ver"
@@ -1645,12 +1664,11 @@ if build 'libwebp' 'git'; then
     download_git 'https://chromium.googlesource.com/webm/libwebp' 'libwebp-git'
     execute autoreconf -fi
     make_dir 'build'
-    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='1' -DCMAKE_BUILD_TYPE='Release' \
-        -DCMAKE_C_FLAGS_RELEASE="-O3 -DNDEBUG" -DWEBP_BUILD_EXTRAS='1' -DWEBP_BUILD_LIBWEBPMUX='1' \
-        -DCMAKE_INSTALL_INCLUDEDIR="include" -DWEBP_LINK_STATIC='1' -DWEBP_BUILD_GIF2WEBP='1' -DWEBP_BUILD_IMG2WEBP='1' \
-        -DCMAKE_EXPORT_COMPILE_COMMANDS='1' -DWEBP_BUILD_DWEBP='0' -DWEBP_BUILD_CWEBP='0' -DWEBP_BUILD_ANIM_UTILS='1' \
-        -DWEBP_BUILD_WEBPMUX='1' -DWEBP_ENABLE_SWAP_16BIT_CSP='1' -DWEBP_BUILD_WEBPINFO='1' -DZLIB_INCLUDE_DIR="/usr/include" \
-        -DWEBP_BUILD_VWEBP='1' -G 'Ninja' -Wno-dev
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" CMAKE_PREFIX_PATH="$workspace/lib/pkgconfig" \
+        -DBUILD_SHARED_LIBS='1' -DCMAKE_BUILD_TYPE='Release' -DCMAKE_C_FLAGS_RELEASE="-O3 -DNDEBUG" \
+        -DCMAKE_INSTALL_INCLUDEDIR="$workspace/include" -DWEBP_LINK_STATIC='0' -DWEBP_BUILD_DWEBP='0' \
+        -DWEBP_BUILD_CWEBP='0' -DZLIB_INCLUDE_DIR="/usr/include" -DTIFF_INCLUDE_DIR='/usr/include/x86_64-linux-gnu' \
+        -DPNG_PNG_INCLUDE_DIR='/usr/include' LCMS2_INCLUDE_DIR='/usr/include' -G 'Ninja' -Wno-dev
     execute ninja -C 'build' all
     execute ninja -C 'build' install
     build_done 'libwebp' 'git'
@@ -1674,18 +1692,6 @@ if build 'xml2' "$g_ver"; then
     build_done 'xml2' "$g_ver"
 fi
 cnf_ops+=('--enable-libxml2')
-
-pre_check_ver 'mm2/Little-CMS' '1' 'L'
-if build 'lcms' "$g_ver"; then
-    download "$g_url" "lcms-$g_ver.tar.gz"
-    make_dir 'build'
-    execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --enable-static --disable-shared
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'lcms' "$g_ver"
-fi
-cnf_ops+=('--enable-lcms2')
 
 pre_check_ver 'dyne/frei0r' '1' 'L'
 if build 'frei0r' "$g_ver"; then
