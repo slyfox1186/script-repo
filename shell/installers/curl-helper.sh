@@ -2,6 +2,10 @@
 
 clear
 
+if ! which 'git'; then
+    sudo apt -y install git &>/dev/null
+fi
+
 if [ -d 'script-repo' ]; then
     sudo rm -fr 'script-repo'
 fi
