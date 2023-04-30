@@ -60,7 +60,7 @@ success_fn()
 ## create build folders
 ##
 
-execute mkdir -p "$parent_dir" "$packages"
+mkdir -p "$parent_dir" "$packages"
 cd "$parent_dir" || exit 1
 
 ##
@@ -105,13 +105,13 @@ fi
 
 printf "\n%s\n" \
     '$ This might take a minute... please be patient'
-execute ./bootstrap --prefix=/usr/local --parallel="$(nproc --all)" --enable-ccache --generator=Ninjal
+./bootstrap --prefix=/usr/local --parallel="$(nproc --all)" --enable-ccache --generator=Ninjal
 
 ##
 ## run the ninja commands to install cmake system-wide
 ##
 
-execute ninja
-execute sudo ninja install
+ninja
+sudo ninja install
 
 success_fn
