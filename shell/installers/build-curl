@@ -116,8 +116,6 @@ curl_timeout='5'
 
 git_1_fn()
 {
-    local github_repo github_url
-
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     github_repo="$1"
     github_url="$2"
@@ -305,7 +303,7 @@ export LD_LIBRARY_PATH='/lib:/usr/lib:/usr/local/lib:intl-perl/lib:/llvm-14/lib:
 ## install required apt packages
 ##
 
-pkgs=(build-essential lcov libldap2-dev libldap-dev libmbedtls-dev librtmp-dev libpsl-dev \
+pkgs=(build-essential jq lcov libldap2-dev libldap-dev libmbedtls-dev librtmp-dev libpsl-dev \
       libgsasl-dev libgsasl7-dev libssh2-1-dev make openssl pkg-config)
 
 for pkg in ${pkgs[@]}
@@ -353,7 +351,7 @@ if build 'curl' "$g_ver"; then
             printf "\n%s\n%s\n" \
             'Configuring build files or this pc' \
             '================================================'
-    execute ./configure --enable-silent-rules --enable-optimize --enable-code-coverage --enable-static --disable-shared \
+   ./configure --enable-silent-rules --enable-optimize --enable-code-coverage --enable-static --disable-shared \
         --enable-fast-install --enable-alt-svc --enable-cookies --enable-crypto-auth --enable-dateparse --enable-dict \
         --enable-dnsshuffle --enable-doh --enable-get-easy-options --enable-gopher --enable-headers-api --enable-hsts \
         --enable-http-auth --enable-imap --enable-ipv6 --enable-libcurl-option --enable-libgcc \
@@ -367,7 +365,7 @@ if build 'curl' "$g_ver"; then
     printf "\n%s\n%s\n%s" \
         'Making build files' \
         '================================================'
-    execute make "-j$cpu_threads"
+    make "-j$cpu_threads"
     printf "\n%s\n%s\n%s" \
         'Installing build files' \
         '================================================'
