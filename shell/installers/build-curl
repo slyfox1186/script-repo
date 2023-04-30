@@ -335,7 +335,7 @@ export LD_LIBRARY_PATH
 ## install required apt packages
 ##
 
-pkgs=(build-essential jq libbrotli-dev lcov libldap2-dev libldap-dev libmbedtls-dev librtmp-dev libpsl-dev \
+pkgs=(ccache build-essential jq libbrotli-dev lcov libldap2-dev libldap-dev libmbedtls-dev librtmp-dev libpsl-dev \
       libgsasl-dev libgsasl7-dev libssh2-1-dev libzstd-dev make openssl pkg-config)
 
 for pkg in ${pkgs[@]}
