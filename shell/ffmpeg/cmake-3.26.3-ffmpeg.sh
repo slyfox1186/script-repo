@@ -105,10 +105,9 @@ fi
 ## run the bootstrap file to generate any required install files
 ##
 
-printf "\n%s\n\n%s" \
+printf "\n%s\n%s\n" \
     '$ Installing the CMake v3.26.3 for system-wide use.' \
     '$ This might take a minute... please be patient' \
-    '$ curl -Lso cmake-ffmpeg.sh https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ffmpeg/cmake-3.26.3-ffmpeg.sh; bash cmake-ffmpeg.sh' \
     '$ ./configure --parallel=32 --generator=Ninja --enable-ccache'
 ./configure --parallel='32' --generator='Ninja' --enable-ccache &>/dev/null
 
