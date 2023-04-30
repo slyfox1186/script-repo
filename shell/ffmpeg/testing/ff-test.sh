@@ -1840,7 +1840,7 @@ git_ver_fn '7950' '4'
 if build 'freetype' "$g_ver"; then
     extracommands=(-D{harfbuzz,png,bzip2,brotli,zlib,tests}"=disabled")
     download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/$g_ver/freetype-$g_ver.tar.bz2" "freetype-$g_ver.tar.bz2"
-    ./autogen.sh
+    execute ./autogen.sh
     execute meson setup 'build' --prefix="$workspace" --buildtype='release' --default-library='static' \
         --pkg-config-path="$workspace/lib/pkgconfig:$workspace/lib/x86_64-linux-gnu/pkgconfig" --strip
     execute ninja -C 'build'
