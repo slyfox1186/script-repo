@@ -295,9 +295,41 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok insta
 
 export PATH="$PATH:/usr/local/share/ca-certificates"
 
-export CFLAGS='-I/usr/include -I/usr/local/include -I/usr/lib/llvm-14/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/local/share/cmake-3.26/include -I/usr/share/apache2/error/include -I/usr/share/cmake-3.22/Help/include -I/usr/share/cmake-3.22/include -I/usr/share/go-1.18/pkg/include'
+CFLAGS="\
+-I/usr/include -I/usr/local/include \
+-I/usr/lib/llvm-14/include \
+-I/usr/lib/x86_64-linux-gnu/glib-2.0/include \
+-I/usr/lib/x86_64-linux-gnu/gtk-2.0/include \
+-I/usr/local/share/cmake-3.26/include \
+-I/usr/share/apache2/error/include \
+-I/usr/share/cmake-3.22/Help/include \
+-I/usr/share/cmake-3.22/include \
+-I/usr/share/go-1.18/pkg/include\
+"
+export CFLAGS
 
-export LD_LIBRARY_PATH='/lib:/usr/lib:/usr/local/lib:intl-perl/lib:/llvm-14/lib:/python3/dist-packages/reportlab/lib:/rustlib:/usr/share/alsa/ucm2/lib:/usr/share/doc/gawk/examples/lib:/usr/share/gdb/auto-load/lib:/usr/share/gdb/auto-load/usr/lib:/usr/share/ghostscript/9.55.0/lib:/usr/share/git-gui/lib:/usr/share/gitk/lib /usr/share/perl/5.34.0/unicore/lib:/usr/share/texinfo/lib:/x86_64-linux-gnu/openmpi/lib:/x86_64-linux-gnu/perl-base/unicore/lib:/x86_64-linux-gnu/pmix2/lib:/x86_64-unknown-linux-gnu/lib'
+LD_LIBRARY_PATH="\
+/lib:/usr/lib:\
+/usr/local/lib:\
+intl-perl/lib:\
+/llvm-14/lib:\
+/python3/dist-packages/reportlab/lib:\
+/rustlib:\
+/usr/share/alsa/ucm2/lib:\
+/usr/share/doc/gawk/examples/lib:\
+/usr/share/gdb/auto-load/lib:\
+/usr/share/gdb/auto-load/usr/lib:\
+/usr/share/ghostscript/9.55.0/lib:\
+/usr/share/git-gui/lib:\
+/usr/share/gitk/lib:\
+/usr/share/perl/5.34.0/unicore/lib:\
+/usr/share/texinfo/lib:\
+/x86_64-linux-gnu/openmpi/lib:\
+/x86_64-linux-gnu/perl-base/unicore/lib:\
+/x86_64-linux-gnu/pmix2/lib:\
+/x86_64-unknown-linux-gnu/lib\
+"
+export LD_LIBRARY_PATH
 
 ##
 ## install required apt packages
