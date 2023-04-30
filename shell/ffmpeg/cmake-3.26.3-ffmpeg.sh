@@ -41,7 +41,7 @@ cleanup_fn()
 {
     cd "$parent_dir" || exit 1
     cd ../ || exit 1
-    sudo rm -r 'cmake-build'
+    sudo rm -r 'cmake-build' &>/dev/null
 }
 
 success_fn()
@@ -50,8 +50,6 @@ success_fn()
     printf "%s\n\n" \
         "$1"
     cmake --version
-    echo
-    echo '$ Sleeping 5 seconds.'
     sleep 5
     cleanup_fn
 }
