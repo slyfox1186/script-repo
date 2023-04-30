@@ -1940,7 +1940,7 @@ fi
 
 # CLONE FFMPEG FROM THE LATEST GIT RELEASE
 if build 'FFmpeg' 'git'; then
-    download_git 'https://git.ffmpeg.org/ffmpeg.git' 'FFmpeg-git'
+    download_git 'https://github.com/FFmpeg/FFmpeg.git' 'FFmpeg-git'
     ./configure \
             "${cnf_ops[@]}" \
             --prefix="$workspace" \
