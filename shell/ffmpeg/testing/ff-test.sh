@@ -17,9 +17,9 @@
 ##           the user will be prompted by the script to install them so that
 ##           hardware acceleration is enabled when compiling FFmpeg
 ##
-##  Updated: 04.28.23
+##  Updated: 04.29.23
 ##
-##  Version: 4.2
+##  Version: 5.0
 ##
 #################################################################################
 
@@ -29,7 +29,7 @@
 
 # FFmpeg version: Whatever the latest Git pull from: https://git.ffmpeg.org/gitweb/ffmpeg.git
 progname="${0:2}"
-script_ver='4.2'
+script_ver='5.0'
 cuda_ver='12.1.1'
 packages="$PWD"/packages
 workspace="$PWD"/workspace
@@ -668,21 +668,20 @@ if [ -n "$LDEXEFLAGS" ]; then
 fi
 
 # set global variables
-JAVA_HOME='/usr/lib/jvm/java-17-openjdk-amd64'
-export JAVA_HOME
+export JAVA_HOME='/usr/lib/jvm/java-17-openjdk-amd64'
 
 # libbluray requries that this variable be set
 PATH="\
+/usr/lib/ccache:\
 $JAVA_HOME/bin:\
 $PATH\
 "
 export PATH
 
-# export PYTHONPATH='/usr/lib/python3/dist-packages'
-
 # set the pkg-config path
 PKG_CONFIG_PATH="\
 $workspace/lib/pkgconfig:\
+$workspace/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib/pkgconfig:\
 /usr/local/share/pkgconfig:\
@@ -815,11 +814,11 @@ build_pkgs_fn()
     echo 'Installing required development packages'
     echo '=========================================='
 
-    pkgs=(ant autoconf autogen automake binutils bison build-essential ccache ccdiff checkinstall clang \
+    pkgs=(ant autoconf autogen automake binutils bison build-essential cargo ccache ccdiff checkinstall clang \
           clang-tools cmake cmake-curses-gui cmake-extras cmake-qt-gui curl dbus dbus-x11 dos2unix doxygen flex \
           flexc++ freeglut3-dev g++ g++-11 g++-12 gawk gcc gcc-11 gcc-12 gh git-all gnustep-gui-runtime \
-          golang gperf gtk-doc-tools help2man javacc jfsutils jq junit libavif-dev libbz2-dev libcairo2-dev libcdio-paranoia-dev \
-          libcurl4-gnutls-dev libdmalloc-dev libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev liblz-dev \
+          golang gperf gtk-doc-tools help2man javacc jfsutils jq junit liblcms2-dev libavif-dev libbz2-dev libcairo2-dev \
+          libcdio-paranoia-dev libcurl4-gnutls-dev libdmalloc-dev libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev liblz-dev \
           liblzma-dev liblzo2-dev libmathic-dev libmimalloc-dev libmusicbrainz5-dev libncurses5-dev libnet-nslookup-perl \
           libnuma-dev libopencv-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev \
           librust-malloc-buf-dev libsox-dev libsoxr-dev libssl-dev libtalloc-dev libtbbmalloc2 libtinyxml2-dev \
@@ -1958,8 +1957,7 @@ if build 'FFmpeg' 'git'; then
             --extra-ldexeflags="$LDEXEFLAGS" \
             --extra-ldflags="$LDFLAGS" \
             --extra-libs="$EXTRALIBS" \
-            --pkg-config-flags='--static' \
-            --pkgconfigdir="$workspace"/lib/pkgconfig
+            --pkg-config-flags='--static'
     execute make "-j$cpu_threads"
     execute make install
 fi
