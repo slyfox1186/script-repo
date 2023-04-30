@@ -32,6 +32,8 @@ ffind()
 
     if [ -n "$fname" ] && [ -z "$ftype" ] && [ -z "$fpath" ]; then
         sudo find . -iname "$fname" | while read line; do echo "$line"; done
+    elif [ -n "$fname" ] && [ -z "$ftype" ] && [ -n "$fpath" ]; then
+        sudo find "$fpath" -iname "$fname" | while read line; do echo "$line"; done
     elif [ -n "$fname" ] && [ -n "$ftype" ] && [ -n "$fpath" ]; then
         sudo find "$fpath" -type "$ftype" -iname "$fname" | while read line; do echo "$line"; done
     elif [ -n "$fname" ] && [ -z "$ftype" ] && [ "$fpath" = '.' ]; then
