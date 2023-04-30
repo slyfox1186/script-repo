@@ -1265,19 +1265,19 @@ if $nonfree_and_gpl; then
         echo '$ making 12bit binaries'
         execute cmake -S ../../../source -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='1' -DCMAKE_REQUIRED_LIBRARIES='numa' \
             -DHIGH_BIT_DEPTH='0' -DENABLE_HDR10_PLUS='0' -DEXPORT_C_API='1' -DENABLE_CLI='1' -DMAIN12='0' -G 'Ninja' -Wno-dev
-        execute ninja "-j$cpu_threads"
+        execute ninja
         echo '$ making 10bit binaries'
         cd ../10bit || exit 1
         execute cmake -S ../../../source -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='1' -DCMAKE_REQUIRED_LIBRARIES='numa' \
             -DHIGH_BIT_DEPTH='0' -DENABLE_HDR10_PLUS='0' -DEXPORT_C_API='1' -DENABLE_CLI='1' -G 'Ninja' -Wno-dev
-        execute ninja "-j$cpu_threads"
+        execute ninja
         echo '$ making 8bit binaries'
         cd ../8bit || exit 1
         ln -sf ../10bit/libx265.a libx265_main10.a
         ln -sf ../12bit/libx265.a libx265_main12.a
         execute cmake -S ../../../source -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='1' -DCMAKE_REQUIRED_LIBRARIES='numa' \
             -DEXTRA_LIB='x265_main10.a;x265_main12.a;-ldl' -DEXTRA_LINK_FLAGS='-L.' -DLINKED_10BIT='0' -DLINKED_12BIT='0' -G 'Ninja' -Wno-dev
-        execute ninja "-j$cpu_threads"
+        execute ninja
         mv libx265.a  libx265_main.a
 
         execute ar -M <<EOF
@@ -1348,19 +1348,12 @@ if $nonfree_and_gpl; then
     cnf_ops+=('--enable-libxvid')
 fi
 
-echo
-echo 'Done'
-echo
-echo 'Go to line 1355 and work on vid stab'
-echo
-exit
-
 if $nonfree_and_gpl; then
     pre_check_ver 'georgmartius/vid.stab' '1' 'T'
     if build 'vid_stab' "$g_ver"; then
         download "$g_url" "vid.stab-$g_ver.tar.gz"
         make_dir 'build'
-        execute cmake -S . -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='1' -DCMAKE_BUILD_TYPE='Release' \
+        execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='1' -DCMAKE_BUILD_TYPE='Release' \
              -DUSE_OMP='0' -G 'Ninja' -Wno-dev
         execute ninja -C 'build'
         execute ninja -C 'build' install
@@ -1373,14 +1366,15 @@ if build 'av1' 'd192cdf'; then
     download 'https://aomedia.googlesource.com/aom/+archive/d192cdfc229d3d4edf6a0acd2e5b71fb4880d28e.tar.gz' 'av1-d192cdf.tar.gz' 'av1'
     make_dir "$packages"/aom_build
     cd "$packages"/aom_build || exit 1
-    execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR="$workspace"/lib \
+    make_dir 'build'
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR="$workspace"/lib \
         -DCMAKE_BUILD_TYPE='Release' -DCONFIG_ACCOUNTING='0' -DCONFIG_ANALYZER='0' -DCONFIG_AV1_DECODER='1' \
         -DCONFIG_AV1_ENCODER='1' -DCONFIG_AV1_HIGHBITDEPTH='1' -DCONFIG_AV1_TEMPORAL_DENOISING='0' \
         -DCONFIG_BIG_ENDIAN='0' -DCONFIG_COLLECT_RD_STATS='0' -DCONFIG_DENOISE='1' -DCONFIG_DISABLE_FULL_PIXEL_SPLIT_8X8='1' \
         -DCONFIG_ENTROPY_STATS='0' -DCONFIG_SHARED='0' -DENABLE_CCACHE='1' -DENABLE_EXAMPLES='0' \
         -DENABLE_TESTS='0' "$packages"/av1 -DBUILD_SHARED_LIBS='1' -G 'Ninja' "$packages"/av1
-    execute ninja
-    execute ninja install
+    execute ninja -C 'build'
+    execute ninja -C 'build' install
     build_done 'av1' 'd192cdf'
 fi
 cnf_ops+=('--enable-libaom')
