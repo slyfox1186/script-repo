@@ -818,7 +818,7 @@ build_pkgs_fn()
     pkgs=(ant autoconf autogen automake binutils bison build-essential ccache ccdiff checkinstall clang \
           clang-tools cmake cmake-curses-gui cmake-extras cmake-qt-gui curl dbus dbus-x11 dos2unix doxygen flex \
           flexc++ freeglut3-dev g++ g++-11 g++-12 gawk gcc gcc-11 gcc-12 gh git-all gnustep-gui-runtime \
-          golang gtk-doc-tools help2man javacc jfsutils jq junit libavif-dev libbz2-dev libcairo2-dev libcdio-paranoia-dev \
+          golang gperf gtk-doc-tools help2man javacc jfsutils jq junit libavif-dev libbz2-dev libcairo2-dev libcdio-paranoia-dev \
           libcurl4-gnutls-dev libdmalloc-dev libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev liblz-dev \
           liblzma-dev liblzo2-dev libmathic-dev libmimalloc-dev libmusicbrainz5-dev libncurses5-dev libnet-nslookup-perl \
           libnuma-dev libopencv-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev \
@@ -1171,7 +1171,7 @@ if command_exists 'python3'; then
             execute meson setup 'build' --prefix="$workspace" --libdir="$workspace"/lib --pkg-config-path="$PKG_CONFIG_PATH" \
                 --buildtype='release' --default-library='static' --optimization='s' --strip
             execute ninja -C 'build'
-            execute sudo ninja -C 'build' install
+            execute ninja -C 'build' install
             build_done 'dav1d' "$g_sver"
         fi
         cnf_ops+=('--enable-libdav1d')
@@ -1446,7 +1446,7 @@ if command_exists 'python3'; then
         if build 'lv2' "$g_ver"; then
             download "$g_url" "lv2-$g_ver.tar.gz"
             execute meson setup 'build' --prefix="$workspace" --buildtype='release' --default-library='static' \
-                --pkg-config-path="$workspace/lib/pkgconfig"
+                --pkg-config-path="$workspace/lib/pkgconfig" --strip
             execute ninja -C 'build'
             execute ninja -C 'build' install
             build_done 'lv2' "$g_ver"
@@ -1462,7 +1462,7 @@ if command_exists 'python3'; then
         if build 'serd' "$g_ver"; then
             download "https://gitlab.com/drobilla/serd/-/archive/v$g_ver/serd-v$g_ver.tar.bz2" "serd-$g_ver.tar.bz2"
             execute meson setup 'build' --prefix="$workspace" --buildtype='release' --default-library='static' \
-                --pkg-config-path="$workspace/lib/pkgconfig"
+                --pkg-config-path="$workspace/lib/pkgconfig" --strip
             execute ninja -C 'build'
             execute ninja -C 'build' install
             build_done 'serd' "$g_ver"
@@ -1482,7 +1482,7 @@ if command_exists 'python3'; then
         if build 'zix' "$g_sver1"; then
             download "https://gitlab.com/drobilla/zix/-/archive/$g_ver1/zix-$g_ver1.tar.bz2" "zix-$g_sver1.tar.bz2"
             execute meson setup 'build' --prefix="$workspace" --buildtype='release' --default-library='static' \
-                --pkg-config-path="$workspace/lib/pkgconfig"
+                --pkg-config-path="$workspace/lib/pkgconfig" --strip
             execute ninja -C 'build'
             execute ninja -C 'build' install
             build_done 'zix' "$g_sver1"
@@ -1493,7 +1493,7 @@ if command_exists 'python3'; then
             CFLAGS+="$CFLAGS -I$workspace/include/serd-0"
             download "https://gitlab.com/drobilla/sord/-/archive/$g_ver1/sord-$g_ver1.tar.bz2" "sord-$g_sver1.tar.bz2"
             execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' \
-                --pkg-config-path="$workspace/lib/pkgconfig:$workspace/lib/x86_64-linux-gnu/pkgconfig"
+                --pkg-config-path="$workspace/lib/pkgconfig:$workspace/lib/x86_64-linux-gnu/pkgconfig" --strip
             execute ninja -C 'build'
             execute ninja -C 'build' install
             build_done 'sord' "$g_sver1"
@@ -1503,7 +1503,7 @@ if command_exists 'python3'; then
         if build 'sratom' "$g_ver"; then
             download "https://gitlab.com/lv2/sratom/-/archive/v$g_ver/sratom-v$g_ver.tar.bz2" "sratom-$g_ver.tar.bz2"
             execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' \
-                --pkg-config-path="$workspace/lib/pkgconfig:$workspace/lib/x86_64-linux-gnu/pkgconfig"
+                --pkg-config-path="$workspace/lib/pkgconfig:$workspace/lib/x86_64-linux-gnu/pkgconfig" --strip
             ninja -C 'build'
             execute ninja -C 'build' install
             build_done 'sratom' "$g_ver"
@@ -1513,7 +1513,7 @@ if command_exists 'python3'; then
         if build 'lilv' "$g_ver"; then
             download "https://gitlab.com/lv2/lilv/-/archive/v$g_ver/lilv-v$g_ver.tar.bz2" "lilv-$g_ver.tar.bz2"
             execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' \
-                --pkg-config-path="$workspace/lib/pkgconfig:$workspace/lib/x86_64-linux-gnu/pkgconfig"
+                --pkg-config-path="$workspace/lib/pkgconfig:$workspace/lib/x86_64-linux-gnu/pkgconfig" --strip
             execute ninja -C 'build'
             execute ninja -C 'build' install
             build_done 'lilv' "$g_ver"
@@ -1599,9 +1599,9 @@ fi
 cnf_ops+=('--enable-libtheora')
 
 if $nonfree_and_gpl; then
-    pre_check_ver 'mstorsjo/fdk-aac' '1' 'L'
+    pre_check_ver 'mstorsjo/fdk-aac' '1' 'T'
     if build 'fdk_aac' "$g_ver"; then
-    download "$g_url" "fdk_aac-$g_ver.tar.gz"
+    download "https://github.com/mstorsjo/fdk-aac/archive/refs/tags/v$g_ver.tar.gz" "fdk_aac-$g_ver.tar.gz"
         execute ./autogen.sh
         execute ./configure --prefix="$workspace" --bindir="$workspace"/bin --disable-shared --enable-static --enable-pic \
             CXXFLAGS='-fno-exceptions -fno-rtti'
@@ -1670,7 +1670,7 @@ if build 'xml2' "$g_ver"; then
         -DCPACK_BINARY_RPM='ON' -DCPACK_BINARY_TBZ2='ON' -DCPACK_BINARY_TXZ='ON' -DCPACK_SOURCE_RPM='ON' -DCPACK_SOURCE_ZIP='ON' \
         -DHWY_LIBRARY:FILEPATH="/usr/lib/x86_64-linux-gnu/libhwy.so" -DOPENGL_opengl_LIBRARY:FILEPATH="/usr/lib/x86_64-linux-gnu/libglut.a" -G 'Ninja' -Wno-dev
     execute ninja -C 'build'
-    execute sudo ninja -C 'build' install
+    execute ninja -C 'build' install
     build_done 'xml2' "$g_ver"
 fi
 cnf_ops+=('--enable-libxml2')
@@ -1682,7 +1682,7 @@ if build 'lcms' "$g_ver"; then
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --disable-shared --enable-static
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'lcms' "$g_ver"
 fi
 cnf_ops+=('--enable-lcms2')
@@ -1765,14 +1765,14 @@ if build 'MediaInfoCLI' "$g_ver"; then
 fi
 
 if command_exists 'meson'; then
-    pre_check_ver 'harfbuzz/harfbuzz' '1' 'L'
+    pre_check_ver 'harfbuzz/harfbuzz' '1' 'T'
     if build 'harfbuzz' "$g_ver"; then
-        download "$g_url" "harfbuzz-$g_ver.tar.gz"
+        download "https://github.com/harfbuzz/harfbuzz/archive/refs/tags/$g_ver.tar.gz" "harfbuzz-$g_ver.tar.gz"
         execute ./autogen.sh
         execute meson setup 'build' --prefix="$workspace" --libdir="$workspace"/lib --pkg-config-path="$PKG_CONFIG_PATH" \
                 --buildtype='release' --default-library='static' --optimization='s' --strip
         execute ninja -C 'build'
-        execute sudo ninja -C 'build' install
+        execute ninja -C 'build' install
         build_done 'harfbuzz' "$g_ver"
     fi
 fi
@@ -1790,20 +1790,17 @@ if build 'c2man' 'git'; then
         -D vi='/usr/bin/vi' -D zip='/usr/bin/zip'
     execute make depend
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'c2man' 'git'
 fi
 
 pre_check_ver 'fribidi/fribidi' '1' 'L'
 if build 'fribidi' "$g_ver"; then
-    if [ -f "fribidi-$g_ver.tar.gz" ]; then
-        sudo rm "fribidi-$g_ver.tar.gz"
-    fi
     download "$g_url" "fribidi-$g_ver.tar.gz"
-    execute meson setup 'build' --prefix="$workspace" --libdir="$workspace"/lib --pkg-config-path="$PKG_CONFIG_PATH" \
-        --buildtype='release' --default-library='static' --optimization='s' --strip
-    execute ninja -C 'build'
-    execute sudo ninja -C 'build' install
+    execute ./autogen.sh
+    execute ./configure --prefix="$workspace" --disable-shared --enable-static PKG_CONFIG_PATH="$workspace/lib/pkgconfig"
+    execute make "-j$cpu_threads"
+    execute make install
     build_done 'fribidi' "$g_ver"
 fi
 cnf_ops+=('--enable-libfribidi')
@@ -1824,9 +1821,9 @@ if build 'fontconfig' "$g_ver"; then
     extracommands=(-D{harfbuzz,png,bzip2,brotli,zlib,tests}"=disabled")
     download "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/$g_ver/fontconfig-$g_ver.tar.bz2" "fontconfig-$g_ver.tar.bz2"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --sysconfdir="$workspace"/etc --mandir="$workspace"/share/man
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'fontconfig' "$g_ver"
 fi
 cnf_ops+=('--enable-libfontconfig')
