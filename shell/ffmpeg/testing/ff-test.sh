@@ -1040,7 +1040,7 @@ pre_check_ver 'yasm/yasm' '1' 'L'
 if build 'yasm' "$g_ver"; then
     download "$g_url" "yasm-$g_ver.tar.gz"
     make_dir 'build'
-    execute cmake -S . -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='1' -DUSE_OMP='OFF' -G 'Ninja' -Wno-dev
+    execute cmake -S . -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='1' -DUSE_OMP='1' -G 'Ninja' -Wno-dev
     execute ninja -C 'build'
     execute ninja -C 'build' install
     build_done 'yasm' "$g_ver"
@@ -1141,7 +1141,7 @@ fi
 pre_check_ver 'kitware/cmake' '1' 'L'
 if build 'cmake' "$g_ver" "$packages/$1.done"; then
     download "$g_url" "cmake-$g_ver.tar.gz"
-    execute ./configure --prefix="$workspace" --parallel="$cpu_threads" --enable-ccache -- -DCMAKE_USE_OPENSSL='OFF'
+    execute ./configure --prefix="$workspace" --parallel="$cpu_threads" --enable-ccache -- -DCMAKE_USE_OPENSSL='1'
     execute make "-j$cpu_threads"
     execute make install
     build_done 'cmake' "$g_ver"
@@ -1181,7 +1181,7 @@ pre_check_ver 'google/googletest' '1' 'L'
 if build 'googletest' "$g_ver"; then
     download "$g_url" "googletest-$g_ver.tar.gz"
     make_dir 'build'
-    execute cmake -S . -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_GMOCK='OFF' -DBUILD_SHARED_LIBS='1' -G 'Ninja' -Wno-dev
+    execute cmake -S . -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_GMOCK='1' -DBUILD_SHARED_LIBS='1' -G 'Ninja' -Wno-dev
     execute ninja -C 'build'
     execute ninja -C 'build' install
     build_done 'googletest' "$g_ver"
@@ -1190,7 +1190,7 @@ fi
 if build 'abseil' 'git'; then
     download_git 'https://github.com/abseil/abseil-cpp.git' 'abseil-git'
     make_dir 'build'
-    execute cmake -S . -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_EXPORT_COMPILE_COMMANDS='ON' -DABSL_PROPAGATE_CXX_STD='ON' \
+    execute cmake -S . -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_EXPORT_COMPILE_COMMANDS='0' -DABSL_PROPAGATE_CXX_STD='0' \
         -DBUILD_SHARED_LIBS='1' -G 'Ninja' -Wno-dev
     execute cmake --build build --target all --parallel='32'
     execute ninja -C 'build'
@@ -1204,10 +1204,10 @@ if build 'libgav1' 'git'; then
     download_git 'https://chromium.googlesource.com/codecs/libgav1' 'libgav1-git'
     make_dir 'libgav1_build'
     execute git -C "$packages/libgav1-git" clone -b '20220623.0' --depth '1' 'https://github.com/abseil/abseil-cpp.git' 'third_party/abseil-cpp'
-    execute cmake -S . -B 'libgav1_build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_EXPORT_COMPILE_COMMANDS='ON' -DABSL_ENABLE_INSTALL='ON' \
-        -DABSL_PROPAGATE_CXX_STD='ON' -DCMAKE_INSTALL_SBINDIR="sbin" -DBUILD_SHARED_LIBS='1' -G 'Ninja' -Wno-dev
-    execute cmake -S . -B 'third_party/abseil-cpp' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_EXPORT_COMPILE_COMMANDS='ON' -DABSL_ENABLE_INSTALL='ON' \
-        -DABSL_PROPAGATE_CXX_STD='ON' -DCMAKE_INSTALL_SBINDIR="sbin" -G 'Ninja' -Wno-dev
+    execute cmake -S . -B 'libgav1_build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_EXPORT_COMPILE_COMMANDS='0' -DABSL_ENABLE_INSTALL='0' \
+        -DABSL_PROPAGATE_CXX_STD='0' -DCMAKE_INSTALL_SBINDIR="sbin" -DBUILD_SHARED_LIBS='1' -G 'Ninja' -Wno-dev
+    execute cmake -S . -B 'third_party/abseil-cpp' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_EXPORT_COMPILE_COMMANDS='0' -DABSL_ENABLE_INSTALL='0' \
+        -DABSL_PROPAGATE_CXX_STD='0' -DCMAKE_INSTALL_SBINDIR="sbin" -G 'Ninja' -Wno-dev
     execute ninja -C 'libgav1_build'
     execute ninja -C 'libgav1_build' install
     execute ninja -C 'third_party/abseil-cpp'
@@ -1219,7 +1219,7 @@ git_ver_fn '24327400' '3' 'T'
 if build 'svtav1' "$g_ver"; then
     download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v$g_ver/SVT-AV1-v$g_ver.tar.bz2" "SVT-AV1-$g_sver.tar.bz2"
     make_dir 'build'
-    execute cmake -S . -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_OUTPUT_DIRECTORY="$packages/SVT-AV1-9593e625/Bin/Release" \
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_OUTPUT_DIRECTORY="$packages/SVT-AV1-9593e625/Bin/Release" \
         -DBUILD_SHARED_LIBS='0' -G 'Ninja' -Wno-dev
     execute ninja -C 'build'
     execute ninja -C 'build' install
@@ -1230,15 +1230,15 @@ cnf_ops+=('--enable-libsvtav1')
 if command_exists 'cargo'; then
     pre_check_ver 'xiph/rav1e' '1' 'L'
     if build 'rav1e' "$g_ver"; then
-        download "$g_url" "rav1e-$g_ver.tar.gz"
+        download "https://github.com/xiph/rav1e/archive/refs/tags/v$g_ver.tar.gz" "rav1e-$g_ver.tar.gz" 
         execute cargo install --all-features --version '0.9.14+cargo-0.66' cargo-c
         execute cargo cinstall --prefix="$workspace" --library-type='staticlib' --crt-static --release
         build_done 'rav1e' "$g_ver"
     fi
-    avif_tag='-DAVIF_CODEC_RAV1E=ON'
+    avif_tag='-DAVIF_CODEC_RAV1E=0'
     cnf_ops+=('--enable-librav1e')
 else
-    avif_tag='-DAVIF_CODEC_RAV1E=OFF'
+    avif_tag='-DAVIF_CODEC_RAV1E=1'
 fi
 
 if $nonfree_and_gpl; then
@@ -1264,19 +1264,19 @@ if $nonfree_and_gpl; then
         cd 12bit || exit 1
         echo '$ making 12bit binaries'
         execute cmake -S ../../../source -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='1' -DCMAKE_REQUIRED_LIBRARIES='numa' \
-            -DHIGH_BIT_DEPTH='ON' -DENABLE_HDR10_PLUS='ON' -DEXPORT_C_API='OFF' -DENABLE_CLI='OFF' -DMAIN12='ON' -G 'Ninja' -Wno-dev
+            -DHIGH_BIT_DEPTH='0' -DENABLE_HDR10_PLUS='0' -DEXPORT_C_API='1' -DENABLE_CLI='1' -DMAIN12='0' -G 'Ninja' -Wno-dev
         execute ninja "-j$cpu_threads"
         echo '$ making 10bit binaries'
         cd ../10bit || exit 1
         execute cmake -S ../../../source -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='1' -DCMAKE_REQUIRED_LIBRARIES='numa' \
-            -DHIGH_BIT_DEPTH='ON' -DENABLE_HDR10_PLUS='ON' -DEXPORT_C_API='OFF' -DENABLE_CLI='OFF' -G 'Ninja' -Wno-dev
+            -DHIGH_BIT_DEPTH='0' -DENABLE_HDR10_PLUS='0' -DEXPORT_C_API='1' -DENABLE_CLI='1' -G 'Ninja' -Wno-dev
         execute ninja "-j$cpu_threads"
         echo '$ making 8bit binaries'
         cd ../8bit || exit 1
         ln -sf ../10bit/libx265.a libx265_main10.a
         ln -sf ../12bit/libx265.a libx265_main12.a
         execute cmake -S ../../../source -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='1' -DCMAKE_REQUIRED_LIBRARIES='numa' \
-            -DEXTRA_LIB='x265_main10.a;x265_main12.a;-ldl' -DEXTRA_LINK_FLAGS='-L.' -DLINKED_10BIT='ON' -DLINKED_12BIT='ON' -G 'Ninja' -Wno-dev
+            -DEXTRA_LIB='x265_main10.a;x265_main12.a;-ldl' -DEXTRA_LINK_FLAGS='-L.' -DLINKED_10BIT='0' -DLINKED_12BIT='0' -G 'Ninja' -Wno-dev
         execute ninja "-j$cpu_threads"
         mv libx265.a  libx265_main.a
 
@@ -1348,13 +1348,20 @@ if $nonfree_and_gpl; then
     cnf_ops+=('--enable-libxvid')
 fi
 
+echo
+echo 'Done'
+echo
+echo 'Go to line 1355 and work on vid stab'
+echo
+exit
+
 if $nonfree_and_gpl; then
     pre_check_ver 'georgmartius/vid.stab' '1' 'T'
     if build 'vid_stab' "$g_ver"; then
         download "$g_url" "vid.stab-$g_ver.tar.gz"
         make_dir 'build'
         execute cmake -S . -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='1' -DCMAKE_BUILD_TYPE='Release' \
-             -DUSE_OMP='ON' -G 'Ninja' -Wno-dev
+             -DUSE_OMP='0' -G 'Ninja' -Wno-dev
         execute ninja -C 'build'
         execute ninja -C 'build' install
         build_done 'vid_stab' "$g_ver"
@@ -1619,10 +1626,10 @@ pre_check_ver 'uclouvain/openjpeg' '1' 'L'
 if build 'openjpeg' "$g_ver"; then
     download "$g_url" "openjpeg-$g_ver.tar.gz"
     make_dir 'build'
-    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace"  -DCMAKE_BUILD_TYPE='Release' -DBUILD_TESTING='OFF' \
-        -DCPACK_BINARY_FREEBSD='ON' -DBUILD_THIRDPARTY='ON' -DCPACK_SOURCE_RPM='ON' -DCPACK_SOURCE_ZIP='ON' \
-        -DCPACK_BINARY_IFW='ON' -DBUILD_SHARED_LIBS='1' -DCPACK_BINARY_DEB='ON' -DCPACK_BINARY_TBZ2='ON' \
-        -DCPACK_BINARY_NSIS='ON' -DCPACK_BINARY_RPM='ON' -DCPACK_BINARY_TXZ='ON' -DCMAKE_EXPORT_COMPILE_COMMANDS='ON' -G 'Ninja' -Wno-dev
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace"  -DCMAKE_BUILD_TYPE='Release' -DBUILD_TESTING='1' \
+        -DCPACK_BINARY_FREEBSD='0' -DBUILD_THIRDPARTY='0' -DCPACK_SOURCE_RPM='0' -DCPACK_SOURCE_ZIP='0' \
+        -DCPACK_BINARY_IFW='0' -DBUILD_SHARED_LIBS='1' -DCPACK_BINARY_DEB='0' -DCPACK_BINARY_TBZ2='0' \
+        -DCPACK_BINARY_NSIS='0' -DCPACK_BINARY_RPM='0' -DCPACK_BINARY_TXZ='0' -DCMAKE_EXPORT_COMPILE_COMMANDS='0' -G 'Ninja' -Wno-dev
     execute ninja -C 'build'
     execute ninja -C 'build' install
     build_done 'openjpeg' "$g_ver"
@@ -1645,11 +1652,11 @@ if build 'libwebp' 'git'; then
     execute autoreconf -fi
     make_dir 'build'
     execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='1' -DCMAKE_BUILD_TYPE='Release' \
-        -DCMAKE_C_FLAGS_RELEASE="-O3 -DNDEBUG" -DWEBP_BUILD_EXTRAS='OFF' -DWEBP_BUILD_LIBWEBPMUX='OFF' \
-        -DCMAKE_INSTALL_INCLUDEDIR="include" -DWEBP_LINK_STATIC='OFF' -DWEBP_BUILD_GIF2WEBP='OFF' -DWEBP_BUILD_IMG2WEBP='OFF' \
-        -DCMAKE_EXPORT_COMPILE_COMMANDS='1' -DWEBP_BUILD_DWEBP='ON' -DWEBP_BUILD_CWEBP='ON' -DWEBP_BUILD_ANIM_UTILS='OFF' \
-        -DWEBP_BUILD_WEBPMUX='OFF' -DWEBP_ENABLE_SWAP_16BIT_CSP='OFF' -DWEBP_BUILD_WEBPINFO='OFF' -DZLIB_INCLUDE_DIR="/usr/include" \
-        -DWEBP_BUILD_VWEBP='OFF' -G 'Ninja' -Wno-dev
+        -DCMAKE_C_FLAGS_RELEASE="-O3 -DNDEBUG" -DWEBP_BUILD_EXTRAS='1' -DWEBP_BUILD_LIBWEBPMUX='1' \
+        -DCMAKE_INSTALL_INCLUDEDIR="include" -DWEBP_LINK_STATIC='1' -DWEBP_BUILD_GIF2WEBP='1' -DWEBP_BUILD_IMG2WEBP='1' \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS='1' -DWEBP_BUILD_DWEBP='0' -DWEBP_BUILD_CWEBP='0' -DWEBP_BUILD_ANIM_UTILS='1' \
+        -DWEBP_BUILD_WEBPMUX='1' -DWEBP_ENABLE_SWAP_16BIT_CSP='1' -DWEBP_BUILD_WEBPINFO='1' -DZLIB_INCLUDE_DIR="/usr/include" \
+        -DWEBP_BUILD_VWEBP='1' -G 'Ninja' -Wno-dev
     execute ninja -C 'build' all
     execute ninja -C 'build' install
     build_done 'libwebp' 'git'
@@ -1664,9 +1671,9 @@ git_ver_fn '1665' '6' 'T'
 if build 'xml2' "$g_ver"; then
     download "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v$g_ver/libxml2-v$g_ver.tar.bz2" "xml2-$g_ver.tar.bz2"
     make_dir 'build'
-    execute cmake -B 'build' -DBUILD_SHARED_LIBS='1' -DCMAKE_EXPORT_COMPILE_COMMANDS='OFF' -DCMAKE_INSTALL_PREFIX="$workspace" \
-        -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCPACK_BINARY_DEB='ON' -DCPACK_BINARY_FREEBSD='ON' -DCPACK_BINARY_IFW='ON' -DCPACK_BINARY_NSIS='ON' \
-        -DCPACK_BINARY_RPM='ON' -DCPACK_BINARY_TBZ2='ON' -DCPACK_BINARY_TXZ='ON' -DCPACK_SOURCE_RPM='ON' -DCPACK_SOURCE_ZIP='ON' \
+    execute cmake -B 'build' -DBUILD_SHARED_LIBS='1' -DCMAKE_EXPORT_COMPILE_COMMANDS='1' -DCMAKE_INSTALL_PREFIX="$workspace" \
+        -DCMAKE_VERBOSE_MAKEFILE='1' -DCPACK_BINARY_DEB='0' -DCPACK_BINARY_FREEBSD='0' -DCPACK_BINARY_IFW='0' -DCPACK_BINARY_NSIS='0' \
+        -DCPACK_BINARY_RPM='0' -DCPACK_BINARY_TBZ2='0' -DCPACK_BINARY_TXZ='0' -DCPACK_SOURCE_RPM='0' -DCPACK_SOURCE_ZIP='0' \
         -DHWY_LIBRARY:FILEPATH="/usr/lib/x86_64-linux-gnu/libhwy.so" -DOPENGL_opengl_LIBRARY:FILEPATH="/usr/lib/x86_64-linux-gnu/libglut.a" -G 'Ninja' -Wno-dev
     execute ninja -C 'build'
     execute ninja -C 'build' install
@@ -1690,9 +1697,9 @@ pre_check_ver 'dyne/frei0r' '1' 'L'
 if build 'frei0r' "$g_ver"; then
     download "$g_url" "frei0r-$g_ver.tar.gz"
     make_dir 'build'
-    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DWITHOUT_OPENCV='OFF' \
-        -DCMAKE_CXX_COMPILER_RANLIB="/usr/bin/gcc-ranlib-12" -DCMAKE_CXX_FLAGS_DEBUG="-g" -DCMAKE_EXPORT_COMPILE_COMMANDS='ON' \
-        -DWEBP_ENABLE_SWAP_16BIT_CSP='ON' -DBUILD_SHARED_LIBS='1' -G 'Ninja' -Wno-dev
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DWITHOUT_OPENCV='1' \
+        -DCMAKE_CXX_COMPILER_RANLIB="/usr/bin/gcc-ranlib-12" -DCMAKE_CXX_FLAGS_DEBUG="-g" -DCMAKE_EXPORT_COMPILE_COMMANDS='0' \
+        -DWEBP_ENABLE_SWAP_16BIT_CSP='0' -DBUILD_SHARED_LIBS='1' -G 'Ninja' -Wno-dev
     execute ninja -C 'build'
     execute ninja -C 'build' install
     build_done 'frei0r' "$g_ver"
