@@ -1900,7 +1900,7 @@ fi
 
 pre_check_ver 'GPUOpen-LibrariesAndSDKs/AMF' '1' 'L'
 if build 'amf' "$g_ver"; then
-    download "$g_url" "AMF-$g_ver.tar.gz"
+    download "https://github.com/GPUOpen-LibrariesAndSDKs/AMF/archive/refs/tags/v$g_ver.tar.gz" "AMF-$g_ver.tar.gz" 
     execute rm -fr "$workspace"/include/AMF
     execute mkdir -p "$workspace"/include/AMF
     execute cp -fr "$packages"/AMF-"$g_ver"/amf/public/include/* "$workspace"/include/AMF/
