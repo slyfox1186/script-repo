@@ -1761,15 +1761,15 @@ if build 'MediaInfoLib' "$g_ver"; then
     build_done 'MediaInfoLib' "$g_ver"
 fi
 
-pre_check_ver 'MediaArea/MediaInfo' '1' 'L'
+pre_check_ver 'MediaArea/MediaInfo' '1' 'T'
 if build 'MediaInfoCLI' "$g_ver"; then
-    download "$g_url" "MediaInfoCLI-$g_ver.tar.gz"
-    execute autoreconf -fi
+    download "https://github.com/MediaArea/MediaInfo/archive/refs/tags/v$g_ver.tar.gz" "MediaInfo-$g_ver.tar.gz"
+    cd 'Project/GNU/CLI' || exit 1
+    execute ./autogen.sh
     execute ./configure --prefix="$workspace" --enable-static --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     build_done 'MediaInfoCLI' "$g_ver"
-fi
 
 if command_exists 'meson'; then
     pre_check_ver 'harfbuzz/harfbuzz' '1' 'L'
