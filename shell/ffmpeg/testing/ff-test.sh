@@ -1750,11 +1750,12 @@ if build 'zenLib' "$g_ver"; then
     build_done 'zenLib' "$g_ver"
 fi
 
-pre_check_ver 'MediaArea/MediaInfoLib' '1' 'L'
+pre_check_ver 'MediaArea/MediaInfoLib' '1' 'T'
 if build 'MediaInfoLib' "$g_ver"; then
-    download "$g_url" "MediaInfoLib-$g_ver.tar.gz"
-    execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --enable-static --disable-shared --without-libxml2
+    download "https://github.com/MediaArea/MediaInfoLib/archive/refs/tags/v$g_ver.tar.gz" "MediaInfoLib-$g_ver.tar.gz"
+    cd 'Project/GNU/Library' || exit 1
+    execute ./autogen.sh
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     build_done 'MediaInfoLib' "$g_ver"
