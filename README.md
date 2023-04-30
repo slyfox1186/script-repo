@@ -118,7 +118,7 @@ curl -Lso cmake.sh https://cmake.optimizethis.net; bash cmake.sh
     - Other debian style distros may work as well
 
 ```bash
-curl -Lso curl-build https://curl.optimizethis.net; sudo bash curl-build
+curl -Lso build-curl https://curl.optimizethis.net; sudo bash build-curl
 ````
 ------
 
