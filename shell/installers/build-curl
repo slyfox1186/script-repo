@@ -1,28 +1,54 @@
 #!/bin/bash
 # shellcheck disable=SC2016,SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
 
-################################################################
+#####################################
 ##
-## Install the latest curl static build with custom options set
+## Install curl v3.8.0.1
 ##
 ## Supported OS: Linux Debian based
 ##
-################################################################
+#####################################
 
 clear
-
-if [ "$EUID" -ne '0' ]; then
-    echo 'You must run this script with root/sudo'
-    echo
-    exit 1
-fi
 
 ##
 ## define global variables
 ##
 
 parent_dir="$PWD"/curl-build
-git_url='https://github.com/curl/curl.git'
+packages="$parent_dir"/packages
+workspace="$parent_dir"/workspace
+
+mkdir -p "$packages" "$parent_dir" "$workspace"
+
+##
+## set downlaod utlity
+##
+
+if which 'curl' &>/dev/null; then
+    clear
+elif which 'wget' &>/dev/null; then
+    apt update
+    apt -y install curl
+else
+    clear
+    printf "%s\n\n%s\n\n%s\n\n" \
+        'You do not have either wget or curl installed.' \
+        'You must install one of these to continue. (preferred curl)' \
+        'Try: apt update; apt -y install curl'
+    exit
+fi
+
+##
+## get cpu coure count for parallel processing
+##
+
+if [ -f '/proc/cpuinfo' ]; then
+    cpu_threads="$(grep -c ^processor '/proc/cpuinfo')"
+else
+    cpu_threads="$(nproc --all)"
+fi
+cpu_cores="$(grep ^cpu\\scores '/proc/cpuinfo' | uniq | awk '{print $4}')"
 
 ##
 ## define functions
@@ -51,12 +77,12 @@ cleanup_fn()
         'Do you want to cleanup the build files?' \
         '[1] Yes' \
         '[2] No'
-        read -p 'Your choices are (1 or 2): ' my_choice
-        case "$my_choice" in
+        read -p 'Your choices are (1 or 2): ' pychoice
+        case "$pychoice" in
             1)
                     cd "$parent_dir" || exit 1
                     cd ../ || exit 1
-                    sudo rm -r 'curl-build'
+                    rm -r 'curl-build'
                     exit_fn
                     ;;
             2)
@@ -67,17 +93,213 @@ cleanup_fn()
                     clear
                     cleanup_fn
                     ;;
-        esac         
+        esac
 }
 
 success_fn()
 {
-    echo
     printf "\n%s\n\n" \
         'The installed curl version is shown below.'
-    curl --version
+    curl --version 2>/dev/null
     cleanup_fn
 }
+
+# create txt files to check versions
+ver_file_tmp="$workspace/latest-versions-tmp.txt"
+ver_file="$workspace/latest-versions.txt"
+if [ ! -f "$ver_file_tmp" ] || [ ! -f "$ver_file" ]; then
+    touch "$ver_file_tmp" "$ver_file" 2>/dev/null
+fi
+
+# PULL THE LATEST VERSIONS OF EACH PACKAGE FROM THE WEBSITE API
+curl_timeout='5'
+
+git_1_fn()
+{
+    local github_repo github_url
+
+    # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
+    github_repo="$1"
+    github_url="$2"
+
+    if [ "$github_url" = 'releases/latest' ]; then
+
+        if curl_cmd="$(curl \
+                             -m "$curl_timeout" \
+                            --request GET \
+                            --url "https://api.github.com/slyfox1186" \
+                            --header "Authorization: Bearer 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" \
+                            --header "X-GitHub-Api-Version: 2022-11-28" \
+                            -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
+            g_url="$(echo "$curl_cmd" | jq -r '.tarball_url' | sort | head -n1)"
+            g_ver="${g_url##*/}"
+            g_ver="${g_ver##v}"
+            g_ver="${g_ver#OpenJPEG }"
+            g_ver="${g_ver#OpenSSL }"
+            g_ver="${g_ver#lcms}"
+        fi
+    fi
+
+    if [ "$github_url" = 'tags' ]; then
+        if curl_cmd="$(curl \
+                             -m "$curl_timeout" \
+                            --request GET \
+                            --url "https://api.github.com/slyfox1186" \
+                            --header "Authorization: Bearer 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" \
+                            --header "X-GitHub-Api-Version: 2022-11-28" \
+                            -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
+            g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' | sort | head -n1)"
+            g_ver="${g_ver#v}"
+            g_ver="${g_ver#OpenJPEG }"
+            g_ver="${g_ver#OpenSSL }"
+            g_ver="${g_ver#pkgconf-}"
+            g_ver="${g_ver#lcms}"
+            g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url')"
+        fi
+    fi
+}
+
+git_ver_fn()
+{
+    local v_flag v_tag url_tag
+
+    v_url="$1"
+    v_tag="$2"
+
+    if [ -n "$3" ]; then
+        v_flag="$3"
+    fi
+
+    case "$v_flag" in
+        T)
+            gv_url='tags';;
+        R)
+            gv_url='releases';;
+        L)
+            gv_url='releases/latest';;
+    esac
+
+    url_tag='git_1_fn'
+
+    "$url_tag" "$v_url" "$gv_url" 2>/dev/null
+}
+
+execute()
+{
+    echo "$ $*"
+
+    if ! output=$("$@" 2>&1); then
+        fail_fn "Failed to Execute $*"
+    fi
+}
+
+make_dir()
+{
+    remove_dir "$*"
+    if ! mkdir "$*"; then
+        printf "\n Failed to create dir %s" "$*"
+        echo
+        exit 1
+    fi
+}
+
+remove_file()
+{
+    if [ -f "$*" ]; then
+        sudo rm -f "$*"
+    fi
+}
+
+remove_dir()
+{
+    if [ -d "$*" ]; then
+        sudo rm -fr "$*"
+    fi
+}
+
+download()
+{
+    dl_path="$packages"
+    dl_url="$1"
+    dl_file="${2:-"${1##*/}"}"
+
+    if [[ "$dl_file" =~ tar. ]]; then
+        target_dir="${dl_file%.*}"
+        target_dir="${3:-"${target_dir%.*}"}"
+    else
+        target_dir="${3:-"${dl_file%.*}"}"
+    fi
+
+    if [ -d "$dl_path/$target_dir" ]; then
+        remove_dir "$dl_path/$target_dir"
+    fi
+
+    if [ ! -f "$dl_path/$dl_file" ]; then
+        echo "Downloading $dl_url as $dl_file"
+        url_down_test="$dl_url"
+        is_down="$(curl -LIs "$url_down_test")"
+        if [ -z "$is_down" ]; then
+            echo 'The download link was unresponsive.'
+            echo
+            echo 'Sleeping for 10 seconds before attempting to download.'
+            sleep 10
+            echo
+        fi
+        if ! curl -Lso "$dl_path/$dl_file" "$dl_url"; then
+            echo
+            echo "The script failed to download \"$dl_url\" and will try again in 10 seconds"
+            sleep 10
+            echo
+            if ! curl -Lso "$dl_path/$dl_file" "$dl_url"; then
+                echo
+                echo "The script failed to download \"$dl_url\" two times and will exit the build"
+                echo
+                fail_fn
+            fi
+        fi
+        echo 'Download Completed'
+    else
+        echo "$dl_file is already downloaded"
+    fi
+
+    make_dir "$dl_path/$target_dir"
+
+    if [ -n "$3" ]; then
+        if ! tar -xf "$dl_path/$dl_file" -C "$dl_path/$target_dir" 2>/dev/null >/dev/null; then
+            fail_fn "Failed to extract $dl_file"
+        fi
+    else
+        if ! tar -xf "$dl_path/$dl_file" -C "$dl_path/$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
+            fail_fn "Failed to extract $dl_file"
+        fi
+    fi
+
+    echo "File extracted: $dl_file"
+    echo
+
+    cd "$dl_path/$target_dir" || fail_fn "Unable to change the working directory to $target_dir"
+}
+
+build()
+{
+    echo
+    echo "building $1 - version $2"
+    echo '===================================='
+
+    if [ -f "$packages/$1.done" ]; then
+    if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
+            echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
+            return 1
+        else
+            echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
+            return 1
+        fi
+    fi
+
+    return 0
+}
+
+build_done() { echo "$2" > "$packages/$1.done"; }
 
 installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
@@ -92,17 +314,11 @@ export CFLAGS='-I/usr/include -I/usr/local/include -I/usr/lib/llvm-14/include -I
 export LD_LIBRARY_PATH='/lib:/usr/lib:/usr/local/lib:intl-perl/lib:/llvm-14/lib:/python3/dist-packages/reportlab/lib:/rustlib:/usr/share/alsa/ucm2/lib:/usr/share/doc/gawk/examples/lib:/usr/share/gdb/auto-load/lib:/usr/share/gdb/auto-load/usr/lib:/usr/share/ghostscript/9.55.0/lib:/usr/share/git-gui/lib:/usr/share/gitk/lib /usr/share/perl/5.34.0/unicore/lib:/usr/share/texinfo/lib:/x86_64-linux-gnu/openmpi/lib:/x86_64-linux-gnu/perl-base/unicore/lib:/x86_64-linux-gnu/pmix2/lib:/x86_64-unknown-linux-gnu/lib'
 
 ##
-## create build folders
-##
-
-mkdir -p "$parent_dir"
-cd "$parent_dir" || exit 1
-
-##
 ## install required apt packages
 ##
 
-pkgs=(build-essential lcov libldap2-dev libldap-dev libmbedtls-dev librtmp-dev libpsl-dev libgsasl-dev libgsasl7-dev libssh2-1-dev make openssl pkg-config)
+pkgs=(build-essential lcov libldap2-dev libldap-dev libmbedtls-dev librtmp-dev libpsl-dev \
+      libgsasl-dev libgsasl7-dev libssh2-1-dev make openssl pkg-config)
 
 for pkg in ${pkgs[@]}
 do
@@ -114,103 +330,62 @@ done
 if [ -n "${missing_pkgs-}" ]; then
     printf "%s\n%s\n%s\n\n" \
         'Installing required apt packages' \
-        '========================================' \
-        "\$ sudo apt-get -qq -y install $i"
+        '================================================' \
+        '$ apt-get -q -y install'
         for i in "$missing_pkgs"
     do
-        sudo apt-get -qq -y install $i
+        apt-get -qq -y install $i
     done
+    echo
 fi
 
 ##
-## update ca certificates ubuntu only
+## run the bootstrap file to generate any required install files
 ##
 
-check_linix_os_type="$(lsb_release -a | grep -Eo 'Ubuntu')"
-
-if [ -n "$check_linix_os_type" ]; then
-    printf "\n%s\n%s\n%s\n\n" \
-        'Updating ca-certificates (Ubuntu only)' \
-        '========================================' \
-        '$ sudo update-ca-certificates'
-    sudo update-ca-certificates &>/dev/null
-fi
-
-##
-## download the curl-git repository and extract the files into the src directory
-##
-
-printf "%s\n%s\n%s\n\n" \
-    'Cloning Curl'\''s Git Repository' \
-    '========================================' \
-    "\$ git clone $git_url curl-git"
-if ! git clone "$git_url" curl-git &>/dev/null; then
-    fail_fn 'Git clone failed to download.'
-else
-    if [ -d "$parent_dir"/curl-git ]; then
-        cd "$parent_dir"/curl-git || exit
+git_ver_fn 'curl/curl' '1' 'L'
+if build 'curl' "$g_ver"; then
+    download "$g_url" "$g_ver.tar.gz"
+    check_linix_os_type="$(lsb_release -a | grep -Eo 'Ubuntu')"
+    if [ -n "$check_linix_os_type" ]; then
+        printf "%s\n%s\n" \
+            'Updating ca-certificates (Ubuntu only)' \
+            '================================================'
+        execute update-ca-certificates
     fi
+    printf "\n%s\n%s\n" \
+            'Downloading certs from offical https://curl.se' \
+            '================================================'
+    execute curl -s --etag-compare etag.txt --etag-save etag.txt --remote-name https://curl.se/ca/cacert.pem
+    execute sudo mv cacert.pem /etc/ssl/certs 2>/dev/null
+        printf "\n%s\n%s\n" \
+            'Creating configure files' \
+            '================================================'
+    execute autoreconf -fi
+            printf "\n%s\n%s\n" \
+            'Configuring build files or this pc' \
+            '================================================'
+    execute ./configure --enable-silent-rules --enable-optimize --enable-code-coverage --enable-static --disable-shared \
+        --enable-fast-install --enable-alt-svc --enable-cookies --enable-crypto-auth --enable-dateparse --enable-dict \
+        --enable-dnsshuffle --enable-doh --enable-get-easy-options --enable-gopher --enable-headers-api --enable-hsts \
+        --enable-http-auth --enable-imap --enable-ipv6 --enable-libcurl-option --enable-libgcc \
+        --enable-manual --enable-mime --enable-mqtt --enable-netrc --enable-ntlm --enable-ntlm-wb --enable-openssl-auto-load-config \
+        --enable-pop3 --enable-progress-meter --enable-proxy --enable-pthreads --enable-rtsp --enable-smb --enable-smtp \
+        --enable-socketpair --enable-telnet --enable-tftp --enable-threaded-resolver --enable-tls-srp \
+        --enable-unix-sockets --enable-verbose --with-aix-soname=both --with-amissl --with-brotli \
+        -with-fish-functions-dir --with-libidn2 --with-librtmp --with-libssh --with-libssh2 --with-mbedtls --with-msh3 \
+        --with-nghttp2 --with-ngtcp2 --with-openssl --with-pic --with-quiche --with-test-httpd --with-test-nghttpx \
+        --with-wolfssh --with-zlib --with-zsh-functions-dir --with-zstd --with-ca-path='/etc/ssl/certs' --with-ca-fallback
+    printf "\n%s\n%s\n%s" \
+        'Making build files' \
+        '================================================'
+    execute make "-j$cpu_threads"
+    printf "\n%s\n%s\n%s" \
+        'Installing build files' \
+        '================================================'
+    execute sudo make install
+    build_done 'curl' "$g_ver"
 fi
 
-##
-## change into the source directory
-##
-
-cd "$parent_dir"/curl-git || exit 1
-
-##
-## run autoreconf to generate any required install files
-##
-printf "%s\n%s\n%s\n\n" \
-    'Generating configure file' \
-    '========================================' \
-    '$ autoreconf -fi'
-autoreconf -fi &>/dev/null
-
-printf "%s\n%s\n%s\n\n" \
-    'Configuring system settings' \
-    '========================================' \
-    './configure -q --enable-silent-rules --enable-optimize --enable-code-coverage --enable-static --disable-shared \
-    --enable-fast-install --enable-alt-svc --enable-cookies --enable-crypto-auth --enable-dateparse --enable-dict \
-    --enable-dnsshuffle --enable-doh --enable-get-easy-options --enable-gopher --enable-headers-api --enable-hsts \
-    --enable-http-auth --enable-imap --enable-ipv6 --enable-libcurl-option --enable-libgcc \
-    --enable-manual --enable-mime --enable-mqtt --enable-netrc --enable-ntlm --enable-ntlm-wb --enable-openssl-auto-load-config \
-    --enable-pop3 --enable-progress-meter --enable-proxy --enable-pthreads --enable-rtsp --enable-smb --enable-smtp \
-    --enable-socketpair --enable-telnet --enable-tftp --enable-threaded-resolver --enable-tls-srp \
-    --enable-unix-sockets --enable-verbose --with-aix-soname=both --with-amissl --with-brotli \
-    -with-fish-functions-dir --with-libidn2 --with-librtmp --with-libssh --with-libssh2 --with-mbedtls --with-msh3 \
-    --with-nghttp2 --with-ngtcp2 --with-openssl --with-pic --with-quiche --with-test-httpd --with-test-nghttpx \
-    --with-wolfssh --with-zlib --with-zsh-functions-dir --with-zstd --with-ca-path='/etc/ssl/certs' --with-ca-fallback'
-./configure --enable-silent-rules --enable-optimize --enable-code-coverage --enable-static --disable-shared \
-    --enable-fast-install --enable-alt-svc --enable-cookies --enable-crypto-auth --enable-dateparse --enable-dict \
-    --enable-dnsshuffle --enable-doh --enable-get-easy-options --enable-gopher --enable-headers-api --enable-hsts \
-    --enable-http-auth --enable-imap --enable-ipv6 --enable-libcurl-option --enable-libgcc \
-    --enable-manual --enable-mime --enable-mqtt --enable-netrc --enable-ntlm --enable-ntlm-wb --enable-openssl-auto-load-config \
-    --enable-pop3 --enable-progress-meter --enable-proxy --enable-pthreads --enable-rtsp --enable-smb --enable-smtp \
-    --enable-socketpair --enable-telnet --enable-tftp --enable-threaded-resolver --enable-tls-srp \
-    --enable-unix-sockets --enable-verbose --with-aix-soname=both --with-amissl --with-brotli \
-    -with-fish-functions-dir --with-libidn2 --with-librtmp --with-libssh --with-libssh2 --with-mbedtls --with-msh3 \
-    --with-nghttp2 --with-ngtcp2 --with-openssl --with-pic --with-quiche --with-test-httpd --with-test-nghttpx \
-    --with-wolfssh --with-zlib --with-zsh-functions-dir --with-zstd --with-ca-path='/etc/ssl/certs' --with-ca-fallback &>/dev/null
-
-##
-## run the ninja commands to install curl-git system-wide
-##
-
-printf "%s\n%s\n%s\n\n" \
-    'Make generating install files' \
-    '========================================' \
-    "\$ make -j$(nproc --all)"
-if make -s "-j$(nproc --all)" &>/dev/null; then
-    printf "%s\n%s\n%s" \
-        'Make installing the system binaries' \
-        '========================================' \
-        '$ sudo make install'
-    if ! sudo make -s install &>/dev/null; then
-        fail_fn 'Make failed to install curl-git.'
-    else
-        success_fn
-    fi
-else
-    fail_fn 'Make failed to generate the install files.'
-fi
+# output final messages to user in terminal
+success_fn
