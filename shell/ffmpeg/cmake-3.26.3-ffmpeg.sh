@@ -47,7 +47,7 @@ cleanup_fn()
 success_fn()
 {
     clear
-    printf "\n%s\n\n" \
+    printf "%s\n\n" \
         "$1"
     cmake --version
     echo
@@ -87,31 +87,39 @@ fi
 ## download the cmake tar file and extract the files into the src directory
 ##
 
+if [ -d "$packages"/cmake-3.26.3 ]; then
+    sudo rm -fr "$packages"/cmake-3.26.3
+fi
+
 if ! curl -Lso "$packages"/cmake-3.26.3.tar.gz "$tar_url"; then
     fail_fn 'The tar file failed to download.'
 else
-    if [ ! -d "$packages"/cmake-3.26.3 ]; then
-        mkdir -p "$packages"/cmake-3.26.3
-        if ! tar -zxf "$packages"/cmake-3.26.3.tar.gz -C "$packages"/cmake-3.26.3 --strip-components 1; then
-            fail_fn 'The tar command failed to extract any files.'
-        fi
-        cd "$packages"/cmake-3.26.3 || exit 1
+    mkdir -p "$packages"/cmake-3.26.3
+    if ! tar -zxf "$packages"/cmake-3.26.3.tar.gz -C "$packages"/cmake-3.26.3 --strip-components 1; then
+        fail_fn 'The tar command failed to extract any files.'
     fi
+    cd "$packages"/cmake-3.26.3 || exit 1
 fi
 
 ##
 ## run the bootstrap file to generate any required install files
 ##
 
-printf "\n%s\n" \
-    '$ This might take a minute... please be patient'
-./bootstrap --prefix=/usr/local --parallel="$(nproc --all)" --enable-ccache --generator=Ninjal
+printf "\n%s\n\n%s\n" \
+    '$ This might take a minute... please be patient' \
+    '$ ./configure --parallel=32 --generator=Ninja --enable-ccache'
+./configure --parallel='32' --generator='Ninja' --enable-ccache &>/dev/null
 
 ##
 ## run the ninja commands to install cmake system-wide
 ##
 
-ninja
-sudo ninja install
-
-success_fn
+if ninja &>/dev/null; then
+    if sudo ninja install &>/dev/null; then
+        success_fn
+    else
+        fail_fn '$ Ninja install failed to install the system binaries.'
+    fi
+else
+    fail_fn '$ Ninja failed to crate the system binaries.'
+fi
