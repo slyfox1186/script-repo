@@ -56,7 +56,6 @@ echo '============================================='
 echo
 
 curl -LSso 'build-ffmpeg' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ffmpeg/build-ffmpeg'
-
 if [ -f build-ffmpeg ]; then
     bash 'build-ffmpeg' --build --enable-gpl-and-non-free --latest
 else
