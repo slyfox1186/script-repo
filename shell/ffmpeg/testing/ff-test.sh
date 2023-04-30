@@ -1558,7 +1558,7 @@ if build 'libogg' "$g_ver"; then
     download "$g_url" "libogg-$g_ver.tar.gz"
     execute mkdir -p 'm4' 'build'
     execute autoreconf -fi
-    cmake -S . -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace"  -DCMAKE_BUILD_TYPE='Release' -DBUILD_SHARED_LIBS='1' \
+    execute cmake -S . -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace"  -DCMAKE_BUILD_TYPE='Release' -DBUILD_SHARED_LIBS='1' \
         -DCPACK_BINARY_DEB='1' -DBUILD_TESTING='0'-DCPACK_SOURCE_ZIP='1' -DBUILD_SHARED_LIBS='1' -G 'Ninja' -Wno-dev
     execute ninja -C 'build'
     execute ninja -C 'build' install
@@ -1748,30 +1748,30 @@ if build 'MediaInfoLib' "$g_ver"; then
     cd Project/CMake || exit 1
     execute cmake . -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
         -DCMAKE_INSTALL_INCLUDEDIR='include' -DBUILD_SHARED_LIBS='1' -DENABLE_APPS='OFF' \
-        -DUSE_STATIC_LIBSTDCXX='ON' -DBUILD_ZLIB='OFF' -DBUILD_ZENLIB='OFF'
-    execute make "-j$cpu_threads"
-    execute make install
+        -DUSE_STATIC_LIBSTDCXX='ON' -DBUILD_ZLIB='OFF' -DBUILD_ZENLIB='OFF' -G 'Ninja'
+    execute ninja
+    execute ninja install
     build_done 'MediaInfoLib' "$g_ver"
 fi
 
 pre_check_ver 'MediaArea/MediaInfo' '1' 'L'
 if build 'MediaInfoCLI' "$g_ver"; then
     download "$g_url" "MediaInfoCLI-$g_ver.tar.gz"
-    cd "$PWD"/Project/GNU/CLI || exit 1
-    execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --enable-staticlibs
+    execute autoreconf -fi
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared
+    execute make "-j$cpu_threads"
+    execute make install
     build_done 'MediaInfoCLI' "$g_ver"
 fi
 
 if command_exists 'meson'; then
-    pre_check_ver 'harfbuzz/harfbuzz' '1' 'T'
+    pre_check_ver 'harfbuzz/harfbuzz' '1' 'L'
     if build 'harfbuzz' "$g_ver"; then
-        download "https://github.com/harfbuzz/harfbuzz/archive/refs/tags/$g_ver.tar.gz" "harfbuzz-$g_ver.tar.gz"
-        execute ./autogen.sh
-        execute meson setup 'build' --prefix="$workspace" --libdir="$workspace"/lib --pkg-config-path="$PKG_CONFIG_PATH" \
-                --buildtype='release' --default-library='static' --optimization='s' --strip
-        execute ninja -C 'build'
-        execute ninja -C 'build' install
+        download "$g_url" "harfbuzz-$g_ver.tar.gz"
+        execute autoreconf -fi
+        execute ./configure --prefix="$workspace" --enable-static --disable-shared
+        execute make "-j$cpu_threads"
+        execute make install
         build_done 'harfbuzz' "$g_ver"
     fi
 fi
@@ -1779,7 +1779,7 @@ fi
 if build 'c2man' 'git'; then
     download_git 'https://github.com/fribidi/c2man.git' 'c2man-git'
     execute ./Configure -desO -D prefix="$workspace" -D bin="$workspace"/bin -D bash='/bin/bash' -D cc='/usr/bin/cc' \
-        -D d_gnu='/usr/lib/x86_64-linux-gnu' -D find='/usr/bin/find' -D gcc='/usr/lib/ccache/gcc' -D gzip='/usr/bin/gzip' \
+        -D d_gnu='/usr/lib/x86_64-linux-gnu' -D find='/usr/bin/find' -D gcc='/usr/lib/ccache/gcc-12' -D gzip='/usr/bin/gzip' \
         -D installmansrc="$workspace"/share/man -D ldflags=" -L $workspace/lib -L/usr/local/lib" -D less='/usr/bin/less' \
         -D libpth="$workspace/lib /usr/local/lib /lib /usr/lib" \
         -D locincpth="$workspace/include /usr/local/include /opt/local/include /usr/gnu/include /opt/gnu/include /usr/GNU/include /opt/GNU/include" \
@@ -1789,7 +1789,7 @@ if build 'c2man' 'git'; then
         -D vi='/usr/bin/vi' -D zip='/usr/bin/zip'
     execute make depend
     execute make "-j$cpu_threads"
-    execute make install
+    execute sudo make install
     build_done 'c2man' 'git'
 fi
 
@@ -1797,9 +1797,10 @@ pre_check_ver 'fribidi/fribidi' '1' 'L'
 if build 'fribidi' "$g_ver"; then
     download "$g_url" "fribidi-$g_ver.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --disable-shared --enable-static PKG_CONFIG_PATH="$workspace/lib/pkgconfig"
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared PKG_CONFIG_PATH="$workspace/lib/pkgconfig:$workspace/lib/x86_64-linux-gnu/pkgconfig"
     execute make "-j$cpu_threads"
     execute make install
+    execute libtool --finish "$workspace/lib"
     build_done 'fribidi' "$g_ver"
 fi
 cnf_ops+=('--enable-libfribidi')
