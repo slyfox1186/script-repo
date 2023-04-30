@@ -1395,7 +1395,7 @@ if build "libpng" '1.6.39'; then
     download "https://github.com/glennrp/libpng/archive/refs/tags/v1.6.39.tar.gz" 'libpng-1.6.39.tar.gz'
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" --enable-static --disable-shared --enable-unversioned-links \
-        --enable-hardware-optimizations LDFLAGS="$LDFLAGS" CPPFLAGS="$CFLAGS"
+        --enable-hardware-optimizations
     execute make "-j$cpu_threads"
     execute make install-header-links
     execute make install-library-links
@@ -1504,7 +1504,7 @@ if command_exists 'python3'; then
             download "https://gitlab.com/lv2/sratom/-/archive/v$g_ver/sratom-v$g_ver.tar.bz2" "sratom-$g_ver.tar.bz2"
             execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' \
                 --pkg-config-path="$workspace/lib/pkgconfig:$workspace/lib/x86_64-linux-gnu/pkgconfig" --strip
-            ninja -C 'build'
+            execute ninja -C 'build'
             execute ninja -C 'build' install
             build_done 'sratom' "$g_ver"
         fi
