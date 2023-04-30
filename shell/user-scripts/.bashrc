@@ -94,7 +94,9 @@ if [ -f "${HOME}/.bash_functions" ]; then
 fi
 
 # custom user vars
-PATH=\
+export PATH=\
+/usr/lib/ccache:\
+"$HOME"/.cargo/env:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
@@ -103,22 +105,17 @@ PATH=\
 /bin:\
 /snap/bin:\
 "${HOME}"/.local/bin
-export PATH
 
-PS1='\[\e[0;1;93;48;5;16m\]\w\n\[\e[0;1;38;5;46;48;5;16m\]\T\n\[\e[0;1;38;5;198;48;5;16m\]\u\[\e[0;1;97;48;5;16m\]@\[\e[0;1;96;48;5;16m\]\h\[\e[0;1;93;48;5;16m\]$\[\e[0m\]'
-export PS1
+export PS1='\[\e[0;1;93;48;5;16m\]\w\n\[\e[0;1;38;5;46;48;5;16m\]\T\n\[\e[0;1;38;5;198;48;5;16m\]\u\[\e[0;1;97;48;5;16m\]@\[\e[0;1;96;48;5;16m\]\h\[\e[0;1;93;48;5;16m\]$\[\e[0m\]'
 
-TMP="${HOME}/tmp"
-export TMP
+export TMP="${HOME}/tmp"
 
-LAN="$(hostname -I)"
-export LAN
+export LAN="$(hostname -I)"
 
-WAN="$(curl -sS 'https://checkip.amazonaws.com')"
-export WAN
+export WAN="$(curl -sS 'https://checkip.amazonaws.com')"
 
-THREADS="$(nproc --all)"
-export THREADS
+export THREADS="$(nproc --all)"
 
-CPUS="$((THREADS/2))"
-export CPUS
+export CPUS="$((THREADS/2))"
+
+export PYTHONUTF8='1'
