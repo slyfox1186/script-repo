@@ -1708,11 +1708,11 @@ cnf_ops+=('--enable-frei0r')
 
 pre_check_ver 'avisynth/avisynthplus' '1' 'L'
 if build 'avisynth' "$g_ver"; then
-    download "$g_url" "avisynth-$g_ver.tar.gz"
-    execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --enable-static --disable-shared
-    execute make "-j$cpu_threads"
-    execute make install
+    download_git 'https://github.com/AviSynth/AviSynthPlus.git' "avisynth-$g_ver"
+    make_dir 'build'
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX:="$workspace" -G 'Ninja'
+    execute ninja -C 'build'
+    execute ninja -C 'build' install
     build_done 'avisynth' "$g_ver"
 fi
 cnf_ops+=('--enable-avisynth')
