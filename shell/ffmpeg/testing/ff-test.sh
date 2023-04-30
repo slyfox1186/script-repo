@@ -1048,7 +1048,7 @@ fi
 
 if build 'nasm' '2.16.02rc1'; then
     download "https://www.nasm.us/pub/nasm/releasebuilds/2.16.02rc1/nasm-2.16.02rc1.tar.xz" "nasm-2.16.02rc1.tar.xz"
-    execute ./configure --prefix="$workspace" --enable-ccache --disable-shared --enable-static
+    execute ./configure --prefix="$workspace" --enable-ccache --enable-static --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     build_done 'nasm' '2.16.02rc1'
@@ -1111,7 +1111,7 @@ if $nonfree_and_gpl; then
 else
     if build 'gmp' '6.2.1'; then
         download 'https://ftp.gnu.org/gnu/gmp/gmp-6.2.1.tar.xz'
-        execute ./configure --prefix="$workspace" --disable-shared --enable-static
+        execute ./configure --prefix="$workspace" --enable-static --disable-shared
         execute make "-j$cpu_threads"
         execute make install
         build_done 'gmp' '6.2.1'
@@ -1119,7 +1119,7 @@ else
 
     if build 'nettle' '3.8.1'; then
         download 'https://ftp.gnu.org/gnu/nettle/nettle-3.8.1.tar.gz'
-        execute ./configure --prefix="$workspace" --libdir="$workspace"/lib --disable-shared --enable-static \
+        execute ./configure --prefix="$workspace" --libdir="$workspace"/lib --enable-static --disable-shared \
         --disable-openssl --disable-documentation CPPFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS"
         execute make "-j$cpu_threads"
         execute make install
@@ -1128,7 +1128,7 @@ else
 
     if build 'gnutls' '3.8.0'; then
         download 'https://www.gnupg.org/ftp/gcrypt/gnutls/v3.8/gnutls-3.8.0.tar.xz'
-        execute ./configure --prefix="$workspace" --disable-shared --enable-static --disable-doc --disable-tools \
+        execute ./configure --prefix="$workspace" --enable-static --disable-shared --disable-doc --disable-tools \
             --disable-cxx --disable-tests --disable-gtk-doc-html --disable-libdane --disable-nls --enable-local-libopts \
             --disable-guile --with-included-libtasn1 --with-included-unistring --without-p11-kit CPPFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS"
         execute make "-j$cpu_threads"
@@ -1327,7 +1327,7 @@ if $nonfree_and_gpl; then
     if build 'xvidcore' '1.3.7'; then
         download 'https://downloads.xvid.com/downloads/xvidcore-1.3.7.tar.bz2' 'xvidcore-1.3.7.tar.bz2'
         cd 'build/generic' || exit 1
-        execute ./configure --prefix="$workspace" --disable-shared --enable-static
+        execute ./configure --prefix="$workspace" --enable-static --disable-shared
         execute make "-j$cpu_threads"
         execute make install
 
@@ -1393,7 +1393,7 @@ cnf_ops+=('--enable-libzimg')
 if build "libpng" '1.6.39'; then
     download "https://github.com/glennrp/libpng/archive/refs/tags/v1.6.39.tar.gz" 'libpng-1.6.39.tar.gz'
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --disable-shared --enable-static --enable-unversioned-links \
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared --enable-unversioned-links \
         --enable-hardware-optimizations LDFLAGS="$LDFLAGS" CPPFLAGS="$CFLAGS"
     execute make "-j$cpu_threads"
     execute make install-header-links
@@ -1471,7 +1471,7 @@ if command_exists 'python3'; then
         if build 'pcre2' "$g_ver"; then
             download "$g_url" "pcre2-$g_ver.tar.gz"
             execute ./autogen.sh
-            execute ./configure --prefix="$workspace" --disable-shared --enable-static
+            execute ./configure --prefix="$workspace" --enable-static --disable-shared
             execute make "-j$cpu_threads"
             execute make install
             build_done 'pcre2' "$g_ver"
@@ -1524,7 +1524,7 @@ fi
 
 if build 'opencore' '0.1.6'; then
     download 'https://master.dl.sourceforge.net/project/opencore-amr/opencore-amr/opencore-amr-0.1.6.tar.gz?viasf=1' 'opencore-amr-0.1.6.tar.gz'
-    execute ./configure --prefix="$workspace" --disable-shared --enable-static --enable-fast-install
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared --enable-fast-install
     execute make "-j$cpu_threads"
     execute make install
     build_done 'opencore' '0.1.6'
@@ -1533,7 +1533,7 @@ cnf_ops+=('--enable-libopencore_amrnb' '--enable-libopencore_amrwb')
 
 if build 'lame' '3.100'; then
     download 'https://sourceforge.net/projects/lame/files/lame/3.100/lame-3.100.tar.gz/download?use_mirror=gigenet' 'lame-3.100.tar.gz'
-    execute ./configure --prefix="$workspace" --disable-shared --enable-static
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     build_done 'lame' '3.100'
@@ -1602,7 +1602,7 @@ if $nonfree_and_gpl; then
     if build 'fdk_aac' "$g_ver"; then
     download "https://github.com/mstorsjo/fdk-aac/archive/refs/tags/v$g_ver.tar.gz" "fdk_aac-$g_ver.tar.gz"
         execute ./autogen.sh
-        execute ./configure --prefix="$workspace" --bindir="$workspace"/bin --disable-shared --enable-static --enable-pic \
+        execute ./configure --prefix="$workspace" --bindir="$workspace"/bin --enable-static --disable-shared --enable-pic \
             CXXFLAGS='-fno-exceptions -fno-rtti'
         execute make "-j$cpu_threads"
         execute make install
@@ -1633,7 +1633,7 @@ git_ver_fn '4720790' '3' 'T'
 if build 'libtiff' "$g_ver"; then
     download "https://gitlab.com/libtiff/libtiff/-/archive/v$g_ver/libtiff-v$g_ver.tar.bz2" "libtiff-$g_ver.tar.bz2"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --disable-shared --enable-static
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     build_done 'libtiff' "$g_ver"
@@ -1679,7 +1679,7 @@ if build 'lcms' "$g_ver"; then
     download "$g_url" "lcms-$g_ver.tar.gz"
     make_dir 'build'
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --disable-shared --enable-static
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     build_done 'lcms' "$g_ver"
@@ -1701,10 +1701,11 @@ cnf_ops+=('--enable-frei0r')
 
 pre_check_ver 'avisynth/avisynthplus' '1' 'L'
 if build 'avisynth' "$g_ver"; then
-    download "$g_url" "avisynth-$g_ver"
-    execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='1' -G 'Ninja' -Wno-dev
-    execute ninja
-    execute ninja install
+    download "$g_url" "avisynth-$g_ver.tar.gz"
+    execute ./autogen.sh
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared
+    execute make "-j$cpu_threads"
+    execute make install
     build_done 'avisynth' "$g_ver"
 fi
 cnf_ops+=('--enable-avisynth')
@@ -1713,7 +1714,7 @@ git_ver_fn '363' '2' 'T'
 if build 'udfread' "$g_ver1"; then
     download "https://code.videolan.org/videolan/libudfread/-/archive/$g_ver1/libudfread-$g_ver1.tar.bz2" "udfread-$g_ver1.tar.bz2"
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --disable-shared --enable-static --with-pic --with-gnu-ld
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared --with-pic --with-gnu-ld
     execute make "-j$cpu_threads"
     execute make install
     build_done 'udfread' "$g_ver1"
@@ -1723,7 +1724,7 @@ git_ver_fn '206' '2' 'T'
 if build 'libbluray' "$g_ver1"; then
     download "https://code.videolan.org/videolan/libbluray/-/archive/$g_ver1/$g_ver1.tar.gz" "libbluray-$g_ver1.tar.gz"
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --disable-shared --enable-static --without-libxml2
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared --without-libxml2
     execute make "-j$cpu_threads"
     execute make install
     build_done 'libbluray' "$g_ver1"
@@ -1733,7 +1734,7 @@ cnf_ops+=('--enable-libbluray')
 
 pre_check_ver 'mediaarea/zenLib' '1' 'L'
 if build 'zenLib' "$g_ver"; then
-    download "$g_url" "zenLib-$g_ver.tar.gz"
+    download "https://github.com/MediaArea/ZenLib/archive/refs/tags/v$g_ver.tar.gz" "zenLib-$g_ver.tar.gz"
     cd Project/CMake || exit 1
     execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR="$workspace"/lib -DCMAKE_INSTALL_BINDIR="$workspace"/bin \
         -DCMAKE_INSTALL_INCLUDEDIR="$workspace"/include -DBUILD_SHARED_LIBS='1'
@@ -1745,12 +1746,10 @@ fi
 pre_check_ver 'MediaArea/MediaInfoLib' '1' 'L'
 if build 'MediaInfoLib' "$g_ver"; then
     download "$g_url" "MediaInfoLib-$g_ver.tar.gz"
-    cd Project/CMake || exit 1
-    execute cmake . -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
-        -DCMAKE_INSTALL_INCLUDEDIR='include' -DBUILD_SHARED_LIBS='1' -DENABLE_APPS='OFF' \
-        -DUSE_STATIC_LIBSTDCXX='ON' -DBUILD_ZLIB='OFF' -DBUILD_ZENLIB='OFF' -G 'Ninja'
-    execute ninja
-    execute ninja install
+    execute autoreconf -fi
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared --without-libxml2
+    execute make "-j$cpu_threads"
+    execute make install
     build_done 'MediaInfoLib' "$g_ver"
 fi
 
@@ -1797,9 +1796,10 @@ pre_check_ver 'fribidi/fribidi' '1' 'L'
 if build 'fribidi' "$g_ver"; then
     download "$g_url" "fribidi-$g_ver.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --enable-static --disable-shared PKG_CONFIG_PATH="$workspace/lib/pkgconfig:$workspace/lib/x86_64-linux-gnu/pkgconfig"
-    execute make "-j$cpu_threads"
-    execute make install
+    execute meson setup 'build' --prefix="$workspace" --buildtype='release' --default-library='static' \
+        --pkg-config-path="$workspace/lib/pkgconfig:$workspace/lib/x86_64-linux-gnu/pkgconfig" --strip -Ddocs=false
+    execute ninja -C 'build'
+    execute ninja -C 'build' install
     execute libtool --finish "$workspace/lib"
     build_done 'fribidi' "$g_ver"
 fi
@@ -1809,7 +1809,7 @@ pre_check_ver 'libass/libass' '1' 'L'
 if build 'libass' "$g_ver"; then
     download "$g_url" "libass-$g_ver.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --disable-shared --enable-static
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     build_done 'libass' "$g_ver"
@@ -1844,7 +1844,7 @@ pre_check_ver 'libsdl-org/SDL' '1' 'L'
 if build 'libsdl' "$g_ver"; then
     download "$g_url" "libsdl-$g_ver.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --disable-shared --enable-static
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     build_done 'libsdl' "$g_ver"
