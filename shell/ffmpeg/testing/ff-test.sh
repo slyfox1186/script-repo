@@ -1832,10 +1832,11 @@ git_ver_fn '7950' '4'
 if build 'freetype' "$g_ver"; then
     extracommands=(-D{harfbuzz,png,bzip2,brotli,zlib,tests}"=disabled")
     download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/$g_ver/freetype-$g_ver.tar.bz2" "freetype-$g_ver.tar.bz2"
-    execute ./autogen.sh
-    execute cmake -B 'build/release-static' -DCMAKE_INSTALL_PREFIX="$workspace" -DVVDEC_ENABLE_LINK_TIME_OPT='OFF' \
-        -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCMAKE_BUILD_TYPE='Release' -DBUILD_SHARED_LIBS='1' "${extracommands[@]}"
-    execute cmake --build 'build/release-static' "-j$cpu_threads"
+    ./autogen.sh
+    execute meson setup 'build' --prefix="$workspace" --buildtype='release' --default-library='static' \
+        --pkg-config-path="$workspace/lib/pkgconfig:$workspace/lib/x86_64-linux-gnu/pkgconfig" --strip
+    execute ninja -C 'build'
+    execute ninja -C 'build' install
     build_done 'freetype' "$g_ver"
 fi
 cnf_ops+=('--enable-libfreetype')
@@ -1857,10 +1858,11 @@ if $nonfree_and_gpl; then
         export OPENSSL_ROOT_DIR="$workspace"
         export OPENSSL_LIB_DIR="$workspace"/lib
         export OPENSSL_INCLUDE_DIR="$workspace"/include
-        execute cmake . -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR="$workspace"/lib -DCMAKE_INSTALL_BINDIR="$workspace"/bin \
-            -DCMAKE_INSTALL_INCLUDEDIR="$workspace"/include -DBUILD_SHARED_LIBS='1' -DENABLE_APPS='OFF' -DUSE_STATIC_LIBSTDCXX='ON'
-        execute make "-j$cpu_threads"
-        execute make install
+        make_dir 'build'
+        execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='1' -DENABLE_APPS='1' \
+            -DUSE_STATIC_LIBSTDCXX='0' -G 'Ninja'
+        execute ninja -C 'build'
+        execute ninja -C 'build' install
 
         if [ -n "$LDEXEFLAGS" ]; then
             sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "$workspace"/lib/pkgconfigsrt.pc
