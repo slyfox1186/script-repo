@@ -1723,7 +1723,7 @@ cnf_ops+=('--enable-frei0r')
 
 pre_check_ver 'avisynth/avisynthplus' '1' 'T'
 if build 'avisynth' "$g_ver"; then
-    download "https://github.com/AviSynth/AviSynthPlus/archive/refs/tags/v$g_ver.tar.gz" "avisynth-$g_ver"
+    download "https://github.com/AviSynth/AviSynthPlus/archive/refs/tags/v$g_ver.tar.gz" "avisynth-$g_ver.tar.gz"
     make_dir 'build'
     execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -DBIN_INSTALL_DIR:STRING="$workspace/bin" \
         -DINCLUDE_INSTALL_DIR:PATH="$workspace/include" -DLIB_INSTALL_DIR:STRING="$workspace/lib" \
@@ -1761,12 +1761,13 @@ cnf_ops+=('--enable-libbluray')
 pre_check_ver 'mediaarea/zenLib' '1' 'T'
 if build 'zenLib' "$g_ver"; then
     download "https://github.com/MediaArea/ZenLib/archive/refs/tags/v$g_ver.tar.gz" "zenLib-$g_ver.tar.gz"
-    cd Project/CMake || exit 1
-    execute cmake -S . -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -DBIN_INSTALL_DIR:STRING="$workspace/bin" \
+    cd 'Project/CMake' || exit 1
+    make_dir 'build'
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -DBIN_INSTALL_DIR:STRING="$workspace/bin" \
     -DINCLUDE_INSTALL_DIR:PATH="$workspace/include" -DLIB_INSTALL_DIR:STRING="$workspace/lib" \
     -DBUILD_SHARED_LIBS:BOOL='0' -DENABLE_UNICODE:BOOL='0' -DLARGE_FILES:BOOL='0' -G 'Ninja' -Wno-dev
-    execute ninja
-    execute ninja install
+    execute ninja -C 'build' "-j$cpu_threads"
+    execute ninja -C 'build' install "-j$cpu_threads"
     build_done 'zenLib' "$g_ver"
 fi
 
@@ -1793,13 +1794,14 @@ if build 'MediaInfoCLI' "$g_ver"; then
 fi
 
 if command_exists 'meson'; then
-    pre_check_ver 'harfbuzz/harfbuzz' '1' 'L'
+    pre_check_ver 'harfbuzz/harfbuzz' '1' 'T'
     if build 'harfbuzz' "$g_ver"; then
-        download "https://github.com/harfbuzz/harfbuzz/releases/tag/$g_ver" "harfbuzz-$g_ver.tar.gz"
-        execute autoreconf -fi
-        execute ./configure --prefix="$workspace" --enable-static --disable-shared
-        execute make "-j$cpu_threads"
-        execute make install
+        download "$g_url" "harfbuzz-$g_ver.tar.gz"
+        make_dir 'build'
+        execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX:PATH="$workspace" \
+            -DBUILD_SHARED_LIBS:BOOL="0"  -G 'Ninja' -Wno-dev
+        execute ninja -C 'build' "-j$cpu_threads"
+        execute ninja -C 'build' install "-j$cpu_threads"
         build_done 'harfbuzz' "$g_ver"
     fi
 fi
