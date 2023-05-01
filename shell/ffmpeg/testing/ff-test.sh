@@ -999,6 +999,16 @@ install_cuda_fn
 build_pkgs_fn
 
 ##
+## install cmake latest version (some poackages get bent out of shape with the one source by APT)
+##
+
+if [ ! -f '/usr/local/bin/cmake' ]; then
+    curl -Lso cmake-ffmpeg.sh https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ffmpeg/cmake-3.26.3-ffmpeg.sh; bash cmake-ffmpeg.sh
+    execute rm cmake-ffmpeg.sh
+    echo
+fi
+
+##
 ## being source code building
 ##
 
@@ -1029,11 +1039,11 @@ if build 'pkg-config' "$g_ver"; then
     build_done 'pkg-config' "$g_ver"
 fi
 
-pre_check_ver 'yasm/yasm' '1' 'L'
+pre_check_ver 'yasm/yasm' '1' 'T'
 if build 'yasm' "$g_ver"; then
-    download "$g_url" "yasm-$g_ver.tar.gz"
+    download "$https://github.com/yasm/yasm/archive/refs/tags/v$g_ver.tar.gz" "yasm-$g_ver.tar.gz"
     make_dir 'build'
-    execute cmake -S . -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='OFF' -DUSE_OMP='OFF'-G 'Ninja' -Wno-dev
+    execute cmake -S . -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='OFF' -DUSE_OMP='OFF' -G 'Ninja' -Wno-dev
     execute ninja -C 'build'
     execute ninja -C 'build' install
     build_done 'yasm' "$g_ver"
@@ -1134,9 +1144,12 @@ fi
 pre_check_ver 'kitware/cmake' '1' 'L'
 if build 'cmake' "$g_ver" "$packages/$1.done"; then
     download "$g_url" "cmake-$g_ver.tar.gz"
-    execute ./configure --prefix="$workspace" --parallel="$cpu_threads" --enable-ccache -- -DCMAKE_USE_OPENSSL='1'
-    execute make "-j$cpu_threads"
-    execute make install
+    make_dir 'build'
+    execute cmake -B 'build' -DCMAKE_BUILD_TYPE:STRING="Release" -DBUILD_TESTING:BOOL='0' -DCPACK_BINARY_DEB:BOOL='1' -DCMAKE_USE_SYSTEM_CURL:BOOL='0' \
+        -DCPACK_BINARY_TBZ2:BOOL='0' -DCMAKE_INSTALL_PREFIX:PATH="/home/jman/tmp/ffmpeg-build/workspace" -DCPACK_ENABLE_FREEBSD_PKG:BOOL='0' \
+        -DENABLE_CCACHE:BOOL='0' -G 'Ninja' -Wno-dev
+    execute ninja -C 'build'
+    execute ninja -C 'build' install
     build_done 'cmake' "$g_ver"
 fi
 
@@ -1190,22 +1203,22 @@ if build 'abseil' 'git'; then
     execute ninja -C 'build' install
     build_done 'abseil' 'git'
 fi
-
-if build 'libgav1' 'git'; then
+git_ver_fn 'google/googletest' '1' 'L'
+if build 'libgav1' "$g_var"; then
     # version 1.3.0, 1.2.4, and 1.2.3 fail to build successfully
     CPPFLAGS=
-    download_git 'https://chromium.googlesource.com/codecs/libgav1' 'libgav1-git'
+    download "$g_url" "libgav1-$g_var.tar.gz"
     make_dir 'libgav1_build'
-    execute git -C "$packages/libgav1-git" clone -b '20220623.0' --depth '1' 'https://github.com/abseil/abseil-cpp.git' 'third_party/abseil-cpp'
-    execute cmake -S . -B 'libgav1_build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_EXPORT_COMPILE_COMMANDS='ON'-DABSL_ENABLE_INSTALL='ON'\
-        -DABSL_PROPAGATE_CXX_STD='ON'-DCMAKE_INSTALL_SBINDIR="sbin" -DBUILD_SHARED_LIBS='OFF' -G 'Ninja' -Wno-dev
-    execute cmake -S . -B 'third_party/abseil-cpp' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_EXPORT_COMPILE_COMMANDS='ON'-DABSL_ENABLE_INSTALL='ON'\
-        -DABSL_PROPAGATE_CXX_STD='ON'-DCMAKE_INSTALL_SBINDIR="sbin" -G 'Ninja' -Wno-dev
+    execute git -C "$packages/libgav1-$g_var" clone -b '20220623.0' --depth '1' 'https://github.com/abseil/abseil-cpp.git' 'third_party/abseil-cpp'
+    execute cmake -S . -B 'libgav1_build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_EXPORT_COMPILE_COMMANDS='0'-DABSL_ENABLE_INSTALL='0'\
+        -DABSL_PROPAGATE_CXX_STD='0'-DCMAKE_INSTALL_SBINDIR='/usr/sbin' -DBUILD_SHARED_LIBS='1' -DCMAKE_STRIP='/usr/bin/strip' -G 'Ninja' -Wno-dev
+    execute cmake -S . -B 'third_party/abseil-cpp' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_EXPORT_COMPILE_COMMANDS='0'-DABSL_ENABLE_INSTALL='0'\
+        -DABSL_PROPAGATE_CXX_STD='0'-DCMAKE_INSTALL_SBINDIR='/usr/sbin' -DCMAKE_STRIP='/usr/bin/strip' -G 'Ninja' -Wno-dev
     execute ninja -C 'libgav1_build'
     execute ninja -C 'libgav1_build' install
     execute ninja -C 'third_party/abseil-cpp'
     execute ninja -C 'third_party/abseil-cpp' install
-    build_done 'libgav1' 'git'
+    build_done 'libgav1' "$g_var"
 fi
 
 git_ver_fn '24327400' '3' 'T'
