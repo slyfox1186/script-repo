@@ -1713,13 +1713,12 @@ cnf_ops+=('--enable-libwebp')
 git_ver_fn '1665' '6' 'T'
 if build 'xml2' "$g_ver"; then
     download "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v$g_ver/libxml2-v$g_ver.tar.bz2" "xml2-$g_ver.tar.bz2"
-    make_dir 'build'
-    execute cmake -B 'build' -DBUILD_SHARED_LIBS='1' -DCMAKE_EXPORT_COMPILE_COMMANDS='1' -DCMAKE_INSTALL_PREFIX="$workspace" \
-        -DCMAKE_VERBOSE_MAKEFILE='1' -DCPACK_BINARY_DEB='0' -DCPACK_BINARY_FREEBSD='0' -DCPACK_BINARY_IFW='0' -DCPACK_BINARY_NSIS='0' \
-        -DCPACK_BINARY_RPM='0' -DCPACK_BINARY_TBZ2='0' -DCPACK_BINARY_TXZ='0' -DCPACK_SOURCE_RPM='0' -DCPACK_SOURCE_ZIP='0' \
-        -DHWY_LIBRARY:FILEPATH="/usr/lib/x86_64-linux-gnu/libhwy.so" -DOPENGL_opengl_LIBRARY:FILEPATH="/usr/lib/x86_64-linux-gnu/libglut.a" -G 'Ninja' -Wno-dev
-    execute ninja -C 'build'
-    execute ninja -C 'build' install
+    make_dir build
+    execute ./autogen.sh
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared --enable-fast-install --with-aix-soname='both' \
+        --with-ftp --with-minimum --with-threads --with-thread-alloc --with-zlib='/usr/lib/x86_64-linux-gnu/pkgconfig' --with-lzma='/usr/lib/x86_64-linux-gnu/pkgconfig'
+    execute make "-j$cpu_threads"
+    execute make install
     build_done 'xml2' "$g_ver"
 fi
 cnf_ops+=('--enable-libxml2')
