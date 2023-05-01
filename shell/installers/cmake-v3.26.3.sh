@@ -98,7 +98,7 @@ cd "$target" || exit 1
 ## install required apt target
 ##
 
-pkgs=(ccache make ninja-build openssl)
+pkgs=(ccache libssl-dev make ninja-build)
 
 for pkg in ${pkgs[@]}
 do
