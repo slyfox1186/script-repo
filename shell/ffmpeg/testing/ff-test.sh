@@ -1260,7 +1260,6 @@ if build 'svtav1' "$g_ver"; then
     execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="${workspace}" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' ../.. -G 'Ninja' -DCMAKE_BUILD_TYPE='Release'
     execute ninja -C 'build'
     execute ninja -C 'build' install
-    read -p 'enter'
     cp 'build/SvtAv1Enc.pc' "${workspace}"/lib/pkgconfig
     cp 'build/SvtAv1Enc.pc' "${workspace}"/lib/pkgconfig
     build_done 'svtav1' "$g_ver"
