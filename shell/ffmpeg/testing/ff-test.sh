@@ -1009,6 +1009,12 @@ if [ ! -f '/usr/local/bin/cmake' ]; then
 fi
 
 ##
+## add ccache to PATH to speed up rebuilds
+##
+
+export PATH="/usr/lib/ccache:$PATH"
+
+##
 ## being source code building
 ##
 
