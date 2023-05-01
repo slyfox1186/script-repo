@@ -265,7 +265,7 @@ fi
 
 # PULL THE LATEST VERSIONS OF EACH PACKAGE FROM THE WEBSITE API
 curl_timeout='5'
-git_token='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'
+git_token=''
 
 git_1_fn()
 {
@@ -287,11 +287,13 @@ git_1_fn()
                             -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
             g_url="$(echo "$curl_cmd" | jq -r '.tarball_url')"
             g_ver="${g_ver##*/}"
-            g_ver="${g_ver##v}"
+            g_ver="${g_ver##lcms}"
+            g_ver="${g_ver##null }"
             g_ver="${g_ver##OpenJPEG }"
             g_ver="${g_ver##OpenSSL }"
+            g_ver="${g_ver##pkgconf-}"
             g_ver="${g_ver##release-}"
-            g_ver="${g_ver##lcms}"
+            g_ver="${g_ver##v}"
         fi
     fi
 
@@ -304,13 +306,14 @@ git_1_fn()
                             --header "X-GitHub-Api-Version: 2022-11-28" \
                             -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
             g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
-            g_ver="${g_ver##v}"
-            g_ver="${g_ver##pkgconf-}"
+            g_ver="${g_ver##*/}"
+            g_ver="${g_ver##lcms}"
+            g_ver="${g_ver##null }"
             g_ver="${g_ver##OpenJPEG }"
             g_ver="${g_ver##OpenSSL }"
-            g_ver="${g_ver##release-}"
             g_ver="${g_ver##pkgconf-}"
-            g_ver="${g_ver##lcms}"
+            g_ver="${g_ver##release-}"
+            g_ver="${g_ver##v}"
             g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url')"
         fi
     fi
@@ -1337,13 +1340,13 @@ EOF
     cnf_ops+=('--enable-libx265')
 fi
 
-pre_check_ver 'openvisualcloud/svt-hevc' '1' 'L'
-if build 'SVT-HEVC' "$g_ver"; then
-    download "$g_url" "SVT-HEVC-$g_ver.tar.gz"
+pre_check_ver 'openvisualcloud/svt-hevc' '1' 'T'
+if build 'SVT-HEVC' 'git'; then
+    download_git 'https://github.com/OpenVisualCloud/SVT-HEVC.git' 'SVT-HEVC-git'
     cd 'Build/linux' || exit 1
-    execute ./build.sh
-    execute cp 'Release/SvtHevcEnc.pc' "$workspace"/lib/pkgconfig
-    build_done 'SVT-HEVC' "$g_ver"
+    execute sudo ./build.sh prefix="/home/jman/tmp/ffmpeg-build/workspace" release static install
+    execute sudo cp 'Release/SvtHevcEnc.pc' "$workspace"/lib/pkgconfig
+    build_done 'SVT-HEVC' 'git'
 fi
 
 pre_check_ver 'webmproject/libvpx' '1' 'T'
