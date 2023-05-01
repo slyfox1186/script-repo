@@ -69,9 +69,9 @@ alias dir='dir --color=auto'
 alias vdir='vdir --color=auto'
 
 # apt commands
-alias install='clear; apt -y install'
-alias remove='clear; apt -y remove'
-alias search='clear; apt search'
+alias install='clear; aptitude -f -y install'
+alias remove='clear; aptitude -y remove'
+alias search='clear; aptitude search'
 
 # fix missing gpnu keys used to update packages
 alias fixkey='clear; apt-key adv --keyserver keyserver.ubuntu.com --recv-keys'
@@ -106,6 +106,7 @@ alias gsync='clear; nano /etc/gravity-sync/gravity-sync.conf'
 alias nss='clear; systemd-resolve --status'
 
 # clipboard
+alias clip='xclip -sel clip'
 alias paste='xclip -o'
 
 # nano [ /home/jman ]
@@ -270,3 +271,7 @@ alias fix_gpg='sudo cp /etc/apt/trusted.gpg /etc/apt/trusted.gpg.d'
 
 # WATCH COMMAND
 alias cwatch='watch -n1 ccache --print-stats'
+
+# GET KERNEL VERSION
+alias kv='\cat /proc/version | grep -Eo "([0-9\.\-]+-generic)"'
+
