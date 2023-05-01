@@ -85,6 +85,8 @@ success_fn()
     cleanup_fn
 }
 
+installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
+
 ##
 ## create build folders
 ##
@@ -108,7 +110,7 @@ done
 if [ -n "${missing_pkgs-}" ]; then
     for i in "$missing_pkgs"
     do
-        sudo apt -y install $i
+        sudo apt-get -qq -y install $i
     done
 fi
 
@@ -116,10 +118,10 @@ fi
 ## download the cmake tar file and extract the files into the src directory
 ##
 
-printf "%s\n%s\n\n\n" \
+printf "\n%s\n%s\n" \
     "CMake Build Script v$s_ver" \
     '============================='
-sleep 3
+sleep 2
 
 if [ -d "$target" ]; then
     rm -fr "$target"
@@ -144,7 +146,7 @@ fi
 printf "\n%s\n\n%s\n\n" \
     'This might take a minute... please be patient' \
     "\$ ./bootstrap --prefix=/usr/local --parallel=$(nproc --all) --enable-ccache --generator=Ninja"
-./bootstrap --prefix=/usr/local --parallel="$(nproc --all)" --enable-ccache --generator=Ninja
+./bootstrap --prefix=/usr/local --parallel="$(nproc --all)" --enable-ccache --generator=Ninja &>/dev/null
 
 ##
 ## run the ninja commands to install cmake system-wide
