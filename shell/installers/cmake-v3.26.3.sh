@@ -7,6 +7,10 @@
 ##
 ## Supported OS: Linux Debian based
 ##
+## Updated: 4.30.23
+##
+## Script version: 2.0
+##
 #####################################
 
 clear
@@ -21,8 +25,9 @@ fi
 ## define global variables
 ##
 
-parent_dir="$PWD"/cmake-build
-packages="$parent_dir"/packages
+s_ver='2.0'
+build_dir='cmake-3.26.3'
+target="$PWD/$build_dir"
 tar_url='https://github.com/Kitware/CMake/releases/download/v3.26.3/cmake-3.26.3.tar.gz'
 
 ##
@@ -55,9 +60,9 @@ cleanup_fn()
         read -p 'Your choices are (1 or 2): ' cchoice
         case "$cchoice" in
             1)
-                    cd "$parent_dir" || exit 1
+                    cd "$target" || exit 1
                     cd ../ || exit 1
-                    sudo rm -r 'cmake-build'
+                    sudo rm -r "$build_dir"
                     exit_fn
                     ;;
             2)
@@ -84,14 +89,14 @@ success_fn()
 ## create build folders
 ##
 
-mkdir -p "$parent_dir" "$packages"
-cd "$parent_dir" || exit 1
+mkdir -p "$target"
+cd "$target" || exit 1
 
 ##
-## install required apt packages
+## install required apt target
 ##
 
-pkgs=(make ninja-build)
+pkgs=(ccache make ninja-build)
 
 for pkg in ${pkgs[@]}
 do
@@ -111,24 +116,26 @@ fi
 ## download the cmake tar file and extract the files into the src directory
 ##
 
-if ! curl -LSso "$packages"/cmake-3.26.3.tar.gz "$tar_url"; then
-    fail_fn 'The tar file failed to download.'
-else
-    if [ -d "$packages"/cmake-3.26.3 ]; then
-        rm -r "$packages"/cmake-3.26.3
-    else
-        mkdir -p "$packages"/cmake-3.26.3
-        if ! tar -zxf "$packages"/cmake-3.26.3.tar.gz -C "$packages"/cmake-3.26.3 --strip-components 1; then
-            fail_fn 'The tar command failed to extract any files.'
-        fi
-    fi
+printf "%s\n%s\n\n\n" \
+    "CMake Build Script v$s_ver" \
+    '============================='
+sleep 3
+
+if [ -d "$target" ]; then
+    rm -fr "$target"
 fi
 
-##
-## change into the source directory
-##
+mkdir -p "$target"
 
-cd "$packages"/cmake-3.26.3 || exit 1
+cd "$target" || exit 1
+
+if ! curl -Lso "$target".tar.gz "$tar_url"; then
+    fail_fn 'The tar file failed to download.'
+fi
+
+if ! tar -zxf "$target".tar.gz -C "$target" --strip-components 1; then
+    fail_fn 'The tar command failed to extract any files.'
+fi
 
 ##
 ## run the bootstrap file to generate any required install files
@@ -137,7 +144,7 @@ cd "$packages"/cmake-3.26.3 || exit 1
 printf "\n%s\n\n%s\n\n" \
     'This might take a minute... please be patient' \
     "\$ ./bootstrap --prefix=/usr/local --parallel=$(nproc --all) --enable-ccache --generator=Ninja"
-./bootstrap --prefix=/usr/local --parallel="$(nproc --all)" --enable-ccache --generator=Ninja &>/dev/null
+./bootstrap --prefix=/usr/local --parallel="$(nproc --all)" --enable-ccache --generator=Ninja
 
 ##
 ## run the ninja commands to install cmake system-wide
