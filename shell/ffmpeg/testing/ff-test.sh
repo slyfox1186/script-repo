@@ -1727,11 +1727,10 @@ pre_check_ver 'dyne/frei0r' '1' 'L'
 if build 'frei0r' "$g_ver"; then
     download "$g_url" "frei0r-$g_ver.tar.gz"
     make_dir 'build'
-    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DWITHOUT_OPENCV='OFF'\
-        -DCMAKE_CXX_COMPILER_RANLIB="/usr/bin/gcc-ranlib-12" -DCMAKE_CXX_FLAGS_DEBUG="-g" -DCMAKE_EXPORT_COMPILE_COMMANDS='ON'\
-        -DWEBP_ENABLE_SWAP_16BIT_CSP='ON'-DBUILD_SHARED_LIBS='OFF' -G 'Ninja' -Wno-dev
-    execute ninja -C 'build'
-    execute ninja -C 'build' install
+    execute ./autogen.sh
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared --enable-fast-install
+    execute make "-j$cpu_threads"
+    execute make install
     build_done 'frei0r' "$g_ver"
 fi
 cnf_ops+=('--enable-frei0r')
