@@ -265,42 +265,57 @@ fi
 
 # PULL THE LATEST VERSIONS OF EACH PACKAGE FROM THE WEBSITE API
 curl_timeout='5'
-
-git_token='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'
+git_token='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'
 
 git_1_fn()
 {
-    local github_repo github_url
+    local github_repo github_url github_repo_name
 
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     github_repo="$1"
     github_url="$2"
+    github_repo_name="$(echo $github_repo | sed -e 's|.*/||')"
 
     if [ "$github_url" = 'releases/latest' ]; then
 
-        if curl_cmd="$(curl -m "$curl_timeout" sSL https://api.github.com/repos/$github_repo/$github_url)"; then
-            g_url="$(echo "$curl_cmd" | jq -r '.tarball_url' | sort | head -n1)"
-            g_ver="${g_url##*/}"
+        if curl_cmd="$(curl \
+                             -m "$curl_timeout" \
+                            --request GET \
+                            --url "https://api.github.com/slyfox1186" \
+                            --header "Authorization: Bearer $git_token" \
+                            --header "X-GitHub-Api-Version: 2022-11-28" \
+                            -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
+            g_url="$(echo "$curl_cmd" | jq -r '.tarball_url')"
+            g_ver="${g_ver##*/}"
             g_ver="${g_ver##v}"
-            g_ver="${g_ver#OpenJPEG }"
-            g_ver="${g_ver#OpenSSL }"
-            g_ver="${g_ver#lcms}"
+            g_ver="${g_ver##OpenJPEG }"
+            g_ver="${g_ver##OpenSSL }"
+            g_ver="${g_ver##release-}"
+            g_ver="${g_ver##lcms}"
         fi
     fi
 
     if [ "$github_url" = 'tags' ]; then
-        if curl_cmd="$(curl -m "$curl_timeout" sSL https://api.github.com/repos/$github_repo/$github_url)"; then
-            g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' | sort | head -n1)"
-            g_ver="${g_ver#v}"
-            g_ver="${g_ver#OpenJPEG }"
-            g_ver="${g_ver#OpenSSL }"
-            g_ver="${g_ver#pkgconf-}"
-            g_ver="${g_ver#lcms}"
+        if curl_cmd="$(curl \
+                             -m "$curl_timeout" \
+                            --request GET \
+                            --url "https://api.github.com/slyfox1186" \
+                            --header "Authorization: Bearer $git_token" \
+                            --header "X-GitHub-Api-Version: 2022-11-28" \
+                            -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
+            g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
+            g_ver="${g_ver##v}"
+            g_ver="${g_ver##pkgconf-}"
+            g_ver="${g_ver##OpenJPEG }"
+            g_ver="${g_ver##OpenSSL }"
+            g_ver="${g_ver##release-}"
+            g_ver="${g_ver##pkgconf-}"
+            g_ver="${g_ver##lcms}"
             g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url')"
         fi
     fi
 
-    echo "${github_repo##*/}-$g_ver" >> "$ver_file_tmp"
+    echo "$github_repo_name-$g_ver" >> "$ver_file_tmp"
     awk '!NF || !seen[$0]++' "$latest_txt_tmp" > "$ver_file"
 }
 
@@ -415,9 +430,13 @@ git_ver_fn()
         7)          url_tag='git_7_fn';;
     esac
 
+#echo $1
+#echo $2
+#echo $3
+#echo
+
     "$url_tag" "$v_url" "$gv_url" 2>/dev/null
 }
-
 check_version()
 {
     github_repo="$1"
@@ -439,6 +458,11 @@ pre_check_ver()
     github_repo="$1"
     git_ver="$2"
     git_url_type="$3"
+
+#echo $1
+#echo $2
+#echo $3
+#echo
 
     check_version "$github_repo"
     if [ "$g_nocheck" -eq '1' ]; then
@@ -809,7 +833,7 @@ build_pkgs_fn()
 
     pkgs=(ant autoconf autogen automake binutils bison build-essential cargo ccache ccdiff checkinstall clang \
           clang-tools cmake cmake-curses-gui cmake-extras cmake-qt-gui curl dbus dbus-x11 dos2unix doxygen flex \
-          flexc++ freeglut3-dev g++ g++-11 g++-12 gawk gcc gcc-11 gcc-12 gh git-all gnustep-gui-runtime \
+          flexc++ freeglut3-dev frei0r-plugins-dev g++ g++-11 g++-12 gawk gcc gcc-11 gcc-12 gh git-all gnustep-gui-runtime \
           golang gperf gtk-doc-tools help2man javacc jfsutils jq junit liblcms2-dev libavif-dev libbz2-dev libcairo2-dev \
           libcdio-paranoia-dev libcurl4-gnutls-dev libdmalloc-dev libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev liblz-dev \
           liblzma-dev liblzo2-dev libmathic-dev libmimalloc-dev libmusicbrainz5-dev libncurses5-dev libnet-nslookup-perl \
@@ -1229,17 +1253,19 @@ fi
 
 git_ver_fn '24327400' '3' 'T'
 if build 'svtav1' "$g_ver"; then
-    download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v$g_ver/SVT-AV1-v$g_ver.tar.bz2" "SVT-AV1-$g_sver.tar.bz2"
+    # Last known working commit which passed CI Tests from HEAD branch
+    download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v$g_ver/SVT-AV1-v$g_ver.tar.gz" "svtav1-$g_ver.tar.gz"
     cd 'Build/linux' || exit 1
-    execute bash build.sh prefix="$workspace" static bindir="$workspace/bin" enable-avx512 enable-lto disable-shared \
-        native gen='Ninja' release jobs='32' enable-pgop cc='/usr/lib/ccache/clang-14' cxx='/usr/lib/ccache/clang++-14'
-    execute ninja -C 'Release'
-    execute ninja -C 'Release' install
-    execute cp 'Release/SvtAv1Dec.pc' "$workspace"/lib/pkgconfig
-    execute cp 'Release/SvtAv1Enc.pc' "$workspace"/lib/pkgconfig
+    make_dir 'build'
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="${workspace}" -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' ../.. -G 'Ninja' -DCMAKE_BUILD_TYPE='Release'
+    execute ninja -C 'build'
+    execute ninja -C 'build' install
+    read -p 'enter'
+    cp 'build/SvtAv1Enc.pc' "${workspace}"/lib/pkgconfig
+    cp 'build/SvtAv1Enc.pc' "${workspace}"/lib/pkgconfig
     build_done 'svtav1' "$g_ver"
+    cnf_ops+=("--enable-libsvtav1")
 fi
-cnf_ops+=('--enable-libsvtav1')
 
 if command_exists 'cargo'; then
     pre_check_ver 'xiph/rav1e' '1' 'L'
@@ -1410,9 +1436,9 @@ if build 'av1' 'd192cdf'; then
 fi
 cnf_ops+=('--enable-libaom')
 
-pre_check_ver 'sekrit-twc/zimg' '1' 'L'
+pre_check_ver 'sekrit-twc/zimg' '1' 'T'
 if build 'zimg' "$g_ver"; then
-    download "$g_url" "zimg-$g_ver.tar.gz"
+    download "https://github.com/sekrit-twc/zimg/archive/refs/tags/release-$g_ver.tar.gz" "zimg-$g_ver.tar.gz"
     execute "$workspace"/bin/libtoolize -fiq
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" --enable-static --disable-shared
@@ -1884,9 +1910,9 @@ if build 'freetype' "$g_ver"; then
 fi
 cnf_ops+=('--enable-libfreetype')
 
-pre_check_ver 'libsdl-org/SDL' '1' 'L'
+pre_check_ver 'libsdl-org/SDL' '1' 'T'
 if build 'libsdl' "$g_ver"; then
-    download "$g_url" "libsdl-$g_ver.tar.gz"
+    download "https://github.com/libsdl-org/SDL/archive/refs/tags/release-$g_ver.tar.gz" "libsdl-$g_ver.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --enable-static --disable-shared
     execute make "-j$cpu_threads"
@@ -1957,7 +1983,7 @@ cnf_ops+=('--enable-amf')
 if which 'nvcc' &>/dev/null; then
     pre_check_ver 'FFmpeg/nv-codec-headers' '1' 'L'
     if build 'nv-codec' "$g_ver"; then
-        download "$g_url" "nv-codec-$g_ver.tar.gz"
+        download "https://github.com/FFmpeg/nv-codec-headers/archive/refs/tags/n12.0.16.0.tar.gz" "nv-codec-$g_ver.tar.gz"
         execute make PREFIX="$workspace" "-j$cpu_threads"
         execute make install PREFIX="$workspace"
         build_done 'nv-codec' "$g_ver"
@@ -2006,7 +2032,8 @@ if build 'FFmpeg' 'git'; then
             --extra-ldexeflags="$LDEXEFLAGS" \
             --extra-ldflags="$LDFLAGS" \
             --extra-libs="$EXTRALIBS" \
-            --pkg-config-flags='--static'
+            --pkg-config-flags='--static' \
+            --pkgconfigdir="$PKG_CONFIG_PATH"
     execute make "-j$cpu_threads"
     execute make install
 fi
