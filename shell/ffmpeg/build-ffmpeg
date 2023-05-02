@@ -264,7 +264,8 @@ if [ ! -f "$ver_file_tmp" ] || [ ! -f "$ver_file" ]; then
 fi
 
 # PULL THE LATEST VERSIONS OF EACH PACKAGE FROM THE WEBSITE API
-curl_timeout='15'
+curl_timeout='10'
+git_token=''
 
 git_1_fn()
 {
@@ -276,8 +277,13 @@ git_1_fn()
     github_repo_name="$(echo $github_repo | sed -e 's|.*/||')"
 
     if [ "$github_url" = 'releases/latest' ]; then
-        # Latest token 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
-        if curl_cmd="$(curl -m "$curl_timeout" -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
+        if curl_cmd="$(curl \
+                             -m "$curl_timeout" \
+                            --request GET \
+                            --url "https://api.github.com/slyfox1186" \
+                            --header "Authorization: Bearer $git_token" \
+                            --header "X-GitHub-Api-Version: 2022-11-28" \
+                            -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
             g_url="$(echo "$curl_cmd" | jq -r '.tarball_url')"
             g_ver="${g_url##*/}"
             g_ver="${g_ver##v}"
@@ -288,7 +294,13 @@ git_1_fn()
     fi
 
     if [ "$github_url" = 'tags' ]; then
-        if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
+        if curl_cmd="$(curl \
+                             -m "$curl_timeout" \
+                            --request GET \
+                            --url "https://api.github.com/slyfox1186" \
+                            --header "Authorization: Bearer $git_token" \
+                            --header "X-GitHub-Api-Version: 2022-11-28" \
+                            -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
             g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
             g_ver="${g_ver#v}"
             g_ver3="$(echo "$curl_cmd" | jq -r '.[3].name')"
@@ -1847,22 +1859,21 @@ fi
 
 if $nonfree_and_gpl; then
     pre_check_ver 'Haivision/srt' '1' 'T'
-    if build 'srt' "$g_ver"; then
-        download "$g_url" "srt-$g_ver.tar.gz"
+    if build 'srt' '1.5.1'; then
+        download 'https://github.com/Haivision/srt/archive/refs/tags/v1.5.1.tar.gz' 'srt-1.5.1.tar.gz'
         export OPENSSL_ROOT_DIR="$workspace"
         export OPENSSL_LIB_DIR="$workspace"/lib
         export OPENSSL_INCLUDE_DIR="$workspace"/include
-        make_dir 'build'
-        execute cmake -B 'build' -DNATIVE='ON' -DCMAKE_INSTALL_PREFIX:="$workspace" -DBUILD_APP='OFF' -DYASM_EXE='/usr/bin/yasm' \
-            -DBUILD_SHARED_LIBS='ON' -DCOMPILE_AS_CPP='ON' -G 'Ninja' -Wno-dev
-        execute ninja "-j$cpu_threads" -C 'build' "-j$cpu_threads"
-        execute ninja -C 'build' install "-j$cpu_threads"
+        execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX:="$workspace" -DYASM_EXE='/usr/bin/yasm' -DBUILD_SHARED_LIBS='1' -DCOMPILE_AS_CPP='1' \
+            -G 'Ninja' -Wno-dev
+        execute ninja -C 'build' "-j$cpu_threads"
+        execute ninja -C 'build' install
 
         if [ -n "$LDEXEFLAGS" ]; then
             sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "$workspace"/lib/pkgconfig/srt.pc
         fi
 
-        build_done 'srt' "$g_ver"
+        build_done 'srt' '1.5.1'
     fi
         cnf_ops+=('--enable-libsrt')
 fi
@@ -1934,9 +1945,10 @@ fi
 ## BUILD FFMPEG
 ##
 
+ff_ver='n6.0'
 # CLONE FFMPEG FROM THE LATEST GIT RELEASE
-if build 'FFmpeg' 'git'; then
-    download_git 'https://git.ffmpeg.org/ffmpeg.git' 'FFmpeg-git'
+if build 'FFmpeg' "$ff_ver"; then
+    download "https://github.com/FFmpeg/FFmpeg/archive/refs/tags/$ff_ver.tar.gz" "FFmpeg-$ff_ver-tar.gz"
     ./configure \
             "${cnf_ops[@]}" \
             --prefix="$workspace" \
