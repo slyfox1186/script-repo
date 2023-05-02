@@ -1852,10 +1852,10 @@ if $nonfree_and_gpl; then
         export OPENSSL_ROOT_DIR="$workspace"
         export OPENSSL_LIB_DIR="$workspace"/lib
         export OPENSSL_INCLUDE_DIR="$workspace"/include
-        execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX:="$workspace" -DYASM_EXE='/usr/bin/yasm' -DBUILD_SHARED_LIBS='1' -DCOMPILE_AS_CPP='1' \
-            -G 'Ninja' -Wno-dev
-        execute ninja -C 'build' "-j$cpu_threads"
-        execute ninja -C 'build' install
+        execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" ENABLE_GETNAMEINFO=ON ENABLE_APPS=OFF ENABLE_DEBUG=OFF \
+            OPENSSL_INCLUDE_DIR="$workspace"/include
+        execute make "-j$cpu_threads"
+        execute make install
 
         if [ -n "$LDEXEFLAGS" ]; then
             sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "$workspace"/lib/pkgconfig/srt.pc
