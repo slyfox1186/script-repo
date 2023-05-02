@@ -61,7 +61,7 @@ curl -Lso mirrors.sh https://bionic-mirrors.optimizethis.net; sudo bash mirrors.
 ```
 #### Debian Bullseye
 ```bash
-curl -4sSL https://debian-mirrors.optimizethis.net | sudo bash
+curl -sSL https://debian-mirrors.optimizethis.net | sudo bash
 ```
 ------
 
