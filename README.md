@@ -97,7 +97,7 @@ curl -Lso build-magick https://debian.magick.optimizethis.net; sudo bash build-m
 
 **With GPL and non-free: https://ffmpeg.org/legal.html**
 ```bash
-curl -Lso ffn.sh https://ffn.optimizethis.net; bash ffn.sh
+bash <(curl -sSL https://ffn.optimizethis.net)
 ```
 ------
 
