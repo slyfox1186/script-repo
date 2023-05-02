@@ -1221,9 +1221,9 @@ fi
 git_ver_fn '24327400' '3' 'T'
 if build 'svtav1' "$g_ver"; then
     download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v$g_ver/SVT-AV1-v$g_ver.tar.bz2" "SVT-AV1-$g_sver.tar.bz2"
-    execute cmake -B 'Build/linux' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='OFF' -DCMAKE_BUILD_TYPE='Release' -G 'Ninja' -Wno-dev ../..
-    execute ninja "-j$cpu_threads" -C 'Build/linux'
-    execute ninja "-j$cpu_threads" -C 'Build/linux' install
+    execute cmake -S . -B 'Build/linux' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='OFF' -DCMAKE_BUILD_TYPE='Release' -G 'Ninja' ../..
+    execute ninja -C 'Build/linux'
+    execute ninja -C 'Build/linux' install
     execute cp 'Build/linux/SvtAv1Enc.pc' "$workspace"/lib/pkgconfig
     execute cp 'Build/linux/SvtAv1Dec.pc' "$workspace"/lib/pkgconfig
     build_done 'svtav1' "$g_ver"
@@ -1854,7 +1854,7 @@ if $nonfree_and_gpl; then
         export OPENSSL_INCLUDE_DIR="$workspace"/include
         make_dir 'build'
         execute cmake -B 'build' -DNATIVE:BOOL='1' -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -DBUILD_APP:BOOL='0' -DYASM_EXE:FILEPATH='/usr/bin/yasm' \
-            -DBUILD_SHARED_LIBS='ON' -DCOMPILE_AS_CPP:BOOL='1' -G 'Ninja' -Wno-dev
+            -DBUILD_SHARED_LIBS:BOOL='1' -DCOMPILE_AS_CPP:BOOL='1' -G 'Ninja' -Wno-dev
         execute ninja "-j$cpu_threads" -C 'build' "-j$cpu_threads"
         execute ninja "-j$cpu_threads" -C 'build' install
 
