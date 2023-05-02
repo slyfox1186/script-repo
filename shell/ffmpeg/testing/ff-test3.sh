@@ -1852,10 +1852,11 @@ if $nonfree_and_gpl; then
         export OPENSSL_ROOT_DIR="$workspace"
         export OPENSSL_LIB_DIR="$workspace"/lib
         export OPENSSL_INCLUDE_DIR="$workspace"/include
-        execute cmake . -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR="$workspace"/lib -DCMAKE_INSTALL_BINDIR="$workspace"/bin \
-            -DCMAKE_INSTALL_INCLUDEDIR="$workspace"/include -DBUILD_SHARED_LIBS='OFF' -DENABLE_APPS='OFF' -DUSE_STATIC_LIBSTDCXX='ON'
-        execute make "-j$cpu_threads"
-        execute make install
+        make_dir 'build'
+        execute cmake -B 'build' -DNATIVE:BOOL="1" -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -DBUILD_APP:BOOL="0" -DYASM_EXE:FILEPATH="/usr/bin/yasm" \
+            -DBUILD_SHARED_LIBS:BOOL="1" -DCOMPILE_AS_CPP:BOOL="1" -G 'Ninja'
+        execute ninja -C 'build' "-j$cpu_threads"
+        execute ninja -C 'build' install
 
         if [ -n "$LDEXEFLAGS" ]; then
             sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "$workspace"/lib/pkgconfig/srt.pc
@@ -1901,7 +1902,7 @@ if build 'amf' "$g_ver"; then
 fi
 cnf_ops+=('--enable-amf')
 
-if which 'nvcc' &>/dev/null; then
+if [ -n "iscuda" ]; then
     pre_check_ver 'FFmpeg/nv-codec-headers' '1' 'T'
     if build 'nv-codec' "$g_ver"; then
         download "$g_url" "nv-codec-$g_ver.tar.gz"
