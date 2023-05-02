@@ -1759,7 +1759,7 @@ fi
 if command_exists 'meson'; then
     pre_check_ver 'harfbuzz/harfbuzz' '1' 'T'
     if build 'harfbuzz' "$g_ver"; then
-        download "$g_url" "harfbuzz-$g_ver.tar.gz"
+        download_git 'https://github.com/harfbuzz/harfbuzz.git' "harfbuzz-$g_ver"
         execute ./autogen.sh
         execute meson setup 'build' --prefix="$workspace" --libdir="$workspace"/lib --pkg-config-path="$workspace"/lib/pkgconfig \
                 --buildtype='release' --default-library='static' --optimization='s' --strip
