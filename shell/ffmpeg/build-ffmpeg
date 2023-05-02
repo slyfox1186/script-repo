@@ -1047,7 +1047,7 @@ if build 'yasm' "$g_ver"; then
     make_dir 'build'
     execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='OFF' -DUSE_OMP='OFF' -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C 'build'
-    execute ninja "-j$cpu_threads" -C 'build' install
+    execute ninja -C 'build' install "-j$cpu_threads"
     build_done 'yasm' "$g_ver"
 fi
 
@@ -1187,7 +1187,7 @@ if build 'googletest' "$g_ver"; then
     make_dir 'build'
     execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_GMOCK='OFF' -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C 'build'
-    execute ninja "-j$cpu_threads" -C 'build' install
+    execute ninja -C 'build' install "-j$cpu_threads"
     build_done 'googletest' "$g_ver"
 fi
 
@@ -1197,7 +1197,7 @@ if build 'abseil' 'git'; then
     execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_EXPORT_COMPILE_COMMANDS='ON' -DABSL_PROPAGATE_CXX_STD='ON' -G 'Ninja' -Wno-dev
     execute cmake --build build --target all --parallel='32'
     execute ninja "-j$cpu_threads" -C 'build'
-    execute ninja "-j$cpu_threads" -C 'build' install
+    execute ninja -C 'build' install "-j$cpu_threads"
     build_done 'abseil' 'git'
 fi
 
@@ -1309,7 +1309,7 @@ if build 'SVT-HEVC' "$g_ver"; then
     make_dir 'build'
     execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='OFF' -DCMAKE_BUILD_TYPE='Release' -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C 'build'
-    execute ninja "-j$cpu_threads" -C 'build' install
+    execute ninja -C 'build' install "-j$cpu_threads"
     build_done 'SVT-HEVC' "$g_ver"
 fi
 
@@ -1360,7 +1360,7 @@ if $nonfree_and_gpl; then
         execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='OFF' -DCMAKE_BUILD_TYPE='Release' \
              -DUSE_OMP='ON' -G 'Ninja' -Wno-dev
         execute ninja "-j$cpu_threads" -C 'build'
-        execute ninja "-j$cpu_threads" -C 'build' install
+        execute ninja -C 'build' install "-j$cpu_threads"
         build_done 'vid_stab' "$g_ver"
     fi
     cnf_ops+=('--enable-libvidstab')
@@ -1456,7 +1456,7 @@ if command_exists 'python3'; then
             execute meson setup build --prefix="$workspace" --buildtype='release' --default-library='static' \
                 --libdir="$workspace"/lib  --pkg-config-path="$workspace"/lib/pkgconfig
             execute ninja "-j$cpu_threads" -C 'build'
-            execute ninja "-j$cpu_threads" -C 'build' install
+            execute ninja -C 'build' install "-j$cpu_threads"
             build_done 'serd' "$g_ver"
         fi
 
@@ -1541,7 +1541,7 @@ if build 'opus' "$g_ver"; then
     execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='OFF' -DCMAKE_C_FLAGS_DEBUG='-g' \
         -DCPACK_SOURCE_ZIP='1' -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C 'build'
-    execute ninja "-j$cpu_threads" -C 'build' install
+    execute ninja -C 'build' install "-j$cpu_threads"
     build_done 'opus' "$g_ver"
 fi
 cnf_ops+=('--enable-libopus')
@@ -1554,7 +1554,7 @@ if build 'libogg' "$g_ver"; then
     execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace"  -DCMAKE_BUILD_TYPE='Release' -DBUILD_SHARED_LIBS='0' \
         -DCPACK_BINARY_DEB='1' -DBUILD_TESTING='0'-DCPACK_SOURCE_ZIP='1' -DBUILD_SHARED_LIBS='OFF' -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C 'build'
-    execute ninja "-j$cpu_threads" -C 'build' install
+    execute ninja -C 'build' install "-j$cpu_threads"
     build_done 'libogg' "$g_ver"
 fi
 
@@ -1565,7 +1565,7 @@ if build 'libvorbis' "$g_ver"; then
     execute autoreconf -fi
     execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='0' -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C 'build'
-    execute ninja "-j$cpu_threads" -C 'build' install
+    execute ninja -C 'build' install "-j$cpu_threads"
     build_done 'libvorbis' "$g_ver"
 fi
 cnf_ops+=('--enable-libvorbis')
@@ -1616,7 +1616,7 @@ if build 'openjpeg' "$g_ver"; then
         -DCPACK_BINARY_IFW='ON' -DBUILD_SHARED_LIBS='OFF' -DCPACK_BINARY_DEB='ON' -DCPACK_BINARY_TBZ2='ON' \
         -DCPACK_BINARY_NSIS='ON' -DCPACK_BINARY_RPM='ON' -DCPACK_BINARY_TXZ='ON' -DCMAKE_EXPORT_COMPILE_COMMANDS='ON' -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C 'build'
-    execute ninja "-j$cpu_threads" -C 'build' install
+    execute ninja -C 'build' install "-j$cpu_threads"
     build_done 'openjpeg' "$g_ver"
 fi
 cnf_ops+=('--enable-libopenjpeg')
@@ -1643,7 +1643,7 @@ if build 'libwebp' 'git'; then
         -DWEBP_BUILD_WEBPMUX='OFF' -DWEBP_ENABLE_SWAP_16BIT_CSP='OFF' -DWEBP_BUILD_WEBPINFO='OFF' -DZLIB_INCLUDE_DIR="/usr/include" \
         -DWEBP_BUILD_VWEBP='OFF' -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C 'build' all
-    execute ninja "-j$cpu_threads" -C 'build' install
+    execute ninja -C 'build' install "-j$cpu_threads"
     build_done 'libwebp' 'git'
 fi
 cnf_ops+=('--enable-libwebp')
@@ -1686,7 +1686,7 @@ if build 'frei0r' "$g_ver"; then
         -DCMAKE_CXX_COMPILER_RANLIB="/usr/bin/gcc-ranlib-12" -DCMAKE_CXX_FLAGS_DEBUG="-g" -DCMAKE_EXPORT_COMPILE_COMMANDS='ON' \
         -DWEBP_ENABLE_SWAP_16BIT_CSP='ON' -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C 'build'
-    execute ninja "-j$cpu_threads" -C 'build' install
+    execute ninja -C 'build' install "-j$cpu_threads"
     build_done 'frei0r' "$g_ver"
 fi
 cnf_ops+=('--enable-frei0r')
@@ -1731,7 +1731,7 @@ if build 'zenLib' "$g_ver"; then
     execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR="$workspace"/lib -DCMAKE_INSTALL_BINDIR="$workspace"/bin \
         -DCMAKE_INSTALL_INCLUDEDIR="$workspace"/include -DBUILD_SHARED_LIBS='OFF' -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C 'build'
-    execute ninja "-j$cpu_threads" -C 'build' install
+    execute ninja -C 'build' install "-j$cpu_threads"
     build_done 'zenLib' "$g_ver"
 fi
 
@@ -1853,10 +1853,10 @@ if $nonfree_and_gpl; then
         export OPENSSL_LIB_DIR="$workspace"/lib
         export OPENSSL_INCLUDE_DIR="$workspace"/include
         make_dir 'build'
-        execute cmake -B 'build' -DNATIVE:BOOL='1' -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -DBUILD_APP:BOOL='0' -DYASM_EXE:FILEPATH='/usr/bin/yasm' \
-            -DBUILD_SHARED_LIBS:BOOL='1' -DCOMPILE_AS_CPP:BOOL='1' -G 'Ninja' -Wno-dev
+        execute cmake -B 'build' -DNATIVE='ON' -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -DBUILD_APP='OFF' -DYASM_EXE='/usr/bin/yasm' \
+            -DBUILD_SHARED_LIBS='ON' -DCOMPILE_AS_CPP='ON' -G 'Ninja' -Wno-dev
         execute ninja "-j$cpu_threads" -C 'build' "-j$cpu_threads"
-        execute ninja "-j$cpu_threads" -C 'build' install
+        execute ninja -C 'build' install "-j$cpu_threads"
 
         if [ -n "$LDEXEFLAGS" ]; then
             sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "$workspace"/lib/pkgconfig/srt.pc
