@@ -52,7 +52,7 @@ pkgs_fn()
           git-hub gnome-shell-extension-manager gnome-tweaks gnustep-gui-runtime golang gparted \
           gperf grub-customizer gufw hfsplus hfsprogs hfsutils htop idn2 iftop iw jfsutils \
           jq libbz2-dev libdmalloc-dev libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev liblz-dev \
-          liblzma-dev liblzo2-dev libmimalloc-dev libncurses5-dev libnet-nslookup-perl \
+          libasan6-amd64-cross liblzma-dev liblzo2-dev libmimalloc-dev libncurses5-dev libnet-nslookup-perl \
           libnuma-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev \
           librust-jemalloc-sys-dev librust-malloc-buf-dev libsdl-pango-dev libsox-dev \
           libsoxr-dev libssl-dev libtalloc-dev libtbbmalloc2 libtool libtool-bin \
