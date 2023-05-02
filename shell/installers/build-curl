@@ -296,7 +296,8 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok insta
 export PATH="$PATH:/usr/local/share/ca-certificates"
 
 CFLAGS="\
--I/usr/include -I/usr/local/include \
+-I/usr/include \
+-I/usr/local/include \
 -I/usr/lib/llvm-14/include \
 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include \
 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include \
@@ -311,7 +312,6 @@ export CFLAGS
 LD_LIBRARY_PATH="\
 /lib:/usr/lib:\
 /usr/local/lib:\
-intl-perl/lib:\
 /llvm-14/lib:\
 /python3/dist-packages/reportlab/lib:\
 /rustlib:\
