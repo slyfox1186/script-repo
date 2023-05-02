@@ -746,42 +746,42 @@ cuda_fn()
 
     case "$c_dist" in
         1)
-            wget --show progress -4cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-debian10-12-1-local_12.1.1-530.30.02-1_amd64.deb'
+            wget --show progress -cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-debian10-12-1-local_12.1.1-530.30.02-1_amd64.deb'
             sudo dpkg -i 'cuda-12.1.1.deb'
             sudo cp /var/cuda-repo-debian10-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             sudo add-apt-repository contrib
             ;;
         2)
-            wget --show progress -4cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-debian11-12-1-local_12.1.1-530.30.02-1_amd64.deb'
+            wget --show progress -cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-debian11-12-1-local_12.1.1-530.30.02-1_amd64.deb'
             sudo dpkg -i 'cuda-12.1.1.deb'
             sudo cp /var/cuda-repo-debian11-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             sudo add-apt-repository contrib
             ;;
         3)
-            wget --show progress -4cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin'
+            wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin'
             sudo mv 'cuda-ubuntu1804.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-            wget --show progress -4cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-ubuntu1804-12-1-local_12.1.1-530.30.02-1_amd64.deb'
+            wget --show progress -cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-ubuntu1804-12-1-local_12.1.1-530.30.02-1_amd64.deb'
             sudo dpkg -i 'cuda-12.1.1.deb'
             sudo cp /var/cuda-repo-ubuntu1804-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             ;;
         4)
-            wget --show progress -4cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin'
+            wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin'
             sudo mv 'cuda-ubuntu2004.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-            wget --show progress -4cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-ubuntu2004-12-1-local_12.1.1-530.30.02-1_amd64.deb'
+            wget --show progress -cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-ubuntu2004-12-1-local_12.1.1-530.30.02-1_amd64.deb'
             sudo dpkg -i 'cuda-12.1.1.deb'
             sudo cp /var/cuda-repo-ubuntu2004-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             ;;
         5)
-            wget --show progress -4cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin'
+            wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin'
             sudo mv 'cuda-ubuntu2204.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-            wget --show progress -4cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-ubuntu2204-12-1-local_12.1.1-530.30.02-1_amd64.deb'
+            wget --show progress -cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-ubuntu2204-12-1-local_12.1.1-530.30.02-1_amd64.deb'
             sudo dpkg -i 'cuda-12.1.1.deb'
             sudo cp /var/cuda-repo-ubuntu2204-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             ;;
         6)
-            wget --show progress -4cq 'https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin'
+            wget --show progress -cq 'https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin'
             sudo mv 'cuda-wsl-ubuntu.pin' '/etc/apt/preferences.d/cuda-repository-pin-600'
-            wget --show progress -4cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-wsl-ubuntu-12-1-local_12.1.1-1_amd64.deb'
+            wget --show progress -cqO 'cuda-12.1.1.deb' 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-wsl-ubuntu-12-1-local_12.1.1-1_amd64.deb'
             sudo dpkg -i 'cuda-12.1.1.deb'
             sudo cp /var/cuda-repo-wsl-ubuntu-12-1-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             ;;
@@ -1371,11 +1371,11 @@ if build 'av1' 'd192cdf'; then
     make_dir "$packages"/aom_build
     cd "$packages"/aom_build || exit 1
     execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR="$workspace"/lib \
-        -DCMAKE_BUILD_TYPE='Release' -DCONFIG_ACCOUNTING='0' -DCONFIG_ANALYZER='0' -DCONFIG_AV1_DECODER='1' \
-        -DCONFIG_AV1_ENCODER='1' -DCONFIG_AV1_HIGHBITDEPTH='1' -DCONFIG_AV1_TEMPORAL_DENOISING='0' \
-        -DCONFIG_BIG_ENDIAN='0' -DCONFIG_COLLECT_RD_STATS='0' -DCONFIG_DENOISE='1' -DCONFIG_DISABLE_FULL_PIXEL_SPLIT_8X8='1' \
-        -DCONFIG_ENTROPY_STATS='0' -DCONFIG_SHARED='0' -DENABLE_CCACHE='1' -DENABLE_EXAMPLES='0' \
-        -DENABLE_TESTS='0' "$packages"/av1 -G 'Unix Makefiles' "$packages"/av1
+        -DCMAKE_BUILD_TYPE='Release' -DCONFIG_ACCOUNTING='OFF' -DCONFIG_ANALYZER='OFF' -DCONFIG_AV1_DECODER='ON' \
+        -DCONFIG_AV1_ENCODER='ON' -DCONFIG_AV1_HIGHBITDEPTH='ON' -DCONFIG_AV1_TEMPORAL_DENOISING='OFF' \
+        -DCONFIG_BIG_ENDIAN='OFF' -DCONFIG_COLLECT_RD_STATS='OFF' -DCONFIG_DENOISE='ON' -DCONFIG_DISABLE_FULL_PIXEL_SPLIT_8X8='ON' \
+        -DCONFIG_ENTROPY_STATS='OFF' -DCONFIG_SHARED='OFF' -DENABLE_CCACHE='ON' -DENABLE_EXAMPLES='OFF' \
+        -DENABLE_TESTS='OFF' "$packages"/av1 -G 'Unix Makefiles' "$packages"/av1
     execute make -j "$cpu_threads"
     execute make install
     build_done 'av1' 'd192cdf'
@@ -1539,7 +1539,7 @@ if build 'opus' "$g_ver"; then
     make_dir 'build'
     execute autoreconf -isf
     execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='OFF' -DCMAKE_C_FLAGS_DEBUG='-g' \
-        -DCPACK_SOURCE_ZIP='1' -G 'Ninja' -Wno-dev
+        -DCPACK_SOURCE_ZIP='OFF' -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C 'build'
     execute ninja -C 'build' install "-j$cpu_threads"
     build_done 'opus' "$g_ver"
@@ -1551,8 +1551,8 @@ if build 'libogg' "$g_ver"; then
     download "$g_url" "libogg-$g_ver.tar.gz"
     execute mkdir -p 'm4' 'build'
     execute autoreconf -fi
-    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace"  -DCMAKE_BUILD_TYPE='Release' -DBUILD_SHARED_LIBS='0' \
-        -DCPACK_BINARY_DEB='1' -DBUILD_TESTING='0'-DCPACK_SOURCE_ZIP='1' -DBUILD_SHARED_LIBS='OFF' -G 'Ninja' -Wno-dev
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace"  -DCMAKE_BUILD_TYPE='Release' -DBUILD_SHARED_LIBS='ON' \
+        -DCPACK_BINARY_DEB='OFF' -DBUILD_TESTING='OFF'-DCPACK_SOURCE_ZIP='OFF' -DBUILD_SHARED_LIBS='OFF' -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C 'build'
     execute ninja -C 'build' install "-j$cpu_threads"
     build_done 'libogg' "$g_ver"
@@ -1563,7 +1563,7 @@ if build 'libvorbis' "$g_ver"; then
     download "$g_url" "libvorbis-$g_ver.tar.gz"
     make_dir 'build'
     execute autoreconf -fi
-    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='0' -G 'Ninja' -Wno-dev
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='ON' -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C 'build'
     execute ninja -C 'build' install "-j$cpu_threads"
     build_done 'libvorbis' "$g_ver"
@@ -1639,7 +1639,7 @@ if build 'libwebp' 'git'; then
     execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='OFF' -DCMAKE_BUILD_TYPE='Release' \
         -DCMAKE_C_FLAGS_RELEASE="-O3 -DNDEBUG" -DWEBP_BUILD_EXTRAS='OFF' -DWEBP_BUILD_LIBWEBPMUX='OFF' \
         -DCMAKE_INSTALL_INCLUDEDIR="include" -DWEBP_LINK_STATIC='OFF' -DWEBP_BUILD_GIF2WEBP='OFF' -DWEBP_BUILD_IMG2WEBP='OFF' \
-        -DCMAKE_EXPORT_COMPILE_COMMANDS='1' -DWEBP_BUILD_DWEBP='ON' -DWEBP_BUILD_CWEBP='ON' -DWEBP_BUILD_ANIM_UTILS='OFF' \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS='OFF' -DWEBP_BUILD_DWEBP='ON' -DWEBP_BUILD_CWEBP='ON' -DWEBP_BUILD_ANIM_UTILS='OFF' \
         -DWEBP_BUILD_WEBPMUX='OFF' -DWEBP_ENABLE_SWAP_16BIT_CSP='OFF' -DWEBP_BUILD_WEBPINFO='OFF' -DZLIB_INCLUDE_DIR="/usr/include" \
         -DWEBP_BUILD_VWEBP='OFF' -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C 'build' all
@@ -1853,7 +1853,7 @@ if $nonfree_and_gpl; then
         export OPENSSL_LIB_DIR="$workspace"/lib
         export OPENSSL_INCLUDE_DIR="$workspace"/include
         make_dir 'build'
-        execute cmake -B 'build' -DNATIVE='ON' -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -DBUILD_APP='OFF' -DYASM_EXE='/usr/bin/yasm' \
+        execute cmake -B 'build' -DNATIVE='ON' -DCMAKE_INSTALL_PREFIX:="$workspace" -DBUILD_APP='OFF' -DYASM_EXE='/usr/bin/yasm' \
             -DBUILD_SHARED_LIBS='ON' -DCOMPILE_AS_CPP='ON' -G 'Ninja' -Wno-dev
         execute ninja "-j$cpu_threads" -C 'build' "-j$cpu_threads"
         execute ninja -C 'build' install "-j$cpu_threads"
