@@ -55,11 +55,4 @@ echo 'Downloading and executing the build script'
 echo '============================================='
 echo
 
-curl -LSso 'build-ffmpeg' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ffmpeg/build-ffmpeg'
-if [ -f build-ffmpeg ]; then
-    bash 'build-ffmpeg' --build --enable-gpl-and-non-free --latest
-else
-    echo 'FATAL: File not found: build-ffmpeg'
-    echo
-    exit 1
-fi
+bash <(curl -sSL 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ffmpeg/build-ffmpeg') --build --latest --enable-gpl-and-non-free
