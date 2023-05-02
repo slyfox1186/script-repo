@@ -1228,8 +1228,6 @@ if build 'svtav1' "$g_ver"; then
     cd 'build' || exit 1
     execute make "-j$cpu_threads"
     execute make install
-    # cp 'build/SvtAv1Enc.pc' "${workspace}"/lib/pkgconfig
-    # cp 'build/SvtAv1Enc.pc' "${workspace}"/lib/pkgconfig
     build_done 'svtav1' "$g_ver"
     cnf_ops+=("--enable-libsvtav1")
 fi
