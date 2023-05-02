@@ -1551,7 +1551,7 @@ if build 'libogg' "$g_ver"; then
     download "$g_url" "libogg-$g_ver.tar.gz"
     execute mkdir -p 'm4' 'build'
     execute autoreconf -fi
-    cmake -S . -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace"  -DCMAKE_BUILD_TYPE='Release' -DBUILD_SHARED_LIBS='0' \
+    execute cmake -S . -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace"  -DCMAKE_BUILD_TYPE='Release' -DBUILD_SHARED_LIBS='0' \
         -DCPACK_BINARY_DEB='1' -DBUILD_TESTING='0'-DCPACK_SOURCE_ZIP='1' -DBUILD_SHARED_LIBS='OFF' -G 'Ninja'
     execute ninja -C 'build'
     execute ninja -C 'build' install
