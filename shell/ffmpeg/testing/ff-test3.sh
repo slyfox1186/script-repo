@@ -1727,10 +1727,11 @@ pre_check_ver 'mediaarea/zenLib' '1' 'T'
 if build 'zenLib' "$g_ver"; then
     download "$g_url" "zenLib-$g_ver.tar.gz"
     cd Project/CMake || exit 1
-    execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR="$workspace"/lib -DCMAKE_INSTALL_BINDIR="$workspace"/bin \
-        -DCMAKE_INSTALL_INCLUDEDIR="$workspace"/include -DBUILD_SHARED_LIBS='OFF'
-    execute make "-j$cpu_threads"
-    execute make install
+    make_dir 'build'
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR="$workspace"/lib -DCMAKE_INSTALL_BINDIR="$workspace"/bin \
+        -DCMAKE_INSTALL_INCLUDEDIR="$workspace"/include -DBUILD_SHARED_LIBS='OFF' -G 'Ninja'
+    execute ninja -C 'build'
+    execute ninja -C 'build' install
     build_done 'zenLib' "$g_ver"
 fi
 
