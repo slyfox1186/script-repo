@@ -62,7 +62,7 @@ pkgs_fn()
           openssh-client openssh-server openssl patchutils pbuilder pcregrep php-cli \
           php-sqlite3 pipenv plank plocate ppa-purge pristine-tar psensor python3 \
           python3-pip quilt reiser4progs reiserfsprogs rpm ruby-all-dev samba shellcheck \
-          smbclient sox sqlite3 subversion synaptic texinfo tofrodos trash-cli tty-share \
+          smbclient sox sqlite3 subversion synaptic texinfo tilix tofrodos trash-cli tty-share \
           udftools unzip uuid-dev wget xclip xfsprogs xsel yasm)
 
     for pkg in ${pkgs[@]}
