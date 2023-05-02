@@ -1371,11 +1371,11 @@ if build 'av1' 'd192cdf'; then
     make_dir "$packages"/aom_build
     cd "$packages"/aom_build || exit 1
     execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR="$workspace"/lib \
-        -DCMAKE_BUILD_TYPE='Release' -DCONFIG_ACCOUNTING='OFF' -DCONFIG_ANALYZER='OFF' -DCONFIG_AV1_DECODER='ON' \
-        -DCONFIG_AV1_ENCODER='ON' -DCONFIG_AV1_HIGHBITDEPTH='ON' -DCONFIG_AV1_TEMPORAL_DENOISING='OFF' \
-        -DCONFIG_BIG_ENDIAN='OFF' -DCONFIG_COLLECT_RD_STATS='OFF' -DCONFIG_DENOISE='ON' -DCONFIG_DISABLE_FULL_PIXEL_SPLIT_8X8='ON' \
-        -DCONFIG_ENTROPY_STATS='OFF' -DCONFIG_SHARED='OFF' -DENABLE_CCACHE='ON' -DENABLE_EXAMPLES='OFF' \
-        -DENABLE_TESTS='OFF' "$packages"/av1 -G 'Unix Makefiles' "$packages"/av1
+        -DCMAKE_BUILD_TYPE='Release' -DCONFIG_ACCOUNTING='0' -DCONFIG_ANALYZER='0' -DCONFIG_AV1_DECODER='1' \
+        -DCONFIG_AV1_ENCODER='1' -DCONFIG_AV1_HIGHBITDEPTH='1' -DCONFIG_AV1_TEMPORAL_DENOISING='0' \
+        -DCONFIG_BIG_ENDIAN='0' -DCONFIG_COLLECT_RD_STATS='0' -DCONFIG_DENOISE='1' -DCONFIG_DISABLE_FULL_PIXEL_SPLIT_8X8='1' \
+        -DCONFIG_ENTROPY_STATS='0' -DCONFIG_SHARED='0' -DENABLE_CCACHE='1' -DENABLE_EXAMPLES='0' \
+        -DENABLE_TESTS='0' "$packages"/av1 -G 'Unix Makefiles' "$packages"/av1
     execute make -j "$cpu_threads"
     execute make install
     build_done 'av1' 'd192cdf'
