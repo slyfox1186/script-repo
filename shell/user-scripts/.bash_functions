@@ -918,7 +918,7 @@ hw_mon()
     clear
 
     if [ ! -f "$dpath".tar.gz ]; then
-        7z a -t7z -m0=lzma2 -mx9 "$dpath".7z "$spath"
+        7z a -t7z -m0=lzma2 -mx9 "$dpath".7z ./"$spath"/*
     else
         clear
         printf "%s\n\n%s\n\n" \
