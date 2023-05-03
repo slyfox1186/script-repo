@@ -948,15 +948,9 @@ wcache()
 
     local drive_choice
 
-    if [ $EUID -ne 0 ]; then
-        echo 'You must run this with root/sudo'
-        echo
-        exit 1
-    fi
-
     lsblk
     echo
     read -p 'Enter the drive id to turn off write cacheing (/dev/sdX w/o /dev/): ' drive_choice
 
-    hdparm -W 0 "$drive_choice"
+    sudo hdparm -W 0 "$drive_choice"
 }
