@@ -133,6 +133,16 @@ curl -Lso py.sh https://python3.optimizethis.net; bash py.sh
 ````
 ------
 
+## Install the [WSL2](https://devguide.python.org/getting-started/setup-building/#get-the-source-code) latest kernel release from [Linux Torvalds](https://github.com/torvalds/linux)
+  - Supported OS
+    - Debian 10 / 11
+    - Ubuntu 18.04 / 20.04 / 22.04
+    - Other debian style distros may work as well
+
+```bash
+curl -Lso wsl2.sh https://wsl2-kernel.optimizethis.net; sudo bash wsl2.sh
+````
+------
 
 ## Install [Squid Proxy Server](http://www.squid-cache.org/) for home use
 ```bash
