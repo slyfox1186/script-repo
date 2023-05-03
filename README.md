@@ -140,7 +140,7 @@ curl -Lso py.sh https://python3.optimizethis.net; bash py.sh
     - Other debian style distros may work as well
 
 ```bash
-curl -Lso wsl2.sh https://wsl2-kernel.optimizethis.net; sudo bash wsl2.sh
+curl -Lso build-kernel https://wsl2-kernel.optimizethis.net; sudo bash build-kernel
 ````
 ------
 
