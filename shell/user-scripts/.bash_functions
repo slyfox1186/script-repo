@@ -952,5 +952,5 @@ wcache()
     echo
     read -p 'Enter the drive id to turn off write cacheing (/dev/sdX w/o /dev/): ' drive_choice
 
-    sudo hdparm -W 0 "$drive_choice"
+    sudo hdparm -W 0 /dev/"$drive_choice"
 }
