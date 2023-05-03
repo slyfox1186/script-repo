@@ -455,7 +455,7 @@ execute()
 {
     echo "$ $*"
 
-    if ! "$@" 2>&1; then
+    if ! output=$("$@" 2>&1); then
         fail_fn "Failed to Execute $*"
     fi
 }
