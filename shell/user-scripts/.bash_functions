@@ -21,7 +21,7 @@ ffind()
 {
     clear
 
-    local fname fpath ftype
+    local fname fpath ftype fmaxdepth
 
     read -p 'Enter the name to search for: ' fname
     echo
@@ -36,7 +36,7 @@ ffind()
         sudo find "$fpath" -iname "$fname" | while read line; do echo "$line"; done
     elif [ -n "$fname" ] && [ -n "$ftype" ] && [ -n "$fpath" ]; then
         sudo find "$fpath" -type "$ftype" -iname "$fname" | while read line; do echo "$line"; done
-    elif [ -n "$fname" ] && [ -z "$ftype" ] && [ "$fpath" = '.' ]; then
+    elif [ -n "$fname" ] && [ -z "$ftype" ] && [ "$fpath" ]; then
         sudo find . -iname "$fname" | while read line; do echo "$line"; done
     elif [ -n "$fname" ] && [ -n "$ftype" ] && [ "$fpath" = '.' ]; then
         sudo find . -type "$ftype" -iname "$fname" | while read line; do echo "$line"; done
@@ -879,12 +879,6 @@ hw_mon()
     sudo watch -n1 sensors
 }
 
-#####################
-## FFMPEG COMMANDS ##
-#####################
-
-ffr() { bash "$1" -b --latest --enable-gpl-and-non-free; }
-
 ###################
 ## 7ZIP COMMANDS ##
 ###################
@@ -911,4 +905,58 @@ ffr() { bash "$1" -b --latest --enable-gpl-and-non-free; }
         'Please choose another output name or delete the file.'
         exit 1 &>/dev/null
     fi
+}
+
+# create a max compressed settings 7z file
+7z_7z()
+{
+    clear
+
+    local spath dpath
+
+    read -p 'Please enter the source folder path: ' spath
+    echo
+    read -p 'Please enter the destination archive path (w/o extension): ' dpath
+    clear
+
+    if [ ! -f "$dpath".tar.gz ]; then
+        7z a -t7z -mx9 -o"$dpath".7z "$spath"
+        exit 0
+    else
+        clear
+        printf "%s\n\n%s\n\n" \
+        'The output file already exists.' \
+        'Please choose another output name or delete the file.'
+        exit 1 &>/dev/null
+    fi
+}
+
+#####################
+## FFMPEG COMMANDS ##
+#####################
+
+ffr() { bash "$1" -b --latest --enable-gpl-and-non-free; }
+ffrv() { bash -v "$1" -b --latest --enable-gpl-and-non-free; }
+
+###################
+## WRITE CACHING ##
+###################
+
+wcache()
+{
+    clear
+
+    local drive_choice
+
+    if [ $EUID -ne 0 ]; then
+        echo 'You must run this with root/sudo'
+        echo
+        exit 1
+    fi
+
+    lsblk
+    echo
+    read -p 'Enter the drive id to turn off write cacheing (/dev/sdX w/o /dev/): ' drive_choice
+
+    hdparm -W 0 "$drive_choice"
 }
