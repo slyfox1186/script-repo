@@ -897,13 +897,11 @@ hw_mon()
 
     if [ ! -f "$dpath".tar.gz ]; then
         7z a -ttar -so -an "$spath" | 7z a -mx9 -mpass1 -si "$dpath".tar.gz
-        exit 0
     else
         clear
         printf "%s\n\n%s\n\n" \
         'The output file already exists.' \
         'Please choose another output name or delete the file.'
-        exit 1 &>/dev/null
     fi
 }
 
@@ -921,13 +919,11 @@ hw_mon()
 
     if [ ! -f "$dpath".tar.gz ]; then
         7z a -t7z -mx9 -o"$dpath".7z "$spath"
-        exit 0
     else
         clear
         printf "%s\n\n%s\n\n" \
         'The output file already exists.' \
         'Please choose another output name or delete the file.'
-        exit 1 &>/dev/null
     fi
 }
 
