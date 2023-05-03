@@ -264,7 +264,6 @@ fi
 
 # PULL THE LATEST VERSIONS OF EACH PACKAGE FROM THE WEBSITE API
 curl_timeout='10'
-git_token='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'
 
 git_1_fn()
 {
