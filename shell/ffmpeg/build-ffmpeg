@@ -17,9 +17,9 @@
 ##           the user will be prompted by the script to install them so that
 ##           hardware acceleration is enabled when compiling FFmpeg
 ##
-##  Updated: 05.02.23
+##  Updated: 05.04.23
 ##
-##  Version: 5.0
+##  Version: 5.1
 ##
 #################################################################################
 
@@ -29,18 +29,23 @@
 
 # FFmpeg version: Whatever the latest Git pull from: https://git.ffmpeg.org/gitweb/ffmpeg.git
 progname="${0:2}"
-script_ver='5.0'
+script_ver='5.1'
 cuda_ver='12.1.1'
 packages="$PWD"/packages
 workspace="$PWD"/workspace
 install_dir='/usr/bin'
-CFLAGS="-I$workspace/include -I/usr/include -I/usr/local/include"
 LDFLAGS="-L$workspace"/lib
 LDEXEFLAGS=''
 EXTRALIBS='-ldl -lpthread -lm -lz'
 cnf_ops=()
 nonfree_and_gpl='false'
 latest='false'
+CFLAGS="\
+-I$workspace/include \
+-I/usr/include \
+-I/usr/local/include \
+-I/usr/include/gnutls\
+"
 
 # create the output directories
 mkdir -p "$packages"
@@ -273,10 +278,8 @@ git_1_fn()
     github_repo="$1"
     github_url="$2"
 
-string="stirng" ; echo "${string//ir/ri}"
-
     if [ "$github_url" = 'releases/latest' ]; then
-        if curl_cmd="$(curl -m "$curl_timeout" -sSL https://api.github.com/repos/"$github_repo"/"$github_url")"; then
+        if curl_cmd="$(curl -m "$curl_timeout" -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
             g_url="$(echo "$curl_cmd" | jq -r '.tarball_url')"
             g_ver="${g_url##*/}"
             g_ver="${g_ver##v}"
@@ -286,9 +289,11 @@ string="stirng" ; echo "${string//ir/ri}"
         fi
     fi
 
-    if [ "$github_url" = 'tags' ]; then
-        if curl_cmd="$(curl -m "$curl_timeout" -sSL https://api.github.com/repos/"$github_repo"/"$github_url")"; then
+    if [ "$github_url" = 'tags' ] || [ "$github_url" = 'releases' ]; then
+        if curl_cmd="$(curl -m "$curl_timeout" -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
+            g_url="$(echo "$curl_cmd" | jq -r '.tarball_url')"
             g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
+            g_deb_url="$(echo "$curl_cmd" | jq -r '.' | grep 'browser_download_url' | head -n1 | grep -Eo 'http.*b')"
             g_ver="${g_ver#v}"
             g_ver3="$(echo "$curl_cmd" | jq -r '.[3].name')"
             g_ver3="${g_ver3#v}"
@@ -296,6 +301,7 @@ string="stirng" ; echo "${string//ir/ri}"
             g_ver="${g_ver#OpenSSL }"
             g_ver="${g_ver#pkgconf-}"
             g_ver="${g_ver#lcms}"
+            g_deb_ver="${g_ver%-*}"
             g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url')"
         fi
     fi
@@ -510,7 +516,7 @@ cuda_fail_fn()
     echo '                    Script error:'
     echo '======================================================'
     echo
-    echo "Unable to locate directory: /usr/local/cuda-12.1/bin/"
+    echo 'Unable to locate the directory: cuda'
     echo
     read -p 'Press enter to exit.'
     clear
@@ -685,8 +691,13 @@ $workspace/lib/pkgconfig:\
 "
 export PKG_CONFIG_PATH
 
-LD_LIBRARY_PATH="$workspace"/lib
-
+LD_LIBRARY_PATH="\
+$workspace/lib:\
+/usr/x86_64-linux-gnu/lib:\
+/usr/lib:\
+/usr/local/lib:\
+/usr/share/ant/lib\
+"
 export LD_LIBRARY_PATH
 
 if ! command_exists 'make'; then
@@ -819,7 +830,7 @@ build_pkgs_fn()
           liblzma-dev liblzo2-dev libmathic-dev libmimalloc-dev libmusicbrainz5-dev libncurses5-dev libnet-nslookup-perl \
           libnuma-dev libopencv-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev \
           librust-malloc-buf-dev libsox-dev libsoxr-dev libssl-dev libtalloc-dev libtbbmalloc2 libtinyxml2-dev \
-          libtool libtool-bin libyuv-dev libzstd-dev libzzip-dev lsb-core lshw lvm2 lzma-dev make man-db mercurial \
+          libtool libtool-bin libyuv-dev libzen-dev libzstd-dev libzzip-dev lsb-core lshw lvm2 lzma-dev make man-db mercurial \
           meson nano ninja-build openjdk-17-jdk pkg-config python3 python3-pip ragel scons sox texi2html texinfo xmlto yasm)
 
     for pkg in ${pkgs[@]}
@@ -885,8 +896,8 @@ install_cuda_fn()
 
     if [ -z "$iscuda" ]; then
         echo
-        echo 'The cuda-sdk-toolkit isn'\''t installed or it is not in PATH'
-        echo '==============================================================='
+        echo "The latest cuda-sdk-toolkit version is: v$cuda_ver"
+        echo '====================================================='
         echo
         echo 'What do you want to do next?'
         echo
@@ -920,8 +931,8 @@ install_cuda_fn()
         fi
     else
         echo
-        echo "The cuda-sdk-toolkit v12.1 is already installed."
-        echo '================================================='
+        echo "The latest cuda-sdk-toolkit version is: v$cuda_ver"
+        echo '====================================================='
         echo
         echo 'Do you want to update/reinstall it?'
         echo
@@ -1002,7 +1013,19 @@ install_cuda_fn
 build_pkgs_fn
 
 ##
-## being source code building
+## INSTALL DEBIAN PACKAGES
+##
+
+if ! which pandoc &>/dev/null; then
+    pre_check_ver 'jgm/pandoc' '1' 'R'
+    echo "\$ curl -Lso $packages/$g_deb_ver.deb $g_deb_url"
+    curl -Lso "$packages/$g_deb_ver".deb "$g_deb_url" 2>&1
+    echo "\$ sudo dpkg -i $packages/$g_deb_ver.deb"
+    sudo dpkg -i "$packages/$g_deb_ver".deb 2>&1
+fi
+
+##
+## BUILD FROM SOURCE CODE
 ##
 
 git_test()
@@ -1013,9 +1036,8 @@ git_test()
     eval "git clone '$git_url' $git_dir/"
 }
 
-export CC='gcc-12' CXX='g++-12'
+export CC='clang' CXX='clang++'
 
-# begin source code building
 if build 'giflib' '5.2.1'; then
     download 'https://cfhcable.dl.sourceforge.net/project/giflib/giflib-5.2.1.tar.gz' 'giflib-5.2.1.tar.gz'
     # PARELLEL BUILDING NOT AVAILABLE FOR THIS LIBRARY
@@ -1361,13 +1383,15 @@ if build 'av1' 'd192cdf'; then
     download 'https://aomedia.googlesource.com/aom/+archive/d192cdfc229d3d4edf6a0acd2e5b71fb4880d28e.tar.gz' 'av1-d192cdf.tar.gz' 'av1'
     make_dir "$packages"/aom_build
     cd "$packages"/aom_build || exit 1
-    execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR="$workspace"/lib \
+    make_dir 'build'
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR="$workspace"/lib \
         -DCMAKE_BUILD_TYPE='Release' -DCONFIG_ACCOUNTING='0' -DCONFIG_ANALYZER='0' -DCONFIG_AV1_DECODER='1' \
         -DCONFIG_AV1_ENCODER='1' -DCONFIG_AV1_HIGHBITDEPTH='1' -DCONFIG_AV1_TEMPORAL_DENOISING='0' \
         -DCONFIG_BIG_ENDIAN='0' -DCONFIG_COLLECT_RD_STATS='0' -DCONFIG_DENOISE='1' -DCONFIG_DISABLE_FULL_PIXEL_SPLIT_8X8='1' \
         -DCONFIG_ENTROPY_STATS='0' -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' -DENABLE_CCACHE='1' -DENABLE_EXAMPLES='0' \
         -DENABLE_TESTS='0' "$packages"/av1 -G 'Unix Makefiles' "$packages"/av1
-    execute make -j "$cpu_threads"
+    cd 'build' || exit 1
+    execute make -j "$cpu_threads" 
     execute make install
     build_done 'av1' 'd192cdf'
 fi
@@ -1553,7 +1577,7 @@ pre_check_ver 'xiph/vorbis' '1' 'T'
 if build 'libvorbis' "$g_ver"; then
     download "$g_url" "libvorbis-$g_ver.tar.gz"
     make_dir 'build'
-    execute autoreconf -fi
+    execute ./autogen.sh
     execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='OFF' -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C 'build'
     execute ninja "-j$cpu_threads" -C 'build' install
@@ -1579,6 +1603,21 @@ if build 'libtheora' '1.0'; then
     build_done 'libtheora' '1.0'
 fi
 cnf_ops+=('--enable-libtheora')
+
+./bootstrap
+
+if $nonfree_and_gpl; then
+    pre_check_ver 'knik0/faac' '1' 'T'
+    if build 'faac' "$g_ver"; then
+    download "$g_url" "faac-$g_ver.tar.gz"
+        execute ./bootstrap
+        execute ./configure --prefix="$workspace" --disable-shared --enable-static
+        execute make "-j$cpu_threads"
+        execute make install
+        build_done 'faac' "$g_ver"
+    fi
+    cnf_ops+=('--enable-libfdk-aac')
+fi
 
 if $nonfree_and_gpl; then
     pre_check_ver 'mstorsjo/fdk-aac' '1' 'T'
@@ -1649,7 +1688,7 @@ if build 'xml2' "$g_ver"; then
     execute cmake -B 'build' -DENABLE_SHARED='OFF' -DBUILD_SHARED_LIBS='OFF' -DCMAKE_EXPORT_COMPILE_COMMANDS='OFF' -DCMAKE_INSTALL_PREFIX="$workspace" \
         -DCMAKE_VERBOSE_MAKEFILE='OFF' -DCPACK_BINARY_DEB='ON' -DCPACK_BINARY_FREEBSD='ON' -DCPACK_BINARY_IFW='ON' -DCPACK_BINARY_NSIS='ON' \
         -DCPACK_BINARY_RPM='ON' -DCPACK_BINARY_TBZ2='ON' -DCPACK_BINARY_TXZ='ON' -DCPACK_SOURCE_RPM='ON' -DCPACK_SOURCE_ZIP='ON' \
-        -DHWY_LIBRARY:FILEPATH="/usr/lib/x86_64-linux-gnu/libhwy.so" -DOPENGL_opengl_LIBRARY:FILEPATH="/usr/lib/x86_64-linux-gnu/libglut.a" -G 'Ninja' -Wno-dev
+        -DHWY_LIBRARY="/usr/lib/x86_64-linux-gnu/libhwy.so" -DOPENGL_opengl_LIBRARY="/usr/lib/x86_64-linux-gnu/libglut.a" -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C 'build'
     execute ninja "-j$cpu_threads" -C 'build' install
     build_done 'xml2' "$g_ver"
@@ -1684,9 +1723,10 @@ cnf_ops+=('--enable-frei0r')
 pre_check_ver 'avisynth/avisynthplus' '1' 'T'
 if build 'avisynth' "$g_ver"; then
     download "$g_url" "avisynth-$g_ver.tar.gz"
-    execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -G 'Ninja' -Wno-dev
-    execute ninja "-j$cpu_threads"
-    execute ninja "-j$cpu_threads" install
+    make_dir 'build'
+    execute cmake -S . -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -G 'Ninja' -Wno-dev
+    execute ninja "-j$cpu_threads" -C 'build'
+    execute ninja "-j$cpu_threads" -C 'build' install
     build_done 'avisynth' "$g_ver"
 fi
 cnf_ops+=('--enable-avisynth')
@@ -1713,6 +1753,18 @@ fi
 unset JAVA_HOME
 cnf_ops+=('--enable-libbluray')
 
+pre_check_ver 'xiph/flac' '1' 'T'
+if build 'flac' "$g_ver"; then
+    download "$g_url" "flac-$g_ver.tar.gz"
+    cmake -S . -DWITH_STACK_PROTECTOR='ON' -DBUILD_TESTING='OFF' -DBUILD_CXXLIBS='ON' -DWITH_FORTIFY_SOURCE='ON' -DCMAKE_BUILD_TYPE='Release' \
+        -DCMAKE_INSTALL_PREFIX="/home/jman/tmp/ffmpeg-build/workspace" -DINSTALL_MANPAGES='ON' -DWITH_ASM='ON' -DINSTALL_PKGCONFIG_MODULES='ON' \
+        -DWITH_AVX='ON' -DINSTALL_CMAKE_CONFIG_MODULE='ON' -DWITH_OGG='OFF' -DBUILD_PROGRAMS='ON' -DBUILD_DOCS='OFF' -DENABLE_64_BIT_WORDS='ON' \
+        -DBUILD_EXAMPLES='OFF' -G 'Unix Makefiles' -Wno-dev
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'flac' "$g_ver"
+fi
+
 pre_check_ver 'mediaarea/zenLib' '1' 'T'
 if build 'zenLib' "$g_ver"; then
     download "$g_url" "zenLib-$g_ver.tar.gz"
@@ -1729,11 +1781,10 @@ pre_check_ver 'MediaArea/MediaInfoLib' '1' 'T'
 if build 'MediaInfoLib' "$g_ver"; then
     download "$g_url" "MediaInfoLib-$g_ver.tar.gz"
     cd Project/CMake || exit 1
-    execute cmake . -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR='lib' -DCMAKE_INSTALL_BINDIR='bin' \
-        -DCMAKE_INSTALL_INCLUDEDIR='include' -DBUILD_SHARED_LIBS='OFF' -DENABLE_APPS='OFF' \
-        -DUSE_STATIC_LIBSTDCXX='ON' -DBUILD_ZLIB='OFF' -DBUILD_ZENLIB='OFF'
-    execute make "-j$cpu_threads"
-    execute make install
+    make_dir 'build'
+    execute cmake -S . -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='OFF' -DBUILD_ZLIB='OFF' -DBUILD_ZENLIB='OFF' -G 'Ninja' -Wno-dev
+    execute ninja "-j$cpu_threads" -C 'build'
+    execute ninja -C 'build' install
     build_done 'MediaInfoLib' "$g_ver"
 fi
 
@@ -1752,7 +1803,7 @@ if command_exists 'meson'; then
         download_git 'https://github.com/harfbuzz/harfbuzz.git' "harfbuzz-$g_ver"
         execute ./autogen.sh
         execute meson setup 'build' --prefix="$workspace" --libdir="$workspace"/lib --pkg-config-path="$workspace"/lib/pkgconfig \
-                --buildtype='release' --default-library='static' --optimization='s' --strip
+                --buildtype='release' --default-library='static' --strip
         execute ninja "-j$cpu_threads" -C 'build'
         execute ninja "-j$cpu_threads" -C 'build' install
         build_done 'harfbuzz' "$g_ver"
@@ -1783,7 +1834,7 @@ if build 'fribidi' "$g_ver"; then
     fi
     download "$g_url" "fribidi-$g_ver.tar.gz"
     execute meson setup 'build' --prefix="$workspace" --libdir="$workspace"/lib --pkg-config-path="$workspace"/lib/pkgconfig \
-        --buildtype='release' --default-library='static' --optimization='s' --strip
+        --buildtype='release' --default-library='static' --strip
     execute ninja "-j$cpu_threads" -C 'build'
     execute ninja "-j$cpu_threads" -C 'build' install
     build_done 'fribidi' "$g_ver"
@@ -1843,8 +1894,8 @@ if $nonfree_and_gpl; then
         export OPENSSL_LIB_DIR="$workspace"/lib
         export OPENSSL_INCLUDE_DIR="$workspace"/include
         make_dir 'build'
-        cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_APPS=OFF -DENABLE_SHARED=OFF -DENABLE_STATIC=ON \
-            -DPKG_CONFIG_EXECUTABLE=/usr/bin -DENABLE_DEBUG=OFF -G 'Ninja'
+        execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_APPS='OFF' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON' \
+            -DPKG_CONFIG_EXECUTABLE='/usr/bin' -DENABLE_DEBUG='OFF' -G 'Ninja'
         execute ninja -C 'build' "-j$cpu_threads"
         execute ninja -C 'build' "-j$cpu_threads" install
 
@@ -1892,21 +1943,19 @@ if build 'amf' "$g_ver"; then
 fi
 cnf_ops+=('--enable-amf')
 
+
 if [ -n "$iscuda" ]; then
     pre_check_ver 'FFmpeg/nv-codec-headers' '1' 'T'
     if build 'nv-codec' "$g_ver"; then
-        download "$g_url" "nv-codec-$g_ver.tar.gz"
+        download_git 'https://git.videolan.org/git/ffmpeg/nv-codec-headers.git' "nv-codec-$g_ver"
         execute make PREFIX="$workspace" "-j$cpu_threads"
         execute make install PREFIX="$workspace"
         build_done 'nv-codec' "$g_ver"
     fi
 
-    CFLAGS+=" -I/usr/local/cuda-12/targets/x86_64-linux/include -I/usr/local/cuda-12/include -I$workspace/usr/include -I$packages/nv-codec-n12.0.16.0/include"
-    export CFLAGS
-    LDFLAGS+=" -L/usr/local/cuda-12/targets/x86_64-linux/lib -L/usr/local/cuda-12/lib64"
-    export LDFLAGS
-    LDPATH+=' -lcudart'
-    export LDPATH
+    export CFLAGS+=" -I/usr/local/cuda/targets/x86_64-linux/include -I/usr/local/cuda/include -I$workspace/usr/include -I$packages/nv-codec-$g_ver/include"
+    export LDFLAGS+=' -L/usr/local/cuda/targets/x86_64-linux/lib -L/usr/local/cuda/lib64'
+    export LDPATH+=' -lcudart'
 
     cnf_ops+=('--enable-cuda-nvcc' '--enable-cuvid' '--enable-cuda-llvm')
 
@@ -1924,10 +1973,10 @@ fi
 ## BUILD FFMPEG
 ##
 
-ff_ver='n6.0'
+ff_ver='n6.1-dev'
 # CLONE FFMPEG FROM THE LATEST GIT RELEASE
 if build 'FFmpeg' "$ff_ver"; then
-    download "https://github.com/FFmpeg/FFmpeg/archive/refs/tags/$ff_ver.tar.gz" "FFmpeg-$ff_ver-tar.gz"
+    download "https://github.com/FFmpeg/FFmpeg/archive/refs/tags/$ff_ver.tar.gz" "FFmpeg-$ff_ver.tar.gz"
     ./configure \
             "${cnf_ops[@]}" \
             --prefix="$workspace" \
