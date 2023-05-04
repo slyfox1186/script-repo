@@ -702,34 +702,6 @@ $workspace/lib:\
 "
 export LD_LIBRARY_PATH
 
-if ! command_exists 'make'; then
-    fail_pkg_fn 'make'
-fi
-
-if ! command_exists 'g++'; then
-    fail_pkg_fn 'g++'
-fi
-
-if ! command_exists 'curl'; then
-    fail_pkg_fn 'curl'
-fi
-
-if ! command_exists 'jq'; then
-    fail_pkg_fn 'jq'
-fi
-
-if ! command_exists 'cargo'; then
-    echo 'The '\''cargo'\'' command was not found.'
-    echo
-    echo 'The rav1e encoder will not be available.'
-fi
-
-if ! command_exists 'python3'; then
-    echo 'The '\''python3'\'' command was not found.'
-    echo
-    echo 'The '\''Lv2'\'' filter and '\''dav1d'\'' decoder will not be available.'
-fi
-
 cuda_fn()
 {
     clear
