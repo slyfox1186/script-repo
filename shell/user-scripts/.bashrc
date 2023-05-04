@@ -93,10 +93,10 @@ if [ -f "${HOME}/.bash_functions" ]; then
     . "${HOME}/.bash_functions"
 fi
 
-# custom user vars
-export PATH=\
+# custom user PATH
+PATH="\
 /usr/lib/ccache:\
-"$HOME"/.cargo/env:\
+$HOME/.cargo/env:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
@@ -104,7 +104,9 @@ export PATH=\
 /sbin:\
 /bin:\
 /snap/bin:\
-"${HOME}"/.local/bin
+${HOME}/.local/bin\
+"
+export PATH
 
 export PS1='\[\e[0;1;93;48;5;16m\]\w\n\[\e[0;1;38;5;46;48;5;16m\]\T\n\[\e[0;1;38;5;198;48;5;16m\]\u\[\e[0;1;97;48;5;16m\]@\[\e[0;1;96;48;5;16m\]\h\[\e[0;1;93;48;5;16m\]$\[\e[0m\]'
 
