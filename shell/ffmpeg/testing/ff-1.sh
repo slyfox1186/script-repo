@@ -269,6 +269,7 @@ fi
 
 # PULL THE LATEST VERSIONS OF EACH PACKAGE FROM THE WEBSITE API
 curl_timeout='10'
+git_token='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'
 
 git_1_fn()
 {
@@ -279,7 +280,13 @@ git_1_fn()
     github_url="$2"
 
     if [ "$github_url" = 'releases/latest' ]; then
-        if curl_cmd="$(curl -m "$curl_timeout" -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
+        if curl_cmd="$(curl \
+                             -m "$curl_timeout" \
+                            --request GET \
+                            --url "https://api.github.com/slyfox1186" \
+                            --header "Authorization: Bearer $git_token" \
+                            --header "X-GitHub-Api-Version: 2022-11-28" \
+                            -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
             g_url="$(echo "$curl_cmd" | jq -r '.tarball_url')"
             g_ver="${g_url##*/}"
             g_ver="${g_ver##v}"
@@ -290,7 +297,13 @@ git_1_fn()
     fi
 
     if [ "$github_url" = 'tags' ] || [ "$github_url" = 'releases' ]; then
-        if curl_cmd="$(curl -m "$curl_timeout" -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
+        if curl_cmd="$(curl \
+                             -m "$curl_timeout" \
+                            --request GET \
+                            --url "https://api.github.com/slyfox1186" \
+                            --header "Authorization: Bearer $git_token" \
+                            --header "X-GitHub-Api-Version: 2022-11-28" \
+                            -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
             g_url="$(echo "$curl_cmd" | jq -r '.tarball_url')"
             g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
             g_deb_url="$(echo "$curl_cmd" | jq -r '.' | grep 'browser_download_url' | head -n1 | grep -Eo 'http.*b')"
@@ -674,7 +687,6 @@ export JAVA_HOME
 PATH="\
 /usr/lib/ccache:\
 $HOME/.cargo/env:\
-$workspace/bin:\
 $JAVA_HOME/bin:\
 $PATH\
 "
@@ -795,16 +807,15 @@ build_pkgs_fn()
     echo
     echo 'Installing required development packages'
     echo '=========================================='
+    echo
 
-    pkgs=(ant autoconf autogen automake binutils bison build-essential ccache ccdiff checkinstall clang \
-          clang-tools cmake cmake-extras flex flexc++ freeglut3-dev g++ gawk gcc git gnustep-gui-runtime golang \
-          gtk-doc-tools help2man javacc jfsutils jq junit libavif-dev libbz2-dev libcairo2-dev libcdio-paranoia-dev \
-          libcurl4-gnutls-dev libdmalloc-dev libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev liblz-dev \
-          liblzma-dev liblzo2-dev libmathic-dev libmimalloc-dev libmusicbrainz5-dev libncurses5-dev libnet-nslookup-perl \
-          libnuma-dev libopencv-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev \
-          librust-malloc-buf-dev libssl-dev libtalloc-dev libtbbmalloc2 libtinyxml2-dev libtool libtool-bin libyuv-dev \
-          libzen-dev libzstd-dev libzzip-dev lsb-core lshw lvm2 lzma-dev make man-db mercurial ninja-build openjdk-17-jdk \
-          pkg-config python3 ragel scons texi2html texinfo xmlto)
+    pkgs=(ant autoconf autogen automake binutils bison ccache checkinstall clang clang-tools cmake cmake-extras dpkg-dev flex flexc++ \
+          freeglut3-dev g++ gawk git gnustep-gui-runtime golang gtk-doc-tools help2man javacc jfsutils jq junit libavif-dev libbz2-dev \
+          libcairo2-dev libcdio-paranoia-dev libcurl4-gnutls-dev libdmalloc-dev libglib2.0-dev libc6-dev libgvc6 libheif-dev libjemalloc-dev liblz-dev \
+          liblzma-dev liblzo2-dev libmathic-dev libmimalloc-dev libmusicbrainz5-dev libncurses5-dev libnet-nslookup-perl libnuma-dev libopencv-dev \
+          libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev librust-malloc-buf-dev libssl-dev libtalloc-dev libtbbmalloc2 \
+          libtinyxml2-dev libtool libtool-bin libyuv-dev libzen-dev libzstd-dev libzzip-dev lsb-core lshw lvm2 lzma-dev make man-db mercurial meson \
+          ninja-build openjdk-17-jdk pkg-config python3 python3-pip ragel scons texi2html texinfo xmlto)
 
     for pkg in ${pkgs[@]}
     do
@@ -840,7 +851,7 @@ cuda_add_fn()
     echo '================================================'
 
     pkgs=(autoconf automake build-essential libc6 \
-          libc6-dev libnuma1 libnuma-dev texinfo unzip wget)
+          libnuma1 libnuma-dev texinfo unzip wget)
 
     for pkg in ${pkgs[@]}
     do
@@ -1147,24 +1158,19 @@ fi
 if command_exists 'python3'; then
     # dav1d needs meson and ninja along with nasm to be built
     if command_exists 'pip3'; then
-        # meson and ninja can be installed via pip3
-        pip_tools_pkg="$(pip3 show setuptools)"
-        if [ -z "$pip_tools_pkg" ]; then
-            execute pip3 install pip setuptools --quiet --upgrade --no-cache-dir --disable-pip-version-check
+        if command_exists 'meson'; then
+            git_ver_fn '198' '2' 'T'
+            if build 'dav1d' "$g_sver"; then
+                download "https://code.videolan.org/videolan/dav1d/-/archive/$g_ver/$g_ver.tar.bz2" "dav1d-$g_sver.tar.bz2"
+                make_dir 'build'
+                execute meson setup 'build' --prefix="$workspace" --libdir="$workspace"/lib --pkg-config-path="$workspace"/lib/pkgconfig \
+                    --buildtype='release' --default-library='static' --strip
+                execute ninja "-j$cpu_threads" -C 'build'
+                execute ninja "-j$cpu_threads" -C 'build' install
+                build_done 'dav1d' "$g_sver"
+            fi
+            cnf_ops+=('--enable-libdav1d')
         fi
-    fi
-    if command_exists 'meson'; then
-        git_ver_fn '198' '2' 'T'
-        if build 'dav1d' "$g_sver"; then
-            download "https://code.videolan.org/videolan/dav1d/-/archive/$g_ver/$g_ver.tar.bz2" "dav1d-$g_sver.tar.bz2"
-            make_dir 'build'
-            execute meson setup 'build' --prefix="$workspace" --libdir="$workspace"/lib --pkg-config-path="$workspace"/lib/pkgconfig \
-                --buildtype='release' --default-library='static' --strip
-            execute ninja "-j$cpu_threads" -C 'build'
-            execute ninja "-j$cpu_threads" -C 'build' install
-            build_done 'dav1d' "$g_sver"
-        fi
-        cnf_ops+=('--enable-libdav1d')
     fi
 fi
 
