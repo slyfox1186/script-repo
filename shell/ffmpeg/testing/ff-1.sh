@@ -672,6 +672,8 @@ export JAVA_HOME
 
 # libbluray requries that this variable be set
 PATH="\
+/usr/lib/ccache:\
+$HOME/.cargo/env:\
 $workspace/bin:\
 $JAVA_HOME/bin:\
 $PATH\
