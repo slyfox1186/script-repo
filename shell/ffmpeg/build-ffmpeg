@@ -5,7 +5,7 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/ffmpeg-build-script/
 ##
-##  Supported Distros: Ubuntu
+##  Supported Distros: Ubuntu 22.04.2
 ##
 ##  Supported architecture: x86_64
 ##
@@ -1604,8 +1604,6 @@ if build 'libtheora' '1.0'; then
 fi
 cnf_ops+=('--enable-libtheora')
 
-./bootstrap
-
 if $nonfree_and_gpl; then
     pre_check_ver 'knik0/faac' '1' 'T'
     if build 'faac' "$g_ver"; then
@@ -1756,7 +1754,7 @@ cnf_ops+=('--enable-libbluray')
 pre_check_ver 'xiph/flac' '1' 'T'
 if build 'flac' "$g_ver"; then
     download "$g_url" "flac-$g_ver.tar.gz"
-    cmake -S . -DWITH_STACK_PROTECTOR='ON' -DBUILD_TESTING='OFF' -DBUILD_CXXLIBS='ON' -DWITH_FORTIFY_SOURCE='ON' -DCMAKE_BUILD_TYPE='Release' \
+    execute cmake -S . -DWITH_STACK_PROTECTOR='ON' -DBUILD_TESTING='OFF' -DBUILD_CXXLIBS='ON' -DWITH_FORTIFY_SOURCE='ON' -DCMAKE_BUILD_TYPE='Release' \
         -DCMAKE_INSTALL_PREFIX="/home/jman/tmp/ffmpeg-build/workspace" -DINSTALL_MANPAGES='ON' -DWITH_ASM='ON' -DINSTALL_PKGCONFIG_MODULES='ON' \
         -DWITH_AVX='ON' -DINSTALL_CMAKE_CONFIG_MODULE='ON' -DWITH_OGG='OFF' -DBUILD_PROGRAMS='ON' -DBUILD_DOCS='OFF' -DENABLE_64_BIT_WORDS='ON' \
         -DBUILD_EXAMPLES='OFF' -G 'Unix Makefiles' -Wno-dev
