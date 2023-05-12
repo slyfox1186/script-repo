@@ -93,18 +93,19 @@ if [ -f "${HOME}/.bash_functions" ]; then
     . "${HOME}/.bash_functions"
 fi
 
-# custom user PATH
+# custom user vars
 PATH="\
 /usr/lib/ccache:\
-$HOME/.cargo/env:\
+/home/jman/.cargo/env:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
+/usr/local/cuda-12.1/bin:\
 /sbin:\
 /bin:\
 /snap/bin:\
-${HOME}/.local/bin\
+/home/jman/.local/bin\
 "
 export PATH
 
@@ -120,4 +121,4 @@ export THREADS="$(nproc --all)"
 
 export CPUS="$((THREADS/2))"
 
-export PYTHONUTF8='1'
+# export PYTHONUTF8='1'
