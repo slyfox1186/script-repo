@@ -19,7 +19,7 @@ clear
 
 # Verify the script has root access before continuing
 if [ $EUID -ne 0 ]; then
-    echo 'You must run this script as root/sudo'
+    echo 'You must run this script as root/sudo.'
     echo
     exit 1
 fi
@@ -39,6 +39,11 @@ exit_fn()
     '[i] https://github.com/slyfox1186/script-repo/'
     # rm "${0}"
     exit 0
+}
+
+deb_fn()
+{
+    curl -fsS 'https://dlang.org/install.sh' | bash -s dmd
 }
 
 pkgs_fn()
@@ -125,6 +130,9 @@ ppa_fn
 
 # install missing apt packages
 pkgs_fn
+
+# intall deb files
+deb_fn
 
 # show exit message
 exit_fn
