@@ -349,7 +349,7 @@ if [ -n "${missing_pkgs-}" ]; then
     printf "%s\n%s\n%s\n\n" \
         'Installing required apt packages' \
         '================================================' \
-        '$ apt-get -q -y install'
+        '$ apt-get -qq -y install'
         for i in "$missing_pkgs"
     do
         apt-get -qq -y install $i
