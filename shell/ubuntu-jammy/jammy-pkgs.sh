@@ -57,18 +57,17 @@ pkgs_fn()
           git-hub gnome-shell-extension-manager gnome-tweaks gnustep-gui-runtime golang gparted \
           gperf grub-customizer gufw hfsplus hfsprogs hfsutils htop idn2 iftop iw jfsutils \
           jq libbz2-dev libdmalloc-dev libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev liblz-dev \
-          libasan6-amd64-cross liblzma-dev liblzo2-dev libmimalloc-dev libncurses5-dev libnet-nslookup-perl \
-          libnuma-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev \
-          librust-jemalloc-sys-dev librust-malloc-buf-dev libsdl-pango-dev libsox-dev \
-          libsoxr-dev libssl-dev libtalloc-dev libtbbmalloc2 libtool libtool-bin \
-          libzstd-dev libzzip-dev linux-headers-generic linux-source lm-sensors \
-          lsb-core lshw lvm2 lzma-dev mainline make man-db mercurial meson mono-devel nano \
-          netplan.io net-tools network-manager nilfs-tools npm ntfs2btrfs ntfs-3g nvme-cli \
-          openssh-client openssh-server openssl patchutils pbuilder pcregrep php-cli \
-          php-sqlite3 pipenv plank ppa-purge pristine-tar psensor python3 \
-          python3-pip quilt reiser4progs reiserfsprogs rpm ruby-all-dev samba shellcheck \
-          smbclient sox sqlite3 subversion synaptic texinfo tilix tofrodos trash-cli tty-share \
-          udftools unzip uuid-dev wget xclip xfsprogs xsel yasm)
+          libasan6-amd64-cross liblzma-dev liblzo2-dev libboost-all-dev libmimalloc-dev libncurses5-dev \
+          libnet-nslookup-perl libnuma-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev \
+          librsvg2-dev librust-jemalloc-sys-dev librust-malloc-buf-dev libsdl-pango-dev libsox-dev \
+          libsoxr-dev libssl-dev libtalloc-dev libtbbmalloc2 libtool libtool-bin libzstd-dev \
+          libzzip-dev linux-headers-generic linux-source lm-sensors lsb-core lshw lvm2 lzma-dev \
+          mainline make man-db mercurial meson mono-devel nano netplan.io net-tools network-manager \
+          nilfs-tools npm ntfs2btrfs ntfs-3g nvme-cli openssh-client openssh-server openssl patchutils \
+          pbuilder pcregrep php-cli php-sqlite3 pipenv plank ppa-purge pristine-tar psensor python3 \
+          python3-pip quilt reiser4progs reiserfsprogs rpm ruby-all-dev samba shellcheck smbclient \
+          sox sqlite3 subversion synaptic texinfo tilix tofrodos trash-cli tty-share udftools unzip \
+          uuid-dev wget xclip xfsprogs xsel yasm)
 
     for pkg in ${pkgs[@]}
     do
