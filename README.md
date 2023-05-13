@@ -162,17 +162,6 @@ curl -Lso players.sh https://media-players.optimizethis.net; sudo bash players.s
 ```
 ------
 
-## Create SSH key pairs and export the public key to a remote computer
- 1. **Prompt user with instructions**
-    - **Main Menu:**
-      1. **Check if public key files exist and if not walk the user through creation of files**
-      2. **Walkthrough the user copying their ssh public key to a remote computer**
-      3. **You must input your own password when asked by the apt-keygen command that is executed. This is to keep your security strong!**
-```bash
-curl -Lso ssh-keys.sh https://ssh-keys.optimizethis.net; sudo bash ssh-keys.sh
-```
-------
-
 ## Install: GParted's extra functionality packages
   - Unlock the following options in GParted
     - exfat
@@ -185,7 +174,17 @@ curl -Lso ssh-keys.sh https://ssh-keys.optimizethis.net; sudo bash ssh-keys.sh
     - reiser 4/reiserfs
 ```bash
 curl -Lso gparted.sh https://gparted.optimizethis.net; sudo bash gparted.sh
+```
+------
 
+## Create SSH key pairs and export the public key to a remote computer
+ 1. **Prompt user with instructions**
+    - **Main Menu:**
+      1. **Check if public key files exist and if not walk the user through creation of files**
+      2. **Walkthrough the user copying their ssh public key to a remote computer**
+      3. **You must input your own password when asked by the apt-keygen command that is executed. This is to keep your security strong!**
+```bash
+curl -Lso ssh-keys.sh https://ssh-keys.optimizethis.net; sudo bash ssh-keys.sh
 ```
 ------
 
