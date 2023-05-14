@@ -100,7 +100,7 @@ install_ppa_fn()
         sudo mkdir -p '/etc/apt/sources.list.d'
     fi
 
-    ppa_repo='apt-fast/stable cappelikan/ppa danielrichter2007/grub-customizer git-core/ppa'
+    ppa_repo='apt-fast/stable cappelikan/ppa danielrichter2007/grub-customizer git-core/ppa ubuntu-toolchain-r/test'
 
     for pkg in ${ppa_repo[@]}
     do
@@ -110,10 +110,11 @@ install_ppa_fn()
             for i in "$pkg"
             do
                 case "$i" in
-                        'apt-fast/stable')                       apt_pkg='apt-fast';;
-                        'cappelikan/ppa')                        apt_pkg+=' mainline';;
-                        'danielrichter2007/grub-customizer')     apt_pkg+=' grub-customizer';;
-                        'git-core/ppa')                          apt_pkg+=' git';;
+                        'apt-fast/stable')                         apt_pkg='apt-fast';;
+                        'cappelikan/ppa')                          apt_pkg+=' mainline';;
+                        'danielrichter2007/grub-customizer')       apt_pkg+=' grub-customizer';;
+                        'git-core/ppa')                            apt_pkg+=' git';;
+                        'git-core/ppa ubuntu-toolchain-r/test')    apt_pkg+=' g++-13 g++-13-multilib libstdc++-13-doc';;
                  esac
             done
         fi
