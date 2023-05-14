@@ -67,12 +67,10 @@ packages="$PWD"/packages
 exit_fn()
 {
     clear
-    echo
-    echo 'The script has completed'
-    echo
-    echo 'Make sure to star this repository to show your support!'
-    echo 'https://github.com/slyfox1186/script-repo'
-    echo
+    printf "%s\n\n%s\n%s\n\n" \
+        'The script has completed' \
+        'Make sure to star this repository to show your support!' \
+        'https://github.com/slyfox1186/script-repo'
     exit 0
 }
 
@@ -80,15 +78,8 @@ execute()
 {
     echo "$ $*"
 
-    output=$("$@" 2>&1)
-
-    # shellcheck disable=SC2181
-    if [ "$?" -ne '0' ]; then
-        echo "$output"
-        echo
-        echo "Failed to Execute $*" >&2
-        echo
-        exit 1
+    if ! output=$("$@" 2>&1); then
+        exit_fn "Failed to Execute $*"
     fi
 }
 
@@ -115,28 +106,32 @@ build_done() { echo "$2" > "$packages/$1.done"; }
 
 cleanup_fn()
 {
-    echo
-    echo 'Do you want to remove the build files?'
-    echo
-    echo '[1] Yes'
-    echo '[2] No'
-    echo
-    read -p 'Your choices are (1 or 2): ' cleanup_choice
-    clear
+    local cchoice
 
-    if [[ "$cleanup_choice" -eq '1' ]]; then
-        remove_dir "$packages"
-        remove_file "$0"
-        exit_fn
-    elif [[ "$cleanup_choice" -eq '2' ]]; then
-        exit_fn
-    else
-        echo 'Bad user input...'
-        echo
-        read -p 'Press enter to try again.'
+        printf "\n%s\n\n%s\n%s\n%s\n\n" \
+            'The script has completed' \
+            'Do you want to remove the build files?' \
+            '[1] Yes' \
+            '[2] No'
+        read -p 'Your choices are (1 or 2): ' cchoice
         clear
-        cleanup_fn
-    fi
+
+    case "$cchoice" in
+        1)
+            remove_dir "$packages"
+            remove_file "$0"
+            exit_fn
+            ;;
+        2)  exit_fn;;
+
+        *)
+            echo 'Bad user input.'
+            echo
+            read -p 'Press enter to try again.'
+            clear
+            cleanup_fn
+            ;;
+    esac
 }
 
 get_version_fn()
@@ -160,34 +155,31 @@ get_version_fn()
 make_dir()
 {
     if ! remove_dir "$1"; then
-        printf "%s\n\n" \
-            "Failed to remove the directory: $PWD/$1"
-        exit 1
+        printf "%s\n" \
+            fail_fn "Failed to remove the directory: $PWD/$1"
     fi
-    if ! mkdir -pv "$1"; then
-        printf "%s\n\n" \
-            "Failed to create the directory: $PWD/$1"
-        exit 1
+    if ! mkdir -p "$1"; then
+        printf "%s\n" \
+            fail_fn "Failed to create the directory: $PWD/$1"
     fi
 }
 
 remove_file()
 {
     if [ -f "$1" ]; then
-        rm -f "$1"
+        sudo rm -f "$1"
     fi
 }
 
 remove_dir()
 {
     if [ -d "$1" ]; then
-        rm -fr "$1"
+        sudo rm -fr "$1"
     fi
 }
 
 download()
 {
-
     dl_path="$packages"
     dl_file="${2:-"${1##*/}"}"
 
@@ -203,17 +195,14 @@ download()
         if ! curl -Lso "$dl_path/$dl_file" "$1"; then
             printf "\n%s\n\n%s" \
                 "Failed to download: $1" \
-                'Retrying in 10 seconds'
-                sleep 10
+                'Retrying in 5 seconds'
+                sleep 5
             if ! curl -Lso "$dl_path/$dl_file" "$1"; then
                fail_fn "Failed to download: $1"
             fi
-    fi
-
-        echo 'Download Complete...'
+        fi
+        echo 'Download Completed'
         echo
-    else
-        echo "$dl_file is already downloaded."
     fi
 
     make_dir "$dl_path/$target_dir"
@@ -243,11 +232,12 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok insta
 ## required imagemagick developement packages
 magick_packages_fn()
 {
+    librust-pkg="$1"
     pkgs=(autoconf automake build-essential google-perftools jq libc-devtools libcpu-features-dev libcrypto++-dev \
           libdmalloc-dev libdmalloc5 libgc-dev libgc1 libgl2ps-dev libglib2.0-dev libgoogle-perftools-dev \
           libgoogle-perftools4 libheif-dev libjemalloc-dev libjemalloc2 libjpeg-dev libmagickcore-6.q16hdri-dev \
           libmimalloc-dev libmimalloc2.0 libopenjp2-7-dev libpng++-dev libpng-dev libpng-tools libpng16-16 \
-          libpstoedit-dev libraw-dev librust-bzip2-dev librust-jpeg-decoder+default-dev libtcmalloc-minimal4 \
+          libpstoedit-dev libraw-dev librust-bzip2-dev "$librust-pkg" libtcmalloc-minimal4 \
           libtiff-dev libtool libwebp-dev libzip-dev pstoedit)
 
     for pkg in ${pkgs[@]}
@@ -262,12 +252,10 @@ magick_packages_fn()
         do
             apt -y install $i
         done
-        printf "\n%s\n\n%s\n\n" \
-            'The required packages were successfully installed.' \
-            'Please execute the script again to finish installing ImageMagick.'
-        exit 0
+        printf "\n%s\n\n" \
+            'The required packages were successfully installed.'
     else
-        echo 'The required packages are already installed.'
+        echo -e "The required packages were already installed.\\n"
     fi
 }
 
@@ -286,32 +274,32 @@ usage()
 
 while (($# > 0)); do
     case $1 in
-    -h | --help)
-        clear
-        usage
-        echo
-        exit 0
-        ;;
-    -*)
-        if [[ "$1" == '--build' || "$1" =~ '-b' ]]; then
-            bflag='-b'
-        fi
-        if [[ "$1" == '--cleanup' || "$1" =~ '-c' && ! "$1" =~ '--' ]]; then
-            cflag='-c'
-            cleanup_fn
-        fi
-        if [[ "$1" == '--version' || "$1" =~ '-v' && ! "$1" =~ '--' ]]; then
-            vflag='-v'
+    -h|--help)
             clear
-            get_version_fn
-        fi
-        shift
-        ;;
+            usage
+            echo
+            exit 0
+            ;;
+    -*)
+            if [[ "$1" == '--build' || "$1" =~ '-b' ]]; then
+                bflag='-b'
+            fi
+            if [[ "$1" == '--cleanup' || "$1" =~ '-c' && ! "$1" =~ '--' ]]; then
+                cflag='-c'
+                cleanup_fn
+            fi
+            if [[ "$1" == '--version' || "$1" =~ '-v' && ! "$1" =~ '--' ]]; then
+                vflag='-v'
+                clear
+                get_version_fn
+            fi
+            shift
+            ;;
     *)
-        usage
-        echo
-        exit 1
-        ;;
+            usage
+            echo
+            exit 1
+            ;;
     esac
 done
 
@@ -328,12 +316,22 @@ if [ -z "$bflag" ]; then
 fi
 
 clear
-echo "This script will utilize ($cpus cpu cores) for parallel processing to accelerate the building speed."
+echo "This script will utilize ( $cpus cpu cores ) for parallel processing to accelerate the building processes."
 echo
 
 # Required + extra functionality packages for imagemagick
 echo 'Installing required packages'
-magick_packages_fn
+
+os_test="$(lsb_release -a | grep -Eo '[0-9\.]+' | uniq)"
+if [ "$os_test" = '23.04' ]; then
+    curl -Lso 'librust-jpeg-decoder-dev.deb' 'http://ports.ubuntu.com/pool/universe/r/rust-jpeg-decoder/librust-jpeg-decoder-dev_0.1.22-1_arm64.deb'
+    sudo dpkg -i 'librust-jpeg-decoder-dev.deb'
+    lirust_pkg=
+else
+    lirust_pkg='librust-jpeg-decoder+default-dev'
+fi
+
+magick_packages_fn "$lirust_pkg"
 
 # Export the pkg-config paths to enable support during the build
 PKG_CONFIG_PATH="\
@@ -355,7 +353,8 @@ if build 'libpng12' "$png_ver"; then
     download "https://github.com/glennrp/libpng/archive/refs/tags/v$png_ver.tar.gz" "libpng-$png_ver.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix='/usr/local'
-    execute make install
+    execute make "-j$cpus"
+    execute sudo make install
     build_done 'libpng12' "$png_ver"
 fi
 
@@ -379,22 +378,22 @@ if build 'ImageMagick' "$magick_ver"; then
         --with-tcmalloc \
         --with-quantum-depth=16
     execute make "-j$cpus"
-    execute make install
+    execute sudo make install
     build_done 'ImageMagick' "$magick_ver"
 fi
 
 # ldconfig must be run next in order to update file changes or the magick command will not work
 echo
-ldconfig /usr/local/lib 2>/dev/null
+sudo ldconfig '/usr/local/lib' 2>/dev/null
 
 # show the newly installed magick version
 if ! magick -version 2>/dev/null; then
     clear
     printf "%s\n%s\n\n%s\n\n%s\n\n" \
         'Script error!' \
-        '    - Failure to execute the command: magick -version' \
-        'If help is required or to report bugs please create a support ticket' \
-        'https://github.com/slyfox1186/build-imagemagick/issues'
+        '- Failure to execute the command: magick -version' \
+        'To notify the repo owner of a bug please create a support ticket at...' \
+        'https://github.com/slyfox1186/script-repo/issues'
     exit 1
 fi
 
