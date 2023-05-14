@@ -220,7 +220,8 @@ download_git()
 
     if [ -d "$target_dir" ]; then
         remove_dir "$target_dir"
-    else
+    fi
+
         echo "Downloading $dl_url as $dl_file"
         if ! git clone -q "$dl_url" "$target_dir"; then
             printf "\n%s\n\n%s\n\n" \
@@ -232,7 +233,6 @@ download_git()
             fi
         fi
         echo -e "Succesfully cloned the directory: $target_dir\\n"
-    fi
 
     cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
 }
@@ -246,7 +246,6 @@ fi
 
 # PULL THE LATEST VERSIONS OF EACH PACKAGE FROM THE WEBSITE API
 curl_timeout='10'
-git_token='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'
 
 git_1_fn()
 {
@@ -255,13 +254,7 @@ git_1_fn()
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     github_repo="$1"
     github_url="$2"
-    if curl_cmd="$(curl \
-                         -m "$curl_timeout" \
-                        --request GET \
-                        --url "https://api.github.com/slyfox1186" \
-                        --header "Authorization: Bearer $git_token" \
-                        --header "X-GitHub-Api-Version: 2022-11-28" \
-                        -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null | sed 's/\-/\./g' | sed 's/\_/\./g')"
         g_pcre2="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_faac1="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null | sed 's/\-/\./g' | sed 's/\_/\./g')"
@@ -806,7 +799,7 @@ build_pkgs_fn()
           libcdio-paranoia-dev libcurl4-gnutls-dev libdmalloc-dev libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev \
           liblz-dev liblzma-dev liblzo2-dev libmathic-dev libmimalloc-dev libmusicbrainz5-dev libncurses5-dev libnuma-dev \
           libopencv-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev librust-malloc-buf-dev \
-          libssl-dev libtalloc-dev libtbbmalloc2 libyuv-dev libzstd-dev libzzip-dev lsb-core lshw lvm2 lzma-dev make mercurial \
+          libssl-dev libtalloc-dev libtbbmalloc2 libyuv-dev libzstd-dev libzzip-dev lshw lvm2 lzma-dev make mercurial \
           meson ninja-build openjdk-17-jdk-headless pandoc python3 python3-pip ragel scons texi2html texinfo xmlto yasm)
 
     for pkg in ${pkgs[@]}
@@ -1039,11 +1032,13 @@ git_test()
 ## SET COMPILER
 ##
 
-my_gcc="$(which gcc-12)"
-my_gpp="$(which g++-12)"
+my_gcc12="$(which gcc-12)"
+my_gpp12="$(which g++-12)"
+my_gcc13="$(which gcc-13)"
+my_gpp13="$(which g++-13)"
 my_clang="$(which clang)"
 my_clangpp="$(which clang++)"
-export CC="$my_gcc" CXX="$my_gpp"
+export CC="$my_clang" CXX="$my_clangpp"
 
 if build 'giflib' '5.2.1'; then
     download 'https://cfhcable.dl.sourceforge.net/project/giflib/giflib-5.2.1.tar.gz' 'giflib-5.2.1.tar.gz'
@@ -1191,8 +1186,7 @@ if command_exists 'python3'; then
         git_ver_fn '198' '2' 'T'
         if build 'dav1d' "$g_sver"; then
             download "https://code.videolan.org/videolan/dav1d/-/archive/$g_ver/$g_ver.tar.bz2" "dav1d-$g_sver.tar.bz2"
-            execute meson setup 'build' --prefix="$workspace" --buildtype='release' --default-library='static' \
-                --includedir="$workspace"/include --libdir="$workspace"/lib  --pkg-config-path="$workspace"/lib/pkgconfig --strip
+            execute meson setup 'build' --prefix="$workspace" --buildtype='release' --default-library='static' --strip
             execute ninja "-j$cpu_threads" -C 'build'
             execute ninja "-j$cpu_threads" -C 'build' install
             build_done 'dav1d' "$g_sver"
@@ -1335,16 +1329,15 @@ fi
 pre_check_ver 'webmproject/libvpx' '1' 'T'
 if build 'libvpx' "$g_ver"; then
     download "https://codeload.github.com/webmproject/libvpx/tar.gz/refs/tags/v$g_ver" "libvpx-$g_ver.tar.gz"
-    execute ./configure --prefix="$workspace" --disable-unit-tests --disable-shared --disable-examples \
-        --target='x86_64-linux-gcc' --enable-ccache --enable-vp9-highbitdepth --enable-better-hw-compatibility \
-        --enable-vp8 --enable-vp9 --enable-postproc --enable-vp9-postproc --enable-realtime-only --enable-onthefly-bitpacking \
-        --enable-coefficient-range-checking --enable-runtime-cpu-detect --enable-small --enable-multi-res-encoding --enable-vp9-temporal-denoising \
-        --enable-libyuv
+    execute sudo ./configure --prefix="/home/jman/tmp/ffmpeg-build-script/workspace" --disable-unit-tests --enable-static --disable-shared --disable-docs \
+        --disable-examples --as='auto' --enable-vp9-highbitdepth --enable-better-hw-compatibility --enable-vp8 --enable-vp9 --enable-postproc \
+        --enable-vp9-postproc --enable-runtime-cpu-detect --enable-multi-res-encoding --enable-postproc-visualizer --enable-vp9-temporal-denoising \
+        --enable-codec-srcs --disable-install-docs --enable-install-srcs --enable-pic --enable-ccache --enable-debug
     execute make "-j$cpu_threads"
     execute make install
     build_done 'libvpx' "$g_ver"
 fi
-ffmpeg_libraries+=('--enable-libvpx')
+cnf_ops+=('--enable-libvpx')
 
 if $nonfree_and_gpl; then
     if build 'xvidcore' '1.3.7'; then
@@ -1426,11 +1419,12 @@ fi
 pre_check_ver 'AOMediaCodec/libavif' '1' 'T'
 if build 'avif' "$g_ver"; then
     download "https://codeload.github.com/AOMediaCodec/libavif/tar.gz/refs/tags/v$g_ver" "avif-$g_ver.tar.gz"
-    execute cmake -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='OFF' \
-        -DENABLE_STATIC='ON' -DAVIF_ENABLE_WERROR='OFF' -DAVIF_CODEC_DAV1D='ON' -DAVIF_CODEC_AOM='ON' \
-        -DAVIF_BUILD_APPS='ON' "$avif_tag"
-    execute make -j "$cpu_threads"
-    execute make install
+    make_dir 'build'
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE='Release' -DAVIF_CODEC_SVT='ON' -DAVIF_CODEC_DAV1D='ON' \
+        -DAVIF_CODEC_LIBGAV1='ON' -DAVIF_BUILD_APPS='OFF' -DBUILD_SHARED_LIBS='OFF' "$avif_tag" -DAVIF_ENABLE_GTEST='OFF' -DAVIF_ENABLE_WERROR='OFF' \
+        -G 'Ninja' -Wno-dev
+    execute ninja "-j$cpu_threads" -C 'build'
+    execute ninja "-j$cpu_threads" -C 'build' install
     build_done 'avif' "$g_ver"
 fi
 
@@ -1909,7 +1903,7 @@ fi
 pre_check_ver 'gpac/gpac' '1' 'T'
 if build 'gpac' "$g_ver"; then
     download "https://codeload.github.com/gpac/gpac/tar.gz/refs/tags/v$g_ver" "gpac-$g_ver.tar.gz"
-    execute ./configure --prefix="$workspace" --static-build --static-bin --cc="$my_gcc" --cxx="$my_gpp" --cpu='x86_64' --static-modules
+    execute ./configure --prefix="$workspace" --static-build --static-bin --cc="$my_clang" --cxx="$my_clangpp" --cpu='x86_64' --static-modules
     execute make "-j$cpu_threads"
     execute make install
     build_done 'gpac' "$g_ver"
@@ -1989,8 +1983,8 @@ if build 'ffmpeg' "$ff_ver"; then
     ./configure \
             --prefix="$workspace" \
             --cpu="$cpu_cores" \
-            --cc="$my_gcc" \
-            --cxx="$my_gpp" \
+            --cc="$my_clang" \
+            --cxx="$my_clangpp" \
             "${ffmpeg_libraries[@]}" \
             --extra-cflags="-I$workspace/include" \
             --extra-ldexeflags="$LDEXEFLAGS" \
