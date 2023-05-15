@@ -87,6 +87,13 @@ sudo apt-get -qq -y install gettext git gtk-doc-tools libgtkd-3-dev libgtk-4-dev
 echo -e "\$ curl -Ssf https://dlang.org/install.sh | bash -s dmd\\n"
 curl -Lso 'tilix-themes.tar.gz' 'https://github.com/slyfox1186/script-repo/raw/main/shell/installers/tilix/tilix-themes.tar.gz'
 
+if [ ! -f 'tilix-themes.tar.gz' ]; then
+    fail_fn 'The file "tilix-themes.tar.gz" failed to download.'
+else
+    mkdir -p 'tilix-themes'
+    tar zxf 'tilix-themes.tar.gz' -C 'tilix-themes' --strip-components 1 2>/dev/null
+fi
+
 ##
 ## INSTALL DMD (D COMPILER)
 ##
