@@ -1,5 +1,16 @@
 #!/bin/bash
 
+if [ "$EUID" -eq '0' ]; then
+    echo 'This script is intended to be run WITHOUT root/sudo.'
+    echo
+    echo 'It is (highly) recommended you exit the script and run it with user level access instead of root.'
+    echo
+    read -p 'To chance it and continue the build press enter or exit the script using ctrl c or ctrl z.'
+    echo
+fi
+
+echo
+
 ##
 ## IMPORANT INSTRUCTIONS (MUST READ BEFORE INSTALLING)
 ##
@@ -13,25 +24,6 @@
 
 ## To add the custom color themes, separate each entry name with a comma and leave off the '.json'.
 ## See the example below for help. As you will see (dracula neopolitan vibrant-ink) will be added.
-
-echo
-
-if [ "$EUID" -eq '0' ]; then
-    echo 'This script is intended to be run WITHOUT root/sudo.'
-    echo
-    echo 'It is (highly) recommended you exit the script and run it with user level access instead of root.'
-    echo
-    read -p 'To chance it and continue the build press enter or exit the script using ctrl c or ctrl z.'
-    echo
-fi
-
-if ! which 'curl' &>/dev/null; then
-    printf "%s\n\n%s\n\n%s\n\n" \
-        'You do not have curl installed.' \
-        'You can install the latest version available from this repo using: wget -cqO build-curl https://curl.optimizethis.net; bash build-curl' \
-        'Or you can use: sudo apt -y install curl'
-    exit 1
-fi
 
 ##
 ## CREATE VARIABLES
@@ -77,8 +69,8 @@ mkdir -p "$packages"
 
 echo 'Depending on your download speed this could take a moment... please be patient.'
 echo
-echo -e "\$ apt-get -qq -y install gettext git gtk-doc-tools libgtkd-3-dev libgtk-4-dev python3-nautilus\\n"
-sudo apt-get -qq -y install gettext git gtk-doc-tools libgtkd-3-dev libgtk-4-dev python3-nautilus
+echo -e "\$ apt-get -qq -y install curl gettext git gtk-doc-tools libgtkd-3-dev libgtk-4-dev python3-nautilus\\n"
+sudo apt-get -qq -y install curl gettext git gtk-doc-tools libgtkd-3-dev libgtk-4-dev python3-nautilus
 
 ##
 ## DOWNLOAD CUSTOM THEMES FOLDER
