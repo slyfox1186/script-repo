@@ -1,16 +1,5 @@
 #!/bin/bash
 
-if [ "$EUID" -eq '0' ]; then
-    echo 'This script is intended to be run WITHOUT root/sudo.'
-    echo
-    echo 'It is (highly) recommended you exit the script and run it with user level access instead of root.'
-    echo
-    read -p 'To chance it and continue the build press enter or exit the script using ctrl c or ctrl z.'
-    echo
-fi
-
-echo
-
 ##
 ## IMPORANT INSTRUCTIONS (MUST READ BEFORE INSTALLING)
 ##
@@ -24,6 +13,17 @@ echo
 
 ## To add the custom color themes, separate each entry name with a comma and leave off the '.json'.
 ## See the example below for help. As you will see (dracula neopolitan vibrant-ink) will be added.
+
+if [ "$EUID" -eq '0' ]; then
+    echo 'This script is intended to be run WITHOUT root/sudo.'
+    echo
+    echo 'It is (highly) recommended you exit the script and run it with user level access instead of root.'
+    echo
+    read -p 'To chance it and continue the build press enter or exit the script using ctrl c or ctrl z.'
+    echo
+fi
+
+echo
 
 ##
 ## CREATE VARIABLES
