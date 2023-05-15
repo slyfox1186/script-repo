@@ -1,5 +1,19 @@
 #!/bin/bash
 
+##
+## IMPORANT INSTRUCTIONS (MUST READ BEFORE INSTALLING)
+##
+
+## The default themes that come with tilix will be deleted on install unless you change the value of
+##    the variable 'themes_flag' below to '1' which will keep the defaults.
+
+## You MUST modify the variable 'theme_options' below with the custom color theme names IF you want
+##    to add them to tilix during install. You can check which themes you want to add by visiting the
+##    themes folder before running this script.
+
+## To add the custom color themes, separate each entry name with a comma and leave off the '.json'.
+## See the example below for help. As you will see (dracula neopolitan vibrant-ink) will be added.
+
 echo
 
 if [ "$EUID" -eq '0' ]; then
@@ -18,20 +32,6 @@ if ! which 'curl' &>/dev/null; then
         'Or you can use: sudo apt -y install curl'
     exit 1
 fi
-
-##
-## IMPORANT INSTRUCTIONS (MUST READ BEFORE INSTALLING)
-##
-
-## The default themes that come with tilix will be deleted on install unless you change the value of
-##    the variable 'themes_flag' below to '1' which will keep the defaults.
-
-## You MUST modify the variable 'theme_options' below with the custom color theme names IF you want
-##    to add them to tilix during install. You can check which themes you want to add by visiting the
-##    themes folder before running this script.
-
-## To add the custom color themes, separate each entry name with a comma and leave off the '.json'.
-## See the example below for help. As you will see (dracula neopolitan vibrant-ink) will be added.
 
 ##
 ## CREATE VARIABLES
