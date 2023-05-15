@@ -127,13 +127,14 @@ curl -Lso build-curl https://curl.optimizethis.net; bash build-curl
     - Ubuntu 22.04
     - Other debian style distros may work as well
   - To install with no other actions required execute the first command, otherwise use the second command to
-    git clone the repo and change what custom color themes you want to add or remove.
-     - Navigate to the 'install-tilix' script to make your changes and the run `bash install-tilix`
+    only download the files without executing the scripts immediatley.
+     - Open the file `install-tilix` and read the instructions at the top of the script to easily customize the
+       color themes further and then run `bash install-tilix`
 ```bash
 wget -qN - -i https://build-tilix.optimizethis.net/; bash run-tilix
 ````
 ```bash
-curl -Lso tilix-helper https://tilix-helper.optimizethis.net; bash tilix-helper
+wget -qN - -i https://build-tilix.optimizethis.net/
 ````
 ------
 
