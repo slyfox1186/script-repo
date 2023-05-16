@@ -17,14 +17,14 @@ clear
 if [ $EUID -ne 0 ]; then
     echo 'you must run this as root/sudo'
     echo
-    exit 1
+    return 1
 fi
 
 ##
 ## Functions
 ##
 
-exit_fn()
+return_fn()
 {
     echo
     echo 'Please star this repository to show your support!'
@@ -32,7 +32,7 @@ exit_fn()
     echo 'https://github.com/slyfox1186/script-repo/'
     echo
     rm "$0"
-    exit 1
+    return 1
 }
 
 fail_fn()
@@ -45,14 +45,14 @@ fail_fn()
     echo 'https://github.com/slyfox1186/script-repo/issues'
     echo
     rm "$0"
-    exit 1
+    return 1
 }
 
 success_fn()
 {
     clear
     echo "$1 was succesfully installed."
-    exit_fn
+    return_fn
 }
 
 printf "%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n\n" \
@@ -62,7 +62,7 @@ printf "%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n\n" \
     '[3] SMPlayer' \
     '[4] GNOME Videos (Totem)' \
     '[5] Bomi' \
-    '[6] Exit'
+    '[6] return'
 
 read -p 'Your choices are (1 to 6): ' media_selection
 clear
@@ -118,12 +118,12 @@ case "$media_selection" in
         fi
         ;;
     6)
-        exit_fn
+        return_fn
         ;;
 
     *)
         echo 'Bad user input: Run the script again.'
         echo
-        exit 1
+        return 1
         ;;
 esac
