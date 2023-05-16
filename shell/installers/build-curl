@@ -374,7 +374,7 @@ if build 'curl' "$g_ver"; then
     printf "\n%s\n%s\n" \
             'Downloading certs from offical https://curl.se' \
             '================================================'
-    execute curl -s --etag-compare etag.txt --etag-save etag.txt --remote-name https://curl.se/ca/cacert.pem
+    execute curl -s --etag-compare 'etag.txt' --remote-name 'https://curl.se/ca/cacert-2023-01-10.pem'
     execute sudo mv cacert.pem /etc/ssl/certs 2>/dev/null
         printf "\n%s\n%s\n" \
             'Creating configure files' \
