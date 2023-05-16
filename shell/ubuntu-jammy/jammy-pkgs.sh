@@ -69,7 +69,7 @@ install_apt_fn()
           ninja-build npm ntfs2btrfs ntfs-3g nvme-cli openssh-client openssh-server openssl patchutils pbuilder \
           pcregrep pipenv plank ppa-purge preload pristine-tar psensor python3-pip quilt reiser4progs reiserfsprogs \
           rpm ruby-all-dev samba shellcheck smbclient sox sqlite3 subversion synaptic texinfo tofrodos trash-cli \
-          tty-share udftools unzip uuid-dev wget xclip xfsprogs xsel yasm)
+          tty-share udftools unzip usb-creator-gtk uuid-dev wget xclip xfsprogs xsel yasm)
 
     for pkg in ${pkgs[@]}
     do
