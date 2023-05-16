@@ -2,11 +2,6 @@
 
 clear
 
-# Verify the script has root access before continuing
-if [ "$EUID" -ne '0' ]; then
-    exec sudo bash "${0}" "${@}"
-fi
-
 ##
 ## Functions
 ##
