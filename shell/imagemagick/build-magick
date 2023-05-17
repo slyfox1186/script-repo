@@ -338,7 +338,7 @@ PKG_CONFIG_PATH="\
 /usr/lib/i386-linux-gnu/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/lib/pkgconfig:\
-/usr/share/pkgconfig:\
+/usr/share/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -352,7 +352,7 @@ mkdir -p "$packages"
 if build 'libpng12' "$png_ver"; then
     download "https://github.com/glennrp/libpng/archive/refs/tags/v$png_ver.tar.gz" "libpng-$png_ver.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix='/usr/local'
+    execute ./configure --prefix=/usr CXXFLAGS='-O3 -march=native -mtune=native'
     execute make "-j$cpus"
     execute sudo make install
     build_done 'libpng12' "$png_ver"
@@ -364,19 +364,8 @@ fi
 
 if build 'ImageMagick' "$magick_ver"; then
     download "https://github.com/ImageMagick/ImageMagick/archive/refs/tags/$magick_ver.tar.gz" "ImageMagick-$magick_ver.tar.gz"
-    execute ./configure \
-        --enable-ccmalloc \
-        --enable-legacy-support \
-        --with-autotrace \
-        --with-dmalloc \
-        --with-flif \
-        --with-gslib \
-        --with-heic \
-        --with-jemalloc \
-        --with-modules \
-        --with-perl \
-        --with-tcmalloc \
-        --with-quantum-depth=16
+    execute ./configure --prefix=/usr --enable-ccmalloc --enable-legacy-support --with-autotrace --with-dmalloc --with-flif --with-gslib \
+    --with-heic --with-jemalloc --with-modules --with-perl --with-tcmalloc --with-quantum-depth=16 CXXFLAGS='-O3 -march=native -mtune=native'
     execute make "-j$cpus"
     execute sudo make install
     build_done 'ImageMagick' "$magick_ver"
@@ -384,6 +373,7 @@ fi
 
 # ldconfig must be run next in order to update file changes or the magick command will not work
 echo
+sudo ldconfig '/usr/lib' 2>/dev/null
 sudo ldconfig '/usr/local/lib' 2>/dev/null
 
 # show the newly installed magick version
