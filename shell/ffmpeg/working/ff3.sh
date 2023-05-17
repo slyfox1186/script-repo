@@ -733,9 +733,6 @@ $workspace/src/lib:\
 /usr/share/gnulib/lib:\
 /usr/share/lintian/lib:\
 /usr/share/texinfo/lib:\
-/usr/src/linux-headers-5.15.0-71/lib:\
-/usr/src/linux-headers-6.2.15-060215/lib:\
-/usr/src/linux-hwe-5.19-headers-5.19.0-41/lib:\
 /usr/x86_64-linux-gnu/lib\
 "
 export LD_LIBRARY_PATH
