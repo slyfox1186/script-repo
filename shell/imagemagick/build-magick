@@ -604,7 +604,7 @@ fi
 git_ver_fn 'imagemagick/imagemagick' '1' 'T'
 if build 'ImageMagick' "$g_ver"; then
     download "https://codeload.github.com/ImageMagick/ImageMagick/tar.gz/refs/tags/$g_ver" "imagemagick-$g_ver.tar.gz"
-    execute ./configure --prefix=/usr --enable-shared --with-modules --enable-ccmalloc --enable-legacy-support --with-autotrace --with-dmalloc \
+    ./configure --prefix=/usr --enable-shared --with-modules --enable-ccmalloc --enable-legacy-support --with-autotrace --with-dmalloc \
         --with-flif --with-gslib --with-heic --with-jemalloc --with-perl --with-tcmalloc --with-quantum-depth=16 \
         CXXFLAGS="$CXX_NAT"
     execute make "-j$cpus"
