@@ -23,7 +23,7 @@ if ! mkdir -p "$PWD"/magick-build; then
     exit 1
 fi
 
-printf "\n%s\n\n" \
+printf "\n%s\n" \
     'Executing the build script'
 
 # change into the temporary build directory, and run the master install script
