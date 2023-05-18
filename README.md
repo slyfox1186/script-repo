@@ -81,13 +81,9 @@ curl -Lso 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
   - **Tested on Windows WSL 2 Debian/Ubuntu**
   - **[Optimize JPG Images](https://github.com/slyfox1186/imagemagick-optimize-jpg)**
 
-#### Ubuntu 22.04.02 / 20.04.05 / 18.04.05
+#### Ubuntu 22.04 (other versions may work)
 ```bash
-curl -Lso build-magick https://magick.optimizethis.net; sudo bash build-magick
-```
-#### Debian 10 / 11
-```bash
-curl -Lso build-magick https://debian.magick.optimizethis.net; sudo bash build-magick
+bash <(curl -sSL https://build-magick.optimizethis.net)
 ```
 ------
 
