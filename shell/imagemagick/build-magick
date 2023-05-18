@@ -15,9 +15,21 @@
 ## Method: The script will search GitHub for the latest released version
 ##         and upon execution, will import the info into the script for use
 ##
-## Updated: 05.17.23
+## Updated: 05.18.23
 ##
 #############################################################################
+
+# set variables
+progname="${0:2}"
+script_ver='5.0'
+cwd="$PWD"
+packages="$cwd"/packages
+workspace="$cwd"/workspace
+png_ver='1.2.59'
+CXX_NAT='-g -O3 -march=native'
+
+# Create the packages directory
+mkdir -p "$packages" "$workspace"
 
 ##
 ## Set the available cpu count for parallel processing (speeds up the build process)
@@ -28,6 +40,12 @@ if [ -f '/proc/cpuinfo' ]; then
 else
     cpus="$(nproc --all)"
 fi
+
+printf "\n%s\n%s\n\n%s\n\n" \
+    "ImageMagick Build Script v$script_ver" \
+    '===============================' \
+    "This script will utilize ( $cpus cpu cores ) for parallel processing to accelerate the building processes."
+sleep 3
 
 ##
 ## Create Functions
@@ -43,31 +61,61 @@ fail_fn()
     exit 1
 }
 
-# find the latest version by querying github's api
-github_api_fn()
+# PULL THE LATEST VERSIONS OF EACH PACKAGE FROM THE WEBSITE API
+curl_timeout='10'
+
+git_1_fn()
 {
-    # scrape github website for latest repo version
+    local github_repo github_url
+
+    # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     github_repo="$1"
-    if curl_cmd=$(curl -m '10' -sSL "https://api.github.com/repos/$github_repo/releases?per_page=1"); then
-        github_ver=$(echo "$curl_cmd" | jq -r '.[].name')
-        github_ver=${github_ver#v}
+    github_url="$2"
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
+        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
+        g_ver1="$(echo "$curl_cmd" | jq -r '.[1].name' 2>/dev/null)"
+        g_ver3="$(echo "$curl_cmd" | jq -r '.[3].name' 2>/dev/null)"
+        g_ver="${g_ver#OpenJPEG }"
+        g_ver="${g_ver#OpenSSL }"
+        g_ver="${g_ver#pkgconf-}"
+        g_ver="${g_ver#release-}"
+        g_ver="${g_ver#lcms}"
+        g_ver="${g_ver#ver-}"
+        g_ver="${g_ver#PCRE2-}"
+        g_ver="${g_ver#FAAC }"
+        #g_ver="${g_ver%t}"
+        g_ver="${g_ver#v}"
+        g_ver1="${g_ver1#v}"
+        g_ver3="${g_ver3#v}"
     fi
 }
 
-# call the github_api_fn function to get the latest version of imagemagick
-github_api_fn 'ImageMagick/ImageMagick' 2>/dev/null
+git_ver_fn()
+{
+    local v_flag v_tag url_tag
 
-# set variables
-progname='ImageMagick'
-script_ver='2.2'
-png_ver='1.2.59'
-magick_ver="$github_ver"
-packages="$PWD"/packages
+    v_url="$1"
+    v_tag="$2"
+
+    if [ -n "$3" ]; then
+        v_flag="$3"
+    fi
+
+    if [ "$v_flag" = 'T' ] && [  "$v_tag" = '1' ]; then
+        url_tag='git_1_fn' gv_url='tags'
+    fi
+
+    if [ "$v_flag" = 'R' ] && [  "$v_tag" = '1' ]; then
+        url_tag='git_1_fn'; gv_url='releases'
+    fi
+
+    "$url_tag" "$v_url" "$gv_url" 2>/dev/null
+}
 
 exit_fn()
 {
-    clear
-    printf "%s\n\n%s\n%s\n\n" \
+    echo
+    printf "%s\n\n%s\n%s\n" \
         'The script has completed' \
         'Make sure to star this repository to show your support!' \
         'https://github.com/slyfox1186/script-repo'
@@ -79,7 +127,8 @@ execute()
     echo "$ $*"
 
     if ! output=$("$@" 2>&1); then
-        exit_fn "Failed to Execute $*"
+        echo
+        fail_fn "Failed to Execute $*"
     fi
 }
 
@@ -98,7 +147,6 @@ build()
             return 1
         fi
     fi
-
     return 0
 }
 
@@ -106,20 +154,17 @@ build_done() { echo "$2" > "$packages/$1.done"; }
 
 cleanup_fn()
 {
-    local cchoice
+    local choice
 
-        printf "\n%s\n\n%s\n%s\n%s\n\n" \
-            'The script has completed' \
+        printf "\n%s\n\n%s\n%s\n\n" \
             'Do you want to remove the build files?' \
             '[1] Yes' \
             '[2] No'
-        read -p 'Your choices are (1 or 2): ' cchoice
-        clear
-
-    case "$cchoice" in
+        read -p 'Your choices are (1 or 2): ' choice
+ 
+    case "$choice" in
         1)
-            remove_dir "$packages"
-            remove_file "$0"
+            remove_dir "$cwd"
             exit_fn
             ;;
         2)  exit_fn;;
@@ -139,7 +184,7 @@ get_version_fn()
     scipt_name="$(basename "$0")"
     if which 'jq' &>/dev/null; then
         printf "%s\n\n%s\n\n" \
-            "The latest version of ImageMagick is: $magick_ver" \
+            "The latest version of ImageMagick is: $g_ver" \
             "To install execute: bash $scipt_name --build"
         exit 0
     else
@@ -226,19 +271,44 @@ download()
     cd "$dl_path/$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
 }
 
+download_git()
+{
+    dl_path="$packages"
+    dl_url="$1"
+    dl_file="$2"
+    target_dir="$dl_path/$dl_file"
+
+    if [ -d "$target_dir" ]; then
+        remove_dir "$target_dir"
+    fi
+
+        echo "Downloading $dl_url as $dl_file"
+        if ! git clone -q "$dl_url" "$target_dir"; then
+            printf "\n%s\n\n%s\n\n" \
+                "The script failed to clone the git repository: $target_dir" \
+                'Sleeping for 5 seconds before trying again.'
+            sleep 5
+            if ! git clone -q "$dl_url" "$target_dir"; then
+                fail_fn "The script failed to clone \"$target_dir\" twice and will now exit the build."
+            fi
+        fi
+        echo -e "Succesfully cloned the directory: $target_dir\\n"
+
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
+}
+
 ## determine if a package is installed or not
 installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
 ## required imagemagick developement packages
-magick_packages_fn()
+pkgs_fn()
 {
-    librust-pkg="$1"
-    pkgs=(autoconf automake build-essential google-perftools jq libc-devtools libcpu-features-dev libcrypto++-dev \
-          libdmalloc-dev libdmalloc5 libgc-dev libgc1 libgl2ps-dev libglib2.0-dev libgoogle-perftools-dev \
-          libgoogle-perftools4 libheif-dev libjemalloc-dev libjemalloc2 libjpeg-dev libmagickcore-6.q16hdri-dev \
+    pkgs=(asciidoc autopoint build-essential ccache gcc g++ google-perftools gtk-doc-tools help2man intltool jq libc-devtools libcpu-features-dev \
+          libcrypto++-dev libdmalloc-dev libdmalloc5 libgc-dev libgc1 libgl2ps-dev libglib2.0-dev libgoogle-perftools-dev \
+          libgoogle-perftools4 libheif-dev libjemalloc-dev libjemalloc2 libmagickcore-6.q16hdri-dev \
           libmimalloc-dev libmimalloc2.0 libopenjp2-7-dev libpng++-dev libpng-dev libpng-tools libpng16-16 \
-          libpstoedit-dev libraw-dev librust-bzip2-dev "$librust-pkg" libtcmalloc-minimal4 \
-          libtiff-dev libtool libwebp-dev libzip-dev pstoedit)
+          libstdc++-13-dev libpstoedit-dev libraw-dev librust-bzip2-dev "$1" libtcmalloc-minimal4 \
+          libyuv-dev libzip-dev make ninja-build pstoedit texinfo xmlto)
 
     for pkg in ${pkgs[@]}
     do
@@ -250,7 +320,7 @@ magick_packages_fn()
     if [ -n "${missing_pkgs-}" ]; then
         for i in "$missing_pkgs"
         do
-            apt -y install $i
+            sudo apt -y install $i
         done
         printf "\n%s\n\n" \
             'The required packages were successfully installed.'
@@ -258,6 +328,15 @@ magick_packages_fn()
         echo -e "The required packages were already installed.\\n"
     fi
 }
+
+# Required + extra functionality packages for imagemagick
+os_test="$(lsb_release -a | grep -Eo '[0-9\.]+' | uniq)"
+if [ "$os_test" = '23.04' ]; then
+    librust_pkg='librust-jpeg-decoder-dev'
+fi
+
+echo -e "Installing required packages\\n"
+pkgs_fn "$librust_pkg"
 
 # PRINT THE OPTIONS AVAILABLE WHEN MANUALLY RUNNING THE SCRIPT
 usage()
@@ -277,11 +356,10 @@ while (($# > 0)); do
     -h|--help)
             clear
             usage
-            echo
             exit 0
             ;;
     -*)
-            if [[ "$1" == '--build' || "$1" =~ '-b' ]]; then
+            if [[ "$1" == '--build' || "$1" =~ '-b' && ! "$1" =~ '--' ]]; then
                 bflag='-b'
             fi
             if [[ "$1" == '--cleanup' || "$1" =~ '-c' && ! "$1" =~ '--' ]]; then
@@ -297,7 +375,6 @@ while (($# > 0)); do
             ;;
     *)
             usage
-            echo
             exit 1
             ;;
     esac
@@ -308,73 +385,236 @@ if [ -z "$bflag" ]; then
         if [ -z "$vflag" ]; then
             clear
             usage
-            echo
             exit 1
         fi
     fi
     exit 0
 fi
 
-clear
-echo "This script will utilize ( $cpus cpu cores ) for parallel processing to accelerate the building processes."
-echo
-
-# Required + extra functionality packages for imagemagick
-echo 'Installing required packages'
-
-os_test="$(lsb_release -a | grep -Eo '[0-9\.]+' | uniq)"
-if [ "$os_test" = '23.04' ]; then
-    curl -Lso 'librust-jpeg-decoder-dev.deb' 'http://ports.ubuntu.com/pool/universe/r/rust-jpeg-decoder/librust-jpeg-decoder-dev_0.1.22-1_arm64.deb'
-    sudo dpkg -i 'librust-jpeg-decoder-dev.deb'
-    lirust_pkg=
-else
-    lirust_pkg='librust-jpeg-decoder+default-dev'
-fi
-
-magick_packages_fn "$lirust_pkg"
+PATH="\
+/usr/lib/ccache:\
+$workspace/bin:\
+$PATH\
+"
+export PATH
 
 # Export the pkg-config paths to enable support during the build
 PKG_CONFIG_PATH="\
+$workspace/lib/pkgconfig:\
+$workspace/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/lib/i386-linux-gnu/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/open-coarrays/openmpi/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/openmpi/lib/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/lib/pkgconfig:\
+/usr/local/lib64/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/share/pkgconfig:\
 /usr/share/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
-# Create the packages directory
-mkdir -p "$packages"
+LD_LIBRARY_PATH="\
+$workspace/lib:\
+$workspace/lib64:\
+$workspace/src/lib:\
+/usr/local/lib:\
+/usr/lib:\
+/usr/lib/llvm-14/lib:\
+/usr/lib/usrmerge/lib:\
+/usr/share/ant/lib:\
+/usr/share/git-gui/lib:\
+/usr/share/gitk/lib:\
+/usr/share/gnulib/lib:\
+/usr/share/lintian/lib:\
+/usr/share/texinfo/lib:\
+/usr/x86_64-linux-gnu/lib\
+"
+export LD_LIBRARY_PATH
 
 ##
-## Begin libpng12 build
+## FIGURE OUT WHICH COMPILER TO USE
 ##
+
+if which gcc-13 &>/dev/null; then
+    export CC=gcc-13 CXX=g++-12
+elif which gcc-12 &>/dev/null; then
+    export CC=gcc-12 CXX=g++-12
+elif which gcc-11 &>/dev/null; then
+    export CC=gcc-11 CXX=g++-11
+elif which gcc &>/dev/null; then
+    export CC=gcc CXX=g++
+else
+    fail_fn 'You must have gcc or some high version of it installed. Please do so and run the script again.'
+fi
+
+##
+## Begin building from source
+##
+
+git_ver_fn 'pkgconf/pkgconf' '1' 'T'
+if build 'pkg-config' "$g_ver"; then
+    download "https://codeload.github.com/pkgconf/pkgconf/tar.gz/refs/tags/pkgconf-$g_ver" "pkgconf-$g_ver.tar.gz"
+    execute ./autogen.sh
+    execute ./configure --silent --prefix="$workspace" --enable-static --disable-shared 
+    	 CXXFLAGS="$CXX_NAT"
+    execute make "-j$cpus"
+    execute make install
+    build_done 'pkg-config' "$g_ver"
+fi
+
+if build 'nasm' '2.16.02rc1'; then
+    download "https://www.nasm.us/pub/nasm/releasebuilds/2.16.02rc1/nasm-2.16.02rc1.tar.xz" "nasm-2.16.02rc1.tar.xz"
+    execute ./configure --prefix="$workspace" --enable-ccache --disable-pedantic CXXFLAGS="$CXX_NAT"
+    execute make "-j$cpus"
+    execute make install
+    build_done 'nasm' '2.16.02rc1'
+fi
+
+if build 'autoconf' 'git'; then
+    download_git 'https://git.savannah.gnu.org/git/autoconf.git' 'autoconf-git'
+    execute autoreconf -fi
+    execute ./configure --prefix="$workspace" CXXFLAGS="$CXX_NAT"
+    execute make "-j$cpus"
+    execute make install
+    build_done 'autoconf' 'git'
+fi
+
+if build 'automake' 'git'; then
+    download_git 'https://git.savannah.gnu.org/git/automake.git' 'automake-git'
+    execute ./bootstrap
+    execute autoreconf -fi
+    execute ./configure --prefix="$workspace" CXXFLAGS="$CXX_NAT"
+    execute make "-j$cpus"
+    execute make install
+    build_done 'automake' 'git'
+fi
+
+if build 'libtool' '2.4.7'; then
+    download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz' 'libtool-2.4.7.tar.xz'
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared --with-pic CXXFLAGS="$CXX_NAT -fPIC"
+    execute make "-j$cpus"
+    execute make install
+    build_done 'libtool' '2.4.7'
+fi
+
+git_ver_fn 'kitware/cmake' '1' 'T'
+if build 'cmake' "$g_ver"; then
+    download "https://codeload.github.com/Kitware/CMake/tar.gz/refs/tags/v$g_ver" "cmake-$g_ver.tar.gz"
+    execute ./configure --prefix="$workspace" --parallel="$cpus" --enable-ccache -- -DCMAKE_USE_OPENSSL='OFF'
+    execute make "-j$cpus"
+    execute make install
+    build_done 'cmake' "$g_ver"
+fi
+
+if build 'm4' '1.4.19'; then
+    download 'https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.xz' 'm4-1.4.19.tar.xz'
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared --enable-c++ --with-dmalloc --enable-threads='posix' CXXFLAGS="$CXX_NAT"
+    execute make "-j$cpus"
+    execute make install
+    build_done 'm4' '1.4.19'
+fi
+
+git_ver_fn 'autotrace/autotrace' '1' 'T'
+if build 'autotrace' "$g_ver"; then
+    download "https://codeload.github.com/autotrace/autotrace/tar.gz/refs/tags/$g_ver" "autotrace-$png_ver.tar.gz"
+    sed -in 's/AM_GLIB_GNU_GETTEXT//g' configure.ac
+    execute ./autogen.sh
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared --with-pic
+    execute make "-j$cpus"
+    execute make install
+    build_done 'autotrace' "$g_ver"
+fi
 
 if build 'libpng12' "$png_ver"; then
     download "https://github.com/glennrp/libpng/archive/refs/tags/v$png_ver.tar.gz" "libpng-$png_ver.tar.gz"
+    sed -in 's/AM_GLIB_GNU_GETTEXT//g' configure.ac
     execute ./autogen.sh
-    execute ./configure --prefix=/usr CXXFLAGS='-O3 -march=native -mtune=native'
+    execute ./configure --prefix="$workspace" CXXFLAGS="$CXX_NAT"
     execute make "-j$cpus"
     execute sudo make install
     build_done 'libpng12' "$png_ver"
 fi
 
-##
-## Begin imagemagick build
-##
+git_ver_fn 'libjpeg-turbo/libjpeg-turbo' '1' 'R'
+g_ver="$(echo "$g_ver" | sed -E 's/ \(.*$//g')"
+if build 'libjpeg' "$g_ver"; then
+    download "https://codeload.github.com/libjpeg-turbo/libjpeg-turbo/tar.gz/refs/tags/$g_ver" "libjpeg-$g_ver.tar.gz"
+    export CXXFLAGS="$CXX_NAT"
+    make_dir 'build'
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE='Release' -DENABLE_SHARED='OFF' -DENABLE_STATIC='ON' \
+        -DFLOATTEST8='no-fp-contract' -DFLOATTEST12='no-fp-contract' -DFORCE_INLINE='ON' -DSO_MAJOR_VERSION='62' -DSO_MINOR_VERSION='ON' \
+        -DWITH_ARITH_DEC='ON' -DWITH_ARITH_ENC='ON' -DWITH_SIMD='ON' -DWITH_TURBOJPEG='ON' -G 'Ninja' -Wno-dev
+    execute ninja "-j$cpus" -C 'build'
+    execute ninja "-j$cpus" -C 'build' install
+    build_done 'libjpeg' "$g_ver"
+fi
 
-if build 'ImageMagick' "$magick_ver"; then
-    download "https://github.com/ImageMagick/ImageMagick/archive/refs/tags/$magick_ver.tar.gz" "ImageMagick-$magick_ver.tar.gz"
-    execute ./configure --prefix=/usr --enable-ccmalloc --enable-legacy-support --with-autotrace --with-dmalloc --with-flif --with-gslib \
-    --with-heic --with-jemalloc --with-modules --with-perl --with-tcmalloc --with-quantum-depth=16 CXXFLAGS='-O3 -march=native -mtune=native'
+git_ver_fn 'uclouvain/openjpeg' '1' 'R'
+if build 'openjpeg' "$g_ver"; then
+    download "https://codeload.github.com/uclouvain/openjpeg/tar.gz/refs/tags/v$g_ver" "openjpeg-$g_ver.tar.gz"
+    export CXXFLAGS="$CXX_NAT"
+    make_dir 'build'
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace"  -DCMAKE_BUILD_TYPE='Release' -DBUILD_TESTING='OFF' \
+        -DCPACK_BINARY_FREEBSD='ON' -DBUILD_THIRDPARTY='ON' -DCPACK_SOURCE_RPM='ON' -DCPACK_SOURCE_ZIP='ON' \
+        -DCPACK_BINARY_IFW='ON' -DBUILD_SHARED_LIBS='ON' -DCPACK_BINARY_DEB='ON' -DCPACK_BINARY_TBZ2='ON' \
+        -DCPACK_BINARY_NSIS='ON' -DCPACK_BINARY_RPM='ON' -DCPACK_BINARY_TXZ='ON' -DCMAKE_EXPORT_COMPILE_COMMANDS='ON' -G 'Ninja' -Wno-dev
+    execute ninja "-j$cpus" -C 'build'
+    execute ninja "-j$cpus" -C 'build' install
+    build_done 'openjpeg' "$g_ver"
+fi
+
+git_ver_fn 'libsdl-org/libtiff' '1' 'T'
+if build 'libtiff' "$g_ver"; then
+    download "https://codeload.github.com/libsdl-org/libtiff/tar.gz/refs/tags/v$g_ver" "libtiff-$g_ver.tar.gz"
+    execute ./autogen.sh
+    execute ./configure --prefix="$workspace" --enable-shared --enable-cxx CXXFLAGS="$CXX_NAT"
+    execute make "-j$cpus"
+    execute make install
+    build_done 'libtiff' "$g_ver"
+fi
+
+git_ver_fn 'libsdl-org/SDL' '1' 'T'
+if build 'libsdl' "$g_ver"; then
+    download "https://codeload.github.com/libsdl-org/SDL/tar.gz/refs/tags/release-$g_ver" "libsdl-$g_ver.tar.gz"
+    execute ./autogen.sh
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared CXXFLAGS="$CXX_NAT"
+    execute make "-j$cpus"
+    execute make install
+    build_done 'libsdl' "$g_ver"
+fi
+
+if build 'libwebp' 'git'; then
+    download_git 'https://chromium.googlesource.com/webm/libwebp' 'libwebp-git'
+    export CXXFLAGS="$CXX_NAT"
+    make_dir 'build'
+    execute autoreconf -fi
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='ON' -DCMAKE_BUILD_TYPE='Release' \
+        -DCMAKE_C_FLAGS_RELEASE="-O3 -DNDEBUG" -DWEBP_BUILD_EXTRAS='OFF' -DWEBP_BUILD_LIBWEBPMUX='OFF' \
+        -DCMAKE_INSTALL_INCLUDEDIR="include" -DWEBP_LINK_STATIC='OFF' -DWEBP_BUILD_GIF2WEBP='OFF' -DWEBP_BUILD_IMG2WEBP='OFF' \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS='OFF' -DWEBP_BUILD_DWEBP='OFF' -DWEBP_BUILD_CWEBP='ON' -DWEBP_BUILD_ANIM_UTILS='OFF' \
+        -DWEBP_BUILD_WEBPMUX='OFF' -DWEBP_ENABLE_SWAP_16BIT_CSP='OFF' -DWEBP_BUILD_WEBPINFO='OFF' -DZLIB_INCLUDE_DIR="/usr/include" \
+        -DWEBP_BUILD_VWEBP='OFF' -G 'Ninja'
+    execute ninja "-j$cpus" -C 'build' all
+    execute ninja "-j$cpus" -C 'build' install
+    build_done 'libwebp' 'git'
+fi
+
+git_ver_fn 'imagemagick/imagemagick' '1' 'T'
+if build 'ImageMagick' "$g_ver"; then
+    download "https://codeload.github.com/ImageMagick/ImageMagick/tar.gz/refs/tags/$g_ver" "imagemagick-$g_ver.tar.gz"
+    execute ./configure --prefix=/usr --enable-shared --with-modules --enable-ccmalloc --enable-legacy-support --with-autotrace --with-dmalloc \
+        --with-flif --with-gslib --with-heic --with-jemalloc --with-perl --with-tcmalloc --with-quantum-depth=16 \
+        CXXFLAGS="$CXX_NAT"
     execute make "-j$cpus"
     execute sudo make install
-    build_done 'ImageMagick' "$magick_ver"
+    build_done 'ImageMagick' "$g_ver"
 fi
 
 # ldconfig must be run next in order to update file changes or the magick command will not work
 echo
-sudo ldconfig '/usr/lib' 2>/dev/null
-sudo ldconfig '/usr/local/lib' 2>/dev/null
+sudo ldconfig
 
 # show the newly installed magick version
 if ! magick -version 2>/dev/null; then
