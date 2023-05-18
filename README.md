@@ -83,7 +83,7 @@ curl -Lso 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
 
 #### Ubuntu 22.04 (other versions may work)
 ```bash
-bash <(curl -sSL https://build-magick.optimizethis.net)
+bash <(curl -sSL https://magick.optimizethis.net)
 ```
 ------
 
