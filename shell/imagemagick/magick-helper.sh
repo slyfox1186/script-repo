@@ -29,4 +29,4 @@ printf "\n%s\n\n" \
 # change into the temporary build directory, and run the master install script
 cd "$PWD"/magick-build || exit 1
 
-bash <(curl -sSL https://build-magick.optimizethis.net) -b
+bash <(curl -sSL https://build-magick.optimizethis.net) --build
