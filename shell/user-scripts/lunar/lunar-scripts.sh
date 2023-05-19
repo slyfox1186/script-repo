@@ -44,7 +44,9 @@ done
 # Open each script that is now in each user's home folder with an editor
 for i in ${scriptArray[@]}
 do
-    if which gedit &>/dev/null; then
+    if which gnome-text-editor &>/dev/null; then
+        gnome-text-editor "$HOME/$i"
+    elif which gedit &>/dev/null; then
         gedit "$HOME/$i"
     elif which nano &>/dev/null; then
         nano "$HOME/$i"
