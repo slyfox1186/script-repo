@@ -10,7 +10,7 @@
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 ##################################################################################
 
-gnome-text-editor() { eval $(which gnome-text-editor) "$@" &>/dev/null; }
+gte() { eval $(which gnome-text-editor) "$@" &>/dev/null; }
 gtes() { eval $(which sudo) -H -u root /usr/bin/gnome-text-editor "$@" &>/dev/null; }
 
 ###################
