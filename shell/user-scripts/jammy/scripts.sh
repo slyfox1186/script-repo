@@ -2,6 +2,17 @@
 
 clear
 
+#
+# create functions
+#
+
+fail_fn()
+{
+    printf "\n%s\n\n" \
+        "$1"
+        exit 1
+}
+
 # make a tmporary random directory
 random_dir="$(mktemp --directory)"
 
@@ -11,7 +22,7 @@ static_dir="$random_dir"
 cd "$static_dir" || exit 1
 
 # Download the user scripts from GitHub
-wget -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/user-scripts/scripts.txt'
+wget -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/user-scripts/scripts-jammy.txt'
 
 # Delete all files except those that start with a '.' or end with '.sh'
 find . ! \( -name '\.*' -o -name '*.sh' \) -type f -delete 2>/dev/null
@@ -23,14 +34,10 @@ scriptArray=(.bash_aliases .bash_functions .bashrc)
 for script in ${scriptArray[@]}
 do
     if ! mv -f "$PWD/$script" "$HOME"; then
-        echo 'Failed: 1'
-        echo
-        exit 1
+        fail_fn "Failed to move scripts to: $HOME"
     fi
     if ! sudo chown "$USER":"$USER" "$HOME/$script"; then
-        echo 'Failed: 1'
-        echo
-        exit 1
+        fail_fn "Failed to update file permissions to: $USER:$USER"
     fi
 done
 
@@ -42,9 +49,9 @@ do
     elif which nano &>/dev/null; then
         nano "$HOME/$i"
     elif which vim &>/dev/null; then
-        vim "$HOME/$i"
-    else
         vi "$HOME/$i"
+    else
+        fail_fn 'Could not find an EDITOR to open the files with.'
     fi
 done
 
