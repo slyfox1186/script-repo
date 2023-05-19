@@ -4,14 +4,14 @@
 ## SET SUDO TO RUN AS THE CURRENT USER ##
 #########################################
 
-sudo() { eval $(which sudo) -H -u root "$@"; }
+# sudo() { eval $(which sudo) -H -u root "$@"; }
 
 ##################################################################################
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 ##################################################################################
 
-gedit() { eval $(which gedit) "$@" &>/dev/null; }
-geds() { eval $(which sudo) -H -u root /usr/bin/gedit "$@" &>/dev/null; }
+gnome-text-editor() { eval $(which gnome-text-editor) "$@" &>/dev/null; }
+gtes() { eval $(which sudo) -H -u root /usr/bin/gnome-text-editor "$@" &>/dev/null; }
 
 ###################
 ## FIND COMMANDS ##
@@ -184,39 +184,38 @@ apt_dl() { wget -c "$(apt-get install --reinstall --print-uris -qq $1 | cut -d"'
 clean()
 {
     clear
-    apt clean
-    apt -y autoremove
-    apt autoclean
-    apt -y purge
+    sudo apt-fast -y autoremove
+    sudo apt-fast clean
+    sudo apt-fast autoclean
+    sudo apt-fast -y purge
 }
 
 # UPDATE
 update()
 {
     clear
-    apt update
-    apt-get -y dist-upgrade
-    apt-get -y install ubuntu-advantage-tools
-    apt -y full-upgrade
-    apt clean
-    apt -y autoremove
-    apt autoclean
-    apt -y purge
+    sudo apt-fast update
+    sudo apt-fast -y full-upgrade
+    sudo apt-fast -y install ubuntu-advantage-tools
+    sudo apt-fast -y autoremove
+    sudo apt-fast clean
+    sudo apt-fast autoclean
+    sudo apt-fast -y purge
 }
 
 # FIX BROKEN APT PACKAGES
 fix()
 {
     clear
+    sudo apt-fast -f -y install
     apt --fix-broken install
     apt --fix-missing update
-    apt -y install
     dpkg --configure -a
-    apt -y autoremove
-    apt clean
-    apt autoclean
-    apt -y purge
-    apt update
+    sudo apt-fast -y autoremove
+    sudo apt-fast clean
+    sudo apt-fast autoclean
+    sudo apt-fast -y purge
+    sudo apt-fast update
 }
 
 listd()
@@ -225,11 +224,11 @@ listd()
     local search_cache
 
     if [ -n "$1" ]; then
-        apt list *$1*-dev | awk -F'/' '{print $1}'
+        sudo apt-fast list *$1*-dev | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        apt list *$1*-dev | awk -F'/' '{print $1}'
+        sudo apt-fast list *$1*-dev | awk -F'/' '{print $1}'
     fi
 }
 
@@ -240,26 +239,26 @@ list()
     local search_cache
 
     if [ -n "$1" ]; then
-        apt list *$1* | awk -F'/' '{print $1}'
+        sudo apt-fast list *$1* | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        apt list *$1* | awk -F'/' '{print $1}'
+        sudo apt-fast list *$1* | awk -F'/' '{print $1}'
     fi
 }
 
-# USE APTITUDE TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
+# USE sudo apt-fast TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
 asearch()
 {
     clear
     local search_cache
 
     if [ -n "$1" ]; then
-        aptitude search "$1 ~i" -F "%p"
+        sudo apt-fast search "$1 ~i" -F "%p"
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        aptitude search "$1 ~i" -F "%p"
+        sudo apt-fast search "$1 ~i" -F "%p"
     fi
 }
 
@@ -757,9 +756,9 @@ cuda_purge()
         echo 'Purging the cuda-sdk-toolkit from your computer.'
         echo '================================================'
         echo
-        sudo apt-get -y --purge remove "*cublas*" "cuda*" "nsight*"
-        sudo apt -y autoremove
-        sudo apt update
+        sudo sudo apt-fast -y --purge remove "*cublas*" "cuda*" "nsight*"
+        sudo sudo apt-fast -y autoremove
+        sudo sudo apt-fast update
     elif [[ "$answer" -eq '2' ]]; then
         return 0
     fi
@@ -865,7 +864,7 @@ hw_mon()
 
     # install lm-sensors if not already
     if ! which lm-sensors &>/dev/null; then
-        sudo apt -y install lm-sensors
+        sudo apt-fast -y install lm-sensors
     fi
 
     # add modprobe to system startup tasks if not already added    
@@ -950,3 +949,73 @@ wcache()
 
     sudo hdparm -W 0 /dev/"$drive_choice"
 }
+
+##################
+## TAR COMMANDS ##
+##################
+
+tar_gz()
+{
+    clear
+
+    local spath dpath
+
+    read -p 'Please enter the source folder path: ' spath
+    echo
+    read -p 'Please enter the destination archive path (w/o extension): ' dpath
+    clear
+
+    if [ ! -f "$dpath".tar.gz ]; then
+        tar -cvJf "$spath" "$dpath".tar.gz
+    else
+        clear
+        printf "%s\n\n%s\n\n" \
+        'The output file already exists.' \
+        'Please choose another output name or delete the file.'
+    fi
+}
+
+tar_bz2()
+{
+    clear
+
+    local spath dpath
+
+    read -p 'Please enter the source folder path: ' spath
+    echo
+    read -p 'Please enter the destination archive path (w/o extension): ' dpath
+    clear
+
+    if [ ! -f "$dpath".tar.bz2 ]; then
+        tar -cvjf "$spath" "$dpath".tar.bz2
+    else
+        clear
+        printf "%s\n\n%s\n\n" \
+        'The output file already exists.' \
+        'Please choose another output name or delete the file.'
+    fi
+}
+
+tar_xz()
+{
+    clear
+
+    local spath dpath
+
+    read -p 'Please enter the source folder path: ' spath
+    echo
+    read -p 'Please enter the destination archive path (w/o extension): ' dpath
+    clear
+
+    if [ ! -f "$dpath".tar.xz ]; then
+        tar -cvf - "$spath" | xz -9 -c - > "$dpath".tar.xz
+    else
+        clear
+        printf "%s\n\n%s\n\n" \
+        'The output file already exists.' \
+        'Please choose another output name or delete the file.'
+    fi
+}
+
+# GET LIST OF PACKAGES BY IMPORTANCE
+list_optional() { clear; dpkg-query -Wf '${Package;-40}${Priority}\n' | sort -b -k2,2 -k1,1; }
