@@ -27,7 +27,7 @@ if [ -n "$missing_pkgs" ]; then
     echo
     for i in "$missing_pkgs"
         do
-            apt -y install ${i}
+            sudo apt -y install $i
         done
 else
     echo '$ The packages are already installed.'
