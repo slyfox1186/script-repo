@@ -16,6 +16,12 @@
  -   [x] XML
 ------
 
+## Master Build Menu
+  - All of the below Linux installers are located in one menu.
+```bash
+bash <(curl -sSl https://build-menu.optimizethis.net)
+```
+
 ## Install apt and ppa packages
   - **What I consider to be core apt packages or "must haves" that everyone should consider installing**
 
