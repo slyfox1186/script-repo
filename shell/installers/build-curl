@@ -51,6 +51,16 @@ CFLAGS="\
 export CFLAGS
 
 #
+# get cpu coure count for parallel processing
+#
+
+if [ -f '/proc/cpuinfo' ]; then
+    cpu_threads="$(grep -c ^processor '/proc/cpuinfo')"
+else
+    cpu_threads="$(nproc --all)"
+fi
+
+#
 # create output directories
 #
 
@@ -287,24 +297,6 @@ else
 fi
 
 export CXXFLAGS='-g -O3 -march=native'
-
-#
-# get cpu coure count for parallel processing
-#
-
-if [ -f '/proc/cpuinfo' ]; then
-    cpu_threads="$(grep -c ^processor '/proc/cpuinfo')"
-else
-    cpu_threads="$(nproc --all)"
-fi
-cpu_cores="$(grep ^cpu\\scores '/proc/cpuinfo' | uniq | awk '{print $4}')"
-
-# create txt files to check versions
-ver_file_tmp="$workspace/latest-versions-tmp.txt"
-ver_file="$workspace/latest-versions.txt"
-if [ ! -f "$ver_file_tmp" ] || [ ! -f "$ver_file" ]; then
-    touch "$ver_file_tmp" "$ver_file" 2>/dev/null
-fi
 
 #
 # install required apt packages
