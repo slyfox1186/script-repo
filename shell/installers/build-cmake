@@ -360,7 +360,7 @@ pkgs_fn()
         printf "\n%s\n\n" \
             'The required packages were successfully installed.'
     else
-        echo 'The required packages were already installed.'
+        echo 'The required packages are already installed.'
     fi
 }
 
