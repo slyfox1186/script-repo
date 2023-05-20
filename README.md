@@ -193,7 +193,7 @@ bash <(curl -sSL https://players.optimizethis.net)
     - hfs/hfs 2
     - reiser 4/reiserfs
 ```bash
-curl -Lso gparted.sh https://gparted.optimizethis.net; sudo bash gparted.sh
+bash <(curl -sSL https://gparted.optimizethis.net)
 ```
 ------
 
