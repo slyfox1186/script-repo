@@ -66,9 +66,9 @@ install_apt_fn()
           libsdl-pango-dev libsox-dev libssl-dev libtalloc-dev libtbbmalloc2 libtool libtool-bin libzstd-dev \
           libzzip-dev linux-headers-generic linux-source lm-sensors lsb-core lshw lvm2 lzma-dev mainline make \
           man-db mercurial meson mono-devel nano nasm netplan.io net-tools network-manager nilfs-tools \
-          ninja-build npm ntfs2btrfs ntfs-3g nvme-cli openssh-client openssh-server openssl patchutils pbuilder \
+          ninja-build ntfs2btrfs ntfs-3g nvme-cli openssh-client openssh-server openssl patchutils pbuilder \
           pcregrep pipenv plank ppa-purge preload pristine-tar psensor python3-pip quilt reiser4progs reiserfsprogs \
-          rpm ruby-all-dev samba shellcheck smbclient sox sqlite3 subversion synaptic texinfo tofrodos trash-cli \
+          rpm ruby-all-dev samba shellcheck smbclient sqlite3 subversion synaptic texinfo tofrodos trash-cli \
           tty-share udftools unzip usb-creator-gtk uuid-dev wget xclip xfsprogs xsel yasm)
 
     for pkg in ${pkgs[@]}
@@ -100,7 +100,7 @@ install_ppa_fn()
         sudo mkdir -p '/etc/apt/sources.list.d'
     fi
 
-    ppa_repo='apt-fast/stable cappelikan/ppa danielrichter2007/grub-customizer git-core/ppa ubuntu-toolchain-r/test'
+    ppa_repo='apt-fast/stable cappelikan/ppa danielrichter2007/grub-customizer git-core/ppa ubuntu-toolchain-r/ppa'
 
     for pkg in ${ppa_repo[@]}
     do
@@ -114,7 +114,6 @@ install_ppa_fn()
                         'cappelikan/ppa')                          apt_pkg+=' mainline';;
                         'danielrichter2007/grub-customizer')       apt_pkg+=' grub-customizer';;
                         'git-core/ppa')                            apt_pkg+=' git';;
-                        'git-core/ppa ubuntu-toolchain-r/test')    apt_pkg+=' g++-13 g++-13-multilib libstdc++-13-doc';;
                  esac
             done
         fi
