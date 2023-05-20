@@ -88,6 +88,10 @@ bash <(curl -sSL https://debian-mirrors.optimizethis.net)
 ```bash
 bash <(curl -sSL https://7z.optimizethis.net)
 ```
+### 7-Zip Beta v2300
+```bash
+bash <(curl -sSL https://7z-beta.optimizethis.net)
+```
 ------
 
 ## Install [ImageMagick 7](https://github.com/ImageMagick/ImageMagick)
