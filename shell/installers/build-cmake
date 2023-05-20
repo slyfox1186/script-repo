@@ -343,7 +343,7 @@ export CXXFLAGS='-g -O3 -march=native'
 
 pkgs_fn()
 {
-    pkgs=(build-essential ccache gcc libssl-dev make ninja-build)
+    pkgs=(build-essential ccache gcc libssl-dev ninja-build)
 
     for pkg in ${pkgs[@]}
     do
