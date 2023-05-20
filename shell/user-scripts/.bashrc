@@ -1,4 +1,4 @@
-# "${HOME}/.bashrc": executed by bash(1) for non-login shells.
+# "$HOME/.bashrc": executed by bash(1) for non-login shells.
 # see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
 # for examples
 
@@ -73,8 +73,8 @@ xterm*|rxvt*)
 esac
 
 # alias definitions
-if [ -f "${HOME}/.bash_aliases" ]; then
-    . "${HOME}/.bash_aliases"
+if [ -f "$HOME/.bash_aliases" ]; then
+    . "$HOME/.bash_aliases"
 fi
 
 # enable programmable completion features
@@ -89,29 +89,31 @@ fi
 ##############################################################################################################
 
 # function definitions
-if [ -f "${HOME}/.bash_functions" ]; then
-    . "${HOME}/.bash_functions"
+if [ -f "$HOME/.bash_functions" ]; then
+    . "$HOME/.bash_functions"
 fi
 
 # custom user vars
 PATH="\
 /usr/lib/ccache:\
-/home/jman/.cargo/env:\
+$HOME/.cargo/env:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
-/usr/local/cuda-12.1/bin:\
 /sbin:\
 /bin:\
-/snap/bin:\
-/home/jman/.local/bin\
+/usr/games:\
+/usr/local/games:\
+/usr/local/cuda/bin:\
+/snap/bin\
 "
 export PATH
 
-export PS1='\[\e[0;1;93;48;5;16m\]\w\n\[\e[0;1;38;5;46;48;5;16m\]\T\n\[\e[0;1;38;5;198;48;5;16m\]\u\[\e[0;1;97;48;5;16m\]@\[\e[0;1;96;48;5;16m\]\h\[\e[0;1;93;48;5;16m\]$\[\e[0m\]'
+export PS1='\n\[\e[0;96m\]\w\n\[\e[0;38;5;220m\]\T\n\[\e[0;38;5;208m\]\h\[\e[0m\]@\[\e[0;38;5;201m\]\u\[\e[0;93m\]$\[\e[0m\]'
 
-export TMP="${HOME}/tmp"
+export TMP="$HOME/tmp"
 
 export LAN="$(hostname -I)"
 
@@ -121,4 +123,22 @@ export THREADS="$(nproc --all)"
 
 export CPUS="$((THREADS/2))"
 
-# export PYTHONUTF8='1'
+export PYTHONUTF8='1'
+
+# find the highest gcc version you have installed and set it as your compiler
+if which 'gcc-13' &>/dev/null; then
+    export CC='gcc-13' CXX='g++-12'
+elif which 'gcc-12' &>/dev/null; then
+    export CC='gcc-12' CXX='g++-12'
+elif which 'gcc-11' &>/dev/null; then
+    export CC='gcc-11' CXX='g++-11'
+elif which 'gcc' &>/dev/null; then
+    export CC='gcc' CXX='g++'
+else
+    clear
+    echo 'You must have gcc or some high version of it installed. Please do so and run the script again.'
+    exit 1
+fi
+
+# Compile using ultimate settings
+export CXXFLAGS='-g -O3 -march=native'
