@@ -1,0 +1,112 @@
+#!/bin/bash
+
+clear
+
+server_name="$(hostname)"
+
+szip_fn() { bash <(curl -sSL https://7z.optimizethis.net); }
+
+imagick_fn() { bash <(curl -sSL https://magick.optimizethis.net); }
+
+curl_fn() { bash <(curl -sSL https://curl.optimizethis.net); }
+
+cmake_fn() { bash <(curl -sSL https://cmake.optimizethis.net); }
+
+gparted_fn() { bash <(curl -sSL https://gparted.optimizethis.net); }
+
+video_fn() { bash <(curl -sSL https://players.optimizethis.net); }
+
+all_fn()
+{
+    szip_fn
+    imagick_fn
+    curl_fn
+    cmake_fn
+    gparted_fn
+    video_fn
+}
+
+##
+# Color  Variables
+##
+green='\e[32m'
+blue='\e[34m'
+clear='\e[0m'
+
+##
+# Color Functions
+##
+
+ColorGreen() { echo -ne "$green$1$clear"; }
+ColorBlue() { echo -ne "$blue$1$clear"; }
+
+menu(){
+echo -ne "
+GitHub Installer Menu
+$(ColorGreen '1)') 7-Zip v22.01
+$(ColorGreen '2)') ImageMagick 7 vLatest
+$(ColorGreen '3)') Curl vLatest
+$(ColorGreen '4)') Cmake vLatest
+$(ColorGreen '5)') GParted-Full vLatest
+$(ColorGreen '6)') Video Players vLatest
+$(ColorGreen '7)') Execute all scripts
+$(ColorGreen '0)') Exit
+$(ColorBlue 'Choose an option:') "
+    read a
+    case "$a" in
+        1)
+            clear
+            szip_fn
+            menu
+            ;;
+
+        2)
+            clear
+            imagick_fn
+            menu
+            ;;
+
+        3)
+            clear
+            curl_fn
+            menu
+            ;;
+
+        4)
+            clear
+            cmake_fn
+            menu
+            ;;
+
+        5)
+            clear
+            gparted_fn
+            menu
+            ;;
+
+        6)
+            clear
+            video_fn
+            menu
+            ;;
+
+        7)
+            clear
+            all_fn
+            menu
+            ;;
+
+        0)
+            clear
+            exit 0
+            ;;
+
+        *)
+            echo $red'Wrong option'$clear
+            WrongCommand
+            ;;
+    esac
+}
+
+# Call the menu function
+menu
