@@ -307,7 +307,7 @@ pkgs_fn()
           libcrypto++-dev libdmalloc-dev libdmalloc5 libgc-dev libgc1 libgl2ps-dev libglib2.0-dev libgoogle-perftools-dev \
           libgoogle-perftools4 libheif-dev libjemalloc-dev libjemalloc2 libmagickcore-6.q16hdri-dev \
           libmimalloc-dev libmimalloc2.0 libopenjp2-7-dev libpng++-dev libpng-dev libpng-tools libpng16-16 \
-          libstdc++-13-dev libpstoedit-dev libraw-dev librust-bzip2-dev "$1" libtcmalloc-minimal4 \
+          libstdc++-12-dev libpstoedit-dev libraw-dev librust-bzip2-dev "$1" libtcmalloc-minimal4 \
           libyuv-dev libzip-dev make ninja-build pstoedit texinfo xmlto)
 
     for pkg in ${pkgs[@]}
