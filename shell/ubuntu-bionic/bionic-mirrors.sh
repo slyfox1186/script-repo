@@ -14,7 +14,7 @@ cat > "$list" <<EOF
 ##
 ##  UBUNTU BIONIC
 ##
-##  v18.04.6
+##  v18.04
 ##
 ##  /etc/apt/sources.list
 ##
