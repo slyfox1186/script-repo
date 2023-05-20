@@ -146,7 +146,7 @@ fi
 printf "\n%s\n\n%s\n\n" \
     'This might take a minute... please be patient' \
     "\$ ./bootstrap --prefix=/usr --parallel=$(nproc --all) --enable-ccache --generator=Ninja"
-./bootstrap --prefix=/usr/local --parallel="$(nproc --all)" --enable-ccache --generator=Ninja &>/dev/null
+./bootstrap --prefix=/usr --parallel="$(nproc --all)" --enable-ccache --generator=Ninja &>/dev/null
 
 ##
 ## run the ninja commands to install cmake system-wide
