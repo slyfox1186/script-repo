@@ -1,5 +1,8 @@
+#!/bin/bash
+
 alias alien='sudo alien'
 alias apt-get='sudo apt-get'
+alias apt-fast='sudo apt-fast'
 alias aptitude='sudo aptitude'
 alias apt-key='sudo apt-key'
 alias apt='sudo apt'
@@ -30,6 +33,7 @@ alias rpm='sudo rpm'
 alias service='sudo service'
 alias snap='sudo snap'
 alias systemctl='sudo systemctl'
+alias timeshift='sudo timeshift'
 alias ufw='sudo ufw'
 alias umount='sudo umount'
 alias unzip='sudo unzip'
@@ -49,7 +53,7 @@ alias reboot-uefi='sudo systemctl reboot --firmware-setup'
 
 # enable color support of ls and also add handy aliases
 if [ -x '/usr/bin/dircolors' ]; then
-    test -r "${HOME}/.dircolors" && eval "$(dircolors -b ${HOME}/.dircolors)" || eval "$(dircolors -b)"
+    test -r "${HOME}/.dircolors" && eval "$(dircolors -b "${HOME}"/.dircolors)" || eval "$(dircolors -b)"
         # file navigation
         alias ls='ls -1AhFSv --color=auto --group-directories-first'
         # grep commands
@@ -69,9 +73,9 @@ alias dir='dir --color=auto'
 alias vdir='vdir --color=auto'
 
 # apt commands
-alias install='clear; aptitude -f -y install'
-alias remove='clear; aptitude -y remove'
-alias search='clear; aptitude search'
+alias install='clear; apt-fast -y install'
+alias remove='clear; apt-fast remove'
+alias search='clear; apt-fast search'
 
 # fix missing gpnu keys used to update packages
 alias fixkey='clear; apt-key adv --keyserver keyserver.ubuntu.com --recv-keys'
@@ -90,7 +94,7 @@ alias psp='clear; echo -e ${PATH//:/\\n}'
 alias mount='mount |column -t'
 
 # get system time
-alias time='date +%r | cut -d " " -f1-2 | egrep '^.*$''
+#alias time='date +%r | cut -d " " -f1-2 | egrep '^.*$''
 
 # crontab commands
 alias crontab='crontab -e'
@@ -229,9 +233,6 @@ alias psarch='clear; dpkg --print-architecture'
 # USB
 alias psusb='lsblk -a | sort > ~/usb.txt'
 
-# remove bom
-alias rmb="sed -i '1s/^\xEF\xBB\xBF//' ${1}"
-
 # get system architechture
 alias showarch='dpkg --print-architecture'
 
@@ -264,7 +265,7 @@ alias wtemp='clear; watch sensors'
 alias wgpu='clear; watch ndivia-smi'
 
 # UBUNTU VERSION
-alias uver="clear; lsb_release -a | grep -Eo '^Des.*\s*[A-Za-z.*]$'"
+alias uver="clear; lsb_release -d | grep -Eo 'Ubuntu [0-9\.]+.*$'"
 
 # FIX GPG KEY ERRORS DURING APT UPDATE THAT SHOWS THEY ARE "DEPRECIATED"
 alias fix_gpg='sudo cp /etc/apt/trusted.gpg /etc/apt/trusted.gpg.d'
@@ -275,3 +276,9 @@ alias cwatch='watch -n1 ccache --print-stats'
 # GET KERNEL VERSION
 alias kv='\cat /proc/version | grep -Eo "([0-9\.\-]+-generic)"'
 
+# FFMPEG
+alias fft='clear; ./repo.sh'
+alias ffc='clear; ./configure --help'
+
+# TIMESHIFT BACKUP SNAPSHOTS
+alias tsb='clear; timeshift --create'
