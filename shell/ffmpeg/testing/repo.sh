@@ -10,38 +10,25 @@ git_1_fn()
     github_repo="$1"
     github_url="$2"
 
-    if [ "$github_url" = 'releases/latest' ]; then
-    if curl_cmd="$(curl
+    if curl_cmd="$(curl \
                         -m "$curl_timeout" \
                         --request GET \
                         --url "https://api.github.com/slyfox1186" \
                         --header "Authorization: Bearer $git_token" \
                         --header "X-GitHub-Api-Version: 2022-11-28" \
                         -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
-            g_url="$(echo "$curl_cmd" | jq -r '.tarball_url')"
-            g_ver="${g_url##*/}"
-            g_ver="${g_ver##v}"
-            g_ver="${g_ver#OpenJPEG }"
-            g_ver="${g_ver#OpenSSL }"
-            g_ver="${g_ver#lcms}"
-        fi
-    fi
-
-    if [ "$github_url" = 'tags' ] || [ "$github_url" = 'releases' ]; then
-        if curl_cmd="$(curl -m "$curl_timeout" -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
-            g_url="$(echo "$curl_cmd" | jq -r '.tarball_url')"
-            g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
-            g_deb_url="$(echo "$curl_cmd" | jq -r '.' | grep 'browser_download_url' | head -n1 | grep -Eo 'http.*b')"
-            g_ver="${g_ver#v}"
-            g_ver3="$(echo "$curl_cmd" | jq -r '.[3].name')"
-            g_ver3="${g_ver3#v}"
-            g_ver="${g_ver#OpenJPEG }"
-            g_ver="${g_ver#OpenSSL }"
-            g_ver="${g_ver#pkgconf-}"
-            g_ver="${g_ver#lcms}"
-            g_deb_ver="${g_ver%-*}"
-            g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url')"
-        fi
+        g_url="$(echo "$curl_cmd" | jq -r '.tarball_url')"
+        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
+        g_deb_url="$(echo "$curl_cmd" | jq -r '.' | grep 'browser_download_url' | head -n1 | grep -Eo 'http.*b')"
+        g_ver="${g_ver#v}"
+        g_ver3="$(echo "$curl_cmd" | jq -r '.[3].name')"
+        g_ver3="${g_ver3#v}"
+        g_ver="${g_ver#OpenJPEG }"
+        g_ver="${g_ver#OpenSSL }"
+        g_ver="${g_ver#pkgconf-}"
+        g_ver="${g_ver#lcms}"
+        g_deb_ver="${g_ver%-*}"
+        g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url')"
     fi
 
     echo "${github_repo%/*}-$g_ver" >> "$ver_file_tmp"
