@@ -178,8 +178,7 @@ git_ver_fn()
 execute()
 {
     echo "$ $*"
-#  2>&1
-    if ! output=$("$@"); then
+    if ! output=$("$@" 2>&1); then
         fail_fn "Failed to Execute $*"
     fi
 }
@@ -348,7 +347,7 @@ if build 'c-ares' "$g_ver"; then
     make_dir 'build'
     execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCARES_SHARED='0' -DCARES_STATIC_PIC='1' \
         -DCARES_STATIC='1' -DCMAKE_CXX_COMPILER='/usr/lib/ccache/g++-12' -DCMAKE_BUILD_TYPE='Release' \
-        -DBUILD_SHARED_LIBS='OFF' -G 'Ninja' -Wno-dev CXXFLAGS='-O3 -march=native'
+        -DBUILD_SHARED_LIBS='OFF' -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C 'build'
     execute ninja "-j$cpu_threads" -C 'build' install
     build_done 'c-ares' "$g_ver"
@@ -369,7 +368,7 @@ if build 'curl' "$g_ver"; then
         --enable-ntlm-wb='/usr/bin/ntlm_auth' --enable-tls-srp --enable-unix-sockets --enable-cookies --enable-socketpair \
         --enable-http-auth --enable-doh --enable-mime --enable-dateparse --enable-netrc --enable-progress-meter --enable-dnsshuffle \
         --enable-get-easy-options --enable-alt-svc --enable-headers-api --enable-hsts --enable-websockets --enable-year2038 \
-        --with-gnutls='/usr/include' --without-hyper --with-zlib='/usr/include/boost/beast' --with-brotli='/usr/include' \
+        --with-gnutls='/usr/include' --with-gssapi --enable-manual --without-hyper --with-zlib='/usr/include/boost/beast' --with-brotli='/usr/include' \
         --with-ca-bundle='/etc/ssl/certs/ca-certificates.crt' --with-ca-path='/etc/ssl/certs' --with-ca-fallback --with-libssh2 \
         --with-wolfssh --with-nghttp2='/usr/include' --with-nghttp3='/usr/include' CXXFLAGS='-O3 -march=native'
     execute make "-j$cpu_threads"
