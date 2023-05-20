@@ -3,7 +3,7 @@
 
 #####################################
 ##
-## Install CMake v3.26.3
+## Install CMake v3.26.4
 ##
 ## Supported OS: Linux Debian based
 ##
@@ -26,9 +26,9 @@ fi
 ##
 
 s_ver='2.0'
-build_dir='cmake-3.26.3'
+build_dir='cmake-3.26.4'
 target="$PWD/$build_dir"
-tar_url='https://github.com/Kitware/CMake/releases/download/v3.26.3/cmake-3.26.3.tar.gz'
+tar_url='https://github.com/Kitware/CMake/releases/download/v3.26.4/cmake-3.26.4.tar.gz'
 
 ##
 ## define functions
