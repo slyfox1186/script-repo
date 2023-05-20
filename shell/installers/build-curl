@@ -1,28 +1,29 @@
 #!/bin/bash
 # shellcheck disable=SC2016,SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
 
-####################################
+#######################################
 #
-# Install curl latest curl release
+# Install the latest curl release
 #
 # Supported OS: Linux Debian based
 #
-#####################################
+#######################################
 
 clear
 
+script_ver='2.0'
 cwd="$PWD"/curl-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
 
 #
-# create output directories
+# CREATE OUTPUT DIRECTORIES
 #
 
 mkdir -p "$cwd" "$packages" "$workspace"
 
 #
-# get cpu coure count for parallel processing
+# GET CPU CORE COUNT FOR PARALLEL PROCESSING
 #
 
 if [ -f '/proc/cpuinfo' ]; then
@@ -32,7 +33,16 @@ else
 fi
 
 #
-# create global variables
+# PRINT BANNER
+#
+printf "\n%s\n%s\n\n%s\n\n" \
+    "cURL Build Script v$script_ver" \
+    '===============================' \
+    "This script will utilize ( $cpu_threads cpu cores ) for parallel processing to accelerate the building processes."
+# sleep 3
+
+#
+# CREATE GLOBAL VARIABLES
 #
 
 PATH="\
@@ -50,6 +60,7 @@ $HOME/.local/bin:\
 export PATH
 
 PKG_CONFIG_PATH="\
+$workspace/lib/pkgconfig:\
 /usr/lib/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/share/emscripten/system/lib/pkgconfig:\
@@ -59,6 +70,7 @@ PKG_CONFIG_PATH="\
 export PKG_CONFIG_PATH
 
 LD_LIBRARY_PATH="\
+$workspace/lib:\
 /usr/lib:\
 /usr/lib/usrmerge/lib:\
 /usr/lib/jvm/java-17-openjdk-amd64/lib:\
@@ -72,9 +84,8 @@ LD_LIBRARY_PATH="\
 "
 export LD_LIBRARY_PATH
 
-
 #
-# define functions
+# DEFINE FUNCTIONS
 #
 
 fail_fn()
@@ -87,8 +98,7 @@ fail_fn()
 
 exit_fn()
 {
-    echo
-    printf "%s\n\n%s\n\n" \
+    printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         'https://github.com/slyfox1186/script-repo/'
     exit 0
@@ -130,19 +140,29 @@ curl_timeout='10'
 
 git_1_fn()
 {
+    local github_repo github_url
+
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     github_repo="$1"
     github_url="$2"
-
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
         g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url' 2>/dev/null)"
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
-        g_ver="${g_ver#v}"
-        g_ver="${g_ver#OpenJPEG }"
-        g_ver="${g_ver#OpenSSL }"
-        g_ver="${g_ver#pkgconf-}"
         g_ver="${g_ver#cares-}"
-        g_ver="${g_ver#lcms}"
+        g_ver="${g_ver#nghttp2 v}"
+        g_ver="${g_ver#nghttp3 v}"
+        g_ver="${g_ver#OpenSSL }"
+        g_ver="${g_ver#v}"
+     fi
+}
+
+git_2_fn()
+{
+    gitlab_repo="$1"
+    github_url="$2"
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.gnome.org/api/v4/projects/$gitlab_repo/repository/$github_url")"; then
+        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
+        g_ver="${g_ver#v}"
     fi
 }
 
@@ -164,7 +184,15 @@ git_ver_fn()
             gv_url='releases';;
     esac
 
-    url_tag='git_1_fn'
+    case "$v_tag" in
+        1)          url_tag='git_1_fn';;
+        2)          url_tag='git_2_fn';;
+        3)          url_tag='git_3_fn';;
+        4)          url_tag='git_4_fn';;
+        5)          url_tag='git_5_fn';;
+        6)          url_tag='git_6_fn';;
+        7)          url_tag='git_7_fn';;
+    esac
 
     "$url_tag" "$v_url" "$gv_url" 2>/dev/null
 }
@@ -319,7 +347,7 @@ build_done() { echo "$2" > "$packages/$1.done"; }
 installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
 #
-# Figure out which compilers to use
+# FIGURE OUT WHICH COMPILERS TO USE
 #
 
 if which 'gcc-13' &>/dev/null; then
@@ -347,13 +375,13 @@ fi
 export CXXFLAGS='-g -O3 -march=native'
 
 #
-# install required apt packages
+# INSTALL REQUIRED APT PACKAGES
 #
 
 pkgs=(autoconf automake autotools-dev build-essential ccache curl gcc-12 jq lcov libbrotli-dev libc-ares-dev libcunit1-dev \
       libcurl4-gnutls-dev libec-dev libev-dev libgcc-12-dev libgnutls28-dev libgsasl7-dev libgsasl-dev libldap2-dev libldap-dev \
-      libmbedtls-dev libnghttp2-dev libnghttp3-dev libngtcp2-dev libntlm0-dev libpsl-dev librtmp-dev libssh2-1-dev libtool \
-      libzstd-dev make nghttp2 openssl pkg-config zlib1g-dev)
+      libmbedtls-dev libngtcp2-dev libntlm0-dev libpsl-dev librtmp-dev libssh2-1-dev libtool libzstd-dev make nghttp2 openssl \
+      pkg-config zlib1g-dev libjemalloc-dev libevent-dev libjansson-dev libnghttp2-dev libnghttp3-dev)
 
 for pkg in ${pkgs[@]}
 do
@@ -375,8 +403,31 @@ if [ -n "${missing_pkgs-}" ]; then
 fi
 
 #
-# run the bootstrap file to generate essential files
+# START BUILDING FROM SOURCE
 #
+
+git_ver_fn 'zlib-ng/zlib-ng' '1' 'R'
+if build "zlib-ng" "$g_ver"; then
+    download "$g_url" "zlib-ng-$g_ver.tar.gz"
+    make_dir 'build'
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DWITH_GZFILEOP='ON' -DCMAKE_BUILD_TYPE:STRING='Release' -DWITH_OPTIM='ON' \
+        -DWITH_AVX512VNNI='ON' -DWITH_GTEST='ON' -DINSTALL_GTEST='ON' -DFETCHCONTENT_BASE_DIR="$workspace/_deps" -DBUILD_GMOCK='ON' \
+        -DFETCHCONTENT_QUIET='ON' -DWITH_VPCLMULQDQ='ON' -DZLIBNG_ENABLE_TESTS='ON' -DWITH_NEW_STRATEGIES='ON' -DZLIB_ENABLE_TESTS='ON' \
+        -DWITH_AVX512='ON' -G 'Ninja' -Wno-dev
+    execute ninja "-j$cpu_threads" -C 'build'
+    execute ninja "-j$cpu_threads" -C 'build' install
+  build_done "zlib-ng" "$g_ver"
+fi
+
+git_ver_fn 'google/brotli' '1' 'T'
+if build 'brotli' "$g_ver"; then
+    download "$g_url" 'brotli-1.6.39.tar.gz'
+    execute autoreconf -fi
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE='Release' -G 'Ninja' -Wno-dev
+    execute ninja "-j$cpu_threads" -C 'build'
+    execute ninja "-j$cpu_threads" -C 'build' install
+  build_done "brotli" '1.6.39'
+fi
 
 git_ver_fn 'c-ares/c-ares' '1' 'R'
 if build 'c-ares' "$g_ver"; then
@@ -389,19 +440,44 @@ if build 'c-ares' "$g_ver"; then
     build_done 'c-ares' "$g_ver"
 fi
 
+git_ver_fn 'akheron/jansson' '1' 'T'
+if build 'jansson' "$g_ver"; then
+    download "$g_url" "jansson-$g_ver.tar.gz"
+    make_dir 'build'
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DJANSSON_INSTALL='ON' -DJANSSON_EXAMPLES='OFF' -DJANSSON_LIBRARIES='jansson' \
+        -DJANSSON_INITIAL_HASHTABLE_ORDER='3' -DJANSSON_INCLUDE_DIRS="/home/jman/tmp/curl-build-script/packages/jansson-2.14/include;$workspace/include" \
+        -DJANSSON_WITHOUT_TESTS='ON' -DJANSSON_BUILD_DOCS='OFF' -DJANSSON_BUILD_SHARED_LIBS='ON' -G 'Ninja' -Wno-dev
+    execute ninja "-j$cpu_threads" -C 'build'
+    execute ninja "-j$cpu_threads" -C 'build' install
+    build_done 'jansson' "$g_ver"
+fi
+
+_RLD_LIB_PATH="$workspace"
+
+git_ver_fn 'quictls/openssl' '1' 'R'
+g_ver="$(echo $g_ver | sed 's/\-quic Release 1//g')"
+if build 'openssl-quictls' "$g_ver"; then
+    download "$g_url" "openssl-quictls-$g_ver.tar.gz"
+    execute ./Configure --prefix='/usr/local' --openssldir='/usr/local/ssl' --with-zlib-include="$workspace"/include \
+        --with-zlib-lib="$workspace"/lib no-shared zlib
+    execute make "-j$cpu_threads"
+    execute sudo make install_sw
+    build_done 'openssl-quictls' "$g_ver"
+fi
+
 git_ver_fn 'ngtcp2/ngtcp2' '1' 'T'
 if build 'ngtcp2' "$g_ver"; then
     download_git 'https://github.com/quictls/openssl' "ngtcp2-$g_ver" 'O' 'OpenSSL_1_1_1t+quic'
-    execute ./config --prefix="$workspace" enable-tls1_3
+    execute ./config --prefix='/usr/local' enable-tls1_3
     execute make "-j$cpu_threads"
-    execute make install_sw
+    execute sudo make install_sw
     cd ../ || exit 1
     execute git clone 'https://github.com/ngtcp2/nghttp3' 'nghttp3-git'
     cd 'nghttp3-git' || exit 1
     execute autoreconf -i
     execute ./configure --prefix="$workspace" --enable-lib-only
     execute make "-j$cpu_threads" check
-    cd .. || exit 1
+    cd ../ || exit 1
     execute git clone 'https://github.com/ngtcp2/ngtcp2' 'ngtcp2-git'
     cd 'ngtcp2-git' || exit 1
     execute autoreconf -i
@@ -416,7 +492,7 @@ if build 'curl' "$g_ver"; then
     e_opts=(--enable-{alt-svc,ares="$workspace"/include,cookies,crypto-auth,dateparse,dict,dnsshuffle,doh,file,ftp,get-easy-options,gopher})
     e_opts+=(--enable-{headers-api,hsts,http,http-auth,imap,ipv6,ldap,ldaps,libcurl-option,libgcc,manual,mime,mqtt,netrc,ntlm,ntlm-wb='/usr/bin/ntlm_auth'})
     e_opts+=(--enable-{openssl-auto-load-config,optimize,pop3,progress-meter,proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static,telnet,tftp,threaded-resolver})
-    e_opts+=(--enable-{tls-srp,unix-sockets,websockets,year2038})
+    e_opts+=(--enable-{tls-srp,unix-sockets,websockets})
     w_opts=(--with-{brotli='/usr/include',ca-bundle='/etc/ssl/certs/ca-certificates.crt',ca-fallback,ca-path='/etc/ssl/certs',gnutls='/usr/include'})
     w_opts+=(--with-{gssapi,libssh2,nghttp2='/usr/include',nghttp3='/usr/include',wolfssh,zlib='/usr/include/boost/beast'})
     download "$g_url" "curl-$g_ver.tar.gz"
@@ -436,5 +512,5 @@ if build 'curl' "$g_ver"; then
     build_done 'curl' "$g_ver"
 fi
 
-# output final messages to user in terminal
+# OUTPUT FINAL MESSAGES TO USER IN TERMINAL
 success_fn
