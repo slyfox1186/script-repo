@@ -2,35 +2,36 @@
 
 clear
 
-FILE='/etc/apt/sources.list'
+list='/etc/apt/sources.list'
 
 # make a backup of the file
-if [ ! -f "${FILE}.bak" ]; then
-    cp -f "${FILE}" "${FILE}.bak"
+if [ ! -f "$list.bak" ]; then
+    sudo cp -f "$list" "$list.bak"
 fi
 
-cat <<EOT > "${FILE}"
-###########################
-##     DEBIAN BULLSEYE
+sudo cat > "$list" <<EOF
+#######################################################
 ##
-##         v11
+##  DEBIAN BULLSEYE
+##
 ##  /etc/apt/sources.list
 ##
-###########################
-
-### ALL MIRRORS IN EACH CATAGORY ARE LISTED AS BEING IN THE USA
-### IF YOU USE ALL THE LISTS YOU CAN RUN INTO APT COMMAND ISSUES THAT
-###    STATE THERE ARE TOO MANY FILES AND WHAT NOT. JUST AN FYI FOR YOU.
-
-#######################
-##  Default Mirrors  ##
-#######################
+##  ALL MIRRORS IN EACH CATAGORY ARE LISTED AS BEING
+##  IN THE USA. IF YOU USE ALL THE LISTS YOU CAN RUN
+##  INTO APT COMMAND ISSUES THAT STATE THERE ARE TOO
+##  MANY FILES. JUST AN FYI FOR YOU.
+##
+#######################################################
+##
+## DEFAULT
+##
 deb http://deb.debian.org/debian bullseye main
 deb http://deb.debian.org/debian bullseye-updates main
 deb http://security.debian.org/debian-security bullseye-security main
 deb http://ftp.debian.org/debian bullseye-backports main
-
-# MAIN
+##
+## MAIN
+##
 deb http://atl.mirrors.clouvider.net/debian bullseye main
 deb http://debian.mirror.constant.com/debian bullseye main
 deb http://debian.osuosl.org/debian bullseye main
@@ -40,8 +41,9 @@ deb http://mirror.steadfast.net/debian bullseye main
 deb http://mirror.us.leaseweb.net/debian bullseye main
 deb http://mirrors.wikimedia.org/debian bullseye main
 deb http://nyc.mirrors.clouvider.net/debian bullseye main
-
-# UPDATES
+##
+## UPDATES
+##
 deb http://atl.mirrors.clouvider.net/debian bullseye-updates main
 deb http://debian.mirror.constant.com/debian bullseye-updates main
 deb http://debian.osuosl.org/debian bullseye-updates main
@@ -51,8 +53,9 @@ deb http://mirror.steadfast.net/debian bullseye-updates main
 deb http://mirror.us.leaseweb.net/debian bullseye-updates main
 deb http://mirrors.wikimedia.org/debian bullseye-updates main
 deb http://nyc.mirrors.clouvider.net/debian bullseye-updates main
-
-# BACKPORTS
+##
+## BACKPORTS
+##
 deb http://atl.mirrors.clouvider.net/debian bullseye-backports main
 deb http://debian.mirror.constant.com/debian bullseye-backports main
 deb http://debian.osuosl.org/debian bullseye-backports main
@@ -62,15 +65,17 @@ deb http://mirror.steadfast.net/debian bullseye-backports main
 deb http://mirror.us.leaseweb.net/debian bullseye-backports main
 deb http://mirrors.wikimedia.org/debian bullseye-backports main
 deb http://nyc.mirrors.clouvider.net/debian bullseye-backports main
-EOT
+EOF
 
-# Open in editor to verify file contents
-if which gedit &> /dev/null; then
-    gedit "${FILE}"
-elif which nano &> /dev/null; then
-    nano "${FILE}"
-elif which vim &> /dev/null; then
-    vim "${FILE}"
+# OPEN AN EDITOR TO VIEW THE CHANGES
+if which 'gedit' &>/dev/null; then
+    sudo gedit "$list"
+elif which 'nano' &>/dev/null; then
+    sudo nano "$list"
+elif which 'vi' &>/dev/null; then
+    sudo vi "$list"
 else
-    vi "${FILE}"
+    printf "\n%s\n\n" \
+        "Could not find an EDITOR to open: $list"
+    exit 1
 fi
