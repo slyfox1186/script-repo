@@ -125,18 +125,31 @@ export CPUS="$((THREADS/2))"
 
 export PYTHONUTF8='1'
 
-# find the highest gcc version you have installed and set it as your compiler
+# find the highest gcc version you have installed and set it as your CC compiler
 if which 'gcc-13' &>/dev/null; then
-    export CC='gcc-13' CXX='g++-12'
+    export CC='gcc-13'
 elif which 'gcc-12' &>/dev/null; then
-    export CC='gcc-12' CXX='g++-12'
+    export CC='gcc-12'
 elif which 'gcc-11' &>/dev/null; then
-    export CC='gcc-11' CXX='g++-11'
+    export CC='gcc-11'
 elif which 'gcc' &>/dev/null; then
-    export CC='gcc' CXX='g++'
+    export CC='gcc'
 else
     clear
     echo 'You must have gcc or some high version of it installed. Please do so and run the script again.'
+    exit 1
+fi
+
+# find the highest g++ version you have installed and set it as your CXX compiler
+if which 'g++-12' &>/dev/null; then
+    export CXX='g++-12'
+elif which 'g++-11' &>/dev/null; then
+    export CXX='g++-11'
+elif which 'g++' &>/dev/null; then
+    export CXX='g++'
+else
+    clear
+    echo 'You must have g++ or some high version of it installed. Please do so and run the script again.'
     exit 1
 fi
 
