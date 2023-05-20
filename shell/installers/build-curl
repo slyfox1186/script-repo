@@ -365,7 +365,7 @@ if build 'curl' "$g_ver"; then
     execute curl -s --remote-name 'https://curl.se/ca/cacert-2023-01-10.pem'
     execute sudo mv 'cacert-2023-01-10.pem' '/etc/ssl/certs' 2>/dev/null
     execute autoreconf -fi
-    execute ./configure --disable-shared --enable-static --enable-optimize --enable-ares="$workspace/include" \
+    execute ./configure --prefix='/usr' --disable-shared --enable-static --enable-optimize --enable-ares="$workspace/include" \
         --enable-http --enable-ftp --enable-file --enable-ldap --enable-ldaps --enable-rtsp --enable-proxy --enable-dict --enable-telnet \
         --enable-tftp --enable-pop3 --enable-imap --enable-smb --enable-smtp --enable-gopher --enable-mqtt --disable-manual \
         --enable-libcurl-option --enable-libgcc --enable-ipv6 --enable-openssl-auto-load-config --disable-versioned-symbols \
