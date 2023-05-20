@@ -1,163 +1,390 @@
 #!/bin/bash
-# shellcheck disable=SC2016,SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
+# shellcheck disable=SC2034,SC2046,SC2066,SC2068,SC2086,SC2162
 
-#####################################
+##############################################
 ##
-## Install CMake v3.26.4
+##  Install CMake: Latest GitHub Release
 ##
-## Supported OS: Linux Debian based
+##  Supported OS: Linux Ubuntu - 23.04 (Lunar) / 22.04 (Jammy)
 ##
-## Updated: 4.30.23
+##  Updated: 05.20.23
 ##
-## Script version: 2.0
+##  Script version: 3.0
 ##
-#####################################
+##############################################
 
 clear
 
 if [ "$EUID" -eq '0' ]; then
-    echo 'You must run this script WITHOUT root/sudo'
-    echo
+    printf "\n%s\n\n" \
+        'You must run this script WITHOUT root/sudo'
     exit 1
 fi
 
-##
-## define global variables
-##
+#
+# CREATE SCRIPT VARIABLES
+#
 
-s_ver='2.0'
-build_dir='cmake-3.26.4'
-target="$PWD/$build_dir"
-tar_url='https://github.com/Kitware/CMake/releases/download/v3.26.4/cmake-3.26.4.tar.gz'
+script_ver='3.0'
+cwd="$PWD"/cmake-build-script
+packages="$cwd"/packages
+workspace="$cwd"/workspace
 
-##
-## define functions
-##
+#
+# PRINT SCRIPT BANNER
+#
+printf "%s\n%s\n\n" \
+    "CMake Build Script: v$script_ver" \
+    '============================='
+sleep 3
 
-fail_fn()
-{
-    printf "\n%s\n\n%s\n\n" \
-        "$1" \
-        'Please submit a support ticket in GitHub.'
-    exit 1
-}
+#
+# GET CPU COURE COUNT FOR PARALLEL PROCESSING
+#
+
+if [ -f '/proc/cpuinfo' ]; then
+    cpu_threads="$(grep -c ^processor '/proc/cpuinfo')"
+else
+    cpu_threads="$(nproc --all)"
+fi
+
+#
+# CREATE OUTPUT DIRECTORIES
+#
+
+mkdir -p "$packages" "$cwd" "$workspace"
+
+#
+# SET GLOBAL VARIABLES
+#
+PATH="\
+/usr/lib/ccache:\
+$workspace/bin:\
+$PATH\
+"
+export PATH
+
+# Export the pkg-config paths to enable support during the build
+PKG_CONFIG_PATH="\
+$workspace/lib/x86_64-linux-gnu/pkgconfig:\
+$workspace/lib/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/local/lib64/pkgconfig:\
+/usr/local/share/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/i386-linux-gnu/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/pkgconfig:\
+/usr/share/pkgconfig\
+"
+export PKG_CONFIG_PATH
+
+LD_LIBRARY_PATH="\
+$workspace/lib:\
+$workspace/lib64:\
+$workspace/src/lib:\
+/usr/local/lib:\
+/usr/lib:\
+/usr/x86_64-linux-gnu/lib:\
+/usr/lib/wsl/lib:\
+/usr/lib/llvm-14/lib:\
+/usr/lib/usrmerge/lib:\
+/usr/share/ant/lib:\
+/usr/share/git-gui/lib:\
+/usr/share/gitk/lib:\
+/usr/share/gnulib/lib:\
+/usr/share/lintian/lib:\
+/usr/share/texinfo/lib\
+"
+export LD_LIBRARY_PATH
+
+CFLAGS="\
+-I/usr/include \
+-I/usr/local/include\
+"
+export CFLAGS
+
+#
+# CREATE FUNCTIONS
+#
 
 exit_fn()
 {
-    clear
-    printf "%s\n\n%s\n\n" \
+    printf "\n%s\n\n%s\n%s\n" \
+        'The script has completed' \
         'Make sure to star this repository to show your support!' \
-        'https://github.com/slyfox1186/script-repo/'
+        'https://github.com/slyfox1186/script-repo'
     exit 0
+}
+
+fail_fn()
+{
+    printf "\n\n%s\n\n%s\n\n%s\n\n" \
+        "$1" \
+        'Please create a support ticket at the address below' \
+        'https://github.com/slyfox1186/script-repo/issues'
+    exit 1
 }
 
 cleanup_fn()
 {
-    printf "\n%s\n\n%s\n%s\n\n" \
-        'Do you want to cleanup the build files?' \
-        '[1] Yes' \
-        '[2] No'
-        read -p 'Your choices are (1 or 2): ' cchoice
-        case "$cchoice" in
-            1)
-                    cd "$target" || exit 1
-                    cd ../ || exit 1
-                    sudo rm -r "$build_dir"
-                    exit_fn
-                    ;;
-            2)
-                    exit_fn
-                    ;;
-            *)
-                    read -p 'Bad user input. Press enter to try again'
-                    clear
-                    cleanup_fn
-                    ;;
-        esac         
+    local choice
+
+        printf "\n%s\n\n%s\n%s\n\n" \
+            'Do you want to remove the build files?' \
+            '[1] Yes' \
+            '[2] No'
+        read -p 'Your choices are (1 or 2): ' choice
+
+    case "$choice" in
+        1)
+            remove_dir "$cwd"
+            exit_fn
+            ;;
+        2)
+            exit_fn
+            ;;
+
+        *)
+            printf "%s\n\n" \
+                'Bad user input.'
+            read -p 'Press enter to try again.'
+            clear
+            cleanup_fn
+            ;;
+    esac
 }
 
-success_fn()
+show_ver_fn()
 {
-    clear
-    printf "\n%s\n\n" \
-        "$1"
-    cmake --version
-    cleanup_fn
+    show_ver="$(cmake --version | sed 's/cmake version /v/g')"
+    if [ -n "$show_ver" ]; then
+        printf "\n%s\n" \
+            "The installed CMake version is: $show_ver"
+    else
+        printf "\n%s\n\n%s\n\n%s\n\n" \
+            'Failure to execute the command: cmake --version' \
+            'Please create an issue so it can be fixed at the below URL:' \
+            'https://github.com/slyfox1186/script-repo/issues'
+        exit 1
+    fi
 }
+
+execute()
+{
+    echo "$ $*"
+    if ! output=$("$@" 2>&1); then
+        fail_fn "Failed to Execute $*"
+    fi
+}
+
+make_dir()
+{
+    if ! remove_dir "$1"; then
+        printf "%s\n" \
+            fail_fn "Failed to remove the directory: $PWD/$1"
+    fi
+    if ! mkdir -p "$1"; then
+        printf "%s\n" \
+            fail_fn "Failed to create the directory: $PWD/$1"
+    fi
+}
+
+remove_file()
+{
+    if [ -f "$*" ]; then
+        sudo rm -f "$*"
+    fi
+}
+
+remove_dir()
+{
+    if [ -d "$*" ]; then
+        sudo rm -fr "$*"
+    fi
+}
+
+download()
+{
+    dl_path="$packages"
+    dl_file="${2:-"${1##*/}"}"
+
+    if [[ "$dl_file" =~ tar. ]]; then
+        target_dir="${dl_file%.*}"
+        target_dir="${3:-"${target_dir%.*}"}"
+    else
+        target_dir="${3:-"${dl_file%.*}"}"
+    fi
+
+    if [ ! -f "$dl_path/$dl_file" ]; then
+        echo "Downloading $1 as $dl_file"
+        if ! curl -Lso "$dl_path/$dl_file" "$1"; then
+            printf "\n%s\n\n%s" \
+                "Failed to download: $1" \
+                'Retrying in 5 seconds'
+                sleep 5
+            if ! curl -Lso "$dl_path/$dl_file" "$1"; then
+               fail_fn "Failed to download: $1"
+            fi
+        fi
+        echo -e "Download Complete"
+    fi
+
+    make_dir "$dl_path/$target_dir"
+
+    if [[ "$dl_file" == *'patch'* ]]; then
+        return
+    fi
+
+    if [ -n "$3" ]; then
+        if ! tar -xf "$dl_path/$dl_file" -C "$dl_path/$target_dir" &>/dev/null; then
+            fail_fn "Failed to download: $dl_file"
+        fi
+    else
+        if ! tar -xf "$dl_path/$dl_file" -C "$dl_path/$target_dir" --strip-components 1 &>/dev/null; then
+            fail_fn "Failed to download: $dl_file"
+        fi
+    fi
+
+    echo -e "Extracted $dl_file\\n"
+
+    cd "$dl_path/$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
+}
+
+build()
+{
+    echo
+    echo "building $1 - version $2"
+    echo '===================================='
+
+    if [ -f "$packages/$1.done" ]; then
+    if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
+            echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
+            return 1
+        else
+            echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
+            return 1
+        fi
+    fi
+
+    return 0
+}
+
+# PULL THE LATEST VERSIONS OF EACH PACKAGE FROM THE WEBSITE API
+curl_timeout='10'
+
+git_1_fn()
+{
+    local github_repo github_url
+
+    # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
+    github_repo="$1"
+    github_url="$2"
+
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
+        g_ver="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null)"
+        g_ver="${g_ver#v}"
+    fi
+}
+
+git_ver_fn()
+{
+    local gv_url url_tag v_flag v_tag v_url
+
+    v_url="$1"
+    v_tag="$2"
+    v_flag="$3"
+
+    if [ "$v_flag" = 'T' ] && [  "$v_tag" = '1' ]; then
+        url_tag='git_1_fn' gv_url='tags'
+    fi
+    if [ "$v_flag" = 'R' ] && [  "$v_tag" = '1' ]; then
+        url_tag='git_1_fn'; gv_url='releases'
+    fi
+
+    "$url_tag" "$v_url" "$gv_url" 2>/dev/null
+}
+
+build_done() { echo "$2" > "$packages/$1.done"; }
 
 installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
-##
-## create build folders
-##
+#
+# FIGURE OUT WHICH COMPILERS TO USE
+#
 
-mkdir -p "$target"
-cd "$target" || exit 1
-
-##
-## install required apt target
-##
-
-pkgs=(ccache libssl-dev make ninja-build)
-
-for pkg in ${pkgs[@]}
-do
-    if ! installed "$pkg"; then
-        missing_pkgs+=" $pkg"
-    fi
-done
-
-if [ -n "${missing_pkgs-}" ]; then
-    for i in "$missing_pkgs"
-    do
-        sudo apt-get -qq -y install $i
-    done
-fi
-
-##
-## download the cmake tar file and extract the files into the src directory
-##
-
-printf "\n%s\n%s\n" \
-    "CMake Build Script v$s_ver" \
-    '============================='
-sleep 2
-
-if [ -d "$target" ]; then
-    rm -fr "$target"
-fi
-
-mkdir -p "$target"
-
-cd "$target" || exit 1
-
-if ! curl -Lso "$target".tar.gz "$tar_url"; then
-    fail_fn 'The tar file failed to download.'
-fi
-
-if ! tar -zxf "$target".tar.gz -C "$target" --strip-components 1; then
-    fail_fn 'The tar command failed to extract any files.'
-fi
-
-##
-## run the bootstrap file to generate any required install files
-##
-
-printf "\n%s\n\n%s\n\n" \
-    'This might take a minute... please be patient' \
-    "\$ ./bootstrap --prefix=/usr --parallel=$(nproc --all) --enable-ccache --generator=Ninja"
-./bootstrap --prefix=/usr --parallel="$(nproc --all)" --enable-ccache --generator=Ninja &>/dev/null
-
-##
-## run the ninja commands to install cmake system-wide
-##
-
-if ninja &>/dev/null; then
-    if ! sudo ninja install &>/dev/null; then
-        fail_fn 'Ninja failed to install CMake.'
-    else
-        success_fn 'CMake has successfully been installed.'
-    fi
+if which 'gcc-13' &>/dev/null; then
+    export CC='gcc-13'
+elif which 'gcc-12' &>/dev/null; then
+    export CC='gcc-12'
+elif which 'gcc-11' &>/dev/null; then
+    export CC='gcc-11'
+elif which 'gcc' &>/dev/null; then
+    export CC='gcc'
 else
-    fail_fn 'Ninja failed to generate the install files.'
+    fail_fn 'You must have gcc or some high version of it installed. Please do so and run the script again.'
 fi
+
+if which 'g++-12' &>/dev/null; then
+    export CXX='g++-12'
+elif which 'g++-11' &>/dev/null; then
+    export CXX='g++-11'
+elif which 'g++' &>/dev/null; then
+    export CXX='g++'
+else
+    fail_fn 'You must have g++ or some high version of it installed. Please do so and run the script again.'
+fi
+
+export CXXFLAGS='-g -O3 -march=native'
+
+#
+# INSTALL REQUIRED APT PACKAGES
+#
+
+pkgs_fn()
+{
+    pkgs=(build-essential ccache gcc libssl-dev make ninja-build)
+
+    for pkg in ${pkgs[@]}
+    do
+        if ! installed "$pkg"; then
+            missing_pkgs+=" $pkg"
+        fi
+    done
+
+    if [ -n "${missing_pkgs}" ]; then
+        for i in "$missing_pkgs"
+        do
+            sudo apt -y install $i
+        done
+        printf "\n%s\n\n" \
+            'The required packages were successfully installed.'
+    else
+        echo 'The required packages were already installed.'
+    fi
+}
+
+echo 'Installing required APT packages.'
+pkgs_fn
+
+#
+# RUN THE BOOTSTRAP FILE TO GENERATE ESSENTIAL FILES
+#
+
+git_ver_fn 'kitware/cmake' '1' 'R'
+if build 'cmake' "$g_ver"; then
+    download "https://codeload.github.com/kitware/cmake/tar.gz/refs/tags/v$g_ver" "cmake-$g_ver.tar.gz"
+    execute ./bootstrap --prefix='/usr' --parallel="$cpu_threads" --enable-ccache --generator='Ninja'
+    execute ninja "-j$cpu_threads"
+    execute sudo ninja install
+    build_done 'cmake' "$g_ver"
+fi
+
+# LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE MAGICK COMMAND WILL NOT WORK
+sudo ldconfig 2>/dev/null
+
+# SHOW THE NEWLY INSTALLED MAGICK VERSION
+show_ver_fn
+
+# PROMPT THE USER TO CLEANUP THE BUILD FILES
+cleanup_fn
