@@ -6,10 +6,10 @@ list='/etc/apt/sources.list'
 
 # make a backup of the file
 if [ ! -f "$list.bak" ]; then
-    cp -f "$list" "$list.bak"
+    sudo cp -f "$list" "$list.bak"
 fi
 
-cat > "$list" <<EOF
+sudo cat > "$list" <<EOF
 ###################################################
 ##
 ##  UBUNTU LUNAR
@@ -64,13 +64,13 @@ EOF
 
 # OPEN AN EDITOR TO VIEW THE CHANGES
 if which 'gnome-text-editor' &>/dev/null; then
-    gnome-text-editor "$list"
+    sudo gnome-text-editor "$list"
 elif which 'gedit' &>/dev/null; then
-    gedit "$list"
+    sudo gedit "$list"
 elif which 'nano' &>/dev/null; then
-    nano "$list"
+    sudo nano "$list"
 elif which 'vi' &>/dev/null; then
-    vi "$list"
+    sudo vi "$list"
 else
     printf "\n%s\n\n" \
         "Could not find an EDITOR to open: $list"
