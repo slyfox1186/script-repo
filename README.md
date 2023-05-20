@@ -51,22 +51,25 @@ bash <(curl -sSL https://jammy-scripts.optimizethis.net)
 
 ## Install download mirrors to sources.list
   - **Warning! This will overwrite your files!**
-
+#### Ubuntu Lunar
+```bash
+bash <(curl -sSL https://lunar-mirrors.optimizethis.net)
+```
 #### Ubuntu Jammy
 ```bash
-curl -Lso mirrors.sh https://jammy-mirrors.optimizethis.net; sudo bash mirrors.sh
+bash <(curl -sSL https://jammy-mirrors.optimizethis.net)
 ```
 #### Ubuntu Focal
 ```bash
-curl -Lso mirrors.sh https://focal-mirrors.optimizethis.net; sudo bash mirrors.sh
+bash <(curl -sSL https://focal-mirrors.optimizethis.net)
 ```
 #### Ubuntu Bionic
 ```bash
-curl -Lso mirrors.sh https://bionic-mirrors.optimizethis.net; sudo bash mirrors.sh
+bash <(curl -sSL https://bionic-mirrors.optimizethis.net)
 ```
 #### Debian Bullseye
 ```bash
-curl -sSL https://debian-mirrors.optimizethis.net | sudo bash
+bash <(curl -sSL https://debian-mirrors.optimizethis.net)
 ```
 ------
 
