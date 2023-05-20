@@ -19,7 +19,19 @@ parent_dir="$PWD"
 packages="$PWD"/packages
 workspace="$PWD"/workspace
 
-export PATH="$PATH:/usr/local/share/ca-certificates"
+PATH="\
+/usr/lib/ccache:\
+$workspace/bin:\
+$HOME/.cargo/env:\
+$HOME/.local/bin:\
+/usr/local/sbin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin\
+"
+export PATH
 
 PKG_CONFIG_PATH="\
 /usr/lib/pkgconfig:\
