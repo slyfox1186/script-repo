@@ -80,7 +80,7 @@ bash <(curl -sSL https://debian-mirrors.optimizethis.net)
     - **ARM x64**
     - **ARM x86**
 ```bash
-curl -Lso 7z.sh https://7z.optimizethis.net; sudo bash 7z.sh
+bash <(curl -sSL https://7z.optimizethis.net)
 ```
 ------
 
