@@ -11,13 +11,29 @@
 
 clear
 
+cwd="$PWD"/curl-build-script
+packages="$cwd"/packages
+workspace="$cwd"/workspace
+
+#
+# create output directories
+#
+
+mkdir -p "$cwd" "$packages" "$workspace"
+
+#
+# get cpu coure count for parallel processing
+#
+
+if [ -f '/proc/cpuinfo' ]; then
+    cpu_threads="$(grep -c ^processor '/proc/cpuinfo')"
+else
+    cpu_threads="$(nproc --all)"
+fi
+
 #
 # create global variables
 #
-
-parent_dir="$PWD"
-packages="$PWD"/packages
-workspace="$PWD"/workspace
 
 PATH="\
 /usr/lib/ccache:\
@@ -56,27 +72,6 @@ LD_LIBRARY_PATH="\
 "
 export LD_LIBRARY_PATH
 
-CFLAGS="\
--I/usr/include \
--I/usr/local/include\
-"
-export CFLAGS
-
-#
-# get cpu coure count for parallel processing
-#
-
-if [ -f '/proc/cpuinfo' ]; then
-    cpu_threads="$(grep -c ^processor '/proc/cpuinfo')"
-else
-    cpu_threads="$(nproc --all)"
-fi
-
-#
-# create output directories
-#
-
-mkdir -p "$packages" "$parent_dir" "$workspace"
 
 #
 # define functions
@@ -108,7 +103,7 @@ cleanup_fn()
         read -p 'Your choices are (1 or 2): ' pychoice
         case "$pychoice" in
             1)
-                    remove_dir "$parent_dir"
+                    remove_dir "$cwd"
                     exit_fn
                     ;;
             2)
@@ -124,9 +119,9 @@ cleanup_fn()
 
 success_fn()
 {
+    curl_ver="$(curl --version)"
     printf "\n%s\n\n" \
-        'The installed curl version is shown below.'
-    sudo curl --version 2>/dev/null
+        "The installed curl version is: $curl_ver"
     cleanup_fn
 }
 
@@ -146,6 +141,7 @@ git_1_fn()
         g_ver="${g_ver#OpenJPEG }"
         g_ver="${g_ver#OpenSSL }"
         g_ver="${g_ver#pkgconf-}"
+        g_ver="${g_ver#cares-}"
         g_ver="${g_ver#lcms}"
     fi
 }
@@ -166,8 +162,6 @@ git_ver_fn()
             gv_url='tags';;
         R)
             gv_url='releases';;
-        L)
-            gv_url='releases/latest';;
     esac
 
     url_tag='git_1_fn'
@@ -178,7 +172,8 @@ git_ver_fn()
 execute()
 {
     echo "$ $*"
-    if ! output=$("$@" 2>&1); then
+# 2>&1
+    if ! output=$("$@"); then
         fail_fn "Failed to Execute $*"
     fi
 }
@@ -187,8 +182,8 @@ make_dir()
 {
     remove_dir "$*"
     if ! mkdir "$*"; then
-        printf "\n Failed to create dir %s" "$*"
-        echo
+        printf "\n%s\n\n" \
+            "Failed to create dir: $*"
         exit 1
     fi
 }
@@ -258,6 +253,48 @@ download()
     cd "$dl_path/$target_dir" || fail_fn "Unable to change the working directory to $target_dir"
 }
 
+download_git()
+{
+    dl_path="$packages"
+    dl_url="$1"
+    dl_file="$2"
+    git_type="$3"
+    git_other_url="$4"
+    target_dir="$dl_path/$dl_file"
+
+    if [ -d "$target_dir" ]; then
+        remove_dir "$target_dir"
+    fi
+    
+    if [ "$git_type" = 'O' ]; then
+        echo "Downloading $dl_url as $dl_file"
+        if ! git clone --depth 1 -b "$git_other_url" "$dl_url" "$target_dir"; then
+            printf "\n%s\n\n%s\n\n" \
+                "The script failed to clone the git repository: $target_dir" \
+                'Sleeping for 5 seconds before trying again.'
+            sleep 5
+            if ! git clone -q "$dl_url" "$target_dir"; then
+                fail_fn "The script failed to clone \"$target_dir\" twice and will now exit the build."
+            fi
+        fi
+        echo -e "Succesfully cloned the directory: $target_dir\\n"
+    else
+        echo "Downloading $dl_url as $dl_file"
+        if ! git clone -q "$dl_url" "$target_dir"; then
+            printf "\n%s\n\n%s\n\n" \
+                "The script failed to clone the git repository: $target_dir" \
+                'Sleeping for 5 seconds before trying again.'
+            sleep 5
+            if ! git clone -q "$dl_url" "$target_dir"; then
+                fail_fn "The script failed to clone \"$target_dir\" twice and will now exit the build."
+            fi
+        fi
+        echo -e "Succesfully cloned the directory: $target_dir\\n"
+    fi
+
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
+}
+
 build()
 {
     echo
@@ -313,10 +350,10 @@ export CXXFLAGS='-g -O3 -march=native'
 # install required apt packages
 #
 
-pkgs=(build-essential ccache gcc-12 jq lcov libbrotli-dev libc-ares-dev libcurl4-openssl-dev \
-      libec-dev libgcc-12-dev libgsasl7-dev libgsasl-dev libldap2-dev libldap-dev libmbedtls-dev \
-      libnghttp2-dev libnghttp3-dev libnghttp3-dev libntlm0-dev libpsl-dev librtmp-dev libssh2-1-dev \
-      libzstd-dev make nghttp2 openssl pkg-config libgnutls28-dev)
+pkgs=(autoconf automake autotools-dev build-essential ccache curl gcc-12 jq lcov libbrotli-dev libc-ares-dev libcunit1-dev \
+      libcurl4-gnutls-dev libec-dev libev-dev libgcc-12-dev libgnutls28-dev libgsasl7-dev libgsasl-dev libldap2-dev libldap-dev \
+      libmbedtls-dev libnghttp2-dev libnghttp3-dev libngtcp2-dev libntlm0-dev libpsl-dev librtmp-dev libssh2-1-dev libtool \
+      libzstd-dev make nghttp2 openssl pkg-config zlib1g-dev)
 
 for pkg in ${pkgs[@]}
 do
@@ -345,32 +382,55 @@ git_ver_fn 'c-ares/c-ares' '1' 'R'
 if build 'c-ares' "$g_ver"; then
     download "$g_url" "c-ares-$g_ver.tar.gz"
     make_dir 'build'
-    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCARES_SHARED='0' -DCARES_STATIC_PIC='1' \
-        -DCARES_STATIC='1' -DCMAKE_CXX_COMPILER='/usr/lib/ccache/g++-12' -DCMAKE_BUILD_TYPE='Release' \
-        -DBUILD_SHARED_LIBS='OFF' -G 'Ninja' -Wno-dev
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCARES_SHARED='OFF' -DCARES_STATIC_PIC='ON' \
+        -DCARES_STATIC='ON' -DCMAKE_BUILD_TYPE='Release' -DBUILD_SHARED_LIBS='OFF' -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C 'build'
     execute ninja "-j$cpu_threads" -C 'build' install
     build_done 'c-ares' "$g_ver"
 fi
 
+git_ver_fn 'ngtcp2/ngtcp2' '1' 'T'
+if build 'ngtcp2' "$g_ver"; then
+    download_git 'https://github.com/quictls/openssl' "ngtcp2-$g_ver" 'O' 'OpenSSL_1_1_1t+quic'
+    execute ./config --prefix="$workspace" enable-tls1_3
+    execute make "-j$cpu_threads"
+    execute make install_sw
+    cd ../ || exit 1
+    execute git clone 'https://github.com/ngtcp2/nghttp3' 'nghttp3-git'
+    cd 'nghttp3-git' || exit 1
+    execute autoreconf -i
+    execute ./configure --prefix="$workspace" --enable-lib-only
+    execute make "-j$cpu_threads" check
+    cd .. || exit 1
+    execute git clone 'https://github.com/ngtcp2/ngtcp2' 'ngtcp2-git'
+    cd 'ngtcp2-git' || exit 1
+    execute autoreconf -i
+    execute ./configure PKG_CONFIG_PATH="$workspace"/../openssl/build/lib/pkgconfig:"$workspace"/../nghttp3/build/lib/pkgconfig:"$PKG_CONFIG_PATH" LDFLAGS="-Wl,-rpath,$workspace/../openssl/build/lib"
+    execute make "-j$cpu_threads" check
+    build_done 'ngtcp2' "$g_ver"
+fi
+
 git_ver_fn 'curl/curl' '1' 'R'
 if build 'curl' "$g_ver"; then
+    d_opts=(--disable-{manual,shared,verbose,versioned-symbols})
+    e_opts=(--enable-{alt-svc,ares="$workspace"/include,cookies,crypto-auth,dateparse,dict,dnsshuffle,doh,file,ftp,get-easy-options,gopher})
+    e_opts+=(--enable-{headers-api,hsts,http,http-auth,imap,ipv6,ldap,ldaps,libcurl-option,libgcc,manual,mime,mqtt,netrc,ntlm,ntlm-wb='/usr/bin/ntlm_auth'})
+    e_opts+=(--enable-{openssl-auto-load-config,optimize,pop3,progress-meter,proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static,telnet,tftp,threaded-resolver})
+    e_opts+=(--enable-{tls-srp,unix-sockets,websockets,year2038})
+    w_opts=(--with-{brotli='/usr/include',ca-bundle='/etc/ssl/certs/ca-certificates.crt',ca-fallback,ca-path='/etc/ssl/certs',gnutls='/usr/include'})
+    w_opts+=(--with-{gssapi,libssh2,nghttp2='/usr/include',nghttp3='/usr/include',wolfssh,zlib='/usr/include/boost/beast'})
     download "$g_url" "curl-$g_ver.tar.gz"
     execute sudo update-ca-certificates
     execute curl -s --remote-name 'https://curl.se/ca/cacert-2023-01-10.pem'
     execute sudo mv 'cacert-2023-01-10.pem' '/etc/ssl/certs' 2>/dev/null
     execute autoreconf -fi
-    ./configure --prefix='/usr' --disable-shared --enable-static --enable-optimize --enable-ares="$workspace/include" \
-        --enable-http --enable-ftp --enable-file --enable-ldap --enable-ldaps --enable-rtsp --enable-proxy --enable-dict --enable-telnet \
-        --enable-tftp --enable-pop3 --enable-imap --enable-smb --enable-smtp --enable-gopher --enable-mqtt --disable-manual \
-        --enable-libcurl-option --enable-libgcc --enable-ipv6 --enable-openssl-auto-load-config --disable-versioned-symbols \
-        --enable-threaded-resolver --enable-pthreads --disable-verbose --enable-sspi --enable-crypto-auth --enable-ntlm  \
-        --enable-ntlm-wb='/usr/bin/ntlm_auth' --enable-tls-srp --enable-unix-sockets --enable-cookies --enable-socketpair \
-        --enable-http-auth --enable-doh --enable-mime --enable-dateparse --enable-netrc --enable-progress-meter --enable-dnsshuffle \
-        --enable-get-easy-options --enable-alt-svc --enable-headers-api --enable-hsts --enable-websockets --enable-year2038 \
-        --with-gnutls='/usr/include' --with-gssapi --enable-manual --without-hyper --with-zlib='/usr/include/boost/beast' --with-brotli='/usr/include' \
-        --with-ca-bundle='/etc/ssl/certs/ca-certificates.crt' --with-ca-path='/etc/ssl/certs' --with-ca-fallback --with-libssh2 \
-        --with-wolfssh --with-nghttp2='/usr/include' --with-nghttp3='/usr/include' CXXFLAGS='-O3 -march=native'
+    ./configure \
+        --prefix='/usr/local' \
+        "${d_opts[@]}" \
+        "${e_opts[@]}" \
+        "${w_opts[@]}" \
+        --without-hyper \
+        CXXFLAGS='-O3 -march=native'
     execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'curl' "$g_ver"
