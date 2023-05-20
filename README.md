@@ -119,7 +119,7 @@ bash <(curl -sSL https://cmake.optimizethis.net)
     - Other debian style distros may work as well
 
 ```bash
-curl -Lso build-curl https://curl.optimizethis.net; bash build-curl
+bash <(curl -sSL https://curl.optimizethis.net)
 ````
 ------
 
