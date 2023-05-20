@@ -2,20 +2,26 @@
 
 clear
 
-fname='/etc/apt/sources.list'
+list='/etc/apt/sources.list'
 
 # make a backup of the file
-if [ ! -f "$fname.bak" ]; then cp -f "$fname" "$fname.bak"; fi
+if [ ! -f "$list.bak" ]; then
+    cp -f "$list" "$list.bak"
+fi
 
-cat > "$fname" <<EOF
-##      UBUNTU JAMMY
+cat > "$list" <<EOF
+###################################################
 ##
-##        v22.04.2
+##  UBUNTU JAMMY
+##
+##  v22.04
+##
 ##  /etc/apt/sources.list
 ##
-##  ALL MIRRORS IN EACH CATAGORY ARE LISTED AS BEING IN THE USA
-##  IF YOU USE ALL THE LISTS YOU CAN RUN INTO APT COMMAND ISSUES THAT
-##  STATE THERE ARE TOO MANY FILES AND WHAT NOT. JUST AN FYI FOR YOU.
+##  ALL MIRRORS IN EACH CATAGORY ARE LISTED AS BEING
+##  IN THE USA. IF YOU USE ALL THE LISTS YOU CAN RUN
+##  INTO APT COMMAND ISSUES THAT STATE THERE ARE TOO
+##  MANY FILES. JUST AN FYI FOR YOU.
 ##
 ###################################################
 ##                Default Mirrors                ##
@@ -23,62 +29,48 @@ cat > "$fname" <<EOF
 ##  The security updates have been left enabled  ##
 ###################################################
 ##
-## deb http://archive.ubuntu.com/ubuntu/ jammy main restricted universe multiverse
-## deb-src http://archive.ubuntu.com/ubuntu/ jammy main restricted universe multiverse
-## deb http://archive.ubuntu.com/ubuntu/ jammy-updates main restricted universe multiverse
-## deb-src http://archive.ubuntu.com/ubuntu/ jammy-updates main restricted universe multiverse
+# deb http://archive.ubuntu.com/ubuntu/ jammy main restricted universe multiverse
+# deb http://archive.ubuntu.com/ubuntu/ jammy-updates main restricted universe multiverse
+# deb http://archive.ubuntu.com/ubuntu/ jammy-backports main restricted universe multiverse
 deb http://security.ubuntu.com/ubuntu/ jammy-security main restricted universe multiverse
-## deb-src http://security.ubuntu.com/ubuntu/ jammy-security main restricted universe multiverse
-## deb http://archive.ubuntu.com/ubuntu/ jammy-backports main restricted universe multiverse
-## deb-src http://archive.ubuntu.com/ubuntu/ jammy-backports main restricted universe multiverse
 ##
-#########################################
-##                                     ##
-##  20Gbps mirrors [ unsecured HTTP ]  ##
-##                                     ##
-#########################################
+####################################################
+##                                                ##
+##                  20Gb Mirrors                  ##
+##                                                ##
+####################################################
 ##
 ## MAIN
 ##
-deb http://mirror.enzu.com/ubuntu/ jammy main restricted universe multiverse
-## deb-src http://mirror.enzu.com/ubuntu/ jammy main restricted universe multiverse
+deb deb https://mirror.enzu.com/ubuntu/ jammy main restricted universe multiverse
 deb http://mirror.genesisadaptive.com/ubuntu/ jammy main restricted universe multiverse
-## deb-src http://mirror.genesisadaptive.com/ubuntu/ jammy main restricted universe multiverse
 deb http://mirror.math.princeton.edu/pub/ubuntu/ jammy main restricted universe multiverse
-## deb-src http://mirror.math.princeton.edu/pub/ubuntu/ jammy main restricted universe multiverse
 deb http://mirror.pit.teraswitch.com/ubuntu/ jammy main restricted universe multiverse
-## deb-src http://mirror.pit.teraswitch.com/ubuntu/ jammy main restricted universe multiverse
 ##
 ## UPDATES
 ##
-deb http://mirror.enzu.com/ubuntu/ jammy-updates main restricted universe multiverse
-## deb-src http://mirror.enzu.com/ubuntu/ jammy-updates main restricted universe multiverse
+deb https://mirror.enzu.com/ubuntu/ jammy-updates main restricted universe multiverse
 deb http://mirror.genesisadaptive.com/ubuntu/ jammy-updates main restricted universe multiverse
-## deb-src http://mirror.genesisadaptive.com/ubuntu/ jammy-updates main restricted universe multiverse
 deb http://mirror.math.princeton.edu/pub/ubuntu/ jammy-updates main restricted universe multiverse
-## deb-src http://mirror.math.princeton.edu/pub/ubuntu/ jammy-updates main restricted universe multiverse
 deb http://mirror.pit.teraswitch.com/ubuntu/ jammy-updates main restricted universe multiverse
-## deb-src http://mirror.pit.teraswitch.com/ubuntu/ jammy-updates main restricted universe multiverse
 ##
 ## BACKPORTS
 ##
-deb http://mirror.enzu.com/ubuntu/ jammy-backports main restricted universe multiverse
-## deb-src http://mirror.enzu.com/ubuntu/ jammy-backports main restricted universe multiverse
+deb https://mirror.enzu.com/ubuntu/ jammy-backports main restricted universe multiverse
 deb http://mirror.genesisadaptive.com/ubuntu/ jammy-backports main restricted universe multiverse
-## deb-src http://mirror.genesisadaptive.com/ubuntu/ jammy-backports main restricted universe multiverse
 deb http://mirror.math.princeton.edu/pub/ubuntu/ jammy-backports main restricted universe multiverse
-## deb-src http://mirror.math.princeton.edu/pub/ubuntu/ jammy-backports main restricted universe multiverse
 deb http://mirror.pit.teraswitch.com/ubuntu/ jammy-backports main restricted universe multiverse
-## deb-src http://mirror.pit.teraswitch.com/ubuntu/ jammy-backports main restricted universe multiverse
 EOF
 
-# Open in editor and verify changes
-if which gedit &>/dev/null; then
-    gedit "$fname"
-elif which nano &>/dev/null; then
-    nano "$fname"
-elif which vim &>/dev/null; then
-    vim "$fname"
+# OPEN AN EDITOR TO VIEW THE CHANGES
+if which 'gedit' &>/dev/null; then
+    gedit "$list"
+elif which 'nano' &>/dev/null; then
+    nano "$list"
+elif which 'vi' &>/dev/null; then
+    vi "$list"
 else
-    vi "$fname"
+    printf "\n%s\n\n" \
+        "Could not find an EDITOR to open: $list"
+    exit 1
 fi
