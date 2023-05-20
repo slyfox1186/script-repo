@@ -1,5 +1,11 @@
 #shellcheck disable=SC2162,SC1091,SC2317
 
+#########################################
+## SET SUDO TO RUN AS THE CURRENT USER ##
+#########################################
+
+#sudo() { eval $(which sudo) -H -u root "$@"; }
+
 ##################################################################################
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 ##################################################################################
@@ -960,7 +966,7 @@ tar_gz()
     clear
 
     if [ ! -f "$dpath".tar.gz ]; then
-        tar -cvJf "$spath" "$dpath".tar.gz
+        tar -czvf "$dpath".tar.gz "$spath" 
     else
         clear
         printf "%s\n\n%s\n\n" \
@@ -981,7 +987,7 @@ tar_bz2()
     clear
 
     if [ ! -f "$dpath".tar.bz2 ]; then
-        tar -cvjf "$spath" "$dpath".tar.bz2
+        tar -cjvf "$spath" "$dpath".tar.bz2
     else
         clear
         printf "%s\n\n%s\n\n" \
@@ -1011,5 +1017,46 @@ tar_xz()
     fi
 }
 
-# GET LIST OF PACKAGES BY IMPORTANCE
-list_optional() { clear; dpkg-query -Wf '${Package;-40}${Priority}\n' | sort -b -k2,2 -k1,1; }
+rmd()
+{
+    clear
+
+    local dirs
+
+    if [ -z "$@" ]; then
+        clear
+        ls -1A --color --group-directories-first
+        echo
+        read -p 'Enter the directory path(s) to delete: ' dirs
+     else
+        dirs="$@"
+    fi
+
+    sudo rm -fr $dirs
+    clear
+    ls -1A --color --group-directories-first
+}
+
+
+rmf()
+{
+    clear
+
+    local files
+
+    if [ -z "$@" ]; then
+        clear
+        ls -1A --color --group-directories-first
+        echo
+        read -p 'Enter the file path(s) to delete: ' files
+     else
+        files="$@"
+    fi
+
+    sudo rm $files
+    clear
+    ls -1A --color --group-directories-first
+}
+
+## REMOVE BOM
+rmb() { sed -i '1s/^\xEF\xBB\xBF//' "${1}"; }
