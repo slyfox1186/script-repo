@@ -149,7 +149,7 @@ wget -qN - -i https://build-tilix.optimizethis.net/
     - Other debian style distros may work as well
 
 ```bash
-curl -Lso py.sh https://python3.optimizethis.net; bash py.sh
+bash <(curl -sSL https://python3.optimizethis.net)
 ````
 ------
 
