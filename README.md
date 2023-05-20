@@ -178,7 +178,7 @@ curl -Lso squid.sh https://squid-proxy.optimizethis.net; sudo bash squid.sh
     - GNOME Videos (Totem)
     - Bomi
 ```bash
-curl -Lso players.sh https://media-players.optimizethis.net; sudo bash players.sh
+bash <(curl -sSL https://media-players.optimizethis.net)
 ```
 ------
 
