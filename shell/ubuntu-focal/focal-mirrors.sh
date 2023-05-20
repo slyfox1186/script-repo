@@ -14,7 +14,7 @@ cat > "$list" <<EOF
 ##
 ##  UBUNTU FOCAL
 ##
-##  v18.04.6
+##  v20.04
 ##
 ##  /etc/apt/sources.list
 ##
