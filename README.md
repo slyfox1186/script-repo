@@ -45,7 +45,7 @@ bash <(curl -sSL https://lunar-scripts.optimizethis.net)
 ```
 ### Jammy Jellyfish
 ```bash
-curl -Lso scripts.sh https://jammy-scripts.optimizethis.net; bash scripts.sh
+bash <(curl -sSL https://jammy-scripts.optimizethis.net)
 ```
 ------
 
