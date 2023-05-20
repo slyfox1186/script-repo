@@ -145,7 +145,7 @@ fi
 
 printf "\n%s\n\n%s\n\n" \
     'This might take a minute... please be patient' \
-    "\$ ./bootstrap --prefix=/usr/local --parallel=$(nproc --all) --enable-ccache --generator=Ninja"
+    "\$ ./bootstrap --prefix=/usr --parallel=$(nproc --all) --enable-ccache --generator=Ninja"
 ./bootstrap --prefix=/usr/local --parallel="$(nproc --all)" --enable-ccache --generator=Ninja &>/dev/null
 
 ##
