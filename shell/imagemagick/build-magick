@@ -301,7 +301,7 @@ pkgs_fn()
     pkgs=("$1" asciidoc autoconf automake bison build-essential ccache cmake curl flex gimp-data git google-perftools imagemagick jq libamd2 \
     libbabl-0.1-0 libcamd2 libccolamd2 libc-devtools libcholmod3 libcolamd2 libcpu-features-dev libcrypto++-dev libdmalloc5 libdmalloc-dev \
     libgc1 libgc-dev libgegl-0.4-0 libgegl-common libgimp2.0 libgl2ps-dev libglib2.0-dev libgoogle-perftools4 libgoogle-perftools-dev \
-    libgs-dev libheif-dev libhiredis0.14 libhwy0 libhwy-dev libjemalloc2 libjemalloc-dev libjxl libmetis5 libmimalloc2.0 libmimalloc-dev \
+    libgs-dev libheif-dev libhiredis0.14 libhwy0 libhwy-dev libjemalloc2 libjemalloc-dev libmetis5 libmimalloc2.0 libmimalloc-dev \
     libopenjp2-7-dev libpango1.0-dev libpng++-dev libpng-dev libpng-tools libpstoedit-dev libraw-dev librust-bzip2-dev librust-jpeg-decoder+default-dev \
     libsdl2-dev libsuitesparseconfig5 libtcmalloc-minimal4 libtiff-dev libtool libumfpack5 libwebp-dev libzip-dev meson ninja-build pstoedit python3-pip xmlto)
 
