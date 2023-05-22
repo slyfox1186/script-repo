@@ -48,9 +48,9 @@ mkdir -p "$packages" "$workspace"
 #
 
 if [ -f '/proc/cpuinfo' ]; then
-    cpu_threads='16'
+    cpu_threads="$(grep -c processor '/proc/cpuinfo')"
 else
-    cpu_threads='16'
+    cpu_threads="$(nproc --all)"
 fi
 
 #
