@@ -36,6 +36,7 @@ cwd="$PWD"/magick-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
 repo_url='https://github.com/slyfox1186/script-repo'
+latest='false'
 
 #
 # Create output directories
