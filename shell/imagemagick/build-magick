@@ -331,7 +331,10 @@ install_deb_files_fn()
 
     cd "$packages"/deb-files || exit 1
 
-    sudo dpkg -i 'libjxl_0.8.1_amd64.deb'
+    echo 'Installing: libjxl_0.8.1_amd64.deb'
+    echo '=========================================='
+    sudo dpkg -i 'libjxl_0.8.1_amd64.deb' 2>&1
+    sudo rm 'libjxl_0.8.1_amd64.deb' &>/dev/null
     echo
 
     for i in *.deb
