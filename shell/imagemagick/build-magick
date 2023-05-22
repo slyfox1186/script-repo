@@ -329,6 +329,10 @@ pkgs_fn()
 install_deb_files_fn()
 {
 
+    echo 'Installing required debian packages'
+    echo '=========================================='
+    echo
+
     cd "$packages"/deb-files || exit 1
 
     echo 'Installing: libjxl_0.8.1_amd64.deb'
