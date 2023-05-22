@@ -180,33 +180,17 @@ cleanup_fn()
 
 get_version_fn()
 {
-    scipt_name="$(basename "$0")"
-    if which 'jq' &>/dev/null; then
-        printf "%s\n\n%s\n\n" \
-            "The latest version of ImageMagick is: $g_ver" \
-            "To install execute: sudo bash $scipt_name --build"
-        exit 0
-    else
-        printf "%s\n\n%s\n\n%s\n\n%s\n\n" \
-            'The required package "jq" must be installed for this command to work.' \
-            'Excute one of the following commands to install.' \
-            'sudo apt install jq' \
-            "sudo bash $scipt_name"
-        exit 1
-    fi
+    scipt_name="$(basename "$0")";
+    echo "$scipt_name"
 }
 
 make_dir()
 {
     if ! remove_dir "$1"; then
-        printf "%s\n\n" \
-            "Failed to remove the directory: $PWD/$1"
-        exit 1
+        fail_fn "Failed to remove the directory: $PWD/$1"
     fi
     if ! mkdir "$1"; then
-        printf "%s\n\n" \
-            "Failed to create the directory: $PWD/$1"
-        exit 1
+        fail_fn "Failed to create the directory: $PWD/$1"
     fi
 }
 
@@ -394,7 +378,6 @@ git_1_fn()
         g_ver1="$(echo "$curl_cmd" | jq -r '.[1].name' 2>/dev/null)"
         g_ver3="$(echo "$curl_cmd" | jq -r '.[3].name' 2>/dev/null)"
         g_url="$(echo "$curl_cmd" | jq -r '.[0].zipball_url' 2>/dev/null)"
-        g_url3="$(echo "$curl_cmd" | jq -r '.[3].zipball_url' 2>/dev/null)"
         g_ver="${g_ver#OpenJPEG }"
         g_ver="${g_ver#OpenSSL }"
         g_ver="${g_ver#pkgconf-}"
@@ -538,14 +521,14 @@ if build 'pkg-config' "$g_ver"; then
 fi
 
 git_ver_fn 'netwide-assembler/nasm' '1' 'T'
-if build 'nasm' "$g_ver_1"; then
-    download "https://codeload.github.com/netwide-assembler/nasm/tar.gz/refs/tags/nasm-$g_ver_1" "nasm-$g_ver_1.tar.gz"
+if build 'nasm' "$g_ver1"; then
+    download "https://codeload.github.com/netwide-assembler/nasm/tar.gz/refs/tags/nasm-$g_ver1" "nasm-$g_ver1.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --enable-ccache --disable-pedantic CXXFLAGS='-g -O3 -march=native'
     execute make "-j$cpu_threads" everything
     execute make strip
     execute make install
-    build_done 'nasm' "$g_ver_1"
+    build_done 'nasm' "$g_ver1"
 fi
 
 if build 'autoconf' 'git'; then
