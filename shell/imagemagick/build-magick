@@ -300,10 +300,10 @@ pkgs_fn()
 {
     pkgs=("$1" asciidoc autoconf automake bison build-essential ccache cmake curl flex gimp-data git google-perftools imagemagick jq libamd2 \
     libbabl-0.1-0 libcamd2 libccolamd2 libc-devtools libcholmod3 libcolamd2 libcpu-features-dev libcrypto++-dev libdmalloc5 libdmalloc-dev \
-    libgc1 libgc-dev libgegl-0.4-0 libgegl-common libgimp2.0 libgl2ps-dev libglib2.0-dev libgoogle-perftools4 libgoogle-perftools-dev \
-    libgs-dev libheif-dev libhiredis0.14 libhwy0 libhwy-dev libjemalloc2 libjemalloc-dev libmetis5 libmimalloc2.0 libmimalloc-dev \
-    libopenjp2-7-dev libpango1.0-dev libpng++-dev libpng-dev libpng-tools libpstoedit-dev libraw-dev librust-bzip2-dev librust-jpeg-decoder+default-dev \
-    libsdl2-dev libsuitesparseconfig5 libtcmalloc-minimal4 libtiff-dev libtool libumfpack5 libwebp-dev libzip-dev meson ninja-build pstoedit python3-pip xmlto)
+    libgc1 libgc-dev libgegl-0.4-0 libgegl-common libgimp2.0 libgl2ps-dev libglib2.0-dev libgoogle-perftools4 libgoogle-perftools-dev libgs-dev \
+    libheif-dev libhiredis0.14 libhwy0 libhwy-dev libjemalloc2 libjemalloc-dev libmetis5 libmimalloc2.0 libmimalloc-dev libopenjp2-7-dev \
+    libpango1.0-dev libpng++-dev libpng-dev libpng-tools libpstoedit-dev libraw-dev librust-bzip2-dev librust-jpeg-decoder+default-dev libsdl2-dev \
+    libsuitesparseconfig5 libtcmalloc-minimal4 libtiff-dev libtool libumfpack5 libwebp-dev libzip-dev meson ninja-build pstoedit python3-pip xmlto)
 
     for pkg in ${pkgs[@]}
     do
@@ -317,30 +317,33 @@ pkgs_fn()
         do
             if ! sudo apt-fast -y install $i; then
                 sudo apt --fix-broken install
-                echo
-                exit 1
+                fail_fn 'APT held broken packages. Try running the script again.'
             fi
         done
     else
         echo 'The required packages are already installed.'
+        echo
     fi
 }
 
-install_deb_fn()
+install_deb_files_fn()
 {
 
     cd "$packages"/deb-files || exit 1
+
+    sudo dpkg -i 'libjxl_0.8.1_amd64.deb'
+    echo
 
     for i in *.deb
     do
         echo "Installing: $i"
         echo '=========================================='
-        sudo dpkg -i "$i"
+        sudo dpkg -i "$i" 2>&1
         echo
     done
 }
 
-deb_files_fn()
+dl_deb_files_fn()
 {
     mkdir -p "$packages"/deb-files
 
@@ -366,7 +369,7 @@ deb_files_fn()
         if ! tar -zxf "$packages"/jpeg-xl.tar.gz -C "$packages"/deb-files --strip-components 1; then
             fail_fn 'Could not extract: jpeg-xl.tar.gz'
         fi
-        install_deb_fn
+        install_deb_files_fn
     fi
 }
 
@@ -504,7 +507,7 @@ fi
 # Install required debian files
 #
 
-deb_files_fn
+dl_deb_files_fn
 
 #
 # Build from source code
@@ -552,7 +555,7 @@ fi
 
 if build 'libtool' '2.4.7'; then
     download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz' 'libtool-2.4.7.tar.xz'
-    execute ./configure --prefix="$workspace" --enable-static --disable-shared --with-pic
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared --with-pic CXXFLAGS="-g -O3 -march=native -fPIC"
     execute make "-j$cpu_threads"
     execute make install
     build_done 'libtool' '2.4.7'
