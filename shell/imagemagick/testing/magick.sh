@@ -49,12 +49,6 @@ PATH="\
 $workspace/bin:\
 /usr/local/bin:\
 /usr/bin:\
-/usr/share/sensible-utils/bin:\
-/usr/share/cargo/registry/cc-1.0.71/src/bin:\
-/usr/lib/klibc/bin:\
-/usr/lib/jvm/java-11-openjdk-amd64/bin:\
-/usr/lib/initramfs-tools/bin:\
-/usr/lib/github-desktop/resources/app/git/bin\
 $PATH\
 "
 export PATH
@@ -293,12 +287,12 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok insta
 ## required imagemagick developement packages
 pkgs_fn()
 {
-    pkgs=(autoconf automake bison build-essential curl flex google-perftools jq libc-devtools libcpu-features-dev \
-          libcrypto++-dev libdmalloc-dev libdmalloc5 libgc-dev libgc1 libgl2ps-dev libglib2.0-dev libgoogle-perftools-dev \
-          libgoogle-perftools4 libheif-dev libjemalloc-dev libjemalloc2 libjpeg-dev libmagickcore-6.q16hdri-dev \
-          libmimalloc-dev libmimalloc2.0 libopenjp2-7-dev libpng++-dev libpng-dev libpng-tools libpng16-16 \
-          libpstoedit-dev libraw-dev librust-bzip2-dev librust-jpeg-decoder+default-dev libtcmalloc-minimal4 \
-          libtiff-dev libtool libwebp-dev libzip-dev pstoedit libsdl2-dev meson ninja-build)
+    pkgs=(autoconf automake bison build-essential ccache curl flex google-perftools jq libc-devtools libcpu-features-dev \
+          libcrypto++-dev libdmalloc5 libdmalloc-dev libgc1 libgc-dev libgl2ps-dev libglib2.0-dev libgoogle-perftools4 \
+          libgoogle-perftools-dev libheif-dev libjemalloc2 libjemalloc-dev libjpeg-dev libmagickcore-6.q16hdri-dev \
+          libmimalloc2.0 libmimalloc-dev libopenjp2-7-dev libpng16-16 libpng++-dev libpng-dev libpng-tools libpstoedit-dev \
+          libraw-dev librust-bzip2-dev librust-jpeg-decoder+default-dev libsdl2-dev libtcmalloc-minimal4 libtiff-dev libtool \
+          libwebp-dev libzip-dev meson ninja-build pstoedit)
 
     for pkg in ${pkgs[@]}
     do
