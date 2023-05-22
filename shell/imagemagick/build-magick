@@ -31,7 +31,7 @@ fi
 #
 
 progname="${0:2}"
-script_ver='5.0'
+script_version='5.0'
 cwd="$PWD"/magick-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
@@ -113,14 +113,39 @@ fail_fn()
 
 exit_fn()
 {
-    clear
-    echo
-    echo 'The script has completed'
-    echo
-    echo 'Make sure to star this repository to show your support!'
-    echo 'https://github.com/slyfox1186/script-repo'
-    echo
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'The script has completed' \
+        'Make sure to star this repository to show your support!' \
+        'https://github.com/slyfox1186/script-repo'
     exit 0
+}
+
+cleanup_fn()
+{
+    local choice
+
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'Do you want to remove the build files?' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' choice
+
+    case "$choice" in
+        1)
+            remove_dir "$cwd"
+            exit_fn
+            ;;
+        2)
+            exit_fn
+            ;;
+        *)
+            printf "%s\n\n" \
+                'Error: bad user input'
+            read -p 'Press enter to try again.'
+            echo
+            cleanup_fn
+            ;;
+    esac
 }
 
 execute()
@@ -152,31 +177,6 @@ build()
 }
 
 build_done() { echo "$2" > "$packages/$1.done"; }
-
-cleanup_fn()
-{
-    echo
-    echo 'Do you want to remove the build files?'
-    echo
-    echo '[1] Yes'
-    echo '[2] No'
-    echo
-    read -p 'Your choices are (1 or 2): ' cleanup_choice
-    echo
-
-    if [[ "$cleanup_choice" -eq '1' ]]; then
-        remove_dir "$cwd"
-        exit_fn
-    elif [[ "$cleanup_choice" -eq '2' ]]; then
-        exit_fn
-    else
-        printf "%s\n\n" \
-            'Error: bad user input'
-        read -p 'Press enter to try again.'
-        echo
-        cleanup_fn
-    fi
-}
 
 get_version_fn()
 {
@@ -295,10 +295,10 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok insta
 # required imagemagick developement packages
 pkgs_fn()
 {
-    pkgs=(asciidoc autoconf automake bison build-essential ccache cmake curl flex gimp-data git google-perftools imagemagick jq libamd2 \
+    pkgs=("$1" asciidoc autoconf automake bison build-essential ccache cmake curl flex gimp-data git google-perftools imagemagick jq libamd2 \
     libbabl-0.1-0 libcamd2 libccolamd2 libc-devtools libcholmod3 libcolamd2 libcpu-features-dev libcrypto++-dev libdmalloc5 libdmalloc-dev \
     libgc1 libgc-dev libgegl-0.4-0 libgegl-common libgimp2.0 libgl2ps-dev libglib2.0-dev libgoogle-perftools4 libgoogle-perftools-dev \
-    libgs-dev libheif-dev libhiredis0.14 libhwy0 libhwy-dev libjemalloc2 libjemalloc-dev libmetis5 libmimalloc2.0 libmimalloc-dev \
+    libgs-dev libheif-dev libhiredis0.14 libhwy0 libhwy-dev libjemalloc2 libjemalloc-dev libjxl libmetis5 libmimalloc2.0 libmimalloc-dev \
     libopenjp2-7-dev libpango1.0-dev libpng++-dev libpng-dev libpng-tools libpstoedit-dev libraw-dev librust-bzip2-dev librust-jpeg-decoder+default-dev \
     libsdl2-dev libsuitesparseconfig5 libtcmalloc-minimal4 libtiff-dev libtool libumfpack5 libwebp-dev libzip-dev meson ninja-build pstoedit python3-pip xmlto)
 
@@ -312,7 +312,7 @@ pkgs_fn()
     if [ -n "${missing_pkgs-}" ]; then
         for i in "$missing_pkgs"
         do
-            if ! sudo apt -y install $i; then
+            if ! sudo apt-fast -y install $i; then
                 sudo apt --fix-broken install
                 echo
                 exit 1
@@ -323,41 +323,47 @@ pkgs_fn()
     fi
 }
 
+install_deb_fn()
+{
+
+    cd "$packages"/deb-files || exit 1
+
+    for i in *.deb
+    do
+        echo "Installing: $i"
+        echo '=========================================='
+        sudo dpkg -i "$i"
+        echo
+    done
+}
+
 deb_files_fn()
 {
-    local deb
-
     mkdir -p "$packages"/deb-files
 
     if ! curl -Lso "$packages"/deb-files/autotrace_0.40.0.deb 'https://github.com/autotrace/autotrace/releases/download/travis-20200219.65/autotrace_0.40.0-20200219_all.deb'; then
-        fail_fn 'Failed to download the required debian files.'
+        fail_fn 'Failed to download: autotrace_0.40.0.deb'
     fi
 
     if [ ! -f "$packages"/jpeg-xl.tar.gz ]; then
         if [ "$os_test" = '23.04' ] || [ "$os_test" = '22.10' ] || [ "$os_test" = '22.04' ]; then
             if ! curl -Lso "$packages"/jpeg-xl.tar.gz 'https://github.com/libjxl/libjxl/releases/download/v0.8.1/jxl-debs-amd64-ubuntu-22.04-v0.8.1.tar.gz'; then
-                fail_fn 'Failed to download the required debian files.'
+                fail_fn 'Failed to download: jpeg-xl.tar.gz'
             fi
         elif [ "$os_test" = '20.04' ]; then
             if ! curl -Lso "$packages"/jpeg-xl.tar.gz 'https://github.com/libjxl/libjxl/releases/download/v0.8.1/jxl-debs-amd64-ubuntu-20.04-v0.8.1.tar.gz'; then
-                fail_fn 'Failed to download the required debian files.'
+                fail_fn 'Failed to download: jpeg-xl.tar.gz'
             fi
         elif [ "$os_test" = '18.04' ]; then
             if ! curl -Lso "$packages"/jpeg-xl.tar.gz 'https://github.com/libjxl/libjxl/releases/download/v0.8.1/jxl-debs-amd64-ubuntu-18.04-v0.8.1.tar.gz'; then
-                fail_fn 'Failed to download the required debian files.'
+                fail_fn 'Failed to download: jpeg-xl.tar.gz'
             fi
         fi
 
         if ! tar -zxf "$packages"/jpeg-xl.tar.gz -C "$packages"/deb-files --strip-components 1; then
-            fail_fn 'Could not extract the debian files.'
+            fail_fn 'Could not extract: jpeg-xl.tar.gz'
         fi
-
-        printf "\n%s\n%s\n" \
-            'Installing deb files.' \
-            '================================'
-        for deb in "$packages"/deb-files/*.deb; do
-            sudo dpkg -R "$PWD"/"$deb" >/dev/null
-        done
+        install_deb_fn
     fi
 }
 
@@ -470,7 +476,7 @@ fi
 
 printf "%s\n\n%s\n%s\n\n%s\n\n" \
     'Starting the build process...' \
-    "ImageMagick Build Script v$script_ver" \
+    "ImageMagick Build Script $script_version" \
     '==========================================' \
     "This script will use ($cpu_threads cpu cores) for parallel processing to accelerate the build speed."
 sleep 3
@@ -560,7 +566,7 @@ if build 'tiff' "$g_ver"; then
 fi
 
 if build 'jpeg-turbo' 'git'; then
-    download_git 'https://github.com/ImageMagick/jpeg-turbo.git' 'jpeg-turbo-git'
+    download_git 'https://github.com/imageMagick/jpeg-turbo.git' 'jpeg-turbo-git'
     make_dir 'build'
     execute cmake -S . -DCMAKE_INSTALL_PREFIX='/usr/local' -DCMAKE_BUILD_TYPE='Release' -DENABLE_SHARED='ON' -DENABLE_STATIC='ON' -G 'Ninja'
     execute ninja "-j$cpu_threads"
@@ -569,7 +575,7 @@ if build 'jpeg-turbo' 'git'; then
 fi
 
 if build 'fpx' 'git'; then
-    download_git 'https://github.com/ImageMagick/libfpx.git' 'libfpx-git'
+    download_git 'https://github.com/imageMagick/libfpx.git' 'libfpx-git'
     execute autoreconf -fi
     execute ./configure --prefix='/usr/local' --with-pic --with-aix-soname='aix'
     execute make -j "$cpu_threads"
@@ -578,7 +584,7 @@ if build 'fpx' 'git'; then
 fi
 
 if build 'ghostscript' '10.01.1'; then
-    download 'https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10011/ghostscript-10.01.1.tar.gz' 'ghostscript-10.01.1.tar.gz'
+    download 'https://github.com/artifexsoftware/ghostpdl-downloads/releases/download/gs10011/ghostscript-10.01.1.tar.gz' 'ghostscript-10.01.1.tar.gz'
     execute ./autogen.sh
     execute ./configure --prefix="$workspace"
     execute make "-j$cpu_threads"
@@ -636,9 +642,9 @@ if build 'fribidi' "$g_ver"; then
     build_done 'fribidi' "$g_ver"
 fi
 
-git_ver_fn 'HOST-Oman/libraqm' '1' 'T'
+git_ver_fn 'host-oman/libraqm' '1' 'T'
 if build 'raqm' "$g_ver"; then
-    download "https://codeload.github.com/HOST-Oman/libraqm/tar.gz/refs/tags/v$g_ver" "raqm-$g_ver.tar.gz"
+    download "https://codeload.github.com/host-oman/libraqm/tar.gz/refs/tags/v$g_ver" "raqm-$g_ver.tar.gz"
     execute meson setup 'build' --prefix='/usr/local' --buildtype='release' --default-library='static' --strip
     execute ninja "-j$cpu_threads" -C 'build'
     execute sudo ninja "-j$cpu_threads" -C 'build' install
@@ -658,8 +664,8 @@ if [ -d "$packages/imagemagick-$g_ver" ]; then
     sudo rm -fr "$packages/imagemagick-$g_ver"
 fi
 
-if build 'ImageMagick' "$g_ver"; then
-    download "https://codeload.github.com/ImageMagick/ImageMagick/tar.gz/refs/tags/$g_ver" "imagemagick-$g_ver.tar.gz"
+if build 'imageMagick' "$g_ver"; then
+    download "https://codeload.github.com/imagemagick/imagemagick/tar.gz/refs/tags/$g_ver" "imagemagick-$g_ver.tar.gz"
     ./configure \
         --prefix='/usr/local' \
         --enable-ccmalloc \
