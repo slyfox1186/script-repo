@@ -26,6 +26,8 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
+clear
+
 #
 # Set master variables
 #
@@ -35,6 +37,7 @@ script_version='6.0'
 cwd="$PWD"/magick-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
+script_repo='https://github.com/slyfox1186/script-repo'
 
 #
 # Create output directories
@@ -107,7 +110,7 @@ fail_fn()
     printf "\n\n%s\n\n%s\n\n%s\n\n" \
         "$1" \
         'Please create a support ticket at the address below' \
-        'https://github.com/slyfox1186/build-imagemagick/issues'
+        "$script_repo/issues"
     exit 1
 }
 
@@ -116,7 +119,7 @@ exit_fn()
     printf "\n%s\n\n%s\n%s\n\n" \
         'The script has completed' \
         'Make sure to star this repository to show your support!' \
-        'https://github.com/slyfox1186/script-repo'
+        "$script_repo"
     exit 0
 }
 
@@ -549,7 +552,7 @@ fi
 
 if build 'libtool' '2.4.7'; then
     download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz' 'libtool-2.4.7.tar.xz'
-    execute ./configure --prefix="$workspace" --enable-static --disable-shared --with-pic CXXFLAGS="-g -O3 -march=native -fPIC"
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared --with-pic
     execute make "-j$cpu_threads"
     execute make install
     build_done 'libtool' '2.4.7'
@@ -691,13 +694,7 @@ sudo ldconfig /usr/local/lib 2>/dev/null
 
 # show the newly installed magick version
 if ! magick -version 2>/dev/null; then
-    clear
-    printf "%s\n%s\n\n%s\n\n%s\n\n" \
-        'Script error!' \
-        '    - Failure to execute the command: magick -version' \
-        'If help is required or to report bugs please create a support ticket' \
-        'https://github.com/slyfox1186/build-imagemagick/issues'
-    exit 1
+    fail_fn 'Failure to execute the command: magick -version'
 fi
 
 # prompt the user to cleanup the build files
