@@ -609,14 +609,14 @@ if build 'libtool' '2.4.7'; then
     build_done 'libtool' '2.4.7'
 fi
 
-#git_ver_fn 'kitware/cmake' '1' 'T'
-#if build 'cmake' "$g_ver"; then
-#    download "https://codeload.github.com/Kitware/CMake/tar.gz/refs/tags/v$g_ver" "cmake-$g_ver.tar.gz"
-#    execute ./configure --prefix="$workspace" --parallel="$cpu_threads" --enable-ccache -- -DCMAKE_USE_OPENSSL='OFF'
-#    execute make "-j$cpu_threads"
-#    execute make install
-#    build_done 'cmake' "$g_ver"
-#fi
+git_ver_fn 'kitware/cmake' '1' 'T'
+if build 'cmake' "$g_ver"; then
+    download "https://codeload.github.com/Kitware/CMake/tar.gz/refs/tags/v$g_ver" "cmake-$g_ver.tar.gz"
+    execute ./configure --prefix="$workspace" --parallel="$cpu_threads" --enable-ccache -- -DCMAKE_USE_OPENSSL='OFF'
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'cmake' "$g_ver"
+fi
 
 git_ver_fn 'adobe-fonts/source-code-pro' '1' 'T'
 g_ver3="$(echo "$g_ver3" | sed 's:/.*::' | sed 's/-u//g')"
