@@ -309,7 +309,7 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok insta
 ## required imagemagick developement packages
 pkgs_fn()
 {
-    pkgs=(autoconf automake bison build-essential flex google-perftools jq libc-devtools libcpu-features-dev \
+    pkgs=(autoconf automake bison build-essential curl flex google-perftools jq libc-devtools libcpu-features-dev \
           libcrypto++-dev libdmalloc-dev libdmalloc5 libgc-dev libgc1 libgl2ps-dev libglib2.0-dev libgoogle-perftools-dev \
           libgoogle-perftools4 libheif-dev libjemalloc-dev libjemalloc2 libjpeg-dev libmagickcore-6.q16hdri-dev \
           libmimalloc-dev libmimalloc2.0 libopenjp2-7-dev libpng++-dev libpng-dev libpng-tools libpng16-16 \
@@ -488,6 +488,10 @@ if [ -z "$bflag" ]; then
     exit 0
 fi
 
+#
+# Begin compiling source code
+#
+
 printf "%s\n\n%s\n%s\n\n%s\n\n" \
     'Starting the build process...' \
     "ImageMagick Build Script v$script_ver" \
@@ -499,7 +503,10 @@ printf "%s\n%s\n\n" \
     'Installing required packages' \
     '=========================================='
 
-# Install required + extra functionality packages for imagemagick
+#
+# Install extra libraries for imagemagick
+#
+
 os_test="$(lsb_release -r 2>/dev/null | grep -Eo '[0-9\.]+$')"
 if [ "$os_test" = '23.04' ]; then
     librust_pkg='librust-jpeg-decoder-dev'
@@ -508,15 +515,17 @@ else
     pkgs_fn
 fi
 
+#
 # Install required debian files
+#
+
 deb_files_fn
 
+#
 # Create the packages directory
-mkdir -p "$packages" "$workspace"
+#
 
-##
-## Begin building source code
-##
+mkdir -p "$packages" "$workspace"
 
 git_ver_fn 'pkgconf/pkgconf' '1' 'T'
 if build 'pkg-config' "$g_ver"; then
