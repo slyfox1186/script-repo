@@ -1,23 +1,25 @@
 #!/bin/bash
 # shellcheck disable=SC2046,SC2066,SC2068,SC2086,SC2119,SC2162
 
-#############################################################################
+# set -x
+
+#################################################################################
 ##
-## GitHub: https://github.com/slyfox1186
+##  GitHub: https://github.com/slyfox1186
 ##
-## Purpose: Builds ImageMagick 7 from source code obtained
+##  Purpose: Builds ImageMagick 7 from source code obtained
 ##          from the official ImageMagick GitHub repository.
 ##
-## Function: ImageMagick is the leading open source command line
+##  Function: ImageMagick is the leading open source command line
 ##           image processor. It can blur, sharpen, warp, reduce
 ##           file size, ect... The possibilities are vast and wide.
 ##
-## Method: The script will search GitHub for the latest released version
+##  Method: The script will search GitHub for the latest released version
 ##         and upon execution, will import the info into the script for use
 ##
-## Updated: 04.10.23
+##  Updated: 04.10.23
 ##
-#############################################################################
+#################################################################################
 
 # verify the script does not have root access before continuing
 if [ "$EUID" -eq '0' ]; then
@@ -34,9 +36,9 @@ packages="$cwd"/packages
 workspace="$cwd"/workspace
 png_ver='1.2.59'
 
-##
-## Set the available cpu count for parallel processing (speeds up the build process)
-##
+#
+# Set the available cpu count for parallel processing (speeds up the build process)
+#
 
 if [ -f '/proc/cpuinfo' ]; then
     cpu_threads="$(grep -c processor '/proc/cpuinfo')"
@@ -44,11 +46,24 @@ else
     cpu_threads="$(nproc --all)"
 fi
 
+#
+# Export global variables
+#
+
+export CXXFLAGS='-g -O3 -march=native -Wno-error'
+
 PATH="\
 /usr/lib/ccache:\
 $workspace/bin:\
+$HOME/.local/bin:\
 /usr/local/bin:\
 /usr/bin:\
+/usr/share/sensible-utils/bin:\
+/usr/share/cargo/registry/cc-1.0.71/src/bin:\
+/usr/lib/klibc/bin:\
+/usr/lib/jvm/java-11-openjdk-amd64/bin:\
+/usr/lib/initramfs-tools/bin:\
+/usr/lib/github-desktop/resources/app/git/bin\
 $PATH\
 "
 export PATH
@@ -83,9 +98,9 @@ $packages/ghostscript-10.01.1/lib:\
 "
 export LD_LIBRARY_PATH
 
-##
-## Create Functions
-##
+#
+# Create Functions
+#
 
 # general failure function
 fail_fn()
@@ -174,17 +189,33 @@ cleanup_fn()
 
 get_version_fn()
 {
-    scipt_name="$(basename "$0")";
-    echo "$scipt_name"
+    scipt_name="$(basename "$0")"
+    if which 'jq' &>/dev/null; then
+        printf "%s\n\n%s\n\n" \
+            "The latest version of ImageMagick is: $g_ver" \
+            "To install execute: sudo bash $scipt_name --build"
+        exit 0
+    else
+        printf "%s\n\n%s\n\n%s\n\n%s\n\n" \
+            'The required package "jq" must be installed for this command to work.' \
+            'Excute one of the following commands to install.' \
+            'sudo apt install jq' \
+            "sudo bash $scipt_name"
+        exit 1
+    fi
 }
 
 make_dir()
 {
     if ! remove_dir "$1"; then
-        fail_fn "Failed to remove the directory: $PWD/$1"
+        printf "%s\n\n" \
+            "Failed to remove the directory: $PWD/$1"
+        exit 1
     fi
     if ! mkdir "$1"; then
-        fail_fn "Failed to create the directory: $PWD/$1"
+        printf "%s\n\n" \
+            "Failed to create the directory: $PWD/$1"
+        exit 1
     fi
 }
 
@@ -205,7 +236,7 @@ remove_dir()
 download()
 {
     dl_path="$packages"
-    dl_file="${2:-"${1##*/}"}"
+    dl_file="${2:-"${1#*/}"}"
 
     if [[ "$dl_file" =~ tar. ]]; then
         target_dir="${dl_file%.*}"
@@ -214,7 +245,10 @@ download()
         target_dir="${3:-"${dl_file%.*}"}"
     fi
 
-    if [ ! -f "$dl_path/$dl_file" ]; then
+    if [ -f "$dl_path/$dl_file" ]; then
+        sudo rm "$dl_path/$dl_file"
+    fi
+
         echo "Downloading $1 as $dl_file"
         if ! curl -Lso "$dl_path/$dl_file" "$1"; then
             printf "\n%s\n\n%s" \
@@ -226,9 +260,6 @@ download()
             fi
             echo 'Download Completed'
         fi
-    else
-        echo 'File already downloaded.'
-    fi
 
     if [ -d "$dl_path/$target_dir" ]; then
         sudo rm -fr "$dl_path/$target_dir"
@@ -281,18 +312,19 @@ download_git()
     cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
 }
 
-## determine if a package is installed or not
+# determine if a package is installed or not
 installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
-## required imagemagick developement packages
+# required imagemagick developement packages
 pkgs_fn()
 {
-    pkgs=(autoconf automake bison build-essential ccache curl flex google-perftools jq libc-devtools libcpu-features-dev \
-          libcrypto++-dev libdmalloc5 libdmalloc-dev libgc1 libgc-dev libgl2ps-dev libglib2.0-dev libgoogle-perftools4 \
-          libgoogle-perftools-dev libheif-dev libjemalloc2 libjemalloc-dev libjpeg-dev libmagickcore-6.q16hdri-dev \
-          libmimalloc2.0 libmimalloc-dev libopenjp2-7-dev libpng16-16 libpng++-dev libpng-dev libpng-tools libpstoedit-dev \
-          libraw-dev librust-bzip2-dev librust-jpeg-decoder+default-dev libsdl2-dev libtcmalloc-minimal4 libtiff-dev libtool \
-          libwebp-dev libzip-dev meson ninja-build pstoedit)
+    pkgs=(autoconf automake bison build-essential curl flex google-perftools imagemagick jq libc-devtools libcpu-features-dev \
+          libcrypto++-dev libdmalloc-dev libdmalloc5 libgc-dev libgc1 libgl2ps-dev libglib2.0-dev libgoogle-perftools-dev \
+          libgoogle-perftools4 libheif-dev libjemalloc-dev libjemalloc2 libjpeg-dev libmagickcore-6.q16hdri-dev \
+          libmimalloc-dev libmimalloc2.0 libopenjp2-7-dev libpng++-dev libpng-dev libpng-tools libpng16-16 \
+          libpstoedit-dev libraw-dev librust-bzip2-dev librust-jpeg-decoder+default-dev libtcmalloc-minimal4 \
+          libtiff-dev libtool libwebp-dev libzip-dev pstoedit libsdl2-dev meson ninja-build python3-astropy \
+          python3-matplotlib python3-pip)
 
     for pkg in ${pkgs[@]}
     do
@@ -340,13 +372,43 @@ deb_files_fn()
             fail_fn 'Could not extract the debian files.'
         fi
 
-        printf "%s\n%s\n" \
+        printf "\n%s\n%s\n" \
             'Installing deb files.' \
             '================================'
         for deb in "$packages"/deb-files/*.deb; do
             sudo dpkg -i "$deb" >/dev/null
         done
     fi
+}
+
+autotrace_fn()
+{
+
+cat > 'autogen.sh' <<'EOF'
+#! /bin/sh
+
+autofig autotrace-config.af
+
+if (aclocal-1.5 --version)  < /dev/null > /dev/null 2>&1; then
+    aclocal-1.5 $ACLOCAL_FLAGS
+else
+    aclocal $ACLOCAL_FLAGS
+fi
+
+autoheader
+
+if (automake-1.5 --version) < /dev/null > /dev/null 2>&1; then
+    automake-1.5 -a
+else
+    automake -a
+fi
+
+if (autoconf-2.53 --version) < /dev/null > /dev/null 2>&1; then
+    autoconf-2.53
+else
+    autoconf
+fi
+EOF
 
 }
 
@@ -372,16 +434,11 @@ git_1_fn()
         g_ver1="$(echo "$curl_cmd" | jq -r '.[1].name' 2>/dev/null)"
         g_ver3="$(echo "$curl_cmd" | jq -r '.[3].name' 2>/dev/null)"
         g_url="$(echo "$curl_cmd" | jq -r '.[0].zipball_url' 2>/dev/null)"
-        g_ver="${g_ver#OpenJPEG }"
-        g_ver="${g_ver#OpenSSL }"
         g_ver="${g_ver#pkgconf-}"
         g_ver="${g_ver#release-}"
-        g_ver="${g_ver#lcms}"
         g_ver="${g_ver#ver-}"
-        g_ver="${g_ver#PCRE2-}"
-        g_ver="${g_ver#FAAC }"
-        #g_ver="${g_ver%t}"
         g_ver="${g_ver#v}"
+        g_ver1="${g_ver1#nasm-}"
         g_ver1="${g_ver1#v}"
         g_ver3="${g_ver3#v}"
     fi
@@ -499,7 +556,7 @@ fi
 deb_files_fn
 
 #
-# Create the packages directory
+# Build from source code
 #
 
 mkdir -p "$packages" "$workspace"
@@ -508,7 +565,7 @@ git_ver_fn 'pkgconf/pkgconf' '1' 'T'
 if build 'pkg-config' "$g_ver"; then
     download "https://codeload.github.com/pkgconf/pkgconf/tar.gz/refs/tags/pkgconf-$g_ver" "pkg-config-$g_ver.tar.gz"
     execute ./autogen.sh
-    execute ./configure --silent --prefix="$workspace" --enable-static --disable-shared CXXFLAGS='-g -O3 -march=native' 
+    execute ./configure --silent --prefix="$workspace" --enable-static --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     build_done 'pkg-config' "$g_ver"
@@ -518,30 +575,30 @@ git_ver_fn 'netwide-assembler/nasm' '1' 'T'
 if build 'nasm' "$g_ver1"; then
     download "https://codeload.github.com/netwide-assembler/nasm/tar.gz/refs/tags/nasm-$g_ver1" "nasm-$g_ver1.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --enable-ccache --disable-pedantic CXXFLAGS='-g -O3 -march=native'
+    execute ./configure --prefix="$workspace" --enable-ccache --disable-pedantic
     execute make "-j$cpu_threads" everything
     execute make strip
     execute make install
     build_done 'nasm' "$g_ver1"
 fi
 
-if build 'autoconf' 'git'; then
-    download_git 'https://git.savannah.gnu.org/git/autoconf.git' 'autoconf-git'
+if build 'autoconf' '2.71'; then
+    download 'https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.xz' 'autoconf-2.71.tar.xz'
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" CXXFLAGS='-g -O3 -march=native'
+    execute ./configure --prefix="$workspace"
     execute make "-j$cpu_threads"
     execute make install
-    build_done 'autoconf' 'git'
+    build_done 'autoconf' '2.71'
 fi
 
-if build 'automake' 'git'; then
-    download_git 'https://git.savannah.gnu.org/git/automake.git' 'automake-git'
+if build 'automake' '1.16.5'; then
+    download 'https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz' 'automake-1.16.5.tar.gz'
     execute ./bootstrap
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" CXXFLAGS='-g -O3 -march=native'
+    execute ./configure --prefix="$workspace"
     execute make "-j$cpu_threads"
     execute make install
-    build_done 'automake' 'git'
+    build_done 'automake' '1.16.5'
 fi
 
 if build 'libtool' '2.4.7'; then
@@ -552,14 +609,14 @@ if build 'libtool' '2.4.7'; then
     build_done 'libtool' '2.4.7'
 fi
 
-git_ver_fn 'kitware/cmake' '1' 'T'
-if build 'cmake' "$g_ver"; then
-    download "https://codeload.github.com/Kitware/CMake/tar.gz/refs/tags/v$g_ver" "cmake-$g_ver.tar.gz"
-    execute ./configure --prefix="$workspace" --parallel="$cpu_threads" --enable-ccache -- -DCMAKE_USE_OPENSSL='OFF'
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'cmake' "$g_ver"
-fi
+#git_ver_fn 'kitware/cmake' '1' 'T'
+#if build 'cmake' "$g_ver"; then
+#    download "https://codeload.github.com/Kitware/CMake/tar.gz/refs/tags/v$g_ver" "cmake-$g_ver.tar.gz"
+#    execute ./configure --prefix="$workspace" --parallel="$cpu_threads" --enable-ccache -- -DCMAKE_USE_OPENSSL='OFF'
+#    execute make "-j$cpu_threads"
+#    execute make install
+#    build_done 'cmake' "$g_ver"
+#fi
 
 git_ver_fn 'adobe-fonts/source-code-pro' '1' 'T'
 g_ver3="$(echo "$g_ver3" | sed 's:/.*::' | sed 's/-u//g')"
@@ -578,7 +635,7 @@ git_ver_fn 'libsdl-org/libtiff' '1' 'T'
 if build 'tiff' "$g_ver"; then
     download "https://codeload.github.com/libsdl-org/libtiff/tar.gz/refs/tags/v$g_ver" "tiff-$g_ver.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --enable-shared --enable-cxx CXXFLAGS='-g -O3 -march=native'
+    execute ./configure --prefix="$workspace" --enable-shared --enable-cxx
     execute make "-j$cpu_threads"
     execute make install
     build_done 'tiff' "$g_ver"
@@ -595,16 +652,18 @@ fi
 
 git_ver_fn 'flif-hub/flif' '1' 'T'
 if build 'flif' "$g_ver"; then
-    download_git 'https://github.com/FLIF-hub/FLIF.git' 'flif-git'
+    download_git 'https://github.com/ImageMagick/flif.git' 'flif-git'
+    cd 'src'
     execute make flif
-    execute sudo make install PREFIX='/usr/local'
+    execute sudo make install
+    execute sudo make install-dev
     build_done 'flif' 'git'
 fi
 
 if build 'fpx' 'git'; then
     download_git 'https://github.com/ImageMagick/libfpx.git' 'libfpx-git'
     execute autoreconf -fi
-    execute ./configure --prefix='/usr/local'
+    execute ./configure --prefix='/usr/local' --with-pic --with-aix-soname='aix'
     execute make -j "$cpu_threads"
     execute sudo make install
     build_done 'fpx' 'git'
@@ -678,9 +737,18 @@ if build 'raqm' "$g_ver"; then
     build_done 'raqm' "$g_ver"
 fi
 
-##
-## Begin imagemagick build
-##
+if build 'jpegsrc' 'v9e'; then
+    download 'http://www.ijg.org/files/jpegsrc.v9e.tar.gz' 'jpegsrc-v9e.tar.gz'
+    execute autoreconf -fi
+    execute ./configure --prefix="$workspace"
+    execute make "-j$cpu_threads"
+    execute sudo make install
+    build_done 'jpegsrc' 'v9e'
+fi
+
+#
+# Begin imagemagick build
+#
 
 if [ -f "$packages/ImageMagick.done" ]; then
     rm -f "$packages/ImageMagick.done"
@@ -688,12 +756,12 @@ fi
 
 git_ver_fn 'imagemagick/imagemagick' '1' 'T'
 if [ -d "$packages/imagemagick-$g_ver" ]; then
-    rm -fr "$packages/imagemagick-$g_ver"
+    sudo rm -fr "$packages/imagemagick-$g_ver"
 fi
 
 if build 'ImageMagick' "$g_ver"; then
     rm -fr "imagemagick-$g_ver.tar.gz"
-    download "$g_url" "imagemagick-$g_ver.tar.gz"
+    download "https://codeload.github.com/ImageMagick/ImageMagick/tar.gz/refs/tags/$g_ver" "imagemagick-$g_ver.tar.gz"
     ./configure \
         --prefix='/usr/local' \
         --enable-ccmalloc \
@@ -701,15 +769,14 @@ if build 'ImageMagick' "$g_ver"; then
         --with-autotrace \
         --with-dmalloc \
         --with-flif \
+        --with-fpx \
         --with-gslib \
         --with-heic \
         --with-jemalloc \
         --with-modules \
         --with-perl \
         --with-tcmalloc \
-        --with-quantum-depth=16 \
-        CFLAGS="-I/usr/include" \
-        LDFLAGS="-L$workspace/lib"
+        --with-quantum-depth=16
     execute make "-j$cpu_threads"
     sudo make install
     build_done 'ImageMagick' "$g_ver"
