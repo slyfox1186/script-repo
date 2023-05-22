@@ -135,9 +135,8 @@ elif which 'gcc-11' &>/dev/null; then
 elif which 'gcc' &>/dev/null; then
     export CC='gcc'
 else
-    clear
-    echo 'You must have gcc or some high version of it installed. Please do so and run the script again.'
-    exit 1
+    printf "\n%s\n\n" \
+      'You must have gcc or some high version of it installed. Please do so to take advantage of .bashrc'\''s settings.'
 fi
 
 # find the highest g++ version you have installed and set it as your CXX compiler
@@ -148,10 +147,6 @@ elif which 'g++-11' &>/dev/null; then
 elif which 'g++' &>/dev/null; then
     export CXX='g++'
 else
-    clear
-    echo 'You must have g++ or some high version of it installed. Please do so and run the script again.'
-    exit 1
+    printf "\n%s\n\n" \
+      'You must have gcc or some high version of it installed. Please do so to take advantage of .bashrc'\''s settings.'
 fi
-
-# Compile using ultimate settings
-export CXXFLAGS='-g -O3 -march=native'
