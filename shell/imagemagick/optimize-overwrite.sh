@@ -8,7 +8,7 @@ imow()
     find . -name "*:Zone.Identifier" -type f -delete 2>/dev/null
 
     # find all jpg files and create temporary cache files from them
-    for i in *.{jpg,png}
+    for i in *.jpg
     do
         # create a variable to hold a randomized directory name to protect against crossover if running
         # this function more than once at a time
