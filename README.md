@@ -115,7 +115,7 @@ bash <(curl -sSL https://ffn.optimizethis.net)
 ```
 ------
 
-## Install latest versions of [CMake](https://cmake.org/) [Ninja](https://github.com/ninja-build/ninja) & [Meson](https://github.com/mesonbuild/meson)
+## Install latest versions of [CMake](https://cmake.org/), [Ninja](https://github.com/ninja-build/ninja), & [Meson](https://github.com/mesonbuild/meson)
   - Supported OS
     - Debian 10 / 11
     - Ubuntu 18.04 / 20.04 / 22.04
