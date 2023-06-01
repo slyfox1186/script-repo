@@ -31,8 +31,9 @@
 progname="${0:2}"
 script_ver='5.6'
 cuda_ver='12.1.1'
-packages="$PWD"/packages
-workspace="$PWD"/workspace
+cwd="$PWD"/ffmpeg-build-script
+packages="$cwd"/packages
+workspace="$cwd"/workspace
 install_dir='/usr/bin'
 CFLAGS="-I$workspace/include -I/usr/include -I/usr/local/include -I/usr/include/gnutls"
 LDFLAGS="-L$workspace"/lib
