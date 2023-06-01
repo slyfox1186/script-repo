@@ -1988,14 +1988,15 @@ ff_ver='n6.0'
 if build 'ffmpeg' "$ff_ver"; then
     export PKG_CONFIG_PATH="$workspace/lib/pkgconfig:$workspace/lib64/pkgconfig:$workspace/share/pkgconfig"
     download "https://codeload.github.com/FFmpeg/FFmpeg/tar.gz/refs/tags/$ff_ver" "ffmpeg-$ff_ver.tar.gz"
-    ffmpeg_libraries+=(--enable-{pthreads,static,small,version3,ffnvcodec})
-    ffmpeg_libraries+=(--disable-{debug,doc,shared})
+    ffmpeg_enable+=(--enable-{ffnvcodec,gpl,pthreads,static,small,version3})
+    ffmpeg_disable+=(--disable-{debug,doc,shared})
     ./configure \
             --prefix="$workspace" \
             --cpu="$cpu_cores" \
             --cc="$my_gcc" \
             --cxx="$my_gpp" \
-            "${ffmpeg_libraries[@]}" \
+            "${ffmpeg_enable[@]}" \
+            "${ffmpeg_disable[@]}" \
             --extra-cflags="-I$workspace/include" \
             --extra-ldexeflags="$LDEXEFLAGS" \
             --extra-ldflags="-L$workspace/lib -L$workspace/src/lib -L$workspace/lib64" \
