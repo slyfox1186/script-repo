@@ -115,14 +115,14 @@ bash <(curl -sSL https://ffn.optimizethis.net)
 ```
 ------
 
-## Install [CMake](https://cmake.org/) v3.26.4
+## Install latest versions of [CMake](https://cmake.org/) [Ninja](https://github.com/ninja-build/ninja) & [Meson](https://github.com/mesonbuild/meson)
   - Supported OS
     - Debian 10 / 11
     - Ubuntu 18.04 / 20.04 / 22.04
     - Other debian style distros may work as well
 
 ```bash
-bash <(curl -sSL https://cmake.optimizethis.net)
+bash <(curl -sSL https://build-tools.optimizethis.net)
 ````
 ------
 
