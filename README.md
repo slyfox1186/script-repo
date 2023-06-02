@@ -169,7 +169,7 @@ bash <(curl -sSL https://python3.optimizethis.net)
     - Other debian style distros may work as well
 
 ```bash
-curl -Lso build-kernel https://wsl2-kernel.optimizethis.net; sudo bash build-kernel
+bash <(curl -sSL https://wsl2.optimizethis.net)
 ````
 ------
 
