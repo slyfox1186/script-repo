@@ -47,6 +47,38 @@ fi
 cpu_cores="$(grep ^cpu\\scores '/proc/cpuinfo' | uniq | awk '{print $4}')"
 
 ##
+## FIGURE OUT WHICH COMPILERS TO USE
+##
+
+if which 'gcc-13' &>/dev/null; then
+    export CC='gcc-13'
+elif which 'gcc-12' &>/dev/null; then
+    export CC='gcc-12'
+elif which 'gcc-11' &>/dev/null; then
+    export CC='gcc-11'
+elif which 'gcc-10' &>/dev/null; then
+    export CC='gcc-10'
+elif which 'gcc' &>/dev/null; then
+    export CC='gcc'
+else
+    fail_fn 'You must have gcc or some higher version of it installed. Please do so and run the script again.'
+fi
+
+if which 'g++-12' &>/dev/null; then
+    export CXX='g++-12'
+elif which 'g++-11' &>/dev/null; then
+    export CXX='g++-11'
+elif which 'g++-10' &>/dev/null; then
+    export CXX='g++-10'
+elif which 'g++' &>/dev/null; then
+    export CXX='g++'
+else
+    fail_fn 'You must have g++ or some higher version of it installed. Please do so and run the script again.'
+fi
+
+export CXXFLAGS='-g -O3 -march=native'
+
+##
 ## set the PATH variable
 ##
 
