@@ -103,7 +103,7 @@ export LD_LIBRARY_PATH
 
 exit_fn()
 {
-    printf "\n%s\n\n%s\n%s\n" \
+    printf "\n%s\n\n%s\n%s\n\n" \
         'The script has completed' \
         'Make sure to star this repository to show your support!' \
         'https://github.com/slyfox1186/script-repo'
