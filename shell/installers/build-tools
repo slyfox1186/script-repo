@@ -35,7 +35,7 @@ install_dir='/usr/local'
 #
 printf "%s\n%s\n\n" \
     "Build-tools script: v$script_ver" \
-    '============================='
+    '===================================='
 sleep 2
 
 #
@@ -354,8 +354,12 @@ export CXXFLAGS='-g -O3 -march=native'
 # INSTALL REQUIRED APT PACKAGES
 #
 
-echo 'Installing the required APT packages.'
-sudo apt -y install build-essential ccache libssl-dev
+printf "%s\n%s\n%s\n" \
+    'Installing required APT packages.' \
+    '====================================' \
+    '$ sudo apt-get -qq -y install build-essential ccache libssl-dev'
+
+sudo apt-get -qq -y install build-essential ccache libssl-dev
 
 #
 # INSTALL FROM SOURCE CODE
