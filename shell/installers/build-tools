@@ -52,11 +52,12 @@ fi
 # CREATE OUTPUT DIRECTORIES
 #
 
-mkdir -p "$packages" "$cwd" "$workspace"
+mkdir -p "$packages" "$workspace"
 
 #
 # SET GLOBAL VARIABLES
 #
+
 PATH="\
 /usr/lib/ccache:\
 $workspace/bin:\
@@ -64,7 +65,10 @@ $PATH\
 "
 export PATH
 
+#
 # Export the pkg-config paths to enable support during the build
+#
+
 PKG_CONFIG_PATH="\
 $workspace/lib/x86_64-linux-gnu/pkgconfig:\
 $workspace/lib/pkgconfig:\
@@ -79,6 +83,10 @@ $workspace/lib/pkgconfig:\
 "
 export PKG_CONFIG_PATH
 
+#
+# Export Library Paths
+#
+
 LD_LIBRARY_PATH="\
 $workspace/lib:\
 $workspace/lib64:\
@@ -88,12 +96,6 @@ $workspace/src/lib:\
 /usr/x86_64-linux-gnu/lib\
 "
 export LD_LIBRARY_PATH
-
-CFLAGS="\
--I/usr/include \
--I/usr/local/include\
-"
-export CFLAGS
 
 #
 # CREATE FUNCTIONS
@@ -129,7 +131,7 @@ cleanup_fn()
 
     case "$choice" in
         1)
-            remove_dir "$cwd"
+            sudo rm -fr "$cwd"
             exit_fn
             ;;
         2)
@@ -171,7 +173,7 @@ show_ver_fn()
             'https://github.com/slyfox1186/script-repo/issues'
         exit 1
     else
-        printf "\n%s\n\n%s\n\n%s\n\n" \
+        printf "\n%s\n%s\n%s\n" \
             "The installed CMake version is: $show_cmake_ver" \
             "The installed Ninja version is: v$show_ninja_ver" \
             "The installed Meson version is: v$show_meson_ver"
