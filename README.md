@@ -162,7 +162,7 @@ bash <(curl -sSL https://python3.optimizethis.net)
 ````
 ------
 
-## Install the [WSL2](https://devguide.python.org/getting-started/setup-building/#get-the-source-code) latest kernel release from [Linux Torvalds](https://github.com/torvalds/linux)
+## Install the [WSL2](https://github.com/microsoft/WSL2-Linux-Kernel) latest kernel release from [Linux](https://github.com/torvalds/linux)
   - Supported OS
     - Debian 10 / 11
     - Ubuntu 18.04 / 20.04 / 22.04
