@@ -34,7 +34,6 @@ fail_fn()
         "$1" \
         'If you think this is a bug please fill out a report.' \
         'https://github.com/slyfox1186/script-repo/issues'
-    rm "$0"
     return 1
 }
 
