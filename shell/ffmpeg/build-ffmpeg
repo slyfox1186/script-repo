@@ -24,7 +24,7 @@
 ############################################################################################
 
 #
-# DEFINE VARIABLES
+# DEFINE GLOBAL VARIABLES
 #
 
 script_name="${0:2}"
@@ -44,19 +44,23 @@ latest='false'
 install_dir='/usr/bin'
 repo='https://github.com/slyfox1186/script-repo'
 
-# CREATE THE OUTPUT DIRECTORIES
-mkdir -p "$packages" "$workspace"
-
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
 #
 
 if [ -f '/proc/cpuinfo' ]; then
-	cpu_threads="$(grep -c ^processor '/proc/cpuinfo')"
-else
 	cpu_threads="$(nproc --all)"
+	cpu_cores="$(expr $cpu_threads / 2)"
+else
+	cpu_threads="$(grep -c ^processor '/proc/cpuinfo')"
+	cpu_cores="$(grep ^cpu\\scores '/proc/cpuinfo' | uniq | awk '{print $4}')"
 fi
-cpu_cores="$(grep ^cpu\\scores '/proc/cpuinfo' | uniq | awk '{print $4}')"
+
+#
+# CREATE THE OUTPUT DIRECTORIES
+#
+
+mkdir -p "$packages" "$workspace"
 
 #
 # DEFINE FUNCTIONS
@@ -163,12 +167,10 @@ download()
 	else
 		echo "Downloading \"$dl_url\" and saving as \"$dl_file\""
 		if ! curl -Lso "$target_file" "$dl_url"; then
-			printf "\n%s\n\n%s\n\n" \
-				"The script failed to download \"$dl_file\" and will try again in 5 seconds." \
-				'Sleeping for 5 seconds before trying again.'
+			printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 5 seconds..."
 			sleep 5
 			if ! curl -Lso "$target_file" "$dl_url"; then
-				fail_fn "The script failed to download \"$dl_file\" twice and will now exit the build."
+				fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
 			fi
 		fi
 		echo 'Download Completed'
@@ -208,15 +210,14 @@ download_git()
 
 	echo "Downloading $dl_url as $dl_file"
 	if ! git clone -q "$dl_url" "$target_dir"; then
-		printf "\n%s\n\n%s\n\n" \
-			"The script failed to clone the git repository: $target_dir" \
-			'Sleeping for 5 seconds before trying again.'
+		printf "\n%s\n\n" "The script failed to clone the git repository \"$target_dir\" and will try again in 5 seconds..."
 		sleep 5
 		if ! git clone -q "$dl_url" "$target_dir"; then
 			fail_fn "The script failed to clone \"$target_dir\" twice and will now exit the build."
 		fi
+	else
+		echo -e "Succesfully cloned: $target_dir\\n"
 	fi
-	echo -e "Succesfully cloned the directory: $target_dir\\n"
 
 	cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
 }
