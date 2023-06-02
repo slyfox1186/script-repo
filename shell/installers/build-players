@@ -22,9 +22,8 @@ clear
 exit_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-    'Please star this repository to show your support!' \
-    'https://github.com/slyfox1186/script-repo'
-    rm "$0"
+        'Please star this repository to show your support!' \
+        'https://github.com/slyfox1186/script-repo'
     return 0
 }
 
