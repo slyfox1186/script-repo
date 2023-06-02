@@ -37,7 +37,6 @@ install_dir='/usr/local'
 printf "%s\n%s\n\n" \
 	"Build-tools script: v$script_ver" \
 	'===================================='
-sleep 2
 
 #
 # GET CPU CORE COUNT FOR PARALLEL PROCESSING
