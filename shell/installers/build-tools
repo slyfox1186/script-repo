@@ -157,9 +157,9 @@ show_versions_fn()
     if [ -x "$show_cmake_ver" ]; then
         fail_fn 'Failed to execute the command: cmake --version'
     elif [ -x "$show_ninja_ver" ]; then
-            fail_fn 'Failed to execute the command: ninja --version'
+        fail_fn 'Failed to execute the command: ninja --version'
     elif [ -x "$show_meson_ver" ]; then
-            fail_fn 'Failed to execute the command: meson --version'
+        fail_fn 'Failed to execute the command: meson --version'
     else
         printf "\n%s\n%s\n%s\n" \
             "The installed CMake version is: $show_cmake_ver" \
