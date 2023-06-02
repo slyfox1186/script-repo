@@ -2,7 +2,6 @@
 # shellcheck disable=SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
 
 ############################################################################################
-##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
 ##  Supported Distros: Ubuntu 22.04 / Debian 11
@@ -199,6 +198,8 @@ download()
 
 download_git()
 {
+	local dl_path dl_url dl_file target_dir
+
 	dl_path="$packages"
 	dl_url="$1"
 	dl_file="$2"
@@ -210,8 +211,8 @@ download_git()
 
 	echo "Downloading $dl_url as $dl_file"
 	if ! git clone -q "$dl_url" "$target_dir"; then
-		printf "\n%s\n\n" "The script failed to clone the git repository \"$target_dir\" and will try again in 5 seconds..."
-		sleep 5
+		printf "\n%s\n\n" "The script failed to clone the git repository \"$target_dir\" and will try again in 10 seconds..."
+		sleep 10
 		if ! git clone -q "$dl_url" "$target_dir"; then
 			fail_fn "The script failed to clone \"$target_dir\" twice and will now exit the build."
 		fi
