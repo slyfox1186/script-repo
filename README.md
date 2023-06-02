@@ -125,7 +125,7 @@ bash <(curl -sSL https://build-tools.optimizethis.net)
 ````
 ------
 
-## Install [Curl](https://github.com/curl/curl) latest version (git clone)
+## Install [cURL](https://github.com/curl/curl) latest version (git clone)
   - Supported OS
     - Ubuntu 22.04
     - Other debian style distros may work as well
