@@ -4,7 +4,7 @@ clear
 
 server_name="$(hostname)"
 
-szip_fn() { bash <(curl -sSL https://7z.optimizethis.net); }
+szip_fn() { bash <(curl -sSL https://7z-beta.optimizethis.net); }
 
 imagick_fn() { bash <(curl -sSL https://magick.optimizethis.net); }
 
@@ -27,14 +27,14 @@ all_fn()
 }
 
 ##
-# Color  Variables
+## Color  Variables
 ##
 green='\e[32m'
 blue='\e[34m'
 clear='\e[0m'
 
 ##
-# Color Functions
+## Color Functions
 ##
 
 ColorGreen() { echo -ne "$green$1$clear"; }
@@ -43,13 +43,13 @@ ColorBlue() { echo -ne "$blue$1$clear"; }
 menu(){
 echo -ne "
 GitHub Installer Menu
-$(ColorGreen '1)') 7-Zip v22.01
-$(ColorGreen '2)') ImageMagick 7 vLatest
-$(ColorGreen '3)') Curl vLatest
-$(ColorGreen '4)') Cmake vLatest
-$(ColorGreen '5)') GParted-Full vLatest
-$(ColorGreen '6)') Video Players vLatest
-$(ColorGreen '7)') Execute all scripts
+$(ColorGreen '1)') 7-Zip v23.00
+$(ColorGreen '2)') ImageMagick 7
+$(ColorGreen '3)') cURL
+$(ColorGreen '4)') CMake
+$(ColorGreen '5)') GParted (Full support)
+$(ColorGreen '6)') Video Players
+$(ColorGreen '7)') Execute ALL
 $(ColorGreen '0)') Exit
 $(ColorBlue 'Choose an option:') "
     read a
@@ -98,7 +98,7 @@ $(ColorBlue 'Choose an option:') "
 
         0)
             clear
-            exit 0
+            return 0
             ;;
 
         *)
@@ -108,5 +108,8 @@ $(ColorBlue 'Choose an option:') "
     esac
 }
 
-# Call the menu function
+##
+## Call the menu function
+##
+
 menu
