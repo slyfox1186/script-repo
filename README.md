@@ -79,7 +79,7 @@ bash <(curl -sSL https://debian-mirrors.optimizethis.net)
 ```
 ------
 
-## Install [7-Zip](www.7-zip.org/download.html)
+## Install [7-Zip](www.7-zip.org/download.html) v21.00
   - **Auto installs based on your os architecture. No user input required.**
     - **Linux x64**
     - **Linux x86**
@@ -88,7 +88,7 @@ bash <(curl -sSL https://debian-mirrors.optimizethis.net)
 ```bash
 bash <(curl -sSL https://7z.optimizethis.net)
 ```
-### 7-Zip Beta v2300
+### 7-Zip v23.00 Beta
 ```bash
 bash <(curl -sSL https://7z-beta.optimizethis.net)
 ```
