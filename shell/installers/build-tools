@@ -159,7 +159,6 @@ show_versions_fn()
     elif [ -x "$show_ninja_ver" ]; then
             fail_fn 'Failed to execute the command: ninja --version'
     elif [ -x "$show_meson_ver" ]; then
-        printf "\n%s\n\n%s\n\n%s\n\n" \
             fail_fn 'Failed to execute the command: meson --version'
     else
         printf "\n%s\n%s\n%s\n" \
