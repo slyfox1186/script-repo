@@ -3,13 +3,13 @@
 
 ##############################################
 ##
-##  Install CMake: Latest GitHub Release
+##  Install CMake, Ninja, & Meson: Latest GitHub Releases
 ##
 ##  Supported OS: Linux Ubuntu - 23.04 (Lunar) / 22.04 (Jammy)
 ##
-##  Updated: 05.20.23
+##  Updated: 06.01.23
 ##
-##  Script version: 3.0
+##  Script version: 4.0
 ##
 ##############################################
 
@@ -25,8 +25,8 @@ fi
 # CREATE SCRIPT VARIABLES
 #
 
-script_ver='3.0'
-cwd="$PWD"/cmake-build-script
+script_ver='4.0'
+cwd="$PWD"/build-tools-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
 
@@ -34,9 +34,9 @@ workspace="$cwd"/workspace
 # PRINT SCRIPT BANNER
 #
 printf "%s\n%s\n\n" \
-    "CMake Build Script: v$script_ver" \
+    "Build-tools script: v$script_ver" \
     '============================='
-sleep 3
+sleep 2
 
 #
 # GET CPU COURE COUNT FOR PARALLEL PROCESSING
@@ -85,16 +85,7 @@ $workspace/lib64:\
 $workspace/src/lib:\
 /usr/local/lib:\
 /usr/lib:\
-/usr/x86_64-linux-gnu/lib:\
-/usr/lib/wsl/lib:\
-/usr/lib/llvm-14/lib:\
-/usr/lib/usrmerge/lib:\
-/usr/share/ant/lib:\
-/usr/share/git-gui/lib:\
-/usr/share/gitk/lib:\
-/usr/share/gnulib/lib:\
-/usr/share/lintian/lib:\
-/usr/share/texinfo/lib\
+/usr/x86_64-linux-gnu/lib\
 "
 export LD_LIBRARY_PATH
 
@@ -157,16 +148,33 @@ cleanup_fn()
 
 show_ver_fn()
 {
-    show_ver="$(cmake --version | sed 's/cmake version /v/g')"
-    if [ -n "$show_ver" ]; then
-        printf "\n%s\n" \
-            "The installed CMake version is: $show_ver"
-    else
+    local show_cmake_ver show_ninja_ver show_meson_ver
+    show_cmake_ver="$(cmake --version | sed 's/cmake version /v/g' | sed 's/CMake suite maintained and supported by Kitware (kitware.com\/cmake).//g' | xargs -n1)"
+    show_ninja_ver="$(ninja --version)"
+    show_meson_ver="$(meson --version)"
+    if [ -x "$show_cmake_ver" ]; then
+        printf "\n%s\n\n%s\n\n%s\n" \
+        'Failed to execute the command: cmake --version' \
+        'Please create a support ticket so it can be fixed at:' \
+        'https://github.com/slyfox1186/script-repo/issues'
+        exit 1
+    elif [ -x "$show_ninja_ver" ]; then
         printf "\n%s\n\n%s\n\n%s\n\n" \
-            'Failure to execute the command: cmake --version' \
-            'Please create an issue so it can be fixed at the below URL:' \
+            'Failed to execute the command: ninja --version' \
+            'Please create a support ticket so it can be fixed at:' \
             'https://github.com/slyfox1186/script-repo/issues'
         exit 1
+    elif [ -x "$show_meson_ver" ]; then
+        printf "\n%s\n\n%s\n\n%s\n\n" \
+            'Failed to execute the command: meson --version' \
+            'Please create a support ticket so it can be fixed at:' \
+            'https://github.com/slyfox1186/script-repo/issues'
+        exit 1
+    else
+        printf "\n%s\n\n%s\n\n%s\n\n" \
+            "The installed CMake version is: $show_cmake_ver" \
+            "The installed Ninja version is: v$show_ninja_ver" \
+            "The installed Meson version is: v$show_meson_ver"
     fi
 }
 
@@ -207,48 +215,54 @@ remove_dir()
 download()
 {
     dl_path="$packages"
+    dl_url="$1"
     dl_file="${2:-"${1##*/}"}"
 
     if [[ "$dl_file" =~ tar. ]]; then
-        target_dir="${dl_file%.*}"
-        target_dir="${3:-"${target_dir%.*}"}"
+        output_dir="${dl_file%.*}"
+        output_dir="${3:-"${output_dir%.*}"}"
     else
-        target_dir="${3:-"${dl_file%.*}"}"
+        output_dir="${3:-"${dl_file%.*}"}"
     fi
 
-    if [ ! -f "$dl_path/$dl_file" ]; then
-        echo "Downloading $1 as $dl_file"
-        if ! curl -Lso "$dl_path/$dl_file" "$1"; then
-            printf "\n%s\n\n%s" \
-                "Failed to download: $1" \
-                'Retrying in 5 seconds'
-                sleep 5
-            if ! curl -Lso "$dl_path/$dl_file" "$1"; then
-               fail_fn "Failed to download: $1"
+    target_file="$dl_path/$dl_file"
+    target_dir="$dl_path/$output_dir"
+
+    if [ -f "$target_file" ]; then
+        echo "The file \"$dl_file\" is already downloaded."
+    else
+        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
+        if ! curl -Lso "$target_file" "$dl_url"; then
+                        printf "\n%s\n\n%s\n\n" \
+                "The script failed to download \"$dl_file\" and will try again in 5 seconds." \
+                'Sleeping for 5 seconds before trying again.'
+            sleep 5
+            if ! curl -Lso "$target_file" "$dl_url"; then
+                fail_fn "The script failed to download \"$dl_file\" twice and will now exit the build."
             fi
         fi
-        echo -e "Download Complete"
+        echo 'Download Completed'
     fi
 
-    make_dir "$dl_path/$target_dir"
-
-    if [[ "$dl_file" == *'patch'* ]]; then
-        return
+    if [ -d "$target_dir" ]; then
+        remove_dir "$target_dir"
     fi
+
+    make_dir "$target_dir"
 
     if [ -n "$3" ]; then
-        if ! tar -xf "$dl_path/$dl_file" -C "$dl_path/$target_dir" &>/dev/null; then
-            fail_fn "Failed to download: $dl_file"
+        if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
+            fail_fn "Failed to extract: $dl_file"
         fi
     else
-        if ! tar -xf "$dl_path/$dl_file" -C "$dl_path/$target_dir" --strip-components 1 &>/dev/null; then
-            fail_fn "Failed to download: $dl_file"
+        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
+            fail_fn "Failed to extract: $dl_file"
         fi
     fi
 
-    echo -e "Extracted $dl_file\\n"
+    echo -e "File extracted: $dl_file\\n"
 
-    cd "$dl_path/$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
 }
 
 build()
@@ -259,7 +273,7 @@ build()
 
     if [ -f "$packages/$1.done" ]; then
     if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
-            echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
+            echo "$1 version $2 is already built. Remove $packages/$1.done lockfile to rebuild it."
             return 1
         else
             echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
@@ -282,8 +296,10 @@ git_1_fn()
     github_url="$2"
 
     if curl_cmd="$(curl -m "$curl_timeout" -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
-        g_ver="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null)"
-        g_ver="${g_ver#v}"
+        g_sver="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null)"
+        g_sver1="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
+        g_ver="${g_sver#v}"
+        g_ver1="${g_sver1#v}"
     fi
 }
 
@@ -295,14 +311,12 @@ git_ver_fn()
     v_tag="$2"
     v_flag="$3"
 
-    if [ "$v_flag" = 'T' ] && [  "$v_tag" = '1' ]; then
-        url_tag='git_1_fn' gv_url='tags'
-    fi
-    if [ "$v_flag" = 'R' ] && [  "$v_tag" = '1' ]; then
-        url_tag='git_1_fn'; gv_url='releases'
-    fi
+    case "$v_flag" in
+        T)    gv_url='tags';;
+        R)    gv_url='releases';;
+    esac
 
-    "$url_tag" "$v_url" "$gv_url" 2>/dev/null
+    git_1_fn "$v_url" "$gv_url" 2>/dev/null
 }
 
 build_done() { echo "$2" > "$packages/$1.done"; }
@@ -343,7 +357,7 @@ export CXXFLAGS='-g -O3 -march=native'
 
 pkgs_fn()
 {
-    pkgs=(build-essential ccache gcc libssl-dev ninja-build)
+    pkgs=(build-essential ccache gcc libssl-dev)
 
     for pkg in ${pkgs[@]}
     do
@@ -368,7 +382,7 @@ echo 'Installing required APT packages.'
 pkgs_fn
 
 #
-# RUN THE BOOTSTRAP FILE TO GENERATE ESSENTIAL FILES
+# INTALL PACKAGES FROM SOURCE CODE
 #
 
 git_ver_fn 'kitware/cmake' '1' 'R'
@@ -378,6 +392,23 @@ if build 'cmake' "$g_ver"; then
     execute ninja "-j$cpu_threads"
     execute sudo ninja install
     build_done 'cmake' "$g_ver"
+fi
+
+git_ver_fn 'ninja-build/ninja' '1' 'T'
+if build 'ninja' "$g_ver1"; then
+    download "https://codeload.github.com/ninja-build/ninja/tar.gz/refs/tags/v$g_ver1" "ninja-$g_ver1.tar.gz"
+    execute cmake -B"$workspace"/bin
+    execute cmake --build "$workspace"/bin
+    execute sudo cp -f "$workspace"/bin/ninja '/usr/local/bin'
+    build_done 'ninja' "$g_ver1"
+fi
+
+git_ver_fn 'mesonbuild/meson' '1' 'T'
+if build 'meson' "$g_ver1"; then
+    download "https://codeload.github.com/mesonbuild/meson/tar.gz/refs/tags/$g_ver1" "meson-$g_ver1.tar.gz"
+    execute python3 setup.py build
+    execute sudo python3 setup.py install --prefix='/usr/local'
+    build_done 'meson' "$g_ver1"
 fi
 
 # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE MAGICK COMMAND WILL NOT WORK
