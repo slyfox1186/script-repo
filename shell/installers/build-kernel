@@ -23,9 +23,9 @@ clear
 ##
 ##                https://learn.microsoft.com/en-us/windows/wsl/wsl-config
 ##
-##  Updated: 04.19.23
+##  Updated: 06.02.23
 ##
-##  Version: 1.0
+##  Version: 2.0
 ##
 ###########################################################################################################
 
@@ -33,7 +33,7 @@ clear
 ## define variables
 ##
 
-script_ver='1.0'
+script_ver='2.0'
 
 ##
 ## set the available cpu thread and core count for parallel processing (speeds up the build process)
@@ -45,6 +45,17 @@ else
     cpu_threads="$(nproc --all)"
 fi
 cpu_cores="$(grep ^cpu\\scores '/proc/cpuinfo' | uniq | awk '{print $4}')"
+
+##
+## set the PATH variable
+##
+
+PATH="\
+/usr/lib/ccache:\
+$workspace/bin:\
+$PATH\
+"
+export PATH
 
 ##
 ## define functions
@@ -113,8 +124,7 @@ make_dir()
 {
     remove_dir "$1"
     if ! mkdir "$1"; then
-        printf "\n Failed to create dir %s" "$1"
-        echo
+        printf "\n%s\n\n" "Failed to create dir: $1"
         exit 1
     fi
 }
@@ -234,7 +244,7 @@ build_pkgs_fn()
     echo 'Installing required apt packages'
     echo '=================================='
 
-    pkgs=(build-essential curl flex bison dwarves gcc g++ gcc-12 g++-12 jq libssl-dev libelf-dev)
+    pkgs=(build-essential curl flex bison ccache dwarves gcc g++ jq libssl-dev libelf-dev)
 
     for pkg in ${pkgs[@]}
     do
@@ -276,26 +286,18 @@ git_1_fn()
 
 git_ver_fn()
 {
-    local gv_url v_flag v_tag v_url url_tag
+    local v_tag v_url
 
     v_url="$1"
     v_tag="$2"
 
-    if [ -n "$3" ]; then v_flag="$3"; fi
-
-    if [  "$v_flag" = 'T' ] && [  "$v_tag" = '1' ]; then
-        url_tag='git_1_fn' gv_url='tags'
-    elif [  "$v_flag" = 'R' ] && [  "$v_tag" = '1' ]; then
-        url_tag='git_1_fn'; gv_url='releases'
-    fi
-
-    "$url_tag" "$v_url" "$gv_url" 2>/dev/null
+    git_1_fn "$v_url" 'releases' 2>/dev/null
 }
 
 git_ver_fn 'microsoft/WSL2-Linux-Kernel' '1' 'R'
 if build 'wsl2-linux-kernel' "$g_ver"; then
-    download "$g_url" "$g_ver.tar.gz"
-    echo 'yes' | make KCONFIG_CONFIG=Microsoft/config-wsl -j "$cpu_cores"
+    download "$g_url" "wsl2-$g_ver.tar.gz"
+    echo 'yes' | make KCONFIG_CONFIG='Microsoft/config-wsl' -j "$cpu_cores"
     build_done 'wsl2-linux-kernel' "$g_ver"
 fi
 
