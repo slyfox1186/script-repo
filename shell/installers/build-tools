@@ -16,8 +16,8 @@
 clear
 
 if [ "$EUID" -eq '0' ]; then
-    printf "\n%s\n\n" 'You must run this script WITHOUT root/sudo'
-    exit 1
+	printf "\n%s\n\n" 'You must run this script WITHOUT root/sudo'
+	exit 1
 fi
 
 #
@@ -33,20 +33,17 @@ install_dir='/usr/local'
 #
 # PRINT SCRIPT BANNER
 #
+
 printf "%s\n%s\n\n" \
-    "Build-tools script: v$script_ver" \
-    '===================================='
+	"Build-tools script: v$script_ver" \
+	'===================================='
 sleep 2
 
 #
-# GET CPU COURE COUNT FOR PARALLEL PROCESSING
+# GET CPU CORE COUNT FOR PARALLEL PROCESSING
 #
 
-if [ -f '/proc/cpuinfo' ]; then
-    cpu_threads="$(grep -c ^processor '/proc/cpuinfo')"
-else
-    cpu_threads="$(nproc --all)"
-fi
+cpu_threads="$(nproc --all)"
 
 #
 # CREATE OUTPUT DIRECTORIES
@@ -61,8 +58,7 @@ mkdir -p "$packages" "$workspace"
 PATH="\
 /usr/lib/ccache:\
 $workspace/bin:\
-$PATH\
-"
+$PATH"
 export PATH
 
 #
@@ -102,239 +98,210 @@ export LD_LIBRARY_PATH
 # CREATE FUNCTIONS
 #
 
-exit_fn()
-{
-    printf "\n%s\n\n%s\n%s\n\n" \
-        'The script has completed' \
-        'Make sure to star this repository to show your support!' \
-        'https://github.com/slyfox1186/script-repo'
-    exit 0
+exit_fn() {
+	printf "\n%s\n\n%s\n%s\n\n" \
+		'The script has completed' \
+		'Make sure to star this repository to show your support!' \
+		'https://github.com/slyfox1186/script-repo'
+	exit 0
 }
 
-fail_fn()
-{
-    printf "\n\n%s\n\n%s\n\n%s\n\n" \
-        "$1" \
-        'Please create a support ticket so I can work on a fix.' \
-        'https://github.com/slyfox1186/script-repo/issues'
-    exit 1
+fail_fn() {
+	printf "\n\n%s\n\n%s\n\n%s\n\n" \
+		"$1" \
+		'Please create a support ticket so I can work on a fix.' \
+		'https://github.com/slyfox1186/script-repo/issues'
+	exit 1
 }
 
-cleanup_fn()
-{
-    local choice
+cleanup_fn() {
+	local cleanup_answer
 
-        printf "\n%s\n\n%s\n%s\n\n" \
-            'Do you want to remove the build files?' \
-            '[1] Yes' \
-            '[2] No'
-        read -p 'Your choices are (1 or 2): ' choice
+	printf "\n%s\n\n%s\n%s\n\n" \
+		'Do you want to remove the build files?' \
+		'[1] Yes' \
+		'[2] No'
+	read -p 'Your choices are (1 or 2): ' cleanup_answer
 
-    case "$choice" in
-        1)
-            sudo rm -fr "$cwd"
-            exit_fn
-            ;;
-        2)
-            exit_fn
-            ;;
+	case "$cleanup_answer" in
+	1)
+		sudo rm -fr "$cwd"
+		exit_fn
+		;;
+	2)
+		exit_fn
+		;;
 
-        *)
-            printf "%s\n\n" 'Bad user input.'
-            read -p 'Press enter to try again.'
-            clear
-            cleanup_fn
-            ;;
-    esac
+	*)
+		printf "%s\n\n" 'Bad user input.'
+		read -p 'Press enter to try again.'
+		clear
+		cleanup_fn
+		;;
+	esac
 }
 
-show_versions_fn()
-{
-    local show_cmake_ver show_ninja_ver show_meson_ver
-    show_cmake_ver="$(cmake --version | sed 's/cmake version /v/g' | sed 's/CMake suite maintained and supported by Kitware (kitware.com\/cmake).//g' | xargs -n1)"
-    show_ninja_ver="$(ninja --version)"
-    show_meson_ver="$(meson --version)"
-    if [ -x "$show_cmake_ver" ]; then
-        fail_fn 'Failed to execute the command: cmake --version'
-    elif [ -x "$show_ninja_ver" ]; then
-        fail_fn 'Failed to execute the command: ninja --version'
-    elif [ -x "$show_meson_ver" ]; then
-        fail_fn 'Failed to execute the command: meson --version'
-    else
-        printf "\n%s\n%s\n%s\n" \
-            "The installed CMake version is: $show_cmake_ver" \
-            "The installed Ninja version is: v$show_ninja_ver" \
-            "The installed Meson version is: v$show_meson_ver"
-    fi
+show_versions_fn() {
+	local show_cmake_ver show_ninja_ver show_meson_ver
+
+	show_cmake_ver="$(cmake --version | sed 's/cmake version /v/g' | sed 's/CMake suite maintained and supported by Kitware (kitware.com\/cmake).//g' | xargs -n1)"
+	show_ninja_ver="$(ninja --version)"
+	show_meson_ver="$(meson --version)"
+
+	if [ -x "$show_cmake_ver" ]; then
+		fail_fn 'Failed to execute the command: cmake --version'
+	elif [ -x "$show_ninja_ver" ]; then
+		fail_fn 'Failed to execute the command: ninja --version'
+	elif [ -x "$show_meson_ver" ]; then
+		fail_fn 'Failed to execute the command: meson --version'
+	else
+        clear
+		printf "%s\n\n%s\n%s\n%s\n" \
+            'The installed versions are:' \
+			"CMake: $show_cmake_ver" \
+			"Ninja: v$show_ninja_ver" \
+			"Meson: v$show_meson_ver"
+	fi
 }
 
-execute()
-{
-    echo "$ $*"
-    if ! output=$("$@" 2>&1); then
-        fail_fn "Failed to Execute $*"
-    fi
+execute() {
+	echo "$ $*"
+	if ! output=$("$@" 2>&1); then
+		fail_fn "Failed to Execute $*"
+	fi
 }
 
-make_dir()
-{
-    if ! remove_dir "$1"; then
-        fail_fn "Failed to remove the directory: $PWD/$1"
-    fi
-    if ! mkdir -p "$1"; then
-        fail_fn "Failed to create the directory: $PWD/$1"
-    fi
+download() {
+	local dl_file dl_path dl_url output_dir target_dir target_file
+
+	dl_path="$packages"
+	dl_url="$1"
+	dl_file="${2:-"${1##*/}"}"
+
+	if [[ "$dl_file" =~ tar. ]]; then
+		output_dir="${dl_file%.*}"
+		output_dir="${3:-"${output_dir%.*}"}"
+	else
+		output_dir="${3:-"${dl_file%.*}"}"
+	fi
+
+	target_file="$dl_path/$dl_file"
+	target_dir="$dl_path/$output_dir"
+
+	if [ -f "$target_file" ]; then
+		echo "The file \"$dl_file\" is already downloaded."
+	else
+		echo "Downloading \"$dl_url\" saving as \"$dl_file\""
+		if ! curl -Lso "$target_file" "$dl_url"; then
+			printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
+			sleep 10
+			if ! curl -Lso "$target_file" "$dl_url"; then
+				fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
+			fi
+		fi
+		echo 'Download Completed'
+	fi
+
+	# REMOVE ANY DIRETORIES FROM PREVIOUS RUNS BEFORE ATTEMPTING TO RE-BUILD
+	if [ -d "$target_dir" ]; then
+		rm -fr "$target_dir"
+	fi
+
+	# CREATE A NEW OUTPUT DIRECTORY
+	mkdir -p "$target_dir"
+
+	if [ -n "$3" ]; then
+		if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
+			fail_fn "Failed to extract: $dl_file"
+		fi
+	else
+		if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
+			fail_fn "Failed to extract: $dl_file"
+		fi
+	fi
+
+	echo -e "File extracted: $dl_file\\n"
+
+	cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
 }
 
-remove_file()
-{
-    if [ -f "$*" ]; then
-        sudo rm -f "$*"
-    fi
+build() {
+	echo
+	echo "building $1 - version $2"
+	echo '===================================='
+
+	if [ -f "$packages/$1.done" ]; then
+		if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
+			echo "$1 version $2 is already built. Remove $packages/$1.done lockfile to rebuild it."
+			return 1
+		else
+			echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
+			return 1
+		fi
+	fi
+
+	return 0
 }
 
-remove_dir()
-{
-    if [ -d "$*" ]; then
-        sudo rm -fr "$*"
-    fi
+git_1_fn() {
+	local curl_cmd github_repo github_url g_sver g_sver1
+
+	# SCRAPE GITHUB'S API FOR THE LATEST REPO VERSION
+	github_repo="$1"
+	github_url="$2"
+
+	if curl_cmd="$(curl -m '10' -sSL https://api.github.com/repos/"$github_repo"/"$github_url")"; then
+		g_sver="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null)"
+		g_sver1="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
+		g_ver="${g_sver#v}"
+		g_ver1="${g_sver1#v}"
+	fi
 }
 
-download()
-{
-    local dl_file dl_path dl_url output_dir target_dir target_file
+git_ver_fn() {
+	local gv_url v_flag v_url
 
-    dl_path="$packages"
-    dl_url="$1"
-    dl_file="${2:-"${1##*/}"}"
+	v_url="$1"
+	v_flag="$2"
 
-    if [[ "$dl_file" =~ tar. ]]; then
-        output_dir="${dl_file%.*}"
-        output_dir="${3:-"${output_dir%.*}"}"
-    else
-        output_dir="${3:-"${dl_file%.*}"}"
-    fi
+	case "$v_flag" in
+	T) gv_url='tags' ;;
+	R) gv_url='releases' ;;
+	esac
 
-    target_file="$dl_path/$dl_file"
-    target_dir="$dl_path/$output_dir"
-
-    if [ -f "$target_file" ]; then
-        echo "The file \"$dl_file\" is already downloaded."
-    else
-        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
-        if ! curl -Lso "$target_file" "$dl_url"; then
-            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
-            sleep 10
-            if ! curl -Lso "$target_file" "$dl_url"; then
-                fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
-            fi
-        fi
-        echo 'Download Completed'
-    fi
-
-    # REMOVE ANY DIRETORIES FROM PREVIOUS RUNS BEFORE ATTEMPTING TO RE-BUILD
-    if [ -d "$target_dir" ]; then
-        remove_dir "$target_dir"
-    fi
-
-    # CREATE A NEW OUTPUT DIRECTORY
-    make_dir "$target_dir"
-
-    if [ -n "$3" ]; then
-        if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
-            fail_fn "Failed to extract: $dl_file"
-        fi
-    else
-        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-            fail_fn "Failed to extract: $dl_file"
-        fi
-    fi
-
-    echo -e "File extracted: $dl_file\\n"
-
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
+	git_1_fn "$v_url" "$gv_url" 2>/dev/null
 }
 
-build()
-{
-    echo
-    echo "building $1 - version $2"
-    echo '===================================='
-
-    if [ -f "$packages/$1.done" ]; then
-    if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
-            echo "$1 version $2 is already built. Remove $packages/$1.done lockfile to rebuild it."
-            return 1
-        else
-            echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
-            return 1
-        fi
-    fi
-
-    return 0
-}
-
-git_1_fn()
-{
-    local curl_cmd github_repo github_url g_sver g_sver1
-
-    # SCRAPE GITHUB'S API FOR THE LATEST REPO VERSION
-    github_repo="$1"
-    github_url="$2"
-
-    if curl_cmd="$(curl -m '10' -sSL https://api.github.com/repos/"$github_repo"/"$github_url")"; then
-        g_sver="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null)"
-        g_sver1="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
-        g_ver="${g_sver#v}"
-        g_ver1="${g_sver1#v}"
-    fi
-}
-
-git_ver_fn()
-{
-    local gv_url v_flag v_url
-
-    v_url="$1"
-    v_flag="$2"
-
-    case "$v_flag" in
-        T)    gv_url='tags';;
-        R)    gv_url='releases';;
-    esac
-
-    git_1_fn "$v_url" "$gv_url" 2>/dev/null
-}
-
-build_done() { echo "$2" > "$packages/$1.done"; }
+build_done() { echo "$2" >"$packages/$1.done"; }
 
 #
 # FIGURE OUT WHICH COMPILERS TO USE
 #
 
 if which 'gcc-13' &>/dev/null; then
-    export CC='gcc-13'
+	export CC='gcc-13'
 elif which 'gcc-12' &>/dev/null; then
-    export CC='gcc-12'
+	export CC='gcc-12'
 elif which 'gcc-11' &>/dev/null; then
-    export CC='gcc-11'
+	export CC='gcc-11'
 elif which 'gcc-10' &>/dev/null; then
-    export CC='gcc-10'
+	export CC='gcc-10'
 elif which 'gcc' &>/dev/null; then
-    export CC='gcc'
+	export CC='gcc'
 else
-    fail_fn 'You must have "gcc" or some higher version of it installed. Please do so and run the script again.'
+	fail_fn 'You must have "gcc" or some higher version of it installed. Please do so and run the script again.'
 fi
 
 if which 'g++-12' &>/dev/null; then
-    export CXX='g++-12'
+	export CXX='g++-12'
 elif which 'g++-11' &>/dev/null; then
-    export CXX='g++-11'
+	export CXX='g++-11'
 elif which 'g++-10' &>/dev/null; then
-    export CXX='g++-10'
+	export CXX='g++-10'
 elif which 'g++' &>/dev/null; then
-    export CXX='g++'
+	export CXX='g++'
 else
-    fail_fn 'You must have "g++" or some higher version of it installed. Please do so and run the script again.'
+	fail_fn 'You must have "g++" or some higher version of it installed. Please do so and run the script again.'
 fi
 
 export CXXFLAGS='-g -O3 -march=native'
@@ -344,9 +311,9 @@ export CXXFLAGS='-g -O3 -march=native'
 #
 
 printf "%s\n%s\n%s\n" \
-    'Installing required APT packages.' \
-    '====================================' \
-    '$ sudo apt-get -qq -y install build-essential ccache libssl-dev'
+	'Installing required APT packages.' \
+	'====================================' \
+	'$ sudo apt-get -qq -y install build-essential ccache libssl-dev'
 
 sudo apt-get -qq -y install build-essential ccache libssl-dev
 
@@ -356,28 +323,28 @@ sudo apt-get -qq -y install build-essential ccache libssl-dev
 
 git_ver_fn 'kitware/cmake' 'R'
 if build 'cmake' "$g_ver"; then
-    download "https://codeload.github.com/kitware/cmake/tar.gz/refs/tags/v$g_ver" "cmake-$g_ver.tar.gz"
-    execute ./bootstrap --prefix="$install_dir" --parallel="$cpu_threads" --enable-ccache
-    execute make "-j$cpu_threads"
-    execute sudo make install
-    build_done 'cmake' "$g_ver"
+	download "https://codeload.github.com/kitware/cmake/tar.gz/refs/tags/v$g_ver" "cmake-$g_ver.tar.gz"
+	execute ./bootstrap --prefix="$install_dir" --parallel="$cpu_threads" --enable-ccache
+	execute make "-j$cpu_threads"
+	execute sudo make install
+	build_done 'cmake' "$g_ver"
 fi
 
 git_ver_fn 'ninja-build/ninja' 'T'
 if build 'ninja' "$g_ver1"; then
-    download "https://codeload.github.com/ninja-build/ninja/tar.gz/refs/tags/v$g_ver1" "ninja-$g_ver1.tar.gz"
-    execute cmake -B"$workspace"/bin
-    execute cmake --build "$workspace"/bin
-    execute sudo cp -f "$workspace"/bin/ninja "$install_dir"/bin
-    build_done 'ninja' "$g_ver1"
+	download "https://codeload.github.com/ninja-build/ninja/tar.gz/refs/tags/v$g_ver1" "ninja-$g_ver1.tar.gz"
+	execute cmake -B"$workspace"/bin
+	execute cmake --build "$workspace"/bin
+	execute sudo cp -f "$workspace"/bin/ninja "$install_dir"/bin
+	build_done 'ninja' "$g_ver1"
 fi
 
 git_ver_fn 'mesonbuild/meson' 'T'
 if build 'meson' "$g_ver1"; then
-    download "https://codeload.github.com/mesonbuild/meson/tar.gz/refs/tags/$g_ver1" "meson-$g_ver1.tar.gz"
-    execute python3 setup.py build
-    execute sudo python3 setup.py install --prefix="$install_dir"
-    build_done 'meson' "$g_ver1"
+	download "https://codeload.github.com/mesonbuild/meson/tar.gz/refs/tags/$g_ver1" "meson-$g_ver1.tar.gz"
+	execute python3 setup.py build
+	execute sudo python3 setup.py install --prefix="$install_dir"
+	build_done 'meson' "$g_ver1"
 fi
 
 # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES
