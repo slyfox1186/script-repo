@@ -115,7 +115,7 @@ fail_fn()
 {
     printf "\n\n%s\n\n%s\n\n%s\n\n" \
         "$1" \
-        'Please create a support ticket at the address below.' \
+        'Please create a support ticket so I can work on a fix.' \
         'https://github.com/slyfox1186/script-repo/issues'
     exit 1
 }
@@ -155,23 +155,12 @@ show_versions_fn()
     show_ninja_ver="$(ninja --version)"
     show_meson_ver="$(meson --version)"
     if [ -x "$show_cmake_ver" ]; then
-        printf "\n%s\n\n%s\n\n%s\n" \
-        'Failed to execute the command: cmake --version' \
-        'Please create a support ticket so it can be fixed at:' \
-        'https://github.com/slyfox1186/script-repo/issues'
-        exit 1
+        fail_fn 'Failed to execute the command: cmake --version'
     elif [ -x "$show_ninja_ver" ]; then
-        printf "\n%s\n\n%s\n\n%s\n\n" \
-            'Failed to execute the command: ninja --version' \
-            'Please create a support ticket so it can be fixed at:' \
-            'https://github.com/slyfox1186/script-repo/issues'
-        exit 1
+            fail_fn 'Failed to execute the command: ninja --version'
     elif [ -x "$show_meson_ver" ]; then
         printf "\n%s\n\n%s\n\n%s\n\n" \
-            'Failed to execute the command: meson --version' \
-            'Please create a support ticket so it can be fixed at:' \
-            'https://github.com/slyfox1186/script-repo/issues'
-        exit 1
+            fail_fn 'Failed to execute the command: meson --version'
     else
         printf "\n%s\n%s\n%s\n" \
             "The installed CMake version is: $show_cmake_ver" \
