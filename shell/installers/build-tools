@@ -375,7 +375,7 @@ if build 'ninja' "$g_ver1"; then
     download "https://codeload.github.com/ninja-build/ninja/tar.gz/refs/tags/v$g_ver1" "ninja-$g_ver1.tar.gz"
     execute cmake -B"$workspace"/bin
     execute cmake --build "$workspace"/bin
-    execute sudo cp -f "$workspace"/bin/ninja "$install_dir"
+    execute sudo cp -f "$workspace"/bin/ninja "$install_dir"/bin
     build_done 'ninja' "$g_ver1"
 fi
 
