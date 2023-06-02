@@ -66,7 +66,7 @@ $PATH\
 export PATH
 
 #
-# Export the pkg-config paths to enable support during the build
+# EXPORT THE PKG-CONFIG PATHS TO ENABLE SUPPORT DURING THE BUILD
 #
 
 PKG_CONFIG_PATH="\
@@ -84,7 +84,7 @@ $workspace/lib/pkgconfig:\
 export PKG_CONFIG_PATH
 
 #
-# Export Library Paths
+# EXPORT LIBRARY PATHS
 #
 
 LD_LIBRARY_PATH="\
