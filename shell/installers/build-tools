@@ -382,15 +382,15 @@ echo 'Installing required APT packages.'
 pkgs_fn
 
 #
-# INTALL PACKAGES FROM SOURCE CODE
+# INSTALL FROM SOURCE CODE
 #
 
 git_ver_fn 'kitware/cmake' '1' 'R'
 if build 'cmake' "$g_ver"; then
     download "https://codeload.github.com/kitware/cmake/tar.gz/refs/tags/v$g_ver" "cmake-$g_ver.tar.gz"
-    execute ./bootstrap --prefix='/usr/local' --parallel="$cpu_threads" --enable-ccache --generator='Ninja'
-    execute ninja "-j$cpu_threads"
-    execute sudo ninja install
+    execute ./bootstrap --prefix='/usr/local' --parallel="$cpu_threads" --enable-ccache
+    execute make "-j$cpu_threads"
+    execute sudo make install
     build_done 'cmake' "$g_ver"
 fi
 
