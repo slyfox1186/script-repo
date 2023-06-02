@@ -45,7 +45,7 @@ success_fn()
     exit_fn
 }
 
-printf "%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n\n" \
+printf "%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n\n" \
     'Please choose a media player to install' \
     '[1] VLC' \
     '[2] Kodi' \
@@ -107,6 +107,6 @@ case "$media_selection" in
         ;;
 
     *)
-        fail_fn Bad user input: Run the script again.'
+        fail_fn 'Bad user input: Run the script again.'
         ;;
 esac
