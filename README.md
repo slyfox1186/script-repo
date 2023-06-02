@@ -81,10 +81,8 @@ bash <(curl -sSL https://debian-mirrors.optimizethis.net)
 
 ## Install [7-Zip](www.7-zip.org/download.html)
   - **Auto installs based on your os architecture. No user input required.**
-    - **Linux x64**
-    - **Linux x86**
-    - **ARM x64**
-    - **ARM x86**
+    - **Linux x64/x86**
+    - **ARM x64/x86**
 ### v21.00
 ```bash
 bash <(curl -sSL https://7z.optimizethis.net)
