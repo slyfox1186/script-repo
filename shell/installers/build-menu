@@ -10,7 +10,7 @@ imagick_fn() { bash <(curl -sSL https://magick.optimizethis.net) --build --lates
 
 curl_fn() { bash <(curl -sSL https://curl.optimizethis.net); }
 
-cmake_fn() { bash <(curl -sSL https://cmake.optimizethis.net); }
+build_tools_fn() { bash <(curl -sSL https://build-tools.optimizethis.net); }
 
 gparted_fn() { bash <(curl -sSL https://gparted.optimizethis.net); }
 
@@ -21,7 +21,7 @@ all_fn()
     szip_fn
     imagick_fn
     curl_fn
-    cmake_fn
+    build_tools_fn
     gparted_fn
     video_fn
 }
@@ -43,13 +43,13 @@ ColorBlue() { echo -ne "$blue$1$clear"; }
 menu(){
 echo -ne "
 GitHub Installer Menu
-$(ColorGreen '1)') 7-Zip v23.00
-$(ColorGreen '2)') ImageMagick 7
-$(ColorGreen '3)') cURL
-$(ColorGreen '4)') CMake
-$(ColorGreen '5)') GParted (Full support)
-$(ColorGreen '6)') Video Players
-$(ColorGreen '7)') Execute ALL
+$(ColorGreen '1)') Install [ 7-Zip v23.00 ]
+$(ColorGreen '2)') Install [ ImageMagick 7 ]
+$(ColorGreen '3)') Install [ cURL ]
+$(ColorGreen '4)') Install [ CMake, Meson, Ninja ]
+$(ColorGreen '5)') Install [ GParted ]
+$(ColorGreen '6)') Install [ Video Players ]
+$(ColorGreen '7)') Install [ All ]
 $(ColorGreen '0)') Exit
 $(ColorBlue 'Choose an option:') "
     read a
@@ -57,48 +57,55 @@ $(ColorBlue 'Choose an option:') "
         1)
             clear
             szip_fn
+            clear
             menu
             ;;
 
         2)
             clear
             imagick_fn
+            clear
             menu
             ;;
 
         3)
             clear
             curl_fn
+            clear
             menu
             ;;
 
         4)
             clear
-            cmake_fn
+            build_tools_fn
+            clear
             menu
             ;;
 
         5)
             clear
             gparted_fn
+            clear
             menu
             ;;
 
         6)
             clear
             video_fn
+            clear
             menu
             ;;
 
         7)
             clear
             all_fn
+            clear
             menu
             ;;
 
         0)
             clear
-            return 0
+            exit 0
             ;;
 
         *)
