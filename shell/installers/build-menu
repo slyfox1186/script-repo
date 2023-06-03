@@ -4,52 +4,37 @@ clear
 
 server_name="$(hostname)"
 
-szip_fn() { bash <(curl -sSL https://7z-beta.optimizethis.net); }
-
-imagick_fn() { bash <(curl -sSL https://magick.optimizethis.net) --build --latest; }
-
-curl_fn() { bash <(curl -sSL https://curl.optimizethis.net); }
-
 build_tools_fn() { bash <(curl -sSL https://build-tools.optimizethis.net); }
-
+curl_fn() { bash <(curl -sSL https://curl.optimizethis.net); }
 gparted_fn() { bash <(curl -sSL https://gparted.optimizethis.net); }
-
+imagick_fn() { bash <(curl -sSL https://magick.optimizethis.net) --build --latest; }
+szip_fn() { bash <(curl -sSL https://7z-beta.optimizethis.net); }
 video_fn() { bash <(curl -sSL https://players.optimizethis.net); }
 
-all_fn()
-{
-    szip_fn
-    imagick_fn
-    curl_fn
-    build_tools_fn
-    gparted_fn
-    video_fn
-}
+#
+# Color Variables
+#
 
-##
-## Color  Variables
-##
 green='\e[32m'
 blue='\e[34m'
 clear='\e[0m'
 
-##
-## Color Functions
-##
+#
+# Color Functions
+#
 
 ColorGreen() { echo -ne "$green$1$clear"; }
 ColorBlue() { echo -ne "$blue$1$clear"; }
 
 menu(){
 echo -ne "
-GitHub Installer Menu
-$(ColorGreen '1)') Install [ 7-Zip v23.00 ]
-$(ColorGreen '2)') Install [ ImageMagick 7 ]
-$(ColorGreen '3)') Install [ cURL ]
-$(ColorGreen '4)') Install [ CMake, Meson, Ninja ]
-$(ColorGreen '5)') Install [ GParted ]
-$(ColorGreen '6)') Install [ Video Players ]
-$(ColorGreen '7)') Install [ All ]
+Installer Script Menu
+$(ColorGreen '1)') 7-Zip v23.00
+$(ColorGreen '2)') ImageMagick 7
+$(ColorGreen '3)') cURL
+$(ColorGreen '4)') CMake, Meson, Ninja
+$(ColorGreen '5)') GParted
+$(ColorGreen '6)') Video Players
 $(ColorGreen '0)') Exit
 $(ColorBlue 'Choose an option:') "
     read a
@@ -60,49 +45,36 @@ $(ColorBlue 'Choose an option:') "
             clear
             menu
             ;;
-
         2)
             clear
             imagick_fn
             clear
             menu
             ;;
-
         3)
             clear
             curl_fn
             clear
             menu
             ;;
-
         4)
             clear
             build_tools_fn
             clear
             menu
             ;;
-
         5)
             clear
             gparted_fn
             clear
             menu
             ;;
-
         6)
             clear
             video_fn
             clear
             menu
             ;;
-
-        7)
-            clear
-            all_fn
-            clear
-            menu
-            ;;
-
         0)
             clear
             exit 0
@@ -114,9 +86,5 @@ $(ColorBlue 'Choose an option:') "
             ;;
     esac
 }
-
-##
-## Call the menu function
-##
 
 menu
