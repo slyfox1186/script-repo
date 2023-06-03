@@ -1,0 +1,132 @@
+#!/bin/bash
+# shellcheck disable=SC2046,SC2066,SC2068,SC2086,SC2119,SC2162,SC2181
+
+# Verify the script does not have root access before continuing
+if [ "$EUID" -eq '0' ]; then
+    printf "%s\n\n" \
+        'This script must be run WITHOUT root/sudo'
+    exit 1
+fi
+
+clear
+
+#
+# SET VARIABLES
+#
+
+cwd="$PWD"/golang-download-script
+packages="$cwd"/packages
+workspace="$cwd"/workspace
+script_repo='https://github.com/slyfox1186/script-repo'
+gopkg_1="$workspace"/go-1.20.4/bin/go
+gopkg_2="$workspace"/go-1.20.4/bin/gofmt
+
+mkdir -p "$workspace" "$packages"
+
+cd "$packages" || exit 1
+
+#
+# CREATE FUNCTIONS
+#
+
+fail_fn()
+{
+    printf "\n%s\n\n%s\n\n%s\n\n" \
+        "$1" \
+        'Please submit a support ticket at:' \
+        "$script_repo"/issues
+    exit 1
+}
+
+exit_fn()
+{
+    printf "\n%s\n\n%s\n\n" \
+        'Make sure to star this repository to show your support!' \
+        "$script_repo"
+    exit 0
+}
+
+cleanup_fn()
+{
+    local my_choice
+
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'Do you want to delete the build files?' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' my_choice
+
+    case "$my_choice" in
+    1)
+        sudo rm -fr "$cwd"
+        exit_fn
+        ;;
+    2)
+        exit_fn
+        ;;
+    *)
+        read -p 'Bad user input. Press enter to try again'
+        clear
+        cleanup_fn
+        ;;
+    esac
+}
+
+#
+# Download goland package
+#
+
+if which curl &>/dev/null; then
+    dl_App='curl -Lso'
+elif which wget &>/dev/null; then
+    dl_App='wget -cqO'
+fi
+
+if [ ! -f 'go-1.20.4.tar.gz' ]; then
+    if ! $dl_App 'go-1.20.4.tar.gz' 'https://go.dev/dl/go1.20.4.linux-amd64.tar.gz'; then
+        fail_fn 'The script failed to download go-1.20.4.tar.gz'
+    else
+        echo "\$ Downloading https://go.dev/dl/go1.20.4.linux-amd64.tar.gz as go-1.20.4.tar.gz"
+    fi
+fi
+
+#
+# UNCOMPRESS THE TAR FILE
+#
+
+if [ -d 'go-1.20.4' ]; then
+    sudo rm -fr 'go-1.20.4'
+fi
+
+mkdir -p "$workspace"/go-1.20.4
+
+if ! tar -xf 'go-1.20.4.tar.gz' -C "$workspace"/go-1.20.4 --strip-components 1 2>/dev/null; then
+    fail_fn 'The script failed to uncompress the tar file.'
+else
+    echo "\$ Uncompressed go-1.20.4.tar.gz into $workspace/go-1.20.4"
+    cd "$workspace"/go-1.20.4 || exit 1
+fi
+
+#
+# CREATE A NEW FOLDER FOR THE GOPATH VARIABLE
+#
+
+if [ ! -f 'bin/go' ] && [ ! -f 'bin/gofmt' ]; then
+    fail_fn 'Unable to locate the binary files (go, gofmt)'
+else
+    echo "\$ sudo cp -f bin/go bin/gofmt /usr/local/bin"
+    sudo cp -f 'bin/go' 'bin/gofmt' '/usr/local/bin'
+fi
+
+#
+# CREATE A NEW FOLDER FOR THE GOPATH VARIABLE
+#
+
+printf "\n%s\n\n" '$ Creating the $GOPATH directory (/usr/local/go)'
+if ! sudo mkdir -p '/usr/local/go'; then
+    fail_fn 'Failed to create the $GOPATH folder!'
+else
+    echo '$ Success!'
+fi
+
+cleanup_fn
