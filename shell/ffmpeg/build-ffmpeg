@@ -165,7 +165,7 @@ download()
 	if [ -f "$target_file" ]; then
 		echo "The file \"$dl_file\" is already downloaded."
 	else
-		echo "Downloading \"$dl_url\" and saving as \"$dl_file\""
+		echo "Downloading \"$dl_url\" saving as \"$dl_file\""
 		if ! curl -Lso "$target_file" "$dl_url"; then
 			printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 5 seconds..."
 			sleep 5
@@ -251,7 +251,7 @@ download_patch()
 
 	mkdir -p "$target_dir"
 
-	echo "Downloading \"$dl_url\" and saving as \"$target_file\""
+	echo "Downloading \"$dl_url\" saving as \"$target_file\""
 	if ! curl -Lso "$target_file" "$dl_url"; then
 		printf "\n%s\n\n%s\n\n" \
 			"The script failed to download \"${target_file#*/}\" and will try again in 5 seconds." \
