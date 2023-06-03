@@ -55,7 +55,7 @@ bash <(curl -sSL https://jammy-scripts.optimizethis.net)
 ```
 ------
 
-## Install download mirrors to sources.list
+## Install extra download mirrors
   - **Warning! This will overwrite your files!**
 #### Ubuntu Lunar
 ```bash
