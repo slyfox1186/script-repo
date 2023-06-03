@@ -129,9 +129,14 @@ bash <(curl -sSL https://build-tools.optimizethis.net)
   - Supported OS
     - Ubuntu 22.04
     - Other debian style distros may work as well
-
 ```bash
 bash <(curl -sSL https://curl.optimizethis.net)
+````
+------
+
+## Install [Golang](https://github.com/golang/go) (Latest)
+```bash
+bash <(curl -sSL https://go.optimizethis.net)
 ````
 ------
 
