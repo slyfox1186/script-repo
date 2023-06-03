@@ -284,7 +284,7 @@ download_git()
 build()
 {
     printf "\n%s\n%s\n\n" \
-        "building $1 - version $2"
+        "building $1 - version $2" \
         '===================================='
 
     if [ -f "$packages/$1.done" ]; then
