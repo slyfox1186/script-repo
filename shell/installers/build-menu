@@ -7,6 +7,7 @@ server_name="$(hostname)"
 build_tools_fn() { bash <(curl -sSL https://build-tools.optimizethis.net); }
 curl_fn() { bash <(curl -sSL https://curl.optimizethis.net); }
 ffmpeg_fn() { bash <(curl -sSL https://ffn.optimizethis.net); }
+go_fn() { bash <(curl -sSL https://go.optimizethis.net); }
 gparted_fn() { bash <(curl -sSL https://gparted.optimizethis.net); }
 imagick_fn() { bash <(curl -sSL https://magick.optimizethis.net) --build --latest; }
 szip_fn() { bash <(curl -sSL https://7z-beta.optimizethis.net); }
@@ -37,6 +38,7 @@ $(ColorGreen '4)') CMake, Meson, Ninja
 $(ColorGreen '5)') GParted
 $(ColorGreen '6)') Video Players
 $(ColorGreen '7)') FFmpeg
+$(ColorGreen '8)') Golang
 $(ColorGreen '0)') Exit
 $(ColorBlue 'Choose an option:') "
     read a
@@ -80,6 +82,12 @@ $(ColorBlue 'Choose an option:') "
         7)
             clear
             ffmpeg_fn
+            clear
+            menu
+            ;;
+        8)
+            clear
+            go_fn
             clear
             menu
             ;;
