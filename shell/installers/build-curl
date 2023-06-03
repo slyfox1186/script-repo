@@ -1,17 +1,17 @@
 #!/bin/bash
 # shellcheck disable=SC2016,SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
 
-################################################
+######################################################
 ##
 ##  Install the latest curl release from GitHub
 ##
 ##  Supported OS: Debian based OS
 ##
-##  Updated: 06.02.23
+##  Updated: 06.03.23
 ##
 ##  Script version: 4.0
 ##
-################################################
+######################################################
 
 echo
 
@@ -19,7 +19,6 @@ script_ver='4.0'
 cwd="$PWD"/curl-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
-curl_flags=()
 install_dir='/usr/local'
 
 #
@@ -43,9 +42,9 @@ fi
 #
 
 printf "%s\n%s\n%s\n" \
-	"cURL Build Script v$script_ver" \
+	"cURL Build Script - v$script_ver" \
 	'===============================' \
-	"This script will utilize ($cpu_threads cpu cores) for parallel processing to accelerate the building processes."
+	"This script will utilize ($cpu_threads) cpu threads for parallel processing to accelerate the build process."
 
 #
 # CREATE GLOBAL VARIABLES
@@ -68,8 +67,8 @@ PKG_CONFIG_PATH="\
 $workspace/lib64/pkgconfig:\
 $workspace/lib/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/lib/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
+/usr/local/lib/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/lib/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
@@ -132,7 +131,7 @@ git_1_fn() {
 	# SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
 	github_repo="$1"
 	github_url="$2"
-	git_token='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'
+	git_token='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'
 
 	if curl_cmd="$(curl \
 		-m "$curl_timeout" \
@@ -178,15 +177,15 @@ git_ver_fn() {
 	v_flag="$3"
 
 	case "$v_flag" in
-		T)	gv_url='tags';;
-		R)	gv_url='releases';;
-		*)	fail_fn 'tags and releases were not among the URL options.';;
+	T) gv_url='tags' ;;
+	R) gv_url='releases' ;;
+	*) fail_fn 'tags and releases were not among the URL options.' ;;
 	esac
 
 	case "$v_tag" in
-		1) url_tag='git_1_fn';;
-		2) url_tag='git_2_fn';;
-		6) url_tag='git_6_fn';;
+	1) url_tag='git_1_fn' ;;
+	2) url_tag='git_2_fn' ;;
+	6) url_tag='git_6_fn' ;;
 	esac
 
 	"$url_tag" "$v_url" "$gv_url" 2>/dev/null
@@ -194,8 +193,8 @@ git_ver_fn() {
 
 execute() {
 	echo "$ $*"
-	# 2>&1
-	if ! output=$("$@"); then
+
+	if ! output=$("$@" 2>&1); then
 		fail_fn "Failed to Execute $*"
 	fi
 }
@@ -250,8 +249,7 @@ download() {
 	cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
 }
 
-download_git()
-{
+download_git() {
 	local dl_path dl_url dl_file target_dir
 
 	dl_path="$packages"
@@ -303,12 +301,12 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok insta
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autogen automake autotools-dev build-essential ccache cmake curl jq lcov libcunit1-dev libcurl4-gnutls-dev libec-dev libev-dev libevent-dev \
-      libgnutls28-dev libgsasl7-dev libgsasl-dev libjansson-dev libjemalloc-dev libldap2-dev libldap-dev liblzma-dev libmbedtls-dev libngtcp2-dev libntlm0-dev \
-      libpsl-dev librtmp-dev libssh2-1-dev libssh-dev libtool libzstd-dev m4 pkg-config python3-pip re2c)
+pkgs=(autoconf autogen automake build-essential ccache cmake curl jq lcov libbrotli-dev libc-ares-dev libcunit1-dev libcurl4-gnutls-dev libec-dev libev-dev
+	libevent-dev libgnutls28-dev libgsasl7-dev libgsasl-dev libjansson-dev libjemalloc-dev libldap2-dev libldap-dev liblzma-dev libmbedtls-dev libnghttp2-dev
+	libnghttp3-dev libngtcp2-dev libntlm0-dev libpsl-dev librtmp-dev libssh2-1-dev libssh-dev libtool libxml2-dev libzstd-dev m4 pkg-config python3-pip
+	re2c)
 
-for pkg in ${pkgs[@]}
-do
+for pkg in ${pkgs[@]}; do
 	if ! installed "$pkg"; then
 		missing_pkgs+=" $pkg"
 	fi
@@ -356,7 +354,7 @@ else
 fi
 
 #
-# START BUILDING FROM SOURCE
+# COMPILE FROM SOUCE CODE
 #
 
 git_ver_fn 'madler/zlib' '1' 'T'
@@ -368,82 +366,36 @@ if build 'zlib' "$g_ver"; then
 	build_done 'zlib' "$g_ver"
 fi
 
-git_ver_fn 'google/brotli' '1' 'T'
-if build 'brotli' "$g_ver"; then
-	download "$g_url" "brotli-$g_ver.tar.gz"
-	execute python3 setup.py build
-	execute python3 setup.py install --prefix="$workspace"
-	build_done "brotli" "$g_ver"
-fi
-
-git_ver_fn 'c-ares/c-ares' '1' 'R'
-if build 'c-ares' "$g_ver"; then
-	download "$g_url" "c-ares-$g_ver.tar.gz"
-	execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCARES_SHARED='OFF' -DCARES_STATIC_PIC='ON' \
-		-DCARES_STATIC='ON' -DCMAKE_BUILD_TYPE='Release' -DBUILD_SHARED_LIBS='OFF' -Wno-dev
-	execute make "-j$cpu_threads" -C 'build'
-	execute make "-j$cpu_threads" -C 'build' install
-	build_done 'c-ares' "$g_ver"
-fi
-
-git_ver_fn 'akheron/jansson' '1' 'T'
-if build 'jansson' "$g_ver"; then
-	download "$g_url" "jansson-$g_ver.tar.gz"
-	execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DJANSSON_INSTALL='ON' -DJANSSON_EXAMPLES='OFF' -DJANSSON_LIBRARIES='jansson' \
-		-DJANSSON_INITIAL_HASHTABLE_ORDER='3' -DJANSSON_INCLUDE_DIRS="$packages/jansson-2.14/include;$workspace/include" \
-		-DJANSSON_WITHOUT_TESTS='ON' -DJANSSON_BUILD_DOCS='OFF' -DJANSSON_BUILD_SHARED_LIBS='ON' -Wno-dev
-	execute make "-j$cpu_threads" -C 'build'
-	execute make "-j$cpu_threads" -C 'build' install
-	build_done 'jansson' "$g_ver"
-fi
-
-git_ver_fn '1665' '6' 'T'
-if build 'xml2' "$g_ver"; then
-	download "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v$g_ver/libxml2-v$g_ver.tar.bz2" "xml2-$g_ver.tar.bz2"
-	execute cmake -B 'build' -DBUILD_SHARED_LIBS='OFF' -DCMAKE_EXPORT_COMPILE_COMMANDS='OFF' -DCMAKE_INSTALL_PREFIX="$workspace" \
-		-DCMAKE_VERBOSE_MAKEFILE='OFF' -DCPACK_BINARY_DEB='ON' -DCPACK_BINARY_FREEBSD='ON' -DCPACK_BINARY_IFW='ON' -DCPACK_BINARY_NSIS='ON' \
-		-DCPACK_BINARY_RPM='ON' -DCPACK_BINARY_TBZ2='ON' -DCPACK_BINARY_TXZ='ON' -DCPACK_SOURCE_RPM='ON' -DCPACK_SOURCE_ZIP='ON' -G 'Unix Makefiles' -Wno-dev
-	execute make "-j$cpu_threads" -C 'build'
-	execute make "-j$cpu_threads" -C 'build' install
-	build_done 'xml2' "$g_ver"
-fi
-ffmpeg_libraries+=('--enable-libxml2')
-
-git_ver_fn 'quictls/openssl' '1' 'R'
-g_ver="$(echo $g_ver | sed 's/\-quic Release 1//g')"
-if build 'openssl-qtls' "$g_ver"; then
-	download "$g_url" "openssl-qtls-$g_ver.tar.gz"
-	_RLD_LIB_PATH="$workspace"
-	execute ./Configure --prefix="$workspace" --openssldir='/usr/local/ssl' --with-zlib-include="$workspace"/include --with-zlib-lib="$workspace"/lib no-shared zlib enable-tls1_3
-	execute make "-j$cpu_threads"
-	execute make install_sw
-	build_done 'openssl-qtls' "$g_ver"
-fi
-
 git_ver_fn 'curl/curl' '1' 'R'
 if build 'curl' "$g_ver"; then
-	disable_opts=(--disable-{manual,shared,verbose,versioned-symbols})
-	enable_opts=(--enable-{alt-svc,ares="$workspace"/include,cookies,crypto-auth,dateparse,dict,dnsshuffle,doh,file,ftp,get-easy-options,gopher})
+	disable_opts=(--disable-{get-easy-options,shared,verbose,versioned-symbols})
+	enable_opts=(--enable-{alt-svc,ares='/usr/include',cookies,crypto-auth,dateparse,dict,dnsshuffle,doh,file,ftp,gopher})
 	enable_opts+=(--enable-{headers-api,hsts,http,http-auth,imap,ipv6,ldap,ldaps,libcurl-option,libgcc,manual,mime,mqtt,netrc,ntlm,ntlm-wb='/usr/bin/ntlm_auth'})
 	enable_opts+=(--enable-{openssl-auto-load-config,optimize,pop3,progress-meter,proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static,telnet,tftp,threaded-resolver})
 	enable_opts+=(--enable-{tls-srp,unix-sockets,websockets})
 	with_opts=(--with-{libssh2,nghttp2='/usr/include',nghttp3='/usr/include',brotli='/usr/include',gnutls='/usr/include'})
-	with_opts+=(--with-{gssapi,wolfssh,zlib='/usr/include/boost/beast',ca-bundle='/etc/ssl/certs/ca-certificates.crt',ca-path='/etc/ssl/certs',ca-fallback})
+	with_opts+=(--with-{gssapi,wolfssh,zlib='/usr/include/boost/beast',ca-bundle='/etc/ssl/certs/cacert-2023-05-30.pem',ca-fallback,ca-path='/etc/ssl/certs'})
 	download "$g_url" "curl-$g_ver.tar.gz"
+
 	if which 'update-ca-certificates' &>/dev/null; then
 		execute sudo update-ca-certificates
 	fi
-	execute curl -s --remote-name 'https://curl.se/ca/cacert-2023-05-30.pem'
-	execute sudo mv 'cacert-2023-05-30.pem' '/etc/ssl/certs'
-	execute autoreconf -fi
+
+	if [ ! -f '/etc/ssl/certs/cacert-2023-05-30.pem' ]; then
+		execute wget -cqO 'cacert-2023-05-30.pem' 'https://curl.se/ca/cacert-2023-05-30.pem'
+		execute sudo mv 'cacert-2023-05-30.pem' '/etc/ssl/certs'
+	fi
+
+	execute autoreconf -fi -I '/usr/share/aclocal'
 	./configure \
 		--prefix="$install_dir" \
 		"${disable_opts[@]}" \
 		"${enable_opts[@]}" \
 		"${with_opts[@]}" \
-		CXXFLAGS='-O3 -march=native' \
+		CFLAGS='-Os -ffunction-sections -fdata-sections -fno-unwind-tables -fno-asynchronous-unwind-tables -flto' \
+		CXXFLAGS='-OFast -march=native' \
 		CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include" \
-		LDFLAGS="-L$workspace/lib -L/usr/local/lib -L/usr/lib"
+		LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L/usr/local/lib64 -L/usr/lib64 -L/usr/local/lib -L/usr/lib -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections"
 	execute make "-j$cpu_threads"
 	execute sudo make install
 fi
