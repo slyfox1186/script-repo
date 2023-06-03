@@ -10,8 +10,8 @@ ffmpeg_fn() { bash <(curl -sSL https://build-ffmpeg.optimizethis.net) --build --
 go_fn() { bash <(curl -sSL https://go.optimizethis.net); }
 gparted_fn() { bash <(curl -sSL https://gparted.optimizethis.net); }
 imagick_fn() { bash <(curl -sSL https://magick.optimizethis.net) --build --latest; }
-szip_release_fn() { bash <(curl -sSL https://7z.optimizethis.net); }
 szip_beta_fn() { bash <(curl -sSL https://7z-beta.optimizethis.net); }
+szip_release_fn() { bash <(curl -sSL https://7z.optimizethis.net); }
 video_fn() { bash <(curl -sSL https://players.optimizethis.net); }
 
 green='\e[32m'
