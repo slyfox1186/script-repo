@@ -16,7 +16,7 @@
  -   [x] XML
 ------
 
-## Master Build Menu
+## Build Menu
   - All of the below Linux installers are located in one menu.
 ```bash
 curl -Lso build-menu https://build-menu.optimizethis.net; sudo bash build-menu
