@@ -28,7 +28,7 @@
 #
 
 script_name="${0:2}"
-script_ver='6.2'
+script_ver='6.3'
 ffmpeg_version='n5.1.3'
 cuda_ver='12.1.1'
 cwd="$PWD"/ffmpeg-build-script
@@ -458,8 +458,7 @@ pre_check_ver()
 execute()
 {
     echo "$ $*"
-    # 2>&1
-    if ! output=$("$@"); then
+    if ! output=$("$@" 2>&1); then
         fail_fn "Failed to Execute $*"
     fi
 }
@@ -684,7 +683,7 @@ ffmpeg_libraries+=('--enable-nonfree' '--enable-gpl')
 # ENABLE CUSTOM C++ COMPILER SETTINGS
 #
 
-export CXXFLAGS='-g -Ofast -march=native'
+export CXXFLAGS='-g -O3 -march=native'
 
 #
 # SET GLOBAL VARIABLES
@@ -968,7 +967,7 @@ install_cuda_fn()
 
 ffmpeg_install_choice()
 {
-    printf "%s\n\n%s\n%s\n\n" \
+    printf "\n%s\n\n%s\n%s\n\n" \
         'Would you like to install the static binaries system-wide? [/usr/local/bin]' \
         '[1] Yes ' \
         '[2] No'
@@ -1010,25 +1009,6 @@ build_pkgs_fn
 #
 # BUILD FROM SOURCE CODE
 #
-
-pre_check_ver 'strukturag/libheif' '1' 'T'
-if build 'libheif' "$g_ver"; then
-    download "https://codeload.github.com/strukturag/libheif/tar.gz/refs/tags/v$g_ver" "libheif-$g_ver.tar.gz"
-    cd "$packages/libheif-$g_ver/third-party" || exit 1
-    run_cmd=(aom.cmd dav1d.cmd libsharpyuv.cmd rav1e.cmd svt.cmd)
-    echo '$ Compiling....'
-    for i in ${run_cmd[@]}; do sudo bash $i; done 2>/dev/null >/dev/null
-    PKG_CONFIG_PATH+=":$packages/libheif-$g_ver/third-party/aom/dist/lib/pkgconfig:$packages/libheif-$g_ver/third-party/rav1e/dist/lib/pkgconfig"
-    PKG_CONFIG_PATH+=":$packages/libheif-$g_ver/third-party/dav1d/dist/lib/x86_64-linux-gnu/pkgconfig:$packages/libheif-$g_ver/third-party/SVT-AV1/Build/linux/Release"
-    export PKG_CONFIG_PATH
-    cd '../' || exit 1
-    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE='Release' -DBUILD_SHARED_LIBS='OFF' -DWITH_AOM_DECODER='ON' -DWITH_AOM_ENCODER='ON' \
-        -DWITH_DAV1D='ON' -DWITH_EXAMPLES='OFF' -DWITH_GDK_PIXBUF='ON' -DWITH_LIBDE265='OFF' -DWITH_LIBSHARPYUV='ON' -DWITH_RAV1E='ON' -DWITH_RAV1E_PLUGIN='ON' \
-        -DWITH_REDUCED_VISIBILITY='ON' -DWITH_SvtEnc='ON' -DWITH_SvtEnc_PLUGIN='ON' -DWITH_X265='ON' -G 'Ninja' -Wno-dev
-    execute ninja "-j$cpu_threads" -C 'build'
-    execute ninja "-j$cpu_threads" -C 'build' install
-    build_done 'libheif' "$g_ver"
-fi
 
 if build 'giflib' '5.2.1'; then
     download 'https://cfhcable.dl.sourceforge.net/project/giflib/giflib-5.2.1.tar.gz' 'giflib-5.2.1.tar.gz'
@@ -1630,17 +1610,24 @@ if build 'gflags' "$g_ver"; then
     build_done 'gflags' "$g_ver"
 fi
 
-
-
-
-
-
-
-
-
-
-
-
+pre_check_ver 'strukturag/libheif' '1' 'T'
+if build 'libheif' "$g_ver"; then
+    download "https://codeload.github.com/strukturag/libheif/tar.gz/refs/tags/v$g_ver" "libheif-$g_ver.tar.gz"
+    cd "$packages/libheif-$g_ver/third-party" || exit 1
+    run_cmd=(aom.cmd dav1d.cmd libsharpyuv.cmd rav1e.cmd svt.cmd)
+    echo '$ Compiling....'
+    for i in ${run_cmd[@]}; do sudo bash $i; done 2>/dev/null >/dev/null
+    PKG_CONFIG_PATH+=":$packages/libheif-$g_ver/third-party/aom/dist/lib/pkgconfig:$packages/libheif-$g_ver/third-party/rav1e/dist/lib/pkgconfig"
+    PKG_CONFIG_PATH+=":$packages/libheif-$g_ver/third-party/dav1d/dist/lib/x86_64-linux-gnu/pkgconfig:$packages/libheif-$g_ver/third-party/SVT-AV1/Build/linux/Release"
+    export PKG_CONFIG_PATH
+    cd '../' || exit 1
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE='Release' -DBUILD_SHARED_LIBS='OFF' -DWITH_AOM_DECODER='ON' -DWITH_AOM_ENCODER='ON' \
+        -DWITH_DAV1D='ON' -DWITH_EXAMPLES='OFF' -DWITH_GDK_PIXBUF='ON' -DWITH_LIBDE265='OFF' -DWITH_LIBSHARPYUV='ON' -DWITH_RAV1E='ON' -DWITH_RAV1E_PLUGIN='ON' \
+        -DWITH_REDUCED_VISIBILITY='ON' -DWITH_SvtEnc='ON' -DWITH_SvtEnc_PLUGIN='ON' -DWITH_X265='ON' -G 'Ninja' -Wno-dev
+    execute ninja "-j$cpu_threads" -C 'build'
+    execute ninja "-j$cpu_threads" -C 'build' install
+    build_done 'libheif' "$g_ver"
+fi
 
 git_ver_fn '1665' '6' 'T'
 if build 'xml2' "$g_ver"; then
@@ -1859,17 +1846,16 @@ ffmpeg_libraries+=('--enable-libsrt')
 pre_check_ver 'gpac/gpac' '1' 'T'
 if build 'gpac' "$g_ver"; then
     download "https://codeload.github.com/gpac/gpac/tar.gz/refs/tags/v$g_ver" "gpac-$g_ver.tar.gz"
-    execute ./configure --prefix="$workspace" --cc="$CC" --cxx="$CXX" --extra-cflags="$CFLAGS" \
-        --extra-ldflags="-L$workspace/lib -L$workspace/src/lib -L$workspace/lib64" --extra-libs="$EXTRALIBS" \
-        --cpu='x86_64' --static-build --static-bin --static-modules --enable-gprof
+    execute ./configure --prefix="$workspace" --extra-cflags="$CFLAGS" --extra-ldflags="-L$workspace/lib -L$workspace/src/lib -L$workspace/lib64" --extra-libs="$EXTRALIBS" \
+        --static-bin --static-modules --enable-gprof
     execute make "-j$cpu_threads"
     execute make install
     build_done 'gpac' "$g_ver"
 fi
 
-###########
-# HWaccel library #
-###########
+#
+# HWACCEL LIBRARY
+#
 
 pre_check_ver 'khronosgroup/opencl-headers' '1' 'T'
 if build 'opencl' "$g_ver"; then
@@ -1935,26 +1921,26 @@ fi
 if build 'FFmpeg' "$ffmpeg_version"; then
     download "https://github.com/FFmpeg/FFmpeg/archive/refs/tags/$ffmpeg_version.tar.gz" "FFmpeg-$ffmpeg_version.tar.gz"
     ./configure \
-            "${ffmpeg_libraries[@]}" \
-            --prefix="$workspace" \
-            --arch="$(uname -m)" \
-            --cpu="$cpu_cores" \
-            --disable-debug \
-            --disable-doc \
-            --disable-shared \
-            --enable-ffnvcodec \
-            --enable-pthreads \
-            --enable-small \
-            --enable-static \
-            --enable-version3 \
-            --extra-cflags="$CFLAGS" \
-            --extra-ldexeflags="$LDEXEFLAGS" \
-            --extra-ldflags="$LDFLAGS" \
-            --extra-libs="$EXTRALIBS" \
-            --pkg-config='/usr/bin/pkg-config' \
-            --pkgconfigdir="$workspace"/lib/pkgconfig \
-            --pkg-config-flags='--static' \
-            --extra-version="$EXTRA_VERSION"
+        "${ffmpeg_libraries[@]}" \
+        --prefix="$workspace" \
+        --arch="$(uname -m)" \
+        --cpu="$cpu_cores" \
+        --disable-debug \
+        --disable-doc \
+        --disable-shared \
+        --enable-ffnvcodec \
+        --enable-pthreads \
+        --enable-small \
+        --enable-static \
+        --enable-version3 \
+        --extra-cflags="$CFLAGS" \
+        --extra-ldexeflags="$LDEXEFLAGS" \
+        --extra-ldflags="$LDFLAGS" \
+        --extra-libs="$EXTRALIBS" \
+        --pkg-config='/usr/bin/pkg-config' \
+        --pkgconfigdir="$workspace"/lib/pkgconfig \
+        --pkg-config-flags='--static' \
+        --extra-version="$EXTRA_VERSION"
     execute make "-j$cpu_threads"
     execute make install
 fi
