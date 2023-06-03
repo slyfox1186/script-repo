@@ -106,7 +106,6 @@ bash <(curl -sSL https://magick.optimizethis.net) --build --latest
 
 ## Install [FFmpeg](https://ffmpeg.org/download.html)
   - **Compiles the latest updates from souce code by issuing API calls to each repositories backend**
-  - **Rips the latest package updates by issuing API calls. Any updates will be noticed by the script**
   - **Installing the CUDA SDK Toolkit to unlock Hardware Acceleration is available during install to make things as easy as possible**
 
 **With GPL and non-free libraries: https://ffmpeg.org/legal.html**
