@@ -10,92 +10,97 @@ ffmpeg_fn() { bash <(curl -sSL https://ffn.optimizethis.net); }
 go_fn() { bash <(curl -sSL https://go.optimizethis.net); }
 gparted_fn() { bash <(curl -sSL https://gparted.optimizethis.net); }
 imagick_fn() { bash <(curl -sSL https://magick.optimizethis.net) --build --latest; }
-szip_fn() { bash <(curl -sSL https://7z-beta.optimizethis.net); }
+szip_release_fn() { bash <(curl -sSL https://7z.optimizethis.net); }
+szip_beta_fn() { bash <(curl -sSL https://7z-beta.optimizethis.net); }
 video_fn() { bash <(curl -sSL https://players.optimizethis.net); }
-
-#
-# Color Variables
-#
 
 green='\e[32m'
 blue='\e[34m'
 clear='\e[0m'
 
-#
-# Color Functions
-#
-
 ColorGreen() { echo -ne "$green$1$clear"; }
 ColorBlue() { echo -ne "$blue$1$clear"; }
 
-menu(){
+install_menu()
+{
+
 echo -ne "
 Installer Script Menu
-$(ColorGreen '1)') 7-Zip v23.00
-$(ColorGreen '2)') ImageMagick 7
-$(ColorGreen '3)') cURL
-$(ColorGreen '4)') CMake, Meson, Ninja
-$(ColorGreen '5)') GParted
-$(ColorGreen '6)') Video Players
-$(ColorGreen '7)') FFmpeg
-$(ColorGreen '8)') Golang
+$(ColorGreen '1)') 7-Zip Release v21.00
+$(ColorGreen '2)') 7-Zip Beta v23.00
+$(ColorGreen '3)') ImageMagick 7
+$(ColorGreen '4)') cURL
+$(ColorGreen '5)') CMake, Meson, Ninja
+$(ColorGreen '6)') GParted
+$(ColorGreen '7)') Video Players
+$(ColorGreen '8)') FFmpeg
+$(ColorGreen '9)') Golang
 $(ColorGreen '0)') Exit
 $(ColorBlue 'Choose an option:') "
-    read a
-    case "$a" in
+    read answer
+
+    case "$answer" in
         1)
             clear
-            szip_fn
+            szip_release_fn
             clear
-            menu
+            install_menu
             ;;
         2)
             clear
-            imagick_fn
+            szip_beta_fn
             clear
-            menu
+            install_menu
             ;;
         3)
             clear
-            curl_fn
+            imagick_fn
             clear
-            menu
+            install_menu
             ;;
         4)
             clear
-            build_tools_fn
+            curl_fn
             clear
-            menu
+            install_menu
             ;;
         5)
             clear
-            gparted_fn
+            build_tools_fn
             clear
-            menu
+            install_menu
             ;;
         6)
             clear
-            video_fn
+            gparted_fn
             clear
-            menu
+            install_menu
             ;;
         7)
             clear
-            ffmpeg_fn
+            video_fn
             clear
-            menu
+            install_menu
             ;;
         8)
             clear
+            ffmpeg_fn
+            clear
+            install_menu
+            ;;
+        9)
+            clear
             go_fn
             clear
-            menu
+            install_menu
             ;;
         0)
+            if [ -f 'build-menu' ]; then
+                sudo rm 'build-menu'
+            fi
             clear
             exit 0
             ;;
-
         *)
             echo $red'Wrong option'$clear
             WrongCommand
@@ -103,4 +108,4 @@ $(ColorBlue 'Choose an option:') "
     esac
 }
 
-menu
+install_menu
