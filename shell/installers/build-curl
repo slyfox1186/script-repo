@@ -32,9 +32,9 @@ mkdir -p "$packages" "$workspace"
 #
 
 if [ -f '/proc/cpuinfo' ]; then
-	cpu_threads="$(grep -c ^processor '/proc/cpuinfo')"
+    cpu_threads="$(grep -c ^processor '/proc/cpuinfo')"
 else
-	cpu_threads="$(nproc --all)"
+    cpu_threads="$(nproc --all)"
 fi
 
 #
@@ -42,9 +42,9 @@ fi
 #
 
 printf "%s\n%s\n%s\n" \
-	"cURL Build Script - v$script_ver" \
-	'===============================' \
-	"This script will utilize ($cpu_threads) cpu threads for parallel processing to accelerate the build process."
+    "cURL Build Script - v$script_ver" \
+    '===============================' \
+    "This script will utilize ($cpu_threads) cpu threads for parallel processing to accelerate the build process."
 
 #
 # CREATE GLOBAL VARIABLES
@@ -82,218 +82,225 @@ export PKG_CONFIG_PATH
 # DEFINE FUNCTIONS
 #
 
-fail_fn() {
-	printf "\n%s\n\n%s\n\n" \
-		"$1" \
-		'Please submit a support ticket in GitHub.'
-	exit 1
+fail_fn()
+{
+    printf "\n%s\n\n%s\n\n" \
+        "$1" \
+        'Please submit a support ticket in GitHub.'
+    exit 1
 }
 
-exit_fn() {
-	printf "\n%s\n\n%s\n\n" \
-		'Make sure to star this repository to show your support!' \
-		'https://github.com/slyfox1186/script-repo/'
-	exit 0
+exit_fn()
+{
+    printf "\n%s\n\n%s\n\n" \
+        'Make sure to star this repository to show your support!' \
+        'https://github.com/slyfox1186/script-repo/'
+    exit 0
 }
 
-cleanup_fn() {
-	printf "\n%s\n\n%s\n%s\n\n" \
-		'Do you want to cleanup the build files?' \
-		'[1] Yes' \
-		'[2] No'
-	read -p 'Your choices are (1 or 2): ' pychoice
-	case "$pychoice" in
-	1)
-		sudo rm -fr "$cwd"
-		exit_fn
-		;;
-	2)
-		exit_fn
-		;;
-	*)
-		read -p 'Bad user input. Press enter to try again'
-		clear
-		cleanup_fn
-		;;
-	esac
+cleanup_fn()
+{
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'Do you want to cleanup the build files?' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' pychoice
+    case "$pychoice" in
+    1)
+        sudo rm -fr "$cwd"
+        exit_fn
+        ;;
+    2)
+        exit_fn
+        ;;
+    *)
+        read -p 'Bad user input. Press enter to try again'
+        clear
+        cleanup_fn
+        ;;
+    esac
 }
 
-success_fn() {
-	curl_ver="$(curl --version)"
-	printf "\n%s\n\n" \
-		"The installed curl version is: $curl_ver"
-	cleanup_fn
+success_fn()
+{
+    curl_ver="$(curl --version)"
+    printf "\n%s\n\n" \
+        "The installed curl version is: $curl_ver"
+    cleanup_fn
 }
 
 curl_timeout='10'
 
-git_1_fn() {
-	# SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
-	github_repo="$1"
-	github_url="$2"
-	git_token='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'
+git_1_fn()
+{
+    local curl_cmd github_repo github_url
 
-	if curl_cmd="$(curl \
-		-m "$curl_timeout" \
-		--request GET \
-		--url "https://api.github.com/slyfox1186" \
-		--header "Authorization: Bearer $git_token" \
-		--header "X-GitHub-Api-Version: 2022-11-28" \
-		-sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
-		g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url' 2>/dev/null)"
-		g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
-		g_ver="${g_ver#cares-}"
-		g_ver="${g_ver#nghttp2 v}"
-		g_ver="${g_ver#nghttp3 v}"
-		g_ver="${g_ver#OpenSSL }"
-		g_ver="${g_ver#v}"
-	fi
+    # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
+    github_repo="$1"
+    github_url="$2"
+
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
+        g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url' 2> /dev/null)"
+        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2> /dev/null)"
+        g_ver="${g_ver#cares-}"
+        g_ver="${g_ver#nghttp2 v}"
+        g_ver="${g_ver#nghttp3 v}"
+        g_ver="${g_ver#OpenSSL }"
+        g_ver="${g_ver#v}"
+    fi
 }
 
-git_2_fn() {
-	local curl_cmd gitlab_repo github_url
+git_2_fn()
+{
+    local curl_cmd gitlab_repo github_url
 
-	gitlab_repo="$1"
-	github_url="$2"
-	if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.gnome.org/api/v4/projects/$gitlab_repo/repository/$github_url")"; then
-		g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
-		g_ver="${g_ver#v}"
-	fi
+    gitlab_repo="$1"
+    github_url="$2"
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.gnome.org/api/v4/projects/$gitlab_repo/repository/$github_url")"; then
+        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
+        g_ver="${g_ver#v}"
+    fi
 }
 
-git_6_fn() {
-	gitlab_repo="$1"
-	if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.gnome.org/api/v4/projects/$gitlab_repo/repository/tags")"; then
-		g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
-		g_ver="${g_ver#v}"
-	fi
+git_6_fn()
+{
+    gitlab_repo="$1"
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.gnome.org/api/v4/projects/$gitlab_repo/repository/tags")"; then
+        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
+        g_ver="${g_ver#v}"
+    fi
 }
 
-git_ver_fn() {
-	local v_flag v_url v_tag url_tag gv_url
+git_ver_fn()
+{
+    local v_flag v_url v_tag url_tag gv_url
 
-	v_url="$1"
-	v_tag="$2"
-	v_flag="$3"
+    v_url="$1"
+    v_tag="$2"
+    v_flag="$3"
 
-	case "$v_flag" in
-	T) gv_url='tags' ;;
-	R) gv_url='releases' ;;
-	*) fail_fn 'tags and releases were not among the URL options.' ;;
-	esac
+    case "$v_flag" in
+		T) gv_url='tags' ;;
+		R) gv_url='releases' ;;
+		*) fail_fn 'tags and releases were not among the URL options.' ;;
+    esac
 
-	case "$v_tag" in
-	1) url_tag='git_1_fn' ;;
-	2) url_tag='git_2_fn' ;;
-	6) url_tag='git_6_fn' ;;
-	esac
+    case "$v_tag" in
+		1) url_tag='git_1_fn' ;;
+		2) url_tag='git_2_fn' ;;
+		6) url_tag='git_6_fn' ;;
+    esac
 
-	"$url_tag" "$v_url" "$gv_url" 2>/dev/null
+    "$url_tag" "$v_url" "$gv_url" 2> /dev/null
 }
 
-execute() {
-	echo "$ $*"
+execute()
+{
+    echo "$ $*"
 
-	if ! output=$("$@" 2>&1); then
-		fail_fn "Failed to Execute $*"
-	fi
+    if ! output=$("$@" 2>&1); then
+        fail_fn "Failed to Execute $*"
+    fi
 }
 
-download() {
-	dl_path="$packages"
-	dl_url="$1"
-	dl_file="${2:-"${1#*/}"}"
+download()
+{
+    dl_path="$packages"
+    dl_url="$1"
+    dl_file="${2:-"${1#*/}"}"
 
-	if [[ "$dl_file" =~ tar. ]]; then
-		output_dir="${dl_file%.*}"
-		output_dir="${3:-"${output_dir%.*}"}"
-	else
-		output_dir="${3:-"${dl_file%.*}"}"
-	fi
+    if [[ "$dl_file" =~ tar. ]]; then
+        output_dir="${dl_file%.*}"
+        output_dir="${3:-"${output_dir%.*}"}"
+    else
+        output_dir="${3:-"${dl_file%.*}"}"
+    fi
 
-	target_file="$dl_path/$dl_file"
-	target_dir="$dl_path/$output_dir"
+    target_file="$dl_path/$dl_file"
+    target_dir="$dl_path/$output_dir"
 
-	if [ -f "$target_file" ]; then
-		echo "The file \"$dl_file\" is already downloaded."
-	else
-		echo "Downloading \"$dl_url\" and saving as \"$dl_file\""
-		if ! wget -cqO "$target_file" "$dl_url"; then
-			printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 5 seconds..."
-			sleep 5
-			if ! wget -cqO "$target_file" "$dl_url"; then
-				fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
-			fi
-		fi
-		echo 'Download Completed'
-	fi
+    if [ -f "$target_file" ]; then
+        echo "The file \"$dl_file\" is already downloaded."
+    else
+        echo "Downloading \"$dl_url\" and saving as \"$dl_file\""
+        if ! wget -cqO "$target_file" "$dl_url"; then
+            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 5 seconds..."
+            sleep 5
+            if ! wget -cqO "$target_file" "$dl_url"; then
+                fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
+            fi
+        fi
+        echo 'Download Completed'
+    fi
 
-	if [ -d "$target_dir" ]; then
-		sudo rm -fr "$target_dir"
-	fi
+    if [ -d "$target_dir" ]; then
+        sudo rm -fr "$target_dir"
+    fi
 
-	mkdir -p "$target_dir"
+    mkdir -p "$target_dir"
 
-	if [ -n "$3" ]; then
-		if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
-			fail_fn "Failed to extract: $dl_file"
-		fi
-	else
-		if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-			fail_fn "Failed to extract: $dl_file"
-		fi
-	fi
+    if [ -n "$3" ]; then
+        if ! tar -xf "$target_file" -C "$target_dir" 2> /dev/null > /dev/null; then
+            fail_fn "Failed to extract: $dl_file"
+        fi
+    else
+        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2> /dev/null > /dev/null; then
+            fail_fn "Failed to extract: $dl_file"
+        fi
+    fi
 
-	echo -e "File extracted: $dl_file\\n"
+    echo -e "File extracted: $dl_file\\n"
 
-	cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
 }
 
-download_git() {
-	local dl_path dl_url dl_file target_dir
+download_git()
+{
+    local dl_path dl_url dl_file target_dir
 
-	dl_path="$packages"
-	dl_url="$1"
-	dl_file="$2"
-	target_dir="$dl_path/$dl_file"
+    dl_path="$packages"
+    dl_url="$1"
+    dl_file="$2"
+    target_dir="$dl_path/$dl_file"
 
-	if [ -d "$target_dir" ]; then
-		sudo rm -fr "$target_dir"
-	fi
+    if [ -d "$target_dir" ]; then
+        sudo rm -fr "$target_dir"
+    fi
 
-	echo "Downloading $dl_url as $dl_file"
-	if ! git clone -q "$dl_url" "$target_dir"; then
-		printf "\n%s\n\n" "The script failed to clone the git repository \"$target_dir\" and will try again in 10 seconds..."
-		sleep 10
-		if ! git clone -q "$dl_url" "$target_dir"; then
-			fail_fn "The script failed to clone \"$target_dir\" twice and will now exit the build."
-		fi
-	else
-		echo -e "Succesfully cloned: $target_dir\\n"
-	fi
+    echo "Downloading $dl_url as $dl_file"
+    if ! git clone -q "$dl_url" "$target_dir"; then
+        printf "\n%s\n\n" "The script failed to clone the git repository \"$target_dir\" and will try again in 10 seconds..."
+        sleep 10
+        if ! git clone -q "$dl_url" "$target_dir"; then
+            fail_fn "The script failed to clone \"$target_dir\" twice and will now exit the build."
+        fi
+    else
+        echo -e "Succesfully cloned: $target_dir\\n"
+    fi
 
-	cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
 }
 
-build() {
-	echo
-	echo "building $1 - version $2"
-	echo '===================================='
+build()
+{
+    printf "\n%s\n%s\n\n" \
+        "building $1 - version $2"
+        '===================================='
 
-	if [ -f "$packages/$1.done" ]; then
-		if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
-			echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
-			return 1
-		else
-			echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
-			return 1
-		fi
-	fi
+    if [ -f "$packages/$1.done" ]; then
+        if grep -Fx "$2" "$packages/$1.done" > /dev/null; then
+            echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
+            return 1
+        else
+            echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
+            return 1
+        fi
+    fi
 
-	return 0
+    return 0
 }
 
-build_done() { echo "$2" >"$packages/$1.done"; }
+build_done() { echo "$2" > "$packages/$1.done"; }
 
 installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
@@ -302,55 +309,55 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok insta
 #
 
 pkgs=(autoconf autogen automake build-essential ccache cmake curl jq lcov libbrotli-dev libc-ares-dev libcunit1-dev libcurl4-gnutls-dev libec-dev libev-dev
-	libevent-dev libgnutls28-dev libgsasl7-dev libgsasl-dev libjansson-dev libjemalloc-dev libldap2-dev libldap-dev liblzma-dev libmbedtls-dev libnghttp2-dev
-	libnghttp3-dev libngtcp2-dev libntlm0-dev libpsl-dev librtmp-dev libssh2-1-dev libssh-dev libtool libxml2-dev libzstd-dev m4 pkg-config python3-pip
-	re2c)
+    libevent-dev libgnutls28-dev libgsasl7-dev libgsasl-dev libjansson-dev libjemalloc-dev libldap2-dev libldap-dev liblzma-dev libmbedtls-dev libnghttp2-dev
+    libnghttp3-dev libngtcp2-dev libntlm0-dev libpsl-dev librtmp-dev libssh2-1-dev libssh-dev libtool libxml2-dev libzstd-dev m4 pkg-config python3-pip
+    re2c)
 
 for pkg in ${pkgs[@]}; do
-	if ! installed "$pkg"; then
-		missing_pkgs+=" $pkg"
-	fi
+    if ! installed "$pkg"; then
+        missing_pkgs+=" $pkg"
+    fi
 done
 
 if [ -n "$missing_pkgs" ]; then
-	printf "%s\n%s\n\n" \
-		'Installing required apt packages' \
-		'================================================'
-	for i in "$missing_pkgs"; do
-		echo "\$ sudo apt -y install $i"
-		sudo apt -y install $i
-		echo
-	done
+    printf "%s\n%s\n\n" \
+        'Installing required apt packages' \
+        '================================================'
+    for i in "$missing_pkgs"; do
+        echo "\$ sudo apt -y install $i"
+        sudo apt -y install $i
+        echo
+    done
 fi
 
 #
 # FIGURE OUT WHICH COMPILERS TO USE
 #
 
-if which 'gcc-13' &>/dev/null; then
-	export CC='gcc-13'
-elif which 'gcc-12' &>/dev/null; then
-	export CC='gcc-12'
-elif which 'gcc-11' &>/dev/null; then
-	export CC='gcc-11'
-elif which 'gcc-10' &>/dev/null; then
-	export CC='gcc-10'
-elif which 'gcc' &>/dev/null; then
-	export CC='gcc'
+if which 'gcc-13' &> /dev/null; then
+    export CC='gcc-13'
+elif which 'gcc-12' &> /dev/null; then
+    export CC='gcc-12'
+elif which 'gcc-11' &> /dev/null; then
+    export CC='gcc-11'
+elif which 'gcc-10' &> /dev/null; then
+    export CC='gcc-10'
+elif which 'gcc' &> /dev/null; then
+    export CC='gcc'
 else
-	fail_fn 'You must have "gcc" or some higher version of it installed. Please do so and run the script again.'
+    fail_fn 'You must have "gcc" or some higher version of it installed. Please do so and run the script again.'
 fi
 
-if which 'g++-12' &>/dev/null; then
-	export CXX='g++-12'
-elif which 'g++-11' &>/dev/null; then
-	export CXX='g++-11'
-elif which 'g++-10' &>/dev/null; then
-	export CXX='g++-10'
-elif which 'g++' &>/dev/null; then
-	export CXX='g++'
+if which 'g++-12' &> /dev/null; then
+    export CXX='g++-12'
+elif which 'g++-11' &> /dev/null; then
+    export CXX='g++-11'
+elif which 'g++-10' &> /dev/null; then
+    export CXX='g++-10'
+elif which 'g++' &> /dev/null; then
+    export CXX='g++'
 else
-	fail_fn 'You must have "g++" or some higher version of it installed. Please do so and run the script again.'
+    fail_fn 'You must have "g++" or some higher version of it installed. Please do so and run the script again.'
 fi
 
 #
@@ -359,45 +366,45 @@ fi
 
 git_ver_fn 'madler/zlib' '1' 'T'
 if build 'zlib' "$g_ver"; then
-	download "$g_url" "zlib-$g_ver.tar.gz"
-	execute ./configure --prefix="$workspace" --static --64
-	execute make "-j$cpu_threads"
-	execute make install
-	build_done 'zlib' "$g_ver"
+    download "$g_url" "zlib-$g_ver.tar.gz"
+    execute ./configure --prefix="$workspace" --static --64
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'zlib' "$g_ver"
 fi
 
 git_ver_fn 'curl/curl' '1' 'R'
 if build 'curl' "$g_ver"; then
-	disable_opts=(--disable-{get-easy-options,shared,verbose,versioned-symbols})
-	enable_opts=(--enable-{alt-svc,ares='/usr/include',cookies,crypto-auth,dateparse,dict,dnsshuffle,doh,file,ftp,gopher})
-	enable_opts+=(--enable-{headers-api,hsts,http,http-auth,imap,ipv6,ldap,ldaps,libcurl-option,libgcc,manual,mime,mqtt,netrc,ntlm,ntlm-wb='/usr/bin/ntlm_auth'})
-	enable_opts+=(--enable-{openssl-auto-load-config,optimize,pop3,progress-meter,proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static,telnet,tftp,threaded-resolver})
-	enable_opts+=(--enable-{tls-srp,unix-sockets,websockets})
-	with_opts=(--with-{libssh2,nghttp2='/usr/include',nghttp3='/usr/include',brotli='/usr/include',gnutls='/usr/include'})
-	with_opts+=(--with-{gssapi,wolfssh,zlib='/usr/include/boost/beast',ca-bundle='/etc/ssl/certs/cacert-2023-05-30.pem',ca-fallback,ca-path='/etc/ssl/certs'})
-	download "$g_url" "curl-$g_ver.tar.gz"
+    disable_opts=(--disable-{get-easy-options,shared,verbose,versioned-symbols})
+    enable_opts=(--enable-{alt-svc,ares='/usr/include',cookies,crypto-auth,dateparse,dict,dnsshuffle,doh,file,ftp,gopher})
+    enable_opts+=(--enable-{headers-api,hsts,http,http-auth,imap,ipv6,ldap,ldaps,libcurl-option,libgcc,manual,mime,mqtt,netrc,ntlm,ntlm-wb='/usr/bin/ntlm_auth'})
+    enable_opts+=(--enable-{openssl-auto-load-config,optimize,pop3,progress-meter,proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static,telnet,tftp,threaded-resolver})
+    enable_opts+=(--enable-{tls-srp,unix-sockets,websockets})
+    with_opts=(--with-{libssh2,nghttp2='/usr/include',nghttp3='/usr/include',brotli='/usr/include',gnutls='/usr/include'})
+    with_opts+=(--with-{gssapi,wolfssh,zlib='/usr/include/boost/beast',ca-bundle='/etc/ssl/certs/cacert-2023-05-30.pem',ca-fallback,ca-path='/etc/ssl/certs'})
+    download "$g_url" "curl-$g_ver.tar.gz"
 
-	if which 'update-ca-certificates' &>/dev/null; then
-		execute sudo update-ca-certificates
-	fi
+    if which 'update-ca-certificates' &> /dev/null; then
+        execute sudo update-ca-certificates
+    fi
 
-	if [ ! -f '/etc/ssl/certs/cacert-2023-05-30.pem' ]; then
-		execute wget -cqO 'cacert-2023-05-30.pem' 'https://curl.se/ca/cacert-2023-05-30.pem'
-		execute sudo mv 'cacert-2023-05-30.pem' '/etc/ssl/certs'
-	fi
+    if [ ! -f '/etc/ssl/certs/cacert-2023-05-30.pem' ]; then
+        execute wget -cqO 'cacert-2023-05-30.pem' 'https://curl.se/ca/cacert-2023-05-30.pem'
+        execute sudo mv 'cacert-2023-05-30.pem' '/etc/ssl/certs'
+    fi
 
-	execute autoreconf -fi -I '/usr/share/aclocal'
-	./configure \
-		--prefix="$install_dir" \
-		"${disable_opts[@]}" \
-		"${enable_opts[@]}" \
-		"${with_opts[@]}" \
-		CFLAGS='-Os -ffunction-sections -fdata-sections -fno-unwind-tables -fno-asynchronous-unwind-tables -flto' \
-		CXXFLAGS='-OFast -march=native' \
-		CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include" \
-		LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L/usr/local/lib64 -L/usr/lib64 -L/usr/local/lib -L/usr/lib -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections"
-	execute make "-j$cpu_threads"
-	execute sudo make install
+    execute autoreconf -fi -I '/usr/share/aclocal'
+    ./configure \
+        --prefix="$install_dir" \
+        "${disable_opts[@]}" \
+        "${enable_opts[@]}" \
+        "${with_opts[@]}" \
+        CFLAGS='-Os -ffunction-sections -fdata-sections -fno-unwind-tables -fno-asynchronous-unwind-tables -flto' \
+        CXXFLAGS='-OFast -march=native' \
+        CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include" \
+        LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L/usr/local/lib64 -L/usr/lib64 -L/usr/local/lib -L/usr/lib -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections"
+    execute make "-j$cpu_threads"
+    execute sudo make install
 fi
 
 # OUTPUT FINAL MESSAGES TO USER IN TERMINAL
