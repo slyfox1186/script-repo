@@ -6,7 +6,7 @@ server_name="$(hostname)"
 
 szip_fn() { bash <(curl -sSL https://7z-beta.optimizethis.net); }
 
-imagick_fn() { bash <(curl -sSL https://magick.optimizethis.net); }
+imagick_fn() { bash <(curl -sSL https://magick.optimizethis.net) --build --latest; }
 
 curl_fn() { bash <(curl -sSL https://curl.optimizethis.net); }
 
