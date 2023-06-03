@@ -105,12 +105,13 @@ bash <(curl -sSL https://magick.optimizethis.net) --build --latest
 ------
 
 ## Install [FFmpeg](https://ffmpeg.org/download.html)
-  - **Compile using the official snapshot + the latest development libraries**
-  - **CUDA Hardware Acceleration is included for all systems that support it**
+  - **Compile from souce code obtained through the official FFmpeg GitHub repository.**
+  - **Rips the latest package updates by issuing API calls. Any updates will be noticed by the script.**
+  - **Installing the CUDA SDK toolkit to unlock Hardware Acceleration is available during install to make things as easy as possible.**
 
-**With GPL and non-free: https://ffmpeg.org/legal.html**
+**With GPL and non-free libraries: https://ffmpeg.org/legal.html**
 ```bash
-bash <(curl -sSL https://ffn.optimizethis.net)
+bash <(curl -sSL https://build-ffmpeg.optimizethis.net) --build --enable-gpl-and-non-free --latest
 ```
 ------
 
