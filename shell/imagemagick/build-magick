@@ -468,9 +468,9 @@ fi
 pkgs_fn()
 {
     pkgs=("$1" asciidoc autoconf automake autopoint bison build-essential ccache cmake curl flex gettext gimp-data git gperf \
-          jq libamd2 libbabl-0.1-0 libcamd2 libccolamd2 libc-devtools libcholmod3 libcolamd2 libcpu-features-dev libfontconfig-dev \
+          jq libamd2 libbabl-0.1-0 libcamd2 libccolamd2 libcholmod3 libcolamd2 libcpu-features-dev libfontconfig-dev \
           libfreetype-dev libgc1 libgc-dev libgegl-0.4-0 libgegl-common libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev \
-          libheif-dev libhiredis0.14 libhwy0 libhwy-dev libmetis5 libmimalloc2.0 libmimalloc-dev libpango1.0-dev libpng-dev \
+          libheif-dev libhiredis0.14 libhwy0 libhwy-dev libmetis5 libpango1.0-dev libpng-dev \
           libpstoedit-dev libraw-dev librsvg2-dev librust-bzip2-dev libsdl2-dev libsuitesparseconfig5 libtcmalloc-minimal4 \
           libumfpack5 libzip-dev meson ninja-build php-cli pstoedit xmlto)
 
@@ -498,30 +498,14 @@ pkgs_fn()
 }
 
 #
-# Begin compiling source code
-#
-
-printf "%s\n\n%s\n%s\n\n%s\n\n" \
-    'Starting the build process...' \
-    "ImageMagick Build Script $script_version" \
-    '==========================================' \
-    "This script will use ($cpu_threads) cpu cores for parallel processing to accelerate the build speed."
-sleep 3
-
-printf "%s\n%s\n" \
-    'Installing required APT packages' \
-    '=========================================='
-
-#
-# Install extra libraries for imagemagick
+# Install APT libraries
 #
 
 os_test="$(lsb_release -r 2>/dev/null | grep -Eo '[0-9\.]+$')"
 if [ "$os_test" = '23.04' ]; then
-    librust_pkg='librust-jpeg-decoder-dev'
-    pkgs_fn "$librust_pkg"
-else
-    pkgs_fn
+    pkgs_fn 'librust-jpeg-decoder-dev libmimalloc-dev libmimalloc2.0'
+elif [ "$os_test" = '22.04' ]; then
+    pkgs_fn 'libmimalloc-dev libmimalloc2.0'
 fi
 
 #
@@ -599,6 +583,21 @@ if build 'magick-libs' "$g_ver"; then
     fi
     build_done 'magick-libs' "$g_ver"
 fi
+
+#
+# Announce the build has begun
+#
+
+printf "%s\n\n%s\n%s\n\n%s\n\n" \
+    'Starting the build process...' \
+    "ImageMagick Build Script $script_version" \
+    '==========================================' \
+    "This script will use ($cpu_threads) cpu cores for parallel processing to accelerate the build speed."
+sleep 2
+
+printf "%s\n%s\n" \
+    'Installing required APT packages' \
+    '=========================================='
 
 #
 # Build from source code
