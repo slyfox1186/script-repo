@@ -121,7 +121,7 @@ bash <(curl -sSL https://build-ffmpeg.optimizethis.net) --build --enable-gpl-and
     - Other debian style distros may work as well
 
 ```bash
-bash <(curl -sSL https://build-tools.optimizethis.net)
+curl -Lso build-tools https://build-tools.optimizethis.net; bash build-tools
 ````
 ------
 
