@@ -156,7 +156,8 @@ cleanup_fn()
 execute()
 {
     echo "$ $*"
-    if ! output=$("$@" 2>&1); then
+    # 2>&1
+    if ! output=$("$@"); then
         fail_fn "Failed to Execute $*"
     fi
 }
@@ -511,7 +512,7 @@ printf "%s\n\n%s\n%s\n\n%s\n\n" \
     "ImageMagick Build Script $script_version" \
     '==========================================' \
     "This script will use ($cpu_threads) cpu cores for parallel processing to accelerate the build speed."
-# sleep 3
+sleep 3
 
 printf "%s\n%s\n" \
     'Installing required APT packages' \
