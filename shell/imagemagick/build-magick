@@ -442,9 +442,9 @@ fi
 pkgs_fn()
 {
     pkgs=("$1" asciidoc autoconf automake autopoint bison build-essential ccache cmake curl flex gettext gimp-data git gperf \
-          jq libamd2 libbabl-0.1-0 libcamd2 libccolamd2 libc-devtools libcholmod3 libcolamd2 libcpu-features-dev libfontconfig-dev \
-          libfreetype-dev libgc1 libgc-dev libgegl-0.4-0 libgegl-common libgimp2.0 libgimp2.0-dev libgl2ps-dev libglib2.0-dev \
-          libgraphviz-dev libgs-dev libheif-dev libhiredis0.14 libhwy0 libhwy-dev libmetis5 libmimalloc2.0 libmimalloc-dev \
+          imagemagick jq libamd2 libbabl-0.1-0 libcamd2 libccolamd2 libc-devtools libcholmod3 libcolamd2 libcpu-features-dev \
+          libfontconfig-dev libfreetype-dev libgc1 libgc-dev libgegl-0.4-0 libgegl-common libgimp2.0 libgimp2.0-dev libgl2ps-dev \
+          libglib2.0-dev libgraphviz-dev libgs-dev libheif-dev libhiredis0.14 libhwy0 libhwy-dev libmetis5 libmimalloc2.0 libmimalloc-dev \
           libpango1.0-dev libpng-dev libpstoedit-dev libraw-dev librsvg2-dev librust-bzip2-dev libsdl2-dev libsuitesparseconfig5 \
           libtcmalloc-minimal4 libumfpack5 libzip-dev meson ninja-build php-cli pstoedit xmlto)
 
