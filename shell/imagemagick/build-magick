@@ -467,18 +467,12 @@ fi
 # required imagemagick developement packages
 pkgs_fn()
 {
-    pkgs=("$1" alien asciidoc autoconf automake autopoint bison build-essential bzip2 ccache cmake curl ffmpeg flex fontconfig \
-          fontconfig-config fonts-dejavu-core fonts-droid-fallback fonts-noto-mono gettext ghostscript gimp-data git gperf \
-          gsfonts hicolor-icon-theme jq libamd2 libavahi-client3 libavahi-common3 libavahi-common-data libbabl-0.1-0 libcairo2 \
-          libcamd2 libccolamd2 libc-devtools libcholmod3 libcolamd2 libcpu-features-dev libcups2 libcupsfilters1 libcupsimage2 \
-          libdatrie1 libdjvulibre21 libdjvulibre-text libfftw3-double3 libfontconfig1 libfontconfig-dev libfreetype6 libfreetype6-dev \
-          libfreetype-dev libgc1 libgc-dev libgegl-0.4-0 libgegl-common libgl2ps-dev libglib2.0-dev libgraphite2-3 libgraphviz-dev \
-          libgs9 libgs9-common libgs-dev libharfbuzz0b libheif-dev libhiredis0.14 libhwy0 libhwy-dev libijs-0.35 libilmbase25 libjbig0 \
-          libjbig2dec0 liblcms2-2 liblqr-1-0 libmetis5 libmimalloc2.0 libmimalloc-dev libnetpbm10 libopenexr25 libpango-1.0-0 \
-          libpango1.0-dev libpangocairo-1.0-0 libpangoft2-1.0-0 libpaper1 libpaper-utils libpixman-1-0 libpng-dev libpstoedit-dev libraw20 \
-          libraw-bin libraw-dev librsvg2-dev librust-bzip2-dev libsuitesparseconfig5 libtcmalloc-minimal4 libthai0 libthai-data \
-          libtiff5 libturbojpeg libumfpack5 libwmf0.2-7 libxcb-render0 libxcb-shm0 libxrender1 libxt6 libzip-dev meson netpbm ninja-build \
-          php-cli poppler-data pstoedit xmlto libstdc++6)
+    pkgs=("$1" asciidoc autoconf automake autopoint bison build-essential ccache cmake curl flex gettext gimp-data git gperf \
+          jq libamd2 libbabl-0.1-0 libcamd2 libccolamd2 libc-devtools libcholmod3 libcolamd2 libcpu-features-dev libfontconfig-dev \
+          libfreetype-dev libgc1 libgc-dev libgegl-0.4-0 libgegl-common libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev \
+          libheif-dev libhiredis0.14 libhwy0 libhwy-dev libmetis5 libmimalloc2.0 libmimalloc-dev libpango1.0-dev libpng-dev \
+          libpstoedit-dev libraw-dev librsvg2-dev librust-bzip2-dev libsdl2-dev libsuitesparseconfig5 libtcmalloc-minimal4 \
+          libumfpack5 libzip-dev meson ninja-build php-cli pstoedit xmlto)
 
     for pkg in ${pkgs[@]}
     do
