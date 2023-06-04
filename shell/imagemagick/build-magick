@@ -617,15 +617,6 @@ if build 'm4' 'release'; then
     build_done 'm4' 'latest'
 fi
 
-if build 'libunwind' '1.6.2'; then
-    download 'http://download.savannah.gnu.org/releases/libunwind/libunwind-1.6.2.tar.gz' 'libunwind-1.6.2.tar.gz'
-    execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --enable-shared --disable-static --disable-tests --enable-cxx-exceptions
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'libunwind' '1.6.2'
-fi
-
 if build 'openssl' '1.1.1u'; then
     download 'https://www.openssl.org/source/openssl-1.1.1u.tar.gz' 'openssl-1.1.1u.tar.gz'
     execute ./config --prefix="$workspace" --openssldir="$workspace" --with-zlib-include="$workspace"/include/ --with-zlib-lib="$workspace"/lib no-shared zlib
