@@ -317,7 +317,7 @@ pkgs_fn()
     if [ -n "${missing_pkgs-}" ]; then
         for i in "$missing_pkgs"
         do
-            if ! sudo apt-fast -y install $i; then
+            if ! sudo apt -y install $i; then
                 sudo apt --fix-broken install
                 fail_fn 'APT held broken packages. Try running the script again.'
             fi
