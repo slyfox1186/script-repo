@@ -308,7 +308,7 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok insta
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autogen automake build-essential ccache cmake curl jq lcov libbrotli-dev libc-ares-dev libcunit1-dev libcurl4-gnutls-dev libec-dev libev-dev
+pkgs=(autoconf autogen automake build-essential ccache cmake curl git jq lcov libbrotli-dev libc-ares-dev libcunit1-dev libcurl4-gnutls-dev libec-dev libev-dev
     libevent-dev libgnutls28-dev libgsasl7-dev libgsasl-dev libjansson-dev libjemalloc-dev libldap2-dev libldap-dev liblzma-dev libmbedtls-dev libnghttp2-dev
     libnghttp3-dev libngtcp2-dev libntlm0-dev libpsl-dev librtmp-dev libssh2-1-dev libssh-dev libtool libxml2-dev libzstd-dev m4 pkg-config python3-pip
     re2c)
