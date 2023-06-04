@@ -273,7 +273,7 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok insta
 
 install_deb_files_fn()
 {
-    printf "%s\n%s" \
+    printf "\n%s\n%s" \
         'Installing required debian packages' \
         '=========================================='
 
