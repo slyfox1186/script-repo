@@ -1,6 +1,5 @@
 # PULL THE LATEST VERSIONS OF EACH PACKAGE FROM THE WEBSITE API
 curl_timeout='10'
-git_token=''
 
 git_1_fn()
 {
@@ -9,6 +8,7 @@ git_1_fn()
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     github_repo="$1"
     github_url="$2"
+    git_token=''
 
     if curl_cmd="$(curl \
                         -m "$curl_timeout" \
