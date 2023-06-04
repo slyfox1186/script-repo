@@ -23,7 +23,6 @@
 
 clear
 
-# Verify the script does not have root access before continuing
 if [ "$EUID" -eq '0' ]; then
     printf "%s\n\n" \
         'This script must be run WITHOUT root/sudo'
@@ -31,7 +30,7 @@ if [ "$EUID" -eq '0' ]; then
 fi
 
 #
-# Set master variables
+# SET MASTER VARIABLES
 #
 
 progname="${0:2}"
@@ -42,13 +41,13 @@ workspace="$cwd"/workspace
 script_repo='https://github.com/slyfox1186/script-repo'
 
 #
-# Create output directories
+# CREATE OUTPUT DIRECTORIES
 #
 
-mkdir -p "$packages" "$workspace/deb-files"
+mkdir -p "$packages" "$packages/deb-files"
 
 #
-# Set the available cpu count for parallel processing (speeds up the build process)
+# SET THE AVAILABLE CPU COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
 #
 
 if [ -f '/proc/cpuinfo' ]; then
@@ -58,7 +57,7 @@ else
 fi
 
 #
-# Set global variables
+# SET GLOBAL VARIABLES
 #
 
 export CXXFLAGS='-g -O3 -march=native -Wno-error'
@@ -103,10 +102,9 @@ $workspace/share/ghostscript/10.01.1/lib:\
 export LD_LIBRARY_PATH
 
 #
-# Create Functions
+# CREATE FUNCTIONS
 #
 
-# general failure function
 fail_fn()
 {
     printf "\n\n%s\n\n%s\n\n%s\n\n" \
@@ -156,8 +154,7 @@ cleanup_fn()
 execute()
 {
     echo "$ $*"
-    # 2>&1
-    if ! output=$("$@"); then
+    if ! output=$("$@" 2>&1); then
         fail_fn "Failed to Execute $*"
     fi
 }
@@ -294,18 +291,17 @@ download_git()
     cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
 }
 
-# determine if a package is installed or not
 installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
 install_deb_files_fn()
 {
-    printf "%s\n%s" \
+    printf "\n%s\n%s" \
         'Installing required debian packages' \
         '=========================================='
 
     cd "$packages"/deb-files || exit 1
 
-    printf "%s\n%s" \
+    printf "\n%s\n%s" \
         'Installing: libjxl_0.8.1_amd64.deb' \
         '=========================================='
     sudo dpkg -i 'libjxl_0.8.1_amd64.deb' 2>&1
@@ -346,14 +342,14 @@ deb_files_fn()
         fi
 
         if ! tar -zxf "$packages"/jpeg-xl.tar.gz -C "$packages"/deb-files --strip-components 1; then
-            fail_fn 'Could not extract: jpeg-xl.tar.gz'
+            fail_fn "Could not extract: $packages/jpeg-xl.tar.gz"
         fi
         install_deb_files_fn
     fi
 }
 
 #
-# Get the latest package version using GitHub's API
+# GET THE LATEST PACKAGE VERSION USING GITHUB'S API
 #
 
 curl_timeout='10'
@@ -408,7 +404,10 @@ git_ver_fn()
     "$url_tag" "$v_url" "$gv_url" 2>/dev/null
 }
 
+#
 # PRINT THE OPTIONS AVAILABLE WHEN MANUALLY RUNNING THE SCRIPT
+#
+
 usage()
 {
     clear
@@ -464,15 +463,12 @@ if [ -z "$bflag" ]; then
     exit 0
 fi
 
-# required imagemagick developement packages
 pkgs_fn()
 {
-    pkgs=("$1" asciidoc autoconf automake autopoint bison build-essential ccache cmake curl flex gettext gimp-data git gperf \
-          jq libamd2 libbabl-0.1-0 libcamd2 libccolamd2 libcholmod3 libcolamd2 libcpu-features-dev libfontconfig-dev \
-          libfreetype-dev libgc1 libgc-dev libgegl-0.4-0 libgegl-common libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev \
-          libheif-dev libhiredis0.14 libhwy0 libhwy-dev libmetis5 libpango1.0-dev libpng-dev \
-          libpstoedit-dev libraw-dev librsvg2-dev librust-bzip2-dev libsdl2-dev libsuitesparseconfig5 libtcmalloc-minimal4 \
-          libumfpack5 libzip-dev meson ninja-build php-cli pstoedit xmlto)
+    pkgs=("$1" alien asciidoc autoconf automake autopoint bison build-essential ccache cmake curl flex gettext gimp-data git \
+          gperf jq libfreetype-dev libgc-dev libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev libheif-dev libpango1.0-dev \
+          libpng-dev libpstoedit-dev libraw-dev librsvg2-dev librust-bzip2-dev libsdl2-dev libtcmalloc-minimal4 libzip-dev meson \
+          nasm ninja-build php-cli pstoedit xmlto)
 
     for pkg in ${pkgs[@]}
     do
@@ -486,7 +482,7 @@ pkgs_fn()
         do
             if ! sudo apt -y install $i; then
                 sudo apt --fix-broken install
-                fail_fn 'APT held broken packages. Try running the script again.'
+                fail_fn 'Error: APT held broken packages. Try running the script again.'
             fi
             sudo apt -y autoremove
             sudo apt clean
@@ -498,24 +494,26 @@ pkgs_fn()
 }
 
 #
-# Install APT libraries
+# INSTALL APT LIBRARIES
 #
 
 os_test="$(lsb_release -r 2>/dev/null | grep -Eo '[0-9\.]+$')"
 if [ "$os_test" = '23.04' ]; then
-    pkgs_fn 'librust-jpeg-decoder-dev libmimalloc-dev libmimalloc2.0'
+    pkgs_fn 'librust-jpeg-decoder-dev libmimalloc-dev libmimalloc2.0 libcpu-features-dev libgc1 libhwy-dev libfontconfig-dev'
 elif [ "$os_test" = '22.04' ]; then
-    pkgs_fn 'libmimalloc-dev libmimalloc2.0'
+    pkgs_fn 'libmimalloc-dev libmimalloc2.0 libcpu-features-dev libgc1 libhwy0 libhwy-dev libfontconfig-dev'
+elif [ "$os_test" = '20.04' ]; then
+    pkgs_fn 'libfontconfig1-dev'
 fi
 
 #
-# Install required debian files
+# INSTALL REQUIRED DEBIAN FILES
 #
 
 deb_files_fn
 
 #
-# Install composer to compile Graphviz
+# INSTALL COMPOSER TO COMPILE GRAPHVIZ
 #
 
 if [ ! -f '/usr/bin/composer' ]; then
@@ -565,12 +563,12 @@ else
 fi
 
 #
-# Install official ImageMagick Libs
+# INSTALL OFFICIAL IMAGEMAGICK LIBS
 #
 
 git_ver_fn 'imagemagick/imagemagick' '1' 'T'
 if build 'magick-libs' "$g_ver"; then
-    cd "$workspace/deb-files" || exit 1
+    cd "$packages/deb-files" || exit 1
     if ! curl -Lso "magick-libs-$g_ver.rpm" "https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-libs-$g_ver.x86_64.rpm"; then
         fail_fn 'Failed to download the magick-libs file.'
     fi
@@ -585,7 +583,7 @@ if build 'magick-libs' "$g_ver"; then
 fi
 
 #
-# Announce the build has begun
+# ANNOUNCE THE BUILD HAS BEGUN
 #
 
 printf "%s\n\n%s\n%s\n\n%s\n\n" \
@@ -600,7 +598,7 @@ printf "%s\n%s\n" \
     '=========================================='
 
 #
-# Build from source code
+# BUILD FROM SOURCE CODE
 #
 
 git_ver_fn 'libsdl-org/libtiff' '1' 'T'
@@ -720,7 +718,7 @@ if build 'openjpeg' "$g_ver"; then
 fi
 
 #
-# Begin imagemagick build
+# BEGIN IMAGEMAGICK BUILD
 #
 
 if [ -f "$packages/ImageMagick.done" ]; then
@@ -755,14 +753,23 @@ if build 'imageMagick' "$g_ver"; then
     build_done 'ImageMagick' "$g_ver"
 fi
 
-# ldconfig must be run next in order to update file changes or the magick command will not work
+#
+# LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE MAGICK COMMAND WILL NOT WORK
+#
+
 echo
 sudo ldconfig /usr/local/lib 2>/dev/null
 
-# show the newly installed magick version
+#
+# SHOW THE NEWLY INSTALLED MAGICK VERSION
+#
+
 if ! magick -version 2>/dev/null; then
     fail_fn 'Failure to execute the command: magick -version'
 fi
 
-# prompt the user to cleanup the build files
+#
+# PROMPT THE USER TO CLEANUP THE BUILD FILES
+#
+
 cleanup_fn
