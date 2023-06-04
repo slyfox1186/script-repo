@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2046,SC2066,SC2068,SC2086,SC2119,SC2162,SC2181,SC2034
+# shellcheck disable=SC2046,SC2066,SC2068,SC2086,SC2119,SC2162,SC2181
 
 #################################################################################
 ##
@@ -15,37 +15,37 @@
 ##  Method: The script will search GitHub for the latest released version
 ##         and upon execution, will import the info into the script for use
 ##
-##  Updated: 06.04.23
+##  Updated: 06.03.23
 ##
-##  Script Version: 2.0
+##  Script Version: 1.0
 ##
 #################################################################################
 
+clear
+
 # Verify the script does not have root access before continuing
 if [ "$EUID" -eq '0' ]; then
-    printf "%s\n\n" 'This script must be run WITHOUT root/sudo'
+    printf "%s\n\n" \
+        'This script must be run WITHOUT root/sudo'
     exit 1
 fi
-
-clear
 
 #
 # Set master variables
 #
 
 progname="${0:2}"
-script_version='2.0'
+script_version='1.0'
 cwd="$PWD"/magick-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
 script_repo='https://github.com/slyfox1186/script-repo'
-latest='false'
 
 #
 # Create output directories
 #
 
-mkdir -p "$packages" "$workspace"
+mkdir -p "$packages" "$workspace/deb-files"
 
 #
 # Set the available cpu count for parallel processing (speeds up the build process)
@@ -137,14 +137,15 @@ cleanup_fn()
 
     case "$choice" in
         1)
-            sudo rm -fr "$cwd"
+            remove_dir "$cwd"
             exit_fn
             ;;
         2)
             exit_fn
             ;;
         *)
-            printf "%s\n\n" 'Error: bad user input'
+            printf "%s\n\n" \
+                'Error: bad user input'
             read -p 'Press enter to try again.'
             echo
             cleanup_fn
@@ -155,7 +156,8 @@ cleanup_fn()
 execute()
 {
     echo "$ $*"
-    if ! output=$("$@" 2>&1); then
+    # 2>&1
+    if ! output=$("$@"); then
         fail_fn "Failed to Execute $*"
     fi
 }
@@ -187,6 +189,30 @@ get_version_fn()
     printf "\n%s\n\n%s\n\n" \
         "Script name: $scipt_name" \
         "Script version: $script_version"
+}
+
+make_dir()
+{
+    if ! remove_dir "$1"; then
+        fail_fn "Failed to remove the directory: $PWD/$1"
+    fi
+    if ! mkdir "$1"; then
+        fail_fn "Failed to create the directory: $PWD/$1"
+    fi
+}
+
+remove_file()
+{
+    if [ -f "$1" ]; then
+        sudo rm -f "$1"
+    fi
+}
+
+remove_dir()
+{
+    if [ -d "$1" ]; then
+        sudo rm -fr "$1"
+    fi
 }
 
 download()
@@ -221,7 +247,7 @@ download()
         sudo rm -fr "$dl_path/$target_dir"
     fi
 
-    mkdir -p "$dl_path/$target_dir"
+    make_dir "$dl_path/$target_dir"
 
     if [[ "$dl_file" == *'patch'* ]]; then
         return
@@ -250,7 +276,7 @@ download_git()
     target_dir="$dl_path/$dl_file"
 
     if [ -d "$target_dir" ]; then
-        sudo rm -fr "$target_dir"
+        remove_dir "$target_dir"
     fi
 
         echo "Downloading $dl_url as $dl_file"
@@ -273,7 +299,7 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok insta
 
 install_deb_files_fn()
 {
-    printf "\n%s\n%s" \
+    printf "%s\n%s" \
         'Installing required debian packages' \
         '=========================================='
 
@@ -441,12 +467,18 @@ fi
 # required imagemagick developement packages
 pkgs_fn()
 {
-    pkgs=("$1" asciidoc autoconf automake autopoint bison build-essential ccache cmake curl flex gettext gimp-data git gperf \
-          imagemagick jq libamd2 libbabl-0.1-0 libcamd2 libccolamd2 libc-devtools libcholmod3 libcolamd2 libcpu-features-dev \
-          libfontconfig-dev libfreetype-dev libgc1 libgc-dev libgegl-0.4-0 libgegl-common libgimp2.0 libgimp2.0-dev libgl2ps-dev \
-          libglib2.0-dev libgraphviz-dev libgs-dev libheif-dev libhiredis0.14 libhwy0 libhwy-dev libmetis5 libmimalloc2.0 libmimalloc-dev \
-          libpango1.0-dev libpng-dev libpstoedit-dev libraw-dev librsvg2-dev librust-bzip2-dev libsdl2-dev libsuitesparseconfig5 \
-          libtcmalloc-minimal4 libumfpack5 libzip-dev meson ninja-build php-cli pstoedit xmlto)
+    pkgs=("$1" alien asciidoc autoconf automake autopoint bison build-essential bzip2 ccache cmake curl ffmpeg flex fontconfig \
+          fontconfig-config fonts-dejavu-core fonts-droid-fallback fonts-noto-mono gettext ghostscript gimp-data git gperf \
+          gsfonts hicolor-icon-theme jq libamd2 libavahi-client3 libavahi-common3 libavahi-common-data libbabl-0.1-0 libcairo2 \
+          libcamd2 libccolamd2 libc-devtools libcholmod3 libcolamd2 libcpu-features-dev libcups2 libcupsfilters1 libcupsimage2 \
+          libdatrie1 libdjvulibre21 libdjvulibre-text libfftw3-double3 libfontconfig1 libfontconfig-dev libfreetype6 libfreetype6-dev \
+          libfreetype-dev libgc1 libgc-dev libgegl-0.4-0 libgegl-common libgl2ps-dev libglib2.0-dev libgraphite2-3 libgraphviz-dev \
+          libgs9 libgs9-common libgs-dev libharfbuzz0b libheif-dev libhiredis0.14 libhwy0 libhwy-dev libijs-0.35 libilmbase25 libjbig0 \
+          libjbig2dec0 liblcms2-2 liblqr-1-0 libmetis5 libmimalloc2.0 libmimalloc-dev libnetpbm10 libopenexr25 libpango-1.0-0 \
+          libpango1.0-dev libpangocairo-1.0-0 libpangoft2-1.0-0 libpaper1 libpaper-utils libpixman-1-0 libpng-dev libpstoedit-dev libraw20 \
+          libraw-bin libraw-dev librsvg2-dev librust-bzip2-dev libsuitesparseconfig5 libtcmalloc-minimal4 libthai0 libthai-data \
+          libtiff5 libturbojpeg libumfpack5 libwmf0.2-7 libxcb-render0 libxcb-shm0 libxrender1 libxt6 libzip-dev meson netpbm ninja-build \
+          php-cli poppler-data pstoedit xmlto libstdc++6)
 
     for pkg in ${pkgs[@]}
     do
@@ -462,9 +494,11 @@ pkgs_fn()
                 sudo apt --fix-broken install
                 fail_fn 'APT held broken packages. Try running the script again.'
             fi
+            sudo apt -y autoremove
+            sudo apt clean
         done
     else
-        echo 'The required packages are already installed.'
+        echo 'The required APT packages are already installed.'
         echo
     fi
 }
@@ -478,10 +512,10 @@ printf "%s\n\n%s\n%s\n\n%s\n\n" \
     "ImageMagick Build Script $script_version" \
     '==========================================' \
     "This script will use ($cpu_threads) cpu cores for parallel processing to accelerate the build speed."
-sleep 2
+# sleep 3
 
 printf "%s\n%s\n" \
-    'Installing required packages' \
+    'Installing required APT packages' \
     '=========================================='
 
 #
@@ -558,73 +592,28 @@ else
 fi
 
 #
-# Build from source code
+# Install official ImageMagick Libs
 #
 
-git_ver_fn 'pkgconf/pkgconf' '1' 'T'
-if build 'pkg-config' "$g_ver"; then
-    download "https://codeload.github.com/pkgconf/pkgconf/tar.gz/refs/tags/pkgconf-$g_ver" "pkg-config-$g_ver.tar.gz"
-    execute ./autogen.sh
-    execute ./configure --silent --prefix="$workspace" --enable-static --disable-shared
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'pkg-config' "$g_ver"
+git_ver_fn 'imagemagick/imagemagick' '1' 'T'
+if build 'magick-libs' "$g_ver"; then
+    cd "$workspace/deb-files" || exit 1
+    if ! curl -Lso "magick-libs-$g_ver.rpm" "https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-libs-$g_ver.x86_64.rpm"; then
+        fail_fn 'Failed to download the magick-libs file.'
+    fi
+    sudo alien -d "magick-libs-$g_ver.rpm"
+    if ! sudo dpkg -i "imagemagick-libs_7.1.1-12_amd64.deb"; then
+        printf "\n%s\n%s\n\n" \
+            "DPKG failed to install: magick-libs-$g_ver.deb" \
+            'The script will probably stil work so keep going.'
+        read -p 'Press enter to continue.'
+    fi
+    build_done 'magick-libs' "$g_ver"
 fi
 
-git_ver_fn 'netwide-assembler/nasm' '1' 'T'
-if build 'nasm' '2.16.02rc1'; then
-    download 'https://www.nasm.us/pub/nasm/releasebuilds/2.16.02rc1/nasm-2.16.02rc1.tar.xz' 'nasm-2.16.02rc1.tar.gz'
-    execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --enable-ccache --disable-pedantic
-    execute make "-j$cpu_threads"
-    execute make strip
-    execute make install
-    build_done 'nasm' '2.16.02rc1'
-fi
-
-if build 'autoconf' '2.71'; then
-    download 'https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.xz' 'autoconf-2.71.tar.xz'
-    execute autoreconf -fi
-    execute ./configure --prefix="$workspace"
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'autoconf' '2.71'
-fi
-
-if build 'automake' '1.16.5'; then
-    download 'https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz' 'automake-1.16.5.tar.gz'
-    execute ./bootstrap
-    execute autoreconf -fi
-    execute ./configure --prefix="$workspace"
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'automake' '1.16.5'
-fi
-
-if build 'libtool' '2.4.7'; then
-    download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz' 'libtool-2.4.7.tar.xz'
-    execute ./configure --prefix="$workspace" --enable-static --disable-shared --with-pic
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'libtool' '2.4.7'
-fi
-
-if build 'm4' 'release'; then
-    download 'http://ftp.gnu.org/gnu/m4/m4-latest.tar.xz' 'm4-release.tar.xz'
-    execute ./configure --prefix="$workspace"
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'm4' 'latest'
-fi
-
-if build 'libunwind' '1.6.2'; then
-    download 'http://download.savannah.gnu.org/releases/libunwind/libunwind-1.6.2.tar.gz' 'libunwind-1.6.2.tar.gz'
-    execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --enable-shared --disable-static --disable-tests --enable-cxx-exceptions
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'libunwind' '1.6.2'
-fi
+#
+# Build from source code
+#
 
 git_ver_fn 'libsdl-org/libtiff' '1' 'T'
 if build 'tiff' "$g_ver"; then
@@ -638,7 +627,7 @@ fi
 
 if build 'jpeg-turbo' 'git'; then
     download_git 'https://github.com/imageMagick/jpeg-turbo.git' 'jpeg-turbo-git'
-    mkdir -p 'build'
+    make_dir 'build'
     execute cmake -S . -DCMAKE_INSTALL_PREFIX='/usr/local' -DCMAKE_BUILD_TYPE='Release' -DENABLE_SHARED='ON' -DENABLE_STATIC='ON' -G 'Ninja'
     execute ninja "-j$cpu_threads"
     execute sudo ninja "-j$cpu_threads" install
@@ -675,6 +664,7 @@ fi
 if build 'webp' 'git'; then
     download_git 'https://chromium.googlesource.com/webm/libwebp' 'webp-git'
     execute autoreconf -fi
+    make_dir 'build'
     execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE='Release' -DBUILD_SHARED_LIBS='ON' \
         -DCMAKE_C_FLAGS_RELEASE="-O3 -DNDEBUG" -DWEBP_BUILD_EXTRAS='OFF' -DWEBP_BUILD_LIBWEBPMUX='OFF' \
         -DCMAKE_INSTALL_INCLUDEDIR="include" -DWEBP_LINK_STATIC='OFF' -DWEBP_BUILD_GIF2WEBP='OFF' -DWEBP_BUILD_IMG2WEBP='OFF' \
@@ -771,9 +761,7 @@ if build 'imageMagick' "$g_ver"; then
         --with-perl \
         --with-rsvg \
         --with-tcmalloc \
-        --with-quantum-depth=16 \
-        LDFLAGS="-L$workspace/lib -L/usr/local/lib -L/usr/lib" \
-        CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include"
+        --with-quantum-depth=16
     execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'ImageMagick' "$g_ver"
