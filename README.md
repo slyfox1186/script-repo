@@ -140,7 +140,8 @@ bash <(curl -sSL https://go.optimizethis.net)
 ````
 ------
 
-## Install [Tilix Advanced Terminal](https://github.com/gnunn1/tilix) with custom color themes (Dracula included)
+## Install [Tilix](https://github.com/gnunn1/tilix) Advanced Terminal with custom color themes
+  - Dracula theme included + many others
   - Supported OS
     - Ubuntu 22.04
     - Other debian style distros may work as well
