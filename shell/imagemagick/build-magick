@@ -294,7 +294,6 @@ install_deb_files_fn()
         sudo dpkg -i "$i" 2>&1
         echo
     done
-exit
 }
 
 deb_files_fn()
