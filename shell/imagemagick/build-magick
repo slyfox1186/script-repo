@@ -617,14 +617,6 @@ if build 'm4' 'release'; then
     build_done 'm4' 'latest'
 fi
 
-if build 'openssl' '1.1.1u'; then
-    download 'https://www.openssl.org/source/openssl-1.1.1u.tar.gz' 'openssl-1.1.1u.tar.gz'
-    execute ./config --prefix="$workspace" --openssldir="$workspace" --with-zlib-include="$workspace"/include/ --with-zlib-lib="$workspace"/lib no-shared zlib
-    execute make "-j$cpu_threads"
-    execute make install_sw
-    build_done 'openssl' '1.1.1u'
-fi
-
 git_ver_fn 'libsdl-org/libtiff' '1' 'T'
 if build 'tiff' "$g_ver"; then
     download "https://codeload.github.com/libsdl-org/libtiff/tar.gz/refs/tags/v$g_ver" "tiff-$g_ver.tar.gz"
