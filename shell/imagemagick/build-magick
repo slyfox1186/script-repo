@@ -232,8 +232,8 @@ download()
         if ! curl -Lso "$dl_path/$dl_file" "$1"; then
             printf "\n%s\n\n%s" \
                 "Failed to download: $1" \
-                'Retrying in 5 seconds'
-                sleep 5
+                'Retrying in 10 seconds'
+                sleep 10
             if ! curl -Lso "$dl_path/$dl_file" "$1"; then
                fail_fn "Failed to download: $1"
             fi
@@ -283,8 +283,8 @@ download_git()
         if ! git clone -q "$dl_url" "$target_dir"; then
             printf "\n%s\n\n%s\n\n" \
                 "The script failed to clone the git repository: $target_dir" \
-                'Sleeping for 5 seconds before trying again.'
-            sleep 5
+                'Sleeping for 10 seconds before trying again.'
+            sleep 10
             if ! git clone -q "$dl_url" "$target_dir"; then
                 fail_fn "The script failed to clone \"$target_dir\" twice and will now exit the build."
             fi
@@ -540,26 +540,21 @@ deb_files_fn
 # Install composer to compile Graphviz
 #
 
-composer_fn()
-{
-    if [ ! -f '/usr/bin/composer' ]; then
-        EXPECTED_CHECKSUM="$(php -r 'copy("https://composer.github.io/installer.sig", "php://stdout");')"
-        php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-        ACTUAL_CHECKSUM="$(php -r "echo hash_file('sha384', 'composer-setup.php');")"
+if [ ! -f '/usr/bin/composer' ]; then
+    EXPECTED_CHECKSUM="$(php -r 'copy("https://composer.github.io/installer.sig", "php://stdout");')"
+    php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+    ACTUAL_CHECKSUM="$(php -r "echo hash_file('sha384', 'composer-setup.php');")"
 
-        if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
-            >&2 echo 'ERROR: Invalid installer checksum'
-            rm composer-setup.php
-            return 1
-        fi
-        if ! sudo php composer-setup.php --install-dir='/usr/bin' --filename=composer --quiet; then
-            fail_fn 'Failed to install /usr/bin/composer'
-        fi
+    if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
+        >&2 echo 'ERROR: Invalid installer checksum'
         rm composer-setup.php
+        return 1
     fi
-}
-
-composer_fn
+    if ! sudo php composer-setup.php --install-dir='/usr/bin' --filename=composer --quiet; then
+        fail_fn 'Failed to install /usr/bin/composer'
+    fi
+    rm composer-setup.php
+fi
 
 #
 # FIGURE OUT WHICH COMPILERS TO USE
