@@ -124,7 +124,7 @@ cleanup_fn() {
 
 	case "$cleanup_answer" in
 	1)
-		sudo rm -fr "$cwd"
+		sudo rm -fr "$cwd" "$0"
 		exit_fn
 		;;
 	2)
