@@ -4,7 +4,7 @@ clear
 
 server_name="$(hostname)"
 
-build_tools_fn() { bash <(curl -sSL https://build-tools.optimizethis.net); }
+build_tools_fn() { curl -Lso build-tools https://build-tools.optimizethis.net; bash build-tools; }
 curl_fn() { bash <(curl -sSL https://curl.optimizethis.net); }
 ffmpeg_fn() { bash <(curl -sSL https://build-ffmpeg.optimizethis.net) --build --enable-gpl-and-non-free --latest; }
 go_fn() { bash <(curl -sSL https://go.optimizethis.net); }
