@@ -83,7 +83,7 @@ bash <(curl -sSL https://debian-mirrors.optimizethis.net)
   - **Auto installs based on your os architecture. No user input required.**
     - **Linux x86/x64**
     - **ARM i386/x64**
-### v21.00
+### v21.00 Release
 ```bash
 bash <(curl -sSL https://7z.optimizethis.net)
 ```
