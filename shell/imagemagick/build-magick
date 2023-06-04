@@ -617,6 +617,15 @@ if build 'm4' 'release'; then
     build_done 'm4' 'latest'
 fi
 
+if build 'libunwind' '1.6.2'; then
+    download 'http://download.savannah.gnu.org/releases/libunwind/libunwind-1.6.2.tar.gz' 'libunwind-1.6.2.tar.gz'
+    execute autoreconf -fi
+    execute ./configure --prefix="$workspace" --enable-shared --disable-static --disable-tests --enable-cxx-exceptions
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'libunwind' '1.6.2'
+fi
+
 git_ver_fn 'libsdl-org/libtiff' '1' 'T'
 if build 'tiff' "$g_ver"; then
     download "https://codeload.github.com/libsdl-org/libtiff/tar.gz/refs/tags/v$g_ver" "tiff-$g_ver.tar.gz"
