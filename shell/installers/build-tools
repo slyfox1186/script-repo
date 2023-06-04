@@ -273,6 +273,31 @@ git_ver_fn() {
 
 build_done() { echo "$2" >"$packages/$1.done"; }
 
+installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
+
+#
+# INSTALL REQUIRED APT PACKAGES
+#
+
+pkgs=(autoconf automake autogen build-essential ccache cmake curl jq git)
+
+for pkg in ${pkgs[@]}; do
+    if ! installed "$pkg"; then
+        missing_pkgs+=" $pkg"
+    fi
+done
+
+if [ -n "$missing_pkgs" ]; then
+    printf "%s\n%s\n\n" \
+        'Installing required apt packages' \
+        '================================================'
+    for i in "$missing_pkgs"; do
+        echo "\$ sudo apt -y install $i"
+        sudo apt -y install $i
+        echo
+    done
+fi
+
 #
 # FIGURE OUT WHICH COMPILERS TO USE
 #
