@@ -2,13 +2,15 @@
 
 #######################################
 ##
-## GitHub: https://github.com/slyfox1186/script-repo/
+##  GitHub: https://github.com/slyfox1186/script-repo/
 ##
-## Purpose: Install the latest 7-zip package across multiple OS types.
+##  Purpose: Install the latest 7-zip package across multiple OS types.
 ##          The user will be prompted to select their OS architecture before
 ##          installing.
 ##
-## Updated: 05.20.23
+##  Updated: 05.20.23
+##
+##  Script version: 2.1
 ##
 #############################
 
@@ -18,20 +20,19 @@ echo
 # SET VARIABLES
 #
 
-script_ver='2.0'
+script_ver='2.1'
 version='7z2201'
 tar_file="$version.tar.xz"
 cwd="$PWD"/7zip-build-script
 packages="$cwd"/packages
 install_dir='/usr/bin/7z'
+repo='https://github.com/slyfox1186/script-repo'
 
-#
 # PRINT SCRIPT BANNER
-#
 printf "%s\n%s\n\n" \
     "7-Zip Build Script: v$script_ver" \
     '============================='
-sleep 3
+sleep 2
 
 # CREATE OUTPUT FOLDERS
 mkdir -p "$packages"
@@ -45,7 +46,7 @@ exit_fn()
     printf "\n%s\n\n%s\n%s\n" \
         'The script has completed' \
         'Make sure to star this repository to show your support!' \
-        'https://github.com/slyfox1186/script-repo'
+        "$repo"
     exit 0
 }
 
@@ -54,46 +55,12 @@ fail_fn()
     printf "\n\n%s\n\n%s\n\n%s\n\n" \
         "$1" \
         'Please create a support ticket at the address below' \
-        'https://github.com/slyfox1186/script-repo/issues'
+        "$repo/issues"
     exit 1
 }
 
-remove_dir()
-{
-    if [ -d "$*" ]; then
-        sudo rm -fr "$*"
-    fi
-}
-
-# CLEANUP DOWNLAOD FILES
-cleanup_fn()
-{
-    local choice
-
-        printf "\n%s\n\n%s\n%s\n\n" \
-            'Do you want to remove the build files?' \
-            '[1] Yes' \
-            '[2] No'
-        read -p 'Your choices are (1 or 2): ' choice
-
-    case "$choice" in
-        1)
-            remove_dir "$cwd"
-            exit_fn
-            ;;
-        2)
-            exit_fn
-            ;;
-
-        *)
-            printf "%s\n\n" \
-                'Bad user input.'
-            read -p 'Press enter to try again.'
-            clear
-            cleanup_fn
-            ;;
-    esac
-}
+# CLEANUP DOWNLOAD FILES
+cleanup_fn() { sudo rm -fr "$cwd"; }
 
 # PRINT 7-ZIP VERSION
 version_fn()
@@ -101,6 +68,7 @@ version_fn()
     show_ver="$("$install_dir" | head -n 2 | cut -d " " -f3 | awk 'NF' | xargs echo "$1")"
     show_ver="$(echo $show_ver | sed 's/v /v/g')"
     echo "7-zip has been updated to: v$show_ver"
+    sleep 3
 }
 
 # DETECT PC ARCHITECTURE
@@ -111,6 +79,9 @@ case "$(uname -m)" in
       arm|armv7*)      url='linux-arm.tar.xz';;
       *) fail_fn "Unrecognized architecture '$(uname -m)'";;
 esac
+
+# Install curl (needed to download the files)
+sudo apt-get -qq -y install curl
 
 # Download the tar file if missing
 if [ ! -f "$tar_file" ]; then
