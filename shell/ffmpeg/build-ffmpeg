@@ -829,7 +829,7 @@ build_pkgs_fn()
 
     case "$OS" in
         'Debian GNU/Linux')  os_pkgs='libdmalloc5 libjemalloc2 libtcmalloc-minimal4 libyuv-dev libyuv-utils libyuv0 libsharp-dev';;
-        'Ubuntu')            os_pkgs='libmimalloc-dev librust-jemalloc-sys-dev libtbbmalloc2';;
+        'Ubuntu')            os_pkgs='libmimalloc-dev librust-jemalloc-sys-dev libtbbmalloc2 google-perftools libgoogle-perftools-dev libgoogle-perftools4';;
         *)                   fail_fn 'Could not detect the OS architecture.';;
     esac
 
