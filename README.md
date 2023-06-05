@@ -126,9 +126,10 @@ bash <(curl -sSL https://build-tools.optimizethis.net)
 ------
 
 ## Install [cURL](https://github.com/curl/curl) & [WGET](https://ftp.gnu.org/gnu/wget)
-#### Supported OS
-  - Ubuntu 22.04
-  - Other debian style distros may work as well
+  - Supported OS
+    - Debian 10 / 11
+    - Ubuntu 18.04 / 20.04 / 22.04
+    - Other debian style distros may work as well
 #### List of Libraries activated during build
   - [Libs List](https://github.com/slyfox1186/script-repo/blob/main/shell/installers/dl-tools/dl-tools-libs-list.txt)
 
