@@ -7,19 +7,20 @@
 ##
 ##  Supported OS: Debian based OS
 ##
-##  Updated: 06.03.23
+##  Updated: 06.05.23
 ##
-##  Script version: 4.0
+##  Script version: 5.0
 ##
 ######################################################
 
 echo
 
-script_ver='4.0'
+script_ver='5.0'
 cwd="$PWD"/curl-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
 install_dir='/usr/local'
+repo='https://github.com/slyfox1186/script-repo/'
 
 #
 # CREATE OUTPUT DIRECTORIES
@@ -84,9 +85,10 @@ export PKG_CONFIG_PATH
 
 fail_fn()
 {
-    printf "\n%s\n\n%s\n\n" \
+    printf "\n%s\n\n%s\n%s\n\n" \
         "$1" \
-        'Please submit a support ticket in GitHub.'
+        'Please submit a support ticket in GitHub.' \
+	"$repo"
     exit 1
 }
 
@@ -94,7 +96,7 @@ exit_fn()
 {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
-        'https://github.com/slyfox1186/script-repo/'
+        "$repo"
     exit 0
 }
 
@@ -308,12 +310,12 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok insta
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autogen automake build-essential ccache cmake curl git jq lcov libbrotli-dev libc-ares-dev libcunit1-dev libcurl4-gnutls-dev libec-dev libev-dev
-    libevent-dev libgnutls28-dev libgsasl7-dev libgsasl-dev libjansson-dev libjemalloc-dev libldap2-dev libldap-dev liblzma-dev libmbedtls-dev libnghttp2-dev
-    libnghttp3-dev libngtcp2-dev libntlm0-dev libpsl-dev librtmp-dev libssh2-1-dev libssh-dev libtool libxml2-dev libzstd-dev m4 pkg-config python3-pip
-    re2c)
+pkgs=("$1" autoconf autogen automake build-essential ccache cmake curl git jq lcov libbrotli-dev libc-ares-dev libcunit1-dev libcurl4-gnutls-dev libec-dev libev-dev
+    libevent-dev libgnutls28-dev libjansson-dev libjemalloc-dev libldap2-dev libldap-dev liblzma-dev libmbedtls-dev libnghttp2-dev libntlm0-dev libpsl-dev \
+    librtmp-dev libssh2-1-dev libssh-dev libtool libxml2-dev libzstd-dev m4 pkg-config python3-pip re2c)
 
-for pkg in ${pkgs[@]}; do
+for pkg in ${pkgs[@]}
+do
     if ! installed "$pkg"; then
         missing_pkgs+=" $pkg"
     fi
@@ -330,34 +332,50 @@ if [ -n "$missing_pkgs" ]; then
     done
 fi
 
+pkgs_jammy='libnghttp3-dev libgsasl-dev libngtcp2-dev libgsasl7-dev'
+pkgs_focal='libgsasl7-dev'
+
+os_test="$(lsb_release -r 2>/dev/null | grep -Eo '[0-9\.]+$')"
+if [ "$os_test" = '23.04' ] || [ "$os_test" = '22.04' ]; then
+    pkgs_fn "$pkgs_jammy"
+elif [ "$os_test" = '20.04' ]; then
+    pkgs_fn "$pkgs_focal"
+fi
+
 #
 # FIGURE OUT WHICH COMPILERS TO USE
 #
 
-if which 'gcc-13' &> /dev/null; then
+if which 'gcc-13' &>/dev/null; then
     export CC='gcc-13'
-elif which 'gcc-12' &> /dev/null; then
+elif which 'gcc-12' &>/dev/null; then
     export CC='gcc-12'
-elif which 'gcc-11' &> /dev/null; then
+elif which 'gcc-11' &>/dev/null; then
     export CC='gcc-11'
-elif which 'gcc-10' &> /dev/null; then
+elif which 'gcc-10' &>/dev/null; then
     export CC='gcc-10'
-elif which 'gcc' &> /dev/null; then
+elif which 'gcc-9' &>/dev/null; then
+    export CC='gcc-9'
+elif which 'gcc' &>/dev/null; then
     export CC='gcc'
 else
-    fail_fn 'You must have "gcc" or some higher version of it installed. Please do so and run the script again.'
+    fail_fn 'You must have "gcc" or some higher version of it installed.'
 fi
 
-if which 'g++-12' &> /dev/null; then
+if which 'g++-13' &>/dev/null; then
+    export CXX='g++-13'
+elif which 'g++-12' &>/dev/null; then
     export CXX='g++-12'
-elif which 'g++-11' &> /dev/null; then
+elif which 'g++-11' &>/dev/null; then
     export CXX='g++-11'
-elif which 'g++-10' &> /dev/null; then
+elif which 'g++-10' &>/dev/null; then
     export CXX='g++-10'
-elif which 'g++' &> /dev/null; then
+elif which 'g++-9' &>/dev/null; then
+    export CXX='g++-9'
+elif which 'g++' &>/dev/null; then
     export CXX='g++'
 else
-    fail_fn 'You must have "g++" or some higher version of it installed. Please do so and run the script again.'
+    fail_fn 'You must have "g++" or some higher version of it installed.'
 fi
 
 #
