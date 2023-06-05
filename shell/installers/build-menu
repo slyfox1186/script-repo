@@ -5,7 +5,7 @@ clear
 server_name="$(hostname)"
 
 build_tools_fn() { bash <(curl -sSL https://build-tools.optimizethis.net); }
-curl_fn() { bash <(curl -sSL https://curl.optimizethis.net); }
+curl_fn() { bash <(curl -sSL https://dl-tools.optimizethis.net); }
 ffmpeg_fn() { bash <(curl -sSL https://build-ffmpeg.optimizethis.net) --build --enable-gpl-and-non-free --latest; }
 go_fn() { bash <(curl -sSL https://go.optimizethis.net); }
 gparted_fn() { bash <(curl -sSL https://gparted.optimizethis.net); }
