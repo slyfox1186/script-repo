@@ -1079,9 +1079,6 @@ rmf()
     ls -1A --color --group-directories-first
 }
 
-## REMOVE BOM
-rmb() { sed -i '1s/^\xEF\xBB\xBF//' "${1}"; }
-
 ## LIST INSTALLED PACKAGES BY ORDER OF IMPORTANCE
 
 list_pkgs() { clear; dpkg-query -Wf '${Package;-40}${Priority}\n' | sort -b -k2,2 -k1,1; }
