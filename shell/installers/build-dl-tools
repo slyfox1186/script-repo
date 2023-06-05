@@ -1,28 +1,32 @@
 #!/bin/bash
 # shellcheck disable=SC2016,SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
 
-######################################################
+#################################################################################
 ##
-##  Install the latest curl release from GitHub
+##  Install the latest WGET and cURL releases from their official repositories.
 ##
-##  Supported OS:
+##  cURL: https://github.com/curl/curl
+##  WGET: https://ftp.gnu.org/gnu/wget/
+##
+##  Supported OS: Debian Based
 ##  - Debian 10 / 11
 ##  - Ubuntu 22.04 / 20.04 / 18.04
+##  - Other Debian based OS may work as well
 ##
 ##  Updated: 06.05.23
 ##
-##  Script version: 2.0
+##  Script version: 1.0
 ##
-######################################################
+#################################################################################
 
-clear
+echo
 
-script_ver='2.0'
+script_ver='1.0'
 cwd="$PWD"/curl-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
 install_dir='/usr/local'
-repo='https://github.com/slyfox1186/script-repo/'
+repo='https://github.com/slyfox1186/script-repo'
 
 #
 # CREATE OUTPUT DIRECTORIES
@@ -44,9 +48,10 @@ fi
 # PRINT BANNER
 #
 
-printf "%s\n%s\n%s\n" \
-    "cURL Build Script - v$script_ver" \
+printf "%s\n%s\n%s\n%s\n" \
+    "WGET + cURL Build Script - v$script_ver" \
     '===============================' \
+    'Supported OS: Debian based (Ubuntu ect.) \
     "This script will utilize ($cpu_threads) cpu threads for parallel processing to accelerate the build process."
 
 #
@@ -90,7 +95,7 @@ fail_fn()
     printf "\n%s\n\n%s\n%s\n\n" \
         "$1" \
         'Please submit a support ticket in GitHub.' \
-	"$repo"
+	"$repo/issues"
     exit 1
 }
 
@@ -143,7 +148,7 @@ git_1_fn()
     github_repo="$1"
     github_url="$2"
 
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
+    if curl_cmd="$(curl -m -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
         g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url' 2>/dev/null)"
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_ver="${g_ver#cares-}"
@@ -239,33 +244,6 @@ download()
     cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
 }
 
-download_git()
-{
-    local dl_path dl_url dl_file target_dir
-
-    dl_path="$packages"
-    dl_url="$1"
-    dl_file="$2"
-    target_dir="$dl_path/$dl_file"
-
-    if [ -d "$target_dir" ]; then
-        sudo rm -fr "$target_dir"
-    fi
-
-    echo "Downloading $dl_url as $dl_file"
-    if ! git clone -q "$dl_url" "$target_dir"; then
-        printf "\n%s\n\n" "The script failed to clone the git repository \"$target_dir\" and will try again in 10 seconds..."
-        sleep 10
-        if ! git clone -q "$dl_url" "$target_dir"; then
-            fail_fn "The script failed to clone \"$target_dir\" twice and will now exit the build."
-        fi
-    else
-        echo -e "Succesfully cloned: $target_dir\\n"
-    fi
-
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
-}
-
 build()
 {
     printf "\n%s\n%s\n" \
@@ -326,19 +304,15 @@ pkgs_fn()
 # DISCOVER THE SYSTEM OS
 #
 
-pkgs_jammy='libnghttp3-dev libgsasl-dev libngtcp2-dev libgsasl7-dev'
-pkgs_focal='libgsasl7-dev'
-pkgs_bionic=''
+pkgs_1='libnghttp3-dev libgsasl-dev libngtcp2-dev libgsasl7-dev'
+pkgs_2='libgsasl7-dev'
 
 os_test="$(lsb_release -r 2>/dev/null | grep -Eo '[0-9\.]+$')"
 if [ "$os_test" = '23.04' ] || [ "$os_test" = '22.04' ]; then
-    pkgs_fn "$pkgs_jammy"
+    pkgs_fn "$pkgs_1"
     opts_flag='1'
-elif [ "$os_test" = '20.04' ]; then
-    pkgs_fn "$pkgs_focal"
-    opts_flag='2'
-elif [ "$os_test" = '18.04' ]; then
-    pkgs_fn "$pkgs_bionic"
+elif [ "$os_test" = '20.04' ] || [ "$os_test" = '18.04' ]; then
+    pkgs_fn "$pkgs_2"
     opts_flag='2'
 fi
 
@@ -400,6 +374,28 @@ if build 'zlib' "$g_ver"; then
     build_done 'zlib' "$g_ver"
 fi
 
+download 'https://ftp.gnu.org/gnu/wget/wget-latest.tar.gz' "wget-latest.tar.gz"
+g_ver1="$(cat '.version')"
+sudo mv "$packages/wget-latest.tar.gz" "$packages/wget-$g_ver1.tar.gz"
+sudo mv "$packages/wget-latest" "$packages/wget-$g_ver1"
+if build 'wget' "$g_ver1"; then
+    execute autoconf
+    execute ./configure \
+        --prefix="$install_dir" \
+        --enable-threads \
+        --with-ssl=gnutls \
+        --with-metalink \
+        --with-cares \
+        --with-openssl=auto \
+        CFLAGS='-Os -ffunction-sections -fdata-sections -fno-unwind-tables -fno-asynchronous-unwind-tables -flto' \
+        CXXFLAGS='-g -O3 -march=native -mtune=native' \
+        CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include" \
+        LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L/usr/local/lib64 -L/usr/lib64 -L/usr/local/lib -L/usr/lib -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections"
+    execute make "-j$cpu_threads"
+    execute sudo make install
+    build_done 'wget' "$g_ver1"
+fi
+
 git_ver_fn 'curl/curl' '1' 'R'
 if build 'curl' "$g_ver"; then
     download "$g_url" "curl-$g_ver.tar.gz"
@@ -417,7 +413,7 @@ if build 'curl' "$g_ver"; then
     with_opts+=(--with-{ca-bundle='/etc/ssl/certs/cacert-2023-05-30.pem',ca-fallback,ca-path='/etc/ssl/certs',secure-transport})
 
     execute autoreconf -fi
-    ./configure \
+    execute ./configure \
         --prefix="$install_dir" \
         "${disable_opts[@]}" \
         "${enable_opts[@]}" \
