@@ -1,0 +1,491 @@
+#!/bin/bash
+# shellcheck disable=SC2016,SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
+
+######################################################
+##
+##  Install the latest curl release from GitHub
+##
+##  Supported OS:
+##  - Debian 10 / 11
+##  - Ubuntu 22.04 / 20.04 / 18.04
+##
+##  Updated: 06.05.23
+##
+##  Script version: 2.0
+##
+######################################################
+
+echo
+
+script_ver='2.0'
+cwd="$PWD"/curl-build-script
+packages="$cwd"/packages
+workspace="$cwd"/workspace
+install_dir='/usr/local'
+repo='https://github.com/slyfox1186/script-repo/'
+
+#
+# CREATE OUTPUT DIRECTORIES
+#
+
+mkdir -p "$packages" "$workspace"
+
+#
+# GET CPU CORE COUNT FOR PARALLEL PROCESSING
+#
+
+if [ -f '/proc/cpuinfo' ]; then
+    cpu_threads="$(grep -c ^processor '/proc/cpuinfo')"
+else
+    cpu_threads="$(nproc --all)"
+fi
+
+#
+# PRINT BANNER
+#
+
+printf "%s\n%s\n%s\n" \
+    "cURL Build Script - v$script_ver" \
+    '===============================' \
+    "This script will utilize ($cpu_threads) cpu threads for parallel processing to accelerate the build process."
+
+#
+# CREATE GLOBAL VARIABLES
+#
+
+PATH="\
+/usr/lib/ccache:\
+$workspace/bin:\
+$HOME/.local/bin:\
+$PATH\
+"
+export PATH
+
+PKG_CONFIG_PATH="\
+$workspace/lib64/pkgconfig:\
+$workspace/lib/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib64/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/i386-linux-gnu/pkgconfig:\
+/usr/lib/pkgconfig:\
+/usr/share/pkgconfig\
+"
+export PKG_CONFIG_PATH
+
+#
+# DEFINE FUNCTIONS
+#
+
+fail_fn()
+{
+    printf "\n%s\n\n%s\n%s\n\n" \
+        "$1" \
+        'Please submit a support ticket in GitHub.' \
+	"$repo"
+    exit 1
+}
+
+exit_fn()
+{
+    printf "\n%s\n\n%s\n\n" \
+        'Make sure to star this repository to show your support!' \
+        "$repo"
+    exit 0
+}
+
+cleanup_fn()
+{
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'Do you want to cleanup the build files?' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' my_choice
+    case "$my_choice" in
+    1)
+        sudo rm -fr "$cwd"
+        exit_fn
+        ;;
+    2)
+        exit_fn
+        ;;
+    *)
+        read -p 'Bad user input. Press enter to try again'
+        clear
+        cleanup_fn
+        ;;
+    esac
+}
+
+success_fn()
+{
+    curl_ver="$(curl --version)"
+    printf "\n%s\n\n" \
+        "The installed curl version is: $curl_ver"
+    cleanup_fn
+}
+
+curl_timeout='10'
+
+git_1_fn()
+{
+    local curl_cmd github_repo github_url
+
+    # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
+    github_repo="$1"
+    github_url="$2"
+    git_token='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'
+
+    if curl_cmd="$(curl \
+                        -m "$curl_timeout" \
+                        --request GET \
+                        --url "https://api.github.com/slyfox1186" \
+                        --header "Authorization: Bearer $git_token" \
+                        --header "X-GitHub-Api-Version: 2022-11-28" \
+                        -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
+        g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url' 2>/dev/null)"
+        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
+        g_ver="${g_ver#cares-}"
+        g_ver="${g_ver#nghttp2 v}"
+        g_ver="${g_ver#nghttp3 v}"
+        g_ver="${g_ver#OpenSSL }"
+        g_ver="${g_ver#release-}"
+        g_ver="${g_ver#v}"
+    fi
+}
+
+git_ver_fn()
+{
+    local v_flag v_url v_tag url_tag gv_url
+
+    v_url="$1"
+    v_tag="$2"
+
+    if [ -n "$3" ]; then
+        v_flag="$3"
+    fi
+
+    case "$v_flag" in
+		T)      gv_url='tags' ;;
+		R)      gv_url='releases' ;;
+		*)      fail_fn 'tags and releases were not among the URL options.' ;;
+    esac
+
+    case "$v_tag" in
+        1)      url_tag='git_1_fn';;
+        *)      fail_fn 'Could not detect the $v_tag variable inside the git_ver_fn() function';;
+    esac
+
+    "$url_tag" "$v_url" "$gv_url" 2>/dev/null
+}
+
+execute()
+{
+    echo "$ $*"
+# 2>&1
+    if ! output=$("$@"); then
+        fail_fn "Failed to Execute $*"
+    fi
+}
+
+download()
+{
+    dl_path="$packages"
+    dl_url="$1"
+    dl_file="${2:-"${1#*/}"}"
+
+    if [[ "$dl_file" =~ tar. ]]; then
+        output_dir="${dl_file%.*}"
+        output_dir="${3:-"${output_dir%.*}"}"
+    else
+        output_dir="${3:-"${dl_file%.*}"}"
+    fi
+
+    target_file="$dl_path/$dl_file"
+    target_dir="$dl_path/$output_dir"
+
+    if [ -f "$target_file" ]; then
+        echo "The file \"$dl_file\" is already downloaded."
+    else
+        echo "Downloading \"$dl_url\" and saving as \"$dl_file\""
+        if ! wget -cqO "$target_file" "$dl_url"; then
+            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 5 seconds..."
+            sleep 5
+            if ! wget -cqO "$target_file" "$dl_url"; then
+                fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
+            fi
+        fi
+        echo 'Download Completed'
+    fi
+
+    if [ -d "$target_dir" ]; then
+        sudo rm -fr "$target_dir"
+    fi
+
+    mkdir -p "$target_dir"
+
+    if [ -n "$3" ]; then
+        if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null > /dev/null; then
+            fail_fn "Failed to extract: $dl_file"
+        fi
+    else
+        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null > /dev/null; then
+            fail_fn "Failed to extract: $dl_file"
+        fi
+    fi
+
+    echo -e "File extracted: $dl_file\\n"
+
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
+}
+
+download_git()
+{
+    local dl_path dl_url dl_file target_dir
+
+    dl_path="$packages"
+    dl_url="$1"
+    dl_file="$2"
+    target_dir="$dl_path/$dl_file"
+
+    if [ -d "$target_dir" ]; then
+        sudo rm -fr "$target_dir"
+    fi
+
+    echo "Downloading $dl_url as $dl_file"
+    if ! git clone -q "$dl_url" "$target_dir"; then
+        printf "\n%s\n\n" "The script failed to clone the git repository \"$target_dir\" and will try again in 10 seconds..."
+        sleep 10
+        if ! git clone -q "$dl_url" "$target_dir"; then
+            fail_fn "The script failed to clone \"$target_dir\" twice and will now exit the build."
+        fi
+    else
+        echo -e "Succesfully cloned: $target_dir\\n"
+    fi
+
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
+}
+
+build()
+{
+    printf "\n%s\n%s\n" \
+        "building $1 - version $2" \
+        '===================================='
+
+    if [ -f "$packages/$1.done" ]; then
+        if grep -Fx "$2" "$packages/$1.done" > /dev/null; then
+            echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
+            return 1
+        else
+            echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
+            return 1
+        fi
+    fi
+
+    return 0
+}
+
+build_done() { echo "$2" > "$packages/$1.done"; }
+
+installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
+
+#
+# INSTALL REQUIRED APT PACKAGES
+#
+
+pkgs_fn()
+{
+    local pkg pkgs missing_pkgs
+
+    pkgs=("$1" autoconf autogen automake autopoint autotools-dev build-essential ccache cmake curl git google-perftools jq lcov 
+          libaria2-0 libaria2-0-dev libbrotli-dev libc-ares-dev libcppunit-dev libcunit1-dev libcurl4-gnutls-dev libec-dev libev-dev 
+          libevent-dev libexiv2-27 libgexiv2-2 libgimp2.0 libgnutls28-dev libgoogle-perftools-dev libgoogle-perftools4 libgsasl7-dev 
+          libjansson-dev libjemalloc-dev libldap-dev libldap2-dev liblzma-dev libmbedtls-dev libnghttp2-dev libntlm0-dev libpsl-dev 
+          librtmp-dev libsqlite3-dev libssh-dev libssh2-1-dev libssl-dev libtool libxml2-dev libzstd-dev m4 pkg-config python3-pip 
+          re2c zlib1g-dev libunistring-dev libp11-kit-dev libp11-kit0 p11-kit-modules p11-kit libgpg-error-dev libuv1-dev libgcrypt20-dev)
+
+    for pkg in ${pkgs[@]}
+    do
+        if ! installed "$pkg"; then
+            missing_pkgs+=" $pkg"
+        fi
+    done
+
+    if [ -n "${missing_pkgs-}" ]; then
+        printf "\n%s\n%s\n" \
+            'Installing required apt packages' \
+            '================================================'
+        for i in "$missing_pkgs"; do
+            echo "\$ sudo apt -y install $i"
+            sudo apt -y install $i
+            echo
+        done
+    fi
+}
+
+#
+# DISCOVER THE SYSTEM OS
+#
+
+pkgs_jammy='libnghttp3-dev libgsasl-dev libngtcp2-dev libgsasl7-dev'
+pkgs_focal='libgsasl7-dev'
+pkgs_bionic=''
+
+os_test="$(lsb_release -r 2>/dev/null | grep -Eo '[0-9\.]+$')"
+if [ "$os_test" = '23.04' ] || [ "$os_test" = '22.04' ]; then
+    pkgs_fn "$pkgs_jammy"
+    opts_flag='1'
+elif [ "$os_test" = '20.04' ]; then
+    pkgs_fn "$pkgs_focal"
+    opts_flag='2'
+elif [ "$os_test" = '18.04' ]; then
+    pkgs_fn "$pkgs_bionic"
+    opts_flag='2'
+fi
+
+#
+# FIGURE OUT WHICH COMPILERS TO USE
+#
+
+if which 'gcc-13' &>/dev/null; then
+    export CC='gcc-13'
+elif which 'gcc-12' &>/dev/null; then
+    export CC='gcc-12'
+elif which 'gcc-11' &>/dev/null; then
+    export CC='gcc-11'
+elif which 'gcc-10' &>/dev/null; then
+    export CC='gcc-10'
+elif which 'gcc-9' &>/dev/null; then
+    export CC='gcc-9'
+elif which 'gcc' &>/dev/null; then
+    export CC='gcc'
+else
+    fail_fn 'You must have "gcc" or some higher version of it installed.'
+fi
+
+if which 'g++-13' &>/dev/null; then
+    export CXX='g++-13'
+elif which 'g++-12' &>/dev/null; then
+    export CXX='g++-12'
+elif which 'g++-11' &>/dev/null; then
+    export CXX='g++-11'
+elif which 'g++-10' &>/dev/null; then
+    export CXX='g++-10'
+elif which 'g++-9' &>/dev/null; then
+    export CXX='g++-9'
+elif which 'g++' &>/dev/null; then
+    export CXX='g++'
+else
+    fail_fn 'You must have "g++" or some higher version of it installed.'
+fi
+
+#
+# INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
+#
+
+if [ ! -f '/etc/ssl/certs/cacert-2023-05-30.pem' ]; then
+    execute wget -cqO 'cacert-2023-05-30.pem' 'https://curl.se/ca/cacert-2023-05-30.pem'
+    execute sudo mv 'cacert-2023-05-30.pem' '/etc/ssl/certs'
+fi
+
+#
+# COMPILE FROM SOUCE CODE
+#
+
+git_ver_fn 'madler/zlib' '1' 'T'
+if build 'zlib' "$g_ver"; then
+    download "$g_url" "zlib-$g_ver.tar.gz"
+    execute ./configure --prefix="$workspace" --static
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'zlib' "$g_ver"
+fi
+
+if build 'p11-kit' '0.24.1'; then
+    download 'https://github.com/p11-glue/p11-kit/releases/download/0.24.1/p11-kit-0.24.1.tar.xz' 'p11-kit-0.24.1.tar.xz'
+    execute ./configure --prefix='/usr'
+    execute make "-j$cpu_threads"
+    execute sudo make install
+    build_done 'p11-kit' '0.24.1'
+fi
+git_ver_fn 'aria2/aria2' '1' 'T'
+if build 'aria2' "$g_ver"; then
+    download "$g_url" "aria2-$g_ver.tar.gz"
+    execute autoreconf -fi
+    ./configure \
+        --prefix="$install_dir" \
+        --enable-static \
+        --disable-shared \
+        --enable-libaria2 \
+        --with-tcmalloc \
+        --with-ca-bundle='/etc/ssl/certs/cacert-2023-05-30.pem' \
+        ARIA2_STATIC=yes \
+        CXXFLAGS='-g -O3 -march=native -mtune=native' \
+        CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -I/usr/include/p11-kit-1" \
+        LDFLAGS="-L/usr/local/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu64 -L/usr/local/lib64 -L/lib64 -L/usr/lib64 -L/usr/local/lib -L/lib -L/usr/lib -L/usr/lib/p11-kit-1 -L/usr/x86_64-linux-gnu/lib64 -L/usr/x86_64-linux-gnu/lib" \
+        PKG_CONFIG='/usr/bin/pkg-config'
+    execute make "-j$cpu_threads"
+    execute sudo make install
+    build_done 'aria2' "$g_ver"
+fi
+
+download 'https://ftp.gnu.org/gnu/wget/wget-latest.tar.gz' "wget-latest.tar.gz"
+g_ver1="$(cat '.version')"
+sudo mv "$packages/wget-latest.tar.gz" "$packages/wget-$g_ver1.tar.gz"
+sudo mv "$packages/wget-latest" "$packages/wget-$g_ver1"
+if build 'wget' "$g_ver1"; then
+    execute autoconf
+    execute ./configure \
+        --prefix="$install_dir" \
+        --enable-threads \
+        --with-ssl=gnutls \
+        --with-metalink \
+        --with-cares \
+        --with-openssl=auto \
+        CFLAGS='-Os -ffunction-sections -fdata-sections -fno-unwind-tables -fno-asynchronous-unwind-tables -flto' \
+        CXXFLAGS='-g -O3 -march=native -mtune=native' \
+        CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -I/usr/include/p11-kit-1" \
+        LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L/usr/local/lib64 -L/usr/lib64 -L/usr/local/lib -L/usr/lib -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections"
+    execute make "-j$cpu_threads"
+    execute sudo make install
+    build_done 'wget' "$g_ver1"
+fi
+
+git_ver_fn 'curl/curl' '1' 'R'
+if build 'curl' "$g_ver"; then
+    download "$g_url" "curl-$g_ver.tar.gz"
+
+    if which 'update-ca-certificates' &>/dev/null; then
+        execute sudo update-ca-certificates
+    fi
+
+    disable_opts=(--disable-{get-easy-options,shared,verbose,versioned-symbols})
+    enable_opts=(--enable-{alt-svc,ares='/usr/include',cookies,crypto-auth,dateparse,dict,dnsshuffle,doh,file,ftp,gopher})
+    enable_opts+=(--enable-{headers-api,hsts,http,http-auth,imap,ipv6,ldap,ldaps,libcurl-option,libgcc,manual,mime,mqtt,netrc,ntlm,ntlm-wb='/usr/bin/ntlm_auth'})
+    enable_opts+=(--enable-{openssl-auto-load-config,optimize,pop3,progress-meter,proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static,telnet,tftp,threaded-resolver})
+    enable_opts+=(--enable-{tls-srp,unix-sockets,websockets})
+    with_opts=(--with-{gnutls='/usr/include',libssh2,gssapi='/usr/include/globus'})
+    with_opts+=(--with-{ca-bundle='/etc/ssl/certs/cacert-2023-05-30.pem',ca-fallback,ca-path='/etc/ssl/certs',secure-transport})
+
+    execute autoreconf -fi
+    execute ./configure \
+        --prefix="$install_dir" \
+        "${disable_opts[@]}" \
+        "${enable_opts[@]}" \
+        "${with_opts[@]}" \
+        CFLAGS='-Os -ffunction-sections -fdata-sections -fno-unwind-tables -fno-asynchronous-unwind-tables -flto' \
+        CXXFLAGS='-g -O3 -march=native -mtune=native' \
+        CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include" \
+        LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L/usr/local/lib64 -L/usr/lib64 -L/usr/local/lib -L/usr/lib -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections"
+    execute make "-j$cpu_threads"
+    execute sudo make install
+fi
+
+# OUTPUT FINAL MESSAGES TO USER IN TERMINAL
+success_fn
+
+# CLEANUP LEFTOVER FILES
+cleanup_fn
