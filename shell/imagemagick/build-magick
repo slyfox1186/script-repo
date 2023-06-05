@@ -465,10 +465,10 @@ fi
 
 pkgs_fn()
 {
-    pkgs=("$1" alien asciidoc autoconf automake autopoint bison build-essential ccache cmake curl flex gettext gimp-data git \
-          gperf jq libfreetype-dev libgc-dev libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev libheif-dev libpango1.0-dev \
-          libpng-dev libpstoedit-dev libraw-dev librsvg2-dev librust-bzip2-dev libsdl2-dev libtcmalloc-minimal4 libzip-dev meson \
-          nasm ninja-build php-cli pstoedit xmlto)
+    pkgs=("$1" alien asciidoc autoconf automake autopoint binutils bison build-essential ccache cmake curl flex gettext gimp-data git \
+          gperf jq libfreetype-dev libgc-dev libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev libheif-dev libpango1.0-dev libpng-dev \
+          libpstoedit-dev libraw-dev librsvg2-dev librust-bzip2-dev libsdl2-dev libtcmalloc-minimal4 libtool libzip-dev m4 meson nasm \
+          ninja-build php-cli pstoedit xmlto)
 
     for pkg in ${pkgs[@]}
     do
@@ -497,11 +497,13 @@ pkgs_fn()
 # INSTALL APT LIBRARIES
 #
 
+pkgs_jammy='libcpu-features-dev libfontconfig-dev libgc1 libhwy-dev libmimalloc2.0 libmimalloc-dev'
+
 os_test="$(lsb_release -r 2>/dev/null | grep -Eo '[0-9\.]+$')"
 if [ "$os_test" = '23.04' ]; then
-    pkgs_fn 'librust-jpeg-decoder-dev libmimalloc-dev libmimalloc2.0 libcpu-features-dev libgc1 libhwy-dev libfontconfig-dev'
+    pkgs_fn "$pkgs_jammy librust-jpeg-decoder-dev"
 elif [ "$os_test" = '22.04' ]; then
-    pkgs_fn 'libmimalloc-dev libmimalloc2.0 libcpu-features-dev libgc1 libhwy0 libhwy-dev libfontconfig-dev'
+    pkgs_fn "$pkgs_jammy libhwy0"
 elif [ "$os_test" = '20.04' ]; then
     pkgs_fn 'libfontconfig1-dev'
 fi
@@ -544,6 +546,8 @@ elif which 'gcc-11' &>/dev/null; then
     export CC='gcc-11'
 elif which 'gcc-10' &>/dev/null; then
     export CC='gcc-10'
+elif which 'gcc-9' &>/dev/null; then
+    export CC='gcc-9'
 elif which 'gcc' &>/dev/null; then
     export CC='gcc'
 else
@@ -556,11 +560,28 @@ elif which 'g++-11' &>/dev/null; then
     export CXX='g++-11'
 elif which 'g++-10' &>/dev/null; then
     export CXX='g++-10'
+elif which 'g++-9' &>/dev/null; then
+    export CXX='g++-9'
 elif which 'g++' &>/dev/null; then
     export CXX='g++'
 else
     fail_fn 'You must have "g++" or some higher version of it installed.'
 fi
+
+#
+# ANNOUNCE THE BUILD HAS BEGUN
+#
+
+printf "%s\n\n%s\n%s\n\n%s\n\n" \
+    'Starting the build process...' \
+    "ImageMagick Build Script $script_version" \
+    '==========================================' \
+    "This script will use ($cpu_threads) cpu cores for parallel processing to accelerate the build speed."
+sleep 2
+
+printf "%s\n%s\n" \
+    'Installing required APT packages' \
+    '=========================================='
 
 #
 # INSTALL OFFICIAL IMAGEMAGICK LIBS
@@ -581,21 +602,6 @@ if build 'magick-libs' "$g_ver"; then
     fi
     build_done 'magick-libs' "$g_ver"
 fi
-
-#
-# ANNOUNCE THE BUILD HAS BEGUN
-#
-
-printf "%s\n\n%s\n%s\n\n%s\n\n" \
-    'Starting the build process...' \
-    "ImageMagick Build Script $script_version" \
-    '==========================================' \
-    "This script will use ($cpu_threads) cpu cores for parallel processing to accelerate the build speed."
-sleep 2
-
-printf "%s\n%s\n" \
-    'Installing required APT packages' \
-    '=========================================='
 
 #
 # BUILD FROM SOURCE CODE
