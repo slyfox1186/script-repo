@@ -51,7 +51,7 @@ fi
 printf "%s\n%s\n%s\n%s\n" \
     "WGET + cURL Build Script - v$script_ver" \
     '===============================' \
-    'Supported OS: Debian based (Ubuntu ect.) \
+    'Supported OS: Debian based (Ubuntu ect.)' \
     "This script will utilize ($cpu_threads) cpu threads for parallel processing to accelerate the build process."
 
 #
