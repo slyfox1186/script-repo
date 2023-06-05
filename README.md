@@ -45,11 +45,11 @@ curl -Lso pkgs.sh https://debian-pkgs.optimizethis.net; sudo bash pkgs.sh
     - .bashrc
     - .bash_aliases
     - .bash_functions
-### Ubuntu Lunar
+### Ubuntu 23.04 (Lunar)
 ```bash
 bash <(curl -sSL https://lunar-scripts.optimizethis.net)
 ```
-### Ubuntu Jammy, Focal, Bionic
+### Ubuntu 22.04 (Jammy), 20.04 (Focal), 18.04 (Bionic)
 ```bash
 bash <(curl -sSL https://jammy-scripts.optimizethis.net)
 ```
