@@ -738,6 +738,7 @@ fi
 
 if build 'imageMagick' "$g_ver"; then
     download "https://codeload.github.com/imagemagick/imagemagick/tar.gz/refs/tags/$g_ver" "imagemagick-$g_ver.tar.gz"
+    execute autoreconf -fi -I '/usr/share/aclocal'
     ./configure \
         --prefix='/usr/local' \
         --enable-ccmalloc \
