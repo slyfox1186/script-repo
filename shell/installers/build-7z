@@ -2,7 +2,7 @@
 
 ################################################################################
 ##
-##  GitHub: https://github.com/slyfox1186/script-repo/
+##  GitHub: https://github.com/slyfox1186/script-repo
 ##
 ##  Purpose: Install the latest 7-zip package across multiple OS types.
 ##          The user will be prompted to select their OS architecture before
@@ -14,7 +14,7 @@
 ##
 ################################################################################
 
-echo
+clear
 
 #
 # SET VARIABLES
@@ -31,11 +31,8 @@ repo='https://github.com/slyfox1186/script-repo'
 # PRINT SCRIPT BANNER
 printf "%s\n%s\n\n" \
     "7-Zip Build Script: v$script_ver" \
-    '============================='
+    '==================================='
 sleep 2
-
-# CREATE OUTPUT FOLDERS
-mkdir -p "$packages"
 
 #
 # CREATE FUNCTIONS
@@ -82,6 +79,9 @@ esac
 
 # Install curl (needed to download the files)
 sudo apt-get -qq -y install curl
+
+# CREATE OUTPUT FOLDERS
+mkdir -p "$packages"
 
 # Download the tar file if missing
 if [ ! -f "$tar_file" ]; then
