@@ -1,5 +1,3 @@
-#!/bin/bash
-
 alias alien='sudo alien'
 alias apt-get='sudo apt-get'
 alias apt-fast='sudo apt-fast'
@@ -73,9 +71,9 @@ alias dir='dir --color=auto'
 alias vdir='vdir --color=auto'
 
 # apt commands
-alias install='clear; apt -y install'
-alias remove='clear; apt remove'
-alias search='clear; apt search'
+alias install='clear; apt-fast -y install'
+alias remove='clear; apt-fast remove'
+alias search='clear; apt-fast search'
 
 # fix missing gpnu keys used to update packages
 alias fixkey='clear; apt-key adv --keyserver keyserver.ubuntu.com --recv-keys'
@@ -287,4 +285,4 @@ alias tsb='clear; timeshift --create'
 alias show_gcc='clear; gcc-12 -march=native -E -v - </dev/null 2>&1 | grep cc1'
 
 # START VIRTUAL MACHINE
-alias svm='clear; sudo virt-manager &'
+alias svm='clear; sudo virt-manager'
