@@ -42,7 +42,7 @@ deb http://security.ubuntu.com/ubuntu/ jammy-security main restricted universe m
 ##
 ## MAIN
 ##
-deb deb https://mirror.enzu.com/ubuntu/ jammy main restricted universe multiverse
+deb https://mirror.enzu.com/ubuntu/ jammy main restricted universe multiverse
 deb http://mirror.genesisadaptive.com/ubuntu/ jammy main restricted universe multiverse
 deb http://mirror.math.princeton.edu/pub/ubuntu/ jammy main restricted universe multiverse
 deb http://mirror.pit.teraswitch.com/ubuntu/ jammy main restricted universe multiverse
