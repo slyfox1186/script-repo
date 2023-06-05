@@ -125,12 +125,15 @@ bash <(curl -sSL https://build-tools.optimizethis.net)
 ````
 ------
 
-## Install [cURL](https://github.com/curl/curl)
-  - Supported OS
-    - Ubuntu 22.04
-    - Other debian style distros may work as well
+## Install [cURL](https://github.com/curl/curl) & [WGET](https://ftp.gnu.org/gnu/wget)
+#### Supported OS
+  - Ubuntu 22.04
+  - Other debian style distros may work as well
+#### List of Libraries activated during build
+  - [Libs List](https://github.com/slyfox1186/script-repo/blob/main/shell/installers/dl-tools/dl-tools-libs-list.txt)
+
 ```bash
-bash <(curl -sSL https://curl.optimizethis.net)
+bash <(curl -sSL https://dl-tools.optimizethis.net)
 ````
 ------
 
