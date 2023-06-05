@@ -112,17 +112,11 @@ $HOME/.local/bin:\
 export PATH
 
 export PS1='\n\[\e[0;96m\]\w\n\[\e[0;38;5;220m\]\T\n\[\e[0;38;5;208m\]\h\[\e[0m\]@\[\e[0;38;5;201m\]\u\[\e[0;93m\]$\[\e[0m\]'
-
 export TMP="$HOME/tmp"
-
 export LAN="$(hostname -I)"
-
 export WAN="$(curl -sS 'https://checkip.amazonaws.com')"
-
 export THREADS="$(nproc --all)"
-
 export CPUS="$((THREADS/2))"
-
 export PYTHONUTF8='1'
 
 # find the highest gcc version you have installed and set it as your CC compiler
@@ -132,11 +126,8 @@ elif which 'gcc-12' &>/dev/null; then
     export CC='gcc-12'
 elif which 'gcc-11' &>/dev/null; then
     export CC='gcc-11'
-elif which 'gcc' &>/dev/null; then
-    export CC='gcc'
 else
-    printf "\n%s\n\n" \
-      'You must have gcc or some high version of it installed. Please do so to take advantage of .bashrc'\''s settings.'
+    export CC='gcc'
 fi
 
 # find the highest g++ version you have installed and set it as your CXX compiler
@@ -144,9 +135,6 @@ if which 'g++-12' &>/dev/null; then
     export CXX='g++-12'
 elif which 'g++-11' &>/dev/null; then
     export CXX='g++-11'
-elif which 'g++' &>/dev/null; then
-    export CXX='g++'
 else
-    printf "\n%s\n\n" \
-      'You must have gcc or some high version of it installed. Please do so to take advantage of .bashrc'\''s settings.'
+    export CXX='g++'
 fi
