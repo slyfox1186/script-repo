@@ -126,15 +126,25 @@ elif which 'gcc-12' &>/dev/null; then
     export CC='gcc-12'
 elif which 'gcc-11' &>/dev/null; then
     export CC='gcc-11'
+elif which 'gcc-10' &>/dev/null; then
+    export CC='gcc-10'
+elif which 'gcc-9' &>/dev/null; then
+    export CC='gcc-9'
 else
     export CC='gcc'
 fi
 
 # find the highest g++ version you have installed and set it as your CXX compiler
-if which 'g++-12' &>/dev/null; then
+if which 'g++-13' &>/dev/null; then
+    export CXX='g++-13'
+elif which 'g++-12' &>/dev/null; then
     export CXX='g++-12'
 elif which 'g++-11' &>/dev/null; then
     export CXX='g++-11'
+elif which 'g++-10' &>/dev/null; then
+    export CC='g++-10'
+elif which 'g++-9' &>/dev/null; then
+    export CC='g++-9'
 else
     export CXX='g++'
 fi
