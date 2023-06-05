@@ -29,15 +29,15 @@ clear
 ##
 ###########################################################################################################
 
-##
-## define variables
-##
+#
+# define variables
+#
 
 script_ver='2.0'
 
-##
-## set the available cpu thread and core count for parallel processing (speeds up the build process)
-##
+#
+# set the available cpu thread and core count for parallel processing (speeds up the build process)
+#
 
 if [ -f '/proc/cpuinfo' ]; then
     cpu_threads="$(grep -c ^processor '/proc/cpuinfo')"
@@ -46,9 +46,9 @@ else
 fi
 cpu_cores="$(grep ^cpu\\scores '/proc/cpuinfo' | uniq | awk '{print $4}')"
 
-##
-## FIGURE OUT WHICH COMPILERS TO USE
-##
+#
+# FIGURE OUT WHICH COMPILERS TO USE
+#
 
 if which 'gcc-13' &>/dev/null; then
     export CC='gcc-13'
@@ -78,9 +78,9 @@ fi
 
 export CXXFLAGS='-g -O3 -march=native'
 
-##
-## set the PATH variable
-##
+#
+# set the PATH variable
+#
 
 PATH="\
 /usr/lib/ccache:\
@@ -89,9 +89,9 @@ $PATH\
 "
 export PATH
 
-##
-## define functions
-##
+#
+# define functions
+#
 
 exit_fn()
 {
@@ -266,9 +266,9 @@ echo '======================================'
 echo
 echo "The script will utilize ( $cpu_threads cpu cores ) for parallel processing to accelerate the build speed."
 
-##
-## required apt packages
-##
+#
+# required apt packages
+#
 
 build_pkgs_fn()
 {
@@ -300,7 +300,6 @@ build_pkgs_fn()
     fi
 }
 
-# install required apt packages
 build_pkgs_fn
 
 git_1_fn()
@@ -333,4 +332,5 @@ if build 'wsl2-linux-kernel' "$g_ver"; then
     build_done 'wsl2-linux-kernel' "$g_ver"
 fi
 
+# call exit script function
 exit_fn
