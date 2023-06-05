@@ -489,50 +489,8 @@ pkgs_fn()
         done
     else
         echo 'The required APT packages are already installed.'
-        echo
     fi
 }
-
-#
-# INSTALL APT LIBRARIES
-#
-
-pkgs_jammy='libcpu-features-dev libfontconfig-dev libgc1 libhwy-dev libmimalloc2.0 libmimalloc-dev'
-
-os_test="$(lsb_release -r 2>/dev/null | grep -Eo '[0-9\.]+$')"
-if [ "$os_test" = '23.04' ]; then
-    pkgs_fn "$pkgs_jammy librust-jpeg-decoder-dev"
-elif [ "$os_test" = '22.04' ]; then
-    pkgs_fn "$pkgs_jammy libhwy0"
-elif [ "$os_test" = '20.04' ]; then
-    pkgs_fn 'libfontconfig1-dev'
-fi
-
-#
-# INSTALL REQUIRED DEBIAN FILES
-#
-
-deb_files_fn
-
-#
-# INSTALL COMPOSER TO COMPILE GRAPHVIZ
-#
-
-if [ ! -f '/usr/bin/composer' ]; then
-    EXPECTED_CHECKSUM="$(php -r 'copy("https://composer.github.io/installer.sig", "php://stdout");')"
-    php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-    ACTUAL_CHECKSUM="$(php -r "echo hash_file('sha384', 'composer-setup.php');")"
-
-    if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
-        >&2 echo 'ERROR: Invalid installer checksum'
-        rm composer-setup.php
-        return 1
-    fi
-    if ! sudo php composer-setup.php --install-dir='/usr/bin' --filename=composer --quiet; then
-        fail_fn 'Failed to install /usr/bin/composer'
-    fi
-    rm composer-setup.php
-fi
 
 #
 # FIGURE OUT WHICH COMPILERS TO USE
@@ -572,7 +530,7 @@ fi
 # ANNOUNCE THE BUILD HAS BEGUN
 #
 
-printf "%s\n\n%s\n%s\n\n%s\n\n" \
+printf "%s\n\n%s\n%s\n%s\n\n" \
     'Starting the build process...' \
     "ImageMagick Build Script $script_version" \
     '==========================================' \
@@ -582,6 +540,21 @@ sleep 2
 printf "%s\n%s\n" \
     'Installing required APT packages' \
     '=========================================='
+
+#
+# INSTALL APT LIBRARIES
+#
+
+pkgs_jammy='libcpu-features-dev libfontconfig-dev libgc1 libhwy-dev libmimalloc2.0 libmimalloc-dev'
+
+os_test="$(lsb_release -r 2>/dev/null | grep -Eo '[0-9\.]+$')"
+if [ "$os_test" = '23.04' ]; then
+    pkgs_fn "$pkgs_jammy librust-jpeg-decoder-dev"
+elif [ "$os_test" = '22.04' ]; then
+    pkgs_fn "$pkgs_jammy libhwy0"
+elif [ "$os_test" = '20.04' ]; then
+    pkgs_fn 'libfontconfig1-dev'
+fi
 
 #
 # INSTALL OFFICIAL IMAGEMAGICK LIBS
@@ -601,6 +574,32 @@ if build 'magick-libs' "$g_ver"; then
         read -p 'Press enter to continue.'
     fi
     build_done 'magick-libs' "$g_ver"
+fi
+
+#
+# INSTALL REQUIRED DEBIAN FILES
+#
+
+deb_files_fn
+
+#
+# INSTALL COMPOSER TO COMPILE GRAPHVIZ
+#
+
+if [ ! -f '/usr/bin/composer' ]; then
+    EXPECTED_CHECKSUM="$(php -r 'copy("https://composer.github.io/installer.sig", "php://stdout");')"
+    php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+    ACTUAL_CHECKSUM="$(php -r "echo hash_file('sha384', 'composer-setup.php');")"
+
+    if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
+        >&2 echo 'ERROR: Invalid installer checksum'
+        rm composer-setup.php
+        return 1
+    fi
+    if ! sudo php composer-setup.php --install-dir='/usr/bin' --filename=composer --quiet; then
+        fail_fn 'Failed to install /usr/bin/composer'
+    fi
+    rm composer-setup.php
 fi
 
 #
