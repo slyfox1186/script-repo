@@ -23,7 +23,7 @@ if [ "$EUID" -eq '0' ]; then
     echo
 fi
 
-echo
+clear
 
 ##
 ## CREATE VARIABLES
