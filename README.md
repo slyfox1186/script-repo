@@ -45,11 +45,11 @@ curl -Lso pkgs.sh https://debian-pkgs.optimizethis.net; sudo bash pkgs.sh
     - .bashrc
     - .bash_aliases
     - .bash_functions
-### Lunar Lobster
+### Ubuntu Lunar 
 ```bash
 bash <(curl -sSL https://lunar-scripts.optimizethis.net)
 ```
-### Jammy Jellyfish
+### Ubuntu Jammy & Focal
 ```bash
 bash <(curl -sSL https://jammy-scripts.optimizethis.net)
 ```
