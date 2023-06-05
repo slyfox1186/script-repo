@@ -15,7 +15,7 @@
 ##
 ######################################################
 
-echo
+clear
 
 script_ver='2.0'
 cwd="$PWD"/curl-build-script
