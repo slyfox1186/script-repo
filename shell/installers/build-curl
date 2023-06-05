@@ -5,17 +5,19 @@
 ##
 ##  Install the latest curl release from GitHub
 ##
-##  Supported OS: Debian based OS
+##  Supported OS:
+##  - Debian 10 / 11
+##  - Ubuntu 22.04 / 20.04 / 18.04
 ##
 ##  Updated: 06.05.23
 ##
-##  Script version: 5.0
+##  Script version: 2.0
 ##
 ######################################################
 
 echo
 
-script_ver='5.0'
+script_ver='2.0'
 cwd="$PWD"/curl-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
@@ -141,34 +143,13 @@ git_1_fn()
     github_repo="$1"
     github_url="$2"
 
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
-        g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url' 2> /dev/null)"
-        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2> /dev/null)"
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
+        g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url' 2>/dev/null)"
+        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_ver="${g_ver#cares-}"
         g_ver="${g_ver#nghttp2 v}"
         g_ver="${g_ver#nghttp3 v}"
         g_ver="${g_ver#OpenSSL }"
-        g_ver="${g_ver#v}"
-    fi
-}
-
-git_2_fn()
-{
-    local curl_cmd gitlab_repo github_url
-
-    gitlab_repo="$1"
-    github_url="$2"
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.gnome.org/api/v4/projects/$gitlab_repo/repository/$github_url")"; then
-        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
-        g_ver="${g_ver#v}"
-    fi
-}
-
-git_6_fn()
-{
-    gitlab_repo="$1"
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.gnome.org/api/v4/projects/$gitlab_repo/repository/tags")"; then
-        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
     fi
 }
@@ -179,21 +160,23 @@ git_ver_fn()
 
     v_url="$1"
     v_tag="$2"
-    v_flag="$3"
+
+    if [ -n "$3" ]; then
+        v_flag="$3"
+    fi
 
     case "$v_flag" in
-		T) gv_url='tags' ;;
-		R) gv_url='releases' ;;
-		*) fail_fn 'tags and releases were not among the URL options.' ;;
+		T)      gv_url='tags' ;;
+		R)      gv_url='releases' ;;
+		*)      fail_fn 'tags and releases were not among the URL options.' ;;
     esac
 
     case "$v_tag" in
-		1) url_tag='git_1_fn' ;;
-		2) url_tag='git_2_fn' ;;
-		6) url_tag='git_6_fn' ;;
+        1)      url_tag='git_1_fn';;
+        *)      fail_fn 'Could not detect the $v_tag variable inside the git_ver_fn() function';;
     esac
 
-    "$url_tag" "$v_url" "$gv_url" 2> /dev/null
+    "$url_tag" "$v_url" "$gv_url" 2>/dev/null
 }
 
 execute()
@@ -242,11 +225,11 @@ download()
     mkdir -p "$target_dir"
 
     if [ -n "$3" ]; then
-        if ! tar -xf "$target_file" -C "$target_dir" 2> /dev/null > /dev/null; then
+        if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null > /dev/null; then
             fail_fn "Failed to extract: $dl_file"
         fi
     else
-        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2> /dev/null > /dev/null; then
+        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null > /dev/null; then
             fail_fn "Failed to extract: $dl_file"
         fi
     fi
@@ -285,7 +268,7 @@ download_git()
 
 build()
 {
-    printf "\n%s\n%s\n\n" \
+    printf "\n%s\n%s\n" \
         "building $1 - version $2" \
         '===================================='
 
@@ -310,36 +293,53 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok insta
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=("$1" autoconf autogen automake build-essential ccache cmake curl git jq lcov libbrotli-dev libc-ares-dev libcunit1-dev libcurl4-gnutls-dev libec-dev libev-dev
-    libevent-dev libgnutls28-dev libjansson-dev libjemalloc-dev libldap2-dev libldap-dev liblzma-dev libmbedtls-dev libnghttp2-dev libntlm0-dev libpsl-dev \
-    librtmp-dev libssh2-1-dev libssh-dev libtool libxml2-dev libzstd-dev m4 pkg-config python3-pip re2c)
+pkgs_fn()
+{
+    local pkg pkgs missing_pkgs
 
-for pkg in ${pkgs[@]}
-do
-    if ! installed "$pkg"; then
-        missing_pkgs+=" $pkg"
-    fi
-done
+    pkgs=("$1" autoconf autogen automake build-essential ccache cmake curl git jq lcov libbrotli-dev libc-ares-dev \
+          libcunit1-dev libcurl4-gnutls-dev libec-dev libev-dev libevent-dev libexiv2-27 libgexiv2-2 libgimp2.0 \
+          libgnutls28-dev libgsasl7-dev libjansson-dev libjemalloc-dev libldap-dev libldap2-dev liblzma-dev libmbedtls-dev \
+          libnghttp2-dev libntlm0-dev libpsl-dev librtmp-dev libssh-dev libssh2-1-dev libtool libxml2-dev libzstd-dev m4 \
+          pkg-config python3-pip re2c)
 
-if [ -n "$missing_pkgs" ]; then
-    printf "%s\n%s\n\n" \
-        'Installing required apt packages' \
-        '================================================'
-    for i in "$missing_pkgs"; do
-        echo "\$ sudo apt -y install $i"
-        sudo apt -y install $i
-        echo
+    for pkg in ${pkgs[@]}
+    do
+        if ! installed "$pkg"; then
+            missing_pkgs+=" $pkg"
+        fi
     done
-fi
+
+    if [ -n "${missing_pkgs-}" ]; then
+        printf "\n%s\n%s\n" \
+            'Installing required apt packages' \
+            '================================================'
+        for i in "$missing_pkgs"; do
+            echo "\$ sudo apt -y install $i"
+            sudo apt -y install $i
+            echo
+        done
+    fi
+}
+
+#
+# DISCOVER THE SYSTEM OS
+#
 
 pkgs_jammy='libnghttp3-dev libgsasl-dev libngtcp2-dev libgsasl7-dev'
 pkgs_focal='libgsasl7-dev'
+pkgs_bionic=''
 
 os_test="$(lsb_release -r 2>/dev/null | grep -Eo '[0-9\.]+$')"
 if [ "$os_test" = '23.04' ] || [ "$os_test" = '22.04' ]; then
     pkgs_fn "$pkgs_jammy"
+    opts_flag='1'
 elif [ "$os_test" = '20.04' ]; then
     pkgs_fn "$pkgs_focal"
+    opts_flag='2'
+elif [ "$os_test" = '18.04' ]; then
+    pkgs_fn "$pkgs_bionic"
+    opts_flag='2'
 fi
 
 #
@@ -379,13 +379,22 @@ else
 fi
 
 #
+# INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
+#
+
+if [ ! -f '/etc/ssl/certs/cacert-2023-05-30.pem' ]; then
+    execute wget -cqO 'cacert-2023-05-30.pem' 'https://curl.se/ca/cacert-2023-05-30.pem'
+    execute sudo mv 'cacert-2023-05-30.pem' '/etc/ssl/certs'
+fi
+
+#
 # COMPILE FROM SOUCE CODE
 #
 
 git_ver_fn 'madler/zlib' '1' 'T'
 if build 'zlib' "$g_ver"; then
     download "$g_url" "zlib-$g_ver.tar.gz"
-    execute ./configure --prefix="$workspace" --static --64
+    execute ./configure --prefix="$workspace" --static
     execute make "-j$cpu_threads"
     execute make install
     build_done 'zlib' "$g_ver"
@@ -393,32 +402,28 @@ fi
 
 git_ver_fn 'curl/curl' '1' 'R'
 if build 'curl' "$g_ver"; then
+    download "$g_url" "curl-$g_ver.tar.gz"
+
+    if which 'update-ca-certificates' &>/dev/null; then
+        execute sudo update-ca-certificates
+    fi
+
     disable_opts=(--disable-{get-easy-options,shared,verbose,versioned-symbols})
     enable_opts=(--enable-{alt-svc,ares='/usr/include',cookies,crypto-auth,dateparse,dict,dnsshuffle,doh,file,ftp,gopher})
     enable_opts+=(--enable-{headers-api,hsts,http,http-auth,imap,ipv6,ldap,ldaps,libcurl-option,libgcc,manual,mime,mqtt,netrc,ntlm,ntlm-wb='/usr/bin/ntlm_auth'})
     enable_opts+=(--enable-{openssl-auto-load-config,optimize,pop3,progress-meter,proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static,telnet,tftp,threaded-resolver})
     enable_opts+=(--enable-{tls-srp,unix-sockets,websockets})
-    with_opts=(--with-{libssh2,nghttp2='/usr/include',nghttp3='/usr/include',brotli='/usr/include',gnutls='/usr/include'})
-    with_opts+=(--with-{gssapi,wolfssh,zlib='/usr/include/boost/beast',ca-bundle='/etc/ssl/certs/cacert-2023-05-30.pem',ca-fallback,ca-path='/etc/ssl/certs'})
-    download "$g_url" "curl-$g_ver.tar.gz"
+    with_opts=(--with-{gnutls='/usr/include',libssh2,gssapi='/usr/include/globus'})
+    with_opts+=(--with-{ca-bundle='/etc/ssl/certs/cacert-2023-05-30.pem',ca-fallback,ca-path='/etc/ssl/certs',secure-transport})
 
-    if which 'update-ca-certificates' &> /dev/null; then
-        execute sudo update-ca-certificates
-    fi
-
-    if [ ! -f '/etc/ssl/certs/cacert-2023-05-30.pem' ]; then
-        execute wget -cqO 'cacert-2023-05-30.pem' 'https://curl.se/ca/cacert-2023-05-30.pem'
-        execute sudo mv 'cacert-2023-05-30.pem' '/etc/ssl/certs'
-    fi
-
-    execute autoreconf -fi -I '/usr/share/aclocal'
+    execute autoreconf -fi
     ./configure \
         --prefix="$install_dir" \
         "${disable_opts[@]}" \
         "${enable_opts[@]}" \
         "${with_opts[@]}" \
         CFLAGS='-Os -ffunction-sections -fdata-sections -fno-unwind-tables -fno-asynchronous-unwind-tables -flto' \
-        CXXFLAGS='-OFast -march=native' \
+        CXXFLAGS='-g -O3 -march=native -mtune=native' \
         CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include" \
         LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L/usr/local/lib64 -L/usr/lib64 -L/usr/local/lib -L/usr/lib -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections"
     execute make "-j$cpu_threads"
