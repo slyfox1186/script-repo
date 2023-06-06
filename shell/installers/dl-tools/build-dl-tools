@@ -160,6 +160,7 @@ git_1_fn()
         g_ver="${g_ver#release-}"
         g_ver="${g_ver#v}"
     fi
+
 }
 
 git_ver_fn()
@@ -190,8 +191,7 @@ git_ver_fn()
 execute()
 {
     echo "$ $*"
-# 2>&1
-    if ! output=$("$@"); then
+    if ! output=$("$@" 2>&1); then
         fail_fn "Failed to Execute $*"
     fi
 }
@@ -298,10 +298,10 @@ pkgs_fn()
     local pkg pkgs missing_pkgs
 
     pkgs=("$1" autoconf autogen automake autopoint autotools-dev build-essential ccache cmake curl git google-perftools jq lcov
-          libaria2-0 libaria2-0-dev libbrotli-dev libcppunit-dev libcunit1-dev libcurl4-gnutls-dev libec-dev libev-dev libevent-dev
-          libexiv2-27 libgcc-12-dev libgexiv2-2 libgimp2.0 libldap-dev libldap2-dev liblzma-dev libmbedtls-dev libnghttp2-dev \
-          libntlm0-dev libpsl-dev librtmp-dev libssh-dev libssh2-1-dev libtool libzstd-dev m4 pkg-config python3-pip re2c \
-          libunistring-dev libuv1-dev)
+          libaria2-0 libaria2-0-dev libcppunit-dev libcunit1-dev libcurl4-gnutls-dev libec-dev libev-dev libevent-dev libexiv2-27 \
+          libgcc-12-dev libgexiv2-2 libgimp2.0 libldap-dev libldap2-dev liblzma-dev libmbedtls-dev libnghttp2-dev libntlm0-dev \
+          libpsl-dev librtmp-dev libssh-dev libssh2-1-dev libtool libzstd-dev m4 pkg-config python3-pip re2c libunistring-dev \
+          libuv1-dev)
 
     for pkg in ${pkgs[@]}
     do
@@ -443,6 +443,18 @@ if build 'jemalloc' "$g_ver"; then
     execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'jemalloc' "$g_ver"
+fi
+
+git_ver_fn 'google/brotli' '1' 'T'
+if build 'brotli' "$g_ver"; then
+    download "$g_url" "brotli-$g_ver.tar.gz"
+    mkdir out
+    cd out || exit 1
+    execute ../configure-cmake --prefix="$workspace"
+    execute make "-j$cpu_threads"
+    execute make test
+    execute make install
+    build_done 'brotli' "$g_ver"
 fi
 
 #
