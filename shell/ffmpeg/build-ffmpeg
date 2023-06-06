@@ -378,6 +378,12 @@ git_ver_fn()
         v_flag="$3"
     fi
 
+    if [ "$v_flag" = 'B' ] && [ "$v_tag" = '2' ]; then
+        url_tag='git_2_fn' gv_url='branches'
+    elif [ "$v_flag" = 'B' ] && [ "$v_tag" = '3' ]; then
+        url_tag='git_3_fn' gv_url='branches'
+    fi
+
     if [ "$v_flag" = 'X' ] && [ "$v_tag" = '5' ]; then
         url_tag='git_5_fn'
     fi
