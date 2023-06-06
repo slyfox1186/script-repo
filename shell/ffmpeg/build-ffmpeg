@@ -17,9 +17,9 @@
 ##        the user will be prompted by the script to install them so that
 ##        hardware acceleration is enabled when compiling FFmpeg
 ##
-##  Updated: 06.03.23
+##  Updated: 06.06.23
 ##
-##  Script version: 6.3
+##  Script version: 6.4
 ##
 ############################################################################################
 
@@ -28,7 +28,7 @@
 #
 
 script_name="${0:2}"
-script_ver='6.3'
+script_ver='6.4'
 ffmpeg_version='n5.1.3'
 cuda_ver='12.1.1'
 cwd="$PWD"/ffmpeg-build-script
@@ -285,7 +285,7 @@ git_1_fn()
     github_repo="$1"
     github_url="$2"
 
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL https://api.github.com/repos/$github_repo/$github_url)"; then
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "$curl_cmd" | jq -r '.[1].name' 2>/dev/null)"
         g_ver3="$(echo "$curl_cmd" | jq -r '.[3].name' 2>/dev/null)"
@@ -378,14 +378,14 @@ git_ver_fn()
         v_flag="$3"
     fi
 
+    if [ "$v_flag" = 'X' ] && [ "$v_tag" = '5' ]; then
+        url_tag='git_5_fn'
+    fi
+
     if [ "$v_flag" = 'B' ] && [ "$v_tag" = '2' ]; then
         url_tag='git_2_fn' gv_url='branches'
     elif [ "$v_flag" = 'B' ] && [ "$v_tag" = '3' ]; then
         url_tag='git_3_fn' gv_url='branches'
-    fi
-
-    if [ "$v_flag" = 'X' ] && [ "$v_tag" = '5' ]; then
-        url_tag='git_5_fn'
     fi
 
     if [ "$v_flag" = 'T' ] && [ "$v_tag" = '1' ]; then
@@ -637,36 +637,6 @@ if [ -n "$LDEXEFLAGS" ]; then
 fi
 
 #
-# FIGURE OUT WHICH COMPILERS TO USE
-#
-
-if which 'gcc-13' &>/dev/null; then
-    export CC='gcc-13'
-elif which 'gcc-12' &>/dev/null; then
-    export CC='gcc-12'
-elif which 'gcc-11' &>/dev/null; then
-    export CC='gcc-11'
-elif which 'gcc-10' &>/dev/null; then
-    export CC='gcc-10'
-elif which 'gcc' &>/dev/null; then
-    export CC='gcc'
-else
-    fail_fn 'You must have "gcc" or some higher version of it installed.'
-fi
-
-if which 'g++-12' &>/dev/null; then
-    export CXX='g++-12'
-elif which 'g++-11' &>/dev/null; then
-    export CXX='g++-11'
-elif which 'g++-10' &>/dev/null; then
-    export CXX='g++-10'
-elif which 'g++' &>/dev/null; then
-    export CXX='g++'
-else
-    fail_fn 'You must have "g++" or some higher version of it installed.'
-fi
-
-#
 # ENABLE NONFREE LIBRARY SUPPORT
 #
 
@@ -846,7 +816,7 @@ build_pkgs_fn()
           libglib2.0-dev libgvc6 libjemalloc-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev libmusicbrainz5-dev libcrypto++-dev \
           libncurses5-dev libopencv-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-malloc-buf-dev libsrt-doc libssl-dev \
           libtalloc-dev libyuv-dev libzstd-dev libzzip-dev lshw lzma-dev make openjdk-17-jdk-headless pandoc pkg-config python3 python3-pip ragel re2c \
-          scons texi2html texinfo xmlto libdevil-dev unzip wget)
+          scons texi2html texinfo xmlto libdevil-dev unzip wget nasm)
 
     for pkg in ${pkgs[@]}; do
         if ! installed "$pkg"; then
@@ -998,6 +968,16 @@ install_cuda_fn
 #
 
 build_pkgs_fn
+
+#
+# SET COMPILER
+#
+
+if which clang &>/dev/null; then
+    export CC='clang' CXX='clang++'
+else
+    export CC='gcc' CXX='g++'
+fi
 
 #
 # BUILD FROM SOURCE CODE
@@ -1356,8 +1336,8 @@ fi
 pre_check_ver 'AOMediaCodec/libavif' '1' 'T'
 if build 'avif' "$g_ver"; then
     download "$g_url" "avif-$g_ver.tar.gz"
-    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='ON' -DAVIF_ENABLE_WERROR='OFF' -DAVIF_CODEC_DAV1D='ON' -DAVIF_CODEC_AOM='ON' \
-        -DAVIF_BUILD_APPS='ON' "$avif_tag" -G 'Ninja' -Wno-dev
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -DBUILD_SHARED_LIBS='OFF' -DCMAKE_BUILD_TYPE='Release' -DAVIF_ENABLE_GTEST='ON' -DAVIF_ENABLE_WERROR='OFF' \
+        -DAVIF_CODEC_AOM_ENCODE='ON' -DAVIF_CODEC_AOM_DECODE='ON'  "$avif_tag" -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C 'build'
     execute ninja "-j$cpu_threads" -C 'build' install
     build_done 'avif' "$g_ver"
@@ -1488,7 +1468,6 @@ ffmpeg_libraries+=('--enable-libopus')
 pre_check_ver 'xiph/ogg' '1' 'T'
 if build 'libogg' "$g_ver"; then
     download "$g_url" "libogg-$g_ver.tar.gz"
-    execute mkdir -p 'm4' 'build'
     execute autoreconf -fi
     execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE='Release' -DBUILD_SHARED_LIBS='OFF' -DCPACK_BINARY_DEB='OFF' \
         -DBUILD_TESTING='OFF'-DCPACK_SOURCE_ZIP='OFF' -G 'Ninja' -Wno-dev
@@ -1950,4 +1929,3 @@ ff_ver_fn
 cleanup_fn
 
 # DISPLAY A MESSAGE AT THE SCRIPT'S END
-exit_fn
