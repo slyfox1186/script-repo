@@ -391,11 +391,9 @@ git_ver_fn()
     fi
 
     if [ "$v_flag" = 'R' ] && [ "$v_tag" = '1' ]; then
-        url_tag='git_1_fn'
-        gv_url='releases'
+        url_tag='git_1_fn' gv_url='releases'
     elif [ "$v_flag" = 'R' ] && [ "$v_tag" = '2' ]; then
-        url_tag='git_2_fn'
-        gv_url='releases'
+        url_tag='git_2_fn' gv_url='releases'
     elif [ "$v_flag" = 'R' ] && [ "$v_tag" = '3' ]; then
         url_tag='git_3_fn' gv_url='releases'
     fi
