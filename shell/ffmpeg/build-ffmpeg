@@ -435,7 +435,8 @@ pre_check_ver()
 execute()
 {
     echo "$ $*"
-    if ! output=$("$@" 2>&1); then
+    # 2>&1
+    if ! output=$("$@"); then
         fail_fn "Failed to Execute $*"
     fi
 }
@@ -1170,7 +1171,18 @@ pre_check_ver 'xiph/rav1e' '1' 'T'
 if build 'rav1e' "$g_ver"; then
     download "$g_url" "rav1e-$g_ver.tar.gz"
     export RUSTUP_INIT_SKIP_PATH_CHECK='yes'
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &>/dev/null
+    export PATH="$PATH:$HOME/.cargo/bin"
+
+    if [ -f '/usr/bin/rustc' ]; then
+        echo '$ The script detected rustc and must remove before it before updating to the latest version.'
+        execute sudo apt remove -y rustc
+    fi
+
+    echo '$ Sourcing ~/.bashrc'
+    source "$HOME"/.bashrc
+
+    echo '$ Installing the latest version of rust.'
+    curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh -s -- -y
     execute rm -rf "$HOME"/.cargo/registry/index/* "$HOME"/.cargo/.package-cache
     execute cargo install --version '0.9.20+cargo-0.71' --locked cargo-c
     execute cargo cinstall --prefix="$workspace" --library-type='staticlib' --crt-static --release
