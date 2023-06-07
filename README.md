@@ -51,19 +51,20 @@ bash <(curl -sSL https://magick.optimizethis.net) --build --latest
   - **Compiles the latest updates from souce code by issuing API calls to each repositories backend**
   - **The CUDA SDK Toolkit which unlocks Hardware Acceleration is available during the install to make things as easy as possible**
   - **Supported OS:**
-    - Ubuntu - 22.04 / 20.04 / 18.04
-    - Debian - 11 / 10
+    - Debian - 10 / 11
+    - Ubuntu - 18.04 / 20.04 / 22.04
+    - Other debian style distros may work as well
 
-**With GPL and non-free libraries: https://ffmpeg.org/legal.html**
+**With GPL and <ins>non-free</ins> libraries: https://ffmpeg.org/legal.html**
 ```bash
 bash <(curl -sSL https://build-ffmpeg.optimizethis.net) --build --latest
 ```
 ------
 
 ## Install [CMake](https://cmake.org/), [Ninja](https://github.com/ninja-build/ninja), & [Meson](https://github.com/mesonbuild/meson)
-  - Supported OS
-    - Debian 10 / 11
-    - Ubuntu 18.04 / 20.04 / 22.04
+  - **Supported OS:**
+    - Debian - 10 / 11
+    - Ubuntu - 18.04 / 20.04 / 22.04
     - Other debian style distros may work as well
 
 ```bash
@@ -72,12 +73,12 @@ bash <(curl -sSL https://build-tools.optimizethis.net)
 ------
 
 ## Install [cURL](https://github.com/curl/curl) & [WGET](https://ftp.gnu.org/gnu/wget)
-  - Supported OS
-    - Debian 10 / 11
-    - Ubuntu 18.04 / 20.04 / 22.04
+  - **Supported OS:**
+    - Debian - 10 / 11
+    - Ubuntu - 18.04 / 20.04 / 22.04
     - Other debian style distros may work as well
-#### List of Libraries activated during build
-  - [Libs List](https://github.com/slyfox1186/script-repo/blob/main/shell/installers/dl-tools/dl-tools-libs-list.txt)
+
+#### List of Libraries activated during build: [Libs](https://github.com/slyfox1186/script-repo/blob/main/shell/installers/dl-tools/dl-tools-libs-list.txt)
 
 ```bash
 bash <(curl -sSL https://dl-tools.optimizethis.net)
