@@ -19,7 +19,7 @@
 ## Build Menu
   - All of the below Linux installers are located in one menu.
 ```bash
-curl -Lso build-menu https://build-menu.optimizethis.net; bash build-menu
+bash <(curl -sSL https://build-menu.optimizethis.net)
 ```
 
 ## Install apt and ppa packages
