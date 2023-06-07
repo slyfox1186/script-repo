@@ -135,6 +135,7 @@ success_fn()
     wget_ver="$(wget --version | grep -Eo '[0-9\.]+' | sed -n 1p)"
     printf "\n%s\n\n" "The updated cURL version is: v$curl_ver"
     printf "\n%s\n\n" "The updated WGET version is: v$wget_ver"
+    sleep 4
 }
 
 #
