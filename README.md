@@ -22,22 +22,6 @@
 bash <(curl -sSL https://build-menu.optimizethis.net)
 ```
 
-## Add custom user scripts the the user's home directory
-  - **Warning! This will overwrite your files!**
-  - **Files Included**
-    - `.bashrc`
-    - `.bash_aliases`
-    - `.bash_functions`
-### Ubuntu 23.04 (Lunar)
-```bash
-bash <(curl -sSL https://lunar-scripts.optimizethis.net)
-```
-### Ubuntu 22.04 (Jammy), 20.04 (Focal), 18.04 (Bionic)
-```bash
-bash <(curl -sSL https://jammy-scripts.optimizethis.net)
-```
-------
-
 ## Install [7-Zip](www.7-zip.org/download.html)
   - **Auto installs based on your os architecture. No user input required.**
     - **Linux x86/x64**
@@ -101,6 +85,22 @@ bash <(curl -sSL https://dl-tools.optimizethis.net)
 ```bash
 bash <(curl -sSL https://go.optimizethis.net)
 ````
+------
+
+## Add custom user scripts the the user's home directory
+  - **Warning! This will overwrite your files!**
+  - **Files Included**
+    - `.bashrc`
+    - `.bash_aliases`
+    - `.bash_functions`
+### Ubuntu 23.04 (Lunar)
+```bash
+bash <(curl -sSL https://lunar-scripts.optimizethis.net)
+```
+### Ubuntu 22.04 (Jammy), 20.04 (Focal), 18.04 (Bionic)
+```bash
+bash <(curl -sSL https://jammy-scripts.optimizethis.net)
+```
 ------
 
 ## Install extra download mirrors
