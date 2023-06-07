@@ -6,10 +6,10 @@ list='/etc/apt/sources.list'
 
 # make a backup of the file
 if [ ! -f "$list.bak" ]; then
-    sudo cp -f "$list" "$list.bak"
+    cp -f "$list" "$list.bak"
 fi
 
-sudo \cat > "$list" <<EOF
+cat > "$list" <<EOF
 ###################################################
 ##
 ##  UBUNTU JAMMY
@@ -73,3 +73,5 @@ else
     printf "\n%s\n\n" "Could not find an EDITOR to open the file: $list"
     exit 1
 fi
+
+sudo rm "$0"
