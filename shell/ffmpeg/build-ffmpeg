@@ -1050,14 +1050,6 @@ if build 'ninja' "$g_ver"; then
     build_done 'ninja' "$g_ver"
 fi
 
-pre_check_ver 'mesonbuild/meson' '1' 'T'
-if build 'meson' "$g_ver"; then
-    download "https://codeload.github.com/mesonbuild/meson/tar.gz/refs/tags/$g_ver" "meson-$g_ver.tar.gz"
-    execute python3 setup.py build
-    execute python3 setup.py install --prefix="$workspace"
-    build_done 'meson' "$g_ver"
-fi
-
 pre_check_ver 'yasm/yasm' '1' 'T'
 if build 'yasm' "$g_ver"; then
     download "https://codeload.github.com/yasm/yasm/tar.gz/refs/tags/v$g_ver" "yasm-$g_ver.tar.gz"
