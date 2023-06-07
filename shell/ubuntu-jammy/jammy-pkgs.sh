@@ -83,9 +83,8 @@ install_apt_fn()
         do
             $exec_apt -y install $i
         done
-        printf "\n%s\n\n%s\n\n" \
-            'The required packages were successfully installed.' \
-            'Please execute the script again to finish installing ImageMagick.'
+        printf "\n%s\n\n" \
+            'The required packages were successfully installed.'
         exit 0
     else
         echo 'The required packages are already installed.'
