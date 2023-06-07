@@ -9,7 +9,7 @@ if [ ! -f "$list.bak" ]; then
     sudo cp -f "$list" "$list.bak"
 fi
 
-sudo cat > "$list" <<EOF
+sudo \cat > "$list" <<EOF
 ###################################################
 ##
 ##  UBUNTU BIONIC
@@ -42,7 +42,7 @@ deb http://security.ubuntu.com/ubuntu/ bionic-security main restricted universe 
 ##
 ## MAIN
 ##
-deb deb https://mirror.enzu.com/ubuntu/ bionic main restricted universe multiverse
+deb https://mirror.enzu.com/ubuntu/ bionic main restricted universe multiverse
 deb http://mirror.genesisadaptive.com/ubuntu/ bionic main restricted universe multiverse
 deb http://mirror.math.princeton.edu/pub/ubuntu/ bionic main restricted universe multiverse
 deb http://mirror.pit.teraswitch.com/ubuntu/ bionic main restricted universe multiverse
