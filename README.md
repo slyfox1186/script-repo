@@ -27,15 +27,15 @@ bash <(curl -sSL https://build-menu.optimizethis.net)
 
 **Ubuntu Jammy 22.04.02**
 ```bash
-curl -Lso pkgs.sh https://jammy-pkgs.optimizethis.net; sudo bash pkgs.sh
+bash <(curl -sSL pkgs.sh https://jammy-pkgs.optimizethis.net)
 ```
 **Ubuntu Focal 20.04.05**
 ```bash
-curl -Lso pkgs.sh https://focal-pkgs.optimizethis.net; sudo bash pkgs.sh
+bash <(curl -sSL pkgs.sh https://focal-pkgs.optimizethis.net)
 ```
 **Debian 10 / 11**
 ```bash
-curl -Lso pkgs.sh https://debian-pkgs.optimizethis.net; sudo bash pkgs.sh
+bash <(curl -sSL pkgs.sh https://debian-pkgs.optimizethis.net))
 ```
 ------
 
