@@ -30,7 +30,7 @@ if [ "$EUID" -eq '0' ]; then
 fi
 
 #
-# SET MASTER VARIABLES
+# SET GLOBAL VARIABLES
 #
 
 progname="${0:2}"
@@ -39,6 +39,9 @@ cwd="$PWD"/magick-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
 script_repo='https://github.com/slyfox1186/script-repo'
+install_dir='/usr/local'
+CXXFLAGS='-g -O3 -march=native -Wno-error'
+export CXXFLAGS
 
 #
 # CREATE OUTPUT DIRECTORIES
@@ -55,12 +58,6 @@ if [ -f '/proc/cpuinfo' ]; then
 else
     cpu_threads="$(nproc --all)"
 fi
-
-#
-# SET GLOBAL VARIABLES
-#
-
-export CXXFLAGS='-g -O3 -march=native -Wno-error'
 
 PATH="\
 /usr/lib/ccache:\
@@ -92,12 +89,12 @@ $workspace/lib:\
 $workspace/lib64:\
 $workspace/src/lib:\
 $workspace/share/ghostscript/10.01.1/lib:\
-/usr/share/texinfo/lib:\
-/usr/share/ghostscript/9.55.0/lib:\
-/usr/lib/jvm/java-11-openjdk-amd64/lib:\
 /usr/local/lib:\
 /usr/lib64:\
-/usr/lib\
+/usr/lib:\
+/usr/share/texinfo/lib:\
+/usr/share/ghostscript/9.55.0/lib:\
+/usr/lib/jvm/java-11-openjdk-amd64/lib\
 "
 export LD_LIBRARY_PATH
 
@@ -289,6 +286,13 @@ download_git()
         echo -e "Succesfully cloned the directory: $target_dir\\n"
 
     cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
+}
+
+show_magick_version()
+{
+    if ! magick -version 2>/dev/null; then
+        fail_fn 'Failure to execute the command: magick -version'
+    fi
 }
 
 installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
@@ -512,7 +516,9 @@ else
     fail_fn 'You must have "gcc" or some higher version of it installed.'
 fi
 
-if which 'g++-12' &>/dev/null; then
+if which 'g++-13' &>/dev/null; then
+    export CXX='g++-13'
+elif which 'g++-12' &>/dev/null; then
     export CXX='g++-12'
 elif which 'g++-11' &>/dev/null; then
     export CXX='g++-11'
@@ -739,7 +745,7 @@ if build 'imageMagick' "$g_ver"; then
     download "https://codeload.github.com/imagemagick/imagemagick/tar.gz/refs/tags/$g_ver" "imagemagick-$g_ver.tar.gz"
     execute autoreconf -fi -I '/usr/share/aclocal'
     ./configure \
-        --prefix='/usr/local' \
+        --prefix="$install_dir" \
         --enable-ccmalloc \
         --enable-legacy-support \
         --with-autotrace \
@@ -764,15 +770,13 @@ fi
 #
 
 echo
-sudo ldconfig /usr/local/lib 2>/dev/null
+sudo ldconfig 2>/dev/null
 
 #
 # SHOW THE NEWLY INSTALLED MAGICK VERSION
 #
 
-if ! magick -version 2>/dev/null; then
-    fail_fn 'Failure to execute the command: magick -version'
-fi
+show_magick_version
 
 #
 # PROMPT THE USER TO CLEANUP THE BUILD FILES
