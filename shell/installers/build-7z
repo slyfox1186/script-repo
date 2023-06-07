@@ -43,7 +43,6 @@ exit_fn()
         'The script has completed' \
         'Make sure to star this repository to show your support!' \
         "$repo"
-    sleep 3
     exit 0
 }
 
