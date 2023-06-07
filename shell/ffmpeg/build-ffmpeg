@@ -266,7 +266,7 @@ git_1_fn()
     github_repo="$1"
     github_url="$2"
 
-    if curl_cmd="$(curl --request GET -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "$curl_cmd" | jq -r '.[1].name' 2>/dev/null)"
         g_ver3="$(echo "$curl_cmd" | jq -r '.[3].name' 2>/dev/null)"
@@ -1041,6 +1041,22 @@ if build 'cmake' "$g_ver" "$packages/$1.done"; then
     build_done 'cmake' "$g_ver"
 fi
 
+pre_check_ver 'ninja-build/ninja' '1' 'T'
+if build 'ninja' "$g_ver"; then
+    download "https://codeload.github.com/ninja-build/ninja/tar.gz/refs/tags/v$g_ver" "ninja-$g_ver.tar.gz"
+    execute cmake -B build
+    execute cmake --build build
+    execute cp -f 'build/ninja' "$workspace/bin"
+    build_done 'ninja' "$g_ver"
+fi
+
+pre_check_ver 'mesonbuild/meson' '1' 'T'
+if build 'meson' "$g_ver"; then
+    download "https://codeload.github.com/mesonbuild/meson/tar.gz/refs/tags/$g_ver" "meson-$g_ver.tar.gz"
+    execute python3 setup.py build
+    execute python3 setup.py install --prefix="$workspace"
+    build_done 'meson' "$g_ver"
+fi
 
 pre_check_ver 'yasm/yasm' '1' 'T'
 if build 'yasm' "$g_ver"; then
@@ -1057,23 +1073,6 @@ if build 'nasm' '2.16.01'; then
     execute make "-j$cpu_threads"
     execute make install
     build_done 'nasm' '2.16.01'
-fi
-
-pre_check_ver 'ninja-build/ninja' '1' 'T'
-if build 'ninja' "$g_ver"; then
-    download "https://codeload.github.com/ninja-build/ninja/tar.gz/refs/tags/v$g_ver" "ninja-$g_ver.tar.gz"
-    execute cmake -B build
-    execute cmake --build build
-    execute cp -f 'build/ninja' "$workspace/bin"
-    build_done 'ninja' "$g_ver"
-fi
-
-pre_check_ver 'mesonbuild/meson' '1' 'T'
-if build 'meson' "$g_ver"; then
-    download "https://codeload.github.com/mesonbuild/meson/tar.gz/refs/tags/$g_ver" "meson-$g_ver.tar.gz"
-    execute python3 setup.py build
-    execute python3 setup.py install --prefix="$workspace"
-    build_done 'meson' "$g_ver"
 fi
 
 pre_check_ver 'madler/zlib' '1' 'T'
