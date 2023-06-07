@@ -1,4 +1,4 @@
-#!/bin/bash
+    #!/bin/bash
 # shellcheck disable=SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
 
 ############################################################################################
@@ -34,7 +34,8 @@ cuda_ver='12.1.1'
 cwd="$PWD"/ffmpeg-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
-CFLAGS="-I$workspace/include"
+CFLAGS="-I$workspace/include -I/usr/local/cuda-12.1/nvvm/include -I/usr/local/include -I/usr/include -I/usr/lib/gcc/x86_64-linux-gnu/8/include"
+CFLAGS+=' -I/usr/lib/gcc/x86_64-linux-gnu/9/include'
 LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L/usr/local/lib64 -L/usr/local/lib -L/usr/lib -L/usr/local/cuda-12.1/nvvm/lib64"
 LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/local/cuda-12.1/targets/x86_64-linux/lib -L/lib/x86_64-linux-gnu -L/usr/share/ant/lib'
 LDEXEFLAGS=''
@@ -637,7 +638,7 @@ export JAVA_HOME
 PATH="\
 /usr/lib/ccache:\
 $workspace/bin:\
-/usr/local/cuda-12.1/bin:\
+/usr/local/cuda/bin:\
 $JAVA_HOME/bin:\
 $PATH\
 "
@@ -758,13 +759,13 @@ pkgs_fn()
         'Installing required APT development packages' \
         '=============================================='
 
-    pkgs=("$1" ant asciidoc autopoint binutils bison build-essential cargo ccache checkinstall curl doxygen flex freeglut3-dev g++ gawk gcc
+    pkgs=("$1" ant asciidoc autopoint binutils bison build-essential cargo ccache checkinstall clang curl doxygen flex freeglut3-dev gawk
           gettext git gnustep-gui-runtime google-perftools gperf gtk-doc-tools help2man jq junit libbz2-dev libcairo2-dev libc-ares-dev
           libcdio-paranoia-dev libcrypto++-dev libdevil-dev libdmalloc-dev libglib2.0-dev libgoogle-perftools4 libgoogle-perftools-dev
           libgvc6 libjemalloc-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev libmusicbrainz5-dev libncurses5-dev libopencv-dev
           libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev librust-malloc-buf-dev libsrt-doc
-          libssl-dev libtalloc-dev libzstd-dev libzzip-dev lshw lzma-dev make nasm openjdk-17-jdk-headless pandoc pkg-config python3
-          python3-pip ragel re2c scons texi2html texinfo unzip wget xmlto)
+          libssl-dev libtalloc-dev libzstd-dev libzzip-dev lshw lzma-dev nasm openjdk-17-jdk-headless pandoc pkg-config python3 python3-pip
+          ragel re2c scons texi2html texinfo unzip wget xmlto)
 
     for pkg in ${pkgs[@]}; do
         if ! installed "$pkg"; then
@@ -966,9 +967,11 @@ esac
 # SET COMPILER
 #
 
-if which clang &>/dev/null; then
-    export CC='clang' CXX='clang++'
-elif which gcc &>/dev/null; then
+if [ -f '/usr/lib/ccache/clang' ]; then
+    export CC='/usr/lib/ccache/clang' CXX='/usr/lib/ccache/clang++'
+elif [ -f '/usr/lib/ccache/gcc' ]; then
+    export CC='/usr/lib/ccache/gcc' CXX='/usr/lib/ccache/g++'
+else
     export CC='gcc' CXX='g++'
 fi
 
@@ -1237,12 +1240,11 @@ EOF
         sed -i.backup 's/lgcc_s/lgcc_eh/g' "$workspace"/lib/pkgconfig/x265.pc
     fi
 
-    if [ -f "$workspace/lib/libx265.so.192" ]; then
-        sudo cp -f "$workspace/lib/libx265.so.192" '/usr/lib/x86_64-linux-gnu'
-    fi
-
-    if [ -f '/usr/lib/x86_64-linux-gnu/libx265.so.192' ]; then
-        sudo ln -s '/usr/lib/x86_64-linux-gnu/libx265.so.192' '/usr/lib/x86_64-linux-gnu/libx265.so'
+    if [ -f "$workspace/lib/libx265.so.199" ]; then
+        sudo cp -f "$workspace/lib/libx265.so.199" '/usr/lib/x86_64-linux-gnu'
+        sudo ln -s '/usr/lib/x86_64-linux-gnu/libx265.so.199' '/usr/lib/x86_64-linux-gnu/libx265.so'
+    else
+        echo "$ The sript could not located the file \"$workspace/lib/libx265.so.199\" and needs to be updated."
     fi
 
     build_done 'x265' '3.5'
@@ -1867,18 +1869,15 @@ ffmpeg_libraries+=('--enable-amf')
 if [ -n "$iscuda" ]; then
     if build 'nv-codec-headers' "$g_ver"; then
         download 'https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.0.16.0/nv-codec-headers-12.0.16.0.tar.gz' 'nv-codec-headers-12.0.16.0.tar.gz'
-        execute make PREFIX="${workspace}"
-        execute make PREFIX="${workspace}" install
+        execute make PREFIX="$workspace"
+        execute make PREFIX="$workspace" install
         build_done 'nv-codec-headers' "$g_ver"
     fi
 
-    ffmpeg_libraries+=('--enable-cuda-nvcc' '--enable-cuvid' '--enable-nvenc')
-
-    export CFLAGS+=' -I/usr/local/cuda/include -I/usr/local/cuda/targets/x86_64-linux/include'
-    export LDFLAGS+=' -L/usr/local/cuda/lib64'
-    export LDPATH+=' -lcudart'
-
     ffmpeg_libraries+=('--enable-cuda-nvcc' '--enable-cuvid' '--enable-nvenc' '--enable-cuda-llvm')
+
+    CFLAGS+=' -I/usr/local/cuda/include'
+    LDFLAGS+=' -L/usr/local/cuda/lib64'
 
     if [ -z "$LDEXEFLAGS" ]; then
         ffmpeg_libraries+=('--enable-libnpp')
@@ -1914,6 +1913,7 @@ if build 'FFmpeg' "$ffmpeg_version"; then
         --extra-ldexeflags="$LDEXEFLAGS" \
         --extra-ldflags="$LDFLAGS" \
         --extra-libs="$EXTRALIBS" \
+        --nvccflags="$nvflags" \
         --pkgconfigdir="$workspace"/lib/pkgconfig \
         --pkg-config-flags='--static' \
         --extra-version="$EXTRA_VERSION"
