@@ -130,7 +130,7 @@ cleanup_fn()
 
     case "$choice" in
         1)
-            remove_dir "$cwd"
+            sudo rm -fr "$cwd"
             exit_fn
             ;;
         2)
@@ -180,30 +180,6 @@ get_version_fn()
         "Script version: $script_version"
 }
 
-make_dir()
-{
-    if ! remove_dir "$1"; then
-        fail_fn "Failed to remove the directory: $PWD/$1"
-    fi
-    if ! mkdir "$1"; then
-        fail_fn "Failed to create the directory: $PWD/$1"
-    fi
-}
-
-remove_file()
-{
-    if [ -f "$1" ]; then
-        sudo rm -f "$1"
-    fi
-}
-
-remove_dir()
-{
-    if [ -d "$1" ]; then
-        sudo rm -fr "$1"
-    fi
-}
-
 download()
 {
     dl_path="$packages"
@@ -236,7 +212,7 @@ download()
         sudo rm -fr "$dl_path/$target_dir"
     fi
 
-    make_dir "$dl_path/$target_dir"
+    mkdir -p "$dl_path/$target_dir"
 
     if [[ "$dl_file" == *'patch'* ]]; then
         return
@@ -265,7 +241,7 @@ download_git()
     target_dir="$dl_path/$dl_file"
 
     if [ -d "$target_dir" ]; then
-        remove_dir "$target_dir"
+        sudo rm -fr "$target_dir"
     fi
 
         echo "Downloading $dl_url as $dl_file"
@@ -645,7 +621,6 @@ fi
 
 if build 'jpeg-turbo' 'git'; then
     download_git 'https://github.com/imageMagick/jpeg-turbo.git' 'jpeg-turbo-git'
-    make_dir 'build'
     execute cmake -S . -DCMAKE_INSTALL_PREFIX='/usr/local' -DCMAKE_BUILD_TYPE='Release' -DENABLE_SHARED='ON' -DENABLE_STATIC='ON' -G 'Ninja'
     execute ninja "-j$cpu_threads"
     execute sudo ninja "-j$cpu_threads" install
@@ -682,7 +657,6 @@ fi
 if build 'webp' 'git'; then
     download_git 'https://chromium.googlesource.com/webm/libwebp' 'webp-git'
     execute autoreconf -fi
-    make_dir 'build'
     execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE='Release' -DBUILD_SHARED_LIBS='ON' \
         -DCMAKE_C_FLAGS_RELEASE="-O3 -DNDEBUG" -DWEBP_BUILD_EXTRAS='OFF' -DWEBP_BUILD_LIBWEBPMUX='OFF' \
         -DCMAKE_INSTALL_INCLUDEDIR="include" -DWEBP_LINK_STATIC='OFF' -DWEBP_BUILD_GIF2WEBP='OFF' -DWEBP_BUILD_IMG2WEBP='OFF' \
