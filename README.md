@@ -38,30 +38,6 @@ bash <(curl -sSL https://jammy-scripts.optimizethis.net)
 ```
 ------
 
-## Install extra download mirrors
-  - **Warning! This will overwrite your files!**
-#### Ubuntu Lunar
-```bash
-bash <(curl -sSL https://lunar-mirrors.optimizethis.net)
-```
-#### Ubuntu Jammy
-```bash
-bash <(curl -sSL https://jammy-mirrors.optimizethis.net)
-```
-#### Ubuntu Focal
-```bash
-bash <(curl -sSL https://focal-mirrors.optimizethis.net)
-```
-#### Ubuntu Bionic
-```bash
-bash <(curl -sSL https://bionic-mirrors.optimizethis.net)
-```
-#### Debian Bullseye
-```bash
-bash <(curl -sSL https://debian-mirrors.optimizethis.net)
-```
-------
-
 ## Install [7-Zip](www.7-zip.org/download.html)
   - **Auto installs based on your os architecture. No user input required.**
     - **Linux x86/x64**
@@ -125,6 +101,30 @@ bash <(curl -sSL https://dl-tools.optimizethis.net)
 ```bash
 bash <(curl -sSL https://go.optimizethis.net)
 ````
+------
+
+## Install extra download mirrors
+  - **Warning! This will overwrite your files!**
+#### Ubuntu Lunar
+```bash
+bash <(curl -sSL https://lunar-mirrors.optimizethis.net)
+```
+#### Ubuntu Jammy
+```bash
+bash <(curl -sSL https://jammy-mirrors.optimizethis.net)
+```
+#### Ubuntu Focal
+```bash
+bash <(curl -sSL https://focal-mirrors.optimizethis.net)
+```
+#### Ubuntu Bionic
+```bash
+bash <(curl -sSL https://bionic-mirrors.optimizethis.net)
+```
+#### Debian Bullseye
+```bash
+bash <(curl -sSL https://debian-mirrors.optimizethis.net)
+```
 ------
 
 ## Install apt and ppa packages
