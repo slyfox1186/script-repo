@@ -135,7 +135,7 @@ success_fn()
     wget_ver="$(wget --version | grep -Eo '[0-9\.]+' | sed -n 1p)"
     printf "\n%s\n\n" "The updated cURL version is: v$curl_ver"
     printf "\n%s\n\n" "The updated WGET version is: v$wget_ver"
-    sleep 4
+    sleep 3
 }
 
 #
@@ -197,7 +197,8 @@ execute()
     fi
 }
 
-download() {
+download()
+{
     local dl_file dl_path dl_url output_dir target_dir target_file
 
     dl_path="$packages"
@@ -471,7 +472,6 @@ if build 'wget' "$g_ver"; then
         LDFLAGS="$LDFLAGS" PCRE_LIBS="$workspace"/lib
     execute make "-j$cpu_threads"
     execute sudo make install
-    build_done 'wget' "$g_ver"
 fi
 
 git_ver_fn 'curl/curl' '1' 'R'
