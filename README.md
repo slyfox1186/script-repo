@@ -111,23 +111,23 @@ bash <(curl -sSL https://jammy-scripts.optimizethis.net)
   - **Warning! This will overwrite your files!**
 #### Ubuntu Lunar
 ```bash
-bash <(curl -sSL https://lunar-mirrors.optimizethis.net)
+curl -Lso mirrors https://lunar-mirrors.optimizethis.net; sudo bash mirrors
 ```
 #### Ubuntu Jammy
 ```bash
-bash <(curl -sSL https://jammy-mirrors.optimizethis.net)
+curl -Lso mirrors https://jammy-mirrors.optimizethis.net; sudo bash mirrors
 ```
 #### Ubuntu Focal
 ```bash
-bash <(curl -sSL https://focal-mirrors.optimizethis.net)
+curl -Lso mirrors https://focal-mirrors.optimizethis.net; sudo bash mirrors
 ```
 #### Ubuntu Bionic
 ```bash
-bash <(curl -sSL https://bionic-mirrors.optimizethis.net)
+curl -Lso mirrors https://bionic-mirrors.optimizethis.net; sudo bash mirrors
 ```
 #### Debian Bullseye
 ```bash
-bash <(curl -sSL https://debian-mirrors.optimizethis.net)
+curl -Lso mirrors https://debian-mirrors.optimizethis.net; sudo bash mirrors
 ```
 ------
 
