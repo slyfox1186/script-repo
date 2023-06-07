@@ -340,31 +340,31 @@ fi
 #
 
 if which 'gcc-13' &>/dev/null; then
-    export CC='gcc-13'
-elif which 'gcc-12' &>/dev/null; then
-    export CC='gcc-12'
+    export CC='/usr/lib/ccache/gcc-13'
+elif which '/usr/lib/ccache/gcc-12' &>/dev/null; then
+    export CC='/usr/lib/ccache/gcc-12'
 elif which 'gcc-11' &>/dev/null; then
-    export CC='gcc-11'
+    export CC='/usr/lib/ccache/gcc-11'
 elif which 'gcc-10' &>/dev/null; then
-    export CC='gcc-10'
+    export CC='/usr/lib/ccache/gcc-10'
 elif which 'gcc-9' &>/dev/null; then
-    export CC='gcc-9'
+    export CC='/usr/lib/ccache/gcc-9'
 elif which 'gcc' &>/dev/null; then
-    export CC='gcc'
+    export CC='/usr/lib/ccache/gcc'
 fi
 
 if which 'g++-13' &>/dev/null; then
-    export CXX='g++-13'
+    export CXX='/usr/lib/ccache/g++-13'
 elif which 'g++-12' &>/dev/null; then
-    export CXX='g++-12'
+    export CXX='/usr/lib/ccache/g++-12'
 elif which 'g++-11' &>/dev/null; then
-    export CXX='g++-11'
+    export CXX='/usr/lib/ccache/g++-11'
 elif which 'g++-10' &>/dev/null; then
-    export CXX='g++-10'
+    export CXX='/usr/lib/ccache/g++-10'
 elif which 'g++-9' &>/dev/null; then
-    export CXX='g++-9'
+    export CXX='/usr/lib/ccache/g++-9'
 elif which 'g++' &>/dev/null; then
-    export CXX='g++'
+    export CXX='/usr/lib/ccache/g++'
 fi
 
 export CXXFLAGS="$CXXFLAGS"
