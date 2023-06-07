@@ -435,7 +435,8 @@ pre_check_ver()
 execute()
 {
     echo "$ $*"
-    if ! output=$("$@" 2>&1); then
+    # 2>&1
+    if ! output=$("$@"); then
         fail_fn "Failed to Execute $*"
     fi
 }
@@ -758,12 +759,13 @@ pkgs_fn()
         'Installing required APT development packages' \
         '=============================================='
 
-    pkgs=("$1" ant asciidoc autopoint bison binutils build-essential cargo ccache checkinstall curl doxygen flex freeglut3-dev g++
-          gawk gcc gettext git gnustep-gui-runtime gperf gtk-doc-tools help2man jq junit libbz2-dev libcairo2-dev libc-ares-dev
-          libdmalloc-dev libglib2.0-dev libgvc6 libjemalloc-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev libmusicbrainz5-dev
-          libcdio-paranoia-dev libcrypto++-dev libncurses5-dev libopencv-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev
-          librust-malloc-buf-dev libsrt-doc libssl-dev libtalloc-dev libyuv-dev libzstd-dev libzzip-dev lshw lzma-dev make openjdk-17-jdk-headless
-          pandoc pkg-config python3 python3-pip ragel re2c scons texi2html texinfo xmlto libdevil-dev unzip wget nasm)
+    pkgs=("$1" ant asciidoc autopoint binutils bison build-essential cargo ccache checkinstall curl doxygen flex freeglut3-dev g++ gawk gcc
+          gettext git gnustep-gui-runtime google-perftools gperf gtk-doc-tools help2man jq junit libbz2-dev libcairo2-dev libc-ares-dev
+          libcdio-paranoia-dev libcrypto++-dev libdevil-dev libdmalloc-dev libglib2.0-dev libgoogle-perftools4 libgoogle-perftools-dev
+          libgvc6 libjemalloc-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev libmusicbrainz5-dev libncurses5-dev libopencv-dev
+          libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev librust-malloc-buf-dev libsrt-doc
+          libssl-dev libtalloc-dev libzstd-dev libzzip-dev lshw lzma-dev make nasm openjdk-17-jdk-headless pandoc pkg-config python3
+          python3-pip ragel re2c scons texi2html texinfo unzip wget xmlto)
 
     for pkg in ${pkgs[@]}; do
         if ! installed "$pkg"; then
@@ -951,9 +953,9 @@ case "$OS" in
     'Ubuntu')
                         os_test="$(lsb_release -r 2>/dev/null | grep -Eo '[0-9\.]+$')"
                         if [ "$os_test" = '23.04' ] || [ "$os_test" = '22.04' ]; then
-                            pkgs_fn 'libmimalloc-dev librust-jemalloc-sys-dev libtbbmalloc2 google-perftools libgoogle-perftools-dev libgoogle-perftools4'
+                            pkgs_fn 'libmimalloc-dev libtbbmalloc2 libyuv-dev'
                         elif [ "$os_test" = '20.04' ] || [ "$os_test" = '18.04' ]; then
-                            pkgs_fn
+                            pkgs_fn 'libjemalloc2 libtcmalloc-minimal4 libvmmalloc1 libvmmalloc-dev libdmalloc5'
                         fi
                         ;;
     *)
@@ -965,14 +967,10 @@ esac
 # SET COMPILER
 #
 
-if [ -f /usr/lib/ccache/clang ]; then
-    export CC='/usr/lib/ccache/clang' CXX='/usr/lib/ccache/clang++'
-elif [ -f /usr/lib/ccache/gcc ]; then
-    export CC='/usr/lib/ccache/gcc' CXX='/usr/lib/ccache/g++'
-elif [ -f /usr/bin/clang ]; then
-    export CC='/usr/bin/clang' CXX='/usr/bin/clang++'
-else
-    export CC='/usr/bin/gcc' CXX='/usr/bin/g++'
+if which clang &>/dev/null; then
+    export CC='clang' CXX='clang++'
+elif which gcc &>/dev/null; then
+    export CC='gcc' CXX='g++'
 fi
 
 #
@@ -1048,6 +1046,14 @@ if build 'ninja' "$g_ver"; then
     execute cmake --build build
     execute cp -f 'build/ninja' "$workspace/bin"
     build_done 'ninja' "$g_ver"
+fi
+
+pre_check_ver 'mesonbuild/meson' '1' 'T'
+if build 'meson' "$g_ver"; then
+    download "https://codeload.github.com/mesonbuild/meson/tar.gz/refs/tags/$g_ver" "meson-$g_ver.tar.gz"
+    execute python3 setup.py build
+    execute sudo python3 setup.py install --prefix='/usr/local'
+    build_done 'meson' "$g_ver"
 fi
 
 pre_check_ver 'yasm/yasm' '1' 'T'
