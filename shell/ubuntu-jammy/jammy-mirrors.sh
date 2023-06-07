@@ -9,7 +9,7 @@ if [ ! -f "$list.bak" ]; then
     sudo cp -f "$list" "$list.bak"
 fi
 
-sudo cat > "$list" <<EOF
+sudo \cat > "$list" <<EOF
 ###################################################
 ##
 ##  UBUNTU JAMMY
