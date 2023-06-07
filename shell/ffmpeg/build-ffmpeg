@@ -435,8 +435,7 @@ pre_check_ver()
 execute()
 {
     echo "$ $*"
-    # 2>&1
-    if ! output=$("$@"); then
+    if ! output=$("$@" 2>&1); then
         fail_fn "Failed to Execute $*"
     fi
 }
