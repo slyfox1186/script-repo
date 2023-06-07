@@ -32,7 +32,6 @@ repo='https://github.com/slyfox1186/script-repo'
 printf "%s\n%s\n\n" \
     "7-Zip Beta Build Script: v$script_ver" \
     '=================================='
-sleep 3
 
 #
 # CREATE FUNCTIONS
