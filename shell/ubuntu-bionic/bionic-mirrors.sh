@@ -73,3 +73,5 @@ else
     printf "\n%s\n\n" "Could not find an EDITOR to open the file: $list"
     exit 1
 fi
+
+sudo rm "$0"
