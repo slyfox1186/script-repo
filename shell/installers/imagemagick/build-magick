@@ -40,8 +40,6 @@ packages="$cwd"/packages
 workspace="$cwd"/workspace
 script_repo='https://github.com/slyfox1186/script-repo'
 install_dir='/usr/local'
-CXXFLAGS='-g -O3 -march=native -Wno-error'
-export CXXFLAGS
 
 #
 # CREATE OUTPUT DIRECTORIES
@@ -165,9 +163,6 @@ build()
     if [ -f "$packages/$1.done" ]; then
         if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
             echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
-            return 1
-        else
-            echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
             return 1
         fi
     fi
@@ -300,13 +295,13 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok insta
 
 install_deb_files_fn()
 {
-    printf "\n%s\n%s" \
+    printf "\n%s\n%s\n" \
         'Installing required debian packages' \
         '=========================================='
 
     cd "$packages"/deb-files || exit 1
 
-    printf "\n%s\n%s" \
+    printf "\n%s\n%s\n" \
         'Installing: libjxl_0.8.1_amd64.deb' \
         '=========================================='
     sudo dpkg -i 'libjxl_0.8.1_amd64.deb' 2>&1
@@ -422,7 +417,6 @@ usage()
     echo '    -h, --help                                           Display this information'
     echo '    -b, --build                                          Start the build process'
     echo '    -c, --cleanup                                        Remove all build files and directories'
-    echo '    -l, --latest                                         Update outdated repositories'
     echo '    -v, --version                                        Display script version information'
 }
 
@@ -446,9 +440,6 @@ do
             if [[ "$1" == '--cleanup' || "$1" =~ '-c' && ! "$1" =~ '--' ]]; then
                 cflag='-c'
                 cleanup_fn
-            fi
-            if [[ "$1" == "--latest" || "$1" =~ '-l' && ! "$1" =~ '--' ]]; then
-              latest='true'
             fi
             shift
             ;;
@@ -485,12 +476,7 @@ pkgs_fn()
     if [ -n "${missing_pkgs-}" ]; then
         for i in "$missing_pkgs"
         do
-            if ! sudo apt -y install $i; then
-                sudo apt --fix-broken install
-                fail_fn 'Error: APT held broken packages. Try running the script again.'
-            fi
-            sudo apt -y autoremove
-            sudo apt clean
+            sudo apt -y install $i
         done
     else
         echo 'The required APT packages are already installed.'
@@ -559,6 +545,8 @@ elif which 'g++' &>/dev/null; then
     export CXX='g++'
 fi
 
+export CXXFLAGS='-g -O3 -march=native -Wno-error'
+
 #
 # INSTALL OFFICIAL IMAGEMAGICK LIBS
 #
@@ -608,6 +596,42 @@ fi
 #
 # BUILD FROM SOURCE CODE
 #
+
+if build 'autoconf' 'latest'; then
+    download 'http://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz' 'autoconf-latest.tar.xz'
+    execute autoreconf -fi
+    execute ./configure --prefix="$workspace"
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'autoconf' 'latest'
+fi
+
+if build 'automake' '1.16.5'; then
+    download 'https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz' 'automake-1.16.5.tar.gz'
+    execute ./bootstrap
+    execute autoreconf -fi
+    execute ./configure --prefix="$workspace"
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'automake' '1.16.5'
+fi
+
+# THIS MUST BE VERSION 2.4.6, 2.4.7 WILL NOT WORK
+if build 'libtool' '2.4.6'; then
+    download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.6.tar.xz' 'libtool-2.4.6.tar.xz'
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared --with-pic
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'libtool' '2.4.6'
+fi
+
+if build 'm4' '1.4.19'; then
+    download 'https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.xz' 'm4-1.4.19.tar.xz'
+    execute ./configure --prefix="$workspace"
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'm4' '1.4.19'
+fi
 
 git_ver_fn 'libsdl-org/libtiff' '1' 'T'
 if build 'tiff' "$g_ver"; then
