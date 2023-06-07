@@ -29,6 +29,7 @@ CXXFLAGS='-g -O3 -march=native -mtune=native'
 cert_dir='/etc/ssl/certs'
 pem_file='cacert-2023-05-30.pem'
 install_dir='/usr/local'
+include_dir='/usr/include'
 repo='https://github.com/slyfox1186/script-repo/'
 
 #
@@ -134,7 +135,7 @@ success_fn()
     wget_ver="$(wget --version | grep -Eo '[0-9\.]+' | sed -n 1p)"
     printf "\n%s\n\n" "The updated cURL version is: v$curl_ver"
     printf "\n%s\n\n" "The updated WGET version is: v$wget_ver"
-    sleep 3
+    sleep 4
 }
 
 #
@@ -196,8 +197,7 @@ execute()
     fi
 }
 
-download()
-{
+download() {
     local dl_file dl_path dl_url output_dir target_dir target_file
 
     dl_path="$packages"
@@ -410,6 +410,7 @@ if build 'gsasl' '2.2.0'; then
     execute ./configure --prefix="$workspace"
     execute make "-j$cpu_threads"
     execute make install
+    sudo cp -f "$workspace"/lib/libgsasl.so.18 /usr/local/lib
     build_done 'gsasl' '2.2.0'
 fi
 
@@ -471,6 +472,7 @@ if build 'wget' "$g_ver"; then
         LDFLAGS="$LDFLAGS" PCRE_LIBS="$workspace"/lib
     execute make "-j$cpu_threads"
     execute sudo make install
+    build_done 'wget' "$g_ver"
 fi
 
 git_ver_fn 'curl/curl' '1' 'R'
@@ -481,7 +483,7 @@ if build 'curl' "$g_ver"; then
     curl_enable_opts+=(--enable-{headers-api,hsts,http,http-auth,imap,ipv6,ldap,ldaps,libcurl-option,libgcc,manual,mime,mqtt,netrc,ntlm,ntlm-wb='/usr/bin/ntlm_auth'})
     curl_enable_opts+=(--enable-{openssl-auto-load-config,optimize,pop3,progress-meter,proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static,telnet,tftp,threaded-resolver})
     curl_enable_opts+=(--enable-{tls-srp,unix-sockets,websockets})
-    curl_with_opts=(--with-{gnutls=/usr/include,libssh2,gssapi=/usr/include/globus,nghttp2='/usr/include'})
+    curl_with_opts=(--with-{gnutls="$include_dir",libssh2,gssapi="$include_dir"/globus,nghttp2='/usr/include'})
     curl_with_opts+=(--with-{ca-bundle="$cert_dir/$pem_file",ca-fallback,ca-path="$cert_dir",secure-transport})
     execute autoreconf -fi
     ./configure --prefix="$install_dir" "${curl_disable_opts[@]}" "${curl_enable_opts[@]}" \
