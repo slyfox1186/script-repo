@@ -184,38 +184,38 @@ apt_dl() { wget -c "$(apt-get install --reinstall --print-uris -qq $1 | cut -d"'
 clean()
 {
     clear
-    sudo apt -y autoremove
-    sudo apt clean
-    sudo apt autoclean
-    sudo apt -y purge
+    sudo apt-fast -y autoremove
+    sudo apt-fast clean
+    sudo apt-fast autoclean
+    sudo apt-fast -y purge
 }
 
 # UPDATE
 update()
 {
     clear
-    sudo apt update
-    sudo apt -y full-upgrade
-    sudo apt -y install ubuntu-advantage-tools
-    sudo apt -y autoremove
-    sudo apt clean
-    sudo apt autoclean
-    sudo apt -y purge
+    sudo apt-fast update
+    sudo apt-fast -y full-upgrade
+    sudo apt-fast -y install ubuntu-advantage-tools
+    sudo apt-fast -y autoremove
+    sudo apt-fast clean
+    sudo apt-fast autoclean
+    sudo apt-fast -y purge
 }
 
 # FIX BROKEN APT PACKAGES
 fix()
 {
     clear
-    sudo apt -f -y install
+    sudo apt-fast -f -y install
     apt --fix-broken install
     apt --fix-missing update
     dpkg --configure -a
-    sudo apt -y autoremove
-    sudo apt clean
-    sudo apt autoclean
-    sudo apt -y purge
-    sudo apt update
+    sudo apt-fast -y autoremove
+    sudo apt-fast clean
+    sudo apt-fast autoclean
+    sudo apt-fast -y purge
+    sudo apt-fast update
 }
 
 listd()
@@ -224,11 +224,11 @@ listd()
     local search_cache
 
     if [ -n "$1" ]; then
-        sudo apt list *$1*-dev | awk -F'/' '{print $1}'
+        sudo apt-fast list *$1*-dev | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt list *$1*-dev | awk -F'/' '{print $1}'
+        sudo apt-fast list *$1*-dev | awk -F'/' '{print $1}'
     fi
 }
 
@@ -239,26 +239,26 @@ list()
     local search_cache
 
     if [ -n "$1" ]; then
-        sudo apt list *$1* | awk -F'/' '{print $1}'
+        sudo apt-fast list *$1* | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt list *$1* | awk -F'/' '{print $1}'
+        sudo apt-fast list *$1* | awk -F'/' '{print $1}'
     fi
 }
 
-# USE sudo apt TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
+# USE sudo apt-fast TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
 asearch()
 {
     clear
     local search_cache
 
     if [ -n "$1" ]; then
-        sudo apt search "$1 ~i" -F "%p"
+        sudo apt-fast search "$1 ~i" -F "%p"
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt search "$1 ~i" -F "%p"
+        sudo apt-fast search "$1 ~i" -F "%p"
     fi
 }
 
@@ -629,27 +629,26 @@ imow()
         random="$(mktemp --directory)"
         echo '========================================================================================================='
         echo
-        echo "Working Directory: $PWD"
+        echo "Working Directory: ${PWD}"
         echo
-        printf "Converting: %s\n             >> %s\n              >> %s\n               >> %s\n" "$i" "${i%%.jpg}.mpc" "${i%%.jpg}.cache" "${i%%.jpg}-IM.jpg"
+        printf "Converting: %s\n             >> %s\n              >> %s\n               >> %s\n" "${i}" "${i%%.jpg}.mpc" "${i%%.jpg}.cache" "${i%%.jpg}-IM.jpg"
         echo
         echo '========================================================================================================='
         echo
-        dimensions="$(identify -format '%wx%h' "$i")"
-        convert "$i" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "$dimensions" -strip \
+        dimensions="$(identify -format '%wx%h' "${i}")"
+        convert "${i}" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "${dimensions}" -strip \
             -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize '136' -quality '82' -define jpeg:fancy-upsampling='off' \
-            -define png:compression-filter='5' -define png:compression-level='9' -define png:compression-strategy='1' \
-            -define png:exclude-chunk='all' -auto-level -enhance -interlace 'none' -colorspace 'sRGB' "$random/${i%%.jpg}.mpc"
+            -auto-level -enhance -interlace 'none' -colorspace 'sRGB' "${random}/${i%%.jpg}.mpc"
         clear
-        for cached in "$random"/*.mpc
+        for i in "${random}"/*.mpc
         do
-            if [ -f "$cached" ]; then
-                convert "$cached" -monitor "${cached%%.mpc}.jpg"
-                if [ -f "${cached%%.mpc}.jpg" ]; then
-                    CWD="$(${cached//s:.*/::})"
-                    mv "${cached%%.mpc}.jpg" "$PWD/${CWD%%.*}-IM.jpg"
-                    rm -f "$PWD/${CWD%%.*}.jpg"
-                    for v in $cached
+            if [ -f "${i}" ]; then
+                convert "${i}" -monitor "${i%%.mpc}.jpg"
+                if [ -f "${i%%.mpc}.jpg" ]; then
+                    cwd="$(echo "${i}" | sed 's:.*/::')"
+                    mv "${i%%.mpc}.jpg" "${PWD}/${cwd%%.*}-IM.jpg"
+                    rm -f "${PWD}/${cwd%%.*}.jpg"
+                    for v in "${i}"
                     do
                         v_noslash="${v%/}"
                         rm -fr "${v_noslash%/*}"
@@ -667,7 +666,8 @@ imow()
 
     # The text-to-speech below requries the following packages:
     # pip install gTTS; sudo apt -y install sox libsox-fmt-all
-    if google_speech 'Image conversion completed.'; then
+    if [ "${?}" -eq '0' ]; then
+        google_speech 'Image conversion completed.'
         return 0
     else
         google_speech 'Image conversion failed.'
@@ -756,9 +756,9 @@ cuda_purge()
         echo 'Purging the cuda-sdk-toolkit from your computer.'
         echo '================================================'
         echo
-        sudo sudo apt -y --purge remove "*cublas*" "cuda*" "nsight*"
-        sudo sudo apt -y autoremove
-        sudo sudo apt update
+        sudo sudo apt-fast -y --purge remove "*cublas*" "cuda*" "nsight*"
+        sudo sudo apt-fast -y autoremove
+        sudo sudo apt-fast update
     elif [[ "$answer" -eq '2' ]]; then
         return 0
     fi
@@ -864,7 +864,7 @@ hw_mon()
 
     # install lm-sensors if not already
     if ! which lm-sensors &>/dev/null; then
-        sudo apt -y install lm-sensors
+        sudo apt-fast -y install lm-sensors
     fi
 
     # add modprobe to system startup tasks if not already added    
