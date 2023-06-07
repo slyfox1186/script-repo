@@ -293,6 +293,7 @@ show_magick_version()
     if ! magick -version 2>/dev/null; then
         fail_fn 'Failure to execute the command: magick -version'
     fi
+    sleep 3
 }
 
 installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
