@@ -22,23 +22,6 @@
 bash <(curl -sSL https://build-menu.optimizethis.net)
 ```
 
-## Install apt and ppa packages
-  - **What I consider to be core apt packages or "must haves" that everyone should consider installing**
-
-**Ubuntu Jammy 22.04.02**
-```bash
-bash <(curl -sSL pkgs.sh https://jammy-pkgs.optimizethis.net)
-```
-**Ubuntu Focal 20.04.05**
-```bash
-bash <(curl -sSL pkgs.sh https://focal-pkgs.optimizethis.net)
-```
-**Debian 10 / 11**
-```bash
-bash <(curl -sSL pkgs.sh https://debian-pkgs.optimizethis.net))
-```
-------
-
 ## Add custom user scripts the the user's home directory
   - **Warning! This will overwrite your files!**
   - **Files Included**
@@ -142,6 +125,23 @@ bash <(curl -sSL https://dl-tools.optimizethis.net)
 ```bash
 bash <(curl -sSL https://go.optimizethis.net)
 ````
+------
+
+## Install apt and ppa packages
+  - **What I consider to be core apt packages or "must haves" that everyone should consider installing**
+
+**Ubuntu Jammy 22.04.02**
+```bash
+bash <(curl -sSL pkgs.sh https://jammy-pkgs.optimizethis.net)
+```
+**Ubuntu Focal 20.04.05**
+```bash
+bash <(curl -sSL pkgs.sh https://focal-pkgs.optimizethis.net)
+```
+**Debian 10 / 11**
+```bash
+bash <(curl -sSL pkgs.sh https://debian-pkgs.optimizethis.net))
+```
 ------
 
 ## Install [Tilix](https://github.com/gnunn1/tilix) Advanced Terminal with custom color themes
