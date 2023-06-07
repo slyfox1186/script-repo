@@ -35,8 +35,7 @@ cwd="$PWD"/ffmpeg-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
 CFLAGS="-I$workspace/include"
-LDFLAGS="-L$workspace/lib -L$workspace/lib64 -L/usr/lib64 -L/usr/lib -L/usr/local/lib -L/usr/local/cuda-12.1/nvvm/lib64"
-LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/local/cuda-12.1/targets/x86_64-linux/lib -L/lib/x86_64-linux-gnu -L/usr/share/ant/lib'
+LDFLAGS="-L$workspace/lib -L$workspace/lib64 -L/usr/lib/x86_64-linux-gnu"
 LDEXEFLAGS=''
 EXTRALIBS='-ldl -lpthread -lm -lz'
 ffmpeg_libraries=()
@@ -263,20 +262,26 @@ git_1_fn()
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     github_repo="$1"
     github_url="$2"
+    git_token='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'
 
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
+    if curl_cmd="$(curl \
+                        -m "$curl_timeout" \
+                        --request GET \
+                        --url "https://api.github.com/slyfox1186" \
+                        --header "Authorization: Bearer $git_token" \
+                        --header "X-GitHub-Api-Version: 2022-11-28" \
+                        -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "$curl_cmd" | jq -r '.[1].name' 2>/dev/null)"
         g_ver3="$(echo "$curl_cmd" | jq -r '.[3].name' 2>/dev/null)"
-        g_ver="${g_ver#cares-}"
-        g_ver="${g_ver#FAAC }"
-        g_ver="${g_ver#lcms}"
         g_ver="${g_ver#OpenJPEG }"
         g_ver="${g_ver#OpenSSL }"
-        g_ver="${g_ver#PCRE2-}"
         g_ver="${g_ver#pkgconf-}"
         g_ver="${g_ver#release-}"
+        g_ver="${g_ver#lcms}"
         g_ver="${g_ver#ver-}"
+        g_ver="${g_ver#PCRE2-}"
+        g_ver="${g_ver#FAAC }"
         g_ver="${g_ver#v}"
         g_ver1="${g_ver1#v}"
         g_ver3="${g_ver3#v}"
@@ -431,8 +436,7 @@ pre_check_ver()
 execute()
 {
     echo "$ $*"
-    # 2>&1
-    if ! output=$("$@"); then
+    if ! output=$("$@" 2>&1); then
         fail_fn "Failed to Execute $*"
     fi
 }
@@ -454,6 +458,15 @@ build()
             echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
             return 1
         fi
+    fi
+
+    return 0
+}
+
+command_exists()
+{
+    if ! [[ -x $(command -v "$1") ]]; then
+        return 1
     fi
 
     return 0
@@ -748,20 +761,49 @@ cuda_fn()
 # REQUIRED BUILD PACKAGES
 #
 
-pkgs_fn()
+build_pkgs_fn()
 {
-    local pkg pkgs missing_vars
+    local pkgs missing_vars
+
+    if [ -f '/etc/os-release' ]; then
+        # freedesktop.org and systemd
+        source '/etc/os-release'
+        OS="$NAME"
+        VER="$VERSION_ID"
+    elif type lsb_release >/dev/null 2>&1; then
+        # linuxbase.org
+        OS=$(lsb_release -si)
+        VER=$(lsb_release -sr)
+    elif [ -f '/etc/lsb-release' ]; then
+        source '/etc/lsb-release'
+        OS="$DISTRIB_ID"
+        VER="$DISTRIB_RELEASE"
+    elif [ -f '/etc/debian_version' ]; then
+        # Older Debian/Ubuntu/etc.
+        OS='Debian'
+        VER="$(cat '/etc/debian_version')"
+    else
+        # Fall back to uname, e.g. "Linux <version>", also works for BSD, etc.
+        OS="$(uname -s)"
+        VER="$(uname -r)"
+    fi
+
+    case "$OS" in
+        'Debian GNU/Linux')  os_pkgs='libdmalloc5 libjemalloc2 libtcmalloc-minimal4 libyuv-dev libyuv-utils libyuv0 libsharp-dev';;
+        'Ubuntu')            os_pkgs='libmimalloc-dev librust-jemalloc-sys-dev libtbbmalloc2 google-perftools libgoogle-perftools-dev libgoogle-perftools4';;
+        *)                   fail_fn 'Could not detect the OS architecture.';;
+    esac
 
     printf "\n%s\n%s\n" \
         'Installing required APT development packages' \
         '=============================================='
 
-    pkgs=("$1" ant asciidoc autopoint bison binutils build-essential cargo ccache checkinstall curl doxygen flex freeglut3-dev g++
-          gawk gcc gettext git gnustep-gui-runtime gperf gtk-doc-tools help2man jq junit libbz2-dev libcairo2-dev libc-ares-dev
+    pkgs=("$os_pkgs" ant asciidoc autopoint bison binutils build-essential ccache checkinstall curl doxygen flex freeglut3-dev g++
+          gawk gcc gettext git gnustep-gui-runtime gperf gtk-doc-tools help2man jq junit libbz2-dev libcairo2-dev libcdio-paranoia-dev
           libdmalloc-dev libglib2.0-dev libgvc6 libjemalloc-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev libmusicbrainz5-dev
-          libcdio-paranoia-dev libcrypto++-dev libncurses5-dev libopencv-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev
-          librust-malloc-buf-dev libsrt-doc libssl-dev libtalloc-dev libyuv-dev libzstd-dev libzzip-dev lshw lzma-dev make openjdk-17-jdk-headless
-          pandoc pkg-config python3 python3-pip ragel re2c scons texi2html texinfo xmlto libdevil-dev unzip wget nasm)
+          libcrypto++-dev libncurses5-dev libopencv-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-malloc-buf-dev
+          libsrt-doc libssl-dev libtalloc-dev libyuv-dev libzstd-dev libzzip-dev lshw lzma-dev make openjdk-17-jdk-headless pandoc
+          pkg-config python3 python3-pip ragel re2c scons texi2html texinfo xmlto libdevil-dev unzip wget nasm)
 
     for pkg in ${pkgs[@]}; do
         if ! installed "$pkg"; then
@@ -854,8 +896,7 @@ install_cuda_fn()
             '[1] Yes' \
             '[2] No'
         read -p 'Your choices are (1 or 2): ' cuda_choice
-        clear
-
+        echo
         if [[ "$cuda_choice" -eq '1' ]]; then
             cuda_fn
             cuda_add_fn
@@ -877,7 +918,7 @@ install_cuda_fn()
 ffmpeg_install_choice()
 {
     printf "\n%s\n\n%s\n%s\n\n" \
-        "Would you like to install the static binaries system-wide? [$install_dir]" \
+        'Would you like to install the static binaries system-wide? [/usr/local/bin]' \
         '[1] Yes ' \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' install_choice
@@ -888,7 +929,6 @@ ffmpeg_install_choice()
               sudo cp -f "$workspace/bin/ffprobe" "$install_dir"
               sudo cp -f "$workspace/bin/ffplay" "$install_dir"
               sudo cp -f "$workspace/bin/mediainfo" "$install_dir"
-              sudo cp -f "$workspace/bin/MP4Box" "$install_dir"
              ;;
         2)
               printf "\n%s\n\n%s\n" \
@@ -914,49 +954,7 @@ install_cuda_fn
 # INSTALL REQUIRED APT PACKAGES
 #
 
-if [ -f '/etc/os-release' ]; then
-    # freedesktop.org and systemd
-    source '/etc/os-release'
-    OS="$NAME"
-    VER="$VERSION_ID"
-elif type lsb_release >/dev/null 2>&1; then
-    # linuxbase.org
-    OS=$(lsb_release -si)
-    VER=$(lsb_release -sr)
-elif [ -f '/etc/lsb-release' ]; then
-    source '/etc/lsb-release'
-    OS="$DISTRIB_ID"
-    VER="$DISTRIB_RELEASE"
-elif [ -f '/etc/debian_version' ]; then
-    # Older Debian/Ubuntu/etc.
-    OS='Debian'
-    VER="$(cat '/etc/debian_version')"
-else
-    # Fall back to uname, e.g. "Linux <version>", also works for BSD, etc.
-    OS="$(uname -s)"
-    VER="$(uname -r)"
-fi
-
-#
-# TEST THE OS AND ITS VERSION IF UBUNTU THEN CALL THE pkgs_fn
-#
-
-case "$OS" in
-    'Debian GNU/Linux')
-                        pkgs_fn 'libdmalloc5 libjemalloc2 libtcmalloc-minimal4 libyuv-dev libyuv-utils libyuv0 libsharp-dev'
-                        ;;
-    'Ubuntu')
-                        os_test="$(lsb_release -r 2>/dev/null | grep -Eo '[0-9\.]+$')"
-                        if [ "$os_test" = '23.04' ] || [ "$os_test" = '22.04' ]; then
-                            pkgs_fn 'libmimalloc-dev librust-jemalloc-sys-dev libtbbmalloc2 google-perftools libgoogle-perftools-dev libgoogle-perftools4'
-                        elif [ "$os_test" = '20.04' ] || [ "$os_test" = '18.04' ]; then
-                            pkgs_fn
-                        fi
-                        ;;
-    *)
-                        fail_fn 'Could not detect the OS architecture.'
-                        ;;
-esac
+build_pkgs_fn
 
 #
 # SET COMPILER
@@ -976,6 +974,14 @@ fi
 # BUILD FROM SOURCE CODE
 #
 
+if build 'giflib' '5.2.1'; then
+    download 'https://cfhcable.dl.sourceforge.net/project/giflib/giflib-5.2.1.tar.gz' 'giflib-5.2.1.tar.gz'
+    # PARELLEL BUILDING NOT AVAILABLE FOR THIS LIBRARY
+    execute make
+    execute make PREFIX="$workspace" install
+    build_done 'giflib' '5.2.1'
+fi
+
 if build 'autoconf' 'latest'; then
     download 'http://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz' 'autoconf-latest.tar.xz'
     execute autoreconf -fi
@@ -983,32 +989,6 @@ if build 'autoconf' 'latest'; then
     execute make "-j$cpu_threads"
     execute make install
     build_done 'autoconf' 'latest'
-fi
-
-if build 'automake' '1.16.5'; then
-    download 'https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz' 'automake-1.16.5.tar.gz'
-    execute ./bootstrap
-    execute autoreconf -fi
-    execute ./configure --prefix="$workspace"
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'automake' '1.16.5'
-fi
-
-if build 'libtool' '2.4.7'; then
-    download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz' 'libtool-2.4.7.tar.xz'
-    execute ./configure --prefix="$workspace" --enable-static --disable-shared
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'libtool' '2.4.7'
-fi
-
-if build 'giflib' '5.2.1'; then
-    download 'https://cfhcable.dl.sourceforge.net/project/giflib/giflib-5.2.1.tar.gz' 'giflib-5.2.1.tar.gz'
-    # PARELLEL BUILDING NOT AVAILABLE FOR THIS LIBRARY
-    execute make
-    execute make PREFIX="$workspace" install
-    build_done 'giflib' '5.2.1'
 fi
 
 pre_check_ver 'pkgconf/pkgconf' '1' 'T'
@@ -1019,14 +999,6 @@ if build 'pkg-config' "$g_ver"; then
     execute make "-j$cpu_threads"
     execute make install
     build_done 'pkg-config' "$g_ver"
-fi
-
-if build 'm4' '1.4.19'; then
-    download 'https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.xz' 'm4-1.4.19.tar.xz'
-    execute ./configure --prefix="$workspace" --enable-c++ --with-dmalloc
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'm4' '1.4.19'
 fi
 
 pre_check_ver 'kitware/cmake' '1' 'T'
@@ -1055,12 +1027,12 @@ if build 'yasm' "$g_ver"; then
     build_done 'yasm' "$g_ver"
 fi
 
-if build 'nasm' '2.16.01'; then
-    download 'https://www.nasm.us/pub/nasm/releasebuilds/2.16.01/nasm-2.16.01.tar.xz' 'nasm-2.16.01.tar.xz'
+if build 'nasm' '2.16.02rc1'; then
+    download "https://www.nasm.us/pub/nasm/releasebuilds/2.16.02rc1/nasm-2.16.02rc1.tar.xz" "nasm-2.16.02rc1.tar.xz"
     execute ./configure --prefix="$workspace"
     execute make "-j$cpu_threads"
     execute make install
-    build_done 'nasm' '2.16.01'
+    build_done 'nasm' '2.16.02rc1'
 fi
 
 pre_check_ver 'madler/zlib' '1' 'T'
@@ -1070,6 +1042,32 @@ if build 'zlib' "$g_ver"; then
     execute make "-j$cpu_threads"
     execute make install
     build_done 'zlib' "$g_ver"
+fi
+
+if build 'm4' 'latest'; then
+    download 'http://ftp.gnu.org/gnu/m4/m4-latest.tar.xz' 'm4-latest.tar.xz'
+    execute ./configure --prefix="$workspace"
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'm4' 'latest'
+fi
+
+if build 'automake' '1.16.5'; then
+    download 'https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz' 'automake-1.16.5.tar.gz'
+    execute ./bootstrap
+    execute autoreconf -fi
+    execute ./configure --prefix="$workspace"
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'automake' '1.16.5'
+fi
+
+if build 'libtool' '2.4.7'; then
+    download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz' 'libtool-2.4.7.tar.xz'
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'libtool' '2.4.7'
 fi
 
 if build 'openssl' '1.1.1u'; then
@@ -1093,21 +1091,27 @@ fi
 # video libraries
 #
 
-pip_tools_pkg="$(pip show setuptools)"
-if [ -z "$pip_tools_pkg" ]; then
-    execute pip install pip setuptools --quiet --upgrade --no-cache-dir --disable-pip-version-check
+if command_exists 'python3'; then
+    # dav1d needs meson and ninja along with nasm to be built
+    if command_exists 'pip'; then
+        # meson and ninja can be installed via pip3
+        pip_tools_pkg="$(pip show setuptools)"
+        if [ -z "$pip_tools_pkg" ]; then
+            execute pip install pip setuptools --quiet --upgrade --no-cache-dir --disable-pip-version-check
+        fi
+    fi
+    if command_exists 'meson'; then
+        git_ver_fn '198' '2' 'T'
+        if build 'dav1d' "$g_sver"; then
+            download "https://code.videolan.org/videolan/dav1d/-/archive/$g_ver/$g_ver.tar.bz2" "dav1d-$g_sver.tar.bz2"
+            execute meson setup 'build' --prefix="$workspace" --libdir="${workspace}"/lib --buildtype='release' --default-library='static' --strip
+            execute ninja "-j$cpu_threads" -C 'build'
+            execute ninja "-j$cpu_threads" -C 'build' install
+            build_done 'dav1d' "$g_sver"
+        fi
+        ffmpeg_libraries+=('--enable-libdav1d')
+    fi
 fi
-
-pre_check_ver '198' '2' 'T'
-if build 'dav1d' "$g_sver"; then
-    download "https://code.videolan.org/videolan/dav1d/-/archive/$g_ver/$g_ver.tar.bz2" "dav1d-$g_sver.tar.bz2"
-    execute meson setup 'build' --prefix="$workspace" --libdir="${workspace}"/lib --buildtype='release' --default-library='static' --strip
-    execute ninja "-j$cpu_threads" -C 'build'
-    execute ninja "-j$cpu_threads" -C 'build' install
-    build_done 'dav1d' "$g_sver"
-fi
-ffmpeg_libraries+=('--enable-libdav1d')
-
 
 pre_check_ver 'google/googletest' '1' 'T'
 if build 'googletest' "$g_ver"; then
@@ -1152,29 +1156,16 @@ if build 'svtav1' '1.4.1'; then
 fi
 ffmpeg_libraries+=('--enable-libsvtav1')
 
-pre_check_ver 'c-ares/c-ares' '1' 'R'
-g_ver="$(echo "$g_ver" | sed 's/ares-//g')"
-if build 'c-ares' "$g_ver"; then
-    download "$g_url" "c-ares-$g_ver.tar.gz"
-    execute autoupdate
-    execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --enable-static --disable-shared --disable-warnings \
-        --enable-optimize='-O3 -march=native -mtune=native' --enable-silent-rules CFLAGS="$CFLAGS" \
-        CPPFLAGS="$CPPFLAGS" LDFLAGS="$LDFLAGS"
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'c-ares' "$g_ver"
+if command_exists 'cargo'; then
+    pre_check_ver 'xiph/rav1e' '1' 'T'
+    if build 'rav1e' "$g_ver"; then
+        execute cargo install --version '0.9.14+cargo-0.66' cargo-c
+        download "https://codeload.github.com/xiph/rav1e/tar.gz/refs/tags/$g_ver" "rav1e-$g_ver.tar.gz"
+        execute cargo cinstall --prefix="$workspace" --library-type=staticlib --crt-static --release
+        build_done 'rav1e' "$g_ver"
+    fi
+CONFIGURE_OPTIONS+=('--enable-librav1e')
 fi
-
-pre_check_ver 'xiph/rav1e' '1' 'T'
-if build 'rav1e' "$g_ver"; then
-    download "$g_url" "rav1e-$g_ver.tar.gz"
-    RUSTFLAGS="-L $workspace/lib -L/lib/x86_64-linux-gnu"
-    execute cargo install --version '0.9.14+cargo-0.66' cargo-c
-    execute cargo cinstall --prefix="$workspace" --library-type='staticlib' --crt-static --release
-    build_done 'rav1e' "$g_ver"
-fi
-ffmpeg_libraries+=('--enable-librav1e')
 
 git_ver_fn '536' '2' 'B'
 if build 'x264' "$g_sver"; then
@@ -1332,7 +1323,7 @@ fi
 pre_check_ver 'AOMediaCodec/libavif' '1' 'T'
 if build 'avif' "$g_ver"; then
     download "$g_url" "avif-$g_ver.tar.gz"
-    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS='OFF' -DCMAKE_BUILD_TYPE='Release' -DAVIF_ENABLE_GTEST='ON' -DAVIF_ENABLE_WERROR='OFF' \
+    execute cmake -B 'build' -DCMAKE_INSTALL_PREFIX:PATH="$workspace" -DBUILD_SHARED_LIBS='OFF' -DCMAKE_BUILD_TYPE='Release' -DAVIF_ENABLE_GTEST='ON' -DAVIF_ENABLE_WERROR='OFF' \
         -DAVIF_CODEC_AOM_ENCODE='ON' -DAVIF_CODEC_AOM_DECODE='ON'  "$avif_tag" -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C 'build'
     execute ninja "-j$cpu_threads" -C 'build' install
@@ -1354,79 +1345,83 @@ ffmpeg_libraries+=('--enable-libkvazaar')
 # audio libraries
 #
 
-pre_check_ver 'lv2/lv2' '1' 'T'
-if build 'lv2' "$g_ver"; then
-    download_git 'https://github.com/lv2/lv2.git' "lv2-$g_ver"
-    execute meson setup 'build' --prefix="$workspace" --libdir="${workspace}"/lib --buildtype='release' --default-library='static' --strip
-    execute ninja "-j$cpu_threads" -C 'build'
-    execute ninja "-j$cpu_threads" -C 'build' install
-    build_done 'lv2' "$g_ver"
-fi
+if command_exists 'python3'; then
+    if command_exists 'meson'; then
+        pre_check_ver 'lv2/lv2' '1' 'T'
+        if build 'lv2' "$g_ver"; then
+            download_git 'https://github.com/lv2/lv2.git' "lv2-$g_ver"
+            execute meson setup 'build' --prefix="$workspace" --libdir="${workspace}"/lib --buildtype='release' --default-library='static' --strip
+            execute ninja "-j$cpu_threads" -C 'build'
+            execute ninja "-j$cpu_threads" -C 'build' install
+            build_done 'lv2' "$g_ver"
+        fi
 
-git_ver_fn '7131569' '3' 'T'
-g_ver="$(echo $g_ver | sed 's/-//g' | sed 's/waf//g')"
-if build 'waflib' "$g_ver"; then
-    download "https://gitlab.com/ita1024/waf/-/archive/waf-$g_ver/waf-waf-$g_ver.tar.bz2" "waf-$g_ver.tar.bz2"
-    build_done 'waflib' "$g_ver"
-fi
+        git_ver_fn '7131569' '3' 'T'
+        g_ver="$(echo $g_ver | sed 's/-//g' | sed 's/waf//g')"
+        if build 'waflib' "$g_ver"; then
+            download "https://gitlab.com/ita1024/waf/-/archive/waf-$g_ver/waf-waf-$g_ver.tar.bz2" "waf-$g_ver.tar.bz2"
+            build_done 'waflib' "$g_ver"
+        fi
 
-git_ver_fn '5048975' '3' 'T'
-if build 'serd' "$g_ver"; then
-    download "https://gitlab.com/drobilla/serd/-/archive/v$g_ver/serd-v$g_ver.tar.bz2" "serd-$g_ver.tar.bz2"
-    execute meson setup 'build' --prefix="$workspace" --libdir="${workspace}"/lib --buildtype='release' --default-library='static' --strip
-    execute ninja "-j$cpu_threads" -C 'build'
-    execute ninja "-j$cpu_threads" -C 'build' install
-    build_done 'serd' "$g_ver"
-fi
+        git_ver_fn '5048975' '3' 'T'
+        if build 'serd' "$g_ver"; then
+            download "https://gitlab.com/drobilla/serd/-/archive/v$g_ver/serd-v$g_ver.tar.bz2" "serd-$g_ver.tar.bz2"
+            execute meson setup 'build' --prefix="$workspace" --libdir="${workspace}"/lib --buildtype='release' --default-library='static' --strip
+            execute ninja "-j$cpu_threads" -C 'build'
+            execute ninja "-j$cpu_threads" -C 'build' install
+            build_done 'serd' "$g_ver"
+        fi
 
-pre_check_ver 'pcre2project/pcre2' '1' 'T'
-if build 'pcre2' "$g_ver"; then
-    download "$g_url" "pcre2-$g_ver.tar.gz"
-    execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --enable-static --disable-shared
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'pcre2' "$g_ver"
-fi
+        pre_check_ver 'pcre2project/pcre2' '1' 'T'
+        if build 'pcre2' "$g_ver"; then
+            download "$g_url" "pcre2-$g_ver.tar.gz"
+            execute ./autogen.sh
+            execute ./configure --prefix="$workspace" --enable-static --disable-shared
+            execute make "-j$cpu_threads"
+            execute make install
+            build_done 'pcre2' "$g_ver"
+        fi
 
-git_ver_fn '14889806' '3' 'B'
-if build 'zix' "$g_sver1"; then
-    download "https://gitlab.com/drobilla/zix/-/archive/$g_ver1/zix-$g_ver1.tar.bz2" "zix-$g_sver1.tar.bz2"
-    execute meson setup 'build' --prefix="$workspace" --libdir="${workspace}"/lib --buildtype='release' --default-library='static' --strip
-    execute ninja "-j$cpu_threads" -C 'build'
-    execute ninja "-j$cpu_threads" -C 'build' install
-    build_done 'zix' "$g_sver1"
-fi
+        git_ver_fn '14889806' '3' 'B'
+        if build 'zix' "$g_sver1"; then
+            download "https://gitlab.com/drobilla/zix/-/archive/$g_ver1/zix-$g_ver1.tar.bz2" "zix-$g_sver1.tar.bz2"
+            execute meson setup 'build' --prefix="$workspace" --libdir="${workspace}"/lib --buildtype='release' --default-library='static' --strip
+            execute ninja "-j$cpu_threads" -C 'build'
+            execute ninja "-j$cpu_threads" -C 'build' install
+            build_done 'zix' "$g_sver1"
+        fi
 
-git_ver_fn '11853362' '3' 'B'
-if build 'sord' "$g_sver1"; then
-    CFLAGS+="$CFLAGS -I$workspace/include/serd-0"
-    download "https://gitlab.com/drobilla/sord/-/archive/$g_ver1/sord-$g_ver1.tar.bz2" "sord-$g_sver1.tar.bz2"
-    execute meson setup 'build' --prefix="$workspace" --libdir="${workspace}"/lib --buildtype='release' --default-library='static' --strip
-    execute ninja "-j$cpu_threads" -C 'build'
-    execute ninja "-j$cpu_threads" -C 'build' install
-    build_done 'sord' "$g_sver1"
-fi
+        git_ver_fn '11853362' '3' 'B'
+        if build 'sord' "$g_sver1"; then
+            CFLAGS+="$CFLAGS -I$workspace/include/serd-0"
+            download "https://gitlab.com/drobilla/sord/-/archive/$g_ver1/sord-$g_ver1.tar.bz2" "sord-$g_sver1.tar.bz2"
+            execute meson setup 'build' --prefix="$workspace" --libdir="${workspace}"/lib --buildtype='release' --default-library='static' --strip
+            execute ninja "-j$cpu_threads" -C 'build'
+            execute ninja "-j$cpu_threads" -C 'build' install
+            build_done 'sord' "$g_sver1"
+        fi
 
-git_ver_fn '11853194' '3' 'T'
-if build 'sratom' "$g_ver"; then
-    download "https://gitlab.com/lv2/sratom/-/archive/v$g_ver/sratom-v$g_ver.tar.bz2" "sratom-$g_ver.tar.bz2"
-    execute meson setup 'build' --prefix="$workspace" --libdir="${workspace}"/lib --buildtype='release' --default-library='static' --strip
-    execute ninja "-j$cpu_threads" -C 'build'
-    execute ninja "-j$cpu_threads" -C 'build' install
-    build_done 'sratom' "$g_ver"
-fi
+        git_ver_fn '11853194' '3' 'T'
+        if build 'sratom' "$g_ver"; then
+            download "https://gitlab.com/lv2/sratom/-/archive/v$g_ver/sratom-v$g_ver.tar.bz2" "sratom-$g_ver.tar.bz2"
+            execute meson setup 'build' --prefix="$workspace" --libdir="${workspace}"/lib --buildtype='release' --default-library='static' --strip
+            execute ninja "-j$cpu_threads" -C 'build'
+            execute ninja "-j$cpu_threads" -C 'build' install
+            build_done 'sratom' "$g_ver"
+        fi
 
-git_ver_fn '11853176' '3' 'T'
-if build 'lilv' "$g_ver"; then
-    download "https://gitlab.com/lv2/lilv/-/archive/v$g_ver/lilv-v$g_ver.tar.bz2" "lilv-$g_ver.tar.bz2"
-    execute meson setup 'build' --prefix="$workspace" --libdir="${workspace}"/lib --buildtype='release' --default-library='static' --strip
-    execute ninja "-j$cpu_threads" -C 'build'
-    execute ninja "-j$cpu_threads" -C 'build' install
-    build_done 'lilv' "$g_ver"
+        git_ver_fn '11853176' '3' 'T'
+        if build 'lilv' "$g_ver"; then
+            download "https://gitlab.com/lv2/lilv/-/archive/v$g_ver/lilv-v$g_ver.tar.bz2" "lilv-$g_ver.tar.bz2"
+            execute meson setup 'build' --prefix="$workspace" --libdir="${workspace}"/lib --buildtype='release' --default-library='static' --strip
+            execute ninja "-j$cpu_threads" -C 'build'
+            execute ninja "-j$cpu_threads" -C 'build' install
+            build_done 'lilv' "$g_ver"
+        fi
+        CFLAGS+=" -I$workspace/include/lilv-0"
+        ffmpeg_libraries+=('--enable-lv2')
+    fi
 fi
-CFLAGS+=" -I$workspace/include/lilv-0"
-ffmpeg_libraries+=('--enable-lv2')
 
 if build 'opencore' '0.1.6'; then
     download 'https://master.dl.sourceforge.net/project/opencore-amr/opencore-amr/opencore-amr-0.1.6.tar.gz?viasf=1' 'opencore-amr-0.1.6.tar.gz'
@@ -1720,7 +1715,7 @@ if build 'c2man' 'git'; then
     execute ./Configure -desO -D prefix="$workspace" -D bin="$workspace"/bin -D bash='/bin/bash' -D cc='/usr/lib/ccache/cc' \
         -D d_gnu='/usr/lib/x86_64-linux-gnu' -D find='/usr/bin/find' -D gcc='/usr/lib/ccache/gcc' -D gzip='/usr/bin/gzip' \
         -D installmansrc="$workspace"/share/man -D ldflags="-L$workspace/lib" -D less='/usr/bin/less' \
-        -D libpth="$workspace/lib /usr/local/lib /lib /usr/lib" \
+        -D libpth="$workspace/lib $workspace/lib64 /usr/local/lib64 /usr/local/lib /usr/lib /lib" \
         -D locincpth="$workspace/include /usr/local/include /opt/local/include /usr/gnu/include /opt/gnu/include /usr/GNU/include /opt/GNU/include" \
         -D yacc='/usr/bin/yacc' -D loclibpth="$workspace/lib /usr/local/lib /opt/local/lib /usr/gnu/lib /opt/gnu/lib /usr/GNU/lib /opt/GNU/lib" \
         -D make='/usr/bin/make' -D more='/usr/bin/more' -D osname='Ubuntu' -D perl='/usr/bin/perl' -D privlib="$workspace"/lib/c2man \
@@ -1901,6 +1896,7 @@ if build 'FFmpeg' "$ffmpeg_version"; then
         --extra-ldexeflags="$LDEXEFLAGS" \
         --extra-ldflags="$LDFLAGS" \
         --extra-libs="$EXTRALIBS" \
+        --pkg-config='/usr/bin/pkg-config' \
         --pkgconfigdir="$workspace"/lib/pkgconfig \
         --pkg-config-flags='--static' \
         --extra-version="$EXTRA_VERSION"
