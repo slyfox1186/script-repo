@@ -492,6 +492,8 @@ if build 'curl' "$g_ver"; then
     execute sudo make install
 fi
 
+sudo ldconfig &>/dev/null
+
 # OUTPUT FINAL MESSAGES TO USER IN TERMINAL
 success_fn
 
