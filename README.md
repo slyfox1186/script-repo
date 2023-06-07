@@ -50,10 +50,13 @@ bash <(curl -sSL https://magick.optimizethis.net) --build --latest
 ## Install [FFmpeg](https://ffmpeg.org/download.html)
   - **Compiles the latest updates from souce code by issuing API calls to each repositories backend**
   - **The CUDA SDK Toolkit which unlocks Hardware Acceleration is available during the install to make things as easy as possible**
+  - **Supported OS:**
+    - Ubuntu - 22.04 / 20.04 / 18.04
+    - Debian - 11 / 10
 
 **With GPL and non-free libraries: https://ffmpeg.org/legal.html**
 ```bash
-bash <(curl -sSL https://build-ffmpeg.optimizethis.net) --build --enable-gpl-and-non-free --latest
+bash <(curl -sSL https://build-ffmpeg.optimizethis.net) --build --latest
 ```
 ------
 
