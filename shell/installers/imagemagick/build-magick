@@ -498,42 +498,6 @@ pkgs_fn()
 }
 
 #
-# FIGURE OUT WHICH COMPILERS TO USE
-#
-
-if which 'gcc-13' &>/dev/null; then
-    export CC='gcc-13'
-elif which 'gcc-12' &>/dev/null; then
-    export CC='gcc-12'
-elif which 'gcc-11' &>/dev/null; then
-    export CC='gcc-11'
-elif which 'gcc-10' &>/dev/null; then
-    export CC='gcc-10'
-elif which 'gcc-9' &>/dev/null; then
-    export CC='gcc-9'
-elif which 'gcc' &>/dev/null; then
-    export CC='gcc'
-else
-    fail_fn 'You must have "gcc" or some higher version of it installed.'
-fi
-
-if which 'g++-13' &>/dev/null; then
-    export CXX='g++-13'
-elif which 'g++-12' &>/dev/null; then
-    export CXX='g++-12'
-elif which 'g++-11' &>/dev/null; then
-    export CXX='g++-11'
-elif which 'g++-10' &>/dev/null; then
-    export CXX='g++-10'
-elif which 'g++-9' &>/dev/null; then
-    export CXX='g++-9'
-elif which 'g++' &>/dev/null; then
-    export CXX='g++'
-else
-    fail_fn 'You must have "g++" or some higher version of it installed.'
-fi
-
-#
 # ANNOUNCE THE BUILD HAS BEGUN
 #
 
@@ -561,6 +525,38 @@ elif [ "$os_test" = '22.04' ]; then
     pkgs_fn "$pkgs_jammy libhwy0"
 elif [ "$os_test" = '20.04' ]; then
     pkgs_fn 'libfontconfig1-dev'
+fi
+
+#
+# FIGURE OUT WHICH COMPILERS TO USE
+#
+
+if which 'gcc-13' &>/dev/null; then
+    export CC='gcc-13'
+elif which 'gcc-12' &>/dev/null; then
+    export CC='gcc-12'
+elif which 'gcc-11' &>/dev/null; then
+    export CC='gcc-11'
+elif which 'gcc-10' &>/dev/null; then
+    export CC='gcc-10'
+elif which 'gcc-9' &>/dev/null; then
+    export CC='gcc-9'
+elif which 'gcc' &>/dev/null; then
+    export CC='gcc'
+fi
+
+if which 'g++-13' &>/dev/null; then
+    export CXX='g++-13'
+elif which 'g++-12' &>/dev/null; then
+    export CXX='g++-12'
+elif which 'g++-11' &>/dev/null; then
+    export CXX='g++-11'
+elif which 'g++-10' &>/dev/null; then
+    export CXX='g++-10'
+elif which 'g++-9' &>/dev/null; then
+    export CXX='g++-9'
+elif which 'g++' &>/dev/null; then
+    export CXX='g++'
 fi
 
 #
