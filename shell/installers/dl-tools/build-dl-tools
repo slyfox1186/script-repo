@@ -378,10 +378,6 @@ if [ ! -f "$cert_dir/$pem_file" ]; then
     execute sudo mv "$pem_file" "$cert_dir/$pem_file"
 fi
 
-if which 'update-ca-certificates' &>/dev/null; then
-    execute sudo update-ca-certificates
-fi
-
 #
 # COMPILE FROM SOUCE CODE
 #
@@ -466,6 +462,9 @@ fi
 download_alt 'wget'
 if build 'wget' "$g_ver"; then
     download "https://ftp.gnu.org/gnu/wget/wget-$g_ver.tar.gz" "wget-$g_ver.tar.gz"
+    if which 'update-ca-certificates' &>/dev/null; then
+        execute sudo update-ca-certificates
+    fi
     execute autoconf
     ./configure --prefix="$install_dir" --enable-threads --with-ssl=gnutls --with-metalink \
         --with-cares --with-openssl=auto CFLAGS="$CFLAGS" CPPFLAGS="$CPPFLAGS" CXXFLAGS="$CXXFLAGS" \
