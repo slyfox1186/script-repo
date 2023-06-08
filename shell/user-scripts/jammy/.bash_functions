@@ -178,44 +178,46 @@ mvf()
 ##################
 
 # DOWNLOAD AN APT PACKAGE + ALL ITS DEPENDENCIES IN ONE GO
-apt_dl() { wget -c "$(apt-get install --reinstall --print-uris -qq $1 | cut -d"'" -f2)"; }
+apt_dl() { wget -c "$(apt-get install --reinstall --print-uris -qq $1 2>/dev/null | cut -d"'" -f2)"; }
 
 # CLEAN
 clean()
 {
     clear
-    sudo apt-fast -y autoremove
-    sudo apt-fast clean
-    sudo apt-fast autoclean
-    sudo apt-fast -y purge
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt -y purge
 }
 
 # UPDATE
 update()
 {
     clear
-    sudo apt-fast update
-    sudo apt-fast -y full-upgrade
-    sudo apt-fast -y install ubuntu-advantage-tools
-    sudo apt-fast -y autoremove
-    sudo apt-fast clean
-    sudo apt-fast autoclean
-    sudo apt-fast -y purge
+    sudo apt update
+    sudo apt -y full-upgrade
+    sudo apt -y install ubuntu-advantage-tools
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt -y purge
 }
 
 # FIX BROKEN APT PACKAGES
 fix()
 {
     clear
-    sudo apt-fast -f -y install
+    if [ -f '/tmp/apt.lock' ]; then
+        sudo rm '/tmp/apt.lock'
+    fi
+    sudo apt -f -y install
     apt --fix-broken install
     apt --fix-missing update
     dpkg --configure -a
-    sudo apt-fast -y autoremove
-    sudo apt-fast clean
-    sudo apt-fast autoclean
-    sudo apt-fast -y purge
-    sudo apt-fast update
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt update
 }
 
 listd()
@@ -224,11 +226,11 @@ listd()
     local search_cache
 
     if [ -n "$1" ]; then
-        sudo apt-fast list *$1*-dev | awk -F'/' '{print $1}'
+        sudo apt list *$1*-dev | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt-fast list *$1*-dev | awk -F'/' '{print $1}'
+        sudo apt list *$1*-dev | awk -F'/' '{print $1}'
     fi
 }
 
@@ -239,26 +241,26 @@ list()
     local search_cache
 
     if [ -n "$1" ]; then
-        sudo apt-fast list *$1* | awk -F'/' '{print $1}'
+        sudo apt list *$1* | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt-fast list *$1* | awk -F'/' '{print $1}'
+        sudo apt list *$1* | awk -F'/' '{print $1}'
     fi
 }
 
-# USE sudo apt-fast TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
+# USE sudo apt TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
 asearch()
 {
     clear
     local search_cache
 
     if [ -n "$1" ]; then
-        sudo apt-fast search "$1 ~i" -F "%p"
+        sudo apt search "$1 ~i" -F "%p"
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt-fast search "$1 ~i" -F "%p"
+        sudo apt search "$1 ~i" -F "%p"
     fi
 }
 
@@ -756,9 +758,9 @@ cuda_purge()
         echo 'Purging the cuda-sdk-toolkit from your computer.'
         echo '================================================'
         echo
-        sudo sudo apt-fast -y --purge remove "*cublas*" "cuda*" "nsight*"
-        sudo sudo apt-fast -y autoremove
-        sudo sudo apt-fast update
+        sudo sudo apt -y --purge remove "*cublas*" "cuda*" "nsight*"
+        sudo sudo apt -y autoremove
+        sudo sudo apt update
     elif [[ "$answer" -eq '2' ]]; then
         return 0
     fi
@@ -821,11 +823,11 @@ listppas()
 {
     clear
 
-    local _apt host user ppa entry
+    local apt host user ppa entry
 
-    for _apt in $(find /etc/apt/ -type f -name \*.list)
+    for apt in $(find /etc/apt/ -type f -name \*.list)
     do
-        grep -Po "(?<=^deb\s).*?(?=#|$)" "$_apt" | while read entry
+        grep -Po "(?<=^deb\s).*?(?=#|$)" "$apt" | while read entry
         do
             host="$(echo "$entry" | cut -d/ -f3)"
             user="$(echo "$entry" | cut -d/ -f4)"
@@ -864,7 +866,7 @@ hw_mon()
 
     # install lm-sensors if not already
     if ! which lm-sensors &>/dev/null; then
-        sudo apt-fast -y install lm-sensors
+        sudo apt -y install lm-sensors
     fi
 
     # add modprobe to system startup tasks if not already added    
@@ -1064,3 +1066,14 @@ rmb() { sed -i '1s/^\xEF\xBB\xBF//' "${1}"; }
 ## LIST INSTALLED PACKAGES BY ORDER OF IMPORTANCE
 
 list_pkgs() { clear; dpkg-query -Wf '${Package;-40}${Priority}\n' | sort -b -k2,2 -k1,1; }
+
+## FIX USER FOLDER PERMISSIONS up = user permissions
+
+fix_up()
+{
+    find "$HOME"/.gnupg -type f -exec chmod 600 {} \;
+    find "$HOME"/.gnupg -type d -exec chmod 700 {} \;
+    find "$HOME"/.ssh -type d -exec chmod 700 {} \; 2>/dev/null
+    find "$HOME"/.ssh/id_rsa.pub -type f -exec chmod 644 {} \; 2>/dev/null
+    find "$HOME"/.ssh/id_rsa -type f -exec chmod 600 {} \; 2>/dev/null
+}
