@@ -6,11 +6,6 @@ function box_out_banner()
 {
     input_char=$(echo "$@" | wc -c)
     line=$(for i in `seq 0 $input_char`; do printf "-"; done)
-    # tput This should be the best option. what tput does is it will
-    # read the terminal info and render the correctly escaped ANSI code
-    # for you.
-    # Code like \033[31m will break the readline library in some of the
-    # terminals.
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
