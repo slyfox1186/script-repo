@@ -1,4 +1,4 @@
-# Big Script Repository
+# Slys Script Repository
 ## A mix of my favorite scripts for both Windows and Linux.
 
 ### Why this repository exists:
