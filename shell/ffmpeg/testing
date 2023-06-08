@@ -359,6 +359,15 @@ git_7_fn()
     fi
 }
 
+git_8_fn()
+{
+    gitlab_repo="$1"
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.kitware.com/api/v4/projects/$gitlab_repo/repository/tags")"; then
+        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
+        g_ver="${g_ver#v}"
+    fi
+}
+
 git_ver_fn()
 {
     local v_flag v_tag url_tag
@@ -403,6 +412,7 @@ git_ver_fn()
         5)      url_tag='git_5_fn';;
         6)      url_tag='git_6_fn';;
         7)      url_tag='git_7_fn';;
+        8)      url_tag='git_8_fn';;
     esac
 
     "$url_tag" "$v_url" "$gv_url" 2>/dev/null
@@ -1074,6 +1084,11 @@ export CXXFLAGS='-g -O3 -march=native -mtune=native'
 # GLOBAL TOOLS
 #
 
+printf "\n%s\n%s\n%s\n" \
+    '===========================================' \
+    '          Installing Global Tools          ' \
+    '==========================================='
+
 if build 'autoconf' 'latest'; then
     download 'http://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz' 'autoconf-latest.tar.xz'
     execute autoreconf -fi
@@ -1128,12 +1143,12 @@ if build 'm4' '1.4.19'; then
 fi
 
 pre_check_ver 'kitware/cmake' '1' 'T'
-if build 'cmake' "$g_ver" "$packages/$1.done"; then
-    download "https://codeload.github.com/Kitware/CMake/tar.gz/refs/tags/v$g_ver" "cmake-$g_ver.tar.gz"
+if build 'cmake' '3.26.3'; then
+    download 'https://codeload.github.com/Kitware/CMake/tar.gz/refs/tags/v3.26.3' 'cmake-3.26.3.tar.gz'
     execute ./configure --prefix="$workspace" --parallel="$cpu_threads" --enable-ccache -- -DCMAKE_USE_OPENSSL=OFF
     execute make "-j$cpu_threads"
     execute make install
-    build_done 'cmake' "$g_ver"
+    build_done 'cmake' '3.26.3'
 fi
 
 pre_check_ver 'ninja-build/ninja' '1' 'T'
@@ -1472,11 +1487,104 @@ if build 'zimg' "$g_ver"; then
 fi
 ffmpeg_libraries+=('--enable-libzimg')
 
-exit
+#
+# AUDIO LIBRARIES
+#
 
-#
-# VIDEO LIBRARIES
-#
+printf "\n%s\n%s\n%s\n" \
+    '==========================================' \
+    '         Installing Audio Tools           ' \
+    '=========================================='
+
+pre_check_ver 'xiph/flac' '1' 'T'
+if build 'flac' "$g_ver"; then
+    download "$g_url" "flac-$g_ver.tar.gz"
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DWITH_STACK_PROTECTOR=ON -DBUILD_TESTING=OFF -DBUILD_CXXLIBS=ON \
+        -DWITH_FORTIFY_SOURCE=ON -DCMAKE_BUILD_TYPE=Release -DINSTALL_MANPAGES=ON -DWITH_ASM=ON -DINSTALL_PKGCONFIG_MODULES=ON \
+        -DWITH_AVX=ON -DINSTALL_CMAKE_CONFIG_MODULE=ON -DWITH_OGG=OFF -DBUILD_PROGRAMS=ON -DBUILD_DOCS=OFF -DENABLE_64_BIT_WORDS=ON \
+        -DBUILD_EXAMPLES=OFF -G 'Ninja' -Wno-dev
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
+    build_done 'flac' "$g_ver"
+fi
+
+pre_check_ver 'mstorsjo/fdk-aac' '1' 'T'
+if build 'fdk_aac' "$g_ver"; then
+    download "$g_url" "fdk_aac-$g_ver.tar.gz"
+    execute ./autogen.sh
+    execute ./configure --prefix="$workspace" --bindir="$workspace"/bin --enable-static --disable-shared CXXFLAGS='-g -O3 -march=native -fno-exceptions -fno-rtti'
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'fdk_aac' "$g_ver"
+fi
+ffmpeg_libraries+=('--enable-libfdk-aac')
+
+pre_check_ver 'knik0/faac' '1' 'T'
+g_ver="$(echo "$g_ver" | sed 's/er_//g' | sed 's/_/./g')"
+if build 'faac' "$g_ver"; then
+    download "$g_url" "faac-$g_ver.tar.gz"
+    execute ./bootstrap
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'faac' "$g_ver"
+fi
+
+pre_check_ver 'xiph/ogg' '1' 'T'
+if build 'libogg' "$g_ver"; then
+    download "$g_url" "libogg-$g_ver.tar.gz"
+    execute autoreconf -fi
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCPACK_BINARY_DEB=OFF \
+        -DBUILD_TESTING=OFF-DCPACK_SOURCE_ZIP=OFF -G 'Ninja' -Wno-dev
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
+    build_done 'libogg' "$g_ver"
+fi
+
+pre_check_ver 'xiph/vorbis' '1' 'T'
+if build 'libvorbis' "$g_ver"; then
+    download "https://codeload.github.com/xiph/vorbis/tar.gz/refs/tags/v$g_ver" "libvorbis-$g_ver.tar.gz"
+    execute ./autogen.sh
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS=OFF -G 'Ninja' -Wno-dev
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
+    build_done 'libvorbis' "$g_ver"
+fi
+ffmpeg_libraries+=('--enable-libvorbis')
+
+pre_check_ver 'xiph/opus' '1' 'T'
+if build 'opus' "$g_ver"; then
+    download "$g_url" "opus-$g_ver.tar.gz"
+    execute autoreconf -isf
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS=OFF -DCPACK_SOURCE_ZIP=OFF -G 'Ninja' -Wno-dev
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
+    build_done 'opus' "$g_ver"
+fi
+ffmpeg_libraries+=('--enable-libopus')
+
+if build 'libsndfile' 'git'; then
+    download_git 'https://github.com/libsndfile/libsndfile.git' "libsndfile-git"
+    execute autoreconf -fi
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'libsndfile' 'git'
+fi
+
+pre_check_ver 'hoene/libmysofa' '1' 'T'
+if build 'opus' "$g_ver"; then
+    download "https://codeload.github.com/hoene/libmysofa/tar.gz/refs/tags/v$g_ver" "libmysofa-$g_ver.tar.gz"
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_TESTS=NO -DCODE_COVERAGE=OFF -G 'Ninja' -Wno-dev
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
+    build_done 'opus' "$g_ver"
+fi
+
+
+
+
+exit
 
 pre_check_ver '198' '2' 'T'
 if build 'dav1d' "$g_sver"; then
@@ -1487,7 +1595,6 @@ if build 'dav1d' "$g_sver"; then
     build_done 'dav1d' "$g_sver"
 fi
 ffmpeg_libraries+=('--enable-libdav1d')
-
 
 pre_check_ver 'google/googletest' '1' 'T'
 if build 'googletest' "$g_ver"; then
@@ -1814,39 +1921,6 @@ if build 'lame' '3.100'; then
 fi
 ffmpeg_libraries+=('--enable-libmp3lame')
 
-pre_check_ver 'xiph/opus' '1' 'T'
-if build 'opus' "$g_ver"; then
-    download "$g_url" "opus-$g_ver.tar.gz"
-    execute autoreconf -isf
-    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS=OFF -DCMAKE_C_FLAGS_DEBUG='-g' -DCPACK_SOURCE_ZIP=OFF -G 'Ninja' -Wno-dev
-    execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
-    build_done 'opus' "$g_ver"
-fi
-ffmpeg_libraries+=('--enable-libopus')
-
-pre_check_ver 'xiph/ogg' '1' 'T'
-if build 'libogg' "$g_ver"; then
-    download "$g_url" "libogg-$g_ver.tar.gz"
-    execute autoreconf -fi
-    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCPACK_BINARY_DEB=OFF \
-        -DBUILD_TESTING=OFF-DCPACK_SOURCE_ZIP=OFF -G 'Ninja' -Wno-dev
-    execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
-    build_done 'libogg' "$g_ver"
-fi
-
-pre_check_ver 'xiph/vorbis' '1' 'T'
-if build 'libvorbis' "$g_ver"; then
-    download "$g_url" "libvorbis-$g_ver.tar.gz"
-    execute ./autogen.sh
-    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS=OFF -G 'Ninja' -Wno-dev
-    execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
-    build_done 'libvorbis' "$g_ver"
-fi
-ffmpeg_libraries+=('--enable-libvorbis')
-
 pre_check_ver 'xiph/theora' '1' 'T'
 if build 'libtheora' '1.0'; then
     download "$g_url" "libtheora-1.0.tar.gz"
@@ -1864,41 +1938,6 @@ if build 'libtheora' '1.0'; then
     build_done 'libtheora' '1.0'
 fi
 ffmpeg_libraries+=('--enable-libtheora')
-
-pre_check_ver 'knik0/faac' '1' 'T'
-g_ver="$(echo "$g_ver" | sed 's/er_//g' | sed 's/_/./g')"
-if build 'faac' "$g_ver"; then
-    download "$g_url" "faac-$g_ver.tar.gz"
-    execute ./bootstrap
-    execute ./configure --prefix="$workspace" --enable-static --disable-shared
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'faac' "$g_ver"
-fi
-ffmpeg_libraries+=('--enable-libfdk-aac')
-
-pre_check_ver 'mstorsjo/fdk-aac' '1' 'T'
-if build 'fdk_aac' "$g_ver"; then
-    download "$g_url" "fdk_aac-$g_ver.tar.gz"
-    execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --bindir="$workspace"/bin --enable-static --disable-shared CXXFLAGS='-g -O3 -march=native -fno-exceptions -fno-rtti'
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'fdk_aac' "$g_ver"
-fi
-ffmpeg_libraries+=('--enable-libfdk-aac')
-
-pre_check_ver 'xiph/flac' '1' 'T'
-if build 'flac' "$g_ver"; then
-    download "$g_url" "flac-$g_ver.tar.gz"
-    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DWITH_STACK_PROTECTOR=ON -DBUILD_TESTING=OFF -DBUILD_CXXLIBS=ON \
-        -DWITH_FORTIFY_SOURCE=ON -DCMAKE_BUILD_TYPE=Release -DINSTALL_MANPAGES=ON -DWITH_ASM=ON -DINSTALL_PKGCONFIG_MODULES=ON \
-        -DWITH_AVX=ON -DINSTALL_CMAKE_CONFIG_MODULE=ON -DWITH_OGG=OFF -DBUILD_PROGRAMS=ON -DBUILD_DOCS=OFF -DENABLE_64_BIT_WORDS=ON \
-        -DBUILD_EXAMPLES=OFF -G 'Ninja' -Wno-dev
-    execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
-    build_done 'flac' "$g_ver"
-fi
 
 #
 # IMAGE LIBRARIES
