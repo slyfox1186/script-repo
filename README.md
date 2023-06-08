@@ -40,6 +40,10 @@ bash <(curl -sSL https://7z-beta.optimizethis.net)
   - **Sourced from the most recent release on their official Git**
   - **Tested on Windows WSL 2 Debian/Ubuntu**
   - **[Optimize JPG Images](https://github.com/slyfox1186/imagemagick-optimize-jpg)**
+  - **Supported OS:**
+    - Debian - 10 / 11
+    - Ubuntu - 18.04 / 20.04 / 22.04
+    - Other debian style distros may work as well
 
 #### Ubuntu 22.04 (other versions may work)
 ```bash
