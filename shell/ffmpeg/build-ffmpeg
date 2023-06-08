@@ -17,9 +17,9 @@
 ##        the user will be prompted by the script to install them so that
 ##        hardware acceleration is enabled when compiling FFmpeg
 ##
-##  Updated: 06.07.23
+##  Updated: 06.08.23
 ##
-##  Script version: 6.5
+##  Script version: 6.6
 ##
 ############################################################################################
 
