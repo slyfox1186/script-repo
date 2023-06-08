@@ -790,7 +790,7 @@ pkgs_fn()
     if [ -n "$missing_vars" ]; then
         for pkg in "$missing_vars"; do
             echo "\$ sudo apt-get install -qq -y$pkg"
-            if sudo apt-get install -qq -y $pkg; then
+            if sudo apt-get install -qq -y $pkg 2>/dev/null >/dev/null; then
                 echo 'The required APT development packages were installed.'
             else
                 fail_fn 'The required APT development packages failed to install.'
@@ -1086,7 +1086,7 @@ export CXXFLAGS='-g -O3 -march=native -mtune=native'
 
 printf "\n%s\n%s\n%s\n" \
     '==========================================' \
-    '          Installing Global Tools         ' \
+    '         Installing Global Tools          ' \
     '=========================================='
 
 if build 'autoconf' 'latest'; then
@@ -1615,13 +1615,24 @@ if build 'libvmaf' "$g_ver"; then
     CFLAGS="-msse2 -mfpmath=sse -mstackrealign $CFLAGS"
     execute meson setup --reconfigure libvmaf/build libvmaf --prefix="$workspace" --libdir="$workspace"/lib --buildtype=release --default-library=static --strip \
         --optimization=3 -Denable_float=true -Dbuilt_in_models=true -Denable_tests=false -Denable_docs=false -Denable_avx512=true
-    execute ninja "-j$cpu_threads" -vC libvmaf/build install
+    execute ninja "-j$cpu_threads" -C libvmaf/build install
     build_done 'libvmaf' "$g_ver"
 fi
 ffmpeg_libraries+=('--enable-libvmaf')
 
-
-exit
+if build 'av1' 'd192cdf'; then
+    download 'https://aomedia.googlesource.com/aom/+archive/d192cdfc229d3d4edf6a0acd2e5b71fb4880d28e.tar.gz' 'av1-d192cdf.tar.gz' 'av1'
+    mkdir -p "$packages"/aom_build
+    cd "$packages"/aom_build || exit 1
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR="$workspace"/lib -DCMAKE_BUILD_TYPE=Release -DCONFIG_ACCOUNTING='0' \
+        -DCONFIG_ANALYZER='0' -DCONFIG_AV1_DECODER='1' -DCONFIG_AV1_ENCODER='1' -DCONFIG_AV1_HIGHBITDEPTH='1' -DCONFIG_AV1_TEMPORAL_DENOISING='0' -DCONFIG_BIG_ENDIAN='0' \
+        -DCONFIG_COLLECT_RD_STATS='0' -DCONFIG_DENOISE='1' -DCONFIG_DISABLE_FULL_PIXEL_SPLIT_8X8='1' -DCONFIG_ENTROPY_STATS='0' -DBUILD_SHARED_LIBS=OFF -DENABLE_CCACHE='1' \
+        -DENABLE_EXAMPLES='0' -DENABLE_TESTS='0' "$packages"/av1 -G 'Ninja' "$packages"/av1
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
+    build_done 'av1' 'd192cdf'
+fi
+ffmpeg_libraries+=('--enable-libaom')
 
 pre_check_ver '198' '2' 'T'
 if build 'dav1d' "$g_sver"; then
@@ -1632,6 +1643,83 @@ if build 'dav1d' "$g_sver"; then
     build_done 'dav1d' "$g_sver"
 fi
 ffmpeg_libraries+=('--enable-libdav1d')
+
+#
+# BUILD VIDEO TOOLS
+#
+
+printf "\n%s\n%s\n%s\n" \
+    '==========================================' \
+    '         Installing Video Tools           ' \
+    '=========================================='
+
+# RAV1E FAILS TO BUILD ON UBUNTU BIONIC
+if [ "$os_test" != '18.04' ]; then
+    pre_check_ver 'xiph/rav1e' '1' 'T'
+    if build 'rav1e' "$g_ver"; then
+        download "$g_url" "rav1e-$g_ver.tar.gz"
+        export RUSTUP_INIT_SKIP_PATH_CHECK='yes'
+        export PATH="$PATH:$HOME/.cargo/bin"
+        if [ -f '/usr/bin/rustc' ]; then
+            echo '$ The script detected rustc and must remove before it before updating to the latest version.'
+            execute sudo apt -y remove rustc
+        fi
+        echo '$ Sourcing ~/.bashrc'
+        source "$HOME"/.bashrc
+        echo '$ Installing the latest version of rust.'
+        curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh -s -- -y
+        execute rm -rf "$HOME"/.cargo/registry/index/* "$HOME"/.cargo/.package-cache
+        execute cargo install --version '0.9.20+cargo-0.71' --force cargo-c
+        execute cargo cinstall --prefix="$workspace" --library-type='staticlib' --crt-static --release
+        build_done 'rav1e' "$g_ver"
+    fi
+    ffmpeg_libraries+=('--enable-librav1e')
+fi
+
+pre_check_ver 'AOMediaCodec/libavif' '1' 'T'
+if build 'avif' "$g_ver"; then
+    download "$g_url" "avif-$g_ver.tar.gz"
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DAVIF_ENABLE_GTEST=ON -DAVIF_ENABLE_WERROR=OFF \
+        -DAVIF_CODEC_AOM_ENCODE=ON -DAVIF_CODEC_AOM_DECODE=ON -G 'Ninja' -Wno-dev
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
+    build_done 'avif' "$g_ver"
+fi
+
+pre_check_ver 'ultravideo/kvazaar' '1' 'T'
+if build 'kvazaar' "$g_ver"; then
+    download "$g_url" "kvazaar-$g_ver.tar.gz"
+    execute ./autogen.sh
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'kvazaar' "$g_ver"
+fi
+ffmpeg_libraries+=('--enable-libkvazaar')
+
+pre_check_ver 'libsdl-org/SDL' '1' 'T'
+if build 'libsdl' "$g_ver"; then
+    download "https://codeload.github.com/libsdl-org/SDL/tar.gz/refs/tags/release-$g_ver" "libsdl-$g_ver.tar.gz"
+    execute ./autogen.sh
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'libsdl' "$g_ver"
+fi
+
+git_ver_fn '76' '2' 'T'
+if build 'libdvdread' "$g_ver1"; then
+    download "https://code.videolan.org/videolan/libdvdread/-/archive/$g_ver1/libdvdread-$g_ver1.tar.bz2" "libdvdread-$g_ver1.tar.bz2"
+    execute autoreconf -fi
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared --disable-apidoc
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'libdvdread' "$g_ver1"
+fi
+
+
+
+exit
 
 pre_check_ver 'google/googletest' '1' 'T'
 if build 'googletest' "$g_ver"; then
@@ -1687,29 +1775,6 @@ if build 'c-ares' "$g_ver"; then
     execute make "-j$cpu_threads"
     execute make install
     build_done 'c-ares' "$g_ver"
-fi
-
-# RAV1E FAILS TO BUILD ON UBUNTU BIONIC
-if [ "$os_test" != '18.04' ]; then
-    pre_check_ver 'xiph/rav1e' '1' 'T'
-    if build 'rav1e' "$g_ver"; then
-        download "$g_url" "rav1e-$g_ver.tar.gz"
-        export RUSTUP_INIT_SKIP_PATH_CHECK='yes'
-        export PATH="$PATH:$HOME/.cargo/bin"
-        if [ -f '/usr/bin/rustc' ]; then
-            echo '$ The script detected rustc and must remove before it before updating to the latest version.'
-            execute sudo apt -y remove rustc
-        fi
-        echo '$ Sourcing ~/.bashrc'
-        source "$HOME"/.bashrc
-        echo '$ Installing the latest version of rust.'
-        curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh -s -- -y
-        execute rm -rf "$HOME"/.cargo/registry/index/* "$HOME"/.cargo/.package-cache
-        execute cargo install --version '0.9.20+cargo-0.71' --force cargo-c
-        execute cargo cinstall --prefix="$workspace" --library-type='staticlib' --crt-static --release
-        build_done 'rav1e' "$g_ver"
-    fi
-    ffmpeg_libraries+=('--enable-librav1e')
 fi
 
 git_ver_fn '536' '2' 'B'
@@ -1812,41 +1877,6 @@ if build 'vid_stab' "$g_ver"; then
     build_done 'vid_stab' "$g_ver"
 fi
 ffmpeg_libraries+=('--enable-libvidstab')
-
-if build 'av1' 'd192cdf'; then
-    download 'https://aomedia.googlesource.com/aom/+archive/d192cdfc229d3d4edf6a0acd2e5b71fb4880d28e.tar.gz' 'av1-d192cdf.tar.gz' 'av1'
-    mkdir -p "$packages"/aom_build
-    cd "$packages"/aom_build || exit 1
-    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_INSTALL_LIBDIR="$workspace"/lib -DCMAKE_BUILD_TYPE=Release -DCONFIG_ACCOUNTING='0' \
-        -DCONFIG_ANALYZER='0' -DCONFIG_AV1_DECODER='1' -DCONFIG_AV1_ENCODER='1' -DCONFIG_AV1_HIGHBITDEPTH='1' -DCONFIG_AV1_TEMPORAL_DENOISING='0' -DCONFIG_BIG_ENDIAN='0' \
-        -DCONFIG_COLLECT_RD_STATS='0' -DCONFIG_DENOISE='1' -DCONFIG_DISABLE_FULL_PIXEL_SPLIT_8X8='1' -DCONFIG_ENTROPY_STATS='0' -DBUILD_SHARED_LIBS=OFF -DENABLE_CCACHE='1' \
-        -DENABLE_EXAMPLES='0' -DENABLE_TESTS='0' "$packages"/av1 -G 'Ninja' "$packages"/av1
-    execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
-    build_done 'av1' 'd192cdf'
-fi
-ffmpeg_libraries+=('--enable-libaom')
-
-pre_check_ver 'AOMediaCodec/libavif' '1' 'T'
-if build 'avif' "$g_ver"; then
-    download "$g_url" "avif-$g_ver.tar.gz"
-    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DAVIF_ENABLE_GTEST=ON -DAVIF_ENABLE_WERROR=OFF \
-        -DAVIF_CODEC_AOM_ENCODE=ON -DAVIF_CODEC_AOM_DECODE=ON -G 'Ninja' -Wno-dev
-    execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
-    build_done 'avif' "$g_ver"
-fi
-
-pre_check_ver 'ultravideo/kvazaar' '1' 'T'
-if build 'kvazaar' "$g_ver"; then
-    download "$g_url" "kvazaar-$g_ver.tar.gz"
-    execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --enable-static --disable-shared
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'kvazaar' "$g_ver"
-fi
-ffmpeg_libraries+=('--enable-libkvazaar')
 
 #
 # audio libraries
@@ -2079,16 +2109,6 @@ if build 'MediaInfoCLI' "$g_ver"; then
     execute make "-j$cpu_threads"
     execute make install
     build_done 'MediaInfoCLI' "$g_ver"
-fi
-
-pre_check_ver 'libsdl-org/SDL' '1' 'T'
-if build 'libsdl' "$g_ver"; then
-    download "$g_url" "libsdl-$g_ver.tar.gz"
-    execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --enable-static --disable-shared
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'libsdl' "$g_ver"
 fi
 
 pre_check_ver 'Haivision/srt' '1' 'T'
