@@ -1717,6 +1717,131 @@ if build 'libdvdread' "$g_ver1"; then
     build_done 'libdvdread' "$g_ver1"
 fi
 
+git_ver_fn '363' '2' 'T'
+if build 'udfread' "$g_ver1"; then
+    download "https://code.videolan.org/videolan/libudfread/-/archive/$g_ver1/libudfread-$g_ver1.tar.bz2" "udfread-$g_ver1.tar.bz2"
+    execute autoreconf -fi
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared --with-pic --with-gnu-ld
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'udfread' "$g_ver1"
+fi
+
+git_ver_fn '206' '2' 'T'
+if build 'libbluray' "$g_ver1"; then
+    download "https://code.videolan.org/videolan/libbluray/-/archive/$g_ver1/$g_ver1.tar.gz" "libbluray-$g_ver1.tar.gz"
+    execute autoreconf -fi
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared --without-libxml2
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'libbluray' "$g_ver1"
+fi
+unset JAVA_HOME
+ffmpeg_libraries+=('--enable-libbluray')
+
+pre_check_ver 'mediaarea/zenLib' '1' 'T'
+if build 'zenLib' "$g_ver"; then
+    download "https://codeload.github.com/MediaArea/ZenLib/tar.gz/refs/tags/v$g_ver" "zenLib-$g_ver.tar.gz"
+    cd 'Project/GNU/Library' || exit 1
+    execute ./autogen.sh
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'zenLib' "$g_ver"
+fi
+
+pre_check_ver 'MediaArea/MediaInfoLib' '1' 'T'
+if build 'MediaInfoLib' "$g_ver"; then
+    download "https://codeload.github.com/MediaArea/MediaInfoLib/tar.gz/refs/tags/v$g_ver" "MediaInfoLib-$g_ver.tar.gz"
+    cd 'Project/GNU/Library' || exit 1
+    execute ./autogen.sh
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'MediaInfoLib' "$g_ver"
+fi
+
+pre_check_ver 'MediaArea/MediaInfo' '1' 'T'
+if build 'MediaInfoCLI' "$g_ver"; then
+    download "https://codeload.github.com/MediaArea/MediaInfo/tar.gz/refs/tags/v$g_ver" "MediaInfoCLI-$g_ver.tar.gz"
+    cd 'Project/GNU/CLI' || exit 1
+    execute ./autogen.sh
+    execute ./configure --prefix="$workspace" --enable-staticlibs
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'MediaInfoCLI' "$g_ver"
+fi
+
+pre_check_ver 'georgmartius/vid.stab' '1' 'T'
+if build 'vid_stab' "$g_ver"; then
+    download "$g_url" "vid.stab-$g_ver.tar.gz"
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DUSE_OMP=ON -G 'Ninja' -Wno-dev
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
+    build_done 'vid_stab' "$g_ver"
+fi
+ffmpeg_libraries+=('--enable-libvidstab')
+
+pre_check_ver 'dyne/frei0r' '1' 'T'
+if build 'frei0r' "$g_ver"; then
+    download "$g_url" "frei0r-$g_ver.tar.gz"
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DWITHOUT_OPENCV=OFF -DCMAKE_CXX_COMPILER_RANLIB='/usr/bin/gcc-ranlib-12' \
+        -DCMAKE_CXX_FLAGS_DEBUG='-g' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_SHARED_LIBS=OFF -G 'Ninja' -Wno-dev
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
+    build_done 'frei0r' "$g_ver"
+fi
+ffmpeg_libraries+=('--enable-frei0r')
+
+pre_check_ver 'GPUOpen-LibrariesAndSDKs/AMF' '1' 'T'
+if build 'amf' "$g_ver"; then
+    download "$g_url" "AMF-$g_ver.tar.gz"
+    execute rm -fr "$workspace"/include/AMF
+    execute mkdir -p "$workspace"/include/AMF
+    execute cp -fr "$packages"/AMF-"$g_ver"/amf/public/include/* "$workspace"/include/AMF/
+    build_done 'amf' "$g_ver"
+fi
+ffmpeg_libraries+=('--enable-amf')
+
+pre_check_ver 'gpac/gpac' '1' 'T'
+if build 'gpac' "$g_ver"; then
+    download "https://codeload.github.com/gpac/gpac/tar.gz/refs/tags/v$g_ver" "gpac-$g_ver.tar.gz"
+    execute ./configure --prefix="$workspace" --extra-cflags="$CFLAGS" --static-bin --static-modules --enable-gprof
+    execute make "-j$cpu_threads"
+    execute make install
+    build_done 'gpac' "$g_ver"
+fi
+
+pre_check_ver 'openvisualcloud/svt-hevc' '1' 'T'
+if build 'svthevc' "$g_ver"; then
+    download "https://codeload.github.com/OpenVisualCloud/SVT-HEVC/tar.gz/refs/tags/v$g_ver" "svthevc-$g_ver.tar.gz"
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -G 'Ninja' -Wno-dev
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
+    build_done 'svthevc' "$g_ver"
+fi
+
+git_ver_fn '24327400' '3' 'T'
+if build 'svtav1' '1.4.1'; then
+    download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v1.4.1/SVT-AV1-v1.4.1.tar.bz2' 'svtav1-1.4.1.tar.bz2'
+    execute cmake -S . -B 'Build/linux' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -G 'Ninja'
+    execute ninja -C 'Build/linux'
+    execute ninja -C 'Build/linux' install
+    execute cp -f 'Build/linux/SvtAv1Enc.pc' "$workspace"/lib/pkgconfig
+    execute cp -f 'Build/linux/SvtAv1Dec.pc' "$workspace"/lib/pkgconfig
+    build_done 'svtav1' '1.4.1'
+fi
+ffmpeg_libraries+=('--enable-libsvtav1')
+
+pre_check_ver 'OpenVisualCloud/SVT-VP9' '1' 'T'
+if build 'svtvp9' "$g_ver"; then
+    download "https://codeload.github.com/OpenVisualCloud/SVT-VP9/tar.gz/refs/tags/v$g_ver" "svtvp9-$g_ver.tar.gz"
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -G 'Ninja' -Wno-dev
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
+    build_done 'svtvp9' "$g_ver"
+fi
+
 
 
 exit
@@ -1750,18 +1875,6 @@ if build 'libgav1' 'git'; then
     execute ninja "-j$cpu_threads" -C 'libgav1_build' install
     build_done 'libgav1' 'git'
 fi
-
-git_ver_fn '24327400' '3' 'T'
-if build 'svtav1' '1.4.1'; then
-    download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v1.4.1/SVT-AV1-v1.4.1.tar.bz2' 'SVT-AV1-1.4.1.tar.bz2'
-    execute cmake -S . -B 'Build/linux' -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -G 'Ninja'
-    execute ninja -C 'Build/linux'
-    execute ninja -C 'Build/linux' install
-    execute cp -f 'Build/linux/SvtAv1Enc.pc' "$workspace"/lib/pkgconfig
-    execute cp -f 'Build/linux/SvtAv1Dec.pc' "$workspace"/lib/pkgconfig
-    build_done 'svtav1' '1.4.1'
-fi
-ffmpeg_libraries+=('--enable-libsvtav1')
 
 pre_check_ver 'c-ares/c-ares' '1' 'R'
 g_ver="$(echo "$g_ver" | sed 's/ares-//g')"
@@ -1836,15 +1949,6 @@ EOF
 fi
 ffmpeg_libraries+=('--enable-libx265')
 
-pre_check_ver 'openvisualcloud/svt-hevc' '1' 'T'
-if build 'SVT-HEVC' "$g_ver"; then
-    download "$g_url" "SVT-HEVC-$g_ver.tar.gz"
-    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -G 'Ninja' -Wno-dev
-    execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
-    build_done 'SVT-HEVC' "$g_ver"
-fi
-
 if build 'xvidcore' '1.3.7'; then
     download 'https://downloads.xvid.com/downloads/xvidcore-1.3.7.tar.bz2' 'xvidcore-1.3.7.tar.bz2'
     cd 'build/generic' || exit 1
@@ -1867,16 +1971,6 @@ if build 'xvidcore' '1.3.7'; then
     build_done 'xvidcore' '1.3.7'
 fi
 ffmpeg_libraries+=('--enable-libxvid')
-
-pre_check_ver 'georgmartius/vid.stab' '1' 'T'
-if build 'vid_stab' "$g_ver"; then
-    download "$g_url" "vid.stab-$g_ver.tar.gz"
-    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DUSE_OMP=ON -G 'Ninja' -Wno-dev
-    execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
-    build_done 'vid_stab' "$g_ver"
-fi
-ffmpeg_libraries+=('--enable-libvidstab')
 
 #
 # audio libraries
@@ -2034,17 +2128,6 @@ if [ "$os_test" != '18.04' ]; then
     fi
 fi
 
-pre_check_ver 'dyne/frei0r' '1' 'T'
-if build 'frei0r' "$g_ver"; then
-    download "$g_url" "frei0r-$g_ver.tar.gz"
-    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DWITHOUT_OPENCV=OFF -DCMAKE_CXX_COMPILER_RANLIB='/usr/bin/gcc-ranlib-12' \
-        -DCMAKE_CXX_FLAGS_DEBUG='-g' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_SHARED_LIBS=OFF -G 'Ninja' -Wno-dev
-    execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
-    build_done 'frei0r' "$g_ver"
-fi
-ffmpeg_libraries+=('--enable-frei0r')
-
 pre_check_ver 'avisynth/avisynthplus' '1' 'T'
 if build 'avisynth' "$g_ver"; then
     download "$g_url" "avisynth-$g_ver.tar.gz"
@@ -2055,61 +2138,6 @@ if build 'avisynth' "$g_ver"; then
     build_done 'avisynth' "$g_ver"
 fi
 ffmpeg_libraries+=('--enable-avisynth')
-
-git_ver_fn '363' '2' 'T'
-if build 'udfread' "$g_ver1"; then
-    download "https://code.videolan.org/videolan/libudfread/-/archive/$g_ver1/libudfread-$g_ver1.tar.bz2" "udfread-$g_ver1.tar.bz2"
-    execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --enable-static --disable-shared --with-pic --with-gnu-ld
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'udfread' "$g_ver1"
-fi
-
-git_ver_fn '206' '2' 'T'
-if build 'libbluray' "$g_ver1"; then
-    download "https://code.videolan.org/videolan/libbluray/-/archive/$g_ver1/$g_ver1.tar.gz" "libbluray-$g_ver1.tar.gz"
-    execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --enable-static --disable-shared --without-libxml2
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'libbluray' "$g_ver1"
-fi
-unset JAVA_HOME
-ffmpeg_libraries+=('--enable-libbluray')
-
-pre_check_ver 'mediaarea/zenLib' '1' 'T'
-if build 'zenLib' "$g_ver"; then
-    download "https://codeload.github.com/MediaArea/ZenLib/tar.gz/refs/tags/v$g_ver" "zenLib-$g_ver.tar.gz"
-    cd 'Project/GNU/Library' || exit 1
-    execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --enable-static --disable-shared
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'zenLib' "$g_ver"
-fi
-
-pre_check_ver 'MediaArea/MediaInfoLib' '1' 'T'
-if build 'MediaInfoLib' "$g_ver"; then
-    download "https://codeload.github.com/MediaArea/MediaInfoLib/tar.gz/refs/tags/v$g_ver" "MediaInfoLib-$g_ver.tar.gz"
-    cd 'Project/GNU/Library' || exit 1
-    execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --enable-static --disable-shared
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'MediaInfoLib' "$g_ver"
-fi
-
-pre_check_ver 'MediaArea/MediaInfo' '1' 'T'
-if build 'MediaInfoCLI' "$g_ver"; then
-    download "https://codeload.github.com/MediaArea/MediaInfo/tar.gz/refs/tags/v$g_ver" "MediaInfoCLI-$g_ver.tar.gz"
-    cd 'Project/GNU/CLI' || exit 1
-    execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --enable-staticlibs
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'MediaInfoCLI' "$g_ver"
-fi
 
 pre_check_ver 'Haivision/srt' '1' 'T'
 if build 'srt' '1.5.2-rc.2'; then
@@ -2129,15 +2157,6 @@ if build 'srt' '1.5.2-rc.2'; then
 fi
 ffmpeg_libraries+=('--enable-libsrt')
 
-pre_check_ver 'gpac/gpac' '1' 'T'
-if build 'gpac' "$g_ver"; then
-    download "https://codeload.github.com/gpac/gpac/tar.gz/refs/tags/v$g_ver" "gpac-$g_ver.tar.gz"
-    execute ./configure --prefix="$workspace" --extra-cflags="$CFLAGS" --static-bin --static-modules --enable-gprof
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'gpac' "$g_ver"
-fi
-
 #
 # HWACCEL LIBRARY
 #
@@ -2152,16 +2171,6 @@ if [ -z "$LDEXEFLAGS" ]; then
         ffmpeg_libraries+=('--enable-vaapi')
     fi
 fi
-
-pre_check_ver 'GPUOpen-LibrariesAndSDKs/AMF' '1' 'T'
-if build 'amf' "$g_ver"; then
-    download "$g_url" "AMF-$g_ver.tar.gz"
-    execute rm -fr "$workspace"/include/AMF
-    execute mkdir -p "$workspace"/include/AMF
-    execute cp -fr "$packages"/AMF-"$g_ver"/amf/public/include/* "$workspace"/include/AMF/
-    build_done 'amf' "$g_ver"
-fi
-ffmpeg_libraries+=('--enable-amf')
 
 if [ -n "$iscuda" ]; then
     if build 'nv-codec-headers' "$g_ver"; then
