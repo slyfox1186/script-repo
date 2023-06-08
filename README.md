@@ -45,7 +45,6 @@ bash <(curl -sSL https://7z-beta.optimizethis.net)
     - Ubuntu - 18.04 / 20.04 / 22.04
     - Other debian style distros may work as well
 
-#### Ubuntu 22.04 (other versions may work)
 ```bash
 bash <(curl -sSL https://magick.optimizethis.net) --build --latest
 ```
