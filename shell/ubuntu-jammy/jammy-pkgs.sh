@@ -57,7 +57,7 @@ install_apt_fn()
     pkgs=(alien apt-file aptitude aria2 autoconf autogen automake bat binutils bison build-essential ccache
           ccdiff checkinstall clang cmake cmake-extras cmake-qt-gui colordiff cpu-checker curl cvs dbus-x11
           dconf-editor ddclient debhelper devscripts dh-make disktype dos2unix dpkg-dev exfat-fuse exfatprogs
-          f2fs-tools fakeroot flatpak flex gawk gcc g++ gcc-12 g++-12 gedit gedit-plugins gh gir1.2-gtksource-3.0
+          f2fs-tools fakeroot flatpak flex gawk gcc g++ gcc-12 gedit gedit-plugins gh gir1.2-gtksource-3.0
           git-all git-buildpackage gnome-shell-extension-manager gnome-tweaks gnustep-gui-runtime golang gparted
           gperf gufw hfsplus hfsprogs hfsutils htop idn2 iftop iw jfsutils jq libasan6-amd64-cross libboost-all-dev
           libbz2-dev libdmalloc-dev libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev liblz-dev liblzma-dev
