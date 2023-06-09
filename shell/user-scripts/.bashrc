@@ -121,7 +121,6 @@ export PYTHONUTF8='1'
 
 # FIND THE HIGHEST Gexport CC VERSION YOU HAVE INSTALLED AND SET IT AS YOUR export CC COMPILER
 type -P 'gcc' &>/dev/null && export CC='gcc'
-type -P 'gcc-9' &>/dev/null && export CC='gcc-9'
 type -P 'gcc-10' &>/dev/null && export CC='gcc-10'
 type -P 'gcc-11' &>/dev/null && export CC='gcc-11'
 type -P 'gcc-12' &>/dev/null && export CC='gcc-12'
@@ -129,7 +128,6 @@ type -P 'gcc-13' &>/dev/null && export CC='gcc-13'
 
 # FIND THE HIGHEST G++ VERSION YOU HAVE INSTALLED AND SET IT AS YOUR export CXX COMPILER
 type -P 'g++' &>/dev/null && export CXX='g++'
-type -P 'g++-9' &>/dev/null && export CXX='g++-9'
 type -P 'g++-10' &>/dev/null && export CXX='g++-10'
 type -P 'g++-11' &>/dev/null && export CXX='g++-11'
 type -P 'g++-12' &>/dev/null && export CXX='g++-12'
