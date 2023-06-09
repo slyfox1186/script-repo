@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
+# shellcheck disable=SC1091,SC2000,SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
 
 ############################################################################################
 ##
@@ -67,7 +67,7 @@ export CXXFLAGS='-g -O3 -march=native -mtune=native'
 
 if [ -f '/proc/cpuinfo' ]; then
     cpu_threads="$(nproc --all)"
-    cpu_cores="$(expr $cpu_threads / 2)"
+    cpu_cores="$($cpu_threads / 2)"
 else
     cpu_threads="$(grep -c ^processor '/proc/cpuinfo')"
     cpu_cores="$(grep ^cpu\\scores '/proc/cpuinfo' | uniq | awk '{print $4}')"
@@ -964,8 +964,9 @@ install_cuda_fn
 
 function box_out_banner()
 {
-    input_char=$(echo "$@" | wc -c)
-    line=$(for i in `seq 0 $input_char`; do printf "-"; done)
+    input_char="$( echo "$@" | wc -c )"
+
+    line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
@@ -977,10 +978,12 @@ function box_out_banner()
     tput sgr 0
 }
 
+box_out_banner 'FFmpeg Build Script'
+
 function box_out_update()
 {
-    input_char=$(echo "$@" | wc -c)
-    line=$(for i in `seq 0 $input_char`; do printf "-"; done)
+    input_char="$( echo "$@" | wc -c )"
+    line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
@@ -994,8 +997,8 @@ function box_out_update()
 
 function box_out_global()
 {
-    input_char=$(echo "$@" | wc -c)
-    line=$(for i in `seq 0 $input_char`; do printf "-"; done)
+    input_char="$( echo "$@" | wc -c )"
+    line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
@@ -1009,8 +1012,8 @@ function box_out_global()
 
 function box_out_audio()
 {
-    input_char=$(echo "$@" | wc -c)
-    line=$(for i in `seq 0 $input_char`; do printf "-"; done)
+    input_char="$( echo "$@" | wc -c )"
+    line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
@@ -1024,8 +1027,8 @@ function box_out_audio()
 
 function box_out_video()
 {
-    input_char=$(echo "$@" | wc -c)
-    line=$(for i in `seq 0 $input_char`; do printf "-"; done)
+    input_char="$( echo "$@" | wc -c )"
+    line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
@@ -1040,8 +1043,8 @@ function box_out_video()
 function box_out_ffmpeg()
 {
     echo
-    input_char=$(echo "$@" | wc -c)
-    line=$(for i in `seq 0 $input_char`; do printf "-"; done)
+    input_char="$( echo "$@" | wc -c )"
+    line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
@@ -1107,7 +1110,11 @@ case "$OS" in
     *)                      fail_fn 'Could not detect the OS architecture.';;
 esac
 
-check_python3_ver() { python3_ver="$(python3 --version | grep -Eo '[0-9\.]+')"; }
+check_python3_ver()
+{
+    python3_ver="$(python3 --version | grep -Eo '[0-9\.]+')"
+    python3_rm_decimals="${python3_ver//\./}"
+}
 
 patch_fn()
 {
@@ -1195,12 +1202,6 @@ elif type -P clang++ &>/dev/null; then
 else
     fail_fn 'No C++ compilers were located. Please install one and run the script again.'
 fi
-
-#
-# BEGIN THE BUILDING PROCESS
-#
-
-box_out_banner 'FFmpeg Build Script'
 
 #
 # GLOBAL TOOLS
@@ -1320,7 +1321,6 @@ ffmpeg_libraries+=('--enable-openssl')
 
 # UBUNTU BIONIC NEEDS A RECENT VERSION OF PYTHON3 TO INSTALL A RECENT VERSION OF MESON
 check_python3_ver
-python3_rm_decimals="$(echo $python3_ver | sed 's/\.//g')"
 if [ "$python3_rm_decimals" -ge '700' ]; then
     pre_check_ver 'mesonbuild/meson' '1' 'T'
     if build 'meson' "$g_ver"; then
@@ -1620,7 +1620,7 @@ if build 'gflags' "$g_ver"; then
 fi
 
 git_ver_fn 'libjxl/libjxl' '1' 'T'
-g_ver="$(echo "$g_ver" | sed 's/-snapshot//g')"
+g_ver="${g_ver//-snapshot/}"
 if build 'jxl' "$g_ver"; then
     deb_files_fn
     build_done 'jxl' "$g_ver"
@@ -1671,8 +1671,8 @@ fi
 ffmpeg_libraries+=('--enable-libzimg')
 
 pre_check_ver 'c-ares/c-ares' '1' 'R'
-g_ver="$(echo "$g_ver" | sed 's/ares-//g')"
-g_tag="$(echo "$g_ver" | sed 's/\./_/g')"
+g_ver="${g_ver//ares-/}"
+g_tag="${g_ver//\./_}"
 if build 'c-ares' "$g_ver"; then
     download "https://codeload.github.com/c-ares/c-ares/tar.gz/refs/tags/cares-$g_tag" "c-ares-$g_ver.tar.gz"
     execute autoreconf -fi
