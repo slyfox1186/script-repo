@@ -23,7 +23,7 @@ bash <(curl -sSL https://build-menu.optimizethis.net)
 ```
 ------
 
-## Debian package downloader
+## Debian Package Downloader
   - Download APT packages to your pc by enter a space separated list of values.
   - Easy to use, just enter a list of APT package names and their debian file equivalent will download to the current folder.
 ```bash
