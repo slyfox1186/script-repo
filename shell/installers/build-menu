@@ -1,103 +1,132 @@
 #!/bin/bash
-
 clear
 
-server_name="$(hostname)"
-
-build_tools_fn() { bash <(curl -sSL https://build-tools.optimizethis.net); }
-curl_fn() { bash <(curl -sSL https://dl-tools.optimizethis.net); }
-ffmpeg_fn() { bash <(curl -sSL https://build-ffmpeg.optimizethis.net) --build --enable-gpl-and-non-free --latest; }
-go_fn() { bash <(curl -sSL https://go.optimizethis.net); }
-gparted_fn() { bash <(curl -sSL https://gparted.optimizethis.net); }
-imagick_fn() { bash <(curl -sSL https://magick.optimizethis.net) --build --latest; }
-szip_beta_fn() { bash <(curl -sSL https://7z-beta.optimizethis.net); }
-szip_release_fn() { bash <(curl -sSL https://7z.optimizethis.net); }
-video_fn() { bash <(curl -sSL https://players.optimizethis.net); }
+#
+# MENU COLOR FUNCTIONS
+#
 
 green='\e[32m'
 blue='\e[34m'
 clear='\e[0m'
-
 ColorGreen() { echo -ne "$green$1$clear"; }
 ColorBlue() { echo -ne "$blue$1$clear"; }
 
-install_menu()
-{
+#
+# SHOW BANNER
+#
 
+function box_out_banner()
+{
+    input_char=$(echo "$@" | wc -c)
+    line=$(for i in `seq 0 $input_char`; do printf "-"; done)
+    tput bold
+    line="$(tput setaf 3)${line}"
+    space=${line//-/ }
+    echo " ${line}"
+    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
+    printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
+    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
+    echo " ${line}"
+    tput sgr 0
+}
+
+#
+# DOWNLOAD SCRIPTS
+#
+
+szip_release_fn() { bash <(curl -sSL https://7z.optimizethis.net); }
+szip_beta_fn() { bash <(curl -sSL https://7z-beta.optimizethis.net); }
+dl_tools_fn() { bash <(curl -sSL https://dl-tools.optimizethis.net); }
+build_tools_fn() { bash <(curl -sSL https://build-tools.optimizethis.net); }
+magick_fn() { bash <(curl -sSL https://magick.optimizethis.net) --build --latest; }
+ffmpeg_fn() { bash <(curl -sSL https://build-ffmpeg.optimizethis.net) --build --enable-gpl-and-non-free --latest; }
+go_fn() { bash <(curl -sSL https://go.optimizethis.net); }
+gparted_fn() { bash <(curl -sSL https://gparted.optimizethis.net); }
+deb_dl_fn() { bash <(curl -sSL https://download.optimizethis.net); }
+video_fn() { bash <(curl -sSL https://players.optimizethis.net); }
+
+box_out_banner 'Installer Script Menu'
+
+main_menu()
+{
+    local answer
 echo -ne "
-Installer Script Menu
-$(ColorGreen '1)') 7-Zip Release v21.00
-$(ColorGreen '2)') 7-Zip Beta v23.00
-$(ColorGreen '3)') ImageMagick 7
-$(ColorGreen '4)') cURL
-$(ColorGreen '5)') CMake, Meson, Ninja
-$(ColorGreen '6)') GParted
-$(ColorGreen '7)') Video Players
-$(ColorGreen '8)') FFmpeg
-$(ColorGreen '9)') Golang
-$(ColorGreen '0)') Exit
+$(ColorGreen '1)')  7-Zip Release v21.00
+$(ColorGreen '2)')  7-Zip Beta v23.00
+$(ColorGreen '3)')  cURL, WGET
+$(ColorGreen '4)')  CMake, Meson, Ninja
+$(ColorGreen '5)')  ImageMagick 7
+$(ColorGreen '6)')  FFmpeg
+$(ColorGreen '7)')  Golang
+$(ColorGreen '8)')  GParted
+$(ColorGreen '9)')  Debian Package Downloader
+$(ColorGreen '10)') Video Players
+$(ColorGreen '0)')  Exit
 $(ColorBlue 'Choose an option:') "
     read answer
-
     case "$answer" in
         1)
             clear
             szip_release_fn
             clear
-            install_menu
+            main_menu
             ;;
         2)
             clear
             szip_beta_fn
             clear
-            install_menu
+            main_menu
             ;;
         3)
             clear
-            imagick_fn
+            dl_tools_fn
             clear
-            install_menu
+            main_menu
             ;;
         4)
             clear
-            curl_fn
+            build_tools_fn
             clear
-            install_menu
+            main_menu
             ;;
         5)
             clear
-            build_tools_fn
+            magick_fn
             clear
-            install_menu
+            main_menu
             ;;
         6)
             clear
-            gparted_fn
+            ffmpeg_fn
             clear
-            install_menu
+            main_menu
             ;;
         7)
             clear
-            video_fn
+            go_fn
             clear
-            install_menu
+            main_menu
             ;;
         8)
             clear
-            ffmpeg_fn
+            gparted_fn
             clear
-            install_menu
+            main_menu
             ;;
         9)
             clear
-            go_fn
+            deb_dl_fn
             clear
-            install_menu
+            main_menu
+            ;;
+        10)
+            clear
+            video_fn
+            clear
+            main_menu
             ;;
         0)
-            if [ -f 'build-menu' ]; then
-                sudo rm 'build-menu'
-            fi
+            sudo rm "$0"
             clear
             exit 0
             ;;
@@ -108,4 +137,4 @@ $(ColorBlue 'Choose an option:') "
     esac
 }
 
-install_menu
+main_menu
