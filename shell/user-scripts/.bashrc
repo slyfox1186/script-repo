@@ -95,7 +95,7 @@ fi
 
 # custom user vars
 PATH="\
-/usr/lib/ccache:\
+/usr/lib/export CCache:\
 $HOME/.cargo/env:\
 $HOME/.local/bin:\
 /usr/local/sbin:\
@@ -119,32 +119,18 @@ export THREADS="$(nproc --all)"
 export CPUS="$((THREADS/2))"
 export PYTHONUTF8='1'
 
-# find the highest gcc version you have installed and set it as your CC compiler
-if which 'gcc-13' &>/dev/null; then
-    export CC='gcc-13'
-elif which 'gcc-12' &>/dev/null; then
-    export CC='gcc-12'
-elif which 'gcc-11' &>/dev/null; then
-    export CC='gcc-11'
-elif which 'gcc-10' &>/dev/null; then
-    export CC='gcc-10'
-elif which 'gcc-9' &>/dev/null; then
-    export CC='gcc-9'
-else
-    export CC='gcc'
-fi
+# FIND THE HIGHEST Gexport CC VERSION YOU HAVE INSTALLED AND SET IT AS YOUR export CC COMPILER
+type -P 'gcc' &>/dev/null && export CC='gcc'
+type -P 'gcc-9' &>/dev/null && export CC='gcc-9'
+type -P 'gcc-10' &>/dev/null && export CC='gcc-10'
+type -P 'gcc-11' &>/dev/null && export CC='gcc-11'
+type -P 'gcc-12' &>/dev/null && export CC='gcc-12'
+type -P 'gcc-13' &>/dev/null && export CC='gcc-13'
 
-# find the highest g++ version you have installed and set it as your CXX compiler
-if which 'g++-13' &>/dev/null; then
-    export CXX='g++-13'
-elif which 'g++-12' &>/dev/null; then
-    export CXX='g++-12'
-elif which 'g++-11' &>/dev/null; then
-    export CXX='g++-11'
-elif which 'g++-10' &>/dev/null; then
-    export CC='g++-10'
-elif which 'g++-9' &>/dev/null; then
-    export CC='g++-9'
-else
-    export CXX='g++'
-fi
+# FIND THE HIGHEST G++ VERSION YOU HAVE INSTALLED AND SET IT AS YOUR export CXX COMPILER
+type -P 'g++' &>/dev/null && export CXX='g++'
+type -P 'g++-9' &>/dev/null && export CXX='g++-9'
+type -P 'g++-10' &>/dev/null && export CXX='g++-10'
+type -P 'g++-11' &>/dev/null && export CXX='g++-11'
+type -P 'g++-12' &>/dev/null && export CXX='g++-12'
+type -P 'g++-13' &>/dev/null && export CXX='g++-13'
