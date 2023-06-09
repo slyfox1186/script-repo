@@ -3,7 +3,7 @@
 
 ############################################################################################
 ##
-##  GitHub: https://github.com/slyfox1186/script-repo
+##  GitHub: https://github.com/slyfox1186/ffmpeg-build-script
 ##
 ##  Supported Distros
 ##
@@ -39,6 +39,7 @@
 
 script_name="${0:2}"
 script_ver='7.0'
+ffmpeg_version='5.1.3'
 cuda_ver='12.1.1'
 cwd="$PWD"/ffmpeg-build-script
 packages="$cwd"/packages
@@ -52,7 +53,13 @@ EXTRALIBS='-ldl -lpthread -lm -lz'
 ffmpeg_libraries=()
 latest='false'
 install_dir='/usr/local/bin'
-repo='https://github.com/slyfox1186/script-repo'
+repo='https://github.com/slyfox1186/ffmpeg-build-script'
+
+#
+# SET C++ LINKER OPTIMIZATION FLAGS TO TUNE THE BUILD FOR THE SPECIFIC COMPUTER THAT IS RUNNING THIS SCRIPT
+#
+
+export CXXFLAGS='-g -O3 -march=native -mtune=native'
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -277,25 +284,25 @@ git_1_fn()
     github_url="$2"
 
     if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
-            g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
-            g_ver1="$(echo "$curl_cmd" | jq -r '.[1].name' 2>/dev/null)"
-            g_ver3="$(echo "$curl_cmd" | jq -r '.[3].name' 2>/dev/null)"
-            g_ver="${g_ver#cares-}"
-            g_ver="${g_ver#FAAC }"
-            g_ver="${g_ver#lcms}"
-            g_ver="${g_ver#OpenJPEG }"
-            g_ver="${g_ver#OpenSSL }"
-            g_ver="${g_ver#PCRE2-}"
-            g_ver="${g_ver#pkgconf-}"
-            g_ver="${g_ver#release-}"
-            g_ver="${g_ver#Rust }"
-            g_ver="${g_ver#ver-}"
-            g_ver="${g_ver#v}"
-            g_ver1="${g_ver1#nasm-}"
-            g_ver1="${g_ver1#v}"
-            g_ver3="${g_ver3#v}"
-            g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url')"
-        fi
+        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
+        g_ver1="$(echo "$curl_cmd" | jq -r '.[1].name' 2>/dev/null)"
+        g_ver3="$(echo "$curl_cmd" | jq -r '.[3].name' 2>/dev/null)"
+        g_ver="${g_ver#cares-}"
+        g_ver="${g_ver#FAAC }"
+        g_ver="${g_ver#lcms}"
+        g_ver="${g_ver#OpenJPEG }"
+        g_ver="${g_ver#OpenSSL }"
+        g_ver="${g_ver#PCRE2-}"
+        g_ver="${g_ver#pkgconf-}"
+        g_ver="${g_ver#release-}"
+        g_ver="${g_ver#Rust }"
+        g_ver="${g_ver#ver-}"
+        g_ver="${g_ver#v}"
+        g_ver1="${g_ver1#nasm-}"
+        g_ver1="${g_ver1#v}"
+        g_ver3="${g_ver3#v}"
+        g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url')"
+    fi
 
     echo "${github_repo%/*}-$g_ver" >>"$ver_file_tmp"
     awk '!NF || !seen[$0]++' "$latest_txt_tmp" >"$ver_file"
@@ -812,6 +819,7 @@ pkgs_fn()
 
 install_cuda_fn()
 {
+    echo
     local cuda_answer cuda_choice
 
     iscuda="$(sudo find /usr/local/ -type f -name nvcc)"
@@ -952,18 +960,12 @@ deb_files_fn()
 # INSTALL CUDA SDK-TOOLKIT
 #
 
-echo
 install_cuda_fn
 
 function box_out_banner()
 {
     input_char=$(echo "$@" | wc -c)
     line=$(for i in `seq 0 $input_char`; do printf "-"; done)
-    # tput This should be the best option. what tput does is it will
-    # read the terminal info and render the correctly escaped ANSI code
-    # for you.
-    # Code like \033[31m will break the readline library in some of the
-    # terminals.
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
@@ -974,17 +976,11 @@ function box_out_banner()
     echo " ${line}"
     tput sgr 0
 }
-box_out_banner 'FFmpeg Build Script'
 
 function box_out_update()
 {
     input_char=$(echo "$@" | wc -c)
     line=$(for i in `seq 0 $input_char`; do printf "-"; done)
-    # tput This should be the best option. what tput does is it will
-    # read the terminal info and render the correctly escaped ANSI code
-    # for you.
-    # Code like \033[31m will break the readline library in some of the
-    # terminals.
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
@@ -1000,11 +996,6 @@ function box_out_global()
 {
     input_char=$(echo "$@" | wc -c)
     line=$(for i in `seq 0 $input_char`; do printf "-"; done)
-    # tput This should be the best option. what tput does is it will
-    # read the terminal info and render the correctly escaped ANSI code
-    # for you.
-    # Code like \033[31m will break the readline library in some of the
-    # terminals.
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
@@ -1020,11 +1011,6 @@ function box_out_audio()
 {
     input_char=$(echo "$@" | wc -c)
     line=$(for i in `seq 0 $input_char`; do printf "-"; done)
-    # tput This should be the best option. what tput does is it will
-    # read the terminal info and render the correctly escaped ANSI code
-    # for you.
-    # Code like \033[31m will break the readline library in some of the
-    # terminals.
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
@@ -1040,11 +1026,6 @@ function box_out_video()
 {
     input_char=$(echo "$@" | wc -c)
     line=$(for i in `seq 0 $input_char`; do printf "-"; done)
-    # tput This should be the best option. what tput does is it will
-    # read the terminal info and render the correctly escaped ANSI code
-    # for you.
-    # Code like \033[31m will break the readline library in some of the
-    # terminals.
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
@@ -1058,13 +1039,9 @@ function box_out_video()
 
 function box_out_ffmpeg()
 {
+    echo
     input_char=$(echo "$@" | wc -c)
     line=$(for i in `seq 0 $input_char`; do printf "-"; done)
-    # tput This should be the best option. what tput does is it will
-    # read the terminal info and render the correctly escaped ANSI code
-    # for you.
-    # Code like \033[31m will break the readline library in some of the
-    # terminals.
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
@@ -1220,10 +1197,10 @@ else
 fi
 
 #
-# ENABLE C++ COMPILER OPTIMIZATIONS
+# BEGIN THE BUILDING PROCESS
 #
 
-export CXXFLAGS='-g -O3 -march=native -mtune=native'
+box_out_banner 'FFmpeg Build Script'
 
 #
 # GLOBAL TOOLS
@@ -2396,14 +2373,10 @@ ffmpeg_libraries+=('--enable-libxvid')
 # BUILD FFMPEG
 #
 
-pkg_config_fn
-
-ff_ver='5.1.3'
-echo
 box_out_ffmpeg 'Installing FFmpeg'
-# CLONE FFMPEG FROM THE LATEST GIT RELEASE
-if build 'FFmpeg' '5.1.3'; then
-    download "https://ffmpeg.org/releases/ffmpeg-$ff_ver.tar.xz" "ffmpeg-$ff_ver.tar.xz"
+pkg_config_fn
+if build 'FFmpeg' "$ffmpeg_version"; then
+    download "https://ffmpeg.org/releases/ffmpeg-$ffmpeg_version.tar.xz" "ffmpeg-$ffmpeg_version.tar.xz"
     #execute cp -f "$packages/svtvp9-0.3.0/ffmpeg_plugin/master-0001-Add-ability-for-ffmpeg-to-run-svt-vp9.patch" "$PWD"
     #git apply --check --ignore-space-change --ignore-whitespace 'master-0001-Add-ability-for-ffmpeg-to-run-svt-vp9.patch'
     ./configure \
@@ -2436,6 +2409,7 @@ if build 'FFmpeg' '5.1.3'; then
     execute make distclean
 fi
 
+# EXECUTE THE LDCONFIG COMMAND TO ENSURE THAT ALL LIBRARY CHANGES ARE DETECTED BY FFMPEG
 sudo ldconfig
 
 # PROMPT THE USER TO INSTALL THE FFMPEG BINARIES SYSTEM-WIDE
