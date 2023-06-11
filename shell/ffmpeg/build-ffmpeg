@@ -757,6 +757,8 @@ cuda_download_fn()
     sudo apt update
     sudo apt -y install cuda
 
+    cuda_ver="$(cat '/usr/local/cuda/version.json' | jq -r '.cuda.version')"
+
     if [ -z "$cuda_path" ]; then
         cuda_fail_fn
     else
@@ -770,7 +772,7 @@ cuda_download_fn()
 
 install_cuda_fn()
 {
-    cuda_ver="$(cat '/usr/local/cuda/version.json' | jq -r '.cuda.version')"
+    cuda_ver='12.1.1'
 
     if [ -n "$iscuda" ]; then
         printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
