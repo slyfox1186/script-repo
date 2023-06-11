@@ -10,6 +10,10 @@ if build 'svtvp9' "$g_ver"; then
 fi
 ffmpeg_libraries+=('--enable-libsvtvp9')
 
+# THESE GO IN WITH FFMPEG'S COMMAND LINE FOR VP9
+execute cp -f "$packages/svtvp9-0.3.0/ffmpeg_plugin/master-0001-Add-ability-for-ffmpeg-to-run-svt-vp9.patch" "$PWD"
+git apply --check --ignore-space-change --ignore-whitespace 'master-0001-Add-ability-for-ffmpeg-to-run-svt-vp9.patch'
+
 pre_check_ver 'Netflix/vmaf' '1' 'T'
 if build 'libvmaf' "$g_ver"; then
     download "https://codeload.github.com/Netflix/vmaf/tar.gz/refs/tags/v$g_ver" "libvmaf-$g_ver.tar.gz"
