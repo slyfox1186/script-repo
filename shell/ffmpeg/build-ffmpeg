@@ -905,7 +905,7 @@ install_deb_files_fn()
         printf "%s\n%s\n" \
             "Installing: $i" \
             '============================================='
-        sudo dpkg -i "$i" 2>&1
+        sudo apt-get -y install ./"$i" 2>&1
         echo
     done
 }
