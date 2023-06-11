@@ -1141,7 +1141,7 @@ fi
 
 pre_check_ver '541' '8'
 if build 'cmake' "$g_ver"; then
-    download "https://gitlab.kitware.com/cmake/cmake/-/archive/v$g_ver/cmake-v$g_ver.tar.bz2" "cmake-$g_ver.tar.gz"
+    download "https://gitlab.kitware.com/cmake/cmake/-/archive/v$g_ver/cmake-v$g_ver.tar.bz2" "cmake-$g_ver.tar.bz2"
     execute ./configure --prefix="$workspace" --parallel="$cpu_threads" --enable-ccache -- -DCMAKE_USE_OPENSSL=OFF
     execute make "-j$cpu_threads"
     execute make install
