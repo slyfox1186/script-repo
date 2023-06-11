@@ -680,6 +680,8 @@ $PATH\
 export PATH
 }
 
+path_fn
+
 pkg_config_fn()
 {
 # set the pkg-config path
@@ -841,12 +843,13 @@ pkgs_fn()
           doxygen fcitx-libs-dev flex freeglut3-dev gawk gettext git gnome-desktop-testing gnustep-gui-runtime google-perftools
           gperf gtk-doc-tools guile-3.0-dev help2man jq junit libasound2-dev libaudio-dev libavfilter-dev libbz2-dev libc6 libc6-dev
           libcairo2-dev libcdio-paranoia-dev libcrypto++-dev libdbus-1-dev libdevil-dev libdmalloc-dev libdrm-dev libegl1-mesa-dev
-          libffi-dev libgbm-dev libgdbm-dev libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgoogle-perftools4 libgoogle-perftools-dev
-          libgvc6 libibus-1.0-dev libjack-dev libintl-perl libjemalloc-dev libleptonica-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev
-          libmusicbrainz5-dev libncurses5-dev libncursesw5-dev libnuma1 libnuma-dev libopencv-dev libperl-dev libpstoedit-dev libpulse-dev
-          libraqm-dev libraw-dev librsvg2-dev libsdl2-dev libsndio-dev libsqlite3-dev libssl-dev libtalloc-dev libudev-dev libx11-dev
-          libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libzstd-dev libzzip-dev lshw lzma-dev nasm
-          openjdk-17-jdk-headless pandoc pkg-config python3 python3-pip ragel re2c scons texi2html texinfo tk-dev unzip wget xmlto zlib1g-dev)
+          libffi-dev libgbm-dev libgdbm-dev libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgoogle-perftools-dev libgoogle-perftools4
+          libgvc6 libibus-1.0-dev libintl-perl libjack-dev libjemalloc-dev libleptonica-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev
+          libmusicbrainz5-dev libncurses5-dev libncursesw5-dev libnuma-dev libnuma1 libopencv-dev libperl-dev libpstoedit-dev libpulse-dev
+          libraqm-dev libraw-dev librsvg2-dev libsdl2-dev libsndio-dev libsqlite3-dev libssl-dev libtalloc-dev libtool-bin libudev-dev
+          libx11-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libzstd-dev libzzip-dev
+          lshw lzma-dev nasm openjdk-17-jdk-headless pandoc python3 python3-pip ragel re2c scons texi2html texinfo tk-dev unzip wget
+          xmlto zlib1g-dev)
 
     for pkg in ${pkgs[@]}; do
         if ! installed "$pkg"; then
@@ -1223,6 +1226,7 @@ fi
 pre_check_ver 'yasm/yasm' '1' 'T'
 if build 'yasm' "$g_ver"; then
     download "https://codeload.github.com/yasm/yasm/tar.gz/refs/tags/v$g_ver" "yasm-$g_ver.tar.gz"
+    execute autoreconf -fi
     execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS=OFF -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
