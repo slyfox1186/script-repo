@@ -829,16 +829,17 @@ pkgs_fn()
           lshw lzma-dev nasm openjdk-17-jdk-headless pandoc python3 python3-pip ragel re2c scons texi2html texinfo tk-dev unzip wget
           xmlto zlib1g-dev)
 
-    for pkg in ${pkgs[@]}; do
+    for pkg in ${pkgs[@]}
+    do
         if ! installed "$pkg"; then
             missing_vars+=" $pkg"
         fi
     done
 
     if [ -n "$missing_vars" ]; then
-        for pkg in "$missing_vars"; do
-            echo "\$ sudo apt-get install -y$pkg"
-            if sudo apt install -y $pkg 2>/dev/null >/dev/null; then
+        for pkg in "$missing_vars"
+        do
+            if sudo apt -y install $pkg; then
                 echo 'The required APT development packages were installed.'
             else
                 fail_fn 'The required APT development packages failed to install.'
