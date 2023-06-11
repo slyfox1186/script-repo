@@ -1317,7 +1317,7 @@ fi
 
 if build 'c2man' 'git'; then
     download_git 'https://github.com/fribidi/c2man.git'
-    execute ./Configure -desO -D prefix="$workspace" -D bin="$workspace/bin" -D bash='/bin/bash' -D cc='/usr/lib/ccache/cc' \
+    execute ./Configure -desO -D prefix="$workspace" -D bin="$workspace/bin" -D bash='/bin/bash' -D cc='/usr/bin/cc' \
         -D d_gnu='/usr/lib/x86_64-linux-gnu' -D find='/usr/bin/find' -D gcc='/usr/lib/ccache/gcc' -D gzip='/usr/bin/gzip' \
         -D installmansrc="$workspace/share/man" -D ldflags="-L$workspace/lib" -D less='/usr/bin/less' -D libpth="$workspace/lib /usr/local/lib /lib /usr/lib" \
         -D locincpth="$workspace/include /usr/local/include /opt/local/include /usr/gnu/include /opt/gnu/include /usr/GNU/include /opt/GNU/include" \
