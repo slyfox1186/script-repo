@@ -9,3 +9,14 @@ if build 'svtvp9' "$g_ver"; then
     build_done 'svtvp9' "$g_ver"
 fi
 ffmpeg_libraries+=('--enable-libsvtvp9')
+
+pre_check_ver 'Netflix/vmaf' '1' 'T'
+if build 'libvmaf' "$g_ver"; then
+    download "https://codeload.github.com/Netflix/vmaf/tar.gz/refs/tags/v$g_ver" "libvmaf-$g_ver.tar.gz"
+    CFLAGS="-msse2 -mfpmath=sse -mstackrealign $CFLAGS"
+    execute meson setup --reconfigure libvmaf/build libvmaf --prefix="$workspace" --libdir="$workspace"/lib --buildtype=release --default-library=static --strip \
+        -Denable_float=true -Dbuilt_in_models=true -Denable_tests=false -Denable_docs=false -Denable_avx512=true
+    execute ninja "-j$cpu_threads" -C libvmaf/build install
+    build_done 'libvmaf' "$g_ver"
+fi
+CFLAGS+=" -I$workspace/include/libvmaf"
