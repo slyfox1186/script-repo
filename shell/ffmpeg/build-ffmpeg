@@ -5,21 +5,21 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
-##  Supported Distros
+##  Supported Distro:
 ##
 ##    - Ubuntu 18.04 | 20.04 | 22.04
 ##    - Debian 10 | 11
 ##
-##  Supported architecture
+##  Supported architecture:
 ##
 ##    - x86_64
 ##
-##  Purpose
+##  Purpose:
 ##
 ##    - Build FFmpeg from source code with addon development libraries also compiled from
 ##    - source to ensure the latest extra functionality
 ##
-##  GeForce CUDA
+##  GeForce CUDA:
 ##
 ##    - If the cuda libraries are not installed (for Geforce garphics cards only) the user
 ##    - will be prompted by the script to install them so that hardware acceleration is
@@ -27,9 +27,10 @@
 ##
 ##  Last Update: 06.11.23
 ##
-##    - Added vapoursynth library
+##    - Added cyanrip
+##    - Added vapoursynth
 ##
-##  Script version: v7.1
+##  Script version: v7.2
 ##
 ############################################################################################
 
@@ -38,7 +39,7 @@
 #
 
 script_name="${0:2}"
-script_ver='7.1'
+script_ver='7.2'
 ffmpeg_ver='5.1.3'
 install_prefix='/usr/local'
 cwd="$PWD"/ffmpeg-build-script
@@ -388,7 +389,7 @@ git_8_fn()
 
 git_ver_fn()
 {
-    local v_flag v_tag url_tag
+    local gv_url v_flag v_tag url_tag v_url
 
     v_url="$1"
     v_tag="$2"
@@ -668,8 +669,6 @@ export JAVA_HOME
 # SET THE PATH VARIABLE
 #
 
-path_fn()
-{
 PATH="\
 /usr/lib/ccache:\
 $workspace/bin:\
@@ -678,9 +677,6 @@ $JAVA_HOME/bin:\
 $PATH\
 "
 export PATH
-}
-
-path_fn
 
 pkg_config_fn()
 {
@@ -1446,7 +1442,7 @@ git_ver_fn 'google/highway' '1' 'R'
 if build 'libhwy' "$g_ver"; then
     download "https://codeload.github.com/google/highway/tar.gz/refs/tags/$g_ver" "libhwy-$g_ver.tar.gz"
     CXXFLAGS+=" -DHWY_COMPILE_ALL_ATTAINABLE"
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -G 'Ninja' -Wno-dev
+    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DHWY_ENABLE_{EXAMPLES,TESTS}=OFF -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
     build_done 'libhwy' "$g_ver"
@@ -1528,6 +1524,7 @@ pre_check_ver 'sekrit-twc/zimg' '1' 'T'
 if build 'zimg' "$g_ver"; then
     download "https://codeload.github.com/sekrit-twc/zimg/tar.gz/refs/tags/release-$g_ver" "zimg-$g_ver.tar.gz"
     execute libtoolize -fiq
+    execute autoupdate
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$cpu_threads"
@@ -1625,6 +1622,16 @@ fi
 CFLAGS+=" -I$workspace/include/lilv-0"
 ffmpeg_libraries+=('--enable-lv2')
 
+if build 'libmpg123' 'git'; then
+    download_git 'https://github.com/gypified/libmpg123.git'
+    execute autoreconf -fi
+    execute ./configure --prefix="$workspace" --enable-static --with-{cpu=x86-64,pic}
+    execute make "-j$cpu_threads"
+    execute make install
+    execute make distclean
+    build_done 'libmpg123' 'git'
+fi
+
 #
 # AUDIO LIBRARIES
 #
@@ -1685,13 +1692,14 @@ if build 'libogg' "$g_ver"; then
 fi
 
 pre_check_ver 'xiph/vorbis' '1' 'T'
-if build 'libvorbis' "$g_ver"; then
-    download "https://codeload.github.com/xiph/vorbis/tar.gz/refs/tags/v$g_ver" "libvorbis-$g_ver.tar.gz"
+if build 'vorbis' "$g_ver"; then
+    download "https://codeload.github.com/xiph/vorbis/tar.gz/refs/tags/v$g_ver" "vorbis-$g_ver.tar.gz"
     execute ./autogen.sh
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DBUILD_SHARED_LIBS=OFF -G 'Ninja' -Wno-dev
+    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DBUILD_SHARED_LIBS=OFF \
+        -DOGG_INCLUDE_DIR="$workspace/include" -DOGG_LIBRARY="$workspace/lib" -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
-    build_done 'libvorbis' "$g_ver"
+    build_done 'vorbis' "$g_ver"
 fi
 ffmpeg_libraries+=('--enable-libvorbis')
 
@@ -1709,7 +1717,7 @@ ffmpeg_libraries+=('--enable-libopus')
 if build 'libsndfile' 'git'; then
     download_git 'https://github.com/libsndfile/libsndfile.git'
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --disable-shared
+    execute cmake -DBUILD_EXAMPLES=off -DBUILD_TESTING=off -DBUILD_PROGRAMS=OFF
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
@@ -1719,7 +1727,8 @@ fi
 pre_check_ver 'hoene/libmysofa' '1' 'T'
 if build 'libmysofa' "$g_ver"; then
     download "https://codeload.github.com/hoene/libmysofa/tar.gz/refs/tags/v$g_ver" "libmysofa-$g_ver.tar.gz"
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DBUILD_TESTS=NO -DCODE_COVERAGE=OFF -G 'Ninja' -Wno-dev
+    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DBUILD_{EXAMPLES,SHARED_LIBS,TESTING}=OFF \
+        -DENABLE_{CPACK,EXTERNAL_LIBS,MPEG,PACKAGE_CONFIG}=ON -DINSTALL_{MANPAGES=OFF,PKGCONFIG_MODULE=ON} -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
     build_done 'libmysofa' "$g_ver"
@@ -1823,9 +1832,13 @@ if [ "$os_test" != '18.04' ]; then
         execute cargo install --version '0.9.20+cargo-0.71' --force cargo-c
         execute cargo cinstall --prefix="$workspace" --library-type='staticlib' --crt-static --release
         if [ -f '/usr/bin/rustc' ]; then
-            echo '$ The script detected rustc and must remove before it before updating to the latest version.'
+            echo '$ The script detected rustc and must remove it to avoid interfering with RUSTUP.'
             execute sudo apt -y remove rustc
-            execute source "$HOME"/.bashrc
+            if [ -f "$HOME"/.zshrc ]; then
+                source "$HOME"/.zshrc
+            else
+                source "$HOME"/.bashrc
+            fi
         fi
         build_done 'rav1e' "$g_ver"
     fi
@@ -1937,12 +1950,12 @@ if build 'MediaInfoCLI' "$g_ver"; then
 fi
 
 pre_check_ver 'georgmartius/vid.stab' '1' 'T'
-if build 'vid_stab' "$g_ver"; then
-    download "https://codeload.github.com/georgmartius/vid.stab/tar.gz/refs/tags/v$g_ver" "vid.stab-$g_ver.tar.gz"
+if build 'vid-stab' "$g_ver"; then
+    download "https://codeload.github.com/georgmartius/vid.stab/tar.gz/refs/tags/v$g_ver" "vid-stab-$g_ver.tar.gz"
     execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DBUILD_SHARED_LIBS=OFF -DUSE_OMP=ON -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
-    build_done 'vid_stab' "$g_ver"
+    build_done 'vid-stab' "$g_ver"
 fi
 ffmpeg_libraries+=('--enable-libvidstab')
 pre_check_ver 'dyne/frei0r' '1' 'T'
@@ -1980,30 +1993,32 @@ if build 'gpac' "$g_ver"; then
 fi
 
 pre_check_ver 'openvisualcloud/svt-hevc' '1' 'T'
-if build 'svthevc' "$g_ver"; then
-    download "https://codeload.github.com/OpenVisualCloud/SVT-HEVC/tar.gz/refs/tags/v$g_ver" "svthevc-$g_ver.tar.gz"
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DBUILD_SHARED_LIBS=OFF -G 'Ninja' -Wno-dev
+if build 'svt-hevc' "$g_ver"; then
+    download "https://codeload.github.com/OpenVisualCloud/SVT-HEVC/tar.gz/refs/tags/v$g_ver" "svt-hevc-$g_ver.tar.gz"
+    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} \
+        -DBUILD_SHARED_LIBS=OFF -DYASM_EXE="$workspace/bin/yasm" -DNATIVE=ON -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
-    build_done 'svthevc' "$g_ver"
+    build_done 'svt-hevc' "$g_ver"
 fi
 
 git_ver_fn '24327400' '3' 'T'
-if build 'svtav1' '1.4.1'; then
-    download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v1.4.1/SVT-AV1-v1.4.1.tar.bz2' 'svtav1-1.4.1.tar.bz2'
-    execute cmake -S . -B 'Build/linux' -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DBUILD_SHARED_LIBS=OFF -G 'Ninja' -Wno-dev
+if build 'svt-av1' '1.4.1'; then
+    download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v1.4.1/SVT-AV1-v1.4.1.tar.bz2' 'svt-av1-1.4.1.tar.bz2'
+    execute cmake -S . -B 'Build/linux' -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} \
+        -DCLOG_LOG_TO_STDIO=OFF -DBUILD_SHARED_LIBS=OFF -G 'Ninja' -Wno-dev
     execute ninja -C 'Build/linux'
     execute ninja -C 'Build/linux' install
     execute cp -f 'Build/linux/SvtAv1Enc.pc' "$workspace/lib/pkgconfig"
     execute cp -f 'Build/linux/SvtAv1Dec.pc' "$workspace/lib/pkgconfig"
-    build_done 'svtav1' '1.4.1'
+    build_done 'svt-av1' '1.4.1'
 fi
 ffmpeg_libraries+=('--enable-libsvtav1')
 
 git_ver_fn '536' '2' 'B'
 if build 'x264' "$g_sver"; then
     download "https://code.videolan.org/videolan/x264/-/archive/$g_ver/x264-$g_ver.tar.bz2" "x264-$g_sver.tar.bz2"
-    execute ./configure --prefix="$workspace" --enable-{lto,pic,static,strip} --bit-depth=all --chroma-format=all
+    execute ./configure --prefix="$workspace" --bit-depth=all --chroma-format=all --enable-{lto,pic,static,strip}
     execute make "-j$cpu_threads"
     execute make install
     execute make install-lib-static
@@ -2019,17 +2034,20 @@ if build 'x265' '3.5'; then
     mkdir -p {8,10,12}bit
     cd '12bit' || exit 1
     echo '$ making 12bit binaries'
-    execute cmake '../../../source' -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DHIGH_BIT_DEPTH=ON -DEXPORT_C_API=OFF -DENABLE_{SHARED,CLI}=OFF -DMAIN12=ON -G 'Ninja' -Wno-dev
+    execute cmake '../../../source' -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} \
+        -DHIGH_BIT_DEPTH=ON -DEXPORT_C_API=OFF -DENABLE_{SHARED,CLI}=OFF -DMAIN12=ON -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads"
     echo '$ making 10bit binaries'
     cd '../10bit' || exit 1
-    execute cmake '../../../source' -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DHIGH_BIT_DEPTH=ON -DEXPORT_C_API=OFF -DENABLE_{SHARED,CLI}=OFF -G 'Ninja' -Wno-dev
+    execute cmake '../../../source' -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} \
+        -DHIGH_BIT_DEPTH=ON -DEXPORT_C_API=OFF -DENABLE_{SHARED,CLI}=OFF -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads"
     echo '$ making 8bit binaries'
     cd '../8bit' || exit 1
     ln -sf '../10bit/libx265.a' 'libx265_main10.a'
     ln -sf '../12bit/libx265.a' 'libx265_main12.a'
-    execute cmake '../../../source' -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DEXTRA_LIB='x265_main10.a;x265_main12.a' -DEXTRA_LINK_FLAGS='-L.' -DLINKED_{10BIT,12BIT}=ON -G 'Ninja' -Wno-dev
+    execute cmake '../../../source' -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} \
+        -DEXTRA_{LIB='x265_main10.a;x265_main12.a',LINK_FLAGS='-L.'} -DLINKED_{10BIT,12BIT}=ON -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads"
     mv 'libx265.a' 'libx265_main.a'
 
@@ -2099,28 +2117,29 @@ if build 'srt' "$g_ver"; then
     export OPENSSL_ROOT_DIR="$workspace"
     export OPENSSL_LIB_DIR="$workspace/lib"
     export OPENSSL_INCLUDE_DIR="$workspace/include"
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DENABLE_{APPS=OFF,SHARED=OFF,STATIC=ON} -DUSE_STATIC_LIBSTDCXX=ON -G 'Ninja' -Wno-dev
+    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DBUILD_SHARED_LIBS=OFF \
+        -DENABLE_{APPS=OFF,SHARED=OFF,STATIC=ON} -DUSE_STATIC_LIBSTDCXX=ON -G 'Ninja' -Wno-dev
     execute ninja -C build "-j$cpu_threads"
     execute ninja -C build "-j$cpu_threads" install
-
     if [ -n "$LDEXEFLAGS" ]; then
         sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "$workspace/lib/pkgconfig/srt.pc"
     fi
-
     build_done 'srt' "$g_ver"
 fi
 ffmpeg_libraries+=('--enable-libsrt')
 
 git_ver_fn '12073082' '3' 'T'
 if build 'vvc' 'git'; then
-    download_git 'https://gitlab.com/m-ab-s/VVCSoftware_VTM.git'
+    download_git 'https://gitlab.com/m-ab-s/VVCSoftware_VTM.git' 'vvc-git'
     patch_fn
     execute git apply -3 --check --ignore-space-change --ignore-whitespace 'vvc_patch1.patch'
     execute git apply -3 --check --ignore-space-change --ignore-whitespace 'vvc_patch2.patch'
     execute git apply -3 --check --ignore-space-change --ignore-whitespace 'vvc_patch3.patch'
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DBUILD_STATIC=ON -G 'Unix Makefiles' -Wno-dev
-    execute make "-j$cpu_threads" -C build
-    execute make clean
+    execute cmake -B build -DCMAKE_{INSTALL_BINDIR="$workspace/bin",BUILD_TYPE=Release} \
+        -DBUILD_{SHARED_LIBS=OFF,STATIC=ON} -DENABLE_SPLIT_PARALLELISM=OFF -DSET_ENABLE_SPLIT_PARALLELISM=ON -DUSE_CCACHE=ON \
+        -G 'Ninja' -Wno-dev
+    execute ninja "-j$cpu_threads" -C build
+    execute cp -f bin/ninja/*/*/release/* "$workspace/bin"
     build_done 'vvc' 'git'
 fi
 
@@ -2233,19 +2252,21 @@ printf "\n%s\n%s\n%s\n" \
 pkg_config_fn
 if build 'FFmpeg' "$ffmpeg_ver"; then
     download "https://ffmpeg.org/releases/ffmpeg-$ffmpeg_ver.tar.xz" "ffmpeg-$ffmpeg_ver.tar.xz"
-    ./configure \
+    mkdir build
+    cd build || exit 1
+    ../configure \
         "${ffmpeg_libraries[@]}" \
         --prefix="$workspace" \
         --arch="$(uname -m)" \
         --cpu="$((cpu_threads / 2))" \
-        --disable-{debug,doc,shared} \
-        --enable-{ffnvcodec,gpl,lto,nonfree,pthreads,small,static,version3} \
         --cc="$CC" \
         --cxx="$CXX" \
-        --strip='/usr/bin/strip' \
+        --disable-{debug,doc,shared} \
+        --enable-{ffnvcodec,gpl,lto,nonfree,pthreads,small,static,version3} \
         --extra-{cflags="$CFLAGS",cxxflags="$CXXFLAGS",ldexeflags="$LDEXEFLAGS",ldflags="$LDFLAGS",libs="$EXTRALIBS",version="$EXTRA_VERSION"} \
         --pkgconfigdir="$workspace/lib/pkgconfig" \
-        --pkg-config-flags='--static'
+        --pkg-config-flags='--static' \
+        --strip='/usr/bin/strip'
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
