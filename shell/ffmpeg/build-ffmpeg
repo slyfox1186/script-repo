@@ -48,7 +48,7 @@ workspace="$cwd"/workspace
 CFLAGS="-I$workspace/include -I/usr/local/cuda-12.1/nvvm/include -I/usr/local/cuda/include -I/usr/local/include -I/usr/include"
 CFLAGS+=' -I/usr/include/x86_64-linux-gnu -I/usr/lib/gcc/x86_64-linux-gnu/8/include -I/usr/lib/gcc/x86_64-linux-gnu/9/include'
 LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/local/lib -L/usr/lib -L/usr/local/cuda-12.1/nvvm/lib64"
-LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/local/cuda-12.1/targets/x86_64-linux/lib -L/lib/x86_64-linux-gnu -L/usr/share/ant/lib'
+LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/local/cuda-12.1/targets/x86_64-linux/lib -L/lib/x86_64-linux-gnu -L/usr/share/ant/lib -L/lib'
 LDEXEFLAGS=''
 EXTRALIBS='-ldl -lpthread -lm -lz'
 ffmpeg_libraries=()
@@ -60,12 +60,6 @@ repo='https://github.com/slyfox1186/script-repo'
 #
 
 mkdir -p "$packages"/deb-files "$packages"/nvidia "$workspace"
-
-#
-# SET C++ LINKER OPTIMIZATION FLAGS TO TUNE THE BUILD FOR THE SPECIFIC COMPUTER THAT IS RUNNING THIS SCRIPT
-#
-
-export CXXFLAGS='-g -O3 -march=native -mtune=native'
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -389,7 +383,7 @@ git_8_fn()
 
 git_ver_fn()
 {
-    local gv_url v_flag v_tag url_tag v_url
+    local t_flag u_flag v_flag v_tag v_url
 
     v_url="$1"
     v_tag="$2"
@@ -398,43 +392,24 @@ git_ver_fn()
         v_flag="$3"
     fi
 
-    if [ "$v_flag" = 'X' ] && [ "$v_tag" = '5' ]; then
-        url_tag='git_5_fn'
-    fi
-
-    if [ "$v_flag" = 'B' ] && [ "$v_tag" = '2' ]; then
-        url_tag='git_2_fn' gv_url='branches'
-    elif [ "$v_flag" = 'B' ] && [ "$v_tag" = '3' ]; then
-        url_tag='git_3_fn' gv_url='branches'
-    fi
-
-    if [ "$v_flag" = 'T' ] && [ "$v_tag" = '1' ]; then
-        url_tag='git_1_fn' gv_url='tags'
-    elif [ "$v_flag" = 'T' ] && [ "$v_tag" = '2' ]; then
-        url_tag='git_2_fn' gv_url='tags'
-    elif [ "$v_flag" = 'T' ] && [ "$v_tag" = '3' ]; then
-        url_tag='git_3_fn' gv_url='tags'
-    fi
-
-    if [ "$v_flag" = 'R' ] && [ "$v_tag" = '1' ]; then
-        url_tag='git_1_fn' gv_url='releases'
-    elif [ "$v_flag" = 'R' ] && [ "$v_tag" = '2' ]; then
-        url_tag='git_2_fn' gv_url='releases'
-    elif [ "$v_flag" = 'R' ] && [ "$v_tag" = '3' ]; then
-        url_tag='git_3_fn' gv_url='releases'
-    fi
-
-    case "$v_tag" in
-        2)      url_tag='git_2_fn';;
-        3)      url_tag='git_3_fn';;
-        4)      url_tag='git_4_fn';;
-        5)      url_tag='git_5_fn';;
-        6)      url_tag='git_6_fn';;
-        7)      url_tag='git_7_fn';;
-        8)      url_tag='git_8_fn';;
+    case "$v_flag" in
+            B)      t_flag='branches';;
+            R)      t_flag='releases';;
+            T)      t_flag='tags';;
     esac
 
-    "$url_tag" "$v_url" "$gv_url" 2>/dev/null
+    case "$v_tag" in
+            1)      u_flag='git_1_fn';;
+            2)      u_flag='git_2_fn';;
+            3)      u_flag='git_3_fn';;
+            4)      u_flag='git_4_fn';;
+            5)      u_flag='git_5_fn';;
+            6)      u_flag='git_6_fn';;
+            7)      u_flag='git_7_fn';;
+            8)      u_flag='git_8_fn';;
+    esac
+
+    "$u_flag" "$v_url" "$t_flag" 2>/dev/null
 }
 
 check_version()
@@ -672,26 +647,33 @@ export JAVA_HOME
 PATH="\
 /usr/lib/ccache:\
 $workspace/bin:\
+$HOME/.local/bin:\
 $HOME/.cargo/bin:\
-$JAVA_HOME/bin:\
-$PATH\
+/usr/local/sbin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin:\
+/usr/local/cuda/bin:\
+/snap/bin\
 "
 export PATH
 
 pkg_config_fn()
 {
-# set the pkg-config path
+unset PKG_CONFIG_PATH
 PKG_CONFIG_PATH="\
 $workspace/lib/pkgconfig:\
 $workspace/lib64/pkgconfig:\
 $workspace/share/pkgconfig:\
 $workspace/lib/x86_64-linux-gnu/pkgconfig:\
 $workspace/usr/lib/pkgconfig:\
+/lib/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
-/usr/lib64/pkgconfig:\
-usr/local/share/pkgconfig:\
+/usr/local/share/pkgconfig:\
 /usr/share/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/lib/pkgconfig\
@@ -1061,6 +1043,12 @@ if [ -z "$CXX" ]; then
 fi
 
 #
+# SET C++ LINKER OPTIMIZATION FLAGS TO TUNE THE BUILD FOR THE COMPUTER RUNNING THIS SCRIPT 
+#
+
+export CXXFLAGS='-g -O3 -march=native -mtune=native'
+
+#
 # GLOBAL TOOLS
 #
 
@@ -1148,9 +1136,9 @@ if build 'm4' '1.4.19'; then
     build_done 'm4' '1.4.19'
 fi
 
-pre_check_ver 'kitware/cmake' '1' 'T'
+pre_check_ver '541' '8'
 if build 'cmake' "$g_ver"; then
-    download "https://codeload.github.com/Kitware/CMake/tar.gz/refs/tags/v$g_ver" "cmake-$g_ver.tar.gz"
+    download "https://gitlab.kitware.com/cmake/cmake/-/archive/v$g_ver/cmake-v$g_ver.tar.bz2" "cmake-$g_ver.tar.gz"
     execute ./configure --prefix="$workspace" --parallel="$cpu_threads" --enable-ccache -- -DCMAKE_USE_OPENSSL=OFF
     execute make "-j$cpu_threads"
     execute make install
@@ -1270,46 +1258,6 @@ if build 'libpng' '1.6.39'; then
     build_done 'libpng' '1.6.39'
 fi
 
-pre_check_ver 'uclouvain/openjpeg' '1' 'T'
-if build 'openjpeg' "$g_ver"; then
-    download "https://codeload.github.com/uclouvain/openjpeg/tar.gz/refs/tags/$g_ver" "openjpeg-$g_ver.tar.gz"
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DBUILD_{TESTING,SHARED_LIBS}=OFF -DBUILD_THIRDPARTY=ON \
-        -DCPACK_{BINARY_DEB,BINARY_FREEBSD,BINARY_IFW,BINARY_NSIS,BINARY_RPM,BINARY_TBZ2,BINARY_TXZ,SOURCE_RPM,SOURCE_ZIP}=ON \
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -G 'Ninja' -Wno-dev
-    execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
-    build_done 'openjpeg' "$g_ver"
-fi
-ffmpeg_libraries+=('--enable-libopenjpeg')
-
-# UBUNTU BIONIC FAILS TO BUILD LIBHEIF
-if [ "$os_test" != '18.04' ]; then
-    pre_check_ver 'strukturag/libheif' '1' 'T'
-    if build 'libheif' "$g_ver"; then
-        download "https://codeload.github.com/strukturag/libheif/tar.gz/refs/tags/v$g_ver" "libheif-$g_ver.tar.gz"
-        cd "$packages/libheif-$g_ver/third-party" || exit 1
-        run_cmd=(aom.cmd dav1d.cmd libsharpyuv.cmd rav1e.cmd svt.cmd)
-        echo '$ Compiling support libraries...'
-
-        for i in ${run_cmd[@]}
-        do
-            sudo bash $i 2>/dev/null >/dev/null
-        done
-
-        PKG_CONFIG_PATH+=":$packages/libheif-$g_ver/third-party/aom/dist/lib/pkgconfig:$packages/libheif-$g_ver/third-party/rav1e/dist/lib/pkgconfig"
-        PKG_CONFIG_PATH+=":$packages/libheif-$g_ver/third-party/dav1d/dist/lib/x86_64-linux-gnu/pkgconfig:$packages/libheif-$g_ver/third-party/SVT-AV1/Build/linux/Release"
-        cd '../' || exit 1
-        execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DBUILD_SHARED_LIBS=OFF \
-            -DWITH_{AOM_DECODER,AOM_ENCODER,DAV1D,GDK_PIXBUF,LIBSHARPYUV,RAV1E,RAV1E_PLUGIN,SvtEnc,SvtEnc_PLUGIN,X265}=ON \
-            -DWITH_{EXAMPLES,LIBDE265,REDUCED_VISIBILITY}=OFF -G 'Ninja' -Wno-dev
-        execute ninja "-j$cpu_threads" -C build
-        execute ninja "-j$cpu_threads" -C build install
-        build_done 'libheif' "$g_ver"
-    fi
-    unset PKG_CONFIG_PATH
-    pkg_config_fn
-fi
-
 pre_check_ver 'nkoriyama/aribb24' '1' 'T'
 if build 'aribb24' '2.16.01'; then
     download "https://codeload.github.com/nkoriyama/aribb24/tar.gz/refs/tags/v$g_ver" "aribb24-$g_ver.tar.gz"
@@ -1339,6 +1287,7 @@ if build 'fontconfig' "$g_ver"; then
     download "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/$g_ver/fontconfig-$g_ver.tar.bz2"
     execute ./autogen.sh --noconf
     execute autoreconf -fi
+    execute autoupdate
     LDFLAGS+=' -DLIBXML_STATIC'
     sed -i 's|Cflags:|& -DLIBXML_STATIC|' fontconfig.pc.in
     execute ./configure --prefix="$workspace" --disable-{docs,shared} --enable-iconv --with-libiconv-{prefix="$workspace",includes="$workspace/include",lib="$workspace/lib"} LDFLAGS="$LDFLAGS"
@@ -1478,7 +1427,7 @@ pre_check_ver 'gflags/gflags' '1' 'T'
 if build 'gflags' "$g_ver"; then
     download "https://codeload.github.com/gflags/gflags/tar.gz/refs/tags/v$g_ver" "gflags-$g_ver.tar.gz"
     execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DINSTALL_HEADERS=ON \
-        -DBUILD_{STATIC_LIBS,gflags_LIB,INSTALL_STATIC_LIBS}=ON -DREGISTER_{BUILD_DIR,INSTALL_PREFIX}=ON -G 'Ninja' -Wno-dev
+        -DBUILD_{STATIC_LIBS,gflags_LIB}=ON -DREGISTER_{BUILD_DIR,INSTALL_PREFIX}=ON -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
     build_done 'gflags' "$g_ver"
@@ -1624,6 +1573,11 @@ ffmpeg_libraries+=('--enable-lv2')
 
 if build 'libmpg123' 'git'; then
     download_git 'https://github.com/gypified/libmpg123.git'
+    execute rm -rf aclocal.m4
+    execute aclocal --force -I m4
+    execute autoconf -f -W all,no-obsolete
+    execute autoheader -f -W all
+    execute automake -a -c -f -W all,no-portability
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" --enable-static --with-{cpu=x86-64,pic}
     execute make "-j$cpu_threads"
@@ -1717,10 +1671,9 @@ ffmpeg_libraries+=('--enable-libopus')
 if build 'libsndfile' 'git'; then
     download_git 'https://github.com/libsndfile/libsndfile.git'
     execute autoreconf -fi
-    execute cmake -DBUILD_EXAMPLES=off -DBUILD_TESTING=off -DBUILD_PROGRAMS=OFF
-    execute make "-j$cpu_threads"
-    execute make install
-    execute make distclean
+    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DBUILD_{EXAMPLES,PROGRAMS,SHARED_LIBS,TESTING}=OFF -G 'Ninja' -Wno-dev
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'libsndfile' 'git'
 fi
 
@@ -1824,13 +1777,12 @@ printf "\n%s\n%s\n%s\n" \
 if [ "$os_test" != '18.04' ]; then
     pre_check_ver 'xiph/rav1e' '1' 'T'
     if build 'rav1e' "$g_ver"; then
-        download "https://codeload.github.com/xiph/rav1e/tar.gz/refs/tags/v$g_ver" "rav1e-$g_ver.tar.gz"
-        export RUSTUP_INIT_SKIP_PATH_CHECK=yes
         echo '$ Installing the latest version of rust.'
-        curl --proto '=https' --tlsv1.2 'https://sh.rustup.rs' -sSf | sh -s -- -y &>/dev/null
+        curl -sSf --proto '=https' --tlsv1.2 'https://sh.rustup.rs' | sh -s -- -y &>/dev/null
         execute rm -rf "$HOME"/.cargo/registry/index/* "$HOME"/.cargo/.package-cache
         execute cargo install --version '0.9.20+cargo-0.71' --force cargo-c
-        execute cargo cinstall --prefix="$workspace" --library-type='staticlib' --crt-static --release
+        download "https://codeload.github.com/xiph/rav1e/tar.gz/refs/tags/v$g_ver" "rav1e-$g_ver.tar.gz"
+        execute cargo cinstall --prefix="$workspace" --crt-static --library-type=staticlib --release
         if [ -f '/usr/bin/rustc' ]; then
             echo '$ The script detected rustc and must remove it to avoid interfering with RUSTUP.'
             execute sudo apt -y remove rustc
@@ -1849,7 +1801,7 @@ pre_check_ver 'AOMediaCodec/libavif' '1' 'T'
 if build 'avif' "$g_ver"; then
     download "https://codeload.github.com/AOMediaCodec/libavif/tar.gz/refs/tags/v$g_ver" "avif-$g_ver.tar.gz"
     execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DBUILD_SHARED_LIBS=OFF \
-        -DAVIF_{CODEC_AOM_ENCODE,AOM_DECODE}=ON -DAVIF_ENABLE_{GTEST=ON,WERROR=OFF} -G 'Ninja' -Wno-dev
+        -DAVIF_CODEC_{AOM_ENCODE,AOM_DECODE}=ON -DAVIF_ENABLE_{GTEST=ON,WERROR=OFF} -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
     build_done 'avif' "$g_ver"
@@ -2135,9 +2087,7 @@ if build 'vvc' 'git'; then
     execute git apply -3 --check --ignore-space-change --ignore-whitespace 'vvc_patch1.patch'
     execute git apply -3 --check --ignore-space-change --ignore-whitespace 'vvc_patch2.patch'
     execute git apply -3 --check --ignore-space-change --ignore-whitespace 'vvc_patch3.patch'
-    execute cmake -B build -DCMAKE_{INSTALL_BINDIR="$workspace/bin",BUILD_TYPE=Release} \
-        -DBUILD_{SHARED_LIBS=OFF,STATIC=ON} -DENABLE_SPLIT_PARALLELISM=OFF -DSET_ENABLE_SPLIT_PARALLELISM=ON -DUSE_CCACHE=ON \
-        -G 'Ninja' -Wno-dev
+    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DBUILD_{SHARED_LIBS=OFF,STATIC=ON} -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute cp -f bin/ninja/*/*/release/* "$workspace/bin"
     build_done 'vvc' 'git'
@@ -2239,6 +2189,47 @@ if build 'xvidcore' '1.3.7'; then
     build_done 'xvidcore' '1.3.7'
 fi
 ffmpeg_libraries+=('--enable-libxvid')
+
+#
+# IMAGE LIBRARIES
+#
+
+printf "\n%s\n%s\n%s\n" \
+    '==============================================' \
+    '            Installing Image Tools            ' \
+    '=============================================='
+
+# UBUNTU BIONIC FAILS TO BUILD LIBHEIF
+if [ "$os_test" != '18.04' ]; then
+    pre_check_ver 'strukturag/libheif' '1' 'T'
+    if build 'libheif' "$g_ver"; then
+        download "https://codeload.github.com/strukturag/libheif/tar.gz/refs/tags/v$g_ver" "libheif-$g_ver.tar.gz"
+        third_party="$packages/libheif-$g_ver/third-party"
+        execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DBUILD_SHARED_LIBS=OFF -G 'Ninja' -Wno-dev \
+            -DWITH_{AOM_DECODER,AOM_ENCODER,DAV1D,GDK_PIXBUF,LIBDE265,LIBSHARPYUV,RAV1E,RAV1E_PLUGIN,SvtEnc,SvtEnc_PLUGIN,X265}=ON \
+            -DWITH_{EXAMPLES,REDUCED_VISIBILITY}=OFF -DSvtEnc_{INCLUDE_DIR="$workspace/include",LIBRARY="$workspace/lib"} \
+            -DAOM_{INCLUDE_DIR="$workspace/include",LIBRARY="$workspace/lib"} -DDAV1D_{INCLUDE_DIR="$workspace/include",LIBRARY="$workspace/lib"} \
+            -DRAV1E_{INCLUDE_DIR="$workspace/include/rav1e",LIBRARY="$workspace/lib"} -DLIBDE265_{INCLUDE_DIR="$workspace/include",LIBRARY="$workspace/lib"} \
+            -DX265_{INCLUDE_DIR="$workspace/include",LIBRARY="$workspace/lib"} -DLIBSHARPYUV_{INCLUDE_DIR="$workspace/include/webp",LIBRARY="$workspace/lib"}
+        execute ninja "-j$cpu_threads" -C build
+        execute ninja "-j$cpu_threads" -C build install
+        build_done 'libheif' "$g_ver"
+    fi
+    unset PKG_CONFIG_PATH
+    pkg_config_fn
+fi
+
+pre_check_ver 'uclouvain/openjpeg' '1' 'T'
+if build 'openjpeg' "$g_ver"; then
+    download "https://codeload.github.com/uclouvain/openjpeg/tar.gz/refs/tags/$g_ver" "openjpeg-$g_ver.tar.gz"
+    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DBUILD_{TESTING,SHARED_LIBS}=OFF -DBUILD_THIRDPARTY=ON \
+        -DCPACK_{BINARY_DEB,BINARY_FREEBSD,BINARY_IFW,BINARY_NSIS,BINARY_RPM,BINARY_TBZ2,BINARY_TXZ,SOURCE_RPM,SOURCE_ZIP}=ON \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -G 'Ninja' -Wno-dev
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
+    build_done 'openjpeg' "$g_ver"
+fi
+ffmpeg_libraries+=('--enable-libopenjpeg')
 
 #
 # BUILD FFMPEG
