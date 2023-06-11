@@ -759,7 +759,7 @@ cuda_download_fn()
 
     cuda_ver="$(cat '/usr/local/cuda/version.json' | jq -r '.cuda.version')"
 
-    if [ -z "$cuda_path" ]; then
+    if [ -z "$cuda_ver" ]; then
         cuda_fail_fn
     else
         export PATH="$PATH:$cuda_path"
