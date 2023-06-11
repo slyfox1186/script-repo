@@ -2101,8 +2101,8 @@ if build 'vvenc' "$g_ver"; then
     download "https://codeload.github.com/fraunhoferhhi/vvenc/tar.gz/refs/tags/v$g_ver" "vvenc-$g_ver.tar.gz"
     execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DCCACHE_FOUND='/usr/bin/ccache' \
         -DVVENC_{ENABLE_INSTALL,ENABLE_LINK_TIME_OPT,ENABLE_THIRDPARTY_JSON,ENABLE_X86_SIMD,TOPLEVEL_OUTPUT_DIRS}=ON -G 'Ninja' -Wno-dev
-    execute ninja -C build "-j$cpu_threads"
-    execute ninja -C build "-j$cpu_threads" install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'vvenc' "$g_ver"
 fi
 
@@ -2111,8 +2111,8 @@ if build 'vvdec' "$g_ver"; then
     download "https://codeload.github.com/fraunhoferhhi/vvdec/tar.gz/refs/tags/v$g_ver" "vvdec-$g_ver.tar.gz"
     execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DCCACHE_FOUND='/usr/bin/ccache' \
         -DVVDEC_{ENABLE_LINK_TIME_OPT,ENABLE_WARNINGS_AS_WERROR,ENABLE_X86_SIMD,TOPLEVEL_OUTPUT_DIRS}=ON -G 'Ninja' -Wno-dev
-    execute ninja -C build "-j$cpu_threads"
-    execute ninja -C build "-j$cpu_threads" install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'vvdec' "$g_ver"
 fi
 
