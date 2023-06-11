@@ -66,9 +66,9 @@ mkdir -p "$packages"/deb-files "$packages"/nvidia "$workspace"
 #
 
 if [ -f '/proc/cpuinfo' ]; then
-    cpu_threads="$(nproc --all)"
+    cpu_threads='8'
 else
-    cpu_threads="$(grep -c ^processor '/proc/cpuinfo')"
+    cpu_threads='8'
 fi
 
 #
@@ -282,8 +282,15 @@ git_1_fn()
     # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
     github_repo="$1"
     github_url="$2"
+    git_token='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'
 
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
+    if curl_cmd="$(curl \
+                        -m "$curl_timeout" \
+                        --request GET \
+                        --url "https://api.github.com/slyfox1186" \
+                        --header "Authorization: Bearer $git_token" \
+                        --header "X-GitHub-Api-Version: 2022-11-28" \
+                        -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "$curl_cmd" | jq -r '.[1].name' 2>/dev/null)"
         g_ver3="$(echo "$curl_cmd" | jq -r '.[3].name' 2>/dev/null)"
@@ -943,8 +950,8 @@ deb_files_fn()
 ubuntu_os_test()
 {
     bionic_pkgs='libdmalloc5 libjemalloc1 libtcmalloc-minimal4 libvmmalloc-dev libvmmalloc1 libreadline-gplv2-dev'
-    focal_pkgs='libjemalloc2 libtcmalloc-minimal4 libvmmalloc1 libvmmalloc-dev libdmalloc5 librust-jemalloc-sys-dev'
-    focal_pkgs+=' librust-malloc-buf-dev libsrt-doc libreadline-dev libcunit1 libcunit1-dev libcunit1-doc gcc-10 g++-10'
+    focal_pkgs='libjemalloc2 libtcmalloc-minimal4 libvmmalloc1 libvmmalloc-dev libdmalloc5 libcunit1-dev'
+    focal_pkgs+=' librust-jemalloc-sys-dev librust-malloc-buf-dev libsrt-doc libreadline-dev libcunit1 libcunit1-doc'
     jammy_lunar_pkgs='libmimalloc-dev libtbbmalloc2 libyuv-dev librust-jemalloc-sys-dev librust-malloc-buf-dev'
     jammy_lunar_pkgs+=' libsrt-doc libreadline-dev libpipewire-0.3-dev libwayland-dev libdecor-0-dev'
 
@@ -1024,26 +1031,10 @@ patch_fn()
 install_cuda_fn
 
 #
-# LOCATE THE LATEST VERSION C & C++ COMPILERS AVAILABLE FOR USE
+# SET C & C++ COMPILERS
 #
 
-type -P gcc &>/dev/null && export CC=gcc
-type -P gcc-10 &>/dev/null && export CC=gcc-10
-type -P gcc-11 &>/dev/null && export CC=gcc-11
-type -P gcc-12 &>/dev/null && export CC=gcc-12
-type -P gcc-13 &>/dev/null && export CC=gcc-13
-if [ -z "$CC" ]; then
-    fail_fn 'No C compilers were located. Please install "gcc" and run the script again.'
-fi
-
-type -P g++ &>/dev/null && export CXX=g++
-type -P g++-10 &>/dev/null && export CXX=g++-10
-type -P g++-11 &>/dev/null && export CXX=g++-11
-type -P g++-12 &>/dev/null && export CXX=g++-12
-type -P g++-13 &>/dev/null && export CXX=g++-13
-if [ -z "$CXX" ]; then
-    fail_fn 'No CXX compilers were located. Please install "g++" and run the script again.'
-fi
+export CC=gcc CXX=g++
 
 #
 # SET C++ LINKER OPTIMIZATION FLAGS TO TUNE THE BUILD FOR THE COMPUTER RUNNING THIS SCRIPT 
