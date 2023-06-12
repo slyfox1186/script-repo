@@ -840,13 +840,13 @@ pkgs_fn()
         for pkg in "$missing_vars"
         do
             if sudo apt -y install $pkg; then
-                echo 'The required APT development packages were installed.'
+                echo 'The required APT packages were installed.'
             else
-                fail_fn 'The required APT development packages failed to install.'
+                fail_fn 'The required APT packages failed to install.'
             fi
         done
     else
-        echo 'The required APT development packages are already installed.'
+        echo 'The required APT packages are already installed.'
     fi
 }
 
