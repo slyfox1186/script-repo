@@ -62,7 +62,6 @@ version_fn()
     show_ver="$("$install_file" | head -n 2 | cut -d " " -f3 | awk 'NF' | xargs echo "$1")"
     show_ver="$(echo $show_ver | sed 's/v /v/g')"
     echo -e "\\n7-zip has been updated to: v$show_ver"
-    sleep 3
 }
 
 #
