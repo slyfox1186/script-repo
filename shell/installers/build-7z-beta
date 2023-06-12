@@ -10,7 +10,7 @@
 ##
 ##  Updated: 06.05.23
 ##
-##  Script version: 2.1
+##  Script version: 1.1
 ##
 ################################################################################
 
@@ -20,18 +20,13 @@ clear
 # SET VARIABLES
 #
 
-script_ver='2.1'
+script_ver='1.1'
 version='7z2300'
 tar_file="$version.tar.xz"
 cwd="$PWD"/7zip-build-script
 packages="$cwd"/packages
 install_dir='/usr/bin/7z'
 repo='https://github.com/slyfox1186/script-repo'
-
-# PRINT SCRIPT BANNER
-printf "%s\n%s\n\n" \
-    "7-Zip Beta Build Script: v$script_ver" \
-    '=================================='
 
 #
 # CREATE FUNCTIONS
@@ -43,7 +38,7 @@ exit_fn()
         'The script has completed' \
         'Make sure to star this repository to show your support!' \
         "$repo"
-    exit 0
+    return 0
 }
 
 fail_fn()
@@ -52,7 +47,7 @@ fail_fn()
         "$1" \
         'Please create a support ticket at the address below' \
         "$repo/issues"
-    exit 1
+    return 1
 }
 
 # CLEANUP DOWNLOAD FILES
@@ -67,12 +62,20 @@ version_fn()
     sleep 3
 }
 
+#
+# PRINT SCRIPT BANNER
+#
+
+printf "%s\n%s\n" \
+    "7-Zip Beta Build Script: v$script_ver" \
+    '==================================='
+
 # DETECT PC ARCHITECTURE
 case "$(uname -m)" in 
-      x86_64)           url='linux-x64.tar.xz';;
-      i386|i686)        url='linux-x86.tar.xz';;
-      aarch64*|armv8*)  url='linux-arm64.tar.xz';;
-      arm|armv7*)       url='linux-arm.tar.xz';;
+      x86_64)          url='linux-x64.tar.xz';;
+      i386|i686)       url='linux-x86.tar.xz';;
+      aarch64*|armv8*) url='linux-arm64.tar.xz';;
+      arm|armv7*)      url='linux-arm.tar.xz';;
       *) fail_fn "Unrecognized architecture '$(uname -m)'";;
 esac
 
