@@ -66,9 +66,9 @@ mkdir -p "$packages"/deb-files "$packages"/nvidia "$workspace"
 #
 
 if [ -f '/proc/cpuinfo' ]; then
-    cpu_threads="$(nproc --all)"
-else
     cpu_threads="$(grep -c ^processor '/proc/cpuinfo')"
+else
+    cpu_threads="$(nproc --all)"
 fi
 
 #
