@@ -51,7 +51,10 @@ fail_fn()
 }
 
 # CLEANUP DOWNLOAD FILES
-cleanup_fn() { sudo rm -fr "$cwd"; }
+cleanup_fn()
+{
+    sudo rm -fr "$cwd"
+}
 
 # PRINT 7-ZIP VERSION
 version_fn()
