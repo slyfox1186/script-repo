@@ -49,6 +49,7 @@ CFLAGS="-I$workspace/include -I/usr/local/cuda-12.1/nvvm/include -I/usr/local/cu
 CFLAGS+=' -I/usr/include/x86_64-linux-gnu -I/usr/lib/gcc/x86_64-linux-gnu/8/include -I/usr/lib/gcc/x86_64-linux-gnu/9/include'
 LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/local/lib -L/usr/lib -L/usr/local/cuda-12.1/nvvm/lib64"
 LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/local/cuda-12.1/targets/x86_64-linux/lib -L/lib/x86_64-linux-gnu -L/usr/share/ant/lib -L/lib'
+LDFLAGS+=' -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
 LDEXEFLAGS=''
 EXTRALIBS='-ldl -lpthread -lm -lz'
 ffmpeg_libraries=()
