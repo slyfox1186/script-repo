@@ -349,7 +349,9 @@ export CXXFLAGS='-g -O3 -march=native -mtune=native'
 git_ver_fn '541' '2' 'T'
 if build 'cmake' "$g_ver"; then
     download "https://gitlab.kitware.com/cmake/cmake/-/archive/v$g_ver/cmake-v$g_ver.tar.bz2" "cmake-$g_ver.tar.bz2"
-    execute ./configure --prefix="$install_prefix" --parallel="$cpu_threads" --enable-ccache -- -DCMAKE_USE_OPENSSL=OFF
+    mkdir build
+    cd build || exit 1
+    execute ../configure --prefix="$install_prefix" --parallel="$cpu_threads" --enable-ccache -- -DCMAKE_USE_OPENSSL=OFF
     execute make "-j$cpu_threads"
     execute sudo make install
     execute make clean
