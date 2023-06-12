@@ -814,7 +814,7 @@ pkgs_fn()
     local pkg pkgs missing_vars
 
     printf "%s\n%s\n" \
-        'Installing required APT development packages' \
+        'Installing the required APT packages' \
         '=============================================='
 
     pkgs=("$1" ant asciidoc autoconf automake autopoint binutils bison build-essential cargo ccache checkinstall clang curl
