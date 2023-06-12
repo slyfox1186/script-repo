@@ -184,40 +184,40 @@ apt_dl() { wget -c "$(apt-get install --reinstall --print-uris -qq $1 2>/dev/nul
 clean()
 {
     clear
-    sudo apt -y autoremove
-    sudo apt clean
-    sudo apt autoclean
-    sudo apt -y purge
+    sudo apt-fast -y autoremove
+    sudo apt-fast clean
+    sudo apt-fast autoclean
+    sudo apt-fast -y purge
 }
 
 # UPDATE
 update()
 {
     clear
-    sudo apt update
-    sudo apt -y full-upgrade
-    sudo apt -y install ubuntu-advantage-tools
-    sudo apt -y autoremove
-    sudo apt clean
-    sudo apt autoclean
-    sudo apt -y purge
+    sudo apt-fast update
+    sudo apt-fast -y full-upgrade
+    sudo apt-fast -y install ubuntu-advantage-tools
+    sudo apt-fast -y autoremove
+    sudo apt-fast clean
+    sudo apt-fast autoclean
+    sudo apt-fast -y purge
 }
 
 # FIX BROKEN APT PACKAGES
 fix()
 {
     clear
-    if [ -f '/tmp/apt.lock' ]; then
-        sudo rm '/tmp/apt.lock'
+    if [ -f '/tmp/apt-fast.lock' ]; then
+        sudo rm '/tmp/apt-fast.lock'
     fi
-    sudo apt -f -y install
+    sudo apt-fast -f -y install
     apt --fix-broken install
     apt --fix-missing update
     dpkg --configure -a
-    sudo apt -y autoremove
-    sudo apt clean
-    sudo apt autoclean
-    sudo apt update
+    sudo apt-fast -y autoremove
+    sudo apt-fast clean
+    sudo apt-fast autoclean
+    sudo apt-fast update
 }
 
 listd()
@@ -226,11 +226,11 @@ listd()
     local search_cache
 
     if [ -n "$1" ]; then
-        sudo apt list *$1*-dev | awk -F'/' '{print $1}'
+        sudo apt-fast list *$1*-dev | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt list *$1*-dev | awk -F'/' '{print $1}'
+        sudo apt-fast list *$1*-dev | awk -F'/' '{print $1}'
     fi
 }
 
@@ -241,26 +241,26 @@ list()
     local search_cache
 
     if [ -n "$1" ]; then
-        sudo apt list *$1* | awk -F'/' '{print $1}'
+        sudo apt-fast list *$1* | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt list *$1* | awk -F'/' '{print $1}'
+        sudo apt-fast list *$1* | awk -F'/' '{print $1}'
     fi
 }
 
-# USE sudo apt TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
+# USE sudo apt-fast TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
 asearch()
 {
     clear
     local search_cache
 
     if [ -n "$1" ]; then
-        sudo apt search "$1 ~i" -F "%p"
+        sudo apt-fast search "$1 ~i" -F "%p"
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt search "$1 ~i" -F "%p"
+        sudo apt-fast search "$1 ~i" -F "%p"
     fi
 }
 
@@ -758,9 +758,9 @@ cuda_purge()
         echo 'Purging the cuda-sdk-toolkit from your computer.'
         echo '================================================'
         echo
-        sudo sudo apt -y --purge remove "*cublas*" "cuda*" "nsight*"
-        sudo sudo apt -y autoremove
-        sudo sudo apt update
+        sudo sudo apt-fast -y --purge remove "*cublas*" "cuda*" "nsight*"
+        sudo sudo apt-fast -y autoremove
+        sudo sudo apt-fast update
     elif [[ "$answer" -eq '2' ]]; then
         return 0
     fi
@@ -866,7 +866,7 @@ hw_mon()
 
     # install lm-sensors if not already
     if ! which lm-sensors &>/dev/null; then
-        sudo apt -y install lm-sensors
+        sudo apt-fast -y install lm-sensors
     fi
 
     # add modprobe to system startup tasks if not already added    
@@ -889,21 +889,19 @@ hw_mon()
 {
     clear
 
-    local spath dpath
+    local source output
 
-    read -p 'Please enter the source folder path: ' spath
+    read -p 'Please enter the source folder path: ' source
     echo
-    read -p 'Please enter the destination archive path (w/o extension): ' dpath
+    read -p 'Please enter the destination archive path (w/o extension): ' output
     clear
 
-    if [ ! -f "$dpath".tar.gz ]; then
-        7z a -ttar -so -an "$spath" | 7z a -mx9 -mpass1 -si "$dpath".tar.gz
-    else
-        clear
-        printf "%s\n\n%s\n\n" \
-        'The output file already exists.' \
-        'Please choose another output name or delete the file.'
+    if [ ! -f "$output".tar.gz ]; then
+        sudo rm "$output".tar.gz
     fi
+
+    7z a -ttar -so -an "$source" | 7z a -mx9 -mpass1 -si "$output".tar.gz
+
 }
 
 # create a max compressed settings 7z file
@@ -911,21 +909,18 @@ hw_mon()
 {
     clear
 
-    local spath dpath
+    local source output
 
-    read -p 'Please enter the source folder path: ' spath
+    read -p 'Please enter the source folder path: ' source
     echo
-    read -p 'Please enter the destination archive path (w/o extension): ' dpath
+    read -p 'Please enter the destination archive path (w/o extension): ' output
     clear
 
-    if [ ! -f "$dpath".tar.gz ]; then
-        7z a -t7z -m0=lzma2 -mx9 "$dpath".7z ./"$spath"/*
-    else
-        clear
-        printf "%s\n\n%s\n\n" \
-        'The output file already exists.' \
-        'Please choose another output name or delete the file.'
+    if [ ! -f "$output".7z ]; then
+        sudo rm "$output".7z
     fi
+
+    7z a -t7z -m0=lzma2 -mx9 "$output".7z ./"$source"/*
 }
 
 #####################
@@ -1061,7 +1056,10 @@ rmf()
 }
 
 ## REMOVE BOM
-rmb() { sed -i '1s/^\xEF\xBB\xBF//' "${1}"; }
+rmb()
+{
+    sed -i '1s/^\xEF\xBB\xBF//' "${1}"
+}
 
 ## LIST INSTALLED PACKAGES BY ORDER OF IMPORTANCE
 
