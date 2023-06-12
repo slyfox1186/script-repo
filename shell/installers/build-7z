@@ -28,11 +28,6 @@ packages="$cwd"/packages
 install_dir='/usr/bin/7z'
 repo='https://github.com/slyfox1186/script-repo'
 
-# PRINT SCRIPT BANNER
-printf "%s\n%s\n\n" \
-    "7-Zip Build Script: v$script_ver" \
-    '==================================='
-
 #
 # CREATE FUNCTIONS
 #
@@ -43,7 +38,7 @@ exit_fn()
         'The script has completed' \
         'Make sure to star this repository to show your support!' \
         "$repo"
-    exit 0
+    return 0
 }
 
 fail_fn()
@@ -52,7 +47,7 @@ fail_fn()
         "$1" \
         'Please create a support ticket at the address below' \
         "$repo/issues"
-    exit 1
+    return 1
 }
 
 # CLEANUP DOWNLOAD FILES
@@ -66,6 +61,14 @@ version_fn()
     echo -e "\\n7-zip has been updated to: v$show_ver"
     sleep 3
 }
+
+#
+# PRINT SCRIPT BANNER
+#
+
+printf "%s\n%s\n" \
+    "7-Zip Build Script: v$script_ver" \
+    '==================================='
 
 # DETECT PC ARCHITECTURE
 case "$(uname -m)" in 
