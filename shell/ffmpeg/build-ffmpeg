@@ -417,7 +417,7 @@ check_version()
     latest_txt="$ver_file"
 
     awk '!NF || !seen[$0]++' "$latest_txt_tmp" > "$latest_txt"
-    check_ver="$(grep -Eo "${github_repo#*/}-[0-9\.]+" "$latest_txt" | sort | head -n1)"
+    check_ver="$(grep -Eo "${github_repo#*/}-[0-9\.]+$" "$latest_txt" | sort | head -n1)"
 
     if [ -n "$check_ver" ]; then
         g_nocheck='0'
