@@ -25,7 +25,7 @@ version='7z2300'
 tar_file="$version.tar.xz"
 cwd="$PWD"/7zip-build-script
 packages="$cwd"/packages
-install_file='/usr/bin/7z'
+install_file='/usr/local/bin/7z'
 repo='https://github.com/slyfox1186/script-repo'
 
 #
