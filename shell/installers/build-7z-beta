@@ -25,7 +25,7 @@ version='7z2300'
 tar_file="$version.tar.xz"
 cwd="$PWD"/7zip-build-script
 packages="$cwd"/packages
-install_dir='/usr/bin/7z'
+install_file='/usr/bin/7z'
 repo='https://github.com/slyfox1186/script-repo'
 
 #
@@ -59,7 +59,7 @@ cleanup_fn()
 # PRINT 7-ZIP VERSION
 version_fn()
 {
-    show_ver="$("$install_dir" | head -n 2 | cut -d " " -f3 | awk 'NF' | xargs echo "$1")"
+    show_ver="$("$install_file" | head -n 2 | cut -d " " -f3 | awk 'NF' | xargs echo "$1")"
     show_ver="$(echo $show_ver | sed 's/v /v/g')"
     echo -e "\\n7-zip has been updated to: v$show_ver"
     sleep 3
@@ -96,12 +96,12 @@ fi
 # Extract files into directory '7z'
 mkdir -p "$packages/$version"
 if ! tar -xf "$packages/$tar_file" -C "$packages/$version"; then
-    fail_fn 'The script was unable to find the download file.'
+    fail_fn "The script was unable to find the download file '$packages/$tar_file'"
 fi
 
 # Copy the file to its destination or throw an error if the copying of the file fails
-if ! sudo cp -f "$packages/$version/7zzs" "$install_dir"; then
-    fail_fn "The script was unable to copy the static file '7zzs' to: $install_dir"
+if ! sudo cp -f "$packages/$version/7zzs" "$install_file"; then
+    fail_fn "The script was unable to copy the static file '7zzs' to '$install_file'"
 fi
 
 # SHOW THE NEWLY INSTALLED 7-ZIP VERSION
