@@ -97,7 +97,8 @@ export LD_LIBRARY_PATH
 # CREATE FUNCTIONS
 #
 
-exit_fn() {
+exit_fn()
+{
 	printf "\n%s\n\n%s\n%s\n\n" \
 		'The script has completed' \
 		'Make sure to star this repository to show your support!' \
@@ -105,7 +106,8 @@ exit_fn() {
 	exit 0
 }
 
-fail_fn() {
+fail_fn()
+{
 	printf "\n\n%s\n\n%s\n\n%s\n\n" \
 		"$1" \
 		'Please create a support ticket so I can work on a fix.' \
@@ -113,7 +115,8 @@ fail_fn() {
 	exit 1
 }
 
-cleanup_fn() {
+cleanup_fn()
+{
 	local cleanup_answer
 
 	printf "\n%s\n\n%s\n%s\n\n" \
@@ -140,7 +143,8 @@ cleanup_fn() {
 	esac
 }
 
-show_versions_fn() {
+show_versions_fn()
+{
 	local show_cmake_ver show_ninja_ver show_meson_ver
 
 	show_cmake_ver="$(cmake --version | sed 's/cmake version /v/g' | sed 's/CMake suite maintained and supported by Kitware (kitware.com\/cmake).//g' | xargs -n1)"
@@ -163,14 +167,16 @@ show_versions_fn() {
 	fi
 }
 
-execute() {
+execute()
+{
 	echo "$ $*"
 	if ! output=$("$@" 2>&1); then
 		fail_fn "Failed to Execute $*"
 	fi
 }
 
-download() {
+download()
+{
 	local dl_file dl_path dl_url output_dir target_dir target_file
 
 	dl_path="$packages"
@@ -224,7 +230,8 @@ download() {
 	cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
 }
 
-build() {
+build()
+{
 	echo
 	echo "building $1 - version $2"
 	echo '===================================='
@@ -242,7 +249,8 @@ build() {
 	return 0
 }
 
-git_1_fn() {
+git_1_fn()
+{
 	local curl_cmd github_repo github_url g_sver g_sver1
 
 	# SCRAPE GITHUB'S API FOR THE LATEST REPO VERSION
@@ -306,7 +314,7 @@ installed()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf automake autogen build-essential ccache cmake curl jq git)
+pkgs=(autoconf automake autogen build-essential ccache cmake curl jq git libssl-dev)
 
 for pkg in ${pkgs[@]}; do
     if ! installed "$pkg"; then
@@ -324,17 +332,6 @@ if [ -n "$missing_pkgs" ]; then
         echo
     done
 fi
-
-#
-# INSTALL REQUIRED APT PACKAGES
-#
-
-printf "%s\n%s\n%s\n" \
-	'Installing required APT packages.' \
-	'====================================' \
-	'$ sudo apt-get -qq -y install build-essential ccache libssl-dev'
-
-sudo apt-get -qq -y install build-essential ccache libssl-dev
 
 #
 # SET THE C & C++ COMPILERS
