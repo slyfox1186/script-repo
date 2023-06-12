@@ -23,7 +23,7 @@ packages="$cwd"/packages
 workspace="$cwd"/workspace
 CFLAGS='-Os -ffunction-sections -fdata-sections -fno-unwind-tables -fno-asynchronous-unwind-tables -flto'
 LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu"
-LDFLAGS+=' -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/usr/local/lib -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
+LDFLAGS+=' -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/usr/local/lib -L/lib -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
 CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include"
 CXXFLAGS='-g -O3 -march=native -mtune=native'
 cert_dir='/etc/ssl/certs'
