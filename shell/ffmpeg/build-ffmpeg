@@ -1177,32 +1177,29 @@ ffmpeg_libraries+=('--enable-openssl')
 
 # UBUNTU BIONIC NEEDS A RECENT VERSION OF PYTHON3 TO INSTALL A RECENT VERSION OF MESON
 check_python3_ver
-if [ "$python3_rm_decimals" -ge '700' ]; then
-    pre_check_ver 'mesonbuild/meson' '1' 'T'
-    if build 'meson' "$g_ver"; then
-        download "https://codeload.github.com/mesonbuild/meson/tar.gz/refs/tags/$g_ver" "meson-$g_ver.tar.gz"
-        execute python3 setup.py build
-        execute sudo python3 setup.py install
-        build_done 'meson' "$g_ver"
-    fi
-else
+if [ "$python3_rm_decimals" -lt '700' ]; then
     if build 'python3' '3.9.16'; then
         download 'https://www.python.org/ftp/python/3.9.16/Python-3.9.16.tar.xz' 'python3-3.9.16.tar.xz'
         pip_tools_pkg="$(pip show setuptools)"
         if [ -z "$pip_tools_pkg" ]; then
             execute pip install setuptools --disable-pip-version-check --no-cache-dir --quiet --upgrade
         fi
-        execute sudo ./configure --enable-optimizations CXXFLAGS="$CXXFLAGS"
+        execute sudo ./configure --enable-optimizations
         execute sudo make "-j$cpu_threads"
         execute sudo make altinstall
+        python_var='python3.9'
         build_done 'python3' '3.9.16'
     fi
-    if build 'meson' "$g_ver"; then
-        download "https://codeload.github.com/mesonbuild/meson/tar.gz/refs/tags/$g_ver" "meson-$g_ver.tar.gz"
-        execute python3.9 setup.py build
-        execute sudo python3.9 setup.py install --prefix="$install_prefix"
-        build_done 'meson' "$g_ver"
-    fi
+else
+    python_var='python3'
+fi
+
+pre_check_ver 'mesonbuild/meson' '1' 'T'
+if build 'meson' "$g_ver"; then
+    download "https://codeload.github.com/mesonbuild/meson/tar.gz/refs/tags/$g_ver" "meson-$g_ver.tar.gz"
+    execute $python_var setup.py build
+    execute sudo $python_var setup.py install
+    build_done 'meson' "$g_ver"
 fi
 
 pre_check_ver 'yasm/yasm' '1' 'T'
@@ -1215,14 +1212,14 @@ if build 'yasm' "$g_ver"; then
     build_done 'yasm' "$g_ver"
 fi
 
-if build 'nasm' '2.16.02rc1'; then
-    download "https://www.nasm.us/pub/nasm/releasebuilds/2.16.02rc1/nasm-2.16.02rc1.tar.xz" "nasm-2.16.02rc1.tar.xz"
+if build 'nasm' '2.16.01'; then
+    download 'https://www.nasm.us/pub/nasm/stable/nasm-2.16.01.tar.xz' 'nasm-2.16.01.tar.xz'
     execute autoupdate
     execute ./configure --prefix="$workspace"
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
-    build_done 'nasm' '2.16.02rc1'
+    build_done 'nasm' '2.16.01'
 fi
 
 # UBUNTU BIONIC FAILS TO BUILD XML2
