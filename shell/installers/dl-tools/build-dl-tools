@@ -18,7 +18,7 @@
 clear
 
 script_ver='2.1'
-cwd="$PWD"/curl-build-script
+cwd="$PWD"/dltools-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
 CFLAGS='-Os -ffunction-sections -fdata-sections -fno-unwind-tables -fno-asynchronous-unwind-tables -flto'
