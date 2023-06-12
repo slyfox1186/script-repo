@@ -943,7 +943,7 @@ deb_files_fn()
 ubuntu_os_test()
 {
     bionic_pkgs='libdmalloc5 libjemalloc1 libtcmalloc-minimal4 libvmmalloc-dev libvmmalloc1 libreadline-gplv2-dev'
-    focal_pkgs='libjemalloc2 libtcmalloc-minimal4 libvmmalloc1 libvmmalloc-dev libdmalloc5 libcunit1-dev libcurl4-openssl-dev'
+    focal_pkgs='libjemalloc2 libtcmalloc-minimal4 libvmmalloc1 libvmmalloc-dev libdmalloc5 libcunit1-dev libde265-dev'
     focal_pkgs+=' librust-jemalloc-sys-dev librust-malloc-buf-dev libsrt-doc libreadline-dev libcunit1 libcunit1-doc'
     jammy_lunar_pkgs='libmimalloc-dev libtbbmalloc2 libyuv-dev librust-jemalloc-sys-dev librust-malloc-buf-dev'
     jammy_lunar_pkgs+=' libsrt-doc libreadline-dev libpipewire-0.3-dev libwayland-dev libdecor-0-dev'
@@ -1038,6 +1038,34 @@ export CXXFLAGS='-g -O3 -march=native -mtune=native'
 #
 # GLOBAL TOOLS
 #
+
+# UBUNTU BIONIC FAILS TO BUILD LIBHEIF
+if [[ "$os_test" = '18.04' ]] || [[ "$os_test" = '20.04' ]]; then
+    pixbuf_var=OFF
+else
+    pixbuf_var=ON
+fi
+
+pre_check_ver 'strukturag/libheif' '1' 'T'
+if build 'libheif' "$g_ver"; then
+    download "https://codeload.github.com/strukturag/libheif/tar.gz/refs/tags/v$g_ver" "libheif-$g_ver.tar.gz"
+    third_party="$packages/libheif-$g_ver/third-party"
+    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DBUILD_SHARED_LIBS=OFF -G 'Ninja' -Wno-dev \
+        -DWITH_{AOM_DECODER,AOM_ENCODER,DAV1D,LIBDE265,LIBSHARPYUV,RAV1E,RAV1E_PLUGIN,SvtEnc,SvtEnc_PLUGIN,X265}=ON -DWITH_GDK_PIXBUF="$pixbuf_var" \
+        -DWITH_{EXAMPLES,REDUCED_VISIBILITY}=OFF -DSvtEnc_{INCLUDE_DIR="$workspace/include",LIBRARY="$workspace/lib"} \
+        -DAOM_{INCLUDE_DIR="$workspace/include",LIBRARY="$workspace/lib"} -DDAV1D_{INCLUDE_DIR="$workspace/include",LIBRARY="$workspace/lib"} \
+        -DRAV1E_{INCLUDE_DIR="$workspace/include/rav1e",LIBRARY="$workspace/lib"} -DLIBDE265_{INCLUDE_DIR="$workspace/include",LIBRARY="$workspace/lib"} \
+        -DX265_{INCLUDE_DIR="$workspace/include",LIBRARY="$workspace/lib"} -DLIBSHARPYUV_{INCLUDE_DIR="$workspace/include/webp",LIBRARY="$workspace/lib"}
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
+    build_done 'libheif' "$g_ver"
+fi
+unset PKG_CONFIG_PATH
+pkg_config_fn
+
+echo
+echo 'Done.'
+exit
 
 printf "\n%s\n%s\n%s\n" \
     '==============================================' \
@@ -2185,26 +2213,6 @@ printf "\n%s\n%s\n%s\n" \
     '==============================================' \
     '            Installing Image Tools            ' \
     '=============================================='
-
-# UBUNTU BIONIC FAILS TO BUILD LIBHEIF
-if [ "$os_test" != '18.04' ]; then
-    pre_check_ver 'strukturag/libheif' '1' 'T'
-    if build 'libheif' "$g_ver"; then
-        download "https://codeload.github.com/strukturag/libheif/tar.gz/refs/tags/v$g_ver" "libheif-$g_ver.tar.gz"
-        third_party="$packages/libheif-$g_ver/third-party"
-        execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -DBUILD_SHARED_LIBS=OFF -G 'Ninja' -Wno-dev \
-            -DWITH_{AOM_DECODER,AOM_ENCODER,DAV1D,GDK_PIXBUF,LIBDE265,LIBSHARPYUV,RAV1E,RAV1E_PLUGIN,SvtEnc,SvtEnc_PLUGIN,X265}=ON \
-            -DWITH_{EXAMPLES,REDUCED_VISIBILITY}=OFF -DSvtEnc_{INCLUDE_DIR="$workspace/include",LIBRARY="$workspace/lib"} \
-            -DAOM_{INCLUDE_DIR="$workspace/include",LIBRARY="$workspace/lib"} -DDAV1D_{INCLUDE_DIR="$workspace/include",LIBRARY="$workspace/lib"} \
-            -DRAV1E_{INCLUDE_DIR="$workspace/include/rav1e",LIBRARY="$workspace/lib"} -DLIBDE265_{INCLUDE_DIR="$workspace/include",LIBRARY="$workspace/lib"} \
-            -DX265_{INCLUDE_DIR="$workspace/include",LIBRARY="$workspace/lib"} -DLIBSHARPYUV_{INCLUDE_DIR="$workspace/include/webp",LIBRARY="$workspace/lib"}
-        execute ninja "-j$cpu_threads" -C build
-        execute ninja "-j$cpu_threads" -C build install
-        build_done 'libheif' "$g_ver"
-    fi
-    unset PKG_CONFIG_PATH
-    pkg_config_fn
-fi
 
 pre_check_ver 'uclouvain/openjpeg' '1' 'T'
 if build 'openjpeg' "$g_ver"; then
