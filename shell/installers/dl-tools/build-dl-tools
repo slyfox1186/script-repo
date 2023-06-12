@@ -438,8 +438,10 @@ git_ver_fn 'jemalloc/jemalloc' '1' 'T'
 if build 'jemalloc' "$g_ver"; then
     download "https://codeload.github.com/jemalloc/jemalloc/tar.gz/refs/tags/$g_ver" "jemalloc-$g_ver.tar.gz"
     execute ./autogen.sh
+    execute ./configure --prefix="$workspace" --enable-{autogen,lazy-lock,static,xmalloc} \
+        --disable-{debug,doc,fill,log,shared,prof,stats}
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done 'jemalloc' "$g_ver"
 fi
 
