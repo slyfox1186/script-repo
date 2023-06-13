@@ -1075,3 +1075,37 @@ fix_up()
     find "$HOME"/.ssh/id_rsa.pub -type f -exec chmod 644 {} \; 2>/dev/null
     find "$HOME"/.ssh/id_rsa -type f -exec chmod 600 {} \; 2>/dev/null
 }
+
+## SET DEFAULT PROGRAMS
+set_default()
+{
+    local choice target name link importance
+
+    clear
+
+    printf "%s\n\n%s\n%s\n\n" \
+        'Set default programs' \
+        'Example: sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 50' \
+        'Example: sudo update-alternatives --install <target> <program_name> <link> <importance>'
+
+    read -p 'Enter the target: ' target
+    read -p 'Enter the program_name: ' name
+    read -p 'Enter the link: ' link
+    read -p 'Enter the importance: ' importance
+    clear
+
+    printf "%s\n\n%s\n\n%s\n%s\n\n" \
+        "You have chosen: sudo update-alternatives --install $target $name $link $importance" \
+        'Would you like to continue?' \
+        '[1] Yes' \
+        '[2] No'
+        
+    read -p 'Your choices are (1 or 2): ' choice
+    clear
+
+    case "$choice" in
+        1)      sudo update-alternatives --install "$target" "$name" "$link" "$importance";;
+        2)      return 0;;
+        *)      return 0;;
+    esac
+}
