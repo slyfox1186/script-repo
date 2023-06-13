@@ -332,14 +332,10 @@ fi
 # SET THE C & C++ COMPILERS
 #
 
-if ! type -P gcc &>/dev/null && export CC=gcc CXX=g++; then
-    fail_fn 'No C compilers were located. Please install "gcc and g++"'
-fi
+type -P gcc &>/dev/null && export CC=gcc CXX=g++
+type -P gcc-11 &>/dev/null && export CC=gcc-11 CXX=g++-11
 
-#
-# SET THE C++ COMPILER OPTIMIZATION FLAGS TO TUNE THE BUILD FOR THE SPECIFIC COMPUTER RUNNING THE SCRIPT 
-#
-
+# SET THE C++ COMPILER OPTIMIZATION FLAGS TO TUNE THE BUILD FOR THE SPECIFIC COMPUTER RUNNING THE SCRIPT
 export CXXFLAGS='-g -O3 -march=native -mtune=native'
 
 #
