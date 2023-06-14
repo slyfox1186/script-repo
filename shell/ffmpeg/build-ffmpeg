@@ -29,6 +29,7 @@
 ##
 ##    - Added cyanrip
 ##    - Added vapoursynth
+##    - Added cunit support library for mysofa
 ##    - Added libcurl support library for cyanrip
 ##
 ##  Script version: v7.3
