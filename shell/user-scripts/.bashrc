@@ -95,7 +95,7 @@ fi
 
 # custom user vars
 PATH="\
-/usr/lib/export CCache:\
+/usr/lib/ccache:\
 $HOME/.cargo/env:\
 $HOME/.local/bin:\
 /usr/local/sbin:\
