@@ -31,7 +31,7 @@ bash <(curl -sSL https://download.optimizethis.net)
 ```
 
 ## Install [GCC](https://github.com/gcc-mirror/gcc) 11.4 & 13.1 on Ubuntu Jammy
-  - **Sourced from the most recent release on the official Git repository**
+  - **Sourced from the most recent releases on the official Git repository**
   - **Tested on Ubuntu Jammy 22.04**
   - **Strictly for personal, non-commercial use**
 ```bash
