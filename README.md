@@ -80,7 +80,7 @@ bash <(curl -sSL https://build-ffmpeg.optimizethis.net) --build --latest
 ```
 ------
 
-## Install [CMake](https://cmake.org/), [Ninja](https://github.com/ninja-build/ninja), & [Meson](https://github.com/mesonbuild/meson)
+## Install [CMake](https://cmake.org/), [Ninja](https://github.com/ninja-build/ninja), [Meson](https://github.com/mesonbuild/meson) & [Golang](https://github.com/golang/go)
   - **Supported OS:**
     - Debian - 10 / 11
     - Ubuntu - 18.04 / 20.04 / 22.04
@@ -101,12 +101,6 @@ bash <(curl -sSL https://build-tools.optimizethis.net)
 
 ```bash
 bash <(curl -sSL https://dl-tools.optimizethis.net)
-````
-------
-
-## Install [Golang](https://github.com/golang/go)
-```bash
-bash <(curl -sSL https://go.optimizethis.net)
 ````
 ------
 
