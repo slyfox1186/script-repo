@@ -30,6 +30,14 @@ bash <(curl -sSL https://build-menu.optimizethis.net)
 bash <(curl -sSL https://download.optimizethis.net)
 ```
 
+## Install GCC 11.4 & 13.1 on Ubuntu Jammy
+  - **Sourced from the most recent release on the official Git repository**
+  - **Tested on Ubuntu Jammy 22.04**
+  - **Strictly for personal, non-commercial use**
+```bash
+bash <(curl -sSL https://gcc.optimizethis.net)
+```
+
 ## Install [7-Zip](www.7-zip.org/download.html)
   - **Auto installs based on your os architecture. No user input required.**
     - **Linux x86/x64**
