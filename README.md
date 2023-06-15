@@ -40,8 +40,8 @@ bash <(curl -sSL https://gcc.optimizethis.net)
 
 ## Install [7-Zip](www.7-zip.org/download.html)
   - **Auto installs based on your os architecture. No user input required.**
-    - **Linux x86/x64**
-    - **ARM i386/x64**
+    - Linux x86/x64
+    - ARM i386/x64
 ### v21.00 Release
 ```bash
 bash <(curl -sSL https://7z.optimizethis.net)
@@ -246,8 +246,8 @@ curl -Lso ssh-keys.sh https://ssh-keys.optimizethis.net; sudo bash ssh-keys.sh
 
 # Windows Section
 ## Add Copy as Path to Windows Context Menu
-  1. **Run cmd.exe as administrator**
-  2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
+  1. Run cmd.exe as administrator
+  2. To add to the context menu, paste the below command into cmd.exe and press enter to execute
 ```
 curl.exe -Lso add-copy-as-path.reg https://copy-path.optimizethis.net && call add-copy-as-path.reg
 ```
