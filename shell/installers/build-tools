@@ -3,13 +3,13 @@
 
 ##################################################################
 ##
-##  Install CMake, Ninja, & Meson: Latest GitHub Releases
+##  Install CMake, Ninja, Meson, Golang
 ##
 ##  Supported OS: Linux Ubuntu - 23.04 (Lunar) / 22.04 (Jammy)
 ##
-##  Updated: 06.02.23
+##  Updated: 06.15.23
 ##
-##  Script version: 1.1
+##  Script version: 2.0
 ##
 ##################################################################
 
@@ -24,7 +24,7 @@ fi
 # CREATE SCRIPT VARIABLES
 #
 
-script_ver='1.1'
+script_ver='2.0'
 cwd="$PWD"/build-tools-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
@@ -51,6 +51,7 @@ PATH="\
 $workspace/bin:\
 $PATH"
 export PATH
+
 #
 # EXPORT THE PKG-CONFIG PATHS TO ENABLE SUPPORT DURING THE BUILD
 #
@@ -69,20 +70,6 @@ $workspace/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/share/pkgconfig\
 "
 export PKG_CONFIG_PATH
-
-#
-# EXPORT LIBRARY PATHS
-#
-
-LD_LIBRARY_PATH="\
-$workspace/lib:\
-$workspace/lib64:\
-$workspace/src/lib:\
-/usr/local/lib:\
-/usr/lib:\
-/usr/x86_64-linux-gnu/lib\
-"
-export LD_LIBRARY_PATH
 
 #
 # CREATE FUNCTIONS
@@ -135,6 +122,7 @@ show_versions_fn()
     show_cmake_ver="$(cmake --version | sed 's/cmake version /v/g' | sed 's/CMake suite maintained and supported by Kitware (kitware.com\/cmake).//g' | xargs -n1)"
     show_ninja_ver="$(ninja --version)"
     show_meson_ver="$(meson --version)"
+    show_go_ver="$(go version | grep -Eo '[0-9\.]+ | xargs -n1')"
 
     if [ -x "$show_cmake_ver" ]; then
         fail_fn 'Failed to execute the command: cmake --version'
@@ -142,13 +130,16 @@ show_versions_fn()
         fail_fn 'Failed to execute the command: ninja --version'
     elif [ -x "$show_meson_ver" ]; then
         fail_fn 'Failed to execute the command: meson --version'
+    elif [ -x "$show_go_ver" ]; then
+        fail_fn 'Failed to execute the command: go version'
     else
         clear
-        printf "%s\n\n%s\n%s\n%s\n" \
+        printf "%s\n\n%s\n%s\n%s\n%s\n" \
             'The installed versions are:' \
-            "CMake: $show_cmake_ver" \
-            "Ninja: v$show_ninja_ver" \
-            "Meson: v$show_meson_ver"
+            "CMake:  $show_cmake_ver" \
+            "Ninja:  v$show_ninja_ver" \
+            "Meson:  v$show_meson_ver" \
+            "Golang: v$show_go_ver"
     fi
 }
 
@@ -289,7 +280,7 @@ git_ver_fn()
 
 build_done()
 {
-    echo "$2" >"$packages/$1.done"
+    echo "$2" > "$packages/$1.done"
 }
 
 installed()
@@ -321,10 +312,9 @@ if [ -n "$missing_pkgs" ]; then
     printf "%s\n%s\n\n" \
         'Installing required apt packages' \
         '================================================'
-    for i in "$missing_pkgs"; do
-        echo "\$ sudo apt -y install $i"
+    for i in "$missing_pkgs"
+    do
         sudo apt -y install $i
-        echo
     done
 fi
 
@@ -333,7 +323,6 @@ fi
 #
 
 type -P gcc &>/dev/null && export CC=gcc CXX=g++
-type -P gcc-11 &>/dev/null && export CC=gcc-11 CXX=g++-11
 
 # SET THE C++ COMPILER OPTIMIZATION FLAGS TO TUNE THE BUILD FOR THE SPECIFIC COMPUTER RUNNING THE SCRIPT
 export CXXFLAGS='-g -O3 -march=native -mtune=native'
@@ -346,7 +335,7 @@ git_ver_fn '541' '2' 'T'
 if build 'cmake' "$g_ver"; then
     download "https://gitlab.kitware.com/cmake/cmake/-/archive/v$g_ver/cmake-v$g_ver.tar.bz2" "cmake-$g_ver.tar.bz2"
     execute ./configure --prefix="$install_prefix" --parallel="$cpu_threads" --enable-ccache -- -DCMAKE_USE_OPENSSL=OFF
-    execute make "-j$cpu_threads"
+    execute make "-j$(($cpu_threads-1))"
     execute sudo make install
     execute make clean
     build_done 'cmake' "$g_ver"
@@ -357,7 +346,7 @@ if build 'ninja' "$g_ver1"; then
     download "https://codeload.github.com/ninja-build/ninja/tar.gz/refs/tags/v$g_ver1" "ninja-$g_ver1.tar.gz"
     re2c_path="$(type -P re2c)"
     execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$install_prefix",BUILD_TYPE=Release} -DRE2C="$re2c_path" -DBUILD_TESTING=OFF -G 'Unix Makefiles' -Wno-dev
-    execute make "-j$cpu_threads" -C build
+    execute make "-j$(($cpu_threads-1))" -C build
     execute sudo make -C build install
     execute make -C build clean
     build_done 'ninja' "$g_ver1"
@@ -369,6 +358,13 @@ if build 'meson' "$g_ver1"; then
     execute python3 setup.py build
     execute sudo python3 setup.py install --prefix="$install_prefix"
     build_done 'meson' "$g_ver1"
+fi
+
+if build 'golang' '1.20.5'; then
+    download 'https://go.dev/dl/go1.20.5.linux-amd64.tar.gz' 'go-1.20.5.tar.gz'
+    execute sudo cp -f 'bin/go' 'bin/gofmt' "$install_prefix"/bin
+    execute sudo mkdir -p '/usr/local/go'
+    build_done 'golang' '1.20.5'
 fi
 
 # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES
