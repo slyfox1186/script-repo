@@ -673,8 +673,7 @@ $workspace/usr/lib/pkgconfig:\
 /usr/local/share/pkgconfig:\
 /usr/share/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/pkgconfig:\
-/lib\
+/usr/lib/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
