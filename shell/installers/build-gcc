@@ -1,0 +1,438 @@
+#!/bin/bash
+# shellcheck disable=SC2034,SC2046,SC2066,SC2068,SC2086,SC2162
+
+##################################################################
+##
+##  Install gcc 11.4.0 / 13.1.0
+##
+##  Supported OS: Linux Ubuntu - 23.04 (Lunar) / 22.04 (Jammy)
+##
+##  Updated: 06.12.23
+##
+##  Script version: 1.0
+##
+##################################################################
+
+clear
+
+if [ "$EUID" -eq '0' ]; then
+    printf "\n%s\n\n" 'You must run this script WITHOUT root/sudo'
+    exit 1
+fi
+
+#
+# CREATE SCRIPT VARIABLES
+#
+
+script_ver='1.0'
+cwd="$PWD"/gcc-build-script
+install_dir='/usr/local'
+packages="$cwd"/packages
+workspace="$cwd"/workspace
+CFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -I/usr/local/cuda-12.1/nvvm/include -I/usr/local/cuda/include"
+CFLAGS+=' -I/usr/include/x86_64-linux-gnu -I/usr/lib/gcc/x86_64-linux-gnu/8/include -I/usr/lib/gcc/x86_64-linux-gnu/9/include'
+LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/local/lib -L/usr/lib -L/usr/local/cuda-12.1/nvvm/lib64"
+LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/local/cuda-12.1/targets/x86_64-linux/lib -L/lib/x86_64-linux-gnu -L/usr/share/ant/lib -L/lib'
+LDFLAGS+=' -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
+
+#
+# SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
+#
+
+if [ -f '/proc/cpuinfo' ]; then
+    cpu_threads="$(grep -c ^processor '/proc/cpuinfo')"
+else
+    cpu_threads="$(nproc --all)"
+fi
+
+#
+# CREATE OUTPUT DIRECTORIES
+#
+
+mkdir -p "$packages" "$workspace"
+
+#
+# SET GLOBAL VARIABLES
+#
+
+PATH="\
+/usr/lib/ccache:\
+$workspace/bin:\
+$HOME/.local/bin:\
+$HOME/.cargo/bin:\
+/usr/local/sbin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin:\
+/usr/local/cuda/bin:\
+/snap/bin\
+"
+export PATH
+
+#
+# EXPORT THE PKG-CONFIG PATHS TO ENABLE SUPPORT DURING THE BUILD
+#
+
+PKG_CONFIG_PATH="\
+$workspace/lib/pkgconfig:\
+$workspace/lib64/pkgconfig:\
+$workspace/share/pkgconfig:\
+$workspace/lib/x86_64-linux-gnu/pkgconfig:\
+$workspace/usr/lib/pkgconfig:\
+/lib/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib64/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/local/share/pkgconfig:\
+/usr/share/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/pkgconfig\
+"
+export PKG_CONFIG_PATH
+
+#
+# CREATE FUNCTIONS
+#
+
+exit_fn()
+{
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'The script has completed' \
+        'Make sure to star this repository to show your support!' \
+        'https://github.com/slyfox1186/script-repo'
+    exit 0
+}
+
+fail_fn()
+{
+    printf "\n\n%s\n\n%s\n\n%s\n\n" \
+        "$1" \
+        'Please create a support ticket so I can work on a fix.' \
+        'https://github.com/slyfox1186/script-repo/issues'
+    exit 1
+}
+
+cleanup_fn()
+{
+    local answer
+
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'Do you want to remove the build files?' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' answer
+
+    case "$answer" in
+        1)      sudo rm -fr "$cwd" "$0";;
+        2)      return 0;;
+        *)
+                printf "%s\n\n" 'Bad user input.'
+                read -p 'Press enter to try again.'
+                clear
+                cleanup_fn
+                ;;
+    esac
+}
+
+show_versions_fn()
+{
+    clear
+    printf "%s\n\n" 'The installed gcc versions are:'
+        "$install_dir"/bin/gcc-11 -v
+        echo
+        "$install_dir"/bin/gcc-13 -v
+}
+
+execute()
+{
+    echo "$ $*"
+    if ! output=$("$@" 2>&1); then
+        fail_fn "Failed to Execute $*"
+    fi
+}
+
+download()
+{
+    dl_path="$packages"
+    dl_url="$1"
+    dl_file="${2:-"${1##*/}"}"
+
+    if [[ "$dl_file" =~ tar. ]]; then
+        output_dir="${dl_file%.*}"
+        output_dir="${3:-"${output_dir%.*}"}"
+    else
+        output_dir="${3:-"${dl_file%.*}"}"
+    fi
+
+    target_file="$dl_path/$dl_file"
+    target_dir="$dl_path/$output_dir"
+
+    if [ -f "$target_file" ]; then
+        echo "The file \"$dl_file\" is already downloaded."
+    else
+        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
+        if ! curl -Lso "$target_file" "$dl_url"; then
+            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 5 seconds..."
+            sleep 5
+            if ! curl -Lso "$target_file" "$dl_url"; then
+                fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
+            fi
+        fi
+        echo 'Download Completed'
+    fi
+
+    if [ -d "$target_dir" ]; then
+        sudo rm -fr "$target_dir"
+    fi
+
+    mkdir -p "$target_dir"
+
+    if [ -n "$3" ]; then
+        if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
+            sudo rm "$target_file"
+            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please run the script again."
+        fi
+    else
+        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
+            sudo rm "$target_file"
+            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please run the script again."
+        fi
+    fi
+
+    echo -e "File extracted: $dl_file\\n"
+
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
+}
+
+build()
+{
+    echo
+    echo "building $1 - version $2"
+    echo '===================================='
+
+    if [ -f "$packages/$1.done" ]; then
+        if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
+            echo "$1 version $2 is already built. Remove $packages/$1.done lockfile to rebuild it."
+            return 1
+        else
+            echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
+            return 1
+        fi
+    fi
+
+    return 0
+}
+
+curl_timeout='10'
+
+git_1_fn()
+{
+    local curl_cmd github_repo github_url g_sver g_sver1
+
+    # SCRAPE GITHUB'S API FOR THE LATEST REPO VERSION
+    github_repo="$1"
+    github_url="$2"
+
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
+        g_sver="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null)"
+        g_ver="${g_sver#v}"
+    fi
+}
+
+git_ver_fn()
+{
+    local t_flag u_flag v_flag v_tag v_url
+
+    v_url="$1"
+    v_tag="$2"
+
+    if [ -n "$3" ]; then
+        v_flag="$3"
+    fi
+
+    case "$v_flag" in
+            R)      t_flag='releases';;
+            T)      t_flag='tags';;
+            *)      fail_fn 'Could not detect the variable $v_flag.'
+    esac
+
+    case "$v_tag" in
+            1)      u_flag='git_1_fn';;
+            *)      fail_fn 'Could not detect the variable $v_tag.'
+    esac
+
+    "$u_flag" "$v_url" "$t_flag" 2>/dev/null
+}
+
+build_done()
+{
+    echo "$2" >"$packages/$1.done"
+}
+
+installed()
+{
+    return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
+}
+
+#
+# PRINT SCRIPT BANNER
+#
+
+printf "%s\n%s\n%s" \
+    "Build GCC Script: v$script_ver" \
+    '===================================='
+
+#
+# INSTALL REQUIRED APT PACKAGES
+#
+
+pkgs=(autoconf autogen automake bison build-essential ccache curl flex g++ gcc-12-base gcc-multilib git gnat gperf jq
+      libadacgi4 libadacgi4-dev libeigen3-dev libfontconfig1-dev libfreetype6 libgcc-12-dev libgm2-10-dev libgm2-15
+      libgmp3-dev libgnat-util10 libicu-dev libjpeg-dev libmpfr-dev libpng-dev libquadmath0 libsqlite3-dev libssl-dev
+      libx11-dev libxext-dev m4 perl python3 ruby)
+
+for pkg in ${pkgs[@]}; do
+    if ! installed "$pkg"; then
+        missing_pkgs+=" $pkg"
+    fi
+done
+
+if [ -n "$missing_pkgs" ]; then
+    printf "%s\n%s\n\n" \
+        'Installing required apt packages' \
+        '================================================'
+    for i in "$missing_pkgs"; do
+        echo "\$ sudo apt -y install $i"
+        sudo apt -y install $i
+        echo
+    done
+fi
+
+#
+# SET THE C & C++ COMPILERS
+#
+
+type -P gcc &>/dev/null && export CC=gcc CXX=g++
+
+# SET THE C++ COMPILER OPTIMIZATION FLAGS TO TUNE THE BUILD FOR THE SPECIFIC COMPUTER RUNNING THE SCRIPT
+export CXXFLAGS='-g -O3 -march=native -mtune=native'
+
+#
+# INSTALL FROM SOURCE CODE
+#
+
+if build 'make' '4.4.1'; then
+    download 'https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz'
+    execute autoreconf -fi
+    execute ./configure --prefix="$workspace" --with-{dmalloc,guile}
+    execute make "-j$(($cpu_threads-1))"
+    execute make install
+    execute make distclean
+    build_done 'make' '4.4.1'
+fi
+
+if build 'm4' '1.4.19'; then
+    download 'https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.xz'
+    execute ./configure --prefix="$workspace" --enable-c++ --with-dmalloc
+    execute make "-j$(($cpu_threads-1))"
+    execute make install
+    execute make distclean
+    build_done 'm4' '1.4.19'
+fi
+
+if build 'autoconf' '2.69'; then
+    download 'https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.xz'
+    execute ./configure --prefix="$workspace" M4="$workspace/bin/m4"
+    execute make "-j$(($cpu_threads-1))"
+    execute make install
+    build_done 'autoconf' '2.69'
+fi
+
+if build 'automake' '1.16.5'; then
+    download 'https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
+    execute ./bootstrap
+    execute autoreconf -fi
+    execute ./configure --prefix="$workspace"
+    execute make "-j$(($cpu_threads-1))"
+    execute make install
+    execute make distclean
+    build_done 'automake' '1.16.5'
+fi
+
+if build 'libtool' '2.4.6'; then
+    download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.6.tar.xz'
+    execute ./configure --prefix="$workspace" --disable-shared
+    execute make "-j$(($cpu_threads-1))"
+    execute make install
+    execute make distclean
+    build_done 'libtool' '2.4.6'
+fi
+
+git_ver_fn 'madler/zlib' '1' 'R'
+if build 'zlib' "$g_ver"; then
+    download "https://github.com/madler/zlib/releases/download/v$g_ver/zlib-$g_ver.tar.gz" "zlib-$g_ver.tar.gz"
+    execute ./configure --prefix='/usr/local'
+    execute make "-j$(($cpu_threads-1))"
+    execute sudo make install
+    build_done 'zlib' "$g_ver"
+fi
+
+if build 'gcc-11' '11.4.0'; then
+    download 'https://ftp.gnu.org/gnu/gcc/gcc-11.4.0/gcc-11.4.0.tar.xz' 'gcc-11.4.0.tar.xz'
+    execute autoreconf -fi
+    execute sudo ./contrib/download_prerequisites
+    mkdir builddir
+    cd builddir || exit 1
+    execute ../configure \
+        --prefix="$install_dir" \
+        --program-suffix=-11 \
+        --build=x86_64-linux-gnu \
+        --disable-{assembly,multilib,werror} \
+        --enable-languages=c,c++,brig,d,fortran,go,objc,obj-c++ \
+        --enable-{plugin,threads=posix} \
+        --with-{system-zlib,tune=native} \
+        --without-{cuda-driver,included-gettext}
+    echo '$ This is going to take a while...'
+    execute make "-j$(($cpu_threads-1))"
+    execute sudo make install
+    execute sudo libtool --finish "$install_dir"/lib
+    execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-linux-gnu/11.4.0
+    build_done 'gcc-11' '11.4.0'
+fi
+
+if build 'gcc-13' '13.1.0'; then
+    download 'https://ftp.gnu.org/gnu/gcc/gcc-13.1.0/gcc-13.1.0.tar.xz' 'gcc-13.1.0.tar.xz'
+    execute autoreconf -fi
+    execute sudo ./contrib/download_prerequisites
+    mkdir builddir
+    cd builddir || exit 1
+    execute ../configure \
+        --prefix="$install_dir" \
+        --program-suffix=-13 \
+        --build=x86_64-linux-gnu \
+        --disable-{assembly,multilib,werror} \
+        --enable-languages=c,c++,fortran,go,objc,obj-c++ \
+        --enable-{plugin,threads=posix} \
+        --with-{system-zlib,tune=native} \
+        --without-{cuda-driver,included-gettext}
+    echo '$ This is going to take a while...'
+    execute make "-j$(($cpu_threads-1))"
+    execute sudo make install
+    execute sudo libtool --finish "$install_dir"/lib
+    execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-linux-gnu/13.1.0
+    build_done 'gcc-13' '13.1.0'
+fi
+
+# LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES
+sudo ldconfig 2>/dev/null
+
+# SHOW THE NEWLY INSTALLED VERSION OF EACH PACKAGE
+show_versions_fn
+
+# PROMPT THE USER TO CLEANUP THE BUILD FILES
+cleanup_fn
+
+# SHOW THE EXIT MESSAGE
+exit_fn
