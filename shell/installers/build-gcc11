@@ -426,6 +426,17 @@ if build 'cmake' '3.26.3'; then
     build_done 'cmake' '3.26.3'
 fi
 
+git_ver_fn 'ninja-build/ninja' '1' 'T'
+if build 'ninja' "$g_ver1"; then
+    download "https://codeload.github.com/ninja-build/ninja/tar.gz/refs/tags/v$g_ver1" "ninja-$g_ver1.tar.gz"
+    re2c_path="$(type -P re2c)"
+    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} \
+        -DRE2C="$re2c_path" -DBUILD_TESTING=OFF -G 'Unix Makefiles' -Wno-dev
+    execute make "-j$(($cpu_threads-1))" -C build
+    execute make -C build install
+    build_done 'ninja' "$g_ver1"
+fi
+
 git_ver_fn 'nicolapiccinelli/libmpc' '1' 'R'
 if build 'libmpc' "$g_ver"; then
     download 'https://codeload.github.com/nicolapiccinelli/libmpc/tar.gz/refs/tags/0.4.0' "libmpc-$g_ver.tar.gz"
@@ -436,17 +447,6 @@ if build 'libmpc' "$g_ver"; then
     execute ninja "-j$(($cpu_threads-1))" -C build
     execute ninja "-j$(($cpu_threads-1))" -C build install
     build_done 'libmpc' "$g_ver"
-fi
-
-git_ver_fn 'ninja-build/ninja' '1' 'T'
-if build 'ninja' "$g_ver1"; then
-    download "https://codeload.github.com/ninja-build/ninja/tar.gz/refs/tags/v$g_ver1" "ninja-$g_ver1.tar.gz"
-    re2c_path="$(type -P re2c)"
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} \
-        -DRE2C="$re2c_path" -DBUILD_TESTING=OFF -G 'Unix Makefiles' -Wno-dev
-    execute make "-j$(($cpu_threads-1))" -C build
-    execute make -C build install
-    build_done 'ninja' "$g_ver1"
 fi
 
 git_ver_fn 'mesonbuild/meson' '1' 'T'
