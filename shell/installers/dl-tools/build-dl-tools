@@ -9,15 +9,15 @@
 ##  - Debian 10 / 11
 ##  - Ubuntu 22.04 / 20.04 / 18.04
 ##
-##  Updated: 06.07.23
+##  Updated: 06.14.23
 ##
-##  Script version: 2.1
+##  Script version: 2.2
 ##
 ######################################################
 
 clear
 
-script_ver='2.1'
+script_ver='2.2'
 cwd="$PWD"/dltools-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
@@ -196,9 +196,8 @@ execute()
     fi
 }
 
-download() {
-    local dl_file dl_path dl_url output_dir target_dir target_file
-
+download()
+{
     dl_path="$packages"
     dl_url="$1"
     dl_file="${2:-"${1##*/}"}"
@@ -218,8 +217,8 @@ download() {
     else
         echo "Downloading \"$dl_url\" saving as \"$dl_file\""
         if ! curl -Lso "$target_file" "$dl_url"; then
-            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
-            sleep 10
+            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 5 seconds..."
+            sleep 5
             if ! curl -Lso "$target_file" "$dl_url"; then
                 fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
             fi
@@ -227,21 +226,21 @@ download() {
         echo 'Download Completed'
     fi
 
-    # REMOVE ANY DIRETORIES FROM PREVIOUS RUNS BEFORE ATTEMPTING TO RE-BUILD
     if [ -d "$target_dir" ]; then
-        rm -fr "$target_dir"
+        sudo rm -fr "$target_dir"
     fi
 
-    # CREATE A NEW OUTPUT DIRECTORY
     mkdir -p "$target_dir"
 
     if [ -n "$3" ]; then
         if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
-            fail_fn "Failed to extract: $dl_file"
+            sudo rm "$target_file"
+            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please run the script again."
         fi
     else
         if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-            fail_fn "Failed to extract: $dl_file"
+            sudo rm "$target_file"
+            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please run the script again."
         fi
     fi
 
@@ -365,7 +364,7 @@ git_ver_fn 'madler/zlib' '1' 'T'
 if build 'zlib' "$g_ver"; then
     download "$g_url" "zlib-$g_ver.tar.gz"
     execute ./configure --prefix="$workspace" --static
-    execute make "-j$cpu_threads"
+    execute make "-j$(($cpu_threads-1))"
     execute make install
     build_done 'zlib' "$g_ver"
 fi
@@ -375,7 +374,7 @@ if build 'jansson' "$g_ver"; then
     download "$g_url" "jansson-$g_ver.tar.gz"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace"
-    execute make "-j$cpu_threads"
+    execute make "-j$(($cpu_threads-1))"
     execute make install
     build_done 'jansson' "$g_ver"
 fi
@@ -383,22 +382,23 @@ fi
 if build 'gsasl' '2.2.0'; then
     download 'https://ftp.gnu.org/gnu/gsasl/gsasl-2.2.0.tar.gz' 'gsasl-2.2.0.tar.gz'
     execute ./configure --prefix="$workspace"
-    execute make "-j$cpu_threads"
+    execute make "-j$(($cpu_threads-1))"
     execute make install
     sudo cp -f "$workspace"/lib/libgsasl.so.18 /usr/local/lib
     build_done 'gsasl' '2.2.0'
 fi
 
 git_ver_fn 'c-ares/c-ares' '1' 'R'
+g_ver="${g_ver//cares-/}"
+g_tag="${g_ver//\./_}"
 if build 'c-ares' "$g_ver"; then
-    download "$g_url" "c-ares-$g_ver.tar.gz"
-    execute autoreconf -fi
+    download "https://codeload.github.com/c-ares/c-ares/tar.gz/refs/tags/cares-$g_tag" "c-ares-$g_ver.tar.gz"
     execute autoupdate
-    execute ./configure --prefix="$workspace" --enable-static --disable-shared --disable-warnings \
-        --enable-optimize='-O3 -march=native -mtune=native' --enable-silent-rules CFLAGS="$CFLAGS" \
-        CPPFLAGS="$CPPFLAGS" LDFLAGS="$LDFLAGS"
-    execute make "-j$cpu_threads"
+    execute autoreconf -fi
+    execute ./configure --prefix="$workspace" --disable-{shared,warnings} --enable-optimize="$CXXFLAGS"
+    execute make "-j$(($cpu_threads-1))"
     execute make install
+    execute make distclean
     build_done 'c-ares' "$g_ver"
 fi
 
@@ -408,7 +408,7 @@ if build 'pcre2' "$g_ver"; then
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --enable-static \
         --disable-shared CFLAGS="$CFLAGS" CPPFLAGS="$CPPFLAGS" LDFLAGS="$LDFLAGS"
-    execute make "-j$cpu_threads"
+    execute make "-j$(($cpu_threads-1))"
     execute make install
     build_done 'pcre2' "$g_ver"
 fi
@@ -419,7 +419,7 @@ if build 'jemalloc' "$g_ver"; then
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --enable-{autogen,lazy-lock,static,xmalloc} \
         --disable-{debug,doc,fill,log,shared,prof,stats}
-    execute make "-j$cpu_threads"
+    execute make "-j$(($cpu_threads-1))"
     execute make install
     build_done 'jemalloc' "$g_ver"
 fi
@@ -430,7 +430,7 @@ if build 'brotli' "$g_ver"; then
     mkdir build
     cd build || exit 1
     execute ../configure-cmake --prefix="$workspace"
-    execute make "-j$cpu_threads"
+    execute make "-j$(($cpu_threads-1))"
     execute make test
     execute make install
     build_done 'brotli' "$g_ver"
@@ -450,7 +450,7 @@ if build 'wget' "$g_ver"; then
     ./configure --prefix="$install_dir" --enable-threads --with-ssl=gnutls --with-metalink \
         --with-cares --with-openssl=auto CFLAGS="$CFLAGS" CPPFLAGS="$CPPFLAGS" LDFLAGS="$LDFLAGS" \
         PCRE_LIBS="$workspace"/lib
-    execute make "-j$cpu_threads"
+    execute make "-j$(($cpu_threads-1))"
     execute sudo make install
     build_done 'wget' "$g_ver"
 fi
@@ -468,7 +468,7 @@ if build 'curl' "$g_ver"; then
     execute autoreconf -fi
     ./configure --prefix="$install_dir" "${curl_disable_opts[@]}" "${curl_enable_opts[@]}" \
         "${curl_with_opts[@]}" CFLAGS="$CFLAGS" CPPFLAGS="$CPPFLAGS" LDFLAGS="$LDFLAGS" --with-"$j_flag" 
-    execute make "-j$cpu_threads"
+    execute make "-j$(($cpu_threads-1))"
     execute sudo make install
 fi
 
