@@ -12,7 +12,7 @@ ColorGreen() { echo -ne "$green$1$clear"; }
 ColorBlue() { echo -ne "$blue$1$clear"; }
 
 #
-# SHOW BANNER
+# SHOW SCRIPT BANNER
 #
 
 function box_out_banner()
