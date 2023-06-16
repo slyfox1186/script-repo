@@ -47,6 +47,10 @@ video_fn() { bash <(curl -sSL https://players.optimizethis.net); }
 
 box_out_banner 'Installer Script Menu'
 
+#
+# DISPLAY CUSTOM USER SCRIPTS MENU
+#
+
 custom_user_scripts()
 {
     local answer
@@ -79,6 +83,10 @@ $(ColorBlue 'Choose an option:') "
             ;;
     esac
 }
+
+#
+# DISPLAY EXTRA MIRRORS MENU
+#
 
 extra_mirrors()
 {
@@ -133,6 +141,10 @@ $(ColorBlue 'Choose an option:') "
             ;;
     esac
 }
+
+#
+# DISPLAY MAIN MENU
+#
 
 main_menu()
 {
