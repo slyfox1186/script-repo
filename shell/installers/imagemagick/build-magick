@@ -702,11 +702,23 @@ fi
 git_ver_fn 'imagemagick/imagemagick' '1' 'T'
 if build 'imageMagick' "$g_ver"; then
     download "https://codeload.github.com/imagemagick/imagemagick/tar.gz/refs/tags/$g_ver" "imagemagick-$g_ver.tar.gz"
-    execute autoreconf -fi -I /usr/share/aclocal
+    execute autoreconf -fi -I '/usr/share/aclocal'
     ./configure \
         --prefix="$install_dir" \
-        --enable-{ccmalloc,legacy-support} \
-        --with-autotrace,dmalloc,fpX,gslib,gvc,heic,jemalloc,modules,perl,quantum-depth=16,rsvg,tcmalloc}
+        --enable-ccmalloc \
+        --enable-legacy-support \
+        --with-autotrace \
+        --with-dmalloc \
+        --with-fpx \
+        --with-gslib \
+        --with-gvc \
+        --with-heic \
+        --with-jemalloc \
+        --with-modules \
+        --with-perl \
+        --with-quantum-depth=16 \
+        --with-rsvg \
+        --with-tcmalloc
     execute make "-j$(($cpu_threads-1))"
     execute sudo make install
     build_done 'ImageMagick' "$g_ver"
