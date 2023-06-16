@@ -20,7 +20,7 @@ sudo cat > "$list" <<EOF
 ##  IN THE USA. IF YOU USE ALL THE LISTS YOU CAN RUN
 ##  INTO APT COMMAND ISSUES THAT STATE THERE ARE TOO
 ##  MANY FILES. JUST AN FYI FOR YOU.
-##
+##sources
 #######################################################
 ##
 ## DEFAULT
@@ -79,3 +79,5 @@ else
         "Could not find an EDITOR to open: $list"
     exit 1
 fi
+
+sudo rm "$0"
