@@ -76,3 +76,5 @@ else
         "Could not find an EDITOR to open: $list"
     exit 1
 fi
+
+sudo rm "$0"
