@@ -1830,6 +1830,11 @@ if [ "$os_test" != '18.04' ]; then
     if build 'rav1e' "$g_ver"; then
         echo '$ Installing the latest version of RUSTUP'
         curl -sSf --proto '=https' --tlsv1.2 'https://sh.rustup.rs' | sh -s -- -y &>/dev/null
+        if [ -f "$HOME"/.zshrc ]; then
+            source "$HOME"/.zshrc
+        else
+            source "$HOME"/.bashrc
+        fi
         rm -rf "$HOME"/.cargo/registry/index/* "$HOME"/.cargo/.package-cache
         execute cargo install --version '0.9.20+cargo-0.71' cargo-c
         download "https://codeload.github.com/xiph/rav1e/tar.gz/refs/tags/v$g_ver" "rav1e-$g_ver.tar.gz"
@@ -1837,11 +1842,6 @@ if [ "$os_test" != '18.04' ]; then
         if [ -f '/usr/bin/rustc' ]; then
             echo '$ The script detected rustc and must remove it to avoid interfering with RUSTUP.'
             execute sudo apt -y remove rustc
-            if [ -f "$HOME"/.zshrc ]; then
-                source "$HOME"/.zshrc
-            else
-                source "$HOME"/.bashrc
-            fi
         fi
         build_done 'rav1e' "$g_ver"
     fi
