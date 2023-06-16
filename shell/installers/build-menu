@@ -45,7 +45,6 @@ gparted_fn() { bash <(curl -sSL https://gparted.optimizethis.net); }
 deb_dl_fn() { bash <(curl -sSL https://download.optimizethis.net); }
 video_fn() { bash <(curl -sSL https://players.optimizethis.net); }
 
-
 box_out_banner 'Installer Script Menu'
 
 custom_user_scripts()
