@@ -149,18 +149,18 @@ show_ver_fn()
     clear
 
     if [ ! -f "$gcc_install_dir"/bin/gcc-11 ]; then
-        fail_fn 'Could not find the file gcc-11.'
+        fail_fn "Could not find the file: $gcc_install_dir/bin/gcc-11"
         elif [ ! -f "$gcc_install_dir"/bin/gcc-12 ]; then
-            fail_fn 'Could not find the file gcc-11.'
+            fail_fn "Could not find the file: $gcc_install_dir/bin/gcc-12"
             elif [ ! -f "$gcc_install_dir"/bin/gcc-13 ]; then
-                fail_fn 'Could not find the file gcc-11.'
+                fail_fn "Could not find the file: $gcc_install_dir/bin/gcc-13"
     else
         printf "%s\n\n" 'The installed gcc versions are:'
-        sudo "$gcc_install_dir"/bin/gcc-11 -v
+        sudo "$gcc_install_dir/bin/gcc-11" -v
         echo
-        sudo "$gcc_install_dir"/bin/gcc-12 -v
+        sudo "$gcc_install_dir/bin/gcc-12" -v
         echo
-        sudo "$gcc_install_dir"/bin/gcc-13 -v
+        sudo "$gcc_install_dir/bin/gcc-13" -v
         echo
     fi
 }
