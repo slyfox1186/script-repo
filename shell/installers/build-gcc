@@ -39,7 +39,7 @@ CPPFLAGS+=' -I/usr/include/x86_64-linux-gnu -I/usr/lib/gcc/x86_64-linux-gnu/8/in
 LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/local/lib -L/usr/lib -L/usr/local/cuda-12.1/nvvm/lib64"
 LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/local/cuda-12.1/targets/x86_64-linux/lib -L/lib/x86_64-linux-gnu -L/usr/share/ant/lib -L/lib -L/usr/x86_64-linux-gnux32/lib'
 LDFLAGS+=' -L/usr/lib/gcc/x86_64-linux-gnu/12/adalib'
-# CHANGE DEBUG TO "ON" TO ENABLE DEBUGGING DURING THE BUILD
+# CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO ENABLE DEBUGGING DURING THE BUILD
 debug=OFF
 
 #
