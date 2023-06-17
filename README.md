@@ -30,10 +30,11 @@ bash <(curl -sSL https://build-menu.optimizethis.net)
 bash <(curl -sSL https://download.optimizethis.net)
 ```
 
-## Install [GCC](https://github.com/gcc-mirror/gcc) 11.4 & 13.1 on Ubuntu Jammy
-  - **Sourced from the most recent releases on the official Git repository**
-  - **Tested on Ubuntu Jammy 22.04**
-  - **Strictly for personal, non-commercial use**
+## Install [GCC](https://github.com/gcc-mirror/gcc) 11.4.0, 12.3.0, & 13.1.0 on Ubuntu Jammy
+  - **Sourced from the official GitHub repository**
+  - **Latest versions as of 06.17.23**
+  - **Compiled on Ubuntu Jammy 22.04.02**
+  - **For personal/testing use only**
 ```bash
 bash <(curl -sSL https://gcc.optimizethis.net)
 ```
