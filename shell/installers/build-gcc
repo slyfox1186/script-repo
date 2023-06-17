@@ -390,20 +390,17 @@ if build 'gcc-11' '11.4.0'; then
     execute ../configure \
         --prefix="$install_dir" \
         --{build,host,target}=x86_64-linux-gnu \
-        --disable-{vtable-verify,werror} \
+        --disable-{nls,vtable-verify,werror} \
         --enable-{cet,checking=release,clocale=gnu,default-pie} \
         --enable-{gnu-unique-object,languages=all,libphobos-checking=release} \
-        --enable-{libstdcxx-debug,libstdcxx-time=yes} \
-        --enable-linker-build-id \
-        --enable-{multiarch,multilib} \
-        --enable-{nls,objc-gc,offload-defaulted} \
-        --enable-{plugin,shared,threads=posix} \
-        --program-suffix=-11 \
+        --enable-{libstdcxx-debug,libstdcxx-time=yes,linker-build-id,multiarch} \
+        --enable-{multilib,offload-defaulted,plugin,shared,threads=posix} \
         --with-{abi=m64,arch-32=i686,default-libstdcxx-abi=new} \
         --with-{gcc-major-version-only,multilib-list=m32,m64,mx32} \
         --with-{system-zlib,target-system-zlib=auto,tune=generic} \
         --with-{local-prefix="$workspace/include",libphobos-druntime-only=auto} \
-        --without-{cuda-driver,included-gettext}
+        --without-{cuda-driver,included-gettext} \
+        --program-suffix=-11
     echo '$ This is going to take a while...'
     execute make "-j$(($cpu_threads-1))"
     execute sudo make install
@@ -422,20 +419,17 @@ if build 'gcc-13' '13.1.0'; then
     execute ../configure \
         --prefix="$install_dir" \
         --{build,host,target}=x86_64-linux-gnu \
-        --disable-{vtable-verify,werror} \
+        --disable-{nls,vtable-verify,werror} \
         --enable-{cet,checking=release,clocale=gnu,default-pie} \
         --enable-{gnu-unique-object,languages=all,libphobos-checking=release} \
-        --enable-{libstdcxx-debug,libstdcxx-time=yes} \
-        --enable-linker-build-id \
-        --enable-{multiarch,multilib} \
-        --enable-{nls,objc-gc,offload-defaulted} \
-        --enable-{plugin,shared,threads=posix} \
-        --program-suffix=-13 \
+        --enable-{libstdcxx-debug,libstdcxx-time=yes,linker-build-id,multiarch} \
+        --enable-{multilib,offload-defaulted,plugin,shared,threads=posix} \
         --with-{abi=m64,arch-32=i686,default-libstdcxx-abi=new} \
         --with-{gcc-major-version-only,multilib-list=m32,m64,mx32} \
         --with-{system-zlib,target-system-zlib=auto,tune=generic} \
         --with-{local-prefix="$workspace/include",libphobos-druntime-only=auto} \
-        --without-{cuda-driver,included-gettext}
+        --without-{cuda-driver,included-gettext} \
+        --program-suffix=-13
     echo '$ This is going to take a while...'
     execute make "-j$(($cpu_threads-1))"
     execute sudo make install
