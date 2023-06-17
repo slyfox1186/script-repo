@@ -322,10 +322,24 @@ fi
 # SET THE C & C++ COMPILERS
 #
 
-type -P gcc &>/dev/null && export CC=gcc CXX=g++
+which gcc &>/dev/null && export CC=gcc CXX=g++
+which gcc-11 &>/dev/null && export CC=gcc-11 CXX=g++-11
+which gcc-12 &>/dev/null && export CC=gcc-12 CXX=g++-12
+which gcc-13 &>/dev/null && export CC=gcc-13 CXX=g++-12
 
+#
 # SET THE C++ COMPILER OPTIMIZATION FLAGS TO TUNE THE BUILD FOR THE SPECIFIC COMPUTER RUNNING THE SCRIPT
-export CXXFLAGS='-g -O3 -march=native -mtune=native'
+#
+
+is_ryzen9="$(lscpu | grep -o 'Ryzen 9')"
+
+if [[ "$CC" == 'gcc-13' ]]; then
+    if [[ "$is_ryzen9" == 'Ryzen 9' ]]; then
+        CXXFLAGS='-g -O3 -march=znver4'
+    fi
+else
+    export CXXFLAGS='-g -O3 -march=native'
+fi
 
 #
 # INSTALL FROM SOURCE CODE
@@ -334,7 +348,7 @@ export CXXFLAGS='-g -O3 -march=native -mtune=native'
 git_ver_fn '541' '2' 'T'
 if build 'cmake' "$g_ver"; then
     download "https://gitlab.kitware.com/cmake/cmake/-/archive/v$g_ver/cmake-v$g_ver.tar.bz2" "cmake-$g_ver.tar.bz2"
-    execute ./configure --prefix="$install_prefix" --parallel="$cpu_threads" --enable-ccache -- -DCMAKE_USE_OPENSSL=OFF
+    execute ./configure --prefix="$install_prefix" --parallel="$cpu_threads" --enable-ccache -- -DCMAKE_USE_OPENSSL=OFF CXXFLAGS="$CXXFLAGS"
     execute make "-j$(($cpu_threads-1))"
     execute sudo make install
     execute make clean
@@ -345,7 +359,8 @@ git_ver_fn 'ninja-build/ninja' '1' 'T'
 if build 'ninja' "$g_ver1"; then
     download "https://codeload.github.com/ninja-build/ninja/tar.gz/refs/tags/v$g_ver1" "ninja-$g_ver1.tar.gz"
     re2c_path="$(type -P re2c)"
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$install_prefix",BUILD_TYPE=Release} -DRE2C="$re2c_path" -DBUILD_TESTING=OFF -G 'Unix Makefiles' -Wno-dev
+    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$install_prefix",BUILD_TYPE=Release} \
+        -DRE2C="$re2c_path" -DBUILD_TESTING=OFF -G 'Unix Makefiles' -Wno-dev
     execute make "-j$(($cpu_threads-1))" -C build
     execute sudo make -C build install
     execute make -C build clean
