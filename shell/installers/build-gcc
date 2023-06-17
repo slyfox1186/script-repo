@@ -359,15 +359,14 @@ build()
     return 0
 }
 
-curl_timeout='10'
-
 git_1_fn()
 {
-    local curl_cmd github_repo github_url g_sver g_sver1
+    local curl_cmd curl_timeout github_repo github_url g_sver
 
     # SCRAPE GITHUB'S API FOR THE LATEST REPO VERSION
     github_repo="$1"
     github_url="$2"
+    curl_timeout='10'
 
     if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_sver="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null)"
