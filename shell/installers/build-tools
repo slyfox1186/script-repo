@@ -348,7 +348,7 @@ fi
 git_ver_fn '541' '2' 'T'
 if build 'cmake' "$g_ver"; then
     download "https://gitlab.kitware.com/cmake/cmake/-/archive/v$g_ver/cmake-v$g_ver.tar.bz2" "cmake-$g_ver.tar.bz2"
-    execute ./configure --prefix="$install_prefix" --parallel="$cpu_threads" --enable-ccache -- -DCMAKE_USE_OPENSSL=OFF CXXFLAGS="$CXXFLAGS"
+    execute ./configure --prefix="$install_prefix" --parallel="$(($cpu_threads-1))" --enable-ccache -- -DCMAKE_USE_OPENSSL=OFF CXXFLAGS="$CXXFLAGS"
     execute make "-j$(($cpu_threads-1))"
     execute sudo make install
     execute make clean
