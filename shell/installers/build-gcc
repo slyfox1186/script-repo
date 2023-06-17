@@ -136,13 +136,18 @@ cleanup_fn()
     esac
 }
 
-show_versions_fn()
+show_ver_fn()
 {
     clear
-    printf "%s\n\n" 'The installed gcc versions are:'
-        sudo "$install_dir"/bin/gcc-11 -v
-        echo
-        sudo "$install_dir"/bin/gcc-13 -v
+    if [ -f "$install_dir"/bin/gcc-11 ]; then
+        if [ -f "$install_dir"/bin/gcc-13 ]; then
+            printf "%s\n\n" 'The installed gcc versions are:'
+                sudo "$install_dir"/bin/gcc-11 -v
+                echo
+                sudo "$install_dir"/bin/gcc-13 -v
+                echo
+        fi
+    fi
 }
 
 execute()
@@ -443,7 +448,7 @@ fi
 sudo ldconfig 2>/dev/null
 
 # SHOW THE NEWLY INSTALLED VERSION OF EACH PACKAGE
-show_versions_fn
+show_ver_fn
 
 # PROMPT THE USER TO CLEANUP THE BUILD FILES
 cleanup_fn
