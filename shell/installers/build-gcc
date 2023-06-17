@@ -578,7 +578,7 @@ if build 'isl' '0.24'; then
 fi
 
 git_ver_fn 'gperftools/gperftools' '1' 'R'
-g_ver="$("${g_ver//gperftools-/}")"
+g_ver="${g_ver//gperftools-/}"
 if build 'gperftools' "$g_ver"; then
     download "https://github.com/gperftools/gperftools/releases/download/gperftools-$g_ver/gperftools-$g_ver.tar.gz"
     execute ./configure --prefix="$libs_install_dir"
