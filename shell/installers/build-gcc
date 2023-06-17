@@ -7,9 +7,9 @@
 ##
 ##  Supported OS: Linux Ubuntu - 22.04 (Jammy)
 ##
-##  Updated: 06.15.23
+##  Updated: 06.17.23
 ##
-##  Script version: 1.0
+##  Script version: 2.0
 ##
 ##################################################################
 
@@ -24,16 +24,16 @@ fi
 # CREATE SCRIPT VARIABLES
 #
 
-script_ver='1.0'
+script_ver='2.0'
 cwd="$PWD"/gcc-build-script
-install_dir='/usr/local'
 packages="$cwd"/packages
 workspace="$cwd"/workspace
-CFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -I/usr/local/cuda-12.1/nvvm/include -I/usr/local/cuda/include"
-CFLAGS+=' -I/usr/include/x86_64-linux-gnu -I/usr/lib/gcc/x86_64-linux-gnu/8/include -I/usr/lib/gcc/x86_64-linux-gnu/9/include'
+CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -I/usr/local/cuda-12.1/nvvm/include -I/usr/local/cuda/include"
+CPPFLAGS+=' -I/usr/include/x86_64-linux-gnu -I/usr/lib/gcc/x86_64-linux-gnu/8/include -I/usr/lib/gcc/x86_64-linux-gnu/9/include'
 LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/local/lib -L/usr/lib -L/usr/local/cuda-12.1/nvvm/lib64"
-LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/local/cuda-12.1/targets/x86_64-linux/lib -L/lib/x86_64-linux-gnu -L/usr/share/ant/lib -L/lib'
-LDFLAGS+=' -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
+LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/local/cuda-12.1/targets/x86_64-linux/lib -L/lib/x86_64-linux-gnu -L/usr/share/ant/lib -L/lib -L/usr/x86_64-linux-gnux32/lib'
+LDFLAGS+=' -L/usr/lib/gcc/x86_64-linux-gnu/12/adalib -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
+install_dir='/usr/local'
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -140,9 +140,9 @@ show_versions_fn()
 {
     clear
     printf "%s\n\n" 'The installed gcc versions are:'
-        "$install_dir"/bin/gcc-11 -v
+        sudo "$install_dir"/bin/gcc-11 -v
         echo
-        "$install_dir"/bin/gcc-13 -v
+        sudo "$install_dir"/bin/gcc-13 -v
 }
 
 execute()
@@ -288,10 +288,11 @@ printf "%s\n%s\n%s" \
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autogen automake bison build-essential ccache curl flex g++ gcc-12-base gcc-multilib git gnat gperf jq
-      libadacgi4 libadacgi4-dev libeigen3-dev libfontconfig1-dev libfreetype6 libgcc-12-dev libgm2-10-dev libgm2-15
-      libgmp3-dev libgnat-util10 libicu-dev libjpeg-dev libmpfr-dev libpng-dev libquadmath0 libsqlite3-dev libssl-dev
-      libx11-dev libxext-dev m4 perl python3 ruby)
+pkgs=(autoconf autogen automake bison build-essential ccache curl flex g++ gcc-12-base gcc-multilib
+      gfortran gfortran-multilib git gnat-10 gperf jq libadacgi4 libdmalloc-dev libadacgi4-dev
+      libeigen3-dev libfontconfig1-dev libfreetype6 libgcc-12-dev libgm2-10-dev libgm2-15 libgmp3-dev
+      libgnat-util10-dev libicu-dev libisl-dev libjpeg-dev libmpfr-dev libpng-dev libquadmath0 libsqlite3-dev
+      libssl-dev libx11-dev libxext-dev linux-libc-dev linux-libc-dev:i386 m4 perl python3 ruby)
 
 for pkg in ${pkgs[@]}; do
     if ! installed "$pkg"; then
@@ -314,24 +315,11 @@ fi
 # SET THE C & C++ COMPILERS
 #
 
-type -P gcc &>/dev/null && export CC=gcc CXX=g++
-
-# SET THE C++ COMPILER OPTIMIZATION FLAGS TO TUNE THE BUILD FOR THE SPECIFIC COMPUTER RUNNING THE SCRIPT
-export CXXFLAGS='-g -O3 -march=native -mtune=native'
+which gcc &>/dev/null && export CC=gcc CXX=g++
 
 #
 # INSTALL FROM SOURCE CODE
 #
-
-if build 'make' '4.4.1'; then
-    download 'https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz'
-    execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --with-{dmalloc,guile}
-    execute make "-j$(($cpu_threads-1))"
-    execute make install
-    execute make distclean
-    build_done 'make' '4.4.1'
-fi
 
 if build 'm4' '1.4.19'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.xz'
@@ -379,49 +367,75 @@ if build 'zlib' "$g_ver"; then
     build_done 'zlib' "$g_ver"
 fi
 
+if build 'gc' '8.2.4'; then
+    download 'https://github.com/ivmai/bdwgc/releases/download/v8.2.4/gc-8.2.4.tar.gz'
+    execute autoreconf -fi
+    execute ./configure --prefix='/usr/local'
+    execute make "-j$(($cpu_threads-1))"
+    execute sudo make install
+    build_done 'gc' '8.2.4'
+fi
+
 if build 'gcc-11' '11.4.0'; then
-    download 'https://ftp.gnu.org/gnu/gcc/gcc-11.4.0/gcc-11.4.0.tar.xz' 'gcc-11.4.0.tar.xz'
+    download 'https://ftp.gnu.org/gnu/gcc/gcc-11.4.0/gcc-11.4.0.tar.xz'
     execute autoreconf -fi
     execute sudo ./contrib/download_prerequisites
     mkdir builddir
     cd builddir || exit 1
     execute ../configure \
         --prefix="$install_dir" \
+        --{build,host,target}=x86_64-linux-gnu \
+        --disable-{vtable-verify,werror} \
+        --enable-{cet,checking=release,clocale=gnu,default-pie} \
+        --enable-{gnu-unique-object,languages=all,libphobos-checking=release} \
+        --enable-{libstdcxx-debug,libstdcxx-time=yes} \
+        --enable-linker-build-id \
+        --enable-{multiarch,multilib} \
+        --enable-{nls,objc-gc,offload-defaulted} \
+        --enable-{plugin,shared,threads=posix} \
         --program-suffix=-11 \
-        --build=x86_64-linux-gnu \
-        --disable-{assembly,multilib,werror} \
-        --enable-languages=c,c++,brig,d,fortran,go,objc,obj-c++ \
-        --enable-{plugin,threads=posix} \
-        --with-{system-zlib,tune=native} \
+        --with-{abi=m64,arch-32=i686,default-libstdcxx-abi=new} \
+        --with-{gcc-major-version-only,multilib-list=m32,m64,mx32} \
+        --with-{system-zlib,target-system-zlib=auto,tune=generic} \
+        --with-{local-prefix="$workspace/include",libphobos-druntime-only=auto} \
         --without-{cuda-driver,included-gettext}
     echo '$ This is going to take a while...'
     execute make "-j$(($cpu_threads-1))"
     execute sudo make install
-    execute sudo libtool --finish "$install_dir"/lib
-    execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-linux-gnu/11.4.0
+    execute libtool --finish "$install_dir"/libexec/gcc/x86_64-linux-gnu/11
+    execute libtool --finish /usr/local/lib
     build_done 'gcc-11' '11.4.0'
 fi
 
 if build 'gcc-13' '13.1.0'; then
-    download 'https://ftp.gnu.org/gnu/gcc/gcc-13.1.0/gcc-13.1.0.tar.xz' 'gcc-13.1.0.tar.xz'
+    download 'https://ftp.gnu.org/gnu/gcc/gcc-13.1.0/gcc-13.1.0.tar.xz'
     execute autoreconf -fi
     execute sudo ./contrib/download_prerequisites
+    execute sudo ln -s /usr/include/asm-generic /usr/include/asm
     mkdir builddir
     cd builddir || exit 1
     execute ../configure \
         --prefix="$install_dir" \
+        --{build,host,target}=x86_64-linux-gnu \
+        --disable-{vtable-verify,werror} \
+        --enable-{cet,checking=release,clocale=gnu,default-pie} \
+        --enable-{gnu-unique-object,languages=all,libphobos-checking=release} \
+        --enable-{libstdcxx-debug,libstdcxx-time=yes} \
+        --enable-linker-build-id \
+        --enable-{multiarch,multilib} \
+        --enable-{nls,objc-gc,offload-defaulted} \
+        --enable-{plugin,shared,threads=posix} \
         --program-suffix=-13 \
-        --build=x86_64-linux-gnu \
-        --disable-{assembly,multilib,werror} \
-        --enable-languages=c,c++,fortran,go,objc,obj-c++ \
-        --enable-{plugin,threads=posix} \
-        --with-{system-zlib,tune=native} \
+        --with-{abi=m64,arch-32=i686,default-libstdcxx-abi=new} \
+        --with-{gcc-major-version-only,multilib-list=m32,m64,mx32} \
+        --with-{system-zlib,target-system-zlib=auto,tune=generic} \
+        --with-{local-prefix="$workspace/include",libphobos-druntime-only=auto} \
         --without-{cuda-driver,included-gettext}
     echo '$ This is going to take a while...'
     execute make "-j$(($cpu_threads-1))"
     execute sudo make install
-    execute sudo libtool --finish "$install_dir"/lib
-    execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-linux-gnu/13.1.0
+    execute libtool --finish "$install_dir"/libexec/gcc/x86_64-linux-gnu/13
+    execute libtool --finish /usr/local/lib
     build_done 'gcc-13' '13.1.0'
 fi
 
