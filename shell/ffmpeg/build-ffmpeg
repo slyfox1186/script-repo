@@ -58,6 +58,8 @@ EXTRALIBS='-ldl -lpthread -lm -lz'
 ffmpeg_libraries=()
 latest='false'
 repo='https://github.com/slyfox1186/script-repo'
+# CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
+debug=OFF
 
 #
 # CREATE THE OUTPUT DIRECTORIES
@@ -448,8 +450,17 @@ pre_check_ver()
 execute()
 {
     echo "$ $*"
-    if ! output=$("$@" 2>&1); then
-        fail_fn "Failed to Execute $*"
+
+    if [ "$debug" = 'ON' ]; then
+        if ! output=$("$@"); then
+            notify-send "Failed to execute: $*"
+            fail_fn "Failed to execute: $*"
+        fi
+    else
+        if ! output=$("$@" 2>&1); then
+            notify-send "Failed to execute: $*"
+            fail_fn "Failed to execute: $*"
+        fi
     fi
 }
 
