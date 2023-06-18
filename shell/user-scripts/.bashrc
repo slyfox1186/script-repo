@@ -96,7 +96,7 @@ fi
 # custom user vars
 PATH="\
 /usr/lib/ccache:\
-$HOME/.cargo/env:\
+$HOME/.cargo/bin:\
 $HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
@@ -107,6 +107,7 @@ $HOME/.local/bin:\
 /usr/games:\
 /usr/local/games:\
 /usr/local/cuda/bin:\
+/usr/lib/python3/dist-packages:\
 /snap/bin\
 "
 export PATH
@@ -132,3 +133,4 @@ type -P 'g++-10' &>/dev/null && export CXX='g++-10'
 type -P 'g++-11' &>/dev/null && export CXX='g++-11'
 type -P 'g++-12' &>/dev/null && export CXX='g++-12'
 type -P 'g++-13' &>/dev/null && export CXX='g++-13'
+. "$HOME/.cargo/env"
