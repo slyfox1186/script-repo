@@ -809,7 +809,6 @@ if build 'gcc-13' '13.1.0'; then
         --with-{system-zlib,target-system-zlib=auto,tune=generic} \
         --without-{cuda-driver,included-gettext} \
         --program-{prefix=x86_64-pc-linux-gnu-,suffix=-13}
-        LDFLAGS="$LDFLAGS"
     echo '$ This is going to take a while...'
     execute make "-j$cpu_threads"
     execute sudo make install-strip
