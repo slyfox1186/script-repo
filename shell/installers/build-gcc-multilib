@@ -5,7 +5,7 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
-##  Install: GCC 11.4.0 /  12.3.0 / 13.1.0 with 32bit multilib Support
+##  Install: GCC 11.4.0 /  12.3.0 / 13.1.0
 ##
 ##  Supported OS: Linux Ubuntu - 22.04 (Jammy)
 ##
@@ -747,7 +747,7 @@ if build 'gcc-11' '11.4.0'; then
         --{build,host,target}=x86_64-pc-linux-gnu \
         --disable-{assembly,werror} \
         --enable-{bootstrap,checking=release,clocale=gnu,gnu-unique-object,languages='c,c++,d,fortran,go,objc,obj-c++'} \
-        --enable-{libphobos-checking=release,libstdcxx-time=yes,linker-build-id,plugin,threads=posix} \
+        --enable-{libphobos-checking=release,libstdcxx-time=yes,linker-build-id,multilib,multiarch,plugin,threads=posix} \
         --with-{gcc-major-version-only,libiconv-prefix="$libs_install_dir"} \
         --with-{system-zlib,target-system-zlib=auto,tune=generic,multilib-list='m32,m64,mx32'} \
         --without-{cuda-driver,included-gettext} \
@@ -777,7 +777,7 @@ if build 'gcc-12' '12.3.0'; then
         --{build,host,target}=x86_64-pc-linux-gnu \
         --disable-{assembly,werror} \
         --enable-{bootstrap,checking=release,clocale=gnu,gnu-unique-object,languages='c,c++,d,fortran,go,objc,obj-c++'} \
-        --enable-{libphobos-checking=release,libstdcxx-time=yes,linker-build-id,plugin,threads=posix} \
+        --enable-{libphobos-checking=release,libstdcxx-time=yes,linker-build-id,multilib,multiarch,plugin,threads=posix} \
         --with-{gcc-major-version-only,libiconv-prefix="$libs_install_dir"} \
         --with-{system-zlib,target-system-zlib=auto,tune=generic,multilib-list='m32,m64,mx32'} \
         --without-{cuda-driver,included-gettext} \
@@ -807,7 +807,7 @@ if build 'gcc-13' '13.1.0'; then
         --{build,host,target}=x86_64-pc-linux-gnu \
         --disable-{assembly,werror} \
         --enable-{bootstrap,checking=release,clocale=gnu,gnu-unique-object,languages=all} \
-        --enable-{libphobos-checking=release,libstdcxx-time=yes,linker-build-id,plugin,threads=posix} \
+        --enable-{libphobos-checking=release,libstdcxx-time=yes,linker-build-id,multilib,multiarch,plugin,threads=posix} \
         --with-{gcc-major-version-only,libiconv-prefix="$libs_install_dir"} \
         --with-{system-zlib,target-system-zlib=auto,tune=generic,multilib-list='m32,m64,mx32'} \
         --without-{cuda-driver,included-gettext} \
