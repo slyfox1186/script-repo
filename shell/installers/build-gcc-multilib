@@ -559,6 +559,17 @@ if [ -f /usr/include/asm-generic ]; then
 fi
 
 #
+# CHECK IF THE CUDA SDK TOOLKIT IS INSTALLED
+#
+
+iscuda="$(sudo find /usr/local/ -type f -name nvcc)"
+if [ -n "$iscuda" ]; then
+    cuda_check='--with-cuda-driver'
+else
+    cuda_check='--without-cuda-driver'
+fi
+
+#
 # INSTALL FROM SOURCE CODE
 #
 
@@ -750,7 +761,8 @@ if build 'gcc-11' '11.4.0'; then
         --enable-{libphobos-checking=release,libstdcxx-time=yes,linker-build-id,multilib,multiarch,plugin,threads=posix} \
         --with-{gcc-major-version-only,libiconv-prefix="$libs_install_dir"} \
         --with-{system-zlib,target-system-zlib=auto,tune=generic,multilib-list='m32,m64,mx32'} \
-        --without-{cuda-driver,included-gettext} \
+        "$cuda_check" \
+        --without-included-gettext \
         --program-{prefix=x86_64-pc-linux-gnu-,suffix=-11}
     echo '$ This is going to take a while...'
     execute make "-j$cpu_threads"
@@ -780,7 +792,8 @@ if build 'gcc-12' '12.3.0'; then
         --enable-{libphobos-checking=release,libstdcxx-time=yes,linker-build-id,multilib,multiarch,plugin,threads=posix} \
         --with-{gcc-major-version-only,libiconv-prefix="$libs_install_dir"} \
         --with-{system-zlib,target-system-zlib=auto,tune=generic,multilib-list='m32,m64,mx32'} \
-        --without-{cuda-driver,included-gettext} \
+        "$cuda_check" \
+        --without-included-gettext \
         --program-{prefix=x86_64-pc-linux-gnu-,suffix=-12}
     echo '$ This is going to take a while...'
     execute make "-j$cpu_threads"
@@ -810,7 +823,8 @@ if build 'gcc-13' '13.1.0'; then
         --enable-{libphobos-checking=release,libstdcxx-time=yes,linker-build-id,multilib,multiarch,plugin,threads=posix} \
         --with-{gcc-major-version-only,libiconv-prefix="$libs_install_dir"} \
         --with-{system-zlib,target-system-zlib=auto,tune=generic,multilib-list='m32,m64,mx32'} \
-        --without-{cuda-driver,included-gettext} \
+        "$cuda_check" \
+        --without-included-gettext \
         --program-{prefix=x86_64-pc-linux-gnu-,suffix=-13}
     echo '$ This is going to take a while...'
     execute make "-j$cpu_threads"
