@@ -1109,3 +1109,20 @@ set_default()
         *)      return 0;;
     esac
 }
+
+## COUNT FILES IN DIRECTORY
+cnt_dir()
+{
+    local keep_cnt
+    clear
+    keep_cnt="$(find . -maxdepth 1 -type f | wc -l)"
+    printf "%s %'d\n\n" "The total directory file count is (non-recursive):" "$keep_cnt"
+}
+
+cnt_dirr()
+{
+    local keep_cnt
+    clear
+    keep_cnt="$(find . -type f | wc -l)"
+    printf "%s %'d\n\n" "The total directory file count is (recursive):" "$keep_cnt"
+}
