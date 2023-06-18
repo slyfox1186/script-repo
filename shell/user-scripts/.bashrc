@@ -112,25 +112,10 @@ $HOME/.local/bin:\
 "
 export PATH
 
-export PS1='\n\[\e[0;96m\]\w\n\[\e[0;38;5;220m\]\T\n\[\e[0;38;5;208m\]\h\[\e[0m\]@\[\e[0;38;5;201m\]\u\[\e[0;93m\]$\[\e[0m\]'
-export TMP="$HOME/tmp"
-export LAN="$(hostname -I)"
-export WAN="$(curl -sS 'https://checkip.amazonaws.com')"
-export THREADS="$(nproc --all)"
 export CPUS="$((THREADS/2))"
+export LAN="$(hostname -I)"
+export PS1='\n\[\e[0;96m\]\w\n\[\e[0;38;5;220m\]\T\n\[\e[0;38;5;208m\]\h\[\e[0m\]@\[\e[0;38;5;201m\]\u\[\e[0;93m\]$\[\e[0m\]'
 export PYTHONUTF8='1'
-
-# FIND THE HIGHEST Gexport CC VERSION YOU HAVE INSTALLED AND SET IT AS YOUR export CC COMPILER
-type -P 'gcc' &>/dev/null && export CC='gcc'
-type -P 'gcc-10' &>/dev/null && export CC='gcc-10'
-type -P 'gcc-11' &>/dev/null && export CC='gcc-11'
-type -P 'gcc-12' &>/dev/null && export CC='gcc-12'
-type -P 'gcc-13' &>/dev/null && export CC='gcc-13'
-
-# FIND THE HIGHEST G++ VERSION YOU HAVE INSTALLED AND SET IT AS YOUR export CXX COMPILER
-type -P 'g++' &>/dev/null && export CXX='g++'
-type -P 'g++-10' &>/dev/null && export CXX='g++-10'
-type -P 'g++-11' &>/dev/null && export CXX='g++-11'
-type -P 'g++-12' &>/dev/null && export CXX='g++-12'
-type -P 'g++-13' &>/dev/null && export CXX='g++-13'
-. "$HOME/.cargo/env"
+export THREADS="$(nproc --all)"
+export TMP="$HOME/tmp"
+export WAN="$(curl -sS 'https://checkip.amazonaws.com')"
