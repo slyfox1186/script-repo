@@ -34,8 +34,14 @@ bash <(curl -sSL https://download.optimizethis.net)
   - **Sourced from the official GitHub repository**
   - **Compiled on Ubuntu Jammy 22.04.02**
   - **For personal/testing use only**
+
+#### Native Build
 ```bash
 bash <(curl -sSL https://gcc.optimizethis.net)
+```
+#### Mult arch/lib Build
+```bash
+bash <(curl -sSL https://gcc-multilib.optimizethis.net)
 ```
 
 ## Install [7-Zip](www.7-zip.org/download.html)
