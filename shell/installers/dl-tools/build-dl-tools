@@ -9,15 +9,15 @@
 ##  - Debian 10 / 11
 ##  - Ubuntu 22.04 / 20.04 / 18.04
 ##
-##  Updated: 06.14.23
+##  Updated: 06.18.23
 ##
-##  Script version: 2.2
+##  Script version: 2.3
 ##
 ######################################################
 
 clear
 
-script_ver='2.2'
+script_ver='2.3'
 cwd="$PWD"/dltools-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
@@ -249,22 +249,6 @@ download()
     cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
 }
 
-download_alt()
-{
-    local dl_path dl_file target_dir
-
-    dl_path="$packages"
-    dl_file="$1"
-    target_dir="$dl_path/$dl_file"
-
-    curl -Lso "$target_dir.tar.gz" 'https://ftp.gnu.org/gnu/wget/wget-latest.tar.gz'
-    mkdir -p "$target_dir"
-    tar -xf "$target_dir.tar.gz" -C "$target_dir" --strip-components 1
-    cd "$target_dir" || exit 1
-    g_ver="$(cat '.version')"
-    sudo rm -fr "$target_dir" "$target_dir.tar.gz"
-}
-
 build()
 {
     printf "\n%s\n%s\n" \
@@ -296,11 +280,16 @@ pkgs_fn()
 {
     local pkg pkgs missing_pkgs
 
-    pkgs=("$1" autoconf autogen automake autopoint autotools-dev build-essential ccache cmake curl git google-perftools jq lcov
-          libaria2-0 libaria2-0-dev libcppunit-dev libcunit1-dev libcurl4-gnutls-dev libec-dev libev-dev libevent-dev libexiv2-27 \
-          libgcc-12-dev libgexiv2-2 libgimp2.0 libldap-dev libldap2-dev liblzma-dev libmbedtls-dev libnghttp2-dev libntlm0-dev \
-          libpsl-dev librtmp-dev libssh-dev libssh2-1-dev libtool libzstd-dev m4 pkg-config python3-pip re2c libunistring-dev \
-          libuv1-dev)
+    pkgs=("$1" apt-transport-https apt-utils aria2 autoconf autogen automake autopoint autotools-dev
+          build-essential bzip2 ca-certificates ccache cmake curl gfortran git google-perftools graphviz
+          jq language-pack-en lcov libaria2-0 libaria2-0-dev libcppunit-dev libcunit1-dev libcurl4
+          libcurl4-gnutls-dev libcurl4-openssl-dev libec-dev libedit-dev libev-dev libevent-dev libexiv2-27
+          libexpat1-dev libgcc-12-dev libgexiv2-2 libgimp2.0 libicu-dev libkrb5-3 libldap2-dev libldap-dev
+          liblttng-ust-dev liblzma-dev libmbedtls-dev libnghttp2-dev libntlm0-dev libpng-dev libpsl-dev librtmp-dev
+          libssh2-1-dev libssh-dev libssl-dev libtinfo5 libtinfo-dev libtool libunistring-dev libunwind8 libuv1-dev
+          libxml2-dev libzstd-dev m4 openjdk-11-jdk openssh-server pkg-config python3 python3-dev python3-numpy
+          python3-packaging python3-pip python3-pytest python3-setuptools python3-wheel re2c rsync sudo unzip wget
+          zip zlib1g zlib1g-dev libgtk-4-doc)
 
     for pkg in ${pkgs[@]}
     do
@@ -337,9 +326,8 @@ fi
 # SET THE C & C++ COMPILERS
 #
 
-if ! type -P gcc &>/dev/null && export CC=gcc CXX=g++; then
-    fail_fn 'No C compilers were located. Please install "gcc and g++".'
-fi
+which gcc &>/dev/null && export CC=gcc CXX=g++
+which gcc-13 &>/dev/null && export CC=gcc-13 CXX=g++-13
 
 #
 # SET THE C++ COMPILER OPTIMIZATION FLAGS TO TUNE THE BUILD FOR THE SPECIFIC COMPUTER RUNNING THE SCRIPT 
@@ -379,9 +367,20 @@ if build 'jansson' "$g_ver"; then
     build_done 'jansson' "$g_ver"
 fi
 
+if build 'libiconv' '1.17'; then
+    download 'https://ftp.gnu.org/gnu/libiconv/libiconv-1.17.tar.gz'
+    execute ./configure --prefix="$libs_install_dir" --disable-shared
+    execute make "-j$(($cpu_threads-1))"
+    execute sudo make install
+    execute make distclean
+    execute sudo libtool --finish "$libs_install_dir"/lib
+    build_done 'libiconv' '1.17'
+fi
+
 if build 'gsasl' '2.2.0'; then
     download 'https://ftp.gnu.org/gnu/gsasl/gsasl-2.2.0.tar.gz' 'gsasl-2.2.0.tar.gz'
-    execute ./configure --prefix="$workspace"
+    execute ./configure --prefix="$workspace" --disable-{shared,year2038} \
+        --with-{libiconv-prefix='/usr/local',openssl=auto} --enable-gtk-doc
     execute make "-j$(($cpu_threads-1))"
     execute make install
     sudo cp -f "$workspace"/lib/libgsasl.so.18 /usr/local/lib
@@ -406,10 +405,10 @@ git_ver_fn 'pcre2project/pcre2' '1' 'T'
 if build 'pcre2' "$g_ver"; then
     download "$g_url" "pcre2-$g_ver.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --enable-static \
-        --disable-shared CFLAGS="$CFLAGS" CPPFLAGS="$CPPFLAGS" LDFLAGS="$LDFLAGS"
+    execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$(($cpu_threads-1))"
     execute make install
+    execute make distclean
     build_done 'pcre2' "$g_ver"
 fi
 
@@ -440,19 +439,16 @@ fi
 # START CURL & WGET BUILD
 #
 
-download_alt 'wget'
-if build 'wget' "$g_ver"; then
-    download "https://ftp.gnu.org/gnu/wget/wget-$g_ver.tar.gz" "wget-$g_ver.tar.gz"
-    if which 'update-ca-certificates' &>/dev/null; then
+if build 'wget' 'latest'; then
+    download 'https://ftp.gnu.org/gnu/wget/wget-latest.tar.lz'
+    if which update-ca-certificates &>/dev/null; then
         execute sudo update-ca-certificates
     fi
     execute autoconf
-    ./configure --prefix="$install_dir" --enable-threads --with-ssl=gnutls --with-metalink \
-        --with-cares --with-openssl=auto CFLAGS="$CFLAGS" CPPFLAGS="$CPPFLAGS" LDFLAGS="$LDFLAGS" \
-        PCRE_LIBS="$workspace"/lib
+    ./configure --prefix="$install_dir" --enable-threads --with-{cares,metalink,openssl=auto,ssl=gnutls}
     execute make "-j$(($cpu_threads-1))"
     execute sudo make install
-    build_done 'wget' "$g_ver"
+    build_done 'wget' 'latest'
 fi
 
 git_ver_fn 'curl/curl' '1' 'R'
