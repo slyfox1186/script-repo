@@ -492,14 +492,13 @@ box_out_banner "GCC Build Script: v$script_ver"
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autogen automake bison build-essential ccache curl dejagnu flex gcc-11-base gcc-multilib g++-multilib
-      gdc gdc-multilib gfortran gfortran-multilib git gnat-10 gnulib gperf guile-3.0-dev help2man jq libadacgi4-dev
-      libdebuginfod-dev libdmalloc-dev libeigen3-dev libffi-dev libfontconfig1-dev libfreetype6 libgcc-11-dev
-      libgd-dev libgm2-11-dev libgm2-12-dev libgm2-15 libgmp3-dev libgmp-dev libgnat-util10-dev libicu-dev
-      libisl-dev libjpeg-dev libmpc-dev libmpfr-dev libphobos2-ldc-shared-dev libpng-dev libquadmath0
-      libsqlite3-dev libssl-dev libunwind-dev libx11-dev libx32gfortran-12-dev libxext-dev linux-libc-dev
-      linux-libc-dev:i386 meson ninja-build openjdk-11-jdk-headless perl python3 ruby sphinx-common
-      tcl-expect-dev tex-common texinfo)
+pkgs=(autoconf autogen automake bison build-essential ccache cmake curl dejagnu flex gcc-11-base gcc-multilib  gdc
+      gfortran gfortran-multilib git gnat-10 gnulib gperf guile-3.0-dev help2man jq libadacgi4-dev libdebuginfod-dev
+      libdmalloc-dev libeigen3-dev libffi-dev libfontconfig1-dev libfreetype6 libgcc-11-dev libgd-dev libgm2-11-dev
+      libgm2-12-dev libgm2-15 libgmp3-dev libgmp-dev libgnat-util10-dev libicu-dev libisl-dev libjpeg-dev libmpc-dev
+      libmpfr-dev libphobos2-ldc-shared-dev libpng-dev libquadmath0 libsqlite3-dev libssl-dev libunwind-dev libx11-dev
+      libx32gfortran-12-dev libxext-dev linux-libc-dev linux-libc-dev:i386 meson ninja-build openjdk-11-jdk-headless
+      perl python3 ruby sphinx-common tcl-expect-dev tex-common texinfo)
 
 for pkg in ${pkgs[@]}; do
     if ! installed "$pkg"; then
