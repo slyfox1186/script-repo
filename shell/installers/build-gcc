@@ -43,7 +43,7 @@ LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/local/cuda-12.1/targets/x86_64-lin
 LDFLAGS+=' -L/usr/lib/gcc/x86_64-linux-gnu/12/adalib -L/lib/x86_64-linux-gnu -L/lib -L/usr/x86_64-linux-gnux32/lib'
 repo='https://github.com/slyfox1186/script-repo'
 # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
-debug=OFF
+debug=ON
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -491,11 +491,10 @@ box_out_banner "GCC Build Script: v$script_ver"
 pkgs=(autoconf autogen automake bison build-essential ccache curl dejagnu flex gcc-11-base gcc-multilib
       gdc gdc-multilib gfortran gfortran-multilib git gnat-10 gnulib gperf guile-3.0-dev help2man jq libadacgi4-dev
       libdebuginfod-dev libdmalloc-dev libeigen3-dev libffi-dev libfontconfig1-dev libfreetype6 libgcc-11-dev
-      libgd-dev libgm2-11-dev libgm2-12-dev libgm2-15 libgmp3-dev libgmp-dev libgnat-util10-dev libicu-dev
-      libisl-dev libjpeg-dev libmpc-dev libmpfr-dev libphobos2-ldc-shared-dev libpng-dev libquadmath0
-      libsqlite3-dev libssl-dev libunwind-dev libx11-dev libx32gfortran-12-dev libxext-dev linux-libc-dev
-      linux-libc-dev:i386 meson ninja-build openjdk-11-jdk-headless perl python3 ruby sphinx-common
-      tcl-expect-dev tex-common texinfo)
+      libgd-dev libgm2-11-dev libgm2-12-dev libgm2-15 libgmp-dev libgnat-util10-dev libicu-dev libisl-dev
+      libjpeg-dev libmpc-dev libmpfr-dev libphobos2-ldc-shared-dev libpng-dev libquadmath0 libsqlite3-dev libssl-dev
+      libunwind-dev libx11-dev libx32gfortran-12-dev libxext-dev linux-libc-dev linux-libc-dev:i386 meson ninja-build
+      openjdk-11-jdk-headless perl python3 ruby sphinx-common tcl-expect-dev tex-common texinfo)
 
 for pkg in ${pkgs[@]}; do
     if ! installed "$pkg"; then
@@ -542,7 +541,9 @@ fi
 # SET THE C & C++ COMPILERS
 #
 
-which gcc &>/dev/null && export CC=gcc CXX=g++
+export CC=gcc-12 CXX=g++-12
+export CFLAGS='-g -O3 -march=native'
+export CXXFLAGS='-g -O3 -march=native'
 
 #
 # CREATE SOFT LINKS
@@ -552,6 +553,17 @@ if [ -f /usr/include/asm-generic ]; then
     if [ ! -f /usr/include/asm ]; then
         sudo ln -fs /usr/include/asm-generic /usr/include/asm 2>&1
     fi
+fi
+
+#
+# CHECK IF THE CUDA SDK TOOLKIT IS INSTALLED
+#
+
+iscuda="$(sudo find /usr/local/ -type f -name nvcc)"
+if [ -n "$iscuda" ]; then
+    cuda_check='--with-cuda-driver'
+else
+    cuda_check='--without-cuda-driver'
 fi
 
 #
@@ -677,33 +689,6 @@ if build 'zlib' "$g_ver"; then
     build_done 'zlib' "$g_ver"
 fi
 
-if build 'gmp' '6.2.1'; then
-    download 'https://gmplib.org/download/gmp/gmp-6.2.1.tar.lz'
-    execute ./configure --prefix="$libs_install_dir"
-    execute make "-j$cpu_threads"
-    execute sudo make install
-    execute make distclean
-    build_done 'gmp' '6.2.1'
-fi
-
-if build 'mpfr' '4.2.0'; then
-    download 'https://www.mpfr.org/mpfr-current/mpfr-4.2.0.tar.xz'
-    execute ./configure --prefix="$libs_install_dir"
-    execute make "-j$cpu_threads"
-    execute sudo make install
-    execute make distclean
-    build_done 'mpfr' '4.2.0'
-fi
-
-if build 'mpc' '1.3.1'; then
-    download 'https://ftp.gnu.org/gnu/mpc/mpc-1.3.1.tar.gz'
-    execute ./configure --prefix="$libs_install_dir"
-    execute make "-j$cpu_threads"
-    execute sudo make install
-    execute make distclean
-    build_done 'mpc' '1.3.1'
-fi
-
 if build 'bison' 'git'; then
     download_git 'https://github.com/akimd/bison.git'
     execute git submodule update --init
@@ -744,11 +729,11 @@ if build 'gcc-11' '11.4.0'; then
         --prefix="$gcc_install_dir" \
         --{build,host,target}=x86_64-pc-linux-gnu \
         --disable-{assembly,werror} \
-        --enable-{plugin,threads=posix} \
-        --enable-languages=c,c++,d,fortran,go,objc,obj-c++ \
-        --with-{gcc-major-version-only,libiconv-prefix="$libs_install_dir"} \
+        --enable-{bootstrap,plugin,threads=posix,languages='c,c++,d,fortran,go,objc,obj-c++'} \
+        --with-{link-serialization=2,gcc-major-version-only,libiconv-prefix="$libs_install_dir"} \
         --with-{system-zlib,target-system-zlib=auto,tune=generic} \
-        --without-{cuda-driver,included-gettext} \
+        "$cuda_check" \
+        --without-included-gettext \
         --program-{prefix=x86_64-pc-linux-gnu-,suffix=-11}
     echo '$ This is going to take a while...'
     execute make "-j$cpu_threads"
@@ -774,11 +759,11 @@ if build 'gcc-12' '12.3.0'; then
         --prefix="$gcc_install_dir" \
         --{build,host,target}=x86_64-pc-linux-gnu \
         --disable-{assembly,werror} \
-        --enable-{plugin,threads=posix} \
-        --enable-languages=c,c++,d,fortran,go,objc,obj-c++ \
-        --with-{gcc-major-version-only,libiconv-prefix="$libs_install_dir"} \
+        --enable-{bootstrap,plugin,threads=posix,languages='c,c++,d,fortran,go,objc,obj-c++'} \
+        --with-{link-serialization=2,gcc-major-version-only,libiconv-prefix="$libs_install_dir"} \
         --with-{system-zlib,target-system-zlib=auto,tune=generic} \
-        --without-{cuda-driver,included-gettext} \
+        "$cuda_check" \
+        --without-included-gettext \
         --program-{prefix=x86_64-pc-linux-gnu-,suffix=-12}
     echo '$ This is going to take a while...'
     execute make "-j$cpu_threads"
@@ -804,10 +789,11 @@ if build 'gcc-13' '13.1.0'; then
         --prefix="$gcc_install_dir" \
         --{build,host,target}=x86_64-pc-linux-gnu \
         --disable-{assembly,werror} \
-        --enable-{languages=all,plugin,threads=posix} \
-        --with-{gcc-major-version-only,libiconv-prefix="$libs_install_dir"} \
+        --enable-{bootstrap,plugin,threads=posix,languages=all} \
+        --with-{link-serialization=2,gcc-major-version-only,libiconv-prefix="$libs_install_dir"} \
         --with-{system-zlib,target-system-zlib=auto,tune=generic} \
-        --without-{cuda-driver,included-gettext} \
+        "$cuda_check" \
+        --without-included-gettext \
         --program-{prefix=x86_64-pc-linux-gnu-,suffix=-13}
     echo '$ This is going to take a while...'
     execute make "-j$cpu_threads"
