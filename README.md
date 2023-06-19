@@ -39,10 +39,6 @@ bash <(curl -sSL https://download.optimizethis.net)
 ```bash
 bash <(curl -sSL https://gcc.optimizethis.net)
 ```
-#### Mult arch/lib Build
-```bash
-bash <(curl -sSL https://gcc-multilib.optimizethis.net)
-```
 
 ## Install [7-Zip](www.7-zip.org/download.html)
   - **Auto installs based on your os architecture. No user input required.**
