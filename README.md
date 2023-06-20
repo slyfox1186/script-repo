@@ -41,16 +41,12 @@ bash <(curl -sSL https://gcc.optimizethis.net)
 ```
 
 ## Install [7-Zip](www.7-zip.org/download.html)
-  - **Auto installs based on your os architecture. No user input required.**
+  - **Auto installs based on your os architecture. No user input is required.**
     - Linux x86/x64
     - ARM i386/x64
-### v21.00 Release
+### v23.01 Release
 ```bash
 bash <(curl -sSL https://7z.optimizethis.net)
-```
-### v23.00 Beta
-```bash
-bash <(curl -sSL https://7z-beta.optimizethis.net)
 ```
 ------
 
