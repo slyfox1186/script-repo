@@ -9,13 +9,14 @@
 ##
 ##  Supported OS: Linux Ubuntu - 22.04 (Jammy)
 ##
-##  Updated: 06.18.23
+##  Updated: 06.20.23
 ##
 ##  Script Version: 3.1
 ##
 ##  Added: Multiple support libraries using the latest versions available
 ##  Added: Custom LIBRARY_PATH variables for each version of GCC compiled
 ##  Added: 'all' as the list of languages to compile (autobuilds what it can)
+##  Fixed: Zstd issue
 ##
 ################################################################################
 
@@ -670,6 +671,7 @@ if build 'gperftools' "$g_ver"; then
 fi
 
 git_ver_fn 'facebook/zstd' '1' 'R'
+g_ver="${g_ver#Zstandard v}"
 if build 'zstd' "$g_ver"; then
     download "https://github.com/facebook/zstd/releases/download/v$g_ver/zstd-$g_ver.tar.gz"
     cd build/meson || exit 1
