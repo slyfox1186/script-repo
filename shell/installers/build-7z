@@ -21,7 +21,7 @@ clear
 #
 
 script_ver='1.1'
-version='7z2201'
+version='7z2301'
 tar_file="$version.tar.xz"
 cwd="$PWD"/7zip-build-script
 packages="$cwd"/packages
