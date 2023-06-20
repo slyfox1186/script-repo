@@ -1,11 +1,3 @@
-#shellcheck disable=SC2162,SC1091,SC2317
-
-#########################################
-## SET SUDO TO RUN AS THE CURRENT USER ##
-#########################################
-
-#sudo() { eval $(which sudo) -H -u root "$@"; }
-
 ##################################################################################
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 ##################################################################################
@@ -884,43 +876,114 @@ hw_mon()
 ## 7ZIP COMMANDS ##
 ###################
 
-# create a max compressed settings tar.gz file
+# CREATE A GZ FILE WITH MAX COMPRESSION SETTINGS
 7z_gz()
 {
-    clear
-
     local source output
-
-    read -p 'Please enter the source folder path: ' source
-    echo
-    read -p 'Please enter the destination archive path (w/o extension): ' output
     clear
 
-    if [ ! -f "$output".tar.gz ]; then
-        sudo rm "$output".tar.gz
+    if [ -n "$1" ]; then
+        7z a -ttar -so -an "$1" | 7z a -tgz -mx9 -mpass1 -si "$1".tar.gz
+    else
+        read -p 'Please enter the source folder path: ' source
+        echo
+        read -p 'Please enter the destination archive path (w/o extension): ' output
+        clear
+        if [ ! -f "$output".tar.gz ]; then
+            sudo rm "$output".tar.gz
+        fi
+        7z a -ttar -so -an "$source" | 7z a -tgz -mx9 -mpass1 -si "$output".tar.gz
     fi
-
-    7z a -ttar -so -an "$source" | 7z a -mx9 -mpass1 -si "$output".tar.gz
-
 }
 
-# create a max compressed settings 7z file
+# CREATE A XZ FILE WITH MAX COMPRESSION SETTINGS USING 7ZIP
+7z_xz()
+{
+    local source output
+    clear
+
+    if [ -n "$1" ]; then
+        7z a -ttar -so -an "$1" | 7z a -txz -mx9 -si "$1".tar.xz
+    else
+        read -p 'Please enter the source folder path: ' source
+        echo
+        read -p 'Please enter the destination archive path (w/o extension): ' output
+        clear
+        if [ ! -f "$output".tar.gz ]; then
+            sudo rm "$output".tar.gz
+        fi
+        7z a -ttar -so -an "$source" | 7z a -txz -mx9 -si "$output".tar.xz
+    fi
+}
+
+# CREATE A 7ZIP FILE WITH MAX COMPRESSION SETTINGS
 7z_7z()
 {
-    clear
-
     local source output
-
-    read -p 'Please enter the source folder path: ' source
-    echo
-    read -p 'Please enter the destination archive path (w/o extension): ' output
     clear
 
-    if [ ! -f "$output".7z ]; then
-        sudo rm "$output".7z
+    if [ -n "$1" ]; then
+        7z a -t7z -m0=lzma2 -mx9 "$1".7z ./"$1"/*
+    else
+        read -p 'Please enter the source folder path: ' source
+        echo
+        read -p 'Please enter the destination archive path (w/o extension): ' output
+        clear
+        if [ ! -f "$output".7z ]; then
+            sudo rm "$output".7z
+        fi
+        7z a -t7z -m0=lzma2 -mx9 "$output".7z ./"$source"/*
     fi
+}
 
-    7z a -t7z -m0=lzma2 -mx9 "$output".7z ./"$source"/*
+##################
+## TAR COMMANDS ##
+##################
+
+# CREATE A GZ FILE USING TAR COMMAND
+tar_gz()
+{
+    local source output
+    clear
+
+    if [ -n "$1" ]; then
+        if [ ! -f "$1".tar.gz ]; then
+            sudo rm "$1".tar.gz
+        fi
+        tar -cJf "$1".tar.gz "$1"
+    else
+        read -p 'Please enter the source folder path: ' source
+        echo
+        read -p 'Please enter the destination archive path (w/o extension): ' output
+        clear
+        if [ ! -f "$output".tar.gz ]; then
+            sudo rm "$output".tar.gz
+        fi
+        tar -cJf "$output".tar.gz "$source"
+    fi
+}
+
+# CREATE A XZ FILE USING TAR COMMAND
+tar_xz()
+{
+    local source output
+    clear
+
+    if [ -n "$1" ]; then
+        if [ ! -f "$1".tar.xz ]; then
+            sudo rm "$1".tar.xz
+        fi
+        tar -cJf "$1".tar.xz "$1"
+    else
+        read -p 'Please enter the source folder path: ' source
+        echo
+        read -p 'Please enter the destination archive path (w/o extension): ' output
+        clear
+        if [ ! -f "$output".tar.xz ]; then
+            sudo rm "$output".tar.xz
+        fi
+        tar -cJf "$output".tar.xz "$source"
+    fi
 }
 
 #####################
