@@ -11,7 +11,7 @@
 ##
 ##  Updated: 06.20.23
 ##
-##  Script Version: 3.1
+##  Script Version: 3.2
 ##
 ##  Added: Multiple support libraries using the latest versions available
 ##  Added: Custom LIBRARY_PATH variables for each version of GCC compiled
@@ -31,7 +31,7 @@ fi
 # CREATE SCRIPT VARIABLES
 #
 
-script_ver='3.1'
+script_ver='3.2'
 cwd="$PWD"/gcc-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
