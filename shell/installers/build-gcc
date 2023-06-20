@@ -414,6 +414,8 @@ build()
     return 0
 }
 
+curl_timeout=10
+
 git_1_fn()
 {
     local curl_cmd github_repo github_url g_sver
@@ -423,10 +425,10 @@ git_1_fn()
     github_url="$2"
 
     if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
-        g_sver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
-        g_tag="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null)"
-        g_ver="${g_tag#v}"
-        g_ver="${g_sver#v}"
+        g_ver1="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
+        g_ver2="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null)"
+        g_ver="${g_ver1#v}"
+        g_ver="${g_ver2#v}"
     fi
 }
 
