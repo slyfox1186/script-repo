@@ -15,6 +15,7 @@
 ##
 ##  Added: Multiple support libraries using the latest versions available
 ##  Added: Custom LIBRARY_PATH variables for each version of GCC compiled
+##  Added: 'all' as the list of languages to compile (autobuilds what it can)
 ##
 ################################################################################
 
