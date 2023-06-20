@@ -16,7 +16,7 @@
 ##  Added: Multiple support libraries using the latest versions available
 ##  Added: Custom LIBRARY_PATH variables for each version of GCC compiled
 ##  Added: 'all' as the list of languages to compile (autobuilds what it can)
-##  Fixed: zstd and zlib build issue
+##  Fixed: zstdn zlib, and bison build issue
 ##
 ################################################################################
 
@@ -45,7 +45,7 @@ LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/local/cuda-12.1/targets/x86_64-lin
 LDFLAGS+=' -L/usr/lib/gcc/x86_64-linux-gnu/12/adalib -L/lib/x86_64-linux-gnu -L/lib -L/usr/x86_64-linux-gnux32/lib'
 repo='https://github.com/slyfox1186/script-repo'
 # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
-debug=OFF
+debug=ON
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -422,7 +422,7 @@ git_1_fn()
     github_repo="$1"
     github_url="$2"
 
-    if curl_cmd="$(curl -m 10 -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_sver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_tag="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null)"
         g_ver="${g_tag#v}"
@@ -691,17 +691,6 @@ if build 'zlib' "$g_ver"; then
     execute sudo make install
     execute make distclean
     build_done 'zlib' "$g_ver"
-fi
-
-if build 'bison' 'git'; then
-    download_git 'https://github.com/akimd/bison.git'
-    execute git submodule update --init
-    execute ./bootstrap --bootstrap-sync
-    execute ./configure --prefix="$libs_install_dir"
-    execute make "-j$cpu_threads"
-    execute sudo make install
-    execute make distclean
-    build_done 'bison' 'git'
 fi
 
 if build 'binutils' '2.40'; then
