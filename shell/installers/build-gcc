@@ -729,7 +729,7 @@ if build 'gcc-11' '11.4.0'; then
         --prefix="$gcc_install_dir" \
         --{build,host,target}=x86_64-pc-linux-gnu \
         --disable-{assembly,werror} \
-        --enable-{bootstrap,plugin,threads=posix,languages='c,c++,d,fortran,go,objc,obj-c++'} \
+        --enable-{bootstrap,plugin,threads=posix,languages=all} \
         --with-{link-serialization=2,gcc-major-version-only,libiconv-prefix="$libs_install_dir"} \
         --with-{system-zlib,target-system-zlib=auto,tune=generic} \
         "$cuda_check" \
@@ -759,7 +759,7 @@ if build 'gcc-12' '12.3.0'; then
         --prefix="$gcc_install_dir" \
         --{build,host,target}=x86_64-pc-linux-gnu \
         --disable-{assembly,werror} \
-        --enable-{bootstrap,plugin,threads=posix,languages='c,c++,d,fortran,go,objc,obj-c++'} \
+        --enable-{bootstrap,plugin,threads=posix,languages=all} \
         --with-{link-serialization=2,gcc-major-version-only,libiconv-prefix="$libs_install_dir"} \
         --with-{system-zlib,target-system-zlib=auto,tune=generic} \
         "$cuda_check" \
