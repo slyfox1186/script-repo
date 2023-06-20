@@ -15,7 +15,7 @@
 ##
 ##  Added: Multiple support libraries using the latest versions available
 ##  Added: Custom LIBRARY_PATH variables for each version of GCC compiled
-##  Added: 'all' as the list of languages to compile (autobuilds what it can)
+##  Added: 'all' as the list of languages to compile (builds all that it can)
 ##  Fixed: zstdn, zlib, and bison build issues
 ##
 ################################################################################
@@ -353,12 +353,12 @@ download()
     if [ -n "$3" ]; then
         if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
             sudo rm "$target_file"
-            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please run the script again."
+            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please rerun the script."
         fi
     else
         if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
             sudo rm "$target_file"
-            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please run the script again."
+            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please rerun the script."
         fi
     fi
 
@@ -389,7 +389,7 @@ download_git()
             fail_fn "The script failed to clone \"$target_dir\" twice and will now exit the build."
         fi
     else
-        echo -e "Succesfully cloned: $target_dir\\n"
+        echo -e "Successfully cloned: $target_dir\\n"
     fi
 
     cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
@@ -414,8 +414,6 @@ build()
     return 0
 }
 
-curl_timeout=10
-
 git_1_fn()
 {
     local curl_cmd github_repo github_url g_sver
@@ -424,7 +422,7 @@ git_1_fn()
     github_repo="$1"
     github_url="$2"
 
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
+    if curl_cmd="$(curl -m 10 -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver1="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_ver2="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null)"
         g_ver="${g_ver1#v}"
@@ -806,7 +804,7 @@ sudo ldconfig 2>/dev/null
 # SHOW THE NEWLY INSTALLED VERSION OF EACH PACKAGE
 show_ver_fn
 
-# PROMPT THE USER TO CLEANUP THE BUILD FILES
+# PROMPT THE USER TO CLEAN UP THE BUILD FILES
 cleanup_fn
 
 # SHOW THE EXIT MESSAGE
