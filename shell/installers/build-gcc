@@ -16,7 +16,7 @@
 ##  Added: Multiple support libraries using the latest versions available
 ##  Added: Custom LIBRARY_PATH variables for each version of GCC compiled
 ##  Added: 'all' as the list of languages to compile (autobuilds what it can)
-##  Fixed: Zstd issue
+##  Fixed: zstd and zlib build issue
 ##
 ################################################################################
 
@@ -683,6 +683,7 @@ if build 'zstd' "$g_ver"; then
 fi
 
 git_ver_fn 'madler/zlib' '1' 'R'
+g_ver="${g_ver#zlib }"
 if build 'zlib' "$g_ver"; then
     download "https://github.com/madler/zlib/releases/download/v$g_ver/zlib-$g_ver.tar.gz" "zlib-$g_ver.tar.gz"
     execute ./configure --prefix="$libs_install_dir"
