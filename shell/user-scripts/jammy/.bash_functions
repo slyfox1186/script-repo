@@ -883,13 +883,16 @@ hw_mon()
     clear
 
     if [ -n "$1" ]; then
+        if [ -f "$1".tar.gz ]; then
+            sudo rm "$1".tar.gz
+        fi
         7z a -ttar -so -an "$1" | 7z a -tgz -mx9 -mpass1 -si "$1".tar.gz
     else
         read -p 'Please enter the source folder path: ' source
         echo
         read -p 'Please enter the destination archive path (w/o extension): ' output
         clear
-        if [ ! -f "$output".tar.gz ]; then
+        if [ -f "$output".tar.gz ]; then
             sudo rm "$output".tar.gz
         fi
         7z a -ttar -so -an "$source" | 7z a -tgz -mx9 -mpass1 -si "$output".tar.gz
@@ -903,14 +906,17 @@ hw_mon()
     clear
 
     if [ -n "$1" ]; then
+        if [ -f "$1".tar.xz ]; then
+            sudo rm "$1".tar.xz
+        fi
         7z a -ttar -so -an "$1" | 7z a -txz -mx9 -si "$1".tar.xz
     else
         read -p 'Please enter the source folder path: ' source
         echo
         read -p 'Please enter the destination archive path (w/o extension): ' output
         clear
-        if [ ! -f "$output".tar.gz ]; then
-            sudo rm "$output".tar.gz
+        if [ -f "$output".tar.xz ]; then
+            sudo rm "$output".tar.xz
         fi
         7z a -ttar -so -an "$source" | 7z a -txz -mx9 -si "$output".tar.xz
     fi
@@ -923,13 +929,16 @@ hw_mon()
     clear
 
     if [ -n "$1" ]; then
+        if [ -f "$1".7z ]; then
+            sudo rm "$1".7z
+        fi
         7z a -t7z -m0=lzma2 -mx9 "$1".7z ./"$1"/*
     else
         read -p 'Please enter the source folder path: ' source
         echo
         read -p 'Please enter the destination archive path (w/o extension): ' output
         clear
-        if [ ! -f "$output".7z ]; then
+        if [ -f "$output".7z ]; then
             sudo rm "$output".7z
         fi
         7z a -t7z -m0=lzma2 -mx9 "$output".7z ./"$source"/*
@@ -947,7 +956,7 @@ tar_gz()
     clear
 
     if [ -n "$1" ]; then
-        if [ ! -f "$1".tar.gz ]; then
+        if [ -f "$1".tar.gz ]; then
             sudo rm "$1".tar.gz
         fi
         tar -cJf "$1".tar.gz "$1"
@@ -956,7 +965,7 @@ tar_gz()
         echo
         read -p 'Please enter the destination archive path (w/o extension): ' output
         clear
-        if [ ! -f "$output".tar.gz ]; then
+        if [ -f "$output".tar.gz ]; then
             sudo rm "$output".tar.gz
         fi
         tar -cJf "$output".tar.gz "$source"
@@ -970,7 +979,7 @@ tar_xz()
     clear
 
     if [ -n "$1" ]; then
-        if [ ! -f "$1".tar.xz ]; then
+        if [ -f "$1".tar.xz ]; then
             sudo rm "$1".tar.xz
         fi
         tar -cJf "$1".tar.xz "$1"
@@ -979,7 +988,7 @@ tar_xz()
         echo
         read -p 'Please enter the destination archive path (w/o extension): ' output
         clear
-        if [ ! -f "$output".tar.xz ]; then
+        if [ -f "$output".tar.xz ]; then
             sudo rm "$output".tar.xz
         fi
         tar -cJf "$output".tar.xz "$source"
