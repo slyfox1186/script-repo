@@ -830,7 +830,7 @@ pkgs_fn()
         'Installing the required APT packages' \
         '=============================================='
 
-    pkgs=("$1" ant asciidoc autoconf automake autopoint binutils bison build-essential cargo ccache checkinstall clang curl
+    pkgs=("$1" ant asciidoc autoconf automake autopoint binutils bison build-essential cargo ccache checkinstall clang cmake curl
           doxygen fcitx-libs-dev flex freeglut3-dev gawk gettext git gnome-desktop-testing gnustep-gui-runtime google-perftools
           gperf gtk-doc-tools guile-3.0-dev help2man jq junit libasound2-dev libaudio-dev libavfilter-dev libbz2-dev libc6 libc6-dev
           libcairo2-dev libcdio-paranoia-dev libcrypto++-dev libcurl4-openssl-dev libdbus-1-dev libdevil-dev libdmalloc-dev libdrm-dev
