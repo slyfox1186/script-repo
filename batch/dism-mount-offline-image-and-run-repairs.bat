@@ -8,19 +8,15 @@ TITLE REPAIR WINDOWS USING AN OFFLINE IMAGE
 REM Created by: SlyFox1186
 REM Pastebin: https://pastebin.com/u/slyfox1186
 
-REM THIS SCRIPT WILL HELP YOU REPAIR WINDOWS WHILE
-REM ALSO LIMITING THE INTERNET'S ACCESS BY USING AN
+REM THIS SCRIPT WILL HELP YOU REPAIR WINDOWS
+REM WHILE ALSO LIMITING THE INTERNET'S ACCESS BY USING AN
 REM OFFLINE MOUNTED IMAGE OF WINDOWS.
 
 REM BEFORE RUNNING THIS SCRIPT LOCATE AND PLACE EITHER
 REM "install.wim” or “install.esd" IN THE SAME FOLDER AS THIS SCRIPT.
 REM THE FILES CAN BE FOUND INSIDE A WINDOWS ".ISO" FILE.
-
 REM IT IS HIGHLY RECOMMENDED THAT YOU USE THE LATEST ISO FILE AVAILABLE
 REM WHEN SOURCING THE ESD OR WIM FILES MENTIONED ABOVE.
-
-REM WIN 10 ISO DOWNLOAD: https://www.microsoft.com/en-us/software-download/windows10
-REM WIN 11 ISO DOWNLOAD: https://www.microsoft.com/software-download/windows11
 
 :------------------------------------------------------------------------------------------------------------------------
 
@@ -75,10 +71,10 @@ DISM /Get-ImageInfo /ImageFile:"%ESD%"
 ECHO=
 SET /P "INDEX=Please select an index number from the list above that matches your Windows version: "
 IF "%INDEX%" LSS "1" (
-	ECHO Please enter an acceptable value that matches your Windows version...
-	ECHO=
-	PAUSE
-	GOTO RETRY1
+    ECHO Please enter an acceptable value that matches your Windows version...
+    ECHO=
+    PAUSE
+    GOTO RETRY1
 )
 CLS
 ECHO Creating: "%FLAG_01%"
@@ -139,17 +135,17 @@ CHOICE /C 1234 /N & CLS
 IF ERRORLEVEL 4 EXIT
 IF ERRORLEVEL 3 GOTO RUN_REPAIRS
 IF ERRORLEVEL 2 (
-	DISM /Unmount-Image /MountDir:"%ROOT%" /Discard
-	RD /S /Q "%ROOT%" >NUL
-	GOTO :EOF
+    DISM /Unmount-Image /MountDir:"%ROOT%" /Discard
+    RD /S /Q "%ROOT%" >NUL
+    GOTO :EOF
     )
 )
 IF ERRORLEVEL 1 (
     IF NOT EXIST "%ROOT%" MD "%ROOT%"
-	DISM /Mount-Image /ImageFile:"%FTYPE%" /Index:"%INDEX%" /MountDir:"%ROOT%
+    DISM /Mount-Image /ImageFile:"%FTYPE%" /Index:"%INDEX%" /MountDir:"%ROOT%
     ECHO=
     TIMEOUT 2 >NUL
-	GOTO :EOF
+    GOTO :EOF
 )
 
 :------------------------------------------------------------------------------------------------
@@ -159,19 +155,19 @@ IF ERRORLEVEL 1 (
 REM REPAIR WINDOWS USING THE MOUNTED OFFLINE IMAGE
 
 IF EXIST "%MDIR%" (
-	DISM /Online /Cleanup-Image /RestoreHealth /StartComponentCleanup
-	ECHO=
-	DISM /Online /Cleanup-Image /RestoreHealth /Source:"%MDIR%" /LimitAccess
-	ECHO=
-	SFC /SCANNOW
-	ECHO=
-	SFC /SCANNOW
+    DISM /Online /Cleanup-Image /RestoreHealth /StartComponentCleanup
     ECHO=
-    ECHO REPAIRS ARE COMPLETE! & ECHO=
+    DISM /Online /Cleanup-Image /RestoreHealth /Source:"%MDIR%" /LimitAccess
+    ECHO=
+    SFC /SCANNOW
+    ECHO=
+    SFC /SCANNOW
+    ECHO=
+    ECHO REPAIRS COMPLETE! & ECHO=
     PAUSE
-	GOTO :EOF
+    GOTO :EOF
   ) ELSE (
-	ECHO YOU MUST MOUNT THE IMAGE BEFORE RUNNING REPAIRS... & ECHO=
-	PAUSE
-	GOTO RETRY3
+    ECHO YOU MUST MOUNT THE IMAGE BEFORE RUNNING REPAIRS... & ECHO=
+    PAUSE
+    GOTO RETRY3
 )
