@@ -17,7 +17,6 @@
 ##  Added: custom LIBRARY_PATH variables for each version of GCC
 ##  Added: link time optimization support
 ##  Added: gmp support library for binutils
-##  Added: the latest version of libtasn1 (address sanitizer)
 ##
 ##  Fixed: zstdn, zlib, and bison build issues.
 ##
@@ -499,7 +498,7 @@ box_out_banner "GCC Build Script: v$script_ver"
 
 pkgs=(autoconf autogen automake bison build-essential ccache curl dejagnu flex gcc-11-base gcc-multilib
       gdc gdc-multilib gfortran gfortran-multilib git gnulib guile-3.0-dev help2man jq libacl1-dev
-      libadacgi4-dev libdebuginfod-dev libdmalloc-dev libeigen3-dev libffi-dev libfontconfig1-dev
+      libadacgi4-dev libasan8 libdebuginfod-dev libdmalloc-dev libeigen3-dev libffi-dev libfontconfig1-dev
       libfreetype6 libgcc-11-dev libgd-dev libgm2-11-dev libgm2-12-dev libgm2-15 libgmp-dev libicu-dev
       libintl-perl libjpeg-dev libltdl-dev libmpc-dev libmpfr-dev libphobos2-ldc-shared-dev libpng-dev
       libquadmath0 libsigsegv-dev libsqlite3-dev libssl-dev libstdc++-12-dev libunwind-dev libx11-dev
@@ -551,8 +550,8 @@ fi
 # SET THE C & C++ COMPILERS
 #
 
-export CC='gcc'
-export CXX='g++'
+export CC=gcc
+export CXX=g++
 export CFLAGS='-g -O3 -march=native'
 export CXXFLAGS='-g -O3 -march=native'
 
@@ -567,7 +566,7 @@ if [ -f /usr/include/asm-generic ]; then
 fi
 
 #
-# CHECK IF THE CUDA SDK TOOLKIT IS INSTALLED
+# IF THE CUDA SDK TOOLKIT IS INSTALLED ENABLE IT WHEN BUILDING GCC
 #
 
 iscuda="$(sudo find /usr/local/ -type f -name nvcc)"
@@ -584,7 +583,7 @@ fi
 if build 'm4' 'latest'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
     execute ./configure --prefix="$workspace" --enable-{c++,threads=posix} \
-        --disable-{nls,gcc-warnings} --with-{dmalloc,libintl-prefix=/usr}
+        --disable-{gcc-warnings,nls} --with-{dmalloc,libintl-prefix=/usr}
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
@@ -736,17 +735,6 @@ if build 'zlib' "$g_ver"; then
     execute sudo make install
     execute make distclean
     build_done 'zlib' "$g_ver"
-fi
-
-if build 'libtasn1' '4.19.0'; then
-    download 'https://ftp.gnu.org/gnu/libtasn1/libtasn1-4.19.0.tar.gz'
-    execute autoreconf -fi
-    execute ./configure --prefix=/usr/local --disable-{doc,shared}
-    execute make "-j$cpu_threads"
-    execute sudo make install
-    execute "$workspace"/bin/libtool --finish "$workspace"/lib
-    execute make clean
-    build_done 'libtasn1' '4.19.0'
 fi
 
 if build 'autoconf-v269' '2.69'; then
