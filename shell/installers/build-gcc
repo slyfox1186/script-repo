@@ -7,23 +7,24 @@
 ##
 ##  Install: GCC 11.4.0 /  12.3.0 / 13.1.0
 ##
-##  Supported OS: Linux Ubuntu - 22.04 (Jammy)
+##  Supported OS: Linux Ubuntu Jammy (22.04.02)
 ##
 ##  Updated: 06.21.23
 ##
-##  Script Version: 3.5
+##  Script Version: 3.6
 ##
-##  Added: Multiple support libraries using the latest versions available
-##  Added: Custom LIBRARY_PATH variables for each version of GCC compiled
+##  Added: multiple support libraries using the latest versions available
+##  Added: custom LIBRARY_PATH variables for each version of GCC
 ##  Added: link time optimization support
 ##  Added: gmp support library for binutils
+##  Added: the latest version of libtasn1 (address sanitizer)
 ##
 ##  Fixed: zstdn, zlib, and bison build issues.
 ##
-##  Changed: The language support to 'all' for each gcc build so it will build all languages
+##  Changed: the language support to 'all' for each gcc build so it will build all languages
 ##           that it finds available.
-##  Changed: The default install directory for the GNU libs to "$workspace" to help avoid
-##           future overlap with any APT packages that may be installed.
+##  Changed: the default install directory for the GNU libs to "$workspace" to help avoid
+##           future overlaps with APT packages that may be installed.
 ##
 ################################################################################################
 
@@ -51,7 +52,7 @@ LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/local/cuda-12.1/targets/x86_64-lin
 LDFLAGS+=' -L/usr/lib/gcc/x86_64-linux-gnu/12/adalib -L/lib/x86_64-linux-gnu -L/lib -L/usr/x86_64-linux-gnux32/lib'
 repo='https://github.com/slyfox1186/script-repo'
 # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
-debug=ON
+debug=OFF
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -359,12 +360,12 @@ download()
     if [ -n "$3" ]; then
         if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
             sudo rm "$target_file"
-            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please run the script again."
+            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please rerun the script."
         fi
     else
         if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
             sudo rm "$target_file"
-            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please run the script again."
+            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please rerun the script."
         fi
     fi
 
@@ -395,7 +396,7 @@ download_git()
             fail_fn "The script failed to clone \"$target_dir\" twice and will now exit the build."
         fi
     else
-        echo -e "Succesfully cloned: $target_dir\\n"
+        echo -e "Successfully cloned: $target_dir\\n"
     fi
 
     cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
@@ -428,7 +429,7 @@ git_1_fn()
     github_repo="$1"
     github_url="$2"
 
-    if curl_cmd="$(curl -m 10 -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
+    if curl_cmd="$(curl -m 10 --request GET -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver1="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_ver2="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null)"
         g_ver="${g_ver1#v}"
@@ -611,7 +612,7 @@ if build 'libtool' '2.4.6'; then
     build_done 'libtool' '2.4.6'
 fi
 
-# The latest bison requrires autoconf v2.71 to compile but GCC requires v2.69 which is why autoconf is built twice.
+# The latest bison requires autoconf v2.71 to compile but GCC requires v2.69 which is why autoconf is built twice.
 if build 'autoconf-v271' '2.71'; then
     download 'https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.xz'
     execute ./configure --prefix="$workspace" M4="$workspace"/bin/m4
@@ -625,28 +626,29 @@ if build 'bison' 'git'; then
     download_git 'https://github.com/akimd/bison.git'
     execute git submodule update --init
     execute ./bootstrap
-    execute ./configure --prefix="$workspace" --disable-nls --enable-threads=posix \
-        M4="$workspace"/bin/m4
+    execute ./configure --prefix="$workspace" --disable-nls --enable-threads=posix M4="$workspace"/bin/m4
     execute make "-j$cpu_threads"
     execute sudo make install
     execute make distclean
     build_done 'bison' 'git'
 fi
 
-if build 'autoconf-v269' '2.69'; then
-    download 'https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.xz'
-    execute ./configure --prefix="$workspace" M4="$workspace"/bin/m4
+if build 'gettext' '0.21.1'; then
+    download 'https://ftp.gnu.org/gnu/gettext/gettext-0.22.tar.xz'
+    execute autoreconf -fi
+    execute ./configure --prefix=/usr/local --disable-{nls,shared} --enable-{static,threads=posix} \
+        --with-libintl-prefix=/usr
     execute make "-j$cpu_threads"
-    execute make install
+    execute sudo make install
     execute make distclean
-    build_done 'autoconf-v269' '2.69'
+    build_done 'gettext' '0.21.1'
 fi
 
 if build 'libiconv' '1.17'; then
     download 'https://ftp.gnu.org/gnu/libiconv/libiconv-1.17.tar.gz'
     execute ./configure --prefix="$workspace" --disable-{nls,shared} --enable-static
     execute make "-j$cpu_threads"
-    execute sudo make uninstall
+    execute sudo make install
     execute make distclean
     execute "$workspace"/bin/libtool --finish "$workspace"/lib
     build_done 'libiconv' '1.17'
@@ -661,16 +663,6 @@ if build 'diffutils' '3.9'; then
     execute make install
     execute make distclean
     build_done 'diffutils' '3.9'
-fi
-
-if build 'gettext' '0.21.1'; then
-    download 'https://gcc.gnu.org/pub/gcc/infrastructure/gettext-0.21.1.tar.gz'
-    execute ./configure --prefix=/usr/local --disable-{nls,shared} --enable-{static,threads=posix} \
-        --with-libintl-prefix=/usr
-    execute make "-j$cpu_threads"
-    execute sudo make install
-    execute make distclean
-    build_done 'gettext' '0.21.1'
 fi
 
 if build 'attr' '2.5.1'; then
@@ -695,6 +687,7 @@ fi
 
 if build 'gmp' '6.2.1'; then
     download 'https://ftp.gnu.org/gnu/gmp/gmp-6.2.1.tar.xz'
+    execute autoreconf -fi
     execute ./configure --prefix="$workspace" --disable-shared --enable-cxx M4="$workspace"/bin/m4
     execute make "-j$cpu_threads"
     execute sudo make install
@@ -704,6 +697,7 @@ fi
 
 if build 'isl' '0.24'; then
     download 'https://gcc.gnu.org/pub/gcc/infrastructure/isl-0.24.tar.bz2'
+    execute autoreconf -fi
     execute ./configure --prefix=/usr/local --disable-shared --with-gmp-prefix="$workspace"
     execute make "-j$cpu_threads"
     execute sudo make install
@@ -744,8 +738,29 @@ if build 'zlib' "$g_ver"; then
     build_done 'zlib' "$g_ver"
 fi
 
+if build 'libtasn1' '4.19.0'; then
+    download 'https://ftp.gnu.org/gnu/libtasn1/libtasn1-4.19.0.tar.gz'
+    execute autoreconf -fi
+    execute ./configure --prefix=/usr/local --disable-{doc,shared}
+    execute make "-j$cpu_threads"
+    execute sudo make install
+    execute "$workspace"/bin/libtool --finish "$workspace"/lib
+    execute make clean
+    build_done 'libtasn1' '4.19.0'
+fi
+
+if build 'autoconf-v269' '2.69'; then
+    download 'https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.xz'
+    execute ./configure --prefix="$workspace" M4="$workspace"/bin/m4
+    execute make "-j$cpu_threads"
+    execute make install
+    execute make distclean
+    build_done 'autoconf-v269' '2.69'
+fi
+
 if build 'binutils' '2.40'; then
     download 'https://ftp.gnu.org/gnu/binutils/binutils-2.40.tar.xz'
+    execute autoreconf -fi
     execute ./configure --prefix="$workspace" --enable-{lto,year2038} \
         --with-{jdk=/usr/lib/jvm/java-11-openjdk-amd64,static-standard-libraries} \
         --with-{gmp="$workspace",mpc=/usr,mpfr=/usr,isl=/usr/local,zstd=/usr/local}
@@ -755,9 +770,6 @@ if build 'binutils' '2.40'; then
     execute make clean
     build_done 'binutils' '2.40'
 fi
-
-# GIVE LIB PERMISSIONS BACK TO THE USER BEFORE STARTING TO BUILD GCC
-sudo chown "$USER":"$USER" "$workspace"
 
 if build 'gcc-11' '11.4.0'; then
     source_libs_gcc11_fn
