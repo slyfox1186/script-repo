@@ -1,7 +1,7 @@
 #!/bin/bash
 # shellcheck disable=SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
 
-################################################################################
+################################################################################################
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
@@ -11,14 +11,20 @@
 ##
 ##  Updated: 06.20.23
 ##
-##  Script Version: 3.2
+##  Script Version: 3.4
 ##
 ##  Added: Multiple support libraries using the latest versions available
 ##  Added: Custom LIBRARY_PATH variables for each version of GCC compiled
-##  Added: 'all' as the list of languages to compile (builds all that it can)
-##  Fixed: zstdn, zlib, and bison build issues
+##  Added: link time optimization support
 ##
-################################################################################
+##  Fixed: zstdn, zlib, and bison build issues.
+##
+##  Changed: The language support to 'all' for each gcc build so it will build all languages
+##           that it finds available.
+##  Changed: The default install directory for the GNU libs to "$workspace" to help avoid
+##           future overlap with any APT packages that may be installed.
+##
+################################################################################################
 
 clear
 
@@ -31,17 +37,16 @@ fi
 # CREATE SCRIPT VARIABLES
 #
 
-script_ver='3.2'
+script_ver='3.4'
 cwd="$PWD"/gcc-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
-gcc_install_dir='/usr/local'
-libs_install_dir='/usr/local'
+install_dir='/usr/local'
 CFLAGS=' -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
-CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -I/usr/local/cuda-12.1/nvvm/include -I/usr/local/cuda/include"
+CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -I/usr/local/cuda/nvvm/include -I/usr/local/cuda/include"
 CPPFLAGS+=' -I/usr/include/x86_64-linux-gnu -I/usr/lib/gcc/x86_64-linux-gnu/8/include -I/usr/lib/gcc/x86_64-linux-gnu/9/include'
-LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/local/lib -L/usr/local/cuda-12.1/nvvm/lib64"
-LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/local/cuda-12.1/targets/x86_64-linux/lib -L/usr/share/ant/lib -L/usr/lib'
+LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/local/lib"
+LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/local/cuda/targets/x86_64-linux/lib -L/usr/share/ant/lib -L/usr/lib'
 LDFLAGS+=' -L/usr/lib/gcc/x86_64-linux-gnu/12/adalib -L/lib/x86_64-linux-gnu -L/lib -L/usr/x86_64-linux-gnux32/lib'
 repo='https://github.com/slyfox1186/script-repo'
 # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
@@ -153,19 +158,19 @@ show_ver_fn()
 {
     clear
 
-    if [ ! -f "$gcc_install_dir"/bin/gcc-11 ]; then
-        fail_fn "Could not find the file: $gcc_install_dir/bin/gcc-11"
-        elif [ ! -f "$gcc_install_dir"/bin/gcc-12 ]; then
-            fail_fn "Could not find the file: $gcc_install_dir/bin/gcc-12"
-            elif [ ! -f "$gcc_install_dir"/bin/gcc-13 ]; then
-                fail_fn "Could not find the file: $gcc_install_dir/bin/gcc-13"
+    if [ ! -f "$install_dir"/bin/gcc-11 ]; then
+        fail_fn "Could not find the file: $install_dir/bin/gcc-11"
+        elif [ ! -f "$install_dir"/bin/gcc-12 ]; then
+            fail_fn "Could not find the file: $install_dir/bin/gcc-12"
+            elif [ ! -f "$install_dir"/bin/gcc-13 ]; then
+                fail_fn "Could not find the file: $install_dir/bin/gcc-13"
     else
         printf "%s\n\n" 'The installed gcc versions are:'
-        sudo "$gcc_install_dir/bin/gcc-11" -v
+        sudo "$install_dir/bin/gcc-11" -v
         echo
-        sudo "$gcc_install_dir/bin/gcc-12" -v
+        sudo "$install_dir/bin/gcc-12" -v
         echo
-        sudo "$gcc_install_dir/bin/gcc-13" -v
+        sudo "$install_dir/bin/gcc-13" -v
         echo
     fi
 }
@@ -199,7 +204,7 @@ lib_path_other_fn()
     export LIBRARY_PATH
 }
 
-lib_path_gcc11_fn()
+source_libs_gcc11_fn()
 {
     LIBRARY_PATH="\
 /usr/x86_64-linux-gnu/lib/x86_64-linux-gnu/11:\
@@ -215,7 +220,7 @@ lib_path_gcc11_fn()
     lib_path_other_fn
 }
 
-lib_path_gcc12_fn()
+source_libs_gcc12_fn()
 {
     unset LIBRARY_PATH
     LIBRARY_PATH="\
@@ -232,7 +237,7 @@ lib_path_gcc12_fn()
     lib_path_other_fn
 }
 
-lib_path_gcc13_fn()
+source_libs_gcc13_fn()
 {
     unset LIBRARY_PATH
     LIBRARY_PATH="\
@@ -249,7 +254,7 @@ lib_path_gcc13_fn()
     lib_path_other_fn
 }
 
-link_gcc_13_fn()
+create_links_gcc_13_fn()
 {
     list=(x86_64-pc-linux-gnu-c++-13 x86_64-pc-linux-gnu-cpp-13 x86_64-pc-linux-gnu-g++-13
           x86_64-pc-linux-gnu-gcc-13 x86_64-pc-linux-gnu-gcc-ar-13 x86_64-pc-linux-gnu-gccgo-13
@@ -265,7 +270,7 @@ link_gcc_13_fn()
     done
 }
 
-link_gcc_12_fn()
+create_links_gcc_12_fn()
 {
     list=(x86_64-pc-linux-gnu-c++-12 x86_64-pc-linux-gnu-cpp-12 x86_64-pc-linux-gnu-g++-12
           x86_64-pc-linux-gnu-gcc-12 x86_64-pc-linux-gnu-gcc-ar-12 x86_64-pc-linux-gnu-gccgo-12
@@ -281,7 +286,7 @@ link_gcc_12_fn()
     done
 }
 
-link_gcc_11_fn()
+create_links_gcc_11_fn()
 {
     list=(x86_64-pc-linux-gnu-c++-11 x86_64-pc-linux-gnu-cpp-11 x86_64-pc-linux-gnu-g++-11
           x86_64-pc-linux-gnu-gcc-11 x86_64-pc-linux-gnu-gcc-ar-11 x86_64-pc-linux-gnu-gccgo-11
@@ -353,12 +358,12 @@ download()
     if [ -n "$3" ]; then
         if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
             sudo rm "$target_file"
-            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please rerun the script."
+            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please run the script again."
         fi
     else
         if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
             sudo rm "$target_file"
-            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please rerun the script."
+            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please run the script again."
         fi
     fi
 
@@ -389,7 +394,7 @@ download_git()
             fail_fn "The script failed to clone \"$target_dir\" twice and will now exit the build."
         fi
     else
-        echo -e "Successfully cloned: $target_dir\\n"
+        echo -e "Succesfully cloned: $target_dir\\n"
     fi
 
     cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
@@ -491,10 +496,10 @@ box_out_banner "GCC Build Script: v$script_ver"
 #
 
 pkgs=(autoconf autogen automake bison build-essential ccache curl dejagnu flex gcc-11-base gcc-multilib
-      gdc gdc-multilib gfortran gfortran-multilib git gnulib gperf guile-3.0-dev help2man jq libadacgi4-dev
+      gdc gdc-multilib gfortran gfortran-multilib git gnulib guile-3.0-dev help2man jq libadacgi4-dev
       libdebuginfod-dev libdmalloc-dev libeigen3-dev libffi-dev libfontconfig1-dev libfreetype6 libgcc-11-dev
-      libgd-dev libgm2-11-dev libgm2-12-dev libgm2-15 libgmp-dev libicu-dev libisl-dev libjpeg-dev libmpc-dev
-      libmpfr-dev libphobos2-ldc-shared-dev libpng-dev libquadmath0 libsqlite3-dev libssl-dev libunwind-dev
+      libgd-dev libgm2-11-dev libgm2-12-dev libgm2-15 libgmp-dev libicu-dev libjpeg-dev libmpc-dev libmpfr-dev
+      libphobos2-ldc-shared-dev libpng-dev libquadmath0 libsqlite3-dev libssl-dev libstdc++-12-dev libunwind-dev
       libx11-dev libx32gfortran-12-dev libxext-dev linux-libc-dev linux-libc-dev:i386 meson ninja-build
       openjdk-11-jdk-headless perl python3 ruby sphinx-common tcl-expect-dev tex-common texinfo)
 
@@ -543,12 +548,13 @@ fi
 # SET THE C & C++ COMPILERS
 #
 
-export CC=gcc CXX=g++
+export CC='gcc'
+export CXX='g++'
 export CFLAGS='-g -O3 -march=native'
 export CXXFLAGS='-g -O3 -march=native'
 
 #
-# CREATE SOFT LINKS
+# CREATE SOFT LINKS TO FIX LINKING BUGS
 #
 
 if [ -f /usr/include/asm-generic ]; then
@@ -574,58 +580,79 @@ fi
 
 if build 'm4' 'latest'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
-    execute ./configure --prefix="$libs_install_dir" --enable-c++ --with-dmalloc
+    execute ./configure --prefix="$workspace" --enable-c++ --with-dmalloc
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     execute make distclean
     build_done 'm4' 'latest'
-fi
-
-if build 'autoconf' '2.69'; then
-    download 'https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.xz'
-    execute ./configure --prefix="$workspace" M4="$libs_install_dir"/bin/m4
-    execute make "-j$cpu_threads"
-    execute sudo make install
-    execute make distclean
-    build_done 'autoconf' '2.69'
 fi
 
 if build 'automake' '1.16.5'; then
     download 'https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
     execute ./bootstrap
     execute autoreconf -fi
-    execute ./configure --prefix="$libs_install_dir"
+    execute ./configure --prefix="$workspace"
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     execute make distclean
     build_done 'automake' '1.16.5'
 fi
 
 if build 'libtool' '2.4.6'; then
     download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.6.tar.xz'
-    execute ./configure --prefix="$libs_install_dir" --disable-shared
+    execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     execute make distclean
     build_done 'libtool' '2.4.6'
 fi
 
-if build 'libiconv' '1.17'; then
-    download 'https://ftp.gnu.org/gnu/libiconv/libiconv-1.17.tar.gz'
-    execute ./configure --prefix="$libs_install_dir" --disable-shared
+# The latest bison requrires autoconf v2.71 to compile but GCC requires v2.69 which is why autoconf is built twice.
+if build 'autoconf-v271' '2.71'; then
+    download 'https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.xz'
+    execute ./configure --prefix="$workspace" M4="$workspace"/bin/m4
+    execute make "-j$cpu_threads"
+    execute make install
+    execute make distclean
+    build_done 'autoconf-v271' '2.71'
+fi
+
+if build 'bison' 'git'; then
+    download_git 'https://github.com/akimd/bison.git'
+    execute git submodule update --init
+    execute ./bootstrap
+    execute ./configure --prefix="$workspace"
     execute make "-j$cpu_threads"
     execute sudo make install
     execute make distclean
-    execute sudo libtool --finish "$libs_install_dir"/lib
+    build_done 'bison' 'git'
+fi
+
+if build 'autoconf-v269' '2.69'; then
+    download 'https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.xz'
+    execute ./configure --prefix="$workspace" M4="$workspace"/bin/m4
+    execute make "-j$cpu_threads"
+    execute make install
+    execute make distclean
+    build_done 'autoconf-v269' '2.69'
+fi
+
+if build 'libiconv' '1.17'; then
+    download 'https://ftp.gnu.org/gnu/libiconv/libiconv-1.17.tar.gz'
+    execute ./configure --prefix="$workspace" --disable-shared
+    execute make "-j$cpu_threads"
+    execute sudo make install
+    execute make distclean
+    execute "$workspace"/bin/libtool --finish "$workspace"/lib
     build_done 'libiconv' '1.17'
 fi
 
 if build 'diffutils' '3.9'; then
     download 'https://ftp.gnu.org/gnu/diffutils/diffutils-3.9.tar.xz'
     execute autoreconf -fi
-    execute ./configure --prefix="$libs_install_dir" --enable-{threads=posix,year2038} --disable-nls --with-libiconv-prefix="$libs_install_dir"
+    execute ./configure --prefix="$workspace" --disable-nls --enable-{threads=posix,year2038} --with-libiconv-prefix="$workspace"
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     execute make distclean
     build_done 'diffutils' '3.9'
 fi
@@ -633,7 +660,7 @@ fi
 if build 'attr' '2.5.1'; then
     download 'http://download.savannah.nongnu.org/releases/attr/attr-2.5.1.tar.xz'
     execute autoreconf -fi
-    execute ./configure --prefix="$libs_install_dir" --disable-shared --with-libiconv-prefix="$libs_install_dir"
+    execute ./configure --prefix="$workspace" --disable-shared --with-libiconv-prefix="$workspace"
     execute make "-j$cpu_threads"
     execute sudo make install
     execute make distclean
@@ -643,16 +670,16 @@ fi
 if build 'patch' '2.7.6'; then
     download 'https://ftp.gnu.org/gnu/patch/patch-2.7.6.tar.xz'
     execute autoreconf -fi
-    execute ./configure --prefix="$libs_install_dir"
+    execute ./configure --prefix="$workspace"
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     execute make distclean
     build_done 'patch' '2.7.6'
 fi
 
 if build 'isl' '0.24'; then
     download 'https://gcc.gnu.org/pub/gcc/infrastructure/isl-0.24.tar.bz2'
-    execute ./configure --prefix="$libs_install_dir"
+    execute ./configure --prefix=/usr/local
     execute make "-j$cpu_threads"
     execute sudo make install
     execute make distclean
@@ -663,7 +690,7 @@ git_ver_fn 'gperftools/gperftools' '1' 'R'
 g_ver="${g_ver//gperftools-/}"
 if build 'gperftools' "$g_ver"; then
     download "https://github.com/gperftools/gperftools/releases/download/gperftools-$g_ver/gperftools-$g_ver.tar.gz"
-    execute ./configure --prefix="$libs_install_dir"
+    execute ./configure --prefix=/usr/local
     execute make "-j$cpu_threads"
     execute sudo make install
     execute make distclean
@@ -675,8 +702,7 @@ g_ver="${g_ver#Zstandard v}"
 if build 'zstd' "$g_ver"; then
     download "https://github.com/facebook/zstd/releases/download/v$g_ver/zstd-$g_ver.tar.gz"
     cd build/meson || exit 1
-    execute meson setup build --prefix="$libs_install_dir" --libdir="$libs_install_dir"/lib \
-        --buildtype=release --default-library=static --strip
+    execute meson setup build --prefix=/usr/local --libdir=/usr/local/lib --buildtype=release --default-library=static --strip
     execute ninja "-j$cpu_threads" -C build
     execute sudo ninja "-j$cpu_threads" -C build install
     build_done 'zstd' "$g_ver"
@@ -685,8 +711,8 @@ fi
 git_ver_fn 'madler/zlib' '1' 'R'
 g_ver="${g_ver#zlib }"
 if build 'zlib' "$g_ver"; then
-    download "https://github.com/madler/zlib/releases/download/v$g_ver/zlib-$g_ver.tar.gz" "zlib-$g_ver.tar.gz"
-    execute ./configure --prefix="$libs_install_dir"
+    download "https://github.com/madler/zlib/releases/download/v$g_ver/zlib-$g_ver.tar.gz"
+    execute ./configure --prefix=/usr
     execute make "-j$cpu_threads"
     execute sudo make install
     execute make distclean
@@ -695,21 +721,22 @@ fi
 
 if build 'binutils' '2.40'; then
     download 'https://ftp.gnu.org/gnu/binutils/binutils-2.40.tar.xz'
-    execute ./configure --prefix="$libs_install_dir" --{build,host,target}=x86_64-pc-linux-gnu \
+    execute ./configure --prefix="$workspace" --{build,host,target}=x86_64-pc-linux-gnu \
         --with-{jdk=/usr/lib/jvm/java-11-openjdk-amd64,static-standard-libraries} \
-        --with-{isl="$libs_install_dir",gmp="$libs_install_dir",mpc="$libs_install_dir"} \
-        --with-{mpfr="$libs_install_dir",zstd="$libs_install_dir"} \
-        --enable-{lto,year2038} LD=/usr/bin/ld LD_FOR_TARGET=/usr/bin/ld \
-        CPPFLAGS='-I/usr/lib/jvm/java-11-openjdk-amd64/include'
+        --with-{gmp="$workspace",mpc="$workspace",mpfr="$workspace",isl=/usr/local,zstd=/usr/local} \
+        --enable-{lto,year2038}
     execute make "-j$cpu_threads"
     execute sudo make install
-    execute sudo sudo libtool --finish "$libs_install_dir"/lib
+    execute "$workspace"/bin/libtool --finish "$workspace"/lib
     execute make clean
     build_done 'binutils' '2.40'
 fi
 
+# GIVE LIB PERMISSIONS BACK TO THE USER BEFORE STARTING TO BUILD GCC
+sudo chown "$USER":"$USER" "$workspace"
+
 if build 'gcc-11' '11.4.0'; then
-    lib_path_gcc11_fn
+    source_libs_gcc11_fn
     download 'https://ftp.gnu.org/gnu/gcc/gcc-11.4.0/gcc-11.4.0.tar.xz'
     execute autoreconf -fi
     execute sudo ./contrib/download_prerequisites
@@ -718,28 +745,29 @@ if build 'gcc-11' '11.4.0'; then
     fi
     mkdir "$packages"/gcc-11.4.0-build
     cd "$packages"/gcc-11.4.0-build || exit 1
+    # On my PC (Jammy 22.04.02) lanauages=all results in lanauages=c,brig,c++,d,fortran,go,lto,objc,obj-c++
     execute ../gcc-11.4.0/configure \
-        --prefix="$gcc_install_dir" \
+        --prefix="$install_dir" \
         --{build,host,target}=x86_64-pc-linux-gnu \
-        --disable-{assembly,werror} \
-        --enable-{bootstrap,plugin,threads=posix,languages=all} \
-        --with-{link-serialization=2,gcc-major-version-only,libiconv-prefix="$libs_install_dir"} \
-        --with-{system-zlib,target-system-zlib=auto,tune=generic} \
+        --disable-{assembly,nls,target-isl,target-zlib,werror} \
+        --enable-{bootstrap,lto,plugin,checking=release,threads=posix,languages=all} \
+        --program-{prefix=x86_64-pc-linux-gnu-,suffix=-11} \
+        --with-{libiconv-prefix="$workspace",isl=/usr/local,zstd=/usr/local} \
+        --with-{link-serialization=2,gcc-major-version-only,system-zlib,target-system-zlib,tune=generic} \
         "$cuda_check" \
-        --without-included-gettext \
-        --program-{prefix=x86_64-pc-linux-gnu-,suffix=-11}
+        --without-included-gettext
     echo '$ This is going to take a while...'
     execute make "-j$cpu_threads"
     execute sudo make install-strip
-    execute sudo libtool --finish "$gcc_install_dir"/libexec/gcc/x86_64-pc-linux-gnu/11
-    execute sudo libtool --finish "$gcc_install_dir"/lib
+    execute "$workspace"/bin/libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/11
+    execute "$workspace"/bin/libtool --finish "$install_dir"/lib
     execute make distclean
-    link_gcc_11_fn
+    create_links_gcc_11_fn
     build_done 'gcc-11' '11.4.0'
 fi
 
 if build 'gcc-12' '12.3.0'; then
-    lib_path_gcc12_fn
+    source_libs_gcc12_fn
     download 'https://ftp.gnu.org/gnu/gcc/gcc-12.3.0/gcc-12.3.0.tar.xz'
     execute autoreconf -fi
     execute sudo ./contrib/download_prerequisites
@@ -748,28 +776,29 @@ if build 'gcc-12' '12.3.0'; then
     fi
     mkdir "$packages"/gcc-12.3.0-build
     cd "$packages"/gcc-12.3.0-build || exit 1
+    # On my PC (Jammy 22.04.02) lanauages=all results in lanauages=c,c++,d,fortran,go,lto,objc,obj-c++
     execute ../gcc-12.3.0/configure \
-        --prefix="$gcc_install_dir" \
+        --prefix="$install_dir" \
         --{build,host,target}=x86_64-pc-linux-gnu \
-        --disable-{assembly,werror} \
-        --enable-{bootstrap,plugin,threads=posix,languages=all} \
-        --with-{link-serialization=2,gcc-major-version-only,libiconv-prefix="$libs_install_dir"} \
-        --with-{system-zlib,target-system-zlib=auto,tune=generic} \
+        --disable-{assembly,nls,target-isl,target-zlib,werror} \
+        --enable-{bootstrap,lto,plugin,checking=release,threads=posix,languages=all} \
+        --program-{prefix=x86_64-pc-linux-gnu-,suffix=-12} \
+        --with-{libiconv-prefix="$workspace",isl=/usr/local,zstd=/usr/local} \
+        --with-{link-serialization=2,gcc-major-version-only,system-zlib,target-system-zlib,tune=generic} \
         "$cuda_check" \
-        --without-included-gettext \
-        --program-{prefix=x86_64-pc-linux-gnu-,suffix=-12}
+        --without-included-gettext
     echo '$ This is going to take a while...'
     execute make "-j$cpu_threads"
     execute sudo make install-strip
-    execute sudo libtool --finish "$gcc_install_dir"/libexec/gcc/x86_64-pc-linux-gnu/12
-    execute sudo libtool --finish "$gcc_install_dir"/lib
+    execute "$workspace"/bin/libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/12
+    execute "$workspace"/bin/libtool --finish "$install_dir"/lib
     execute make distclean
-    link_gcc_12_fn
+    create_links_gcc_12_fn
     build_done 'gcc-12' '12.3.0'
 fi
 
 if build 'gcc-13' '13.1.0'; then
-    lib_path_gcc13_fn
+    source_libs_gcc13_fn
     download 'https://ftp.gnu.org/gnu/gcc/gcc-13.1.0/gcc-13.1.0.tar.xz'
     execute autoreconf -fi
     execute sudo ./contrib/download_prerequisites
@@ -778,23 +807,24 @@ if build 'gcc-13' '13.1.0'; then
     fi
     mkdir "$packages"/gcc-13.1.0-build
     cd "$packages"/gcc-13.1.0-build || exit 1
+    # On my PC (Jammy 22.04.02) lanauages=all results in lanauages=c,c++,d,fortran,go,lto,m2,objc,obj-c++
     execute ../gcc-13.1.0/configure \
-        --prefix="$gcc_install_dir" \
+        --prefix="$install_dir" \
         --{build,host,target}=x86_64-pc-linux-gnu \
-        --disable-{assembly,werror} \
-        --enable-{bootstrap,plugin,threads=posix,languages=all} \
-        --with-{link-serialization=2,gcc-major-version-only,libiconv-prefix="$libs_install_dir"} \
-        --with-{system-zlib,target-system-zlib=auto,tune=generic} \
+        --disable-{assembly,nls,target-isl,target-zlib,werror} \
+        --enable-{bootstrap,lto,plugin,checking=release,threads=posix,languages=all} \
+        --program-{prefix=x86_64-pc-linux-gnu-,suffix=-13} \
+        --with-{libiconv-prefix="$workspace",isl=/usr/local,zstd=/usr/local} \
+        --with-{link-serialization=2,gcc-major-version-only,system-zlib,target-system-zlib,tune=generic} \
         "$cuda_check" \
-        --without-included-gettext \
-        --program-{prefix=x86_64-pc-linux-gnu-,suffix=-13}
+        --without-included-gettext
     echo '$ This is going to take a while...'
     execute make "-j$cpu_threads"
     execute sudo make install-strip
-    execute sudo libtool --finish "$gcc_install_dir"/libexec/gcc/x86_64-pc-linux-gnu/13
-    execute sudo libtool --finish "$gcc_install_dir"/lib
+    execute "$workspace"/bin/libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/13
+    execute "$workspace"/bin/libtool --finish "$install_dir"/lib
     execute make distclean
-    link_gcc_13_fn
+    create_links_gcc_13_fn
     build_done 'gcc-13' '13.1.0'
 fi
 
@@ -804,7 +834,7 @@ sudo ldconfig 2>/dev/null
 # SHOW THE NEWLY INSTALLED VERSION OF EACH PACKAGE
 show_ver_fn
 
-# PROMPT THE USER TO CLEAN UP THE BUILD FILES
+# PROMPT THE USER TO CLEANUP THE BUILD FILES
 cleanup_fn
 
 # SHOW THE EXIT MESSAGE
