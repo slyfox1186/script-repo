@@ -773,7 +773,7 @@ if build 'gcc-11' '11.4.0'; then
     execute ../gcc-11.4.0/configure \
         --prefix="$install_dir" \
         --{build,host,target}=x86_64-pc-linux-gnu \
-        --disable-{assembly,nls,target-isl,target-zlib,werror} \
+        --disable-{assembly,nls,target-zlib,werror} \
         --enable-{bootstrap,lto,plugin,checking=release,threads=posix,languages=all} \
         --program-{prefix=x86_64-pc-linux-gnu-,suffix=-11} \
         --with-{libiconv-prefix="$workspace",isl=/usr/local,zstd=/usr/local,link-serialization=2} \
@@ -804,7 +804,7 @@ if build 'gcc-12' '12.3.0'; then
     execute ../gcc-12.3.0/configure \
         --prefix="$install_dir" \
         --{build,host,target}=x86_64-pc-linux-gnu \
-        --disable-{assembly,nls,target-isl,target-zlib,werror} \
+        --disable-{assembly,nls,target-zlib,werror} \
         --enable-{bootstrap,lto,plugin,checking=release,threads=posix,languages=all} \
         --program-{prefix=x86_64-pc-linux-gnu-,suffix=-12} \
         --with-{libiconv-prefix="$workspace",isl=/usr/local,zstd=/usr/local,link-serialization=2} \
@@ -835,7 +835,7 @@ if build 'gcc-13' '13.1.0'; then
     execute ../gcc-13.1.0/configure \
         --prefix="$install_dir" \
         --{build,host,target}=x86_64-pc-linux-gnu \
-        --disable-{assembly,nls,target-isl,target-zlib,werror} \
+        --disable-{assembly,nls,target-zlib,werror} \
         --enable-{bootstrap,lto,plugin,checking=release,threads=posix,languages=all} \
         --program-{prefix=x86_64-pc-linux-gnu-,suffix=-13} \
         --with-{libiconv-prefix="$workspace",isl=/usr/local,zstd=/usr/local,link-serialization=2} \
@@ -858,7 +858,7 @@ sudo ldconfig 2>/dev/null
 # SHOW THE NEWLY INSTALLED VERSION OF EACH PACKAGE
 show_ver_fn
 
-# PROMPT THE USER TO CLEANUP THE BUILD FILES
+# PROMPT THE USER TO CLEAN UP THE BUILD FILES
 cleanup_fn
 
 # SHOW THE EXIT MESSAGE
