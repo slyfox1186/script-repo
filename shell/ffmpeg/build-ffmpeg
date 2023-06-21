@@ -1126,17 +1126,6 @@ if build 'm4' '1.4.19'; then
     build_done 'm4' '1.4.19'
 fi
 
-#pre_check_ver '541' '8'
-#if build 'cmake' "$g_ver"; then
-#    download "https://gitlab.kitware.com/cmake/cmake/-/archive/v$g_ver/cmake-v$g_ver.tar.bz2" "cmake-$g_ver.tar.bz2"
-#    execute ./configure --prefix="$workspace" --parallel="$cpu_threads" \
-#        --enable-ccache -- -DCMAKE_USE_OPENSSL=OFF
-#    execute make "-j$(($cpu_threads-1))"
-#    execute make install
-#    execute make clean
-#    build_done 'cmake' "$g_ver"
-#fi
-
 pre_check_ver 'ninja-build/ninja' '1' 'T'
 if build 'ninja' "$g_ver"; then
     download "https://codeload.github.com/ninja-build/ninja/tar.gz/refs/tags/v$g_ver" "ninja-$g_ver.tar.gz"
