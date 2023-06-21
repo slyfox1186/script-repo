@@ -750,7 +750,7 @@ if build 'gcc-11' '11.4.0'; then
         --prefix="$install_dir" \
         --{build,host,target}=x86_64-pc-linux-gnu \
         --disable-{assembly,nls,target-isl,target-zlib,werror} \
-        --enable-{bootstrap,lto,plugin,checking=release,threads=posix,languages=all} \
+        --enable-{bootstrap,checking=release,languages=all,lto,plugin,threads=posix} \
         --program-{prefix=x86_64-pc-linux-gnu-,suffix=-11} \
         --with-{libiconv-prefix="$workspace",isl=/usr/local,zstd=/usr/local} \
         --with-{link-serialization=2,gcc-major-version-only,system-zlib,target-system-zlib,tune=generic} \
@@ -781,7 +781,7 @@ if build 'gcc-12' '12.3.0'; then
         --prefix="$install_dir" \
         --{build,host,target}=x86_64-pc-linux-gnu \
         --disable-{assembly,nls,target-isl,target-zlib,werror} \
-        --enable-{bootstrap,lto,plugin,checking=release,threads=posix,languages=all} \
+        --enable-{bootstrap,checking=release,languages=all,lto,plugin,threads=posix} \
         --program-{prefix=x86_64-pc-linux-gnu-,suffix=-12} \
         --with-{libiconv-prefix="$workspace",isl=/usr/local,zstd=/usr/local} \
         --with-{link-serialization=2,gcc-major-version-only,system-zlib,target-system-zlib,tune=generic} \
@@ -812,7 +812,7 @@ if build 'gcc-13' '13.1.0'; then
         --prefix="$install_dir" \
         --{build,host,target}=x86_64-pc-linux-gnu \
         --disable-{assembly,nls,target-isl,target-zlib,werror} \
-        --enable-{bootstrap,lto,plugin,checking=release,threads=posix,languages=all} \
+        --enable-{bootstrap,checking=release,languages=all,lto,plugin,threads=posix} \
         --program-{prefix=x86_64-pc-linux-gnu-,suffix=-13} \
         --with-{libiconv-prefix="$workspace",isl=/usr/local,zstd=/usr/local} \
         --with-{link-serialization=2,gcc-major-version-only,system-zlib,target-system-zlib,tune=generic} \
