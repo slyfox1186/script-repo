@@ -1,6 +1,6 @@
-##################################################################################
-## WHEN LAUNCHING CERTAIN PROGRAMS FROM TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
-##################################################################################
+######################################################################################
+## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
+######################################################################################
 
 gedit() { eval $(which gedit) "$@" &>/dev/null; }
 geds() { eval $(which sudo) -H -u root /usr/bin/gedit "$@" &>/dev/null; }
@@ -1208,9 +1208,13 @@ int main(void)
 }
 EOF
 
-    clear
-    read -p 'Enter the GCC binary you wish to test (example: gcc-11): ' answer
-    clear
-    "$answer" -Q -v /tmp/hello.c
+    if [ -n "$1" ]; then
+        "$1" -Q -v /tmp/hello.c
+    else
+        clear
+        read -p 'Enter the GCC binary you wish to test (example: gcc-11): ' answer
+        clear
+        "$answer" -Q -v /tmp/hello.c
+    fi
     sudo rm /tmp/hello.c
 }
