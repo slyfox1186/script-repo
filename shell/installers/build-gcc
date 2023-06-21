@@ -9,13 +9,14 @@
 ##
 ##  Supported OS: Linux Ubuntu - 22.04 (Jammy)
 ##
-##  Updated: 06.20.23
+##  Updated: 06.21.23
 ##
-##  Script Version: 3.4
+##  Script Version: 3.5
 ##
 ##  Added: Multiple support libraries using the latest versions available
 ##  Added: Custom LIBRARY_PATH variables for each version of GCC compiled
 ##  Added: link time optimization support
+##  Added: gmp support library for binutils
 ##
 ##  Fixed: zstdn, zlib, and bison build issues.
 ##
@@ -37,20 +38,20 @@ fi
 # CREATE SCRIPT VARIABLES
 #
 
-script_ver='3.4'
+script_ver='3.5'
 cwd="$PWD"/gcc-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
 install_dir='/usr/local'
 CFLAGS=' -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
-CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -I/usr/local/cuda/nvvm/include -I/usr/local/cuda/include"
+CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -I/usr/local/cuda-12.1/nvvm/include -I/usr/local/cuda/include"
 CPPFLAGS+=' -I/usr/include/x86_64-linux-gnu -I/usr/lib/gcc/x86_64-linux-gnu/8/include -I/usr/lib/gcc/x86_64-linux-gnu/9/include'
-LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/local/lib"
-LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/local/cuda/targets/x86_64-linux/lib -L/usr/share/ant/lib -L/usr/lib'
+LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/local/lib -L/usr/local/cuda-12.1/nvvm/lib64"
+LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/local/cuda-12.1/targets/x86_64-linux/lib -L/usr/share/ant/lib -L/usr/lib'
 LDFLAGS+=' -L/usr/lib/gcc/x86_64-linux-gnu/12/adalib -L/lib/x86_64-linux-gnu -L/lib -L/usr/x86_64-linux-gnux32/lib'
 repo='https://github.com/slyfox1186/script-repo'
 # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
-debug=OFF
+debug=ON
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -496,11 +497,12 @@ box_out_banner "GCC Build Script: v$script_ver"
 #
 
 pkgs=(autoconf autogen automake bison build-essential ccache curl dejagnu flex gcc-11-base gcc-multilib
-      gdc gdc-multilib gfortran gfortran-multilib git gnulib guile-3.0-dev help2man jq libadacgi4-dev
-      libdebuginfod-dev libdmalloc-dev libeigen3-dev libffi-dev libfontconfig1-dev libfreetype6 libgcc-11-dev
-      libgd-dev libgm2-11-dev libgm2-12-dev libgm2-15 libgmp-dev libicu-dev libjpeg-dev libmpc-dev libmpfr-dev
-      libphobos2-ldc-shared-dev libpng-dev libquadmath0 libsqlite3-dev libssl-dev libstdc++-12-dev libunwind-dev
-      libx11-dev libx32gfortran-12-dev libxext-dev linux-libc-dev linux-libc-dev:i386 meson ninja-build
+      gdc gdc-multilib gfortran gfortran-multilib git gnulib guile-3.0-dev help2man jq libacl1-dev
+      libadacgi4-dev libdebuginfod-dev libdmalloc-dev libeigen3-dev libffi-dev libfontconfig1-dev
+      libfreetype6 libgcc-11-dev libgd-dev libgm2-11-dev libgm2-12-dev libgm2-15 libgmp-dev libicu-dev
+      libintl-perl libjpeg-dev libltdl-dev libmpc-dev libmpfr-dev libphobos2-ldc-shared-dev libpng-dev
+      libquadmath0 libsigsegv-dev libsqlite3-dev libssl-dev libstdc++-12-dev libunwind-dev libx11-dev
+      libx32gfortran-12-dev libxext-dev linux-libc-dev linux-libc-dev:i386 meson ninja-build
       openjdk-11-jdk-headless perl python3 ruby sphinx-common tcl-expect-dev tex-common texinfo)
 
 for pkg in ${pkgs[@]}; do
@@ -580,7 +582,8 @@ fi
 
 if build 'm4' 'latest'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
-    execute ./configure --prefix="$workspace" --enable-c++ --with-dmalloc
+    execute ./configure --prefix="$workspace" --enable-{c++,threads=posix} \
+        --disable-{nls,gcc-warnings} --with-{dmalloc,libintl-prefix=/usr}
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
@@ -591,7 +594,7 @@ if build 'automake' '1.16.5'; then
     download 'https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
     execute ./bootstrap
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace"
+    execute ./configure --prefix="$workspace" M4="$workspace"/bin/m4
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
@@ -600,7 +603,8 @@ fi
 
 if build 'libtool' '2.4.6'; then
     download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.6.tar.xz'
-    execute ./configure --prefix="$workspace" --disable-shared
+    execute ./configure --prefix="$workspace" --disable-shared --enable-ltdl-install \
+        M4="$workspace"/bin/m4
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
@@ -621,7 +625,8 @@ if build 'bison' 'git'; then
     download_git 'https://github.com/akimd/bison.git'
     execute git submodule update --init
     execute ./bootstrap
-    execute ./configure --prefix="$workspace"
+    execute ./configure --prefix="$workspace" --disable-nls --enable-threads=posix \
+        M4="$workspace"/bin/m4
     execute make "-j$cpu_threads"
     execute sudo make install
     execute make distclean
@@ -639,9 +644,9 @@ fi
 
 if build 'libiconv' '1.17'; then
     download 'https://ftp.gnu.org/gnu/libiconv/libiconv-1.17.tar.gz'
-    execute ./configure --prefix="$workspace" --disable-shared
+    execute ./configure --prefix="$workspace" --disable-{nls,shared} --enable-static
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute sudo make uninstall
     execute make distclean
     execute "$workspace"/bin/libtool --finish "$workspace"/lib
     build_done 'libiconv' '1.17'
@@ -650,17 +655,28 @@ fi
 if build 'diffutils' '3.9'; then
     download 'https://ftp.gnu.org/gnu/diffutils/diffutils-3.9.tar.xz'
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --disable-nls --enable-{threads=posix,year2038} --with-libiconv-prefix="$workspace"
+    execute ./configure --prefix="$workspace" --disable-{gcc-warnings,nls} --enable-{threads=posix,year2038} \
+        --with-{libiconv-prefix="$workspace",libintl-prefix=/usr,libsigsegv}
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
     build_done 'diffutils' '3.9'
 fi
 
+if build 'gettext' '0.21.1'; then
+    download 'https://gcc.gnu.org/pub/gcc/infrastructure/gettext-0.21.1.tar.gz'
+    execute ./configure --prefix=/usr/local --disable-{nls,shared} --enable-{static,threads=posix} \
+        --with-libintl-prefix=/usr
+    execute make "-j$cpu_threads"
+    execute sudo make install
+    execute make distclean
+    build_done 'gettext' '0.21.1'
+fi
+
 if build 'attr' '2.5.1'; then
     download 'http://download.savannah.nongnu.org/releases/attr/attr-2.5.1.tar.xz'
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --disable-shared --with-libiconv-prefix="$workspace"
+    execute ./configure --prefix=/usr/local --disable-{nls,shared} --with-libiconv-prefix="$workspace"
     execute make "-j$cpu_threads"
     execute sudo make install
     execute make distclean
@@ -670,16 +686,25 @@ fi
 if build 'patch' '2.7.6'; then
     download 'https://ftp.gnu.org/gnu/patch/patch-2.7.6.tar.xz'
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace"
+    execute ./configure --prefix="$workspace" --disable-gcc-warnings
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
     build_done 'patch' '2.7.6'
 fi
 
+if build 'gmp' '6.2.1'; then
+    download 'https://ftp.gnu.org/gnu/gmp/gmp-6.2.1.tar.xz'
+    execute ./configure --prefix="$workspace" --disable-shared --enable-cxx M4="$workspace"/bin/m4
+    execute make "-j$cpu_threads"
+    execute sudo make install
+    execute make distclean
+    build_done 'gmp' '6.2.1'
+fi
+
 if build 'isl' '0.24'; then
     download 'https://gcc.gnu.org/pub/gcc/infrastructure/isl-0.24.tar.bz2'
-    execute ./configure --prefix=/usr/local
+    execute ./configure --prefix=/usr/local --disable-shared --with-gmp-prefix="$workspace"
     execute make "-j$cpu_threads"
     execute sudo make install
     execute make distclean
@@ -690,7 +715,7 @@ git_ver_fn 'gperftools/gperftools' '1' 'R'
 g_ver="${g_ver//gperftools-/}"
 if build 'gperftools' "$g_ver"; then
     download "https://github.com/gperftools/gperftools/releases/download/gperftools-$g_ver/gperftools-$g_ver.tar.gz"
-    execute ./configure --prefix=/usr/local
+    execute ./configure --prefix=/usr/local --disable-shared --enable-libunwind
     execute make "-j$cpu_threads"
     execute sudo make install
     execute make distclean
@@ -702,7 +727,7 @@ g_ver="${g_ver#Zstandard v}"
 if build 'zstd' "$g_ver"; then
     download "https://github.com/facebook/zstd/releases/download/v$g_ver/zstd-$g_ver.tar.gz"
     cd build/meson || exit 1
-    execute meson setup build --prefix=/usr/local --libdir=/usr/local/lib --buildtype=release --default-library=static --strip
+    execute meson setup build --prefix=/usr/local --buildtype=release --default-library=static --strip
     execute ninja "-j$cpu_threads" -C build
     execute sudo ninja "-j$cpu_threads" -C build install
     build_done 'zstd' "$g_ver"
@@ -721,10 +746,9 @@ fi
 
 if build 'binutils' '2.40'; then
     download 'https://ftp.gnu.org/gnu/binutils/binutils-2.40.tar.xz'
-    execute ./configure --prefix="$workspace" --{build,host,target}=x86_64-pc-linux-gnu \
+    execute ./configure --prefix="$workspace" --enable-{lto,year2038} \
         --with-{jdk=/usr/lib/jvm/java-11-openjdk-amd64,static-standard-libraries} \
-        --with-{gmp="$workspace",mpc="$workspace",mpfr="$workspace",isl=/usr/local,zstd=/usr/local} \
-        --enable-{lto,year2038}
+        --with-{gmp="$workspace",mpc=/usr,mpfr=/usr,isl=/usr/local,zstd=/usr/local}
     execute make "-j$cpu_threads"
     execute sudo make install
     execute "$workspace"/bin/libtool --finish "$workspace"/lib
@@ -750,10 +774,10 @@ if build 'gcc-11' '11.4.0'; then
         --prefix="$install_dir" \
         --{build,host,target}=x86_64-pc-linux-gnu \
         --disable-{assembly,nls,target-isl,target-zlib,werror} \
-        --enable-{bootstrap,checking=release,languages=all,lto,plugin,threads=posix} \
+        --enable-{bootstrap,lto,plugin,checking=release,threads=posix,languages=all} \
         --program-{prefix=x86_64-pc-linux-gnu-,suffix=-11} \
-        --with-{libiconv-prefix="$workspace",isl=/usr/local,zstd=/usr/local} \
-        --with-{link-serialization=2,gcc-major-version-only,system-zlib,target-system-zlib,tune=generic} \
+        --with-{libiconv-prefix="$workspace",isl=/usr/local,zstd=/usr/local,link-serialization=2} \
+        --with-{gcc-major-version-only,system-zlib,tune=generic,target-system-zlib} \
         "$cuda_check" \
         --without-included-gettext
     echo '$ This is going to take a while...'
@@ -781,10 +805,10 @@ if build 'gcc-12' '12.3.0'; then
         --prefix="$install_dir" \
         --{build,host,target}=x86_64-pc-linux-gnu \
         --disable-{assembly,nls,target-isl,target-zlib,werror} \
-        --enable-{bootstrap,checking=release,languages=all,lto,plugin,threads=posix} \
+        --enable-{bootstrap,lto,plugin,checking=release,threads=posix,languages=all} \
         --program-{prefix=x86_64-pc-linux-gnu-,suffix=-12} \
-        --with-{libiconv-prefix="$workspace",isl=/usr/local,zstd=/usr/local} \
-        --with-{link-serialization=2,gcc-major-version-only,system-zlib,target-system-zlib,tune=generic} \
+        --with-{libiconv-prefix="$workspace",isl=/usr/local,zstd=/usr/local,link-serialization=2} \
+        --with-{gcc-major-version-only,system-zlib,tune=generic,target-system-zlib} \
         "$cuda_check" \
         --without-included-gettext
     echo '$ This is going to take a while...'
@@ -812,10 +836,10 @@ if build 'gcc-13' '13.1.0'; then
         --prefix="$install_dir" \
         --{build,host,target}=x86_64-pc-linux-gnu \
         --disable-{assembly,nls,target-isl,target-zlib,werror} \
-        --enable-{bootstrap,checking=release,languages=all,lto,plugin,threads=posix} \
+        --enable-{bootstrap,lto,plugin,checking=release,threads=posix,languages=all} \
         --program-{prefix=x86_64-pc-linux-gnu-,suffix=-13} \
-        --with-{libiconv-prefix="$workspace",isl=/usr/local,zstd=/usr/local} \
-        --with-{link-serialization=2,gcc-major-version-only,system-zlib,target-system-zlib,tune=generic} \
+        --with-{libiconv-prefix="$workspace",isl=/usr/local,zstd=/usr/local,link-serialization=2} \
+        --with-{gcc-major-version-only,system-zlib,tune=generic,target-system-zlib} \
         "$cuda_check" \
         --without-included-gettext
     echo '$ This is going to take a while...'
