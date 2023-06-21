@@ -286,3 +286,6 @@ alias show_gcc='clear; gcc-12 -march=native -E -v - </dev/null 2>&1 | grep cc1'
 
 # START VIRTUAL MACHINE
 alias svm='clear; sudo virt-manager'
+
+## SHOW TOP 10 PROCESS BY CPU RESOURCE CONSUMPTION
+alias cpu_leach='clear; ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%mem | head -10'
