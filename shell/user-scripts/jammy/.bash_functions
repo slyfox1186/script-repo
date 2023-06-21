@@ -1189,3 +1189,28 @@ cnt_dirr()
     keep_cnt="$(find . -type f | wc -l)"
     printf "%s %'d\n\n" "The total directory file count is (recursive):" "$keep_cnt"
 }
+
+##############
+## TEST GCC ##
+##############
+
+test_gcc()
+{
+    local answer
+
+# CREATE A TEMPORARY C FILE TO RUN OUR TESTS AGAINST
+cat > /tmp/hello.c <<'EOF'
+#include <stdio.h>
+int main(void)
+{
+   printf("Hello World!\n");
+   return 0;
+}
+EOF
+
+    clear
+    read -p 'Enter the GCC binary you wish to test (example: gcc-11): ' answer
+    clear
+    "$answer" -Q -v /tmp/hello.c
+    sudo rm /tmp/hello.c
+}
