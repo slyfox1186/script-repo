@@ -998,7 +998,6 @@ tar_xz()
 {
     local source output
     clear
-set -x
     if [ -n "$1" ]; then
         if [ -f "$1".tar.xz ]; then
             sudo rm "$1".tar.xz
