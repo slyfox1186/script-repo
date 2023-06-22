@@ -11,12 +11,13 @@
 ##
 ##  Updated: 06.21.23
 ##
-##  Script Version: 3.6
+##  Script Version: 3.51
 ##
 ##  Added: multiple support libraries using the latest versions available
 ##  Added: custom LIBRARY_PATH variables for each version of GCC
 ##  Added: link time optimization support
 ##  Added: gmp support library for binutils
+##  Added: libdmalloc5 and python3-pip to the list of required APT packages
 ##
 ##  Fixed: zstdn, zlib, and bison build issues.
 ##
@@ -38,7 +39,7 @@ fi
 # CREATE SCRIPT VARIABLES
 #
 
-script_ver='3.5'
+script_ver='3.51'
 cwd="$PWD"/gcc-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
@@ -498,12 +499,12 @@ box_out_banner "GCC Build Script: v$script_ver"
 
 pkgs=(autoconf autogen automake bison build-essential ccache curl dejagnu flex gcc-11-base gcc-multilib
       gdc gdc-multilib gfortran gfortran-multilib git gnulib guile-3.0-dev help2man jq libacl1-dev
-      libadacgi4-dev libasan8 libdebuginfod-dev libdmalloc-dev libeigen3-dev libffi-dev libfontconfig1-dev
-      libfreetype6 libgcc-11-dev libgd-dev libgm2-11-dev libgm2-12-dev libgm2-15 libgmp-dev libicu-dev
-      libintl-perl libjpeg-dev libltdl-dev libmpc-dev libmpfr-dev libphobos2-ldc-shared-dev libpng-dev
-      libquadmath0 libsigsegv-dev libsqlite3-dev libssl-dev libstdc++-12-dev libunwind-dev libx11-dev
-      libx32gfortran-12-dev libxext-dev linux-libc-dev linux-libc-dev:i386 meson ninja-build
-      openjdk-11-jdk-headless perl python3 ruby sphinx-common tcl-expect-dev tex-common texinfo)
+      libadacgi4-dev libasan8 libdebuginfod-dev libdmalloc5 libdmalloc-dev libeigen3-dev libffi-dev
+      libfontconfig1-dev libfreetype6 libgcc-11-dev libgd-dev libgm2-11-dev libgm2-12-dev libgm2-15
+      libgmp-dev libicu-dev libintl-perl libjpeg-dev libltdl-dev libmpc-dev libmpfr-dev libphobos2-ldc-shared-dev
+      libpng-dev libquadmath0 libsigsegv-dev libsqlite3-dev libssl-dev libstdc++-12-dev libunwind-dev libx11-dev
+      libx32gfortran-12-dev libxext-dev linux-libc-dev linux-libc-dev:i386 meson ninja-build openjdk-11-jdk-headless
+      perl python3 python3-pip ruby sphinx-common tcl-expect-dev tex-common texinfo)
 
 for pkg in ${pkgs[@]}; do
     if ! installed "$pkg"; then
