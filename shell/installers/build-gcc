@@ -259,49 +259,40 @@ source_libs_gcc13_fn()
 
 create_links_gcc_13_fn()
 {
-    list=(x86_64-linux-gnu-c++-13 x86_64-linux-gnu-cpp-13 x86_64-linux-gnu-g++-13
-          x86_64-linux-gnu-gcc-13 x86_64-linux-gnu-gcc-ar-13 x86_64-linux-gnu-gccgo-13
-          x86_64-linux-gnu-gcc-nm-13 x86_64-linux-gnu-gcc-ranlib-13 x86_64-linux-gnu-gcov-13
-          x86_64-linux-gnu-gcov-dump-13 x86_64-linux-gnu-gcov-tool-13 x86_64-linux-gnu-gdc-13
-          x86_64-linux-gnu-gfortran-13 x86_64-linux-gnu-go-13 x86_64-linux-gnu-gofmt-13
-          x86_64-linux-gnu-lto-dump-13)
+    list=(c++-13 cpp-13 g++-13 gcc-13 gcc-ar-13 gccgo-13 gcc-nm-13 gcc-ranlib-13 gcov-13 gcov-dump-13
+          gcov-tool-13 gdc-13 gfortran-13 gm2-13 gnat-13 gnatbind-13 gnatchop-13 gnatclean-13 gnatkr-13
+          gnatlink-13 gnatls-13 gnatmake-13 gnatname-13 gnatprep-13 go-13 gofmt-13 lto-dump-13)
 
     for i in ${list[@]}
     do
-        trim_str="$(echo "$i" | sed 's/.*gnu-\(.*\)$/\1/')"
-        sudo ln -fs /usr/local/bin/$i /usr/local/bin/$trim_str
+        sudo ln -fs "/usr/local/bin/x86_64-linux-gnu-$i" "/usr/local/bin/$i"
+        sudo chown 755 "/usr/local/bin/$i"
     done
 }
 
 create_links_gcc_12_fn()
 {
-    list=(x86_64-linux-gnu-c++-12 x86_64-linux-gnu-cpp-12 x86_64-linux-gnu-g++-12
-          x86_64-linux-gnu-gcc-12 x86_64-linux-gnu-gcc-ar-12 x86_64-linux-gnu-gccgo-12
-          x86_64-linux-gnu-gcc-nm-12 x86_64-linux-gnu-gcc-ranlib-12 x86_64-linux-gnu-gcov-12
-          x86_64-linux-gnu-gcov-dump-12 x86_64-linux-gnu-gcov-tool-12 x86_64-linux-gnu-gdc-12
-          x86_64-linux-gnu-gfortran-12 x86_64-linux-gnu-go-12 x86_64-linux-gnu-gofmt-12
-          x86_64-linux-gnu-lto-dump-12)
+    list=(c++-12 cpp-12 g++-12 gcc-12 gcc-ar-12 gccgo-12 gcc-nm-12 gcc-ranlib-12 gcov-12 gcov-dump-12
+          gcov-tool-12 gdc-12 gfortran-12 gnat-12 gnatbind-12 gnatchop-12 gnatclean-12 gnatkr-12
+          gnatlink-12 gnatls-12 gnatmake-12 gnatname-12 gnatprep-12 go-12 gofmt-12 lto-dump-12)
 
     for i in ${list[@]}
     do
-        trim_str="$(echo "$i" | sed 's/.*gnu-\(.*\)$/\1/')"
-        sudo ln -fs /usr/local/bin/$i /usr/local/bin/$trim_str
+        sudo ln -fs "/usr/local/bin/x86_64-linux-gnu-$i" "/usr/local/bin/$i"
+        sudo chown 755 "/usr/local/bin/$i"
     done
 }
 
 create_links_gcc_11_fn()
 {
-    list=(x86_64-linux-gnu-c++-11 x86_64-linux-gnu-cpp-11 x86_64-linux-gnu-g++-11
-          x86_64-linux-gnu-gcc-11 x86_64-linux-gnu-gcc-ar-11 x86_64-linux-gnu-gccgo-11
-          x86_64-linux-gnu-gcc-nm-11 x86_64-linux-gnu-gcc-ranlib-11 x86_64-linux-gnu-gcov-11
-          x86_64-linux-gnu-gcov-dump-11 x86_64-linux-gnu-gcov-tool-11 x86_64-linux-gnu-gdc-11
-          x86_64-linux-gnu-gfortran-11 x86_64-linux-gnu-go-11 x86_64-linux-gnu-gofmt-11
-          x86_64-linux-gnu-lto-dump-11)
+    list=(c++-11 cpp-11 g++-11 gcc-11 gcc-ar-11 gccbrig-11 gccgo-11 gcc-nm-11 gcc-ranlib-11 gcov-11 gcov-dump-11
+          gcov-tool-11 gdc-11 gfortran-11 gnat-11 gnatbind-11 gnatchop-11 gnatclean-11 gnatfind-11 gnatkr-11
+          gnatlink-11 gnatls-11 gnatmake-11 gnatname-11 gnatprep-11 gnatxref-11 go-11 gofmt-11 lto-dump-11)
 
     for i in ${list[@]}
     do
-        trim_str="$(echo "$i" | sed 's/.*gnu-\(.*\)$/\1/')"
-        sudo ln -fs /usr/local/bin/$i /usr/local/bin/$trim_str
+        sudo ln -fs "/usr/local/bin/x86_64-linux-gnu-$i" "/usr/local/bin/$i"
+        sudo chown 755 "/usr/local/bin/$i"
     done
 }
 
@@ -576,6 +567,11 @@ if [ -n "$iscuda" ]; then
 else
     cuda_check='--without-cuda-driver'
 fi
+
+create_links_gcc_13_fn
+create_links_gcc_12_fn
+create_links_gcc_11_fn
+exit
 
 #
 # INSTALL FROM SOURCE CODE
