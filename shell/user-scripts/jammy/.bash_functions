@@ -176,40 +176,40 @@ apt_dl() { wget -c "$(apt-get install --reinstall --print-uris -qq $1 2>/dev/nul
 clean()
 {
     clear
-    sudo apt-fast -y autoremove
-    sudo apt-fast clean
-    sudo apt-fast autoclean
-    sudo apt-fast -y purge
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt -y purge
 }
 
 # UPDATE
 update()
 {
     clear
-    sudo apt-fast update
-    sudo apt-fast -y full-upgrade
-    sudo apt-fast -y install ubuntu-advantage-tools
-    sudo apt-fast -y autoremove
-    sudo apt-fast clean
-    sudo apt-fast autoclean
-    sudo apt-fast -y purge
+    sudo apt update
+    sudo apt -y full-upgrade
+    sudo apt -y install ubuntu-advantage-tools
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt -y purge
 }
 
 # FIX BROKEN APT PACKAGES
 fix()
 {
     clear
-    if [ -f '/tmp/apt-fast.lock' ]; then
-        sudo rm '/tmp/apt-fast.lock'
+    if [ -f '/tmp/apt.lock' ]; then
+        sudo rm '/tmp/apt.lock'
     fi
-    sudo apt-fast -f -y install
+    sudo apt -f -y install
     apt --fix-broken install
     apt --fix-missing update
     dpkg --configure -a
-    sudo apt-fast -y autoremove
-    sudo apt-fast clean
-    sudo apt-fast autoclean
-    sudo apt-fast update
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt update
 }
 
 listd()
@@ -218,11 +218,11 @@ listd()
     local search_cache
 
     if [ -n "$1" ]; then
-        sudo apt-fast list *$1*-dev | awk -F'/' '{print $1}'
+        sudo apt list *$1*-dev | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt-fast list *$1*-dev | awk -F'/' '{print $1}'
+        sudo apt list *$1*-dev | awk -F'/' '{print $1}'
     fi
 }
 
@@ -233,26 +233,26 @@ list()
     local search_cache
 
     if [ -n "$1" ]; then
-        sudo apt-fast list *$1* | awk -F'/' '{print $1}'
+        sudo apt list *$1* | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt-fast list *$1* | awk -F'/' '{print $1}'
+        sudo apt list *$1* | awk -F'/' '{print $1}'
     fi
 }
 
-# USE sudo apt-fast TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
+# USE sudo apt TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
 asearch()
 {
     clear
     local search_cache
 
     if [ -n "$1" ]; then
-        sudo apt-fast search "$1 ~i" -F "%p"
+        sudo apt search "$1 ~i" -F "%p"
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt-fast search "$1 ~i" -F "%p"
+        sudo apt search "$1 ~i" -F "%p"
     fi
 }
 
@@ -750,9 +750,9 @@ cuda_purge()
         echo 'Purging the cuda-sdk-toolkit from your computer.'
         echo '================================================'
         echo
-        sudo sudo apt-fast -y --purge remove "*cublas*" "cuda*" "nsight*"
-        sudo sudo apt-fast -y autoremove
-        sudo sudo apt-fast update
+        sudo sudo apt -y --purge remove "*cublas*" "cuda*" "nsight*"
+        sudo sudo apt -y autoremove
+        sudo sudo apt update
     elif [[ "$answer" -eq '2' ]]; then
         return 0
     fi
@@ -858,7 +858,7 @@ hw_mon()
 
     # install lm-sensors if not already
     if ! which lm-sensors &>/dev/null; then
-        sudo apt-fast -y install lm-sensors
+        sudo apt -y install lm-sensors
     fi
 
     # add modprobe to system startup tasks if not already added    
