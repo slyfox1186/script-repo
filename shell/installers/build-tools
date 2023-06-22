@@ -322,24 +322,8 @@ fi
 # SET THE C & C++ COMPILERS
 #
 
-which gcc &>/dev/null && export CC=gcc CXX=g++
-which gcc-11 &>/dev/null && export CC=gcc-11 CXX=g++-11
-which gcc-12 &>/dev/null && export CC=gcc-12 CXX=g++-12
-which gcc-13 &>/dev/null && export CC=gcc-13 CXX=g++-12
-
-#
-# SET THE C++ COMPILER OPTIMIZATION FLAGS TO TUNE THE BUILD FOR THE SPECIFIC COMPUTER RUNNING THE SCRIPT
-#
-
-is_ryzen9="$(lscpu | grep -o 'Ryzen 9')"
-
-if [[ "$CC" == 'gcc-13' ]]; then
-    if [[ "$is_ryzen9" == 'Ryzen 9' ]]; then
-        CXXFLAGS='-g -O3 -march=znver4'
-    fi
-else
-    export CXXFLAGS='-g -O3 -march=native'
-fi
+export CC=gcc CXX=g++
+export CXXFLAGS='-g -O3 -march=native'
 
 #
 # INSTALL FROM SOURCE CODE
@@ -348,7 +332,7 @@ fi
 git_ver_fn '541' '2' 'T'
 if build 'cmake' "$g_ver"; then
     download "https://gitlab.kitware.com/cmake/cmake/-/archive/v$g_ver/cmake-v$g_ver.tar.bz2" "cmake-$g_ver.tar.bz2"
-    execute ./configure --prefix="$install_prefix" --parallel="$(($cpu_threads-1))" --enable-ccache -- -DCMAKE_USE_OPENSSL=OFF CXXFLAGS="$CXXFLAGS"
+    execute ./configure --prefix="$install_prefix" --parallel="$(($cpu_threads-1))" --enable-ccache -- -DCMAKE_USE_OPENSSL=OFF
     execute make "-j$(($cpu_threads-1))"
     execute sudo make install
     execute make clean
