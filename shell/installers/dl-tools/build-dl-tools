@@ -326,8 +326,8 @@ fi
 # SET THE C & C++ COMPILERS
 #
 
-which gcc &>/dev/null && export CC=gcc CXX=g++
-which gcc-13 &>/dev/null && export CC=gcc-13 CXX=g++-13
+export CC=gcc CXX=g++
+export CXXFLAGS='-g -O3 -march=native'
 
 #
 # SET THE C++ COMPILER OPTIMIZATION FLAGS TO TUNE THE BUILD FOR THE SPECIFIC COMPUTER RUNNING THE SCRIPT 
