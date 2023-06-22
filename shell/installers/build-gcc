@@ -266,7 +266,7 @@ create_links_gcc_13_fn()
     for i in ${list[@]}
     do
         sudo ln -fs "/usr/local/bin/x86_64-linux-gnu-$i" "/usr/local/bin/$i"
-        sudo chown 755 "/usr/local/bin/$i"
+        sudo chown 755 "/usr/local/bin/x86_64-linux-gnu-$i" "/usr/local/bin/$i"
     done
 }
 
@@ -279,7 +279,7 @@ create_links_gcc_12_fn()
     for i in ${list[@]}
     do
         sudo ln -fs "/usr/local/bin/x86_64-linux-gnu-$i" "/usr/local/bin/$i"
-        sudo chown 755 "/usr/local/bin/$i"
+        sudo chown 755 "/usr/local/bin/x86_64-linux-gnu-$i" "/usr/local/bin/$i"
     done
 }
 
@@ -292,7 +292,7 @@ create_links_gcc_11_fn()
     for i in ${list[@]}
     do
         sudo ln -fs "/usr/local/bin/x86_64-linux-gnu-$i" "/usr/local/bin/$i"
-        sudo chown 755 "/usr/local/bin/$i"
+        sudo chown 755 "/usr/local/bin/x86_64-linux-gnu-$i" "/usr/local/bin/$i"
     done
 }
 
@@ -567,11 +567,6 @@ if [ -n "$iscuda" ]; then
 else
     cuda_check='--without-cuda-driver'
 fi
-
-create_links_gcc_13_fn
-create_links_gcc_12_fn
-create_links_gcc_11_fn
-exit
 
 #
 # INSTALL FROM SOURCE CODE
