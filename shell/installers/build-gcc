@@ -184,8 +184,8 @@ lib_path_other_fn()
 /usr/x86_64-linux-gnu/lib/x86_64-linux-gnu:\
 /usr/x86_64-linux-gnu/lib64:\
 /usr/x86_64-linux-gnu/lib:\
-/usr/local/x86_64-pc-linux-gnu/lib64:\
-/usr/local/x86_64-pc-linux-gnu/lib:\
+/usr/local/x86_64-linux-gnu/lib64:\
+/usr/local/x86_64-linux-gnu/lib:\
 /usr/local/lib/x86_64-linux-gnu:\
 /usr/local/lib64:\
 /usr/local/lib:\
@@ -211,13 +211,13 @@ source_libs_gcc11_fn()
 {
     LIBRARY_PATH="\
 /usr/x86_64-linux-gnu/lib/x86_64-linux-gnu/11:\
-/usr/local/x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/11:\
-/usr/local/lib/x86_64-pc-linux-gnu/11:\
-/usr/local/lib/gcc/x86_64-pc-linux-gnu/11:\
-/usr/lib/x86_64-pc-linux-gnu/11:\
+/usr/local/x86_64-linux-gnu/lib/x86_64-linux-gnu/11:\
+/usr/local/lib/x86_64-linux-gnu/11:\
+/usr/local/lib/gcc/x86_64-linux-gnu/11:\
+/usr/lib/x86_64-linux-gnu/11:\
 /usr/lib/x86_64-linux-gnu/11:\
 /usr/lib/gcc/x86_64-linux-gnu/11:\
-/lib/x86_64-pc-linux-gnu/11:\
+/lib/x86_64-linux-gnu/11:\
 /lib/x86_64-linux-gnu/11:\
 "
     lib_path_other_fn
@@ -228,13 +228,13 @@ source_libs_gcc12_fn()
     unset LIBRARY_PATH
     LIBRARY_PATH="\
 /usr/x86_64-linux-gnu/lib/x86_64-linux-gnu/12:\
-/usr/local/x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/12:\
-/usr/local/lib/x86_64-pc-linux-gnu/12:\
-/usr/local/lib/gcc/x86_64-pc-linux-gnu/12:\
-/usr/lib/x86_64-pc-linux-gnu/12:\
+/usr/local/x86_64-linux-gnu/lib/x86_64-linux-gnu/12:\
+/usr/local/lib/x86_64-linux-gnu/12:\
+/usr/local/lib/gcc/x86_64-linux-gnu/12:\
+/usr/lib/x86_64-linux-gnu/12:\
 /usr/lib/x86_64-linux-gnu/12:\
 /usr/lib/gcc/x86_64-linux-gnu/12:\
-/lib/x86_64-pc-linux-gnu/12:\
+/lib/x86_64-linux-gnu/12:\
 /lib/x86_64-linux-gnu/12:\
 "
     lib_path_other_fn
@@ -245,13 +245,13 @@ source_libs_gcc13_fn()
     unset LIBRARY_PATH
     LIBRARY_PATH="\
 /usr/x86_64-linux-gnu/lib/x86_64-linux-gnu/13:\
-/usr/local/x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/13:\
-/usr/local/lib/x86_64-pc-linux-gnu/13:\
-/usr/local/lib/gcc/x86_64-pc-linux-gnu/13:\
-/usr/lib/x86_64-pc-linux-gnu/13:\
+/usr/local/x86_64-linux-gnu/lib/x86_64-linux-gnu/13:\
+/usr/local/lib/x86_64-linux-gnu/13:\
+/usr/local/lib/gcc/x86_64-linux-gnu/13:\
+/usr/lib/x86_64-linux-gnu/13:\
 /usr/lib/x86_64-linux-gnu/13:\
 /usr/lib/gcc/x86_64-linux-gnu/13:\
-/lib/x86_64-pc-linux-gnu/13:\
+/lib/x86_64-linux-gnu/13:\
 /lib/x86_64-linux-gnu/13:\
 "
     lib_path_other_fn
@@ -775,7 +775,7 @@ if build 'gcc-11' '11.4.0'; then
     echo '$ This is going to take a while...'
     execute make "-j$cpu_threads"
     execute sudo make install-strip
-    execute "$workspace"/bin/libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/11
+    execute "$workspace"/bin/libtool --finish "$install_dir"/libexec/gcc/x86_64-linux-gnu/11
     execute "$workspace"/bin/libtool --finish "$install_dir"/lib
     execute make distclean
     create_links_gcc_11_fn
@@ -804,7 +804,7 @@ if build 'gcc-12' '12.3.0'; then
     echo '$ This is going to take a while...'
     execute make "-j$cpu_threads"
     execute sudo make install-strip
-    execute "$workspace"/bin/libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/12
+    execute "$workspace"/bin/libtool --finish "$install_dir"/libexec/gcc/x86_64-linux-gnu/12
     execute "$workspace"/bin/libtool --finish "$install_dir"/lib
     execute make distclean
     create_links_gcc_12_fn
@@ -834,7 +834,7 @@ if build 'gcc-13' '13.1.0'; then
     echo '$ This is going to take a while...'
     execute make "-j$cpu_threads"
     execute sudo make install-strip
-    execute "$workspace"/bin/libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/13
+    execute "$workspace"/bin/libtool --finish "$install_dir"/libexec/gcc/x86_64-linux-gnu/13
     execute "$workspace"/bin/libtool --finish "$install_dir"/lib
     execute make distclean
     create_links_gcc_13_fn
