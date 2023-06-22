@@ -519,7 +519,8 @@ fi
 # INSTALL PYTHON MODULES
 #
 
-py_pkgs=(types-gdb os.path2 mbs-sys tempfile2 PrettyGcov json2json pytest csv23 time-tools argparse3 pathlib shutil-extra latex Pygments)
+py_pkgs=(types-gdb os.path2 mbs-sys tempfile2 PrettyGcov json2json pytest
+         csv23 time-tools argparse3 pathlib shutil-extra latex Pygments)
 
 for py_pkg in ${py_pkgs[@]}; do
     if ! pip show "$py_pkg" &>/dev/null; then
