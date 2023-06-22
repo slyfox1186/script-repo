@@ -1,9 +1,12 @@
+#!/bin/bash
+# shellcheck disable=SC1091,SC2001,SC2162,SC2317
+
 ######################################################################################
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 ######################################################################################
 
-gedit() { eval $(which gedit) "$@" &>/dev/null; }
-geds() { eval $(which sudo) -H -u root /usr/bin/gedit "$@" &>/dev/null; }
+gedit() { $(which gedit) "$@" &>/dev/null; }
+geds() { $(which sudo) -H -u root /usr/bin/gedit "$@" &>/dev/null; }
 
 ###################
 ## FIND COMMANDS ##
@@ -13,7 +16,7 @@ ffind()
 {
     clear
 
-    local fname fpath ftype fmaxdepth
+    local fname fpath ftype
 
     read -p 'Enter the name to search for: ' fname
     echo
@@ -114,7 +117,11 @@ mdir()
 ##################
 
 # REMOVED ALL DUPLICATE LINES: OUTPUTS TO TERMINAL
-rmd() { clear; awk '!seen[${0}]++' "$1"; }
+rmd()
+{
+    clear
+    awk '!seen[${0}]++' "$1"
+}
 
 # REMOVE CONSECUTIVE DUPLICATE LINES: OUTPUTS TO TERMINAL
 rmdc() { clear; awk 'f!=${0}&&f=${0}' "$1"; }
@@ -170,7 +177,7 @@ mvf()
 ##################
 
 # DOWNLOAD AN APT PACKAGE + ALL ITS DEPENDENCIES IN ONE GO
-apt_dl() { wget -c "$(apt-get install --reinstall --print-uris -qq $1 2>/dev/null | cut -d"'" -f2)"; }
+apt_dl() { wget -c "$(apt-get install --reinstall --print-uris -qq "$1" 2>/dev/null | cut -d"'" -f2)"; }
 
 # CLEAN
 clean()
@@ -218,11 +225,11 @@ listd()
     local search_cache
 
     if [ -n "$1" ]; then
-        sudo apt list *$1*-dev | awk -F'/' '{print $1}'
+        sudo apt list ./*"$1"*-dev | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt list *$1*-dev | awk -F'/' '{print $1}'
+        sudo apt list ./*"$1"*-dev | awk -F'/' '{print $1}'
     fi
 }
 
@@ -233,11 +240,11 @@ list()
     local search_cache
 
     if [ -n "$1" ]; then
-        sudo apt list *$1* | awk -F'/' '{print $1}'
+        sudo apt list ./*"$1"* | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt list *$1* | awk -F'/' '{print $1}'
+        sudo apt list ./*"$1"* | awk -F'/' '{print $1}'
     fi
 }
 
@@ -625,33 +632,34 @@ imow()
         echo
         echo "Working Directory: ${PWD}"
         echo
-        printf "Converting: %s\n             >> %s\n              >> %s\n               >> %s\n" "${i}" "${i%%.jpg}.mpc" "${i%%.jpg}.cache" "${i%%.jpg}-IM.jpg"
+        printf "Converting: %s\n             >> %s\n              >> %s\n               >> %s\n" "$i" "${i%%.jpg}.mpc" "${i%%.jpg}.cache" "${i%%.jpg}-IM.jpg"
         echo
         echo '========================================================================================================='
         echo
-        dimensions="$(identify -format '%wx%h' "${i}")"
-        convert "${i}" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "${dimensions}" -strip \
+        dimensions="$(identify -format '%wx%h' "$i")"
+        convert "$i" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "${dimensions}" -strip \
             -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize '136' -quality '82' -define jpeg:fancy-upsampling='off' \
             -auto-level -enhance -interlace 'none' -colorspace 'sRGB' "${random}/${i%%.jpg}.mpc"
         clear
-        for i in "${random}"/*.mpc
+        for file in "${random}"/*.mpc
         do
-            if [ -f "${i}" ]; then
-                convert "${i}" -monitor "${i%%.mpc}.jpg"
-                if [ -f "${i%%.mpc}.jpg" ]; then
-                    cwd="$(echo "${i}" | sed 's:.*/::')"
-                    mv "${i%%.mpc}.jpg" "${PWD}/${cwd%%.*}-IM.jpg"
-                    rm -f "${PWD}/${cwd%%.*}.jpg"
-                    for v in "${i}"
-                    do
-                        v_noslash="${v%/}"
-                        rm -fr "${v_noslash%/*}"
-                        clear
-                    done
+            if [ -f "$file" ]; then
+                if convert "$file" -monitor "${file%%.mpc}.jpg"; then
+                    if [ -f "${file%%.mpc}.jpg" ]; then
+                        cwd="$(echo "$file" | sed 's:.*/::')"
+                        mv "${file%%.mpc}.jpg" "${PWD}/${cwd%%.*}-IM.jpg"
+                        rm -f "${PWD}/${cwd%%.*}.jpg"
+                        for v in $file
+                        do
+                            v_noslash="${v%/}"
+                            rm -fr "${v_noslash%/*}"
+                            clear
+                        done
+                    fi
                 else
                     clear
-                    echo 'Error: Unable to find the optimized image.'
-                    echo
+                    printf "%s\n\n" 'Error: Unable to find the optimized image.'
+                    read -p 'Press enter to exit.'
                     return 1
                 fi
             fi
@@ -1045,16 +1053,15 @@ rmd()
 
     local dirs
 
-    if [ -z "$@" ]; then
-        clear
-        ls -1A --color --group-directories-first
+    if [ -z "$*" ]; then
+        clear; ls -1A --color --group-directories-first
         echo
         read -p 'Enter the directory path(s) to delete: ' dirs
      else
-        dirs="$@"
+        dirs="$*"
     fi
 
-    sudo rm -fr $dirs
+    sudo rm -fr "$dirs"
     clear
     ls -1A --color --group-directories-first
 }
@@ -1066,16 +1073,15 @@ rmf()
 
     local files
 
-    if [ -z "$@" ]; then
-        clear
-        ls -1A --color --group-directories-first
+    if [ -z "$*" ]; then
+        clear; ls -1A --color --group-directories-first
         echo
         read -p 'Enter the file path(s) to delete: ' files
      else
-        files="$@"
+        files="$*"
     fi
 
-    sudo rm $files
+    sudo rm "$files"
     clear
     ls -1A --color --group-directories-first
 }
