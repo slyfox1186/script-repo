@@ -18,11 +18,11 @@
 ##  Added: custom LIBRARY_PATH variables for each version of GCC
 ##  Added: link time optimization support
 ##  Added: gmp support library for binutils
-##  Added: ada launguage support for all gcc versions
+##  Added: ada language support for all gcc versions
 ##
 ##  Fixed: zstdn, zlib, and bison build issues.
 ##
-##  Changed: the language support to 'all' for each gcc build so it will build all languages
+##  Changed: the language support to 'all' for each gcc version which will build all languages
 ##           that it finds available.
 ##  Changed: the default install directory for the GNU libs to "$workspace" to help avoid
 ##           future overlaps with APT packages that may be installed.
@@ -759,7 +759,7 @@ if build 'binutils' '2.40'; then
     build_done 'binutils' '2.40'
 fi
 
-# To build GCC with ada support you must use gnatcc as the C Compiler
+# To build GCC with ada support you must use gnatgcc as the C Compiler
 export CC=gnatgcc CXX=g++
 
 if build 'gcc-11' '11.4.0'; then
