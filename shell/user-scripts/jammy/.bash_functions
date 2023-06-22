@@ -972,17 +972,38 @@ tar_gz()
     fi
 }
 
-# CREATE A XZ FILE USING TAR COMMAND
-tar_xz()
+tar_bz2()
 {
     local source output
     clear
 
     if [ -n "$1" ]; then
+        if [ -f "$1".tar.bz2 ]; then
+            sudo rm "$1".tar.bz2
+        fi
+        tar -cvjf "$1".tar.bz2 "$1"
+    else
+        read -p 'Please enter the source folder path: ' source
+        echo
+        read -p 'Please enter the destination archive path (w/o extension): ' output
+        clear
+        if [ -f "$output".tar.bz2 ]; then
+            sudo rm "$output".tar.bz2
+        fi
+        tar -cvjf "$output".tar.bz2 "$source"
+    fi
+}
+
+tar_xz()
+{
+    local source output
+    clear
+set -x
+    if [ -n "$1" ]; then
         if [ -f "$1".tar.xz ]; then
             sudo rm "$1".tar.xz
         fi
-        tar -cJf "$1".tar.xz "$1"
+        tar -cvJf - "$1" | xz -9 -c - > "$1".tar.xz
     else
         read -p 'Please enter the source folder path: ' source
         echo
@@ -991,7 +1012,7 @@ tar_xz()
         if [ -f "$output".tar.xz ]; then
             sudo rm "$output".tar.xz
         fi
-        tar -cJf "$output".tar.xz "$source"
+        tar -cvJf - "$source" | xz -9 -c - > "$output".tar.xz
     fi
 }
 
@@ -1017,73 +1038,6 @@ wcache()
     read -p 'Enter the drive id to turn off write cacheing (/dev/sdX w/o /dev/): ' drive_choice
 
     sudo hdparm -W 0 /dev/"$drive_choice"
-}
-
-##################
-## TAR COMMANDS ##
-##################
-
-tar_gz()
-{
-    clear
-
-    local spath dpath
-
-    read -p 'Please enter the source folder path: ' spath
-    echo
-    read -p 'Please enter the destination archive path (w/o extension): ' dpath
-    clear
-
-    if [ ! -f "$dpath".tar.gz ]; then
-        tar -czvf "$dpath".tar.gz "$spath" 
-    else
-        clear
-        printf "%s\n\n%s\n\n" \
-        'The output file already exists.' \
-        'Please choose another output name or delete the file.'
-    fi
-}
-
-tar_bz2()
-{
-    clear
-
-    local spath dpath
-
-    read -p 'Please enter the source folder path: ' spath
-    echo
-    read -p 'Please enter the destination archive path (w/o extension): ' dpath
-    clear
-
-    if [ ! -f "$dpath".tar.bz2 ]; then
-        tar -cjvf "$spath" "$dpath".tar.bz2
-    else
-        clear
-        printf "%s\n\n%s\n\n" \
-        'The output file already exists.' \
-        'Please choose another output name or delete the file.'
-    fi
-}
-
-tar_xz()
-{
-    clear
-
-    local spath dpath
-
-    read -p 'Please enter the source folder path: ' spath
-    echo
-    read -p 'Please enter the destination archive path (w/o extension): ' dpath
-    clear
-
-    if [ ! -f "$dpath".tar.xz ]; then
-        tar -cvf - "$spath" | xz -9 -c - > "$dpath".tar.xz
-    else
-        clear
-        printf "%s\n\n%s\n\n" \
-        'The output file already exists.' \
-        'Please choose another output name or delete the file.'
-    fi
 }
 
 rmd()
