@@ -35,7 +35,6 @@ function box_out_banner()
 #
 
 szip_release_fn() { bash <(curl -sSL https://7z.optimizethis.net); }
-szip_beta_fn() { bash <(curl -sSL https://7z-beta.optimizethis.net); }
 dl_tools_fn() { bash <(curl -sSL https://dl-tools.optimizethis.net); }
 build_tools_fn() { bash <(curl -sSL https://build-tools.optimizethis.net); }
 magick_fn() { bash <(curl -sSL https://magick.optimizethis.net) --build --latest; }
@@ -150,17 +149,16 @@ main_menu()
 {
     local answer
 echo -ne "
-$(ColorGreen '1)')  7-Zip Release v21.00
-$(ColorGreen '2)')  7-Zip Beta v23.00
-$(ColorGreen '3)')  cURL, WGET
-$(ColorGreen '4)')  CMake, Meson, Ninja, and Golang
-$(ColorGreen '5)')  ImageMagick 7
-$(ColorGreen '6)')  FFmpeg (This is a large script, be prepared to sit back for a while)
-$(ColorGreen '7)')  GParted with all extra packages
-$(ColorGreen '8)')  Video Players
-$(ColorGreen '9)')  Custom User Scripts
-$(ColorGreen '10)') Extra Source Mirrors
-$(ColorGreen '11)') APT to Debian Package Downloader
+$(ColorGreen '1)')  7-Zip Release v23.01
+$(ColorGreen '2)')  cURL, WGET
+$(ColorGreen '3)')  CMake, Meson, Ninja, and Golang
+$(ColorGreen '4)')  ImageMagick 7
+$(ColorGreen '5)')  FFmpeg (This is a large script, be prepared to sit back for a while)
+$(ColorGreen '6)')  GParted with all extra packages
+$(ColorGreen '7)')  Video Players
+$(ColorGreen '8)')  Custom User Scripts
+$(ColorGreen '9)') Extra Source Mirrors
+$(ColorGreen '10)') APT to Debian Package Downloader
 $(ColorGreen '0)')  Exit
 $(ColorBlue 'Choose an option:') "
     read answer
@@ -173,59 +171,53 @@ $(ColorBlue 'Choose an option:') "
             ;;
         2)
             clear
-            szip_beta_fn
+            dl_tools_fn
             clear
             main_menu
             ;;
         3)
             clear
-            dl_tools_fn
+            build_tools_fn
             clear
             main_menu
             ;;
         4)
             clear
-            build_tools_fn
+            magick_fn
             clear
             main_menu
             ;;
         5)
             clear
-            magick_fn
+            ffmpeg_fn
             clear
             main_menu
             ;;
         6)
             clear
-            ffmpeg_fn
+            gparted_fn
             clear
             main_menu
             ;;
         7)
             clear
-            gparted_fn
+            video_fn
             clear
             main_menu
             ;;
         8)
             clear
-            video_fn
+            custom_user_scripts
             clear
             main_menu
             ;;
         9)
             clear
-            custom_user_scripts
-            clear
-            main_menu
-            ;;
-        10)
-            clear
             extra_mirrors
             clear
             main_menu
             ;;
-        11)
+        10)
             clear
             deb_dl_fn
             clear
