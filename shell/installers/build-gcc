@@ -543,8 +543,7 @@ fi
 # SET THE C & C++ COMPILERS
 #
 
-export CC=gcc
-export CXX=g++
+export CC=gcc CXX=g++
 export CFLAGS='-g -O3 -march=native'
 export CXXFLAGS='-g -O3 -march=native'
 
