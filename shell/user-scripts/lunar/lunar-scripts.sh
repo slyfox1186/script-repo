@@ -3,23 +3,20 @@
 clear
 
 #
-# create functions
+# CREATE FUNCTIONS
 #
 
 fail_fn()
 {
-    printf "\n%s\n\n" \
-        "$1"
-        exit 1
+    printf "\n%s\n\n" "$1"
+    exit 1
 }
 
-# make a tmporary random directory
+# create a tmporary random directory
 random_dir="$(mktemp --directory)"
 
-static_dir="$random_dir"
-
 # Change the working directory into the random directory to avoid deleting unintended files
-cd "$static_dir" || exit 1
+cd "$random_dir" || exit 1
 
 # Delete all files except those that start with a '.' or end with '.sh'
 find . ! \( -name '\.*' -o -name '*.sh' \) -type f -delete 2>/dev/null
