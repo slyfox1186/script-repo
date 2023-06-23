@@ -440,7 +440,7 @@ fi
 #
 
 if build 'wget' 'latest'; then
-    download 'https://ftp.gnu.org/gnu/wget/wget-latest.tar.lz'
+    download 'https://ftp.gnu.org/gnu/wget/wget-latest.tar.gz'
     if which update-ca-certificates &>/dev/null; then
         execute sudo update-ca-certificates
     fi
