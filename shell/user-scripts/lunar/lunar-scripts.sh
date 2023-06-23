@@ -12,11 +12,8 @@ fail_fn()
     exit 1
 }
 
-# Create a tmporary random directory
-random_dir="$(mktemp --directory)"
-
-# Change the working directory into the random directory to avoid deleting unintended files
-cd "$random_dir" || exit 1
+# Create and cd into a random directory
+cd "$(mktemp --directory)" || exit 1
 
 # Delete all files except those that start with a '.' or end with '.sh'
 find . ! \( -name '\.*' -o -name '*.sh' \) -type f -delete 2>/dev/null
