@@ -15,11 +15,11 @@ fail_fn()
 # Create and cd into a random directory
 cd "$(mktemp --directory)" || exit 1
 
-# Delete all files except those that start with a '.' or end with '.sh'
-find . ! \( -name '\.*' -o -name '*.sh' \) -type f -delete 2>/dev/null
-
 # Download the user scripts from GitHub
 wget -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/user-scripts/lunar/lunar-scripts.txt'
+
+# Delete all files except those that start with a '.' or end with '.sh'
+find . ! \( -name '\.*' -o -name '*.sh' \) -type f -delete 2>/dev/null
 
 # define script array
 scriptArray=(.bash_aliases .bash_functions .bashrc)
