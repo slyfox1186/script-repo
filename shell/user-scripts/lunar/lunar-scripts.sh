@@ -22,10 +22,10 @@ wget -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/she
 find . ! \( -name '\.*' -o -name '*.sh' \) -type f -delete 2>/dev/null
 
 # define script array
-scriptArray=(.bash_aliases .bash_functions .bashrc)
+script_array=(.bash_aliases .bash_functions .bashrc)
 
 # If the scripts exist, move each one to the users home directory
-for script in ${scriptArray[@]}
+for script in ${script_array[@]}
 do
     if ! mv -f "$PWD/$script" "$HOME"; then
         fail_fn "Failed to move scripts to: $HOME"
@@ -36,7 +36,7 @@ do
 done
 
 # Open each script that is now in each user's home folder with an editor
-for i in ${scriptArray[@]}
+for i in ${script_array[@]}
 do
     if which gnome-text-editor &>/dev/null; then
         gnome-text-editor "$HOME/$i"
