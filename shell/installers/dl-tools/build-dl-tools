@@ -6,30 +6,30 @@
 ##  Install the latest curl release from GitHub
 ##
 ##  Supported OS:
-##  - Debian 10 / 11
+##  - Debian 10 / 11 / 12
 ##  - Ubuntu 22.04 / 20.04 / 18.04
 ##
-##  Updated: 06.18.23
+##  Updated: 06.23.23
 ##
-##  Script version: 2.3
+##  Script version: 2.4
 ##
 ######################################################
 
 clear
 
-script_ver='2.3'
+script_ver='2.4'
 cwd="$PWD"/dltools-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
-CFLAGS='-Os -ffunction-sections -fdata-sections -fno-unwind-tables -fno-asynchronous-unwind-tables -flto'
-LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu"
-LDFLAGS+=' -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/usr/local/lib -L/lib -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
+CFLAGS='-g -O3 -march=native -ffunction-sections -fdata-sections -fno-unwind-tables'
+CFLAGS+=' -fno-asynchronous-unwind-tables -flto -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
+LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L/usr/lib/x86_64-linux-gnu"
+LDFLAGS+=' -L/usr/lib/gcc/x86_64-linux-gnu -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/lib'
 CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include"
 cert_dir='/etc/ssl/certs'
 pem_file='cacert-2023-05-30.pem'
-install_dir='/usr/local'
-include_dir='/usr/include'
-repo='https://github.com/slyfox1186/script-repo/'
+repo='https://github.com/slyfox1186/script-repo'
+debug=OFF
 
 #
 # CREATE OUTPUT DIRECTORIES
@@ -52,7 +52,7 @@ fi
 #
 
 printf "%s\n%s\n%s\n" \
-    "DL-Tools Build Script - v$script_ver" \
+    "dltools build script - v$script_ver" \
     '===============================' \
     "This script will utilize ($cpu_threads) cpu threads for parallel processing to accelerate the build process."
 
@@ -89,10 +89,10 @@ export PKG_CONFIG_PATH
 
 fail_fn()
 {
-    printf "\n%s\n\n%s\n%s\n\n" \
+    printf "\n%s\n%s\n%s\n\n" \
         "$1" \
-        'Please submit a support ticket in GitHub.' \
-    "$repo"
+        'You can enable the script'\''s debugging feature by changing the variable "debug" to "ON"' \
+        "Please create a bug report: $repo/issues"
     exit 1
 }
 
@@ -130,7 +130,7 @@ cleanup_fn()
 success_fn()
 {
     local curl_ver wget_ver
-    curl_ver="$(curl --version | grep -Eo '[0-9\.]+' | sed -n 1p)"
+    curl_ver="$(curl-"$1" --version | grep -Eo '[0-9\.]+' | sed -n 1p)"
     wget_ver="$(wget --version | grep -Eo '[0-9\.]+' | sed -n 1p)"
     printf "\n%s\n\n" "The updated cURL version is: v$curl_ver"
     printf "\n%s\n\n" "The updated WGET version is: v$wget_ver"
@@ -141,8 +141,6 @@ success_fn()
 # SCRAPE GITHUB WEBSITE FOR THE LATEST REPO VERSION
 #
 
-curl_timeout='10'
-
 git_1_fn()
 {
     local curl_cmd github_repo github_url
@@ -150,7 +148,7 @@ git_1_fn()
     github_repo="$1"
     github_url="$2"
 
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
+    if curl_cmd="$(curl -m '10' -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url' 2>/dev/null)"
         g_ver="${g_ver#cares-}"
@@ -191,8 +189,17 @@ git_ver_fn()
 execute()
 {
     echo "$ $*"
-    if ! output=$("$@" 2>&1); then
-        fail_fn "Failed to Execute $*"
+
+    if [ "$debug" = 'ON' ]; then
+        if ! output=$("$@"); then
+            notify-send "Failed to execute: $*"
+            fail_fn "Failed to execute: $*"
+        fi
+    else
+        if ! output=$("$@" 2>&1); then
+            notify-send "Failed to execute: $*"
+            fail_fn "Failed to execute: $*"
+        fi
     fi
 }
 
@@ -235,16 +242,16 @@ download()
     if [ -n "$3" ]; then
         if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
             sudo rm "$target_file"
-            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please run the script again."
+            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please rerun the script."
         fi
     else
         if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
             sudo rm "$target_file"
-            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please run the script again."
+            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please rerun the script."
         fi
     fi
 
-    echo -e "File extracted: $dl_file\\n"
+    printf "%s\n\n" "Extracted the archive: $dl_file"
 
     cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
 }
@@ -268,9 +275,15 @@ build()
     return 0
 }
 
-build_done() { echo "$2" > "$packages/$1.done"; }
+build_done()
+{
+    echo "$2" > "$packages/$1.done"
+}
 
-installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
+installed()
+{
+    return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
+}
 
 #
 # INSTALL REQUIRED APT PACKAGES
@@ -280,16 +293,14 @@ pkgs_fn()
 {
     local pkg pkgs missing_pkgs
 
-    pkgs=("$1" apt-transport-https apt-utils aria2 autoconf autogen automake autopoint autotools-dev
-          build-essential bzip2 ca-certificates ccache cmake curl gfortran git google-perftools graphviz
-          jq language-pack-en lcov libaria2-0 libaria2-0-dev libcppunit-dev libcunit1-dev libcurl4
-          libcurl4-gnutls-dev libcurl4-openssl-dev libec-dev libedit-dev libev-dev libevent-dev libexiv2-27
-          libexpat1-dev libgcc-12-dev libgexiv2-2 libgimp2.0 libicu-dev libkrb5-3 libldap2-dev libldap-dev
-          liblttng-ust-dev liblzma-dev libmbedtls-dev libnghttp2-dev libntlm0-dev libpng-dev libpsl-dev librtmp-dev
-          libssh2-1-dev libssh-dev libssl-dev libtinfo5 libtinfo-dev libtool libunistring-dev libunwind8 libuv1-dev
-          libxml2-dev libzstd-dev m4 openjdk-11-jdk openssh-server pkg-config python3 python3-dev python3-numpy
-          python3-packaging python3-pip python3-pytest python3-setuptools python3-wheel re2c rsync sudo unzip wget
-          zip zlib1g zlib1g-dev libgtk-4-doc)
+    pkgs=("$1" apt-transport-https apt-utils aria2 autoconf autogen automake autopoint autotools-dev build-essential
+          bzip2 ca-certificates ccache cmake curl gfortran git google-perftools graphviz jq lcov libaria2-0 libaria2-0-dev
+          libcppunit-dev libcunit1-dev libcurl4 libcurl4-gnutls-dev libec-dev libedit-dev libev-dev libevent-dev libexiv2-27
+          libexpat1-dev libgcc-12-dev libgexiv2-2 libgimp2.0 libgtk-4-doc libicu-dev libkrb5-3 libldap2-dev libldap-dev
+          liblttng-ust-dev liblzma-dev libmbedtls-dev libnghttp2-dev libntlm0-dev libpng-dev libpsl-dev librtmp-dev libssh2-1-dev
+          libssh-dev libssl-dev libtinfo5 libtinfo-dev libtool libunistring-dev libunwind8 libuv1-dev libxml2-dev libzstd-dev m4
+          openjdk-17-jdk-headless openssh-server pkg-config python3 python3-dev python3-numpy python3-packaging python3-pip
+          python3-pytest python3-setuptools python3-wheel re2c rsync sudo unzip wget zip zlib1g zlib1g-dev)
 
     for pkg in ${pkgs[@]}
     do
@@ -298,7 +309,7 @@ pkgs_fn()
         fi
     done
 
-    if [ -n "${missing_pkgs-}" ]; then
+    if [ -n "$missing_pkgs" ]; then
         printf "\n%s\n%s\n" \
             'Installing required apt packages' \
             '================================================'
@@ -311,37 +322,86 @@ pkgs_fn()
 }
 
 #
-# DISCOVER THE SYSTEM OS
+# DETERMINE WHAT VERSION OF LINUX WE ARE ON
 #
 
-pkgs_jammy='libnghttp3-dev libgsasl-dev libngtcp2-dev'
+ubuntu_os_check_fn()
+{
+    ubuntu_os="$(lsb_release -r 2>/dev/null | grep -Eo '[0-9\.]+$')"
+    case "$ubuntu_os" in
+        23.04|22.04)
+                        pkgs_fn 'libnghttp3-dev libgsasl-dev libngtcp2-dev language-pack-en libcurl4-gnutls-dev'
+                        http3_flag='true'
+                        ;;
+        *)              fail_fn 'Could not detect the Ubuntu version.';;
+    esac
+}
 
-os_test="$(lsb_release -r 2>/dev/null | grep -Eo '[0-9\.]+$')"
-if [ "$os_test" = '23.04' ] || [ "$os_test" = '22.04' ]; then
-    pkgs_fn "$pkgs_jammy"
-    j_flag='nghttp3=/usr/include'
-fi
+linux_ver()
+{
+    if [ -f '/etc/os-release' ]; then
+        . '/etc/os-release'
+        OS="$NAME"
+        VER="$VERSION_ID"
+    elif "$(type -P lsb_release)" &>/dev/null; then
+        OS=$(lsb_release -si)
+        VER=$(lsb_release -sr)
+    elif [ -f '/etc/lsb-release' ]; then
+        . '/etc/lsb-release'
+        OS="$DISTRIB_ID"
+        VER="$DISTRIB_RELEASE"
+    elif [ -f '/etc/debian_version' ]; then
+        OS='Debian'
+        VER="$(cat '/etc/debian_version')"
+    else
+        OS="$(uname -s)"
+        VER="$(uname -r)"
+    fi
+}
+linux_ver
+
+#
+# TEST THE OS AND ITS VERSION IF UBUNTU THEN CALL THE pkgs_fn
+#
+
+case "$OS" in
+    'Debian GNU/Linux')
+                            pkgs_fn 'libnghttp3-dev libgsasl-dev libngtcp2-dev libcurl4-gnutls-dev'
+                            http3_flag='true'
+                            ;;
+    'Ubuntu')               ubuntu_os_check_fn;;
+    *)                      fail_fn 'Could not detect the OS architecture.';;
+esac
 
 #
 # SET THE C & C++ COMPILERS
 #
 
 export CC=gcc CXX=g++
-export CXXFLAGS='-g -O3 -march=native'
 
 #
-# SET THE C++ COMPILER OPTIMIZATION FLAGS TO TUNE THE BUILD FOR THE SPECIFIC COMPUTER RUNNING THE SCRIPT 
+# SET COMPILER OPTIMIZATION FLAGS TO TUNE THE BUILD FOR THE SPECIFIC COMPUTER RUNNING THE SCRIPT
 #
 
-export CXXFLAGS='-g -O3 -march=native -mtune=native'
+export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 #
 # INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
 #
 
+# DETERMINE WHICH DOWNLOADER IS AVAILABLE
+if which curl &>/dev/null; then
+    dl_tool='curl -Lso'
+else
+    dl_tool='wget -cqO'
+fi
+
 if [ ! -f "$cert_dir/$pem_file" ]; then
-    execute wget -cqO "$pem_file" "https://curl.se/ca/$pem_file"
-    execute sudo mv "$pem_file" "$cert_dir/$pem_file"
+    printf "%s\n%s\n\n" \
+        'Download the latest security certificate' \
+        '================================================'
+    execute "$dl_tool" "$packages/$pem_file" "https://curl.se/ca/$pem_file"
+    execute sudo cp -f "$packages/$pem_file" "$cert_dir/$pem_file"
 fi
 
 #
@@ -351,9 +411,13 @@ fi
 git_ver_fn 'madler/zlib' '1' 'T'
 if build 'zlib' "$g_ver"; then
     download "$g_url" "zlib-$g_ver.tar.gz"
-    execute ./configure --prefix="$workspace" --static
-    execute make "-j$(($cpu_threads-1))"
+    mkdir build
+    cd build || exit 1
+    execute ../configure --prefix="$workspace" \
+                         --static
+    execute make "-j$cpu_threads"
     execute make install
+    execute make clean
     build_done 'zlib' "$g_ver"
 fi
 
@@ -361,29 +425,42 @@ git_ver_fn 'akheron/jansson' '1' 'T'
 if build 'jansson' "$g_ver"; then
     download "$g_url" "jansson-$g_ver.tar.gz"
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace"
-    execute make "-j$(($cpu_threads-1))"
+    mkdir build
+    cd build || exit 1
+    execute ../configure --prefix="$workspace" \
+                         --disable-shared
+    execute make "-j$cpu_threads"
     execute make install
+    execute make clean
     build_done 'jansson' "$g_ver"
 fi
 
 if build 'libiconv' '1.17'; then
     download 'https://ftp.gnu.org/gnu/libiconv/libiconv-1.17.tar.gz'
-    execute ./configure --prefix="$libs_install_dir" --disable-shared
-    execute make "-j$(($cpu_threads-1))"
-    execute sudo make install
-    execute make distclean
-    execute sudo libtool --finish "$libs_install_dir"/lib
+    mkdir build
+    cd build || exit 1
+    execute ../configure --prefix="$workspace" \
+                         --disable-shared
+    execute make "-j$cpu_threads"
+    execute make install
+    execute make clean
+    execute libtool --finish "$workspace"/lib
     build_done 'libiconv' '1.17'
 fi
 
 if build 'gsasl' '2.2.0'; then
     download 'https://ftp.gnu.org/gnu/gsasl/gsasl-2.2.0.tar.gz' 'gsasl-2.2.0.tar.gz'
-    execute ./configure --prefix="$workspace" --disable-{shared,year2038} \
-        --with-{libiconv-prefix='/usr/local',openssl=auto} --enable-gtk-doc
-    execute make "-j$(($cpu_threads-1))"
+    mkdir build
+    cd build || exit 1
+    execute ../configure --prefix="$workspace"               \
+                         --disable-shared                    \
+                         --disable-year2038                  \
+                         --enable-gtk-doc                    \
+                         --with-libiconv-prefix="$workspace" \
+                         --with-openssl=auto
+    execute make "-j$cpu_threads"
     execute make install
-    sudo cp -f "$workspace"/lib/libgsasl.so.18 /usr/local/lib
+    execute make clean
     build_done 'gsasl' '2.2.0'
 fi
 
@@ -394,10 +471,15 @@ if build 'c-ares' "$g_ver"; then
     download "https://codeload.github.com/c-ares/c-ares/tar.gz/refs/tags/cares-$g_tag" "c-ares-$g_ver.tar.gz"
     execute autoupdate
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --disable-{shared,warnings} --enable-optimize="$CXXFLAGS"
-    execute make "-j$(($cpu_threads-1))"
+    mkdir build
+    cd build || exit 1
+    execute ../configure --prefix="$workspace" \
+                         --disable-shared      \
+                         --disable-warnings    \
+                         --enable-optimize="$CXXFLAGS"
+    execute make "-j$cpu_threads"
     execute make install
-    execute make distclean
+    execute make clean
     build_done 'c-ares' "$g_ver"
 fi
 
@@ -405,10 +487,13 @@ git_ver_fn 'pcre2project/pcre2' '1' 'T'
 if build 'pcre2' "$g_ver"; then
     download "$g_url" "pcre2-$g_ver.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --disable-shared
-    execute make "-j$(($cpu_threads-1))"
+    mkdir build
+    cd build || exit 1
+    execute ../configure --prefix="$workspace" \
+                        --disable-shared
+    execute make "-j$cpu_threads"
     execute make install
-    execute make distclean
+    execute make clean
     build_done 'pcre2' "$g_ver"
 fi
 
@@ -416,10 +501,23 @@ git_ver_fn 'jemalloc/jemalloc' '1' 'T'
 if build 'jemalloc' "$g_ver"; then
     download "https://codeload.github.com/jemalloc/jemalloc/tar.gz/refs/tags/$g_ver" "jemalloc-$g_ver.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --enable-{autogen,lazy-lock,static,xmalloc} \
-        --disable-{debug,doc,fill,log,shared,prof,stats}
-    execute make "-j$(($cpu_threads-1))"
+    mkdir build
+    cd build || exit 1
+    execute ../configure --prefix="$workspace" \
+                         --enable-autogen      \
+                         --enable-lazy-lock    \
+                         --enable-static       \
+                         --enable-xmalloc      \
+                         --disable-debug       \
+                         --disable-doc         \
+                         --disable-fill        \
+                         --disable-log         \
+                         --disable-shared      \
+                         --disable-prof        \
+                         --disable-stats
+    execute make "-j$cpu_threads"
     execute make install
+    execute make clean
     build_done 'jemalloc' "$g_ver"
 fi
 
@@ -429,9 +527,10 @@ if build 'brotli' "$g_ver"; then
     mkdir build
     cd build || exit 1
     execute ../configure-cmake --prefix="$workspace"
-    execute make "-j$(($cpu_threads-1))"
+    execute make "-j$cpu_threads"
     execute make test
     execute make install
+    execute make clean
     build_done 'brotli' "$g_ver"
 fi
 
@@ -441,37 +540,64 @@ fi
 
 if build 'wget' 'latest'; then
     download 'https://ftp.gnu.org/gnu/wget/wget-latest.tar.gz'
-    if which update-ca-certificates &>/dev/null; then
+    if "$(which update-ca-certificates)" &>/dev/null; then
         execute sudo update-ca-certificates
     fi
     execute autoconf
-    ./configure --prefix="$install_dir" --enable-threads --with-{cares,metalink,openssl=auto,ssl=gnutls}
-    execute make "-j$(($cpu_threads-1))"
+    mkdir build
+    cd build || exit 1
+    execute ../configure --prefix=/usr/local \
+                         --enable-threads    \
+                         --with-cares        \
+                         --with-metalink     \
+                         --with-openssl=auto \
+                         --with-ssl=gnutls
+    execute make "-j$cpu_threads"
     execute sudo make install
+    execute make clean
     build_done 'wget' 'latest'
+fi
+
+# DETERMINE IF HTTP3 SUPPORT IS ENABLED
+if [ "$http3_flag" = 'true' ]; then
+    http3_flag='--with-nghttp3=/usr/include'
+else
+    http3_flag='--without-nghttp3'
 fi
 
 git_ver_fn 'curl/curl' '1' 'R'
 if build 'curl' "$g_ver"; then
     download "$g_url" "curl-$g_ver.tar.gz"
     curl_disable_opts=(--disable-{get-easy-options,shared,verbose,versioned-symbols})
-    curl_enable_opts=(--enable-{alt-svc,ares="$workspace/include",cookies,crypto-auth,dateparse,dict,dnsshuffle,doh,file,ftp,gopher})
-    curl_enable_opts+=(--enable-{headers-api,hsts,http,http-auth,imap,ipv6,ldap,ldaps,libcurl-option,libgcc,manual,mime,mqtt,netrc,ntlm,ntlm-wb='/usr/bin/ntlm_auth'})
-    curl_enable_opts+=(--enable-{openssl-auto-load-config,optimize,pop3,progress-meter,proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static,telnet,tftp,threaded-resolver})
-    curl_enable_opts+=(--enable-{tls-srp,unix-sockets,websockets})
-    curl_with_opts=(--with-{gnutls="$include_dir",libssh2,gssapi="$include_dir"/globus,nghttp2='/usr/include'})
+    curl_enable_opts=(--enable-{alt-svc,ares="$workspace",cookies})
+    curl_enable_opts+=(--enable-{crypto-auth-dateparse,dict,dnsshuffle,doh,file})
+    curl_enable_opts+=(--enable-{ftp,gopher,headers-api,hsts,http,http-auth,imap})
+    curl_enable_opts+=(--enable-{ipv6,ldap,ldaps,libcurl-option,libgcc,manual,mime})
+    curl_enable_opts+=(--enable-{mqtt,netrc,ntlm,ntlm-wb='/usr/bin/ntlm_auth'})
+    curl_enable_opts+=(--enable-{openssl-auto-load-config,optimize,pop3,progress-meter})
+    curl_enable_opts+=(--enable-{proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static,telnet})
+    curl_enable_opts+=(--enable-{tftp,threaded-resolver,tls-srp,unix-sockets,websockets})
+    curl_with_opts=(--with-{gnutls=/usr/include,libssh2,nghttp2=/usr/include})
     curl_with_opts+=(--with-{ca-bundle="$cert_dir/$pem_file",ca-fallback,ca-path="$cert_dir",secure-transport})
-    execute autoreconf -fi
-    ./configure --prefix="$install_dir" "${curl_disable_opts[@]}" "${curl_enable_opts[@]}" \
-        "${curl_with_opts[@]}" CFLAGS="$CFLAGS" CPPFLAGS="$CPPFLAGS" LDFLAGS="$LDFLAGS" --with-"$j_flag" 
-    execute make "-j$(($cpu_threads-1))"
+    autoreconf -fi
+    mkdir build
+    cd build || exit 1
+    ../configure --prefix=/usr/local        \
+                 --program-suffix=-"$g_ver" \
+                 "${curl_disable_opts[@]}"  \
+                 "${curl_enable_opts[@]}"   \
+                 "${curl_with_opts[@]}"     \
+                 "$http3_flag"
+    execute make "-j$cpu_threads"
     execute sudo make install
+    execute make clean
 fi
 
 sudo ldconfig &>/dev/null
 
 # ALERT THE USER THAT THE BUILD HAS FINISHED
-success_fn
+success_fn "$g_ver"
 
 # CLEANUP LEFTOVER FILES
 cleanup_fn
+
