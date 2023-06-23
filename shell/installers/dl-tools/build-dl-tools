@@ -361,7 +361,7 @@ linux_ver()
 linux_ver
 
 #
-# TEST THE OS AND ITS VERSION IF UBUNTU THEN CALL THE pkgs_fn
+# TEST THE OS AND ITS VERSION
 #
 
 case "$OS" in
