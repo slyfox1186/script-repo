@@ -12,23 +12,20 @@ fail_fn()
     exit 1
 }
 
-# Create a tmporary random directory
-random_dir="$(mktemp --directory)"
-
-# Change the working directory into the random directory to avoid deleting unintended files
-cd "$random_dir" || exit 1
-
-# Delete all files except those that start with a '.' or end with '.sh'
-find . ! \( -name '\.*' -o -name '*.sh' \) -type f -delete 2>/dev/null
+# Create and cd into a random directory
+cd "$(mktemp --directory)" || exit 1
 
 # Download the user scripts from GitHub
 wget -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/user-scripts/jammy/jammy-scripts.txt'
 
+# Delete all files except those that start with a '.' or end with '.sh'
+find . ! \( -name '\.*' -o -name '*.sh' \) -type f -delete 2>/dev/null
+
 # define script array
-scriptArray=(.bash_aliases .bash_functions .bashrc)
+script_array=(.bash_aliases .bash_functions .bashrc)
 
 # If the scripts exist, move each one to the users home directory
-for script in ${scriptArray[@]}
+for script in ${script_array[@]}
 do
     if ! mv -f "$PWD/$script" "$HOME"; then
         fail_fn "Failed to move scripts to: $HOME"
@@ -39,7 +36,7 @@ do
 done
 
 # Open each script that is now in each user's home folder with an editor
-for i in ${scriptArray[@]}
+for i in ${script_array[@]}
 do
     if which gedit &>/dev/null; then
         gedit "$HOME/$i"
