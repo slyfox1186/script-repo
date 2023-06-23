@@ -99,13 +99,6 @@ fail_fn()
     exit 1
 }
 
-fail_pkg_fn()
-{
-    printf "\n%s\n\n" \
-        "The '$1' package is not installed. It is required for this script to run."
-    exit 1
-}
-
 cleanup_fn()
 {
     local cleanup_answer
