@@ -12,7 +12,7 @@ fail_fn()
     exit 1
 }
 
-# create a tmporary random directory
+# Create a tmporary random directory
 random_dir="$(mktemp --directory)"
 
 # Change the working directory into the random directory to avoid deleting unintended files
