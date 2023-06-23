@@ -405,7 +405,7 @@ if [ ! -f "$cert_dir/$pem_file" ]; then
 fi
 
 #
-# COMPILE FROM SOUCE CODE
+# COMPILE FROM SOURCE CODE
 #
 
 git_ver_fn 'madler/zlib' '1' 'T'
