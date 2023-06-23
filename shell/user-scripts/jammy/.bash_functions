@@ -195,7 +195,6 @@ update()
     clear
     sudo apt update
     sudo apt -y full-upgrade
-    sudo apt -y install ubuntu-advantage-tools
     sudo apt -y autoremove
     sudo apt clean
     sudo apt autoclean
@@ -225,11 +224,11 @@ listd()
     local search_cache
 
     if [ -n "$1" ]; then
-        sudo apt-fast list *$1*-dev | awk -F'/' '{print $1}'
+        sudo apt list *$1*-dev | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt-fast list *$1*-dev | awk -F'/' '{print $1}'
+        sudo apt list *$1*-dev | awk -F'/' '{print $1}'
     fi
 }
 
@@ -240,11 +239,11 @@ list()
     local search_cache
 
     if [ -n "$1" ]; then
-        sudo apt-fast list *$1* | awk -F'/' '{print $1}'
+        sudo apt list *$1* | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt-fast list *$1* | awk -F'/' '{print $1}'
+        sudo apt list *$1* | awk -F'/' '{print $1}'
     fi
 }
 
@@ -1185,4 +1184,21 @@ EOF
         "$answer" -Q -v /tmp/hello.c
     fi
     sudo rm /tmp/hello.c
+}
+
+############################
+## UNINSTALL DEBIAN FILES ##
+############################
+
+rm_deb()
+{
+    local deb_file
+    clear
+    if [ -n "$1" ]; then
+        sudo dpkg -r "$(dpkg -f "$1" Package)"
+    else
+        read -p 'Please enter the debian file name: ' deb_file
+        clear
+        sudo dpkg -r "$(dpkg -f "$deb_file" Package)"
+    fi
 }
