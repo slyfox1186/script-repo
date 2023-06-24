@@ -102,7 +102,7 @@ bash <(curl -sSL https://dl-tools.optimizethis.net)
 ````
 ------
 
-## Add custom user scripts the the user's home directory
+## Add custom user scripts to the user's home directory
   - **Warning! This will overwrite your files!**
   - **Files Included**
     - `.bashrc`
@@ -115,6 +115,10 @@ bash <(curl -sSL https://lunar-scripts.optimizethis.net)
 ### Ubuntu 22.04 (Jammy), 20.04 (Focal), 18.04 (Bionic)
 ```bash
 bash <(curl -sSL https://jammy-scripts.optimizethis.net)
+```
+### Debian 10 (Buster) / 11 (Bullseye) / 12 (Bookworm)
+```bash
+bash <(curl -sSL https://bookworm-scripts.optimizethis.net)
 ```
 ------
 
