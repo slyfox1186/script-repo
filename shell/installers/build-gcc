@@ -35,6 +35,10 @@
 
 clear
 
+cwd="$PWD"/gcc-build-script
+packages="$cwd"/packages
+workspace="$cwd"/workspace
+
 #
 # CLEAN THE BUILD ENVIRONMENT
 #
@@ -89,7 +93,8 @@ awk '!NF || !seen[$0]++' "$post_file" > "$pre_file"
 join_str="$(tr '\n' ':' < "$pre_file")"
 PATH="$(echo "$join_str" | sed 's/..$//g')"
 export PATH
-
+echo $PATH
+exit
 sudo rm -fr "$tmp_dir"
 unset join_str post_file pre_file tmp_dir
 
@@ -98,9 +103,6 @@ unset join_str post_file pre_file tmp_dir
 #
 
 script_ver='4.0'
-cwd="$PWD"/gcc-build-script
-packages="$cwd"/packages
-workspace="$cwd"/workspace
 install_dir='/usr/local'
 CFLAGS='-g -O3 -march=native -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
 CXXFLAGS='-g -O3 -march=native'
