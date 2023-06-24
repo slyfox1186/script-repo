@@ -10,48 +10,104 @@
 ##  Supported OS: Linux Ubuntu Jammy (22.04.02)
 ##                Native OS Only - Windows WSL is NOT working
 ##
-##  Updated: 06.21.23
+##  Updated: 06.24.23
 ##
-##  Script Version: 3.7
+##  Script Version: 4.0
 ##
 ##  Added: multiple support libraries using the latest versions available
-##  Added: custom LIBRARY_PATH variables for each version of GCC
 ##  Added: link time optimization support
 ##  Added: gmp support library for binutils
 ##  Added: ada language support for all gcc versions
+##  Added: code to clean the environment
+##
+##  Updated: the LIBRARY_PATH variable to include the default paths of the APT "gcc" version
 ##
 ##  Fixed: zstdn, zlib, and bison build issues.
+##  Fixed: debian not being able to compile gcc due to the ada language being included
+##  Fixed: debian missing and uninstallable APT package errors
 ##
-##  Changed: the language support to 'all' for each gcc version which will build all languages
-##           that it finds available.
+##  Changed: the language support on 'ubuntu' to 'all' for all gcc versions which allows them to
+##           build any languages they are able to.
 ##  Changed: the default install directory for the GNU libs to "$workspace" to help avoid
-##           future overlaps with APT packages that may be installed.
+##           future overlap with APT packages that may be installed.
 ##
 ################################################################################################
 
 clear
 
-if [ "$EUID" -eq '0' ]; then
-    printf "\n%s\n\n" 'You must run this script WITHOUT root/sudo'
-    exit 1
-fi
-
 #
-# CREATE SCRIPT VARIABLES
+# CLEAN THE BUILD ENVIRONMENT
 #
 
-script_ver='3.7'
+home="$HOME"
+pwd="$PWD"
+term="$TERM"
+
+for var in $(env | awk -F"=" '{print $1}')
+do
+    unset $var || true # IGNORE UNSET FAILURES
+done
+
+export HOME="$home" PWD="$pwd" TERM="$term"
+unset home pwd term var
+
+#
+# SET GLOBAL VARIABLES
+#
+
+PATH="\
+/usr/lib/ccache:\
+$workspace/bin:\
+/usr/bin/x86_64-pc-linux-gnu-ld:\
+$HOME/.local/bin:\
+$HOME/.cargo/bin:\
+/usr/local/sbin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin:\
+/usr/local/cuda/bin:\
+/snap/bin:\
+$PATH\
+"
+
+#
+# REMOVE DUPLICATE LINES FROM THE PATH VARIABLE
+#
+
+pre_file="$(mktemp -d)"/file_1.txt
+post_file="$(mktemp -d)"/file_2.txt
+
+echo "$PATH" > "$pre_file"
+
+sed -E 's/(:)/\n/g' "$pre_file" | tee "$post_file"
+clear
+awk '!NF || !seen[$0]++' "$post_file" > "$pre_file"
+
+join_str="$(tr '\n' ':' < "$pre_file")"
+PATH="$(echo "$join_str" | sed 's/..$//g')"
+export PATH
+
+sudo rm -fr "$pre_file" "$post_file"
+unset join_str post_file pre_file
+
+#
+# SET BUILD VARIABLES
+#
+
+script_ver='4.0'
 cwd="$PWD"/gcc-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
 install_dir='/usr/local'
 CFLAGS='-g -O3 -march=native -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
 CXXFLAGS='-g -O3 -march=native'
-CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -I/usr/local/cuda-12.1/nvvm/include -I/usr/local/cuda/include"
-CPPFLAGS+=' -I/usr/include/x86_64-linux-gnu -I/usr/lib/gcc/x86_64-linux-gnu/8/include -I/usr/lib/gcc/x86_64-linux-gnu/9/include'
-LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/local/lib -L/usr/local/cuda-12.1/nvvm/lib64"
-LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/local/cuda-12.1/targets/x86_64-linux/lib -L/usr/share/ant/lib -L/usr/lib'
-LDFLAGS+=' -L/usr/lib/gcc/x86_64-linux-gnu/12/adalib -L/lib/x86_64-linux-gnu -L/lib -L/usr/x86_64-linux-gnux32/lib'
+CPPFLAGS="-I/include -I$workspace/include -I/usr/local/include -I/usr/include -I/usr/local/cuda-12.1/nvvm/include -I/usr/local/cuda/include"
+CPPFLAGS+=' -I/usr/include/x86_64-pc-linux-gnu -I/usr/lib/gcc/x86_64-pc-linux-gnu/8/include -I/usr/lib/gcc/x86_64-pc-linux-gnu/9/include'
+LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-pc-linux-gnu -L/usr/local/lib64 -L/usr/local/lib -L/usr/local/cuda-12.1/nvvm/lib64"
+LDFLAGS+=' -L/usr/lib/x86_64-pc-linux-gnu -L/usr/local/cuda-12.1/targets/x86_64-linux/lib -L/usr/share/ant/lib -L/usr/lib'
+LDFLAGS+=' -L/usr/lib/gcc/x86_64-pc-linux-gnu/12/adalib -L/lib/x86_64-pc-linux-gnu -L/lib -L/usr/x86_64-pc-linux-gnux32/lib'
 repo='https://github.com/slyfox1186/script-repo'
 # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
 debug=OFF
@@ -73,27 +129,6 @@ fi
 mkdir -p "$packages" "$workspace"/venv/bin/python "$workspace"/venv/bin/pip
 
 #
-# SET GLOBAL VARIABLES
-#
-
-PATH="\
-/usr/lib/ccache:\
-$workspace/bin:\
-/usr/bin/x86_64-linux-gnu-ld:\
-$HOME/.local/bin:\
-$HOME/.cargo/bin:\
-/usr/local/sbin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/cuda/bin:\
-/snap/bin\
-"
-export PATH
-
-#
 # EXPORT THE PKG-CONFIG PATHS TO ENABLE SUPPORT DURING THE BUILD
 #
 
@@ -101,15 +136,15 @@ PKG_CONFIG_PATH="\
 $workspace/lib/pkgconfig:\
 $workspace/lib64/pkgconfig:\
 $workspace/share/pkgconfig:\
-$workspace/lib/x86_64-linux-gnu/pkgconfig:\
+$workspace/lib/x86_64-pc-linux-gnu/pkgconfig:\
 $workspace/usr/lib/pkgconfig:\
 /lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/x86_64-pc-linux-gnu/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
 /usr/local/share/pkgconfig:\
 /usr/share/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/x86_64-pc-linux-gnu/pkgconfig:\
 /usr/lib/pkgconfig\
 "
 export PKG_CONFIG_PATH
@@ -172,7 +207,7 @@ show_ver_fn()
         printf "%s\n\n" 'The installed gcc versions are:'
         sudo "$install_dir/bin/gcc-11" -v
         echo
-        sudo "$install_dir/bin/gcc-12" -v
+        sudo "$install_dPKG_CONFIG_PATHir/bin/gcc-12" -v
         echo
         sudo "$install_dir/bin/gcc-13" -v
         echo
@@ -181,45 +216,73 @@ show_ver_fn()
 
 lib_path_other_fn()
 {
+    unset LIBRARY_PATH
     LIBRARY_PATH+="\
-/usr/x86_64-linux-gnu/lib/x86_64-linux-gnu:\
-/usr/x86_64-linux-gnu/lib64:\
-/usr/x86_64-linux-gnu/lib:\
-/usr/local/x86_64-linux-gnu/lib64:\
-/usr/local/x86_64-linux-gnu/lib:\
-/usr/local/lib/x86_64-linux-gnu:\
-/usr/local/lib64:\
-/usr/local/lib:\
-/usr/local/cuda/targets/x86_64-linux/lib:\
-/usr/lib/x86_64-linux-gnu/libfakeroot:\
-/usr/lib/x86_64-linux-gnu64:\
-/usr/lib/x86_64-linux-gnu:\
-/usr/libx32:\
-/usr/lib64:\
-/usr/lib32:\
-/usr/lib:\
-/lib/x86_64-linux-gnu:\
-/lib/i386-linux-gnu:\
-/libx32:\
-/lib64:\
-/lib32:\
-/lib\
+/usr/x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/:\
+/usr/x86_64-linux-gnu/lib/x86_64-linux-gnu/:\
+/usr/x86_64-pc-linux-gnu/lib64/:\
+/usr/x86_64-linux-gnu/lib64/:\
+/usr/x86_64-pc-linux-gnu/lib/:\
+/usr/x86_64-linux-gnu/lib/:\
+/usr/local/x86_64-pc-linux-gnu/lib64/:\
+/usr/local/x86_64-linux-gnu/lib64/:\
+/usr/local/x86_64-pc-linux-gnu/lib/:\
+/usr/local/x86_64-linux-gnu/lib/:\
+/usr/local/lib/x86_64-pc-linux-gnu/:\
+/usr/local/lib/x86_64-linux-gnu/:\
+/usr/local/lib64/:\
+/usr/local/lib/:\
+/usr/local/cuda/targets/x86_64-linux/lib/:\
+/usr/local/cuda-12.1/targets/x86_64-linux/lib/:\
+/usr/lib/x86_64-pc-linux-gnu/libfakeroot/:\
+/usr/lib/x86_64-linux-gnu/libfakeroot/:\
+/usr/lib/x86_64-pc-linux-gnu64/:\
+/usr/lib/x86_64-linux-gnu64/:\
+/usr/lib/x86_64-pc-linux-gnu/:\
+/usr/lib/x86_64-linux-gnu/:\
+/usr/libx32/:\
+/usr/lib/../lib/:\
+/usr/lib64/:\
+/usr/lib32/:\
+/usr/lib/:\
+/lib/x86_64-pc-linux-gnu/:\
+/lib/x86_64-linux-gnu/:\
+/libx32/:\
+/lib/../lib/:\
+/lib/i386-linux-gnu/:\
+/lib64/:\
+/lib32/:\
+/lib/\
 "
     export LIBRARY_PATH
 }
 
 source_libs_gcc11_fn()
 {
+    unset LIBRARY_PATH
     LIBRARY_PATH="\
-/usr/x86_64-linux-gnu/lib/x86_64-linux-gnu/11:\
-/usr/local/x86_64-linux-gnu/lib/x86_64-linux-gnu/11:\
-/usr/local/lib/x86_64-linux-gnu/11:\
-/usr/local/lib/gcc/x86_64-linux-gnu/11:\
-/usr/lib/x86_64-linux-gnu/11:\
-/usr/lib/x86_64-linux-gnu/11:\
-/usr/lib/gcc/x86_64-linux-gnu/11:\
-/lib/x86_64-linux-gnu/11:\
-/lib/x86_64-linux-gnu/11:\
+/usr/lib/gcc/x86_64-linux-gnu/11/:\
+/usr/lib/gcc/x86_64-pc-linux-gnu/11/:\
+/usr/lib/gcc/x86_64-linux-gnu/11/../../../x86_64-linux-gnu/:\
+/usr/lib/gcc/x86_64-pc-linux-gnu/11/../../../x86_64-pc-linux-gnu/:\
+/usr/lib/gcc/x86_64-linux-gnu/11/../../../../lib/:\
+/usr/lib/gcc/x86_64-pc-linux-gnu/11/../../../../lib/:\
+/usr/lib/gcc/x86_64-linux-gnu/11/../../../:\
+/usr/lib/gcc/x86_64-pc-linux-gnu/11/../../../:\
+/usr/x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/11/:\
+/usr/x86_64-linux-gnu/lib/x86_64-linux-gnu/11/:\
+/usr/local/x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/11/:\
+/usr/local/x86_64-linux-gnu/lib/x86_64-linux-gnu/11/:\
+/usr/local/lib/x86_64-pc-linux-gnu/11/:\
+/usr/local/lib/x86_64-linux-gnu/11/:\
+/usr/local/lib/gcc/x86_64-pc-linux-gnu/11/:\
+/usr/local/lib/gcc/x86_64-linux-gnu/11/:\
+/usr/lib/x86_64-pc-linux-gnu/11/:\
+/usr/lib/x86_64-linux-gnu/11/:\
+/usr/lib/gcc/x86_64-pc-linux-gnu/11/:\
+/usr/lib/gcc/x86_64-linux-gnu/11/:\
+/lib/x86_64-pc-linux-gnu/11/:\
+/lib/x86_64-linux-gnu/11/:\
 "
     lib_path_other_fn
 }
@@ -228,15 +291,28 @@ source_libs_gcc12_fn()
 {
     unset LIBRARY_PATH
     LIBRARY_PATH="\
-/usr/x86_64-linux-gnu/lib/x86_64-linux-gnu/12:\
-/usr/local/x86_64-linux-gnu/lib/x86_64-linux-gnu/12:\
-/usr/local/lib/x86_64-linux-gnu/12:\
-/usr/local/lib/gcc/x86_64-linux-gnu/12:\
-/usr/lib/x86_64-linux-gnu/12:\
-/usr/lib/x86_64-linux-gnu/12:\
-/usr/lib/gcc/x86_64-linux-gnu/12:\
-/lib/x86_64-linux-gnu/12:\
-/lib/x86_64-linux-gnu/12:\
+/usr/lib/gcc/x86_64-linux-gnu/12/:\
+/usr/lib/gcc/x86_64-pc-linux-gnu/12/:\
+/usr/lib/gcc/x86_64-linux-gnu/12/../../../x86_64-linux-gnu/:\
+/usr/lib/gcc/x86_64-pc-linux-gnu/12/../../../x86_64-pc-linux-gnu/:\
+/usr/lib/gcc/x86_64-linux-gnu/12/../../../../lib/:\
+/usr/lib/gcc/x86_64-pc-linux-gnu/12/../../../../lib/:\
+/usr/lib/gcc/x86_64-linux-gnu/12/../../../:\
+/usr/lib/gcc/x86_64-pc-linux-gnu/12/../../../:\
+/usr/x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/12/:\
+/usr/x86_64-linux-gnu/lib/x86_64-linux-gnu/12/:\
+/usr/local/x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/12/:\
+/usr/local/x86_64-linux-gnu/lib/x86_64-linux-gnu/12/:\
+/usr/local/lib/x86_64-pc-linux-gnu/12/:\
+/usr/local/lib/x86_64-linux-gnu/12/:\
+/usr/local/lib/gcc/x86_64-pc-linux-gnu/12/:\
+/usr/local/lib/gcc/x86_64-linux-gnu/12/:\
+/usr/lib/x86_64-pc-linux-gnu/12/:\
+/usr/lib/x86_64-linux-gnu/12/:\
+/usr/lib/gcc/x86_64-pc-linux-gnu/12/:\
+/usr/lib/gcc/x86_64-linux-gnu/12/:\
+/lib/x86_64-pc-linux-gnu/12/:\
+/lib/x86_64-linux-gnu/12/:\
 "
     lib_path_other_fn
 }
@@ -245,15 +321,28 @@ source_libs_gcc13_fn()
 {
     unset LIBRARY_PATH
     LIBRARY_PATH="\
-/usr/x86_64-linux-gnu/lib/x86_64-linux-gnu/13:\
-/usr/local/x86_64-linux-gnu/lib/x86_64-linux-gnu/13:\
-/usr/local/lib/x86_64-linux-gnu/13:\
-/usr/local/lib/gcc/x86_64-linux-gnu/13:\
-/usr/lib/x86_64-linux-gnu/13:\
-/usr/lib/x86_64-linux-gnu/13:\
-/usr/lib/gcc/x86_64-linux-gnu/13:\
-/lib/x86_64-linux-gnu/13:\
-/lib/x86_64-linux-gnu/13:\
+/usr/lib/gcc/x86_64-linux-gnu/13/:\
+/usr/lib/gcc/x86_64-pc-linux-gnu/13/:\
+/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/:\
+/usr/lib/gcc/x86_64-pc-linux-gnu/13/../../../x86_64-pc-linux-gnu/:\
+/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib/:\
+/usr/lib/gcc/x86_64-pc-linux-gnu/13/../../../../lib/:\
+/usr/lib/gcc/x86_64-linux-gnu/13/../../../:\
+/usr/lib/gcc/x86_64-pc-linux-gnu/13/../../../:\
+/usr/x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/13/:\
+/usr/x86_64-linux-gnu/lib/x86_64-linux-gnu/13/:\
+/usr/local/x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/13/:\
+/usr/local/x86_64-linux-gnu/lib/x86_64-linux-gnu/13/:\
+/usr/local/lib/x86_64-pc-linux-gnu/13/:\
+/usr/local/lib/x86_64-linux-gnu/13/:\
+/usr/local/lib/gcc/x86_64-pc-linux-gnu/13/:\
+/usr/local/lib/gcc/x86_64-linux-gnu/13/:\
+/usr/lib/x86_64-pc-linux-gnu/13/:\
+/usr/lib/x86_64-linux-gnu/13/:\
+/usr/lib/gcc/x86_64-pc-linux-gnu/13/:\
+/usr/lib/gcc/x86_64-linux-gnu/13/:\
+/lib/x86_64-pc-linux-gnu/13/:\
+/lib/x86_64-linux-gnu/13/:\
 "
     lib_path_other_fn
 }
@@ -266,8 +355,8 @@ create_links_gcc_13_fn()
 
     for i in ${list[@]}
     do
-        sudo ln -fs "/usr/local/bin/x86_64-linux-gnu-$i" "/usr/local/bin/$i"
-        sudo chown 755 "/usr/local/bin/x86_64-linux-gnu-$i" "/usr/local/bin/$i"
+        sudo ln -fs "/usr/local/bin/x86_64-pc-linux-gnu-$i" "/usr/local/bin/$i"
+        sudo chown 755 "/usr/local/bin/x86_64-pc-linux-gnu-$i" "/usr/local/bin/$i"
     done
 }
 
@@ -279,8 +368,8 @@ create_links_gcc_12_fn()
 
     for i in ${list[@]}
     do
-        sudo ln -fs "/usr/local/bin/x86_64-linux-gnu-$i" "/usr/local/bin/$i"
-        sudo chown 755 "/usr/local/bin/x86_64-linux-gnu-$i" "/usr/local/bin/$i"
+        sudo ln -fs "/usr/local/bin/x86_64-pc-linux-gnu-$i" "/usr/local/bin/$i"
+        sudo chown 755 "/usr/local/bin/x86_64-pc-linux-gnu-$i" "/usr/local/bin/$i"
     done
 }
 
@@ -292,8 +381,8 @@ create_links_gcc_11_fn()
 
     for i in ${list[@]}
     do
-        sudo ln -fs "/usr/local/bin/x86_64-linux-gnu-$i" "/usr/local/bin/$i"
-        sudo chown 755 "/usr/local/bin/x86_64-linux-gnu-$i" "/usr/local/bin/$i"
+        sudo ln -fs "/usr/local/bin/x86_64-pc-linux-gnu-$i" "/usr/local/bin/$i"
+        sudo chown 755 "/usr/local/bin/x86_64-pc-linux-gnu-$i" "/usr/local/bin/$i"
     done
 }
 
@@ -422,7 +511,7 @@ git_1_fn()
     github_repo="$1"
     github_url="$2"
 
-    if curl_cmd="$(curl -m '10' -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver1="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_ver2="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null)"
         g_ver="${g_ver1#v}"
@@ -495,7 +584,7 @@ pkgs_fn()
     pkgs=(autoconf autogen automake bison build-essential ccache curl dejagnu flex gcc-11-base gcc-multilib
           gdc gdc-multilib gfortran gfortran-multilib git gnulib guile-3.0-dev help2man jq libacl1-dev libasan8
           libdebuginfod-dev libdmalloc5 libdmalloc-dev libeigen3-dev libffi-dev libfontconfig1-dev libfreetype6
-          libgcc-11-dev libgd-dev libgm2-12-dev libgmp-dev libicu-dev libintl-perl libjpeg-dev libltdl-dev
+          libgcc-11-dev libgd-dev libgm2-12-dev libgmp-dev libiberty-dev libicu-dev libintl-perl libjpeg-dev libltdl-dev
           libmpc-dev libmpfr-dev libphobos2-ldc-shared-dev libpng-dev libquadmath0 libsigsegv-dev libsqlite3-dev
           libssl-dev libstdc++-12-dev libunwind-dev libx11-dev libx32gfortran-12-dev libxext-dev linux-libc-dev
           linux-libc-dev:i386 meson ninja-build openjdk-17-jdk-headless perl pipx python3 python3-full python3-pip
@@ -701,7 +790,7 @@ if build 'libiconv' '1.17'; then
     execute make "-j$cpu_threads"
     execute sudo make install
     execute make distclean
-    execute "$workspace"/bin/libtool --finish "$workspace"/lib
+    execute libtool --finish "$workspace"/lib
     build_done 'libiconv' '1.17'
 fi
 
@@ -798,21 +887,42 @@ if build 'autoconf-v269' '2.69'; then
     build_done 'autoconf-v269' '2.69'
 fi
 
-if build 'binutils' '2.40'; then
-    download 'https://ftp.gnu.org/gnu/binutils/binutils-2.40.tar.xz'
-    execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --enable-{lto,year2038} \
-        --with-{jdk=/usr/lib/jvm/java-11-openjdk-amd64,static-standard-libraries} \
-        --with-{gmp="$workspace",mpc=/usr,mpfr=/usr,isl=/usr/local,zstd=/usr/local}
-    execute make "-j$cpu_threads"
-    execute sudo make install
-    execute "$workspace"/bin/libtool --finish "$workspace"/lib
-    execute make clean
-    build_done 'binutils' '2.40'
-fi
+############################################################
+##
+##  GCC ( 11 | 12 | 13 )
+##
+##  BUILD SUCCESS RESULTS
+##
+##  DEBIAN 12      |  PASS
+##  DEBIAN 11      |  UNKNOWN
+##  DEBIAN 10      |  UNKNOWN
+##
+##  UBUNTU LUNAR   |  PASS
+##  UBUNTU JAMMY   |  PASS
+##  UBUNTU FOCAL   |  UNKNOWN
+##  UBUNTU BIONIC  |  UNKNOWN
+##
+############################################################
+##
+##  GCC [ 11 ] NOTES
+##
+##  Debian Bookworm will not build the "ada" language for gcc-11, so it's disabled.
+##  To date, I have not tested Debian Buster or Bullseye, so make changes as necessary.
+##  Ubuntu seems to have no issue building the "ada" language, so it remains enabled.
+##
+##  GCC [ 12 | 13 ] NOTES
+##
+##  Debian and Ubuntu appears to have no issues building "ada"
+##  language support on gcc 12 and 13 so it is enabled for both
+##
+############################################################
 
-# To build GCC with ada support you must use gnatgcc as the C Compiler
-export CC=gnatgcc CXX=g++
+if [ "$OS" = 'Debian GNU/Linux' ]; then
+    gcc_11_lang='c,brig,c++,d,fortran,go,lto,objc,obj-c++'
+else
+    gcc_11_lang='c,ada,brig,c++,d,fortran,go,lto,objc,obj-c++'
+    export CC=gnatgcc
+fi
 
 if build 'gcc-11' '11.4.0'; then
     source_libs_gcc11_fn
@@ -821,28 +931,41 @@ if build 'gcc-11' '11.4.0'; then
     execute sudo ./contrib/download_prerequisites
     mkdir builddir
     cd builddir || exit 1
-    echo '$ Compiling gcc-11 with languages=c,ada,brig,c++,d,fortran,go,lto,objc,obj-c++'
-    execute ../configure \
-        --prefix="$install_dir" \
-        --{build,host,target}=x86_64-linux-gnu \
-        --disable-{assembly,nls,werror} \
-        --enable-{bootstrap,checking=release,languages=all,lto} \
-        --enable-{multilib,plugin,threads=posix} \
-        --program-{prefix=x86_64-linux-gnu-,suffix=-11} \
-        --with-{gcc-major-version-only,isl=/usr/local,libiconv-prefix="$workspace"} \
-        --with-{link-serialization=2,tune=generic,target-system-zlib,zstd=/usr/local} \
-        "$cuda_check" \
+    echo "$ Compiling gcc-11 with languages=$gcc_11_lang"
+    execute ../configure                          \
+        --prefix="$install_dir"                   \
+        --{build,host,target}=x86_64-pc-linux-gnu \
+        --disable-assembly                        \
+        --disable-nls                             \
+        --disable-werror                          \
+        --enable-bootstrap                        \
+        --enable-checking=release                 \
+        --enable-languages="$gcc_11_lang"         \
+        --enable-lto                              \
+        --enable-multilib                         \
+        --enable-plugin                           \
+        --enable-threads=posix                    \
+        --program-prefix=x86_64-pc-linux-gnu-     \
+        --program-suffix=-11                      \
+        --with-gcc-major-version-only             \
+        --with-isl=/usr/local                     \
+        --with-libiconv-prefix="$workspace"       \
+        --with-link-serialization=2               \
+        --with-tune=generic                       \
+        --with-target-system-zlib                 \
+        --with-zstd=/usr/local                    \
+        "$cuda_check"                             \
         --without-included-gettext
-    echo '$ This is going to take a while...'
+    printf "\n%s\n\n" '$ This is going to take a while...'
     execute make "-j$cpu_threads"
     execute sudo make install-strip
-    execute "$workspace"/bin/libtool --finish "$install_dir"/libexec/gcc/x86_64-linux-gnu/11
-    execute "$workspace"/bin/libtool --finish "$install_dir"/lib
-    execute make distclean
+    execute libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/11
+    execute libtool --finish "$install_dir"/lib
     create_links_gcc_11_fn
     build_done 'gcc-11' '11.4.0'
 fi
 
+export CC=gnatgcc
 if build 'gcc-12' '12.3.0'; then
     source_libs_gcc12_fn
     download 'https://ftp.gnu.org/gnu/gcc/gcc-12.3.0/gcc-12.3.0.tar.xz'
@@ -851,23 +974,36 @@ if build 'gcc-12' '12.3.0'; then
     mkdir builddir
     cd builddir || exit 1
     echo '$ Compiling gcc-12 with languages=c,ada,c++,d,fortran,go,lto,objc,obj-c++'
-    execute ../configure \
-        --prefix="$install_dir" \
-        --{build,host,target}=x86_64-linux-gnu \
-        --disable-{assembly,nls,werror} \
-        --enable-{bootstrap,checking=release,languages=all,lto} \
-        --enable-{multilib,offload-defaulted,plugin,threads=posix} \
-        --program-{prefix=x86_64-linux-gnu-,suffix=-12} \
-        --with-{gcc-major-version-only,isl=/usr/local,libiconv-prefix="$workspace"} \
-        --with-{link-serialization=2,tune=generic,target-system-zlib,zstd=/usr/local} \
-        "$cuda_check" \
+    execute ../configure                          \
+        --prefix="$install_dir"                   \
+        --{build,host,target}=x86_64-pc-linux-gnu \
+        --disable-assembly                        \
+        --disable-nls                             \
+        --disable-werror                          \
+        --enable-bootstrap                        \
+        --enable-checking=release                 \
+        --enable-languages=all                    \
+        --enable-lto                              \
+        --enable-multilib                         \
+        --enable-offload-defaulted                \
+        --enable-plugin                           \
+        --enable-threads=posix                    \
+        --program-prefix=x86_64-pc-linux-gnu-     \
+        --program-suffix=-11                      \
+        --with-gcc-major-version-only             \
+        --with-isl=/usr/local                     \
+        --with-libiconv-prefix="$workspace"       \
+        --with-link-serialization=2               \
+        --with-tune=generic                       \
+        --with-target-system-zlib                 \
+        --with-zstd=/usr/local                    \
+        "$cuda_check"                             \
         --without-included-gettext
-    echo '$ This is going to take a while...'
+    printf "\n%s\n\n" '$ This is going to take a while...'
     execute make "-j$cpu_threads"
     execute sudo make install-strip
-    execute "$workspace"/bin/libtool --finish "$install_dir"/libexec/gcc/x86_64-linux-gnu/12
-    execute "$workspace"/bin/libtool --finish "$install_dir"/lib
-    execute make distclean
+    execute libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/12
+    execute libtool --finish "$install_dir"/lib
     create_links_gcc_12_fn
     build_done 'gcc-12' '12.3.0'
 fi
@@ -880,24 +1016,36 @@ if build 'gcc-13' '13.1.0'; then
     mkdir builddir
     cd builddir || exit 1
     echo '$ Compiling gcc-13 with languages=c,ada,c++,d,fortran,go,lto,m2,objc,obj-c++'
-    execute ../configure \
-        --prefix="$install_dir" \
-        --{build,host,target}=x86_64-linux-gnu \
-        --disable-{assembly,nls,werror} \
-        --enable-{bootstrap,checking=release,languages=all,lto} \
-        --enable-{multilib,offload-defaulted,plugin,threads=posix} \
-        --program-{prefix=x86_64-linux-gnu-,suffix=-13} \
-        --with-{gcc-major-version-only,isl=/usr/local,libiconv-prefix="$workspace"} \
-        --with-{link-serialization=2,tune=generic,target-system-zlib,zstd=/usr/local} \
-        "$cuda_check" \
+    execute ../configure                          \
+        --prefix="$install_dir"                   \
+        --{build,host,target}=x86_64-pc-linux-gnu \
+        --disable-assembly                        \
+        --disable-nls                             \
+        --disable-werror                          \
+        --enable-bootstrap                        \
+        --enable-checking=release                 \
+        --enable-languages=all                    \
+        --enable-lto                              \
+        --enable-multilib                         \
+        --enable-offload-defaulted                \
+        --enable-plugin                           \
+        --enable-threads=posix                    \
+        --program-prefix=x86_64-pc-linux-gnu-     \
+        --program-suffix=-11                      \
+        --with-gcc-major-version-only             \
+        --with-isl=/usr/local                     \
+        --with-libiconv-prefix="$workspace"       \
+        --with-link-serialization=2               \
+        --with-tune=generic                       \
+        --with-target-system-zlib                 \
+        --with-zstd=/usr/local                    \
+        "$cuda_check"                             \
         --without-included-gettext
-    echo '$ This is going to take a while...'
-    echo '$ This is going to take a while...'
+    printf "\n%s\n\n" '$ This is going to take a while...'
     execute make "-j$cpu_threads"
     execute sudo make install-strip
-    execute "$workspace"/bin/libtool --finish "$install_dir"/libexec/gcc/x86_64-linux-gnu/13
-    execute "$workspace"/bin/libtool --finish "$install_dir"/lib
-    execute make distclean
+    execute libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/13
+    execute libtool --finish "$install_dir"/lib
     create_links_gcc_13_fn
     build_done 'gcc-13' '13.1.0'
 fi
