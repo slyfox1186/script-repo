@@ -124,29 +124,13 @@ bash <(curl -sSL https://bookworm-scripts.optimizethis.net)
 
 ## Install extra download mirrors
   - **Warning! This will overwrite your files!**
-#### Ubuntu Lunar
+#### Distros Included
+  - **Ubuntu**
+    - Lunar 23.04, Jammy 22.04, Focal 20.04, Bionic 18.04
+  - **Debian**
+    - Bullseye 11, Bookworm 12
 ```bash
-curl -Lso lunar-mirrors https://lunar-mirrors.optimizethis.net; sudo bash lunar-mirrors
-```
-#### Ubuntu Jammy
-```bash
-curl -Lso jammy-mirrors https://jammy-mirrors.optimizethis.net; sudo bash jammy-mirrors
-```
-#### Ubuntu Focal
-```bash
-curl -Lso focal-mirrors https://focal-mirrors.optimizethis.net; sudo bash focal-mirrors
-```
-#### Ubuntu Bionic
-```bash
-curl -Lso bionic-mirrors https://bionic-mirrors.optimizethis.net; sudo bash bionic-mirrors
-```
-#### Debian Bookworm
-```bash
-curl -Lso bookworm-mirrors https://bookworm-mirrors.optimizethis.net; sudo bash bookworm-mirrors
-```
-#### Debian Bullseye
-```bash
-curl -Lso bullseye-mirrors https://bullseye-mirrors.optimizethis.net; sudo bash bullseye-mirrors
+bash <( curl -sSL https://mirrors-menu.optimizethis.net)
 ```
 ------
 
