@@ -39,17 +39,17 @@ clear
 # CLEAN THE BUILD ENVIRONMENT
 #
 
-home="$HOME"
-pwd="$PWD"
-term="$TERM"
+tmp_home="$HOME"
+tmp_pwd="$PWD"
+tmp_term="$TERM"
 
 for var in $(env | awk -F"=" '{print $1}')
 do
     unset $var || true # IGNORE UNSET FAILURES
 done
 
-export HOME="$home" PWD="$pwd" TERM="$term"
-unset home pwd term var
+export HOME="$tmp_home" PWD="$tmp_pwd" TERM="$tmp_term"
+unset tmp_home tmp_pwd tmp_term var
 
 #
 # SET GLOBAL VARIABLES
@@ -111,7 +111,7 @@ LDFLAGS+=' -L/usr/lib/x86_64-pc-linux-gnu -L/usr/local/cuda-12.1/targets/x86_64-
 LDFLAGS+=' -L/usr/lib/gcc/x86_64-pc-linux-gnu/12/adalib -L/lib/x86_64-pc-linux-gnu -L/lib -L/usr/x86_64-pc-linux-gnux32/lib'
 repo='https://github.com/slyfox1186/script-repo'
 # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
-debug=OFF
+debug=ON
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
