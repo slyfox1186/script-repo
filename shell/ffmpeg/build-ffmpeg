@@ -1141,14 +1141,14 @@ if build 'zlib' "$g_ver"; then
     build_done 'zlib' "$g_ver"
 fi
 
-if build 'openssl' '1.1.1u'; then
-    download 'https://www.openssl.org/source/openssl-1.1.1u.tar.gz'
-    execute ./config --prefix="$workspace" --openssldir="$workspace" \
+if build 'openssl' '3.1.1'; then
+    download 'https://www.openssl.org/source/openssl-3.1.1.tar.gz'
+    execute ./config --prefix=/usr/local --openssldir=/usr/local/lib/ssl \
         --with-{zlib-include="$workspace/include",zlib-lib="$workspace/lib"} no-shared zlib
     execute make "-j$(($cpu_threads-1))"
-    execute make install_sw
+    execute sudo make build_sw
     execute make distclean
-    build_done 'openssl' '1.1.1u'
+    build_done 'openssl' '3.1.1'
 fi
 ffmpeg_libraries+=('--enable-openssl')
 
