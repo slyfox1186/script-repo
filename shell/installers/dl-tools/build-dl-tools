@@ -1,7 +1,7 @@
 #!/bin/bash
 # shellcheck disable=SC2016,SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
 
-######################################################
+##################################################################
 ##
 ##  Install the latest curl release from GitHub
 ##
@@ -9,15 +9,17 @@
 ##  - Debian 10 / 11 / 12
 ##  - Ubuntu 22.04 / 20.04 / 18.04
 ##
-##  Updated: 06.23.23
+##  Updated: 06.24.23
 ##
-##  Script version: 2.4
+##  Added the ability to specify suffixes before compiling
 ##
-######################################################
+##  Script version: 2.5
+##
+##################################################################
 
 clear
 
-script_ver='2.4'
+script_ver='2.5'
 cwd="$PWD"/dltools-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
@@ -30,6 +32,36 @@ cert_dir='/etc/ssl/certs'
 pem_file='cacert-2023-05-30.pem'
 repo='https://github.com/slyfox1186/script-repo'
 debug=OFF
+
+#
+# ASK THE USER TO ADD SUFFIXES TO WGET AND CURL BINARIES
+#
+
+add_suffix_fn()
+{
+    clear
+    read -p 'Enter the suffix to add to WGET: ' wget_suffix
+    read -p 'Enter the suffix to add to curl: ' curl_suffix
+    clear
+}
+
+prompt_suffix_choice_fn()
+{
+    printf "%s\n\n%s\n\n%s\n%s\n\n" \
+        'Do you want to add a suffix to the cURL and WGET binaries?' \
+        'Example: curl will output as curl-dev if you input "-dev" (leave off the quotes)' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' suffix_choice
+    clear
+        
+    case "$suffix_choice" in
+        1)      add_suffix_fn;;
+        2)      printf "%s\n\n" 'Continuing script';;
+        *)      prompt_suffix_choice_fn;;
+    esac
+}
+prompt_suffix_choice_fn
 
 #
 # CREATE OUTPUT DIRECTORIES
@@ -256,6 +288,34 @@ download()
     cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
 }
 
+download_git()
+{
+    local dl_path dl_url dl_file target_dir
+
+    dl_path="$packages"
+    dl_url="$1"
+    dl_file="${2:-"${1##*/}"}"
+    dl_file="${dl_file//\./-}"
+    target_dir="$dl_path/$dl_file"
+
+    if [ -d "$target_dir" ]; then
+        sudo rm -fr "$target_dir"
+    fi
+
+    echo "Downloading $dl_url as $dl_file"
+    if ! git clone -q "$dl_url" "$target_dir"; then
+        printf "\n%s\n\n" "The script failed to clone the git repository \"$target_dir\" and will try again in 10 seconds..."
+        sleep 10
+        if ! git clone -q "$dl_url" "$target_dir"; then
+            fail_fn "The script failed to clone \"$target_dir\" twice and will now exit the build."
+        fi
+    else
+        echo -e "Successfully cloned: $target_dir\\n"
+    fi
+
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
+}
+
 build()
 {
     printf "\n%s\n%s\n" \
@@ -373,28 +433,14 @@ case "$OS" in
     *)                      fail_fn 'Could not detect the OS architecture.';;
 esac
 
-#
 # SET THE C & C++ COMPILERS
-#
-
 export CC=gcc CXX=g++
-
-#
-# SET COMPILER OPTIMIZATION FLAGS TO TUNE THE BUILD FOR THE SPECIFIC COMPUTER RUNNING THE SCRIPT
-#
-
+# SET THE COMPILER OPTIMIZATION FLAGS TO TUNE THE BUILD FOR THE SPECIFIC COMPUTER RUNNING THE SCRIPT
 export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 #
 # INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
 #
-
-# DETERMINE WHICH DOWNLOADER IS AVAILABLE
-if which curl &>/dev/null; then
-    dl_tool='curl -Lso'
-else
-    dl_tool='wget -cqO'
-fi
 
 if [ ! -f "$cert_dir/$pem_file" ]; then
     printf "%s\n%s\n\n" \
@@ -404,8 +450,15 @@ if [ ! -f "$cert_dir/$pem_file" ]; then
     execute sudo cp -f "$packages/$pem_file" "$cert_dir/$pem_file"
 fi
 
+# DETERMINE WHICH DOWNLOADER IS AVAILABLE
+if which curl &>/dev/null; then
+    dl_tool='curl -Lso'
+else
+    dl_tool='wget -cqO'
+fi
+
 #
-# COMPILE FROM SOURCE CODE
+# COMPILE LIBRARIES FROM SOURCE
 #
 
 git_ver_fn 'madler/zlib' '1' 'T'
@@ -413,8 +466,10 @@ if build 'zlib' "$g_ver"; then
     download "$g_url" "zlib-$g_ver.tar.gz"
     mkdir build
     cd build || exit 1
-    execute ../configure --prefix="$workspace" \
-                         --static
+    execute ../configure --prefix="$workspace"             \
+                         --libdir="$workspace"/lib         \
+                         --includedir="$workspace"/include \
+                         --sharedlibdir="$workspace"/lib
     execute make "-j$cpu_threads"
     execute make install
     execute make clean
@@ -534,40 +589,53 @@ if build 'brotli' "$g_ver"; then
     build_done 'brotli' "$g_ver"
 fi
 
+# ADD A SUFFIX TO WGET IF THE USER SPECIFIED ONE
+if [ -n "$wget_suffix" ]; then
+    wsuffix="--program-suffix=$wget_suffix"
+fi
+
 #
-# START CURL & WGET BUILD
+# BEGIN WGET BUILD
 #
 
 if build 'wget' 'latest'; then
-    download 'https://ftp.gnu.org/gnu/wget/wget-latest.tar.gz'
+    download_git 'https://ftp.gnu.org/gnu/wget/wget-latest.tar.gz'
+    repo_ver_check
     if "$(which update-ca-certificates)" &>/dev/null; then
         execute sudo update-ca-certificates
     fi
     execute autoconf
     mkdir build
     cd build || exit 1
-    execute ../configure --prefix=/usr/local \
-                         --enable-threads    \
-                         --with-cares        \
-                         --with-metalink     \
-                         --with-openssl=auto \
-                         --with-ssl=gnutls
+    ../configure --prefix=/usr/local \
+                 --enable-threads    \
+                 --with-cares        \
+                 --with-metalink     \
+                 --with-openssl=auto \
+                 --with-ssl=gnutls "$wsuffix"
     execute make "-j$cpu_threads"
     execute sudo make install
     execute make clean
-    build_done 'wget' 'latest'
 fi
 
+#
 # DETERMINE IF HTTP3 SUPPORT IS ENABLED
+#
+
 if [ "$http3_flag" = 'true' ]; then
     http3_flag='--with-nghttp3=/usr/include'
 else
     http3_flag='--without-nghttp3'
 fi
 
+# ADD A SUFFIX TO CURL IF THE USER SPECIFIED ONE
+if [ -n "$curl_suffix" ]; then
+    csuffix="--program-suffix=$curl_suffix"
+fi
+
 git_ver_fn 'curl/curl' '1' 'R'
 if build 'curl' "$g_ver"; then
-    download "$g_url" "curl-$g_ver.tar.gz"
+    download "https://curl.se/download/curl-$g_ver.tar.xz" "curl-$g_ver.tar.gz"
     curl_disable_opts=(--disable-{get-easy-options,shared,verbose,versioned-symbols})
     curl_enable_opts=(--enable-{alt-svc,ares="$workspace",cookies})
     curl_enable_opts+=(--enable-{crypto-auth-dateparse,dict,dnsshuffle,doh,file})
@@ -583,11 +651,9 @@ if build 'curl' "$g_ver"; then
     mkdir build
     cd build || exit 1
     ../configure --prefix=/usr/local        \
-                 --program-suffix=-"$g_ver" \
                  "${curl_disable_opts[@]}"  \
                  "${curl_enable_opts[@]}"   \
-                 "${curl_with_opts[@]}"     \
-                 "$http3_flag"
+                 "${curl_with_opts[@]}" "$csuffix" "$http3_flag"
     execute make "-j$cpu_threads"
     execute sudo make install
     execute make clean
