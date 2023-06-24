@@ -93,8 +93,7 @@ awk '!NF || !seen[$0]++' "$post_file" > "$pre_file"
 join_str="$(tr '\n' ':' < "$pre_file")"
 PATH="$(echo "$join_str" | sed 's/..$//g')"
 export PATH
-echo $PATH
-exit
+
 sudo rm -fr "$tmp_dir"
 unset join_str post_file pre_file tmp_dir
 
@@ -506,6 +505,9 @@ build()
     return 0
 }
 
+# SET THE CURL COMMAND TIMEOUT
+curl_timeout=10
+
 git_1_fn()
 {
     local curl_cmd github_repo github_url g_sver
@@ -514,7 +516,7 @@ git_1_fn()
     github_repo="$1"
     github_url="$2"
 
-    if curl_cmd="$(curl -m '10' -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver1="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_ver2="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null)"
         g_ver="${g_ver1#v}"
@@ -915,15 +917,15 @@ fi
 ##
 ##  GCC [ 12 | 13 ] NOTES
 ##
-##  Debian and Ubuntu appears to have no issues building "ada"
-##  language support on gcc 12 and 13 so it is enabled for both
+##  Debian and Ubuntu appear to have no issues building "ada"
+##  language support on gcc 12 and 13 and remains enabled for both
 ##
 ############################################################
 
 if [ "$OS" = 'Debian GNU/Linux' ]; then
-    gcc_11_lang='c,brig,c++,d,fortran,go,lto,objc,obj-c++'
+    gcc_11_lang=c,brig,c++,d,fortran,go,lto,objc,obj-c++
 else
-    gcc_11_lang='c,ada,brig,c++,d,fortran,go,lto,objc,obj-c++'
+    gcc_11_lang=all
     export CC=gnatgcc
 fi
 
