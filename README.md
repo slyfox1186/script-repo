@@ -30,10 +30,15 @@ bash <(curl -sSL https://build-menu.optimizethis.net)
 bash <(curl -sSL https://download.optimizethis.net)
 ```
 
-## Install [GCC](https://github.com/gcc-mirror/gcc) 11.4.0, 12.3.0, & 13.1.0 on Ubuntu Jammy
+## Install [GCC](https://github.com/gcc-mirror/gcc) 11.4.0, 12.3.0, & 13.1.0
+
   - **Sourced from the official GitHub repository**
   - **Compiled on Ubuntu Jammy 22.04.02**
   - **For personal/testing use only**
+  - **Supported OS:**
+    - Debian - 11 / 12
+    - Ubuntu - 22.04
+    - Other Debian-style distros may work as well
 
 #### Native Build
 ```bash
