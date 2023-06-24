@@ -400,7 +400,7 @@ if [ ! -f "$cert_dir/$pem_file" ]; then
     printf "%s\n%s\n\n" \
         'Download the latest security certificate' \
         '================================================'
-    execute "$dl_tool" "$packages/$pem_file" "https://curl.se/ca/$pem_file"
+    execute $dl_tool "$packages/$pem_file" "https://curl.se/ca/$pem_file"
     execute sudo cp -f "$packages/$pem_file" "$cert_dir/$pem_file"
 fi
 
