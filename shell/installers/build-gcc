@@ -1,7 +1,7 @@
 #!/bin/bash
 # shellcheck disable=SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
 
-################################################################################################
+#####################################################################################################
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
@@ -23,17 +23,43 @@
 ##  Updated: the LIBRARY_PATH variable to include the default paths of the APT "gcc" version
 ##
 ##  Fixed: zstdn, zlib, and bison build issues.
-##  Fixed: debian not being able to compile gcc due to the ada language being included
-##  Fixed: debian missing and uninstallable APT package errors
+##  Fixed: Debian not being able to compile gcc due to the ada language being included
+##  Fixed: Debian missing and uninstallable APT package errors
 ##
 ##  Changed: the language support on 'ubuntu' to 'all' for all gcc versions which allows them to
 ##           build any languages they are able to.
 ##  Changed: the default install directory for the GNU libs to "$workspace" to help avoid
-##           future overlap with APT packages that may be installed.
+##           future overlaps with APT packages that may be installed.
 ##
-################################################################################################
-
-clear
+#####################################################################################################
+##
+##  GCC ( 11 | 12 | 13 )
+##
+##  BUILD SUCCESS RESULTS
+##
+##  DEBIAN 12      |  PASS
+##  DEBIAN 11      |  UNKNOWN
+##  DEBIAN 10      |  UNKNOWN
+##
+##  UBUNTU LUNAR   |  PASS
+##  UBUNTU JAMMY   |  PASS
+##  UBUNTU FOCAL   |  UNKNOWN
+##  UBUNTU BIONIC  |  UNKNOWN
+##
+#####################################################################################################
+##
+##  GCC [ 11 ] NOTES
+##
+##  Debian Bookworm will not build the "ada" language for gcc-11, so it's disabled.
+##  To date, I have not tested Debian Buster or Bullseye, so make changes as necessary.
+##  Ubuntu seems to have no issue building the "ada" language, so it remains enabled.
+##
+##  GCC [ 12 | 13 ] NOTES
+##
+##  Debian and Ubuntu appear to have no issues building "ada"
+##  language support on gcc 12 and 13 remains enabled for both
+##
+#####################################################################################################
 
 cwd="$PWD"/gcc-build-script
 packages="$cwd"/packages
@@ -87,7 +113,6 @@ post_file="$tmp_dir"/file_2.txt
 echo "$PATH" > "$pre_file"
 
 sed -E 's/(:)/\n/g' "$pre_file" | tee "$post_file"
-clear
 awk '!NF || !seen[$0]++' "$post_file" > "$pre_file"
 
 join_str="$(tr '\n' ':' < "$pre_file")"
@@ -96,6 +121,7 @@ export PATH
 
 sudo rm -fr "$tmp_dir"
 unset join_str post_file pre_file tmp_dir
+clear
 
 #
 # SET BUILD VARIABLES
@@ -112,7 +138,7 @@ LDFLAGS+=' -L/usr/lib/x86_64-pc-linux-gnu -L/usr/local/cuda-12.1/targets/x86_64-
 LDFLAGS+=' -L/usr/lib/gcc/x86_64-pc-linux-gnu/12/adalib -L/lib/x86_64-pc-linux-gnu -L/lib -L/usr/x86_64-pc-linux-gnux32/lib'
 repo='https://github.com/slyfox1186/script-repo'
 # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
-debug=ON
+debug=OFF
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -891,36 +917,6 @@ if build 'autoconf-v269' '2.69'; then
     execute make distclean
     build_done 'autoconf-v269' '2.69'
 fi
-
-############################################################
-##
-##  GCC ( 11 | 12 | 13 )
-##
-##  BUILD SUCCESS RESULTS
-##
-##  DEBIAN 12      |  PASS
-##  DEBIAN 11      |  UNKNOWN
-##  DEBIAN 10      |  UNKNOWN
-##
-##  UBUNTU LUNAR   |  PASS
-##  UBUNTU JAMMY   |  PASS
-##  UBUNTU FOCAL   |  UNKNOWN
-##  UBUNTU BIONIC  |  UNKNOWN
-##
-############################################################
-##
-##  GCC [ 11 ] NOTES
-##
-##  Debian Bookworm will not build the "ada" language for gcc-11, so it's disabled.
-##  To date, I have not tested Debian Buster or Bullseye, so make changes as necessary.
-##  Ubuntu seems to have no issue building the "ada" language, so it remains enabled.
-##
-##  GCC [ 12 | 13 ] NOTES
-##
-##  Debian and Ubuntu appear to have no issues building "ada"
-##  language support on gcc 12 and 13 and remains enabled for both
-##
-############################################################
 
 if [ "$OS" = 'Debian GNU/Linux' ]; then
     gcc_11_lang=c,brig,c++,d,fortran,go,lto,objc,obj-c++
