@@ -111,7 +111,7 @@ LDFLAGS+=' -L/usr/lib/x86_64-pc-linux-gnu -L/usr/local/cuda-12.1/targets/x86_64-
 LDFLAGS+=' -L/usr/lib/gcc/x86_64-pc-linux-gnu/12/adalib -L/lib/x86_64-pc-linux-gnu -L/lib -L/usr/x86_64-pc-linux-gnux32/lib'
 repo='https://github.com/slyfox1186/script-repo'
 # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
-debug=OFF
+debug=ON
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -511,8 +511,9 @@ git_1_fn()
     # SCRAPE GITHUB'S API FOR THE LATEST REPO VERSION
     github_repo="$1"
     github_url="$2"
+    git_token='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'
 
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
+    if curl_cmd="$(curl -m '10' -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver1="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_ver2="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null)"
         g_ver="${g_ver1#v}"
@@ -932,7 +933,6 @@ if build 'gcc-11' '11.4.0'; then
     execute sudo ./contrib/download_prerequisites
     mkdir builddir
     cd builddir || exit 1
-    echo "$ Compiling gcc-11 with languages=$gcc_11_lang"
     execute ../configure                          \
         --prefix="$install_dir"                   \
         --{build,host,target}=x86_64-pc-linux-gnu \
@@ -957,7 +957,9 @@ if build 'gcc-11' '11.4.0'; then
         --with-zstd=/usr/local                    \
         "$cuda_check"                             \
         --without-included-gettext
-    printf "\n%s\n\n" '$ This is going to take a while...'
+    printf "\n%s\n%s\n\n" \
+        "$ Compiling gcc-11 with languages=$gcc_11_lang" \
+        '$ This is going to take a while...'
     execute make "-j$cpu_threads"
     execute sudo make install-strip
     execute libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/11
@@ -990,7 +992,7 @@ if build 'gcc-12' '12.3.0'; then
         --enable-plugin                           \
         --enable-threads=posix                    \
         --program-prefix=x86_64-pc-linux-gnu-     \
-        --program-suffix=-11                      \
+        --program-suffix=-12                      \
         --with-gcc-major-version-only             \
         --with-isl=/usr/local                     \
         --with-libiconv-prefix="$workspace"       \
@@ -1000,7 +1002,9 @@ if build 'gcc-12' '12.3.0'; then
         --with-zstd=/usr/local                    \
         "$cuda_check"                             \
         --without-included-gettext
-    printf "\n%s\n\n" '$ This is going to take a while...'
+    printf "\n%s\n%s\n\n" \
+        '$ Compiling gcc-12 with languages=c,ada,c++,d,fortran,go,lto,objc,obj-c++' \
+        '$ This is going to take a while...'
     execute make "-j$cpu_threads"
     execute sudo make install-strip
     execute libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/12
@@ -1032,7 +1036,7 @@ if build 'gcc-13' '13.1.0'; then
         --enable-plugin                           \
         --enable-threads=posix                    \
         --program-prefix=x86_64-pc-linux-gnu-     \
-        --program-suffix=-11                      \
+        --program-suffix=-13                      \
         --with-gcc-major-version-only             \
         --with-isl=/usr/local                     \
         --with-libiconv-prefix="$workspace"       \
@@ -1042,7 +1046,9 @@ if build 'gcc-13' '13.1.0'; then
         --with-zstd=/usr/local                    \
         "$cuda_check"                             \
         --without-included-gettext
-    printf "\n%s\n\n" '$ This is going to take a while...'
+    printf "\n%s\n%s\n\n" \
+        '$ Compiling gcc-13 with languages=c,ada,c++,d,fortran,go,lto,m2,objc,obj-c++' \
+        '$ This is going to take a while...'
     execute make "-j$cpu_threads"
     execute sudo make install-strip
     execute libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/13
