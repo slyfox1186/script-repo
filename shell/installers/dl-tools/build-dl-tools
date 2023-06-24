@@ -610,7 +610,6 @@ fi
 
 if build 'wget' 'latest'; then
     download_git 'https://ftp.gnu.org/gnu/wget/wget-latest.tar.gz'
-    repo_ver_check
     if "$(which update-ca-certificates)" &>/dev/null; then
         execute sudo update-ca-certificates
     fi
