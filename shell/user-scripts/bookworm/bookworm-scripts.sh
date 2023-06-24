@@ -1,7 +1,5 @@
 #!/bin/bash
 
-clear
-
 #
 # CREATE FUNCTIONS
 #
