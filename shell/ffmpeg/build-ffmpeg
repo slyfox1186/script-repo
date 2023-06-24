@@ -1099,15 +1099,15 @@ if build 'giflib' '5.2.1'; then
     build_done 'giflib' '5.2.1'
 fi
 
-pre_check_ver 'pkgconf/pkgconf' '1' 'T'
-if build 'pkg-config' "$g_ver"; then
-    download "https://github.com/pkgconf/pkgconf/archive/refs/tags/pkgconf-$g_ver.tar.gz"
-    execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --disable-shared
-    execute make "-j$(($cpu_threads-1))"
-    execute make install
-    execute make distclean
-    build_done 'pkg-config' "$g_ver"
+if build 'pkg-config' '0.29.2'; then
+    download "https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz"
+    execute autoreconf -fi
+    mkdir build
+    cd build || exit 1
+    execute ../configure --prefix=/usr --with-pic --with-pc-path="$PKG_CONFIG_PATH"
+    execute make "-j$cpu_threads"
+    execute sudo make install
+    build_done 'pkg-config' '0.29.2'
 fi
 
 if build 'm4' 'latest'; then
