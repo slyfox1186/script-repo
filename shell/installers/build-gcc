@@ -45,7 +45,8 @@ cwd="$PWD"/gcc-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
 install_dir='/usr/local'
-CFLAGS=' -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
+CFLAGS='-g -O3 -march=native -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
+CXXFLAGS='-g -O3 -march=native'
 CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -I/usr/local/cuda-12.1/nvvm/include -I/usr/local/cuda/include"
 CPPFLAGS+=' -I/usr/include/x86_64-linux-gnu -I/usr/lib/gcc/x86_64-linux-gnu/8/include -I/usr/lib/gcc/x86_64-linux-gnu/9/include'
 LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/local/lib -L/usr/local/cuda-12.1/nvvm/lib64"
@@ -544,8 +545,8 @@ fi
 #
 
 export CC=gcc CXX=g++
-export CFLAGS='-g -O3 -march=native'
-export CXXFLAGS='-g -O3 -march=native'
+export CFLAGS="$CFLAGS"
+export CXXFLAGS="$CXXFLAGS"
 
 #
 # CREATE SOFT LINKS TO FIX LINKING BUGS
