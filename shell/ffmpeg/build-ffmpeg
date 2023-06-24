@@ -1071,13 +1071,13 @@ if build 'automake' '1.16.5'; then
     build_done 'automake' '1.16.5'
 fi
 
-if build 'libtool' '2.4.6'; then
-    download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.6.tar.xz'
-    execute ./configure --prefix="$workspace" --disable-shared
-    execute make "-j$(($cpu_threads-1))"
-    execute make install
+if build 'libtool' '2.4.7'; then
+    download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
+    execute ./configure --prefix=/usr/include
+    execute make "-j$cpu_threads"
+    execute sudo make install
     execute make distclean
-    build_done 'libtool' '2.4.6'
+    build_done 'libtool' '2.4.7'
 fi
 
 if build 'libiconv' '1.17'; then
