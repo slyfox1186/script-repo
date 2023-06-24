@@ -1110,13 +1110,12 @@ if build 'pkg-config' "$g_ver"; then
     build_done 'pkg-config' "$g_ver"
 fi
 
-if build 'm4' '1.4.19'; then
-    download 'https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.xz'
-    execute ./configure --prefix="$workspace" --enable-c++ --with-dmalloc
-    execute make "-j$(($cpu_threads-1))"
-    execute make install
-    execute make distclean
-    build_done 'm4' '1.4.19'
+if build 'm4' 'latest'; then
+    download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz.sig'
+    execute ./configure --prefix=/usr/include --enable-c++ --with-dmalloc
+    execute make "-j$cpu_threads"
+    execute sudo make install
+    build_done 'm4' 'latest'
 fi
 
 pre_check_ver 'ninja-build/ninja' '1' 'T'
