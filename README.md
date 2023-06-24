@@ -89,7 +89,7 @@ bash <(curl -sSL https://build-tools.optimizethis.net)
 ````
 ------
 
-## Install [cURL](https://github.com/curl/curl), [WGET](https://ftp.gnu.org/gnu/wget) & [ARAI2C](https://github.com/aria2/aria2)
+## Install [cURL](https://github.com/curl/curl), [WGET](https://ftp.gnu.org/gnu/wget) & [ARIA2C](https://github.com/aria2/aria2)
 #### Aria2 max connections increased from 16 to 64
   - **Supported OS:**
     - Debian - 10 / 11
