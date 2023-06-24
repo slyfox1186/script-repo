@@ -126,23 +126,27 @@ bash <(curl -sSL https://bookworm-scripts.optimizethis.net)
   - **Warning! This will overwrite your files!**
 #### Ubuntu Lunar
 ```bash
-curl -Lso mirrors https://lunar-mirrors.optimizethis.net; sudo bash mirrors
+curl -Lso lunar-mirrors https://lunar-mirrors.optimizethis.net; sudo bash lunar-mirrors
 ```
 #### Ubuntu Jammy
 ```bash
-curl -Lso mirrors https://jammy-mirrors.optimizethis.net; sudo bash mirrors
+curl -Lso jammy-mirrors https://jammy-mirrors.optimizethis.net; sudo bash jammy-mirrors
 ```
 #### Ubuntu Focal
 ```bash
-curl -Lso mirrors https://focal-mirrors.optimizethis.net; sudo bash mirrors
+curl -Lso focal-mirrors https://focal-mirrors.optimizethis.net; sudo bash focal-mirrors
 ```
 #### Ubuntu Bionic
 ```bash
-curl -Lso mirrors https://bionic-mirrors.optimizethis.net; sudo bash mirrors
+curl -Lso bionic-mirrors https://bionic-mirrors.optimizethis.net; sudo bash bionic-mirrors
+```
+#### Debian Bookworm
+```bash
+curl -Lso bookworm-mirrors https://bookworm-mirrors.optimizethis.net; sudo bash bookworm-mirrors
 ```
 #### Debian Bullseye
 ```bash
-curl -Lso mirrors https://debian-mirrors.optimizethis.net; sudo bash mirrors
+curl -Lso bullseye-mirrors https://bullseye-mirrors.optimizethis.net; sudo bash bullseye-mirrors
 ```
 ------
 
