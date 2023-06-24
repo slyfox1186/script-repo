@@ -122,13 +122,11 @@ bash <(curl -sSL https://bookworm-scripts.optimizethis.net)
 ```
 ------
 
-## Install extra download mirrors
-  - **Warning! This will overwrite your files!**
-#### Distros Included
-  - **Ubuntu**
-    - Lunar 23.04, Jammy 22.04, Focal 20.04, Bionic 18.04
-  - **Debian**
-    - Bullseye 11, Bookworm 12
+## Install extra download mirrors into the sources.list file
+  - Ubuntu - Lunar 23.04, Jammy 22.04, Focal 20.04, Bionic 18.04
+  - Debian - Bullseye 11, Bookworm 12
+
+**Warning! This will overwrite your files!**
 ```bash
 bash <( curl -sSL https://mirrors-menu.optimizethis.net)
 ```
