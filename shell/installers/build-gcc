@@ -976,7 +976,6 @@ if build 'gcc-12' '12.3.0'; then
     execute sudo ./contrib/download_prerequisites
     mkdir builddir
     cd builddir || exit 1
-    echo '$ Compiling gcc-12 with languages=c,ada,c++,d,fortran,go,lto,objc,obj-c++'
     execute ../configure                          \
         --prefix="$install_dir"                   \
         --{build,host,target}=x86_64-pc-linux-gnu \
@@ -1020,7 +1019,6 @@ if build 'gcc-13' '13.1.0'; then
     execute sudo ./contrib/download_prerequisites
     mkdir builddir
     cd builddir || exit 1
-    echo '$ Compiling gcc-13 with languages=c,ada,c++,d,fortran,go,lto,m2,objc,obj-c++'
     execute ../configure                          \
         --prefix="$install_dir"                   \
         --{build,host,target}=x86_64-pc-linux-gnu \
