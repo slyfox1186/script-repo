@@ -70,7 +70,7 @@ fi
 # CREATE OUTPUT DIRECTORIES
 #
 
-mkdir -p "$packages" "$workspace"
+mkdir -p "$packages" "$workspace"/venv/bin/python "$workspace"/venv/bin/pip
 
 #
 # SET GLOBAL VARIABLES
@@ -490,31 +490,35 @@ box_out_banner "GCC Build Script: v$script_ver"
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autogen automake bison build-essential ccache curl dejagnu flex gcc-11-base gcc-multilib gdc gdc-multilib
-      gfortran gfortran-multilib git gnulib guile-3.0-dev help2man jq libacl1-dev libadacgi4-dev libasan8 libdebuginfod-dev
-      libdmalloc5 libdmalloc-dev libeigen3-dev libffi-dev libfontconfig1-dev libfreetype6 libgcc-11-dev libgd-dev libgm2-11-dev
-      libgm2-12-dev libgm2-15 libgmp-dev libicu-dev libintl-perl libjpeg-dev libltdl-dev libmpc-dev libmpfr-dev libphobos2-ldc-shared-dev
-      libpng-dev libquadmath0 libsigsegv-dev libsqlite3-dev libssl-dev libstdc++-12-dev libunwind-dev libx11-dev libx32gfortran-12-dev
-      libxext-dev linux-libc-dev linux-libc-dev:i386 meson ninja-build openjdk-11-jdk-headless perl python3 python3-pip ruby sphinx-common
-      tcl-expect-dev tex-common texinfo)
+pkgs_fn()
+{
+    pkgs=(autoconf autogen automake bison build-essential ccache curl dejagnu flex gcc-11-base gcc-multilib
+          gdc gdc-multilib gfortran gfortran-multilib git gnulib guile-3.0-dev help2man jq libacl1-dev libasan8
+          libdebuginfod-dev libdmalloc5 libdmalloc-dev libeigen3-dev libffi-dev libfontconfig1-dev libfreetype6
+          libgcc-11-dev libgd-dev libgm2-12-dev libgmp-dev libicu-dev libintl-perl libjpeg-dev libltdl-dev
+          libmpc-dev libmpfr-dev libphobos2-ldc-shared-dev libpng-dev libquadmath0 libsigsegv-dev libsqlite3-dev
+          libssl-dev libstdc++-12-dev libunwind-dev libx11-dev libx32gfortran-12-dev libxext-dev linux-libc-dev
+          linux-libc-dev:i386 meson ninja-build openjdk-17-jdk-headless perl pipx python3 python3-full python3-pip
+          ruby sphinx-common tcl-expect-dev tex-common texinfo)
 
-for pkg in ${pkgs[@]}; do
-    if ! installed "$pkg"; then
-        missing_pkgs+=" $pkg"
-    fi
-done
-
-if [ -n "$missing_pkgs" ]; then
-    printf "%s\n%s\n\n" \
-        'Installing required apt packages' \
-        '================================================'
-    for i in "$missing_pkgs"
-    do
-        echo "\$ sudo apt -y install $i"
-        sudo apt -y install $i
-        echo
+    for pkg in ${pkgs[@]}; do
+        if ! installed "$pkg"; then
+            missing_pkgs+=" $pkg"
+        fi
     done
-fi
+
+    if [ -n "$missing_pkgs" ]; then
+        printf "%s\n%s\n\n" \
+            'Installing required apt packages' \
+            '================================================'
+        for i in "$missing_pkgs"
+        do
+            echo "\$ sudo apt -y install $i"
+            sudo apt -y install $i
+            echo
+        done
+    fi
+}
 
 #
 # INSTALL PYTHON MODULES
@@ -535,10 +539,66 @@ if [ -n "$missing_py_pkgs" ]; then
         '================================================'
     for py in "${missing_py_pkgs[@]}"
     do
-        pip install -q $py
-        echo
+        rm_pip_lock="$(find /usr/lib/python3* -name EXTERNALLY-MANAGED)"
+        if [ -n "$rm_pip_lock" ]; then
+            sudo rm "$rm_pip_lock"
+        fi
+        pip install --user types-gdb os.path2 mbs-sys tempfile2 PrettyGcov json2json pytest csv23 time-tools argparse3 pathlib shutil-extra latex Pygments
+        exit
     done
 fi
+
+#
+# DETERMINE WHAT VERSION OF LINUX WE ARE ON
+#
+
+ubuntu_os_check_fn()
+{
+    ubuntu_os="$(lsb_release -r 2>/dev/null | grep -Eo '[0-9\.]+$')"
+    case "$ubuntu_os" in
+        23.04|22.04)
+                        pkgs_fn 'libadacgi4-dev libgm2-15'
+                        http3_flag='true'
+                        ;;
+        *)              fail_fn 'Could not detect the Ubuntu version.';;
+    esac
+}
+
+linux_ver()
+{
+    if [ -f '/etc/os-release' ]; then
+        . '/etc/os-release'
+        OS="$NAME"
+        VER="$VERSION_ID"
+    elif "$(type -P lsb_release)" &>/dev/null; then
+        OS=$(lsb_release -si)
+        VER=$(lsb_release -sr)
+    elif [ -f '/etc/lsb-release' ]; then
+        . '/etc/lsb-release'
+        OS="$DISTRIB_ID"
+        VER="$DISTRIB_RELEASE"
+    elif [ -f '/etc/debian_version' ]; then
+        OS='Debian'
+        VER="$(cat '/etc/debian_version')"
+    else
+        OS="$(uname -s)"
+        VER="$(uname -r)"
+    fi
+}
+linux_ver
+
+#
+# TEST THE OS AND ITS VERSION
+#
+
+case "$OS" in
+    'Debian GNU/Linux')
+                            pkgs_fn 'libadacgi6-dev libgm2-12-dev libgm2-17'
+                            http3_flag='true'
+                            ;;
+    'Ubuntu')               ubuntu_os_check_fn;;
+    *)                      fail_fn 'Could not detect the OS architecture.';;
+esac
 
 #
 # SET THE C & C++ COMPILERS
