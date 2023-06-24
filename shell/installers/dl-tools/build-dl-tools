@@ -94,9 +94,19 @@ printf "%s\n%s\n%s\n" \
 
 PATH="\
 /usr/lib/ccache:\
-$workspace/bin:\
+$HOME/.cargo/bin:\
 $HOME/.local/bin:\
-$PATH\
+/usr/local/sbin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin:\
+/usr/games:\
+/usr/local/games:\
+/usr/local/cuda/bin:\
+/usr/lib/python3/dist-packages:\
+/snap/bin\
 "
 export PATH
 
