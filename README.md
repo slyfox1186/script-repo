@@ -3,9 +3,9 @@
 
 ### Why this repository exists:
 1. This repository was created as a way to share my custom scripts
-2. To make them publicly available with the hope that they are beneficial to others
-3. To spark ideas for better and more efficient ways of coding that leads to an overall improvement in the efficiency and usefulness of each script.
-4. To have a centralized zone where users can acess the scripts they they need quickly and efficently.
+2. Make the scripts publicly available with the hope that they are beneficial to others
+3. Spark ideas for better and more efficient ways of coding that leads to an overall improvement in the efficiency and usefulness of each script
+4. Have a centralized zone where users can access the scripts they need quickly and efficiently
 
 ### Included languages
  -   [x] AutoHotkey
@@ -24,8 +24,8 @@ bash <(curl -sSL https://build-menu.optimizethis.net)
 ------
 
 ## Debian Package Downloader
-  - Download APT packages to your pc by enter a space separated list of values.
-  - Easy to use, just enter a list of APT package names and their debian file equivalent will download to the current folder.
+  - Download APT packages to your pc by entering a space-separated list of values.
+  - Input a single entry or an entire list of APT packages and the script will download its respective .deb file to the current directory.
 ```bash
 bash <(curl -sSL https://download.optimizethis.net)
 ```
@@ -57,7 +57,7 @@ bash <(curl -sSL https://7z.optimizethis.net)
   - **Supported OS:**
     - Debian - 10 / 11
     - Ubuntu - 18.04 / 20.04 / 22.04
-    - Other debian style distros may work as well
+    - Other Debian-style distros may work as well
 
 ```bash
 bash <(curl -sSL https://magick.optimizethis.net) --build --latest
@@ -65,12 +65,12 @@ bash <(curl -sSL https://magick.optimizethis.net) --build --latest
 ------
 
 ## Install [FFmpeg](https://ffmpeg.org/download.html)
-  - **Compiles the latest updates from souce code by issuing API calls to each repositories backend**
-  - **The CUDA SDK Toolkit which unlocks Hardware Acceleration is available during the install to make things as easy as possible**
+  - **Compiles the latest updates from source code by issuing API calls to each repositories backend**
+  - **The CUDA SDK Toolkit which unlocks Hardware Acceleration is available during the installation to make things as easy as possible**
   - **Supported OS:**
     - Debian - 10 / 11
     - Ubuntu - 18.04 / 20.04 / 22.04
-    - Other debian style distros may work as well
+    - Other Debian-style distros may work as well
 
 **With GPL and <ins>non-free</ins> libraries: https://ffmpeg.org/legal.html**
 ```bash
@@ -82,7 +82,7 @@ bash <(curl -sSL https://build-ffmpeg.optimizethis.net) --build --latest
   - **Supported OS:**
     - Debian - 10 / 11
     - Ubuntu - 18.04 / 20.04 / 22.04
-    - Other debian style distros may work as well
+    - Other Debian-style distros may work as well
 
 ```bash
 bash <(curl -sSL https://build-tools.optimizethis.net)
@@ -93,7 +93,7 @@ bash <(curl -sSL https://build-tools.optimizethis.net)
   - **Supported OS:**
     - Debian - 10 / 11
     - Ubuntu - 18.04 / 20.04 / 22.04
-    - Other debian style distros may work as well
+    - Other Debian-style distros may work as well
 
 #### List of Libraries activated during build: [Libs](https://github.com/slyfox1186/script-repo/blob/main/shell/installers/dl-tools/dl-tools-libs-list.txt)
 
@@ -167,9 +167,9 @@ bash <(curl -sSL pkgs.sh https://debian-pkgs.optimizethis.net))
   - Dracula theme included + many others
   - Supported OS
     - Ubuntu 22.04
-    - Other debian style distros may work as well
+    - Other Debian-style distros may work as well
   - To install with no other actions required execute the first command, otherwise use the second command to
-    only download the files without executing the scripts immediatley.
+    only download the files without executing the scripts immediately.
      - Open the file `install-tilix` and read the instructions at the top of the script to easily customize the
        color themes further and then run `bash install-tilix`
 ```bash
@@ -184,7 +184,7 @@ wget -qN - -i https://build-tilix.optimizethis.net/
   - Supported OS
     - Debian 10 / 11
     - Ubuntu 18.04 / 20.04 / 22.04
-    - Other debian style distros may work as well
+    - Other Debian-style distros may work as well
 
 ```bash
 bash <(curl -sSL https://python3.optimizethis.net)
@@ -195,7 +195,7 @@ bash <(curl -sSL https://python3.optimizethis.net)
   - Supported OS
     - Debian 10 / 11
     - Ubuntu 18.04 / 20.04 / 22.04
-    - Other debian style distros may work as well
+    - Other Debian-style distros may work as well
 
 ```bash
 bash <(curl -sSL https://wsl2.optimizethis.net)
@@ -222,14 +222,14 @@ bash <(curl -sSL https://players.optimizethis.net)
 
 ## Install: GParted's extra functionality packages
   - Unlock the following options in GParted
-    - exfat
+    - exFAT
     - btrfs
     - f2fs
     - jfs
     - udf
     - lvm2 pv
     - hfs/hfs 2
-    - reiser 4/reiserfs
+    - Reiser 4/reiserfs
 ```bash
 bash <(curl -sSL https://gparted.optimizethis.net)
 ```
@@ -238,7 +238,7 @@ bash <(curl -sSL https://gparted.optimizethis.net)
 ## Create SSH key pairs and export the public key to a remote computer
  1. **Prompt user with instructions**
     - **Main Menu:**
-      1. **Check if public key files exist and if not walk the user through creation of files**
+      1. **Check if public key files exist and if not walk the user through the creation of files**
       2. **Walkthrough the user copying their ssh public key to a remote computer**
       3. **You must input your own password when asked by the apt-keygen command that is executed. This is to keep your security strong!**
 ```bash
