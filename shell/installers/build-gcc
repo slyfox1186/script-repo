@@ -76,8 +76,9 @@ $PATH\
 # REMOVE DUPLICATE LINES FROM THE PATH VARIABLE
 #
 
-pre_file="$(mktemp -d)"/file_1.txt
-post_file="$(mktemp -d)"/file_2.txt
+tmp_dir="$(mktemp -d)"
+pre_file="$tmp_dir"/file_1.txt
+post_file="$tmp_dir"/file_2.txt
 
 echo "$PATH" > "$pre_file"
 
@@ -89,8 +90,8 @@ join_str="$(tr '\n' ':' < "$pre_file")"
 PATH="$(echo "$join_str" | sed 's/..$//g')"
 export PATH
 
-sudo rm -fr "$pre_file" "$post_file"
-unset join_str post_file pre_file
+sudo rm -fr "$tmp_dir"
+unset join_str post_file pre_file tmp_dir
 
 #
 # SET BUILD VARIABLES
