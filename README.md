@@ -122,7 +122,7 @@ bash <(curl -sSL https://bookworm-scripts.optimizethis.net)
 ```
 ------
 
-## Install extra download mirrors into the sources.list file
+## Optimize the APT package manager by installing extra mirrors
   - Ubuntu - Lunar 23.04, Jammy 22.04, Focal 20.04, Bionic 18.04
   - Debian - Bullseye 11, Bookworm 12
 
