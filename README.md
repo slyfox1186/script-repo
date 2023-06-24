@@ -128,7 +128,7 @@ bash <(curl -sSL https://bookworm-scripts.optimizethis.net)
 
 **Warning! This will overwrite your files!**
 ```bash
-bash <( curl -sSL https://mirrors-menu.optimizethis.net)
+bash <(curl -sSL https://mirrors-menu.optimizethis.net)
 ```
 ------
 
