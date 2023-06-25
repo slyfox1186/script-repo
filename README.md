@@ -35,12 +35,13 @@ bash <(curl -sSL https://download.optimizethis.net)
   - **Sourced from the official GitHub repository**
   - **Compiled on Ubuntu Jammy 22.04.02**
   - **For personal/testing use only**
+  - **Check the top of the script for build [results](https://github.com/slyfox1186/script-repo/blob/main/shell/installers/build-gcc)**
   - **Supported OS:**
     - Debian - 11 / 12
     - Ubuntu - 22.04
     - Other Debian-style distros may work as well
 
-#### Native Build
+#### For native Linux systems (Windows WSL not working)
 ```bash
 bash <(curl -sSL https://gcc.optimizethis.net)
 ```
