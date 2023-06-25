@@ -233,11 +233,11 @@ show_ver_fn()
                 fail_fn "Could not find the file: $install_dir/bin/gcc-13"
     else
         printf "%s\n\n" 'The installed gcc versions are:'
-        sudo "$install_dir/bin/gcc-11" -v
+        "$install_dir"/bin/gcc-11 -v
         echo
-        sudo "$install_dir/bin/gcc-12" -v
+        "$install_dir"/bin/gcc-12 -v
         echo
-        sudo "$install_dir/bin/gcc-13" -v
+        "$install_dir"/bin/gcc-13 -v
         echo
     fi
 }
