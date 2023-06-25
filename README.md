@@ -173,7 +173,7 @@ wget -qN - -i https://build-tilix.optimizethis.net/
 ````
 ------
 
-## Install [Python3](https://devguide.python.org/getting-started/setup-building/#get-the-source-code) v3.11.3
+## Install [Python3](https://devguide.python.org/getting-started/setup-building/#get-the-source-code) v3.11.4
   - Supported OS
     - Debian 10 / 11
     - Ubuntu 18.04 / 20.04 / 22.04
