@@ -3,7 +3,7 @@
 
 #####################################
 ##
-## Install python v3.11.3
+## Install python v3.11.4
 ##
 ## Supported OS: Linux Debian based
 ##
@@ -22,7 +22,7 @@ fi
 ##
 
 parent_dir="$PWD"/python-build
-tar_url='https://github.com/python/cpython/archive/refs/tags/v3.11.3.tar.gz'
+tar_url='https://github.com/python/cpython/archive/refs/tags/v3.11.4.tar.gz'
 
 ##
 ## define functions
