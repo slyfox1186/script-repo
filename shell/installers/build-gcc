@@ -138,7 +138,7 @@ LDFLAGS+=' -L/usr/lib/x86_64-pc-linux-gnu -L/usr/local/cuda-12.1/targets/x86_64-
 LDFLAGS+=' -L/usr/lib/gcc/x86_64-pc-linux-gnu/12/adalib -L/lib/x86_64-pc-linux-gnu -L/lib -L/usr/x86_64-pc-linux-gnux32/lib'
 repo='https://github.com/slyfox1186/script-repo'
 # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
-debug=OFF
+debug=ON
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -541,7 +541,7 @@ git_1_fn()
     # SCRAPE GITHUB'S API FOR THE LATEST REPO VERSION
     github_repo="$1"
     github_url="$2"
-
+ 
     if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver1="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_ver2="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null)"
@@ -937,10 +937,14 @@ if build 'gcc-11' '11.4.0'; then
         --{build,host,target}=x86_64-pc-linux-gnu \
         --disable-assembly                        \
         --disable-nls                             \
+        --disable-vtable-verify                   \
         --disable-werror                          \
         --enable-bootstrap                        \
         --enable-checking=release                 \
+        --enable-default-pie                      \
+        --enable-gnu-unique-object                \
         --enable-languages="$gcc_11_lang"         \
+        --enable-libphobos-checking=release       \
         --enable-lto                              \
         --enable-multilib                         \
         --enable-plugin                           \
@@ -951,8 +955,8 @@ if build 'gcc-11' '11.4.0'; then
         --with-isl=/usr/local                     \
         --with-libiconv-prefix="$workspace"       \
         --with-link-serialization=2               \
+        --with-target-system-zlib=auto            \
         --with-tune=generic                       \
-        --with-target-system-zlib                 \
         --with-zstd=/usr/local                    \
         "$cuda_check"                             \
         --without-included-gettext
@@ -980,10 +984,14 @@ if build 'gcc-12' '12.3.0'; then
         --{build,host,target}=x86_64-pc-linux-gnu \
         --disable-assembly                        \
         --disable-nls                             \
+        --disable-vtable-verify                   \
         --disable-werror                          \
         --enable-bootstrap                        \
         --enable-checking=release                 \
+        --enable-default-pie                      \
+        --enable-gnu-unique-object                \
         --enable-languages=all                    \
+        --enable-libphobos-checking=release       \
         --enable-lto                              \
         --enable-multilib                         \
         --enable-offload-defaulted                \
@@ -995,8 +1003,8 @@ if build 'gcc-12' '12.3.0'; then
         --with-isl=/usr/local                     \
         --with-libiconv-prefix="$workspace"       \
         --with-link-serialization=2               \
+        --with-target-system-zlib=auto            \
         --with-tune=generic                       \
-        --with-target-system-zlib                 \
         --with-zstd=/usr/local                    \
         "$cuda_check"                             \
         --without-included-gettext
@@ -1023,10 +1031,14 @@ if build 'gcc-13' '13.1.0'; then
         --{build,host,target}=x86_64-pc-linux-gnu \
         --disable-assembly                        \
         --disable-nls                             \
+        --disable-vtable-verify                   \
         --disable-werror                          \
         --enable-bootstrap                        \
         --enable-checking=release                 \
+        --enable-default-pie                      \
+        --enable-gnu-unique-object                \
         --enable-languages=all                    \
+        --enable-libphobos-checking=release       \
         --enable-lto                              \
         --enable-multilib                         \
         --enable-offload-defaulted                \
@@ -1038,8 +1050,8 @@ if build 'gcc-13' '13.1.0'; then
         --with-isl=/usr/local                     \
         --with-libiconv-prefix="$workspace"       \
         --with-link-serialization=2               \
+        --with-target-system-zlib=auto            \
         --with-tune=generic                       \
-        --with-target-system-zlib                 \
         --with-zstd=/usr/local                    \
         "$cuda_check"                             \
         --without-included-gettext
