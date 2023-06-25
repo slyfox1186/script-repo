@@ -138,7 +138,7 @@ LDFLAGS+=' -L/usr/lib/x86_64-pc-linux-gnu -L/usr/local/cuda-12.1/targets/x86_64-
 LDFLAGS+=' -L/usr/lib/gcc/x86_64-pc-linux-gnu/12/adalib -L/lib/x86_64-pc-linux-gnu -L/lib -L/usr/x86_64-pc-linux-gnux32/lib'
 repo='https://github.com/slyfox1186/script-repo'
 # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
-debug=OFF
+debug=ON
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -242,10 +242,32 @@ show_ver_fn()
     fi
 }
 
-lib_path_other_fn()
+source_gcc_libs_fn()
 {
     unset LIBRARY_PATH
-    LIBRARY_PATH+="\
+    LIBRARY_PATH="\
+/usr/lib/gcc/x86_64-linux-gnu/$1/:\
+/usr/lib/gcc/x86_64-pc-linux-gnu/$1/:\
+/usr/lib/gcc/x86_64-linux-gnu/$1/../../../x86_64-linux-gnu/:\
+/usr/lib/gcc/x86_64-pc-linux-gnu/$1/../../../x86_64-pc-linux-gnu/:\
+/usr/lib/gcc/x86_64-linux-gnu/$1/../../../../lib/:\
+/usr/lib/gcc/x86_64-pc-linux-gnu/$1/../../../../lib/:\
+/usr/lib/gcc/x86_64-linux-gnu/$1/../../../:\
+/usr/lib/gcc/x86_64-pc-linux-gnu/$1/../../../:\
+/usr/x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/$1/:\
+/usr/x86_64-linux-gnu/lib/x86_64-linux-gnu/$1/:\
+/usr/local/x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/$1/:\
+/usr/local/x86_64-linux-gnu/lib/x86_64-linux-gnu/$1/:\
+/usr/local/lib/x86_64-pc-linux-gnu/$1/:\
+/usr/local/lib/x86_64-linux-gnu/$1/:\
+/usr/local/lib/gcc/x86_64-pc-linux-gnu/$1/:\
+/usr/local/lib/gcc/x86_64-linux-gnu/$1/:\
+/usr/lib/x86_64-pc-linux-gnu/$1/:\
+/usr/lib/x86_64-linux-gnu/$1/:\
+/usr/lib/gcc/x86_64-pc-linux-gnu/$1/:\
+/usr/lib/gcc/x86_64-linux-gnu/$1/:\
+/lib/x86_64-pc-linux-gnu/$1/:\
+/lib/x86_64-linux-gnu/$1/:\
 /usr/x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/:\
 /usr/x86_64-linux-gnu/lib/x86_64-linux-gnu/:\
 /usr/x86_64-pc-linux-gnu/lib64/:\
@@ -283,96 +305,6 @@ lib_path_other_fn()
 /lib/\
 "
     export LIBRARY_PATH
-}
-
-source_libs_gcc11_fn()
-{
-    unset LIBRARY_PATH
-    LIBRARY_PATH="\
-/usr/lib/gcc/x86_64-linux-gnu/11/:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/11/:\
-/usr/lib/gcc/x86_64-linux-gnu/11/../../../x86_64-linux-gnu/:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/11/../../../x86_64-pc-linux-gnu/:\
-/usr/lib/gcc/x86_64-linux-gnu/11/../../../../lib/:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/11/../../../../lib/:\
-/usr/lib/gcc/x86_64-linux-gnu/11/../../../:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/11/../../../:\
-/usr/x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/11/:\
-/usr/x86_64-linux-gnu/lib/x86_64-linux-gnu/11/:\
-/usr/local/x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/11/:\
-/usr/local/x86_64-linux-gnu/lib/x86_64-linux-gnu/11/:\
-/usr/local/lib/x86_64-pc-linux-gnu/11/:\
-/usr/local/lib/x86_64-linux-gnu/11/:\
-/usr/local/lib/gcc/x86_64-pc-linux-gnu/11/:\
-/usr/local/lib/gcc/x86_64-linux-gnu/11/:\
-/usr/lib/x86_64-pc-linux-gnu/11/:\
-/usr/lib/x86_64-linux-gnu/11/:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/11/:\
-/usr/lib/gcc/x86_64-linux-gnu/11/:\
-/lib/x86_64-pc-linux-gnu/11/:\
-/lib/x86_64-linux-gnu/11/:\
-"
-    lib_path_other_fn
-}
-
-source_libs_gcc12_fn()
-{
-    unset LIBRARY_PATH
-    LIBRARY_PATH="\
-/usr/lib/gcc/x86_64-linux-gnu/12/:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/12/:\
-/usr/lib/gcc/x86_64-linux-gnu/12/../../../x86_64-linux-gnu/:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/12/../../../x86_64-pc-linux-gnu/:\
-/usr/lib/gcc/x86_64-linux-gnu/12/../../../../lib/:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/12/../../../../lib/:\
-/usr/lib/gcc/x86_64-linux-gnu/12/../../../:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/12/../../../:\
-/usr/x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/12/:\
-/usr/x86_64-linux-gnu/lib/x86_64-linux-gnu/12/:\
-/usr/local/x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/12/:\
-/usr/local/x86_64-linux-gnu/lib/x86_64-linux-gnu/12/:\
-/usr/local/lib/x86_64-pc-linux-gnu/12/:\
-/usr/local/lib/x86_64-linux-gnu/12/:\
-/usr/local/lib/gcc/x86_64-pc-linux-gnu/12/:\
-/usr/local/lib/gcc/x86_64-linux-gnu/12/:\
-/usr/lib/x86_64-pc-linux-gnu/12/:\
-/usr/lib/x86_64-linux-gnu/12/:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/12/:\
-/usr/lib/gcc/x86_64-linux-gnu/12/:\
-/lib/x86_64-pc-linux-gnu/12/:\
-/lib/x86_64-linux-gnu/12/:\
-"
-    lib_path_other_fn
-}
-
-source_libs_gcc13_fn()
-{
-    unset LIBRARY_PATH
-    LIBRARY_PATH="\
-/usr/lib/gcc/x86_64-linux-gnu/13/:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/13/:\
-/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/13/../../../x86_64-pc-linux-gnu/:\
-/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib/:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/13/../../../../lib/:\
-/usr/lib/gcc/x86_64-linux-gnu/13/../../../:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/13/../../../:\
-/usr/x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/13/:\
-/usr/x86_64-linux-gnu/lib/x86_64-linux-gnu/13/:\
-/usr/local/x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/13/:\
-/usr/local/x86_64-linux-gnu/lib/x86_64-linux-gnu/13/:\
-/usr/local/lib/x86_64-pc-linux-gnu/13/:\
-/usr/local/lib/x86_64-linux-gnu/13/:\
-/usr/local/lib/gcc/x86_64-pc-linux-gnu/13/:\
-/usr/local/lib/gcc/x86_64-linux-gnu/13/:\
-/usr/lib/x86_64-pc-linux-gnu/13/:\
-/usr/lib/x86_64-linux-gnu/13/:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/13/:\
-/usr/lib/gcc/x86_64-linux-gnu/13/:\
-/lib/x86_64-pc-linux-gnu/13/:\
-/lib/x86_64-linux-gnu/13/:\
-"
-    lib_path_other_fn
 }
 
 create_links_gcc_13_fn()
@@ -541,7 +473,7 @@ git_1_fn()
     # SCRAPE GITHUB'S API FOR THE LATEST REPO VERSION
     github_repo="$1"
     github_url="$2"
- 
+
     if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver1="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_ver2="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null)"
@@ -926,7 +858,7 @@ else
 fi
 
 if build 'gcc-11' '11.4.0'; then
-    source_libs_gcc11_fn
+    source_gcc_libs_fn '11'
     download 'https://ftp.gnu.org/gnu/gcc/gcc-11.4.0/gcc-11.4.0.tar.xz'
     execute autoreconf -fi
     execute sudo ./contrib/download_prerequisites
@@ -973,7 +905,7 @@ fi
 
 export CC=gnatgcc
 if build 'gcc-12' '12.3.0'; then
-    source_libs_gcc12_fn
+    source_gcc_libs_fn '12'
     download 'https://ftp.gnu.org/gnu/gcc/gcc-12.3.0/gcc-12.3.0.tar.xz'
     execute autoreconf -fi
     execute sudo ./contrib/download_prerequisites
@@ -1020,7 +952,7 @@ if build 'gcc-12' '12.3.0'; then
 fi
 
 if build 'gcc-13' '13.1.0'; then
-    source_libs_gcc13_fn
+    source_gcc_libs_fn '13'
     download 'https://ftp.gnu.org/gnu/gcc/gcc-13.1.0/gcc-13.1.0.tar.xz'
     execute autoreconf -fi
     execute sudo ./contrib/download_prerequisites
