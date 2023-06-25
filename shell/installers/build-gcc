@@ -618,7 +618,7 @@ linux_ver
 #
 
 case "$OS" in
-    'Debian GNU/Linux')     pkgs_fn 'libadacgi6-dev libgm2-12-dev libgm2-17';;
+    'Debian GNU/Linux')     pkgs_fn 'libadacgi6-dev libgm2-12-dev libgm2-17 openjdk-17-jdk-headless';;
     'Ubuntu')               ubuntu_os_check_fn;;
     *)                      fail_fn 'Could not detect the OS architecture.';;
 esac
