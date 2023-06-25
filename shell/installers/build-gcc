@@ -589,6 +589,8 @@ ubuntu_os_check_fn()
                         pkgs_fn 'libadacgi4-dev libgm2-15'
                         http3_flag='true'
                         ;;
+        20.04)          pkgs_fn 'libgm2-10-dev';;
+        18.04)          pkgs_fn;;
         *)              fail_fn 'Could not detect the Ubuntu version.';;
     esac
 }
