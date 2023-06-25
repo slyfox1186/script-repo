@@ -20,6 +20,8 @@
 ##  Added: ada language support for all gcc versions
 ##  Added: code to clean the environment
 ##
+##  Optimized: code by removing redundant loops by passing variables to functions
+##
 ##  Updated: the LIBRARY_PATH variable to include the default paths of the APT "gcc" version
 ##
 ##  Fixed: zstdn, zlib, and bison build issues.
