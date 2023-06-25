@@ -318,8 +318,8 @@ create_gcc_links_fn()
 
     for i in ${list[@]}
     do
-        sudo ln -fs "/usr/local/bin/$2$i" "/usr/local/bin/$i"
-        sudo chown 755 "/usr/local/bin/$2$i" "/usr/local/bin/$i"
+        sudo ln -fs "$install_dir/bin/$2$i" "$install_dir/bin/$i"
+        sudo chown 755 "$install_dir/bin/$2$i" "$install_dir/bin/$i"
     done
 }
 
@@ -453,9 +453,7 @@ git_1_fn()
 
     if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver1="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
-        g_ver2="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null)"
         g_ver="${g_ver1#v}"
-        g_ver="${g_ver2#v}"
     fi
 }
 
@@ -527,8 +525,8 @@ pkgs_fn()
           libgcc-11-dev libgd-dev libgm2-12-dev libgmp-dev libiberty-dev libicu-dev libintl-perl libjpeg-dev libltdl-dev
           libmpc-dev libmpfr-dev libphobos2-ldc-shared-dev libpng-dev libquadmath0 libsigsegv-dev libsqlite3-dev
           libssl-dev libstdc++-12-dev libunwind-dev libx11-dev libx32gfortran-12-dev libxext-dev linux-libc-dev
-          linux-libc-dev:i386 meson ninja-build openjdk-17-jdk-headless perl pipx python3 python3-full python3-pip
-          ruby sphinx-common tcl-expect-dev tex-common texinfo)
+          linux-libc-dev:i386 meson ninja-build perl pipx python3 python3-full python3-pip ruby sphinx-common
+          tcl-expect-dev tex-common texinfo)
 
     for pkg in ${pkgs[@]}; do
         if ! installed "$pkg"; then
@@ -585,12 +583,9 @@ ubuntu_os_check_fn()
 {
     ubuntu_os="$(lsb_release -r 2>/dev/null | grep -Eo '[0-9\.]+$')"
     case "$ubuntu_os" in
-        23.04|22.04)
-                        pkgs_fn 'libadacgi4-dev libgm2-15'
-                        http3_flag='true'
-                        ;;
-        20.04)          pkgs_fn 'libgm2-10-dev';;
-        18.04)          pkgs_fn;;
+        23.04|22.04)    pkgs_fn 'libadacgi4-dev libgm2-15 openjdk-17-jdk-headless';;
+        20.04)          pkgs_fn 'libgm2-10-dev openjdk-17-jdk-headless';;
+        18.04)          pkgs_fn 'openjdk-11-jdk-headless';;
         *)              fail_fn 'Could not detect the Ubuntu version.';;
     esac
 }
@@ -623,10 +618,7 @@ linux_ver
 #
 
 case "$OS" in
-    'Debian GNU/Linux')
-                            pkgs_fn 'libadacgi6-dev libgm2-12-dev libgm2-17'
-                            http3_flag='true'
-                            ;;
+    'Debian GNU/Linux')     pkgs_fn 'libadacgi6-dev libgm2-12-dev libgm2-17';;
     'Ubuntu')               ubuntu_os_check_fn;;
     *)                      fail_fn 'Could not detect the OS architecture.';;
 esac
@@ -876,7 +868,7 @@ if build 'gcc-11' '11.4.0'; then
         '$ This is going to take a while...'
     execute make "-j$cpu_threads"
     execute sudo make install-strip
-    execute libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/11
+    execute libtool --finish "$install_dir/libexec/gcc/$gcc_prefix/11"
     execute libtool --finish "$install_dir"/lib
     create_gcc_links_fn '11' "$gcc_prefix"
     build_done 'gcc-11' '11.4.0'
@@ -924,7 +916,7 @@ if build 'gcc-12' '12.3.0'; then
         '$ This is going to take a while...'
     execute make "-j$cpu_threads"
     execute sudo make install-strip
-    execute libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/12
+    execute libtool --finish "$install_dir/libexec/gcc/$gcc_prefix/12"
     execute libtool --finish "$install_dir"/lib
     create_gcc_links_fn '12' "$gcc_prefix"
     build_done 'gcc-12' '12.3.0'
@@ -971,7 +963,7 @@ if build 'gcc-13' '13.1.0'; then
         '$ This is going to take a while...'
     execute make "-j$cpu_threads"
     execute sudo make install-strip
-    execute libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/13
+    execute libtool --finish "$install_dir/libexec/gcc/$gcc_prefix/13"
     execute libtool --finish "$install_dir"/lib
     create_gcc_links_fn '13' "$gcc_prefix"
     build_done 'gcc-13' '13.1.0'
