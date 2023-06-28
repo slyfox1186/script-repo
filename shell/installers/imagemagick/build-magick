@@ -15,9 +15,11 @@
 ##  Method: The script will search GitHub for the latest released version
 ##         and upon execution, will import the info into the script for use
 ##
+##  Added: Debian OS Support ( 12 / 11 / 10 )
+##
 ##  Updated: 06.15.23
 ##
-##  Script Version: 1.2
+##  Script Version: 2.0
 ##
 #################################################################################
 
@@ -34,7 +36,7 @@ fi
 #
 
 progname="${0:2}"
-script_version='1.2'
+script_version='2.0'
 cwd="$PWD"/magick-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
@@ -301,7 +303,19 @@ deb_files_fn()
     fi
 
     if [ ! -f "$packages"/jpeg-xl.tar.gz ]; then
-        if [ "$os_test" = '23.04' ] || [ "$os_test" = '22.10' ] || [ "$os_test" = '22.04' ]; then
+        if [ "$os_test" = '12' ]; then
+            if ! curl -Lso "$packages"/jpeg-xl.tar.gz 'https://github.com/libjxl/libjxl/releases/download/v0.8.1/jxl-debs-amd64-debian-bookworm-v0.8.1.tar.gz'; then
+                fail_fn 'Failed to download jpeg-xl.tar.gz'
+            fi
+        elif [ "$os_test" = '11' ]; then
+            if ! curl -Lso "$packages"/jpeg-xl.tar.gz 'https://github.com/libjxl/libjxl/releases/download/v0.8.1/jxl-debs-amd64-debian-bullseye-v0.8.1.tar.gz'; then
+                fail_fn 'Failed to download jpeg-xl.tar.gz'
+            fi
+        elif [ "$os_test" = '10' ]; then
+            if ! curl -Lso "$packages"/jpeg-xl.tar.gz 'https://github.com/libjxl/libjxl/releases/download/v0.8.1/jxl-debs-amd64-debian-buster-v0.8.1.tar.gz'; then
+                fail_fn 'Failed to download jpeg-xl.tar.gz'
+            fi
+        elif [ "$os_test" = '23.04' ] || [ "$os_test" = '22.10' ] || [ "$os_test" = '22.04' ]; then
             if ! curl -Lso "$packages"/jpeg-xl.tar.gz 'https://github.com/libjxl/libjxl/releases/download/v0.8.1/jxl-debs-amd64-ubuntu-22.04-v0.8.1.tar.gz'; then
                 fail_fn 'Failed to download jpeg-xl.tar.gz'
             fi
@@ -315,7 +329,7 @@ deb_files_fn()
             fi
         fi
 
-        if ! tar -zxf "$packages"/jpeg-xl.tar.gz -C "$packages"/deb-files --strip-components 1; then
+        if ! tar -xf "$packages"/jpeg-xl.tar.gz -C "$packages"/deb-files --strip-components 1; then
             fail_fn "Could not extract: $packages/jpeg-xl.tar.gz"
         fi
         install_deb_files_fn
@@ -469,31 +483,75 @@ printf "%s\n\n%s\n%s\n%s\n\n" \
     "This script will use ($cpu_threads) cpu cores for parallel processing to accelerate the build speed."
 sleep 2
 
+#
+# INSTALL APT LIBRARIES
+#
+
 printf "%s\n%s\n" \
     'Installing required APT packages' \
     '=========================================='
 
 #
-# INSTALL APT LIBRARIES
+# DETERMINE WHAT VERSION OF LINUX WE ARE ON
 #
 
 pkgs_jammy='libcpu-features-dev libfontconfig-dev libgc1 libhwy-dev libmimalloc2.0 libmimalloc-dev'
 
-os_test="$(lsb_release -r 2>/dev/null | grep -Eo '[0-9\.]+$')"
-if [ "$os_test" = '23.04' ]; then
-    pkgs_fn "$pkgs_jammy librust-jpeg-decoder-dev"
-elif [ "$os_test" = '22.04' ]; then
-    pkgs_fn "$pkgs_jammy libhwy0"
-elif [ "$os_test" = '20.04' ]; then
-    pkgs_fn 'libfontconfig1-dev'
-fi
+ubuntu_os_check_fn()
+{
+    ubuntu_os="$(lsb_release -r 2>/dev/null | grep -Eo '[0-9\.]+$')"
+    case "$ubuntu_os" in
+        23.04)          pkgs_fn "$pkgs_jammy librust-jpeg-decoder-dev";;
+        22.04)          pkgs_fn "$pkgs_jammy libhwy0";;
+        20.04)          pkgs_fn 'libfontconfig1-dev';;
+        18.04)          pkgs_fn;;
+        *)              fail_fn 'Could not detect the Ubuntu version.';;
+    esac
+}
+
+linux_ver()
+{
+    if [ -f '/etc/os-release' ]; then
+        . '/etc/os-release'
+        OS="$NAME"
+        VER="$VERSION_ID"
+    elif "$(type -P lsb_release)" &>/dev/null; then
+        OS=$(lsb_release -si)
+        VER=$(lsb_release -sr)
+    elif [ -f '/etc/lsb-release' ]; then
+        . '/etc/lsb-release'
+        OS="$DISTRIB_ID"
+        VER="$DISTRIB_RELEASE"
+    elif [ -f '/etc/debian_version' ]; then
+        OS='Debian'
+        VER="$(cat '/etc/debian_version')"
+    else
+        OS="$(uname -s)"
+        VER="$(uname -r)"
+    fi
+}
+linux_ver
 
 #
-# FIGURE OUT WHICH COMPILERS TO USE
+# TEST THE OS AND ITS VERSION
 #
 
-type -P gcc &>/dev/null && export CC=gcc CXX=g++
-export CXXFLAGS='-g -O3 -march=native -mtune=native'
+case "$OS" in
+    'Debian GNU/Linux')
+                            pkgs_fn "$pkgs_jammy libhwy1"
+                            os_test="$VER"
+                            ;;
+    'Ubuntu')               ubuntu_os_check_fn
+                            os_test="$VER"
+                            ;;
+    *)                      fail_fn 'Could not detect the OS architecture.';;
+esac
+
+#
+# INSTALL REQUIRED DEBIAN FILES
+#
+
+deb_files_fn
 
 #
 # INSTALL OFFICIAL IMAGEMAGICK LIBS
@@ -505,15 +563,10 @@ if build 'magick-libs' "$g_ver"; then
     if ! curl -Lso "magick-libs-$g_ver.rpm" "https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-libs-$g_ver.x86_64.rpm"; then
         fail_fn 'Failed to download the magick-libs file.'
     fi
-    sudo alien -d -i "magick-libs-$g_ver.rpm"
+    sudo alien -d *.rpm
+    sudo dpkg -i *.deb
     build_done 'magick-libs' "$g_ver"
 fi
-
-#
-# INSTALL REQUIRED DEBIAN FILES
-#
-
-deb_files_fn
 
 #
 # INSTALL COMPOSER TO COMPILE GRAPHVIZ
@@ -534,6 +587,13 @@ if [ ! -f '/usr/bin/composer' ]; then
     fi
     rm composer-setup.php
 fi
+
+#
+# FIGURE OUT WHICH COMPILERS TO USE
+#
+
+which gcc &>/dev/null && export CC=gcc CXX=g++
+export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 #
 # BUILD FROM SOURCE CODE
@@ -559,20 +619,20 @@ if build 'automake' '1.16.5'; then
 fi
 
 # THIS MUST BE VERSION 2.4.6, 2.4.7 WILL NOT WORK
-if build 'libtool' '2.4.6'; then
-    download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.6.tar.xz' 'libtool-2.4.6.tar.xz'
+if build 'libtool' '2.4.7'; then
+    download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz' 'libtool-2.4.7.tar.xz'
     execute ./configure --prefix="$workspace" --enable-static --disable-shared --with-pic
     execute make "-j$cpu_threads"
     execute make install
-    build_done 'libtool' '2.4.6'
+    build_done 'libtool' '2.4.7'
 fi
 
-if build 'm4' '1.4.19'; then
-    download 'https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.xz' 'm4-1.4.19.tar.xz'
+if build 'm4' 'latest'; then
+    download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz' 'm4-latest.tar.xz'
     execute ./configure --prefix="$workspace"
     execute make "-j$cpu_threads"
     execute make install
-    build_done 'm4' '1.4.19'
+    build_done 'm4' 'latest'
 fi
 
 git_ver_fn 'libsdl-org/libtiff' '1' 'T'
@@ -602,13 +662,13 @@ if build 'fpx' 'git'; then
     build_done 'fpx' 'git'
 fi
 
-if build 'ghostscript' '10.01.1'; then
-    download 'https://github.com/artifexsoftware/ghostpdl-downloads/releases/download/gs10011/ghostscript-10.01.1.tar.gz' 'ghostscript-10.01.1.tar.gz'
+if build 'ghostscript' '10.01.2'; then
+    download 'https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10012/ghostscript-10.01.2.tar.xz' 'ghostscript-10.01.2.tar.gz'
     execute ./autogen.sh
     execute ./configure --prefix="$workspace"
     execute make "-j$cpu_threads"
     execute make install
-    build_done 'ghostscript' '10.01.1'
+    build_done 'ghostscript' '10.01.2'
 fi
 
 if build 'png12' '1.2.59'; then
