@@ -496,6 +496,7 @@ printf "%s\n%s\n" \
 #
 
 pkgs_jammy='libcpu-features-dev libfontconfig-dev libgc1 libhwy-dev libmimalloc2.0 libmimalloc-dev'
+pkgs_bullseye='libcpu-features-dev libfontconfig-dev libgc1 libdmalloc-dev libdmalloc5 libjemalloc-dev libjemalloc2 librust-malloc-buf-dev libtcmalloc-minimal4 libvmmalloc-dev libvmmalloc1'
 
 ubuntu_os_check_fn()
 {
@@ -538,7 +539,7 @@ linux_ver
 
 case "$OS" in
     'Debian GNU/Linux')
-                            pkgs_fn "$pkgs_jammy libhwy1"
+                            pkgs_fn "$pkgs_bullseye"
                             os_test="$VER"
                             ;;
     'Ubuntu')               ubuntu_os_check_fn
