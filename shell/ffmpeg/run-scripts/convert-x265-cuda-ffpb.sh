@@ -12,7 +12,7 @@ do
 done
 unset i
 
-# INSTALL PYTHON3'S GOOGLE SPEECH TO ANNOUNCE WHEN THE CONVERSION HAS BEEN COMPLETED
+# REQUIRED PIP PACKAGES
 pip_pkgs=(ffpb google_speech)
 for i in ${pip_pkgs[@]}
 do
