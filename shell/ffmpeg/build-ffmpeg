@@ -2228,7 +2228,7 @@ if build 'FFmpeg' "$ffmpeg_ver"; then
         --pkgconfigdir="$workspace"/lib/pkgconfig                                \
         --pkg-config-flags=--static                                              \
         --strip="$(type -P strip)"
-    make "-j$cpu_threads"
+    execute make "-j$cpu_threads"
     execute make install
     execute make distclean
 fi
