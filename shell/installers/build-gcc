@@ -10,9 +10,9 @@
 ##  Supported OS: Linux Ubuntu Jammy (22.04.02)
 ##                Native OS Only - Windows WSL is NOT working
 ##
-##  Updated: 06.24.23
+##  Updated: 06.29.23
 ##
-##  Script Version: 4.0
+##  Script Version: 4.1
 ##
 ##  Added: multiple support libraries using the latest versions available
 ##  Added: link time optimization support
@@ -130,17 +130,13 @@ clear
 # SET BUILD VARIABLES
 #
 
-script_ver='4.0'
-install_dir='/usr/local'
-gcc_prefix='x86_64-pc-linux-gnu-'
+script_ver=4.1
+install_dir=/usr/local
+gcc_prefix=x86_64-pc-linux-gnu-
 CFLAGS='-g -O3 -march=native -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
 CXXFLAGS='-g -O3 -march=native'
-CPPFLAGS="-I/include -I$workspace/include -I/usr/local/include -I/usr/include -I/usr/local/cuda-12.1/nvvm/include -I/usr/local/cuda/include"
-CPPFLAGS+=' -I/usr/include/x86_64-pc-linux-gnu -I/usr/lib/gcc/x86_64-pc-linux-gnu/8/include -I/usr/lib/gcc/x86_64-pc-linux-gnu/9/include'
-LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-pc-linux-gnu -L/usr/local/lib64 -L/usr/local/lib -L/usr/local/cuda-12.1/nvvm/lib64"
-LDFLAGS+=' -L/usr/lib/x86_64-pc-linux-gnu -L/usr/local/cuda-12.1/targets/x86_64-linux/lib -L/usr/share/ant/lib -L/usr/lib'
-LDFLAGS+=' -L/usr/lib/gcc/x86_64-pc-linux-gnu/12/adalib -L/lib/x86_64-pc-linux-gnu -L/lib -L/usr/x86_64-pc-linux-gnux32/lib'
-repo='https://github.com/slyfox1186/script-repo'
+latest=false
+repo=https://github.com/slyfox1186/script-repo
 # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
 debug=OFF
 
@@ -430,8 +426,11 @@ build()
 
     if [ -f "$packages/$1.done" ]; then
         if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
-            echo "$1 version $2 is already built. Remove $packages/$1.done lockfile to rebuild it."
+            echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
             return 1
+        elif $latest; then
+            echo "$1 is outdated and will be rebuilt using version $2"
+            return 0
         else
             echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
             return 1
@@ -446,7 +445,7 @@ curl_timeout=10
 
 git_1_fn()
 {
-    local curl_cmd github_repo github_url g_sver
+    local curl_cmd github_repo github_url
 
     # SCRAPE GITHUB'S API FOR THE LATEST REPO VERSION
     github_repo="$1"
@@ -526,8 +525,7 @@ pkgs_fn()
           libgcc-11-dev libgd-dev libgm2-12-dev libgmp-dev libiberty-dev libicu-dev libintl-perl libjpeg-dev libltdl-dev
           libmpc-dev libmpfr-dev libphobos2-ldc-shared-dev libpng-dev libquadmath0 libsigsegv-dev libsqlite3-dev
           libssl-dev libstdc++-12-dev libunwind-dev libx11-dev libx32gfortran-12-dev libxext-dev linux-libc-dev
-          linux-libc-dev:i386 meson ninja-build perl pipx python3 python3-full python3-pip ruby sphinx-common
-          tcl-expect-dev tex-common texinfo)
+          meson ninja-build perl pipx python3 python3-full python3-pip ruby sphinx-common tcl-expect-dev tex-common texinfo)
 
     for pkg in ${pkgs[@]}; do
         if ! installed "$pkg"; then
@@ -572,7 +570,6 @@ if [ -n "$missing_py_pkgs" ]; then
             sudo rm "$rm_pip_lock"
         fi
         pip install --user types-gdb os.path2 mbs-sys tempfile2 PrettyGcov json2json pytest csv23 time-tools argparse3 pathlib shutil-extra latex Pygments
-        exit
     done
 fi
 
@@ -584,7 +581,7 @@ ubuntu_os_check_fn()
 {
     ubuntu_os="$(lsb_release -r 2>/dev/null | grep -Eo '[0-9\.]+$')"
     case "$ubuntu_os" in
-        23.04|22.04)    pkgs_fn 'libadacgi4-dev libgm2-15 openjdk-17-jdk-headless';;
+        23.04|22.10|22.04)    pkgs_fn 'linux-libc-dev:i386 libadacgi4-dev libgm2-15 openjdk-17-jdk-headless';;
         20.04)          pkgs_fn 'libgm2-10-dev openjdk-17-jdk-headless';;
         18.04)          pkgs_fn 'openjdk-11-jdk-headless';;
         *)              fail_fn 'Could not detect the Ubuntu version.';;
@@ -628,7 +625,8 @@ esac
 # SET THE C & C++ COMPILERS
 #
 
-export CC=gcc CXX=g++
+export CC=gcc
+export CXX=g++
 export CFLAGS="$CFLAGS"
 export CXXFLAGS="$CXXFLAGS"
 
@@ -711,17 +709,17 @@ fi
 if build 'gettext' '0.21.1'; then
     download 'https://ftp.gnu.org/gnu/gettext/gettext-0.22.tar.xz'
     execute autoreconf -fi
-    execute ./configure --prefix=/usr/local --disable-{nls,shared} --enable-{static,threads=posix} \
+    execute ./configure --prefix="$workspace" --disable-{nls,shared} --enable-{static,threads=posix} \
         --with-libintl-prefix=/usr
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     execute make distclean
     build_done 'gettext' '0.21.1'
 fi
 
 if build 'libiconv' '1.17'; then
     download 'https://ftp.gnu.org/gnu/libiconv/libiconv-1.17.tar.gz'
-    execute ./configure --prefix="$workspace" --disable-{nls,shared} --enable-static
+    execute ./configure --prefix=/usr/local --disable-{nls,shared} --enable-static
     execute make "-j$cpu_threads"
     execute sudo make install
     execute make distclean
@@ -743,9 +741,9 @@ fi
 if build 'attr' '2.5.1'; then
     download 'http://download.savannah.nongnu.org/releases/attr/attr-2.5.1.tar.xz'
     execute autoreconf -fi
-    execute ./configure --prefix=/usr/local --disable-{nls,shared} --with-libiconv-prefix="$workspace"
+    execute ./configure --prefix="$workspace" --disable-{nls,shared} --with-libiconv-prefix="$workspace"
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     execute make distclean
     build_done 'attr' '2.5.1'
 fi
@@ -773,9 +771,9 @@ fi
 if build 'isl' '0.24'; then
     download 'https://gcc.gnu.org/pub/gcc/infrastructure/isl-0.24.tar.bz2'
     execute autoreconf -fi
-    execute ./configure --prefix=/usr/local --disable-shared --with-gmp-prefix="$workspace"
+    execute ./configure --prefix="$workspace" --disable-shared --with-gmp-prefix="$workspace"
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     execute make distclean
     build_done 'isl' '0.24'
 fi
@@ -784,9 +782,9 @@ git_ver_fn 'gperftools/gperftools' '1' 'R'
 g_ver="${g_ver//gperftools-/}"
 if build 'gperftools' "$g_ver"; then
     download "https://github.com/gperftools/gperftools/releases/download/gperftools-$g_ver/gperftools-$g_ver.tar.gz"
-    execute ./configure --prefix=/usr/local --disable-shared --enable-libunwind
+    execute ./configure --prefix="$workspace" --disable-shared --enable-libunwind
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     execute make distclean
     build_done 'gperftools' "$g_ver"
 fi
@@ -796,9 +794,9 @@ g_ver="${g_ver#Zstandard v}"
 if build 'zstd' "$g_ver"; then
     download "https://github.com/facebook/zstd/releases/download/v$g_ver/zstd-$g_ver.tar.gz"
     cd build/meson || exit 1
-    execute meson setup build --prefix=/usr/local --buildtype=release --default-library=static --strip
+    execute meson setup build --prefix="$workspace" --buildtype=release --default-library=static --strip
     execute ninja "-j$cpu_threads" -C build
-    execute sudo ninja "-j$cpu_threads" -C build install
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'zstd' "$g_ver"
 fi
 
@@ -806,7 +804,7 @@ git_ver_fn 'madler/zlib' '1' 'R'
 g_ver="${g_ver#zlib }"
 if build 'zlib' "$g_ver"; then
     download "https://github.com/madler/zlib/releases/download/v$g_ver/zlib-$g_ver.tar.gz"
-    execute ./configure --prefix=/usr
+    execute ./configure --prefix=/usr/local
     execute make "-j$cpu_threads"
     execute sudo make install
     execute make distclean
@@ -822,12 +820,10 @@ if build 'autoconf-v269' '2.69'; then
     build_done 'autoconf-v269' '2.69'
 fi
 
-if [ "$OS" = 'Debian GNU/Linux' ]; then
-    gcc_11_lang=c,brig,c++,d,fortran,go,lto,objc,obj-c++
-else
-    gcc_11_lang=all
+if [ "$OS" != 'Debian GNU/Linux' ]; then
     export CC=gnatgcc
 fi
+gcc_11_lang=all
 
 if build 'gcc-11' '11.4.0'; then
     source_gcc_libs_fn '11'
