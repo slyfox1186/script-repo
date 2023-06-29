@@ -3,7 +3,7 @@
 clear
 
 # REQUIRED APT PACKAGES
-apt_pkgs=(bc ffmpegthumbnailer ffmpegthumbs libffmpegthumbnailer4v5 sox)
+apt_pkgs=(bc ffmpegthumbnailer ffmpegthumbs libffmpegthumbnailer4v5 sox trash-cli)
 for i in ${apt_pkgs[@]}
 do
     if ! dpkg -l | grep $i &>/dev/null; then
@@ -121,7 +121,10 @@ if ffpb \
         -qmin:a 1 \
         -qmax:a 4 \
         "$file_out"; then
-    google_speech 'Video conversion completed' 2>/dev/null
+    google_speech 'Video conversion completed.' 2>/dev/null
 else
-    google_speech 'Video conversion failed' 2>/dev/null
+    google_speech 'Video conversion failed.' 2>/dev/null
 fi
+
+# MOVE INPUT FILE TO TRASH
+trash -f "$file_in"
