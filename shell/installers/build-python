@@ -12,8 +12,7 @@
 clear
 
 if [ "$EUID" -eq '0' ]; then
-    echo 'You must run this script WITHOUT root/sudo'
-    echo
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo'
     exit 1
 fi
 
