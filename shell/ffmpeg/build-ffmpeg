@@ -111,12 +111,14 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' answer
 
     case "$answer" in
-        1)
-                sudo rm -fr "$cwd" "$script_name"
-                exit_fn
-               ;;
-        2)     exit_fn;;
-        *)     fail_fn 'Bad user input.';;
+        1)      sudo rm -fr "$cwd" "$script_name";;
+        2)      echo;;
+        *)
+                printf "\n%s\n\n" 'Bad user input.'
+                read -p 'Press enter to try again.'
+                echo
+                cleanup_fn
+                ;;
     esac
 }
 
@@ -811,7 +813,12 @@ ffmpeg_install_test()
     for i in ${binaries[@]}
     do
         if [ ! -f "$workspace/bin/$i" ]; then
-            fail_fn "Unable to locate the binary file: $workspace/bin/$i"
+            printf "\n%s\n\n%s\n\n%s\n\n" \
+                "Unable to locate the binary file: $workspace/bin/$i" \
+                "Please report this at:" \
+                "$repo/issues"
+            read -p 'Press enter to continue.'
+            clear
         fi
     done
 }
@@ -2251,3 +2258,6 @@ ffmpeg_install_choice
 
 # PROMPT THE USER TO CLEAN UP THE BUILD FILES
 cleanup_fn
+
+# SHOW EXIT MESSAGE
+exit_fn
