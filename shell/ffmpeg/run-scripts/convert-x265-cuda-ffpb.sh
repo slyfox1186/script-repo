@@ -10,14 +10,13 @@ do
         sudo apt -y install $i
     fi
 done
-unset i
 
 # REQUIRED PIP PACKAGES
 pip_pkgs=(ffpb google_speech)
-for i in ${pip_pkgs[@]}
+for p in ${pip_pkgs[@]}
 do
-    if ! pip show $i &>/dev/null; then
-        pip install $i
+    if ! pip show $p &>/dev/null; then
+        pip install $p
     fi
 done
 
