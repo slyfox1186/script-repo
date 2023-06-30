@@ -48,8 +48,8 @@ bash <(curl -sSL https://gcc.optimizethis.net)
 
 ## Install [7-Zip](www.7-zip.org/download.html)
   - **Auto installs based on your os architecture. No user input is required.**
-    - Linux - **i386, x86_x64**
-    - ARM - **i386, x86_x64**
+    - Arch types - **i386 + x86_x64**
+    - Processor types - **Linux + ARM**
 ### v23.01 Release
 ```bash
 bash <(curl -sSL https://7z.optimizethis.net)
