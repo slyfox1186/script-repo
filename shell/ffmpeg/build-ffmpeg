@@ -52,8 +52,8 @@ packages="$cwd"/packages
 workspace="$cwd"/workspace
 install_prefix=/usr/local
 CFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections"
-LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/lib -L/usr/local/cuda/nvvm/lib64"
-LDFLAGS+=' -L/usr/local/cuda/targets/x86_64-linux/lib -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu -L/lib'
+LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/local/cuda/nvvm/lib64"
+LDFLAGS+=' -L/usr/local/cuda/targets/x86_64-linux/lib -L/usr/local/lib -L/usr/lib -L/usr/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu -L/lib'
 LDEXEFLAGS=
 EXTRALIBS='-ldl -lpthread -lm -lz'
 ffmpeg_libraries=()
@@ -443,17 +443,12 @@ library_exists()
 
 build_done()
 {
-    echo "$2" >"$packages/$1.done"
+    echo "$2" > "$packages/$1.done"
 }
 
 installed()
 {
     return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
-}
-
-cuda_fail_fn()
-{
-    fail_fn 'Unable to locate the cuda directory.'
 }
 
 gpu_arch_fn()
@@ -700,10 +695,10 @@ cuda_download_fn()
     sudo apt update
     sudo apt -y install cuda
 
-    cuda_ver="$(cat '/usr/local/cuda/version.json' | jq -r '.cuda.version')"
+    cuda_ver="$(cat /usr/local/cuda/version.json | jq -r '.cuda.version')"
 
     if [ -z "$cuda_ver" ]; then
-        cuda_fail_fn
+        fail_fn 'Unable to locate the cuda directory.'
     else
         export PATH="$PATH:$cuda_path"
     fi
@@ -715,7 +710,7 @@ cuda_download_fn()
 
 install_cuda_fn()
 {
-    local cuda_choice
+    local answer choice
     #
     # CHECK IF THE CUDA FOLDER EXISTS TO ENSURE IT WAS INSTALLED
     #
@@ -730,25 +725,25 @@ install_cuda_fn()
             'Do you want to update/reinstall it?' \
             '[1] Yes' \
             '[2] No'
-        read -p 'Your choices are (1 or 2): ' cuda_choice
+        read -p 'Your choices are (1 or 2): ' choice
         clear
 
-        case "$cuda_choice" in
+        case "$choice" in
                 1)      cuda_download_fn;;
                 2)      export PATH="$PATH:$cuda_path";;
                 *)      fail_fn 'Bad user input.';;
         esac
     else
         printf "\n%s\n\n%s\n%s\n\n%s\n%s\n\n" \
-            "The cuda-sdk-toolkit was not detected: v$cuda_ver" \
-            '=====================================================' \
+            "The cuda-sdk-toolkit was not detected and latest version is: v$cuda_ver" \
+            '====================================================================' \
             'What do you want to do next?' \
             '[1] Install the toolkit and add it to PATH' \
             '[2] Continue the build without installing (hardware acceleration will be turned off)'
-        read -p 'Your choices are (1 or 2): ' cuda_answer
+        read -p 'Your choices are (1 or 2): ' answer
         echo
 
-        case "$cuda_answer" in
+        case "$answer" in
             1)      cuda_download_fn;;
             2)      echo;;
             *)      fail_fn 'Bad user input.';;
@@ -810,6 +805,7 @@ ffmpeg_install_test()
     local binaries i
 
     binaries=(cyanrip ffmpeg ffplay ffprobe flac mediainfo MP4Box)
+
     for i in ${binaries[@]}
     do
         if [ ! -f "$workspace/bin/$i" ]; then
@@ -817,7 +813,7 @@ ffmpeg_install_test()
                 "Unable to locate the binary file: $workspace/bin/$i" \
                 "Please report this at:" \
                 "$repo/issues"
-            read -p 'Press enter to continue.'
+            read -p 'You can press enter to continue, however please create an issue report.'
             clear
         fi
     done
@@ -825,20 +821,21 @@ ffmpeg_install_test()
 
 ffmpeg_install_choice()
 {
-    local binaries i install_choice
+    local binaries i choice
 
     printf "\n%s\n\n%s\n%s\n\n" \
         "Would you like to install the static binaries system-wide? [$install_prefix/bin]" \
         '[1] Yes ' \
         '[2] No'
-    read -p 'Your choices are (1 or 2): ' install_choice
+    read -p 'Your choices are (1 or 2): ' choice
 
-    case "$install_choice" in
+    case "$choice" in
         1)
                 binaries=(cyanrip ffmpeg ffplay ffprobe flac mediainfo MP4Box)
                 for i in ${binaries[@]}
                 do
-                    sudo cp -f "$workspace/bin/$i" "$install_prefix"/bin
+                    sudo cp -f "$workspace/bin/$i" "$install_prefix/bin"
+                    sudo chmod 755 "$install_prefix/bin/$i"
                 done
                 ;;
         2)
@@ -848,7 +845,8 @@ ffmpeg_install_choice()
                 ;;
         *)
                 printf "%s\n\n" 'Bad user input.'
-                    read -p 'Press enter to continue.'
+                    read -p 'Press enter to try again.'
+                    clear
                     ffmpeg_install_choice
                 ;;
     esac
@@ -863,11 +861,9 @@ extract_jxl_deb_fn()
     cd "$packages"/libjxl-deb || exit 1
 
     if [ -f benchmark_xl ]; then
-        sudo cp -f benchmark_xl /usr/bin
-        sudo cp -f cjxl /usr/bin
-        sudo cp -f djxl /usr/bin
+        sudo cp -f benchmark_xl cjxl djxl /usr/bin
     else
-        fail_fn 'Unable to find files: benchmark_xl, cjxl, and djxl'
+        fail_fn 'Unable to find the jpegxl static binary files: benchmark_xl, cjxl, and djxl'
     fi
 }
 
@@ -880,7 +876,7 @@ install_jxl_deb_fn()
             fail_fn 'Failed to download jpeg-xl.tar.gz'
         fi
         if ! tar -zxf "$packages"/jpeg-xl.tar.gz -C "$packages"/libjxl-deb --strip-components 1; then
-            fail_fn "Could not extract: $packages/jpeg-xl.tar.gz"
+            fail_fn "Could not extract the jpegxl archive: $packages/jpeg-xl.tar.gz"
         fi
     fi
     extract_jxl_deb_fn
@@ -907,25 +903,21 @@ ubuntu_os_test()
     esac
 }
 
-if [ -f '/etc/os-release' ]; then
-    # freedesktop.org and systemd
-    source '/etc/os-release'
+if [ -f /etc/os-release ]; then
+    source /etc/os-release
     OS="$NAME"
     VER="$VERSION_ID"
 elif type lsb_release >/dev/null 2>&1; then
-    # linuxbase.org
-    OS=$(lsb_release -si)
-    VER=$(lsb_release -sr)
-elif [ -f '/etc/lsb-release' ]; then
-    source '/etc/lsb-release'
+    OS="$(lsb_release -si)"
+    VER="$(lsb_release -sr)"
+elif [ -f /etc/lsb-release ]; then
+    source /etc/lsb-release
     OS="$DISTRIB_ID"
     VER="$DISTRIB_RELEASE"
-elif [ -f '/etc/debian_version' ]; then
-    # Older Debian/Ubuntu/etc.
-    OS='Debian'
-    VER="$(cat '/etc/debian_version')"
+elif [ -f /etc/debian_version ]; then
+    OS=Debian
+    VER="$(cat /etc/debian_version)"
 else
-    # Fall back to uname, e.g. "Linux <version>", also works for BSD, etc.
     OS="$(uname -s)"
     VER="$(uname -r)"
 fi
@@ -948,13 +940,13 @@ check_python3_ver()
 
 patch_fn()
 {
-    local patch1 patch2 patch3 patch4 patch_url
+    local patch1 patch2 patch3 patch4 vvc_patch_url
 
-    patch_url='https://raw.githubusercontent.com/m-ab-s/mabs-patches/master/VVCSoftware_VTM'
+    vvc_patch_url='https://raw.githubusercontent.com/m-ab-s/mabs-patches/master/VVCSoftware_VTM'
 
-    patch1="$patch_url/0001-BBuildEnc.cmake-Remove-Werror-for-gcc-and-clang.patch"
-    patch2="$patch_url/0002-cmake-allow-installing-apps.patch"
-    patch3="$patch_url/0003-CMake-add-USE_CCACHE-variable-to-disable-using-found.patch"
+    patch1="$vvc_patch_url/0001-BBuildEnc.cmake-Remove-Werror-for-gcc-and-clang.patch"
+    patch2="$vvc_patch_url/0002-cmake-allow-installing-apps.patch"
+    patch3="$vvc_patch_url/0003-CMake-add-USE_CCACHE-variable-to-disable-using-found.patch"
 
     if ! curl -Lso vvc_patch1.patch "$patch1"; then
         fail_fn 'Failed to download vvc patch1.'
@@ -983,8 +975,10 @@ iscuda="$(sudo find /usr/local/cuda* -type f -name nvcc)"
 # SET THE C & C++ COMPILERS TO THE HIGHEST VERSION INSTALLED
 #
 
-if ! type -P gcc &>/dev/null && export CC=gcc CXX=g++; then
-    fail_fn 'You must install "gcc" to run this script.'
+if which gcc &>/dev/null; then
+    export CC=gcc-12 CXX=g++-12
+else
+    fail_fn 'Please install "gcc" to start the build.'
 fi
 
 #
@@ -1012,18 +1006,18 @@ printf "%s\n%s\n%s\n" \
 
 if build 'libiconv' '1.17'; then
     download 'https://ftp.gnu.org/gnu/libiconv/libiconv-1.17.tar.gz'
-    execute ./configure --prefix=/usr/local --disable-shared
+    execute ./configure --prefix="$workspace" --enable-static --with-pic
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     execute make distclean
-    execute libtool --finish /usr/local/lib
+    execute libtool --finish "$workspace"/lib
     build_done 'libiconv' '1.17'
 fi
 
 if build 'm4' 'latest'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
     execute ./configure --prefix="$workspace" --disable-nls --enable-c++ \
-        --with-dmalloc --with-libiconv-prefix=/usr/local
+        --with-dmalloc --with-libiconv-prefix="$workspace"
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
@@ -1049,33 +1043,11 @@ if build 'libtool' '2.4.7'; then
     build_done 'libtool' '2.4.7'
 fi
 
-if build 'libiconv' '1.17'; then
-    download 'https://ftp.gnu.org/gnu/libiconv/libiconv-1.17.tar.gz'
-    execute ./configure --prefix="$workspace" --disable-shared
-    execute make "-j$cpu_threads"
-    execute sudo make install
-    execute make distclean
-    execute libtool --finish "$workspace"/lib
-    build_done 'libiconv' '1.17'
-fi
-sudo chown "$USER":"$USER" -R "$cwd"
-
-if build 'giflib' '5.2.1'; then
-    download 'https://cfhcable.dl.sourceforge.net/project/giflib/giflib-5.2.1.tar.gz'
-    # PARELLEL BUILDING NOT AVAILABLE FOR THIS LIBRARY
-    execute make
-    execute make PREFIX="$workspace" install
-    execute make clean
-    build_done 'giflib' '5.2.1'
-fi
-
 if build 'pkg-config' '0.29.2'; then
     download "https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz"
-    mkdir build
-    cd build || exit 1
-    execute ../configure --prefix=/usr --with-pic --with-internal-glib --with-pc-path="$PKG_CONFIG_PATH"
+    execute ./configure --prefix="$workspace" --with-pc-path="$PKG_CONFIG_PATH"
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     execute make distclean
     build_done 'pkg-config' '0.29.2'
 fi
@@ -1107,7 +1079,7 @@ if build 'openssl' '3.1.1'; then
     execute ./config --prefix=/usr/local --openssldir=/usr/local/lib/ssl \
         --with-{zlib-include="$workspace"/include,zlib-lib="$workspace"/lib} no-shared zlib
     execute make "-j$cpu_threads"
-    execute sudo make build_sw
+    execute sudo make install_sw
     execute make distclean
     build_done 'openssl' '3.1.1'
 fi
@@ -1125,9 +1097,9 @@ if [ "$python3_rm_decimals" -lt '700' ]; then
         execute sudo ./configure --enable-optimizations
         execute sudo make "-j$cpu_threads"
         execute sudo make altinstall
-        python_var='python3.9'
         build_done 'python3' '3.9.16'
     fi
+    python_var='python3.9'
 else
     python_var='python3'
 fi
@@ -1136,7 +1108,7 @@ pre_check_ver 'mesonbuild/meson' '1' 'T'
 if build 'meson' "$g_ver"; then
     download "https://codeload.github.com/mesonbuild/meson/tar.gz/refs/tags/$g_ver" "meson-$g_ver.tar.gz"
     execute $python_var setup.py build
-    execute sudo $python_var setup.py install --prefix="$workspace"
+    execute $python_var setup.py install --prefix="$workspace"
     build_done 'meson' "$g_ver"
 fi
 
@@ -1144,7 +1116,8 @@ pre_check_ver 'yasm/yasm' '1' 'T'
 if build 'yasm' "$g_ver"; then
     download "https://codeload.github.com/yasm/yasm/tar.gz/refs/tags/v$g_ver" "yasm-$g_ver.tar.gz"
     execute autoreconf -fi
-    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_SHARED_LIBS=OFF -G 'Ninja' -Wno-dev
+    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} \
+        -DBUILD_SHARED_LIBS=OFF -G 'Ninja' -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
     build_done 'yasm' "$g_ver"
@@ -1158,6 +1131,15 @@ if build 'nasm' '2.16.01'; then
     execute make install
     execute make distclean
     build_done 'nasm' '2.16.01'
+fi
+
+if build 'giflib' '5.2.1'; then
+    download 'https://cfhcable.dl.sourceforge.net/project/giflib/giflib-5.2.1.tar.gz'
+    # PARELLEL BUILDING NOT AVAILABLE FOR THIS LIBRARY
+    execute make
+    execute make PREFIX="$workspace" install
+    execute make clean
+    build_done 'giflib' '5.2.1'
 fi
 
 # UBUNTU BIONIC FAILS TO BUILD XML2
@@ -1402,7 +1384,7 @@ if build 'tesseract' "$g_ver"; then
     download "https://codeload.github.com/tesseract-ocr/tesseract/tar.gz/refs/tags/$g_ver" "tesseract-$g_ver.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --datadir="$workspace"/bin \
-        --disable-{graphics,shared,tessdata-prefix} --without-curl --with-pic
+        --disable-{graphics,shared,tessdata-prefix} --without-curl
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
@@ -1776,14 +1758,10 @@ if [ "$os_test" != '18.04' ]; then
         else
             source "$HOME"/.bashrc
         fi
-        rm -rf "$HOME"/.cargo/registry/index/* "$HOME"/.cargo/.package-cache
+        rm -fr "$HOME"/.cargo/registry/index/* "$HOME"/.cargo/.package-cache
         execute cargo install --version '0.9.20+cargo-0.71' cargo-c
         download "https://codeload.github.com/xiph/rav1e/tar.gz/refs/tags/v$g_ver" "rav1e-$g_ver.tar.gz"
         execute cargo cinstall --prefix="$workspace" --library-type=staticlib --crt-static --release
-        if [ -f '/usr/bin/rustc' ]; then
-            echo '$ The script detected rustc and must remove it to avoid interfering with RUSTUP.'
-            execute sudo apt -y remove rustc
-        fi
         build_done 'rav1e' "$g_ver"
     fi
     ffmpeg_libraries+=("--enable-librav1e")
