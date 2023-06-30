@@ -266,14 +266,14 @@ source_gcc_libs_fn
 
 create_gcc_links_fn()
 {
-    list="(c++-$1 cpp-$1 g++-$1 gcc-$1 gcc-ar-$1 gccgo-$1 gcc-nm-$1 gcc-ranlib-$1 gcov-$1 gcov-dump-$1
-          gcov-tool-$1 gdc-$1 gfortran-$1 gm2-$1 gnat-$1 gnatbind-$1 gnatchop-$1 gnatclean-$1 gnatkr-$1
-          gnatlink-$1 gnatls-$1 gnatmake-$1 gnatname-$1 gnatprep-$1 go-$1 gofmt-$1 lto-dump-$1)"
+    local gcc_long_link_name gcc_short_link_name
 
-    for i in ${list[@]}
+    gcc_long_link_name="$(find /usr/local/bin -type f -name 'x86_64-pc-linux-gnu-*' | grep -Eo 'x86_64-pc-linux-gnu-[a-z\+]+-[123]+$')"
+    for i in ${gcc_long_link_name[@]}
     do
-        sudo ln -fs "$install_dir/bin/$2$i" "$install_dir/bin/$i"
-        sudo chown 755 "$install_dir/bin/$2$i" "$install_dir/bin/$i"
+        gcc_short_link_name="$(echo "$i" | sed 's/^x86_64-pc-linux-gnu-\(.*\)$/\1/')"
+        sudo ln -fs "/usr/local/bin/$i" "/usr/local/bin/$gcc_short_link_name"
+        sudo chmod 755 -R "/usr/local/bin/$i" "/usr/local/bin/$gcc_short_link_name"
     done
 }
 
@@ -837,7 +837,6 @@ if build 'gcc-11' '11.4.0'; then
     execute sudo make install-strip
     execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/11
     execute sudo libtool --finish "$install_dir"/lib
-    create_gcc_links_fn '11' "$gcc_prefix"
     build_done 'gcc-11' '11.4.0'
 fi
 
@@ -893,7 +892,6 @@ if build 'gcc-12' '12.3.0'; then
     execute sudo make install-strip
     execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/12
     execute sudo libtool --finish "$install_dir"/lib
-    create_gcc_links_fn '12' "$gcc_prefix"
     build_done 'gcc-12' '12.3.0'
 fi
 
@@ -939,9 +937,11 @@ if build 'gcc-13' '13.1.0'; then
     execute sudo make install-strip
     execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/13
     execute sudo libtool --finish "$install_dir"/lib
-    create_gcc_links_fn '13' "$gcc_prefix"
     build_done 'gcc-13' '13.1.0'
 fi
+
+# CREATE SOFT LINKS TO SHORTEN THE BINARY NAMES
+create_gcc_links_fn
 
 # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES
 sudo ldconfig 2>/dev/null
