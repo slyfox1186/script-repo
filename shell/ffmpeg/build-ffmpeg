@@ -1004,6 +1004,16 @@ printf "%s\n%s\n%s\n" \
     '           Installing Global Tools            ' \
     '=============================================='
 
+if build 'libiconv' '1.17'; then
+    download 'https://ftp.gnu.org/gnu/libiconv/libiconv-1.17.tar.gz'
+    execute ./configure --prefix=/usr/local --enable-static --with-pic
+    execute make "-j$cpu_threads"
+    execute sudo make install
+    execute make distclean
+    execute libtool --finish "$workspace"/lib
+    build_done 'libiconv' '1.17'
+fi
+
 if build 'm4' 'latest'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
     execute ./configure --prefix="$workspace" --disable-nls --enable-c++ \
