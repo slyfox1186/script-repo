@@ -139,7 +139,7 @@ CPPFLAGS='-I/usr/lib/gcc/x86_64-linux-gnu/12/include -I/usr/local/include -I/usr
 latest=false
 repo=https://github.com/slyfox1186/script-repo
 # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
-debug=ON
+debug=OFF
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -883,7 +883,7 @@ if build 'gcc-12' '12.3.0'; then
         "$cuda_check"                             \
         --without-included-gettext
     printf "\n%s\n%s\n\n" \
-        '$ Compiling gcc-12 with languages=all' \
+        '$ Compiling gcc-12 with languages=c,ada,c++,d,fortran,go,lto,objc,obj-c++' \
         '$ This is going to take a while...'
     execute make "-j$cpu_threads"
     execute sudo make install-strip
