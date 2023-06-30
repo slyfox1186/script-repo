@@ -135,10 +135,11 @@ install_dir=/usr/local
 gcc_prefix=x86_64-pc-linux-gnu-
 CFLAGS='-g -O3 -march=native -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
 CXXFLAGS='-g -O3 -march=native'
+CPPFLAGS='-I/usr/lib/gcc/x86_64-linux-gnu/12/include -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include'
 latest=false
 repo=https://github.com/slyfox1186/script-repo
 # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
-debug=OFF
+debug=ON
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -165,14 +166,17 @@ $workspace/lib/pkgconfig:\
 $workspace/lib64/pkgconfig:\
 $workspace/share/pkgconfig:\
 $workspace/lib/x86_64-pc-linux-gnu/pkgconfig:\
+$workspace/lib/x86_64-linux-gnu/pkgconfig:\
 $workspace/usr/lib/pkgconfig:\
 /lib/pkgconfig:\
 /usr/local/lib/x86_64-pc-linux-gnu/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
 /usr/local/share/pkgconfig:\
 /usr/share/pkgconfig:\
 /usr/lib/x86_64-pc-linux-gnu/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/lib/pkgconfig\
 "
 export PKG_CONFIG_PATH
@@ -232,12 +236,11 @@ show_ver_fn()
             elif [ ! -f "$install_dir"/bin/gcc-13 ]; then
                 fail_fn "Could not find the file: $install_dir/bin/gcc-13"
     else
-        printf "%s\n\n" 'The installed gcc versions are:'
-        "$install_dir"/bin/gcc-11 -v
-        echo
-        "$install_dir"/bin/gcc-12 -v
-        echo
-        "$install_dir"/bin/gcc-13 -v
+        printf "%s\n\n%s\n\n%s\n\n%s\n\n" \
+            'The installed gcc versions are:' \
+            "$install_dir"/bin/gcc-11 -v \
+            "$install_dir"/bin/gcc-12 -v \
+            "$install_dir"/bin/gcc-13 -v
         echo
     fi
 }
@@ -247,65 +250,19 @@ source_gcc_libs_fn()
     unset LIBRARY_PATH
     LIBRARY_PATH="\
 /usr/lib/gcc/x86_64-linux-gnu/$1/:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/$1/:\
 /usr/lib/gcc/x86_64-linux-gnu/$1/../../../x86_64-linux-gnu/:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/$1/../../../x86_64-pc-linux-gnu/:\
 /usr/lib/gcc/x86_64-linux-gnu/$1/../../../../lib/:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/$1/../../../../lib/:\
-/usr/lib/gcc/x86_64-linux-gnu/$1/../../../:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/$1/../../../:\
-/usr/x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/$1/:\
-/usr/x86_64-linux-gnu/lib/x86_64-linux-gnu/$1/:\
-/usr/local/x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/$1/:\
-/usr/local/x86_64-linux-gnu/lib/x86_64-linux-gnu/$1/:\
-/usr/local/lib/x86_64-pc-linux-gnu/$1/:\
-/usr/local/lib/x86_64-linux-gnu/$1/:\
-/usr/local/lib/gcc/x86_64-pc-linux-gnu/$1/:\
-/usr/local/lib/gcc/x86_64-linux-gnu/$1/:\
-/usr/lib/x86_64-pc-linux-gnu/$1/:\
-/usr/lib/x86_64-linux-gnu/$1/:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/$1/:\
-/usr/lib/gcc/x86_64-linux-gnu/$1/:\
-/lib/x86_64-pc-linux-gnu/$1/:\
-/lib/x86_64-linux-gnu/$1/:\
-/usr/x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/:\
-/usr/x86_64-linux-gnu/lib/x86_64-linux-gnu/:\
-/usr/x86_64-pc-linux-gnu/lib64/:\
-/usr/x86_64-linux-gnu/lib64/:\
-/usr/x86_64-pc-linux-gnu/lib/:\
-/usr/x86_64-linux-gnu/lib/:\
-/usr/local/x86_64-pc-linux-gnu/lib64/:\
-/usr/local/x86_64-linux-gnu/lib64/:\
-/usr/local/x86_64-pc-linux-gnu/lib/:\
-/usr/local/x86_64-linux-gnu/lib/:\
-/usr/local/lib/x86_64-pc-linux-gnu/:\
-/usr/local/lib/x86_64-linux-gnu/:\
-/usr/local/lib64/:\
-/usr/local/lib/:\
-/usr/local/cuda/targets/x86_64-linux/lib/:\
-/usr/local/cuda-12.1/targets/x86_64-linux/lib/:\
-/usr/lib/x86_64-pc-linux-gnu/libfakeroot/:\
-/usr/lib/x86_64-linux-gnu/libfakeroot/:\
-/usr/lib/x86_64-pc-linux-gnu64/:\
-/usr/lib/x86_64-linux-gnu64/:\
-/usr/lib/x86_64-pc-linux-gnu/:\
-/usr/lib/x86_64-linux-gnu/:\
-/usr/libx32/:\
-/usr/lib/../lib/:\
-/usr/lib64/:\
-/usr/lib32/:\
-/usr/lib/:\
-/lib/x86_64-pc-linux-gnu/:\
 /lib/x86_64-linux-gnu/:\
-/libx32/:\
 /lib/../lib/:\
-/lib/i386-linux-gnu/:\
-/lib64/:\
-/lib32/:\
-/lib/\
+/usr/lib/x86_64-linux-gnu/:\
+/usr/lib/../lib/:\
+/usr/lib/gcc/x86_64-linux-gnu/$1/../../../:\
+/lib/:\
+/usr/lib/\
 "
     export LIBRARY_PATH
 }
+source_gcc_libs_fn
 
 create_gcc_links_fn()
 {
@@ -629,6 +586,7 @@ export CC=gcc
 export CXX=g++
 export CFLAGS="$CFLAGS"
 export CXXFLAGS="$CXXFLAGS"
+export CPPFLAGS="$CPPFLAGS"
 
 #
 # CREATE SOFT LINKS TO FIX LINKING BUGS
@@ -705,6 +663,7 @@ if build 'bison' 'git'; then
     execute make distclean
     build_done 'bison' 'git'
 fi
+sudo chown "$USER":"$USER" -R "$cwd"
 
 if build 'gettext' '0.21.1'; then
     download 'https://ftp.gnu.org/gnu/gettext/gettext-0.22.tar.xz'
@@ -726,6 +685,7 @@ if build 'libiconv' '1.17'; then
     execute libtool --finish "$workspace"/lib
     build_done 'libiconv' '1.17'
 fi
+sudo chown "$USER":"$USER" -R "$cwd"
 
 if build 'diffutils' '3.9'; then
     download 'https://ftp.gnu.org/gnu/diffutils/diffutils-3.9.tar.xz'
@@ -763,17 +723,17 @@ if build 'gmp' '6.2.1'; then
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" --disable-shared --enable-cxx M4="$workspace"/bin/m4
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     execute make distclean
     build_done 'gmp' '6.2.1'
 fi
+sudo chown "$USER":"$USER" -R "$cwd"
 
 if build 'isl' '0.24'; then
     download 'https://gcc.gnu.org/pub/gcc/infrastructure/isl-0.24.tar.bz2'
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" --disable-shared --with-gmp-prefix="$workspace"
     execute make "-j$cpu_threads"
-    execute make install
     execute make distclean
     build_done 'isl' '0.24'
 fi
@@ -820,14 +780,15 @@ if build 'autoconf-v269' '2.69'; then
     build_done 'autoconf-v269' '2.69'
 fi
 
-if [ "$OS" != 'Debian GNU/Linux' ]; then
+if [ "$OS" = 'Debian GNU/Linux' ]; then
+    source_gcc_libs_fn "$VER"
+else
     export CC=gnatgcc
 fi
-gcc_11_lang=all
 
 if build 'gcc-11' '11.4.0'; then
-    source_gcc_libs_fn '11'
     download 'https://ftp.gnu.org/gnu/gcc/gcc-11.4.0/gcc-11.4.0.tar.xz'
+    gcc_11_lang=all
     execute autoreconf -fi
     execute sudo ./contrib/download_prerequisites
     mkdir builddir
@@ -852,12 +813,12 @@ if build 'gcc-11' '11.4.0'; then
         --program-prefix="$gcc_prefix"            \
         --program-suffix=-11                      \
         --with-gcc-major-version-only             \
-        --with-isl=/usr/local                     \
+        --with-isl="$workspace"                   \
         --with-libiconv-prefix="$workspace"       \
         --with-link-serialization=2               \
         --with-target-system-zlib=auto            \
         --with-tune=generic                       \
-        --with-zstd=/usr/local                    \
+        --with-zstd="$workspace"                  \
         "$cuda_check"                             \
         --without-included-gettext
     printf "\n%s\n%s\n\n" \
@@ -865,7 +826,7 @@ if build 'gcc-11' '11.4.0'; then
         '$ This is going to take a while...'
     execute make "-j$cpu_threads"
     execute sudo make install-strip
-    execute libtool --finish "$install_dir/libexec/gcc/$gcc_prefix/11"
+    execute libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/11
     execute libtool --finish "$install_dir"/lib
     create_gcc_links_fn '11' "$gcc_prefix"
     build_done 'gcc-11' '11.4.0'
@@ -873,7 +834,6 @@ fi
 
 export CC=gnatgcc
 if build 'gcc-12' '12.3.0'; then
-    create_gcc_links_fn '11' "$gcc_prefix"
     download 'https://ftp.gnu.org/gnu/gcc/gcc-12.3.0/gcc-12.3.0.tar.xz'
     execute autoreconf -fi
     execute sudo ./contrib/download_prerequisites
@@ -900,27 +860,26 @@ if build 'gcc-12' '12.3.0'; then
         --program-prefix="$gcc_prefix"            \
         --program-suffix=-12                      \
         --with-gcc-major-version-only             \
-        --with-isl=/usr/local                     \
+        --with-isl="$workspace"                   \
         --with-libiconv-prefix="$workspace"       \
         --with-link-serialization=2               \
         --with-target-system-zlib=auto            \
         --with-tune=generic                       \
-        --with-zstd=/usr/local                    \
+        --with-zstd="$workspace"                  \
         "$cuda_check"                             \
         --without-included-gettext
     printf "\n%s\n%s\n\n" \
-        '$ Compiling gcc-12 with languages=c,ada,c++,d,fortran,go,lto,objc,obj-c++' \
+        '$ Compiling gcc-12 with languages=all' \
         '$ This is going to take a while...'
     execute make "-j$cpu_threads"
     execute sudo make install-strip
-    execute libtool --finish "$install_dir/libexec/gcc/$gcc_prefix/12"
+    execute libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/12
     execute libtool --finish "$install_dir"/lib
     create_gcc_links_fn '12' "$gcc_prefix"
     build_done 'gcc-12' '12.3.0'
 fi
 
 if build 'gcc-13' '13.1.0'; then
-    source_gcc_libs_fn '13'
     download 'https://ftp.gnu.org/gnu/gcc/gcc-13.1.0/gcc-13.1.0.tar.xz'
     execute autoreconf -fi
     execute sudo ./contrib/download_prerequisites
@@ -947,20 +906,20 @@ if build 'gcc-13' '13.1.0'; then
         --program-prefix="$gcc_prefix"            \
         --program-suffix=-13                      \
         --with-gcc-major-version-only             \
-        --with-isl=/usr/local                     \
+        --with-isl="$workspace"                   \
         --with-libiconv-prefix="$workspace"       \
         --with-link-serialization=2               \
         --with-target-system-zlib=auto            \
         --with-tune=generic                       \
-        --with-zstd=/usr/local                    \
+        --with-zstd="$workspace"                  \
         "$cuda_check"                             \
         --without-included-gettext
     printf "\n%s\n%s\n\n" \
-        '$ Compiling gcc-13 with languages=c,ada,c++,d,fortran,go,lto,m2,objc,obj-c++' \
+        '$ Compiling gcc-13 with languages=all' \
         '$ This is going to take a while...'
     execute make "-j$cpu_threads"
     execute sudo make install-strip
-    execute libtool --finish "$install_dir/libexec/gcc/$gcc_prefix/13"
+    execute libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/13
     execute libtool --finish "$install_dir"/lib
     create_gcc_links_fn '13' "$gcc_prefix"
     build_done 'gcc-13' '13.1.0'
@@ -976,4 +935,4 @@ show_ver_fn
 cleanup_fn
 
 # SHOW THE EXIT MESSAGE
-exit_fn
+exit_fn 
