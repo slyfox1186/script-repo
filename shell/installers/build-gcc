@@ -139,7 +139,7 @@ CPPFLAGS='-I/usr/lib/gcc/x86_64-linux-gnu/12/include -I/usr/local/include -I/usr
 latest=false
 repo=https://github.com/slyfox1186/script-repo
 # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
-debug=OFF
+debug=ON
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -835,8 +835,8 @@ if build 'gcc-11' '11.4.0'; then
         '$ This is going to take a while...'
     execute make "-j$cpu_threads"
     execute sudo make install-strip
-    execute libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/11
-    execute libtool --finish "$install_dir"/lib
+    execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/11
+    execute sudo libtool --finish "$install_dir"/lib
     create_gcc_links_fn '11' "$gcc_prefix"
     build_done 'gcc-11' '11.4.0'
 fi
@@ -844,7 +844,11 @@ fi
 if which gnatgcc &>/dev/null; then
     export CC=gnatgcc CXX=g++
 else
-    fail_fn 'Please install gnatgcc to continue.'
+    clear
+    printf "%s\n\n" 'You must intstall "gnatgcc" to build gcc-13 with ada language support.' \
+    read -p 'Press enter to continue the build without ada language support.'
+    clear
+    export CC=gcc CXX=g++
 fi
 
 if build 'gcc-12' '12.3.0'; then
@@ -887,8 +891,8 @@ if build 'gcc-12' '12.3.0'; then
         '$ This is going to take a while...'
     execute make "-j$cpu_threads"
     execute sudo make install-strip
-    execute libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/12
-    execute libtool --finish "$install_dir"/lib
+    execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/12
+    execute sudo libtool --finish "$install_dir"/lib
     create_gcc_links_fn '12' "$gcc_prefix"
     build_done 'gcc-12' '12.3.0'
 fi
@@ -929,12 +933,12 @@ if build 'gcc-13' '13.1.0'; then
         "$cuda_check"                             \
         --without-included-gettext
     printf "\n%s\n%s\n\n" \
-        '$ Compiling gcc-13 with languages=all' \
+        '$ Compiling gcc-13 with languages=c,ada,c++,d,fortran,go,lto,m2,objc,obj-c++' \
         '$ This is going to take a while...'
     execute make "-j$cpu_threads"
     execute sudo make install-strip
-    execute libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/13
-    execute libtool --finish "$install_dir"/lib
+    execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/13
+    execute sudo libtool --finish "$install_dir"/lib
     create_gcc_links_fn '13' "$gcc_prefix"
     build_done 'gcc-13' '13.1.0'
 fi
