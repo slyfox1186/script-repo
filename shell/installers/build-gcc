@@ -477,7 +477,7 @@ box_out_banner "GCC Build Script: v$script_ver"
 pkgs_fn()
 {
     pkgs=(autoconf autogen automake bison build-essential ccache curl dejagnu flex gcc-11-base gcc-multilib
-          gdc gdc-multilib gfortran gfortran-multilib git gnulib guile-3.0-dev help2man jq libacl1-dev libasan8
+          gdc gdc-multilib gfortran gfortran-multilib git gnat gnulib guile-3.0-dev help2man jq libacl1-dev libasan8
           libdebuginfod-dev libdmalloc5 libdmalloc-dev libeigen3-dev libffi-dev libfontconfig1-dev libfreetype6
           libgcc-11-dev libgd-dev libgm2-12-dev libgmp-dev libiberty-dev libicu-dev libintl-perl libjpeg-dev libltdl-dev
           libmpc-dev libmpfr-dev libphobos2-ldc-shared-dev libpng-dev libquadmath0 libsigsegv-dev libsqlite3-dev
@@ -534,47 +534,52 @@ fi
 # DETERMINE WHAT VERSION OF LINUX WE ARE ON
 #
 
-ubuntu_os_check_fn()
+os_ver_check_fn()
 {
-    ubuntu_os="$(lsb_release -r 2>/dev/null | grep -Eo '[0-9\.]+$')"
-    case "$ubuntu_os" in
-        23.04|22.10|22.04)    pkgs_fn 'linux-libc-dev:i386 libadacgi4-dev libgm2-15 openjdk-17-jdk-headless';;
-        20.04)          pkgs_fn 'libgm2-10-dev openjdk-17-jdk-headless';;
-        18.04)          pkgs_fn 'openjdk-11-jdk-headless';;
-        *)              fail_fn 'Could not detect the Ubuntu version.';;
+    os_ver="$(lsb_release -r 2>/dev/null | grep -Eo '[0-9\.]+$')"
+    debian_pkgs='libadacgi6-dev libgm2-12-dev libgm2-17 openjdk-17-jdk-headless'
+
+    case "$os_ver" in
+            23.04|22.10|22.04)      pkgs_fn 'linux-libc-dev:i386 libadacgi4-dev libgm2-15 openjdk-17-jdk-headless';;
+            20.04)                  pkgs_fn 'libgm2-10-dev openjdk-17-jdk-headless';;
+            18.04)                  pkgs_fn 'openjdk-11-jdk-headless';;
+            12)                     pkgs_fn "$debian_pkgs gnat-12";;
+            11)                     pkgs_fn "$debian_pkgs gnat-10";;
+            10)                     pkgs_fn "$debian_pkgs gnat-8";;
+            *)                      fail_fn 'Could not detect the OS version.';;
     esac
 }
 
-linux_ver()
-{
-    if [ -f '/etc/os-release' ]; then
-        . '/etc/os-release'
-        OS="$NAME"
-        VER="$VERSION_ID"
-    elif "$(type -P lsb_release)" &>/dev/null; then
-        OS=$(lsb_release -si)
-        VER=$(lsb_release -sr)
-    elif [ -f '/etc/lsb-release' ]; then
-        . '/etc/lsb-release'
-        OS="$DISTRIB_ID"
-        VER="$DISTRIB_RELEASE"
-    elif [ -f '/etc/debian_version' ]; then
-        OS='Debian'
-        VER="$(cat '/etc/debian_version')"
-    else
-        OS="$(uname -s)"
-        VER="$(uname -r)"
-    fi
-}
-linux_ver
+#
+# GET CURRENT OS INFORMATION
+#
+
+if [ -f /etc/os-release ]; then
+    source /etc/os-release
+    OS="$NAME"
+    VER="$VERSION_ID"
+elif "$(type -P lsb_release)" &>/dev/null; then
+    OS="$(lsb_release -si)"
+    VER="$(lsb_release -sr)"
+elif [ -f /etc/lsb-release ]; then
+    source /etc/lsb-release
+    OS="$DISTRIB_ID"
+    VER="$DISTRIB_RELEASE"
+elif [ -f /etc/debian_version ]; then
+    OS=Debian
+    VER="$(cat /etc/debian_version)"
+else
+    OS="$(uname -s)"
+    VER="$(uname -r)"
+fi
 
 #
 # TEST THE OS AND ITS VERSION
 #
 
 case "$OS" in
-    'Debian GNU/Linux')     pkgs_fn 'libadacgi6-dev libgm2-12-dev libgm2-17 openjdk-17-jdk-headless';;
-    'Ubuntu')               ubuntu_os_check_fn;;
+    'Debian GNU/Linux')     os_ver_check_fn;;
+    'Ubuntu')               os_ver_check_fn;;
     *)                      fail_fn 'Could not detect the OS architecture.';;
 esac
 
@@ -781,9 +786,13 @@ if build 'autoconf-v269' '2.69'; then
 fi
 
 if [ "$OS" = 'Debian GNU/Linux' ]; then
-    source_gcc_libs_fn "$VER"
+    source_gcc_libs_fn "$OS"
 else
-    export CC=gnatgcc
+    if which gnatgcc &>/dev/null; then
+        export CC=gnatgcc CXX=g++
+    else
+        fail_fn 'Please install gnatgcc to continue.'
+    fi
 fi
 
 if build 'gcc-11' '11.4.0'; then
@@ -832,7 +841,12 @@ if build 'gcc-11' '11.4.0'; then
     build_done 'gcc-11' '11.4.0'
 fi
 
-export CC=gnatgcc
+if which gnatgcc &>/dev/null; then
+    export CC=gnatgcc CXX=g++
+else
+    fail_fn 'Please install gnatgcc to continue.'
+fi
+
 if build 'gcc-12' '12.3.0'; then
     download 'https://ftp.gnu.org/gnu/gcc/gcc-12.3.0/gcc-12.3.0.tar.xz'
     execute autoreconf -fi
@@ -935,4 +949,4 @@ show_ver_fn
 cleanup_fn
 
 # SHOW THE EXIT MESSAGE
-exit_fn 
+exit_fn
