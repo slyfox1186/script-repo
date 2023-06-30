@@ -79,10 +79,9 @@ cat <<EOF
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 Input File:      $file_in
-
 Output File:     $file_out
 
-Dimensions:      $file_width'x'$file_height
+Dimensions:      ${file_width}x$file_height
 Aspect Ratio:    $aspect_ratio
 
 Maxrate:         ${maxrate}k
@@ -94,7 +93,7 @@ Length:          $length
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 EOF
 
-# EXECUTE FFPB (FFMPEG)
+# EXECUTE FFMPEG THROUGH FFPB
 if ffpb \
         -y \
         -threads 0 \
