@@ -1004,20 +1004,10 @@ printf "%s\n%s\n%s\n" \
     '           Installing Global Tools            ' \
     '=============================================='
 
-if build 'libiconv' '1.17'; then
-    download 'https://ftp.gnu.org/gnu/libiconv/libiconv-1.17.tar.gz'
-    execute ./configure --prefix="$workspace" --enable-static --with-pic
-    execute make "-j$cpu_threads"
-    execute make install
-    execute make distclean
-    execute libtool --finish "$workspace"/lib
-    build_done 'libiconv' '1.17'
-fi
-
 if build 'm4' 'latest'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
     execute ./configure --prefix="$workspace" --disable-nls --enable-c++ \
-        --with-dmalloc --with-libiconv-prefix="$workspace"
+        --with-dmalloc
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
@@ -1208,8 +1198,7 @@ if build 'fontconfig' "$g_ver"; then
     execute autoupdate
     LDFLAGS+=' -DLIBXML_STATIC'
     sed -i 's|Cflags:|& -DLIBXML_STATIC|' fontconfig.pc.in
-    execute ./configure --prefix="$workspace" --disable-{docs,shared} --enable-iconv \
-        --with-libiconv-{prefix="$workspace",includes="$workspace"/include,lib="$workspace"/lib}
+    execute ./configure --prefix="$workspace" --disable-{docs,shared}
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
