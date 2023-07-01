@@ -28,7 +28,7 @@ exit_fn()
 {
     clear
     printf "%s\n\n%s\n%s\n\n" \
-        'The script has completed!'
+        'The script has completed!' \
         'Make sure to star this repository to show your support!' \
         "$repo"
     exit 0
