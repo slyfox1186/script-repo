@@ -47,7 +47,7 @@ video_fn() { bash <(curl -sSL https://players.optimizethis.net); }
 box_out_banner 'Installer Script Menu'
 
 #
-# DISPLAY CUSTOM USER SCRIPTS MENU
+# DISPLAY THE CUSTOM USER SCRIPTS MENU
 #
 
 custom_user_scripts()
@@ -59,32 +59,31 @@ $(ColorGreen '2)')  Ubuntu Jammy, Focal, or Bionic
 $(ColorGreen '0)')  Exit
 $(ColorBlue 'Choose an option:') "
     read answer
+    clear
     case "$answer" in
         1)
-            clear
             bash <(curl -sSL https://lunar-scripts.optimizethis.net)
             clear
             main_menu
             ;;
         2)
-            clear
             bash <(curl -sSL https://jammy-scripts.optimizethis.net)
             clear
             main_menu
             ;;
-        0)
-            clear
-            main_menu
-            ;;
+        0)  main_menu;;
         *)
-            echo $red'Wrong option'$clear
-            WrongCommand
+            printf "%s\n\n" 'Bad user input. Reloading menu...'
+            sleep 2
+            unset answer
+            clear
+            custom_user_scripts
             ;;
     esac
 }
 
 #
-# DISPLAY EXTRA MIRRORS MENU
+# DISPLAY THE EXTRA MIRRORS MENU
 #
 
 extra_mirrors()
@@ -96,53 +95,55 @@ $(ColorGreen '2)')  Ubuntu Jammy
 $(ColorGreen '3)')  Ubuntu Focal
 $(ColorGreen '4)')  Ubuntu Bionic
 $(ColorGreen '5)')  Debian Bullseye
+$(ColorGreen '6)')  Debian Bookworm
 $(ColorGreen '0)')  Exit
 $(ColorBlue 'Choose an option:') "
     read answer
+    clear
     case "$answer" in
         1)
-            clear
             curl -Lso mirrors https://lunar-mirrors.optimizethis.net; sudo bash mirrors
             clear
             main_menu
             ;;
         2)
-            clear
             curl -Lso mirrors https://jammy-mirrors.optimizethis.net; sudo bash mirrors
             clear
             main_menu
             ;;
         3)
-            clear
             curl -Lso mirrors https://focal-mirrors.optimizethis.net; sudo bash mirrors
             clear
             main_menu
             ;;
         4)
-            clear
             curl -Lso mirrors https://bionic-mirrors.optimizethis.net; sudo bash mirrors
             clear
             main_menu
             ;;
         5)
-            clear
-            curl -Lso mirrors https://debian-mirrors.optimizethis.net; sudo bash mirrors
-            clear
-            main_menu
-            ;;
-        0)
+            curl -Lso mirrors https://bullseye-mirrors.optimizethis.net; sudo bash mirrors
             clear
             main_menu
             ;;
+        6)
+            curl -Lso mirrors https://bookworm-mirrors.optimizethis.net; sudo bash mirrors
+            clear
+            main_menu
+            ;;
+        0)  main_menu;;
         *)
-            echo $red'Wrong option'$clear
-            WrongCommand
+            printf "%s\n\n" 'Bad user input. Reloading menu...'
+            sleep 2
+            unset answer
+            clear
+            extra_mirrors
             ;;
     esac
 }
 
 #
-# DISPLAY MAIN MENU
+# DISPLAY THE MAIN MENU
 #
 
 main_menu()
@@ -157,68 +158,59 @@ $(ColorGreen '5)')  FFmpeg (This is a large script, be prepared to sit back for 
 $(ColorGreen '6)')  GParted with all extra packages
 $(ColorGreen '7)')  Video Players
 $(ColorGreen '8)')  Custom User Scripts
-$(ColorGreen '9)') Extra Source Mirrors
+$(ColorGreen '9)')  Extra Source Mirrors
 $(ColorGreen '10)') APT to Debian Package Downloader
 $(ColorGreen '0)')  Exit
 $(ColorBlue 'Choose an option:') "
     read answer
+    clear
     case "$answer" in
         1)
-            clear
             szip_release_fn
             clear
             main_menu
             ;;
         2)
-            clear
             dl_tools_fn
             clear
             main_menu
             ;;
         3)
-            clear
             build_tools_fn
             clear
             main_menu
             ;;
         4)
-            clear
             magick_fn
             clear
             main_menu
             ;;
         5)
-            clear
             ffmpeg_fn
             clear
             main_menu
             ;;
         6)
-            clear
             gparted_fn
             clear
             main_menu
             ;;
         7)
-            clear
             video_fn
             clear
             main_menu
             ;;
         8)
-            clear
             custom_user_scripts
             clear
             main_menu
             ;;
         9)
-            clear
             extra_mirrors
             clear
             main_menu
             ;;
         10)
-            clear
             deb_dl_fn
             clear
             main_menu
@@ -229,8 +221,11 @@ $(ColorBlue 'Choose an option:') "
             exit 0
             ;;
         *)
-            echo $red'Wrong option'$clear
-            WrongCommand
+            printf "%s\n\n" 'Bad user input. Reloading menu...'
+            sleep 2
+            unset answer
+            clear
+            main_menu
             ;;
     esac
 }
