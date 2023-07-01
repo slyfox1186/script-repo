@@ -2,9 +2,6 @@
 
 clear
 
-# YOU MUST RUN THE SCRIPT WITH ROOT/ADMIN PRIVILEGES
-# IF NOT RUN AS ROOT THE BELOW IF COMMAND WILL RESTART
-# THE SCRIPT WITH ROOT PERMISSIONS
 if [ "$EUID" -ne '0' ]; then
     printf "%s\n\n" 'You must run this script as root/sudo'
     exit 1
