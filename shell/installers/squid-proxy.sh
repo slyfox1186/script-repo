@@ -6,96 +6,83 @@ clear
 # IF NOT RUN AS ROOT THE BELOW IF COMMAND WILL RESTART
 # THE SCRIPT WITH ROOT PERMISSIONS
 if [ "$EUID" -ne '0' ]; then
-    exec sudo bash "$0" "$@"
+    printf "%s\n\n" 'You must run this script as root/sudo'
+    exit 1
 fi
 
 # YOU NEED TO CUSTOMIZE EACH VARIABLE BELOW WITH YOUR OWN VALUES TO OPTIMIZE SQUID'S PERFORMANCE
 # YOU CAN ADD, REMOVE, OR MODIFY THIS SCRIPT AS NEEDED
 
 # CREATE REQUIRED DIRECTORIES
-if [ ! -d '/etc/squid' ]; then
-    mkdir -p '/etc/squid'
-fi
-
-# VERIFY IF THE FILE squid.conf ALREADY EXISTS WHICH WILL DETERMINE HOW
-# WE RECONFIGURE SQUID TO USE ANY UPDATES TO THE FILE ITSELF
-if [ -f '/etc/squid/squid.conf' ]; then
-    run_squid='squid -k reconfigure'
-else
-    run_squid="$(/etc/init.d/squid restart && echo -e "\\nSquid restarted successfully!\\n" || echo -e "\\nSquid failed to restart!\\n")"
+if [ ! -d /etc/squid ]; then
+    sudo mkdir -p /etc/squid
 fi
 
 # CHECK SQUID CURRENT STATUS
 if ! systemctl status squid.service; then
-    echo 'The squid service needs to be running to continue.'
-    echo
-    echo 'The script will attempt to start squid now... please be patient.'
+    printf "%s\n\n%s\n\n" \
+        'The squid service needs to be running to continue.'
+        'The script will attempt to start squid now... please be patient.'
     sudo service squid start
 fi
 if ! service squid start; then
-    echo 'The script was unable to start the squid service. You should manually change any errors'
-    echo 'in the squid.conf file which is usually located in "/etc/squid/squid.conf"'
-    echo
+    printf "%s\n\n%s\n\n" \
+        'The script was unable to start the squid service. You should manually change any errors'
+        'in the squid.conf file which is usually located in "/etc/squid/squid.conf"'
     exit 1
 else
     clear
-    echo 'The script was able to successfully start squid.'
-    echo
-    read -p 'Press enter to continue the reconfiguring of squid.'
+    printf "%s\n\n" 'The script successfully started squid.'
+    sleep 2
     clear
 fi
 
 # SET DEFAULT USER/OWNER OF SQUID (THE UBUNTU AND DEBIAN DEFAULT IS PROXY)
-squid_user='proxy'
+squid_user=proxy
+hostname=homebridge
 
-# SET HOW LONG SQUID WAITS TO FULLY SHUTDOWN AFTER RECEVING A SIGTERM COMMAND
-# THE NUMBERS MUST COMBINED WITH TIME UNITS OF MEASUREMENT AKA 'seconds, minutes, hours'
+# SET HOW LONG SQUID WAITS TO FULLY SHUTDOWN AFTER RECEIVING A SIGTERM COMMAND
+# THE NUMBERS MUST BE COMBINED WITH TIME UNITS OF MEASUREMENT AKA 'seconds, minutes, hours'
 # THE DEFAULT IS 30 SECONDS
 sd_tout='5 seconds'
 
 # Disable persistent connections with servers while leaving
 # persistent connections with clients enabled to avoid connection
 # issues.
-client_pcons='on'
-server_pcons='off'
+client_pcons=on
+server_pcons=off
 
 ####################
 ## CACHE SETTINGS ##
 ####################
 
 # SET CACHE DIRECTORY PATH
-cache_dir_squid='/var/spool/squid'
+cache_dir_squid=/var/spool/squid
 # CACHE DIR SQUID SIZE UNITS IN MB
-cache_dir_squid_size='1000'
-cache_swp_high='95'
-cache_swp_low='90'
+cache_dir_squid_size=1000
+cache_swp_high=95
+cache_swp_low=90
 # MEMORY CACHE MODE options [ always | disk ]
-mem_cache_mode='always'
+mem_cache_mode=always
 # CACHE MEMORY TRANSIT FILE ALLOCATION MAX SIZE LIMIT (CAN BE INCREASED)
 cache_mem='512 MB'
 
 # LIMIT CLIENT REQUESTS BUFFER SIZE
 client_rqst_bfr_size='512 KB'
 
-# FAVOR IPV6 OVER IPV4
-# THIS GREATLY INCREASE OR DECREASE THE SPEED OF YOUR PROXY. IF ONE SETTINGS
-# ISN'T SHOWING PROMISE TRY THE OPPOSITE AS SQUID CLAIMS TO PREFER IPV6 OVER
-# IPV4 BUT MY EXPERIENCE HAS BEEN THE EXACT OPPOSITE.
-dns_v4_first='on'
+# FIREWALLD PROGRAM PORTS'
+squid_port=3128/tcp
+pihole_port=4711/tcp
 
-# FIREWALLD PROGRAM PORTS
-squid_port='3128/tcp'
-pihole_port='4711/tcp'
+# FIREWALLD SERVICES (THIS SHOULD BE CONSIDERED AT HOME SETTINGS WHERE YOU TRUST THE COMPUTERS ACCESSIBLE TO YOUR NETWORK)
+Fwld_01=dhcp
+Fwld_02=dhcpv6
+Fwld_03=dns
+Fwld_04=http
+Fwld_05=ssh
 
-# FIREWALLD SERVICES (THIS SHOULD BE CONSIDERED AT HOME SETTINGS WHERE YOU TRUST THE COMPUTERS ACCESSABLE TO YOUR NETWORK)
-Fwld_01='dhcp'
-Fwld_02='dhcpv6'
-Fwld_03='dns'
-Fwld_04='http'
-Fwld_05='ssh'
-
-# THIS PC'S LAN (LOCAL) IP ADDRESS
-server_ip='192.168.1.40'
+# THE LAN IP ADDRESS OF YOUR DHCP/DNS NAMESERVER (USUALLY YOUR ROUTER'S IP ADDRESS)
+dns_server_ip=192.168.1.40
 
 # OBJECT SIZES
 min_obj_size='64 bytes'
@@ -103,17 +90,17 @@ max_obj_size='1 MB'
 max_obj_size_mem='1 MB'
 
 # SQUID FILES
-basic_ncsa_auth='/usr/lib/squid3/basic_ncsa_auth'
-squid_config='/etc/squid/squid.conf'
-squid_passwords='/etc/squid/passwords'
-squid_whitelist='/etc/squid/sites.whitelist'
-squid_blacklist='/etc/squid/sites.blacklist'
+basic_ncsa_auth="$(sudo find /usr/lib -type f -name basic_ncsa_auth)"
+squid_config=/etc/squid/squid.conf
+squid_passwords=/etc/squid/passwords
+squid_whitelist=/etc/squid/whitelist.txt
+squid_blacklist=/etc/squid/blacklist.txt
 
 # DETECT BROKEN PCON SETTINGS
-detect_broken_pconn='off'
+detect_broken_pconn=off
 
 # CREATE SQUID.CONF FILE
-cat > "$squid_config" <<EOF && echo "$squid_config was created successfully!" || echo "$squid_config failed to create!"
+cat > "$squid_config" <<EOF
 #    WELCOME TO SQUID 5.2
 #    ----------------------------
 #
@@ -151,7 +138,7 @@ cat > "$squid_config" <<EOF && echo "$squid_config was created successfully!" ||
 #
 #  Values with byte units
 #
-#    Squid accepts size units on some size related directives. All
+#    Squid accepts size units on some size-related directives. All
 #    such directives are documented with a default value displaying
 #    a unit.
 #
@@ -280,9 +267,9 @@ cat > "$squid_config" <<EOF && echo "$squid_config was created successfully!" ||
 # none
 
 #  TAG: dns_v4_first
-#    Remove this line. Squid no longer supports preferential treatment of DNS A records.
+#    Remove this line. Squid no longer supports the preferential treatment of DNS A records.
 #Default:
-dns_v4_first $dns_v4_first
+#dns_v4_first
 
 #  TAG: cache_peer_domain
 #    Replace with dstdomain ACLs and cache_peer_access.
@@ -290,7 +277,7 @@ dns_v4_first $dns_v4_first
 # none
 
 #  TAG: ie_refresh
-#    Remove this line. The behaviour enabled by this is no longer needed.
+#    Remove this line. The behavior enabled by this is no longer needed.
 #Default:
 # none
 
@@ -380,7 +367,7 @@ dns_v4_first $dns_v4_first
 # none
 
 #  TAG: ftp_list_width
-#    Remove this line. Configure FTP page display using the CSS controls in errorpages.css instead.
+#    Remove this line. Configure the FTP page display using the CSS controls in errorpages.css instead.
 #Default:
 # none
 
@@ -392,7 +379,7 @@ dns_v4_first $dns_v4_first
 #  TAG: log_fqdn
 #    Remove this option from your config. To log FQDN use %>A in the log format.
 #Default:
-# log_fqdn on (dpreciated/unusable)
+# log_fqdn on (depreciated/unusable)
 
 #  TAG: log_ip_on_direct
 #    Remove this option from your config. To log server or peer names use %<A in the log format.
@@ -400,7 +387,7 @@ dns_v4_first $dns_v4_first
 # none
 
 #  TAG: maximum_single_addr_tries
-#    Replaced by connect_retries. The behaviour has changed, please read the documentation before altering.
+#    Replaced by connect_retries. The behavior has changed, please read the documentation before altering it.
 #Default:
 # none
 
@@ -410,7 +397,7 @@ dns_v4_first $dns_v4_first
 # none
 
 #  TAG: update_headers
-#    Remove this line. The feature is supported by default in storage types where update is implemented.
+#    Remove this line. The feature is supported by default in storage types where the update is implemented.
 #Default:
 # none
 
@@ -469,12 +456,12 @@ dns_v4_first $dns_v4_first
 # none
 
 #  TAG: wais_relay_host
-#    Replace this line with 'cache_peer' configuration.
+#    Replace this line with the 'cache_peer' configuration.
 #Default:
 # none
 
 #  TAG: wais_relay_port
-#    Replace this line with 'cache_peer' configuration.
+#    Replace this line with the 'cache_peer' configuration.
 #Default:
 # none
 
@@ -487,7 +474,7 @@ dns_v4_first $dns_v4_first
 #    1: "no SMP" mode, start one main Squid process daemon (default)
 #    N: start N main Squid process daemons (i.e., SMP mode)
 #
-#    In SMP mode, each worker does nearly all what a single Squid daemon
+#    In SMP mode, each worker does nearly all that a single Squid daemon
 #    does (e.g., listen on http_port and forward HTTP requests).
 #Default:
 # SMP support disabled.
@@ -509,7 +496,7 @@ dns_v4_first $dns_v4_first
 #
 #    See also: workers
 #Default:
-# Let operating system decide.
+# Let the operating system decide.
 
 #  TAG: shared_memory_locking    on|off
 #    Whether to ensure that all required shared memory is available by
@@ -533,7 +520,7 @@ dns_v4_first $dns_v4_first
 #    option ensures that the mapped memory will be available.
 #
 #    This option may have a positive performance side-effect: Locking
-#    memory at start avoids runtime paging I/O. Paging slows Squid down.
+#    memory at the start avoids runtime paging I/O. Paging slows Squid down.
 #
 #    Locking memory may require a large enough RLIMIT_memLOCK OS limit,
 #    CAP_IPC_LOCK capability, or equivalent.
@@ -1462,6 +1449,8 @@ acl Safe_ports port 488                         # gss-http
 acl Safe_ports port 563                         # commonly used (at least at one time) for NNTP (USENET news transfer) over SSL
 acl Safe_ports port 591                         # filemaker
 acl Safe_ports port 777                         # multiling http
+acl whitelist dstdomain $squid_whitelist
+acl blacklist dstdomain squid_blacklist
 
 # Set all connections in the following IP range to allow access to squid's cache
 
@@ -1660,9 +1649,11 @@ http_access deny to_localhost
 include /etc/squid/conf.d/*
 
 ##
+##
 ##############################
 ## START OF CUSTOM COMMANDS ##
 ##############################
+##
 ##
 
 include /etc/squid/conf.d/*
@@ -1677,10 +1668,10 @@ cache deny github
 http_access deny !authenticated
 http_access allow localnet
 http_access allow localhost
-http_access allow allowed_sites
+http_access allow whitelist
 
 # And finally deny all other access to this proxy
-http_access deny blocked_sites
+http_access deny blacklist
 http_access deny all
 
 #
@@ -1690,7 +1681,7 @@ http_access deny all
 client_request_buffer_max_size $client_rqst_bfr_size
 
 # set dns nameserver addresses
-dns_nameservers $server_ip
+dns_nameservers $dns_server_ip
 
 # Set the file size range the proxy will actively cache
 minimum_object_size $min_obj_size
@@ -1733,10 +1724,10 @@ refresh_pattern .                                            0        20%     43
 cache_mem $cache_mem
 
 # set default squid proxy port
-http_port ${squid_port::4}
+http_port 192.168.1.40
 
 # set visible hostname
-visible_hostname raspberrypi
+visible_hostname $hostname
 
 # Some servers incorrectly signal the use of HTTP/1.0 persistent connections including on replies
 # not compatible, causing significant delays. Mostly happens on redirects. Enabling attempts to
@@ -9204,12 +9195,12 @@ umask 022
 #    http_upgrade_request_protocols Foo deny all
 #    http_upgrade_request_protocols OTHER allow all
 #
-#    # only allow upgrades to protocol Bar (except for its first version)
+#    # Only allow upgrades to the protocol Bar (except for its first version)
 #    http_upgrade_request_protocols Bar/1 deny all
 #    http_upgrade_request_protocols Bar allow all
 #    http_upgrade_request_protocols OTHER deny all # this rule is optional
 #
-#    # only allow upgrades to protocol Baz, and only if Baz is the only offer
+#    # Only allow upgrades to protocol Baz, and only if Baz is the only offer
 #    acl UpgradeHeaderHasMultipleOffers ...
 #    http_upgrade_request_protocols Baz deny UpgradeHeaderHasMultipleOffers
 #    http_upgrade_request_protocols Baz allow all
@@ -9217,7 +9208,7 @@ umask 022
 # Upgrade header dropped, effectively blocking an upgrade attempt.
 
 #  TAG: server_pconn_for_nonretriable
-#    This option provides fine-grained control over persistent connection
+#    This option provides fine-grained control over a persistent connection
 #    reuse when forwarding HTTP requests that Squid cannot retry. It is useful
 #    in environments where opening new connections is very expensive
 #    (e.g., all connections are secured with TLS with complex client and server
@@ -9256,7 +9247,7 @@ umask 022
 #    spare to-server connection for the same master transaction. This delay
 #    is similar to the Connection Attempt Delay in RFC 8305, but it is only
 #    applied to the first spare connection attempt. Subsequent spare
-#    connection attempts use happy_eyeballs_connect_gap, and primary
+#    connection attempts to use happy_eyeballs_connect_gap, and primary
 #    connection attempts are not artificially delayed at all.
 #
 #    Terminology: The "primary" and "spare" designations are determined by
@@ -9292,7 +9283,7 @@ umask 022
 #    instance). Each SMP worker currently multiplies the configured gap
 #    by the total number of workers so that the combined spare connection
 #    opening rate of a Squid instance obeys the configured limit. The
-#    workers do not coordinate connection openings yet; a micro burst
+#    workers do not coordinate connection openings yet; a microburst
 #    of spare connection openings may violate the configured gap.
 #
 #    This directive has similar trade-offs as
@@ -9333,56 +9324,90 @@ umask 022
 # no artificial limit on the number of concurrent spare attempts
 EOF
 
+cat > "$squid_whitelist" <<EOF
+192.168.1.40
+.github.com
+.google.com
+.gmail.com
+EOF
+
+cat > "$squid_blacklist" <<EOF
+.tiktok.com
+.whatsapp.com
+EOF
+
 # Install apache2-utils if required so the user can create
 # create a password for the user profile that controls the squid proxy
-if ! which 'htpasswd'; then
-    apt install -y apache2-utils
+if ! which htpasswd; then
+    sudo apt -y install apache2-utils
+    clear
 fi
 
-# RUN HTPASSWD TO CREATE PASSWORD FILE FOR THE USER ACCOUNT THAT OWNS THE SQUID PROXY SERVER
+# RUN HTPASSWD TO CREATE A PASSWORD FILE FOR THE USER ACCOUNT THAT OWNS THE SQUID PROXY SERVER
 if [ ! -f "$squid_passwords" ]; then
-    htpasswd -c "$squid_passwords" 'squid' && echo -e "\\nThe squid passwd file was created successfully!" || echo -e "\\nThe squid passwd file failed to create."
+    if ! htpasswd -c "$squid_passwords" squid; then
+        printf "\n%s\n\n" 'The squid passwd file failed to create.'
+    else
+        printf "\n%s\n\n" 'The squid passwd file was created successfully!'
+    fi
+    sleep 3
     echo
-    cat "$squid_passwords"
-    echo
+    "$(type -P cat)" "$squid_passwords"
 fi
 
 # FIREWALL SETTINGS
-echo '[1] Add IPTables and UFW firewall rules'
-echo '[2] Skip'
-echo
-read -p 'Enter a number: ' uChoice
+printf "\n%s\n%s\n\n" \
+    '[1] Add IPTables and UFW firewall rules' \
+    '[2] Skip'
+read -p 'Enter a number: ' choice
 clear
-if [[ "$uChoice" -eq '1' ]]; then
-    echo 'Installing IPTABLES Firewall Rules'
-    echo '===================================='
-    echo
-    iptables -I INPUT 1 -s 192.168.0.0/16 -p tcp -m tcp --dport 80 -j ACCEPT
-    iptables -I INPUT 1 -s 127.0.0.0/8 -p tcp -m tcp --dport 53 -j ACCEPT
-    iptables -I INPUT 1 -s 127.0.0.0/8 -p udp -m udp --dport 53 -j ACCEPT
-    iptables -I INPUT 1 -s 192.168.0.0/16 -p tcp -m tcp --dport 53 -j ACCEPT
-    iptables -I INPUT 1 -s 192.168.0.0/16 -p udp -m udp --dport 53 -j ACCEPT
-    iptables -I INPUT 1 -p udp --dport 67:68 --sport 67:68 -j ACCEPT
-    iptables -I INPUT 1 -p tcp -m tcp --dport 4711 -i lo -j ACCEPT
-    iptables -I INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-    ip6tables -I INPUT -p udp -m udp --sport 546:547 --dport 546:547 -j ACCEPT
-    ip6tables -I INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-    echo
-    echo 'Installing UFW Firewall Rules'
-    echo '=============================='
-    echo
-    ufw allow '53/tcp'
-    ufw allow '53/udp'
-    ufw allow '67/tcp'
-    ufw allow '67/udp'
-    ufw allow '80/tcp'
-    ufw allow '546:547/udp'
-    echo
-    read -t 5 -p 'Sleeping for 5 seconds. Press enter to skip ahead.'
-    clear
-else
-    clear
-fi
+
+case "$choice" in
+    1)
+            printf "%s\n%s\n\n" \
+                'Installing IPTABLES Firewall Rules' \
+                '===================================='
+            iptables -I INPUT 1 -s 192.168.0.0/16 -p tcp -m tcp --dport 80 -j ACCEPT
+            iptables -I INPUT 1 -s 127.0.0.0/8 -p tcp -m tcp --dport 53 -j ACCEPT
+            iptables -I INPUT 1 -s 127.0.0.0/8 -p udp -m udp --dport 53 -j ACCEPT
+            iptables -I INPUT 1 -s 192.168.0.0/16 -p tcp -m tcp --dport 53 -j ACCEPT
+            iptables -I INPUT 1 -s 192.168.0.0/16 -p udp -m udp --dport 53 -j ACCEPT
+            iptables -I INPUT 1 -p udp --dport 67:68 --sport 67:68 -j ACCEPT
+            iptables -I INPUT 1 -p tcp -m tcp --dport 4711 -i lo -j ACCEPT
+            iptables -I INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+            ip6tables -I INPUT -p udp -m udp --sport 546:547 --dport 546:547 -j ACCEPT
+            ip6tables -I INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+            printf "\n%s\n%s\n\n" \
+                'Installing UFW Firewall Rules'
+                '=============================='
+            ufw allow 53/tcp
+            ufw allow 53/udp
+            ufw allow 67/tcp
+            ufw allow 67/udp
+            ufw allow 80/tcp
+            ufw allow 546:547/udp
+            echo
+            read -p 'Press enter to continue.'
+            clear
+            ;;
+    2)      clear;;
+    '')     clear;;
+    *)
+            printf "%s\n\n" 'Bad user input.'
+            exit 1
+            ;;
+esac
 
 # CONFIGURE SQUID TO USE THE SQUID.CONF FILE CREATED/UPDATED BY THIS SCRIPT
-$run_squid
+sudo squid -k reconfigure
+
+# RESTART SQUID TO ENSURE ALL SETTINGS HAVE BEEN APPLIED
+sudo service squid restart
+clear
+
+# RUN A TEST TO CHECK IF THE PROXY IS FILTERING REQUESTS
+if ! which squidclient &>/dev/null; then
+    sudo apt -y install squidclient
+fi
+
+squidclient https://google.com
