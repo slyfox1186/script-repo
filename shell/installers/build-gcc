@@ -734,13 +734,13 @@ if build 'gmp' '6.2.1'; then
 fi
 sudo chown "$USER":"$USER" -R "$cwd"
 
-if build 'isl' '0.24'; then
-    download 'https://gcc.gnu.org/pub/gcc/infrastructure/isl-0.24.tar.bz2'
+if build 'isl' '0.26'; then
+    download 'https://libisl.sourceforge.io/isl-0.26.tar.xz'
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" --disable-shared --with-gmp-prefix="$workspace"
     execute make "-j$cpu_threads"
     execute make distclean
-    build_done 'isl' '0.24'
+    build_done 'isl' '0.26'
 fi
 
 git_ver_fn 'gperftools/gperftools' '1' 'R'
