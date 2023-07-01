@@ -2,8 +2,8 @@
 
 clear
 
-if [ "$EUID" -ne '0' ]; then
-    printf "%s\n\n" 'You must run this script as root/sudo.'
+if [ "$EUID" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script as WITHOUT root/sudo.'
     exit 1
 fi
 
