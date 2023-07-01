@@ -27,7 +27,8 @@ yaml_file=/etc/netplan/01-netcfg.yaml
 exit_fn()
 {
     clear
-    printf "%s\n\n%s\n\n" \
+    printf "%s\n\n%s\n%s\n\n" \
+        'The script has completed!'
         'Make sure to star this repository to show your support!' \
         "$repo"
     exit 0
@@ -52,7 +53,7 @@ apply_settings_fn()
 
 create_dhcp_yaml_fn()
 {
-    cat > "$yaml_file" <<EOF
+    sudo cat > "$yaml_file" <<EOF
 # This file describes the network interfaces available on your system
 # For more information, see netplan(5).
 network:
@@ -76,7 +77,7 @@ create_static_yaml_fn()
     local ip_address_sed
 
 # CREATE NETPLAN STATIC IP file
-    cat > "$yaml_file" <<EOF
+    sudo cat > "$yaml_file" <<EOF
 # This file describes the network interfaces available on your system
 # For more information, see netplan(5).
 network:
