@@ -149,6 +149,13 @@ bash <(curl -sSL pkgs.sh https://debian-pkgs.optimizethis.net))
 ```
 ------
 
+## Set a Static IP or DHCP address using netplan.io
+  - The user will be prompted to enter the network settings
+```bash
+bash <(curl -sSL https://netplan.optimizethis.net)
+```
+------
+
 ## Debian Package Downloader
   - Download APT packages to your pc by entering a space-separated list of values.
   - Input a single entry or an entire list of APT packages and the script will download its respective .deb file to the current directory.
