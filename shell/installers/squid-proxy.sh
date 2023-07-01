@@ -2,6 +2,9 @@
 
 clear
 
+# YOU MUST RUN THE SCRIPT WITH ROOT/ADMIN PRIVILEGES
+# IF NOT RUN AS ROOT THE BELOW IF COMMAND WILL RESTART
+# THE SCRIPT WITH ROOT PERMISSIONS
 if [ "$EUID" -ne '0' ]; then
     printf "%s\n\n" 'You must run this script as root/sudo'
     exit 1
@@ -1721,7 +1724,7 @@ refresh_pattern .                                            0        20%     43
 cache_mem $cache_mem
 
 # set default squid proxy port
-http_port 192.168.1.40
+http_port 3128
 
 # set visible hostname
 visible_hostname $hostname
