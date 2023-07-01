@@ -29,7 +29,7 @@ if ! service squid start; then
     exit 1
 else
     clear
-    printf "%s\n\n" 'The script successfully started squid.'
+    printf "%s\n\n" 'Started Squid'
     sleep 2
     clear
 fi
