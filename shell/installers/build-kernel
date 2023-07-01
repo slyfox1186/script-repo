@@ -1,8 +1,6 @@
 #!/bin/bash
 # shellcheck disable=SC2016,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
 
-clear
-
 ###########################################################################################################
 ##
 ##  GitHub: https://github.com/slyfox1186/Windows-WSL2-Kernel-build-script
@@ -23,21 +21,23 @@ clear
 ##
 ##                https://learn.microsoft.com/en-us/windows/wsl/wsl-config
 ##
-##  Updated: 04.19.23
+##  Updated: 06.02.23
 ##
-##  Version: 1.0
+##  Version: 2.0
 ##
 ###########################################################################################################
 
-##
-## define variables
-##
+clear
 
-script_ver='1.0'
+#
+# define variables
+#
 
-##
-## set the available cpu thread and core count for parallel processing (speeds up the build process)
-##
+script_ver='2.0'
+
+#
+# set the available cpu thread and core count for parallel processing (speeds up the build process)
+#
 
 if [ -f '/proc/cpuinfo' ]; then
     cpu_threads="$(grep -c ^processor '/proc/cpuinfo')"
@@ -46,9 +46,27 @@ else
 fi
 cpu_cores="$(grep ^cpu\\scores '/proc/cpuinfo' | uniq | awk '{print $4}')"
 
-##
-## define functions
-##
+#
+# FIGURE OUT WHICH COMPILERS TO USE
+#
+
+export CC=gcc CXX=g++
+export CXXFLAGS='-g -O3 -march=native'
+
+#
+# set the PATH variable
+#
+
+PATH="\
+/usr/lib/ccache:\
+$workspace/bin:\
+$PATH\
+"
+export PATH
+
+#
+# define functions
+#
 
 exit_fn()
 {
@@ -113,8 +131,7 @@ make_dir()
 {
     remove_dir "$1"
     if ! mkdir "$1"; then
-        printf "\n Failed to create dir %s" "$1"
-        echo
+        printf "\n%s\n\n" "Failed to create dir: $1"
         exit 1
     fi
 }
@@ -224,9 +241,9 @@ echo '======================================'
 echo
 echo "The script will utilize ( $cpu_threads cpu cores ) for parallel processing to accelerate the build speed."
 
-##
-## required apt packages
-##
+#
+# required apt packages
+#
 
 build_pkgs_fn()
 {
@@ -234,7 +251,7 @@ build_pkgs_fn()
     echo 'Installing required apt packages'
     echo '=================================='
 
-    pkgs=(build-essential curl flex bison dwarves gcc g++ gcc-12 g++-12 jq libssl-dev libelf-dev)
+    pkgs=(build-essential curl flex bison ccache dwarves gcc g++ jq libssl-dev libelf-dev)
 
     for pkg in ${pkgs[@]}
     do
@@ -258,7 +275,6 @@ build_pkgs_fn()
     fi
 }
 
-# install required apt packages
 build_pkgs_fn
 
 git_1_fn()
@@ -276,27 +292,20 @@ git_1_fn()
 
 git_ver_fn()
 {
-    local gv_url v_flag v_tag v_url url_tag
+    local v_tag v_url
 
     v_url="$1"
     v_tag="$2"
 
-    if [ -n "$3" ]; then v_flag="$3"; fi
-
-    if [  "$v_flag" = 'T' ] && [  "$v_tag" = '1' ]; then
-        url_tag='git_1_fn' gv_url='tags'
-    elif [  "$v_flag" = 'R' ] && [  "$v_tag" = '1' ]; then
-        url_tag='git_1_fn'; gv_url='releases'
-    fi
-
-    "$url_tag" "$v_url" "$gv_url" 2>/dev/null
+    git_1_fn "$v_url" 'releases' 2>/dev/null
 }
 
 git_ver_fn 'microsoft/WSL2-Linux-Kernel' '1' 'R'
 if build 'wsl2-linux-kernel' "$g_ver"; then
-    download "$g_url" "$g_ver.tar.gz"
-    echo 'yes' | make KCONFIG_CONFIG=Microsoft/config-wsl -j "$cpu_cores"
+    download "$g_url" "wsl2-$g_ver.tar.gz"
+    echo 'yes' | make KCONFIG_CONFIG='Microsoft/config-wsl' -j "$cpu_cores"
     build_done 'wsl2-linux-kernel' "$g_ver"
 fi
 
+# call exit script function
 exit_fn

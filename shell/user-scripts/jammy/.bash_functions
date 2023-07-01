@@ -1,17 +1,12 @@
-#shellcheck disable=SC2162,SC1091,SC2317
+#!/bin/bash
+# shellcheck disable=SC1091,SC2001,SC2162,SC2317
 
-#########################################
-## SET SUDO TO RUN AS THE CURRENT USER ##
-#########################################
+######################################################################################
+## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
+######################################################################################
 
-#sudo() { eval $(which sudo) -H -u root "$@"; }
-
-##################################################################################
-## WHEN LAUNCHING CERTAIN PROGRAMS FROM TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
-##################################################################################
-
-gedit() { eval $(which gedit) "$@" &>/dev/null; }
-geds() { eval $(which sudo) -H -u root /usr/bin/gedit "$@" &>/dev/null; }
+gedit() { $(which gedit) "$@" &>/dev/null; }
+geds() { $(which sudo) -H -u root /usr/bin/gedit "$@" &>/dev/null; }
 
 ###################
 ## FIND COMMANDS ##
@@ -21,7 +16,7 @@ ffind()
 {
     clear
 
-    local fname fpath ftype fmaxdepth
+    local fname fpath ftype
 
     read -p 'Enter the name to search for: ' fname
     echo
@@ -122,7 +117,11 @@ mdir()
 ##################
 
 # REMOVED ALL DUPLICATE LINES: OUTPUTS TO TERMINAL
-rmd() { clear; awk '!seen[${0}]++' "$1"; }
+rmd()
+{
+    clear
+    awk '!seen[${0}]++' "$1"
+}
 
 # REMOVE CONSECUTIVE DUPLICATE LINES: OUTPUTS TO TERMINAL
 rmdc() { clear; awk 'f!=${0}&&f=${0}' "$1"; }
@@ -178,44 +177,45 @@ mvf()
 ##################
 
 # DOWNLOAD AN APT PACKAGE + ALL ITS DEPENDENCIES IN ONE GO
-apt_dl() { wget -c "$(apt-get install --reinstall --print-uris -qq $1 | cut -d"'" -f2)"; }
+apt_dl() { wget -c "$(apt-get install --reinstall --print-uris -qq "$1" 2>/dev/null | cut -d"'" -f2)"; }
 
 # CLEAN
 clean()
 {
     clear
-    sudo apt-fast -y autoremove
-    sudo apt-fast clean
-    sudo apt-fast autoclean
-    sudo apt-fast -y purge
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt -y purge
 }
 
 # UPDATE
 update()
 {
     clear
-    sudo apt-fast update
-    sudo apt-fast -y full-upgrade
-    sudo apt-fast -y install ubuntu-advantage-tools
-    sudo apt-fast -y autoremove
-    sudo apt-fast clean
-    sudo apt-fast autoclean
-    sudo apt-fast -y purge
+    sudo apt update
+    sudo apt -y full-upgrade
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt -y purge
 }
 
 # FIX BROKEN APT PACKAGES
 fix()
 {
     clear
-    sudo apt-fast -f -y install
+    if [ -f '/tmp/apt.lock' ]; then
+        sudo rm '/tmp/apt.lock'
+    fi
+    sudo apt -f -y install
     apt --fix-broken install
     apt --fix-missing update
     dpkg --configure -a
-    sudo apt-fast -y autoremove
-    sudo apt-fast clean
-    sudo apt-fast autoclean
-    sudo apt-fast -y purge
-    sudo apt-fast update
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt update
 }
 
 listd()
@@ -224,11 +224,11 @@ listd()
     local search_cache
 
     if [ -n "$1" ]; then
-        sudo apt-fast list *$1*-dev | awk -F'/' '{print $1}'
+        sudo apt list *$1*-dev | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt-fast list *$1*-dev | awk -F'/' '{print $1}'
+        sudo apt list *$1*-dev | awk -F'/' '{print $1}'
     fi
 }
 
@@ -239,26 +239,26 @@ list()
     local search_cache
 
     if [ -n "$1" ]; then
-        sudo apt-fast list *$1* | awk -F'/' '{print $1}'
+        sudo apt list *$1* | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt-fast list *$1* | awk -F'/' '{print $1}'
+        sudo apt list *$1* | awk -F'/' '{print $1}'
     fi
 }
 
-# USE sudo apt-fast TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
+# USE sudo apt TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
 asearch()
 {
     clear
     local search_cache
 
     if [ -n "$1" ]; then
-        sudo apt-fast search "$1 ~i" -F "%p"
+        sudo apt search "$1 ~i" -F "%p"
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt-fast search "$1 ~i" -F "%p"
+        sudo apt search "$1 ~i" -F "%p"
     fi
 }
 
@@ -629,36 +629,36 @@ imow()
         random="$(mktemp --directory)"
         echo '========================================================================================================='
         echo
-        echo "Working Directory: $PWD"
+        echo "Working Directory: ${PWD}"
         echo
         printf "Converting: %s\n             >> %s\n              >> %s\n               >> %s\n" "$i" "${i%%.jpg}.mpc" "${i%%.jpg}.cache" "${i%%.jpg}-IM.jpg"
         echo
         echo '========================================================================================================='
         echo
         dimensions="$(identify -format '%wx%h' "$i")"
-        convert "$i" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "$dimensions" -strip \
+        convert "$i" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "${dimensions}" -strip \
             -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize '136' -quality '82' -define jpeg:fancy-upsampling='off' \
-            -define png:compression-filter='5' -define png:compression-level='9' -define png:compression-strategy='1' \
-            -define png:exclude-chunk='all' -auto-level -enhance -interlace 'none' -colorspace 'sRGB' "$random/${i%%.jpg}.mpc"
+            -auto-level -enhance -interlace 'none' -colorspace 'sRGB' "${random}/${i%%.jpg}.mpc"
         clear
-        for cached in "$random"/*.mpc
+        for file in "${random}"/*.mpc
         do
-            if [ -f "$cached" ]; then
-                convert "$cached" -monitor "${cached%%.mpc}.jpg"
-                if [ -f "${cached%%.mpc}.jpg" ]; then
-                    CWD="$(${cached//s:.*/::})"
-                    mv "${cached%%.mpc}.jpg" "$PWD/${CWD%%.*}-IM.jpg"
-                    rm -f "$PWD/${CWD%%.*}.jpg"
-                    for v in $cached
-                    do
-                        v_noslash="${v%/}"
-                        rm -fr "${v_noslash%/*}"
-                        clear
-                    done
+            if [ -f "$file" ]; then
+                if convert "$file" -monitor "${file%%.mpc}.jpg"; then
+                    if [ -f "${file%%.mpc}.jpg" ]; then
+                        cwd="$(echo "$file" | sed 's:.*/::')"
+                        mv "${file%%.mpc}.jpg" "${PWD}/${cwd%%.*}-IM.jpg"
+                        rm -f "${PWD}/${cwd%%.*}.jpg"
+                        for v in $file
+                        do
+                            v_noslash="${v%/}"
+                            rm -fr "${v_noslash%/*}"
+                            clear
+                        done
+                    fi
                 else
                     clear
-                    echo 'Error: Unable to find the optimized image.'
-                    echo
+                    printf "%s\n\n" 'Error: Unable to find the optimized image.'
+                    read -p 'Press enter to exit.'
                     return 1
                 fi
             fi
@@ -667,7 +667,8 @@ imow()
 
     # The text-to-speech below requries the following packages:
     # pip install gTTS; sudo apt -y install sox libsox-fmt-all
-    if google_speech 'Image conversion completed.'; then
+    if [ "${?}" -eq '0' ]; then
+        google_speech 'Image conversion completed.'
         return 0
     else
         google_speech 'Image conversion failed.'
@@ -756,9 +757,9 @@ cuda_purge()
         echo 'Purging the cuda-sdk-toolkit from your computer.'
         echo '================================================'
         echo
-        sudo sudo apt-fast -y --purge remove "*cublas*" "cuda*" "nsight*"
-        sudo sudo apt-fast -y autoremove
-        sudo sudo apt-fast update
+        sudo sudo apt -y --purge remove "*cublas*" "cuda*" "nsight*"
+        sudo sudo apt -y autoremove
+        sudo sudo apt update
     elif [[ "$answer" -eq '2' ]]; then
         return 0
     fi
@@ -821,11 +822,11 @@ listppas()
 {
     clear
 
-    local _apt host user ppa entry
+    local apt host user ppa entry
 
-    for _apt in $(find /etc/apt/ -type f -name \*.list)
+    for apt in $(find /etc/apt/ -type f -name \*.list)
     do
-        grep -Po "(?<=^deb\s).*?(?=#|$)" "$_apt" | while read entry
+        grep -Po "(?<=^deb\s).*?(?=#|$)" "$apt" | while read entry
         do
             host="$(echo "$entry" | cut -d/ -f3)"
             user="$(echo "$entry" | cut -d/ -f4)"
@@ -864,7 +865,7 @@ hw_mon()
 
     # install lm-sensors if not already
     if ! which lm-sensors &>/dev/null; then
-        sudo apt-fast -y install lm-sensors
+        sudo apt -y install lm-sensors
     fi
 
     # add modprobe to system startup tasks if not already added    
@@ -882,47 +883,142 @@ hw_mon()
 ## 7ZIP COMMANDS ##
 ###################
 
-# create a max compressed settings tar.gz file
+# CREATE A GZ FILE WITH MAX COMPRESSION SETTINGS
 7z_gz()
 {
+    local source output
     clear
 
-    local spath dpath
-
-    read -p 'Please enter the source folder path: ' spath
-    echo
-    read -p 'Please enter the destination archive path (w/o extension): ' dpath
-    clear
-
-    if [ ! -f "$dpath".tar.gz ]; then
-        7z a -ttar -so -an "$spath" | 7z a -mx9 -mpass1 -si "$dpath".tar.gz
+    if [ -n "$1" ]; then
+        if [ -f "$1".tar.gz ]; then
+            sudo rm "$1".tar.gz
+        fi
+        7z a -ttar -so -an "$1" | 7z a -tgz -mx9 -mpass1 -si "$1".tar.gz
     else
+        read -p 'Please enter the source folder path: ' source
+        echo
+        read -p 'Please enter the destination archive path (w/o extension): ' output
         clear
-        printf "%s\n\n%s\n\n" \
-        'The output file already exists.' \
-        'Please choose another output name or delete the file.'
+        if [ -f "$output".tar.gz ]; then
+            sudo rm "$output".tar.gz
+        fi
+        7z a -ttar -so -an "$source" | 7z a -tgz -mx9 -mpass1 -si "$output".tar.gz
     fi
 }
 
-# create a max compressed settings 7z file
+# CREATE A XZ FILE WITH MAX COMPRESSION SETTINGS USING 7ZIP
+7z_xz()
+{
+    local source output
+    clear
+
+    if [ -n "$1" ]; then
+        if [ -f "$1".tar.xz ]; then
+            sudo rm "$1".tar.xz
+        fi
+        7z a -ttar -so -an "$1" | 7z a -txz -mx9 -si "$1".tar.xz
+    else
+        read -p 'Please enter the source folder path: ' source
+        echo
+        read -p 'Please enter the destination archive path (w/o extension): ' output
+        clear
+        if [ -f "$output".tar.xz ]; then
+            sudo rm "$output".tar.xz
+        fi
+        7z a -ttar -so -an "$source" | 7z a -txz -mx9 -si "$output".tar.xz
+    fi
+}
+
+# CREATE A 7ZIP FILE WITH MAX COMPRESSION SETTINGS
 7z_7z()
 {
+    local source output
     clear
 
-    local spath dpath
-
-    read -p 'Please enter the source folder path: ' spath
-    echo
-    read -p 'Please enter the destination archive path (w/o extension): ' dpath
-    clear
-
-    if [ ! -f "$dpath".tar.gz ]; then
-        7z a -t7z -m0=lzma2 -mx9 "$dpath".7z ./"$spath"/*
+    if [ -n "$1" ]; then
+        if [ -f "$1".7z ]; then
+            sudo rm "$1".7z
+        fi
+        7z a -t7z -m0=lzma2 -mx9 "$1".7z ./"$1"/*
     else
+        read -p 'Please enter the source folder path: ' source
+        echo
+        read -p 'Please enter the destination archive path (w/o extension): ' output
         clear
-        printf "%s\n\n%s\n\n" \
-        'The output file already exists.' \
-        'Please choose another output name or delete the file.'
+        if [ -f "$output".7z ]; then
+            sudo rm "$output".7z
+        fi
+        7z a -t7z -m0=lzma2 -mx9 "$output".7z ./"$source"/*
+    fi
+}
+
+##################
+## TAR COMMANDS ##
+##################
+
+# CREATE A GZ FILE USING TAR COMMAND
+tar_gz()
+{
+    local source output
+    clear
+
+    if [ -n "$1" ]; then
+        if [ -f "$1".tar.gz ]; then
+            sudo rm "$1".tar.gz
+        fi
+        tar -cJf "$1".tar.gz "$1"
+    else
+        read -p 'Please enter the source folder path: ' source
+        echo
+        read -p 'Please enter the destination archive path (w/o extension): ' output
+        clear
+        if [ -f "$output".tar.gz ]; then
+            sudo rm "$output".tar.gz
+        fi
+        tar -cJf "$output".tar.gz "$source"
+    fi
+}
+
+tar_bz2()
+{
+    local source output
+    clear
+
+    if [ -n "$1" ]; then
+        if [ -f "$1".tar.bz2 ]; then
+            sudo rm "$1".tar.bz2
+        fi
+        tar -cvjf "$1".tar.bz2 "$1"
+    else
+        read -p 'Please enter the source folder path: ' source
+        echo
+        read -p 'Please enter the destination archive path (w/o extension): ' output
+        clear
+        if [ -f "$output".tar.bz2 ]; then
+            sudo rm "$output".tar.bz2
+        fi
+        tar -cvjf "$output".tar.bz2 "$source"
+    fi
+}
+
+tar_xz()
+{
+    local source output
+    clear
+    if [ -n "$1" ]; then
+        if [ -f "$1".tar.xz ]; then
+            sudo rm "$1".tar.xz
+        fi
+        tar -cvJf - "$1" | xz -9 -c - > "$1".tar.xz
+    else
+        read -p 'Please enter the source folder path: ' source
+        echo
+        read -p 'Please enter the destination archive path (w/o extension): ' output
+        clear
+        if [ -f "$output".tar.xz ]; then
+            sudo rm "$output".tar.xz
+        fi
+        tar -cvJf - "$source" | xz -9 -c - > "$output".tar.xz
     fi
 }
 
@@ -930,8 +1026,8 @@ hw_mon()
 ## FFMPEG COMMANDS ##
 #####################
 
-ffr() { bash "$1" -b --latest --enable-gpl-and-non-free; }
-ffrv() { bash -v "$1" -b --latest --enable-gpl-and-non-free; }
+ffr() { clear; bash "$1" -b --latest --enable-gpl-and-non-free; }
+ffrv() { clear; bash -v "$1" -b --latest --enable-gpl-and-non-free; }
 
 ###################
 ## WRITE CACHING ##
@@ -950,89 +1046,21 @@ wcache()
     sudo hdparm -W 0 /dev/"$drive_choice"
 }
 
-##################
-## TAR COMMANDS ##
-##################
-
-tar_gz()
-{
-    clear
-
-    local spath dpath
-
-    read -p 'Please enter the source folder path: ' spath
-    echo
-    read -p 'Please enter the destination archive path (w/o extension): ' dpath
-    clear
-
-    if [ ! -f "$dpath".tar.gz ]; then
-        tar -czvf "$dpath".tar.gz "$spath" 
-    else
-        clear
-        printf "%s\n\n%s\n\n" \
-        'The output file already exists.' \
-        'Please choose another output name or delete the file.'
-    fi
-}
-
-tar_bz2()
-{
-    clear
-
-    local spath dpath
-
-    read -p 'Please enter the source folder path: ' spath
-    echo
-    read -p 'Please enter the destination archive path (w/o extension): ' dpath
-    clear
-
-    if [ ! -f "$dpath".tar.bz2 ]; then
-        tar -cjvf "$spath" "$dpath".tar.bz2
-    else
-        clear
-        printf "%s\n\n%s\n\n" \
-        'The output file already exists.' \
-        'Please choose another output name or delete the file.'
-    fi
-}
-
-tar_xz()
-{
-    clear
-
-    local spath dpath
-
-    read -p 'Please enter the source folder path: ' spath
-    echo
-    read -p 'Please enter the destination archive path (w/o extension): ' dpath
-    clear
-
-    if [ ! -f "$dpath".tar.xz ]; then
-        tar -cvf - "$spath" | xz -9 -c - > "$dpath".tar.xz
-    else
-        clear
-        printf "%s\n\n%s\n\n" \
-        'The output file already exists.' \
-        'Please choose another output name or delete the file.'
-    fi
-}
-
 rmd()
 {
     clear
 
     local dirs
 
-    if [ -z "$@" ]; then
-        clear
-        ls -1A --color --group-directories-first
+    if [ -z "$*" ]; then
+        clear; ls -1A --color --group-directories-first
         echo
         read -p 'Enter the directory path(s) to delete: ' dirs
      else
-        dirs="$@"
+        dirs="$*"
     fi
 
-    sudo rm -fr $dirs
+    sudo rm -fr "$dirs"
     clear
     ls -1A --color --group-directories-first
 }
@@ -1044,19 +1072,133 @@ rmf()
 
     local files
 
-    if [ -z "$@" ]; then
-        clear
-        ls -1A --color --group-directories-first
+    if [ -z "$*" ]; then
+        clear; ls -1A --color --group-directories-first
         echo
         read -p 'Enter the file path(s) to delete: ' files
      else
-        files="$@"
+        files="$*"
     fi
 
-    sudo rm $files
+    sudo rm "$files"
     clear
     ls -1A --color --group-directories-first
 }
 
 ## REMOVE BOM
-rmb() { sed -i '1s/^\xEF\xBB\xBF//' "${1}"; }
+rmb()
+{
+    sed -i '1s/^\xEF\xBB\xBF//' "${1}"
+}
+
+## LIST INSTALLED PACKAGES BY ORDER OF IMPORTANCE
+
+list_pkgs() { clear; dpkg-query -Wf '${Package;-40}${Priority}\n' | sort -b -k2,2 -k1,1; }
+
+## FIX USER FOLDER PERMISSIONS up = user permissions
+
+fix_up()
+{
+    find "$HOME"/.gnupg -type f -exec chmod 600 {} \;
+    find "$HOME"/.gnupg -type d -exec chmod 700 {} \;
+    find "$HOME"/.ssh -type d -exec chmod 700 {} \; 2>/dev/null
+    find "$HOME"/.ssh/id_rsa.pub -type f -exec chmod 644 {} \; 2>/dev/null
+    find "$HOME"/.ssh/id_rsa -type f -exec chmod 600 {} \; 2>/dev/null
+}
+
+## SET DEFAULT PROGRAMS
+set_default()
+{
+    local choice target name link importance
+
+    clear
+
+    printf "%s\n\n%s\n%s\n\n" \
+        'Set default programs' \
+        'Example: sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 50' \
+        'Example: sudo update-alternatives --install <target> <program_name> <link> <importance>'
+
+    read -p 'Enter the target: ' target
+    read -p 'Enter the program_name: ' name
+    read -p 'Enter the link: ' link
+    read -p 'Enter the importance: ' importance
+    clear
+
+    printf "%s\n\n%s\n\n%s\n%s\n\n" \
+        "You have chosen: sudo update-alternatives --install $target $name $link $importance" \
+        'Would you like to continue?' \
+        '[1] Yes' \
+        '[2] No'
+        
+    read -p 'Your choices are (1 or 2): ' choice
+    clear
+
+    case "$choice" in
+        1)      sudo update-alternatives --install "$target" "$name" "$link" "$importance";;
+        2)      return 0;;
+        *)      return 0;;
+    esac
+}
+
+## COUNT FILES IN DIRECTORY
+cnt_dir()
+{
+    local keep_cnt
+    clear
+    keep_cnt="$(find . -maxdepth 1 -type f | wc -l)"
+    printf "%s %'d\n\n" "The total directory file count is (non-recursive):" "$keep_cnt"
+}
+
+cnt_dirr()
+{
+    local keep_cnt
+    clear
+    keep_cnt="$(find . -type f | wc -l)"
+    printf "%s %'d\n\n" "The total directory file count is (recursive):" "$keep_cnt"
+}
+
+##############
+## TEST GCC ##
+##############
+
+test_gcc()
+{
+    local answer
+
+# CREATE A TEMPORARY C FILE TO RUN OUR TESTS AGAINST
+cat > /tmp/hello.c <<'EOF'
+#include <stdio.h>
+int main(void)
+{
+   printf("Hello World!\n");
+   return 0;
+}
+EOF
+
+    if [ -n "$1" ]; then
+        "$1" -Q -v /tmp/hello.c
+    else
+        clear
+        read -p 'Enter the GCC binary you wish to test (example: gcc-11): ' answer
+        clear
+        "$answer" -Q -v /tmp/hello.c
+    fi
+    sudo rm /tmp/hello.c
+}
+
+############################
+## UNINSTALL DEBIAN FILES ##
+############################
+
+rm_deb()
+{
+    local deb_file
+    clear
+    if [ -n "$1" ]; then
+        sudo dpkg -r "$(dpkg -f "$1" Package)"
+    else
+        read -p 'Please enter the debian file name: ' deb_file
+        clear
+        sudo dpkg -r "$(dpkg -f "$deb_file" Package)"
+    fi
+}

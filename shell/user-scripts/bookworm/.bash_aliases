@@ -130,25 +130,25 @@ alias nsudo='sudo nano /etc/sudoers; cl'
 # nano [ /usr ]
 alias nlang='sudo nano /usr/share/gtksourceview-*/language-specs/sh.lang; cl'
 
-# gedit [ /home/jman ]
-alias gba='gedit ~/.bash_aliases; cl'
-alias gbf='gedit ~/.bash_functions; cl'
-alias gbrc='gedit ~/.bashrc; cl'
-alias gpro='gedit ~/.profile; cl'
-# gedit [ /etc ]
-alias g='gedit'
-alias gapt='sudo gedit /etc/apt/apt.conf; cl'
-alias gcron='sudo gedit /etc/crontab; cl'
-alias gddc='sudo gedit /etc/ddclient.conf; cl'
-alias ghosts='sudo gedit /etc/hosts; cl'
-alias glist='sudo gedit /etc/apt/sources.list; cl'
-alias glogin='sudo gedit /etc/gdm*/daemon.conf; cl'
-alias ggedit='sudo gedit /etc/geditrc; cl'
-alias gnet='sudo gedit /etc/network/interfaces; cl'
-alias gssh='sudo gedit /etc/ssh/sshd_config; cl'
-alias gsudo='sudo gedit /etc/sudoers; cl'
-# gedit [ /usr ]
-alias glang='sudo gedit /usr/share/gtksourceview-*/language-specs/sh.lang; cl'
+# gted [ /home/jman ]
+alias gba='gted ~/.bash_aliases; cl'
+alias gbf='gted ~/.bash_functions; cl'
+alias gbrc='gted ~/.bashrc; cl'
+alias gpro='gted ~/.profile; cl'
+# gted [ /etc ]
+alias g='gted'
+alias gapt='sudo gted /etc/apt/apt.conf; cl'
+alias gcron='sudo gted /etc/crontab; cl'
+alias gddc='sudo gted /etc/ddclient.conf; cl'
+alias ghosts='sudo gted /etc/hosts; cl'
+alias glist='sudo gted /etc/apt/sources.list; cl'
+alias glogin='sudo gted /etc/gdm*/daemon.conf; cl'
+alias ggted='sudo gted /etc/gtedrc; cl'
+alias gnet='sudo gted /etc/network/interfaces; cl'
+alias gssh='sudo gted /etc/ssh/sshd_config; cl'
+alias gsudo='sudo gted /etc/sudoers; cl'
+# gted [ /usr ]
+alias glang='sudo gted /usr/share/gtksourceview-*/language-specs/sh.lang; cl'
 
 # change directory
 alias cdaptd='pushd /etc/apt/apt.conf.d; cl'
