@@ -86,7 +86,9 @@ if ! shopt -oq posix; then
   fi
 fi
 
-##############################################################################################################
+####################
+## CUSTOM SECTION ##
+####################
 
 # function definitions
 if [ -f "$HOME/.bash_functions" ]; then
@@ -112,7 +114,7 @@ $HOME/.local/bin:\
 "
 export PATH
 
-export CPUS="$((THREADS/2))"
+export CPUS="$((THREADS / 2))"
 export LAN="$(hostname -I)"
 export PS1='\n\[\e[0;96m\]\w\n\[\e[0;38;5;220m\]\T\n\[\e[0;38;5;208m\]\h\[\e[0m\]@\[\e[0;38;5;201m\]\u\[\e[0;93m\]$\[\e[0m\]'
 export PYTHONUTF8='1'

@@ -1,11 +1,11 @@
-# The Big Script Repository
+# Slys Script Repository
 ## A mix of my favorite scripts for both Windows and Linux.
 
 ### Why this repository exists:
 1. This repository was created as a way to share my custom scripts
-2. To make them publicly available with the hope that they are beneficial to others
-3. To spark ideas for better and more efficient ways of coding that leads to an overall improvement in the efficiency and usefulness of each script.
-4. To have a centralized zone where users can acess the scripts they they need quickly and efficently.
+2. Make the scripts publicly available with the hope that they are beneficial to others
+3. Spark ideas for better and more efficient ways of coding that leads to an overall improvement in the efficiency and usefulness of each script
+4. Have a centralized zone where users can access the scripts they need quickly and efficiently
 
 ### Included languages
  -   [x] AutoHotkey
@@ -16,81 +16,46 @@
  -   [x] XML
 ------
 
-## Master Build Menu
+## Build Menu
   - All of the below Linux installers are located in one menu.
 ```bash
-curl -Lso build-menu https://build-menu.optimizethis.net; sudo bash build-menu
-```
-
-## Install apt and ppa packages
-  - **What I consider to be core apt packages or "must haves" that everyone should consider installing**
-
-**Ubuntu Jammy 22.04.02**
-```bash
-curl -Lso pkgs.sh https://jammy-pkgs.optimizethis.net; sudo bash pkgs.sh
-```
-**Ubuntu Focal 20.04.05**
-```bash
-curl -Lso pkgs.sh https://focal-pkgs.optimizethis.net; sudo bash pkgs.sh
-```
-**Debian 10 / 11**
-```bash
-curl -Lso pkgs.sh https://debian-pkgs.optimizethis.net; sudo bash pkgs.sh
+bash <(curl -sSL https://build-menu.optimizethis.net)
 ```
 ------
 
-## Add custom user scripts the the user's home directory
-  - **Warning! This will overwrite your files!**
-  - **Files Included**
-    - .bashrc
-    - .bash_aliases
-    - .bash_functions
-### Lunar Lobster
+## Optimize the APT package manager by installing extra mirrors
+  - Ubuntu - Lunar 23.04, Jammy 22.04, Focal 20.04, Bionic 18.04
+  - Debian - Bullseye 11, Bookworm 12
+
+**Warning! This will overwrite your files!**
 ```bash
-bash <(curl -sSL https://lunar-scripts.optimizethis.net)
-```
-### Jammy Jellyfish
-```bash
-bash <(curl -sSL https://jammy-scripts.optimizethis.net)
+bash <(curl -sSL https://mirrors-menu.optimizethis.net)
 ```
 ------
 
-## Install download mirrors to sources.list
-  - **Warning! This will overwrite your files!**
-#### Ubuntu Lunar
+## Install [GCC](https://github.com/gcc-mirror/gcc) 11.4.0, 12.3.0, & 13.1.0
+
+  - **Sourced from the official GitHub repository**
+  - **Compiled on Ubuntu Jammy 22.04.02**
+  - **For personal/testing use only**
+  - **Check the top of the script for build [results](https://github.com/slyfox1186/script-repo/blob/main/shell/installers/build-gcc)**
+  - **Supported OS:**
+    - Debian - 11 / 12
+    - Ubuntu - 22.04
+    - Other Debian-style distros may work as well
+
+#### For native Linux systems (Windows WSL not working)
 ```bash
-bash <(curl -sSL https://lunar-mirrors.optimizethis.net)
+bash <(curl -sSL https://gcc.optimizethis.net)
 ```
-#### Ubuntu Jammy
-```bash
-bash <(curl -sSL https://jammy-mirrors.optimizethis.net)
-```
-#### Ubuntu Focal
-```bash
-bash <(curl -sSL https://focal-mirrors.optimizethis.net)
-```
-#### Ubuntu Bionic
-```bash
-bash <(curl -sSL https://bionic-mirrors.optimizethis.net)
-```
-#### Debian Bullseye
-```bash
-bash <(curl -sSL https://debian-mirrors.optimizethis.net)
-```
-------
 
 ## Install [7-Zip](www.7-zip.org/download.html)
-  - **Auto installs based on your os architecture. No user input required.**
-    - **Linux x64**
-    - **Linux x86**
-    - **ARM x64**
-    - **ARM x86**
+  - **Auto installs based on your os architecture. No user input is required.**
+    - Arch - **i386 + x86_x64**
+    - Processor - **Linux + ARM**
+### v23.01 Release
 ```bash
 bash <(curl -sSL https://7z.optimizethis.net)
-```
-### 7-Zip Beta v2300
-```bash
-bash <(curl -sSL https://7z-beta.optimizethis.net)
 ```
 ------
 
@@ -98,50 +63,113 @@ bash <(curl -sSL https://7z-beta.optimizethis.net)
   - **Sourced from the most recent release on their official Git**
   - **Tested on Windows WSL 2 Debian/Ubuntu**
   - **[Optimize JPG Images](https://github.com/slyfox1186/imagemagick-optimize-jpg)**
+  - **Supported OS:**
+    - Debian - 10 / 11
+    - Ubuntu - 18.04 / 20.04 / 22.04
+    - Other Debian-style distros may work as well
 
-#### Ubuntu 22.04 (other versions may work)
 ```bash
 bash <(curl -sSL https://magick.optimizethis.net) --build --latest
 ```
 ------
 
 ## Install [FFmpeg](https://ffmpeg.org/download.html)
-  - **Compile using the official snapshot + the latest development libraries**
-  - **CUDA Hardware Acceleration is included for all systems that support it**
+  - **Compiles the latest updates from source code by issuing API calls to each repositories backend**
+  - **The CUDA SDK Toolkit which unlocks Hardware Acceleration is available during the installation to make things as easy as possible**
+  - **Supported OS:**
+    - Debian - 10 / 11
+    - Ubuntu - 18.04 / 20.04 / 22.04
+    - Other Debian-style distros may work as well
 
-**With GPL and non-free: https://ffmpeg.org/legal.html**
+**With GPL and <ins>non-free</ins> libraries: https://ffmpeg.org/legal.html**
 ```bash
-bash <(curl -sSL https://ffn.optimizethis.net)
+bash <(curl -sSL https://build-ffmpeg.optimizethis.net) --build --latest
 ```
 ------
 
-## Install [CMake](https://cmake.org/) v3.26.4
-  - Supported OS
-    - Debian 10 / 11
-    - Ubuntu 18.04 / 20.04 / 22.04
-    - Other debian style distros may work as well
+## Install [CMake](https://cmake.org/), [Ninja](https://github.com/ninja-build/ninja), [Meson](https://github.com/mesonbuild/meson) & [Golang](https://github.com/golang/go)
+  - **Supported OS:**
+    - Debian - 10 / 11
+    - Ubuntu - 18.04 / 20.04 / 22.04
+    - Other Debian-style distros may work as well
 
 ```bash
-bash <(curl -sSL https://cmake.optimizethis.net)
+bash <(curl -sSL https://build-tools.optimizethis.net)
 ````
 ------
 
-## Install [Curl](https://github.com/curl/curl) latest version (git clone)
-  - Supported OS
-    - Ubuntu 22.04
-    - Other debian style distros may work as well
+## Install [cURL](https://github.com/curl/curl), [WGET](https://ftp.gnu.org/gnu/wget) & [ARIA2C](https://github.com/aria2/aria2)
+#### Aria2 max connections increased from 16 to 64
+  - **Supported OS:**
+    - Debian - 10 / 11
+    - Ubuntu - 18.04 / 20.04 / 22.04
+    - Other Debian-style distros may work as well
+
+#### List of Libraries activated during build: [Libs](https://github.com/slyfox1186/script-repo/blob/main/shell/installers/dl-tools/dl-tools-libs-list.txt)
 
 ```bash
-bash <(curl -sSL https://curl.optimizethis.net)
+bash <(curl -sSL https://dl-tools.optimizethis.net)
 ````
 ------
 
-## Install [Tilix Advanced Terminal](https://github.com/gnunn1/tilix) with custom color themes (Dracula included)
+## Add custom user scripts to the user's home directory
+  - **Warning! This will overwrite your files!**
+  - **Files Included**
+    - `.bashrc`
+    - `.bash_aliases`
+    - `.bash_functions`
+#### Ubuntu 23.04 (Lunar)
+```bash
+bash <(curl -sSL https://lunar-scripts.optimizethis.net)
+```
+#### Ubuntu 22.04 (Jammy), 20.04 (Focal), 18.04 (Bionic)
+```bash
+bash <(curl -sSL https://jammy-scripts.optimizethis.net)
+```
+#### Debian 10 (Buster) / 11 (Bullseye) / 12 (Bookworm)
+```bash
+bash <(curl -sSL https://bookworm-scripts.optimizethis.net)
+```
+------
+
+## Install apt and ppa packages
+  - **What I consider to be core apt packages or "must haves" that everyone should consider installing**
+
+**Ubuntu Jammy 22.04.02**
+```bash
+bash <(curl -sSL pkgs.sh https://jammy-pkgs.optimizethis.net)
+```
+**Ubuntu Focal 20.04.05**
+```bash
+bash <(curl -sSL pkgs.sh https://focal-pkgs.optimizethis.net)
+```
+**Debian 10 / 11**
+```bash
+bash <(curl -sSL pkgs.sh https://debian-pkgs.optimizethis.net))
+```
+------
+
+## Change your network settings to Static or DHCP with netplan.io
+  - The user will be prompted to enter the network settings
+```bash
+bash <(curl -sSL https://netplan.optimizethis.net)
+```
+------
+
+## Debian Package Downloader
+  - Download APT packages to your pc by entering a space-separated list of values.
+  - Input a single entry or an entire list of APT packages and the script will download its respective .deb file to the current directory.
+```bash
+bash <(curl -sSL https://download.optimizethis.net)
+```
+
+## Install [Tilix](https://github.com/gnunn1/tilix) Advanced Terminal with custom color themes
+  - Dracula theme included + many others
   - Supported OS
     - Ubuntu 22.04
-    - Other debian style distros may work as well
+    - Other Debian-style distros may work as well
   - To install with no other actions required execute the first command, otherwise use the second command to
-    only download the files without executing the scripts immediatley.
+    only download the files without executing the scripts immediately.
      - Open the file `install-tilix` and read the instructions at the top of the script to easily customize the
        color themes further and then run `bash install-tilix`
 ```bash
@@ -152,25 +180,25 @@ wget -qN - -i https://build-tilix.optimizethis.net/
 ````
 ------
 
-## Install [Python3](https://devguide.python.org/getting-started/setup-building/#get-the-source-code) v3.11.3
+## Install [Python3](https://devguide.python.org/getting-started/setup-building/#get-the-source-code) v3.11.4
   - Supported OS
     - Debian 10 / 11
     - Ubuntu 18.04 / 20.04 / 22.04
-    - Other debian style distros may work as well
+    - Other Debian-style distros may work as well
 
 ```bash
 bash <(curl -sSL https://python3.optimizethis.net)
 ````
 ------
 
-## Install the [WSL2](https://devguide.python.org/getting-started/setup-building/#get-the-source-code) latest kernel release from [Linux Torvalds](https://github.com/torvalds/linux)
+## Install the [WSL2](https://github.com/microsoft/WSL2-Linux-Kernel) latest kernel release from [Linux](https://github.com/torvalds/linux)
   - Supported OS
     - Debian 10 / 11
     - Ubuntu 18.04 / 20.04 / 22.04
-    - Other debian style distros may work as well
+    - Other Debian-style distros may work as well
 
 ```bash
-curl -Lso build-kernel https://wsl2-kernel.optimizethis.net; sudo bash build-kernel
+bash <(curl -sSL https://wsl2.optimizethis.net)
 ````
 ------
 
@@ -194,14 +222,14 @@ bash <(curl -sSL https://players.optimizethis.net)
 
 ## Install: GParted's extra functionality packages
   - Unlock the following options in GParted
-    - exfat
+    - exFAT
     - btrfs
     - f2fs
     - jfs
     - udf
     - lvm2 pv
     - hfs/hfs 2
-    - reiser 4/reiserfs
+    - Reiser 4/reiserfs
 ```bash
 bash <(curl -sSL https://gparted.optimizethis.net)
 ```
@@ -210,7 +238,7 @@ bash <(curl -sSL https://gparted.optimizethis.net)
 ## Create SSH key pairs and export the public key to a remote computer
  1. **Prompt user with instructions**
     - **Main Menu:**
-      1. **Check if public key files exist and if not walk the user through creation of files**
+      1. **Check if public key files exist and if not walk the user through the creation of files**
       2. **Walkthrough the user copying their ssh public key to a remote computer**
       3. **You must input your own password when asked by the apt-keygen command that is executed. This is to keep your security strong!**
 ```bash
@@ -220,8 +248,8 @@ curl -Lso ssh-keys.sh https://ssh-keys.optimizethis.net; sudo bash ssh-keys.sh
 
 # Windows Section
 ## Add Copy as Path to Windows Context Menu
-  1. **Run cmd.exe as administrator**
-  2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
+  1. Run cmd.exe as administrator
+  2. To add to the context menu, paste the below command into cmd.exe and press enter to execute
 ```
 curl.exe -Lso add-copy-as-path.reg https://copy-path.optimizethis.net && call add-copy-as-path.reg
 ```

@@ -42,7 +42,7 @@ deb http://security.ubuntu.com/ubuntu/ lunar-security main restricted universe m
 ##
 ## MAIN
 ##
-deb deb https://mirror.enzu.com/ubuntu/ lunar main restricted universe multiverse
+deb https://mirror.enzu.com/ubuntu/ lunar main restricted universe multiverse
 deb http://mirror.genesisadaptive.com/ubuntu/ lunar main restricted universe multiverse
 deb http://mirror.math.princeton.edu/pub/ubuntu/ lunar main restricted universe multiverse
 deb http://mirror.pit.teraswitch.com/ubuntu/ lunar main restricted universe multiverse
@@ -76,3 +76,5 @@ else
         "Could not find an EDITOR to open: $list"
     exit 1
 fi
+
+sudo rm "$0"

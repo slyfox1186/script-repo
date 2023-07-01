@@ -24,17 +24,16 @@ imow()
         dimensions="$(identify -format '%wx%h' "${i}")"
         convert "${i}" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "${dimensions}" -strip \
             -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize '136' -quality '82' -define jpeg:fancy-upsampling='off' \
-            -define png:compression-filter='5' -define png:compression-level='9' -define png:compression-strategy='1' \
-            -define png:exclude-chunk='all' -auto-level -enhance -interlace 'none' -colorspace 'sRGB' "${random}/${i%%.jpg}.mpc"
+            -auto-level -enhance -interlace 'none' -colorspace 'sRGB' "${random}/${i%%.jpg}.mpc"
         clear
         for i in "${random}"/*.mpc
         do
             if [ -f "${i}" ]; then
                 convert "${i}" -monitor "${i%%.mpc}.jpg"
                 if [ -f "${i%%.mpc}.jpg" ]; then
-                    CWD="$(echo "${i}" | sed 's:.*/::')"
-                    mv "${i%%.mpc}.jpg" "${PWD}/${CWD%%.*}-IM.jpg"
-                    rm -f "${PWD}/${CWD%%.*}.jpg"
+                    cwd="$(echo "${i}" | sed 's:.*/::')"
+                    mv "${i%%.mpc}.jpg" "${PWD}/${cwd%%.*}-IM.jpg"
+                    rm -f "${PWD}/${cwd%%.*}.jpg"
                     for v in "${i}"
                     do
                         v_noslash="${v%/}"

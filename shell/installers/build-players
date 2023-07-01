@@ -22,9 +22,8 @@ clear
 exit_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-    'Please star this repository to show your support!' \
-    'https://github.com/slyfox1186/script-repo/'
-    rm "$0"
+        'Please star this repository to show your support!' \
+        'https://github.com/slyfox1186/script-repo'
     return 0
 }
 
@@ -34,7 +33,6 @@ fail_fn()
         "$1" \
         'If you think this is a bug please fill out a report.' \
         'https://github.com/slyfox1186/script-repo/issues'
-    rm "$0"
     return 1
 }
 
@@ -45,7 +43,7 @@ success_fn()
     exit_fn
 }
 
-printf "%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n\n" \
+printf "%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n\n" \
     'Please choose a media player to install' \
     '[1] VLC' \
     '[2] Kodi' \
@@ -107,6 +105,6 @@ case "$media_selection" in
         ;;
 
     *)
-        fail_fn Bad user input: Run the script again.'
+        fail_fn 'Bad user input: Run the script again.'
         ;;
 esac

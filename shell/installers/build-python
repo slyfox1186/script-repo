@@ -3,7 +3,7 @@
 
 #####################################
 ##
-## Install python v3.11.3
+## Install python v3.11.4
 ##
 ## Supported OS: Linux Debian based
 ##
@@ -12,8 +12,7 @@
 clear
 
 if [ "$EUID" -eq '0' ]; then
-    echo 'You must run this script WITHOUT root/sudo'
-    echo
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo'
     exit 1
 fi
 
@@ -22,7 +21,7 @@ fi
 ##
 
 parent_dir="$PWD"/python-build
-tar_url='https://github.com/python/cpython/archive/refs/tags/v3.11.3.tar.gz'
+tar_url='https://github.com/python/cpython/archive/refs/tags/v3.11.4.tar.gz'
 
 ##
 ## define functions

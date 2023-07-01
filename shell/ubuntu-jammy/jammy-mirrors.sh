@@ -6,10 +6,10 @@ list='/etc/apt/sources.list'
 
 # make a backup of the file
 if [ ! -f "$list.bak" ]; then
-    sudo cp -f "$list" "$list.bak"
+    cp -f "$list" "$list.bak"
 fi
 
-sudo cat > "$list" <<EOF
+cat > "$list" <<EOF
 ###################################################
 ##
 ##  UBUNTU JAMMY
@@ -42,7 +42,7 @@ deb http://security.ubuntu.com/ubuntu/ jammy-security main restricted universe m
 ##
 ## MAIN
 ##
-deb deb https://mirror.enzu.com/ubuntu/ jammy main restricted universe multiverse
+deb https://mirror.enzu.com/ubuntu/ jammy main restricted universe multiverse
 deb http://mirror.genesisadaptive.com/ubuntu/ jammy main restricted universe multiverse
 deb http://mirror.math.princeton.edu/pub/ubuntu/ jammy main restricted universe multiverse
 deb http://mirror.pit.teraswitch.com/ubuntu/ jammy main restricted universe multiverse
@@ -63,14 +63,15 @@ deb http://mirror.pit.teraswitch.com/ubuntu/ jammy-backports main restricted uni
 EOF
 
 # OPEN AN EDITOR TO VIEW THE CHANGES
-if which 'gedit' &>/dev/null; then
+if which gedit &>/dev/null; then
     sudo gedit "$list"
-elif which 'nano' &>/dev/null; then
+elif which nano &>/dev/null; then
     sudo nano "$list"
-elif which 'vi' &>/dev/null; then
+elif which vi &>/dev/null; then
     sudo vi "$list"
 else
-    printf "\n%s\n\n" \
-        "Could not find an EDITOR to open: $list"
+    printf "\n%s\n\n" "Could not find an EDITOR to open the file: $list"
     exit 1
 fi
+
+sudo rm "$0"
