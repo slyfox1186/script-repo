@@ -23,12 +23,15 @@ bash <(curl -sSL https://build-menu.optimizethis.net)
 ```
 ------
 
-## Debian Package Downloader
-  - Download APT packages to your pc by entering a space-separated list of values.
-  - Input a single entry or an entire list of APT packages and the script will download its respective .deb file to the current directory.
+## Optimize the APT package manager by installing extra mirrors
+  - Ubuntu - Lunar 23.04, Jammy 22.04, Focal 20.04, Bionic 18.04
+  - Debian - Bullseye 11, Bookworm 12
+
+**Warning! This will overwrite your files!**
 ```bash
-bash <(curl -sSL https://download.optimizethis.net)
+bash <(curl -sSL https://mirrors-menu.optimizethis.net)
 ```
+------
 
 ## Install [GCC](https://github.com/gcc-mirror/gcc) 11.4.0, 12.3.0, & 13.1.0
 
@@ -129,16 +132,6 @@ bash <(curl -sSL https://bookworm-scripts.optimizethis.net)
 ```
 ------
 
-## Optimize the APT package manager by installing extra mirrors
-  - Ubuntu - Lunar 23.04, Jammy 22.04, Focal 20.04, Bionic 18.04
-  - Debian - Bullseye 11, Bookworm 12
-
-**Warning! This will overwrite your files!**
-```bash
-bash <(curl -sSL https://mirrors-menu.optimizethis.net)
-```
-------
-
 ## Install apt and ppa packages
   - **What I consider to be core apt packages or "must haves" that everyone should consider installing**
 
@@ -155,6 +148,13 @@ bash <(curl -sSL pkgs.sh https://focal-pkgs.optimizethis.net)
 bash <(curl -sSL pkgs.sh https://debian-pkgs.optimizethis.net))
 ```
 ------
+
+## Debian Package Downloader
+  - Download APT packages to your pc by entering a space-separated list of values.
+  - Input a single entry or an entire list of APT packages and the script will download its respective .deb file to the current directory.
+```bash
+bash <(curl -sSL https://download.optimizethis.net)
+```
 
 ## Install [Tilix](https://github.com/gnunn1/tilix) Advanced Terminal with custom color themes
   - Dracula theme included + many others
