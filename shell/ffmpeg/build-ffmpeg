@@ -1014,14 +1014,14 @@ if build 'libiconv' '1.17'; then
     build_done 'libiconv' '1.17'
 fi
 
-if build 'm4' '1.4.19'; then
-    download 'https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.xz'
+if build 'm4' 'latest'; then
+    download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
     execute ./configure --prefix="$workspace" --disable-nls --enable-c++ \
         --with-dmalloc --build="$(build-aux/config.guess)"
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
-    build_done 'm4' '1.4.19'
+    build_done 'm4' 'latest'
 fi
 
 if build 'autoconf' 'latest'; then
