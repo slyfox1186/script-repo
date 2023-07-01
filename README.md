@@ -149,7 +149,7 @@ bash <(curl -sSL pkgs.sh https://debian-pkgs.optimizethis.net))
 ```
 ------
 
-## Set a Static IP or DHCP address using netplan.io
+## Change your network settings to Static or DHCP with netplan.io
   - The user will be prompted to enter the network settings
 ```bash
 bash <(curl -sSL https://netplan.optimizethis.net)
