@@ -127,14 +127,14 @@ $(ColorBlue 'Choose the Ubuntu release version:') "
 }
 
 #
-# DISPLAY MAIN MENU
+# DISPLAY THE MAIN MENU
 #
 
 main_menu()
 {
     local answer
 echo -ne "
-$(ColorGreen '1)') Ubuntu Mirros
+$(ColorGreen '1)') Ubuntu Mirrors
 $(ColorGreen '2)') Debian Mirrors
 $(ColorGreen '0)') Exit
 $(ColorBlue 'Choose an operating system:') "
