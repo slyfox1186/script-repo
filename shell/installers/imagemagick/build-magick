@@ -678,9 +678,9 @@ if build 'c2man' 'git'; then
     execute ./Configure -desO -D prefix="$workspace" -D bin="$workspace"/bin -D bash="$(type -P bash)" \
         -D cc=/usr/bin/cc -D d_gnu=/usr/lib/x86_64-linux-gnu -D find="$(type -P find)" -D gcc=/usr/bin/gcc \
         -D gzip="$(type -P gzip)" -D installmansrc="$workspace"/share/man -D ldflags="$LDFLAGS" \
-        -D less="$(type -P less)" -D libpth='/lib /usr/lib' \
+        -D less="$(type -P less)" -D libpth='/lib /usr/lib' -D uniq="$(type -P uniq)" -D tr="$(type -P tr)" \
         -D locincpth="$workspace/include /usr/local/include /usr/include" -D yacc="$(type -P yacc)" \
-        -D loclibpth="$workspace/lib /usr/local/lib" -D make="$(type -P make)" \
+        -D loclibpth="$workspace/lib /usr/local/lib" -D make="$(type -P make)" -D troff="$(type -P troff)" \
         -D more="$(type -P more)" -D osname="$OS" -D perl="$(type -P perl)" -D privlib="$workspace"/lib/c2man \
         -D privlibexp="$workspace"/lib/c2man -D sleep="$(type -P sleep)" -D tail="$(type -P tail)" \
         -D tar="$(type -P tar)" -D uuname="$(uname -s)" -D vi="$(type -P vi)" -D zip="$(type -P zip)"
@@ -721,9 +721,9 @@ fi
 git_ver_fn 'uclouvain/openjpeg' '1' 'T'
 if build 'openjpeg' "$g_ver"; then
     download "$g_url" "openjpeg-$g_ver.tar.gz"
-    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DCPACK_BINARY_FREEBSD=ON \
-        -DBUILD_THIRDPARTY=ON -DCPACK_SOURCE_RPM=ON -DCPACK_SOURCE_ZIP=ON -DCPACK_BINARY_IFW=ON -DBUILD_SHARED_LIBS=ON -DCPACK_BINARY_DEB=ON \
-        -DCPACK_BINARY_TBZ2=ON -DCPACK_BINARY_NSIS=ON -DCPACK_BINARY_RPM=ON -DCPACK_BINARY_TXZ=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -G Ninja -Wno-dev
+    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release,EXPORT_COMPILE_COMMANDS=ON} \
+        -DCPACK_{BINARY_DEB,BINARY_FREEBSD,BINARY_IFW,BINARY_NSIS,BINARY_RPM,BINARY_TBZ2,BINARY_TXZ,SOURCE_RPM,SOURCE_ZIP}=ON \
+        -DBUILD_{SHARED_LIBS=ON,TESTING=OFF,THIRDPARTY=ON} -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
     build_done 'openjpeg' "$g_ver"
