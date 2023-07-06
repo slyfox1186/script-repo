@@ -19,7 +19,7 @@
 ##  Added: Debian OS support for versions ( 12 / 11 / 10 )
 ##  Added: A debug variable to help with troubleshooting.
 ##
-##  Fixed:  Debian file issues
+##  Fixed: .deb file issues
 ##  Fixed:  Debian OS APT packages not found.
 ##
 ##  Updated: 07.06.23
@@ -40,7 +40,7 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-progname="${0:2}"
+progname="$0"
 script_version=2.2
 cwd="$PWD"/imagemagick-build-script
 packages="$cwd"/packages
@@ -391,6 +391,7 @@ while (($# > 0))
 do
     case "$1" in
         -h | --help)
+            clear
             usage
             echo
             exit 0
@@ -733,22 +734,21 @@ git_ver_fn 'imagemagick/imagemagick' '1' 'T'
 if build 'imageMagick' "$g_ver"; then
     download "https://codeload.github.com/imagemagick/imagemagick/tar.gz/refs/tags/$g_ver" "imagemagick-$g_ver.tar.gz"
     execute autoreconf -fi -I /usr/share/aclocal
-    ./configure \
-        --prefix="$install_dir" \
-        --enable-ccmalloc \
-        --enable-legacy-support \
-        --with-autotrace \
-        --with-dmalloc \
-        --with-fpx \
-        --with-gvc \
-        --with-gslib \
-        --with-heic \
-        --with-jemalloc \
-        --with-modules \
-        --with-perl \
-        --with-rsvg \
-        --with-tcmalloc \
-        --with-quantum-depth=16
+    ./configure --prefix="$install_dir" \
+                --enable-ccmalloc       \
+                --enable-legacy-support \
+                --with-autotrace        \
+                --with-dmalloc          \
+                --with-fpx              \
+                --with-gvc              \
+                --with-gslib            \
+                --with-heic             \
+                --with-jemalloc         \
+                --with-modules          \
+                --with-perl             \
+                --with-rsvg             \
+                --with-tcmalloc         \
+                --with-quantum-depth=16
     execute make "-j$cpu_threads"
     execute sudo make install
 fi
