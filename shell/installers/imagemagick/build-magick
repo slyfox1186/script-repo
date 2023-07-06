@@ -18,13 +18,14 @@
 ##
 ##  Added: Debian OS support for versions ( 12 / 11 / 10 )
 ##  Added: A debug variable to help with troubleshooting.
+##  Added: LCMS2 library
 ##
 ##  Fixed:  Debian file issues
 ##  Fixed:  Debian OS APT packages not found.
 ##
 ##  Updated: 07.06.23
 ##
-##  Script Version: 2.2
+##  Script Version: 2.3
 ##
 #################################################################################
 
@@ -41,7 +42,7 @@ fi
 #
 
 progname="$0"
-script_version=2.2
+script_version=2.3
 cwd="$PWD"/imagemagick-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
@@ -291,36 +292,6 @@ show_magick_version()
 
 installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
-extract_jxl_deb_fn()
-{
-    printf "\n%s\n%s\n" \
-        'Installing required Debian packages' \
-        '============================================='
-
-    cd "$packages"/libjxl-deb || exit 1
-
-    if [ -f benchmark_xl ] && [ -f cjxl ] && [ -f djxl ]; then
-        sudo cp -f benchmark_xl cjxl djxl /usr/bin
-    else
-        fail_fn 'Unable to find the jpegxl static binary files: benchmark_xl, cjxl, and djxl'
-    fi
-}
-
-install_jxl_deb_fn()
-{
-    local
-
-    if [ ! -f "$packages"/jpeg-xl.tar.gz ]; then
-        if ! curl -Lso "$packages"/jpeg-xl.tar.gz 'https://github.com/libjxl/libjxl/releases/download/v0.8.1/jxl-linux-x86_64-static-v0.8.1.tar.gz'; then
-            fail_fn 'Failed to download jpeg-xl.tar.gz'
-        fi
-        if ! tar -zxf "$packages"/jpeg-xl.tar.gz -C "$packages"/libjxl-deb --strip-components 1; then
-            fail_fn "Could not extract the jpegxl archive: $packages/jpeg-xl.tar.gz"
-        fi
-    fi
-    extract_jxl_deb_fn
-}
-
 #
 # GET THE LATEST PACKAGE VERSION USING GITHUB'S API
 #
@@ -336,6 +307,7 @@ git_1_fn()
 
     if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
+        g_ver="${g_ver#lcms}"
         g_ver="${g_ver#release-}"
         g_ver="${g_ver#ver-}"
         g_ver="${g_ver#v}"
@@ -430,6 +402,41 @@ if [ -z "$bflag" ]; then
     exit 0
 fi
 
+#
+# ANNOUNCE THE BUILD HAS BEGUN
+#
+
+printf "%s\n%s\n%s\n\n" \
+    "ImageMagick Build Script $script_version" \
+    '==========================================' \
+    "This script will use ($cpu_threads) CPU threads for parallel processing to accelerate the building speed."
+
+extract_jxl_deb_fn()
+{
+    cd "$packages"/libjxl-deb || exit 1
+    if [ -f benchmark_xl ] && [ -f cjxl ] && [ -f djxl ]; then
+        execute sudo cp -f benchmark_xl cjxl djxl /usr/bin
+    else
+        fail_fn 'Unable to find the jpegxl static binary files: benchmark_xl, cjxl, and djxl'
+    fi
+}
+
+install_jxl_deb_fn()
+{
+    if [ ! -f "$packages"/jpeg-xl.tar.gz ]; then
+        echo "$ Downloading \"https://github.com/libjxl/libjxl/releases/download/v0.8.1/jxl-linux-x86_64-static-v0.8.1.tar.gz\" saving as \"jpeg-xl.tar.gz\""
+        if ! curl -Lso "$packages"/jpeg-xl.tar.gz 'https://github.com/libjxl/libjxl/releases/download/v0.8.1/jxl-linux-x86_64-static-v0.8.1.tar.gz'; then
+            fail_fn "Failed to download: $packages/jpeg-xl.tar.gz"
+        fi
+        if ! tar -zxf "$packages"/jpeg-xl.tar.gz -C "$packages"/libjxl-deb --strip-components 1; then
+            fail_fn "Failed to extract the jpeg-xl archive: $packages/jpeg-xl.tar.gz"
+        fi
+    else
+        printf "\n%s\n\n" "$packages/jpeg-xl.tar.gz is already downloaded."
+    fi
+    extract_jxl_deb_fn
+}
+
 pkgs_fn()
 {
     pkgs=("$1" alien asciidoc autoconf automake autopoint binutils bison build-essential ccache cmake
@@ -448,7 +455,7 @@ pkgs_fn()
     if [ -n "$missing_pkgs" ]; then
         sudo apt -y install $missing_pkgs
     else
-        printf "\n%s\n\n" 'The required APT packages are already installed.'
+        printf "%s\n" 'The required APT packages are already installed.'
     fi
 }
 
@@ -508,33 +515,6 @@ case "$OS" in
 esac
 
 #
-# ANNOUNCE THE BUILD HAS BEGUN
-#
-
-printf "%s\n\n%s\n%s\n%s\n\n" \
-    'Starting the build process...' \
-    "ImageMagick Build Script $script_version" \
-    '==========================================' \
-    "This script will use ($cpu_threads) CPU threads for parallel processing to accelerate the building speed."
-
-#
-# INSTALL OFFICIAL IMAGEMAGICK LIBS
-#
-
-git_ver_fn 'imagemagick/imagemagick' '1' 'T'
-if build 'magick-libs' "$g_ver"; then
-    cd "$packages"/deb-files || exit 1
-    if ! curl -Lso "magick-libs-$g_ver.rpm" "https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-libs-$g_ver.x86_64.rpm"; then
-        fail_fn "Failed to download the magick-libs file: magick-libs-$g_ver.rpm"
-    fi
-    if ! sudo alien -d '*.rpm'; then
-        fail_fn "Alien was unable to convert \"magick-libs-$g_ver.rpm\" into a \".deb\" file."
-    fi
-    sudo dpkg -i '*.deb'
-    build_done 'magick-libs' "$g_ver"
-fi
-
-#
 # INSTALL COMPOSER TO COMPILE GRAPHVIZ
 #
 
@@ -563,6 +543,24 @@ if ! which gcc &>/dev/null; then
 fi
 export CC=gcc CXX=g++
 export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
+
+#
+# INSTALL OFFICIAL IMAGEMAGICK LIBS
+#
+
+git_ver_fn 'imagemagick/imagemagick' '1' 'T'
+if build 'magick-libs' "$g_ver"; then
+    cd "$packages"/deb-files || exit 1
+    echo "$ Downloading \"https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-libs-$g_ver.x86_64.rpm\" saving as \"magick-libs-$g_ver.rpm\""
+    if ! curl -Lso "magick-libs-$g_ver.rpm" "https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-libs-$g_ver.x86_64.rpm"; then
+        fail_fn "Failed to download the magick-libs file: magick-libs-$g_ver.rpm"
+    fi
+    if ! sudo alien -d *.rpm; then
+        fail_fn "Alien was unable to convert \"magick-libs-$g_ver.rpm\" into a \".deb\" file."
+    fi
+    sudo dpkg -i *.deb
+    build_done 'magick-libs' "$g_ver"
+fi
 
 #
 # INSTALL LIBJXL
@@ -662,12 +660,9 @@ fi
 if build 'webp' 'git'; then
     download_git 'https://chromium.googlesource.com/webm/libwebp' 'webp-git'
     execute autoreconf -fi
-    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
-        -DCMAKE_C_FLAGS_RELEASE='-g -O3 -DNDEBUG -march=native' -DWEBP_BUILD_EXTRAS=OFF -DWEBP_BUILD_LIBWEBPMUX=OFF \
-        -DCMAKE_INSTALL_INCLUDEDIR=include -DWEBP_LINK_STATIC=OFF -DWEBP_BUILD_GIF2WEBP=OFF -DWEBP_BUILD_IMG2WEBP=OFF \
-        -DWEBP_BUILD_DWEBP=ON -DWEBP_BUILD_CWEBP=ON -DWEBP_BUILD_ANIM_UTILS=OFF -DWEBP_BUILD_WEBPMUX=OFF \
-        -DWEBP_ENABLE_SWAP_16BIT_CSP=OFF -DWEBP_BUILD_WEBPINFO=OFF -DZLIB_INCLUDE_DIR=/usr/include -DWEBP_BUILD_VWEBP=OFF \
-        -G Ninja -Wno-dev
+    execute cmake -B build -DCMAKE_{BUILD_TYPE=Release,INSTALL_PREFIX="$workspace",C_FLAGS_RELEASE='-g -O3 -DNDEBUG -march=native'} \
+        -DBUILD_SHARED_LIBS=ON -DWEBP_BUILD_{CWEBP,DWEBP}=ON -DWEBP_{ENABLE_SWAP_16BIT_CSP,LINK_STATIC}=OFF -DZLIB_INCLUDE_DIR=/usr/include \
+        -DWEBP_BUILD_{ANIM_UTILS,EXTRAS,GIF2WEBP,IMG2WEBP,LIBWEBPMUX,VWEBP,WEBPINFO,WEBPMUX}=OFF -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
     build_done 'webp' 'git'
@@ -729,6 +724,16 @@ if build 'openjpeg' "$g_ver"; then
     build_done 'openjpeg' "$g_ver"
 fi
 
+git_ver_fn 'mm2/Little-CMS' '1' 'T'
+if build 'lcms2' "$g_ver"; then
+    download "https://codeload.github.com/mm2/Little-CMS/tar.gz/refs/tags/lcms$g_ver" "lcms2-$g_ver.tar.gz"
+    execute ./autogen.sh
+    execute ./configure --prefix=/usr --enable-static --disable-shared
+    execute make "-j$cpu_threads"
+    execute sudo make install
+    build_done 'lcms2' "$g_ver"
+fi
+
 #
 # BEGIN IMAGEMAGICK BUILD
 #
@@ -748,11 +753,16 @@ if build 'imageMagick' "$g_ver"; then
         --with-gslib \
         --with-heic \
         --with-jemalloc \
+        --with-lcms \
         --with-modules \
         --with-perl \
         --with-rsvg \
         --with-tcmalloc \
-        --with-quantum-depth=16
+        --with-quantum-depth=16 \
+        CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include" \
+        LCMS2_LIBS='-L/usr/lib -llcms2' \
+        LIBS='-lm -lpthread' \
+        PKG_CONFIG="$(type -P pkg-config)"
     execute make "-j$cpu_threads"
     execute sudo make install
 fi
