@@ -19,7 +19,7 @@
 ##  Added: Debian OS support for versions ( 12 / 11 / 10 )
 ##  Added: A debug variable to help with troubleshooting.
 ##
-##  Fixed: .deb file issues
+##  Fixed:  Debian file issues
 ##  Fixed:  Debian OS APT packages not found.
 ##
 ##  Updated: 07.06.23
