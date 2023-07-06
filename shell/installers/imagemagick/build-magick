@@ -19,7 +19,7 @@
 ##  Added: Debian OS support for versions ( 12 / 11 / 10 )
 ##  Added: A debug variable to help with troubleshooting.
 ##
-##  Fixed: .deb file issues
+##  Fixed:  Debian file issues
 ##  Fixed:  Debian OS APT packages not found.
 ##
 ##  Updated: 07.06.23
@@ -408,6 +408,7 @@ do
             if [[ "$1" == '--cleanup' || "$1" =~ '-c' && ! "$1" =~ '--' ]]; then
                 cflag='-c'
                 cleanup_fn
+                exit_fn
             fi
             shift
             ;;
@@ -421,7 +422,9 @@ done
 
 if [ -z "$bflag" ]; then
     if [ -z "$cflag" ]; then
+        clear
         usage
+        echo
         exit 1
     fi
     exit 0
@@ -734,21 +737,22 @@ git_ver_fn 'imagemagick/imagemagick' '1' 'T'
 if build 'imageMagick' "$g_ver"; then
     download "https://codeload.github.com/imagemagick/imagemagick/tar.gz/refs/tags/$g_ver" "imagemagick-$g_ver.tar.gz"
     execute autoreconf -fi -I /usr/share/aclocal
-    ./configure --prefix="$install_dir" \
-                --enable-ccmalloc       \
-                --enable-legacy-support \
-                --with-autotrace        \
-                --with-dmalloc          \
-                --with-fpx              \
-                --with-gvc              \
-                --with-gslib            \
-                --with-heic             \
-                --with-jemalloc         \
-                --with-modules          \
-                --with-perl             \
-                --with-rsvg             \
-                --with-tcmalloc         \
-                --with-quantum-depth=16
+    ./configure \
+        --prefix="$install_dir" \
+        --enable-ccmalloc \
+        --enable-legacy-support \
+        --with-autotrace \
+        --with-dmalloc \
+        --with-fpx \
+        --with-gvc \
+        --with-gslib \
+        --with-heic \
+        --with-jemalloc \
+        --with-modules \
+        --with-perl \
+        --with-rsvg \
+        --with-tcmalloc \
+        --with-quantum-depth=16
     execute make "-j$cpu_threads"
     execute sudo make install
 fi
