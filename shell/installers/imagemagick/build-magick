@@ -6,19 +6,21 @@
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
 ##  Purpose: Builds ImageMagick 7 from source code obtained
-##          from the official ImageMagick GitHub repository.
+##          from it's official ImageMagick GitHub repository.
 ##
-##  Function: ImageMagick is the leading open source command line
+##  Function: ImageMagick is the leading open-source command line
 ##           image processor. It can blur, sharpen, warp, reduce
-##           file size, ect... The possibilities are vast and wide.
+##           file size, etc... The possibilities are vast and wide.
 ##
 ##  Method: The script will search GitHub for the latest released version
-##         and upon execution, will import the info into the script for use
+##          of each package and upon execution will import the version into the
+##          script for use
 ##
 ##  Added: Debian OS Support ( 12 / 11 / 10 )
+##  Added: debug variable
 ##
 ##  Fixed: .deb file issues
-##  Fixed:  debian OS APT packages not found
+##  Fixed:  Debian OS APT packages not found
 ##
 ##  Updated: 07.06.23
 ##
@@ -759,7 +761,7 @@ fi
 sudo ldconfig 2>/dev/null
 # SHOW THE NEWLY INSTALLED MAGICK VERSION
 show_magick_version
-# PROMPT THE USER TO CLEANUP THE BUILD FILES
+# PROMPT THE USER TO CLEAN UP THE BUILD FILES
 cleanup_fn
 # SHOW THE EXIT MESSAGE
 exit_fn
