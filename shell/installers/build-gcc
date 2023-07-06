@@ -139,7 +139,7 @@ CPPFLAGS='-I/usr/lib/gcc/x86_64-linux-gnu/12/include -I/usr/local/include -I/usr
 latest=false
 repo=https://github.com/slyfox1186/script-repo
 # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
-debug=ON
+debug=OFF
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
