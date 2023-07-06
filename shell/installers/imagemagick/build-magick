@@ -6,7 +6,7 @@
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
 ##  Purpose: Builds ImageMagick 7 from source code obtained
-##          from it's official ImageMagick GitHub repository.
+##          from its official ImageMagick GitHub repository.
 ##
 ##  Function: ImageMagick is the leading open-source command line
 ##           image processor. It can blur, sharpen, warp, reduce
@@ -119,7 +119,7 @@ fail_fn()
 {
     printf "\n\n%s\n\n%s\n\n%s\n\n" \
         "$1" \
-        'Please create a support ticket at the address below' \
+        'Please create a support ticket at the address below:' \
         "$script_repo/issues"
     exit 1
 }
@@ -239,12 +239,12 @@ download()
     if [ -n "$3" ]; then
         if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
             sudo rm "$target_file"
-            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please run the script again."
+            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please rerun the script."
         fi
     else
         if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
             sudo rm "$target_file"
-            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please run the script again."
+            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please rerun the script."
         fi
     fi
 
@@ -275,7 +275,7 @@ download_git()
             fail_fn "The script failed to clone \"$target_dir\" twice and will now exit the build."
         fi
     else
-        echo -e "Succesfully cloned: $target_dir\\n"
+        echo -e "Successfully cloned: $target_dir\\n"
     fi
 
     cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
@@ -511,7 +511,7 @@ printf "%s\n\n%s\n%s\n%s\n\n" \
     'Starting the build process...' \
     "ImageMagick Build Script $script_version" \
     '==========================================' \
-    "This script will use ($cpu_threads) cpu cores for parallel processing to accelerate the build speed."
+    "This script will use ($cpu_threads) CPU cores for parallel processing to accelerate the build speed."
 
 #
 # INSTALL OFFICIAL IMAGEMAGICK LIBS
@@ -523,8 +523,8 @@ if build 'magick-libs' "$g_ver"; then
     if ! curl -Lso "magick-libs-$g_ver.rpm" "https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-libs-$g_ver.x86_64.rpm"; then
         fail_fn 'Failed to download the magick-libs file.'
     fi
-    sudo alien -d *.rpm
-    sudo dpkg -i *.deb
+    sudo alien -d '*.rpm'
+    sudo dpkg -i '*.deb'
     build_done 'magick-libs' "$g_ver"
 fi
 
@@ -553,7 +553,7 @@ fi
 #
 
 if ! which gcc &>/dev/null; then
-    fail_fn 'Please install "gcc" and run the script again.'
+    fail_fn 'Please install "gcc" and rerun the script.'
 fi
 export CC=gcc CXX=g++
 export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
