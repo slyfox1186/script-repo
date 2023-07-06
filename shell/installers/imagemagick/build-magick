@@ -45,10 +45,9 @@ script_version=2.1
 cwd="$PWD"/imagemagick-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
-script_repo=https://github.com/slyfox1186/script-repo
 install_dir=/usr/local
-# CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
-debug=OFF
+script_repo=https://github.com/slyfox1186/script-repo
+debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
 # CREATE OUTPUT DIRECTORIES
