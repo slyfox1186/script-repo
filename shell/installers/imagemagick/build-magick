@@ -515,7 +515,7 @@ printf "%s\n\n%s\n%s\n%s\n\n" \
     'Starting the build process...' \
     "ImageMagick Build Script $script_version" \
     '==========================================' \
-    "This script will use ($cpu_threads) CPU cores for parallel processing to accelerate the building speed."
+    "This script will use ($cpu_threads) CPU threads for parallel processing to accelerate the building speed."
 
 #
 # INSTALL OFFICIAL IMAGEMAGICK LIBS
