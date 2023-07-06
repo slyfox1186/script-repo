@@ -69,7 +69,7 @@ bash <(curl -sSL https://7z.optimizethis.net)
     - Other Debian-style distros may work as well
 
 ```bash
-bash <(curl -sSL https://magick.optimizethis.net) --build --latest
+bash <(curl -sSL https://magick.optimizethis.net) --build
 ```
 ------
 
