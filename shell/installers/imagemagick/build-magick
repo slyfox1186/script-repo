@@ -6,25 +6,25 @@
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
 ##  Purpose: Builds ImageMagick 7 from source code obtained
-##          from its official ImageMagick GitHub repository.
+##           from the official ImageMagick GitHub repository.
 ##
 ##  Function: ImageMagick is the leading open-source command line
-##           image processor. It can blur, sharpen, warp, reduce
-##           file size, etc... The possibilities are vast and wide.
+##            image processor. It can blur, sharpen, warp, reduce
+##            file size, etc... The possibilities are vast and wide.
 ##
 ##  Method: The script will search GitHub for the latest released version
 ##          of each package and upon execution will import the version into the
-##          script for use
+##          script for use.
 ##
-##  Added: Debian OS Support ( 12 / 11 / 10 )
-##  Added: debug variable
+##  Added: Debian OS support for versions ( 12 / 11 / 10 )
+##  Added: A debug variable to help with troubleshooting.
 ##
 ##  Fixed: .deb file issues
-##  Fixed:  Debian OS APT packages not found
+##  Fixed:  Debian OS APT packages not found.
 ##
 ##  Updated: 07.06.23
 ##
-##  Script Version: 2.1
+##  Script Version: 2.2
 ##
 #################################################################################
 
@@ -41,7 +41,7 @@ fi
 #
 
 progname="${0:2}"
-script_version=2.1
+script_version=2.2
 cwd="$PWD"/imagemagick-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
@@ -511,7 +511,7 @@ printf "%s\n\n%s\n%s\n%s\n\n" \
     'Starting the build process...' \
     "ImageMagick Build Script $script_version" \
     '==========================================' \
-    "This script will use ($cpu_threads) CPU cores for parallel processing to accelerate the build speed."
+    "This script will use ($cpu_threads) CPU cores for parallel processing to accelerate the building speed."
 
 #
 # INSTALL OFFICIAL IMAGEMAGICK LIBS
@@ -519,12 +519,14 @@ printf "%s\n\n%s\n%s\n%s\n\n" \
 
 git_ver_fn 'imagemagick/imagemagick' '1' 'T'
 if build 'magick-libs' "$g_ver"; then
-    cd "$packages/deb-files" || exit 1
+    cd "$packages"/deb-files || exit 1
     if ! curl -Lso "magick-libs-$g_ver.rpm" "https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-libs-$g_ver.x86_64.rpm"; then
-        fail_fn 'Failed to download the magick-libs file.'
+        fail_fn "Failed to download the magick-libs file: magick-libs-$g_ver.rpm"
     fi
-    sudo alien -d '*.rpm'
-    sudo dpkg -i '*.deb'
+    if ! sudo alien -d *.rpm; then
+        fail_fn "Alien was unable to convert \"magick-libs-$g_ver.rpm\" into a \".deb\" file."
+    fi
+    sudo dpkg -i "$packages/deb-files"/*.deb
     build_done 'magick-libs' "$g_ver"
 fi
 
