@@ -527,10 +527,10 @@ if build 'magick-libs' "$g_ver"; then
     if ! curl -Lso "magick-libs-$g_ver.rpm" "https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-libs-$g_ver.x86_64.rpm"; then
         fail_fn "Failed to download the magick-libs file: magick-libs-$g_ver.rpm"
     fi
-    if ! sudo alien -d *.rpm; then
+    if ! sudo alien -d '*.rpm'; then
         fail_fn "Alien was unable to convert \"magick-libs-$g_ver.rpm\" into a \".deb\" file."
     fi
-    sudo dpkg -i "$packages/deb-files"/*.deb
+    sudo dpkg -i '*.deb'
     build_done 'magick-libs' "$g_ver"
 fi
 
