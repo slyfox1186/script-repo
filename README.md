@@ -136,15 +136,15 @@ bash <(curl -fsSL https://bookworm-scripts.optimizethis.net)
 ## Install apt and ppa packages
   - **What I consider to be core apt packages or "must haves" that everyone should consider installing**
 
-**Ubuntu Jammy 22.04.02**
+**Ubuntu 22.04**
 ```bash
 bash <(curl -fsSL pkgs.sh https://jammy-pkgs.optimizethis.net)
 ```
-**Ubuntu Focal 20.04.05**
+**Ubuntu 20.04**
 ```bash
 bash <(curl -fsSL pkgs.sh https://focal-pkgs.optimizethis.net)
 ```
-**Debian 10 / 11**
+**Debian 10 / 11 / 12**
 ```bash
 bash <(curl -fsSL pkgs.sh https://debian-pkgs.optimizethis.net))
 ```
@@ -166,9 +166,10 @@ bash <(curl -fsSL https://download.optimizethis.net)
 
 ## Install [Tilix](https://github.com/gnunn1/tilix) Advanced Terminal with custom color themes
   - Dracula theme included + many others
-  - Supported OS
-    - Ubuntu 22.04
-    - Other Debian-style distros may work as well
+  - **Supported OS:**
+    - **Debian** - 10 / 11
+    - **Ubuntu** - 18.04 / 20.04 / 22.04
+    - **Other** Debian-style distros may work as well
   - To install with no other actions required execute the first command, otherwise use the second command to
     only download the files without executing the scripts immediately.
      - Open the file `install-tilix` and read the instructions at the top of the script to easily customize the
