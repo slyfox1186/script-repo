@@ -119,15 +119,15 @@ bash <(curl -sSL https://dl-tools.optimizethis.net)
     - `.bashrc`
     - `.bash_aliases`
     - `.bash_functions`
-#### Ubuntu 23.04 (Lunar)
+#### Ubuntu 23.04
 ```bash
 bash <(curl -sSL https://lunar-scripts.optimizethis.net)
 ```
-#### Ubuntu 22.04 (Jammy), 20.04 (Focal), 18.04 (Bionic)
+#### Ubuntu 22.04 / 20.04 / 18.04
 ```bash
 bash <(curl -sSL https://jammy-scripts.optimizethis.net)
 ```
-#### Debian 10 (Buster) / 11 (Bullseye) / 12 (Bookworm)
+#### Debian 10 / 11 / 12
 ```bash
 bash <(curl -sSL https://bookworm-scripts.optimizethis.net)
 ```
