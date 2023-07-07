@@ -151,7 +151,7 @@ main_menu()
     local answer
 echo -ne "
 $(ColorGreen '1)')  7-Zip Release v23.01
-$(ColorGreen '2)')  cURL, WGET
+$(ColorGreen '2)')  cURL, WGET & Aria2c
 $(ColorGreen '3)')  CMake, Meson, Ninja, and Golang
 $(ColorGreen '4)')  ImageMagick 7
 $(ColorGreen '5)')  FFmpeg (This is a large script, be prepared to sit back for a while)
