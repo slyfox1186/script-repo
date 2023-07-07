@@ -25,8 +25,9 @@ bash <(curl -fsSL https://build-menu.optimizethis.net)
 ------
 
 ## Optimize the APT package manager by installing extra mirrors
-  - Ubuntu - Lunar 23.04, Jammy 22.04, Focal 20.04, Bionic 18.04
-  - Debian - Bullseye 11, Bookworm 12
+  - **Supported OS:**
+    - Ubuntu - 18.04 / 20.04 / 22.04 / 23.04
+    - Debian - 11 / 12
 
 **Warning! This will overwrite your files!**
 ```bash
@@ -41,9 +42,9 @@ bash <(curl -fsSL https://mirrors-menu.optimizethis.net)
   - **For personal/testing use only**
   - **Check the top of the script for build [results](https://github.com/slyfox1186/script-repo/blob/main/shell/installers/build-gcc)**
   - **Supported OS:**
-    - **Debian** - 10 / 11
-    - **Ubuntu** - 18.04 / 20.04 / 22.04
-    - **Other**  - Debian-style distros may work as well
+    - Debian - 10 / 11
+    - Ubuntu - 18.04 / 20.04 / 22.04
+    - Other  - Debian-based distros may work as well
 
 #### For native Linux systems (Windows WSL not working)
 ```bash
@@ -65,9 +66,9 @@ bash <(curl -fsSL https://7z.optimizethis.net)
   - **Tested on Windows WSL 2 Debian/Ubuntu**
   - **[Optimize JPG Images](https://github.com/slyfox1186/imagemagick-optimize-jpg)**
   - **Supported OS:**
-    - **Debian** - 10 / 11
-    - **Ubuntu** - 18.04 / 20.04 / 22.04
-    - **Other**  - Debian-style distros may work as well
+    - Debian - 10 / 11
+    - Ubuntu - 18.04 / 20.04 / 22.04
+    - Other  - Debian-based distros may work as well
 
 ```bash
 bash <(curl -fsSL https://magick.optimizethis.net) --build
@@ -78,9 +79,9 @@ bash <(curl -fsSL https://magick.optimizethis.net) --build
   - **Compiles the latest updates from source code by issuing API calls to each repositories backend**
   - **The CUDA SDK Toolkit which unlocks Hardware Acceleration is available during the installation to make things as easy as possible**
   - **Supported OS:**
-    - **Debian** - 10 / 11
-    - **Ubuntu** - 18.04 / 20.04 / 22.04
-    - **Other**  - Debian-style distros may work as well
+    - Debian - 10 / 11
+    - Ubuntu - 18.04 / 20.04 / 22.04
+    - Other  - Debian-based distros may work as well
 
 **With GPL and <ins>non-free</ins> libraries: https://ffmpeg.org/legal.html**
 ```bash
@@ -90,9 +91,9 @@ bash <(curl -fsSL https://build-ffmpeg.optimizethis.net) --build --latest
 
 ## Install [CMake](https://cmake.org/), [Ninja](https://github.com/ninja-build/ninja), [Meson](https://github.com/mesonbuild/meson) & [Golang](https://github.com/golang/go)
   - **Supported OS:**
-    - **Debian** - 10 / 11
-    - **Ubuntu** - 18.04 / 20.04 / 22.04
-    - **Other**  - Debian-style distros may work as well
+    - Debian - 10 / 11
+    - Ubuntu - 18.04 / 20.04 / 22.04
+    - Other  - Debian-based distros may work as well
 
 ```bash
 bash <(curl -fsSL https://build-tools.optimizethis.net)
@@ -102,9 +103,9 @@ bash <(curl -fsSL https://build-tools.optimizethis.net)
 ## Install [cURL](https://github.com/curl/curl), [WGET](https://ftp.gnu.org/gnu/wget) & [ARIA2C](https://github.com/aria2/aria2)
 #### Aria2 max connections increased from 16 to 64
   - **Supported OS:**
-    - **Debian** - 10 / 11
-    - **Ubuntu** - 18.04 / 20.04 / 22.04
-    - **Other**  - Debian-style distros may work as well
+    - Debian - 10 / 11
+    - Ubuntu - 18.04 / 20.04 / 22.04
+    - Other  - Debian-based distros may work as well
 
 #### List of Libraries activated during build: [Libs](https://github.com/slyfox1186/script-repo/blob/main/shell/installers/dl-tools/dl-tools-libs-list.txt)
 
@@ -167,9 +168,9 @@ bash <(curl -fsSL https://download.optimizethis.net)
 ## Install [Tilix](https://github.com/gnunn1/tilix) Advanced Terminal with custom color themes
   - Dracula theme included + many others
   - **Supported OS:**
-    - **Debian** - 10 / 11
-    - **Ubuntu** - 18.04 / 20.04 / 22.04
-    - **Other**  - Debian-style distros may work as well
+    - Debian - 10 / 11
+    - Ubuntu - 18.04 / 20.04 / 22.04
+    - Other  - Debian-based distros may work as well
   - To install with no other actions required execute the first command, otherwise use the second command to
     only download the files without executing the scripts immediately.
      - Open the file `install-tilix` and read the instructions at the top of the script to easily customize the
@@ -184,9 +185,9 @@ wget -qN - -i https://build-tilix.optimizethis.net/
 
 ## Install [Python3](https://devguide.python.org/getting-started/setup-building/#get-the-source-code) v3.11.4
   - **Supported OS:**
-    - **Debian** - 10 / 11
-    - **Ubuntu** - 18.04 / 20.04 / 22.04
-    - **Other**  - Debian-style distros may work as well
+    - Debian - 10 / 11
+    - Ubuntu - 18.04 / 20.04 / 22.04
+    - Other  - Debian-based distros may work as well
 
 ```bash
 bash <(curl -fsSL https://python3.optimizethis.net)
@@ -195,9 +196,9 @@ bash <(curl -fsSL https://python3.optimizethis.net)
 
 ## Install the [WSL2](https://github.com/microsoft/WSL2-Linux-Kernel) latest kernel release from [Linux](https://github.com/torvalds/linux)
   - **Supported OS:**
-    - **Debian** - 10 / 11
-    - **Ubuntu** - 18.04 / 20.04 / 22.04
-    - **Other**  - Debian-style distros may work as well
+    - Debian - 10 / 11
+    - Ubuntu - 18.04 / 20.04 / 22.04
+    - Other  - Debian-based distros may work as well
 
 ```bash
 bash <(curl -fsSL https://wsl2.optimizethis.net)
