@@ -1,6 +1,6 @@
 Windows Registry Editor Version 5.00
 	
-;ADD/RESTORE THE TEXT "- Shortcut" BEING APPENDED TO THE END OF ALL CREATED SHORTCUTS
+; ADD/RESTORE THE TEXT "- Shortcut" BEING APPENDED TO THE END OF ALL CREATED SHORTCUTS
 
 [HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\NamingTemplates]
 "ShortcutNameTemplate"=-
