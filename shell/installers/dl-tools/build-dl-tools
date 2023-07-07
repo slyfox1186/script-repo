@@ -9,30 +9,46 @@
 ##  - Debian 10 / 11 / 12
 ##  - Ubuntu 22.04 / 20.04 / 18.04
 ##
-##  Updated: 06.24.23
+##  Updated: 07.06.23
 ##
 ##  Added the ability to specify suffixes before compiling
 ##  Added aria2c with custom max connections set from 16 to 64
 ##
-##  Script version: 3.0
+##  Fixed: WGET bad download URL
+##  Fixed: The success_fn displaying the new versions
+##
+##  Script version: 3.1
 ##
 ########################################################################
 
 clear
 
-script_ver='3.0'
+script_ver=3.1
 cwd="$PWD"/dltools-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
-CFLAGS='-g -O3 -march=native -ffunction-sections -fdata-sections -fno-unwind-tables'
-CFLAGS+=' -fno-asynchronous-unwind-tables -flto -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
+CFLAGS='-g -O3 -march=native -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
 LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L/usr/lib/x86_64-linux-gnu"
-LDFLAGS+=' -L/usr/lib/gcc/x86_64-linux-gnu -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/lib'
+LDFLAGS+=' -L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/gcc/x86_64-linux-gnu -L/usr/lib -L/lib'
 CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include"
-cert_dir='/etc/ssl/certs'
-pem_file='cacert-2023-05-30.pem'
-repo='https://github.com/slyfox1186/script-repo'
-debug=OFF
+cert_dir=/etc/ssl/certs
+pem_file=cacert-2023-05-30.pem
+pem_target="$cert_dir/$pem_file"
+repo=https://github.com/slyfox1186/script-repo
+debug=ON
+
+# DETERMINE WHICH DOWNLOADER IS AVAILABLE
+if ! which curl &>/dev/null; then
+    dl_tool='wget --show-progress -cqO'
+else
+    dl_tool='curl -Lso'
+fi
+
+#
+# CREATE OUTPUT DIRECTORIES
+#
+
+mkdir -p "$packages" "$workspace"
 
 #
 # ASK THE USER TO ADD SUFFIXES TO WGET AND CURL BINARIES
@@ -42,40 +58,31 @@ add_suffix_fn()
 {
     clear
     read -p 'Enter the suffix to add to WGET: ' wget_suffix
-    read -p 'Enter the suffix to add to curl: ' curl_suffix
+    read -p 'Enter the suffix to add to cURL: ' curl_suffix
+    read -p 'Enter the suffix to add to aria2c: ' aria2c_suffix
     clear
 }
 
-prompt_suffix_choice_fn()
-{
-    printf "%s\n\n%s\n\n%s\n%s\n\n" \
-        'Do you want to add a suffix to the cURL and WGET binaries?' \
-        'Example: curl will output as curl-dev if you input "-dev" (leave off the quotes)' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' suffix_choice
-    clear
-        
-    case "$suffix_choice" in
-        1)      add_suffix_fn;;
-        2)      printf "%s\n\n" 'Continuing script';;
-        *)      prompt_suffix_choice_fn;;
-    esac
-}
-prompt_suffix_choice_fn
+printf "%s\n\n%s\n\n%s\n%s\n\n" \
+    'Do you want to add a suffix to the cURL and WGET binaries?' \
+    'Example: curl will output as curl-dev if you input "-dev" (leave off the quotes)' \
+    '[1] Yes' \
+    '[2] No'
+read -p 'Your choices are (1 or 2): ' suffix_choice
+clear
 
-#
-# CREATE OUTPUT DIRECTORIES
-#
-
-mkdir -p "$packages" "$workspace"
+case "$suffix_choice" in
+    1)      add_suffix_fn;;
+    2)      printf "%s\n\n" 'Continuing script';;
+    *)      prompt_suffix_choice_fn;;
+esac
 
 #
 # GET CPU CORE COUNT FOR PARALLEL PROCESSING
 #
 
-if [ -f '/proc/cpuinfo' ]; then
-    cpu_threads="$(grep -c ^processor '/proc/cpuinfo')"
+if [ -f /proc/cpuinfo ]; then
+    cpu_threads="$(grep -c ^processor /proc/cpuinfo)"
 else
     cpu_threads="$(nproc --all)"
 fi
@@ -87,7 +94,7 @@ fi
 printf "%s\n%s\n%s\n" \
     "dltools build script - v$script_ver" \
     '===============================' \
-    "This script will utilize ($cpu_threads) cpu threads for parallel processing to accelerate the build process."
+    "This script will utilize ($cpu_threads) CPU threads for parallel processing to accelerate the build process."
 
 #
 # CREATE GLOBAL VARIABLES
@@ -103,8 +110,6 @@ $HOME/.local/bin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/games:\
-/usr/local/games:\
 /usr/local/cuda/bin:\
 /usr/lib/python3/dist-packages:\
 /snap/bin\
@@ -114,15 +119,17 @@ export PATH
 PKG_CONFIG_PATH="\
 $workspace/lib64/pkgconfig:\
 $workspace/lib/pkgconfig:\
+$workspace/share/pkgconfig:\
+$workspace/lib/x86_64-linux-gnu/pkgconfig:\
+$workspace/usr/lib/pkgconfig:\
+/lib/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/lib/pkgconfig:\
+/usr/local/share/pkgconfig:\
+/usr/share/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/i386-linux-gnu/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/share/pkgconfig\
+/usr/lib/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -135,7 +142,7 @@ fail_fn()
     printf "\n%s\n%s\n%s\n\n" \
         "$1" \
         'You can enable the script'\''s debugging feature by changing the variable "debug" to "ON"' \
-        "Please create a bug report: $repo/issues"
+        "To report a bug visit: $repo/issues"
     exit 1
 }
 
@@ -154,30 +161,48 @@ cleanup_fn()
         '[1] Yes' \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' my_choice
+
     case "$my_choice" in
-    1)
-        sudo rm -fr "$cwd"
-        exit_fn
-        ;;
-    2)
-        exit_fn
-        ;;
-    *)
-        read -p 'Bad user input. Press enter to try again'
-        echo
-        cleanup_fn
-        ;;
+        1)      sudo rm -fr "$cwd";;
+        2)      clear;;
+        *)
+                read -p 'Bad user input. Refreshing script...'
+                sleep 2
+                unset my_choice
+                clear
+                cleanup_fn
+                ;;
     esac
 }
 
 success_fn()
 {
-    local curl_ver wget_ver
-    curl_ver="$(curl-"$1" --version | grep -Eo '[0-9\.]+' | sed -n 1p)"
-    wget_ver="$(wget --version | grep -Eo '[0-9\.]+' | sed -n 1p)"
-    printf "\n%s\n\n" "The updated cURL version is: v$curl_ver"
-    printf "\n%s\n\n" "The updated WGET version is: v$wget_ver"
-    sleep 4
+    local aria2c_ver curl_ver wget_ver
+
+    if [ -n "$wget_suffix" ]; then
+        wget_ver="wget$wget_suffix"
+    else
+        wget_ver=wget
+    fi
+    if [ -n "$curl_suffix" ]; then
+        curl_ver="curl$curl_suffix"
+    else
+        curl_ver=curl
+    fi
+    if [ -n "$aria2c_suffix" ]; then
+        aria2c_ver="aria2c$aria2c_suffix"
+    else
+        aria2c_ver=aria2c
+    fi
+
+    wget_ver="$($wget_ver --version | grep -Eo '[0-9\.]+' | sed -n 1p)"
+    curl_ver="$($curl_ver --version | grep -Eo '[0-9\.]+' | sed -n 1p)"
+    aria2c_ver="$($aria2c_ver --version | grep -Eo '[0-9\.]+$' | sed -n 1p)"
+
+    printf "\n%s\n\n" "The updated versions are:"
+    printf "%s\n" "WGET: $wget_ver"
+    printf "%s\n" "cURL: $curl_ver"
+    printf "%s\n\n" "Aria2c: $aria2c_ver"
 }
 
 #
@@ -191,15 +216,15 @@ git_1_fn()
     github_repo="$1"
     github_url="$2"
 
-    if curl_cmd="$(curl -m '10' -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
+    if curl_cmd="$(curl -m 10 -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
-        g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url' 2>/dev/null)"
         g_ver="${g_ver#cares-}"
         g_ver="${g_ver#nghttp2 v}"
         g_ver="${g_ver#nghttp3 v}"
         g_ver="${g_ver#OpenSSL }"
         g_ver="${g_ver#release-}"
         g_ver="${g_ver#v}"
+        g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url' 2>/dev/null)"
     fi
 
 }
@@ -216,17 +241,12 @@ git_ver_fn()
     fi
 
     case "$v_flag" in
-        T)      gv_url='tags' ;;
-        R)      gv_url='releases' ;;
-        *)      fail_fn 'tags and releases were not among the URL options.' ;;
+        T)      gv_url=tags;;
+        R)      gv_url=releases;;
+        *)      fail_fn 'Failed to pass "tags" and "releases" to the command: curl_cmd.';;
     esac
 
-    case "$v_tag" in
-        1)      url_tag='git_1_fn';;
-        *)      fail_fn 'Could not detect the $v_tag variable inside the git_ver_fn() function';;
-    esac
-
-    "$url_tag" "$v_url" "$gv_url" 2>/dev/null
+    git_1_fn "$v_url" "$gv_url" 2>/dev/null
 }
 
 execute()
@@ -267,8 +287,8 @@ download()
     else
         echo "Downloading \"$dl_url\" saving as \"$dl_file\""
         if ! curl -Lso "$target_file" "$dl_url"; then
-            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 5 seconds..."
-            sleep 5
+            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
+            sleep 10
             if ! curl -Lso "$target_file" "$dl_url"; then
                 fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
             fi
@@ -346,15 +366,9 @@ build()
     return 0
 }
 
-build_done()
-{
-    echo "$2" > "$packages/$1.done"
-}
+build_done() { echo "$2" > "$packages/$1.done"; }
 
-installed()
-{
-    return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
-}
+installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
 #
 # INSTALL REQUIRED APT PACKAGES
@@ -369,10 +383,10 @@ pkgs_fn()
           graphviz jq lcov libaria2-0 libaria2-0-dev libc-ares-dev libcppunit-dev libcunit1-dev libcurl4
           libcurl4-gnutls-dev libdmalloc-dev libec-dev libedit-dev libev-dev libevent-dev libexiv2-27
           libexpat1-dev libgcc-12-dev libgcrypt20-dev libgexiv2-2 libgimp2.0 libgmp3-dev libgmp-dev
-          libgnutls28-dev libgpg-error-dev libgtk-4-doc libicu-dev libjemalloc-dev libkrb5-3 libldap2-dev
-          libldap-dev liblttng-ust-dev liblzma-dev libmbedtls-dev libnghttp2-dev libntlm0-dev libparted-dev
-          libpng-dev libpsl-dev librtmp-dev libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev libtinfo5
-          libtinfo-dev libtool libunistring-dev libunwind8 libuv1-dev libxml2-dev libzstd-dev m4 nettle-dev
+          libgnutls28-dev libgpg-error-dev libgtk-4-doc libicu-dev libticonv-dev libjemalloc-dev libkrb5-3
+          libldap2-dev libldap-dev liblttng-ust-dev liblzma-dev libmbedtls-dev libnghttp2-dev libntlm0-dev
+          libparted-dev libpng-dev libpsl-dev librtmp-dev libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev
+          libtinfo5 libtinfo-dev libtool libunistring-dev libunwind8 libuv1-dev libxml2-dev libzstd-dev m4 nettle-dev
           openjdk-17-jdk-headless openssh-server pkg-config python3 python3-dev python3-numpy python3-packaging
           python3-pip python3-pytest python3-setuptools python3-wheel re2c rsync sudo unzip wget zip zlib1g
           zlib1g-dev)
@@ -388,11 +402,9 @@ pkgs_fn()
         printf "\n%s\n%s\n" \
             'Installing required apt packages' \
             '================================================'
-        for i in "$missing_pkgs"; do
-            echo "\$ sudo apt -y install $i"
-            sudo apt -y install $i
-            echo
-        done
+        sudo apt -y install $missing_pkgs
+    else
+        printf "%s\n" 'The required APT packages are already installed.'
     fi
 }
 
@@ -414,23 +426,18 @@ ubuntu_os_check_fn()
 
 linux_ver()
 {
-    if [ -f '/etc/os-release' ]; then
-        . '/etc/os-release'
+    if [ -f /etc/os-release ]; then
+        source /etc/os-release
         OS="$NAME"
-        VER="$VERSION_ID"
-    elif "$(type -P lsb_release)" &>/dev/null; then
-        OS=$(lsb_release -si)
-        VER=$(lsb_release -sr)
-    elif [ -f '/etc/lsb-release' ]; then
-        . '/etc/lsb-release'
+    elif type lsb_release >/dev/null 2>&1; then
+        OS="$(lsb_release -si)"
+    elif [ -f /etc/lsb-release ]; then
+        source /etc/lsb-release
         OS="$DISTRIB_ID"
-        VER="$DISTRIB_RELEASE"
-    elif [ -f '/etc/debian_version' ]; then
-        OS='Debian'
-        VER="$(cat '/etc/debian_version')"
+    elif [ -f /etc/debian_version ]; then
+        OS=Debian
     else
         OS="$(uname -s)"
-        VER="$(uname -r)"
     fi
 }
 linux_ver
@@ -448,28 +455,31 @@ case "$OS" in
     *)                      fail_fn 'Could not detect the OS architecture.';;
 esac
 
+#
 # SET THE C & C++ COMPILERS
+#
+
+if ! which gcc &>/dev/null; then
+    fail_fn 'Please install "gcc" to continue.'
+fi
 export CC=gcc CXX=g++
+
+#
 # SET THE COMPILER OPTIMIZATION FLAGS TO TUNE THE BUILD FOR THE SPECIFIC COMPUTER RUNNING THE SCRIPT
+#
+
 export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 #
 # INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
 #
 
-if [ ! -f "$cert_dir/$pem_file" ]; then
+if [ ! -f "$pem_target" ]; then
     printf "%s\n%s\n\n" \
         'Download the latest security certificate' \
         '================================================'
     execute $dl_tool "$packages/$pem_file" "https://curl.se/ca/$pem_file"
-    execute sudo cp -f "$packages/$pem_file" "$cert_dir/$pem_file"
-fi
-
-# DETERMINE WHICH DOWNLOADER IS AVAILABLE
-if which curl &>/dev/null; then
-    dl_tool='curl -Lso'
-else
-    dl_tool='wget -cqO'
+    execute sudo cp -f "$packages/$pem_file" "$pem_target"
 fi
 
 #
@@ -479,9 +489,7 @@ fi
 git_ver_fn 'madler/zlib' '1' 'T'
 if build 'zlib' "$g_ver"; then
     download "$g_url" "zlib-$g_ver.tar.gz"
-    mkdir build
-    cd build || exit 1
-    execute ../configure --prefix="$workspace"             \
+    execute ./configure --prefix="$workspace"             \
                          --libdir="$workspace"/lib         \
                          --includedir="$workspace"/include \
                          --sharedlibdir="$workspace"/lib
@@ -495,34 +503,16 @@ git_ver_fn 'akheron/jansson' '1' 'T'
 if build 'jansson' "$g_ver"; then
     download "$g_url" "jansson-$g_ver.tar.gz"
     execute autoreconf -fi
-    mkdir build
-    cd build || exit 1
-    execute ../configure --prefix="$workspace" \
-                         --disable-shared
+    execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     execute make clean
     build_done 'jansson' "$g_ver"
 fi
 
-if build 'libiconv' '1.17'; then
-    download 'https://ftp.gnu.org/gnu/libiconv/libiconv-1.17.tar.gz'
-    mkdir build
-    cd build || exit 1
-    execute ../configure --prefix="$workspace" \
-                         --disable-shared
-    execute make "-j$cpu_threads"
-    execute make install
-    execute make clean
-    execute libtool --finish "$workspace"/lib
-    build_done 'libiconv' '1.17'
-fi
-
 if build 'gsasl' '2.2.0'; then
     download 'https://ftp.gnu.org/gnu/gsasl/gsasl-2.2.0.tar.gz' 'gsasl-2.2.0.tar.gz'
-    mkdir build
-    cd build || exit 1
-    execute ../configure --prefix="$workspace"               \
+    execute ./configure --prefix="$workspace"               \
                          --disable-shared                    \
                          --disable-year2038                  \
                          --enable-gtk-doc                    \
@@ -541,9 +531,7 @@ if build 'c-ares' "$g_ver"; then
     download "https://codeload.github.com/c-ares/c-ares/tar.gz/refs/tags/cares-$g_tag" "c-ares-$g_ver.tar.gz"
     execute autoupdate
     execute autoreconf -fi
-    mkdir build
-    cd build || exit 1
-    execute ../configure --prefix="$workspace" \
+    execute ./configure --prefix="$workspace" \
                          --disable-shared      \
                          --disable-warnings    \
                          --enable-optimize="$CXXFLAGS"
@@ -557,10 +545,7 @@ git_ver_fn 'pcre2project/pcre2' '1' 'T'
 if build 'pcre2' "$g_ver"; then
     download "$g_url" "pcre2-$g_ver.tar.gz"
     execute ./autogen.sh
-    mkdir build
-    cd build || exit 1
-    execute ../configure --prefix="$workspace" \
-                        --disable-shared
+    execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     execute make clean
@@ -571,9 +556,7 @@ git_ver_fn 'jemalloc/jemalloc' '1' 'T'
 if build 'jemalloc' "$g_ver"; then
     download "https://codeload.github.com/jemalloc/jemalloc/tar.gz/refs/tags/$g_ver" "jemalloc-$g_ver.tar.gz"
     execute ./autogen.sh
-    mkdir build
-    cd build || exit 1
-    execute ../configure --prefix="$workspace" \
+    execute ./configure --prefix="$workspace" \
                          --enable-autogen      \
                          --enable-lazy-lock    \
                          --enable-static       \
@@ -596,7 +579,7 @@ if build 'brotli' "$g_ver"; then
     download "$g_url" "brotli-$g_ver.tar.gz"
     mkdir build
     cd build || exit 1
-    execute ../configure-cmake --prefix="$workspace"
+    execute ./configure-cmake --prefix="$workspace"
     execute make "-j$cpu_threads"
     execute make test
     execute make install
@@ -614,14 +597,12 @@ fi
 #
 
 if build 'wget' 'latest'; then
-    download 'https://ftp.gnu.org/gnu/wget/wget-latest.tar.gz'
-    if "$(which update-ca-certificates)" &>/dev/null; then
+    download 'https://ftp.gnu.org/gnu/wget/wget-latest.tar.lz'
+    if which update-ca-certificates &>/dev/null; then
         execute sudo update-ca-certificates
     fi
     execute autoconf
-    mkdir build
-    cd build || exit 1
-    ../configure --prefix=/usr/local \
+    ./configure --prefix=/usr/local \
                  --enable-threads    \
                  --with-cares        \
                  --with-metalink     \
@@ -649,22 +630,20 @@ fi
 
 git_ver_fn 'curl/curl' '1' 'R'
 if build 'curl' "$g_ver"; then
-    download "https://curl.se/download/curl-$g_ver.tar.xz" "curl-$g_ver.tar.gz"
+    download "https://curl.se/download/curl-$g_ver.tar.xz"
     curl_disable_opts=(--disable-{get-easy-options,shared,verbose,versioned-symbols})
     curl_enable_opts=(--enable-{alt-svc,ares="$workspace",cookies})
     curl_enable_opts+=(--enable-{crypto-auth-dateparse,dict,dnsshuffle,doh,file})
     curl_enable_opts+=(--enable-{ftp,gopher,headers-api,hsts,http,http-auth,imap})
     curl_enable_opts+=(--enable-{ipv6,ldap,ldaps,libcurl-option,libgcc,manual,mime})
-    curl_enable_opts+=(--enable-{mqtt,netrc,ntlm,ntlm-wb='/usr/bin/ntlm_auth'})
+    curl_enable_opts+=(--enable-{mqtt,netrc,ntlm,ntlm-wb=/usr/bin/ntlm_auth})
     curl_enable_opts+=(--enable-{openssl-auto-load-config,optimize,pop3,progress-meter})
     curl_enable_opts+=(--enable-{proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static,telnet})
     curl_enable_opts+=(--enable-{tftp,threaded-resolver,tls-srp,unix-sockets,websockets})
     curl_with_opts=(--with-{gnutls=/usr/include,libssh2,nghttp2=/usr/include})
-    curl_with_opts+=(--with-{ca-bundle="$cert_dir/$pem_file",ca-fallback,ca-path="$cert_dir",secure-transport})
-    autoreconf -fi
-    mkdir build
-    cd build || exit 1
-    ../configure --prefix=/usr/local        \
+    curl_with_opts+=(--with-{ca-bundle="$pem_target",ca-fallback,ca-path="$cert_dir",secure-transport})
+    execute autoreconf -fi
+    ./configure --prefix=/usr/local        \
                  "${curl_disable_opts[@]}"  \
                  "${curl_enable_opts[@]}"   \
                  "${curl_with_opts[@]}" "$csuffix" "$http3_flag"
@@ -677,33 +656,37 @@ fi
 # COMPILE ARIA2 FROM THE SOURCE CODE
 #
 
+# ADD A SUFFIX TO WGET IF THE USER SPECIFIED ONE
+if [ -n "$aria2c_suffix" ]; then
+    asuffix="--program-suffix=$aria2c_suffix"
+fi
+
+# ARIA2C FAILS TO BUILD USING GCC
 export CC=clang CXX=clang++
 
 if build 'aria2' '1.36.0'; then
     download 'https://github.com/aria2/aria2/releases/download/release-1.36.0/aria2-1.36.0.tar.xz'
     # INCREASE THE MAX NUMBER OF CONNECTIONS FROM 16 TO 64
     sed -i 's/1, 16/1, 64/g' src/OptionHandlerFactory.cc
-    mkdir build
-    cd build || exit 1
-    execute ../configure --prefix=/usr/local                \
-                         --disable-nls                      \
-                         --disable-shared                   \
-                         --disable-werror                   \
-                         --enable-libaria2                  \
-                         --enable-static                    \
-                         --with-libuv                       \
-                         --with-jemalloc                    \
-                         --with-ca-bundle="$pem_target"     \
-                         PKG_CONFIG="$(type -P pkg-config)"
+    ./configure --prefix=/usr/local        \
+                         --disable-nls     \
+                         --disable-shared  \
+                         --disable-werror  \
+                         --enable-libaria2 \
+                         --enable-static   \
+                         --with-libuv      \
+                         --with-jemalloc   \
+                         --with-ca-bundle="$pem_target" "$asuffix"
     execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'aria2' '1.36.0'
 fi
 
-sudo ldconfig &>/dev/null
-
+# LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE VERSION COMMANDS MIGHT NOT WORK
+sudo ldconfig 2>/dev/null
 # ALERT THE USER THAT THE BUILD HAS FINISHED
-success_fn "$g_ver"
-
+success_fn
 # CLEANUP LEFTOVER FILES
 cleanup_fn
+# DISPLAY EXIT MESSAGE
+exit_fn
