@@ -794,7 +794,6 @@ pkgs_fn()
     else
         echo 'The required APT packages are already installed.'
     fi
-    unset missing_pkgs
 }
 
 ffmpeg_install_test()
