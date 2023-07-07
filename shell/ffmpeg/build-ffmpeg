@@ -61,7 +61,7 @@ EXTRALIBS='-ldl -lpthread -lm -lz'
 ffmpeg_libraries=()
 latest=false
 repo=https://github.com/slyfox1186/script-repo
-debug=ON # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
 # CREATE THE OUTPUT DIRECTORIES
