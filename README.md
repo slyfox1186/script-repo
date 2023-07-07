@@ -12,6 +12,7 @@
  -   [x] Batch
  -   [x] Powershell
  -   [x] Shell / Bash
+ -   [x] Visual Basic / VBS
  -   [x] Windows Registry
  -   [x] XML
 ------
