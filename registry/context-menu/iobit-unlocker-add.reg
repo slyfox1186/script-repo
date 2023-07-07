@@ -8,6 +8,7 @@ Windows Registry Editor Version 5.00
 "MUIVerb"="IObit Unlocker"
 "Icon"="imageres.dll,-1304"
 "Position"="Middle"
+"Extended"=-
 "SeparatorBefore"=""
 "SeparatorAfter"=""
 "SubCommands"=""
@@ -97,6 +98,7 @@ Windows Registry Editor Version 5.00
 "MUIVerb"="IObit Unlocker"
 "Icon"="imageres.dll,-1304"
 "Position"="Middle"
+"Extended"=-
 "SeparatorBefore"=""
 "SeparatorAfter"=""
 "SubCommands"=""
