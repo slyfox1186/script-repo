@@ -20,7 +20,7 @@
 ## Build Menu
   - All of the below Linux installers are located in one menu.
 ```bash
-bash <(curl -sSL https://build-menu.optimizethis.net)
+bash <(curl -fsSL https://build-menu.optimizethis.net)
 ```
 ------
 
@@ -30,7 +30,7 @@ bash <(curl -sSL https://build-menu.optimizethis.net)
 
 **Warning! This will overwrite your files!**
 ```bash
-bash <(curl -sSL https://mirrors-menu.optimizethis.net)
+bash <(curl -fsSL https://mirrors-menu.optimizethis.net)
 ```
 ------
 
@@ -47,7 +47,7 @@ bash <(curl -sSL https://mirrors-menu.optimizethis.net)
 
 #### For native Linux systems (Windows WSL not working)
 ```bash
-bash <(curl -sSL https://gcc.optimizethis.net)
+bash <(curl -fsSL https://gcc.optimizethis.net)
 ```
 
 ## Install [7-Zip](www.7-zip.org/download.html)
@@ -56,7 +56,7 @@ bash <(curl -sSL https://gcc.optimizethis.net)
     - Processor - **Linux + ARM**
 ### v23.01 Release
 ```bash
-bash <(curl -sSL https://7z.optimizethis.net)
+bash <(curl -fsSL https://7z.optimizethis.net)
 ```
 ------
 
@@ -70,7 +70,7 @@ bash <(curl -sSL https://7z.optimizethis.net)
     - Other Debian-style distros may work as well
 
 ```bash
-bash <(curl -sSL https://magick.optimizethis.net) --build
+bash <(curl -fsSL https://magick.optimizethis.net) --build
 ```
 ------
 
@@ -84,7 +84,7 @@ bash <(curl -sSL https://magick.optimizethis.net) --build
 
 **With GPL and <ins>non-free</ins> libraries: https://ffmpeg.org/legal.html**
 ```bash
-bash <(curl -sSL https://build-ffmpeg.optimizethis.net) --build --latest
+bash <(curl -fsSL https://build-ffmpeg.optimizethis.net) --build --latest
 ```
 ------
 
@@ -95,7 +95,7 @@ bash <(curl -sSL https://build-ffmpeg.optimizethis.net) --build --latest
     - Other Debian-style distros may work as well
 
 ```bash
-bash <(curl -sSL https://build-tools.optimizethis.net)
+bash <(curl -fsSL https://build-tools.optimizethis.net)
 ````
 ------
 
@@ -109,7 +109,7 @@ bash <(curl -sSL https://build-tools.optimizethis.net)
 #### List of Libraries activated during build: [Libs](https://github.com/slyfox1186/script-repo/blob/main/shell/installers/dl-tools/dl-tools-libs-list.txt)
 
 ```bash
-bash <(curl -sSL https://dl-tools.optimizethis.net)
+bash <(curl -fsSL https://dl-tools.optimizethis.net)
 ````
 ------
 
@@ -121,15 +121,15 @@ bash <(curl -sSL https://dl-tools.optimizethis.net)
     - `.bash_functions`
 #### Ubuntu 23.04
 ```bash
-bash <(curl -sSL https://lunar-scripts.optimizethis.net)
+bash <(curl -fsSL https://lunar-scripts.optimizethis.net)
 ```
 #### Ubuntu 22.04 / 20.04 / 18.04
 ```bash
-bash <(curl -sSL https://jammy-scripts.optimizethis.net)
+bash <(curl -fsSL https://jammy-scripts.optimizethis.net)
 ```
 #### Debian 10 / 11 / 12
 ```bash
-bash <(curl -sSL https://bookworm-scripts.optimizethis.net)
+bash <(curl -fsSL https://bookworm-scripts.optimizethis.net)
 ```
 ------
 
@@ -138,22 +138,22 @@ bash <(curl -sSL https://bookworm-scripts.optimizethis.net)
 
 **Ubuntu Jammy 22.04.02**
 ```bash
-bash <(curl -sSL pkgs.sh https://jammy-pkgs.optimizethis.net)
+bash <(curl -fsSL pkgs.sh https://jammy-pkgs.optimizethis.net)
 ```
 **Ubuntu Focal 20.04.05**
 ```bash
-bash <(curl -sSL pkgs.sh https://focal-pkgs.optimizethis.net)
+bash <(curl -fsSL pkgs.sh https://focal-pkgs.optimizethis.net)
 ```
 **Debian 10 / 11**
 ```bash
-bash <(curl -sSL pkgs.sh https://debian-pkgs.optimizethis.net))
+bash <(curl -fsSL pkgs.sh https://debian-pkgs.optimizethis.net))
 ```
 ------
 
 ## Change your network settings to Static or DHCP with netplan.io
   - The user will be prompted to enter the network settings
 ```bash
-bash <(curl -sSL https://netplan.optimizethis.net)
+bash <(curl -fsSL https://netplan.optimizethis.net)
 ```
 ------
 
@@ -161,7 +161,7 @@ bash <(curl -sSL https://netplan.optimizethis.net)
   - Download APT packages to your pc by entering a space-separated list of values.
   - Input a single entry or an entire list of APT packages and the script will download its respective .deb file to the current directory.
 ```bash
-bash <(curl -sSL https://download.optimizethis.net)
+bash <(curl -fsSL https://download.optimizethis.net)
 ```
 
 ## Install [Tilix](https://github.com/gnunn1/tilix) Advanced Terminal with custom color themes
@@ -188,7 +188,7 @@ wget -qN - -i https://build-tilix.optimizethis.net/
     - Other Debian-style distros may work as well
 
 ```bash
-bash <(curl -sSL https://python3.optimizethis.net)
+bash <(curl -fsSL https://python3.optimizethis.net)
 ````
 ------
 
@@ -199,7 +199,7 @@ bash <(curl -sSL https://python3.optimizethis.net)
     - Other Debian-style distros may work as well
 
 ```bash
-bash <(curl -sSL https://wsl2.optimizethis.net)
+bash <(curl -fsSL https://wsl2.optimizethis.net)
 ````
 ------
 
@@ -217,7 +217,7 @@ curl -Lso squid.sh https://squid-proxy.optimizethis.net; sudo bash squid.sh
     - GNOME Videos (Totem)
     - Bomi
 ```bash
-bash <(curl -sSL https://players.optimizethis.net)
+bash <(curl -fsSL https://players.optimizethis.net)
 ```
 ------
 
@@ -232,7 +232,7 @@ bash <(curl -sSL https://players.optimizethis.net)
     - hfs/hfs 2
     - Reiser 4/reiserfs
 ```bash
-bash <(curl -sSL https://gparted.optimizethis.net)
+bash <(curl -fsSL https://gparted.optimizethis.net)
 ```
 ------
 
@@ -299,7 +299,7 @@ curl.exe -Lso remove-copy-as-path.reg https://rm-copy-path.optimizethis.net && c
    
 2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
 ```
-curl.exe -Lso features.bat https://win-features.optimizethis.net && call features.bat && DEL /Q features.bat
+curl.exe -Lso features.bat https://win-features.optimizethis.net && CALL features.bat && DEL /Q features.bat
 ```
 ------
 
@@ -307,5 +307,5 @@ curl.exe -Lso features.bat https://win-features.optimizethis.net && call feature
   1. **Run cmd.exe as administrator**
   2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
 ```
-curl.exe -sSL https://wsl.optimizethis.net > open-wsl-here.bat && call open-wsl-here.bat
+curl.exe -fsSL https://wsl.optimizethis.net > open-wsl-here.bat && call open-wsl-here.bat
 ```
