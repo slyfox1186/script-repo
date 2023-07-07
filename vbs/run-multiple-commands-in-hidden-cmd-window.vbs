@@ -1,4 +1,4 @@
-' RUN MULTIPLE COMMANDS IN A HIDDEN WINDOW
+' RUN MULTIPLE COMMANDS IN A HIDDEN CMD WINDOW
 
 If WScript.Arguments.length = 0 Then
 Set oShell1 = CreateObject("Shell.Application")
