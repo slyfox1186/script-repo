@@ -51,7 +51,7 @@ pkgs_fn()
           libjemalloc-dev liblz-dev liblzma-dev liblzo2-dev libncurses5-dev libnet-nslookup-perl libnuma-dev libperl-dev libpstoedit-dev \
           libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev librust-malloc-buf-dev libsdl-pango-dev libsox-dev libsoxr-dev \
           libssl-dev libtalloc-dev libtool libtool-bin libvmmalloc-dev libvmmalloc1 libzstd-dev libzzip-dev lien linux-headers-generic \
-          linux-source lm-sensors lsb-core lshw lvm2 lzma-dev make man-db mercurial meson mono-devel nano net-tools netplan.io network-manager \
+          linux-source lm-sensors lsb-core lshw lvm2 lzma-dev make man-db mercurial meson nano net-tools netplan.io network-manager \
           nilfs-tools npm ntfs-3g nvme-cli openssh-client openssh-server openssl patchutils pbuilder pcregrep php-cli php-sqlite3 pipenv plank \
           ppa-purge pristine-tar psensor python3 python3-pip quilt reiser4progs reiserfsprogs rpm ruby-all-dev samba shellcheck smbclient sox \
           sqlite3 subversion synaptic texinfo tk-dev tofrodos trash-cli udftools unzip uuid-dev wget xclip xfsprogs xsel yasm)
