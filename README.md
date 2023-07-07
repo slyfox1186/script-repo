@@ -115,9 +115,11 @@ bash <(curl -fsSL https://mirrors-menu.optimizethis.net)
 ## Add custom user scripts to the user's home directory
   - **Warning! This will overwrite your files!**
   - **Files Included**
-    - `.bashrc`
-    - `.bash_aliases`
-    - `.bash_functions`
+    ```bash
+    .bashrc
+    .bash_aliases
+    .bash_functions
+    ```
 #### Ubuntu 23.04
 ```bash
 bash <(curl -fsSL https://lunar-scripts.optimizethis.net)
