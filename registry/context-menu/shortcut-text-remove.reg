@@ -1,0 +1,7 @@
+Windows Registry Editor Version 5.00
+
+; REMOVE THE TEXT "- Shortcut"  FROM BEING APPENDED TO THE END OF ALL CREATED SHORTCUTS
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\NamingTemplates]
+"ShortcutNameTemplate"="\"%s.lnk\""
+
