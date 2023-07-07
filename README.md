@@ -89,8 +89,20 @@ bash <(curl -fsSL https://build-tools.optimizethis.net)
 ````
 ------
 
+## Install [ARIA2C](https://github.com/aria2/aria2)
+  - Aria2 max connections increased from 16 to 64
+  - **Supported OS:**
+    - Debian - 10 / 11
+    - Ubuntu - 18.04 / 20.04 / 22.04
+    - Other  - Debian-based distros may work as well
+
+```bash
+bash <(curl -fsSL aria2c.optimizethis.net)
+````
+------
+
 ## Install [cURL](https://github.com/curl/curl), [WGET](https://ftp.gnu.org/gnu/wget) & [ARIA2C](https://github.com/aria2/aria2)
-#### Aria2 max connections increased from 16 to 64
+  - Aria2 max connections increased from 16 to 64
   - **Supported OS:**
     - Debian - 10 / 11
     - Ubuntu - 18.04 / 20.04 / 22.04
