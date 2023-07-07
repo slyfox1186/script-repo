@@ -1,0 +1,5 @@
+Windows Registry Editor Version 5.00
+
+; REMOVE PERMANENTLY DELETE FILES
+
+[-HKEY_CLASSES_ROOT\AllFilesystemObjects\shell\Windows.PermanentDelete]
