@@ -63,11 +63,13 @@ $(ColorBlue 'Choose an option:') "
     case "$answer" in
         1)
             bash <(curl -sSL https://lunar-scripts.optimizethis.net)
+            unset answer
             clear
             main_menu
             ;;
         2)
             bash <(curl -sSL https://jammy-scripts.optimizethis.net)
+            unset answer
             clear
             main_menu
             ;;
