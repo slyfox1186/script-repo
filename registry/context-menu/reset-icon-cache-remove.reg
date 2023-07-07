@@ -1,0 +1,7 @@
+Windows Registry Editor Version 5.00
+
+; REMOVE RESET ICON CACHE
+
+[-HKEY_CLASSES_ROOT\AllFileSystemObjects\shell\ResetIconCache]
+[-HKEY_CLASSES_ROOT\DesktopBackground\shell\ResetIconCache]
+[-HKEY_CLASSES_ROOT\Directory\Background\shell\ResetIconCache]
