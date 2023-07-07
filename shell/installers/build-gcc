@@ -162,8 +162,8 @@ mkdir -p "$packages" "$workspace"/venv/bin/python "$workspace"/venv/bin/pip
 #
 
 PKG_CONFIG_PATH="\
-$workspace/lib/pkgconfig:\
 $workspace/lib64/pkgconfig:\
+$workspace/lib/pkgconfig:\
 $workspace/share/pkgconfig:\
 $workspace/lib/x86_64-pc-linux-gnu/pkgconfig:\
 $workspace/lib/x86_64-linux-gnu/pkgconfig:\
