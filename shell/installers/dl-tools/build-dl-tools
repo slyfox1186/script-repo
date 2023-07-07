@@ -35,7 +35,7 @@ cert_dir=/etc/ssl/certs
 pem_file=cacert-2023-05-30.pem
 pem_target="$cert_dir/$pem_file"
 repo=https://github.com/slyfox1186/script-repo
-debug=ON
+debug=OFF
 
 # DETERMINE WHICH DOWNLOADER IS AVAILABLE
 if ! which curl &>/dev/null; then
