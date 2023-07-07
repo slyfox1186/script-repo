@@ -44,7 +44,7 @@ bash <(curl -fsSL https://mirrors-menu.optimizethis.net)
   - **Supported OS:**
     - Debian - 10 / 11
     - Ubuntu - 18.04 / 20.04 / 22.04
-    - Other   - Debian-based distros may work as well
+    - Other  - Debian-based distros may work as well
 
 #### For native Linux systems (Windows WSL not working)
 ```bash
