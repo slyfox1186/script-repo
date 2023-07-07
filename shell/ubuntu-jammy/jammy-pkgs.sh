@@ -65,11 +65,10 @@ install_apt_fn()
           libraqm-dev libraw-dev librsvg2-dev librust-jemalloc-sys-dev librust-malloc-buf-dev libsdl-pango-dev
           libsox-dev libssl-dev libtalloc-dev libtbbmalloc2 libtool libtool-bin libzstd-dev libzzip-dev
           linux-headers-generic linux-source lm-sensors lsb-core lshw lvm2 lzma-dev mainline make man-db mercurial
-          meson mono-devel nano nasm neofetch netplan.io net-tools network-manager ninja-build ntfs2btrfs ntfs-3g
-          nvme-cli openssh-client openssh-server openssl patchutils pbuilder pcregrep pipenv plank ppa-purge preload
-          pristine-tar psensor python3-pip quilt reiser4progs reiserfsprogs rpm ruby-all-dev samba shellcheck smbclient
-          sqlite3 subversion synaptic texinfo tofrodos trash-cli tty-share udftools unzip usb-creator-gtk uuid-dev wget
-          xclip xsel yasm)
+          meson nano nasm neofetch netplan.io net-tools network-manager ninja-build ntfs2btrfs ntfs-3g nvme-cli
+          openssh-client openssh-server openssl patchutils pbuilder pcregrep pipenv plank ppa-purge preload pristine-tar
+          psensor python3-pip quilt reiser4progs reiserfsprogs rpm ruby-all-dev samba shellcheck smbclient sqlite3 subversion
+          synaptic texinfo tofrodos trash-cli tty-share udftools unzip usb-creator-gtk uuid-dev wget xclip xsel yasm)
 
     for pkg in ${pkgs[@]}
     do
