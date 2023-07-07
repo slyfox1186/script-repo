@@ -1,0 +1,6 @@
+Windows Registry Editor Version 5.00
+
+; DISABLE VERBOSE LOGIN
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System]
+"VerboseStatus"=-
