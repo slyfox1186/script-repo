@@ -1,0 +1,6 @@
+Windows Registry Editor Version 5.00
+
+; REMOVE WINDOWS INSTALLER IN SAFE MODE
+
+[-HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SafeBoot\Network\MSIServer]
+[-HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\MSIServer]
