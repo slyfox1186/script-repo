@@ -97,22 +97,19 @@ bash <(curl -fsSL https://build-tools.optimizethis.net)
     - Other  - Debian-based distros may work as well
 
 #### List of Libraries activated during build: [Libs](https://github.com/slyfox1186/script-repo/blob/main/shell/installers/dl-tools/dl-tools-libs-list.txt)
+```bash
+bash <(curl -fsSL https://dl-tools.optimizethis.net)
+````
 ------
 
-## Optimize the APT package manager by installing extra mirrors
+## Add custom mirrors to: /etc/apt/sources.list
   - **Supported OS:**
     - Ubuntu - 18.04 / 20.04 / 22.04 / 23.04
     - Debian - 11 / 12
-
 **Warning! This will overwrite your files!**
 ```bash
 bash <(curl -fsSL https://mirrors-menu.optimizethis.net)
 ```
-------
-
-```bash
-bash <(curl -fsSL https://dl-tools.optimizethis.net)
-````
 ------
 
 ## Add custom user scripts to the user's home directory
