@@ -24,17 +24,6 @@ bash <(curl -fsSL https://build-menu.optimizethis.net)
 ```
 ------
 
-## Optimize the APT package manager by installing extra mirrors
-  - **Supported OS:**
-    - Ubuntu - 18.04 / 20.04 / 22.04 / 23.04
-    - Debian - 11 / 12
-
-**Warning! This will overwrite your files!**
-```bash
-bash <(curl -fsSL https://mirrors-menu.optimizethis.net)
-```
-------
-
 ## Install [GCC](https://github.com/gcc-mirror/gcc) 11.4.0, 12.3.0, & 13.1.0
 
   - **Sourced from the official GitHub repository**
@@ -108,6 +97,18 @@ bash <(curl -fsSL https://build-tools.optimizethis.net)
     - Other  - Debian-based distros may work as well
 
 #### List of Libraries activated during build: [Libs](https://github.com/slyfox1186/script-repo/blob/main/shell/installers/dl-tools/dl-tools-libs-list.txt)
+------
+
+## Optimize the APT package manager by installing extra mirrors
+  - **Supported OS:**
+    - Ubuntu - 18.04 / 20.04 / 22.04 / 23.04
+    - Debian - 11 / 12
+
+**Warning! This will overwrite your files!**
+```bash
+bash <(curl -fsSL https://mirrors-menu.optimizethis.net)
+```
+------
 
 ```bash
 bash <(curl -fsSL https://dl-tools.optimizethis.net)
