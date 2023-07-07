@@ -587,8 +587,7 @@ esac
 # SET THE C & C++ COMPILERS
 #
 
-export CC=gcc
-export CXX=g++
+export CC=gcc CXX=g++
 export CFLAGS="$CFLAGS"
 export CXXFLAGS="$CXXFLAGS"
 export CPPFLAGS="$CPPFLAGS"
