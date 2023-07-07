@@ -1,0 +1,9 @@
+Windows Registry Editor Version 5.00
+
+; DISABLE WINDOWS ERROR REPORTING
+
+[HKEY_CURRENT_USER\Software\Policies\Microsoft\Windows\Windows Error Reporting]
+"Disabled"=dword:00000001
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting]
+"Disabled"=dword:00000001
+
