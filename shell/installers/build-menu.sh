@@ -23,9 +23,9 @@ function box_out_banner()
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
     echo " ${line}"
-    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
-    printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
-    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
+    printf '|'; echo -n "$space"; printf "%s\n" '|';
+    printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3; printf "%s\n" ' |';
+    printf '|'; echo -n "$space"; printf "%s\n" '|';
     echo " ${line}"
     tput sgr 0
 }
@@ -37,8 +37,8 @@ function box_out_banner()
 szip_release_fn() { bash <(curl -sSL https://7z.optimizethis.net); }
 dl_tools_fn() { bash <(curl -sSL https://dl-tools.optimizethis.net); }
 build_tools_fn() { bash <(curl -sSL https://build-tools.optimizethis.net); }
-magick_fn() { bash <(curl -sSL https://magick.optimizethis.net) --build --latest; }
-ffmpeg_fn() { bash <(curl -sSL https://build-ffmpeg.optimizethis.net) --build --enable-gpl-and-non-free --latest; }
+magick_fn() { bash <(curl -sSL https://magick.optimizethis.net) --build; }
+ffmpeg_fn() { bash <(curl -sSL https://build-ffmpeg.optimizethis.net) --build --latest; }
 go_fn() { bash <(curl -sSL https://go.optimizethis.net); }
 gparted_fn() { bash <(curl -sSL https://gparted.optimizethis.net); }
 deb_dl_fn() { bash <(curl -sSL https://download.optimizethis.net); }
@@ -102,36 +102,46 @@ $(ColorBlue 'Choose an option:') "
     clear
     case "$answer" in
         1)
-            curl -Lso mirrors https://lunar-mirrors.optimizethis.net; sudo bash mirrors
+            curl -Lso mirrors.sh https://lunar-mirrors.optimizethis.net; sudo bash mirrors.sh
+            unset answer
             clear
             main_menu
             ;;
         2)
-            curl -Lso mirrors https://jammy-mirrors.optimizethis.net; sudo bash mirrors
+            curl -Lso mirrors.sh https://jammy-mirrors.optimizethis.net; sudo bash mirrors.sh
+            unset answer
             clear
             main_menu
             ;;
         3)
-            curl -Lso mirrors https://focal-mirrors.optimizethis.net; sudo bash mirrors
+            curl -Lso mirrors.sh https://focal-mirrors.optimizethis.net; sudo bash mirrors.sh
+            unset answer
             clear
             main_menu
             ;;
         4)
-            curl -Lso mirrors https://bionic-mirrors.optimizethis.net; sudo bash mirrors
+            curl -Lso mirrors.sh https://bionic-mirrors.optimizethis.net; sudo bash mirrors.sh
+            unset answer
             clear
             main_menu
             ;;
         5)
-            curl -Lso mirrors https://bullseye-mirrors.optimizethis.net; sudo bash mirrors
+            curl -Lso mirrors.sh https://bullseye-mirrors.optimizethis.net; sudo bash mirrors.sh
+            unset answer
             clear
             main_menu
             ;;
         6)
-            curl -Lso mirrors https://bookworm-mirrors.optimizethis.net; sudo bash mirrors
+            curl -Lso mirrors.sh https://bookworm-mirrors.optimizethis.net; sudo bash mirrors.sh
+            unset answer
             clear
             main_menu
             ;;
-        0)  main_menu;;
+        0)
+            unset answer
+            clear
+            main_menu
+            ;;
         *)
             printf "%s\n\n" 'Bad user input. Reloading menu...'
             sleep 2
@@ -150,15 +160,15 @@ main_menu()
 {
     local answer
 echo -ne "
-$(ColorGreen '1)')  7-Zip Release v23.01
-$(ColorGreen '2)')  cURL, WGET & Aria2c
-$(ColorGreen '3)')  CMake, Meson, Ninja, and Golang
-$(ColorGreen '4)')  ImageMagick 7
+$(ColorGreen '1)')  7-Zip v23.01
+$(ColorGreen '2)')  cURL, WGET and Aria2c (Latest releases available)
+$(ColorGreen '3)')  CMake, Meson, Ninja, and GoLang (Latest releases available)
+$(ColorGreen '4)')  ImageMagick 7 (Latest release available)
 $(ColorGreen '5)')  FFmpeg (This is a large script, be prepared to sit back for a while)
-$(ColorGreen '6)')  GParted with all extra packages
+$(ColorGreen '6)')  GParted (Includes all support libraries)
 $(ColorGreen '7)')  Video Players
-$(ColorGreen '8)')  Custom User Scripts
-$(ColorGreen '9)')  Extra Source Mirrors
+$(ColorGreen '8)')  Custom User Scripts [ .bashrc | .bash_aliases | .bash_functions ] (Warning! This will overwrite your files!)
+$(ColorGreen '9)')  Extra Source Mirrors [ /etc/apt/sources.list ] (Warning! This will overwrite your files!)
 $(ColorGreen '10)') APT to Debian Package Downloader
 $(ColorGreen '0)')  Exit
 $(ColorBlue 'Choose an option:') "
@@ -167,56 +177,67 @@ $(ColorBlue 'Choose an option:') "
     case "$answer" in
         1)
             szip_release_fn
+            unset answer
             clear
             main_menu
             ;;
         2)
             dl_tools_fn
+            unset answer
             clear
             main_menu
             ;;
         3)
             build_tools_fn
+            unset answer
             clear
             main_menu
             ;;
         4)
             magick_fn
+            unset answer
             clear
             main_menu
             ;;
         5)
             ffmpeg_fn
+            unset answer
             clear
             main_menu
             ;;
         6)
             gparted_fn
+            unset answer
             clear
             main_menu
             ;;
         7)
             video_fn
+            unset answer
             clear
             main_menu
             ;;
         8)
             custom_user_scripts
+            unset answer
             clear
             main_menu
             ;;
         9)
             extra_mirrors
+            unset answer
             clear
             main_menu
             ;;
         10)
             deb_dl_fn
+            unset answer
             clear
             main_menu
             ;;
         0)
             sudo rm "$0"
+            unset answer
             clear
             exit 0
             ;;
