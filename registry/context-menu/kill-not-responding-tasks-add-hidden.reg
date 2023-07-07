@@ -1,0 +1,45 @@
+Windows Registry Editor Version 5.00
+
+; ADD KILL NOT RESPONDING TASKS
+
+; [ ALLFILESYSTEMOBJECTS ]
+
+[HKEY_CLASSES_ROOT\AllFileSystemObjects\shell\KillNotResponding]
+"@"="Kill Not Responding"
+"MUIVerb"=-
+"Icon"="imageres.dll,-98"
+"Position"="Bottom"
+"Extended"=""
+"SeparatorBefore"=""
+"SeparatorAfter"=""
+
+[HKEY_CLASSES_ROOT\AllFileSystemObjects\shell\KillNotResponding\command]
+@="cmd.exe /D /K \"TASKKILL /F /FI \"STATUS EQ NOT RESPONDING\" /IM \"*\" /T & TIMEOUT 5 & EXIT\""
+
+; [ DESKTOPBACKGROUND ]
+
+[HKEY_CLASSES_ROOT\DesktopBackground\shell\KillNotResponding]
+"@"="Kill Not Responding"
+"MUIVerb"=-
+"Icon"="imageres.dll,-98"
+"Position"="Bottom"
+"Extended"=""
+"SeparatorBefore"=""
+"SeparatorAfter"=""
+
+[HKEY_CLASSES_ROOT\DesktopBackground\shell\KillNotResponding\command]
+@="cmd.exe /D /K \"TASKKILL /F /FI \"STATUS EQ NOT RESPONDING\" /IM \"*\" /T & TIMEOUT 5 & EXIT\""
+
+; [ DIRECTORY ]
+
+[HKEY_CLASSES_ROOT\Directory\Background\shell\KillNotResponding]
+"@"="Kill Not Responding"
+"MUIVerb"=-
+"Icon"="imageres.dll,-98"
+"Position"="Bottom"
+"Extended"=""
+"SeparatorBefore"=""
+"SeparatorAfter"=""
+
+[HKEY_CLASSES_ROOT\Directory\Background\shell\KillNotResponding\command]
+@="cmd.exe /D /K \"TASKKILL /F /FI \"STATUS EQ NOT RESPONDING\" /IM \"*\" /T & TIMEOUT 5 & EXIT\""
