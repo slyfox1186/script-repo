@@ -378,7 +378,7 @@ pkgs_fn()
 {
     local pkg pkgs missing_pkgs
 
-    pkgs=("$1" apt-transport-https apt-utils aria2 autoconf autogen automake autopoint autotools-dev
+    pkgs=("$1" apt-transport-https apt-utils autoconf autogen automake autopoint autotools-dev
           build-essential bzip2 ca-certificates ccache clang cmake curl gfortran git google-perftools
           graphviz jq lcov libaria2-0 libaria2-0-dev libc-ares-dev libcppunit-dev libcunit1-dev libcurl4
           libcurl4-gnutls-dev libdmalloc-dev libec-dev libedit-dev libev-dev libevent-dev libexiv2-27
