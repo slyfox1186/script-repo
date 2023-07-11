@@ -10,9 +10,9 @@
 ##  Supported OS: Linux Ubuntu Jammy (22.04.02)
 ##                Native OS Only - Windows WSL is NOT working
 ##
-##  Updated: 06.29.23
+##  Updated: 07.11.23
 ##
-##  Script Version: 4.1
+##  Script Version: 4.2
 ##
 ##  Added: multiple support libraries using the latest versions available
 ##  Added: link time optimization support
@@ -130,7 +130,7 @@ clear
 # SET BUILD VARIABLES
 #
 
-script_ver=4.1
+script_ver=4.2
 install_dir=/usr/local
 gcc_prefix=x86_64-pc-linux-gnu-
 CFLAGS='-g -O3 -march=native -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
