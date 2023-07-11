@@ -229,20 +229,11 @@ show_ver_fn()
 {
     clear
 
-    if [ ! -f "$install_dir"/bin/gcc-11 ]; then
-        fail_fn "Could not find the file: $install_dir/bin/gcc-11"
-        elif [ ! -f "$install_dir"/bin/gcc-12 ]; then
-            fail_fn "Could not find the file: $install_dir/bin/gcc-12"
-            elif [ ! -f "$install_dir"/bin/gcc-13 ]; then
-                fail_fn "Could not find the file: $install_dir/bin/gcc-13"
-    else
-        printf "%s\n\n%s\n\n%s\n\n%s\n\n" \
-            'The installed gcc versions are:' \
-            "$install_dir"/bin/gcc-11 -v \
-            "$install_dir"/bin/gcc-12 -v \
-            "$install_dir"/bin/gcc-13 -v
-        echo
-    fi
+    printf "%s\n\n%s\n\n%s\n\n%s\n\n" \
+        'The installed gcc versions are:' \
+        "$install_dir"/bin/gcc-11 -v \
+        "$install_dir"/bin/gcc-12 -v \
+        "$install_dir"/bin/gcc-13 -v
 }
 
 create_gcc_links_fn()
