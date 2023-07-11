@@ -245,25 +245,6 @@ show_ver_fn()
     fi
 }
 
-source_gcc_libs_fn()
-{
-    unset LIBRARY_PATH
-    LIBRARY_PATH="\
-/usr/lib/gcc/x86_64-linux-gnu/$1/:\
-/usr/lib/gcc/x86_64-linux-gnu/$1/../../../x86_64-linux-gnu/:\
-/usr/lib/gcc/x86_64-linux-gnu/$1/../../../../lib/:\
-/lib/x86_64-linux-gnu/:\
-/lib/../lib/:\
-/usr/lib/x86_64-linux-gnu/:\
-/usr/lib/../lib/:\
-/usr/lib/gcc/x86_64-linux-gnu/$1/../../../:\
-/lib/:\
-/usr/lib/\
-"
-    export LIBRARY_PATH
-}
-source_gcc_libs_fn
-
 create_gcc_links_fn()
 {
     local gcc_long_link_name gcc_short_link_name
@@ -823,16 +804,6 @@ if build 'autoconf-v269' '2.69'; then
     execute make install
     execute make distclean
     build_done 'autoconf-v269' '2.69'
-fi
-
-if [ "$OS" = 'Debian GNU/Linux' ]; then
-    source_gcc_libs_fn "$OS"
-else
-    if which gnatgcc &>/dev/null; then
-        export CC=gnatgcc CXX=g++
-    else
-        fail_fn 'Please install gnatgcc to continue.'
-    fi
 fi
 
 if build 'gcc-11' '11.4.0'; then
