@@ -232,13 +232,16 @@ show_ver_fn()
     printf "%s\n\n" 'The installed gcc versions are:'
 
     if [ -f "$install_dir"/bin/gcc-11 ]; then
-        printf "%s\n\n" "$install_dir"/bin/gcc-11 -v 
+        "$install_dir"/bin/gcc-11 -v
+        echo
     fi
     if [ -f "$install_dir"/bin/gcc-12 ]; then
-        printf "%s\n\n" "$install_dir"/bin/gcc-12 -v
+        "$install_dir"/bin/gcc-12 -v
+        echo
     fi
     if [ -f "$install_dir"/bin/gcc-13 ]; then
-        printf "%s\n\n" "$install_dir"/bin/gcc-13 -v
+        "$install_dir"/bin/gcc-13 -v
+        echo
     fi
 }
 
