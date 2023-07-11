@@ -229,11 +229,17 @@ show_ver_fn()
 {
     clear
 
-    printf "%s\n\n%s\n\n%s\n\n%s\n\n" \
-        'The installed gcc versions are:' \
-        "$install_dir"/bin/gcc-11 -v \
-        "$install_dir"/bin/gcc-12 -v \
-        "$install_dir"/bin/gcc-13 -v
+    printf "%s\n\n" 'The installed gcc versions are:'
+
+    if [ -f "$install_dir"/bin/gcc-11 ]; then
+        printf "%s\n\n" "$install_dir"/bin/gcc-11 -v 
+    fi
+    if [ -f "$install_dir"/bin/gcc-12 ]; then
+        printf "%s\n\n" "$install_dir"/bin/gcc-12 -v
+    fi
+    if [ -f "$install_dir"/bin/gcc-13 ]; then
+        printf "%s\n\n" "$install_dir"/bin/gcc-13 -v
+    fi
 }
 
 create_gcc_links_fn()
