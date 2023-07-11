@@ -601,14 +601,14 @@ fi
 if build 'm4' 'latest'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
     execute ./configure            \
-            --prefix=/usr/local    \
+            --prefix="$workspace"  \
             --disable-nls          \
             --enable-c++           \
             --enable-threads=posix \
             --with-dmalloc         \
             --with-libintl-prefix=/usr
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     execute make distclean
     build_done 'm4' 'latest'
 fi
@@ -617,20 +617,20 @@ if build 'automake' '1.16.5'; then
     download 'https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
     execute ./bootstrap
     execute autoreconf -fi
-    execute ./configure --prefix=/usr/local
+    execute ./configure --prefix="$workspace"
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     execute make distclean
     build_done 'automake' '1.16.5'
 fi
 
 if build 'libtool' '2.4.7'; then
     download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
-    execute ./configure         \
-            --prefix=/usr/local \
+    execute ./configure           \
+            --prefix="$workspace" \
             --enable-ltdl-install
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     execute make distclean
     build_done 'libtool' '2.4.7'
 fi
@@ -638,130 +638,11 @@ fi
 # The latest bison requires autoconf v2.71 to compile but GCC requires v2.69 which is why autoconf is built twice.
 if build 'autoconf-v271' '2.71'; then
     download 'https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.xz'
-    execute ./configure --prefix=/usr/local
+    execute ./configure --prefix="$workspace"
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     execute make distclean
     build_done 'autoconf-v271' '2.71'
-fi
-
-if build 'bison' 'git'; then
-    download_git 'https://github.com/akimd/bison.git'
-    execute git submodule update --init
-    execute ./bootstrap
-    execute ./configure         \
-            --prefix=/usr/local \
-            --disable-nls       \
-            --enable-threads=posix
-    execute make "-j$cpu_threads"
-    execute sudo make install
-    execute make distclean
-    build_done 'bison' 'git'
-fi
-sudo chown "$USER":"$USER" -R "$cwd"
-
-# ACCORDING TO GNU, THE BUILD ORDER FOR GETTEXT AND ICONV IS
-# GETTEXT >> ICONV >> GETTEXT
-# SO WE MUST RUN GETTEXT BEFORE AND AFTER ICONV
-if build 'gettext' '0.21.1'; then
-    download 'https://ftp.gnu.org/gnu/gettext/gettext-0.22.1.tar.xz'
-    execute autoreconf -fi
-    execute ./configure            \
-            --prefix=/usr/local    \
-            --disable-nls          \
-            --enable-static        \
-            --enable-threads=posix \
-            --with-libintl-prefix=/usr
-    execute make "-j$cpu_threads"
-    execute sudo make install
-    execute make distclean
-fi
-
-if build 'libiconv' '1.17'; then
-    download 'https://ftp.gnu.org/gnu/libiconv/libiconv-1.17.tar.gz'
-    execute ./configure         \
-            --prefix=/usr/local \
-            --disable-nls       \
-            --enable-static
-    execute make "-j$cpu_threads"
-    execute sudo make install
-    execute make distclean
-    execute libtool --finish /usr/local/lib
-    build_done 'libiconv' '1.17'
-fi
-sudo chown "$USER":"$USER" -R "$cwd"
-
-if build 'gettext' '0.21.1'; then
-    cd "$packages"/gettext-0.22.1 || exit 1
-    execute autoreconf -fi
-    execute ./configure            \
-            --prefix=/usr/local    \
-            --disable-nls          \
-            --enable-static        \
-            --enable-threads=posix \
-            --with-libintl-prefix=/usr
-    execute make "-j$cpu_threads"
-    execute sudo make install
-    execute make distclean
-    build_done 'gettext' '0.21.1'
-fi
-
-if build 'diffutils' '3.9'; then
-    download 'https://ftp.gnu.org/gnu/diffutils/diffutils-3.9.tar.xz'
-    execute autoreconf -fi
-    execute ./configure                       \
-            --prefix=/usr/local               \
-            --disable-nls                     \
-            --enable-threads=posix            \
-            --enable-year2038                 \
-            --with-libiconv-prefix=/usr/local \
-            --with-libintl-prefix=/usr        \
-            --with-libsigsegv
-    execute make "-j$cpu_threads"
-    execute sudo make install
-    execute make distclean
-    build_done 'diffutils' '3.9'
-fi
-
-if build 'attr' '2.5.1'; then
-    download 'http://download.savannah.nongnu.org/releases/attr/attr-2.5.1.tar.xz'
-    execute autoreconf -fi
-    execute ./configure --prefix=/usr/local --disable-nls --with-libiconv-prefix=/usr/local
-    execute make "-j$cpu_threads"
-    execute sudo make install
-    execute make distclean
-    build_done 'attr' '2.5.1'
-fi
-
-if build 'patch' '2.7.6'; then
-    download 'https://ftp.gnu.org/gnu/patch/patch-2.7.6.tar.xz'
-    execute autoreconf -fi
-    execute ./configure --prefix=/usr/local
-    execute make "-j$cpu_threads"
-    execute sudo make install
-    execute make distclean
-    build_done 'patch' '2.7.6'
-fi
-
-if build 'gmp' '6.2.1'; then
-    download 'https://ftp.gnu.org/gnu/gmp/gmp-6.2.1.tar.xz'
-    execute autoreconf -fi
-    execute ./configure --prefix=/usr/local --enable-cxx
-    execute make "-j$cpu_threads"
-    execute sudo make install
-    execute make distclean
-    build_done 'gmp' '6.2.1'
-fi
-sudo chown "$USER":"$USER" -R "$cwd"
-
-if build 'isl' '0.26'; then
-    download 'https://libisl.sourceforge.io/isl-0.26.tar.xz'
-    execute autoreconf -fi
-    execute ./configure --prefix=/usr/local --with-gmp-prefix=/usr/local
-    execute make "-j$cpu_threads"
-    execute sudo make install
-    execute make distclean
-    build_done 'isl' '0.26'
 fi
 
 git_ver_fn 'gperftools/gperftools' '1' 'R'
@@ -790,9 +671,9 @@ git_ver_fn 'madler/zlib' '1' 'R'
 g_ver="${g_ver#zlib }"
 if build 'zlib' "$g_ver"; then
     download "https://github.com/madler/zlib/releases/download/v$g_ver/zlib-$g_ver.tar.gz"
-    execute ./configure --prefix=/usr/local
+    execute ./configure --prefix="$workspace"
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     execute make distclean
     build_done 'zlib' "$g_ver"
 fi
