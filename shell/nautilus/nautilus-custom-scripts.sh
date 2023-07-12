@@ -17,7 +17,22 @@ cd "$HOME/.local/share/nautilus/scripts" || exit 1
 # DELETE ANY FOUND SCRIPTS
 #
 
-sudo rm *
+printf "%s\n\n%s\n%s\n\n" \
+    "Do you want to delete any found scripts already in the folder: $HOME/.local/share/nautilus/scripts" \
+    '[1] Yes' \
+    '[2] No'
+read -p 'Your choices are (1 or 2): ' choice
+clear
+
+case "$choice" in
+    1)    sudo rm *;
+    2)    clear;
+    *)
+          clear
+          printf "%s\n\n" 'Bad user input. Please re-run the script.'
+          exit 1
+          ;;
+esac
 
 #
 # CREATE OPEN NAUTILUS IN NEW WINDOW SCRIPT
