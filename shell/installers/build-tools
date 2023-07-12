@@ -1,17 +1,20 @@
 #!/bin/bash
 # shellcheck disable=SC2034,SC2046,SC2066,SC2068,SC2086,SC2162
 
-##################################################################
+###################################################################################
 ##
 ##  Install CMake, Ninja, Meson, Golang
 ##
 ##  Supported OS: Linux Ubuntu - 23.04 (Lunar) / 22.04 (Jammy)
 ##
-##  Updated: 06.15.23
+##  Updated: 07.12.23
 ##
-##  Script version: 2.0
+##  Added: The newest golang release version
+##  Added: A new variable named debug to help with troubleshooting issues. 
 ##
-##################################################################
+##  Script version: 2.1
+##
+###################################################################################
 
 clear
 
@@ -24,17 +27,23 @@ fi
 # CREATE SCRIPT VARIABLES
 #
 
-script_ver='2.0'
+script_ver=2.1
 cwd="$PWD"/build-tools-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
-install_prefix='/usr/local'
+install_prefix=/usr/local
+repo=https://github.com/slyfox1186/script-repo
+debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
 # GET CPU CORE COUNT FOR PARALLEL PROCESSING
 #
 
-cpu_threads="$(nproc --all)"
+if [ -f /proc/cpuinfo ]; then
+    cpu_threads="$(grep -c ^processor /proc/cpuinfo)"
+else
+    cpu_threads="$(nproc --all)"
+fi
 
 #
 # CREATE OUTPUT DIRECTORIES
@@ -49,7 +58,17 @@ mkdir -p "$packages" "$workspace"
 PATH="\
 /usr/lib/ccache:\
 $workspace/bin:\
-$PATH"
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
+/usr/local/sbin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin:\
+/usr/local/cuda/bin:\
+/snap/bin\
+"
 export PATH
 
 #
@@ -59,15 +78,17 @@ export PATH
 PKG_CONFIG_PATH="\
 $workspace/lib/pkgconfig:\
 $workspace/lib64/pkgconfig:\
+$workspace/share/pkgconfig:\
 $workspace/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib64/pkgconfig:\
-/usr/local/share/pkgconfig:\
+$workspace/usr/lib/pkgconfig:\
+/lib/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/i386-linux-gnu/pkgconfig:\
+/usr/local/lib64/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/local/share/pkgconfig:\
+/usr/share/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/share/pkgconfig\
+/usr/lib/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -80,7 +101,7 @@ exit_fn()
     printf "\n%s\n\n%s\n%s\n\n" \
         'The script has completed' \
         'Make sure to star this repository to show your support!' \
-        'https://github.com/slyfox1186/script-repo'
+        "$repo"
     exit 0
 }
 
@@ -88,8 +109,8 @@ fail_fn()
 {
     printf "\n\n%s\n\n%s\n\n%s\n\n" \
         "$1" \
-        'Please create a support ticket so I can work on a fix.' \
-        'https://github.com/slyfox1186/script-repo/issues'
+        'To report a bug please create an issue at:' \
+        "$repo/issues"
     exit 1
 }
 
@@ -107,8 +128,9 @@ cleanup_fn()
         1)      sudo rm -fr "$cwd" "$0";;
         2)      return 0;;
         *)
-                printf "%s\n\n" 'Bad user input.'
-                read -p 'Press enter to try again.'
+                printf "%s\n\n" 'Bad user input. Reverting script...'
+                sleep 3
+                unset answer
                 clear
                 cleanup_fn
                 ;;
@@ -119,7 +141,7 @@ show_versions_fn()
 {
     local show_cmake_ver show_ninja_ver show_meson_ver
 
-    show_cmake_ver="$(cmake --version | sed 's/cmake version /v/g' | sed 's/CMake suite maintained and supported by Kitware (kitware.com\/cmake).//g' | xargs -n1)"
+    show_cmake_ver="$(cmake --version | sed -e 's/cmake version /v/g' -e 's/CMake suite maintained and supported by Kitware (kitware.com\/cmake).//g' | xargs -n1)"
     show_ninja_ver="$(ninja --version)"
     show_meson_ver="$(meson --version)"
     show_go_ver="$(go version | grep -Eo '[0-9\.]+ | xargs -n1')"
@@ -135,7 +157,7 @@ show_versions_fn()
     else
         clear
         printf "%s\n\n%s\n%s\n%s\n%s\n" \
-            'The installed versions are:' \
+            'The updated versions are:' \
             "CMake:  $show_cmake_ver" \
             "Ninja:  v$show_ninja_ver" \
             "Meson:  v$show_meson_ver" \
@@ -146,8 +168,17 @@ show_versions_fn()
 execute()
 {
     echo "$ $*"
-    if ! output=$("$@" 2>&1); then
-        fail_fn "Failed to Execute $*"
+
+    if [ "$debug" = 'ON' ]; then
+        if ! output="$("$@")"; then
+            notify-send -u critical -t 10000 "Failed to execute: $*"
+            fail_fn "Failed to execute: $*"
+        fi
+    else
+        if ! output="$("$@" 2>&1)"; then
+            notify-send -u critical -t 10000 "Failed to execute: $*"
+            fail_fn "Failed to execute: $*"
+        fi
     fi
 }
 
@@ -172,8 +203,8 @@ download()
     else
         echo "Downloading \"$dl_url\" saving as \"$dl_file\""
         if ! curl -Lso "$target_file" "$dl_url"; then
-            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 5 seconds..."
-            sleep 5
+            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
+            sleep 10
             if ! curl -Lso "$target_file" "$dl_url"; then
                 fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
             fi
@@ -190,16 +221,16 @@ download()
     if [ -n "$3" ]; then
         if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
             sudo rm "$target_file"
-            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please run the script again."
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script."
         fi
     else
         if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
             sudo rm "$target_file"
-            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please run the script again."
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script."
         fi
     fi
 
-    echo -e "File extracted: $dl_file\\n"
+    printf "%s\n\n" "File extracted: $dl_file"
 
     cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
 }
@@ -223,7 +254,7 @@ build()
     return 0
 }
 
-curl_timeout='10'
+curl_timeout=10
 
 git_1_fn()
 {
@@ -264,29 +295,23 @@ git_ver_fn()
     fi
 
     case "$v_flag" in
-            R)      t_flag='releases';;
-            T)      t_flag='tags';;
+            R)      t_flag=releases;;
+            T)      t_flag=tags;;
             *)      fail_fn 'Could not detect the variable $v_flag.'
     esac
 
     case "$v_tag" in
-            1)      u_flag='git_1_fn';;
-            2)      u_flag='git_2_fn';;
+            1)      u_flag=git_1_fn;;
+            2)      u_flag=git_2_fn;;
             *)      fail_fn 'Could not detect the variable $v_tag.'
     esac
 
     "$u_flag" "$v_url" "$t_flag" 2>/dev/null
 }
 
-build_done()
-{
-    echo "$2" > "$packages/$1.done"
-}
+build_done() { echo "$2" > "$packages/$1.done"; }
 
-installed()
-{
-    return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
-}
+installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
 #
 # PRINT SCRIPT BANNER
@@ -312,18 +337,25 @@ if [ -n "$missing_pkgs" ]; then
     printf "%s\n%s\n\n" \
         'Installing required apt packages' \
         '================================================'
-    for i in "$missing_pkgs"
-    do
-        sudo apt -y install $i
-    done
+        sudo apt -y install $missing_pkgs
 fi
 
 #
 # SET THE C & C++ COMPILERS
 #
 
+if ! which gcc &>/dev/null; then
+    fail_fn 'Please install "gcc" to continue the build.'
+fi
+
 export CC=gcc CXX=g++
-export CXXFLAGS='-g -O3 -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
+
+#
+# MAKE SURE WE USE THE CORRECT M4 FOLDER
+#
+
+export ACLOCAL_PATH=/usr/share/aclocal
 
 #
 # INSTALL FROM SOURCE CODE
@@ -332,8 +364,8 @@ export CXXFLAGS='-g -O3 -march=native'
 git_ver_fn '541' '2' 'T'
 if build 'cmake' "$g_ver"; then
     download "https://gitlab.kitware.com/cmake/cmake/-/archive/v$g_ver/cmake-v$g_ver.tar.bz2" "cmake-$g_ver.tar.bz2"
-    execute ./configure --prefix="$install_prefix" --parallel="$(($cpu_threads-1))" --enable-ccache -- -DCMAKE_USE_OPENSSL=OFF
-    execute make "-j$(($cpu_threads-1))"
+    execute ./configure --prefix="$install_prefix" --parallel="$cpu_threads" --enable-ccache -- -DCMAKE_USE_OPENSSL=OFF
+    execute make "-j$cpu_threads"
     execute sudo make install
     execute make clean
     build_done 'cmake' "$g_ver"
@@ -345,7 +377,7 @@ if build 'ninja' "$g_ver1"; then
     re2c_path="$(type -P re2c)"
     execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$install_prefix",BUILD_TYPE=Release} \
         -DRE2C="$re2c_path" -DBUILD_TESTING=OFF -G 'Unix Makefiles' -Wno-dev
-    execute make "-j$(($cpu_threads-1))" -C build
+    execute make "-j$cpu_threads" -C build
     execute sudo make -C build install
     execute make -C build clean
     build_done 'ninja' "$g_ver1"
@@ -359,21 +391,18 @@ if build 'meson' "$g_ver1"; then
     build_done 'meson' "$g_ver1"
 fi
 
-if build 'golang' '1.20.5'; then
-    download 'https://go.dev/dl/go1.20.5.linux-amd64.tar.gz' 'go-1.20.5.tar.gz'
-    execute sudo cp -f 'bin/go' 'bin/gofmt' "$install_prefix"/bin
-    execute sudo mkdir -p '/usr/local/go'
-    build_done 'golang' '1.20.5'
+if build 'golang' '1.20.6'; then
+    download 'https://go.dev/dl/go1.20.6.linux-amd64.tar.gz' 'golang-1.20.6.tar.gz'
+    execute sudo cp -f bin/go bin/gofmt "$install_prefix"/bin
+    execute sudo mkdir -p /usr/local/go
+    build_done 'golang' '1.20.6'
 fi
 
 # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES
 sudo ldconfig 2>/dev/null
-
 # SHOW THE NEWLY INSTALLED VERSION OF EACH PACKAGE
 show_versions_fn
-
 # PROMPT THE USER TO CLEANUP THE BUILD FILES
 cleanup_fn
-
 # SHOW THE EXIT MESSAGE
 exit_fn
