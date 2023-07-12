@@ -75,7 +75,7 @@ alias install='clear; apt -y install'
 alias remove='clear; apt remove'
 alias search='clear; apt search'
 
-# fix missing gpnu keys used to update packages
+# fix missing gnu keys used to update packages
 alias fixkey='clear; apt-key adv --keyserver keyserver.ubuntu.com --recv-keys'
 
 # dos2unix
@@ -161,11 +161,14 @@ alias cde='pushd ~/Desktop ; cl'
 alias cdetc='pushd /etc; cl'
 alias cdf='pushd ~/Documents ; cl'
 alias cdh='pushd ~; cl'
+alias cdp='pushd ~/Pictures ; cl'
 alias cdpi='pushd /etc/pihole; cl'
 alias cdr='pushd /; cl'
 alias cds='pushd ~/scripts; cl'
 alias cdtmp='pushd ~/tmp ; cl'
 alias cdt='pushd ~/.local/share/trash/; cl'
+alias cdv='pushd ~/Videos ; cl'
+
 # change directory fast commands
 alias cd.='cd ..; cl'
 alias cd..='cd ..; cl'
@@ -238,8 +241,7 @@ alias showarch='dpkg --print-architecture'
 alias ddcu='ddclient -daemon=0 -debug -verbose -noquiet'
 
 # find and kill process by pid or name
-alias tk='kill -9'
-alias tka='killall -9'
+alias tk='sudo kill -9'
 
 # SNAP COMMANDS
 alias snap_on='snap set core snapshots.automatic.retention=yes' # turn on snap automatic snapshots
@@ -272,7 +274,7 @@ alias fix_gpg='sudo cp /etc/apt/trusted.gpg /etc/apt/trusted.gpg.d'
 alias cwatch='watch -n1 ccache --print-stats'
 
 # GET KERNEL VERSION
-alias kv='\cat /proc/version | grep -Eo "([0-9\.\-]+-generic)"'
+alias kv='cat /proc/version | grep -Eo "([0-9\.\-]+-generic)"'
 
 # FFMPEG
 alias fft='clear; ./repo.sh'
@@ -287,5 +289,11 @@ alias show_gcc='clear; gcc-12 -march=native -E -v - </dev/null 2>&1 | grep cc1'
 # START VIRTUAL MACHINE
 alias svm='clear; sudo virt-manager'
 
-## SHOW TOP 10 PROCESS BY CPU RESOURCE CONSUMPTION
+## SHOW THE TOP 10 PROCESSES BY CPU RESOURCE CONSUMPTION
 alias cpu_leach='clear; ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%mem | head -10'
+
+## GET LIST OF ALL DIRECTORY SIZES
+alias dir_size='clear; ncdu -q'
+
+# WINE
+alias wine32='env WINEARCH=win32 WINEPREFIX=~/.wine32 wine $*'
