@@ -17,23 +17,8 @@ cd "$HOME/.local/share/nautilus/scripts" || exit 1
 # DELETE ANY FOUND SCRIPTS
 #
 
-printf "%s\n\n%s\n%s\n\n" \
-    "Do you want to delete any found scripts already in the folder: $HOME/.local/share/nautilus/scripts" \
-    '[1] Yes' \
-    '[2] No'
-read -p 'Your choices are (1 or 2): ' choice
-clear
+sudo rm *
 
-case "$choice" in
-    1)    sudo rm *;
-    2)    clear;
-    *)
-          clear
-          printf "%s\n\n" 'Bad user input. Please re-run the script.'
-          exit 1
-          ;;
-esac
-    
 #
 # CREATE OPEN NAUTILUS IN NEW WINDOW SCRIPT
 #
@@ -80,9 +65,9 @@ fpath="$PWD/$1"
 fname="$(basename "$fpath")"
 fext="${fname##*.}"
 case "$fext" in
-    *.sh)               tilix -w "$PWD" -e bash "$1";;
-    *.bak|*.log|*.txt)  tilix -w "$PWD" -e $editor "$1";;
-    *)                  printf "%s\n\n" 'Unable to locate a file with the following extensions: sh, bak, log, or txt';;
+    sh)             tilix -w "$PWD" -e bash "$fname";;
+    bak|log|txt)    tilix -w "$PWD" -e $editor "$fname";;
+    *)              tilix -w "$PWD" -e bash "$fname";;
 esac
 EOF
 
