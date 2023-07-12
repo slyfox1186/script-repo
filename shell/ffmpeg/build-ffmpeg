@@ -1511,8 +1511,9 @@ cflags_fn
 git_ver_fn '11853194' '3' 'T'
 if build 'sratom' "$g_ver"; then
     download "https://gitlab.com/lv2/sratom/-/archive/v$g_ver/sratom-v$g_ver.tar.bz2" "sratom-$g_ver.tar.bz2"
+    extracommands=(-D{docs,tests}=disabled)
     execute meson setup build --prefix="$workspace" --libdir="$workspace"/lib \
-        --buildtype=release --default-library=static --strip
+        --buildtype=release --default-library=static --strip "${extracommands[@]}"
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
     build_done 'sratom' "$g_ver"
@@ -1521,8 +1522,9 @@ fi
 git_ver_fn '11853176' '3' 'T'
 if build 'lilv' "$g_ver"; then
     download "https://gitlab.com/lv2/lilv/-/archive/v$g_ver/lilv-v$g_ver.tar.bz2" "lilv-$g_ver.tar.bz2"
+    extracommands=(-D{docs,tests}=disabled)
     execute meson setup build --prefix="$workspace" --libdir="$workspace"/lib \
-        --buildtype=release --default-library=static --strip
+        --buildtype=release --default-library=static --strip "${extracommands[@]}"
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
     build_done 'lilv' "$g_ver"
