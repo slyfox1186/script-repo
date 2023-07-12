@@ -5,6 +5,8 @@
 ##
 ##  Install CMake, Ninja, Meson, Golang
 ##
+##  GitHub: https://github.com/slyfox1186/script-repo/edit/main/shell/installers/build-tools
+##
 ##  Supported OS: Linux Ubuntu - 23.04 (Lunar) / 22.04 (Jammy)
 ##
 ##  Updated: 07.12.23
