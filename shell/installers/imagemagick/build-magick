@@ -6,26 +6,20 @@
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
 ##  Purpose: Builds ImageMagick 7 from source code obtained
-##           from the official ImageMagick GitHub repository.
+##          from the official ImageMagick GitHub repository.
 ##
-##  Function: ImageMagick is the leading open-source command line
-##            image processor. It can blur, sharpen, warp, reduce
-##            file size, etc... The possibilities are vast and wide.
+##  Function: ImageMagick is the leading open source command line
+##           image processor. It can blur, sharpen, warp, reduce
+##           file size, ect... The possibilities are vast and wide.
 ##
 ##  Method: The script will search GitHub for the latest released version
-##          of each package and upon execution will import the version into the
-##          script for use.
+##         and upon execution, will import the info into the script for use
 ##
-##  Added: Debian OS support for versions ( 12 / 11 / 10 )
-##  Added: A debug variable to help with troubleshooting.
-##  Added: LCMS2 library
+##  Added: Debian OS Support ( 12 / 11 / 10 )
 ##
-##  Fixed:  Debian file issues
-##  Fixed:  Debian OS APT packages not found.
+##  Updated: 07.13.23
 ##
-##  Updated: 07.06.23
-##
-##  Script Version: 2.3
+##  Script Version: 2.2
 ##
 #################################################################################
 
@@ -41,14 +35,15 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-progname="$0"
-script_version=2.3
-cwd="$PWD"/imagemagick-build-script
+progname="${0:2}"
+script_version=2.2
+cwd="$PWD"/magick-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
+repo=https://github.com/slyfox1186/script-repo
 install_dir=/usr/local
-script_repo=https://github.com/slyfox1186/script-repo
-debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+# CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
+debug=ON
 
 #
 # CREATE OUTPUT DIRECTORIES
@@ -61,7 +56,7 @@ mkdir -p "$packages/deb-files" "$packages/libjxl-deb"
 #
 
 if [ -f /proc/cpuinfo ]; then
-    cpu_threads="$(grep -c processor /proc/cpuinfo)"
+    cpu_threads="$(grep -c ^processor /proc/cpuinfo)"
 else
     cpu_threads="$(nproc --all)"
 fi
@@ -69,33 +64,33 @@ fi
 PATH="\
 /usr/lib/ccache:\
 $workspace/bin:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/games:\
-/usr/local/games:\
 /usr/local/cuda/bin:\
 /snap/bin\
 "
 export PATH
 
 PKG_CONFIG_PATH="\
-$workspace/lib/pkgconfig:\
 $workspace/lib64/pkgconfig:\
-$workspace/share/pkgconfig:\
+$workspace/lib/pkgconfig:\
 $workspace/lib/x86_64-linux-gnu/pkgconfig:\
 $workspace/usr/lib/pkgconfig:\
+$workspace/share/pkgconfig:\
 /lib/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
 /usr/local/share/pkgconfig:\
-/usr/share/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/pkgconfig\
+/usr/lib/pkgconfig:\
+/usr/share/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -103,12 +98,15 @@ LD_LIBRARY_PATH="\
 $workspace/lib64:\
 $workspace/lib:\
 $workspace/src/lib:\
-$workspace/share/ghostscript/10.01.2/lib:\
+$workspace/share/ghostscript/10.01.1/lib:\
 /usr/local/lib64:\
 /usr/local/lib:\
 /usr/lib:\
+/lib64:\
+/lib:\
 /usr/share/texinfo/lib:\
-/usr/share/ghostscript/9.55.0/lib\
+/usr/share/ghostscript/9.55.0/lib:\
+/usr/lib/jvm/java-11-openjdk-amd64/lib\
 "
 export LD_LIBRARY_PATH
 
@@ -120,8 +118,8 @@ fail_fn()
 {
     printf "\n\n%s\n\n%s\n\n%s\n\n" \
         "$1" \
-        'Please create a support ticket at the address below:' \
-        "$script_repo/issues"
+        'Please create a support ticket at the address below' \
+        "$repo/issues"
     exit 1
 }
 
@@ -130,7 +128,7 @@ exit_fn()
     printf "\n%s\n\n%s\n%s\n\n" \
         'The script has completed' \
         'Make sure to star this repository to show your support!' \
-        "$script_repo"
+        "$repo"
     exit 0
 }
 
@@ -148,13 +146,13 @@ cleanup_fn()
         1)      sudo rm -fr "$cwd";;
         2)      clear;;
         *)
-            printf "%s\n\n%s\n\n" \
-                'Bad user input.' \
-                'Restarting script...'
-            sleep 2
-            clear
-            cleanup_fn
-            ;;
+                clear
+                printf "%s\n\n" 'Error: bad user input. Reverting script...'
+                sleep 3
+                unset choice
+                clear
+                cleanup_fn
+                ;;
     esac
 }
 
@@ -163,12 +161,12 @@ execute()
     echo "$ $*"
 
     if [ "$debug" = 'ON' ]; then
-        if ! output=$("$@"); then
+        if ! output="$("$@")"; then
             notify-send -u critical -t 10000 "Failed to execute: $*"
             fail_fn "Failed to execute: $*"
         fi
     else
-        if ! output=$("$@" 2>&1); then
+        if ! output="$("$@" 2>&1)"; then
             notify-send -u critical -t 10000 "Failed to execute: $*"
             fail_fn "Failed to execute: $*"
         fi
@@ -177,9 +175,9 @@ execute()
 
 build()
 {
-    echo
-    echo "Building $1 - version $2"
-    echo '=========================================='
+    printf "\n%s\n%s\n\n" \
+        "Building $1 - version $2" \
+        '=========================================='
 
     if [ -f "$packages/$1.done" ]; then
         if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
@@ -187,11 +185,12 @@ build()
             return 1
         fi
     fi
-
     return 0
 }
 
 build_done() { echo "$2" > "$packages/$1.done"; }
+
+installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
 get_version_fn()
 {
@@ -222,8 +221,8 @@ download()
     else
         echo "Downloading \"$dl_url\" saving as \"$dl_file\""
         if ! curl -Lso "$target_file" "$dl_url"; then
-            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
-            sleep 10
+            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 5 seconds..."
+            sleep 5
             if ! curl -Lso "$target_file" "$dl_url"; then
                 fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
             fi
@@ -240,12 +239,12 @@ download()
     if [ -n "$3" ]; then
         if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
             sudo rm "$target_file"
-            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please rerun the script."
+            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please run the script again."
         fi
     else
         if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
             sudo rm "$target_file"
-            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please rerun the script."
+            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please run the script again."
         fi
     fi
 
@@ -276,7 +275,7 @@ download_git()
             fail_fn "The script failed to clone \"$target_dir\" twice and will now exit the build."
         fi
     else
-        echo -e "Successfully cloned: $target_dir\\n"
+        echo -e "Succesfully cloned: $target_dir\\n"
     fi
 
     cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
@@ -290,12 +289,6 @@ show_magick_version()
     sleep 3
 }
 
-installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
-
-#
-# GET THE LATEST PACKAGE VERSION USING GITHUB'S API
-#
-
 curl_timeout=10
 
 git_1_fn()
@@ -307,10 +300,15 @@ git_1_fn()
 
     if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
-        g_ver="${g_ver#lcms}"
+        g_ver1="$(echo "$curl_cmd" | jq -r '.[1].name' 2>/dev/null)"
+        g_ver3="$(echo "$curl_cmd" | jq -r '.[3].name' 2>/dev/null)"
+        g_ver="${g_ver#pkgconf-}"
         g_ver="${g_ver#release-}"
         g_ver="${g_ver#ver-}"
         g_ver="${g_ver#v}"
+        g_ver1="${g_ver1#nasm-}"
+        g_ver1="${g_ver1#v}"
+        g_ver3="${g_ver3#v}"
         g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url')"
     fi
 }
@@ -335,9 +333,9 @@ git_ver_fn()
     fi
 
     if [ "$v_flag" = 'T' ] && [ "$v_tag" = '1' ]; then
-        url_tag='git_1_fn' gv_url='tags'
+        url_tag=git_1_fn gv_url=tags
     elif [ "$v_flag" = 'T' ] && [ "$v_tag" = '2' ]; then
-        url_tag='git_2_fn' gv_url='tags'
+        url_tag=git_2_fn gv_url=tags
     fi
 
     "$url_tag" "$v_url" "$gv_url" 2>/dev/null
@@ -362,80 +360,41 @@ usage()
 while (($# > 0))
 do
     case "$1" in
-        -h | --help)
-            clear
-            usage
-            echo
-            exit 0
-            ;;
-        -v | --version)
-            get_version_fn
-            echo
-            exit 0
-            ;;
+        -h|--help)
+                        usage
+                        echo
+                        exit 0
+                        ;;
+        -v|--version)
+                        get_version_fn
+                        echo
+                        exit 0
+                        ;;
         -*)
-            if [[ "$1" == '--build' || "$1" =~ '-b' ]]; then
-                bflag='-b'
-            fi
-            if [[ "$1" == '--cleanup' || "$1" =~ '-c' && ! "$1" =~ '--' ]]; then
-                cflag='-c'
-                cleanup_fn
-                exit_fn
-            fi
-            shift
-            ;;
+                        if [[ "$1" == '--build' || "$1" =~ '-b' ]]; then
+                            bflag='-b'
+                        fi
+                        if [[ "$1" == '--cleanup' || "$1" =~ '-c' && ! "$1" =~ '--' ]]; then
+                            cflag='-c'
+                            cleanup_fn
+                        fi
+                        shift
+                        ;;
         *)
-            usage
-            echo
-            exit 1
-            ;;
+                        usage
+                        echo
+                        exit 1
+                        ;;
     esac
 done
 
 if [ -z "$bflag" ]; then
     if [ -z "$cflag" ]; then
-        clear
         usage
-        echo
         exit 1
     fi
     exit 0
 fi
-
-#
-# ANNOUNCE THE BUILD HAS BEGUN
-#
-
-printf "%s\n%s\n%s\n\n" \
-    "ImageMagick Build Script $script_version" \
-    '==========================================' \
-    "This script will use ($cpu_threads) CPU threads for parallel processing to accelerate the building speed."
-
-extract_jxl_deb_fn()
-{
-    cd "$packages"/libjxl-deb || exit 1
-    if [ -f benchmark_xl ] && [ -f cjxl ] && [ -f djxl ]; then
-        execute sudo cp -f benchmark_xl cjxl djxl /usr/bin
-    else
-        fail_fn 'Unable to find the jpegxl static binary files: benchmark_xl, cjxl, and djxl'
-    fi
-}
-
-install_jxl_deb_fn()
-{
-    if [ ! -f "$packages"/jpeg-xl.tar.gz ]; then
-        echo "$ Downloading \"https://github.com/libjxl/libjxl/releases/download/v0.8.1/jxl-linux-x86_64-static-v0.8.1.tar.gz\" saving as \"jpeg-xl.tar.gz\""
-        if ! curl -Lso "$packages"/jpeg-xl.tar.gz 'https://github.com/libjxl/libjxl/releases/download/v0.8.1/jxl-linux-x86_64-static-v0.8.1.tar.gz'; then
-            fail_fn "Failed to download: $packages/jpeg-xl.tar.gz"
-        fi
-        if ! tar -zxf "$packages"/jpeg-xl.tar.gz -C "$packages"/libjxl-deb --strip-components 1; then
-            fail_fn "Failed to extract the jpeg-xl archive: $packages/jpeg-xl.tar.gz"
-        fi
-    else
-        printf "\n%s\n\n" "$packages/jpeg-xl.tar.gz is already downloaded."
-    fi
-    extract_jxl_deb_fn
-}
 
 pkgs_fn()
 {
@@ -443,7 +402,7 @@ pkgs_fn()
           curl flex gettext gimp-data git gperf imagemagick jq libfreetype-dev libgc-dev libgl2ps-dev
           libglib2.0-dev libgraphviz-dev libgs-dev libheif-dev libpango1.0-dev libpng-dev libpstoedit-dev
           libraw-dev librsvg2-dev librust-bzip2-dev libsdl2-dev libtcmalloc-minimal4 libltdl-dev libtool
-          libzip-dev m4 meson nasm ninja-build php-cli pstoedit xmlto yasm)
+          libtool-bin libxml2-dev libzip-dev m4 meson nasm ninja-build php-cli pstoedit xmlto yasm)
 
     for pkg in ${pkgs[@]}
     do
@@ -455,53 +414,122 @@ pkgs_fn()
     if [ -n "$missing_pkgs" ]; then
         sudo apt -y install $missing_pkgs
     else
-        printf "%s\n" 'The required APT packages are already installed.'
+        echo 'The required APT packages are already installed.'
     fi
 }
 
-os_ver_check_fn()
+install_jxl_files_fn()
 {
+    local i
 
-    #
-    # INSTALL APT LIBRARIES
-    #
+    cd "$packages/libjxl-deb" || exit 1
 
-    printf "%s\n%s\n" \
-        'Installing required APT packages' \
+    printf "\n%s\n%s\n" \
+        'Installing: libjxl_0.8.1_amd64.deb' \
         '=========================================='
+    if sudo dpkg -i libjxl_0.8.1_amd64.deb; then
+        sudo rm libjxl_0.8.1_amd64.deb &>/dev/null
+        echo
+    fi
+
+    for i in *.deb
+    do
+        printf "%s\n%s\n" \
+            "Installing: $i" \
+            '=========================================='
+        sudo dpkg -i "$i"
+        echo
+    done
+}
+
+download_jxl_files_fn()
+{
+    local jxl_base_url jxl_suffix_url
+
+    jxl_base_url='https://github.com/libjxl/libjxl/releases/download/v0.8.1/jxl-debs-amd64'
+    jxl_suffix_url='v0.8.1.tar.gz'
+
+    if [ ! -f "$packages/jpeg-xl.tar.gz" ]; then
+        case "$VER" in
+            12)        curl -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-debian-bookworm-$jxl_suffix_url";;
+            11)        curl -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-debian-bullseye-$jxl_suffix_url";;
+            10)        curl -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-debian-buster-$jxl_suffix_url";;
+            22.04)     curl -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-ubuntu-22.04-$jxl_suffix_url";;
+            20.04)     curl -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-ubuntu-20.04-$jxl_suffix_url";;
+            18.04)     curl -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-ubuntu-18.04-$jxl_suffix_url";;
+            *)         fail_fn 'Failed to download the libjxl debian files. The script was unable to detect the OS version.';;
+        esac
+
+        if [ -f "$packages/jpeg-xl.tar.gz" ]; then
+            if ! tar -zxf "$packages"/jpeg-xl.tar.gz -C "$packages"/libjxl-deb --strip-components 1; then
+                fail_fn "Could not extract the jpegxl archive: $packages/jpeg-xl.tar.gz"
+            fi
+        else
+            fail_fn 'The script failed to download the libjxl debian files.'
+        fi
+    fi
+    install_jxl_files_fn
+}
+
+#
+# INSTALL APT LIBRARIES
+#
+
+printf "%s\n%s\n" \
+    'Installing required APT packages' \
+    '=========================================='
+
+debian_ver_check_fn()
+{
+    local pkgs_debian pkgs_bullseye pkgs_bookworm
+    clear
+
+    pkgs_debian='libcpu-features-dev libfontconfig-dev libgc1 libdmalloc-dev libdmalloc5 libjemalloc-dev'
+    pkgs_debian+=' libjemalloc2 librust-malloc-buf-dev libyuv-utils libyuv-dev libyuv0 libsharp-dev'
+    pkgs_bullseye="$pkgs_debian libvmmalloc1 libvmmalloc-dev"
+    pkgs_bookworm+="$pkgs_debian libhwy-dev"
+
+    case "$VER" in
+        12)     pkgs_fn "$pkgs_bookworm";;
+        11)     pkgs_fn "$pkgs_bullseye";;
+        10)     pkgs_fn;;
+        *)      fail_fn 'Could not detect the Ubuntu version.';;
+    esac
+}
+
+ubuntu_ver_check_fn()
+{
+    local pkgs_jammy
+    clear
 
     pkgs_jammy='libcpu-features-dev libfontconfig-dev libgc1 libhwy-dev libmimalloc2.0 libmimalloc-dev'
-    pkgs_debian='libcpu-features-dev libfontconfig-dev libgc1 libdmalloc-dev libdmalloc5 libjemalloc-dev'
-    pkgs_debian+=' libjemalloc2 librust-malloc-buf-dev libtcmalloc-minimal4 libyuv-utils libyuv-dev libyuv0 libsharp-dev'
-    pkgs_bullseye="$pkgs_debian libvmmalloc1 libvmmalloc-dev"
-    pkgs_bookworm+="$pkgs_debian libhwy-dev libyuv-utils"
 
-    os_ver="$(lsb_release -r 2>/dev/null | grep -Eo '[0-9\.]+$')"
-
-    case "$os_ver" in
-        23.04)          pkgs_fn "$pkgs_jammy librust-jpeg-decoder-dev";;
-        22.04)          pkgs_fn "$pkgs_jammy libhwy0";;
-        20.04)          pkgs_fn 'libfontconfig1-dev';;
-        18.04)          pkgs_fn;;
-        12)             pkgs_fn "$pkgs_bookworm";;
-        11)             pkgs_fn "$pkgs_bullseye";;
-        10)             pkgs_fn;;
-        *)              fail_fn 'Could not detect the Ubuntu version.';;
+    case "$VER" in
+        23.04)     pkgs_fn "$pkgs_jammy librust-jpeg-decoder-dev";;
+        22.04)     pkgs_fn "$pkgs_jammy libhwy0";;
+        20.04)     pkgs_fn 'libfontconfig1-dev';;
+        18.04)     pkgs_fn;;
+        *)         fail_fn 'Could not detect the Ubuntu version.';;
     esac
 }
 
 if [ -f /etc/os-release ]; then
     source /etc/os-release
     OS="$NAME"
+    VER="$VERSION_ID"
 elif type lsb_release >/dev/null 2>&1; then
     OS="$(lsb_release -si)"
+    VER="$(lsb_release -sr)"
 elif [ -f /etc/lsb-release ]; then
     source /etc/lsb-release
     OS="$DISTRIB_ID"
+    VER="$DISTRIB_RELEASE"
 elif [ -f /etc/debian_version ]; then
     OS=Debian
+    VER="$(cat /etc/debian_version)"
 else
     OS="$(uname -s)"
+    VER="$(uname -r)"
 fi
 
 #
@@ -509,10 +537,35 @@ fi
 #
 
 case "$OS" in
-    'Debian GNU/Linux')     os_ver_check_fn;;
-    'Ubuntu')               os_ver_check_fn;;
-    *)                      fail_fn 'Could not detect the OS architecture.';;
+    Debian*)     debian_ver_check_fn;;
+    Ubuntu)      ubuntu_ver_check_fn;;
+    *)           fail_fn 'Could not detect the OS architecture.';;
 esac
+
+#
+# ANNOUNCE THE BUILD HAS BEGUN
+#
+
+printf "%s\n\n%s\n%s\n%s\n\n" \
+    'Starting the build process...' \
+    "ImageMagick Build Script $script_version" \
+    '==========================================' \
+    "This script will use ($cpu_threads) cpu cores for parallel processing to accelerate the build speed."
+
+#
+# INSTALL OFFICIAL IMAGEMAGICK LIBS
+#
+
+git_ver_fn 'imagemagick/imagemagick' '1' 'T'
+if build 'magick-libs' "$g_ver"; then
+    cd "$packages/deb-files" || exit 1
+    if ! curl -Lso "magick-libs-$g_ver.rpm" "https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-libs-$g_ver.x86_64.rpm"; then
+        fail_fn 'Failed to download the magick-libs file.'
+    fi
+    sudo alien -d *.rpm
+    sudo dpkg -i *.deb
+    build_done 'magick-libs' "$g_ver"
+fi
 
 #
 # INSTALL COMPOSER TO COMPILE GRAPHVIZ
@@ -525,13 +578,13 @@ if [ ! -f /usr/bin/composer ]; then
 
     if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
         >&2 echo 'ERROR: Invalid installer checksum'
-        sudo rm composer-setup.php
+        rm composer-setup.php
         return 1
     fi
     if ! sudo php composer-setup.php --install-dir=/usr/bin --filename=composer --quiet; then
-        fail_fn 'Failed to install: /usr/bin/composer'
+        fail_fn 'Failed to install /usr/bin/composer'
     fi
-    sudo rm composer-setup.php
+    rm composer-setup.php
 fi
 
 #
@@ -539,36 +592,23 @@ fi
 #
 
 if ! which gcc &>/dev/null; then
-    fail_fn 'Please install "gcc" and rerun the script.'
+    fail_fn 'You must install "gcc" to continue the build.'
 fi
 export CC=gcc CXX=g++
+
+#
+# SET COMPILER OPTIMIZATION FLAGS
+#
+
 export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 #
-# INSTALL OFFICIAL IMAGEMAGICK LIBS
+# INSTALL LIBJXL FROM DEBIAN FILES
 #
 
-git_ver_fn 'imagemagick/imagemagick' '1' 'T'
-if build 'magick-libs' "$g_ver"; then
-    cd "$packages"/deb-files || exit 1
-    echo "$ Downloading \"https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-libs-$g_ver.x86_64.rpm\" saving as \"magick-libs-$g_ver.rpm\""
-    if ! curl -Lso "magick-libs-$g_ver.rpm" "https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-libs-$g_ver.x86_64.rpm"; then
-        fail_fn "Failed to download the magick-libs file: magick-libs-$g_ver.rpm"
-    fi
-    if ! sudo alien -d *.rpm; then
-        fail_fn "Alien was unable to convert \"magick-libs-$g_ver.rpm\" into a \".deb\" file."
-    fi
-    sudo dpkg -i *.deb
-    build_done 'magick-libs' "$g_ver"
-fi
-
-#
-# INSTALL LIBJXL
-#
-
-if build 'jxl' '0.8.1'; then
-    install_jxl_deb_fn
-    build_done 'jxl' '0.8.1'
+if build 'libjxl' '0.8.1'; then
+    download_jxl_files_fn
+    build_done 'libjxl' '0.8.1'
 fi
 
 #
@@ -576,7 +616,7 @@ fi
 #
 
 if build 'autoconf' 'latest'; then
-    download 'http://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz' 'autoconf-latest.tar.xz'
+    download 'http://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz'
     execute autoreconf -fi
     execute ./configure --prefix="$workspace"
     execute make "-j$cpu_threads"
@@ -585,9 +625,9 @@ if build 'autoconf' 'latest'; then
 fi
 
 if build 'automake' '1.16.5'; then
-    download 'https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz' 'automake-1.16.5.tar.gz'
-    execute ./bootstrap
+    download 'https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
     execute autoreconf -fi
+    execute ./bootstrap
     execute ./configure --prefix="$workspace"
     execute make "-j$cpu_threads"
     execute make install
@@ -596,15 +636,15 @@ fi
 
 # THIS MUST BE VERSION 2.4.6, 2.4.7 WILL NOT WORK
 if build 'libtool' '2.4.7'; then
-    download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz' 'libtool-2.4.7.tar.xz'
-    execute ./configure --prefix="$workspace" --enable-static --disable-shared --with-pic
+    download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
+    execute ./configure --prefix="$workspace" --enable-static --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     build_done 'libtool' '2.4.7'
 fi
 
 if build 'm4' 'latest'; then
-    download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz' 'm4-latest.tar.xz'
+    download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
     execute ./configure --prefix="$workspace"
     execute make "-j$cpu_threads"
     execute make install
@@ -622,7 +662,7 @@ if build 'tiff' "$g_ver"; then
 fi
 
 if build 'jpeg-turbo' 'git'; then
-    download_git 'https://github.com/imageMagick/jpeg-turbo.git' 'jpeg-turbo-git'
+    download_git 'https://github.com/imageMagick/jpeg-turbo.git'
     execute cmake -S . -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Release \
         -DENABLE_SHARED=ON -DENABLE_STATIC=ON -G Ninja
     execute ninja "-j$cpu_threads"
@@ -631,7 +671,7 @@ if build 'jpeg-turbo' 'git'; then
 fi
 
 if build 'fpx' 'git'; then
-    download_git 'https://github.com/imageMagick/libfpx.git' 'libfpx-git'
+    download_git 'https://github.com/imageMagick/libfpx.git'
     execute autoreconf -fi
     execute ./configure --prefix=/usr/local --with-pic --with-aix-soname=aix
     execute make -j "$cpu_threads"
@@ -640,7 +680,7 @@ if build 'fpx' 'git'; then
 fi
 
 if build 'ghostscript' '10.01.2'; then
-    download 'https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10012/ghostscript-10.01.2.tar.xz' 'ghostscript-10.01.2.tar.gz'
+    download 'https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10012/ghostscript-10.01.2.tar.xz'
     execute ./autogen.sh
     execute ./configure --prefix="$workspace"
     execute make "-j$cpu_threads"
@@ -657,30 +697,33 @@ if build 'png12' '1.2.59'; then
     build_done 'png12' '1.2.59'
 fi
 
-if build 'webp' 'git'; then
-    download_git 'https://chromium.googlesource.com/webm/libwebp' 'webp-git'
+if build 'libwebp' 'git'; then
+    download_git 'https://chromium.googlesource.com/webm/libwebp' 'libwebp-git'
     execute autoreconf -fi
-    execute cmake -B build -DCMAKE_{BUILD_TYPE=Release,INSTALL_PREFIX="$workspace",C_FLAGS_RELEASE='-g -O3 -DNDEBUG -march=native'} \
-        -DBUILD_SHARED_LIBS=ON -DWEBP_BUILD_{CWEBP,DWEBP}=ON -DWEBP_{ENABLE_SWAP_16BIT_CSP,LINK_STATIC}=OFF -DZLIB_INCLUDE_DIR=/usr/include \
-        -DWEBP_BUILD_{ANIM_UTILS,EXTRAS,GIF2WEBP,IMG2WEBP,LIBWEBPMUX,VWEBP,WEBPINFO,WEBPMUX}=OFF -G Ninja -Wno-dev
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
+        -DCMAKE_C_FLAGS_RELEASE='-g -O3 -DNDEBUG -march=native' -DWEBP_BUILD_EXTRAS=OFF -DWEBP_BUILD_LIBWEBPMUX=OFF \
+        -DCMAKE_INSTALL_INCLUDEDIR=include -DWEBP_LINK_STATIC=OFF -DWEBP_BUILD_GIF2WEBP=OFF -DWEBP_BUILD_IMG2WEBP=OFF \
+        -DWEBP_BUILD_DWEBP=ON -DWEBP_BUILD_CWEBP=ON -DWEBP_BUILD_ANIM_UTILS=OFF -DWEBP_BUILD_WEBPMUX=OFF \
+        -DWEBP_ENABLE_SWAP_16BIT_CSP=OFF -DWEBP_BUILD_WEBPINFO=OFF -DZLIB_INCLUDE_DIR=/usr/include -DWEBP_BUILD_VWEBP=OFF \
+        -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
-    build_done 'webp' 'git'
+    build_done 'libwebp' 'git'
 fi
 
 if build 'c2man' 'git'; then
     download_git 'https://github.com/fribidi/c2man.git'
-    execute ./Configure -desO -D prefix="$workspace" -D bin="$workspace"/bin -D bash="$(type -P bash)" \
+    execute ./Configure -desO -D prefix="$workspace" -D bin="$workspace/bin" -D bash="$(type -P bash)" \
         -D cc=/usr/bin/cc -D d_gnu=/usr/lib/x86_64-linux-gnu -D find="$(type -P find)" -D gcc=/usr/bin/gcc \
-        -D gzip="$(type -P gzip)" -D installmansrc="$workspace"/share/man -D ldflags="$LDFLAGS" \
-        -D less="$(type -P less)" -D libpth='/lib /usr/lib' -D uniq="$(type -P uniq)" -D tr="$(type -P tr)" \
+        -D gzip="$(type -P gzip)" -D installmansrc="$workspace/share/man" -D ldflags="$LDFLAGS" \
+        -D less="$(type -P less)" -D libpth='/usr/lib /lib64 /lib' \
         -D locincpth="$workspace/include /usr/local/include /usr/include" -D yacc="$(type -P yacc)" \
-        -D loclibpth="$workspace/lib /usr/local/lib" -D make="$(type -P make)" -D troff="$(type -P troff)" \
-        -D more="$(type -P more)" -D osname="$OS" -D perl="$(type -P perl)" -D privlib="$workspace"/lib/c2man \
-        -D privlibexp="$workspace"/lib/c2man -D sleep="$(type -P sleep)" -D tail="$(type -P tail)" \
+        -D loclibpth="$workspace/lib64 $workspace/lib /usr/local/lib" -D make="$(type -P make)" \
+        -D more="$(type -P more)" -D osname="$OS" -D perl="$(type -P perl)" -D privlib="$workspace/lib/c2man" \
+        -D privlibexp="$workspace/lib/c2man" -D sleep="$(type -P sleep)" -D tail="$(type -P tail)" \
         -D tar="$(type -P tar)" -D uuname="$(uname -s)" -D vi="$(type -P vi)" -D zip="$(type -P zip)"
     execute make depend
-    execute make "-j$cpu_threads"
+    execute make "-j$(($cpu_threads-1))"
     execute sudo make install
     execute make distclean
     build_done 'c2man' 'git'
@@ -689,7 +732,7 @@ fi
 git_ver_fn 'fribidi/fribidi' '1' 'T'
 if build 'fribidi' "$g_ver"; then
     download "https://codeload.github.com/fribidi/fribidi/tar.gz/refs/tags/v$g_ver" "fribidi-$g_ver.tar.gz"
-    execute meson setup build --prefix="$workspace" --buildtype=release --default-library=static --strip
+    execute meson setup build --prefix="$workspace" --buildtype=release --default-library=both --strip
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
     build_done 'fribidi' "$g_ver"
@@ -698,7 +741,7 @@ fi
 git_ver_fn 'host-oman/libraqm' '1' 'T'
 if build 'raqm' "$g_ver"; then
     download "https://codeload.github.com/host-oman/libraqm/tar.gz/refs/tags/v$g_ver" "raqm-$g_ver.tar.gz"
-    execute meson setup build --prefix="$workspace" --includedir="$workspace"/include --buildtype=release --default-library=static --strip
+    execute meson setup build --prefix="$workspace" --buildtype=release --default-library=both --strip
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
     build_done 'raqm' "$g_ver"
@@ -716,29 +759,27 @@ fi
 git_ver_fn 'uclouvain/openjpeg' '1' 'T'
 if build 'openjpeg' "$g_ver"; then
     download "$g_url" "openjpeg-$g_ver.tar.gz"
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release,EXPORT_COMPILE_COMMANDS=ON} \
-        -DCPACK_{BINARY_DEB,BINARY_FREEBSD,BINARY_IFW,BINARY_NSIS,BINARY_RPM,BINARY_TBZ2,BINARY_TXZ,SOURCE_RPM,SOURCE_ZIP}=ON \
-        -DBUILD_{SHARED_LIBS=ON,TESTING=OFF,THIRDPARTY=ON} -G Ninja -Wno-dev
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DCPACK_BINARY_FREEBSD=ON \
+        -DBUILD_THIRDPARTY=ON -DCPACK_SOURCE_RPM=ON -DCPACK_SOURCE_ZIP=ON -DCPACK_BINARY_IFW=ON -DBUILD_SHARED_LIBS=ON -DCPACK_BINARY_DEB=ON \
+        -DCPACK_BINARY_TBZ2=ON -DCPACK_BINARY_NSIS=ON -DCPACK_BINARY_RPM=ON -DCPACK_BINARY_TXZ=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
     build_done 'openjpeg' "$g_ver"
-fi
-
-git_ver_fn 'mm2/Little-CMS' '1' 'T'
-if build 'lcms2' "$g_ver"; then
-    download "https://codeload.github.com/mm2/Little-CMS/tar.gz/refs/tags/lcms$g_ver" "lcms2-$g_ver.tar.gz"
-    execute ./autogen.sh
-    execute ./configure --prefix=/usr --enable-static --disable-shared
-    execute make "-j$cpu_threads"
-    execute sudo make install
-    build_done 'lcms2' "$g_ver"
 fi
 
 #
 # BEGIN IMAGEMAGICK BUILD
 #
 
+if [ -f "$packages/ImageMagick.done" ]; then
+    rm -f "$packages/ImageMagick.done"
+fi
+
 git_ver_fn 'imagemagick/imagemagick' '1' 'T'
+if [ -d "$packages/imagemagick-$g_ver" ]; then
+    sudo rm -fr "$packages/imagemagick-$g_ver"
+fi
+
 if build 'imageMagick' "$g_ver"; then
     download "https://codeload.github.com/imagemagick/imagemagick/tar.gz/refs/tags/$g_ver" "imagemagick-$g_ver.tar.gz"
     execute autoreconf -fi -I /usr/share/aclocal
@@ -753,16 +794,11 @@ if build 'imageMagick' "$g_ver"; then
         --with-gslib \
         --with-heic \
         --with-jemalloc \
-        --with-lcms \
         --with-modules \
         --with-perl \
         --with-rsvg \
         --with-tcmalloc \
-        --with-quantum-depth=16 \
-        CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include" \
-        LCMS2_LIBS='-L/usr/lib -llcms2' \
-        LIBS='-lm -lpthread' \
-        PKG_CONFIG="$(type -P pkg-config)"
+        --with-quantum-depth=16
     execute make "-j$cpu_threads"
     execute sudo make install
 fi
@@ -771,7 +807,7 @@ fi
 sudo ldconfig 2>/dev/null
 # SHOW THE NEWLY INSTALLED MAGICK VERSION
 show_magick_version
-# PROMPT THE USER TO CLEAN UP THE BUILD FILES
+# PROMPT THE USER TO CLEANUP THE BUILD FILES
 cleanup_fn
-# SHOW THE EXIT MESSAGE
+# SHOW EXIT MESSAGE
 exit_fn
