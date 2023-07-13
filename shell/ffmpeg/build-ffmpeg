@@ -1087,7 +1087,7 @@ fi
 
 if build 'openssl' '3.1.1'; then
     download 'https://www.openssl.org/source/openssl-3.1.1.tar.gz'
-    execute ./config --prefix=/usr/local --openssldir=/usr/local/lib/ssl \
+    execute ./config --prefix=/usr/local --openssldir=/etc/ssl/certs \
         --with-{zlib-include="$workspace"/include,zlib-lib="$workspace"/lib} no-shared zlib
     execute make "-j$cpu_threads"
     execute sudo make install_sw
