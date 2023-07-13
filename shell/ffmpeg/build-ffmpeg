@@ -57,6 +57,7 @@ CFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -I/usr/include/
 CXXFLAGS='-g -O3 -march=native'
 LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/local/lib -L/usr/local/cuda/nvvm/lib64"
 LDFLAGS+=' -L/usr/local/cuda/targets/x86_64-linux/lib -L/usr/lib -L/usr/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu -L/lib'
+CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include"
 LDEXEFLAGS=
 EXTRALIBS='-ldl -lpthread -lm -lz'
 ffmpeg_libraries=()
@@ -291,6 +292,7 @@ git_4_fn()
     gitlab_repo="$1"
     if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.freedesktop.org/api/v4/projects/$gitlab_repo/repository/tags")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
+        g_ver="${g_ver#pkg-config-}"
         g_ver="${g_ver#VER-}"
     fi
 }
@@ -918,11 +920,8 @@ sort_libjxl_fn()
 
 debian_os_version()
 {
-    debian_pkgs='libdmalloc5 libjemalloc2 libtcmalloc-minimal4 libyuv-dev libyuv-utils libyuv0 libsharp-dev libticonv-dev'
-
-    os_version="$VER"
-    case "$os_version" in
-        12|11|10)    pkgs_fn "$debian_pkgs";;
+    case "$VER" in
+        12|11|10)    pkgs_fn 'libdmalloc5 libjemalloc2 libtcmalloc-minimal4 libyuv-dev libyuv-utils libyuv0 libsharp-dev libticonv-dev';;
         *)           fail_fn 'Could not detect the Ubuntu version.';;
     esac
 }
@@ -935,8 +934,7 @@ ubuntu_os_version()
     jammy_lunar_pkgs='libmimalloc-dev libtbbmalloc2 libyuv-dev librust-jemalloc-sys-dev librust-malloc-buf-dev'
     jammy_lunar_pkgs+=' libsrt-doc libreadline-dev libpipewire-0.3-dev libwayland-dev libdecor-0-dev libde265-dev'
 
-    os_version="$VER"
-    case "$os_version" in
+    case "$VER" in
         23.04|22.04)    pkgs_fn "$jammy_lunar_pkgs";;
         20.04)          pkgs_fn "$focal_pkgs";;
         18.04)          pkgs_fn "$bionic_pkgs";;
@@ -1040,7 +1038,8 @@ printf "%s\n%s\n%s\n" \
 if build 'm4' 'latest'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
     pc_type="$(build-aux/config.guess)"
-    execute ./configure --prefix="$workspace" --disable-nls --enable-c++ --{build,host,target}="$pc_type"
+    execute ./configure --prefix="$workspace" --{build,host}="$pc_type" --disable-nls \
+        --enable-c++ --enable-threads=posix --with-dmalloc --with-libiconv-prefix=/usr
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
@@ -1050,29 +1049,28 @@ fi
 if build 'autoconf' 'latest'; then
     download 'http://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz'
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace"
-    execute make "-j$(($cpu_threads-1))"
+    execute ./configure --prefix="$workspace" --{build,host}="$pc_type" M4="$workspace"/bin/m4
+    execute make "-j$cpu_threads"
     execute make install
-    execute make distclean
     build_done 'autoconf' 'latest'
 fi
 
 if build 'libtool' '2.4.7'; then
     download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
-    execute ./configure --prefix="$workspace"
+    execute ./configure --prefix="$workspace" --{build,host}="$pc_type" --with-pic M4="$workspace"/bin/m4
     execute make "-j$cpu_threads"
     execute make install
-    execute make distclean
     build_done 'libtool' '2.4.7'
 fi
 
-if build 'pkg-config' '0.29.2'; then
-    download "https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz"
-    execute ./configure --prefix="$workspace" --with-pc-path="$PKG_CONFIG_PATH"
+git_ver_fn '953' '4'
+if build 'pkg-config' "$g_ver"; then
+    download "https://gitlab.freedesktop.org/pkg-config/pkg-config/-/archive/pkg-config-$g_ver/pkg-config-pkg-config-$g_ver.tar.bz2" "pkg-config-$g_ver.tar.bz2"
+    execute ./configure --prefix=/usr --{build,host}="$pc_type" --with-pc-path="$PKG_CONFIG_PATH" --with-pic
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
-    build_done 'pkg-config' '0.29.2'
+    build_done 'pkg-config' "$g_ver"
 fi
 
 pre_check_ver 'madler/zlib' '1' 'T'
@@ -1087,10 +1085,11 @@ fi
 
 if build 'openssl' '3.1.1'; then
     download 'https://www.openssl.org/source/openssl-3.1.1.tar.gz'
-    execute ./config --prefix=/usr/local --openssldir=/etc/ssl/certs \
-        --with-{zlib-include="$workspace"/include,zlib-lib="$workspace"/lib} no-shared zlib
+    execute ./Configure linux-x86_64 --prefix=/usr/local enable-egd enable-fips enable-md2 enable-rc5 enable-trace \
+        threads zlib --with-rand-seed=os --with-zlib-include="$workspace"/include --with-zlib-lib="$workspace"/lib
     execute make "-j$cpu_threads"
-    execute sudo make install_sw
+    execute sudo make install
+    execute sudo make install_fips
     execute make distclean
     build_done 'openssl' '3.1.1'
 fi
@@ -1171,8 +1170,7 @@ if build 'libpng' '1.6.39'; then
     download "https://codeload.github.com/glennrp/libpng/tar.gz/refs/tags/v$g_ver" "libpng-$g_ver.tar.gz"
     execute autoupdate
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --disable-shared \
-        --enable-{hardware-optimizations,unversioned-links}
+    execute ./configure --prefix="$workspace" --disable-shared --enable-{hardware-optimizations,unversioned-links}
     execute make "-j$cpu_threads"
     execute make install-header-links
     execute make install-library-links
@@ -1185,7 +1183,7 @@ pre_check_ver 'nkoriyama/aribb24' '1' 'T'
 if build 'aribb24' '2.16.01'; then
     download "https://codeload.github.com/nkoriyama/aribb24/tar.gz/refs/tags/v$g_ver" "aribb24-$g_ver.tar.gz"
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --disable-shared --with-pic
+    execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
@@ -1385,7 +1383,7 @@ if build 'tesseract' "$g_ver"; then
     download "https://codeload.github.com/tesseract-ocr/tesseract/tar.gz/refs/tags/$g_ver" "tesseract-$g_ver.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --datadir="$workspace"/bin \
-        --disable-{graphics,shared,tessdata-prefix} --with-pic --without-curl
+        --disable-{graphics,shared,tessdata-prefix} --without-curl
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
@@ -1519,7 +1517,7 @@ if build 'libmpg123' 'git'; then
     execute autoheader -f -W all
     execute automake -a -c -f -W all,no-portability
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --enable-static --with-{cpu=x86-64,pic}
+    execute ./configure --prefix="$workspace" --enable-static --with-cpu=x86-64
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
@@ -1668,7 +1666,7 @@ if build 'libvpx' "$g_ver"; then
     execute ./configure --prefix="$workspace" --{build,host,target}="$pc_type" --as=yasm \
         --disable-{examples,shared,unit-tests,webm-io} --log=no --extra-cxxflags="$CXXFLAGS" \
         --enable-{better-hw-compatibility,ccache,codec-srcs,coefficient-range-checking} \
-        --enable-{install-srcs,libyuv,multi-res-encoding,onthefly-bitpacking,pic,postproc} \
+        --enable-{install-srcs,libyuv,multi-res-encoding,onthefly-bitpacking,postproc} \
         --enable-{realtime-only,runtime-cpu-detect,small,static,vp8,vp9,vp9-highbitdepth} \
         --enable-{vp9-postproc,vp9-temporal-denoising}
     execute make "-j$cpu_threads"
@@ -1708,7 +1706,7 @@ if build 'libtheora' "$g_ver1"; then
     execute rm config.guess
     execute curl -Lso config.guess 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
     chmod +x config.guess
-    execute ./configure --prefix="$workspace" --disable-{asm,examples,oggtest,spec,shared,vorbistest} --with-pic \
+    execute ./configure --prefix="$workspace" --disable-{asm,examples,oggtest,spec,shared,vorbistest} \
         --with-{ogg-includes="$workspace"/include,ogg-libraries="$workspace"/lib,vorbis-includes="$workspace"/include,vorbis-libraries="$workspace"/lib}
     execute make "-j$cpu_threads"
     execute make install
@@ -1820,7 +1818,7 @@ git_ver_fn '363' '2' 'T'
 if build 'udfread' "$g_ver1"; then
     download "https://code.videolan.org/videolan/libudfread/-/archive/$g_ver1/libudfread-$g_ver1.tar.bz2"
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --disable-shared --with-{gnu-ld,pic}
+    execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
@@ -1948,7 +1946,7 @@ ffmpeg_libraries+=('--enable-libsvtav1')
 git_ver_fn '536' '2' 'B'
 if build 'x264' "$g_sver"; then
     download "https://code.videolan.org/videolan/x264/-/archive/$g_ver/x264-$g_ver.tar.bz2" "x264-$g_sver.tar.bz2"
-    execute ./configure --prefix="$workspace" --bit-depth=all --chroma-format=all --enable-{gprof,lto,pic,static,strip}
+    execute ./configure --prefix="$workspace" --bit-depth=all --chroma-format=all --enable-{gprof,lto,static,strip}
     execute make "-j$cpu_threads"
     execute make install
     execute make install-lib-static
@@ -2087,7 +2085,7 @@ if build 'vapoursynth' "$g_ver"; then
     fi
     execute pip install Cython
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --disable-shared CPPFLAGS="-I$workspace/include" CXXFLAGS="$CXXFLAGS"
+    execute ./configure --prefix="$workspace" --disable-shared CPPFLAGS="$CPPFLAGS" CXXFLAGS="$CXXFLAGS"
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
