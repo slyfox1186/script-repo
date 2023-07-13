@@ -1,0 +1,236 @@
+#!/bin/bash
+
+###################################################################
+##
+##  Install OpenSSL from source code with multiple optional
+##  features enabled.
+## 
+##  The script also installs SCTP Module Support which allows OpenSSL
+##  to enable its own SCTP feature support. 
+##  
+##  Enabled features: egd, fips, md2, rc5, trace, sctp, threads
+##
+##  Updated: 07.12.23
+##
+##  Script version: 1.0
+##
+###################################################################
+
+clear
+
+if [ "$EUID" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
+
+#
+# SET PROGRAM NAME + VERSION
+#
+
+script_ver=1.0
+archive_name=openssl-3.1.1
+archive_url=https://github.com/openssl/openssl/releases/download/openssl-3.1.1/openssl-3.1.1.tar.gz
+archive_ext="${archive_url//*.}"
+cwd="$PWD"/openssl-build-script
+packages="$cwd"/packages
+repo=https://github.com/slyfox1186/script-repo
+
+printf "\n%s\n%s\n\n" \
+    "OpenSSL Build Script - v$script_ver" \
+    '==============================================='
+
+
+
+
+#
+# CREATE FUNCTIONS
+#
+
+exit_fn()
+{
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'The script has completed' \
+        'Make sure to star this repository to show your support!' \
+        "$repo"
+    exit 0
+}
+
+fail_fn()
+{
+    printf "\n\n%s\n\n%s\n\n%s\n\n" \
+        "$1" \
+        'To get help with bugs visit:' \
+        "$repo/issues"
+    exit 1
+}
+
+cleanup_fn() { sudo rm -fr "$cwd"; }
+
+installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
+
+#
+# CREATE OUTPUT DIRECTORIES
+#
+
+mkdir -p "$packages"/sctp
+
+#
+# SET THE C AND C++ COMPILERS
+#
+
+export CC=gcc CXX=g++
+
+#
+# SET LDFLAGS
+#
+
+LDFLAGS="\
+-L/usr/local/lib64 \
+-L/usr/local/lib \
+-L/usr/local/cuda/nvvm/lib64 \
+-L/usr/local/cuda/targets/x86_64-linux/lib \
+-L/usr/lib \
+-L/usr/lib/x86_64-linux-gnu \
+-L/usr/lib/gcc/x86_64-linux-gnu \
+-L/lib64 \
+-L/lib \
+-L/lib/x86_64-linux-gnu\
+"
+export LDFLAGS
+
+#
+# EXPORT COMPILER OPTIMIZATION FLAGS
+#
+
+CPPFLAGS='-I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/lib/gcc/x86_64-linux-gnu/12/include'
+CPPFLAGS+=' -I/usr/share/cmake-3.25/include -I/usr/lib/llvm-14/include -I/usr/local/cuda-12.2/compute-sanitizer/include'
+CPPFLAGS+=' -I/usr/local/cuda-12.2/targets/x86_64-linux/include -I/usr/local/cuda-12.2/nvvm/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include'
+CPPFLAGS+=' -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/lib/jvm/java-17-openjdk-amd64/include'
+
+export CPPFLAGS
+export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
+
+#
+# INSTALL REQUIRED APT PACKAGES
+#
+
+pkgs=(autoconf autogen automake build-essential ca-certificates ccache curl libc-ares-dev libcurl4-openssl-dev
+      libdmalloc-dev libgcrypt20-dev libgmp-dev libgpg-error-dev libjemalloc-dev libmbedtls-dev libssh2-1-dev
+      libssh-dev libssl-dev libxml2-dev)
+
+for pkg in ${pkgs[@]}
+do
+    if ! installed "$pkg"; then
+        missing_pkgs+=" $pkg"
+    fi
+done
+
+if [ -n "$missing_pkgs" ]; then
+    if sudo apt -y install $missing_pkgs; then
+        echo 'The required APT packages were installed.'
+    else
+        fail_fn "These required APT packages failed to install: $missing_pkgs"
+    fi
+else
+    echo 'The required APT packages are already installed.'
+fi
+
+#
+# INSTALL SCTP MODULE TO ENABLE SCTP SUPPORT IN OPENSSL
+#
+
+cd "$packages" || exit 1
+
+# DOWNLOAD SCTP SOURCE ARCHIVE
+if [ ! -f "$packages/sctp-1.0.17.tar.gz" ]; then
+    if ! curl -Lso "$packages/sctp-1.0.17.tar.gz" 'https://versaweb.dl.sourceforge.net/project/lksctp/lksctp-tools/lksctp-tools-1.0.17.tar.gz'; then
+        printf "%s\n\n" 'Failed to download sctp source code.'
+    fi
+fi
+
+# EXTRACT SCTP ARCHIVE
+if ! tar -zxf "$packages/sctp-1.0.17.tar.gz" -C "$packages"/sctp --strip-components 1; then
+    printf "%s\n\n" "Failed to extract the SCTP archive file: $packages/sctp-1.0.17.tar.gz"
+fi
+
+printf "\n%s\n%s\n\n" \
+    'Building SCTP Module Support version 1.0.17' \
+    '==============================================='
+
+# INSTALL SCTP MODULE SUPPORT
+cd "$packages/sctp" || exit 1
+autoreconf -fi
+./bootstrap
+./configure
+make -j32
+
+# ENSURE THAT AUTH CHUNKS ARE ENABLED
+sudo sysctl -w net.sctp.auth_enable=1
+
+#
+# DOWNLOAD OPENSSL ARCHIVE FILE
+#
+
+cd $packages || exit 1
+
+archive_file="$archive_name.tar.$archive_ext"
+
+if [ ! -f "$archive_file" ]; then
+    if ! curl -Lso "$archive_file" "$archive_url"; then
+        fail_fn "Failed to download: $archive_url as $archive_file"
+    fi
+fi
+
+#
+# CREATE THE OPENSSL OUTPUT DIRECTORY
+#
+
+if [ -d "$packages/$archive_name" ]; then
+    sudo rm -fr "$packages/$archive_name"
+fi
+
+mkdir -p "$packages/$archive_name/build"
+
+#
+# EXTRACT OPENSSL ARCHIVE FILE
+#
+
+if ! tar -zxf "$archive_file" -C "$packages/$archive_name" --strip-components 1; then
+    fail_fn "Failed to extract: $archive_file"
+fi
+
+#
+# BUILD OPENSSL FROM SOURCE
+#
+
+printf "\n%s\n%s\n\n" \
+    'Building OpenSSL version 3.1.1' \
+    '==============================================='
+
+cd "$packages/$archive_name/build" || exit 1
+clear
+../Configure --prefix=/usr/local         \
+             --openssldir=/usr/local/ssl \
+             --with-rand-seed=os         \
+             enable-egd                  \
+             enable-fips                 \
+             enable-md2                  \
+             enable-rc5                  \
+             enable-trace                \
+             sctp                        \
+             threads
+make "-j$(nproc --all)"
+make "-j$(nproc --all)" test
+
+if ! sudo make build_sw; then
+    make distclean
+    fail_fn 'Failed to execute: sudo make install_sw'
+fi
+
+# REQUIRED FOR FIPS FUNCTIONALITY TO WORK
+sudo openssl fipsinstall
+
+# CLEANUP FILES
+cleanup_fn
+# SHOW EXIT MESSAGE
+exit_fn
