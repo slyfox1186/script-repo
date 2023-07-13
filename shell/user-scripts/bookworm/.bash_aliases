@@ -297,3 +297,8 @@ alias dir_size='clear; ncdu -q'
 
 # WINE
 alias wine32='env WINEARCH=win32 WINEPREFIX=~/.wine32 wine $*'
+
+# FIND AND KILL PROCESSES BY PID OR NAME
+alias tk='kill -9'
+alias tka='killall -9'
+alias tkan='killall -9 nautilus'
