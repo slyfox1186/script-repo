@@ -39,9 +39,6 @@ printf "\n%s\n%s\n\n" \
     "OpenSSL Build Script - v$script_ver" \
     '==============================================='
 
-
-
-
 #
 # CREATE FUNCTIONS
 #
