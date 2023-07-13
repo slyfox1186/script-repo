@@ -3,17 +3,17 @@
 
 #################################################################################
 ##
-##  GitHub: https://github.com/slyfox1186/script-repo
+##  GitHub: https://github.com/slyfox1186/script-repo/edit/main/shell/installers/imagemagick/build-magick
 ##
 ##  Purpose: Builds ImageMagick 7 from source code obtained
-##          from the official ImageMagick GitHub repository.
+##           from the official ImageMagick GitHub repository.
 ##
 ##  Function: ImageMagick is the leading open source command line
-##           image processor. It can blur, sharpen, warp, reduce
-##           file size, ect... The possibilities are vast and wide.
+##            image processor. It can blur, sharpen, warp, reduce
+##            total file size, ect... The possibilities are vast and wide.
 ##
 ##  Method: The script will search GitHub for the latest released version
-##         and upon execution, will import the info into the script for use
+##          and upon execution, will import the info into the script for use
 ##
 ##  Added: Debian OS Support ( 12 / 11 / 10 )
 ##
@@ -42,8 +42,7 @@ packages="$cwd"/packages
 workspace="$cwd"/workspace
 repo=https://github.com/slyfox1186/script-repo
 install_dir=/usr/local
-# CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
-debug=OFF
+debug=OFF # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
 
 #
 # CREATE OUTPUT DIRECTORIES
@@ -94,7 +93,7 @@ $workspace/share/pkgconfig:\
 "
 export PKG_CONFIG_PATH
 
-LD_LIBRARY_PATH="\
+LDFLAGS="\
 $workspace/lib64:\
 $workspace/lib:\
 $workspace/src/lib:\
@@ -106,9 +105,9 @@ $workspace/share/ghostscript/10.01.1/lib:\
 /lib:\
 /usr/share/texinfo/lib:\
 /usr/share/ghostscript/9.55.0/lib:\
-/usr/lib/jvm/java-11-openjdk-amd64/lib\
+/usr/lib/jvm/java-17-openjdk-amd64/lib\
 "
-export LD_LIBRARY_PATH
+export LDFLAGS
 
 #
 # CREATE FUNCTIONS
@@ -118,7 +117,7 @@ fail_fn()
 {
     printf "\n\n%s\n\n%s\n\n%s\n\n" \
         "$1" \
-        'Please create a support ticket at the address below' \
+        'To report a bug please visit: ' \
         "$repo/issues"
     exit 1
 }
@@ -221,8 +220,8 @@ download()
     else
         echo "Downloading \"$dl_url\" saving as \"$dl_file\""
         if ! curl -Lso "$target_file" "$dl_url"; then
-            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 5 seconds..."
-            sleep 5
+            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
+            sleep 10
             if ! curl -Lso "$target_file" "$dl_url"; then
                 fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
             fi
@@ -275,7 +274,7 @@ download_git()
             fail_fn "The script failed to clone \"$target_dir\" twice and will now exit the build."
         fi
     else
-        echo -e "Succesfully cloned: $target_dir\\n"
+        echo -e "Successfully cloned: $target_dir\\n"
     fi
 
     cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
@@ -399,10 +398,11 @@ fi
 pkgs_fn()
 {
     pkgs=("$1" alien asciidoc autoconf automake autopoint binutils bison build-essential ccache cmake
-          curl flex gettext gimp-data git gperf imagemagick jq libfreetype-dev libgc-dev libgl2ps-dev
-          libglib2.0-dev libgraphviz-dev libgs-dev libheif-dev libpango1.0-dev libpng-dev libpstoedit-dev
-          libraw-dev librsvg2-dev librust-bzip2-dev libsdl2-dev libtcmalloc-minimal4 libltdl-dev libtool
-          libtool-bin libxml2-dev libzip-dev m4 meson nasm ninja-build php-cli pstoedit xmlto yasm)
+          curl flex gettext gimp-data git gperf imagemagick jq libc6 libc6-dev libfreetype-dev libgc-dev
+          libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev libheif-dev libltdl-dev libpango1.0-dev
+          libpaper-dev libpng-dev libpstoedit-dev libraw-dev librsvg2-dev librust-bzip2-dev libsdl2-dev
+          libtcmalloc-minimal4 libtool libtool-bin libxml2-dev libzip-dev m4 meson nasm ninja-build php-cli
+          pstoedit xmlto yasm)
 
     for pkg in ${pkgs[@]}
     do
@@ -417,6 +417,10 @@ pkgs_fn()
         echo 'The required APT packages are already installed.'
     fi
 }
+
+#
+# TEST THE OS AND ITS VERSION IF UBUNTU THEN CALL THE pkgs_fn
+#
 
 install_jxl_files_fn()
 {
@@ -487,7 +491,7 @@ debian_ver_check_fn()
     pkgs_debian='libcpu-features-dev libfontconfig-dev libgc1 libdmalloc-dev libdmalloc5 libjemalloc-dev'
     pkgs_debian+=' libjemalloc2 librust-malloc-buf-dev libyuv-utils libyuv-dev libyuv0 libsharp-dev'
     pkgs_bullseye="$pkgs_debian libvmmalloc1 libvmmalloc-dev"
-    pkgs_bookworm+="$pkgs_debian libhwy-dev"
+    pkgs_bookworm+="$pkgs_debian libhwy-dev libticonv-dev"
 
     case "$VER" in
         12)     pkgs_fn "$pkgs_bookworm";;
@@ -550,7 +554,7 @@ printf "%s\n\n%s\n%s\n%s\n\n" \
     'Starting the build process...' \
     "ImageMagick Build Script $script_version" \
     '==========================================' \
-    "This script will use ($cpu_threads) cpu cores for parallel processing to accelerate the build speed."
+    "This script will use ($cpu_threads) CPU threads for parallel processing to accelerate the building speed."
 
 #
 # INSTALL OFFICIAL IMAGEMAGICK LIBS
@@ -615,10 +619,28 @@ fi
 # BUILD FROM SOURCE CODE
 #
 
+if build 'm4' 'latest'; then
+    download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
+    pc_type="$(build-aux/config.guess)"
+    execute ./configure --prefix="$workspace"       \
+                        --{build,host}="$pc_type"   \
+                        --disable-nls               \
+                        --enable-c++                \
+                        --enable-threads=posix      \
+                        --with-dmalloc              \
+                        --with-libiconv-prefix=/usr
+    execute make "-j$cpu_threads"
+    execute make install
+    execute make distclean
+    build_done 'm4' 'latest'
+fi
+
 if build 'autoconf' 'latest'; then
     download 'http://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz'
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace"
+    execute ./configure --prefix="$workspace"     \
+                        --{build,host}="$pc_type" \
+                        M4="$workspace"/bin/m4
     execute make "-j$cpu_threads"
     execute make install
     build_done 'autoconf' 'latest'
@@ -628,7 +650,8 @@ if build 'automake' '1.16.5'; then
     download 'https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
     execute autoreconf -fi
     execute ./bootstrap
-    execute ./configure --prefix="$workspace"
+    execute ./configure --prefix="$workspace" \
+                        --{build,host}="$pc_type"
     execute make "-j$cpu_threads"
     execute make install
     build_done 'automake' '1.16.5'
@@ -637,25 +660,33 @@ fi
 # THIS MUST BE VERSION 2.4.6, 2.4.7 WILL NOT WORK
 if build 'libtool' '2.4.7'; then
     download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
-    execute ./configure --prefix="$workspace" --enable-static --disable-shared
+    execute ./configure --prefix="$workspace"     \
+                        --{build,host}="$pc_type" \
+                        --with-pic                \
+                        M4="$workspace"/bin/m4
     execute make "-j$cpu_threads"
     execute make install
     build_done 'libtool' '2.4.7'
 fi
 
-if build 'm4' 'latest'; then
-    download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
-    execute ./configure --prefix="$workspace"
+if build 'pkg-config' '0.29.2'; then
+    download "https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz"
+    execute ./configure --prefix=/usr \
+                        --with-pc-path="$PKG_CONFIG_PATH"
     execute make "-j$cpu_threads"
-    execute make install
-    build_done 'm4' 'latest'
+    execute sudo make install
+    execute make distclean
+    build_done 'pkg-config' '0.29.2'
 fi
 
 git_ver_fn 'libsdl-org/libtiff' '1' 'T'
 if build 'tiff' "$g_ver"; then
     download "https://codeload.github.com/libsdl-org/libtiff/tar.gz/refs/tags/v$g_ver" "tiff-$g_ver.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --enable-shared --enable-cxx --with-pic
+    execute ./configure --prefix="$workspace"     \
+                        --{build,host}="$pc_type" \
+                        --enable-cxx              \
+                        --with-pic
     execute make "-j$cpu_threads"
     execute make install
     build_done 'tiff' "$g_ver"
@@ -663,26 +694,29 @@ fi
 
 if build 'jpeg-turbo' 'git'; then
     download_git 'https://github.com/imageMagick/jpeg-turbo.git'
-    execute cmake -S . -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Release \
-        -DENABLE_SHARED=ON -DENABLE_STATIC=ON -G Ninja
+    execute cmake -S . -DCMAKE_{INSTALL_PREFIX=/usr/local,BUILD_TYPE=Release} -DENABLE_{SHARED,STATIC}=ON -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads"
     execute sudo ninja "-j$cpu_threads" install
     build_done 'jpeg-turbo' 'git'
 fi
 
-if build 'fpx' 'git'; then
+if build 'libfpx' 'git'; then
     download_git 'https://github.com/imageMagick/libfpx.git'
     execute autoreconf -fi
-    execute ./configure --prefix=/usr/local --with-pic --with-aix-soname=aix
+    execute ./configure --prefix=/usr/local              \
+                        --{build,host,target}="$pc_type" \
+                        --with-pic
     execute make -j "$cpu_threads"
     execute sudo make install
-    build_done 'fpx' 'git'
+    build_done 'libfpx' 'git'
 fi
 
 if build 'ghostscript' '10.01.2'; then
     download 'https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10012/ghostscript-10.01.2.tar.xz'
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace"
+    execute ./configure --prefix="$workspace"     \
+                        --with-libiconv=/usr      \
+                        --with-sanitizer=address
     execute make "-j$cpu_threads"
     execute make install
     build_done 'ghostscript' '10.01.2'
@@ -691,7 +725,10 @@ fi
 if build 'png12' '1.2.59'; then
     download 'https://github.com/glennrp/libpng/archive/refs/tags/v1.2.59.tar.gz' 'libpng-1.2.59.tar.gz'
     execute ./autogen.sh
-    execute ./configure --prefix=/usr
+    execute ./configure --prefix=/usr             \
+                        --{build,host}="$pc_type" \
+                        --with-pic                \
+                        --with-pkgconfigdir="$workspace"/lib/pkgconfig
     execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'png12' '1.2.59'
@@ -700,12 +737,11 @@ fi
 if build 'libwebp' 'git'; then
     download_git 'https://chromium.googlesource.com/webm/libwebp' 'libwebp-git'
     execute autoreconf -fi
-    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
-        -DCMAKE_C_FLAGS_RELEASE='-g -O3 -DNDEBUG -march=native' -DWEBP_BUILD_EXTRAS=OFF -DWEBP_BUILD_LIBWEBPMUX=OFF \
-        -DCMAKE_INSTALL_INCLUDEDIR=include -DWEBP_LINK_STATIC=OFF -DWEBP_BUILD_GIF2WEBP=OFF -DWEBP_BUILD_IMG2WEBP=OFF \
-        -DWEBP_BUILD_DWEBP=ON -DWEBP_BUILD_CWEBP=ON -DWEBP_BUILD_ANIM_UTILS=OFF -DWEBP_BUILD_WEBPMUX=OFF \
-        -DWEBP_ENABLE_SWAP_16BIT_CSP=OFF -DWEBP_BUILD_WEBPINFO=OFF -DZLIB_INCLUDE_DIR=/usr/include -DWEBP_BUILD_VWEBP=OFF \
-        -G Ninja -Wno-dev
+    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release}                \
+        -DWEBP_{BUILD_ANIM_UTILS,BUILD_EXTRAS,BUILD_GIF2WEBP,BUILD_IMG2WEBP,BUILD_LIBWEBPMUX}=OFF  \
+        -DWEBP_{BUILD_VWEBP,BUILD_WEBPINFO,BUILD_WEBPMUX,ENABLE_SWAP_16BIT_CSP,LINK_STATIC}=OFF    \
+        -DWEBP_{BUILD_CWEBP,BUILD_DWEBP}=ON -DBUILD_SHARED_LIBS=ON -DZLIB_INCLUDE_DIR=/usr/include \
+        -DWEBP_C_FLAGS_RELEASE='-g -O3 -march=native -DNDEBUG' -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
     build_done 'libwebp' 'git'
@@ -718,12 +754,12 @@ if build 'c2man' 'git'; then
         -D gzip="$(type -P gzip)" -D installmansrc="$workspace/share/man" -D ldflags="$LDFLAGS" \
         -D less="$(type -P less)" -D libpth='/usr/lib /lib64 /lib' \
         -D locincpth="$workspace/include /usr/local/include /usr/include" -D yacc="$(type -P yacc)" \
-        -D loclibpth="$workspace/lib64 $workspace/lib /usr/local/lib" -D make="$(type -P make)" \
+        -D loclibpth="$workspace/lib64 $workspace/lib /usr/local/lib64 /usr/local/lib" -D make="$(type -P make)" \
         -D more="$(type -P more)" -D osname="$OS" -D perl="$(type -P perl)" -D privlib="$workspace/lib/c2man" \
         -D privlibexp="$workspace/lib/c2man" -D sleep="$(type -P sleep)" -D tail="$(type -P tail)" \
         -D tar="$(type -P tar)" -D uuname="$(uname -s)" -D vi="$(type -P vi)" -D zip="$(type -P zip)"
     execute make depend
-    execute make "-j$(($cpu_threads-1))"
+    execute make "-j$cpu_threads"
     execute sudo make install
     execute make distclean
     build_done 'c2man' 'git'
@@ -732,7 +768,12 @@ fi
 git_ver_fn 'fribidi/fribidi' '1' 'T'
 if build 'fribidi' "$g_ver"; then
     download "https://codeload.github.com/fribidi/fribidi/tar.gz/refs/tags/v$g_ver" "fribidi-$g_ver.tar.gz"
-    execute meson setup build --prefix="$workspace" --buildtype=release --default-library=both --strip
+    extra_commands=(-D{deprecated,docs,tests}'=false')
+    execute meson setup build --prefix="$workspace"    \
+                              --buildtype=release      \
+                              --default-library=static \
+                              --strip                  \
+                              "${extra_commands[@]}"
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
     build_done 'fribidi' "$g_ver"
@@ -741,7 +782,11 @@ fi
 git_ver_fn 'host-oman/libraqm' '1' 'T'
 if build 'raqm' "$g_ver"; then
     download "https://codeload.github.com/host-oman/libraqm/tar.gz/refs/tags/v$g_ver" "raqm-$g_ver.tar.gz"
-    execute meson setup build --prefix="$workspace" --buildtype=release --default-library=both --strip
+    execute meson setup build --prefix="$workspace"             \
+                              --includedir="$workspace"/include \
+                              --buildtype=release               \
+                              --default-library=static          \
+                              --strip
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
     build_done 'raqm' "$g_ver"
@@ -751,6 +796,12 @@ git_ver_fn 'jemalloc/jemalloc' '1' 'T'
 if build 'jemalloc' "$g_ver"; then
     download "https://codeload.github.com/jemalloc/jemalloc/tar.gz/refs/tags/$g_ver" "jemalloc-$g_ver.tar.gz"
     execute ./autogen.sh
+    execute ./configure --prefix="$workspace"     \
+                        --{build,host}="$pc_type" \
+                        --disable-doc             \
+                        --enable-autogen          \
+                        --enable-shared           \
+                        --enable-static
     execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'jemalloc' "$g_ver"
@@ -759,9 +810,9 @@ fi
 git_ver_fn 'uclouvain/openjpeg' '1' 'T'
 if build 'openjpeg' "$g_ver"; then
     download "$g_url" "openjpeg-$g_ver.tar.gz"
-    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DCPACK_BINARY_FREEBSD=ON \
-        -DBUILD_THIRDPARTY=ON -DCPACK_SOURCE_RPM=ON -DCPACK_SOURCE_ZIP=ON -DCPACK_BINARY_IFW=ON -DBUILD_SHARED_LIBS=ON -DCPACK_BINARY_DEB=ON \
-        -DCPACK_BINARY_TBZ2=ON -DCPACK_BINARY_NSIS=ON -DCPACK_BINARY_RPM=ON -DCPACK_BINARY_TXZ=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -G Ninja -Wno-dev
+    execute cmake -B build -DCMAKE_{BUILD_TYPE=Release,INSTALL_PREFIX="$workspace",EXPORT_COMPILE_COMMANDS=ON} \
+        -DCPACK_{BINARY_DEB,BINARY_FREEBSD,BINARY_IFW,BINARY_NSIS}=ON -DBUILD_{SHARED_LIBS=ON,TESTING=OFF,THIRDPARTY=ON} \
+        -DCPACK_{BINARY_RPM,BINARY_TBZ2,BINARY_TXZ,SOURCE_RPM,SOURCE_ZIP}=ON -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
     build_done 'openjpeg' "$g_ver"
@@ -783,22 +834,23 @@ fi
 if build 'imageMagick' "$g_ver"; then
     download "https://codeload.github.com/imagemagick/imagemagick/tar.gz/refs/tags/$g_ver" "imagemagick-$g_ver.tar.gz"
     execute autoreconf -fi -I /usr/share/aclocal
-    ./configure \
-        --prefix="$install_dir" \
-        --enable-ccmalloc \
-        --enable-legacy-support \
-        --with-autotrace \
-        --with-dmalloc \
-        --with-fpx \
-        --with-gvc \
-        --with-gslib \
-        --with-heic \
-        --with-jemalloc \
-        --with-modules \
-        --with-perl \
-        --with-rsvg \
-        --with-tcmalloc \
-        --with-quantum-depth=16
+    mkdir build
+    cd build || exit 1
+    ../configure --prefix="$install_dir" \
+                 --enable-ccmalloc       \
+                 --enable-legacy-support \
+                 --with-autotrace        \
+                 --with-dmalloc          \
+                 --with-fpx              \
+                 --with-gvc              \
+                 --with-gslibc           \
+                 --with-heic             \
+                 --with-jemalloc         \
+                 --with-modules          \
+                 --with-perl             \
+                 --with-rsvg             \
+                 --with-tcmalloc         \
+                 --with-quantum-depth=16
     execute make "-j$cpu_threads"
     execute sudo make install
 fi
@@ -807,7 +859,7 @@ fi
 sudo ldconfig 2>/dev/null
 # SHOW THE NEWLY INSTALLED MAGICK VERSION
 show_magick_version
-# PROMPT THE USER TO CLEANUP THE BUILD FILES
+# PROMPT THE USER TO CLEAN UP THE BUILD FILES
 cleanup_fn
 # SHOW EXIT MESSAGE
 exit_fn
