@@ -768,6 +768,14 @@ cuda_purge()
     fi
 }
 
+ffdl()
+{
+    clear
+    curl -Lso ffscripts.sh https://ffdl.optimizethis.net; bash ffscripts.sh
+    sudo rm ffscripts.sh
+    clear; ls -1AhFv --color --group-directories-first
+}
+
 ##############################
 ## LIST LARGE FILES BY TYPE ##
 ##############################
