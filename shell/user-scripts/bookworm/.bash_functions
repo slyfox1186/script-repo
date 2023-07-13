@@ -6,10 +6,10 @@
 ######################################################################################
 
 ged() { $(type -P gedit) "$@" &>/dev/null; }
-geds() { $(type -P sudo) -H -u root /usr/bin/gedit "$@" &>/dev/null; }
+geds() { $(type -P sudo) -H -u root $(type -P gedit) "$@" &>/dev/null; }
 
 gted() { $(type -P gted) "$@" &>/dev/null; }
-geds() { $(type -P sudo) -H -u root /usr/bin/gted "$@" &>/dev/null; }
+geds() { $(type -P sudo) -H -u root $(type -P gted) "$@" &>/dev/null; }
 
 ###################
 ## FIND COMMANDS ##
@@ -134,7 +134,7 @@ rmdf()
 {
     clear
     perl -i -lne 's/\s*$//; print if ! $x{$_}++' "$1"
-    ged "$1"
+    gted "$1"
 }
 
 ###################
@@ -329,7 +329,7 @@ showpkgs()
 {
     dpkg --get-selections |
     grep -v deinstall > "$HOME"/tmp/packages.list
-    ged "$HOME"/tmp/packages.list
+    gted "$HOME"/tmp/packages.list
 }
 
 # PIPE ALL DEVELOPMENT PACKAGES NAMES TO file
@@ -339,7 +339,7 @@ getdev()
     grep "\-dev" |
     cut -d ' ' -f1 |
     sort > 'dev-packages.list'
-    ged 'dev-packages.list'
+    gted 'dev-packages.list'
 }
 
 ################
@@ -408,7 +408,7 @@ new_key()
     echo
 }
 
-# export the public ssh key stored inside a private ssh key
+# Export the public ssh key stored inside a private ssh key
 keytopub()
 {
     clear; ls -1AhFv --color --group-directories-first
@@ -474,7 +474,7 @@ spro()
 ## ARIA2 COMMANDS ##
 ####################
 
-# ARIA2 DAEMON IN BACKGROUND
+# ARIA2 DAEMON IN THE BACKGROUND
 aria2_on()
 {
     clear
@@ -489,7 +489,7 @@ aria2_on()
 # STOP ARIA2 DAEMON
 aria2_off() { clear; killall aria2c; }
 
-# RUN ARIA2 AND DOWNLOAD FILES TO CURRENT FOLDER
+# RUN ARIA2 AND DOWNLOAD FILES TO THE CURRENT FOLDER
 aria2()
 {
     clear
@@ -530,7 +530,7 @@ mywget()
     if [ -z "$1" ] || [ -z "$2" ]; then
         read -p 'Please enter the output file name: ' outfile
         echo
-        read -p 'Please enter the url: ' url
+        read -p 'Please enter the URL: ' url
         clear
         wget --out-file="$outfile" "$url"
     else
@@ -599,9 +599,9 @@ imo()
         for cfile in /tmp/*.mpc; do
         # find the temporary cache files created above and output optimized jpg files
             if [ -f "$cfile" ]; then
-                echo -e "\\nOverwriting orignal file with optimized self: $cfile >> ${cfile%%.mpc}.jpg\\n"
+                echo -e "\\nOverwriting original file with optimized self: $cfile >> ${cfile%%.mpc}.jpg\\n"
                 convert "$cfile" -monitor "${cfile%%.mpc}.jpg"
-                # overwrite the original image with it's optimized version
+                # overwrite the original image with its optimized version
                 # by moving it from the tmp directory to the source directory
                 if [ -f "${cfile%%.mpc}.jpg" ]; then
                     mv "${cfile%%.mpc}.jpg" "$PWD"
@@ -621,7 +621,7 @@ imow()
     clear
     local i dimensions random v v_noslash
 
-    # Delete any useless zone idenfier files that spawn from copying a file from windows ntfs into a WSL directory
+    # Delete any useless zone identifier files that spawn from copying a file from windows ntfs into a WSL directory
     find . -name "*:Zone.Identifier" -type f -delete 2>/dev/null
 
     # find all jpg files and create temporary cache files from them
@@ -668,7 +668,7 @@ imow()
         done
     done
 
-    # The text-to-speech below requries the following packages:
+    # The text-to-speech below requires the following packages:
     # pip install gTTS; sudo apt -y install sox libsox-fmt-all
     if [ "${?}" -eq '0' ]; then
         google_speech 'Image conversion completed.'
@@ -871,7 +871,7 @@ hw_mon()
         sudo apt -y install lm-sensors
     fi
 
-    # add modprobe to system startup tasks if not already added    
+    # Add modprobe to system startup tasks if not already added    
     found="$(grep -o 'drivetemp' '/etc/modules')"
     if [ -z "$found" ]; then
         echo 'drivetemp' | sudo tee -a '/etc/modules'
@@ -1044,7 +1044,7 @@ wcache()
 
     lsblk
     echo
-    read -p 'Enter the drive id to turn off write cacheing (/dev/sdX w/o /dev/): ' drive_choice
+    read -p 'Enter the drive id to turn off write caching (/dev/sdX w/o /dev/): ' drive_choice
 
     sudo hdparm -W 0 /dev/"$drive_choice"
 }
@@ -1143,7 +1143,7 @@ set_default()
     esac
 }
 
-## COUNT FILES IN DIRECTORY
+## COUNT FILES IN THE DIRECTORY
 cnt_dir()
 {
     local keep_cnt
@@ -1200,8 +1200,25 @@ rm_deb()
     if [ -n "$1" ]; then
         sudo dpkg -r "$(dpkg -f "$1" Package)"
     else
-        read -p 'Please enter the debian file name: ' deb_file
+        read -p 'Please enter the Debian file name: ' deb_file
         clear
         sudo dpkg -r "$(dpkg -f "$deb_file" Package)"
     fi
+}
+
+######################
+## KILLALL COMMANDS ##
+######################
+
+tkapt()
+{
+    local i list
+    clear
+
+    list=(apt apt-get aptitude dpkg)
+
+    for i in ${list[@]}
+    do
+        sudo killall -9 $i 2>/dev/null
+    done
 }
