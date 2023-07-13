@@ -206,8 +206,9 @@ printf "\n%s\n%s\n\n" \
 
 cd "$packages/$archive_name/build" || exit 1
 clear
-../Configure --prefix=/usr/local         \
-             --openssldir=/usr/local/ssl \
+
+../Configure linux-x86_64                \
+             --prefix=/usr/local         \
              --with-rand-seed=os         \
              enable-egd                  \
              enable-fips                 \
@@ -216,12 +217,22 @@ clear
              enable-trace                \
              sctp                        \
              threads
-make "-j$(nproc --all)"
-make "-j$(nproc --all)" test
 
-if ! sudo make build_sw; then
+make "-j$(nproc --all)"
+
+if ! sudo make all; then
     make distclean
-    fail_fn 'Failed to execute: sudo make install_sw'
+    fail_fn 'Failed to execute: sudo make all'
+fi
+
+if ! sudo make install; then
+    make distclean
+    fail_fn 'Failed to execute: sudo make install'
+fi
+
+if ! sudo make install_fips; then
+    make distclean
+    fail_fn 'Failed to execute: sudo make install_fips'
 fi
 
 # REQUIRED FOR FIPS FUNCTIONALITY TO WORK
