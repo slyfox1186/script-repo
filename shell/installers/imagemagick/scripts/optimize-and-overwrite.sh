@@ -2,11 +2,18 @@
 
 clear
 
+# SET PATH
+export PATH="/usr/lib/ccache:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/cuda/bin:$PATH"
+
 # DELETE ANY USELESS ZONE IDENFIER FILES THAT SPAWN FROM COPYING A FILE FROM WINDOWS NTFS INTO A WSL DIRECTORY
 find . -type f -name "*:Zone.Identifier" -delete 2>/dev/null
 
 # THE FILE EXTENSION TO SEARCH FOR (DO NOT INCLUDE A '.' WITH THE EXTENSION)
 fext=jpg
+
+# GET THE FILE COUNT TO USE IN THE FOR LOOP BELOW
+cnt_queue=$(find . -maxdepth 2 -type f -iname *.jpg | wc -l)
+cnt_total=$(find . -maxdepth 2 -type f -iname *.jpg | wc -l)
 
 # GET THE UNMODIFIED PATH OF EACH MATCHING FILE
 get_path="$(find . -type f -iname "*.${fext}" -exec sh -c 'i="${1}"; echo "${i%*.}"' shell {} \;)"
@@ -25,17 +32,30 @@ unset i
 
 for i in *.jpg
 do
-    # CREATE A VARIABLE TO HOLD A RANDOMIZED DIRECTORY NAME TO PROTECT AGAINST CROSSOVER IF RUNNING
-    # THIS FUNCTION MORE THAN ONCE AT A TIME
+    cnt_queue=$(( cnt_queue-1 ))
+
+cat <<EOF
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+File Path: ${fpath//\/Pics\/Pics/\/Pics}
+
+Folder: $(basename ${PWD})
+
+Total Files:    ${cnt_total}
+Files in queue: ${cnt_queue}
+
+Converting:  ${i}
+
+             >> ${i%%.jpg}.mpc
+            
+                >> ${i%%.jpg}.cache
+               
+                   >> ${i%%.jpg}-IM.jpg
+
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+EOF
+    echo
     random_dir="$(mktemp -d)"
-    echo '========================================================================================================='
-    echo
-    echo "Working Directory: ${PWD}"
-    echo
-    printf "Converting: %s\n             >> %s\n              >> %s\n               >> %s\n" "${i}" "${i%%.jpg}.mpc" "${i%%.jpg}.cache" "${i%%.jpg}-IM.jpg"
-    echo
-    echo '========================================================================================================='
-    echo
     dimensions="$(identify -format '%wx%h' "${i}")"
     convert "${i}" -monitor -filter Triangle -define filter:support=2 -thumbnail "${dimensions}" -strip \
         -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize 136 -quality 82 -define jpeg:fancy-upsampling=off \
@@ -53,7 +73,6 @@ do
                     do
                         v_noslash="${v%/}"
                         rm -fr "${v_noslash%/*}"
-                        clear
                     done
                 fi
             else
@@ -64,14 +83,17 @@ do
             fi
         fi
     done
+    clear
 done
 
-# The text-to-speech below requries the following packages:
+# The text-to-speech below requires the following packages:
 # pip install google_speech; sudo apt -y install sox
 if [ "${?}" -eq '0' ]; then
-    google_speech 'Image conversion completed.'
-    return 0
+    google_speech 'Image conversion completed.' 2>/dev/null
+    exit 0
 else
-    google_speech 'Image conversion failed.'
-    return 1
+    google_speech 'Image conversion failed.' 2>/dev/null
+    exit 1
 fi
+
+unlink $TEMPFILE
