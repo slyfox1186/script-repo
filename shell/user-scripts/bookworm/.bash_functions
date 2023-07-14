@@ -1230,3 +1230,16 @@ tkapt()
         sudo killall -9 $i 2>/dev/null
     done
 }
+
+gc()
+{
+    local url
+    clear
+
+    if [ -n "$1" ]; then
+        nohup google-chrome "$1" 2>/dev/null >/dev/null
+    else
+        read -p 'Enter a URL: ' url
+        nohup google-chrome "$url" 2>/dev/null >/dev/null
+    fi
+}
