@@ -95,5 +95,3 @@ else
     google_speech 'Image conversion failed.' 2>/dev/null
     exit 1
 fi
-
-unlink $TEMPFILE
