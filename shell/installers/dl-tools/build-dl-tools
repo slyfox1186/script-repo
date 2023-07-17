@@ -666,8 +666,8 @@ export CC=clang CXX=clang++
 
 if build 'aria2' '1.36.0'; then
     download 'https://github.com/aria2/aria2/releases/download/release-1.36.0/aria2-1.36.0.tar.xz'
-    # INCREASE THE MAX NUMBER OF CONNECTIONS FROM 16 TO 64
-    sed -i 's/1, 16/1, 64/g' src/OptionHandlerFactory.cc
+    # INCREASE THE MAX NUMBER OF CONNECTIONS FROM 16 TO 128
+    sed -i 's/1, 16/1, 128/g' src/OptionHandlerFactory.cc
     ./configure --prefix=/usr/local        \
                          --disable-nls     \
                          --disable-shared  \
