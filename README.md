@@ -108,7 +108,7 @@ bash <(curl -fsSL aria2c.optimizethis.net)
     - Ubuntu - 18.04 / 20.04 / 22.04
     - Other  - Debian-based distros may work as well
 
-#### List of Libraries activated during build: [Libs](https://github.com/slyfox1186/script-repo/blob/main/shell/installers/dl-tools/dl-tools-libs-list.txt)
+#### List of Libraries activated during build: [Libs](https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/installers/GitHub%20Projects/Download%20Tools/build-dl-tools.txt)
 ```bash
 bash <(curl -fsSL https://dl-tools.optimizethis.net)
 ````
