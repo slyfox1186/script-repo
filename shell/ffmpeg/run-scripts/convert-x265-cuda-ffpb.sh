@@ -167,6 +167,9 @@ if ffpb \
     google_speech 'Video conversion completed.' 2>/dev/null
 else
     google_speech 'Video conversion failed.' 2>/dev/null
+    echo
+    read -p 'Press enter to exit.'
+    exit 1
 fi
 
 # MOVE INPUT FILE TO TRASH
