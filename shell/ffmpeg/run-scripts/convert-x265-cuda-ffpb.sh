@@ -40,12 +40,14 @@ unset missing_pkg p pip_pkgs
 pip_lock="$(find /usr/lib/python3* -name EXTERNALLY-MANAGED)"
 if [ -n "${pip_lock}" ]; then
     sudo rm "${pip_lock}"
+    
 fi
 
 if [ -n "${missing_pkgs}" ]; then
     pip install ${p}
     clear
 fi
+unset missing_pkgs
 
 # DELETE FILES PROM PRIOR RUNS
 del_this="$(du -ah --max-depth=1 | grep -Eo '[\/].*\(x265\)\.(mp4|mkv)$' | grep -Eo '[A-Za-z0-9].*\(x265\)\.(mp4|mkv)$')"
