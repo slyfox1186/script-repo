@@ -619,18 +619,21 @@ PKG_CONFIG_PATH="\
 $workspace/lib64/pkgconfig:\
 $workspace/lib/pkgconfig:\
 $workspace/lib/x86_64-linux-gnu/pkgconfig:\
-$workspace/usr/lib/pkgconfig:\
 $workspace/share/pkgconfig:\
+$workspace/usr/lib/pkgconfig:\
+/lib64/pkgconfig:\
+/lib/pkgconfig:\
+/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib64/pkgconfig:\
+/usr/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/open-coarrays/openmpi/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/openmpi/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/share/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
+/usr/share/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
