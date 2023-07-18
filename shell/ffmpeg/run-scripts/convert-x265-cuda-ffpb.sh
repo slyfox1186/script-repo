@@ -76,14 +76,20 @@ fi
 # MAKE SURE THERE ARE ACTUAL VIDEOS IN THE FOLDER WITH THIS SCRIPT BEFORE CONTINUING
 for vid in "$PWD"/*.{mp4,mkv}
 do
-    if [ ! -f "${vid}" ]; then
+    vid_exist="$(echo $vid)"
+    if [ -n "$vid_exist" ]; then
+        vid_list=" $vid"
+    fi
+    if [ -n "$vid_list" ]; then
+        clear
+    else
         printf "%s\n\n%s\n" \
-            'You dummy, there are no video files in this folder... what is this script supposed to do without those?!' \
-            'Fix this problem to continue.'
+        'You dummy, there are no video files in this folder... what is this script supposed to do without those?!' \
+        'Fix this problem to continue.'
         exit 1
     fi
 done
-unset vid
+unset vid vid_exist vid_list
 
 # CAPTURE THE VIDEO WITHOUT (X265).MP4 AS THE ENDING
 video="$(find . -maxdepth 1 -type f \( -iname \*.mp4 -o -iname \*.mkv \) -exec echo '{}' +)"
