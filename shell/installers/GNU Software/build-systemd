@@ -1,0 +1,164 @@
+#!/bin/bash
+# shellcheck disable=SC2068,SC2086
+
+clear
+
+#
+# SET PROGRAM NAME + VERSION
+#
+
+script_ver=1.0
+archive_dir=systemd-253
+archive_url=https://github.com/systemd/systemd/archive/refs/tags/v253.tar.gz
+archive_ext="${archive_url//*.}"
+cwd="$PWD"/systemd-build-script
+
+printf "\n%s\n%s\n\n" \
+    "SystemD Build Script - v$script_ver" \
+    '==============================================='
+
+#
+# CREATE OUTPUT DIRECTORY
+#
+
+mkdir -p "$cwd"
+
+#
+# SET THE C+CPP COMPILERS
+#
+
+export CC=gcc CXX=g++
+
+#
+# EXPORT COMPILER OPTIMIZATION FLAGS
+#
+
+export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
+
+#
+# CREATE FUNCTIONS
+#
+
+exit_fn()
+{
+    printf "\n%s\n\n" 'The script has completed.'
+    exit 0
+}
+
+cleanup_fn()
+{
+    local choice
+
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
+        '============================================' \
+        '  Do you want to clean up the build files?  ' \
+        '============================================' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' choice
+
+    case "$choice" in
+        1)      sudo rm -fr "$cwd";;
+        2)      echo;;
+        *)
+                clear
+                printf "%s\n\n" 'Bad user input. Reverting script...'
+                sleep 3
+                unset choice
+                clear
+                cleanup_fn
+                ;;
+    esac
+}
+
+fail_fn()
+{
+    printf "%s\n\n" "$1"
+    exit 1
+}
+
+#
+# INSTALL REQUIRED APT PACKAGES
+#
+
+pkgs=(autoconf autogen automake binutils bpftool build-essential ccache clang cmake curl git gnu-efi golang-gir-gio-2.0-dev golang-gir-gobject-2.0-dev
+      gperf jekyll kexec-tools libacl1-dev libapparmor-dev libaudit-dev libbinutils libblkid-dev libblkid1 libbpf-dev libbz2-dev libcap-dev
+      libcryptsetup-dev libcryptsetup12 libcurl4-openssl-dev libdbus-1-dev libdrpm-dev libdw-dev libfdisk-dev libfido2-dev libglib2.0-dev
+      libgnutls28-dev libidn11-dev libidn2-0-dev libidn2-dev libiptc-dev libkmod-dev libmicrohttpd-dev libmount-dev libnacl-dev libnss-myhostname
+      libp11-kit-dev libpam0g-dev libpolkit-gobject-1-dev libpwquality-dev libqrencode-dev libquota-perl libquotient-dev librpm-dev librust-pam-dev
+      librust-quote-dev libseccomp-dev libssl-dev libtss2-dev libtool libxen-dev libxkbcommon-dev m4 meson nasm ninja-build openssl python3 python3-evdev
+      python3-jinja2 python3-pyparsing quota strace valgrind xsltproc yasm)
+
+for i in ${pkgs[@]}
+do
+    missing_pkg="$(dpkg -l | grep $i)"
+
+    if [ -z "$missing_pkg" ]; then
+        missing_pkgs+=" $i"
+    fi
+done
+unset i
+
+if [ -n "$missing_pkgs" ]; then
+    sudo apt -y install $missing_pkgs
+    clear
+fi
+
+#
+# GET PC TYPE
+#
+
+curl -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "$cwd/config.guess"
+pc_type="$(source "$cwd/config.guess")"
+
+#
+# DOWNLOAD ARCHIVE FILE
+#
+
+archive_name="$archive_dir.tar.$archive_ext"
+
+if [ ! -f "$cwd/$archive_name" ]; then
+    curl -Lso "$cwd/$archive_name" "$archive_url"
+fi
+
+#
+# CREATE OUTPUT DIRECTORY
+#
+
+if [ -d "$cwd/$archive_dir" ]; then
+    sudo rm -fr "$cwd/$archive_dir"
+fi
+mkdir -p "$cwd/$archive_dir/build"
+
+#
+# EXTRACT ARCHIVE FILES
+#
+
+if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
+    exit 1
+fi
+
+#
+# BUILD PROGRAM FROM SOURCE
+#
+
+clear
+
+cd "$cwd/$archive_dir" || exit 1
+meson setup build --help
+exit
+meson setup build --buildtype=release --default-library=both --strip -Dzstd=true
+ninja "-j$(nproc --all)" -C build
+make "-j$(nproc --all)"
+if ! sudo ninja "-j$(nproc --all)" -C build install; then
+    make distclean
+    printf "\n%s\n\n" 'Failed to install systemd.'
+    exit 1
+fi
+
+# CLEANUP FILES
+cleanup_fn
+# SHOW EXIT MESSAGE
+exit_fn

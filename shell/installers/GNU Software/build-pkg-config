@@ -1,0 +1,204 @@
+#!/bin/bash
+
+clear
+
+#
+# SET PROGRAM NAME + VERSION
+#
+
+script_ver=1.0
+archive_dir=pkg-config-0.29.2
+archive_url=https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz
+archive_ext="${archive_url//*.}"
+cwd="$PWD"/pkg-config-build-script
+
+printf "\n%s\n%s\n\n" \
+    "PKG-Config Build Script - v$script_ver" \
+    '==============================================='
+
+#
+# CREATE OUTPUT DIRECTORY
+#
+
+mkdir -p "$cwd"
+
+#
+# SET THE C+CPP COMPILERS
+#
+
+export CC=gcc CXX=g++
+
+#
+# EXPORT COMPILER OPTIMIZATION FLAGS
+#
+
+export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
+
+#
+# SET PATH
+#
+
+PATH="\
+/usr/lib/ccache:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
+/usr/local/sbin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin:\
+/usr/local/cuda/bin:\
+/snap/bin\
+"
+export PATH
+
+#
+# EXPORT PKG_CONFIG_PATH
+#
+
+PKG_CONFIG_PATH="\
+$workspace/lib64/pkgconfig:\
+$workspace/lib/pkgconfig:\
+$workspace/lib/x86_64-linux-gnu/pkgconfig:\
+$workspace/share/pkgconfig:\
+$workspace/usr/lib/pkgconfig:\
+/lib64/pkgconfig:\
+/lib/pkgconfig:\
+/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib64/pkgconfig:\
+/usr/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/open-coarrays/openmpi/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/openmpi/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib64/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/share/pkgconfig:\
+/usr/share/pkgconfig\
+"
+export PKG_CONFIG_PATH
+
+#
+# CREATE FUNCTIONS
+#
+
+exit_fn()
+{
+    printf "\n%s\n\n" 'The script has completed.'
+    exit 0
+}
+
+
+fail_fn()
+{
+    printf "%s\n\n" "$1"
+    exit 1
+}
+
+cleanup_fn()
+{
+    local choice
+
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
+        '============================================' \
+        '  Do you want to clean up the build files?  ' \
+        '============================================' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' choice
+
+    case "$choice" in
+        1)      sudo rm -fr "$cwd";;
+        2)      echo;;
+        *)
+                clear
+                printf "%s\n\n" 'Bad user input. Reverting script...'
+                sleep 3
+                unset choice
+                clear
+                cleanup_fn
+                ;;
+    esac
+}
+
+#
+# INSTALL REQUIRED APT PACKAGES
+#
+
+pkgs=(autoconf autogen automake build-essential ca-certificates ccache clang curl libaria2-0 libaria2-0-dev
+      libc-ares-dev libdmalloc-dev libgcrypt20-dev libgmp-dev libgnutls28-dev libgpg-error-dev libjemalloc-dev
+      libmbedtls-dev libnghttp2-dev librust-openssl-dev libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev
+      libxml2-dev pkg-config zlib1g-dev)
+
+for i in ${pkgs[@]}
+do
+    missing_pkg="$(dpkg -l | grep $i)"
+
+    if [ -z "$missing_pkg" ]; then
+        missing_pkgs+=" $i"
+    fi
+done
+unset i
+
+if [ -n "$missing_pkgs" ]; then
+    sudo apt -y install $missing_pkgs
+    clear
+fi
+
+#
+# GET PC TYPE
+#
+
+curl -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "$cwd/config.guess"
+pc_type="$(source "$cwd/config.guess")"
+
+#
+# DOWNLOAD ARCHIVE FILE
+#
+
+archive_name="$archive_dir.tar.$archive_ext"
+
+if [ ! -f "$cwd/$archive_name" ]; then
+    curl -Lso "$cwd/$archive_name" "$archive_url"
+fi
+
+#
+# CREATE OUTPUT DIRECTORY
+#
+
+if [ -d "$cwd/$archive_dir" ]; then
+    sudo rm -fr "$cwd/$archive_dir"
+fi
+mkdir -p "$cwd/$archive_dir/build"
+
+#
+# EXTRACT ARCHIVE FILES
+#
+
+if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
+    exit 1
+fi
+
+#
+# BUILD PROGRAM FROM SOURCE
+#
+
+cd "$cwd/$archive_dir/build" || exit 1
+../configure --prefix=/usr               \
+             --{build,host}="$pc_type"   \
+             --with-internal-glib        \
+             --with-pc-path="$PKG_CONFIG_PATH"
+make "-j$(nproc --all)"
+if ! sudo make install; then
+    make distclean
+    printf "\n%s\n\n" 'Failed to install pkg-config.'
+    exit 1
+fi
+
+# CLEANUP FILES
+cleanup_fn
+# SHOW EXIT MESSAGE
+exit_fn

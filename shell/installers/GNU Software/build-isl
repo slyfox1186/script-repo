@@ -1,0 +1,162 @@
+#!/bin/bash
+
+clear
+
+#
+# SET PROGRAM NAME + VERSION
+#
+
+script_ver=1.0
+archive_dir=isl-git
+archive_url=https://repo.or.cz/isl.git
+cwd="$PWD"/isl-build-script
+
+printf "\n%s\n%s\n\n" \
+    "ISL Build Script - v$script_ver" \
+    '==============================================='
+
+#
+# CREATE OUTPUT DIRECTORY
+#
+
+mkdir -p "$cwd"
+
+#
+# SET THE C+CPP COMPILERS
+#
+
+export CC=clang CXX=clang++
+
+#
+# EXPORT COMPILER OPTIMIZATION FLAGS
+#
+
+export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
+
+#
+# CREATE FUNCTIONS
+#
+
+exit_fn()
+{
+    printf "\n%s\n\n" 'The script has completed.'
+    exit 0
+}
+
+cleanup_fn()
+{
+    local choice
+
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
+        '============================================' \
+        '  Do you want to clean up the build files?  ' \
+        '============================================' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' choice
+
+    case "$choice" in
+        1)      sudo rm -fr "$cwd";;
+        2)      echo;;
+        *)
+                clear
+                printf "%s\n\n" 'Bad user input. Reverting script...'
+                sleep 3
+                unset choice
+                clear
+                cleanup_fn
+                ;;
+    esac
+}
+
+fail_fn()
+{
+    printf "%s\n\n" "$1"
+    exit 1
+}
+
+#
+# INSTALL REQUIRED APT PACKAGES
+#
+
+pkgs_fn()
+{
+    pkgs=("$1" autoconf autogen automake binutils build-essential ccache clang cmake curl
+          git libclang-dev libtool libtool-bin llvm-dev lzip m4 nasm pkg-config zlib1g-dev yasm)
+
+
+    for i in ${pkgs[@]}
+    do
+        missing_pkg="$(dpkg -l | grep $i)"
+
+        if [ -z "$missing_pkg" ]; then
+            missing_pkgs+=" $i"
+        fi
+    done
+    unset i
+
+    if [ -n "$missing_pkgs" ]; then
+        sudo apt -y install $missing_pkgs
+        clear
+    fi
+}
+
+if [ -f /usr/local/include/gmp.h ]; then
+    gmp_flag=0
+    sudo apt -y remove libgmp-dev libgmp3-dev 2>/dev/null
+else
+    gmp_flag=1
+    gmp_pkgs='libgmp-dev libgmp3-dev'
+fi
+
+pkgs_fn "$gmp_pkgs"
+
+#
+# GET PC TYPE
+#
+
+curl -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "$cwd/config.guess"
+pc_type="$(source "$cwd/config.guess")"
+
+#
+# DOWNLOAD ARCHIVE FILE
+#
+
+if [ -d "$cwd/$archive_dir" ]; then
+    sudo rm -fr "$cwd/$archive_dir"
+fi
+git clone "$archive_url" "$cwd/$archive_dir"
+
+#
+# BUILD PROGRAM FROM SOURCE
+#
+
+if [ "$gmp_flag" -eq '0' ]; then
+    gmp_prefix=/usr/local
+else
+    gmp_prefix=/usr
+fi
+
+clear
+
+cd "$cwd/$archive_dir" || exit 1
+autoreconf -fi
+mkdir build
+cd build || exit 1
+../configure --prefix=/usr/local             \
+             --{build,host}="$pc_type"       \
+             --with-gmp-prefix="$gmp_prefix" \
+             --with-clang=system             \
+             --with-pic
+make "-j$(nproc --all)"
+if ! sudo make install; then
+    make distclean
+    printf "\n%s\n\n" 'Failed to install isl.'
+    exit 1
+fi
+
+# CLEANUP FILES
+cleanup_fn
+# SHOW EXIT MESSAGE
+exit_fn

@@ -1,0 +1,189 @@
+#!/bin/bash
+
+clear
+
+#
+# SET PROGRAM NAME + VERSION
+#
+
+script_ver=1.0
+archive_dir1=libiconv-1.17
+archive_dir2=gettext-0.22
+archive_url1=https://ftp.gnu.org/gnu/libiconv/libiconv-1.17.tar.gz
+archive_url2=https://ftp.gnu.org/pub/gnu/gettext/gettext-0.22.tar.lz
+archive_ext1="${archive_url1//*.}"
+archive_ext2="${archive_url2//*.}"
+cwd="$PWD"/libiconv-gettext-build-script
+
+#
+# CREATE OUTPUT DIRECTORY
+#
+
+mkdir -p "$cwd/$archive_dir1" "$cwd/$archive_dir2"
+
+#
+# SET THE C+CPP COMPILERS
+#
+
+export CC=gcc CXX=g++
+
+#
+# EXPORT COMPILER OPTIMIZATION FLAGS
+#
+
+export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
+
+#
+# CREATE FUNCTIONS
+#
+
+exit_fn()
+{
+    printf "\n%s\n\n" 'The script has completed.'
+    exit 0
+}
+
+cleanup_fn()
+{
+    local choice
+
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
+        '============================================' \
+        '  Do you want to clean up the build files?  ' \
+        '============================================' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' choice
+
+    case "$choice" in
+        1)      sudo rm -fr "$cwd";;
+        2)      echo;;
+        *)
+                clear
+                printf "%s\n\n" 'Bad user input. Reverting script...'
+                sleep 3
+                unset choice
+                clear
+                cleanup_fn
+                ;;
+    esac
+}
+
+fail_fn()
+{
+    printf "%s\n\n" "$1"
+    exit 1
+}
+
+#
+# INSTALL REQUIRED APT PACKAGES
+#
+
+pkgs=(autoconf autogen automake binutils bison build-essential ccache
+      libintl-perl libtool libtool-bin libxml2-dev lzip m4 nasm pkg-config yasm)
+
+for i in ${pkgs[@]}
+do
+    missing_pkg="$(dpkg -l | grep $i)"
+
+    if [ -z "$missing_pkg" ]; then
+        missing_pkgs+=" $i"
+    fi
+done
+unset i
+
+if [ -n "$missing_pkgs" ]; then
+    sudo apt -y install $missing_pkgs
+    clear
+fi
+
+#
+# GET PC TYPE
+#
+
+curl -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "$cwd/config.guess"
+pc_type="$(source "$cwd/config.guess")"
+
+#
+# DOWNLOAD ARCHIVE FILES
+#
+
+if [ ! -f "$cwd/$archive_dir1.tar.gz" ]; then
+    wget --show-progress -cqO "$cwd/$archive_dir1.$archive_ext1" "$archive_url1"
+fi
+
+if [ ! -f "$cwd/$archive_dir2.tar.lz" ]; then
+    wget --show-progress -cqO "$cwd/$archive_dir2.$archive_ext2" "$archive_url2"
+fi
+
+#
+# CREATE OUTPUT DIRECTORIES
+#
+
+if [ -d "$cwd/$archive_dir1" ] || [ -d "$cwd/$archive_dir2" ]; then
+    sudo rm -fr "$cwd/$archive_dir1" "$cwd/$archive_dir2"
+fi
+mkdir -p "$cwd/$archive_dir1" "$cwd/$archive_dir2"
+
+#
+# EXTRACT ARCHIVE FILES
+#
+
+if ! tar -xf "$cwd/$archive_dir1.$archive_ext1" -C "$cwd/$archive_dir1" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: $cwd/$archive_dir1.$archive_ext1"
+fi
+if ! tar -xf "$cwd/$archive_dir2.$archive_ext2" -C "$cwd/$archive_dir2" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: $cwd/$archive_dir2.$archive_ext2"
+fi
+
+#
+# START BUILDING FROM SOURCE
+#
+
+printf "\n%s\n%s\n\n" \
+    'Building libiconv - v1.17' \
+    '==============================================='
+
+cd "$cwd/$archive_dir1" || exit 1
+mkdir builddir
+cd builddir || exit 1
+../configure --prefix=/usr/local         \
+             --disable-nls               \
+             --enable-relocatable        \
+             --enable-static             \
+             --with-pic                  \
+             --with-libiconv-prefix=/usr \
+             --with-libintl-prefix=/usr  \
+             CPPFLAGS='-I/usr/local/include -I/usr/include'
+make "-j$(nproc --all)"
+make "-j$(nproc --all)"
+if ! sudo make install; then
+    make distclean
+    printf "\n%s\n\n" "Failed to install: $archive_dir1."
+    exit 1
+fi
+
+printf "\n%s\n%s\n\n" \
+    'Building gettext - v0.22' \
+    '==============================================='
+
+cd "$cwd/$archive_dir2" || exit 1
+autoupdate
+./autogen.sh
+mkdir builddir
+cd builddir || exit 1
+../configure --prefix=/usr/local               \
+             --with-libiconv-prefix=/usr/local \
+             --with-libxml2-prefix=/usr
+make "-j$(nproc --all)"
+if ! sudo make install; then
+    make distclean
+    printf "\n%s\n\n" "Failed to install: $archive_dir2."
+    exit 1
+fi
+
+# CLEANUP FILES
+cleanup_fn
+# SHOW EXIT MESSAGE
+exit_fn

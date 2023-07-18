@@ -1,0 +1,165 @@
+#!/bin/bash
+
+clear
+
+#
+# SET PROGRAM NAME + VERSION
+#
+
+script_ver=1.0
+archive_dir=coreutils-9.3
+archive_url=https://ftp.gnu.org/gnu/coreutils/coreutils-9.3.tar.xz
+archive_ext="${archive_url//*.}"
+cwd="$PWD"/coreutils-build-script
+
+printf "\n%s\n%s\n\n" \
+    "Coreutils Build Script - v$script_ver" \
+    '==============================================='
+
+#
+# CREATE OUTPUT DIRECTORY
+#
+
+mkdir -p "$cwd"
+
+#
+# SET THE C+CPP COMPILERS
+#
+
+export CC=gcc CXX=g++
+
+#
+# EXPORT COMPILER OPTIMIZATION FLAGS
+#
+
+export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
+
+#
+# CREATE FUNCTIONS
+#
+
+exit_fn()
+{
+    printf "\n%s\n\n" 'The script has completed.'
+    exit 0
+}
+
+
+fail_fn()
+{
+    printf "%s\n\n" "$1"
+    exit 1
+}
+
+cleanup_fn()
+{
+    local choice
+
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
+        '============================================' \
+        '  Do you want to clean up the build files?  ' \
+        '============================================' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' choice
+
+    case "$choice" in
+        1)      sudo rm -fr "$cwd";;
+        2)      echo;;
+        *)
+                clear
+                printf "%s\n\n" 'Bad user input. Reverting script...'
+                sleep 3
+                unset choice
+                clear
+                cleanup_fn
+                ;;
+    esac
+}
+
+#
+# INSTALL REQUIRED APT PACKAGES
+#
+
+pkgs=(autoconf autogen automake binutils build-essential ccache cmake curl git libgmp-dev
+      libintl-perl libtool libtool-bin m4 nasm ninja-build texinfo zlib1g-dev yasm)
+
+for i in ${pkgs[@]}
+do
+    missing_pkg="$(dpkg -l | grep $i)"
+
+    if [ -z "$missing_pkg" ]; then
+        missing_pkgs+=" $i"
+    fi
+done
+
+if [ -n "$missing_pkgs" ]; then
+    sudo apt -y install $missing_pkgs
+    clear
+fi
+
+#
+# GET PC TYPE
+#
+
+curl -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "$cwd/config.guess"
+pc_type="$(source "$cwd/config.guess")"
+
+#
+# DOWNLOAD ARCHIVE FILE
+#
+
+archive_name="$archive_dir.tar.$archive_ext"
+
+if [ ! -f "$cwd/$archive_name" ]; then
+    curl -Lso "$cwd/$archive_name" "$archive_url"
+fi
+
+#
+# CREATE OUTPUT DIRECTORY
+#
+
+if [ -d "$cwd/$archive_dir" ]; then
+    sudo rm -fr "$cwd/$archive_dir"
+fi
+mkdir -p "$cwd/$archive_dir/build"
+
+#
+# EXTRACT ARCHIVE FILES
+#
+
+if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
+    exit 1
+fi
+
+#
+# BUILD PROGRAM FROM SOURCE
+#
+
+cd "$cwd/$archive_dir" || exit 1
+autoreconf -fi
+cd build || exit 1
+../configure --prefix=/usr/local               \
+             --{build,host}="$pc_type"         \
+             --disable-nls                     \
+             --enable-gcc-warnings=no          \
+             --enable-threads=posix            \
+             --with-clang=system               \
+             --with-libgmp-prefix=/usr         \
+             --with-libiconv-prefix=/usr/local \
+             --with-libintl-prefix=/usr        \
+             --with-openssl=auto               \
+             --with-pic
+make "-j$(nproc --all)"
+if ! sudo make install; then
+    make distclean
+    printf "\n%s\n\n" 'Failed to install coreutils.'
+    exit 1
+fi
+
+# CLEANUP FILES
+cleanup_fn
+# SHOW EXIT MESSAGE
+exit_fn

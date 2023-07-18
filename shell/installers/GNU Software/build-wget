@@ -1,0 +1,228 @@
+#!/bin/bash
+
+clear
+
+#
+# SET PROGRAM NAME + VERSION
+#
+
+script_ver=1.0
+archive_dir=wget-1.21.4
+archive_url=https://ftp.gnu.org/gnu/wget/wget-1.21.4.tar.lz
+archive_ext="${archive_url//*.}"
+cwd="$PWD"/wget-build-script
+
+printf "\n%s\n%s\n\n" \
+    "WGET Build Script - v$script_ver" \
+    '==============================================='
+
+#
+# CREATE OUTPUT DIRECTORY
+#
+
+mkdir -p "$cwd"
+
+#
+# SET THE C+CPP COMPILERS
+#
+
+export CC=gcc CXX=g++
+
+#
+# EXPORT COMPILER OPTIMIZATION FLAGS
+#
+
+export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
+
+#
+# EXPORT PKG_CONFIG_PATH
+#
+
+PKG_CONFIG_PATH="\
+$workspace/lib64/pkgconfig:\
+$workspace/lib/pkgconfig:\
+$workspace/lib/x86_64-linux-gnu/pkgconfig:\
+$workspace/share/pkgconfig:\
+$workspace/usr/lib/pkgconfig:\
+/lib64/pkgconfig:\
+/lib/pkgconfig:\
+/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib64/pkgconfig:\
+/usr/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/open-coarrays/openmpi/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/openmpi/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib64/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/share/pkgconfig:\
+/usr/share/pkgconfig\
+"
+
+#
+# CREATE FUNCTIONS
+#
+
+exit_fn()
+{
+    printf "\n%s\n\n" 'The script has completed.'
+    exit 0
+}
+
+cleanup_fn()
+{
+    local choice
+
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
+        '============================================' \
+        '  Do you want to clean up the build files?  ' \
+        '============================================' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' choice
+
+    case "$choice" in
+        1)      sudo rm -fr "$cwd";;
+        2)      echo;;
+        *)
+                clear
+                printf "%s\n\n" 'Bad user input. Reverting script...'
+                sleep 3
+                unset choice
+                clear
+                cleanup_fn
+                ;;
+    esac
+}
+
+
+fail_fn()
+{
+    printf "%s\n\n" "$1"
+    exit 1
+}
+
+#
+# INSTALL REQUIRED APT PACKAGES
+#
+
+pkgs_fn()
+{
+    pkgs=("$1" apt-transport-https apt-utils autoconf autogen automake autopoint autotools-dev build-essential bzip2
+          ca-certificates ccache clang cmake curl gfortran git google-perftools graphviz jq lcov libaria2-0 libaria2-0-dev
+          libc-ares-dev libcppunit-dev libcunit1-dev libcurl4 libcurl4-openssl-dev libdmalloc-dev libec-dev libedit-dev
+          libev-dev libevent-dev libexiv2-27 libexpat1-dev libgcc-12-dev libgcrypt20-dev libgexiv2-2 libgimp2.0 libgmp3-dev
+          libgpg-error-dev libgtk-4-doc libgpgme-dev libicu-dev libjemalloc-dev libkrb5-3 libldap2-dev libldap-dev liblttng-ust-dev
+          liblzma-dev libmbedtls-dev libnghttp2-dev libntlm0-dev libparted-dev libpng-dev libpsl-dev librtmp-dev librust-bzip2-dev
+          librust-openssl-dev libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev libtinfo5 libtinfo-dev libtool libtool-bin
+          libunistring-dev libunwind8 libuv1-dev libxml2-dev libzstd-dev m4 nettle-dev openjdk-17-jdk-headless openssh-server
+          pkg-config python3-dev python3-numpy python3-packaging python3-pip python3-pytest python3-setuptools python3-wheel
+          re2c rsync unzip valgrind zip zlib1g-dev)
+
+    for i in ${pkgs[@]}
+    do
+        missing_pkg="$(dpkg -l | make $i)"
+
+        if [ -z "$missing_pkg" ]; then
+            missing_pkgs+=" $i"
+        fi
+    done
+
+    if [ -n "$missing_pkgs" ]; then
+        sudo apt -y install $missing_pkgs
+        sudo apt -y autoremove
+        clear
+    fi
+}
+
+#
+# TEST IF LIBICONV WAS MANUALLY INSTALLED OR BY APT
+#
+
+if [ -f /usr/local/bin/iconv ]; then
+    iconv_prefix=/usr/local
+elif [ -f /usr/bin/iconv ]; then
+    iconv_prefix=/usr
+else
+    pkgs_fn 'libiconv-hook-dev'
+    iconv_prefix=/usr
+fi
+
+#
+# GET PC TYPE
+#
+
+curl -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "$cwd/config.guess"
+pc_type="$(source "$cwd/config.guess")"
+
+#
+# DOWNLOAD ARCHIVE FILE
+#
+
+archive_name="$archive_dir.tar.$archive_ext"
+
+if [ ! -f "$cwd/$archive_name" ]; then
+    curl -Lso "$cwd/$archive_name" "$archive_url"
+fi
+
+#
+# CREATE OUTPUT DIRECTORY
+#
+
+if [ -d "$cwd/$archive_dir" ]; then
+    sudo rm -fr "$cwd/$archive_dir"
+fi
+mkdir -p "$cwd/$archive_dir/build"
+
+#
+# EXTRACT ARCHIVE FILES
+#
+
+if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
+    exit 1
+fi
+
+#
+# BUILD PROGRAM FROM SOURCE
+#
+
+cd "$cwd/$archive_dir" || exit 1
+if which update-ca-certificates &>/dev/null; then
+    sudo update-ca-certificates 2>/dev/null
+fi
+autoreconf -fi
+cd build || exit 1
+../configure --prefix=/usr/local                    \
+             --{build,host}="$pc_type"              \
+             --disable-nls                          \
+             --enable-threads=posix                 \
+             --enable-valgrind-tests                \
+             --enable-year2038                      \
+             --with-cares                           \
+             --with-gpgme-prefix=/usr               \
+             --with-included-libunistring           \
+             --with-libiconv-prefix="$iconv_prefix" \
+             --with-libintl-prefix=/usr             \
+             --with-libssl-prefix=/usr/lib64        \
+             --with-libunistring-prefix=/usr        \
+             --with-linux-crypto                    \
+             --with-metalink                        \
+             --with-openssl=auto                    \
+             --with-ssl=openssl                     \
+             PKG_CONFIG="$(type -P pkg-config)"     \
+             PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
+make "-j$(nproc --all)"
+if ! sudo make install; then
+    echo
+    read -p 'Failure. Press enter to continue.'
+    clear
+    make distclean
+    exit 1
+fi
+
+# CLEANUP FILES
+cleanup_fn
+# SHOW EXIT MESSAGE
+exit_fn 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-###################################################################
+#############################################################################
 ##
 ##  Install OpenSSL from source code with multiple optional
 ##  features enabled.
@@ -8,13 +8,13 @@
 ##  The script also installs SCTP Module Support which allows OpenSSL
 ##  to enable its own SCTP feature support. 
 ##  
-##  Enabled features: egd, fips, md2, rc5, trace, sctp, threads
+##  Enabled features: egd, fips, md2, rc5, trace, sctp, threads, and zlib
 ##
 ##  Updated: 07.17.23
 ##
 ##  Script version: 1.1
 ##
-###################################################################
+#############################################################################
 
 clear
 
@@ -24,14 +24,14 @@ clear
 
 script_ver=1.1
 archive_dir=openssl-3.1.1
-archive_url=https://github.com/openssl/openssl/releases/download/openssl-3.1.1/openssl-3.1.1.tar.gz
+archive_url=https://www.openssl.org/source/openssl-3.1.1.tar.gz
 archive_ext="${archive_url//*.}"
 cwd="$PWD"/openssl-build-script
-install_dir=/usr/local
-ssl_dir="$install_dir"/lib/ssl
-cert_dir="$ssl_dir"/certs
+install_dir=/usr
+ssl_dir=/usr/lib/ssl
+cert_dir=/usr/lib/ssl/certs
 pem_filename=cacert.pem
-pem_output="$cert_dir/$pem_filename"
+pem_output=/usr/lib/ssl/certs/cacert.pem
 repo=https://github.com/slyfox1186/script-repo
 
 printf "\n%s\n%s\n\n" \
@@ -104,7 +104,7 @@ fail_fn()
 
 pkgs=(autoconf autogen automake build-essential ca-certificates ccache curl libc-ares-dev libcurl4-openssl-dev
       libdmalloc-dev libgcrypt20-dev libgmp-dev libgpg-error-dev libjemalloc-dev libmbedtls-dev libsctp-dev
-      libssh2-1-dev libssh-dev libssl-dev libxml2-dev zlib1g-dev)
+      libssh2-1-dev libssh-dev libssl-dev libtool libtool-bin libxml2-dev m4 zlib1g-dev)
 
 for i in ${pkgs[@]}
 do

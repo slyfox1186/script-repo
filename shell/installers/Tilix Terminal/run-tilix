@@ -7,15 +7,18 @@ printf "%s\n\n%s\n%s\n%s\n\n" \
     '[1] Install' \
     '[2] Uninstall' \
     '[3] Change shell to BASH (fixes zsh issues after it is uninstalled)'
-    read -p 'Your choices are (1 to 3): ' tilix_choice
+    read -p 'Your choices are (1 to 3): ' choice
 
-case "$tilix_choice" in
+case "$choice" in
     1) 
-        bash 'install-tilix';;
+        bash 'build-tilix';;
     2)
         sudo bash 'remove-tilix';;
     3)
         sudo chsh --shell=/bin/bash "$USER";;
     *)
-        echo 'Bad user input. Run the script again.';;
+        clear
+        printf 'Bad user input. Run the script again.'
+        exit 1
+        ;;
 esac
