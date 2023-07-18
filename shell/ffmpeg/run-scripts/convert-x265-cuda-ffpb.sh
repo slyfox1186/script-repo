@@ -4,6 +4,12 @@
 clear
 
 #
+# SET PATH
+#
+
+export PATH="$PATH:$HOME/.local/bin"
+
+#
 # REQUIRED APT PACKAGES
 #
 
@@ -18,6 +24,7 @@ done
 
 if [ -n "${missing_pkgs}" ]; then
     sudo apt -y install ${missing_pkgs}
+    sudo apt -y autoremove
     clear
 fi
 unset apt_pkgs i missing_pkg missing_pkgs
@@ -165,13 +172,12 @@ if ffpb \
         -qmax:a 4 \
         "${file_out}"; then
     google_speech 'Video conversion completed.' 2>/dev/null
+    # MOVE INPUT FILE TO TRASH
+    trash -f "${file_in}"
+    exit 0
 else
     google_speech 'Video conversion failed.' 2>/dev/null
     echo
     read -p 'Press enter to exit.'
     exit 1
 fi
-
-# MOVE INPUT FILE TO TRASH
-trash -f "${file_in}"
-exit 0
