@@ -48,7 +48,7 @@ do
 done
 
 if [ -n "${missing_pkgs}" ]; then
-    pip install ${p}
+    pip install ${missing_pkgs}
     clear
 fi
 unset p pip_lock pip_pkgs missing_pkg missing_pkgs
