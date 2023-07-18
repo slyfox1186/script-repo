@@ -3,7 +3,7 @@
 
 #####################################
 ##
-## Install python v3.11.4
+## Install python v3.7
 ##
 ## Supported OS: Linux Debian based
 ##
@@ -21,10 +21,10 @@ fi
 ##
 
 parent_dir="$PWD"/python-build
-tar_url='https://github.com/python/cpython/archive/refs/tags/v3.11.4.tar.gz'
+tar_url='https://github.com/python/cpython/archive/refs/tags/3.7.tar.gz'
 
 ##
-## define functions
+## Define functions
 ##
 
 fail_fn()
@@ -47,7 +47,7 @@ exit_fn()
 cleanup_fn()
 {
     printf "\n%s\n\n%s\n%s\n\n" \
-        'Do you want to cleanup the build files?' \
+        'Do you want to clean up the build files?' \
         '[1] Yes' \
         '[2] No'
         read -p 'Your choices are (1 or 2): ' pychoice
@@ -81,14 +81,14 @@ success_fn()
 installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
 ##
-## create build folders
+## Create build folders
 ##
 
 mkdir -p "$parent_dir"
 cd "$parent_dir" || exit 1
 
 ##
-## install required apt packages
+## Install required apt packages
 ##
 
 pkgs=(build-essential gdb lcov libbz2-dev libffi-dev libgdbm-compat-dev libgdbm-dev \
@@ -114,7 +114,7 @@ if [ -n "${missing_pkgs-}" ]; then
 fi
 
 ##
-## download the python3.11.3 tar file and extract the files into the src directory
+## Download the python3.11.3 tar file and extract the files into the src directory
 ##
 
 if ! curl -Lso "$parent_dir"/python3.11.3.tar.gz "$tar_url"; then
@@ -131,13 +131,13 @@ else
 fi
 
 ##
-## change into the source directory
+## Change into the source directory
 ##
 
 cd "$parent_dir"/python3.11.3 || exit 1
 
 ##
-## run the bootstrap file to generate any required install files
+## Run the bootstrap file to generate any required install files
 ##
 
 printf "%s\n%s\n%s\n\n" \
@@ -147,7 +147,7 @@ printf "%s\n%s\n%s\n\n" \
 ./configure -q --prefix=/usr/local --enable-optimizations --with-pkg-config=yes
 
 ##
-## run the ninja commands to install python3.11.3 system-wide
+## Run the ninja commands to install python3.11.3 system-wide
 ##
 
 printf "%s\n%s\n%s\n\n" \
