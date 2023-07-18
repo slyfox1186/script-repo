@@ -84,8 +84,8 @@ do
         clear
     else
         printf "%s\n\n%s\n" \
-        'You dummy, there are no video files in this folder... what is this script supposed to do without those?!' \
-        'Fix this problem to continue.'
+            'You dummy, there are no video files in this folder... what is this script supposed to do without those?!' \
+            'Fix this problem to continue.'
         exit 1
     fi
 done
