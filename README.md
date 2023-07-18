@@ -314,7 +314,7 @@ Work Folders Client
    
 2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
 ```
-curl.exe -Lso features.bat https://win-features.optimizethis.net && CALL features.bat && DEL /Q features.bat
+curl.exe -Lso features.bat https://win-optional-features.optimizethis.net && CALL features.bat && DEL /Q features.bat
 ```
 ------
 
@@ -322,5 +322,5 @@ curl.exe -Lso features.bat https://win-features.optimizethis.net && CALL feature
   1. **Run cmd.exe as administrator**
   2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
 ```
-curl.exe -fsSL https://wsl.optimizethis.net > open-wsl-here.bat && call open-wsl-here.bat
+curl.exe -fsSL https://open-wsl-here.optimizethis.net > open-wsl-here.bat && call open-wsl-here.bat
 ```
