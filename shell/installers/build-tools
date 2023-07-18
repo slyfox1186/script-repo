@@ -313,8 +313,6 @@ git_ver_fn()
 
 build_done() { echo "$2" > "$packages/$1.done"; }
 
-installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
-
 #
 # PRINT SCRIPT BANNER
 #
@@ -329,17 +327,19 @@ printf "%s\n%s\n%s" \
 
 pkgs=(autoconf automake autogen build-essential ccache cmake curl jq git libssl-dev)
 
-for pkg in ${pkgs[@]}; do
-    if ! installed "$pkg"; then
-        missing_pkgs+=" $pkg"
+for i in ${pkgs[@]}
+do
+    missing_pkg="$(dpkg -l | grep $i)"
+
+    if [ -z "$missing_pkg" ]; then
+        missing_pkgs+=" $i"
     fi
 done
+unset i
 
 if [ -n "$missing_pkgs" ]; then
-    printf "%s\n%s\n\n" \
-        'Installing required apt packages' \
-        '================================================'
-        sudo apt -y install $missing_pkgs
+    sudo apt -y install $missing_pkgs
+    clear
 fi
 
 #
@@ -349,14 +349,10 @@ fi
 if ! which gcc &>/dev/null; then
     fail_fn 'Please install "gcc" to continue the build.'
 fi
-
 export CC=gcc CXX=g++
+# SET C OPTIMIZATION FLAGS
 export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
-
-#
 # MAKE SURE WE USE THE CORRECT M4 FOLDER
-#
-
 export ACLOCAL_PATH=/usr/share/aclocal
 
 #
@@ -364,13 +360,13 @@ export ACLOCAL_PATH=/usr/share/aclocal
 #
 
 git_ver_fn '541' '2' 'T'
-if build 'cmake' "$g_ver"; then
-    download "https://gitlab.kitware.com/cmake/cmake/-/archive/v$g_ver/cmake-v$g_ver.tar.bz2" "cmake-$g_ver.tar.bz2"
+if build 'cmake' '3.26.3'; then
+    download "https://gitlab.kitware.com/cmake/cmake/-/archive/v3.26.3/cmake-v3.26.3.tar.bz2" 'cmake-3.26.3.tar.bz2'
     execute ./configure --prefix="$install_prefix" --parallel="$cpu_threads" --enable-ccache -- -DCMAKE_USE_OPENSSL=OFF
     execute make "-j$cpu_threads"
     execute sudo make install
     execute make clean
-    build_done 'cmake' "$g_ver"
+    build_done 'cmake' '3.26.3'
 fi
 
 git_ver_fn 'ninja-build/ninja' '1' 'T'
@@ -404,7 +400,7 @@ fi
 sudo ldconfig 2>/dev/null
 # SHOW THE NEWLY INSTALLED VERSION OF EACH PACKAGE
 show_versions_fn
-# PROMPT THE USER TO CLEANUP THE BUILD FILES
+# PROMPT THE USER TO CLEAN UP THE BUILD FILES
 cleanup_fn
 # SHOW THE EXIT MESSAGE
 exit_fn
