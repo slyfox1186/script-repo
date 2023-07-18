@@ -6,11 +6,6 @@ clear
 # TILIX TERMINAL INSTALLER SCRIPT
 #
 
-if [ "$EUID" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
-    exit 1
-fi
-
 script_ver=1.0
 archive_dir=tilix-1.9.5
 archive_url=https://github.com/gnunn1/tilix/archive/refs/tags/1.9.5.tar.gz
