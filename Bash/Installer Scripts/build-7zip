@@ -38,7 +38,8 @@ exit_fn()
         'The script has completed' \
         'Make sure to star this repository to show your support!' \
         "$repo"
-    read -p 'Press enter to exit.'
+        sleep 3
+        exit 1
 }
 
 fail_fn()
@@ -106,7 +107,7 @@ fi
 # SHOW THE NEWLY INSTALLED 7-ZIP VERSION
 version_fn
 
-# PROMPT THE USER TO CLEANUP THE INSTALL FILES
+# PROMPT THE USER TO CLEAN UP THE INSTALL FILES
 cleanup_fn
 
 # SHOW THE EXIT MESSAGE
