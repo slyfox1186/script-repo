@@ -691,6 +691,14 @@ im50()
     done
 }
 
+imdl()
+{
+    clear
+    curl -Lso imagick.sh https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/installers/imagemagick/scripts/imagick-run-script.sh; bash imagick.sh
+    sudo rm imagick.sh
+    clear; ls -1AhFv --color --group-directories-first
+}
+
 ##################################################
 ## SHOW file name AND SIZE IN CURRENT DIRECTORY ##
 ##################################################
@@ -733,7 +741,19 @@ rftn()
 
 nopen()
 {
+    clear
     nohup nautilus -w "$1" &>/dev/null &
+    exit
+}
+
+tkan()
+{
+    local parent_dir
+    parent_dir="$PWD"
+    killall -9 nautilus
+    sleep 1
+    nohup nautilus -w "$parent_dir" &>/dev/null &
+    exit
 }
 
 #####################
@@ -1242,4 +1262,22 @@ gc()
         read -p 'Enter a URL: ' url
         nohup google-chrome "$url" 2>/dev/null >/dev/null
     fi
+}
+
+###################
+## WINE COMMANDS ##
+###################
+
+fsv()
+{
+    clear
+    nohup wine start /unix "/home/jman/.wine/drive_c/Program Files (x86)/FastStone Image Viewer/FSViewer.exe" &>/dev/null &
+    exit
+}
+
+tkfs()
+{
+    clear
+    sudo killall -9 'FSViewer.exe'
+    cl
 }
