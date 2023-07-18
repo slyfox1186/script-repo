@@ -2,19 +2,15 @@
 
 clear
 
-# SET PATH
-export PATH="/usr/lib/ccache:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/cuda/bin:$PATH"
+# THE FILE EXTENSION TO SEARCH FOR (DO NOT INCLUDE A '.' WITH THE EXTENSION)
+fext=jpg
 
 # DELETE ANY USELESS ZONE IDENFIER FILES THAT SPAWN FROM COPYING A FILE FROM WINDOWS NTFS INTO A WSL DIRECTORY
 find . -type f -name "*:Zone.Identifier" -delete 2>/dev/null
 
-# THE FILE EXTENSION TO SEARCH FOR (DO NOT INCLUDE A '.' WITH THE EXTENSION)
-fext=jpg
-
-# GET THE FILE COUNT TO USE IN THE FOR LOOP BELOW
+# GET THE FILE COUNT INSIDE THE DIRECTORY
 cnt_queue=$(find . -maxdepth 2 -type f -iname *.jpg | wc -l)
 cnt_total=$(find . -maxdepth 2 -type f -iname *.jpg | wc -l)
-
 # GET THE UNMODIFIED PATH OF EACH MATCHING FILE
 get_path="$(find . -type f -iname "*.${fext}" -exec sh -c 'i="${1}"; echo "${i%*.}"' shell {} \;)"
 
@@ -22,7 +18,7 @@ get_path="$(find . -type f -iname "*.${fext}" -exec sh -c 'i="${1}"; echo "${i%*
 for i in ${get_path[@]}
 do
     fname_in="${i:2}"
-    fpath_full="${PWD}/$fname_in"
+    fpath_full="${PWD}/${fname_in}"
     fpath=${fpath_full%/*}
     fdir="${fpath%%.*}"
     # IF YOUR SUB-DIRECTORY IS NOT NAMED "Pics" THEN CHANGE THE BELOW COMMAND AS NEEDED
@@ -34,7 +30,7 @@ for i in *.jpg
 do
     cnt_queue=$(( cnt_queue-1 ))
 
-cat <<EOF
+    cat <<EOF
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 File Path: ${fpath//\/Pics\/Pics/\/Pics}
