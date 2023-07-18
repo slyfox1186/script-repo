@@ -616,19 +616,21 @@ export PATH
 path_fn
 
 PKG_CONFIG_PATH="\
-$workspace/lib/pkgconfig:\
 $workspace/lib64/pkgconfig:\
-$workspace/share/pkgconfig:\
+$workspace/lib/pkgconfig:\
 $workspace/lib/x86_64-linux-gnu/pkgconfig:\
 $workspace/usr/lib/pkgconfig:\
-/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+$workspace/share/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/share/pkgconfig:\
-/usr/share/pkgconfig:\
+/usr/lib/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/pkgconfig\
+/usr/share/pkgconfig:\
+/lib64/pkgconfig:\
+/lib/pkgconfig:\
+/lib/x86_64-linux-gnu/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
