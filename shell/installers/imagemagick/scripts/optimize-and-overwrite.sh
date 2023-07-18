@@ -82,12 +82,15 @@ EOF
     clear
 done
 
-# The text-to-speech below requires the following packages:
+# The text-to-speech below requries the following packages:
 # pip install google_speech; sudo apt -y install sox
 if [ "${?}" -eq '0' ]; then
     google_speech 'Image conversion completed.' 2>/dev/null
     exit 0
 else
+    echo
     google_speech 'Image conversion failed.' 2>/dev/null
+    echo
+    read -p 'Press enter to exit.'
     exit 1
 fi
