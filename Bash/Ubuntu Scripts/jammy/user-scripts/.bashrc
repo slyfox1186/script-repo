@@ -112,10 +112,11 @@ $HOME/.local/bin:\
 "
 export PATH
 
-export CPUS="$((THREADS/2))"
-export LAN="$(hostname -I)"
+export threads="$(nproc --all)"
+export cpus="$((threads/2))"
+export lan="$(hostname -I)"
+export wan="$(curl -sS https://checkip.amazonaws.com)"
 export PS1='\n\[\e[0;96m\]\w\n\[\e[0;38;5;220m\]\T\n\[\e[0;38;5;208m\]\h\[\e[0m\]@\[\e[0;38;5;201m\]\u\[\e[0;93m\]$\[\e[0m\]'
 export PYTHONUTF8='1'
-export THREADS="$(nproc --all)"
-export TMP="$HOME/tmp"
-export WAN="$(curl -sS 'https://checkip.amazonaws.com')"
+export tmp="$HOME/tmp"
+
