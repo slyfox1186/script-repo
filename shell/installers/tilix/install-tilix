@@ -1,174 +1,217 @@
 #!/bin/bash
 
-#################################################################################################################
-##
-##  IMPORANT INSTRUCTIONS (MUST READ BEFORE INSTALLING)
-##
-##  The default themes that come with tilix will be deleted on install unless you change the value of
-##     the variable 'themes_flag' below to '1' which will keep the defaults.
-##
-##  You MUST modify the variable 'theme_options' below with the custom color theme names IF you want
-##     to add them to tilix during install. You can check which themes you want to add by visiting the
-##     themes folder before running this script.
-##
-##  To add the custom color themes, separate each entry name with a comma and leave off the '.json'.
-##  See the example below for help. As you will see (dracula neopolitan vibrant-ink) will be added.
-##
-#################################################################################################################
-
 clear
 
+#
+# TILIX TERMINAL INSTALLER SCRIPT
+#
+
 if [ "$EUID" -eq '0' ]; then
-    echo 'This script is intended to be run WITHOUT root/sudo.'
-    echo
-    echo 'It is (highly) recommended you exit the script and run it with user level access instead of root.'
-    echo
-    read -p 'To chance it and continue the build press enter or exit the script using ctrl c or ctrl z.'
-    echo
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
 fi
 
+script_ver=1.0
+archive_dir=tilix-1.9.5
+archive_url=https://github.com/gnunn1/tilix/archive/refs/tags/1.9.5.tar.gz
+archive_ext="${archive_url//*.}"
+cwd="$PWD"/tilix-build-script
+packages="$cwd"/packages
+schemes_folder="$HOME"/.config/tilix/schemes
+
+printf "\n%s\n%s\n\n" \
+    "tilix build script - v$script_ver" \
+    '==============================================='
+
 #
-# CREATE VARIABLES
+# CREATE OUTPUT DIRECTORY
 #
 
-# Modify the below variable with the names of the custom themes you want to add to tilix during installation.
-theme_options=({dracula,neopolitan,vibrant-ink}.json)
+mkdir -p "$packages"
 
-# Change the below variable to '1' to keep the default color themes that come with tilix.
-themes_flag='0'
+#
+# SET THE C+CPP COMPILERS
+#
 
-## DO NOT CHANGE THESE UNLESS YOU KNOW WHAT YOU ARE DOING
-parent_dir="$PWD"
-packages="$parent_dir"/packages
-tilix_schemes='/usr/share/tilix/schemes'
+export CC=gcc CXX=g++
+
+#
+# EXPORT COMPILER OPTIMIZATION FLAGS
+#
+
+export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
+
+#
+# SET PATH
+#
+
+PKG_CONFIG_PATH="\
+$workspace/lib/pkgconfig:\
+$workspace/lib64/pkgconfig:\
+$workspace/share/pkgconfig:\
+$workspace/lib/x86_64-linux-gnu/pkgconfig:\
+$workspace/usr/lib/pkgconfig:\
+/lib/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib64/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/local/share/pkgconfig:\
+/usr/share/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/pkgconfig\
+"
+export PKG_CONFIG_PATH
 
 #
 # CREATE FUNCTIONS
 #
 
+exit_fn()
+{
+    printf "\n%s\n\n" 'The script has completed.'
+    exit 0
+}
+
+
 fail_fn()
 {
-    printf "\n%s\n\n%s\n%s\n\n" \
-        "$@" \
-        'Make SURE you create an issue on my GitHub page to report this bug so I can fix it!' \
-        'https://github.com/slyfox1186/script-repo/issues'
+    printf "%s\n\n" "$1"
     exit 1
 }
 
-#
-# MANAGE INSTALL FOLDERS
-#
+cleanup_fn()
+{
+    local choice
 
-if [ -d "$packages" ]; then
-    sudo rm -fr "$packages"
-fi
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
+        '============================================' \
+        '  Do you want to clean up the build files?  ' \
+        '============================================' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' choice
 
-mkdir -p "$packages"
+    case "$choice" in
+        1)      sudo rm -fr "$cwd";;
+        2)      echo;;
+        *)
+                clearinstall-tilix.sh
+                printf "%s\n\n" 'Bad user input. Reverting script...'
+                sleep 3
+                unset choice
+                clear
+                cleanup_fn
+                ;;
+    esac
+}
 
 #
 # INSTALL REQUIRED APT PACKAGES
 #
 
-echo 'Depending on your download speed this could take a moment... please be patient.'
-echo
-echo -e "\$ apt-get -qq -y install curl gettext git gtk-doc-tools libgtkd-3-dev libgtk-4-dev python3-nautilus\\n"
-sudo apt-get -qq -y install curl gettext git gtk-doc-tools libgtkd-3-dev libgtk-4-dev python3-nautilus
+pkgs=(autoconf autogen automake build-essential ccache curl gettext git gtk-doc-tools
+      libgtk-4-dev libgtkd-3-dev libtool libtool-bin m4 ninja-build pkg-config python3-nautilus)
+
+for i in ${pkgs[@]}
+do
+    missing_pkg="$(dpkg -l | grep $i)"
+
+    if [ -z "$missing_pkg" ]; then
+        missing_pkgs+=" $i"
+    fi
+done
+unset i
+
+if [ -n "$missing_pkgs" ]; then
+    sudo apt -y install $missing_pkgs
+    sudo apt -y autoremove
+    clear
+fi
 
 #
-# DOWNLOAD CUSTOM THEMES FOLDER
+# DOWNLOAD AND INSTALL DUB 
 #
 
-echo -e "\$ curl -Ssf https://dlang.org/install.sh | bash -s dmd\\n"
-curl -Lso 'tilix-themes.tar.gz' 'https://github.com/slyfox1186/script-repo/raw/main/shell/installers/tilix/tilix-themes.tar.gz'
+if [ -d "$packages"/dub ]; then
+    sudo rm -fr "$packages"/dub
+fi
+mkdir -p "$packages"/dub
 
-if [ ! -f 'tilix-themes.tar.gz' ]; then
-    fail_fn 'The file "tilix-themes.tar.gz" failed to download.'
+if [ -f '/usr/bin/dub' ]; then
+    sudo apt remove -y dub
 else
-    mkdir -p 'tilix-themes'
-    tar zxf 'tilix-themes.tar.gz' -C 'tilix-themes' --strip-components 1 2>/dev/null
-fi
-
-#
-# INSTALL DMD (D COMPILER)
-#
-
-echo -e "\$ curl -Ssf https://dlang.org/install.sh | bash -s dmd\\n"
-curl -Ssf https://dlang.org/install.sh | bash -s dmd &>/dev/null
-
-if ! source "$HOME"/dlang/dmd-*/activate &>/dev/null; then
-    printf "\n%s\n%s\n\n%s\n%s\n\n" \
-        'Could not source the file: ~/dlang/dmd-*/activate' \
-        'This might be a fatal error or it could be benign.'
-        'You can do me a big favor and alert me on my GitHub issues page so I can look into it!' \
-        'https://github.com/slyfox1186/script-repo/issues'
-    read -p 'Press enter to attempt finishing the build. (It may work): '
-    echo
-fi
-
-#
-# INSTALL DUB
-#
-
-if [ ! -f '/usr/bin/dub' ]; then
-    echo -e "\$ git clone https://github.com/dlang/dub.git $packages/dub\\n"
-    if ! git clone -q https://github.com/dlang/dub.git "$packages/dub" &>/dev/null; then
-        fail_fn 'Could not clone the dub repository.'
+    if ! git clone -q 'https://github.com/dlang/dub.git' "$packages"/dub; then
+        fail_fn 'Could not git clone dub.'
     else
-        cd "$packages/dub" || exit 1
-        echo -e "\$ ./build.d\\n"
-        ./build.d &>/dev/null
-        echo -e "\$ sudo mv bin/dub /usr/local/bin\\n"
-        if ! sudo mv 'bin/dub' '/usr/local/bin'; then
-            fail_fn 'Failed to move the dub binary to "/usr/local/bin".'
+        clear
+        cd "$packages"/dub || exschemes_folderit 1
+        ./build.d
+        if ! sudo mv bin/dub /usr/bin; then
+            fail_fn 'Failed to move dub binary to /usr/bin'
         fi
     fi
-else
-    fail_fn 'You already have dub installed on your system (most likely from APT)' \
-    'The current APT version of dub is not high enough to install the latest version of tilix.' \
-    'To install the latest version of dub please try running "sudo apt remove dub" and if successful, run this script again.'
+fi
+
+if ! which dub &>/dev/null;then
+    fail_fn 'dub was not installed.'
 fi
 
 #
-# INSTALL TILIX
+# DOWNLOAD AND INSTALL TILIX
 #
 
-echo -e "\$ git clone -q https://github.com/gnunn1/tilix.git $packages/tilix\\n"
-if ! git clone -q https://github.com/gnunn1/tilix.git "$packages/tilix"; then
-    fail_fn 'Could not clone the tilix repository.'
+if [ -d "$packages"/tilix ]; then
+    sudo rm -fr "$packages"/tilix
+fi
+
+if ! git clone 'https://github.com/gnunn1/tilix.git' "$packages"/tilix; then
+    fail_fn 'Could not git clone tilix.'
 else
-    cd "$packages/tilix" || exit 1
-    echo -e "\$ dub build --build=release\\n"
+    clear
+    cd "$packages"/tilix || exit 1
     dub build --build=release
-    echo -e "\$ sudo bash install.sh\\n"
     if ! sudo bash install.sh; then
-        fail_fn 'Could not install tilix.'
+        fail_fn 'Tilix failed to install. Press enter to continue.'
     fi
 fi
 
 #
-# REMOVE THE DEFAULT TILIX THEMES IF THE CORRECT FLAG WAS SET
+# DOWNLOAD, EXTRACT, AND INSTALL THE TILIX THEMES
 #
 
-if [ "$themes_flag" -ne '1' ]; then
-    echo -e "\\n\$ sudo rm -fr $tilix_schemes/*.json\\n"
-    sudo rm -fr $tilix_schemes/*.json
+if [ -d "$packages"/tilix-themes ]; then
+    sudo rm -fr "$packages"/tilix-themes
+fi
+mkdir -p "$packages"/tilix-themes
+
+if ! curl -Lso "$packages"/tilix-themes.tar.gz 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/installers/tilix/tilix-themes.tar.gz'; then
+    fail_fn 'Failed to down download the tilix-schemes archive file.'
+fi
+
+if ! tar -zxf "$packages"/tilix-themes.tar.gz -C "$packages"/tilix-themes --strip-components 1; then
+    printf "%s\n\n" "Failed to extract the themes archive: $packages/tilix-themes.tar.gz"
+    exit 1
+fi
+
+if [ ! -d "$schemes_folder" ]; then
+    mkdir -p "$schemes_folder"
+fi
+
+cd "$packages"/tilix-themes || exit 1
+if [ -f argonaut.json ] ;then
+    cp -fr argonaut.json dracula.json neopolitan.json vibrant-ink.json "$schemes_folder"
+else
+    fail_fn 'Could not locate the file: argonaut.json'
 fi
 
 #
-# INSTALL CUSTOMIZED THEMES
+# MAKE TILIX THE DEFAULT TERMINAL
 #
 
-cd "$parent_dir/tilix-themes" || exit 1
-echo -e "\$ sudo cp -f ${theme_options[@]} $tilix_schemes\\n"
-sudo cp "${theme_options[@]}" "$tilix_schemes"
+sudo update-alternatives --install /usr/bin/x-terminal-emulator x-terminal-emulator /usr/bin/tilix 75
+sudo update-alternatives --config x-terminal-emulator
 
-#
-# CLEANUP LEFTOVER FILES
-#
-
-echo "\$ sudo rm -r $packages"
-sudo rm -r "$packages"
-
-printf "\n%s\n%s\n\n" \
-    'Tilix has been installed.' \
-    'After a few seconds your system will load it into cache and you will be able to search for it using your OS'\''s search function.'
+# CLEANUP FILES
+cleanup_fn
+# SHOW EXIT MESSAGE
+exit_fn 
