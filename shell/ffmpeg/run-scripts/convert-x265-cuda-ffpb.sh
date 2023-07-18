@@ -174,3 +174,4 @@ fi
 
 # MOVE INPUT FILE TO TRASH
 trash -f "${file_in}"
+exit 0
