@@ -5,6 +5,40 @@ clear
 # THE FILE EXTENSION TO SEARCH FOR (DO NOT INCLUDE A '.' WITH THE EXTENSION)
 fext=jpg
 
+#
+# REQUIRED APT PACKAGES
+#
+
+apt_pkgs=(sox libsox-dev)
+for i in ${apt_pkgs[@]}
+do
+    missing_pkg="$(dpkg -l | grep "${i}")"
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${i}"
+    fi
+done
+
+if [ -n "${missing_pkgs}" ]; then
+    sudo apt -y install ${missing_pkgs}
+    sudo apt -y autoremove
+    clear
+fi
+unset apt_pkgs i missing_pkg missing_pkgs
+
+#
+# REQUIRED PIP PACKAGES
+#
+
+pip_lock="$(find /usr/lib/python3* -name EXTERNALLY-MANAGED)"
+if [ -n "${pip_lock}" ]; then
+    sudo rm "${pip_lock}"
+fi
+missing_pkg="$(pip show "google_speech")"
+if [ -z "${missing_pkg}" ]; then
+    pip install ${missing_pkg}
+fi
+
+unset p pip_lock pip_pkgs missing_pkg missing_pkgs
 # DELETE ANY USELESS ZONE IDENFIER FILES THAT SPAWN FROM COPYING A FILE FROM WINDOWS NTFS INTO A WSL DIRECTORY
 find . -type f -name "*:Zone.Identifier" -delete 2>/dev/null
 
@@ -82,8 +116,6 @@ EOF
     clear
 done
 
-# The text-to-speech below requries the following packages:
-# pip install google_speech; sudo apt -y install sox
 if [ "${?}" -eq '0' ]; then
     google_speech 'Image conversion completed.' 2>/dev/null
     exit 0
