@@ -15,17 +15,21 @@ do
         missing_pkgs+=" ${i}"
     fi
 done
-unset apt_pkgs i missing_pkg
 
 if [ -n "${missing_pkgs}" ]; then
     sudo apt -y install ${missing_pkgs}
     clear
 fi
-unset missing_pkgs
+unset apt_pkgs i missing_pkg missing_pkgs
 
 #
 # REQUIRED PIP PACKAGES
 #
+
+pip_lock="$(find /usr/lib/python3* -name EXTERNALLY-MANAGED)"
+if [ -n "${pip_lock}" ]; then
+    sudo rm "${pip_lock}"
+fi
 
 pip_pkgs=(ffpb google_speech)
 for p in ${pip_pkgs[@]}
@@ -35,24 +39,17 @@ do
         missing_pkgs+=" ${p}"
     fi
 done
-unset missing_pkg p pip_pkgs
-
-pip_lock="$(find /usr/lib/python3* -name EXTERNALLY-MANAGED)"
-if [ -n "${pip_lock}" ]; then
-    sudo rm "${pip_lock}"
-    
-fi
 
 if [ -n "${missing_pkgs}" ]; then
     pip install ${p}
     clear
 fi
-unset missing_pkgs
+unset p pip_lock pip_pkgs missing_pkg missing_pkgs
 
 # DELETE FILES PROM PRIOR RUNS
 del_this="$(du -ah --max-depth=1 | grep -Eo '[\/].*\(x265\)\.(mp4|mkv)$' | grep -Eo '[A-Za-z0-9].*\(x265\)\.(mp4|mkv)$')"
-
 clear
+
 if [ -n "${del_this}" ]; then
     printf "%s\n\n%s\n%s\n%s\n\n" \
         "Do you want to delete this video before continuing?: ${del_this}" \
