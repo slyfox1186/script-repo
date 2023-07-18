@@ -76,11 +76,11 @@ fi
 # MAKE SURE THERE ARE ACTUAL VIDEOS IN THE FOLDER WITH THIS SCRIPT BEFORE CONTINUING
 for vid in "$PWD"/*.{mp4,mkv}
 do
-    vid_exist="$(echo $vid)"
-    if [ -n "$vid_exist" ]; then
-        vid_list=" $vid"
+    vid_exist="$(echo ${vid})"
+    if [ -n "${vid_exist}" ]; then
+        vid_list=" ${vid}"
     fi
-    if [ -n "$vid_list" ]; then
+    if [ -n "${vid_list}" ]; then
         clear
     else
         printf "%s\n\n%s\n" \
