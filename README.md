@@ -321,6 +321,10 @@ curl.exe -Lso features.bat https://win-optional-features.optimizethis.net && CAL
 ## Add Open WSL Here to Windows Context Menu
   1. **Run cmd.exe as administrator**
   2. **To add to the context menu, paste the below command into cmd.exe and press enter to execute**
-```
+```batch
 curl.exe -fsSL https://open-wsl-here.optimizethis.net > open-wsl-here.bat && call open-wsl-here.bat
+```
+3. **To remove to the context menu, paste the below command into cmd.exe and press enter to execute**
+```batch
+curl.exe -fsSL https://open-wsl-here-rm.optimizethis.net > open-wsl-here-rm.bat && call open-wsl-here-rm.bat
 ```
