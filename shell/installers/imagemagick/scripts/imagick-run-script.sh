@@ -1,0 +1,34 @@
+#!/bin/bash
+
+clear
+
+# CREATE VARIABLES
+parent_dir="$PWD"
+tmp_dir="$(mktemp -d)"
+
+# CREATE AND CD INTO A RANDOM DIRECTORY
+cd "$tmp_dir" || exit 1
+
+# DOWNLOAD THE SCRIPTS FROM GITHUB
+wget -cqO 'imow' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/installers/imagemagick/scripts/optimize-and-overwrite.sh'
+
+# MOVE THE SCRIPTS TO THE ORIGINAL DIRECTORY THE SCRIPT WAS EXECUTED FROM
+sudo mv imow "$parent_dir"
+
+# CD BACK INTO THE ORIGINAL DIRECTORY
+cd "$parent_dir" || exit 1
+
+# DELETE THE RANDOM DIRECTORY
+sudo rm -fr "$tmp_dir"
+
+# CHANGE THE FILE PERMISSIONS OF EACH SCRIPT
+sudo chown "$USER":"$USER" -R imow
+sudo chmod +rwx -R imow
+
+# UNSET THE SCRIPT VARIABLES
+unset parent_dir tmp_dir
+
+# REMOVE THE INSTALLER SCRIPT ITSELF
+if [ -f "$0" ]; then
+    sudo rm "$0"
+fi
