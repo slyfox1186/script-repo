@@ -35,7 +35,7 @@ if [ -n "${pip_lock}" ]; then
 fi
 missing_pkg="$(pip show "google_speech")"
 if [ -z "${missing_pkg}" ]; then
-    pip install ${missing_pkg}
+    pip install google_speech
 fi
 
 unset p pip_lock pip_pkgs missing_pkg missing_pkgs
