@@ -17,9 +17,9 @@
 ##
 ##  Added: Debian OS Support ( 12 / 11 / 10 )
 ##
-##  Updated: 07.13.23
+##  Updated: 07.17.23
 ##
-##  Script Version: 2.2
+##  Script Version: 2.3
 ##
 #################################################################################
 
@@ -35,20 +35,20 @@ fi
 # SET GLOBAL VARIABLES
 #
 
+script_version=2.3
 progname="${0:2}"
-script_version=2.2
 cwd="$PWD"/magick-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
-repo=https://github.com/slyfox1186/script-repo
 install_dir=/usr/local
+repo=https://github.com/slyfox1186/script-repo
 debug=OFF # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
 
 #
 # CREATE OUTPUT DIRECTORIES
 #
 
-mkdir -p "$packages/deb-files" "$packages/libjxl-deb"
+mkdir -p "$packages/deb-files" "$packages/libjxl-deb" "$workspace"/lib
 
 #
 # SET THE AVAILABLE CPU COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -82,32 +82,17 @@ $workspace/lib/pkgconfig:\
 $workspace/lib/x86_64-linux-gnu/pkgconfig:\
 $workspace/usr/lib/pkgconfig:\
 $workspace/share/pkgconfig:\
-/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/share/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/lib/pkgconfig:\
-/usr/share/pkgconfig\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/share/pkgconfig:\
+/lib64/pkgconfig:\
+/lib/pkgconfig\
 "
 export PKG_CONFIG_PATH
-
-LDFLAGS="\
-$workspace/lib64:\
-$workspace/lib:\
-$workspace/src/lib:\
-$workspace/share/ghostscript/10.01.1/lib:\
-/usr/local/lib64:\
-/usr/local/lib:\
-/usr/lib:\
-/lib64:\
-/lib:\
-/usr/share/texinfo/lib:\
-/usr/share/ghostscript/9.55.0/lib:\
-/usr/lib/jvm/java-17-openjdk-amd64/lib\
-"
-export LDFLAGS
 
 #
 # CREATE FUNCTIONS
@@ -150,9 +135,25 @@ cleanup_fn()
                 sleep 3
                 unset choice
                 clear
-                cleanup_fn
+                cleanup_fninstall_dir
                 ;;
     esac
+}
+
+create_links_fn()
+{
+    local i link_list
+
+    link_list=(animate compare composite conjure convert display identify import magick Magick++-config MagickCore-config magick-script MagickWand-config mogrify montage stream)
+
+    for i in ${link_list[@]}
+    do
+        if [ -f "$install_dir/bin/$pc_type-$i" ]; then
+            sudo ln -fs "$install_dir/bin/$pc_type-$i" "/usr/local/bin/$i"
+            sudo chmod 755 "$install_dir/bin/$pc_type-$i"
+            sudo chmod 755 "$install_dir/bin/$i"
+        fi
+    done
 }
 
 execute()
@@ -161,12 +162,12 @@ execute()
 
     if [ "$debug" = 'ON' ]; then
         if ! output="$("$@")"; then
-            notify-send -u critical -t 10000 "Failed to execute: $*"
+            notify-send -t 10000 "Failed to execute: $*"
             fail_fn "Failed to execute: $*"
         fi
     else
         if ! output="$("$@" 2>&1)"; then
-            notify-send -u critical -t 10000 "Failed to execute: $*"
+            notify-send  -t 10000 "Failed to execute: $*"
             fail_fn "Failed to execute: $*"
         fi
     fi
@@ -188,8 +189,6 @@ build()
 }
 
 build_done() { echo "$2" > "$packages/$1.done"; }
-
-installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
 get_version_fn()
 {
@@ -282,6 +281,7 @@ download_git()
 
 show_magick_version()
 {
+    printf "\n%s\n\n" 'ImageMagick'\''s new version is:'
     if ! magick -version 2>/dev/null; then
         fail_fn 'Failure to execute the command: magick -version'
     fi
@@ -397,24 +397,26 @@ fi
 
 pkgs_fn()
 {
-    pkgs=("$1" alien asciidoc autoconf automake autopoint binutils bison build-essential ccache cmake
+    pkgs=("$1" alien asciidoc autoconf automake autopoint binutils bison build-essential cmake
           curl flex gettext gimp-data git gperf imagemagick jq libc6 libc6-dev libfreetype-dev libgc-dev
           libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev libheif-dev libltdl-dev libpango1.0-dev
           libpaper-dev libpng-dev libpstoedit-dev libraw-dev librsvg2-dev librust-bzip2-dev libsdl2-dev
-          libtcmalloc-minimal4 libtool libtool-bin libxml2-dev libzip-dev m4 meson nasm ninja-build php-cli
-          pstoedit xmlto yasm)
+          libstdc++-12-dev libtcmalloc-minimal4 libtool libtool-bin libxml2-dev libzip-dev m4 meson nasm
+          ninja-build opencl-headers opencl-c-headers php-cli pstoedit xmlto yasm)
 
-    for pkg in ${pkgs[@]}
+    for i in ${pkgs[@]}
     do
-        if ! installed "$pkg"; then
-            missing_pkgs+=" $pkg"
+        missing_pkg="$(dpkg -l | grep $i)"
+
+        if [ -z "$missing_pkg" ]; then
+            missing_pkgs+=" $i"
         fi
     done
+    unset i
 
     if [ -n "$missing_pkgs" ]; then
         sudo apt -y install $missing_pkgs
-    else
-        echo 'The required APT packages are already installed.'
+        clear
     fi
 }
 
@@ -431,9 +433,10 @@ install_jxl_files_fn()
     printf "\n%s\n%s\n" \
         'Installing: libjxl_0.8.1_amd64.deb' \
         '=========================================='
+    echo '$ sudo dpkg -i libjxl_0.8.1_amd64.deb'
     if sudo dpkg -i libjxl_0.8.1_amd64.deb; then
-        sudo rm libjxl_0.8.1_amd64.deb &>/dev/null
-        echo
+       sudo rm libjxl_0.8.1_amd64.deb &>/dev/null
+       echo
     fi
 
     for i in *.deb
@@ -444,6 +447,7 @@ install_jxl_files_fn()
         sudo dpkg -i "$i"
         echo
     done
+    sudo apt --fix-broken install
 }
 
 download_jxl_files_fn()
@@ -485,7 +489,6 @@ printf "%s\n%s\n" \
 
 debian_ver_check_fn()
 {
-    local pkgs_debian pkgs_bullseye pkgs_bookworm
     clear
 
     pkgs_debian='libcpu-features-dev libfontconfig-dev libgc1 libdmalloc-dev libdmalloc5 libjemalloc-dev'
@@ -503,7 +506,6 @@ debian_ver_check_fn()
 
 ubuntu_ver_check_fn()
 {
-    local pkgs_jammy
     clear
 
     pkgs_jammy='libcpu-features-dev libfontconfig-dev libgc1 libhwy-dev libmimalloc2.0 libmimalloc-dev'
@@ -616,68 +618,16 @@ if build 'libjxl' '0.8.1'; then
 fi
 
 #
-# BUILD FROM SOURCE CODE
+# GET PC TYPE
 #
 
-if build 'm4' 'latest'; then
-    download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
-    pc_type="$(build-aux/config.guess)"
-    execute ./configure --prefix="$workspace"       \
-                        --{build,host}="$pc_type"   \
-                        --disable-nls               \
-                        --enable-c++                \
-                        --enable-threads=posix      \
-                        --with-dmalloc              \
-                        --with-libiconv-prefix=/usr
-    execute make "-j$cpu_threads"
-    execute make install
-    execute make distclean
-    build_done 'm4' 'latest'
-fi
+curl -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "$cwd/config.guess"
+pc_type="$(source "$cwd/config.guess")"
 
-if build 'autoconf' 'latest'; then
-    download 'http://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz'
-    execute autoreconf -fi
-    execute ./configure --prefix="$workspace"     \
-                        --{build,host}="$pc_type" \
-                        M4="$workspace"/bin/m4
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'autoconf' 'latest'
-fi
-
-if build 'automake' '1.16.5'; then
-    download 'https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
-    execute autoreconf -fi
-    execute ./bootstrap
-    execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type"
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'automake' '1.16.5'
-fi
-
-# THIS MUST BE VERSION 2.4.6, 2.4.7 WILL NOT WORK
-if build 'libtool' '2.4.7'; then
-    download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
-    execute ./configure --prefix="$workspace"     \
-                        --{build,host}="$pc_type" \
-                        --with-pic                \
-                        M4="$workspace"/bin/m4
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'libtool' '2.4.7'
-fi
-
-if build 'pkg-config' '0.29.2'; then
-    download "https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz"
-    execute ./configure --prefix=/usr \
-                        --with-pc-path="$PKG_CONFIG_PATH"
-    execute make "-j$cpu_threads"
-    execute sudo make install
-    execute make distclean
-    build_done 'pkg-config' '0.29.2'
-fi
+#
+# BUILD FROM SOURCE CODE
+#
 
 git_ver_fn 'libsdl-org/libtiff' '1' 'T'
 if build 'tiff' "$g_ver"; then
@@ -694,7 +644,7 @@ fi
 
 if build 'jpeg-turbo' 'git'; then
     download_git 'https://github.com/imageMagick/jpeg-turbo.git'
-    execute cmake -S . -DCMAKE_{INSTALL_PREFIX=/usr/local,BUILD_TYPE=Release} -DENABLE_{SHARED,STATIC}=ON -G Ninja -Wno-dev
+    execute cmake -S . -DCMAKE_{INSTALL_PREFIX="$install_dir",BUILD_TYPE=Release} -DENABLE_{SHARED,STATIC}=ON -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads"
     execute sudo ninja "-j$cpu_threads" install
     build_done 'jpeg-turbo' 'git'
@@ -703,7 +653,7 @@ fi
 if build 'libfpx' 'git'; then
     download_git 'https://github.com/imageMagick/libfpx.git'
     execute autoreconf -fi
-    execute ./configure --prefix=/usr/local              \
+    execute ./configure --prefix="$install_dir"          \
                         --{build,host,target}="$pc_type" \
                         --with-pic
     execute make -j "$cpu_threads"
@@ -741,7 +691,7 @@ if build 'libwebp' 'git'; then
         -DWEBP_{BUILD_ANIM_UTILS,BUILD_EXTRAS,BUILD_GIF2WEBP,BUILD_IMG2WEBP,BUILD_LIBWEBPMUX}=OFF  \
         -DWEBP_{BUILD_VWEBP,BUILD_WEBPINFO,BUILD_WEBPMUX,ENABLE_SWAP_16BIT_CSP,LINK_STATIC}=OFF    \
         -DWEBP_{BUILD_CWEBP,BUILD_DWEBP}=ON -DBUILD_SHARED_LIBS=ON -DZLIB_INCLUDE_DIR=/usr/include \
-        -DWEBP_C_FLAGS_RELEASE='-g -O3 -march=native -DNDEBUG' -G Ninja -Wno-dev
+        -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
     build_done 'libwebp' 'git'
@@ -822,39 +772,46 @@ fi
 # BEGIN IMAGEMAGICK BUILD
 #
 
-if [ -f "$packages/ImageMagick.done" ]; then
-    rm -f "$packages/ImageMagick.done"
-fi
-
 git_ver_fn 'imagemagick/imagemagick' '1' 'T'
-if [ -d "$packages/imagemagick-$g_ver" ]; then
-    sudo rm -fr "$packages/imagemagick-$g_ver"
-fi
-
 if build 'imageMagick' "$g_ver"; then
     download "https://codeload.github.com/imagemagick/imagemagick/tar.gz/refs/tags/$g_ver" "imagemagick-$g_ver.tar.gz"
     execute autoreconf -fi -I /usr/share/aclocal
     mkdir build
     cd build || exit 1
-    ../configure --prefix="$install_dir" \
-                 --enable-ccmalloc       \
-                 --enable-legacy-support \
-                 --with-autotrace        \
-                 --with-dmalloc          \
-                 --with-fpx              \
-                 --with-gvc              \
-                 --with-gslibc           \
-                 --with-heic             \
-                 --with-jemalloc         \
-                 --with-modules          \
-                 --with-perl             \
-                 --with-rsvg             \
-                 --with-tcmalloc         \
-                 --with-quantum-depth=16
+    ../configure --prefix="$install_dir"                         \
+                 --{build,host,target}="$pc_type"                \
+                 --enable-ccmalloc                               \
+                 --enable-hdri                                   \
+                 --enable-hugepages                              \
+                 --enable-legacy-support                         \
+                 --enable-opencl                                 \
+                 --with-dmalloc                                  \
+                 --with-fpx                                      \
+                 --with-gvc                                      \
+                 --with-gslib                                    \
+                 --with-heic                                     \
+                 --with-jemalloc                                 \
+                 --with-libstdc=/usr/lib/gcc/x86_64-linux-gnu/12 \
+                 --with-modules                                  \
+                 --with-perl                                     \
+                 --with-pic                                      \
+                 --with-rsvg                                     \
+                 --with-tcmalloc                                 \
+                 --with-pkgconfigdir="$workspace"/lib/pkgconfig  \
+                 --with-quantum-depth=16                         \
+                 --without-autotrace                             \
+                 PKG_CONFIG="$(type -P pkg-config)"              \
+                 PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
     execute make "-j$cpu_threads"
-    execute sudo make install
+    if ! sudo make install; then
+        make distclean
+        printf "\n%s\n\n" 'Failed to install imagemagick.'
+        exit 1
+    fi
 fi
 
+# CREATE SOFT LINKS
+create_links_fn
 # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE MAGICK COMMAND WILL NOT WORK
 sudo ldconfig 2>/dev/null
 # SHOW THE NEWLY INSTALLED MAGICK VERSION
