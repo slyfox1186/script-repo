@@ -7,10 +7,8 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-# THE APT PACKAGE NETPLAN.IO MUST BE INSTALLED
-if ! which netplan &>/dev/null; then
-	sudo apt -y install netplan.io
-    clear
+if ! sudo dpkg -l | grep 'netplan' &>/dev/null; then
+    sudo apt -y install netplan.io
 fi
 
 #
