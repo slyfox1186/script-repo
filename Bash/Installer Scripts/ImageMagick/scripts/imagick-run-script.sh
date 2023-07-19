@@ -10,7 +10,7 @@ tmp_dir="$(mktemp -d)"
 cd "$tmp_dir" || exit 1
 
 # DOWNLOAD THE SCRIPTS FROM GITHUB
-wget -cqO 'imow' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/installers/imagemagick/scripts/optimize-and-overwrite.sh'
+wget -cqO 'imow' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-and-overwrite.sh'
 
 # MOVE THE SCRIPTS TO THE ORIGINAL DIRECTORY THE SCRIPT WAS EXECUTED FROM
 sudo mv imow "$parent_dir"
