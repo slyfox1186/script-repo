@@ -1,13 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # shellcheck disable=SC2066,SC2068,SC2086,SC2162
 
 clear
 
-#
 # SET PATH
-#
-
-export PATH="$PATH:$HOME/.local/bin"
+export PATH="${PATH}:${HOME}/.local/bin"
 
 #
 # REQUIRED APT PACKAGES
@@ -41,7 +38,7 @@ fi
 pip_pkgs=(ffpb google_speech)
 for p in ${pip_pkgs[@]}
 do
-    missing_pkg="$(pip show "${p}")"
+    missing_pkg="$(pip show "${p}" 2>/dev/null)"
     if [ -z "${missing_pkg}" ]; then
         missing_pkgs+=" ${p}"
     fi
@@ -78,7 +75,7 @@ if [ -n "${del_this}" ]; then
 fi
 
 # MAKE SURE THERE ARE ACTUAL VIDEOS IN THE FOLDER WITH THIS SCRIPT BEFORE CONTINUING
-for vid in "$PWD"/*.{mp4,mkv}
+for vid in "${PWD}"/*.{mp4,mkv}
 do
     vid_exist="$(echo ${vid})"
     if [ -n "${vid_exist}" ]; then
