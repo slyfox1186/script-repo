@@ -227,11 +227,11 @@ listd()
     local search_cache
 
     if [ -n "$1" ]; then
-        sudo apt list *$1*-dev | awk -F'/' '{print $1}'
+        sudo apt list -- *$1*-dev | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt list *$1*-dev | awk -F'/' '{print $1}'
+        sudo apt list -- *$1*-dev | awk -F'/' '{print $1}'
     fi
 }
 
@@ -694,8 +694,9 @@ im50()
 imdl()
 {
     clear
-    curl -Lso imagick.sh https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/installers/imagemagick/scripts/imagick-run-script.sh; bash imagick.sh
-    sudo rm imagick.sh
+    curl -Lso imow https://raw.githubusercontent.com/slyfox1186/script-repo/main/bash/installer%20scripts/imagemagick/scripts/imagick-run-script.sh; bash imow
+    sudo chown "$USER":"$USER" imow
+    sudo chmod 755 imow
     clear; ls -1AhFv --color --group-directories-first
 }
 
@@ -1280,4 +1281,60 @@ tkfs()
     clear
     sudo killall -9 'FSViewer.exe'
     cl
+}
+
+####################
+## NOHUP COMMANDS ##
+####################
+
+nh()
+{
+    clear
+    nohup "$1" &>/dev/null &
+    cl
+}
+
+nhs()
+{
+    clear
+    nohup sudo "$1" &>/dev/null &
+    cl
+}
+
+nhe()
+{
+    clear
+    nohup "$1" &>/dev/null &
+    exit
+    exit    
+}
+
+nhse()
+{
+    clear
+    nohup sudo "$1" &>/dev/null &
+    exit
+    exit
+}
+
+#######################
+## UPDATE ICON CACHE ##
+#######################
+
+up_icon()
+{
+    local i pkgs
+    clear
+
+    pkgs=(gtk-update-icon-cache hicolor-icon-theme)
+
+    for i in ${pkgs[@]}
+    do
+        if ! sudo dpkg -l "$i"; then
+            sudo apt -y install $i
+            clear
+        fi
+    done
+
+    sudo gtk-update-icon-cache -f /usr/share/icons/hicolor
 }
