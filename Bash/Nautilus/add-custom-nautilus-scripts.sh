@@ -18,7 +18,7 @@ cd "$HOME/.local/share/nautilus/scripts" || exit 1
 #
 
 printf "%s\n\n%s\n%s\n\n" \
-    "Do you want to delete any scripts already in the nautilus scripts folder?" \
+    "Do you want to delete any scripts already in the Nautilus scripts folder?" \
     '[1] Yes' \
     '[2] No'
 read -p 'Your choices are (1 or 2): ' choice
@@ -75,6 +75,9 @@ elif which vim; then
     editor=vim
 elif which vi; then
     editor=vi
+else
+    clear
+    printf "%s\n\n" 'No editor was found so the script cannot work. Please install an editor such as gedit or nano.'
 fi
 fpath="$PWD/$1"
 fname="$(basename "$fpath")"
