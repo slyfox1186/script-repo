@@ -536,8 +536,8 @@ os_ver_check_fn()
             23.04|22.10|22.04)      pkgs_fn 'linux-libc-dev:i386 libadacgi4-dev libgm2-15 openjdk-17-jdk-headless';;
             20.04)                  pkgs_fn 'libgm2-10-dev openjdk-17-jdk-headless';;
             18.04)                  pkgs_fn 'openjdk-11-jdk-headless';;
-            12)                     pkgs_fn "$debian_pkgs gnat-12";;
-            11)                     pkgs_fn "$debian_pkgs gnat-10";;
+            12)                     pkgs_fn "$debian_pkgs gnat-12 libiconv-hook-dev";;
+            11)                     pkgs_fn "$debian_pkgs gnat-10 libiconv-hook-dev";;
             10)                     pkgs_fn "$debian_pkgs gnat-8";;
             *)                      fail_fn 'Could not detect the OS version.';;
     esac
@@ -727,7 +727,7 @@ if build 'gcc-11' '11.4.0'; then
         --program-suffix=-11                      \
         --with-gcc-major-version-only             \
         --with-isl="$workspace"                   \
-        --with-libiconv-prefix=/usr/local         \
+        --with-libiconv-prefix=/usr               \
         --with-link-serialization=2               \
         --with-target-system-zlib=auto            \
         --with-tune=generic                       \
@@ -782,7 +782,7 @@ if build 'gcc-12' '12.3.0'; then
         --program-suffix=-12                      \
         --with-gcc-major-version-only             \
         --with-isl="$workspace"                   \
-        --with-libiconv-prefix=/usr/local         \
+        --with-libiconv-prefix=/usr               \
         --with-link-serialization=2               \
         --with-target-system-zlib=auto            \
         --with-tune=generic                       \
@@ -826,7 +826,7 @@ if build 'gcc-13' '13.2.0'; then
         --program-suffix=-13                      \
         --with-gcc-major-version-only             \
         --with-isl="$workspace"                   \
-        --with-libiconv-prefix=/usr/local         \
+        --with-libiconv-prefix=/usr               \
         --with-link-serialization=2               \
         --with-target-system-zlib=auto            \
         --with-tune=generic                       \
