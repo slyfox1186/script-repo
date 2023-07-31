@@ -10,9 +10,10 @@
 ##  Supported OS: Linux Ubuntu Jammy (22.04.02)
 ##                Native OS Only - Windows WSL is NOT working
 ##
-##  Updated: 07.11.23
+##  Updated: 07.31.23
+##  Updated: GCC-13 to version 13.2.0
 ##
-##  Script Version: 4.2
+##  Script Version: 4.3
 ##
 ##  Added: multiple support libraries using the latest versions available
 ##  Added: link time optimization support
@@ -141,7 +142,7 @@ clear
 # SET BUILD VARIABLES
 #
 
-script_ver=4.2
+script_ver=4.3
 install_dir=/usr/local
 gcc_prefix=x86_64-pc-linux-gnu-
 CFLAGS='-g -O3 -march=native -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
@@ -798,8 +799,8 @@ if build 'gcc-12' '12.3.0'; then
     build_done 'gcc-12' '12.3.0'
 fi
 
-if build 'gcc-13' '13.1.0'; then
-    download 'https://ftp.gnu.org/gnu/gcc/gcc-13.1.0/gcc-13.1.0.tar.xz'
+if build 'gcc-13' '13.2.0'; then
+    download 'https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.xz'
     execute autoreconf -fi
     execute sudo ./contrib/download_prerequisites
     mkdir builddir
@@ -811,7 +812,6 @@ if build 'gcc-13' '13.1.0'; then
         --disable-nls                             \
         --disable-vtable-verify                   \
         --disable-werror                          \
-        --enable-bootstrap                        \
         --enable-checking=release                 \
         --enable-default-pie                      \
         --enable-gnu-unique-object                \
@@ -840,7 +840,7 @@ if build 'gcc-13' '13.1.0'; then
     execute sudo make install-strip
     execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/13
     execute sudo libtool --finish "$install_dir"/lib
-    build_done 'gcc-13' '13.1.0'
+    build_done 'gcc-13' '13.2.0'
 fi
 
 # CREATE SOFT LINKS TO SHORTEN THE BINARY NAMES
