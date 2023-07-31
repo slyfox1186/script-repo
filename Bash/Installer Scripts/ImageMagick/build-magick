@@ -656,7 +656,7 @@ if build 'libfpx' 'git'; then
     execute ./configure --prefix="$install_dir"          \
                         --{build,host,target}="$pc_type" \
                         --with-pic
-    execute make -j "$cpu_threads"
+    execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'libfpx' 'git'
 fi
