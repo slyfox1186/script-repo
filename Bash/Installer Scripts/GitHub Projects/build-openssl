@@ -48,7 +48,7 @@ if [ ! -d "$cwd" ]; then
 fi
 
 #
-# SET THE C+CPP COMPILERS
+# SET THE C AND CPP COMPILERS
 #
 
 export CC=gcc CXX=g++
