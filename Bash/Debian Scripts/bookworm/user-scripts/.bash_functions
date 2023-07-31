@@ -618,44 +618,112 @@ imo()
 # OPTIMIZE AND OVERWRITE THE ORIGINAL IMAGES
 imow()
 {
+    local apt_pkgs cnt_queue cnt_total cwd dimensions fext get_path missing_pkgs pip_lock random_dir v_noslash
     clear
-    local i dimensions random v v_noslash
 
-    # Delete any useless zone identifier files that spawn from copying a file from windows ntfs into a WSL directory
-    find . -name "*:Zone.Identifier" -type f -delete 2>/dev/null
+    # THE FILE EXTENSION TO SEARCH FOR
+    fext=jpg
 
-    # find all jpg files and create temporary cache files from them
+    #
+    # REQUIRED APT PACKAGES
+    #
+
+    apt_pkgs=(sox libsox-dev)
+    for i in ${apt_pkgs[@]}
+    do
+        missing_pkg="$(sudo dpkg -l | grep "${i}")"
+        if [ -z "${missing_pkg}" ]; then
+            missing_pkgs+=" ${i}"
+        fi
+    done
+
+    if [ -n "${missing_pkgs}" ]; then
+        sudo apt -y install ${missing_pkgs}
+        sudo apt -y autoremove
+        clear
+    fi
+
+    #
+    # REQUIRED PIP PACKAGES
+    #
+
+    pip_lock="$(find /usr/lib/python3* -name EXTERNALLY-MANAGED)"
+    if [ -n "${pip_lock}" ]; then
+        sudo rm "${pip_lock}"
+    fi
+    if ! pip show google_speech &>/dev/null; then
+        pip install google_speech 2>/dev/null
+    fi
+    unset apt_pkgs i missing_pkg missing_pkgs pip_lock
+    clear
+
+    # DELETE ANY USELESS ZONE IDENFIER FILES THAT SPAWN FROM COPYING A FILE FROM WINDOWS NTFS INTO A WSL DIRECTORY
+    find . -type f -name "*:Zone.Identifier" -delete 2>/dev/null
+
+    # GET THE FILE COUNT INSIDE THE DIRECTORY
+    cnt_queue=$(find . -maxdepth 2 -type f -iname *.jpg | wc -l)
+    cnt_total=$(find . -maxdepth 2 -type f -iname *.jpg | wc -l)
+    # GET THE UNMODIFIED PATH OF EACH MATCHING FILE
+    get_path="$(find . -type f -iname "*.${fext}" -exec sh -c 'i="${1}"; echo "${i%*.}"' shell {} \;)"
+
+    # FIND ALL JPG FILES AND CREATE TEMPORARY CACHE FILES FROM THEM
+    for i in ${get_path[@]}
+    do
+        fname_in="${i:2}"
+        fpath_full="${PWD}/${fname_in}"
+        fpath=${fpath_full%/*}
+        fdir="${fpath%%.*}"
+        # IF YOUR SUB-DIRECTORY IS NOT NAMED "Pics" THEN CHANGE THE BELOW COMMAND AS NEEDED
+        cd "${fdir//\/Pics\/Pics/\/Pics}" || exit 1
+    done
+    unset i get_path fname_in fpath_full fdir
+
     for i in *.jpg
     do
-        # create a variable to hold a randomized directory name to protect against crossover if running
-        # this function more than once at a time
-        random="$(mktemp --directory)"
-        echo '========================================================================================================='
-        echo
-        echo "Working Directory: ${PWD}"
-        echo
-        printf "Converting: %s\n             >> %s\n              >> %s\n               >> %s\n" "$i" "${i%%.jpg}.mpc" "${i%%.jpg}.cache" "${i%%.jpg}-IM.jpg"
-        echo
-        echo '========================================================================================================='
-        echo
-        dimensions="$(identify -format '%wx%h' "$i")"
-        convert "$i" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "${dimensions}" -strip \
-            -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize '136' -quality '82' -define jpeg:fancy-upsampling='off' \
-            -auto-level -enhance -interlace 'none' -colorspace 'sRGB' "${random}/${i%%.jpg}.mpc"
-        clear
-        for file in "${random}"/*.mpc
+        cnt_queue=$(( cnt_queue-1 ))
+
+        cat <<EOF
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+File Path: ${fpath//\/Pics\/Pics/\/Pics}
+
+Folder: $(basename ${PWD})
+
+Total Files:    ${cnt_total}
+Files in queue: ${cnt_queue}
+
+Converting:  ${i}
+
+             >> ${i%%.jpg}.mpc
+            
+                >> ${i%%.jpg}.cache
+               
+                   >> ${i%%.jpg}-IM.jpg
+
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+EOF
+    echo
+
+        random_dir="$(mktemp -d)"
+        dimensions="$(identify -format '%wx%h' "${i}")"
+        # RUN CONVERT COMMAND ON THE IMAGES
+        convert "${i}" -monitor -filter Triangle -define filter:support=2 -thumbnail "${dimensions}" -strip \
+            -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize 136 -quality 82 -define jpeg:fancy-upsampling=off \
+            -auto-level -enhance -interlace none -colorspace sRGB "${random_dir}/${i%%.jpg}.mpc"
+
+        # CONVERT THE CACHED IMAGES FROM THE PREVIOUS COMMAND LINE INTO THE OPTIMIZED FINAL VERSION OF THE IMAGE
+        for file in "${random_dir}"/*.mpc
         do
-            if [ -f "$file" ]; then
-                if convert "$file" -monitor "${file%%.mpc}.jpg"; then
+            if [ -f "${file}" ]; then
+                if convert "${file}" -monitor "${file%%.mpc}.jpg"; then
                     if [ -f "${file%%.mpc}.jpg" ]; then
-                        cwd="$(echo "$file" | sed 's:.*/::')"
+                        cwd="$(echo "${file}" | sed 's:.*/::')"
                         mv "${file%%.mpc}.jpg" "${PWD}/${cwd%%.*}-IM.jpg"
                         rm -f "${PWD}/${cwd%%.*}.jpg"
-                        for v in $file
+                        for v in ${file}
                         do
                             v_noslash="${v%/}"
                             rm -fr "${v_noslash%/*}"
-                            clear
                         done
                     fi
                 else
@@ -666,16 +734,21 @@ imow()
                 fi
             fi
         done
+        clear
     done
 
-    # The text-to-speech below requires the following packages:
-    # pip install gTTS; sudo apt -y install sox libsox-fmt-all
+    # USE GOOGLE SPEECH TO ANNOUNCE THE RESULTS
     if [ "${?}" -eq '0' ]; then
-        google_speech 'Image conversion completed.'
-        return 0
+        google_speech 'Image conversion completed.' 2>/dev/null
+        nohup nautilus -w "$HOME/Pictures/Pics" &>/dev/null &
+        exit 0
     else
-        google_speech 'Image conversion failed.'
-        return 1
+        echo
+        google_speech 'Image conversion failed.' 2>/dev/null
+        echo
+        read -p 'Press enter to open the pictures folder.'
+        nohup nautilus -w "$HOME/Pictures/Pics" &>/dev/null &
+        exit 1
     fi
 }
 
