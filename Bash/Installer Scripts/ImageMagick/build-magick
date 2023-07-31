@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2046,SC2066,SC2068,SC2086,SC2119,SC2162,SC2181
+# shellcheck disable=SC1091,SC2034,SC2046,SC2066,SC2068,SC2086,SC2119,SC2162,SC2181
 
 #################################################################################
 ##
@@ -8,26 +8,26 @@
 ##  Purpose: Builds ImageMagick 7 from source code obtained
 ##           from the official ImageMagick GitHub repository.
 ##
-##  Function: ImageMagick is the leading open source command line
+##  Function: ImageMagick is the leading open-source command line
 ##            image processor. It can blur, sharpen, warp, reduce
 ##            total file size, ect... The possibilities are vast and wide.
 ##
 ##  Method: The script will search GitHub for the latest released version
-##          and upon execution, will import the info into the script for use
+##          and upon execution will import the info into the script.
 ##
-##  Added: Debian OS Support ( 12 / 11 / 10 )
+##  Added: Debian OS support for versions - 10 / 11 / 12
+##  Added: A browser user-agent string to the curl command
 ##
-##  Updated: 07.17.23
+##  Updated: 07.31.23
 ##
-##  Script Version: 2.3
+##  Script Version: 2.4
 ##
 #################################################################################
 
 clear
 
 if [ "$EUID" -eq '0' ]; then
-    printf "%s\n\n" \
-        'This script must be run WITHOUT root/sudo'
+    printf "%s\n\n" 'This script must be run WITHOUT root/sudo'
     exit 1
 fi
 
@@ -35,20 +35,21 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-script_version=2.3
+script_version=2.4
 progname="${0:2}"
 cwd="$PWD"/magick-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
 install_dir=/usr/local
-repo=https://github.com/slyfox1186/script-repo
-debug=OFF # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+repo='https://github.com/slyfox1186/script-repo'
+debug=OFF # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP WITH TROUBLESHOOTING DURING THE BUILD
 
 #
 # CREATE OUTPUT DIRECTORIES
 #
 
-mkdir -p "$packages/deb-files" "$packages/libjxl-deb" "$workspace"/lib
+mkdir -p "$packages"/deb-files "$packages"/libjxl-deb "$workspace"/lib
 
 #
 # SET THE AVAILABLE CPU COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -86,6 +87,7 @@ $workspace/share/pkgconfig:\
 /usr/local/lib/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/share/pkgconfig:\
+/usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/share/pkgconfig:\
@@ -135,7 +137,7 @@ cleanup_fn()
                 sleep 3
                 unset choice
                 clear
-                cleanup_fninstall_dir
+                cleanup_fn
                 ;;
     esac
 }
@@ -167,7 +169,7 @@ execute()
         fi
     else
         if ! output="$("$@" 2>&1)"; then
-            notify-send  -t 10000 "Failed to execute: $*"
+            notify-send -t 10000 "Failed to execute: $*"
             fail_fn "Failed to execute: $*"
         fi
     fi
@@ -175,7 +177,7 @@ execute()
 
 build()
 {
-    printf "\n%s\n%s\n\n" \
+    printf "\n%s\n%s\n" \
         "Building $1 - version $2" \
         '=========================================='
 
@@ -188,7 +190,10 @@ build()
     return 0
 }
 
-build_done() { echo "$2" > "$packages/$1.done"; }
+build_done()
+{
+    echo "$2" > "$packages/$1.done"
+}
 
 get_version_fn()
 {
@@ -218,10 +223,10 @@ download()
         echo "The file \"$dl_file\" is already downloaded."
     else
         echo "Downloading \"$dl_url\" saving as \"$dl_file\""
-        if ! curl -Lso "$target_file" "$dl_url"; then
+        if ! curl -A "$user_agent" -Lso "$target_file" "$dl_url"; then
             printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
-            if ! curl -Lso "$target_file" "$dl_url"; then
+            if ! curl -A "$user_agent" -Lso "$target_file" "$dl_url"; then
                 fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
             fi
         fi
@@ -237,16 +242,16 @@ download()
     if [ -n "$3" ]; then
         if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
             sudo rm "$target_file"
-            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please run the script again."
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script."
         fi
     else
         if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
             sudo rm "$target_file"
-            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please run the script again."
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script."
         fi
     fi
 
-    echo -e "File extracted: $dl_file\\n"
+    printf "%s\n\n" "File extracted: $dl_file"
 
     cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
 }
@@ -416,6 +421,7 @@ pkgs_fn()
 
     if [ -n "$missing_pkgs" ]; then
         sudo apt -y install $missing_pkgs
+        sudo apt -y autoremove
         clear
     fi
 }
@@ -434,8 +440,8 @@ install_jxl_files_fn()
         'Installing: libjxl_0.8.1_amd64.deb' \
         '=========================================='
     echo '$ sudo dpkg -i libjxl_0.8.1_amd64.deb'
-    if sudo dpkg -i libjxl_0.8.1_amd64.deb; then
-       sudo rm libjxl_0.8.1_amd64.deb &>/dev/null
+    if sudo dpkg -i 'libjxl_0.8.1_amd64.deb'; then
+       sudo rm 'libjxl_0.8.1_amd64.deb' &>/dev/null
        echo
     fi
 
@@ -459,13 +465,13 @@ download_jxl_files_fn()
 
     if [ ! -f "$packages/jpeg-xl.tar.gz" ]; then
         case "$VER" in
-            12)        curl -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-debian-bookworm-$jxl_suffix_url";;
-            11)        curl -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-debian-bullseye-$jxl_suffix_url";;
-            10)        curl -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-debian-buster-$jxl_suffix_url";;
-            22.04)     curl -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-ubuntu-22.04-$jxl_suffix_url";;
-            20.04)     curl -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-ubuntu-20.04-$jxl_suffix_url";;
-            18.04)     curl -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-ubuntu-18.04-$jxl_suffix_url";;
-            *)         fail_fn 'Failed to download the libjxl debian files. The script was unable to detect the OS version.';;
+            12)        curl -A "$user_agent" -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-debian-bookworm-$jxl_suffix_url";;
+            11)        curl -A "$user_agent" -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-debian-bullseye-$jxl_suffix_url";;
+            10)        curl -A "$user_agent" -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-debian-buster-$jxl_suffix_url";;
+            22.04)     curl -A "$user_agent" -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-ubuntu-22.04-$jxl_suffix_url";;
+            20.04)     curl -A "$user_agent" -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-ubuntu-20.04-$jxl_suffix_url";;
+            18.04)     curl -A "$user_agent" -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-ubuntu-18.04-$jxl_suffix_url";;
+            *)         fail_fn 'Failed to download the libjxl debian files. The script was unable to detect the Linux OS version.';;
         esac
 
         if [ -f "$packages/jpeg-xl.tar.gz" ]; then
@@ -473,7 +479,7 @@ download_jxl_files_fn()
                 fail_fn "Could not extract the jpegxl archive: $packages/jpeg-xl.tar.gz"
             fi
         else
-            fail_fn 'The script failed to download the libjxl debian files.'
+            fail_fn 'The script failed to download: The libjxl Debian files.'
         fi
     fi
     install_jxl_files_fn
@@ -565,11 +571,11 @@ printf "%s\n\n%s\n%s\n%s\n\n" \
 git_ver_fn 'imagemagick/imagemagick' '1' 'T'
 if build 'magick-libs' "$g_ver"; then
     cd "$packages/deb-files" || exit 1
-    if ! curl -Lso "magick-libs-$g_ver.rpm" "https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-libs-$g_ver.x86_64.rpm"; then
+    if ! curl -A "$user_agent" -Lso "magick-libs-$g_ver.rpm" "https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-libs-$g_ver.x86_64.rpm"; then
         fail_fn 'Failed to download the magick-libs file.'
     fi
-    sudo alien -d *.rpm
-    sudo dpkg -i *.deb
+    sudo alien -d ./*.rpm
+    sudo dpkg -i ./*.deb
     build_done 'magick-libs' "$g_ver"
 fi
 
@@ -597,10 +603,17 @@ fi
 # FIGURE OUT WHICH COMPILERS TO USE
 #
 
-if ! which gcc &>/dev/null; then
+if which gcc-13 &>/dev/null; then
+    export CC=gcc-13 CXX=g++-13
+elif which gcc-12 &>/dev/null; then
+    export CC=gcc-12 CXX=g++-12
+elif which gcc-11 &>/dev/null; then
+    export CC=gcc-11 CXX=g++-11
+elif which gcc &>/dev/null; then
+    export CC=gcc CXX=g++
+else
     fail_fn 'You must install "gcc" to continue the build.'
 fi
-export CC=gcc CXX=g++
 
 #
 # SET COMPILER OPTIMIZATION FLAGS
@@ -621,7 +634,7 @@ fi
 # GET PC TYPE
 #
 
-curl -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
 chmod +x "$cwd/config.guess"
 pc_type="$(source "$cwd/config.guess")"
 
@@ -699,14 +712,14 @@ fi
 
 if build 'c2man' 'git'; then
     download_git 'https://github.com/fribidi/c2man.git'
-    execute ./Configure -desO -D prefix="$workspace" -D bin="$workspace/bin" -D bash="$(type -P bash)" \
+    execute ./Configure -desO -D prefix="$workspace" -D bin="$workspace"/bin -D bash="$(type -P bash)" \
         -D cc=/usr/bin/cc -D d_gnu=/usr/lib/x86_64-linux-gnu -D find="$(type -P find)" -D gcc=/usr/bin/gcc \
-        -D gzip="$(type -P gzip)" -D installmansrc="$workspace/share/man" -D ldflags="$LDFLAGS" \
-        -D less="$(type -P less)" -D libpth='/usr/lib /lib64 /lib' \
+        -D gzip="$(type -P gzip)" -D installmansrc="$workspace"/share/man -D ldflags="$LDFLAGS" \
+        -D less="$(type -P less)" -D libpth='/lib64 /lib /usr/lib64 /usr/lib' \
         -D locincpth="$workspace/include /usr/local/include /usr/include" -D yacc="$(type -P yacc)" \
         -D loclibpth="$workspace/lib64 $workspace/lib /usr/local/lib64 /usr/local/lib" -D make="$(type -P make)" \
-        -D more="$(type -P more)" -D osname="$OS" -D perl="$(type -P perl)" -D privlib="$workspace/lib/c2man" \
-        -D privlibexp="$workspace/lib/c2man" -D sleep="$(type -P sleep)" -D tail="$(type -P tail)" \
+        -D more="$(type -P more)" -D osname="$OS" -D perl="$(type -P perl)" -D privlib="$workspace"/lib/c2man \
+        -D privlibexp="$workspace"/lib/c2man -D sleep="$(type -P sleep)" -D tail="$(type -P tail)" \
         -D tar="$(type -P tar)" -D uuname="$(uname -s)" -D vi="$(type -P vi)" -D zip="$(type -P zip)"
     execute make depend
     execute make "-j$cpu_threads"
@@ -803,20 +816,20 @@ if build 'imageMagick' "$g_ver"; then
                  PKG_CONFIG="$(type -P pkg-config)"              \
                  PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
     execute make "-j$cpu_threads"
-    if ! sudo make install; then
-        make distclean
-        printf "\n%s\n\n" 'Failed to install imagemagick.'
-        exit 1
-    fi
+    execute sudo make install
 fi
 
 # CREATE SOFT LINKS
 create_links_fn
+
 # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE MAGICK COMMAND WILL NOT WORK
 sudo ldconfig 2>/dev/null
+
 # SHOW THE NEWLY INSTALLED MAGICK VERSION
 show_magick_version
+
 # PROMPT THE USER TO CLEAN UP THE BUILD FILES
 cleanup_fn
+
 # SHOW EXIT MESSAGE
 exit_fn
