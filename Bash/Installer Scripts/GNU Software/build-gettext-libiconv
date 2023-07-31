@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 clear
 
@@ -13,13 +13,16 @@ archive_url1=https://ftp.gnu.org/gnu/libiconv/libiconv-1.17.tar.gz
 archive_url2=https://ftp.gnu.org/pub/gnu/gettext/gettext-0.22.tar.lz
 archive_ext1="${archive_url1//*.}"
 archive_ext2="${archive_url2//*.}"
-cwd="$PWD"/libiconv-gettext-build-script
+cwd="$PWD"/gettext-libiconv-build-script
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-mkdir -p "$cwd/$archive_dir1" "$cwd/$archive_dir2"
+if [ ! -d "$cwd/$archive_dir1" ] || [ ! -d "$cwd/$archive_dir2" ]; then
+    mkdir -p "$cwd/$archive_dir1" "$cwd/$archive_dir2" 2>/dev/null
+fi
 
 #
 # SET THE C+CPP COMPILERS
@@ -90,31 +93,31 @@ do
         missing_pkgs+=" $i"
     fi
 done
-unset i
 
 if [ -n "$missing_pkgs" ]; then
     sudo apt -y install $missing_pkgs
     clear
 fi
+unset i missing_pkgs
 
 #
 # GET PC TYPE
 #
 
-curl -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
 chmod +x "$cwd/config.guess"
 pc_type="$(source "$cwd/config.guess")"
 
 #
-# DOWNLOAD ARCHIVE FILES
+# DOWNLOAD THE ARCHIVE FILES
 #
 
 if [ ! -f "$cwd/$archive_dir1.tar.gz" ]; then
-    wget --show-progress -cqO "$cwd/$archive_dir1.$archive_ext1" "$archive_url1"
+    curl -A "$user_agent" -Lso "$cwd/$archive_dir1.$archive_ext1" "$archive_url1"
 fi
 
 if [ ! -f "$cwd/$archive_dir2.tar.lz" ]; then
-    wget --show-progress -cqO "$cwd/$archive_dir2.$archive_ext2" "$archive_url2"
+    curl -A "$user_agent" -Lso "$cwd/$archive_dir2.$archive_ext2" "$archive_url2"
 fi
 
 #
@@ -127,7 +130,7 @@ fi
 mkdir -p "$cwd/$archive_dir1" "$cwd/$archive_dir2"
 
 #
-# EXTRACT ARCHIVE FILES
+# EXTRACT THE ARCHIVE FILES
 #
 
 if ! tar -xf "$cwd/$archive_dir1.$archive_ext1" -C "$cwd/$archive_dir1" --strip-components 1; then
@@ -157,7 +160,6 @@ cd builddir || exit 1
              --with-libintl-prefix=/usr  \
              CPPFLAGS='-I/usr/local/include -I/usr/include'
 make "-j$(nproc --all)"
-make "-j$(nproc --all)"
 if ! sudo make install; then
     make distclean
     printf "\n%s\n\n" "Failed to install: $archive_dir1."
@@ -185,5 +187,6 @@ fi
 
 # CLEANUP FILES
 cleanup_fn
+
 # SHOW EXIT MESSAGE
 exit_fn
