@@ -9,6 +9,8 @@ fi
 
 if ! sudo dpkg -l | grep 'netplan' &>/dev/null; then
     sudo apt -y install netplan.io
+    sudo apt -y autoremove
+    clear
 fi
 
 #
