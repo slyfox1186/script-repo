@@ -74,14 +74,23 @@ workspace="$cwd"/workspace
 tmp_home="$HOME"
 tmp_pwd="$PWD"
 tmp_term="$TERM"
+tmp_display="$DISPLAY"
+tmp_dbus="$DBUS_SESSION_BUS_ADDRESS"
 
 for var in $(env | awk -F"=" '{print $1}')
 do
     unset $var || true # IGNORE UNSET FAILURES
 done
 
-export HOME="$tmp_home" PWD="$tmp_pwd" TERM="$tmp_term"
-unset tmp_home tmp_pwd tmp_term var
+# IMPORT SAVED DEFAULT VARS BACK INTO THE SCRIPT ENVIRONMENT
+export DBUS_SESSION_BUS_ADDRESS="$tmp_dbus"
+export DISPLAY="$tmp_display"
+export HOME="$tmp_home"
+export PWD="$tmp_pwd"
+export TERM="$tmp_term"
+
+# UNSET THE TMP VARS
+unset tmp_dbus tmp_display tmp_home tmp_pwd tmp_term var
 
 #
 # SET GLOBAL VARIABLES
