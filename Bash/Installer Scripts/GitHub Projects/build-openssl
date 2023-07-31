@@ -2,17 +2,17 @@
 
 #############################################################################
 ##
-##  Install OpenSSL from source code with multiple optional
+##  Purpose: Install OpenSSL from its source code with multiple optional
 ##  features enabled.
-## 
+##
 ##  The script also installs SCTP Module Support which allows OpenSSL
-##  to enable its own SCTP feature support. 
-##  
+##  to enable its own SCTP feature support.
+##
 ##  Enabled features: egd, fips, md2, rc5, trace, sctp, threads, and zlib
 ##
-##  Updated: 07.17.23
+##  Updated: 07.31.23
 ##
-##  Script version: 1.1
+##  Script version: 1.2
 ##
 #############################################################################
 
@@ -37,12 +37,15 @@ repo=https://github.com/slyfox1186/script-repo
 printf "\n%s\n%s\n\n" \
     "OpenSSL Build Script - v$script_ver" \
     '==============================================='
+sleep 2
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-mkdir -p "$cwd"
+if [ ! -d "$cwd" ]; then
+    mkdir -p "$cwd"
+fi
 
 #
 # SET THE C+CPP COMPILERS
@@ -114,12 +117,13 @@ do
         missing_pkgs+=" $i"
     fi
 done
-unset i
 
 if [ -n "$missing_pkgs" ]; then
     sudo apt -y install $missing_pkgs
+    sudo apt -y autoremove
     clear
 fi
+unset i missing_pkgs
 
 #
 # INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
@@ -134,7 +138,7 @@ if [ ! -f "$cert_dir/$pem_filename" ]; then
 fi
 
 #
-# DOWNLOAD ARCHIVE FILE
+# DOWNLOAD THE ARCHIVE FILE
 #
 
 archive_name="$archive_dir.tar.$archive_ext"
@@ -179,7 +183,11 @@ cd "$cwd/$archive_dir/build" || exit 1
              sctp                             \
              threads                          \
              zlib
-make "-j$(nproc --all)"
+
+if ! make "-j$(nproc --all)"; then
+    fail_fn "Failed to execute: make -j$(nproc --all)"
+fi
+
 if ! sudo make install; then
     fail_fn 'Failed to execute: sudo make install'
 fi
@@ -188,7 +196,7 @@ if ! sudo make install_fips; then
     fail_fn 'Failed to execute: sudo make install_fips'
 fi
 
-# REQUIRED FOR FIPS FUNCTIONALITY TO WORK
+# REQUIRED COMMAND FOR FIPS FUNCTIONALITY TO WORK
 sudo openssl fipsinstall
 
 # ENSURE THE CORRECT PERMISSIONS ARE ATTACHED TO THE CUSTOM PEM FILE THAT WAS ADDED
@@ -198,5 +206,6 @@ fi
 
 # CLEANUP FILES
 cleanup_fn
+
 # SHOW EXIT MESSAGE
 exit_fn
