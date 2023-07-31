@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 clear
 
 #
-# ARIA2 INSTALLER SCRIPT
+# SET PROGRAM NAME + VERSION
 #
 
 script_ver=1.0
@@ -11,6 +11,7 @@ archive_dir=aria2-1.36.0
 archive_url=https://github.com/aria2/aria2/releases/download/release-1.36.0/aria2-1.36.0.tar.gz
 archive_ext="${archive_url//*.}"
 cwd="$PWD"/aria2-build-script
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 
 printf "\n%s\n%s\n\n" \
     "Aria2 Build Script - v$script_ver" \
@@ -20,13 +21,16 @@ printf "\n%s\n%s\n\n" \
 # CREATE OUTPUT DIRECTORY
 #
 
-mkdir -p "$cwd"
+if [ ! -d "$cwd" ]; then
+    mkdir -p "$cwd"
+fi
 
 #
 # SET THE C+CPP COMPILERS
 #
 
-export CC=gcc CXX=g++
+export CC=clang CXX=clang++
+export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 #
 # CREATE FUNCTIONS
@@ -75,12 +79,13 @@ cleanup_fn()
     esac
 }
 
-link_fn()
-{
-    if [ -f "/usr/local/bin/$pc_type-aria2c" ]; then
-        sudo ln -sf "/usr/local/bin/$pc_type-aria2c" /usr/local/bin/aria2c
-    fi
-}
+#
+# GET PC TYPE
+#
+
+curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "$cwd/config.guess"
+pc_type="$(source "$cwd/config.guess")"
 
 #
 # INSTALL REQUIRED APT cwd
@@ -99,7 +104,6 @@ do
         missing_pkgs+=" $i"
     fi
 done
-unset i
 
 if [ -n "$missing_pkgs" ]; then
     sudo apt -y install $missing_pkgs
@@ -107,21 +111,13 @@ if [ -n "$missing_pkgs" ]; then
 fi
 
 #
-# GET PC TYPE
-#
-
-curl -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "$cwd/config.guess"
-pc_type="$(source "$cwd/config.guess")"
-
-#
-# DOWNLOAD ARCHIVE FILE
+# DOWNLOAD THE ARCHIVE FILE
 #
 
 archive_name="$archive_dir.tar.$archive_ext"
 
 if [ ! -f "$cwd/$archive_name" ]; then
-    curl -Lso "$cwd/$archive_name" "$archive_url"
+    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
 #
@@ -156,7 +152,7 @@ fi
 
 cd "$cwd/$archive_dir" || exit 1
 # INCREASE THE MAX NUMBER OF CONNECTIONS FROM 16 TO 128
-sed -i 's/1, 16/1, 128/g' src/OptionHandlerFactory.cc
+sed -i 's/1, 16/1, 128/g' 'src/OptionHandlerFactory.cc'
 cd build || exit 1
 ../configure --prefix=/usr/local              \
              --{build,host,target}="$pc_type" \
@@ -179,9 +175,13 @@ if ! sudo make install; then
     exit 1
 fi
 
+#
 # CREATE SOFT LINK
-link_fn
-# CLEANUP BUILD FILES
-cleanup_fn
-# SHOW EXIT MESSAGE
-exit_fn
+#
+
+if [ -f "/usr/local/bin/$pc_type-aria2c" ]; then
+    sudo ln -sf "/usr/local/bin/$pc_type-aria2c" '/usr/local/bin/aria2c'
+fi
+
+sudo rm -fr "$cwd"
+unset archive_dir archive_ext archive_name archive_url CC CXX i missing_pkg missing_pkgs pc_type pem_target pkgs script_ver
