@@ -30,7 +30,7 @@
 clear
 
 #
-# define variables
+# DEFINE VARIABLES
 #
 
 script_ver=2.1
@@ -47,7 +47,7 @@ export CC=gcc CXX=g++
 export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 #
-# set the available cpu thread and core count for parallel processing (speeds up the build process)
+# SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
 #
 
 if [ -f /proc/cpuinfo ]; then
@@ -57,7 +57,7 @@ else
 fi
 
 #
-# set the PATH variable
+# SET THE PATH VARIABLE
 #
 
 PATH="\
@@ -67,7 +67,7 @@ $PATH\
 export PATH
 
 #
-# define functions
+# DEFINE FUNCTIONS
 #
 
 exit_fn()
@@ -105,11 +105,7 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' answer
 
     case "$answer" in
-        1)
-            sudo rm "$0"
-            echo 'cleanup finished.'
-            exit_fn
-            ;;
+        1)  sudo rm -fr "$cwd" "$0";;
         2)  exit_fn;;
         *)
             printf "%s\n\n" 'Bad user input... Resetting script.'
@@ -261,5 +257,8 @@ if build 'wsl2-linux-kernel' '6.1.21.2'; then
     build_done 'wsl2-linux-kernel' '6.1.21.2'
 fi
 
-# call exit script function
+# CLEAN UP BUILD FILES
+cleanup_fn
+
+# CALL EXIT SCRIPT FUNCTION
 exit_fn
