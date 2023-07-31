@@ -1,18 +1,18 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #############################################################################
 ##
-##  Purpose: Install OpenSSL from its source code with multiple optional
+##  Install OpenSSL from source code with multiple optional
 ##  features enabled.
-##
+## 
 ##  The script also installs SCTP Module Support which allows OpenSSL
-##  to enable its own SCTP feature support.
-##
+##  to enable its own SCTP feature support. 
+##  
 ##  Enabled features: egd, fips, md2, rc5, trace, sctp, threads, and zlib
 ##
-##  Updated: 07.31.23
+##  Updated: 07.17.23
 ##
-##  Script version: 1.2
+##  Script version: 1.1
 ##
 #############################################################################
 
@@ -32,12 +32,12 @@ ssl_dir=/usr/lib/ssl
 cert_dir=/usr/lib/ssl/certs
 pem_filename=cacert.pem
 pem_output=/usr/lib/ssl/certs/cacert.pem
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
 printf "\n%s\n%s\n\n" \
     "OpenSSL Build Script - v$script_ver" \
     '==============================================='
-sleep 2
 
 #
 # CREATE OUTPUT DIRECTORY
@@ -48,13 +48,13 @@ if [ ! -d "$cwd" ]; then
 fi
 
 #
-# SET THE C AND CPP COMPILERS
+# SET THE C+CPP COMPILERS
 #
 
 export CC=gcc CXX=g++
 
 #
-# SET THE COMPILER OPTIMIZATION FLAGS
+# EXPORT COMPILER OPTIMIZATION FLAGS
 #
 
 export {CFLAGS,CXXFLAGS}='-g -O3 -march=native -D_REENTRANT'
@@ -120,7 +120,6 @@ done
 
 if [ -n "$missing_pkgs" ]; then
     sudo apt -y install $missing_pkgs
-    sudo apt -y autoremove
     clear
 fi
 unset i missing_pkgs
@@ -133,7 +132,7 @@ if [ ! -f "$cert_dir/$pem_filename" ]; then
     printf "%s\n%s\n\n" \
         'Download the latest security certificate' \
         '================================================'
-    curl -Lso "$cwd/$pem_filename" "https://curl.se/ca/$pem_filename"
+    curl -A "$user_agent" -Lso "$cwd/$pem_filename" "https://curl.se/ca/$pem_filename"
     sudo mv -f "$cwd/$pem_filename" "$cert_dir/$pem_filename"
 fi
 
@@ -144,7 +143,7 @@ fi
 archive_name="$archive_dir.tar.$archive_ext"
 
 if [ ! -f "$cwd/$archive_name" ]; then
-    curl -Lso "$cwd/$archive_name" "$archive_url"
+    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
 #
@@ -183,11 +182,7 @@ cd "$cwd/$archive_dir/build" || exit 1
              sctp                             \
              threads                          \
              zlib
-
-if ! make "-j$(nproc --all)"; then
-    fail_fn "Failed to execute: make -j$(nproc --all)"
-fi
-
+make "-j$(nproc --all)"
 if ! sudo make install; then
     fail_fn 'Failed to execute: sudo make install'
 fi
@@ -196,7 +191,7 @@ if ! sudo make install_fips; then
     fail_fn 'Failed to execute: sudo make install_fips'
 fi
 
-# REQUIRED COMMAND FOR FIPS FUNCTIONALITY TO WORK
+# REQUIRED FOR FIPS FUNCTIONALITY TO WORK
 sudo openssl fipsinstall
 
 # ENSURE THE CORRECT PERMISSIONS ARE ATTACHED TO THE CUSTOM PEM FILE THAT WAS ADDED
@@ -204,8 +199,6 @@ if [ -f "$pem_output" ]; then
     sudo chmod 644 "$pem_output"
 fi
 
-# CLEANUP FILES
-cleanup_fn
-
-# SHOW EXIT MESSAGE
+sudo rm -fr "$cwd"
+unset archive_dir archive_ext archive_name archive_url CC CXX i missing_pkg missing_pkgs pc_type pem_target pkgs script_verSAGE
 exit_fn
