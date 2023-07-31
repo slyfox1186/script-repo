@@ -19,6 +19,8 @@
 ##  Added: gmp support library for binutils
 ##  Added: ada language support for all gcc versions
 ##  Added: code to clean the environment
+##  Added: added two default variables back into the script environment to combat
+##         any issues with dbus or x-11 display issues.
 ##
 ##  Optimized: code by removing redundant loops by passing variables to functions
 ##
