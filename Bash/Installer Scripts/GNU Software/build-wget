@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 clear
 
@@ -6,11 +6,12 @@ clear
 # SET PROGRAM NAME + VERSION
 #
 
-script_ver=1.0
-archive_dir=wget-1.21.4
-archive_url=https://ftp.gnu.org/gnu/wget/wget-1.21.4.tar.lz
+script_ver=1.1
+archive_dir=wget-latest
+archive_url=https://ftp.gnu.org/gnu/wget/wget-latest.tar.lz
 archive_ext="${archive_url//*.}"
 cwd="$PWD"/wget-build-script
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 
 printf "\n%s\n%s\n\n" \
     "WGET Build Script - v$script_ver" \
@@ -20,7 +21,9 @@ printf "\n%s\n%s\n\n" \
 # CREATE OUTPUT DIRECTORY
 #
 
-mkdir -p "$cwd"
+if [ ! -d "$cwd" ]; then
+    mkdir -p "$cwd"
+fi
 
 #
 # SET THE C+CPP COMPILERS
@@ -152,18 +155,18 @@ fi
 # GET PC TYPE
 #
 
-curl -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
 chmod +x "$cwd/config.guess"
 pc_type="$(source "$cwd/config.guess")"
 
 #
-# DOWNLOAD ARCHIVE FILE
+# DOWNLOAD THE ARCHIVE FILE
 #
 
 archive_name="$archive_dir.tar.$archive_ext"
 
 if [ ! -f "$cwd/$archive_name" ]; then
-    curl -Lso "$cwd/$archive_name" "$archive_url"
+    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
 #
@@ -176,7 +179,7 @@ fi
 mkdir -p "$cwd/$archive_dir/build"
 
 #
-# EXTRACT ARCHIVE FILES
+# EXTRACT THE ARCHIVE FILE
 #
 
 if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
@@ -222,7 +225,5 @@ if ! sudo make install; then
     exit 1
 fi
 
-# CLEANUP FILES
-cleanup_fn
-# SHOW EXIT MESSAGE
-exit_fn 
+unset archive_dir archive_ext archive_name archive_url CC CXX i missing_pkg missing_pkgs pc_type pem_target pkgs script_ver
+sudo rm -fr "$cwd"
