@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 clear
 
@@ -11,6 +11,7 @@ archive_dir=nettle-3.9.1
 archive_url=https://ftp.gnu.org/gnu/nettle/nettle-3.9.1.tar.gz
 archive_ext="${archive_url//*.}"
 cwd="$PWD"/nettle-build-script
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 
 printf "\n%s\n%s\n\n" \
     "nettle build script - v$script_ver" \
@@ -20,7 +21,9 @@ printf "\n%s\n%s\n\n" \
 # CREATE OUTPUT DIRECTORY
 #
 
-mkdir -p "$cwd"
+if [ ! -d "$cwd" ]; then
+    mkdir -p "$cwd"
+fi
 
 #
 # SET THE C+CPP COMPILERS
@@ -152,18 +155,18 @@ fi
 # GET PC TYPE
 #
 
-curl -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
 chmod +x "$cwd/config.guess"
 pc_type="$(source "$cwd/config.guess")"
 
 #
-# DOWNLOAD ARCHIVE FILE
+# DOWNLOAD THE ARCHIVE FILE
 #
 
 archive_name="$archive_dir.tar.$archive_ext"
 
 if [ ! -f "$cwd/$archive_name" ]; then
-    curl -Lso "$cwd/$archive_name" "$archive_url"
+    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
 #
@@ -195,7 +198,7 @@ include_dirs+=':/usr/src/linux-headers-6.1.0-10-amd64/include:/usr/src/linux-hea
 include_dirs+=':/usr/lib/python3/dist-packages/numpy/core/include:/usr/local/cuda-12.2/targets/x86_64-linux/include'
 include_dirs+=':/usr/local/cuda-12.2/targets/x86_64-linux/include/cuda/std/detail/libcxx/include'
 include_dirs+=':/usr/local/cuda-12.2/compute-sanitizer/include:/usr/local/cuda-12.2/nvvm/include'
-include_dirs+=':/usr/include/boost/fusion/includ'
+include_dirs+=':/usr/include/boost/fusion/include'
 lib_dirs='/usr/local/lib:/usr/lib64:/usr/lib:/usr/local/cuda-12.2/nvvm/lib64:/usr/local/cuda-12.2/extras/Debugger/lib64'
 lib_dirs+=':/usr/i686-w64-mingw32/lib:/usr/lib/xen-4.17/lib:/usr/lib/llvm-14/lib:/usr/x86_64-linux-gnu/lib'
 lib_dirs+=':/usr/x86_64-w64-mingw32/lib:/usr/share/lintian/lib:/usr/share/gitk/lib:/usr/share/texinfo/lib:/usr/share/git-gui/lib'
@@ -216,7 +219,5 @@ if ! sudo make install; then
     exit 1
 fi
 
-# CLEANUP FILES
-cleanup_fn
-# SHOW EXIT MESSAGE
-exit_fn 
+sudo rm -fr "$cwd"
+unset archive_dir archive_ext archive_name archive_url CC CXX i missing_pkg missing_pkgs pc_type pem_target pkgs script_ver
