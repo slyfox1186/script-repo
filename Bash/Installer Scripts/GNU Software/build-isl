@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 clear
 
@@ -10,6 +10,7 @@ script_ver=1.0
 archive_dir=isl-git
 archive_url=https://repo.or.cz/isl.git
 cwd="$PWD"/isl-build-script
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 
 printf "\n%s\n%s\n\n" \
     "ISL Build Script - v$script_ver" \
@@ -19,7 +20,9 @@ printf "\n%s\n%s\n\n" \
 # CREATE OUTPUT DIRECTORY
 #
 
-mkdir -p "$cwd"
+if [ ! -d "$cwd" ]; then
+    mkdir -p "$cwd"
+fi
 
 #
 # SET THE C+CPP COMPILERS
@@ -106,21 +109,19 @@ if [ -f /usr/local/include/gmp.h ]; then
     sudo apt -y remove libgmp-dev libgmp3-dev 2>/dev/null
 else
     gmp_flag=1
-    gmp_pkgs='libgmp-dev libgmp3-dev'
+    pkgs_fn 'libgmp-dev libgmp3-dev'
 fi
-
-pkgs_fn "$gmp_pkgs"
 
 #
 # GET PC TYPE
 #
 
-curl -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
 chmod +x "$cwd/config.guess"
 pc_type="$(source "$cwd/config.guess")"
 
 #
-# DOWNLOAD ARCHIVE FILE
+# DOWNLOAD THE ARCHIVE FILE
 #
 
 if [ -d "$cwd/$archive_dir" ]; then
@@ -156,7 +157,5 @@ if ! sudo make install; then
     exit 1
 fi
 
-# CLEANUP FILES
-cleanup_fn
-# SHOW EXIT MESSAGE
-exit_fn
+sudo rm -fr "$cwd"
+unset archive_dir archive_ext archive_name archive_url CC CXX i missing_pkg missing_pkgs pc_type pem_target pkgs script_ver
