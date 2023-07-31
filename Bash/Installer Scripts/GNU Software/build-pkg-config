@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 clear
 
@@ -11,6 +11,7 @@ archive_dir=pkg-config-0.29.2
 archive_url=https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz
 archive_ext="${archive_url//*.}"
 cwd="$PWD"/pkg-config-build-script
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 
 printf "\n%s\n%s\n\n" \
     "PKG-Config Build Script - v$script_ver" \
@@ -20,7 +21,9 @@ printf "\n%s\n%s\n\n" \
 # CREATE OUTPUT DIRECTORY
 #
 
-mkdir -p "$cwd"
+if [ ! -d "$cwd" ]; then
+    mkdir -p "$cwd"
+fi
 
 #
 # SET THE C+CPP COMPILERS
@@ -150,18 +153,18 @@ fi
 # GET PC TYPE
 #
 
-curl -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
 chmod +x "$cwd/config.guess"
 pc_type="$(source "$cwd/config.guess")"
 
 #
-# DOWNLOAD ARCHIVE FILE
+# DOWNLOAD THE ARCHIVE FILE
 #
 
 archive_name="$archive_dir.tar.$archive_ext"
 
 if [ ! -f "$cwd/$archive_name" ]; then
-    curl -Lso "$cwd/$archive_name" "$archive_url"
+    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
 #
