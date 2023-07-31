@@ -218,17 +218,16 @@ installed()
 }
 
 clear
-printf "%s\n%s\n\n" \
+printf "%s\n%s\n%s\n\n" \
     "WSL2-Custom-Kernel build script v$script_ver" \
-    '======================================'
-
-printf "\n%s\n\n" "The script will utilize ($cpu_threads) CPU threads for parallel processing to accelerate the build speed."
+    '======================================' \
+    "The script will utilize ($cpu_threads) CPU threads for parallel processing to accelerate the build speed."
 
 #
 # REQUIRED APT PACKAGES
 #
 
-printf "\n%s\n%s\n\n" \
+printf "%s\n%s\n" \
     'Installing required apt packages' \
     '=================================='
 
@@ -251,11 +250,20 @@ else
     echo 'The required apt packages are already installed.'
 fi
 
-if build 'wsl2-linux-kernel' '6.1.21.2'; then
-    download 'https://github.com/microsoft/WSL2-Linux-Kernel/archive/refs/tags/linux-msft-wsl-6.1.21.2.tar.gz' 'wsl-6.1.21.2.tar.gz'
-    echo 'yes' | make KCONFIG_CONFIG='Microsoft/config-wsl' "-j$cpu_threads"
-    build_done 'wsl2-linux-kernel' '6.1.21.2'
+if [ ! -f 'wsl-6.1.21.2.tar.gz' ]; then
+    wget --show-progress -cqO 'wsl-6.1.21.2.tar.gz' 'https://github.com/microsoft/WSL2-Linux-Kernel/archive/refs/tags/linux-msft-wsl-6.1.21.2.tar.gz'
 fi
+
+if [ -d 'wsl-6.1.21.2' ]; then
+    sudo rm -fr 'wsl-6.1.21.2'
+fi
+mkdir -p 'wsl-6.1.21.2'
+
+tar -zxf 'wsl-6.1.21.2.tar.gz' -C 'wsl-6.1.21.2' --strip-components 1
+
+cd 'wsl-6.1.21.2' || exit 1
+
+echo 'yes' | make KCONFIG_CONFIG='Microsoft/config-wsl' "-j$cpu_threads"
 
 # CLEAN UP BUILD FILES
 cleanup_fn
