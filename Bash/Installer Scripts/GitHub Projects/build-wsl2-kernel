@@ -302,7 +302,7 @@ git_ver_fn()
 
 git_ver_fn 'microsoft/WSL2-Linux-Kernel' '1' 'R'
 if build 'wsl2-linux-kernel' "$g_ver"; then
-    download "$g_url" "wsl2-$g_ver.tar.gz"
+    download 'https://github.com/microsoft/WSL2-Linux-Kernel/archive/refs/tags/linux-msft-wsl-6.1.21.2.tar.gz' 'wsl-6.1.21.2.tar.gz'
     echo 'yes' | make KCONFIG_CONFIG='Microsoft/config-wsl' -j "$cpu_cores"
     build_done 'wsl2-linux-kernel' "$g_ver"
 fi
