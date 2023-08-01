@@ -30,7 +30,7 @@ bash <(curl -fsSL https://build-menu.optimizethis.net)
   - **For personal/testing use only**
   - **Check the top of the script for build [results](https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc)**
   - **Supported OS:**
-    - Debian - 10 / 11
+    - Debian - 10 / 11 / 12
     - Ubuntu - 18.04 / 20.04 / 22.04
     - Other  - Debian-based distros may work as well
 
