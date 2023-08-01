@@ -5,7 +5,7 @@
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 ######################################################################################
 
-ged() { $(type -P gedit) "$@" &>/dev/null; }
+gedit() { $(type -P gedit) "$@" &>/dev/null; }
 geds() { $(type -P sudo) -H -u root $(type -P gedit) "$@" &>/dev/null; }
 
 gted() { $(type -P gted) "$@" &>/dev/null; }
