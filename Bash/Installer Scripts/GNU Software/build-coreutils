@@ -29,9 +29,27 @@ fi
 #
 
 export CC=gcc CXX=g++
+#
+# SET PATH
+#
+
+PATH="\
+/usr/lib/ccache:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
+/usr/local/sbin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin:\
+/usr/local/cuda/bin:\
+/snap/bin\
+"
+export PATH
 
 #
-# EXPORT COMPILER OPTIMIZATION FLAGS
+# SET COMPILER OPTIMIZATION FLAGS
 #
 
 export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
@@ -42,10 +60,11 @@ export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 exit_fn()
 {
-    printf "\n%s\n\n" 'The script has completed.'
+    printf "\n%s\n\n%s\n\n" \
+        'Make sure to star this repository to show your support!' \
+        "$repo"
     exit 0
 }
-
 
 fail_fn()
 {
@@ -55,9 +74,9 @@ fail_fn()
 
 cleanup_fn()
 {
-    local choice
+    local choice dpkg_list
 
-    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
+    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
         '============================================' \
         '  Do you want to clean up the build files?  ' \
         '============================================' \
@@ -162,5 +181,11 @@ if ! sudo make install; then
     exit 1
 fi
 
-sudo rm -fr "$cwd"
-unset archive_dir archive_ext archive_name archive_url CC CXX i missing_pkg missing_pkgs pc_type pem_target pkgs script_ver
+# SHOW THE NEW VERSION
+show_ver_fn
+
+# PROMPT USER TO CLEAN UP FILES
+cleanup_fn
+
+# SHOW EXIT MESSAGE
+exit_fn
