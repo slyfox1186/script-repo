@@ -94,7 +94,6 @@ fail_fn()
     exit 1
 }
 
-
 cleanup_fn()
 {
     local answer
