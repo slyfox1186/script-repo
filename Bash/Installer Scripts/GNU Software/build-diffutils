@@ -88,9 +88,12 @@ exit_fn()
 
 fail_fn()
 {
-    printf "%s\n\n" "$1"
+    printf "\n%s\n\n%s\n\n" \
+        "$1" \
+        "To report a bug create an issue at: $repo/issues"
     exit 1
 }
+
 
 cleanup_fn()
 {
