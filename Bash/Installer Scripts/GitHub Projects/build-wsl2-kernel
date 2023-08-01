@@ -231,7 +231,7 @@ printf "%s\n%s\n" \
     'Installing required apt packages' \
     '=================================='
 
-pkgs=(bc build-essential curl flex bison ccache dwarves jq libssl-dev libelf-dev)
+pkgs=(bc build-essential curl flex bison ccache dwarves jq libssl-dev libelf-dev wget)
 
 for pkg in ${pkgs[@]}
 do
