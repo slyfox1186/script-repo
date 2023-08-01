@@ -1,12 +1,29 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+###########################################################################################################
+##
+##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-coreutils
+##
+##  Purpose: Build GNU CoreUtils
+##
+##  Updated: 08.01.23
+##
+##  Script version: 1.1
+##
+###########################################################################################################
 
 clear
 
+if [ "$EUID" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
+
 #
-# SET PROGRAM NAME + VERSION
+# SET VARIABLES
 #
 
-script_ver=1.0
+script_ver=1.1
 archive_dir=coreutils-9.3
 archive_url=https://ftp.gnu.org/gnu/coreutils/coreutils-9.3.tar.xz
 archive_ext="${archive_url//*.}"
