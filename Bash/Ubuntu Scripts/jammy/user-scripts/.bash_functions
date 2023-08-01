@@ -5,8 +5,11 @@
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 ######################################################################################
 
-gedit() { $(which gedit) "$@" &>/dev/null; }
-geds() { $(which sudo) -H -u root /usr/bin/gedit "$@" &>/dev/null; }
+gedit() { $(type -P gedit) "$@" &>/dev/null; }
+geds() { $(type -P sudo) -H -u root $(type -P gedit) "$@" &>/dev/null; }
+
+gted() { $(type -P gted) "$@" &>/dev/null; }
+geds() { $(type -P sudo) -H -u root $(type -P gted) "$@" &>/dev/null; }
 
 ###################
 ## FIND COMMANDS ##
@@ -131,7 +134,7 @@ rmdf()
 {
     clear
     perl -i -lne 's/\s*$//; print if ! $x{$_}++' "$1"
-    ged "$1"
+    gted "$1"
 }
 
 ###################
@@ -224,11 +227,11 @@ listd()
     local search_cache
 
     if [ -n "$1" ]; then
-        sudo apt list *$1*-dev | awk -F'/' '{print $1}'
+        sudo apt list -- *$1*-dev | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt list *$1*-dev | awk -F'/' '{print $1}'
+        sudo apt list -- *$1*-dev | awk -F'/' '{print $1}'
     fi
 }
 
@@ -326,7 +329,7 @@ showpkgs()
 {
     dpkg --get-selections |
     grep -v deinstall > "$HOME"/tmp/packages.list
-    ged "$HOME"/tmp/packages.list
+    gted "$HOME"/tmp/packages.list
 }
 
 # PIPE ALL DEVELOPMENT PACKAGES NAMES TO file
@@ -336,7 +339,7 @@ getdev()
     grep "\-dev" |
     cut -d ' ' -f1 |
     sort > 'dev-packages.list'
-    ged 'dev-packages.list'
+    gted 'dev-packages.list'
 }
 
 ################
@@ -405,7 +408,7 @@ new_key()
     echo
 }
 
-# export the public ssh key stored inside a private ssh key
+# Export the public ssh key stored inside a private ssh key
 keytopub()
 {
     clear; ls -1AhFv --color --group-directories-first
@@ -471,7 +474,7 @@ spro()
 ## ARIA2 COMMANDS ##
 ####################
 
-# ARIA2 DAEMON IN BACKGROUND
+# ARIA2 DAEMON IN THE BACKGROUND
 aria2_on()
 {
     clear
@@ -486,7 +489,7 @@ aria2_on()
 # STOP ARIA2 DAEMON
 aria2_off() { clear; killall aria2c; }
 
-# RUN ARIA2 AND DOWNLOAD FILES TO CURRENT FOLDER
+# RUN ARIA2 AND DOWNLOAD FILES TO THE CURRENT FOLDER
 aria2()
 {
     clear
@@ -527,7 +530,7 @@ mywget()
     if [ -z "$1" ] || [ -z "$2" ]; then
         read -p 'Please enter the output file name: ' outfile
         echo
-        read -p 'Please enter the url: ' url
+        read -p 'Please enter the URL: ' url
         clear
         wget --out-file="$outfile" "$url"
     else
@@ -596,9 +599,9 @@ imo()
         for cfile in /tmp/*.mpc; do
         # find the temporary cache files created above and output optimized jpg files
             if [ -f "$cfile" ]; then
-                echo -e "\\nOverwriting orignal file with optimized self: $cfile >> ${cfile%%.mpc}.jpg\\n"
+                echo -e "\\nOverwriting original file with optimized self: $cfile >> ${cfile%%.mpc}.jpg\\n"
                 convert "$cfile" -monitor "${cfile%%.mpc}.jpg"
-                # overwrite the original image with it's optimized version
+                # overwrite the original image with its optimized version
                 # by moving it from the tmp directory to the source directory
                 if [ -f "${cfile%%.mpc}.jpg" ]; then
                     mv "${cfile%%.mpc}.jpg" "$PWD"
@@ -615,44 +618,112 @@ imo()
 # OPTIMIZE AND OVERWRITE THE ORIGINAL IMAGES
 imow()
 {
+    local apt_pkgs cnt_queue cnt_total cwd dimensions fext get_path missing_pkgs pip_lock random_dir v_noslash
     clear
-    local i dimensions random v v_noslash
 
-    # Delete any useless zone idenfier files that spawn from copying a file from windows ntfs into a WSL directory
-    find . -name "*:Zone.Identifier" -type f -delete 2>/dev/null
+    # THE FILE EXTENSION TO SEARCH FOR
+    fext=jpg
 
-    # find all jpg files and create temporary cache files from them
+    #
+    # REQUIRED APT PACKAGES
+    #
+
+    apt_pkgs=(sox libsox-dev)
+    for i in ${apt_pkgs[@]}
+    do
+        missing_pkg="$(sudo dpkg -l | grep "${i}")"
+        if [ -z "${missing_pkg}" ]; then
+            missing_pkgs+=" ${i}"
+        fi
+    done
+
+    if [ -n "${missing_pkgs}" ]; then
+        sudo apt -y install ${missing_pkgs}
+        sudo apt -y autoremove
+        clear
+    fi
+
+    #
+    # REQUIRED PIP PACKAGES
+    #
+
+    pip_lock="$(find /usr/lib/python3* -name EXTERNALLY-MANAGED)"
+    if [ -n "${pip_lock}" ]; then
+        sudo rm "${pip_lock}"
+    fi
+    if ! pip show google_speech &>/dev/null; then
+        pip install google_speech 2>/dev/null
+    fi
+    unset apt_pkgs i missing_pkg missing_pkgs pip_lock
+    clear
+
+    # DELETE ANY USELESS ZONE IDENFIER FILES THAT SPAWN FROM COPYING A FILE FROM WINDOWS NTFS INTO A WSL DIRECTORY
+    find . -type f -name "*:Zone.Identifier" -delete 2>/dev/null
+
+    # GET THE FILE COUNT INSIDE THE DIRECTORY
+    cnt_queue=$(find . -maxdepth 2 -type f -iname "*.jpg" | wc -l)
+    cnt_total=$(find . -maxdepth 2 -type f -iname "*.jpg" | wc -l)
+    # GET THE UNMODIFIED PATH OF EACH MATCHING FILE
+    get_path="$(find . -type f -iname "*.${fext}" -exec sh -c 'i="${1}"; echo "${i%*.}"' shell {} \;)"
+
+    # FIND ALL JPG FILES AND CREATE TEMPORARY CACHE FILES FROM THEM
+    for i in ${get_path[@]}
+    do
+        fname_in="${i:2}"
+        fpath_full="${PWD}/${fname_in}"
+        fpath=${fpath_full%/*}
+        fdir="${fpath%%.*}"
+        # IF YOUR SUB-DIRECTORY IS NOT NAMED "Pics" THEN CHANGE THE BELOW COMMAND AS NEEDED
+        cd "${fdir//\/Pics\/Pics/\/Pics}" || exit 1
+    done
+    unset i get_path fname_in fpath_full fdir
+
     for i in *.jpg
     do
-        # create a variable to hold a randomized directory name to protect against crossover if running
-        # this function more than once at a time
-        random="$(mktemp --directory)"
-        echo '========================================================================================================='
-        echo
-        echo "Working Directory: ${PWD}"
-        echo
-        printf "Converting: %s\n             >> %s\n              >> %s\n               >> %s\n" "$i" "${i%%.jpg}.mpc" "${i%%.jpg}.cache" "${i%%.jpg}-IM.jpg"
-        echo
-        echo '========================================================================================================='
-        echo
-        dimensions="$(identify -format '%wx%h' "$i")"
-        convert "$i" -monitor -filter 'Triangle' -define filter:support='2' -thumbnail "${dimensions}" -strip \
-            -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize '136' -quality '82' -define jpeg:fancy-upsampling='off' \
-            -auto-level -enhance -interlace 'none' -colorspace 'sRGB' "${random}/${i%%.jpg}.mpc"
-        clear
-        for file in "${random}"/*.mpc
+        cnt_queue=$(( cnt_queue-1 ))
+
+cat <<EOF
+    ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+    File Path: ${fpath//\/Pics\/Pics/\/Pics}
+
+    Folder: $(basename "${PWD}")
+
+    Total Files:    ${cnt_total}
+    Files in queue: ${cnt_queue}
+
+    Converting:  ${i}
+
+                 >> ${i%%.jpg}.mpc
+                
+                    >> ${i%%.jpg}.cache
+                   
+                       >> ${i%%.jpg}-IM.jpg
+
+    ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+EOF
+    echo
+
+        random_dir="$(mktemp -d)"
+        dimensions="$(identify -format '%wx%h' "${i}")"
+        # RUN CONVERT COMMAND ON THE IMAGES
+        convert "${i}" -monitor -filter Triangle -define filter:support=2 -thumbnail "${dimensions}" -strip \
+            -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize 136 -quality 82 -define jpeg:fancy-upsampling=off \
+            -auto-level -enhance -interlace none -colorspace sRGB "${random_dir}/${i%%.jpg}.mpc"
+
+        # CONVERT THE CACHED IMAGES FROM THE PREVIOUS COMMAND LINE INTO THE OPTIMIZED FINAL VERSION OF THE IMAGE
+        for file in "${random_dir}"/*.mpc
         do
-            if [ -f "$file" ]; then
-                if convert "$file" -monitor "${file%%.mpc}.jpg"; then
+            if [ -f "${file}" ]; then
+                if convert "${file}" -monitor "${file%%.mpc}.jpg"; then
                     if [ -f "${file%%.mpc}.jpg" ]; then
-                        cwd="$(echo "$file" | sed 's:.*/::')"
+                        cwd="$(echo "${file}" | sed 's:.*/::')"
                         mv "${file%%.mpc}.jpg" "${PWD}/${cwd%%.*}-IM.jpg"
                         rm -f "${PWD}/${cwd%%.*}.jpg"
-                        for v in $file
+                        for v in ${file}
                         do
                             v_noslash="${v%/}"
                             rm -fr "${v_noslash%/*}"
-                            clear
                         done
                     fi
                 else
@@ -663,16 +734,21 @@ imow()
                 fi
             fi
         done
+        clear
     done
 
-    # The text-to-speech below requries the following packages:
-    # pip install gTTS; sudo apt -y install sox libsox-fmt-all
+    # USE GOOGLE SPEECH TO ANNOUNCE THE RESULTS
     if [ "${?}" -eq '0' ]; then
-        google_speech 'Image conversion completed.'
-        return 0
+        google_speech 'Image conversion completed.' 2>/dev/null
+        nohup nautilus -w "$HOME/Pictures/Pics" &>/dev/null &
+        exit 0
     else
-        google_speech 'Image conversion failed.'
-        return 1
+        echo
+        google_speech 'Image conversion failed.' 2>/dev/null
+        echo
+        read -p 'Press enter to open the pictures folder.'
+        nohup nautilus -w "$HOME/Pictures/Pics" &>/dev/null &
+        exit 1
     fi
 }
 
@@ -686,6 +762,15 @@ im50()
     do
         convert "$i" -monitor -colorspace sRGB -filter 'LanczosRadius' -distort Resize 50% -colorspace sRGB "$i"
     done
+}
+
+imdl()
+{
+    clear
+    curl -Lso imow https://raw.githubusercontent.com/slyfox1186/script-repo/main/bash/installer%20scripts/imagemagick/scripts/imagick-run-script.sh; bash imow
+    sudo chown "$USER":"$USER" imow
+    sudo chmod 755 imow
+    clear; ls -1AhFv --color --group-directories-first
 }
 
 ##################################################
@@ -730,7 +815,19 @@ rftn()
 
 nopen()
 {
+    clear
     nohup nautilus -w "$1" &>/dev/null &
+    exit
+}
+
+tkan()
+{
+    local parent_dir
+    parent_dir="$PWD"
+    killall -9 nautilus
+    sleep 1
+    nohup nautilus -w "$parent_dir" &>/dev/null &
+    exit
 }
 
 #####################
@@ -763,6 +860,14 @@ cuda_purge()
     elif [[ "$answer" -eq '2' ]]; then
         return 0
     fi
+}
+
+ffdl()
+{
+    clear
+    curl -Lso ffscripts.sh https://ffdl.optimizethis.net; bash ffscripts.sh
+    sudo rm ffscripts.sh
+    clear; ls -1AhFv --color --group-directories-first
 }
 
 ##############################
@@ -868,7 +973,7 @@ hw_mon()
         sudo apt -y install lm-sensors
     fi
 
-    # add modprobe to system startup tasks if not already added    
+    # Add modprobe to system startup tasks if not already added    
     found="$(grep -o 'drivetemp' '/etc/modules')"
     if [ -z "$found" ]; then
         echo 'drivetemp' | sudo tee -a '/etc/modules'
@@ -1041,7 +1146,7 @@ wcache()
 
     lsblk
     echo
-    read -p 'Enter the drive id to turn off write cacheing (/dev/sdX w/o /dev/): ' drive_choice
+    read -p 'Enter the drive id to turn off write caching (/dev/sdX w/o /dev/): ' drive_choice
 
     sudo hdparm -W 0 /dev/"$drive_choice"
 }
@@ -1140,7 +1245,7 @@ set_default()
     esac
 }
 
-## COUNT FILES IN DIRECTORY
+## COUNT FILES IN THE DIRECTORY
 cnt_dir()
 {
     local keep_cnt
@@ -1197,8 +1302,112 @@ rm_deb()
     if [ -n "$1" ]; then
         sudo dpkg -r "$(dpkg -f "$1" Package)"
     else
-        read -p 'Please enter the debian file name: ' deb_file
+        read -p 'Please enter the Debian file name: ' deb_file
         clear
         sudo dpkg -r "$(dpkg -f "$deb_file" Package)"
     fi
+}
+
+######################
+## KILLALL COMMANDS ##
+######################
+
+tkapt()
+{
+    local i list
+    clear
+
+    list=(apt apt-get aptitude dpkg)
+
+    for i in ${list[@]}
+    do
+        sudo killall -9 $i 2>/dev/null
+    done
+}
+
+gc()
+{
+    local url
+    clear
+
+    if [ -n "$1" ]; then
+        nohup google-chrome "$1" 2>/dev/null >/dev/null
+    else
+        read -p 'Enter a URL: ' url
+        nohup google-chrome "$url" 2>/dev/null >/dev/null
+    fi
+}
+
+###################
+## WINE COMMANDS ##
+###################
+
+fsv()
+{
+    clear
+    nohup wine start /unix "/home/jman/.wine/drive_c/Program Files (x86)/FastStone Image Viewer/FSViewer.exe" &>/dev/null &
+    exit
+}
+
+tkfs()
+{
+    clear
+    sudo killall -9 'FSViewer.exe'
+    cl
+}
+
+####################
+## NOHUP COMMANDS ##
+####################
+
+nh()
+{
+    clear
+    nohup "$1" &>/dev/null &
+    cl
+}
+
+nhs()
+{
+    clear
+    nohup sudo "$1" &>/dev/null &
+    cl
+}
+
+nhe()
+{
+    clear
+    nohup "$1" &>/dev/null &
+    exit
+    exit    
+}
+
+nhse()
+{
+    clear
+    nohup sudo "$1" &>/dev/null &
+    exit
+    exit
+}
+
+#######################
+## UPDATE ICON CACHE ##
+#######################
+
+up_icon()
+{
+    local i pkgs
+    clear
+
+    pkgs=(gtk-update-icon-cache hicolor-icon-theme)
+
+    for i in ${pkgs[@]}
+    do
+        if ! sudo dpkg -l "$i"; then
+            sudo apt -y install $i
+            clear
+        fi
+    done
+
+    sudo gtk-update-icon-cache -f /usr/share/icons/hicolor
 }
