@@ -7,14 +7,16 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo/edit/main/shell/installers/build-tools
 ##
-##  Supported OS: Linux Ubuntu - 23.04 (Lunar) / 22.04 (Jammy)
+##  Supported OS:
+##                - Ubuntu 23.04 / 22.04
+##                - Debian 10 / 11 / 12
 ##
-##  Updated: 07.12.23
+##  Updated: 08.01.23
 ##
 ##  Added: The newest golang release version
 ##  Added: A new variable named debug to help with troubleshooting issues. 
 ##
-##  Script version: 2.1
+##  Script version: 2.2
 ##
 ###################################################################################
 
@@ -29,12 +31,13 @@ fi
 # CREATE SCRIPT VARIABLES
 #
 
-script_ver=2.1
+script_ver=2.2
 cwd="$PWD"/build-tools-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
 install_prefix=/usr/local
 repo=https://github.com/slyfox1186/script-repo
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
@@ -51,7 +54,9 @@ fi
 # CREATE OUTPUT DIRECTORIES
 #
 
-mkdir -p "$packages" "$workspace"
+if [ ! -d "$packages" ] || [ ! -d "$workspace" ]; then
+    mkdir -p "$packages" "$workspace" 2>/dev/null
+fi
 
 #
 # SET GLOBAL VARIABLES
@@ -78,19 +83,21 @@ export PATH
 #
 
 PKG_CONFIG_PATH="\
-$workspace/lib/pkgconfig:\
 $workspace/lib64/pkgconfig:\
-$workspace/share/pkgconfig:\
+$workspace/lib/pkgconfig:\
 $workspace/lib/x86_64-linux-gnu/pkgconfig:\
 $workspace/usr/lib/pkgconfig:\
+$workspace/share/pkgconfig:\
+/lib64/pkgconfig:\
 /lib/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
 /usr/local/share/pkgconfig:\
 /usr/share/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/pkgconfig\
+/usr/lib64/pkgconfig:\
+/usr/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -163,7 +170,7 @@ show_versions_fn()
             "CMake:  $show_cmake_ver" \
             "Ninja:  v$show_ninja_ver" \
             "Meson:  v$show_meson_ver" \
-            "Golang: v$show_go_ver"
+            ": v$show_go_ver"
     fi
 }
 
@@ -204,10 +211,10 @@ download()
         echo "The file \"$dl_file\" is already downloaded."
     else
         echo "Downloading \"$dl_url\" saving as \"$dl_file\""
-        if ! curl -Lso "$target_file" "$dl_url"; then
+        if ! curl -A "$user_agent" -Lso "$target_file" "$dl_url"; then
             printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
-            if ! curl -Lso "$target_file" "$dl_url"; then
+            if ! curl -A "$user_agent" -Lso "$target_file" "$dl_url"; then
                 fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
             fi
         fi
@@ -217,7 +224,6 @@ download()
     if [ -d "$target_dir" ]; then
         sudo rm -fr "$target_dir"
     fi
-
     mkdir -p "$target_dir"
 
     if [ -n "$3" ]; then
@@ -279,7 +285,7 @@ git_2_fn()
     gitlab_repo="$1"
     github_url="$2"
 
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.kitware.com/api/v4/projects/$gitlab_repo/repository/$github_url")"; then
+    if curl_cmd="$(curl -A "$user_agent" -m "$curl_timeout" -sSL "https://gitlab.kitware.com/api/v4/projects/$gitlab_repo/repository/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
     fi
@@ -311,7 +317,10 @@ git_ver_fn()
     "$u_flag" "$v_url" "$t_flag" 2>/dev/null
 }
 
-build_done() { echo "$2" > "$packages/$1.done"; }
+build_done()
+{
+    echo "$2" > "$packages/$1.done"
+}
 
 #
 # PRINT SCRIPT BANNER
@@ -335,24 +344,32 @@ do
         missing_pkgs+=" $i"
     fi
 done
-unset i
 
 if [ -n "$missing_pkgs" ]; then
     sudo apt -y install $missing_pkgs
     clear
 fi
+unset i missing_pkgs
 
 #
-# SET THE C & C++ COMPILERS
+# SET THE C + CPP COMPILERS
 #
 
 if ! which gcc &>/dev/null; then
     fail_fn 'Please install "gcc" to continue the build.'
 fi
 export CC=gcc CXX=g++
-# SET C OPTIMIZATION FLAGS
+
+#
+# SET COMPILER OPTIMIZATION FLAGS
+#
+
 export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
+
+#
 # MAKE SURE WE USE THE CORRECT M4 FOLDER
+#
+
 export ACLOCAL_PATH=/usr/share/aclocal
 
 #
@@ -392,15 +409,18 @@ fi
 if build 'golang' '1.20.6'; then
     download 'https://go.dev/dl/go1.20.6.linux-amd64.tar.gz' 'golang-1.20.6.tar.gz'
     execute sudo cp -f bin/go bin/gofmt "$install_prefix"/bin
-    execute sudo mkdir -p /usr/local/go
+    sudo mkdir -p /usr/local/go
     build_done 'golang' '1.20.6'
 fi
 
 # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES
 sudo ldconfig 2>/dev/null
+
 # SHOW THE NEWLY INSTALLED VERSION OF EACH PACKAGE
 show_versions_fn
+
 # PROMPT THE USER TO CLEAN UP THE BUILD FILES
 cleanup_fn
+
 # SHOW THE EXIT MESSAGE
 exit_fn
