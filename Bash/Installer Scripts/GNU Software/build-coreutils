@@ -216,9 +216,6 @@ if ! sudo make install; then
     exit 1
 fi
 
-# SHOW THE NEW VERSION
-show_ver_fn
-
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
 
