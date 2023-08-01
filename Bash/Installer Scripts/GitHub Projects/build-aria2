@@ -104,8 +104,8 @@ show_ver_fn()
 
 cleanup_fn()
 {
-    local choice
-    
+    local choice dpkg_list
+
     unset archive_dir archive_ext archive_name archive_url CC CXX i missing_pkg missing_pkgs pc_type pem_target pkgs script_ver
 
     printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
@@ -117,16 +117,16 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' choice
 
     case "$choice" in
-        1)      
+        1)
                 sudo rm -fr "$cwd"
-                if sudo dpkg -l | grep aria2 &>/dev/null; then
+                if [ -f /usr/bin/aria2c ]; then
                     sudo apt -y remove aria2
                     sudo apt -y autoremove
                     clear
                 fi
                 ;;
         2)
-                if sudo dpkg -l | grep aria2 &>/dev/null; then
+                if [ -f /usr/bin/aria2c ]; then
                     sudo apt -y remove aria2
                     sudo apt -y autoremove
                     clear
