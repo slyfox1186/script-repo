@@ -184,19 +184,19 @@ if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; t
 fi
 
 #
-# TEST IF LIBICONV WAS MANUALLY INSTALLED OR BY APT
+# TEST IF LIBICONV WAS INSTALLED BY APT OR MANUALLY
 #
 
 if [ -f /usr/local/bin/iconv ]; then
+    pkgs_fn
     iconv_prefix=/usr/local
 elif [ -f /usr/bin/iconv ]; then
+    pkgs_fn
     iconv_prefix=/usr
 else
     pkgs_fn 'libiconv-hook-dev libiconv-hook1'
     iconv_prefix=/usr
 fi
-
-pkgs_fn
 
 #
 # BUILD PROGRAM FROM SOURCE
