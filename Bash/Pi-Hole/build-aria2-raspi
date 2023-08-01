@@ -1,6 +1,24 @@
 #!/usr/bin/env bash
 
+#######################################################################################
+##
+##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Pi-Hole/build-aria2-raspi
+##
+##  Purpose: Build aria2c with max connections changed from 16 to 128 on
+##           Raspberry Pi Debian Bullseye OS.
+##
+##  Updated: 08.01.23
+##
+##  Script version: 1.1
+##
+#######################################################################################
+
 clear
+
+if [ "$EUID" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
 
 #
 # SET VARIABLES
