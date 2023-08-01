@@ -1436,8 +1436,18 @@ adl()
         -j128 \
         --file-allocation=none \
         --continue=true \
+        --summary-interval=0 \
         --out="$name"'.mp4' \
         "$url"
+
+    if [ "${?}" -eq '0' ]; then
+        google_speech 'Download completed.' 2>/dev/null
+        exit 0
+    else
+        google_speech 'Download failed.' 2>/dev/null
+        read -p 'Press enter to exit.'
+        exit 1
+    fi
 
     clear; ls -1AhFv --color --group-directories-first
 }
