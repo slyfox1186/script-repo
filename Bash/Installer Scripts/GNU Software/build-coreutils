@@ -29,6 +29,7 @@ fi
 #
 
 export CC=gcc CXX=g++
+
 #
 # SET PATH
 #
