@@ -20,7 +20,9 @@ printf "\n%s\n%s\n\n" \
 # CREATE OUTPUT DIRECTORY
 #
 
-mkdir -p "$cwd"
+if [ ! -d "$cwd" ]; then
+    mkdir -p "$cwd"
+fi
 
 #
 # SET THE C+CPP COMPILERS
