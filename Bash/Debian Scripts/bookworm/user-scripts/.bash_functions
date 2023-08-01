@@ -1411,3 +1411,33 @@ up_icon()
 
     sudo gtk-update-icon-cache -f /usr/share/icons/hicolor
 }
+
+############
+## ARIA2C ##
+############
+
+adl()
+{
+    local name url
+    clear
+
+    if [ -z "$1" ]; then
+        read -p 'Enter the file name (w/o extension): ' name
+        read -p 'Enter download URL: ' url
+        clear
+    else
+        name="$1"
+        url="$2"
+    fi
+
+    aria2c \
+        --user-agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36' \
+        -x128 \
+        -j128 \
+        --file-allocation=none \
+        --continue=true \
+        --out="$name"'.mp4' \
+        "$url"
+
+    clear; ls -1AhFv --color --group-directories-first
+}
