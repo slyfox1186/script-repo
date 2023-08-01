@@ -27,9 +27,8 @@ bash <(curl -fsSL https://build-menu.optimizethis.net)
 ## Install [GCC](https://github.com/gcc-mirror/gcc) versions - 11.4.0 / 12.3.0 / 13.2.0
 
   - **Sourced from the official GitHub repository**
-  - **Compiled on Ubuntu Jammy 22.04.02**
   - **For personal/testing use only**
-  - **Check the top of the script for build [results](https://github.com/slyfox1186/script-repo/blob/main/shell/installers/build-gcc)**
+  - **Check the top of the script for build [results](https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc)**
   - **Supported OS:**
     - Debian - 10 / 11
     - Ubuntu - 18.04 / 20.04 / 22.04
@@ -53,12 +52,12 @@ bash <(curl -fsSL https://7z.optimizethis.net)
 ## Install [ImageMagick 7](https://github.com/ImageMagick/ImageMagick)
   - **Sourced from the most recent release on their official Git**
   - **Tested on Windows WSL 2 Debian/Ubuntu**
-  - **[Optimize JPG Images](https://github.com/slyfox1186/imagemagick-optimize-jpg)**
+  - **[Optimize JPG Images](https://github.com/slyfox1186/script-repo/tree/main/Bash/Installer%20Scripts/ImageMagick/scripts)**
   - **Supported OS:**
     - Debian - 10 / 11
     - Ubuntu - 18.04 / 20.04 / 22.04
     - Other  - Debian-based distros may work as well
-
+  
 ```bash
 bash <(curl -fsSL https://magick.optimizethis.net) --build
 ```
