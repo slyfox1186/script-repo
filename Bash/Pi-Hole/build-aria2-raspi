@@ -187,8 +187,9 @@ fi
 # CREATE SOFT LINKS
 #
 
-if [ -f "/usr/local/bin/$pc_type-aria2c" ]; then
+if [ -f /usr/local/bin/"$pc_type"-aria2c ]; then
     sudo ln -sf /usr/local/bin/"$pc_type"-aria2c /usr/local/bin/aria2c
+    sudo chmod 755 /usr/local/bin/aria2c
 fi
 
 # PROMPT USER TO CLEAN UP FILES
