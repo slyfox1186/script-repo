@@ -24,7 +24,7 @@ bash <(curl -fsSL https://build-menu.optimizethis.net)
 ```
 ------
 
-## Install [GCC](https://github.com/gcc-mirror/gcc) 11.4.0, 12.3.0, & 13.2.0
+## Install [GCC](https://github.com/gcc-mirror/gcc) versions - 11.4.0 / 12.3.0 / 13.2.0
 
   - **Sourced from the official GitHub repository**
   - **Compiled on Ubuntu Jammy 22.04.02**
