@@ -11,7 +11,6 @@ archive_dir=coreutils-9.3
 archive_url=https://ftp.gnu.org/gnu/coreutils/coreutils-9.3.tar.xz
 archive_ext="${archive_url//*.}"
 cwd="$PWD"/coreutils-build-script
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 
 printf "\n%s\n%s\n\n" \
     "Coreutils Build Script - v$script_ver" \
@@ -87,7 +86,7 @@ pkgs=(autoconf autogen automake binutils build-essential ccache cmake curl git l
 
 for i in ${pkgs[@]}
 do
-    missing_pkg="$(dpkg -l | grep $i)"
+    missing_pkg="$(dpkg -l | grep "$i")"
 
     if [ -z "$missing_pkg" ]; then
         missing_pkgs+=" $i"
@@ -96,6 +95,7 @@ done
 
 if [ -n "$missing_pkgs" ]; then
     sudo apt -y install $missing_pkgs
+    sudo apt -y autoremove
     clear
 fi
 
