@@ -14,7 +14,7 @@
 ##  Updated: 08.01.23
 ##
 ##  Added: The newest golang release version
-##  Added: A new variable named debug to help with troubleshooting issues. 
+##  Added: A new variable named debug to help with troubleshooting issues.
 ##
 ##  Script version: 2.2
 ##
@@ -149,29 +149,19 @@ cleanup_fn()
 show_versions_fn()
 {
     local show_cmake_ver show_ninja_ver show_meson_ver
+    clear
 
-    show_cmake_ver="$(cmake --version | sed -e 's/cmake version /v/g' -e 's/CMake suite maintained and supported by Kitware (kitware.com\/cmake).//g' | xargs -n1)"
+    show_cmake_ver="$(cmake --version | sed -e 's/cmake version //g' -e 's/CMake suite maintained and supported by Kitware (kitware.com\/cmake).//g' | xargs -n1)"
     show_ninja_ver="$(ninja --version)"
     show_meson_ver="$(meson --version)"
     show_go_ver="$(go version | grep -Eo '[0-9\.]+ | xargs -n1')"
 
-    if [ -x "$show_cmake_ver" ]; then
-        fail_fn 'Failed to execute the command: cmake --version'
-    elif [ -x "$show_ninja_ver" ]; then
-        fail_fn 'Failed to execute the command: ninja --version'
-    elif [ -x "$show_meson_ver" ]; then
-        fail_fn 'Failed to execute the command: meson --version'
-    elif [ -x "$show_go_ver" ]; then
-        fail_fn 'Failed to execute the command: go version'
-    else
-        clear
         printf "%s\n\n%s\n%s\n%s\n%s\n" \
             'The updated versions are:' \
             "CMake:  $show_cmake_ver" \
-            "Ninja:  v$show_ninja_ver" \
-            "Meson:  v$show_meson_ver" \
-            ": v$show_go_ver"
-    fi
+            "Ninja:  $show_ninja_ver" \
+            "Meson:  $show_meson_ver" \
+            "GoLang: $show_go_ver"
 }
 
 execute()
@@ -377,13 +367,13 @@ export ACLOCAL_PATH=/usr/share/aclocal
 #
 
 git_ver_fn '541' '2' 'T'
-if build 'cmake' '3.26.3'; then
-    download "https://gitlab.kitware.com/cmake/cmake/-/archive/v3.26.3/cmake-v3.26.3.tar.bz2" 'cmake-3.26.3.tar.bz2'
+if build 'cmake' "$g_ver"; then
+    download "https://gitlab.kitware.com/cmake/cmake/-/archive/v$g_ver/cmake-v$g_ver.tar.bz2" "cmake-$g_ver.tar.bz2"
     execute ./configure --prefix="$install_prefix" --parallel="$cpu_threads" --enable-ccache -- -DCMAKE_USE_OPENSSL=OFF
     execute make "-j$cpu_threads"
     execute sudo make install
     execute make clean
-    build_done 'cmake' '3.26.3'
+    build_done 'cmake' "$g_ver"
 fi
 
 git_ver_fn 'ninja-build/ninja' '1' 'T'
