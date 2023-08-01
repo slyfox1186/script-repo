@@ -118,7 +118,7 @@ pkgs_fn()
           libgpg-error-dev libgtk-4-doc libgpgme-dev libicu-dev libjemalloc-dev libkrb5-3 libldap2-dev libldap-dev liblttng-ust-dev
           liblzma-dev libmbedtls-dev libnghttp2-dev libntlm0-dev libparted-dev libpng-dev libpsl-dev librtmp-dev librust-bzip2-dev
           librust-openssl-dev libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev libtinfo5 libtinfo-dev libtool libtool-bin
-          libunistring-dev libunwind8 libuv1-dev libxml2-dev libzstd-dev m4 nettle-dev openjdk-17-jdk-headless openssh-server
+          libunistring-dev libunwind8 libuv1-dev libxml2-dev libzstd-dev lzip m4 nettle-dev openjdk-17-jdk-headless openssh-server
           pkg-config python3-dev python3-numpy python3-packaging python3-pip python3-pytest python3-setuptools python3-wheel
           re2c rsync unzip valgrind zip zlib1g-dev)
 
