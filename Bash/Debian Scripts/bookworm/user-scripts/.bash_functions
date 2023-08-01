@@ -661,8 +661,8 @@ imow()
     find . -type f -name "*:Zone.Identifier" -delete 2>/dev/null
 
     # GET THE FILE COUNT INSIDE THE DIRECTORY
-    cnt_queue=$(find . -maxdepth 2 -type f -iname *.jpg | wc -l)
-    cnt_total=$(find . -maxdepth 2 -type f -iname *.jpg | wc -l)
+    cnt_queue=$(find . -maxdepth 2 -type f -iname "*.jpg" | wc -l)
+    cnt_total=$(find . -maxdepth 2 -type f -iname "*.jpg" | wc -l)
     # GET THE UNMODIFIED PATH OF EACH MATCHING FILE
     get_path="$(find . -type f -iname "*.${fext}" -exec sh -c 'i="${1}"; echo "${i%*.}"' shell {} \;)"
 
@@ -682,25 +682,25 @@ imow()
     do
         cnt_queue=$(( cnt_queue-1 ))
 
-        cat <<EOF
-::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+cat <<EOF
+    ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-File Path: ${fpath//\/Pics\/Pics/\/Pics}
+    File Path: ${fpath//\/Pics\/Pics/\/Pics}
 
-Folder: $(basename ${PWD})
+    Folder: $(basename "${PWD}")
 
-Total Files:    ${cnt_total}
-Files in queue: ${cnt_queue}
+    Total Files:    ${cnt_total}
+    Files in queue: ${cnt_queue}
 
-Converting:  ${i}
+    Converting:  ${i}
 
-             >> ${i%%.jpg}.mpc
-            
-                >> ${i%%.jpg}.cache
-               
-                   >> ${i%%.jpg}-IM.jpg
+                 >> ${i%%.jpg}.mpc
+                
+                    >> ${i%%.jpg}.cache
+                   
+                       >> ${i%%.jpg}-IM.jpg
 
-::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 EOF
     echo
 
