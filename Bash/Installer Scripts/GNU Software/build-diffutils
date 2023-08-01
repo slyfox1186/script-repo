@@ -196,6 +196,8 @@ else
     iconv_prefix=/usr
 fi
 
+pkgs_fn
+
 #
 # BUILD PROGRAM FROM SOURCE
 #
