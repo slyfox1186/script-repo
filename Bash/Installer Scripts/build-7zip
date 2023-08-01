@@ -24,9 +24,9 @@ script_ver=1.2
 version=7z2301
 tar_file="$version.tar.xz"
 cwd="$PWD"/7zip-build-script
-install_dir='/usr/local/bin'
+install_dir=/usr/local/bin
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
-repo='https://github.com/slyfox1186/script-repo'
+repo=https://github.com/slyfox1186/script-repo
 
 #
 # CREATE OUTPUT FOLDERS
@@ -54,7 +54,7 @@ fail_fn()
         "$1" \
         'Please create a support ticket at:' \
         "$repo/issues"
-    read -p 'Press enter to exit.'
+    exit 1
 }
 
 # CLEANUP DOWNLOAD FILES
