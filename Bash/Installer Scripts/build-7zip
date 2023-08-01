@@ -8,9 +8,9 @@
 ##          The user will be prompted to select their OS architecture before
 ##          installing.
 ##
-##  Updated: 06.05.23
+##  Updated: 07.31.23
 ##
-##  Script version: 1.1
+##  Script version: 1.2
 ##
 ################################################################################
 
@@ -20,13 +20,21 @@ clear
 # SET VARIABLES
 #
 
-script_ver='1.1'
-version='7z2301'
+script_ver=1.2
+version=7z2301
 tar_file="$version.tar.xz"
 cwd="$PWD"/7zip-build-script
-packages="$cwd"/packages
-install_file='/usr/local/bin/7z'
+install_dir='/usr/local/bin'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 repo='https://github.com/slyfox1186/script-repo'
+
+#
+# CREATE OUTPUT FOLDERS
+#
+
+if [ ! -d "$cwd" ]; then
+    mkdir -p "$cwd"
+fi
 
 #
 # CREATE FUNCTIONS
@@ -34,8 +42,7 @@ repo='https://github.com/slyfox1186/script-repo'
 
 exit_fn()
 {
-    printf "\n%s\n\n%s\n\n%s\n\n" \
-        'The script has completed' \
+    printf "%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         "$repo"
         exit 1
@@ -45,23 +52,20 @@ fail_fn()
 {
     printf "\n\n%s\n\n%s\n\n%s\n\n" \
         "$1" \
-        'Please create a support ticket at the address below' \
+        'Please create a support ticket at:' \
         "$repo/issues"
     read -p 'Press enter to exit.'
 }
 
 # CLEANUP DOWNLOAD FILES
-cleanup_fn()
-{
-    sudo rm -fr "$cwd"
-}
+cleanup_fn() { sudo rm -fr "$cwd" ; }
 
 # PRINT 7-ZIP VERSION
 version_fn()
 {
-    show_ver="$("$install_file" | head -n 2 | cut -d " " -f3 | awk 'NF' | xargs echo "$1")"
+    show_ver="$("$install_dir/7z" | head -n 2 | cut -d " " -f3 | awk 'NF' | xargs echo "$1")"
     show_ver="$(echo $show_ver | sed 's/v /v/g')"
-    echo -e "\\n7-zip has been updated to: v$show_ver"
+    printf "\n%s\n\n" "7-zip has been updated to v$show_ver"
 }
 
 #
@@ -74,33 +78,34 @@ printf "%s\n%s\n" \
 
 # DETECT PC ARCHITECTURE
 case "$(uname -m)" in 
-      x86_64)          url='linux-x64.tar.xz';;
-      i386|i686)       url='linux-x86.tar.xz';;
-      aarch64*|armv8*) url='linux-arm64.tar.xz';;
-      arm|armv7*)      url='linux-arm.tar.xz';;
-      *) fail_fn "Unrecognized architecture '$(uname -m)'";;
+      x86_64)          url=linux-x64.tar.xz;;
+      i386|i686)       url=linux-x86.tar.xz;;
+      aarch64*|armv8*) url=linux-arm64.tar.xz;;
+      arm|armv7*)      url=linux-arm.tar.xz;;
+      *)               fail_fn "Unrecognized architecture '$(uname -m)'";;
 esac
 
 # Install curl (needed to download the files)
-sudo apt-get -qq -y install curl
-
-# CREATE OUTPUT FOLDERS
-mkdir -p "$packages"
+if ! sudo dpkg -l | grep curl &>/dev/null; then
+    sudo apt -y install curl
+    sudo apt -y autoremove
+    clear
+fi
 
 # Download the tar file if missing
 if [ ! -f "$tar_file" ]; then
-   curl -Lso "$packages/$tar_file" "https://www.7-zip.org/a/$version-$url"
+   curl -A "$user_agent" -Lso "$cwd/$tar_file" "https://www.7-zip.org/a/$version-$url"
 fi
 
 # Extract files into directory '7z'
-mkdir -p "$packages/$version"
-if ! tar -xf "$packages/$tar_file" -C "$packages/$version"; then
-    fail_fn "The script was unable to find the download file '$packages/$tar_file'"
+mkdir -p "$cwd/$version"
+if ! tar -xf "$cwd/$tar_file" -C "$cwd/$version"; then
+    fail_fn "The script was unable to find the download file '$cwd/$tar_file'"
 fi
 
 # Copy the file to its destination or throw an error if the copying of the file fails
-if ! sudo cp -f "$packages/$version/7zzs" "$install_file"; then
-    fail_fn "The script was unable to copy the static file '7zzs' to '$install_file'"
+if ! sudo cp -f "$cwd/$version/7zzs" "$install_dir/7z"; then
+    fail_fn "The script was unable to copy the static file '7zzs' to '$install_dir/7z'"
 fi
 
 # SHOW THE NEWLY INSTALLED 7-ZIP VERSION
