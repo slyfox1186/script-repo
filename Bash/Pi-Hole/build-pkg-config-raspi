@@ -7,14 +7,14 @@ clear
 #
 
 script_ver=1.0
-archive_dir=pkg-config-0.29.2
-archive_url=https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz
+archive_dir=aria2-1.36.0
+archive_url=https://github.com/aria2/aria2/releases/download/release-1.36.0/aria2-1.36.0.tar.gz
 archive_ext="${archive_url//*.}"
-cwd="$PWD"/pkg-config-build-script
+cwd="$PWD"/aria2-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 
 printf "\n%s\n%s\n\n" \
-    "PKG-Config Build Script - v$script_ver" \
+    "Aria2 Build Script - v$script_ver" \
     '==============================================='
 
 #
@@ -32,47 +32,10 @@ fi
 export CC=gcc CXX=g++
 
 #
-# EXPORT COMPILER OPTIMIZATION FLAGS
+# SET COMPILER OPTIMIZATION FLAGS
 #
 
 export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
-
-#
-# SET PATH
-#
-
-PATH="\
-/usr/lib/ccache:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
-/usr/local/sbin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/cuda/bin:\
-/snap/bin\
-"
-export PATH
-
-#
-# EXPORT PKG_CONFIG_PATH
-#
-
-PKG_CONFIG_PATH="\
-$workspace/lib64/pkgconfig:\
-$workspace/lib/pkgconfig:\
-$workspace/lib/x86_64-linux-gnu/pkgconfig:\
-$workspace/share/pkgconfig:\
-$workspace/usr/lib/pkgconfig:\
-/usr/lib/aarch64-linux-gnu/pkgconfig:\
-/usr/local/lib/aarch64-linux-gnu/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/share/cargo/registry/pkg-config-0.3.18/tests:\
-/usr/share/pkgconfig\
-"
-export PKG_CONFIG_PATH
 
 #
 # CREATE FUNCTIONS
@@ -94,6 +57,12 @@ fail_fn()
 cleanup_fn()
 {
     local choice
+
+    if sudo dpkg -l | grep aria2 &>/dev/null; then
+        sudo apt -y remove aria2
+        sudo apt -y autoremove
+        clear
+    fi
 
     printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
         '============================================' \
@@ -118,13 +87,13 @@ cleanup_fn()
 }
 
 #
-# INSTALL REQUIRED APT PACKAGES
+# INSTALL REQUIRED APT cwd
 #
 
 pkgs=(autoconf autogen automake build-essential ca-certificates ccache clang curl libaria2-0 libaria2-0-dev
       libc-ares-dev libdmalloc-dev libgcrypt20-dev libgmp-dev libgnutls28-dev libgpg-error-dev libjemalloc-dev
       libmbedtls-dev libnghttp2-dev librust-openssl-dev libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev
-      libxml2-dev pkg-config zlib1g-dev)
+      libuv1-dev libxml2-dev pkg-config zlib1g-dev)
 
 for i in ${pkgs[@]}
 do
@@ -134,10 +103,10 @@ do
         missing_pkgs+=" $i"
     fi
 done
-unset i
 
 if [ -n "$missing_pkgs" ]; then
     sudo apt -y install $missing_pkgs
+    sudo apt -y autoremove
     clear
 fi
 
@@ -181,19 +150,40 @@ fi
 # BUILD PROGRAM FROM SOURCE
 #
 
-cd "$cwd/$archive_dir/build" || exit 1
-../configure --prefix=/usr               \
-             --{build,host}="$pc_type"   \
-             --with-internal-glib        \
-             --with-pc-path="$PKG_CONFIG_PATH"
+cd "$cwd/$archive_dir" || exit 1
+# INCREASE THE MAX NUMBER OF CONNECTIONS FROM 16 TO 128
+sed -i 's/1, 16/1, 128/g' 'src/OptionHandlerFactory.cc'
+cd build || exit 1
+../configure --prefix=/usr/local              \
+             --{build,host,target}="$pc_type" \
+             --disable-nls                    \
+             --disable-shared                 \
+             --disable-werror                 \
+             --enable-libaria2                \
+             --enable-static                  \
+             --with-ca-bundle="$pem_target"   \
+             --with-libgcrypt                 \
+             --with-libuv                     \
+             --with-jemalloc                  \
+             --with-openssl                   \
+             --without-gnutls                 \
+             --without-libnettle              \
+             ARIA2_STATIC=yes                 \
+             LIBS="$(pkg-config --libs libuv)"
 make "-j$(nproc --all)"
 if ! sudo make install; then
     make distclean
-    printf "\n%s\n\n" 'Failed to install pkg-config.'
+    printf "\n%s\n\n" 'Failed to install aria2.'
     exit 1
 fi
 
-# CLEANUP FILES
-cleanup_fn
-# SHOW EXIT MESSAGE
-exit_fn
+#
+# CREATE SOFT LINK
+#
+
+if [ -f "/usr/local/bin/$pc_type-aria2c" ]; then
+    sudo ln -sf /usr/local/bin/"$pc_type"-aria2c /usr/local/bin/aria2c
+fi
+
+sudo rm -fr "$cwd"
+unset archive_dir archive_ext archive_name archive_url CC CXX i missing_pkg missing_pkgs pc_type pem_target pkgs script_ver
