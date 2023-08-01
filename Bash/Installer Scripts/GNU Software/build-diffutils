@@ -1,17 +1,35 @@
 #!/usr/bin/env bash
 
+###########################################################################################################
+##
+##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-diffutils
+##
+##  Purpose: Build GNU diffutils
+##
+##  Updated: 08.01.23
+##
+##  Script version: 1.1
+##
+###########################################################################################################
+
 clear
 
+if [ "$EUID" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
+
 #
-# SET PROGRAM NAME + VERSION
+# SET VARIABLES
 #
 
-script_ver=1.0
+script_ver=1.1
 archive_dir=diffutils-3.10
 archive_url=https://ftp.gnu.org/gnu/diffutils/diffutils-3.10.tar.xz
 archive_ext="${archive_url//*.}"
 cwd="$PWD"/diffutils-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+repo=https://github.com/slyfox1186/script-repo
 
 printf "\n%s\n%s\n\n" \
     "diffutils build script - v$script_ver" \
@@ -32,7 +50,26 @@ fi
 export CC=gcc CXX=g++
 
 #
-# EXPORT COMPILER OPTIMIZATION FLAGS
+# SET PATH
+#
+
+PATH="\
+/usr/lib/ccache:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
+/usr/local/sbin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin:\
+/usr/local/cuda/bin:\
+/snap/bin\
+"
+export PATH
+
+#
+# SET COMPILER OPTIMIZATION FLAGS
 #
 
 export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
@@ -43,10 +80,11 @@ export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 exit_fn()
 {
-    printf "\n%s\n\n" 'The script has completed.'
+    printf "\n%s\n\n%s\n\n" \
+        'Make sure to star this repository to show your support!' \
+        "$repo"
     exit 0
 }
-
 
 fail_fn()
 {
@@ -56,7 +94,7 @@ fail_fn()
 
 cleanup_fn()
 {
-    local choice
+    local answer
 
     printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
         '============================================' \
@@ -64,9 +102,9 @@ cleanup_fn()
         '============================================' \
         '[1] Yes' \
         '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
+    read -p 'Your choices are (1 or 2): ' answer
 
-    case "$choice" in
+    case "$answer" in
         1)      sudo rm -fr "$cwd";;
         2)      echo;;
         *)
@@ -84,22 +122,28 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autogen automake binutils build-essential ccache cmake curl git libgmp-dev libintl-perl libmpfr-dev
-      libreadline-dev libsigsegv-dev libtool libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev yasm)
+pkgs_fn()
+{
+    local pkgs i missing_pkgs
 
-for i in ${pkgs[@]}
-do
-    missing_pkg="$(dpkg -l | grep $i)"
+    pkgs=("$1" autoconf autogen automake binutils build-essential ccache cmake curl git libgmp-dev libintl-perl libmpfr-dev
+          libreadline-dev libsigsegv-dev libtool libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev yasm)
 
-    if [ -z "$missing_pkg" ]; then
-        missing_pkgs+=" $i"
+    for i in ${pkgs[@]}
+    do
+        missing_pkg="$(dpkg -l | grep $i)"
+
+        if [ -z "$missing_pkg" ]; then
+            missing_pkgs+=" $i"
+        fi
+    done
+
+    if [ -n "$missing_pkgs" ]; then
+        sudo apt -y install $missing_pkgs
+        sudo apt -y autoremove
+        clear
     fi
-done
-
-if [ -n "$missing_pkgs" ]; then
-    sudo apt -y install $missing_pkgs
-    clear
-fi
+}
 
 #
 # GET PC TYPE
@@ -146,7 +190,7 @@ if [ -f /usr/local/bin/iconv ]; then
 elif [ -f /usr/bin/iconv ]; then
     iconv_prefix=/usr
 else
-    pkgs_fn 'libiconv-hook-dev'
+    pkgs_fn 'libiconv-hook-dev libiconv-hook1'
     iconv_prefix=/usr
 fi
 
@@ -171,5 +215,11 @@ if ! sudo make install; then
     exit 1
 fi
 
-sudo rm -fr "$cwd"
-unset archive_dir archive_ext archive_name archive_url CC CXX i missing_pkg missing_pkgs pc_type pem_target pkgs script_ver
+# SHOW THE NEW VERSION
+show_ver_fn
+
+# PROMPT USER TO CLEAN UP FILES
+cleanup_fn
+
+# SHOW EXIT MESSAGE
+exit_fn
