@@ -44,6 +44,11 @@ debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 #
 
 export CC=gcc CXX=g++
+
+#
+# SET COMPILER OPTIMIZATION FLAGS
+#
+
 export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 #
@@ -62,7 +67,17 @@ fi
 
 PATH="\
 /usr/lib/ccache:\
-$PATH\
+$HOME/.local/bin:\
+$HOME/.cargo/bin:\
+/usr/bin/x86_64-linux-gnu-ld:\
+/usr/local/sbin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin:\
+/usr/local/cuda/bin:\
+/snap/bin\
 "
 export PATH
 
@@ -231,7 +246,12 @@ printf "%s\n%s\n" \
     'Installing required apt packages' \
     '=================================='
 
-pkgs=(bc build-essential curl flex bison ccache dwarves jq libssl-dev libelf-dev wget)
+pkgs=(aria2 autoconf autogen automake bat bc binutils bison build-essential ccache
+      ccdiff checkinstall clang cmake cmake-extras cmake-qt-gui colordiff cpu-checker
+      curl dbus-x11 dwarves flex git jq libdmalloc-dev libelf-dev libmimalloc-dev
+      libperl-dev libssl-dev libtalloc-dev libtbbmalloc2 libtool libtool-bin lzip m4
+      meson nano nasm ninja-build shellcheck sqlite3 synaptic texinfo trash-cli unzip
+      uuid-dev wget xclip xsel yasm)
 
 for pkg in ${pkgs[@]}
 do
@@ -250,18 +270,18 @@ else
     echo 'The required apt packages are already installed.'
 fi
 
-if [ ! -f 'wsl-6.1.21.2.tar.gz' ]; then
-    wget --show-progress -cqO 'wsl-6.1.21.2.tar.gz' 'https://github.com/microsoft/WSL2-Linux-Kernel/archive/refs/tags/linux-msft-wsl-6.1.21.2.tar.gz'
+if [ ! -f wsl-6.1.21.2.tar.gz ]; then
+    wget --show-progress -cqO wsl-6.1.21.2.tar.gz https://github.com/microsoft/WSL2-Linux-Kernel/archive/refs/tags/linux-msft-wsl-6.1.21.2.tar.gz
 fi
 
-if [ -d 'wsl-6.1.21.2' ]; then
-    sudo rm -fr 'wsl-6.1.21.2'
+if [ -d wsl-6.1.21.2 ]; then
+    sudo rm -fr wsl-6.1.21.2
 fi
-mkdir -p 'wsl-6.1.21.2'
+mkdir -p wsl-6.1.21.2
 
-tar -zxf 'wsl-6.1.21.2.tar.gz' -C 'wsl-6.1.21.2' --strip-components 1
+tar -zxf wsl-6.1.21.2.tar.gz -C wsl-6.1.21.2 --strip-components 1
 
-cd 'wsl-6.1.21.2' || exit 1
+cd wsl-6.1.21.2 || exit 1
 
 echo 'yes' | make KCONFIG_CONFIG='Microsoft/config-wsl' "-j$cpu_threads"
 
