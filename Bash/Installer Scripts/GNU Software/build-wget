@@ -143,8 +143,10 @@ pkgs_fn()
 #
 
 if [ -f /usr/local/bin/iconv ]; then
+    pkgs_fn
     iconv_prefix=/usr/local
 elif [ -f /usr/bin/iconv ]; then
+    pkgs_fn
     iconv_prefix=/usr
 else
     pkgs_fn 'libiconv-hook-dev'
