@@ -1,16 +1,34 @@
 #!/usr/bin/env bash
 
+###########################################################################################################
+##
+##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-nettle
+##
+##  Purpose: Build GNU Nettle
+##
+##  Updated: 08.01.23
+##
+##  Script version: 1.1
+##
+###########################################################################################################
+
 clear
 
+if [ "$EUID" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
+
 #
-# SET PROGRAM NAME + VERSION
+# SET VARIABLES
 #
 
-script_ver=1.0
+script_ver=1.1
 archive_dir=nettle-3.9.1
 archive_url=https://ftp.gnu.org/gnu/nettle/nettle-3.9.1.tar.gz
 archive_ext="${archive_url//*.}"
 cwd="$PWD"/nettle-build-script
+repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 
 printf "\n%s\n%s\n\n" \
@@ -26,13 +44,13 @@ if [ ! -d "$cwd" ]; then
 fi
 
 #
-# SET THE C+CPP COMPILERS
+# SET THE C + CPP COMPILERS
 #
 
 export CC=gcc CXX=g++
 
 #
-# EXPORT COMPILER OPTIMIZATION FLAGS
+# SET COMPILER OPTIMIZATION FLAGS
 #
 
 export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
@@ -63,20 +81,49 @@ $workspace/usr/lib/pkgconfig:\
 "
 
 #
+# SET PATH
+#
+
+PATH="\
+/usr/lib/ccache:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
+/usr/local/sbin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin:\
+/usr/local/cuda/bin:\
+/snap/bin\
+"
+export PATH
+
+#
 # CREATE FUNCTIONS
 #
 
 exit_fn()
 {
-    printf "\n%s\n\n" 'The script has completed.'
+    printf "\n%s\n\n%s\n\n" \
+        'Make sure to star this repository to show your support!' \
+        "$repo"
     exit 0
+}
+
+fail_fn()
+{
+    printf "\n%s\n\n%s\n\n" \
+        "$1" \
+        "To report a bug create an issue at: $repo/issues"
+    exit 1
 }
 
 cleanup_fn()
 {
-    local choice
+    local choice dpkg_list
 
-    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
+    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
         '============================================' \
         '  Do you want to clean up the build files?  ' \
         '============================================' \
@@ -98,13 +145,6 @@ cleanup_fn()
     esac
 }
 
-
-fail_fn()
-{
-    printf "%s\n\n" "$1"
-    exit 1
-}
-
 #
 # INSTALL REQUIRED APT PACKAGES
 #
@@ -124,7 +164,7 @@ pkgs_fn()
 
     for i in ${pkgs[@]}
     do
-        missing_pkg="$(dpkg -l | make $i)"
+        missing_pkg="$(dpkg -l | make "$i")"
 
         if [ -z "$missing_pkg" ]; then
             missing_pkgs+=" $i"
@@ -143,8 +183,10 @@ pkgs_fn()
 #
 
 if [ -f /usr/local/bin/iconv ]; then
+    pkgs_fn
     iconv_prefix=/usr/local
 elif [ -f /usr/bin/iconv ]; then
+    pkgs_fn
     iconv_prefix=/usr
 else
     pkgs_fn 'libiconv-hook-dev'
@@ -219,5 +261,8 @@ if ! sudo make install; then
     exit 1
 fi
 
-sudo rm -fr "$cwd"
-unset archive_dir archive_ext archive_name archive_url CC CXX i missing_pkg missing_pkgs pc_type pem_target pkgs script_ver
+# PROMPT USER TO CLEAN UP FILES
+cleanup_fn
+
+# SHOW EXIT MESSAGE
+exit_fn
