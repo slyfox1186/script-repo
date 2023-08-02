@@ -32,7 +32,7 @@ repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 
 printf "\n%s\n%s\n\n" \
-    "SystemD Build Script - v$script_ver" \
+    "Systemd Build Script - v$script_ver" \
     '==============================================='
 
 #
