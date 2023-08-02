@@ -79,11 +79,6 @@ export PATH
 #
 
 PKG_CONFIG_PATH="\
-$workspace/lib64/pkgconfig:\
-$workspace/lib/pkgconfig:\
-$workspace/lib/x86_64-linux-gnu/pkgconfig:\
-$workspace/share/pkgconfig:\
-$workspace/usr/lib/pkgconfig:\
 /lib64/pkgconfig:\
 /lib/pkgconfig:\
 /lib/x86_64-linux-gnu/pkgconfig:\
@@ -211,10 +206,12 @@ fi
 #
 
 cd "$cwd/$archive_dir/build" || exit 1
-../configure --prefix=/usr             \
-             --{build,host}="$pc_type" \
-             --with-internal-glib      \
-             --with-pc-path="$PKG_CONFIG_PATH"
+../configure --prefix=/usr                      \
+             --enable-indirect-deps             \
+             --with-pc-path="$PKG_CONFIG_PATH"  \
+             --with-pic                         \
+             PKG_CONFIG="$(type -P pkg-config)" \
+             PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
 make "-j$(nproc --all)"
 if ! sudo make install; then
     make distclean
