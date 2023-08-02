@@ -28,6 +28,7 @@ archive_dir=coreutils-9.3
 archive_url=https://ftp.gnu.org/gnu/coreutils/coreutils-9.3.tar.xz
 archive_ext="${archive_url//*.}"
 cwd="$PWD"/coreutils-build-script
+repo=https://github.com/slyfox1186/script-repo
 
 printf "\n%s\n%s\n\n" \
     "Coreutils Build Script - v$script_ver" \
