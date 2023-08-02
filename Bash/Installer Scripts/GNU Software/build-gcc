@@ -659,13 +659,13 @@ fi
 
 git_ver_fn 'gperftools/gperftools' '1' 'R'
 g_ver="${g_ver//gperftools-/}"
-if build 'gperftools' "$g_ver"; then
-    download "https://github.com/gperftools/gperftools/releases/download/gperftools-$g_ver/gperftools-$g_ver.tar.gz"
+if build 'gperftools' '2.10'; then
+    download 'https://github.com/gperftools/gperftools/releases/download/gperftools-2.10/gperftools-2.10.tar.gz'
     execute ./configure --prefix="$workspace" --disable-shared --enable-libunwind
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
-    build_done 'gperftools' "$g_ver"
+    build_done 'gperftools' '2.10'
 fi
 
 git_ver_fn 'facebook/zstd' '1' 'R'
