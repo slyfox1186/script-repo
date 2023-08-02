@@ -67,7 +67,7 @@ install_scripts_fn()
 
 install_choice_fn()
 {
-    printf "%s\n\n" \
+    printf "%s\n\n%s\n%s\n\n" \
         'Do you want to install all of the scripts now?' \
         '[1] Yes' \
         '[2] No'
@@ -91,6 +91,8 @@ dl_fn()
         wget --show-progress -cq "$2"
     fi
 }
+
+cd "$cwd" || exit 1
 
 dl_fn 'build-coreutils' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-coreutils'
 dl_fn 'build-diffutils' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-diffutils'
