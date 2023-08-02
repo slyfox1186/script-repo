@@ -3,6 +3,7 @@
 clear
 
 cwd="$PWD"/gnu-installers
+repo=https://github.com/slyfox1186/script-repo
 
 if [ ! -d "$cwd"/completed ]; then
     mkdir -p "$cwd"/completed
