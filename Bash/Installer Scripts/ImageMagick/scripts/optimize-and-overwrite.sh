@@ -43,8 +43,8 @@ unset p pip_lock pip_pkgs missing_pkg missing_pkgs
 find . -type f -name "*:Zone.Identifier" -delete 2>/dev/null
 
 # GET THE FILE COUNT INSIDE THE DIRECTORY
-cnt_queue=$(find . -maxdepth 2 -type f -iname *.jpg | wc -l)
-cnt_total=$(find . -maxdepth 2 -type f -iname *.jpg | wc -l)
+cnt_queue=$(find . -maxdepth 2 -type f -iname "*.jpg" | wc -l)
+cnt_total=$(find . -maxdepth 2 -type f -iname "*.jpg" | wc -l)
 # GET THE UNMODIFIED PATH OF EACH MATCHING FILE
 get_path="$(find . -type f -iname "*.${fext}" -exec sh -c 'i="${1}"; echo "${i%*.}"' shell {} \;)"
 
