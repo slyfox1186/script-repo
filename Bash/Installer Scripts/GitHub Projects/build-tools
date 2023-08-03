@@ -348,7 +348,8 @@ unset i missing_pkgs
 if ! which gcc &>/dev/null; then
     fail_fn 'Please install "gcc" to continue the build.'
 fi
-export CC=gcc CXX=g++
+export CC='ccache gcc'
+export CXX='ccache g++'
 
 #
 # SET COMPILER OPTIMIZATION FLAGS
