@@ -2,7 +2,7 @@
 
 #############################################################################
 ##
-##  Install OpenSSL from source code with multiple optional
+##  Install OpenSSL from the source code with multiple optional
 ##  features enabled.
 ## 
 ##  The script also installs SCTP Module Support which allows OpenSSL
@@ -18,8 +18,13 @@
 
 clear
 
+if [ "$EUID" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
+
 #
-# SET PROGRAM NAME + VERSION
+# SET VARIABLES
 #
 
 script_ver=1.2
@@ -57,7 +62,7 @@ export CC=gcc CXX=g++
 # EXPORT COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O3 -march=native -D_REENTRANT'
+export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 #
 # CREATE FUNCTIONS
@@ -65,15 +70,25 @@ export {CFLAGS,CXXFLAGS}='-g -O3 -march=native -D_REENTRANT'
 
 exit_fn()
 {
-    printf "\n%s\n\n" 'The script has completed.'
+    printf "\n%s\n\n%s\n\n" \
+        'Make sure to star this repository to show your support!' \
+        "$repo"
     exit 0
+}
+
+fail_fn()
+{
+    printf "%s\n\n" "$1"
+    exit 1
 }
 
 cleanup_fn()
 {
-    local choice
+    local choice dpkg_list
 
-    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
+    unset archive_dir archive_ext archive_name archive_url CC CXX i missing_pkg missing_pkgs pc_type pem_target pkgs script_ver
+
+    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
         '============================================' \
         '  Do you want to clean up the build files?  ' \
         '============================================' \
@@ -82,8 +97,21 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' choice
 
     case "$choice" in
-        1)      sudo rm -fr "$cwd";;
-        2)      echo;;
+        1)
+                sudo rm -fr "$cwd"
+                if [ -f /usr/bin/aria2c ]; then
+                    sudo apt -y remove aria2
+                    sudo apt -y autoremove
+                    clear
+                fi
+                ;;
+        2)
+                if [ -f /usr/bin/aria2c ]; then
+                    sudo apt -y remove aria2
+                    sudo apt -y autoremove
+                    clear
+                fi
+                ;;
         *)
                 clear
                 printf "%s\n\n" 'Bad user input. Reverting script...'
@@ -93,12 +121,6 @@ cleanup_fn()
                 cleanup_fn
                 ;;
     esac
-}
-
-fail_fn()
-{
-    printf "%s\n\n" "$1"
-    exit 1
 }
 
 #
@@ -199,6 +221,8 @@ if [ -f "$pem_output" ]; then
     sudo chmod 644 "$pem_output"
 fi
 
-sudo rm -fr "$cwd"
-unset archive_dir archive_ext archive_name archive_url CC CXX i missing_pkg missing_pkgs pc_type pem_target pkgs script_verSAGE
+# PROMPT USER TO CLEAN UP FILES
+cleanup_fn
+
+# SHOW EXIT MESSAGE
 exit_fn
