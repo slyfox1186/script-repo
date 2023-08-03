@@ -122,6 +122,7 @@ cleanup_fn()
 #
 # INSTALL REQUIRED APT PACKAGES
 #
+
 pkgs_fn()
 {
     pkgs=("$1" autoconf autogen automake binutils build-essential ccache cmake curl git libgmp-dev
