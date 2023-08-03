@@ -28,7 +28,8 @@ fi
 # SET THE C+CPP COMPILERS
 #
 
-export CC=gcc CXX=g++
+export CC='ccache gcc'
+export CXX='ccache g++'
 
 #
 # EXPORT COMPILER OPTIMIZATION FLAGS
