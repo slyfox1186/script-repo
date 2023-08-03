@@ -29,9 +29,9 @@ archive_ext="${archive_url//*.}"
 cwd="$PWD"/openssl-build-script
 install_dir=/usr
 ssl_dir=/usr/lib/ssl
-cert_dir=/usr/lib/ssl/certs
+cert_dir=$ssl_dir/certs
 pem_filename=cacert.pem
-pem_output=/usr/lib/ssl/certs/cacert.pem
+pem_output=$cert_dir/cacert.pem
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
