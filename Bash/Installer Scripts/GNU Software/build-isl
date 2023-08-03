@@ -29,7 +29,8 @@ fi
 # SET THE C+CPP COMPILERS
 #
 
-export CC=clang CXX=clang++
+export CC='ccache clang'
+export CXX='ccache clang++'
 
 #
 # SET PATH
