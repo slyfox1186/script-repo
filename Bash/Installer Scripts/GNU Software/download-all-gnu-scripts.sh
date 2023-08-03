@@ -51,13 +51,15 @@ cleanup_fn()
 
 install_scripts_fn()
 {
-    local i
+    local i scripts
     clear
 
-    for i in *
+    scripts="$(find . -maxdepth 1 -type f | sed 's/^..//g')"
+
+    for i in ${scripts[@]} 
     do
         if bash "$i"; then
-            mv "$i" "$cwd"/completed
+            find . -maxdepth 1 -type f -name "$i" -exec mv {} completed \;
             printf "\n%s\n\n" "Script finished: $i"
         else
             fail_fn "Failed to install: $i"
