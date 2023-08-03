@@ -10,9 +10,9 @@
 ##  
 ##  Enabled features: egd, fips, md2, rc5, trace, sctp, threads, and zlib
 ##
-##  Updated: 07.17.23
+##  Updated: 08.03.23
 ##
-##  Script version: 1.1
+##  Script version: 1.2
 ##
 #############################################################################
 
@@ -22,9 +22,9 @@ clear
 # SET PROGRAM NAME + VERSION
 #
 
-script_ver=1.1
-archive_dir=openssl-3.1.1
-archive_url=https://www.openssl.org/source/openssl-3.1.1.tar.gz
+script_ver=1.2
+archive_dir=openssl-3.1.2
+archive_url=https://github.com/openssl/openssl/releases/download/openssl-3.1.2/openssl-3.1.2.tar.gz
 archive_ext="${archive_url//*.}"
 cwd="$PWD"/openssl-build-script
 install_dir=/usr
@@ -159,7 +159,7 @@ mkdir -p "$cwd/$archive_dir/build"
 # EXTRACT ARCHIVE FILES
 #
 
-if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
+if ! tar -zxf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
     printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
     exit 1
 fi
@@ -169,7 +169,8 @@ fi
 #
 
 cd "$cwd/$archive_dir/build" || exit 1
-../Configure --prefix="$install_dir"          \
+../Configure linux-x86_64
+             --prefix=/usr                    \
              --openssldir="$ssl_dir"          \
              --with-rand-seed=os              \
              --with-zlib-include=/usr/include \
@@ -179,7 +180,6 @@ cd "$cwd/$archive_dir/build" || exit 1
              enable-md2                       \
              enable-rc5                       \
              enable-trace                     \
-             sctp                             \
              threads                          \
              zlib
 make "-j$(nproc --all)"
