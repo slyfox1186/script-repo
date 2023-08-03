@@ -56,6 +56,21 @@ export CC=gcc CXX=g++
 export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 #
+# set LD_LIBRARY_PATH
+#
+
+LD_LIBRARY_PATH="\
+/usr/local/lib64:\
+/usr/local/lib:\
+/usr/lib64:\
+/usr/lib:\
+/lib64:\
+/lib:\
+/usr/local/cuda-12.2/nvvm/lib64\
+"
+export LD_LIBRARY_PATH
+
+#
 # CREATE FUNCTIONS
 #
 
@@ -108,7 +123,7 @@ cleanup_fn()
 pkgs=(autoconf autogen automake binutils bpftool build-essential ccache clang cmake curl git gnu-efi golang-gir-gio-2.0-dev golang-gir-gobject-2.0-dev
       gperf jekyll kexec-tools libacl1-dev libapparmor-dev libaudit-dev libbinutils libblkid-dev libblkid1 libbpf-dev libbz2-dev libcap-dev
       libcryptsetup-dev libcryptsetup12 libcurl4-openssl-dev libdbus-1-dev libdrpm-dev libdw-dev libfdisk-dev libfido2-dev libglib2.0-dev
-      libgnutls28-dev libidn11-dev libidn2-0-dev libidn2-dev libiptc-dev libkmod-dev liblz4-dev libmicrohttpd-dev libmount-dev libnacl-dev libnss-myhostname
+      libgnutls28-dev libidn11-dev libidn2-0-dev libidn2-dev libiptc-dev libkrb5-dev libkmod-dev liblz4-dev libmicrohttpd-dev libmount-dev libnacl-dev libnss-myhostname
       libp11-kit-dev libpam0g-dev libpolkit-gobject-1-dev libpwquality-dev libqrencode-dev libquota-perl libquotient-dev librpm-dev librust-pam-dev
       librust-quote-dev libseccomp-dev libssl-dev libtss2-dev libsystemd-dev libtool libtool-bin libxen-dev libxkbcommon-dev m4 meson nasm ninja-build
       openssl python3 python3-evdev python3-jinja2 python3-pyparsing quota strace valgrind xsltproc yasm)
