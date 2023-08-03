@@ -49,7 +49,7 @@ fi
 # SET THE C+CPP COMPILERS
 #
 
-export CC=gcc-13 CXX=g++-13
+export CC=gcc CXX=g++
 
 #
 # EXPORT COMPILER OPTIMIZATION FLAGS
