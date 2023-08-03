@@ -1451,3 +1451,21 @@ adl()
 
     clear; ls -1AhFv --color --group-directories-first
 }
+
+#####################
+## GET FILES SIZES ##
+#####################
+
+jsize()
+{
+    local random_dir size
+    clear
+    
+    random_dir="$(mktemp -d)"
+    read -p 'Enter the image size (units in MB): ' size
+    find . -size +"$size"M -type f -iname "*.jpg" > "$random_dir/img-sizes.txt"
+    sed -i "s/^..//g" "$random_dir/img-sizes.txt"
+    sed -i "s|^|$PWD\/|g" "$random_dir/img-sizes.txt"
+    clear
+    nohup gted "$random_dir/img-sizes.txt" &>/dev/null &
+}
