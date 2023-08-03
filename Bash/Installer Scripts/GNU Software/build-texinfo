@@ -24,8 +24,8 @@ fi
 #
 
 script_ver=1.1
-archive_dir=texinfo-4.3
-archive_url=https://ftp.gnu.org/gnu/texinfo/texinfo-4.3.tar.gz
+archive_dir=texinfo-7.0.3
+archive_url=https://ftp.gnu.org/gnu/texinfo/texinfo-7.0.3.tar.xz
 archive_ext="${archive_url//*.}"
 cwd="$PWD"/texinfo-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
