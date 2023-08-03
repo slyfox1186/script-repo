@@ -56,27 +56,6 @@ export CC=gcc CXX=g++
 export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 #
-# SET PKG_CONFIG_PATH VARIABLE
-#
-
-PKG_CONFIG_PATH="\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/open-coarrays/openmpi/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/openmpi/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/share/pkgconfig\
-"
-export PKG_CONFIG_PATH
-
-#
 # CREATE FUNCTIONS
 #
 
@@ -126,17 +105,13 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autogen automake binutils bpftool build-essential ccache clang cmake curl git gnu-efi
-      golang-gir-gio-2.0-dev golang-gir-gobject-2.0-dev gperf jekyll kexec-tools libacl1-dev libapparmor-dev
-      libaudit-dev libbinutils libblkid1 libblkid-dev libbpf-dev libbz2-dev libcap-dev libcryptsetup12
-      libcryptsetup-dev libcurl4-openssl-dev libdbus-1-dev libdrpm-dev libdw-dev libfdisk-dev libfido2-dev
-      libglib2.0-dev libglobus-gssapi-error-dev libglobus-gssapi-gsi-dev libgnutls28-dev libidn11-dev
-      libidn2-0-dev libidn2-dev libiptc-dev libkmod-dev libkrb5-dev libmicrohttpd-dev libmount-dev
-      libnacl-dev libnss-myhostname libp11-kit-dev libpam0g-dev libpolkit-gobject-1-dev libpwquality-dev
-      libqrencode-dev libquota-perl libquotient-dev librpm-dev librust-pam-dev librust-quote-dev
-      libseccomp-dev libssl-dev libsystemd-dev libtool libtool-bin libtss2-dev libxen-dev libxkbcommon-dev
-      m4 meson nasm ninja-build openssl python3 python3-evdev python3-jinja2 python3-pyparsing quota strace
-      valgrind xsltproc yasm)
+pkgs=(autoconf autogen automake binutils bpftool build-essential ccache clang cmake curl git gnu-efi golang-gir-gio-2.0-dev golang-gir-gobject-2.0-dev
+      gperf jekyll kexec-tools libacl1-dev libapparmor-dev libaudit-dev libbinutils libblkid-dev libblkid1 libbpf-dev libbz2-dev libcap-dev
+      libcryptsetup-dev libcryptsetup12 libcurl4-openssl-dev libdbus-1-dev libdrpm-dev libdw-dev libfdisk-dev libfido2-dev libglib2.0-dev
+      libgnutls28-dev libidn11-dev libidn2-0-dev libidn2-dev libiptc-dev libkmod-dev libmicrohttpd-dev libmount-dev libnacl-dev libnss-myhostname
+      libp11-kit-dev libpam0g-dev libpolkit-gobject-1-dev libpwquality-dev libqrencode-dev libquota-perl libquotient-dev librpm-dev librust-pam-dev
+      librust-quote-dev libseccomp-dev libssl-dev libtss2-dev libsystemd-dev libtool libtool-bin libxen-dev libxkbcommon-dev m4 meson nasm ninja-build
+      openssl python3 python3-evdev python3-jinja2 python3-pyparsing quota strace valgrind xsltproc yasm)
 
 for i in ${pkgs[@]}
 do
@@ -153,9 +128,9 @@ if [ -n "$missing_pkgs" ]; then
     sudo apt -y autoremove
     clear
 fi
-set -x 
+
 #
-# GET PC TYPEmarshal
+# GET PC TYPE
 #
 
 curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
@@ -195,7 +170,7 @@ fi
 #
 
 cd "$cwd/$archive_dir" || exit 1
-meson setup build --prefix=/usr/local --buildtype=release --default-library=both --strip
+meson setup build --buildtype=release --default-library=both --strip -Dzstd=true
 ninja "-j$(nproc --all)" -C build
 if ! sudo ninja "-j$(nproc --all)" -C build install; then
     printf "\n%s\n\n" 'Failed to install systemd.'
