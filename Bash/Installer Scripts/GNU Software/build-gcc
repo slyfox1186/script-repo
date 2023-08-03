@@ -746,6 +746,7 @@ build_gcc_11_fn()
         execute sudo libtool --finish "$install_dir"/lib
         build_done 'gcc-11' '11.4.0'
     fi
+    spd-say 'GCC-11 Completed'
 }
 
 build_gcc_12_fn()
@@ -794,6 +795,7 @@ build_gcc_12_fn()
         execute sudo libtool --finish "$install_dir"/lib
         build_done 'gcc-12' '12.3.0'
     fi
+    spd-say 'GCC-12 Completed'
 }
 
 build_gcc_13_fn()
@@ -841,6 +843,7 @@ build_gcc_13_fn()
         execute sudo libtool --finish "$install_dir"/lib
         build_done 'gcc-13' '13.2.0'
     fi
+    spd-say 'GCC-13 Completed'
 }
 
 #
