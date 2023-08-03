@@ -475,7 +475,8 @@ pkgs_fn()
           libgcc-11-dev libgd-dev libgm2-12-dev libgmp-dev libiberty-dev libicu-dev libintl-perl libisl-dev libjpeg-dev
           libltdl-dev libmpc-dev libmpfr-dev libphobos2-ldc-shared-dev libpng-dev libquadmath0 libsigsegv-dev libsqlite3-dev
           libssl-dev libstdc++-12-dev libunwind-dev libx11-dev libx32gfortran-12-dev libxext-dev linux-libc-dev meson
-          ninja-build perl pipx python3 python3-full python3-pip ruby sphinx-common tcl-expect-dev tex-common texinfo)
+          ninja-build perl pipx python3 python3-full python3-pip ruby sphinx-common tcl-expect-dev tex-common texi2html
+          texinfo)
 
     for pkg in ${pkgs[@]}; do
         if ! installed "$pkg"; then
@@ -699,149 +700,158 @@ if build 'autoconf-v269' '2.69'; then
     build_done 'autoconf-v269' '2.69'
 fi
 
-if build 'gcc-11' '11.4.0'; then
-    download 'https://ftp.gnu.org/gnu/gcc/gcc-11.4.0/gcc-11.4.0.tar.xz'
-    gcc_11_lang=all
-    execute autoreconf -fi
-    execute sudo ./contrib/download_prerequisites
-    mkdir builddir
-    cd builddir || exit 1
-    execute ../configure                          \
-        --prefix="$install_dir"                   \
-        --{build,host,target}=x86_64-pc-linux-gnu \
-        --disable-assembly                        \
-        --disable-nls                             \
-        --disable-vtable-verify                   \
-        --disable-werror                          \
-        --enable-bootstrap                        \
-        --enable-checking=release                 \
-        --enable-default-pie                      \
-        --enable-gnu-unique-object                \
-        --enable-languages="$gcc_11_lang"         \
-        --enable-libphobos-checking=release       \
-        --enable-lto                              \
-        --enable-multilib                         \
-        --enable-plugin                           \
-        --enable-threads=posix                    \
-        --program-prefix="$gcc_prefix"            \
-        --program-suffix=-11                      \
-        --with-gcc-major-version-only             \
-        --with-isl="$workspace"                   \
-        --with-libiconv-prefix=/usr               \
-        --with-link-serialization=2               \
-        --with-target-system-zlib=auto            \
-        --with-tune=generic                       \
-        --with-zstd="$workspace"                  \
-        "$cuda_check"                             \
-        --without-included-gettext
-    printf "\n%s\n%s\n\n" \
-        "$ Compiling gcc-11 with languages=$gcc_11_lang" \
-        '$ This is going to take a while...'
-    execute make "-j$cpu_threads"
-    execute sudo make install-strip
-    execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/11
-    execute sudo libtool --finish "$install_dir"/lib
-    build_done 'gcc-11' '11.4.0'
-fi
+build_gcc_11_fn()
+{
+    if build 'gcc-11' '11.4.0'; then
+        download 'https://ftp.gnu.org/gnu/gcc/gcc-11.4.0/gcc-11.4.0.tar.xz'
+        gcc_11_lang=all
+        execute autoreconf -fi
+        execute sudo ./contrib/download_prerequisites
+        mkdir builddir
+        cd builddir || exit 1
+        execute ../configure                          \
+            --prefix="$install_dir"                   \
+            --{build,host,target}=x86_64-pc-linux-gnu \
+            --disable-assembly                        \
+            --disable-nls                             \
+            --disable-vtable-verify                   \
+            --disable-werror                          \
+            --enable-bootstrap                        \
+            --enable-checking=release                 \
+            --enable-default-pie                      \
+            --enable-gnu-unique-object                \
+            --enable-languages="$gcc_11_lang"         \
+            --enable-libphobos-checking=release       \
+            --enable-lto                              \
+            --enable-multilib                         \
+            --enable-plugin                           \
+            --enable-threads=posix                    \
+            --program-prefix="$gcc_prefix"            \
+            --program-suffix=-11                      \
+            --with-gcc-major-version-only             \
+            --with-isl="$workspace"                   \
+            --with-libiconv-prefix=/usr               \
+            --with-link-serialization=2               \
+            --with-target-system-zlib=auto            \
+            --with-tune=generic                       \
+            --with-zstd="$workspace"                  \
+            "$cuda_check"                             \
+            --without-included-gettext
+        printf "\n%s\n%s\n\n" \
+            "$ Compiling gcc-11 with languages=$gcc_11_lang" \
+            '$ This is going to take a while...'
+        execute make "-j$cpu_threads"
+        execute sudo make install-strip
+        execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/11
+        execute sudo libtool --finish "$install_dir"/lib
+        build_done 'gcc-11' '11.4.0'
+    fi
+}
 
-if which gnatgcc &>/dev/null; then
-    export CC=gnatgcc CXX=g++
-else
-    clear
-    printf "%s\n\n" 'You must install "gnatgcc" to build gcc-13 with ada language support.' \
-    read -p 'Press enter to continue the build without ada language support.'
-    clear
-    export CC=gcc CXX=g++
-fi
+build_gcc_12_fn()
+{
+    if build 'gcc-12' '12.3.0'; then
+        download 'https://ftp.gnu.org/gnu/gcc/gcc-12.3.0/gcc-12.3.0.tar.xz'
+        execute autoreconf -fi
+        execute sudo ./contrib/download_prerequisites
+        mkdir builddir
+        cd builddir || exit 1
+        execute ../configure                          \
+            --prefix="$install_dir"                   \
+            --{build,host,target}=x86_64-pc-linux-gnu \
+            --disable-assembly                        \
+            --disable-nls                             \
+            --disable-vtable-verify                   \
+            --disable-werror                          \
+            --enable-bootstrap                        \
+            --enable-checking=release                 \
+            --enable-default-pie                      \
+            --enable-gnu-unique-object                \
+            --enable-languages=all                    \
+            --enable-libphobos-checking=release       \
+            --enable-lto                              \
+            --enable-multilib                         \
+            --enable-offload-defaulted                \
+            --enable-plugin                           \
+            --enable-threads=posix                    \
+            --program-prefix="$gcc_prefix"            \
+            --program-suffix=-12                      \
+            --with-gcc-major-version-only             \
+            --with-isl="$workspace"                   \
+            --with-libiconv-prefix=/usr               \
+            --with-link-serialization=2               \
+            --with-target-system-zlib=auto            \
+            --with-tune=generic                       \
+            --with-zstd="$workspace"                  \
+            "$cuda_check"                             \
+            --without-included-gettext
+        printf "\n%s\n%s\n\n" \
+            '$ Compiling gcc-12 with languages=c,ada,c++,d,fortran,go,lto,objc,obj-c++' \
+            '$ This is going to take a while...'
+        execute make "-j$cpu_threads"
+        execute sudo make install-strip
+        execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/12
+        execute sudo libtool --finish "$install_dir"/lib
+        build_done 'gcc-12' '12.3.0'
+    fi
+}
 
-if build 'gcc-12' '12.3.0'; then
-    download 'https://ftp.gnu.org/gnu/gcc/gcc-12.3.0/gcc-12.3.0.tar.xz'
-    execute autoreconf -fi
-    execute sudo ./contrib/download_prerequisites
-    mkdir builddir
-    cd builddir || exit 1
-    execute ../configure                          \
-        --prefix="$install_dir"                   \
-        --{build,host,target}=x86_64-pc-linux-gnu \
-        --disable-assembly                        \
-        --disable-nls                             \
-        --disable-vtable-verify                   \
-        --disable-werror                          \
-        --enable-bootstrap                        \
-        --enable-checking=release                 \
-        --enable-default-pie                      \
-        --enable-gnu-unique-object                \
-        --enable-languages=all                    \
-        --enable-libphobos-checking=release       \
-        --enable-lto                              \
-        --enable-multilib                         \
-        --enable-offload-defaulted                \
-        --enable-plugin                           \
-        --enable-threads=posix                    \
-        --program-prefix="$gcc_prefix"            \
-        --program-suffix=-12                      \
-        --with-gcc-major-version-only             \
-        --with-isl="$workspace"                   \
-        --with-libiconv-prefix=/usr               \
-        --with-link-serialization=2               \
-        --with-target-system-zlib=auto            \
-        --with-tune=generic                       \
-        --with-zstd="$workspace"                  \
-        "$cuda_check"                             \
-        --without-included-gettext
-    printf "\n%s\n%s\n\n" \
-        '$ Compiling gcc-12 with languages=c,ada,c++,d,fortran,go,lto,objc,obj-c++' \
-        '$ This is going to take a while...'
-    execute make "-j$cpu_threads"
-    execute sudo make install-strip
-    execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/12
-    execute sudo libtool --finish "$install_dir"/lib
-    build_done 'gcc-12' '12.3.0'
-fi
+build_gcc_13_fn()
+{
+    if build 'gcc-13' '13.2.0'; then
+        download 'https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.xz'
+        execute autoreconf -fi
+        execute sudo ./contrib/download_prerequisites
+        mkdir builddir
+        cd builddir || exit 1
+        execute ../configure                          \
+            --prefix="$install_dir"                   \
+            --{build,host,target}=x86_64-pc-linux-gnu \
+            --disable-assembly                        \
+            --disable-nls                             \
+            --disable-vtable-verify                   \
+            --disable-werror                          \
+            --enable-checking=release                 \
+            --enable-default-pie                      \
+            --enable-gnu-unique-object                \
+            --enable-languages=all                    \
+            --enable-libphobos-checking=release       \
+            --enable-lto                              \
+            --enable-multilib                         \
+            --enable-offload-defaulted                \
+            --enable-plugin                           \
+            --enable-threads=posix                    \
+            --program-prefix="$gcc_prefix"            \
+            --program-suffix=-13                      \
+            --with-gcc-major-version-only             \
+            --with-isl="$workspace"                   \
+            --with-libiconv-prefix=/usr               \
+            --with-link-serialization=2               \
+            --with-target-system-zlib=auto            \
+            --with-tune=generic                       \
+            --with-zstd="$workspace"                  \
+            "$cuda_check"                             \
+            --without-included-gettext
+        printf "\n%s\n%s\n\n" \
+            '$ Compiling gcc-13 with languages=c,ada,c++,d,fortran,go,lto,m2,objc,obj-c++' \
+            '$ This is going to take a while...'
+        execute make "-j$cpu_threads"
+        execute sudo make install-strip
+        execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/13
+        execute sudo libtool --finish "$install_dir"/lib
+        build_done 'gcc-13' '13.2.0'
+    fi
+}
 
-if build 'gcc-13' '13.2.0'; then
-    download 'https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.xz'
-    execute autoreconf -fi
-    execute sudo ./contrib/download_prerequisites
-    mkdir builddir
-    cd builddir || exit 1
-    execute ../configure                          \
-        --prefix="$install_dir"                   \
-        --{build,host,target}=x86_64-pc-linux-gnu \
-        --disable-assembly                        \
-        --disable-nls                             \
-        --disable-vtable-verify                   \
-        --disable-werror                          \
-        --enable-checking=release                 \
-        --enable-default-pie                      \
-        --enable-gnu-unique-object                \
-        --enable-languages=all                    \
-        --enable-libphobos-checking=release       \
-        --enable-lto                              \
-        --enable-multilib                         \
-        --enable-offload-defaulted                \
-        --enable-plugin                           \
-        --enable-threads=posix                    \
-        --program-prefix="$gcc_prefix"            \
-        --program-suffix=-13                      \
-        --with-gcc-major-version-only             \
-        --with-isl="$workspace"                   \
-        --with-libiconv-prefix=/usr               \
-        --with-link-serialization=2               \
-        --with-target-system-zlib=auto            \
-        --with-tune=generic                       \
-        --with-zstd="$workspace"                  \
-        "$cuda_check"                             \
-        --without-included-gettext
-    printf "\n%s\n%s\n\n" \
-        '$ Compiling gcc-13 with languages=c,ada,c++,d,fortran,go,lto,m2,objc,obj-c++' \
-        '$ This is going to take a while...'
-    execute make "-j$cpu_threads"
-    execute sudo make install-strip
-    execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/13
-    execute sudo libtool --finish "$install_dir"/lib
-    build_done 'gcc-13' '13.2.0'
+#
+# START GCC BUILD
+#
+
+if [ "$VER" -ne '12' ]; then
+    build_gcc_11_fn
 fi
+build_gcc_12_fn
+build_gcc_13_fn
 
 # CREATE SOFT LINKS TO SHORTEN THE BINARY NAMES
 create_gcc_links_fn
