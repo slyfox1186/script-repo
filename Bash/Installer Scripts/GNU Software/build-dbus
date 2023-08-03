@@ -1,0 +1,240 @@
+#!/usr/bin/env bash
+
+###########################################################################################################
+##
+##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-dbus
+##
+##  Purpose: Build GNU dbus
+##
+##  Updated: 08.03.23
+##
+##  Script version: 1.0
+##
+###########################################################################################################
+
+clear
+
+if [ "$EUID" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
+
+#
+# SET VARIABLES
+#
+
+script_ver=1.0
+archive_dir=dbus-1.15.6
+archive_url=https://dbus.freedesktop.org/releases/dbus/dbus-1.15.6.tar.xz
+archive_ext="${archive_url//*.}"
+cwd="$PWD"/dbus-build-script
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+
+printf "\n%s\n%s\n\n" \
+    "dbus build script - v$script_ver" \
+    '==============================================='
+
+#
+# CREATE OUTPUT DIRECTORY
+#
+
+if [ ! -d "$cwd" ]; then
+    mkdir -p "$cwd"
+fi
+
+#
+# SET THE C+CPP COMPILERS
+#
+
+export CC=gcc CXX=g++
+
+#
+# EXPORT COMPILER OPTIMIZATION FLAGS
+#
+
+export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
+
+#
+# EXPORT PKG_CONFIG_PATH
+#
+
+PKG_CONFIG_PATH="\
+$workspace/lib64/pkgconfig:\
+$workspace/lib/pkgconfig:\
+$workspace/lib/x86_64-linux-gnu/pkgconfig:\
+$workspace/share/pkgconfig:\
+$workspace/usr/lib/pkgconfig:\
+/lib64/pkgconfig:\
+/lib/pkgconfig:\
+/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib64/pkgconfig:\
+/usr/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/open-coarrays/openmpi/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/openmpi/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib64/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/share/pkgconfig:\
+/usr/share/pkgconfig\
+"
+
+#
+# CREATE FUNCTIONS
+#
+
+exit_fn()
+{
+    printf "\n%s\n\n%s\n\n" \
+        'Make sure to star this repository to show your support!' \
+        "$repo"
+    exit 0
+}
+
+fail_fn()
+{
+    printf "\n%s\n\n%s\n\n" \
+        "$1" \
+        "To report a bug create an issue at: $repo/issues"
+    exit 1
+}
+
+cleanup_fn()
+{
+    local choice dpkg_list
+
+    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
+        '============================================' \
+        '  Do you want to clean up the build files?  ' \
+        '============================================' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' choice
+
+    case "$choice" in
+        1)      sudo rm -fr "$cwd";;
+        2)      echo;;
+        *)
+                clear
+                printf "%s\n\n" 'Bad user input. Reverting script...'
+                sleep 3
+                unset choice
+                clear
+                cleanup_fn
+                ;;
+    esac
+}
+
+#
+# INSTALL REQUIRED APT PACKAGES
+#
+
+pkgs_fn()
+{
+    pkgs=("$1" autoconf autogen automake autopoint autotools-dev build-essential bzip2
+          ccache curl git libaudit-dev libintl-perl libtool libtool-bin lzip pkg-config
+          valgrind zlib1g-dev librust-polling-dev)
+
+    for i in ${pkgs[@]}
+    do
+        missing_pkg="$(dpkg -l | make $i)"
+
+        if [ -z "$missing_pkg" ]; then
+            missing_pkgs+=" $i"
+        fi
+    done
+
+    if [ -n "$missing_pkgs" ]; then
+        sudo apt -y install $missing_pkgs
+        sudo apt -y autoremove
+        clear
+    fi
+}
+
+#
+# TEST IF LIBICONV WAS MANUALLY INSTALLED OR BY APT
+#
+
+if [ -f /usr/local/bin/iconv ]; then
+    pkgs_fn
+    iconv_prefix=/usr/local
+elif [ -f /usr/bin/iconv ]; then
+    pkgs_fn
+    iconv_prefix=/usr
+else
+    pkgs_fn 'libiconv-hook-dev libiconv-hook1'
+    iconv_prefix=/usr
+fi
+
+#
+# GET PC TYPE
+#
+
+curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "$cwd/config.guess"
+pc_type="$(source "$cwd/config.guess")"
+
+#
+# DOWNLOAD THE ARCHIVE FILE
+#
+
+archive_name="$archive_dir.tar.$archive_ext"
+
+if [ ! -f "$cwd/$archive_name" ]; then
+    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
+fi
+
+#
+# CREATE OUTPUT DIRECTORY
+#
+
+if [ -d "$cwd/$archive_dir" ]; then
+    sudo rm -fr "$cwd/$archive_dir"
+fi
+mkdir -p "$cwd/$archive_dir/build"
+
+#
+# EXTRACT ARCHIVE FILES
+#
+
+if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
+    exit 1
+fi
+
+#
+# BUILD PROGRAM FROM SOURCE
+#
+
+cd "$cwd/$archive_dir" || exit 1
+cd build || exit 1
+../configure --prefix=/usr/local                    \
+             --{build,host}="$pc_type"              \
+             --enable-apparmor                      \
+             --enable-code-coverage                 \
+             --enable-epoll                         \
+             --enable-inotify                       \
+             --enable-qt-help=auto                  \
+             --enable-selinux                       \
+             --enable-systemd                       \
+             --enable-tests                         \
+             --enable-user-session                  \
+             --enable-x11-autolaunch                \
+             --with-pic                             \
+             --with-valgrind                        \
+             PKG_CONFIG="$(type -P pkg-config)"     \
+             PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
+make "-j$(nproc --all)"
+if ! sudo make install; then
+    echo
+    read -p 'Failure. Press enter to continue.'
+    clear
+    make distclean
+    exit 1
+fi
+
+# PROMPT USER TO CLEAN UP FILES
+cleanup_fn
+
+# SHOW EXIT MESSAGE
+exit_fn
