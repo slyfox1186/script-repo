@@ -6,10 +6,10 @@
 ######################################################################################
 
 gedit() { $(type -P gedit) "$@" &>/dev/null; }
-geds() { $(type -P sudo) -H -u root $(type -P gedit) "$@" &>/dev/null; }
+geds() { $(type -P sudo) -H -u root "$(type -P gedit)" "$@" &>/dev/null; }
 
 gted() { $(type -P gted) "$@" &>/dev/null; }
-geds() { $(type -P sudo) -H -u root $(type -P gted) "$@" &>/dev/null; }
+geds() { $(type -P sudo) -H -u root "$(type -P gted)" "$@" &>/dev/null; }
 
 ###################
 ## FIND COMMANDS ##
@@ -227,11 +227,11 @@ listd()
     local search_cache
 
     if [ -n "$1" ]; then
-        sudo apt list -- *$1*-dev | awk -F'/' '{print $1}'
+        sudo apt list -- "*$1*"-dev | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt list -- *$1*-dev | awk -F'/' '{print $1}'
+        sudo apt list -- "*$1*-dev" | awk -F'/' '{print $1}'
     fi
 }
 
@@ -242,11 +242,11 @@ list()
     local search_cache
 
     if [ -n "$1" ]; then
-        sudo apt list *$1* | awk -F'/' '{print $1}'
+        sudo apt list "*$1*" | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt list *$1* | awk -F'/' '{print $1}'
+        sudo apt list "*$1*" | awk -F'/' '{print $1}'
     fi
 }
 
@@ -619,9 +619,7 @@ imo()
 imow()
 {
     local apt_pkgs cnt_queue cnt_total cwd dimensions fext get_path missing_pkgs pip_lock random_dir v_noslash
-    clear
-
-    # THE FILE EXTENSION TO SEARCH FOR
+    # THE FILE EXTENSION TO SEARCH FOR (DO NOT INCLUDE A '.' WITH THE EXTENSION)
     fext=jpg
 
     #
@@ -631,17 +629,18 @@ imow()
     apt_pkgs=(sox libsox-dev)
     for i in ${apt_pkgs[@]}
     do
-        missing_pkg="$(sudo dpkg -l | grep "${i}")"
+        missing_pkg="$(dpkg -l | grep "${i}")"
         if [ -z "${missing_pkg}" ]; then
             missing_pkgs+=" ${i}"
         fi
     done
 
     if [ -n "${missing_pkgs}" ]; then
-        sudo apt -y install ${missing_pkgs}
+        sudo apt -y install "${missing_pkgs}"
         sudo apt -y autoremove
         clear
     fi
+    unset apt_pkgs i missing_pkg missing_pkgs
 
     #
     # REQUIRED PIP PACKAGES
@@ -651,12 +650,12 @@ imow()
     if [ -n "${pip_lock}" ]; then
         sudo rm "${pip_lock}"
     fi
-    if ! pip show google_speech &>/dev/null; then
-        pip install google_speech 2>/dev/null
+    missing_pkg="$(pip show "google_speech")"
+    if [ -z "${missing_pkg}" ]; then
+        pip install google_speech
     fi
-    unset apt_pkgs i missing_pkg missing_pkgs pip_lock
-    clear
 
+    unset p pip_lock pip_pkgs missing_pkg missing_pkgs
     # DELETE ANY USELESS ZONE IDENFIER FILES THAT SPAWN FROM COPYING A FILE FROM WINDOWS NTFS INTO A WSL DIRECTORY
     find . -type f -name "*:Zone.Identifier" -delete 2>/dev/null
 
@@ -676,42 +675,39 @@ imow()
         # IF YOUR SUB-DIRECTORY IS NOT NAMED "Pics" THEN CHANGE THE BELOW COMMAND AS NEEDED
         cd "${fdir//\/Pics\/Pics/\/Pics}" || exit 1
     done
-    unset i get_path fname_in fpath_full fdir
+    unset i
 
     for i in *.jpg
     do
         cnt_queue=$(( cnt_queue-1 ))
 
-cat <<EOF
-    ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+        cat <<EOF
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-    File Path: ${fpath//\/Pics\/Pics/\/Pics}
+File Path: ${fpath//\/Pics\/Pics/\/Pics}
 
-    Folder: $(basename "${PWD}")
+Folder: $(basename "${PWD}")
 
-    Total Files:    ${cnt_total}
-    Files in queue: ${cnt_queue}
+Total Files:    ${cnt_total}
+Files in queue: ${cnt_queue}
 
-    Converting:  ${i}
+Converting:  ${i}
 
-                 >> ${i%%.jpg}.mpc
-                
-                    >> ${i%%.jpg}.cache
-                   
-                       >> ${i%%.jpg}-IM.jpg
+         >> ${i%%.jpg}.mpc
 
-    ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+            >> ${i%%.jpg}.cache
+
+               >> ${i%%.jpg}-IM.jpg
+
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 EOF
-    echo
-
+        echo
         random_dir="$(mktemp -d)"
         dimensions="$(identify -format '%wx%h' "${i}")"
-        # RUN CONVERT COMMAND ON THE IMAGES
         convert "${i}" -monitor -filter Triangle -define filter:support=2 -thumbnail "${dimensions}" -strip \
             -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize 136 -quality 82 -define jpeg:fancy-upsampling=off \
             -auto-level -enhance -interlace none -colorspace sRGB "${random_dir}/${i%%.jpg}.mpc"
 
-        # CONVERT THE CACHED IMAGES FROM THE PREVIOUS COMMAND LINE INTO THE OPTIMIZED FINAL VERSION OF THE IMAGE
         for file in "${random_dir}"/*.mpc
         do
             if [ -f "${file}" ]; then
@@ -737,17 +733,14 @@ EOF
         clear
     done
 
-    # USE GOOGLE SPEECH TO ANNOUNCE THE RESULTS
     if [ "${?}" -eq '0' ]; then
         google_speech 'Image conversion completed.' 2>/dev/null
-        nohup nautilus -w "$HOME/Pictures/Pics" &>/dev/null &
         exit 0
     else
         echo
         google_speech 'Image conversion failed.' 2>/dev/null
         echo
-        read -p 'Press enter to open the pictures folder.'
-        nohup nautilus -w "$HOME/Pictures/Pics" &>/dev/null &
+        read -p 'Press enter to exit.'
         exit 1
     fi
 }
@@ -973,7 +966,7 @@ hw_mon()
         sudo apt -y install lm-sensors
     fi
 
-    # Add modprobe to system startup tasks if not already added    
+    # Add modprobe to system startup tasks if not already added
     found="$(grep -o 'drivetemp' '/etc/modules')"
     if [ -z "$found" ]; then
         echo 'drivetemp' | sudo tee -a '/etc/modules'
@@ -1234,7 +1227,7 @@ set_default()
         'Would you like to continue?' \
         '[1] Yes' \
         '[2] No'
-        
+
     read -p 'Your choices are (1 or 2): ' choice
     clear
 
@@ -1321,7 +1314,7 @@ tkapt()
 
     for i in ${list[@]}
     do
-        sudo killall -9 $i 2>/dev/null
+        sudo killall -9 "$i" 2>/dev/null
     done
 }
 
@@ -1379,7 +1372,7 @@ nhe()
     clear
     nohup "$1" &>/dev/null &
     exit
-    exit    
+    exit
 }
 
 nhse()
@@ -1404,7 +1397,7 @@ up_icon()
     for i in ${pkgs[@]}
     do
         if ! sudo dpkg -l "$i"; then
-            sudo apt -y install $i
+            sudo apt -y install "$i"
             clear
         fi
     done
@@ -1460,7 +1453,7 @@ jsize()
 {
     local random_dir size
     clear
-    
+
     random_dir="$(mktemp -d)"
     read -p 'Enter the image size (units in MB): ' size
     find . -size +"$size"M -type f -iname "*.jpg" > "$random_dir/img-sizes.txt"
