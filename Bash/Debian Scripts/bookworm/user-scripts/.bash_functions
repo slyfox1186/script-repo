@@ -620,6 +620,8 @@ imow()
 {
     local apt_pkgs cnt_queue cnt_total dimensions fext missing_pkgs pip_lock random_dir tmp_file v_noslash
 
+    clear
+
     # THE FILE EXTENSION TO SEARCH FOR (DO NOT INCLUDE A '.' WITH THE EXTENSION)
     fext=jpg
 
