@@ -1,169 +1,254 @@
-#!/bin/bash
-# shellcheck disable=SC2016,SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
+#!/usr/bin/env bash
 
-#####################################
+#################################################################################################################################
 ##
-## Install python v3.7
+##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-python
 ##
-## Supported OS: Linux Debian based
+##  Purpose: Install Python3 v3.11.4 from source code released from the official website: https://www.python.org/downloads
 ##
-#####################################
+##  Features: Static build, OpenSSL backend
+##
+##  Updated: 08.03.23
+##
+##  Script version: 1.2
+##
+#################################################################################################################################
 
 clear
 
 if [ "$EUID" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo'
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
     exit 1
 fi
 
-##
-## define global variables
-##
+#
+# SET VARIABLES
+#
 
-parent_dir="$PWD"/python-build
-tar_url='https://github.com/python/cpython/archive/refs/tags/3.7.tar.gz'
+script_ver=1.2
+archive_dir=python-3.11.4
+archive_url=https://www.python.org/ftp/python/3.11.4/Python-3.11.4.tar.xz
+archive_ext="${archive_url//*.}"
+cwd="$PWD"/python3-build
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+repo=https://github.com/slyfox1186/script-repo
 
-##
-## Define functions
-##
+printf "\n%s\n%s\n\n" \
+    "Python3 Build Script - v$script_ver" \
+    '==============================================='
 
-fail_fn()
-{
-    printf "\n%s\n\n%s\n\n" \
-        "$1" \
-        'Please submit a support ticket in GitHub.'
-    exit 1
-}
+#
+# CREATE OUTPUT DIRECTORY
+#
+
+if [ ! -d "$cwd" ]; then
+    mkdir -p "$cwd"
+fi
+
+#
+# SET THE C+CPP COMPILERS
+#
+
+export CC=gcc-13 CXX=g++-13
+
+#
+# EXPORT COMPILER OPTIMIZATION FLAGS
+#
+
+export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
+
+#
+# SET PATH
+#
+
+PATH="\
+/usr/lib/ccache:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
+/usr/local/sbin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin:\
+/usr/local/cuda/bin:\
+/snap/bin\
+"
+export PATH
+
+#
+# SET PKG_CONFIG_PATH
+#
+
+PKG_CONFIG_PATH="\
+$workspace/lib/pkgconfig:\
+$workspace/lib64/pkgconfig:\
+$workspace/share/pkgconfig:\
+$workspace/lib/x86_64-linux-gnu/pkgconfig:\
+$workspace/usr/lib/pkgconfig:\
+/lib/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib64/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/local/share/pkgconfig:\
+/usr/share/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/pkgconfig\
+"
+export PKG_CONFIG_PATH
+
+
+LD_LIBRARY_PATH="\
+$LD_LIBRARY_PATH:\
+/usr/local/lib64/:\
+/usr/local/lib/:\
+/usr/lib64/:\
+/usr/lib/:\
+lib64:\
+lib:\
+/usr/local/cuda-12.2/nvvm/lib64\
+"
+export LD_LIBRARY_PATH
+
+#
+# CREATE FUNCTIONS
+#
 
 exit_fn()
 {
-    clear
-    printf "%s\n\n%s\n\n" \
+    printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
-        'https://github.com/slyfox1186/script-repo/'
+        "$repo"
     exit 0
+}
+
+fail_fn()
+{
+    printf "%s\n\n" "$1"
+    exit 1
+}
+
+show_ver_fn()
+{
+    save_ver="$(python3 -V | grep -Eo '[0-9\.]+$')"
+    clear
+    printf "%s\n\n" "The updated Python3 version is: $save_ver"
+    sleep 3
 }
 
 cleanup_fn()
 {
-    printf "\n%s\n\n%s\n%s\n\n" \
-        'Do you want to clean up the build files?' \
+    local choice dpkg_list
+
+    unset archive_dir archive_ext archive_name archive_url CC CXX i missing_pkg missing_pkgs pc_type pem_target pkgs script_ver
+
+    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
+        '============================================' \
+        '  Do you want to clean up the build files?  ' \
+        '============================================' \
         '[1] Yes' \
         '[2] No'
-        read -p 'Your choices are (1 or 2): ' pychoice
-        case "$pychoice" in
-            1)
-                    cd "$parent_dir" || exit 1
-                    cd ../ || exit 1
-                    sudo rm -r 'python-build'
-                    exit_fn
-                    ;;
-            2)
-                    exit_fn
-                    ;;
-            *)
-                    read -p 'Bad user input. Press enter to try again'
-                    clear
-                    cleanup_fn
-                    ;;
-        esac         
+    read -p 'Your choices are (1 or 2): ' choice
+
+    case "$choice" in
+        1)      sudo rm -fr "$cwd";;
+        2)      echo;;
+        *)
+                clear
+                printf "%s\n\n" 'Bad user input. Reverting script...'
+                sleep 3
+                unset choice
+                clear
+                cleanup_fn
+                ;;
+    esac
 }
 
-success_fn()
-{
-    echo
-    printf "\n%s\n\n" \
-        'The installed python version is shown below.'
-    python3 --version
-    cleanup_fn
-}
+pkgs=(autoconf autogen automake binutils build-essential ccache cmake curl git libgnome-desktop-3-dev
+      libexempi-dev libportal-dev libportal-gtk3-dev libportal-gtk4-dev libgnome-desktop-4-dev libhandy-1-dev
+      libpeas-dev libpeasd-3-dev libssl-dev libtool libtool-bin m4 meson nasm ninja-build openssl python3 yasm
+      itstool zlib1g-dev)
 
-installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
-
-##
-## Create build folders
-##
-
-mkdir -p "$parent_dir"
-cd "$parent_dir" || exit 1
-
-##
-## Install required apt packages
-##
-
-pkgs=(build-essential gdb lcov libbz2-dev libffi-dev libgdbm-compat-dev libgdbm-dev \
-      liblzma-dev libncurses5-dev libreadline6-dev libsqlite3-dev libssl-dev lzma \
-      lzma-dev make pkg-config tk-dev uuid-dev zlib1g-dev)
-
-for pkg in ${pkgs[@]}
+for i in ${pkgs[@]}
 do
-    if ! installed "$pkg"; then
-        missing_pkgs+=" $pkg"
+    missing_pkg="$(dpkg -l | grep "$i")"
+
+    if [ -z "$missing_pkg" ]; then
+        missing_pkgs+=" $i"
     fi
 done
 
-if [ -n "${missing_pkgs-}" ]; then
-    printf "%s\n%s\n%s\n\n" \
-        'Installing required apt packages' \
-        '========================================' \
-        '$ sudo apt-get -q -y install'
-        for i in "$missing_pkgs"
-    do
-        sudo apt-get -qq -y install $i
-    done
+if [ -n "$missing_pkgs" ]; then
+    sudo apt -y install $missing_pkgs
+    sudo apt -y autoremove
+    clear
+fi
+unset i missing_pkgs
+
+#
+# GET PC TYPE
+#
+
+curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "$cwd/config.guess"
+pc_type="$(source "$cwd/config.guess")"
+
+#
+# DOWNLOAD THE ARCHIVE FILE
+#
+
+archive_name="$archive_dir.tar.$archive_ext"
+
+if [ ! -f "$cwd/$archive_name" ]; then
+    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
-##
-## Download the python3.11.3 tar file and extract the files into the src directory
-##
+#
+# CREATE OUTPUT DIRECTORY
+#
 
-if ! curl -Lso "$parent_dir"/python3.11.3.tar.gz "$tar_url"; then
-    fail_fn 'The tar file failed to download.'
-else
-    if [ -d "$parent_dir"/python3.11.3 ]; then
-        rm -r "$parent_dir"/python3.11.3
-    else
-        mkdir -p "$parent_dir"/python3.11.3
-        if ! tar -zxf "$parent_dir"/python3.11.3.tar.gz -C "$parent_dir"/python3.11.3 --strip-components 1; then
-            fail_fn 'The tar command failed to extract any files.'
-        fi
-    fi
+if [ -d "$cwd/$archive_dir" ]; then
+    sudo rm -fr "$cwd/$archive_dir"
+fi
+mkdir -p "$cwd/$archive_dir/build"
+
+#
+# EXTRACT ARCHIVE FILES
+#
+
+if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
+    exit 1
 fi
 
-##
-## Change into the source directory
-##
+#
+# BUILD PROGRAM FROM SOURCE
+#
 
-cd "$parent_dir"/python3.11.3 || exit 1
+cd "$cwd/$archive_dir" || exit 1
+cd build || exit 1
+../configure --prefix=/usr/local                                                                                                                      \
+            --{build,host}="$pc_type"                                                                                                                 \
+            --enable-optimizations                                                                                                                    \
+            --with-lto=yes                                                                                                                            \
+            --with-openssl=/usr/lib/ssl                                                                                                               \
+            --with-pkg-config=yes                                                                                                                     \
+            --with-openssl-rpath=auto                                                                                                                 \
+            --with-ssl-default-suites=openssl                                                                                                         \
+            PKG_CONFIG="$(type -P pkg-config)"                                                                                                        \
+            PKG_CONFIG_PATH="$PKG_CONFIG_PATH"                                                                                                        \
+            CPPFLAGS='-I/usr/include/openssl -I/usr/local/include -I/usr/include'                                                                     \
+            LDFLAGS="-L/lib/x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu -L/usr/local/lib -L/usr/local/lib64 -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib" \
+            LIBS='-L/usr/lib64 -lssl -lcrypto -lz -ldl -pthread -L/usr/lib/x86_64-linux-gnu -lz'                                                      \
+            CFLAGS='-I/usr/include/openssl'
+make "-j$(nproc --all)"
+sudo make install
 
-##
-## Run the bootstrap file to generate any required install files
-##
+# SHOW THE NEW VERSION
+show_ver_fn
 
-printf "%s\n%s\n%s\n\n" \
-    'Configuring system settings' \
-    '========================================' \
-    '$ ./configure --prefix=/usr/local --enable-optimizations --with-pkg-config=yes'
-./configure -q --prefix=/usr/local --enable-optimizations --with-pkg-config=yes
+# PROMPT USER TO CLEAN UP FILES
+cleanup_fn
 
-##
-## Run the ninja commands to install python3.11.3 system-wide
-##
-
-printf "%s\n%s\n%s\n\n" \
-    'Make generating install files' \
-    '========================================' \
-    "\$ make -j$(nproc --all)"
-if make "-j$(nproc --all)" &>/dev/null; then
-    printf "%s\n%s\n%s" \
-        'Make installing the system binaries' \
-        '========================================' \
-        '$ sudo make install'
-    if ! sudo make install &>/dev/null; then
-        fail_fn 'Make failed to install python3.11.3.'
-    else
-        success_fn
-    fi
-else
-    fail_fn 'Make failed to generate the install files.'
-fi
+# SHOW EXIT MESSAGE
+exit_fn
