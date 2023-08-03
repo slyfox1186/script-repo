@@ -1,14 +1,31 @@
 #!/usr/bin/env bash
 
+###########################################################################################################
+##
+##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-texinfo
+##
+##  Purpose: Build GNU texinfo
+##
+##  Updated: 08.03.23
+##
+##  Script version: 1.1
+##
+###########################################################################################################
+
 clear
 
+if [ "$EUID" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
+
 #
-# SET PROGRAM NAME + VERSION
+# SET VARIABLES
 #
 
-script_ver=1.0
-archive_dir=texinfo-7.0.3
-archive_url=https://ftp.gnu.org/gnu/texinfo/texinfo-7.0.3.tar.xz
+script_ver=1.1
+archive_dir=texinfo-4.3
+archive_url=https://ftp.gnu.org/gnu/texinfo/texinfo-4.3.tar.gz
 archive_ext="${archive_url//*.}"
 cwd="$PWD"/texinfo-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
@@ -118,7 +135,7 @@ pkgs_fn()
           libgpg-error-dev libgtk-4-doc libgpgme-dev libicu-dev libjemalloc-dev libkrb5-3 libldap2-dev libldap-dev liblttng-ust-dev
           liblzma-dev libmbedtls-dev libnghttp2-dev libntlm0-dev libparted-dev libpng-dev libpsl-dev librtmp-dev librust-bzip2-dev
           librust-openssl-dev libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev libtinfo5 libtinfo-dev libtool libtool-bin
-          libunistring-dev libunwind8 libuv1-dev libxml2-dev libzstd-dev m4 nettle-dev openjdk-17-jdk-headless openssh-server
+          libunistring-dev libunwind8 libuv1-dev libxml2-dev lzip libzstd-dev m4 nettle-dev openjdk-17-jdk-headless openssh-server
           pkg-config python3-dev python3-numpy python3-packaging python3-pip python3-pytest python3-setuptools python3-wheel
           re2c rsync unzip valgrind zip zlib1g-dev)
 
