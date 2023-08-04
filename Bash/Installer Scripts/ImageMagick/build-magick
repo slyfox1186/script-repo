@@ -5,22 +5,23 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo/edit/main/shell/installers/imagemagick/build-magick
 ##
-##  Purpose: Builds ImageMagick 7 from source code obtained
-##           from the official ImageMagick GitHub repository.
+##  Purpose: Builds ImageMagick 7 from the source code obtained
+##           from the official GitHub repository.
 ##
 ##  Function: ImageMagick is the leading open-source command line
 ##            image processor. It can blur, sharpen, warp, reduce
 ##            total file size, ect... The possibilities are vast and wide.
 ##
 ##  Method: The script will search GitHub for the latest released version
-##          and upon execution will import the info into the script.
+##          and upon execution will import the information into the script.
 ##
 ##  Added: Debian OS support for versions - 10 / 11 / 12
 ##  Added: A browser user-agent string to the curl command
+##  Added: A CPPFLAGS variable to ImageMagick's configure script.
 ##
-##  Updated: 07.31.23
+##  Updated: 08.4.23
 ##
-##  Script Version: 2.4
+##  Script Version: 2.5
 ##
 #################################################################################
 
@@ -35,7 +36,7 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-script_version=2.4
+script_version=2.5
 progname="${0:2}"
 cwd="$PWD"/magick-build-script
 packages="$cwd"/packages
@@ -43,7 +44,7 @@ workspace="$cwd"/workspace
 install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 repo='https://github.com/slyfox1186/script-repo'
-debug=OFF # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP WITH TROUBLESHOOTING DURING THE BUILD
+debug=ON # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP WITH TROUBLESHOOTING DURING THE BUILD
 
 #
 # CREATE OUTPUT DIRECTORIES
@@ -782,7 +783,7 @@ if build 'imageMagick' "$g_ver"; then
     execute autoreconf -fi -I /usr/share/aclocal
     mkdir build
     cd build || exit 1
-    ../configure --prefix="$install_dir"                         \
+    echo ../configure --prefix="$install_dir"                         \
                  --{build,host,target}="$pc_type"                \
                  --enable-ccmalloc                               \
                  --enable-hdri                                   \
@@ -805,7 +806,8 @@ if build 'imageMagick' "$g_ver"; then
                  --with-quantum-depth=16                         \
                  --without-autotrace                             \
                  PKG_CONFIG="$(type -P pkg-config)"              \
-                 PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
+                 PKG_CONFIG_PATH="$PKG_CONFIG_PATH"              \
+                 CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include"
     execute make "-j$cpu_threads"
     execute sudo make install
 fi
