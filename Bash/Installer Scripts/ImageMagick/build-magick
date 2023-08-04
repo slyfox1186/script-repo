@@ -814,7 +814,7 @@ fi
 create_links_fn
 
 # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE MAGICK COMMAND WILL NOT WORK
-sudo ldconfig 2>/dev/null
+sudo ldconfig
 
 # SHOW THE NEWLY INSTALLED MAGICK VERSION
 show_magick_version
