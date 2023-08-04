@@ -5,8 +5,7 @@
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-nasm
 ##
 ##  Purpose: Build nasm
-##
-##  Updated: 08.04.23
+####  Updated: 08.04.23
 ##
 ##  Script version: 1.0
 ##
@@ -264,7 +263,6 @@ if build 'nasm' '2.16.01'; then
     sh autogen.sh
     sh configure --prefix=/usr/local                      \
                          --{build,host,target}="$pc_type" \
-                         --enable-sanitizer               \
                          --disable-pedantic               \
                          --enable-ccache
     execute make "-j$(nproc --all)"
