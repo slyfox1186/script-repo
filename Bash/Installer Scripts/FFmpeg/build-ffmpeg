@@ -1175,9 +1175,8 @@ if [ "$os_version" != '18.04' ]; then
 fi
 
 # MANUALLY UPDATE THIS FROM TIME TO TIME ($g_ver returns = 1.7.0beta88)
-pre_check_ver 'glennrp/libpng' '1' 'T'
-if build 'libpng' '1.6.39'; then
-    download "https://codeload.github.com/glennrp/libpng/tar.gz/refs/tags/v$g_ver" "libpng-$g_ver.tar.gz"
+if build 'libpng' '1.6.40'; then
+    download 'https://github.com/glennrp/libpng/archive/refs/tags/v1.6.40.tar.gz' 'libpng-1.6.40.tar.gz'
     execute autoupdate
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" --disable-shared --enable-{hardware-optimizations,unversioned-links}
@@ -1186,7 +1185,7 @@ if build 'libpng' '1.6.39'; then
     execute make install-library-links
     execute make install
     execute make distclean
-    build_done 'libpng' '1.6.39'
+    build_done 'libpng' '1.6.40'
 fi
 
 pre_check_ver 'nkoriyama/aribb24' '1' 'T'
