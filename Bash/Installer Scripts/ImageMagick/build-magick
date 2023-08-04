@@ -406,8 +406,8 @@ pkgs_fn()
           curl flex gettext gimp-data git gperf imagemagick jq libc6 libc6-dev libfreetype-dev libgc-dev
           libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev libheif-dev libltdl-dev libpango1.0-dev
           libpaper-dev libpng-dev libpstoedit-dev libraw-dev librsvg2-dev librust-bzip2-dev libsdl2-dev
-          libstdc++-12-dev libtcmalloc-minimal4 libtool libtool-bin libxml2-dev libzip-dev m4 meson nasm
-          ninja-build opencl-headers opencl-c-headers php-cli pstoedit xmlto yasm)
+          libstdc++-12-dev libtcmalloc-minimal4 libtool libtool-bin libnuma-dev libxml2-dev libzip-dev
+          m4 meson nasm ninja-build opencl-headers opencl-c-headers php-cli pstoedit xmlto yasm)
 
     for i in ${pkgs[@]}
     do
