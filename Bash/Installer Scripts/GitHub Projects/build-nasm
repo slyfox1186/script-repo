@@ -4,7 +4,7 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-nasm
 ##
-##  Purpose: Build GNU libtool
+##  Purpose: Build nasm
 ##
 ##  Updated: 08.04.23
 ##
@@ -30,7 +30,7 @@ repo=https://github.com/slyfox1186/script-repo
 debug=OFF
 
 printf "\n%s\n%s\n\n" \
-    "libtool build script - v$script_ver" \
+    "nasm build script - v$script_ver" \
     '==============================================='
 
 #
