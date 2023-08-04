@@ -57,9 +57,6 @@ fail_fn()
     exit 1
 }
 
-# CLEANUP DOWNLOAD FILES
-cleanup_fn() { sudo rm -fr "$cwd" ; }
-
 # PRINT 7-ZIP VERSION
 version_fn()
 {
@@ -111,8 +108,8 @@ fi
 # SHOW THE NEWLY INSTALLED 7-ZIP VERSION
 version_fn
 
-# PROMPT THE USER TO CLEAN UP THE INSTALL FILES
-cleanup_fn
+# CLEAN UP THE INSTALL FILES
+sudo rm -fr "$cwd"
 
 # SHOW THE EXIT MESSAGE
 exit_fn
