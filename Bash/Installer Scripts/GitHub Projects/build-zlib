@@ -287,6 +287,12 @@ chmod +x "$cwd/config.guess"
 pc_type="$(source "$cwd/config.guess")"
 
 #
+# INSTALL APT PACKAGES
+#
+
+pkgs_fn
+
+#
 # BUILD PROGRAM FROM SOURCE
 #
 
