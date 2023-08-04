@@ -1135,14 +1135,19 @@ fi
 
 if build 'nasm' '2.16.01'; then
     download 'https://www.nasm.us/pub/nasm/stable/nasm-2.16.01.tar.xz'
-    execute autoupdate
-    execute ./configure --prefix="$workspace"
+    execute sh autogen.sh
+    execute sh configure --prefix="$workspace"            \
+                         --{build,host,target}="$pc_type" \
+                         --enable-sanitizer               \
+                         --disable-pedantic               \
+                         --enable-ccache
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
     build_done 'nasm' '2.16.01'
 fi
 
+    sh configure --prefix=/usr/local
 if build 'giflib' '5.2.1'; then
     download 'https://cfhcable.dl.sourceforge.net/project/giflib/giflib-5.2.1.tar.gz'
     # PARELLEL BUILDING NOT AVAILABLE FOR THIS LIBRARY
