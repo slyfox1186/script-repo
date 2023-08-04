@@ -2,9 +2,9 @@
 
 ###########################################################################################################
 ##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-yasm
+##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-xml2
 ##
-##  Purpose: Build GNU libtool
+##  Purpose: Build GNU xml2
 ##
 ##  Updated: 08.04.23
 ##
@@ -284,7 +284,7 @@ pc_type="$(source "$cwd/config.guess")"
 
 pkgs_fn
 
-#build-xml2
+#
 # BUILD PROGRAM FROM SOURCE
 #
 
