@@ -27,15 +27,13 @@
 ##
 ##  Last Update: 07.11.23
 ##
-##    Added: Debian OS Support for Bookworm (12)
-##    Added: cyanrip
-##    Added: vapoursynth
-##    Added: cunit support library for libmysofa
-##    Added: libcurl support library for cyanrip
+##  Added: Debian OS Support for Bookworm (12)
+##  Added: cyanrip
+##  Added: vapoursynth
+##  Added: cunit support library for libmysofa
+##  Added: libcurl support library for cyanrip
 ##
-##    Updated: the CUDA SDK Toolkit to version 12.2.0
-##
-##    Fixed:
+##  Updated: the CUDA SDK Toolkit to version 12.2.0
 ##
 ##  Script version: v2.2
 ##
