@@ -1620,7 +1620,7 @@ if build 'libfdk-aac' "$g_ver"; then
 fi
 ffmpeg_libraries+=('--enable-libfdk-aac')
 
-pre_check_ver 'knik0/libfaac' '1' 'R'
+pre_check_ver 'knik0/faac' '1' 'R'
 g_ver1="${g_ver//er_/}"
 g_ver1="${g_ver//\./_}"
 g_ver="$(echo "$g_ver" | sed 's/er_//g' | sed 's/_/./g')"
