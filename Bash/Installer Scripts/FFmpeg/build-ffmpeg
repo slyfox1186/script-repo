@@ -1934,7 +1934,7 @@ if build 'amf' "$g_sver"; then
     download "https://codeload.github.com/GPUOpen-LibrariesAndSDKs/AMF/tar.gz/refs/tags/v$g_ver" "amf-$g_sver.tar.gz"
     execute rm -fr "$workspace"/include/AMF
     execute mkdir -p "$workspace"/include/AMF
-    execute cp -fr "$packages"/AMF-"$g_sver"/amf/public/include/* "$workspace"/include/AMF
+    execute cp -fr "$packages"/amf-"$g_sver"/amf/public/include/* "$workspace"/include/AMF
     build_done 'amf' "$g_sver"
 fi
 ffmpeg_libraries+=('--enable-amf')
