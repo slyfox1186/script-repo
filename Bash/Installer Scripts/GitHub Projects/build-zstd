@@ -155,7 +155,7 @@ fi
 #
 
 cd "$cwd/$archive_dir/build/meson" || exit 1
-meson setup build --prefix=/usr            \
+meson setup build --prefix=/usr/local      \
                   --buildtype=release      \
                   --default-library=static \
                   --strip
