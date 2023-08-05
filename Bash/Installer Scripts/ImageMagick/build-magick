@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # shellcheck disable=SC1091,SC2034,SC2046,SC2066,SC2068,SC2086,SC2119,SC2162,SC2181
 
 #################################################################################
@@ -783,7 +783,7 @@ if build 'imageMagick' "$g_ver"; then
     execute autoreconf -fi -I /usr/share/aclocal
     mkdir build
     cd build || exit 1
-    echo ../configure --prefix="$install_dir"                         \
+    ../configure --prefix="$install_dir"                         \
                  --{build,host,target}="$pc_type"                \
                  --enable-ccmalloc                               \
                  --enable-hdri                                   \
