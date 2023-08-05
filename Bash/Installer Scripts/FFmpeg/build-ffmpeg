@@ -21,11 +21,13 @@
 ##
 ##  GeForce CUDA:
 ##
+##  Updated: Version to 12.2.1
+##
 ##    - If the cuda libraries are not installed (for Geforce graphics cards only) the user
 ##    - will be prompted by the script to install them so that hardware acceleration is
 ##    - enabled when compiling FFmpeg
 ##
-##  Last Update: 07.11.23
+##  Last Update: 08.05.23
 ##
 ##  Added: Debian OS Support for Bookworm (12)
 ##  Added: cyanrip
@@ -35,7 +37,7 @@
 ##
 ##  Updated: the CUDA SDK Toolkit to version 12.2.0
 ##
-##  Script version: v2.2
+##  Script version: v2.3
 ##
 ############################################################################################
 
@@ -44,9 +46,9 @@
 #
 
 script_name="${0:2}"
-script_ver=2.2
+script_ver=2.3
 ffmpeg_ver=6.0
-cuda_ver=12.2.0
+cuda_ver=12.2.1
 cwd="$PWD"/ffmpeg-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
@@ -60,8 +62,9 @@ LDEXEFLAGS=
 EXTRALIBS='-ldl -lpthread -lm -lz'
 ffmpeg_libraries=()
 latest=false
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
-debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=ON # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
 # CREATE THE OUTPUT DIRECTORIES
@@ -152,10 +155,10 @@ download()
         echo "The file \"$dl_file\" is already downloaded."
     else
         echo "Downloading \"$dl_url\" saving as \"$dl_file\""
-        if ! curl -Lso "$target_file" "$dl_url"; then
+        if ! curl -A "$user_agent" -Lso "$target_file" "$dl_url"; then
             printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
-            if ! curl -Lso "$target_file" "$dl_url"; then
+            if ! curl -A "$user_agent" -Lso "$target_file" "$dl_url"; then
                 fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
             fi
         fi
@@ -639,19 +642,19 @@ cuda_download_fn()
 {
     clear
 
-    local cuda_dist_choice
+    local cuda_dist_choice cuda_url
 
      mkdir -p "$packages/nvidia-cuda"
-     
+
      printf "%s\n\n%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n\n" \
         'Pick your Linux distro from the list below:' \
         'Supported architecture: x86_64' \
         '[1] Debian 10' \
         '[2] Debian 11' \
-        '[4] Ubuntu 20.04' \
-        '[5] Ubuntu 22.04' \
-        '[6] Ubuntu WSL' \
-        '[7] Skip this'
+        '[3] Ubuntu 20.04' \
+        '[4] Ubuntu 22.04' \
+        '[5] Ubuntu WSL' \
+        '[6] Skip this'
 
     read -p 'Your choices are (1 to 7): ' cuda_dist_choice
     clear
@@ -659,41 +662,48 @@ cuda_download_fn()
     cuda_url='https://developer.download.nvidia.com/compute/cuda'
 
     case "$cuda_dist_choice" in
-        1)
-            wget --show progress -cqO "$packages/nvidia-cuda/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-debian10-12-2-local_12.2.0-535.54.03-1_amd64.deb"
-            sudo dpkg -i "$packages/nvidia/cuda-$cuda_ver.deb"
+        1)cuda_dist_choice
+            wget --show progress -cqO "$packages/nvidia-cuda/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-debian10-12-2-local_12.2.1-535.86.10-1_amd64.deb"
+            sudo dpkg -i "$packages/nvidia-cuda/cuda-$cuda_ver.deb"
             sudo cp -f /var/cuda-repo-debian10-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
             sudo add-apt-repository -y contrib
             ;;
         2)
-            wget --show progress -cqO "$packages/nvidia-cuda/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-debian11-12-2-local_12.2.0-535.54.03-1_amd64.deb"
-            sudo dpkg -i "$packages/nvidia/cuda-$cuda_ver.deb"
+            wget --show progress -cqO "$packages/nvidia-cuda/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-debian11-12-2-local_12.2.1-535.86.10-1_amd64.deb"
+            sudo dpkg -i "$packages/nvidia-cuda/cuda-$cuda_ver.deb"
             sudo cp -f /var/cuda-repo-debian11-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
             sudo add-apt-repository -y contrib
             ;;
         3)
-            wget --show progress -cqO "$packages/nvidia-cuda/cuda-ubuntu2204.pin" "$cuda_url/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin"
-            sudo mv "$packages/nvidia/cuda-ubuntu2204.pin" /etc/apt/preferences.d/cuda-repository-pin-600
-            wget --show progress -cqO "$packages/nvidia/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-ubuntu2204-12-2-local_12.2.0-535.54.03-1_amd64.deb"
-            sudo dpkg -i "$packages/nvidia/cuda-$cuda_ver.deb"
-            sudo cp -f /var/cuda-repo-ubuntu2204-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
-            ;;
-        4)
             wget --show progress -cqO "$packages/nvidia-cuda/cuda-ubuntu2004.pin" "$cuda_url/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin"
-            sudo mv "$packages/nvidia/cuda-ubuntu2004.pin" /etc/apt/preferences.d/cuda-repository-pin-600
-            wget --show progress -cqO "$packages/nvidia/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-ubuntu2004-12-2-local_12.2.0-535.54.03-1_amd64.deb"
+            sudo mv "$packages/nvidia-cuda/cuda-ubuntu2004.pin" /etc/apt/preferences.d/cuda-repository-pin-600
+            wget --show progress -cqO "$packages/nvidia/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-ubuntu2004-12-2-local_12.2.1-535.86.10-1_amd64.deb"
             sudo dpkg -i "$packages/nvidia/cuda-$cuda_ver.deb"
             sudo cp -f /var/cuda-repo-ubuntu2004-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
             ;;
+        4)
+            wget --show progress -cqO "$packages/nvidia-cuda/cuda-ubuntu2204.pin" "$cuda_url/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin"
+            sudo mv "$packages/nvidia-cuda/cuda-ubuntu2204.pin" /etc/apt/preferences.d/cuda-repository-pin-600
+            wget --show progress -cqO "$packages/nvidia/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-ubuntu2204-12-2-local_12.2.1-535.86.10-1_amd64.deb"
+            sudo dpkg -i "$packages/nvidia/cuda-$cuda_ver.deb"
+            sudo cp -f /var/cuda-repo-ubuntu2204-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
+            ;;
         5)
             wget --show progress -cqO "$packages/nvidia-cuda/cuda-wsl-ubuntu.pin" "$cuda_url/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin"
-            sudo mv "$packages/nvidia/cuda-wsl-ubuntu.pin" /etc/apt/preferences.d/cuda-repository-pin-600
-            wget --show progress -cqO "$packages/nvidia/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-wsl-ubuntu-12-2-local_12.2.0-1_amd64.deb"
+            sudo mv "$packages/nvidia-cuda/cuda-wsl-ubuntu.pin" /etc/apt/preferences.d/cuda-repository-pin-600
+            wget --show progress -cqO "$packages/nvidia/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-wsl-ubuntu-12-2-local_12.2.1-1_amd64.deb"
             sudo dpkg -i "$packages/nvidia/cuda-$cuda_ver.deb"
             sudo cp -f /var/cuda-repo-wsl-ubuntu-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
             ;;
     6)      exit_fn;;
-    *)      fail_fn 'Bad user input.';;
+    *)
+            clear
+            fail_fn 'Bad user input. Resetting script...'
+            sleep 2
+            unset cuda_dist_choice
+            clear
+            cuda_download_fn
+            ;;
     esac
 
     # UPDATE THE APT PACKAGES THEN INSTALL THE CUDA-SDK-TOOLKIT
@@ -880,7 +890,7 @@ install_libjxl_fn()
 
 download_libjxl_fn()
 {
-    if ! curl -Lso "$packages"/libjxl.tar.gz "$1"; then
+    if ! curl -A "$user_agent" -Lso "$packages"/libjxl.tar.gz "$1"; then
         fail_fn 'Failed to download the libjxl archive: $packages/libjxl.tar.gz'
     fi
 }
@@ -990,13 +1000,13 @@ patch_fn()
     patch2="$vvc_patch_url/0002-cmake-allow-installing-apps.patch"
     patch3="$vvc_patch_url/0003-CMake-add-USE_CCACHE-variable-to-disable-using-found.patch"
 
-    if ! curl -Lso vvc_patch1.patch $patch1; then
+    if ! curl -A "$user_agent" -Lso vvc_patch1.patch $patch1; then
         fail_fn "Failed to download vvc patch 1: $patch1"
     fi
-    if ! curl -Lso vvc_patch2.patch $patch2; then
+    if ! curl -A "$user_agent" -Lso vvc_patch2.patch $patch2; then
         fail_fn "Failed to download vvc patch 2: $patch2"
     fi
-    if ! curl -Lso vvc_patch3.patch $patch3; then
+    if ! curl -A "$user_agent" -Lso vvc_patch3.patch $patch3; then
         fail_fn "Failed to download vvc patch 3: $patch3"
     fi
 }
@@ -1043,7 +1053,19 @@ if build 'm4' 'latest'; then
     pc_type="$(build-aux/config.guess)"
     execute ./configure --prefix="$workspace" --{build,host}="$pc_type" --disable-nls \
         --enable-c++ --enable-threads=posix --with-dmalloc --with-libiconv-prefix=/usr
-    execute make "-j$cpu_threads"
+    execute make "-j$cpu_threads"cd "$cwd/$archive_dir/build" || exit 1
+../configure --prefix=/usr                      \
+             --enable-indirect-deps             \
+             --with-pc-path="$PKG_CONFIG_PATH"  \
+             --with-pic                         \
+             PKG_CONFIG="$(type -P pkg-config)" \
+             PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
+make "-j$(nproc --all)"
+if ! sudo make install; then
+    make distclean
+    printf "\n%s\n\n" 'Failed to install pkg-config.'
+    exit 1
+fi
     execute make install
     execute make distclean
     build_done 'm4' 'latest'
@@ -1711,7 +1733,7 @@ if build 'libtheora' "$g_ver1"; then
     chmod +x configure.patched
     execute mv configure.patched configure
     execute rm config.guess
-    execute curl -Lso config.guess 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+    execute curl -A "$user_agent" -Lso config.guess 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
     chmod +x config.guess
     execute ./configure --prefix="$workspace" --disable-{asm,examples,oggtest,spec,shared,vorbistest} \
         --with-{ogg-includes="$workspace"/include,ogg-libraries="$workspace"/lib,vorbis-includes="$workspace"/include,vorbis-libraries="$workspace"/lib}
