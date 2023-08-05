@@ -6,7 +6,7 @@
 ##
 ##  Purpose: Build GNU libtool
 ##
-##  Updated: 08.04.23
+##  Updated: 08.05.23
 ##
 ##  Script version: 1.0
 ##
@@ -32,7 +32,7 @@ user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 repo=https://github.com/slyfox1186/script-repo
 
 printf "\n%s\n%s\n\n" \
-    "libtool build script - v$script_ver" \
+    "libtool Build Script - v$script_ver" \
     '==============================================='
 
 #
@@ -49,12 +49,6 @@ fi
 
 export CC='ccache gcc'
 export CXX='ccache g++'
-
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 #
 # SET PATH
@@ -74,6 +68,12 @@ $HOME/.local/bin:\
 /snap/bin\
 "
 export PATH
+
+#
+# SET COMPILER OPTIMIZATION FLAGS
+#
+
+export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 #
 # CREATE FUNCTIONS
@@ -127,10 +127,8 @@ cleanup_fn()
 
 pkgs_fn()
 {
-    pkgs=("$1" libtool autogen automake binutils bison build-essential bzip2 ccache curl
-          libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev libtool nasm texinfo
-          zlib1g-dev yasm)
-
+    pkgs=(autoconf autogen automake build-essential ccache cmake curl git libltdl-dev)
+    
     for i in ${pkgs[@]}
     do
         missing_pkg="$(dpkg -l | grep "$i")"
@@ -151,9 +149,9 @@ pkgs_fn()
 # GET PC TYPE
 #
 
-curl -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
 chmod +x "$cwd/config.guess"
-pc_type="$(source "$cwd/config.guess")"
+pc_type="$(source "$cwd/config.guess")"pkgs=
 
 #
 # DOWNLOAD THE ARCHIVE FILE
@@ -191,8 +189,7 @@ cd "$cwd/$archive_dir" || exit 1
 cd build || exit 1
 ../configure --prefix=/usr/local       \
              --{build,host}="$pc_type" \
-             --with-pic                \
-             M4="$(type -P m4)"
+             --enable-ltdl-install             
 make "-j$(nproc --all)"
 if ! sudo make install; then
     make distclean
