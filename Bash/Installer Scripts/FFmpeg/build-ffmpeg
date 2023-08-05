@@ -1076,14 +1076,13 @@ if build 'libtool' '2.4.7'; then
     build_done 'libtool' '2.4.7'
 fi
 
-git_ver_fn '953' '4'
-if build 'pkg-config' "$g_ver"; then
-    download "https://gitlab.freedesktop.org/pkg-config/pkg-config/-/archive/pkg-config-$g_ver/pkg-config-pkg-config-$g_ver.tar.bz2" "pkg-config-$g_ver.tar.bz2"
-    execute ./configure --prefix=/usr --{build,host}="$pc_type" --with-pc-path="$PKG_CONFIG_PATH" --with-pic
+if build 'pkg-config' '0.29.2'; then
+    download "https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz"
+    execute ./configure --prefix="$workspace" --with-pc-path="$PKG_CONFIG_PATH"
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
-    build_done 'pkg-config' "$g_ver"
+    build_done 'pkg-config' '0.29.2'
 fi
 
 pre_check_ver 'madler/zlib' '1' 'T'
