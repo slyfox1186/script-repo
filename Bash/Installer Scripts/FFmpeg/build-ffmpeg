@@ -1053,19 +1053,7 @@ if build 'm4' 'latest'; then
     pc_type="$(build-aux/config.guess)"
     execute ./configure --prefix="$workspace" --{build,host}="$pc_type" --disable-nls \
         --enable-c++ --enable-threads=posix --with-dmalloc --with-libiconv-prefix=/usr
-    execute make "-j$cpu_threads"cd "$cwd/$archive_dir/build" || exit 1
-../configure --prefix=/usr                      \
-             --enable-indirect-deps             \
-             --with-pc-path="$PKG_CONFIG_PATH"  \
-             --with-pic                         \
-             PKG_CONFIG="$(type -P pkg-config)" \
-             PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
-make "-j$(nproc --all)"
-if ! sudo make install; then
-    make distclean
-    printf "\n%s\n\n" 'Failed to install pkg-config.'
-    exit 1
-fi
+    execute make "-j$cpu_threads"
     execute make install
     execute make distclean
     build_done 'm4' 'latest'
