@@ -403,7 +403,7 @@ stop_aria2_fn()
 {
     clear
 
-    printf "%s\n\n" 'Stoping Aria2c...'
+    printf "%s\n\n" 'Stopping Aria2c...'
 
     if sudo killall -9 aria2c; then
         printf "%s\n\n" 'Success!'
