@@ -64,7 +64,7 @@ ffmpeg_libraries=()
 latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
-debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=ON # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
 # CREATE THE OUTPUT DIRECTORIES
@@ -237,8 +237,15 @@ git_1_fn()
     # SCRAPE GITHUB WEBSITE FOR THE LATEST REPO VERSION
     github_repo="$1"
     github_url="$2"
+    git_token='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'
 
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
+    if curl_cmd="$(curl \
+                        -m "$curl_timeout" \
+                        --request GET \
+                        --url "https://api.github.com/slyfox1186" \
+                        --header "Authorization: Bearer $git_token" \
+                        --header "X-GitHub-Api-Version: 2022-11-28" \
+                        -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "$curl_cmd" | jq -r '.[1].name' 2>/dev/null)"
         g_ver="${g_ver#cares-}"
@@ -677,22 +684,22 @@ cuda_download_fn()
         3)
             wget --show progress -cqO "$packages/nvidia-cuda/cuda-ubuntu2004.pin" "$cuda_url/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin"
             sudo mv "$packages/nvidia-cuda/cuda-ubuntu2004.pin" /etc/apt/preferences.d/cuda-repository-pin-600
-            wget --show progress -cqO "$packages/nvidia-cuda/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-ubuntu2004-12-2-local_12.2.1-535.86.10-1_amd64.deb"
-            sudo dpkg -i "$packages/nvidia-cuda/cuda-$cuda_ver.deb"
+            wget --show progress -cqO "$packages/nvidia/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-ubuntu2004-12-2-local_12.2.1-535.86.10-1_amd64.deb"
+            sudo dpkg -i "$packages/nvidia/cuda-$cuda_ver.deb"
             sudo cp -f /var/cuda-repo-ubuntu2004-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
             ;;
         4)
             wget --show progress -cqO "$packages/nvidia-cuda/cuda-ubuntu2204.pin" "$cuda_url/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin"
             sudo mv "$packages/nvidia-cuda/cuda-ubuntu2204.pin" /etc/apt/preferences.d/cuda-repository-pin-600
-            wget --show progress -cqO "$packages/nvidia-cuda/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-ubuntu2204-12-2-local_12.2.1-535.86.10-1_amd64.deb"
-            sudo dpkg -i "$packages/nvidia-cuda/cuda-$cuda_ver.deb"
+            wget --show progress -cqO "$packages/nvidia/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-ubuntu2204-12-2-local_12.2.1-535.86.10-1_amd64.deb"
+            sudo dpkg -i "$packages/nvidia/cuda-$cuda_ver.deb"
             sudo cp -f /var/cuda-repo-ubuntu2204-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
             ;;
         5)
             wget --show progress -cqO "$packages/nvidia-cuda/cuda-wsl-ubuntu.pin" "$cuda_url/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin"
             sudo mv "$packages/nvidia-cuda/cuda-wsl-ubuntu.pin" /etc/apt/preferences.d/cuda-repository-pin-600
-            wget --show progress -cqO "$packages/nvidia-cuda/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-wsl-ubuntu-12-2-local_12.2.1-1_amd64.deb"
-            sudo dpkg -i "$packages/nvidia-cuda/cuda-$cuda_ver.deb"
+            wget --show progress -cqO "$packages/nvidia/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-wsl-ubuntu-12-2-local_12.2.1-1_amd64.deb"
+            sudo dpkg -i "$packages/nvidia/cuda-$cuda_ver.deb"
             sudo cp -f /var/cuda-repo-wsl-ubuntu-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
             ;;
     6)      exit_fn;;
@@ -867,7 +874,6 @@ install_libjxl_fn()
 {
     local i
 
-    mkdir -p "$packages"/deb-files
     cd "$packages"/deb-files || exit 1
 
     printf "\n%s\n%s\n" \
@@ -902,18 +908,20 @@ sort_libjxl_fn()
     url_base=https://github.com/libjxl/libjxl/releases/download/v0.8.1/jxl-debs-amd64
     url_suffix=v0.8.1.tar.gz
 
+    mkdir -p "$packages"/deb-files
+
     if [ ! -f "$packages"/libjxl.tar.gz ]; then
-        if [[ "$os_version" -eq '12' ]]; then
+        if [[ "$VER" -eq '12' ]]; then
             libjxl_download="$url_base-debian-bookworm-$url_suffix"
-        elif [[ "$os_version" -eq '11' ]]; then
+        elif [[ "$VER" -eq '11' ]]; then
             libjxl_download="$url_base-debian-bullseye-$url_suffix"
-        elif [[ "$os_version" -eq '10' ]]; then
+        elif [[ "$VER" -eq '10' ]]; then
             libjxl_download="$url_base-debian-buster-$url_suffix"
-        elif [[ "$os_version" -ge '22.04' ]]; then
+        elif [[ "$VER" -ge '22.04' ]]; then
             libjxl_download="$url_base-ubuntu-22.04-$url_suffix"
-        elif [[ "$os_version" -eq '20.04' ]]; then
+        elif [[ "$VER" -eq '20.04' ]]; then
             libjxl_download="$url_base-ubuntu-20.04-$url_suffix"
-        elif [[ "$os_version" -eq '18.04' ]]; then
+        elif [[ "$VER" -eq '18.04' ]]; then
             libjxl_download="$url_base-ubuntu-18.04-$url_suffix"
         fi
 
@@ -1051,8 +1059,7 @@ printf "%s\n%s\n%s\n" \
 if build 'm4' 'latest'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
     pc_type="$(build-aux/config.guess)"
-    execute ./configure --prefix="$workspace" --{build,host}="$pc_type" --disable-nls \
-        --enable-c++ --enable-threads=posix --with-dmalloc --with-libiconv-prefix=/usr
+    execute ./configure --prefix="$workspace" --disable-nls --enable-c++ --{build,host,target}="$pc_type"
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
@@ -1145,7 +1152,6 @@ if build 'nasm' '2.16.01'; then
     execute sh autogen.sh
     execute sh configure --prefix="$workspace"            \
                          --{build,host,target}="$pc_type" \
-                         --enable-sanitizer               \
                          --disable-pedantic               \
                          --enable-ccache
     execute make "-j$cpu_threads"
@@ -1165,7 +1171,7 @@ if build 'giflib' '5.2.1'; then
 fi
 
 # UBUNTU BIONIC FAILS TO BUILD XML2
-if [ "$os_version" != '18.04' ]; then
+if [ "$VER" != '18.04' ]; then
     git_ver_fn '1665' '6' 'T'
     if build 'xml2' "$g_ver"; then
         download "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v$g_ver/libxml2-v$g_ver.tar.bz2" "xml2-$g_ver.tar.bz2"
@@ -1237,7 +1243,7 @@ fi
 ffmpeg_libraries+=('--enable-libfontconfig')
 
 # UBUNTU BIONIC FAILS TO BUILD XML2
-if [ "$os_version" != '18.04' ]; then
+if [ "$VER" != '18.04' ]; then
     pre_check_ver 'harfbuzz/harfbuzz' '1' 'R'
     if build 'harfbuzz' "$g_ver"; then
         download "https://codeload.github.com/harfbuzz/harfbuzz/tar.gz/refs/tags/$g_ver" "harfbuzz-$g_ver.tar.gz"
@@ -1693,7 +1699,7 @@ fi
 ffmpeg_libraries+=('--enable-libvpx')
 
 if build 'opencore-amr' '0.1.6'; then
-    download 'https://master.dl.sourceforge.net/project/opencore-amr/opencore-amr/opencore-amr-0.1.6.tar.gz?viasf=1'
+    download 'https://zenlayer.dl.sourceforge.net/project/opencore-amr/opencore-amr/opencore-amr-0.1.6.tar.gz'
     execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$cpu_threads"
     execute make install
@@ -1703,7 +1709,7 @@ fi
 ffmpeg_libraries+=('--enable-libopencore_amrnb' '--enable-libopencore_amrwb')
 
 if build 'liblame' '3.100'; then
-    download 'https://sourceforge.net/projects/lame/files/lame/3.100/lame-3.100.tar.gz/download?use_mirror=gigenet' 'liblame-3.100.tar.gz'
+    download 'https://zenlayer.dl.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz'
     execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$cpu_threads"
     execute make install
@@ -1741,8 +1747,8 @@ printf "\n%s\n%s\n%s\n" \
     '=============================================='
 
 # NEED TO MANUALLY UPDATE THIS REPO FROM TIME TO TIME
-if build 'av1' '7d637e1'; then
-    download 'https://aomedia.googlesource.com/aom/+archive/7d637e1ccd859f9018ebff88911411685d3a3a2b.tar.gz' 'av1-7d637e1.tar.gz' 'av1'
+if build 'av1' '304ff33'; then
+    download 'https://aomedia.googlesource.com/aom/+archive/304ff3339198e537cb1db8e6d50ace0c668f723e.tar.gz' 'av1-304ff33.tar.gz' 'av1'
     mkdir -p "$packages/aom_build"
     cd "$packages/aom_build" || exit 1
     execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",INSTALL_LIBDIR="$workspace"/lib,BUILD_TYPE=Release} \
@@ -1751,7 +1757,7 @@ if build 'av1' '7d637e1'; then
         -DBUILD_SHARED_LIBS=OFF -DENABLE_{CCACHE=1,{EXAMPLES,TESTS}=0} -G Ninja -Wno-dev "$packages"/av1
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
-    build_done 'av1' '7d637e1'
+    build_done 'av1' '304ff33'
 fi
 ffmpeg_libraries+=('--enable-libaom')
 
@@ -1768,7 +1774,7 @@ fi
 ffmpeg_libraries+=('--enable-libdav1d')
 
 # RAV1E FAILS TO BUILD ON UBUNTU BIONIC
-if [ "$os_version" != '18.04' ]; then
+if [ "$VER" != '18.04' ]; then
     pre_check_ver 'xiph/rav1e' '1' 'T'
     if build 'rav1e' "$g_ver"; then
         echo '$ installing RUSTUP'
@@ -1972,7 +1978,8 @@ fi
 ffmpeg_libraries+=('--enable-libx264')
 
 if build 'x265' '3.5'; then
-    download 'https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz' 'x265-3.5.tar.gz'
+    download 'https://bitbucket.org/multicoreware/x265_git/get/8f18e3ad32684eee95e885e718655f93951128c3.tar.bz2' 'x265-3.5.tar.bz2'
+    # download 'https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz' 'x265-3.5.tar.gz'
     cd build/linux || exit 1
     rm -fr {8,10,12}bit 2>/dev/null
     mkdir -p {8,10,12}bit
