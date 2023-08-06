@@ -404,12 +404,12 @@ execute()
 
     if [ "$debug" = 'ON' ]; then
         if ! output=$("$@"); then
-            notify-send -u critical -t 10000 "Failed to execute: $*"
+            notify-send -t 5000 "Failed to execute: $*"
             fail_fn "Failed to execute: $*"
         fi
     else
         if ! output=$("$@" 2>&1); then
-            notify-send -u critical -t 10000 "Failed to execute: $*"
+            notify-send -t 5000 "Failed to execute: $*"
             fail_fn "Failed to execute: $*"
         fi
     fi
@@ -1029,7 +1029,7 @@ iscuda="$(sudo find /usr/local/cuda* -type f -name nvcc)"
 #
 
 if which gcc &>/dev/null; then
-    export CC=gcc CXX=g++
+    export CC='ccache gcc' CXX='ccache g++'
 else
     fail_fn 'Please install "gcc" to continue the build.'
 fi
@@ -1806,12 +1806,12 @@ fi
 ffmpeg_libraries+=('--enable-libkvazaar')
 
 # NEED TO MANUALLY UPDATE THIS REPO FROM TIME TO TIME
-if build 'libsdl2' '2.28.1'; then
-    download 'https://www.libsdl.org/release/SDL2-2.28.1.tar.gz' 'libsdl2-2.28.1.tar.gz'
+if build 'libsdl2' '2.28.2'; then
+    download 'https://www.libsdl.org/release/SDL2-2.28.2.tar.gz' 'libsdl2-2.28.2.tar.gz'
     execute ./configure --prefix="$workspace"
     execute make "-j$cpu_threads"
     execute make install
-    build_done 'libsdl2' '2.28.1'
+    build_done 'libsdl2' '2.28.2'
 fi
 
 git_ver_fn '76' '2' 'T'
@@ -1966,8 +1966,8 @@ if build 'x264' "$g_sver"; then
 fi
 ffmpeg_libraries+=('--enable-libx264')
 
-if build 'x265' '3.5'; then
-    download 'https://bitbucket.org/multicoreware/x265_git/get/8f18e3ad32684eee95e885e718655f93951128c3.tar.bz2' 'x265-3.5.tar.bz2'
+if build 'x265' '8f18e3a'; then
+    download 'https://bitbucket.org/multicoreware/x265_git/get/8f18e3ad32684eee95e885e718655f93951128c3.tar.bz2' 'x265-8f18e3a.tar.bz2'
     # download 'https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz' 'x265-3.5.tar.gz'
     cd build/linux || exit 1
     rm -fr {8,10,12}bit 2>/dev/null
@@ -2006,14 +2006,14 @@ EOF
         sed -i.backup 's/lgcc_s/lgcc_eh/g' "$workspace"/lib/pkgconfig/x265.pc
     fi
 
-    if [ -f "$workspace"/lib/libx265.so.199 ]; then
-        sudo cp -f "$workspace"/lib/libx265.so.199 /usr/lib/x86_64-linux-gnu
-        sudo ln -fs /usr/lib/x86_64-linux-gnu/libx265.so.199 /usr/lib/x86_64-linux-gnu/libx265.so
+    if [ -f "$workspace"/lib/libx265.so.208 ]; then
+        sudo cp -f "$workspace"/lib/libx265.so.208 /usr/lib/x86_64-linux-gnu
+        sudo ln -fs /usr/lib/x86_64-linux-gnu/libx265.so.208 /usr/lib/x86_64-linux-gnu/libx265.so
     else
-        fail_fn "The sript could not located the file \"$workspace/lib/libx265.so.199\" and needs to be updated. This error is located in the 'x265' build."
+        fail_fn "The sript could not located the file \"$workspace/lib/libx265.so.208\" and needs to be updated. This error is located in the 'x265' build."
     fi
 
-    build_done 'x265' '3.5'
+    build_done 'x265' '8f18e3a'
 fi
 ffmpeg_libraries+=('--enable-libx265')
 
@@ -2095,9 +2095,9 @@ if build 'vapoursynth' "$g_ver"; then
     if [ -n "$rm_pip_lock" ]; then
         sudo rm "$rm_pip_lock"
     fi
-    execute pip install Cython
+    execute pip install Cython==0.29.36
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --disable-shared CPPFLAGS="$CPPFLAGS" CXXFLAGS="$CXXFLAGS"
+    execute ./configure --prefix="$workspace" --disable-shared CPPFLAGS="-I$workspace/include" CXXFLAGS="$CXXFLAGS"
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
@@ -2208,8 +2208,6 @@ if build 'ffmpeg' "$ffmpeg_ver"; then
         --prefix="$workspace"                     \
         --arch="$(uname -m)"                      \
         --cpu="$((cpu_threads / 2))"              \
-        --cc="$CC"                                \
-        --cxx="$CXX"                              \
         --disable-debug                           \
         --disable-doc                             \
         --disable-shared                          \
