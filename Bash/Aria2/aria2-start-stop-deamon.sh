@@ -393,8 +393,8 @@ EOF
 
     printf "\n%s\n\n%s\n%s\n\n" \
         'Input this into the chrome extension.' \
-        "rpc_listen_port=${rpc_listen_port}" \
-        "rpc_secret=${rpc_secret}"
+        "RPC Listen Port: ${rpc_listen_port}" \
+        "RPC Secret: ${rpc_secret}"
 
     aria2c --conf-path="${HOME}"/.aria2/aria2.conf
 }
