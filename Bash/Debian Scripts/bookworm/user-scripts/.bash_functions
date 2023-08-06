@@ -1385,8 +1385,16 @@ up_icon()
 
 adl()
 {
-    local name url
+    local isWSL name url
     clear
+
+    # FIND OUT IF WSL OR NATIVE LINUX IS RUNNING BECAUSE WE HAVE TO CHANGE THE FILE ALLOCATION DEPENDING ON WHICH IS RUNNING
+    isWSL="$(echo "$(uname -a)" | grep -o 'WSL2')"
+    if [ -n "${isWSL}" ]; then
+        setalloc=prealloc
+    else
+        setalloc=falloc
+    fi
 
     if [ -z "${1}" ]; then
         read -p 'Enter the file name (w/o extension): ' name
@@ -1410,7 +1418,7 @@ adl()
         --auto-file-renaming=false \
         --min-split-size=8M \
         --disk-cache=64M \
-        --file-allocation=prealloc \
+        --file-allocation=${setalloc} \
         --no-file-allocation-limit=8M \
         --continue=true \
         --out="${name}" \
