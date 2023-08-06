@@ -18,23 +18,21 @@
 }
 
 /*____________________________________________________________________________________
-    MOVE TO THE VIRTUAL DESKTOP ON THE LEFT
+    VIRTUAL DESKTOP LEFT
 */
 
 !a up::
 {
-    KeyWait "LAlt"
     Send "{LCtrl Down}{LWin Down}{Left Down}"
     Send "{LCtrl Up}{LWin Up}{Left Up}"
 }
 
 /*____________________________________________________________________________________
-    MOVE TO THE VIRTUAL DESKTOP ON THE RIGHT
+    VIRTUAL DESKTOP RIGHT
 */
 
 !d up::
 {
-    KeyWait "LAlt"
     Send "{LCtrl Down}{LWin Down}{Right Down}"
     Send "{LCtrl Up} {LWin Up}{Right Up}"
 }
