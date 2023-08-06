@@ -1675,18 +1675,15 @@ if build 'libmysofa' "$g_ver"; then
 fi
 
 pre_check_ver 'webmproject/libvpx' '1' 'T'
-if build 'libvpx' "$g_ver"; then
+if build 'vpx' "$g_ver"; then
     download "https://codeload.github.com/webmproject/libvpx/tar.gz/refs/tags/v$g_ver" "libvpx-$g_ver.tar.gz"
-    execute ./configure --prefix="$workspace" --{build,host,target}="$pc_type" --as=yasm \
-        --disable-{examples,shared,unit-tests,webm-io} --log=no --extra-cxxflags="$CXXFLAGS" \
-        --enable-{better-hw-compatibility,ccache,codec-srcs,coefficient-range-checking} \
-        --enable-{install-srcs,libyuv,multi-res-encoding,onthefly-bitpacking,postproc} \
-        --enable-{realtime-only,runtime-cpu-detect,small,static,vp8,vp9,vp9-highbitdepth} \
-        --enable-{vp9-postproc,vp9-temporal-denoising}
+    execute ./configure --prefix="$workspace" --target='x86_64-linux-gcc' --as='yasm' --disable-{examples,shared,unit-tests,webm-io} \
+        --enable-{better-hw-compatibility,ccache,codec-srcs,coefficient-range-checking,install-srcs,libyuv,multi-res-encoding,onthefly-bitpacking,pic,postproc} \
+        --enable-{realtime-only,runtime-cpu-detect,small,static,vp8,vp9,vp9-highbitdepth,vp9-postproc,vp9-temporal-denoising} --log='no' --extra-cxxflags="$CXXFLAGS"
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
-    build_done 'libvpx' "$g_ver"
+    build_done 'vpx' "$g_ver"
 fi
 ffmpeg_libraries+=('--enable-libvpx')
 
