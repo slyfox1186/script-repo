@@ -2,19 +2,19 @@
 ; #  OpenCMDHere  #
 ; #################
 
-!c::_OpenCMDHere()
+!c up::_OpenCMDHere()
 
 _OpenCMDHere()
 {
     ; Static vars so vars are not recreated each time
     Static convert := " !#$%&'()-.*:?@[]^_``{|}~/"
 
-    If WinActive("ahk_class CabinetWClass ahk_exe explorer.exe")
-        winObj := ComObject("Shell.Application").Windows
+    If WinActive('ahk_class CabinetWClass ahk_exe explorer.exe')
+        winObj := ComObject('Shell.Application').Windows
     Else
     {
-        Run "C:\Users\jholl\Downloads",, "Max"
-        Return
+        Run A_ComSpec ' /E:ON /T:0A /K ' 'pushd C:\Users\jholl\Downloads',, 'Max'
+        return
     }
 
     For win in winObj
