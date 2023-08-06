@@ -639,7 +639,7 @@ imow()
     done
 
     if [ -n "${missing_pkgs}" ]; then
-        sudo apt -y install "${missing_pkgs}"
+        sudo apt -y install ${missing_pkgs}
         sudo apt -y autoremove
         clear
     fi
@@ -653,8 +653,7 @@ imow()
     if [ -n "${pip_lock}" ]; then
         sudo rm "${pip_lock}"
     fi
-    missing_pkg="$(pip show "google_speech")"
-    if [ -z "${missing_pkg}" ]; then
+    if ! pip show google_speech &>/dev/null; then
         pip install google_speech
     fi
 
