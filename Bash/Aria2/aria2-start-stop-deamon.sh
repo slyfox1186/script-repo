@@ -7,10 +7,10 @@
 ##           use other programs made to work with an active
 ##           server that will use it to download your files.
 ##
-##           I use the chrome extension below:
+##           I use the Chrome extension below:
 ##           https://chrome.google.com/webstore/detail/aria2-explorer/mpkodccbngfoacfalldjimigbofkhgjn
 ##
-##  Action: Start or stop server.
+##  Action: Start or stop the server.
 ##
 ##  Required: Set your own variables at the top of the script.
 ##
