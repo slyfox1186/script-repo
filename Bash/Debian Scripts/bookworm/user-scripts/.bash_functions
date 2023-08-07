@@ -227,11 +227,11 @@ listd()
     local search_cache
 
     if [ -n "${1}" ]; then
-        sudo apt list -- "*${1}*"-dev | awk -F'/' '{print ${1}}'
+        sudo apt list -- "*${1}*"-dev | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt list -- "*${1}*-dev" | awk -F'/' '{print ${1}}'
+        sudo apt list -- "*${1}*-dev" | awk -F'/' '{print $1}'
     fi
 }
 
@@ -242,11 +242,11 @@ list()
     local search_cache
 
     if [ -n "${1}" ]; then
-        sudo apt list "*${1}*" | awk -F'/' '{print ${1}}'
+        sudo apt list "*${1}*" | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt list "*${1}*" | awk -F'/' '{print ${1}}'
+        sudo apt list "*${1}*" | awk -F'/' '{print $1}'
     fi
 }
 
@@ -272,11 +272,11 @@ csearch()
     local cache
 
     if [ -n "${1}" ]; then
-        apt-cache search --names-only "${1}.*" | awk '{print ${1}}'
+        apt-cache search --names-only "${1}.*" | awk '{print $1}'
     else
         read -p 'Enter the string to search: ' cache
         clear
-        apt-cache search --names-only "${cache}.*" | awk '{print ${1}}'
+        apt-cache search --names-only "${cache}.*" | awk '{print $1}'
     fi
 }
 
