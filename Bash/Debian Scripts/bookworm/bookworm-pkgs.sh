@@ -10,7 +10,7 @@ pkgs=(alien aptitude aria2 autoconf autoconf-archive autogen automake bat binuti
       libglib2.0-dev libgvc6 libheif-dev libjemalloc-dev liblz-dev liblzma-dev liblzo2-dev libncurses5-dev libnet-nslookup-perl
       libnotify-bin libnuma-dev libperl-dev libpstoedit-dev libraqm-dev libraw-dev librsvg2-dev librust-malloc-buf-dev
       libsdl-pango-dev libsox-dev libssl-dev libtalloc-dev libtool libtool-bin libzstd-dev libzzip-dev linux-source lm-sensors
-      lshw lvm2 lzma-dev make man-db mono-devel nano net-tools netplan.io network-manager nilfs-tools npm ntfs-3g openssh-client
+      lshw lvm2 lzma-dev m4 make man-db mono-devel nano net-tools netplan.io network-manager nilfs-tools npm ntfs-3g openssh-client
       openssh-server openssl pcregrep php-cli php-sqlite3 pipenv preload psensor python3 python3-pip reiser4progs reiserfsprogs
       rpm ruby-all-dev shellcheck slack snapd sqlite3 synaptic texinfo tk-dev trash-cli tty-share udftools unzip uuid-dev wget
       xclip xfsprogs xsel)
