@@ -44,7 +44,7 @@ workspace="$cwd"/workspace
 install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 repo='https://github.com/slyfox1186/script-repo'
-debug=ON # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP WITH TROUBLESHOOTING DURING THE BUILD
+debug=OFF # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP WITH TROUBLESHOOTING DURING THE BUILD
 
 #
 # CREATE OUTPUT DIRECTORIES
@@ -431,19 +431,18 @@ pkgs_fn()
 # TEST THE OS AND ITS VERSION IF UBUNTU THEN CALL THE pkgs_fn
 #
 
-install_jxl_files_fn()
+install_libjxl_fn()
 {
     local i
 
-    cd "$packages/libjxl-deb" || exit 1
+    cd "$packages"/deb-files || exit 1
 
     printf "\n%s\n%s\n" \
         'Installing: libjxl_0.8.1_amd64.deb' \
         '=========================================='
-    echo '$ sudo dpkg -i libjxl_0.8.1_amd64.deb'
-    if sudo dpkg -i 'libjxl_0.8.1_amd64.deb'; then
-       sudo rm 'libjxl_0.8.1_amd64.deb' &>/dev/null
-       echo
+    if sudo dpkg -i libjxl_0.8.1_amd64.deb; then
+        sudo rm libjxl_0.8.1_amd64.deb &>/dev/null
+        echo
     fi
 
     for i in *.deb
@@ -454,36 +453,47 @@ install_jxl_files_fn()
         sudo dpkg -i "$i"
         echo
     done
-    sudo apt -y --fix-broken install
 }
 
-download_jxl_files_fn()
+download_libjxl_fn()
 {
-    local jxl_base_url jxl_suffix_url
-
-    jxl_base_url='https://github.com/libjxl/libjxl/releases/download/v0.8.1/jxl-debs-amd64'
-    jxl_suffix_url='v0.8.1.tar.gz'
-
-    if [ ! -f "$packages/jpeg-xl.tar.gz" ]; then
-        case "$VER" in
-            12)        curl -A "$user_agent" -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-debian-bookworm-$jxl_suffix_url";;
-            11)        curl -A "$user_agent" -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-debian-bullseye-$jxl_suffix_url";;
-            10)        curl -A "$user_agent" -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-debian-buster-$jxl_suffix_url";;
-            22.04)     curl -A "$user_agent" -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-ubuntu-22.04-$jxl_suffix_url";;
-            20.04)     curl -A "$user_agent" -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-ubuntu-20.04-$jxl_suffix_url";;
-            18.04)     curl -A "$user_agent" -Lso "$packages/jpeg-xl.tar.gz" "$jxl_base_url-ubuntu-18.04-$jxl_suffix_url";;
-            *)         fail_fn 'Failed to download the libjxl debian files. The script was unable to detect the Linux OS version.';;
-        esac
-
-        if [ -f "$packages/jpeg-xl.tar.gz" ]; then
-            if ! tar -zxf "$packages"/jpeg-xl.tar.gz -C "$packages"/libjxl-deb --strip-components 1; then
-                fail_fn "Could not extract the jpegxl archive: $packages/jpeg-xl.tar.gz"
-            fi
-        else
-            fail_fn 'The script failed to download: The libjxl Debian files.'
-        fi
+    if ! curl -A "$user_agent" -Lso "$packages"/libjxl.tar.gz "$1"; then
+        fail_fn 'Failed to download the libjxl archive: $packages/libjxl.tar.gz'
     fi
-    install_jxl_files_fn
+}
+
+sort_libjxl_fn()
+{
+    local url_base url_suffix
+
+    url_base=https://github.com/libjxl/libjxl/releases/download/v0.8.1/jxl-debs-amd64
+    url_suffix=v0.8.1.tar.gz
+
+    mkdir -p "$packages"/deb-files
+
+    if [ ! -f "$packages"/libjxl.tar.gz ]; then
+        if [[ "$VER" -eq '12' ]]; then
+            libjxl_download="$url_base-debian-bookworm-$url_suffix"
+        elif [[ "$VER" -eq '11' ]]; then
+            libjxl_download="$url_base-debian-bullseye-$url_suffix"
+        elif [[ "$VER" -eq '10' ]]; then
+            libjxl_download="$url_base-debian-buster-$url_suffix"
+        elif [[ "$VER" -ge '22.04' ]]; then
+            libjxl_download="$url_base-ubuntu-22.04-$url_suffix"
+        elif [[ "$VER" -eq '20.04' ]]; then
+            libjxl_download="$url_base-ubuntu-20.04-$url_suffix"
+        elif [[ "$VER" -eq '18.04' ]]; then
+            libjxl_download="$url_base-ubuntu-18.04-$url_suffix"
+        fi
+
+        # CALL THE DOWNLOAD FUNCTION FOR THE LIBJXL DEBIAN FILES
+        download_libjxl_fn "$libjxl_download"
+
+        if ! tar -xf "$packages"/libjxl.tar.gz -C "$packages"/deb-files --strip-components 1; then
+            fail_fn "Could not extract the libjxl archive: $packages/libjxl.tar.gz"
+        fi
+        install_libjxl_fn
+    fi
 }
 
 #
@@ -604,8 +614,7 @@ fi
 # FIGURE OUT WHICH COMPILERS TO USE
 #
 
-export CC='ccache gcc'
-export CXX='ccache g++'
+export CC=gcc CXX=g++
 
 #
 # SET COMPILER OPTIMIZATION FLAGS
@@ -618,7 +627,7 @@ export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 #
 
 if build 'libjxl' '0.8.1'; then
-    download_jxl_files_fn
+    sort_libjxl_fn
     build_done 'libjxl' '0.8.1'
 fi
 
