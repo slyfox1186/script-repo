@@ -266,6 +266,3 @@ cleanup_fn
 
 # SHOW EXIT MESSAGE
 exit_fn
-
-
-LIBS="$(pkg-config --libs openssl)"
