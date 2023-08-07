@@ -4,19 +4,20 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-python
 ##
-##  Purpose: Install Python3 v3.11.4 from the source code released by the official website: https://www.python.org/downloads
+##  Purpose: Install Python3 v3.11.3 from the source code released by the official website: https://www.python.org/downloads
 ##
 ##  Features: Static build, OpenSSL backend
 ##
-##  Updated: 08.04.23
+##  Updated: 08.07.23
+##  Changed: make install > make altinstall to not interfere with the default python3 package that ships with the native OS.
 ##
-##  Script version: 1.3
+##  Script version: 1.0
 ##
 #################################################################################################################################
 
 clear
 
-if [ "$EUID" -eq '0' ]; then
+if [ "${EUID}" -eq '0' ]; then
     printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
     exit 1
 fi
@@ -25,32 +26,31 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.3
+script_ver=1.0
 archive_dir=python-3.11.4
 archive_url=https://www.python.org/ftp/python/3.11.4/Python-3.11.4.tar.xz
 archive_ext="${archive_url//*.}"
-cwd="$PWD"/python3-build-script
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+cwd="${PWD}"/python3-build-script
+user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
 printf "\n%s\n%s\n\n" \
-    "Python3 Build Script - v$script_ver" \
+    "Python3 Build Script v3.11.4 - v${script_ver}" \
     '==============================================='
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ ! -d "$cwd" ]; then
-    mkdir -p "$cwd"
+if [ ! -d "${cwd}" ]; then
+    mkdir -p "${cwd}"
 fi
 
 #
 # SET THE C+CPP COMPILERS
 #
 
-export CC='ccache gcc'
-export CXX='ccache g++'
+export CC='ccache gcc' CXX='ccache g++'
 
 #
 # EXPORT COMPILER OPTIMIZATION FLAGS
@@ -64,8 +64,8 @@ export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 PATH="\
 /usr/lib/ccache:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
+${HOME}/.cargo/bin:\
+${HOME}/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
@@ -82,19 +82,16 @@ export PATH
 #
 
 PKG_CONFIG_PATH="\
-$workspace/lib/pkgconfig:\
-$workspace/lib64/pkgconfig:\
-$workspace/share/pkgconfig:\
-$workspace/lib/x86_64-linux-gnu/pkgconfig:\
-$workspace/usr/lib/pkgconfig:\
+/lib64/pkgconfig:\
 /lib/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
 /usr/local/share/pkgconfig:\
-/usr/share/pkgconfig:\
+/usr/lib64/pkgconfig:\
+/usr/lib/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/pkgconfig\
+/usr/share/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -104,7 +101,7 @@ export PKG_CONFIG_PATH
 
 cuda_lib_dir="$(find /usr/local/cuda* -type d -name lib64 | head -n1)"
 
-if [ -n "$cuda_lib_dir" ]; then
+if [ -n "${cuda_lib_dir}" ]; then
     LD_LIBRARY_PATH="\
 /usr/local/lib64/:\
 /usr/local/lib/:\
@@ -112,7 +109,7 @@ if [ -n "$cuda_lib_dir" ]; then
 /usr/lib/:\
 lib64/:\
 lib/:\
-$cuda_lib_dir/\
+${cuda_lib_dir}/\
 "
     export LD_LIBRARY_PATH
 else
@@ -133,15 +130,19 @@ fi
 
 exit_fn()
 {
-    printf "\n%s\n\n%s\n\n" \
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'The script has completed' \
         'Make sure to star this repository to show your support!' \
-        "$repo"
+        "${repo}"
     exit 0
 }
 
 fail_fn()
 {
-    printf "%s\n\n" "$1"
+    printf "\n\n%s\n\n%s\n\n%s\n\n" \
+        "${1}" \
+        'Please create a support ticket so I can work on a fix.' \
+        "${repo}/issues"
     exit 1
 }
 
@@ -149,54 +150,47 @@ show_ver_fn()
 {
     save_ver="$(python3 -V | grep -Eo '[0-9\.]+$')"
     clear
-    printf "%s\n\n" "The updated Python3 version is: $save_ver"
+    printf "%s\n\n" "The updated Python3 version is: ${save_ver}"
     sleep 3
 }
 
 cleanup_fn()
 {
-    local choice dpkg_list
+    local answer
 
-    unset archive_dir archive_ext archive_name archive_url CC CXX i missing_pkg missing_pkgs pc_type pem_target pkgs script_ver
-
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'Do you want to remove the build files?' \
         '[1] Yes' \
         '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
+    read -p 'Your choices are (1 or 2): ' answer
 
-    case "$choice" in
-        1)      sudo rm -fr "$cwd";;
-        2)      echo;;
+    case "${answer}" in
+        1)      sudo rm -fr "${cwd}" "${0}";;
+        2)      return 0;;
         *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
-                unset choice
+                printf "%s\n\n" 'Bad user input.'
+                read -p 'Press enter to try again.'
                 clear
                 cleanup_fn
                 ;;
     esac
 }
 
-pkgs=(autoconf autogen automake binutils build-essential ccache cmake curl git libgnome-desktop-3-dev
-      libexempi-dev libportal-dev libportal-gtk3-dev libportal-gtk4-dev libgnome-desktop-4-dev libhandy-1-dev
-      libpeas-dev libpeasd-3-dev libssl-dev libtool libtool-bin m4 meson nasm ninja-build openssl python3 yasm
-      itstool zlib1g-dev)
+pkgs=(autoconf autogen automake binutils build-essential ccache cmake curl
+      git libgnome-desktop-3-dev libexempi-dev libportal-dev libportal-gtk3-dev
+      libportal-gtk4-dev libgnome-desktop-4-dev libhandy-1-dev libpeas-dev
+      libpeasd-3-dev libssl-dev libtool libtool-bin m4 meson nasm ninja-build
+      openssl python3 yasm itstool zlib1g-dev)
 
 for i in ${pkgs[@]}
 do
-    missing_pkg="$(dpkg -l | grep "$i")"
-
-    if [ -z "$missing_pkg" ]; then
-        missing_pkgs+=" $i"
+    if ! dpkg -l | grep "${i}" &>/dev/null; then
+        missing_pkgs+=" ${i}"
     fi
 done
 
-if [ -n "$missing_pkgs" ]; then
-    sudo apt -y install $missing_pkgs
+if [ -n "${missing_pkgs}" ]; then
+    sudo apt -y install ${missing_pkgs}
     sudo apt -y autoremove
     clear
 fi
@@ -206,35 +200,35 @@ unset i missing_pkgs
 # GET PC TYPE
 #
 
-curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "$cwd/config.guess"
-pc_type="$(source "$cwd/config.guess")"
+curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "${cwd}/config.guess"
+pc_type="$(source "${cwd}/config.guess")"
 
 #
 # DOWNLOAD THE ARCHIVE FILE
 #
 
-archive_name="$archive_dir.tar.$archive_ext"
+archive_name="${archive_dir}.tar.${archive_ext}"
 
-if [ ! -f "$cwd/$archive_name" ]; then
-    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
+if [ ! -f "${cwd}/${archive_name}" ]; then
+    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
 fi
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
+if [ -d "${cwd}/${archive_dir}" ]; then
+    sudo rm -fr "${cwd}/${archive_dir}"
 fi
-mkdir -p "$cwd/$archive_dir/build"
+mkdir -p "${cwd}/${archive_dir}/build"
 
 #
 # EXTRACT ARCHIVE FILES
 #
 
-if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
+if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
     exit 1
 fi
 
@@ -242,24 +236,25 @@ fi
 # BUILD PROGRAM FROM SOURCE
 #
 
-cd "$cwd/$archive_dir" || exit 1
+LDFLAGS='-L/lib/x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu -L/usr/local/lib'
+LDFLAGS+=' -L/usr/local/lib64 -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+
+cd "${cwd}/${archive_dir}" || exit 1
 cd build || exit 1
-../configure --prefix=/usr/local                                                                                                                      \
-            --{build,host}="$pc_type"                                                                                                                 \
-            --enable-optimizations                                                                                                                    \
-            --with-lto=yes                                                                                                                            \
-            --with-openssl=/usr/lib/ssl                                                                                                               \
-            --with-pkg-config=yes                                                                                                                     \
-            --with-openssl-rpath=auto                                                                                                                 \
-            --with-ssl-default-suites=openssl                                                                                                         \
-            PKG_CONFIG="$(type -P pkg-config)"                                                                                                        \
-            PKG_CONFIG_PATH="$PKG_CONFIG_PATH"                                                                                                        \
-            CPPFLAGS='-I/usr/include/openssl -I/usr/local/include -I/usr/include'                                                                     \
-            LDFLAGS="-L/lib/x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu -L/usr/local/lib -L/usr/local/lib64 -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib" \
-            LIBS='-L/usr/lib64 -lssl -lcrypto -lz -ldl -pthread -L/usr/lib/x86_64-linux-gnu -lz'                                                      \
-            CFLAGS='-I/usr/include/openssl'
+../configure --enable-optimizations                                                               \
+             --with-lto=yes                                                                       \
+             --with-openssl=/usr/lib/ssl                                                          \
+             --with-pkg-config=yes                                                                \
+             --with-openssl-rpath=auto                                                            \
+             --with-ssl-default-suites=openssl                                                    \
+             PKG_CONFIG="$(type -P pkg-config)"                                                   \
+             PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"                                                 \
+             CPPFLAGS='-I/usr/local/include -I/usr/include'                                       \
+             LDFLAGS="${LDFLAGS}"                                                                 \
+             LIBS='-L/usr/lib64 -lssl -lcrypto -lz -ldl -pthread -L/usr/lib/x86_64-linux-gnu -lz' \
+             CFLAGS='-I/usr/include/openssl'
 make "-j$(nproc --all)"
-sudo make install
+sudo make altinstall
 
 # SHOW THE NEW VERSION
 show_ver_fn
