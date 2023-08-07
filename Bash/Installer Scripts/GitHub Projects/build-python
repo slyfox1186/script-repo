@@ -4,14 +4,13 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-python
 ##
-##  Purpose: Install Python3 v3.11.3 from the source code released by the official website: https://www.python.org/downloads
+##  Purpose: Install Python3 v3.11.4 from the source code released by the official website: https://www.python.org/downloads
 ##
 ##  Features: Static build, OpenSSL backend
 ##
 ##  Updated: 08.07.23
-##  Changed: make install > make altinstall to not interfere with the default python3 package that ships with the native OS.
 ##
-##  Script version: 1.0
+##  Script version: 1.4
 ##
 #################################################################################################################################
 
@@ -26,7 +25,7 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.0
+script_ver=1.4
 archive_dir=python-3.11.4
 archive_url=https://www.python.org/ftp/python/3.11.4/Python-3.11.4.tar.xz
 archive_ext="${archive_url//*.}"
@@ -149,7 +148,7 @@ fail_fn()
 show_ver_fn()
 {
     save_ver="$(python3 -V | grep -Eo '[0-9\.]+$')"
-    clear
+    echo
     printf "%s\n\n" "The updated Python3 version is: ${save_ver}"
     sleep 3
 }
@@ -176,11 +175,11 @@ cleanup_fn()
     esac
 }
 
-pkgs=(autoconf autogen automake binutils build-essential ccache cmake curl
-      git libgnome-desktop-3-dev libexempi-dev libportal-dev libportal-gtk3-dev
-      libportal-gtk4-dev libgnome-desktop-4-dev libhandy-1-dev libpeas-dev
-      libpeasd-3-dev libssl-dev libtool libtool-bin m4 meson nasm ninja-build
-      openssl python3 yasm itstool zlib1g-dev)
+pkgs=(autoconf autogen automake binutils build-essential ccache cmake curl git itstool
+      libb2-dev libexempi-dev libgnome-desktop-3-dev libgnome-desktop-4-dev libhandy-1-dev
+      libpeas-dev libpeasd-3-dev libportal-dev libportal-gtk3-dev libportal-gtk4-dev
+      libssl-dev libtool libtool-bin m4 meson nasm ninja-build openssl python3 valgrind
+      yasm zlib1g-dev)
 
 for i in ${pkgs[@]}
 do
@@ -242,14 +241,17 @@ LDFLAGS+=' -L/usr/local/lib64 -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 cd "${cwd}/${archive_dir}" || exit 1
 cd build || exit 1
 ../configure --enable-optimizations                                                               \
+             --with-address-sanitizer                                                             \
+             --with-ensurepip=upgrade                                                             \
              --with-lto=yes                                                                       \
-             --with-openssl=/usr/lib/ssl                                                          \
+             --with-openssl=/usr                                                                  \
              --with-pkg-config=yes                                                                \
              --with-openssl-rpath=auto                                                            \
              --with-ssl-default-suites=openssl                                                    \
+             --with-valgrind                                                                      \
              PKG_CONFIG="$(type -P pkg-config)"                                                   \
              PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"                                                 \
-             CPPFLAGS='-I/usr/local/include -I/usr/include'                                       \
+             CPPFLAGS='-I/usr/include/openssl -I/usr/local/include -I/usr/include'                \
              LDFLAGS="${LDFLAGS}"                                                                 \
              LIBS='-L/usr/lib64 -lssl -lcrypto -lz -ldl -pthread -L/usr/lib/x86_64-linux-gnu -lz' \
              CFLAGS='-I/usr/include/openssl'
@@ -264,3 +266,6 @@ cleanup_fn
 
 # SHOW EXIT MESSAGE
 exit_fn
+
+
+LIBS="$(pkg-config --libs openssl)"
