@@ -1,24 +1,22 @@
 #!/usr/bin/env bash
 
-#############################################################################
+#################################################################################################################################
 ##
-##  Install OpenSSL from the source code with multiple optional
-##  features enabled.
-## 
-##  The script also installs SCTP Module Support which allows OpenSSL
-##  to enable its own SCTP feature support. 
-##  
-##  Enabled features: egd, fips, md2, rc5, trace, sctp, threads, and zlib
+##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-python
 ##
-##  Updated: 08.03.23
+##  Purpose: Install Python3 v3.11.4 from the source code released by the official website: https://www.python.org/downloads
 ##
-##  Script version: 1.2
+##  Features: Static build, OpenSSL backend
 ##
-#############################################################################
+##  Updated: 08.07.23
+##
+##  Script version: 1.4
+##
+#################################################################################################################################
 
 clear
 
-if [ "$EUID" -eq '0' ]; then
+if [ "${EUID}" -eq '0' ]; then
     printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
     exit 1
 fi
@@ -27,37 +25,31 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.2
-archive_dir=openssl-3.1.2
-archive_url=https://github.com/openssl/openssl/releases/download/openssl-3.1.2/openssl-3.1.2.tar.gz
+script_ver=1.4
+archive_dir=python-3.11.4
+archive_url=https://www.python.org/ftp/python/3.11.4/Python-3.11.4.tar.xz
 archive_ext="${archive_url//*.}"
-cwd="$PWD"/openssl-build-script
-install_dir=/usr
-ssl_dir=/usr/lib/ssl
-cert_dir=$ssl_dir/certs
-pem_filename=cacert.pem
-pem_output=$cert_dir/cacert.pem
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+cwd="${PWD}"/python3-build-script
+user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
 printf "\n%s\n%s\n\n" \
-    "OpenSSL Build Script - v$script_ver" \
+    "Python3 Build Script v3.11.4 - v${script_ver}" \
     '==============================================='
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ ! -d "$cwd" ]; then
-    mkdir -p "$cwd"
+if [ ! -d "${cwd}" ]; then
+    mkdir -p "${cwd}"
 fi
 
 #
 # SET THE C+CPP COMPILERS
 #
 
-export CC='ccache gcc'
-export CXX='ccache g++'
+export CC='ccache gcc' CXX='ccache g++'
 
 #
 # EXPORT COMPILER OPTIMIZATION FLAGS
@@ -66,109 +58,176 @@ export CXX='ccache g++'
 export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 #
+# SET PATH
+#
+
+PATH="\
+/usr/lib/ccache:\
+${HOME}/.cargo/bin:\
+${HOME}/.local/bin:\
+/usr/local/sbin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin:\
+/usr/local/cuda/bin:\
+/snap/bin\
+"
+export PATH
+
+#
+# SET PKG_CONFIG_PATH
+#
+
+PKG_CONFIG_PATH="\
+/lib64/pkgconfig:\
+/lib/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib64/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/local/share/pkgconfig:\
+/usr/lib64/pkgconfig:\
+/usr/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/share/pkgconfig\
+"
+export PKG_CONFIG_PATH
+
+#
+# SET LD_LIBRARY_PATH
+#
+
+cuda_lib_dir="$(find /usr/local/cuda* -type d -name lib64 | head -n1)"
+
+if [ -n "${cuda_lib_dir}" ]; then
+    LD_LIBRARY_PATH="\
+/usr/local/lib64/:\
+/usr/local/lib/:\
+/usr/lib64/:\
+/usr/lib/:\
+lib64/:\
+lib/:\
+${cuda_lib_dir}/\
+"
+    export LD_LIBRARY_PATH
+else
+    LD_LIBRARY_PATH="\
+/usr/local/lib64/:\
+/usr/local/lib/:\
+/usr/lib64/:\
+/usr/lib/:\
+lib64/:\
+lib/\
+"
+    export LD_LIBRARY_PATH
+fi
+
+#
 # CREATE FUNCTIONS
 #
 
 exit_fn()
 {
-    printf "\n%s\n\n%s\n\n" \
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'The script has completed' \
         'Make sure to star this repository to show your support!' \
-        "$repo"
+        "${repo}"
     exit 0
 }
 
 fail_fn()
 {
-    printf "%s\n\n" "$1"
+    printf "\n\n%s\n\n%s\n\n%s\n\n" \
+        "${1}" \
+        'Please create a support ticket so I can work on a fix.' \
+        "${repo}/issues"
     exit 1
+}
+
+show_ver_fn()
+{
+    save_ver="$(python3 -V | grep -Eo '[0-9\.]+$')"
+    echo
+    printf "%s\n\n" "The updated Python3 version is: ${save_ver}"
+    sleep 3
 }
 
 cleanup_fn()
 {
-    local choice
+    local answer
 
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'Do you want to remove the build files?' \
         '[1] Yes' \
         '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
+    read -p 'Your choices are (1 or 2): ' answer
 
-    case "$choice" in
-        1)      sudo rm -fr "$cwd";;
-        2)      clear;;
+    case "${answer}" in
+        1)      sudo rm -fr "${cwd}" "${0}";;
+        2)      return 0;;
         *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
-                unset choice
+                printf "%s\n\n" 'Bad user input.'
+                read -p 'Press enter to try again.'
                 clear
                 cleanup_fn
                 ;;
     esac
 }
 
-#
-# INSTALL REQUIRED APT PACKAGES
-#
-
-pkgs=(autoconf autogen automake build-essential ca-certificates ccache curl libc-ares-dev libcurl4-openssl-dev
-      libdmalloc-dev libgcrypt20-dev libgmp-dev libgpg-error-dev libjemalloc-dev libmbedtls-dev libsctp-dev
-      libssh2-1-dev libssh-dev libssl-dev libtool libtool-bin libxml2-dev m4 zlib1g-dev)
+pkgs=(autoconf autogen automake binutils build-essential ccache cmake curl git itstool
+      libb2-dev libexempi-dev libgnome-desktop-3-dev libgnome-desktop-4-dev libhandy-1-dev
+      libpeas-dev libpeasd-3-dev libportal-dev libportal-gtk3-dev libportal-gtk4-dev
+      libssl-dev libtool libtool-bin m4 meson nasm ninja-build openssl python3 valgrind
+      yasm zlib1g-dev)
 
 for i in ${pkgs[@]}
 do
-    missing_pkg="$(dpkg -l | grep $i)"
-
-    if [ -z "$missing_pkg" ]; then
-        missing_pkgs+=" $i"
+    if ! dpkg -l | grep "${i}" &>/dev/null; then
+        missing_pkgs+=" ${i}"
     fi
 done
 
-if [ -n "$missing_pkgs" ]; then
-    sudo apt -y install $missing_pkgs
+if [ -n "${missing_pkgs}" ]; then
+    sudo apt -y install ${missing_pkgs}
+    sudo apt -y autoremove
     clear
 fi
 unset i missing_pkgs
 
 #
-# INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
+# GET PC TYPE
 #
 
-if [ ! -f "$cert_dir/$pem_filename" ]; then
-    printf "%s\n%s\n\n" \
-        'Download the latest security certificate' \
-        '================================================'
-    curl -A "$user_agent" -Lso "$cwd/$pem_filename" "https://curl.se/ca/$pem_filename"
-    sudo mv -f "$cwd/$pem_filename" "$cert_dir/$pem_filename"
-fi
+curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "${cwd}/config.guess"
+pc_type="$(source "${cwd}/config.guess")"
 
 #
 # DOWNLOAD THE ARCHIVE FILE
 #
 
-archive_name="$archive_dir.tar.$archive_ext"
+archive_name="${archive_dir}.tar.${archive_ext}"
 
-if [ ! -f "$cwd/$archive_name" ]; then
-    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
+if [ ! -f "${cwd}/${archive_name}" ]; then
+    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
 fi
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
+if [ -d "${cwd}/${archive_dir}" ]; then
+    sudo rm -fr "${cwd}/${archive_dir}"
 fi
-mkdir -p "$cwd/$archive_dir/build"
+mkdir -p "${cwd}/${archive_dir}/build"
 
 #
 # EXTRACT ARCHIVE FILES
 #
 
-if ! tar -zxf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
+if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
     exit 1
 fi
 
@@ -176,36 +235,31 @@ fi
 # BUILD PROGRAM FROM SOURCE
 #
 
-cd "$cwd/$archive_dir/build" || exit 1
-../Configure linux-x86_64
-             --prefix=/usr                    \
-             --openssldir="$ssl_dir"          \
-             --with-rand-seed=os              \
-             --with-zlib-include=/usr/include \
-             --with-zlib-lib=/usr/lib         \
-             enable-egd                       \
-             enable-fips                      \
-             enable-md2                       \
-             enable-rc5                       \
-             enable-trace                     \
-             threads                          \
-             zlib
+LDFLAGS='-L/lib/x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu -L/usr/local/lib'
+LDFLAGS+=' -L/usr/local/lib64 -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+
+cd "${cwd}/${archive_dir}" || exit 1
+cd build || exit 1
+../configure --enable-optimizations                                                \
+             --with-address-sanitizer                                              \
+             --with-ensurepip=upgrade                                              \
+             --with-lto=yes                                                        \
+             --with-openssl=/usr                                                   \
+             --with-pkg-config=yes                                                 \
+             --with-openssl-rpath=auto                                             \
+             --with-ssl-default-suites=openssl                                     \
+             --with-valgrind                                                       \
+             PKG_CONFIG="$(type -P pkg-config)"                                    \
+             PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"                                  \
+             CPPFLAGS='-I/usr/include/openssl -I/usr/local/include -I/usr/include' \
+             LDFLAGS="${LDFLAGS}"                                                  \
+             LIBS="$(pkg-config --libs openssl)"                                   \
+             CFLAGS='-I/usr/include/openssl'
 make "-j$(nproc --all)"
-if ! sudo make install; then
-    fail_fn 'Failed to execute: sudo make install'
-fi
+sudo make uninstall
 
-if ! sudo make install_fips; then
-    fail_fn 'Failed to execute: sudo make install_fips'
-fi
-
-# REQUIRED FOR FIPS FUNCTIONALITY TO WORK
-sudo openssl fipsinstall
-
-# ENSURE THE CORRECT PERMISSIONS ARE ATTACHED TO THE CUSTOM PEM FILE THAT WAS ADDED
-if [ -f "$pem_output" ]; then
-    sudo chmod 644 "$pem_output"
-fi
+# SHOW THE NEW VERSION
+show_ver_fn
 
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
