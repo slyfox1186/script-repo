@@ -19,9 +19,9 @@
 ##  Added: A browser user-agent string to the curl command
 ##  Added: A CPPFLAGS variable to ImageMagick's configure script.
 ##
-##  Updated: 08.07.23
+##  Updated: 08.4.23
 ##
-##  Script Version: 2.6
+##  Script Version: 2.5
 ##
 #################################################################################
 
@@ -36,7 +36,7 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-script_version=2.6
+script_version=2.5
 progname="${0:2}"
 cwd="$PWD"/magick-build-script
 packages="$cwd"/packages
@@ -472,19 +472,15 @@ sort_libjxl_fn()
     mkdir -p "$packages"/deb-files
 
     if [ ! -f "$packages"/libjxl.tar.gz ]; then
-        if [[ "$VER" -eq '12' ]]; then
-            libjxl_download="$url_base-debian-bookworm-$url_suffix"
-        elif [[ "$VER" -eq '11' ]]; then
-            libjxl_download="$url_base-debian-bullseye-$url_suffix"
-        elif [[ "$VER" -eq '10' ]]; then
-            libjxl_download="$url_base-debian-buster-$url_suffix"
-        elif [[ "$VER" -ge '22.04' ]]; then
-            libjxl_download="$url_base-ubuntu-22.04-$url_suffix"
-        elif [[ "$VER" -eq '20.04' ]]; then
-            libjxl_download="$url_base-ubuntu-20.04-$url_suffix"
-        elif [[ "$VER" -eq '18.04' ]]; then
-            libjxl_download="$url_base-ubuntu-18.04-$url_suffix"
-        fi
+        case "$VER" in
+            '12')       libjxl_download="$url_base-debian-bookworm-$url_suffix";;
+            '11')       libjxl_download="$url_base-debian-bullseye-$url_suffix";;
+            '10')       libjxl_download="$url_base-debian-buster-$url_suffix";;
+            '22.04')    libjxl_download="$url_base-ubuntu-22.04-$url_suffix";;
+            '20.04')    libjxl_download="$url_base-ubuntu-20.04-$url_suffix";;
+            '18.04')    libjxl_download="$url_base-ubuntu-18.04-$url_suffix";;
+            *)          fail_fn 'Inable to determine the OS version to install libjxl.';;
+        esac
 
         # CALL THE DOWNLOAD FUNCTION FOR THE LIBJXL DEBIAN FILES
         download_libjxl_fn "$libjxl_download"
@@ -647,10 +643,7 @@ git_ver_fn 'libsdl-org/libtiff' '1' 'T'
 if build 'tiff' "$g_ver"; then
     download "https://codeload.github.com/libsdl-org/libtiff/tar.gz/refs/tags/v$g_ver" "tiff-$g_ver.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace"     \
-                        --{build,host}="$pc_type" \
-                        --enable-cxx              \
-                        --with-pic
+    execute ./configure --prefix="$workspace" --{build,host}="$pc_type" --enable-cxx --with-pic
     execute make "-j$cpu_threads"
     execute make install
     build_done 'tiff' "$g_ver"
@@ -667,9 +660,7 @@ fi
 if build 'libfpx' 'git'; then
     download_git 'https://github.com/imageMagick/libfpx.git'
     execute autoreconf -fi
-    execute ./configure --prefix="$install_dir"          \
-                        --{build,host,target}="$pc_type" \
-                        --with-pic
+    execute ./configure --prefix="$install_dir" --{build,host,target}="$pc_type" --with-pic
     execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'libfpx' 'git'
@@ -678,9 +669,7 @@ fi
 if build 'ghostscript' '10.01.2'; then
     download 'https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10012/ghostscript-10.01.2.tar.xz'
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace"     \
-                        --with-libiconv=/usr      \
-                        --with-sanitizer=address
+    execute ./configure --prefix="$workspace"  --with-libiconv=/usr --with-sanitizer=address
     execute make "-j$cpu_threads"
     execute make install
     build_done 'ghostscript' '10.01.2'
@@ -689,10 +678,7 @@ fi
 if build 'png12' '1.2.59'; then
     download 'https://github.com/glennrp/libpng/archive/refs/tags/v1.2.59.tar.gz' 'libpng-1.2.59.tar.gz'
     execute ./autogen.sh
-    execute ./configure --prefix=/usr             \
-                        --{build,host}="$pc_type" \
-                        --with-pic                \
-                        --with-pkgconfigdir="$workspace"/lib/pkgconfig
+    execute ./configure --prefix=/usr --{build,host}="$pc_type" --with-pic --with-pkgconfigdir="$workspace"/lib/pkgconfig
     execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'png12' '1.2.59'
@@ -701,9 +687,9 @@ fi
 if build 'libwebp' 'git'; then
     download_git 'https://chromium.googlesource.com/webm/libwebp' 'libwebp-git'
     execute autoreconf -fi
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release}                \
-        -DWEBP_{BUILD_ANIM_UTILS,BUILD_EXTRAS,BUILD_GIF2WEBP,BUILD_IMG2WEBP,BUILD_LIBWEBPMUX}=OFF  \
-        -DWEBP_{BUILD_VWEBP,BUILD_WEBPINFO,BUILD_WEBPMUX,ENABLE_SWAP_16BIT_CSP,LINK_STATIC}=OFF    \
+    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} \
+        -DWEBP_{BUILD_ANIM_UTILS,BUILD_EXTRAS,BUILD_GIF2WEBP,BUILD_IMG2WEBP,BUILD_LIBWEBPMUX}=OFF \
+        -DWEBP_{BUILD_VWEBP,BUILD_WEBPINFO,BUILD_WEBPMUX,ENABLE_SWAP_16BIT_CSP,LINK_STATIC}=OFF \
         -DWEBP_{BUILD_CWEBP,BUILD_DWEBP}=ON -DBUILD_SHARED_LIBS=ON -DZLIB_INCLUDE_DIR=/usr/include \
         -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
@@ -733,11 +719,7 @@ git_ver_fn 'fribidi/fribidi' '1' 'T'
 if build 'fribidi' "$g_ver"; then
     download "https://codeload.github.com/fribidi/fribidi/tar.gz/refs/tags/v$g_ver" "fribidi-$g_ver.tar.gz"
     extra_commands=(-D{deprecated,docs,tests}'=false')
-    execute meson setup build --prefix="$workspace"    \
-                              --buildtype=release      \
-                              --default-library=static \
-                              --strip                  \
-                              "${extra_commands[@]}"
+    execute meson setup build --prefix="$workspace" --buildtype=release --default-library=static --strip "${extra_commands[@]}"
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
     build_done 'fribidi' "$g_ver"
@@ -746,11 +728,7 @@ fi
 git_ver_fn 'host-oman/libraqm' '1' 'T'
 if build 'raqm' "$g_ver"; then
     download "https://codeload.github.com/host-oman/libraqm/tar.gz/refs/tags/v$g_ver" "raqm-$g_ver.tar.gz"
-    execute meson setup build --prefix="$workspace"             \
-                              --includedir="$workspace"/include \
-                              --buildtype=release               \
-                              --default-library=static          \
-                              --strip
+    execute meson setup build --prefix="$workspace" --includedir="$workspace"/include --buildtype=release --default-library=static --strip
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
     build_done 'raqm' "$g_ver"
@@ -760,12 +738,7 @@ git_ver_fn 'jemalloc/jemalloc' '1' 'T'
 if build 'jemalloc' "$g_ver"; then
     download "https://codeload.github.com/jemalloc/jemalloc/tar.gz/refs/tags/$g_ver" "jemalloc-$g_ver.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace"     \
-                        --{build,host}="$pc_type" \
-                        --disable-doc             \
-                        --enable-autogen          \
-                        --enable-shared           \
-                        --enable-static
+    execute ./configure --prefix="$workspace" --{build,host}="$pc_type" --disable-doc --enable-autogen --enable-shared --enable-static
     execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'jemalloc' "$g_ver"
@@ -792,30 +765,30 @@ if build 'imageMagick' "$g_ver"; then
     execute autoreconf -fi -I /usr/share/aclocal
     mkdir build
     cd build || exit 1
-    ../configure --prefix="$install_dir"                         \
-                 --{build,host,target}="$pc_type"                \
-                 --enable-ccmalloc                               \
-                 --enable-hdri                                   \
-                 --enable-hugepages                              \
-                 --enable-legacy-support                         \
-                 --enable-opencl                                 \
-                 --with-dmalloc                                  \
-                 --with-fpx                                      \
-                 --with-gvc                                      \
-                 --with-gslib                                    \
-                 --with-heic                                     \
-                 --with-jemalloc                                 \
+    ../configure --prefix="$install_dir" \
+                 --{build,host,target}="$pc_type" \
+                 --enable-ccmalloc \
+                 --enable-hdri \
+                 --enable-hugepages \
+                 --enable-legacy-support \
+                 --enable-opencl \
+                 --with-dmalloc \
+                 --with-fpx \
+                 --with-gvc \
+                 --with-gslib \
+                 --with-heic \
+                 --with-jemalloc \
                  --with-libstdc=/usr/lib/gcc/x86_64-linux-gnu/12 \
-                 --with-modules                                  \
-                 --with-perl                                     \
-                 --with-pic                                      \
-                 --with-rsvg                                     \
-                 --with-tcmalloc                                 \
-                 --with-pkgconfigdir="$workspace"/lib/pkgconfig  \
-                 --with-quantum-depth=16                         \
-                 --without-autotrace                             \
-                 PKG_CONFIG="$(type -P pkg-config)"              \
-                 PKG_CONFIG_PATH="$PKG_CONFIG_PATH"              \
+                 --with-modules \
+                 --with-perl \
+                 --with-pic \
+                 --with-rsvg \
+                 --with-tcmalloc \
+                 --with-pkgconfigdir="$workspace"/lib/pkgconfig \
+                 --with-quantum-depth=16 \
+                 --without-autotrace \
+                 PKG_CONFIG="$(type -P pkg-config)" \
+                 PKG_CONFIG_PATH="$PKG_CONFIG_PATH" \
                  CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include"
     execute make "-j$cpu_threads"
     execute sudo make install
