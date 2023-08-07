@@ -47,8 +47,6 @@ start_aria2_fn()
     # I USE THIS AWESOME EXTENSION FOR THE CHROME BROWSER THAT WORKS IN HARMONY WITH ARIA2 WHILE RUNNING IT AS A BACKGROUND DAEMON (RPC MODE).
     # https://chrome.google.com/webstore/detail/aria2-for-chrome/mpkodccbngfoacfalldjimigbofkhgjn
 
-    dir_list=( )
-
     if [ ! -d "${HOME}"/.aria2 ] || [ ! -d "${HOME}"/Downloads ]; then
         mkdir -p "${HOME}/.aria2" "${HOME}/Downloads" 2>/dev/null
     fi
