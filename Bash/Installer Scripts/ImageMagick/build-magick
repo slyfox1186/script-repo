@@ -19,9 +19,9 @@
 ##  Added: A browser user-agent string to the curl command
 ##  Added: A CPPFLAGS variable to ImageMagick's configure script.
 ##
-##  Updated: 08.4.23
+##  Updated: 08.07.23
 ##
-##  Script Version: 2.5
+##  Script Version: 2.6
 ##
 #################################################################################
 
@@ -36,7 +36,7 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-script_version=2.5
+script_version=2.6
 progname="${0:2}"
 cwd="$PWD"/magick-build-script
 packages="$cwd"/packages
