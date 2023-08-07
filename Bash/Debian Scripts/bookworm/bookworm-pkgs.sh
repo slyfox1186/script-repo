@@ -17,7 +17,7 @@ pkgs=(alien aptitude aria2 autoconf autoconf-archive autogen automake bat binuti
 
 for pkg in ${pkgs[@]}
 do
-    if ! sudo dpkg | grep "${pkg}"; then
+    if ! sudo dpkg | grep "${pkg}" &>/dev/null; then
         missing_pkgs+=" ${pkg}"
     fi
 done
