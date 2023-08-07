@@ -14,7 +14,7 @@ fail_fn()
 cd "$(mktemp --directory)" || exit 1
 
 # Download the user scripts from GitHub
-wget -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/user-scripts/bookworm/bookworm-scripts.txt'
+wget -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Debian%20Scripts/bookworm/user-scripts/bookworm-scripts.txt'
 
 # Delete all files except those that start with a '.' or end with '.sh'
 find . ! \( -name '\.*' -o -name '*.sh' \) -type f -delete 2>/dev/null
