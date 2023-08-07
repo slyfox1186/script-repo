@@ -4,7 +4,7 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-python
 ##
-##  Purpose: Install Python3 v3.11.4 from the source code released by the official website: https://www.python.org/downloads
+##  Purpose: Install Python3 v3.12.0rc1 from the source code released by the official website: https://www.python.org/downloads
 ##
 ##  Features: Static build, OpenSSL backend
 ##
@@ -26,15 +26,16 @@ fi
 #
 
 script_ver=1.4
-archive_dir=python-3.11.4
-archive_url=https://www.python.org/ftp/python/3.11.4/Python-3.11.4.tar.xz
+py_ver=3.12.0rc1
+archive_dir=Python-"${py_ver}"
+archive_url=https://www.python.org/ftp/python/3.12.0/Python-"${py_ver}".tar.xz
 archive_ext="${archive_url//*.}"
 cwd="${PWD}"/python3-build-script
 user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
 printf "\n%s\n%s\n\n" \
-    "Python3 Build Script v3.11.4 - v${script_ver}" \
+    "Python3 Build Script v${py_ver} - v${script_ver}" \
     '==============================================='
 
 #
