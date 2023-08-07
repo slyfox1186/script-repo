@@ -454,7 +454,7 @@ install_jxl_files_fn()
         sudo dpkg -i "$i"
         echo
     done
-    sudo apt --fix-broken install
+    sudo apt -y --fix-broken install
 }
 
 download_jxl_files_fn()
