@@ -240,20 +240,20 @@ LDFLAGS+=' -L/usr/local/lib64 -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 
 cd "${cwd}/${archive_dir}" || exit 1
 cd build || exit 1
-../configure --enable-optimizations                                                               \
-             --with-address-sanitizer                                                             \
-             --with-ensurepip=upgrade                                                             \
-             --with-lto=yes                                                                       \
-             --with-openssl=/usr                                                                  \
-             --with-pkg-config=yes                                                                \
-             --with-openssl-rpath=auto                                                            \
-             --with-ssl-default-suites=openssl
-             --with-valgrind                                                                      \
-             PKG_CONFIG="$(type -P pkg-config)"                                                   \
-             PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"                                                 \
-             CPPFLAGS='-I/usr/include/openssl -I/usr/local/include -I/usr/include'                \
-             LDFLAGS="${LDFLAGS}"                                                                 \
-             LIBS='-L/usr/lib64 -lssl -lcrypto -lz -ldl -pthread -L/usr/lib/x86_64-linux-gnu -lz' \
+../configure --enable-optimizations                                                \
+             --with-address-sanitizer                                              \
+             --with-ensurepip=upgrade                                              \
+             --with-lto=yes                                                        \
+             --with-openssl=/usr                                                   \
+             --with-pkg-config=yes                                                 \
+             --with-openssl-rpath=auto                                             \
+             --with-ssl-default-suites=openssl                                     \
+             --with-valgrind                                                       \
+             PKG_CONFIG="$(type -P pkg-config)"                                    \
+             PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"                                  \
+             CPPFLAGS='-I/usr/include/openssl -I/usr/local/include -I/usr/include' \
+             LDFLAGS="${LDFLAGS}"                                                  \
+             LIBS="$(pkg-config --libs openssl)"                                   \
              CFLAGS='-I/usr/include/openssl'
 make "-j$(nproc --all)"
 sudo make altinstall
