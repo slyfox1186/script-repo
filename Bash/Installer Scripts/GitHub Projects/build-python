@@ -247,7 +247,7 @@ cd build || exit 1
              --with-openssl=/usr                                                                  \
              --with-pkg-config=yes                                                                \
              --with-openssl-rpath=auto                                                            \
-             --with-ssl-default-suites=openssl                                                    \
+             --with-ssl-default-suites=openssl
              --with-valgrind                                                                      \
              PKG_CONFIG="$(type -P pkg-config)"                                                   \
              PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"                                                 \
