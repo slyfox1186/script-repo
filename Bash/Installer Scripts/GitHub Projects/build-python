@@ -241,7 +241,6 @@ LDFLAGS+=' -L/usr/local/lib64 -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 cd "${cwd}/${archive_dir}" || exit 1
 cd build || exit 1
 ../configure --enable-optimizations                                                \
-             --with-address-sanitizer                                              \
              --with-ensurepip=upgrade                                              \
              --with-lto=yes                                                        \
              --with-openssl=/usr                                                   \
