@@ -256,7 +256,7 @@ cd build || exit 1
              LIBS="$(pkg-config --libs openssl)"                                   \
              CFLAGS='-I/usr/include/openssl'
 make "-j$(nproc --all)"
-sudo make uninstall
+sudo make altinstall
 
 # SHOW THE NEW VERSION
 show_ver_fn
