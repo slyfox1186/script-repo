@@ -177,8 +177,7 @@ fi
 #
 
 cd "$cwd/$archive_dir/build" || exit 1
-../Configure linux-x86_64
-             --prefix=/usr                    \
+../Configure --prefix=/usr                    \
              --openssldir="$ssl_dir"          \
              --with-rand-seed=os              \
              --with-zlib-include=/usr/include \
