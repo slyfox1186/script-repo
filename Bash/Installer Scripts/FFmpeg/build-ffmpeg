@@ -21,7 +21,7 @@
 ##
 ##  GeForce CUDA:
 ##
-##  Updated: Version to 12.2.1
+##  Updated: Version to 12.2.2
 ##
 ##    - If the cuda libraries are not installed (for Geforce graphics cards only) the user
 ##    - will be prompted by the script to install them so that hardware acceleration is
