@@ -24,6 +24,14 @@ bash <(curl -fsSL https://build-menu.optimizethis.net)
 ```
 ------
 
+
+## Build All GNU Scripts
+  - Master script to build all GNU scripts at once.
+```bash
+bash <(curl -fsSL https://build-all-gnu.optimizethis.net)
+```
+------
+
 ## Install [GCC](https://github.com/gcc-mirror/gcc) versions - 11.4.0 / 12.3.0 / 13.2.0
 
   - **Sourced from the official GitHub repository**
