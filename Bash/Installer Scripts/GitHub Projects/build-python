@@ -184,7 +184,8 @@ pkgs=(autoconf autogen automake binutils build-essential ccache cmake curl git i
 
 for i in ${pkgs[@]}
 do
-    if ! dpkg -l | grep "${i}" &>/dev/null; then
+    missing_pkgs="$(dpkg -l | grep -o "${i}")"
+    if [ -z "$missing_pkgs" ]; then
         missing_pkgs+=" ${i}"
     fi
 done
