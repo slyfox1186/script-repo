@@ -23,6 +23,9 @@ fi
 #
 
 script_ver=1.0
+archive_dir=nasm-2.16.01
+archive_url=https://www.nasm.us/pub/nasm/stable/nasm-2.16.01.tar.xz
+archive_ext="${archive_url//*.}"
 cwd="$PWD"/nasm-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
@@ -259,9 +262,9 @@ pkgs_fn
 #
 
 if build 'nasm' '2.16.01'; then
-    download 'https://www.nasm.us/pub/nasm/stable/nasm-2.16.01.tar.xz'
-    sh autogen.sh
-    sh configure --prefix=/usr/local                      \
+    download "$archive_url"
+    ./autogen.sh
+    ./configure --prefix=/usr/local                       \
                          --{build,host,target}="$pc_type" \
                          --disable-pedantic               \
                          --enable-ccache
