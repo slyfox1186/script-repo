@@ -4,7 +4,7 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-diffutils
 ##
-##  Purpose: Build GNU diffutils
+##  Purpose: Build GNU Diffutils
 ##
 ##  Updated: 08.01.23
 ##
@@ -134,7 +134,7 @@ pkgs_fn()
 
     for i in ${pkgs[@]}
     do
-        missing_pkg="$(dpkg -l | grep $i)"
+        missing_pkg="$(dpkg -l | grep -o "$i")"
 
         if [ -z "$missing_pkg" ]; then
             missing_pkgs+=" $i"
