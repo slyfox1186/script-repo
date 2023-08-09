@@ -42,6 +42,7 @@ _OpenWSLHere()
     Else
     {
         Run A_ComSpec ' /D /C START "" /MIN "' myexe '" -NoP -W Hidden -C "Start-Process ' wt ' -Args `'-w new-tab C:\Windows\System32\wsl.exe -d \"' osName '\" --cd \"~\"`' -Verb RunAs'
+        WinActivate("A")
         Return
     }
 
@@ -57,4 +58,5 @@ _OpenWSLHere()
      }
 
         Run A_ComSpec ' /D /C START "" /MIN "' myexe '" -NoP -W Hidden -C "Start-Process ' wt ' -Args `'-w new-tab C:\Windows\System32\wsl.exe -d \"' osName '\" --cd \"' pwd '\"`' -Verb RunAs'
+        WinActivate("A")
 }
