@@ -42,8 +42,11 @@ _OpenWSLHere()
     Else
     {
         Run A_ComSpec ' /D /C START "" /MIN "' myexe '" -NoP -W Hidden -C "Start-Process ' wt ' -Args `'-w new-tab C:\Windows\System32\wsl.exe -d \"' osName '\" --cd \"~\"`' -Verb RunAs'
-        WinActivate("A")
-        Return
+        If WinWait("ahk_exe WindowsTerminal.exe",, 5)
+        {
+            WinActivate("ahk_exe WindowsTerminal.exe")
+            return
+        }
     }
 
     For win in winObj
@@ -58,5 +61,9 @@ _OpenWSLHere()
      }
 
         Run A_ComSpec ' /D /C START "" /MIN "' myexe '" -NoP -W Hidden -C "Start-Process ' wt ' -Args `'-w new-tab C:\Windows\System32\wsl.exe -d \"' osName '\" --cd \"' pwd '\"`' -Verb RunAs'
-        WinActivate("A")
+        If WinWait("ahk_exe WindowsTerminal.exe",, 5)
+        {
+            WinActivate("ahk_exe WindowsTerminal.exe")
+            return
+        }
 }
