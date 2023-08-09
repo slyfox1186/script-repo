@@ -190,7 +190,7 @@ cd "$cwd/$archive_dir/build" || exit 1
              threads                          \
              zlib
 make "-j$(nproc --all)"
-if ! sudo make install; then
+if ! sudo make install_sw; then
     fail_fn 'Failed to execute: sudo make install'
 fi
 
