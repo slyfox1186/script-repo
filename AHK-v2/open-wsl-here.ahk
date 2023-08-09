@@ -18,15 +18,17 @@
       - To find the available distros run "wsl.exe -l --all" using PowerShell to get a list of available options
 
     Updated:
-    - 08.07.23
+    - 08.09.23
 
 */
 
 !w up::_OpenWSLHere()
 
+return
+
 _OpenWSLHere()
 {
-    Static convert := " !#$%&'()-.*:?@[]^_``{|}~/"
+    Static convert := " #$%&'()-.*:?@[]^_``{}|~/"
     Static osName := "Debian"
     Static wt := "C:\Users\jholl\AppData\Local\Microsoft\WindowsApps\wt.exe"
 
