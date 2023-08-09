@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+f#!/usr/bin/env bash
 
 ###########################################################################################################
 ##
@@ -138,7 +138,7 @@ pkgs_fn()
 
     for i in ${pkgs[@]}
     do
-        missing_pkg="$(dpkg -l | make $i)"
+        missing_pkg="$(dpkg -l | grep -o "$i")"
 
         if [ -z "$missing_pkg" ]; then
             missing_pkgs+=" $i"
