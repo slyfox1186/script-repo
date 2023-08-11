@@ -1,76 +1,93 @@
-#!/bin/bash
-# shellcheck disable=SC2016,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
+#!/usr/bin/env bash
+# shellcheck disable=SC2162
 
 ###########################################################################################################
 ##
-##  GitHub: https://github.com/slyfox1186/Windows-WSL2-Kernel-build-script
+##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Pi-Hole/build-WSL2
 ##
-##  Supported Distros: Debian-based ( Debian, Ubuntu, etc. )
+##  Purpose: Build WSL2c with max connections changed from 16 to 128
 ##
-##  Supported architecture: x86_x64
+##  Features: Static build, OpenSSL backend
 ##
-##  Purpose: Build the latest Microsoft WSL2 kernel release for version 6 (6.1.21.2) to link to your current distros.
+##  Updated: 08.01.23
 ##
-##  Install info: The new kernel will be located in the root build directory; the filename will be: vmlinux
-##
-##                Place vmlinux into a folder inside your Windows "%USERPROFILE%" folder.
-##                I placed mine into the folder I created called: "%USERPROFILE%\WSL2\vmlinux"
-##
-##                Create a file called "%USERPROFILE%\.wslconfig" and visit the below website for
-##                instructions on how to link the new kernel to your linux distros.
-##
-##                https://learn.microsoft.com/en-us/windows/wsl/wsl-config
-##
-##  Updated: 07.31.23
-##
-##  Version: 2.1
+##  Script version: 1.1
 ##
 ###########################################################################################################
 
-clear
+if [ "$EUID" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
 
 #
-# DEFINE VARIABLES
+# PROMPT THE USER TO CHOOSE THE KERNEL VERSION
 #
 
-script_ver=2.1
-cwd="$PWD"/wsl2-kernel-build-script
-packages="$cwd"/packages
-repo=https://github.com/slyfox1186/Windows-WSL2-Kernel-build-script
-debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+prompt_fn()
+{
+
+    clear
+
+    printf "%s\n\n\%s\n%s\n%s\n\n" \
+        'Choose the kernel version:' \
+        '[1] 5.15.123.1 (08.08.23)' \
+        '[2] 6.1.21.2 (07.25.23)' \
+        '[3] Exit'
+        read -p 'Your choices are (1 to 3): ' answer
+        clear
+
+        case "$answer" in
+            1)      archive_url='https://github.com/microsoft/WSL2-Linux-Kernel/archive/refs/tags/linux-msft-wsl-5.15.123.1.tar.gz';;
+            2)      archive_url='https://github.com/microsoft/WSL2-Linux-Kernel/archive/refs/tags/linux-msft-wsl-6.1.21.2.tar.gz';;
+            3)      exit 0;;
+            *)      printf 'Bad user input. Resverting script...';;
+         esac
+}
+
+prompt_fn
+
+short_name="$(echo "$archive_url" | sed 's/^.*\/.*-wsl-\(.*\)\.tar\.gz$/\1/')"
 
 #
-# FIGURE OUT WHICH COMPILERS TO USE
+# SET VARIABLES
+#
+
+script_ver=2.0
+archive_dir="$short_name"
+archive_ext="${archive_url//*.}"
+cwd="$PWD"/WSL2-build-script
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+repo=https://github.com/slyfox1186/script-repo
+debug=ON
+
+printf "\n%s\n%s\n\n" \
+    "WSL2 Build Script - v$script_ver" \
+    '==============================================='
+
+#
+# CREATE OUTPUT DIRECTORY
+#
+
+if [ ! -d "$cwd" ]; then
+    mkdir -p "$cwd"
+fi
+
+#
+# SET THE C+CPP COMPILERS
 #
 
 export CC='ccache gcc'
 export CXX='ccache g++'
 
 #
-# SET COMPILER OPTIMIZATION FLAGS
-#
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
-
-#
-# SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
-#
-
-if [ -f /proc/cpuinfo ]; then
-    cpu_threads="$(grep -c ^processor /proc/cpuinfo)"
-else
-    cpu_threads="$(nproc --all)"
-fi
-
-#
-# SET THE PATH VARIABLE
+# SET PATH
 #
 
 PATH="\
 /usr/lib/ccache:\
-$HOME/.local/bin:\
 $HOME/.cargo/bin:\
-/usr/bin/x86_64-linux-gnu-ld:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
@@ -83,18 +100,19 @@ $HOME/.cargo/bin:\
 export PATH
 
 #
-# DEFINE FUNCTIONS
+# SET COMPILER OPTIMIZATION FLAGS
+#
+
+export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
+
+#
+# CREATE FUNCTIONS
 #
 
 exit_fn()
 {
-    printf "\n%s\n\n%s\n\n%s\n\n%s\n\n%s\n%s\n\n%s\n\n%s\n\n" \
-        'The new kernel will be located in the root build directory' \
-        'The filename will be called: vmlinux' \
-        'Place the kernel into a folder inside your "%USERPROFILE%"' \
-        'I placed mine into the folder I created called: "%USERPROFILE%\WSL2\vmlinux"' \
-        'Create a file called "%USERPROFILE%\.wslconfig" and look up online how to link' \
-        'the new kernel you copied so that your WSL2 linux Distro loads it.' \
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'The script has completed' \
         'Make sure to star this repository to show your support!' \
         "$repo"
     exit 0
@@ -102,88 +120,35 @@ exit_fn()
 
 fail_fn()
 {
-    printf "\n%s\n\n%s\n\n%s\n\n" \
+    printf "\n\n%s\n\n%s\n\n%s\n\n" \
         "$1" \
-        'Please create a support ticket' \
-        'https://github.com/slyfox1186/Windows-WSL2-Kernel-build-script/issues/'
+        'Please create a support ticket so I can work on a fix.' \
+        "$repo/issues"
     exit 1
 }
 
 cleanup_fn()
 {
     local answer
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '==========================================' \
-        ' Do you want to clean up the build files? ' \
-        '==========================================' \
+
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'Do you want to remove the build files?' \
         '[1] Yes' \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
 
     case "$answer" in
-        1)  sudo rm -fr "$cwd" "$0";;
-        2)  exit_fn;;
+        1)      sudo rm -fr "$cwd" "$0";;
+        2)      return 0;;
         *)
-            printf "%s\n\n" 'Bad user input... Resetting script.'
-            sleep 3
-            unset answer
-            clear
-            cleanup_fn
-            ;;
+                clear
+                printf "%s\n\n" 'Bad user input. Reverting script...'
+                sleep 3
+                unset choice
+                clear
+                cleanup_fn
+                ;;
     esac
-}
-
-download()
-{
-    dl_path="$packages"
-    dl_url="$1"
-    dl_file="${2:-"${1##*/}"}"
-
-    if [[ "$dl_file" =~ tar. ]]; then
-        output_dir="${dl_file%.*}"
-        output_dir="${3:-"${output_dir%.*}"}"
-    else
-        output_dir="${3:-"${dl_file%.*}"}"
-    fi
-
-    target_file="$dl_path/$dl_file"
-    target_dir="$dl_path/$output_dir"
-
-    if [ -f "$target_file" ]; then
-        echo "The file \"$dl_file\" is already downloaded."
-    else
-        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
-        if ! curl -Lso "$target_file" "$dl_url"; then
-            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
-            sleep 10
-            if ! curl -Lso "$target_file" "$dl_url"; then
-                fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
-            fi
-        fi
-        echo 'Download Completed'
-    fi
-
-    if [ -d "$target_dir" ]; then
-        sudo rm -fr "$target_dir"
-    fi
-
-    mkdir -p "$target_dir"
-
-    if [ -n "$3" ]; then
-        if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
-            sudo rm "$target_file"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script."
-        fi
-    else
-        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-            sudo rm "$target_file"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script."
-        fi
-    fi
-
-    printf "%s\n\n" "File extracted: $dl_file"
-
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
 }
 
 execute()
@@ -203,6 +168,58 @@ execute()
     fi
 }
 
+download()
+{
+    dl_path="$packages"
+    dl_url="$1"
+    clea="${2:-"${1##*/}"}"
+
+    if [[ "$dl_file" =~ tar. ]]; then
+        output_dir="${dl_file%.*}"
+        output_dir="${3:-"${output_dir%.*}"}"
+    else
+        output_dir="${3:-"${dl_file%.*}"}"
+    fi
+
+    target_file="$dl_path/$dl_file"
+    target_dir="$dl_path/$output_dir"
+
+    if [ -f "$target_file" ]; then
+        echo "The file \"$dl_file\" is already downloaded."
+    else
+        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
+        if ! curl -Lso "$target_file" "$dl_url"; then
+            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 5 seconds..."
+            sleep 5
+            if ! curl -Lso "$target_file" "$dl_url"; then
+                fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
+            fi
+        fi
+        echo 'Download Completed'
+    fi
+
+    if [ -d "$target_dir" ]; then
+        sudo rm -fr "$target_dir"
+    fi
+
+    mkdir -p "$target_dir"
+
+    if [ -n "$3" ]; then
+        if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
+            sudo rm "$target_file"
+            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please rerun the script."
+        fi
+    else
+        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
+            sudo rm "$target_file"
+            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please rerun the script."
+        fi
+    fi
+
+    echo -e "File extracted: $dl_file\\n"
+
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
+}
 
 build()
 {
@@ -210,12 +227,15 @@ build()
     echo "building $1 - version $2"
     echo '===================================='
 
-    if [ -f "$PWD/$1.done" ]; then
-        if grep -Fx "$2" "$PWD/$1.done" 2>/dev/null; then
-            echo "$1 version $2 already built. Remove $PWD/$1.done lockfile to rebuild it."
+    if [ -f "$packages/$1.done" ]; then
+        if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
+            echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
             return 1
+        elif $latest; then
+            echo "$1 is outdated and will be rebuilt using version $2"
+            return 0
         else
-            echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $PWD/$1.done lockfile."
+            echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
             return 1
         fi
     fi
@@ -225,69 +245,74 @@ build()
 
 build_done()
 {
-    echo "$2" > "$PWD/$1.done"
+    echo "$2" >"$packages/$1.done"
 }
 
-installed()
-{
-    return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
-}
-
-clear
-printf "%s\n%s\n%s\n\n" \
-    "WSL2-Custom-Kernel build script v$script_ver" \
-    '======================================' \
-    "The script will utilize ($cpu_threads) CPU threads for parallel processing to accelerate the build speed."
-
 #
-# REQUIRED APT PACKAGES
+# GET PC TYPE
 #
 
-printf "%s\n%s\n" \
-    'Installing required apt packages' \
-    '=================================='
+curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "$cwd/config.guess"
+pc_type="$(source "$cwd/config.guess")"
 
-pkgs=(aria2 autoconf autogen automake bat bc binutils bison build-essential ccache
+#
+# INSTALL REQUIRED APT cwd
+#
+
+if [ -f /usr/local/bin/aria2c ] && [ -f /usr/bin/aria2c ]; then
+    sudo apt -y remove aria2c
+else
+    add_this=aria2
+fi
+
+
+pkgs=("$add_this" autoconf autogen automake bat bc binutils bison build-essential ccache
       ccdiff checkinstall clang cmake cmake-extras cmake-qt-gui colordiff cpu-checker
       curl dbus-x11 dwarves flex git jq libdmalloc-dev libelf-dev libmimalloc-dev
       libperl-dev libssl-dev libtalloc-dev libtbbmalloc2 libtool libtool-bin lzip m4
       meson nano nasm ninja-build shellcheck sqlite3 synaptic texinfo trash-cli unzip
       uuid-dev wget xclip xsel yasm)
 
-for pkg in ${pkgs[@]}
+for i in ${pkgs[@]}
 do
-    if ! installed "$pkg"; then
-        missing_pkgs+=" $pkg"
+    missing_pkg="$(dpkg -l | grep -o "${i}")"
+
+    if [ -z "$missing_pkg" ]; then
+        missing_pkgs+=" $i"
     fi
 done
 
 if [ -n "$missing_pkgs" ]; then
-        if sudo apt -y install $missing_pkgs; then
-            printf "\n%s\n\n" 'The required apt packages were installed.'
-        else
-            fail_fn 'The required apt packages failed to install'
-        fi
-else
-    echo 'The required apt packages are already installed.'
+    sudo apt -y install $missing_pkgs
+    sudo apt -y autoremove
+    clear
 fi
 
-if [ ! -f wsl-6.1.21.2.tar.gz ]; then
-    wget --show-progress -cqO wsl-6.1.21.2.tar.gz https://github.com/microsoft/WSL2-Linux-Kernel/archive/refs/tags/linux-msft-wsl-6.1.21.2.tar.gz
+#
+# DOWNLOAD THE ARCHIVE FILE
+#
+
+if [ ! -f "$cwd/$archive_name" ]; then
+    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
-if [ -d wsl-6.1.21.2 ]; then
-    sudo rm -fr wsl-6.1.21.2
+#
+# BUILD PROGRAM FROM SOURCE
+#
+
+cd "$cwd" || exit 1
+if build 'wsl-kernel' "$short_name"; then
+    wget --show-progress -cqO "wsl-$short_name.tar.$archive_ext" "$archive_url"
+    mkdir -p "wsl-$short_name"
+    tar -zxf "wsl-$short_name.tar.gz" -C "wsl-$short_name" --strip-components 1
+    cd "wsl-$short_name" || exit 1
+    echo 'yes' | make "-j$cpu_threads" KCONFIG_CONFIG='Microsoft/config-wsl'
+    build_done 'wsl-kernel' "$short_name"
 fi
-mkdir -p wsl-6.1.21.2
 
-tar -zxf wsl-6.1.21.2.tar.gz -C wsl-6.1.21.2 --strip-components 1
-
-cd wsl-6.1.21.2 || exit 1
-
-echo 'yes' | make KCONFIG_CONFIG='Microsoft/config-wsl' "-j$cpu_threads"
-
-# CLEAN UP BUILD FILES
+# PROMPT USER TO CLEAN UP FILES
 cleanup_fn
 
-# CALL EXIT SCRIPT FUNCTION
+# SHOW EXIT MESSAGE
 exit_fn
