@@ -453,6 +453,12 @@ install_libjxl_fn()
         sudo dpkg -i "$i"
         echo
     done
+    sudo apt -f -y install
+    sudo apt --fix-broken install
+    sudo apt --fix-missing update
+    sudo dpkg --configure -a
+    sudo apt -y autoremove
+    echo
 }
 
 download_libjxl_fn()
