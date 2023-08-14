@@ -1144,8 +1144,8 @@ fi
 
 if build 'nasm' '2.16.01'; then
     download 'https://www.nasm.us/pub/nasm/stable/nasm-2.16.01.tar.xz'
-    execute sh autogen.sh
-    execute sh configure --prefix="$workspace"            \
+    execute ./autogen.sh
+    execute ./configure --prefix="$workspace"            \
                          --{build,host,target}="$pc_type" \
                          --disable-pedantic               \
                          --enable-ccache
@@ -1155,7 +1155,7 @@ if build 'nasm' '2.16.01'; then
     build_done 'nasm' '2.16.01'
 fi
 
-    sh configure --prefix=/usr/local
+    ./configure --prefix=/usr/local
 if build 'giflib' '5.2.1'; then
     download 'https://cfhcable.dl.sourceforge.net/project/giflib/giflib-5.2.1.tar.gz'
     # PARELLEL BUILDING NOT AVAILABLE FOR THIS LIBRARY
@@ -1597,7 +1597,7 @@ fi
 
 pre_check_ver 'mstorsjo/fdk-aac' '1' 'T'
 if build 'libfdk-aac' '2.0.2'; then
-    download 'https://sourceforge.net/projects/opencore-amr/files/fdk-aac/fdk-aac-2.0.2.tar.gz/download?use_mirror=gigenet' 'libfdk-aac-2.0.2.tar.gz'
+    download 'https://gigenet.dl.sourceforge.net/project/opencore-amr/fdk-aac/fdk-aac-2.0.2.tar.gz' 'libfdk-aac-2.0.2.tar.gz'
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --disable-shared --enable-static --enable-pic
     execute make "-j$cpu_threads"
