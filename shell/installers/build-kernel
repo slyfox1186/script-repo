@@ -1,0 +1,311 @@
+#!/bin/bash
+# shellcheck disable=SC2016,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
+
+###########################################################################################################
+##
+##  GitHub: https://github.com/slyfox1186/Windows-WSL2-Kernel-build-script
+##
+##  Supported Distros: Debian-based ( Debian, Ubuntu, etc. )
+##
+##  Supported architecture: x86_x64
+##
+##  Purpose: Build the latest Microsoft WSL2 kernel release to link to your current distros.
+##
+##  Install info: The new kernel will be located in the root build directory; the filename will be: vmlinux
+##
+##                Place vmlinux into a folder inside your Windows "%USERPROFILE%" folder.
+##                I placed mine into the folder I created called: "%USERPROFILE%\WSL2\vmlinux"
+##
+##                Create a file called "%USERPROFILE%\.wslconfig" and visit the below website for
+##                instructions on how to link the new kernel to your linux distros.
+##
+##                https://learn.microsoft.com/en-us/windows/wsl/wsl-config
+##
+##  Updated: 06.02.23
+##
+##  Version: 2.0
+##
+###########################################################################################################
+
+clear
+
+#
+# define variables
+#
+
+script_ver='2.0'
+
+#
+# set the available cpu thread and core count for parallel processing (speeds up the build process)
+#
+
+if [ -f '/proc/cpuinfo' ]; then
+    cpu_threads="$(grep -c ^processor '/proc/cpuinfo')"
+else
+    cpu_threads="$(nproc --all)"
+fi
+cpu_cores="$(grep ^cpu\\scores '/proc/cpuinfo' | uniq | awk '{print $4}')"
+
+#
+# FIGURE OUT WHICH COMPILERS TO USE
+#
+
+export CC=gcc CXX=g++
+export CXXFLAGS='-g -O3 -march=native'
+
+#
+# set the PATH variable
+#
+
+PATH="\
+/usr/lib/ccache:\
+$workspace/bin:\
+$PATH\
+"
+export PATH
+
+#
+# define functions
+#
+
+exit_fn()
+{
+    echo
+    echo 'The new kernel will be located in the root build directory'
+    echo
+    echo 'The filename will be called: vmlinux'
+    echo
+    echo 'Place the kernel into a folder inside your "%USERPROFILE%"'
+    echo
+    echo 'I placed mine into the folder I created called: "%USERPROFILE%\WSL2\vmlinux"'
+    echo
+    echo 'Create a file called "%USERPROFILE%\.wslconfig" and look up online how to link'
+    echo 'the new kernel you copied so that your WSL2 linux Distro loads it.'
+    echo
+    echo 'Make sure to star this repository to show your support!'
+    echo
+    echo 'https://github.com/slyfox1186/Windows-WSL2-Kernel-build-script/'
+    echo
+    exit 0
+}
+
+fail_fn()
+{
+    echo
+    echo "$1"
+    echo
+    echo 'Please create a support ticket'
+    echo
+    echo 'https://github.com/slyfox1186/Windows-WSL2-Kernel-build-script/issues/'
+    echo
+    exit 1
+}
+
+cleanup_fn()
+{
+    echo '=========================================='
+    echo ' Do you want to clean up the build files? '
+    echo '=========================================='
+    echo
+    echo '[1] Yes'
+    echo '[2] No'
+    echo
+    read -p 'Your choices are (1 or 2): ' cleanup_ans
+
+    if [ "$cleanup_ans" -eq '1' ]; then
+        remove_file "$0"
+        echo 'cleanup finished.'
+        exit_fn
+    elif [ "$cleanup_ans" -eq '2' ]; then
+        exit_fn
+    else
+        echo 'Bad user input'
+        echo
+        read -p 'Press enter to try again.'
+        clear
+        cleanup_fn
+    fi
+}
+
+make_dir()
+{
+    remove_dir "$1"
+    if ! mkdir "$1"; then
+        printf "\n%s\n\n" "Failed to create dir: $1"
+        exit 1
+    fi
+}
+
+remove_file()
+{
+    if [ -f "$1" ]; then
+        sudo rm -f "$1"
+    fi
+}
+
+remove_dir()
+{
+    if [ -d "$1" ]; then
+        sudo rm -fr "$1"
+    fi
+}
+
+download()
+{
+    dl_path="$PWD"
+    dl_file="${2:-"${1##*/}"}"
+
+    if [[ "$dl_file" =~ tar. ]]; then
+        target_dir="${dl_file%.*}"
+        target_dir="${3:-"${target_dir%.*}"}"
+    else
+        target_dir="${3:-"${dl_file%.*}"}"
+    fi
+
+    if [ ! -f "$dl_path/$dl_file" ]; then
+        echo "Downloading $1 as $dl_file"
+        if ! curl -Lso "$dl_path/$dl_file" "$1"; then
+            echo
+            echo "The script failed to download \"$1\" and will try again in 10 seconds"
+            sleep 10
+            echo
+            if ! curl -Lso "$dl_path/$dl_file" "$1"; then
+                echo
+                echo "The script failed to download \"$1\" two times and will exit the build"
+                echo
+                fail_fn
+            fi
+        fi
+        echo 'Download Completed'
+        echo
+    else
+        echo "$dl_file is already downloaded"
+    fi
+
+    make_dir "$dl_path/$target_dir"
+
+    if [ -n "$3" ]; then
+        if ! tar -xf "$dl_path/$dl_file" -C "$dl_path/$target_dir" &>/dev/null; then
+            fail_fn "Failed to extract $dl_file"
+        fi
+    else
+        if ! tar -xf "$dl_path/$dl_file" -C "$dl_path/$target_dir" --strip-components 1 &>/dev/null; then
+            fail_fn "Failed to extract $dl_file"
+        fi
+    fi
+
+    echo "File extracted: $dl_file"
+
+    cd "$dl_path/$target_dir" || fail_fn "Unable to change the working directory to $target_dir"
+}
+
+execute()
+{
+    echo "$ $*"
+
+    if ! output=$("$@" 2>&1); then
+        fail_fn "Failed to Execute $*"
+    fi
+}
+
+build()
+{
+    echo
+    echo "building $1 - version $2"
+    echo '===================================='
+
+    if [ -f "$PWD/$1.done" ]; then
+        if grep -Fx "$2" "$PWD/$1.done" 2>/dev/null; then
+            echo "$1 version $2 already built. Remove $PWD/$1.done lockfile to rebuild it."
+            return 1
+        elif $latest; then
+            echo "$1 is outdated and will be rebuilt using version $2"
+            return 0
+        else
+            echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $PWD/$1.done lockfile."
+            return 1
+        fi
+    fi
+
+    return 0
+}
+
+build_done() { echo "$2" > "$PWD/$1.done"; }
+
+installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
+
+clear
+echo "WSL2-Custom-Kernel build script v$script_ver"
+echo '======================================'
+
+echo
+echo "The script will utilize ( $cpu_threads cpu cores ) for parallel processing to accelerate the build speed."
+
+#
+# required apt packages
+#
+
+build_pkgs_fn()
+{
+    echo
+    echo 'Installing required apt packages'
+    echo '=================================='
+
+    pkgs=(build-essential curl flex bison ccache dwarves gcc g++ jq libssl-dev libelf-dev)
+
+    for pkg in ${pkgs[@]}
+    do
+        if ! installed "$pkg"; then
+            missing_pkgs+=" $pkg"
+        fi
+    done
+
+    if [ -n "$missing_pkgs" ]; then
+        for pkg in "$missing_pkgs"
+        do
+            if sudo apt -y install $pkg; then
+                echo
+                echo 'The required apt packages were installed.'
+                echo
+            else
+                fail_fn 'The required apt packages failed to install'
+            fi
+        done
+        echo 'The required apt packages are already installed.'
+    fi
+}
+
+build_pkgs_fn
+
+git_1_fn()
+{
+    # SCRAPE GITHUB WEBSITE FOR LATEST REPO VERSION
+    gh_repo="$1"
+    gh_url="$2"
+
+    if curl_cmd="$(curl -m '5' -sSL "https://api.github.com/repos/$gh_repo/$gh_url")"; then
+        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
+        g_ver="${g_ver##* }"
+        g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url')"
+    fi
+}
+
+git_ver_fn()
+{
+    local v_tag v_url
+
+    v_url="$1"
+    v_tag="$2"
+
+    git_1_fn "$v_url" 'releases' 2>/dev/null
+}
+
+git_ver_fn 'microsoft/WSL2-Linux-Kernel' '1' 'R'
+if build 'wsl2-linux-kernel' "$g_ver"; then
+    download "$g_url" "wsl2-$g_ver.tar.gz"
+    echo 'yes' | make KCONFIG_CONFIG='Microsoft/config-wsl' -j "$cpu_cores"
+    build_done 'wsl2-linux-kernel' "$g_ver"
+fi
+
+# call exit script function
+exit_fn

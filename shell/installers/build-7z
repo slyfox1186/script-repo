@@ -1,0 +1,113 @@
+#!/bin/bash
+
+################################################################################
+##
+##  GitHub: https://github.com/slyfox1186/script-repo
+##
+##  Purpose: Install the latest 7-zip package across multiple OS types.
+##          The user will be prompted to select their OS architecture before
+##          installing.
+##
+##  Updated: 06.05.23
+##
+##  Script version: 1.1
+##
+################################################################################
+
+clear
+
+#
+# SET VARIABLES
+#
+
+script_ver='1.1'
+version='7z2301'
+tar_file="$version.tar.xz"
+cwd="$PWD"/7zip-build-script
+packages="$cwd"/packages
+install_file='/usr/local/bin/7z'
+repo='https://github.com/slyfox1186/script-repo'
+
+#
+# CREATE FUNCTIONS
+#
+
+exit_fn()
+{
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'The script has completed' \
+        'Make sure to star this repository to show your support!' \
+        "$repo"
+    read -p 'Press enter to exit.'
+}
+
+fail_fn()
+{
+    printf "\n\n%s\n\n%s\n\n%s\n\n" \
+        "$1" \
+        'Please create a support ticket at the address below' \
+        "$repo/issues"
+    read -p 'Press enter to exit.'
+}
+
+# CLEANUP DOWNLOAD FILES
+cleanup_fn()
+{
+    sudo rm -fr "$cwd"
+}
+
+# PRINT 7-ZIP VERSION
+version_fn()
+{
+    show_ver="$("$install_file" | head -n 2 | cut -d " " -f3 | awk 'NF' | xargs echo "$1")"
+    show_ver="$(echo $show_ver | sed 's/v /v/g')"
+    echo -e "\\n7-zip has been updated to: v$show_ver"
+}
+
+#
+# PRINT SCRIPT BANNER
+#
+
+printf "%s\n%s\n" \
+    "7-Zip Build Script: v$script_ver" \
+    '==================================='
+
+# DETECT PC ARCHITECTURE
+case "$(uname -m)" in 
+      x86_64)          url='linux-x64.tar.xz';;
+      i386|i686)       url='linux-x86.tar.xz';;
+      aarch64*|armv8*) url='linux-arm64.tar.xz';;
+      arm|armv7*)      url='linux-arm.tar.xz';;
+      *) fail_fn "Unrecognized architecture '$(uname -m)'";;
+esac
+
+# Install curl (needed to download the files)
+sudo apt-get -qq -y install curl
+
+# CREATE OUTPUT FOLDERS
+mkdir -p "$packages"
+
+# Download the tar file if missing
+if [ ! -f "$tar_file" ]; then
+   curl -Lso "$packages/$tar_file" "https://www.7-zip.org/a/$version-$url"
+fi
+
+# Extract files into directory '7z'
+mkdir -p "$packages/$version"
+if ! tar -xf "$packages/$tar_file" -C "$packages/$version"; then
+    fail_fn "The script was unable to find the download file '$packages/$tar_file'"
+fi
+
+# Copy the file to its destination or throw an error if the copying of the file fails
+if ! sudo cp -f "$packages/$version/7zzs" "$install_file"; then
+    fail_fn "The script was unable to copy the static file '7zzs' to '$install_file'"
+fi
+
+# SHOW THE NEWLY INSTALLED 7-ZIP VERSION
+version_fn
+
+# PROMPT THE USER TO CLEANUP THE INSTALL FILES
+cleanup_fn
+
+# SHOW THE EXIT MESSAGE
+exit_fn

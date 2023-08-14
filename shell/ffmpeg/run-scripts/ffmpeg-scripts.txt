@@ -1,0 +1,2 @@
+https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ffmpeg/run-scripts/convert-x265-cuda-ffmpeg.sh
+https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/ffmpeg/run-scripts/convert-x265-cuda-ffpb.sh
