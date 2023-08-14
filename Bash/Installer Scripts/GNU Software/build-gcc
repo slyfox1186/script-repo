@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # shellcheck disable=SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
 
 #####################################################################################################
@@ -104,7 +104,7 @@ PATH="\
 $workspace/bin:\
 $HOME/.local/bin:\
 $HOME/.cargo/bin:\
-/usr/bin/x86_64-pc-linux-gnu-ld:\
+/usr/bin/"$pc_type"-ld:\
 /usr/bin/x86_64-linux-gnu-ld:\
 /usr/local/sbin:\
 /usr/local/bin:\
@@ -144,14 +144,14 @@ clear
 
 script_ver=4.3
 install_dir=/usr/local
-gcc_prefix=x86_64-pc-linux-gnu-
+gcc_prefix="$pc_type"-
 CFLAGS='-g -O3 -march=native -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
 CXXFLAGS='-g -O3 -march=native'
 CPPFLAGS='-I/usr/lib/gcc/x86_64-linux-gnu/12/include -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include'
 latest=false
 repo=https://github.com/slyfox1186/script-repo
-# CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
-debug=OFF
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+debug=OFF # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -177,17 +177,17 @@ PKG_CONFIG_PATH="\
 $workspace/lib64/pkgconfig:\
 $workspace/lib/pkgconfig:\
 $workspace/share/pkgconfig:\
-$workspace/lib/x86_64-pc-linux-gnu/pkgconfig:\
+$workspace/lib/"$pc_type"/pkgconfig:\
 $workspace/lib/x86_64-linux-gnu/pkgconfig:\
 $workspace/usr/lib/pkgconfig:\
 /lib/pkgconfig:\
-/usr/local/lib/x86_64-pc-linux-gnu/pkgconfig:\
+/usr/local/lib/"$pc_type"/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
 /usr/local/share/pkgconfig:\
 /usr/share/pkgconfig:\
-/usr/lib/x86_64-pc-linux-gnu/pkgconfig:\
+/usr/lib/"$pc_type"/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/lib/pkgconfig\
 "
@@ -261,10 +261,10 @@ create_gcc_links_fn()
 {
     local gcc_long_link_name gcc_short_link_name
 
-    gcc_long_link_name="$(find /usr/local/bin -type f -name 'x86_64-pc-linux-gnu-*' | grep -Eo 'x86_64-pc-linux-gnu-[a-z\+]+-[123]+$')"
+    gcc_long_link_name="$(find /usr/local/bin -type f -name '"$pc_type"-*' | grep -Eo '"$pc_type"-[a-z\+]+-[123]+$')"
     for i in ${gcc_long_link_name[@]}
     do
-        gcc_short_link_name="$(echo "$i" | sed 's/^x86_64-pc-linux-gnu-\(.*\)$/\1/')"
+        gcc_short_link_name="$(echo "$i" | sed 's/^"$pc_type"-\(.*\)$/\1/')"
         sudo ln -fs "/usr/local/bin/$i" "/usr/local/bin/$gcc_short_link_name"
         sudo chmod 755 -R "/usr/local/bin/$i" "/usr/local/bin/$gcc_short_link_name"
     done
@@ -307,10 +307,10 @@ download()
         echo "The file \"$dl_file\" is already downloaded."
     else
         echo "Downloading \"$dl_url\" saving as \"$dl_file\""
-        if ! curl -Lso "$target_file" "$dl_url"; then
+        if ! curl -A "$user_agent" -Lso "$target_file" "$dl_url"; then
             printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 5 seconds..."
             sleep 5
-            if ! curl -Lso "$target_file" "$dl_url"; then
+            if ! curl -A "$user_agent" -Lso "$target_file" "$dl_url"; then
                 fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
             fi
         fi
@@ -496,6 +496,14 @@ pkgs_fn()
         done
     fi
 }
+
+#
+# GET PC TYPE
+#
+
+curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "$cwd/config.guess"
+pc_type="$(source "$cwd/config.guess")"
 
 #
 # INSTALL PYTHON MODULES
@@ -711,7 +719,7 @@ build_gcc_11_fn()
         cd builddir || exit 1
         execute ../configure                          \
             --prefix="$install_dir"                   \
-            --{build,host,target}=x86_64-pc-linux-gnu \
+            --{build,host,target}="$pc_type"          \
             --disable-assembly                        \
             --disable-nls                             \
             --disable-vtable-verify                   \
@@ -742,7 +750,7 @@ build_gcc_11_fn()
             '$ This is going to take a while...'
         execute make "-j$cpu_threads"
         execute sudo make install-strip
-        execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/11
+        execute sudo libtool --finish "$install_dir/libexec/gcc/$pc_type/11"
         execute sudo libtool --finish "$install_dir"/lib
         build_done 'gcc-11' '11.4.0'
     fi
@@ -759,7 +767,7 @@ build_gcc_12_fn()
         cd builddir || exit 1
         execute ../configure                          \
             --prefix="$install_dir"                   \
-            --{build,host,target}=x86_64-pc-linux-gnu \
+            --{build,host,target}="$pc_type"          \
             --disable-assembly                        \
             --disable-nls                             \
             --disable-vtable-verify                   \
@@ -791,7 +799,7 @@ build_gcc_12_fn()
             '$ This is going to take a while...'
         execute make "-j$cpu_threads"
         execute sudo make install-strip
-        execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/12
+        execute sudo libtool --finish "$install_dir/libexec/gcc/$pc_type/12"
         execute sudo libtool --finish "$install_dir"/lib
         build_done 'gcc-12' '12.3.0'
     fi
@@ -808,7 +816,7 @@ build_gcc_13_fn()
         cd builddir || exit 1
         execute ../configure                          \
             --prefix="$install_dir"                   \
-            --{build,host,target}=x86_64-pc-linux-gnu \
+            --{build,host,target}="$pc_type"          \
             --disable-assembly                        \
             --disable-nls                             \
             --disable-vtable-verify                   \
@@ -839,7 +847,7 @@ build_gcc_13_fn()
             '$ This is going to take a while...'
         execute make "-j$cpu_threads"
         execute sudo make install-strip
-        execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/13
+        execute sudo libtool --finish "$install_dir/libexec/gcc/$pc_type/13"
         execute sudo libtool --finish "$install_dir"/lib
         build_done 'gcc-13' '13.2.0'
     fi
