@@ -26,7 +26,8 @@ script_ver=1.0
 archive_dir=ffmpeg-5.1.3
 archive_url=https://www.ffmpeg.org/releases/ffmpeg-5.1.3.tar.xz
 archive_ext="${archive_url//*.}"
-cwd="$HOME"/ffmpeg-build-script
+cwd="$PWD"/ffmpeg-build-script
+workspace="$cwd"/workspace
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
@@ -46,7 +47,7 @@ printf "\n%s\n%s\n\n" \
 # CREATE THE OUTPUT DIRECTORIES
 #
 
-mkdir -p "$cwd"
+mkdir -p "$cwd" "$workspace"
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -109,13 +110,45 @@ cleanup_fn()
     esac
 }
 
+ff_move_fn()
+{
+    local answer
+
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'Do you want to copy the files to "/usr/local/bin" ?' \
+        '[1] Yes' \
+        '[2] No'
+        read -p 'Your choices are (1 or 2): ' answer
+
+    case "$answer" in
+        1)
+                clear
+                sudo cp -f "$workspace/bin/ffmpeg" /usr/local/bin 2>/dev/null
+                sudo cp -f "$workspace/bin/ffprobe" /usr/local/bin 2>/dev/null
+                sudo cp -f "$workspace/bin/ffplay" /usr/local/bin 2>/dev/null
+                ;;
+        2)      clear;;
+        *)
+                clear
+                printf "%s\n\n" 'Bad user input. Resetting question...'
+                sleep 3
+                unset answer
+                clear
+                ff_move_fn
+                ;;
+    esac
+}
+
+
 ff_ver_fn()
 {
+    cd "$workspace/bin" || exit 1
+
     printf "%s\n%s\n%s\n\n" \
         '============================================' \
         '               FFmpeg Version               ' \
         '============================================'
-    ffmpeg -version
+    "$PWD/ffmpeg" -version
 }
 
 #
@@ -140,7 +173,7 @@ fail_fn()
 
 cleanup_fn()
 {
-    local choice dpkg_list
+    local choice
 
     printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
         '============================================' \
@@ -182,7 +215,7 @@ mkdir -p "$cwd/nv-headers"
 tar -zxf "$cwd/nv-headers.tar.gz" -C "$cwd/nv-headers" --strip-components 1
 cd "$cwd/nv-headers" || exit 1
 make "-j$(nproc --all)"
-sudo make PREFIX=/usr/local install
+make PREFIX=/usr/local install
 clear
 
 #
@@ -202,7 +235,7 @@ fi
 if [ -d "$cwd/$archive_dir" ]; then
     sudo rm -fr "$cwd/$archive_dir"
 fi
-mkdir -p "$cwd/$archive_dir/build"
+mkdir -p "$cwd/$archive_dir"
 
 #
 # EXTRACT ARCHIVE FILES
@@ -219,8 +252,7 @@ fi
 
 cd "$cwd/$archive_dir" || exit 1
 ./configure                                                                       \
-    --prefix="$cwd"                                                               \
-    --bindir="$cwd"/bin                                                           \
+    --prefix="$workspace"                                                         \
     --arch="$(uname -m)"                                                          \
     --cpu="$((cpu_threads / 2))"                                                  \
     --disable-{debug,doc,shared}                                                  \
@@ -241,15 +273,20 @@ cd "$cwd/$archive_dir" || exit 1
     --pkg-config-flags='--static'                                                 \
     --strip="$(type -P strip)"
 make "-j$(nproc --all)"
-sudo make install
+make install
 make distclean
 
 if [ -f /usr/lib/x86_64-linux-gnu/pulseaudio/libpulsecommon-16.1.so ]; then
-    sudo ln -sf /usr/lib/x86_64-linux-gnu/pulseaudio/libpulsecommon-16.1.so /usr/lib/x86_64-linux-gnu/libpulsecommon-16.1.so
+    if [ ! -f /usr/lib/x86_64-linux-gnu/libpulsecommon-16.1.so ]; then
+        sudo ln -sf /usr/lib/x86_64-linux-gnu/pulseaudio/libpulsecommon-16.1.so /usr/lib/x86_64-linux-gnu/libpulsecommon-16.1.so
+    fi
 fi
 
 # SHOW THE NEW FFMPEG VERSION
 ff_ver_fn
+
+# MOVE THE FILES TO /USR/LOCAL/BIN
+ff_move_fn
 
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
