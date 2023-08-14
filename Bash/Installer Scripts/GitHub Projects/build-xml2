@@ -113,7 +113,7 @@ fail_fn()
 
 cleanup_fn()
 {
-    local choice dpkg_list
+    local choice
 
     printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
         '============================================' \
