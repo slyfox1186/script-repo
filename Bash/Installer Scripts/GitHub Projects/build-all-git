@@ -79,7 +79,7 @@ install_fn()
     do
         if [ -f "$i" ]; then
             if bash "$i"; then
-                find . -maxdepth 1 -type f -name "$i" -exec mv {} completed \;
+                sudo find . -maxdepth 1 -type f -name "$i" -exec mv {} completed \;
                 printf "\n%s\n\n" "Script finished: $i"
             else
                 fail_fn "Failed to install: $i"
@@ -118,17 +118,19 @@ dl_fn()
 
 cd "$cwd" || exit 1
 
-dl_fn '01-build-zlib' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-zlib'
-dl_fn '02-build-zstd' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-zstd'
-dl_fn '03-build-nasm' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-nasm'
-dl_fn '04-build-yasm' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-yasm'
-dl_fn '05-build-xml2' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-xml2'
-dl_fn '06-build-openssl' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-openssl'
-dl_fn '07-build-tools' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-tools'
-dl_fn '08-build-libpng' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-libpng'
-dl_fn '09-build-brotli' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-brotli'
-dl_fn '10-build-aria2' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-aria2'
-dl_fn '11-build-eog' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-eog'
+main_url='https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects'
+
+dl_fn '01-build-zlib' "$main_url/build-zlib"
+dl_fn '02-build-zstd' "$main_url/build-zstd"
+dl_fn '03-build-nasm' "$main_url/build-nasm"
+dl_fn '04-build-yasm' "$main_url/build-yasm"
+dl_fn '05-build-xml2' "$main_url/build-xml2"
+dl_fn '06-build-openssl' "$main_url/build-openssl"
+dl_fn '07-build-tools' "$main_url/build-tools"
+dl_fn '08-build-libpng' "$main_url/build-libpng"
+dl_fn '09-build-brotli' "$main_url/build-brotli"
+dl_fn '10-build-aria2' "$main_url/build-aria2"
+dl_fn '11-build-eog' "$main_url/build-eog"
 
 # DOWNLOAD ALL SCRIPTS
 dl_fn
