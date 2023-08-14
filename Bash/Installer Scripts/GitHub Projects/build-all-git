@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+
+clear
+
+cwd="$PWD"/git-installers
+repo=https://github.com/slyfox1186/script-repo
+
+if [ ! -d "$cwd"/completed ]; then
+    mkdir -p "$cwd"/completed
+fi
+
+exit_fn()
+{
+    printf "\n%s\n\n%s\n\n" \
+        'Make sure to star this repository to show your support!' \
+        "$repo"
+    exit 0
+}
+
+fail_fn()
+{
+    printf "\n%s\n\n%s\n\n" \
+        "$1" \
+        "To report a bug create an issue at: $repo/issues"
+    exit 1
+}
+
+cleanup_fn()
+{
+    local answer
+
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
+        '============================================' \
+        '  Do you want to clean up the build files?  ' \
+        '============================================' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' answer
+
+    case "$answer" in
+        1)      sudo rm -fr "$cwd" "$0";;
+        2)      echo;;
+        *)
+                printf "\n%s\n\n" 'Bad user input.'
+                read -p 'Press enter to try again.'
+                echo
+                cleanup_fn
+                ;;
+    esac
+}
+
+pkgs=(asciidoc autogen autoconf automake binutils bison build-essential bzip2 ccache cmake
+      curl libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev m4 meson
+      nasm ninja-build texinfo xmlto yasm zlib1g-dev)
+
+for i in ${pkgs[@]}
+do
+    missing_pkg="$(dpkg -l | grep -o "${i}")"
+
+    if [ -z "$missing_pkg" ]; then
+        missing_pkgs+=" $i"
+    fi
+done
+
+if [ -n "$missing_pkgs" ]; then
+    sudo apt -y install $missing_pkgs
+    sudo apt -y autoremove
+    clear
+fi
+
+install_fn()
+{
+    local i scripts
+    clear
+
+    scripts="$(ls | sort -n)"
+
+    for i in ${scripts[@]} 
+    do
+        if [ -f "$i" ]; then
+            if bash "$i"; then
+                find . -maxdepth 1 -type f -name "$i" -exec mv {} completed \;
+                printf "\n%s\n\n" "Script finished: $i"
+            else
+                fail_fn "Failed to install: $i"
+            fi
+            sleep 2
+        fi
+    done
+}
+
+install_choice_fn()
+{
+    printf "%s\n\n%s\n%s\n\n" \
+        'Do you want to install all of the scripts now?' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' answer
+
+    case "$answer" in
+        1)      install_fn;;
+        2)      clear;;
+        *)
+                printf "%s\n\n" 'Bad user input... Resetting script.'
+                sleep 3
+                unset answer
+                clear
+                install_choice_fn
+    esac
+}
+
+dl_fn()
+{
+    if [ ! -f "$1" ]; then
+        wget --show-progress -cqO "$1" "$2"
+    fi
+}
+
+cd "$cwd" || exit 1
+
+dl_fn '01-build-zlib' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-zlib'
+dl_fn '02-build-zstd' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-zstd'
+dl_fn '03-build-nasm' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-nasm'
+dl_fn '04-build-yasm' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-yasm'
+dl_fn '05-build-xml2' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-xml2'
+dl_fn '06-build-openssl' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-openssl'
+dl_fn '07-build-tools' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-tools'
+dl_fn '08-build-libpng' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-libpng'
+dl_fn '09-build-brotli' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-brotli'
+dl_fn '10-build-aria2' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-aria2'
+dl_fn '11-build-eog' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-eog'
+
+# DOWNLOAD ALL SCRIPTS
+dl_fn
+echo
+
+# ASK THE USER IF THEY WANT TO INSTALL ALL OF THE SCRIPTS
+install_choice_fn
+
+# CLEANUP THE FILES
+cleanup_fn
+
+# SHOW EXIT MESSAGE
+exit_fn
