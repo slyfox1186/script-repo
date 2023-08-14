@@ -49,6 +49,25 @@ cleanup_fn()
     esac
 }
 
+pkgs=(asciidoc autogen autoconf automake binutils bison build-essential bzip2 ccache cmake
+      curl libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev m4 meson
+      nasm ninja-build texinfo xmlto yasm zlib1g-dev)
+
+for i in ${pkgs[@]}
+do
+    missing_pkg="$(dpkg -l | grep -o "${i}")"
+
+    if [ -z "$missing_pkg" ]; then
+        missing_pkgs+=" $i"
+    fi
+done
+
+if [ -n "$missing_pkgs" ]; then
+    sudo apt -y install $missing_pkgs
+    sudo apt -y autoremove
+    clear
+fi
+
 install_scripts_fn()
 {
     local i scripts
