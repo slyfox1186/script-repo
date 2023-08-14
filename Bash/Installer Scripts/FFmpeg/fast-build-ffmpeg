@@ -30,6 +30,14 @@ cwd="$PWD"/ffmpeg-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
+LDFLAGS='-L/usr/share/ant/lib -L/usr/local/lib64 -L/usr/local/lib -L/usr/local/cuda-12.2/nvvm/lib64 -L/usr/local/cuda-12.2/extras/Debugger/lib64 -L/usr/lib/x86_64-linux-gnu'
+export LDFLAGS+=' -L/usr/lib/jvm/java-17-openjdk-amd64/lib -L/usr/lib64 -L/usr/lib'
+export PATH="/usr/lib/ccache:/usr/local/bin:$PATH"
+export LIBS='-lpthread -lm -lz'
+export CFLAGS='-I/usr/local/include -I/usr/local/cuda-12.2/targets/x86_64-linux/include -I/usr/local/cuda-12.2/include -I/usr/include'
+PKG_CONFIG_PATH='/usr/share/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig'
+export PKG_CONFIG_PATH+=':/usr/lib/pkgconfig:/usr/lib64/pkgconfig'
+
 printf "\n%s\n%s\n\n" \
     "FFmpeg build script - v$script_ver" \
     '==============================================='
@@ -160,7 +168,19 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs='ant apt asciidoc autoconf automake autopoint binutils bison build-essential cargo ccache checkinstall clang cmake curl doxygen fcitx-libs-dev flex flite1-dev freeglut3-dev frei0r-plugins-dev gawk gettext git gnome-desktop-testing gnustep-gui-runtime libgnutls28-dev google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit libasound2-dev libaudio-dev libavfilter-dev libbluray-dev libbs2b-dev libbz2-dev libc6 libc6-dev libcaca-dev libcairo2-dev libcrypto++-dev libcurl4-openssl-dev libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev libgnutls30 libgoogle-perftools-dev libgoogle-perftools4 libgvc6 libibus-1.0-dev libintl-perl libjack-dev libjemalloc-dev libleptonica-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev libmatroska-dev libmusicbrainz5-dev libncurses5-dev libncursesw5-dev libnuma-dev libnuma1 libopencore-amrnb-dev libopencv-dev libopenjp2-7-dev libopenmpt-dev libperl-dev libpstoedit-dev libpulse-dev libraqm-dev libraw-dev librsvg2-dev librubberband-dev libshine-dev libsmbclient-dev libsnappy-dev libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev libssl-dev libtalloc-dev libtheora-dev libtool libtool-bin libtwolame-dev libudev-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev libx11-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzstd-dev libzzip-dev lshw lzma-dev m4 meson nasm ninja-build openjdk-17-jdk-headless pandoc python3 python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip wget xmlto libladspa-ocaml-dev ladspa-sdk zlib1g-dev libass-dev libbluray-dev libiconv-hook-dev libfdk-aac-dev libmodplug-dev libmp3lame-dev libmysofa-dev libopencore-amrnb-dev libopencore-amrwb-dev libopus-dev libsvtav1-dev libsvtav1dec-dev libsvtav1enc-dev libv4l-dev libx264-dev libx265-dev libgme-dev libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libchromaprint-dev'
+pkgs='ant apt asciidoc autoconf automake autopoint binutils bison build-essential cargo ccache checkinstall clang cmake curl doxygen fcitx-libs-dev flex flite1-dev freeglut3-dev frei0r-plugins-dev gawk gettext git gnome-desktop-testing gnustep-gui-runtime google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk libasound2-dev libass-dev libaudio-dev libavfilter-dev libbluray-dev libbs2b-dev libbz2-dev libc6 libc6-dev libcaca-dev libcairo2-dev libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libchromaprint-dev libcrypto++-dev libcurl4-openssl-dev libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev libfdk-aac-dev libffi-dev libgbm-dev libgdbm-dev libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev libgnutls28-dev libgnutls30 libgoogle-perftools4 libgoogle-perftools-dev libgvc6 libibus-1.0-dev libiconv-hook-dev libintl-perl libjack-dev libjemalloc-dev libladspa-ocaml-dev libleptonica-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev libmatroska-dev libmodplug-dev libmp3lame-dev libmusicbrainz5-dev libmysofa-dev libncurses5-dev libncursesw5-dev libnuma1 libnuma-dev libopencore-amrnb-dev libopencore-amrwb-dev libopencv-dev libopenjp2-7-dev libopenmpt-dev libopus-dev libperl-dev libpstoedit-dev libpulse-dev libraqm-dev libraw-dev librsvg2-dev librubberband-dev libshine-dev libsmbclient-dev libsnappy-dev libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev libssl-dev libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libtalloc-dev libtheora-dev libtool libtool-bin libtwolame-dev libudev-dev libv4l-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev libx11-dev libx264-dev libx265-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzstd-dev libzzip-dev lshw lzma-dev m4 meson nasm ninja-build openjdk-17-jdk-headless pandoc python3 python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip wget xmlto zlib1g-dev'
+
+#
+# INSTALL NV-CODEC-HEADERS TO ENABLE HARDWARE ACCELERATION
+#
+
+curl -Lso "$cwd/nv-headers.tar.gz" 'https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.0.16.0/nv-codec-headers-12.0.16.0.tar.gz'
+mkdir -p "$cwd/nv-headers"
+tar -zxf "$cwd/nv-headers.tar.gz" -C "$cwd/nv-headers" --strip-components 1
+cd "$cwd/nv-headers" || exit 1
+make "-j$(nproc --all)"
+sudo make PREFIX=/usr/local install
+clear
 
 #
 # DOWNLOAD THE ARCHIVE FILE
@@ -194,21 +214,13 @@ fi
 # BUILD PROGRAM FROM SOURCE
 #
 
-LDFLAGS='-L/usr/lib/jvm/java-17-openjdk-amd64/lib -L/usr/lib -L/usr/local/lib -L/usr/share/ant/lib -L/usr/lib64 -L/usr/local/cuda-12.2/extras/Debugger/lib64'
-export LDFLAGS+=' -L/usr/local/cuda-12.2/nvvm/lib64 -L/usr/local/lib64 -L/usr/lib/x86_64-linux-gnu'
-
-export PATH="/usr/lib/ccache:/usr/local/bin:$PATH"
-export LIBS='-lpthread -lm -lz'
-export CFLAGS='-I/usr/local/cuda-12.2/include -I/usr/local/cuda-12.2/targets/x86_64-linux/include -I/usr/local/include -I/usr/include'
-export PKG_CONFIG_PATH='/usr/lib64/pkgconfig:/usr/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig'
-
 cd "$cwd/$archive_dir" || exit 1
 ./configure                                                                       \
     --prefix=/usr/local                                                           \
     --arch="$(uname -m)"                                                          \
     --cpu="$((cpu_threads / 2))"                                                  \
-    --disable-{debug,doc,ffnvcodec,shared}                                        \
-    --enable-{frei0r,ladspa,libaom,libass,libbs2b}                                \
+    --disable-{debug,doc,shared}                                                  \
+    --enable-{frei0r,ladspa,libaom,libbluray,libass,libbs2b}                      \
     --enable-{libcaca,libcdio,libdav1d,libfdk-aac,libflite,libfontconfig}         \
     --enable-{libfreetype,libfribidi,libgme,libjxl,libmodplug,libmp3lame}         \
     --enable-{libmysofa,libopencore-amrnb,libopencore-amrwb,libopenjpeg}          \
@@ -216,7 +228,7 @@ cd "$cwd/$archive_dir" || exit 1
     --enable-{libsnappy,libsoxr,libspeex,libsvtav1,libtheora,libtwolame,libv4l2}  \
     --enable-{libvidstab,libvo-amrwbenc,libvorbis,libvpx,libwebp,libx264,libx265} \
     --enable-{libxml2,libxvid,opengl,openssl,version3,lto,pthreads}               \
-    --enable-{gpl,nonfree,small,static,version3}                                  \
+    --enable-{ffnvcodec,gpl,nonfree,small,static,version3}                        \
     --extra-cflags="$CFLAGS"                                                      \
     --extra-cxxflags='-g -O3 -march=native'                                       \
     --extra-ldflags=$"$LDFLAGS"                                                   \
