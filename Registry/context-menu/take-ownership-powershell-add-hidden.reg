@@ -1,0 +1,95 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\AllFilesystemObjects\shell\Take_Ownership]
+"MUIVerb"="Take ownership"
+"Icon"="imageres.dll,77"
+"HasLUAShield"=""
+"Extended"=""
+"SubCommands"=""
+
+[HKEY_CLASSES_ROOT\AllFilesystemObjects\shell\Take_Ownership\shell\01View_Owner]
+@="Display current owner"
+"Icon"="imageres.dll,-1029"
+
+[HKEY_CLASSES_ROOT\AllFilesystemObjects\shell\Take_Ownership\shell\01View_Owner\command]
+@="powershell.exe -NoL -NoP -W Maximized -NoExit -C \"Get-ACL \\\"%1\\\" | Format-List -Property Owner\""
+
+[HKEY_CLASSES_ROOT\AllFilesystemObjects\shell\Take_Ownership\shell\02Set_Administrators]
+@="Change to Administrators"
+"Icon"="imageres.dll,264"
+"CommandFlags"=dword:00000020
+
+[HKEY_CLASSES_ROOT\AllFilesystemObjects\shell\Take_Ownership\shell\02Set_Administrators\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls.exe \\\"%1\\\" /setowner \\\"Administrators\\\" /T /C /L 2>NUL & PAUSE' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls.exe \\\"%1\\\" /setowner \\\"Administrators\\\" /T /C /L 2>NUL & PAUSE' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\AllFilesystemObjects\shell\Take_Ownership\shell\03Set_Everyone]
+@="Change to Everyone"
+"Icon"="imageres.dll,320"
+
+[HKEY_CLASSES_ROOT\AllFilesystemObjects\shell\Take_Ownership\shell\03Set_Everyone\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls.exe \\\"%1\\\" /setowner \\\"Everyone\\\" /T /C /L 2>NUL & PAUSE' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls.exe \\\"%1\\\" /setowner \\\"Everyone\\\" /T /C /L 2>NUL & PAUSE' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\AllFilesystemObjects\shell\Take_Ownership\shell\04Set_SYSTEM]
+@="Change to SYSTEM"
+"Icon"="imageres.dll,143"
+
+[HKEY_CLASSES_ROOT\AllFilesystemObjects\shell\Take_Ownership\shell\04Set_SYSTEM\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls.exe \\\"%1\\\" /setowner \\\"SYSTEM\\\" /T /C /L 2>NUL Maximized& PAUSE' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls.exe \\\"%1\\\" /setowner \\\"SYSTEM\\\" /T /C /L 2>NUL & PAUSE' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\AllFilesystemObjects\shell\Take_Ownership\shell\05Set_TrustedInstaller]
+@="Change to TrustedInstaller"
+"Icon"="imageres.dll,-5356"
+Maximized
+[HKEY_CLASSES_ROOT\AllFilesystemObjects\shell\Take_Ownership\shell\05Set_TrustedInstaller\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls.exe \\\"%1\\\" /setowner \\\"NT Service\\TrustedInstaller\\\" /T /C /L 2>NUL & PAUSE' -Verb RunAs\""
+"IsolatedCommand"="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -WindowStyle Maximized -Args '/T:0A /D /C icacls.exe \\\"%1\\\" /setowner \\\"NT Service\\TrustedInstaller\\\" /T /C /L 2>NUL & PAUSE' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\AllFilesystemObjects\shell\Take_Ownership\shell\06Set_User]
+@="Change to User"
+"Icon"="imageres.dll,81"
+
+[HKEY_CLASSES_ROOT\AllFilesystemObjects\shell\Take_Ownership\shell\06Set_User\command]
+@=hex(2):63,00,6D,00,64,00,2E,00,65,00,78,00,65,00,\
+  20,00,2F,00,44,00,20,00,2F,00,43,00,20,00,53,00,54,00,41,00,52,00,54,00,\
+  20,00,22,00,22,00,20,00,22,00,43,00,3A,00,5C,00,50,00,72,00,6F,00,67,00,\
+  72,00,61,00,6D,00,20,00,46,00,69,00,6C,00,65,00,73,00,5C,00,50,00,6F,00,\
+  77,00,65,00,72,00,53,00,68,00,65,00,6C,00,6C,00,5C,00,37,00,5C,00,70,00,\
+  77,00,73,00,68,00,2E,00,65,00,78,00,65,00,22,00,20,00,2D,00,4E,00,6F,00,\
+  50,00,20,00,2D,00,57,00,20,00,48,00,69,00,64,00,64,00,65,00,6E,00,20,00,\
+  2D,00,43,00,20,00,22,00,53,00,74,00,61,00,72,00,74,00,2D,00,50,00,72,00,\
+  6F,00,63,00,65,00,73,00,73,00,20,00,63,00,6D,00,64,00,2E,00,65,00,78,00,\
+  65,00,20,00,2D,00,57,00,69,00,6E,00,64,00,6F,00,77,00,53,00,74,00,79,00,\
+  6C,00,65,00,20,00,4D,00,61,00,78,00,69,00,6D,00,69,00,7A,00,65,00,64,00,\
+  20,00,2D,00,41,00,72,00,67,00,73,00,20,00,27,00,2F,00,54,00,3A,00,30,00,\
+  41,00,20,00,2F,00,44,00,20,00,2F,00,43,00,20,00,69,00,63,00,61,00,63,00,\
+  6C,00,73,00,2E,00,65,00,78,00,65,00,20,00,5C,00,22,00,25,00,31,00,5C,00,\
+  22,00,20,00,2F,00,73,00,65,00,74,00,6F,00,77,00,6E,00,65,00,72,00,20,00,\
+  5C,00,22,00,25,00,55,00,53,00,45,00,52,00,4E,00,41,00,4D,00,45,00,25,00,\
+  5C,00,22,00,20,00,2F,00,54,00,20,00,2F,00,43,00,20,00,2F,00,4C,00,20,00,\
+  32,00,3E,00,4E,00,55,00,4C,00,20,00,26,00,20,00,50,00,41,00,55,00,53,00,\
+  45,00,27,00,20,00,2D,00,56,00,65,00,72,00,62,00,20,00,52,00,75,00,6E,00,\
+  41,00,73,00,22,00,00,00
+"IsolatedCommand"=hex(2):63,00,6D,00,64,00,2E,00,65,00,78,00,65,00,\
+  20,00,2F,00,44,00,20,00,2F,00,43,00,20,00,53,00,54,00,41,00,52,00,54,00,\
+  20,00,22,00,22,00,20,00,22,00,43,00,3A,00,5C,00,50,00,72,00,6F,00,67,00,\
+  72,00,61,00,6D,00,20,00,46,00,69,00,6C,00,65,00,73,00,5C,00,50,00,6F,00,\
+  77,00,65,00,72,00,53,00,68,00,65,00,6C,00,6C,00,5C,00,37,00,5C,00,70,00,\
+  77,00,73,00,68,00,2E,00,65,00,78,00,65,00,22,00,20,00,2D,00,4E,00,6F,00,\
+  50,00,20,00,2D,00,57,00,20,00,48,00,69,00,64,00,64,00,65,00,6E,00,20,00,\
+  2D,00,43,00,20,00,22,00,53,00,74,00,61,00,72,00,74,00,2D,00,50,00,72,00,\
+  6F,00,63,00,65,00,73,00,73,00,20,00,63,00,6D,00,64,00,2E,00,65,00,78,00,\
+  65,00,20,00,2D,00,57,00,69,00,6E,00,64,00,6F,00,77,00,53,00,74,00,79,00,\
+  6C,00,65,00,20,00,4D,00,61,00,78,00,69,00,6D,00,69,00,7A,00,65,00,64,00,\
+  20,00,2D,00,41,00,72,00,67,00,73,00,20,00,27,00,2F,00,54,00,3A,00,30,00,\
+  41,00,20,00,2F,00,44,00,20,00,2F,00,43,00,20,00,69,00,63,00,61,00,63,00,\
+  6C,00,73,00,2E,00,65,00,78,00,65,00,20,00,5C,00,22,00,25,00,31,00,5C,00,\
+  22,00,20,00,2F,00,73,00,65,00,74,00,6F,00,77,00,6E,00,65,00,72,00,20,00,\
+  5C,00,22,00,25,00,55,00,53,00,45,00,52,00,4E,00,41,00,4D,00,45,00,25,00,\
+  5C,00,22,00,20,00,2F,00,54,00,20,00,2F,00,43,00,20,00,2F,00,4C,00,20,00,\
+  32,00,3E,00,4E,00,55,00,4C,00,20,00,26,00,20,00,50,00,41,00,55,00,53,00,\
+  45,00,27,00,20,00,2D,00,56,00,65,00,72,00,62,00,20,00,52,00,75,00,6E,00,\
+  41,00,73,00,22,00,00,00
+

@@ -1,0 +1,174 @@
+#!/bin/bash
+
+#################################################################################################################
+##
+##  IMPORANT INSTRUCTIONS (MUST READ BEFORE INSTALLING)
+##
+##  The default themes that come with tilix will be deleted on install unless you change the value of
+##     the variable 'themes_flag' below to '1' which will keep the defaults.
+##
+##  You MUST modify the variable 'theme_options' below with the custom color theme names IF you want
+##     to add them to tilix during install. You can check which themes you want to add by visiting the
+##     themes folder before running this script.
+##
+##  To add the custom color themes, separate each entry name with a comma and leave off the '.json'.
+##  See the example below for help. As you will see (dracula neopolitan vibrant-ink) will be added.
+##
+#################################################################################################################
+
+clear
+
+if [ "$EUID" -eq '0' ]; then
+    echo 'This script is intended to be run WITHOUT root/sudo.'
+    echo
+    echo 'It is (highly) recommended you exit the script and run it with user level access instead of root.'
+    echo
+    read -p 'To chance it and continue the build press enter or exit the script using ctrl c or ctrl z.'
+    echo
+fi
+
+#
+# CREATE VARIABLES
+#
+
+# Modify the below variable with the names of the custom themes you want to add to tilix during installation.
+theme_options=({dracula,neopolitan,vibrant-ink}.json)
+
+# Change the below variable to '1' to keep the default color themes that come with tilix.
+themes_flag='0'
+
+## DO NOT CHANGE THESE UNLESS YOU KNOW WHAT YOU ARE DOING
+parent_dir="$PWD"
+packages="$parent_dir"/packages
+tilix_schemes='/usr/share/tilix/schemes'
+
+#
+# CREATE FUNCTIONS
+#
+
+fail_fn()
+{
+    printf "\n%s\n\n%s\n%s\n\n" \
+        "$@" \
+        'Make SURE you create an issue on my GitHub page to report this bug so I can fix it!' \
+        'https://github.com/slyfox1186/script-repo/issues'
+    exit 1
+}
+
+#
+# MANAGE INSTALL FOLDERS
+#
+
+if [ -d "$packages" ]; then
+    sudo rm -fr "$packages"
+fi
+
+mkdir -p "$packages"
+
+#
+# INSTALL REQUIRED APT PACKAGES
+#
+
+echo 'Depending on your download speed this could take a moment... please be patient.'
+echo
+echo -e "\$ apt-get -qq -y install curl gettext git gtk-doc-tools libgtkd-3-dev libgtk-4-dev python3-nautilus\\n"
+sudo apt-get -qq -y install curl gettext git gtk-doc-tools libgtkd-3-dev libgtk-4-dev python3-nautilus
+
+#
+# DOWNLOAD CUSTOM THEMES FOLDER
+#
+
+echo -e "\$ curl -Ssf https://dlang.org/install.sh | bash -s dmd\\n"
+curl -Lso 'tilix-themes.tar.gz' 'https://github.com/slyfox1186/script-repo/raw/main/shell/installers/tilix/tilix-themes.tar.gz'
+
+if [ ! -f 'tilix-themes.tar.gz' ]; then
+    fail_fn 'The file "tilix-themes.tar.gz" failed to download.'
+else
+    mkdir -p 'tilix-themes'
+    tar zxf 'tilix-themes.tar.gz' -C 'tilix-themes' --strip-components 1 2>/dev/null
+fi
+
+#
+# INSTALL DMD (D COMPILER)
+#
+
+echo -e "\$ curl -Ssf https://dlang.org/install.sh | bash -s dmd\\n"
+curl -Ssf https://dlang.org/install.sh | bash -s dmd &>/dev/null
+
+if ! source "$HOME"/dlang/dmd-*/activate &>/dev/null; then
+    printf "\n%s\n%s\n\n%s\n%s\n\n" \
+        'Could not source the file: ~/dlang/dmd-*/activate' \
+        'This might be a fatal error or it could be benign.'
+        'You can do me a big favor and alert me on my GitHub issues page so I can look into it!' \
+        'https://github.com/slyfox1186/script-repo/issues'
+    read -p 'Press enter to attempt finishing the build. (It may work): '
+    echo
+fi
+
+#
+# INSTALL DUB
+#
+
+if [ ! -f '/usr/bin/dub' ]; then
+    echo -e "\$ git clone https://github.com/dlang/dub.git $packages/dub\\n"
+    if ! git clone -q https://github.com/dlang/dub.git "$packages/dub" &>/dev/null; then
+        fail_fn 'Could not clone the dub repository.'
+    else
+        cd "$packages/dub" || exit 1
+        echo -e "\$ ./build.d\\n"
+        ./build.d &>/dev/null
+        echo -e "\$ sudo mv bin/dub /usr/local/bin\\n"
+        if ! sudo mv 'bin/dub' '/usr/local/bin'; then
+            fail_fn 'Failed to move the dub binary to "/usr/local/bin".'
+        fi
+    fi
+else
+    fail_fn 'You already have dub installed on your system (most likely from APT)' \
+    'The current APT version of dub is not high enough to install the latest version of tilix.' \
+    'To install the latest version of dub please try running "sudo apt remove dub" and if successful, run this script again.'
+fi
+
+#
+# INSTALL TILIX
+#
+
+echo -e "\$ git clone -q https://github.com/gnunn1/tilix.git $packages/tilix\\n"
+if ! git clone -q https://github.com/gnunn1/tilix.git "$packages/tilix"; then
+    fail_fn 'Could not clone the tilix repository.'
+else
+    cd "$packages/tilix" || exit 1
+    echo -e "\$ dub build --build=release\\n"
+    dub build --build=release
+    echo -e "\$ sudo bash install.sh\\n"
+    if ! sudo bash install.sh; then
+        fail_fn 'Could not install tilix.'
+    fi
+fi
+
+#
+# REMOVE THE DEFAULT TILIX THEMES IF THE CORRECT FLAG WAS SET
+#
+
+if [ "$themes_flag" -ne '1' ]; then
+    echo -e "\\n\$ sudo rm -fr $tilix_schemes/*.json\\n"
+    sudo rm -fr $tilix_schemes/*.json
+fi
+
+#
+# INSTALL CUSTOMIZED THEMES
+#
+
+cd "$parent_dir/tilix-themes" || exit 1
+echo -e "\$ sudo cp -f ${theme_options[@]} $tilix_schemes\\n"
+sudo cp "${theme_options[@]}" "$tilix_schemes"
+
+#
+# CLEANUP LEFTOVER FILES
+#
+
+echo "\$ sudo rm -r $packages"
+sudo rm -r "$packages"
+
+printf "\n%s\n%s\n\n" \
+    'Tilix has been installed.' \
+    'After a few seconds your system will load it into cache and you will be able to search for it using your OS'\''s search function.'
