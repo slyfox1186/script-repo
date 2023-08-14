@@ -1023,7 +1023,7 @@ iscuda="$(sudo find /usr/local/cuda* -type f -name nvcc)"
 #
 
 if which gcc &>/dev/null; then
-    export CC='ccache gcc' CXX='ccache g++'
+    export CC=gcc CXX=g++
 else
     fail_fn 'Please install "gcc" to continue the build.'
 fi
