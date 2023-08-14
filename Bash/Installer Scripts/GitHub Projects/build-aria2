@@ -8,9 +8,9 @@
 ##
 ##  Features: Static build, OpenSSL backend
 ##
-##  Updated: 08.01.23
+##  Updated: 08.13.23
 ##
-##  Script version: 1.1
+##  Script version: 1.2
 ##
 ###########################################################################################################
 
@@ -25,7 +25,7 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.1
+script_ver=1.2
 archive_dir=aria2-1.36.0
 archive_url=https://github.com/aria2/aria2/releases/download/release-1.36.0/aria2-1.36.0.tar.gz
 archive_ext="${archive_url//*.}"
@@ -83,7 +83,8 @@ export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 exit_fn()
 {
-    printf "\n%s\n\n%s\n\n" \
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'The script has completed' \
         'Make sure to star this repository to show your support!' \
         "$repo"
     exit 0
@@ -91,7 +92,10 @@ exit_fn()
 
 fail_fn()
 {
-    printf "%s\n\n" "$1"
+    printf "\n\n%s\n\n%s\n\n%s\n\n" \
+        "$1" \
+        'Please create a support ticket so I can work on a fix.' \
+        "$repo/issues"
     exit 1
 }
 
