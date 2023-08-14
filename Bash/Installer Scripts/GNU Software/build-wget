@@ -38,29 +38,44 @@ export CC=gcc CXX=g++
 export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 #
-# EXPORT PKG_CONFIG_PATH
+# SET PATH
+#
+
+PATH="\
+/usr/lib/ccache:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
+/usr/local/sbin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin:\
+/usr/local/cuda/bin:\
+/snap/bin\
+"
+export PATH
+
+#
+# SET PKG_CONFIG_PATH
 #
 
 PKG_CONFIG_PATH="\
-$workspace/lib64/pkgconfig:\
 $workspace/lib/pkgconfig:\
-$workspace/lib/x86_64-linux-gnu/pkgconfig:\
+$workspace/lib64/pkgconfig:\
 $workspace/share/pkgconfig:\
+$workspace/lib/x86_64-linux-gnu/pkgconfig:\
 $workspace/usr/lib/pkgconfig:\
-/lib64/pkgconfig:\
 /lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/open-coarrays/openmpi/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/openmpi/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/share/pkgconfig:\
-/usr/share/pkgconfig\
+/usr/share/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/pkgconfig\
 "
+export PKG_CONFIG_PATH
 
 #
 # CREATE FUNCTIONS
