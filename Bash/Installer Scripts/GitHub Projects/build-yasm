@@ -301,7 +301,7 @@ build_done()
 # GET PC TYPE
 #
 
-curl -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
 chmod +x "$cwd/config.guess"
 pc_type="$(source "$cwd/config.guess")"
 
