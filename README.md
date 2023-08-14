@@ -24,11 +24,17 @@ bash <(curl -fsSL https://build-menu.optimizethis.net)
 ```
 ------
 
-
 ## Build All GNU Scripts
-  - Master script to build all GNU scripts at once.
+  - Master script to build all GNU scripts at once
 ```bash
 bash <(curl -fsSL https://build-all-gnu.optimizethis.net)
+```
+------
+
+## Build All GitHub Scripts
+  - Master script to build all GitHub project scripts at once
+```bash
+bash <(curl -fsSL https://build-all-git.optimizethis.net)
 ```
 ------
 
