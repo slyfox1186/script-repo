@@ -61,7 +61,6 @@ export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 PATH="\
 /usr/lib/ccache:\
-$workspace/bin:\
 $HOME/.cargo/bin:\
 $HOME/.local/bin:\
 /usr/local/sbin:\
@@ -74,6 +73,10 @@ $HOME/.local/bin:\
 /snap/bin\
 "
 export PATH
+
+#
+# SET THE PKG_CONFIG_PATH VARIABLE
+#
 
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
