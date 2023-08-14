@@ -104,7 +104,7 @@ PATH="\
 $workspace/bin:\
 $HOME/.local/bin:\
 $HOME/.cargo/bin:\
-/usr/bin/"$pc_type"-ld:\
+/usr/bin/x86_64-pc-linux-gnu-ld:\
 /usr/bin/x86_64-linux-gnu-ld:\
 /usr/local/sbin:\
 /usr/local/bin:\
@@ -144,7 +144,7 @@ clear
 
 script_ver=4.3
 install_dir=/usr/local
-gcc_prefix="$pc_type"-
+gcc_prefix=x86_64-pc-linux-gnu-
 CFLAGS='-g -O3 -march=native -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
 CXXFLAGS='-g -O3 -march=native'
 CPPFLAGS='-I/usr/lib/gcc/x86_64-linux-gnu/12/include -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include'
@@ -177,17 +177,17 @@ PKG_CONFIG_PATH="\
 $workspace/lib64/pkgconfig:\
 $workspace/lib/pkgconfig:\
 $workspace/share/pkgconfig:\
-$workspace/lib/"$pc_type"/pkgconfig:\
+$workspace/lib/x86_64-pc-linux-gnu/pkgconfig:\
 $workspace/lib/x86_64-linux-gnu/pkgconfig:\
 $workspace/usr/lib/pkgconfig:\
 /lib/pkgconfig:\
-/usr/local/lib/"$pc_type"/pkgconfig:\
+/usr/local/lib/x86_64-pc-linux-gnu/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
 /usr/local/share/pkgconfig:\
 /usr/share/pkgconfig:\
-/usr/lib/"$pc_type"/pkgconfig:\
+/usr/lib/x86_64-pc-linux-gnu/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/lib/pkgconfig\
 "
@@ -439,7 +439,7 @@ build_done()
 
 installed()
 {
-    return $(sudo dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
+    return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
 }
 
 #
@@ -501,8 +501,8 @@ pkgs_fn()
 # GET PC TYPE
 #
 
-curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'; \
-chmod +x "$cwd/config.guess"; \
+curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "$cwd/config.guess"
 pc_type="$(source "$cwd/config.guess")"
 
 #
@@ -719,7 +719,7 @@ build_gcc_11_fn()
         cd builddir || exit 1
         execute ../configure                          \
             --prefix="$install_dir"                   \
-            --{build,host,target}="$pc_type"          \
+            --{build,host,target}=x86_64-pc-linux-gnu \
             --disable-assembly                        \
             --disable-nls                             \
             --disable-vtable-verify                   \
@@ -737,7 +737,7 @@ build_gcc_11_fn()
             --program-prefix="$gcc_prefix"            \
             --program-suffix=-11                      \
             --with-gcc-major-version-only             \
-            --with-isl=/usr                           \
+            --with-isl="$workspace"                   \
             --with-libiconv-prefix=/usr               \
             --with-link-serialization=2               \
             --with-target-system-zlib=auto            \
@@ -750,7 +750,7 @@ build_gcc_11_fn()
             '$ This is going to take a while...'
         execute make "-j$cpu_threads"
         execute sudo make install-strip
-        execute sudo libtool --finish "$install_dir/libexec/gcc/$pc_type/11"
+        execute sudo libtool --finish "$install_dir/libexec/gcc/x86_64-pc-linux-gnu/11"
         execute sudo libtool --finish "$install_dir"/lib
         build_done 'gcc-11' '11.4.0'
     fi
@@ -767,7 +767,7 @@ build_gcc_12_fn()
         cd builddir || exit 1
         execute ../configure                          \
             --prefix="$install_dir"                   \
-            --{build,host,target}="$pc_type"          \
+            --{build,host,target}=x86_64-pc-linux-gnu \
             --disable-assembly                        \
             --disable-nls                             \
             --disable-vtable-verify                   \
@@ -786,7 +786,7 @@ build_gcc_12_fn()
             --program-prefix="$gcc_prefix"            \
             --program-suffix=-12                      \
             --with-gcc-major-version-only             \
-            --with-isl=/usr                           \
+            --with-isl="$workspace"                   \
             --with-libiconv-prefix=/usr               \
             --with-link-serialization=2               \
             --with-target-system-zlib=auto            \
@@ -799,7 +799,7 @@ build_gcc_12_fn()
             '$ This is going to take a while...'
         execute make "-j$cpu_threads"
         execute sudo make install-strip
-        execute sudo libtool --finish "$install_dir/libexec/gcc/$pc_type/12"
+        execute sudo libtool --finish "$install_dir/libexec/gcc/x86_64-pc-linux-gnu/12"
         execute sudo libtool --finish "$install_dir"/lib
         build_done 'gcc-12' '12.3.0'
     fi
@@ -816,7 +816,7 @@ build_gcc_13_fn()
         cd builddir || exit 1
         execute ../configure                          \
             --prefix="$install_dir"                   \
-            --{build,host,target}="$pc_type"          \
+            --{build,host,target}=x86_64-pc-linux-gnu \
             --disable-assembly                        \
             --disable-nls                             \
             --disable-vtable-verify                   \
@@ -834,7 +834,7 @@ build_gcc_13_fn()
             --program-prefix="$gcc_prefix"            \
             --program-suffix=-13                      \
             --with-gcc-major-version-only             \
-            --with-isl=/usr                           \
+            --with-isl="$workspace"                   \
             --with-libiconv-prefix=/usr               \
             --with-link-serialization=2               \
             --with-target-system-zlib=auto            \
@@ -847,7 +847,7 @@ build_gcc_13_fn()
             '$ This is going to take a while...'
         execute make "-j$cpu_threads"
         execute sudo make install-strip
-        execute sudo libtool --finish "$install_dir/libexec/gcc/$pc_type/13"
+        execute sudo libtool --finish "$install_dir/libexec/gcc/x86_64-pc-linux-gnu/13"
         execute sudo libtool --finish "$install_dir"/lib
         build_done 'gcc-13' '13.2.0'
     fi
@@ -857,12 +857,6 @@ build_gcc_13_fn()
 #
 # START GCC BUILD
 #
-
-if [ "$VER" -ne '12' ]; then
-    build_gcc_11_fn
-fi
-build_gcc_12_fn
-build_gcc_13_fn
 
 # CREATE SOFT LINKS TO SHORTEN THE BINARY NAMES
 create_gcc_links_fn
