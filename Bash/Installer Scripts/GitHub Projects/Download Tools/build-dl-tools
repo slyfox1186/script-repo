@@ -34,6 +34,7 @@ CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include"
 cert_dir=/etc/ssl/certs
 pem_file=cacert-2023-05-30.pem
 pem_target="$cert_dir/$pem_file"
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 debug=OFF
 
@@ -41,7 +42,7 @@ debug=OFF
 if ! which curl &>/dev/null; then
     dl_tool='wget --show-progress -cqO'
 else
-    dl_tool='curl -Lso'
+    dl_tool='curl -A "$user_agent" -Lso'
 fi
 
 #
@@ -512,7 +513,7 @@ fi
 
 if build 'gsasl' '2.2.0'; then
     download 'https://ftp.gnu.org/gnu/gsasl/gsasl-2.2.0.tar.gz' 'gsasl-2.2.0.tar.gz'
-    execute ./configure --prefix="$workspace"               \
+    execute ./configure --prefix="$workspace"                \
                          --disable-shared                    \
                          --disable-year2038                  \
                          --enable-gtk-doc                    \
@@ -531,7 +532,7 @@ if build 'c-ares' "$g_ver"; then
     download "https://codeload.github.com/c-ares/c-ares/tar.gz/refs/tags/cares-$g_tag" "c-ares-$g_ver.tar.gz"
     execute autoupdate
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" \
+    execute ./configure --prefix="$workspace"  \
                          --disable-shared      \
                          --disable-warnings    \
                          --enable-optimize="$CXXFLAGS"
@@ -556,7 +557,7 @@ git_ver_fn 'jemalloc/jemalloc' '1' 'T'
 if build 'jemalloc' "$g_ver"; then
     download "https://codeload.github.com/jemalloc/jemalloc/tar.gz/refs/tags/$g_ver" "jemalloc-$g_ver.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" \
+    execute ./configure --prefix="$workspace"  \
                          --enable-autogen      \
                          --enable-lazy-lock    \
                          --enable-static       \
@@ -587,7 +588,7 @@ if build 'brotli' "$g_ver"; then
     build_done 'brotli' "$g_ver"
 fi
 
-# ADD A SUFFIX TO WGET IF THE USER SPECIFIED ONE
+# ADD A SUFFIX TO WGET IF THE USER SPECIFIES ONE
 if [ -n "$wget_suffix" ]; then
     wsuffix="--program-suffix=$wget_suffix"
 fi
@@ -602,7 +603,7 @@ if build 'wget' 'latest'; then
         execute sudo update-ca-certificates
     fi
     execute autoconf
-    ./configure --prefix=/usr/local \
+    ./configure --prefix=/usr/local  \
                  --enable-threads    \
                  --with-cares        \
                  --with-metalink     \
@@ -656,7 +657,7 @@ fi
 # COMPILE ARIA2 FROM THE SOURCE CODE
 #
 
-# ADD A SUFFIX TO WGET IF THE USER SPECIFIED ONE
+# ADD A SUFFIX TO WGET IF THE USER SPECIFIES ONE
 if [ -n "$aria2c_suffix" ]; then
     asuffix="--program-suffix=$aria2c_suffix"
 fi
