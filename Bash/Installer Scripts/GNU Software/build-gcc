@@ -474,8 +474,8 @@ pkgs_fn()
           libdebuginfod-dev libdmalloc5 libdmalloc-dev libeigen3-dev libffi-dev libfontconfig1-dev libfreetype6
           libgcc-11-dev libgd-dev libgm2-12-dev libgmp-dev libiberty-dev libicu-dev libintl-perl libisl-dev libjpeg-dev
           libltdl-dev libmpc-dev libmpfr-dev libphobos2-ldc-shared-dev libpng-dev libquadmath0 libsigsegv-dev libsqlite3-dev
-          libssl-dev libstdc++-12-dev libunwind-dev libx11-dev libx32gfortran-12-dev libxext-dev linux-libc-dev meson
-          ninja-build perl pipx python3 python3-full python3-pip ruby sphinx-common tcl-expect-dev tex-common texi2html
+          libssl-dev libstdc++-12-dev libtool libtool-bin libunwind-dev libx11-dev libx32gfortran-12-dev libxext-dev linux-libc-dev
+          meson m4 ninja-build perl pipx python3 python3-full python3-pip ruby sphinx-common tcl-expect-dev tex-common texi2html
           texinfo)
 
     for pkg in ${pkgs[@]}; do
