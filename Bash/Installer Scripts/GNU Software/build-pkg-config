@@ -25,7 +25,7 @@ fi
 
 script_ver=1.1
 archive_dir=pkg-config-0.29.2
-archive_url=https://gitlab.freedesktop.org/pkg-config/pkg-config/-/archive/pkg-config-0.29.2/pkg-config-pkg-config-0.29.2.tar.bz2
+archive_url=https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz
 archive_ext="${archive_url//*.}"
 cwd="$PWD"/pkg-config-build-script
 repo=https://github.com/slyfox1186/script-repo
@@ -153,7 +153,7 @@ pkgs=(autoconf autogen automake build-essential ca-certificates ccache clang cur
 
 for i in ${pkgs[@]}
 do
-    missing_pkg="$(dpkg -l | grep -o "$i")"
+    missing_pkg="$(dpkg -l | grep $i)"
 
     if [ -z "$missing_pkg" ]; then
         missing_pkgs+=" $i"
@@ -197,7 +197,7 @@ mkdir -p "$cwd/$archive_dir/build"
 # EXTRACT ARCHIVE FILES
 #
 
-if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
+if ! tar -zxf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
     printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
     exit 1
 fi
