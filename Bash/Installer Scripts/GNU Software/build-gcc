@@ -276,12 +276,12 @@ execute()
 
     if [ "$debug" = 'ON' ]; then
         if ! output=$("$@"); then
-            notify-send -t 10000 "Failed to execute: $*"
+            notify-send -t 5000 "Failed to execute: $*"
             fail_fn "Failed to execute: $*"
         fi
     else
         if ! output=$("$@" 2>&1); then
-            notify-send -t 10000 "Failed to execute: $*"
+            notify-send -t 5000 "Failed to execute: $*"
             fail_fn "Failed to execute: $*"
         fi
     fi
