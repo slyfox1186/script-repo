@@ -261,12 +261,12 @@ create_gcc_links_fn()
 {
     local gcc_long_link_name gcc_short_link_name
 
-    gcc_long_link_name="$(find /usr/local/bin -type f -name '"$pc_type"-*' | grep -Eo '"$pc_type"-[a-z\+]+-[123]+$')"
+    gcc_long_link_name="$(sudo find /usr/local/bin -type f -name x86_64-pc-linux-gnu-* | grep -Eo 'x86_64-pc-linux-gnu-[a-z\+]+-[123]+$')"
     for i in ${gcc_long_link_name[@]}
     do
-        gcc_short_link_name="$(echo "$i" | sed 's/^"$pc_type"-\(.*\)$/\1/')"
-        sudo ln -fs "/usr/local/bin/$i" "/usr/local/bin/$gcc_short_link_name"
-        sudo chmod 755 -R "/usr/local/bin/$i" "/usr/local/bin/$gcc_short_link_name"
+        gcc_short_link_name="$(echo "$i" | sed 's/^x86_64-pc-linux-gnu-\(.*\)$/\1/')"
+        echo "sudo ln -fs /usr/local/bin/$i /usr/local/bin/$gcc_short_link_name"
+        sudo "chmod 755 -R /usr/local/bin/$i /usr/local/bin/$gcc_short_link_name"
     done
 }
 
@@ -501,8 +501,8 @@ pkgs_fn()
 # GET PC TYPE
 #
 
-curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "$cwd/config.guess"
+curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'; \
+chmod +x "$cwd/config.guess"; \
 pc_type="$(source "$cwd/config.guess")"
 
 #
@@ -857,12 +857,6 @@ build_gcc_13_fn()
 #
 # START GCC BUILD
 #
-
-if [ "$VER" -ne '12' ]; then
-    build_gcc_11_fn
-fi
-build_gcc_12_fn
-build_gcc_13_fn
 
 # CREATE SOFT LINKS TO SHORTEN THE BINARY NAMES
 create_gcc_links_fn
