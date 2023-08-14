@@ -89,6 +89,10 @@ bash <(curl -fsSL https://magick.optimizethis.net) --build
 ```bash
 bash <(curl -fsSL https://build-ffmpeg.optimizethis.net) --build --latest
 ```
+## Fast Build FFmpeg (Much faster with additional libraries)
+```bash
+bash <(curl -fsSL https://fast-build-ffmpeg.optimizethis.net)
+```
 ------
 
 ## Install [CMake](https://cmake.org/), [Ninja](https://github.com/ninja-build/ninja), [Meson](https://github.com/mesonbuild/meson) & [Golang](https://github.com/golang/go)
