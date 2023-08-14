@@ -903,20 +903,15 @@ sort_libjxl_fn()
 
     mkdir -p "$packages"/deb-files
 
-    if [ ! -f "$packages"/libjxl.tar.gz ]; then
-        if [[ "$VER" -eq '12' ]]; then
-            libjxl_download="$url_base-debian-bookworm-$url_suffix"
-        elif [[ "$VER" -eq '11' ]]; then
-            libjxl_download="$url_base-debian-bullseye-$url_suffix"
-        elif [[ "$VER" -eq '10' ]]; then
-            libjxl_download="$url_base-debian-buster-$url_suffix"
-        elif [[ "$VER" -ge '22.04' ]]; then
-            libjxl_download="$url_base-ubuntu-22.04-$url_suffix"
-        elif [[ "$VER" -eq '20.04' ]]; then
-            libjxl_download="$url_base-ubuntu-20.04-$url_suffix"
-        elif [[ "$VER" -eq '18.04' ]]; then
-            libjxl_download="$url_base-ubuntu-18.04-$url_suffix"
-        fi
+        case "$VER" in
+                12)     libjxl_download="$url_base-debian-bookworm-$url_suffix";;
+                11)     libjxl_download="$url_base-debian-bullseye-$url_suffix";;
+                10)     libjxl_download="$url_base-debian-buster-$url_suffix";;
+                22.04)  libjxl_download="$url_base-ubuntu-22.04-$url_suffix";;
+                20.04)  libjxl_download="$url_base-ubuntu-20.04-$url_suffix";;
+                18.04)  libjxl_download="$url_base-ubuntu-18.04-$url_suffix";;
+                *)      fail_fn 'Coudn'\''t detect the OS version of Linux.';;
+        esac
 
         # CALL THE DOWNLOAD FUNCTION FOR THE LIBJXL DEBIAN FILES
         download_libjxl_fn "$libjxl_download"
@@ -925,7 +920,6 @@ sort_libjxl_fn()
             fail_fn "Could not extract the libjxl archive: $packages/libjxl.tar.gz"
         fi
         install_libjxl_fn
-    fi
 }
 
 #
@@ -1041,6 +1035,14 @@ fi
 export ACLOCAL_PATH=/usr/share/aclocal
 
 #
+# GET PC TYPE
+#
+
+curl -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "$cwd/config.guess"
+pc_type="$(source "$cwd/config.guess")"
+
+#
 # INSTALL GLOBAL TOOLS
 #
 
@@ -1051,7 +1053,6 @@ printf "%s\n%s\n%s\n" \
 
 if build 'm4' 'latest'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
-    pc_type="$(build-aux/config.guess)"
     execute ./configure --prefix="$workspace" --disable-nls --enable-c++ --{build,host,target}="$pc_type"
     execute make "-j$cpu_threads"
     execute make install
@@ -2199,8 +2200,8 @@ printf "\n%s\n%s\n%s\n" \
     '              Installing FFmpeg               ' \
     '=============================================='
 
-if build 'ffmpeg' "$ffmpeg_ver"; then
-    download "https://www.ffmpeg.org/releases/ffmpeg-$ffmpeg_ver.tar.xz"
+if build 'ffmpeg' '3d5edb8'; then
+    download 'https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/3d5edb89e75fe3ab3a6757208ef121fa2b0f54c7.tar.gz'
     mkdir build
     cd build || exit 1
     ../configure                                  \
