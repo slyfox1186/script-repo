@@ -589,7 +589,8 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+find_java="$(find /usr/lib/jvm -type d -name java-*-openjdk-*)"
+JAVA_HOME="$find_java"
 export JAVA_HOME
 
 #
