@@ -462,8 +462,7 @@ esac
 if ! which gcc &>/dev/null; then
     fail_fn 'Please install "gcc" to continue.'
 fi
-export CC='ccache gcc'
-export CXX='ccache g++'
+export CC=gcc CXX=g++
 
 #
 # SET THE COMPILER OPTIMIZATION FLAGS TO TUNE THE BUILD FOR THE SPECIFIC COMPUTER RUNNING THE SCRIPT
