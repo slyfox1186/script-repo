@@ -858,6 +858,12 @@ build_gcc_13_fn()
 # START GCC BUILD
 #
 
+if [ "$VER" -ne '12' ]; then
+    build_gcc_11_fn
+fi
+build_gcc_12_fn
+build_gcc_13_fn
+
 # CREATE SOFT LINKS TO SHORTEN THE BINARY NAMES
 create_gcc_links_fn
 
