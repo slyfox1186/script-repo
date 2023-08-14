@@ -38,7 +38,7 @@ export CC=gcc CXX=g++
 export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 #
-# SET PATH
+# SET THE PATH VARIABLE
 #
 
 PATH="\
@@ -57,23 +57,21 @@ $HOME/.local/bin:\
 export PATH
 
 #
-# SET PKG_CONFIG_PATH
+# SET THE PKG_CONFIG_PATH VARIABLE
 #
 
 PKG_CONFIG_PATH="\
-$workspace/lib/pkgconfig:\
-$workspace/lib64/pkgconfig:\
-$workspace/share/pkgconfig:\
-$workspace/lib/x86_64-linux-gnu/pkgconfig:\
-$workspace/usr/lib/pkgconfig:\
-/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/share/pkgconfig:\
-/usr/share/pkgconfig:\
+/usr/lib64/pkgconfig:\
+/usr/lib/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/pkgconfig\
+/usr/share/pkgconfig:\
+/lib64/pkgconfig:\
+/lib/pkgconfig:\
+/lib/x86_64-linux-gnu/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
