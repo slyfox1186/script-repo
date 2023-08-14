@@ -81,14 +81,17 @@ export PKG_CONFIG_PATH
 
 exit_fn()
 {
-    printf "\n%s\n\n" 'The script has completed.'
+    printf "\n%s\n\n%s\n\n" \
+        'Make sure to star this repository to show your support!' \
+        "$repo"
     exit 0
 }
 
-
 fail_fn()
 {
-    printf "%s\n\n" "$1"
+    printf "\n%s\n\n%s\n\n" \
+        "$1" \
+        "To report a bug create an issue at: $repo/issues"
     exit 1
 }
 
@@ -96,7 +99,7 @@ cleanup_fn()
 {
     local choice
 
-    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
+    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
         '============================================' \
         '  Do you want to clean up the build files?  ' \
         '============================================' \
@@ -191,5 +194,8 @@ if ! sudo ninja "-j$(nproc --all)" -C build install; then
     exit 1
 fi
 
-sudo rm -fr "$cwd"
-unset archive_dir archive_ext archive_name archive_url CC CXX i missing_pkg missing_pkgs pc_type pem_target pkgs script_ver
+# PROMPT USER TO CLEAN UP FILES
+cleanup_fn
+
+# SHOW EXIT MESSAGE
+exit_fn
