@@ -1,0 +1,242 @@
+#!/usr/bin/env bash
+
+###########################################################################################################
+##
+##  GitHub Script:
+##
+##  Purpose: Build FFmpeg
+##  Updated: 08.14.23
+##
+##  Script version: 1.0
+##
+###########################################################################################################
+
+clear
+
+if [ "$EUID" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
+
+#
+# SET VARIABLES
+#
+
+script_ver=1.0
+archive_dir=ffmpeg-5.1.3
+archive_url=https://www.ffmpeg.org/releases/ffmpeg-5.1.3.tar.xz
+archive_ext="${archive_url//*.}"
+cwd="$PWD"/ffmpeg-build-script
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+repo=https://github.com/slyfox1186/script-repo
+
+printf "\n%s\n%s\n\n" \
+    "FFmpeg build script - v$script_ver" \
+    '==============================================='
+
+#
+# CREATE THE OUTPUT DIRECTORIES
+#
+
+mkdir -p "$cwd"
+
+#
+# SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
+#
+
+if [ -f /proc/cpuinfo ]; then
+    cpu_threads="$(grep -c ^processor /proc/cpuinfo)"
+else
+    cpu_threads="$(nproc --all)"
+fi
+#
+# SET THE C+CPP COMPILERS
+#
+
+export CC=gcc CXX=g++
+
+#
+# CREATE FUNCTIONS
+#
+
+exit_fn()
+{
+    printf "\n%s\n\n%s\n\n" \
+        'Make sure to star this repository to show your support!' \
+        "$repo"
+    exit 0
+}
+
+fail_fn()
+{
+    printf "\n%s\n\n%s\n\n" \
+        "$1" \
+        "To report a bug create an issue at: $repo/issues"
+    exit 1
+}
+
+cleanup_fn()
+{
+    local choice
+
+    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
+        '============================================' \
+        '  Do you want to clean up the build files?  ' \
+        '============================================' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' choice
+
+    case "$choice" in
+        1)      sudo rm -fr "$cwd";;
+        2)      echo;;
+        *)
+                clear
+                printf "%s\n\n" 'Bad user input. Reverting script...'
+                sleep 3
+                unset choice
+                clear
+                cleanup_fn
+                ;;
+    esac
+}
+
+ff_ver_fn()
+{
+    printf "%s\n%s\n%s\n\n" \
+        '============================================' \
+        '               FFmpeg Version               ' \
+        '============================================'
+    ffmpeg -version
+}
+
+#
+# CREATE FUNCTIONS
+#
+
+exit_fn()
+{
+    printf "\n%s\n\n%s\n\n" \
+        'Make sure to star this repository to show your support!' \
+        "$repo"
+    exit 0
+}
+
+fail_fn()
+{
+    printf "\n%s\n\n%s\n\n" \
+        "$1" \
+        "To report a bug create an issue at: $repo/issues"
+    exit 1
+}
+
+cleanup_fn()
+{
+    local choice dpkg_list
+
+    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
+        '============================================' \
+        '  Do you want to clean up the build files?  ' \
+        '============================================' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' choice
+
+    case "$choice" in
+        1)      sudo rm -fr "$cwd";;
+        2)      echo;;
+        *)
+                clear
+                printf "%s\n\n" 'Bad user input. Reverting script...'
+                sleep 3
+                unset choice
+                clear
+                cleanup_fn
+                ;;
+    esac
+}
+
+#
+# INSTALL REQUIRED APT PACKAGES
+#
+
+pkgs='ant apt asciidoc autoconf automake autopoint binutils bison build-essential cargo ccache checkinstall clang cmake curl doxygen fcitx-libs-dev flex flite1-dev freeglut3-dev frei0r-plugins-dev gawk gettext git gnome-desktop-testing gnustep-gui-runtime libgnutls28-dev google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit libasound2-dev libaudio-dev libavfilter-dev libbluray-dev libbs2b-dev libbz2-dev libc6 libc6-dev libcaca-dev libcairo2-dev libcrypto++-dev libcurl4-openssl-dev libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev libgnutls30 libgoogle-perftools-dev libgoogle-perftools4 libgvc6 libibus-1.0-dev libintl-perl libjack-dev libjemalloc-dev libleptonica-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev libmatroska-dev libmusicbrainz5-dev libncurses5-dev libncursesw5-dev libnuma-dev libnuma1 libopencore-amrnb-dev libopencv-dev libopenjp2-7-dev libopenmpt-dev libperl-dev libpstoedit-dev libpulse-dev libraqm-dev libraw-dev librsvg2-dev librubberband-dev libshine-dev libsmbclient-dev libsnappy-dev libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev libssl-dev libtalloc-dev libtheora-dev libtool libtool-bin libtwolame-dev libudev-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev libx11-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzstd-dev libzzip-dev lshw lzma-dev m4 meson nasm ninja-build openjdk-17-jdk-headless pandoc python3 python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip wget xmlto libladspa-ocaml-dev ladspa-sdk zlib1g-dev libass-dev libbluray-dev libiconv-hook-dev libfdk-aac-dev libmodplug-dev libmp3lame-dev libmysofa-dev libopencore-amrnb-dev libopencore-amrwb-dev libopus-dev libsvtav1-dev libsvtav1dec-dev libsvtav1enc-dev libv4l-dev libx264-dev libx265-dev libgme-dev libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libchromaprint-dev'
+
+#
+# DOWNLOAD THE ARCHIVE FILE
+#
+
+archive_name="$archive_dir.tar.$archive_ext"
+
+if [ ! -f "$cwd/$archive_name" ]; then
+    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
+fi
+
+#
+# CREATE OUTPUT DIRECTORY
+#
+
+if [ -d "$cwd/$archive_dir" ]; then
+    sudo rm -fr "$cwd/$archive_dir"
+fi
+mkdir -p "$cwd/$archive_dir/build"
+
+#
+# EXTRACT ARCHIVE FILES
+#
+
+if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
+    exit 1
+fi
+
+#
+# BUILD PROGRAM FROM SOURCE
+#
+
+LDFLAGS='-L/usr/lib/jvm/java-17-openjdk-amd64/lib -L/usr/lib -L/usr/local/lib -L/usr/share/ant/lib -L/usr/lib64 -L/usr/local/cuda-12.2/extras/Debugger/lib64'
+export LDFLAGS+=' -L/usr/local/cuda-12.2/nvvm/lib64 -L/usr/local/lib64 -L/usr/lib/x86_64-linux-gnu'
+
+export PATH="/usr/lib/ccache:/usr/local/bin:$PATH"
+export LIBS='-lpthread -lm -lz'
+export CFLAGS='-I/usr/local/cuda-12.2/include -I/usr/local/cuda-12.2/targets/x86_64-linux/include -I/usr/local/include -I/usr/include'
+export PKG_CONFIG_PATH='/usr/lib64/pkgconfig:/usr/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig'
+
+cd "$cwd/$archive_dir" || exit 1
+./configure                                                                       \
+    --prefix=/usr/local                                                           \
+    --arch="$(uname -m)"                                                          \
+    --cpu="$((cpu_threads / 2))"                                                  \
+    --disable-{debug,doc,ffnvcodec,shared}                                        \
+    --enable-{frei0r,ladspa,libaom,libass,libbs2b}                                \
+    --enable-{libcaca,libcdio,libdav1d,libfdk-aac,libflite,libfontconfig}         \
+    --enable-{libfreetype,libfribidi,libgme,libjxl,libmodplug,libmp3lame}         \
+    --enable-{libmysofa,libopencore-amrnb,libopencore-amrwb,libopenjpeg}          \
+    --enable-{libopenmpt,libopus,libpulse,librubberband,libshine,libsmbclient}    \
+    --enable-{libsnappy,libsoxr,libspeex,libsvtav1,libtheora,libtwolame,libv4l2}  \
+    --enable-{libvidstab,libvo-amrwbenc,libvorbis,libvpx,libwebp,libx264,libx265} \
+    --enable-{libxml2,libxvid,opengl,openssl,version3,lto,pthreads}               \
+    --enable-{gpl,nonfree,small,static,version3}                                  \
+    --extra-cflags="$CFLAGS"                                                      \
+    --extra-cxxflags='-g -O3 -march=native'                                       \
+    --extra-ldflags=$"$LDFLAGS"                                                   \
+    --extra-libs="$LIBS"                                                          \
+    --pkg-config="$(type -P pkg-config)"                                          \
+    --pkg-config-flags='--static'                                                 \
+    --strip="$(type -P strip)"
+make "-j$(nproc --all)"
+sudo make install
+make distclean
+
+if [ -f /usr/lib/x86_64-linux-gnu/pulseaudio/libpulsecommon-16.1.so ]; then
+    sudo ln -sf /usr/lib/x86_64-linux-gnu/pulseaudio/libpulsecommon-16.1.so /usr/lib/x86_64-linux-gnu/libpulsecommon-16.1.so
+fi
+
+# SHOW THE NEW FFMPEG VERSION
+ff_ver_fn
+
+# PROMPT USER TO CLEAN UP FILES
+cleanup_fn
+
+# SHOW EXIT MESSAGE
+exit_fn
