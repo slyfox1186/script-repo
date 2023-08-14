@@ -469,7 +469,7 @@ box_out_banner "GCC Build Script: v$script_ver"
 
 pkgs_fn()
 {
-    pkgs=(autoconf autogen automake bison build-essential ccache curl dejagnu flex gcc-11-base gcc-multilib
+    pkgs=(autoconf autoconf-archive autogen automake bison build-essential ccache curl dejagnu flex gcc-11-base gcc-multilib
           gdc gdc-multilib gfortran gfortran-multilib git gnat gnulib guile-3.0-dev help2man jq libacl1-dev libasan8
           libdebuginfod-dev libdmalloc5 libdmalloc-dev libeigen3-dev libffi-dev libfontconfig1-dev libfreetype6
           libgcc-11-dev libgd-dev libgm2-12-dev libgmp-dev libiberty-dev libicu-dev libintl-perl libisl-dev libjpeg-dev
