@@ -89,7 +89,7 @@ fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
         "$1" \
-        "To report a bug create an issue at: $repo/issues"
+        "To report a bug create an issue at $repo/issues"
     exit 1
 }
 
@@ -122,7 +122,7 @@ cleanup_fn()
 build()
 {
     printf "\n%s\n%s\n" \
-        "building $1 - version $2" \
+        "Building $1 - version $2" \
         '===================================='
 
     if [ -f "$cwd/$1.done" ]; then
@@ -130,7 +130,7 @@ build()
             echo "$1 version $2 already built. Remove $cwd/$1.done lockfile to rebuild it."
             return 1
         elif $latest; then
-            echo "$1 is oudebugtdated and will be rebuilt using version $2"
+            echo "$1 is outdated and will be rebuilt using version $2"
             return 0
         else
             echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $cwd/$1.done lockfile."
@@ -292,7 +292,7 @@ git_ver_fn '1665' '1' 'T'
 if build 'xml2' "$g_ver"; then
     download "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v$g_ver/libxml2-v$g_ver.tar.bz2" "xml2-$g_ver.tar.bz2"
     CFLAGS+=' -DNOLIBTOOL'
-    execute sh autogen.sh
+    execute ./autogen.sh
     execute cmake -B build -DCMAKE_{INSTALL_PREFIX=/usr/local,EXPORT_COMPILE_COMMANDS=OFF,VERBOSE_MAKEFILE=OFF} \
         -DCPACK_{BINARY_DEB,BINARY_FREEBSD,BINARY_IFW,BINARY_NSIS,BINARY_RPM,BINARY_TBZ2,BINARY_TXZ,SOURCE_{RPM,ZIP}}=ON \
         -DBUILD_SHARED_LIBS=OFF -G Ninja -Wno-dev
