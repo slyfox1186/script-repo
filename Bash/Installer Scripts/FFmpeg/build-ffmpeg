@@ -47,19 +47,20 @@
 
 script_name="${0:2}"
 script_ver=2.3
-ffmpeg_ver=6.0
+ffmpeg_ver_long=566aa38d98f5f492995127e82ab9a516f59bf952
+ffmpeg_ver_short=566aa38
 cuda_ver=12.2.1
 cwd="$PWD"/ffmpeg-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
 install_prefix=/usr/local
-CFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu -g -O3 -march=native"
+CFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2 -g -O3 -march=native"
 CXXFLAGS='-g -O3 -march=native'
 LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/local/lib -L/usr/local/cuda/nvvm/lib64"
 LDFLAGS+=' -L/usr/local/cuda/targets/x86_64-linux/lib -L/usr/lib -L/usr/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu -L/lib'
 CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include"
 LDEXEFLAGS=
-EXTRALIBS='-ldl -lpthread -lm -lz'
+EXTRALIBS="-ldl -lpthread -lm -lz $(pkg-config --libs sdl2)"
 ffmpeg_libraries=()
 latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
@@ -237,8 +238,15 @@ git_1_fn()
     # SCRAPE GITHUB WEBSITE FOR THE LATEST REPO VERSION
     github_repo="$1"
     github_url="$2"
+    git_token='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'
 
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
+    if curl_cmd="$(curl \
+                        -m "$curl_timeout" \
+                        --request GET \
+                        --url "https://api.github.com/slyfox1186" \
+                        --header "Authorization: Bearer $git_token" \
+                        --header "X-GitHub-Api-Version: 2022-11-28" \
+                        -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "$curl_cmd" | jq -r '.[1].name' 2>/dev/null)"
         g_ver="${g_ver#cares-}"
@@ -1595,15 +1603,14 @@ if build 'libflac' "$g_ver"; then
 fi
 
 pre_check_ver 'mstorsjo/fdk-aac' '1' 'T'
-if build 'libfdk-aac' "$g_ver"; then
-    download "https://codeload.github.com/mstorsjo/fdk-aac/tar.gz/refs/tags/v$g_ver" "libfdk-aac-$g_ver.tar.gz"
+if build 'libfdk-aac' '2.0.2'; then
+    download 'https://sourceforge.net/projects/opencore-amr/files/fdk-aac/fdk-aac-2.0.2.tar.gz/download?use_mirror=gigenet' 'libfdk-aac-2.0.2.tar.gz'
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --bindir="$workspace"/bin \
-        --disable-shared CXXFLAGS="$CXXFLAGS -fno-exceptions -fno-rtti"
+    execute ./configure --prefix="$workspace" --disable-shared --enable-static --enable-pic
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
-    build_done 'libfdk-aac' "$g_ver"
+    build_done 'libfdk-aac' '2.0.2'
 fi
 ffmpeg_libraries+=('--enable-libfdk-aac')
 
@@ -1676,21 +1683,19 @@ if build 'libmysofa' "$g_ver"; then
 fi
 
 pre_check_ver 'webmproject/libvpx' '1' 'T'
-if build 'vpx' "$g_ver"; then
-    download "https://codeload.github.com/webmproject/libvpx/tar.gz/refs/tags/v$g_ver" "libvpx-$g_ver.tar.gz"
-    execute ./configure --prefix="$workspace" --target='x86_64-linux-gcc' --as='yasm' --disable-{examples,shared,unit-tests,webm-io} \
-        --enable-{better-hw-compatibility,ccache,codec-srcs,coefficient-range-checking,install-srcs,libyuv,multi-res-encoding,onthefly-bitpacking,pic,postproc} \
-        --enable-{realtime-only,runtime-cpu-detect,small,static,vp8,vp9,vp9-highbitdepth,vp9-postproc,vp9-temporal-denoising} --log='no' --extra-cxxflags="$CXXFLAGS"
+if build 'vpx' '1.13.0'; then
+    download 'https://github.com/webmproject/libvpx/archive/refs/tags/v1.13.0.tar.gz' 'libvpx-1.13.0.tar.gz'
+    execute ./configure --prefix="$workspace" --disable-unit-tests --disable-shared --disable-examples --as=yasm --enable-vp9-highbitdepth
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
-    build_done 'vpx' "$g_ver"
+    build_done 'vpx' '1.13.0'
 fi
 ffmpeg_libraries+=('--enable-libvpx')
 
 if build 'opencore-amr' '0.1.6'; then
-    download 'https://zenlayer.dl.sourceforge.net/project/opencore-amr/opencore-amr/opencore-amr-0.1.6.tar.gz'
-    execute ./configure --prefix="$workspace" --disable-shared
+    download 'https://netactuate.dl.sourceforge.net/project/opencore-amr/opencore-amr/opencore-amr-0.1.6.tar.gz'
+    execute ./configure --prefix="$workspace" --disable-shared --enable-static
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
@@ -1737,8 +1742,8 @@ printf "\n%s\n%s\n%s\n" \
     '=============================================='
 
 # NEED TO MANUALLY UPDATE THIS REPO FROM TIME TO TIME
-if build 'av1' '304ff33'; then
-    download 'https://aomedia.googlesource.com/aom/+archive/304ff3339198e537cb1db8e6d50ace0c668f723e.tar.gz' 'av1-304ff33.tar.gz' 'av1'
+if build 'av1' '7d637e1'; then
+    download 'https://aomedia.googlesource.com/aom/+archive/7d637e1ccd859f9018ebff88911411685d3a3a2b.tar.gz' 'av1-7d637e1.tar.gz' 'av1'
     mkdir -p "$packages/aom_build"
     cd "$packages/aom_build" || exit 1
     execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",INSTALL_LIBDIR="$workspace"/lib,BUILD_TYPE=Release} \
@@ -1747,7 +1752,7 @@ if build 'av1' '304ff33'; then
         -DBUILD_SHARED_LIBS=OFF -DENABLE_{CCACHE=1,{EXAMPLES,TESTS}=0} -G Ninja -Wno-dev "$packages"/av1
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
-    build_done 'av1' '304ff33'
+    build_done 'av1' '7d637e1'
 fi
 ffmpeg_libraries+=('--enable-libaom')
 
@@ -1805,15 +1810,6 @@ if build 'kvazaar' "$g_ver"; then
     build_done 'kvazaar' "$g_ver"
 fi
 ffmpeg_libraries+=('--enable-libkvazaar')
-
-# NEED TO MANUALLY UPDATE THIS REPO FROM TIME TO TIME
-if build 'libsdl2' '2.28.2'; then
-    download 'https://www.libsdl.org/release/SDL2-2.28.2.tar.gz' 'libsdl2-2.28.2.tar.gz'
-    execute ./configure --prefix="$workspace"
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done 'libsdl2' '2.28.2'
-fi
 
 git_ver_fn '76' '2' 'T'
 if build 'libdvdread' "$g_ver1"; then
@@ -1942,6 +1938,7 @@ if build 'svt-hevc' "$g_ver"; then
     build_done 'svt-hevc' "$g_ver"
 fi
 
+# UPDATE THIS FROM TIME TO TIME
 git_ver_fn '24327400' '3' 'T'
 if build 'svt-av1' '1.4.1'; then
     download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v1.4.1/SVT-AV1-v1.4.1.tar.bz2' 'svt-av1-1.4.1.tar.bz2'
@@ -1975,20 +1972,20 @@ if build 'x265' '8f18e3a'; then
     mkdir -p {8,10,12}bit
     cd 12bit || exit 1
     echo '$ making 12bit binaries'
-    execute cmake ../../../source -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} \
-        -DHIGH_BIT_DEPTH=ON -DEXPORT_C_API=OFF -DENABLE_{SHARED,CLI}=OFF -DMAIN12=ON -G Ninja -Wno-dev
+    execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="$workspace" -DHIGH_BIT_DEPTH=ON -DEXPORT_C_API=OFF \
+        -DENABLE_SHARED=OFF -DENABLE_CLI=OFF -DMAIN12=ON -DENABLE_LIBVMAF=OFF -DENABLE_PIC=ON -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads"
     echo '$ making 10bit binaries'
     cd ../10bit || exit 1
-    execute cmake ../../../source -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} \
-        -DHIGH_BIT_DEPTH=ON -DEXPORT_C_API=OFF -DENABLE_{SHARED,CLI}=OFF -G Ninja -Wno-dev
+    execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="$workspace" -DENABLE_HDR10_PLUS=ON -DHIGH_BIT_DEPTH=ON -DEXPORT_C_API=OFF \
+        -DENABLE_SHARED=OFF -DENABLE_CLI=OFF -DENABLE_LIBVMAF=OFF -DENABLE_PIC=ON -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads"
     echo '$ making 8bit binaries'
     cd ../8bit || exit 1
     ln -sf ../10bit/libx265.a libx265_main10.a
     ln -sf ../12bit/libx265.a libx265_main12.a
-    execute cmake ../../../source -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} \
-        -DEXTRA_{LIB='x265_main10.a;x265_main12.a',LINK_FLAGS='-L.'} -DLINKED_{10BIT,12BIT}=ON -G Ninja -Wno-dev
+    execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="$workspace" -DEXTRA_LIB='x265_main10.a;x265_main12.a' \
+        -DHIGH_BIT_DEPTH=ON -DEXTRA_LINK_FLAGS=-L. -DLINKED_10BIT=ON -DLINKED_12BIT=ON -DENABLE_LIBVMAF=OFF -DENABLE_PIC=ON -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads"
     mv libx265.a libx265_main.a
 
@@ -2011,7 +2008,9 @@ EOF
         sudo cp -f "$workspace"/lib/libx265.so.208 /usr/lib/x86_64-linux-gnu
         sudo ln -fs /usr/lib/x86_64-linux-gnu/libx265.so.208 /usr/lib/x86_64-linux-gnu/libx265.so
     else
-        fail_fn "The sript could not located the file \"$workspace/lib/libx265.so.208\" and needs to be updated. This error is located in the 'x265' build."
+        echo
+        read -p "The sript could not located the file \"$workspace/lib/libx265.so.208\" and needs to be updated. This error is located in the 'x265' build."
+        echo
     fi
 
     build_done 'x265' '8f18e3a'
@@ -2200,8 +2199,8 @@ printf "\n%s\n%s\n%s\n" \
     '              Installing FFmpeg               ' \
     '=============================================='
 
-if build 'ffmpeg' '3d5edb8'; then
-    download 'https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/3d5edb89e75fe3ab3a6757208ef121fa2b0f54c7.tar.gz'
+if build 'FFmpeg' "$ffmpeg_ver_short"; then
+    download "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/$ffmpeg_ver_long.tar.gz" "ffmpeg-$ffmpeg_ver_short.tar.gz"
     mkdir build
     cd build || exit 1
     ../configure                                  \
@@ -2216,6 +2215,7 @@ if build 'ffmpeg' '3d5edb8'; then
         --enable-gpl                              \
         --enable-lto                              \
         --enable-nonfree                          \
+        --enable-pic                              \
         --enable-pthreads                         \
         --enable-small                            \
         --enable-static                           \
