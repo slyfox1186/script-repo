@@ -127,7 +127,7 @@ show_ver_fn()
 
 cleanup_fn()
 {
-    local choice dpkg_list
+    local choice
 
     unset archive_dir archive_ext archive_name archive_url CC CXX i missing_pkg missing_pkgs pc_type pem_target pkgs script_ver
 
