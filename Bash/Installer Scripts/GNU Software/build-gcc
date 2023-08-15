@@ -265,8 +265,8 @@ create_gcc_links_fn()
     for i in ${gcc_long_name[@]}
     do
         gcc_short_name="$(echo "$i" | sed 's/^x86_64-pc-linux-gnu-\(.*\)$/\1/')"
-        echo "sudo ln -fs /usr/local/bin/$i /usr/local/bin/$gcc_short_name"
-        sudo "chmod 755 -R /usr/local/bin/$i /usr/local/bin/$gcc_short_name"
+        sudo ln -fs "/usr/local/bin/$i" "/usr/local/bin/$gcc_short_name"
+        sudo chmod 755 -R "/usr/local/bin/$i" "/usr/local/bin/$gcc_short_name"
     done
 }
 
