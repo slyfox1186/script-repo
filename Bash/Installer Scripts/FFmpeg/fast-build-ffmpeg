@@ -181,7 +181,8 @@ ff_ver_fn()
         '============================================' \
         '               FFmpeg Version               ' \
         '============================================'
-    "$PWD/ffmpeg" -version
+    "$workspace/bin/ffmpeg" -version
+    sleep 3
 }
 
 #
