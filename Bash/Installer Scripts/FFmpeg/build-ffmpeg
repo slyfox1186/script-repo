@@ -1102,7 +1102,7 @@ if build 'openssl' '3.1.2'; then
     execute ./Configure linux-x86_64 --prefix=/usr/local enable-egd enable-fips enable-md2 enable-rc5 enable-trace \
         threads zlib --with-rand-seed=os --with-zlib-include="$workspace"/include --with-zlib-lib="$workspace"/lib
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute sudo make install_sw
     execute sudo make install_fips
     execute make distclean
     build_done 'openssl' '3.1.2'
