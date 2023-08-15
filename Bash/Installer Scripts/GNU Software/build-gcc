@@ -729,7 +729,7 @@ build_gcc_11_fn()
             --enable-default-pie                      \
             --enable-gnu-unique-object                \
             --enable-languages="$gcc_11_lang"         \
-            --enable-libphobos-checking=release       \
+            --enable-libphobos-checking=auto          \
             --enable-lto                              \
             --enable-multilib                         \
             --enable-plugin                           \
@@ -777,7 +777,7 @@ build_gcc_12_fn()
             --enable-default-pie                      \
             --enable-gnu-unique-object                \
             --enable-languages=all                    \
-            --enable-libphobos-checking=release       \
+            --enable-libphobos-checking=auto          \
             --enable-lto                              \
             --enable-multilib                         \
             --enable-offload-defaulted                \
@@ -825,7 +825,7 @@ build_gcc_13_fn()
             --enable-default-pie                      \
             --enable-gnu-unique-object                \
             --enable-languages=all                    \
-            --enable-libphobos-checking=release       \
+            --enable-libphobos-checking=auto          \
             --enable-lto                              \
             --enable-multilib                         \
             --enable-offload-defaulted                \
