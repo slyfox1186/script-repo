@@ -725,7 +725,7 @@ build_gcc_11_fn()
             --disable-vtable-verify                   \
             --disable-werror                          \
             --enable-bootstrap                        \
-            --enable-checking=release                 \
+            --enable-checking=yes                     \
             --enable-default-pie                      \
             --enable-gnu-unique-object                \
             --enable-languages="$gcc_11_lang"         \
@@ -737,7 +737,7 @@ build_gcc_11_fn()
             --program-prefix="$gcc_prefix"            \
             --program-suffix=-11                      \
             --with-gcc-major-version-only             \
-            --with-isl="$workspace"                   \
+            --with-isl=/usr                           \
             --with-libiconv-prefix=/usr               \
             --with-link-serialization=2               \
             --with-target-system-zlib=auto            \
@@ -773,7 +773,7 @@ build_gcc_12_fn()
             --disable-vtable-verify                   \
             --disable-werror                          \
             --enable-bootstrap                        \
-            --enable-checking=release                 \
+            --enable-checking=yes                     \
             --enable-default-pie                      \
             --enable-gnu-unique-object                \
             --enable-languages=all                    \
@@ -786,7 +786,7 @@ build_gcc_12_fn()
             --program-prefix="$gcc_prefix"            \
             --program-suffix=-12                      \
             --with-gcc-major-version-only             \
-            --with-isl="$workspace"                   \
+            --with-isl=/usr                           \
             --with-libiconv-prefix=/usr               \
             --with-link-serialization=2               \
             --with-target-system-zlib=auto            \
@@ -821,7 +821,7 @@ build_gcc_13_fn()
             --disable-nls                             \
             --disable-vtable-verify                   \
             --disable-werror                          \
-            --enable-checking=release                 \
+            --enable-checking=yes                     \
             --enable-default-pie                      \
             --enable-gnu-unique-object                \
             --enable-languages=all                    \
@@ -834,7 +834,7 @@ build_gcc_13_fn()
             --program-prefix="$gcc_prefix"            \
             --program-suffix=-13                      \
             --with-gcc-major-version-only             \
-            --with-isl="$workspace"                   \
+            --with-isl=/usr                           \
             --with-libiconv-prefix=/usr               \
             --with-link-serialization=2               \
             --with-target-system-zlib=auto            \
@@ -857,6 +857,12 @@ build_gcc_13_fn()
 #
 # START GCC BUILD
 #
+
+if [ "$VER" -ne '12' ]; then
+    build_gcc_11_fn
+fi
+build_gcc_12_fn
+build_gcc_13_fn
 
 # CREATE SOFT LINKS TO SHORTEN THE BINARY NAMES
 create_gcc_links_fn
