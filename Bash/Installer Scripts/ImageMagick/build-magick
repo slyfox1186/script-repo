@@ -165,12 +165,12 @@ execute()
 
     if [ "$debug" = 'ON' ]; then
         if ! output="$("$@")"; then
-            notify-send -t 10000 "Failed to execute: $*"
+            notify-send -t 5000 "Failed to execute: $*"
             fail_fn "Failed to execute: $*"
         fi
     else
         if ! output="$("$@" 2>&1)"; then
-            notify-send -t 10000 "Failed to execute: $*"
+            notify-send -t 5000 "Failed to execute: $*"
             fail_fn "Failed to execute: $*"
         fi
     fi
@@ -403,22 +403,24 @@ fi
 
 pkgs_fn()
 {
+    local i missing_pkg missing_pkgs pkgs
+
     pkgs=("$1" alien asciidoc autoconf automake autopoint binutils bison build-essential cmake
-          curl flex gettext gimp-data git gperf imagemagick jq libc6 libc6-dev libfreetype-dev libgc-dev
-          libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev libheif-dev libltdl-dev libpango1.0-dev
-          libpaper-dev libpng-dev libpstoedit-dev libraw-dev librsvg2-dev librust-bzip2-dev libsdl2-dev
-          libstdc++-12-dev libtcmalloc-minimal4 libtool libtool-bin libnuma-dev libxml2-dev libzip-dev
-          m4 meson nasm ninja-build opencl-headers opencl-c-headers php-cli pstoedit xmlto yasm)
+          curl flex gettext gimp-data git gperf imagemagick imagemagick-libs jq libc6 libc6-dev
+          libfreetype-dev libgc-dev libgimp2.0-dev libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev
+          libheif-dev libltdl-dev libpango1.0-dev libpaper-dev libpng-dev libpstoedit-dev libraw-dev
+          librsvg2-dev librust-bzip2-dev libsdl2-dev libstdc++-12-dev libtcmalloc-minimal4 libtool
+          libtool-bin libnuma-dev libxml2-dev libzip-dev m4 meson nasm ninja-build opencl-headers
+          opencl-c-headers php-cli pstoedit xmlto yasm)
 
     for i in ${pkgs[@]}
     do
-        missing_pkg="$(dpkg -l | grep $i)"
+        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
 
         if [ -z "$missing_pkg" ]; then
             missing_pkgs+=" $i"
         fi
     done
-    unset i
 
     if [ -n "$missing_pkgs" ]; then
         sudo apt -y install $missing_pkgs
@@ -426,7 +428,7 @@ pkgs_fn()
         clear
     fi
 }
-
+    
 #
 # TEST THE OS AND ITS VERSION IF UBUNTU THEN CALL THE pkgs_fn
 #
@@ -458,7 +460,6 @@ install_libjxl_fn()
     sudo apt --fix-missing update
     sudo dpkg --configure -a
     sudo apt -y autoremove
-    echo
 }
 
 download_libjxl_fn()
