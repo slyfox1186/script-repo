@@ -750,11 +750,10 @@ build_gcc_11_fn()
             '$ This is going to take a while...'
         execute make "-j$cpu_threads"
         execute sudo make install-strip
-        execute sudo libtool --finish "$install_dir/libexec/gcc/x86_64-pc-linux-gnu/11"
+        execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/11
         execute sudo libtool --finish "$install_dir"/lib
         build_done 'gcc-11' '11.4.0'
     fi
-    spd-say 'GCC-11 Completed'
 }
 
 build_gcc_12_fn()
@@ -799,11 +798,10 @@ build_gcc_12_fn()
             '$ This is going to take a while...'
         execute make "-j$cpu_threads"
         execute sudo make install-strip
-        execute sudo libtool --finish "$install_dir/libexec/gcc/x86_64-pc-linux-gnu/12"
+        execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/12
         execute sudo libtool --finish "$install_dir"/lib
         build_done 'gcc-12' '12.3.0'
     fi
-    spd-say 'GCC-12 Completed'
 }
 
 build_gcc_13_fn()
@@ -847,11 +845,10 @@ build_gcc_13_fn()
             '$ This is going to take a while...'
         execute make "-j$cpu_threads"
         execute sudo make install-strip
-        execute sudo libtool --finish "$install_dir/libexec/gcc/x86_64-pc-linux-gnu/13"
+        execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/13
         execute sudo libtool --finish "$install_dir"/lib
         build_done 'gcc-13' '13.2.0'
     fi
-    spd-say 'GCC-13 Completed'
 }
 
 #
