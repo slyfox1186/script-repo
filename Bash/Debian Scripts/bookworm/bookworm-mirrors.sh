@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 clear
 
@@ -9,58 +9,49 @@ if [ ! -f "$list.bak" ]; then
     sudo cp -f "$list" "$list.bak"
 fi
 
-cat > "$list" <<'EOF'
+cat > /etc/apt/sources.list <<'EOF'
 #######################################################
 ##
-##  DEBIAN BOOKWORM
+##  Debian Bookworm
 ##
 ##  /etc/apt/sources.list
 ##
-##  ALL MIRRORS IN EACH CATAGORY ARE LISTED AS BEING
+##  ALL MIRRORS IN EACH CATEGORY ARE LISTED AS BEING
 ##  IN THE USA. IF YOU USE ALL THE LISTS YOU CAN RUN
 ##  INTO APT COMMAND ISSUES THAT STATE THERE ARE TOO
-##  MANY FILES.
+##  MANY FILES. JUST AN FYI FOR YOU.
 ##
 #######################################################
 ##
-## DEBIAN DEFAULT (DISABLED DUE TO HOW SLOW THESE ARE COMPRED TO THE 3RD PARTY MIRRORS)
+## DEFAULT
 ##
-# deb http://deb.debian.org/debian/ bookworm main contrib non-free-firmware non-free
-# deb http://deb.debian.org/debian/ bookworm-updates main contrib non-free-firmware non-free
-# deb http://ftp.debian.org/debian/ bookworm-backports main contrib non-free-firmware non-free
+# deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware
+# deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware
+# deb http://deb.debian.org/debian bookworm-backports main contrib non-free non-free-firmware
+deb http://security.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware
 ##
-## DEBIAN SECURITY
+## MAIN
 ##
-deb http://security.debian.org/debian-security bookworm-security main contrib non-free-firmware non-free
+deb http://debian.osuosl.org/debian bookworm main contrib non-free non-free-firmware
+deb http://mirror.cogentco.com/debian bookworm main contrib non-free non-free-firmware
+deb http://mirror.steadfast.net/debian bookworm main contrib non-free non-free-firmware
 ##
-## DEBIAN MAIN
+## UPDATES
 ##
-deb http://atl.mirrors.clouvider.net/debian/ bookworm main contrib non-free-firmware non-free
-deb https://nyc.mirrors.clouvider.net/debian/ bookworm main contrib non-free-firmware non-free
-deb https://mirrors.wikimedia.org/debian/ bookworm main contrib non-free-firmware non-free
-deb https://debian.osuosl.org/debian/ bookworm main contrib non-free-firmware non-free
-deb http://mirror.us.leaseweb.net/debian/ bookworm main contrib non-free-firmware non-free
+deb http://debian.osuosl.org/debian bookworm-updates main contrib non-free non-free-firmware
+deb http://mirror.cogentco.com/debian bookworm-updates main contrib non-free non-free-firmware
+deb http://mirror.steadfast.net/debian bookworm-updates main contrib non-free non-free-firmware
 ##
-## DEBIAN UPDATES
+## BACKPORTS
 ##
-deb http://atl.mirrors.clouvider.net/debian/ bookworm-updates main contrib non-free-firmware non-free
-deb https://nyc.mirrors.clouvider.net/debian/ bookworm-updates main contrib non-free-firmware non-free
-deb https://mirrors.wikimedia.org/debian/ bookworm-updates main contrib non-free-firmware non-free
-deb https://debian.osuosl.org/debian/ bookworm-updates main contrib non-free-firmware non-free
-deb http://mirror.us.leaseweb.net/debian/ bookworm-updates main contrib non-free-firmware non-free
-##
-## DEBIAN BACKPORTS
-##
-deb http://atl.mirrors.clouvider.net/debian/ bookworm-backports main contrib non-free-firmware non-free
-deb https://nyc.mirrors.clouvider.net/debian/ bookworm-backports main contrib non-free-firmware non-free
-deb https://mirrors.wikimedia.org/debian/ bookworm-backports main contrib non-free-firmware non-free
-deb https://debian.osuosl.org/debian/ bookworm-backports main contrib non-free-firmware non-free
-deb http://mirror.us.leaseweb.net/debian/ bookworm-backports main contrib non-free-firmware non-free
+deb http://debian.osuosl.org/debian bookworm-backports main contrib non-free non-free-firmware
+deb http://mirror.cogentco.com/debian bookworm-backports main contrib non-free non-free-firmware
+deb http://mirror.steadfast.net/debian bookworm-backports main contrib non-free non-free-firmware
 EOF
 
 # Open the sources.list file for review
-if which gnome-text-editor &>/dev/null; then
-    sudo gnome-text-editor "$list"
+if which gted &>/dev/null; then
+    sudo gted "$list"
 elif which gedit &>/dev/null; then
     sudo gedit "$list"
 elif which nano &>/dev/null; then
