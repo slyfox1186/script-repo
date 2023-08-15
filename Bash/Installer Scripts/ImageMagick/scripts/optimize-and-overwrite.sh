@@ -33,11 +33,13 @@ pip_lock="$(find /usr/lib/python3* -name EXTERNALLY-MANAGED)"
 if [ -n "${pip_lock}" ]; then
     sudo rm "${pip_lock}"
 fi
-if ! pip show google_speech; then
+
+test_pip="$(pip show google_speech)"
+if [ -z "$test_pip" ]; then
     pip install google_speech
 fi
-
 unset p pip_lock pip_pkgs missing_pkg missing_pkgs
+
 # DELETE ANY USELESS ZONE IDENFIER FILES THAT SPAWN FROM COPYING A FILE FROM WINDOWS NTFS INTO A WSL DIRECTORY
 find . -type f -iname "*:Zone.Identifier" -delete 2>/dev/null
 
@@ -46,7 +48,11 @@ cnt_queue=$(find . -maxdepth 2 -type f -iname "*.jpg" | wc -l)
 cnt_total=$(find . -maxdepth 2 -type f -iname "*.jpg" | wc -l)
 # GET THE UNMODIFIED PATH OF EACH MATCHING FILE
 
-for i in ./*."${fext}"
+if [ -d Pics ]; then
+    cd Pics || exit 1
+fi
+
+for i in *.${fext}
 do
     cnt_queue=$(( cnt_queue-1 ))
     cat <<EOF
@@ -59,10 +65,10 @@ Folder: $(basename "${PWD}")
 Total Files:    ${cnt_total}
 Files in queue: ${cnt_queue}
 
-Converting:  ${i}
-             >> ${i%%.jpg}.mpc
-                >> ${i%%.jpg}.cache
-                    >> ${i%%.jpg}-IM.jpg
+Converting: ${i}
+            >> ${i%%.jpg}.mpc
+               >> ${i%%.jpg}.cache
+                   >> ${i%%.jpg}-IM.jpg
 
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 EOF
@@ -72,7 +78,6 @@ EOF
     convert "${i}" -monitor -filter Triangle -define filter:support=2 -thumbnail "${dimensions}" -strip \
         -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize 136 -quality 82 -define jpeg:fancy-upsampling=off \
         -auto-level -enhance -interlace none -colorspace sRGB "${random_dir}/${i%%.jpg}.mpc"
-
 
     for file in "${random_dir}"/*.mpc
     do
@@ -86,6 +91,7 @@ EOF
             rm -fr "${v_noslash%/*}"
         done
     done
+    clear
 done
 
 if [ "${?}" -eq '0' ]; then
