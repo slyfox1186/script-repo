@@ -37,7 +37,7 @@ export CXX='ccache g++'
 # EXPORT COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O2 -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O2 -flto -ffunction-sections -fdata-sections -march=native'
 
 #
 # SET THE PATH VARIABLE
