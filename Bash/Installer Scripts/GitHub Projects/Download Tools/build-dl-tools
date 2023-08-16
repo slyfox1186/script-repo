@@ -469,7 +469,7 @@ export CC=gcc CXX=g++
 # SET THE COMPILER OPTIMIZATION FLAGS TO TUNE THE BUILD FOR THE SPECIFIC COMPUTER RUNNING THE SCRIPT
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O2 -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O2 -flto -ffunction-sections -fdata-sections -march=native'
 
 #
 # INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
