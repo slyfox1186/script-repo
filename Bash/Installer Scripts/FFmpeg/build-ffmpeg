@@ -27,7 +27,7 @@
 ##    - will be prompted by the script to install them so that hardware acceleration is
 ##    - enabled when compiling FFmpeg
 ##
-##  Last Update: 08.05.23
+##  Last Update: 08.16.23
 ##
 ##  Added: Debian OS Support for Bookworm (12)
 ##  Added: cyanrip
@@ -47,13 +47,13 @@
 
 script_name="${0:2}"
 script_ver=2.3
-ffmpeg_ver=6.0
+ffmpeg_ver=5.1.3
 cuda_ver=12.2.1
 cwd="$PWD"/ffmpeg-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
 install_prefix=/usr/local
-CFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2 -g -O3 -march=native"
+CFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2 -I/usr/include/libopenmpt-g -O3 -march=native"
 CXXFLAGS='-g -O3 -march=native'
 LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/local/lib -L/usr/local/cuda/nvvm/lib64"
 LDFLAGS+=' -L/usr/local/cuda/targets/x86_64-linux/lib -L/usr/lib -L/usr/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu -L/lib'
@@ -64,7 +64,7 @@ ffmpeg_libraries=()
 latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
-debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=ON # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
 # CREATE THE OUTPUT DIRECTORIES
@@ -779,18 +779,26 @@ pkgs_fn()
         'Installing the required APT packages' \
         '=============================================='
 
-    pkgs=("$1" ant asciidoc autoconf automake autopoint binutils bison build-essential cargo ccache checkinstall clang
-          cmake curl doxygen fcitx-libs-dev flex freeglut3-dev gawk gettext git gnome-desktop-testing gnustep-gui-runtime
-          google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit libasound2-dev libaudio-dev libavfilter-dev
-          libbz2-dev libc6 libc6-dev libcairo2-dev libcdio-paranoia-dev libcrypto++-dev libcurl4-openssl-dev libdbus-1-dev
-          libde265-dev libdevil-dev libdmalloc-dev libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev
-          libgdbm-dev libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgoogle-perftools4 libgoogle-perftools-dev libgvc6
-          libibus-1.0-dev libintl-perl libjack-dev libjemalloc-dev libleptonica-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev
-          libmatroska-dev libmusicbrainz5-dev libncurses5-dev libncursesw5-dev libnuma1 libnuma-dev libopencv-dev libperl-dev
-          libpstoedit-dev libpulse-dev libraqm-dev libraw-dev librsvg2-dev libsndio-dev libsqlite3-dev libssl-dev libtalloc-dev
-          libtool libtool-bin libudev-dev libvlccore-dev libx11-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev
-          libxrandr-dev libxss-dev libzstd-dev libzzip-dev lshw lzma-dev m4 meson nasm ninja-build openjdk-17-jdk-headless pandoc
-          python3 python3-pip ragel re2c scons texi2html texinfo tk-dev unzip wget xmlto zlib1g-dev)
+    pkgs=("$1" ant apt asciidoc autoconf automake autopoint binutils bison build-essential cargo ccache
+          checkinstall clang cmake curl doxygen fcitx-libs-dev flex flite1-dev freeglut3-dev frei0r-plugins-dev
+          gawk gettext git gnome-desktop-testing gnustep-gui-runtime google-perftools gperf gtk-doc-tools
+          guile-3.0-dev help2man jq junit ladspa-sdk libasound2-dev libass-dev libaudio-dev libavfilter-dev
+          libbluray-dev libbs2b-dev libbz2-dev libc6 libc6-dev libcaca-dev libcairo2-dev libcdio-dev
+          libcdio-paranoia-dev libcdparanoia-dev libchromaprint-dev libcrypto++-dev libcurl4-openssl-dev
+          libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev libdrm-dev libdvbpsi-dev libebml-dev
+          libegl1-mesa-dev libfdk-aac-dev libffi-dev libgbm-dev libgdbm-dev libgl1-mesa-dev libgles2-mesa-dev
+          libglib2.0-dev libgme-dev libgnutls28-dev libgnutls30 libgoogle-perftools4 libgoogle-perftools-dev
+          libgvc6 libibus-1.0-dev libiconv-hook-dev libintl-perl libjack-dev libjemalloc-dev libladspa-ocaml-dev
+          libleptonica-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev libmatroska-dev libmodplug-dev
+          libmp3lame-dev libmusicbrainz5-dev libmysofa-dev libncurses5-dev libncursesw5-dev libnuma1 libnuma-dev
+          libopencore-amrnb-dev libopencore-amrwb-dev libopencv-dev libopenjp2-7-dev libopenmpt-dev libopus-dev
+          libperl-dev libpstoedit-dev libpulse-dev libraqm-dev libraw-dev librsvg2-dev librubberband-dev libshine-dev
+          libsmbclient-dev libsnappy-dev libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev libssl-dev libsvtav1dec-dev
+          libsvtav1-dev libsvtav1enc-dev libtalloc-dev libtheora-dev libtool libtool-bin libtwolame-dev libudev-dev
+          libv4l-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libx265-dev
+          libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev
+          libzstd-dev libzzip-dev lshw lzma-dev m4 meson nasm ninja-build openjdk-17-jdk-headless pandoc python3
+          python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip wget xmlto zlib1g-dev)
 
     for pkg in ${pkgs[@]}
     do
@@ -1413,6 +1421,7 @@ if build 'rubberband' 'git'; then
     execute make distclean
     build_done 'rubberband' 'git'
 fi
+ffmpeg_libraries+=('--enable-librubberband')
 
 pre_check_ver 'sekrit-twc/zimg' '1' 'T'
 if build 'zimg' "$g_ver"; then
@@ -1656,16 +1665,6 @@ if build 'opus' "$g_ver"; then
 fi
 ffmpeg_libraries+=('--enable-libopus')
 
-if build 'libsndfile' 'git'; then
-    download_git 'https://github.com/libsndfile/libsndfile.git'
-    execute autoreconf -fi
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} \
-        -DBUILD_{EXAMPLES,PROGRAMS,SHARED_LIBS,TESTING}=OFF -G Ninja -Wno-dev
-    execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
-    build_done 'libsndfile' 'git'
-fi
-
 pre_check_ver 'hoene/libmysofa' '1' 'T'
 if build 'libmysofa' "$g_ver"; then
     download "https://codeload.github.com/hoene/libmysofa/tar.gz/refs/tags/v$g_ver" "libmysofa-$g_ver.tar.gz"
@@ -1674,6 +1673,7 @@ if build 'libmysofa' "$g_ver"; then
     execute ninja "-j$cpu_threads" -C build install
     build_done 'libmysofa' "$g_ver"
 fi
+ffmpeg_libraries+=('--enable-libmysofa')
 
 pre_check_ver 'webmproject/libvpx' '1' 'T'
 if build 'vpx' '1.13.0'; then
@@ -2206,8 +2206,25 @@ if build 'ffmpeg' "$ffmpeg_ver"; then
         --disable-shared                          \
         --enable-ffnvcodec                        \
         --enable-gpl                              \
+        --enable-ladspa                           \
+        --enable-libbs2b                          \
+        --enable-libcaca                          \
+        --enable-libcdio                          \
+        --enable-libflite                         \
+        --enable-libgme                           \
+        --enable-libmodplug                       \
+        --enable-libpulse                         \
+        --enable-libshine                         \
+        --enable-libsmbclient                     \
+        --enable-libsnappy                        \
+        --enable-libsoxr                          \
+        --enable-libspeex                         \
+        --enable-libtwolame                       \
+        --enable-libv4l2                          \
+        --enable-libvo-amrwbenc                   \
         --enable-lto                              \
         --enable-nonfree                          \
+        --enable-opengl                           \
         --enable-pic                              \
         --enable-pthreads                         \
         --enable-small                            \
