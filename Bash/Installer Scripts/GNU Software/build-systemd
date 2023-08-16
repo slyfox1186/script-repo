@@ -158,7 +158,7 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autogen automake binutils bpftool build-essential ccache clang cmake curl git gnu-efi golang-gir-gio-2.0-dev golang-gir-gobject-2.0-dev
+pkgs=("$1" autoconf autoconf-archive autogen automake binutils bpftool build-essential ccache clang cmake curl git gnu-efi golang-gir-gio-2.0-dev golang-gir-gobject-2.0-dev
       gperf jekyll kexec-tools libacl1-dev libapparmor-dev libaudit-dev libbinutils libblkid-dev libblkid1 libbpf-dev libbz2-dev libcap-dev
       libcryptsetup-dev libcryptsetup12 libcurl4-openssl-dev libdbus-1-dev libdrpm-dev libdw-dev libfdisk-dev libfido2-dev libglib2.0-dev
       libgnutls28-dev libidn11-dev libidn2-0-dev libidn2-dev libiptc-dev libkrb5-dev libkmod-dev liblz4-dev libmicrohttpd-dev libmount-dev libnacl-dev libnss-myhostname

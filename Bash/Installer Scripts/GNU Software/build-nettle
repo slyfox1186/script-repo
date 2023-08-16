@@ -145,7 +145,7 @@ cleanup_fn()
 
 pkgs_fn()
 {
-    pkgs=("$1" apt-transport-https apt-utils autoconf autogen automake autopoint autotools-dev build-essential bzip2
+    pkgs=("$1" apt-transport-https apt-utils autoconf autoconf-archive autogen automake autopoint autotools-dev build-essential bzip2
           ca-certificates ccache clang cmake curl gfortran git google-perftools graphviz jq lcov libaria2-0 libaria2-0-dev
           libc-ares-dev libcppunit-dev libcunit1-dev libcurl4 libcurl4-openssl-dev libdmalloc-dev libec-dev libedit-dev
           libev-dev libevent-dev libexiv2-27 libexpat1-dev libgcc-12-dev libgcrypt20-dev libgexiv2-2 libgimp2.0 libgmp3-dev

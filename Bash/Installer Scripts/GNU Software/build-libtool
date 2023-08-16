@@ -145,7 +145,7 @@ cleanup_fn()
 
 pkgs_fn()
 {
-    pkgs=(autoconf autogen automake build-essential ccache cmake curl git libltdl-dev)
+    pkgs=("$1" autoconf autoconf-archive autogen automake build-essential ccache cmake curl git libltdl-dev)
     
     for i in ${pkgs[@]}
     do
