@@ -151,7 +151,7 @@ CPPFLAGS='-I/usr/lib/gcc/x86_64-linux-gnu/12/include -I/usr/local/include -I/usr
 latest=false
 repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
-debug=OFF # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
+debug=ON # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -782,7 +782,7 @@ build_gcc_12_fn()
             --enable-checking=yes                     \
             --enable-default-pie                      \
             --enable-gnu-unique-object                \
-            --enable-languages="$gcc_11_lang"         \
+            --enable-languages=all                    \
             --enable-libphobos-checking=auto          \
             --enable-lto                              \
             --enable-multilib                         \
