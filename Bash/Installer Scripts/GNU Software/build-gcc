@@ -145,8 +145,8 @@ clear
 script_ver=4.3
 install_dir=/usr/local
 gcc_prefix=x86_64-pc-linux-gnu-
-CFLAGS='-g -O2 -flto -ffunction-sections -fdata-sections -march=native -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
-CXXFLAGS='-g -O2 -flto -ffunction-sections -fdata-sections -march=native'
+CFLAGS='-g -O2 -flto -ffunction-sections -fdata-sections -pipe -march=native -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
+CXXFLAGS='-g -O2 -flto -ffunction-sections -fdata-sections -pipe -march=native'
 CPPFLAGS='-I/usr/lib/gcc/x86_64-linux-gnu/12/include -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include'
 latest=false
 repo=https://github.com/slyfox1186/script-repo
