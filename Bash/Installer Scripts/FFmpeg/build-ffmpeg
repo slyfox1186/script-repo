@@ -53,8 +53,8 @@ cwd="$PWD"/ffmpeg-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
 install_prefix=/usr/local
-CFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2 -I/usr/include/libopenmpt-g -O3 -march=native"
-CXXFLAGS='-g -O3 -march=native'
+CFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2 -I/usr/include/libopenmpt-g -O2 -march=native"
+CXXFLAGS='-g -O2 -march=native'
 LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/local/lib -L/usr/local/cuda/nvvm/lib64"
 LDFLAGS+=' -L/usr/local/cuda/targets/x86_64-linux/lib -L/usr/lib -L/usr/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu -L/lib'
 CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include"
@@ -1330,7 +1330,7 @@ if build 'libwebp' 'git'; then
     download_git 'https://chromium.googlesource.com/webm/libwebp' 'libwebp-git'
     execute autoreconf -fi
     execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",INSTALL_INCLUDEDIR="$workspace"/include,BUILD_TYPE=Release} \
-        -DZLIB_INCLUDE_DIR="$workspace"/include -DBUILD_SHARED_LIBS=OFF -DCMAKE_C_FLAGS_RELEASE='-g -O3 -DNDEBUG -march=native' \
+        -DZLIB_INCLUDE_DIR="$workspace"/include -DBUILD_SHARED_LIBS=OFF -DCMAKE_C_FLAGS_RELEASE='-g -O2 -DNDEBUG -march=native' \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=OFF -DWEBP_{BUILD_CWEBP,BUILD_DWEBP}=ON -G Ninja -Wno-dev \
         -DWEBP_{BUILD_ANIM_UTILS,BUILD_EXTRAS,BUILD_GIF2WEBP,BUILD_IMG2WEBP,BUILD_LIBWEBPMUX}=OFF \
         -DWEBP_{BUILD_VWEBP,BUILD_WEBPINFO,BUILD_WEBPMUX,ENABLE_SWAP_16BIT_CSP,LINK_STATIC}=OFF

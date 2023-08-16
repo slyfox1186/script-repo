@@ -308,8 +308,8 @@ cd "$cwd/$archive_dir/build" || exit 1
     --enable-{libvidstab,libvo-amrwbenc,libvorbis,libvpx,libwebp,libx264,libx265}  \
     --enable-{libxml2,libxvid,opengl,openssl,version3,lto,pthreads}                \
     --enable-{ffnvcodec,gpl,nonfree,small,static,version3}                         \
-    --extra-cflags="$CFLAGS -g -O3 -march=native"                                  \
-    --extra-cxxflags='-g -O3 -march=native'                                        \
+    --extra-cflags="$CFLAGS -g -O2 -march=native"                                  \
+    --extra-cxxflags='-g -O2 -march=native'                                        \
     --extra-ldflags=$"$LDFLAGS"                                                    \
     --extra-libs="$LIBS"                                                           \
     --pkg-config="$(type -P pkg-config)"                                           \
