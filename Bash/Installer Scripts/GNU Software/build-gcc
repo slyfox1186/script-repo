@@ -144,7 +144,6 @@ clear
 
 script_ver=4.3
 install_dir=/usr/local
-gcc_prefix=x86_64-pc-linux-gnu-
 CFLAGS='-g -O2 -flto -ffunction-sections -fdata-sections -pipe -march=native -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
 CXXFLAGS='-g -O2 -flto -ffunction-sections -fdata-sections -pipe -march=native'
 CPPFLAGS='-I/usr/lib/gcc/x86_64-linux-gnu/12/include -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include'
@@ -504,6 +503,7 @@ pkgs_fn()
 curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
 chmod +x "$cwd/config.guess"
 pc_type="$(source "$cwd/config.guess")"
+gcc_prefix="$pc_type-"
 
 #
 # INSTALL PYTHON MODULES
@@ -657,13 +657,13 @@ if build 'libtool' '2.4.7'; then
 fi
 
 # The latest bison requires autoconf v2.71 to compile but GCC requires v2.69 which is why autoconf is built twice.
-if build 'autoconf-v271' '2.71'; then
-    download 'https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.xz'
+if build 'autoconf-latest' 'latest'; then
+    download 'https://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz'
     execute ./configure --prefix="$workspace"
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
-    build_done 'autoconf-v271' '2.71'
+    build_done 'autoconf-latest' 'latest'
 fi
 
 git_ver_fn 'gperftools/gperftools' '1' 'R'
@@ -719,7 +719,7 @@ build_gcc_11_fn()
         cd builddir || exit 1
         execute ../configure                          \
             --prefix="$install_dir"                   \
-            --{build,host,target}=x86_64-pc-linux-gnu \
+            --{build,host,target}="$pc_type"          \
             --disable-assembly                        \
             --disable-nls                             \
             --disable-vtable-verify                   \
@@ -750,7 +750,7 @@ build_gcc_11_fn()
             '$ This is going to take a while...'
         execute make "-j$cpu_threads"
         execute sudo make install-strip
-        execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/11
+        execute sudo libtool --finish "$install_dir/libexec/gcc/$pc_type/11"
         execute sudo libtool --finish "$install_dir"/lib
         build_done 'gcc-11' '11.4.0'
     fi
@@ -766,7 +766,7 @@ build_gcc_12_fn()
         cd builddir || exit 1
         execute ../configure                          \
             --prefix="$install_dir"                   \
-            --{build,host,target}=x86_64-pc-linux-gnu \
+            --{build,host,target}="$pc_type"          \
             --disable-assembly                        \
             --disable-nls                             \
             --disable-vtable-verify                   \
@@ -779,10 +779,11 @@ build_gcc_12_fn()
             --enable-libphobos-checking=auto          \
             --enable-lto                              \
             --enable-multilib                         \
+            --enable-objc-gc                          \
             --enable-plugin                           \
             --enable-threads=posix                    \
             --program-prefix="$gcc_prefix"            \
-            --program-suffix=-11                      \
+            --program-suffix=-12                      \
             --with-gcc-major-version-only             \
             --with-isl=/usr                           \
             --with-libiconv-prefix=/usr               \
@@ -797,7 +798,7 @@ build_gcc_12_fn()
             '$ This is going to take a while...'
         execute make "-j$cpu_threads"
         execute sudo make install-strip
-        execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/12
+        execute sudo libtool --finish "$install_dir/libexec/gcc/$pc_type/12"
         execute sudo libtool --finish "$install_dir"/lib
         build_done 'gcc-12' '12.3.0'
     fi
@@ -813,7 +814,7 @@ build_gcc_13_fn()
         cd builddir || exit 1
         execute ../configure                          \
             --prefix="$install_dir"                   \
-            --{build,host,target}=x86_64-pc-linux-gnu \
+            --{build,host,target}="$pc_type"          \
             --disable-assembly                        \
             --disable-nls                             \
             --disable-vtable-verify                   \
@@ -825,6 +826,7 @@ build_gcc_13_fn()
             --enable-libphobos-checking=auto          \
             --enable-lto                              \
             --enable-multilib                         \
+            --enable-objc-gc                          \
             --enable-offload-defaulted                \
             --enable-plugin                           \
             --enable-threads=posix                    \
@@ -844,7 +846,7 @@ build_gcc_13_fn()
             '$ This is going to take a while...'
         execute make "-j$cpu_threads"
         execute sudo make install-strip
-        execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/13
+        execute sudo libtool --finish "$install_dir/libexec/gcc/$pc_type/13"
         execute sudo libtool --finish "$install_dir"/lib
         build_done 'gcc-13' '13.2.0'
     fi
