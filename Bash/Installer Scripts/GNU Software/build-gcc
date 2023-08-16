@@ -800,13 +800,13 @@ build_gcc_12_fn()
             "$cuda_check"                             \
             --without-included-gettext
         printf "\n%s\n%s\n\n" \
-            "$ Compiling gcc-11 with languages=$gcc_11_lang" \
+            "$ Compiling gcc-12 with languages=all" \
             '$ This is going to take a while...'
         execute make "-j$cpu_threads"
         execute sudo make install-strip
         execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/11
         execute sudo libtool --finish "$install_dir"/lib
-        build_done 'gcc-11' '11.4.0'
+        build_done 'gcc-12' '12.3.0'
     fi
 }
 
