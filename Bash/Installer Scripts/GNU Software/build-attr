@@ -144,7 +144,7 @@ cleanup_fn()
 
 pkgs_fn()
 {
-    pkgs=("$1" autoconf autogen automake autopoint autotools-dev build-essential bzip2
+    pkgs=("$1" autoconf autoconf-archive autogen automake autopoint autotools-dev build-essential bzip2
           ccache curl git libintl-perl libtool libtool-bin lzip pkg-config zlib1g-dev)
 
     for i in ${pkgs[@]}

@@ -145,7 +145,7 @@ cleanup_fn()
 
 pkgs_fn()
 {
-    pkgs=("$1" autoconf autogen automake binutils build-essential ccache cmake curl git
+    pkgs=("$1" autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl git
           libgmp-dev libintl-perl libisl-dev libmpc-dev libmpfr-dev libtool libtool-bin
           libzstd-dev lzip m4 nasm ninja-build texinfo yasm zlib1g-dev zstd)
     
