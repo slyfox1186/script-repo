@@ -50,6 +50,12 @@ fi
 export CC=gcc CXX=g++
 
 #
+# SET COMPILER OPTIMIZATION FLAGS
+#
+
+export {CFLAGS,CXXFLAGS}='-g -O2 -flto -ffunction-sections -fdata-sections -pipe -march=native'
+
+#
 # SET THE PATH VARIABLE
 #
 
@@ -86,12 +92,6 @@ PKG_CONFIG_PATH="\
 /lib/x86_64-linux-gnu/pkgconfig\
 "
 export PKG_CONFIG_PATH
-
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
-
-export {CFLAGS,CXXFLAGS}='-g -O2 -flto -ffunction-sections -fdata-sections -pipe -march=native'
 
 #
 # CREATE FUNCTIONS
