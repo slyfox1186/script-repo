@@ -90,7 +90,7 @@ export PKG_CONFIG_PATH
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O2 -march=native'
 
 #
 # CREATE FUNCTIONS
