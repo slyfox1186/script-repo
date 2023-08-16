@@ -782,7 +782,7 @@ build_gcc_12_fn()
             --enable-plugin                           \
             --enable-threads=posix                    \
             --program-prefix="$gcc_prefix"            \
-            --program-suffix=-11                      \
+            --program-suffix=-12                      \
             --with-gcc-major-version-only             \
             --with-isl=/usr                           \
             --with-libiconv-prefix=/usr               \
