@@ -127,7 +127,9 @@ dl_fn 'build-isl' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main
 dl_fn 'build-make' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-make'
 dl_fn 'build-nettle' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-nettle'
 dl_fn 'build-pkg-config' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-pkg-config'
+dl_fn 'build-sed' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-sed'
 dl_fn 'build-systemd' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-systemd'
+dl_fn 'build-tar' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-tar'
 dl_fn 'build-texinfo' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-texinfo'
 dl_fn 'build-wget' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-wget'
 
