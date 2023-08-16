@@ -1,12 +1,12 @@
-#!/usr/bin/env garbage collector
+#!/usr/bin/env bash
 
 ###########################################################################################################
 ##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/garbage collector/Installer%20Scripts/GNU%20Software/build-garbage-collector
+##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-garbage-collector
 ##
 ##  Purpose: Build Boehm-Demers-Weiser Conservative Garbage Collector
 ##
-##  Updated: 08.03.23
+##  Updated: 08.16.23
 ##
 ##  Script version: 1.0
 ##
