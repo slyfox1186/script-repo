@@ -774,13 +774,6 @@ build_gcc_12_fn()
             --enable-bootstrap                        \
             --enable-checking=yes                     \
             --enable-default-pie                      \
-            --enable-gnable-assembly                  \
-            --disable-nls                             \
-            --disable-vtable-verify                   \
-            --disable-werror                          \
-            --enable-bootstrap                        \
-            --enable-checking=yes                     \
-            --enable-default-pie                      \
             --enable-gnu-unique-object                \
             --enable-languages=all                    \
             --enable-libphobos-checking=auto          \
@@ -804,7 +797,7 @@ build_gcc_12_fn()
             '$ This is going to take a while...'
         execute make "-j$cpu_threads"
         execute sudo make install-strip
-        execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/11
+        execute sudo libtool --finish "$install_dir"/libexec/gcc/x86_64-pc-linux-gnu/12
         execute sudo libtool --finish "$install_dir"/lib
         build_done 'gcc-12' '12.3.0'
     fi
