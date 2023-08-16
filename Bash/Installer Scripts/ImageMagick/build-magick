@@ -405,7 +405,7 @@ pkgs_fn()
 {
     local i missing_pkg missing_pkgs pkgs
 
-    pkgs=("$1" alien asciidoc autoconf automake autopoint binutils bison build-essential cmake
+    pkgs=("$1" alien asciidoc autoconf autoconf-archive automake autopoint binutils bison build-essential cmake
           curl flex gettext gimp-data git gperf imagemagick imagemagick-libs jq libc6 libc6-dev
           libfreetype-dev libgc-dev libgimp2.0-dev libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev
           libheif-dev libltdl-dev libpango1.0-dev libpaper-dev libpng-dev libpstoedit-dev libraw-dev
