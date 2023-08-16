@@ -303,7 +303,7 @@ if build 'libpng' '1.6.40'; then
     download 'https://github.com/glennrp/libpng/archive/refs/tags/v1.6.40.tar.gz' 'libpng-1.6.40.tar.gz'
     execute autoupdate
     execute autoreconf -fi
-    execute sh configure --prefix=/usr/local                    \
+    execute ./configure --prefix=/usr/local                     \
                          --{build,host}="$pc_type"              \
                          --disable-shared                       \
                          --enable-hardware-optimizations        \
