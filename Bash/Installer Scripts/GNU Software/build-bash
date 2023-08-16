@@ -91,7 +91,7 @@ export PKG_CONFIG_PATH
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O2 -flto -ffunction-sections -fdata-sections -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O2 -flto -ffunction-sections -fdata-sections -pipe -march=native'
 
 #
 # CREATE FUNCTIONS
