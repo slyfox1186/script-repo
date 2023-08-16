@@ -137,7 +137,7 @@ fail_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autogen automake binutils bison build-essential ccache
+pkgs=("$1" autoconf autoconf-archive autogen automake binutils bison build-essential ccache
       libintl-perl libtool libtool-bin libxml2-dev lzip m4 nasm pkg-config yasm)
 
 for i in ${pkgs[@]}

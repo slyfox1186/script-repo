@@ -146,7 +146,8 @@ cleanup_fn()
 pkgs_fn()
 {
     local i missing_pkg missing_pkgs pkgs 
-    pkgs=(autoconf autogen automake binutils build-essential ccache cmake curl git guile-3.0-dev libdmalloc-dev libdmalloc5 libgmp-dev
+
+    pkgs=("$1" autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl git guile-3.0-dev libdmalloc-dev libdmalloc5 libgmp-dev
           libintl-perl libmpfr-dev libreadline-dev libsigsegv-dev libtool libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev yasm)
     
     for i in ${pkgs[@]}
