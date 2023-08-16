@@ -11,55 +11,61 @@
     - https://pastebin.com/u/slyfox1186
     
     Purpose:
-    - This will open Windows' WSL terminal to the active file explorer folder or if no active window is found, the user's linux home folder
+    - This will open Windows' WSL terminal to the active file explorer folder or if no active window is found, %A_WinDir%\System32
 
     Instructions:
     - You need to replace the below variable "_osName" with the wsl distribution of your choosing.
       - To find the available distros run "wsl.exe -l --all" using PowerShell to get a list of available options
 
     Updated:
-    - 03.24.23
+    - 08.16.23
 
 */
 
-!w::_OpenWSLHere()
+!w up::_OpenWSLHere()
+
+return
 
 _OpenWSLHere()
 {
-    ; Static vars so vars are not recreated each time
-    Static convert := " !#$%&'()-.*:?@[]^_``{|}~/"
-    Static osName := "Ubuntu-22.04"
-    Static wt := "C:\Users\jholl\AppData\Local\Microsoft\WindowsApps\wt.exe"
+    Static convert := " #$%&'()-.*:?@[]^_``{}|~/"
+    Static osName := 'Debian'
+    Static wt := 'C:\Users\jholl\AppData\Local\Microsoft\WindowsApps\wt.exe'
+    Static wsl := 'C:\Windows\System32\wsl.exe'
+    Static win := 'ahk_class CASCADIA_HOSTING_WINDOW_CLASS ahk_exe WindowsTerminal.exe'
 
-    if FileExist(A_ProgramFiles . "\PowerShell\7\pwsh.exe")
-        myexe := A_ProgramFiles . "\PowerShell\7\pwsh.exe"
+    if FileExist('C:\Program Files\PowerShell\7\pwsh.exe')
+        pshell := 'C:\Program Files\PowerShell\7\pwsh.exe'
     else
-        myexe := A_WinDir . "\System32\WindowsPowerShell\v1.0\powershell.exe"
+        pshell := 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
 
-    if WinActive("ahk_class CabinetWClass ahk_exe explorer.exe")
-        winObj := ComObject("Shell.Application").Windows
+    if WinActive('ahk_class CabinetWClass ahk_exe explorer.exe')
+        winObj := ComObject('Shell.Application').Windows
     Else
     {
-        Run A_ComSpec ' /D /C START "" "' myexe '" -NoP -W Hidden -C "Start-Process wt.exe -Args `'-w new-tab -M -d \"~\" wsl.exe -d \"' osName '\"`' -Verb RunAs'
-        Return
+        Run pshell ' -NoP -W Hidden -C "Start-Process ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd ~ `' -Verb RunAs"'
+        If WinWait(win,, 3)
+        {
+            WinActivate(win)
+            return
+        }
     }
 
     For win in winObj
     {
-            ; Get the string
             pwd := SubStr(win.LocationURL, 9)
-            ; Loop through the convert characters
             Loop Parse, convert
-                ; Create a %hex token using ord value of convert chars
-                hex := Format("{:X}" , Ord(A_LoopField))
-                ; Replace any hex tokens with their actual chars
-                ,pwd := StrReplace(pwd, hex, A_LoopField)
-                ; Single quotes must be doubled for the command line below to work properly
+                hex := Format("{:X}" , Ord(A_LoopField)),pwd := StrReplace(pwd, "%" . hex, A_LoopField)
                 pwd := StrReplace(pwd, "%", "")
                 pwd := StrReplace(pwd, "'", "''")
                 pwd := StrReplace(pwd, pwd, '"' . pwd . '"')
-     }
+                pwd := RegExReplace(pwd, 'sl.localhost/Debian', '')
 
-    ; Converted both run commands to expression format
-        Run A_ComSpec ' /D /C START "" "' myexe '" -NoP -W Hidden -C "Start-Process wt.exe -Args `'-w new-tab -M -d \"' pwd '\" wsl.exe -d \"' osName '\"`' -Verb RunAs'
+        Run pshell ' -NoP -W Hidden -C "Start-Process ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd \"' . pwd . '\" `' -Verb RunAs"'
+        If WinWait(win,, 3)
+        {
+            WinActivate(win)
+            return
+        }
+    }
 }
