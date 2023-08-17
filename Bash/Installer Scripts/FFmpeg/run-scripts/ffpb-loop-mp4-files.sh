@@ -100,7 +100,7 @@ do
 done
 unset vid vid_exist vid_list
 
-for i in *.mp4
+for i in *.{mp4,mkv}
 do
     # STORES THE CURRENT VIDEO WIDTH, ASPECT RATIO, PROFILE, BIT RATE, AND TOTAL DURATION IN VARIABLES FOR USE LATER IN THE FFMPEG COMMAND LINE
     aspect_ratio="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 -pretty "${i}" 2>/dev/null)"
