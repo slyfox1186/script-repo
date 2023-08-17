@@ -126,8 +126,9 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=("$1" autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl git libgmp-dev libintl-perl libmpfr-dev
-      libreadline-dev libsigsegv-dev libtool libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev yasm)
+pkgs=("$1" autoconf autoconf-archive autogen automake binutils build-essential ccache cmake
+      curl git libgmp-dev libintl-perl libmpfr-dev libreadline-dev libsigsegv-dev libtool
+      libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev yasm)
 
 for i in ${pkgs[@]}
 do
