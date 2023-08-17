@@ -10,43 +10,40 @@ if [ ! -f "$list.bak" ]; then
 fi
 
 cat > /etc/apt/sources.list <<'EOF'
-#######################################################
+##################################################################
 ##
-##  Debian Bookworm
+##  DEBIAN bookworm MIRRORS
 ##
 ##  /etc/apt/sources.list
 ##
-##  ALL MIRRORS IN EACH CATEGORY ARE LISTED AS BEING
-##  IN THE USA. IF YOU USE ALL THE LISTS YOU CAN RUN
-##  INTO APT COMMAND ISSUES THAT STATE THERE ARE TOO
-##  MANY FILES. JUST AN FYI FOR YOU.
+##  ALL MIRRORS IN EACH CATEGORY ARE LISTED AS BEING IN THE USA.
 ##
-#######################################################
+##################################################################
 ##
 ## DEFAULT
 ##
-# deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware
-# deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware
-# deb http://deb.debian.org/debian bookworm-backports main contrib non-free non-free-firmware
-deb http://security.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware
+# deb http://deb.debian.org/debian bookworm main contrib non-free
+# deb http://deb.debian.org/debian bookworm-updates main contrib non-free
+# deb http://deb.debian.org/debian bookworm-backports main contrib non-free
+deb http://security.debian.org/debian-security bookworm-security main contrib non-free
 ##
 ## MAIN
 ##
-deb http://debian.osuosl.org/debian bookworm main contrib non-free non-free-firmware
-deb http://mirror.cogentco.com/debian bookworm main contrib non-free non-free-firmware
-deb http://mirror.steadfast.net/debian bookworm main contrib non-free non-free-firmware
+deb http://mirror.cogentco.com/debian/ bookworm main contrib non-free
+deb http://atl.mirrors.clouvider.net/debian/ bookworm main contrib non-free
+deb http://mirrors.wikimedia.org/debian/ bookworm main contrib non-free
 ##
 ## UPDATES
 ##
-deb http://debian.osuosl.org/debian bookworm-updates main contrib non-free non-free-firmware
-deb http://mirror.cogentco.com/debian bookworm-updates main contrib non-free non-free-firmware
-deb http://mirror.steadfast.net/debian bookworm-updates main contrib non-free non-free-firmware
+deb http://mirror.cogentco.com/debian/ bookworm-updates main contrib non-free
+deb http://atl.mirrors.clouvider.net/debian/ bookworm-updates main contrib non-free
+deb http://mirrors.wikimedia.org/debian/ bookworm-updates main contrib non-free
 ##
 ## BACKPORTS
 ##
-deb http://debian.osuosl.org/debian bookworm-backports main contrib non-free non-free-firmware
-deb http://mirror.cogentco.com/debian bookworm-backports main contrib non-free non-free-firmware
-deb http://mirror.steadfast.net/debian bookworm-backports main contrib non-free non-free-firmware
+deb http://mirror.cogentco.com/debian/ bookworm-backports main contrib non-free
+deb http://atl.mirrors.clouvider.net/debian/ bookworm-backports main contrib non-free
+deb http://mirrors.wikimedia.org/debian/ bookworm-backports main contrib non-free
 EOF
 
 # Open the sources.list file for review
