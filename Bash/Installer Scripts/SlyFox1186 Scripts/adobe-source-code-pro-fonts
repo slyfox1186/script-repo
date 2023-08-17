@@ -1,0 +1,15 @@
+#!/bin/sh
+
+clear
+
+printf "%s\n\n" "Installing fonts at ${PWD} to /usr/local/share/fonts/"
+
+mkdir -p /usr/local/share/fonts/adobe-fonts
+
+git clone --depth 1 https://github.com/adobe-fonts/source-code-pro.git /usr/local/share/fonts/adobe-fonts
+
+# find /usr/local/share/fonts/ -iname '*.ttf' -exec echo \{\} \;
+
+fc-cache -f -v /usr/local/share/fonts/adobe-fonts
+
+printf "\n%s\n\n" 'Font installation completed.'
