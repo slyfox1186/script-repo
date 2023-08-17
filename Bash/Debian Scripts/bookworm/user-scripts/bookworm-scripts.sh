@@ -38,19 +38,19 @@ for i in ${script_array[@]}
 do
     if which gnome-text-editor &>/dev/null; then
         cd "$HOME" || exit 1
-        gnome-text-editor "$script_array"
+        gnome-text-editor "${i}"
     elif which gedit &>/dev/null; then
         cd "$HOME" || exit 1
-        gedit "$script_array"
+        gedit "${i}"
     elif which nano &>/dev/null; then
         cd "$HOME" || exit 1
-        nano "$script_array"
+        nano "${i}"
     elif which vim &>/dev/null; then
         cd "$HOME" || exit 1
-        vim "$script_array"
+        vim "${i}"
     elif which vi &>/dev/null; then
         cd "$HOME" || exit 1
-        vi "$script_array"
+        vi "${i}"
     else
         fail_fn 'Could not find an EDITOR to open the user scripts.'
     fi
