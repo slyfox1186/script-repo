@@ -507,12 +507,12 @@ gpu_arch_fn()
 
     if [ -n "$gpu_type" ]; then
         case "$gpu_type" in
-            1) gpu_arch=compute_61,code=sm_61;;
-            2) gpu_arch=compute_70,code=sm_70;;
-            3) gpu_arch=compute_75,code=sm_75;;
-            4) gpu_arch=compute_86,code=sm_86;;
-            5) gpu_arch=compute_89,code=sm_89;;
-            6) gpu_arch=compute_90,code=sm_90;;
+            1)      gpu_arch=compute_61,code=sm_61;;
+            2)      gpu_arch=compute_70,code=sm_70;;
+            3)      gpu_arch=compute_75,code=sm_75;;
+            4)      gpu_arch=compute_86,code=sm_86;;
+            5)      gpu_arch=compute_89,code=sm_89;;
+            6)      gpu_arch=compute_90,code=sm_90;;
         esac
     else
         fail_fn 'Failed to find the variable: gpu_type'
@@ -644,7 +644,7 @@ cuda_download_fn()
 {
     clear
 
-    local cuda_dist_choice cuda_url
+    local cuda_choice cuda_url
 
      mkdir -p "$packages/nvidia-cuda"
 
@@ -658,13 +658,13 @@ cuda_download_fn()
         '[5] Ubuntu WSL' \
         '[6] Skip this'
 
-    read -p 'Your choices are (1 to 7): ' cuda_dist_choice
+    read -p 'Your choices are (1 to 7): ' cuda_choice
     clear
 
     cuda_url='https://developer.download.nvidia.com/compute/cuda'
 
-    case "$cuda_dist_choice" in
-        1)cuda_dist_choice
+    case "$cuda_choice" in
+        1)
             wget --show progress -cqO "$packages/nvidia-cuda/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-debian10-12-2-local_12.2.1-535.86.10-1_amd64.deb"
             sudo dpkg -i "$packages/nvidia-cuda/cuda-$cuda_ver.deb"
             sudo cp -f /var/cuda-repo-debian10-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
@@ -702,7 +702,7 @@ cuda_download_fn()
             clear
             fail_fn 'Bad user input. Resetting script...'
             sleep 2
-            unset cuda_dist_choice
+            unset cuda_choice
             clear
             cuda_download_fn
             ;;
