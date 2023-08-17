@@ -264,9 +264,9 @@ git_1_fn()
 
 git_2_fn()
 {
-    videolan_repo="$1"
-    videolan_url="$2"
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://code.videolan.org/api/v4/projects/$videolan_repo/repository/$videolan_url")"; then
+    repo="$1"
+    url="$2"
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://code.videolan.org/api/v4/projects/$repo/repository/$url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].commit.id')"
         g_sver="$(echo "$curl_cmd" | jq -r '.[0].commit.short_id')"
         g_sver="${g_sver::7}"
@@ -277,9 +277,9 @@ git_2_fn()
 
 git_3_fn()
 {
-    gitlab_repo="$1"
-    gitlab_url="$2"
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.com/api/v4/projects/$gitlab_repo/repository/$gitlab_url")"; then
+    repo="$1"
+    url="$2"
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.com/api/v4/projects/$repo/repository/$url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
         g_ver1="$(echo "$curl_cmd" | jq -r '.[0].commit.id')"
@@ -291,8 +291,8 @@ git_3_fn()
 
 git_4_fn()
 {
-    gitlab_repo="$1"
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.freedesktop.org/api/v4/projects/$gitlab_repo/repository/tags")"; then
+    repo="$1"
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.freedesktop.org/api/v4/projects/$repo/repository/tags")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
         g_ver="${g_ver#pkg-config-}"
         g_ver="${g_ver#VER-}"
@@ -301,7 +301,7 @@ git_4_fn()
 
 git_5_fn()
 {
-    gitlab_repo="$1"
+    repo="$1"
     if curl_cmd="$(curl -m "$curl_timeout" -sSL 'https://bitbucket.org/!api/2.0/repositories/multicoreware/x265_git/effective-branching-model')"; then
         g_sver="$(echo "$curl_cmd" | jq '.development.branch.target' | grep -Eo '[0-9a-z][0-9a-z]+' | sort | head -n 1)"
         g_ver="${g_sver::7}"
@@ -310,8 +310,8 @@ git_5_fn()
 
 git_6_fn()
 {
-    gitlab_repo="$1"
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.gnome.org/api/v4/projects/$gitlab_repo/repository/tags")"; then
+    repo="$1"
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.gnome.org/api/v4/projects/$repo/repository/tags")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
     fi
@@ -319,8 +319,8 @@ git_6_fn()
 
 git_7_fn()
 {
-    gitlab_repo="$1"
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://git.archive.org/api/v4/projects/$gitlab_repo/repository/tags")"; then
+    repo="$1"
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://git.archive.org/api/v4/projects/$repo/repository/tags")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
     fi
@@ -328,8 +328,8 @@ git_7_fn()
 
 git_8_fn()
 {
-    gitlab_repo="$1"
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.kitware.com/api/v4/projects/$gitlab_repo/repository/tags")"; then
+    repo="$1"
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.kitware.com/api/v4/projects/$repo/repository/tags")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
     fi
@@ -337,22 +337,21 @@ git_8_fn()
 
 git_ver_fn()
 {
-    local t_flag u_flag v_flag v_tag v_url
+    local url u_flag v_flag v_url v_url
 
     v_url="$1"
-    v_tag="$2"
+    v_url="$2"
 
     if [ -n "$3" ]; then
-        v_flag="$3"
+        case "$3" in
+                B)      url=branches;;
+                R)      url=releases;;
+                T)      url=urls;;
+                *)      fail_fn 'Could not detect the variable "url" in the function "git_ver_fn"';;
+        esac
     fi
-
-    case "$v_flag" in
-            B)      t_flag=branches;;
-            R)      t_flag=releases;;
-            T)      t_flag=tags;;
-    esac
-
-    case "$v_tag" in
+    
+    case "$v_url" in
             1)      u_flag=git_1_fn;;
             2)      u_flag=git_2_fn;;
             3)      u_flag=git_3_fn;;
@@ -361,10 +360,10 @@ git_ver_fn()
             6)      u_flag=git_6_fn;;
             7)      u_flag=git_7_fn;;
             8)      u_flag=git_8_fn;;
-            *)      fail_fn 'Could not detect the variable "v_tag" in the function "git_ver_fn"'
+            *)      fail_fn 'Could not detect the variable "v_url" in the function "git_ver_fn"';;
     esac
 
-    "$u_flag" "$v_url" "$t_flag" 2>/dev/null
+    "$u_flag" "$v_url" "$url" 2>/dev/null
 }
 
 check_version()
@@ -503,6 +502,7 @@ gpu_arch_fn()
         'NVIDIA GeForce RTX 4080')    gpu_type=5;;
         'NVIDIA GeForce RTX 4090')    gpu_type=5;;
         'NVIDIA H100')                gpu_type=6;;
+        *)                            fail_fn 'Unable to define the variable "gpu_type" in the function "gpu_arch_fn".';;
     esac
 
     if [ -n "$gpu_type" ]; then
@@ -513,6 +513,7 @@ gpu_arch_fn()
             4)      gpu_arch=compute_86,code=sm_86;;
             5)      gpu_arch=compute_89,code=sm_89;;
             6)      gpu_arch=compute_90,code=sm_90;;
+            *)      fail_fn 'Unable to define the variable "gpu_arch" in the function "gpu_arch_fn".';;
         esac
     else
         fail_fn 'Failed to find the variable: gpu_type'
@@ -573,8 +574,8 @@ do
     esac
 done
 
-if [ -z "$bflag" ]; then
-    if [ -z "$cflag" ]; then
+if [ -z "${bflag}" ]; then
+    if [ -z "${cflag}" ]; then
         usage
         echo
         exit 1
@@ -582,8 +583,8 @@ if [ -z "$bflag" ]; then
     exit 0
 fi
 
-if [ -n "$LDEXEFLAGS" ]; then
-    echo 'The script has been configured to run in full static mode.'
+if [ -n "${LDEXEFLAGS}" ]; then
+    printf "%s\n\n" 'The script has been configured to run in full static mode.'
 fi
 
 #
@@ -591,15 +592,13 @@ fi
 #
 
 find_java="$(sudo find /usr/lib/jvm -type d -name java-*-openjdk-*)"
-JAVA_HOME="$find_java"
+JAVA_HOME="${find_java}"
 export JAVA_HOME
 
 #
 # SET THE PATH VARIABLE
 #
 
-path_fn()
-{
 PATH="\
 /usr/lib/ccache:\
 $workspace/bin:\
@@ -615,8 +614,6 @@ $HOME/.local/bin:\
 /snap/bin\
 "
 export PATH
-}
-path_fn
 
 PKG_CONFIG_PATH="\
 $workspace/lib64/pkgconfig:\
@@ -1915,7 +1912,7 @@ ffmpeg_libraries+=('--enable-amf')
 pre_check_ver 'gpac/gpac' '1' 'T'
 if build 'gpac' "$g_ver"; then
     download "https://codeload.github.com/gpac/gpac/tar.gz/refs/tags/v$g_ver" "gpac-$g_ver.tar.gz"
-    execute ./configure --prefix="$workspace" --enable-gprof --static-{bin,modules} --extra-cflags="$CFLAGS"
+    execute ./configure --prefix="$workspace" --enable-gprof --static-{bin,modules} --extra-cflags="${cflag}S"
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
@@ -1994,7 +1991,7 @@ EOF
 
     execute ninja "-j$cpu_threads" install
 
-    if [ -n "$LDEXEFLAGS" ]; then
+    if [ -n "${LDEXEFLAGS}" ]; then
         sed -i.backup 's/lgcc_s/lgcc_eh/g' "$workspace"/lib/pkgconfig/x265.pc
     fi
 
@@ -2012,7 +2009,7 @@ fi
 ffmpeg_libraries+=('--enable-libx265')
 
 # Vaapi doesn't work well with static links FFmpeg.
-if [ -z "$LDEXEFLAGS" ]; then
+if [ -z "${LDEXEFLAGS}" ]; then
     # If the libva development SDK is installed, enable vaapi.
     if library_exists 'libva'; then
         if build 'vaapi' '1'; then
@@ -2033,7 +2030,7 @@ if [ -n "$iscuda" ]; then
     LDFLAGS+=' -L/usr/local/cuda/lib64'
     ffmpeg_libraries+=(--enable-{cuda-nvcc,cuda-llvm,cuvid,nvenc})
 
-    if [ -z "$LDEXEFLAGS" ]; then
+    if [ -z "${LDEXEFLAGS}" ]; then
         ffmpeg_libraries+=('--enable-libnpp')
     fi
 
@@ -2053,7 +2050,7 @@ if build 'srt' "$g_ver"; then
         -DENABLE_{APPS=OFF,SHARED=OFF,STATIC=ON} -DUSE_STATIC_LIBSTDCXX=ON -G Ninja -Wno-dev
     execute ninja -C build "-j$cpu_threads"
     execute ninja -C build "-j$cpu_threads" install
-    if [ -n "$LDEXEFLAGS" ]; then
+    if [ -n "${LDEXEFLAGS}" ]; then
         sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "$workspace"/lib/pkgconfig/srt.pc
     fi
     build_done 'srt' "$g_ver"
@@ -2231,9 +2228,9 @@ if build 'ffmpeg' "$ffmpeg_ver"; then
         --enable-small                            \
         --enable-static                           \
         --enable-version3                         \
-        --extra-cflags="$CFLAGS"                  \
+        --extra-cflags="${cflag}S"                  \
         --extra-cxxflags="$CXXFLAGS"              \
-        --extra-ldexeflags="$LDEXEFLAGS"          \
+        --extra-ldexeflags="${LDEXEFLAGS}"          \
         --extra-ldflags="$LDFLAGS"                \
         --extra-libs="$EXTRALIBS"                 \
         --extra-version="$EXTRA_VERSION"          \
