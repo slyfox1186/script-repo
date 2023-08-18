@@ -47,7 +47,7 @@
     ; '"' is a string containing a quote.
     url :=  '"' . reg . string . '"'
 
-    ; Open chrome
+    ; Open Browser
     Run(Browser . " --new-tab " . url,,"Max")
     if WinWait(win,, 4)
         WinActivate(win)
