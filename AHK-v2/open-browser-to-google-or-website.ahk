@@ -21,9 +21,12 @@
 {
     Browser := 'C:\Program Files\Google\Chrome Beta\Application\chrome.exe' ; YOU MUST CHANGE THIS AS NECESSARY
     win := 'ahk_class Chrome_WidgetWin_1 ahk_exe chrome.exe'
+
     SetControlDelay 1 ; make sure the script is run as fast as possible without overdoing it.
+
     ClipSaved := ClipboardAll() ; save current A_Clipboard contents to its own variable
     A_Clipboard := "" ; Empty the clipboard
+
     Send "^c"
     if !ClipWait(0.75)
         A_Clipboard := ClipSaved ; if nothing is saved in the A_Clipboard from the clipwait command then use the current A_Clipboard contents
@@ -34,7 +37,7 @@
 
     ; if the text ends in specific text matching a set of TLDs, assume it's a www address.
     ; otherwise, query the text.
-    ; if the text does not end with the listed postfix, add "? " so Chrome treats it as a query.
+    ; if the text does not end with the listed postfix, add "?" so Chrome treats it as a query.
     reg := RegExMatch(string, "i)^\S+\.(com|de|gov|io|jp|net|org|to|tv|uk)|(\/.*)$")? "" : "https://www.google.com/search?q="
 
     ; Attach the prefix and wrap text in quotes.
