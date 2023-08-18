@@ -24,7 +24,7 @@
     A_Clipboard := "" ; Empty the clipboard
     Send "^c"
     if !ClipWait(0.75)
-        A_Clipboard := ClipSaved ; if nothing is saved in the A_Clipboard from the clipwait command then use the current A_Clipboards contents
+        A_Clipboard := ClipSaved ; if nothing is saved in the A_Clipboard from the clipwait command then use the current A_Clipboard contents
 
     ; A_Clipboard is the text-only bit of the clipboard.
     ; trim whitespace including "enter", because some apps are overzealous when selecting text. Trim does spaces and tabs by default."
