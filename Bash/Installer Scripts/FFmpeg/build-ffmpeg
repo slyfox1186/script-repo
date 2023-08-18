@@ -337,21 +337,22 @@ git_8_fn()
 
 git_ver_fn()
 {
-    local url u_flag v_flag v_url v_url
+    local t_flag u_flag v_flag v_tag v_url
 
     v_url="$1"
-    v_url="$2"
+    v_tag="$2"
 
     if [ -n "$3" ]; then
-        case "$3" in
-                B)      url=branches;;
-                R)      url=releases;;
-                T)      url=urls;;
-                *)      fail_fn 'Could not detect the variable "url" in the function "git_ver_fn"';;
-        esac
+        v_flag="$3"
     fi
-    
-    case "$v_url" in
+
+    case "$v_flag" in
+            B)      t_flag=branches;;
+            R)      t_flag=releases;;
+            T)      t_flag=tags;;
+    esac
+
+    case "$v_tag" in
             1)      u_flag=git_1_fn;;
             2)      u_flag=git_2_fn;;
             3)      u_flag=git_3_fn;;
@@ -360,10 +361,10 @@ git_ver_fn()
             6)      u_flag=git_6_fn;;
             7)      u_flag=git_7_fn;;
             8)      u_flag=git_8_fn;;
-            *)      fail_fn 'Could not detect the variable "v_url" in the function "git_ver_fn"';;
+            *)      fail_fn 'Could not detect the variable "v_tag" in the function "git_ver_fn"'
     esac
 
-    "$u_flag" "$v_url" "$url" 2>/dev/null
+    "$u_flag" "$v_url" "$t_flag" 2>/dev/null
 }
 
 check_version()
@@ -445,7 +446,10 @@ library_exists()
     return 0
 }
 
-build_done() { echo "$2" > "$packages/$1.done"; }
+build_done()
+{
+    echo "$2" > "$packages/$1.done"
+}
 
 installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
