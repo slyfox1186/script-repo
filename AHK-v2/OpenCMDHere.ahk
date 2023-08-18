@@ -7,14 +7,14 @@
 _OpenCMDHere()
 {
     Static convert := " !#$%&'()-.*:?@[]^_``{|}~/"
-
+    win := 'ahk_class ConsoleWindowClass ahk_exe cmd.exe'
     If WinActive('ahk_class CabinetWClass ahk_exe explorer.exe')
         winObj := ComObject('Shell.Application').Windows
     Else
     {
         Run(A_ComSpec ' /E:ON /T:0A /K pushd C:\Users\' . A_UserName . '\Downloads',, 'Max')
-        if WinWait('ahk_class ConsoleWindowClass ahk_exe cmd.exe',, 2)
-            WinActivate('ahk_class ConsoleWindowClass ahk_exe cmd.exe')
+        if WinWait(win,, 2)
+            WinActivate(win)
         return
     }
 
@@ -30,4 +30,7 @@ _OpenCMDHere()
             pwd := StrReplace(pwd, pwd, '"' . pwd . '"')
     }
      Run(A_ComSpec ' /E:ON /T:0A /K pushd ' . pwd,, 'Max')
+     if WinWait(win,, 2)
+        WinActivate(win)
+     return
 }
