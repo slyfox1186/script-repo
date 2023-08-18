@@ -11,7 +11,7 @@ export PATH="${PATH}:${HOME}/.local/bin"
 #
 
 if [ ! -d "${PWD}/completed" ] || [ ! -d "${PWD}/original" ]; then
-    mkdir -p "${PWD}/completed" "${PWD}/original"
+    mkdir -p "${PWD}/completed" "${PWD}/original" 2>/dev/null
 fi
 
 #
@@ -38,7 +38,7 @@ unset apt_pkgs i missing_pkg missing_pkgs
 # REQUIRED PIP PACKAGES
 #
 
-pip_lock="$(find /usr/lib/python3* -name EXTERNALLY-MANAGED)"
+pip_lock="$(sudo find /usr/lib/python3* -name EXTERNALLY-MANAGED)"
 if [ -n "${pip_lock}" ]; then
     sudo rm "${pip_lock}"
 fi
@@ -83,7 +83,7 @@ if [ -n "${del_this}" ]; then
 fi
 
 # MAKE SURE THERE ARE ACTUAL VIDEOS IN THE FOLDER WITH THIS SCRIPT BEFORE CONTINUING
-for vid in "${PWD}"/*.{mp4,mkv}
+for vid in *.{mp4,mkv}
 do
     vid_exist="$(echo ${vid})"
     if [ -n "${vid_exist}" ]; then
@@ -182,6 +182,5 @@ EOF
         echo
         exit 1
     fi
-
     clear
 done
