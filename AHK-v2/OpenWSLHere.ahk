@@ -1,9 +1,6 @@
 /*____________________________________________________________________________________
     OpenWSLHere.ahk
 
-    By:
-    - SlyFox1186
-
     GitHub:
     - https://github.com/slyfox1186
 
@@ -11,26 +8,25 @@
     - https://pastebin.com/u/slyfox1186
     
     Purpose:
-    - This will open Windows' WSL terminal to the active file explorer folder or if no active window is found, %A_WinDir%\System32
+    - This will open Windows' WSL terminal to the active file explorer folder or if no active explorer window is found, ~
 
     Instructions:
-    - You need to replace the below variable "_osName" with the wsl distribution of your choosing.
-      - To find the available distros run "wsl.exe -l --all" using PowerShell to get a list of available options
+    - You need to replace the below variable '_osName' with the wsl distribution of your choosing.
+      - To find the available distros run 'wsl.exe -l --all' using PowerShell to get a list of available options
 
     Updated:
-    - 08.16.23
+    - 08.18.23
 
 */
 
 !w up::_OpenWSLHere()
-
 return
 
 _OpenWSLHere()
 {
     Static convert := " #$%&'()-.*:?@[]^_``{}|~/"
     Static osName := 'Debian'
-    Static wt := 'C:\Users\jholl\AppData\Local\Microsoft\WindowsApps\wt.exe'
+    Static wt := 'C:\Users\' . A_UserName . '\AppData\Local\Microsoft\WindowsApps\wt.exe'
     Static wsl := 'C:\Windows\System32\wsl.exe'
     Static win := 'ahk_class CASCADIA_HOSTING_WINDOW_CLASS ahk_exe WindowsTerminal.exe'
 
@@ -41,17 +37,14 @@ _OpenWSLHere()
 
     if WinActive('ahk_class CabinetWClass ahk_exe explorer.exe')
         winObj := ComObject('Shell.Application').Windows
-    Else
+    else
     {
         Run pshell ' -NoP -W Hidden -C "Start-Process ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd ~ `' -Verb RunAs"'
-        If WinWait(win,, 3)
-        {
+        if WinWait(win,, 2)
             WinActivate(win)
-            return
-        }
     }
 
-    For win in winObj
+    for win in winObj
     {
             pwd := SubStr(win.LocationURL, 9)
             Loop Parse, convert
@@ -59,13 +52,10 @@ _OpenWSLHere()
                 pwd := StrReplace(pwd, "%", "")
                 pwd := StrReplace(pwd, "'", "''")
                 pwd := StrReplace(pwd, pwd, '"' . pwd . '"')
-                pwd := RegExReplace(pwd, 'sl.localhost/Debian', '')
+                pwd := RegExReplace(pwd, 'sl.localhost/' . osName, '')
 
         Run pshell ' -NoP -W Hidden -C "Start-Process ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd \"' . pwd . '\" `' -Verb RunAs"'
-        If WinWait(win,, 3)
-        {
+        if WinWait(win,, 2)
             WinActivate(win)
-            return
-        }
     }
 }
