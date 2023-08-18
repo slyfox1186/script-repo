@@ -3,7 +3,9 @@
     Open your browser and search the clipboard or the currently highlighted text using
     Google or if it is a website then directly load it.
 
-    Instructions: Change the variable 'Browser' to the full path of the exe you wish to use.
+    Instructions:
+                  1. Change the variable 'Browser' to the full path of the exe you wish to use.
+                  2. If needed, use WindowSpy.ahk to replace the variable "win" with the correct text.
 
     Test the strings below!
 
