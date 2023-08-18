@@ -28,5 +28,5 @@ _OpenCMDHere()
             pwd := StrReplace(pwd, "/", "\")
             pwd := StrReplace(pwd, pwd, '"' . pwd . '"')
     }
-     Run A_ComSpec ' /E:ON /T:0A /K ' "pushd " . pwd,, "Max"
+     Run(A_ComSpec ' /E:ON /T:0A /K pushd ' . pwd,, 'Max')
 }
