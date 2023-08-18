@@ -48,8 +48,8 @@
     url :=  '"' . reg . string . '"'
 
     ; Open Browser
-    Run(Browser . " --new-tab " . url,,"Max")
-    if WinWait(win,, 4)
+    Run(Browser . ' --new-tab ' . URL,, 'Max')
+    if WinWait(win,, 3)
         WinActivate(win)
     MinMax := WinGetMinMax(win)
     if (MinMax < 1)
