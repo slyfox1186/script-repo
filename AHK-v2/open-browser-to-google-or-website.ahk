@@ -5,7 +5,7 @@
 
     Instructions:
                   1. Change the variable 'Browser' to the full path of the exe you wish to use.
-                  2. If needed, use WindowSpy.ahk to replace the variable "win" with the correct text.
+                  2. If needed, use WindowSpy.ahk to replace the variable 'win' with the correct text.
 
     Test the strings below!
 
