@@ -2,11 +2,12 @@
 
 clear
 
-cwd="$PWD"/gnu-installers
+cwd="${PWD}"/gnu-installer-master
 repo=https://github.com/slyfox1186/script-repo
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 
-if [ ! -d "$cwd"/completed ]; then
-    mkdir -p "$cwd"/completed
+if [ ! -d "${cwd}"/completed ]; then
+    mkdir -p "${cwd}"/completed
 fi
 
 exit_fn()
@@ -20,7 +21,7 @@ exit_fn()
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "$1" \
+        "${1}" \
         "To report a bug create an issue at: $repo/issues"
     exit 1
 }
@@ -38,7 +39,7 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' answer
 
     case "$answer" in
-        1)      sudo rm -fr "$cwd" "$0";;
+        1)      sudo rm -fr "${cwd}" "$0";;
         2)      echo;;
         *)
                 printf "\n%s\n\n" 'Bad user input.'
@@ -57,13 +58,13 @@ for i in ${pkgs[@]}
 do
     missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
 
-    if [ -z "$missing_pkg" ]; then
-        missing_pkgs+=" $i"
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${i}"
     fi
 done
 
-if [ -n "$missing_pkgs" ]; then
-    sudo apt -y install $missing_pkgs
+if [ -n "${missing_pkg}s" ]; then
+    sudo apt -y install ${missing_pkgs}
     sudo apt -y autoremove
     clear
 fi
@@ -73,15 +74,15 @@ install_scripts_fn()
     local i scripts
     clear
 
-    scripts="$(find . -maxdepth 1 -type f | sed 's/^..//g')"
+    scripts="$(sudo find . -maxdepth 1 -type f | sed 's/^..//g')"
 
     for i in ${scripts[@]} 
     do
-        if bash "$i"; then
-            find . -maxdepth 1 -type f -name "$i" -exec mv {} completed \;
-            printf "\n%s\n\n" "Script finished: $i"
+        if bash "${i}"; then
+            find . -maxdepth 1 -type f -name "${i}" -exec mv {} completed \;
+            printf "\n%s\n\n" "Script finished: ${i}"
         else
-            fail_fn "Failed to install: $i"
+            fail_fn "Failed to install: ${i}"
         fi
         sleep 2
     done
@@ -97,7 +98,7 @@ install_choice_fn()
 
     case "$answer" in
         1)      install_scripts_fn;;
-        2)      clear;;
+        2)      exit_fn;;
         *)
                 printf "%s\n\n" 'Bad user input... Resetting script.'
                 sleep 3
@@ -107,36 +108,21 @@ install_choice_fn()
     esac
 }
 
-dl_fn()
-{
-    if [ ! -f "$1" ]; then
-        wget --show-progress -cq "$2"
-    fi
-}
+cd "${cwd}" || exit 1
 
-cd "$cwd" || exit 1
-
-dl_fn 'build-coreutils' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-coreutils'
-dl_fn 'build-diffutils' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-diffutils'
-dl_fn 'build-gawk' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-gawk'
-dl_fn 'build-gettext-libiconv' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-gettext-libiconv'
-dl_fn 'build-gparted' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-gparted'
-dl_fn 'build-grep' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-grep'
-dl_fn 'build-imath' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-imath'
-dl_fn 'build-isl' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-isl'
-dl_fn 'build-make' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-make'
-dl_fn 'build-nettle' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-nettle'
-dl_fn 'build-pkg-config' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-pkg-config'
-dl_fn 'build-sed' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-sed'
-dl_fn 'build-systemd' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-systemd'
-dl_fn 'build-tar' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-tar'
-dl_fn 'build-texinfo' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-texinfo'
-dl_fn 'build-wget' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-wget'
-
-clear
+scripts=(autoconf-archive build-attr build-autoconf build-bash build-binutils build-coreutils build-dbus
+        build-diffutils build-gawk build-gettext-libiconv build-grep build-imath build-isl build-libtool
+        build-m4 build-make build-nano build-ncurses build-nettle build-pkg-config build-readline build-sed
+        build-systemd build-tar build-texinfo build-util-linux build-wget build-wget)
 
 # DOWNLOAD ALL SCRIPTS
-dl_fn
+
+for script in ${scripts[@]}
+do
+    wget -U "$user_agent" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/${script}"
+done
+
+clear
 
 # ASK THE USER IF THEY WANT TO INSTALL ALL OF THE SCRIPTS
 install_choice_fn
