@@ -27,7 +27,7 @@
 ##    - will be prompted by the script to install them so that hardware acceleration is
 ##    - enabled when compiling FFmpeg
 ##
-##  Last Update: 08.16.23
+##  Last Update: 08.18.23
 ##
 ##  Added: Debian OS Support for Bookworm (12)
 ##  Added: cyanrip
