@@ -6,18 +6,19 @@
 
 _OpenCMDHere()
 {
-    ; Static vars so vars are not recreated each time
     Static convert := " !#$%&'()-.*:?@[]^_``{|}~/"
 
-    if WinActive('ahk_class CabinetWClass ahk_exe explorer.exe')
+    If WinActive('ahk_class CabinetWClass ahk_exe explorer.exe')
         winObj := ComObject('Shell.Application').Windows
-    else
+    Else
     {
         Run(A_ComSpec ' /E:ON /T:0A /K pushd C:\Users\' . A_UserName . '\Downloads',, 'Max')
+        if WinWait('ahk_class ConsoleWindowClass ahk_exe cmd.exe',, 2)
+            WinActivate('ahk_class ConsoleWindowClass ahk_exe cmd.exe')
         return
     }
 
-    for win in winObj
+    For win in winObj
     {
         pwd := SubStr(win.LocationURL, 9)
         Loop Parse, convert
@@ -28,5 +29,5 @@ _OpenCMDHere()
             pwd := StrReplace(pwd, "/", "\")
             pwd := StrReplace(pwd, pwd, '"' . pwd . '"')
     }
-     Run(A_ComSpec ' /E:ON /T:0A /K  pushd ' . pwd,, 'Max')
+     Run(A_ComSpec ' /E:ON /T:0A /K pushd ' . pwd,, 'Max')
 }
