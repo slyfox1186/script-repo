@@ -13,7 +13,7 @@ _OpenCMDHere()
         winObj := ComObject('Shell.Application').Windows
     else
     {
-        Run(A_ComSpec ' /E:ON /T:0A /K pushd 'C:\Users\' . A_UserName . '\Downloads',, 'Max')
+        Run(A_ComSpec ' /E:ON /T:0A /K pushd C:\Users\' . A_UserName . '\Downloads',, 'Max')
         return
     }
 
@@ -28,5 +28,5 @@ _OpenCMDHere()
             pwd := StrReplace(pwd, "/", "\")
             pwd := StrReplace(pwd, pwd, '"' . pwd . '"')
     }
-     Run(A_ComSpec ' /E:ON /T:0A /K pushd ' . pwd,, 'Max')
+     Run(A_ComSpec ' /E:ON /T:0A /K  pushd ' . pwd,, 'Max')
 }
