@@ -15,7 +15,7 @@
 
     if !WinExist(win)
     {
-        Run(runThis,, 'Max', winNew)
+        Run(runThis,, 'Max', &winNew)
         if WinWait('ahk_pid ' . winNew,, 3)
             WinActivate('ahk_pid ' . winNew)
     }
