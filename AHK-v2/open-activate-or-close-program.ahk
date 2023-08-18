@@ -1,30 +1,26 @@
 /*_____________________________________________________________________________________
 
   This will on activation on the following:
-  
+
   1. Open a program if it doesn't exist already.
   2. Active a program if it exists but is not active.
   3. Closes the program if it is active.
 
 */
 
-!m::
+!f up::
 {
-   win := "ahk_exe mintty.exe"
+    runThis := 'C:\Program Files\Notepad++\notepad++.exe'
+    win := 'ahk_class Notepad++ ahk_exe notepad++.exe'
+
     if !WinExist(win)
     {
-        try
-        {
-            Run "C:\path\to\mintty.exe",, "Max"
-            WinWait win,, 2
-            WinMaximize
-            WinActivate
-        }
-        catch
-            MsgBox "The exe was not found."
+        Run(runThis,, 'Max', winNew)
+        if WinWait('ahk_pid ' . winNew,, 3)
+            WinActivate('ahk_pid ' . winNew)
     }
     else if !WinActive(win)
-        WinActivate
+        WinActivate(win)
     else
-        WinClose
+        WinClose(win)
 }
