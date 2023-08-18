@@ -27,7 +27,7 @@
     ClipSaved := ClipboardAll() ; save current A_Clipboard contents to its own variable
     A_Clipboard := "" ; Empty the clipboard
 
-    Send "^c"
+    Send '^c'
     if !ClipWait(0.75)
         A_Clipboard := ClipSaved ; if nothing is saved in the A_Clipboard from the clipwait command then use the current A_Clipboard contents
 
