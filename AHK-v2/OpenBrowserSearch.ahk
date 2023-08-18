@@ -19,7 +19,7 @@
 {
     Browser := 'C:\Program Files\Google\Chrome Beta\Application\chrome.exe' ; YOU MUST CHANGE THIS AS NECESSARY
     win := 'ahk_class Chrome_WidgetWin_1 ahk_exe chrome.exe'
-    SetControlDelay 1 ; make sure the script is run as fast as possible
+    SetControlDelay 1 ; make sure the script is run as fast as possible without overdoing it.
     ClipSaved := ClipboardAll() ; save current A_Clipboard contents to its own variable
     A_Clipboard := "" ; Empty the clipboard
     Send "^c"
