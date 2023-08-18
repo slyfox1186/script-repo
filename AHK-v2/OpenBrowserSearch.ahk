@@ -11,7 +11,7 @@
     how to bake a pie
     amazon.com
     mail.google.com
-    https://github.com/slyfox1186/script-repo/new/main
+    https://github.com/slyfox1186/script-repo/
 
   */
 
