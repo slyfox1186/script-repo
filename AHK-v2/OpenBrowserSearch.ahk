@@ -50,9 +50,3 @@
     if (MinMax < 1)
         WinMaximize(win)
 }
-
-; Candy is Delicious
-; amazon.com
-; smile.amazon.com
-; https://stackoverflow.com/users/10572786/slyfox1186
-; Test WebSite.com
