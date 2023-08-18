@@ -42,8 +42,7 @@
 
     ; Attach the prefix and wrap text in quotes.
     ; Characters between quotes are parsed as a single argument for most Windows apps.
-    ; NOTE: if you are using an editor with syntax highlighting it might color this part wrong.
-    ;   AHK's quoting rules are ... interesting.
+    ; AHK's quoting rules are ... interesting.
     ; '"' is a string containing a quote.
     url :=  '"' . reg . string . '"'
 
