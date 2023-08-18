@@ -1310,8 +1310,8 @@ if build 'freeglut' "$g_ver"; then
     download "https://codeload.github.com/FreeGLUTProject/freeglut/tar.gz/refs/tags/v$g_ver" "freeglut-$g_ver.tar.gz"
     CFLAGS+=' -DFREEGLUT_STATIC'
     execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} \
-        -DFREEGLUT_{BUILD_SHARED_LIBS,GLES,PRINT_WARNINGS}=OFF -G Ninja -Wno-dev \
-        -DFREEGLUT_{BUILD_STATIC_LIBS,WAYLAND,PRINT_ERRORS,REPLACE_GLUT}=ON
+        -DFREEGLUT_{BUILD_SHARED_LIBS,GLES,PRINT_WARNINGS,WAYLAND}=OFF -G Ninja -Wno-dev \
+        -DFREEGLUT_{BUILD_STATIC_LIBS,PRINT_ERRORS,REPLACE_GLUT}=ON
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
     build_done 'freeglut' "$g_ver"
@@ -1752,14 +1752,14 @@ fi
 ffmpeg_libraries+=('--enable-libaom')
 
 pre_check_ver '198' '2' 'T'
-if build 'dav1d' "$g_sver"; then
-    download "https://code.videolan.org/videolan/dav1d/-/archive/$g_ver/$g_ver.tar.bz2" "dav1d-$g_sver.tar.bz2"
+if build 'dav1d' "$g_ver1"; then
+    download "https://code.videolan.org/videolan/dav1d/-/archive/$g_ver1/dav1d-$g_ver1.tar.bz2"
     extracommands=(-D{enable_tests,logging}'=false')
     execute meson setup build --prefix="$workspace" --libdir="$workspace"/lib --buildtype=release \
         --default-library=static --strip "${extracommands[@]}"
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
-    build_done 'dav1d' "$g_sver"
+    build_done 'dav1d' "$g_ver1"
 fi
 ffmpeg_libraries+=('--enable-libdav1d')
 
@@ -1767,7 +1767,7 @@ ffmpeg_libraries+=('--enable-libdav1d')
 if [ "$VER" != '18.04' ]; then
     pre_check_ver 'xiph/rav1e' '1' 'T'
     if build 'rav1e' "$g_ver"; then
-        echo '$ installing RUSTUP'
+        echo '$ Installing RustUp'
         curl -sSf --proto '=https' --tlsv1.2 'https://sh.rustup.rs' | sh -s -- -y &>/dev/null
         source "$HOME"/.cargo/env
         if [ -f "$HOME"/.zshrc ]; then
@@ -1916,7 +1916,7 @@ ffmpeg_libraries+=('--enable-amf')
 pre_check_ver 'gpac/gpac' '1' 'T'
 if build 'gpac' "$g_ver"; then
     download "https://codeload.github.com/gpac/gpac/tar.gz/refs/tags/v$g_ver" "gpac-$g_ver.tar.gz"
-    execute ./configure --prefix="$workspace" --enable-gprof --static-{bin,modules} --extra-cflags="${cflag}S"
+    execute ./configure --prefix="$workspace" --enable-gprof --static-{bin,modules} --extra-cflags="${CFLAGS}"
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
@@ -2232,9 +2232,9 @@ if build 'ffmpeg' "$ffmpeg_ver"; then
         --enable-small                            \
         --enable-static                           \
         --enable-version3                         \
-        --extra-cflags="${cflag}S"                  \
+        --extra-cflags="${CFLAGS}"                \
         --extra-cxxflags="$CXXFLAGS"              \
-        --extra-ldexeflags="${LDEXEFLAGS}"          \
+        --extra-ldexeflags="${LDEXEFLAGS}"        \
         --extra-ldflags="$LDFLAGS"                \
         --extra-libs="$EXTRALIBS"                 \
         --extra-version="$EXTRA_VERSION"          \
