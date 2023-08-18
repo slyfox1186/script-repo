@@ -42,6 +42,7 @@ _OpenWSLHere()
         Run pshell ' -NoP -W Hidden -C "Start-Process ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd ~ `' -Verb RunAs"'
         if WinWait(win,, 2)
             WinActivate(win)
+        return
     }
 
     for win in winObj
@@ -57,5 +58,6 @@ _OpenWSLHere()
         Run pshell ' -NoP -W Hidden -C "Start-Process ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd \"' . pwd . '\" `' -Verb RunAs"'
         if WinWait(win,, 2)
             WinActivate(win)
+        return
     }
 }
