@@ -20,7 +20,7 @@
 ^!c up::
 {
     Browser := 'C:\Program Files\Google\Chrome Beta\Application\chrome.exe' ; YOU MUST CHANGE THIS AS NECESSARY
-    win := 'ahk_class Chrome_WidgetWin_1 ahk_exe chrome.exe'
+    win := 'ahk_class Chrome_WidgetWin_1 ahk_exe chrome.exe' ; YOU MUST CHANGE THIS AS NECESSARY
 
     SetControlDelay 1 ; make sure the script is run as fast as possible without overdoing it.
 
