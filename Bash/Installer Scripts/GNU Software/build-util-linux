@@ -147,9 +147,9 @@ cleanup_fn()
 pkgs_fn()
 {
     pkgs=("${1}" asciidoctor autoconf autoconf-archive autogen automake binutils
-          bison build-essential bzip2 ccache curl libc6-dev libintl-perl libpth-dev
-          ibselinux1-dev libtool libtool-bin lzip lzma-dev m4 nasm po4a texinfo yasm
-          zlib1g-dev)
+          bison build-essential bzip2 ccache curl libaudit-dev libc6-dev libintl-perl
+          libpth-dev ibselinux1-dev libtool libtool-bin lzip lzma-dev m4 nasm po4a texinfo
+          yasm zlib1g-dev)
 
     for i in ${pkgs[@]}
     do
