@@ -79,7 +79,7 @@ install_scripts_fn()
     for i in ${scripts[@]} 
     do
         if bash "${i}"; then
-            find . -maxdepth 1 -type f -name "${i}" -exec mv {} completed \;
+            sudo find . -maxdepth 1 -type f -name "${i}" -exec mv {} completed \;
             printf "\n%s\n\n" "Script finished: ${i}"
         else
             fail_fn "Failed to install: ${i}"
