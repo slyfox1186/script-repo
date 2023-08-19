@@ -110,16 +110,15 @@ install_choice_fn()
 
 cd "${cwd}" || exit 1
 
-scripts=(build-attr build-autoconf build-bash build-binutils build-coreutils build-dbus build-diffutils
-         build-gawk build-gettext-libiconv build-grep build-imath build-isl build-libtool build-m4 build-make
-         build-nano build-ncurses build-nettle build-pkg-config build-readline build-sed build-systemd build-tar
-         build-texinfo build-util-linux build-wget build-wget)
+scripts=(attr autoconf bash binutils coreutils dbus diffutils
+         gawk gettext-libiconv grep imath isl libtool m4 make
+         nano ncurses nettle pkg-config readline sed systemd
+         tar texinfo util-linux wget)
 
 # DOWNLOAD ALL SCRIPTS
-
 for script in ${scripts[@]}
 do
-    wget -U "$user_agent" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/${script}"
+    wget -U "$user_agent" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-${script}"
 done
 
 clear
