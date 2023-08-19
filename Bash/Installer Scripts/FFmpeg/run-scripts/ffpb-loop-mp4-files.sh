@@ -11,7 +11,7 @@ export PATH="${PATH}:${HOME}/.local/bin"
 #
 
 if [ ! -d "${PWD}/completed" ] || [ ! -d "${PWD}/original" ]; then
-    mkdir -p "${PWD}/completed" "${PWD}/original" 2>/dev/null
+    mkdir -p "${PWD}/completed" "${PWD}/original"
 fi
 
 #
@@ -38,7 +38,7 @@ unset apt_pkgs i missing_pkg missing_pkgs
 # REQUIRED PIP PACKAGES
 #
 
-pip_lock="$(sudo find /usr/lib/python3* -name EXTERNALLY-MANAGED)"
+pip_lock="$(find /usr/lib/python3* -name EXTERNALLY-MANAGED)"
 if [ -n "${pip_lock}" ]; then
     sudo rm "${pip_lock}"
 fi
@@ -100,19 +100,21 @@ do
 done
 unset vid vid_exist vid_list
 
-for i in *.{mp4,mkv}
+tmp_dir="$(mktemp -d)"
+
+for vid in *.{mp4,mkv}
 do
     # STORES THE CURRENT VIDEO WIDTH, ASPECT RATIO, PROFILE, BIT RATE, AND TOTAL DURATION IN VARIABLES FOR USE LATER IN THE FFMPEG COMMAND LINE
-    aspect_ratio="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 -pretty "${i}" 2>/dev/null)"
-    file_length="$(ffprobe -hide_banner -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${i}" 2>/dev/null)"
-    max_rate="$(ffprobe -hide_banner -show_entries format=bit_rate -of default=nk=1:nw=1 -pretty "${i}" 2>/dev/null)"
-    file_height="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 -pretty "${i}" 2>/dev/null)"
-    file_width="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 -pretty "${i}" 2>/dev/null)"
+    aspect_ratio="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 -pretty "${vid}" 2>/dev/null)"
+    file_length="$(ffprobe -hide_banner -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${vid}" 2>/dev/null)"
+    max_rate="$(ffprobe -hide_banner -show_entries format=bit_rate -of default=nk=1:nw=1 -pretty "${vid}" 2>/dev/null)"
+    file_height="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 -pretty "${vid}" 2>/dev/null)"
+    file_width="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 -pretty "${vid}" 2>/dev/null)"
 
     # MODIFY VARS TO GET FILE INPUT AND OUTPUT NAMES
-    file_in="${i}"
+    file_in="${vid}"
     fext="${file_in#*.}"
-    file_out="${file_in%.*} (x265).${fext}"
+    file_out="${tmp_dir}/${file_in%.*} (x265).${fext}"
 
     # TRIM THE STRINGS
     trim="${max_rate::-11}"
@@ -127,7 +129,7 @@ do
     length="$(( ${file_length::-7} / 60 ))"
     length+=' Minutes'
 
-    cat <<EOF
+cat <<EOF
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 Input File:      ${file_in}
@@ -144,7 +146,7 @@ Length:          ${length}
 
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 EOF
-
+    echo
     # EXECUTE FFMPEG THROUGH FFPB
     if ffpb \
             -y \
@@ -174,8 +176,8 @@ EOF
             "${file_out}"; then
         google_speech 'Video conversion completed.' 2>/dev/null
         if [ -f "${file_out}" ]; then
-            mv "${file_in}" original
-            mv "${file_out}" completed
+            mv "${file_in}" "${PWD}"/original
+            mv "${file_out}" "${PWD}"/completed
         fi
     else
         google_speech 'Video conversion failed.' 2>/dev/null
