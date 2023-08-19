@@ -105,6 +105,7 @@ install_choice_fn()
                 unset answer
                 clear
                 install_choice_fn
+                ;;
     esac
 }
 
