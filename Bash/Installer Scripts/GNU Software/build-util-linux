@@ -24,8 +24,8 @@ fi
 #
 
 script_ver=1.0
-archive_dir=util-linux-2.39.1
-archive_url=https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.39/util-linux-2.39.1.tar.xz
+archive_dir=util-linux-2.39.2
+archive_url=https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.39/util-linux-2.39.2.tar.xz
 archive_ext="${archive_url//*.}"
 cwd="$PWD"/util-linux-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
@@ -153,12 +153,12 @@ pkgs_fn()
     for i in ${pkgs[@]}
     do
         missing_pkg="$(sudo dpkg -l | grep -o "$i")"
-    
+
         if [ -z "$missing_pkg" ]; then
             missing_pkgs+=" $i"
         fi
     done
-    
+
     if [ -n "$missing_pkgs" ]; then
         sudo apt -y install $missing_pkgs
         sudo apt -y autoremove
@@ -213,17 +213,17 @@ cd "$cwd/$archive_dir" || exit 1
 cd build || exit 1
 ../configure --prefix=/usr/local                                       \
              --{build,host}="$pc_type"                                 \
-             --enable-ubsan                                            \
-             --disable-werror                                          \
              --disable-nls                                             \
+             --disable-werror                                          \
              --enable-static-programs="${extralists[@]}"               \
+             --enable-ubsan                                            \
              --enable-write                                            \
-             --with-pic                                                \
-             --with-pkgconfigdir='/usr/lib/x86_64-linux-gnu/pkgconfig' \
+             --with-audit                                              \
              --with-libiconv-prefix=/usr                               \
              --with-libintl-prefix=/usr                                \
+             --with-pic                                                \
+             --with-pkgconfigdir='/usr/lib/x86_64-linux-gnu/pkgconfig' \
              --with-selinux                                            \
-             --with-audit                                              \
              --with-systemdsystemunitdir=/usr                          \
              PKG_CONFIG"$(type -P pkg-config)"                         \
              PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
