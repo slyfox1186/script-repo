@@ -22,7 +22,7 @@ _OpenCMDHere()
     For win in winObj
     {
         pwd := SubStr(win.LocationURL, 9)
-        Loop Parse, convertsd
+        Loop Parse, convert
             hex := Format('{:X}' , Ord(A_LoopField))
             ,pwd := StrReplace(pwd, hex, A_LoopField)
             pwd := StrReplace(pwd, "%", "")
