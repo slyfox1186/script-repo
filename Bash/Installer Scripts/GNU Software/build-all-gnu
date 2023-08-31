@@ -113,9 +113,9 @@ install_choice_fn()
 cd "${cwd}" || exit 1
 
 scripts=(attr autoconf bash binutils coreutils dbus diffutils
-         gawk gettext-libiconv gnutls grep imath isl libtool m4
-         make nano ncurses nettle pkg-config readline sed systemd
-         tar texinfo util-linux wget)
+         eog gawk gettext-libiconv gnutls grep imath isl libtool
+         m4 make nano ncurses nettle pkg-config readline sed
+         systemd tar texinfo util-linux wget)
 
 #
 # DOWNLOAD ALL THE SCRIPTS
