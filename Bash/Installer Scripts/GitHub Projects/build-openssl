@@ -31,12 +31,14 @@ script_ver=1.3
 archive_dir=openssl-3.1.2
 archive_url=https://github.com/openssl/openssl/releases/download/${archive_dir}/${archive_dir}.tar.gz
 archive_ext="${archive_url//*.}"
-cwd="${PWD}"/openssl-build-script
+parent_dir="${PWD}"
+cwd="${parent_dir}"/openssl-build-script
 install_dir=/usr
-ssl_dir=${install_dir}/lib/ssl
-cert_dir=${ssl_dir}/certs
-pem_filename=cacert.pem
-pem_output=${cert_dir}/cacert.pem
+ssl_dir=/usr/lib/ssl
+cert_dir="${ssl_dir}/certs"
+pem_file=cacert.pem
+pem_in="${cwd}/${pem_file}"
+pem_out="${cert_dir}/${pem_file}"
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
@@ -48,9 +50,10 @@ printf "%s\n%s\n\n" \
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ ! -d "${cwd}" ]; then
-    mkdir -p "${cwd}"
+if [ -d "${cwd}" ]; then
+    sudo rm -fr "${cwd}"
 fi
+mkdir -p "${cwd}"
 
 #
 # SET THE C+CPP COMPILERS
@@ -133,7 +136,13 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' choice
 
     case "${choice}" in
-        1)      sudo rm -fr "${cwd}";;
+        1)
+                sudo rm -fr "${cwd}"
+                cd "${parent_dir}" || exit 1
+                if [ -f "${pem_file}" ]; then
+                    sudo rm "${pem_file}"
+                fi
+                ;;
         2)      clear;;
         *)
                 clear
@@ -173,12 +182,12 @@ unset i missing_pkgs
 # INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
 #
 
-if [ ! -f "${cert_dir}/${pem_filename}" ]; then
+if [ ! -f "${cert_dir}/${pem_file}" ]; then
     printf "%s\n%s\n\n" \
         'Download the latest security certificate' \
         '================================================'
-    curl -A "${user_agent}" -Lso "${cwd}/${pem_filename}" "https://curl.se/ca/${pem_filename}"
-    sudo mv -f "${cwd}/${pem_filename}" "${cert_dir}/${pem_filename}"
+    curl -A "${user_agent}" -Lso "${cwd}/${pem_file}" "https://curl.se/ca/${pem_file}"
+    sudo mv -f "${cwd}/${pem_file}" "${cert_dir}/${pem_file}"
 fi
 
 #
