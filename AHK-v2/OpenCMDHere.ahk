@@ -14,8 +14,8 @@ _OpenCMDHere()
     Else
     {
         Run(A_ComSpec ' /E:ON /T:0A /K pushd C:\Users\' . A_UserName . '\Downloads',, 'Max', &winCMD)
-        if WinWait('ahk_pid ' winCMD,, 2)
-            WinActivate('ahk_pid ' winCMD)
+        if WinWait('ahk_pid ' . winCMD,, 2)
+            WinActivate('ahk_pid ' . winCMD)
         return
     }
 
