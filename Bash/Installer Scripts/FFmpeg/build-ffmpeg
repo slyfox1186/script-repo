@@ -1452,7 +1452,7 @@ if build 'c-ares' "$g_ver"; then
     download "https://codeload.github.com/c-ares/c-ares/tar.gz/refs/tags/cares-$g_tag" "c-ares-$g_ver.tar.gz"
     execute autoreconf -fi
     execute autoupdate
-    execute ./configure --prefix="$workspace" --disable-{shared,warnings} --enable-optimize="$CXXFLAGS"
+    execute ./configure --prefix="$workspace" --disable-{shared,warnings} --enable-optimize="${CXXFLAGS}"
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
@@ -1497,14 +1497,14 @@ if build 'pcre2' "$g_ver"; then
 fi
 
 git_ver_fn '14889806' '3' 'B'
-if build 'zix' "$g_sver1"; then
-    download "https://gitlab.com/drobilla/zix/-/archive/$g_ver1/zix-$g_ver1.tar.bz2" "zix-$g_sver1.tar.bz2"
+if build 'zix' '0.4.0'; then
+    download 'https://gitlab.com/drobilla/zix/-/archive/v0.4.0/zix-v0.4.0.tar.bz2' 'zix-0.4.0.tar.bz2'
     extracommands=(-D{benchmarks,docs,singlehtml,tests,tests_cpp}=disabled)
     execute meson setup build --prefix="$workspace" --libdir="$workspace"/lib \
         --buildtype=release --default-library=static --strip "${extracommands[@]}"
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
-    build_done 'zix' "$g_sver1"
+    build_done 'zix' '0.4.0'
 fi
 
 git_ver_fn '11853362' '3' 'B'
