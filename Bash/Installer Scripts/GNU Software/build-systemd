@@ -4,17 +4,17 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-systemd
 ##
-##  Purpose: Build GNU systemd
+##  Purpose: Build GNU SystemD
 ##
-##  Updated: 08.01.23
+##  Updated: 08.31.23
 ##
-##  Script version: 1.1
+##  Script version: 1.2
 ##
 ###########################################################################################################
 
 clear
 
-if [ "$EUID" -eq '0' ]; then
+if [ "${EUID}" -eq '0' ]; then
     printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
     exit 1
 fi
@@ -23,7 +23,7 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.1
+script_ver=1.2
 archive_dir=systemd-253
 archive_url=https://github.com/systemd/systemd/archive/refs/tags/v253.tar.gz
 archive_ext="${archive_url//*.}"
@@ -32,16 +32,17 @@ repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 
 printf "\n%s\n%s\n\n" \
-    "Systemd Build Script - v$script_ver" \
+    "SystemD build script - v${script_ver}" \
     '==============================================='
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ ! -d "$cwd" ]; then
-    mkdir -p "$cwd"
+if [ -d "${cwd}" ]; then
+    sudo rm -fr "${cwd}"
 fi
+mkdir -p "${cwd}"
 
 #
 # SET THE C+CPP COMPILERS
@@ -61,8 +62,8 @@ export {CFLAGS,CXXFLAGS}='-g -O2 -flto -ffunction-sections -fdata-sections -pipe
 
 PATH="\
 /usr/lib/ccache:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
+${HOME}/.cargo/bin:\
+${HOME}/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
@@ -116,15 +117,15 @@ exit_fn()
 {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
-        "$repo"
+        "${repo}"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "$1" \
-        "To report a bug create an issue at: $repo/issues"
+        "${1}" \
+        "To report a bug create an issue at: ${repo}/issues"
     exit 1
 }
 
@@ -140,8 +141,8 @@ cleanup_fn()
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
 
-    case "$choice" in
-        1)      sudo rm -fr "$cwd";;
+    case "${choice}" in
+        1)      sudo rm -fr "${cwd}";;
         2)      echo;;
         *)
                 clear
@@ -158,7 +159,7 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=("$1" autoconf autoconf-archive autogen automake binutils bpftool build-essential ccache clang cmake curl git gnu-efi golang-gir-gio-2.0-dev golang-gir-gobject-2.0-dev
+pkgs=("${1}" autoconf autoconf-archive autogen automake binutils bpftool build-essential ccache clang cmake curl git gnu-efi golang-gir-gio-2.0-dev golang-gir-gobject-2.0-dev
       gperf jekyll kexec-tools libacl1-dev libapparmor-dev libaudit-dev libbinutils libblkid-dev libblkid1 libbpf-dev libbz2-dev libcap-dev
       libcryptsetup-dev libcryptsetup12 libcurl4-openssl-dev libdbus-1-dev libdrpm-dev libdw-dev libfdisk-dev libfido2-dev libglib2.0-dev
       libgnutls28-dev libidn11-dev libidn2-0-dev libidn2-dev libiptc-dev libkrb5-dev libkmod-dev liblz4-dev libmicrohttpd-dev libmount-dev libnacl-dev libnss-myhostname
@@ -168,16 +169,16 @@ pkgs=("$1" autoconf autoconf-archive autogen automake binutils bpftool build-ess
 
 for i in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "$i")"
+    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
 
-    if [ -z "$missing_pkg" ]; then
-        missing_pkgs+=" $i"
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${i}"
     fi
 done
 unset i
 
-if [ -n "$missing_pkgs" ]; then
-    sudo apt -y install $missing_pkgs
+if [ -n "${missing_pkgs}" ]; then
+    sudo apt -y install ${missing_pkgs}
     sudo apt -y autoremove
     clear
 fi
@@ -186,35 +187,35 @@ fi
 # GET PC TYPE
 #
 
-curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "$cwd/config.guess"
-pc_type="$(source "$cwd/config.guess")"
+curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "${cwd}/config.guess"
+pc_type="$(source "${cwd}/config.guess")"
 
 #
 # DOWNLOAD THE ARCHIVE FILE
 #
 
-archive_name="$archive_dir.tar.$archive_ext"
+archive_name="${archive_dir}.tar.${archive_ext}"
 
-if [ ! -f "$cwd/$archive_name" ]; then
-    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
+if [ ! -f "${cwd}/${archive_name}" ]; then
+    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
 fi
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
+if [ -d "${cwd}/${archive_dir}" ]; then
+    sudo rm -fr "${cwd}/${archive_dir}"
 fi
-mkdir -p "$cwd/$archive_dir/build"
+mkdir -p "${cwd}/${archive_dir}/build"
 
 #
 # EXTRACT ARCHIVE FILES
 #
 
-if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
+if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
     exit 1
 fi
 
@@ -222,9 +223,14 @@ fi
 # BUILD PROGRAM FROM SOURCE
 #
 
-cd "$cwd/$archive_dir" || exit 1
-meson setup build --buildtype=release --default-library=both --strip -Dzstd=true
+cd "${cwd}/${archive_dir}" || exit 1
+meson setup build --buildtype=release    \
+                  --default-library=both \
+                  --strip                \
+                  -Dzstd=true
+
 ninja "-j$(nproc --all)" -C build
+
 if ! sudo ninja "-j$(nproc --all)" -C build install; then
     printf "\n%s\n\n" 'Failed to install systemd.'
     exit 1
