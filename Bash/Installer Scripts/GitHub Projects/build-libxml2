@@ -2,7 +2,7 @@
 
 ###########################################################################################################
 ##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-xml2
+##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-libxml2
 ##
 ##  Purpose: Build libxml2
 ##
@@ -31,7 +31,7 @@ repo=https://github.com/slyfox1186/script-repo
 debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 printf "%s\n%s\n\n" \
-    "xml2 build script - v${script_ver}" \
+    "libxml2 build script - v${script_ver}" \
     '==============================================='
 
 #
