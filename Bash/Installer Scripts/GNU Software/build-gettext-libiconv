@@ -6,9 +6,9 @@
 ##
 ##  Purpose: Build GNU gettext and iconv
 ##
-##  Updated: 08.13.23
+##  Updated: 08.31.23
 ##
-##  Script version: 1.1
+##  Script version: 1.2
 ##
 ###########################################################################################################
 
@@ -23,22 +23,23 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.1
+script_ver=1.2
 archive_dir1=libiconv-1.17
 archive_dir2=gettext-0.22
 archive_url1=https://ftp.gnu.org/gnu/libiconv/libiconv-1.17.tar.gz
 archive_url2=https://ftp.gnu.org/gnu/gettext/gettext-0.22.tar.lz
 archive_ext1="${archive_url1//*.}"
 archive_ext2="${archive_url2//*.}"
-cwd="$PWD"/gettext-libiconv-build-script
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+cwd="${PWD}"/gettext-libiconv-build-script
+install_prefix=/usr/local
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ ! -d "$cwd/$archive_dir1" ] || [ ! -d "$cwd/$archive_dir2" ]; then
-    mkdir -p "$cwd/$archive_dir1" "$cwd/$archive_dir2" 2>/dev/null
+if [ ! -d "${cwd}/${archive_dir1}" ] || [ ! -d "${cwd}/${archive_dir2}" ]; then
+    mkdir -p "${cwd}/${archive_dir1}" "${cwd}/${archive_dir2}" 2>/dev/null
 fi
 
 #
@@ -114,7 +115,7 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' choice
 
     case "$choice" in
-        1)      sudo rm -fr "$cwd";;
+        1)      sudo rm -fr "${cwd}";;
         2)      echo;;
         *)
                 clear
@@ -129,7 +130,7 @@ cleanup_fn()
 
 fail_fn()
 {
-    printf "%s\n\n" "$1"
+    printf "%s\n\n" "${1}"
     exit 1
 }
 
@@ -137,62 +138,109 @@ fail_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=("$1" autoconf autoconf-archive autogen automake binutils bison build-essential ccache
-      libintl-perl libtool libtool-bin libxml2-dev lzip m4 nasm pkg-config yasm)
+pkgs_fn()
+{
+    pkgs=("${1}" autoconf autoconf-archive autogen automake binutils bison build-essential ccache
+          libc6-dev libintl-perl libtool libtool-bin libxml2-dev lzip m4 nasm pkg-config yasm)
 
-for i in ${pkgs[@]}
-do
-    missing_pkg="$(sudo dpkg -l | grep -o "$i")"
+    for i in ${pkgs[@]}
+    do
+        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
 
-    if [ -z "$missing_pkg" ]; then
-        missing_pkgs+=" $i"
+        if [ -z "$missing_pkg" ]; then
+            missing_pkgs+=" ${i}"
+        fi
+    done
+
+    if [ -n "${missing_pkgs}" ]; then
+        sudo apt -y install ${missing_pkgs}
+        clear
     fi
-done
+    unset i missing_pkgs
+}
 
-if [ -n "$missing_pkgs" ]; then
-    sudo apt -y install $missing_pkgs
-    clear
+#
+# DETERMINE WHAT VERSION OF LINUX WE ARE ON
+#
+
+os_ver_check_fn()
+{
+    case "${VER}" in
+            12|11|10)               pkgs_fn 'libticonv-dev';;
+    esac
+}
+
+#
+# GET CURRENT OS INFORMATION
+#
+
+if [ -f /etc/os-release ]; then
+    source /etc/os-release
+    OS="${NAME}"
+    VER="${VERSION_ID}"
+elif "$(type -P lsb_release)" &>/dev/null; then
+    OS="$(lsb_release -si)"
+    VER="$(lsb_release -sr)"
+elif [ -f /etc/lsb-release ]; then
+    source /etc/lsb-release
+    OS="${DISTRIB_ID}"
+    VER="${DISTRIB_RELEASE}"
+elif [ -f /etc/debian_version ]; then
+    OS=Debian
+    VER="$(cat /etc/debian_version)"
+else
+    OS="$(uname -s)"
+    VER="$(uname -r)"
 fi
-unset i missing_pkgs
+
+#
+# TEST THE OS AND ITS VERSION
+#
+
+case "${OS}" in
+    Debian*)            os_ver_check_fn;;
+    Ubuntu)             echo;;
+    *)                  fail_fn 'Could not detect the OS architecture.';;
+esac
 
 #
 # GET PC TYPE
 #
 
-curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "$cwd/config.guess"
-pc_type="$(source "$cwd/config.guess")"
+curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "${cwd}/config.guess"
+pc_type="$(source "${cwd}/config.guess")"
 
 #
 # DOWNLOAD THE ARCHIVE FILES
 #
 
-if [ ! -f "$cwd/$archive_dir1.tar.gz" ]; then
-    curl -A "$user_agent" -Lso "$cwd/$archive_dir1.$archive_ext1" "$archive_url1"
+if [ ! -f "${cwd}/${archive_dir1}.tar.gz" ]; then
+    curl -A "${user_agent}" -Lso "${cwd}/${archive_dir1}.$archive_ext1" "$archive_url1"
 fi
 
-if [ ! -f "$cwd/$archive_dir2.tar.lz" ]; then
-    curl -A "$user_agent" -Lso "$cwd/$archive_dir2.$archive_ext2" "$archive_url2"
+if [ ! -f "${cwd}/${archive_dir2}.tar.lz" ]; then
+    curl -A "${user_agent}" -Lso "${cwd}/${archive_dir2}.$archive_ext2" "$archive_url2"
 fi
 
 #
 # CREATE OUTPUT DIRECTORIES
 #
 
-if [ -d "$cwd/$archive_dir1" ] || [ -d "$cwd/$archive_dir2" ]; then
-    sudo rm -fr "$cwd/$archive_dir1" "$cwd/$archive_dir2"
+if [ -d "${cwd}/${archive_dir1}" ] || [ -d "${cwd}/${archive_dir2}" ]; then
+    sudo rm -fr "${cwd}/${archive_dir1}" "${cwd}/${archive_dir2}"
 fi
-mkdir -p "$cwd/$archive_dir1" "$cwd/$archive_dir2"
+mkdir -p "${cwd}/${archive_dir1}" "${cwd}/${archive_dir2}"
 
 #
 # EXTRACT THE ARCHIVE FILES
 #
 
-if ! tar -xf "$cwd/$archive_dir1.$archive_ext1" -C "$cwd/$archive_dir1" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: $cwd/$archive_dir1.$archive_ext1"
+if ! tar -xf "${cwd}/${archive_dir1}.$archive_ext1" -C "${cwd}/${archive_dir1}" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_dir1}.$archive_ext1"
 fi
-if ! tar -xf "$cwd/$archive_dir2.$archive_ext2" -C "$cwd/$archive_dir2" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: $cwd/$archive_dir2.$archive_ext2"
+if ! tar -xf "${cwd}/${archive_dir2}.$archive_ext2" -C "${cwd}/${archive_dir2}" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_dir2}.$archive_ext2"
 fi
 
 #
@@ -203,21 +251,22 @@ printf "\n%s\n%s\n\n" \
     'Building libiconv - v1.17' \
     '==============================================='
 
-cd "$cwd/$archive_dir1" || exit 1
+cd "${cwd}/${archive_dir1}" || exit 1
 mkdir builddir
 cd builddir || exit 1
-../configure --prefix=/usr/local         \
-             --disable-nls               \
-             --enable-relocatable        \
-             --enable-static             \
-             --with-pic                  \
-             --with-libiconv-prefix=/usr \
-             --with-libintl-prefix=/usr  \
+../configure --{build,host}="${pc_type}"  \
+             --prefix="${install_prefix}" \
+             --disable-nls                \
+             --enable-relocatable         \
+             --enable-static              \
+             --with-pic                   \
+             --with-libiconv-prefix=/usr  \
+             --with-libintl-prefix=/usr   \
+             CC="${CC}"                   \
              CPPFLAGS='-I/usr/local/include -I/usr/include'
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    make distclean
-    printf "\n%s\n\n" "Failed to install: $archive_dir1."
+    printf "\n%s\n\n" "Failed to install: ${archive_dir1}."
     exit 1
 fi
 sudo libtool --finish /usr/local/lib
@@ -226,20 +275,27 @@ printf "\n%s\n%s\n\n" \
     'Building gettext - v0.22' \
     '==============================================='
 
-cd "$cwd/$archive_dir2" || exit 1
+cd "${cwd}/${archive_dir2}" || exit 1
 autoupdate
 ./autogen.sh
 mkdir builddir
 cd builddir || exit 1
-../configure --prefix=/usr/local               \
-             --with-libiconv-prefix=/usr/local \
-             --with-libxml2-prefix=/usr
+../configure --{build,host}="${pc_type}"       \
+             --prefix="${install_prefix}"      \
+             --disable-shared                  \
+             --enable-static                   \
+             --with-libiconv-prefix=/usr       \
+             --with-libxml2-prefix=/usr        \
+             --with-pic                        \
+             CC="${CC}"                        \
+             CXX="${CXX}"                      \
+             LIBS="$(pkg-config --libs ticonv)"
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    make distclean
-    printf "\n%s\n\n" "Failed to install: $archive_dir2."
+    printf "\n%s\n\n" "Failed to install: ${archive_dir2}."
     exit 1
 fi
+sudo libtool --finish /usr/local/lib
 
 # CLEANUP FILES
 cleanup_fn
