@@ -31,7 +31,7 @@ _OpenCMDHere()
             pwd := StrReplace(pwd, pwd, '"' . pwd . '"')
     }
      Run(A_ComSpec ' /E:ON /T:0A /K pushd ' . pwd,, 'Max', &winCMD)
-     if WinWait('ahk_pid ' winCMD,, 2)
-        WinActivate('ahk_pid ' winCMD)
+     if WinWait('ahk_pid ' . winCMD,, 2)
+        WinActivate('ahk_pid ' . winCMD)
      return
 }
