@@ -1,6 +1,12 @@
-; #################
-; #  OpenCMDHere  #
-; #################
+/*____________________________________________________________________________________
+    OpenCMDHere.ahk
+
+    Opens cmd.exe to the active explorer window's current folder, otherwise
+    it will open cmd.exe to the current user's download folder.
+
+    Extra Info. Feel free to modify the command lines ' /E:ON /T:0A /K pushd ' to fit your needs.
+
+*/
 
 !c up::OpenCMDHere()
 
