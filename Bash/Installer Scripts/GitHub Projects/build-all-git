@@ -2,26 +2,31 @@
 
 clear
 
-cwd="$PWD"/git-installers
+cwd="$PWD"/git-installers-master
 repo=https://github.com/slyfox1186/script-repo
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 
-if [ ! -d "$cwd"/completed ]; then
-    mkdir -p "$cwd"/completed
+if [ -d "${cwd}" ]; then
+    sudo rm -fr "${cwd}"
+fi
+
+if [ ! -d "${cwd}"/completed ]; then
+    mkdir -p "${cwd}"/completed
 fi
 
 exit_fn()
 {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
-        "$repo"
+        "${repo}"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "$1" \
-        "To report a bug create an issue at: $repo/issues"
+        "${1}" \
+        "To report a bug create an issue at: ${repo}/issues"
     exit 1
 }
 
@@ -38,12 +43,13 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' answer
 
     case "$answer" in
-        1)      sudo rm -fr "$cwd" "$0";;
+        1)      sudo rm -fr "${cwd}" "${0}";;
         2)      echo;;
         *)
-                printf "\n%s\n\n" 'Bad user input.'
-                read -p 'Press enter to try again.'
-                echo
+                printf "\n%s\n\n" 'Bad user input. Re-asking question...'
+                sleep 3
+                unset answer
+                clear
                 cleanup_fn
                 ;;
     esac
@@ -57,35 +63,33 @@ for i in ${pkgs[@]}
 do
     missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
 
-    if [ -z "$missing_pkg" ]; then
-        missing_pkgs+=" $i"
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${i}"
     fi
 done
 
-if [ -n "$missing_pkgs" ]; then
-    sudo apt -y install $missing_pkgs
+if [ -n "${missing_pkg}s" ]; then
+    sudo apt -y install ${missing_pkgs}
     sudo apt -y autoremove
     clear
 fi
 
-install_fn()
+install_scripts_fn()
 {
     local i scripts
     clear
 
-    scripts="$(ls | sort -n)"
+    scripts="$(sudo find . -maxdepth 1 -type f | sed 's/^..//g')"
 
     for i in ${scripts[@]} 
     do
-        if [ -f "$i" ]; then
-            if bash "$i"; then
-                sudo find . -maxdepth 1 -type f -name "$i" -exec mv {} completed \;
-                printf "\n%s\n\n" "Script finished: $i"
-            else
-                fail_fn "Failed to install: $i"
-            fi
-            sleep 2
+        if bash "${i}"; then
+            sudo find . -maxdepth 1 -type f -name "${i}" -exec mv {} completed \;
+            printf "\n%s\n\n" "Script finished: ${i}"
+        else
+            fail_fn "Failed to install: ${i}"
         fi
+        sleep 2
     done
 }
 
@@ -97,50 +101,47 @@ install_choice_fn()
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
 
-    case "$answer" in
-        1)      install_fn;;
-        2)      clear;;
+    case "${answer}" in
+        1)      install_scripts_fn;;
+        2)      exit_fn;;
         *)
                 printf "%s\n\n" 'Bad user input... Resetting script.'
                 sleep 3
                 unset answer
                 clear
                 install_choice_fn
+                ;;
     esac
 }
 
-dl_fn()
-{
-    if [ ! -f "$1" ]; then
-        wget --show-progress -cqO "$1" "$2"
-    fi
-}
+cd "${cwd}" || exit 1
 
-cd "$cwd" || exit 1
+#
+# DOWNLOAD ALL THE SCRIPTS
+#
 
-main_url='https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects'
+scripts=(zlib zstd nasm yasm libxml2 openssl tools libpng brotli aria2)
 
-dl_fn '01-build-zlib' "$main_url/build-zlib"
-dl_fn '02-build-zstd' "$main_url/build-zstd"
-dl_fn '03-build-nasm' "$main_url/build-nasm"
-dl_fn '04-build-yasm' "$main_url/build-yasm"
-dl_fn '05-build-libxml2' "$main_url/build-libxml2"
-dl_fn '06-build-openssl' "$main_url/build-openssl"
-dl_fn '07-build-tools' "$main_url/build-tools"
-dl_fn '08-build-libpng' "$main_url/build-libpng"
-dl_fn '09-build-brotli' "$main_url/build-brotli"
-dl_fn '10-build-aria2' "$main_url/build-aria2"
-dl_fn '11-build-eog' "$main_url/build-eog"
+for script in ${scripts[@]}
+do
+    wget -U "${user_agent}" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-${script}"
+done
+clear
 
-# DOWNLOAD ALL SCRIPTS
-dl_fn
-echo
-
+#
 # ASK THE USER IF THEY WANT TO INSTALL ALL OF THE SCRIPTS
+#
+
 install_choice_fn
 
+#
 # CLEANUP THE FILES
+#
+
 cleanup_fn
 
-# SHOW EXIT MESSAGE
+#
+# SHOW THE EXIT MESSAGE
+#
+
 exit_fn
