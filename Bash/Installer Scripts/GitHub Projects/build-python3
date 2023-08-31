@@ -253,7 +253,7 @@ openssl_program="$(type -P openssl)"
 
 if [ -z "${openssl_program}" ]; then
     clear
-    printf "%s\n\n" 'Unable to find the OpenSSL program.'
+    printf "%s\n\n" 'Unable to find the OpenSSL Program.'
     exit 1
 fi
 
