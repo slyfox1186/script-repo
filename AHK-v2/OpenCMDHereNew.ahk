@@ -3,14 +3,7 @@
 
     Mechanism of action:
       - Opens a cmd.exe window to the active explorer window's current folder, otherwise
-        it will open cmd.exe to the current user's download folder.
-
-    Note on Windows 11:
-      - If you have a single explorer window open and are using multiple tabs this script
-        will open the far left tab path "only", it does not matter which tab is open
-        when the hotkey is pressed in this scenario. Otherwise, if you have multiple explorer
-        windows open at once, then this script should open the correct folder path for each
-        separate window when triggered.
+        it will open cmd.exe to the current user's downloads folder.
 
     Extra Info:
       - Feel free to modify the command lines ' /E:ON /T:0A /K pushd ' to fit your needs.
@@ -30,25 +23,27 @@ OpenCMDHereNew()
     {
         Run(A_ComSpec ' /E:ON /T:0A /K pushd C:\Users\' . A_UserName . '\Downloads',, 'Max', &OutputVarPID)
         if WinWait('ahk_pid ' OutputVarPID)
-        {
-            Sleep 100
             WinActivate('ahk_pid ' OutputVarPID)
-        }
-    return
+        return
     }
     hwnd := WinExist('A')
     winObj := ComObject('Shell.Application').Windows
+    try activeTab := ControlGetHwnd('ShellTabWindowClass1', hwnd)
     for win in winObj
     {
         if win.hwnd != hwnd
             continue
+        if IsSet(activeTab)
+        {
+            shellBrowser := ComObjQuery(win, '{000214E2-0000-0000-C000-000000000046}', '{000214E2-0000-0000-C000-000000000046}')
+            ComCall(3, shellBrowser, 'uint*', &thisTab:=0)
+            if thisTab != activeTab
+                continue
+        }
         pwd := '"' win.Document.Folder.Self.Path '"'
         break
     }
     Run(A_ComSpec ' /E:ON /T:0A /K pushd ' . pwd,, 'Max', &OutputVarPID)
     if WinWait('ahk_pid ' OutputVarPID)
-    {
-        Sleep 100
         WinActivate('ahk_pid ' OutputVarPID)
-    }
 }
