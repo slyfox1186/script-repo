@@ -6,9 +6,9 @@
 ##
 ##  Purpose: Build GNU util-linux
 ##
-##  Updated: 08.03.23
+##  Updated: 08.31.23
 ##
-##  Script version: 1.0
+##  Script version: 1.1
 ##
 ###########################################################################################################
 
@@ -23,7 +23,7 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.0
+script_ver=1.1
 archive_dir=util-linux-2.39.2
 archive_url=https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.39/util-linux-2.39.2.tar.xz
 archive_ext="${archive_url//*.}"
@@ -147,7 +147,7 @@ cleanup_fn()
 
 pkgs_fn()
 {
-    pkgs=("${1}" asciidoctor autoconf autoconf-archive autogen automake binutils
+    pkgs=("${1}" asciidoc autoconf autoconf-archive autogen automake binutils
           bison build-essential bzip2 ccache curl libaudit-dev libc6-dev libintl-perl
           libpth-dev ibselinux1-dev libtool libtool-bin lzip lzma-dev m4 nasm po4a texinfo
           yasm zlib1g-dev)
@@ -208,7 +208,7 @@ fi
 # BUILD PROGRAM FROM SOURCE
 #
 
-extralists='blkid,fdisk,losetup,mount,nsenter,sfdisk,umount,unshare'
+extralists=(blkid,fdisk,losetup,mount,nsenter,sfdisk,umount,unshare)
 
 cd "${cwd}/${archive_dir}" || exit 1
 ./autogen.sh
@@ -217,8 +217,11 @@ cd build || exit 1
              --{build,host}="${pc_type}"                               \
              --disable-nls                                             \
              --disable-werror                                          \
+             --enable-line                                             \
+             --enable-newgrp                                           \
              --enable-static-programs="${extralists[@]}"               \
              --enable-ubsan                                            \
+             --enable-usrdir-path                                      \
              --enable-write                                            \
              --with-audit                                              \
              --with-libiconv-prefix=/usr                               \
