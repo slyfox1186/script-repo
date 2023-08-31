@@ -1,16 +1,25 @@
 /*____________________________________________________________________________________
-    OpenCMDHere.ahk
+    OpenCMDHereNew.ahk
 
-    Mechanism of action: Opens a cmd.exe window to the active explorer window's current folder, otherwise
-    it will open cmd.exe to the current user's download folder.
+    Mechanism of action:
+      - Opens a cmd.exe window to the active explorer window's current folder, otherwise
+        it will open cmd.exe to the current user's download folder.
 
-    Extra Info: Feel free to modify the command lines ' /E:ON /T:0A /K pushd ' to fit your needs.
+    Note on Windows 11:
+      - If you have a single explorer window open and are using multiple tabs this script
+        will open the far left tab path "only", it does not matter which tab is open
+        when the hotkey is pressed in this scenario. Otherwsie, if you have multiple explorer
+        windows open at once, then this script should open the correct folder path for each
+        separate window when triggered.
+
+    Extra Info:
+      - Feel free to modify the command lines ' /E:ON /T:0A /K pushd ' to fit your needs.
 
 */
 
-!c up::OpenCMDHere()
+!c up::OpenCMDHereNew()
 
-OpenCMDHere()
+OpenCMDHereNew()
 {
     win1 := 'ahk_class CabinetWClass ahk_exe explorer.exe'
     win2 := 'ahk_class ConsoleWindowClass ahk_exe cmd.exe'
