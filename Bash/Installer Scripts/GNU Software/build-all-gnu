@@ -42,9 +42,10 @@ cleanup_fn()
         1)      sudo rm -fr "${cwd}" "$0";;
         2)      echo;;
         *)
-                printf "\n%s\n\n" 'Bad user input.'
-                read -p 'Press enter to try again.'
-                echo
+                printf "\n%s\n\n" 'Bad user input. Re-asking question...'
+                sleep 3
+                unset answer
+                clear
                 cleanup_fn
                 ;;
     esac
@@ -96,7 +97,7 @@ install_choice_fn()
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
 
-    case "$answer" in
+    case "${answer}" in
         1)      install_scripts_fn;;
         2)      exit_fn;;
         *)
@@ -116,19 +117,31 @@ scripts=(attr autoconf bash binutils coreutils dbus diffutils
          make nano ncurses nettle pkg-config readline sed systemd
          tar texinfo util-linux wget)
 
-# DOWNLOAD ALL SCRIPTS
+#
+# DOWNLOAD ALL THE SCRIPTS
+#
+
 for script in ${scripts[@]}
 do
-    wget -U "$user_agent" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-${script}"
+    wget -U "${user_agent}" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-${script}"
 done
 
 clear
 
+#
 # ASK THE USER IF THEY WANT TO INSTALL ALL OF THE SCRIPTS
+#
+
 install_choice_fn
 
+#
 # CLEANUP THE FILES
+#
+
 cleanup_fn
 
-# SHOW EXIT MESSAGE
+#
+# SHOW THE EXIT MESSAGE
+#
+
 exit_fn
