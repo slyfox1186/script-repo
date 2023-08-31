@@ -257,7 +257,7 @@ if [ -z "${openssl_program}" ]; then
     exit 1
 fi
 
-if [[ '/usr/local/bin/openssl' == "${openssl_program}" ]]; then
+if [[ "${openssl_program}" == '/usr/local/bin/openssl' ]]; then
     openssl_dir=/usr/local
 else
     openssl_dir=/usr
