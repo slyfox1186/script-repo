@@ -6,40 +6,42 @@
 ##
 ##  Purpose: Build GNU Coreutils
 ##
-##  Updated: 08.01.23
+##  Updated: 08.31.23
 ##
-##  Script version: 1.1
+##  Added Version: 9.4
+##
+##  Script version: 1.2
 ##
 ###########################################################################################################
 
 clear
 
-if [ "$EUID" -eq '0' ]; then
+if [ "${EUID}" -eq '0' ]; then
     printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
     exit 1
 fi
 
 #
-# SET VARIABLES
+# SET THE VARIABLES
 #
 
-script_ver=1.1
-archive_dir=coreutils-9.3
-archive_url=https://ftp.gnu.org/gnu/coreutils/coreutils-9.3.tar.xz
+script_ver=1.2
+archive_dir=coreutils-9.4
+archive_url=https://ftp.gnu.org/gnu/coreutils/coreutils-9.4.tar.xz
 archive_ext="${archive_url//*.}"
-cwd="$PWD"/coreutils-build-script
+cwd="${PWD}"/coreutils-build-script
 repo=https://github.com/slyfox1186/script-repo
 
 printf "\n%s\n%s\n\n" \
-    "Coreutils Build Script - v$script_ver" \
+    "Coreutils Build Script - v${script_ver}" \
     '==============================================='
 
 #
-# CREATE OUTPUT DIRECTORY
+# CREATE THE OUTPUT DIRECTORY
 #
 
-if [ ! -d "$cwd" ]; then
-    mkdir -p "$cwd"
+if [ ! -d "${cwd}" ]; then
+    mkdir -p "${cwd}"
 fi
 
 #
@@ -54,8 +56,8 @@ export CC=gcc CXX=g++
 
 PATH="\
 /usr/lib/ccache:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
+${HOME}/.cargo/bin:\
+${HOME}/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
@@ -87,28 +89,28 @@ PKG_CONFIG_PATH="\
 export PKG_CONFIG_PATH
 
 #
-# SET COMPILER OPTIMIZATION FLAGS
+# SET THE COMPILER OPTIMIZATION FLAGS
 #
 
 export {CFLAGS,CXXFLAGS}='-g -O2 -flto -ffunction-sections -fdata-sections -pipe -march=native'
 
 #
-# CREATE FUNCTIONS
+# CREATE THE FUNCTIONS
 #
 
 exit_fn()
 {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
-        "$repo"
+        "${repo}"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "$1" \
-        "To report a bug create an issue at: $repo/issues"
+        "${1}" \
+        "To report a bug create an issue at: ${repo}/issues"
     exit 1
 }
 
@@ -124,8 +126,8 @@ cleanup_fn()
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
 
-    case "$choice" in
-        1)      sudo rm -fr "$cwd";;
+    case "${choice}" in
+        1)      sudo rm -fr "${cwd}";;
         2)      echo;;
         *)
                 clear
@@ -139,63 +141,63 @@ cleanup_fn()
 }
 
 #
-# INSTALL REQUIRED APT PACKAGES
+# INSTALL THE REQUIRED APT PACKAGES
 #
 
 pkgs_fn()
 {
-    pkgs=("$1" autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl git libgmp-dev
+    pkgs=("${1}" autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl git libgmp-dev
           libintl-perl libtool libtool-bin m4 nasm ninja-build texinfo zlib1g-dev yasm)
-    
+
     for i in ${pkgs[@]}
     do
-        missing_pkg="$(sudo dpkg -l | grep -o "$i")"
-    
-        if [ -z "$missing_pkg" ]; then
-            missing_pkgs+=" $i"
+        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+
+        if [ -z "${missing_pkg}" ]; then
+            missing_pkgs+=" ${i}"
         fi
     done
-    
-    if [ -n "$missing_pkgs" ]; then
-        sudo apt -y install $missing_pkgs
+
+    if [ -n "${missing_pkgs}" ]; then
+        sudo apt -y install ${missing_pkgs}
         sudo apt -y autoremove
         clear
     fi
 }
 
 #
-# GET PC TYPE
+# GET THE PC TYPE
 #
 
-curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "$cwd/config.guess"
-pc_type="$(source "$cwd/config.guess")"
+curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "${cwd}/config.guess"
+pc_type="$(source "${cwd}/config.guess")"
 
 #
 # DOWNLOAD THE ARCHIVE FILE
 #
 
-archive_name="$archive_dir.tar.$archive_ext"
+archive_name="${archive_dir}.tar.${archive_ext}"
 
-if [ ! -f "$cwd/$archive_name" ]; then
-    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
+if [ ! -f "${cwd}/${archive_name}" ]; then
+    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
 fi
 
 #
-# CREATE OUTPUT DIRECTORY
+# CREATE THE OUTPUT DIRECTORY
 #
 
-if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
+if [ -d "${cwd}/${archive_dir}" ]; then
+    sudo rm -fr "${cwd}/${archive_dir}"
 fi
-mkdir -p "$cwd/$archive_dir/build"
+mkdir -p "${cwd}/${archive_dir}/build"
 
 #
-# EXTRACT ARCHIVE FILES
+# EXTRACT THE ARCHIVE FILES
 #
 
-if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
+if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
     exit 1
 fi
 
@@ -215,22 +217,22 @@ else
 fi
 
 #
-# BUILD PROGRAM FROM SOURCE
+# BUILD COREUTILS FROM IT'S SOURCE CODE
 #
 
-cd "$cwd/$archive_dir" || exit 1
+cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 cd build || exit 1
-../configure --prefix=/usr/local                    \
-             --{build,host}="$pc_type"              \
-             --disable-nls                          \
-             --enable-gcc-warnings=no               \
-             --enable-threads=posix                 \
-             --with-clang=system                    \
-             --with-libgmp-prefix=/usr              \
-             --with-libiconv-prefix="$iconv_prefix" \
-             --with-libintl-prefix=/usr             \
-             --with-openssl=auto                    \
+../configure --prefix=/usr/local                      \
+             --{build,host}="${pc_type}"              \
+             --disable-nls                            \
+             --enable-gcc-warnings=no                 \
+             --enable-threads=posix                   \
+             --with-clang=system                      \
+             --with-libgmp-prefix=/usr                \
+             --with-libiconv-prefix="${iconv_prefix}" \
+             --with-libintl-prefix=/usr               \
+             --with-openssl=auto                      \
              --with-pic
 make "-j$(nproc --all)"
 if ! sudo make install; then
@@ -239,8 +241,8 @@ if ! sudo make install; then
     exit 1
 fi
 
-# PROMPT USER TO CLEAN UP FILES
+# PROMPT THE USER TO CLEAN UP THE LEFTOVER FILES
 cleanup_fn
 
-# SHOW EXIT MESSAGE
+# SHOW THE EXIT MESSAGE
 exit_fn
