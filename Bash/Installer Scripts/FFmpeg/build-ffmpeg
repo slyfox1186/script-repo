@@ -21,13 +21,13 @@
 ##
 ##  GeForce CUDA:
 ##
-##  Updated: Version to 12.2.1
+##  Updated: Version to 12.2.2
 ##
 ##    - If the cuda libraries are not installed (for Geforce graphics cards only) the user
 ##    - will be prompted by the script to install them so that hardware acceleration is
 ##    - enabled when compiling FFmpeg
 ##
-##  Last Update: 08.18.23
+##  Last Update: 08.31.23
 ##
 ##  Added: Debian OS Support for Bookworm (12)
 ##  Added: cyanrip
@@ -35,9 +35,7 @@
 ##  Added: cunit support library for libmysofa
 ##  Added: libcurl support library for cyanrip
 ##
-##  Updated: the CUDA SDK Toolkit to version 12.2.0
-##
-##  Script version: v2.3
+##  Script version: 2.4
 ##
 ############################################################################################
 
@@ -46,9 +44,9 @@
 #
 
 script_name="${0:2}"
-script_ver=2.3
+script_ver=2.4
 ffmpeg_ver=5.1.3
-cuda_ver=12.2.1
+cuda_ver=12.2.2
 cwd="$PWD"/ffmpeg-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
@@ -666,13 +664,13 @@ cuda_download_fn()
 
     case "$cuda_choice" in
         1)
-            wget --show progress -cqO "$packages/nvidia-cuda/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-debian10-12-2-local_12.2.1-535.86.10-1_amd64.deb"
+            wget --show progress -cqO "$packages/nvidia-cuda/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-debian10-12-2-local_12.2.2-535.104.05-1_amd64.deb"
             sudo dpkg -i "$packages/nvidia-cuda/cuda-$cuda_ver.deb"
             sudo cp -f /var/cuda-repo-debian10-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
             sudo add-apt-repository -y contrib
             ;;
         2)
-            wget --show progress -cqO "$packages/nvidia-cuda/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-debian11-12-2-local_12.2.1-535.86.10-1_amd64.deb"
+            wget --show progress -cqO "$packages/nvidia-cuda/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-debian11-12-2-local_12.2.2-535.104.05-1_amd64.deb"
             sudo dpkg -i "$packages/nvidia-cuda/cuda-$cuda_ver.deb"
             sudo cp -f /var/cuda-repo-debian11-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
             sudo add-apt-repository -y contrib
@@ -680,29 +678,29 @@ cuda_download_fn()
         3)
             wget --show progress -cqO "$packages/nvidia-cuda/cuda-ubuntu2004.pin" "$cuda_url/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin"
             sudo mv "$packages/nvidia-cuda/cuda-ubuntu2004.pin" /etc/apt/preferences.d/cuda-repository-pin-600
-            wget --show progress -cqO "$packages/nvidia/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-ubuntu2004-12-2-local_12.2.1-535.86.10-1_amd64.deb"
+            wget --show progress -cqO "$packages/nvidia/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-ubuntu2004-12-2-local_12.2.2-535.104.05-1_amd64.deb"
             sudo dpkg -i "$packages/nvidia/cuda-$cuda_ver.deb"
             sudo cp -f /var/cuda-repo-ubuntu2004-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
             ;;
         4)
             wget --show progress -cqO "$packages/nvidia-cuda/cuda-ubuntu2204.pin" "$cuda_url/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin"
             sudo mv "$packages/nvidia-cuda/cuda-ubuntu2204.pin" /etc/apt/preferences.d/cuda-repository-pin-600
-            wget --show progress -cqO "$packages/nvidia/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-ubuntu2204-12-2-local_12.2.1-535.86.10-1_amd64.deb"
+            wget --show progress -cqO "$packages/nvidia/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-ubuntu2204-12-2-local_12.2.2-535.104.05-1_amd64.deb"
             sudo dpkg -i "$packages/nvidia/cuda-$cuda_ver.deb"
             sudo cp -f /var/cuda-repo-ubuntu2204-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
             ;;
         5)
             wget --show progress -cqO "$packages/nvidia-cuda/cuda-wsl-ubuntu.pin" "$cuda_url/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin"
             sudo mv "$packages/nvidia-cuda/cuda-wsl-ubuntu.pin" /etc/apt/preferences.d/cuda-repository-pin-600
-            wget --show progress -cqO "$packages/nvidia/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-wsl-ubuntu-12-2-local_12.2.1-1_amd64.deb"
+            wget --show progress -cqO "$packages/nvidia/cuda-$cuda_ver.deb" "$cuda_url/$cuda_ver/local_installers/cuda-repo-wsl-ubuntu-12-2-local_12.2.2-1_amd64.deb"
             sudo dpkg -i "$packages/nvidia/cuda-$cuda_ver.deb"
             sudo cp -f /var/cuda-repo-wsl-ubuntu-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
             ;;
     6)      exit_fn;;
     *)
             clear
-            fail_fn 'Bad user input. Resetting script...'
-            sleep 2
+            printf "%s\n\n" 'Bad user input. Resetting question...'
+            sleep 3
             unset cuda_choice
             clear
             cuda_download_fn
