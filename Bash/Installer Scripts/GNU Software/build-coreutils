@@ -27,13 +27,13 @@ fi
 
 script_ver=1.2
 archive_dir=coreutils-9.4
-archive_url=https://ftp.gnu.org/gnu/coreutils/coreutils-9.4.tar.xz
+archive_url=https://ftp.gnu.org/gnu/coreutils/${archive_dir}.tar.xz
 archive_ext="${archive_url//*.}"
 install_prefix=/usr/local
 cwd="${PWD}"/coreutils-build-script
 repo=https://github.com/slyfox1186/script-repo
 
-printf "\n%s\n%s\n\n" \
+printf "%s\n%s\n\n" \
     "Coreutils Build Script - v${script_ver}" \
     '==============================================='
 
@@ -41,15 +41,16 @@ printf "\n%s\n%s\n\n" \
 # CREATE THE OUTPUT DIRECTORY
 #
 
-if [ ! -d "${cwd}" ]; then
-    mkdir -p "${cwd}"
+if [ -d "${cwd}" ]; then
+    sudo rm -fr "${cwd}"
 fi
+mkdir -p "${cwd}"
 
 #
 # SET THE C+CPP COMPILERS
 #
 
-export CC=gcc CXX=g++
+export CC=clang CXX=clang++
 
 #
 # SET THE PATH VARIABLE
@@ -147,8 +148,9 @@ cleanup_fn()
 
 pkgs_fn()
 {
-    pkgs=("${1}" autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl git libgmp-dev
-          libintl-perl libtool libtool-bin m4 nasm ninja-build texinfo zlib1g-dev yasm)
+    pkgs=("${1}" autoconf autoconf-archive autogen automake binutils build-essential ccache
+          clang clang-tools cmake curl git libgmp-dev libintl-perl libtool libtool-bin m4
+          nasm ninja-build texinfo zlib1g-dev yasm)
 
     for i in ${pkgs[@]}
     do
