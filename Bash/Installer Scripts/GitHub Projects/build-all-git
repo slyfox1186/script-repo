@@ -2,7 +2,7 @@
 
 clear
 
-cwd="$PWD"/git-installers-master
+cwd="${PWD}"/git-installers-master
 repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 
@@ -42,7 +42,7 @@ cleanup_fn()
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
 
-    case "$answer" in
+    case "${answer}" in
         1)      sudo rm -fr "${cwd}" "${0}";;
         2)      echo;;
         *)
@@ -68,7 +68,7 @@ do
     fi
 done
 
-if [ -n "${missing_pkg}s" ]; then
+if [ -n "${missing_pkgs}" ]; then
     sudo apt -y install ${missing_pkgs}
     sudo apt -y autoremove
     clear
@@ -79,7 +79,9 @@ install_scripts_fn()
     local i scripts
     clear
 
-    scripts="$(sudo find . -maxdepth 1 -type f | sed 's/^..//g')"
+    mv '010-build-aria2' '10-build-aria2'
+
+    scripts="$(sudo find . -maxdepth 1 -type f | sed 's/^..//g' | sort)"
 
     for i in ${scripts[@]} 
     do
@@ -93,47 +95,44 @@ install_scripts_fn()
     done
 }
 
-install_choice_fn()
-{
-    printf "%s\n\n%s\n\n%s\n%s\n\n" \
-        'Do you want to install all of the scripts now?' \
-        'You must manually remove any scripts you do not want to install before continuing.' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' answer
-
-    case "${answer}" in
-        1)      install_scripts_fn;;
-        2)      exit_fn;;
-        *)
-                printf "%s\n\n" 'Bad user input... Resetting script.'
-                sleep 3
-                unset answer
-                clear
-                install_choice_fn
-                ;;
-    esac
-}
-
-cd "${cwd}" || exit 1
-
 #
 # DOWNLOAD ALL THE SCRIPTS
 #
 
+cd "${cwd}" || exit 1
+
 scripts=(zlib zstd nasm yasm libxml2 openssl tools libpng brotli aria2)
+cnt=0
 
 for script in ${scripts[@]}
 do
-    wget -U "${user_agent}" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-${script}"
+    let cnt=cnt+1
+    wget -U "${user_agent}" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-${script}"
+    mv "build-${script}" "0${cnt}-build-${script}"
 done
-clear
 
 #
 # ASK THE USER IF THEY WANT TO INSTALL ALL OF THE SCRIPTS
 #
 
-install_choice_fn
+printf "%s\n\n%s\n\n%s\n%s\n\n" \
+    'Do you want to install all of the scripts now?' \
+    'You must manually remove any scripts you do not want to install before continuing.' \
+    '[1] Yes' \
+    '[2] No'
+read -p 'Your choices are (1 or 2): ' answer
+
+case "${answer}" in
+    1)      install_scripts_fn;;
+    2)      exit_fn;;
+    *)
+            printf "%s\n\n" 'Bad user input... Resetting script.'
+            sleep 3
+            unset answer
+            clear
+            install_choice_fn
+            ;;
+esac
 
 #
 # CLEANUP THE FILES
