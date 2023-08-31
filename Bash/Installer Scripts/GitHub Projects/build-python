@@ -8,9 +8,9 @@
 ##
 ##  Features: Static build, OpenSSL backend
 ##
-##  Updated: 08.30.23
+##  Updated: 08.07.23
 ##
-##  Script version: 1.5
+##  Script version: 1.4
 ##
 #################################################################################################################################
 
@@ -25,7 +25,7 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.5
+script_ver=1.4
 py_ver=3.12.0rc1
 archive_dir=Python-${py_ver}.tar.xz
 archive_url=https://www.python.org/ftp/python/3.12.0/${archive_dir}
@@ -33,6 +33,14 @@ archive_ext="${archive_url//*.}"
 cwd="${PWD}"/python3-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
+
+LDFLAGS='-L/lib/x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu -L/usr/local/lib'
+LDFLAGS+=' -L/usr/local/lib64 -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+CPPFLAGS='-I/usr/include/openssl -I/usr/local/include -I/usr/include'
+
+#
+# START PYTHON3 BUILD
+#
 
 printf "%s\n%s\n\n" \
     "Python3 Build Script v${py_ver} - v${script_ver}" \
@@ -150,7 +158,7 @@ fail_fn()
 
 show_ver_fn()
 {
-    save_ver="$(python3 -V | grep -Eo '[0-9\.]+$')"
+    save_ver="$(sudo find /usr/local -type f -name python3.12 | grep -Eo '[0-9\.]+$')"
     echo
     printf "%s\n\n" "The updated Python3 version is: ${save_ver}"
     sleep 3
@@ -239,9 +247,6 @@ fi
 # BUILD PROGRAM FROM SOURCE
 #
 
-LDFLAGS='-L/lib/x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu -L/usr/local/lib'
-LDFLAGS+=' -L/usr/local/lib64 -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
-
 cd "${cwd}/${archive_dir}" || exit 1
 cd build || exit 1
 ../configure --enable-optimizations                                                \
@@ -254,7 +259,7 @@ cd build || exit 1
              --with-valgrind                                                       \
              PKG_CONFIG="$(type -P pkg-config)"                                    \
              PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"                                  \
-             CPPFLAGS='-I/usr/include/openssl -I/usr/local/include -I/usr/include' \
+             CPPFLAGS="${CPPFLAGS}"                                                \
              LDFLAGS="${LDFLAGS}"                                                  \
              LIBS="$(pkg-config --libs openssl)"                                   \
              CFLAGS='-I/usr/include/openssl'
