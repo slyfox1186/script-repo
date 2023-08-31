@@ -15,6 +15,9 @@
     Extra Info:
       - Feel free to modify the command lines ' /E:ON /T:0A /K pushd ' to fit your needs.
 
+    Authors:
+      - SlyFox1186
+      - https://www.reddit.com/user/plankoe/
 */
 
 !c up::OpenCMDHereNew()
