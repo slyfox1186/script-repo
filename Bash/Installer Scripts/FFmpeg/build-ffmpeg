@@ -35,7 +35,7 @@
 ##  Added: cunit support library for libmysofa
 ##  Added: libcurl support library for cyanrip
 ##
-##  Script version: 2.4
+##  Script version: 2.5
 ##
 ############################################################################################
 
@@ -44,7 +44,7 @@
 #
 
 script_name="${0:2}"
-script_ver=2.4
+script_ver=2.5
 ffmpeg_ver=5.1.3
 cuda_ver=12.2.2
 cwd="$PWD"/ffmpeg-build-script
@@ -57,7 +57,7 @@ ffmpeg_libraries=()
 latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
-debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=ON # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 CFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2 -g -O2 -march=native"
 CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include"
@@ -522,7 +522,7 @@ gpu_arch_fn()
             *)      fail_fn 'Unable to define the variable "gpu_arch" in the function "gpu_arch_fn".';;
         esac
     else
-        fail_fn 'Failed to find the variable: gpu_type'
+        fail_fn 'Failed to find the variable: gpu_type at line 528'
     fi
 }
 
@@ -878,26 +878,17 @@ ffmpeg_install_choice()
 
 install_libjxl_fn()
 {
-    local i
-
     cd "$packages"/deb-files || exit 1
 
     printf "\n%s\n%s\n" \
-        'Installing: libjxl_0.8.1_amd64.deb' \
-        '=========================================='
+        'Installing: libjxl' \
+        '======================'
     if sudo dpkg -i libjxl_0.8.1_amd64.deb; then
         sudo rm libjxl_0.8.1_amd64.deb &>/dev/null
         echo
     fi
 
-    for i in *.deb
-    do
-        printf "%s\n%s\n" \
-            "Installing: $i" \
-            '=========================================='
-        sudo dpkg -i "$i"
-        echo
-    done
+    sudo dpkg -i ./*.deb
 }
 
 download_libjxl_fn()
@@ -929,7 +920,7 @@ sort_libjxl_fn()
         # CALL THE DOWNLOAD FUNCTION FOR THE LIBJXL DEBIAN FILES
         download_libjxl_fn "$libjxl_download"
 
-        if ! tar -xf "$packages"/libjxl.tar.gz -C "$packages"/deb-files --strip-components 1; then
+        if ! tar -zxf "$packages"/libjxl.tar.gz -C "$packages"/deb-files --strip-components 1; then
             fail_fn "Could not extract the libjxl archive: $packages/libjxl.tar.gz"
         fi
         install_libjxl_fn
@@ -987,13 +978,14 @@ fi
 #
 
 case "$OS" in
-    'Debian GNU/Linux')     debian_os_version;;
-    'Ubuntu')               ubuntu_os_version;;
-    *)                      fail_fn 'Could not detect the OS architecture.';;
+    Debian*)        debian_os_version;;
+    Ubuntu)         ubuntu_os_version;;
+    *)              fail_fn 'Could not detect the OS architecture.';;
 esac
 
 check_python3_ver()
 {
+    local python3_ver
     python3_ver="$(python3 --version | grep -Eo '[0-9\.]+')"
     python3_rm_decimals="${python3_ver//\./}"
 }
@@ -1035,11 +1027,7 @@ iscuda="$(sudo find /usr/local/cuda* -type f -name nvcc)"
 # SET THE C & C++ COMPILERS TO THE HIGHEST VERSION INSTALLED
 #
 
-if which gcc &>/dev/null; then
-    export CC=gcc CXX=g++
-else
-    fail_fn 'Please install "gcc" to continue the build.'
-fi
+export CC='ccache clang-15' CXX='ccache clang++-15'
 
 #
 # MAKE SURE WE USE THE CORRECT M4 FOLDER
@@ -1327,7 +1315,9 @@ git_ver_fn '4720790' '3' 'T'
 if build 'libtiff' "$g_ver"; then
     download "https://gitlab.com/libtiff/libtiff/-/archive/v$g_ver/libtiff-v$g_ver.tar.bz2" "libtiff-$g_ver.tar.bz2"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --disable-shared
+    execute ./configure --prefix="$workspace"     \
+                        --{build,host}="$pc_type" \
+                        --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
@@ -1361,15 +1351,10 @@ fi
 
 pre_check_ver 'google/brotli' '1' 'T'
 if build 'brotli' "$g_ver"; then
-    download "https://codeload.github.com/google/brotli/tar.gz/refs/tags/v$g_ver" "brotli-$g_ver.tar.gz"
-    execute ./bootstrap
-    mkdir build
-    cd build || exit 1
-    execute ../configure-cmake --prefix="$workspace"
-    execute make "-j$cpu_threads"
-    execute make test
-    execute make install
-    execute make clean
+    download "https://github.com/google/brotli/archive/refs/tags/v$g_ver.tar.gz" "brotli-$g_ver.tar.gz"
+    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} -G Ninja -Wno-dev
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'brotli' "$g_ver"
 fi
 
@@ -1921,7 +1906,7 @@ ffmpeg_libraries+=('--enable-amf')
 
 pre_check_ver 'gpac/gpac' '1' 'T'
 if build 'gpac' "$g_ver"; then
-    download "https://codeload.github.com/gpac/gpac/tar.gz/refs/tags/v$g_ver" "gpac-$g_ver.tar.gz"
+    download_git 'https://github.com/gpac/gpac.git'
     execute ./configure --prefix="$workspace" --enable-gprof --static-{bin,modules} --extra-cflags="${CFLAGS}"
     execute make "-j$cpu_threads"
     execute make install
@@ -1956,17 +1941,17 @@ ffmpeg_libraries+=('--enable-libsvtav1')
 git_ver_fn '536' '2' 'B'
 if build 'x264' "$g_sver"; then
     download "https://code.videolan.org/videolan/x264/-/archive/$g_ver/x264-$g_ver.tar.bz2" "x264-$g_sver.tar.bz2"
-    execute ./configure --prefix="$workspace" --bit-depth=all --chroma-format=all --enable-{gprof,lto,static,strip}
-    execute make "-j$cpu_threads"
-    execute make install
-    execute make install-lib-static
+    execute ./configure --prefix="$workspace" --bit-depth=all --chroma-format=all --enable-{gprof,static,strip}
+    execute sudo make "-j$cpu_threads"
+    execute sudo make install
+    execute sudo make install-lib-static
     execute make distclean
     build_done 'x264' "$g_sver"
 fi
 ffmpeg_libraries+=('--enable-libx264')
 
-if build 'x265' '8f18e3a'; then
-    download 'https://bitbucket.org/multicoreware/x265_git/get/8f18e3ad32684eee95e885e718655f93951128c3.tar.bz2' 'x265-8f18e3a.tar.bz2'
+if build 'x265' '359b8ec'; then
+    download 'https://bitbucket.org/multicoreware/x265_git/get/359b8ec1b6cbfcf94983e2bf3cce315ccbc85e75.tar.bz2' 'x265-359b8ec.tar.bz2'
     # download 'https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz' 'x265-3.5.tar.gz'
     cd build/linux || exit 1
     rm -fr {8,10,12}bit 2>/dev/null
@@ -2014,7 +1999,7 @@ EOF
         fail_fn "The sript could not located the file \"$workspace/lib/$x265_lib\" and needs to be updated. This error is located in the 'x265' build."
     fi
 
-    build_done 'x265' '8f18e3a'
+    build_done 'x265' '359b8ec'
 fi
 ffmpeg_libraries+=('--enable-libx265')
 
@@ -2067,6 +2052,7 @@ if build 'srt' "$g_ver"; then
 fi
 ffmpeg_libraries+=('--enable-libsrt')
 
+export CC=gcc CXX=g++
 git_ver_fn '12073082' '3' 'T'
 if build 'vvc' 'git'; then
     download_git 'https://gitlab.com/m-ab-s/VVCSoftware_VTM.git' 'vvc-git'
@@ -2080,6 +2066,7 @@ if build 'vvc' 'git'; then
     build_done 'vvc' 'git'
 fi
 
+export CC='ccache clang-15' CXX='ccache clang++-15'
 pre_check_ver 'avisynth/avisynthplus' '1' 'T'
 if build 'avisynth' "$g_ver"; then
     download "https://codeload.github.com/AviSynth/AviSynthPlus/tar.gz/refs/tags/v$g_ver" "avisynth-$g_ver.tar.gz"
@@ -2125,7 +2112,7 @@ if build 'libgav1' 'git'; then
     mkdir -p 'libgav1_build'
     execute git clone -b 20220623.0 --depth 1 https://github.com/abseil/abseil-cpp.git third_party/abseil-cpp
     execute cmake -B libgav1_build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release,EXPORT_COMPILE_COMMANDS=ON,INSTALL_SBINDIR=sbin} \
-        -DBUILD_SHARED_LIBS=OFF -DABSL_{ENABLE_INSTALL,PROPAGATE_CXX_STD}=ON -G Ninja -Wno-dev
+        -DBUILD_SHARED_LIBS=OFF -DABSL_{ENABLE_INSTALL,PROPAGATE_CXX_STD}=ON -DLIBGAV1_ENABLE_TESTS=OFF -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C libgav1_build
     execute ninja "-j$cpu_threads" -C libgav1_build install
     build_done 'libgav1' 'git'
@@ -2206,15 +2193,16 @@ printf "\n%s\n%s\n%s\n" \
 
 if build 'ffmpeg' "$ffmpeg_ver"; then
     download "https://www.ffmpeg.org/releases/ffmpeg-$ffmpeg_ver.tar.xz"
-    mkdir build
-    cd build || exit 1
-    ../configure                                  \
+    ./configure                                   \
         "${ffmpeg_libraries[@]}"                  \
         --prefix="$workspace"                     \
         --arch="$(uname -m)"                      \
         --cpu="$((cpu_threads / 2))"              \
+        --cc="${CC}"                              \
+        --cxx="${CXX}"                            \
         --disable-debug                           \
         --disable-doc                             \
+        --disable-large-tests                     \
         --disable-shared                          \
         --enable-ffnvcodec                        \
         --enable-gpl                              \
@@ -2234,7 +2222,6 @@ if build 'ffmpeg' "$ffmpeg_ver"; then
         --enable-libtwolame                       \
         --enable-libv4l2                          \
         --enable-libvo-amrwbenc                   \
-        --enable-lto                              \
         --enable-nonfree                          \
         --enable-opengl                           \
         --enable-pic                              \
@@ -2242,15 +2229,14 @@ if build 'ffmpeg' "$ffmpeg_ver"; then
         --enable-small                            \
         --enable-static                           \
         --enable-version3                         \
-        --extra-cflags="${CFLAGS}"                  \
-        --extra-cxxflags="$CXXFLAGS"              \
-        --extra-ldexeflags="${LDEXEFLAGS}"          \
-        --extra-ldflags="$LDFLAGS"                \
-        --extra-libs="$EXTRALIBS"                 \
-        --extra-version="$EXTRA_VERSION"          \
+        --extra-cflags="${CFLAGS}"                \
+        --extra-cxxflags="${CXXFLAGS}"            \
+        --extra-ldexeflags="${LDEXEFLAGS}"        \
+        --extra-ldflags="${LDFLAGS}"              \
+        --extra-libs="${EXTRALIBS}"               \
+        --extra-version="${EXTRA_VERSION}"        \
         --pkgconfigdir="$workspace"/lib/pkgconfig \
-        --pkg-config-flags='--static'             \
-        --strip="$(type -P strip)"
+        --pkg-config-flags='--static'
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
