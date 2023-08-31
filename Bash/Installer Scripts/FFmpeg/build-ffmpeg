@@ -1208,7 +1208,11 @@ pre_check_ver 'nkoriyama/aribb24' '1' 'T'
 if build 'aribb24' '2.16.01'; then
     download "https://codeload.github.com/nkoriyama/aribb24/tar.gz/refs/tags/v$g_ver" "aribb24-$g_ver.tar.gz"
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --disable-shared
+    execute ./configure --prefix="$workspace"              \
+                        --disable-shared                   \
+                        --with-pic                         \
+                        PKG_CONFIG="$(type -P pkg-config)" \
+                        PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
@@ -1774,7 +1778,7 @@ if [ "$VER" != '18.04' ]; then
             source "$HOME"/.bashrc
         fi
         rm -fr "$HOME"/.cargo/registry/index/* "$HOME"/.cargo/.package-cache
-        execute cargo install --version '0.9.20+cargo-0.71' cargo-c
+        execute cargo install --version '0.9.24+cargo-0.73.0' cargo-c
         download "https://codeload.github.com/xiph/rav1e/tar.gz/refs/tags/v$g_ver" "rav1e-$g_ver.tar.gz"
         execute cargo cinstall --prefix="$workspace" --library-type=staticlib --crt-static --release
         build_done 'rav1e' "$g_ver"
@@ -1997,13 +2001,13 @@ EOF
         sed -i.backup 's/lgcc_s/lgcc_eh/g' "$workspace"/lib/pkgconfig/x265.pc
     fi
 
-    if [ -f "$workspace"/lib/libx265.so.208 ]; then
-        sudo cp -f "$workspace"/lib/libx265.so.208 /usr/lib/x86_64-linux-gnu
-        sudo ln -fs /usr/lib/x86_64-linux-gnu/libx265.so.208 /usr/lib/x86_64-linux-gnu/libx265.so
+    x265_lib="$(sudo find . -type f -name libx265.so.* | sed 's/^..//g')"
+
+    if [ -f "$workspace/lib/$x265_lib" ]; then
+        sudo cp -f "$workspace/lib/$x265_lib" '/usr/lib/x86_64-linux-gnu'
+        sudo ln -fs "/usr/lib/x86_64-linux-gnu/$x265_lib" '/usr/lib/x86_64-linux-gnu/libx265.so'
     else
-        echo
-        read -p "The sript could not located the file \"$workspace/lib/libx265.so.208\" and needs to be updated. This error is located in the 'x265' build."
-        echo
+        fail_fn "The sript could not located the file \"$workspace/lib/$x265_lib\" and needs to be updated. This error is located in the 'x265' build."
     fi
 
     build_done 'x265' '8f18e3a'
