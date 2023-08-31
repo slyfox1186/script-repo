@@ -4,7 +4,7 @@ clear
 
 cwd="${PWD}"/gnu-installer-master
 repo=https://github.com/slyfox1186/script-repo
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 
 if [ ! -d "${cwd}"/completed ]; then
     mkdir -p "${cwd}"/completed
@@ -112,8 +112,8 @@ install_choice_fn()
 cd "${cwd}" || exit 1
 
 scripts=(attr autoconf bash binutils coreutils dbus diffutils
-         gawk gettext-libiconv grep imath isl libtool m4 make
-         nano ncurses nettle pkg-config readline sed systemd
+         gawk gettext-libiconv gnutls grep imath isl libtool m4
+         make nano ncurses nettle pkg-config readline sed systemd
          tar texinfo util-linux wget)
 
 # DOWNLOAD ALL SCRIPTS
