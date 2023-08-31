@@ -4,7 +4,7 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-yasm
 ##
-##  Purpose: Build GNU libtool
+##  Purpose: Build yasm
 ##
 ##  Updated: 08.04.23
 ##
@@ -31,7 +31,7 @@ repo=https://github.com/slyfox1186/script-repo
 debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 printf "\n%s\n%s\n\n" \
-    "libtool build script - v$script_ver" \
+    "yasm build script - v$script_ver" \
     '==============================================='
 
 #
@@ -52,7 +52,7 @@ export CC=gcc CXX=g++
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O2 -flto -ffunction-sections -fdata-sections -pipe -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
 
 #
 # SET THE PATH VARIABLE
@@ -149,7 +149,7 @@ build()
             echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
             return 1
         elif $latest; then
-            echo "$1 is oudebugtdated and will be rebuilt using version $2"
+            echo "$1 is outdated and will be rebuilt using version $2"
             return 0
         else
             echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
@@ -273,7 +273,7 @@ git_ver_fn()
 pkgs_fn()
 {
     pkgs=("$1" autogen automake binutils bison build-essential bzip2 ccache cmake
-          curl libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev
+          curl libc6-dev libintl-perl libpth-dev yasm yasm-bin lzip lzma-dev
           nasm ninja-build texinfo yasm yasm1g-dev)
 
     for i in ${pkgs[@]}
