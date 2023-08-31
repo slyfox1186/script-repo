@@ -2094,7 +2094,11 @@ if build 'vapoursynth' "$g_ver"; then
     fi
     execute pip install Cython==0.29.36
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --disable-shared CPPFLAGS="-I$workspace/include" CXXFLAGS="$CXXFLAGS"
+    execute ./configure --prefix="$workspace"           \
+                        --disable-shared                \
+                        CPPFLAGS="-I$workspace/include" \
+                        CFLAGS="${CFLAGS}"              \
+                        CXXFLAGS="${CXXFLAGS}"
     execute make "-j$cpu_threads"
     execute make install
     execute make distclean
