@@ -8,9 +8,9 @@
 ##
 ##  Features: Static build, OpenSSL backend
 ##
-##  Updated: 08.07.23
+##  Updated: 08.30.23
 ##
-##  Script version: 1.4
+##  Script version: 1.5
 ##
 #################################################################################################################################
 
@@ -25,16 +25,16 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.4
+script_ver=1.5
 py_ver=3.12.0rc1
-archive_dir=Python-"${py_ver}"
-archive_url=https://www.python.org/ftp/python/3.12.0/Python-"${py_ver}".tar.xz
+archive_dir=Python-${py_ver}.tar.xz
+archive_url=https://www.python.org/ftp/python/3.12.0/${archive_dir}
 archive_ext="${archive_url//*.}"
 cwd="${PWD}"/python3-build-script
-user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
-printf "\n%s\n%s\n\n" \
+printf "%s\n%s\n\n" \
     "Python3 Build Script v${py_ver} - v${script_ver}" \
     '==============================================='
 
@@ -43,8 +43,9 @@ printf "\n%s\n%s\n\n" \
 #
 
 if [ ! -d "${cwd}" ]; then
-    mkdir -p "${cwd}"
+    sudo rm -fr "${cwd}"
 fi
+mkdir -p "${cwd}"
 
 #
 # SET THE C+CPP COMPILERS
