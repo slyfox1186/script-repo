@@ -13,7 +13,7 @@
 ##  Last Script Update: 08.31.23
 ##  Script Version: 4.3
 ##
-##  Changed: GCC-13 to v13.2.0
+##  Updated: GCC-13 to version - 13.2.0
 ##
 ##  Added: multiple support libraries using the latest versions available
 ##  Added: link time optimization support
