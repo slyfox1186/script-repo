@@ -8,7 +8,7 @@
     Note on Windows 11:
       - If you have a single explorer window open and are using multiple tabs this script
         will open the far left tab path "only", it does not matter which tab is open
-        when the hotkey is pressed in this scenario. Otherwsie, if you have multiple explorer
+        when the hotkey is pressed in this scenario. Otherwise, if you have multiple explorer
         windows open at once, then this script should open the correct folder path for each
         separate window when triggered.
 
