@@ -178,8 +178,10 @@ cleanup_fn()
         1)      sudo rm -fr "${cwd}" "${0}";;
         2)      return 0;;
         *)
+                clear
                 printf "%s\n\n" 'Bad user input.'
                 read -p 'Press enter to try again.'
+                unset answer
                 clear
                 cleanup_fn
                 ;;
@@ -244,26 +246,59 @@ if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-compone
 fi
 
 #
+# GET OPENSSL DIR
+#
+
+openssl_program="$(type -P openssl)"
+
+if [ -z "${openssl_program}" ]; then
+    clear
+    printf "%s\n\n" 'Unable to find the OpenSSL program.'
+    exit 1
+fi
+
+if [[ '/usr/local/bin/openssl' == "${openssl_program}" ]]; then
+    openssl_dir=/usr/local
+else
+    openssl_dir=/usr
+fi
+
+#
 # BUILD PROGRAM FROM SOURCE
 #
 
-cd "${cwd}/${archive_dir}" || exit 1
-cd build || exit 1
+cd "${cwd}/${archive_dir}/build" || exit 1
+
+clear
+printf "%s\n%s\n\n" \
+    'Running: configure' \
+    '========================'
+
 ../configure --enable-optimizations                                                \
              --with-ensurepip=upgrade                                              \
              --with-lto=yes                                                        \
-             --with-openssl=/usr                                                   \
+             --with-openssl="${openssl_dir}"                                       \
              --with-pkg-config=yes                                                 \
              --with-openssl-rpath=auto                                             \
              --with-ssl-default-suites=openssl                                     \
              --with-valgrind                                                       \
              PKG_CONFIG="$(type -P pkg-config)"                                    \
              PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"                                  \
+             CFLAGS='-I/usr/include/openssl'                                       \
              CPPFLAGS="${CPPFLAGS}"                                                \
              LDFLAGS="${LDFLAGS}"                                                  \
-             LIBS="$(pkg-config --libs openssl)"                                   \
-             CFLAGS='-I/usr/include/openssl'
+             LIBS="$(pkg-config --libs openssl)"
+
+printf "\n%s\n%s\n\n" \
+    "Running: make -j$(nproc --all)" \
+    '========================'
+
 make "-j$(nproc --all)"
+
+printf "\n%s\n%s\n\n" \
+    'Running: sudo make altinstall' \
+    '========================'
+
 sudo make altinstall
 
 # SHOW THE NEW VERSION
