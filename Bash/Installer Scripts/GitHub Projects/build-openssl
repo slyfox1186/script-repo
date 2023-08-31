@@ -40,7 +40,7 @@ pem_output=${cert_dir}/cacert.pem
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
-printf "\n%s\n%s\n\n" \
+printf "%s\n%s\n\n" \
     "OpenSSL Build Script - v${script_ver}" \
     '==============================================='
 
@@ -56,7 +56,7 @@ fi
 # SET THE C+CPP COMPILERS
 #
 
-export CC=gcc CXX=g++
+export CC=gcc-13 CXX=g++-13
 
 #
 # EXPORT COMPILER OPTIMIZATION FLAGS
@@ -265,7 +265,7 @@ printf "\n%s\n%s\n\n" \
 sleep 2
 
 # REQUIRED FOR FIPS FUNCTIONALITY TO WORK
-sudo openssl fipsinstall
+sudo openssl fipsinstall >/dev/null
 
 printf "\n%s\n%s\n\n" \
     "Running: sudo chmod 644 ${pem_output}" \
