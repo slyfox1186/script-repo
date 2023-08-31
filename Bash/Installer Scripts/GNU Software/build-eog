@@ -1,0 +1,236 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2068,SC2086
+
+###########################################################################################################
+##
+##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-brotli
+##
+##  Purpose: Build GNU EYE OF GNOME (AKA EOG)
+##
+##  Updated: 08.31.23
+##
+##  Script version: 1.1
+##
+###########################################################################################################
+
+clear
+
+if [ "${EUID}" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
+
+#
+# SET VARIABLES
+#
+
+script_ver=1.1
+archive_dir=eog
+archive_url=https://download.gnome.org/sources/eog/44/eog-44.3.tar.xz
+archive_ext="${archive_url//*.}"
+cwd="$PWD"/eog-build-script
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+repo=https://github.com/slyfox1186/script-repo
+debug=OFF
+
+printf "\n%s\n%s\n\n" \
+    "Eye of Gnome Build Script - v$script_ver" \
+    '==============================================='
+
+#
+# CREATE OUTPUT DIRECTORY
+#
+
+if [ -d "${cwd}" ]; then
+    sudo rm -fr "${cwd}"
+fi
+mkdir -p "${cwd}"
+
+#
+# SET THE C+CPP COMPILERS
+#
+
+export CC=gcc CXX=g++
+
+#
+# SET COMPILER OPTIMIZATION FLAGS
+#
+
+export {CFLAGS,CXXFLAGS}='-g -O2 -flto -ffunction-sections -fdata-sections -pipe -march=native'
+
+#
+# SET THE PATH VARIABLE
+#
+
+PATH="\
+/usr/lib/ccache:\
+${HOME}/.cargo/bin:\
+${HOME}/.local/bin:\
+/usr/local/sbin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin:\
+/usr/local/cuda/bin:\
+/snap/bin\
+"
+export PATH
+
+#
+# SET THE PKG_CONFIG_PATH VARIABLE
+#
+
+PKG_CONFIG_PATH="\
+/usr/local/lib64/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/share/pkgconfig:\
+/usr/lib64/pkgconfig:\
+/usr/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/share/pkgconfig:\
+/lib64/pkgconfig:\
+/lib/pkgconfig:\
+/lib/x86_64-linux-gnu/pkgconfig\
+"
+export PKG_CONFIG_PATH
+
+#
+# SET THE LIBRARY_PATH VARIABLE
+#
+
+LIBRARY_PATH="\
+/usr/lib/x86_64-linux-gnu:\
+$LIBRARY_PATH\
+"
+export LIBRARY_PATH
+
+#
+# CREATE FUNCTIONS
+#
+
+exit_fn()
+{
+    printf "\n%s\n\n%s\n\n" \
+        'Make sure to star this repository to show your support!' \
+        "${repo}"
+    exit 0
+}
+
+fail_fn()
+{
+    printf "\n%s\n\n%s\n\n" \
+        "${1}" \
+        "To report a bug create an issue at: ${repo}/issues"
+    exit 1
+}
+
+cleanup_fn()
+{
+    local choice
+
+    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
+        '============================================' \
+        '  Do you want to clean up the build files?  ' \
+        '============================================' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' choice
+
+    case "${choice}" in
+        1)      sudo rm -fr "${cwd}" "${0}";;
+        2)      echo;;
+        *)
+                clear
+                printf "%s\n\n" 'Bad user input. Reverting script...'
+                sleep 3
+                unset choice
+                clear
+                cleanup_fn
+                ;;
+    esac
+}
+
+#
+# INSTALL REQUIRED APT PACKAGES
+#
+
+pkgs=(autoconf autogen automake binutils build-essential ccache clang cmake curl git
+      libgnome-desktop-3-dev libexempi-dev libportal-dev libportal-gtk3-dev libportal-gtk4-dev
+      libgnome-desktop-4-dev libhandy-1-dev libpeas-dev libpeasd-3-dev libtool libtool-bin
+      m4 meson nasm ninja-build python3 yasm itstool)
+
+for i in ${pkgs[@]}
+do
+    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${i}"
+    fi
+done
+unset i
+
+if [ -n "${missing_pkgs}" ]; then
+    sudo apt -y install ${missing_pkgs}
+    clear
+fi
+
+#
+# GET PC TYPE
+#
+
+curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "${cwd}/config.guess"
+pc_type="$(source "${cwd}/config.guess")"
+
+#
+# DOWNLOAD THE ARCHIVE FILE
+#
+
+archive_name="${archive_dir}.tar.${archive_ext}"
+
+if [ ! -f "${cwd}/${archive_name}" ]; then
+    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
+fi
+
+#
+# CREATE OUTPUT DIRECTORY
+#
+
+mkdir -p "${cwd}/${archive_dir}/build"
+
+#
+# EXTRACT ARCHIVE FILES
+#
+
+if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
+    exit 1
+fi
+
+#
+# BUILD PROGRAM FROM SOURCE
+#
+
+clear
+
+cd "${cwd}/${archive_dir}" || exit 1
+
+meson setup build --buildtype=release      \
+                  --default-library=static \
+                  --strip
+
+ninja "-j$(nproc --all)" -C build
+
+if ! sudo ninja "-j$(nproc --all)" -C build install; then
+    ninja clean
+    printf "\n%s\n\n" 'Failed to install EOG.'
+    exit 1
+fi
+
+# PROMPT USER TO CLEAN UP FILES
+cleanup_fn
+
+# SHOW EXIT MESSAGE
+exit_fn
