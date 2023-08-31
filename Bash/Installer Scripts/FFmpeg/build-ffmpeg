@@ -1802,7 +1802,7 @@ fi
 
 pre_check_ver 'ultravideo/kvazaar' '1' 'T'
 if build 'kvazaar' "$g_ver"; then
-    download "https://codeload.github.com/ultravideo/kvazaar/tar.gz/refs/tags/v$g_ver" "kvazaar-$g_ver.tar.gz"
+    download_git 'https://github.com/ultravideo/kvazaar.git'
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$cpu_threads"
