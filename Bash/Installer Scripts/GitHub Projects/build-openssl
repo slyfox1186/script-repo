@@ -182,12 +182,14 @@ unset i missing_pkgs
 # INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
 #
 
-if [ ! -f "${cert_dir}/${pem_file}" ]; then
+if [ ! -f "${pem_out}" ]; then
     printf "%s\n%s\n\n" \
         'Download the latest security certificate' \
         '================================================'
-    curl -A "${user_agent}" -Lso "${cwd}/${pem_file}" "https://curl.se/ca/${pem_file}"
-    sudo mv -f "${cwd}/${pem_file}" "${cert_dir}/${pem_file}"
+    curl -A "${user_agent}" -Lso "${pem_in}" "https://curl.se/ca/${pem_file}"
+    if ! sudo mv "${pem_in}" "${pem_out}"; then
+        fail_fn "Failed to move \"${pem_in}\" to \"${pem_out}\""
+    fi
 fi
 
 #
@@ -277,13 +279,13 @@ sleep 2
 sudo openssl fipsinstall >/dev/null
 
 printf "\n%s\n%s\n\n" \
-    "Running: sudo chmod 644 ${pem_output}" \
+    "Running: sudo chmod 644 ${pem_out}" \
     '===================================='
 sleep 2
 
 # ENSURE THE CORRECT PERMISSIONS ARE ATTACHED TO THE CUSTOM PEM FILE THAT WAS ADDED
-if [ -f "${pem_output}" ]; then
-    sudo chmod 644 "${pem_output}"
+if [ -f "${pem_out}" ]; then
+    sudo chmod 644 "${pem_out}"
 fi
 
 # PROMPT USER TO CLEAN UP FILES
