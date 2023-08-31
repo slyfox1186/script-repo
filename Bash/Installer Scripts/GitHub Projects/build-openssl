@@ -29,7 +29,7 @@ fi
 
 script_ver=1.3
 archive_dir=openssl-3.1.2
-archive_url=https://github.com/openssl/openssl/releases/download/openssl-3.1.2/${archive_dir}.tar.gz
+archive_url=https://github.com/openssl/openssl/releases/download/${archive_dir}/${archive_dir}.tar.gz
 archive_ext="${archive_url//*.}"
 cwd="${PWD}"/openssl-build-script
 install_dir=/usr
