@@ -2,9 +2,9 @@
 ; #  OpenCMDHere  #
 ; #################
 
-!c up::_OpenCMDHere()
+!c up::OpenCMDHere()
 
-_OpenCMDHere()
+OpenCMDHere()
 {
     win := 'ahk_class ConsoleWindowClass ahk_exe cmd.exe'
     winExp := 'ahk_class CabinetWClass ahk_exe explorer.exe'
