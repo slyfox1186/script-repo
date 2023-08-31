@@ -56,13 +56,13 @@ fi
 # SET THE C+CPP COMPILERS
 #
 
-export CC=gcc-13 CXX=g++-13
+export CC=gcc CXX=g++
 
 #
 # EXPORT COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O2 -flto -ffunction-sections -fdata-sections -pipe -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
 
 #
 # SET THE PATH VARIABLE
