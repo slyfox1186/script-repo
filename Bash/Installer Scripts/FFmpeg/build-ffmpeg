@@ -51,19 +51,23 @@ cwd="$PWD"/ffmpeg-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
 install_prefix=/usr/local
-CFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2"
-CFLAGS+=' -g -O2 -flto -ffunction-sections -fdata-sections -pipe -march=native'
-CXXFLAGS='-g -O2 -flto -ffunction-sections -fdata-sections -pipe -march=native'
-LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/local/lib -L/usr/local/cuda/nvvm/lib64"
-LDFLAGS+=' -L/usr/local/cuda/targets/x86_64-linux/lib -L/usr/lib64 -L/usr/lib -L/usr/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu -L/lib64 -L/lib'
-CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include"
 LDEXEFLAGS=
 EXTRALIBS='-ldl -lpthread -lm -lz'
 ffmpeg_libraries=()
 latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
-debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=ON # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+
+CFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2 -g -O2 -march=native"
+CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include"
+CXXFLAGS='-g -O2 -march=native'
+LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/local/lib -L/usr/local/cuda/nvvm/lib64"
+LDFLAGS+=' -L/usr/local/cuda/targets/x86_64-linux/lib -L/usr/lib64 -L/usr/lib -L/usr/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu -L/lib64 -L/lib'
+
+export CFLAGS
+export CXXFLAGS
+export LDFLAGS
 
 #
 # CREATE THE OUTPUT DIRECTORIES
