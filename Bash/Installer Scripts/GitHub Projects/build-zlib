@@ -182,7 +182,7 @@ download()
     dl_url="${1}"
     dl_file="${2:-"${1##*/}"}"
 
-    if [[ "${dl_file}" =~ tar. ]]; then
+    if [[ "$dl_file" =~ tar. ]]; then
         output_dir="${dl_file%.*}"
         output_dir="${3:-"${output_dir%.*}"}"
     else
@@ -192,14 +192,19 @@ download()
     target_file="${dl_path}/${dl_file}"
     target_dir="${dl_path}/${output_dir}"
 
+    if [ ! -d "${dl_path}" ]; then
+        mkdir -p "${dl_path}"
+    fi
+    cd "${dl_path}" || exit 1
+
     if [ -f "${target_file}" ]; then
         echo "The file \"${dl_file}\" is already downloaded."
     else
         echo "Downloading \"${dl_url}\" saving as \"${dl_file}\""
-        if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
+        if ! curl -A "${user_agent}" -Lso "${dl_file}" "${dl_url}"; then
             printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 10 seconds..."
             sleep 10
-            if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
+            if ! curl -A "${user_agent}" -Lso "${dl_file}" "${dl_url}"; then
                 fail_fn "The script failed to download \"${dl_file}\" twice and will now exit."
             fi
         fi
@@ -209,17 +214,16 @@ download()
     if [ -d "${target_dir}" ]; then
         sudo rm -fr "${target_dir}"
     fi
-
     mkdir -p "${target_dir}"
 
     if [ -n "${3}" ]; then
-        if ! tar -xf "${target_file}" -C "${target_dir}" 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
+        if ! tar -xf "${dl_file}" -C "${target_dir}" 2>/dev/null >/dev/null; then
+            sudo rm "${dl_file}"
             fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script."
         fi
     else
-        if ! tar -xf "${target_file}" -C "${target_dir}" --strip-components 1 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
+        if ! tar -xf "${dl_file}" -C "${target_dir}" --strip-components 1 2>/dev/null >/dev/null; then
+            sudo rm "${dl_file}"
             fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script."
         fi
     fi
