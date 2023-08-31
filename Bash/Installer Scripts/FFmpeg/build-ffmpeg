@@ -1027,7 +1027,7 @@ iscuda="$(sudo find /usr/local/cuda* -type f -name nvcc)"
 # SET THE C & C++ COMPILERS TO THE HIGHEST VERSION INSTALLED
 #
 
-export CC='ccache clang-15' CXX='ccache clang++-15'
+export CC='ccache clang' CXX='ccache clang++'
 
 #
 # MAKE SURE WE USE THE CORRECT M4 FOLDER
@@ -2066,7 +2066,7 @@ if build 'vvc' 'git'; then
     build_done 'vvc' 'git'
 fi
 
-export CC='ccache clang-15' CXX='ccache clang++-15'
+export CC='ccache clang' CXX='ccache clang++'
 pre_check_ver 'avisynth/avisynthplus' '1' 'T'
 if build 'avisynth' "$g_ver"; then
     download "https://codeload.github.com/AviSynth/AviSynthPlus/tar.gz/refs/tags/v$g_ver" "avisynth-$g_ver.tar.gz"
