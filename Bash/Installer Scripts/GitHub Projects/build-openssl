@@ -33,7 +33,7 @@ archive_url=https://github.com/openssl/openssl/releases/download/openssl-3.1.2/$
 archive_ext="${archive_url//*.}"
 cwd="${PWD}"/openssl-build-script
 install_dir=/usr
-ssl_dir=/usr/lib/ssl
+ssl_dir=${install_dir}/lib/ssl
 cert_dir=${ssl_dir}/certs
 pem_filename=cacert.pem
 pem_output=${cert_dir}/cacert.pem
@@ -48,10 +48,9 @@ printf "\n%s\n%s\n\n" \
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ -d "${cwd}" ]; then
-    sudo rm -fr "${cwd}"
+if [ ! -d "${cwd}" ]; then
+    mkdir -p "${cwd}"
 fi
-mkdir -p "${cwd}"
 
 #
 # SET THE C+CPP COMPILERS
