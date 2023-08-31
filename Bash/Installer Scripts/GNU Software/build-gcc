@@ -8,12 +8,12 @@
 ##  Install: GCC 11.4.0 / 12.3.0 / 13.2.0
 ##
 ##  Supported OS: Linux Ubuntu Jammy (22.04.02)
-##                Native OS Only - Windows WSL is NOT working
+##                Windows WSL2 is now working
 ##
-##  Updated: 07.31.23
-##  Updated: GCC-13 to version 13.2.0
-##
+##  Last Script Update: 08.31.23
 ##  Script Version: 4.3
+##
+##  Changed: GCC-13 to v13.2.0
 ##
 ##  Added: multiple support libraries using the latest versions available
 ##  Added: link time optimization support
@@ -33,7 +33,7 @@
 ##
 ##  Changed: the language support on Ubuntu to "all" for each GCC version which allows them to
 ##           build every language they are able to.
-##  Changed: the default install directory for the GNU libs to "$workspace" to help avoid
+##  Changed: the default install directory for the GNU libs to "${workspace}" to help avoid
 ##           future overlaps with APT packages that may be installed.
 ##
 #####################################################################################################
@@ -62,35 +62,35 @@
 ##  GCC [ 12 | 13 ] NOTES
 ##
 ##  Debian and Ubuntu appear to have no issues building "ada"
-##  language support on gcc 12 and 13 remains enabled for both
+##  language support on gcc 12 and 13 and it remains enabled for both
 ##
 #####################################################################################################
 
-cwd="$PWD"/gcc-build-script
-packages="$cwd"/packages
-workspace="$cwd"/workspace
+cwd="${PWD}"/gcc-build-script
+packages="${cwd}"/packages
+workspace="${cwd}"/workspace
 
 #
 # CLEAN THE BUILD ENVIRONMENT
 #
 
-tmp_home="$HOME"
-tmp_pwd="$PWD"
-tmp_term="$TERM"
-tmp_display="$DISPLAY"
-tmp_dbus="$DBUS_SESSION_BUS_ADDRESS"
+tmp_home="${HOME}"
+tmp_pwd="${PWD}"
+tmp_term="${TERM}"
+tmp_display="${DISPLAY}"
+tmp_dbus="${DBUS_SESSION_BUS_ADDRESS}"
 
 for var in $(env | awk -F"=" '{print $1}')
 do
-    unset $var || true # IGNORE UNSET FAILURES
+    unset ${var} || true # IGNORE UNSET FAILURES
 done
 
 # IMPORT SAVED DEFAULT VARS BACK INTO THE SCRIPT ENVIRONMENT
-export DBUS_SESSION_BUS_ADDRESS="$tmp_dbus"
-export DISPLAY="$tmp_display"
-export HOME="$tmp_home"
-export PWD="$tmp_pwd"
-export TERM="$tmp_term"
+export DBUS_SESSION_BUS_ADDRESS="${tmp_dbus}"
+export DISPLAY="${tmp_display}"
+export HOME="${tmp_home}"
+export PWD="${tmp_pwd}"
+export TERM="${tmp_term}"
 
 # UNSET THE TMP VARS
 unset tmp_dbus tmp_display tmp_home tmp_pwd tmp_term var
@@ -101,9 +101,9 @@ unset tmp_dbus tmp_display tmp_home tmp_pwd tmp_term var
 
 PATH="\
 /usr/lib/ccache:\
-$workspace/bin:\
-$HOME/.local/bin:\
-$HOME/.cargo/bin:\
+${workspace}/bin:\
+${HOME}/.local/bin:\
+${HOME}/.cargo/bin:\
 /usr/bin/x86_64-pc-linux-gnu-ld:\
 /usr/bin/x86_64-linux-gnu-ld:\
 /usr/local/sbin:\
@@ -114,7 +114,7 @@ $HOME/.cargo/bin:\
 /bin:\
 /usr/local/cuda/bin:\
 /snap/bin:\
-$PATH\
+${PATH}\
 "
 
 #
@@ -122,19 +122,19 @@ $PATH\
 #
 
 tmp_dir="$(mktemp -d)"
-pre_file="$tmp_dir"/file_1.txt
-post_file="$tmp_dir"/file_2.txt
+pre_file="${tmp_dir}"/file_1.txt
+post_file="${tmp_dir}"/file_2.txt
 
-echo "$PATH" > "$pre_file"
+echo "${PATH}" > "${pre_file}"
 
-sed -E 's/(:)/\n/g' "$pre_file" | tee "$post_file"
-awk '!NF || !seen[$0]++' "$post_file" > "$pre_file"
+sed -E 's/(:)/\n/g' "${pre_file}" | tee "${post_file}"
+awk '!NF || !seen[${0}]++' "${post_file}" > "${pre_file}"
 
-join_str="$(tr '\n' ':' < "$pre_file")"
-PATH="$(echo "$join_str" | sed 's/..$//g')"
+join_str="$(tr '\n' ':' < "${pre_file}")"
+PATH="$(echo "${join_str}" | sed 's/..$//g')"
 export PATH
 
-sudo rm -fr "$tmp_dir"
+sudo rm -fr "${tmp_dir}"
 unset join_str post_file pre_file tmp_dir
 clear
 
@@ -144,20 +144,20 @@ clear
 
 script_ver=4.3
 install_dir=/usr/local
-CFLAGS='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
 CXXFLAGS='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
+CFLAGS="${CXXFLAGS} -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections"
 CPPFLAGS='-I/usr/lib/gcc/x86_64-linux-gnu/12/include -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include'
 latest=false
 repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
-debug=OFF # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
+debug=ON # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
 #
 
-if [ -f '/proc/cpuinfo' ]; then
-    cpu_threads="$(grep -c ^processor '/proc/cpuinfo')"
+if [ -f /proc/cpuinfo ]; then
+    cpu_threads="$(grep -c ^processor /proc/cpuinfo)"
 else
     cpu_threads="$(nproc --all)"
 fi
@@ -166,19 +166,19 @@ fi
 # CREATE OUTPUT DIRECTORIES
 #
 
-mkdir -p "$packages" "$workspace"/venv/bin/python "$workspace"/venv/bin/pip
+mkdir -p "${packages}" "${workspace}"/venv/bin/python "${workspace}"/venv/bin/pip
 
 #
 # EXPORT THE PKG-CONFIG PATHS TO ENABLE SUPPORT DURING THE BUILD
 #
 
 PKG_CONFIG_PATH="\
-$workspace/lib64/pkgconfig:\
-$workspace/lib/pkgconfig:\
-$workspace/share/pkgconfig:\
-$workspace/lib/x86_64-pc-linux-gnu/pkgconfig:\
-$workspace/lib/x86_64-linux-gnu/pkgconfig:\
-$workspace/usr/lib/pkgconfig:\
+${workspace}/lib64/pkgconfig:\
+${workspace}/lib/pkgconfig:\
+${workspace}/share/pkgconfig:\
+${workspace}/lib/x86_64-pc-linux-gnu/pkgconfig:\
+${workspace}/lib/x86_64-linux-gnu/pkgconfig:\
+${workspace}/usr/lib/pkgconfig:\
 /lib/pkgconfig:\
 /usr/local/lib/x86_64-pc-linux-gnu/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
@@ -201,16 +201,16 @@ exit_fn()
     printf "\n%s\n\n%s\n%s\n\n" \
         'The script has completed' \
         'Make sure to star this repository to show your support!' \
-        "$repo"
+        "${repo}"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n\n%s\n\n%s\n\n%s\n\n" \
-        "$1" \
+        "${1}" \
         'Please create a support ticket so I can work on a fix.' \
-        "$repo/issues"
+        "${repo}/issues"
     exit 1
 }
 
@@ -224,12 +224,14 @@ cleanup_fn()
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
 
-    case "$answer" in
-        1)      sudo rm -fr "$cwd" "$0";;
+    case "${answer}" in
+        1)      sudo rm -fr "${cwd}" "${0}";;
         2)      return 0;;
         *)
-                printf "%s\n\n" 'Bad user input.'
-                read -p 'Press enter to try again.'
+                clear
+                printf "%s\n\n" 'Bad user input. Re-asking question...'
+                sleep 2
+                unset answer
                 clear
                 cleanup_fn
                 ;;
@@ -242,16 +244,16 @@ show_ver_fn()
 
     printf "%s\n\n" 'The installed gcc versions are:'
 
-    if [ -f "$install_dir"/bin/gcc-11 ]; then
-        "$install_dir"/bin/gcc-11 -v
+    if [ -f "${install_dir}"/bin/gcc-11 ]; then
+        "${install_dir}"/bin/gcc-11 -v
         echo
     fi
-    if [ -f "$install_dir"/bin/gcc-12 ]; then
-        "$install_dir"/bin/gcc-12 -v
+    if [ -f "${install_dir}"/bin/gcc-12 ]; then
+        "${install_dir}"/bin/gcc-12 -v
         echo
     fi
-    if [ -f "$install_dir"/bin/gcc-13 ]; then
-        "$install_dir"/bin/gcc-13 -v
+    if [ -f "${install_dir}"/bin/gcc-13 ]; then
+        "${install_dir}"/bin/gcc-13 -v
         echo
     fi
 }
@@ -263,125 +265,125 @@ create_gcc_links_fn()
     gcc_long_name="$(sudo find /usr/local/bin -type f -name x86_64-pc-linux-gnu-* | grep -Eo 'x86_64-pc-linux-gnu-[a-z\+]+-[123]+$')"
     for i in ${gcc_long_name[@]}
     do
-        gcc_short_name="$(echo "$i" | sed 's/^x86_64-pc-linux-gnu-\(.*\)$/\1/')"
-        sudo ln -fs "/usr/local/bin/$i" "/usr/local/bin/$gcc_short_name"
-        sudo chmod 755 -R "/usr/local/bin/$i" "/usr/local/bin/$gcc_short_name"
+        gcc_short_name="$(echo "${i}" | sed 's/^x86_64-pc-linux-gnu-\(.*\)$/\1/')"
+        sudo ln -fs "/usr/local/bin/${i}" "/usr/local/bin/${gcc_short_name}"
+        sudo chmod 755 -R "/usr/local/bin/${i}" "/usr/local/bin/${gcc_short_name}"
     done
 }
 
 execute()
 {
-    echo "$ $*"
+    echo "$ ${*}"
 
-    if [ "$debug" = 'ON' ]; then
-        if ! output=$("$@"); then
-            notify-send -t 5000 "Failed to execute: $*"
-            fail_fn "Failed to execute: $*"
+    if [ "${debug}" = 'ON' ]; then
+        if ! output=$("${@}"); then
+            notify-send -t 5000 "Failed to execute: ${*}"
+            fail_fn "Failed to execute: ${*}"
         fi
     else
-        if ! output=$("$@" 2>&1); then
-            notify-send -t 5000 "Failed to execute: $*"
-            fail_fn "Failed to execute: $*"
+        if ! output=$("${@}" 2>&1); then
+            notify-send -t 5000 "Failed to execute: ${*}"
+            fail_fn "Failed to execute: ${*}"
         fi
     fi
 }
 
 download()
 {
-    dl_path="$packages"
-    dl_url="$1"
+    dl_path="${packages}"
+    dl_url="${1}"
     dl_file="${2:-"${1##*/}"}"
 
-    if [[ "$dl_file" =~ tar. ]]; then
+    if [[ "${dl_file}" =~ tar. ]]; then
         output_dir="${dl_file%.*}"
         output_dir="${3:-"${output_dir%.*}"}"
     else
         output_dir="${3:-"${dl_file%.*}"}"
     fi
 
-    target_file="$dl_path/$dl_file"
-    target_dir="$dl_path/$output_dir"
+    target_file="${dl_path}/${dl_file}"
+    target_dir="${dl_path}/${output_dir}"
 
-    if [ -f "$target_file" ]; then
-        echo "The file \"$dl_file\" is already downloaded."
+    if [ -f "${target_file}" ]; then
+        echo "The file \"${dl_file}\" is already downloaded."
     else
-        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
-        if ! curl -A "$user_agent" -Lso "$target_file" "$dl_url"; then
-            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 5 seconds..."
+        echo "Downloading \"${dl_url}\" saving as \"${dl_file}\""
+        if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
+            printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 5 seconds..."
             sleep 5
-            if ! curl -A "$user_agent" -Lso "$target_file" "$dl_url"; then
-                fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
+            if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
+                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit."
             fi
         fi
         echo 'Download Completed'
     fi
 
-    if [ -d "$target_dir" ]; then
-        sudo rm -fr "$target_dir"
+    if [ -d "${target_dir}" ]; then
+        sudo rm -fr "${target_dir}"
     fi
 
-    mkdir -p "$target_dir"
+    mkdir -p "${target_dir}"
 
-    if [ -n "$3" ]; then
-        if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
-            sudo rm "$target_file"
-            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please rerun the script."
+    if [ -n "${3}" ]; then
+        if ! tar -xf "${target_file}" -C "${target_dir}" 2>/dev/null >/dev/null; then
+            sudo rm "${target_file}"
+            fail_fn "Failed to extract \"${dl_file}\" so it was deleted. Please rerun the script."
         fi
     else
-        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-            sudo rm "$target_file"
-            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please rerun the script."
+        if ! tar -xf "${target_file}" -C "${target_dir}" --strip-components 1 2>/dev/null >/dev/null; then
+            sudo rm "${target_file}"
+            fail_fn "Failed to extract \"${dl_file}\" so it was deleted. Please rerun the script."
         fi
     fi
 
-    echo -e "File extracted: $dl_file\\n"
+    echo -e "File extracted: ${dl_file}\\n"
 
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
+    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}"
 }
 
 download_git()
 {
     local dl_path dl_url dl_file target_dir
 
-    dl_path="$packages"
-    dl_url="$1"
+    dl_path="${packages}"
+    dl_url="${1}"
     dl_file="${2:-"${1##*/}"}"
     dl_file="${dl_file//\./-}"
-    target_dir="$dl_path/$dl_file"
+    target_dir="${dl_path}/${dl_file}"
 
-    if [ -d "$target_dir" ]; then
-        sudo rm -fr "$target_dir"
+    if [ -d "${target_dir}" ]; then
+        sudo rm -fr "${target_dir}"
     fi
 
-    echo "Downloading $dl_url as $dl_file"
-    if ! git clone -q "$dl_url" "$target_dir"; then
-        printf "\n%s\n\n" "The script failed to clone the git repository \"$target_dir\" and will try again in 10 seconds..."
+    echo "Downloading ${dl_url} as ${dl_file}"
+    if ! git clone -q "${dl_url}" "${target_dir}"; then
+        printf "\n%s\n\n" "The script failed to clone the git repository \"${target_dir}\" and will try again in 10 seconds..."
         sleep 10
-        if ! git clone -q "$dl_url" "$target_dir"; then
-            fail_fn "The script failed to clone \"$target_dir\" twice and will now exit the build."
+        if ! git clone -q "${dl_url}" "${target_dir}"; then
+            fail_fn "The script failed to clone \"${target_dir}\" twice and will now exit the build."
         fi
     else
-        echo -e "Successfully cloned: $target_dir\\n"
+        echo -e "Successfully cloned: ${target_dir}\\n"
     fi
 
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
+    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}"
 }
 
 build()
 {
     echo
-    echo "building $1 - version $2"
+    echo "building ${1} - version ${2}"
     echo '===================================='
 
-    if [ -f "$packages/$1.done" ]; then
-        if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
-            echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
+    if [ -f "${packages}/${1}.done" ]; then
+        if grep -Fx "${2}" "${packages}/${1}.done" >/dev/null; then
+            echo "${1} version ${2} already built. Remove ${packages}/${1}.done lockfile to rebuild it."
             return 1
-        elif $latest; then
-            echo "$1 is outdated and will be rebuilt using version $2"
+        elif ${latest}; then
+            echo "${1} is outdated and will be rebuilt using version ${2}"
             return 0
         else
-            echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
+            echo "${1} is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove ${packages}/${1}.done lockfile."
             return 1
         fi
     fi
@@ -389,19 +391,16 @@ build()
     return 0
 }
 
-# SET THE CURL COMMAND TIMEOUT
-curl_timeout=10
-
 git_1_fn()
 {
     local curl_cmd github_repo github_url
 
     # SCRAPE GITHUB'S API FOR THE LATEST REPO VERSION
-    github_repo="$1"
-    github_url="$2"
+    github_repo="${1}"
+    github_url="${2}"
 
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
-        g_ver1="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
+    if curl_cmd="$(curl -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+        g_ver1="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver="${g_ver1#v}"
     fi
 }
@@ -410,36 +409,25 @@ git_ver_fn()
 {
     local t_flag u_flag v_flag v_tag v_url
 
-    v_url="$1"
-    v_tag="$2"
+    v_url="${1}"
+    v_tag="${2}"
 
-    if [ -n "$3" ]; then
-        v_flag="$3"
+    if [ -n "${3}" ]; then
+        v_flag="${3}"
     fi
 
-    case "$v_flag" in
-            R)      t_flag='releases';;
-            T)      t_flag='tags';;
-            *)      fail_fn 'Could not detect the variable $v_flag.'
+    case "${v_flag}" in
+            R)      t_flag=releases;;
+            T)      t_flag=tags;;
+            *)      fail_fn 'Could not detect the variable ${v_flag}.'
     esac
 
-    case "$v_tag" in
-            1)      u_flag='git_1_fn';;
-            *)      fail_fn 'Could not detect the variable $v_tag.'
-    esac
-
-    "$u_flag" "$v_url" "$t_flag" 2>/dev/null
+    git_1_fn "${v_url}" "${t_flag}" 2>/dev/null
 }
 
-build_done()
-{
-    echo "$2" >"$packages/$1.done"
-}
+build_done() { echo "${2}" >"${packages}/${1}.done"; }
 
-installed()
-{
-    return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
-}
+installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
 #
 # PRINT SCRIPT BANNER
@@ -447,20 +435,20 @@ installed()
 
 function box_out_banner()
 {
-    input_char=$(echo "$@" | wc -c)
-    line=$(for i in `seq 0 $input_char`; do printf "-"; done)
+    input_char=$(echo "${@}" | wc -c)
+    line=$(for i in `seq 0 ${i}nput_char`; do printf "-"; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
     echo " ${line}"
-    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
-    printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
-    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
     echo " ${line}"
     tput sgr 0
 }
 
-box_out_banner "GCC Build Script: v$script_ver"
+box_out_banner "GCC Build Script: v${script_ver}"
 
 #
 # INSTALL REQUIRED APT PACKAGES
@@ -468,29 +456,28 @@ box_out_banner "GCC Build Script: v$script_ver"
 
 pkgs_fn()
 {
-    pkgs=(autoconf autoconf-archive autogen automake bison build-essential ccache curl dejagnu flex gcc-11-base gcc-multilib
-          gdc gdc-multilib gfortran gfortran-multilib git gnat gnulib guile-3.0-dev help2man jq libacl1-dev libasan8
-          libdebuginfod-dev libdmalloc5 libdmalloc-dev libeigen3-dev libffi-dev libfontconfig1-dev libfreetype6
-          libgcc-11-dev libgd-dev libgm2-12-dev libgmp-dev libiberty-dev libicu-dev libintl-perl libisl-dev libjpeg-dev
-          libltdl-dev libmpc-dev libmpfr-dev libphobos2-ldc-shared-dev libpng-dev libquadmath0 libsigsegv-dev libsqlite3-dev
-          libssl-dev libstdc++-12-dev libtool libtool-bin libunwind-dev libx11-dev libx32gfortran-12-dev libxext-dev linux-libc-dev
-          meson m4 ninja-build perl pipx python3 python3-full python3-pip ruby sphinx-common tcl-expect-dev tex-common texi2html
-          texinfo)
+    pkgs=(autoconf autoconf-archive autogen automake bison build-essential ccache curl
+          dejagnu flex gcc-11-base gcc-multilib gdc gdc-multilib gfortran gfortran-multilib
+          git gnat gnulib guile-3.0-dev help2man jq libacl1-dev libasan8 libdebuginfod-dev
+          libdmalloc5 libdmalloc-dev libeigen3-dev libffi-dev libfontconfig1-dev libfreetype6
+          libgcc-11-dev libgd-dev libgm2-12-dev libgmp-dev libiberty-dev libicu-dev libintl-perl
+          libisl-dev libjpeg-dev libltdl-dev libmpc-dev libmpfr-dev libphobos2-ldc-shared-dev
+          libpng-dev libquadmath0 libsigsegv-dev libsqlite3-dev libssl-dev libstdc++-12-dev libtool
+          libtool-bin libunwind-dev libx11-dev libx32gfortran-12-dev libxext-dev linux-libc-dev meson
+          m4 ninja-build perl pipx python3 python3-full python3-pip ruby sphinx-common tcl-expect-dev
+          tex-common texi2html texinfo)
 
     for pkg in ${pkgs[@]}; do
-        if ! installed "$pkg"; then
-            missing_pkgs+=" $pkg"
+        if ! installed "${pkg}"; then
+            missing_pkgs+=" ${pkg}"
         fi
     done
 
-    if [ -n "$missing_pkgs" ]; then
-        printf "%s\n%s\n\n" \
-            'Installing required apt packages' \
-            '================================================'
-        for i in "$missing_pkgs"
+    if [ -n "${missing_pkgs}" ]; then
+        for i in "${missing_pkgs}"
         do
-            echo "\$ sudo apt -y install $i"
-            sudo apt -y install $i
+            echo "\$ sudo apt -y install ${i}"
+            sudo apt -y install ${i}
             echo
         done
     fi
@@ -500,10 +487,10 @@ pkgs_fn()
 # GET PC TYPE
 #
 
-curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "$cwd/config.guess"
-pc_type="$(source "$cwd/config.guess")"
-gcc_prefix="$pc_type-"
+curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "${cwd}/config.guess"
+pc_type="$(source "${cwd}/config.guess")"
+gcc_prefix="${pc_type}-"
 
 #
 # INSTALL PYTHON MODULES
@@ -513,23 +500,17 @@ py_pkgs=(types-gdb os.path2 mbs-sys tempfile2 PrettyGcov json2json pytest
          csv23 time-tools argparse3 pathlib shutil-extra latex Pygments)
 
 for py_pkg in ${py_pkgs[@]}; do
-    if ! pip show "$py_pkg" &>/dev/null; then
-        missing_py_pkgs+=" $py_pkg"
+    if ! pip show "${py_pkg}" &>/dev/null; then
+        missing_py_pkgs+=" ${py_pkg}"
     fi
 done
 
-if [ -n "$missing_py_pkgs" ]; then
-    printf "%s\n%s\n\n" \
-        'Installing required python packages' \
-        '================================================'
-    for py in "${missing_py_pkgs[@]}"
-    do
-        rm_pip_lock="$(find /usr/lib/python3* -name EXTERNALLY-MANAGED)"
-        if [ -n "$rm_pip_lock" ]; then
-            sudo rm "$rm_pip_lock"
-        fi
-        pip install --user types-gdb os.path2 mbs-sys tempfile2 PrettyGcov json2json pytest csv23 time-tools argparse3 pathlib shutil-extra latex Pygments
-    done
+if [ -n "${missing_py_pkgs}" ]; then
+    rm_pip_lock="$(find /usr/lib/python3* -name EXTERNALLY-MANAGED)"
+    if [ -n "${rm_pip_lock}" ]; then
+        sudo rm "${rm_pip_lock}"
+    fi
+    pip install --user ${missing_py_pkgs}
 fi
 
 #
@@ -538,16 +519,15 @@ fi
 
 os_ver_check_fn()
 {
-    os_ver="$(lsb_release -r 2>/dev/null | grep -Eo '[0-9\.]+$')"
     debian_pkgs='libadacgi6-dev libgm2-12-dev libgm2-17 openjdk-17-jdk-headless'
 
-    case "$os_ver" in
+    case "${VER}" in
             23.04|22.10|22.04)      pkgs_fn 'linux-libc-dev:i386 libadacgi4-dev libgm2-15 openjdk-17-jdk-headless';;
             20.04)                  pkgs_fn 'libgm2-10-dev openjdk-17-jdk-headless';;
             18.04)                  pkgs_fn 'openjdk-11-jdk-headless';;
-            12)                     pkgs_fn "$debian_pkgs gnat-12 libiconv-hook-dev";;
-            11)                     pkgs_fn "$debian_pkgs gnat-10 libiconv-hook-dev";;
-            10)                     pkgs_fn "$debian_pkgs gnat-8";;
+            12)                     pkgs_fn "${debian_pkgs} gnat-12 libiconv-hook-dev";;
+            11)                     pkgs_fn "${debian_pkgs} gnat-10 libiconv-hook-dev";;
+            10)                     pkgs_fn "${debian_pkgs} gnat-8";;
             *)                      fail_fn 'Could not detect the OS version.';;
     esac
 }
@@ -558,15 +538,15 @@ os_ver_check_fn()
 
 if [ -f /etc/os-release ]; then
     source /etc/os-release
-    OS="$NAME"
-    VER="$VERSION_ID"
+    OS="${NAME}"
+    VER="${VERSION_ID}"
 elif "$(type -P lsb_release)" &>/dev/null; then
     OS="$(lsb_release -si)"
     VER="$(lsb_release -sr)"
 elif [ -f /etc/lsb-release ]; then
     source /etc/lsb-release
-    OS="$DISTRIB_ID"
-    VER="$DISTRIB_RELEASE"
+    OS="${DISTRIB_ID}"
+    VER="${DISTRIB_RELEASE}"
 elif [ -f /etc/debian_version ]; then
     OS=Debian
     VER="$(cat /etc/debian_version)"
@@ -579,10 +559,10 @@ fi
 # TEST THE OS AND ITS VERSION
 #
 
-case "$OS" in
-    'Debian GNU/Linux')     os_ver_check_fn;;
-    'Ubuntu')               os_ver_check_fn;;
-    *)                      fail_fn 'Could not detect the OS architecture.';;
+case "${OS}" in
+    Debian*)        os_ver_check_fn;;
+    Ubuntu)         os_ver_check_fn;;
+    *)              fail_fn 'Could not detect the OS architecture.';;
 esac
 
 #
@@ -590,9 +570,9 @@ esac
 #
 
 export CC=gcc CXX=g++
-export CFLAGS="$CFLAGS"
-export CXXFLAGS="$CXXFLAGS"
-export CPPFLAGS="$CPPFLAGS"
+export CFLAGS="${CFLAGS}"
+export CXXFLAGS="${CXXFLAGS}"
+export CPPFLAGS="${CPPFLAGS}"
 
 #
 # CREATE SOFT LINKS TO FIX LINKING BUGS
@@ -609,10 +589,11 @@ fi
 #
 
 iscuda="$(sudo find /usr/local/ -type f -name nvcc)"
-if [ -n "$iscuda" ]; then
-    cuda_check='--with-cuda-driver'
+
+if [ -n "${iscuda}" ]; then
+    cuda_check=--with-cuda-driver
 else
-    cuda_check='--without-cuda-driver'
+    cuda_check=--without-cuda-driver
 fi
 
 #
@@ -622,13 +603,13 @@ fi
 if build 'm4' 'latest'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
     execute ./configure            \
-            --prefix="$workspace"  \
+            --prefix="${workspace}"  \
             --disable-nls          \
             --enable-c++           \
             --enable-threads=posix \
             --with-dmalloc         \
             --with-libintl-prefix=/usr
-    execute make "-j$cpu_threads"
+    execute make "-j${cpu_threads}"
     execute make install
     execute make distclean
     build_done 'm4' 'latest'
@@ -638,8 +619,8 @@ if build 'automake' '1.16.5'; then
     download 'https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
     execute ./bootstrap
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace"
-    execute make "-j$cpu_threads"
+    execute ./configure --prefix="${workspace}"
+    execute make "-j${cpu_threads}"
     execute make install
     execute make distclean
     build_done 'automake' '1.16.5'
@@ -648,9 +629,9 @@ fi
 if build 'libtool' '2.4.7'; then
     download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
     execute ./configure           \
-            --prefix="$workspace" \
+            --prefix="${workspace}" \
             --enable-ltdl-install
-    execute make "-j$cpu_threads"
+    execute make "-j${cpu_threads}"
     execute make install
     execute make distclean
     build_done 'libtool' '2.4.7'
@@ -659,8 +640,8 @@ fi
 # The latest bison requires autoconf v2.71 to compile but GCC requires v2.69 which is why autoconf is built twice.
 if build 'autoconf-latest' 'latest'; then
     download 'https://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz'
-    execute ./configure --prefix="$workspace"
-    execute make "-j$cpu_threads"
+    execute ./configure --prefix="${workspace}"
+    execute make "-j${cpu_threads}"
     execute make install
     execute make distclean
     build_done 'autoconf-latest' 'latest'
@@ -668,195 +649,210 @@ fi
 
 git_ver_fn 'gperftools/gperftools' '1' 'R'
 g_ver="${g_ver//gperftools-/}"
-if build 'gperftools' '2.10'; then
-    download 'https://github.com/gperftools/gperftools/releases/download/gperftools-2.10/gperftools-2.10.tar.gz'
-    execute ./configure --prefix="$workspace" --disable-shared --enable-libunwind
-    execute make "-j$cpu_threads"
+if build 'gperftools' "${g_ver}"; then
+    download 'https://github.com/gperftools/gperftools/releases/download/gperftools-${g_ver}/gperftools-${g_ver}.tar.gz'
+    execute ./configure --prefix="${workspace}" \
+                        --disable-shared      \
+                        --enable-libunwind
+    execute make "-j${cpu_threads}"
     execute make install
     execute make distclean
-    build_done 'gperftools' '2.10'
+    build_done 'gperftools' "${g_ver}"
 fi
 
 git_ver_fn 'facebook/zstd' '1' 'R'
 g_ver="${g_ver#Zstandard v}"
-if build 'zstd' "$g_ver"; then
-    download "https://github.com/facebook/zstd/releases/download/v$g_ver/zstd-$g_ver.tar.gz"
+if build 'zstd' "${g_ver}"; then
+    download "https://github.com/facebook/zstd/releases/download/v${g_ver}/zstd-${g_ver}.tar.gz"
     cd build/meson || exit 1
-    execute meson setup build --prefix="$workspace" --buildtype=release --default-library=static --strip
-    execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
-    build_done 'zstd' "$g_ver"
+    execute meson setup build --prefix="${workspace}"    \
+                              --buildtype=release      \
+                              --default-library=static \
+                              --strip
+    execute ninja "-j${cpu_threads}" -C build
+    execute ninja "-j${cpu_threads}" -C build install
+    build_done 'zstd' "${g_ver}"
 fi
 
 git_ver_fn 'madler/zlib' '1' 'R'
 g_ver="${g_ver#zlib }"
-if build 'zlib' "$g_ver"; then
-    download "https://github.com/madler/zlib/releases/download/v$g_ver/zlib-$g_ver.tar.gz"
-    execute ./configure --prefix="$workspace"
-    execute make "-j$cpu_threads"
+if build 'zlib' "${g_ver}"; then
+    download "https://github.com/madler/zlib/releases/download/v${g_ver}/zlib-${g_ver}.tar.gz"
+    execute ./configure --prefix="${workspace}"
+    execute make "-j${cpu_threads}"
     execute make install
     execute make distclean
-    build_done 'zlib' "$g_ver"
+    build_done 'zlib' "${g_ver}"
 fi
 
 if build 'autoconf-v269' '2.69'; then
     download 'https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.xz'
-    execute ./configure --prefix="$workspace"
-    execute make "-j$cpu_threads"
+    execute ./configure --prefix="${workspace}"
+    execute make "-j${cpu_threads}"
     execute make install
     execute make distclean
     build_done 'autoconf-v269' '2.69'
 fi
 
+#
+# START GCC BUILD
+#
+
 build_gcc_11_fn()
 {
+    if [ -d "${packages}/gcc-11.4.0" ]; then
+        sudo rm -fr "${packages}/gcc-11.4.0"
+    fi
+    mkdir -p "${packages}/gcc-11.4.0/builddir"
     if build 'gcc-11' '11.4.0'; then
         download 'https://ftp.gnu.org/gnu/gcc/gcc-11.4.0/gcc-11.4.0.tar.xz'
-        gcc_11_lang=all
         execute autoreconf -fi
         execute sudo ./contrib/download_prerequisites
-        mkdir builddir
         cd builddir || exit 1
-        execute ../configure                          \
-            --prefix="$install_dir"                   \
-            --{build,host,target}="$pc_type"          \
-            --disable-assembly                        \
-            --disable-nls                             \
-            --disable-vtable-verify                   \
-            --disable-werror                          \
-            --enable-bootstrap                        \
-            --enable-checking=yes                     \
-            --enable-default-pie                      \
-            --enable-gnu-unique-object                \
-            --enable-languages="$gcc_11_lang"         \
-            --enable-libphobos-checking=auto          \
-            --enable-lto                              \
-            --enable-multilib                         \
-            --enable-plugin                           \
-            --enable-threads=posix                    \
-            --program-prefix="$gcc_prefix"            \
-            --program-suffix=-11                      \
-            --with-gcc-major-version-only             \
-            --with-isl=/usr                           \
-            --with-libiconv-prefix=/usr               \
-            --with-link-serialization=2               \
-            --with-target-system-zlib=auto            \
-            --with-tune=generic                       \
-            --with-zstd="$workspace"                  \
-            "$cuda_check"                             \
+        execute ../configure                   \
+            --prefix="${install_dir}"          \
+            --{build,host,target}="${pc_type}" \
+            --disable-assembly                 \
+            --disable-nls                      \
+            --disable-vtable-verify            \
+            --disable-werror                   \
+            --enable-bootstrap                 \
+            --enable-checking=yes              \
+            --enable-default-pie               \
+            --enable-gnu-unique-object         \
+            --enable-languages=all             \
+            --enable-libphobos-checking        \
+            --enable-lto                       \
+            --enable-multilib                  \
+            --enable-plugin                    \
+            --enable-threads=posix             \
+            --program-prefix="${gcc_prefix}"   \
+            --program-suffix=-11               \
+            --with-gcc-major-version-only      \
+            --with-isl=/usr                    \
+            --with-libiconv-prefix=/usr        \
+            --with-link-serialization=2        \
+            --with-target-system-zlib=auto     \
+            --with-tune=generic                \
+            --with-zstd="${workspace}"         \
+            "${cuda_check}"                    \
             --without-included-gettext
         printf "\n%s\n%s\n\n" \
-            "$ Compiling gcc-11 with languages=$gcc_11_lang" \
+            '$ Compiling gcc-11 with languages=all' \
             '$ This is going to take a while...'
-        execute make "-j$cpu_threads"
+        execute make "-j${cpu_threads}"
         execute sudo make install-strip
-        execute sudo libtool --finish "$install_dir/libexec/gcc/$pc_type/11"
-        execute sudo libtool --finish "$install_dir"/lib
+        execute sudo libtool --finish "${install_dir}/libexec/gcc/${pc_type}/11"
+        execute sudo libtool --finish "${install_dir}/lib"
         build_done 'gcc-11' '11.4.0'
     fi
 }
 
 build_gcc_12_fn()
 {
+    if [ -d "${packages}/gcc-12.3.0" ]; then
+        sudo rm -fr "${packages}/gcc-12.3.0"
+    fi
+    mkdir -p "${packages}/gcc-12.3.0/builddir"
     if build 'gcc-12' '12.3.0'; then
         download 'https://ftp.gnu.org/gnu/gcc/gcc-12.3.0/gcc-12.3.0.tar.xz'
         execute autoreconf -fi
         execute sudo ./contrib/download_prerequisites
-        mkdir builddir
         cd builddir || exit 1
-        execute ../configure                          \
-            --prefix="$install_dir"                   \
-            --{build,host,target}="$pc_type"          \
-            --disable-assembly                        \
-            --disable-nls                             \
-            --disable-vtable-verify                   \
-            --disable-werror                          \
-            --enable-bootstrap                        \
-            --enable-checking=yes                     \
-            --enable-default-pie                      \
-            --enable-gnu-unique-object                \
-            --enable-languages=all                    \
-            --enable-libphobos-checking=auto          \
-            --enable-lto                              \
-            --enable-multilib                         \
-            --enable-objc-gc                          \
-            --enable-plugin                           \
-            --enable-threads=posix                    \
-            --program-prefix="$gcc_prefix"            \
-            --program-suffix=-12                      \
-            --with-gcc-major-version-only             \
-            --with-isl=/usr                           \
-            --with-libiconv-prefix=/usr               \
-            --with-link-serialization=2               \
-            --with-target-system-zlib=auto            \
-            --with-tune=generic                       \
-            --with-zstd="$workspace"                  \
-            "$cuda_check"                             \
+        execute ../configure                   \
+            --prefix="${install_dir}"          \
+            --{build,host,target}="${pc_type}" \
+            --disable-assembly                 \
+            --disable-nls                      \
+            --disable-vtable-verify            \
+            --disable-werror                   \
+            --enable-bootstrap                 \
+            --enable-checking=yes              \
+            --enable-default-pie               \
+            --enable-gnu-unique-object         \
+            --enable-languages=all             \
+            --enable-libphobos-checking        \
+            --enable-lto                       \
+            --enable-multilib                  \
+            --enable-plugin                    \
+            --enable-threads=posix             \
+            --program-prefix="${gcc_prefix}"   \
+            --program-suffix=-12               \
+            --with-gcc-major-version-only      \
+            --with-isl=/usr                    \
+            --with-libiconv-prefix=/usr        \
+            --with-link-serialization=2        \
+            --with-target-system-zlib=auto     \
+            --with-tune=generic                \
+            --with-zstd="${workspace}"         \
+            "${cuda_check}"                    \
             --without-included-gettext
         printf "\n%s\n%s\n\n" \
             "$ Compiling gcc-12 with languages=all" \
             '$ This is going to take a while...'
-        execute make "-j$cpu_threads"
+        execute make "-j${cpu_threads}"
         execute sudo make install-strip
-        execute sudo libtool --finish "$install_dir/libexec/gcc/$pc_type/12"
-        execute sudo libtool --finish "$install_dir"/lib
+        execute sudo libtool --finish "${install_dir}/libexec/gcc/${pc_type}/12"
+        execute sudo libtool --finish "${install_dir}/lib"
         build_done 'gcc-12' '12.3.0'
     fi
 }
 
 build_gcc_13_fn()
 {
+    if [ -d "${packages}/gcc-13.2.0" ]; then
+        sudo rm -fr "${packages}/gcc-13.2.0"
+    fi
+    mkdir -p "${packages}/gcc-13.2.0/builddir"
     if build 'gcc-13' '13.2.0'; then
         download 'https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.xz'
         execute autoreconf -fi
         execute sudo ./contrib/download_prerequisites
-        mkdir builddir
         cd builddir || exit 1
-        execute ../configure                          \
-            --prefix="$install_dir"                   \
-            --{build,host,target}="$pc_type"          \
-            --disable-assembly                        \
-            --disable-nls                             \
-            --disable-vtable-verify                   \
-            --disable-werror                          \
-            --enable-checking=yes                     \
-            --enable-default-pie                      \
-            --enable-gnu-unique-object                \
-            --enable-languages=all                    \
-            --enable-libphobos-checking=auto          \
-            --enable-lto                              \
-            --enable-multilib                         \
-            --enable-objc-gc                          \
-            --enable-offload-defaulted                \
-            --enable-plugin                           \
-            --enable-threads=posix                    \
-            --program-prefix="$gcc_prefix"            \
-            --program-suffix=-13                      \
-            --with-gcc-major-version-only             \
-            --with-isl=/usr                           \
-            --with-libiconv-prefix=/usr               \
-            --with-link-serialization=2               \
-            --with-target-system-zlib=auto            \
-            --with-tune=generic                       \
-            --with-zstd="$workspace"                  \
-            "$cuda_check"                             \
+        execute ../configure                   \
+            --prefix="${install_dir}"          \
+            --{build,host,target}="${pc_type}" \
+            --disable-assembly                 \
+            --disable-nls                      \
+            --disable-vtable-verify            \
+            --disable-werror                   \
+            --enable-checking=yes              \
+            --enable-default-pie               \
+            --enable-gnu-unique-object         \
+            --enable-languages=all             \
+            --enable-libphobos-checking        \
+            --enable-lto                       \
+            --enable-multilib                  \
+            --enable-offload-defaulted         \
+            --enable-plugin                    \
+            --enable-threads=posix             \
+            --program-prefix="${gcc_prefix}"   \
+            --program-suffix=-13               \
+            --with-gcc-major-version-only      \
+            --with-isl=/usr                    \
+            --with-libiconv-prefix=/usr        \
+            --with-link-serialization=2        \
+            --with-target-system-zlib=auto     \
+            --with-tune=generic                \
+            --with-zstd="${workspace}"         \
+            "${cuda_check}"                    \
             --without-included-gettext
         printf "\n%s\n%s\n\n" \
-            '$ Compiling gcc-13 with languages=c,ada,c++,d,fortran,go,lto,m2,objc,obj-c++' \
+            '$ Compiling gcc-13 with languages=all' \
             '$ This is going to take a while...'
-        execute make "-j$cpu_threads"
+        execute make "-j${cpu_threads}"
         execute sudo make install-strip
-        execute sudo libtool --finish "$install_dir/libexec/gcc/$pc_type/13"
-        execute sudo libtool --finish "$install_dir"/lib
+        execute sudo libtool --finish "${install_dir}/libexec/gcc/${pc_type}/13"
+        execute sudo libtool --finish "${install_dir}/lib"
         build_done 'gcc-13' '13.2.0'
     fi
 }
 
 #
-# START GCC BUILD
+# CALL EACH GCC FUNCTION BY VERSION LOWEST TO HIGHEST
 #
 
-if [ "$VER" -ne '12' ]; then
+if [ "${VER}" -ne '12' ]; then
     build_gcc_11_fn
 fi
 build_gcc_12_fn
