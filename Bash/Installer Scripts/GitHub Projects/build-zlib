@@ -6,15 +6,15 @@
 ##
 ##  Purpose: Build GNU libtool
 ##
-##  Updated: 08.04.23
+##  Updated: 08.31.23
 ##
-##  Script version: 1.0
+##  Script version: 1.1
 ##
 ###########################################################################################################
 
 clear
 
-if [ "$EUID" -eq '0' ]; then
+if [ "${EUID}" -eq '0' ]; then
     printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
     exit 1
 fi
@@ -23,23 +23,24 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.0
-cwd="$PWD"/zlib-build-script
-packages="$cwd"/packages
+script_ver=1.1
+cwd="${PWD}"/zlib-build-script
+packages="${cwd}"/packages
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
 printf "\n%s\n%s\n\n" \
-    "libtool build script - v$script_ver" \
+    "libtool build script - v${script_ver}" \
     '==============================================='
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ ! -d "$cwd" ]; then
-    mkdir -p "$packages"
+if [ -d "${cwd}" ]; then
+    sudo rm -fr "${cwd}"
 fi
+mkdir -p "${cwd}"
 
 #
 # SET THE C+CPP COMPILERS
@@ -51,7 +52,7 @@ export CC=gcc CXX=g++
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O2 -flto -ffunction-sections -fdata-sections -pipe -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
 
 #
 # SET THE PATH VARIABLE
@@ -59,8 +60,8 @@ export {CFLAGS,CXXFLAGS}='-g -O2 -flto -ffunction-sections -fdata-sections -pipe
 
 PATH="\
 /usr/lib/ccache:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
+${HOME}/.cargo/bin:\
+${HOME}/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
@@ -99,15 +100,15 @@ exit_fn()
 {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
-        "$repo"
+        "${repo}"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "$1" \
-        "To report a bug create an issue at: $repo/issues"
+        "${1}" \
+        "To report a bug create an issue at: ${repo}/issues"
     exit 1
 }
 
@@ -115,7 +116,7 @@ cleanup_fn()
 {
     local choice
 
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
         '============================================' \
         '  Do you want to clean up the build files?  ' \
         '============================================' \
@@ -123,8 +124,8 @@ cleanup_fn()
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
 
-    case "$choice" in
-        1)      sudo rm -fr "$cwd";;
+    case "${choice}" in
+        1)      sudo rm -fr "${cwd}";;
         2)      echo;;
         *)
                 clear
@@ -140,18 +141,18 @@ cleanup_fn()
 build()
 {
     printf "\n%s\n%s\n" \
-        "building $1 - version $2" \
+        "building ${1} - version ${2}" \
         '===================================='
 
-    if [ -f "$packages/$1.done" ]; then
-        if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
-            echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
+    if [ -f "${packages}/${1}.done" ]; then
+        if grep -Fx "${2}" "${packages}/${1}.done" >/dev/null; then
+            echo "${1} version ${2} already built. Remove ${packages}/${1}.done lockfile to rebuild it."
             return 1
-        elif $latest; then
-            echo "$1 is outdated and will be rebuilt using version $2"
+        elif ${latest}; then
+            echo "${1} is outdated and will be rebuilt using version ${2}"
             return 0
         else
-            echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
+            echo "${1} is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove ${packages}/${1}.done lockfile."
             return 1
         fi
     fi
@@ -160,72 +161,72 @@ build()
 
 execute()
 {
-    echo "$ $*"
+    echo "$ ${*}"
 
-    if [ "$debug" = 'ON' ]; then
-        if ! output=$("$@"); then
-            notify-send 5000 "Failed to execute: $*"
-            fail_fn "Failed to execute: $*"
+    if [ "${debug}" = 'ON' ]; then
+        if ! output=$("${@}"); then
+            notify-send 5000 "Failed to execute: ${*}"
+            fail_fn "Failed to execute: ${*}"
         fi
     else
-        if ! output=$("$@" 2>&1); then
-            notify-send 5000 "Failed to execute: $*"
-            fail_fn "Failed to execute: $*"
+        if ! output=$("${@}" 2>&1); then
+            notify-send 5000 "Failed to execute: ${*}"
+            fail_fn "Failed to execute: ${*}"
         fi
     fi
 }
 
 download()
 {
-    dl_path="$packages"
-    dl_url="$1"
+    dl_path="${packages}"
+    dl_url="${1}"
     dl_file="${2:-"${1##*/}"}"
 
-    if [[ "$dl_file" =~ tar. ]]; then
+    if [[ "${dl_file}" =~ tar. ]]; then
         output_dir="${dl_file%.*}"
         output_dir="${3:-"${output_dir%.*}"}"
     else
         output_dir="${3:-"${dl_file%.*}"}"
     fi
 
-    target_file="$dl_path/$dl_file"
-    target_dir="$dl_path/$output_dir"
+    target_file="${dl_path}/${dl_file}"
+    target_dir="${dl_path}/${output_dir}"
 
-    if [ -f "$target_file" ]; then
-        echo "The file \"$dl_file\" is already downloaded."
+    if [ -f "${target_file}" ]; then
+        echo "The file \"${dl_file}\" is already downloaded."
     else
-        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
-        if ! curl -A "$user_agent" -Lso "$target_file" "$dl_url"; then
-            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
+        echo "Downloading \"${dl_url}\" saving as \"${dl_file}\""
+        if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
+            printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 10 seconds..."
             sleep 10
-            if ! curl -A "$user_agent" -Lso "$target_file" "$dl_url"; then
-                fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
+            if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
+                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit."
             fi
         fi
         echo 'Download Completed'
     fi
 
-    if [ -d "$target_dir" ]; then
-        sudo rm -fr "$target_dir"
+    if [ -d "${target_dir}" ]; then
+        sudo rm -fr "${target_dir}"
     fi
 
-    mkdir -p "$target_dir"
+    mkdir -p "${target_dir}"
 
-    if [ -n "$3" ]; then
-        if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
-            sudo rm "$target_file"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script."
+    if [ -n "${3}" ]; then
+        if ! tar -xf "${target_file}" -C "${target_dir}" 2>/dev/null >/dev/null; then
+            sudo rm "${target_file}"
+            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script."
         fi
     else
-        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-            sudo rm "$target_file"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script."
+        if ! tar -xf "${target_file}" -C "${target_dir}" --strip-components 1 2>/dev/null >/dev/null; then
+            sudo rm "${target_file}"
+            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script."
         fi
     fi
 
-    printf "%s\n\n" "File extracted: $dl_file"
+    printf "%s\n\n" "File extracted: ${dl_file}"
 
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
+    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}"
 }
 
 git_1_fn()
@@ -233,36 +234,36 @@ git_1_fn()
     local curl_cmd github_repo github_url
 
     # SCRAPE GITHUB WEBSITE FOR THE LATEST REPO VERSION
-    github_repo="$1"
-    github_url="$2"
+    github_repo="${1}"
+    github_url="${2}"
 
-    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
-        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
+    if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+        g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver="${g_ver#v}"
     fi
 
-    echo "${github_repo%/*}-$g_ver" >>"$ver_file_tmp"
-    awk '!NF || !seen[$0]++' "$latest_txt_tmp" >"$ver_file"
+    echo "${github_repo%/*}-${g_ver}" >>"${ver_file_tmp}"
+    awk '!NF || !seen[${0}]++' "${latest_txt_tmp}" >"${ver_file}"
 }
 
 git_ver_fn()
 {
     local t_flag u_flag v_flag v_tag v_url
 
-    v_url="$1"
-    v_tag="$2"
+    v_url="${1}"
+    v_tag="${2}"
 
-    if [ -n "$3" ]; then
-        v_flag="$3"
+    if [ -n "${3}" ]; then
+        v_flag="${3}"
     fi
 
-    case "$v_flag" in
+    case "${v_flag}" in
             B)      t_flag=branches;;
             R)      t_flag=releases;;
             T)      t_flag=tags;;
     esac
 
-    git_1_fn "$v_url" "$t_flag" 2>/dev/null
+    git_1_fn "${v_url}" "${t_flag}" 2>/dev/null
 }
 
 #
@@ -271,7 +272,7 @@ git_ver_fn()
 
 pkgs_fn()
 {
-    pkgs=("$1" libtool autogen automake binutils bison build-essential bzip2 ccache curl
+    pkgs=("${1}" libtool autogen automake binutils bison build-essential bzip2 ccache curl
           libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev libtool nasm texinfo
           zlib1g-dev yasm)
 
@@ -279,13 +280,13 @@ pkgs_fn()
     do
         missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
     
-        if [ -z "$missing_pkg" ]; then
-            missing_pkgs+=" $i"
+        if [ -z "${missing_pkg}" ]; then
+            missing_pkgs+=" ${i}"
         fi
     done
     
-    if [ -n "$missing_pkgs" ]; then
-        sudo apt -y install $missing_pkgs
+    if [ -n "${missing_pkgs}" ]; then
+        sudo apt -y install ${missing_pkgs}
         sudo apt -y autoremove
         clear
     fi
@@ -293,16 +294,16 @@ pkgs_fn()
 
 build_done()
 {
-    echo "$2" > "$packages/$1.done"
+    echo "${2}" > "${packages}/${1}.done"
 }
 
 #
 # GET PC TYPE
 #
 
-curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "$cwd/config.guess"
-pc_type="$(source "$cwd/config.guess")"
+curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "${cwd}/config.guess"
+pc_type="$(source "${cwd}/config.guess")"
 
 #
 # INSTALL APT PACKAGES
@@ -315,17 +316,19 @@ pkgs_fn
 #
 
 git_ver_fn 'madler/zlib' '1' 'T'
-if build 'zlib' "$g_ver"; then
-    download "https://github.com/madler/zlib/releases/download/v$g_ver/zlib-$g_ver.tar.gz"
+if build 'zlib' "${g_ver}"; then
+    download "https://github.com/madler/zlib/releases/download/v${g_ver}/zlib-${g_ver}.tar.gz"
     mkdir build
     cd build || exit 1
-    execute ../configure --prefix=/usr/local \
-                         --static            \
+    execute ../configure --prefix=/usr/local             \
+                         --includedir=/usr/local/include \
+                         --libdir=/usr/local/lib         \
+                         --sharedlibdir=/usr/local/lib   \
+                         --static                        \
                          --64
     execute make "-j$(nproc --all)"
     execute sudo make install
-    execute make distclean
-    build_done 'zlib' "$g_ver"
+    build_done 'zlib' "${g_ver}"
 fi
 
 # PROMPT USER TO CLEAN UP FILES
