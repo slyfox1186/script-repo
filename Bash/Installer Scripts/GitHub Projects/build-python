@@ -8,9 +8,9 @@
 ##
 ##  Features: Static build, OpenSSL backend
 ##
-##  Updated: 08.07.23
+##  Updated: 08.30.23
 ##
-##  Script version: 1.4
+##  Script version: 1.5
 ##
 #################################################################################################################################
 
@@ -25,7 +25,7 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.4
+script_ver=1.5
 py_ver=3.12.0rc1
 archive_dir=Python-${py_ver}.tar.xz
 archive_url=https://www.python.org/ftp/python/3.12.0/${archive_dir}
