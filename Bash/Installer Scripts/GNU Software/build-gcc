@@ -602,12 +602,12 @@ fi
 
 if build 'm4' 'latest'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
-    execute ./configure            \
-            --prefix="${workspace}"  \
-            --disable-nls          \
-            --enable-c++           \
-            --enable-threads=posix \
-            --with-dmalloc         \
+    execute ./configure             \
+            --prefix="${workspace}" \
+            --disable-nls           \
+            --enable-c++            \
+            --enable-threads=posix  \
+            --with-dmalloc          \
             --with-libintl-prefix=/usr
     execute make "-j${cpu_threads}"
     execute make install
@@ -628,7 +628,7 @@ fi
 
 if build 'libtool' '2.4.7'; then
     download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
-    execute ./configure           \
+    execute ./configure             \
             --prefix="${workspace}" \
             --enable-ltdl-install
     execute make "-j${cpu_threads}"
@@ -652,7 +652,7 @@ g_ver="${g_ver//gperftools-/}"
 if build 'gperftools' "${g_ver}"; then
     download 'https://github.com/gperftools/gperftools/releases/download/gperftools-${g_ver}/gperftools-${g_ver}.tar.gz'
     execute ./configure --prefix="${workspace}" \
-                        --disable-shared      \
+                        --disable-shared        \
                         --enable-libunwind
     execute make "-j${cpu_threads}"
     execute make install
@@ -665,7 +665,7 @@ g_ver="${g_ver#Zstandard v}"
 if build 'zstd' "${g_ver}"; then
     download "https://github.com/facebook/zstd/releases/download/v${g_ver}/zstd-${g_ver}.tar.gz"
     cd build/meson || exit 1
-    execute meson setup build --prefix="${workspace}"    \
+    execute meson setup build --prefix="${workspace}"  \
                               --buildtype=release      \
                               --default-library=static \
                               --strip
