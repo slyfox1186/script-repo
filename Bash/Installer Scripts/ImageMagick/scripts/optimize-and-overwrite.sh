@@ -9,21 +9,9 @@ fext=jpg
 # REQUIRED APT PACKAGES
 #
 
-apt_pkgs=(sox libsox-dev)
-for i in ${apt_pkgs[@]}
-do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
-    fi
-done
-
-if [ -n "${missing_pkgs}" ]; then
-    sudo apt -y install ${missing_pkgs}
-    sudo apt -y autoremove
-    clear
-fi
-unset apt_pkgs i missing_pkg missing_pkgs
+sudo apt -y install sox libsox-dev
+sudo apt -y autoremove
+clear
 
 #
 # REQUIRED PIP PACKAGES
@@ -68,7 +56,7 @@ Files in queue: ${cnt_queue}
 Converting: ${i}
             >> ${i%%.jpg}.mpc
                >> ${i%%.jpg}.cache
-                   >> ${i%%.jpg}-IM.jpg
+                  >> ${i%%.jpg}-IM.jpg
 
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 EOF
