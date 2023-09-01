@@ -280,15 +280,15 @@ autoupdate
 ./autogen.sh
 mkdir builddir
 cd builddir || exit 1
-../configure --{build,host}="${pc_type}"       \
-             --prefix="${install_prefix}"      \
-             --disable-shared                  \
-             --enable-static                   \
-             --with-libiconv-prefix=/usr       \
-             --with-libxml2-prefix=/usr        \
-             --with-pic                        \
-             CC="${CC}"                        \
-             CXX="${CXX}"                      \
+../configure --{build,host}="${pc_type}"  \
+             --prefix="${install_prefix}" \
+             --disable-shared             \
+             --enable-static              \
+             --with-libiconv-prefix=/usr  \
+             --with-libxml2-prefix=/usr   \
+             --with-pic                   \
+             CC="${CC}"                   \
+             CXX="${CXX}"                 \
              LIBS="$(pkg-config --libs ticonv)"
 make "-j$(nproc --all)"
 if ! sudo make install; then
