@@ -216,31 +216,28 @@ fi
 cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 cd build || exit 1
-../configure --prefix=/usr/local                    \
+../configure --prefix=/usr/local                      \
              --{build,host}="${pc_type}"              \
-             --disable-nls                          \
-             --enable-threads=posix                 \
-             --enable-valgrind-tests                \
-             --enable-year2038                      \
-             --with-cares                           \
-             --with-gpgme-prefix=/usr               \
-             --with-included-libunistring           \
-             --with-libiconv-prefix="${i}conv_prefix" \
-             --with-libintl-prefix=/usr             \
-             --with-libssl-prefix=/usr/lib64        \
-             --with-libunistring-prefix=/usr        \
-             --with-linux-crypto                    \
-             --with-metalink                        \
-             --with-openssl=auto                    \
-             --with-ssl=openssl                     \
-             PKG_CONFIG="$(type -P pkg-config)"     \
-             PKG_CONFIG_PATH="${pkg}_CONFIG_PATH"
+             --disable-nls                            \
+             --enable-threads=posix                   \
+             --enable-valgrind-tests                  \
+             --enable-year2038                        \
+             --with-cares                             \
+             --with-gpgme-prefix=/usr                 \
+             --with-included-libunistring             \
+             --with-libiconv-prefix="${iconv_prefix}" \
+             --with-libintl-prefix=/usr               \
+             --with-libssl-prefix=/usr/lib64          \
+             --with-libunistring-prefix=/usr          \
+             --with-linux-crypto                      \
+             --with-metalink                          \
+             --with-openssl=auto                      \
+             --with-ssl=openssl                       \
+             PKG_CONFIG="$(type -P pkg-config)"       \
+             PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    echo
-    read -p 'Failure. Press enter to continue.'
-    clear
-    make distclean
+    printf "\n%s\n\n" 'Failed to execute: sudo make install.'
     exit 1
 fi
 
