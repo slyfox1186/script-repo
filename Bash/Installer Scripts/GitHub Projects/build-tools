@@ -243,7 +243,7 @@ download()
 build()
 {
     echo
-    echo "building ${1} - version ${2}"
+    echo "Building ${1} - version ${2}"
     echo '===================================='
 
     if [ -f "${packages}/${1}.done" ]; then
