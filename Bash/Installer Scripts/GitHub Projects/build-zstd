@@ -188,7 +188,6 @@ meson setup build --prefix=/usr/local      \
                   --strip
 ninja "-j$(nproc --all)" -C build
 if ! sudo ninja "-j$(nproc --all)" -C build install; then
-    ninja -C build clean
     printf "\n%s\n\n" 'Failed to install zstd.'
     exit 1
 fi
