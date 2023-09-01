@@ -214,20 +214,20 @@ bash <(curl -A "${user_agent}" -fsSL https://7z.optimizethis.net)
 cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 cd build || exit 1
-../configure --prefix=/usr/local                    \
-             --{build,host}="${pc_type}"              \
-             --disable-nls                          \
-             --enable-gcc-warnings=no               \
-             --enable-backup-scripts                \
-             --with-compress="$(type -P 7z)"        \
-             --with-gzip="$(type -P gzip)"          \
-             --with-bzip2="$(type -P bzip2)"        \
-             --with-lzip="$(type -P lzip)"          \
-             --with-lzma="$(type -P lzma)"          \
-             --with-lzop="$(type -P lzop)"          \
-             --with-xz="$(type -P xz)"              \
-             --with-zstd="$(type -P zstd)"          \
-             --with-libiconv-prefix=/usr            \
+../configure --prefix=/usr/local             \
+             --{build,host}="${pc_type}"     \
+             --disable-nls                   \
+             --enable-gcc-warnings=no        \
+             --enable-backup-scripts         \
+             --with-compress="$(type -P 7z)" \
+             --with-gzip="$(type -P gzip)"   \
+             --with-bzip2="$(type -P bzip2)" \
+             --with-lzip="$(type -P lzip)"   \
+             --with-lzma="$(type -P lzma)"   \
+             --with-lzop="$(type -P lzop)"   \
+             --with-xz="$(type -P xz)"       \
+             --with-zstd="$(type -P zstd)"   \
+             --with-libiconv-prefix=/usr     \
              --with-libintl-prefix=/usr
 make "-j$(nproc --all)"
 if ! sudo make install; then
