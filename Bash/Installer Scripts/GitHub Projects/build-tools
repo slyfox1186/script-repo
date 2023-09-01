@@ -268,8 +268,15 @@ git_1_fn()
     # SCRAPE GITHUB'S API FOR THE LATEST REPO VERSION
     github_repo="${1}"
     github_url="${2}"
+    git_token='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'
 
-    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl \
+                        -m "$curl_timeout" \
+                        --request GET \
+                        --url "https://api.github.com/slyfox1186" \
+                        --header "Authorization: Bearer $git_token" \
+                        --header "X-GitHub-Api-Version: 2022-11-28" \
+                        -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_sver="$(echo "${curl_cmd}" | jq -r '.[0].tag_name' 2>/dev/null)"
         g_sver1="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver="${g_sver#v}"
@@ -282,9 +289,8 @@ git_2_fn()
     gitlab_repo="${1}"
     github_url="${2}"
 
-    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}")"; then
-        g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
-        g_ver="${g_ver#v}"
+    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}" | jq -r '.[0].name')"; then
+        g_ver="${curl_cmd#v}"
     fi
 }
 
