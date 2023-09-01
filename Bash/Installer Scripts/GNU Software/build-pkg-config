@@ -204,12 +204,12 @@ fi
 #
 
 cd "${cwd}/${archive_dir}/build" || exit 1
-../configure --prefix=/usr                      \
-             --enable-indirect-deps             \
-             --with-pc-path="${pkg}_CONFIG_PATH"  \
-             --with-pic                         \
-             PKG_CONFIG="$(type -P pkg-config)" \
-             PKG_CONFIG_PATH="${pkg}_CONFIG_PATH"
+../configure --prefix=/usr                       \
+             --enable-indirect-deps              \
+             --with-pc-path="${PKG_CONFIG_PATH}" \
+             --with-pic                          \
+             PKG_CONFIG="$(type -P pkg-config)"  \
+             PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
 make "-j$(nproc --all)"
 if ! sudo make install; then
     make distclean
