@@ -274,19 +274,19 @@ printf "%s\n%s\n\n" \
     'Running: configure' \
     '========================'
 
-../configure --enable-optimizations                                                \
-             --with-ensurepip=upgrade                                              \
-             --with-lto=yes                                                        \
-             --with-openssl="${openssl_dir}"                                       \
-             --with-pkg-config=yes                                                 \
-             --with-openssl-rpath=auto                                             \
-             --with-ssl-default-suites=openssl                                     \
-             --with-valgrind                                                       \
-             PKG_CONFIG="$(type -P pkg-config)"                                    \
-             PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"                                  \
-             CFLAGS='-I/usr/include/openssl'                                       \
-             CPPFLAGS="${CPPFLAGS}"                                                \
-             LDFLAGS="${LDFLAGS}"                                                  \
+../configure --enable-optimizations               \
+             --with-ensurepip=upgrade             \
+             --with-lto=yes                       \
+             --with-openssl="${openssl_dir}"      \
+             --with-pkg-config=yes                \
+             --with-openssl-rpath=auto            \
+             --with-ssl-default-suites=openssl    \
+             --with-valgrind                      \
+             PKG_CONFIG="$(type -P pkg-config)"   \
+             PKG_CONFIG_PATH="${PKG_CONFIG_PATH}" \
+             CFLAGS='-I/usr/include/openssl'      \
+             CPPFLAGS="${CPPFLAGS}"               \
+             LDFLAGS="${LDFLAGS}"                 \
              LIBS="$(pkg-config --libs openssl)"
 
 printf "\n%s\n%s\n\n" \
