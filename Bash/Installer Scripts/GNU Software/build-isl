@@ -189,7 +189,7 @@ autoreconf -fi
 mkdir build
 cd build || exit 1
 ../configure --prefix=/usr/local             \
-             --{build,host}="${pc_type}"       \
+             --{build,host}="${pc_type}"     \
              --with-gmp-prefix="$gmp_prefix" \
              --with-clang=system             \
              --with-pic
