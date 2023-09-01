@@ -151,10 +151,10 @@ create_links_fn()
 
     for i in ${link_list[@]}
     do
-        if [ -f "${i}nstall_dir/bin/${pc_type}-${i}" ]; then
-            sudo ln -fs "${i}nstall_dir/bin/${pc_type}-${i}" "/usr/local/bin/${i}"
-            sudo chmod 755 "${i}nstall_dir/bin/${pc_type}-${i}"
-            sudo chmod 755 "${i}nstall_dir/bin/${i}"
+        if [ -f "${install_dir}/bin/${pc_type}-${i}" ]; then
+            sudo ln -fs "${install_dir}/bin/${pc_type}-${i}" "/usr/local/bin/${i}"
+            sudo chmod 755 "${install_dir}/bin/${pc_type}-${i}"
+            sudo chmod 755 "${install_dir}/bin/${i}"
         fi
     done
 }
@@ -302,8 +302,15 @@ git_1_fn()
 
     github_repo="${1}"
     github_url="${2}"
+    git_token='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'
 
-    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl \
+                        -m "$curl_timeout" \
+                        --request GET \
+                        --url "https://api.github.com/slyfox1186" \
+                        --header "Authorization: Bearer $git_token" \
+                        --header "X-GitHub-Api-Version: 2022-11-28" \
+                        -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
         g_ver3="$(echo "${curl_cmd}" | jq -r '.[3].name' 2>/dev/null)"
@@ -658,7 +665,7 @@ fi
 
 if build 'jpeg-turbo' 'git'; then
     download_git 'https://github.com/imageMagick/jpeg-turbo.git'
-    execute cmake -S . -DCMAKE_{INSTALL_PREFIX="${i}nstall_dir",BUILD_TYPE=Release} -DENABLE_{SHARED,STATIC}=ON -G Ninja -Wno-dev
+    execute cmake -S . -DCMAKE_{INSTALL_PREFIX="${install_dir}",BUILD_TYPE=Release} -DENABLE_{SHARED,STATIC}=ON -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}"
     execute sudo ninja "-j${cpu_threads}" install
     build_done 'jpeg-turbo' 'git'
@@ -667,7 +674,7 @@ fi
 if build 'libfpx' 'git'; then
     download_git 'https://github.com/imageMagick/libfpx.git'
     execute autoreconf -fi
-    execute ./configure --prefix="${i}nstall_dir" --{build,host,target}="${pc_type}" --with-pic
+    execute ./configure --prefix="${install_dir}" --{build,host,target}="${pc_type}" --with-pic
     execute make "-j${cpu_threads}"
     execute sudo make install
     build_done 'libfpx' 'git'
@@ -772,30 +779,30 @@ if build 'imageMagick' "${g_ver}"; then
     execute autoreconf -fi -I /usr/share/aclocal
     mkdir build
     cd build || exit 1
-    ../configure --prefix="${i}nstall_dir" \
-                 --{build,host,target}="${pc_type}" \
-                 --enable-ccmalloc \
-                 --enable-hdri \
-                 --enable-hugepages \
-                 --enable-legacy-support \
-                 --enable-opencl \
-                 --with-dmalloc \
-                 --with-fpx \
-                 --with-gvc \
-                 --with-gslib \
-                 --with-heic \
-                 --with-jemalloc \
-                 --with-libstdc=/usr/lib/gcc/x86_64-linux-gnu/12 \
-                 --with-modules \
-                 --with-perl \
-                 --with-pic \
-                 --with-rsvg \
-                 --with-tcmalloc \
+    ../configure --prefix="${install_dir}"                        \
+                 --{build,host,target}="${pc_type}"               \
+                 --enable-ccmalloc                                \
+                 --enable-hdri                                    \
+                 --enable-hugepages                               \
+                 --enable-legacy-support                          \
+                 --enable-opencl                                  \
+                 --with-dmalloc                                   \
+                 --with-fpx                                       \
+                 --with-gvc                                       \
+                 --with-gslib                                     \
+                 --with-heic                                      \
+                 --with-jemalloc                                  \
+                 --with-libstdc=/usr/lib/gcc/x86_64-linux-gnu/12  \
+                 --with-modules                                   \
+                 --with-perl                                      \
+                 --with-pic                                       \
+                 --with-rsvg                                      \
+                 --with-tcmalloc                                  \
                  --with-pkgconfigdir="${workspace}"/lib/pkgconfig \
-                 --with-quantum-depth=16 \
-                 --without-autotrace \
-                 PKG_CONFIG="$(type -P pkg-config)" \
-                 PKG_CONFIG_PATH="${pkg}_CONFIG_PATH" \
+                 --with-quantum-depth=16                          \
+                 --without-autotrace                              \
+                 PKG_CONFIG="$(type -P pkg-config)"               \
+                 PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"             \
                  CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include"
     execute make "-j${cpu_threads}"
     execute sudo make install
