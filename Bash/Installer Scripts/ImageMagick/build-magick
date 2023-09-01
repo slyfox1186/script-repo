@@ -27,7 +27,7 @@
 
 clear
 
-if [ "$EUID" -eq '0' ]; then
+if [ "${EUID}" -eq '0' ]; then
     printf "%s\n\n" 'This script must be run WITHOUT root/sudo'
     exit 1
 fi
@@ -38,9 +38,9 @@ fi
 
 script_version=2.5
 progname="${0:2}"
-cwd="$PWD"/magick-build-script
-packages="$cwd"/packages
-workspace="$cwd"/workspace
+cwd="${PWD}"/magick-build-script
+packages="${cwd}"/packages
+workspace="${cwd}"/workspace
 install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 repo='https://github.com/slyfox1186/script-repo'
@@ -50,7 +50,7 @@ debug=OFF # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP WITH TROUBLESHOOTING
 # CREATE OUTPUT DIRECTORIES
 #
 
-mkdir -p "$packages"/deb-files "$packages"/libjxl-deb "$workspace"/lib
+mkdir -p "${packages}"/deb-files "${packages}"/libjxl-deb "${workspace}"/lib
 
 #
 # SET THE AVAILABLE CPU COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -64,9 +64,9 @@ fi
 
 PATH="\
 /usr/lib/ccache:\
-$workspace/bin:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
+${workspace}/bin:\
+${HOME}/.cargo/bin:\
+${HOME}/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
@@ -79,11 +79,11 @@ $HOME/.local/bin:\
 export PATH
 
 PKG_CONFIG_PATH="\
-$workspace/lib64/pkgconfig:\
-$workspace/lib/pkgconfig:\
-$workspace/lib/x86_64-linux-gnu/pkgconfig:\
-$workspace/usr/lib/pkgconfig:\
-$workspace/share/pkgconfig:\
+${workspace}/lib64/pkgconfig:\
+${workspace}/lib/pkgconfig:\
+${workspace}/lib/x86_64-linux-gnu/pkgconfig:\
+${workspace}/usr/lib/pkgconfig:\
+${workspace}/share/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
@@ -104,9 +104,9 @@ export PKG_CONFIG_PATH
 fail_fn()
 {
     printf "\n\n%s\n\n%s\n\n%s\n\n" \
-        "$1" \
+        "${1}" \
         'To report a bug please visit: ' \
-        "$repo/issues"
+        "${repo}/issues"
     exit 1
 }
 
@@ -115,7 +115,7 @@ exit_fn()
     printf "\n%s\n\n%s\n%s\n\n" \
         'The script has completed' \
         'Make sure to star this repository to show your support!' \
-        "$repo"
+        "${repo}"
     exit 0
 }
 
@@ -129,8 +129,8 @@ cleanup_fn()
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
 
-    case "$choice" in
-        1)      sudo rm -fr "$cwd";;
+    case "${choice}" in
+        1)      sudo rm -fr "${cwd}";;
         2)      clear;;
         *)
                 clear
@@ -151,27 +151,27 @@ create_links_fn()
 
     for i in ${link_list[@]}
     do
-        if [ -f "$install_dir/bin/$pc_type-$i" ]; then
-            sudo ln -fs "$install_dir/bin/$pc_type-$i" "/usr/local/bin/$i"
-            sudo chmod 755 "$install_dir/bin/$pc_type-$i"
-            sudo chmod 755 "$install_dir/bin/$i"
+        if [ -f "${i}nstall_dir/bin/${pc_type}-${i}" ]; then
+            sudo ln -fs "${i}nstall_dir/bin/${pc_type}-${i}" "/usr/local/bin/${i}"
+            sudo chmod 755 "${i}nstall_dir/bin/${pc_type}-${i}"
+            sudo chmod 755 "${i}nstall_dir/bin/${i}"
         fi
     done
 }
 
 execute()
 {
-    echo "$ $*"
+    echo "$ ${*}"
 
-    if [ "$debug" = 'ON' ]; then
-        if ! output="$("$@")"; then
-            notify-send -t 5000 "Failed to execute: $*"
-            fail_fn "Failed to execute: $*"
+    if [ "${debug}" = 'ON' ]; then
+        if ! output="$("${@}")"; then
+            notify-send -t 5000 "Failed to execute: ${*}"
+            fail_fn "Failed to execute: ${*}"
         fi
     else
-        if ! output="$("$@" 2>&1)"; then
-            notify-send -t 5000 "Failed to execute: $*"
-            fail_fn "Failed to execute: $*"
+        if ! output="$("${@}" 2>&1)"; then
+            notify-send -t 5000 "Failed to execute: ${*}"
+            fail_fn "Failed to execute: ${*}"
         fi
     fi
 }
@@ -179,12 +179,12 @@ execute()
 build()
 {
     printf "\n%s\n%s\n" \
-        "Building $1 - version $2" \
+        "Building ${1} - version ${2}" \
         '=========================================='
 
-    if [ -f "$packages/$1.done" ]; then
-        if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
-            echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
+    if [ -f "${packages}/${1}.done" ]; then
+        if grep -Fx "${2}" "${packages}/${1}.done" >/dev/null; then
+            echo "${1} version ${2} already built. Remove ${packages}/${1}.done lockfile to rebuild it."
             return 1
         fi
     fi
@@ -193,96 +193,96 @@ build()
 
 build_done()
 {
-    echo "$2" > "$packages/$1.done"
+    echo "${2}" > "${packages}/${1}.done"
 }
 
 get_version_fn()
 {
-    scipt_name="$(basename "$0")"
+    scipt_name="$(basename "${0}")"
     printf "\n%s\n\n%s\n\n" \
         "Script name: $scipt_name" \
-        "Script version: $script_version"
+        "Script version: ${script_ver}sion"
 }
 
 download()
 {
-    dl_path="$packages"
-    dl_url="$1"
+    dl_path="${packages}"
+    dl_url="${1}"
     dl_file="${2:-"${1##*/}"}"
 
-    if [[ "$dl_file" =~ tar. ]]; then
+    if [[ "${dl_file}" =~ tar. ]]; then
         output_dir="${dl_file%.*}"
         output_dir="${3:-"${output_dir%.*}"}"
     else
         output_dir="${3:-"${dl_file%.*}"}"
     fi
 
-    target_file="$dl_path/$dl_file"
-    target_dir="$dl_path/$output_dir"
+    target_file="${dl_path}/${dl_file}"
+    target_dir="${dl_path}/${output_dir}"
 
-    if [ -f "$target_file" ]; then
-        echo "The file \"$dl_file\" is already downloaded."
+    if [ -f "${target_file}" ]; then
+        echo "The file \"${dl_file}\" is already downloaded."
     else
-        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
-        if ! curl -A "$user_agent" -Lso "$target_file" "$dl_url"; then
-            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
+        echo "Downloading \"${dl_url}\" saving as \"${dl_file}\""
+        if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
+            printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 10 seconds..."
             sleep 10
-            if ! curl -A "$user_agent" -Lso "$target_file" "$dl_url"; then
-                fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
+            if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
+                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit."
             fi
         fi
         echo 'Download Completed'
     fi
 
-    if [ -d "$target_dir" ]; then
-        sudo rm -fr "$target_dir"
+    if [ -d "${target_dir}" ]; then
+        sudo rm -fr "${target_dir}"
     fi
 
-    mkdir -p "$target_dir"
+    mkdir -p "${target_dir}"
 
-    if [ -n "$3" ]; then
-        if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
-            sudo rm "$target_file"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script."
+    if [ -n "${3}" ]; then
+        if ! tar -xf "${target_file}" -C "${target_dir}" 2>/dev/null >/dev/null; then
+            sudo rm "${target_file}"
+            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script."
         fi
     else
-        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-            sudo rm "$target_file"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script."
+        if ! tar -xf "${target_file}" -C "${target_dir}" --strip-components 1 2>/dev/null >/dev/null; then
+            sudo rm "${target_file}"
+            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script."
         fi
     fi
 
-    printf "%s\n\n" "File extracted: $dl_file"
+    printf "%s\n\n" "File extracted: ${dl_file}"
 
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
+    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}"
 }
 
 download_git()
 {
     local dl_path dl_url dl_file target_dir
 
-    dl_path="$packages"
-    dl_url="$1"
+    dl_path="${packages}"
+    dl_url="${1}"
     dl_file="${2:-"${1##*/}"}"
     dl_file="${dl_file//\./-}"
-    target_dir="$dl_path/$dl_file"
+    target_dir="${dl_path}/${dl_file}"
 
-    if [ -d "$target_dir" ]; then
-        sudo rm -fr "$target_dir"
+    if [ -d "${target_dir}" ]; then
+        sudo rm -fr "${target_dir}"
     fi
 
-    echo "Downloading $dl_url as $dl_file"
-    if ! git clone -q "$dl_url" "$target_dir"; then
-        printf "\n%s\n\n" "The script failed to clone the git repository \"$target_dir\" and will try again in 10 seconds..."
+    echo "Downloading ${dl_url} as ${dl_file}"
+    if ! git clone -q "${dl_url}" "${target_dir}"; then
+        printf "\n%s\n\n" "The script failed to clone the git repository \"${target_dir}\" and will try again in 10 seconds..."
         sleep 10
-        if ! git clone -q "$dl_url" "$target_dir"; then
-            fail_fn "The script failed to clone \"$target_dir\" twice and will now exit the build."
+        if ! git clone -q "${dl_url}" "${target_dir}"; then
+            fail_fn "The script failed to clone \"${target_dir}\" twice and will now exit the build."
         fi
     else
-        echo -e "Successfully cloned: $target_dir\\n"
+        echo -e "Successfully cloned: ${target_dir}\\n"
     fi
 
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
+    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}"
 }
 
 show_magick_version()
@@ -300,13 +300,13 @@ git_1_fn()
 {
     local curl_cmd github_repo github_url
 
-    github_repo="$1"
-    github_url="$2"
+    github_repo="${1}"
+    github_url="${2}"
 
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
-        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
-        g_ver1="$(echo "$curl_cmd" | jq -r '.[1].name' 2>/dev/null)"
-        g_ver3="$(echo "$curl_cmd" | jq -r '.[3].name' 2>/dev/null)"
+    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+        g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
+        g_ver1="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
+        g_ver3="$(echo "${curl_cmd}" | jq -r '.[3].name' 2>/dev/null)"
         g_ver="${g_ver#pkgconf-}"
         g_ver="${g_ver#release-}"
         g_ver="${g_ver#ver-}"
@@ -314,15 +314,15 @@ git_1_fn()
         g_ver1="${g_ver1#nasm-}"
         g_ver1="${g_ver1#v}"
         g_ver3="${g_ver3#v}"
-        g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url')"
+        g_url="$(echo "${curl_cmd}" | jq -r '.[0].tarball_url')"
     fi
 }
 
 git_2_fn()
 {
-    gitlab_repo="$1"
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.freedesktop.org/api/v4/projects/$gitlab_repo/repository/tags")"; then
-        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
+    gitlab_repo="${1}"
+    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://gitlab.freedesktop.org/api/v4/projects/${gitlab_repo}/repository/tags")"; then
+        g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
     fi
 }
 
@@ -330,20 +330,20 @@ git_ver_fn()
 {
     local v_flag v_tag url_tag
 
-    v_url="$1"
-    v_tag="$2"
+    v_url="${1}"
+    v_tag="${2}"
 
-    if [ -n "$3" ]; then
-        v_flag="$3"
+    if [ -n "${3}" ]; then
+        v_flag="${3}"
     fi
 
-    if [ "$v_flag" = 'T' ] && [ "$v_tag" = '1' ]; then
+    if [ "${v_flag}" = 'T' ] && [ "${v_tag}" = '1' ]; then
         url_tag=git_1_fn gv_url=tags
-    elif [ "$v_flag" = 'T' ] && [ "$v_tag" = '2' ]; then
+    elif [ "${v_flag}" = 'T' ] && [ "${v_tag}" = '2' ]; then
         url_tag=git_2_fn gv_url=tags
     fi
 
-    "$url_tag" "$v_url" "$gv_url" 2>/dev/null
+    "$url_tag" "${v_url}" "$gv_url" 2>/dev/null
 }
 
 #
@@ -364,7 +364,7 @@ usage()
 
 while (($# > 0))
 do
-    case "$1" in
+    case "${1}" in
         -h|--help)
                         usage
                         echo
@@ -376,10 +376,10 @@ do
                         exit 0
                         ;;
         -*)
-                        if [[ "$1" == '--build' || "$1" =~ '-b' ]]; then
+                        if [[ "${1}" == '--build' || "${1}" =~ '-b' ]]; then
                             bflag='-b'
                         fi
-                        if [[ "$1" == '--cleanup' || "$1" =~ '-c' && ! "$1" =~ '--' ]]; then
+                        if [[ "${1}" == '--cleanup' || "${1}" =~ '-c' && ! "${1}" =~ '--' ]]; then
                             cflag='-c'
                             cleanup_fn
                         fi
@@ -405,7 +405,7 @@ pkgs_fn()
 {
     local i missing_pkg missing_pkgs pkgs
 
-    pkgs=("$1" alien asciidoc autoconf autoconf-archive automake autopoint binutils bison build-essential cmake
+    pkgs=("${1}" alien asciidoc autoconf autoconf-archive automake autopoint binutils bison build-essential cmake
           curl flex gettext gimp-data git gperf imagemagick imagemagick-libs jq libc6 libc6-dev
           libfreetype-dev libgc-dev libgimp2.0-dev libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev
           libheif-dev libltdl-dev libpango1.0-dev libpaper-dev libpng-dev libpstoedit-dev libraw-dev
@@ -417,13 +417,13 @@ pkgs_fn()
     do
         missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
 
-        if [ -z "$missing_pkg" ]; then
-            missing_pkgs+=" $i"
+        if [ -z "${missing_pkg}" ]; then
+            missing_pkgs+=" ${i}"
         fi
     done
 
-    if [ -n "$missing_pkgs" ]; then
-        sudo apt -y install $missing_pkgs
+    if [ -n "${missing_pkgs}" ]; then
+        sudo apt -y install ${missing_pkgs}
         sudo apt -y autoremove
         clear
     fi
@@ -437,7 +437,7 @@ install_libjxl_fn()
 {
     local i
 
-    cd "$packages"/deb-files || exit 1
+    cd "${packages}"/deb-files || exit 1
 
     printf "\n%s\n%s\n" \
         'Installing: libjxl_0.8.1_amd64.deb' \
@@ -450,9 +450,9 @@ install_libjxl_fn()
     for i in *.deb
     do
         printf "%s\n%s\n" \
-            "Installing: $i" \
+            "Installing: ${i}" \
             '=========================================='
-        sudo dpkg -i "$i"
+        sudo dpkg -i "${i}"
         echo
     done
     sudo apt -f -y install
@@ -464,8 +464,8 @@ install_libjxl_fn()
 
 download_libjxl_fn()
 {
-    if ! curl -A "$user_agent" -Lso "$packages"/libjxl.tar.gz "$1"; then
-        fail_fn 'Failed to download the libjxl archive: $packages/libjxl.tar.gz'
+    if ! curl -A "${user_agent}" -Lso "${packages}"/libjxl.tar.gz "${1}"; then
+        fail_fn 'Failed to download the libjxl archive: ${packages}/libjxl.tar.gz'
     fi
 }
 
@@ -476,9 +476,9 @@ sort_libjxl_fn()
     url_base=https://github.com/libjxl/libjxl/releases/download/v0.8.1/jxl-debs-amd64
     url_suffix=v0.8.1.tar.gz
 
-    mkdir -p "$packages"/deb-files
+    mkdir -p "${packages}"/deb-files
 
-    if [ ! -f "$packages"/libjxl.tar.gz ]; then
+    if [ ! -f "${packages}"/libjxl.tar.gz ]; then
         case "$VER" in
             '12')       libjxl_download="$url_base-debian-bookworm-$url_suffix";;
             '11')       libjxl_download="$url_base-debian-bullseye-$url_suffix";;
@@ -492,8 +492,8 @@ sort_libjxl_fn()
         # CALL THE DOWNLOAD FUNCTION FOR THE LIBJXL DEBIAN FILES
         download_libjxl_fn "$libjxl_download"
 
-        if ! tar -xf "$packages"/libjxl.tar.gz -C "$packages"/deb-files --strip-components 1; then
-            fail_fn "Could not extract the libjxl archive: $packages/libjxl.tar.gz"
+        if ! tar -xf "${packages}"/libjxl.tar.gz -C "${packages}"/deb-files --strip-components 1; then
+            fail_fn "Could not extract the libjxl archive: ${packages}/libjxl.tar.gz"
         fi
         install_libjxl_fn
     fi
@@ -513,12 +513,12 @@ debian_ver_check_fn()
 
     pkgs_debian='libcpu-features-dev libfontconfig-dev libgc1 libdmalloc-dev libdmalloc5 libjemalloc-dev'
     pkgs_debian+=' libjemalloc2 librust-malloc-buf-dev libyuv-utils libyuv-dev libyuv0 libsharp-dev'
-    pkgs_bullseye="$pkgs_debian libvmmalloc1 libvmmalloc-dev"
-    pkgs_bookworm+="$pkgs_debian libhwy-dev libticonv-dev"
+    pkgs_bullseye="${pkgs}_debian libvmmalloc1 libvmmalloc-dev"
+    pkgs_bookworm+="${pkgs}_debian libhwy-dev libticonv-dev"
 
     case "$VER" in
-        12)     pkgs_fn "$pkgs_bookworm";;
-        11)     pkgs_fn "$pkgs_bullseye";;
+        12)     pkgs_fn "${pkgs}_bookworm";;
+        11)     pkgs_fn "${pkgs}_bullseye";;
         10)     pkgs_fn;;
         *)      fail_fn 'Could not detect the Ubuntu version.';;
     esac
@@ -531,8 +531,8 @@ ubuntu_ver_check_fn()
     pkgs_jammy='libcpu-features-dev libfontconfig-dev libgc1 libhwy-dev libmimalloc2.0 libmimalloc-dev'
 
     case "$VER" in
-        23.04)     pkgs_fn "$pkgs_jammy librust-jpeg-decoder-dev";;
-        22.04)     pkgs_fn "$pkgs_jammy libhwy0";;
+        23.04)     pkgs_fn "${pkgs}_jammy librust-jpeg-decoder-dev";;
+        22.04)     pkgs_fn "${pkgs}_jammy libhwy0";;
         20.04)     pkgs_fn 'libfontconfig1-dev';;
         18.04)     pkgs_fn;;
         *)         fail_fn 'Could not detect the Ubuntu version.';;
@@ -574,23 +574,23 @@ esac
 
 printf "%s\n\n%s\n%s\n%s\n\n" \
     'Starting the build process...' \
-    "ImageMagick Build Script $script_version" \
+    "ImageMagick Build Script ${script_ver}sion" \
     '==========================================' \
-    "This script will use ($cpu_threads) CPU threads for parallel processing to accelerate the building speed."
+    "This script will use (${cpu_threads}) CPU threads for parallel processing to accelerate the building speed."
 
 #
 # INSTALL OFFICIAL IMAGEMAGICK LIBS
 #
 
 git_ver_fn 'imagemagick/imagemagick' '1' 'T'
-if build 'magick-libs' "$g_ver"; then
-    cd "$packages/deb-files" || exit 1
-    if ! curl -A "$user_agent" -Lso "magick-libs-$g_ver.rpm" "https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-libs-$g_ver.x86_64.rpm"; then
+if build 'magick-libs' "${g_ver}"; then
+    cd "${packages}/deb-files" || exit 1
+    if ! curl -A "${user_agent}" -Lso "magick-libs-${g_ver}.rpm" "https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-libs-${g_ver}.x86_64.rpm"; then
         fail_fn 'Failed to download the magick-libs file.'
     fi
     sudo alien -d ./*.rpm
     sudo dpkg -i ./*.deb
-    build_done 'magick-libs' "$g_ver"
+    build_done 'magick-libs' "${g_ver}"
 fi
 
 #
@@ -638,37 +638,37 @@ fi
 # GET PC TYPE
 #
 
-curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "$cwd/config.guess"
-pc_type="$(source "$cwd/config.guess")"
+curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "${cwd}/config.guess"
+pc_type="$(source "${cwd}/config.guess")"
 
 #
 # BUILD FROM SOURCE CODE
 #
 
 git_ver_fn 'libsdl-org/libtiff' '1' 'T'
-if build 'tiff' "$g_ver"; then
-    download "https://codeload.github.com/libsdl-org/libtiff/tar.gz/refs/tags/v$g_ver" "tiff-$g_ver.tar.gz"
+if build 'tiff' "${g_ver}"; then
+    download "https://codeload.github.com/libsdl-org/libtiff/tar.gz/refs/tags/v${g_ver}" "tiff-${g_ver}.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --{build,host}="$pc_type" --enable-cxx --with-pic
-    execute make "-j$cpu_threads"
+    execute ./configure --prefix="${workspace}" --{build,host}="${pc_type}" --enable-cxx --with-pic
+    execute make "-j${cpu_threads}"
     execute make install
-    build_done 'tiff' "$g_ver"
+    build_done 'tiff' "${g_ver}"
 fi
 
 if build 'jpeg-turbo' 'git'; then
     download_git 'https://github.com/imageMagick/jpeg-turbo.git'
-    execute cmake -S . -DCMAKE_{INSTALL_PREFIX="$install_dir",BUILD_TYPE=Release} -DENABLE_{SHARED,STATIC}=ON -G Ninja -Wno-dev
-    execute ninja "-j$cpu_threads"
-    execute sudo ninja "-j$cpu_threads" install
+    execute cmake -S . -DCMAKE_{INSTALL_PREFIX="${i}nstall_dir",BUILD_TYPE=Release} -DENABLE_{SHARED,STATIC}=ON -G Ninja -Wno-dev
+    execute ninja "-j${cpu_threads}"
+    execute sudo ninja "-j${cpu_threads}" install
     build_done 'jpeg-turbo' 'git'
 fi
 
 if build 'libfpx' 'git'; then
     download_git 'https://github.com/imageMagick/libfpx.git'
     execute autoreconf -fi
-    execute ./configure --prefix="$install_dir" --{build,host,target}="$pc_type" --with-pic
-    execute make "-j$cpu_threads"
+    execute ./configure --prefix="${i}nstall_dir" --{build,host,target}="${pc_type}" --with-pic
+    execute make "-j${cpu_threads}"
     execute sudo make install
     build_done 'libfpx' 'git'
 fi
@@ -676,8 +676,8 @@ fi
 if build 'ghostscript' '10.01.2'; then
     download 'https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10012/ghostscript-10.01.2.tar.xz'
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace"  --with-libiconv=/usr --with-sanitizer=address
-    execute make "-j$cpu_threads"
+    execute ./configure --prefix="${workspace}"  --with-libiconv=/usr --with-sanitizer=address
+    execute make "-j${cpu_threads}"
     execute make install
     build_done 'ghostscript' '10.01.2'
 fi
@@ -685,8 +685,8 @@ fi
 if build 'png12' '1.2.59'; then
     download 'https://github.com/glennrp/libpng/archive/refs/tags/v1.2.59.tar.gz' 'libpng-1.2.59.tar.gz'
     execute ./autogen.sh
-    execute ./configure --prefix=/usr --{build,host}="$pc_type" --with-pic --with-pkgconfigdir="$workspace"/lib/pkgconfig
-    execute make "-j$cpu_threads"
+    execute ./configure --prefix=/usr --{build,host}="${pc_type}" --with-pic --with-pkgconfigdir="${workspace}"/lib/pkgconfig
+    execute make "-j${cpu_threads}"
     execute sudo make install
     build_done 'png12' '1.2.59'
 fi
@@ -694,72 +694,72 @@ fi
 if build 'libwebp' 'git'; then
     download_git 'https://chromium.googlesource.com/webm/libwebp' 'libwebp-git'
     execute autoreconf -fi
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="$workspace",BUILD_TYPE=Release} \
+    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} \
         -DWEBP_{BUILD_ANIM_UTILS,BUILD_EXTRAS,BUILD_GIF2WEBP,BUILD_IMG2WEBP,BUILD_LIBWEBPMUX}=OFF \
         -DWEBP_{BUILD_VWEBP,BUILD_WEBPINFO,BUILD_WEBPMUX,ENABLE_SWAP_16BIT_CSP,LINK_STATIC}=OFF \
         -DWEBP_{BUILD_CWEBP,BUILD_DWEBP}=ON -DBUILD_SHARED_LIBS=ON -DZLIB_INCLUDE_DIR=/usr/include \
         -G Ninja -Wno-dev
-    execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
+    execute ninja "-j${cpu_threads}" -C build
+    execute ninja "-j${cpu_threads}" -C build install
     build_done 'libwebp' 'git'
 fi
 
 if build 'c2man' 'git'; then
     download_git 'https://github.com/fribidi/c2man.git'
-    execute ./Configure -desO -D prefix="$workspace" -D bin="$workspace"/bin -D bash="$(type -P bash)" \
+    execute ./Configure -desO -D prefix="${workspace}" -D bin="${workspace}"/bin -D bash="$(type -P bash)" \
         -D cc=/usr/bin/cc -D d_gnu=/usr/lib/x86_64-linux-gnu -D find="$(type -P find)" -D gcc=/usr/bin/gcc \
-        -D gzip="$(type -P gzip)" -D installmansrc="$workspace"/share/man -D ldflags="$LDFLAGS" \
+        -D gzip="$(type -P gzip)" -D installmansrc="${workspace}"/share/man -D ldflags="${LDFLAGS}" \
         -D less="$(type -P less)" -D libpth='/lib64 /lib /usr/lib64 /usr/lib' \
-        -D locincpth="$workspace/include /usr/local/include /usr/include" -D yacc="$(type -P yacc)" \
-        -D loclibpth="$workspace/lib64 $workspace/lib /usr/local/lib64 /usr/local/lib" -D make="$(type -P make)" \
-        -D more="$(type -P more)" -D osname="$OS" -D perl="$(type -P perl)" -D privlib="$workspace"/lib/c2man \
-        -D privlibexp="$workspace"/lib/c2man -D sleep="$(type -P sleep)" -D tail="$(type -P tail)" \
+        -D locincpth="${workspace}/include /usr/local/include /usr/include" -D yacc="$(type -P yacc)" \
+        -D loclibpth="${workspace}/lib64 ${workspace}/lib /usr/local/lib64 /usr/local/lib" -D make="$(type -P make)" \
+        -D more="$(type -P more)" -D osname="$OS" -D perl="$(type -P perl)" -D privlib="${workspace}"/lib/c2man \
+        -D privlibexp="${workspace}"/lib/c2man -D sleep="$(type -P sleep)" -D tail="$(type -P tail)" \
         -D tar="$(type -P tar)" -D uuname="$(uname -s)" -D vi="$(type -P vi)" -D zip="$(type -P zip)"
     execute make depend
-    execute make "-j$cpu_threads"
+    execute make "-j${cpu_threads}"
     execute sudo make install
     execute make distclean
     build_done 'c2man' 'git'
 fi
 
 git_ver_fn 'fribidi/fribidi' '1' 'T'
-if build 'fribidi' "$g_ver"; then
-    download "https://codeload.github.com/fribidi/fribidi/tar.gz/refs/tags/v$g_ver" "fribidi-$g_ver.tar.gz"
+if build 'fribidi' "${g_ver}"; then
+    download "https://codeload.github.com/fribidi/fribidi/tar.gz/refs/tags/v${g_ver}" "fribidi-${g_ver}.tar.gz"
     extra_commands=(-D{deprecated,docs,tests}'=false')
-    execute meson setup build --prefix="$workspace" --buildtype=release --default-library=static --strip "${extra_commands[@]}"
-    execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
-    build_done 'fribidi' "$g_ver"
+    execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=static --strip "${extra_commands[@]}"
+    execute ninja "-j${cpu_threads}" -C build
+    execute ninja "-j${cpu_threads}" -C build install
+    build_done 'fribidi' "${g_ver}"
 fi
 
 git_ver_fn 'host-oman/libraqm' '1' 'T'
-if build 'raqm' "$g_ver"; then
-    download "https://codeload.github.com/host-oman/libraqm/tar.gz/refs/tags/v$g_ver" "raqm-$g_ver.tar.gz"
-    execute meson setup build --prefix="$workspace" --includedir="$workspace"/include --buildtype=release --default-library=static --strip
-    execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
-    build_done 'raqm' "$g_ver"
+if build 'raqm' "${g_ver}"; then
+    download "https://codeload.github.com/host-oman/libraqm/tar.gz/refs/tags/v${g_ver}" "raqm-${g_ver}.tar.gz"
+    execute meson setup build --prefix="${workspace}" --includedir="${workspace}"/include --buildtype=release --default-library=static --strip
+    execute ninja "-j${cpu_threads}" -C build
+    execute ninja "-j${cpu_threads}" -C build install
+    build_done 'raqm' "${g_ver}"
 fi
 
 git_ver_fn 'jemalloc/jemalloc' '1' 'T'
-if build 'jemalloc' "$g_ver"; then
-    download "https://codeload.github.com/jemalloc/jemalloc/tar.gz/refs/tags/$g_ver" "jemalloc-$g_ver.tar.gz"
+if build 'jemalloc' "${g_ver}"; then
+    download "https://codeload.github.com/jemalloc/jemalloc/tar.gz/refs/tags/${g_ver}" "jemalloc-${g_ver}.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --{build,host}="$pc_type" --disable-doc --enable-autogen --enable-shared --enable-static
-    execute make "-j$cpu_threads"
+    execute ./configure --prefix="${workspace}" --{build,host}="${pc_type}" --disable-doc --enable-autogen --enable-shared --enable-static
+    execute make "-j${cpu_threads}"
     execute sudo make install
-    build_done 'jemalloc' "$g_ver"
+    build_done 'jemalloc' "${g_ver}"
 fi
 
 git_ver_fn 'uclouvain/openjpeg' '1' 'T'
-if build 'openjpeg' "$g_ver"; then
-    download "$g_url" "openjpeg-$g_ver.tar.gz"
-    execute cmake -B build -DCMAKE_{BUILD_TYPE=Release,INSTALL_PREFIX="$workspace",EXPORT_COMPILE_COMMANDS=ON} \
+if build 'openjpeg' "${g_ver}"; then
+    download "$g_url" "openjpeg-${g_ver}.tar.gz"
+    execute cmake -B build -DCMAKE_{BUILD_TYPE=Release,INSTALL_PREFIX="${workspace}",EXPORT_COMPILE_COMMANDS=ON} \
         -DCPACK_{BINARY_DEB,BINARY_FREEBSD,BINARY_IFW,BINARY_NSIS}=ON -DBUILD_{SHARED_LIBS=ON,TESTING=OFF,THIRDPARTY=ON} \
         -DCPACK_{BINARY_RPM,BINARY_TBZ2,BINARY_TXZ,SOURCE_RPM,SOURCE_ZIP}=ON -G Ninja -Wno-dev
-    execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
-    build_done 'openjpeg' "$g_ver"
+    execute ninja "-j${cpu_threads}" -C build
+    execute ninja "-j${cpu_threads}" -C build install
+    build_done 'openjpeg' "${g_ver}"
 fi
 
 #
@@ -767,13 +767,13 @@ fi
 #
 
 git_ver_fn 'imagemagick/imagemagick' '1' 'T'
-if build 'imageMagick' "$g_ver"; then
-    download "https://codeload.github.com/imagemagick/imagemagick/tar.gz/refs/tags/$g_ver" "imagemagick-$g_ver.tar.gz"
+if build 'imageMagick' "${g_ver}"; then
+    download "https://codeload.github.com/imagemagick/imagemagick/tar.gz/refs/tags/${g_ver}" "imagemagick-${g_ver}.tar.gz"
     execute autoreconf -fi -I /usr/share/aclocal
     mkdir build
     cd build || exit 1
-    ../configure --prefix="$install_dir" \
-                 --{build,host,target}="$pc_type" \
+    ../configure --prefix="${i}nstall_dir" \
+                 --{build,host,target}="${pc_type}" \
                  --enable-ccmalloc \
                  --enable-hdri \
                  --enable-hugepages \
@@ -791,13 +791,13 @@ if build 'imageMagick' "$g_ver"; then
                  --with-pic \
                  --with-rsvg \
                  --with-tcmalloc \
-                 --with-pkgconfigdir="$workspace"/lib/pkgconfig \
+                 --with-pkgconfigdir="${workspace}"/lib/pkgconfig \
                  --with-quantum-depth=16 \
                  --without-autotrace \
                  PKG_CONFIG="$(type -P pkg-config)" \
-                 PKG_CONFIG_PATH="$PKG_CONFIG_PATH" \
-                 CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include"
-    execute make "-j$cpu_threads"
+                 PKG_CONFIG_PATH="${pkg}_CONFIG_PATH" \
+                 CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include"
+    execute make "-j${cpu_threads}"
     execute sudo make install
 fi
 

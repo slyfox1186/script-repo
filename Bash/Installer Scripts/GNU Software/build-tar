@@ -14,7 +14,7 @@
 
 clear
 
-if [ "$EUID" -eq '0' ]; then
+if [ "${EUID}" -eq '0' ]; then
     printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
     exit 1
 fi
@@ -27,20 +27,20 @@ script_ver=1.0
 archive_dir=tar-latest
 archive_url=https://ftp.gnu.org/gnu/tar/tar-latest.tar.xz
 archive_ext="${archive_url//*.}"
-cwd="$PWD"/tar-build-script
+cwd="${PWD}"/tar-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
 printf "\n%s\n%s\n\n" \
-    "tar build script - v$script_ver" \
+    "tar build script - v${script_ver}" \
     '==============================================='
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ ! -d "$cwd" ]; then
-    mkdir -p "$cwd"
+if [ ! -d "${cwd}" ]; then
+    mkdir -p "${cwd}"
 fi
 
 #
@@ -53,7 +53,7 @@ export CC=gcc CXX=g++
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O2 -flto -ffunction-sections -fdata-sections -pipe -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
 
 #
 # SET THE PATH VARIABLE
@@ -61,8 +61,8 @@ export {CFLAGS,CXXFLAGS}='-g -O2 -flto -ffunction-sections -fdata-sections -pipe
 
 PATH="\
 /usr/lib/ccache:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
+${HOME}/.cargo/bin:\
+${HOME}/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
@@ -101,15 +101,15 @@ exit_fn()
 {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
-        "$repo"
+        "${repo}"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "$1" \
-        "To report a bug create an issue at: $repo/issues"
+        "${1}" \
+        "To report a bug create an issue at: ${repo}/issues"
     exit 1
 }
 
@@ -125,8 +125,8 @@ cleanup_fn()
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
 
-    case "$choice" in
-        1)      sudo rm -fr "$cwd";;
+    case "${choice}" in
+        1)      sudo rm -fr "${cwd}";;
         2)      echo;;
         *)
                 clear
@@ -145,21 +145,21 @@ cleanup_fn()
 
 pkgs_fn()
 {
-    pkgs=("$1" autoconf autoconf-archive autogen automake binutils bison build-essential bzip2 ccache curl
+    pkgs=("${1}" autoconf autoconf-archive autogen automake binutils bison build-essential bzip2 ccache curl
           libc6-dev libintl-perl libtool libtool-bin libzstd-dev lzip lzma lzma-dev m4 nasm
           texinfo zlib1g-dev zstd yasm)
 
     for i in ${pkgs[@]}
     do
-        missing_pkg="$(sudo dpkg -l | grep -o "$i")"
+        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
     
-        if [ -z "$missing_pkg" ]; then
-            missing_pkgs+=" $i"
+        if [ -z "${missing_pkg}" ]; then
+            missing_pkgs+=" ${i}"
         fi
     done
     
-    if [ -n "$missing_pkgs" ]; then
-        sudo apt -y install $missing_pkgs
+    if [ -n "${missing_pkgs}" ]; then
+        sudo apt -y install ${missing_pkgs}
         sudo apt -y autoremove
         clear
     fi
@@ -169,35 +169,35 @@ pkgs_fn()
 # GET PC TYPE
 #
 
-curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "$cwd/config.guess"
-pc_type="$(source "$cwd/config.guess")"
+curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "${cwd}/config.guess"
+pc_type="$(source "${cwd}/config.guess")"
 
 #
 # DOWNLOAD THE ARCHIVE FILE
 #
 
-archive_name="$archive_dir.tar.$archive_ext"
+archive_name="${archive_dir}.tar.${archive_ext}"
 
-if [ ! -f "$cwd/$archive_name" ]; then
-    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
+if [ ! -f "${cwd}/${archive_name}" ]; then
+    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
 fi
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
+if [ -d "${cwd}/${archive_dir}" ]; then
+    sudo rm -fr "${cwd}/${archive_dir}"
 fi
-mkdir -p "$cwd/$archive_dir/build"
+mkdir -p "${cwd}/${archive_dir}/build"
 
 #
 # EXTRACT ARCHIVE FILES
 #
 
-if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
+if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
     exit 1
 fi
 
@@ -205,17 +205,17 @@ fi
 # INSTALL 7Z FOR USE IN CONFIGURE COMMAND LINE BELOW
 #
 
-bash <(curl -A "$user_agent" -fsSL https://7z.optimizethis.net)
+bash <(curl -A "${user_agent}" -fsSL https://7z.optimizethis.net)
 
 #
 # BUILD PROGRAM FROM SOURCE
 #
 
-cd "$cwd/$archive_dir" || exit 1
+cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 cd build || exit 1
 ../configure --prefix=/usr/local                    \
-             --{build,host}="$pc_type"              \
+             --{build,host}="${pc_type}"              \
              --disable-nls                          \
              --enable-gcc-warnings=no               \
              --enable-backup-scripts                \

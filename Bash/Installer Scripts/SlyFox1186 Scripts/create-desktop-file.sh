@@ -7,9 +7,8 @@ clear
 ##########################################
 # Verify the script has root access before continuing
 if [ "${EUID}" -eq '0' ]; then
-    echo 'You must run this script without root/sudo'
-    echo
-    exec bash "${0}" "${@}"
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
 fi
 
 #######################################
@@ -29,17 +28,17 @@ clear
 ######################
 ## CUSTOM VARIABLES ##
 ######################
-DISPLAY_NAME='Nautilus'
-FILE_NAME='nautilus-root'
-FILE_PATH='/usr/bin/nautilus'
-FILE_ICON='/usr/share/icons/Yaru/256x256@2x/apps/nautilus.png'
+display_name='Nautilus'
+file_name='nautilus-root'
+file_path='/usr/bin/nautilus'
+file_icon='/usr/share/icons/Yaru/256x256@2x/apps/nautilus.png'
 
 ######################
 ## STATIC VARIABLES ##
 ######################
-FULL_PATH="${HOME}/Desktop/${FILE_NAME}.desktop"
-TERMINAL='false'
-VERSION='1.0'
+full_path="${HOME}/Desktop/${file_name}.desktop"
+terminal='false'
+version='1.0'
 
 #####################
 ## DEFINE FUNTIONS ##
@@ -60,7 +59,7 @@ exit_fn()
     if [[ "${1}" == '_YES_' ]]; then
         exit_msg_fn
     elif [[ "${1}" == '_NO_' ]]; then
-        echo "[i] You can find the new file here: ${FULL_PATH}"
+        echo "[i] You can find the new file here: ${full_path}"
         exit_msg_fn
     fi
 }
@@ -74,27 +73,27 @@ edit_permissions_fn()
     read -t 15 -p '[i] Pausing execution for 15 seconds. Press enter to continue at any time.'
     clear
     echo '[i] Setting the file permission to '\''750'\'' which equals rwxr-----'
-    sudo chmod 750 "${FULL_PATH}"
+    sudo chmod 750 "${full_path}"
     sleep 2
     echo
     echo '[i] Enabling the required '\''allow to execute'\'' switch'
     sleep 3
-    gio set "${FULL_PATH}" metadata::trusted true
+    gio set "${full_path}" metadata::trusted true
     clear
     exit_fn "${1}"
 }
 
 editor_fn()
 {
-    if [ -n "${EDITOR}" ]; then
-        "${EDITOR}" "${FULL_PATH}"
+    if [ -n "${editor}" ]; then
+        "${editor}" "${full_path}"
     else
         if which gedit &> /dev/null; then
-            gedit "${FULL_PATH}"
+            gedit "${full_path}"
         elif which nano &> /dev/null; then
-            nano "${FULL_PATH}"
+            nano "${full_path}"
         else
-            vi "${FULL_PATH}"
+            vi "${full_path}"
         fi
     fi
 }
@@ -102,7 +101,7 @@ editor_fn()
 prompt_fn()
 {
     if [[ "${1}" == '1' ]]; then
-        sudo rm "${FULL_PATH}"
+        sudo rm "${full_path}"
         clear
         exit_fn "${2}"
     elif [[ "${1}" == '2' ]]; then
@@ -122,19 +121,19 @@ prompt_fn()
 echo '[i] Creating the .desktop file.'
 sleep 2
 
-cat > "${FULL_PATH}" <<EOF
+cat > "${full_path}" <<EOF
 [Desktop Entry]
 Encoding=UTF-8
-Version=${VERSION}
+version=${version}
 Type=Application
-Terminal=${TERMINAL}
-Exec=${FILE_PATH}
-Name=${DISPLAY_NAME}
-Icon=${FILE_ICON}
+terminal=${terminal}
+Exec=${file_path}
+Name=${display_name}
+Icon=${file_icon}
 EOF
 
 # OPEN THE NEWLY CREATED FILE FOR INSPECTION
-# JUST CLOSE THE EDITOR IF EVERYTHING LOOKS GOOD
+# JUST CLOSE THE editor IF EVERYTHING LOOKS GOOD
 echo
 echo '[i] Inspect the file and close the editor when done.'
 echo
@@ -149,11 +148,11 @@ echo
 echo '[1] Yes'
 echo '[2] No'
 echo
-read -p 'Your choices are (1 or 2): ' ANSWER
+read -p 'Your choices are (1 or 2): ' answer
 clear
-if [[ "${ANSWER}" == '1' ]]; then
-    FLAG='_YES_'
+if [[ "${answer}" == '1' ]]; then
+    flag='_YES_'
 else
-    FLAG='_NO_'
+    flag='_NO_'
 fi
-prompt_fn "${ANSWER}" "${FLAG}"
+prompt_fn "${answer}" "${flag}"

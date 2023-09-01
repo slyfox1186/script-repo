@@ -8,8 +8,8 @@ clear
 green='\e[32m'
 blue='\e[34m'
 clear='\e[0m'
-ColorGreen() { echo -ne "$green$1$clear"; }
-ColorBlue() { echo -ne "$blue$1$clear"; }
+ColorGreen() { echo -ne "$green${1}$clear"; }
+ColorBlue() { echo -ne "$blue${1}$clear"; }
 
 #
 # SHOW SCRIPT BANNER
@@ -17,14 +17,14 @@ ColorBlue() { echo -ne "$blue$1$clear"; }
 
 function box_out_banner()
 {
-    input_char=$(echo "$@" | wc -c)
-    line=$(for i in `seq 0 $input_char`; do printf "-"; done)
+    input_char=$(echo "${@}" | wc -c)
+    line=$(for i in `seq 0 ${i}nput_char`; do printf "-"; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
     echo " ${line}"
     printf '|'; echo -n "$space"; printf "%s\n" '|';
-    printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3; printf "%s\n" ' |';
+    printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3; printf "%s\n" ' |';
     printf '|'; echo -n "$space"; printf "%s\n" '|';
     echo " ${line}"
     tput sgr 0
@@ -60,7 +60,7 @@ $(ColorGreen '0)')  Exit
 $(ColorBlue 'Choose an option:') "
     read answer
     clear
-    case "$answer" in
+    case "${answer}" in
         1)
             bash <(curl -sSL https://lunar-scripts.optimizethis.net)
             unset answer
@@ -102,7 +102,7 @@ $(ColorGreen '0)')  Exit
 $(ColorBlue 'Choose an option:') "
     read answer
     clear
-    case "$answer" in
+    case "${answer}" in
         1)
             curl -Lso mirrors.sh https://lunar-mirrors.optimizethis.net; sudo bash mirrors.sh
             unset answer
@@ -176,7 +176,7 @@ $(ColorGreen '0)')  Exit
 $(ColorBlue 'Choose an option:') "
     read answer
     clear
-    case "$answer" in
+    case "${answer}" in
         1)
             szip_release_fn
             unset answer
@@ -238,7 +238,7 @@ $(ColorBlue 'Choose an option:') "
             main_menu
             ;;
         0)
-            sudo rm "$0"
+            sudo rm "${0}"
             unset answer
             clear
             exit 0

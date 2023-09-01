@@ -3,7 +3,7 @@
 clear
 
 # CREATE VARIABLES
-parent_dir="$PWD"
+parent_dir="${PWD}"
 tmp_dir="$(mktemp -d)"
 
 # CREATE AND CD INTO A RANDOM DIRECTORY
@@ -29,6 +29,6 @@ sudo chmod +rwx -R imow
 unset parent_dir tmp_dir
 
 # REMOVE THE INSTALLER SCRIPT ITSELF
-if [ -f "$0" ]; then
-    sudo rm "$0"
+if [ -f "${0}" ]; then
+    sudo rm "${0}"
 fi

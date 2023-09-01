@@ -15,7 +15,7 @@
 ##
 ###########################################################################################################
 
-if [ "$EUID" -eq '0' ]; then
+if [ "${EUID}" -eq '0' ]; then
     printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
     exit 1
 fi
@@ -37,7 +37,7 @@ prompt_fn()
         read -p 'Your choices are (1 to 3): ' answer
         clear
 
-        case "$answer" in
+        case "${answer}" in
             1)      archive_url='https://github.com/microsoft/WSL2-Linux-Kernel/archive/refs/tags/linux-msft-wsl-5.15.123.1.tar.gz';;
             2)      archive_url='https://github.com/microsoft/WSL2-Linux-Kernel/archive/refs/tags/linux-msft-wsl-6.1.21.2.tar.gz';;
             3)      exit 0;;
@@ -47,7 +47,7 @@ prompt_fn()
 
 prompt_fn
 
-short_name="$(echo "$archive_url" | sed 's/^.*\/.*-wsl-\(.*\)\.tar\.gz$/\1/')"
+short_name="$(echo "${archive_url}" | sed 's/^.*\/.*-wsl-\(.*\)\.tar\.gz$/\1/')"
 
 #
 # SET VARIABLES
@@ -56,21 +56,21 @@ short_name="$(echo "$archive_url" | sed 's/^.*\/.*-wsl-\(.*\)\.tar\.gz$/\1/')"
 script_ver=2.0
 archive_dir="$short_name"
 archive_ext="${archive_url//*.}"
-cwd="$PWD"/WSL2-build-script
+cwd="${PWD}"/WSL2-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 printf "\n%s\n%s\n\n" \
-    "WSL2 Build Script - v$script_ver" \
+    "WSL2 Build Script - v${script_ver}" \
     '==============================================='
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ ! -d "$cwd" ]; then
-    mkdir -p "$cwd"
+if [ ! -d "${cwd}" ]; then
+    mkdir -p "${cwd}"
 fi
 
 #
@@ -83,7 +83,7 @@ export CC=gcc CXX=g++
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O2 -flto -ffunction-sections -fdata-sections -pipe -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
 
 #
 # SET THE PATH VARIABLE
@@ -91,8 +91,8 @@ export {CFLAGS,CXXFLAGS}='-g -O2 -flto -ffunction-sections -fdata-sections -pipe
 
 PATH="\
 /usr/lib/ccache:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
+${HOME}/.cargo/bin:\
+${HOME}/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
@@ -132,16 +132,16 @@ exit_fn()
     printf "\n%s\n\n%s\n%s\n\n" \
         'The script has completed' \
         'Make sure to star this repository to show your support!' \
-        "$repo"
+        "${repo}"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n\n%s\n\n%s\n\n%s\n\n" \
-        "$1" \
+        "${1}" \
         'Please create a support ticket so I can work on a fix.' \
-        "$repo/issues"
+        "${repo}/issues"
     exit 1
 }
 
@@ -155,8 +155,8 @@ cleanup_fn()
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
 
-    case "$answer" in
-        1)      sudo rm -fr "$cwd" "$0";;
+    case "${answer}" in
+        1)      sudo rm -fr "${cwd}" "${0}";;
         2)      return 0;;
         *)
                 clear
@@ -171,89 +171,89 @@ cleanup_fn()
 
 execute()
 {
-    echo "$ $*"
+    echo "$ ${*}"
 
-    if [ "$debug" = 'ON' ]; then
-        if ! output=$("$@"); then
-            notify-send -t 10000 "Failed to execute: $*"
-            fail_fn "Failed to execute: $*"
+    if [ "${debug}" = 'ON' ]; then
+        if ! output=$("${@}"); then
+            notify-send -t 10000 "Failed to execute: ${*}"
+            fail_fn "Failed to execute: ${*}"
         fi
     else
-        if ! output=$("$@" 2>&1); then
-            notify-send -t 10000 "Failed to execute: $*"
-            fail_fn "Failed to execute: $*"
+        if ! output=$("${@}" 2>&1); then
+            notify-send -t 10000 "Failed to execute: ${*}"
+            fail_fn "Failed to execute: ${*}"
         fi
     fi
 }
 
 download()
 {
-    dl_path="$packages"
-    dl_url="$1"
+    dl_path="${packages}"
+    dl_url="${1}"
     clea="${2:-"${1##*/}"}"
 
-    if [[ "$dl_file" =~ tar. ]]; then
+    if [[ "${dl_file}" =~ tar. ]]; then
         output_dir="${dl_file%.*}"
         output_dir="${3:-"${output_dir%.*}"}"
     else
         output_dir="${3:-"${dl_file%.*}"}"
     fi
 
-    target_file="$dl_path/$dl_file"
-    target_dir="$dl_path/$output_dir"
+    target_file="${dl_path}/${dl_file}"
+    target_dir="${dl_path}/${output_dir}"
 
-    if [ -f "$target_file" ]; then
-        echo "The file \"$dl_file\" is already downloaded."
+    if [ -f "${target_file}" ]; then
+        echo "The file \"${dl_file}\" is already downloaded."
     else
-        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
-        if ! curl -Lso "$target_file" "$dl_url"; then
-            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 5 seconds..."
+        echo "Downloading \"${dl_url}\" saving as \"${dl_file}\""
+        if ! curl -Lso "${target_file}" "${dl_url}"; then
+            printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 5 seconds..."
             sleep 5
-            if ! curl -Lso "$target_file" "$dl_url"; then
-                fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
+            if ! curl -Lso "${target_file}" "${dl_url}"; then
+                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit."
             fi
         fi
         echo 'Download Completed'
     fi
 
-    if [ -d "$target_dir" ]; then
-        sudo rm -fr "$target_dir"
+    if [ -d "${target_dir}" ]; then
+        sudo rm -fr "${target_dir}"
     fi
 
-    mkdir -p "$target_dir"
+    mkdir -p "${target_dir}"
 
-    if [ -n "$3" ]; then
-        if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
-            sudo rm "$target_file"
-            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please rerun the script."
+    if [ -n "${3}" ]; then
+        if ! tar -xf "${target_file}" -C "${target_dir}" 2>/dev/null >/dev/null; then
+            sudo rm "${target_file}"
+            fail_fn "Failed to extract \"${dl_file}\" so it was deleted. Please rerun the script."
         fi
     else
-        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-            sudo rm "$target_file"
-            fail_fn "Failed to extract \"$dl_file\" so it was deleted. Please rerun the script."
+        if ! tar -xf "${target_file}" -C "${target_dir}" --strip-components 1 2>/dev/null >/dev/null; then
+            sudo rm "${target_file}"
+            fail_fn "Failed to extract \"${dl_file}\" so it was deleted. Please rerun the script."
         fi
     fi
 
-    echo -e "File extracted: $dl_file\\n"
+    echo -e "File extracted: ${dl_file}\\n"
 
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
+    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}"
 }
 
 build()
 {
     echo
-    echo "building $1 - version $2"
+    echo "building ${1} - version ${2}"
     echo '===================================='
 
-    if [ -f "$packages/$1.done" ]; then
-        if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
-            echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
+    if [ -f "${packages}/${1}.done" ]; then
+        if grep -Fx "${2}" "${packages}/${1}.done" >/dev/null; then
+            echo "${1} version ${2} already built. Remove ${packages}/${1}.done lockfile to rebuild it."
             return 1
         elif $latest; then
-            echo "$1 is outdated and will be rebuilt using version $2"
+            echo "${1} is outdated and will be rebuilt using version ${2}"
             return 0
         else
-            echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
+            echo "${1} is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove ${packages}/${1}.done lockfile."
             return 1
         fi
     fi
@@ -263,16 +263,16 @@ build()
 
 build_done()
 {
-    echo "$2" >"$packages/$1.done"
+    echo "${2}" >"${packages}/${1}.done"
 }
 
 #
 # GET PC TYPE
 #
 
-curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "$cwd/config.guess"
-pc_type="$(source "$cwd/config.guess")"
+curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "${cwd}/config.guess"
+pc_type="$(source "${cwd}/config.guess")"
 
 #
 # INSTALL REQUIRED APT cwd
@@ -296,13 +296,13 @@ for i in ${pkgs[@]}
 do
     missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
 
-    if [ -z "$missing_pkg" ]; then
-        missing_pkgs+=" $i"
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${i}"
     fi
 done
 
-if [ -n "$missing_pkgs" ]; then
-    sudo apt -y install $missing_pkgs
+if [ -n "${missing_pkgs}" ]; then
+    sudo apt -y install ${missing_pkgs}
     sudo apt -y autoremove
     clear
 fi
@@ -311,21 +311,21 @@ fi
 # DOWNLOAD THE ARCHIVE FILE
 #
 
-if [ ! -f "$cwd/$archive_name" ]; then
-    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
+if [ ! -f "${cwd}/${archive_name}" ]; then
+    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
 fi
 
 #
 # BUILD PROGRAM FROM SOURCE
 #
 
-cd "$cwd" || exit 1
+cd "${cwd}" || exit 1
 if build 'wsl-kernel' "$short_name"; then
-    wget --show-progress -cqO "wsl-$short_name.tar.$archive_ext" "$archive_url"
+    wget --show-progress -cqO "wsl-$short_name.tar.${archive_ext}" "${archive_url}"
     mkdir -p "wsl-$short_name"
     tar -zxf "wsl-$short_name.tar.gz" -C "wsl-$short_name" --strip-components 1
     cd "wsl-$short_name" || exit 1
-    echo 'yes' | make "-j$cpu_threads" KCONFIG_CONFIG='Microsoft/config-wsl'
+    echo 'yes' | make "-j${cpu_threads}" KCONFIG_CONFIG='Microsoft/config-wsl'
     build_done 'wsl-kernel' "$short_name"
 fi
 

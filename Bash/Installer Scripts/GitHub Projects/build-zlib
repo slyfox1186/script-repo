@@ -182,7 +182,7 @@ download()
     dl_url="${1}"
     dl_file="${2:-"${1##*/}"}"
 
-    if [[ "$dl_file" =~ tar. ]]; then
+    if [[ "${dl_file}" =~ tar. ]]; then
         output_dir="${dl_file%.*}"
         output_dir="${3:-"${output_dir%.*}"}"
     else

@@ -11,6 +11,7 @@ export PATH="${PATH}:${HOME}/.local/bin"
 #
 
 apt_pkgs=(bc ffmpegthumbnailer ffmpegthumbs libffmpegthumbnailer4v5 sox libsox-dev trash-cli)
+
 for i in ${apt_pkgs[@]}
 do
     missing_pkg="$(sudo dpkg -l | grep "${i}")"

@@ -10,18 +10,18 @@ script_ver=1.0
 archive_dir=terminator-2.1.3
 archive_url=https://salsa.debian.org/python-team/packages/terminator/-/archive/debian/2.1.3-1/terminator-debian-2.1.3-1.tar.bz2
 archive_ext="${archive_url//*.}"
-cwd="$PWD"/terminator-config-build-script
+cwd="${PWD}"/terminator-config-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 
 printf "\n%s\n%s\n\n" \
-    "Terminator Build Script - v$script_ver" \
+    "Terminator Build Script - v${script_ver}" \
     '==============================================='
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-mkdir -p "$cwd"
+mkdir -p "${cwd}"
 
 #
 # SET THE C+CPP COMPILERS
@@ -33,7 +33,7 @@ export CC=gcc CXX=g++
 # EXPORT COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O2 -flto -ffunction-sections -fdata-sections -pipe -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
 
 #
 # SET THE PATH VARIABLE
@@ -41,8 +41,8 @@ export {CFLAGS,CXXFLAGS}='-g -O2 -flto -ffunction-sections -fdata-sections -pipe
 
 PATH="\
 /usr/lib/ccache:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
+${HOME}/.cargo/bin:\
+${HOME}/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
@@ -86,7 +86,7 @@ exit_fn()
 
 fail_fn()
 {
-    printf "%s\n\n" "$1"
+    printf "%s\n\n" "${1}"
     exit 1
 }
 
@@ -102,8 +102,8 @@ cleanup_fn()
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
 
-    case "$choice" in
-        1)      sudo rm -fr "$cwd";;
+    case "${choice}" in
+        1)      sudo rm -fr "${cwd}";;
         2)      echo;;
         *)
                 clear
@@ -130,14 +130,14 @@ for i in ${pkgs[@]}
 do
     missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
 
-    if [ -z "$missing_pkg" ]; then
-        missing_pkgs+=" $i"
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${i}"
     fi
 done
 unset i
 
-if [ -n "$missing_pkgs" ]; then
-    sudo apt -y install $missing_pkgs
+if [ -n "${missing_pkgs}" ]; then
+    sudo apt -y install ${missing_pkgs}
     clear
 fi
 
@@ -145,35 +145,35 @@ fi
 # GET PC TYPE
 #
 
-curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "$cwd/config.guess"
-pc_type="$(source "$cwd/config.guess")"
+curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "${cwd}/config.guess"
+pc_type="$(source "${cwd}/config.guess")"
 
 #
 # DOWNLOAD THE ARCHIVE FILE
 #
 
-archive_name="$archive_dir.tar.$archive_ext"
+archive_name="${archive_dir}.tar.${archive_ext}"
 
-if [ ! -f "$cwd/$archive_name" ]; then
-    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
+if [ ! -f "${cwd}/${archive_name}" ]; then
+    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
 fi
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
+if [ -d "${cwd}/${archive_dir}" ]; then
+    sudo rm -fr "${cwd}/${archive_dir}"
 fi
-mkdir -p "$cwd/$archive_dir"
+mkdir -p "${cwd}/${archive_dir}"
 
 #
 # EXTRACT ARCHIVE FILES
 #
 
-if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
+if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
     exit 1
 fi
 
@@ -181,11 +181,11 @@ fi
 # BUILD PROGRAM FROM SOURCE
 #
 
-cd "$cwd/$archive_dir" || exit 1
+cd "${cwd}/${archive_dir}" || exit 1
 python3 setup.py build
-if ! sudo python3 setup.py install --prefix=/usr/local --install-lib=/usr/local/lib --home="$HOME" \
+if ! sudo python3 setup.py install --prefix=/usr/local --install-lib=/usr/local/lib --home="${HOME}" \
         --single-version-externally-managed --record=install-files.txt --install-headers --install-scripts \
-        --install-data --compile -optimize -O2 --force --record "$cwd"/terminator-installed-files.txt --user \
+        --install-data --compile -optimize -O2 --force --record "${cwd}"/terminator-installed-files.txt --user \
         --install-layout=unix; then
     python3 build clean
     printf "\n%s\n\n" 'Failed to install Terminator.'
