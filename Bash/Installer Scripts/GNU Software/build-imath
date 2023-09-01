@@ -185,8 +185,7 @@ fi
 cd "${cwd}/${archive_dir}" || exit 1
 cmake -B build -DCMAKE_INSTALL_PREFIX=/usr/local \
                -DCMAKE_BUILD_TYPE=Release        \
-               -G Ninja                          \
-               -Wno-dev
+               -G Ninja -Wno-dev
 ninja "-j$(nproc --all)" -C build
 if ! sudo ninja "-j$(nproc --all)" -C build install; then
     ninja build clean
