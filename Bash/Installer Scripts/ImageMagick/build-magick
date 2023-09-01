@@ -524,8 +524,8 @@ debian_ver_check_fn()
     pkgs_bookworm+="${pkgs}_debian libhwy-dev libticonv-dev"
 
     case "$VER" in
-        12)     pkgs_fn "${pkgs}_bookworm";;
-        11)     pkgs_fn "${pkgs}_bullseye";;
+        12)     pkgs_fn "${pkgs_bookworm}";;
+        11)     pkgs_fn "${pkgs_bullseye}";;
         10)     pkgs_fn;;
         *)      fail_fn 'Could not detect the Ubuntu version.';;
     esac
@@ -538,8 +538,8 @@ ubuntu_ver_check_fn()
     pkgs_jammy='libcpu-features-dev libfontconfig-dev libgc1 libhwy-dev libmimalloc2.0 libmimalloc-dev'
 
     case "$VER" in
-        23.04)     pkgs_fn "${pkgs}_jammy librust-jpeg-decoder-dev";;
-        22.04)     pkgs_fn "${pkgs}_jammy libhwy0";;
+        23.04)     pkgs_fn "${pkgs_jammy} librust-jpeg-decoder-dev";;
+        22.04)     pkgs_fn "${pkgs_jammy} libhwy0";;
         20.04)     pkgs_fn 'libfontconfig1-dev';;
         18.04)     pkgs_fn;;
         *)         fail_fn 'Could not detect the Ubuntu version.';;
