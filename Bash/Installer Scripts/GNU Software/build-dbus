@@ -222,7 +222,7 @@ fi
 cd "${cwd}/${archive_dir}" || exit 1
 cd build || exit 1
 ../configure --prefix=/usr/local                    \
-             --{build,host}="${pc_type}"              \
+             --{build,host}="${pc_type}"            \
              --enable-apparmor                      \
              --enable-code-coverage                 \
              --enable-epoll                         \
