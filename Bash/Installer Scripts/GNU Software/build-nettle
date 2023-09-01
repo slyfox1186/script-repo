@@ -241,10 +241,10 @@ lib_dirs+=':/usr/x86_64-w64-mingw32/lib:/usr/share/lintian/lib:/usr/share/gitk/l
 
 cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
-./configure --prefix=/usr/local           
-             --disable-documentation                        \
-             --with-include-path="${i}nclude_dirs"            \
-             --with-lib-path="$lib_dirs"                    \
+./configure --prefix=/usr/local                    \
+             --disable-documentation               \
+             --with-include-path="${include_dirs}" \
+             --with-lib-path="${lib_dirs}"         \
              CPPFLAGS='-I/usr/local/include -I/usr/include'
 make "-j$(nproc --all)"
 if ! sudo make install; then
