@@ -60,7 +60,7 @@ fail_fn()
 # PRINT 7-ZIP VERSION
 version_fn()
 {
-    show_ver="$("${i}nstall_dir/7z" | head -n 2 | cut -d " " -f3 | awk 'NF' | xargs echo "${1}")"
+    show_ver="$("${install_dir}/7z" | head -n 2 | cut -d " " -f3 | awk 'NF' | xargs echo "${1}")"
     show_ver="$(echo $show_ver | sed 's/v /v/g')"
     printf "\n%s\n\n" "7-zip has been updated to v$show_ver"
 }
@@ -101,8 +101,8 @@ if ! tar -xf "${cwd}/$tar_file" -C "${cwd}/$version"; then
 fi
 
 # Copy the file to its destination or throw an error if the copying of the file fails
-if ! sudo cp -f "${cwd}/$version/7zzs" "${i}nstall_dir/7z"; then
-    fail_fn "The script was unable to copy the static file '7zzs' to '${i}nstall_dir/7z'"
+if ! sudo cp -f "${cwd}/$version/7zzs" "${install_dir}/7z"; then
+    fail_fn "The script was unable to copy the static file '7zzs' to '${install_dir}/7z'"
 fi
 
 # SHOW THE NEWLY INSTALLED 7-ZIP VERSION
