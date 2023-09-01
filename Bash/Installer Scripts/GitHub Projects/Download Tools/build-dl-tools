@@ -710,7 +710,7 @@ if build 'aria2' '1.36.0'; then
                  EXPAT_LIBS="$(pkg-config --libs expat)"        \
                  CPPFLAGS='-I/usr/local/include -I/usr/include' \
                  PKG_CONFIG="$(type -P pkg-config)"             \
-                 PKG_CONFIG_PATH="${pkg}_CONFIG_PATH"           \
+                 PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"           \
                  LDFLAGS="${LDFLAGS}"
     execute make "-j${cpu_threads}"
     execute sudo make install
