@@ -236,7 +236,7 @@ cd build || exit 1
              --with-pic                             \
              --with-valgrind                        \
              PKG_CONFIG="$(type -P pkg-config)"     \
-             PKG_CONFIG_PATH="${pkg}_CONFIG_PATH"
+             PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
 make "-j$(nproc --all)"
 if ! sudo make install; then
     echo
