@@ -212,6 +212,7 @@ cd build || exit 1
 ../configure --prefix=/usr/local               \
              --{build,host}="${pc_type}"       \
              --disable-nls                     \
+             --disable-profiling               \
              --enable-alias                    \
              --enable-arith-for-command        \
              --enable-array-variables          \
@@ -239,7 +240,6 @@ cd build || exit 1
              --enable-multibyte                \
              --enable-net-redirections         \
              --enable-process-substitution     \
-             --enable-profiling                \
              --enable-progcomp                 \
              --enable-prompt-string-decoding   \
              --enable-readline                 \
