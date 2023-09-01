@@ -486,18 +486,18 @@ sort_libjxl_fn()
     mkdir -p "${packages}"/deb-files
 
     if [ ! -f "${packages}"/libjxl.tar.gz ]; then
-        case "$VER" in
-            '12')       libjxl_download="$url_base-debian-bookworm-$url_suffix";;
-            '11')       libjxl_download="$url_base-debian-bullseye-$url_suffix";;
-            '10')       libjxl_download="$url_base-debian-buster-$url_suffix";;
-            '22.04')    libjxl_download="$url_base-ubuntu-22.04-$url_suffix";;
-            '20.04')    libjxl_download="$url_base-ubuntu-20.04-$url_suffix";;
-            '18.04')    libjxl_download="$url_base-ubuntu-18.04-$url_suffix";;
-            *)          fail_fn 'Inable to determine the OS version to install libjxl.';;
+        case "${VER}" in
+            12)         libjxl_download="${url_base}-debian-bookworm-${url_suffix}";;
+            11)         libjxl_download="${url_base}-debian-bullseye-${url_suffix}";;
+            10)         libjxl_download="${url_base}-debian-buster-${url_suffix}";;
+            22.04)      libjxl_download="${url_base}-ubuntu-22.04-${url_suffix}";;
+            20.04)      libjxl_download="${url_base}-ubuntu-20.04-${url_suffix}";;
+            18.04)      libjxl_download="${url_base}-ubuntu-18.04-${url_suffix}";;
+            *)          fail_fn 'Unable to determine the OS version and thus unable to install libjxl.';;
         esac
 
         # CALL THE DOWNLOAD FUNCTION FOR THE LIBJXL DEBIAN FILES
-        download_libjxl_fn "$libjxl_download"
+        download_libjxl_fn "${libjxl_download}"
 
         if ! tar -xf "${packages}"/libjxl.tar.gz -C "${packages}"/deb-files --strip-components 1; then
             fail_fn "Could not extract the libjxl archive: ${packages}/libjxl.tar.gz"
