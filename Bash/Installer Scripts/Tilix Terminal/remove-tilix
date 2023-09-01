@@ -18,8 +18,8 @@ sudo rm /usr/share/man/man1/tilix.1.gz 2>/dev/null
 sudo rm /usr/share/man/*/man1/tilix.1.gz 2>/dev/null
 
 ## REMOVE HOME DIRECTORY ENTRIES
-if [ -d "$HOME"/.config/tilix ]; then
-    sudo rm -r "$HOME"/.config/tilix
+if [ -d "${HOME}"/.config/tilix ]; then
+    sudo rm -r "${HOME}"/.config/tilix
 fi
 
 sudo rm -fr "$tilix_schemes"/*.json

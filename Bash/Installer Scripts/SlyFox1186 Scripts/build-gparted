@@ -15,16 +15,16 @@ exit_fn()
     printf "\n%s\n\n%s\n%s\n" \
         'The script has completed' \
         'Make sure to star this repository to show your support!' \
-        "$repo"
+        "${repo}"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n\n%s\n\n%s\n\n%s\n\n" \
-        "$1" \
+        "${1}" \
         'Please create a support ticket at the address below' \
-        "$repo/issues"
+        "${repo}/issues"
     exit 1
 }
 
@@ -45,17 +45,17 @@ pkgs=(exfat-fuse exfatprogs f2fs-tools gparted hfsplus hfsprogs hfsutils jfsutil
 
 for pkg in ${pkgs[@]}
 do
-    if ! installed "$pkg"; then
-        missing_pkgs+=" $pkg"
+    if ! installed "${pkg}"; then
+        missing_pkgs+=" ${pkg}"
     fi
 done
 
-if [ -n "$missing_pkgs" ]; then
+if [ -n "${missing_pkgs}" ]; then
     echo '$ Installing missing packages'
     echo
-    for i in "$missing_pkgs"
+    for i in "${missing_pkgs}"
         do
-            if ! sudo apt -y install $i; then
+            if ! sudo apt -y install ${i}; then
                 fail_fn 'Failed to run APT package manager.'
             fi
         done

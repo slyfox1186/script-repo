@@ -3,7 +3,7 @@
 clear
 
 if [ "${EUID}" -ne '0' ]; then
-    printf "%s\n\n" 'You must run this script with root/sudo.'
+    printf "%s\n\n" 'You must run this script as root/sudo.'
     exit 1
 fi
 

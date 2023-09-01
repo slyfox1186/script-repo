@@ -11,11 +11,11 @@ blue='\e[34m'
 clear='\e[0m'
 ColorGreen()
 {
-    echo -ne "$green$1$clear"
+    echo -ne "$green${1}$clear"
 }
 ColorBlue()
 {
-    echo -ne "$blue$1$clear"
+    echo -ne "$blue${1}$clear"
 }
 
 #
@@ -24,14 +24,14 @@ ColorBlue()
 
 function box_out_banner()
 {
-    input_char=$(echo "$@" | wc -c)
-    line=$(for i in `seq 0 $input_char`; do printf "-"; done)
+    input_char=$(echo "${@}" | wc -c)
+    line=$(for i in `seq 0 ${i}nput_char`; do printf "-"; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
     echo " ${line}"
     printf '|' ; echo -n "$space" ; printf "%s\n" '|';
-    printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
+    printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
     printf '|' ; echo -n "$space" ; printf "%s\n" '|';
     echo " ${line}"
     tput sgr 0
@@ -62,7 +62,7 @@ $(ColorGreen '0)') Back
 $(ColorBlue 'Choose the Debian release version:') "
     read answer
     clear
-    case "$answer" in
+    case "${answer}" in
         1)
                 $dl_app bullseye-mirrors https://bullseye-mirrors.optimizethis.net; sudo bash bullseye-mirrors
                 rm bullseye-mirrors
@@ -96,7 +96,7 @@ $(ColorGreen '0)') Back
 $(ColorBlue 'Choose the Ubuntu release version:') "
     read answer
     clear
-    case "$answer" in
+    case "${answer}" in
         1)
                 $dl_app lunar-mirrors https://lunar-mirrors.optimizethis.net; sudo bash lunar-mirrors
                 rm lunar-mirrors
@@ -140,7 +140,7 @@ $(ColorGreen '0)') Exit
 $(ColorBlue 'Choose an operating system:') "
     read answer
     clear
-    case "$answer" in
+    case "${answer}" in
         1)      ubuntu_mirrors;;
         2)      debian_mirrors;;
         0)      return 0;;

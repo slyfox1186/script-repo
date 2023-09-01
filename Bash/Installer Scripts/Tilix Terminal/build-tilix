@@ -10,19 +10,19 @@ script_ver=1.0
 archive_dir=tilix-1.9.5
 archive_url=https://github.com/gnunn1/tilix/archive/refs/tags/1.9.5.tar.gz
 archive_ext="${archive_url//*.}"
-cwd="$PWD"/tilix-build-script
-packages="$cwd"/packages
-schemes_folder="$HOME"/.config/tilix/schemes
+cwd="${PWD}"/tilix-build-script
+packages="${cwd}"/packages
+schemes_folder="${HOME}"/.config/tilix/schemes
 
 printf "\n%s\n%s\n\n" \
-    "tilix build script - v$script_ver" \
+    "tilix build script - v${script_ver}" \
     '==============================================='
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-mkdir -p "$packages"
+mkdir -p "${packages}"
 
 #
 # SET THE C+CPP COMPILERS
@@ -41,11 +41,11 @@ export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 #
 
 PKG_CONFIG_PATH="\
-$workspace/lib/pkgconfig:\
-$workspace/lib64/pkgconfig:\
-$workspace/share/pkgconfig:\
-$workspace/lib/x86_64-linux-gnu/pkgconfig:\
-$workspace/usr/lib/pkgconfig:\
+${workspace}/lib/pkgconfig:\
+${workspace}/lib64/pkgconfig:\
+${workspace}/share/pkgconfig:\
+${workspace}/lib/x86_64-linux-gnu/pkgconfig:\
+${workspace}/usr/lib/pkgconfig:\
 /lib/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
@@ -70,7 +70,7 @@ exit_fn()
 
 fail_fn()
 {
-    printf "%s\n\n" "$1"
+    printf "%s\n\n" "${1}"
     exit 1
 }
 
@@ -86,8 +86,8 @@ cleanup_fn()
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
 
-    case "$choice" in
-        1)      sudo rm -fr "$cwd";;
+    case "${choice}" in
+        1)      sudo rm -fr "${cwd}";;
         2)      echo;;
         *)
                 clearinstall-tilix.sh
@@ -109,16 +109,16 @@ pkgs=(autoconf autogen automake build-essential ccache curl gettext git gtk-doc-
 
 for i in ${pkgs[@]}
 do
-    missing_pkg="$(dpkg -l | grep $i)"
+    missing_pkg="$(sudo dpkg -l | grep ${i})"
 
-    if [ -z "$missing_pkg" ]; then
-        missing_pkgs+=" $i"
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${i}"
     fi
 done
 unset i
 
-if [ -n "$missing_pkgs" ]; then
-    sudo apt -y install $missing_pkgs
+if [ -n "${missing_pkgs}" ]; then
+    sudo apt -y install ${missing_pkgs}
     sudo apt -y autoremove
     clear
 fi
@@ -127,19 +127,19 @@ fi
 # DOWNLOAD AND INSTALL DUB 
 #
 
-if [ -d "$packages"/dub ]; then
-    sudo rm -fr "$packages"/dub
+if [ -d "${packages}"/dub ]; then
+    sudo rm -fr "${packages}"/dub
 fi
-mkdir -p "$packages"/dub
+mkdir -p "${packages}"/dub
 
 if [ -f '/usr/bin/dub' ]; then
     sudo apt remove -y dub
 else
-    if ! git clone -q 'https://github.com/dlang/dub.git' "$packages"/dub; then
+    if ! git clone -q 'https://github.com/dlang/dub.git' "${packages}"/dub; then
         fail_fn 'Could not git clone dub.'
     else
         clear
-        cd "$packages"/dub || exschemes_folderit 1
+        cd "${packages}"/dub || exschemes_folderit 1
         ./build.d
         if ! sudo mv bin/dub /usr/bin; then
             fail_fn 'Failed to move dub binary to /usr/bin'
@@ -155,15 +155,15 @@ fi
 # DOWNLOAD AND INSTALL TILIX
 #
 
-if [ -d "$packages"/tilix ]; then
-    sudo rm -fr "$packages"/tilix
+if [ -d "${packages}"/tilix ]; then
+    sudo rm -fr "${packages}"/tilix
 fi
 
-if ! git clone 'https://github.com/gnunn1/tilix.git' "$packages"/tilix; then
+if ! git clone 'https://github.com/gnunn1/tilix.git' "${packages}"/tilix; then
     fail_fn 'Could not git clone tilix.'
 else
     clear
-    cd "$packages"/tilix || exit 1
+    cd "${packages}"/tilix || exit 1
     dub build --build=release
     if ! sudo bash install.sh; then
         fail_fn 'Tilix failed to install. Press enter to continue.'
@@ -174,17 +174,17 @@ fi
 # DOWNLOAD, EXTRACT, AND INSTALL THE TILIX THEMES
 #
 
-if [ -d "$packages"/tilix-themes ]; then
-    sudo rm -fr "$packages"/tilix-themes
+if [ -d "${packages}"/tilix-themes ]; then
+    sudo rm -fr "${packages}"/tilix-themes
 fi
-mkdir -p "$packages"/tilix-themes
+mkdir -p "${packages}"/tilix-themes
 
-if ! curl -Lso "$packages"/tilix-themes.tar.gz 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/installers/tilix/tilix-themes.tar.gz'; then
+if ! curl -Lso "${packages}"/tilix-themes.tar.gz 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/installers/tilix/tilix-themes.tar.gz'; then
     fail_fn 'Failed to down download the tilix-schemes archive file.'
 fi
 
-if ! tar -zxf "$packages"/tilix-themes.tar.gz -C "$packages"/tilix-themes --strip-components 1; then
-    printf "%s\n\n" "Failed to extract the themes archive: $packages/tilix-themes.tar.gz"
+if ! tar -zxf "${packages}"/tilix-themes.tar.gz -C "${packages}"/tilix-themes --strip-components 1; then
+    printf "%s\n\n" "Failed to extract the themes archive: ${packages}/tilix-themes.tar.gz"
     exit 1
 fi
 
@@ -192,7 +192,7 @@ if [ ! -d "$schemes_folder" ]; then
     mkdir -p "$schemes_folder"
 fi
 
-cd "$packages"/tilix-themes || exit 1
+cd "${packages}"/tilix-themes || exit 1
 if [ -f argonaut.json ] ;then
     cp -fr argonaut.json dracula.json neopolitan.json vibrant-ink.json "$schemes_folder"
 else

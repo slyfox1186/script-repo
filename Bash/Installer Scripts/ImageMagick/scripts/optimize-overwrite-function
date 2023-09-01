@@ -14,7 +14,7 @@ imow()
     apt_pkgs=(sox libsox-dev)
     for i in ${apt_pkgs[@]}
     do
-        missing_pkg="$(dpkg -l | grep "${i}")"
+        missing_pkg="$(sudo dpkg -l | grep "${i}")"
         if [ -z "${missing_pkg}" ]; then
             missing_pkgs+=" ${i}"
         fi

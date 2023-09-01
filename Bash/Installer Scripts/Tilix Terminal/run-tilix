@@ -9,7 +9,7 @@ printf "%s\n\n%s\n%s\n%s\n\n" \
     '[3] Change shell to BASH (fixes zsh issues after it is uninstalled)'
     read -p 'Your choices are (1 to 3): ' choice
 
-case "$choice" in
+case "${choice}" in
     1) 
         bash 'build-tilix';;
     2)

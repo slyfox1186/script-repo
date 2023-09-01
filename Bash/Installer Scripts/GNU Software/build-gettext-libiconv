@@ -14,7 +14,7 @@
 
 clear
 
-if [ "$EUID" -eq '0' ]; then
+if [ "${EUID}" -eq '0' ]; then
     printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
     exit 1
 fi
@@ -52,7 +52,7 @@ export CC=gcc CXX=g++
 # EXPORT COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O2 -flto -ffunction-sections -fdata-sections -pipe -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
 
 #
 # SET THE PATH VARIABLE
@@ -60,8 +60,8 @@ export {CFLAGS,CXXFLAGS}='-g -O2 -flto -ffunction-sections -fdata-sections -pipe
 
 PATH="\
 /usr/lib/ccache:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
+${HOME}/.cargo/bin:\
+${HOME}/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
@@ -114,7 +114,7 @@ cleanup_fn()
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
 
-    case "$choice" in
+    case "${choice}" in
         1)      sudo rm -fr "${cwd}";;
         2)      echo;;
         *)
@@ -147,7 +147,7 @@ pkgs_fn()
     do
         missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
 
-        if [ -z "$missing_pkg" ]; then
+        if [ -z "${missing_pkg}" ]; then
             missing_pkgs+=" ${i}"
         fi
     done
@@ -216,11 +216,11 @@ pc_type="$(source "${cwd}/config.guess")"
 #
 
 if [ ! -f "${cwd}/${archive_dir1}.tar.gz" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/${archive_dir1}.$archive_ext1" "$archive_url1"
+    curl -A "${user_agent}" -Lso "${cwd}/${archive_dir1}.${archive_ext}1" "${archive_url}1"
 fi
 
 if [ ! -f "${cwd}/${archive_dir2}.tar.lz" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/${archive_dir2}.$archive_ext2" "$archive_url2"
+    curl -A "${user_agent}" -Lso "${cwd}/${archive_dir2}.${archive_ext}2" "${archive_url}2"
 fi
 
 #
@@ -236,11 +236,11 @@ mkdir -p "${cwd}/${archive_dir1}" "${cwd}/${archive_dir2}"
 # EXTRACT THE ARCHIVE FILES
 #
 
-if ! tar -xf "${cwd}/${archive_dir1}.$archive_ext1" -C "${cwd}/${archive_dir1}" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_dir1}.$archive_ext1"
+if ! tar -xf "${cwd}/${archive_dir1}.${archive_ext}1" -C "${cwd}/${archive_dir1}" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_dir1}.${archive_ext}1"
 fi
-if ! tar -xf "${cwd}/${archive_dir2}.$archive_ext2" -C "${cwd}/${archive_dir2}" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_dir2}.$archive_ext2"
+if ! tar -xf "${cwd}/${archive_dir2}.${archive_ext}2" -C "${cwd}/${archive_dir2}" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_dir2}.${archive_ext}2"
 fi
 
 #

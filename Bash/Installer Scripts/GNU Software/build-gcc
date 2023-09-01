@@ -80,7 +80,7 @@ tmp_term="${TERM}"
 tmp_display="${DISPLAY}"
 tmp_dbus="${DBUS_SESSION_BUS_ADDRESS}"
 
-for var in $(env | awk -F"=" '{print $1}')
+for var in $(env | awk -F"=" '{print ${1}}')
 do
     unset ${var} || true # IGNORE UNSET FAILURES
 done

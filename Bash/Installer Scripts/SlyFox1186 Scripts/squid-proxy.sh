@@ -5,7 +5,7 @@ clear
 # YOU MUST RUN THE SCRIPT WITH ROOT/ADMIN PRIVILEGES
 # IF NOT RUN AS ROOT THE BELOW IF COMMAND WILL RESTART
 # THE SCRIPT WITH ROOT PERMISSIONS
-if [ "$EUID" -ne '0' ]; then
+if [ "${EUID}" -ne '0' ]; then
     printf "%s\n\n" 'You must run this script as root/sudo'
     exit 1
 fi
@@ -9362,7 +9362,7 @@ printf "\n%s\n%s\n\n" \
 read -p 'Enter a number: ' choice
 clear
 
-case "$choice" in
+case "${choice}" in
     1)
             printf "%s\n%s\n\n" \
                 'Installing IPTABLES Firewall Rules' \

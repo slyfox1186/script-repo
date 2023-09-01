@@ -13,7 +13,7 @@
 
 clear
 
-if [ "$EUID" -eq '0' ]; then
+if [ "${EUID}" -eq '0' ]; then
     printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
     exit 1
 fi
@@ -26,11 +26,10 @@ script_ver=1.0
 archive_dir=ffmpeg-5.1.3
 archive_url=https://www.ffmpeg.org/releases/ffmpeg-5.1.3.tar.xz
 archive_ext="${archive_url//*.}"
-cwd="$PWD"/ffmpeg-build-script
-workspace="$cwd"/workspace
+cwd="${PWD}"/ffmpeg-build-script
+workspace="${cwd}"/workspace
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
-
 export LIBS='-lpthread -lm -lz'
 
 LDFLAGS="\
@@ -48,8 +47,8 @@ export LDFLAGS
 
 PATH="\
 /usr/lib/ccache:\
-$workspace/bin:\
-$PATH\
+${workspace}/bin:\
+${PATH}\
 "
 export PATH
 
@@ -57,12 +56,12 @@ CFLAGS="\
 -I/usr/local/include \
 -I/usr/local/cuda-12.2/targets/x86_64-linux/include \
 -I/usr/local/cuda-12.2/include \
--I/usr/include:\
--g -O2 -flto -ffunction-sections -fdata-sections -pipe -march=native\
+-I/usr/include \
+-g -O2 -ffunction-sections -fdata-sections -pipe -march=native\
 "
 export CFLAGS
 
-export CXXFLAGS='-g -O2 -flto -ffunction-sections -fdata-sections -pipe -march=native'
+export CXXFLAGS='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
 
 PKG_CONFIG_PATH="\
 /usr/share/pkgconfig:\
@@ -76,14 +75,14 @@ PKG_CONFIG_PATH="\
 export PKG_CONFIG_PATH
 
 printf "\n%s\n%s\n\n" \
-    "FFmpeg build script - v$script_ver" \
+    "FFmpeg build script - v${script_ver}" \
     '==============================================='
 
 #
 # CREATE THE OUTPUT DIRECTORIES
 #
 
-mkdir -p "$cwd" "$workspace"
+mkdir -p "${cwd}" "${workspace}"
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -108,15 +107,15 @@ exit_fn()
 {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
-        "$repo"
+        "${repo}"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "$1" \
-        "To report a bug create an issue at: $repo/issues"
+        "${1}" \
+        "To report a bug create an issue at: ${repo}/issues"
     exit 1
 }
 
@@ -132,8 +131,8 @@ cleanup_fn()
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
 
-    case "$choice" in
-        1)      sudo rm -fr "$cwd";;
+    case "${choice}" in
+        1)      sudo rm -fr "${cwd}";;
         2)      echo;;
         *)
                 clear
@@ -156,12 +155,12 @@ ff_move_fn()
         '[2] No'
         read -p 'Your choices are (1 or 2): ' answer
 
-    case "$answer" in
+    case "${answer}" in
         1)
                 clear
-                sudo cp -f "$workspace"/bin/ffmpeg /usr/local/bin 2>/dev/null
-                sudo cp -f "$workspace"/bin/ffprobe /usr/local/bin 2>/dev/null
-                sudo cp -f "$workspace"/bin/ffplay /usr/local/bin 2>/dev/null
+                sudo cp -f "${workspace}"/bin/ffmpeg /usr/local/bin 2>/dev/null
+                sudo cp -f "${workspace}"/bin/ffprobe /usr/local/bin 2>/dev/null
+                sudo cp -f "${workspace}"/bin/ffplay /usr/local/bin 2>/dev/null
                 ;;
         2)      clear;;
         *)
@@ -178,13 +177,13 @@ ff_move_fn()
 
 ff_ver_fn()
 {
-    cd "$workspace/bin" || exit 1
+    cd "${workspace}/bin" || exit 1
 
     printf "%s\n%s\n%s\n\n" \
         '============================================' \
         '               FFmpeg Version               ' \
         '============================================'
-    "$workspace/bin/ffmpeg" -version
+    "${workspace}/bin/ffmpeg" -version
     sleep 3
 }
 
@@ -196,15 +195,15 @@ exit_fn()
 {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
-        "$repo"
+        "${repo}"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "$1" \
-        "To report a bug create an issue at: $repo/issues"
+        "${1}" \
+        "To report a bug create an issue at: ${repo}/issues"
     exit 1
 }
 
@@ -220,8 +219,8 @@ cleanup_fn()
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
 
-    case "$choice" in
-        1)      sudo rm -fr "$cwd";;
+    case "${choice}" in
+        1)      sudo rm -fr "${cwd}";;
         2)      echo;;
         *)
                 clear
@@ -240,7 +239,7 @@ cleanup_fn()
 
 pkgs='ant apt asciidoc autoconf autoconf-archive automake autopoint binutils bison build-essential cargo ccache checkinstall clang cmake curl doxygen fcitx-libs-dev flex flite1-dev freeglut3-dev frei0r-plugins-dev gawk gettext git gnome-desktop-testing gnustep-gui-runtime google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk libasound2-dev libass-dev libaudio-dev libavfilter-dev libbluray-dev libbs2b-dev libbz2-dev libc6 libc6-dev libcaca-dev libcairo2-dev libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libchromaprint-dev libcrypto++-dev libcurl4-openssl-dev libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev libfdk-aac-dev libffi-dev libgbm-dev libgdbm-dev libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev libgnutls28-dev libgnutls30 libgoogle-perftools4 libgoogle-perftools-dev libgvc6 libibus-1.0-dev libiconv-hook-dev libintl-perl libjack-dev libjemalloc-dev libladspa-ocaml-dev libleptonica-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev libmatroska-dev libmodplug-dev libmp3lame-dev libmusicbrainz5-dev libmysofa-dev libncurses5-dev libncursesw5-dev libnuma1 libnuma-dev libopencore-amrnb-dev libopencore-amrwb-dev libopencv-dev libopenjp2-7-dev libopenmpt-dev libopus-dev libperl-dev libpstoedit-dev libpulse-dev libraqm-dev libraw-dev librsvg2-dev librubberband-dev libshine-dev libsmbclient-dev libsnappy-dev libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev libssl-dev libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libtalloc-dev libtheora-dev libtool libtool-bin libtwolame-dev libudev-dev libv4l-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libx265-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzstd-dev libzzip-dev lshw lzma-dev m4 meson nasm ninja-build openjdk-17-jdk-headless pandoc python3 python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip wget xmlto zlib1g-dev'
 
-sudo apt -y install $pkgs
+sudo apt -y install ${pkgs}
 sudo apt -y autoremove
 clear
 
@@ -248,10 +247,10 @@ clear
 # INSTALL NV-CODEC-HEADERS TO ENABLE HARDWARE ACCELERATION
 #
 
-curl -A "$user_agent" -Lso "$cwd"/nv-headers.tar.gz https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.0.16.0/nv-codec-headers-12.0.16.0.tar.gz
-mkdir -p "$cwd"/nv-headers
-tar -zxf "$cwd"/nv-headers.tar.gz -C "$cwd"/nv-headers --strip-components 1
-cd "$cwd"/nv-headers || exit 1
+curl -A "${user_agent}" -Lso "${cwd}"/nv-headers.tar.gz https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.0.16.0/nv-codec-headers-12.0.16.0.tar.gz
+mkdir -p "${cwd}"/nv-headers
+tar -zxf "${cwd}"/nv-headers.tar.gz -C "${cwd}"/nv-headers --strip-components 1
+cd "${cwd}"/nv-headers || exit 1
 make "-j$(nproc --all)"
 if sudo make PREFIX=/usr/local install; then
     clear
@@ -266,27 +265,27 @@ fi
 # DOWNLOAD THE ARCHIVE FILE
 #
 
-archive_name="$archive_dir.tar.$archive_ext"
+archive_name="${archive_dir}.tar.${archive_ext}"
 
-if [ ! -f "$cwd/$archive_name" ]; then
-    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
+if [ ! -f "${cwd}/${archive_name}" ]; then
+    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
 fi
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
+if [ -d "${cwd}/${archive_dir}" ]; then
+    sudo rm -fr "${cwd}/${archive_dir}"
 fi
-mkdir -p "$cwd/$archive_dir/build"
+mkdir -p "${cwd}/${archive_dir}/build"
 
 #
 # EXTRACT ARCHIVE FILES
 #
 
-if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
+if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
     exit 1
 fi
 
@@ -294,9 +293,9 @@ fi
 # BUILD PROGRAM FROM SOURCE
 #
 
-cd "$cwd/$archive_dir/build" || exit 1
+cd "${cwd}/${archive_dir}/build" || exit 1
 ../configure                                                                       \
-    --prefix="$workspace"                                                          \
+    --prefix="${workspace}"                                                          \
     --arch="$(uname -m)"                                                           \
     --cpu="$((cpu_threads / 2))"                                                   \
     --cc="$CC"                                                                     \
@@ -311,10 +310,10 @@ cd "$cwd/$archive_dir/build" || exit 1
     --enable-{libvidstab,libvo-amrwbenc,libvorbis,libvpx,libwebp,libx264,libx265}  \
     --enable-{libxml2,libxvid,opengl,openssl,version3,lto,pthreads}                \
     --enable-{ffnvcodec,gpl,nonfree,small,static,version3}                         \
-    --extra-cflags="$CFLAGS"                                                       \
-    --extra-cxxflags="$CXXFLAGS"                                                   \
-    --extra-ldflags=$"$LDFLAGS"                                                    \
-    --extra-libs="$LIBS"                                                           \
+    --extra-cflags="${CFLAGS}"                                                       \
+    --extra-cxxflags="${CXXFLAGS}"                                                   \
+    --extra-ldflags="${LDFLAGS}"                                                    \
+    --extra-libs="${LIBS}"                                                           \
     --pkg-config="$(type -P pkg-config)"                                           \
     --pkg-config-flags='--static'                                                  \
     --strip="$(type -P strip)"
