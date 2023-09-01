@@ -520,8 +520,8 @@ debian_ver_check_fn()
 
     pkgs_debian='libcpu-features-dev libfontconfig-dev libgc1 libdmalloc-dev libdmalloc5 libjemalloc-dev'
     pkgs_debian+=' libjemalloc2 librust-malloc-buf-dev libyuv-utils libyuv-dev libyuv0 libsharp-dev'
-    pkgs_bullseye="${pkgs}_debian libvmmalloc1 libvmmalloc-dev"
-    pkgs_bookworm+="${pkgs}_debian libhwy-dev libticonv-dev"
+    pkgs_bullseye="${pkgs_debian} libvmmalloc1 libvmmalloc-dev"
+    pkgs_bookworm+="${pkgs_debian} libhwy-dev libticonv-dev"
 
     case "$VER" in
         12)     pkgs_fn "${pkgs_bookworm}";;
@@ -595,8 +595,8 @@ if build 'magick-libs' "${g_ver}"; then
     if ! curl -A "${user_agent}" -Lso "magick-libs-${g_ver}.rpm" "https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-libs-${g_ver}.x86_64.rpm"; then
         fail_fn 'Failed to download the magick-libs file.'
     fi
-    sudo alien -d ./*.rpm
-    sudo dpkg -i ./*.deb
+    sudo alien -d *.rpm
+    sudo dpkg -i *.deb
     build_done 'magick-libs' "${g_ver}"
 fi
 
