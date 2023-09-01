@@ -209,7 +209,7 @@ cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 cd build || exit 1
 ../configure --prefix=/usr/local                       \
-             --{build,host,target}="${pc_type}"          \
+             --{build,host,target}="${pc_type}"        \
              --enable-pc-files                         \
              --with-pkg-config="$(type -P pkg-config)" \
              --with-shared                             \
