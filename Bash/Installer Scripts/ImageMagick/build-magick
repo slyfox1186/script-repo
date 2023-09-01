@@ -302,15 +302,8 @@ git_1_fn()
 
     github_repo="${1}"
     github_url="${2}"
-    git_token='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'
 
-    if curl_cmd="$(curl \
-                        -m "$curl_timeout" \
-                        --request GET \
-                        --url "https://api.github.com/slyfox1186" \
-                        --header "Authorization: Bearer $git_token" \
-                        --header "X-GitHub-Api-Version: 2022-11-28" \
-                        -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
         g_ver3="$(echo "${curl_cmd}" | jq -r '.[3].name' 2>/dev/null)"
@@ -350,7 +343,7 @@ git_ver_fn()
         url_tag=git_2_fn gv_url=tags
     fi
 
-    "$url_tag" "${v_url}" "$gv_url" 2>/dev/null
+    "${url_tag}" "${v_url}" "${gv_url}" 2>/dev/null
 }
 
 #
@@ -360,7 +353,7 @@ git_ver_fn()
 usage()
 {
     clear
-    echo "Usage: $progname [options]"
+    echo "Usage: ${progname} [options]"
     echo
     echo 'Options:'
     echo '    -h, --help                                           Display this information'
@@ -369,7 +362,7 @@ usage()
     echo '    -v, --version                                        Display script version information'
 }
 
-while (($# > 0))
+while ((${#} > 0))
 do
     case "${1}" in
         -h|--help)
@@ -400,8 +393,8 @@ do
     esac
 done
 
-if [ -z "$bflag" ]; then
-    if [ -z "$cflag" ]; then
+if [ -z "${bflag}" ]; then
+    if [ -z "${cflag}" ]; then
         usage
         exit 1
     fi
@@ -442,26 +435,12 @@ pkgs_fn()
 
 install_libjxl_fn()
 {
-    local i
-
     cd "${packages}"/deb-files || exit 1
 
-    printf "\n%s\n%s\n" \
-        'Installing: libjxl_0.8.1_amd64.deb' \
-        '=========================================='
     if sudo dpkg -i libjxl_0.8.1_amd64.deb; then
         sudo rm libjxl_0.8.1_amd64.deb &>/dev/null
-        echo
     fi
-
-    for i in *.deb
-    do
-        printf "%s\n%s\n" \
-            "Installing: ${i}" \
-            '=========================================='
-        sudo dpkg -i "${i}"
-        echo
-    done
+    sudo dpkg -i ./*.deb
     sudo apt -f -y install
     sudo apt --fix-broken install
     sudo apt --fix-missing update
