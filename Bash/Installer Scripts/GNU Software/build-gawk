@@ -188,7 +188,7 @@ cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 cd build || exit 1
 ../configure --prefix=/usr/local               \
-             --{build,host}="${pc_type}"         \
+             --{build,host}="${pc_type}"       \
              --disable-nls                     \
              --with-libsigsegv-prefix=/usr     \
              --with-libiconv-prefix=/usr/local \
