@@ -205,7 +205,7 @@ fi
 
 cd "${cwd}/${archive_dir}" || exit 1
 cd build || exit 1
-../configure --prefix=/usr/local       \
+../configure --prefix=/usr/local         \
              --{build,host}="${pc_type}" \
              --enable-ltdl-install             
 make "-j$(nproc --all)"
