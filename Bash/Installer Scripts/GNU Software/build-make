@@ -233,7 +233,7 @@ cd build || exit 1
              --with-libiconv-prefix="${i}conv_prefix" \
              --with-libintl-prefix=/usr               \
              PKG_CONFIG="$(type -P pkg-config)"       \
-             PKG_CONFIG_PATH="${pkg}_CONFIG_PATH"
+             PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
 make "-j$(nproc --all)"
 if ! sudo make install; then
     make distclean
