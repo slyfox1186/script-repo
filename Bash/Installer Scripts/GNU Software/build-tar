@@ -231,8 +231,7 @@ cd build || exit 1
              --with-libintl-prefix=/usr
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    make distclean
-    printf "\n%s\n\n" 'Failed to install tar.'
+    printf "\n%s\n\n" 'Failed to execute: sudo make install.'
     exit 1
 fi
 
