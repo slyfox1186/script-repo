@@ -240,16 +240,13 @@ cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 cd build || exit 1
 clear
-../configure --prefix=/usr/local                    \
-             --{build,host}="${pc_type}"              \
-             --disable-install-examples             \
+../configure --prefix=/usr/local         \
+             --{build,host}="${pc_type}" \
+             --disable-install-examples  \
              --enable-multibyte
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    echo
-    read -p 'Failure. Press enter to continue.'
-    clear
-    make distclean
+    printf "\n%s\n\n" 'Failed to execute: sudo make install.'
     exit 1
 fi
 
