@@ -531,9 +531,9 @@ fi
 if build 'gsasl' '2.2.0'; then
     download 'https://ftp.gnu.org/gnu/gsasl/gsasl-2.2.0.tar.gz' 'gsasl-2.2.0.tar.gz'
     execute ./configure --prefix="${workspace}"                \
-                         --disable-shared                    \
-                         --disable-year2038                  \
-                         --enable-gtk-doc                    \
+                         --disable-shared                      \
+                         --disable-year2038                    \
+                         --enable-gtk-doc                      \
                          --with-libiconv-prefix="${workspace}" \
                          --with-openssl=auto
     execute make "-j${cpu_threads}"
@@ -549,9 +549,9 @@ if build 'c-ares' "${g_ver}"; then
     download "$g_url" "c-ares-${g_ver}.tar.gz"
     execute autoupdate
     execute autoreconf -fi
-    execute ./configure --prefix="${workspace}"  \
-                         --disable-shared      \
-                         --disable-warnings    \
+    execute ./configure --prefix="${workspace}" \
+                         --disable-shared       \
+                         --disable-warnings     \
                          --enable-optimize="${CXXFLAGS}"
     execute make "-j${cpu_threads}"
     execute make install
@@ -575,16 +575,16 @@ if build 'jemalloc' "${g_ver}"; then
     download "$g_url" "jemalloc-${g_ver}.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}"  \
-                         --disable-debug       \
-                         --disable-doc         \
-                         --disable-fill        \
-                         --disable-log         \
-                         --disable-prof        \
-                         --disable-shared      \
-                         --disable-stats       \
-                         --enable-autogen      \
-                         --enable-lazy-lock    \
-                         --enable-static       \
+                         --disable-debug         \
+                         --disable-doc           \
+                         --disable-fill          \
+                         --disable-log           \
+                         --disable-prof          \
+                         --disable-shared        \
+                         --disable-stats         \
+                         --enable-autogen        \
+                         --enable-lazy-lock      \
+                         --enable-static         \
                          --enable-xmalloc
     execute make "-j${cpu_threads}"
     execute make install
@@ -621,10 +621,10 @@ if build 'wget' 'latest'; then
     fi
     execute autoconf
     ./configure --prefix="${install_prefix}" \
-                 --enable-threads          \
-                 --with-cares              \
-                 --with-metalink           \
-                 --with-openssl=auto       \
+                 --enable-threads            \
+                 --with-cares                \
+                 --with-metalink             \
+                 --with-openssl=auto         \
                  --with-ssl=gnutls "$wsuffix"
     execute make "-j${cpu_threads}"
     execute sudo make install
@@ -688,8 +688,8 @@ if build 'aria2' '1.36.0'; then
     sed -i 's/1, 16/1, 128/g' 'src/OptionHandlerFactory.cc'
     mkdir build
     cd build || exit 1
-    ../configure --prefix="${install_prefix}"                     \
-                 --{build,host,target}="${pc_type}"               \
+    ../configure --prefix="${install_prefix}"                   \
+                 --{build,host,target}="${pc_type}"             \
                  --disable-nls                                  \
                  --disable-shared                               \
                  --disable-werror                               \
@@ -705,12 +705,12 @@ if build 'aria2' '1.36.0'; then
                  --with-pic                                     \
                  --without-gnutls                               \
                  ARIA2_STATIC=yes                               \
-                 LIBS="${LIBS}"                                   \
+                 LIBS="${LIBS}"                                 \
                  LIBUV_CFLAGS='-I/usr/include'                  \
                  EXPAT_LIBS="$(pkg-config --libs expat)"        \
                  CPPFLAGS='-I/usr/local/include -I/usr/include' \
                  PKG_CONFIG="$(type -P pkg-config)"             \
-                 PKG_CONFIG_PATH="${pkg}_CONFIG_PATH"             \
+                 PKG_CONFIG_PATH="${pkg}_CONFIG_PATH"           \
                  LDFLAGS="${LDFLAGS}"
     execute make "-j${cpu_threads}"
     execute sudo make install
