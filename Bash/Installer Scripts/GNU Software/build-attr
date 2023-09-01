@@ -221,11 +221,11 @@ fi
 cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 cd build || exit 1
-../configure --prefix=/usr/local                    \
+../configure --prefix=/usr/local                      \
              --{build,host}="${pc_type}"              \
-             --disable-nls                          \
+             --disable-nls                            \
              --with-libiconv-prefix="${i}conv_prefix" \
-             --with-libintl-prefix=/usr             \
+             --with-libintl-prefix=/usr               \
              --with-pic
 make "-j$(nproc --all)"
 if ! sudo make install; then
