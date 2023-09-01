@@ -2193,48 +2193,48 @@ printf "\n%s\n%s\n%s\n" \
 
 if build 'ffmpeg' "$ffmpeg_ver"; then
     download "https://www.ffmpeg.org/releases/ffmpeg-$ffmpeg_ver.tar.xz"
-    ./configure                                   \
-        "${ffmpeg_libraries[@]}"                  \
+    ./configure                                     \
+        "${ffmpeg_libraries[@]}"                    \
         --prefix="${workspace}"                     \
-        --arch="$(uname -m)"                      \
-        --cpu="$((cpu_threads / 2))"              \
-        --cc="${CC}"                              \
-        --cxx="${CXX}"                            \
-        --disable-debug                           \
-        --disable-doc                             \
-        --disable-large-tests                     \
-        --disable-shared                          \
-        --enable-ffnvcodec                        \
-        --enable-gpl                              \
-        --enable-ladspa                           \
-        --enable-libbs2b                          \
-        --enable-libcaca                          \
-        --enable-libcdio                          \
-        --enable-libflite                         \
-        --enable-libgme                           \
-        --enable-libmodplug                       \
-        --enable-libpulse                         \
-        --enable-libshine                         \
-        --enable-libsmbclient                     \
-        --enable-libsnappy                        \
-        --enable-libsoxr                          \
-        --enable-libspeex                         \
-        --enable-libtwolame                       \
-        --enable-libv4l2                          \
-        --enable-libvo-amrwbenc                   \
-        --enable-nonfree                          \
-        --enable-opengl                           \
-        --enable-pic                              \
-        --enable-pthreads                         \
-        --enable-small                            \
-        --enable-static                           \
-        --enable-version3                         \
-        --extra-cflags="${CFLAGS}"                \
-        --extra-cxxflags="${CXXFLAGS}"            \
-        --extra-ldexeflags="${LDEXEFLAGS}"        \
-        --extra-ldflags="${LDFLAGS}"              \
-        --extra-libs="${EXTRALIBS}"               \
-        --extra-version="${EXTRA_VERSION}"        \
+        --arch="$(uname -m)"                        \
+        --cpu="$((cpu_threads / 2))"                \
+        --cc="${CC}"                                \
+        --cxx="${CXX}"                              \
+        --disable-debug                             \
+        --disable-doc                               \
+        --disable-large-tests                       \
+        --disable-shared                            \
+        --enable-ffnvcodec                          \
+        --enable-gpl                                \
+        --enable-ladspa                             \
+        --enable-libbs2b                            \
+        --enable-libcaca                            \
+        --enable-libcdio                            \
+        --enable-libflite                           \
+        --enable-libgme                             \
+        --enable-libmodplug                         \
+        --enable-libpulse                           \
+        --enable-libshine                           \
+        --enable-libsmbclient                       \
+        --enable-libsnappy                          \
+        --enable-libsoxr                            \
+        --enable-libspeex                           \
+        --enable-libtwolame                         \
+        --enable-libv4l2                            \
+        --enable-libvo-amrwbenc                     \
+        --enable-nonfree                            \
+        --enable-opengl                             \
+        --enable-pic                                \
+        --enable-pthreads                           \
+        --enable-small                              \
+        --enable-static                             \
+        --enable-version3                           \
+        --extra-cflags="${CFLAGS}"                  \
+        --extra-cxxflags="${CXXFLAGS}"              \
+        --extra-ldexeflags="${LDEXEFLAGS}"          \
+        --extra-ldflags="${LDFLAGS}"                \
+        --extra-libs="${EXTRALIBS}"                 \
+        --extra-version="${EXTRA_VERSION}"          \
         --pkgconfigdir="${workspace}"/lib/pkgconfig \
         --pkg-config-flags='--static'
     execute make "-j${cpu_threads}"
