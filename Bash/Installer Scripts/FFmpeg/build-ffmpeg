@@ -313,9 +313,8 @@ git_5_fn()
 git_6_fn()
 {
     repo="${1}"
-    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://gitlab.gnome.org/api/v4/projects/${repo}/repository/tags")"; then
-        g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
-        g_ver="${g_ver#v}"
+    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://gitlab.gnome.org/api/v4/projects/${repo}/repository/tags" | jq -r '.[0].name')"; then
+        g_ver="${curl_cmd#v}"
     fi
 }
 
