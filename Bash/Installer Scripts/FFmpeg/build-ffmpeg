@@ -1311,8 +1311,8 @@ if build 'freeglut' "${g_ver}"; then
 fi
 
 git_ver_fn '4720790' '3' 'T'
-if build 'libtiff' "${g_ver}"; then
-    download "https://gitlab.com/libtiff/libtiff/-/archive/v${g_ver}/libtiff-v${g_ver}.tar.bz2" "libtiff-${g_ver}.tar.bz2"
+if build 'libtiff' '4.5.0'; then
+    download 'https://gitlab.com/libtiff/libtiff/-/archive/v4.5.0/libtiff-v4.5.0.tar.bz2' 'libtiff-4.5.0.tar.bz2'
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}"     \
                         --{build,host}="${pc_type}" \
@@ -1320,7 +1320,7 @@ if build 'libtiff' "${g_ver}"; then
     execute make "-j${cpu_threads}"
     execute make install
     execute make distclean
-    build_done 'libtiff' "${g_ver}"
+    build_done 'libtiff' '4.5.0'
 fi
 
 if build 'libwebp' 'git'; then
