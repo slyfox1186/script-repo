@@ -191,10 +191,7 @@ build()
     return 0
 }
 
-build_done()
-{
-    echo "${2}" > "${packages}/${1}.done"
-}
+build_done() { echo "${2}" > "${packages}/${1}.done"; }
 
 get_version_fn()
 {
