@@ -80,7 +80,7 @@ tmp_term="${TERM}"
 tmp_display="${DISPLAY}"
 tmp_dbus="${DBUS_SESSION_BUS_ADDRESS}"
 
-for var in $(env | awk -F"=" '{print ${1}}')
+for var in $(env | awk -F"=" '{print $1}')
 do
     unset ${var} || true # IGNORE UNSET FAILURES
 done
@@ -128,7 +128,7 @@ post_file="${tmp_dir}"/file_2.txt
 echo "${PATH}" > "${pre_file}"
 
 sed -E 's/(:)/\n/g' "${pre_file}" | tee "${post_file}"
-awk '!NF || !seen[${0}]++' "${post_file}" > "${pre_file}"
+awk '!NF || !seen[$0]++' "${post_file}" > "${pre_file}"
 
 join_str="$(tr '\n' ':' < "${pre_file}")"
 PATH="$(echo "${join_str}" | sed 's/..$//g')"
