@@ -150,7 +150,7 @@ CPPFLAGS='-I/usr/lib/gcc/x86_64-linux-gnu/12/include -I/usr/local/include -I/usr
 latest=false
 repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
-debug=OFF # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
+debug=ON # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -179,16 +179,20 @@ ${workspace}/share/pkgconfig:\
 ${workspace}/lib/x86_64-pc-linux-gnu/pkgconfig:\
 ${workspace}/lib/x86_64-linux-gnu/pkgconfig:\
 ${workspace}/usr/lib/pkgconfig:\
+/lib64/pkgconfig:\
 /lib/pkgconfig:\
-/usr/local/lib/x86_64-pc-linux-gnu/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib64/pkgconfig:\
+/usr/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig/mit-krb5:\
+/usr/lib/x86_64-pc-linux-gnu/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/x86_64-pc-linux-gnu/pkgconfig:\
 /usr/local/share/pkgconfig:\
-/usr/share/pkgconfig:\
-/usr/lib/x86_64-pc-linux-gnu/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/pkgconfig\
+/usr/share/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -398,7 +402,7 @@ git_1_fn()
     # SCRAPE GITHUB'S API FOR THE LATEST REPO VERSION
     github_repo="${1}"
     github_url="${2}"
- 
+
     if curl_cmd="$(curl -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver="${g_ver1#v}"
@@ -698,6 +702,29 @@ fi
 # START GCC BUILD
 #
 
+clear
+
+printf "%s\n%s\n\n%s\n%s\n%s\n%s\n%s\n\n" \
+    'Choose what to install' \
+    '===========================' \
+    '[1] All' \
+    '[2] GCC 12+13' \
+    '[3] GCC 11' \
+    '[4] GCC 12' \
+    '[5] GCC 13'
+    read -p 'Your choices are (1 to 4): ' answer
+
+case "${answer}" in
+    1)      gcc_choice=1;;
+    2)      gcc_choice=2;;
+    3)      gcc_choice=3;;
+    4)      gcc_choice=4;;
+    5)      gcc_choice=5;;
+    *)      fail_fn 'Bad user input. Run the script again.';;
+esac
+
+clear
+
 build_gcc_11_fn()
 {
     if [ -d "${packages}/gcc-11.4.0" ]; then
@@ -852,11 +879,21 @@ build_gcc_13_fn()
 # CALL EACH GCC FUNCTION BY VERSION LOWEST TO HIGHEST
 #
 
-if [ "${VER}" -ne '12' ]; then
-    build_gcc_11_fn
-fi
-build_gcc_12_fn
-build_gcc_13_fn
+case "${gcc_choice}" in
+    1)
+            build_gcc_11_fn
+            build_gcc_12_fn
+            build_gcc_13_fn
+            ;;
+    2)
+            build_gcc_12_fn
+            build_gcc_13_fn
+            ;;
+    3)      build_gcc_11_fn;;
+    4)      build_gcc_12_fn;;
+    5)      build_gcc_13_fn;;
+    *)      fail_fn 'Unable to find the gcc_choice variable.';;
+esac
 
 # CREATE SOFT LINKS TO SHORTEN THE BINARY NAMES
 create_gcc_links_fn
