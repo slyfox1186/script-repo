@@ -261,7 +261,7 @@ git_1_fn()
     fi
 
     echo "${github_repo%/*}-${g_ver}" >>"$ver_file_tmp"
-    awk '!NF || !seen[${0}]++' "$latest_txt_tmp" >"$ver_file"
+    awk '!NF || !seen[$0]++' "$latest_txt_tmp" >"$ver_file"
 }
 
 git_2_fn()
