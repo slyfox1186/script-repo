@@ -238,12 +238,12 @@ git_1_fn()
     local curl_cmd github_repo github_url
 
     # SCRAPE GITHUB WEBSITE FOR THE LATEST REPO VERSION
-    github_repo="${1}"
-    github_url="${2}"
+    github_repo="$1"
+    github_url="$2"
 
-    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
-        g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
-        g_ver1="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
+        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
+        g_ver1="$(echo "$curl_cmd" | jq -r '.[1].name' 2>/dev/null)"
         g_ver="${g_ver#cares-}"
         g_ver="${g_ver#FAAC }"
         g_ver="${g_ver#lcms}"
@@ -260,78 +260,79 @@ git_1_fn()
         g_ver1="${g_ver1#v}"
     fi
 
-    echo "${github_repo%/*}-${g_ver}" >>"$ver_file_tmp"
+    echo "${github_repo%/*}-$g_ver" >>"$ver_file_tmp"
     awk '!NF || !seen[$0]++' "$latest_txt_tmp" >"$ver_file"
 }
 
 git_2_fn()
 {
-    repo="${1}"
-    url="${2}"
-    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://code.videolan.org/api/v4/projects/${repo}/repository/$url")"; then
-        g_ver="$(echo "${curl_cmd}" | jq -r '.[0].commit.id')"
-        g_sver="$(echo "${curl_cmd}" | jq -r '.[0].commit.short_id')"
+    repo="$1"
+    url="$2"
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://code.videolan.org/api/v4/projects/$repo/repository/$url")"; then
+        g_ver="$(echo "$curl_cmd" | jq -r '.[0].commit.id')"
+        g_sver="$(echo "$curl_cmd" | jq -r '.[0].commit.short_id')"
         g_sver="${g_sver::7}"
-        g_ver1="$(echo "${curl_cmd}" | jq -r '.[0].name')"
+        g_ver1="$(echo "$curl_cmd" | jq -r '.[0].name')"
         g_ver1="${g_ver1#v}"
     fi
 }
 
 git_3_fn()
 {
-    repo="${1}"
-    url="${2}"
-    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://gitlab.com/api/v4/projects/${repo}/repository/$url")"; then
-        g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
+    repo="$1"
+    url="$2"
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.com/api/v4/projects/$repo/repository/$url")"; then
+        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
-        g_ver1="$(echo "${curl_cmd}" | jq -r '.[0].commit.id')"
+        g_ver1="$(echo "$curl_cmd" | jq -r '.[0].commit.id')"
         g_ver1="${g_ver1#v}"
-        g_sver1="$(echo "${curl_cmd}" | jq -r '.[0].commit.short_id')"
+        g_sver1="$(echo "$curl_cmd" | jq -r '.[0].commit.short_id')"
         g_ver="${g_ver#VTM-}"
     fi
 }
 
 git_4_fn()
 {
-    repo="${1}"
-    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://gitlab.freedesktop.org/api/v4/projects/${repo}/repository/tags" | jq -r '.[0].name')"; then
-        g_ver="${curl_cmd#pkg-config-}"
-        g_ver1="${curl_cmd#VER-}"
-        g_ver="${curl_cmd#v}"
+    repo="$1"
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.freedesktop.org/api/v4/projects/$repo/repository/tags")"; then
+        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
+        g_ver="${g_ver#pkg-config-}"
+        g_ver="${g_ver#VER-}"
     fi
 }
 
 git_5_fn()
 {
-    repo="${1}"
-    if curl_cmd="$(curl -m "${curl_timeout}" -sSL 'https://bitbucket.org/!api/2.0/repositories/multicoreware/x265_git/effective-branching-model')"; then
-        g_sver="$(echo "${curl_cmd}" | jq '.development.branch.target' | grep -Eo '[0-9a-z][0-9a-z]+' | sort | head -n 1)"
+    repo="$1"
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL 'https://bitbucket.org/!api/2.0/repositories/multicoreware/x265_git/effective-branching-model')"; then
+        g_sver="$(echo "$curl_cmd" | jq '.development.branch.target' | grep -Eo '[0-9a-z][0-9a-z]+' | sort | head -n 1)"
         g_ver="${g_sver::7}"
     fi
 }
 
 git_6_fn()
 {
-    repo="${1}"
-    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://gitlab.gnome.org/api/v4/projects/${repo}/repository/tags" | jq -r '.[0].name')"; then
-        g_ver="${curl_cmd#v}"
+    repo="$1"
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.gnome.org/api/v4/projects/$repo/repository/tags")"; then
+        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
+        g_ver="${g_ver#v}"
     fi
 }
 
 git_7_fn()
 {
-    repo="${1}"
-    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://git.archive.org/api/v4/projects/${repo}/repository/tags")"; then
-        g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
+    repo="$1"
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://git.archive.org/api/v4/projects/$repo/repository/tags")"; then
+        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
     fi
 }
 
 git_8_fn()
 {
-    repo="${1}"
-    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://gitlab.kitware.com/api/v4/projects/${repo}/repository/tags")"; then
-        g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
+    repo="$1"
+    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.kitware.com/api/v4/projects/$repo/repository/tags")"; then
+        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
     fi
 }
