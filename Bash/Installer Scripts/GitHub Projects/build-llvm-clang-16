@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+
+###########################################################################################################
+##
+##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-llvm-clang-18
+##
+##  Purpose: Build LLVM-with clang-18
+##
+##  Updated: 08.03.23
+##
+##  Script version: 1.0
+##
+###########################################################################################################
+
+clear
+
+if [ "${EUID}" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
+
+#
+# SET VARIABLES
+#
+
+if [ ! -f llvm-project-16.0.6.tar.xz ]; then
+    if [ ! -d llvm-project ]; then
+        wget --show-progress -cqO llvm-project-16.0.6.tar.xz https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.6/llvm-project-16.0.6.src.tar.xz
+    fi
+fi
+
+if [ -d llvm-project-16.0.6 ]; then
+    sudo rm -fr llvm-project-16.0.6
+fi
+mkdir -p llvm-project-16.0.6
+
+tar -xf llvm-project-16.0.6.tar.xz -C llvm-project-16.0.6 --strip-components 1
+
+cd llvm-project-16.0.6 || exit 1
+
+list1='clang;clang-tools-extra;openmp'
+list2='libcxx;libcxxabi;libunwind;compiler-rt'
+
+cmake -S ../llvm -B build         \
+-G Ninja -Wno-dev                 \
+-DCMAKE_INSTALL_PREFIX=/usr/local \
+-DCMAKE_BUILD_TYPE=Release        \
+-DCMAKE_C_COMPILER=gcc            \
+-DCMAKE_CXX_COMPILER=g++          \
+-DLLVM_TARGETS_TO_BUILD=host      \
+-DLLVM_ENABLE_PROJECTS="${list1}" \
+-DLLVM_ENABLE_RUNTIMES="${list2}"
+
+ninja "-j$(nproc --all)" -C build
+sudo ninja "-j$(nproc --all)" -C build install
