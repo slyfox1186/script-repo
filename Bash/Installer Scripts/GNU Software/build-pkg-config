@@ -6,9 +6,9 @@
 ##
 ##  Purpose: Build GNU pkg-config
 ##
-##  Updated: 08.01.23
+##  Updated: 09.02.23
 ##
-##  Script version: 1.1
+##  Script version: 1.2
 ##
 ###########################################################################################################
 
@@ -23,7 +23,7 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.1
+script_ver=1.2
 archive_dir=pkg-config-0.29.2
 archive_url=https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz
 archive_ext="${archive_url//*.}"
@@ -79,17 +79,20 @@ export PATH
 #
 
 PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/share/pkgconfig:\
+/lib64/pkgconfig:\
+/lib/pkgconfig:\
+/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
+/usr/lib/x86_64-linux-gnu/pkgconfig/mit-krb5:\
+/usr/lib/x86_64-pc-linux-gnu/pkgconfig:\
+/usr/local/lib64/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/x86_64-pc-linux-gnu/pkgconfig:\
+/usr/local/share/pkgconfig:\
+/usr/share/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
