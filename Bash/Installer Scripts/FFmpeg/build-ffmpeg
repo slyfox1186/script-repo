@@ -57,7 +57,7 @@ ffmpeg_libraries=()
 latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
-debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=ON # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 CFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2 -g -O2 -march=native"
 CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include"
@@ -294,10 +294,10 @@ git_3_fn()
 git_4_fn()
 {
     repo="${1}"
-    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://gitlab.freedesktop.org/api/v4/projects/${repo}/repository/tags")"; then
-        g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
-        g_ver="${g_ver#pkg-config-}"
-        g_ver="${g_ver#VER-}"
+    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://gitlab.freedesktop.org/api/v4/projects/${repo}/repository/tags" | jq -r '.[0].name')"; then
+        g_ver="${curl_cmd#pkg-config-}"
+        g_ver1="${curl_cmd#VER-}"
+        g_ver="${curl_cmd#v}"
     fi
 }
 
@@ -1026,7 +1026,7 @@ iscuda="$(sudo find /usr/local/cuda* -type f -name nvcc)"
 # SET THE C & C++ COMPILERS TO THE HIGHEST VERSION INSTALLED
 #
 
-export CC='ccache clang' CXX='ccache clang++'
+export CC='ccache clang-15' CXX='ccache clang++-15'
 
 #
 # MAKE SURE WE USE THE CORRECT M4 FOLDER
@@ -1211,16 +1211,16 @@ if build 'aribb24' '2.16.01'; then
 fi
 
 git_ver_fn '7950' '4'
-g_ver1="${g_ver//-/.}"
-if build 'freetype' "${g_ver1}"; then
-    download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-${g_ver}/freetype-VER-${g_ver}.tar.bz2" "freetype-${g_ver1}.tar.bz2"
+g_ver2="${g_ver1//-/.}"
+if build 'freetype' "${g_ver2}"; then
+    download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-${g_ver1}/freetype-VER-${g_ver}.tar.bz2" "freetype-${g_ver2}.tar.bz2"
     extracommands=(-D{harfbuzz,png,bzip2,brotli,zlib,tests}'=disabled')
     execute ./autogen.sh
     execute meson setup build --prefix="${workspace}" --libdir="${workspace}"/lib \
         --buildtype=release --default-library=static --strip "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
-build_done 'freetype' "${g_ver1}"
+build_done 'freetype' "${g_ver2}"
 fi
 ffmpeg_libraries+=('--enable-libfreetype')
 
@@ -2065,7 +2065,7 @@ if build 'vvc' 'git'; then
     build_done 'vvc' 'git'
 fi
 
-export CC='ccache clang' CXX='ccache clang++'
+export CC='ccache clang-15' CXX='ccache clang++-15'
 pre_check_ver 'avisynth/avisynthplus' '1' 'T'
 if build 'avisynth' "${g_ver}"; then
     download "https://codeload.github.com/AviSynth/AviSynthPlus/tar.gz/refs/tags/v${g_ver}" "avisynth-${g_ver}.tar.gz"
