@@ -400,8 +400,8 @@ git_1_fn()
     github_url="${2}"
 
     if curl_cmd="$(curl -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
-        g_ver1="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
-        g_ver="${g_ver1#v}"
+        g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
+        g_ver="${g_ver#v}"
     fi
 }
 
@@ -650,7 +650,7 @@ fi
 git_ver_fn 'gperftools/gperftools' '1' 'R'
 g_ver="${g_ver//gperftools-/}"
 if build 'gperftools' "${g_ver}"; then
-    download 'https://github.com/gperftools/gperftools/releases/download/gperftools-${g_ver}/gperftools-${g_ver}.tar.gz'
+    download "https://github.com/gperftools/gperftools/releases/download/gperftools-${g_ver}/gperftools-${g_ver}.tar.gz"
     execute ./configure --prefix="${workspace}" \
                         --disable-shared        \
                         --enable-libunwind
