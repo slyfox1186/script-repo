@@ -372,7 +372,7 @@ download_git()
 build()
 {
     echo
-    echo "Building ${1} - version ${2}"
+    echo "building ${1} - version ${2}"
     echo '===================================='
 
     if [ -f "${packages}/${1}.done" ]; then
@@ -398,10 +398,10 @@ git_1_fn()
     # SCRAPE GITHUB'S API FOR THE LATEST REPO VERSION
     github_repo="${1}"
     github_url="${2}"
-
+ 
     if curl_cmd="$(curl -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
-        g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
-        g_ver="${g_ver#v}"
+        g_ver1="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
+        g_ver="${g_ver1#v}"
     fi
 }
 
@@ -703,11 +703,11 @@ build_gcc_11_fn()
     if [ -d "${packages}/gcc-11.4.0" ]; then
         sudo rm -fr "${packages}/gcc-11.4.0"
     fi
-    mkdir -p "${packages}/gcc-11.4.0/builddir"
     if build 'gcc-11' '11.4.0'; then
         download 'https://ftp.gnu.org/gnu/gcc/gcc-11.4.0/gcc-11.4.0.tar.xz'
         execute autoreconf -fi
         execute sudo ./contrib/download_prerequisites
+        mkdir builddir
         cd builddir || exit 1
         execute ../configure                   \
             --prefix="${install_dir}"          \
@@ -753,11 +753,11 @@ build_gcc_12_fn()
     if [ -d "${packages}/gcc-12.3.0" ]; then
         sudo rm -fr "${packages}/gcc-12.3.0"
     fi
-    mkdir -p "${packages}/gcc-12.3.0/builddir"
     if build 'gcc-12' '12.3.0'; then
         download 'https://ftp.gnu.org/gnu/gcc/gcc-12.3.0/gcc-12.3.0.tar.xz'
         execute autoreconf -fi
         execute sudo ./contrib/download_prerequisites
+        mkdir builddir
         cd builddir || exit 1
         execute ../configure                   \
             --prefix="${install_dir}"          \
@@ -803,11 +803,11 @@ build_gcc_13_fn()
     if [ -d "${packages}/gcc-13.2.0" ]; then
         sudo rm -fr "${packages}/gcc-13.2.0"
     fi
-    mkdir -p "${packages}/gcc-13.2.0/builddir"
     if build 'gcc-13' '13.2.0'; then
         download 'https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.xz'
         execute autoreconf -fi
         execute sudo ./contrib/download_prerequisites
+        mkdir builddir
         cd builddir || exit 1
         execute ../configure                   \
             --prefix="${install_dir}"          \
