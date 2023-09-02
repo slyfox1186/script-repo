@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 
-###########################################################################################################
+###########################################################################################################################################
 ##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-llvm-clang-18
+##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-llvm-clang-16
 ##
-##  Purpose: Build LLVM-with clang-18
+##  Purpose: Build LLVM-with clang-16
 ##
-##  Updated: 08.03.23
+##  Updated: 09.02.23
 ##
 ##  Script version: 1.0
 ##
-###########################################################################################################
+###########################################################################################################################################
 
 clear
 
@@ -32,16 +32,16 @@ fi
 if [ -d llvm-project-16.0.6 ]; then
     sudo rm -fr llvm-project-16.0.6
 fi
-mkdir -p llvm-project-16.0.6
+mkdir -p llvm-project-16.0.6/build
 
 tar -xf llvm-project-16.0.6.tar.xz -C llvm-project-16.0.6 --strip-components 1
 
-cd llvm-project-16.0.6 || exit 1
+cd llvm-project-16.0.6/build || exit 1
 
 list1='clang;clang-tools-extra;openmp'
 list2='libcxx;libcxxabi;libunwind;compiler-rt'
 
-cmake -S ../llvm -B build         \
+cmake -S ../llvm                  \
 -G Ninja -Wno-dev                 \
 -DCMAKE_INSTALL_PREFIX=/usr/local \
 -DCMAKE_BUILD_TYPE=Release        \
@@ -51,5 +51,5 @@ cmake -S ../llvm -B build         \
 -DLLVM_ENABLE_PROJECTS="${list1}" \
 -DLLVM_ENABLE_RUNTIMES="${list2}"
 
-ninja "-j$(nproc --all)" -C build
-sudo ninja "-j$(nproc --all)" -C build install
+ninja "-j$(nproc --all)"
+sudo ninja "-j$(nproc --all)" install
