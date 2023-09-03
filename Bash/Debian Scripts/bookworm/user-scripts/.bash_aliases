@@ -167,6 +167,8 @@ alias cdr='pushd /; cl'
 alias cds='pushd ~/scripts; cl'
 alias cdtmp='pushd ~/tmp ; cl'
 alias cdt='pushd ~/.local/share/trash/; cl'
+alias cdb1='pushd /usr/bin; cl'
+alias cdb2='pushd /usr/local/bin; cl'
 alias cdv='pushd ~/Videos ; cl'
 
 # change directory fast commands
