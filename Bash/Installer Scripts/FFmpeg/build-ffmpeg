@@ -1027,7 +1027,7 @@ iscuda="$(sudo find /usr/local/cuda* -type f -name nvcc)"
 # SET THE C & C++ COMPILERS TO THE HIGHEST VERSION INSTALLED
 #
 
-export CC='ccache clang-15' CXX='ccache clang++-15'
+export CC=gcc CXX=g++
 
 #
 # MAKE SURE WE USE THE CORRECT M4 FOLDER
@@ -2051,7 +2051,6 @@ if build 'srt' "${g_ver}"; then
 fi
 ffmpeg_libraries+=('--enable-libsrt')
 
-export CC=gcc CXX=g++
 git_ver_fn '12073082' '3' 'T'
 if build 'vvc' 'git'; then
     download_git 'https://gitlab.com/m-ab-s/VVCSoftware_VTM.git' 'vvc-git'
@@ -2065,7 +2064,6 @@ if build 'vvc' 'git'; then
     build_done 'vvc' 'git'
 fi
 
-export CC='ccache clang-15' CXX='ccache clang++-15'
 pre_check_ver 'avisynth/avisynthplus' '1' 'T'
 if build 'avisynth' "${g_ver}"; then
     download "https://codeload.github.com/AviSynth/AviSynthPlus/tar.gz/refs/tags/v${g_ver}" "avisynth-${g_ver}.tar.gz"
