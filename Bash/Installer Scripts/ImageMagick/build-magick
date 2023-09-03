@@ -36,7 +36,7 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-script_version=2.6
+script_ver=2.6
 progname="${0:2}"
 cwd="${PWD}"/magick-build-script
 packages="${cwd}"/packages
@@ -47,7 +47,7 @@ user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 repo=https://github.com/slyfox1186/script-repo
 debug=OFF # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP WITH TROUBLESHOOTING DURING THE BUILD
 
-box_out_banner()
+box_out_banner1()
 {
     input_char=$(echo "${@}" | wc -c)
     line=$(for i in `seq 0 $input_char`; do printf "-"; done)
@@ -61,7 +61,7 @@ box_out_banner()
     echo " ${line}"
     tput sgr 0
 }
-box_out_banner 'ImageMagick Build Script'
+box_out_banner1 'ImageMagick Build Script'
 sleep 2
 
 #
@@ -228,7 +228,7 @@ get_version_fn()
     scipt_name="$(basename "${0}")"
     printf "\n%s\n\n%s\n\n" \
         "Script name: $scipt_name" \
-        "Script version: ${script_ver}sion"
+        "Script version: ${script_ver}"
 }
 
 download()
@@ -298,7 +298,7 @@ download_git()
         sudo rm -fr "${target_dir}"
     fi
 
-    echo "Downloading ${dl_url} as ${dl_file}"
+    echo "Git cloning ${dl_url} as ${dl_file}"
     if ! git clone -q "${dl_url}" "${target_dir}"; then
         printf "\n%s\n\n" "The script failed to clone the git repository \"${target_dir}\" and will try again in 10 seconds..."
         sleep 10
@@ -306,7 +306,7 @@ download_git()
             fail_fn "The script failed to clone \"${target_dir}\" twice and will now exit the build."
         fi
     else
-        echo -e "Successfully cloned: ${target_dir}\\n"
+        echo -e "Git clone successful\\n"
     fi
 
     cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}"
@@ -345,32 +345,19 @@ git_1_fn()
     fi
 }
 
-git_2_fn()
-{
-    gitlab_repo="${1}"
-    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://gitlab.freedesktop.org/api/v4/projects/${gitlab_repo}/repository/tags")"; then
-        g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
-    fi
-}
-
 git_ver_fn()
 {
-    local v_flag v_tag url_tag
+    local flag_type flag_url set_type
 
-    v_url="${1}"
-    v_tag="${2}"
+    flag_url="${1}"
+    flag_type="${2}"
 
-    if [ -n "${3}" ]; then
-        v_flag="${3}"
-    fi
+    case "${flag_type}" in
+            R)      set_type=releases;;
+            T)      set_type=tags;;
+    esac
 
-    if [ "${v_flag}" = 'T' ] && [ "${v_tag}" = '1' ]; then
-        url_tag=git_1_fn gv_url=tags
-    elif [ "${v_flag}" = 'T' ] && [ "${v_tag}" = '2' ]; then
-        url_tag=git_2_fn gv_url=tags
-    fi
-
-    "${url_tag}" "${v_url}" "${gv_url}" 2>/dev/null
+    git_1_fn "${flag_url}" "${set_type}" 2>/dev/null
 }
 
 #
@@ -586,7 +573,7 @@ esac
 
 printf "%s\n\n%s\n%s\n%s\n\n" \
     'Starting the build process...' \
-    "ImageMagick Build Script ${script_ver}sion" \
+    "ImageMagick Build Script ${script_ver}" \
     '==========================================' \
     "This script will use (${cpu_threads}) CPU threads for parallel processing to accelerate the building speed."
 
@@ -594,7 +581,7 @@ printf "%s\n\n%s\n%s\n%s\n\n" \
 # INSTALL OFFICIAL IMAGEMAGICK LIBS
 #
 
-git_ver_fn 'imagemagick/imagemagick' '1' 'T'
+git_ver_fn 'imagemagick/imagemagick' 'T'
 if build 'magick-libs' "${g_ver}"; then
     cd "${packages}/deb-files" || exit 1
     if ! curl -A "${user_agent}" -Lso "magick-libs-${g_ver}.rpm" "https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-libs-${g_ver}.x86_64.rpm"; then
@@ -634,6 +621,24 @@ if build 'libjxl' '0.8.1'; then
     build_done 'libjxl' '0.8.1'
 fi
 
+clear
+box_out_banner2()
+{
+    input_char=$(echo "${@}" | wc -c)
+    line=$(for i in `seq 0 $input_char`; do printf "-"; done)
+    tput bold
+    line="$(tput setaf 3)${line}"
+    space=${line//-/ }
+    echo " ${line}"
+    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
+    printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
+    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
+    echo " ${line}"
+    tput sgr 0
+}
+box_out_banner2 'Begin compiling from source code'
+sleep 2
+
 #
 # GET PC TYPE
 #
@@ -646,7 +651,7 @@ pc_type="$(source "${cwd}/config.guess")"
 # BUILD FROM SOURCE CODE
 #
 
-git_ver_fn 'libsdl-org/libtiff' '1' 'T'
+git_ver_fn 'libsdl-org/libtiff' 'T'
 if build 'tiff' "${g_ver}"; then
     download "https://codeload.github.com/libsdl-org/libtiff/tar.gz/refs/tags/v${g_ver}" "tiff-${g_ver}.tar.gz"
     execute ./autogen.sh
@@ -734,7 +739,7 @@ if build 'c2man' 'git'; then
     build_done 'c2man' 'git'
 fi
 
-git_ver_fn 'fribidi/fribidi' '1' 'T'
+git_ver_fn 'fribidi/fribidi' 'T'
 if build 'fribidi' "${g_ver}"; then
     download "https://codeload.github.com/fribidi/fribidi/tar.gz/refs/tags/v${g_ver}" "fribidi-${g_ver}.tar.gz"
     extra_commands=(-D{deprecated,docs,tests}'=false')
@@ -748,7 +753,7 @@ if build 'fribidi' "${g_ver}"; then
     build_done 'fribidi' "${g_ver}"
 fi
 
-git_ver_fn 'host-oman/libraqm' '1' 'T'
+git_ver_fn 'host-oman/libraqm' 'T'
 if build 'raqm' "${g_ver}"; then
     download "https://codeload.github.com/host-oman/libraqm/tar.gz/refs/tags/v${g_ver}" "raqm-${g_ver}.tar.gz"
     execute meson setup build --prefix="${workspace}"             \
@@ -761,7 +766,7 @@ if build 'raqm' "${g_ver}"; then
     build_done 'raqm' "${g_ver}"
 fi
 
-git_ver_fn 'jemalloc/jemalloc' '1' 'T'
+git_ver_fn 'jemalloc/jemalloc' 'T'
 if build 'jemalloc' "${g_ver}"; then
     download "https://codeload.github.com/jemalloc/jemalloc/tar.gz/refs/tags/${g_ver}" "jemalloc-${g_ver}.tar.gz"
     execute ./autogen.sh
@@ -777,7 +782,7 @@ if build 'jemalloc' "${g_ver}"; then
     build_done 'jemalloc' "${g_ver}"
 fi
 
-git_ver_fn 'uclouvain/openjpeg' '1' 'T'
+git_ver_fn 'uclouvain/openjpeg' 'T'
 if build 'openjpeg' "${g_ver}"; then
     download "$g_url" "openjpeg-${g_ver}.tar.gz"
     execute cmake -B build                                                                    \
@@ -795,7 +800,7 @@ fi
 # BEGIN IMAGEMAGICK BUILD
 #
 
-git_ver_fn 'imagemagick/imagemagick' '1' 'T'
+git_ver_fn 'imagemagick/imagemagick' 'T'
 if build 'imageMagick' "${g_ver}"; then
     download "https://codeload.github.com/imagemagick/imagemagick/tar.gz/refs/tags/${g_ver}" "imagemagick-${g_ver}.tar.gz"
     execute autoreconf -fi -I /usr/share/aclocal
