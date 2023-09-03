@@ -182,6 +182,7 @@ EOF
     else
         google_speech 'Video conversion failed.' 2>/dev/null
         echo
+        read -p 'Press enter to exit.'
         exit 1
     fi
     clear
