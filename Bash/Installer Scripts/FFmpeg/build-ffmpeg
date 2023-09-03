@@ -1155,7 +1155,6 @@ if build 'nasm' '2.16.01'; then
     build_done 'nasm' '2.16.01'
 fi
 
-    ./configure --prefix=/usr/local
 if build 'giflib' '5.2.1'; then
     download 'https://cfhcable.dl.sourceforge.net/project/giflib/giflib-5.2.1.tar.gz'
     # PARELLEL BUILDING NOT AVAILABLE FOR THIS LIBRARY
