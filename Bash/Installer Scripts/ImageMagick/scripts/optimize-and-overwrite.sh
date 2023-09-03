@@ -2,6 +2,8 @@
 
 clear
 
+export TSAN_OPTIONS='ignore_noninstrumented_modules=1'
+
 # THE FILE EXTENSION TO SEARCH FOR (DO NOT INCLUDE A '.' WITH THE EXTENSION)
 fext=jpg
 
@@ -79,7 +81,7 @@ EOF
             rm -fr "${v_noslash%/*}"
         done
     done
-    clear
+clear
 done
 
 if [ "${?}" -eq '0' ]; then
