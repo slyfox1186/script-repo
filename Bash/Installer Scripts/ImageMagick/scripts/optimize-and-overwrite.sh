@@ -94,3 +94,5 @@ else
     read -p 'Press enter to exit.'
     exit 1
 fi
+
+unset TSAN_OPTIONS
