@@ -205,7 +205,7 @@ fi
 # GET ADA PACKAGE
 #
 
-get_ada="$(sudo apt list *gnat* | awk -F'/' '{print ${1}}' | grep -Eo '^libgnat-1[0-9]?$' | sort -r | head -n1 2>/dev/null)"
+get_ada="$(sudo apt list *gnat* | awk -F'/' '{print $1}' | grep -Eo '^libgnat-1[0-9]?$' | sort -r | head -n1 2>/dev/null)"
 
 #
 # TEST IF LIBICONV WAS INSTALLED BY APT OR MANUALLY
