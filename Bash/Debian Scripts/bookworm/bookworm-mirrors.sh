@@ -2,9 +2,9 @@
 
 clear
 
-list='/etc/apt/sources.list'
+list=/etc/apt/sources.list
 
-# make a backup of the file
+# Create a backup of the sources.list file
 if [ ! -f "$list.bak" ]; then
     sudo cp -f "$list" "$list.bak"
 fi
@@ -16,7 +16,7 @@ cat > /etc/apt/sources.list <<'EOF'
 ##
 ##  /etc/apt/sources.list
 ##
-##  ALL MIRRORS IN EACH CATEGORY ARE LISTED AS BEING IN THE USA.
+##  ALL MIRRORS IN EACH CATEGORY ARE LISTED AS BEING LOCATED IN THE UNITED STATES
 ##
 ##################################################################
 ##
