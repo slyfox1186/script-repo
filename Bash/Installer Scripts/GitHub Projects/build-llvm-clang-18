@@ -2,11 +2,11 @@
 
 ###########################################################################################################
 ##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-llvm-clang-18
+##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/Installer%20Scripts/GNU%20Software/build-llvm-18
 ##
-##  Purpose: Build LLVM-with clang-18
+##  Purpose: Build LLVM-18
 ##
-##  Updated: 08.03.23
+##  Updated: 09.02.23
 ##
 ##  Script version: 1.0
 ##
@@ -23,18 +23,168 @@ fi
 # SET VARIABLES
 #
 
-if [ ! -d llvm-project ]; then
-    git clone --depth=1 https://github.com/llvm/llvm-project.git
-fi
+script_ver=1.0
+git_url=https://github.com/llvm/llvm-project.git
+cwd="${PWD}"/llvm-18-build-script
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 
 list1='clang;clang-tools-extra;openmp'
 list2='libcxx;libcxxabi;libunwind;compiler-rt'
 
-cd llvm-project || exit 1
-mkdir builddir1
-cd builddir1 || exit 1
+printf "\n%s\n%s\n\n" \
+    "LLVM Build Script - v${script_ver}" \
+    '==============================================='
 
-cmake -S ../llvm -B build         \
+#
+# CREATE OUTPUT DIRECTORY
+#
+
+if [ -d "${cwd}" ]; then
+    sudo rm -fr "${cwd}"
+fi
+mkdir -p "${cwd}"
+
+#
+# SET THE C+CPP COMPILERS
+#
+
+export CC=gcc-13 CXX=g++-13
+
+#
+# EXPORT COMPILER OPTIMIZATION FLAGS
+#
+
+export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -march=native'
+
+#
+# SET THE PATH VARIABLE
+#
+
+PATH="\
+/usr/lib/ccache:\
+${HOME}/.cargo/bin:\
+${HOME}/.local/bin:\
+/usr/local/sbin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin:\
+/usr/local/cuda/bin:\
+/snap/bin\
+"
+export PATH
+
+#
+# SET THE PKG_CONFIG_PATH VARIABLE
+#
+
+PKG_CONFIG_PATH="\
+/usr/local/lib64/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/share/pkgconfig:\
+/usr/lib64/pkgconfig:\
+/usr/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/share/pkgconfig:\
+/lib64/pkgconfig:\
+/lib/pkgconfig:\
+/lib/x86_64-linux-gnu/pkgconfig\
+"
+export PKG_CONFIG_PATH
+
+#
+# CREATE FUNCTIONS
+#
+
+exit_fn()
+{
+    printf "\n%s\n\n%s\n\n" \
+        'Make sure to star this repository to show your support!' \
+        "${repo}"
+    exit 0
+}
+
+fail_fn()
+{
+    printf "\n%s\n\n%s\n\n" \
+        "${1}" \
+        "To report a bug create an issue at: ${repo}/issues"
+    exit 1
+}
+
+cleanup_fn()
+{
+    local choice
+
+    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
+        '============================================' \
+        '  Do you want to clean up the build files?  ' \
+        '============================================' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' choice
+
+    case "${choice}" in
+        1)      sudo rm -fr "${cwd}";;
+        2)      echo;;
+        *)
+                clear
+                printf "%s\n\n" 'Bad user input. Reverting script...'
+                sleep 3
+                unset choice
+                clear
+                cleanup_fn
+                ;;
+    esac
+}
+
+#
+# INSTALL REQUIRED APT PACKAGES
+#
+
+pkgs_fn()
+{
+    pkgs=(autoconf autoconf-archive autogen automake build-essential ccache
+          cmake curl git jq libtool libtool-bin lzip m4 pkg-config)
+
+    for i in ${pkgs[@]}
+    do
+        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+
+        if [ -z "${missing_pkg}" ]; then
+            missing_pkgs+=" ${i}"
+        fi
+    done
+
+    if [ -n "${missing_pkgs}" ]; then
+        sudo apt -y install ${missing_pkgs}
+        sudo apt -y autoremove
+        clear
+    fi
+}
+
+#
+# DOWNLOAD THE ARCHIVE FILE
+#
+
+cd "${cwd}" || exit 1
+
+if [ ! -d llvm-project ]; then
+    git clone --depth=1 "${git_url}"
+fi
+
+#
+# BUILD PROGRAM FROM SOURCE
+#
+
+cd llvm-project || exit 1
+
+mkdir build
+cd build || exit 1
+
+cmake -S ../llvm                  \
 -G Ninja -Wno-dev                 \
 -DCMAKE_INSTALL_PREFIX=/usr/local \
 -DCMAKE_BUILD_TYPE=Release        \
@@ -44,5 +194,15 @@ cmake -S ../llvm -B build         \
 -DLLVM_ENABLE_PROJECTS="${list1}" \
 -DLLVM_ENABLE_RUNTIMES="${list2}"
 
-ninja "-j$(nproc --all)" -C build
-sudo ninja "-j$(nproc --all)" -C build install
+ninja "-j$(nproc --all)"
+
+if ! sudo ninja "-j$(nproc --all)" install; then
+    printf "\n%s\n\n" "Failed to execute: sudo ninja "-j$(nproc --all)" install."
+    exit 1
+fi
+
+# PROMPT USER TO CLEAN UP FILES
+cleanup_fn
+
+# SHOW EXIT MESSAGE
+exit_fn
