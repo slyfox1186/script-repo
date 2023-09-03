@@ -1212,15 +1212,15 @@ fi
 
 git_ver_fn '7950' '4'
 g_ver2="${g_ver1//-/.}"
-if build 'freetype' "${g_ver2}"; then
-    download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-${g_ver1}/freetype-VER-${g_ver}.tar.bz2" "freetype-${g_ver2}.tar.bz2"
+if build 'freetype' '2.13.2'; then
+    download 'https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-2-13-2/freetype-VER-2-13-2.tar.bz2' 'freetype-2.13.2.tar.bz2'
     extracommands=(-D{harfbuzz,png,bzip2,brotli,zlib,tests}'=disabled')
     execute ./autogen.sh
     execute meson setup build --prefix="${workspace}" --libdir="${workspace}"/lib \
         --buildtype=release --default-library=static --strip "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
-build_done 'freetype' "${g_ver2}"
+build_done 'freetype' '2.13.2'
 fi
 ffmpeg_libraries+=('--enable-libfreetype')
 
