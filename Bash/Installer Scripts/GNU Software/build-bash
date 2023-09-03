@@ -4,7 +4,7 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-bash
 ##
-##  Purpose: Build GNU Bash
+##  Purpose: Build GNU BASH
 ##
 ##  Updated: 08.31.23
 ##
@@ -32,7 +32,7 @@ user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
-    "Bash build script - v${script_ver}" \
+    "BASH Build Script - v${script_ver}" \
     '==============================================='
 
 #
@@ -49,6 +49,12 @@ mkdir -p "${cwd}"
 #
 
 export CC=gcc CXX=g++
+
+#
+# SET COMPILER OPTIMIZATION FLAGS
+#
+
+export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
 
 #
 # SET THE PATH VARIABLE
@@ -87,12 +93,6 @@ PKG_CONFIG_PATH="\
 /lib/x86_64-linux-gnu/pkgconfig\
 "
 export PKG_CONFIG_PATH
-
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
-
-export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
 
 #
 # CREATE FUNCTIONS
@@ -213,53 +213,8 @@ cd build || exit 1
              --{build,host}="${pc_type}"       \
              --disable-nls                     \
              --disable-profiling               \
-             --enable-alias                    \
-             --enable-arith-for-command        \
-             --enable-array-variables          \
-             --enable-brace-expansion          \
-             --enable-casemod-attributes       \
-             --enable-casemod-expansions       \
-             --enable-command-timing           \
-             --enable-cond-command             \
-             --enable-cond-regexp              \
-             --enable-coprocesses              \
-             --enable-debugger                 \
-             --enable-dev-fd-stat-broken       \
-             --enable-directory-stack          \
-             --enable-direxpand-default        \
-             --enable-disabled-builtins        \
-             --enable-dparen-arithmetic        \
-             --enable-extended-glob            \
-             --enable-extended-glob-default    \
-             --enable-function-import          \
-             --enable-glob-asciiranges-default \
-             --enable-help-builtin             \
-             --enable-history                  \
-             --enable-job-control              \
-             --enable-mem-scramble             \
-             --enable-multibyte                \
-             --enable-net-redirections         \
-             --enable-process-substitution     \
-             --enable-progcomp                 \
-             --enable-prompt-string-decoding   \
-             --enable-readline                 \
-             --enable-restricted               \
-             --enable-select                   \
-             --enable-separate-helpfiles       \
-             --enable-single-help-strings      \
-             --enable-strict-posix-default     \
-             --enable-threads=posix            \
-             --enable-translatable-strings     \
-             --enable-usg-echo-default         \
-             --enable-xpg-echo-default         \
-             --with-bash-malloc                \
-             --with-curses                     \
-             --with-gnu-malloc                 \
-             --with-included-gettext           \
-             --with-installed-readline         \
-             --with-libiconv-prefix=/usr       \
-             --with-libintl-prefix=/usr        \
-             --with-libpth-prefix=/usr
+             --without-bash-malloc             \
+             --without-included-gettext
 make "-j$(nproc --all)"
 if ! sudo make install; then
     make distclean
