@@ -11,10 +11,10 @@ cd "$tmp_dir" || exit 1
 
 # DOWNLOAD THE SCRIPTS FROM GITHUB
 wget -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/FFmpeg/run-scripts/ffmpeg-scripts.txt'
-
 # RENAME THE SCRIPTS
 sudo mv convert-x265-cuda-ffpb.sh ffpb
 sudo mv convert-x265-cuda-ffmpeg.sh ffmpeg
+sudo mv ffpb-loop-mp4-files.sh ffpb-loop
 
 # MOVE THE SCRIPTS TO THE ORIGINAL DIRECTORY THE SCRIPT WAS EXECUTED FROM
 sudo mv ffpb ffmpeg "$parent_dir"
