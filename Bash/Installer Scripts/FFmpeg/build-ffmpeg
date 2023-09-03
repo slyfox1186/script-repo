@@ -460,7 +460,7 @@ gpu_arch_fn()
     local is_wsl gpu_name gpu_type
 
     is_wsl="$(uname -a | grep -Eo 'WSL2')"
-    if [ -n "${i}s_wsl" ]; then
+    if [ -n "${is_wsl}" ]; then
         sudo apt -y install nvidia-utils-530
     fi
 
