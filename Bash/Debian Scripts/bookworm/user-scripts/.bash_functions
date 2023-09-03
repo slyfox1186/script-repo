@@ -179,46 +179,46 @@ mvf()
 ## APT COMMANDS ##
 ##################
 
-# DOWNLOAD AN APT PACKAGE + ALL ITS DEPENDENCIES IN ONE GO
+# DOWNLOAD AN apt-fast PACKAGE + ALL ITS DEPENDENCIES IN ONE GO
 aptdl() { wget -c "$(apt-get install --reinstall --print-uris -qq ${1} 2>/dev/null | cut -d''\''' -f2)"; }
 
 # CLEAN
 clean()
 {
     clear
-    sudo apt -y autoremove
-    sudo apt clean
-    sudo apt autoclean
-    sudo apt -y purge
+    sudo apt-fast -y autoremove
+    sudo apt-fast clean
+    sudo apt-fast autoclean
+    sudo apt-fast -y purge
 }
 
 # UPDATE
 update()
 {
     clear
-    sudo apt update
-    sudo apt -y full-upgrade
-    sudo apt -y autoremove
-    sudo apt clean
-    sudo apt autoclean
-    sudo apt -y purge
+    sudo apt-fast update
+    sudo apt-fast -y full-upgrade
+    sudo apt-fast -y autoremove
+    sudo apt-fast clean
+    sudo apt-fast autoclean
+    sudo apt-fast -y purge
 }
 
-# FIX BROKEN APT PACKAGES
+# FIX BROKEN apt-fast PACKAGES
 fix()
 {
     clear
     if [ -f '/tmp/apt.lock' ]; then
         sudo rm '/tmp/apt.lock'
     fi
-    sudo apt -f -y install
-    apt --fix-broken install
-    apt --fix-missing update
+    sudo apt-fast -f -y install
+    apt-fast --fix-broken install
+    apt-fast --fix-missing update
     dpkg --configure -a
-    sudo apt -y autoremove
-    sudo apt clean
-    sudo apt autoclean
-    sudo apt update
+    sudo apt-fast -y autoremove
+    sudo apt-fast clean
+    sudo apt-fast autoclean
+    sudo apt-fast update
 }
 
 listd()
@@ -227,11 +227,11 @@ listd()
     local search_cache
 
     if [ -n "${1}" ]; then
-        sudo apt list -- "*${1}*"-dev | awk -F'/' '{print $1}'
+        sudo apt-fast list -- "*${1}*"-dev | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt list -- "*${1}*-dev" | awk -F'/' '{print $1}'
+        sudo apt-fast list -- "*${1}*-dev" | awk -F'/' '{print $1}'
     fi
 }
 
@@ -242,30 +242,30 @@ list()
     local search_cache
 
     if [ -n "${1}" ]; then
-        sudo apt list "*${1}*" | awk -F'/' '{print $1}'
+        sudo apt-fast list "*${1}*" | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt list "*${1}*" | awk -F'/' '{print $1}'
+        sudo apt-fast list "*${1}*" | awk -F'/' '{print $1}'
     fi
 }
 
-# USE sudo apt TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
+# USE sudo apt-fast TO SEARCH FOR ALL apt-fast PACKAGES BY PASSING A NAME TO THE FUNCTION
 aptsc()
 {
     clear
     local search
 
     if [ -n "${1}" ]; then
-        sudo apt search "${1} ~i" -F "%p"
+        sudo apt-fast search "${1} ~i" -F "%p"
     else
         read -p 'Enter the string to search: ' search
         clear
-        sudo apt search "${search} ~i" -F "%p"
+        sudo apt-fast search "${search} ~i" -F "%p"
     fi
 }
 
-# USE APT CACHE TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
+# USE apt-fast CACHE TO SEARCH FOR ALL apt-fast PACKAGES BY PASSING A NAME TO THE FUNCTION
 csearch()
 {
     clear
@@ -626,7 +626,7 @@ imow()
     fext=jpg
 
     #
-    # REQUIRED APT PACKAGES
+    # REQUIRED apt-fast PACKAGES
     #
 
     apt_pkgs=(sox libsox-dev)
@@ -639,8 +639,8 @@ imow()
     done
 
     if [ -n "${missing_pkgs}" ]; then
-        sudo apt -y install ${missing_pkgs}
-        sudo apt -y autoremove
+        sudo apt-fast -y install ${missing_pkgs}
+        sudo apt-fast -y autoremove
         clear
     fi
     unset apt_pkgs i missing_pkg missing_pkgs
@@ -805,9 +805,9 @@ cuda_purge()
         echo 'Purging the cuda-sdk-toolkit from your computer.'
         echo '================================================'
         echo
-        sudo sudo apt -y --purge remove "*cublas*" "cuda*" "nsight*"
-        sudo sudo apt -y autoremove
-        sudo sudo apt update
+        sudo sudo apt-fast -y --purge remove "*cublas*" "cuda*" "nsight*"
+        sudo sudo apt-fast -y autoremove
+        sudo sudo apt-fast update
     elif [[ "${answer}" -eq '2' ]]; then
         return 0
     fi
@@ -878,9 +878,9 @@ listppas()
 {
     clear
 
-    local apt host user ppa entry
+    local apt-fast host user ppa entry
 
-    for apt in $(find /etc/apt/ -type f -name \*.list)
+    for apt-fast in $(find /etc/apt/ -type f -name \*.list)
     do
         grep -Po "(?<=^deb\s).*?(?=#|$)" "${apt}" | while read entry
         do
@@ -936,7 +936,7 @@ hw_mon()
 
     # install lm-sensors if not already
     if ! which lm-sensors &>/dev/null; then
-        sudo apt -y install lm-sensors
+        sudo apt-fast -y install lm-sensors
     fi
 
     # Add modprobe to system startup tasks if not already added
@@ -1003,7 +1003,7 @@ hw_mon()
 # CREATE A 7ZIP FILE WITH MAX COMPRESSION SETTINGS
 7z_7z()
 {
-    local source output
+    local answer source output
     clear
 
     if [ -n "${1}" ]; then
@@ -1021,6 +1021,24 @@ hw_mon()
         fi
         7z a -t7z -m0=lzma2 -mx9 "${output}".7z ./"${source}"/*
     fi
+
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'Do you want to delete the original file?' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' answer
+    clear
+
+    if [ -n "${1}" ]; then
+        source="${1}"
+    fi
+
+    case "${answer}" in
+        1)      sudo rm -fr "${source}";;
+        2)      clear;;
+        '')     sudo rm -fr "${source}";;
+        *)      printf "\n%s\n\n" 'Bad user input...';;
+    esac
 }
 
 ##################
@@ -1283,7 +1301,7 @@ tkapt()
     local i list
     clear
 
-    list=(apt apt-get aptitude dpkg)
+    list=(apt-fast apt-get aptitude dpkg)
 
     for i in ${list[@]}
     do
@@ -1371,7 +1389,7 @@ up_icon()
     for i in ${pkgs[@]}
     do
         if ! sudo dpkg -l "${i}"; then
-            sudo apt -y install "${i}"
+            sudo apt-fast -y install "${i}"
             clear
         fi
     done
