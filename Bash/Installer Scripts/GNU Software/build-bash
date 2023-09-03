@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
 
-###########################################################################################################
+###########################################################################################################################
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-bash
 ##
 ##  Purpose: Build GNU BASH
 ##
-##  Updated: 08.31.23
+##  Updated: 09.03.23
 ##
-##  Script version: 1.1
+##  Changes: Remove most of the custom install line switches due to incorrect behaviors when running certain commands
 ##
-###########################################################################################################
+##  Script version: 2.0
+##
+###########################################################################################################################
 
 clear
 
@@ -23,7 +25,7 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.1
+script_ver=2.0
 archive_dir=bash-5.2.15
 archive_url=https://ftp.gnu.org/gnu/bash/bash-5.2.15.tar.gz
 archive_ext="${archive_url//*.}"
