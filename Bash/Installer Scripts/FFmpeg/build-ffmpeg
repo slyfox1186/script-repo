@@ -1056,7 +1056,7 @@ pc_type="$(source "${cwd}/config.guess")"
 # INSTALL GLOBAL TOOLS
 #
 
-printf "%s\n%s\n%s\n" \
+printf "\n%s\n%s\n%s\n" \
     '==============================================' \
     '           Installing Global Tools            ' \
     '=============================================='
