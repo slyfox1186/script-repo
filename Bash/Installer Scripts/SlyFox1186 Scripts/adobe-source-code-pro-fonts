@@ -1,15 +1,20 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 clear
 
-printf "%s\n\n" "Installing fonts at ${PWD} to /usr/local/share/fonts/"
+printf "%s\n\n" "Installing fonts in /usr/local/share/fonts/adobe-fonts"
 
-mkdir -p /usr/local/share/fonts/adobe-fonts
+cd /usr/local/share/fonts || exit 1
 
-git clone --depth 1 https://github.com/adobe-fonts/source-code-pro.git /usr/local/share/fonts/adobe-fonts
+if [ -d adobe-fonts ]; then
+    sudo rm -fr adobe-fonts
+fi
+sudo mkdir adobe-fonts
 
-# find /usr/local/share/fonts/ -iname '*.ttf' -exec echo \{\} \;
+git clone --depth 1 https://github.com/adobe-fonts/source-code-pro.git adobe-fonts
 
-fc-cache -f -v /usr/local/share/fonts/adobe-fonts
+fc-cache -f -v adobe-fonts
 
 printf "\n%s\n\n" 'Font installation completed.'
+
+# find . -iname '*.ttf' -exec echo \{\} \;
