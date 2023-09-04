@@ -10,7 +10,7 @@ printf "%s\n%s\n\n" \
 # SET VARIABLES
 #
 
-file="${HOME}"/.bash_aliases
+file="$HOME"/.bash_aliases
 
 #
 # CREATE FUNCTIONS
@@ -18,7 +18,7 @@ file="${HOME}"/.bash_aliases
 
 script_fn()
 {
-cat > "${file}" <<'EOF'
+cat > "$file" <<'EOF'
 alias alien='sudo alien'
 alias apt-get='sudo apt-get'
 alias apt-fast='sudo apt-fast'
@@ -328,19 +328,25 @@ EOF
 }
 
 #
-# GET USER INPUT
+# CHECK FOR ANY PASSED ARGUMENTS TO SET THE APT PACKAGE MANAGER
 #
 
-printf "%s\n\n%s\n%s\n\n" \
-    'If apt-fast is installed do you want this script to use it instead of apt?' \
-    '[1] Yes' \
-    '[2] No'
-read -p 'Your choices are (1 or 2): ' answer
+if [[ "$1" == 'yes' ]]; then
+    answer=1
+else
+    answer=2
+fi
 
-case "${answer}" in
+clear
+echo "The first argument is: $answer"
+echo
+read -p 'Press enter to continue.'
+clear
+
+case "$answer" in
     1)
             script_fn
-            sed -i "s/apt /apt-fast /g" "${file}"
+            sed -i "s/apt /apt-fast /g" "$file"
             ;;
     2)      script_fn;;
     *)
