@@ -25,48 +25,69 @@ if ! mv -f '.bashrc' "$HOME"; then
     fail_fn 'Failed to move the script .bashrc to the user'\''s $HOME directory.'
 fi
 
+#
+# PROMPT THE USER TO INSTALL APT-FAST
+#
+
+clear
+
+printf "%s\n\n%s\n%s\n\n" \
+    'Do you want to install/enable apt-fast as the primary download utility?' \
+    '[1] Yes' \
+    '[2] No'
+read -p 'Your choices are (1 or 2): ' answer
+clear
+
+case "${answer}" in
+    1)      apt_flag=yes;;
+    2)      apt_flag=no;;
+    *)
+            clear
+            printf "%s\n\n" 'Bad user input. Please start over.'
+            exit 1
+            ;;
+esac
+unset answer
+
 shell_array=(bash_aliases.sh bash_functions.sh)
 script_array=(.bash_aliases .bash_functions .bashrc)
 
 for i in ${shell_array[@]}
 do
-    if ! bash "${i}"; then
-        fail_fn "Failed to execute: ${i}"
-    fi
+    /bin/bash "$i" "$apt_flag"
 done
-unset i
 
-for i in ${script_array[@]}
+for f in ${script_array[@]}
 do
-    if ! sudo chown "$USER":"$USER" "$HOME/$i"; then
-        fail_fn "Failed to update the file permissions for: $i"
+    if ! sudo chown "$USER":"$USER" "$HOME/$f"; then
+        fail_fn "Failed to update the file permissions for: $f"
     fi
 done
 
 # Open each script that is now in each user's home folder with an editor
-for i in ${script_array[@]}
+for v in ${script_array[@]}
 do
     if which gnome-text-editor &>/dev/null; then
         cd "$HOME" || exit 1
-        gnome-text-editor "${i}"
+        gnome-text-editor "$v"
     elif which gedit &>/dev/null; then
         cd "$HOME" || exit 1
-        gedit "${i}"
+        gedit "$v"
     elif which nano &>/dev/null; then
         cd "$HOME" || exit 1
-        nano "${i}"
+        nano "$v"
     elif which vim &>/dev/null; then
         cd "$HOME" || exit 1
-        vim "${i}"
+        vim "$v"
     elif which vi &>/dev/null; then
         cd "$HOME" || exit 1
-        vi "${i}"
+        vi "$v"
     else
         fail_fn 'Could not find an EDITOR to open the user scripts.'
     fi
 done
 
 # Remove the installer script itself
-if [ -f "$0" ]; then
-    sudo rm "$0"
-fi
+#if [ -f "$0" ]; then
+#    sudo rm "$0"
+#fi
