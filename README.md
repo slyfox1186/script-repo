@@ -163,6 +163,12 @@ bash <(curl -fsSL https://bookworm-scripts.optimizethis.net)
 ```
 ------
 
+## Quick Install **apt-fast**
+```bash
+bash -c "$(curl -fsL https://git.io/vokNn)"
+```
+------
+
 ## Install apt and ppa packages
   - **What I consider to be core apt packages or "must haves" that everyone should consider installing**
 
