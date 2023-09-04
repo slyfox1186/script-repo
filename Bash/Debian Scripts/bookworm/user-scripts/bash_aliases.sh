@@ -2,7 +2,6 @@
 
 clear
 
-
 printf "%s\n%s\n\n" \
     'Install ~/.bash_aliases' \
     '================================='
