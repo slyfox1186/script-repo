@@ -1,3 +1,0 @@
-https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/Tilix%20Terminal/build-tilix
-https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/Tilix%20Terminal/remove-tilix
-https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/Tilix%20Terminal/run-tilix
