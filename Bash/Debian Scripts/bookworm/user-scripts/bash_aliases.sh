@@ -337,12 +337,6 @@ else
     answer=2
 fi
 
-clear
-echo "The first argument is: $answer"
-echo
-read -p 'Press enter to continue.'
-clear
-
 case "$answer" in
     1)
             script_fn
