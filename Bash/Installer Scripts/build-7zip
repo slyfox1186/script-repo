@@ -83,7 +83,7 @@ case "$(uname -m)" in
 esac
 
 # Install curl (needed to download the files)
-if ! sudo dpkg -l | grep curl &>/dev/null; then
+if ! sudo dpkg -l | grep -o curl &>/dev/null; then
     sudo apt -y install curl
     sudo apt -y autoremove
     clear
