@@ -54,7 +54,7 @@ short_name="$(echo "${archive_url}" | sed 's/^.*\/.*-wsl-\(.*\)\.tar\.gz$/\1/')"
 #
 
 script_ver=2.0
-archive_dir="$short_name"
+archive_dir="${short_name}"
 archive_ext="${archive_url//*.}"
 cwd="${PWD}"/WSL2-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
@@ -249,7 +249,7 @@ build()
         if grep -Fx "${2}" "${packages}/${1}.done" >/dev/null; then
             echo "${1} version ${2} already built. Remove ${packages}/${1}.done lockfile to rebuild it."
             return 1
-        elif $latest; then
+        elif ${latest}; then
             echo "${1} is outdated and will be rebuilt using version ${2}"
             return 0
         else
@@ -285,7 +285,7 @@ else
 fi
 
 
-pkgs=("$add_this" autoconf autogen automake bat bc binutils bison build-essential ccache
+pkgs=("${add_this}" autoconf autogen automake bat bc binutils bison build-essential ccache
       ccdiff checkinstall clang cmake cmake-extras cmake-qt-gui colordiff cpu-checker
       curl dbus-x11 dwarves flex git jq libdmalloc-dev libelf-dev libmimalloc-dev
       libperl-dev libssl-dev libtalloc-dev libtbbmalloc2 libtool libtool-bin lzip m4
@@ -320,13 +320,13 @@ fi
 #
 
 cd "${cwd}" || exit 1
-if build 'wsl-kernel' "$short_name"; then
-    wget --show-progress -cqO "wsl-$short_name.tar.${archive_ext}" "${archive_url}"
-    mkdir -p "wsl-$short_name"
-    tar -zxf "wsl-$short_name.tar.gz" -C "wsl-$short_name" --strip-components 1
-    cd "wsl-$short_name" || exit 1
+if build 'wsl-kernel' "${short_name}"; then
+    wget --show-progress -cqO "wsl-${short_name}.tar.${archive_ext}" "${archive_url}"
+    mkdir -p "wsl-${short_name}"
+    tar -zxf "wsl-${short_name}.tar.gz" -C "wsl-${short_name}" --strip-components 1
+    cd "wsl-${short_name}" || exit 1
     echo 'yes' | make "-j${cpu_threads}" KCONFIG_CONFIG='Microsoft/config-wsl'
-    build_done 'wsl-kernel' "$short_name"
+    build_done 'wsl-kernel' "${short_name}"
 fi
 
 # PROMPT USER TO CLEAN UP FILES
