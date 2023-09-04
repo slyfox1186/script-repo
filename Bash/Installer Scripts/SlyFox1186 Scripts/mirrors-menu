@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 clear
 
@@ -64,13 +64,13 @@ $(ColorBlue 'Choose the Debian release version:') "
     clear
     case "${answer}" in
         1)
-                $dl_app bullseye-mirrors https://bullseye-mirrors.optimizethis.net; sudo bash bullseye-mirrors
+                ${dl_app} bullseye-mirrors https://bullseye-mirrors.optimizethis.net; sudo bash bullseye-mirrors
                 rm bullseye-mirrors
                 clear
                 return 0
                 ;;
         2)
-                $dl_app bookworm-mirrors https://bookworm-mirrors.optimizethis.net; sudo bash bookworm-mirrors
+                ${dl_app} bookworm-mirrors https://bookworm-mirrors.optimizethis.net; sudo bash bookworm-mirrors
                 rm bookworm-mirrors
                 clear
                 return 0
@@ -98,25 +98,25 @@ $(ColorBlue 'Choose the Ubuntu release version:') "
     clear
     case "${answer}" in
         1)
-                $dl_app lunar-mirrors https://lunar-mirrors.optimizethis.net; sudo bash lunar-mirrors
+                ${dl_app} lunar-mirrors https://lunar-mirrors.optimizethis.net; sudo bash lunar-mirrors
                 rm lunar-mirrors
                 clear
                 return 0
                 ;;
         2)
-                $dl_app jammy-mirrors https://jammy-mirrors.optimizethis.net; sudo bash jammy-mirrors
+                ${dl_app} jammy-mirrors https://jammy-mirrors.optimizethis.net; sudo bash jammy-mirrors
                 rm jammy-mirrors
                 clear
                 return 0
                 ;;
         3)
-                $dl_app focal-mirrors https://focal-mirrors.optimizethis.net; sudo bash focal-mirrors
+                ${dl_app} focal-mirrors https://focal-mirrors.optimizethis.net; sudo bash focal-mirrors
                 rm focal-mirrors
                 clear
                 return 0
                 ;;
         4)
-                $dl_app bionic-mirrors https://bionic-mirrors.optimizethis.net; sudo bash bionic-mirrors
+                ${dl_app} bionic-mirrors https://bionic-mirrors.optimizethis.net; sudo bash bionic-mirrors
                 rm bionic-mirrors
                 clear
                 return 0

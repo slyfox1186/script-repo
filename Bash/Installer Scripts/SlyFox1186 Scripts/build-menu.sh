@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 clear
 
 #
@@ -8,8 +9,9 @@ clear
 green='\e[32m'
 blue='\e[34m'
 clear='\e[0m'
-ColorGreen() { echo -ne "$green${1}$clear"; }
-ColorBlue() { echo -ne "$blue${1}$clear"; }
+
+ColorGreen() { echo -ne "${green}${1}${clear}"; }
+ColorBlue() { echo -ne "${blue}${1}${clear}"; }
 
 #
 # SHOW SCRIPT BANNER
@@ -23,9 +25,9 @@ box_out_banner()
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
     echo " ${line}"
-    printf '|'; echo -n "$space"; printf "%s\n" '|';
+    printf '|'; echo -n "${space}"; printf "%s\n" '|';
     printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3; printf "%s\n" ' |';
-    printf '|'; echo -n "$space"; printf "%s\n" '|';
+    printf '|'; echo -n "${space}"; printf "%s\n" '|';
     echo " ${line}"
     tput sgr 0
 }
@@ -35,7 +37,7 @@ box_out_banner 'Installer Script Menu'
 # DOWNLOAD SCRIPTS
 #
 
-szip_release_fn() { sudo bash <(curl -fsSL https://7z.optimizethis.net); }
+szip_release_fn() { bash <(curl -fsSL https://7z.optimizethis.net); }
 dl_tools_fn() { bash <(curl -fsSL https://dl-tools.optimizethis.net); }
 build_tools_fn() { bash <(curl -fsSL https://build-tools.optimizethis.net); }
 magick_fn() { bash <(curl -fsSL https://magick.optimizethis.net) --build; }
@@ -74,6 +76,7 @@ $(ColorBlue 'Choose an option:') "
                 ;;
         0)      main_menu;;
         *)
+                clear
                 printf "%s\n\n" 'Bad user input. Reloading menu...'
                 sleep 2
                 unset answer
@@ -103,37 +106,43 @@ $(ColorBlue 'Choose an option:') "
     clear
     case "${answer}" in
         1)
-                curl -Lso mirrors.sh https://lunar-mirrors.optimizethis.net; sudo bash mirrors.sh
+                curl -Lso mirrors.sh https://lunar-mirrors.optimizethis.net
+                sudo bash mirrors.sh
                 unset answer
                 clear
                 main_menu
                 ;;
         2)
-                curl -Lso mirrors.sh https://jammy-mirrors.optimizethis.net; sudo bash mirrors.sh
+                curl -Lso mirrors.sh https://jammy-mirrors.optimizethis.net
+                sudo bash mirrors.sh
                 unset answer
                 clear
                 main_menu
                 ;;
         3)
-                curl -Lso mirrors.sh https://focal-mirrors.optimizethis.net; sudo bash mirrors.sh
+                curl -Lso mirrors.sh https://focal-mirrors.optimizethis.net
+                sudo bash mirrors.sh
                 unset answer
                 clear
                 main_menu
                 ;;
         4)
-                curl -Lso mirrors.sh https://bionic-mirrors.optimizethis.net; sudo bash mirrors.sh
+                curl -Lso mirrors.sh https://bionic-mirrors.optimizethis.net
+                sudo bash mirrors.sh
                 unset answer
                 clear
                 main_menu
                 ;;
         5)
-                curl -Lso mirrors.sh https://bullseye-mirrors.optimizethis.net; sudo bash mirrors.sh
+                curl -Lso mirrors.sh https://bullseye-mirrors.optimizethis.net
+                sudo bash mirrors.sh
                 unset answer
                 clear
                 main_menu
                 ;;
         6)
-                curl -Lso mirrors.sh https://bookworm-mirrors.optimizethis.net; sudo bash mirrors.sh
+                curl -Lso mirrors.sh https://bookworm-mirrors.optimizethis.net
+                sudo bash mirrors.sh
                 unset answer
                 clear
                 main_menu
