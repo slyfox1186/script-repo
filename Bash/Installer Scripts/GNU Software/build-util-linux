@@ -141,32 +141,37 @@ cleanup_fn()
     esac
 }
 
+installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
+
 #
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs_fn()
-{
-    pkgs=("${1}" asciidoc autoconf autoconf-archive autogen automake binutils
-          bison build-essential bzip2 ccache curl libaudit-dev libc6-dev libintl-perl
-          libpth-dev ibselinux1-dev libtool libtool-bin lzip lzma-dev m4 nasm po4a texinfo
-          yasm zlib1g-dev)
+pkgs=(asciidoc autoconf autoconf-archive autogen automake binutils
+      bison build-essential bzip2 ccache curl libaudit-dev libc6-dev libintl-perl
+      libpth-dev libselinux1-dev libtool libtool-bin lzip lzma-dev m4 nasm po4a texinfo
+      yasm zlib1g-dev)
 
-    for i in ${pkgs[@]}
-    do
-        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
-        fi
-    done
-
-    if [ -n "${missing_pkgs}" ]; then
-        sudo apt -y install ${missing_pkgs}
-        sudo apt -y autoremove
-        clear
+for pkg in ${pkgs[@]}
+do
+    if ! installed "$pkg"; then
+        missing_pkgs+=" $pkg"
     fi
-}
+done
+
+if [ -n "$missing_pkgs" ]; then
+    echo '$ Installing missing packages'
+    echo
+    for i in "$missing_pkgs"
+        do
+            if ! sudo apt -y install $i; then
+                fail_fn 'Failed to run APT package manager.'
+            fi
+        done
+else
+    echo '$ The packages are already installed.'
+    echo
+fi
 
 #
 # GET PC TYPE
