@@ -6,9 +6,9 @@
 ##
 ##  Purpose: Build GNU dbus
 ##
-##  Updated: 08.03.23
+##  Updated: 09.04.23
 ##
-##  Script version: 1.0
+##  Script version: 1.1
 ##
 ###########################################################################################################
 
@@ -23,7 +23,7 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.0
+script_ver=1.1
 archive_dir=dbus-1.15.6
 archive_url=https://dbus.freedesktop.org/releases/dbus/dbus-1.15.6.tar.xz
 archive_ext="${archive_url//*.}"
@@ -144,9 +144,9 @@ cleanup_fn()
 
 pkgs_fn()
 {
-    pkgs=("${1}" autoconf autoconf-archive autogen automake autopoint autotools-dev build-essential bzip2
-          ccache curl git libaudit-dev libintl-perl libtool libtool-bin lzip pkg-config
-          valgrind zlib1g-dev librust-polling-dev)
+    pkgs=("${1}" apparmor apparmor-utils autoconf autoconf-archive autogen automake autopoint autotools-dev
+          build-essential bzip2 ccache curl git libapparmor-dev libaudit-dev libglib2.0-dev libintl-perl
+          libsystemd-dev libtool libtool-bin libx11-dev lzip pkg-config valgrind zlib1g-dev librust-polling-dev)
 
     for i in ${pkgs[@]}
     do
