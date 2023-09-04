@@ -10,7 +10,7 @@ printf "%s\n%s\n\n" \
 # SET VARIABLES
 #
 
-file="${HOME}"/.bash_functions
+file="$HOME"/.bash_functions
 
 #
 # CREATE FUNCTIONS
@@ -18,7 +18,7 @@ file="${HOME}"/.bash_functions
 
 script_fn()
 {
-cat > "${file}" <<'EOF'
+cat > "$file" <<'EOF'
 #!/usr/bin/env bash
 # shellcheck disable=SC1091,SC2001,SC2162,SC2317
 
@@ -1545,24 +1545,30 @@ EOF
 }
 
 #
-# GET USER INPUT
+# CHECK FOR ANY PASSED ARGUMENTS TO SET THE APT PACKAGE MANAGER
 #
 
-printf "%s\n\n%s\n%s\n\n" \
-    'If apt is installed do you want this script to use it instead of apt?' \
-    '[1] Yes' \
-    '[2] No'
-read -p 'Your choices are (1 or 2): ' answer
+if [[ "$1" == 'yes' ]]; then
+    answer=1
+else
+    answer=2
+fi
 
-case "${answer}" in
+clear
+echo "The first argument is: $answer"
+echo
+read -p 'Press enter to continue.'
+clear
+
+case "$answer" in
     1)
             script_fn
-            sed -i 's/apt /apt-fast /g' "${file}"
-            sed -i 's/apt-fast list/apt list/g' "${file}"
-            sed -i 's/local apt-fast host/local apt host/g' "${file}"
-            sed -i 's/for apt-fast in/for apt in/g' "${file}"
-            sed -i 's/apt-fast apt-get aptitude dpkg/apt apt-fast apt-get aptitude dpkg/g' "${file}"
-            sed -i 's/apt-fast search/apt search/g' "${file}"
+            sed -i 's/apt /apt-fast /g' "$file"
+            sed -i 's/apt-fast list/apt list/g' "$file"
+            sed -i 's/local apt-fast host/local apt host/g' "$file"
+            sed -i 's/for apt-fast in/for apt in/g' "$file"
+            sed -i 's/apt-fast apt-get aptitude dpkg/apt apt-fast apt-get aptitude dpkg/g' "$file"
+            sed -i 's/apt-fast search/apt search/g' "$file"
             ;;
     2)      script_fn;;
     *)
