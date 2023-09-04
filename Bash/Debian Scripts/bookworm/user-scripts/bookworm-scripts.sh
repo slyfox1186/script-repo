@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+clear
 
 #
 # CREATE FUNCTIONS
