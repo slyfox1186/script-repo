@@ -4,7 +4,7 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/Tilix%20Terminal/build-tilix
 ##
-##  Purpose: Build the Advanced Linux Terminal Tilix from its official GitHub repositories source code
+##  Purpose: Compile the Advanced Linux Terminal Tilix from it's official GitHub Repository 
 ##
 ##  Updated: 09.03.23
 ##
@@ -169,7 +169,7 @@ else
     fi
 fi
 
-if ! which dub &>/dev/null; then
+if ! which dub &>/dev/null;then
     fail_fn 'The binary file "dub" failed to install.'
 fi
 
@@ -182,14 +182,16 @@ if [ -d "${themes_dir}" ]; then
 fi
 mkdir -p "${themes_dir}"
 
-if ! wget --show-progress -qO "${themes_dir}/dracula.json" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/Tilix%20Terminal/dracula.json'; then
-    fail_fn 'Failed to down download the theme file: dracula.json'
+if [ ! -f "${themes_dir}/dracula.json" ]; then
+    if ! wget --show-progress -qO "${themes_dir}/dracula.json" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/Tilix%20Terminal/dracula.json'; then
+        fail_fn 'Failed to down download the theme file: dracula.json'
+    fi
 fi
 
 if [ -f "${themes_dir}/dracula.json" ]; then
     cp -f "${themes_dir}/dracula.json" "${schemes_dir}"
 else
-    fail_fn "Could not locate the theme file: ${packages}/tilix-themes/dracula.json"
+    fail_fn "Could not locate the theme file: ${themes_dir}/dracula.json"
 fi
 
 #
