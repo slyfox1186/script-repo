@@ -1571,3 +1571,6 @@ case "$answer" in
             exit 1
             ;;
 esac
+
+clear
+printf "%s\n%s\n\n" 'The script has completed!'
