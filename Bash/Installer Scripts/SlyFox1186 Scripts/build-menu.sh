@@ -34,7 +34,7 @@ function box_out_banner()
 # DOWNLOAD SCRIPTS
 #
 
-szip_release_fn() { bash <(curl -sSL https://7z.optimizethis.net); }
+szip_release_fn() { sudo bash <(curl -sSL https://7z.optimizethis.net); }
 dl_tools_fn() { bash <(curl -sSL https://dl-tools.optimizethis.net); }
 build_tools_fn() { bash <(curl -sSL https://build-tools.optimizethis.net); }
 magick_fn() { bash <(curl -sSL https://magick.optimizethis.net) --build; }
