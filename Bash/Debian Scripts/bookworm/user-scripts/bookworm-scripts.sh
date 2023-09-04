@@ -19,15 +19,22 @@ wget -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bas
 # Delete all files except those that start with a '.' or end with '.sh'
 find . ! \( -name '\.*' -o -name '*.sh' \) -type f -delete 2>/dev/null
 
-# define script array
+if ! mv -f '.bashrc' "$HOME"; then
+    fail_fn 'Failed to move the script .bashrc to the user'\''s $HOME directory.'
+fi
+
+shell_array=(bash_aliases.sh bash_functions.sh)
 script_array=(.bash_aliases .bash_functions .bashrc)
 
-# If the scripts exist, move each one to the users home directory
-for i in ${script_array[@]}
+for i in ${shell_array[@]}
 do
-    if ! mv -f "$i" "$HOME"; then
-        fail_fn 'Failed to move the scripts to the user'\''s $HOME directory.'
+    if ! bash "${i}"; then
+        fail_fn "Failed to execute: ${i}"
     fi
+done
+unset i
+
+for i in ${script_array[@]}
     if ! sudo chown "$USER":"$USER" "$HOME/$i"; then
         fail_fn "Failed to update the file permissions for: $i"
     fi
