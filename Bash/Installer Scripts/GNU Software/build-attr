@@ -28,7 +28,7 @@ archive_dir=attr-2.5.1
 archive_url=https://download.savannah.gnu.org/releases/attr/attr-2.5.1.tar.gz
 archive_ext="${archive_url//*.}"
 cwd="${PWD}"/attr-build-script
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 
 printf "%s\n%s\n\n" \
     "attr build script - v${script_ver}" \

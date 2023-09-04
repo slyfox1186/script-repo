@@ -28,7 +28,7 @@ archive_dir=sed-4.9
 archive_url=https://ftp.gnu.org/gnu/sed/sed-4.9.tar.xz
 archive_ext="${archive_url//*.}"
 cwd="${PWD}"/sed-build-script
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 
 printf "%s\n%s\n\n" \
     "sed build script - v${script_ver}" \

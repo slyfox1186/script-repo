@@ -28,7 +28,7 @@ archive_dir=binutils-2.41
 archive_url=https://ftp.gnu.org/gnu/binutils/binutils-2.41.tar.lz
 archive_ext="${archive_url//*.}"
 cwd="${PWD}"/binutils-build-script
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
@@ -216,11 +216,11 @@ if [ -f /usr/local/bin/iconv ]; then
 elif [ -f /usr/bin/iconv ]; then
     iconv_prefix=/usr
 else
-    pkgs_fn "$get_ada libiconv-hook-dev libiconv-hook1"
+    pkgs_fn "${get_ada} libiconv-hook-dev libiconv-hook1"
     iconv_prefix=/usr
 fi
 
-pkgs_fn "$get_ada"
+pkgs_fn "${get_ada}"
 
 #
 # BUILD PROGRAM FROM SOURCE
