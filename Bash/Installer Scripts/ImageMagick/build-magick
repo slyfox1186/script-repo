@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1091,SC2034,SC2046,SC2066,SC2068,SC2086,SC2119,SC2162,SC2181
 
-#################################################################################
+#############################################################################################################
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo/edit/main/shell/installers/imagemagick/build-magick
 ##
@@ -19,11 +19,11 @@
 ##  Added: A browser user-agent string to the curl command
 ##  Added: A CPPFLAGS variable to ImageMagick's configure script.
 ##
-##  Updated: 09.03.23
+##  Updated: 09.04.23
 ##
-##  Script Version: 2.6
+##  Script Version: 2.7
 ##
-#################################################################################
+#############################################################################################################
 
 clear
 
@@ -36,28 +36,28 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-script_ver=2.6
+script_ver=2.7
 progname="${0:2}"
 cwd="${PWD}"/magick-build-script
 packages="${cwd}"/packages
 workspace="${cwd}"/workspace
 install_dir=/usr/local
 CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include"
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
-debug=OFF # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP WITH TROUBLESHOOTING DURING THE BUILD
+debug=OFF # CHANGE THIS VARIABLE TO "ON" FOR HELP WITH TROUBLESHOOTING UNEXPECTED ISSUES DURING THE BUILD
 
 box_out_banner1()
 {
     input_char=$(echo "${@}" | wc -c)
-    line=$(for i in `seq 0 $input_char`; do printf "-"; done)
+    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
     echo " ${line}"
-    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
     printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
-    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
     echo " ${line}"
     tput sgr 0
 }
@@ -227,7 +227,7 @@ get_version_fn()
 {
     scipt_name="$(basename "${0}")"
     printf "\n%s\n\n%s\n\n" \
-        "Script name: $scipt_name" \
+        "Script name: ${scipt_name}" \
         "Script version: ${script_ver}"
 }
 
@@ -321,8 +321,6 @@ show_magick_version()
     sleep 3
 }
 
-curl_timeout=10
-
 git_1_fn()
 {
     local curl_cmd github_repo github_url
@@ -330,7 +328,7 @@ git_1_fn()
     github_repo="${1}"
     github_url="${2}"
 
-    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
         g_ver3="$(echo "${curl_cmd}" | jq -r '.[3].name' 2>/dev/null)"
@@ -464,7 +462,7 @@ install_libjxl_fn()
 download_libjxl_fn()
 {
     if ! curl -A "${user_agent}" -Lso "${packages}"/libjxl.tar.gz "${1}"; then
-        fail_fn 'Failed to download the libjxl archive: ${packages}/libjxl.tar.gz'
+        fail_fn "Failed to download the libjxl archive: ${packages}/libjxl.tar.gz"
     fi
 }
 
@@ -515,7 +513,7 @@ debian_ver_check_fn()
     pkgs_bullseye="${pkgs_debian} libvmmalloc1 libvmmalloc-dev"
     pkgs_bookworm+="${pkgs_debian} libhwy-dev libticonv-dev"
 
-    case "$VER" in
+    case "${VER}" in
         12)     pkgs_fn "${pkgs_bookworm}";;
         11)     pkgs_fn "${pkgs_bullseye}";;
         10)     pkgs_fn;;
@@ -529,7 +527,7 @@ ubuntu_ver_check_fn()
 
     pkgs_jammy='libcpu-features-dev libfontconfig-dev libgc1 libhwy-dev libmimalloc2.0 libmimalloc-dev'
 
-    case "$VER" in
+    case "${VER}" in
         23.04)     pkgs_fn "${pkgs_jammy} librust-jpeg-decoder-dev";;
         22.04)     pkgs_fn "${pkgs_jammy} libhwy0";;
         20.04)     pkgs_fn 'libfontconfig1-dev';;
@@ -540,15 +538,15 @@ ubuntu_ver_check_fn()
 
 if [ -f /etc/os-release ]; then
     source /etc/os-release
-    OS="$NAME"
-    VER="$VERSION_ID"
+    OS="${NAME}"
+    VER="${VERSION_ID}"
 elif type lsb_release >/dev/null 2>&1; then
     OS="$(lsb_release -si)"
     VER="$(lsb_release -sr)"
 elif [ -f /etc/lsb-release ]; then
     source /etc/lsb-release
-    OS="$DISTRIB_ID"
-    VER="$DISTRIB_RELEASE"
+    OS="${DISTRIB_ID}"
+    VER="${DISTRIB_RELEASE}"
 elif [ -f /etc/debian_version ]; then
     OS=Debian
     VER="$(cat /etc/debian_version)"
@@ -561,7 +559,7 @@ fi
 # TEST THE OS AND ITS VERSION IF UBUNTU THEN CALL THE pkgs_fn
 #
 
-case "$OS" in
+case "${OS}" in
     Debian*)     debian_ver_check_fn;;
     Ubuntu)      ubuntu_ver_check_fn;;
     *)           fail_fn 'Could not detect the OS architecture.';;
@@ -587,8 +585,8 @@ if build 'magick-libs' "${g_ver}"; then
     if ! curl -A "${user_agent}" -Lso "magick-libs-${g_ver}.rpm" "https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-libs-${g_ver}.x86_64.rpm"; then
         fail_fn 'Failed to download the magick-libs file.'
     fi
-    sudo alien -d *.rpm
-    sudo dpkg -i *.deb
+    sudo alien -d ./*.rpm
+    sudo dpkg -i ./*.deb
     build_done 'magick-libs' "${g_ver}"
 fi
 
@@ -601,7 +599,7 @@ if [ ! -f /usr/bin/composer ]; then
     php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
     ACTUAL_CHECKSUM="$(php -r "echo hash_file('sha384', 'composer-setup.php');")"
 
-    if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
+    if [ "${EXPECTED_CHECKSUM}" != "${ACTUAL_CHECKSUM}" ]; then
         >&2 echo 'ERROR: Invalid installer checksum'
         rm composer-setup.php
         return 1
@@ -625,14 +623,14 @@ clear
 box_out_banner2()
 {
     input_char=$(echo "${@}" | wc -c)
-    line=$(for i in `seq 0 $input_char`; do printf "-"; done)
+    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
     echo " ${line}"
-    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
     printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
-    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
     echo " ${line}"
     tput sgr 0
 }
@@ -729,7 +727,7 @@ if build 'c2man' 'git'; then
         -D less="$(type -P less)" -D libpth='/lib64 /lib /usr/lib64 /usr/lib'                                        \
         -D locincpth="${workspace}/include /usr/local/include /usr/include" -D yacc="$(type -P yacc)"                \
         -D loclibpth="${workspace}/lib64 ${workspace}/lib /usr/local/lib64 /usr/local/lib" -D make="$(type -P make)" \
-        -D more="$(type -P more)" -D osname="$OS" -D perl="$(type -P perl)" -D privlib="${workspace}"/lib/c2man      \
+        -D more="$(type -P more)" -D osname="${OS}" -D perl="$(type -P perl)" -D privlib="${workspace}"/lib/c2man      \
         -D privlibexp="${workspace}"/lib/c2man -D sleep="$(type -P sleep)" -D tail="$(type -P tail)"                 \
         -D tar="$(type -P tar)" -D uuname="$(uname -s)" -D vi="$(type -P vi)" -D zip="$(type -P zip)"
     execute make depend
@@ -784,7 +782,7 @@ fi
 
 git_ver_fn 'uclouvain/openjpeg' 'T'
 if build 'openjpeg' "${g_ver}"; then
-    download "$g_url" "openjpeg-${g_ver}.tar.gz"
+    download "${g_url}" "openjpeg-${g_ver}.tar.gz"
     execute cmake -B build                                                                    \
         -DCMAKE_{BUILD_TYPE=Release,INSTALL_PREFIX="${workspace}",EXPORT_COMPILE_COMMANDS=ON} \
         -DCPACK_{BINARY_DEB,BINARY_FREEBSD,BINARY_IFW,BINARY_NSIS}=ON                         \
