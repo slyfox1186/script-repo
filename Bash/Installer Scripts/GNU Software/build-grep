@@ -28,7 +28,7 @@ archive_dir=grep-3.11
 archive_url=https://ftp.gnu.org/gnu/grep/grep-3.11.tar.xz
 archive_ext="${archive_url//*.}"
 cwd="${PWD}"/grep-build-script
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
@@ -145,19 +145,19 @@ lib_combined="$(sudo find /lib -type d -name pkgconfig | awk '{printf("%s:",$0)}
 lib64_combined="$(sudo find /lib64 -type d -name pkgconfig | awk '{printf("%s:",$0)}' | sed 's/.$//')"
 usr_combined="$(sudo find /usr -type d -name pkgconfig | awk '{printf("%s:",$0)}' | sed 's/.$//')"
 
-if [ -n "$usr_combined" ] && [ -z "$lib_combined" ] && [ -z "$lib64_combined" ]; then
-    all_combined="$usr_combined"
-elif [ -n "$usr_combined" ] && [ -n "$lib_combined" ] && [ -z "$lib64_combined" ]; then
-    all_combined="$usr_combined:$lib_combined"
-elif [ -n "$usr_combined" ] && [ -n "$lib_combined" ] && [ -n "$lib64_combined" ]; then
-    all_combined="$usr_combined:$lib_combined:$lib64_combined"
+if [ -n "${usr_combined}" ] && [ -z "${lib_combined}" ] && [ -z "${lib64_combined}" ]; then
+    all_combined="${usr_combined}"
+elif [ -n "${usr_combined}" ] && [ -n "${lib_combined}" ] && [ -z "${lib64_combined}" ]; then
+    all_combined="${usr_combined}:${lib_combined}"
+elif [ -n "${usr_combined}" ] && [ -n "${lib_combined}" ] && [ -n "${lib64_combined}" ]; then
+    all_combined="${usr_combined}:${lib_combined}:${lib64_combined}"
 else
     clear
     printf "%s\n\n" 'No pkgconfig directories were found.'
     exit 1
 fi
 
-export PKG_CONFIG_PATH="$all_combined"
+export PKG_CONFIG_PATH="${all_combined}"
 
 #
 # INSTALL REQUIRED APT PACKAGES
