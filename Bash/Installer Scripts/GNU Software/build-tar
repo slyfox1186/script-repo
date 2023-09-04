@@ -6,9 +6,9 @@
 ##
 ##  Purpose: Build GNU TAR
 ##
-##  Updated: 08.03.23
+##  Updated: 09.04.23
 ##
-##  Script version: 1.0
+##  Script version: 1.1
 ##
 ###########################################################################################################
 
@@ -23,7 +23,7 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.0
+script_ver=1.1
 archive_dir=tar-latest
 archive_url=https://ftp.gnu.org/gnu/tar/tar-latest.tar.xz
 archive_ext="${archive_url//*.}"
@@ -39,9 +39,10 @@ printf "%s\n%s\n\n" \
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ ! -d "${cwd}" ]; then
-    mkdir -p "${cwd}"
+if [ -d "${cwd}" ]; then
+    sudo rm -fr "${cwd}"
 fi
+mkdir -p "${cwd}"
 
 #
 # SET THE C+CPP COMPILERS
@@ -143,27 +144,26 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs_fn()
-{
-    pkgs=("${1}" autoconf autoconf-archive autogen automake binutils bison build-essential bzip2 ccache curl
-          libc6-dev libintl-perl libtool libtool-bin libzstd-dev lzip lzma lzma-dev m4 nasm
-          texinfo zlib1g-dev zstd yasm)
 
-    for i in ${pkgs[@]}
-    do
-        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-    
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
-        fi
-    done
-    
-    if [ -n "${missing_pkgs}" ]; then
-        sudo apt -y install ${missing_pkgs}
-        sudo apt -y autoremove
-        clear
-    fi
-}
+pkgs=(autoconf autoconf-archive autogen automake binutils bison build-essential bzip2 ccache curl
+	  libc6-dev libintl-perl libtool libtool-bin libzstd-dev lzip lzma lzma-dev m4 nasm
+	  texinfo xz-utils zlib1g-dev zstd yasm)
+
+for i in ${pkgs[@]}
+do
+	missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+
+	if [ -z "${missing_pkg}" ]; then
+		missing_pkgs+=" ${i}"
+	fi
+done
+
+if [ -n "${missing_pkgs}" ]; then
+	sudo apt -y install ${missing_pkgs}
+	sudo apt -y autoremove
+	clear
+fi
+
 
 #
 # GET PC TYPE
@@ -202,7 +202,7 @@ if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-compone
 fi
 
 #
-# INSTALL 7Z FOR USE IN CONFIGURE COMMAND LINE BELOW
+# INSTALL 7Z FOR USE IN THE CONFIGURE COMMAND LINE BELOW
 #
 
 bash <(curl -A "${user_agent}" -fsSL https://7z.optimizethis.net)
