@@ -1,28 +1,47 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+##############################################################################################################################
+##
+##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/Tilix%20Terminal/build-tilix
+##
+##  Purpose: Build the Advanced Linux Terminal Tilix from its official GitHub Repository 
+##
+##  Updated: 09.03.23
+##
+##  Script version: 2.0
+##
+##############################################################################################################################
 
 clear
 
+if [ "${EUID}" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
+
 #
-# TILIX TERMINAL INSTALLER SCRIPT
+# SET VARIABLES
 #
 
-script_ver=1.0
+script_ver=2.0
 archive_dir=tilix-1.9.5
 archive_url=https://github.com/gnunn1/tilix/archive/refs/tags/1.9.5.tar.gz
 archive_ext="${archive_url//*.}"
-cwd="${PWD}"/tilix-build-script
-packages="${cwd}"/packages
-schemes_folder="${HOME}"/.config/tilix/schemes
+cwd="${PWD}/tilix-build-script"
+themes_dir="${packages}/tilix-themes"
+packages="${cwd}/packages"
+schemes_dir="${HOME}/.config/tilix/schemes"
+dracula_file="${packages}/tilix-themes/dracula.json"
 
 printf "\n%s\n%s\n\n" \
-    "tilix build script - v${script_ver}" \
+    "Tilix Terminal Build Script - v${script_ver}" \
     '==============================================='
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-mkdir -p "${packages}"
+mkdir -p "${packages}" "${schemes_dir}"
 
 #
 # SET THE C+CPP COMPILERS
@@ -34,22 +53,17 @@ export CC=gcc CXX=g++
 # EXPORT COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O2 -march=native'
 
 #
 # SET PATH
 #
 
 PKG_CONFIG_PATH="\
-${workspace}/lib/pkgconfig:\
-${workspace}/lib64/pkgconfig:\
-${workspace}/share/pkgconfig:\
-${workspace}/lib/x86_64-linux-gnu/pkgconfig:\
-${workspace}/usr/lib/pkgconfig:\
 /lib/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
+/usr/local/lib/pkgconfig:\ss
 /usr/local/share/pkgconfig:\
 /usr/share/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
@@ -90,7 +104,7 @@ cleanup_fn()
         1)      sudo rm -fr "${cwd}";;
         2)      echo;;
         *)
-                clearinstall-tilix.sh
+                clear
                 printf "%s\n\n" 'Bad user input. Reverting script...'
                 sleep 3
                 unset choice
@@ -104,18 +118,18 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autogen automake build-essential ccache curl gettext git gtk-doc-tools
-      libgtk-4-dev libgtkd-3-dev libtool libtool-bin m4 ninja-build pkg-config python3-nautilus)
+pkgs=(autoconf autogen automake build-essential ccache curl gettext git
+      gtk-doc-tools libgtk-4-dev libgtkd-3-dev libtool libtool-bin m4
+      ninja-build pkg-config python3-nautilus)
 
 for i in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep ${i})"
+    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
 
     if [ -z "${missing_pkg}" ]; then
         missing_pkgs+=" ${i}"
     fi
 done
-unset i
 
 if [ -n "${missing_pkgs}" ]; then
     sudo apt -y install ${missing_pkgs}
@@ -127,76 +141,55 @@ fi
 # DOWNLOAD AND INSTALL DUB 
 #
 
-if [ -d "${packages}"/dub ]; then
-    sudo rm -fr "${packages}"/dub
-fi
-mkdir -p "${packages}"/dub
-
-if [ -f '/usr/bin/dub' ]; then
-    sudo apt remove -y dub
-else
-    if ! git clone -q 'https://github.com/dlang/dub.git' "${packages}"/dub; then
-        fail_fn 'Could not git clone dub.'
-    else
-        clear
-        cd "${packages}"/dub || exschemes_folderit 1
-        ./build.d
-        if ! sudo mv bin/dub /usr/bin; then
-            fail_fn 'Failed to move dub binary to /usr/bin'
-        fi
+if [ ! -f "${packages}/dmd-2.105.1-0.deb" ]; then
+    if ! wget --show-progress -cqO "${packages}/dmd-2.105.1-0.deb" 'https://downloads.dlang.org/releases/2023/dmd_2.105.1-0_amd64.deb'; then
+        fail_fn 'Failed to download the DMD Debian installer.'
     fi
 fi
+sudo dpkg -i "${packages}/dmd-2.105.1-0.deb"
 
-if ! which dub &>/dev/null;then
-    fail_fn 'dub was not installed.'
+if [ -d "${packages}/dub" ]; then
+    sudo rm -fr "${packages}/dub"
+fi
+mkdir -p "${packages}/dub"
+
+if [ -f /usr/bin/dub ]; then
+    sudo apt -y remove autoremove dub
 fi
 
-#
-# DOWNLOAD AND INSTALL TILIX
-#
-
-if [ -d "${packages}"/tilix ]; then
-    sudo rm -fr "${packages}"/tilix
-fi
-
-if ! git clone 'https://github.com/gnunn1/tilix.git' "${packages}"/tilix; then
-    fail_fn 'Could not git clone tilix.'
+if ! git clone 'https://github.com/dlang/dub.git' "${packages}/dub"; then
+    fail_fn 'Could not clone dlang'\''s dub file.'
 else
     clear
-    cd "${packages}"/tilix || exit 1
-    dub build --build=release
-    if ! sudo bash install.sh; then
-        fail_fn 'Tilix failed to install. Press enter to continue.'
+    cd "${packages}/dub" || exit 1
+    bash build.sh
+    sudo ln -sf "${PWD}/tilix-build-script/packages/dub/bin/dub" '/usr/local/bin'
+    if ! sudo cp -f bin/dub /usr/bin; then
+        fail_fn 'Failed to move the dub binary to: /usr/bin'
     fi
+fi
+
+if ! which dub &>/dev/null; then
+    fail_fn 'The binary file "dub" failed to install.'
 fi
 
 #
 # DOWNLOAD, EXTRACT, AND INSTALL THE TILIX THEMES
 #
 
-if [ -d "${packages}"/tilix-themes ]; then
-    sudo rm -fr "${packages}"/tilix-themes
+if [ -d "${themes_dir}" ]; then
+    sudo rm -fr "${themes_dir}"
 fi
-mkdir -p "${packages}"/tilix-themes
+mkdir -p "${themes_dir}"
 
-if ! curl -Lso "${packages}"/tilix-themes.tar.gz 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/installers/tilix/tilix-themes.tar.gz'; then
-    fail_fn 'Failed to down download the tilix-schemes archive file.'
-fi
-
-if ! tar -zxf "${packages}"/tilix-themes.tar.gz -C "${packages}"/tilix-themes --strip-components 1; then
-    printf "%s\n\n" "Failed to extract the themes archive: ${packages}/tilix-themes.tar.gz"
-    exit 1
+if ! wget --show-progress -qO "${themes_dir}/dracula.json" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/Tilix%20Terminal/dracula.json'; then
+    fail_fn 'Failed to down download the theme file: dracula.json'
 fi
 
-if [ ! -d "$schemes_folder" ]; then
-    mkdir -p "$schemes_folder"
-fi
-
-cd "${packages}"/tilix-themes || exit 1
-if [ -f argonaut.json ] ;then
-    cp -fr argonaut.json dracula.json neopolitan.json vibrant-ink.json "$schemes_folder"
+if [ -f "${themes_dir}/dracula.json" ]; then
+    cp -f "${themes_dir}/dracula.json" "${schemes_dir}"
 else
-    fail_fn 'Could not locate the file: argonaut.json'
+    fail_fn "Could not locate the theme file: ${packages}/tilix-themes/dracula.json"
 fi
 
 #
@@ -208,5 +201,6 @@ sudo update-alternatives --config x-terminal-emulator
 
 # CLEANUP FILES
 cleanup_fn
+
 # SHOW EXIT MESSAGE
 exit_fn 
