@@ -148,7 +148,7 @@ build()
         if grep -Fx "${2}" "${packages}/${1}.done" >/dev/null; then
             echo "${1} version ${2} already built. Remove ${packages}/${1}.done lockfile to rebuild it."
             return 1
-        elif $latest; then
+        elif ${latest}; then
             echo "${1} is outdated and will be rebuilt using version ${2}"
             return 0
         else
@@ -242,8 +242,8 @@ git_1_fn()
         g_ver="${g_ver#v}"
     fi
 
-    echo "${github_repo%/*}-${g_ver}" >>"$ver_file_tmp"
-    awk '!NF || !seen[${0}]++' "$latest_txt_tmp" >"$ver_file"
+    echo "${github_repo%/*}-${g_ver}" >>"${ver_file_tmp}"
+    awk '!NF || !seen[${0}]++' "${latest_txt_tmp}" >"${ver_file}"
 }
 
 git_ver_fn()

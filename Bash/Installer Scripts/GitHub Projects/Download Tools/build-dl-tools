@@ -31,7 +31,7 @@ packages="${cwd}"/packages
 workspace="${cwd}"/workspace
 cert_dir=/usr/lib/ssl/certs
 pem_file=cacert-05.30.23.pem
-pem_target="$cert_dir/$pem_file"
+pem_target="${cert_dir}/${pem_file}"
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 LDFLAGS="-L${workspace}/lib64 -L${workspace}/lib -L${workspace}/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/local/lib -L/usr/local/cuda/nvvm/lib64"
@@ -79,7 +79,7 @@ printf "%s\n\n%s\n\n%s\n%s\n\n" \
 read -p 'Your choices are (1 or 2): ' suffix_choice
 clear
 
-case "$suffix_choice" in
+case "${suffix_choice}" in
     1)      add_suffix_fn;;
     2)      printf "%s\n\n" 'Continuing script';;
     *)      prompt_suffix_choice_fn;;
@@ -170,7 +170,7 @@ cleanup_fn()
         '[2] No'
     read -p 'Your choices are (1 or 2): ' my_choice
 
-    case "$my_choice" in
+    case "${my_choice}" in
         1)      sudo rm -fr "${cwd}";;
         2)      clear;;
         *)
@@ -187,31 +187,31 @@ success_fn()
 {
     local aria2c_ver curl_ver wget_ver
 
-    if [ -n "$wget_suffix" ]; then
-        wget_ver="wget$wget_suffix"
+    if [ -n "${wget_suffix}" ]; then
+        wget_ver="wget${wget_suffix}"
     else
         wget_ver=wget
     fi
-    if [ -n "$curl_suffix" ]; then
-        curl_ver="curl$curl_suffix"
+    if [ -n "${curl_suffix}" ]; then
+        curl_ver="curl${curl_suffix}"
     else
         curl_ver=curl
     fi
-    if [ -n "$aria2c_suffix" ]; then
-        aria2c_ver="aria2c$aria2c_suffix"
+    if [ -n "${aria2c_suffix}" ]; then
+        aria2c_ver="aria2c${aria2c_suffix}"
     else
         aria2c_ver=aria2c
     fi
 
-    wget_ver="$($wget_ver --version | grep -Eo '[0-9\.]+' | sed -n 1p)"
-    curl_ver="$($curl_ver --version | grep -Eo '[0-9\.]+' | sed -n 1p)"
-    aria2c_ver="$($aria2c_ver --version | grep -Eo '[0-9\.]+$' | sed -n 1p)"
+    wget_ver="$(${wget_ver} --version | grep -Eo '[0-9\.]+' | sed -n 1p)"
+    curl_ver="$(${curl_ver} --version | grep -Eo '[0-9\.]+' | sed -n 1p)"
+    aria2c_ver="$(${aria2c_ver} --version | grep -Eo '[0-9\.]+$' | sed -n 1p)"
 
     clear
     printf "%s\n\n" "The updated versions are:"
-    printf "%s\n" "ARIA:    $aria2c_ver"
-    printf "%s\n" "CURL:    $curl_ver"
-    printf "%s\n" "WGET:    $wget_ver"
+    printf "%s\n" "ARIA:    ${aria2c_ver}"
+    printf "%s\n" "CURL:    ${curl_ver}"
+    printf "%s\n" "WGET:    ${wget_ver}"
 }
 
 #
@@ -256,7 +256,7 @@ git_ver_fn()
         *)      fail_fn 'Failed to pass "tags" and "releases" to the command: curl_cmd.';;
     esac
 
-    git_1_fn "${v_url}" "$gv_url" 2>/dev/null
+    git_1_fn "${v_url}" "${gv_url}" 2>/dev/null
 }
 
 execute()
@@ -480,7 +480,7 @@ esac
 # INSTALL OPENSSL TO SET THE CA CERT SSL DIRECTORY
 #
 
-if [ ! -d "$cert_dir" ]; then
+if [ ! -d "${cert_dir}" ]; then
     if ! "$(type -P bash)" <(curl -A "${user_agent}" -sSL \
         'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-openssl'); then
         fail_fn 'Failed to install OpenSSL.'
@@ -492,12 +492,12 @@ clear
 # INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
 #
 
-if [ ! -f "$pem_target" ]; then
+if [ ! -f "${pem_target}" ]; then
     printf "%s\n%s\n\n" \
         'Download the latest security certificate' \
         '================================================'
-    execute curl -A "${user_agent}" -Lso "${packages}/$pem_file" "https://curl.se/ca/$pem_file"
-    execute sudo cp -f "${packages}/$pem_file" "$pem_target"
+    execute curl -A "${user_agent}" -Lso "${packages}/${pem_file}" "https://curl.se/ca/${pem_file}"
+    execute sudo cp -f "${packages}/${pem_file}" "${pem_target}"
 fi
 
 #
@@ -506,7 +506,7 @@ fi
 
 git_ver_fn 'madler/zlib' '1' 'T'
 if build 'zlib' "${g_ver}"; then
-    download "$g_url" "zlib-${g_ver}.tar.gz"
+    download "${g_url}" "zlib-${g_ver}.tar.gz"
     execute ./configure --prefix="${workspace}"              \
                          --libdir="${workspace}"/lib         \
                          --includedir="${workspace}"/include \
@@ -519,7 +519,7 @@ fi
 
 git_ver_fn 'akheron/jansson' '1' 'T'
 if build 'jansson' "${g_ver}"; then
-    download "$g_url" "jansson-${g_ver}.tar.gz"
+    download "${g_url}" "jansson-${g_ver}.tar.gz"
     execute autoreconf -fi
     execute ./configure --prefix="${workspace}" --disable-shared
     execute make "-j${cpu_threads}"
@@ -546,7 +546,7 @@ git_ver_fn 'c-ares/c-ares' '1' 'R'
 g_ver="${g_ver//cares-/}"
 g_tag="${g_ver//\./_}"
 if build 'c-ares' "${g_ver}"; then
-    download "$g_url" "c-ares-${g_ver}.tar.gz"
+    download "${g_url}" "c-ares-${g_ver}.tar.gz"
     execute autoupdate
     execute autoreconf -fi
     execute ./configure --prefix="${workspace}" \
@@ -561,7 +561,7 @@ fi
 
 git_ver_fn 'pcre2project/pcre2' '1' 'T'
 if build 'pcre2' "${g_ver}"; then
-    download "$g_url" "pcre2-${g_ver}.tar.gz"
+    download "${g_url}" "pcre2-${g_ver}.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}" --disable-shared
     execute make "-j${cpu_threads}"
@@ -572,7 +572,7 @@ fi
 
 git_ver_fn 'jemalloc/jemalloc' '1' 'T'
 if build 'jemalloc' "${g_ver}"; then
-    download "$g_url" "jemalloc-${g_ver}.tar.gz"
+    download "${g_url}" "jemalloc-${g_ver}.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}"  \
                          --disable-debug         \
@@ -594,7 +594,7 @@ fi
 
 git_ver_fn 'google/brotli' '1' 'T'
 if build 'brotli' "${g_ver}"; then
-    download "$g_url" "brotli-${g_ver}.tar.gz"
+    download "${g_url}" "brotli-${g_ver}.tar.gz"
     mkdir build
     cd build || exit 1
     execute ../configure-cmake --prefix="${workspace}"
@@ -606,8 +606,8 @@ if build 'brotli' "${g_ver}"; then
 fi
 
 # ADD A SUFFIX TO WGET IF THE USER SPECIFIES ONE
-if [ -n "$wget_suffix" ]; then
-    wsuffix="--program-suffix=$wget_suffix"
+if [ -n "${wget_suffix}" ]; then
+    wsuffix="--program-suffix=${wget_suffix}"
 fi
 
 #
@@ -625,7 +625,7 @@ if build 'wget' 'latest'; then
                  --with-cares                \
                  --with-metalink             \
                  --with-openssl=auto         \
-                 --with-ssl=gnutls "$wsuffix"
+                 --with-ssl=gnutls "${wsuffix}"
     execute make "-j${cpu_threads}"
     execute sudo make install
     execute make clean
@@ -636,15 +636,15 @@ fi
 # DETERMINE IF HTTP3 SUPPORT IS ENABLED
 #
 
-if [ "$http3_flag" = 'true' ]; then
+if [ "${http3_flag}" = 'true' ]; then
     http3_flag='--with-nghttp3=/usr/include'
 else
     http3_flag='--without-nghttp3'
 fi
 
 # ADD A SUFFIX TO CURL IF THE USER SPECIFIED ONE
-if [ -n "$curl_suffix" ]; then
-    csuffix="--program-suffix=$curl_suffix"
+if [ -n "${curl_suffix}" ]; then
+    csuffix="--program-suffix=${curl_suffix}"
 fi
 
 git_ver_fn 'curl/curl' '1' 'R'
@@ -660,12 +660,12 @@ if build 'curl' "${g_ver}"; then
     curl_enable_opts+=(--enable-{proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static,telnet})
     curl_enable_opts+=(--enable-{tftp,threaded-resolver,tls-srp,unix-sockets,websockets})
     curl_with_opts=(--with-{gnutls=/usr/include,libssh2,nghttp2=/usr/include})
-    curl_with_opts+=(--with-{ca-bundle="$pem_target",ca-fallback,ca-path="$cert_dir",secure-transport})
+    curl_with_opts+=(--with-{ca-bundle="${pem_target}",ca-fallback,ca-path="${cert_dir}",secure-transport})
     execute autoreconf -fi
-    ./configure --prefix="${install_prefix}"  \
-                 "${curl_disable_opts[@]}"  \
-                 "${curl_enable_opts[@]}"   \
-                 "${curl_with_opts[@]}" "$csuffix" "$http3_flag"
+    ./configure --prefix="${install_prefix}" \
+                 "${curl_disable_opts[@]}"   \
+                 "${curl_enable_opts[@]}"    \
+                 "${curl_with_opts[@]}" "${csuffix}" "${http3_flag}"
     execute make "-j${cpu_threads}"
     execute sudo make install
     execute make clean
@@ -677,8 +677,8 @@ fi
 #
 
 # ADD A SUFFIX TO WGET IF THE USER SPECIFIES ONE
-if [ -n "$aria2c_suffix" ]; then
-    asuffix="--program-suffix=$aria2c_suffix"
+if [ -n "${aria2c_suffix}" ]; then
+    asuffix="--program-suffix=${aria2c_suffix}"
 fi
 
 git_ver_fn 'aria2/aria2' '1' 'T'
@@ -695,7 +695,7 @@ if build 'aria2' '1.36.0'; then
                  --disable-werror                               \
                  --enable-libaria2                              \
                  --enable-static                                \
-                 --with-ca-bundle="$pem_target"                 \
+                 --with-ca-bundle="${pem_target}"               \
                  --with-libgcrypt=/usr                          \
                  --with-libiconv-prefix=/usr                    \
                  --with-libintl-prefix=/usr                     \

@@ -149,7 +149,7 @@ build()
         if grep -Fx "${2}" "${cwd}/${1}.done" >/dev/null; then
             echo "${1} version ${2} already built. Remove ${cwd}/${1}.done lockfile to rebuild it."
             return 1
-        elif $latest; then
+        elif ${latest}; then
             echo "${1} is outdated and will be rebuilt using version ${2}"
             return 0
         else
