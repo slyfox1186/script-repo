@@ -203,18 +203,18 @@ bash <(curl -fsSL https://download.optimizethis.net)
 ## Install [Tilix](https://github.com/gnunn1/tilix) Advanced Terminal with custom color themes
   - Dracula theme included + many others
   - **Supported OS:**
-    - Debian - 10 / 11
+    - Debian - 10 / 11 / 12
     - Ubuntu - 18.04 / 20.04 / 22.04
     - Other  - Debian-based distros may work as well
-  - To install with no other actions required execute the first command, otherwise use the second command to
+  - To install with no other actions required execute the first command, otherwise, use the second command to
     only download the files without executing the scripts immediately.
      - Open the file `install-tilix` and read the instructions at the top of the script to easily customize the
        color themes further and then run `bash install-tilix`
 ```bash
-wget -qN - -i https://build-tilix.optimizethis.net/; bash run-tilix
+bash <(curl -sSL https://tilix.optimizethis.net)
 ````
 ```bash
-wget -qN - -i https://build-tilix.optimizethis.net/
+curl -Lso build-tilix https://tilix.optimizethis.net
 ````
 ------
 
