@@ -38,8 +38,12 @@ printf "%s\n\n%s\n%s\n\n" \
 read -p 'Your choices are (1 or 2): ' answer
 clear
 
-case "${answer}" in
-    1)      apt_flag=yes;;
+case "$answer" in
+    1)
+            bash -c "$(curl -sL https://git.io/vokNn)"
+            apt_flag=yes
+            clear
+            ;;
     2)      apt_flag=no;;
     *)
             clear
@@ -54,7 +58,7 @@ script_array=(.bash_aliases .bash_functions .bashrc)
 
 for i in ${shell_array[@]}
 do
-    /bin/bash "$i" "$apt_flag"
+    bash "$i" "$apt_flag"
 done
 
 for f in ${script_array[@]}
