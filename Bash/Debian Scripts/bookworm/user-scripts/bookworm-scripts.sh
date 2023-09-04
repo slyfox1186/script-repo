@@ -37,6 +37,7 @@ done
 unset i
 
 for i in ${script_array[@]}
+do
     if ! sudo chown "$USER":"$USER" "$HOME/$i"; then
         fail_fn "Failed to update the file permissions for: $i"
     fi
