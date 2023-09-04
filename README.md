@@ -211,7 +211,7 @@ bash <(curl -fsSL https://download.optimizethis.net)
      - Open the file `install-tilix` and read the instructions at the top of the script to easily customize the
        color themes further and then run `bash install-tilix`
 ```bash
-bash <(curl -sSL https://tilix.optimizethis.net)
+bash <(curl -fsSL https://tilix.optimizethis.net)
 ````
 ```bash
 curl -Lso build-tilix https://tilix.optimizethis.net
