@@ -15,7 +15,7 @@ ColorBlue() { echo -ne "$blue${1}$clear"; }
 # SHOW SCRIPT BANNER
 #
 
-function box_out_banner()
+box_out_banner()
 {
     input_char=$(echo "${@}" | wc -c)
     line=$(for i in `seq 0 ${input_char}`; do printf "-"; done)
@@ -29,22 +29,21 @@ function box_out_banner()
     echo " ${line}"
     tput sgr 0
 }
+box_out_banner 'Installer Script Menu'
 
 #
 # DOWNLOAD SCRIPTS
 #
 
-szip_release_fn() { sudo bash <(curl -sSL https://7z.optimizethis.net); }
-dl_tools_fn() { bash <(curl -sSL https://dl-tools.optimizethis.net); }
-build_tools_fn() { bash <(curl -sSL https://build-tools.optimizethis.net); }
-magick_fn() { bash <(curl -sSL https://magick.optimizethis.net) --build; }
-ffmpeg_fn() { bash <(curl -sSL https://build-ffmpeg.optimizethis.net) --build --latest; }
-go_fn() { bash <(curl -sSL https://go.optimizethis.net); }
-gparted_fn() { bash <(curl -sSL https://gparted.optimizethis.net); }
-deb_dl_fn() { bash <(curl -sSL https://download.optimizethis.net); }
-video_fn() { bash <(curl -sSL https://players.optimizethis.net); }
-
-box_out_banner 'Installer Script Menu'
+szip_release_fn() { sudo bash <(curl -fsSL https://7z.optimizethis.net); }
+dl_tools_fn() { bash <(curl -fsSL https://dl-tools.optimizethis.net); }
+build_tools_fn() { bash <(curl -fsSL https://build-tools.optimizethis.net); }
+magick_fn() { bash <(curl -fsSL https://magick.optimizethis.net) --build; }
+ffmpeg_fn() { bash <(curl -fsSL https://build-ffmpeg.optimizethis.net) --build --latest; }
+go_fn() { bash <(curl -fsSL https://go.optimizethis.net); }
+gparted_fn() { bash <(curl -fsSL https://gparted.optimizethis.net); }
+deb_dl_fn() { bash <(curl -fsSL https://download.optimizethis.net); }
+video_fn() { bash <(curl -fsSL https://players.optimizethis.net); }
 
 #
 # DISPLAY THE CUSTOM USER SCRIPTS MENU
@@ -62,25 +61,25 @@ $(ColorBlue 'Choose an option:') "
     clear
     case "${answer}" in
         1)
-            bash <(curl -sSL https://lunar-scripts.optimizethis.net)
-            unset answer
-            clear
-            main_menu
-            ;;
+                bash <(curl -fsSL https://lunar-scripts.optimizethis.net)
+                unset answer
+                clear
+                main_menu
+                ;;
         2)
-            bash <(curl -sSL https://jammy-scripts.optimizethis.net)
-            unset answer
-            clear
-            main_menu
-            ;;
-        0)  main_menu;;
+                bash <(curl -fsSL https://jammy-scripts.optimizethis.net)
+                unset answer
+                clear
+                main_menu
+                ;;
+        0)      main_menu;;
         *)
-            printf "%s\n\n" 'Bad user input. Reloading menu...'
-            sleep 2
-            unset answer
-            clear
-            custom_user_scripts
-            ;;
+                printf "%s\n\n" 'Bad user input. Reloading menu...'
+                sleep 2
+                unset answer
+                clear
+                custom_user_scripts
+                ;;
     esac
 }
 
@@ -104,53 +103,53 @@ $(ColorBlue 'Choose an option:') "
     clear
     case "${answer}" in
         1)
-            curl -Lso mirrors.sh https://lunar-mirrors.optimizethis.net; sudo bash mirrors.sh
-            unset answer
-            clear
-            main_menu
-            ;;
+                curl -Lso mirrors.sh https://lunar-mirrors.optimizethis.net; sudo bash mirrors.sh
+                unset answer
+                clear
+                main_menu
+                ;;
         2)
-            curl -Lso mirrors.sh https://jammy-mirrors.optimizethis.net; sudo bash mirrors.sh
-            unset answer
-            clear
-            main_menu
-            ;;
+                curl -Lso mirrors.sh https://jammy-mirrors.optimizethis.net; sudo bash mirrors.sh
+                unset answer
+                clear
+                main_menu
+                ;;
         3)
-            curl -Lso mirrors.sh https://focal-mirrors.optimizethis.net; sudo bash mirrors.sh
-            unset answer
-            clear
-            main_menu
-            ;;
+                curl -Lso mirrors.sh https://focal-mirrors.optimizethis.net; sudo bash mirrors.sh
+                unset answer
+                clear
+                main_menu
+                ;;
         4)
-            curl -Lso mirrors.sh https://bionic-mirrors.optimizethis.net; sudo bash mirrors.sh
-            unset answer
-            clear
-            main_menu
-            ;;
+                curl -Lso mirrors.sh https://bionic-mirrors.optimizethis.net; sudo bash mirrors.sh
+                unset answer
+                clear
+                main_menu
+                ;;
         5)
-            curl -Lso mirrors.sh https://bullseye-mirrors.optimizethis.net; sudo bash mirrors.sh
-            unset answer
-            clear
-            main_menu
-            ;;
+                curl -Lso mirrors.sh https://bullseye-mirrors.optimizethis.net; sudo bash mirrors.sh
+                unset answer
+                clear
+                main_menu
+                ;;
         6)
-            curl -Lso mirrors.sh https://bookworm-mirrors.optimizethis.net; sudo bash mirrors.sh
-            unset answer
-            clear
-            main_menu
-            ;;
+                curl -Lso mirrors.sh https://bookworm-mirrors.optimizethis.net; sudo bash mirrors.sh
+                unset answer
+                clear
+                main_menu
+                ;;
         0)
-            unset answer
-            clear
-            main_menu
-            ;;
+                unset answer
+                clear
+                main_menu
+                ;;
         *)
-            printf "%s\n\n" 'Bad user input. Reloading menu...'
-            sleep 2
-            unset answer
-            clear
-            extra_mirrors
-            ;;
+                printf "%s\n\n" 'Bad user input. Reloading menu...'
+                sleep 2
+                unset answer
+                clear
+                extra_mirrors
+                ;;
     esac
 }
 
@@ -178,78 +177,73 @@ $(ColorBlue 'Choose an option:') "
     clear
     case "${answer}" in
         1)
-            szip_release_fn
-            unset answer
-            clear
-            main_menu
-            ;;
+                szip_release_fn
+                unset answer
+                clear
+                main_menu
+                ;;
         2)
-            dl_tools_fn
-            unset answer
-            clear
-            main_menu
-            ;;
+                dl_tools_fn
+                unset answer
+                clear
+                main_menu
+                ;;
         3)
-            build_tools_fn
-            unset answer
-            clear
-            main_menu
-            ;;
+                build_tools_fn
+                unset answer
+                clear
+                main_menu
+                ;;
         4)
-            magick_fn
-            unset answer
-            clear
-            main_menu
-            ;;
+                magick_fn
+                unset answer
+                clear
+                main_menu
+                ;;
         5)
-            ffmpeg_fn
-            unset answer
-            clear
-            main_menu
-            ;;
+                ffmpeg_fn
+                unset answer
+                clear
+                main_menu
+                ;;
         6)
-            gparted_fn
-            unset answer
-            clear
-            main_menu
-            ;;
+                gparted_fn
+                unset answer
+                clear
+                main_menu
+                ;;
         7)
-            video_fn
-            unset answer
-            clear
-            main_menu
-            ;;
+                video_fn
+                unset answer
+                clear
+                main_menu
+                ;;
         8)
-            custom_user_scripts
-            unset answer
-            clear
-            main_menu
-            ;;
+                custom_user_scripts
+                unset answer
+                clear
+                main_menu
+                ;;
         9)
-            extra_mirrors
-            unset answer
-            clear
-            main_menu
-            ;;
+                extra_mirrors
+                unset answer
+                clear
+                main_menu
+                ;;
         10)
-            deb_dl_fn
-            unset answer
-            clear
-            main_menu
-            ;;
-        0)
-            sudo rm "${0}"
-            unset answer
-            clear
-            exit 0
-            ;;
+                deb_dl_fn
+                unset answer
+                clear
+                main_menu
+                ;;
+        0)      exit 0;;
         *)
-            printf "%s\n\n" 'Bad user input. Reloading menu...'
-            sleep 2
-            unset answer
-            clear
-            main_menu
-            ;;
+                printf "%s\n\n" 'Bad user input. Reloading menu...'
+                sleep 2
+                unset answer
+                clear
+                main_menu
+                ;;
     esac
 }
 
