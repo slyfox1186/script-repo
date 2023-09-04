@@ -1,4 +1,25 @@
 #!/usr/bin/env bash
+
+clear
+
+printf "%s\n%s\n\n" \
+    'Install ~/.bash_functions' \
+    '================================='
+
+#
+# SET VARIABLES
+#
+
+file=~/tmp/test_aliases
+
+#
+# CREATE FUNCTIONS
+#
+
+script_fn()
+{
+cat > "${file}" <<'EOF'
+#!/usr/bin/env bash
 # shellcheck disable=SC1091,SC2001,SC2162,SC2317
 
 ######################################################################################
@@ -179,46 +200,46 @@ mvf()
 ## APT COMMANDS ##
 ##################
 
-# DOWNLOAD AN apt-fast PACKAGE + ALL ITS DEPENDENCIES IN ONE GO
+# DOWNLOAD AN APT PACKAGE + ALL ITS DEPENDENCIES IN ONE GO
 aptdl() { wget -c "$(apt-get install --reinstall --print-uris -qq ${1} 2>/dev/null | cut -d''\''' -f2)"; }
 
 # CLEAN
 clean()
 {
     clear
-    sudo apt-fast -y autoremove
-    sudo apt-fast clean
-    sudo apt-fast autoclean
-    sudo apt-fast -y purge
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt -y purge
 }
 
 # UPDATE
 update()
 {
     clear
-    sudo apt-fast update
-    sudo apt-fast -y full-upgrade
-    sudo apt-fast -y autoremove
-    sudo apt-fast clean
-    sudo apt-fast autoclean
-    sudo apt-fast -y purge
+    sudo apt update
+    sudo apt -y full-upgrade
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt -y purge
 }
 
-# FIX BROKEN apt-fast PACKAGES
+# FIX BROKEN APT PACKAGES
 fix()
 {
     clear
     if [ -f '/tmp/apt.lock' ]; then
         sudo rm '/tmp/apt.lock'
     fi
-    sudo apt-fast -f -y install
-    apt-fast --fix-broken install
-    apt-fast --fix-missing update
+    sudo apt -f -y install
+    sudo apt --fix-broken install
+    sudo apt --fix-missing update
     dpkg --configure -a
-    sudo apt-fast -y autoremove
-    sudo apt-fast clean
-    sudo apt-fast autoclean
-    sudo apt-fast update
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt update
 }
 
 listd()
@@ -227,11 +248,11 @@ listd()
     local search_cache
 
     if [ -n "${1}" ]; then
-        sudo apt-fast list -- "*${1}*"-dev | awk -F'/' '{print $1}'
+        sudo apt list -- "*${1}*"-dev | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt-fast list -- "*${1}*-dev" | awk -F'/' '{print $1}'
+        sudo apt list -- "*${1}*-dev" | awk -F'/' '{print $1}'
     fi
 }
 
@@ -242,30 +263,30 @@ list()
     local search_cache
 
     if [ -n "${1}" ]; then
-        sudo apt-fast list "*${1}*" | awk -F'/' '{print $1}'
+        sudo apt list "*${1}*" | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt-fast list "*${1}*" | awk -F'/' '{print $1}'
+        sudo apt list "*${1}*" | awk -F'/' '{print $1}'
     fi
 }
 
-# USE sudo apt-fast TO SEARCH FOR ALL apt-fast PACKAGES BY PASSING A NAME TO THE FUNCTION
+# USE SUDO APT TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
 aptsc()
 {
     clear
     local search
 
     if [ -n "${1}" ]; then
-        sudo apt-fast search "${1} ~i" -F "%p"
+        sudo apt search "${1} ~i" -F "%p"
     else
         read -p 'Enter the string to search: ' search
         clear
-        sudo apt-fast search "${search} ~i" -F "%p"
+        sudo apt search "${search} ~i" -F "%p"
     fi
 }
 
-# USE apt-fast CACHE TO SEARCH FOR ALL apt-fast PACKAGES BY PASSING A NAME TO THE FUNCTION
+# USE APT CACHE TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
 csearch()
 {
     clear
@@ -626,7 +647,7 @@ imow()
     fext=jpg
 
     #
-    # REQUIRED apt-fast PACKAGES
+    # REQUIRED APT PACKAGES
     #
 
     apt_pkgs=(sox libsox-dev)
@@ -639,8 +660,8 @@ imow()
     done
 
     if [ -n "${missing_pkgs}" ]; then
-        sudo apt-fast -y install ${missing_pkgs}
-        sudo apt-fast -y autoremove
+        sudo apt -y install ${missing_pkgs}
+        sudo apt -y autoremove
         clear
     fi
     unset apt_pkgs i missing_pkg missing_pkgs
@@ -670,7 +691,7 @@ imow()
     do
         cnt_queue=$(( cnt_queue-1 ))
 
-        cat <<EOF
+        cat <<EOT
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 File Path: ${PWD}
@@ -689,7 +710,7 @@ Converting:  ${i}
        >> ${i%%.jpg}-IM.jpg
 
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-EOF
+EOT
         echo
         random_dir="$(mktemp -d)"
         dimensions="$(identify -format '%wx%h' "${i}")"
@@ -805,9 +826,9 @@ cuda_purge()
         echo 'Purging the cuda-sdk-toolkit from your computer.'
         echo '================================================'
         echo
-        sudo sudo apt-fast -y --purge remove "*cublas*" "cuda*" "nsight*"
-        sudo sudo apt-fast -y autoremove
-        sudo sudo apt-fast update
+        sudo sudo apt -y --purge remove "*cublas*" "cuda*" "nsight*"
+        sudo sudo apt -y autoremove
+        sudo sudo apt update
     elif [[ "${answer}" -eq '2' ]]; then
         return 0
     fi
@@ -878,9 +899,9 @@ listppas()
 {
     clear
 
-    local apt-fast host user ppa entry
+    local apt host user ppa entry
 
-    for apt-fast in $(find /etc/apt/ -type f -name \*.list)
+    for apt in $(find /etc/apt/ -type f -name \*.list)
     do
         grep -Po "(?<=^deb\s).*?(?=#|$)" "${apt}" | while read entry
         do
@@ -936,7 +957,7 @@ hw_mon()
 
     # install lm-sensors if not already
     if ! which lm-sensors &>/dev/null; then
-        sudo apt-fast -y install lm-sensors
+        sudo apt -y install lm-sensors
     fi
 
     # Add modprobe to system startup tasks if not already added
@@ -1255,14 +1276,14 @@ test_gcc()
     local answer
 
 # CREATE A TEMPORARY C FILE TO RUN OUR TESTS AGAINST
-cat > /tmp/hello.c <<'EOF'
+cat > /tmp/hello.c <<'EOT'
 #include <stdio.h>
 int main(void)
 {
    printf("Hello World!\n");
    return 0;
 }
-EOF
+EOT
 
     if [ -n "${1}" ]; then
         "${1}" -Q -v /tmp/hello.c
@@ -1301,7 +1322,7 @@ tkapt()
     local i list
     clear
 
-    list=(apt-fast apt-get aptitude dpkg)
+    list=(apt apt-get aptitude dpkg)
 
     for i in ${list[@]}
     do
@@ -1389,7 +1410,7 @@ up_icon()
     for i in ${pkgs[@]}
     do
         if ! sudo dpkg -l "${i}"; then
-            sudo apt-fast -y install "${i}"
+            sudo apt -y install "${i}"
             clear
         fi
     done
@@ -1520,3 +1541,33 @@ jsize()
     clear
     nohup gted "${random_dir}/img-sizes.txt" &>/dev/null &
 }
+EOF
+}
+
+#
+# GET USER INPUT
+#
+
+printf "%s\n\n%s\n%s\n\n" \
+    'If apt is installed do you want this script to use it instead of apt?' \
+    '[1] Yes' \
+    '[2] No'
+read -p 'Your choices are (1 or 2): ' answer
+
+case "${answer}" in
+    1)
+            script_fn
+            sed -i 's/apt /apt-fast /g' "${file}"
+            sed -i 's/apt-fast list/apt list/g' "${file}"
+            sed -i 's/local apt-fast host/local apt host/g' "${file}"
+            sed -i 's/for apt-fast in/for apt in/g' "${file}"
+            sed -i 's/apt-fast apt-get aptitude dpkg/apt apt-fast apt-get aptitude dpkg/g' "${file}"
+            sed -i 's/apt-fast search/apt search/g' "${file}"
+            ;;
+    2)      script_fn;;
+    *)
+            clear
+            printf "%s\n\n" 'Bad user input. Please start over.'
+            exit 1
+            ;;
+esac
