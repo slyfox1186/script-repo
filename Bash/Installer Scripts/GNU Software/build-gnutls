@@ -147,8 +147,8 @@ cleanup_fn()
 pkgs_fn()
 {
     pkgs=("${1}" autoconf autoconf-archive autogen automake binutils build-essential ccache
-          cmake curl git libgmp-dev libintl-perl libtool libtool-bin m4 nasm ninja-build
-          texinfo zlib1g-dev yasm)
+          cmake curl guile-3.0-dev git libgmp-dev libintl-perl libtool libtool-bin m4 nasm
+          ninja-build texinfo zlib1g-dev yasm)
 
     for i in ${pkgs[@]}
     do
