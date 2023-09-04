@@ -4,7 +4,7 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/Tilix%20Terminal/build-tilix
 ##
-##  Purpose: Compile the Advanced Linux Terminal Tilix from it's official GitHub Repository 
+##  Purpose: Compile the Advanced Linux Terminal Tilix from its official GitHub Repository 
 ##
 ##  Updated: 09.03.23
 ##
@@ -24,9 +24,6 @@ fi
 #
 
 script_ver=2.0
-archive_dir=tilix-1.9.5
-archive_url=https://github.com/gnunn1/tilix/archive/refs/tags/1.9.5.tar.gz
-archive_ext="${archive_url//*.}"
 cwd="${PWD}/tilix-build-script"
 themes_dir="${packages}/tilix-themes"
 packages="${cwd}/packages"
@@ -60,14 +57,20 @@ export {CFLAGS,CXXFLAGS}='-g -O2 -march=native'
 #
 
 PKG_CONFIG_PATH="\
+/lib64/pkgconfig:\
 /lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\ss
-/usr/local/share/pkgconfig:\
-/usr/share/pkgconfig:\
+/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib64/pkgconfig:\
+/usr/lib/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/pkgconfig\
+/usr/lib/x86_64-linux-gnu/pkgconfig/mit-krb5:\
+/usr/lib/x86_64-pc-linux-gnu/pkgconfig:\
+/usr/local/lib64/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/x86_64-pc-linux-gnu/pkgconfig:\
+/usr/local/share/pkgconfig:\
+/usr/share/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -105,7 +108,7 @@ cleanup_fn()
         2)      echo;;
         *)
                 clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
+                printf "%s\n\n" 'Bad user input. Reloading...'
                 sleep 3
                 unset choice
                 clear
@@ -158,7 +161,7 @@ if [ -f /usr/bin/dub ]; then
 fi
 
 if ! git clone 'https://github.com/dlang/dub.git' "${packages}/dub"; then
-    fail_fn 'Could not clone dlang'\''s dub file.'
+    fail_fn 'Could not clone dlang'\''s dub repository.'
 else
     clear
     cd "${packages}/dub" || exit 1
@@ -169,7 +172,7 @@ else
     fi
 fi
 
-if ! which dub &>/dev/null;then
+if ! which dub &>/dev/null; then
     fail_fn 'The binary file "dub" failed to install.'
 fi
 
@@ -182,16 +185,16 @@ if [ -d "${themes_dir}" ]; then
 fi
 mkdir -p "${themes_dir}"
 
-if [ ! -f "${themes_dir}/dracula.json" ]; then
-    if ! wget --show-progress -qO "${themes_dir}/dracula.json" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/Tilix%20Terminal/dracula.json'; then
-        fail_fn 'Failed to down download the theme file: dracula.json'
+if [ ! -f "${dracula_file}" ]; then
+    if ! wget --show-progress -qO "${dracula_file}" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/Tilix%20Terminal/dracula.json'; then
+        fail_fn 'Failed to download the theme file: dracula.json'
     fi
 fi
 
-if [ -f "${themes_dir}/dracula.json" ]; then
-    cp -f "${themes_dir}/dracula.json" "${schemes_dir}"
+if [ -f "${dracula_file}" ]; then
+    cp -f "${dracula_file}" "${schemes_dir}"
 else
-    fail_fn "Could not locate the theme file: ${themes_dir}/dracula.json"
+    fail_fn "Could not locate the theme file: ${dracula_file}"
 fi
 
 #
