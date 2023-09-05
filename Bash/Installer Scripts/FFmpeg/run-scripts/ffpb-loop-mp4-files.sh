@@ -18,21 +18,29 @@ fi
 # REQUIRED APT PACKAGES
 #
 
-apt_pkgs=(bc ffmpegthumbnailer ffmpegthumbs libffmpegthumbnailer4v5 sox libsox-dev trash-cli)
-for i in ${apt_pkgs[@]}
+installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
+
+pkgs=(bc ffmpegthumbnailer ffmpegthumbs libffmpegthumbnailer4v5 sox libsox-dev trash-cli)
+
+for pkg in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+    if ! installed "$pkg"; then
+        missing_pkgs+=" $pkg"
     fi
 done
 
-if [ -n "${missing_pkgs}" ]; then
-    sudo apt -y install ${missing_pkgs}
-    sudo apt -y autoremove
-    clear
+if [ -n "$missing_pkgs" ]; then
+    echo '$ Installing missing packages'
+    echo
+    for i in "$missing_pkgs"
+        do
+            if ! sudo apt -y install $i; then
+                fail_fn 'Failed to run APT package manager.'
+            fi
+        done
+else
+    printf "%s\n\n" '$ The packages are already installed.'
 fi
-unset apt_pkgs i missing_pkg missing_pkgs
 
 #
 # REQUIRED PIP PACKAGES
@@ -83,7 +91,7 @@ if [ -n "${del_this}" ]; then
 fi
 
 # MAKE SURE THERE ARE ACTUAL VIDEOS IN THE FOLDER WITH THIS SCRIPT BEFORE CONTINUING
-for vid in *.{mp4,mkv}
+for vid in ./*.{mp4,mkv}
 do
     vid_exist="$(echo ${vid})"
     if [ -n "${vid_exist}" ]; then
@@ -102,7 +110,7 @@ unset vid vid_exist vid_list
 
 tmp_dir="$(mktemp -d)"
 
-for vid in *.{mp4,mkv}
+for vid in ./*.{mp4,mkv}
 do
     # STORES THE CURRENT VIDEO WIDTH, ASPECT RATIO, PROFILE, BIT RATE, AND TOTAL DURATION IN VARIABLES FOR USE LATER IN THE FFMPEG COMMAND LINE
     aspect_ratio="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 -pretty "${vid}" 2>/dev/null)"
