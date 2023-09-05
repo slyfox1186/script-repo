@@ -38,9 +38,8 @@ gteds() { "$(type -P sudo)" -H -u root "$(type -P gted)" "${@}" &>/dev/null; }
 
 ffind()
 {
-    clear
-
     local fname fpath ftype
+    clear
 
     read -p 'Enter the name to search for: ' fname
     echo
@@ -68,9 +67,8 @@ ffind()
 
 untar()
 {
-    clear
-
     local ext file
+    clear
 
     for file in *.*
     do
@@ -100,9 +98,8 @@ untar()
 
 mf()
 {
-    clear
-
     local i
+    clear
 
     if [ -z "${1}" ]; then
         read -p 'Enter file name: ' i
@@ -119,9 +116,8 @@ mf()
 
 mdir()
 {
-    clear
-
     local dir
+    clear
 
     if [[ -z "${1}" ]]; then
         read -p 'Enter directory name: ' dir
@@ -141,11 +137,7 @@ mdir()
 ##################
 
 # REMOVED ALL DUPLICATE LINES: OUTPUTS TO TERMINAL
-rmd()
-{
-    clear
-    awk '!seen[${0}]++' "${1}"
-}
+rmd() { clear; awk '!seen[${0}]++' "${1}"; }
 
 # REMOVE CONSECUTIVE DUPLICATE LINES: OUTPUTS TO TERMINAL
 rmdc() { clear; awk 'f!=${0}&&f=${0}' "${1}"; }
@@ -201,7 +193,12 @@ mvf()
 ##################
 
 # DOWNLOAD AN APT PACKAGE + ALL ITS DEPENDENCIES IN ONE GO
-aptdl() { wget -c "$(apt-get install --reinstall --print-uris -qq ${1} 2>/dev/null | cut -d''\''' -f2)"; }
+aptdl()
+{
+    clear
+    wget -c "$(apt --print-uris -qq --reinstall install ${1} 2>/dev/null | cut -d''\''' -f2)"
+    clear; ls -1AhFv --color --group-directories-first
+}
 
 # CLEAN
 clean()
@@ -229,8 +226,8 @@ update()
 fix()
 {
     clear
-    if [ -f '/tmp/apt.lock' ]; then
-        sudo rm '/tmp/apt.lock'
+    if [ -f /tmp/apt.lock ]; then
+        sudo rm /tmp/apt.lock
     fi
     sudo apt -f -y install
     sudo apt --fix-broken install
@@ -244,8 +241,8 @@ fix()
 
 listd()
 {
-    clear
     local search_cache
+    clear
 
     if [ -n "${1}" ]; then
         sudo apt list -- "*${1}*"-dev | awk -F'/' '{print $1}'
@@ -259,8 +256,8 @@ listd()
 
 list()
 {
-    clear
     local search_cache
+    clear
 
     if [ -n "${1}" ]; then
         sudo apt list "*${1}*" | awk -F'/' '{print $1}'
@@ -272,10 +269,10 @@ list()
 }
 
 # USE SUDO APT TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
-aptsc()
+apts()
 {
-    clear
     local search
+    clear
 
     if [ -n "${1}" ]; then
         sudo apt search "${1} ~i" -F "%p"
@@ -327,17 +324,14 @@ fix_key()
     fi
 }
 
-
 ##########################
 # TAKE OWNERSHIP COMMAND #
 ##########################
 toa()
 {
     clear
-
     chown -R "${USER}":"${USER}" "${PWD}"
     chmod -R 744 "${PWD}"
-
     clear; ls -1AhFv --color --group-directories-first
 }
 
@@ -367,7 +361,7 @@ getdev()
 ## SSH-KEYGEN ##
 ################
 
-# create a new private and public ssh key pair
+# CREATE A NEW PRIVATE AND PUBLIC SSH KEY PAIR
 new_key()
 {
     clear
@@ -429,7 +423,7 @@ new_key()
     echo
 }
 
-# Export the public ssh key stored inside a private ssh key
+# EXPORT THE PUBLIC SSH KEY STORED INSIDE A PRIVATE SSH KEY
 keytopub()
 {
     clear; ls -1AhFv --color --group-directories-first
@@ -462,10 +456,7 @@ cdiff() { clear; colordiff "${1}" "${2}"; }
 gzip() { clear; gzip -d "${@}"; }
 
 # get system time
-show_time() { clear; date +%r | cut -d " " -f1-2 | grep -E '^.*$'; }
-
-# CHANGE DIRECTORY
-cdsys() { pushd "${HOME}"/system || exit 1; cl; }
+gettime() { clear; date +%r | cut -d " " -f1-2 | grep -E '^.*$'; }
 
 ##################
 ## SOURCE FILES ##
@@ -542,10 +533,7 @@ myip()
         "WAN: ${wan}"
 }
 
-#################
-# WGET COMMANDS #
-#################
-
+# WGET COMMAND
 mywget()
 {
     clear; ls -1AhFv --color --group-directories-first
@@ -585,7 +573,7 @@ rmd()
     fi
 }
 
-# RM file
+# RM FILE
 rmf()
 {
     clear
@@ -606,39 +594,6 @@ rmf()
 #################
 ## IMAGEMAGICK ##
 #################
-
-# OPTIMIZE WITHOUT OVERWRITING THE ORIGINAL IMAGES
-imo()
-{
-    clear
-
-    local i
-    # find all jpg files and create temporary cache files from them
-    for i in *.jpg; do
-        echo -e "\\nCreating two temporary cache files: ${i%%.jpg}.mpc + ${i%%.jpg}.cache\\n"
-        dimensions="$(identify -format '%wx%h' "${i}")"
-        convert "${i}" -monitor -filter Triangle -define filter:support=2 -thumbnail "${dimensions}" -strip \
-        -unsharp 0.25x0.08+8.3+0.045 -dither None -posterize 136 -quality 82 -define jpeg:fancy-upsampling=off \
-        -auto-level -enhance -interlace none -colorspace sRGB "/tmp/${i%%.jpg}.mpc"
-        clear
-        for cfile in /tmp/*.mpc; do
-        # find the temporary cache files created above and output optimized jpg files
-            if [ -f "${cfile}" ]; then
-                echo -e "\\nOverwriting original file with optimized self: ${cfile} >> ${cfile%%.mpc}.jpg\\n"
-                convert "${cfile}" -monitor "${cfile%%.mpc}.jpg"
-                # overwrite the original image with its optimized version
-                # by moving it from the tmp directory to the source directory
-                if [ -f "${cfile%%.mpc}.jpg" ]; then
-                    mv "${cfile%%.mpc}.jpg" "${PWD}"
-                    # delete both cache files before continuing
-                    rm "${cfile}"
-                    rm "${cfile%%.mpc}.cache"
-                    clear
-                fi
-            fi
-        done
-    done
-}
 
 # OPTIMIZE AND OVERWRITE THE ORIGINAL IMAGES
 imow()
@@ -755,7 +710,7 @@ im50()
     clear
     local i
 
-    for i in *.jpg
+    for i in ./*.jpg
     do
         convert "${i}" -monitor -colorspace sRGB -filter LanczosRadius -distort Resize 50% -colorspace sRGB "${i}"
     done
@@ -771,7 +726,7 @@ imdl()
 }
 
 ##################################################
-## SHOW file name AND SIZE IN CURRENT DIRECTORY ##
+## SHOW FILE NAME AND SIZE IN CURRENT DIRECTORY ##
 ##################################################
 
 fs() { clear; du --max-depth=1 -abh | grep -Eo '^[0-9A-Za-z\_\-\.]*|[a-zA-Z0-9\_\-]+\.jpg$'; }
@@ -1308,6 +1263,7 @@ rm_deb()
 {
     local fname
     clear
+
     if [ -n "${1}" ]; then
         sudo dpkg -r "$(dpkg -f "${1}" Package)"
     else
