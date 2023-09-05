@@ -60,6 +60,38 @@ web_repo=https://github.com/slyfox1186/script-repo
 debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
+# SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
+#
+
+if [ -f /proc/cpuinfo ]; then
+    cpu_threads="$(grep -c ^processor /proc/cpuinfo)"
+else
+    cpu_threads="$(nproc --all)"
+fi
+
+#
+# SCRIPT BANNER 1
+#
+
+box_out_banner1()
+{
+    input_char=$(echo "${@}" | wc -c)
+    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+    tput bold
+    line="$(tput setaf 3)${line}"
+    space=${line//-/ }
+    echo " ${line}"
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    echo " ${line}"
+    tput sgr 0
+}
+box_out_banner1 "FFmpeg Build Script - v${script_ver}"
+printf "\n%s\n\n" "The script will utilize ${cpu_threads} CPU cores for parallel processing to accelerate the build speed."
+sleep 3
+
+#
 # SET THE C & C++ COMPILERS TO THE HIGHEST VERSION INSTALLED
 #
 
@@ -86,16 +118,6 @@ export LDFLAGS
 #
 
 mkdir -p "${packages}" "${workspace}"
-
-#
-# SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
-#
-
-if [ -f /proc/cpuinfo ]; then
-    cpu_threads="$(grep -c ^processor /proc/cpuinfo)"
-else
-    cpu_threads="$(nproc --all)"
-fi
 
 #
 # DEFINE FUNCTIONS
@@ -551,11 +573,6 @@ usage()
     echo
 }
 
-printf "%s\n%s\n%s\n\n" \
-    "ffmpeg-build-script v${script_ver}" \
-    '======================================' \
-    "The script will utilize ${cpu_threads} CPU cores for parallel processing to accelerate the build speed."
-
 while (($# > 0))
 do
     case "${1}" in
@@ -749,7 +766,6 @@ install_cuda_fn()
 
     iscuda="$(sudo find /usr/local/cuda* -type f -name nvcc 2>/dev/null)"
     cuda_path="$(sudo find /usr/local/cuda* -type f -name nvcc | grep -Eo '^.*/bin?')"
-    clear
 
     if [ -n "${iscuda}" ]; then
         printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
@@ -774,7 +790,7 @@ install_cuda_fn()
             '[1] Install the toolkit and add it to PATH' \
             '[2] Continue the build without installing (hardware acceleration will be turned off)'
         read -p 'Your choices are (1 or 2): ' answer
-        echo
+        clear
 
         case "${answer}" in
             1)      cuda_download_fn;;
@@ -1056,10 +1072,22 @@ pc_type="$(source "${cwd}/config.guess")"
 # INSTALL GLOBAL TOOLS
 #
 
-printf "\n%s\n%s\n%s\n" \
-    '==============================================' \
-    '           Installing Global Tools            ' \
-    '=============================================='
+box_out_banner_global()
+{
+    input_char=$(echo "${@}" | wc -c)
+    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+    tput bold
+    line="$(tput setaf 3)${line}"
+    space=${line//-/ }
+    echo " ${line}"
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    echo " ${line}"
+    tput sgr 0
+}
+box_out_banner_global 'Installing Global Tools'
+sleep 2
 
 if build 'm4' 'latest'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
@@ -1587,10 +1615,22 @@ fi
 # INSTALL AUDIO TOOLS
 #
 
-printf "\n%s\n%s\n%s\n" \
-    '==============================================' \
-    '            Installing Audio Tools            ' \
-    '=============================================='
+echo
+box_out_banner_audio()
+{
+    input_char=$(echo "${@}" | wc -c)
+    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+    tput bold
+    line="$(tput setaf 3)${line}"
+    space=${line//-/ }
+    echo " ${line}"
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    echo " ${line}"
+    tput sgr 0
+}
+box_out_banner_audio 'Installing Audio Tools'
 
 pre_check_ver 'xiph/flac' '1' 'T'
 if build 'libflac' "${g_ver}"; then
@@ -1711,10 +1751,22 @@ ffmpeg_libraries+=('--enable-libtheora')
 # INSTALL VIDEO TOOLS
 #
 
-printf "\n%s\n%s\n%s\n" \
-    '==============================================' \
-    '            Installing Video Tools            ' \
-    '=============================================='
+echo
+box_out_banner_video()
+{
+    input_char=$(echo "${@}" | wc -c)
+    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+    tput bold
+    line="$(tput setaf 3)${line}"
+    space=${line//-/ }
+    echo " ${line}"
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    echo " ${line}"
+    tput sgr 0
+}
+box_out_banner_video 'Installing Video Tools'
 
 # NEED TO MANUALLY UPDATE THIS REPO FROM TIME TO TIME
 if build 'av1' '61bddf1'; then
@@ -2146,10 +2198,22 @@ ffmpeg_libraries+=('--enable-libopenjpeg')
 # BUILD FFMPEG
 #
 
-printf "\n%s\n%s\n%s\n" \
-    '==============================================' \
-    '              Installing FFmpeg               ' \
-    '=============================================='
+echo
+box_out_banner_ffmpeg()
+{
+    input_char=$(echo "${@}" | wc -c)
+    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+    tput bold
+    line="$(tput setaf 3)${line}"
+    space=${line//-/ }
+    echo " ${line}"
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    echo " ${line}"
+    tput sgr 0
+}
+box_out_banner_ffmpeg 'Installing FFmpeg'
 
 if build 'ffmpeg' "${ffmpeg_ver}"; then
     download "https://www.ffmpeg.org/releases/ffmpeg-${ffmpeg_ver}.tar.xz"
