@@ -27,16 +27,13 @@ fi
 
 script_ver=1.5
 py_ver=3.12.0rc1
-archive_dir=Python-${py_ver}.tar.xz
-archive_url=https://www.python.org/ftp/python/3.12.0/${archive_dir}
+archive_dir="Python-${py_ver}.tar.xz"
+archive_url="https://www.python.org/ftp/python/3.12.0/${archive_dir}"
 archive_ext="${archive_url//*.}"
+archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/python3-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
-
-LDFLAGS='-L/lib/x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu -L/usr/local/lib'
-LDFLAGS+=' -L/usr/local/lib64 -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
-CPPFLAGS='-I/usr/include/openssl -I/usr/local/include -I/usr/include'
 
 #
 # START PYTHON3 BUILD
@@ -65,7 +62,13 @@ export CC=gcc CXX=g++
 # EXPORT COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
+export CFLAGS='-I/usr/include/openssl -g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
+export CXXFLAGS='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
+export CPPFLAGS='-I/usr/include/openssl -I/usr/local/include -I/usr/include'
+
+LDFLAGS='-L/lib/x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu -L/usr/local/lib'
+LDFLAGS+=' -L/usr/local/lib64 -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+export LDFLAGS
 
 #
 # SET THE PATH VARIABLE
@@ -112,7 +115,7 @@ export PKG_CONFIG_PATH
 cuda_lib_dir="$(find /usr/local/cuda* -type d -name lib64 | head -n1)"
 
 if [ -n "${cuda_lib_dir}" ]; then
-    LD_LIBRARY_PATH="\
+LD_LIBRARY_PATH="\
 /usr/local/lib64/:\
 /usr/local/lib/:\
 /usr/lib64/:\
@@ -121,9 +124,9 @@ lib64/:\
 lib/:\
 ${cuda_lib_dir}/\
 "
-    export LD_LIBRARY_PATH
+export LD_LIBRARY_PATH
 else
-    LD_LIBRARY_PATH="\
+LD_LIBRARY_PATH="\
 /usr/local/lib64/:\
 /usr/local/lib/:\
 /usr/lib64/:\
@@ -131,7 +134,7 @@ else
 lib64/:\
 lib/\
 "
-    export LD_LIBRARY_PATH
+export LD_LIBRARY_PATH
 fi
 
 #
@@ -141,7 +144,7 @@ fi
 exit_fn()
 {
     printf "\n%s\n\n%s\n%s\n\n" \
-        'The script has completed' \
+        'The script has completed!' \
         'Make sure to star this repository to show your support!' \
         "${repo}"
     exit 0
@@ -159,8 +162,7 @@ fail_fn()
 show_ver_fn()
 {
     save_ver="$(sudo find /usr/local -type f -name python3.12 | grep -Eo '[0-9\.]+$')"
-    echo
-    printf "%s\n\n" "The updated Python3 version is: ${save_ver}"
+     printf "\n%s\n\n" "The installed Python3 version is: ${save_ver}"
     sleep 3
 }
 
@@ -179,8 +181,8 @@ cleanup_fn()
         2)      return 0;;
         *)
                 clear
-                printf "%s\n\n" 'Bad user input.'
-                read -p 'Press enter to try again.'
+                printf "%s\n\n" 'Bad user input. Resetting script...'
+                sleep 3
                 unset answer
                 clear
                 cleanup_fn
@@ -188,26 +190,34 @@ cleanup_fn()
     esac
 }
 
+installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
+
 pkgs=(autoconf autogen automake binutils build-essential ccache cmake curl git itstool
       libb2-dev libexempi-dev libgnome-desktop-3-dev libgnome-desktop-4-dev libhandy-1-dev
       libpeas-dev libpeasd-3-dev libportal-dev libportal-gtk3-dev libportal-gtk4-dev
       libssl-dev libtool libtool-bin m4 meson nasm ninja-build openssl python3 valgrind
       yasm zlib1g-dev)
 
-for i in ${pkgs[@]}
+for pkg in ${pkgs[@]}
 do
-    missing_pkgs="$(sudo dpkg -l | grep -o "${i}")"
-    if [ -z "${missing_pkgs}" ]; then
-        missing_pkgs+=" ${i}"
+    if ! installed "$pkg"; then
+        missing_pkgs+=" $pkg"
     fi
 done
 
-if [ -n "${missing_pkgs}" ]; then
-    sudo apt -y install ${missing_pkgs}
-    sudo apt -y autoremove
-    clear
+if [ -n "$missing_pkgs" ]; then
+    echo '$ Installing missing packages'
+    echo
+    for i in "$missing_pkgs"
+        do
+            if ! sudo apt -y install $i; then
+                fail_fn 'Failed to run APT package manager.'
+            fi
+        done
+else
+    echo '$ The packages are already installed.'
+    echo
 fi
-unset i missing_pkgs
 
 #
 # GET PC TYPE
@@ -220,8 +230,6 @@ pc_type="$(source "${cwd}/config.guess")"
 #
 # DOWNLOAD THE ARCHIVE FILE
 #
-
-archive_name="${archive_dir}.tar.${archive_ext}"
 
 if [ ! -f "${cwd}/${archive_name}" ]; then
     curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
@@ -268,8 +276,8 @@ fi
 #
 
 cd "${cwd}/${archive_dir}/build" || exit 1
-
 clear
+
 printf "%s\n%s\n\n" \
     'Running: configure' \
     '========================'
@@ -284,7 +292,7 @@ printf "%s\n%s\n\n" \
              --with-valgrind                      \
              PKG_CONFIG="$(type -P pkg-config)"   \
              PKG_CONFIG_PATH="${PKG_CONFIG_PATH}" \
-             CFLAGS='-I/usr/include/openssl'      \
+             CFLAGS="${CFLAGS}"                   \
              CPPFLAGS="${CPPFLAGS}"               \
              LDFLAGS="${LDFLAGS}"                 \
              LIBS="$(pkg-config --libs openssl)"
