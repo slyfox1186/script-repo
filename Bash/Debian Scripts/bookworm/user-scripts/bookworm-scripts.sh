@@ -7,6 +7,9 @@ clear
 #
 
 randir="$(mktemp -d)"
+dl_url='https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Debian%20Scripts/bookworm/user-scripts/bookworm-scripts.txt'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+
 shell_array=(bash_aliases.sh bash_functions.sh)
 script_array=(.bash_aliases .bash_functions .bashrc)
 
@@ -30,7 +33,7 @@ cd "${randir}" || exit 1
 # DOWNLOAD THE USER SCRIPTS FROM GITHUB
 #
 
-wget -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Debian%20Scripts/bookworm/user-scripts/bookworm-scripts.txt'
+wget -U "${user_agent}" -qN - -i "${dl_url}"
 
 #
 # DELETE ALL FILES EXCEPT THOSE THAT START WITH A "." OR END WITH ".sh"
