@@ -3,19 +3,22 @@
 
 clear
 
-# SET PATH
+#
+# SET THE PATH VARIABLE
+#
+
 export PATH="${PATH}:${HOME}/.local/bin"
 
 #
-# CREATE OUTPUT DIRECTORIES
+# CREATE THE OUTPUT DIRECTORIES
 #
 
-if [ ! -d "${PWD}/completed" ] || [ ! -d "${PWD}/original" ]; then
-    mkdir -p "${PWD}/completed" "${PWD}/original"
+if [ ! -d completed ] || [ ! -d original ]; then
+    mkdir completed original 2>/dev/null
 fi
 
 #
-# REQUIRED APT PACKAGES
+# INSTALLL THE REQUIRED APT PACKAGES
 #
 
 installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
@@ -43,30 +46,20 @@ else
 fi
 
 #
-# REQUIRED PIP PACKAGES
+# INSTALL THE REQUIRED PIP PACKAGES
 #
 
 pip_lock="$(find /usr/lib/python3* -name EXTERNALLY-MANAGED)"
 if [ -n "${pip_lock}" ]; then
     sudo rm "${pip_lock}"
 fi
+pip install ffpb google_speech
+clear
 
-pip_pkgs=(ffpb google_speech)
-for p in ${pip_pkgs[@]}
-do
-    missing_pkg="$(pip show "${p}" 2>/dev/null)"
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${p}"
-    fi
-done
+#
+# DELETE ANY FILES PROM PREVIOUS RUNS
+#
 
-if [ -n "${missing_pkgs}" ]; then
-    pip install ${missing_pkgs}
-    clear
-fi
-unset p pip_lock pip_pkgs missing_pkg missing_pkgs
-
-# DELETE FILES PROM PRIOR RUNS
 del_this="$(du -ah --max-depth=1 | grep -Eo '[\/].*\(x265\)\.(mp4|mkv)$' | grep -Eo '[A-Za-z0-9].*\(x265\)\.(mp4|mkv)$')"
 clear
 
@@ -90,8 +83,11 @@ if [ -n "${del_this}" ]; then
     esac
 fi
 
-# MAKE SURE THERE ARE ACTUAL VIDEOS IN THE FOLDER WITH THIS SCRIPT BEFORE CONTINUING
-for vid in ./*.{mp4,mkv}
+#
+# MAKE SURE THERE ARE VIDEOS IN THE SCRIPTS FOLDER BEFORE CONTINUING
+#
+
+for vid in *.{mp4,mkv}
 do
     vid_exist="$(echo ${vid})"
     if [ -n "${vid_exist}" ]; then
@@ -110,7 +106,7 @@ unset vid vid_exist vid_list
 
 tmp_dir="$(mktemp -d)"
 
-for vid in ./*.{mp4,mkv}
+for vid in *.{mp4,mkv}
 do
     # STORES THE CURRENT VIDEO WIDTH, ASPECT RATIO, PROFILE, BIT RATE, AND TOTAL DURATION IN VARIABLES FOR USE LATER IN THE FFMPEG COMMAND LINE
     aspect_ratio="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 -pretty "${vid}" 2>/dev/null)"
@@ -155,7 +151,11 @@ Length:          ${length}
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 EOF
     echo
-    # EXECUTE FFMPEG THROUGH FFPB
+    
+    #
+    # EXECUTE FFPB
+    #
+    
     if ffpb \
             -y \
             -threads 0 \
