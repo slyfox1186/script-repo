@@ -530,18 +530,22 @@ aria2()
     aria2c --out="${file}" "${link}"
 }
 
-# PRINT lan/wan IP
+# PRINT LAN & WAN IP ADDRESSES
 myip()
 {
     clear
     lan="$(hostname -I)"
     wan="$(dig +short myip.opendns.com @resolver1.opendns.com)"
     clear
-    echo "Internal IP (lan) address: ${lan}"
-    echo "External IP (wan) address: ${wan}"
+    printf "%s\n%s\n\n" \
+        "LAN: ${lan}" \
+        "WAN: ${wan}"
 }
 
-# WGET COMMAND
+#################
+# WGET COMMANDS #
+#################
+
 mywget()
 {
     clear; ls -1AhFv --color --group-directories-first
