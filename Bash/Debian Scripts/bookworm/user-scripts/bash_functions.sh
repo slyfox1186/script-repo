@@ -67,29 +67,30 @@ ffind()
 
 untar()
 {
-    local ext file jflag
     clear
+    local ext jflag
 
-    for file in *.*
+    for i in *.*
     do
-        ext="${file##*.}" && mkdir -p "${PWD}/${file%%.*}"
+        ext="${i##*.}"
+
+        [[ ! -d "${PWD}"/"${i%%.*}" ]] && mkdir -p "${PWD}"/"${i%%.*}"
 
         case "${ext}" in
-            7z|zip)     7z x -o"${PWD}/${file%%.*}" "${PWD}/${file}";;
-            bz2|gz|xz)
-                        jflag=""
-                        [[ "${ext}" == 'bz2' ]] && jflag='j'
-                        tar -xf${jflag} "${PWD}/${file}" -C "${PWD}/${file%%.*}" --strip-components 1
-                        ;;
-            *)
-                        printf "%s\n\n%s\n\n" \
-                            'No archive files were found.' \
-                            'There must be archive files in the same directory to work.'
-                        ;;
+            7z|zip)             7z x -o"${PWD}"/"${i%%.*}" "${PWD}"/"${i}";;
+            bz2|gz|tgz|xz)
+                                jflag=""
+                                gflag=""
+                                xflag=""
+                                [[ "${ext}" = 'bz2' && "${ext}" != 'gz' && "${ext}" != 'tgz' ]] && jflag="xfj"
+                                [[ "${ext}" != 'bz2' && "${ext}" = 'gz' || "${ext}" = 'tgz' ]] && gflag="zxf"
+                                [[ "${ext}" = 'xz' && "${ext}" != 'bz2' && "${ext}" != 'gz' && "${ext}" != 'tgz' ]] && xflag="xf"
+                                tar -${xflag}${gflag}${jflag} "${PWD}"/"${i}" -C "${PWD}"/"${i%%.*}" 2>/dev/null
+                                ;;
         esac
     done
 }
-
+            
 ##################
 ## CREATE FILES ##
 ##################
