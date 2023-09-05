@@ -102,7 +102,7 @@ unset i
 # OPEN EACH SCRIPT WITH AN EDITOR
 #
 
-for i in "${script_array[@]}"
+for i in ${script_array[@]}
 do
     if which gted &>/dev/null; then
         cd "${HOME}" || exit 1
