@@ -67,7 +67,7 @@ ffind()
 
 untar()
 {
-    local ext file
+    local ext file jflag
     clear
 
     for file in *.*
@@ -75,19 +75,17 @@ untar()
         ext="${file##*.}" && mkdir -p "${PWD}/${file%%.*}"
 
         case "${ext}" in
-            7z|zip)
-                7z x -o"${PWD}/${file%%.*}" "${PWD}/${file}"
-                ;;
+            7z|zip)     7z x -o"${PWD}/${file%%.*}" "${PWD}/${file}";;
             bz2|gz|xz)
-                jflag=''
-                [[ "${ext}" == 'bz2' ]] && jflag='j'
-                tar -xf${jflag} "${PWD}/${file}" -C "${PWD}/${file%%.*}"
-                ;;
+                        jflag=""
+                        [[ "${ext}" == 'bz2' ]] && jflag='j'
+                        tar -xf${jflag} "${PWD}/${file}" -C "${PWD}/${file%%.*}" --strip-components 1
+                        ;;
             *)
-                printf "%s\n\n%s\n\n" \
-                    'No archives to extract were found.' \
-                    'Make sure you run this function in the same directory as the archives'
-                ;;
+                        printf "%s\n\n%s\n\n" \
+                            'No archive files were found.' \
+                            'There must be archive files in the same directory to work.'
+                        ;;
         esac
     done
 }
