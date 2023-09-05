@@ -52,12 +52,12 @@ packages="${cwd}"/packages
 workspace="${cwd}"/workspace
 install_prefix=/usr/local
 LDEXEFLAGS=
-extralibs='-ldl -lpthread -lm -lz'
+EXTRALIBS='-ldl -lpthread -lm -lz'
 ffmpeg_libraries=()
 latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
-debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=ON # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
 # SET THE C & C++ COMPILERS TO THE HIGHEST VERSION INSTALLED
@@ -170,10 +170,10 @@ download()
         echo "The file \"${dl_file}\" is already downloaded."
     else
         echo "Downloading \"${dl_url}\" saving as \"${dl_file}\""
-        if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
+        if ! wget --show-progress -U "${user_agent}" -cqO "${target_file}" "${dl_url}"; then
             printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 10 seconds..."
             sleep 10
-            if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
+            if ! wget --show-progress -U "${user_agent}" -cqO "${target_file}" "${dl_url}"; then
                 fail_fn "The script failed to download \"${dl_file}\" twice and will now exit."
             fi
         fi
@@ -1231,16 +1231,16 @@ fi
 ffmpeg_libraries+=('--enable-libaribb24')
 
 git_ver_fn '7950' '4'
-g_ver2="${g_ver1//-/.}"
-if build 'freetype' '2.13.2'; then
-    download 'https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-2-13-2/freetype-VER-2-13-2.tar.bz2' 'freetype-2.13.2.tar.bz2'
+g_ver1="${g_ver//-/.}"
+if build 'freetype' "${g_ver1}"; then
+    download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-${g_ver}/freetype-VER-${g_ver}.tar.bz2" "freetype-${g_ver1}.tar.bz2"
     extracommands=(-D{harfbuzz,png,bzip2,brotli,zlib,tests}'=disabled')
     execute ./autogen.sh
     execute meson setup build --prefix="${workspace}" --libdir="${workspace}"/lib \
         --buildtype=release --default-library=static --strip "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
-build_done 'freetype' '2.13.2'
+build_done 'freetype' "${g_ver1}"
 fi
 ffmpeg_libraries+=('--enable-libfreetype')
 
@@ -1328,15 +1328,15 @@ if build 'freeglut' "${g_ver}"; then
 fi
 
 git_ver_fn '4720790' '3' 'T'
-if build 'libtiff' '4.5.0'; then
-    download 'https://gitlab.com/libtiff/libtiff/-/archive/v4.5.0/libtiff-v4.5.0.tar.bz2' 'libtiff-4.5.0.tar.bz2'
+if build 'libtiff' "$g_ver"; then
+    download "https://gitlab.com/libtiff/libtiff/-/archive/v$g_ver/libtiff-v$g_ver.tar.bz2" "libtiff-$g_ver.tar.bz2"
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}"     \
                         --{build,host}="${pc_type}" \
                         --disable-shared
     execute make "-j${cpu_threads}"
     execute make install
-    build_done 'libtiff' '4.5.0'
+    build_done 'libtiff' "$g_ver"
 fi
 
 if build 'libwebp' 'git'; then
@@ -1717,8 +1717,8 @@ printf "\n%s\n%s\n%s\n" \
     '=============================================='
 
 # NEED TO MANUALLY UPDATE THIS REPO FROM TIME TO TIME
-if build 'av1' '7d637e1'; then
-    download 'https://aomedia.googlesource.com/aom/+archive/7d637e1ccd859f9018ebff88911411685d3a3a2b.tar.gz' 'av1-7d637e1.tar.gz' 'av1'
+if build 'av1' '61bddf1'; then
+    download 'https://aomedia.googlesource.com/aom/+archive/61bddf1e5f233e048280cf33cc31f72eecc2954a.tar.gz' 'av1-61bddf1.tar.gz' 'av1'
     mkdir -p "${packages}/aom_build"
     cd "${packages}/aom_build" || exit 1
     execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",INSTALL_LIBDIR="${workspace}"/lib,BUILD_TYPE=Release} \
@@ -1727,7 +1727,7 @@ if build 'av1' '7d637e1'; then
         -DBUILD_SHARED_LIBS=OFF -DENABLE_{CCACHE=1,{EXAMPLES,TESTS}=0} -G Ninja -Wno-dev "${packages}"/av1
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
-    build_done 'av1' '7d637e1'
+    build_done 'av1' '61bddf1'
 fi
 ffmpeg_libraries+=('--enable-libaom')
 
@@ -2194,10 +2194,10 @@ if build 'ffmpeg' "${ffmpeg_ver}"; then
         --extra-cxxflags="${CXXFLAGS}"              \
         --extra-ldexeflags="${LDEXEFLAGS}"          \
         --extra-ldflags="${LDFLAGS}"                \
-        --extra-libs="${extralibs}"                 \
+        --extra-libs="${EXTRALIBS}"                 \
+        --pkg-config-flags='--static'               \
         --pkg-config="$(type -P pkg-config)"        \
-        --pkgconfigdir="${workspace}"/lib/pkgconfig \
-        --pkg-config-flags='--static'
+        --pkgconfigdir="${workspace}"/lib/pkgconfig
     execute make "-j${cpu_threads}"
     execute make install
 fi
