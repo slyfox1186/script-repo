@@ -55,23 +55,35 @@ cleanup_fn()
     esac
 }
 
+installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
+
+##
+## Install Missing Gparted Packages
+##
+
 pkgs=(asciidoc autogen autoconf automake binutils bison build-essential bzip2 ccache cmake
       curl libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev m4 meson
       nasm ninja-build texinfo xmlto yasm zlib1g-dev)
 
-for i in ${pkgs[@]}
+for pkg in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+    if ! installed "${pkg}"; then
+        missing_pkgs+=" ${pkg}"
     fi
 done
 
 if [ -n "${missing_pkgs}" ]; then
-    sudo apt -y install ${missing_pkgs}
-    sudo apt -y autoremove
-    clear
+    echo '$ Installing missing packages'
+    echo
+    for i in "${missing_pkgs}"
+        do
+            if ! sudo apt -y install ${i}; then
+                fail_fn 'Failed to run APT package manager.'
+            fi
+        done
+else
+    echo '$ The packages are already installed.'
+    echo
 fi
 
 install_scripts_fn()
