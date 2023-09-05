@@ -1503,6 +1503,9 @@ topsize()
 
     printf "%s\n\n" "These are the largest ${cnt} files in this directory."
     sudo find "${PWD}" -type f -printf "%s %p\n" | sort -nr | head -"${cnt}"
+    echo
+    printf "%s\n\n" "These are the largest ${cnt} folders in this directory."
+    sudo du -Bm "${PWD}" 2>/dev/null | sort -nr | head -"${cnt}"
 }
 
 jpgsize()
