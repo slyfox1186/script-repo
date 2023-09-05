@@ -1489,7 +1489,23 @@ adlm()
 ## GET FILES SIZES ##
 #####################
 
-jsize()
+topsize()
+{
+    local cnt
+    clear
+
+    if [ -n "${1}" ]; then
+        cnt="${1}"
+    else
+        read -p 'Enter how many files to list in the results: ' cnt
+        clear
+    fi
+
+    printf "%s\n\n" "These are the largest ${cnt} files in this directory."
+    sudo find "${PWD}" -type f -printf "%s %p\n" | sort -nr | head -"${cnt}"
+}
+
+jpgsize()
 {
     local random_dir size
     clear
