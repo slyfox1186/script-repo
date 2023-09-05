@@ -32,8 +32,7 @@ archive_dir=aria2-1.36.0
 archive_url="https://github.com/aria2/aria2/releases/download/release-1.36.0/${archive_dir}.tar.gz"
 archive_ext="${archive_url//*.}"
 parent_dir="${PWD}"
-cwd="${parent_dir
-}"/aria2-build-script
+cwd="${parent_dir}"/aria2-build-script
 cert_dir=/usr/lib/ssl/certs
 pem_file=cacert.pem
 pem_in="${cwd}/${pem_file}"
