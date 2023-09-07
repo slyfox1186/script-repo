@@ -146,27 +146,23 @@ cleanup_fn()
 # INSTALL THE REQUIRED APT PACKAGES
 #
 
-pkgs_fn()
-{
-    pkgs=("${1}" autoconf autoconf-archive autogen automake binutils build-essential ccache
-          clang clang-tools cmake curl git libgmp-dev libintl-perl libtool libtool-bin m4
-          nasm ninja-build texinfo zlib1g-dev yasm)
+pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache
+      clang clang-tools cmake curl git libtool libtool-bin m4 nasm ninja-build
+      texinfo zlib1g-dev yasm)
 
-    for i in ${pkgs[@]}
-    do
-        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
-        fi
-    done
-
-    if [ -n "${missing_pkgs}" ]; then
-        sudo apt -y install ${missing_pkgs}
-        sudo apt -y autoremove
-        clear
+for i in ${pkgs[@]}
+do
+    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${i}"
     fi
-}
+done
+
+if [ -n "${missing_pkgs}" ]; then
+    sudo apt -y install ${missing_pkgs}
+    sudo apt -y autoremove
+    clear
+fi
 
 #
 # GET THE PC TYPE
@@ -205,42 +201,23 @@ if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-compone
 fi
 
 #
-# TEST IF LIBICONV WAS INSTALLED BY APT OR MANUALLY
-#
-
-if [ -f /usr/local/bin/iconv ]; then
-    pkgs_fn
-    iconv_prefix=/usr/local
-elif [ -f /usr/bin/iconv ]; then
-    pkgs_fn
-    iconv_prefix=/usr
-else
-    pkgs_fn 'libiconv-hook-dev libiconv-hook1'
-    iconv_prefix=/usr
-fi
-
-#
 # BUILD COREUTILS FROM IT'S SOURCE CODE
 #
 
 cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 cd build || exit 1
-../configure --prefix="${install_prefix}"             \
-             --{build,host}="${pc_type}"              \
-             --disable-nls                            \
-             --enable-gcc-warnings=no                 \
-             --enable-threads=posix                   \
-             --with-clang=system                      \
-             --with-libgmp-prefix=/usr                \
-             --with-libiconv-prefix="${iconv_prefix}" \
-             --with-libintl-prefix=/usr               \
-             --with-openssl=auto                      \
+../configure --prefix="${install_prefix}" \
+             --{build,host}="${pc_type}"  \
+             --disable-nls                \
+             --enable-gcc-warnings=no     \
+             --enable-threads=posix       \
+             --with-clang=system          \
+             --with-openssl=auto          \
              --with-pic
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    make distclean
-    printf "\n%s\n\n" 'Failed to install coreutils.'
+    printf "\n%s\n\n" 'Failed to execute: sudo make install'
     exit 1
 fi
 
