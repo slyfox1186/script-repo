@@ -8,9 +8,11 @@
 ##
 ##  Features: Static build, OpenSSL backend
 ##
-##  Updated: 08.30.23
+##  Updated: 09.07.23
 ##
-##  Script version: 1.5
+##  Upgraded to version: 3.12.0rc2
+##
+##  Script version: 1.6
 ##
 #################################################################################################################################
 
@@ -25,10 +27,10 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.5
-py_ver=3.12.0rc1
-archive_dir="Python-${py_ver}.tar.xz"
-archive_url="https://www.python.org/ftp/python/3.12.0/${archive_dir}"
+script_ver=1.6
+py_ver=3.12.0rc2
+archive_dir=Python-${py_ver}.tar.xz
+archive_url=https://www.python.org/ftp/python/3.12.0/${archive_dir}
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/python3-build-script
@@ -62,10 +64,12 @@ export CC=gcc CXX=g++
 # EXPORT COMPILER OPTIMIZATION FLAGS
 #
 
-export CFLAGS='-I/usr/include/openssl -g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
 export CXXFLAGS='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
+export CFLAGS="-I/usr/include/openssl ${CXXFLAGS}"
 export CPPFLAGS='-I/usr/include/openssl -I/usr/local/include -I/usr/include'
 
+export CXXFLAGS
+export CFLAGS
 LDFLAGS='-L/lib/x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu -L/usr/local/lib'
 LDFLAGS+=' -L/usr/local/lib64 -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 export LDFLAGS
@@ -281,7 +285,6 @@ clear
 printf "%s\n%s\n\n" \
     'Running: configure' \
     '========================'
-
 ../configure --enable-optimizations               \
              --with-ensurepip=upgrade             \
              --with-lto=yes                       \
@@ -300,20 +303,16 @@ printf "%s\n%s\n\n" \
 printf "\n%s\n%s\n\n" \
     "Running: make -j$(nproc --all)" \
     '========================'
-
 make "-j$(nproc --all)"
 
 printf "\n%s\n%s\n\n" \
     'Running: sudo make altinstall' \
     '========================'
-
 sudo make altinstall
 
 # SHOW THE NEW VERSION
 show_ver_fn
-
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
-
 # SHOW EXIT MESSAGE
 exit_fn
