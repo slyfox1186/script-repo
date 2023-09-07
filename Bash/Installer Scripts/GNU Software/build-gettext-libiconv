@@ -8,9 +8,7 @@
 ##
 ##  Updated: 08.31.23
 ##
-##  Fixed: Variable error
-##
-##  Script version: 1.3
+##  Script version: 1.2
 ##
 ###########################################################################################################
 
@@ -25,7 +23,7 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.3
+script_ver=1.2
 archive_dir1=libiconv-1.17
 archive_dir2=gettext-0.22
 archive_url1=https://ftp.gnu.org/gnu/libiconv/libiconv-1.17.tar.gz
@@ -258,24 +256,19 @@ printf "\n%s\n%s\n\n" \
     '==============================================='
 
 cd "${cwd}/${archive_dir1}" || exit 1
-mkdir builddir
-cd builddir || exit 1
+mkdir build
+cd build || exit 1
 ../configure --{build,host}="${pc_type}"  \
              --prefix="${install_prefix}" \
              --disable-nls                \
-             --enable-relocatable         \
              --enable-static              \
-             --with-pic                   \
-             --with-libiconv-prefix=/usr  \
-             --with-libintl-prefix=/usr   \
-             CC="${CC}"                   \
-             CPPFLAGS='-I/usr/local/include -I/usr/include'
+             --with-pic
 make "-j$(nproc --all)"
 if ! sudo make install; then
     printf "\n%s\n\n" "Failed to install: ${archive_dir1}."
     exit 1
 fi
-sudo libtool --finish /usr/local/lib
+sudo libtool --finish "${install_prefix}/lib"
 
 printf "\n%s\n%s\n\n" \
     'Building gettext - v0.22' \
@@ -284,24 +277,19 @@ printf "\n%s\n%s\n\n" \
 cd "${cwd}/${archive_dir2}" || exit 1
 autoupdate
 ./autogen.sh
-mkdir builddir
-cd builddir || exit 1
+mkdir build
+cd build || exit 1
 ../configure --{build,host}="${pc_type}"  \
              --prefix="${install_prefix}" \
-             --disable-shared             \
+             --enable-shared              \
              --enable-static              \
-             --with-libiconv-prefix=/usr  \
-             --with-libxml2-prefix=/usr   \
-             --with-pic                   \
-             CC="${CC}"                   \
-             CXX="${CXX}"                 \
-             LIBS="$(pkg-config --libs ticonv)"
+             --with-pic
 make "-j$(nproc --all)"
 if ! sudo make install; then
     printf "\n%s\n\n" "Failed to install: ${archive_dir2}."
     exit 1
 fi
-sudo libtool --finish /usr/local/lib
+sudo libtool --finish "${install_prefix}/lib"
 
 # CLEANUP FILES
 cleanup_fn
