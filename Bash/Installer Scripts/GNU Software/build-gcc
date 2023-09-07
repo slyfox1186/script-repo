@@ -487,6 +487,10 @@ pkgs_fn()
     fi
 }
 
+#
+# DETECT THE HIGHEST GCC VERSION ALREADY INSTALLED AND INSTALL THE RESPECTIVE APT PACKAGES
+#
+
 get_gcc_ver="$(sudo find /usr/bin -name gcc-1* | head -n1)"
 case "${get_gcc_ver}" in
     /usr/bin/gcc-10)        apt_gcc_ver='gcc-10-base libgcc-10-dev gcc-10-multilib';;
