@@ -149,9 +149,9 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autoconf-archive autogen automake binutils bison build-essential bzip2 ccache curl
-      docbook2x install-info libc6-dev libintl-perl libtool libtool-bin libzstd-dev lzip lzma
-      lzma-dev m4 nasm texinfo xz-utils zlib1g-dev zstd yasm)
+pkgs=(autoconf autoconf-archive autogen automake binutils bison build-essential bzip2 ccache
+      curl docbook2x install-info libc6-dev libintl-perl libtool libtool-bin libzstd-dev lzip
+      lzma lzma-dev m4 nasm texinfo xz-utils zlib1g-dev zstd yasm)
 
 for i in ${pkgs[@]}
 do
