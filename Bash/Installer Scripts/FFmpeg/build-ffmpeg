@@ -1568,7 +1568,7 @@ ffmpeg_libraries+=('--enable-lv2')
 
 if build 'libmpg123' 'git'; then
     download_git 'https://github.com/gypified/libmpg123.git'
-    execute rm -rf aclocal.m4
+    execute rm -fr aclocal.m4
     execute aclocal --force -I m4
     execute autoconf -f -W all,no-obsolete
     execute autoheader -f -W all
