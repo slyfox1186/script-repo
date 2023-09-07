@@ -1768,7 +1768,7 @@ box_out_banner_video()
 }
 box_out_banner_video 'Installing Video Tools'
 
-# NEED TO MANUALLY UPDATE THIS REPO FROM TIME TO TIME
+# NEED TO UPDATE THIS REPO FROM TIME TO TIME MANUALLY
 if build 'av1' '61bddf1'; then
     download 'https://aomedia.googlesource.com/aom/+archive/61bddf1e5f233e048280cf33cc31f72eecc2954a.tar.gz' 'av1-61bddf1.tar.gz' 'av1'
     mkdir -p "${packages}/aom_build"
