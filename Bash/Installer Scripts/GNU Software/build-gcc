@@ -66,6 +66,17 @@
 ##
 #####################################################################################################
 
+clear
+
+if [ "${EUID}" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
+
+#
+# SET ESSENTIAL OUTPUT DIRECTORY VARIABLES
+#
+
 cwd="${PWD}"/gcc-build-script
 packages="${cwd}"/packages
 workspace="${cwd}"/workspace
@@ -80,7 +91,7 @@ tmp_term="${TERM}"
 tmp_display="${DISPLAY}"
 tmp_dbus="${DBUS_SESSION_BUS_ADDRESS}"
 
-for var in $(env | awk -F"=" '{print $1}')
+for var in $(env | awk -F'=' '{print $1}')
 do
     unset ${var} || true # IGNORE UNSET FAILURES
 done
@@ -91,12 +102,10 @@ export DISPLAY="${tmp_display}"
 export HOME="${tmp_home}"
 export PWD="${tmp_pwd}"
 export TERM="${tmp_term}"
-
-# UNSET THE TMP VARS
 unset tmp_dbus tmp_display tmp_home tmp_pwd tmp_term var
 
 #
-# SET GLOBAL VARIABLES
+# SET THE SCRIPT'S PATH VARIABLE
 #
 
 PATH="\
@@ -139,21 +148,32 @@ unset join_str post_file pre_file tmp_dir
 clear
 
 #
-# SET BUILD VARIABLES
+# SET THE GLOBAL SCRIPT VARIABLES
 #
 
 script_ver=4.3
 install_dir=/usr/local
-CXXFLAGS='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
-CFLAGS="${CXXFLAGS} -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections"
-CPPFLAGS='-I/usr/lib/gcc/x86_64-linux-gnu/12/include -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include'
 latest=false
 repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 debug=OFF # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
 
 #
-# SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
+# SET THE C & C++ COMPILERS
+#
+
+export CC=gcc CXX=g++
+
+#
+# SET THE COMPILER OPTIMIZATION FLAGS
+#
+
+export CXXFLAGS='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
+export CFLAGS="${CXXFLAGS} -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections"
+export CPPFLAGS='-I/usr/lib/gcc/x86_64-linux-gnu/12/include -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include'
+
+#
+# SET THE AVAILABLE CPU THREADS AND CORE COUNT FOR PARALLEL PROCESSING (TO SPEED UP THE BUILD PROCESS)
 #
 
 if [ -f /proc/cpuinfo ]; then
@@ -166,7 +186,9 @@ fi
 # CREATE OUTPUT DIRECTORIES
 #
 
-mkdir -p "${packages}" "${workspace}"/venv/bin/python "${workspace}"/venv/bin/pip
+if [ ! -d "${packages}" ] || [ ! -d "${workspace}"/venv/bin/python ] || [ ! -d "${workspace}"/venv/bin/pip ]; then 
+    mkdir -p "${packages}" "${workspace}"/venv/bin/python "${workspace}"/venv/bin/pip 2>/dev/null
+fi
 
 #
 # EXPORT THE PKG-CONFIG PATHS TO ENABLE SUPPORT DURING THE BUILD
@@ -184,13 +206,13 @@ ${workspace}/usr/lib/pkgconfig:\
 /lib/x86_64-linux-gnu/pkgconfig:\
 /usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
+/usr/lib/x86_64-pc-linux-gnu/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig/mit-krb5:\
-/usr/lib/x86_64-pc-linux-gnu/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib/x86_64-pc-linux-gnu/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/share/pkgconfig:\
 /usr/share/pkgconfig\
 "
@@ -233,8 +255,8 @@ cleanup_fn()
         2)      return 0;;
         *)
                 clear
-                printf "%s\n\n" 'Bad user input. Re-asking question...'
-                sleep 2
+                printf "%s\n\n" 'Bad user input. Resetting script...'
+                sleep 3
                 unset answer
                 clear
                 cleanup_fn
@@ -266,7 +288,7 @@ create_gcc_links_fn()
 {
     local gcc_long_name gcc_short_name
 
-    gcc_long_name="$(sudo find /usr/local/bin -type f -name x86_64-pc-linux-gnu-* | grep -Eo 'x86_64-pc-linux-gnu-[a-z\+]+-[123]+$')"
+    gcc_long_name="$(sudo find /usr/local/bin -type f -name x86_64-pc-linux-gnu-* | grep -Eo 'x86_64-pc-linux-gnu-[a-z\+\-]+-[123]+$')"
     for i in ${gcc_long_name[@]}
     do
         gcc_short_name="$(echo "${i}" | sed 's/^x86_64-pc-linux-gnu-\(.*\)$/\1/')"
@@ -395,6 +417,8 @@ build()
     return 0
 }
 
+build_done() { echo "${2}" >"${packages}/${1}.done"; }
+
 git_1_fn()
 {
     local curl_cmd github_repo github_url
@@ -403,7 +427,7 @@ git_1_fn()
     github_repo="${1}"
     github_url="${2}"
 
-    if curl_cmd="$(curl -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver="${g_ver1#v}"
     fi
@@ -423,36 +447,13 @@ git_ver_fn()
     case "${v_flag}" in
             R)      t_flag=releases;;
             T)      t_flag=tags;;
-            *)      fail_fn 'Could not detect the variable ${v_flag}.'
+            *)      fail_fn 'Could not detect the variable: v_flag.'
     esac
 
     git_1_fn "${v_url}" "${t_flag}" 2>/dev/null
 }
 
-build_done() { echo "${2}" >"${packages}/${1}.done"; }
-
 installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
-
-#
-# PRINT SCRIPT BANNER
-#
-
-function box_out_banner()
-{
-    input_char=$(echo "${@}" | wc -c)
-    line=$(for i in `seq 0 ${input_char}`; do printf "-"; done)
-    tput bold
-    line="$(tput setaf 3)${line}"
-    space=${line//-/ }
-    echo " ${line}"
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
-    printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
-    echo " ${line}"
-    tput sgr 0
-}
-
-box_out_banner "GCC Build Script: v${script_ver}"
 
 #
 # INSTALL REQUIRED APT PACKAGES
@@ -460,16 +461,15 @@ box_out_banner "GCC Build Script: v${script_ver}"
 
 pkgs_fn()
 {
-    pkgs=(autoconf autoconf-archive autogen automake bison build-essential ccache curl
-          dejagnu flex gcc-11-base gcc-multilib gdc gdc-multilib gfortran gfortran-multilib
-          git gnat gnulib guile-3.0-dev help2man jq libacl1-dev libasan8 libdebuginfod-dev
-          libdmalloc5 libdmalloc-dev libeigen3-dev libffi-dev libfontconfig1-dev libfreetype6
-          libgcc-11-dev libgd-dev libgm2-12-dev libgmp-dev libiberty-dev libicu-dev libintl-perl
-          libisl-dev libjpeg-dev libltdl-dev libmpc-dev libmpfr-dev libphobos2-ldc-shared-dev
-          libpng-dev libquadmath0 libsigsegv-dev libsqlite3-dev libssl-dev libstdc++-12-dev libtool
-          libtool-bin libunwind-dev libx11-dev libx32gfortran-12-dev libxext-dev linux-libc-dev meson
-          m4 ninja-build perl pipx python3 python3-full python3-pip ruby sphinx-common tcl-expect-dev
-          tex-common texi2html texinfo)
+    pkgs=("${1}" autoconf autoconf-archive autogen automake bison build-essential ccache curl
+          dejagnu flex gdc gdc-multilib gfortran gfortran-multilib git gnat gnulib guile-3.0-dev
+          help2man jq libacl1-dev libasan8 libdebuginfod-dev libdmalloc5 libdmalloc-dev libeigen3-dev
+          libffi-dev libfontconfig1-dev libfreetype6 libgd-dev libgm2-12-dev libgmp-dev libiberty-dev
+          libicu-dev libintl-perl libisl-dev libjpeg-dev libltdl-dev libmpc-dev libmpfr-dev
+          libphobos2-ldc-shared-dev libpng-dev libquadmath0 libsigsegv-dev libsqlite3-dev libssl-dev
+          libstdc++-12-dev libtool libtool-bin libx11-dev libx32gfortran-12-dev libxext-dev
+          linux-libc-dev meson m4 ninja-build openjdk-17-jdk-headless perl pipx python3 python3-full
+          python3-pip ruby sphinx-common tcl-expect-dev tex-common texi2html texinfo)
 
     for pkg in ${pkgs[@]}; do
         if ! installed "${pkg}"; then
@@ -480,12 +480,24 @@ pkgs_fn()
     if [ -n "${missing_pkgs}" ]; then
         for i in "${missing_pkgs}"
         do
-            echo "\$ sudo apt -y install ${i}"
             sudo apt -y install ${i}
-            echo
+            sudo apt -y autoremove
+            clear
         done
     fi
 }
+
+get_gcc_ver="$(sudo find /usr/bin -name gcc-1* | head -n1)"
+case "${get_gcc_ver}" in
+    /usr/bin/gcc-10)        apt_gcc_ver='gcc-10-base libgcc-10-dev gcc-10-multilib';;
+    /usr/bin/gcc-11)        apt_gcc_ver='gcc-11-base libgcc-11-dev gcc-11-multilib';;
+    /usr/bin/gcc-12)        apt_gcc_ver='gcc-12-base libgcc-12-dev gcc-12-multilib';;
+    *)                      clear;;
+esac
+
+if [ -n "${apt_gcc_ver}" ]; then
+    pkgs_fn "${apt_gcc_ver}"
+fi
 
 #
 # GET PC TYPE
@@ -523,12 +535,12 @@ fi
 
 os_ver_check_fn()
 {
-    debian_pkgs='libadacgi6-dev libgm2-12-dev libgm2-17 openjdk-17-jdk-headless'
+    debian_pkgs='libadacgi6-dev libgm2-12-dev libgm2-17'
 
     case "${VER}" in
-            23.04|22.10|22.04)      pkgs_fn 'linux-libc-dev:i386 libadacgi4-dev libgm2-15 openjdk-17-jdk-headless';;
-            20.04)                  pkgs_fn 'libgm2-10-dev openjdk-17-jdk-headless';;
-            18.04)                  pkgs_fn 'openjdk-11-jdk-headless';;
+            23.04|22.10|22.04)      pkgs_fn 'linux-libc-dev:i386 libadacgi4-dev libgm2-15';;
+            20.04)                  pkgs_fn 'libgm2-10-dev';;
+            18.04)                  clear;;
             12)                     pkgs_fn "${debian_pkgs} gnat-12 libiconv-hook-dev";;
             11)                     pkgs_fn "${debian_pkgs} gnat-10 libiconv-hook-dev";;
             10)                     pkgs_fn "${debian_pkgs} gnat-8";;
@@ -570,15 +582,6 @@ case "${OS}" in
 esac
 
 #
-# SET THE C & C++ COMPILERS
-#
-
-export CC=gcc CXX=g++
-export CFLAGS="${CFLAGS}"
-export CXXFLAGS="${CXXFLAGS}"
-export CPPFLAGS="${CPPFLAGS}"
-
-#
 # CREATE SOFT LINKS TO FIX LINKING BUGS
 #
 
@@ -601,6 +604,27 @@ else
 fi
 
 #
+# PRINT SCRIPT BANNER
+#
+
+function box_out_banner()
+{
+    input_char=$(echo "${@}" | wc -c)
+    line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
+    tput bold
+    line="$(tput setaf 3)${line}"
+    space="${line//-/ }"
+    echo " ${line}"
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    echo " ${line}"
+    tput sgr 0
+}
+
+box_out_banner "GCC Build Script: v${script_ver}"
+
+#
 # INSTALL FROM SOURCE CODE
 #
 
@@ -610,9 +634,7 @@ if build 'm4' 'latest'; then
             --prefix="${workspace}" \
             --disable-nls           \
             --enable-c++            \
-            --enable-threads=posix  \
-            --with-dmalloc          \
-            --with-libintl-prefix=/usr
+            --enable-threads=posix
     execute make "-j${cpu_threads}"
     execute make install
     execute make distclean
@@ -633,8 +655,7 @@ fi
 if build 'libtool' '2.4.7'; then
     download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
     execute ./configure             \
-            --prefix="${workspace}" \
-            --enable-ltdl-install
+            --prefix="${workspace}"
     execute make "-j${cpu_threads}"
     execute make install
     execute make distclean
@@ -656,8 +677,7 @@ g_ver="${g_ver//gperftools-/}"
 if build 'gperftools' "${g_ver}"; then
     download "https://github.com/gperftools/gperftools/releases/download/gperftools-${g_ver}/gperftools-${g_ver}.tar.gz"
     execute ./configure --prefix="${workspace}" \
-                        --disable-shared        \
-                        --enable-libunwind
+                        --disable-shared
     execute make "-j${cpu_threads}"
     execute make install
     execute make distclean
@@ -702,28 +722,36 @@ fi
 # START GCC BUILD
 #
 
-clear
+gcc_prompt()
+{
+    printf "\n%s\n%s\n\n%s\n%s\n%s\n%s\n%s\n\n" \
+        'Choose what to install' \
+        '===========================' \
+        '[1] All' \
+        '[2] GCC 12+13' \
+        '[3] GCC 11' \
+        '[4] GCC 12' \
+        '[5] GCC 13'
+        read -p 'Your choices are (1 to 4): ' answer
 
-printf "%s\n%s\n\n%s\n%s\n%s\n%s\n%s\n\n" \
-    'Choose what to install' \
-    '===========================' \
-    '[1] All' \
-    '[2] GCC 12+13' \
-    '[3] GCC 11' \
-    '[4] GCC 12' \
-    '[5] GCC 13'
-    read -p 'Your choices are (1 to 4): ' answer
+    case "${answer}" in
+        1)      gcc_choice=1;;
+        2)      gcc_choice=2;;
+        3)      gcc_choice=3;;
+        4)      gcc_choice=4;;
+        5)      gcc_choice=5;;
+        *)
+                clear
+                printf "%s\n\n" 'Bad user input. Re-setting script...'
+                sleep 3
+                unset answer
+                clear
+                gcc_prompt
+                ;;
+    esac
+}
 
-case "${answer}" in
-    1)      gcc_choice=1;;
-    2)      gcc_choice=2;;
-    3)      gcc_choice=3;;
-    4)      gcc_choice=4;;
-    5)      gcc_choice=5;;
-    *)      fail_fn 'Bad user input. Run the script again.';;
-esac
-
-clear
+echo
 
 build_gcc_11_fn()
 {
