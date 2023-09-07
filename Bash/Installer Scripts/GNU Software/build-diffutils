@@ -6,9 +6,11 @@
 ##
 ##  Purpose: Build GNU Diffutils
 ##
-##  Updated: 08.01.23
+##  Updated: 09.07.23
 ##
-##  Script version: 1.1
+##  Fixed: Variable error
+##
+##  Script version: 1.2
 ##
 ###########################################################################################################
 
@@ -28,6 +30,7 @@ archive_dir=diffutils-3.10
 archive_url=https://ftp.gnu.org/gnu/diffutils/diffutils-3.10.tar.xz
 archive_ext="${archive_url//*.}"
 cwd="${PWD}"/diffutils-build-script
+install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
@@ -39,9 +42,10 @@ printf "%s\n%s\n\n" \
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ ! -d "${cwd}" ]; then
-    mkdir -p "${cwd}"
+if [ -d "${cwd}" ]; then
+    sudo rm -fr "${cwd}"
 fi
+mkdir -p "${cwd}"
 
 #
 # SET THE C+CPP COMPILERS
@@ -105,14 +109,6 @@ exit_fn()
     exit 0
 }
 
-fail_fn()
-{
-    printf "\n%s\n\n%s\n\n" \
-        "${1}" \
-        "To report a bug create an issue at: ${repo}/issues"
-    exit 1
-}
-
 cleanup_fn()
 {
     local answer
@@ -143,28 +139,23 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs_fn()
-{
-    local pkgs i missing_pkgs
+pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl git libgmp-dev
+      libintl-perl libmpfr-dev libreadline-dev libsigsegv-dev libtool libtool-bin lzip m4 nasm ninja-build
+      texinfo zlib1g-dev yasm)
 
-    pkgs=("${1}" autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl git libgmp-dev libintl-perl libmpfr-dev
-          libreadline-dev libsigsegv-dev libtool libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev yasm)
-
-    for i in ${pkgs[@]}
-    do
-        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
-        fi
-    done
-
-    if [ -n "${missing_pkgs}" ]; then
-        sudo apt -y install ${missing_pkgs}
-        sudo apt -y autoremove
-        clear
+for i in ${pkgs[@]}
+do
+    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${i}"
     fi
-}
+done
+
+if [ -n "${missing_pkgs}" ]; then
+    sudo apt -y install ${missing_pkgs}
+    sudo apt -y autoremove
+    clear
+fi
 
 #
 # GET PC TYPE
@@ -203,40 +194,23 @@ if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-compone
 fi
 
 #
-# TEST IF LIBICONV WAS INSTALLED BY APT OR MANUALLY
-#
-
-if [ -f /usr/local/bin/iconv ]; then
-    pkgs_fn
-    iconv_prefix=/usr/local
-elif [ -f /usr/bin/iconv ]; then
-    pkgs_fn
-    iconv_prefix=/usr
-else
-    pkgs_fn 'libiconv-hook-dev libiconv-hook1'
-    iconv_prefix=/usr
-fi
-
-#
 # BUILD PROGRAM FROM SOURCE
 #
 
 cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 cd build || exit 1
-../configure --prefix=/usr/local                      \
-             --{build,host}="${pc_type}"              \
-             --disable-nls                            \
-             --enable-threads=posix                   \
-             --with-libsigsegv-prefix=/usr            \
-             --with-libiconv-prefix="${i}conv_prefix" \
-             --with-libintl-prefix=/usr
+../configure --prefix="${install_dir}"   \
+             --{build,host}="${pc_type}" \
+             --disable-nls               \
+             --enable-threads=posix
 make "-j$(nproc --all)"
 if ! sudo make install; then
     make distclean
     printf "\n%s\n\n" 'Failed to install diffutils.'
     exit 1
 fi
+sudo ldconfig "${install_dir}/lib"
 
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
