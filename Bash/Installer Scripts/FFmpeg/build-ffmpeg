@@ -27,9 +27,7 @@
 ##    - will be prompted by the script to install them so that hardware acceleration is
 ##    - enabled when compiling FFmpeg
 ##
-##  Updated: rav1e and opencore-amr to the latest versions
-##
-##  Last Update: 09.07.23
+##  Last Update: 08.31.23
 ##
 ##  Added: Debian OS Support for Bookworm (12)
 ##  Added: cyanrip
@@ -37,7 +35,7 @@
 ##  Added: cunit support library for libmysofa
 ##  Added: libcurl support library for cyanrip
 ##
-##  Script version: 2.6
+##  Script version: 2.5
 ##
 ############################################################################################
 
@@ -46,7 +44,7 @@
 #
 
 script_name="${0:2}"
-script_ver=2.6
+script_ver=2.5
 ffmpeg_ver=5.1.3
 cuda_ver=12.2.2
 cwd="${PWD}"/ffmpeg-build-script
@@ -2169,8 +2167,7 @@ fi
 
 pre_check_ver 'uclouvain/openjpeg' '1' 'T'
 if build 'openjpeg' "${g_ver}"; then
-    download "https://github.com/uclouvain/openjpeg/archive/refs/tags/v${g_ver}.tar.gz" "openjpeg-${g_ver}.tar.gz"
-    # download "https://codeload.github.com/uclouvain/openjpeg/tar.gz/refs/tags/${g_ver}" "openjpeg-${g_ver}.tar.gz"
+    download "https://codeload.github.com/uclouvain/openjpeg/tar.gz/refs/tags/${g_ver}" "openjpeg-${g_ver}.tar.gz"
     execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} -DBUILD_{TESTING,SHARED_LIBS}=ON -DBUILD_THIRDPARTY=ON \
         -DCPACK_{BINARY_DEB,BINARY_FREEBSD,BINARY_IFW,BINARY_NSIS,BINARY_RPM,BINARY_TBZ2,BINARY_TXZ,SOURCE_RPM,SOURCE_ZIP}=ON \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -G Ninja -Wno-dev
