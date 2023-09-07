@@ -1,4 +1,4 @@
-f#!/usr/bin/env bash
+#!/usr/bin/env bash
 
 ###########################################################################################################
 ##
@@ -6,9 +6,9 @@ f#!/usr/bin/env bash
 ##
 ##  Purpose: Build GNU readline
 ##
-##  Updated: 08.03.23
+##  Updated: 09.07.23
 ##
-##  Script version: 1.0
+##  Script version: 1.1
 ##
 ###########################################################################################################
 
@@ -23,11 +23,12 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.0
+script_ver=1.1
 archive_dir=readline-8.2
 archive_url=https://ftp.gnu.org/gnu/readline/readline-8.2.tar.gz
 archive_ext="${archive_url//*.}"
 cwd="${PWD}"/readline-build-script
+install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 
 printf "%s\n%s\n\n" \
@@ -38,9 +39,10 @@ printf "%s\n%s\n\n" \
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ ! -d "${cwd}" ]; then
-    mkdir -p "${cwd}"
+if [ -d "${cwd}" ]; then
+    sudo rm -fr "${cwd}"
 fi
+mkdir -p "${cwd}"
 
 #
 # SET THE C+CPP COMPILERS
@@ -165,21 +167,6 @@ pkgs_fn()
 }
 
 #
-# TEST IF LIBICONV WAS MANUALLY INSTALLED OR BY APT
-#
-
-if [ -f /usr/local/bin/iconv ]; then
-    pkgs_fn
-    iconv_prefix=/usr/local
-elif [ -f /usr/bin/iconv ]; then
-    pkgs_fn
-    iconv_prefix=/usr
-else
-    pkgs_fn 'libiconv-hook-dev libiconv-hook1'
-    iconv_prefix=/usr
-fi
-
-#
 # GET PC TYPE
 #
 
@@ -196,8 +183,6 @@ archive_name="${archive_dir}.tar.${archive_ext}"
 if [ ! -f "${cwd}/${archive_name}" ]; then
     curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
 fi
-readline-8.2
-
 
 #
 # CREATE OUTPUT DIRECTORY
@@ -218,21 +203,6 @@ if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-compone
 fi
 
 #
-# TEST IF LIBICONV WAS INSTALLED BY APT OR MANUALLY
-#
-
-if [ -f /usr/local/bin/iconv ]; then
-    pkgs_fn
-    iconv_prefix=/usr/local
-elif [ -f /usr/bin/iconv ]; then
-    pkgs_fn
-    iconv_prefix=/usr
-else
-    pkgs_fn 'libiconv-hook-dev libiconv-hook1'
-    iconv_prefix=/usr
-fi
-
-#
 # BUILD PROGRAM FROM SOURCE
 #
 
@@ -240,15 +210,15 @@ cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 cd build || exit 1
 clear
-../configure --prefix=/usr/local         \
+../configure --prefix="${install_dir}"   \
              --{build,host}="${pc_type}" \
-             --disable-install-examples  \
-             --enable-multibyte
+             --disable-install-examples
 make "-j$(nproc --all)"
 if ! sudo make install; then
     printf "\n%s\n\n" 'Failed to execute: sudo make install.'
     exit 1
 fi
+sudo ldconfig "${install_dir}"/lib
 
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
