@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2068,SC2086
 
-###########################################################################################################
+##########################################################################################################################
 ##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-brotli
+##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-eog
 ##
 ##  Purpose: Build GNU EYE OF GNOME (AKA EOG)
 ##
@@ -11,7 +11,7 @@
 ##
 ##  Script version: 1.1
 ##
-###########################################################################################################
+##########################################################################################################################
 
 clear
 
@@ -28,6 +28,7 @@ script_ver=1.1
 archive_dir=eog
 archive_url=https://download.gnome.org/sources/eog/44/eog-44.3.tar.xz
 archive_ext="${archive_url//*.}"
+archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/eog-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
@@ -169,10 +170,10 @@ do
         missing_pkgs+=" ${i}"
     fi
 done
-unset i
 
 if [ -n "${missing_pkgs}" ]; then
     sudo apt -y install ${missing_pkgs}
+    sudo apt -y autoremove
     clear
 fi
 
@@ -188,16 +189,9 @@ pc_type="$(source "${cwd}/config.guess")"
 # DOWNLOAD THE ARCHIVE FILE
 #
 
-archive_name="${archive_dir}.tar.${archive_ext}"
-
 if [ ! -f "${cwd}/${archive_name}" ]; then
     curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
 fi
-
-#
-# CREATE OUTPUT DIRECTORY
-#
-
 mkdir -p "${cwd}/${archive_dir}/build"
 
 #
@@ -205,7 +199,7 @@ mkdir -p "${cwd}/${archive_dir}/build"
 #
 
 if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
+    fail_fn "Failed to extract: ${cwd}/${archive_name}"
     exit 1
 fi
 
@@ -214,18 +208,13 @@ fi
 #
 
 clear
-
 cd "${cwd}/${archive_dir}" || exit 1
-
 meson setup build --buildtype=release      \
                   --default-library=static \
                   --strip
-
 ninja "-j$(nproc --all)" -C build
-
 if ! sudo ninja "-j$(nproc --all)" -C build install; then
-    ninja clean
-    printf "\n%s\n\n" 'Failed to install EOG.'
+    fail_fn "Failed to execute: sudo ninja "-j$(nproc --all)" -C build install"
     exit 1
 fi
 
