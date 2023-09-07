@@ -142,40 +142,22 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs_fn()
-{
-    pkgs=("${1}" autoconf autoconf-archive autogen automake autopoint autotools-dev build-essential bzip2
-          ccache curl git libintl-perl libtool libtool-bin lzip pkg-config zlib1g-dev)
+pkgs=("${1}" autoconf autoconf-archive autogen automake autopoint autotools-dev build-essential bzip2
+      ccache curl git libintl-perl libtool libtool-bin lzip pkg-config zlib1g-dev)
 
-    for i in ${pkgs[@]}
-    do
-        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+for i in ${pkgs[@]}
+do
+    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
 
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
-        fi
-    done
-
-    if [ -n "${missing_pkgs}" ]; then
-        sudo apt -y install ${missing_pkgs}
-        sudo apt -y autoremove
-        clear
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${i}"
     fi
-}
+done
 
-#
-# TEST IF LIBICONV WAS MANUALLY INSTALLED OR BY APT
-#
-
-if [ -f /usr/local/bin/iconv ]; then
-    pkgs_fn
-    iconv_prefix=/usr/local
-elif [ -f /usr/bin/iconv ]; then
-    pkgs_fn
-    iconv_prefix=/usr
-else
-    pkgs_fn 'libiconv-hook-dev libiconv-hook1'
-    iconv_prefix=/usr
+if [ -n "${missing_pkgs}" ]; then
+    sudo apt -y install ${missing_pkgs}
+    sudo apt -y autoremove
+    clear
 fi
 
 #
@@ -221,18 +203,13 @@ fi
 cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 cd build || exit 1
-../configure --prefix=/usr/local                      \
-             --{build,host}="${pc_type}"              \
-             --disable-nls                            \
-             --with-libiconv-prefix="${i}conv_prefix" \
-             --with-libintl-prefix=/usr               \
+../configure --prefix=/usr/local         \
+             --{build,host}="${pc_type}" \
+             --disable-nls               \
              --with-pic
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    echo
-    read -p 'Failure. Press enter to continue.'
-    clear
-    make distclean
+    fail_fn 'Failed to execute: sudo make install'
     exit 1
 fi
 
