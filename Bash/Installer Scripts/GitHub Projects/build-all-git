@@ -58,12 +58,12 @@ cleanup_fn()
 installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
 ##
-## Install Missing Gparted Packages
+## Install required APT packages
 ##
 
-pkgs=(asciidoc autogen autoconf automake binutils bison build-essential bzip2 ccache cmake
-      curl libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev m4 meson
-      nasm ninja-build texinfo xmlto yasm zlib1g-dev)
+pkgs=(asciidoc autogen autoconf autoconf-archive automake binutils bison build-essential
+      bzip2 ccache cmake curl libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip
+      lzma-dev m4 meson nasm ninja-build texinfo xmlto yasm zlib1g-dev)
 
 for pkg in ${pkgs[@]}
 do
@@ -92,6 +92,7 @@ install_scripts_fn()
     clear
 
     mv '010-build-aria2' '10-build-aria2'
+    mv '011-build-git' '11-build-git'
 
     scripts="$(sudo find . -maxdepth 1 -type f | sed 's/^..//g' | sort)"
 
@@ -113,7 +114,7 @@ install_scripts_fn()
 
 cd "${cwd}" || exit 1
 
-scripts=(zlib zstd nasm yasm libxml2 openssl tools libpng brotli aria2)
+scripts=(zlib zstd nasm yasm libxml2 openssl tools libpng brotli aria2 git)
 cnt=0
 
 for script in ${scripts[@]}
@@ -146,14 +147,7 @@ case "${answer}" in
             ;;
 esac
 
-#
 # CLEANUP THE FILES
-#
-
 cleanup_fn
-
-#
 # SHOW THE EXIT MESSAGE
-#
-
 exit_fn
