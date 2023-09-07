@@ -222,11 +222,11 @@ pc_type="$(source "${cwd}/config.guess")"
 #
 
 if [ ! -f "${cwd}/${archive_dir1}.tar.gz" ]; then
-    wget -U "${user_agent}" -cO "${cwd}/${archive_dir1}.${archive_ext1}" "${archive_url1}"
+    curl -A "${user_agent}" -Lso "${cwd}/${archive_dir1}.${archive_ext1}" "${archive_url1}"
 fi
 
 if [ ! -f "${cwd}/${archive_dir2}.tar.lz" ]; then
-    wget -U "${user_agent}" -cO "${cwd}/${archive_dir2}.${archive_ext2}" "${archive_url2}"
+    curl -A "${user_agent}" -Lso "${cwd}/${archive_dir2}.${archive_ext2}" "${archive_url2}"
 fi
 
 #
