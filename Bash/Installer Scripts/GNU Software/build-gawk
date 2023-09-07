@@ -1,15 +1,33 @@
 #!/usr/bin/env bash
 
+###########################################################################################################
+##
+##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-gawk
+##
+##  Purpose: Build GNU GAWK
+##
+##  Updated: 09.07.23
+##
+##  Script version: 1.1
+##
+###########################################################################################################
+
 clear
 
+if [ "${EUID}" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
+
 #
-# SET PROGRAM NAME + VERSION
+# SET THE VARIABLES
 #
 
-script_ver=1.0
+script_ver=1.1
 archive_dir=gawk-5.2.2
 archive_url=https://ftp.gnu.org/gnu/gawk/gawk-5.2.2.tar.lz
 archive_ext="${archive_url//*.}"
+archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/gawk-build-script
 repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
@@ -126,14 +144,12 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=("${1}" autoconf autoconf-archive autogen automake binutils build-essential ccache cmake
-      curl git libgmp-dev libintl-perl libmpfr-dev libreadline-dev libsigsegv-dev libtool
-      libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev yasm)
+pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache cmake
+      curl git libtool libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev yasm)
 
 for i in ${pkgs[@]}
 do
     missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-
     if [ -z "${missing_pkg}" ]; then
         missing_pkgs+=" ${i}"
     fi
@@ -155,8 +171,6 @@ pc_type="$(source "${cwd}/config.guess")"
 #
 # DOWNLOAD THE ARCHIVE FILE
 #
-
-archive_name="${archive_dir}.tar.${archive_ext}"
 
 if [ ! -f "${cwd}/${archive_name}" ]; then
     curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
@@ -189,12 +203,7 @@ autoreconf -fi
 cd build || exit 1
 ../configure --prefix=/usr/local               \
              --{build,host}="${pc_type}"       \
-             --disable-nls                     \
-             --with-libsigsegv-prefix=/usr     \
-             --with-libiconv-prefix=/usr/local \
-             --with-libintl-prefix=/usr        \
-             --with-mpfr=/usr                  \
-             --with-readline=/usr
+             --disable-nls
 make "-j$(nproc --all)"
 if ! sudo make install; then
     make distclean
