@@ -24,7 +24,6 @@ fi
 #
 
 script_ver=3.0
-parent_dir="${PWD}"
 cwd="$PWD"/tilix-build-script
 packages="${cwd}"/packages
 schemes_dir="${HOME}"/.config/tilix/schemes
