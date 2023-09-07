@@ -38,9 +38,10 @@ printf "%s\n%s\n\n" \
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ ! -d "${cwd}" ]; then
-    mkdir -p "${cwd}"
+if [ -d "${cwd}" ]; then
+    sudo rm -fr "${cwd}"
 fi
+mkdir -p "${cwd}"
 
 #
 # SET THE C+CPP COMPILERS
@@ -142,41 +143,24 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs_fn()
-{
-    pkgs=("${1}" apparmor apparmor-utils autoconf autoconf-archive autogen automake autopoint autotools-dev
-          build-essential bzip2 ccache curl git libapparmor-dev libaudit-dev libglib2.0-dev libintl-perl
-          libsystemd-dev libtool libtool-bin libx11-dev lzip pkg-config valgrind zlib1g-dev librust-polling-dev)
+pkgs=(apparmor apparmor-utils autoconf autoconf-archive autogen automake autopoint autotools-dev
+      build-essential bzip2 ccache curl git libapparmor-dev libaudit-dev libglib2.0-dev libintl-perl
+      librust-polling-dev libsystemd-dev libtool libtool-bin libx11-dev lzip pkg-config valgrind
+      zlib1g-dev)
 
-    for i in ${pkgs[@]}
-    do
-        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+for i in ${pkgs[@]}
+do
+    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
 
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
-        fi
-    done
-
-    if [ -n "${missing_pkgs}" ]; then
-        sudo apt -y install ${missing_pkgs}
-        sudo apt -y autoremove
-        clear
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${i}"
     fi
-}
+done
 
-#
-# TEST IF LIBICONV WAS MANUALLY INSTALLED OR BY APT
-#
-
-if [ -f /usr/local/bin/iconv ]; then
-    pkgs_fn
-    iconv_prefix=/usr/local
-elif [ -f /usr/bin/iconv ]; then
-    pkgs_fn
-    iconv_prefix=/usr
-else
-    pkgs_fn 'libiconv-hook-dev libiconv-hook1'
-    iconv_prefix=/usr
+if [ -n "${missing_pkgs}" ]; then
+    sudo apt -y install ${missing_pkgs}
+    sudo apt -y autoremove
+    clear
 fi
 
 #
@@ -239,10 +223,7 @@ cd build || exit 1
              PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    echo
-    read -p 'Failure. Press enter to continue.'
-    clear
-    make distclean
+    fail_fn 'Failed to execute: sudo make install'
     exit 1
 fi
 
