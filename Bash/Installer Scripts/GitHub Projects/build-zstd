@@ -1,29 +1,50 @@
 #!/usr/bin/env bash
 
+###########################################################################################################
+##
+##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-zstd
+##
+##  Purpose: Build zstd compression software
+##
+##  Features: Static and shared build
+##
+##  Updated: 09.07.23
+##
+##  Script version: 1.1
+##
+###########################################################################################################
+
 clear
 
+if [ "${EUID}" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
+
 #
-# SET PROGRAM NAME + VERSION
+# SET THE VARIABLES
 #
 
-script_ver=1.0
+script_ver=1.1
 archive_dir=zstd-1.5.5
-archive_url=https://github.com/facebook/zstd/releases/download/v1.5.5/zstd-1.5.5.tar.gz
+archive_url=https://github.com/facebook/zstd/releases/download/v1.5.5/${archive_dir}.tar.gz
 archive_ext="${archive_url//*.}"
+archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/zstd-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 
 printf "\n%s\n%s\n\n" \
-    "PKG-Config Build Script - v${script_ver}" \
+    "ZStd Build Script - v${script_ver}" \
     '==============================================='
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ ! -d "${cwd}" ]; then
-    mkdir -p "${cwd}"
+if [ -d "${cwd}" ]; then
+    sudo rm -fr "${cwd}"
 fi
+mkdir -p "${cwd}"
 
 #
 # SET THE C+CPP COMPILERS
@@ -111,8 +132,10 @@ cleanup_fn()
         1)      sudo rm -fr "${cwd}" "${0}";;
         2)      return 0;;
         *)
-                printf "%s\n\n" 'Bad user input.'
-                read -p 'Press enter to try again.'
+                clear
+                printf "%s\n\n" 'Bad user input. Resetting script...'
+                sleep 3
+                unset answer
                 clear
                 cleanup_fn
                 ;;
@@ -123,8 +146,9 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autogen automake build-essential ccache clang cmake curl git libdmalloc-dev libjemalloc-dev
-      liblz4-dev liblzma-dev libtool libtool-bin m4 meson ninja-build pkg-config zlib1g-dev)
+pkgs=(autoconf autogen automake build-essential ccache clang cmake curl git libdmalloc-dev
+      libjemalloc-dev liblz4-dev liblzma-dev libtool libtool-bin m4 meson ninja-build
+      pkg-config zlib1g-dev)
 
 for i in ${pkgs[@]}
 do
@@ -134,33 +158,23 @@ do
         missing_pkgs+=" ${i}"
     fi
 done
-unset i
 
 if [ -n "${missing_pkgs}" ]; then
     sudo apt -y install ${missing_pkgs}
+    sudo apt -y autoremove
     clear
 fi
 
 #
-# GET PC TYPE
-#
-
-curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "${cwd}/config.guess"
-pc_type="$(source "${cwd}/config.guess")"
-
-#
 # DOWNLOAD THE ARCHIVE FILE
 #
-
-archive_name="${archive_dir}.tar.${archive_ext}"
 
 if [ ! -f "${cwd}/${archive_name}" ]; then
     curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
 fi
 
 #
-# CREATE OUTPUT DIRECTORY
+# CREATE THE OUTPUT DIRECTORY
 #
 
 if [ -d "${cwd}/${archive_dir}" ]; then
@@ -169,26 +183,26 @@ fi
 mkdir -p "${cwd}/${archive_dir}"
 
 #
-# EXTRACT ARCHIVE FILES
+# EXTRACT THE ARCHIVE FILE
 #
 
-if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
+if ! tar -zxf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
     printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
     exit 1
 fi
 
 #
-# BUILD PROGRAM FROM SOURCE
+# BUILD THE PROGRAM FROM SOURCE CODE
 #
 
 cd "${cwd}/${archive_dir}/build/meson" || exit 1
-meson setup build --prefix=/usr/local      \
-                  --buildtype=release      \
-                  --default-library=static \
+meson setup build --prefix=/usr/local    \
+                  --buildtype=release    \
+                  --default-library=both \
                   --strip
 ninja "-j$(nproc --all)" -C build
 if ! sudo ninja "-j$(nproc --all)" -C build install; then
-    printf "\n%s\n\n" 'Failed to install zstd.'
+    printf "\n%s\n\n" "Failed to execute: sudo ninja "-j$(nproc --all)" -C build install"
     exit 1
 fi
 
