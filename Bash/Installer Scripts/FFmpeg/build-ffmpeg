@@ -27,7 +27,9 @@
 ##    - will be prompted by the script to install them so that hardware acceleration is
 ##    - enabled when compiling FFmpeg
 ##
-##  Last Update: 08.31.23
+##  Updated: rav1e and opencore-amr to the latest versions
+##
+##  Last Update: 09.07.23
 ##
 ##  Added: Debian OS Support for Bookworm (12)
 ##  Added: cyanrip
@@ -35,7 +37,7 @@
 ##  Added: cunit support library for libmysofa
 ##  Added: libcurl support library for cyanrip
 ##
-##  Script version: 2.5
+##  Script version: 2.6
 ##
 ############################################################################################
 
@@ -44,7 +46,7 @@
 #
 
 script_name="${0:2}"
-script_ver=2.5
+script_ver=2.6
 ffmpeg_ver=5.1.3
 cuda_ver=12.2.2
 cwd="${PWD}"/ffmpeg-build-script
@@ -70,13 +72,13 @@ else
 fi
 
 #
-# SCRIPT BANNER 1
+# PRINT SCRIPT BANNER
 #
 
 box_out_banner1()
 {
     input_char=$(echo "${@}" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+    line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
@@ -101,10 +103,10 @@ export CC=gcc CXX=g++
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-CFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2"
-CFLAGS+=' -I/usr/include/openjpeg-2.5 -g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
-CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/openjpeg-2.5"
 CXXFLAGS='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
+CFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2"
+CFLAGS+=" -I/usr/include/openjpeg-2.5 ${CXXFLAGS}"
+CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/openjpeg-2.5"
 LDFLAGS="-L${workspace}/lib64 -L${workspace}/lib -L${workspace}/lib/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/local/lib -L/usr/local/cuda/nvvm/lib64"
 LDFLAGS+=' -L/usr/local/cuda/targets/x86_64-linux/lib -L/usr/lib64 -L/usr/lib -L/usr/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu -L/lib64 -L/lib'
 
@@ -338,34 +340,16 @@ git_4_fn()
 git_5_fn()
 {
     repo="${1}"
-    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL 'https://bitbucket.org/!api/2.0/repositories/multicoreware/x265_git/effective-branching-model')"; then
-        g_sver="$(echo "${curl_cmd}" | jq '.development.branch.target' | grep -Eo '[0-9a-z][0-9a-z]+' | sort | head -n 1)"
-        g_ver="${g_sver::7}"
-    fi
-}
-
-git_6_fn()
-{
-    repo="${1}"
     if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.gnome.org/api/v4/projects/${repo}/repository/tags")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
     fi
 }
 
-git_7_fn()
+git_6_fn()
 {
     repo="${1}"
-    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://git.archive.org/api/v4/projects/${repo}/repository/tags")"; then
-        g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
-        g_ver="${g_ver#v}"
-    fi
-}
-
-git_8_fn()
-{
-    repo="${1}"
-    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.kitware.com/api/v4/projects/${repo}/repository/tags")"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://salsa.debian.org/api/v4/projects/${repo}/repository/tags?")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
     fi
@@ -395,8 +379,6 @@ git_ver_fn()
             4)      u_flag=git_4_fn;;
             5)      u_flag=git_5_fn;;
             6)      u_flag=git_6_fn;;
-            7)      u_flag=git_7_fn;;
-            8)      u_flag=git_8_fn;;
             *)      fail_fn 'Could not detect the variable "v_tag" in the function "git_ver_fn"'
     esac
 
@@ -651,24 +633,24 @@ ${HOME}/.local/bin:\
 export PATH
 
 PKG_CONFIG_PATH="\
+${workspace}/usr/lib/pkgconfig:\
 ${workspace}/lib64/pkgconfig:\
 ${workspace}/lib/pkgconfig:\
 ${workspace}/lib/x86_64-linux-gnu/pkgconfig:\
 ${workspace}/share/pkgconfig:\
-${workspace}/usr/lib/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib64/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/share/pkgconfig:\
 /usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/open-coarrays/openmpi/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/openmpi/lib/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/share/pkgconfig\
+/usr/share/pkgconfig:\
+/lib64/pkgconfig:\
+/lib/pkgconfig:\
+/lib/x86_64-linux-gnu/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -1075,7 +1057,7 @@ pc_type="$(source "${cwd}/config.guess")"
 box_out_banner_global()
 {
     input_char=$(echo "${@}" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+    line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
@@ -1213,7 +1195,7 @@ fi
 
 # UBUNTU BIONIC FAILS TO BUILD XML2
 if [ "${VER}" != '18.04' ]; then
-    git_ver_fn '1665' '6' 'T'
+    git_ver_fn '1665' '5' 'T'
     if build 'xml2' "${g_ver}"; then
         download "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v${g_ver}/libxml2-v${g_ver}.tar.bz2" "xml2-${g_ver}.tar.bz2"
         CFLAGS+=' -DNOLIBTOOL'
@@ -1493,7 +1475,7 @@ if build 'lv2' 'git'; then
 fi
 
 git_ver_fn '7131569' '3' 'T'
-g_ver="$(echo "${g_ver}" | sed 's/-//g' | sed 's/waf//g')"
+g_ver="${g_ver//waf-/}"
 if build 'waflib' "${g_ver}"; then
     download "https://gitlab.com/ita1024/waf/-/archive/waf-${g_ver}/waf-waf-${g_ver}.tar.bz2" "waflib-${g_ver}.tar.bz2"
     build_done 'waflib' "${g_ver}"
@@ -1619,7 +1601,7 @@ echo
 box_out_banner_audio()
 {
     input_char=$(echo "${@}" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+    line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
@@ -1711,12 +1693,15 @@ if build 'vpx' '1.13.0'; then
 fi
 ffmpeg_libraries+=('--enable-libvpx')
 
-if build 'opencore-amr' '0.1.6'; then
-    download 'https://netactuate.dl.sourceforge.net/project/opencore-amr/opencore-amr/opencore-amr-0.1.6.tar.gz'
+git_ver_fn '8143' '6'
+g_ver="${g_ver//debian\//}"
+if build 'opencore-amr' "${g_ver}"; then
+    download "https://salsa.debian.org/multimedia-team/opencore-amr/-/archive/debian/${g_ver}/opencore-amr-debian-${g_ver}.tar.bz2" "opencore-amr-${g_ver}.tar.bz2"
+    # download 'https://netactuate.dl.sourceforge.net/project/opencore-amr/opencore-amr/opencore-amr-0.1.6.tar.gz'
     execute ./configure --prefix="${workspace}" --disable-shared --enable-static
     execute make "-j${cpu_threads}"
     execute make install
-    build_done 'opencore-amr' '0.1.6'
+    build_done 'opencore-amr' "${g_ver}"
 fi
 ffmpeg_libraries+=('--enable-libopencore-amrnb' '--enable-libopencore-amrwb')
 
@@ -1755,7 +1740,7 @@ echo
 box_out_banner_video()
 {
     input_char=$(echo "${@}" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+    line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
@@ -1798,7 +1783,7 @@ ffmpeg_libraries+=('--enable-libdav1d')
 # RAV1E FAILS TO BUILD ON UBUNTU BIONIC
 if [ "${VER}" != '18.04' ]; then
     pre_check_ver 'xiph/rav1e' '1' 'T'
-    if build 'rav1e' "${g_ver}"; then
+    if build 'rav1e' 'p20230905'; then
         echo '$ Installing RustUp'
         curl -A "${user_agent}" -sSf --proto '=https' --tlsv1.2 'https://sh.rustup.rs' | sh -s -- -y &>/dev/null
         source "${HOME}"/.cargo/env
@@ -1809,11 +1794,11 @@ if [ "${VER}" != '18.04' ]; then
         fi
         rm -fr "${HOME}"/.cargo/registry/index/* "${HOME}"/.cargo/.package-cache
         execute cargo install --version '0.9.24+cargo-0.73.0' cargo-c
-        download "https://codeload.github.com/xiph/rav1e/tar.gz/refs/tags/v${g_ver}" "rav1e-${g_ver}.tar.gz"
+        download 'https://github.com/xiph/rav1e/archive/refs/tags/p20230905.tar.gz' 'rav1e-p20230905.tar.gz'
         execute cargo cinstall --prefix="${workspace}" --library-type=staticlib --crt-static --release
-        build_done 'rav1e' "${g_ver}"
+        build_done 'rav1e' 'p20230905'
     fi
-    ffmpeg_libraries+=("--enable-librav1e")
+    ffmpeg_libraries+=('--enable-librav1e')
 fi
 
 pre_check_ver 'AOMediaCodec/libavif' '1' 'T'
@@ -2184,7 +2169,8 @@ fi
 
 pre_check_ver 'uclouvain/openjpeg' '1' 'T'
 if build 'openjpeg' "${g_ver}"; then
-    download "https://codeload.github.com/uclouvain/openjpeg/tar.gz/refs/tags/${g_ver}" "openjpeg-${g_ver}.tar.gz"
+    download "https://github.com/uclouvain/openjpeg/archive/refs/tags/v${g_ver}.tar.gz" "openjpeg-${g_ver}.tar.gz"
+    # download "https://codeload.github.com/uclouvain/openjpeg/tar.gz/refs/tags/${g_ver}" "openjpeg-${g_ver}.tar.gz"
     execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} -DBUILD_{TESTING,SHARED_LIBS}=ON -DBUILD_THIRDPARTY=ON \
         -DCPACK_{BINARY_DEB,BINARY_FREEBSD,BINARY_IFW,BINARY_NSIS,BINARY_RPM,BINARY_TBZ2,BINARY_TXZ,SOURCE_RPM,SOURCE_ZIP}=ON \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -G Ninja -Wno-dev
@@ -2202,7 +2188,7 @@ echo
 box_out_banner_ffmpeg()
 {
     input_char=$(echo "${@}" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+    line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
@@ -2213,7 +2199,7 @@ box_out_banner_ffmpeg()
     echo " ${line}"
     tput sgr 0
 }
-box_out_banner_ffmpeg 'Installing FFmpeg'
+box_out_banner_ffmpeg 'Building FFmpeg'
 
 if build 'ffmpeg' "${ffmpeg_ver}"; then
     download "https://www.ffmpeg.org/releases/ffmpeg-${ffmpeg_ver}.tar.xz"
