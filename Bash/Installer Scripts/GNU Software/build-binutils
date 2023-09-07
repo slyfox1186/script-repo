@@ -143,27 +143,24 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs_fn()
-{
-    pkgs=("${1}" autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl git
-          libgmp-dev libintl-perl libisl-dev libmpc-dev libmpfr-dev libtool libtool-bin
-          libzstd-dev lzip m4 nasm ninja-build texinfo yasm zlib1g-dev zstd)
-    
-    for i in ${pkgs[@]}
-    do
-        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-    
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
-        fi
-    done
-    
-    if [ -n "${missing_pkgs}" ]; then
-        sudo apt -y install ${missing_pkgs}
-        sudo apt -y autoremove
-        clear
+pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl
+      git libgmp-dev libintl-perl libisl-dev libmpc-dev libmpfr-dev libtool libtool-bin
+      libzstd-dev lzip m4 nasm ninja-build texinfo yasm zlib1g-dev zstd)
+
+for i in ${pkgs[@]}
+do
+    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${i}"
     fi
-}
+done
+
+if [ -n "${missing_pkgs}" ]; then
+    sudo apt -y install ${missing_pkgs}
+    sudo apt -y autoremove
+    clear
+fi
 
 #
 # GET PC TYPE
@@ -202,27 +199,6 @@ if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-compone
 fi
 
 #
-# GET ADA PACKAGE
-#
-
-get_ada="$(sudo apt list *gnat* | awk -F'/' '{print $1}' | grep -Eo '^libgnat-1[0-9]?$' | sort -r | head -n1 2>/dev/null)"
-
-#
-# TEST IF LIBICONV WAS INSTALLED BY APT OR MANUALLY
-#
-
-if [ -f /usr/local/bin/iconv ]; then
-    iconv_prefix=/usr/local
-elif [ -f /usr/bin/iconv ]; then
-    iconv_prefix=/usr
-else
-    pkgs_fn "${get_ada} libiconv-hook-dev libiconv-hook1"
-    iconv_prefix=/usr
-fi
-
-pkgs_fn "${get_ada}"
-
-#
 # BUILD PROGRAM FROM SOURCE
 #
 
@@ -231,19 +207,8 @@ autoreconf -fi
 cd build || exit 1
 ../configure --prefix=/usr/local                                       \
              --{build,host,target}="${pc_type}"                        \
-             --enable-compressed-debug-sections=gold                   \
-             --enable-default-compressed-debug-sections-algorithm=zstd \
-             --enable-gold=yes                                         \
-             --enable-libada                                           \
              --enable-lto                                              \
-             --enable-vtable-verify                                    \
-             --enable-year2038                                         \
-             --with-gmp=/usr                                           \
-             --with-isl=/usr                                           \
-             --with-mpc=/usr                                           \
-             --with-mpfr=/usr                                          \
-             --with-system-zlib                                        \
-             --with-zstd
+             --enable-year2038
 make "-j$(nproc --all)"
 if ! sudo make install; then
     make distclean
