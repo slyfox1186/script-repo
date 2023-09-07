@@ -4,7 +4,7 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-bash
 ##
-##  Purpose: Build GNU BASH
+##  Purpose: Build GNU Bash
 ##
 ##  Updated: 09.03.23
 ##
@@ -34,7 +34,7 @@ user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
-    "BASH Build Script - v${script_ver}" \
+    "Bash Build Script - v${script_ver}" \
     '==============================================='
 
 #
@@ -216,8 +216,7 @@ cd build || exit 1
              --without-included-gettext
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    make distclean
-    printf "\n%s\n\n" 'Failed to install bash.'
+    fail_fn 'Failed to execute: sudo make install'
     exit 1
 fi
 
