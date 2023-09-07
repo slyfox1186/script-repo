@@ -302,7 +302,7 @@ git_2_fn()
 {
     repo="${1}"
     url="${2}"
-    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://code.videolan.org/api/v4/projects/${repo}/repository/${url}")"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://code.videolan.org/api/v4/projects/${repo}/repository/${url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].commit.id')"
         g_sver="$(echo "${curl_cmd}" | jq -r '.[0].commit.short_id')"
         g_sver="${g_sver::7}"
@@ -315,7 +315,7 @@ git_3_fn()
 {
     repo="${1}"
     url="${2}"
-    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://gitlab.com/api/v4/projects/${repo}/repository/${url}")"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.com/api/v4/projects/${repo}/repository/${url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[0].commit.id')"
@@ -328,7 +328,7 @@ git_3_fn()
 git_4_fn()
 {
     repo="${1}"
-    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://gitlab.freedesktop.org/api/v4/projects/${repo}/repository/tags")"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.freedesktop.org/api/v4/projects/${repo}/repository/tags")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
         g_ver="${g_ver#pkg-config-}"
         g_ver="${g_ver#VER-}"
@@ -338,7 +338,7 @@ git_4_fn()
 git_5_fn()
 {
     repo="${1}"
-    if curl_cmd="$(curl -m "${curl_timeout}" -sSL 'https://bitbucket.org/!api/2.0/repositories/multicoreware/x265_git/effective-branching-model')"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL 'https://bitbucket.org/!api/2.0/repositories/multicoreware/x265_git/effective-branching-model')"; then
         g_sver="$(echo "${curl_cmd}" | jq '.development.branch.target' | grep -Eo '[0-9a-z][0-9a-z]+' | sort | head -n 1)"
         g_ver="${g_sver::7}"
     fi
@@ -347,7 +347,7 @@ git_5_fn()
 git_6_fn()
 {
     repo="${1}"
-    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://gitlab.gnome.org/api/v4/projects/${repo}/repository/tags")"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.gnome.org/api/v4/projects/${repo}/repository/tags")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
     fi
@@ -356,7 +356,7 @@ git_6_fn()
 git_7_fn()
 {
     repo="${1}"
-    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://git.archive.org/api/v4/projects/${repo}/repository/tags")"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://git.archive.org/api/v4/projects/${repo}/repository/tags")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
     fi
@@ -365,7 +365,7 @@ git_7_fn()
 git_8_fn()
 {
     repo="${1}"
-    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://gitlab.kitware.com/api/v4/projects/${repo}/repository/tags")"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.kitware.com/api/v4/projects/${repo}/repository/tags")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
     fi
@@ -1064,7 +1064,7 @@ export ACLOCAL_PATH=/usr/share/aclocal
 # GET PC TYPE
 #
 
-curl -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
 chmod +x "${cwd}/config.guess"
 pc_type="$(source "${cwd}/config.guess")"
 
@@ -1800,7 +1800,7 @@ if [ "${VER}" != '18.04' ]; then
     pre_check_ver 'xiph/rav1e' '1' 'T'
     if build 'rav1e' "${g_ver}"; then
         echo '$ Installing RustUp'
-        curl -sSf --proto '=https' --tlsv1.2 'https://sh.rustup.rs' | sh -s -- -y &>/dev/null
+        curl -A "${user_agent}" -sSf --proto '=https' --tlsv1.2 'https://sh.rustup.rs' | sh -s -- -y &>/dev/null
         source "${HOME}"/.cargo/env
         if [ -f "${HOME}"/.zshrc ]; then
             source "${HOME}"/.zshrc
