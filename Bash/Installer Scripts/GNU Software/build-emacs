@@ -143,31 +143,24 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs_fn()
-{
-    local i missing_pkg missing_pkgs pkgs 
+pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache make
+      curl git guile-3.0-dev libdmalloc-dev libdmalloc5 libmpfr-dev libreadline-dev
+      libtool libtool-bin libgif-dev lzip m4 nasm  ninja-build texinfo zlib1g-dev yasm)
 
-    pkgs=("${1}" autoconf autoconf-archive autogen automake binutils
-          build-essential ccache make curl git guile-3.0-dev libdmalloc-dev
-          libdmalloc5 libgmp-dev libintl-perl libmpfr-dev libreadline-dev
-          libsigsegv-dev libtool libtool-bin libgif-dev lzip m4 nasm
-          ninja-build texinfo zlib1g-dev yasm)
-    
-    for i in ${pkgs[@]}
-    do
-        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-    
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
-        fi
-    done
-    
-    if [ -n "${missing_pkgs}" ]; then
-        sudo apt -y install ${missing_pkgs}
-        sudo apt -y autoremove
-        clear
+for i in ${pkgs[@]}
+do
+    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${i}"
     fi
-}
+done
+
+if [ -n "${missing_pkgs}" ]; then
+    sudo apt -y install ${missing_pkgs}
+    sudo apt -y autoremove
+    clear
+fi
 
 #
 # GET PC TYPE
@@ -206,21 +199,6 @@ if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-compone
 fi
 
 #
-# TEST IF LIBICONV WAS MANUALLY INSTALLED OR BY APT
-#
-
-if [ -f /usr/local/bin/iconv ]; then
-    pkgs_fn
-    iconv_prefix=/usr/local
-elif [ -f /usr/bin/iconv ]; then
-    pkgs_fn
-    iconv_prefix=/usr
-else
-    pkgs_fn 'libiconv-hook-dev'
-    iconv_prefix=/usr
-fi
-
-#
 # BUILD PROGRAM FROM SOURCE
 #
 
@@ -231,7 +209,7 @@ cd build || exit 1
 ../configure --prefix=/usr/local
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    printf "\n%s\n\n" 'Failed to install make.'
+    fail_fn "\n%s\n\n" 'Failed to execute: sudo make install'
     exit 1
 fi
 
