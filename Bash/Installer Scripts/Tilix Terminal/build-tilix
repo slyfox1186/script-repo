@@ -6,9 +6,9 @@
 ##
 ##  Purpose: Compile the Advanced Linux Terminal Tilix from its official GitHub Repository 
 ##
-##  Updated: 09.03.23
+##  Updated: 09.07.23
 ##
-##  Script version: 2.0
+##  Script version: 3.0
 ##
 ##############################################################################################################################
 
@@ -23,56 +23,41 @@ fi
 # SET VARIABLES
 #
 
-script_ver=2.0
-cwd="${PWD}/tilix-build-script"
-themes_dir="${packages}/tilix-themes"
-packages="${cwd}/packages"
-schemes_dir="${HOME}/.config/tilix/schemes"
-dracula_file="${packages}/tilix-themes/dracula.json"
-
-printf "\n%s\n%s\n\n" \
-    "Tilix Terminal Build Script - v${script_ver}" \
-    '==============================================='
+script_ver=3.0
+parent_dir="${PWD}"
+cwd="$PWD"/tilix-build-script
+packages="${cwd}"/packages
+schemes_dir="${HOME}"/.config/tilix/schemes
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+web_repo=https://github.com/slyfox1186/script-repo
+debug=OFF
 
 #
-# CREATE OUTPUT DIRECTORY
+# PRINT SCRIPT BANNER
+#
+
+box_out_banner()
+{
+    input_char=$(echo "${@}" | wc -c)
+    line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
+    tput bold
+    line="$(tput setaf 3)${line}"
+    space=${line//-/ }
+    echo " ${line}"
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    echo " ${line}"
+    tput sgr 0
+}
+box_out_banner "Tilix Build Script - v${script_ver}"
+
+#
+# CREATE OUTPUT DIRECTORIES
 #
 
 mkdir -p "${packages}" "${schemes_dir}"
 
-#
-# SET THE C+CPP COMPILERS
-#
-
-export CC=gcc CXX=g++
-
-#
-# EXPORT COMPILER OPTIMIZATION FLAGS
-#
-
-export {CFLAGS,CXXFLAGS}='-g -O2 -march=native'
-
-#
-# SET PATH
-#
-
-PKG_CONFIG_PATH="\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig/mit-krb5:\
-/usr/lib/x86_64-pc-linux-gnu/pkgconfig:\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/lib/x86_64-pc-linux-gnu/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/share/pkgconfig\
-"
-export PKG_CONFIG_PATH
 
 #
 # CREATE FUNCTIONS
@@ -80,20 +65,23 @@ export PKG_CONFIG_PATH
 
 exit_fn()
 {
-    printf "\n%s\n\n" 'The script has completed.'
+    printf "\n%s\n\n%s\n\n" \
+        'Make sure to star this repository to show your support!' \
+        "${web_repo}"
     exit 0
 }
 
-
 fail_fn()
 {
-    printf "%s\n\n" "${1}"
+    printf "\n%s\n\n%s\n\n" \
+        "${1}" \
+        "To report a bug create an issue at: ${web_repo}/issues"
     exit 1
 }
 
 cleanup_fn()
 {
-    local choice
+    local answer
 
     printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
         '============================================' \
@@ -101,111 +89,193 @@ cleanup_fn()
         '============================================' \
         '[1] Yes' \
         '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
+    read -p 'Your choices are (1 or 2): ' answer
 
-    case "${choice}" in
-        1)      sudo rm -fr "${cwd}";;
+    case "${answer}" in
+        1)      sudo rm -fr "${cwd}" "${script_name}";;
         2)      echo;;
         *)
                 clear
-                printf "%s\n\n" 'Bad user input. Reloading...'
+                printf "\n%s\n\n" 'Bad user input. Re-setting script...'
                 sleep 3
-                unset choice
+                unset answer
                 clear
                 cleanup_fn
                 ;;
     esac
 }
 
-#
-# INSTALL REQUIRED APT PACKAGES
-#
+execute()
+{
+    echo "$ ${*}"
 
-pkgs=(autoconf autogen automake build-essential ccache curl gettext git
-      gtk-doc-tools libgtk-4-dev libgtkd-3-dev libtool libtool-bin m4
-      ninja-build pkg-config python3-nautilus)
-
-for i in ${pkgs[@]}
-do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+    if [ "${debug}" = 'ON' ]; then
+        if ! output=$("${@}"); then
+            notify-send -t 5000 "Failed to execute: ${*}"
+            fail_fn "Failed to execute: ${*}"
+        fi
+    else
+        if ! output=$("${@}" 2>&1); then
+            notify-send -t 5000 "Failed to execute: ${*}"
+            fail_fn "Failed to execute: ${*}"
+        fi
     fi
-done
+}
 
-if [ -n "${missing_pkgs}" ]; then
-    sudo apt -y install ${missing_pkgs}
-    sudo apt -y autoremove
-    clear
-fi
+download()
+{
+    dl_path="${packages}"
+    dl_url="${1}"
+    dl_file="${2:-"${1##*/}"}"
 
-#
-# DOWNLOAD AND INSTALL DUB 
-#
+    target_file="${dl_path}/${dl_file}"
 
-if [ ! -f "${packages}/dmd-2.105.1-0.deb" ]; then
-    if ! wget --show-progress -cqO "${packages}/dmd-2.105.1-0.deb" 'https://downloads.dlang.org/releases/2023/dmd_2.105.1-0_amd64.deb'; then
-        fail_fn 'Failed to download the DMD Debian installer.'
+    if [ -f "${target_file}" ]; then
+        echo "The file \"${dl_file}\" is already downloaded."
+    else
+        echo "Downloading \"${dl_url}\" saving as \"${dl_file}\""
+        if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
+            printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 10 seconds..."
+            sleep 10
+            if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
+                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit."
+            fi
+        fi
+        echo 'Download Completed'
     fi
-fi
-sudo dpkg -i "${packages}/dmd-2.105.1-0.deb"
 
-if [ -d "${packages}/dub" ]; then
-    sudo rm -fr "${packages}/dub"
-fi
-mkdir -p "${packages}/dub"
+    cd "${packages}" || fail_fn "Unable to change the working directory to: ${packages}"
+}
 
-if [ -f /usr/bin/dub ]; then
-    sudo apt -y remove autoremove dub
-fi
+download_git()
+{
+    local dl_path dl_url dl_file target_dir
 
-if ! git clone 'https://github.com/dlang/dub.git' "${packages}/dub"; then
-    fail_fn 'Could not clone dlang'\''s dub repository.'
-else
-    clear
-    cd "${packages}/dub" || exit 1
-    bash build.sh
-    sudo ln -sf "${PWD}/tilix-build-script/packages/dub/bin/dub" '/usr/local/bin'
-    if ! sudo cp -f bin/dub /usr/bin; then
-        fail_fn 'Failed to move the dub binary to: /usr/bin'
+    dl_path="${packages}"
+    dl_url="${1}"
+    dl_file="${2:-"${1##*/}"}"
+    dl_file="${dl_file//\./-}"
+    target_dir="${dl_path}/${dl_file}"
+
+    if [ -d "${target_dir}" ]; then
+        sudo rm -fr "${target_dir}"
     fi
-fi
 
-if ! which dub &>/dev/null; then
-    fail_fn 'The binary file "dub" failed to install.'
+    echo "Downloading ${dl_url} as ${dl_file}"
+
+    if ! git clone -q "${dl_url}" "${target_dir}"; then
+        printf "\n%s\n\n" "The script failed to clone the directory \"${target_dir}\" and will try again in 10 seconds..."
+        sleep 10
+        if ! git clone -q "${dl_url}" "${target_dir}"; then
+            fail_fn "The script failed to clone the directory \"${target_dir}\" twice and will now exit the build."
+        fi
+    else
+        printf "%s\n\n" "Successfully cloned: ${target_dir}"
+    fi
+
+    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}"
+}
+
+build()
+{
+    printf "\n%s\n%s\n" \
+        "Building ${1} - version ${2}" \
+        '===================================='
+
+    if [ -f "${packages}/${1}.done" ]; then
+        if grep -Fx "${2}" "${packages}/${1}.done" >/dev/null; then
+            echo "${1} version ${2} already built. Remove ${packages}/${1}.done lockfile to rebuild it."
+            return 1
+        elif ${latest}; then
+            echo "${1} is outdated and will be rebuilt using version ${2}"
+            return 0
+        else
+            echo "${1} is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove ${packages}/${1}.done lockfile."
+            return 1
+        fi
+    fi
+    return 0
+}
+
+build_done() { echo "${2}" >"${packages}/${1}.done"; }
+
+installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
+
+#
+# INSTALL APT PACKAGES
+#
+
+pkgs_fn()
+{
+    local pkg pkgs missing_pkgs
+
+    pkgs=(autoconf autogen automake build-essential ccache curl gettext git gtk-doc-tools libgtk-3-dev libgtk-4-dev
+          libgtkd-3-dev libhwy-dev libtool libtool-bin m4 ninja-build pkg-config python3-nautilus tilix tilix-common)
+
+    for pkg in ${pkgs[@]}
+    do
+        if ! installed "${pkg}"; then
+            missing_pkgs+=" ${pkg}"
+        fi
+    done
+
+    if [ -n "${missing_pkgs}" ]; then
+        if sudo apt -y install ${missing_pkgs}; then
+            echo 'The required APT packages were installed.'
+        else
+            fail_fn "These required APT packages failed to install: ${missing_pkgs}"
+        fi
+    else
+        echo 'The required APT packages are already installed.'
+    fi
+}
+
+#
+# DOWNLOAD D COMPILER
+#
+
+if build 'dmd' '2.105.1-0'; then
+    download 'https://downloads.dlang.org/releases/2023/dmd_2.105.1-0_amd64.deb' 'dmd-2.105.1-0.deb'
+    execute sudo apt -y install ./dmd-2.105.1-0.deb
+    build_done 'dmd' '2.105.1-0'
 fi
 
 #
-# DOWNLOAD, EXTRACT, AND INSTALL THE TILIX THEMES
+# INSTALL TILIX
 #
 
-if [ -d "${themes_dir}" ]; then
-    sudo rm -fr "${themes_dir}"
+if build 'tilix' 'git'; then
+    download_git 'https://github.com/gnunn1/tilix.git'
+    execute dub build --build=release
+    execute sudo sh install.sh
+    build_done 'tilix' 'git'
 fi
-mkdir -p "${themes_dir}"
 
-if [ ! -f "${dracula_file}" ]; then
-    if ! wget --show-progress -qO "${dracula_file}" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/Tilix%20Terminal/dracula.json'; then
-        fail_fn 'Failed to download the theme file: dracula.json'
+#
+# APPLY THEMES
+#
+
+if build 'tilix-themes' 'git'; then
+    download_git 'https://github.com/storm119/Tilix-Themes.git' 'tilix-themes'
+    if [ ! -d "${schemes_dir}" ]; then
+        execute mkdir -p "${schemes_dir}"
     fi
-fi
-
-if [ -f "${dracula_file}" ]; then
-    cp -f "${dracula_file}" "${schemes_dir}"
-else
-    fail_fn "Could not locate the theme file: ${dracula_file}"
+    cd 'Themes' || exit 1
+    execute cp -f 'argonaut.json' 'dracula.json' "${schemes_dir}"
+    cd ../ || exit 1
+    cd 'Themes-2' || exit 1
+    execute cp -f 'neopolitan.json'  'vibrant-ink.json' "${schemes_dir}"
+    build_done 'tilix-themes' 'git'
 fi
 
 #
 # MAKE TILIX THE DEFAULT TERMINAL
 #
 
-sudo update-alternatives --install /usr/bin/x-terminal-emulator x-terminal-emulator /usr/bin/tilix 75
-sudo update-alternatives --config x-terminal-emulator
+sudo update-alternatives --install /usr/bin/x-terminal-emulator x-terminal-emulator /usr/bin/tilix 50
 
 # CLEANUP FILES
 cleanup_fn
 
 # SHOW EXIT MESSAGE
-exit_fn 
+exit_fn
