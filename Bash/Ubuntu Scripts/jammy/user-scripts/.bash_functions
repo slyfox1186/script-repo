@@ -8,8 +8,8 @@
 gedit() { "$(type -P gedit)" "${@}" &>/dev/null; }
 geds() { "$(type -P sudo)" -H -u root "$(type -P gedit)" "${@}" &>/dev/null; }
 
-gted() { "$(type -P gted)" "${@}" &>/dev/null; }
-gteds() { "$(type -P sudo)" -H -u root "$(type -P gted)" "${@}" &>/dev/null; }
+gted() { "$(type -P gedit)" "${@}" &>/dev/null; }
+gteds() { "$(type -P sudo)" -H -u root "$(type -P gedit)" "${@}" &>/dev/null; }
 
 ###################
 ## FIND COMMANDS ##
@@ -125,7 +125,7 @@ rmdf()
 {
     clear
     perl -i -lne 's/\s*$//; print if ! $x{$_}++' "${1}"
-    gted "${1}"
+    gedit "${1}"
 }
 
 ###################
@@ -322,7 +322,7 @@ showpkgs()
 {
     dpkg --get-selections |
     grep -v deinstall > "${HOME}"/tmp/packages.list
-    gted "${HOME}"/tmp/packages.list
+    gedit "${HOME}"/tmp/packages.list
 }
 
 # PIPE ALL DEVELOPMENT PACKAGES NAMES TO file
@@ -332,7 +332,7 @@ getdev()
     grep "\-dev" |
     cut -d ' ' -f1 |
     sort > 'dev-packages.list'
-    gted 'dev-packages.list'
+    gedit 'dev-packages.list'
 }
 
 ################
@@ -1499,5 +1499,5 @@ jpgsize()
     sed -i "s/^..//g" "${random_dir}/img-sizes.txt"
     sed -i "s|^|${PWD}\/|g" "${random_dir}/img-sizes.txt"
     clear
-    nohup gted "${random_dir}/img-sizes.txt" &>/dev/null &
+    nohup gedit "${random_dir}/img-sizes.txt" &>/dev/null &
 }
