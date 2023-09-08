@@ -114,9 +114,7 @@ install_choice_fn()
 
 cd "${cwd}" || exit 1
 
-scripts=(m4 autoconf libtool pkg-config gettext-libiconv make bash binutils coreutils dbus diffutils
-         sed tar eog gawk gnutls grep imath isl nano ncurses nettle readline systemd texinfo util-linux
-         wget attr)
+scripts=(m4 autoconf libtool pkg-config make bash sed tar eog gawk grep nano wget)
 
 for script in ${scripts[@]}
 do
