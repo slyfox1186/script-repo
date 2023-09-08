@@ -7,7 +7,7 @@
 ##
 ##  Install: GCC 11.4.0 / 12.3.0 / 13.2.0
 ##
-##  Supported OS: Debian 12 / 11 / 10
+##  Supported OS: Debian 10 / 11 / 12
 ##                Ubuntu 22.04
 ##                Windows WSL2 is now working
 ##
