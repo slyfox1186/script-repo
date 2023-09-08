@@ -6,7 +6,7 @@
 ##
 ##  Purpose: Build LLVM-16
 ##
-##  Updated: 09.07.23
+##  Updated: 09.08.23
 ##
 ##  Script version: 1.1
 ##
@@ -25,10 +25,10 @@ fi
 
 script_ver=1.1
 archive_dir=llvm-project-16.0.6
-archive_url=https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.6/llvm-project-16.0.6.src.tar.xz
+archive_url=https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.6/${archive_dir}.src.tar.xz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
-cwd="${PWD}"/llvm-16-build-script
+cwd="${PWD}"/curl-16-build-script
 install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
@@ -210,9 +210,7 @@ cmake -S ../llvm                        \
 -DLLVM_TARGETS_TO_BUILD=host            \
 -DLLVM_ENABLE_PROJECTS="${list1}"       \
 -DLLVM_ENABLE_RUNTIMES="${list2}"
-
 ninja "-j$(nproc --all)"
-
 if ! sudo ninja "-j$(nproc --all)" install; then
     printf "\n%s\n\n" "Failed to execute: sudo ninja "-j$(nproc --all)" install."
     exit 1
@@ -220,6 +218,5 @@ fi
 
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
-
 # SHOW EXIT MESSAGE
 exit_fn
