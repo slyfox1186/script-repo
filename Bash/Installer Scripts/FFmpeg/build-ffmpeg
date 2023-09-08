@@ -607,8 +607,7 @@ fi
 #
 
 find_java="$(sudo find /usr/lib/jvm -type d -name java-*-openjdk-* | head -n1)"
-JAVA_HOME="${find_java}"
-export JAVA_HOME
+export JAVA_HOME="${find_java}"
 
 #
 # SET THE PATH VARIABLE
