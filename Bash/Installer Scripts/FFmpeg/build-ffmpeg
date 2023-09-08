@@ -26,7 +26,7 @@
 ##    - If the cuda libraries are not installed (for Geforce graphics cards only) the user
 ##    - will be prompted by the script to install them so that hardware acceleration is
 ##    - enabled when compiling FFmpeg
-##
+##o
 ##  Last Update: 08.31.23
 ##
 ##  Added: Debian OS Support for Bookworm (12)
@@ -1140,8 +1140,8 @@ if build 'openssl' '3.1.2'; then
                         --with-zlib-include="${workspace}"/include \
                         --with-zlib-lib="${workspace}"/lib
     execute make "-j${cpu_threads}"
-    execute sudo make install_sw
-    execute sudo make install_fips
+    execute make install_sw
+    execute make install_fips
     build_done 'openssl' '3.1.2'
 fi
 ffmpeg_libraries+=('--enable-openssl')
