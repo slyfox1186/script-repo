@@ -2,10 +2,14 @@
 
 clear
 
-cwd="${PWD}"/build-all-gnu-master
+cwd="${PWD}"/build-all-git-master
 repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 cnt=0
+
+if [ -d "${cwd}" ]; then
+    sudo rm -fr "${cwd}"
+fi
 
 if [ ! -d "${cwd}"/completed ]; then
     mkdir -p "${cwd}"/completed
@@ -52,23 +56,35 @@ cleanup_fn()
     esac
 }
 
-pkgs=(asciidoc autogen autoconf autoconf-archive automake binutils bison build-essential bzip2 ccache cmake
-      curl libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev m4 meson
-      nasm ninja-build texinfo xmlto yasm zlib1g-dev)
+installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
-for i in ${pkgs[@]}
+##
+## Install required APT packages
+##
+
+pkgs=(asciidoc autogen autoconf autoconf-archive automake binutils bison build-essential
+      bzip2 ccache cmake curl libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip
+      lzma-dev m4 meson nasm ninja-build texinfo xmlto yasm zlib1g-dev)
+
+for pkg in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+    if ! installed "${pkg}"; then
+        missing_pkgs+=" ${pkg}"
     fi
 done
 
-if [ -n "${missing_pkg}s" ]; then
-    sudo apt -y install ${missing_pkgs}
-    sudo apt -y autoremove
-    clear
+if [ -n "${missing_pkgs}" ]; then
+    echo '$ Installing missing packages'
+    echo
+    for i in "${missing_pkgs}"
+        do
+            if ! sudo apt -y install ${i}; then
+                fail_fn 'Failed to run APT package manager.'
+            fi
+        done
+else
+    echo '$ The packages are already installed.'
+    echo
 fi
 
 install_scripts_fn()
@@ -76,7 +92,7 @@ install_scripts_fn()
     local i scripts
     clear
 
-    scripts="$(sudo find . -maxdepth 1 -type f | sed 's/^..//g')"
+    scripts="$(sudo find . -maxdepth 1 -type f | sed 's/^..//g' | sort)"
 
     for i in ${scripts[@]} 
     do
@@ -89,6 +105,10 @@ install_scripts_fn()
         sleep 2
     done
 }
+
+#
+# ASK THE USER IF THEY WANT TO INSTALL ALL OF THE SCRIPTS
+#
 
 install_choice_fn()
 {
@@ -112,16 +132,18 @@ install_choice_fn()
     esac
 }
 
+#
+# DOWNLOAD ALL THE SCRIPTS
+#
+
 cd "${cwd}" || exit 1
 
-scripts=(m4 autoconf libtool pkg-config gettext-libiconv make bash binutils coreutils dbus diffutils
-         sed tar eog gawk gnutls grep imath isl nano ncurses nettle readline systemd texinfo util-linux
-         wget attr)
+scripts=(git nasm tools yasm openssl zstd aria2)
 
 for script in ${scripts[@]}
 do
     let cnt=cnt+1
-    wget -U "${user_agent}" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-${script}"
+    wget -U "${user_agent}" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-${script}"
     mv "build-${script}" "0${cnt}-build-${script}"
 done
 
@@ -133,3 +155,4 @@ cleanup_fn
 
 # SHOW THE EXIT MESSAGE
 exit_fn
+
