@@ -11,7 +11,9 @@ archive_dir=imath-3.1.9
 archive_url=https://github.com/AcademySoftwareFoundation/Imath/archive/refs/tags/v3.1.9.tar.gz
 archive_ext="${archive_url//*.}"
 cwd="${PWD}"/imath-build-script
+install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
     "iMath Build Script - v${script_ver}" \
@@ -183,12 +185,11 @@ fi
 #
 
 cd "${cwd}/${archive_dir}" || exit 1
-cmake -B build -DCMAKE_INSTALL_PREFIX=/usr/local \
-               -DCMAKE_BUILD_TYPE=Release        \
+cmake -B build -DCMAKE_INSTALL_PREFIX="${install_dir}" \
+               -DCMAKE_BUILD_TYPE=Release              \
                -G Ninja -Wno-dev
 ninja "-j$(nproc --all)" -C build
 if ! sudo ninja "-j$(nproc --all)" -C build install; then
-    ninja build clean
     printf "\n%s\n\n" 'Failed to install imath.'
     exit 1
 fi

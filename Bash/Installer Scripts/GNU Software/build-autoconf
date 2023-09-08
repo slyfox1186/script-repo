@@ -28,6 +28,7 @@ archive_dir=autoconf-latest
 archive_url=https://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz
 archive_ext="${archive_url//*.}"
 cwd="${PWD}"/autoconf-build-script
+install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
@@ -39,9 +40,10 @@ printf "%s\n%s\n\n" \
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ ! -d "${cwd}" ]; then
-    mkdir -p "${cwd}"
+if [ -d "${cwd}" ]; then
+    sudo rm -fr "${cwd}"
 fi
+mkdir -p "${cwd}"
 
 #
 # SET THE C+CPP COMPILERS
@@ -143,8 +145,8 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autoconf-archive autogen automake binutils bison build-essential bzip2 ccache curl
-      libc6-dev libpth-dev libtool libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev yasm)
+pkgs=(autoconf autoconf-archive autogen automake autopoint autotools-dev binutils bison build-essential bzip2
+      bzip2 ccache curl libc6-dev libpth-dev libtool libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev yasm)
 
 for i in ${pkgs[@]}
 do
@@ -205,12 +207,11 @@ cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 autoupdate
 cd build || exit 1
-../configure --prefix=/usr/local         \
+../configure --prefix="${install_dir}"   \
              --{build,host}="${pc_type}" \
              M4="$(type -P m4)"
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    make distclean
     printf "\n%s\n\n" 'Failed to install autoconf.'
     exit 1
 fi

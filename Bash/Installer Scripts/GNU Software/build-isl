@@ -10,8 +10,10 @@ script_ver=1.1
 archive_dir=isl-git
 archive_url=https://repo.or.cz/isl.git
 cwd="${PWD}"/isl-build-script
+install_dir=/usr/local
 repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
     "ISL Build Script - v${script_ver}" \
@@ -125,34 +127,23 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs_fn()
-{
-    pkgs=("${1}" autoconf autoconf-archive autogen automake binutils build-essential ccache clang cmake curl
-          git libclang-dev libtool libtool-bin llvm-dev lzip m4 nasm pkg-config zlib1g-dev yasm)
+pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache clang cmake
+      curl git libclang-dev libtool libtool-bin llvm-dev lzip m4 nasm pkg-config zlib1g-dev yasm)
 
 
-    for i in ${pkgs[@]}
-    do
-        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+for i in ${pkgs[@]}
+do
+    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
 
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
-        fi
-    done
-    unset i
-
-    if [ -n "${missing_pkgs}" ]; then
-        sudo apt -y install ${missing_pkgs}
-        clear
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${i}"
     fi
-}
+done
+unset i
 
-if [ -f /usr/local/include/gmp.h ]; then
-    gmp_flag=0
-    sudo apt -y remove libgmp-dev libgmp3-dev 2>/dev/null
-else
-    gmp_flag=1
-    pkgs_fn 'libgmp-dev libgmp3-dev'
+if [ -n "${missing_pkgs}" ]; then
+    sudo apt -y install ${missing_pkgs}
+    clear
 fi
 
 #
@@ -176,22 +167,15 @@ git clone "${archive_url}" "${cwd}/${archive_dir}"
 # BUILD PROGRAM FROM SOURCE
 #
 
-if [ "${gmp_flag}" -eq '0' ]; then
-    gmp_prefix=/usr/local
-else
-    gmp_prefix=/usr
-fi
-
 clear
 
 cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 mkdir build
 cd build || exit 1
-../configure --prefix=/usr/local             \
-             --{build,host}="${pc_type}"     \
-             --with-gmp-prefix="${gmp_prefix}" \
-             --with-clang=system             \
+../configure --prefix="${install_dir}"   \
+             --{build,host}="${pc_type}" \
+             --with-clang=system         \
              --with-pic
 make "-j$(nproc --all)"
 if ! sudo make install; then

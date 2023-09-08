@@ -28,6 +28,7 @@ archive_dir=grep-3.11
 archive_url=https://ftp.gnu.org/gnu/grep/grep-3.11.tar.xz
 archive_ext="${archive_url//*.}"
 cwd="${PWD}"/grep-build-script
+install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
@@ -245,7 +246,7 @@ fi
 cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 cd build || exit 1
-../configure --prefix=/usr/local                      \
+../configure --prefix="${install_dir}"                \
              --{build,host}="${pc_type}"              \
              --disable-nls                            \
              --enable-gcc-warnings=no                 \
@@ -258,7 +259,6 @@ cd build || exit 1
              PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    make distclean
     printf "\n%s\n\n" 'Failed to install grep.'
     exit 1
 fi

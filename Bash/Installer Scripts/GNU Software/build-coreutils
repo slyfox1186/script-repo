@@ -29,8 +29,8 @@ script_ver=1.2
 archive_dir=coreutils-9.4
 archive_url=https://ftp.gnu.org/gnu/coreutils/${archive_dir}.tar.xz
 archive_ext="${archive_url//*.}"
-install_prefix=/usr/local
 cwd="${PWD}"/coreutils-build-script
+install_dir=/usr/local
 repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
@@ -207,7 +207,7 @@ fi
 cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 cd build || exit 1
-../configure --prefix="${install_prefix}" \
+../configure --prefix="${install_dir}"    \
              --{build,host}="${pc_type}"  \
              --disable-nls                \
              --enable-gcc-warnings=no     \
