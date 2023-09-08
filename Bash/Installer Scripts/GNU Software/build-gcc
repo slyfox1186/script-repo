@@ -909,6 +909,8 @@ build_gcc_13_fn()
 # CALL EACH GCC FUNCTION BY VERSION LOWEST TO HIGHEST
 #
 
+gcc_prompt
+
 case "${gcc_choice}" in
     1)
             build_gcc_11_fn
