@@ -1404,7 +1404,8 @@ pre_check_ver 'mm2/Little-CMS' '1' 'T'
 if build 'lcms2' "${g_ver}"; then
     download "https://github.com/mm2/Little-CMS/archive/refs/tags/lcms${g_ver}.tar.gz" "lcms2-${g_ver}.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}" --disable-shared
+    execute ./configure --prefix="${workspace}" \
+                        --disable-shared
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'lcms2' "${g_ver}"
@@ -1414,8 +1415,9 @@ ffmpeg_libraries+=('--enable-lcms2')
 pre_check_ver 'gflags/gflags' '1' 'T'
 if build 'gflags' "${g_ver}"; then
     download "https://github.com/gflags/gflags/archive/refs/tags/v${g_ver}.tar.gz" "gflags-${g_ver}.tar.gz"
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} -DINSTALL_HEADERS=ON \
-        -DBUILD_{STATIC_LIBS,gflags_LIB}=ON -DREGISTER_{BUILD_DIR,INSTALL_PREFIX}=ON -G Ninja -Wno-dev
+    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} \
+                           -DINSTALL_HEADERS=ON -DBUILD_{STATIC_LIBS,gflags_LIB}=ON   \
+                           -DREGISTER_{BUILD_DIR,INSTALL_PREFIX}=ON -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'gflags' "${g_ver}"
