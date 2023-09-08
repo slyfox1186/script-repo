@@ -726,7 +726,7 @@ cuda_download_fn()
     cuda_ver="$(cat /usr/local/cuda/version.json | jq -r '.cuda.version')"
 
     if [ -z "${cuda_ver}" ]; then
-        fail_fn 'Unable to locate the file: /usr/local/cuda/version.json'
+        fail_fn "Unable to locate the file: /usr/local/cuda/version.json:${LINENO}"
     else
         export PATH="${PATH}:${cuda_path}"
     fi
@@ -759,7 +759,7 @@ install_cuda_fn()
         case "${choice}" in
                 1)      cuda_download_fn;;
                 2)      export PATH="${PATH}:${cuda_path}";;
-                *)      fail_fn 'Bad user input.';;
+                *)      fail_fn "Bad user input.:${LINENO}";;
         esac
     else
         printf "\n%s\n\n%s\n%s\n\n%s\n%s\n\n" \
@@ -1091,15 +1091,21 @@ if build 'autoconf' 'latest'; then
     build_done 'autoconf' 'latest'
 fi
 
-if build 'libtool' '2.4.6'; then
-    download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.6.tar.xz'
+case "${OS}" in
+    Debian*)    libtool_ver='2.4.7';;
+    Ubuntu)     libtool_ver='2.4.6';;
+    *)          fail_fn "Unable to get the OS version:${LINENO}"
+esac
+
+if build 'libtool' "${libtool_ver}"; then
+    download "https://ftp.gnu.org/gnu/libtool/libtool-${libtool_ver}.tar.xz"
     execute ./configure --prefix="${workspace}"     \
                         --{build,host}="${pc_type}" \
                         --with-pic \
                         M4="${workspace}"/bin/m4
     execute make "-j${cpu_threads}"
     execute make install
-    build_done 'libtool' '2.4.6'
+    build_done 'libtool' "${libtool_ver}"
 fi
 
 if build 'pkg-config' '0.29.2'; then
