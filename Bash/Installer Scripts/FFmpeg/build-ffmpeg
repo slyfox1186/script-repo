@@ -845,7 +845,7 @@ ffmpeg_install_test()
             printf "\n%s\n\n%s\n\n%s\n\n" \
                 "Unable to locate the binary file: ${workspace}/bin/${i}" \
                 "Please report this at:" \
-                "${repo}/issues"
+                "${web_repo}/issues"
             read -p 'You can press enter to continue, however, please consider creating an issue report.'
             clear
         fi
