@@ -5,23 +5,23 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo/edit/main/shell/installers/imagemagick/build-magick
 ##
-##  Purpose: Builds ImageMagick 7 from the source code obtained
-##           from the official GitHub repository.
+##  Purpose: Build ImageMagick 7 from the source code obtained from the official GitHub repository.
 ##
-##  Function: ImageMagick is the leading open-source command line
-##            image processor. It can blur, sharpen, warp, reduce
-##            total file size, ect... The possibilities are vast and wide.
+##  Function: ImageMagick is the leading open-source command line image processor.
+##            It can blur, sharpen, warp, reduce total file size, ect... The possibilities are vast and wide.
 ##
-##  Method: The script will search GitHub for the latest released version
-##          and upon execution will import the information into the script.
+##  Method: The script will search GitHub for the latest released version and upon execution will import the
+##          information into the script.
 ##
 ##  Added: Debian OS support for versions - 10 / 11 / 12
 ##  Added: A browser user-agent string to the curl command
 ##  Added: A CPPFLAGS variable to ImageMagick's configure script.
 ##
-##  Updated: 09.04.23
+##  Changed: Some support libraries prefix paths to avoid installing into the system.
 ##
-##  Script Version: 2.7
+##  Updated: 09.07.23
+##
+##  Script Version: 2.8
 ##
 #############################################################################################################
 
@@ -36,7 +36,7 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-script_ver=2.7
+script_ver=2.8
 progname="${0:2}"
 cwd="${PWD}"/magick-build-script
 packages="${cwd}"/packages
@@ -439,7 +439,7 @@ pkgs_fn()
         clear
     fi
 }
-    
+
 #
 # TEST THE OS AND ITS VERSION IF UBUNTU THEN CALL THE pkgs_fn
 #
@@ -575,6 +575,23 @@ printf "%s\n\n%s\n%s\n%s\n\n" \
     '==========================================' \
     "This script will use (${cpu_threads}) CPU threads for parallel processing to accelerate the building speed."
 
+box_out_banner2()
+{
+    input_char=$(echo "${@}" | wc -c)
+    line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
+    tput bold
+    line="$(tput setaf 3)${line}"
+    space=${line//-/ }
+    echo " ${line}"
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    echo " ${line}"
+    tput sgr 0
+}
+box_out_banner2 'Building support libraries'
+sleep 2
+
 #
 # INSTALL OFFICIAL IMAGEMAGICK LIBS
 #
@@ -619,24 +636,6 @@ if build 'libjxl' '0.8.1'; then
     build_done 'libjxl' '0.8.1'
 fi
 
-clear
-box_out_banner2()
-{
-    input_char=$(echo "${@}" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
-    tput bold
-    line="$(tput setaf 3)${line}"
-    space=${line//-/ }
-    echo " ${line}"
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
-    printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
-    echo " ${line}"
-    tput sgr 0
-}
-box_out_banner2 'Begin compiling from source code'
-sleep 2
-
 #
 # GET PC TYPE
 #
@@ -648,6 +647,40 @@ pc_type="$(source "${cwd}/config.guess")"
 #
 # BUILD FROM SOURCE CODE
 #
+
+
+if build 'm4' 'latest'; then
+    download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
+    execute ./configure --prefix="${workspace}"            \
+                        --{build,host,target}="${pc_type}" \
+                        --disable-nls                      \
+                        --enable-c++
+    execute make "-j${cpu_threads}"
+    execute make install
+    build_done 'm4' 'latest'
+fi
+
+if build 'autoconf' 'latest'; then
+    download 'http://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz'
+    execute autoreconf -fi
+    execute ./configure --prefix="${workspace}"     \
+                        --{build,host}="${pc_type}" \
+                        M4="${workspace}"/bin/m4
+    execute make "-j${cpu_threads}"
+    execute make install
+    build_done 'autoconf' 'latest'
+fi
+
+if build 'libtool' '2.4.6'; then
+    download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.6.tar.xz'
+    execute ./configure --prefix="${workspace}"     \
+                        --{build,host}="${pc_type}" \
+                        --with-pic \
+                        M4="${workspace}"/bin/m4
+    execute make "-j${cpu_threads}"
+    execute make install
+    build_done 'libtool' '2.4.6'
+fi
 
 git_ver_fn 'libsdl-org/libtiff' 'T'
 if build 'tiff' "${g_ver}"; then
@@ -665,22 +698,22 @@ fi
 if build 'jpeg-turbo' 'git'; then
     download_git 'https://github.com/imageMagick/jpeg-turbo.git'
     execute cmake -S . \
-            -DCMAKE_{INSTALL_PREFIX="${install_dir}",BUILD_TYPE=Release} \
-            -DENABLE_{SHARED,STATIC}=ON                                  \
+            -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} \
+            -DENABLE_{SHARED,STATIC}=ON                                \
             -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}"
-    execute sudo ninja "-j${cpu_threads}" install
+    execute ninja "-j${cpu_threads}" install
     build_done 'jpeg-turbo' 'git'
 fi
 
 if build 'libfpx' 'git'; then
     download_git 'https://github.com/imageMagick/libfpx.git'
     execute autoreconf -fi
-    execute ./configure --prefix="${install_dir}"          \
+    execute ./configure --prefix="${workspace}"            \
                         --{build,host,target}="${pc_type}" \
                         --with-pic
     execute make "-j${cpu_threads}"
-    execute sudo make install
+    execute make install
     build_done 'libfpx' 'git'
 fi
 
@@ -697,12 +730,12 @@ fi
 if build 'png12' '1.2.59'; then
     download 'https://github.com/glennrp/libpng/archive/refs/tags/v1.2.59.tar.gz' 'libpng-1.2.59.tar.gz'
     execute ./autogen.sh
-    execute ./configure --prefix=/usr               \
+    execute ./configure --prefix="${workspace}"     \
                         --{build,host}="${pc_type}" \
                         --with-pic                  \
                         --with-pkgconfigdir="${workspace}"/lib/pkgconfig
     execute make "-j${cpu_threads}"
-    execute sudo make install
+    execute make install
     build_done 'png12' '1.2.59'
 fi
 
@@ -733,7 +766,6 @@ if build 'c2man' 'git'; then
     execute make depend
     execute make "-j${cpu_threads}"
     execute sudo make install
-    execute make distclean
     build_done 'c2man' 'git'
 fi
 
@@ -797,6 +829,24 @@ fi
 #
 # BEGIN IMAGEMAGICK BUILD
 #
+
+echo
+box_out_banner3()
+{
+    input_char=$(echo "${@}" | wc -c)
+    line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
+    tput bold
+    line="$(tput setaf 3)${line}"
+    space=${line//-/ }
+    echo " ${line}"
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    echo " ${line}"
+    tput sgr 0
+}
+box_out_banner3 'Build ImageMagick'
+sleep 2
 
 git_ver_fn 'imagemagick/imagemagick' 'T'
 if build 'imageMagick' "${g_ver}"; then
