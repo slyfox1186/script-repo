@@ -217,20 +217,6 @@ fix()
     sudo apt update
 }
 
-listd()
-{
-    local search_cache
-    clear
-
-    if [ -n "${1}" ]; then
-        sudo apt list -- "*${1}*"-dev | awk -F'/' '{print $1}'
-    else
-        read -p 'Enter the string to search: ' search_cache
-        clear
-        sudo apt list -- "*${1}*-dev" | awk -F'/' '{print $1}'
-    fi
-}
-
 
 list()
 {
@@ -238,11 +224,25 @@ list()
     clear
 
     if [ -n "${1}" ]; then
-        sudo apt list "*${1}*" | awk -F'/' '{print $1}'
+        sudo apt list "*${1}*" 2>/dev/null | awk -F'/' '{print $1}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt list "*${1}*" | awk -F'/' '{print $1}'
+        sudo apt list "*${1}*" 2>/dev/null | awk -F'/' '{print $1}'
+    fi
+}
+
+listd()
+{
+    local search_cache
+    clear
+
+    if [ -n "${1}" ]; then
+        sudo apt list -- "*${1}*"-dev 2>/dev/null | awk -F'/' '{print $1}'
+    else
+        read -p 'Enter the string to search: ' search_cache
+        clear
+        sudo apt list -- "*${1}*"-dev 2>/dev/null | awk -F'/' '{print $1}'
     fi
 }
 
