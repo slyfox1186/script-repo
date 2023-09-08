@@ -1354,7 +1354,7 @@ if build 'libwebp' 'git'; then
     execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} \
         -DWEBP_{BUILD_ANIM_UTILS,BUILD_EXTRAS,BUILD_GIF2WEBP,BUILD_IMG2WEBP,BUILD_LIBWEBPMUX}=OFF \
         -DWEBP_{BUILD_VWEBP,BUILD_WEBPINFO,BUILD_WEBPMUX,ENABLE_SWAP_16BIT_CSP,LINK_STATIC}=OFF \
-        -DWEBP_{BUILD_CWEBP,BUILD_DWEBP}=ON -DBUILD_SHARED_LIBS=ON -DZLIB_INCLUDE_DIR=/usr/include \
+        -DWEBP_{BUILD_CWEBP,BUILD_DWEBP}=ON -DBUILD_SHARED_LIBS=ON -DZLIB_INCLUDE_DIR="${workspace}" \
         -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
