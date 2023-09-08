@@ -729,7 +729,7 @@ gcc_prompt()
         5)      gcc_choice=5;;
         *)
                 clear
-                printf "%s\n\n" 'Bad user input. Re-setting script...'
+                printf "%s\n\n" 'Bad user input. Resetting script...'
                 sleep 3
                 unset answer
                 clear
