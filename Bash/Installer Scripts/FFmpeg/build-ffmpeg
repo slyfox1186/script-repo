@@ -958,7 +958,8 @@ ubuntu_os_version()
     jammy_lunar_pkgs+=' libsrt-doc libreadline-dev libpipewire-0.3-dev libwayland-dev libdecor-0-dev libde265-dev'
 
     case "${VER}" in
-        23.04|22.04)    pkgs_fn "${jammy_lunar_pkgs}";;
+        23.04|22.10)    pkgs_fn "${jammy_lunar_pkgs} librist-dev";;
+        22.04)          pkgs_fn "${jammy_lunar_pkgs}";;
         20.04)          pkgs_fn "${focal_pkgs}";;
         18.04)          pkgs_fn "${bionic_pkgs}";;
         *)              fail_fn 'Could not detect the Ubuntu version.';;
