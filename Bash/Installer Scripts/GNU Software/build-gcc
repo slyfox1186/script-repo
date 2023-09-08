@@ -7,7 +7,8 @@
 ##
 ##  Install: GCC 11.4.0 / 12.3.0 / 13.2.0
 ##
-##  Supported OS: Linux Ubuntu Jammy (22.04.02)
+##  Supported OS: Debian 12 / 11 / 10
+##                Ubuntu 22.04
 ##                Windows WSL2 is now working
 ##
 ##  Screenshot of Ubuntu build: https://gcc-screenshot.optimizethis.net
