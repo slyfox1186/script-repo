@@ -123,6 +123,11 @@ do
     mv "build-${script}" "0${cnt}-build-${script}"
 done
 
+# RENAME SOME OF THE    FILES SO THEY EXECUTE IN THE CORRECT ORDER
+mv 011-build-grep 11-build-grep
+mv 012-build-nano 12-build-nano
+mv 013-build-wget 13-build-wget
+    
 # ASK THE USER IF THEY WANT TO INSTALL ALL OF THE SCRIPTS
 install_choice_fn
 
