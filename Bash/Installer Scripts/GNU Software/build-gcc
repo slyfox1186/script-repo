@@ -32,7 +32,7 @@
 ##  Fixed: zstdn, zlib, and bison build issues.
 ##  Fixed: Debian not being able to compile gcc due to the ada language being included
 ##  Fixed: Debian missing and uninstallable APT package errors
-##  Fixed: Ubuntu Jammy zstd not building. Changed from meson to cmake.
+##  Fixed: Ubuntu Jammy zstd not building. Changed from meson to cmake
 ##
 ##  Changed: the language support on Ubuntu to "all" for each GCC version which allows them to
 ##           build every language they are able to.
