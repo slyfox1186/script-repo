@@ -10,8 +10,8 @@
 ##  Supported OS: Linux Ubuntu Jammy (22.04.02)
 ##                Windows WSL2 is now working
 ##
-##  Last Script Update: 08.31.23
-##  Script Version: 4.3
+##  Last Script Update: 09.07.23
+##  Script Version: 4.4
 ##
 ##  Updated: GCC-13 to version - 13.2.0
 ##
@@ -27,9 +27,12 @@
 ##
 ##  Updated: the LIBRARY_PATH variable to include the default paths of the APT "gcc" version
 ##
+##  Updated: Added options to choose what GCC versions to install.
+##
 ##  Fixed: zstdn, zlib, and bison build issues.
 ##  Fixed: Debian not being able to compile gcc due to the ada language being included
 ##  Fixed: Debian missing and uninstallable APT package errors
+##  Fixed: Ubuntu Jammy zstd not building. Changed from meson to cmake.
 ##
 ##  Changed: the language support on Ubuntu to "all" for each GCC version which allows them to
 ##           build every language they are able to.
@@ -47,7 +50,7 @@
 ##  DEBIAN 10      |  UNKNOWN
 ##
 ##  UBUNTU LUNAR   |  PASS
-##  UBUNTU JAMMY   |  PASS
+##  UBUNTU JAMMY   |  PASS (To anyone with dbus X-11 issues... I could not reproduce this issue myself. Not sure what is going on with your OS)
 ##  UBUNTU FOCAL   |  UNKNOWN
 ##  UBUNTU BIONIC  |  UNKNOWN
 ##
@@ -56,6 +59,7 @@
 ##  GCC [ 11 ] NOTES
 ##
 ##  Debian Bookworm will not build the "ada" language for gcc-11, so it's disabled.
+##
 ##  To date, I have not tested Debian Buster or Bullseye, so make changes as necessary.
 ##  Ubuntu seems to have no issue building the "ada" language, so it remains enabled.
 ##
@@ -131,8 +135,8 @@ ${PATH}\
 #
 
 tmp_dir="$(mktemp -d)"
-pre_file="${tmp_dir}"/file_1.txt
-post_file="${tmp_dir}"/file_2.txt
+pre_file="${tmp_dir}"/file1.txt
+post_file="${tmp_dir}"/file2.txt
 
 echo "${PATH}" > "${pre_file}"
 
@@ -151,12 +155,12 @@ clear
 # SET THE GLOBAL SCRIPT VARIABLES
 #
 
-script_ver=4.3
+script_ver=4.4
 install_dir=/usr/local
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 latest=false
 repo=https://github.com/slyfox1186/script-repo
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
-debug=OFF # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
+debug=ON # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
 
 #
 # SET THE C & C++ COMPILERS
@@ -397,9 +401,9 @@ download_git()
 
 build()
 {
-    echo
-    echo "building ${1} - version ${2}"
-    echo '===================================='
+    printf "\n%s\n%s\n" \
+        "Building ${1} - version ${2}" \
+        '======================================'
 
     if [ -f "${packages}/${1}.done" ]; then
         if grep -Fx "${2}" "${packages}/${1}.done" >/dev/null; then
@@ -491,7 +495,7 @@ pkgs_fn()
 # DETECT THE HIGHEST GCC VERSION ALREADY INSTALLED AND INSTALL THE RESPECTIVE APT PACKAGES
 #
 
-get_gcc_ver="$(sudo find /usr/bin -name gcc-1* | head -n1)"
+get_gcc_ver="$(sudo find /usr/bin/ -name gcc-1* | head -n1)"
 case "${get_gcc_ver}" in
     /usr/bin/gcc-10)        apt_gcc_ver='gcc-10-base libgcc-10-dev gcc-10-multilib';;
     /usr/bin/gcc-11)        apt_gcc_ver='gcc-11-base libgcc-11-dev gcc-11-multilib';;
@@ -507,9 +511,9 @@ fi
 # GET PC TYPE
 #
 
-curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "${cwd}/config.guess"
-pc_type="$(source "${cwd}/config.guess")"
+curl -A "${user_agent}" -Lso "${cwd}"/config.guess 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+chmod +x "${cwd}"/config.guess
+pc_type="$(source "${cwd}"/config.guess)"
 gcc_prefix="${pc_type}-"
 
 #
@@ -634,14 +638,12 @@ box_out_banner "GCC Build Script: v${script_ver}"
 
 if build 'm4' 'latest'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
-    execute ./configure             \
-            --prefix="${workspace}" \
-            --disable-nls           \
-            --enable-c++            \
-            --enable-threads=posix
+    execute ./configure --prefix="${workspace}" \
+                        --disable-nls           \
+                        --enable-c++            \
+                        --enable-threads=posix
     execute make "-j${cpu_threads}"
     execute make install
-    execute make distclean
     build_done 'm4' 'latest'
 fi
 
@@ -652,39 +654,32 @@ if build 'automake' '1.16.5'; then
     execute ./configure --prefix="${workspace}"
     execute make "-j${cpu_threads}"
     execute make install
-    execute make distclean
     build_done 'automake' '1.16.5'
 fi
 
 if build 'libtool' '2.4.7'; then
     download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
-    execute ./configure             \
-            --prefix="${workspace}"
-    execute make "-j${cpu_threads}"
-    execute make install
-    execute make distclean
-    build_done 'libtool' '2.4.7'
-fi
-
-# The latest bison requires autoconf v2.71 to compile but GCC requires v2.69 which is why autoconf is built twice.
-if build 'autoconf-latest' 'latest'; then
-    download 'https://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz'
     execute ./configure --prefix="${workspace}"
     execute make "-j${cpu_threads}"
     execute make install
-    execute make distclean
-    build_done 'autoconf-latest' 'latest'
+    build_done 'libtool' '2.4.7'
+fi
+
+if build 'autoconf' '2.69'; then
+    download 'https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.xz'
+    execute ./configure --prefix="${workspace}"
+    execute make "-j${cpu_threads}"
+    execute make install
+    build_done 'autoconf' '2.69'
 fi
 
 git_ver_fn 'gperftools/gperftools' '1' 'R'
 g_ver="${g_ver//gperftools-/}"
 if build 'gperftools' "${g_ver}"; then
     download "https://github.com/gperftools/gperftools/releases/download/gperftools-${g_ver}/gperftools-${g_ver}.tar.gz"
-    execute ./configure --prefix="${workspace}" \
-                        --disable-shared
+    execute ./configure --prefix="${workspace}" --disable-shared
     execute make "-j${cpu_threads}"
     execute make install
-    execute make distclean
     build_done 'gperftools' "${g_ver}"
 fi
 
@@ -707,17 +702,7 @@ if build 'zlib' "${g_ver}"; then
     execute ./configure --prefix="${workspace}"
     execute make "-j${cpu_threads}"
     execute make install
-    execute make distclean
     build_done 'zlib' "${g_ver}"
-fi
-
-if build 'autoconf-v269' '2.69'; then
-    download 'https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.xz'
-    execute ./configure --prefix="${workspace}"
-    execute make "-j${cpu_threads}"
-    execute make install
-    execute make distclean
-    build_done 'autoconf-v269' '2.69'
 fi
 
 #
@@ -726,9 +711,9 @@ fi
 
 gcc_prompt()
 {
-    printf "\n%s\n%s\n\n%s\n%s\n%s\n%s\n%s\n\n" \
-        'Choose what to install' \
-        '===========================' \
+    printf "%s\n%s\n\n%s\n%s\n%s\n%s\n%s\n\n" \
+        'Choose the GCC version(s) to install' \
+        '======================================' \
         '[1] All' \
         '[2] GCC 12+13' \
         '[3] GCC 11' \
@@ -906,7 +891,7 @@ build_gcc_13_fn()
 }
 
 #
-# CALL EACH GCC FUNCTION BY VERSION LOWEST TO HIGHEST
+# PROMPT THE USER TO SELECT THE GCC VERSION(S) TO INSTALL
 #
 
 gcc_prompt
