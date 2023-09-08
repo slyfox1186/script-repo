@@ -606,7 +606,7 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-find_java="$(sudo find /usr/lib/jvm -type d -name java-*-openjdk-*)"
+find_java="$(sudo find /usr/lib/jvm -type d -name java-*-openjdk-* | head -n1)"
 JAVA_HOME="${find_java}"
 export JAVA_HOME
 
@@ -1845,7 +1845,13 @@ git_ver_fn '206' '2' 'T'
 if build 'libbluray' "${g_ver1}"; then
     download "https://code.videolan.org/videolan/libbluray/-/archive/${g_ver1}/${g_ver1}.tar.gz" "libbluray-${g_ver1}.tar.gz"
     execute autoreconf -fi
-    execute ./configure --prefix="${workspace}" --disable-shared --without-libxml2
+    execute ./bootstrap
+    execute ./configure --prefix="${workspace}"            \
+                        --disable-extra-warnings           \
+                        --disable-shared                   \
+                        --disable-werror                   \
+                        --without-libxml2                  \
+                        PKG_CONFIG="$(type -P pkg-config)"
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'libbluray' "${g_ver1}"
