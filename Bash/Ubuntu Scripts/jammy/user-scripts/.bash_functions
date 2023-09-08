@@ -1500,3 +1500,4 @@ jpgsize()
     sed -i "s|^|${PWD}\/|g" "${random_dir}/img-sizes.txt"
     clear
     nohup gted "${random_dir}/img-sizes.txt" &>/dev/null &
+}
