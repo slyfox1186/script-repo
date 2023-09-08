@@ -261,6 +261,43 @@ if ! sudo make install_sw; then
     fail_fn 'Failed to execute: sudo make install_sw'
 fi
 
+#
+# IF UBUNTU IS THE CURRENT OS THEN YOU MUST SOFTLINK FOR OPENSSL TO FUNCTION
+#
+
+debian_os_version() { clear; }
+
+ubuntu_os_version() { sudo ln -sf /usr/lib64/libcrypto.so.3 /lib/x86_64-linux-gnu/; }
+
+if [ -f /etc/os-release ]; then
+    source /etc/os-release
+    OS="${NAME}"
+    VER="${VERSION_ID}"
+elif type lsb_release >/dev/null 2>&1; then
+    OS="$(lsb_release -si)"
+    VER="$(lsb_release -sr)"
+elif [ -f /etc/lsb-release ]; then
+    source /etc/lsb-release
+    OS="${DISTRIB_ID}"
+    VER="${DISTRIB_RELEASE}"
+elif [ -f /etc/debian_version ]; then
+    OS=Debian
+    VER="$(cat /etc/debian_version)"
+else
+    OS="$(uname -s)"
+    VER="$(uname -r)"
+fi
+
+#
+# TEST THE OS AND ITS VERSION IF UBUNTU THEN CALL THE pkgs_fn
+#
+
+case "${OS}" in
+    Debian*)        debian_os_version;;
+    Ubuntu)         ubuntu_os_version;;
+    *)              fail_fn 'Could not detect the OS architecture.';;
+esac
+
 printf "\n%s\n%s\n\n" \
     'Running: sudo make install_fips' \
     '===================================='
