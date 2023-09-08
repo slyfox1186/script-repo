@@ -28,6 +28,7 @@ archive_dir=binutils-2.41
 archive_url=https://ftp.gnu.org/gnu/binutils/binutils-2.41.tar.lz
 archive_ext="${archive_url//*.}"
 cwd="${PWD}"/binutils-build-script
+install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
@@ -205,13 +206,12 @@ fi
 cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 cd build || exit 1
-../configure --prefix=/usr/local                                       \
-             --{build,host,target}="${pc_type}"                        \
-             --enable-lto                                              \
+../configure --prefix="${install_dir}"          \
+             --{build,host,target}="${pc_type}" \
+             --enable-lto                       \
              --enable-year2038
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    make distclean
     printf "\n%s\n\n" 'Failed to install binutils.'
     exit 1
 fi

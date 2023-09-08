@@ -28,8 +28,10 @@ archive_dir=emacs-29.1
 archive_url=https://ftp.gnu.org/gnu/emacs/emacs-29.1.tar.xz
 archive_ext="${archive_url//*.}"
 cwd="${PWD}"/emacs-build-script
+install_dir=/usr/local
 repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
     "emacs Build Script - v${script_ver}" \
@@ -206,7 +208,7 @@ cd "${cwd}/${archive_dir}" || exit 1
 sed -i 's/-DPROFILING=1 -pg/-DPROFILING=0 -pg/g' configure.ac
 autoreconf -fi
 cd build || exit 1
-../configure --prefix=/usr/local
+../configure --prefix="${install_dir}"
 make "-j$(nproc --all)"
 if ! sudo make install; then
     fail_fn "\n%s\n\n" 'Failed to execute: sudo make install'
