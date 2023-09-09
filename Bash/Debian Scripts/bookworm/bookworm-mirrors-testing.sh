@@ -9,7 +9,7 @@ if [ ! -f "${list}.bak" ]; then
     sudo cp -f "${list}" "${list}.bak"
 fi
 
-cat > /etc/apt/sources.list <<'EOF'
+cat > "${list}" <<'EOF'
 #######################################################################################
 ##
 ##  DEBIAN TESTING MIRRORS
