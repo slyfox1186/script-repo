@@ -1140,8 +1140,8 @@ if build 'openssl' '3.1.2'; then
                         --with-zlib-include="${workspace}"/include \
                         --with-zlib-lib="${workspace}"/lib
     execute make "-j${cpu_threads}"
-    execute make install_sw
-    execute make install_fips
+    execute sudo make install_sw
+    execute sudo make install_fips
     build_done 'openssl' '3.1.2'
 fi
 ffmpeg_libraries+=('--enable-openssl')
