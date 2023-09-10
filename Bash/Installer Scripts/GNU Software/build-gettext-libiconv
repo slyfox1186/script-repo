@@ -31,7 +31,7 @@ archive_url2=https://ftp.gnu.org/gnu/gettext/gettext-0.22.tar.lz
 archive_ext1="${archive_url1//*.}"
 archive_ext2="${archive_url2//*.}"
 cwd="${PWD}"/gettext-libiconv-build-script
-install_prefix=/usr/local
+install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
@@ -261,7 +261,7 @@ cd "${cwd}/${archive_dir1}" || exit 1
 mkdir build
 cd build || exit 1
 ../configure --{build,host}="${pc_type}"  \
-             --prefix="${install_prefix}" \
+             --prefix="${install_dir}" \
              --disable-nls                \
              --enable-static              \
              --with-pic
@@ -270,7 +270,7 @@ if ! sudo make install; then
     printf "\n%s\n\n" "Failed to install: ${archive_dir1}."
     exit 1
 fi
-sudo libtool --finish "${install_prefix}/lib"
+sudo libtool --finish "${install_dir}/lib"
 
 printf "\n%s\n%s\n\n" \
     'Building gettext - v0.22' \
@@ -281,8 +281,8 @@ autoupdate
 ./autogen.sh
 mkdir build
 cd build || exit 1
-../configure --{build,host}="${pc_type}"  \
-             --prefix="${install_prefix}" \
+../configure --prefix="${install_dir}"    \
+             --{build,host}="${pc_type}"  \
              --enable-shared              \
              --enable-static              \
              --with-pic
@@ -291,7 +291,7 @@ if ! sudo make install; then
     printf "\n%s\n\n" "Failed to install: ${archive_dir2}."
     exit 1
 fi
-sudo libtool --finish "${install_prefix}/lib"
+sudo libtool --finish "${install_dir}/lib"
 
 # CLEANUP FILES
 cleanup_fn

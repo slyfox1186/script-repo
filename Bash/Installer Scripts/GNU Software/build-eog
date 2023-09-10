@@ -30,6 +30,7 @@ archive_url=https://download.gnome.org/sources/eog/44/eog-44.3.tar.xz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/eog-build-script
+install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 debug=OFF
@@ -209,8 +210,9 @@ fi
 
 clear
 cd "${cwd}/${archive_dir}" || exit 1
-meson setup build --buildtype=release      \
-                  --default-library=static \
+meson setup build --prefix="${install_dir}" \
+                  --buildtype=release       \
+                  --default-library=static  \
                   --strip
 ninja "-j$(nproc --all)" -C build
 if ! sudo ninja "-j$(nproc --all)" -C build install; then

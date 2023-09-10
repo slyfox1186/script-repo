@@ -28,6 +28,7 @@ archive_dir=dbus-1.15.6
 archive_url=https://dbus.freedesktop.org/releases/dbus/dbus-1.15.6.tar.xz
 archive_ext="${archive_url//*.}"
 cwd="${PWD}"/dbus-build-script
+install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
@@ -206,21 +207,21 @@ fi
 
 cd "${cwd}/${archive_dir}" || exit 1
 cd build || exit 1
-../configure --prefix=/usr/local                    \
-             --{build,host}="${pc_type}"            \
-             --enable-apparmor                      \
-             --enable-code-coverage                 \
-             --enable-epoll                         \
-             --enable-inotify                       \
-             --enable-qt-help=auto                  \
-             --enable-selinux                       \
-             --enable-systemd                       \
-             --enable-tests                         \
-             --enable-user-session                  \
-             --enable-x11-autolaunch                \
-             --with-pic                             \
-             --with-valgrind                        \
-             PKG_CONFIG="$(type -P pkg-config)"     \
+../configure --prefix="${install_dir}"          \
+             --{build,host}="${pc_type}"        \
+             --enable-apparmor                  \
+             --enable-code-coverage             \
+             --enable-epoll                     \
+             --enable-inotify                   \
+             --enable-qt-help=auto              \
+             --enable-selinux                   \
+             --enable-systemd                   \
+             --enable-tests                     \
+             --enable-user-session              \
+             --enable-x11-autolaunch            \
+             --with-pic                         \
+             --with-valgrind                    \
+             PKG_CONFIG="$(type -P pkg-config)" \
              PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
 make "-j$(nproc --all)"
 if ! sudo make install; then

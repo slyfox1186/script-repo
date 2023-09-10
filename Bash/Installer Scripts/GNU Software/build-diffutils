@@ -204,7 +204,6 @@ cd build || exit 1
              --enable-threads=posix
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    make distclean
     printf "\n%s\n\n" 'Failed to install diffutils.'
     exit 1
 fi
