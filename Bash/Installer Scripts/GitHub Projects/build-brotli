@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2162,SC2317
 
 ###########################################################################################################
 ##
@@ -80,15 +81,15 @@ export PATH
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/usr/local/pkgconfig:\
 /usr/local/share/pkgconfig:\
 /usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/usr/local/pkgconfig:\
 /usr/share/pkgconfig:\
 /lib64/pkgconfig:\
 /lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
+/lib/usr/local/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -148,9 +149,6 @@ build()
         if grep -Fx "${2}" "${cwd}/${1}.done" >/dev/null; then
             echo "${1} version ${2} already built. Remove ${cwd}/${1}.done lockfile to rebuild it."
             return 1
-        elif ${latest}; then
-            echo "${1} is outdated and will be rebuilt using version ${2}"
-            return 0
         else
             echo "${1} is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove ${cwd}/${1}.done lockfile."
             return 1
@@ -200,7 +198,7 @@ download()
             printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 10 seconds..."
             sleep 10
             if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
-                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit."
+                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit:Line ${LINENO}"
             fi
         fi
         echo 'Download Completed'
@@ -215,18 +213,18 @@ download()
     if [ -n "${3}" ]; then
         if ! tar -xf "${target_file}" -C "${target_dir}" 2>/dev/null >/dev/null; then
             sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script."
+            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script:Line ${LINENO}"
         fi
     else
         if ! tar -xf "${target_file}" -C "${target_dir}" --strip-components 1 2>/dev/null >/dev/null; then
             sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script."
+            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script:Line ${LINENO}"
         fi
     fi
 
     printf "%s\n\n" "File extracted: ${dl_file}"
 
-    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}"
+    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}:Line ${LINENO}"
 }
 
 git_1_fn()
@@ -267,14 +265,6 @@ if [ -n "${missing_pkgs}" ]; then
     sudo apt -y autoremove
     clear
 fi
-
-#
-# GET PC TYPE
-#
-
-curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "${cwd}/config.guess"
-pc_type="$(source "${cwd}/config.guess")"
 
 #
 # BUILD PROGRAM FROM SOURCE

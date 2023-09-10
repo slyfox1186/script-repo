@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2162,SC2317
 
 #################################################################################################################################
 ##
@@ -70,7 +71,7 @@ export CPPFLAGS='-I/usr/include/openssl -I/usr/local/include -I/usr/include'
 
 export CXXFLAGS
 export CFLAGS
-LDFLAGS='-L/lib/x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu -L/usr/local/lib'
+LDFLAGS='-L/lib/"${install_dir}" -L/usr/lib/"${install_dir}" -L/usr/local/lib'
 LDFLAGS+=' -L/usr/local/lib64 -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 export LDFLAGS
 
@@ -100,15 +101,15 @@ export PATH
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/usr/local/pkgconfig:\
 /usr/local/share/pkgconfig:\
 /usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/usr/local/pkgconfig:\
 /usr/share/pkgconfig:\
 /lib64/pkgconfig:\
 /lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
+/lib/usr/local/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -166,7 +167,7 @@ fail_fn()
 show_ver_fn()
 {
     save_ver="$(sudo find /usr/local -type f -name python3.12 | grep -Eo '[0-9\.]+$')"
-     printf "\n%s\n\n" "The installed Python3 version is: ${save_ver}"
+    printf "\n%s\n\n" "The installed Python3 version is: ${save_ver}"
     sleep 3
 }
 
@@ -196,40 +197,31 @@ cleanup_fn()
 
 installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
-pkgs=(autoconf autogen automake binutils build-essential ccache cmake curl git itstool
-      libb2-dev libexempi-dev libgnome-desktop-3-dev libgnome-desktop-4-dev libhandy-1-dev
-      libpeas-dev libpeasd-3-dev libportal-dev libportal-gtk3-dev libportal-gtk4-dev
-      libssl-dev libtool libtool-bin m4 meson nasm ninja-build openssl python3 valgrind
-      yasm zlib1g-dev)
+pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache cmake
+      curl git itstool libb2-dev libexempi-dev libgnome-desktop-3-dev libgnome-desktop-4-dev
+      libhandy-1-dev libpeas-dev libpeasd-3-dev libportal-dev libportal-gtk3-dev libportal-gtk4-dev
+      libssl-dev libtool libtool-bin m4 meson nasm ninja-build openssl python3 valgrind yasm zlib1g-dev)
 
 for pkg in ${pkgs[@]}
 do
-    if ! installed "$pkg"; then
-        missing_pkgs+=" $pkg"
+    if ! installed "${pkg}"; then
+        missing_pkgs+=" ${pkg}"
     fi
 done
 
-if [ -n "$missing_pkgs" ]; then
+if [ -n "${missing_pkgs}" ]; then
     echo '$ Installing missing packages'
     echo
-    for i in "$missing_pkgs"
+    for i in "${missing_pkgs}"
         do
             if ! sudo apt -y install $i; then
-                fail_fn 'Failed to run APT package manager.'
+                fail_fn "Failed to install the apt packages:Line ${LINENO}"
             fi
         done
 else
     echo '$ The packages are already installed.'
     echo
 fi
-
-#
-# GET PC TYPE
-#
-
-curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "${cwd}/config.guess"
-pc_type="$(source "${cwd}/config.guess")"
 
 #
 # DOWNLOAD THE ARCHIVE FILE
@@ -253,7 +245,7 @@ mkdir -p "${cwd}/${archive_dir}/build"
 #
 
 if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
+    fail_fn "Failed to extract: ${cwd}/${archive_name}:Line ${LINENO}"
     exit 1
 fi
 
@@ -261,15 +253,7 @@ fi
 # GET OPENSSL DIR
 #
 
-openssl_program="$(type -P openssl)"
-
-if [ -z "${openssl_program}" ]; then
-    clear
-    printf "%s\n\n" 'Unable to find the OpenSSL Program.'
-    exit 1
-fi
-
-if [[ "${openssl_program}" == '/usr/local/bin/openssl' ]]; then
+if [[ "$(type -P openssl)" == '/usr/local/bin/openssl' ]]; then
     openssl_dir=/usr/local
 else
     openssl_dir=/usr
@@ -288,9 +272,9 @@ printf "%s\n%s\n\n" \
 ../configure --enable-optimizations               \
              --with-ensurepip=upgrade             \
              --with-lto=yes                       \
+             --with-openssl-rpath=auto            \
              --with-openssl="${openssl_dir}"      \
              --with-pkg-config=yes                \
-             --with-openssl-rpath=auto            \
              --with-ssl-default-suites=openssl    \
              --with-valgrind                      \
              PKG_CONFIG="$(type -P pkg-config)"   \
@@ -299,17 +283,11 @@ printf "%s\n%s\n\n" \
              CPPFLAGS="${CPPFLAGS}"               \
              LDFLAGS="${LDFLAGS}"                 \
              LIBS="$(pkg-config --libs openssl)"
-
-printf "\n%s\n%s\n\n" \
-    "Running: make -j$(nproc --all)" \
-    '========================'
 make "-j$(nproc --all)"
-
-printf "\n%s\n%s\n\n" \
-    'Running: sudo make altinstall' \
-    '========================'
-sudo make altinstall
-
+if ! sudo make altinstall; then
+    fail_fn "Failed to execute: sudo make altinstall:Line ${LINENO}"
+    exit 1
+fi
 # SHOW THE NEW VERSION
 show_ver_fn
 # PROMPT USER TO CLEAN UP FILES

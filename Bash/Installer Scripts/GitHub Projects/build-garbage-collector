@@ -27,6 +27,7 @@ script_ver=1.0
 archive_dir=gc-8.2.4
 archive_url=https://github.com/ivmai/bdwgc/releases/download/v8.2.4/gc-8.2.4.tar.gz
 archive_ext="${archive_url//*.}"
+archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/garbage-collector-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
@@ -81,15 +82,15 @@ export PATH
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/"${install_dir}"/pkgconfig:\
 /usr/local/share/pkgconfig:\
 /usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/"${install_dir}"/pkgconfig:\
 /usr/share/pkgconfig:\
 /lib64/pkgconfig:\
 /lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
+/lib/"${install_dir}"/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -145,8 +146,8 @@ cleanup_fn()
 
 pkgs_fn()
 {
-    pkgs=("${1}" autoconf autoconf-archive autogen automake binutils bison build-essential bzip2 ccache curl
-          libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev m4 nasm texinfo
+    pkgs=(autoconf autoconf-archive autogen automake binutils bison build-essential bzip2 ccache curl
+          libc6-dev libintl-perl libpth-dev libticonv-dev libtool libtool-bin lzip lzma-dev m4 nasm texinfo
           zlib1g-dev yasm)
 
     for i in ${pkgs[@]}
@@ -166,18 +167,8 @@ pkgs_fn()
 }
 
 #
-# GET PC TYPE
-#
-
-curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-sudo chmod +x "${cwd}/config.guess"
-pc_type="$(source "${cwd}/config.guess")"
-
-#
 # DOWNLOAD THE ARCHIVE FILE
 #
-
-archive_name="${archive_dir}.tar.${archive_ext}"
 
 if [ ! -f "${cwd}/${archive_name}" ]; then
     curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
@@ -208,24 +199,23 @@ fi
 cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 cd build || exit 1
-../configure --prefix=/usr/local         \
-             --{build,host}="${pc_type}"   \
-             --disable-nls               \
-             --disable-werror            \
-             --enable-cplusplus          \
-             --enable-gc-assertions      \
-             --enable-gcov               \
-             --enable-large-config       \
-             --enable-static             \
-             --with-libatomic-ops=check  \
-             --with-libiconv-prefix=/usr \
-             --with-libintl-prefix=/usr  \
-             --with-libpth-prefix=/usr   \
+../configure --prefix=/usr/local             \
+             --{build,host}=x86_64-linux-gnu \
+             --disable-nls                   \
+             --disable-werror                \
+             --enable-cplusplus              \
+             --enable-gc-assertions          \
+             --enable-gcov                   \
+             --enable-large-config           \
+             --enable-static                 \
+             --with-libatomic-ops=check      \
+             --with-libiconv-prefix=/usr     \
+             --with-libintl-prefix=/usr      \
+             --with-libpth-prefix=/usr       \
              --with-pic
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    make distclean
-    printf "\n%s\n\n" 'Failed to install garbage collector.'
+    fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
     exit 1
 fi
 

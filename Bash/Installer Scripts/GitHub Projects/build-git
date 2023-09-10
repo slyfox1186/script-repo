@@ -84,17 +84,17 @@ export PATH
 PKG_CONFIG_PATH="\
 /lib64/pkgconfig:\
 /lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig:\
+/lib/"${install_dir}"/pkgconfig:\
 /snap/core18/2790/usr/share/pkgconfig:\
 /snap/vlc/3078/usr/lib/pkgconfig:\
-/snap/vlc/3078/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/snap/vlc/3078/usr/lib/"${install_dir}"/pkgconfig:\
 /snap/vlc/3078/usr/share/pkgconfig:\
 /usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/"${install_dir}"/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/"${install_dir}"/pkgconfig:\
 /usr/share/pkgconfig\
 "
 export PKG_CONFIG_PATH
@@ -168,15 +168,6 @@ if [ -n "${missing_pkgs}" ]; then
 	clear
 fi
 
-
-#
-# GET PC TYPE
-#
-
-curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "${cwd}/config.guess"
-pc_type="$(source "${cwd}/config.guess")"
-
 #
 # DOWNLOAD THE ARCHIVE FILE
 #
@@ -211,8 +202,8 @@ cd "${cwd}/${archive_dir}" || exit 1
 make configure
 ./configure --prefix="${install_dir}"
 make "-j$(nproc --all)" all doc
-if ! sudo make install install-doc install-html; then
-    printf "\n%s\n\n" 'Failed to execute: sudo make install.'
+if ! sudo make install; then
+    fail_fn "Failed to execute: sudo make install install-doc install-html:Line ${LINENO}"
     exit 1
 fi
 

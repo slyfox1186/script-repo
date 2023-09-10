@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2162,SC2317
 
 ###########################################################################################################
 ##
@@ -24,6 +25,7 @@ fi
 #
 
 script_ver=1.1
+install_dir=/usr/local
 cwd="${PWD}"/yasm-build-script
 packages="${cwd}"/packages
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
@@ -80,15 +82,15 @@ export PATH
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/usr/local/pkgconfig:\
 /usr/local/share/pkgconfig:\
 /usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/usr/local/pkgconfig:\
 /usr/share/pkgconfig:\
 /lib64/pkgconfig:\
 /lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
+/lib/usr/local/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -148,9 +150,6 @@ build()
         if grep -Fx "${2}" "${packages}/${1}.done" >/dev/null; then
             echo "${1} version ${2} already built. Remove ${packages}/${1}.done lockfile to rebuild it."
             return 1
-        elif ${latest}; then
-            echo "${1} is outdated and will be rebuilt using version ${2}"
-            return 0
         else
             echo "${1} is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove ${packages}/${1}.done lockfile."
             return 1
@@ -241,21 +240,14 @@ git_1_fn()
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver="${g_ver#v}"
     fi
-
-    echo "${github_repo%/*}-${g_ver}" >>"${ver_file_tmp}"
-    awk '!NF || !seen[${0}]++' "${latest_txt_tmp}" >"${ver_file}"
 }
 
 git_ver_fn()
 {
-    local t_flag u_flag v_flag v_tag v_url
+    local t_flag v_flag v_url
 
     v_url="${1}"
-    v_tag="${2}"
-
-    if [ -n "${3}" ]; then
-        v_flag="${3}"
-    fi
+    v_flag="${2}"
 
     case "${v_flag}" in
             B)      t_flag=branches;;
@@ -272,7 +264,7 @@ git_ver_fn()
 
 pkgs_fn()
 {
-    pkgs=("${1}" autogen automake binutils bison build-essential bzip2 ccache cmake
+    pkgs=(autogen automake binutils bison build-essential bzip2 ccache cmake
           curl libc6-dev libintl-perl libpth-dev yasm yasm-bin lzip lzma-dev
           nasm ninja-build texinfo yasm yasm1g-dev)
 
@@ -292,18 +284,7 @@ pkgs_fn()
     fi
 }
 
-build_done()
-{
-    echo "${2}" > "${packages}/${1}.done"
-}
-
-#
-# GET PC TYPE
-#
-
-curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "${cwd}/config.guess"
-pc_type="$(source "${cwd}/config.guess")"
+build_done() { echo "${2}" > "${packages}/${1}.done"; }
 
 #
 # BUILD PROGRAM FROM SOURCE
@@ -313,8 +294,10 @@ git_ver_fn 'yasm/yasm' '1' 'T'
 if build 'yasm' "${g_ver}"; then
     download "https://codeload.github.com/yasm/yasm/tar.gz/refs/tags/v${g_ver}" "yasm-${g_ver}.tar.gz"
     execute autoreconf -fi
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX=/usr/local,BUILD_TYPE=Release} \
-        -DBUILD_SHARED_LIBS=OFF -G Ninja -Wno-dev
+    execute cmake -B build -DCMAKE_install_dir="${install_dir}" \
+                           -DCMAKE_BUILD_TYPE=Release           \
+                           -DBUILD_SHARED_LIBS=OFF              \
+                           -G Ninja -Wno-dev
     execute ninja "-j$(nproc --all)" -C build
     execute sudo ninja "-j$(nproc --all)" -C build install
     build_done 'yasm' "${g_ver}"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2162
+# shellcheck disable=SC2162,SC2317
 
 ###########################################################################################################
 ##
@@ -47,19 +47,19 @@ prompt_fn()
 
 prompt_fn
 
-short_name="$(echo "${archive_url}" | sed 's/^.*\/.*-wsl-\(.*\)\.tar\.gz$/\1/')"
-
 #
 # SET VARIABLES
 #
 
 script_ver=2.0
-archive_dir="${short_name}"
+archive_dir="wsl-kernel-${archive_ver}"
+archive_ver="$(echo "${archive_url}" | sed 's/^.*\/.*-wsl-\(.*\)\.tar\.gz$/\1/')"
 archive_ext="${archive_url//*.}"
+archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/WSL2-build-script
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
-debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=OFF
 
 printf "\n%s\n%s\n\n" \
     "WSL2 Build Script - v${script_ver}" \
@@ -80,19 +80,13 @@ fi
 export CC=gcc CXX=g++
 
 #
-# SET COMPILER OPTIMIZATION FLAGS
-#
-
-export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
-
-#
-# SET THE PATH VARIABLE
+# SET PATH
 #
 
 PATH="\
 /usr/lib/ccache:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
@@ -105,23 +99,10 @@ ${HOME}/.local/bin:\
 export PATH
 
 #
-# SET THE PKG_CONFIG_PATH VARIABLE
+# SET COMPILER OPTIMIZATION FLAGS
 #
 
-PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
-"
-export PKG_CONFIG_PATH
+export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 #
 # CREATE FUNCTIONS
@@ -169,111 +150,6 @@ cleanup_fn()
     esac
 }
 
-execute()
-{
-    echo "$ ${*}"
-
-    if [ "${debug}" = 'ON' ]; then
-        if ! output=$("${@}"); then
-            notify-send -t 10000 "Failed to execute: ${*}"
-            fail_fn "Failed to execute: ${*}"
-        fi
-    else
-        if ! output=$("${@}" 2>&1); then
-            notify-send -t 10000 "Failed to execute: ${*}"
-            fail_fn "Failed to execute: ${*}"
-        fi
-    fi
-}
-
-download()
-{
-    dl_path="${packages}"
-    dl_url="${1}"
-    clea="${2:-"${1##*/}"}"
-
-    if [[ "${dl_file}" =~ tar. ]]; then
-        output_dir="${dl_file%.*}"
-        output_dir="${3:-"${output_dir%.*}"}"
-    else
-        output_dir="${3:-"${dl_file%.*}"}"
-    fi
-
-    target_file="${dl_path}/${dl_file}"
-    target_dir="${dl_path}/${output_dir}"
-
-    if [ -f "${target_file}" ]; then
-        echo "The file \"${dl_file}\" is already downloaded."
-    else
-        echo "Downloading \"${dl_url}\" saving as \"${dl_file}\""
-        if ! curl -Lso "${target_file}" "${dl_url}"; then
-            printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 5 seconds..."
-            sleep 5
-            if ! curl -Lso "${target_file}" "${dl_url}"; then
-                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit."
-            fi
-        fi
-        echo 'Download Completed'
-    fi
-
-    if [ -d "${target_dir}" ]; then
-        sudo rm -fr "${target_dir}"
-    fi
-
-    mkdir -p "${target_dir}"
-
-    if [ -n "${3}" ]; then
-        if ! tar -xf "${target_file}" -C "${target_dir}" 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
-            fail_fn "Failed to extract \"${dl_file}\" so it was deleted. Please rerun the script."
-        fi
-    else
-        if ! tar -xf "${target_file}" -C "${target_dir}" --strip-components 1 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
-            fail_fn "Failed to extract \"${dl_file}\" so it was deleted. Please rerun the script."
-        fi
-    fi
-
-    echo -e "File extracted: ${dl_file}\\n"
-
-    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}"
-}
-
-build()
-{
-    echo
-    echo "building ${1} - version ${2}"
-    echo '===================================='
-
-    if [ -f "${packages}/${1}.done" ]; then
-        if grep -Fx "${2}" "${packages}/${1}.done" >/dev/null; then
-            echo "${1} version ${2} already built. Remove ${packages}/${1}.done lockfile to rebuild it."
-            return 1
-        elif ${latest}; then
-            echo "${1} is outdated and will be rebuilt using version ${2}"
-            return 0
-        else
-            echo "${1} is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove ${packages}/${1}.done lockfile."
-            return 1
-        fi
-    fi
-
-    return 0
-}
-
-build_done()
-{
-    echo "${2}" >"${packages}/${1}.done"
-}
-
-#
-# GET PC TYPE
-#
-
-curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "${cwd}/config.guess"
-pc_type="$(source "${cwd}/config.guess")"
-
 #
 # INSTALL REQUIRED APT cwd
 #
@@ -294,7 +170,7 @@ pkgs=("${add_this}" autoconf autogen automake bat bc binutils bison build-essent
 
 for i in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+    missing_pkg="$(dpkg -l | grep -o "${i}")"
 
     if [ -z "${missing_pkg}" ]; then
         missing_pkgs+=" ${i}"
@@ -311,22 +187,22 @@ fi
 # DOWNLOAD THE ARCHIVE FILE
 #
 
-if [ ! -f "${cwd}/${archive_name}" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
+if [ ! -f "$cwd/${archive_ver}" ]; then
+    curl -A "${user_agent}" -Lso "${cwd}/${archive_dir}" "${archive_url}"
 fi
 
 #
 # BUILD PROGRAM FROM SOURCE
 #
 
-cd "${cwd}" || exit 1
-if build 'wsl-kernel' "${short_name}"; then
-    wget --show-progress -cqO "wsl-${short_name}.tar.${archive_ext}" "${archive_url}"
-    mkdir -p "wsl-${short_name}"
-    tar -zxf "wsl-${short_name}.tar.gz" -C "wsl-${short_name}" --strip-components 1
-    cd "wsl-${short_name}" || exit 1
-    echo 'yes' | make "-j${cpu_threads}" KCONFIG_CONFIG='Microsoft/config-wsl'
-    build_done 'wsl-kernel' "${short_name}"
+cd "$cwd" || exit 1
+if build 'wsl-kernel' "${archive_ver}"; then
+    wget --show-progress -cqO "${archive_name}" "${archive_url}"
+    mkdir -p "${archive_dir}"
+    tar -zxf "${archive_name}" -C "${archive_dir}" --strip-components 1
+    cd "${archive_dir}" || exit 1
+    echo 'yes' | make "-j$(nproc --all)" KCONFIG_CONFIG='Microsoft/config-wsl'
+    build_done 'wsl-kernel' "${archive_ver}"
 fi
 
 # PROMPT USER TO CLEAN UP FILES
