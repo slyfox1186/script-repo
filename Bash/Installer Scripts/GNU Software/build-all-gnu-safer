@@ -127,7 +127,8 @@ done
 mv 010-build-gawk 10-build-gawk
 mv 011-build-grep 11-build-grep
 mv 012-build-nano 12-build-nano
-mv 013-build-wget 13-build-wget
+mv 013-build-isl 13-build-isl
+mv 014-build-wget 14-build-wget
     
 # ASK THE USER IF THEY WANT TO INSTALL ALL OF THE SCRIPTS
 install_choice_fn
