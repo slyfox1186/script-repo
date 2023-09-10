@@ -824,7 +824,7 @@ pkgs_fn()
           libvlccore-dev libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libx265-dev libxcursor-dev libxext-dev libxfixes-dev
           libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev lshw
           lzma-dev m4 meson nasm ninja-build openjdk-17-jdk-headless pandoc python3 python3-pip ragel re2c scons sudo texi2html
-          texinfo tk-dev unzip wget xmlto zlib1g-dev)
+          texinfo tk-dev unzip wget xmlto yasm zlib1g-dev)
 
     for pkg in ${pkgs[@]}
     do
@@ -1085,32 +1085,10 @@ box_out_banner_global()
 }
 box_out_banner_global 'Installing Global Tools'
 
-if build 'm4' 'latest'; then
-    download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
-    execute ./configure --prefix="${workspace}"            \
-                        --{build,host,target}="${pc_type}" \
-                        --disable-nls                      \
-                        --enable-c++
-    execute make "-j${cpu_threads}"
-    execute make install
-    build_done 'm4' 'latest'
-fi
-
-if build 'autoconf' 'latest'; then
-    download 'http://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz'
-    execute autoreconf -fi
-    execute ./configure --prefix="${workspace}"     \
-                        --{build,host}="${pc_type}" \
-                        M4="${workspace}"/bin/m4
-    execute make "-j${cpu_threads}"
-    execute make install
-    build_done 'autoconf' 'latest'
-fi
-
 case "${OS}" in
-    Debian*)    libtool_ver='2.4.7';;
+    Debia*)    libtool_ver='2.4.7';;
     Ubunt*)     libtool_ver='2.4.6';;
-    *)          fail_fn "Unable to get the OS version:Line ${LINENO}"
+    *)          fail_fn "Unable to get the OS version to determine the correct libtool version to install:Line ${LINENO}"
 esac
 
 if build 'libtool' "${libtool_ver}"; then
@@ -1181,29 +1159,6 @@ if [ "${python3_rm_decimals}" -lt '700' ]; then
     python_var='python3.9'
 else
     python_var='python3'
-fi
-
-pre_check_ver 'yasm/yasm' '1' 'T'
-if build 'yasm' "${g_ver}"; then
-    download "https://github.com/yasm/yasm/archive/refs/tags/v${g_ver}.tar.gz" "yasm-${g_ver}.tar.gz"
-    execute autoreconf -fi
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} \
-        -DBUILD_SHARED_LIBS=OFF -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
-    build_done 'yasm' "${g_ver}"
-fi
-
-if build 'nasm' '2.16.01'; then
-    download 'https://www.nasm.us/pub/nasm/stable/nasm-2.16.01.tar.xz'
-    execute ./autogen.sh
-    execute ./configure --prefix="${workspace}"             \
-                         --{build,host,target}="${pc_type}" \
-                         --disable-pedantic                 \
-                         --enable-ccache
-    execute make "-j${cpu_threads}"
-    execute make install
-    build_done 'nasm' '2.16.01'
 fi
 
 if build 'giflib' '5.2.1'; then
