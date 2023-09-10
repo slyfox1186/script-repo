@@ -157,10 +157,10 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autogen automake binutils build-essential ccache clang cmake curl git
-      libgnome-desktop-3-dev libexempi-dev libportal-dev libportal-gtk3-dev libportal-gtk4-dev
-      libgnome-desktop-4-dev libhandy-1-dev libpeas-dev libpeasd-3-dev libtool libtool-bin
-      m4 meson nasm ninja-build python3 yasm itstool)
+pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache clang
+      cmake curl git libgnome-desktop-3-dev libexempi-dev libportal-dev libportal-gtk3-dev
+      libportal-gtk4-dev libgnome-desktop-4-dev libhandy-1-dev libpeas-dev libpeasd-3-dev
+      libtool libtool-bin m4 meson nasm ninja-build python3 yasm itstool)
 
 for i in ${pkgs[@]}
 do

@@ -149,7 +149,7 @@ cleanup_fn()
 pkgs_fn()
 {
     pkgs=("${1}" autoconf autoconf-archive autogen automake binutils bison build-essential bzip2 ccache curl
-          libc6-dev libintl-perl libjson-xs-perl libpth-dev libtool libtool-bin lzip lzma-dev
+          libc6-dev libintl-perl libjson-xs-perl libpth-dev libticonv-dev libtool libtool-bin lzip lzma-dev
           texinfo nasm texinfo zlib1g-dev yasm)
 
     for i in ${pkgs[@]}
@@ -167,21 +167,6 @@ pkgs_fn()
         clear
     fi
 }
-
-#
-# TEST IF LIBICONV WAS MANUALLY INSTALLED OR BY APT
-#
-
-if [ -f /usr/local/bin/iconv ]; then
-    pkgs_fn
-    iconv_prefix=/usr/local
-elif [ -f /usr/bin/iconv ]; then
-    pkgs_fn
-    iconv_prefix=/usr
-else
-    pkgs_fn 'libiconv-hook-dev libiconv-hook1'
-    iconv_prefix=/usr
-fi
 
 #
 # DOWNLOAD THE ARCHIVE FILE
@@ -216,14 +201,14 @@ fi
 cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 cd build || exit 1
-../configure --prefix="${install_dir}"                \
-             --{build,host}=x86_64-linux-gnu              \
-             --disable-install-warnings               \
-             --disable-nls                            \
-             --enable-perl-xs                         \
-             --enable-threads=posix                   \
-             --with-dmalloc                           \
-             --with-libiconv-prefix="${iconv_prefix}" \
+../configure --prefix="${install_dir}"       \
+             --{build,host}=x86_64-linux-gnu \
+             --disable-install-warnings      \
+             --disable-nls                   \
+             --enable-perl-xs                \
+             --enable-threads=posix          \
+             --with-dmalloc                  \
+             --with-libiconv-prefix=/usr     \
              --with-libintl-prefix=/usr
 make "-j$(nproc --all)"
 if ! sudo make install; then

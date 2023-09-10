@@ -154,10 +154,10 @@ pkgs_fn()
           libev-dev libevent-dev libexiv2-27 libexpat1-dev libgcc-12-dev libgcrypt20-dev libgexiv2-2 libgimp2.0 libgmp3-dev
           libgpg-error-dev libgtk-4-doc libgpgme-dev libicu-dev libjemalloc-dev libkrb5-3 libldap2-dev libldap-dev liblttng-ust-dev
           liblzma-dev libmbedtls-dev libnghttp2-dev libntlm0-dev libparted-dev libpng-dev libpsl-dev librtmp-dev librust-bzip2-dev
-          librust-openssl-dev libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev libtinfo5 libtinfo-dev libtool libtool-bin
-          libunistring-dev libunwind8 libuv1-dev libxml2-dev libzstd-dev m4 nettle-dev openjdk-17-jdk-headless openssh-server
-          pkg-config python3-dev python3-numpy python3-packaging python3-pip python3-pytest python3-setuptools python3-wheel
-          re2c rsync unzip valgrind zip zlib1g-dev)
+          librust-openssl-dev libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev libtinfo5 libticonv-dev libtinfo-dev libtool
+          libtool-bin libunistring-dev libunwind8 libuv1-dev libxml2-dev libzstd-dev m4 nettle-dev openjdk-17-jdk-headless
+          openssh-server pkg-config python3-dev python3-numpy python3-packaging python3-pip python3-pytest python3-setuptools
+          python3-wheel re2c rsync unzip valgrind zip zlib1g-dev)
 
     for i in ${pkgs[@]}
     do
@@ -174,21 +174,6 @@ pkgs_fn()
         clear
     fi
 }
-
-#
-# TEST IF LIBICONV WAS MANUALLY INSTALLED OR BY APT
-#
-
-if [ -f /usr/local/bin/iconv ]; then
-    pkgs_fn
-    iconv_prefix=/usr/local
-elif [ -f /usr/bin/iconv ]; then
-    pkgs_fn
-    iconv_prefix=/usr
-else
-    pkgs_fn 'libiconv-hook-dev'
-    iconv_prefix=/usr
-fi
 
 #
 # DOWNLOAD THE ARCHIVE FILE
@@ -234,7 +219,8 @@ lib_dirs+=':/usr/x86_64-w64-mingw32/lib:/usr/share/lintian/lib:/usr/share/gitk/l
 
 cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
-./configure --prefix="${install_dir}"              \
+cd build || exit 1
+../configure --prefix="${install_dir}"             \
              --disable-documentation               \
              --with-lib-path="${lib_dirs}"         \
              --with-include-path="${include_dirs}" \

@@ -148,8 +148,8 @@ cleanup_fn()
 
 pkgs_fn()
 {
-    pkgs=("${1}" autoconf autoconf-archive autogen automake autopoint autotools-dev build-essential bzip2
-          ccache curl git libaudit-dev libintl-perl libtool libtool-bin lzip pkg-config
+    pkgs=(autoconf autoconf-archive autogen automake autopoint autotools-dev build-essential bzip2
+          ccache curl git libaudit-dev libintl-perl libticonv-dev libtool libtool-bin lzip pkg-config
           valgrind zlib1g-dev librust-polling-dev)
 
     for i in ${pkgs[@]}
@@ -167,21 +167,6 @@ pkgs_fn()
         clear
     fi
 }
-
-#
-# TEST IF LIBICONV WAS MANUALLY INSTALLED OR BY APT
-#
-
-if [ -f /usr/local/bin/iconv ]; then
-    pkgs_fn
-    iconv_prefix=/usr/local
-elif [ -f /usr/bin/iconv ]; then
-    pkgs_fn
-    iconv_prefix=/usr
-else
-    pkgs_fn 'libiconv-hook-dev libiconv-hook1'
-    iconv_prefix=/usr
-fi
 
 #
 # DOWNLOAD THE ARCHIVE FILE
@@ -230,11 +215,11 @@ fi
 
 cd "${cwd}/${archive_dir}" || exit 1
 cd build || exit 1
-../configure --prefix="${install_dir}"                \
-             --{build,host}=x86_64-linux-gnu              \
-             --enable-threads=posix                   \
-             --disable-nls                            \
-             --with-libiconv-prefix="${iconv_prefix}" \
+../configure --prefix="${install_dir}"       \
+             --{build,host}=x86_64-linux-gnu \
+             --enable-threads=posix          \
+             --disable-nls                   \
+             --with-libiconv-prefix=/usr     \
              --with-libintl-prefix=/usr
 make "-j$(nproc --all)"
 if ! sudo make install; then

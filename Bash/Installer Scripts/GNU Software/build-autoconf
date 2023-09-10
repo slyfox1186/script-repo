@@ -146,8 +146,9 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autoconf-archive autogen automake autopoint autotools-dev binutils bison build-essential bzip2
-      bzip2 ccache curl libc6-dev libpth-dev libtool libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev yasm)
+pkgs=(autoconf autoconf-archive autogen automake autopoint autotools-dev binutils
+      bison build-essential bzip2 bzip2 ccache curl libc6-dev libpth-dev libtool
+      libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev yasm)
 
 for i in ${pkgs[@]}
 do
@@ -198,7 +199,7 @@ cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 autoupdate
 cd build || exit 1
-../configure --prefix="${install_dir}"   \
+../configure --prefix="${install_dir}"       \
              --{build,host}=x86_64-linux-gnu \
              M4="$(type -P m4)"
 make "-j$(nproc --all)"
