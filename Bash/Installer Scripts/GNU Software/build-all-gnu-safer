@@ -131,7 +131,7 @@ mv 013-build-isl 13-build-isl
 mv 014-build-wget 14-build-wget
 
 # DELETE ANY UNWANTED FILES
-find . -type f -name '*.Identifier' -delete
+sudo find . -type f -name '*.Identifier' -delete
 
 # ASK THE USER IF THEY WANT TO INSTALL ALL OF THE SCRIPTS
 install_choice_fn
