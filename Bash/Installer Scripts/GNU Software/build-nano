@@ -210,7 +210,7 @@ cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 cd build || exit 1
 ../configure --prefix="${install_dir}"          \
-             --{build,host}="${pc_type}"        \
+             --{build,host}=x86_64-linux-gnu        \
              --disable-nls                      \
              --enable-threads=posix             \
              --enable-utf8                      \
@@ -221,8 +221,7 @@ cd build || exit 1
              PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    make distclean
-    printf "\n%s\n\n" 'Failed to install nano.'
+    fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
     exit 1
 fi
 

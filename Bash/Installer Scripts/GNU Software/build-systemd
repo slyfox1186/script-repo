@@ -229,9 +229,9 @@ meson setup build --prefix="${install_dir}" \
                   --default-library=both    \
                   --strip                   \
                   -Dzstd=true
-ninja "-j$(nproc --all)" -C build
-if ! sudo ninja "-j$(nproc --all)" -C build install; then
-    printf "\n%s\n\n" 'Failed to install systemd.'
+make "-j$(nproc --all)"
+if ! sudo make install; then
+    fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
     exit 1
 fi
 

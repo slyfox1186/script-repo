@@ -249,10 +249,7 @@ autoreconf -fi
              CPPFLAGS='-I/usr/local/include -I/usr/include'
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    echo
-    read -p 'Failure. Press enter to continue.'
-    clear
-    make clean
+    fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
     exit 1
 fi
 

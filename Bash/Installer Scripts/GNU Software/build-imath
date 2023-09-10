@@ -207,7 +207,7 @@ cmake -B build -DCMAKE_INSTALL_PREFIX="${install_dir}" \
                -G Ninja -Wno-dev
 ninja "-j$(nproc --all)" -C build
 if ! sudo ninja "-j$(nproc --all)" -C build install; then
-    fail_fn "Failed to execute sudo ninja "-j$(nproc --all)" -C build install:${LINENO}"
+    fail_fn "Failed to execute: sudo ninja -j$(nproc --all) -C build install:Line ${LINENO}"
     exit 1
 fi
 
