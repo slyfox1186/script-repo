@@ -191,8 +191,7 @@ cd build || exit 1
              --with-pic
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    make distclean
-    printf "\n%s\n\n" 'Failed to install isl.'
+    fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
     exit 1
 fi
 

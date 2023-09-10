@@ -207,11 +207,11 @@ autoreconf -fi
 autoupdate
 cd build || exit 1
 ../configure --prefix="${install_dir}"   \
-             --{build,host}="${pc_type}" \
+             --{build,host}=x86_64-linux-gnu \
              M4="$(type -P m4)"
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    printf "\n%s\n\n" 'Failed to install autoconf.'
+    fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
     exit 1
 fi
 

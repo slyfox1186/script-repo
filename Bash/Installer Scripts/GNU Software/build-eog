@@ -215,7 +215,7 @@ meson setup build --prefix="${install_dir}" \
                   --strip
 ninja "-j$(nproc --all)" -C build
 if ! sudo ninja "-j$(nproc --all)" -C build install; then
-    fail_fn "Failed to execute: sudo ninja "-j$(nproc --all)" -C build install"
+    fail_fn "Failed to execute: sudo ninja -j$(nproc --all) -C build install:Line ${LINENO}"
     exit 1
 fi
 

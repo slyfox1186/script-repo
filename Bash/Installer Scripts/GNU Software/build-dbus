@@ -207,7 +207,7 @@ fi
 cd "${cwd}/${archive_dir}" || exit 1
 cd build || exit 1
 ../configure --prefix="${install_dir}"          \
-             --{build,host}="${pc_type}"        \
+             --{build,host}=x86_64-linux-gnu    \
              --enable-apparmor                  \
              --enable-code-coverage             \
              --enable-epoll                     \
@@ -224,7 +224,7 @@ cd build || exit 1
              PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    fail_fn 'Failed to execute: sudo make install'
+    fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
     exit 1
 fi
 

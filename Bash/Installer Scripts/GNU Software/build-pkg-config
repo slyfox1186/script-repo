@@ -216,8 +216,7 @@ cd "${cwd}/${archive_dir}/build" || exit 1
              PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    make distclean
-    printf "\n%s\n\n" 'Failed to install pkg-config.'
+    fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
     exit 1
 fi
 

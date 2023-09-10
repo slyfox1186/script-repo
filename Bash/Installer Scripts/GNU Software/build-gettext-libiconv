@@ -104,7 +104,7 @@ export PKG_CONFIG_PATH
 
 exit_fn()
 {
-    printf "\n%s\n\n" 'The script has completed.'
+    fail_fn "The script has completed:Line ${LINENO}"
     exit 0
 }
 
@@ -206,7 +206,7 @@ fi
 case "${OS}" in
     Debian*)            os_ver_check_fn;;
     Ubuntu)             echo;;
-    *)                  fail_fn 'Could not detect the OS architecture.';;
+    *)                  fail_fn "Could not detect the OS architecture:Line ${LINENO}";;
 esac
 
 #
@@ -260,7 +260,7 @@ printf "\n%s\n%s\n\n" \
 cd "${cwd}/${archive_dir1}" || exit 1
 mkdir build
 cd build || exit 1
-../configure --{build,host}="${pc_type}"  \
+../configure --{build,host}=x86_64-linux-gnu  \
              --prefix="${install_dir}" \
              --disable-nls                \
              --enable-static              \
@@ -282,7 +282,7 @@ autoupdate
 mkdir build
 cd build || exit 1
 ../configure --prefix="${install_dir}"    \
-             --{build,host}="${pc_type}"  \
+             --{build,host}=x86_64-linux-gnu  \
              --enable-shared              \
              --enable-static              \
              --with-pic
