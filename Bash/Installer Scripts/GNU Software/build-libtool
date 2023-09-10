@@ -167,14 +167,6 @@ pkgs_fn()
 }
 
 #
-# GET PC TYPE
-#
-
-curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "${cwd}/config.guess"
-pc_type="$(source "${cwd}/config.guess")"
-
-#
 # DOWNLOAD THE ARCHIVE FILE
 #
 
