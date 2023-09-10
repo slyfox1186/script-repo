@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+        #!/usr/bin/env bash
 
 ###########################################################################################################################
 ##
@@ -7,8 +7,6 @@
 ##  Purpose: build gnu bash
 ##
 ##  Updated: 09.03.23
-##
-##  Changes: Remove most of the custom install line switches due to incorrect behaviors when running certain commands
 ##
 ##  Script version: 2.0
 ##
