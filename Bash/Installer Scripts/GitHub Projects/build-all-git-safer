@@ -147,8 +147,6 @@ do
     mv "build-${script}" "0${cnt}-build-${script}"
 done
 
-sudo find . -type f -name '*.Identifier' -delete
-
 # ASK THE USER IF THEY WANT TO INSTALL ALL OF THE SCRIPTS
 install_choice_fn
 
