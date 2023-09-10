@@ -39,6 +39,7 @@ export CC=gcc CXX=g++
 
 PATH="\
 /usr/lib/ccache:\
+/home/jman/tmp/gcc-build-script/workspace/bin:\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
@@ -161,7 +162,9 @@ pc_type="$(source "${cwd}/config.guess")"
 if [ -d "${cwd}/${archive_dir}" ]; then
     sudo rm -fr "${cwd}/${archive_dir}"
 fi
+
 git clone "${archive_url}" "${cwd}/${archive_dir}"
+mkdir -p "${cwd}/${archive_dir}/build"
 
 #
 # BUILD PROGRAM FROM SOURCE
@@ -170,12 +173,11 @@ git clone "${archive_url}" "${cwd}/${archive_dir}"
 clear
 
 cd "${cwd}/${archive_dir}" || exit 1
-autoreconf -fi
-mkdir build
+autoreconf -fi -I /usr/share/aclocal
 cd build || exit 1
-../configure --prefix="${install_dir}"   \
-             --{build,host}="${pc_type}" \
-             --with-clang=system         \
+../configure --prefix="${install_dir}"       \
+             --{build,host}=x86_64-linux-gnu \
+             --with-clang=system             \
              --with-pic
 make "-j$(nproc --all)"
 if ! sudo make install; then
