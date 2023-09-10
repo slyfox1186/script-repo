@@ -195,7 +195,7 @@ mvf()
 aptdl()
 {
     clear
-    wget -c "$(apt --print-uris -qq --reinstall install ${1} 2>/dev/null | cut -d''\''' -f2)"
+    wget -c "$(apt-fast --print-uris -qq --reinstall install ${1} 2>/dev/null | cut -d''\''' -f2)"
     clear; ls -1AhFv --color --group-directories-first
 }
 
@@ -203,22 +203,22 @@ aptdl()
 clean()
 {
     clear
-    sudo apt -y autoremove
-    sudo apt clean
-    sudo apt autoclean
-    sudo apt -y purge
+    sudo apt-fast -y autoremove
+    sudo apt-fast clean
+    sudo apt-fast autoclean
+    sudo apt-fast -y purge
 }
 
 # UPDATE
 update()
 {
     clear
-    sudo apt update
-    sudo apt -y full-upgrade
-    sudo apt -y autoremove
-    sudo apt clean
-    sudo apt autoclean
-    sudo apt -y purge
+    sudo apt-fast update
+    sudo apt-fast -y full-upgrade
+    sudo apt-fast -y autoremove
+    sudo apt-fast clean
+    sudo apt-fast autoclean
+    sudo apt-fast -y purge
 }
 
 # FIX BROKEN APT PACKAGES
@@ -228,14 +228,14 @@ fix()
     if [ -f /tmp/apt.lock ]; then
         sudo rm /tmp/apt.lock
     fi
-    sudo apt -f -y install
-    sudo apt --fix-broken install
-    sudo apt --fix-missing update
+    sudo apt-fast -f -y install
+    sudo apt-fast --fix-broken install
+    sudo apt-fast --fix-missing update
     dpkg --configure -a
-    sudo apt -y autoremove
-    sudo apt clean
-    sudo apt autoclean
-    sudo apt update
+    sudo apt-fast -y autoremove
+    sudo apt-fast clean
+    sudo apt-fast autoclean
+    sudo apt-fast update
 }
 
 list()
@@ -617,8 +617,8 @@ imow()
     done
 
     if [ -n "${missing_pkgs}" ]; then
-        sudo apt -y install ${missing_pkgs}
-        sudo apt -y autoremove
+        sudo apt-fast -y install ${missing_pkgs}
+        sudo apt-fast -y autoremove
         clear
     fi
     unset apt_pkgs i missing_pkg missing_pkgs
@@ -783,9 +783,9 @@ cuda_purge()
         echo 'Purging the cuda-sdk-toolkit from your computer.'
         echo '================================================'
         echo
-        sudo sudo apt -y --purge remove "*cublas*" "cuda*" "nsight*"
-        sudo sudo apt -y autoremove
-        sudo sudo apt update
+        sudo sudo apt-fast -y --purge remove "*cublas*" "cuda*" "nsight*"
+        sudo sudo apt-fast -y autoremove
+        sudo sudo apt-fast update
     elif [[ "${answer}" -eq '2' ]]; then
         return 0
     fi
@@ -917,7 +917,7 @@ hw_mon()
 
     # install lm-sensors if not already
     if ! which lm-sensors &>/dev/null; then
-        sudo apt -y install lm-sensors
+        sudo apt-fast -y install lm-sensors
     fi
 
     # Add modprobe to system startup tasks if not already added
@@ -982,7 +982,87 @@ hw_mon()
 }
 
 # CREATE A 7ZIP FILE WITH MAX COMPRESSION SETTINGS
-7z_7z()
+7z_7z_1()
+{
+    local answer source output
+    clear
+
+    if [ -n "${1}" ]; then
+        if [ -f "${1}".7z ]; then
+            sudo rm "${1}".7z
+        fi
+        7z a -t7z -m0=lzma2 -mx1 "${1}".7z ./"${1}"/*
+    else
+        read -p 'Please enter the source folder path: ' source
+        echo
+        read -p 'Please enter the destination archive path (w/o extension): ' output
+        clear
+        if [ -f "${output}".7z ]; then
+            sudo rm "${output}".7z
+        fi
+        7z a -t7z -m0=lzma2 -mx1 "${output}".7z ./"${source}"/*
+    fi
+
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'Do you want to delete the original file?' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' answer
+    clear
+
+    if [ -n "${1}" ]; then
+        source="${1}"
+    fi
+
+    case "${answer}" in
+        1)      sudo rm -fr "${source}";;
+        2)      clear;;
+        '')     sudo rm -fr "${source}";;
+        *)      printf "\n%s\n\n" 'Bad user input...';;
+    esac
+}
+
+7z_7z_5()
+{
+    local answer source output
+    clear
+
+    if [ -n "${1}" ]; then
+        if [ -f "${1}".7z ]; then
+            sudo rm "${1}".7z
+        fi
+        7z a -t7z -m0=lzma2 -mx5 "${1}".7z ./"${1}"/*
+    else
+        read -p 'Please enter the source folder path: ' source
+        echo
+        read -p 'Please enter the destination archive path (w/o extension): ' output
+        clear
+        if [ -f "${output}".7z ]; then
+            sudo rm "${output}".7z
+        fi
+        7z a -t7z -m0=lzma2 -mx5 "${output}".7z ./"${source}"/*
+    fi
+
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'Do you want to delete the original file?' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' answer
+    clear
+
+    if [ -n "${1}" ]; then
+        source="${1}"
+    fi
+
+    case "${answer}" in
+        1)      sudo rm -fr "${source}";;
+        2)      clear;;
+        '')     sudo rm -fr "${source}";;
+        *)      printf "\n%s\n\n" 'Bad user input...';;
+    esac
+}
+
+7z_7z_9()
 {
     local answer source output
     clear
@@ -1071,7 +1151,49 @@ tar_bz2()
     fi
 }
 
-tar_xz()
+tar_xz_1()
+{
+    local source output
+    clear
+    if [ -n "${1}" ]; then
+        if [ -f "${1}".tar.xz ]; then
+            sudo rm "${1}".tar.xz
+        fi
+        tar -cvJf - "${1}" | xz -1 -c - > "${1}".tar.xz
+    else
+        read -p 'Please enter the source folder path: ' source
+        echo
+        read -p 'Please enter the destination archive path (w/o extension): ' output
+        clear
+        if [ -f "${output}".tar.xz ]; then
+            sudo rm "${output}".tar.xz
+        fi
+        tar -cvJf - "${source}" | xz -1 -c - > "${output}".tar.xz
+    fi
+}
+
+tar_xz_5()
+{
+    local source output
+    clear
+    if [ -n "${1}" ]; then
+        if [ -f "${1}".tar.xz ]; then
+            sudo rm "${1}".tar.xz
+        fi
+        tar -cvJf - "${1}" | xz -5 -c - > "${1}".tar.xz
+    else
+        read -p 'Please enter the source folder path: ' source
+        echo
+        read -p 'Please enter the destination archive path (w/o extension): ' output
+        clear
+        if [ -f "${output}".tar.xz ]; then
+            sudo rm "${output}".tar.xz
+        fi
+        tar -cvJf - "${source}" | xz -5 -c - > "${output}".tar.xz
+    fi
+}
+
+tar_xz_9()
 {
     local source output
     clear
@@ -1283,7 +1405,7 @@ tkapt()
     local i list
     clear
 
-    list=(apt apt-get aptitude dpkg)
+    list=(apt apt-fast apt-get aptitude dpkg)
 
     for i in ${list[@]}
     do
@@ -1371,7 +1493,7 @@ up_icon()
     for i in ${pkgs[@]}
     do
         if ! sudo dpkg -l "${i}"; then
-            sudo apt -y install "${i}"
+            sudo apt-fast -y install "${i}"
             clear
         fi
     done
