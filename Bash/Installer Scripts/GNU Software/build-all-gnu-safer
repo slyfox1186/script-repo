@@ -136,9 +136,6 @@ do
     done
 done
 
-# DELETE ANY UNWANTED FILES
-sudo find . -type f -name '*.Identifier' -delete
-
 # ASK THE USER IF THEY WANT TO INSTALL ALL OF THE SCRIPTS
 install_choice_fn
 
