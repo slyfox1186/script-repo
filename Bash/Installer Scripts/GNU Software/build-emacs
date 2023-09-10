@@ -4,7 +4,7 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-emacs
 ##
-##  Purpose: Build GNU emacs
+##  Purpose: build gnu emacs
 ##
 ##  Updated: 08.01.23
 ##
@@ -20,21 +20,21 @@ if [ "${EUID}" -eq '0' ]; then
 fi
 
 #
-# SET VARIABLES
+# SET THE VARIABLES
 #
 
 script_ver=1.1
 archive_dir=emacs-29.1
 archive_url=https://ftp.gnu.org/gnu/emacs/emacs-29.1.tar.xz
 archive_ext="${archive_url//*.}"
+archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/emacs-build-script
 install_dir=/usr/local
-repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
-    "emacs Build Script - v${script_ver}" \
+    "emacs build script - v${script_ver}" \
     '==============================================='
 
 #
@@ -176,8 +176,6 @@ pc_type="$(source "${cwd}/config.guess")"
 #
 # DOWNLOAD THE ARCHIVE FILE
 #
-
-archive_name="${archive_dir}.tar.${archive_ext}"
 
 if [ ! -f "${cwd}/${archive_name}" ]; then
     curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"

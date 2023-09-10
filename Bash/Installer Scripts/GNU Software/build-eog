@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2068,SC2086
 
 ##########################################################################################################################
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-eog
 ##
-##  Purpose: Build GNU EYE OF GNOME (AKA EOG)
+##  Purpose: build gnu eye of gnome (aka eog)
 ##
 ##  Updated: 08.31.23
 ##
@@ -21,7 +20,7 @@ if [ "${EUID}" -eq '0' ]; then
 fi
 
 #
-# SET VARIABLES
+# SET THE VARIABLES
 #
 
 script_ver=1.1
@@ -36,7 +35,7 @@ repo=https://github.com/slyfox1186/script-repo
 debug=OFF
 
 printf "%s\n%s\n\n" \
-    "Eye of Gnome Build Script - v${script_ver}" \
+    "eog build script - v${script_ver}" \
     '==============================================='
 
 #
@@ -49,7 +48,7 @@ fi
 mkdir -p "${cwd}"
 
 #
-# SET THE C+CPP COMPILERS
+# SET THE C + CPP COMPILERS
 #
 
 export CC=gcc CXX=g++

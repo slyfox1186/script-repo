@@ -4,7 +4,7 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-bash
 ##
-##  Purpose: Build GNU Bash
+##  Purpose: build gnu bash
 ##
 ##  Updated: 09.03.23
 ##
@@ -22,20 +22,21 @@ if [ "${EUID}" -eq '0' ]; then
 fi
 
 #
-# SET VARIABLES
+# SET THE VARIABLES
 #
 
 script_ver=2.0
 archive_dir=bash-5.2.15
 archive_url=https://ftp.gnu.org/gnu/bash/bash-5.2.15.tar.gz
 archive_ext="${archive_url//*.}"
+archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/bash-build-script
 install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
-    "Bash Build Script - v${script_ver}" \
+    "bash build script - v${script_ver}" \
     '==============================================='
 
 #
@@ -48,7 +49,7 @@ fi
 mkdir -p "${cwd}"
 
 #
-# SET THE C+CPP COMPILERS
+# SET THE C + CPP COMPILERS
 #
 
 export CC=gcc CXX=g++
@@ -177,8 +178,6 @@ pc_type="$(source "${cwd}/config.guess")"
 #
 # DOWNLOAD THE ARCHIVE FILE
 #
-
-archive_name="${archive_dir}.tar.${archive_ext}"
 
 if [ ! -f "${cwd}/${archive_name}" ]; then
     curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"

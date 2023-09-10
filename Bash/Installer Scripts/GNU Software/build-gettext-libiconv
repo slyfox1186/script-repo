@@ -4,7 +4,7 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-gettext-libiconv
 ##
-##  Purpose: Build GNU gettext and iconv
+##  Purpose: build gnu gettext + libiconv
 ##
 ##  Updated: 08.31.23
 ##
@@ -20,7 +20,7 @@ if [ "${EUID}" -eq '0' ]; then
 fi
 
 #
-# SET VARIABLES
+# SET THE VARIABLES
 #
 
 script_ver=1.2
@@ -36,7 +36,7 @@ user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
-    "Iconv + GetText Build Script - v${script_ver}" \
+    "gettext + libiconv build script - v${script_ver}" \
     '==============================================='
 
 #
@@ -49,13 +49,13 @@ fi
 mkdir -p "${cwd}/${archive_dir1}" "${cwd}/${archive_dir2}"
 
 #
-# SET THE C+CPP COMPILERS
+# SET THE C + CPP COMPILERS
 #
 
 export CC=gcc CXX=g++
 
 #
-# EXPORT COMPILER OPTIMIZATION FLAGS
+# SET COMPILER OPTIMIZATION FLAGS
 #
 
 export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'

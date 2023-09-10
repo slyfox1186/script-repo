@@ -4,7 +4,7 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-attr
 ##
-##  Purpose: Build GNU attr
+##  Purpose: build gnu attr
 ##
 ##  Updated: 08.03.23
 ##
@@ -20,13 +20,14 @@ if [ "${EUID}" -eq '0' ]; then
 fi
 
 #
-# SET VARIABLES
+# SET THE VARIABLES
 #
 
 script_ver=1.0
 archive_dir=attr-2.5.1
 archive_url=https://download.savannah.gnu.org/releases/attr/attr-2.5.1.tar.gz
 archive_ext="${archive_url//*.}"
+archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/attr-build-script
 install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
@@ -46,7 +47,7 @@ fi
 mkdir -p "${cwd}"
 
 #
-# SET THE C+CPP COMPILERS
+# SET THE C + CPP COMPILERS
 #
 
 export CC=gcc CXX=g++
@@ -175,8 +176,6 @@ pc_type="$(source "${cwd}/config.guess")"
 #
 # DOWNLOAD THE ARCHIVE FILE
 #
-
-archive_name="${archive_dir}.tar.${archive_ext}"
 
 if [ ! -f "${cwd}/${archive_name}" ]; then
     curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"

@@ -4,7 +4,7 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-coreutils
 ##
-##  Purpose: Build GNU Coreutils
+##  Purpose: build gnu coreutils
 ##
 ##  Updated: 08.31.23
 ##
@@ -29,12 +29,14 @@ script_ver=1.2
 archive_dir=coreutils-9.4
 archive_url=https://ftp.gnu.org/gnu/coreutils/${archive_dir}.tar.xz
 archive_ext="${archive_url//*.}"
+archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/coreutils-build-script
 install_dir=/usr/local
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
-    "Coreutils Build Script - v${script_ver}" \
+    "coreutils build script - v${script_ver}" \
     '==============================================='
 
 #
@@ -47,10 +49,16 @@ fi
 mkdir -p "${cwd}"
 
 #
-# SET THE C+CPP COMPILERS
+# SET THE C + CPP COMPILERS
 #
 
-export CC=clang CXX=clang++
+export CC=gcc CXX=g++
+
+#
+# SET COMPILER OPTIMIZATION FLAGS
+#
+
+export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
 
 #
 # SET THE PATH VARIABLE
@@ -89,12 +97,6 @@ PKG_CONFIG_PATH="\
 /lib/x86_64-linux-gnu/pkgconfig\
 "
 export PKG_CONFIG_PATH
-
-#
-# SET THE COMPILER OPTIMIZATION FLAGS
-#
-
-export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
 
 #
 # CREATE THE FUNCTIONS
@@ -175,8 +177,6 @@ pc_type="$(source "${cwd}/config.guess")"
 #
 # DOWNLOAD THE ARCHIVE FILE
 #
-
-archive_name="${archive_dir}.tar.${archive_ext}"
 
 if [ ! -f "${cwd}/${archive_name}" ]; then
     curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
