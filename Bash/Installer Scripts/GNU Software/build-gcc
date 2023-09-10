@@ -508,7 +508,7 @@ gcc_13='gcc-13-base gcc-13-multilib g++-13-multilib libgcc-13-dev gobjc-13-multi
 gcc_13+=' gfortran-13-multilib gdc-13-multilib gccgo-13-multilib libx32gcc-13-dev libx32gfortran-13-dev'
 gcc_13+=' libx32go-13-dev libx32gphobos-13-dev libx32objc-13-dev libx32stdc++-13-dev lib32stdc++-13-dev'
 
-get_gcc_ver="$("${CC}" --version | grep -Eo '[0-3\.]+$' | head -n1 | grep -Eo '^[1-3]+')"
+get_gcc_ver="$("${CC}" --version | grep -Eo '[0-9\.]+$' | head -n1 | grep -Eo '^[1-9]+')"
 
 case "${get_gcc_ver}" in
     10)     apt_gcc_ver="${gcc_10}";;
