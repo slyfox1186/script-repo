@@ -170,9 +170,9 @@ pkgs_fn()
 {
     local i missing_pkgs pkgs
 
-    pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl git libgmp-dev libintl-perl
-          libmpfr-dev libreadline-dev libsigsegv-dev libticonv-dev libtool libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev
-          yasm)
+    pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl git
+          libgmp-dev libintl-perl libmpfr-dev libreadline-dev libsigsegv-dev libticonv-dev libtool
+          libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev yasm)
 
     for i in ${pkgs[@]}
     do
@@ -189,14 +189,6 @@ pkgs_fn()
         clear
     fi
 }
-
-#
-# GET PC TYPE
-#
-
-curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "${cwd}/config.guess"
-pc_type="$(source "${cwd}/config.guess")"
 
 #
 # DOWNLOAD THE ARCHIVE FILE

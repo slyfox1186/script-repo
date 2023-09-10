@@ -202,7 +202,7 @@ cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 cd build || exit 1
 clear
-../configure --prefix="${install_dir}"   \
+../configure --prefix="${install_dir}"       \
              --{build,host}=x86_64-linux-gnu \
              --disable-install-examples
 make "-j$(nproc --all)"

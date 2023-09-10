@@ -204,8 +204,7 @@ cd "${cwd}/${archive_dir}/build" || exit 1
              --enable-indirect-deps              \
              --with-pc-path="${PKG_CONFIG_PATH}" \
              --with-pic                          \
-             PKG_CONFIG="$(type -P pkg-config)"  \
-             PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
+             PKG_CONFIG="$(type -P pkg-config)"
 make "-j$(nproc --all)"
 if ! sudo make install; then
     fail_fn "Failed to execute: sudo make install:Line ${LINENO}"

@@ -148,16 +148,16 @@ cleanup_fn()
 
 pkgs_fn()
 {
-    pkgs=("${1}" apt-transport-https apt-utils "${1}" autoconf autoconf-archive autogen automake autopoint autotools-dev build-essential bzip2
-          ca-certificates ccache clang cmake curl gfortran git google-perftools graphviz jq lcov libaria2-0 libaria2-0-dev
-          libc-ares-dev libcppunit-dev libcunit1-dev libcurl4 libcurl4-openssl-dev libdmalloc-dev libec-dev libedit-dev
-          libev-dev libevent-dev libexiv2-27 libexpat1-dev libgcc-12-dev libgcrypt20-dev libgexiv2-2 libgimp2.0 libgmp3-dev
-          libgpg-error-dev libgtk-4-doc libgpgme-dev libicu-dev libjemalloc-dev libkrb5-3 libldap2-dev libldap-dev liblttng-ust-dev
-          liblzma-dev libmbedtls-dev libnghttp2-dev libntlm0-dev libparted-dev libpng-dev libpsl-dev librtmp-dev librust-bzip2-dev
-          librust-openssl-dev libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev libtinfo5 libtinfo-dev libtool libtool-bin
-          libunistring-dev libunwind8 libuv1-dev libxml2-dev libzstd-dev lzip m4 nettle-dev openjdk-17-jdk-headless openssh-server
-          pkg-config python3-dev python3-numpy python3-packaging python3-pip python3-pytest python3-setuptools python3-wheel
-          re2c rsync unzip valgrind zip zlib1g-dev)
+    pkgs=(apt-transport-https apt-utils autoconf autoconf-archive autogen automake autopoint autotools-dev
+          build-essential bzip2 ca-certificates ccache clang cmake curl gfortran git google-perftools graphviz jq lcov
+          libaria2-0 libaria2-0-dev libc-ares-dev libcppunit-dev libcunit1-dev libcurl4 libcurl4-openssl-dev libdmalloc-dev
+          libec-dev libedit-dev libev-dev libevent-dev libexiv2-27 libexpat1-dev libgcc-12-dev libgcrypt20-dev libgexiv2-2
+          libgimp2.0 libgmp3-dev libgpg-error-dev libgtk-4-doc libgpgme-dev libicu-dev libjemalloc-dev libkrb5-3 libldap2-dev
+          libldap-dev liblttng-ust-dev liblzma-dev libmbedtls-dev libnghttp2-dev libntlm0-dev libparted-dev libpng-dev libpsl-dev
+          librtmp-dev librust-bzip2-dev librust-openssl-dev libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev libtinfo5 libticonv-dev
+          libtinfo-dev libtool libtool-bin libunistring-dev libunwind8 libuv1-dev libxml2-dev libzstd-dev lzip m4 nettle-dev
+          openjdk-17-jdk-headless openssh-server pkg-config python3-dev python3-numpy python3-packaging python3-pip python3-pytest
+          python3-setuptools python3-wheel re2c rsync unzip valgrind zip zlib1g-dev)
 
     for i in ${pkgs[@]}
     do
@@ -174,21 +174,6 @@ pkgs_fn()
         clear
     fi
 }
-
-#
-# TEST IF LIBICONV WAS MANUALLY INSTALLED OR BY APT
-#
-
-if [ -f /usr/local/bin/iconv ]; then
-    pkgs_fn
-    iconv_prefix=/usr/local
-elif [ -f /usr/bin/iconv ]; then
-    pkgs_fn
-    iconv_prefix=/usr
-else
-    pkgs_fn 'libiconv-hook-dev'
-    iconv_prefix=/usr
-fi
 
 #
 # DOWNLOAD THE ARCHIVE FILE
@@ -227,24 +212,24 @@ fi
 cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 cd build || exit 1
-../configure --prefix="${install_dir}"                \
-             --{build,host}=x86_64-linux-gnu              \
-             --disable-nls                            \
-             --enable-threads=posix                   \
-             --enable-valgrind-tests                  \
-             --enable-year2038                        \
-             --with-cares                             \
-             --with-gpgme-prefix=/usr                 \
-             --with-included-libunistring             \
-             --with-libiconv-prefix="${iconv_prefix}" \
-             --with-libintl-prefix=/usr               \
-             --with-libssl-prefix=/usr/lib64          \
-             --with-libunistring-prefix=/usr          \
-             --with-linux-crypto                      \
-             --with-metalink                          \
-             --with-openssl=auto                      \
-             --with-ssl=openssl                       \
-             PKG_CONFIG="$(type -P pkg-config)"       \
+../configure --prefix="${install_dir}"          \
+             --{build,host}=x86_64-linux-gnu    \
+             --disable-nls                      \
+             --enable-threads=posix             \
+             --enable-valgrind-tests            \
+             --enable-year2038                  \
+             --with-cares                       \
+             --with-gpgme-prefix=/usr           \
+             --with-included-libunistring       \
+             --with-libiconv-prefix=/usr        \
+             --with-libintl-prefix=/usr         \
+             --with-libssl-prefix=/usr/lib64    \
+             --with-libunistring-prefix=/usr    \
+             --with-linux-crypto                \
+             --with-metalink                    \
+             --with-openssl=auto                \
+             --with-ssl=openssl                 \
+             PKG_CONFIG="$(type -P pkg-config)" \
              PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
 make "-j$(nproc --all)"
 if ! sudo make install; then
