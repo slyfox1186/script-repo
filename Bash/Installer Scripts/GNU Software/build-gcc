@@ -18,6 +18,7 @@
 ##
 ##  Updated: GCC-13 to version - 13.2.0
 ##
+##  Added: multiarch support for GCC 11 / 12 / 13
 ##  Added: multiple support libraries using the latest versions available
 ##  Added: link time optimization support
 ##  Added: gmp support library for binutils
@@ -25,7 +26,6 @@
 ##  Added: code to clean the environment
 ##  Added: added two default variables back into the script environment to combat
 ##         any issues with dbus or x-11 display issues.
-##  Added: multiarch support
 ##
 ##  Optimized: code by removing redundant loops by passing variables to functions
 ##
