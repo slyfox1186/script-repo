@@ -1,9 +1,26 @@
 #!/usr/bin/env bash
 
+###########################################################################################################
+##
+##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-isl
+##
+##  Purpose: Build GNU isl
+##
+##  Updated: 08.03.23
+##
+##  Script version: 1.0
+##
+###########################################################################################################
+
 clear
 
+if [ "${EUID}" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
+
 #
-# SET PROGRAM NAME + VERSION
+# SET VARIABLES
 #
 
 script_ver=1.1
@@ -147,14 +164,6 @@ if [ -n "${missing_pkgs}" ]; then
     sudo apt -y autoremove
     clear
 fi
-
-#
-# GET PC TYPE
-#
-
-curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "${cwd}/config.guess"
-pc_type="$(source "${cwd}/config.guess")"
 
 #
 # DOWNLOAD THE ARCHIVE FILE
