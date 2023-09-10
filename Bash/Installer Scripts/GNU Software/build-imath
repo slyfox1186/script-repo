@@ -1,9 +1,26 @@
 #!/usr/bin/env bash
 
+###########################################################################################################
+##
+##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-imath
+##
+##  Purpose: Build GNU iMath
+##
+##  Updated: 08.03.23
+##
+##  Script version: 1.0
+##
+###########################################################################################################
+
 clear
 
+if [ "${EUID}" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
+
 #
-# SET PROGRAM NAME + VERSION
+# SET VARIABLES
 #
 
 script_ver=1.0
@@ -23,9 +40,10 @@ printf "%s\n%s\n\n" \
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ ! -d "${cwd}" ]; then
-    mkdir -p "${cwd}"
+if [ -d "${cwd}" ]; then
+    sudo rm -fr "${cwd}"
 fi
+mkdir -p "${cwd}"
 
 #
 # SET THE C+CPP COMPILERS
@@ -190,7 +208,7 @@ cmake -B build -DCMAKE_INSTALL_PREFIX="${install_dir}" \
                -G Ninja -Wno-dev
 ninja "-j$(nproc --all)" -C build
 if ! sudo ninja "-j$(nproc --all)" -C build install; then
-    printf "\n%s\n\n" 'Failed to install imath.'
+    fail_fn "Failed to execute sudo ninja "-j$(nproc --all)" -C build install:${LINENO}"
     exit 1
 fi
 
