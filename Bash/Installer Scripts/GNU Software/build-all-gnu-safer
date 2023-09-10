@@ -76,9 +76,9 @@ install_scripts_fn()
     local i scripts
     clear
 
-    scripts="$(sudo find . -maxdepth 1 -type f | sed 's/^..//g')"
+    scripts="$(sudo find . -maxdepth 1 -type f -name '*' | sed 's/^..//g' | sort)"
 
-    for i in ${scripts[@]} 
+    for i in ${scripts[@]}
     do
         if bash "${i}"; then
             sudo find . -maxdepth 1 -type f -name "${i}" -exec mv {} completed \;
@@ -114,9 +114,7 @@ install_choice_fn()
 
 cd "${cwd}" || exit 1
 
-scripts=(m4 autoconf libtool pkg-config gettext-libiconv make bash binutils coreutils dbus diffutils
-         sed tar eog gawk gnutls grep imath isl nano ncurses nettle readline systemd texinfo util-linux
-         wget attr)
+scripts=(m4 autoconf libtool pkg-config make bash sed tar eog gawk grep nano isl wget)
 
 for script in ${scripts[@]}
 do
@@ -124,6 +122,16 @@ do
     wget -U "${user_agent}" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-${script}"
     mv "build-${script}" "0${cnt}-build-${script}"
 done
+
+# RENAME SOME OF THE    FILES SO THEY EXECUTE IN THE CORRECT ORDER
+mv 010-build-gawk 10-build-gawk
+mv 011-build-grep 11-build-grep
+mv 012-build-nano 12-build-nano
+mv 013-build-isl 13-build-isl
+mv 014-build-wget 14-build-wget
+
+# DELETE ANY UNWANTED FILES
+sudo find . -type f -name '*.Identifier' -delete
 
 # ASK THE USER IF THEY WANT TO INSTALL ALL OF THE SCRIPTS
 install_choice_fn

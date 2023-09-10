@@ -1,26 +1,9 @@
-#!/usr/bin/env bash 
-
-###########################################################################################################
-##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-imath
-##
-##  Purpose: Build GNU Grep
-##
-##  Updated: 08.13.23
-##
-##  Script version: 1.2
-##
-###########################################################################################################
+#!/usr/bin/env bash
 
 clear
 
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
-    exit 1
-fi
-
 #
-# SET VARIABLES
+# SET PROGRAM NAME + VERSION
 #
 
 script_ver=1.0
@@ -28,6 +11,7 @@ archive_dir=imath-3.1.9
 archive_url=https://github.com/AcademySoftwareFoundation/Imath/archive/refs/tags/v3.1.9.tar.gz
 archive_ext="${archive_url//*.}"
 cwd="${PWD}"/imath-build-script
+install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
@@ -39,11 +23,11 @@ printf "%s\n%s\n\n" \
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ -d "${cwd}" ]; then
-    sudo rm -fr "${cwd}"
+if [ ! -d "${cwd}" ]; then
+    mkdir -p "${cwd}"
 fi
-mkdir -p "${cwd}"
 
+#
 # SET THE C+CPP COMPILERS
 #
 
@@ -201,13 +185,12 @@ fi
 #
 
 cd "${cwd}/${archive_dir}" || exit 1
-cmake -B build -DCMAKE_INSTALL_PREFIX=/usr/local \
-               -DCMAKE_BUILD_TYPE=Release        \
+cmake -B build -DCMAKE_INSTALL_PREFIX="${install_dir}" \
+               -DCMAKE_BUILD_TYPE=Release              \
                -G Ninja -Wno-dev
 ninja "-j$(nproc --all)" -C build
 if ! sudo ninja "-j$(nproc --all)" -C build install; then
-    ninja build clean
-    printf "\n%s\n\n" 'Failed to execute .'
+    printf "\n%s\n\n" 'Failed to install imath.'
     exit 1
 fi
 

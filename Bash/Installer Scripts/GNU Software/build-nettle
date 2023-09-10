@@ -28,8 +28,9 @@ archive_dir=nettle-3.9.1
 archive_url=https://ftp.gnu.org/gnu/nettle/nettle-3.9.1.tar.gz
 archive_ext="${archive_url//*.}"
 cwd="${PWD}"/nettle-build-script
-repo=https://github.com/slyfox1186/script-repo
+install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
     "nettle build script - v${script_ver}" \
@@ -242,10 +243,10 @@ lib_dirs+=':/usr/x86_64-w64-mingw32/lib:/usr/share/lintian/lib:/usr/share/gitk/l
 
 cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
-./configure --prefix=/usr/local                    \
+./configure --prefix="${install_dir}"              \
              --disable-documentation               \
-             --with-include-path="${include_dirs}" \
              --with-lib-path="${lib_dirs}"         \
+             --with-include-path="${include_dirs}" \
              CPPFLAGS='-I/usr/local/include -I/usr/include'
 make "-j$(nproc --all)"
 if ! sudo make install; then

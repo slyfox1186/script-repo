@@ -29,6 +29,7 @@ archive_url=https://ftp.gnu.org/gnu/gawk/gawk-5.2.2.tar.lz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/gawk-build-script
+install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 
@@ -40,10 +41,9 @@ printf "%s\n%s\n\n" \
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ -d "${cwd}" ]; then
-    sudo rm -fr "${cwd}"
+if [ ! -d "${cwd}" ]; then
+    mkdir -p "${cwd}"
 fi
-mkdir -p "${cwd}"
 
 #
 # SET THE C+CPP COMPILERS
@@ -158,6 +158,7 @@ done
 
 if [ -n "${missing_pkgs}" ]; then
     sudo apt -y install ${missing_pkgs}
+    sudo apt -y autoremove
     clear
 fi
 
@@ -202,13 +203,12 @@ fi
 cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 cd build || exit 1
-../configure --prefix=/usr/local               \
-             --{build,host}="${pc_type}"       \
+../configure --prefix="${install_dir}"   \
+             --{build,host}="${pc_type}" \
              --disable-nls
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    make distclean
-    printf "\n%s\n\n" 'Failed to install gawk.'
+    printf "\n%s\n\n" 'Failed to execute: sudo make install'
     exit 1
 fi
 

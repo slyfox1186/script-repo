@@ -28,7 +28,9 @@ archive_dir=attr-2.5.1
 archive_url=https://download.savannah.gnu.org/releases/attr/attr-2.5.1.tar.gz
 archive_ext="${archive_url//*.}"
 cwd="${PWD}"/attr-build-script
+install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
     "attr build script - v${script_ver}" \
@@ -50,7 +52,7 @@ mkdir -p "${cwd}"
 export CC=gcc CXX=g++
 
 #
-# EXPORT COMPILER OPTIMIZATION FLAGS
+# SET COMPILER OPTIMIZATION FLAGS
 #
 
 export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
@@ -143,8 +145,9 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=("${1}" autoconf autoconf-archive autogen automake autopoint autotools-dev build-essential bzip2
-      ccache curl git libintl-perl libtool libtool-bin lzip pkg-config zlib1g-dev)
+pkgs=(autoconf autoconf-archive autogen automake autopoint autotools-dev binutils bison build-essential bzip2
+      bzip2 ccache curl libc6-dev libpth-dev git libtool libtool-bin lzip pkg-config m4 nasm texinfo zlib1g-dev
+      yasm zlib1g-dev)
 
 for i in ${pkgs[@]}
 do
@@ -204,9 +207,9 @@ fi
 cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 cd build || exit 1
-../configure --prefix=/usr/local         \
-             --{build,host}="${pc_type}" \
-             --disable-nls               \
+../configure --prefix="${install_dir}"    \
+             --{build,host}="${pc_type}"  \
+             --disable-nls                \
              --with-pic
 make "-j$(nproc --all)"
 if ! sudo make install; then
