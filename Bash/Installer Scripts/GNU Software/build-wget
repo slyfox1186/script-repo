@@ -50,13 +50,13 @@ mkdir -p "${cwd}"
 # SET THE C + CPP COMPILERS
 #
 
-export CC=gcc-13 CXX=g++-13
+export CC=gcc CXX=g++
 
 #
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -march=znver4'
+export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -march=native'
 
 #
 # SET THE PATH VARIABLE
