@@ -187,7 +187,6 @@ autoreconf -fi -I /usr/share/aclocal
 cd build || exit 1
 ../configure --prefix="${install_dir}"       \
              --{build,host}=x86_64-linux-gnu \
-             --with-clang=system             \
              --with-pic
 make "-j$(nproc --all)"
 if ! sudo make install; then
