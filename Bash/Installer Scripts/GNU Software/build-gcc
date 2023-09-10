@@ -14,7 +14,7 @@
 ##  Screenshot of Ubuntu build: https://gcc-screenshot.optimizethis.net
 ##
 ##  Last Script Update: 09.10.23
-##  Script Version: 4.4
+##  Script Version: 4.5
 ##
 ##  Updated: GCC-13 to version - 13.2.0
 ##
@@ -158,7 +158,7 @@ clear
 # SET THE GLOBAL SCRIPT VARIABLES
 #
 
-script_ver=4.4
+script_ver=4.5
 install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 latest=false
