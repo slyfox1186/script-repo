@@ -671,15 +671,15 @@ if build 'autoconf' 'latest'; then
     build_done 'autoconf' 'latest'
 fi
 
-if build 'libtool' '2.4.6'; then
-    download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.6.tar.xz'
+if build 'libtool' '2.4.7'; then
+    download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
     execute ./configure --prefix="${workspace}"     \
                         --{build,host}="${pc_type}" \
                         --with-pic \
                         M4="${workspace}"/bin/m4
     execute make "-j${cpu_threads}"
     execute make install
-    build_done 'libtool' '2.4.6'
+    build_done 'libtool' '2.4.7'
 fi
 
 git_ver_fn 'libsdl-org/libtiff' 'T'
