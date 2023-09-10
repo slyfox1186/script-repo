@@ -644,6 +644,14 @@ box_out_banner "GCC Build Script: v${script_ver}"
 # INSTALL FROM SOURCE CODE
 #
 
+if build 'autoconf' '2.69'; then
+    download 'https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.xz'
+    execute ./configure --prefix="${workspace}"
+    execute make "-j${cpu_threads}"
+    execute make install
+    build_done 'autoconf' '2.69'
+fi
+
 if build 'pkg-config' '0.29.2'; then
     download "https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz"
     execute ./configure --prefix="${workspace}" \
