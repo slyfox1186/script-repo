@@ -114,7 +114,7 @@ install_choice_fn()
 
 cd "${cwd}" || exit 1
 
-scripts=(m4 autoconf libtool pkg-config make bash sed tar eog gawk grep nano isl wget)
+scripts=(m4 autoconf libtool pkg-config util-linuxmake bash sed tar eog gawk grep nano isl wget)
 
 for script in ${scripts[@]}
 do
