@@ -29,8 +29,8 @@ archive_url=https://ftp.gnu.org/gnu/gawk/gawk-5.2.2.tar.lz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/gawk-build-script
-repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
     "GAWK Build Script - v${script_ver}" \
@@ -40,9 +40,10 @@ printf "%s\n%s\n\n" \
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ ! -d "${cwd}" ]; then
-    mkdir -p "${cwd}"
+if [ -d "${cwd}" ]; then
+    sudo rm -fr "${cwd}"
 fi
+mkdir -p "${cwd}"
 
 #
 # SET THE C+CPP COMPILERS
