@@ -31,6 +31,7 @@ script_ver=1.5
 archive_dir=aria2-1.36.0
 archive_url="https://github.com/aria2/aria2/releases/download/release-1.36.0/${archive_dir}.tar.gz"
 archive_ext="${archive_url//*.}"
+archive_name="${archive_dir}.tar.${archive_ext}"
 parent_dir="${PWD}"
 cwd="${parent_dir}"/aria2-build-script
 cert_dir=/usr/lib/ssl/certs
@@ -48,7 +49,7 @@ CFLAGS='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
 CPPFLAGS='-I/usr/local/include -I/usr/include'
 CXXFLAGS="${CFLAGS}"
 LDFLAGS="-L/usr/local/lib64 -L/usr/local/lib -L/usr/local/cuda/nvvm/lib64 -L/usr/local/cuda/targets/x86_64-linux/lib"
-LDFLAGS+=' -L/usr/lib -L/usr/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu -L/lib'
+LDFLAGS+=' -L/usr/lib -L/usr/lib/"${install_dir}" -L/lib/"${install_dir}" -L/lib'
 LIBS="$(pkg-config --libs libuv) $(pkg-config --libs libgcrypt)"
 
 #
@@ -100,15 +101,15 @@ export PATH
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/"${install_dir}"/pkgconfig:\
 /usr/local/share/pkgconfig:\
 /usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/"${install_dir}"/pkgconfig:\
 /usr/share/pkgconfig:\
 /lib64/pkgconfig:\
 /lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
+/lib/"${install_dir}"/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -193,16 +194,8 @@ cleanup_fn()
 
 curl -A "${user_agent}" -Lso "${pem_in}" "https://curl.se/ca/${pem_file}"
 if ! sudo mv "${pem_in}" "${pem_out}"; then
-    fail_fn 'Failed to move cacert.pem'
+    fail_fn "Failed to move cacert.pem:Line ${LINENO}"
 fi
-
-#
-# GET THE PC TYPE
-#
-
-curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "${cwd}/config.guess"
-pc_type="$(source "${cwd}/config.guess")"
 
 #
 # INSTALL THE REQUIRED APT PACKAGES
@@ -231,8 +224,6 @@ fi
 #
 # DOWNLOAD THE ARCHIVE FILE
 #
-
-archive_name="${archive_dir}.tar.${archive_ext}"
 
 if [ ! -f "${cwd}/${archive_name}" ]; then
     curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
@@ -275,7 +266,7 @@ cd "${cwd}/${archive_dir}" || exit 1
 sed -i 's/1, 16/1, 128/g' 'src/OptionHandlerFactory.cc'
 cd build || exit 1
 ../configure --prefix=/usr/local                            \
-             --{build,host,target}="${pc_type}"             \
+             --{build,host,target}=x86_64-linux-gnu             \
              --disable-nls                                  \
              --disable-shared                               \
              --disable-werror                               \
@@ -301,9 +292,8 @@ cd build || exit 1
              PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
 
 make "-j$(nproc --all)"
-
 if ! sudo make install; then
-    printf "\n%s\n\n" 'Failed to install aria2c.'
+    fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
     exit 1
 fi
 
@@ -315,7 +305,7 @@ if [ -f "/usr/local/bin/${pc_type}-aria2c" ]; then
     sudo ln -sf "/usr/local/bin/${pc_type}-aria2c" '/usr/local/bin/aria2c'
     sudo chmod 755 '/usr/local/bin/aria2c'
 else
-    fail_fn 'Failed to create a soft link to: /usr/local/bin/aria2c'
+    fail_fn "Failed to create a soft link to: /usr/local/bin/aria2c:Line ${LINENO}"
 fi
 
 # SHOW THE NEW VERSION

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2162,SC2317
 
 ###########################################################################################################
 ##
@@ -192,7 +193,7 @@ mkdir -p "${cwd}/${archive_dir}/build"
 #
 
 if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
+    fail_fn "Failed to extract: ${cwd}/${archive_name}:Line ${LINENO}"
     exit 1
 fi
 
@@ -201,22 +202,22 @@ fi
 #
 
 cd "${cwd}/${archive_dir}/build" || exit 1
-cmake -S ../llvm                        \
--G Ninja -Wno-dev                       \
--DCMAKE_INSTALL_PREFIX="${install_dir}" \
--DCMAKE_BUILD_TYPE=Release              \
--DCMAKE_C_COMPILER="${CC}"              \
--DCMAKE_CXX_COMPILER="${CXX}"           \
--DLLVM_TARGETS_TO_BUILD=host            \
--DLLVM_ENABLE_PROJECTS="${list1}"       \
--DLLVM_ENABLE_RUNTIMES="${list2}"
+cmake -S ../llvm -DCMAKE_install_dir="${install_dir}" \
+                 -DCMAKE_BUILD_TYPE=Release           \
+                 -DCMAKE_C_COMPILER="${CC}"           \
+                 -DCMAKE_CXX_COMPILER="${CXX}"        \
+                 -DLLVM_TARGETS_TO_BUILD=host         \
+                 -DLLVM_ENABLE_PROJECTS="${list1}"    \
+                 -DLLVM_ENABLE_RUNTIMES="${list2}"    \
+                 -G Ninja -Wno-dev
 ninja "-j$(nproc --all)"
 if ! sudo ninja "-j$(nproc --all)" install; then
-    printf "\n%s\n\n" "Failed to execute: sudo ninja "-j$(nproc --all)" install."
+    fail_fn "Failed to execute: sudo ninja -j$(nproc --all) install:Line ${LINENO}"
     exit 1
 fi
 
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
+
 # SHOW EXIT MESSAGE
 exit_fn

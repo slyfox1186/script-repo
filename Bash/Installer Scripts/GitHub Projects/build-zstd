@@ -84,15 +84,15 @@ export PATH
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/"${install_dir}"/pkgconfig:\
 /usr/local/share/pkgconfig:\
 /usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/"${install_dir}"/pkgconfig:\
 /usr/share/pkgconfig:\
 /lib64/pkgconfig:\
 /lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
+/lib/"${install_dir}"/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -187,7 +187,7 @@ mkdir -p "${cwd}/${archive_dir}"
 #
 
 if ! tar -zxf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
+    fail_fn "Failed to extract: ${cwd}/${archive_name}"
     exit 1
 fi
 
@@ -202,7 +202,7 @@ meson setup build --prefix=/usr/local    \
                   --strip
 ninja "-j$(nproc --all)" -C build
 if ! sudo ninja "-j$(nproc --all)" -C build install; then
-    printf "\n%s\n\n" "Failed to execute: sudo ninja "-j$(nproc --all)" -C build install"
+    fail_fn "Failed to execute: sudo ninja -j$(nproc --all) -C build install:Line ${LINENO}"
     exit 1
 fi
 

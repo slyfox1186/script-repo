@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2034,SC2046,SC2066,SC2068,SC2086,SC2162
+# shellcheck disable=SC2162,SC2317
 
-###################################################################################
+##############################################################################################
 ##
 ##  Install CMake, Ninja, Meson, Golang
 ##
@@ -18,7 +18,7 @@
 ##
 ##  Script version: 2.3
 ##
-###################################################################################
+##############################################################################################
 
 clear
 
@@ -34,10 +34,9 @@ fi
 script_ver=2.3
 cwd="${PWD}"/build-tools-script
 packages="${cwd}"/packages
-workspace="${cwd}"/workspace
-install_prefix=/usr/local
-repo=https://github.com/slyfox1186/script-repo
+install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+repo=https://github.com/slyfox1186/script-repo
 debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
@@ -54,8 +53,8 @@ fi
 # CREATE OUTPUT DIRECTORIES
 #
 
-if [ ! -d "${packages}" ] || [ ! -d "${workspace}" ]; then
-    mkdir -p "${packages}" "${workspace}" 2>/dev/null
+if [ ! -d "${packages}" ]; then
+    mkdir -p "${packages}" 
 fi
 
 #
@@ -96,15 +95,15 @@ export PATH
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/usr/local/pkgconfig:\
 /usr/local/share/pkgconfig:\
 /usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/usr/local/pkgconfig:\
 /usr/share/pkgconfig:\
 /lib64/pkgconfig:\
 /lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
+/lib/usr/local/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -212,7 +211,7 @@ download()
             printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 10 seconds..."
             sleep 10
             if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
-                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit."
+                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit:Line ${LINENO}"
             fi
         fi
         echo 'Download Completed'
@@ -226,18 +225,18 @@ download()
     if [ -n "${3}" ]; then
         if ! tar -xf "${target_file}" -C "${target_dir}" 2>/dev/null >/dev/null; then
             sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script."
+            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script:Line ${LINENO}"
         fi
     else
         if ! tar -xf "${target_file}" -C "${target_dir}" --strip-components 1 2>/dev/null >/dev/null; then
             sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script."
+            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script:Line ${LINENO}"
         fi
     fi
 
     printf "%s\n\n" "File extracted: ${dl_file}"
 
-    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}"
+    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}:Line ${LINENO}"
 }
 
 build()
@@ -269,7 +268,7 @@ git_1_fn()
     github_repo="${1}"
     github_url="${2}"
 
-    if curl_cmd="$(curl -m "${curl_timeout}" -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_sver="$(echo "${curl_cmd}" | jq -r '.[0].tag_name' 2>/dev/null)"
         g_sver1="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver="${g_sver#v}"
@@ -301,28 +300,25 @@ git_ver_fn()
     case "${v_flag}" in
             R)      t_flag=releases;;
             T)      t_flag=tags;;
-            *)      fail_fn 'Could not detect the variable ${v_flag}.'
+            *)      fail_fn "Could not detect the variable \"v_flag\":Line ${LINENO}"
     esac
 
     case "${v_tag}" in
             1)      u_flag=git_1_fn;;
             2)      u_flag=git_2_fn;;
-            *)      fail_fn 'Could not detect the variable ${v_tag}.'
+            *)      fail_fn "Could not detect the variable \"v_tag\":Line ${LINENO}"
     esac
 
     "${u_flag}" "${v_url}" "${t_flag}" 2>/dev/null
 }
 
-build_done()
-{
-    echo "${2}" > "${packages}/${1}.done"
-}
+build_done() { echo "${2}" > "${cwd}/${1}.done"; }
 
 #
 # PRINT SCRIPT BANNER
 #
 
-printf "%s\n%s\n%s" \
+printf "%s\n%s\n\n" \
     "Build-tools script: v${script_ver}" \
     '===================================='
 
@@ -343,6 +339,7 @@ done
 
 if [ -n "${missing_pkgs}" ]; then
     sudo apt -y install ${missing_pkgs}
+    sudo apt -y autoremove
     clear
 fi
 unset i missing_pkgs
@@ -351,7 +348,7 @@ unset i missing_pkgs
 # MAKE SURE WE USE THE CORRECT M4 FOLDER
 #
 
-export ACLOCAL_PATH=/usr/share/aclocal
+export ACLOCAL_PATH='/usr/share/aclocal'
 
 #
 # INSTALL FROM SOURCE CODE
@@ -360,7 +357,7 @@ export ACLOCAL_PATH=/usr/share/aclocal
 git_ver_fn '541' '2' 'T'
 if build 'cmake' "${g_ver}"; then
     download "https://gitlab.kitware.com/cmake/cmake/-/archive/v${g_ver}/cmake-v${g_ver}.tar.bz2" "cmake-${g_ver}.tar.bz2"
-    execute ./configure --prefix="${install_prefix}" --parallel="${cpu_threads}" --enable-ccache -- -DCMAKE_USE_OPENSSL=OFF
+    execute ./configure --prefix="${install_dir}" --parallel="${cpu_threads}" --enable-ccache -- -DCMAKE_USE_OPENSSL=OFF
     execute make "-j${cpu_threads}"
     execute sudo make install
     execute make clean
@@ -371,7 +368,7 @@ git_ver_fn 'ninja-build/ninja' '1' 'T'
 if build 'ninja' "${g_ver1}"; then
     download "https://codeload.github.com/ninja-build/ninja/tar.gz/refs/tags/v${g_ver1}" "ninja-${g_ver1}.tar.gz"
     re2c_path="$(type -P re2c)"
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${install_prefix}",BUILD_TYPE=Release} \
+    execute cmake -B build -DCMAKE_{install_dir="${install_dir}",BUILD_TYPE=Release} \
         -DRE2C="${re2c_path}" -DBUILD_TESTING=OFF -G 'Unix Makefiles' -Wno-dev
     execute make "-j${cpu_threads}" -C build
     execute sudo make -C build install
@@ -383,16 +380,16 @@ git_ver_fn 'mesonbuild/meson' '1' 'T'
 if build 'meson' "${g_ver1}"; then
     download "https://codeload.github.com/mesonbuild/meson/tar.gz/refs/tags/${g_ver1}" "meson-${g_ver1}.tar.gz"
     execute python3 setup.py build
-    execute sudo python3 setup.py install --prefix="${install_prefix}"
+    execute sudo python3 setup.py install --prefix="${install_dir}"
     build_done 'meson' "${g_ver1}"
 fi
 
 if build 'golang' '21.0'; then
     download 'https://go.dev/dl/go1.21.0.linux-amd64.tar.gz' 'golang-21.0.tar.gz'
-    execute sudo cp -f bin/go bin/gofmt "${install_prefix}"/bin
-    sudo rm -fr /usr/local/go 2>/dev/null
-    sudo mkdir -p /usr/local/go
-    export GOROOT=/usr/local/go
+    execute sudo cp -f bin/go bin/gofmt "${install_dir}"/bin
+    sudo rm -fr "${install_dir}"/go 2>/dev/null
+    sudo mkdir -p "${install_dir}"/go
+    export GOROOT="${install_dir}"/go
     export PATH="${PATH}:${GOROOT}/bin"
     build_done 'golang' '21.0'
 fi

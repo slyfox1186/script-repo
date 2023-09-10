@@ -24,10 +24,12 @@ fi
 #
 
 script_ver=1.1
+install_dir=/usr/local
 cwd="${PWD}"/zlib-build-script
 packages="${cwd}"/packages
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
+debug=OFF
 
 printf "\n%s\n%s\n\n" \
     "zlib build script - v${script_ver}" \
@@ -80,15 +82,15 @@ export PATH
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/usr/local/pkgconfig:\
 /usr/local/share/pkgconfig:\
 /usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/usr/local/pkgconfig:\
 /usr/share/pkgconfig:\
 /lib64/pkgconfig:\
 /lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
+/lib/usr/local/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -148,9 +150,6 @@ build()
         if grep -Fx "${2}" "${packages}/${1}.done" >/dev/null; then
             echo "${1} version ${2} already built. Remove ${packages}/${1}.done lockfile to rebuild it."
             return 1
-        elif ${latest}; then
-            echo "${1} is outdated and will be rebuilt using version ${2}"
-            return 0
         else
             echo "${1} is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove ${packages}/${1}.done lockfile."
             return 1
@@ -205,7 +204,7 @@ download()
             printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 10 seconds..."
             sleep 10
             if ! curl -A "${user_agent}" -Lso "${dl_file}" "${dl_url}"; then
-                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit."
+                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit:Line ${LINENO}"
             fi
         fi
         echo 'Download Completed'
@@ -219,18 +218,18 @@ download()
     if [ -n "${3}" ]; then
         if ! tar -xf "${dl_file}" -C "${target_dir}" 2>/dev/null >/dev/null; then
             sudo rm "${dl_file}"
-            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script."
+            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script:Line ${LINENO}"
         fi
     else
         if ! tar -xf "${dl_file}" -C "${target_dir}" --strip-components 1 2>/dev/null >/dev/null; then
             sudo rm "${dl_file}"
-            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script."
+            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script:Line ${LINENO}"
         fi
     fi
 
     printf "%s\n\n" "File extracted: ${dl_file}"
 
-    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}"
+    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}:Line ${LINENO}"
 }
 
 git_1_fn()
@@ -245,21 +244,14 @@ git_1_fn()
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver="${g_ver#v}"
     fi
-
-    echo "${github_repo%/*}-${g_ver}" >>"${ver_file_tmp}"
-    awk '!NF || !seen[${0}]++' "${latest_txt_tmp}" >"${ver_file}"
 }
 
 git_ver_fn()
 {
-    local t_flag u_flag v_flag v_tag v_url
+    local t_flag v_tag v_url
 
     v_url="${1}"
-    v_tag="${2}"
-
-    if [ -n "${3}" ]; then
-        v_flag="${3}"
-    fi
+    v_flag="${2}"
 
     case "${v_flag}" in
             B)      t_flag=branches;;
@@ -276,56 +268,39 @@ build_done() { echo "${2}" > "${packages}/${1}.done"; }
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs_fn()
-{
-    pkgs=("${1}" libtool autogen automake binutils bison build-essential bzip2 ccache curl
-          libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev libtool nasm texinfo
-          zlib1g-dev yasm)
+pkgs=(libtool autogen automake binutils bison build-essential bzip2 ccache curl
+      libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev libtool
+      nasm texinfo zlib1g-dev yasm)
 
-    for i in ${pkgs[@]}
-    do
-        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-    
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
-        fi
-    done
-    
-    if [ -n "${missing_pkgs}" ]; then
-        sudo apt -y install ${missing_pkgs}
-        sudo apt -y autoremove
-        clear
+for i in ${pkgs[@]}
+do
+    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${i}"
     fi
-}
+done
 
-#
-# INSTALL APT PACKAGES
-#
-
-pkgs_fn
-
-#
-# GET PC TYPE
-#
-
-curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "${cwd}/config.guess"
-pc_type="$(source "${cwd}/config.guess")"
+if [ -n "${missing_pkgs}" ]; then
+    sudo apt -y install ${missing_pkgs}
+    sudo apt -y autoremove
+    clear
+fi
 
 #
 # BUILD PROGRAM FROM SOURCE
 #
 
-git_ver_fn 'madler/zlib' '1' 'T'
+git_ver_fn 'madler/zlib' 'T'
 if build 'zlib' "${g_ver}"; then
     download "https://github.com/madler/zlib/releases/download/v${g_ver}/zlib-${g_ver}.tar.gz"
     mkdir build
     cd build || exit 1
-    execute ../configure --prefix=/usr/local             \
-                         --includedir=/usr/local/include \
-                         --libdir=/usr/local/lib         \
-                         --sharedlibdir=/usr/local/lib   \
-                         --static                        \
+    execute ../configure --prefix="${install_dir}"             \
+                         --includedir="${install_dir}"/include \
+                         --libdir="${install_dir}"/lib         \
+                         --sharedlibdir="${install_dir}"/lib   \
+                         --static                              \
                          --64
     execute make "-j$(nproc --all)"
     execute sudo make install
