@@ -25,7 +25,7 @@
 ##  Added: code to clean the environment
 ##  Added: added two default variables back into the script environment to combat
 ##         any issues with dbus or x-11 display issues.
-##  Added: multiarch support for gcc-13
+##  Added: multiarch support
 ##
 ##  Optimized: code by removing redundant loops by passing variables to functions
 ##
@@ -597,6 +597,8 @@ case "${OS}" in
     *)              fail_fn "Could not detect the OS architecture:Line ${LINENO}";;
 esac
 
+os_first_token="$(echo "${OS}" | awk '{print $1}')"
+
 #
 # CREATE SOFT LINKS TO FIX LINKING BUGS
 #
@@ -739,46 +741,50 @@ build_gcc_11_fn()
         execute sudo ./contrib/download_prerequisites
         mkdir builddir
         cd builddir || exit 1
-        execute ../configure --prefix="${install_dir}"              \
-                             --{build,host,target}=x86_64-linux-gnu \
-                             --disable-assembly                     \
-                             --disable-nls                          \
-                             --disable-vtable-verify                \
-                             --disable-werror                       \
-                             --enable-bootstrap                     \
-                             --enable-cet                           \
-                             --enable-checking=release              \
-                             --enable-clocale=gnu                   \
-                             --enable-default-pie                   \
-                             --enable-gnu-unique-object             \
-                             --enable-languages=all                 \
-                             --enable-libphobos-checking=release    \
-                             --enable-libstdcxx-debug               \
-                             --enable-libstdcxx-time=yes            \
-                             --enable-linker-build-id               \
-                             --enable-lto                           \
-                             --enable-multilib                      \
-                             --enable-offload-defaulted             \
-                             --enable-offload-targets="${olt_11}"   \
-                             --enable-plugin                        \
-                             --enable-shared                        \
-                             --enable-threads=posix                 \
-                             --libdir="${install_dir}"/lib          \
-                             --libexecdir="${install_dir}"/libexec  \
-                             --program-prefix=x86_64-linux-gnu-     \
-                             --program-suffix=-11                   \
-                             --with-build-config=bootstrap-lto-lean \
-                             --with-gcc-major-version-only          \
-                             --with-isl=/usr                        \
-                             --with-libiconv-prefix=/usr            \
-                             --with-link-serialization=2            \
-                             --with-pkgversion='Debian 11.4.0'      \
-                             --with-system-zlib                     \
-                             --with-target-system-zlib=auto         \
-                             --with-tune=generic                    \
-                             --with-zstd="${workspace}"             \
-                             --without-included-gettext             \
-                             "${cuda_check}"
+        execute ../configure --prefix="${install_dir}"                    \
+                             --{build,host,target}=x86_64-linux-gnu       \
+                             --disable-assembly                           \
+                             --disable-nls                                \
+                             --disable-vtable-verify                      \
+                             --disable-werror                             \
+                             --enable-bootstrap                           \
+                             --enable-cet                                 \
+                             --enable-checking=release                    \
+                             --enable-clocale=gnu                         \
+                             --enable-default-pie                         \
+                             --enable-gnu-unique-object                   \
+                             --enable-languages=all                       \
+                             --enable-libphobos-checking=release          \
+                             --enable-libstdcxx-debug                     \
+                             --enable-libstdcxx-time=yes                  \
+                             --enable-linker-build-id                     \
+                             --enable-lto                                 \
+                             --enable-multiarch                           \
+                             --enable-multilib                            \
+                             --enable-offload-defaulted                   \
+                             --enable-offload-targets="${olt_11}"         \
+                             --enable-plugin                              \
+                             --enable-shared                              \
+                             --enable-threads=posix                       \
+                             --libdir="${install_dir}"/lib                \
+                             --libexecdir="${install_dir}"/libexec        \
+                             --program-prefix=x86_64-linux-gnu-           \
+                             --program-suffix=-11                         \
+                             --with-abi=m64                               \
+                             --with-build-config=bootstrap-lto-lean       \
+                             --with-default-libstdcxx-abi=new             \
+                             --with-gcc-major-version-only                \
+                             --with-isl=/usr                              \
+                             --with-libiconv-prefix=/usr                  \
+                             --with-link-serialization=2                  \
+                             --with-multilib-list=m32,m64,mx32            \
+                             --with-pkgversion="${os_first_token} 11.4.0" \
+                             --with-system-zlib                           \
+                             --with-target-system-zlib=auto               \
+                             --with-tune=generic                          \
+                             --with-zstd="${workspace}"                   \
+                             --without-included-gettext                   \
+                             --without-cuda-driver
         printf "\n%s\n%s\n\n" \
             '$ Compiling gcc-11 with languages=all' \
             '$ This is going to take a while...'
@@ -803,46 +809,50 @@ build_gcc_12_fn()
         execute sudo ./contrib/download_prerequisites
         mkdir builddir
         cd builddir || exit 1
-        execute ../configure --prefix="${install_dir}"              \
-                             --{build,host,target}=x86_64-linux-gnu \
-                             --disable-assembly                     \
-                             --disable-nls                          \
-                             --disable-vtable-verify                \
-                             --disable-werror                       \
-                             --enable-bootstrap                     \
-                             --enable-cet                           \
-                             --enable-checking=release              \
-                             --enable-clocale=gnu                   \
-                             --enable-default-pie                   \
-                             --enable-gnu-unique-object             \
-                             --enable-languages=all                 \
-                             --enable-libphobos-checking=release    \
-                             --enable-libstdcxx-debug               \
-                             --enable-libstdcxx-time=yes            \
-                             --enable-linker-build-id               \
-                             --enable-lto                           \
-                             --enable-multilib                      \
-                             --enable-offload-defaulted             \
-                             --enable-offload-targets="${olt_12}"   \
-                             --enable-plugin                        \
-                             --enable-shared                        \
-                             --enable-threads=posix                 \
-                             --libdir="${install_dir}"/lib          \
-                             --libexecdir="${install_dir}"/libexec  \
-                             --program-prefix=x86_64-linux-gnu-     \
-                             --program-suffix=-12                   \
-                             --with-build-config=bootstrap-lto-lean \
-                             --with-gcc-major-version-only          \
-                             --with-isl=/usr                        \
-                             --with-libiconv-prefix=/usr            \
-                             --with-link-serialization=2            \
-                             --with-pkgversion='Debian 12.3.0'      \
-                             --with-system-zlib                     \
-                             --with-target-system-zlib=auto         \
-                             --with-tune=generic                    \
-                             --with-zstd="${workspace}"             \
-                             --without-included-gettext             \
-                             "${cuda_check}"
+        execute ../configure --prefix="${install_dir}"                    \
+                             --{build,host,target}=x86_64-linux-gnu       \
+                             --disable-assembly                           \
+                             --disable-nls                                \
+                             --disable-vtable-verify                      \
+                             --disable-werror                             \
+                             --enable-bootstrap                           \
+                             --enable-cet                                 \
+                             --enable-checking=release                    \
+                             --enable-clocale=gnu                         \
+                             --enable-default-pie                         \
+                             --enable-gnu-unique-object                   \
+                             --enable-languages=all                       \
+                             --enable-libphobos-checking=release          \
+                             --enable-libstdcxx-debug                     \
+                             --enable-libstdcxx-time=yes                  \
+                             --enable-linker-build-id                     \
+                             --enable-lto                                 \
+                             --enable-multiarch                           \
+                             --enable-multilib                            \
+                             --enable-offload-defaulted                   \
+                             --enable-offload-targets="${olt_12}"         \
+                             --enable-plugin                              \
+                             --enable-shared                              \
+                             --enable-threads=posix                       \
+                             --libdir="${install_dir}"/lib                \
+                             --libexecdir="${install_dir}"/libexec        \
+                             --program-prefix=x86_64-linux-gnu-           \
+                             --program-suffix=-12                         \
+                             --with-abi=m64                               \
+                             --with-build-config=bootstrap-lto-lean       \
+                             --with-default-libstdcxx-abi=new             \
+                             --with-gcc-major-version-only                \
+                             --with-isl=/usr/local                        \
+                             --with-libiconv-prefix=/usr                  \
+                             --with-link-serialization=2                  \
+                             --with-multilib-list=m32,m64,mx32            \
+                             --with-pkgversion="${os_first_token} 12.3.0" \
+                             --with-system-zlib                           \
+                             --with-target-system-zlib=auto               \
+                             --with-tune=generic                          \
+                             --with-zstd="${workspace}"                   \
+                             --without-included-gettext                   \
+                             --without-cuda-driver
         printf "\n%s\n%s\n\n" \
             "$ Compiling gcc-12 with languages=all" \
             '$ This is going to take a while...'
@@ -867,49 +877,49 @@ build_gcc_13_fn()
         execute sudo ./contrib/download_prerequisites
         mkdir builddir
         cd builddir || exit 1
-        execute ../configure --prefix="${install_dir}"              \
-                             --{build,host,target}=x86_64-linux-gnu \
-                             --disable-assembly                     \
-                             --disable-nls                          \
-                             --disable-vtable-verify                \
-                             --disable-werror                       \
-                             --enable-bootstrap                     \
-                             --enable-cet                           \
-                             --enable-checking=release              \
-                             --enable-clocale=gnu                   \
-                             --enable-default-pie                   \
-                             --enable-gnu-unique-object             \
-                             --enable-languages=all                 \
-                             --enable-libphobos-checking=release    \
-                             --enable-libstdcxx-debug               \
-                             --enable-libstdcxx-time=yes            \
-                             --enable-linker-build-id               \
-                             --enable-lto                           \
-                             --enable-multiarch                     \
-                             --enable-multilib                      \
-                             --enable-offload-defaulted             \
-                             --enable-offload-targets="${olt_13}"   \
-                             --enable-plugin                        \
-                             --enable-shared                        \
-                             --enable-threads=posix                 \
-                             --libdir="${install_dir}"/lib          \
-                             --libexecdir="${install_dir}"/libexec  \
-                             --program-prefix=x86_64-linux-gnu-     \
-                             --program-suffix=-13                   \
-                             --with-abi=m64                         \
-                             --with-build-config=bootstrap-lto-lean \
-                             --with-default-libstdcxx-abi=new       \
-                             --with-gcc-major-version-only          \
-                             --with-isl=/usr                        \
-                             --with-libiconv-prefix=/usr            \
-                             --with-link-serialization=2            \
-                             --with-multilib-list=m32,m64,mx32      \
-                             --with-pkgversion='Debian 13.2.0'      \
-                             --with-system-zlib                     \
-                             --with-target-system-zlib=auto         \
-                             --with-tune=generic                    \
-                             --with-zstd="${workspace}"             \
-                             --without-included-gettext             \
+        execute ../configure --prefix="${install_dir}"                    \
+                             --{build,host,target}=x86_64-linux-gnu       \
+                             --disable-assembly                           \
+                             --disable-nls                                \
+                             --disable-vtable-verify                      \
+                             --disable-werror                             \
+                             --enable-bootstrap                           \
+                             --enable-cet                                 \
+                             --enable-checking=release                    \
+                             --enable-clocale=gnu                         \
+                             --enable-default-pie                         \
+                             --enable-gnu-unique-object                   \
+                             --enable-languages=all                       \
+                             --enable-libphobos-checking=release          \
+                             --enable-libstdcxx-debug                     \
+                             --enable-libstdcxx-time=yes                  \
+                             --enable-linker-build-id                     \
+                             --enable-lto                                 \
+                             --enable-multiarch                           \
+                             --enable-multilib                            \
+                             --enable-offload-defaulted                   \
+                             --enable-offload-targets="${olt_13}"         \
+                             --enable-plugin                              \
+                             --enable-shared                              \
+                             --enable-threads=posix                       \
+                             --libdir="${install_dir}"/lib                \
+                             --libexecdir="${install_dir}"/libexec        \
+                             --program-prefix=x86_64-linux-gnu-           \
+                             --program-suffix=-13                         \
+                             --with-abi=m64                               \
+                             --with-build-config=bootstrap-lto-lean       \
+                             --with-default-libstdcxx-abi=new             \
+                             --with-gcc-major-version-only                \
+                             --with-isl=/usr                              \
+                             --with-libiconv-prefix=/usr                  \
+                             --with-link-serialization=2                  \
+                             --with-multilib-list=m32,m64,mx32            \
+                             --with-pkgversion="${os_first_token} 13.2.0" \
+                             --with-system-zlib                           \
+                             --with-target-system-zlib=auto               \
+                             --with-tune=generic                          \
+                             --with-zstd="${workspace}"                   \
+                             --without-included-gettext                   \
                              "${cuda_check}"
         printf "\n%s\n%s\n\n" \
             '$ Compiling gcc-13 with languages=all' \
