@@ -235,6 +235,11 @@ if ! sudo make install; then
     exit 1
 fi
 
+# FIX A BUG WHERE A SHARED LIB IS NOT FOUND
+if [ -f /usr/local/lib/libmount.so.1 ]; then
+    sudo ln -sf /usr/local/lib/libmount.so.1 /lib/x86_64-linux-gnu/
+fi
+
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
 
