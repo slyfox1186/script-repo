@@ -49,15 +49,17 @@ fi
 # INSTALL THE REQUIRED PIP PACKAGES
 #
 
-pip_lock="$(find /usr/lib/python3* -name EXTERNALLY-MANAGED)"
-if [ -n "${pip_lock}" ]; then
-    sudo rm "${pip_lock}"
+random_dir="$(mktemp -d)"
+echo 'beautifulsoup4' > "${random_dir}"/requirements.txt
+echo 'google_speech' >> "${random_dir}"/requirements.txt
+if ! pip install -r "${random_dir}"/requirements.txt &>/dev/null; then
+    printf "%s\n\n" 'Failed to install the pip packages.'
+    exit 1
 fi
-pip install ffpb google_speech
-clear
+sudo rm -fr "${random_dir}"
 
 #
-# DELETE ANY FILES PROM PREVIOUS RUNS
+# DELETE ANY FILES FROM PREVIOUS RUNS
 #
 
 del_this="$(du -ah --max-depth=1 | grep -Eo '[\/].*\(x265\)\.(mp4|mkv)$' | grep -Eo '[A-Za-z0-9].*\(x265\)\.(mp4|mkv)$')"
@@ -179,8 +181,8 @@ EOF
             -i_qfactor:v 0.75 \
             -b_qfactor:v 1.1 \
             -c:a libfdk_aac \
-            -qmin:a 1 \
-            -qmax:a 4 \
+            -profile:a aac_he \
+            -vbr:a 5 \
             "${file_out}"; then
         google_speech 'Video conversion completed.' 2>/dev/null
         if [ -f "${file_out}" ]; then
