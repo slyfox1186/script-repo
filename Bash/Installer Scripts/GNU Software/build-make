@@ -146,28 +146,27 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs_fn()
-{
-    local i missing_pkg missing_pkgs pkgs 
+local i missing_pkg missing_pkgs pkgs 
 
-    pkgs=("${1}" autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl git guile-3.0-dev libdmalloc-dev libdmalloc5 libgmp-dev
-          libintl-perl libmpfr-dev libreadline-dev libsigsegv-dev libticonv-dev libtool libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev yasm)
-    
-    for i in ${pkgs[@]}
-    do
-        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-    
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
-        fi
-    done
-    
-    if [ -n "${missing_pkgs}" ]; then
-        sudo apt -y install ${missing_pkgs}
-        sudo apt -y autoremove
-        clear
+pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache cmake
+      curl git guile-3.0-dev libdmalloc-dev libdmalloc5 libgmp-dev libintl-perl libmpfr-dev
+      libreadline-dev libsigsegv-dev libticonv-dev libtool libtool-bin lzip m4 nasm ninja-build
+      texinfo zlib1g-dev yasm)
+
+for i in ${pkgs[@]}
+do
+    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${i}"
     fi
-}
+done
+
+if [ -n "${missing_pkgs}" ]; then
+    sudo apt -y install ${missing_pkgs}
+    sudo apt -y autoremove
+    clear
+fi
 
 #
 # DOWNLOAD THE ARCHIVE FILE
@@ -200,7 +199,7 @@ fi
 #
 
 cd "${cwd}/${archive_dir}" || exit 1
-autoreconf -fi
+autoreconf -fi -I /usr/share/aclocal
 cd build || exit 1
 ../configure --prefix="${install_dir}"          \
              --{build,host}=x86_64-linux-gnu    \
@@ -210,8 +209,7 @@ cd build || exit 1
              --with-libsigsegv-prefix=/usr      \
              --with-libiconv-prefix=/usr        \
              --with-libintl-prefix=/usr         \
-             PKG_CONFIG="$(type -P pkg-config)" \
-             PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
+             PKG_CONFIG="$(type -P pkg-config)"
 make "-j$(nproc --all)"
 if ! sudo make install; then
     fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
