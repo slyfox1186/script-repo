@@ -1971,7 +1971,8 @@ if build 'x265' 'a55e756'; then
     ln -sf ../10bit/libx265.a libx265_main10.a
     ln -sf ../12bit/libx265.a libx265_main12.a
     execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="${workspace}" -DEXTRA_LIB='x265_main10.a;x265_main12.a' \
-        -DHIGH_BIT_DEPTH=ON -DEXTRA_LINK_FLAGS='-L.' -DLINKED_10BIT=ON -DLINKED_12BIT=ON -DENABLE_PIC=ON -G Ninja -Wno-dev
+        -DHIGH_BIT_DEPTH=ON -DEXTRA_LINK_FLAGS='-L.' -DLINKED_10BIT=ON -DLINKED_12BIT=ON -DENABLE_PIC=ON \
+        -DENABLE_SHARED=OFF -DENABLE_CLI=OFF -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}"
     mv libx265.a libx265_main.a
 
@@ -1988,15 +1989,6 @@ EOF
 
     if [ -n "${LDEXEFLAGS}" ]; then
         sed -i.backup 's/lgcc_s/lgcc_eh/g' "${workspace}"/lib/pkgconfig/x265.pc
-    fi
-
-    x265_lib="$(sudo find . -type f -name libx265.so.* | sed 's/^..//g')"
-
-    if [ -f "${workspace}/lib/${x265_lib}" ]; then
-        execute sudo cp -f "${workspace}/lib/${x265_lib}" '/usr/lib/x86_64-linux-gnu'
-        execute sudo ln -fs "/usr/lib/x86_64-linux-gnu/${x265_lib}" '/usr/lib/x86_64-linux-gnu/libx265.so'
-    else
-        fail_fn "The sript could not located the file \"${workspace}/lib/${x265_lib}\" and needs to be updated. This error is located in the 'x265' build:Line ${LINENO}"
     fi
 
     build_done 'x265' 'a55e756'
