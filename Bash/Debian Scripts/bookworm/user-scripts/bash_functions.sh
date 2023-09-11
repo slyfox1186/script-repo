@@ -717,9 +717,11 @@ im50()
 imdl()
 {
     clear
-    curl -Lso imow https://raw.githubusercontent.com/slyfox1186/script-repo/main/bash/installer%20scripts/imagemagick/scripts/imagick-run-script.sh; bash imow
+    user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+    curl -A "${user_agent}" -Lso 'imow' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/imagick-run-script.sh'
     sudo chown "${USER}":"${USER}" imow
     sudo chmod 755 imow
+    bash imow
     clear; ls -1AhFv --color --group-directories-first
 }
 
@@ -1642,6 +1644,28 @@ jpgsize()
     sed -i "s|^|${PWD}\/|g" "${random_dir}/img-sizes.txt"
     clear
     nohup gted "${random_dir}/img-sizes.txt" &>/dev/null &
+}
+
+##################
+## SED COMMANDS ##
+##################
+
+fsed()
+{
+    clear
+
+    printf "%s\n\n" 'This command is for sed to act ONLY on files'
+
+    if [ -z "${1}" ]; then
+        read -p 'Enter the original text: ' otext
+        read -p 'Enter the replacement text: ' rtext
+        clear
+    else
+        otext="${1}"
+        rtext="${2}"
+    fi
+
+     sudo sed -i "s/${otext}/${rtext}/g" $(find . -maxdepth 1 -type f)
 }
 EOF
 }
