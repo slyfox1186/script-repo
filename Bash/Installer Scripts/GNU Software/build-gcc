@@ -26,7 +26,6 @@
 ##  Added: added two default variables back into the script environment to combat
 ##         any issues with dbus or x-11 display issues.
 ##  Added: options to choose what GCC versions to install.
-##
 ##  Added: the LIBRARY_PATH variable to include the default paths of the APT "gcc" version
 ##
 ##  Optimized: code by removing redundant loops by passing variables to functions
