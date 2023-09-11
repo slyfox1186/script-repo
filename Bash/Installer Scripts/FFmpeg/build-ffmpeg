@@ -22,15 +22,12 @@
 ##  GeForce CUDA:
 ##
 ##  Updated: Version to 12.2.2
-##  Updated: xvidcore to 7.1.3-1
-##  Updated: x265 to the latest snapshot as of 09.09.23
-##  Updated: x265 to a full static build
 ##
 ##    - If the cuda libraries are not installed (for Geforce graphics cards only) the user
 ##    - will be prompted by the script to install them so that hardware acceleration is
 ##    - enabled when compiling FFmpeg
 ##
-##  Last Update: 09.11.23
+##  Last Update: 08.31.23
 ##
 ##  Added: Debian OS Support for Bookworm (12)
 ##  Added: cyanrip
@@ -38,7 +35,7 @@
 ##  Added: cunit support library for libmysofa
 ##  Added: libcurl support library for cyanrip
 ##
-##  Script version: 2.6
+##  Script version: 2.5
 ##
 ############################################################################################
 
@@ -47,11 +44,9 @@
 #
 
 script_name="${0:2}"
-script_ver=2.6
-ffmpeg_ver=566aa38d98f5f492995127e82ab9a516f59bf952 # VER 5 Snapshot 09.09.23
-ffmpeg_ver_short=566aa38
-###############################################################################
-# VER 5 Stable https://www.ffmpeg.org/releases/ffmpeg-5.1.3.tar.xz
+script_ver=2.5
+ffmpeg_ver=5.1.3
+ffmpeg_url=https://ffmpeg.org/releases/ffmpeg-${ffmpeg_ver}.tar.xz
 ###############################################################################
 # VER 6 Snapshot https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/.tar.gz
 # VER 6 Snapshot ffmpeg_ver=3d5edb89e75fe3ab3a6757208ef121fa2b0f54c7
@@ -68,7 +63,7 @@ ffmpeg_libraries=()
 latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
-debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=ON # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -120,16 +115,13 @@ else
 fi
 
 CXXFLAGS='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
-CFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2 /usr/lib/x86_64-linux-gnu/pulseaudio"
-CFLAGS+=" -I/usr/include/openjpeg-2.5 ${CXXFLAGS}"
+CFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu"
+CFLAGS+=" -I/usr/include/SDL2 -I/usr/lib/x86_64-linux-gnu/pulseaudio -I/usr/include/openjpeg-2.5 ${CXXFLAGS}"
 CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/openjpeg-2.5"
-LDFLAGS="-L${workspace}/lib64 -L${workspace}/lib -L${workspace}/lib/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/local/lib -L${set_cuda_folder_path}/nvvm/lib64"
-LDFLAGS+=" -L${set_cuda_folder_path}/targets/x86_64-linux/lib -L/usr/lib64 -L/usr/lib -L/usr/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu -L/lib64 -L/lib"
 
 export CFLAGS
 export CPPFLAGS
 export CXXFLAGS
-export LDFLAGS
 
 #
 # CREATE THE OUTPUT DIRECTORIES
@@ -293,7 +285,7 @@ git_1_fn()
     github_repo="${1}"
     github_url="${2}"
 
-    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
         g_ver="${g_ver#cares-}"
@@ -825,7 +817,7 @@ pkgs_fn()
           libvlccore-dev libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libx265-dev libxcursor-dev libxext-dev libxfixes-dev
           libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev lshw
           lzma-dev m4 meson nasm ninja-build openjdk-17-jdk-headless pandoc python3 python3-pip ragel re2c scons sudo texi2html
-          texinfo tk-dev unzip wget xmlto yasm zlib1g-dev)
+          texinfo tk-dev unzip wget xmlto zlib1g-dev)
 
     for pkg in ${pkgs[@]}
     do
@@ -1086,16 +1078,38 @@ box_out_banner_global()
 }
 box_out_banner_global 'Installing Global Tools'
 
+if build 'm4' 'latest'; then
+    download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
+    execute ./configure --prefix="${workspace}"                \
+                        --{build,host,target}=x86_64-linux-gnu \
+                        --disable-nls                          \
+                        --enable-c++
+    execute make "-j${cpu_threads}"
+    execute make install
+    build_done 'm4' 'latest'
+fi
+
+if build 'autoconf' 'latest'; then
+    download 'http://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz'
+    execute autoreconf -fi
+    execute ./configure --prefix="${workspace}"         \
+                        --{build,host}=x86_64-linux-gnu \
+                        M4="${workspace}"/bin/m4
+    execute make "-j${cpu_threads}"
+    execute make install
+    build_done 'autoconf' 'latest'
+fi
+
 case "${OS}" in
-    Debia*)    libtool_ver='2.4.7';;
+    Debian*)    libtool_ver='2.4.7';;
     Ubunt*)     libtool_ver='2.4.6';;
-    *)          fail_fn "Unable to get the OS version to determine the correct libtool version to install:Line ${LINENO}"
+    *)          fail_fn "Unable to get the OS version:Line ${LINENO}"
 esac
 
 if build 'libtool' "${libtool_ver}"; then
     download "https://ftp.gnu.org/gnu/libtool/libtool-${libtool_ver}.tar.xz"
     execute ./configure --prefix="${workspace}"     \
-                        --{build,host}="${pc_type}" \
+                        --{build,host}=x86_64-linux-gnu \
                         --with-pic \
                         M4="${workspace}"/bin/m4
     execute make "-j${cpu_threads}"
@@ -1160,6 +1174,29 @@ if [ "${python3_rm_decimals}" -lt '700' ]; then
     python_var='python3.9'
 else
     python_var='python3'
+fi
+
+pre_check_ver 'yasm/yasm' '1' 'T'
+if build 'yasm' "${g_ver}"; then
+    download "https://github.com/yasm/yasm/archive/refs/tags/v${g_ver}.tar.gz" "yasm-${g_ver}.tar.gz"
+    execute autoreconf -fi
+    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} \
+        -DBUILD_SHARED_LIBS=OFF -G Ninja -Wno-dev
+    execute ninja "-j${cpu_threads}" -C build
+    execute ninja "-j${cpu_threads}" -C build install
+    build_done 'yasm' "${g_ver}"
+fi
+
+if build 'nasm' '2.16.01'; then
+    download 'https://www.nasm.us/pub/nasm/stable/nasm-2.16.01.tar.xz'
+    execute ./autogen.sh
+    execute ./configure --prefix="${workspace}"             \
+                         --{build,host,target}=x86_64-linux-gnu \
+                         --disable-pedantic                 \
+                         --enable-ccache
+    execute make "-j${cpu_threads}"
+    execute make install
+    build_done 'nasm' '2.16.01'
 fi
 
 if build 'giflib' '5.2.1'; then
@@ -1319,7 +1356,7 @@ if build 'libtiff' "$g_ver"; then
     download "https://gitlab.com/libtiff/libtiff/-/archive/v$g_ver/libtiff-v$g_ver.tar.bz2" "libtiff-$g_ver.tar.bz2"
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}"     \
-                        --{build,host}="${pc_type}" \
+                        --{build,host}=x86_64-linux-gnu \
                         --disable-shared
     execute make "-j${cpu_threads}"
     execute make install
@@ -1951,29 +1988,27 @@ if build 'x264' "${g_sver}"; then
 fi
 ffmpeg_libraries+=('--enable-libx264')
 
-if build 'x265' 'a55e756'; then
-    download 'https://bitbucket.org/multicoreware/x265_git/get/a55e7566a5bef8b4d36d8fed50d596ebcb47e34e.tar.bz2' 'x265-a55e756.tar.bz2'
-    # download 'https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz' 'x265-3.5.tar.gz'
+if build 'x265' '3bd3dd7'; then
+    download 'https://bitbucket.org/multicoreware/x265_git/get/3bd3dd731b4b4c3fbbe5e513c16bc6ae481a0ec5.tar.bz2' 'x265-3bd3dd7.tar.bz2'
     cd build/linux || exit 1
     rm -fr {8,10,12}bit 2>/dev/null
     mkdir -p {8,10,12}bit
     cd 12bit || exit 1
     echo '$ making 12bit binaries'
-    execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="${workspace}" -DHIGH_BIT_DEPTH=ON -DEXPORT_C_API=OFF \
-        -DENABLE_SHARED=OFF -DENABLE_CLI=OFF -DMAIN12=ON -DENABLE_PIC=ON -G Ninja -Wno-dev
+    execute cmake ../../../source -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} -DHIGH_BIT_DEPTH=ON -DEXPORT_C_API=OFF \
+        -DENABLE_SHARED=OFF -DENABLE_CLI=OFF -DMAIN12=ON -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}"
     echo '$ making 10bit binaries'
     cd ../10bit || exit 1
-    execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="${workspace}" -DENABLE_HDR10_PLUS=ON -DHIGH_BIT_DEPTH=ON -DEXPORT_C_API=OFF \
-        -DENABLE_SHARED=OFF -DENABLE_CLI=OFF -DENABLE_PIC=ON -G Ninja -Wno-dev
+    execute cmake ../../../source -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} -DHIGH_BIT_DEPTH=ON -DEXPORT_C_API=OFF \
+        -DENABLE_SHARED=OFF -DENABLE_CLI=OFF -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}"
     echo '$ making 8bit binaries'
     cd ../8bit || exit 1
     ln -sf ../10bit/libx265.a libx265_main10.a
     ln -sf ../12bit/libx265.a libx265_main12.a
-    execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="${workspace}" -DEXTRA_LIB='x265_main10.a;x265_main12.a' \
-        -DHIGH_BIT_DEPTH=ON -DEXTRA_LINK_FLAGS='-L.' -DLINKED_10BIT=ON -DLINKED_12BIT=ON -DENABLE_PIC=ON \
-        -DENABLE_SHARED=OFF -DENABLE_CLI=OFF -G Ninja -Wno-dev
+    execute cmake ../../../source -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} -DEXTRA_LIB='x265_main10.a;x265_main12.a' \
+        -DENABLE_SHARED=ON -DENABLE_SVT_HEVC=ON -DENABLE_PIC=ON -DEXTRA_LINK_FLAGS='-L.' -DLINKED_10BIT=ON -DLINKED_12BIT=ON -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}"
     mv libx265.a libx265_main.a
 
@@ -1992,7 +2027,16 @@ EOF
         sed -i.backup 's/lgcc_s/lgcc_eh/g' "${workspace}"/lib/pkgconfig/x265.pc
     fi
 
-    build_done 'x265' 'a55e756'
+    x265_lib="$(sudo find . -type f -name libx265.so.* | sed 's/^..//g')"
+
+    if [ -f "${workspace}/lib/${x265_lib}" ]; then
+        execute sudo cp -f "${workspace}/lib/${x265_lib}" '/usr/lib/x86_64-linux-gnu'
+        execute sudo ln -fs "/usr/lib/x86_64-linux-gnu/${x265_lib}" '/usr/lib/x86_64-linux-gnu/libx265.so'
+    else
+        fail_fn "The sript could not located the file \"${workspace}/lib/${x265_lib}\" and needs to be updated. This error is located in the 'x265' build:Line ${LINENO}"
+    fi
+
+    build_done 'x265' '3bd3dd7'
 fi
 ffmpeg_libraries+=('--enable-libx265')
 
@@ -2179,8 +2223,8 @@ box_out_banner_ffmpeg()
 }
 box_out_banner_ffmpeg 'Building FFmpeg'
 
-if build 'ffmpeg' "${ffmpeg_ver_short}"; then
-    download "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/${ffmpeg_ver}.tar.gz" "ffmpeg-${ffmpeg_ver_short}.tar.gz"
+if build 'ffmpeg' "${ffmpeg_ver}"; then
+    download "${ffmpeg_url}" "ffmpeg-${ffmpeg_ver}.tar.xz"
     ./configure                                     \
         "${ffmpeg_libraries[@]}"                    \
         --prefix="${workspace}"                     \
@@ -2225,7 +2269,7 @@ if build 'ffmpeg' "${ffmpeg_ver_short}"; then
         --extra-ldflags="${LDFLAGS}"                \
         --extra-libs="${EXTRALIBS}"                 \
         --pkg-config-flags='--static'               \
-        --pkg-config="$(type -P pkg-config)"        \
+        --pkg-config="${workspace}"/bin/pkg-config  \
         --pkgconfigdir="${workspace}"/lib/pkgconfig \
         --strip="$(type -P strip)"
     execute make "-j${cpu_threads}"
