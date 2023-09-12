@@ -1465,7 +1465,7 @@ if build 'c-ares' "${g_ver}"; then
     download "https://github.com/c-ares/c-ares/archive/refs/tags/cares-${g_tag}.tar.gz" "c-ares-${g_ver}.tar.gz"
     execute autoreconf -fi
     execute autoupdate
-    execute ./configure --prefix="${workspace}" --disable-{shared,warnings} --enable-optimize="${CXXFLAGS}"
+    execute ./configure --prefix="${workspace}" --disable-{shared,warnings}
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'c-ares' "${g_ver}"
