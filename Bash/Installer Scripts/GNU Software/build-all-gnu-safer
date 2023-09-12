@@ -2,10 +2,9 @@
 
 clear
 
-cwd="${PWD}"/build-all-gnu-master
+cwd="${PWD}"/build-all-gnu-safer-master
 repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
-cnt=0
 
 if [ ! -d "${cwd}"/completed ]; then
     mkdir -p "${cwd}"/completed
@@ -114,7 +113,8 @@ install_choice_fn()
 
 cd "${cwd}" || exit 1
 
-scripts=(m4 autoconf libtool pkg-config make bash sed tar eog gawk grep nano isl wget)
+scripts=(m4 autoconf libtool pkg-config util-linux make bash sed tar eog gawk grep nano isl wget)
+cnt=0
 
 for script in ${scripts[@]}
 do
@@ -123,15 +123,18 @@ do
     mv "build-${script}" "0${cnt}-build-${script}"
 done
 
-# RENAME SOME OF THE    FILES SO THEY EXECUTE IN THE CORRECT ORDER
-mv 010-build-gawk 10-build-gawk
-mv 011-build-grep 11-build-grep
-mv 012-build-nano 12-build-nano
-mv 013-build-isl 13-build-isl
-mv 014-build-wget 14-build-wget
+# RENAME FILES WITH NUMBERS 10 AND HIGHER SO THEY EXECUTE IN THE INTENDED ORDER
+files=(eog gawk grep nano isl wget)
+cnt=9
 
-# DELETE ANY UNWANTED FILES
-sudo find . -type f -name '*.Identifier' -delete
+for i in 1
+do
+    for file in ${files[@]}
+    do
+        ((cnt++)) # << start counting here
+        mv "0${cnt}-build-${file}" "${cnt}-build-${file}" # << move the files, thus renaming them
+    done
+done
 
 # ASK THE USER IF THEY WANT TO INSTALL ALL OF THE SCRIPTS
 install_choice_fn

@@ -2,14 +2,9 @@
 
 clear
 
-cwd="${PWD}"/build-all-git-master
+cwd="${PWD}"/build-all-git-safer-master
 repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
-cnt=0
-
-if [ -d "${cwd}" ]; then
-    sudo rm -fr "${cwd}"
-fi
 
 if [ ! -d "${cwd}"/completed ]; then
     mkdir -p "${cwd}"/completed
@@ -58,13 +53,12 @@ cleanup_fn()
 
 installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
-##
-## Install required APT packages
-##
+#
+# INSTALL REQUIRED APT PACKAGES
+#
 
-pkgs=(asciidoc autogen autoconf autoconf-archive automake binutils bison build-essential
-      bzip2 ccache cmake curl libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip
-      lzma-dev m4 meson nasm ninja-build texinfo xmlto yasm zlib1g-dev)
+pkgs=(asciidoc autoconf autoconf-archive autogen automake binutils bison build-essential
+      bzip2 ccache cmake curl libtool libtool-bin lzip m4 meson nasm ninja-build yasm zlib1g-dev)
 
 for pkg in ${pkgs[@]}
 do
@@ -74,16 +68,14 @@ do
 done
 
 if [ -n "${missing_pkgs}" ]; then
-    echo '$ Installing missing packages'
-    echo
     for i in "${missing_pkgs}"
         do
             if ! sudo apt -y install ${i}; then
-                fail_fn 'Failed to run APT package manager.'
+                fail_fn "$ Failed to install the apt packages:Line ${LINENO}"
             fi
         done
 else
-    echo '$ The packages are already installed.'
+    echo '$ The packages apt packages are already installed.'
     echo
 fi
 
@@ -92,9 +84,9 @@ install_scripts_fn()
     local i scripts
     clear
 
-    scripts="$(sudo find . -maxdepth 1 -type f | sed 's/^..//g' | sort)"
+    scripts="$(sudo find . -maxdepth 1 -type f -name '*' | sed 's/^..//g' | sort)"
 
-    for i in ${scripts[@]} 
+    for i in ${scripts[@]}
     do
         if bash "${i}"; then
             sudo find . -maxdepth 1 -type f -name "${i}" -exec mv {} completed \;
@@ -102,7 +94,7 @@ install_scripts_fn()
         else
             fail_fn "Failed to install: ${i}"
         fi
-        sleep 2
+        sleep 1
     done
 }
 
@@ -123,7 +115,7 @@ install_choice_fn()
         1)      install_scripts_fn;;
         2)      exit_fn;;
         *)
-                printf "%s\n\n" 'Bad user input... Resetting script.'
+                printf "%s\n\n" 'Bad user input... Reverting script...'
                 sleep 3
                 unset answer
                 clear
@@ -132,13 +124,10 @@ install_choice_fn()
     esac
 }
 
-#
-# DOWNLOAD ALL THE SCRIPTS
-#
-
 cd "${cwd}" || exit 1
 
-scripts=(git nasm tools yasm openssl zstd aria2)
+scripts=(git zlib tools zstd openssl aria2 python3 clang-16)
+cnt=0
 
 for script in ${scripts[@]}
 do
@@ -146,8 +135,6 @@ do
     wget -U "${user_agent}" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-${script}"
     mv "build-${script}" "0${cnt}-build-${script}"
 done
-
-sudo find . -type f -name '*.Identifier' -delete
 
 # ASK THE USER IF THEY WANT TO INSTALL ALL OF THE SCRIPTS
 install_choice_fn
@@ -157,4 +144,3 @@ cleanup_fn
 
 # SHOW THE EXIT MESSAGE
 exit_fn
-
