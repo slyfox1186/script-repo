@@ -195,7 +195,7 @@ mvf()
 aptdl()
 {
     clear
-    wget -c "$(apt-fast --print-uris -qq --reinstall install ${1} 2>/dev/null | cut -d''\''' -f2)"
+    wget -c "$(apt --print-uris -qq --reinstall install ${1} 2>/dev/null | cut -d''\''' -f2)"
     clear; ls -1AhFv --color --group-directories-first
 }
 
@@ -203,22 +203,22 @@ aptdl()
 clean()
 {
     clear
-    sudo apt-fast -y autoremove
-    sudo apt-fast clean
-    sudo apt-fast autoclean
-    sudo apt-fast -y purge
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt -y purge
 }
 
 # UPDATE
 update()
 {
     clear
-    sudo apt-fast update
-    sudo apt-fast -y full-upgrade
-    sudo apt-fast -y autoremove
-    sudo apt-fast clean
-    sudo apt-fast autoclean
-    sudo apt-fast -y purge
+    sudo apt update
+    sudo apt -y full-upgrade
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt -y purge
 }
 
 # FIX BROKEN APT PACKAGES
@@ -228,14 +228,14 @@ fix()
     if [ -f /tmp/apt.lock ]; then
         sudo rm /tmp/apt.lock
     fi
-    sudo apt-fast -f -y install
-    sudo apt-fast --fix-broken install
-    sudo apt-fast --fix-missing update
+    sudo apt -f -y install
+    sudo apt --fix-broken install
+    sudo apt --fix-missing update
     dpkg --configure -a
-    sudo apt-fast -y autoremove
-    sudo apt-fast clean
-    sudo apt-fast autoclean
-    sudo apt-fast update
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt update
 }
 
 list()
@@ -617,8 +617,8 @@ imow()
     done
 
     if [ -n "${missing_pkgs}" ]; then
-        sudo apt-fast -y install ${missing_pkgs}
-        sudo apt-fast -y autoremove
+        sudo apt -y install ${missing_pkgs}
+        sudo apt -y autoremove
         clear
     fi
     unset apt_pkgs i missing_pkg missing_pkgs
@@ -793,9 +793,9 @@ cuda_purge()
         echo 'Purging the cuda-sdk-toolkit from your computer.'
         echo '================================================'
         echo
-        sudo sudo apt-fast -y --purge remove "*cublas*" "cuda*" "nsight*"
-        sudo sudo apt-fast -y autoremove
-        sudo sudo apt-fast update
+        sudo sudo apt -y --purge remove "*cublas*" "cuda*" "nsight*"
+        sudo sudo apt -y autoremove
+        sudo sudo apt update
     elif [[ "${answer}" -eq '2' ]]; then
         return 0
     fi
@@ -927,7 +927,7 @@ hw_mon()
 
     # install lm-sensors if not already
     if ! which lm-sensors &>/dev/null; then
-        sudo apt-fast -y install lm-sensors
+        sudo apt -y install lm-sensors
     fi
 
     # Add modprobe to system startup tasks if not already added
@@ -1415,7 +1415,7 @@ tkapt()
     local i list
     clear
 
-    list=(apt apt-fast apt-get aptitude dpkg)
+    list=(apt apt apt apt-get aptitude dpkg)
 
     for i in ${list[@]}
     do
@@ -1503,7 +1503,7 @@ up_icon()
     for i in ${pkgs[@]}
     do
         if ! sudo dpkg -l "${i}"; then
-            sudo apt-fast -y install "${i}"
+            sudo apt -y install "${i}"
             clear
         fi
     done
@@ -1674,6 +1674,28 @@ fsed()
     fi
 
      sudo sed -i "s/${otext}/${rtext}/g" $(find . -maxdepth 1 -type f)
+}
+
+####################
+## CMAKE COMMANDS ##
+####################
+
+cmf()
+{
+    local rel_sdir
+    if ! sudo dpkg -l | grep -o cmake-curses-gui; then
+        sudo apt -y install cmake-curses-gui
+    fi
+    clear
+
+    if [ -z "${1}" ]; then
+        read -p 'Enter the relative source directory: ' rel_sdir
+    else
+        rel_sdir="${1}"
+    fi
+
+    cmake ${rel_sdir} -B build -G Ninja -Wno-dev
+    ccmake ${rel_sdir}
 }
 EOF
 }
