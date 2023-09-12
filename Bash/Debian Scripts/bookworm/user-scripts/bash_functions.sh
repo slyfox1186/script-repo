@@ -716,13 +716,21 @@ im50()
 
 imdl()
 {
+    local cwd tmp_dir user_agent
     clear
+    cwd="${PWD}"
+    tmp_dir="$(mktemp -d)"
     user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
-    curl -A "${user_agent}" -Lso 'imow' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/imagick-run-script.sh'
+    cd "${tmp_dir}" || exit 1
+    curl -A "${user_agent}" -Lso 'imow' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-and-overwrite.sh'
+    sudo mv imow "${cwd}"
+    sudo rm -fr "${tmp_dir}"
+    cd "${cwd}" || exit 1
     sudo chown "${USER}":"${USER}" imow
-    sudo chmod 755 imow
-    bash imow
-    clear; ls -1AhFv --color --group-directories-first
+    sudo chmod +rwx imow
+    if [ -f "${0}" ]; then
+        sudo rm "${0}"
+    fi
 }
 
 ##################################################
