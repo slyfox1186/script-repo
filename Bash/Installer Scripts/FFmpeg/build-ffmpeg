@@ -115,8 +115,8 @@ else
 fi
 
 CXXFLAGS='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
-CFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu"
-CFLAGS+=" -I/usr/include/SDL2 -I/usr/lib/x86_64-linux-gnu/pulseaudio -I/usr/include/openjpeg-2.5 ${CXXFLAGS}"
+CFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2 -I/usr/lib/x86_64-linux-gnu/pulseaudio"
+CFLAGS+=" -I/usr/include/openjpeg-2.5 ${CXXFLAGS}"
 CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/openjpeg-2.5"
 
 export CFLAGS
@@ -285,7 +285,7 @@ git_1_fn()
     github_repo="${1}"
     github_url="${2}"
 
-    if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m $"{curl_timeout}" \-sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
         g_ver="${g_ver#cares-}"
@@ -1051,14 +1051,6 @@ cuda_folder_path="$(sudo find "${set_cuda_folder_path}" -type f -name nvcc | sed
 export ACLOCAL_PATH='/usr/share/aclocal'
 
 #
-# GET PC TYPE
-#
-
-curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "${cwd}/config.guess"
-pc_type="$(source "${cwd}/config.guess")"
-
-#
 # INSTALL GLOBAL TOOLS
 #
 
@@ -1711,7 +1703,6 @@ git_ver_fn '8143' '6'
 g_ver="${g_ver//debian\//}"
 if build 'opencore-amr' "${g_ver}"; then
     download "https://salsa.debian.org/multimedia-team/opencore-amr/-/archive/debian/${g_ver}/opencore-amr-debian-${g_ver}.tar.bz2" "opencore-amr-${g_ver}.tar.bz2"
-    # download 'https://netactuate.dl.sourceforge.net/project/opencore-amr/opencore-amr/opencore-amr-0.1.6.tar.gz'
     execute ./configure --prefix="${workspace}" --disable-shared --enable-static
     execute make "-j${cpu_threads}"
     execute make install
@@ -1995,20 +1986,39 @@ if build 'x265' '3bd3dd7'; then
     mkdir -p {8,10,12}bit
     cd 12bit || exit 1
     echo '$ making 12bit binaries'
-    execute cmake ../../../source -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} -DHIGH_BIT_DEPTH=ON -DEXPORT_C_API=OFF \
-        -DENABLE_SHARED=OFF -DENABLE_CLI=OFF -DMAIN12=ON -G Ninja -Wno-dev
+    execute cmake ../../../source \
+        -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} \
+        -DENABLE_{ASSEMBLY,HDR10_PLUS,LIBNUMA,SVT_HEVC}=ON \
+        -DENABLE_{CLI,LIBVMAF,PPA,SHARED,TESTS,VTUNE}=OFF -DWARNINGS_AS_ERRORS=OFF \
+        -DLIBDL=/usr/lib/x86_64-linux-gnu/libdl.a -DNASM_EXECUTABLE=/usr/bin/nasm \
+        -DNO_ATOMICS=OFF -DNUMA_ROOT_DIR=/usr -DSTATIC_LINK_CRT=OFF \
+        -DHIGH_BIT_DEPTH=ON -DEXPORT_C_API=OFF -DENABLE_SHARED=OFF -DENABLE_CLI=OFF \
+        -DMAIN12=ON -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}"
     echo '$ making 10bit binaries'
     cd ../10bit || exit 1
-    execute cmake ../../../source -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} -DHIGH_BIT_DEPTH=ON -DEXPORT_C_API=OFF \
-        -DENABLE_SHARED=OFF -DENABLE_CLI=OFF -G Ninja -Wno-dev
+    execute cmake ../../../source \
+        -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} \
+        -DENABLE_{ASSEMBLY,HDR10_PLUS,LIBNUMA,SVT_HEVC}=ON \
+        -DENABLE_{CLI,LIBVMAF,PPA,SHARED,TESTS,VTUNE}=OFF -DWARNINGS_AS_ERRORS=OFF \
+        -DLIBDL=/usr/lib/x86_64-linux-gnu/libdl.a -DNASM_EXECUTABLE=/usr/bin/nasm \
+        -DNO_ATOMICS=OFF -DNUMA_ROOT_DIR=/usr -DSTATIC_LINK_CRT=OFF \
+        -DHIGH_BIT_DEPTH=ON -DEXPORT_C_API=OFF -DENABLE_SHARED=OFF -DENABLE_CLI=OFF \
+        -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}"
     echo '$ making 8bit binaries'
     cd ../8bit || exit 1
     ln -sf ../10bit/libx265.a libx265_main10.a
     ln -sf ../12bit/libx265.a libx265_main12.a
-    execute cmake ../../../source -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} -DEXTRA_LIB='x265_main10.a;x265_main12.a' \
-        -DENABLE_SHARED=ON -DENABLE_SVT_HEVC=ON -DENABLE_PIC=ON -DEXTRA_LINK_FLAGS='-L.' -DLINKED_10BIT=ON -DLINKED_12BIT=ON -G Ninja -Wno-dev
+    execute cmake ../../../source \
+        -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} \
+        -DENABLE_{ASSEMBLY,HDR10_PLUS,LIBNUMA,PIC,SVT_HEVC}=ON \
+        -DENABLE_{CLI,LIBVMAF,PPA,SHARED,TESTS,VTUNE}=OFF -DWARNINGS_AS_ERRORS=OFF \
+        -DLIBDL=/usr/lib/x86_64-linux-gnu/libdl.a -DNASM_EXECUTABLE=/usr/bin/nasm \
+        -DNO_ATOMICS=OFF -DNUMA_ROOT_DIR=/usr -DSTATIC_LINK_CRT=OFF \
+        -DHIGH_BIT_DEPTH=ON -DEXPORT_C_API=OFF -DENABLE_CLI=OFF \
+        -DEXTRA_{LIB='x265_main10.a;x265_main12.a',LINK_FLAGS='-L.'} -DLINKED_{10BIT,12BIT}=ON \
+        -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}"
     mv libx265.a libx265_main.a
 
@@ -2027,14 +2037,14 @@ EOF
         sed -i.backup 's/lgcc_s/lgcc_eh/g' "${workspace}"/lib/pkgconfig/x265.pc
     fi
 
-    x265_lib="$(sudo find . -type f -name libx265.so.* | sed 's/^..//g')"
+    #x265_lib="$(sudo find . -type f -name libx265.so.* | sed 's/^..//g')"
 
-    if [ -f "${workspace}/lib/${x265_lib}" ]; then
-        execute sudo cp -f "${workspace}/lib/${x265_lib}" '/usr/lib/x86_64-linux-gnu'
-        execute sudo ln -fs "/usr/lib/x86_64-linux-gnu/${x265_lib}" '/usr/lib/x86_64-linux-gnu/libx265.so'
-    else
-        fail_fn "The sript could not located the file \"${workspace}/lib/${x265_lib}\" and needs to be updated. This error is located in the 'x265' build:Line ${LINENO}"
-    fi
+    #if [ -f "${workspace}/lib/${x265_lib}" ]; then
+    #    execute sudo cp -f "${workspace}/lib/${x265_lib}" '/usr/lib/x86_64-linux-gnu'
+    #    execute sudo ln -fs "/usr/lib/x86_64-linux-gnu/${x265_lib}" '/usr/lib/x86_64-linux-gnu/libx265.so'
+    #else
+    #    fail_fn "The sript could not located the file \"${workspace}/lib/${x265_lib}\" and needs to be updated. This error is located in the 'x265' build:Line ${LINENO}"
+    #fi
 
     build_done 'x265' '3bd3dd7'
 fi
@@ -2126,7 +2136,6 @@ if build 'cyanrip' "${g_ver}"; then
 fi
 
 if build 'libgav1' 'git'; then
-    # version 1.3.0, 1.2.4, and 1.2.3 fail to build successfully
     download_git 'https://chromium.googlesource.com/codecs/libgav1' 'libgav1-git'
     mkdir -p 'libgav1_build'
     execute git clone -b 20220623.0 --depth 1 https://github.com/abseil/abseil-cpp.git third_party/abseil-cpp
@@ -2137,27 +2146,23 @@ if build 'libgav1' 'git'; then
     build_done 'libgav1' 'git'
 fi
 
-git_ver_fn '8143' '6'
-if build 'xvidcore' '1.3.7-1'; then
-    download 'https://salsa.debian.org/multimedia-team/xvidcore/-/archive/debian/2%251.3.7-1/xvidcore-debian-2%251.3.7-1.tar.bz2' 'xvidcore-1.3.7-1.tar.bz2'
+git_ver_fn '8268' '6'
+g_ver="${g_ver//debian\/2%/}"
+if build 'xvidcore' "${g_ver}"; then
+    download "https://salsa.debian.org/multimedia-team/xvidcore/-/archive/debian/2%25${g_ver}/xvidcore-debian-2%25${g_ver}.tar.bz2" "xvidcore-${g_ver}.tar.bz2"
     cd build/generic || exit 1
     execute ./configure --prefix="${workspace}"
     execute make "-j${cpu_threads}"
     execute make install
 
-    if [ -f "${workspace}"/lib/libxvidcore.4.dylib ]; then
-        rm "${workspace}"/lib/libxvidcore.4.dylib
+    if [ ! -f "${workspace}/lib/libxvidcore.so.4@" ]; then
+        execute ln -sf 'build/libxvidcore.so.4.3' "${workspace}/lib/libxvidcore.so.4@"
+    fi
+    if [ ! -f "${workspace}/lib/libxvidcore.so" ]; then
+        execute ln -sf "build/libxvidcore.so.4@" "${workspace}/lib/libxvidcore.so"
     fi
 
-    if [ -f "${workspace}"/lib/libxvidcore.so ]; then
-        rm "${workspace}"/lib/libxvidcore.so*
-    fi
-    clear
-    set -x
-    ln -sf build/libxvidcore.so.4.3 "${workspace}"/lib/libxvidcore.so.4@
-    ln -sf build/libxvidcore.so.4@ "${workspace}"/lib/libxvidcore.so
-
-    build_done 'xvidcore' '1.3.7-1'
+    build_done 'xvidcore' "${g_ver}"
 fi
 ffmpeg_libraries+=('--enable-libxvid')
 
