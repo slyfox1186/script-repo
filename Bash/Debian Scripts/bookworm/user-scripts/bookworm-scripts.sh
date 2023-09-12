@@ -24,6 +24,12 @@ fail_fn()
 }
 
 #
+# DOWNLAOD REQUIRED APT PACKAGES
+#
+
+sudo apt-get -qq -y install wget
+
+#
 # CD INTO A RANDOM FOLDER TO HOLD AND EXECUTE THE TEMP FILES
 #
 

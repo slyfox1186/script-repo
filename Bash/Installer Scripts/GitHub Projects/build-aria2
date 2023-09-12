@@ -8,7 +8,7 @@
 ##
 ##  Features: Static build, OpenSSL backend
 ##
-##  Updated: 09.05.23
+##  Updated: 09.11.23
 ##
 ##  Updated: cacert.pem security file
 ##
@@ -29,28 +29,18 @@ fi
 
 script_ver=1.5
 archive_dir=aria2-1.36.0
-archive_url="https://github.com/aria2/aria2/releases/download/release-1.36.0/${archive_dir}.tar.gz"
+archive_url=https://github.com/aria2/aria2/releases/download/release-1.36.0/${archive_dir}.tar.gz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 parent_dir="${PWD}"
 cwd="${parent_dir}"/aria2-build-script
+install_dir=/usr/local
 cert_dir=/usr/lib/ssl/certs
 pem_file=cacert.pem
 pem_in="${cwd}/${pem_file}"
 pem_out="${cert_dir}/${pem_file}"
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
-
-#
-# SET OPTIMIZATION AND EXTRA COMMANDS TO MODIFY THE BUILD
-#
-
-CFLAGS='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
-CPPFLAGS='-I/usr/local/include -I/usr/include'
-CXXFLAGS="${CFLAGS}"
-LDFLAGS="-L/usr/local/lib64 -L/usr/local/lib -L/usr/local/cuda/nvvm/lib64 -L/usr/local/cuda/targets/x86_64-linux/lib"
-LDFLAGS+=' -L/usr/lib -L/usr/lib/"${install_dir}" -L/lib/"${install_dir}" -L/lib'
-LIBS="$(pkg-config --libs libuv) $(pkg-config --libs libgcrypt)"
 
 #
 # PRINT THE SCRIPT BANNER
@@ -65,6 +55,24 @@ printf "%s\n%s\n\n" \
 #
 
 export CC=gcc CXX=g++
+
+#
+# SET COMPILER OPTIMIZATION FLAGS
+#
+
+cuda_folder_path="$(sudo find /usr/local/cuda* -type f -name nvcc | sed 's/\/bin\/nvcc//')"
+
+if [ -n "${cuda_folder_path}" ]; then
+    set_cuda_folder_path="${cuda_folder_path}"
+else
+    set_cuda_folder_path='/usr/local/cuda'
+fi
+
+export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
+export CPPFLAGS='-I/usr/local/include -I/usr/include'
+export LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+export LDFLAGS+=" -L${set_cuda_folder_path}/nvvm/lib64 -L${set_cuda_folder_path}/targets/x86_64-linux/lib"
+export LIBS="$(pkg-config --libs libuv) $(pkg-config --libs libgcrypt)"
 
 #
 # CREATE THE OUTPUT DIRECTORY
@@ -147,7 +155,7 @@ cleanup_fn()
 {
     local choice
 
-    unset archive_dir archive_ext archive_name archive_url CC CXX i missing_pkg missing_pkgs pc_type pem_out pkgs script_ver
+    unset archive_dir archive_ext archive_name archive_url CC CXX i missing_pkg missing_pkgs pem_out pkgs script_ver
 
     printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
         '============================================' \
@@ -265,32 +273,30 @@ cd "${cwd}/${archive_dir}" || exit 1
 # INCREASE THE MAX NUMBER OF CONNECTIONS FROM 16 TO 128
 sed -i 's/1, 16/1, 128/g' 'src/OptionHandlerFactory.cc'
 cd build || exit 1
-../configure --prefix=/usr/local                            \
-             --{build,host,target}=x86_64-linux-gnu             \
-             --disable-nls                                  \
-             --disable-shared                               \
-             --disable-werror                               \
-             --enable-libaria2                              \
-             --enable-static                                \
-             --with-ca-bundle="${pem_out}"                  \
-             --with-libgcrypt=/usr                          \
-             --with-libiconv-prefix=/usr                    \
-             --with-libintl-prefix=/usr                     \
-             --with-libuv                                   \
-             --with-jemalloc                                \
-             --with-openssl                                 \
-             --with-pic                                     \
-             --without-gnutls                               \
-             ARIA2_STATIC=yes                               \
-             CFLAGS="${CFLAGS}"                             \
-             CPPFLAGS="${CPPFLAGS}"                         \
-             CXXFLAGS="${CXXFLAGS}"                         \
-             EXPAT_LIBS="$(pkg-config --libs expat)"        \
-             LDFLAGS="${LDFLAGS}"                           \
-             LIBS="${LIBS}"                                 \
-             PKG_CONFIG="$(type -P pkg-config)"             \
-             PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
-
+../configure --prefix="${install_dir}"               \
+             --{build,host,target}=x86_64-linux-gnu  \
+             --disable-nls                           \
+             --disable-shared                        \
+             --disable-werror                        \
+             --enable-libaria2                       \
+             --enable-static                         \
+             --with-ca-bundle="${pem_out}"           \
+             --with-libgcrypt=/usr                   \
+             --with-libiconv-prefix=/usr             \
+             --with-libintl-prefix=/usr              \
+             --with-libuv                            \
+             --with-jemalloc                         \
+             --with-openssl                          \
+             --with-pic                              \
+             --without-gnutls                        \
+             ARIA2_STATIC=yes                        \
+             CFLAGS="${CFLAGS}"                      \
+             CXXFLAGS="${CXXFLAGS}"                  \
+             CPPFLAGS="${CPPFLAGS}"                  \
+             EXPAT_LIBS="$(pkg-config --libs expat)" \
+             LDFLAGS="${LDFLAGS}"                    \
+             LIBS="${LIBS}"                          \
+             PKG_CONFIG="$(type -P pkg-config)"
 make "-j$(nproc --all)"
 if ! sudo make install; then
     fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
@@ -301,8 +307,8 @@ fi
 # CREATE SOFT LINKS
 #
 
-if [ -f "/usr/local/bin/${pc_type}-aria2c" ]; then
-    sudo ln -sf "/usr/local/bin/${pc_type}-aria2c" '/usr/local/bin/aria2c'
+if [ -f "/usr/local/bin/x86_64-linux-gnu-aria2c" ]; then
+    sudo ln -sf "/usr/local/bin/x86_64-linux-gnu-aria2c" '/usr/local/bin/aria2c'
     sudo chmod 755 '/usr/local/bin/aria2c'
 else
     fail_fn "Failed to create a soft link to: /usr/local/bin/aria2c:Line ${LINENO}"

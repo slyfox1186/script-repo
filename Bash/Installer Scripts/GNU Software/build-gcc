@@ -21,17 +21,14 @@
 ##  Added: multiarch support for GCC 11 / 12 / 13
 ##  Added: multiple support libraries using the latest versions available
 ##  Added: link time optimization support
-##  Added: gmp support library for binutils
 ##  Added: ada language support for all gcc versions
 ##  Added: code to clean the environment
 ##  Added: added two default variables back into the script environment to combat
 ##         any issues with dbus or x-11 display issues.
+##  Added: options to choose what GCC versions to install.
+##  Added: the LIBRARY_PATH variable to include the default paths of the APT "gcc" version
 ##
 ##  Optimized: code by removing redundant loops by passing variables to functions
-##
-##  Updated: the LIBRARY_PATH variable to include the default paths of the APT "gcc" version
-##
-##  Updated: Added options to choose what GCC versions to install.
 ##
 ##  Fixed: zstdn, zlib, and bison build issues.
 ##  Fixed: Debian not being able to compile gcc due to the ada language being included
@@ -292,12 +289,12 @@ create_gcc_links_fn()
 {
     local gcc_long_name gcc_short_name
 
-    gcc_long_name="$(sudo find /usr/local/bin -type f -name x86_64-linux-gnu-* | grep -Eo 'x86_64-linux-gnu-[a-z\+\-]+-[123]+$')"
+    gcc_long_name="$(sudo find ${install_dir}/bin -type f -name 'x86_64-linux-gnu-*' | grep -Eo 'x86_64-linux-gnu-[a-z\+\-]+-[123]+$')"
     for i in ${gcc_long_name[@]}
     do
         gcc_short_name="$(echo "${i}" | sed 's/^x86_64-linux-gnu-\(.*\)$/\1/')"
-        sudo ln -fs "/usr/local/bin/${i}" "/usr/local/bin/${gcc_short_name}"
-        sudo chmod 755 -R "/usr/local/bin/${i}" "/usr/local/bin/${gcc_short_name}"
+        sudo ln -fs "${install_dir}/bin/${i}" "${install_dir}/bin/${gcc_short_name}"
+        sudo chmod 755 -R "${install_dir}/bin/${i}" "${install_dir}/bin/${gcc_short_name}"
     done
 }
 

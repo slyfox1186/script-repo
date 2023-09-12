@@ -5,7 +5,6 @@ clear
 cwd="${PWD}"/build-all-gnu-master
 repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
-cnt=0
 
 if [ ! -d "${cwd}"/completed ]; then
     mkdir -p "${cwd}"/completed
@@ -76,9 +75,9 @@ install_scripts_fn()
     local i scripts
     clear
 
-    scripts="$(sudo find . -maxdepth 1 -type f | sed 's/^..//g')"
+    scripts="$(sudo find . -maxdepth 1 -type f -name '*' | sed 's/^..//g' | sort)"
 
-    for i in ${scripts[@]} 
+    for i in ${scripts[@]}
     do
         if bash "${i}"; then
             sudo find . -maxdepth 1 -type f -name "${i}" -exec mv {} completed \;
@@ -114,15 +113,29 @@ install_choice_fn()
 
 cd "${cwd}" || exit 1
 
-scripts=(m4 autoconf libtool pkg-config gettext-libiconv make bash binutils coreutils dbus diffutils
-         sed tar eog gawk gnutls grep imath isl nano ncurses nettle readline systemd texinfo util-linux
-         wget attr)
+scripts=(attr autoconf bash binutils coreutils dbus diffutils emacs eog gawk gcc gettext-libiconv gnutls grep gzip
+         imath isl libtool m4 make nano ncurses nettle pkg-config readline sed systemd tar texinfo util-linux wget)
+cnt=0
 
 for script in ${scripts[@]}
 do
     let cnt=cnt+1
-    wget -U "${user_agent}" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-${script}"
+    wget -U "${user_agent}" --show-progress -cq "https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-${script}"
     mv "build-${script}" "0${cnt}-build-${script}"
+done
+
+# RENAME FILES WITH NUMBERS 10 AND HIGHER SO THEY EXECUTE IN THE INTENDED ORDER
+files=(gawk gcc gettext-libiconv gnutls grep gzip imath isl libtool m4 make nano
+       ncurses nettle pkg-config readline sed systemd tar texinfo util-linux wget)
+cnt=9
+
+for i in 1
+do
+    for file in ${files[@]}
+    do
+        ((cnt++)) # << start counting here
+        mv "0${cnt}-build-${file}" "${cnt}-build-${file}" # << move the files, thus renaming them
+    done
 done
 
 # ASK THE USER IF THEY WANT TO INSTALL ALL OF THE SCRIPTS

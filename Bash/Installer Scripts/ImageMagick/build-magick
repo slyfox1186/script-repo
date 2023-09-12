@@ -175,17 +175,14 @@ cleanup_fn()
 
 create_links_fn()
 {
-    local i link_list
-
-    link_list=(animate compare composite conjure convert display identify import magick Magick++-config MagickCore-config magick-script MagickWand-config mogrify montage stream)
-
-    for i in ${link_list[@]}
+    local gcc_long_name gcc_short_name
+ 
+    gcc_long_name="$(sudo find ${install_dir}/bin -name 'x86_64-linux-gnu-*' | grep -Eo 'x86_64-linux-gnu-[A-Za-z\+\-]+$')"
+    for i in ${gcc_long_name[@]}
     do
-        if [ -f "${install_dir}/bin/${pc_type}-${i}" ]; then
-            sudo ln -fs "${install_dir}/bin/${pc_type}-${i}" "/usr/local/bin/${i}"
-            sudo chmod 755 "${install_dir}/bin/${pc_type}-${i}"
-            sudo chmod 755 "${install_dir}/bin/${i}"
-        fi
+        gcc_short_name="$(echo "${i}" | sed 's/^x86_64-linux-gnu-\(.*\)$/\1/')"
+        sudo ln -fs "${install_dir}/bin/${i}" "${install_dir}/bin/${gcc_short_name}"
+        sudo chmod 755 -R "${install_dir}/bin/${i}" "${install_dir}/bin/${gcc_short_name}"
     done
 }
 

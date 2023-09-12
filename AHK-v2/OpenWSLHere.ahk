@@ -15,49 +15,52 @@
       - To find the available distros run 'wsl.exe -l --all' using PowerShell to get a list of available options
 
     Updated:
-    - 08.18.23
+    - 09.10.23
+
+    Big Update:
+    - Greatly improved the code. Explorer windows with multiple tabs will now open the correct tab the hotkey is trigged on instead of just
+      activating the far left tab.
 
 */
 
-!w up::_OpenWSLHere()
-return
+!w up::OpenWSLHere()
 
-_OpenWSLHere()
+OpenWSLHere()
 {
-    Static convert := " #$%&'()-.*:?@[]^_``{}|~/"
     Static osName := 'Debian'
     Static wt := 'C:\Users\' . A_UserName . '\AppData\Local\Microsoft\WindowsApps\wt.exe'
     Static wsl := 'C:\Windows\System32\wsl.exe'
     Static win := 'ahk_class CASCADIA_HOSTING_WINDOW_CLASS ahk_exe WindowsTerminal.exe'
-
     if FileExist('C:\Program Files\PowerShell\7\pwsh.exe')
         pshell := 'C:\Program Files\PowerShell\7\pwsh.exe'
     else
         pshell := 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
-
-    if WinActive('ahk_class CabinetWClass ahk_exe explorer.exe')
-        winObj := ComObject('Shell.Application').Windows
-    else
+    
+    if !WinActive('ahk_class CabinetWClass ahk_exe explorer.exe')
     {
-        Run pshell ' -NoP -W Hidden -C "Start-Process ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd ~ `' -Verb RunAs"'
-        if WinWait(win,, 2)
+        Run(pshell ' -NoP -W Hidden -C "Start-Process -WindowStyle Hidden ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd ~ `' -Verb RunAs"')
+        if WinWait(win)
             WinActivate(win)
         return
     }
-
+    hwnd := WinExist('A')
+    winObj := ComObject('Shell.Application').Windows
+    try activeTab := ControlGetHwnd('ShellTabWindowClass1', hwnd)
     for win in winObj
     {
-            pwd := SubStr(win.LocationURL, 9)
-            Loop Parse, convert
-                hex := Format("{:X}" , Ord(A_LoopField)),pwd := StrReplace(pwd, "%" . hex, A_LoopField)
-                pwd := StrReplace(pwd, "%", "")
-                pwd := StrReplace(pwd, "'", "''")
-                pwd := StrReplace(pwd, pwd, '"' . pwd . '"')
-                pwd := RegExReplace(pwd, 'sl.localhost/' . osName, '')
-
-        Run pshell ' -NoP -W Hidden -C "Start-Process ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd \"' . pwd . '\" `' -Verb RunAs"'
-        if WinWait(win,, 2)
-            WinActivate(win)
-        return
+        if win.hwnd != hwnd
+            continue
+        if IsSet(activeTab)
+        {
+            shellBrowser := ComObjQuery(win, '{000214E2-0000-0000-C000-000000000046}', '{000214E2-0000-0000-C000-000000000046}')
+            ComCall(3, shellBrowser, 'uint*', &thisTab:=0)
+            if thisTab != activeTab
+                continue
+        }
+        pwd := '"' win.Document.Folder.Self.Path '"'
+        break
     }
+    Run(pshell ' -NoP -W Hidden -C "Start-Process -WindowStyle Hidden ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd \"' . pwd . '\" `' -Verb RunAs"')
+    if WinWait(win)
+        WinActivate(win)
 }
