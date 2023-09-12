@@ -78,6 +78,7 @@ exit_fn()
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         "${web_repo}"
+        sudo rm -fr "${cwd}" >2/dev/null
     exit 0
 }
 
@@ -87,32 +88,6 @@ fail_fn()
         "${1}" \
         "To report a bug create an issue at: ${web_repo}/issues"
     exit 1
-}
-
-cleanup_fn()
-{
-    local answer
-
-    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' answer
-
-    case "${answer}" in
-        1)      sudo rm -fr "${cwd}";;
-        2)      echo;;
-        *)
-                clear
-                printf "%s\n\n" 'Bad user input.'
-                sleep 3
-                unset answer
-                clear
-                cleanup_fn
-                ;;
-    esac
 }
 
 #
@@ -161,9 +136,6 @@ elif [ "$(sudo find "${install_dir_sans}" -type f -iname '*.*' | wc -l)" -ne '64
 else
     sudo fc-cache -fv
 fi
-
-# PROMPT THE USER TO CLEAN UP THE LEFTOVER BUILD FILES
-cleanup_fn
 
 # SHOW THE EXIT MESSAGE
 exit_fn
