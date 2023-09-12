@@ -289,12 +289,12 @@ create_gcc_links_fn()
 {
     local gcc_long_name gcc_short_name
 
-    gcc_long_name="$(sudo find /usr/local/bin -type f -name x86_64-linux-gnu-* | grep -Eo 'x86_64-linux-gnu-[a-z\+\-]+-[123]+$')"
+    gcc_long_name="$(sudo find ${install_dir}/bin -type f -name 'x86_64-linux-gnu-*' | grep -Eo 'x86_64-linux-gnu-[a-z\+\-]+-[123]+$')"
     for i in ${gcc_long_name[@]}
     do
         gcc_short_name="$(echo "${i}" | sed 's/^x86_64-linux-gnu-\(.*\)$/\1/')"
-        sudo ln -fs "/usr/local/bin/${i}" "/usr/local/bin/${gcc_short_name}"
-        sudo chmod 755 -R "/usr/local/bin/${i}" "/usr/local/bin/${gcc_short_name}"
+        sudo ln -fs "${install_dir}/bin/${i}" "${install_dir}/bin/${gcc_short_name}"
+        sudo chmod 755 -R "${install_dir}/bin/${i}" "${install_dir}/bin/${gcc_short_name}"
     done
 }
 
