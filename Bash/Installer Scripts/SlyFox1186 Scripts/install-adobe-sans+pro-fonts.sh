@@ -2,7 +2,7 @@
 
 ####################################################################################################################################################
 ##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/install-adobe-sans+pro-fonts.sh
+##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/SlyFox1186%20Scripts/install-adobe-sans+pro-fonts.sh
 ##
 ##  Purpose: install adobe-sans + adobe-pro fonts system wide
 ##
