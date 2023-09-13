@@ -4,7 +4,7 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/install-adobe-sans+pro-fonts.sh
 ##
-##  Purpose: install adobe sans+pro fonts
+##  Purpose: install adobe-sans + adobe-pro fonts system wide
 ##
 ##  Created: 09.12.23
 ##
@@ -39,7 +39,7 @@ web_repo=https://github.com/slyfox1186/script-repo
 # PRINT SCRIPT BANNER
 #
 
-box_out_banner1()
+box_out_banner_main()
 {
     input_char=$(echo "${@}" | wc -c)
     line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
@@ -53,8 +53,8 @@ box_out_banner1()
     echo " ${line}"
     tput sgr 0
 }
-box_out_banner1 "FFmpeg Build Script - v${script_ver}"
-printf "\n%s\n\n" "The script will utilize ${cpu_threads} CPU cores for parallel processing to accelerate the build speed."
+box_out_banner_main "Installer Script - Adobe-Sans & Adobe-Pro Fonts"
+printf "\n%s\n\n" "The script will utilize (${cpu_threads}) CPU threads for parallel processing to accelerate the build speed."
 
 #
 # CREATE OR DELETE OLD OUTPUT DIRECTORIES FROM PREVIOUS RUNS
