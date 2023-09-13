@@ -84,17 +84,13 @@ export PATH
 PKG_CONFIG_PATH="\
 /lib64/pkgconfig:\
 /lib/pkgconfig:\
-/lib/"${install_dir}"/pkgconfig:\
-/snap/core18/2790/usr/share/pkgconfig:\
-/snap/vlc/3078/usr/lib/pkgconfig:\
-/snap/vlc/3078/usr/lib/"${install_dir}"/pkgconfig:\
-/snap/vlc/3078/usr/share/pkgconfig:\
+/lib/${install_dir}/pkgconfig:\
 /usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
-/usr/lib/"${install_dir}"/pkgconfig:\
+/usr/lib/${install_dir}/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
-/usr/local/lib/"${install_dir}"/pkgconfig:\
+/usr/local/lib/${install_dir}/pkgconfig:\
 /usr/share/pkgconfig\
 "
 export PKG_CONFIG_PATH
