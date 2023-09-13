@@ -64,15 +64,16 @@ export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -pipe -marc
 
 PATH="\
 /usr/lib/ccache:\
+${HOME}/perl5/bin:\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
+/usr/local/cuda/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/local/cuda/bin:\
 /snap/bin\
 "
 export PATH
@@ -85,16 +86,12 @@ PKG_CONFIG_PATH="\
 /lib64/pkgconfig:\
 /lib/pkgconfig:\
 /lib/x86_64-linux-gnu/pkgconfig:\
-/snap/core18/2790/usr/share/pkgconfig:\
-/snap/vlc/3078/usr/lib/pkgconfig:\
-/snap/vlc/3078/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/snap/vlc/3078/usr/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib64/pkgconfig:\
+/usr/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/share/pkgconfig\
 "
 export PKG_CONFIG_PATH
