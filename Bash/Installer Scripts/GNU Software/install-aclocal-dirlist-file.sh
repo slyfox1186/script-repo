@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-###############################################################################################################################
+##########################################################################################################################################
+##
+##  GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/install-aclocal-dirlist-file.sh
 ##
 ##  Purpose: ACLOCAL has a special file that can be created in the "acdir" aka /usr/share/aclocal folder that
 ##           directly influences where ACLOCAL looks for m4 files when running commands such as autoconf.
@@ -8,7 +10,7 @@
 ##  Website Manual: Modifying the Macro Search Path: dirlist
 ##                  https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html#Macro-Search-Path
 ##
-###############################################################################################################################
+##########################################################################################################################################
 
 clear
 
