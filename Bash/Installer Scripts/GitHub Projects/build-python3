@@ -255,8 +255,10 @@ fi
 
 if [[ "$(type -P openssl)" == '/usr/local/bin/openssl' ]]; then
     openssl_dir=/usr/local
-else
+elif [[ "$(type -P openssl)" == '/usr/bin/openssl' ]]; then
     openssl_dir=/usr
+else
+    fail_fn "Failed to locate openssl. Please install it before running the script again. :Line {LINENO}"
 fi
 
 #
