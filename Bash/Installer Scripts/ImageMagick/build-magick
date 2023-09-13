@@ -176,7 +176,7 @@ cleanup_fn()
 create_links_fn()
 {
     local gcc_long_name gcc_short_name
- 
+
     gcc_long_name="$(sudo find ${install_dir}/bin -name 'x86_64-linux-gnu-*' | grep -Eo 'x86_64-linux-gnu-[A-Za-z\+\-]+$')"
     for i in ${gcc_long_name[@]}
     do
@@ -634,23 +634,15 @@ if build 'libjxl' '0.8.1'; then
 fi
 
 #
-# GET PC TYPE
-#
-
-curl -A "${user_agent}" -Lso "${cwd}/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-chmod +x "${cwd}/config.guess"
-pc_type="$(source "${cwd}/config.guess")"
-
-#
 # BUILD FROM SOURCE CODE
 #
 
 
 if build 'm4' 'latest'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
-    execute ./configure --prefix="${workspace}"            \
-                        --{build,host,target}="${pc_type}" \
-                        --disable-nls                      \
+    execute ./configure --prefix="${workspace}"                \
+                        --{build,host,target}=x86_64-linux-gnu \
+                        --disable-nls                          \
                         --enable-c++
     execute make "-j${cpu_threads}"
     execute make install
@@ -660,8 +652,8 @@ fi
 if build 'autoconf' 'latest'; then
     download 'http://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz'
     execute autoreconf -fi
-    execute ./configure --prefix="${workspace}"     \
-                        --{build,host}="${pc_type}" \
+    execute ./configure --prefix="${workspace}"         \
+                        --{build,host}=x86_64-linux-gnu \
                         M4="${workspace}"/bin/m4
     execute make "-j${cpu_threads}"
     execute make install
@@ -670,8 +662,8 @@ fi
 
 if build 'libtool' '2.4.7'; then
     download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
-    execute ./configure --prefix="${workspace}"     \
-                        --{build,host}="${pc_type}" \
+    execute ./configure --prefix="${workspace}"         \
+                        --{build,host}=x86_64-linux-gnu \
                         --with-pic \
                         M4="${workspace}"/bin/m4
     execute make "-j${cpu_threads}"
@@ -683,9 +675,9 @@ git_ver_fn 'libsdl-org/libtiff' 'T'
 if build 'tiff' "${g_ver}"; then
     download "https://codeload.github.com/libsdl-org/libtiff/tar.gz/refs/tags/v${g_ver}" "tiff-${g_ver}.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}"     \
-                        --{build,host}="${pc_type}" \
-                        --enable-cxx                \
+    execute ./configure --prefix="${workspace}"         \
+                        --{build,host}=x86_64-linux-gnu \
+                        --enable-cxx                    \
                         --with-pic
     execute make "-j${cpu_threads}"
     execute make install
@@ -694,10 +686,10 @@ fi
 
 if build 'jpeg-turbo' 'git'; then
     download_git 'https://github.com/imageMagick/jpeg-turbo.git'
-    execute cmake -S . \
-            -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} \
-            -DENABLE_{SHARED,STATIC}=ON                                \
-            -G Ninja -Wno-dev
+    execute cmake -S .                                                       \
+                  -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} \
+                  -DENABLE_{SHARED,STATIC}=ON                                \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}"
     execute ninja "-j${cpu_threads}" install
     build_done 'jpeg-turbo' 'git'
@@ -706,8 +698,8 @@ fi
 if build 'libfpx' 'git'; then
     download_git 'https://github.com/imageMagick/libfpx.git'
     execute autoreconf -fi
-    execute ./configure --prefix="${workspace}"            \
-                        --{build,host,target}="${pc_type}" \
+    execute ./configure --prefix="${workspace}"                \
+                        --{build,host,target}=x86_64-linux-gnu \
                         --with-pic
     execute make "-j${cpu_threads}"
     execute make install
@@ -727,9 +719,9 @@ fi
 if build 'png12' '1.2.59'; then
     download 'https://github.com/glennrp/libpng/archive/refs/tags/v1.2.59.tar.gz' 'libpng-1.2.59.tar.gz'
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}"     \
-                        --{build,host}="${pc_type}" \
-                        --with-pic                  \
+    execute ./configure --prefix="${workspace}"         \
+                        --{build,host}=x86_64-linux-gnu \
+                        --with-pic                      \
                         --with-pkgconfigdir="${workspace}"/lib/pkgconfig
     execute make "-j${cpu_threads}"
     execute make install
@@ -739,11 +731,11 @@ fi
 if build 'libwebp' 'git'; then
     download_git 'https://chromium.googlesource.com/webm/libwebp' 'libwebp-git'
     execute autoreconf -fi
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release}              \
-        -DWEBP_{BUILD_ANIM_UTILS,BUILD_EXTRAS,BUILD_GIF2WEBP,BUILD_IMG2WEBP,BUILD_LIBWEBPMUX}=OFF  \
-        -DWEBP_{BUILD_VWEBP,BUILD_WEBPINFO,BUILD_WEBPMUX,ENABLE_SWAP_16BIT_CSP,LINK_STATIC}=OFF    \
-        -DWEBP_{BUILD_CWEBP,BUILD_DWEBP}=ON -DBUILD_SHARED_LIBS=ON -DZLIB_INCLUDE_DIR=/usr/include \
-        -G Ninja -Wno-dev
+    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release}                        \
+                  -DWEBP_{BUILD_ANIM_UTILS,BUILD_EXTRAS,BUILD_GIF2WEBP,BUILD_IMG2WEBP,BUILD_LIBWEBPMUX}=OFF  \
+                  -DWEBP_{BUILD_VWEBP,BUILD_WEBPINFO,BUILD_WEBPMUX,ENABLE_SWAP_16BIT_CSP,LINK_STATIC}=OFF    \
+                  -DWEBP_{BUILD_CWEBP,BUILD_DWEBP}=ON -DBUILD_SHARED_LIBS=ON -DZLIB_INCLUDE_DIR=/usr/include \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'libwebp' 'git'
@@ -757,7 +749,7 @@ if build 'c2man' 'git'; then
         -D less="$(type -P less)" -D libpth='/lib64 /lib /usr/lib64 /usr/lib'                                        \
         -D locincpth="${workspace}/include /usr/local/include /usr/include" -D yacc="$(type -P yacc)"                \
         -D loclibpth="${workspace}/lib64 ${workspace}/lib /usr/local/lib64 /usr/local/lib" -D make="$(type -P make)" \
-        -D more="$(type -P more)" -D osname="${OS}" -D perl="$(type -P perl)" -D privlib="${workspace}"/lib/c2man      \
+        -D more="$(type -P more)" -D osname="${OS}" -D perl="$(type -P perl)" -D privlib="${workspace}"/lib/c2man    \
         -D privlibexp="${workspace}"/lib/c2man -D sleep="$(type -P sleep)" -D tail="$(type -P tail)"                 \
         -D tar="$(type -P tar)" -D uuname="$(uname -s)" -D vi="$(type -P vi)" -D zip="$(type -P zip)"
     execute make depend
@@ -797,12 +789,12 @@ git_ver_fn 'jemalloc/jemalloc' 'T'
 if build 'jemalloc' "${g_ver}"; then
     download "https://codeload.github.com/jemalloc/jemalloc/tar.gz/refs/tags/${g_ver}" "jemalloc-${g_ver}.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}"     \
-                        --{build,host}="${pc_type}" \
-                        --disable-doc               \
-                        --enable-autogen            \
-                        --enable-prof               \
-                        --enable-shared             \
+    execute ./configure --prefix="${workspace}"         \
+                        --{build,host}=x86_64-linux-gnu \
+                        --disable-doc                   \
+                        --enable-autogen                \
+                        --enable-prof                   \
+                        --enable-shared                 \
                         --enable-static
     execute make "-j${cpu_threads}"
     execute sudo make install
@@ -852,7 +844,7 @@ if build 'imageMagick' "${g_ver}"; then
     mkdir build
     cd build || exit 1
     ../configure --prefix="${install_dir}"                        \
-                 --{build,host,target}="${pc_type}"               \
+                 --{build,host,target}=x86_64-linux-gnu           \
                  --enable-ccmalloc                                \
                  --enable-hdri                                    \
                  --enable-hugepages                               \
