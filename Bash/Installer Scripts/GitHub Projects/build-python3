@@ -253,13 +253,11 @@ fi
 # GET OPENSSL DIR
 #
 
-if [[ "$(type -P openssl)" == '/usr/local/bin/openssl' ]]; then
-    openssl_dir=/usr/local
-elif [[ "$(type -P openssl)" == '/usr/bin/openssl' ]]; then
-    openssl_dir=/usr
-else
-    fail_fn "Failed to locate openssl. Please install it before running the script again. :Line {LINENO}"
-fi
+case "$(type -P openssl)" in
+    /usr/local/bin/openssl)     openssl_dir=/usr/local;;
+    /usr/bin/openssl)           openssl_dir=/usr;;
+    *)                          fail_fn "Failed to locate openssl. Please install it before running the script again. :Line {LINENO}";;
+esac
 
 #
 # BUILD PROGRAM FROM SOURCE
