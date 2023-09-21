@@ -32,7 +32,7 @@
         A_Clipboard := ClipSaved ; if nothing is saved in the A_Clipboard from the clipwait command then use the current A_Clipboard contents
 
     ; A_Clipboard is the text-only bit of the clipboard.
-    ; trim whitespace including "enter", because some apps are overzealous when selecting text. Trim does spaces and tabs by default."
+    ; trim whitespace including "enter", because some apps are overzealous when selecting text. Trim does spaces and tabs by default.
     string := Trim(A_Clipboard, " `t`r`n") 
 
     ; if the text ends in specific text matching a set of TLDs, assume it's a www address.
