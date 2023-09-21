@@ -5,7 +5,7 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Pi-Hole/build-WSL2
 ##
-##  Purpose: Build WSL2c with max connections changed from 16 to 128
+##  Purpose: Build WSL2 with max connections changed from 16 to 128
 ##
 ##  Features: Static build, OpenSSL backend
 ##
