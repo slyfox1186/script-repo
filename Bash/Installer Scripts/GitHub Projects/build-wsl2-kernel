@@ -78,6 +78,12 @@ fi
 export CC=gcc CXX=g++
 
 #
+# SET COMPILER OPTIMIZATION FLAGS
+#
+
+export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
+
+#
 # SET PATH
 #
 
@@ -95,12 +101,6 @@ $HOME/.local/bin:\
 /snap/bin\
 "
 export PATH
-
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 #
 # CREATE FUNCTIONS
