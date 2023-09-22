@@ -91,7 +91,6 @@ PATH="\
 $workspace/bin:\
 $HOME/.local/bin:\
 $HOME/.cargo/bin:\
-/usr/bin/x86_64-pc-linux-gnu-ld:\
 /usr/bin/x86_64-linux-gnu-ld:\
 /usr/local/sbin:\
 /usr/local/bin:\
