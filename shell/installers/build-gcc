@@ -16,7 +16,6 @@
 ##
 ##  Added: multiple support libraries using the latest versions available
 ##  Added: link time optimization support
-##  Added: gmp support library for binutils
 ##  Added: ada language support for all gcc versions
 ##  Added: code to clean the environment
 ##
