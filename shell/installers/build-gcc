@@ -23,7 +23,7 @@
 ##
 ##  Updated: the LIBRARY_PATH variable to include the default paths of the APT "gcc" version
 ##
-##  Fixed: zstdn, zlib, and bison build issues.
+##  Fixed: zstdn, zlib, build issues.
 ##  Fixed: Debian not being able to compile gcc due to the ada language being included
 ##  Fixed: Debian missing and uninstallable APT package errors
 ##
