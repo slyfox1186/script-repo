@@ -64,7 +64,7 @@ EXTRALIBS='-ldl -lpthread -lm -lz'
 ffmpeg_libraries=()
 latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/ffmpeg-build-script
+web_web_repo=https://github.com/slyfox1186/ffmpeg-build-script
 debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
@@ -286,7 +286,7 @@ git_1_fn()
     local curl_cmd github_repo github_url
 
     # SCRAPE GITHUB WEBSITE FOR THE LATEST REPO VERSION
-    github_repo="${1}"
+    github_web_repo="${1}"
     github_url="${2}"
 
     if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
@@ -314,9 +314,9 @@ git_1_fn()
 
 git_2_fn()
 {
-    repo="${1}"
+    web_repo="${1}"
     url="${2}"
-    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://code.videolan.org/api/v4/projects/${repo}/repository/${url}")"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://code.videolan.org/api/v4/projects/${web_repo}/repository/${url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].commit.id')"
         g_sver="$(echo "${curl_cmd}" | jq -r '.[0].commit.short_id')"
         g_sver="${g_sver::7}"
@@ -327,9 +327,9 @@ git_2_fn()
 
 git_3_fn()
 {
-    repo="${1}"
+    web_repo="${1}"
     url="${2}"
-    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.com/api/v4/projects/${repo}/repository/${url}")"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.com/api/v4/projects/${web_repo}/repository/${url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[0].commit.id')"
@@ -341,8 +341,8 @@ git_3_fn()
 
 git_4_fn()
 {
-    repo="${1}"
-    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.freedesktop.org/api/v4/projects/${repo}/repository/tags")"; then
+    web_repo="${1}"
+    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.freedesktop.org/api/v4/projects/${web_repo}/repository/tags")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
         g_ver="${g_ver#pkg-config-}"
         g_ver="${g_ver#VER-}"
@@ -351,8 +351,8 @@ git_4_fn()
 
 git_5_fn()
 {
-    repo="${1}"
-    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.gnome.org/api/v4/projects/${repo}/repository/tags")"; then
+    web_repo="${1}"
+    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.gnome.org/api/v4/projects/${web_repo}/repository/tags")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
     fi
@@ -360,8 +360,8 @@ git_5_fn()
 
 git_6_fn()
 {
-    repo="${1}"
-    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://salsa.debian.org/api/v4/projects/${repo}/repository/tags?")"; then
+    web_repo="${1}"
+    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://salsa.debian.org/api/v4/projects/${web_repo}/repository/tags?")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
     fi
@@ -399,7 +399,7 @@ git_ver_fn()
 
 check_version()
 {
-    github_repo="${1}"
+    github_web_repo="${1}"
     latest_txt_tmp="${ver_file_tmp}"
     latest_txt="${ver_file}"
 
@@ -415,7 +415,7 @@ check_version()
 
 pre_check_ver()
 {
-    github_repo="${1}"
+    github_web_repo="${1}"
     git_ver="${2}"
     git_url_type="${3}"
 

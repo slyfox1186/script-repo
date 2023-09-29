@@ -105,7 +105,7 @@ exit_fn()
     printf "\n%s\n\n%s\n%s\n\n" \
         'The script has completed' \
         'Make sure to star this repository to show your support!' \
-        "${repo}"
+        "${web_repo}"
     exit 0
 }
 
@@ -114,7 +114,7 @@ fail_fn()
     printf "\n\n%s\n\n%s\n\n%s\n\n" \
         "${1}" \
         'Please create a support ticket so I can work on a fix.' \
-        "${repo}/issues"
+        "${web_repo}/issues"
     exit 1
 }
 

@@ -29,7 +29,7 @@ install_dir=/usr/local
 cwd="${PWD}"/yasm-build-script
 packages="${cwd}"/packages
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
-repo=https://github.com/slyfox1186/script-repo
+web_repo=https://github.com/slyfox1186/script-repo
 debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 printf "\n%s\n%s\n\n" \
@@ -102,7 +102,7 @@ exit_fn()
 {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
-        "${repo}"
+        "${web_repo}"
     exit 0
 }
 
@@ -110,7 +110,7 @@ fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
         "${1}" \
-        "To report a bug create an issue at: ${repo}/issues"
+        "To report a bug create an issue at: ${web_repo}/issues"
     exit 1
 }
 
@@ -233,7 +233,7 @@ git_1_fn()
     local curl_cmd github_repo github_url
 
     # SCRAPE GITHUB WEBSITE FOR THE LATEST REPO VERSION
-    github_repo="${1}"
+    github_web_repo="${1}"
     github_url="${2}"
 
     if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
