@@ -618,6 +618,7 @@ if [ ! -f /usr/bin/composer ]; then
         rm composer-setup.php
         return 1
     fi
+    if ! sudo php composer-setup.php --install-dir=/usr/bin --filename=composer --quiet; then
         fail_fn 'Failed to install /usr/bin/composer'
     fi
     rm composer-setup.php
