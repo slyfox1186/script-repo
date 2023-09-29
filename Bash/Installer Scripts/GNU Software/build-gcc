@@ -688,39 +688,6 @@ if build 'zlib' "${g_ver}"; then
     build_done 'zlib' "${g_ver}"
 fi
 
-#
-# START GCC BUILD
-#
-
-gcc_prompt()
-{
-    printf "%s\n%s\n\n%s\n%s\n%s\n%s\n%s\n\n" \
-        'Choose the GCC version(s) to install' \
-        '======================================' \
-        '[1] All' \
-        '[2] GCC 12+13' \
-        '[3] GCC 11' \
-        '[4] GCC 12' \
-        '[5] GCC 13'
-        read -p 'Your choices are (1 to 5): ' answer
-
-    case "${answer}" in
-        1)      gcc_choice=1;;
-        2)      gcc_choice=2;;
-        3)      gcc_choice=3;;
-        4)      gcc_choice=4;;
-        5)      gcc_choice=5;;
-        *)
-                clear
-                printf "%s\n\n" 'Bad user input. Resetting script...'
-                sleep 3
-                unset answer
-                clear
-                gcc_prompt
-                ;;
-    esac
-}
-
 build_gcc_11_fn()
 {
     if [ -d "${packages}/gcc-11.4.0" ]; then
@@ -926,11 +893,42 @@ build_gcc_13_fn()
 }
 
 #
-# PROMPT THE USER TO SELECT THE GCC VERSION(S) TO INSTALL
+# START GCC BUILD
 #
+
+gcc_prompt()
+{
+    local answer
+    printf "%s\n%s\n\n%s\n%s\n%s\n%s\n%s\n\n" \
+        'Choose the GCC version(s) to install' \
+        '======================================' \
+        '[1] All' \
+        '[2] GCC 12+13' \
+        '[3] GCC 11' \
+        '[4] GCC 12' \
+        '[5] GCC 13'
+        read -p 'Your choices are (1 to 5): ' answer
+
+    case "${answer}" in
+        1)      gcc_choice=1;;
+        2)      gcc_choice=2;;
+        3)      gcc_choice=3;;
+        4)      gcc_choice=4;;
+        5)      gcc_choice=5;;
+        *)
+                clear
+                printf "%s\n\n" 'Bad user input. Resetting script...'
+                sleep 3
+                unset answer
+                clear
+                gcc_prompt
+                ;;
+    esac
+}
 
 gcc_prompt
 clear
+
 case "${gcc_choice}" in
     1)
             build_gcc_11_fn
