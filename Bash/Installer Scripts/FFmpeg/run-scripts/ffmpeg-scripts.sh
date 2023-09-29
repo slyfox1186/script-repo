@@ -16,7 +16,7 @@ wget -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bas
 # RENAME THE SCRIPTS
 sudo mv 'convert-x265-cuda-ffpb-loop.sh' 'ffmpeg'
 sudo mv 'convert-x265-cuda-ffpb.sh' 'ffpb'
-sudo mv 'ffpb-loop-video-files.sh' 'ffpb-loop'
+sudo mv 'convert-x265-cuda-ffpb-loop.sh' 'ffpb-loop'
 
 # MOVE THE SCRIPTS TO THE ORIGINAL DIRECTORY THE SCRIPT WAS EXECUTED FROM
 sudo mv "${scripts[@]}" "${parent_dir}"
