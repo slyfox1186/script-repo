@@ -3,7 +3,10 @@
 
 clear
 
-# SET PATH
+#
+# MODIFY THE PATH VARIABLE IF THE DIRECTORY EXISTS
+#
+
 if [ -d "${HOME}/.local/bin" ]; then
     PATH="${PATH}:${HOME}/.local/bin"
     export PATH
@@ -40,11 +43,11 @@ if [ -n "${pip_lock}" ]; then
 fi
 
 pip_pkgs=(ffpb google_speech)
-for p in ${pip_pkgs[@]}
+for py in ${pip_pkgs[@]}
 do
-    missing_pkg="$(pip show "${p}" 2>/dev/null)"
+    missing_pkg="$(pip show "${py}" 2>/dev/null)"
     if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${p}"
+        missing_pkgs+=" ${py}"
     fi
 done
 
@@ -52,31 +55,39 @@ if [ -n "${missing_pkgs}" ]; then
     pip install ${missing_pkgs}
     clear
 fi
-unset p pip_lock pip_pkgs missing_pkg missing_pkgs
+unset py pip_lock pip_pkgs missing_pkg missing_pkgs
 
 # DELETE FILES PROM PRIOR RUNS
-del_this="$(du -ah --max-depth=1 | grep -Eo '[\/].*\(x265\)\.(mp4|mkv)$' | grep -Eo '[A-Za-z0-9].*\(x265\)\.(mp4|mkv)$')"
+del_this="$(du -ah --max-depth=1 | grep -Eo '[\/].*\(x265\)\.m(p4|kv)$' | grep -Eo '[A-Za-z0-9].*\(x265\)\.m(p4|kv)$')"
 clear
 
-if [ -n "${del_this}" ]; then
-    printf "%s\n\n%s\n%s\n%s\n\n" \
-        "Do you want to delete this video before continuing?: ${del_this}" \
-        '[1] Yes' \
-        '[2] No' \
-        '[3] Exit'
-    read -p 'Your choices are (1 to 3): ' choice
-
-    case "${choice}" in
-        1)      rm "${del_this}"; clear;;
-        2)      clear;;
-        3)      exit 0;;
-        *)
-                clear
-                printf "%s\n\n" 'Bad user input.'
-                exit 1
-                ;;
-    esac
-fi
+del_prompt()
+{
+    clear
+    if [ -n "${del_this}" ]; then
+        printf "%s\n\n%s\n%s\n%s\n\n" \
+            "Do you want to delete this video before continuing?: ${del_this}" \
+            '[1] Yes (Recommended)' \
+            '[2] No' \
+            '[3] Exit'
+        read -p 'Your choices are (1 to 3): ' del_choice
+    
+        case "${del_choice}" in
+            1)      rm "${del_this}";;
+            2)      clear;;
+            3)      exit 0;;
+            *)
+                    clear
+                    printf "%s\n\n" 'Bad user input. Reverting script...'
+                    sleep 3
+                    unset del_choice
+                    del_prompt
+                    ;;
+        esac
+    fi
+}
+del_prompt
+clear
 
 # MAKE SURE THERE ARE ACTUAL VIDEOS IN THE FOLDER WITH THIS SCRIPT BEFORE CONTINUING
 for vid in "${PWD}"/*.{mp4,mkv}
@@ -153,7 +164,7 @@ if ffmpeg \
         -hwaccel_output_format cuda \
         -i "${file_in}" \
         -pix_fmt p010le \
-        -movflags frag_keyframe+empty_moov \
+        -movflags 'frag_keyframe+empty_moov' \
         -c:v hevc_nvenc \
         -preset:v medium \
         -profile:v main \
