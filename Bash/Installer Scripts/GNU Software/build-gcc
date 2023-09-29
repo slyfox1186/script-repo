@@ -7,16 +7,18 @@
 ##
 ##  Install: GCC 11.4.0 / 12.3.0 / 13.2.0
 ##
-##  Supported OS: Debian 10 / 11 / 12
-##                Ubuntu 22.04 (Possibly 20.04 and 18.04 as well)
-##                Windows WSL
+##  Supported OS: Debian 10/11/12
+##                Ubuntu 22.04 and higher (possibly 20.04/18.04 as well)
+##                Windows WSL 1/2
 ##
 ##  Screenshot of Ubuntu build: https://gcc-screenshot.optimizethis.net
 ##
-##  Last Script Update: 09.10.23
-##  Script Version: 4.5
+##  Last Script Update: 09.28.23
+##  Script Version: 4.6
 ##
 ##  Updated: GCC-13 to version - 13.2.0
+##
+##  Updated: the LDFLAGS variable
 ##
 ##  Added: multiarch support for GCC 11 / 12 / 13
 ##  Added: multiple support libraries using the latest versions available
@@ -24,21 +26,21 @@
 ##  Added: ada language support for all gcc versions
 ##  Added: code to clean the environment
 ##  Added: added two default variables back into the script environment to combat
-##         any issues with dbus or x-11 display issues.
-##  Added: options to choose what GCC versions to install.
+##         any issues with dbus or x-11 display issues
+##  Added: options to choose what GCC versions to install
 ##  Added: the LIBRARY_PATH variable to include the default paths of the APT "gcc" version
 ##
 ##  Optimized: code by removing redundant loops by passing variables to functions
 ##
-##  Fixed: zstdn, zlib, and bison build issues.
+##  Fixed: zstdn and zlib build issues
 ##  Fixed: Debian not being able to compile gcc due to the ada language being included
 ##  Fixed: Debian missing and uninstallable APT package errors
 ##  Fixed: Ubuntu Jammy zstd not building. Changed from meson to cmake
 ##
 ##  Changed: the language support on Ubuntu to "all" for each GCC version which allows them to
-##           build every language they are able to.
+##           build every language they are able to
 ##  Changed: the default install directory for the GNU libs to "${workspace}" to help avoid
-##           future overlaps with APT packages that may be installed.
+##           future overlaps with APT packages that may be installed
 ##
 #####################################################################################################
 ##
@@ -155,9 +157,9 @@ clear
 # SET THE GLOBAL SCRIPT VARIABLES
 #
 
-script_ver=4.5
+script_ver=4.6
 install_dir=/usr/local
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
 latest=false
 repo=https://github.com/slyfox1186/script-repo
 debug=OFF # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
@@ -172,9 +174,13 @@ export CC=gcc CXX=g++
 # SET THE COMPILER OPTIMIZATION FLAGS
 #
 
-export CXXFLAGS='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
-export CFLAGS="${CXXFLAGS} -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections"
-export CPPFLAGS='-I/usr/lib/gcc/x86_64-linux-gnu/12/include -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include'
+CXXFLAGS='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
+CFLAGS="${CXXFLAGS} -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections"
+CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include"
+CPPFLAGS+=' -I/usr/include/x86_64-linux-gnu -I/usr/lib/gcc/x86_64-linux-gnu/11/include'
+CPPFLAGS+=' -I/usr/lib/gcc/x86_64-linux-gnu/12/include -I/usr/lib/gcc/x86_64-linux-gnu/13/include'
+
+export CXXFLAGS CFLAGS CPPFLAGS
 
 #
 # SET THE AVAILABLE CPU THREADS AND CORE COUNT FOR PARALLEL PROCESSING (TO SPEED UP THE BUILD PROCESS)
@@ -460,16 +466,16 @@ pkgs_fn()
 {
     pkgs=("${1}" autoconf autoconf-archive autogen automake bison build-essential ccache curl
           dejagnu flex gdc gdc-multilib gfortran gfortran-multilib git gnat gnulib guile-3.0-dev
-          help2man jq  libc++abi-dev libacl1-dev libasan8
-          libdebuginfod-dev libdmalloc5 libdmalloc-dev libeigen3-dev libffi-dev libfontconfig1-dev
-          libfreetype6 libgd-dev libgm2-12-dev libgmp-dev libiberty-dev libicu-dev libintl-perl
-          libisl-dev libjpeg-dev libltdl-dev libmpc-dev libmpfr-dev libnotify-bin libphobos2-ldc-shared-dev
-          libpng-dev libquadmath0 libsigsegv-dev libsqlite3-dev libssl-dev libstdc++-12-dev libticonv-dev
-          libtool libtool-bin libx11-dev libx32gfortran-12-dev libxext-dev linux-libc-dev meson m4
-          ninja-build openjdk-17-jdk-headless perl pipx python3 python3-full python3-pip ruby sphinx-common
-          tcl-expect-dev tex-common texi2html texinfo)
+          help2man jq  libc++abi-dev libacl1-dev libasan8 libdebuginfod-dev libdmalloc5 libdmalloc-dev
+          libeigen3-dev libffi-dev libfontconfig1-dev libfreetype6 libgd-dev libgm2-12-dev libgmp-dev
+          libiberty-dev libicu-dev libintl-perl libisl-dev libjpeg-dev libltdl-dev libmpc-dev libmpfr-dev
+          libnotify-bin libphobos2-ldc-shared-dev libpng-dev libquadmath0 libsigsegv-dev libsqlite3-dev
+          libssl-dev libstdc++-12-dev libticonv-dev libtool libtool-bin libx11-dev libx32gfortran-12-dev
+          libxext-dev linux-libc-dev meson m4 ninja-build openjdk-17-jdk-headless perl pipx python3
+          python3-full python3-pip ruby sphinx-common tcl-expect-dev tex-common texi2html texinfo)
 
-    for pkg in ${pkgs[@]}; do
+    for pkg in ${pkgs[@]}
+    do
         if ! installed "${pkg}"; then
             missing_pkgs+=" ${pkg}"
         fi
@@ -526,14 +532,15 @@ fi
 py_pkgs=(types-gdb os.path2 mbs-sys tempfile2 PrettyGcov json2json pytest
          csv23 time-tools argparse3 pathlib shutil-extra latex Pygments)
 
-for py_pkg in ${py_pkgs[@]}; do
+for py_pkg in ${py_pkgs[@]}
+do
     if ! pip show "${py_pkg}" &>/dev/null; then
         missing_py_pkgs+=" ${py_pkg}"
     fi
 done
 
 if [ -n "${missing_py_pkgs}" ]; then
-    rm_pip_lock="$(find /usr/lib/python3* -name EXTERNALLY-MANAGED)"
+    rm_pip_lock="$(sudo find /usr/lib/python3* -name 'EXTERNALLY-MANAGED')"
     if [ -n "${rm_pip_lock}" ]; then
         sudo rm "${rm_pip_lock}"
     fi
@@ -565,23 +572,15 @@ os_ver_check_fn()
 # GET CURRENT OS INFORMATION
 #
 
+find_lsb_release="$(sudo find /usr -type f -name lsb_release)"
+
 if [ -f /etc/os-release ]; then
     source /etc/os-release
-    OS="${NAME}"
-    VER="${VERSION_ID}"
-elif "$(type -P lsb_release)" &>/dev/null; then
-    OS="$(lsb_release -si)"
-    VER="$(lsb_release -sr)"
-elif [ -f /etc/lsb-release ]; then
-    source /etc/lsb-release
-    OS="${DISTRIB_ID}"
-    VER="${DISTRIB_RELEASE}"
-elif [ -f /etc/debian_version ]; then
-    OS=Debian
-    VER="$(cat /etc/debian_version)"
-else
-    OS="$(uname -s)"
-    VER="$(uname -r)"
+    OS="$NAME"
+    VER="$VERSION_ID"
+else [ -n "${find_lsb_release}" ]
+    OS="$(lsb_release -d | awk '{print $2}')"
+    VER="$(lsb_release -r | awk '{print $2}')"
 fi
 
 #
@@ -589,9 +588,8 @@ fi
 #
 
 case "${OS}" in
-    Debia*)         os_ver_check_fn;;
-    Ubunt*)         os_ver_check_fn;;
-    *)              fail_fn "Could not detect the OS architecture:Line ${LINENO}";;
+    Debia*|Ubunt*)      os_ver_check_fn;;
+    *)                  fail_fn "Could not detect the OS architecture:Line ${LINENO}";;
 esac
 
 os_first_token="$(echo "${OS}" | awk '{print $1}')"
@@ -653,8 +651,7 @@ fi
 
 if build 'pkg-config' '0.29.2'; then
     download "https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz"
-    execute ./configure --prefix="${workspace}" \
-                        --with-pc-path="${PKG_CONFIG_PATH}"
+    execute ./configure --prefix="${workspace}" --with-pc-path="${PKG_CONFIG_PATH}"
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'pkg-config' '0.29.2'
@@ -673,10 +670,8 @@ g_ver="${g_ver#Zstandard v}"
 if build 'zstd' "${g_ver}"; then
     download "https://github.com/facebook/zstd/releases/download/v${g_ver}/zstd-${g_ver}.tar.gz"
     cd build/cmake || exit 1
-    execute cmake -B build -DCMAKE_INSTALL_PREFIX="${workspace}" \
-                           -DCMAKE_BUILD_TYPE=Release            \
-                           -DBUILD_SHARED_LIBS=OFF               \
-                           -G Ninja -Wno-dev
+    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} \
+                  -DBUILD_SHARED_LIBS=OFF -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'zstd' "${g_ver}"
@@ -948,7 +943,7 @@ case "${gcc_choice}" in
     3)      build_gcc_11_fn;;
     4)      build_gcc_12_fn;;
     5)      build_gcc_13_fn;;
-    *)      fail_fn "Unable to find the gcc_choice variable:Line ${LINENO}";;
+    *)      fail_fn "Unable to find the gcc_choice variable. It could be due to bad user input...:Line ${LINENO}";;
 esac
 
 # CREATE SOFT LINKS TO SHORTEN THE BINARY NAMES
