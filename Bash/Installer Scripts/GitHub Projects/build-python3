@@ -36,7 +36,7 @@ archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/python3-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
-repo=https://github.com/slyfox1186/script-repo
+web_repo=https://github.com/slyfox1186/script-repo
 
 #
 # START PYTHON3 BUILD
@@ -151,7 +151,7 @@ exit_fn()
     printf "\n%s\n\n%s\n%s\n\n" \
         'The script has completed!' \
         'Make sure to star this repository to show your support!' \
-        "${repo}"
+        "${web_repo}"
     exit 0
 }
 
@@ -160,7 +160,7 @@ fail_fn()
     printf "\n\n%s\n\n%s\n\n%s\n\n" \
         "${1}" \
         'Please create a support ticket so I can work on a fix.' \
-        "${repo}/issues"
+        "${web_repo}/issues"
     exit 1
 }
 

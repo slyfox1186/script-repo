@@ -162,7 +162,7 @@ install_prefix=/usr/local
 pc_type=x86_64-linux-gnu
 latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
-repo=https://github.com/slyfox1186/script-repo
+web_repo=https://github.com/slyfox1186/script-repo
 debug=ON # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
 
 #
@@ -235,7 +235,7 @@ exit_fn()
     printf "\n%s\n\n%s\n%s\n\n" \
         'The script has completed' \
         'Make sure to star this repository to show your support!' \
-        "${repo}"
+        "${web_repo}"
     exit 0
 }
 
@@ -244,7 +244,7 @@ fail_fn()
     printf "\n\n%s\n\n%s\n\n%s\n\n" \
         "${1}" \
         'If you want help fixing a bug, create a support ticket!' \
-        "${repo}/issues"
+        "${web_repo}/issues"
     exit 1
 }
 
@@ -432,7 +432,7 @@ git_1_fn()
     local curl_cmd github_repo github_url
 
     # SCRAPE GITHUB'S API FOR THE LATEST REPO VERSION
-    github_repo="${1}"
+    github_web_repo="${1}"
     github_url="${2}"
 
     if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then

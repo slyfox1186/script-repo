@@ -29,7 +29,7 @@ git_dir=llvm-project-18.0.0
 git_url=https://github.com/llvm/llvm-project.git
 cwd="${PWD}"/curl-18-build-script
 install_dir=/usr/local
-repo=https://github.com/slyfox1186/script-repo
+web_repo=https://github.com/slyfox1186/script-repo
 
 list1='clang;clang-tools-extra;openmp'
 list2='libcxx;libcxxabi;libunwind;compiler-rt'
@@ -105,7 +105,7 @@ exit_fn()
 {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
-        "${repo}"
+        "${web_repo}"
     exit 0
 }
 
@@ -113,7 +113,7 @@ fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
         "${1}" \
-        "To report a bug create an issue at: ${repo}/issues"
+        "To report a bug create an issue at: ${web_repo}/issues"
     exit 1
 }
 
