@@ -5,14 +5,13 @@ clear
 # CREATE VARIABLES
 parent_dir="${PWD}"
 tmp_dir="$(mktemp -d)"
+scripts=(ffmpeg ffpb ffpb-loop)
 
 # CREATE AND CD INTO A RANDOM DIRECTORY
 cd "${tmp_dir}" || exit 1
 
 # DOWNLOAD THE SCRIPTS FROM GITHUB
 wget -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/FFmpeg/run-scripts/ffmpeg-scripts.txt'
-
-scripts=(ffmpeg ffpb ffpb-loop)
 
 # RENAME THE SCRIPTS
 sudo mv 'convert-x265-cuda-ffpb-loop.sh' 'ffmpeg'
