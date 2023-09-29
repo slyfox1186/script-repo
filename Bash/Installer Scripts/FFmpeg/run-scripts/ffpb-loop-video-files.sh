@@ -7,7 +7,9 @@ clear
 # SET THE PATH VARIABLE
 #
 
-export PATH="${PATH}:${HOME}/.local/bin"
+if [ -d ${HOME}/.local/bin ]; then
+    export PATH="${PATH}:${HOME}/.local/bin"
+fi
 
 #
 # CREATE THE OUTPUT DIRECTORIES
@@ -27,17 +29,17 @@ pkgs=(bc ffmpegthumbnailer ffmpegthumbs libffmpegthumbnailer4v5 sox libsox-dev t
 
 for pkg in ${pkgs[@]}
 do
-    if ! installed "$pkg"; then
-        missing_pkgs+=" $pkg"
+    if ! installed "${pkg}"; then
+        missing_pkgs+=" ${pkg}"
     fi
 done
 
-if [ -n "$missing_pkgs" ]; then
+if [ -n "${missing_pkgs}" ]; then
     echo '$ Installing missing packages'
     echo
-    for i in "$missing_pkgs"
+    for i in "${missing_pkgs}"
         do
-            if ! sudo apt -y install $i; then
+            if ! sudo apt -y install ${i}; then
                 fail_fn 'Failed to run APT package manager.'
             fi
         done
@@ -49,20 +51,21 @@ fi
 # INSTALL THE REQUIRED PIP PACKAGES
 #
 
-random_dir="$(mktemp -d)"
-echo 'beautifulsoup4' > "${random_dir}"/requirements.txt
-echo 'google_speech' >> "${random_dir}"/requirements.txt
-if ! pip install -r "${random_dir}"/requirements.txt &>/dev/null; then
+pip_tmp_dir="$(mktemp -d)"
+echo 'ffpb' > "${pip_tmp_dir}"/requirements.txt
+echo 'google_speech' >> "${pip_tmp_dir}"/requirements.txt
+if ! pip install -r "${pip_tmp_dir}"/requirements.txt &>/dev/null; then
     printf "%s\n\n" 'Failed to install the pip packages.'
     exit 1
 fi
-sudo rm -fr "${random_dir}"
+sudo rm -fr "${pip_tmp_dir}"
+unset pip_tmp_dir
 
 #
 # DELETE ANY FILES FROM PREVIOUS RUNS
 #
 
-del_this="$(du -ah --max-depth=1 | grep -Eo '[\/].*\(x265\)\.(mp4|mkv)$' | grep -Eo '[A-Za-z0-9].*\(x265\)\.(mp4|mkv)$')"
+del_this="$(du -ah --max-depth=1 | grep -Eo '[\/].*\(x265\)\.(mp4|mkv)$' | grep -Eo '[A-Za-z0-9].*\(x265\)\.m(p4|kv)$')"
 clear
 
 if [ -n "${del_this}" ]; then
@@ -106,7 +109,7 @@ do
 done
 unset vid vid_exist vid_list
 
-tmp_dir="$(mktemp -d)"
+ff_tmp_dir="$(mktemp -d)"
 
 for vid in *.{mp4,mkv}
 do
@@ -120,7 +123,7 @@ do
     # MODIFY VARS TO GET FILE INPUT AND OUTPUT NAMES
     file_in="${vid}"
     fext="${file_in#*.}"
-    file_out="${tmp_dir}/${file_in%.*} (x265).${fext}"
+    file_out="${ff_tmp_dir}/${file_in%.*} (x265).${fext}"
 
     # TRIM THE STRINGS
     trim="${max_rate::-11}"
@@ -195,5 +198,6 @@ EOF
         read -p 'Press enter to exit.'
         exit 1
     fi
+    sudo rm -fr "${ff_tmp_dir}"
     clear
 done
