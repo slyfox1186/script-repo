@@ -1263,7 +1263,7 @@ if build 'freetype' "${g_ver1}"; then
     download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-${g_ver}/freetype-VER-${g_ver}.tar.bz2" "freetype-${g_ver1}.tar.bz2"
     extracommands=(-D{harfbuzz,png,bzip2,brotli,zlib,tests}'=disabled')
     execute ./autogen.sh
-    execute meson setup build --prefix="${workspace}"--buildtype=release --default-library=static --strip "${extracommands[@]}"
+    execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=static --strip "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
 build_done 'freetype' "${g_ver1}"
@@ -1292,7 +1292,7 @@ if [ "${VER}" != '18.04' ]; then
         download "https://github.com/harfbuzz/harfbuzz/archive/refs/tags/${g_ver}.tar.gz" "harfbuzz-${g_ver}.tar.gz"
         extracommands=(-D{benchmark,cairo,docs,glib,gobject,icu,introspection,tests}'=disabled')
         execute ./autogen.sh
-        execute meson setup build --prefix="${workspace}"--buildtype=release --default-library=static --strip "${extracommands[@]}"
+        execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=static --strip "${extracommands[@]}"
         execute ninja "-j${cpu_threads}" -C build
         execute ninja "-j${cpu_threads}" -C build install
         build_done 'harfbuzz' "${g_ver}"
@@ -1321,7 +1321,7 @@ if build 'fribidi' "${g_ver}"; then
     download "https://github.com/fribidi/fribidi/archive/refs/tags/v${g_ver}.tar.gz" "fribidi-${g_ver}.tar.gz"
     extracommands=(-D{docs,tests}'=false')
     execute autoreconf -fi
-    execute meson setup build --prefix="${workspace}"--buildtype=release --default-library=static --strip "${extracommands[@]}"
+    execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=static --strip "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'fribidi' "${g_ver}"
@@ -1483,7 +1483,7 @@ fi
 
 if build 'lv2' 'git'; then
     download_git 'https://github.com/lv2/lv2.git'
-    execute meson setup build --prefix="${workspace}"--buildtype=release --default-library=static --strip -Dplugins=disabled
+    execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=static --strip -Dplugins=disabled
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'lv2' 'git'
@@ -1499,7 +1499,7 @@ fi
 git_ver_fn '5048975' '3' 'T'
 if build 'serd' "${g_ver}"; then
     download "https://gitlab.com/drobilla/serd/-/archive/v${g_ver}/serd-v${g_ver}.tar.bz2" "serd-${g_ver}.tar.bz2"
-    execute meson setup build --prefix="${workspace}"--buildtype=release --default-library=static --strip
+    execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=static --strip
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'serd' "${g_ver}"
@@ -1519,7 +1519,7 @@ git_ver_fn '14889806' '3' 'B'
 if build 'zix' '0.4.0'; then
     download 'https://gitlab.com/drobilla/zix/-/archive/v0.4.0/zix-v0.4.0.tar.bz2' 'zix-0.4.0.tar.bz2'
     extracommands=(-D{benchmarks,docs,singlehtml,tests,tests_cpp}=disabled)
-    execute meson setup build --prefix="${workspace}"--buildtype=release --default-library=static --strip "${extracommands[@]}"
+    execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=static --strip "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'zix' '0.4.0'
@@ -1530,7 +1530,7 @@ if build 'sord' "${g_sver1}"; then
     CFLAGS+=" -I${workspace}/include/serd-0"
     download "https://gitlab.com/drobilla/sord/-/archive/${g_ver1}/sord-${g_ver1}.tar.bz2" "sord-${g_sver1}.tar.bz2"
     extracommands=(-D{docs,tests}=disabled)
-    execute meson setup build --prefix="${workspace}"--buildtype=release --default-library=static --strip "${extracommands[@]}"
+    execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=static --strip "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'sord' "${g_sver1}"
@@ -1540,7 +1540,7 @@ git_ver_fn '11853194' '3' 'T'
 if build 'sratom' "${g_ver}"; then
     download "https://gitlab.com/lv2/sratom/-/archive/v${g_ver}/sratom-v${g_ver}.tar.bz2" "sratom-${g_ver}.tar.bz2"
     extracommands=(-D{docs,tests}=disabled)
-    execute meson setup build --prefix="${workspace}"--buildtype=release --default-library=static --strip "${extracommands[@]}"
+    execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=static --strip "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'sratom' "${g_ver}"
@@ -1550,7 +1550,7 @@ git_ver_fn '11853176' '3' 'T'
 if build 'lilv' "${g_ver}"; then
     download "https://gitlab.com/lv2/lilv/-/archive/v${g_ver}/lilv-v${g_ver}.tar.bz2" "lilv-${g_ver}.tar.bz2"
     extracommands=(-D{docs,tests}=disabled)
-    execute meson setup build --prefix="${workspace}"--buildtype=release --default-library=static --strip "${extracommands[@]}"
+    execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=static --strip "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'lilv' "${g_ver}"
@@ -1781,7 +1781,7 @@ pre_check_ver '198' '2' 'T'
 if build 'dav1d' "${g_ver1}"; then
     download "https://code.videolan.org/videolan/dav1d/-/archive/${g_ver1}/dav1d-${g_ver1}.tar.bz2"
     extracommands=(-D{enable_tests,logging}'=false')
-    execute meson setup build --prefix="${workspace}"--buildtype=release --default-library=static --strip "${extracommands[@]}"
+    execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=static --strip "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'dav1d' "${g_ver1}"
