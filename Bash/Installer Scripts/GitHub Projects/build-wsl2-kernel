@@ -24,7 +24,7 @@ fi
 
 prompt_fn()
 {
-
+    local answer
     clear
 
     printf "%s\n\n%s\n%s\n%s\n\n" \
@@ -32,30 +32,35 @@ prompt_fn()
         '[1] 5.15.123.1 (08.08.23)' \
         '[2] 6.1.21.2 (07.25.23)' \
         '[3] Exit'
-        read -p 'Your choices are (1 to 3): ' answer
-        clear
+    read -p 'Your choices are (1 to 3): ' answer
+    clear
 
-        case "${answer}" in
-            1)      archive_url='https://github.com/microsoft/WSL2-Linux-Kernel/archive/refs/tags/linux-msft-wsl-5.15.123.1.tar.gz';;
-            2)      archive_url='https://github.com/microsoft/WSL2-Linux-Kernel/archive/refs/tags/linux-msft-wsl-6.1.21.2.tar.gz';;
-            3)      exit 0;;
-            *)      printf 'Bad user input. Resverting script...';;
-         esac
+    case "${answer}" in
+        1)      archive_url='https://github.com/microsoft/WSL2-Linux-Kernel/archive/refs/tags/linux-msft-wsl-5.15.123.1.tar.gz';;
+        2)      archive_url='https://github.com/microsoft/WSL2-Linux-Kernel/archive/refs/tags/linux-msft-wsl-6.1.21.2.tar.gz';;
+        3)      exit 0;;
+        *)
+                clear
+                printf "%s\n\n" 'Bad user input. Reverting script...'
+                sleep 3
+                unset answer
+                prompt_fn
+                ;;
+     esac
 }
-
 prompt_fn
 
 #
 # SET VARIABLES
 #
 
-script_ver=2.0
+script_ver=2.1
 archive_dir="wsl-kernel-${archive_ver}"
 archive_ver="$(echo "${archive_url}" | sed 's/^.*\/.*-wsl-\(.*\)\.tar\.gz$/\1/')"
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/WSL2-build-script
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
 repo=https://github.com/slyfox1186/script-repo
 debug=OFF
 
