@@ -31,7 +31,7 @@ unset apt_pkgs i missing_pkg missing_pkgs
 # REQUIRED PIP PACKAGES
 #
 
-pip_lock="$(find /usr/lib/python3* -name EXTERNALLY-MANAGED)"
+pip_lock="$(sudo find /usr/lib/python3* -name 'EXTERNALLY-MANAGED')"
 if [ -n "${pip_lock}" ]; then
     sudo rm "${pip_lock}"
 fi
@@ -94,7 +94,7 @@ done
 unset vid vid_exist vid_list
 
 # CAPTURE THE VIDEO WITHOUT (X265).MP4 AS THE ENDING
-video="$(find . -maxdepth 1 -type f \( -iname \*.mp4 -o -iname \*.mkv \) -exec echo '{}' +)"
+video="$(sudo find . -maxdepth 1 -type f \( -iname \*.mp4 -o -iname \*.mkv \) -exec echo '{}' +)"
 
 for v in "${video:2}"
 do
