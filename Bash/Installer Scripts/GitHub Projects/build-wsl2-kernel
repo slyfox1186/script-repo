@@ -27,7 +27,7 @@ prompt_fn()
 
     clear
 
-    printf "%s\n\n\%s\n%s\n%s\n\n" \
+    printf "%s\n\n%s\n%s\n%s\n\n" \
         'Choose the kernel version:' \
         '[1] 5.15.123.1 (08.08.23)' \
         '[2] 6.1.21.2 (07.25.23)' \
