@@ -1681,3 +1681,15 @@ cmf()
     cmake ${rel_sdir} -B build -G Ninja -Wno-dev
     ccmake ${rel_sdir}
 }
+
+##########################
+## SORT IMAGES BY WIDTH ##
+##########################
+
+swjpg()
+{
+    clear
+    sudo find . -type f -iname '*.jpg' -exec identify -ping -format '%[width]x%[height] %[basename] ' '{}' > /tmp/image-sizes.txt \;
+    cat /tmp/image-sizes.txt | grep -Eo '[0-9]+x[0-9]+\s[A-Za-z0-9\-\_]+' | sort -h
+    sudo rm /tmp/image-sizes.txt
+}
