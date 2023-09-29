@@ -702,7 +702,7 @@ gcc_prompt()
         '[3] GCC 11' \
         '[4] GCC 12' \
         '[5] GCC 13'
-        read -p 'Your choices are (1 to 4): ' answer
+        read -p 'Your choices are (1 to 5): ' answer
 
     case "${answer}" in
         1)      gcc_choice=1;;
