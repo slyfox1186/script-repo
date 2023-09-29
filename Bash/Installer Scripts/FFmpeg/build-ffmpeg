@@ -2133,7 +2133,7 @@ fi
 if build 'libgav1' 'git'; then
     download_git 'https://chromium.googlesource.com/codecs/libgav1' 'libgav1-git'
     mkdir -p 'libgav1_build'
-    execute git clone -b 20220623.0 --depth 1 'https://github.com/abseil/abseil-cpp.git third_party/abseil-cpp'
+    execute git clone -b 20220623.0 --depth 1 https://github.com/abseil/abseil-cpp.git third_party/abseil-cpp
     execute cmake -B libgav1_build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release,EXPORT_COMPILE_COMMANDS=ON,INSTALL_SBINDIR=sbin} \
         -DBUILD_SHARED_LIBS=OFF -DABSL_{ENABLE_INSTALL,PROPAGATE_CXX_STD}=ON -DLIBGAV1_ENABLE_TESTS=OFF -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C libgav1_build
