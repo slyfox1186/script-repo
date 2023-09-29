@@ -5,6 +5,9 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
+##  Script version: 2.6
+##  Last Update: 09.28.23
+##
 ##  Supported Distro:
 ##
 ##    - Ubuntu (18/20/22).04
@@ -20,14 +23,10 @@
 ##    - source to ensure the latest extra functionality
 ##
 ##  GeForce CUDA:
-##
-##  Updated: Version to 12.2.2
-##
-##    - If the cuda libraries are not installed (for Geforce graphics cards only) the user
-##    - will be prompted by the script to install them so that hardware acceleration is
-##    - enabled when compiling FFmpeg
-##
-##  Last Update: 09.28.23
+##               - Updated: Version to 12.2.2
+##               - If the cuda libraries are not installed (for Geforce graphics cards only) the user
+##               - will be prompted by the script to install them so that hardware acceleration is
+##               - enabled when compiling FFmpeg
 ##
 ##  Updated: x265 to the latest release
 ##
@@ -38,8 +37,6 @@
 ##  Added: libcurl support library for cyanrip
 ##  Added: support for library files regarding opencl and libpulse
 ##
-##  Script version: 2.6
-##
 ############################################################################################
 
 #
@@ -48,16 +45,14 @@
 
 script_name="${0:2}"
 script_ver=2.6
-
-ffmpeg_ver=5.1.3
-ffmpeg_url=https://ffmpeg.org/releases/ffmpeg-${ffmpeg_ver}.tar.xz
+ffmpeg_ver=963937e408fc68b5925f938a253cfff1d506f784
+ffmpeg_sver=963937e
+ffmpeg_url="https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/${ffmpeg_ver}.tar.gz"
+ffmpeg_archive="ffmpeg-${ffmpeg_sver}.tar.gz"
 ###############################################################################
-# VER 6 Snapshot https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/.tar.gz
-# VER 6 Snapshot ffmpeg_ver=3d5edb89e75fe3ab3a6757208ef121fa2b0f54c7
-# VER 6 Snapshot ffmpeg_ver_short=3d5edb8
+# ffmpeg_ver=5.1.3
 # Latest Snapshot https://ffmpeg.org/releases/ffmpeg-snapshot.tar.bz2
 ###############################################################################
-
 cuda_ver=12.2.2
 cwd="${PWD}"/ffmpeg-build-script
 packages="${cwd}"/packages
@@ -2236,7 +2231,7 @@ box_out_banner_ffmpeg()
 box_out_banner_ffmpeg 'Building FFmpeg'
 
 if build 'ffmpeg' "${ffmpeg_ver}"; then
-    download "${ffmpeg_url}" "ffmpeg-${ffmpeg_ver}.tar.xz"
+    download "${ffmpeg_url}" "${ffmpeg_archive}"
     ./configure --prefix="${workspace}"                     \
                 --arch="$(uname -m)"                        \
                 --cpu="$((cpu_threads / 2))"                \
