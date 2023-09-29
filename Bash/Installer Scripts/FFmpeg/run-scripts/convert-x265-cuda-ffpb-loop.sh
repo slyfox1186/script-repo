@@ -155,12 +155,12 @@ Length:          ${length}
 
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 EOF
-    echo
-    
+
     #
     # EXECUTE FFPB
     #
-    
+
+    echo
     if ffpb \
             -y \
             -threads 0 \
@@ -196,8 +196,9 @@ EOF
         google_speech 'Video conversion failed.' 2>/dev/null
         echo
         read -p 'Press enter to exit.'
+        sudo rm -fr "${ff_tmp_dir}"
         exit 1
     fi
-    sudo rm -fr "${ff_tmp_dir}"
     clear
 done
+sudo rm -fr "${ff_tmp_dir}"
