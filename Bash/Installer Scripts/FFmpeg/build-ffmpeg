@@ -50,7 +50,8 @@ ffmpeg_sver=963937e
 ffmpeg_url="https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/${ffmpeg_ver}.tar.gz"
 ffmpeg_archive="ffmpeg-${ffmpeg_sver}.tar.gz"
 ###############################################################################
-# ffmpeg_ver=5.1.3
+# ffmpeg_sver=5.1.3
+# ffmpeg_url=https://ffmpeg.org/releases/ffmpeg-${ffmpeg_ver}.tar.xz
 # Latest Snapshot https://ffmpeg.org/releases/ffmpeg-snapshot.tar.bz2
 ###############################################################################
 cuda_ver=12.2.2
@@ -63,8 +64,8 @@ EXTRALIBS='-ldl -lpthread -lm -lz'
 ffmpeg_libraries=()
 latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/script-repo
-debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+web_repo=https://github.com/slyfox1186/ffmpeg-build-script
+debug=ON # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -120,7 +121,7 @@ CXXFLAGS='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
 CFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2"
 CFLAGS+=" -I/usr/lib/x86_64-linux-gnu/pulseaudio -I/usr/include/openjpeg-2.5 -I${workspace}/include/CL ${CXXFLAGS}"
 CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/openjpeg-2.5"
-LDFLAGS='-L/usr/lib/x86_64-linux-gnu'
+LDFLAGS="-L${workspace}/lib64 -L${workspace}/lib -L/usr/local/lib64 -L/usr/local/lib -L/usr/lib -L/usr/lib/x86_64-linux-gnu"
 
 export CFLAGS
 export CPPFLAGS
@@ -842,10 +843,9 @@ pkgs_fn()
 
 ffmpeg_fix_libs()
 {
-    if [ -f /usr/lib/x86_64-linux-gnu/pulseaudio/libpulsecommon-16.1.so ]; then
-        sudo ln -sf /usr/lib/x86_64-linux-gnu/pulseaudio/libpulsecommon-16.1.so /usr/lib/x86_64-linux-gnu
-    else
-        fail_fn "Failed to located the file \"/usr/lib/x86_64-linux-gnu/pulseaudio/libpulsecommon-16.1.so\":Line ${LINENO}"
+    find_libpulse="$(sudo find /usr -type f -name 'libpulsecommon-*.so')"
+    if [ -n "${find_libpulse}" ]; then
+        sudo ln -sf "${find_libpulse}" /usr/lib/x86_64-linux-gnu
     fi
 }
 
@@ -853,7 +853,7 @@ ffmpeg_install_test()
 {
     local binaries i
 
-    binaries=(cyanrip ffmpeg ffplay ffprobe flac mediainfo MP4Box)
+    binaries=(ffmpeg ffplay ffprobe)
 
     for i in ${binaries[@]}
     do
@@ -995,7 +995,7 @@ ubuntu_os_version()
 find_lsb_release="$(sudo find /usr -type f -name lsb_release)"
 
 if [ -f /etc/os-release ]; then
-    . /etc/os-release
+    source /etc/os-release
     OS="$NAME"
     VER="$VERSION_ID"
 else [ -n "${find_lsb_release}" ]
@@ -1162,7 +1162,7 @@ check_python3_ver
 if [ "${python3_rm_decimals}" -lt '700' ]; then
     if build 'python3' '3.9.16'; then
         download 'https://www.python.org/ftp/python/3.9.16/Python-3.9.16.tar.xz' 'python3-3.9.16.tar.xz'
-        rm_pip_lock="$(find /usr/lib/python3* -type f -name EXTERNALLY-MANAGED)"
+        rm_pip_lock="$(sudo find /usr/lib/python3* -type f -name EXTERNALLY-MANAGED)"
         if [ -n "${rm_pip_lock}" ]; then
             sudo rm "${rm_pip_lock}"
         fi
@@ -1957,15 +1957,18 @@ fi
 
 # UPDATE THIS FROM TIME TO TIME
 git_ver_fn '24327400' '3' 'T'
-if build 'svt-av1' '1.4.1'; then
-    download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v1.4.1/SVT-AV1-v1.4.1.tar.bz2' 'svt-av1-1.4.1.tar.bz2'
-    execute cmake -S . -B Build/linux -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} \
-        -DCLOG_LOG_TO_STDIO=OFF -DBUILD_SHARED_LIBS=OFF -G Ninja -Wno-dev
-    execute ninja -C Build/linux
-    execute ninja -C Build/linux install
-    execute cp -f Build/linux/SvtAv1Enc.pc "${workspace}"/lib/pkgconfig
-    execute cp -f Build/linux/SvtAv1Dec.pc "${workspace}"/lib/pkgconfig
-    build_done 'svt-av1' '1.4.1'
+if build 'svt-av1' '1.4.0'; then
+    download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v1.4.0/SVT-AV1-v1.4.0.tar.bz2' 'svt-av1-1.4.0.tar.bz2'
+    execute cmake -S . -B Build/linux                                              \
+                       -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release}  \
+                       -DBUILD_{APPS,DEC,ENC}=ON -DBUILD_{SHARED_LIBS,TESTING}=OFF \
+                       -DENABLE_{NASM=ON,AVX512=ON} -DSVT_AV1_{LTO=ON,PGO=OFF}     \
+                       -DNATIVE=ON -G Ninja -Wno-dev
+    execute ninja "-j${cpu_threads}" -C Build/linux
+    execute ninja "-j${cpu_threads}" -C Build/linux install
+    cp -f Build/linux/SvtAv1Enc.pc "${workspace}"/lib/pkgconfig
+    cp -f Build/linux/SvtAv1Dec.pc "${workspace}"/lib/pkgconfig
+    build_done 'svt-av1' '1.4.0'
 fi
 ffmpeg_libraries+=('--enable-libsvtav1')
 
@@ -2102,7 +2105,7 @@ ffmpeg_libraries+=('--enable-avisynth')
 pre_check_ver 'vapoursynth/vapoursynth' '1' 'R'
 if build 'vapoursynth' "${g_ver}"; then
     download "https://github.com/vapoursynth/vapoursynth/archive/refs/tags/${g_ver}.tar.gz" "vapoursynth-${g_ver}.tar.gz"
-    rm_pip_lock="$(find /usr/lib/python3* -type f -name EXTERNALLY-MANAGED)"
+    rm_pip_lock="$(sudo find /usr/lib/python3* -type f -name EXTERNALLY-MANAGED)"
     if [ -n "${rm_pip_lock}" ]; then
         sudo rm "${rm_pip_lock}"
     fi
@@ -2115,14 +2118,16 @@ if build 'vapoursynth' "${g_ver}"; then
 fi
 ffmpeg_libraries+=('--enable-vapoursynth')
 
-pre_check_ver 'cyanreg/cyanrip' '1' 'T'
-if build 'cyanrip' "${g_ver}"; then
-    download "https://github.com/cyanreg/cyanrip/archive/refs/tags/v${g_ver}.tar.gz" "cyanrip-${g_ver}.tar.gz"
-    execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=shared --strip \
-        -Dpkg_config_path="${workspace}/lib/pkgconfig"
-    execute ninja -C build "-j${cpu_threads}"
-    execute ninja -C build "-j${cpu_threads}" install
-    build_done 'cyanrip' "${g_ver}"
+if [ "${VER}" != '22.04' ]; then
+    pre_check_ver 'cyanreg/cyanrip' '1' 'T'
+    if build 'cyanrip' "${g_ver}"; then
+        download "https://github.com/cyanreg/cyanrip/archive/refs/tags/v${g_ver}.tar.gz" "cyanrip-${g_ver}.tar.gz"
+        execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=shared --strip \
+            -Dpkg_config_path="${workspace}/lib/pkgconfig"
+        execute ninja -C build "-j${cpu_threads}"
+        execute ninja -C build "-j${cpu_threads}" install
+        build_done 'cyanrip' "${g_ver}"
+    fi
 fi
 
 if build 'libgav1' 'git'; then
@@ -2230,8 +2235,14 @@ box_out_banner_ffmpeg()
 }
 box_out_banner_ffmpeg 'Building FFmpeg'
 
+if [ -n "${ffmpeg_archive}" ]; then
+    ff_cmd="${ffmpeg_url} ${ffmpeg_archive}"
+else
+    ff_cmd="${ffmpeg_url}"
+fi
+
 if build 'ffmpeg' "${ffmpeg_sver}"; then
-    download "${ffmpeg_url}" "${ffmpeg_archive}"
+    download ${ff_cmd}
     ./configure --prefix="${workspace}"                     \
                 --arch="$(uname -m)"                        \
                 --cpu="$((cpu_threads / 2))"                \
@@ -2284,8 +2295,10 @@ fi
 
 # MAKE SURE ALL OF THE FILES WERE COMPILED CORRECTLY
 ffmpeg_install_test
+
 # FIX KNOWN ISSUES WITH LIBS THAT FFMPEG CAN NOT FIND EVEN THOUGH IT SHOULD BE ABLE AS IT WAS TOLD EXACTLY WHERE THEY WERE LOCATED
 ffmpeg_fix_libs
+
 # EXECUTE THE LDCONFIG COMMAND TO ENSURE THAT ALL LIBRARY CHANGES ARE DETECTED BY FFMPEG
 sudo ldconfig 2>/dev/null
 
@@ -2298,7 +2311,9 @@ fi
 
 # PROMPT THE USER TO INSTALL THE FFMPEG BINARIES SYSTEM-WIDE
 ffmpeg_install_choice
+
 # PROMPT THE USER TO CLEAN UP THE BUILD FILES
 cleanup_fn
+
 # SHOW EXIT MESSAGE
 exit_fn
