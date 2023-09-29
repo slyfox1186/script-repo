@@ -16,7 +16,7 @@ scripts=(ffmpeg ffpb ffpb-loop)
 
 # RENAME THE SCRIPTS
 sudo mv convert-x265-cuda-ffpb.sh ffpb
-sudo mv ffpb-loop-mp4-files.sh ffpb-loop
+sudo mv ffpb-loop-video-files.sh ffpb-loop
 sudo mv convert-x265-cuda-ffmpeg.sh ffmpeg
 
 # MOVE THE SCRIPTS TO THE ORIGINAL DIRECTORY THE SCRIPT WAS EXECUTED FROM
