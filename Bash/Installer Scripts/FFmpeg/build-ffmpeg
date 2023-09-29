@@ -2230,7 +2230,7 @@ box_out_banner_ffmpeg()
 }
 box_out_banner_ffmpeg 'Building FFmpeg'
 
-if build 'ffmpeg' "${ffmpeg_ver}"; then
+if build 'ffmpeg' "${ffmpeg_sver}"; then
     download "${ffmpeg_url}" "${ffmpeg_archive}"
     ./configure --prefix="${workspace}"                     \
                 --arch="$(uname -m)"                        \
