@@ -19,9 +19,9 @@
 ##
 ##  Changed: Some support libraries prefix paths to avoid installing into the system.
 ##
-##  Updated: 09.07.23
+##  Updated: 09.29.23
 ##
-##  Script Version: 2.8
+##  Script Version: 2.9
 ##
 #############################################################################################################
 
@@ -36,8 +36,8 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-script_ver=2.8
-progname="${0:2}"
+script_ver=2.9
+progname="${0}"
 cwd="${PWD}"/magick-build-script
 packages="${cwd}"/packages
 workspace="${cwd}"/workspace
@@ -47,28 +47,11 @@ user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 web_repo=https://github.com/slyfox1186/script-repo
 debug=OFF # CHANGE THIS VARIABLE TO "ON" FOR HELP WITH TROUBLESHOOTING UNEXPECTED ISSUES DURING THE BUILD
 
-box_out_banner1()
-{
-    input_char=$(echo "${@}" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
-    tput bold
-    line="$(tput setaf 3)${line}"
-    space=${line//-/ }
-    echo " ${line}"
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
-    printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
-    echo " ${line}"
-    tput sgr 0
-}
-box_out_banner1 'ImageMagick Build Script'
-sleep 2
-
 #
 # CREATE OUTPUT DIRECTORIES
 #
 
-mkdir -p "${packages}"/deb-files "${packages}"/libjxl-deb "${workspace}"/lib
+mkdir -p "${workspace}"/lib
 
 #
 # FIGURE OUT WHICH COMPILERS TO USE
@@ -131,6 +114,15 @@ export PKG_CONFIG_PATH
 # CREATE FUNCTIONS
 #
 
+exit_fn()
+{
+    printf "%s\n\n%s\n%s\n\n"                                     \
+        'The script has completed'                                \
+        'Make sure to star this repository to show your support!' \
+        "${web_repo}"
+    exit 0
+}
+
 fail_fn()
 {
     printf "\n\n%s\n\n%s\n\n%s\n\n"      \
@@ -138,15 +130,6 @@ fail_fn()
         'To report a bug please visit: ' \
         "${web_repo}/issues"
     exit 1
-}
-
-exit_fn()
-{
-    printf "\n%s\n\n%s\n%s\n\n"                                   \
-        'The script has completed'                                \
-        'Make sure to star this repository to show your support!' \
-        "${web_repo}"
-    exit 0
 }
 
 cleanup_fn()
@@ -248,11 +231,11 @@ download()
         echo "The file \"${dl_file}\" is already downloaded."
     else
         echo "Downloading \"${dl_url}\" saving as \"${dl_file}\""
-        if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
+        if ! curl -A "${user_agent}" -m 10 -Lso "${target_file}" "${dl_url}"; then
             printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 10 seconds..."
             sleep 10
-            if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
-                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit."
+            if ! curl -A "${user_agent}" -m 10 -Lso "${target_file}" "${dl_url}"; then
+                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit. Line: ${LINENO}"
             fi
         fi
         echo 'Download Completed'
@@ -267,18 +250,18 @@ download()
     if [ -n "${3}" ]; then
         if ! tar -xf "${target_file}" -C "${target_dir}" 2>/dev/null >/dev/null; then
             sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script."
+            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script. Line: ${LINENO}"
         fi
     else
         if ! tar -xf "${target_file}" -C "${target_dir}" --strip-components 1 2>/dev/null >/dev/null; then
             sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script."
+            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script. Line: ${LINENO}"
         fi
     fi
 
     printf "%s\n\n" "File extracted: ${dl_file}"
 
-    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}"
+    cd "${target_dir}" || fail_fn "Unable to change the working directory to \"${target_dir}\" Line: ${LINENO}"
 }
 
 download_git()
@@ -300,22 +283,21 @@ download_git()
         printf "\n%s\n\n" "The script failed to clone the git repository \"${target_dir}\" and will try again in 10 seconds..."
         sleep 10
         if ! git clone -q "${dl_url}" "${target_dir}"; then
-            fail_fn "The script failed to clone \"${target_dir}\" twice and will now exit the build."
+            fail_fn "The script failed to clone \"${target_dir}\" twice and will now exit the build. Line: ${LINENO}"
         fi
     else
-        echo -e "Git clone successful\\n"
+        printf "%s\n\n" 'Git clone successful'
     fi
 
-    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}"
+    cd "${target_dir}" || fail_fn "Unable to change the working directory to \"${target_dir}\" Line: ${LINENO}"
 }
 
-show_magick_version()
+show_ver_fn()
 {
     printf "\n%s\n\n" 'ImageMagick'\''s new version is:'
     if ! magick -version 2>/dev/null; then
-        fail_fn 'Failure to execute the command: magick -version'
+        fail_fn "Failure to execute the command: magick -version Line: ${LINENO}"
     fi
-    sleep 3
 }
 
 git_1_fn()
@@ -328,31 +310,30 @@ git_1_fn()
     if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
-        g_ver3="$(echo "${curl_cmd}" | jq -r '.[3].name' 2>/dev/null)"
         g_ver="${g_ver#pkgconf-}"
         g_ver="${g_ver#release-}"
         g_ver="${g_ver#ver-}"
         g_ver="${g_ver#v}"
         g_ver1="${g_ver1#nasm-}"
         g_ver1="${g_ver1#v}"
-        g_ver3="${g_ver3#v}"
         g_url="$(echo "${curl_cmd}" | jq -r '.[0].tarball_url')"
     fi
 }
 
 git_ver_fn()
 {
-    local flag_type flag_url set_type
+    local flag_choice flag_type flag_url
 
     flag_url="${1}"
     flag_type="${2}"
 
     case "${flag_type}" in
-            R)      set_type=releases;;
-            T)      set_type=tags;;
+            R)      flag_choice=releases;;
+            T)      flag_choice=tags;;
+            *)      fail_fn "Could not determine the variable \"flag_choice\" Line: ${LINENO}";;
     esac
 
-    git_1_fn "${flag_url}" "${set_type}" 2>/dev/null
+    git_1_fn "${flag_url}" "${flag_choice}" 2>/dev/null
 }
 
 #
@@ -362,13 +343,13 @@ git_ver_fn()
 usage()
 {
     clear
-    echo "Usage: ${progname} [options]"
-    echo
-    echo 'Options:'
-    echo '    -h, --help                                           Display this information'
-    echo '    -b, --build                                          Start the build process'
-    echo '    -c, --cleanup                                        Remove all build files and directories'
-    echo '    -v, --version                                        Display script version information'
+    printf "%s\n\n%s\n%s\n%s\n%s\n%s\n\n" \
+        "Usage: ${progname} [options]" \
+        'Options:' \
+        '    -h, --help                                           Display this information' \
+        '    -b, --build                                          Start the build process' \
+        '    -c, --cleanup                                        Remove all build files and directories' \
+        '    -v, --version                                        Display script version information'
 }
 
 while ((${#} > 0))
@@ -449,17 +430,12 @@ install_libjxl_fn()
         sudo rm libjxl_0.8.1_amd64.deb &>/dev/null
     fi
     sudo dpkg -i ./*.deb
-    sudo apt -f -y install
-    sudo apt --fix-broken install
-    sudo apt --fix-missing update
-    sudo dpkg --configure -a
-    sudo apt -y autoremove
 }
 
 download_libjxl_fn()
 {
-    if ! curl -A "${user_agent}" -Lso "${packages}"/libjxl.tar.gz "${1}"; then
-        fail_fn "Failed to download the libjxl archive: ${packages}/libjxl.tar.gz"
+    if ! curl -A "${user_agent}" -m 10 -Lso "${packages}"/libjxl.tar.gz "${1}"; then
+        fail_fn "Failed to download the libjxl archive: ${packages}/libjxl.tar.gz Line: ${LINENO}"
     fi
 }
 
@@ -470,8 +446,6 @@ sort_libjxl_fn()
     url_base=https://github.com/libjxl/libjxl/releases/download/v0.8.1/jxl-debs-amd64
     url_suffix=v0.8.1.tar.gz
 
-    mkdir -p "${packages}"/deb-files
-
     if [ ! -f "${packages}"/libjxl.tar.gz ]; then
         case "${VER}" in
             12)         libjxl_download="${url_base}-debian-bookworm-${url_suffix}";;
@@ -480,99 +454,24 @@ sort_libjxl_fn()
             22.04)      libjxl_download="${url_base}-ubuntu-22.04-${url_suffix}";;
             20.04)      libjxl_download="${url_base}-ubuntu-20.04-${url_suffix}";;
             18.04)      libjxl_download="${url_base}-ubuntu-18.04-${url_suffix}";;
-            *)          fail_fn 'Unable to determine the OS version and thus unable to install libjxl.';;
+            *)          fail_fn "Unable to determine the OS architecture. Line: ${LINENO}";;
         esac
 
         # CALL THE DOWNLOAD FUNCTION FOR THE LIBJXL DEBIAN FILES
         download_libjxl_fn "${libjxl_download}"
 
-        if ! tar -xf "${packages}"/libjxl.tar.gz -C "${packages}"/deb-files --strip-components 1; then
-            fail_fn "Could not extract the libjxl archive: ${packages}/libjxl.tar.gz"
+        if ! tar -zxf "${packages}"/libjxl.tar.gz -C "${packages}"/deb-files --strip-components 1; then
+            fail_fn "Could not extract the libjxl archive \"${packages}/libjxl.tar.gz\" Line: ${LINENO}"
         fi
         install_libjxl_fn
     fi
 }
 
 #
-# INSTALL APT LIBRARIES
-#
-
-printf "%s\n%s\n" \
-    'Installing required APT packages' \
-    '=========================================='
-
-debian_ver_check_fn()
-{
-    clear
-
-    pkgs_debian='libcpu-features-dev libfontconfig-dev libgc1 libdmalloc-dev libdmalloc5 libjemalloc-dev'
-    pkgs_debian+=' libjemalloc2 librust-malloc-buf-dev libyuv-utils libyuv-dev libyuv0 libsharp-dev'
-    pkgs_bullseye="${pkgs_debian} libvmmalloc1 libvmmalloc-dev"
-    pkgs_bookworm+="${pkgs_debian} libhwy-dev libticonv-dev"
-
-    case "${VER}" in
-        12)     pkgs_fn "${pkgs_bookworm}";;
-        11)     pkgs_fn "${pkgs_bullseye}";;
-        10)     pkgs_fn;;
-        *)      fail_fn 'Could not detect the Ubuntu version.';;
-    esac
-}
-
-ubuntu_ver_check_fn()
-{
-    clear
-
-    pkgs_jammy='libcpu-features-dev libfontconfig-dev libgc1 libhwy-dev libmimalloc2.0 libmimalloc-dev'
-
-    case "${VER}" in
-        23.04)     pkgs_fn "${pkgs_jammy} librust-jpeg-decoder-dev";;
-        22.04)     pkgs_fn "${pkgs_jammy} libhwy0";;
-        20.04)     pkgs_fn 'libfontconfig1-dev';;
-        18.04)     pkgs_fn;;
-        *)         fail_fn 'Could not detect the Ubuntu version.';;
-    esac
-}
-
-if [ -f /etc/os-release ]; then
-    source /etc/os-release
-    OS="${NAME}"
-    VER="${VERSION_ID}"
-elif type lsb_release >/dev/null 2>&1; then
-    OS="$(lsb_release -si)"
-    VER="$(lsb_release -sr)"
-elif [ -f /etc/lsb-release ]; then
-    source /etc/lsb-release
-    OS="${DISTRIB_ID}"
-    VER="${DISTRIB_RELEASE}"
-elif [ -f /etc/debian_version ]; then
-    OS=Debian
-    VER="$(cat /etc/debian_version)"
-else
-    OS="$(uname -s)"
-    VER="$(uname -r)"
-fi
-
-#
-# TEST THE OS AND ITS VERSION IF UBUNTU THEN CALL THE pkgs_fn
-#
-
-case "${OS}" in
-    Debian*)     debian_ver_check_fn;;
-    Ubuntu)      ubuntu_ver_check_fn;;
-    *)           fail_fn 'Could not detect the OS architecture.';;
-esac
-
-#
 # ANNOUNCE THE BUILD HAS BEGUN
 #
 
-printf "%s\n\n%s\n%s\n%s\n\n" \
-    'Starting the build process...' \
-    "ImageMagick Build Script ${script_ver}" \
-    '==========================================' \
-    "This script will use (${cpu_threads}) CPU threads for parallel processing to accelerate the building speed."
-
-box_out_banner2()
+box_out_banner1()
 {
     input_char=$(echo "${@}" | wc -c)
     line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
@@ -586,8 +485,73 @@ box_out_banner2()
     echo " ${line}"
     tput sgr 0
 }
-box_out_banner2 'Building support libraries'
-sleep 2
+box_out_banner1 "ImageMagick Build Script v${script_ver}"
+
+#
+# INSTALL APT LIBRARIES
+#
+
+printf "\n%s\n%s\n" \
+    'Installing required APT packages' \
+    '=========================================='
+
+debian_ver_fn()
+{
+    local pkgs_bookworm pkgs_bullseye pkgs_debian
+
+    pkgs_debian='libcpu-features-dev libfontconfig-dev libgc1 libdmalloc-dev libdmalloc5 libjemalloc-dev'
+    pkgs_debian+=' libjemalloc2 librust-malloc-buf-dev libyuv-utils libyuv-dev libyuv0 libsharp-dev'
+    pkgs_bullseye="${pkgs_debian} libvmmalloc1 libvmmalloc-dev"
+    pkgs_bookworm+="${pkgs_debian} libhwy-dev libticonv-dev"
+
+    case "${VER}" in
+        12)     pkgs_fn "${pkgs_bookworm}";;
+        11)     pkgs_fn "${pkgs_bullseye}";;
+        10)     pkgs_fn;;
+        *)      fail_fn "Could not detect the Debian version. Line: ${LINENO}";;
+    esac
+}
+
+ubuntu_ver_fn()
+{
+    local pkgs_jammy pkgs_lunar
+
+    pkgs_jammy='libcpu-features-dev libfontconfig-dev libgc1 libhwy-dev libmimalloc2.0 libmimalloc-dev'
+    pkgs_lunar="${pkgs_jammy} librust-jpeg-decoder-dev"
+
+    case "${VER}" in
+        23.04)     pkgs_fn "${pkgs_lunar}";;
+        22.04)     pkgs_fn "${pkgs_jammy} libhwy0";;
+        20.04)     pkgs_fn 'libfontconfig1-dev';;
+        18.04)     pkgs_fn;;
+        *)         fail_fn "Could not detect the Ubuntu version. Line: ${LINENO}";;
+    esac
+}
+
+find_lsb_release="$(sudo find /usr -type f -name 'lsb_release')"
+
+if [ -f /etc/os-release ]; then
+    source /etc/os-release
+    OS_TMP="$NAME"
+    VER_TMP="$VERSION_ID"
+    OS="$(echo "${OS_TMP}" | awk '{print $1}')"
+    VER="$(echo "${VER_TMP}" | awk '{print $1}')"
+elif [ -n "${find_lsb_release}" ]; then
+    OS="$(lsb_release -d | awk '{print $2}')"
+    VER="$(lsb_release -r | awk '{print $2}')"
+else
+    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
+fi
+
+#
+# TEST THE OS AND ITS VERSION IF UBUNTU THEN CALL THE pkgs_fn
+#
+
+case "${OS}" in
+    Debian)     debian_ver_fn;;
+    Ubuntu)     ubuntu_ver_fn;;
+    *)          fail_fn "Could not detect the OS architecture. Line: ${LINENO}";;
+esac
 
 #
 # INSTALL OFFICIAL IMAGEMAGICK LIBS
@@ -595,9 +559,12 @@ sleep 2
 
 git_ver_fn 'imagemagick/imagemagick' 'T'
 if build 'magick-libs' "${g_ver}"; then
-    cd "${packages}/deb-files" || exit 1
-    if ! curl -A "${user_agent}" -Lso "magick-libs-${g_ver}.rpm" "https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-libs-${g_ver}.x86_64.rpm"; then
-        fail_fn 'Failed to download the magick-libs file.'
+    if [ ! -d "${packages}"/deb-files ]; then
+        mkdir -p "${packages}"/deb-files
+    fi
+    cd "${packages}"/deb-files || exit 1
+    if ! curl -A "${user_agent}" -m 10 -Lso "magick-libs-${g_ver}.rpm" "https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-libs-${g_ver}.x86_64.rpm"; then
+        fail_fn "Failed to download the magick-libs file. Line: ${LINENO}"
     fi
     sudo alien -d ./*.rpm
     sudo dpkg -i ./*.deb
@@ -619,7 +586,7 @@ if [ ! -f /usr/bin/composer ]; then
         return 1
     fi
     if ! sudo php composer-setup.php --install-dir=/usr/bin --filename=composer --quiet; then
-        fail_fn 'Failed to install /usr/bin/composer'
+        fail_fn "Failed to install /usr/bin/composer Line: ${LINENO}"
     fi
     rm composer-setup.php
 fi
@@ -794,7 +761,6 @@ if build 'jemalloc' "${g_ver}"; then
                         --disable-doc                   \
                         --enable-autogen                \
                         --enable-prof                   \
-                        --enable-shared                 \
                         --enable-static
     execute make "-j${cpu_threads}"
     execute sudo make install
@@ -806,10 +772,9 @@ if build 'openjpeg' "${g_ver}"; then
     download "${g_url}" "openjpeg-${g_ver}.tar.gz"
     execute cmake -B build                                                                    \
         -DCMAKE_{BUILD_TYPE=Release,INSTALL_PREFIX="${workspace}",EXPORT_COMPILE_COMMANDS=ON} \
-        -DCPACK_{BINARY_DEB,BINARY_FREEBSD,BINARY_IFW,BINARY_NSIS}=ON                         \
+        -DCPACK_{BINARY_DEB,BINARY_FREEBSD,BINARY_IFW,BINARY_NSIS}=ON -G Ninja -Wno-dev       \
         -DBUILD_{SHARED_LIBS=ON,TESTING=OFF,THIRDPARTY=ON}                                    \
-        -DCPACK_{BINARY_RPM,BINARY_TBZ2,BINARY_TXZ,SOURCE_RPM,SOURCE_ZIP}=ON                  \
-        -G Ninja -Wno-dev
+        -DCPACK_{BINARY_RPM,BINARY_TBZ2,BINARY_TXZ,SOURCE_RPM,SOURCE_ZIP}=ON
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'openjpeg' "${g_ver}"
@@ -820,7 +785,7 @@ fi
 #
 
 echo
-box_out_banner3()
+box_out_banner2()
 {
     input_char=$(echo "${@}" | wc -c)
     line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
@@ -834,11 +799,11 @@ box_out_banner3()
     echo " ${line}"
     tput sgr 0
 }
-box_out_banner3 'Build ImageMagick'
+box_out_banner2 'Build ImageMagick'
 sleep 2
 
 git_ver_fn 'imagemagick/imagemagick' 'T'
-if build 'imageMagick' "${g_ver}"; then
+if build 'ImageMagick' "${g_ver}"; then
     download "https://codeload.github.com/imagemagick/imagemagick/tar.gz/refs/tags/${g_ver}" "imagemagick-${g_ver}.tar.gz"
     execute autoreconf -fi -I /usr/share/aclocal
     mkdir build
@@ -875,10 +840,10 @@ fi
 create_links_fn
 
 # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE MAGICK COMMAND WILL NOT WORK
-sudo ldconfig
+sudo ldconfig 2>/dev/null
 
 # SHOW THE NEWLY INSTALLED MAGICK VERSION
-show_magick_version
+show_ver_fn
 
 # PROMPT THE USER TO CLEAN UP THE BUILD FILES
 cleanup_fn
