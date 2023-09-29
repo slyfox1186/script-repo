@@ -184,8 +184,8 @@ EOF
             -i_qfactor:v 0.75 \
             -b_qfactor:v 1.1 \
             -c:a libfdk_aac \
-            -profile:a aac_he \
-            -vbr:a 5 \
+            -qmin:a 1 \
+            -qmax:a 5 \
             "${file_out}"; then
         google_speech 'Video conversion completed.' 2>/dev/null
         if [ -f "${file_out}" ]; then
