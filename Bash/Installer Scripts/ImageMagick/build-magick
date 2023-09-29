@@ -87,7 +87,7 @@ export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -pipe -marc
 #
 
 if [ -f /proc/cpuinfo ]; then
-    cpu_threads="$(grep grep --count ^processor /proc/cpuinfo)"
+    cpu_threads="$(grep --count ^processor /proc/cpuinfo)"
 else
     cpu_threads="$(nproc --all)"
 fi
