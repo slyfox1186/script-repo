@@ -1,25 +1,4 @@
 #!/usr/bin/env bash
-
-clear
-
-printf "%s\n%s\n\n" \
-    'Install ~/.bash_functions' \
-    '================================='
-
-#
-# SET VARIABLES
-#
-
-file="$HOME"/.bash_functions
-
-#
-# CREATE FUNCTIONS
-#
-
-script_fn()
-{
-cat > "$file" <<'EOF'
-#!/usr/bin/env bash
 # shellcheck disable=SC1091,SC2001,SC2162,SC2317
 
 ######################################################################################
@@ -720,7 +699,7 @@ imdl()
     clear
     cwd="${PWD}"
     tmp_dir="$(mktemp -d)"
-    user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
+    user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
     cd "${tmp_dir}" || exit 1
     curl -A "${user_agent}" -Lso 'imow' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-and-overwrite.sh'
     sudo mv imow "${cwd}"
@@ -805,10 +784,9 @@ ffdl()
 {
     local user_agent
     clear
-    user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
-    wget -U "${user_agent}" -cqO ff.sh https://ffdl.optimizethis.net
-    bash ff.sh
-    sudo rm ff.sh
+    curl -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36' -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
+    bash 'ff.sh'
+    sudo rm 'ff.sh'
     clear; ls -1AhFv --color --group-directories-first
 }
 
@@ -1539,7 +1517,7 @@ adl()
 
     aria2c \
         --console-log-level=notice \
-        --user-agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36' \
+        --user-agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36' \
         -x16 \
         -j5 \
         --split=32 \
@@ -1586,7 +1564,7 @@ adlm()
 
     aria2c \
         --console-log-level=notice \
-        --user-agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36' \
+        --user-agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36' \
         -x16 \
         -j5 \
         --split=32 \
@@ -1697,36 +1675,3 @@ cmf()
     cmake ${rel_sdir} -B build -G Ninja -Wno-dev
     ccmake ${rel_sdir}
 }
-EOF
-}
-
-#
-# CHECK FOR ANY PASSED ARGUMENTS TO SET THE APT PACKAGE MANAGER
-#
-
-if [[ "$1" == 'yes' ]]; then
-    answer=1
-else
-    answer=2
-fi
-
-case "$answer" in
-    1)
-            script_fn
-            sed -i 's/apt /apt-fast /g' "$file"
-            sed -i 's/apt-fast list/apt list/g' "$file"
-            sed -i 's/local apt-fast host/local apt host/g' "$file"
-            sed -i 's/for apt-fast in/for apt in/g' "$file"
-            sed -i 's/apt-fast apt-get aptitude dpkg/apt apt-fast apt-get aptitude dpkg/g' "$file"
-            sed -i 's/apt-fast search/apt search/g' "$file"
-            ;;
-    2)      script_fn;;
-    *)
-            clear
-            printf "%s\n\n" 'Bad user input. Please start over.'
-            exit 1
-            ;;
-esac
-
-clear
-printf "%s\n%s\n\n" 'The script has completed!'
