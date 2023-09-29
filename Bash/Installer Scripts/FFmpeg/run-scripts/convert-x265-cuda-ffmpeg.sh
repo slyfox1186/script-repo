@@ -4,7 +4,9 @@
 clear
 
 # SET PATH
-export PATH="${PATH}:${HOME}/.local/bin"
+if [ -d "${HOME}/.local/bin" ]; then
+    export PATH="${PATH}:${HOME}/.local/bin"
+fi
 
 #
 # REQUIRED APT PACKAGES
@@ -14,7 +16,7 @@ apt_pkgs=(bc ffmpegthumbnailer ffmpegthumbs libffmpegthumbnailer4v5 sox libsox-d
 
 for i in ${apt_pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep "${i}")"
+    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
     if [ -z "${missing_pkg}" ]; then
         missing_pkgs+=" ${i}"
     fi
