@@ -800,13 +800,19 @@ large_files()
 
     local answer
 
-    echo 'Input the file extension to search for without a dot: '
-    echo
-    read -p 'Enter your choice: ' answer
-    clear
-    find "${PWD}" -type f -name "*.${answer}" -printf '%h\n' | sort -u -o 'large-files.txt'
+    if [ -z "${1}" ]; then
+        printf "%s\n\n" 'Input the file extension to search for without a dot: '
+        read -p 'Enter your choice: ' answer
+        clear
+    else
+        answer="${1}"
+    fi
+
+    sudo find "${PWD}" -type f -name "*.${answer}" -printf '%s %h\n' | sort -ru -o 'large-files.txt'
+
     if [ -f 'large-files.txt' ]; then
-        sudo ged 'large-files.txt'
+        sudo gted 'large-files.txt'
+        sudo rm 'large-files.txt'
     fi
 }
 
