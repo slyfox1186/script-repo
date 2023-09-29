@@ -14,7 +14,7 @@ cd "${tmp_dir}" || exit 1
 wget -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/FFmpeg/run-scripts/ffmpeg-scripts.txt'
 
 # RENAME THE SCRIPTS
-sudo mv 'convert-x265-cuda-ffpb-loop.sh' 'ffmpeg'
+sudo mv 'convert-x265-cuda-ffmpeg.sh' 'ffmpeg'
 sudo mv 'convert-x265-cuda-ffpb.sh' 'ffpb'
 sudo mv 'convert-x265-cuda-ffpb-loop.sh' 'ffpb-loop'
 
