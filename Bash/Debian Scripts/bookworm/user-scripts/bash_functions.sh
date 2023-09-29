@@ -1686,7 +1686,7 @@ cmf()
 ## SORT IMAGES BY WIDTH ##
 ##########################
 
-swjpg()
+jpgs()
 {
     clear
     sudo find . -type f -iname '*.jpg' -exec identify -ping -format '%[width]x%[height] %[basename] ' '{}' > /tmp/image-sizes.txt \;
