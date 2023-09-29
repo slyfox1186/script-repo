@@ -188,7 +188,7 @@ export CXXFLAGS CFLAGS CPPFLAGS
 #
 
 if [ -f /proc/cpuinfo ]; then
-    cpu_threads="$(grep -c ^processor /proc/cpuinfo)"
+    cpu_threads="$(grep --count ^processor /proc/cpuinfo)"
 else
     cpu_threads="$(nproc --all)"
 fi
