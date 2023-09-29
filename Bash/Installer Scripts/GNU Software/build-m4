@@ -161,7 +161,6 @@ done
 if [ -n "${missing_pkgs}" ]; then
     sudo apt -y install ${missing_pkgs}
     sudo apt -y autoremove
-    clear
 fi
 
 #
@@ -169,7 +168,7 @@ fi
 #
 
 if [ ! -f "${cwd}/${archive_name}" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
+    curl -A "${user_agent}" -m 10 -Lso "${cwd}/${archive_name}" "${archive_url}"
 fi
 
 #
