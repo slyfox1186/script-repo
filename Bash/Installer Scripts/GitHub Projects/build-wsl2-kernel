@@ -5,11 +5,11 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-wsl2-kernel
 ##
-##  Purpose: Build WSL2
+##  Purpose: Build Official WSL2 Kernels
 ##
-##  Updated: 08.01.23
+##  Updated: 09.29.23
 ##
-##  Script version: 1.1
+##  Script version: 2.1
 ##
 ############################################################################################################################################
 
