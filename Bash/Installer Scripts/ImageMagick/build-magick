@@ -38,7 +38,7 @@ fi
 
 script_ver=2.9
 progname="${0}"
-cwd="${PWD}"/magick-build-script
+cwd="${PWD}"/imagemagick-build-script
 packages="${cwd}"/packages
 workspace="${cwd}"/workspace
 install_dir=/usr/local
