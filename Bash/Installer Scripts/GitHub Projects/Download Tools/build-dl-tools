@@ -222,7 +222,7 @@ git_1_fn()
 {
     local curl_cmd github_repo github_url
 
-    github_web_repo="${1}"
+    github_repo="${1}"
     github_url="${2}"
 
     if curl_cmd="$(curl -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then

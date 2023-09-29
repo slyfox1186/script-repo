@@ -286,7 +286,7 @@ git_1_fn()
     local curl_cmd github_repo github_url
 
     # SCRAPE GITHUB WEBSITE FOR THE LATEST REPO VERSION
-    github_web_repo="${1}"
+    github_repo="${1}"
     github_url="${2}"
 
     if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
@@ -399,7 +399,7 @@ git_ver_fn()
 
 check_version()
 {
-    github_web_repo="${1}"
+    github_repo="${1}"
     latest_txt_tmp="${ver_file_tmp}"
     latest_txt="${ver_file}"
 
@@ -415,7 +415,7 @@ check_version()
 
 pre_check_ver()
 {
-    github_web_repo="${1}"
+    github_repo="${1}"
     git_ver="${2}"
     git_url_type="${3}"
 
