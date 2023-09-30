@@ -191,7 +191,7 @@ fi
 #
 
 if [ ! -f "$cwd/${archive_ver}" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/${archive_dir}" "${archive_url}"
+    curl -A "${user_agent}" -m 10 -Lso "${cwd}/${archive_dir}" "${archive_url}"
 fi
 
 #
