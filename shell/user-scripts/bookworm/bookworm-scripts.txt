@@ -1,3 +1,0 @@
-https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/user-scripts/bookworm/.bash_aliases
-https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/user-scripts/bookworm/.bash_functions
-https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/user-scripts/bookworm/.bashrc
