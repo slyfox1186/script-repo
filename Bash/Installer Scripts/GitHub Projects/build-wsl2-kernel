@@ -158,7 +158,8 @@ fi
 #
 
 if [ ! -f "${archive_name}" ]; then
-    curl -A "${user_agent}" -Lso "${archive_name}" "${archive_url}"
+    printf "%s\n\n" 'Downloading the source code from GitHub...'
+    wget -U "${user_agent}" --show-progress -cqO "${archive_name}" "${archive_url}"
 fi
 
 #
