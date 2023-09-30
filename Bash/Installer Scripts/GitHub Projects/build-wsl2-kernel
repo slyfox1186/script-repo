@@ -129,30 +129,6 @@ fail_fn()
     exit 1
 }
 
-cleanup_fn()
-{
-    local answer
-
-    printf "\n%s\n\n%s\n%s\n\n" \
-        'Do you want to remove the build files?' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' answer
-
-    case "${answer}" in
-        1)      sudo rm -fr "${cwd}" "${0}";;
-        2)      return 0;;
-        *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
-                unset choice
-                clear
-                cleanup_fn
-                ;;
-    esac
-}
-
 #
 # INSTALL REQUIRED APT PACKAGES
 #
@@ -208,11 +184,7 @@ fi
 #
 
 cd "${archive_dir}" || exit 1
-
 echo 'yes' | make "-j$(nproc --all)" KCONFIG_CONFIG='Microsoft/config-wsl'
-
-# PROMPT USER TO CLEAN UP FILES
-cleanup_fn
 
 # SHOW EXIT MESSAGE
 exit_fn
