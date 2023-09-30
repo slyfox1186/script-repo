@@ -5,19 +5,20 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo/blob/main/shell/installers/imagemagick/build-magick
 ##
-##  Purpose: Build ImageMagick 7 from the source code obtained from the official GitHub repository.
+##  Purpose: Build ImageMagick 7 from the source code obtained from the official GitHub repository
 ##
-##  Function: ImageMagick is the leading open-source command line image processor.
-##            It can blur, sharpen, warp, reduce total file size, ect... The possibilities are vast and wide.
+##  Function: ImageMagick is the leading open-source command line image processor
+##            It can blur, sharpen, warp, reduce total file size, ect... The possibilities are vast and wide
 ##
 ##  Method: The script will search GitHub for the latest released version and upon execution will import the
 ##          information into the script.
 ##
 ##  Added: Debian OS support for versions, 10 | 11 | 12
 ##  Added: A browser user-agent string to the curl command
-##  Added: A CPPFLAGS variable to ImageMagick's configure script.
+##  Added: A CPPFLAGS variable to ImageMagick's configure script
+##  Added: A case command to determine the required libtool version based on the active OS
 ##
-##  Changed: Some support libraries prefix paths to avoid installing into the system.
+##  Changed: Some support libraries prefix paths to avoid installing into the system
 ##
 ##  Updated: 09.30.23
 ##
@@ -631,15 +632,22 @@ if build 'autoconf' 'latest'; then
     build_done 'autoconf' 'latest'
 fi
 
-if build 'libtool' '2.4.7'; then
-    download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
+# UBUNTU AND DEBIAN REQUIRE DIFFERENT LIBTOOL VERSIONS
+case "${OS}" in
+    Debian)     lt_ver=2.4.7;;
+    Ubuntu)     lt_ver=2.4.6;;
+    *)          fail_fn "Script failure on line: ${LINENO}";;
+esac
+
+if build 'libtool' "${lt_ver}"; then
+    download "https://ftp.gnu.org/gnu/libtool/libtool-${lt_ver}.tar.xz"
     execute ./configure --prefix="${workspace}"     \
                         --{build,host}="${pc_type}" \
                         --with-pic                  \
                         M4="${workspace}"/bin/m4
     execute make "-j${cpu_threads}"
     execute make install
-    build_done 'libtool' '2.4.7'
+    build_done 'libtool' "${lt_ver}"
 fi
 
 git_ver_fn 'libsdl-org/libtiff' 'T'
