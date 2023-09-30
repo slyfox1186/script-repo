@@ -532,7 +532,7 @@ mywget()
 # RM COMMANDS ##
 ################
 
-# RM DIRECTORY
+# REMOVE DIRECTORY
 rmd()
 {
     clear
@@ -550,7 +550,7 @@ rmd()
     fi
 }
 
-# RM FILE
+# REMOVE FILE
 rmf()
 {
     clear
@@ -726,9 +726,8 @@ big_img() { clear; sudo find . -size +10M -type f -name '*.jpg' 2>/dev/null; }
 
 nvme_temp()
 {
-    clear
-
     local n0 n1 n2
+    clear
 
     n0="$(sudo nvme smart-log /dev/nvme0n1)"
     n1="$(sudo nvme smart-log /dev/nvme1n1)"
@@ -754,9 +753,8 @@ rftn()
 
 cuda_purge()
 {
-    clear
-
     local answer
+    clear
 
     echo 'Do you want to completely remove the cuda-sdk-toolkit?'
     echo
@@ -817,9 +815,8 @@ large_files()
 
 mi()
 {
+    local I
     clear
-
-    local i
 
     if [ -z "${1}" ]; then
         ls -1AhFv --color --group-directories-first
@@ -871,11 +868,7 @@ listppas()
 ## NVIDIA-SMI COMMANDS ##
 #########################
 
-gpu_mon()
-{
-    clear
-    nvidia-smi dmon
-}
+gpu_mon() { clear; nvidia-smi dmon; }
 
 ################################################################
 ## PRINT THE NAME OF THE DISTRIBUTION YOU ARE CURRENTLY USING ##
@@ -971,7 +964,7 @@ hw_mon()
 }
 
 # CREATE A 7ZIP FILE WITH MAX COMPRESSION SETTINGS
-7z_7z_1()
+7z_1()
 {
     local answer source output
     clear
@@ -1011,7 +1004,7 @@ hw_mon()
     esac
 }
 
-7z_7z_5()
+7z_5()
 {
     local answer source output
     clear
@@ -1051,7 +1044,7 @@ hw_mon()
     esac
 }
 
-7z_7z_9()
+7z_9()
 {
     local answer source output
     clear
