@@ -131,7 +131,7 @@ export CXXFLAGS
 # CREATE THE OUTPUT DIRECTORIES
 #
 
-mkdir -p "${packages}" "${workspace}"
+mkdir -p "${packages}/deb-files" "${workspace}"
 
 #
 # DEFINE FUNCTIONS
