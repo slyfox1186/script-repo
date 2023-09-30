@@ -1934,9 +1934,9 @@ ffmpeg_libraries+=('--enable-amf')
 pre_check_ver 'gpac/gpac' '1' 'T'
 if build 'gpac' "${g_ver}"; then
     download_git 'https://github.com/gpac/gpac.git'
-    execute ./configure --prefix="${workspace}" --enable-gprof --static-{bin,modules} --extra-cflags="${CFLAGS}"
-    execute make "-j${cpu_threads}"
-    execute make install
+    execute sudo ./configure --prefix="${workspace}" --enable-gprof --static-{bin,modules} --extra-cflags="${CFLAGS}"
+    execute sudo make "-j${cpu_threads}"
+    execute sudo make install
     build_done 'gpac' "${g_ver}"
 fi
 
