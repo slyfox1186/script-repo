@@ -7,9 +7,9 @@
 ##
 ##  Purpose: Build Official WSL2 Kernels
 ##
-##  Updated: 09.29.23
+##  Updated: 09.30.23
 ##
-##  Script version: 2.1
+##  Script version: 2.2
 ##
 ############################################################################################################################################
 
@@ -54,12 +54,12 @@ prompt_fn
 # SET VARIABLES
 #
 
-script_ver=2.1
-archive_dir="wsl-kernel-${archive_ver}"
+script_ver=2.2
+cwd="${PWD}"/wsl-build-script
 archive_ver="$(echo "${archive_url}" | sed 's/^.*\/.*-wsl-\(.*\)\.tar\.gz$/\1/')"
+archive_dir="${cwd}/wsl-kernel-${archive_ver}"
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
-cwd="${PWD}"/wsl-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 debug=OFF
@@ -157,13 +157,6 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-if [ -f /usr/local/bin/aria2c ] && [ -f /usr/bin/aria2c ]; then
-    sudo apt -y remove aria2c
-else
-    add_this=aria2
-fi
-
-
 pkgs=("${add_this}" autoconf autogen automake bat bc binutils bison build-essential ccache
       ccdiff checkinstall clang cmake cmake-extras cmake-qt-gui colordiff cpu-checker
       curl dbus-x11 dwarves flex git jq libdmalloc-dev libelf-dev libmimalloc-dev
@@ -182,7 +175,6 @@ done
 
 if [ -n "${missing_pkgs}" ]; then
     sudo apt -y install ${missing_pkgs}
-    sudo apt -y autoremove
     clear
 fi
 
@@ -190,23 +182,34 @@ fi
 # DOWNLOAD THE ARCHIVE FILE
 #
 
-if [ ! -f "$cwd/${archive_ver}" ]; then
-    curl -A "${user_agent}" -m 10 -Lso "${cwd}/${archive_dir}" "${archive_url}"
+if [ ! -f "${archive_name}" ]; then
+    curl -A "${user_agent}" -Lso "${archive_name}" "${archive_url}"
+fi
+
+#
+# CREATE THE OUTPUT DIRECTORY
+#
+
+if [ -d "${archive_dir}" ]; then
+    sudo rm -fr "${archive_dir}"
+fi
+mkdir -p "${archive_dir}"
+
+#
+# EXTRACT THE ARCHIVE FILES INTO THE OUTPUT DIRECTORY
+#
+
+if ! tar -xf "${archive_name}" -C "${archive_dir}" --strip-components 1; then
+    fail_fn "Failed to extract the archive files. Line: ${LINENO}"
 fi
 
 #
 # BUILD PROGRAM FROM SOURCE
 #
 
-cd "$cwd" || exit 1
-if build 'wsl-kernel' "${archive_ver}"; then
-    wget --show-progress -cqO "${archive_name}" "${archive_url}"
-    mkdir -p "${archive_dir}"
-    tar -zxf "${archive_name}" -C "${archive_dir}" --strip-components 1
-    cd "${archive_dir}" || exit 1
-    echo 'yes' | make "-j$(nproc --all)" KCONFIG_CONFIG='Microsoft/config-wsl'
-    build_done 'wsl-kernel' "${archive_ver}"
-fi
+cd "${archive_dir}" || exit 1
+
+echo 'yes' | make "-j$(nproc --all)" KCONFIG_CONFIG='Microsoft/config-wsl'
 
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
