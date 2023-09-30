@@ -8,8 +8,8 @@
 gedit() { "$(type -P gedit)" "${@}" &>/dev/null; }
 geds() { "$(type -P sudo)" -H -u root "$(type -P gedit)" "${@}" &>/dev/null; }
 
-gted() { "$(type -P gedit)" "${@}" &>/dev/null; }
-gteds() { "$(type -P sudo)" -H -u root "$(type -P gedit)" "${@}" &>/dev/null; }
+gted() { "$(type -P gnome-text-editor)" "${@}" &>/dev/null; }
+gteds() { "$(type -P sudo)" -H -u root "$(type -P gnome-text-editor)" "${@}" &>/dev/null; }
 
 ###################
 ## FIND COMMANDS ##
@@ -125,7 +125,7 @@ rmdf()
 {
     clear
     perl -i -lne 's/\s*$//; print if ! $x{$_}++' "${1}"
-    gedit "${1}"
+    gted "${1}"
 }
 
 ###################
@@ -216,7 +216,6 @@ fix()
     sudo apt autoclean
     sudo apt update
 }
-
 
 list()
 {
@@ -322,7 +321,7 @@ showpkgs()
 {
     dpkg --get-selections |
     grep -v deinstall > "${HOME}"/tmp/packages.list
-    gedit "${HOME}"/tmp/packages.list
+    gted "${HOME}"/tmp/packages.list
 }
 
 # PIPE ALL DEVELOPMENT PACKAGES NAMES TO file
@@ -332,7 +331,7 @@ getdev()
     grep "\-dev" |
     cut -d ' ' -f1 |
     sort > 'dev-packages.list'
-    gedit 'dev-packages.list'
+    gted 'dev-packages.list'
 }
 
 ################
@@ -696,11 +695,21 @@ im50()
 
 imdl()
 {
+    local cwd tmp_dir user_agent
     clear
-    curl -Lso imow https://raw.githubusercontent.com/slyfox1186/script-repo/main/bash/installer%20scripts/imagemagick/scripts/imagick-run-script.sh; bash imow
+    cwd="${PWD}"
+    tmp_dir="$(mktemp -d)"
+    user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+    cd "${tmp_dir}" || exit 1
+    curl -A "${user_agent}" -Lso 'imow' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-and-overwrite.sh'
+    sudo mv imow "${cwd}"
+    sudo rm -fr "${tmp_dir}"
+    cd "${cwd}" || exit 1
     sudo chown "${USER}":"${USER}" imow
-    sudo chmod 755 imow
-    clear; ls -1AhFv --color --group-directories-first
+    sudo chmod +rwx imow
+    if [ -f "${0}" ]; then
+        sudo rm "${0}"
+    fi
 }
 
 ##################################################
@@ -962,7 +971,87 @@ hw_mon()
 }
 
 # CREATE A 7ZIP FILE WITH MAX COMPRESSION SETTINGS
-7z_7z()
+7z_7z_1()
+{
+    local answer source output
+    clear
+
+    if [ -n "${1}" ]; then
+        if [ -f "${1}".7z ]; then
+            sudo rm "${1}".7z
+        fi
+        7z a -t7z -m0=lzma2 -mx1 "${1}".7z ./"${1}"/*
+    else
+        read -p 'Please enter the source folder path: ' source
+        echo
+        read -p 'Please enter the destination archive path (w/o extension): ' output
+        clear
+        if [ -f "${output}".7z ]; then
+            sudo rm "${output}".7z
+        fi
+        7z a -t7z -m0=lzma2 -mx1 "${output}".7z ./"${source}"/*
+    fi
+
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'Do you want to delete the original file?' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' answer
+    clear
+
+    if [ -n "${1}" ]; then
+        source="${1}"
+    fi
+
+    case "${answer}" in
+        1)      sudo rm -fr "${source}";;
+        2)      clear;;
+        '')     sudo rm -fr "${source}";;
+        *)      printf "\n%s\n\n" 'Bad user input...';;
+    esac
+}
+
+7z_7z_5()
+{
+    local answer source output
+    clear
+
+    if [ -n "${1}" ]; then
+        if [ -f "${1}".7z ]; then
+            sudo rm "${1}".7z
+        fi
+        7z a -t7z -m0=lzma2 -mx5 "${1}".7z ./"${1}"/*
+    else
+        read -p 'Please enter the source folder path: ' source
+        echo
+        read -p 'Please enter the destination archive path (w/o extension): ' output
+        clear
+        if [ -f "${output}".7z ]; then
+            sudo rm "${output}".7z
+        fi
+        7z a -t7z -m0=lzma2 -mx5 "${output}".7z ./"${source}"/*
+    fi
+
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'Do you want to delete the original file?' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' answer
+    clear
+
+    if [ -n "${1}" ]; then
+        source="${1}"
+    fi
+
+    case "${answer}" in
+        1)      sudo rm -fr "${source}";;
+        2)      clear;;
+        '')     sudo rm -fr "${source}";;
+        *)      printf "\n%s\n\n" 'Bad user input...';;
+    esac
+}
+
+7z_7z_9()
 {
     local answer source output
     clear
@@ -1051,7 +1140,49 @@ tar_bz2()
     fi
 }
 
-tar_xz()
+tar_xz_1()
+{
+    local source output
+    clear
+    if [ -n "${1}" ]; then
+        if [ -f "${1}".tar.xz ]; then
+            sudo rm "${1}".tar.xz
+        fi
+        tar -cvJf - "${1}" | xz -1 -c - > "${1}".tar.xz
+    else
+        read -p 'Please enter the source folder path: ' source
+        echo
+        read -p 'Please enter the destination archive path (w/o extension): ' output
+        clear
+        if [ -f "${output}".tar.xz ]; then
+            sudo rm "${output}".tar.xz
+        fi
+        tar -cvJf - "${source}" | xz -1 -c - > "${output}".tar.xz
+    fi
+}
+
+tar_xz_5()
+{
+    local source output
+    clear
+    if [ -n "${1}" ]; then
+        if [ -f "${1}".tar.xz ]; then
+            sudo rm "${1}".tar.xz
+        fi
+        tar -cvJf - "${1}" | xz -5 -c - > "${1}".tar.xz
+    else
+        read -p 'Please enter the source folder path: ' source
+        echo
+        read -p 'Please enter the destination archive path (w/o extension): ' output
+        clear
+        if [ -f "${output}".tar.xz ]; then
+            sudo rm "${output}".tar.xz
+        fi
+        tar -cvJf - "${source}" | xz -5 -c - > "${output}".tar.xz
+    fi
+}
+
+tar_xz_9()
 {
     local source output
     clear
@@ -1263,7 +1394,7 @@ tkapt()
     local i list
     clear
 
-    list=(apt apt-get aptitude dpkg)
+    list=(apt apt apt apt-get aptitude dpkg)
 
     for i in ${list[@]}
     do
@@ -1499,5 +1630,61 @@ jpgsize()
     sed -i "s/^..//g" "${random_dir}/img-sizes.txt"
     sed -i "s|^|${PWD}\/|g" "${random_dir}/img-sizes.txt"
     clear
-    nohup gedit "${random_dir}/img-sizes.txt" &>/dev/null &
+    nohup gted "${random_dir}/img-sizes.txt" &>/dev/null &
+}
+
+##################
+## SED COMMANDS ##
+##################
+
+fsed()
+{
+    clear
+
+    printf "%s\n\n" 'This command is for sed to act ONLY on files'
+
+    if [ -z "${1}" ]; then
+        read -p 'Enter the original text: ' otext
+        read -p 'Enter the replacement text: ' rtext
+        clear
+    else
+        otext="${1}"
+        rtext="${2}"
+    fi
+
+     sudo sed -i "s/${otext}/${rtext}/g" $(find . -maxdepth 1 -type f)
+}
+
+####################
+## CMAKE COMMANDS ##
+####################
+
+cmf()
+{
+    local rel_sdir
+    if ! sudo dpkg -l | grep -o cmake-curses-gui; then
+        sudo apt -y install cmake-curses-gui
+    fi
+    clear
+
+    if [ -z "${1}" ]; then
+        read -p 'Enter the relative source directory: ' rel_sdir
+    else
+        rel_sdir="${1}"
+    fi
+
+    cmake ${rel_sdir} -B build -G Ninja -Wno-dev
+    ccmake ${rel_sdir}
+}
+
+##########################
+## SORT IMAGES BY WIDTH ##
+##########################
+
+jpgs()
+{
+    clear
+    sudo find . -type f -iname '*.jpg' -exec identify -format " ${PWD}/%f: %wx%h " '{}' > /tmp/img-sizes.txt \;
+    cat /tmp/img-sizes.txt | sed 's/\s\//\n\//g' | sort -h
+    sudo rm /tmp/img-sizes.txt
 }
