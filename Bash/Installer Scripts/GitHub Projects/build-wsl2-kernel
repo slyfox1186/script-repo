@@ -154,7 +154,7 @@ cleanup_fn()
 }
 
 #
-# INSTALL REQUIRED APT cwd
+# INSTALL REQUIRED APT PACKAGES
 #
 
 if [ -f /usr/local/bin/aria2c ] && [ -f /usr/bin/aria2c ]; then
