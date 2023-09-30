@@ -1690,6 +1690,6 @@ jpgs()
 {
     clear
     sudo find . -type f -iname '*.jpg' -exec identify -format " ${PWD}/%f: %wx%h " '{}' > /tmp/img-sizes.txt \;
-    cat /tmp/img-sizes.txt | sed 's/\s\/d/\n\/d/g' | sort -h
+    cat /tmp/img-sizes.txt | sed 's/\s\//\n\//g' | sort -h
     sudo rm /tmp/img-sizes.txt
 }
