@@ -3,7 +3,7 @@
 
 #############################################################################################################
 ##
-##  GitHub: https://github.com/slyfox1186/script-repo/edit/main/shell/installers/imagemagick/build-magick
+##  GitHub: https://github.com/slyfox1186/script-repo/blob/main/shell/installers/imagemagick/build-magick
 ##
 ##  Purpose: Build ImageMagick 7 from the source code obtained from the official GitHub repository.
 ##
@@ -13,15 +13,15 @@
 ##  Method: The script will search GitHub for the latest released version and upon execution will import the
 ##          information into the script.
 ##
-##  Added: Debian OS support for versions - 10 / 11 / 12
+##  Added: Debian OS support for versions, 10 | 11 | 12
 ##  Added: A browser user-agent string to the curl command
 ##  Added: A CPPFLAGS variable to ImageMagick's configure script.
 ##
 ##  Changed: Some support libraries prefix paths to avoid installing into the system.
 ##
-##  Updated: 09.29.23
+##  Updated: 09.30.23
 ##
-##  Script Version: 2.9
+##  Script Version: 3.0
 ##
 #############################################################################################################
 
@@ -36,13 +36,13 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-script_ver=2.9
+script_ver=3.0
 progname="${0}"
-cwd="${PWD}"/imagemagick-build-script
+cwd="${PWD}"/magick-build-script
 packages="${cwd}"/packages
 workspace="${cwd}"/workspace
 install_dir=/usr/local
-CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include"
+pc_type=x86_64-linux-gnu
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 debug=OFF # CHANGE THIS VARIABLE TO "ON" FOR HELP WITH TROUBLESHOOTING UNEXPECTED ISSUES DURING THE BUILD
@@ -51,7 +51,7 @@ debug=OFF # CHANGE THIS VARIABLE TO "ON" FOR HELP WITH TROUBLESHOOTING UNEXPECTE
 # CREATE OUTPUT DIRECTORIES
 #
 
-mkdir -p "${workspace}"/lib
+mkdir -p "${packages}" "${workspace}"
 
 #
 # FIGURE OUT WHICH COMPILERS TO USE
@@ -64,6 +64,10 @@ export CC=gcc CXX=g++
 #
 
 export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
+LDFLAGS="-L${workspace}/lib64 -L${workspace}/lib -L${workspace}/lib/x86_64-linux-gnu -L/usr/local/lib64"
+LDFLAGS+=' -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+export LDFLAGS
+CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include"
 
 #
 # SET THE AVAILABLE CPU COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -330,7 +334,7 @@ git_ver_fn()
     case "${flag_type}" in
             R)      flag_choice=releases;;
             T)      flag_choice=tags;;
-            *)      fail_fn "Could not determine the variable \"flag_choice\" Line: ${LINENO}";;
+            *)      fail_fn "Could not determine the variable \"flag_choice\" variable. Line: ${LINENO}";;
     esac
 
     git_1_fn "${flag_url}" "${flag_choice}" 2>/dev/null
@@ -343,11 +347,11 @@ git_ver_fn()
 usage()
 {
     clear
-    printf "%s\n\n%s\n%s\n%s\n%s\n%s\n\n" \
-        "Usage: ${progname} [options]" \
-        'Options:' \
-        '    -h, --help                                           Display this information' \
-        '    -b, --build                                          Start the build process' \
+    printf "%s\n\n%s\n%s\n%s\n%s\n%s\n\n"                                                                 \
+        "Usage: ${progname} [options]"                                                                    \
+        'Options:'                                                                                        \
+        '    -h, --help                                           Display this information'               \
+        '    -b, --build                                          Start the build process'                \
         '    -c, --cleanup                                        Remove all build files and directories' \
         '    -v, --version                                        Display script version information'
 }
@@ -413,7 +417,6 @@ pkgs_fn()
 
     if [ -n "${missing_pkgs}" ]; then
         sudo apt -y install ${missing_pkgs}
-        sudo apt -y autoremove
         clear
     fi
 }
@@ -426,8 +429,8 @@ install_libjxl_fn()
 {
     cd "${packages}"/deb-files || exit 1
 
-    if sudo dpkg -i libjxl_0.8.1_amd64.deb; then
-        sudo rm libjxl_0.8.1_amd64.deb &>/dev/null
+    if sudo dpkg -i 'libjxl_0.8.2_amd64.deb'; then
+        sudo rm 'libjxl_0.8.2_amd64.deb' &>/dev/null
     fi
     sudo dpkg -i ./*.deb
 }
@@ -443,8 +446,8 @@ sort_libjxl_fn()
 {
     local url_base url_suffix
 
-    url_base=https://github.com/libjxl/libjxl/releases/download/v0.8.1/jxl-debs-amd64
-    url_suffix=v0.8.1.tar.gz
+    url_base=https://github.com/libjxl/libjxl/releases/download/v0.8.2/jxl-debs-amd64
+    url_suffix=v0.8.2.tar.gz
 
     if [ ! -f "${packages}"/libjxl.tar.gz ]; then
         case "${VER}" in
@@ -463,6 +466,8 @@ sort_libjxl_fn()
         if ! tar -zxf "${packages}"/libjxl.tar.gz -C "${packages}"/deb-files --strip-components 1; then
             fail_fn "Could not extract the libjxl archive \"${packages}/libjxl.tar.gz\" Line: ${LINENO}"
         fi
+
+        # INSTALL THE DOWNLOADED LIBJXL DEBIAN PACKAGES
         install_libjxl_fn
     fi
 }
@@ -544,7 +549,7 @@ else
 fi
 
 #
-# TEST THE OS AND ITS VERSION IF UBUNTU THEN CALL THE pkgs_fn
+# DISCOVER WHAT VERSION OF LINUX WE ARE RUNNING (DEBIAN OR UBUNTU)
 #
 
 case "${OS}" in
@@ -582,34 +587,33 @@ if [ ! -f /usr/bin/composer ]; then
 
     if [ "${EXPECTED_CHECKSUM}" != "${ACTUAL_CHECKSUM}" ]; then
         >&2 echo 'ERROR: Invalid installer checksum'
-        rm composer-setup.php
+        rm 'composer-setup.php'
         return 1
     fi
     if ! sudo php composer-setup.php --install-dir=/usr/bin --filename=composer --quiet; then
         fail_fn "Failed to install /usr/bin/composer Line: ${LINENO}"
     fi
-    rm composer-setup.php
+    rm 'composer-setup.php'
 fi
 
 #
 # INSTALL LIBJXL FROM DEBIAN FILES
 #
 
-if build 'libjxl' '0.8.1'; then
+if build 'libjxl' '0.8.2'; then
     sort_libjxl_fn
-    build_done 'libjxl' '0.8.1'
+    build_done 'libjxl' '0.8.2'
 fi
 
 #
-# BUILD FROM SOURCE CODE
+# BEGIN BUILDING FROM SOURCE CODE
 #
-
 
 if build 'm4' 'latest'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
-    execute ./configure --prefix="${workspace}"                \
-                        --{build,host,target}=x86_64-linux-gnu \
-                        --disable-nls                          \
+    execute ./configure --prefix="${workspace}"            \
+                        --{build,host,target}="${pc_type}" \
+                        --disable-nls                      \
                         --enable-c++
     execute make "-j${cpu_threads}"
     execute make install
@@ -619,8 +623,8 @@ fi
 if build 'autoconf' 'latest'; then
     download 'http://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz'
     execute autoreconf -fi
-    execute ./configure --prefix="${workspace}"         \
-                        --{build,host}=x86_64-linux-gnu \
+    execute ./configure --prefix="${workspace}"     \
+                        --{build,host}="${pc_type}" \
                         M4="${workspace}"/bin/m4
     execute make "-j${cpu_threads}"
     execute make install
@@ -629,9 +633,9 @@ fi
 
 if build 'libtool' '2.4.7'; then
     download 'https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
-    execute ./configure --prefix="${workspace}"         \
-                        --{build,host}=x86_64-linux-gnu \
-                        --with-pic \
+    execute ./configure --prefix="${workspace}"     \
+                        --{build,host}="${pc_type}" \
+                        --with-pic                  \
                         M4="${workspace}"/bin/m4
     execute make "-j${cpu_threads}"
     execute make install
@@ -642,9 +646,9 @@ git_ver_fn 'libsdl-org/libtiff' 'T'
 if build 'tiff' "${g_ver}"; then
     download "https://codeload.github.com/libsdl-org/libtiff/tar.gz/refs/tags/v${g_ver}" "tiff-${g_ver}.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}"         \
-                        --{build,host}=x86_64-linux-gnu \
-                        --enable-cxx                    \
+    execute ./configure --prefix="${workspace}"     \
+                        --{build,host}="${pc_type}" \
+                        --enable-cxx                \
                         --with-pic
     execute make "-j${cpu_threads}"
     execute make install
@@ -655,8 +659,7 @@ if build 'jpeg-turbo' 'git'; then
     download_git 'https://github.com/imageMagick/jpeg-turbo.git'
     execute cmake -S .                                                       \
                   -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} \
-                  -DENABLE_{SHARED,STATIC}=ON                                \
-                  -G Ninja -Wno-dev
+                  -DENABLE_{SHARED,STATIC}=ON -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}"
     execute ninja "-j${cpu_threads}" install
     build_done 'jpeg-turbo' 'git'
@@ -665,31 +668,32 @@ fi
 if build 'libfpx' 'git'; then
     download_git 'https://github.com/imageMagick/libfpx.git'
     execute autoreconf -fi
-    execute ./configure --prefix="${workspace}"                \
-                        --{build,host,target}=x86_64-linux-gnu \
+    execute ./configure --prefix="${workspace}"            \
+                        --{build,host,target}="${pc_type}" \
                         --with-pic
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'libfpx' 'git'
 fi
 
-if build 'ghostscript' '10.01.2'; then
-    download 'https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10012/ghostscript-10.01.2.tar.xz'
+if build 'ghostscript' '10.02.0'; then
+    download 'https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10020/ghostscript-10.02.0.tar.xz'
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}" \
-                        --with-libiconv=/usr
+    execute ./configure --prefix="${workspace}"     \
+                        --{build,host}="${pc_type}" \
+                        --with-libiconv=native      \
+                        --with-sanitizer=address
     execute make "-j${cpu_threads}"
     execute make install
-    build_done 'ghostscript' '10.01.2'
+    build_done 'ghostscript' '10.02.0'
 fi
 
 if build 'png12' '1.2.59'; then
     download 'https://github.com/glennrp/libpng/archive/refs/tags/v1.2.59.tar.gz' 'libpng-1.2.59.tar.gz'
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}"         \
-                        --{build,host}=x86_64-linux-gnu \
-                        --with-pic                      \
-                        --with-pkgconfigdir="${workspace}"/lib/pkgconfig
+    execute ./configure --prefix="${workspace}"     \
+                        --{build,host}="${pc_type}" \
+                        --with-pic
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'png12' '1.2.59'
@@ -701,7 +705,7 @@ if build 'libwebp' 'git'; then
     execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release}                        \
                   -DWEBP_{BUILD_ANIM_UTILS,BUILD_EXTRAS,BUILD_GIF2WEBP,BUILD_IMG2WEBP,BUILD_LIBWEBPMUX}=OFF  \
                   -DWEBP_{BUILD_VWEBP,BUILD_WEBPINFO,BUILD_WEBPMUX,ENABLE_SWAP_16BIT_CSP,LINK_STATIC}=OFF    \
-                  -DWEBP_{BUILD_CWEBP,BUILD_DWEBP}=ON -DBUILD_SHARED_LIBS=ON -DZLIB_INCLUDE_DIR=/usr/include \
+                  -DWEBP_{BUILD_CWEBP,BUILD_DWEBP}=ON -DBUILD_SHARED_LIBS=OFF -DZLIB_INCLUDE_DIR=/usr/include \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
@@ -756,11 +760,11 @@ git_ver_fn 'jemalloc/jemalloc' 'T'
 if build 'jemalloc' "${g_ver}"; then
     download "https://codeload.github.com/jemalloc/jemalloc/tar.gz/refs/tags/${g_ver}" "jemalloc-${g_ver}.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}"         \
-                        --{build,host}=x86_64-linux-gnu \
-                        --disable-doc                   \
-                        --enable-autogen                \
-                        --enable-prof                   \
+    execute ./configure --prefix="${workspace}"     \
+                        --{build,host}="${pc_type}" \
+                        --disable-doc               \
+                        --enable-autogen            \
+                        --enable-prof               \
                         --enable-static
     execute make "-j${cpu_threads}"
     execute sudo make install
@@ -781,7 +785,7 @@ if build 'openjpeg' "${g_ver}"; then
 fi
 
 #
-# BEGIN IMAGEMAGICK BUILD
+# BEGIN BUILDING IMAGEMAGICK
 #
 
 echo
@@ -800,7 +804,6 @@ box_out_banner2()
     tput sgr 0
 }
 box_out_banner2 'Build ImageMagick'
-sleep 2
 
 git_ver_fn 'imagemagick/imagemagick' 'T'
 if build 'ImageMagick' "${g_ver}"; then
@@ -809,7 +812,7 @@ if build 'ImageMagick' "${g_ver}"; then
     mkdir build
     cd build || exit 1
     ../configure --prefix="${install_dir}"                        \
-                 --{build,host,target}=x86_64-linux-gnu           \
+                 --{build,host,target}="${pc_type}"               \
                  --enable-ccmalloc                                \
                  --enable-hdri                                    \
                  --enable-hugepages                               \
@@ -817,21 +820,20 @@ if build 'ImageMagick' "${g_ver}"; then
                  --enable-opencl                                  \
                  --with-dmalloc                                   \
                  --with-fpx                                       \
-                 --with-gvc                                       \
                  --with-gslib                                     \
+                 --with-gvc                                       \
                  --with-heic                                      \
                  --with-jemalloc                                  \
                  --with-modules                                   \
                  --with-perl                                      \
                  --with-pic                                       \
-                 --with-rsvg                                      \
-                 --with-tcmalloc                                  \
                  --with-pkgconfigdir="${workspace}"/lib/pkgconfig \
                  --with-quantum-depth=16                          \
+                 --with-rsvg                                      \
+                 --with-tcmalloc                                  \
                  --without-autotrace                              \
-                 PKG_CONFIG="$(type -P pkg-config)"               \
-                 PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"             \
-                 CPPFLAGS="${CPPFLAGS}"
+                 CPPFLAGS="${CPPFLAGS}"                           \
+                 PKG_CONFIG="${workspace}/bin/pkg-config"
     execute make "-j${cpu_threads}"
     execute sudo make install
 fi
