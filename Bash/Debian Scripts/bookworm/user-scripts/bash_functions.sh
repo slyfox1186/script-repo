@@ -1689,7 +1689,7 @@ cmf()
 jpgs()
 {
     clear
-    sudo find . -type f -iname '*.jpg' -exec identify -ping -format '%[width]x%[height] %[basename] ' '{}' > /tmp/image-sizes.txt \;
-    cat /tmp/image-sizes.txt | grep -Eo '[0-9]+x[0-9]+\s[A-Za-z0-9\-\_]+' | sort -h
-    sudo rm /tmp/image-sizes.txt
+    sudo find . -type f -iname '*.jpg' -exec identify -format " ${PWD}/%f: %wx%h " '{}' > /tmp/img-sizes.txt \;
+    cat /tmp/img-sizes.txt | sed 's/\s\/d/\n\/d/g' | sort -h
+    sudo rm /tmp/img-sizes.txt
 }
