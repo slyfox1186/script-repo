@@ -1415,9 +1415,9 @@ if build 'gflags' "${g_ver}"; then
     build_done 'gflags' "${g_ver}"
 fi
 
-if build 'libjxl' '0.8.1'; then
+if build 'libjxl' '0.8.2'; then
     sort_libjxl_fn
-    build_done 'libjxl' '0.8.1'
+    build_done 'libjxl' '0.8.2'
 fi
 ffmpeg_libraries+=('--enable-libjxl')
 
