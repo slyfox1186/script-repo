@@ -907,21 +907,16 @@ install_libjxl_fn()
 {
     cd "${packages}"/deb-files || exit 1
 
-    printf "\n%s\n%s\n" \
-        'Installing: libjxl' \
-        '======================'
-    if sudo dpkg -i libjxl_0.8.1_amd64.deb; then
-        sudo rm libjxl_0.8.1_amd64.deb &>/dev/null
-        echo
+    if sudo dpkg -i 'libjxl_0.8.2_amd64.deb'; then
+        sudo rm 'libjxl_0.8.2_amd64.deb' &>/dev/null
     fi
-
     sudo dpkg -i ./*.deb
 }
 
 download_libjxl_fn()
 {
-    if ! curl -A "${user_agent}" -Lso "${packages}"/libjxl.tar.gz "${1}"; then
-        fail_fn "Failed to download the libjxl archive: ${packages}/libjxl.tar.gz:Line ${LINENO}"
+    if ! curl -A "${user_agent}" -m 10 -Lso "${packages}"/libjxl.tar.gz "${1}"; then
+        fail_fn "Failed to download the libjxl archive: ${packages}/libjxl.tar.gz Line: ${LINENO}"
     fi
 }
 
@@ -929,29 +924,30 @@ sort_libjxl_fn()
 {
     local url_base url_suffix
 
-    url_base='https://github.com/libjxl/libjxl/releases/download/v0.8.1/jxl-debs-amd64'
-    url_suffix='v0.8.1.tar.gz'
+    url_base=https://github.com/libjxl/libjxl/releases/download/v0.8.2/jxl-debs-amd64
+    url_suffix=v0.8.2.tar.gz
 
-    mkdir -p "${packages}"/deb-files
-
+    if [ ! -f "${packages}"/libjxl.tar.gz ]; then
         case "${VER}" in
-                12)             libjxl_download="${url_base}-debian-bookworm-${url_suffix}";;
-                11)             libjxl_download="${url_base}-debian-bullseye-${url_suffix}";;
-                10)             libjxl_download="${url_base}-debian-buster-${url_suffix}";;
-                n/a)            libjxl_download="${url_base}-debian-sid-${url_suffix}";;
-                22.04)          libjxl_download="${url_base}-ubuntu-22.04-${url_suffix}";;
-                20.04)          libjxl_download="${url_base}-ubuntu-20.04-${url_suffix}";;
-                18.04)          libjxl_download="${url_base}-ubuntu-18.04-${url_suffix}";;
-                *)              fail_fn "Could not detect the OS version of Linux:Line ${LINENO}";;
+            12)         libjxl_download="${url_base}-debian-bookworm-${url_suffix}";;
+            11)         libjxl_download="${url_base}-debian-bullseye-${url_suffix}";;
+            10)         libjxl_download="${url_base}-debian-buster-${url_suffix}";;
+            22.04)      libjxl_download="${url_base}-ubuntu-22.04-${url_suffix}";;
+            20.04)      libjxl_download="${url_base}-ubuntu-20.04-${url_suffix}";;
+            18.04)      libjxl_download="${url_base}-ubuntu-18.04-${url_suffix}";;
+            *)          fail_fn "Unable to determine the OS architecture. Line: ${LINENO}";;
         esac
 
         # CALL THE DOWNLOAD FUNCTION FOR THE LIBJXL DEBIAN FILES
         download_libjxl_fn "${libjxl_download}"
 
         if ! tar -zxf "${packages}"/libjxl.tar.gz -C "${packages}"/deb-files --strip-components 1; then
-            fail_fn "Could not extract the libjxl archive: ${packages}/libjxl.tar.gz:Line ${LINENO}"
+            fail_fn "Could not extract the libjxl archive \"${packages}/libjxl.tar.gz\" Line: ${LINENO}"
         fi
+
+        # INSTALL THE DOWNLOADED LIBJXL DEBIAN PACKAGES
         install_libjxl_fn
+    fi
 }
 
 #
@@ -1042,13 +1038,13 @@ patch_fn()
 }
 
 #
-# INSTALL CUDA SDK-TOOLKIT
+# PROMPT THE USER TO INSTALL THE GEFORCE CUDA SDK-TOOLKIT
 #
 
 install_cuda_fn
 
 #
-# CHECK IF THE CUDA FOLDER EXISTS TO ENSURE IT WAS INSTALLED
+# CHECK IF THE CUDA FOLDER EXISTS TO DETERMINE INSTALLATION STATUS
 #
 
 iscuda="$(sudo find "${set_cuda_folder_path}" -type f -name nvcc 2>/dev/null)"
@@ -1059,10 +1055,10 @@ cuda_folder_path="$(sudo find "${set_cuda_folder_path}" -type f -name nvcc | sed
 # MAKE SURE WE USE THE CORRECT M4 FOLDER
 #
 
-export ACLOCAL_PATH='/usr/share/aclocal'
+export ACLOCAL_PATH=/usr/share/aclocal
 
 #
-# INSTALL GLOBAL TOOLS
+# INSTALL THE GLOBAL TOOLS
 #
 
 box_out_banner_global()
@@ -1104,20 +1100,20 @@ if build 'autoconf' 'latest'; then
 fi
 
 case "${OS}" in
-    Debian*)    libtool_ver='2.4.7';;
-    Ubunt*)     libtool_ver='2.4.6';;
+    Debian*)    lt_ver=2.4.7;;
+    Ubunt*)     lt_ver=2.4.6;;
     *)          fail_fn "Unable to get the OS version:Line ${LINENO}"
 esac
 
-if build 'libtool' "${libtool_ver}"; then
-    download "https://ftp.gnu.org/gnu/libtool/libtool-${libtool_ver}.tar.xz"
+if build 'libtool' "${lt_ver}"; then
+    download "https://ftp.gnu.org/gnu/libtool/libtool-${lt_ver}.tar.xz"
     execute ./configure --prefix="${workspace}"     \
                         --{build,host}=x86_64-linux-gnu \
                         --with-pic \
                         M4="${workspace}"/bin/m4
     execute make "-j${cpu_threads}"
     execute make install
-    build_done 'libtool' "${libtool_ver}"
+    build_done 'libtool' "${lt_ver}"
 fi
 
 if build 'pkg-config' '0.29.2'; then
