@@ -62,7 +62,6 @@ archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
-debug=OFF
 
 printf "\n%s\n%s\n\n" \
     "WSL2 Build Script - v${script_ver}" \
@@ -77,7 +76,7 @@ if [ ! -d "${cwd}" ]; then
 fi
 
 #
-# SET THE C+CPP COMPILERS
+# SET THE C + CXX COMPILERS
 #
 
 export CC=gcc CXX=g++
@@ -133,12 +132,12 @@ fail_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=("${add_this}" autoconf autogen automake bat bc binutils bison build-essential ccache
-      ccdiff checkinstall clang cmake cmake-extras cmake-qt-gui colordiff cpu-checker
-      curl dbus-x11 dwarves flex git jq libdmalloc-dev libelf-dev libmimalloc-dev
-      libperl-dev libssl-dev libtalloc-dev libtbbmalloc2 libtool libtool-bin lzip m4
-      meson nano nasm ninja-build shellcheck sqlite3 synaptic texinfo trash-cli unzip
-      uuid-dev wget xclip xsel yasm)
+pkgs=(autoconf autogen automake bat bc binutils bison build-essential ccache ccdiff
+      checkinstall clang cmake cmake-extras cmake-qt-gui colordiff cpu-checker curl
+      dbus-x11 dwarves flex git jq libdmalloc-dev libelf-dev libmimalloc-dev libperl-dev
+      libssl-dev libtalloc-dev libtbbmalloc2 libtool libtool-bin lzip m4 meson nano nasm
+      ninja-build shellcheck sqlite3 synaptic texinfo trash-cli unzip uuid-dev wget xclip
+      xsel yasm)
 
 for i in ${pkgs[@]}
 do
