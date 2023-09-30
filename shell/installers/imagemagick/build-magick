@@ -429,8 +429,8 @@ install_libjxl_fn()
 {
     cd "${packages}"/deb-files || exit 1
 
-    if sudo dpkg -i 'libjxl_0.8.1_amd64.deb'; then
-        sudo rm 'libjxl_0.8.1_amd64.deb' &>/dev/null
+    if sudo dpkg -i 'libjxl_0.8.2_amd64.deb'; then
+        sudo rm 'libjxl_0.8.2_amd64.deb' &>/dev/null
     fi
     sudo dpkg -i ./*.deb
 }
@@ -446,8 +446,8 @@ sort_libjxl_fn()
 {
     local url_base url_suffix
 
-    url_base=https://github.com/libjxl/libjxl/releases/download/v0.8.1/jxl-debs-amd64
-    url_suffix=v0.8.1.tar.gz
+    url_base=https://github.com/libjxl/libjxl/releases/download/v0.8.2/jxl-debs-amd64
+    url_suffix=v0.8.2.tar.gz
 
     if [ ! -f "${packages}"/libjxl.tar.gz ]; then
         case "${VER}" in
@@ -600,9 +600,9 @@ fi
 # INSTALL LIBJXL FROM DEBIAN FILES
 #
 
-if build 'libjxl' '0.8.1'; then
+if build 'libjxl' '0.8.2'; then
     sort_libjxl_fn
-    build_done 'libjxl' '0.8.1'
+    build_done 'libjxl' '0.8.2'
 fi
 
 #
