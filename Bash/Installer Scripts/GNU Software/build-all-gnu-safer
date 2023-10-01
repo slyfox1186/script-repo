@@ -91,7 +91,7 @@ install_scripts_fn()
 
 install_choice_fn()
 {
-    printf "%s\n\n%s\n\n%s\n%s\n\n" \
+    printf "\n%s\n\n%s\n\n%s\n%s\n\n" \
         'Do you want to install all of the scripts now?' \
         'You must manually remove any scripts you do not want to install before continuing.' \
         '[1] Yes' \
