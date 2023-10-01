@@ -360,7 +360,6 @@ if build 'cmake' "${g_ver}"; then
     execute ./configure --prefix="${install_dir}" --parallel="${cpu_threads}" --enable-ccache -- -DCMAKE_USE_OPENSSL=OFF
     execute make "-j${cpu_threads}"
     execute sudo make install
-    execute make clean
     build_done 'cmake' "${g_ver}"
 fi
 
@@ -372,7 +371,6 @@ if build 'ninja' "${g_ver1}"; then
         -DRE2C="${re2c_path}" -DBUILD_TESTING=OFF -G 'Unix Makefiles' -Wno-dev
     execute make "-j${cpu_threads}" -C build
     execute sudo make -C build install
-    execute make -C build clean
     build_done 'ninja' "${g_ver1}"
 fi
 
