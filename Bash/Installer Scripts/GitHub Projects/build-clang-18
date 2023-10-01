@@ -27,7 +27,7 @@ fi
 script_ver=1.1
 git_dir=llvm-project-18.0.0
 git_url=https://github.com/llvm/llvm-project.git
-cwd="${PWD}"/curl-18-build-script
+cwd="${PWD}"/llvm18-build-script
 install_dir=/usr/local
 web_repo=https://github.com/slyfox1186/script-repo
 
@@ -188,7 +188,7 @@ mkdir build
 cd build || exit 1
 cmake -S ../llvm                     \
 -G Ninja -Wno-dev                    \
--DCMAKE_install_dir="${install_dir}" \
+-DCMAKE_INSTALL_DIR="${install_dir}" \
 -DCMAKE_BUILD_TYPE=Release           \
 -DCMAKE_C_COMPILER=gcc               \
 -DCMAKE_CXX_COMPILER=g++             \
