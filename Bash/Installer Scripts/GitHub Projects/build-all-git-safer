@@ -126,18 +126,19 @@ install_choice_fn()
 
 cd "${cwd}" || exit 1
 
-scripts=(git zlib tools zstd openssl aria2 python3 clang-16)
+# RENAME FILES WITH NUMBERS 10 AND HIGHER SO THEY EXECUTE IN THE INTENDED ORDER
+files=(git zlib tools zstd openssl aria2 python3 clang-16)
 cnt=0
 
-for script in ${scripts[@]}
+for file in ${files[@]}
 do
-    let cnt=cnt+1
-    wget -U "${user_agent}" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-${script}"
-    mv "build-${script}" "0${cnt}-build-${script}"
+    ((cnt++))
+    wget -U "${user_agent}" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-${file}"
+    mv "build-${file}" "0${cnt}-build-${file}"'.sh'
 done
 
-# ASK THE USER IF THEY WANT TO INSTALL ALL OF THE SCRIPTS
-install_choice_fn
+clear
+find . -type f -name '*.sh' -exec bash -c "echo '1' | bash '{}'" \;
 
 # CLEANUP THE FILES
 cleanup_fn
