@@ -162,6 +162,7 @@ do
 done
 
 if [ -n "${missing_pkgs}" ]; then
+    clear
     echo '$ Installing missing packages'
     echo
     for i in "${missing_pkgs}"
