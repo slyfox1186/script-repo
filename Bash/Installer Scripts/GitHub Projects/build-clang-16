@@ -29,7 +29,7 @@ archive_dir=llvm-project-16.0.6
 archive_url=https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.6/${archive_dir}.src.tar.xz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
-cwd="${PWD}"/curl-16-build-script
+cwd="${PWD}"/llvm-build-script
 install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
@@ -202,7 +202,7 @@ fi
 #
 
 cd "${cwd}/${archive_dir}/build" || exit 1
-cmake -S ../llvm -DCMAKE_install_dir="${install_dir}" \
+cmake -S ../llvm -DCMAKE_INSTALL_DIR="${install_dir}" \
                  -DCMAKE_BUILD_TYPE=Release           \
                  -DCMAKE_C_COMPILER="${CC}"           \
                  -DCMAKE_CXX_COMPILER="${CXX}"        \
