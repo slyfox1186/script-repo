@@ -2,9 +2,17 @@
 
 clear
 
-cwd="${PWD}"/build-all-gnu-safer
+cwd=build-gnu-script
+workspace="${cwd}"/workspace
 web_repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
+
+if [ -d "${cwd}" ]; then
+    sudo rm -fr "${cwd}"
+fi
+mkdir -p "${cwd}"
+
+cd "${cwd}" || exit 1
 
 exit_fn()
 {
@@ -108,10 +116,9 @@ install_choice_fn()
     esac
 }
 
-cd "${cwd}" || exit 1
-
-scripts=(m4 autoconf libtool pkg-config util-linux make bash sed tar eog gawk grep nano isl wget)
+scripts=(m4 autoconf libtool make bash pkg-config sed tar gawk grep nano eog wget)
 cnt=0
+# util-linux isl
 
 for script in ${scripts[@]}
 do
@@ -124,7 +131,7 @@ done
 # install_choice_fn
 
 # RENAME FILES WITH NUMBERS 10 AND HIGHER SO THEY EXECUTE IN THE INTENDED ORDER
-files=(eog gawk grep nano isl wget)
+files=(gawk grep nano eog wget)
 cnt=9
 
 for i in 1
