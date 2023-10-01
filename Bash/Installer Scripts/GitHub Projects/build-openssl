@@ -11,9 +11,9 @@
 ##  
 ##  Enabled features: egd, fips, md2, rc5, trace, sctp, threads, and zlib
 ##
-##  Updated: 08.30.23
+##  Updated: 10.01.23
 ##
-##  Script version: 1.3
+##  Script version: 1.4
 ##
 #############################################################################
 
@@ -28,9 +28,9 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.3
-archive_dir=openssl-3.1.2
-archive_url=https://github.com/openssl/openssl/releases/download/${archive_dir}/${archive_dir}.tar.gz
+script_ver=1.4
+archive_dir=openssl-3.1.3
+archive_url="https://www.openssl.org/source/${archive_dir}.tar.gz"
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 parent_dir="${PWD}"
