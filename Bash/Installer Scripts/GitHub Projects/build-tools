@@ -278,7 +278,7 @@ git_1_fn()
 
 git_2_fn()
 {
-    gitlab_web_repo="${1}"
+    gitlab_repo="${1}"
     github_url="${2}"
 
     if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}" | jq -r '.[0].name')"; then
