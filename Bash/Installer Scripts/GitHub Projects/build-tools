@@ -11,12 +11,13 @@
 ##                - Ubuntu 23.04 / 22.04
 ##                - Debian 10 / 11 / 12
 ##
-##  Updated: 08.09.23
+##  Updated: 10.01.23
 ##
 ##  Added: The newest golang release version
 ##  Added: A new variable named debug to help with troubleshooting issues.
+##  Added: cmake gui
 ##
-##  Script version: 2.3
+##  Script version: 2.4
 ##
 ##############################################################################################
 
@@ -31,7 +32,7 @@ fi
 # CREATE SCRIPT VARIABLES
 #
 
-script_ver=2.3
+script_ver=2.4
 cwd="${PWD}"/build-tools-script
 packages="${cwd}"/packages
 install_dir=/usr/local
