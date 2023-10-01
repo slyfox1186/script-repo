@@ -80,8 +80,9 @@ install_scripts_fn()
     for i in ${scripts[@]}
     do
         if bash "${i}"; then
-            sudo find . -maxdepth 1 -type f -name "${i}" -exec mv {} completed \;
+            sudo find . -maxdepth 1 -type f -name "${i}" -exec mv '{}' completed \;
             printf "\n%s\n\n" "Script finished: ${i}"
+            sleep 1
         else
             fail_fn "Failed to install: ${i}"
         fi
@@ -123,6 +124,9 @@ do
     mv "build-${script}" "0${cnt}-build-${script}"
 done
 
+# ASK THE USER IF THEY WANT TO INSTALL ALL OF THE SCRIPTS
+install_choice_fn
+
 # RENAME FILES WITH NUMBERS 10 AND HIGHER SO THEY EXECUTE IN THE INTENDED ORDER
 files=(eog gawk grep nano isl wget)
 cnt=9
@@ -132,12 +136,11 @@ do
     for file in ${files[@]}
     do
         ((cnt++)) # << start counting here
-        mv "0${cnt}-build-${file}" "${cnt}-build-${file}" # << move the files, thus renaming them
+        mv "0${cnt}-build-${file}" "${cnt}-build-${file}"'.sh' # << move the files, thus renaming them
     done
 done
 
-# ASK THE USER IF THEY WANT TO INSTALL ALL OF THE SCRIPTS
-install_choice_fn
+find . -type f -name '*.sh' -exec bash -c "echo '1' | bash '{}'" \;
 
 # CLEANUP THE FILES
 cleanup_fn
