@@ -65,14 +65,14 @@ export CC=gcc CXX=g++
 # EXPORT COMPILER OPTIMIZATION FLAGS
 #
 
+LDFLAGS='-L/lib/"${install_dir}" -L/usr/lib/"${install_dir}" -L/usr/local/lib'
+LDFLAGS+=' -L/usr/local/lib64 -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+
 export CXXFLAGS='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
 export CFLAGS="-I/usr/include/openssl ${CXXFLAGS}"
 export CPPFLAGS='-I/usr/include/openssl -I/usr/local/include -I/usr/include'
-
 export CXXFLAGS
 export CFLAGS
-LDFLAGS='-L/lib/"${install_dir}" -L/usr/lib/"${install_dir}" -L/usr/local/lib'
-LDFLAGS+=' -L/usr/local/lib64 -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 export LDFLAGS
 
 #
