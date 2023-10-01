@@ -564,10 +564,6 @@ esac
 #
 
 git_ver_fn 'imagemagick/imagemagick' 'T'
-first="$(echo "${g_ver}" | grep -Eo '^[0-9\.]+-[0-9]')"
-last="$(echo "${g_ver}" | grep -Eo '[0-9]$')"
-g_ver="$(($last + 1))"
-g_ver="${first}${g_ver}"
 if build 'magick-libs' "${g_ver}"; then
     if [ ! -d "${packages}"/deb-files ]; then
         mkdir -p "${packages}"/deb-files
