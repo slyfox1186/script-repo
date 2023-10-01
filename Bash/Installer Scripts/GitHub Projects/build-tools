@@ -53,9 +53,10 @@ fi
 # CREATE OUTPUT DIRECTORIES
 #
 
-if [ ! -d "${packages}" ]; then
-    mkdir -p "${packages}" 
+if [ -d "${packages}" ]; then
+    sudo rm -fr "${packages}" 
 fi
+mkdir -p "${packages}"
 
 #
 # SET THE C + CPP COMPILERS
@@ -67,7 +68,7 @@ export CC=gcc CXX=g++
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O2 -march=native'
 
 #
 # SET THE PATH VARIABLE
@@ -326,7 +327,7 @@ printf "%s\n%s\n\n" \
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf automake autogen build-essential ccache cmake curl jq git libssl-dev)
+pkgs=(autoconf automake autogen build-essential ccache cmake curl jq git libssl-dev qt6-base-dev)
 
 for i in ${pkgs[@]}
 do
@@ -348,7 +349,7 @@ unset i missing_pkgs
 # MAKE SURE WE USE THE CORRECT M4 FOLDER
 #
 
-export ACLOCAL_PATH='/usr/share/aclocal'
+export ACLOCAL_PATH=/usr/share/aclocal
 
 #
 # INSTALL FROM SOURCE CODE
@@ -357,7 +358,7 @@ export ACLOCAL_PATH='/usr/share/aclocal'
 git_ver_fn '541' '2' 'T'
 if build 'cmake' "${g_ver}"; then
     download "https://gitlab.kitware.com/cmake/cmake/-/archive/v${g_ver}/cmake-v${g_ver}.tar.bz2" "cmake-${g_ver}.tar.bz2"
-    execute ./configure --prefix="${install_dir}" --parallel="${cpu_threads}" --enable-ccache -- -DCMAKE_USE_OPENSSL=OFF
+    execute ./bootstrap --qt-gui
     execute make "-j${cpu_threads}"
     execute sudo make install
     build_done 'cmake' "${g_ver}"
