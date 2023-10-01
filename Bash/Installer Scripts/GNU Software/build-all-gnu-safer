@@ -121,11 +121,11 @@ for script in ${scripts[@]}
 do
     let cnt=cnt+1
     wget -U "${user_agent}" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-${script}"
-    mv "build-${script}" "0${cnt}-build-${script}"
+    mv "build-${script}" "0${cnt}-build-${script}"'.sh'
 done
 
 # ASK THE USER IF THEY WANT TO INSTALL ALL OF THE SCRIPTS
-install_choice_fn
+# install_choice_fn
 
 # RENAME FILES WITH NUMBERS 10 AND HIGHER SO THEY EXECUTE IN THE INTENDED ORDER
 files=(eog gawk grep nano isl wget)
@@ -136,10 +136,11 @@ do
     for file in ${files[@]}
     do
         ((cnt++)) # << start counting here
-        mv "0${cnt}-build-${file}" "${cnt}-build-${file}"'.sh' # << move the files, thus renaming them
+        mv "0${cnt}-build-${file}" "${cnt}-build-${file}" # << move the files, thus renaming them
     done
 done
 
+clear
 find . -type f -name '*.sh' -exec bash -c "echo '1' | bash '{}'" \;
 
 # CLEANUP THE FILES
