@@ -140,15 +140,7 @@ do
     done
 done
 
-if find . -type f -name '*.sh' -exec bash -c "echo '1' | bash '{}'" \;
-then
-    printf "\n%s\n\n" 'All GNU scripts completed successfully!'
-    sleep 2
-else
-    printf "\n%s\n\n" 'All GNU scripts completed successfully!'
-    read -p 'Press enter to exit.'
-    exit 1
-fi
+find . -type f -name '*.sh' -exec bash -c "echo '1' | bash '{}'" \;
 
 # CLEANUP THE FILES
 cleanup_fn
