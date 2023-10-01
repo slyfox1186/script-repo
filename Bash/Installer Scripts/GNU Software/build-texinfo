@@ -24,8 +24,8 @@ fi
 #
 
 script_ver=1.0
-archive_dir=texinfo-7.0
-archive_url=https://ftp.gnu.org/gnu/texinfo/texinfo-7.0.tar.xz
+archive_dir=texinfo-7.0.3
+archive_url=https://ftp.gnu.org/gnu/texinfo/${archive_dir}.tar.xz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/texinfo-build-script
