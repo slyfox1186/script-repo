@@ -503,7 +503,7 @@ myip()
 {
     clear
     lan="$(hostname -I)"
-    wan="$(dig +short myip.opendns.com @resolver1.opendns.com)"
+    wan="$(dig +short myip.opendns.com @resolver1.opendns.com 2>/dev/null)"
     clear
     printf "%s\n%s\n\n" \
         "LAN: ${lan}" \
@@ -1212,8 +1212,8 @@ tar_xz_9()
 ## FFMPEG COMMANDS ##
 #####################
 
-ffr() { clear; bash "${1}" -b --latest --enable-gpl-and-non-free; }
-ffrv() { clear; bash -v "${1}" -b --latest --enable-gpl-and-non-free; }
+ffr() { clear; bash "${1}" --build --latest; }
+ffrv() { clear; bash -v "${1}" --build --latest; }
 
 ###################
 ## WRITE CACHING ##
@@ -1680,16 +1680,4 @@ cmf()
 
     cmake ${rel_sdir} -B build -G Ninja -Wno-dev
     ccmake ${rel_sdir}
-}
-
-##########################
-## SORT IMAGES BY WIDTH ##
-##########################
-
-jpgs()
-{
-    clear
-    sudo find . -type f -iname '*.jpg' -exec identify -format " ${PWD}/%f: %wx%h " '{}' > /tmp/img-sizes.txt \;
-    cat /tmp/img-sizes.txt | sed 's/\s\//\n\//g' | sort -h
-    sudo rm /tmp/img-sizes.txt
 }
