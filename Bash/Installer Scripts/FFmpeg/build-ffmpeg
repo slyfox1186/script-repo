@@ -293,6 +293,7 @@ git_1_fn()
     if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
+        g_ver2="$(echo "${curl_cmd}" | jq -r '.[0].tag_name' 2>/dev/null)"
         g_ver="${g_ver#cares-}"
         g_ver="${g_ver#FAAC }"
         g_ver="${g_ver#lcms}"
@@ -307,6 +308,7 @@ git_1_fn()
         g_ver="${g_ver#v}"
         g_ver1="${g_ver1#nasm-}"
         g_ver1="${g_ver1#v}"
+        g_ver2="${g_ver2#v}"
     fi
 
     echo "${github_repo%/*}-${g_ver}" >> "${ver_file_tmp}"
@@ -2502,15 +2504,29 @@ if build 'libheif' "${g_ver}"; then
     build_done 'libheif' "${g_ver}"
 fi
 
-pre_check_ver 'uclouvain/openjpeg' '1' 'T'
-if build 'openjpeg' "${g_ver1}"; then
-    download "https://codeload.github.com/uclouvain/openjpeg/tar.gz/refs/tags/${g_ver1}" "openjpeg-${g_ver1}.tar.gz"
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} -DBUILD_{TESTING,SHARED_LIBS}=ON -DBUILD_THIRDPARTY=ON \
-        -DCPACK_{BINARY_DEB,BINARY_FREEBSD,BINARY_IFW,BINARY_NSIS,BINARY_RPM,BINARY_TBZ2,BINARY_TXZ,SOURCE_RPM,SOURCE_ZIP}=ON \
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -G Ninja -Wno-dev
+pre_check_ver 'uclouvain/openjpeg' '1' 'R'
+if build 'openjpeg' "${g_ver2}"; then
+    download "https://codeload.github.com/uclouvain/openjpeg/tar.gz/refs/tags/v${g_ver2}" "openjpeg-${g_ver2}.tar.gz"
+    execute cmake -B build                              \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DBUILD_TESTING=ON                    \
+                  -DBUILD_SHARED_LIBS=ON                \
+                  -DBUILD_THIRDPARTY=ON                 \
+                  -DCPACK_BINARY_DEB=ON                 \
+                  -DCPACK_BINARY_FREEBSD=ON             \
+                  -DCPACK_BINARY_IFW=ON                 \
+                  -DCPACK_BINARY_NSIS=ON                \
+                  -DCPACK_BINARY_RPM=ON                 \
+                  -DCPACK_BINARY_TBZ2=ON                \
+                  -DCPACK_BINARY_TXZ=ON                 \
+                  -DCPACK_SOURCE_RPM=ON                 \
+                  -DCPACK_SOURCE_ZIP=ON                 \
+                  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON    \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
-    build_done 'openjpeg' "${g_ver1}"
+    build_done 'openjpeg' "${g_ver2}"
 fi
 ffmpeg_libraries+=('--enable-libopenjpeg')
 
@@ -2617,4 +2633,3 @@ cleanup_fn
 
 # SHOW EXIT MESSAGE
 exit_fn
-
