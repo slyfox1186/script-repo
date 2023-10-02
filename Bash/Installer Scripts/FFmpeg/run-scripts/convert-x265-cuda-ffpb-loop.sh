@@ -7,7 +7,7 @@ clear
 # SET THE PATH VARIABLE
 #
 
-if [ -d ${HOME}/.local/bin ]; then
+if [ -d "${HOME}/.local/bin" ]; then
     export PATH="${PATH}:${HOME}/.local/bin"
 fi
 
@@ -37,7 +37,7 @@ done
 if [ -n "${missing_pkgs}" ]; then
     echo '$ Installing missing packages'
     echo
-    for i in "${missing_pkgs}"
+    for i in "${missing_pkgs[@]}"
         do
             if ! sudo apt -y install ${i}; then
                 fail_fn 'Failed to run APT package manager.'
@@ -93,9 +93,10 @@ fi
 
 for vid in *.{mp4,mkv}
 do
-    vid_exist=${vid}
-    if [ -n "${vid_exist}" ]; then
+    if [ -n "${vid}" ]; then
         vid_list=" ${vid}"
+    else
+        return 0
     fi
     if [ -n "${vid_list}" ]; then
         clear
@@ -106,8 +107,9 @@ do
         exit 1
     fi
 done
-unset vid vid_exist vid_list
+unset vid vid_list
 
+# CREATE A TEMPORARY OUTPUT FOLDER IN THE /TMP DIRECTORY
 ff_tmp_dir="$(mktemp -d)"
 
 for vid in *.{mp4,mkv}
@@ -143,9 +145,10 @@ do
 cat <<EOF
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
+Working Dir:     ${PWD}
+
 Input File:      ${file_in}
 Output File:     ${file_out}
-Working Dir:     ${PWD}
 
 Dimensions:      ${file_width}x${file_height}
 Aspect Ratio:    ${aspect_ratio}
