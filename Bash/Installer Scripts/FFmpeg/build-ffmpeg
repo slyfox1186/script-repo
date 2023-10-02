@@ -64,7 +64,7 @@ EXTRALIBS='-ldl -lpthread -lm -lz'
 ffmpeg_libraries=()
 latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/ffmpeg-build-script
+web_repo=https://github.com/slyfox1186/script-repo
 debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
@@ -180,7 +180,7 @@ cleanup_fn()
 
 ff_ver_fn()
 {
-    printf "\n%s\n%s\n%s\n\n" \
+    printf "%s\n%s\n%s\n\n" \
         '============================================' \
         '               FFmpeg Version               ' \
         '============================================'
@@ -618,7 +618,7 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-find_java="$(sudo find /usr/lib/jvm -type d -name 'java-*-openjdk-*' | head -n1)"
+find_java="$(sudo find /usr/lib/jvm -type d -name java-*-openjdk-* | head -n1)"
 export JAVA_HOME="${find_java}"
 
 #
@@ -2503,14 +2503,14 @@ if build 'libheif' "${g_ver}"; then
 fi
 
 pre_check_ver 'uclouvain/openjpeg' '1' 'T'
-if build 'openjpeg' "${g_ver}"; then
-    download "https://codeload.github.com/uclouvain/openjpeg/tar.gz/refs/tags/${g_ver}" "openjpeg-${g_ver}.tar.gz"
+if build 'openjpeg' "${g_ver1}"; then
+    download "https://codeload.github.com/uclouvain/openjpeg/tar.gz/refs/tags/${g_ver1}" "openjpeg-${g_ver1}.tar.gz"
     execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} -DBUILD_{TESTING,SHARED_LIBS}=ON -DBUILD_THIRDPARTY=ON \
         -DCPACK_{BINARY_DEB,BINARY_FREEBSD,BINARY_IFW,BINARY_NSIS,BINARY_RPM,BINARY_TBZ2,BINARY_TXZ,SOURCE_RPM,SOURCE_ZIP}=ON \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
-    build_done 'openjpeg' "${g_ver}"
+    build_done 'openjpeg' "${g_ver1}"
 fi
 ffmpeg_libraries+=('--enable-libopenjpeg')
 
