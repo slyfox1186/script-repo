@@ -359,7 +359,7 @@ export ACLOCAL_PATH=/usr/share/aclocal
 git_ver_fn '541' '2' 'T'
 if build 'cmake' "${g_ver}"; then
     download "https://gitlab.kitware.com/cmake/cmake/-/archive/v${g_ver}/cmake-v${g_ver}.tar.bz2" "cmake-${g_ver}.tar.bz2"
-    execute ./bootstrap --qt-gui
+    execute ./bootstrap --prefix=/usr/local --enable-ccache --parallel="$(nproc --all)" --qt-gui
     execute make "-j${cpu_threads}"
     execute sudo make install
     build_done 'cmake' "${g_ver}"
