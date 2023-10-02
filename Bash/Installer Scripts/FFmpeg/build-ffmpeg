@@ -5,8 +5,8 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
-##  Script version: 2.6
-##  Last Update: 09.28.23
+##  Script version: 2.7
+##  Last Update: 10.02.23
 ##
 ##  Supported Distro:
 ##
@@ -44,7 +44,7 @@
 #
 
 script_name="${0:2}"
-script_ver=2.6
+script_ver=2.7
 ffmpeg_ver=963937e408fc68b5925f938a253cfff1d506f784
 ffmpeg_sver=963937e
 ffmpeg_url="https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/${ffmpeg_ver}.tar.gz"
@@ -59,12 +59,12 @@ cwd="${PWD}"/ffmpeg-build-script
 packages="${cwd}"/packages
 workspace="${cwd}"/workspace
 install_dir=/usr/local
-LDEXEFLAGS=
+LDEXEFLAGS=''
 EXTRALIBS='-ldl -lpthread -lm -lz'
 ffmpeg_libraries=()
 latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
-web_web_repo=https://github.com/slyfox1186/ffmpeg-build-script
+web_repo=https://github.com/slyfox1186/ffmpeg-build-script
 debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
@@ -108,30 +108,29 @@ export CC=gcc CXX=g++
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-cuda_folder_path="$(sudo find /usr/local/cuda* -type f -name nvcc | sed 's/\/bin\/nvcc//')"
+set_cuda_folder_path="$(sudo find /usr/local/cuda* -type f -name 'nvcc' | sed 's/\/bin\/nvcc//')"
 
-if [ -n "${cuda_folder_path}" ]; then
-    set_cuda_folder_path="${cuda_folder_path}"
+if [ -n "${set_cuda_folder_path}" ]; then
+    cuda_folder_path="${set_cuda_folder_path}"
 else
-    set_cuda_folder_path=/usr/local/cuda
+    cuda_folder_path=/usr/local/cuda
 fi
 
-EXTRALIBS+=" -L${set_cuda_folder_path}/targets/x86_64-linux/lib -lOpenCL"
-CXXFLAGS='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
+EXTRALIBS+=" -L${cuda_folder_path}/targets/x86_64-linux/lib -lOpenCL -L${workspace}/lib -L/usr/lib/x86_64-linux-gnu -ltesseract -lcurl"
+CXXFLAGS='-g -O2 -march=native'
 CFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2"
 CFLAGS+=" -I/usr/lib/x86_64-linux-gnu/pulseaudio -I/usr/include/openjpeg-2.5 -I${workspace}/include/CL ${CXXFLAGS}"
 CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/openjpeg-2.5"
-LDFLAGS="-L${workspace}/lib64 -L${workspace}/lib -L/usr/local/lib64 -L/usr/local/lib -L/usr/lib -L/usr/lib/x86_64-linux-gnu"
+LDFLAGS="-L${workspace}/lib64 -L${workspace}/lib -L${workspace}/lib/x86_64-linux-gnu -L/usr/local/lib64"
+LDFLAGS+=' -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 
-export CFLAGS
-export CPPFLAGS
-export CXXFLAGS
+export CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
 
 #
 # CREATE THE OUTPUT DIRECTORIES
 #
 
-mkdir -p "${packages}/deb-files" "${workspace}"
+mkdir -p "${packages}/deb-files" "${workspace}"/logs
 
 #
 # DEFINE FUNCTIONS
@@ -169,9 +168,11 @@ cleanup_fn()
         1)      sudo rm -fr "${cwd}" "${script_name}";;
         2)      echo;;
         *)
-                printf "\n%s\n\n" 'Bad user input.'
-                read -p 'Press enter to try again.'
-                echo
+                clear
+                printf "\n%s\n\n" 'Bad user input! Reverting script...'
+                sleep 3
+                unset answer
+                clear
                 cleanup_fn
                 ;;
     esac
@@ -314,9 +315,9 @@ git_1_fn()
 
 git_2_fn()
 {
-    web_repo="${1}"
+    repo="${1}"
     url="${2}"
-    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://code.videolan.org/api/v4/projects/${web_repo}/repository/${url}")"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://code.videolan.org/api/v4/projects/${repo}/repository/${url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].commit.id')"
         g_sver="$(echo "${curl_cmd}" | jq -r '.[0].commit.short_id')"
         g_sver="${g_sver::7}"
@@ -327,9 +328,9 @@ git_2_fn()
 
 git_3_fn()
 {
-    web_repo="${1}"
+    repo="${1}"
     url="${2}"
-    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.com/api/v4/projects/${web_repo}/repository/${url}")"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.com/api/v4/projects/${repo}/repository/${url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[0].commit.id')"
@@ -341,8 +342,8 @@ git_3_fn()
 
 git_4_fn()
 {
-    web_repo="${1}"
-    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.freedesktop.org/api/v4/projects/${web_repo}/repository/tags")"; then
+    repo="${1}"
+    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.freedesktop.org/api/v4/projects/${repo}/repository/tags")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
         g_ver="${g_ver#pkg-config-}"
         g_ver="${g_ver#VER-}"
@@ -351,8 +352,8 @@ git_4_fn()
 
 git_5_fn()
 {
-    web_repo="${1}"
-    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.gnome.org/api/v4/projects/${web_repo}/repository/tags")"; then
+    repo="${1}"
+    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.gnome.org/api/v4/projects/${repo}/repository/tags")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
     fi
@@ -360,8 +361,8 @@ git_5_fn()
 
 git_6_fn()
 {
-    web_repo="${1}"
-    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://salsa.debian.org/api/v4/projects/${web_repo}/repository/tags?")"; then
+    repo="${1}"
+    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://salsa.debian.org/api/v4/projects/${repo}/repository/tags?")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
     fi
@@ -538,16 +539,16 @@ gpu_arch_fn()
 
     if [ -n "${gpu_type}" ]; then
         case "${gpu_type}" in
-            1)      gpu_arch=compute_61,code=sm_61;;
-            2)      gpu_arch=compute_70,code=sm_70;;
-            3)      gpu_arch=compute_75,code=sm_75;;
-            4)      gpu_arch=compute_86,code=sm_86;;
-            5)      gpu_arch=compute_89,code=sm_89;;
-            6)      gpu_arch=compute_90,code=sm_90;;
+            1)      gpu_arch='compute_61,code=sm_61';;
+            2)      gpu_arch='compute_70,code=sm_70';;
+            3)      gpu_arch='compute_75,code=sm_75';;
+            4)      gpu_arch='compute_86,code=sm_86';;
+            5)      gpu_arch='compute_89,code=sm_89';;
+            6)      gpu_arch='compute_90,code=sm_90';;
             *)      fail_fn "Unable to define the variable \"gpu_arch\" in the function \"gpu_arch_fn\":Line ${LINENO}";;
         esac
     else
-        fail_fn "Failed to find the variable: gpu_type at line 528:Line ${LINENO}"
+        fail_fn "Failed to find the variable: gpu_type Line ${LINENO}"
     fi
 }
 
@@ -635,7 +636,7 @@ ${HOME}/.local/bin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-${set_cuda_folder_path}/bin:\
+${cuda_folder_path}/bin:\
 /snap/bin\
 "
 export PATH
@@ -734,10 +735,10 @@ cuda_download_fn()
     sudo apt update
     sudo apt -y install cuda
 
-    cuda_ver="$(cat "${set_cuda_folder_path}"/version.json | jq -r '.cuda.version')"
+    cuda_ver="$(cat "${cuda_folder_path}"/version.json | jq -r '.cuda.version')"
 
     if [ -z "${cuda_ver}" ]; then
-        fail_fn "Unable to locate the file: ${set_cuda_folder_path}/version.json:Line ${LINENO}"
+        fail_fn "Unable to locate the file: ${cuda_folder_path}/version.json:Line ${LINENO}"
     else
         export PATH="${PATH}:${cuda_path}"
     fi
@@ -754,8 +755,8 @@ install_cuda_fn()
     # CHECK IF THE CUDA FOLDER EXISTS TO ENSURE IT WAS INSTALLED
     #
 
-    iscuda="$(sudo find "${set_cuda_folder_path}" -type f -name nvcc 2>/dev/null)"
-    cuda_path="$(sudo find "${set_cuda_folder_path}" -type f -name nvcc | grep -Eo '^.*/bin?')"
+    iscuda="$(sudo find "${cuda_folder_path}" -type f -name nvcc 2>/dev/null)"
+    cuda_path="$(sudo find "${cuda_folder_path}" -type f -name nvcc | grep -Eo '^.*/bin?')"
 
     if [ -n "${iscuda}" ]; then
         printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
@@ -956,13 +957,13 @@ sort_libjxl_fn()
 
 debian_os_version()
 {
-    debian_pkgs='libncurses5-dev libncursesw5-dev libdmalloc5 libjemalloc2 libtcmalloc-minimal4 libyuv-dev libyuv-utils libyuv0 libsharp-dev'
+    debian_pkgs='libdmalloc5 libjemalloc2 libtcmalloc-minimal4 libyuv-dev libyuv-utils libyuv0 libsharp-dev'
 
     case "${VER}" in
-        n/a)            pkgs_fn "${debian_pkgs} libncurses-dev libncurses6 libncursesw6 librist-dev";;
-        12)             pkgs_fn "${debian_pkgs} librist-dev";;
-        10|11)          pkgs_fn "${debian_pkgs}";;
-        *)              fail_fn "Could not detect the Ubuntu version:Line ${LINENO}";;
+        trixie)         pkgs_fn "${debian_pkgs} libncurses-dev libncurses6 libncursesw6 librist-dev";;
+        12)             pkgs_fn "${debian_pkgs} librist-dev libncurses5-dev libncursesw5-dev";;
+        10|11)          pkgs_fn "${debian_pkgs} libncurses5-dev libncursesw5-dev";;
+        *)              fail_fn "Could not detect the Debian version:Line ${LINENO}";;
     esac
 }
 
@@ -988,25 +989,30 @@ ubuntu_os_version()
 # TEST THE OS AND ITS VERSION IF UBUNTU THEN CALL THE pkgs_fn
 #
 
-find_lsb_release="$(sudo find /usr -type f -name lsb_release)"
+find_lsb_release="$(sudo find /usr -type f -name 'lsb_release')"
 
 if [ -f /etc/os-release ]; then
     source /etc/os-release
-    OS="$NAME"
-    VER="$VERSION_ID"
-else [ -n "${find_lsb_release}" ]
+    OS_TMP="$NAME"
+    VER_TMP="$VERSION_ID"
+    CODENAME="$VERSION_CODENAME"
+    OS="$(echo "${OS_TMP}" | awk '{print $1}')"
+    VER="$(echo "${VER_TMP}" | awk '{print $1}')"
+elif [ -n "${find_lsb_release}" ]; then
     OS="$(lsb_release -d | awk '{print $2}')"
     VER="$(lsb_release -r | awk '{print $2}')"
+else
+    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
 fi
 
-if [ -z "$OS" ] || [ -z "$VER" ]; then
-    fail_fn "Failed to define either the \"OS\" and or \"VER\" variable(s):Line ${LINENO}"
+if [ -z "${VER}" ]; then
+    VER="${CODENAME}"
 fi
 
 case "${OS}" in
-    Debia*)         debian_os_version;;
-    Ubunt*)         ubuntu_os_version;;
-    *)              fail_fn "Could not detect the OS architecture.:Line ${LINENO}";
+    Debian|n/a)         debian_os_version;;
+    Ubuntu)             ubuntu_os_version;;
+    *)                  fail_fn "Could not detect the OS architecture.:Line ${LINENO}";
 esac
 
 check_python3_ver()
@@ -1047,9 +1053,9 @@ install_cuda_fn
 # CHECK IF THE CUDA FOLDER EXISTS TO DETERMINE INSTALLATION STATUS
 #
 
-iscuda="$(sudo find "${set_cuda_folder_path}" -type f -name nvcc 2>/dev/null)"
-cuda_path="$(sudo find "${set_cuda_folder_path}" -type f -name nvcc | grep -Eo '^.*/bin?')"
-cuda_folder_path="$(sudo find "${set_cuda_folder_path}" -type f -name nvcc | sed 's/\/bin\/nvcc//')"
+iscuda="$(sudo find "${cuda_folder_path}" -type f -name nvcc 2>/dev/null)"
+cuda_path="$(sudo find "${cuda_folder_path}" -type f -name nvcc | grep -Eo '^.*/bin?')"
+cuda_folder_path="$(sudo find "${cuda_folder_path}" -type f -name nvcc | sed 's/\/bin\/nvcc//')"
 
 #
 # MAKE SURE WE USE THE CORRECT M4 FOLDER
@@ -1107,9 +1113,9 @@ esac
 
 if build 'libtool' "${lt_ver}"; then
     download "https://ftp.gnu.org/gnu/libtool/libtool-${lt_ver}.tar.xz"
-    execute ./configure --prefix="${workspace}"     \
+    execute ./configure --prefix="${workspace}"         \
                         --{build,host}=x86_64-linux-gnu \
-                        --with-pic \
+                        --with-pic                      \
                         M4="${workspace}"/bin/m4
     execute make "-j${cpu_threads}"
     execute make install
@@ -1158,7 +1164,7 @@ check_python3_ver
 if [ "${python3_rm_decimals}" -lt '700' ]; then
     if build 'python3' '3.9.16'; then
         download 'https://www.python.org/ftp/python/3.9.16/Python-3.9.16.tar.xz' 'python3-3.9.16.tar.xz'
-        rm_pip_lock="$(sudo find /usr/lib/python3* -type f -name EXTERNALLY-MANAGED)"
+        rm_pip_lock="$(sudo find /usr/lib/python3* -type f -name 'EXTERNALLY-MANAGED')"
         if [ -n "${rm_pip_lock}" ]; then
             sudo rm "${rm_pip_lock}"
         fi
@@ -1179,8 +1185,11 @@ pre_check_ver 'yasm/yasm' '1' 'T'
 if build 'yasm' "${g_ver}"; then
     download "https://github.com/yasm/yasm/archive/refs/tags/v${g_ver}.tar.gz" "yasm-${g_ver}.tar.gz"
     execute autoreconf -fi
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} \
-        -DBUILD_SHARED_LIBS=OFF -G Ninja -Wno-dev
+    execute cmake -B build                              \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DBUILD_SHARED_LIBS=OFF               \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'yasm' "${g_ver}"
@@ -1189,9 +1198,9 @@ fi
 if build 'nasm' '2.16.01'; then
     download 'https://www.nasm.us/pub/nasm/stable/nasm-2.16.01.tar.xz'
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}"             \
+    execute ./configure --prefix="${workspace}"                 \
                          --{build,host,target}=x86_64-linux-gnu \
-                         --disable-pedantic                 \
+                         --disable-pedantic                     \
                          --enable-ccache
     execute make "-j${cpu_threads}"
     execute make install
@@ -1213,9 +1222,22 @@ if [ "${VER}" != '18.04' ]; then
         download "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v${g_ver}/libxml2-v${g_ver}.tar.bz2" "xml2-${g_ver}.tar.bz2"
         CFLAGS+=' -DNOLIBTOOL'
         execute ./autogen.sh
-        execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",EXPORT_COMPILE_COMMANDS=OFF,VERBOSE_MAKEFILE=OFF} \
-            -DCPACK_{BINARY_DEB,BINARY_FREEBSD,BINARY_IFW,BINARY_NSIS,BINARY_RPM,BINARY_TBZ2,BINARY_TXZ,SOURCE_{RPM,ZIP}}=ON \
-            -DBUILD_SHARED_LIBS=OFF -G Ninja -Wno-dev
+        execute cmake -B build                              \
+                      -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                      -DCMAKE_BUILD_TYPE=Release            \
+                      -DBUILD_SHARED_LIBS=OFF               \
+                      -DCMAKE_EXPORT_COMPILE_COMMANDS=OFF   \
+                      -DCMAKE_VERBOSE_MAKEFILE=OFF          \
+                      -DCPACK_BINARY_DEB=ON                 \
+                      -DCPACK_BINARY_FREEBSD=ON             \
+                      -DCPACK_BINARY_IFW=ON                 \
+                      -DCPACK_BINARY_NSIS=ON                \
+                      -DCPACK_BINARY_RPM=ON                 \
+                      -DCPACK_BINARY_TBZ2=ON                \
+                      -DCPACK_BINARY_TXZ=ON                 \
+                      -DCPACK_SOURCE_RPM=ON                 \
+                      -DCPACK_SOURCE_ZIP=ON                 \
+                      -G Ninja -Wno-dev
         execute ninja "-j${cpu_threads}" -C build
         execute ninja "-j${cpu_threads}" -C build install
         build_done 'xml2' "${g_ver}"
@@ -1228,9 +1250,9 @@ if build 'libpng' '1.6.40'; then
     download 'https://github.com/glennrp/libpng/archive/refs/tags/v1.6.40.tar.gz' 'libpng-1.6.40.tar.gz'
     execute autoupdate
     execute autoreconf -fi
-    execute ./configure --prefix="${workspace}" \
-                        --disable-shared        \
-                        --enable-{hardware-optimizations,unversioned-links}
+    execute ./configure --prefix="${workspace}"                             \
+                        --enable-{hardware-optimizations,unversioned-links} \
+                        --with-pic
     execute make "-j${cpu_threads}"
     execute make install-header-links
     execute make install-library-links
@@ -1238,15 +1260,26 @@ if build 'libpng' '1.6.40'; then
     build_done 'libpng' '1.6.40'
 fi
 
+git_ver_fn '4720790' '3' 'T'
+if build 'libtiff' "$g_ver"; then
+    download "https://gitlab.com/libtiff/libtiff/-/archive/v$g_ver/libtiff-v$g_ver.tar.bz2" "libtiff-$g_ver.tar.bz2"
+    execute ./autogen.sh
+    execute ./configure --prefix="${workspace}"         \
+                        --{build,host}=x86_64-linux-gnu \
+                        --with-pic
+    execute make "-j${cpu_threads}"
+    execute make install
+    build_done 'libtiff' "$g_ver"
+fi
+
 pre_check_ver 'nkoriyama/aribb24' '1' 'T'
 if build 'aribb24' '2.16.01'; then
     download "https://github.com/nkoriyama/aribb24/archive/refs/tags/v${g_ver}.tar.gz" "aribb24-${g_ver}.tar.gz"
     execute autoreconf -fi
-    execute ./configure --prefix="${workspace}"            \
-                        --disable-shared                   \
-                        --with-pic                         \
-                        PKG_CONFIG="$(type -P pkg-config)" \
-                        PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
+    execute ./configure --prefix="${workspace}" \
+                        --disable-shared        \
+                        --with-pic              \
+                        PKG_CONFIG="${workspace}"/bin/pkg-config
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'aribb24' '2.16.01'
@@ -1259,7 +1292,11 @@ if build 'freetype' "${g_ver1}"; then
     download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-${g_ver}/freetype-VER-${g_ver}.tar.bz2" "freetype-${g_ver1}.tar.bz2"
     extracommands=(-D{harfbuzz,png,bzip2,brotli,zlib,tests}'=disabled')
     execute ./autogen.sh
-    execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=static --strip "${extracommands[@]}"
+        execute meson setup build --prefix="${workspace}" \
+                              --buildtype=release         \
+                              --default-library=static    \
+                              --strip                     \
+                               "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
 build_done 'freetype' "${g_ver1}"
@@ -1288,7 +1325,11 @@ if [ "${VER}" != '18.04' ]; then
         download "https://github.com/harfbuzz/harfbuzz/archive/refs/tags/${g_ver}.tar.gz" "harfbuzz-${g_ver}.tar.gz"
         extracommands=(-D{benchmark,cairo,docs,glib,gobject,icu,introspection,tests}'=disabled')
         execute ./autogen.sh
-        execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=static --strip "${extracommands[@]}"
+        execute meson setup build --prefix="${workspace}" \
+                              --buildtype=release         \
+                              --default-library=static    \
+                              --strip                     \
+                               "${extracommands[@]}"
         execute ninja "-j${cpu_threads}" -C build
         execute ninja "-j${cpu_threads}" -C build install
         build_done 'harfbuzz' "${g_ver}"
@@ -1297,15 +1338,16 @@ fi
 
 if build 'c2man' 'git'; then
     download_git 'https://github.com/fribidi/c2man.git'
-    execute ./Configure -desO -D prefix="${workspace}" -D bin="${workspace}"/bin -D bash="$(type -P bash)" \
-        -D cc=/usr/bin/cc -D d_gnu=/usr/lib/x86_64-linux-gnu -D find="$(type -P find)" -D gcc=/usr/bin/gcc \
-        -D gzip="$(type -P gzip)" -D installmansrc="${workspace}"/share/man -D ldflags="${LDFLAGS}" \
-        -D less="$(type -P less)" -D libpth='/lib /usr/lib' -D uniq="$(type -P uniq)" -D tr="$(type -P tr)" \
-        -D locincpth="${workspace}/include /usr/local/include /usr/include" -D yacc="$(type -P yacc)" \
-        -D loclibpth="${workspace}/lib /usr/local/lib" -D make="$(type -P make)" -D troff="$(type -P troff)" \
-        -D more="$(type -P more)" -D osname="${OS}" -D perl="$(type -P perl)" -D privlib="${workspace}"/lib/c2man \
-        -D privlibexp="${workspace}"/lib/c2man -D sleep="$(type -P sleep)" -D tail="$(type -P tail)" \
-        -D tar="$(type -P tar)" -D uuname="$(uname -s)" -D vi="$(type -P vi)" -D zip="$(type -P zip)"
+    execute ./Configure -desO \
+                        -D prefix="${workspace}" -D bin="${workspace}"/bin -D bash="$(type -P bash)" \
+                        -D cc=/usr/bin/cc -D d_gnu=/usr/lib/x86_64-linux-gnu -D find="$(type -P find)" -D gcc=/usr/bin/gcc \
+                        -D gzip="$(type -P gzip)" -D installmansrc="${workspace}"/share/man -D ldflags="${LDFLAGS}" \
+                        -D less="$(type -P less)" -D libpth='/lib /usr/lib' -D uniq="$(type -P uniq)" -D tr="$(type -P tr)" \
+                        -D locincpth="${workspace}/include /usr/local/include /usr/include" -D yacc="$(type -P yacc)" \
+                        -D loclibpth="${workspace}/lib /usr/local/lib" -D make="$(type -P make)" -D troff="$(type -P troff)" \
+                        -D more="$(type -P more)" -D osname="${OS}" -D perl="$(type -P perl)" -D privlib="${workspace}"/lib/c2man \
+                        -D privlibexp="${workspace}"/lib/c2man -D sleep="$(type -P sleep)" -D tail="$(type -P tail)" \
+                        -D tar="$(type -P tar)" -D uuname="$(uname -s)" -D vi="$(type -P vi)" -D zip="$(type -P zip)"
     execute make depend
     execute make "-j${cpu_threads}"
     execute sudo make install
@@ -1317,7 +1359,11 @@ if build 'fribidi' "${g_ver}"; then
     download "https://github.com/fribidi/fribidi/archive/refs/tags/v${g_ver}.tar.gz" "fribidi-${g_ver}.tar.gz"
     extracommands=(-D{docs,tests}'=false')
     execute autoreconf -fi
-    execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=static --strip "${extracommands[@]}"
+        execute meson setup build --prefix="${workspace}" \
+                              --buildtype=release         \
+                              --default-library=static    \
+                              --strip                     \
+                               "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'fribidi' "${g_ver}"
@@ -1328,7 +1374,8 @@ pre_check_ver 'libass/libass' '1' 'T'
 if build 'libass' "${g_ver}"; then
     download "https://github.com/libass/libass/archive/refs/tags/${g_ver}.tar.gz" "libass-${g_ver}.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}" --disable-shared
+    execute ./configure --prefix="${workspace}" \
+                        --disable-shared
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'libass' "${g_ver}"
@@ -1339,34 +1386,43 @@ pre_check_ver 'FreeGLUTProject/freeglut' '1' 'T'
 if build 'freeglut' "${g_ver}"; then
     download "https://github.com/freeglutproject/freeglut/archive/refs/tags/v${g_ver}.tar.gz" "freeglut-${g_ver}.tar.gz"
     CFLAGS+=' -DFREEGLUT_STATIC'
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release}    \
-        -DFREEGLUT_{BUILD_SHARED_LIBS,GLES,PRINT_WARNINGS,WAYLAND}=OFF -G Ninja -Wno-dev \
-        -DFREEGLUT_{BUILD_STATIC_LIBS,PRINT_ERRORS,REPLACE_GLUT}=ON
+    execute cmake -B build                              \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DFREEGLUT_BUILD_SHARED_LIBS=OFF      \
+                  -DFREEGLUT_GLES=OFF                   \
+                  -DFREEGLUT_PRINT_WARNINGS=OFF         \
+                  -DFREEGLUT_BUILD_STATIC_LIBS=ON       \
+                  -DFREEGLUT_PRINT_ERRORS=ON            \
+                  -DFREEGLUT_REPLACE_GLUT=ON            \
+                  -DFREEGLUT_WAYLAND=ON                 \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'freeglut' "${g_ver}"
 fi
 
-git_ver_fn '4720790' '3' 'T'
-if build 'libtiff' "$g_ver"; then
-    download "https://gitlab.com/libtiff/libtiff/-/archive/v$g_ver/libtiff-v$g_ver.tar.bz2" "libtiff-$g_ver.tar.bz2"
-    execute ./autogen.sh
-    execute ./configure --prefix="${workspace}"         \
-                        --{build,host}=x86_64-linux-gnu \
-                        --disable-shared
-    execute make "-j${cpu_threads}"
-    execute make install
-    build_done 'libtiff' "$g_ver"
-fi
-
 if build 'libwebp' 'git'; then
     download_git 'https://chromium.googlesource.com/webm/libwebp' 'libwebp-git'
     execute autoreconf -fi
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release}                \
-        -DWEBP_{BUILD_ANIM_UTILS,BUILD_EXTRAS,BUILD_GIF2WEBP,BUILD_IMG2WEBP,BUILD_LIBWEBPMUX}=OFF    \
-        -DWEBP_{BUILD_VWEBP,BUILD_WEBPINFO,BUILD_WEBPMUX,ENABLE_SWAP_16BIT_CSP,LINK_STATIC}=OFF      \
-        -DWEBP_{BUILD_CWEBP,BUILD_DWEBP}=ON -DBUILD_SHARED_LIBS=ON -DZLIB_INCLUDE_DIR="${workspace}" \
-        -G Ninja -Wno-dev
+    execute cmake -B build                              \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DZLIB_INCLUDE_DIR="${workspace}"     \
+                  -DWEBP_BUILD_ANIM_UTILS=OFF           \
+                  -DWEBP_BUILD_EXTRAS=OFF               \
+                  -DWEBP_BUILD_GIF2WEBP=OFF             \
+                  -DWEBP_BUILD_IMG2WEBP=OFF             \
+                  -DWEBP_BUILD_LIBWEBPMUX=OFF           \
+                  -DWEBP_BUILD_VWEBP=OFF                \
+                  -DWEBP_BUILD_WEBPINFO=OFF             \
+                  -DWEBP_BUILD_WEBPMUX=OFF              \
+                  -DWEBP_ENABLE_SWAP_16BIT_CSP=OFF      \
+                  -DWEBP_LINK_STATIC=OFF                \
+                  -DWEBP_BUILD_CWEBP=ON                 \
+                  -DWEBP_BUILD_DWEBP=ON                 \
+                  -DBUILD_SHARED_LIBS=ON                \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'libwebp' 'git'
@@ -1378,8 +1434,12 @@ if build 'libhwy' "1.0.7"; then
     download "https://github.com/google/highway/archive/refs/tags/1.0.7.tar.gz" "libhwy-1.0.7.tar.gz"
     CFLAGS+=' -DHWY_COMPILE_ALL_ATTAINABLE' 
     CXXFLAGS+=' -DHWY_COMPILE_ALL_ATTAINABLE'
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} \
-        -DHWY_ENABLE_{EXAMPLES,TESTS}=OFF -G Ninja -Wno-dev
+    execute cmake -B build                              \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DHWY_ENABLE_EXAMPLES=OFF             \
+                  -DHWY_ENABLE_TESTS=OFF                \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'libhwy' "1.0.7"
@@ -1388,7 +1448,10 @@ fi
 pre_check_ver 'google/brotli' '1' 'T'
 if build 'brotli' "${g_ver}"; then
     download "https://github.com/google/brotli/archive/refs/tags/v${g_ver}.tar.gz" "brotli-${g_ver}.tar.gz"
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} -G Ninja -Wno-dev
+    execute cmake -B build                              \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'brotli' "${g_ver}"
@@ -1398,7 +1461,10 @@ pre_check_ver 'mm2/Little-CMS' '1' 'T'
 if build 'lcms2' "${g_ver}"; then
     download "https://github.com/mm2/Little-CMS/archive/refs/tags/lcms${g_ver}.tar.gz" "lcms2-${g_ver}.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}" --disable-shared
+    execute ./configure --prefix="${workspace}"         \
+                        --{build,host}=x86_64-linux-gnu \
+                        --with-pic                      \
+                        --with-threaded
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'lcms2' "${g_ver}"
@@ -1408,8 +1474,15 @@ ffmpeg_libraries+=('--enable-lcms2')
 pre_check_ver 'gflags/gflags' '1' 'T'
 if build 'gflags' "${g_ver}"; then
     download "https://github.com/gflags/gflags/archive/refs/tags/v${g_ver}.tar.gz" "gflags-${g_ver}.tar.gz"
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} -DINSTALL_HEADERS=ON \
-        -DBUILD_{STATIC_LIBS,gflags_LIB}=ON -DREGISTER_{BUILD_DIR,INSTALL_PREFIX}=ON -G Ninja -Wno-dev
+    execute cmake -B build                              \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DINSTALL_HEADERS=ON                  \
+                  -DBUILD_STATIC_LIBS=ON                \
+                  -DBUILD_gflags_LIB=ON                 \
+                  -DREGISTER_BUILD_DIR=ON               \
+                  -DREGISTER_INSTALL_PREFIX=ON          \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'gflags' "${g_ver}"
@@ -1424,25 +1497,51 @@ ffmpeg_libraries+=('--enable-libjxl')
 pre_check_ver 'khronosgroup/opencl-headers' '1' 'T'
 if build 'opencl-headers' "${g_ver}"; then
     download "https://github.com/KhronosGroup/OpenCL-Headers/archive/refs/tags/v${g_ver}.tar.gz" "opencl-headers-${g_ver}.tar.gz"
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} -DOPENCL_HEADERS_BUILD_CXX_TESTS=ON \
-        -DBUILD_TESTING=OFF -G Ninja -Wno-dev
+    execute cmake -B build \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DOPENCL_HEADERS_BUILD_CXX_TESTS=OFF  \
+                  -DBUILD_TESTING=OFF                   \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'opencl-headers' "${g_ver}"
 fi
 ffmpeg_libraries+=('--enable-opencl')
 
-#pre_check_ver 'tesseract-ocr/tesseract' '1' 'T'
-#if build 'tesseract' "${g_ver}"; then
-#    download "https://github.com/tesseract-ocr/tesseract/archive/refs/tags/${g_ver}.tar.gz" "tesseract-${g_ver}.tar.gz"
-#    execute ./autogen.sh
-#    execute ./configure --prefix="${workspace}" --datadir="${workspace}"/bin \
-#        --disable-{graphics,shared,tessdata-prefix} --without-curl
-#    execute make "-j${cpu_threads}"
-#    execute make install
-#    build_done 'tesseract' "${g_ver}"
-#fi
-#ffmpeg_libraries+=('--enable-libtesseract')
+pre_check_ver 'DanBloomberg/leptonica' '1' 'T'
+if build 'leptonica' '1.83.1'; then
+    download 'https://github.com/DanBloomberg/leptonica/archive/refs/tags/1.83.1.tar.gz' "leptonica-1.83.1.tar.gz"
+    execute ./autogen.sh
+    execute ./configure --prefix="${workspace}"         \
+                        --{build,host}=x86_64-linux-gnu \
+                        --with-pic                      \
+                        PKG_CONFIG="${workspace}"/bin/pkg-config
+    execute make "-j${cpu_threads}"
+    execute make install
+    build_done 'leptonica' '1.83.1'
+fi
+
+pre_check_ver 'tesseract-ocr/tesseract' '1' 'T'
+if build 'tesseract' "${g_ver}"; then
+    download "https://github.com/tesseract-ocr/tesseract/archive/refs/tags/${g_ver}.tar.gz" "tesseract-${g_ver}.tar.gz"
+    execute ./autogen.sh
+    execute ./configure --prefix="${workspace}"                      \
+                        --{build,host}=x86_64-linux-gnu              \
+                        --disable-doc                                \
+                        --with-extra-includes="${workspace}"/include \
+                        --with-extra-libraries="${workspace}"/lib    \
+                        --with-pic                                   \
+                        PKG_CONFIG="${workspace}"/bin/pkg-config     \
+                        PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
+    execute make "-j${cpu_threads}"
+    execute make install
+    if [ -f "${workspace}/lib/libtesseract.so.5.0.3" ]; then
+        execute sudo ln -sf "${workspace}/lib/libtesseract.so.5.0.3" '/usr/lib/libtesseract.so.5'
+    fi
+    build_done 'tesseract' "${g_ver}"
+fi
+ffmpeg_libraries+=('--enable-libtesseract')
 
 if build 'rubberband' 'git'; then
     download_git 'https://github.com/m-ab-s/rubberband.git'
@@ -1457,7 +1556,8 @@ if build 'zimg' "${g_ver}"; then
     execute libtoolize -fiq
     execute autoupdate
     execute autoreconf -fi
-    execute ./configure --prefix="${workspace}" --disable-shared
+    execute ./configure --prefix="${workspace}" \
+                        --disable-shared
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'zimg' "${g_ver}"
@@ -1471,7 +1571,9 @@ if build 'c-ares' "${g_ver}"; then
     download "https://github.com/c-ares/c-ares/archive/refs/tags/cares-${g_tag}.tar.gz" "c-ares-${g_ver}.tar.gz"
     execute autoreconf -fi
     execute autoupdate
-    execute ./configure --prefix="${workspace}" --disable-{shared,warnings}
+    execute ./configure --prefix="${workspace}" \
+                        --disable-shared        \
+                        --disable-warnings
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'c-ares' "${g_ver}"
@@ -1479,7 +1581,11 @@ fi
 
 if build 'lv2' 'git'; then
     download_git 'https://github.com/lv2/lv2.git'
-    execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=static --strip -Dplugins=disabled
+    execute meson setup build --prefix="${workspace}"  \
+                              --buildtype=release      \
+                              --default-library=static \
+                              --strip                  \
+                              -Dplugins=disabled
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'lv2' 'git'
@@ -1495,7 +1601,10 @@ fi
 git_ver_fn '5048975' '3' 'T'
 if build 'serd' "${g_ver}"; then
     download "https://gitlab.com/drobilla/serd/-/archive/v${g_ver}/serd-v${g_ver}.tar.bz2" "serd-${g_ver}.tar.bz2"
-    execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=static --strip
+        execute meson setup build --prefix="${workspace}" \
+                              --buildtype=release         \
+                              --default-library=static    \
+                              --strip
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'serd' "${g_ver}"
@@ -1505,7 +1614,8 @@ pre_check_ver 'pcre2project/pcre2' '1' 'T'
 if build 'pcre2' "${g_ver}"; then
     download "https://github.com/PCRE2Project/pcre2/archive/refs/tags/pcre${g_ver}.tar.gz" "pcre2-${g_ver}.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}" --disable-shared
+    execute ./configure --prefix="${workspace}" \
+                        --disable-shared
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'pcre2' "${g_ver}"
@@ -1515,7 +1625,11 @@ git_ver_fn '14889806' '3' 'B'
 if build 'zix' '0.4.0'; then
     download 'https://gitlab.com/drobilla/zix/-/archive/v0.4.0/zix-v0.4.0.tar.bz2' 'zix-0.4.0.tar.bz2'
     extracommands=(-D{benchmarks,docs,singlehtml,tests,tests_cpp}=disabled)
-    execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=static --strip "${extracommands[@]}"
+        execute meson setup build --prefix="${workspace}" \
+                              --buildtype=release         \
+                              --default-library=static    \
+                              --strip                     \
+                               "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'zix' '0.4.0'
@@ -1526,7 +1640,11 @@ if build 'sord' "${g_sver1}"; then
     CFLAGS+=" -I${workspace}/include/serd-0"
     download "https://gitlab.com/drobilla/sord/-/archive/${g_ver1}/sord-${g_ver1}.tar.bz2" "sord-${g_sver1}.tar.bz2"
     extracommands=(-D{docs,tests}=disabled)
-    execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=static --strip "${extracommands[@]}"
+        execute meson setup build --prefix="${workspace}" \
+                              --buildtype=release         \
+                              --default-library=static    \
+                              --strip                     \
+                               "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'sord' "${g_sver1}"
@@ -1536,7 +1654,11 @@ git_ver_fn '11853194' '3' 'T'
 if build 'sratom' "${g_ver}"; then
     download "https://gitlab.com/lv2/sratom/-/archive/v${g_ver}/sratom-v${g_ver}.tar.bz2" "sratom-${g_ver}.tar.bz2"
     extracommands=(-D{docs,tests}=disabled)
-    execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=static --strip "${extracommands[@]}"
+        execute meson setup build --prefix="${workspace}" \
+                              --buildtype=release         \
+                              --default-library=static    \
+                              --strip                     \
+                               "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'sratom' "${g_ver}"
@@ -1546,7 +1668,11 @@ git_ver_fn '11853176' '3' 'T'
 if build 'lilv' "${g_ver}"; then
     download "https://gitlab.com/lv2/lilv/-/archive/v${g_ver}/lilv-v${g_ver}.tar.bz2" "lilv-${g_ver}.tar.bz2"
     extracommands=(-D{docs,tests}=disabled)
-    execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=static --strip "${extracommands[@]}"
+        execute meson setup build --prefix="${workspace}" \
+                              --buildtype=release         \
+                              --default-library=static    \
+                              --strip                     \
+                               "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'lilv' "${g_ver}"
@@ -1562,7 +1688,9 @@ if build 'libmpg123' 'git'; then
     execute autoheader -f -W all
     execute automake -a -c -f -W all,no-portability
     execute autoreconf -fi
-    execute ./configure --prefix="${workspace}" --enable-static --with-cpu=x86-64
+    execute ./configure --prefix="${workspace}" \
+                        --enable-static         \
+                        --with-cpu=x86-64
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'libmpg123' 'git'
@@ -1583,8 +1711,16 @@ if build 'jemalloc' "${g_ver}"; then
     download "https://github.com/jemalloc/jemalloc/archive/refs/tags/${g_ver}.tar.gz" "jemalloc-${g_ver}.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}"           \
-                        --enable-{autogen,static,xmalloc} \
-                        --disable-{debug,doc,fill,log,shared,prof,stats}
+                        --disable-debug                   \
+                        --disable-doc                     \
+                        --disable-fill                    \
+                        --disable-log                     \
+                        --disable-shared                  \
+                        --disable-prof                    \
+                        --disable-stats                   \
+                        --enable-autogen                  \
+                        --enable-static                   \
+                        --enable-xmalloc
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'jemalloc' "${g_ver}"
@@ -1593,7 +1729,8 @@ fi
 if build 'cunit' 'git'; then
     download_git 'https://github.com/jacklicn/cunit.git'
     execute autoreconf -fi
-    execute ./configure --prefix="${workspace}" --disable-shared
+    execute ./configure --prefix="${workspace}" \
+                        --disable-shared
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'cunit' 'git'
@@ -1624,10 +1761,25 @@ pre_check_ver 'xiph/flac' '1' 'T'
 if build 'libflac' "${g_ver}"; then
     download "https://github.com/xiph/flac/archive/refs/tags/${g_ver}.tar.gz" "libflac-${g_ver}.tar.gz"
     execute ./autogen.sh
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} \
-        -DINSTALL_{CMAKE_CONFIG_MODULE,MANPAGES,PKGCONFIG_MODULES}=ON -DBUILD_{CXXLIBS,PROGRAMS}=ON \
-        -DWITH_{ASM,AVX,FORTIFY_SOURCE,STACK_PROTECTOR}=ON -DWITH_OGG=OFF -DENABLE_64_BIT_WORDS=ON \
-        -DBUILD_{DOCS,EXAMPLES,TESTING}=OFF -G Ninja -Wno-dev
+    execute cmake -B build                              \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DINSTALL_CMAKE_CONFIG_MODULE=ON      \
+                  -DINSTALL_MANPAGES=ON                 \
+                  -DINSTALL_PKGCONFIG=ON                \
+                  -DINSTALL_MODULES=ON                  \
+                  -DBUILD_CXXLIBS=ON                    \
+                  -DBUILD_PROGRAMS=ON                   \
+                  -DWITH_ASM=ON                         \
+                  -DWITH_AVX=ON                         \
+                  -DWITH_FORTIFY_SOURCE=ON              \
+                  -DWITH_STACK_PROTECTOR=ON             \
+                  -DWITH_OGG=OFF                        \
+                  -DENABLE_64_BIT_WORDS=ON              \
+                  -DBUILD_DOCS=OFF                      \
+                  -DBUILD_EXAMPLES=OFF                  \
+                  -DBUILD_TESTING=OFF                   \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'libflac' "${g_ver}"
@@ -1637,7 +1789,9 @@ pre_check_ver 'mstorsjo/fdk-aac' '1' 'T'
 if build 'libfdk-aac' '2.0.2'; then
     download 'https://gigenet.dl.sourceforge.net/project/opencore-amr/fdk-aac/fdk-aac-2.0.2.tar.gz' 'libfdk-aac-2.0.2.tar.gz'
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}" --disable-shared --enable-static
+    execute ./configure --prefix="${workspace}" \
+                        --disable-shared        \
+                        --enable-static
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'libfdk-aac' '2.0.2'
@@ -1648,8 +1802,14 @@ pre_check_ver 'xiph/ogg' '1' 'T'
 if build 'libogg' "${g_ver}"; then
     download "https://github.com/xiph/ogg/archive/refs/tags/v${g_ver}.tar.gz" "libogg-${g_ver}.tar.gz"
     execute autoreconf -fi
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} \
-        -DCPACK_{BINARY_DEB,SOURCE_ZIP}=OFF -DBUILD_{SHARED_LIBS,TESTING}=OFF -G Ninja -Wno-dev
+    execute cmake -B build                              \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DBUILD_TESTING=OFF                   \
+                  -DBUILD_SHARED_LIBS=OFF               \
+                  -DCPACK_BINARY_DEB=OFF                \
+                  -DCPACK_SOURCE_ZIP=OFF                \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'libogg' "${g_ver}"
@@ -1659,8 +1819,13 @@ pre_check_ver 'xiph/vorbis' '1' 'T'
 if build 'vorbis' "${g_ver}"; then
     download "https://github.com/xiph/vorbis/archive/refs/tags/v${g_ver}.tar.gz" "vorbis-${g_ver}.tar.gz"
     execute ./autogen.sh
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} -DBUILD_SHARED_LIBS=OFF \
-        -DOGG_{INCLUDE_DIR="${workspace}"/include,LIBRARY="${workspace}"/lib} -G Ninja -Wno-dev
+    execute cmake -B build                                 \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}"    \
+                  -DCMAKE_BUILD_TYPE=Release               \
+                  -DBUILD_SHARED_LIBS=OFF                  \
+                  -DOGG_INCLUDE_DIR="${workspace}"/include \
+                  -DOGG_LIBRARY="${workspace}"/lib         \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'vorbis' "${g_ver}"
@@ -1671,8 +1836,12 @@ pre_check_ver 'xiph/opus' '1' 'T'
 if build 'opus' "${g_ver}"; then
     download "https://github.com/xiph/opus/archive/refs/tags/v${g_ver}.tar.gz" "opus-${g_ver}.tar.gz"
     execute autoreconf -fis
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} \
-        -DBUILD_SHARED_LIBS=OFF -DCPACK_SOURCE_ZIP=OFF -G Ninja -Wno-dev
+    execute cmake -B build                              \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DBUILD_SHARED_LIBS=OFF               \
+                  -DCPACK_SOURCE_ZIP=OFF                \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'opus' "${g_ver}"
@@ -1682,7 +1851,11 @@ ffmpeg_libraries+=('--enable-libopus')
 pre_check_ver 'hoene/libmysofa' '1' 'T'
 if build 'libmysofa' "${g_ver}"; then
     download "https://github.com/hoene/libmysofa/archive/refs/tags/v${g_ver}.tar.gz" "libmysofa-${g_ver}.tar.gz"
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} -DBUILD_SHARED_LIBS=OFF -G Ninja -Wno-dev
+    execute cmake -B build                              \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DBUILD_SHARED_LIBS=OFF               \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'libmysofa' "${g_ver}"
@@ -1692,7 +1865,12 @@ ffmpeg_libraries+=('--enable-libmysofa')
 pre_check_ver 'webmproject/libvpx' '1' 'T'
 if build 'vpx' '1.13.0'; then
     download 'https://github.com/webmproject/libvpx/archive/refs/tags/v1.13.0.tar.gz' 'libvpx-1.13.0.tar.gz'
-    execute ./configure --prefix="${workspace}" --disable-unit-tests --disable-shared --disable-examples --as=yasm --enable-vp9-highbitdepth
+    execute ./configure --prefix="${workspace}" \
+                        --as=yasm               \
+                        --disable-unit-tests    \
+                        --disable-shared        \
+                        --disable-examples      \
+                        --enable-vp9-highbitdepth
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'vpx' '1.13.0'
@@ -1703,7 +1881,9 @@ git_ver_fn '8143' '6'
 g_ver="${g_ver//debian\//}"
 if build 'opencore-amr' "${g_ver}"; then
     download "https://salsa.debian.org/multimedia-team/opencore-amr/-/archive/debian/${g_ver}/opencore-amr-debian-${g_ver}.tar.bz2" "opencore-amr-${g_ver}.tar.bz2"
-    execute ./configure --prefix="${workspace}" --disable-shared --enable-static
+    execute ./configure --prefix="${workspace}" \
+                        --disable-shared        \
+                        --enable-static
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'opencore-amr' "${g_ver}"
@@ -1712,7 +1892,8 @@ ffmpeg_libraries+=('--enable-libopencore-amrnb' '--enable-libopencore-amrwb')
 
 if build 'liblame' '3.100'; then
     download 'https://zenlayer.dl.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz'
-    execute ./configure --prefix="${workspace}" --disable-shared
+    execute ./configure --prefix="${workspace}" \
+                        --disable-shared
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'liblame' '3.100'
@@ -1727,10 +1908,19 @@ if build 'libtheora' "${g_ver1}"; then
     chmod +x configure.patched
     execute mv configure.patched configure
     execute rm config.guess
-    execute curl -A "${user_agent}" -Lso config.guess 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+    execute curl -A "${user_agent}" -Lso config.guess https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess
     chmod +x config.guess
-    execute ./configure --prefix="${workspace}" --disable-{asm,examples,oggtest,spec,shared,vorbistest} \
-        --with-{ogg-includes="${workspace}"/include,ogg-libraries="${workspace}"/lib,vorbis-includes="${workspace}"/include,vorbis-libraries="${workspace}"/lib}
+    execute ./configure --prefix="${workspace}"                       \
+                        --disable-asm                                 \
+                        --disable-examples                            \
+                        --disable-oggtest                             \
+                        --disable-spec                                \
+                        --disable-shared                              \
+                        --disable-vorbistest                          \
+                        --with-ogg-includes="${workspace}"/include    \
+                        --with-ogg-libraries="${workspace}"/lib       \
+                        --with-vorbis-includes="${workspace}"/include \
+                        --with-vorbis-libraries="${workspace}"/lib
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'libtheora' "${g_ver1}"
@@ -1763,10 +1953,26 @@ if build 'av1' '61bddf1'; then
     download 'https://aomedia.googlesource.com/aom/+archive/61bddf1e5f233e048280cf33cc31f72eecc2954a.tar.gz' 'av1-61bddf1.tar.gz' 'av1'
     mkdir -p "${packages}/aom_build"
     cd "${packages}/aom_build" || exit 1
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",INSTALL_LIBDIR="${workspace}"/lib,BUILD_TYPE=Release} \
-        -DCONFIG_{ANALYZER,AV1_TEMPORAL_DENOISING,BIG_ENDIAN,COLLECT_RD_STATS,ENTROPY_STATS}=0 \
-        -DCONFIG_{AV1_DECODER,AV1_ENCODER,AV1_HIGHBITDEPTH,DENOISE,DISABLE_FULL_PIXEL_SPLIT_8X8}=1 \
-        -DBUILD_SHARED_LIBS=OFF -DENABLE_{CCACHE=1,{EXAMPLES,TESTS}=0} -G Ninja -Wno-dev "${packages}"/av1
+    execute cmake -B build                                  \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}"     \
+                  -DCMAKE_INSTALL_LIBDIR="${workspace}"/lib \
+                  -DCMAKE_BUILD_TYPE=Release                \
+                  -DBUILD_SHARED_LIBS=OFF                   \
+                  -DCONFIG_ANALYZER=0                       \
+                  -DCONFIG_AV1_TEMPORAL_DENOISING=0         \
+                  -DCONFIG_BIG_ENDIAN=0                     \
+                  -DCONFIG_COLLECT_RD_STATS=0               \
+                  -DCONFIG_ENTROPY_STATS=0                  \
+                  -DCONFIG_AV1_DECODER=1                    \
+                  -DCONFIG_AV1_ENCODER=1                    \
+                  -DCONFIG_AV1_HIGHBITDEPTH=1               \
+                  -DCONFIG_DENOISE=1                        \
+                  -DCONFIG_DISABLE_FULL_PIXEL_SPLIT_8X8=1   \
+                  -DENABLE_CCACHE=1                         \
+                  -DENABLE_EXAMPLES=0                       \
+                  -DENABLE_TESTS=0                          \
+                  -G Ninja -Wno-dev                         \
+                  "${packages}"/av1
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'av1' '61bddf1'
@@ -1777,7 +1983,11 @@ pre_check_ver '198' '2' 'T'
 if build 'dav1d' "${g_ver1}"; then
     download "https://code.videolan.org/videolan/dav1d/-/archive/${g_ver1}/dav1d-${g_ver1}.tar.bz2"
     extracommands=(-D{enable_tests,logging}'=false')
-    execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=static --strip "${extracommands[@]}"
+    execute meson setup build --prefix="${workspace}"  \
+                              --buildtype=release      \
+                              --default-library=static \
+                              --strip                  \
+                               "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'dav1d' "${g_ver1}"
@@ -1787,7 +1997,7 @@ ffmpeg_libraries+=('--enable-libdav1d')
 # RAV1E FAILS TO BUILD ON UBUNTU BIONIC
 if [ "${VER}" != '18.04' ]; then
     pre_check_ver 'xiph/rav1e' '1' 'T'
-    if build 'rav1e' 'p20230905'; then
+    if build 'rav1e' 'p20230926'; then
         echo '$ Installing RustUp'
         curl -A "${user_agent}" -sSf --proto '=https' --tlsv1.2 'https://sh.rustup.rs' | sh -s -- -y &>/dev/null
         source "${HOME}"/.cargo/env
@@ -1798,9 +2008,12 @@ if [ "${VER}" != '18.04' ]; then
         fi
         rm -fr "${HOME}"/.cargo/registry/index/* "${HOME}"/.cargo/.package-cache
         execute cargo install --version '0.9.24+cargo-0.73.0' cargo-c
-        download 'https://github.com/xiph/rav1e/archive/refs/tags/p20230905.tar.gz' 'rav1e-p20230905.tar.gz'
-        execute cargo cinstall --prefix="${workspace}" --library-type=staticlib --crt-static --release
-        build_done 'rav1e' 'p20230905'
+        download 'https://github.com/xiph/rav1e/archive/refs/tags/p20230926.tar.gz' 'rav1e-p20230926.tar.gz'
+        execute cargo cinstall --prefix="${workspace}"  \
+                               --library-type=staticlib \
+                               --crt-static             \
+                               --release
+        build_done 'rav1e' 'p20230926'
     fi
     ffmpeg_libraries+=('--enable-librav1e')
 fi
@@ -1808,9 +2021,16 @@ fi
 pre_check_ver 'AOMediaCodec/libavif' '1' 'T'
 if build 'avif' "${g_ver}"; then
     download "https://github.com/AOMediaCodec/libavif/archive/refs/tags/v${g_ver}.tar.gz" "avif-${g_ver}.tar.gz"
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release}   \
-        -DBUILD_SHARED_LIBS=OFF -DAVIF_{CODEC_AOM,CODEC_AOM_DECODE,CODEC_AOM_ENCODE}=ON \
-        -DAVIF_{ENABLE_GTEST,ENABLE_WERROR}=OFF -G Ninja -Wno-dev
+    execute cmake -B build                              \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DBUILD_SHARED_LIBS=OFF               \
+                  -DAVIF_CODEC_AOM=ON                   \
+                  -DAVIF_CODEC_AOM_DECODE=ON            \
+                  -DAVIF_CODEC_AOM_ENCODE=ON            \
+                  -DAVIF_ENABLE_GTEST=OFF               \
+                  -DAVIF_ENABLE_WERROR=OFF              \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'avif' "${g_ver}"
@@ -1820,7 +2040,8 @@ pre_check_ver 'ultravideo/kvazaar' '1' 'T'
 if build 'kvazaar' "${g_ver}"; then
     download_git 'https://github.com/ultravideo/kvazaar.git'
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}" --disable-shared
+    execute ./configure --prefix="${workspace}" \
+                        --disable-shared
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'kvazaar' "${g_ver}"
@@ -1831,7 +2052,9 @@ git_ver_fn '76' '2' 'T'
 if build 'libdvdread' "${g_ver1}"; then
     download "https://code.videolan.org/videolan/libdvdread/-/archive/${g_ver1}/libdvdread-${g_ver1}.tar.bz2"
     execute autoreconf -fi
-    execute ./configure --prefix="${workspace}" --disable-{apidoc,shared}
+    execute ./configure --prefix="${workspace}" \
+                        --disable-apidoc        \
+                        --disable-shared
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'libdvdread' "${g_ver1}"
@@ -1841,7 +2064,8 @@ git_ver_fn '363' '2' 'T'
 if build 'udfread' "${g_ver1}"; then
     download "https://code.videolan.org/videolan/libudfread/-/archive/${g_ver1}/libudfread-${g_ver1}.tar.bz2"
     execute autoreconf -fi
-    execute ./configure --prefix="${workspace}" --disable-shared
+    execute ./configure --prefix="${workspace}" \
+                        --disable-shared
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'udfread' "${g_ver1}"
@@ -1852,8 +2076,10 @@ if build 'libbluray' "${g_ver1}"; then
     download "https://code.videolan.org/videolan/libbluray/-/archive/${g_ver1}/${g_ver1}.tar.gz" "libbluray-${g_ver1}.tar.gz"
     execute autoreconf -fi
     execute ./bootstrap
-    execute ./configure --prefix="${workspace}"                  \
-                        --disable-{extra-warnings,shared,werror} \
+    execute ./configure --prefix="${workspace}"  \
+                        --disable-extra-warnings \
+                        --disable-shared         \
+                        --disable-werror         \
                         --without-libxml2
     execute make "-j${cpu_threads}"
     execute make install
@@ -1867,7 +2093,8 @@ if build 'zenlib' "${g_ver}"; then
     download "https://github.com/MediaArea/ZenLib/archive/refs/tags/v${g_ver}.tar.gz" "zenlib-${g_ver}.tar.gz"
     cd Project/GNU/Library || exit 1
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}" --disable-shared
+    execute ./configure --prefix="${workspace}" \
+                        --disable-shared
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'zenlib' "${g_ver}"
@@ -1878,7 +2105,8 @@ if build 'mediainfolib' "${g_ver}"; then
     download "https://github.com/MediaArea/MediaInfoLib/archive/refs/tags/v${g_ver}.tar.gz" "mediainfolib-${g_ver}.tar.gz"
     cd Project/GNU/Library || exit 1
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}" --disable-shared
+    execute ./configure --prefix="${workspace}" \
+                        --disable-shared
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'mediainfolib' "${g_ver}"
@@ -1889,7 +2117,8 @@ if build 'mediainfo-cli' "${g_ver}"; then
     download "https://github.com/MediaArea/MediaInfo/archive/refs/tags/v${g_ver}.tar.gz" "mediainfo-cli-${g_ver}.tar.gz"
     cd Project/GNU/CLI || exit 1
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}" --enable-staticlibs
+    execute ./configure --prefix="${workspace}" \
+                        --enable-staticlibs
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'mediainfo-cli' "${g_ver}"
@@ -1908,12 +2137,13 @@ ffmpeg_libraries+=('--enable-libvidstab')
 pre_check_ver 'dyne/frei0r' '1' 'T'
 if build 'frei0r' "${g_ver}"; then
     download "https://github.com/dyne/frei0r/archive/refs/tags/v${g_ver}.tar.gz" "frei0r-${g_ver}.tar.gz"
-    which gcc-ranlib &>/dev/null && gcc_rlib="$(type -P gcc-ranlib)"
-    which gcc-ranlib-11 &>/dev/null && gcc_rlib="$(type -P gcc-ranlib-11)"
-    which gcc-ranlib-12 &>/dev/null && gcc_rlib="$(type -P gcc-ranlib-12)"
-    which gcc-ranlib-13 &>/dev/null && gcc_rlib="$(type -P gcc-ranlib-13)"
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release,CXX_COMPILER_RANLIB="${gcc_rlib}",EXPORT_COMPILE_COMMANDS=ON} \
-        -DBUILD_SHARED_LIBS=OFF -DWITHOUT_OPENCV=OFF -G Ninja -Wno-dev
+    execute cmake -B build                              \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DBUILD_SHARED_LIBS=OFF               \
+                  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON    \
+                  -DWITHOUT_OPENCV=OFF                  \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'frei0r' "${g_ver}"
@@ -1934,7 +2164,10 @@ ffmpeg_libraries+=('--enable-amf')
 pre_check_ver 'gpac/gpac' '1' 'T'
 if build 'gpac' "${g_ver}"; then
     download_git 'https://github.com/gpac/gpac.git'
-    execute sudo ./configure --prefix="${workspace}" --enable-gprof --static-{bin,modules} --extra-cflags="${CFLAGS}"
+    execute sudo ./configure --prefix="${workspace}" \
+                        --enable-gprof               \
+                        --static-bin                 \
+                        --static-modules
     execute sudo make "-j${cpu_threads}"
     execute sudo make install
     build_done 'gpac' "${g_ver}"
@@ -1943,8 +2176,13 @@ fi
 pre_check_ver 'openvisualcloud/svt-hevc' '1' 'T'
 if build 'svt-hevc' "${g_ver}"; then
     download "https://github.com/OpenVisualCloud/SVT-HEVC/archive/refs/tags/v${g_ver}.tar.gz" "svt-hevc-${g_ver}.tar.gz"
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} \
-        -DBUILD_SHARED_LIBS=OFF -DYASM_EXE="${workspace}"/bin/yasm -DNATIVE=ON -G Ninja -Wno-dev
+    execute cmake -B build                              \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DBUILD_SHARED_LIBS=OFF               \
+                  -DYASM_EXE="${workspace}"/bin/yasm    \
+                  -DNATIVE=ON                           \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'svt-hevc' "${g_ver}"
@@ -1955,11 +2193,20 @@ fi
 git_ver_fn '24327400' '3' 'T'
 if build 'svt-av1' '1.4.0'; then
     download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v1.4.0/SVT-AV1-v1.4.0.tar.bz2' 'svt-av1-1.4.0.tar.bz2'
-    execute cmake -S . -B Build/linux                                              \
-                       -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release}  \
-                       -DBUILD_{APPS,DEC,ENC}=ON -DBUILD_{SHARED_LIBS,TESTING}=OFF \
-                       -DENABLE_{NASM=ON,AVX512=ON} -DSVT_AV1_{LTO=ON,PGO=OFF}     \
-                       -DNATIVE=ON -G Ninja -Wno-dev
+    execute cmake -S . -B Build/linux                        \
+                       -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                       -DCMAKE_BUILD_TYPE=Release            \
+                       -DBUILD_APPS=ON                       \
+                       -DBUILD_DEC=ON                        \
+                       -DBUILD_ENC=ON                        \
+                       -DBUILD_SHARED_LIBS=OFF               \
+                       -DBUILD_TESTING=OFF                   \
+                       -DENABLE_NASM=ON                      \
+                       -DENABLE_AVX512=ON                    \
+                       -DSVT_AV1_LTO=ON                      \
+                       -DSVT_AV1_PGO=OFF                     \
+                       -DNATIVE=ON                           \
+                       -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C Build/linux
     execute ninja "-j${cpu_threads}" -C Build/linux install
     cp -f Build/linux/SvtAv1Enc.pc "${workspace}"/lib/pkgconfig
@@ -1969,9 +2216,15 @@ fi
 ffmpeg_libraries+=('--enable-libsvtav1')
 
 git_ver_fn '536' '2' 'B'
+g_sver="${g_ver::8}"
 if build 'x264' "${g_sver}"; then
     download "https://code.videolan.org/videolan/x264/-/archive/${g_ver}/x264-${g_ver}.tar.bz2" "x264-${g_sver}.tar.bz2"
-    execute ./configure --prefix="${workspace}" --bit-depth=all --chroma-format=all --enable-{gprof,static,strip}
+    execute ./configure --prefix="${workspace}" \
+                        --bit-depth=all         \
+                        --chroma-format=all     \
+                        --enable-gprof          \
+                        --enable-static         \
+                        --enable-strip
     execute sudo make "-j${cpu_threads}"
     execute sudo make install
     execute sudo make install-lib-static
@@ -1979,8 +2232,12 @@ if build 'x264' "${g_sver}"; then
 fi
 ffmpeg_libraries+=('--enable-libx264')
 
-if build 'x265' '8ee01d4'; then
-    download 'https://bitbucket.org/multicoreware/x265_git/get/8ee01d45b05cdbc9da89b884815257807a514bc8.tar.bz2' 'x265-8ee01d4.tar.bz2'
+# ENTER A SNAPSHOT ID FOR X265
+g_ver=8ee01d45b05cdbc9da89b884815257807a514bc8
+g_sver="${g_ver::7}"
+
+if build 'x265' "${g_sver}"; then
+    download "https://bitbucket.org/multicoreware/x265_git/get/${g_ver}.tar.bz2" "x265-${g_sver}.tar.bz2"
     cd build/linux || exit 1
     rm -fr {8,10,12}bit 2>/dev/null
     mkdir -p {8,10,12}bit
@@ -1993,19 +2250,27 @@ if build 'x265' '8ee01d4'; then
     execute ninja "-j${cpu_threads}"
     echo '$ making 10bit binaries'
     cd ../10bit || exit 1
-    execute cmake ../../../source                                        \
-        -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release}       \
-        -DHIGH_BIT_DEPTH=ON -DEXPORT_C_API=OFF -DENABLE_{SHARED,CLI}=OFF \
-        -G Ninja -Wno-dev
+    execute cmake ../../../source                       \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DHIGH_BIT_DEPTH=ON                   \
+                  -DEXPORT_C_API=OFF                    \
+                  -DENABLE_SHARED=OFF                   \
+                  -DENABLE_CLI=OFF                      \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}"
     echo '$ making 8bit binaries'
     cd ../8bit || exit 1
     ln -sf ../10bit/libx265.a libx265_main10.a
     ln -sf ../12bit/libx265.a libx265_main12.a
-    execute cmake ../../../source                                    \
-        -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release}   \
-        -DEXTRA_{LIB='x265_main10.a;x265_main12.a',LINK_FLAGS='-L.'} \
-        -DLINKED_{10,12}BIT=ON -G Ninja -Wno-dev
+    execute cmake ../../../source                           \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}"     \
+                  -DCMAKE_BUILD_TYPE=Release                \
+                  -DEXTRA_LIB='x265_main10.a;x265_main12.a' \
+                  -DEXTRA_LINK_FLAGS='-L.'                  \
+                  -DLINKED_10BIT=ON                         \
+                  -DLINKED_12BIT=ON                         \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}"
 
     mv libx265.a libx265_main.a
@@ -2034,7 +2299,7 @@ EOF
         fail_fn "The sript could not located the file \"${workspace}/lib/${x265_lib}\" and needs to be updated.:Line ${LINENO}"
     fi
 
-    build_done 'x265' '8ee01d4'
+    build_done 'x265' "${g_sver}"
 fi
 ffmpeg_libraries+=('--enable-libx265')
 
@@ -2057,8 +2322,8 @@ if [ -n "${iscuda}" ]; then
         build_done 'nv-codec-headers' '12.0.16.0'
     fi
 
-    CFLAGS+=" -I${set_cuda_folder_path}/include"
-    LDFLAGS+=" -L${set_cuda_folder_path}/lib64"
+    CFLAGS+=" -I${cuda_folder_path}/include"
+    LDFLAGS+=" -L${cuda_folder_path}/lib64"
     ffmpeg_libraries+=(--enable-{cuda-nvcc,cuda-llvm,cuvid,nvenc})
 
     if [ -n "${LDEXEFLAGS}" ]; then
@@ -2092,10 +2357,13 @@ ffmpeg_libraries+=('--enable-libsrt')
 pre_check_ver 'avisynth/avisynthplus' '1' 'T'
 if build 'avisynth' "${g_ver}"; then
     download "https://github.com/AviSynth/AviSynthPlus/archive/refs/tags/v${g_ver}.tar.gz" "avisynth-${g_ver}.tar.gz"
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} -DHEADERS_ONLY=ON -G 'Unix Makefiles' -Wno-dev
-    execute make "-j${cpu_threads}" -C build VersionGen install
+    execute cmake -B avisynth-build                     \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DHEADERS_ONLY=OFF
+    execute make "-j${cpu_threads}" -C avisynth-build VersionGen install
     build_done 'avisynth' "${g_ver}"
 fi
+CFLAGS+=" -I${workspace}/include/avisynth"
 ffmpeg_libraries+=('--enable-avisynth')
 
 pre_check_ver 'vapoursynth/vapoursynth' '1' 'R'
@@ -2118,8 +2386,11 @@ if [ "${VER}" != '22.04' ]; then
     pre_check_ver 'cyanreg/cyanrip' '1' 'T'
     if build 'cyanrip' "${g_ver}"; then
         download "https://github.com/cyanreg/cyanrip/archive/refs/tags/v${g_ver}.tar.gz" "cyanrip-${g_ver}.tar.gz"
-        execute meson setup build --prefix="${workspace}" --buildtype=release --default-library=shared --strip \
-            -Dpkg_config_path="${workspace}/lib/pkgconfig"
+    execute meson setup build --prefix="${workspace}"  \
+                              --buildtype=release      \
+                              --default-library=static \
+                              --strip                  \
+                              -Dpkg_config_path="${workspace}"/lib/pkgconfig
         execute ninja -C build "-j${cpu_threads}"
         execute ninja -C build "-j${cpu_threads}" install
         build_done 'cyanrip' "${g_ver}"
@@ -2128,12 +2399,19 @@ fi
 
 if build 'libgav1' 'git'; then
     download_git 'https://chromium.googlesource.com/codecs/libgav1' 'libgav1-git'
-    mkdir -p 'libgav1_build'
     execute git clone -b 20220623.0 --depth 1 https://github.com/abseil/abseil-cpp.git third_party/abseil-cpp
-    execute cmake -B libgav1_build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release,EXPORT_COMPILE_COMMANDS=ON,INSTALL_SBINDIR=sbin} \
-        -DBUILD_SHARED_LIBS=OFF -DABSL_{ENABLE_INSTALL,PROPAGATE_CXX_STD}=ON -DLIBGAV1_ENABLE_TESTS=OFF -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C libgav1_build
-    execute ninja "-j${cpu_threads}" -C libgav1_build install
+    execute cmake -B build                              \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON    \
+                  -DCMAKE_INSTALL_SBINDIR=sbin          \
+                  -DBUILD_SHARED_LIBS=OFF               \
+                  -DABSL_ENABLE_INSTALL=ON              \
+                  -DABSL_PROPAGATE_CXX_STD=ON           \
+                  -DLIBGAV1_ENABLE_TESTS=OFF            \
+                  -G Ninja -Wno-dev
+    execute ninja "-j${cpu_threads}" -C build
+    execute ninja "-j${cpu_threads}" -C build install
     build_done 'libgav1' 'git'
 fi
 
@@ -2187,12 +2465,38 @@ if build 'libheif' "${g_ver}"; then
         *)                                  fail_fn "Unable to vet the OS version inside the libheif repository:Line ${LINENO}";;
     esac
     third_party="${packages}/libheif-${g_ver}/third-party"
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} -DBUILD_SHARED_LIBS=OFF -G Ninja -Wno-dev \
-        -DWITH_{AOM_DECODER,AOM_ENCODER,DAV1D,LIBDE265,LIBSHARPYUV,RAV1E,RAV1E_PLUGIN,SvtEnc,SvtEnc_PLUGIN,X265}=ON -DWITH_GDK_PIXBUF="${pixbuf_var}" \
-        -DWITH_{EXAMPLES,REDUCED_VISIBILITY}=OFF -DSvtEnc_{INCLUDE_DIR="${workspace}"/include,LIBRARY="${workspace}"/lib} \
-        -DAOM_{INCLUDE_DIR="${workspace}"/include,LIBRARY="${workspace}"/lib} -DDAV1D_{INCLUDE_DIR="${workspace}"/include,LIBRARY="${workspace}"/lib} \
-        -DRAV1E_{INCLUDE_DIR="${workspace}"/include/rav1e,LIBRARY="${workspace}"/lib} -DLIBDE265_{INCLUDE_DIR="${workspace}"/include,LIBRARY="${workspace}"/lib} \
-        -DX265_{INCLUDE_DIR="${workspace}"/include,LIBRARY="${workspace}"/lib} -DLIBSHARPYUV_{INCLUDE_DIR="${workspace}"/include/webp,LIBRARY="${workspace}"/lib}
+    execute cmake -B build                                              \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}"                 \
+                  -DCMAKE_BUILD_TYPE=Release                            \
+                  -DBUILD_SHARED_LIBS=OFF                               \
+                  -DWITH_AOM_DECODER=ON                                 \
+                  -DWITH_AOM_ENCODER=ON                                 \
+                  -DWITH_DAV1D=ON                                       \
+                  -DWITH_LIBDE265=ON                                    \
+                  -DWITH_LIBSHARPYUV=ON                                 \
+                  -DWITH_RAV1E=ON                                       \
+                  -DWITH_RAV1E_PLUGIN=ON                                \
+                  -DWITH_SvtEnc=ON                                      \
+                  -DWITH_SvtEnc_PLUGIN=ON                               \
+                  -DWITH_SvtEnc_X265=ON                                 \
+                  -DWITH_GDK_PIXBUF="${pixbuf_var}"=OFF                 \
+                  -DWITH_EXAMPLES=OFF                                   \
+                  -DWITH_REDUCED_VISIBILITY=OFF                         \
+                  -DSvtEnc_INCLUDE_DIR="${workspace}"/include           \
+                  -DSvtEnc_LIBRARY="${workspace}"/lib                   \
+                  -DAOM_INCLUDE_DIR="${workspace}"/include              \
+                  -DAOM_LIBRARY="${workspace}"/lib                      \
+                  -DDAV1D_INCLUDE_DIR="${workspace}"/include            \
+                  -DDAV1D_LIBRARY="${workspace}"/lib                    \
+                  -DRAV1E_INCLUDE_DIR="${workspace}"/include/rav1e      \
+                  -DRAV1E_LIBRARY="${workspace}"/lib                    \
+                  -DLIBDE265_INCLUDE_DIR="${workspace}"/include         \
+                  -DLIBDE265_LIBRARY="${workspace}"/lib                 \
+                  -DX265_INCLUDE_DIR="${workspace}"/include             \
+                  -DX265_LIBRARY="${workspace}"/lib                     \
+                  -DLIBSHARPYUV_INCLUDE_DIR="${workspace}"/include/webp \
+                  -DLIBSHARPYUV_LIBRARY="${workspace}"/lib              \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'libheif' "${g_ver}"
@@ -2313,3 +2617,4 @@ cleanup_fn
 
 # SHOW EXIT MESSAGE
 exit_fn
+
