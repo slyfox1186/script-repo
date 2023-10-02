@@ -105,6 +105,10 @@ ff_tmp_dir="$(mktemp -d)"
 
 for vid in *.{mp4,mkv}
 do
+    if [ -z "${vid}" ]; then
+        return 0
+    fi
+
     # STORES THE CURRENT VIDEO WIDTH, ASPECT RATIO, PROFILE, BIT RATE, AND TOTAL DURATION IN VARIABLES FOR USE LATER IN THE FFMPEG COMMAND LINE
     aspect_ratio="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 -pretty "${vid}" 2>/dev/null)"
     file_length="$(ffprobe -hide_banner -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${vid}" 2>/dev/null)"
