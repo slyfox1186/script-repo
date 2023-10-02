@@ -66,7 +66,6 @@ unset pip_tmp_dir
 #
 
 del_this="$(du -ah --max-depth=1 | grep -Eo '[\/].*\(x265\)\.(mp4|mkv)$' | grep -Eo '[A-Za-z0-9].*\(x265\)\.m(p4|kv)$')"
-clear
 
 if [ -n "${del_this}" ]; then
     printf "%s\n\n%s\n%s\n%s\n\n" \
@@ -94,7 +93,7 @@ fi
 
 for vid in *.{mp4,mkv}
 do
-    vid_exist="$(echo ${vid})"
+    vid_exist=${vid}
     if [ -n "${vid_exist}" ]; then
         vid_list=" ${vid}"
     fi
@@ -136,13 +135,17 @@ do
     bs="$(bc <<< "scale=2 ; ${br} * 2")"
     bufsize="${bs::-3}"
     length="$(( ${file_length::-7} / 60 ))"
-    length+=' Minutes'
+
+#
+# PRINT THE VIDEO STATS IN THE TERMINAL
+#
 
 cat <<EOF
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 Input File:      ${file_in}
 Output File:     ${file_out}
+Working Dir:     ${PWD}
 
 Dimensions:      ${file_width}x${file_height}
 Aspect Ratio:    ${aspect_ratio}
@@ -151,7 +154,7 @@ Maxrate:         ${maxrate}k
 Bufsize:         ${bufsize}k
 Bitrate:         ${bitrate}k
 
-Length:          ${length}
+Length:          ${length} mins
 
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 EOF
