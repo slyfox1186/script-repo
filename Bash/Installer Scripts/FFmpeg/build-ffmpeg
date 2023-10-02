@@ -1313,7 +1313,9 @@ if build 'fontconfig' "${g_ver}"; then
     execute autoupdate
     LDFLAGS+=' -DLIBXML_STATIC'
     sed -i 's|Cflags:|& -DLIBXML_STATIC|' fontconfig.pc.in
-    execute ./configure --prefix="${workspace}" --disable-{docs,shared}
+    execute ./configure --prefix="${workspace}" \
+                        --disable-docs          \
+                        --disable-shared
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'fontconfig' "${g_ver}"
@@ -1340,16 +1342,37 @@ fi
 
 if build 'c2man' 'git'; then
     download_git 'https://github.com/fribidi/c2man.git'
-    execute ./Configure -desO \
-                        -D prefix="${workspace}" -D bin="${workspace}"/bin -D bash="$(type -P bash)" \
-                        -D cc=/usr/bin/cc -D d_gnu=/usr/lib/x86_64-linux-gnu -D find="$(type -P find)" -D gcc=/usr/bin/gcc \
-                        -D gzip="$(type -P gzip)" -D installmansrc="${workspace}"/share/man -D ldflags="${LDFLAGS}" \
-                        -D less="$(type -P less)" -D libpth='/lib /usr/lib' -D uniq="$(type -P uniq)" -D tr="$(type -P tr)" \
-                        -D locincpth="${workspace}/include /usr/local/include /usr/include" -D yacc="$(type -P yacc)" \
-                        -D loclibpth="${workspace}/lib /usr/local/lib" -D make="$(type -P make)" -D troff="$(type -P troff)" \
-                        -D more="$(type -P more)" -D osname="${OS}" -D perl="$(type -P perl)" -D privlib="${workspace}"/lib/c2man \
-                        -D privlibexp="${workspace}"/lib/c2man -D sleep="$(type -P sleep)" -D tail="$(type -P tail)" \
-                        -D tar="$(type -P tar)" -D uuname="$(uname -s)" -D vi="$(type -P vi)" -D zip="$(type -P zip)"
+    execute ./Configure -desO                                                               \
+                        -D bash="$(type -P bash)"                                           \
+                        -D bin="${workspace}"/bin                                           \
+                        -D cc=/usr/bin/cc                                                   \
+                        -D d_gnu=/usr/lib/x86_64-linux-gnu                                  \
+                        -D find="$(type -P find)"                                           \
+                        -D gcc=/usr/bin/gcc                                                 \
+                        -D gzip="$(type -P gzip)"                                           \
+                        -D installmansrc="${workspace}"/share/man                           \
+                        -D ldflags="${LDFLAGS}"                                             \
+                        -D less="$(type -P less)"                                           \
+                        -D libpth='/lib /usr/lib'                                           \
+                        -D locincpth="${workspace}/include /usr/local/include /usr/include" \
+                        -D loclibpth="${workspace}/lib /usr/local/lib"                      \
+                        -D make="$(type -P make)"                                           \
+                        -D more="$(type -P more)"                                           \
+                        -D osname="${OS}"                                                   \
+                        -D perl="$(type -P perl)"                                           \
+                        -D prefix="${workspace}"                                            \
+                        -D privlib="${workspace}"/lib/c2man                                 \
+                        -D privlibexp="${workspace}"/lib/c2man                              \
+                        -D sleep="$(type -P sleep)"                                         \
+                        -D tail="$(type -P tail)"                                           \
+                        -D tar="$(type -P tar)"                                             \
+                        -D tr="$(type -P tr)"                                               \
+                        -D troff="$(type -P troff)"                                         \
+                        -D uniq="$(type -P uniq)"                                           \
+                        -D uuname="$(uname -s)"                                             \
+                        -D vi="$(type -P vi)"                                               \
+                        -D yacc="$(type -P yacc)"                                           \
+                        -D zip="$(type -P zip)"
     execute make depend
     execute make "-j${cpu_threads}"
     execute sudo make install
@@ -2245,10 +2268,15 @@ if build 'x265' "${g_sver}"; then
     mkdir -p {8,10,12}bit
     cd 12bit || exit 1
     echo '$ making 12bit binaries'
-    execute cmake ../../../source                                        \
-        -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release}       \
-        -DHIGH_BIT_DEPTH=ON -DEXPORT_C_API=OFF -DENABLE_{SHARED,CLI}=OFF \
-        -DMAIN12=ON -G Ninja -Wno-dev
+    execute cmake ../../../source                       \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DHIGH_BIT_DEPTH=ON                   \
+                  -DEXPORT_C_API=OFF                    \
+                  -DENABLE_SHARED=OFF                   \
+                  -DENABLE_CLI=OFF                      \
+                  -DMAIN12=ON                           \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}"
     echo '$ making 10bit binaries'
     cd ../10bit || exit 1
@@ -2345,8 +2373,15 @@ if build 'srt' "${g_ver}"; then
     export OPENSSL_ROOT_DIR="${workspace}"
     export OPENSSL_LIB_DIR="${workspace}"/lib
     export OPENSSL_INCLUDE_DIR="${workspace}"/include
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} -DBUILD_SHARED_LIBS=OFF \
-        -DENABLE_{APPS=OFF,SHARED=OFF,STATIC=ON} -DUSE_STATIC_LIBSTDCXX=ON -G Ninja -Wno-dev
+    execute cmake -B build                              \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DBUILD_SHARED_LIBS=OFF               \
+                  -DENABLE_APPS=OFF                     \
+                  -DENABLE_SHARED=OFF                   \
+                  -DENABLE_STATIC=ON                    \
+                  -DUSE_STATIC_LIBSTDCXX=ON             \
+                  -G Ninja -Wno-dev
     execute ninja -C build "-j${cpu_threads}"
     execute ninja -C build "-j${cpu_threads}" install
     if [ -n "${LDEXEFLAGS}" ]; then
