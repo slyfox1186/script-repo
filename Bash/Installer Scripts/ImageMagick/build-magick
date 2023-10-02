@@ -20,9 +20,9 @@
 ##
 ##  Changed: Some support libraries prefix paths to avoid installing into the system
 ##
-##  Updated: 09.30.23
+##  Updated: 10.02.23
 ##
-##  Script Version: 3.0
+##  Script Version: 3.1
 ##
 #############################################################################################################
 
@@ -37,7 +37,7 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-script_ver=3.0
+script_ver=3.1
 progname="${0}"
 cwd="${PWD}"/magick-build-script
 packages="${cwd}"/packages
@@ -315,12 +315,14 @@ git_1_fn()
     if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
+        g_ver2="$(echo "${curl_cmd}" | jq -r '.[0].tag_name' 2>/dev/null)"
         g_ver="${g_ver#pkgconf-}"
         g_ver="${g_ver#release-}"
         g_ver="${g_ver#ver-}"
         g_ver="${g_ver#v}"
         g_ver1="${g_ver1#nasm-}"
         g_ver1="${g_ver1#v}"
+        g_ver2="${g_ver2#v}"
         g_url="$(echo "${curl_cmd}" | jq -r '.[0].tarball_url')"
     fi
 }
@@ -338,7 +340,7 @@ git_ver_fn()
             *)      fail_fn "Could not determine the variable \"flag_choice\" variable. Line: ${LINENO}";;
     esac
 
-    git_1_fn "${flag_url}" "${flag_choice}" 2>/dev/null
+    git_1_fn "${flag_url}" "${flag_choice}"
 }
 
 #
@@ -779,18 +781,31 @@ if build 'jemalloc' "${g_ver}"; then
     build_done 'jemalloc' "${g_ver}"
 fi
 
-git_ver_fn 'uclouvain/openjpeg' 'T'
-if build 'openjpeg' "${g_ver}"; then
-    download "${g_url}" "openjpeg-${g_ver}.tar.gz"
-    execute cmake -B build                                                                    \
-        -DCMAKE_{BUILD_TYPE=Release,INSTALL_PREFIX="${workspace}",EXPORT_COMPILE_COMMANDS=ON} \
-        -DCPACK_{BINARY_DEB,BINARY_FREEBSD,BINARY_IFW,BINARY_NSIS}=ON -G Ninja -Wno-dev       \
-        -DBUILD_{SHARED_LIBS=ON,TESTING=OFF,THIRDPARTY=ON}                                    \
-        -DCPACK_{BINARY_RPM,BINARY_TBZ2,BINARY_TXZ,SOURCE_RPM,SOURCE_ZIP}=ON
+git_ver_fn 'uclouvain/openjpeg' 'R'
+if build 'openjpeg' "${g_ver2}"; then
+    download "https://codeload.github.com/uclouvain/openjpeg/tar.gz/refs/tags/v${g_ver2}" "openjpeg-${g_ver2}.tar.gz"
+    execute cmake -B build                              \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DBUILD_TESTING=ON                    \
+                  -DBUILD_SHARED_LIBS=ON                \
+                  -DBUILD_THIRDPARTY=ON                 \
+                  -DCPACK_BINARY_DEB=ON                 \
+                  -DCPACK_BINARY_FREEBSD=ON             \
+                  -DCPACK_BINARY_IFW=ON                 \
+                  -DCPACK_BINARY_NSIS=ON                \
+                  -DCPACK_BINARY_RPM=ON                 \
+                  -DCPACK_BINARY_TBZ2=ON                \
+                  -DCPACK_BINARY_TXZ=ON                 \
+                  -DCPACK_SOURCE_RPM=ON                 \
+                  -DCPACK_SOURCE_ZIP=ON                 \
+                  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON    \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
-    build_done 'openjpeg' "${g_ver}"
+    build_done 'openjpeg' "${g_ver2}"
 fi
+ffmpeg_libraries+=('--enable-libopenjpeg')
 
 #
 # BEGIN BUILDING IMAGEMAGICK
