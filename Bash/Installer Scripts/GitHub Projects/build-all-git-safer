@@ -2,7 +2,7 @@
 
 clear
 
-cwd="${PWD}"/build-all-git-safer-master
+cwd="${PWD}"/build-all-git-safer
 web_repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
 
