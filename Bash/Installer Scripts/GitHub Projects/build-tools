@@ -11,7 +11,7 @@
 ##                - Ubuntu 23.04 / 22.04
 ##                - Debian 10 / 11 / 12
 ##
-##  Updated: 10.01.23
+##  Updated: 10.02.23
 ##
 ##  Added: The newest golang release version
 ##  Added: A new variable named debug to help with troubleshooting issues.
@@ -384,14 +384,14 @@ if build 'meson' "${g_ver1}"; then
     build_done 'meson' "${g_ver1}"
 fi
 
-if build 'golang' '21.0'; then
-    download 'https://go.dev/dl/go1.21.0.linux-amd64.tar.gz' 'golang-21.0.tar.gz'
+if build 'golang' '21.1'; then
+    download 'https://go.dev/dl/go1.21.1.linux-amd64.tar.gz' 'golang-21.1.tar.gz'
     execute sudo cp -f bin/go bin/gofmt "${install_dir}"/bin
     sudo rm -fr "${install_dir}"/go 2>/dev/null
     sudo mkdir -p "${install_dir}"/go
     export GOROOT="${install_dir}"/go
     export PATH="${PATH}:${GOROOT}/bin"
-    build_done 'golang' '21.0'
+    build_done 'golang' '21.1'
 fi
 
 # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES
