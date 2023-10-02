@@ -150,8 +150,8 @@ Working Dir:     ${PWD}
 Input File:      ${file_in}
 Output File:     ${file_out}
 
-Dimensions:      ${file_width}x${file_height}
 Aspect Ratio:    ${aspect_ratio}
+Dimensions:      ${file_width}x${file_height}
 
 Maxrate:         ${maxrate}k
 Bufsize:         ${bufsize}k
