@@ -93,21 +93,12 @@ fi
 
 for vid in *.{mp4,mkv}
 do
-    if [ -n "${vid}" ]; then
-        vid_list=" ${vid}"
-    else
-        return 0
-    fi
-    if [ -n "${vid_list}" ]; then
-        clear
-    else
-        printf "%s\n\n%s\n" \
-            'You dummy, there are no video files in this folder... what is this script supposed to do without those?!' \
-            'Fix this problem to continue.'
+    if [ -z "${vid}" ]; then
+        printf "\n%s\n\n" 'You dummy, there are no video files in this folder... what is this script supposed to do without those?!'
         exit 1
     fi
 done
-unset vid vid_list
+unset vid
 
 # CREATE A TEMPORARY OUTPUT FOLDER IN THE /TMP DIRECTORY
 ff_tmp_dir="$(mktemp -d)"
@@ -138,11 +129,11 @@ do
     bufsize="${bs::-3}"
     length="$(( ${file_length::-7} / 60 ))"
 
-#
-# PRINT THE VIDEO STATS IN THE TERMINAL
-#
+    #
+    # PRINT THE VIDEO STATS IN THE TERMINAL
+    #
 
-cat <<EOF
+    cat <<EOF
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 Working Dir:     ${PWD}
@@ -207,4 +198,6 @@ EOF
     fi
     clear
 done
+
+# REMOVE THE TEMPORARY DIRECTORY
 sudo rm -fr "${ff_tmp_dir}"
