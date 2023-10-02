@@ -323,7 +323,7 @@ git_1_fn()
         g_ver1="${g_ver1#nasm-}"
         g_ver1="${g_ver1#v}"
         g_ver2="${g_ver2#v}"
-        g_url="$(echo "${curl_cmd}" | jq -r '.[0].tarball_url')"
+        g_url="$(echo "${curl_cmd}" | jq -r '.[0].tarball_url' 2>/dev/null)"
     fi
 }
 
