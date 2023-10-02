@@ -24,7 +24,7 @@ fi
 #
 
 script_ver=1.1
-archive_dir=util-linux-2.39-rc2
+archive_dir=util-linux-2.39.2
 archive_url=https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.39/${archive_dir}.tar.xz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
