@@ -2,17 +2,11 @@
 
 clear
 
-#
 # REQUIRED APT PACKAGES
-#
-
 sudo apt-get -qq -y install libsox-dev sox
 clear
 
-#
 # REQUIRED PIP PACKAGES
-#
-
 pip_lock="$(find /usr/lib/python3* -name 'EXTERNALLY-MANAGED')"
 if [ -n "${pip_lock}" ]; then
     sudo rm "${pip_lock}"
@@ -47,7 +41,7 @@ Working Dir: ${PWD}
 Total files:    ${cnt_total}
 Files in queue: ${cnt_queue}
 
-Converting: ${i} >> ${i%%.jpg}-IM.jpg
+Converting: ${i} > ${i%%.jpg}-IM.jpg
 
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 EOF
