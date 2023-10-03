@@ -214,7 +214,7 @@ update()
 {
     clear
     sudo apt-fast update
-    sudo apt-fast -y full-upgrade
+    sudo apt-fast -Vsy full-upgrade
     sudo apt-fast -y autoremove
     sudo apt-fast clean
     sudo apt-fast autoclean
