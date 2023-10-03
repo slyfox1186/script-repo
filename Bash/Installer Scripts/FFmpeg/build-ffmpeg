@@ -823,7 +823,7 @@ pkgs_fn()
           libticonv-dev libtool libtool-bin libtwolame-dev libudev-dev libv4l-dev libva-dev libvdpau-dev libvidstab-dev
           libvlccore-dev libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libx265-dev libxcursor-dev libxext-dev libxfixes-dev
           libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev lshw
-          lzma-dev m4 meson nasm ninja-build openjdk-17-jdk-headless pandoc python3 python3-pip ragel re2c scons sudo texi2html
+          lzma-dev m4 meson nasm ninja-build default-jdk-headless pandoc python3 python3-pip ragel re2c scons sudo texi2html
           texinfo tk-dev unzip wget xmlto zlib1g-dev)
 
     for pkg in ${pkgs[@]}
