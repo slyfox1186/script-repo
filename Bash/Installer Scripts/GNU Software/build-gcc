@@ -281,13 +281,22 @@ show_ver_fn()
     if [ -f "${install_prefix}"/bin/gcc-11 ]; then
         "${install_prefix}"/bin/gcc-11 -v
         echo
+    elif [ -f /usr/bin/gcc-11 ]; then
+        /usr/bin/gcc-11 -v
+        echo
     fi
     if [ -f "${install_prefix}"/bin/gcc-12 ]; then
         "${install_prefix}"/bin/gcc-12 -v
         echo
+    elif [ -f /usr/bin/gcc-12 ]; then
+        /usr/bin/gcc-12 -v
+        echo
     fi
     if [ -f "${install_prefix}"/bin/gcc-13 ]; then
         "${install_prefix}"/bin/gcc-13 -v
+        echo
+    elif [ -f /usr/bin/gcc-13 ]; then
+        /usr/bin/gcc-13 -v
         echo
     fi
 }
@@ -427,6 +436,8 @@ build()
 
 build_done() { echo "${2}" >"${packages}/${1}.done"; }
 
+installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
+
 git_1_fn()
 {
     local curl_cmd github_repo github_url
@@ -436,8 +447,8 @@ git_1_fn()
     github_url="${2}"
 
     if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
-        g_ver1="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
-        g_ver="${g_ver1#v}"
+        g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
+        g_ver="${g_ver#v}"
     fi
 }
 
@@ -456,8 +467,6 @@ git_ver_fn()
 
     git_1_fn "${v_url}" "${t_flag}" 2>/dev/null
 }
-
-installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
 #
 # INSTALL REQUIRED APT PACKAGES
@@ -958,4 +967,4 @@ show_ver_fn
 cleanup_fn
 
 # SHOW THE EXIT MESSAGE
-exit_fn 
+exit_fn
