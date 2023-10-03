@@ -235,7 +235,6 @@ fix()
     sudo apt-fast -y autoremove
     sudo apt-fast clean
     sudo apt-fast autoclean
-    sudo apt-fast update
 }
 
 list()
