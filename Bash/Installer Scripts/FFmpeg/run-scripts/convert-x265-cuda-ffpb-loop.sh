@@ -63,7 +63,7 @@ unset pip_tmp_dir
 # DELETE ANY FILES FROM PREVIOUS RUNS
 #
 
-del_this="$(du -ah --max-depth=1 | grep -Eo '[\/].*\(x265\)\.(mp4|mkv)$' | grep -Eo '[A-Za-z0-9].*\(x265\)\.m(p4|kv)$')"
+del_this="$(du -ah --max-depth=1 | grep -Eo '[\/].*\(x265\)\.m(p4|kv)$' | grep -Eo '[A-Za-z0-9].*\(x265\)\.m(p4|kv)$')"
 
 if [ -n "${del_this}" ]; then
     printf "%s\n\n%s\n%s\n%s\n\n" \
