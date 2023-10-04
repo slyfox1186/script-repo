@@ -86,6 +86,7 @@ bash <(curl -fsSL https://magick.optimizethis.net) --build
     - Other  - Debian-based distros may work as well
 
 **With GPL and <ins>non-free</ins> libraries: https://ffmpeg.org/legal.html**
+**See the my dedicated ffmpeg build page for more info on supplying your own GitHub API tokens: [build--ffmpeg](https://github.com/slyfox1186/ffmpeg-build-script)**
 ```bash
 bash <(curl -fsSL https://build-ffmpeg.optimizethis.net) --build --latest
 ```
