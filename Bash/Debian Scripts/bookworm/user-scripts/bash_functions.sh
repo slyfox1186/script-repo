@@ -1720,6 +1720,7 @@ sedr()
         read -p 'Enter the text we will replace with: ' replace_with
         clear
         sudo find . -type f -iname "${search_this}" -exec sudo sed -i "s/${replace_this}/${replace_with}/g" '{}' \;
+    fi
 }
 EOF
 }
