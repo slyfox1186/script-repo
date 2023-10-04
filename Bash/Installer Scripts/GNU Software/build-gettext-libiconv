@@ -25,7 +25,7 @@ fi
 
 script_ver=1.2
 archive_dir1=libiconv-1.17
-archive_dir2=gettext-0.22.2
+archive_dir2=gettext-0.22.3
 archive_url1=https://ftp.gnu.org/gnu/libiconv/${archive_dir1}.tar.gz
 archive_url2=https://ftp.gnu.org/gnu/gettext/${archive_dir2}.tar.lz
 archive_ext1="${archive_url1//*.}"
