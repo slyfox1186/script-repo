@@ -284,7 +284,7 @@ curl_timeout=10
 
 git_1_fn()
 {
-    local curl_cmd github_repo github_url
+    local curl_cmd github_repo github_url git_token
 
     # SCRAPE GITHUB WEBSITE FOR THE LATEST REPO VERSION
     github_repo="${1}"
@@ -1782,6 +1782,23 @@ box_out_banner_audio()
 }
 box_out_banner_audio 'Installing Audio Tools'
 
+pre_check_ver 'xiph/ogg' '1' 'T'
+if build 'libogg' "${g_ver}"; then
+    download "https://github.com/xiph/ogg/archive/refs/tags/v${g_ver}.tar.gz" "libogg-${g_ver}.tar.gz"
+    execute autoreconf -fi
+    execute cmake -B build                              \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DBUILD_TESTING=OFF                   \
+                  -DBUILD_SHARED_LIBS=OFF               \
+                  -DCPACK_BINARY_DEB=OFF                \
+                  -DCPACK_SOURCE_ZIP=OFF                \
+                  -G Ninja -Wno-dev
+    execute ninja "-j${cpu_threads}" -C build
+    execute ninja "-j${cpu_threads}" -C build install
+    build_done 'libogg' "${g_ver}"
+fi
+
 pre_check_ver 'xiph/flac' '1' 'T'
 if build 'libflac' "${g_ver}"; then
     download "https://github.com/xiph/flac/archive/refs/tags/${g_ver}.tar.gz" "libflac-${g_ver}.tar.gz"
@@ -1790,7 +1807,7 @@ if build 'libflac' "${g_ver}"; then
                   -DCMAKE_INSTALL_PREFIX="${workspace}" \
                   -DCMAKE_BUILD_TYPE=Release            \
                   -DINSTALL_CMAKE_CONFIG_MODULE=ON      \
-                  -DINSTALL_MANPAGES=ON                 \
+                  -DINSTALL_MANPAGES=OFF                \
                   -DINSTALL_PKGCONFIG=ON                \
                   -DINSTALL_MODULES=ON                  \
                   -DBUILD_CXXLIBS=ON                    \
@@ -1799,7 +1816,7 @@ if build 'libflac' "${g_ver}"; then
                   -DWITH_AVX=ON                         \
                   -DWITH_FORTIFY_SOURCE=ON              \
                   -DWITH_STACK_PROTECTOR=ON             \
-                  -DWITH_OGG=OFF                        \
+                  -DWITH_OGG=ON                         \
                   -DENABLE_64_BIT_WORDS=ON              \
                   -DBUILD_DOCS=OFF                      \
                   -DBUILD_EXAMPLES=OFF                  \
@@ -1822,23 +1839,6 @@ if build 'libfdk-aac' '2.0.2'; then
     build_done 'libfdk-aac' '2.0.2'
 fi
 ffmpeg_libraries+=('--enable-libfdk-aac')
-
-pre_check_ver 'xiph/ogg' '1' 'T'
-if build 'libogg' "${g_ver}"; then
-    download "https://github.com/xiph/ogg/archive/refs/tags/v${g_ver}.tar.gz" "libogg-${g_ver}.tar.gz"
-    execute autoreconf -fi
-    execute cmake -B build                              \
-                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
-                  -DCMAKE_BUILD_TYPE=Release            \
-                  -DBUILD_TESTING=OFF                   \
-                  -DBUILD_SHARED_LIBS=OFF               \
-                  -DCPACK_BINARY_DEB=OFF                \
-                  -DCPACK_SOURCE_ZIP=OFF                \
-                  -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
-    build_done 'libogg' "${g_ver}"
-fi
 
 pre_check_ver 'xiph/vorbis' '1' 'T'
 if build 'vorbis' "${g_ver}"; then
@@ -1938,10 +1938,10 @@ if build 'libtheora' "${g_ver1}"; then
     execute ./configure --prefix="${workspace}"                       \
                         --disable-asm                                 \
                         --disable-examples                            \
-                        --disable-oggtest                             \
                         --disable-spec                                \
                         --disable-shared                              \
                         --disable-vorbistest                          \
+                        --enable-oggtest                              \
                         --with-ogg-includes="${workspace}"/include    \
                         --with-ogg-libraries="${workspace}"/lib       \
                         --with-vorbis-includes="${workspace}"/include \
