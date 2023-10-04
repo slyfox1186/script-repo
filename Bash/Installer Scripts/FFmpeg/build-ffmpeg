@@ -498,6 +498,7 @@ gpu_arch_fn()
     fi
 
     case "${gpu_name}" in
+        'Quadro P2000')               gpu_type=1;;
         'NVIDIA GeForce GT 1010')     gpu_type=1;;
         'NVIDIA GeForce GTX 1030')    gpu_type=1;;
         'NVIDIA GeForce GTX 1050')    gpu_type=1;;
@@ -823,8 +824,8 @@ pkgs_fn()
           libticonv-dev libtool libtool-bin libtwolame-dev libudev-dev libv4l-dev libva-dev libvdpau-dev libvidstab-dev
           libvlccore-dev libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libx265-dev libxcursor-dev libxext-dev libxfixes-dev
           libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev lshw
-          lzma-dev m4 meson nasm ninja-build default-jdk-headless pandoc python3 python3-pip ragel re2c scons sudo texi2html
-          texinfo tk-dev unzip wget xmlto zlib1g-dev)
+          lzma-dev m4 meson nasm ninja-build openjdk-17-jdk-headless pandoc python3 python3-pip ragel re2c scons sudo texi2html
+          texinfo tk-dev unzip wget xmlto zlib1g-dev libssh-dev)
 
     for pkg in ${pkgs[@]}
     do
