@@ -3,7 +3,7 @@
 
 #############################################################################################################
 ##
-##  GitHub: https://github.com/slyfox1186/ffmpeg-build-script
+##  GitHub: https://github.com/slyfox1186/script-repo
 ##
 ##  Script version: 2.7
 ##  Last Update: 10.02.23
@@ -64,7 +64,7 @@ EXTRALIBS='-ldl -lpthread -lm -lz'
 ffmpeg_libraries=()
 latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/ffmpeg-build-script
+web_repo=https://github.com/slyfox1186/script-repo
 debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
