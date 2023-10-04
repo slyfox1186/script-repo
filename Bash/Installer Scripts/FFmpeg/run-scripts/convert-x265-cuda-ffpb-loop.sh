@@ -15,9 +15,7 @@ fi
 # CREATE THE OUTPUT DIRECTORIES
 #
 
-if [ ! -d completed ] || [ ! -d original ]; then
-    mkdir completed original 2>/dev/null
-fi
+mkdir 'completed' 'original' 2>/dev/null
 
 #
 # INSTALLL THE REQUIRED APT PACKAGES
