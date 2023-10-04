@@ -43,21 +43,23 @@ if [ -n "${missing_pkgs}" ]; then
                 fail_fn 'Failed to run APT package manager.'
             fi
         done
+else
+    printf "%s\n\n" '$ The packages are already installed.'
 fi
 
 #
 # INSTALL THE REQUIRED PIP PACKAGES
 #
 
-pip_tmp_dir="$(mktemp -d)"
-echo 'ffpb' > "${pip_tmp_dir}"/requirements.txt
-echo 'google_speech' >> "${pip_tmp_dir}"/requirements.txt
-if ! pip install -r "${pip_tmp_dir}"/requirements.txt &>/dev/null; then
+pip_dir="$(mktemp -d)"
+echo 'ffpb' > "${pip_dir}"/requirements.txt
+echo 'google_speech' >> "${pip_dir}"/requirements.txt
+if ! pip install -r "${pip_dir}"/requirements.txt &>/dev/null; then
     printf "%s\n\n" 'Failed to install the pip packages.'
     exit 1
 fi
-sudo rm -fr "${pip_tmp_dir}"
-unset pip_tmp_dir
+sudo rm -fr "${pip_dir}"
+unset pip_dir
 
 #
 # DELETE ANY FILES FROM PREVIOUS RUNS
@@ -85,26 +87,23 @@ if [ -n "${del_this}" ]; then
     esac
 fi
 
-#
-# MAKE SURE THERE ARE VIDEOS IN THE SCRIPTS FOLDER BEFORE CONTINUING
-#
-
-for vid in *.{mp4,mkv}
-do
-    if [ -z "${vid}" ]; then
-        printf "\n%s\n\n" 'You dummy, there are no video files in this folder... what is this script supposed to do without those?!'
-        exit 1
-    fi
-done
-unset vid
+# MAKE SURE THERE ARE VIDEOS AVAILABLE TO CONVERT
+vid_test="$(find ./ -maxdepth 1 -type f \( -iname \*.mp4 -o -iname \*.mkv \) | xargs -0 -n1 | head -n1)"
+if [ -z "${vid_test}" ]; then
+    google_speech 'No videos were located. Please add some.' 2>/dev/null
+    clear
+    exit 0
+fi
+unset vid_test
 
 # CREATE A TEMPORARY OUTPUT FOLDER IN THE /TMP DIRECTORY
-ff_tmp_dir="$(mktemp -d)"
+ff_dir="$(mktemp -d)"
 
 for vid in *.{mp4,mkv}
 do
-    if [ -z "${vid}" ]; then
-        return 0
+    vid_test="$(find ./ -maxdepth 1 -type f \( -iname \*.mp4 -o -iname \*.mkv \) | xargs -0 -n1 | head -n1)"
+    if [ -z "${vid_test}" ]; then
+        exit 0
     fi
 
     # STORES THE CURRENT VIDEO WIDTH, ASPECT RATIO, PROFILE, BIT RATE, AND TOTAL DURATION IN VARIABLES FOR USE LATER IN THE FFMPEG COMMAND LINE
@@ -117,7 +116,7 @@ do
     # MODIFY VARS TO GET FILE INPUT AND OUTPUT NAMES
     file_in="${vid}"
     fext="${file_in#*.}"
-    file_out="${ff_tmp_dir}/${file_in%.*} (x265).${fext}"
+    file_out="${ff_dir}/${file_in%.*} (x265).${fext}"
 
     # TRIM THE STRINGS
     trim="${max_rate::-11}"
@@ -195,11 +194,11 @@ EOF
         google_speech 'Video conversion failed.' 2>/dev/null
         echo
         read -p 'Press enter to exit.'
-        sudo rm -fr "${ff_tmp_dir}"
+        sudo rm -fr "${ff_dir}"
         exit 1
     fi
     clear
 done
 
 # REMOVE THE TEMPORARY DIRECTORY
-sudo rm -fr "${ff_tmp_dir}"
+sudo rm -fr "${ff_dir}"
