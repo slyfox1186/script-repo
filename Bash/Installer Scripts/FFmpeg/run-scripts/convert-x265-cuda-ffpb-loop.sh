@@ -43,8 +43,6 @@ if [ -n "${missing_pkgs}" ]; then
                 fail_fn 'Failed to run APT package manager.'
             fi
         done
-else
-    printf "%s\n\n" '$ The packages are already installed.'
 fi
 
 #
