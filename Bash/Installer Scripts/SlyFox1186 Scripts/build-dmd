@@ -1,0 +1,228 @@
+#!/usr/bin/env bash
+
+###########################################################################################################
+##
+##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-aria2
+##
+##  Purpose: Install DMD (D compiler)
+##
+##  Updated: 10.04.23
+##
+##  Script version: 1.0
+##
+###########################################################################################################
+
+clear
+
+if [ "${EUID}" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
+
+#
+# SET THE VARIABLES
+#
+
+script_ver=1.0
+debian_dir=dmd_2.105.2-0_amd64
+debian_url=https://downloads.dlang.org/releases/2023/${debian_dir}.deb
+debian_name="${debian_dir}".deb
+cwd="${PWD}"/dmd-install-script
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
+web_repo=https://github.com/slyfox1186/script-repo
+
+#
+# PRINT THE SCRIPT BANNER
+#
+
+printf "%s\n%s\n\n" \
+    "DMD Install Script - v${script_ver}" \
+    '==============================================='
+
+#
+# SET THE SOURCE CODE COMPILERS
+#
+
+export CC=gcc CXX=g++
+
+#
+# SET COMPILER OPTIMIZATION FLAGS
+#
+
+cuda_folder_path="$(sudo find /usr/local/cuda* -type f -name nvcc | sed 's/\/bin\/nvcc//')"
+
+if [ -n "${cuda_folder_path}" ]; then
+    set_cuda_folder_path="${cuda_folder_path}"
+else
+    set_cuda_folder_path='/usr/local/cuda'
+fi
+
+export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
+export CPPFLAGS='-I/usr/local/include -I/usr/include'
+export LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+export LDFLAGS+=" -L${set_cuda_folder_path}/nvvm/lib64 -L${set_cuda_folder_path}/targets/x86_64-linux/lib"
+export LIBS="$(pkg-config --libs libuv) $(pkg-config --libs libgcrypt)"
+
+#
+# CREATE THE OUTPUT DIRECTORY
+#
+
+if [ -d "${cwd}" ]; then
+    sudo rm -fr "${cwd}"
+fi
+mkdir -p "${cwd}"
+
+#
+# SET THE PATH VARIABLE
+#
+
+PATH="\
+/usr/lib/ccache:\
+${HOME}/.cargo/bin:\
+${HOME}/.local/bin:\
+/usr/local/sbin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin:\
+/usr/local/cuda/bin:\
+/snap/bin\
+"
+export PATH
+
+#
+# SET THE PKG_CONFIG_PATH VARIABLE
+#
+
+PKG_CONFIG_PATH="\
+/usr/local/lib64/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/local/lib/"${install_dir}"/pkgconfig:\
+/usr/local/share/pkgconfig:\
+/usr/lib64/pkgconfig:\
+/usr/lib/pkgconfig:\
+/usr/lib/"${install_dir}"/pkgconfig:\
+/usr/share/pkgconfig:\
+/lib64/pkgconfig:\
+/lib/pkgconfig:\
+/lib/"${install_dir}"/pkgconfig\
+"
+export PKG_CONFIG_PATH
+
+#
+# CREATE FUNCTIONS
+#
+
+exit_fn()
+{
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'The script has completed' \
+        'Make sure to star this repository to show your support!' \
+        "${web_repo}"
+    exit 0
+}
+
+fail_fn()
+{
+    printf "\n\n%s\n\n%s\n\n%s\n\n" \
+        "${1}" \
+        'Please create a support ticket so I can work on a fix.' \
+        "${web_repo}/issues"
+    exit 1
+}
+
+show_ver_fn()
+{
+    save_ver="$(dmd --version | grep -Eo '[0-9\.]+$' | head -n1 2>/dev/null | xargs -I{} echo {})"
+    clear
+    printf "%s\n\n" "The updated DMD version is: ${save_ver}"
+    sleep 3
+}
+
+cleanup_fn()
+{
+    local choice
+
+    unset debian_dir debian_name debian_url CC CXX i missing_pkg missing_pkgs pem_out pkgs script_ver
+
+    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
+        '=============================================' \
+        '  Do you want to clean up the install files? ' \
+        '=============================================' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' choice
+
+    case "${choice}" in
+        1)
+                sudo rm -fr "${cwd}"
+                clear
+                ;;
+        2)      clear;;
+        *)
+                clear
+                printf "%s\n\n" 'Bad user input. Reverting script...'
+                sleep 3
+                unset choice
+                clear
+                cleanup_fn
+                ;;
+    esac
+}
+
+#
+# INSTALL THE REQUIRED APT PACKAGES
+#
+
+pkgs=(autoconf autogen automake build-essential ccache curl gettext git
+      gtk-doc-tools libgtk-3-dev libgtk-4-dev libgtkd-3-dev libhwy-dev
+      libtool libtool-bin m4 ninja-build pkg-config python3-nautilus)
+
+for i in ${pkgs[@]}
+do
+    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${i}"
+    fi
+done
+
+if [ -n "${missing_pkgs}" ]; then
+    sudo apt -y install ${missing_pkgs}
+    sudo apt -y autoremove
+    clear
+fi
+
+#
+# DOWNLOAD THE ARCHIVE FILE
+#
+
+if [ ! -f "${cwd}/${debian_name}" ]; then
+    curl -A "${user_agent}" -Lso "${cwd}/${debian_name}" "${debian_url}"
+fi
+
+#
+# REMOVE ANY PREVIOUS VERSIONS INSTALLED BY THE APT PACKAGE MANAGER
+#
+
+if [ -f /usr/bin/dmd ]; then
+    sudo apt -y remove dmd
+fi
+
+#
+# INSTALL DMD
+#
+
+cd "${cwd}" || exit 1
+# INCREASE THE MAX NUMBER OF CONNECTIONS FROM 16 TO 128
+sudo apt -y install ./"${debian_name}"
+
+# SHOW THE NEW VERSION
+show_ver_fn
+
+# PROMPT USER TO CLEAN UP FILES
+cleanup_fn
+
+# SHOW EXIT MESSAGE
+exit_fn
