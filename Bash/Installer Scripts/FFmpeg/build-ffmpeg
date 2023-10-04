@@ -1610,8 +1610,7 @@ if build 'lv2' 'git'; then
     execute meson setup build --prefix="${workspace}"  \
                               --buildtype=release      \
                               --default-library=static \
-                              --strip                  \
-                              -Dplugins=disabled
+                              --strip
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'lv2' 'git'
