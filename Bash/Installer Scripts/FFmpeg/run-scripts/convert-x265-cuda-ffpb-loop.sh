@@ -88,7 +88,7 @@ if [ -n "${del_this}" ]; then
 fi
 
 # MAKE SURE THERE ARE VIDEOS AVAILABLE TO CONVERT
-vid_test="$(find ./ -maxdepth 1 -type f \( -iname \*.mp4 -o -iname \*.mkv \) | xargs -0 -n1 | head -n1)"
+vid_test="$(find ./ -maxdepth 1 -type f \( -iname \*.mp4 -o -iname \*.mkv \) | xargs -0n1 | head -n1)"
 if [ -z "${vid_test}" ]; then
     google_speech 'No videos were located. Please add some.' 2>/dev/null
     clear
@@ -101,7 +101,7 @@ ff_dir="$(mktemp -d)"
 
 for vid in *.{mp4,mkv}
 do
-    vid_test="$(find ./ -maxdepth 1 -type f \( -iname \*.mp4 -o -iname \*.mkv \) | xargs -0 -n1 | head -n1)"
+    vid_test="$(find ./ -maxdepth 1 -type f \( -iname \*.mp4 -o -iname \*.mkv \) | xargs -0n1 | head -n1)"
     if [ -z "${vid_test}" ]; then
         exit 0
     fi
