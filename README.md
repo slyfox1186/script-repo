@@ -80,7 +80,7 @@ bash <(curl -fsSL https://magick.optimizethis.net) --build
 ## Install [FFmpeg](https://ffmpeg.org/download.html)
   - **Compiles the latest updates from source code by issuing API calls to each repositories backend**
   - **The CUDA SDK Toolkit which unlocks Hardware Acceleration is available during the installation to make things as easy as possible**
-  -  **See the my dedicated ffmpeg build page for more info on supplying your own GitHub API tokens: [build--ffmpeg](https://github.com/slyfox1186/ffmpeg-build-script)**
+  -  **See the my dedicated ffmpeg build page for more info on supplying your own GitHub API tokens: [ffmpeg-build-script](https://github.com/slyfox1186/ffmpeg-build-script)**
   - **Supported OS:**
     - Debian - 10 / 11
     - Ubuntu - 18.04 / 20.04 / 22.04
