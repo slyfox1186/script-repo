@@ -2079,7 +2079,6 @@ git_ver_fn '206' '2' 'T'
 if build 'libbluray' "${g_ver1}"; then
     download "https://code.videolan.org/videolan/libbluray/-/archive/${g_ver1}/${g_ver1}.tar.gz" "libbluray-${g_ver1}.tar.gz"
     execute autoreconf -fi
-    execute ./bootstrap
     execute ./configure --prefix="${workspace}"  \
                         --disable-extra-warnings \
                         --disable-shared         \
