@@ -58,7 +58,7 @@ mkdir -p "${packages}" "${workspace}"
 # FIGURE OUT WHICH COMPILERS TO USE
 #
 
-export CC=gcc CXX=g++
+export CC=gcc-13 CXX=g++-13
 
 #
 # SET COMPILER OPTIMIZATION FLAGS
@@ -764,12 +764,12 @@ if build 'jemalloc' "${g_ver}"; then
                         --disable-doc                     \
                         --disable-fill                    \
                         --disable-log                     \
-                        --disable-shared                  \
                         --disable-prof                    \
                         --disable-stats                   \
                         --enable-autogen                  \
                         --enable-static                   \
-                        --enable-xmalloc
+                        --enable-xmalloc                  \
+                        --with-pic
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'jemalloc' "${g_ver}"
