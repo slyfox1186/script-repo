@@ -153,7 +153,7 @@ mkdir -p "${packages}"/deb-files "${workspace}"/logs
 
 exit_fn()
 {
-    printf "\n%s\n\n%s\n\n" \
+    printf "\n%s\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         "${web_repo}"
     exit 0
@@ -171,7 +171,7 @@ cleanup_fn()
 {
     local answer
 
-    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n" \
         '============================================' \
         '  Do you want to clean up the build files?  ' \
         '============================================' \
