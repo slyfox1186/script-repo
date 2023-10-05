@@ -30,6 +30,7 @@ fi
 cnt_queue=$(find . -maxdepth 1 -type f -iname '*.jpg' | wc -l)
 cnt_total=$(find . -maxdepth 1 -type f -iname '*.jpg' | wc -l)
 
+clear
 for i in *.jpg
 do
     cnt_queue=$((cnt_queue-1))
