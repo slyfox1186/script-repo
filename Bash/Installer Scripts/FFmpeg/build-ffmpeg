@@ -2048,7 +2048,7 @@ ffmpeg_libraries+=('--enable-libdav1d')
 # RAV1E FAILS TO BUILD ON UBUNTU BIONIC
 if [ "${VER}" != '18.04' ]; then
     pre_check_ver 'xiph/rav1e' '1' 'T'
-    if build 'rav1e' 'p20230926'; then
+    if build 'rav1e' 'p20231003'; then
         echo '$ Installing RustUp'
         curl -A "${user_agent}" -sSf --proto '=https' --tlsv1.2 'https://sh.rustup.rs' | sh -s -- -y &>/dev/null
         source "${HOME}"/.cargo/env
@@ -2059,12 +2059,12 @@ if [ "${VER}" != '18.04' ]; then
         fi
         rm -fr "${HOME}"/.cargo/registry/index/* "${HOME}"/.cargo/.package-cache
         execute cargo install --version '0.9.24+cargo-0.73.0' cargo-c
-        download 'https://github.com/xiph/rav1e/archive/refs/tags/p20230926.tar.gz' 'rav1e-p20230926.tar.gz'
+        download 'https://github.com/xiph/rav1e/archive/refs/tags/p20231003.tar.gz' 'rav1e-p20231003.tar.gz'
         execute cargo cinstall --prefix="${workspace}"  \
                                --library-type=staticlib \
                                --crt-static             \
                                --release
-        build_done 'rav1e' 'p20230926'
+        build_done 'rav1e' 'p20231003'
     fi
     ffmpeg_libraries+=('--enable-librav1e')
 fi
