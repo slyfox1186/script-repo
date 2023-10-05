@@ -6,9 +6,10 @@ cwd="${PWD}"/build-all-git-safer-script
 web_repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
 
-if [ ! -d "${cwd}"/completed ]; then
-    mkdir -p "${cwd}"/completed
+if [ -d "${cwd}" ]; then
+    sudo rm -fr "${cwd}"
 fi
+mkdir -p "${cwd}"/completed
 
 exit_fn()
 {
@@ -84,12 +85,12 @@ install_scripts_fn()
     local i scripts
     clear
 
-    scripts="$(sudo find . -maxdepth 1 -type f -name '*' | sed 's/^..//g' | sort)"
+    scripts="$(sudo find . -maxdepth 1 -type f -iname '*' | sed 's/^..//g' | sort)"
 
     for i in ${scripts[@]}
     do
         if bash "${i}"; then
-            sudo find . -maxdepth 1 -type f -name "${i}" -exec mv {} completed \;
+            sudo find . -maxdepth 1 -type f -iname "${i}" -exec mv {} completed \;
             printf "\n%s\n\n" "Script finished: ${i}"
         else
             fail_fn "Failed to install: ${i}"
@@ -138,7 +139,7 @@ do
 done
 
 clear
-find . -type f -name '*.sh' -exec bash -c "echo '1' | bash '{}'" \;
+find . -maxdepth 1 -type f -iname '*.sh' -exec bash -c "echo '1' | bash '{}'; mv '{}' completed" \;
 
 # CLEANUP THE FILES
 cleanup_fn
