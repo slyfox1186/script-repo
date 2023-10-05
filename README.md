@@ -73,7 +73,7 @@ bash <(curl -fsSL https://7z.optimizethis.net)
     - Other  - Debian-based distros may work as well
   
 ```bash
-bash <(curl -fsSL https://magick.optimizethis.net) --build
+bash <(curl -fsSL https://magick.optimizethis.net)
 ```
 ------
 
