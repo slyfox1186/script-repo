@@ -266,7 +266,7 @@ download_git()
     dl_file="${dl_file//\./-}"
     target_dir="${dl_path}/${dl_file}"
 
-    if [[ -n "${3}" ]]; then
+    if [ -n "${3}" ]; then
         output_dir="${dl_path}/${3}"
         target_dir="${output_dir}"
     fi
