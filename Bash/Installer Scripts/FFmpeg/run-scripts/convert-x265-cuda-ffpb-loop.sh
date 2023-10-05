@@ -36,13 +36,11 @@ if [ -n "${missing_pkgs}" ]; then
     echo '$ Installing missing packages'
     echo
     for i in "${missing_pkgs[@]}"
-        do
-            if ! sudo apt -y install ${i}; then
-                fail_fn 'Failed to run APT package manager.'
-            fi
-        done
-else
-    printf "%s\n\n" '$ The packages are already installed.'
+    do
+        if ! sudo apt -y install ${i}; then
+            fail_fn 'Failed to run APT package manager.'
+        fi
+    done
 fi
 
 #
