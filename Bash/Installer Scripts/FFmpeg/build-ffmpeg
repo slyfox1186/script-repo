@@ -2417,11 +2417,11 @@ if [ "${VER}" != '22.04' ]; then
     pre_check_ver 'cyanreg/cyanrip' '1' 'T'
     if build 'cyanrip' "${g_ver}"; then
         download "https://github.com/cyanreg/cyanrip/archive/refs/tags/v${g_ver}.tar.gz" "cyanrip-${g_ver}.tar.gz"
-    execute meson setup build --prefix="${workspace}"  \
-                              --buildtype=release      \
-                              --default-library=static \
-                              --strip                  \
-                              -Dpkg_config_path="${workspace}"/lib/pkgconfig
+        execute meson setup build --prefix="${workspace}"  \
+                                  --buildtype=release      \
+                                  --default-library=static \
+                                  --strip                  \
+                                  -Dpkg_config_path="${workspace}"/lib/pkgconfig
         execute ninja -C build "-j${cpu_threads}"
         execute ninja -C build "-j${cpu_threads}" install
         build_done 'cyanrip' "${g_ver}"
