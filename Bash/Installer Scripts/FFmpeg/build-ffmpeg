@@ -795,23 +795,26 @@ install_cuda_fn()
     fi
 
     if [ -n "${cuda_ver}" ]; then
-        printf "%s\n%s\n\n%s\n\n%s\n%s\n\n" \
-            "The installed CUDA SDK Toolkit version is: ${cuda_ver}" \
-            '=====================================================' \
-            'Do you want to update/reinstall it?' \
-            '[1] Yes' \
-            '[2] No'
-        read -p 'Your choices are (1 or 2): ' choice
-        clear
+        if [ "${cuda_ver}" != "${cuda_latest_ver}" ]; then
+            printf "%s\n%s\n%s\n\n%s\n\n%s\n%s\n\n" \
+                "The installed CUDA SDK Toolkit version is: ${cuda_ver}" \
+                "The latest version available is: ${cuda_latest_ver}"    \
+                '====================================================='  \
+                'Do you want to update/reinstall it?' \
+                '[1] Yes' \
+                '[2] No'
+            read -p 'Your choices are (1 or 2): ' choice
+            clear
 
-        case "${choice}" in
-                1)      cuda_download_fn;;
-                2)      export PATH="${PATH}:${cuda_path}";;
-                *)      fail_fn "Bad user input. Line: ${LINENO}";;
-        esac
-    else    
+            case "${choice}" in
+                    1)      cuda_download_fn;;
+                    2)      export PATH="${PATH}:${cuda_path}";;
+                    *)      fail_fn "Bad user input. Line: ${LINENO}";;
+            esac
+        fi
+    else
         printf "\n%s\n\n%s\n%s\n\n%s\n%s\n\n" \
-            "The cuda-sdk-toolkit was not detected and the latest version is: v${cuda_latest_ver}" \
+            "The CUDA SDK Toolkit was not detected and the latest version is: v${cuda_latest_ver}" \
             '====================================================================' \
             'What do you want to do next?' \
             '[1] Install the toolkit and add it to PATH' \
