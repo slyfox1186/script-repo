@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1091,SC2001,SC2162,SC2317
 
+export user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+
 ######################################################################################
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 ######################################################################################
@@ -574,107 +576,97 @@ rmf()
 # OPTIMIZE AND OVERWRITE THE ORIGINAL IMAGES
 imow()
 {
-    local apt_pkgs cnt_queue cnt_total dimensions fext missing_pkgs pip_lock random_dir tmp_file v_noslash
+    local cnt_queue cnt_total dimensions pip_lock random_dir tmp_file v_noslash
 
     clear
-
-    # THE FILE EXTENSION TO SEARCH FOR (DO NOT INCLUDE A '.' WITH THE EXTENSION)
-    fext=jpg
-
-    #
+    
     # REQUIRED APT PACKAGES
-    #
-
-    apt_pkgs=(sox libsox-dev)
-    for i in ${apt_pkgs[@]}
-    do
-        missing_pkg="$(dpkg -l | grep "${i}")"
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
-        fi
-    done
-
-    if [ -n "${missing_pkgs}" ]; then
-        sudo apt-fast -y install ${missing_pkgs}
-        sudo apt-fast -y autoremove
-        clear
-    fi
-    unset apt_pkgs i missing_pkg missing_pkgs
-
-    #
+    sudo apt-get -qq -y install libsox-dev sox
+    clear
+    
     # REQUIRED PIP PACKAGES
-    #
-
-    pip_lock="$(find /usr/lib/python3* -name EXTERNALLY-MANAGED)"
+    pip_lock="$(find /usr/lib/python3* -name 'EXTERNALLY-MANAGED')"
     if [ -n "${pip_lock}" ]; then
         sudo rm "${pip_lock}"
     fi
-    if ! pip show google_speech &>/dev/null; then
+    
+    test_pip="$(pip show google_speech 2>/dev/null)"
+    if [ -z "$test_pip" ]; then
         pip install google_speech
     fi
-
-    unset p pip_lock pip_pkgs missing_pkg missing_pkgs
+    unset pip_lock test_pip
+    
     # DELETE ANY USELESS ZONE IDENFIER FILES THAT SPAWN FROM COPYING A FILE FROM WINDOWS NTFS INTO A WSL DIRECTORY
-    find . -type f -name "*:Zone.Identifier" -delete 2>/dev/null
-
-    # GET THE FILE COUNT INSIDE THE DIRECTORY
-    cnt_queue=$(find . -maxdepth 2 -type f -iname "*.jpg" | wc -l)
-    cnt_total=$(find . -maxdepth 2 -type f -iname "*.jpg" | wc -l)
+    find . -type f -iname "*:Zone.Identifier" -delete 2>/dev/null
+    
     # GET THE UNMODIFIED PATH OF EACH MATCHING FILE
-
-    for i in ./*."${fext}"
+    if [ -d pics-convert ]; then
+        cd pics-convert || exit 1
+    fi
+    
+    # GET THE FILE COUNT INSIDE THE DIRECTORY
+    cnt_queue=$(find . -maxdepth 1 -type f -iname '*.jpg' | wc -l)
+    cnt_total=$(find . -maxdepth 1 -type f -iname '*.jpg' | wc -l)
+    
+    clear
+    for i in *.jpg
     do
-        cnt_queue=$(( cnt_queue-1 ))
-
-        cat <<EOT
+        cnt_queue=$((cnt_queue-1))
+    cat <<EOF
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-File Path: ${PWD}
+Working Dir: ${PWD}
 
-Folder: $(basename "${PWD}")
-
-Total Files:    ${cnt_total}
+Total files:    ${cnt_total}
 Files in queue: ${cnt_queue}
 
-Converting:  ${i}
-
- >> ${i%%.jpg}.mpc
-
-    >> ${i%%.jpg}.cache
-
-       >> ${i%%.jpg}-IM.jpg
+Converting: ${i} > ${i%%.jpg}-IM.jpg
 
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-EOT
-        echo
+EOF
+    
         random_dir="$(mktemp -d)"
         dimensions="$(identify -format '%wx%h' "${i}")"
-        convert "${i}" -monitor -filter Triangle -define filter:support=2 -thumbnail "${dimensions}" -strip \
-            -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize 136 -quality 82 -define jpeg:fancy-upsampling=off \
-            -auto-level -enhance -interlace none -colorspace sRGB "${random_dir}/${i%%.jpg}.mpc"
-
-
+    
+        echo
+        convert "${i}"                            \
+                -monitor                          \
+                -filter Triangle                  \
+                -define filter:support=2          \
+                -thumbnail "${dimensions}"        \
+                -strip                            \
+                -unsharp '0.25x0.08+8.3+0.045'    \
+                -dither None                      \
+                -posterize 136                    \
+                -quality 82                       \
+                -define jpeg:fancy-upsampling=off \
+                -auto-level                       \
+                -enhance                          \
+                -interlace none                   \
+                -colorspace sRGB                  \
+                "${random_dir}/${i%%.jpg}.mpc"
+    
         for file in "${random_dir}"/*.mpc
         do
             convert "${file}" -monitor "${file%%.mpc}.jpg"
             tmp_file="$(echo "${file}" | sed 's:.*/::')"
             mv "${file%%.mpc}.jpg" "${PWD}/${tmp_file%%.*}-IM.jpg"
             rm -f "${PWD}/${tmp_file%%.*}.jpg"
+    
             for v in ${file}
             do
                 v_noslash="${v%/}"
                 rm -fr "${v_noslash%/*}"
             done
         done
+        clear
     done
-
+    
     if [ "${?}" -eq '0' ]; then
         google_speech 'Image conversion completed.' 2>/dev/null
         exit 0
     else
-        echo
         google_speech 'Image conversion failed.' 2>/dev/null
-        echo
         read -p 'Press enter to exit.'
         exit 1
     fi
@@ -698,14 +690,13 @@ imdl()
     clear
     cwd="${PWD}"
     tmp_dir="$(mktemp -d)"
-    user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
     cd "${tmp_dir}" || exit 1
-    curl -A "${user_agent}" -Lso 'optimize-and-overwrite.sh' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-and-overwrite.sh'
-    sudo mv 'optimize-and-overwrite.sh' "${cwd}"/imow
+    wget -U "${user_agent}" -Nq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-and-overwrite.sh'
+    sudo chown "${USER}":"${USER}" -- *
+    sudo chmod +rwx -- *
+    mv 'optimize-and-overwrite.sh' "${cwd}"/imow
     sudo rm -fr "${tmp_dir}"
     cd "${cwd}" || exit 1
-    sudo chown "${USER}":"${USER}" 'imow'
-    sudo chmod +rwx 'imow'
 }
 
 ##################################################
@@ -778,9 +769,8 @@ cuda_purge()
 
 ffdl()
 {
-    local user_agent
     clear
-    curl -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36' -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
+    curl -A $"{user_agent}" -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
     bash 'ff.sh'
     sudo rm 'ff.sh'
     clear; ls -1AhFv --color --group-directories-first
@@ -1689,7 +1679,6 @@ cmf()
 sedr()
 {
     clear
-
     if [ -z "${1}" ]; then
         read -p 'Enter the file name to search ( ex: *.sh ): ' search_this
         read -p 'Enter the text the will be replaced: ' replace_this
@@ -1697,4 +1686,26 @@ sedr()
         clear
         sudo find . -type f -iname "${search_this}" -exec sudo sed -i "s/${replace_this}/${replace_with}/g" '{}' \;
     fi
+}
+
+#################################
+## DOWNLOAD ALL GITHUB SCRIPTS ##
+#################################
+
+gitdl()
+{
+    local cwd random_dir
+    clear
+    cwd="${PWD}"
+    random_dir="$(mktemp -d)"
+    cd "${random_dir}" || return 1
+    wget -U "${user_agent}" -Nq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc'
+    wget -U "${user_agent}" -Nq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/FFmpeg/build-ffmpeg'
+    wget -U "${user_agent}" -Nq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/build-magick'
+    sudo chmod -R +rwx -- *
+    sudo chown "${USER}":"${USER}" -- *
+    mv -- * "${cwd}"
+    sudo rm -fr "${random_dir}"
+    cd "${cwd}" || return 1
+    clear; ls -1AhFv --color --group-directories-first
 }
