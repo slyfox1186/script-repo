@@ -1624,14 +1624,15 @@ if build 'lv2' 'git'; then
     if [ -n "${rm_pip_lock}" ]; then
         sudo rm "${rm_pip_lock}"
     fi
+    extracommands=(-D{docs,tests}'=false')
     execute pip install lxml Markdown Pygments rdflib
-    execute meson setup build --prefix="${workspace}"  \
-                              --buildtype=release      \
-                              --default-library=static \
-                              --strip                  \
-                              -Dtests=disabled         \
-                              -Ddocs=disabled          \
-                              -Dplugins=disabled
+    execute autoreconf -fi
+    execute meson setup build --prefix="${workspace}"       \
+                              --buildtype=release           \
+                              --default-library=static      \
+                              --strip                       \
+                              -Dplugins="${pulgins_switch}" \
+                              "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'lv2' 'git'
