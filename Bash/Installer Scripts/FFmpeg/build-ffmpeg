@@ -571,7 +571,7 @@ gpu_arch_fn()
         'NVIDIA GeForce RTX 4080')      gpu_type=5;;
         'NVIDIA GeForce RTX 4090')      gpu_type=5;;
         'NVIDIA H100')                  gpu_type=6;;
-        *)                              fail_fn "Unable to define the variable \"gpu_type\" in the function \"gpu_arch_fn\". Line: ${LINENO}";;
+        *)                              fail_fn "Unable to define the variable \"gpu_name\" in the function \"gpu_arch_fn\". Line: ${LINENO}";;
     esac
 
     if [ -n "${gpu_type}" ]; then
