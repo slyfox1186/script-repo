@@ -316,8 +316,9 @@ git_1_fn()
 
     github_repo="${1}"
     github_url="${2}"
+    git_token='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'
 
-    if curl_cmd="$(curl -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36' -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
         g_ver2="$(echo "${curl_cmd}" | jq -r '.[0].tag_name' 2>/dev/null)"
@@ -568,9 +569,18 @@ fi
 # AUTOTRACE FAILS ON DEBIAN 12
 if build 'autotrace' 'travis-20200219.65'; then
     case "${VER}" in
-        18.04|20.04|22.04|11|10)      install_autotrace_fn;;
+        18.04|20.04|22.04|11|10)
+                                    install_autotrace_fn
+                                    autotrace_flag=1
+                                    ;;
     esac
     build_done 'autotrace' 'travis-20200219.65'
+fi
+
+if [ "${autotrace_flag}" = '1' ]; then
+    set_autotrace='--with-autotrace'
+else
+    set_autotrace='--without-autotrace'
 fi
 
 #
@@ -856,7 +866,7 @@ if build 'openjpeg' "${g_ver2}"; then
     execute cmake -B build                              \
                   -DCMAKE_INSTALL_PREFIX="${workspace}" \
                   -DCMAKE_BUILD_TYPE=Release            \
-                  -DBUILD_TESTING=ON                    \
+                  -DBUILD_TESTING=OFF                   \
                   -DBUILD_SHARED_LIBS=ON                \
                   -DBUILD_THIRDPARTY=ON                 \
                   -DCPACK_BINARY_DEB=ON                 \
@@ -923,7 +933,7 @@ if build 'ImageMagick' "${g_ver}"; then
                  --with-quantum-depth=16                          \
                  --with-rsvg                                      \
                  --with-tcmalloc                                  \
-                 --without-autotrace                              \
+                 "${set_autotrace}"                               \
                  CPPFLAGS="${CPPFLAGS}"                           \
                  CXXFLAGS="${CXXFLAGS}"                           \
                  CFLAGS="${CFLAGS}"                               \
