@@ -10,7 +10,7 @@ user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 if [ -d "${cwd}" ]; then
     sudo rm -fr "${cwd}"
 fi
-mkdir -p "${cwd}"
+mkdir -p "${cwd}"/completed
 
 cd "${cwd}" || exit 1
 
@@ -68,66 +68,22 @@ do
     fi
 done
 
-if [ -n "${missing_pkg}s" ]; then
+if [ -n "${missing_pkgs}" ]; then
     sudo apt -y install ${missing_pkgs}
     sudo apt -y autoremove
     clear
 fi
 
-install_scripts_fn()
-{
-    local i scripts
-    clear
-
-    scripts="$(sudo find . -maxdepth 1 -type f -name '*' | sed 's/^..//g' | sort)"
-
-    for i in ${scripts[@]}
-    do
-        if bash "${i}"; then
-            sudo find . -maxdepth 1 -type f -name "${i}" -exec mv '{}' completed \;
-            printf "\n%s\n\n" "Script finished: ${i}"
-            sleep 1
-        else
-            fail_fn "Failed to install: ${i}"
-        fi
-        sleep 2
-    done
-}
-
-install_choice_fn()
-{
-    printf "\n%s\n\n%s\n\n%s\n%s\n\n" \
-        'Do you want to install all of the scripts now?' \
-        'You must manually remove any scripts you do not want to install before continuing.' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' answer
-
-    case "${answer}" in
-        1)      install_scripts_fn;;
-        2)      exit_fn;;
-        *)
-                printf "%s\n\n" 'Bad user input... Resetting script.'
-                sleep 3
-                unset answer
-                clear
-                install_choice_fn
-                ;;
-    esac
-}
-
-scripts=(m4 autoconf libtool make bash pkg-config sed tar gawk grep nano eog isl wget)
+dl_files=(m4 autoconf libtool make bash pkg-config sed tar gawk grep nano eog isl wget)
 cnt=0
 
-for script in ${scripts[@]}
+for dl_file in ${dl_files[@]}
 do
     let cnt=cnt+1
-    wget -U "${user_agent}" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-${script}"
-    mv "build-${script}" "0${cnt}-build-${script}"'.sh'
+    wget -U "${user_agent}" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-${dl_file}"
+    mv "build-${dl_file}" "0${cnt}-build-${dl_file}"'.sh' 2>/dev/null
 done
-
-# ASK THE USER IF THEY WANT TO INSTALL ALL OF THE SCRIPTS
-# install_choice_fn
+unset cnt
 
 # RENAME FILES WITH NUMBERS 10 AND HIGHER SO THEY EXECUTE IN THE INTENDED ORDER
 files=(gawk grep nano eog isl wget)
@@ -138,12 +94,12 @@ do
     for file in ${files[@]}
     do
         ((cnt++)) # << start counting here
-        mv "0${cnt}-build-${file}" "${cnt}-build-${file}" # << move the files, thus renaming them
+        mv "0${cnt}-build-${file}" "${cnt}-build-${file}" 2>/dev/null # << move the files, thus renaming them
     done
 done
 
 clear
-find . -type f -name '*.sh' -exec bash -c "echo '1' | bash '{}'" \;
+find . -maxdepth 1 -type f -iname '*.sh' -exec bash -c "echo '1' | bash '{}'; mv '{}' completed" \;
 
 # CLEANUP THE FILES
 cleanup_fn
