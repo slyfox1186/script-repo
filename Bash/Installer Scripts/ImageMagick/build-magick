@@ -18,11 +18,13 @@
 ##  Added: A CPPFLAGS variable to ImageMagick's configure script
 ##  Added: A case command to determine the required libtool version based on the active OS
 ##
+##  Fixed: Incorrect pkg-config location when building ImageMagick
+##
 ##  Changed: Some support libraries prefix paths to avoid installing into the system
 ##
-##  Updated: 10.02.23
+##  Updated: 10.05.23
 ##
-##  Script Version: 3.1
+##  Script Version: 3.2
 ##
 #############################################################################################################
 
@@ -37,7 +39,7 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-script_ver=3.1
+script_ver=3.2
 progname="${0}"
 cwd="${PWD}"/magick-build-script
 packages="${cwd}"/packages
@@ -58,17 +60,19 @@ mkdir -p "${packages}" "${workspace}"
 # FIGURE OUT WHICH COMPILERS TO USE
 #
 
-export CC=gcc-13 CXX=g++-13
+export CC=gcc CXX=g++
 
 #
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
+CXXFLAGS='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
+CFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu"
+CFLAGS+=" -I/usr/include/openjpeg-2.5 -I${workspace}/include/CL ${CXXFLAGS}"
+CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/openjpeg-2.5"
 LDFLAGS="-L${workspace}/lib64 -L${workspace}/lib -L${workspace}/lib/x86_64-linux-gnu -L/usr/local/lib64"
 LDFLAGS+=' -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
-export LDFLAGS
-CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include"
+export CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
 
 #
 # SET THE AVAILABLE CPU COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -327,20 +331,38 @@ git_1_fn()
     fi
 }
 
+git_2_fn()
+{
+    repo="${1}"
+    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.freedesktop.org/api/v4/projects/${repo}/repository/tags")"; then
+        g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
+    fi
+}
+
 git_ver_fn()
 {
-    local flag_choice flag_type flag_url
+    local t_flag u_flag v_flag v_tag v_url
 
-    flag_url="${1}"
-    flag_type="${2}"
+    v_url="${1}"
+    v_tag="${2}"
 
-    case "${flag_type}" in
-            R)      flag_choice=releases;;
-            T)      flag_choice=tags;;
-            *)      fail_fn "Could not determine the variable \"flag_choice\" variable. Line: ${LINENO}";;
+    if [ -n "${3}" ]; then
+        v_flag="${3}"
+    fi
+
+    case "${v_flag}" in
+            B)      t_flag=branches;;
+            R)      t_flag=releases;;
+            T)      t_flag=tags;;
     esac
 
-    git_1_fn "${flag_url}" "${flag_choice}"
+    case "${v_tag}" in
+            1)      u_flag=git_1_fn;;
+            2)      u_flag=git_2_fn;;
+            *)      fail_fn "Could not detect the variable \"v_tag\" in the function \"git_ver_fn\". Line: ${LINENO}"
+    esac
+
+    "${u_flag}" "${v_url}" "${t_flag}" 2>/dev/null
 }
 
 #
@@ -371,6 +393,8 @@ pkgs_fn()
     if [ -n "${missing_pkgs}" ]; then
         sudo apt -y install ${missing_pkgs}
         clear
+    else
+        printf "%s\n" 'The APT packages are already installed'
     fi
 }
 
@@ -515,7 +539,7 @@ esac
 # INSTALL OFFICIAL IMAGEMAGICK LIBS
 #
 
-git_ver_fn 'imagemagick/imagemagick' 'T'
+git_ver_fn 'imagemagick/imagemagick' '1' 'T'
 if build 'magick-libs' "${g_ver}"; then
     if [ ! -d "${packages}"/deb-files ]; then
         mkdir -p "${packages}"/deb-files
@@ -602,7 +626,7 @@ if build 'libtool' "${lt_ver}"; then
     build_done 'libtool' "${lt_ver}"
 fi
 
-git_ver_fn 'libsdl-org/libtiff' 'T'
+git_ver_fn 'libsdl-org/libtiff' '1' 'T'
 if build 'tiff' "${g_ver}"; then
     download "https://codeload.github.com/libsdl-org/libtiff/tar.gz/refs/tags/v${g_ver}" "tiff-${g_ver}.tar.gz"
     execute ./autogen.sh
@@ -688,6 +712,37 @@ if build 'libwebp' 'git'; then
     build_done 'libwebp' 'git'
 fi
 
+if build 'freetype' '2.13.2'; then
+    download 'https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-2-13-2/freetype-VER-2-13-2.tar.bz2' 'freetype-2.13.2.tar.bz2'
+    extracommands=(-D{harfbuzz,png,bzip2,brotli,zlib,tests}'=disabled')
+    execute ./autogen.sh
+        execute meson setup build --prefix="${workspace}"  \
+                                  --buildtype=release      \
+                                  --default-library=static \
+                                  --strip                  \
+                                   "${extracommands[@]}"
+    execute ninja "-j${cpu_threads}" -C build
+    execute ninja "-j${cpu_threads}" -C build install
+    build_done 'freetype' '2.13.2'
+fi
+
+git_ver_fn '890' '2'
+if build 'fontconfig' '2.14.2'; then
+    download 'https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/2.14.2/fontconfig-2.14.2.tar.bz2'
+    execute ./autogen.sh --noconf
+    execute autoreconf -fi
+    execute autoupdate
+    LDFLAGS+=' -DLIBXML_STATIC'
+    sed -i 's|Cflags:|& -DLIBXML_STATIC|' fontconfig.pc.in
+    execute ./configure --prefix="${workspace}" \
+                        --disable-docs          \
+                        --enable-shared         \
+                        --with-pic
+    execute make "-j${cpu_threads}"
+    execute make install
+    build_done 'fontconfig' '2.14.2'
+fi
+
 if build 'c2man' 'git'; then
     download_git 'https://github.com/fribidi/c2man.git'
     execute ./Configure -desO                                                               \
@@ -727,7 +782,7 @@ if build 'c2man' 'git'; then
     build_done 'c2man' 'git'
 fi
 
-git_ver_fn 'fribidi/fribidi' 'T'
+git_ver_fn 'fribidi/fribidi' '1' 'T'
 if build 'fribidi' "${g_ver}"; then
     download "https://github.com/fribidi/fribidi/archive/refs/tags/v${g_ver}.tar.gz" "fribidi-${g_ver}.tar.gz"
     extracommands=(-D{docs,tests}'=false')
@@ -742,7 +797,7 @@ if build 'fribidi' "${g_ver}"; then
     build_done 'fribidi' "${g_ver}"
 fi
 
-git_ver_fn 'host-oman/libraqm' 'T'
+git_ver_fn 'host-oman/libraqm' '1' 'T'
 if build 'raqm' "${g_ver}"; then
     download "https://codeload.github.com/host-oman/libraqm/tar.gz/refs/tags/v${g_ver}" "raqm-${g_ver}.tar.gz"
     execute meson setup build --prefix="${workspace}"             \
@@ -755,7 +810,7 @@ if build 'raqm' "${g_ver}"; then
     build_done 'raqm' "${g_ver}"
 fi
 
-git_ver_fn 'jemalloc/jemalloc' 'T'
+git_ver_fn 'jemalloc/jemalloc' '1' 'T'
 if build 'jemalloc' "${g_ver}"; then
     download "https://github.com/jemalloc/jemalloc/archive/refs/tags/${g_ver}.tar.gz" "jemalloc-${g_ver}.tar.gz"
     execute ./autogen.sh
@@ -775,7 +830,7 @@ if build 'jemalloc' "${g_ver}"; then
     build_done 'jemalloc' "${g_ver}"
 fi
 
-git_ver_fn 'uclouvain/openjpeg' 'R'
+git_ver_fn 'uclouvain/openjpeg' '1' 'R'
 if build 'openjpeg' "${g_ver2}"; then
     download "https://codeload.github.com/uclouvain/openjpeg/tar.gz/refs/tags/v${g_ver2}" "openjpeg-${g_ver2}.tar.gz"
     execute cmake -B build                              \
@@ -822,7 +877,7 @@ box_out_banner2()
 }
 box_out_banner2 'Build ImageMagick'
 
-git_ver_fn 'imagemagick/imagemagick' 'T'
+git_ver_fn 'imagemagick/imagemagick' '1' 'T'
 if build 'ImageMagick' "${g_ver}"; then
     download "https://codeload.github.com/imagemagick/imagemagick/tar.gz/refs/tags/${g_ver}" "imagemagick-${g_ver}.tar.gz"
     execute autoreconf -fi -I /usr/share/aclocal
@@ -850,7 +905,10 @@ if build 'ImageMagick' "${g_ver}"; then
                  --with-tcmalloc                                  \
                  --without-autotrace                              \
                  CPPFLAGS="${CPPFLAGS}"                           \
-                 PKG_CONFIG="${workspace}/bin/pkg-config"
+                 CXXFLAGS="${CXXFLAGS}"                           \
+                 CFLAGS="${CFLAGS}"                               \
+                 LDFLAGS="${LDFLAGS}"                             \
+                 PKG_CONFIG="$(type -P pkg-config)"
     execute make "-j${cpu_threads}"
     execute sudo make install
 fi
