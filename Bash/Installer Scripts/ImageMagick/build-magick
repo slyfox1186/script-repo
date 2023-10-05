@@ -569,7 +569,7 @@ fi
 # AUTOTRACE FAILS ON DEBIAN 12
 if build 'autotrace' 'travis-20200219.65'; then
     case "${VER}" in
-        18.04|20.04|22.04|11|10)
+        18.04|20.04|22.04|23.10|11|10)
                                     install_autotrace_fn
                                     autotrace_flag=1
                                     ;;
