@@ -101,15 +101,27 @@ sleep 2
 # SET THE C & C++ COMPILERS TO THE HIGHEST VERSION INSTALLED
 #
 
-export CC=gcc CXX=g++
+locate_gcc="$(type -P gcc | sed 's:/[^/]*$::')"
+set_gcc="$(sudo find "${locate_gcc}" -maxdepth 1 -name 'gcc-*' | grep -Eo 'gcc-[0-9]+' | sort -r | head -n1)"
+set_gpp="$(sudo find "${locate_gcc}" -maxdepth 1 -name 'g++-*' | grep -Eo 'g\+\+-[0-9]+' | sort -r | head -n1)"
+
+if [ -n "${set_gcc}" ] && [ -n "${set_gpp}" ]; then
+    CC="${set_gcc}"
+    CXX="${set_gpp}"
+    export CC CXX
+else
+    clear
+    printf "%s\n\n" 'Failed to locate and set the highest gcc/g++ versions. Make sure they are installed before trying again!'
+    exit 1
+fi
 
 check_gcc_ver="$(gcc --version | grep -Eo '[0-9\.]+$' | head -n1 | sed 's/....$//g')"
 
-if [[ "${check_gcc_ver}" -ge '13' ]]; then
+if [ "${check_gcc_ver}" -ge '13' ]; then
     clear
     printf "%s\n%s\n\n" \
         'Your default gcc version is "gcc-13" and FFmpeg does not support it.' \
-        'Please manually change the variables CC/CXX to gcc-12/g++-12 or lower.'
+        'Please manually install a lower version and add the variables CC/CXX as required to reflect the changes.'
     exit 1
 fi
 
