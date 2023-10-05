@@ -39,7 +39,7 @@
 # DEFINE GLOBAL VARIABLES
 #
 
-script_name="${0:2}"
+script_name="${0}"
 script_ver=2.8.0
 ffmpeg_ver=963937e408fc68b5925f938a253cfff1d506f784
 ffmpeg_sver="${ffmpeg_ver::7}"
