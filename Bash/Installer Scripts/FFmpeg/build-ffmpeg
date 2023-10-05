@@ -781,16 +781,18 @@ cuda_download_fn()
 install_cuda_fn()
 {
     local answer choice
-    #
-    # CHECK IF THE CUDA FOLDER EXISTS TO ENSURE IT WAS INSTALLED
-    #
+    clear
 
     iscuda="$(sudo find "${cuda_folder_path}" -type f -name nvcc 2>/dev/null)"
     cuda_path="$(sudo find "${cuda_folder_path}" -type f -name nvcc | grep -Eo '^.*/bin?')"
 
+    if [ -f "${cuda_folder_path}"/version.json ]; then
+        get_cuda_version="$(cat "${cuda_folder_path}"/version.json | jq -r '.cuda.version')"
+    fi
+
     if [ -n "${iscuda}" ]; then
-        printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
-            "The installed cuda-sdk-toolkit version is: ${cuda_ver}" \
+        printf "%s\n%s\n\n%s\n\n%s\n%s\n\n" \
+            "The installed CUDA SDK Toolkit version is: ${get_cuda_version}" \
             '=====================================================' \
             'Do you want to update/reinstall it?' \
             '[1] Yes' \
