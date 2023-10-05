@@ -40,7 +40,7 @@ box_out_banner 'Installer Script Menu'
 szip_release_fn() { bash <(curl -fsSL https://7z.optimizethis.net); }
 dl_tools_fn() { bash <(curl -fsSL https://dl-tools.optimizethis.net); }
 build_tools_fn() { bash <(curl -fsSL https://build-tools.optimizethis.net); }
-magick_fn() { bash <(curl -fsSL https://magick.optimizethis.net) --build; }
+magick_fn() { bash <(curl -fsSL https://magick.optimizethis.net); }
 ffmpeg_fn() { bash <(curl -fsSL https://build-ffmpeg.optimizethis.net) --build --latest; }
 go_fn() { bash <(curl -fsSL https://go.optimizethis.net); }
 gparted_fn() { bash <(curl -fsSL https://gparted.optimizethis.net); }
