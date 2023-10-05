@@ -5,7 +5,7 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
-##  Script version: 2.8.1
+##  Script version: 2.8.0
 ##  Last Update: 10.05.23
 ##
 ##  Supported Distro:
@@ -47,7 +47,7 @@
 #
 
 script_name="${0}"
-script_ver=2.8.1
+script_ver=2.8.0
 ffmpeg_ver=963937e408fc68b5925f938a253cfff1d506f784
 ffmpeg_sver="${ffmpeg_ver::7}"
 ffmpeg_archive=ffmpeg-"${ffmpeg_sver}".tar.gz
@@ -70,7 +70,7 @@ latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 curl_timeout=10
-debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=ON # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -208,7 +208,7 @@ cleanup_fn()
 
 ff_ver_fn()
 {
-    printf "%s\n%s\n%s\n\n" \
+    printf "\n%s\n%s\n%s\n\n" \
         '============================================' \
         '               FFmpeg Version               ' \
         '============================================'
@@ -504,6 +504,10 @@ build()
     return 0
 }
 
+build_done() { echo "${2}" > "${packages}/${1}.done"; }
+
+installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
+
 library_exists()
 {
 
@@ -512,10 +516,6 @@ library_exists()
     fi
     return 0
 }
-
-build_done() { echo "${2}" > "${packages}/${1}.done"; }
-
-installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
 gpu_arch_fn()
 {
