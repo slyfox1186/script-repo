@@ -17,6 +17,7 @@
 ##  Added: A browser user-agent string to the curl command
 ##  Added: A CPPFLAGS variable to ImageMagick's configure script
 ##  Added: A case command to determine the required libtool version based on the active OS
+##  Added: Autotrace for Ubuntu (18/20/22).04 and Debian 10/11
 ##
 ##  Fixed: Incorrect pkg-config location when building ImageMagick
 ##
@@ -24,7 +25,7 @@
 ##
 ##  Updated: 10.05.23
 ##
-##  Script Version: 3.2
+##  Script Version: 3.3
 ##
 #############################################################################################################
 
@@ -39,7 +40,7 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-script_ver=3.2
+script_ver=3.3
 progname="${0}"
 cwd="${PWD}"/magick-build-script
 packages="${cwd}"/packages
@@ -316,7 +317,7 @@ git_1_fn()
     github_repo="${1}"
     github_url="${2}"
 
-    if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36' -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
         g_ver2="$(echo "${curl_cmd}" | jq -r '.[0].tag_name' 2>/dev/null)"
@@ -398,9 +399,16 @@ pkgs_fn()
     fi
 }
 
-#
-# TEST THE OS AND ITS VERSION IF UBUNTU THEN CALL THE pkgs_fn
-#
+install_autotrace_fn()
+{
+    if ! curl -A "${user_agent}" -Lso "${packages}"/deb-files/autotrace_0.40.0.deb 'https://github.com/autotrace/autotrace/releases/download/travis-20200219.65/autotrace_0.40.0-20200219_all.deb'; then
+        fail_fn "Failed to install autotrace. Line: ${LINENO}"
+    fi
+
+    cd "${packages}"/deb-files || exit 1
+
+    sudo apt -y install ./autotrace_0.40.0.deb
+}
 
 install_libjxl_fn()
 {
@@ -551,6 +559,18 @@ if build 'magick-libs' "${g_ver}"; then
     sudo alien -d ./*.rpm
     sudo dpkg -i ./*.deb
     build_done 'magick-libs' "${g_ver}"
+fi
+
+#
+# INSTALL AUTOTRACE
+#
+
+# AUTOTRACE FAILS ON DEBIAN 12
+if build 'autotrace' 'travis-20200219.65'; then
+    case "${VER}" in
+        18.04|20.04|22.04|11|10)      install_autotrace_fn;;
+    esac
+    build_done 'autotrace' 'travis-20200219.65'
 fi
 
 #
