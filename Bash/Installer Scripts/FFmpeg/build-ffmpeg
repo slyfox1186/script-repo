@@ -2214,23 +2214,7 @@ if build 'gpac' "${g_ver}"; then
     build_done 'gpac' "${g_ver}"
 fi
 
-# pre_check_ver 'openvisualcloud/svt-hevc' '1' 'T'
-# if build 'svt-hevc' "${g_ver}"; then
-#     download "https://github.com/OpenVisualCloud/SVT-HEVC/archive/refs/tags/v${g_ver}.tar.gz" "svt-hevc-${g_ver}.tar.gz"
-#     execute cmake -B build                              \
-#                   -DCMAKE_INSTALL_PREFIX="${workspace}" \
-#                   -DCMAKE_BUILD_TYPE=Release            \
-#                   -DBUILD_SHARED_LIBS=OFF               \
-#                   -DYASM_EXE="${workspace}"/bin/yasm    \
-#                   -DNATIVE=ON                           \
-#                   -G Ninja -Wno-dev
-#     execute ninja "-j${cpu_threads}" -C build
-#     execute ninja "-j${cpu_threads}" -C build install
-#     build_done 'svt-hevc' "${g_ver}"
-# fi
-# ffmpeg_libraries+=('--enable-libsvthevc')
-
-# UPDATE THIS FROM TIME TO TIME
+# ANY VERSION HIGHER THAN 1.4.0 BREAKS FFMPEG DURING IT'S BUILD
 git_ver_fn '24327400' '3' 'T'
 if build 'svt-av1' '1.4.0'; then
     download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v1.4.0/SVT-AV1-v1.4.0.tar.bz2' 'svt-av1-1.4.0.tar.bz2'
