@@ -1,25 +1,4 @@
 #!/usr/bin/env bash
-
-clear
-
-printf "%s\n%s\n\n" \
-    'Install ~/.bash_functions' \
-    '================================='
-
-#
-# SET VARIABLES
-#
-
-file="$HOME"/.bash_functions
-
-#
-# CREATE FUNCTIONS
-#
-
-script_fn()
-{
-cat > "$file" <<'EOF'
-#!/usr/bin/env bash
 # shellcheck disable=SC1091,SC2001,SC2162,SC2317
 
 ######################################################################################
@@ -203,22 +182,22 @@ aptdl()
 clean()
 {
     clear
-    sudo apt-fast -y autoremove
-    sudo apt-fast clean
-    sudo apt-fast autoclean
-    sudo apt-fast -y purge
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt -y purge
 }
 
 # UPDATE
 update()
 {
     clear
-    sudo apt-fast update
-    sudo apt-fast -Vsy full-upgrade
-    sudo apt-fast -y autoremove
-    sudo apt-fast clean
-    sudo apt-fast autoclean
-    sudo apt-fast -y purge
+    sudo apt update
+    sudo apt -Vsy full-upgrade
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt -y purge
 }
 
 # FIX BROKEN APT PACKAGES
@@ -721,15 +700,12 @@ imdl()
     tmp_dir="$(mktemp -d)"
     user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
     cd "${tmp_dir}" || exit 1
-    curl -A "${user_agent}" -Lso 'imow' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-and-overwrite.sh'
-    sudo mv imow "${cwd}"
+    curl -A "${user_agent}" -Lso 'optimize-and-overwrite.sh' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-and-overwrite.sh'
+    sudo mv 'optimize-and-overwrite.sh' "${cwd}"/imow
     sudo rm -fr "${tmp_dir}"
     cd "${cwd}" || exit 1
-    sudo chown "${USER}":"${USER}" imow
-    sudo chmod +rwx imow
-    if [ -f "${0}" ]; then
-        sudo rm "${0}"
-    fi
+    sudo chown "${USER}":"${USER}" 'imow'
+    sudo chmod +rwx 'imow'
 }
 
 ##################################################
@@ -1423,7 +1399,7 @@ tkapt()
     local i list
     clear
 
-    list=(apt-fast apt-fast apt apt-fast apt-get aptitude dpkg)
+    list=(apt-fast apt-fast apt-fast apt apt-fast apt-get aptitude dpkg)
 
     for i in ${list[@]}
     do
@@ -1722,36 +1698,3 @@ sedr()
         sudo find . -type f -iname "${search_this}" -exec sudo sed -i "s/${replace_this}/${replace_with}/g" '{}' \;
     fi
 }
-EOF
-}
-
-#
-# CHECK FOR ANY PASSED ARGUMENTS TO SET THE APT PACKAGE MANAGER
-#
-
-if [[ "$1" == 'yes' ]]; then
-    answer=1
-else
-    answer=2
-fi
-
-case "$answer" in
-    1)
-            script_fn
-            sed -i 's/apt /apt-fast /g' "$file"
-            sed -i 's/apt-fast list/apt list/g' "$file"
-            sed -i 's/local apt-fast host/local apt host/g' "$file"
-            sed -i 's/for apt-fast in/for apt in/g' "$file"
-            sed -i 's/apt-fast apt-get aptitude dpkg/apt apt-fast apt-get aptitude dpkg/g' "$file"
-            sed -i 's/apt-fast search/apt search/g' "$file"
-            ;;
-    2)      script_fn;;
-    *)
-            clear
-            printf "%s\n\n" 'Bad user input. Please start over.'
-            exit 1
-            ;;
-esac
-
-clear
-printf "%s\n%s\n\n" 'The script has completed!'
