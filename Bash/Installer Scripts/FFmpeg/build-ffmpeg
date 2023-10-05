@@ -1290,14 +1290,14 @@ if build 'freetype' "${g_ver1}"; then
     download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-${g_ver}/freetype-VER-${g_ver}.tar.bz2" "freetype-${g_ver1}.tar.bz2"
     extracommands=(-D{harfbuzz,png,bzip2,brotli,zlib,tests}'=disabled')
     execute ./autogen.sh
-        execute meson setup build --prefix="${workspace}" \
-                              --buildtype=release         \
-                              --default-library=static    \
-                              --strip                     \
-                               "${extracommands[@]}"
+        execute meson setup build --prefix="${workspace}"  \
+                                  --buildtype=release      \
+                                  --default-library=static \
+                                  --strip                  \
+                                   "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
-build_done 'freetype' "${g_ver1}"
+    build_done 'freetype' "${g_ver1}"
 fi
 ffmpeg_libraries+=('--enable-libfreetype')
 
