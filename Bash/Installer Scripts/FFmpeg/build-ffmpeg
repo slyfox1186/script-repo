@@ -98,7 +98,6 @@ box_out_banner1()
 }
 box_out_banner1 "FFmpeg Build Script - v${script_ver}"
 printf "\n%s\n\n" "The script will utilize (${cpu_threads}) CPU threads for parallel processing to accelerate the build speed."
-sleep 2
 
 #
 # SET THE C & C++ COMPILERS TO THE HIGHEST VERSION INSTALLED
