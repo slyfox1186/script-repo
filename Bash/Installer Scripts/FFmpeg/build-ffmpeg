@@ -69,6 +69,7 @@ ffmpeg_libraries=()
 latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
+curl_timeout=10
 debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
@@ -298,9 +299,6 @@ sed -i -e '/null-/d' -e '/null /d' -e '/-null/d' -e '/-$/d' "${ver_file_tmp}" "$
 if [ ! -f "${ver_file_tmp}" ] || [ ! -f "${ver_file}" ]; then
     touch "${ver_file_tmp}" "${ver_file}" 2>/dev/null
 fi
-
-# PULL THE LATEST VERSIONS OF EACH PACKAGE FROM THE WEBSITE API
-curl_timeout=10
 
 git_1_fn()
 {
