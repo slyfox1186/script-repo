@@ -2539,7 +2539,7 @@ if build 'openjpeg' "${g_ver2}"; then
     execute cmake -B build                              \
                   -DCMAKE_INSTALL_PREFIX="${workspace}" \
                   -DCMAKE_BUILD_TYPE=Release            \
-                  -DBUILD_TESTING=ON                    \
+                  -DBUILD_TESTING=OFF                   \
                   -DBUILD_SHARED_LIBS=ON                \
                   -DBUILD_THIRDPARTY=ON                 \
                   -DCPACK_BINARY_DEB=ON                 \
