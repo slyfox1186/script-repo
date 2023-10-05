@@ -28,7 +28,7 @@
 ##               - will be prompted by the script to install them so that hardware acceleration is
 ##               - enabled when compiling FFmpeg
 ##
-##  Updated: x265 to the latest release
+##  Updated: x265 library
 ##  Updated: aom/av1 library
 ##
 ##  Added: Debian OS Support for Bookworm (12)
