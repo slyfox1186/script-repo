@@ -2608,6 +2608,7 @@ if build 'ffmpeg' "${ffmpeg_sver}"; then
                 --disable-large-tests                       \
                 --disable-shared                            \
                 "${ffmpeg_libraries[@]}"                    \
+                --enable-chromaprint                        \
                 --enable-ffnvcodec                          \
                 --enable-gpl                                \
                 --enable-ladspa                             \
