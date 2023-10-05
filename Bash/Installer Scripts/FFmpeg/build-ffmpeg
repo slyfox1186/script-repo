@@ -833,7 +833,7 @@ pkgs_fn()
           libass-dev libaudio-dev libavfilter-dev libbluray-dev libbs2b-dev libbz2-dev libc6 libc6-dev libcaca-dev
           libcairo2-dev libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libchromaprint-dev libcodec2-dev
           libcrypto++-dev libcurl4-openssl-dev libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev libdrm-dev
-          libdvbpsi-dev libebml-dev libegl1-mesa-dev libfdk-aac-dev libffi-dev libgbm-dev libgdbm-dev libgl1-mesa-dev
+          libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev libgl1-mesa-dev
           libgles2-mesa-dev libglib2.0-dev libgme-dev libgnutls28-dev libgnutls30 libgoogle-perftools4
           libgoogle-perftools-dev libgsm1-dev libgvc6 libibus-1.0-dev libiconv-hook-dev libintl-perl libjack-dev
           libjemalloc-dev libladspa-ocaml-dev libleptonica-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev
