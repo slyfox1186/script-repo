@@ -50,7 +50,8 @@ ffmpeg_url=https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/"${ffmpeg_ver}".tar
 ###############################################################################
 # FFMPEG STABLE VERSION
 # ffmpeg_ver=5.1.3
-# ffmpeg_url=https://ffmpeg.org/releases/${ffmpeg_ver}.tar.xz
+# ffmpeg_sver=5.1.3
+# ffmpeg_url=https://ffmpeg.org/releases/ffmpeg-${ffmpeg_ver}.tar.xz
 ###############################################################################
 cuda_latest_ver=12.2.2
 cwd="${PWD}"/ffmpeg-build-script
