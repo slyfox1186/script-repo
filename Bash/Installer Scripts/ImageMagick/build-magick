@@ -312,7 +312,7 @@ git_1_fn()
     github_repo="${1}"
     github_url="${2}"
 
-    if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36' -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
         g_ver2="$(echo "${curl_cmd}" | jq -r '.[0].tag_name' 2>/dev/null)"
@@ -347,57 +347,6 @@ git_ver_fn()
 # PRINT THE OPTIONS AVAILABLE WHEN MANUALLY RUNNING THE SCRIPT
 #
 
-usage()
-{
-    clear
-    printf "%s\n\n%s\n%s\n%s\n%s\n%s\n\n"                                                                 \
-        "Usage: ${progname} [options]"                                                                    \
-        'Options:'                                                                                        \
-        '    -h, --help                                           Display this information'               \
-        '    -b, --build                                          Start the build process'                \
-        '    -c, --cleanup                                        Remove all build files and directories' \
-        '    -v, --version                                        Display script version information'
-}
-
-while ((${#} > 0))
-do
-    case "${1}" in
-        -h|--help)
-                        usage
-                        echo
-                        exit 0
-                        ;;
-        -v|--version)
-                        get_version_fn
-                        echo
-                        exit 0
-                        ;;
-        -*)
-                        if [[ "${1}" == '--build' || "${1}" =~ '-b' ]]; then
-                            bflag='-b'
-                        fi
-                        if [[ "${1}" == '--cleanup' || "${1}" =~ '-c' && ! "${1}" =~ '--' ]]; then
-                            cflag='-c'
-                            cleanup_fn
-                        fi
-                        shift
-                        ;;
-        *)
-                        usage
-                        echo
-                        exit 1
-                        ;;
-    esac
-done
-
-if [ -z "${bflag}" ]; then
-    if [ -z "${cflag}" ]; then
-        usage
-        exit 1
-    fi
-    exit 0
-fi
-
 pkgs_fn()
 {
     local i missing_pkg missing_pkgs pkgs
@@ -407,7 +356,8 @@ pkgs_fn()
           libgimp2.0-dev libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev libheif-dev libltdl-dev
           libpango1.0-dev libpaper-dev libpng-dev libpstoedit-dev libraw-dev librsvg2-dev librust-bzip2-dev
           libsdl2-dev libstdc++-12-dev libtcmalloc-minimal4 libtool libtool-bin libnuma-dev libxml2-dev
-          libzip-dev m4 meson nasm ninja-build opencl-headers opencl-c-headers php php-cli pstoedit xmlto yasm)
+          libzip-dev m4 meson nasm ninja-build opencl-headers opencl-c-headers php php-cli pstoedit xmlto
+          zlib1g-dev yasm)
 
     for i in ${pkgs[@]}
     do
@@ -667,9 +617,12 @@ fi
 
 if build 'jpeg-turbo' 'git'; then
     download_git 'https://github.com/imageMagick/jpeg-turbo.git'
-    execute cmake -S .                                                       \
-                  -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} \
-                  -DENABLE_{SHARED,STATIC}=ON -G Ninja -Wno-dev
+    execute cmake -S .                                  \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DENABLE_SHARED=ON                    \
+                  -DENABLE_STATIC=ON                    \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}"
     execute ninja "-j${cpu_threads}" install
     build_done 'jpeg-turbo' 'git'
@@ -712,10 +665,23 @@ fi
 if build 'libwebp' 'git'; then
     download_git 'https://chromium.googlesource.com/webm/libwebp' 'libwebp-git'
     execute autoreconf -fi
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release}                        \
-                  -DWEBP_{BUILD_ANIM_UTILS,BUILD_EXTRAS,BUILD_GIF2WEBP,BUILD_IMG2WEBP,BUILD_LIBWEBPMUX}=OFF  \
-                  -DWEBP_{BUILD_VWEBP,BUILD_WEBPINFO,BUILD_WEBPMUX,ENABLE_SWAP_16BIT_CSP,LINK_STATIC}=OFF    \
-                  -DWEBP_{BUILD_CWEBP,BUILD_DWEBP}=ON -DBUILD_SHARED_LIBS=OFF -DZLIB_INCLUDE_DIR=/usr/include \
+    execute cmake -B build                              \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DBUILD_SHARED_LIBS=ON                \
+                  -DZLIB_INCLUDE_DIR=/usr               \
+                  -DWEBP_BUILD_ANIM_UTILS=OFF           \
+                  -DWEBP_BUILD_CWEBP=ON                 \
+                  -DWEBP_BUILD_DWEBP=ON                 \
+                  -DWEBP_BUILD_VWEBP=OFF                \
+                  -DWEBP_BUILD_EXTRAS=OFF               \
+                  -DWEBP_BUILD_GIF2WEBP=OFF             \
+                  -DWEBP_BUILD_IMG2WEBP=OFF             \
+                  -DWEBP_BUILD_LIBWEBPMUX=OFF           \
+                  -DWEBP_BUILD_WEBPINFO=OFF             \
+                  -DWEBP_BUILD_WEBPMUX=OFF              \
+                  -DWEBP_ENABLE_SWAP_16BIT_CSP=OFF      \
+                  -DWEBP_LINK_STATIC=OFF                \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
@@ -724,15 +690,37 @@ fi
 
 if build 'c2man' 'git'; then
     download_git 'https://github.com/fribidi/c2man.git'
-    execute ./Configure -desO -D prefix="${workspace}" -D bin="${workspace}"/bin -D bash="$(type -P bash)"           \
-        -D cc=/usr/bin/cc -D d_gnu=/usr/lib/x86_64-linux-gnu -D find="$(type -P find)" -D gcc=/usr/bin/gcc           \
-        -D gzip="$(type -P gzip)" -D installmansrc="${workspace}"/share/man -D ldflags="${LDFLAGS}"                  \
-        -D less="$(type -P less)" -D libpth='/lib64 /lib /usr/lib64 /usr/lib'                                        \
-        -D locincpth="${workspace}/include /usr/local/include /usr/include" -D yacc="$(type -P yacc)"                \
-        -D loclibpth="${workspace}/lib64 ${workspace}/lib /usr/local/lib64 /usr/local/lib" -D make="$(type -P make)" \
-        -D more="$(type -P more)" -D osname="${OS}" -D perl="$(type -P perl)" -D privlib="${workspace}"/lib/c2man    \
-        -D privlibexp="${workspace}"/lib/c2man -D sleep="$(type -P sleep)" -D tail="$(type -P tail)"                 \
-        -D tar="$(type -P tar)" -D uuname="$(uname -s)" -D vi="$(type -P vi)" -D zip="$(type -P zip)"
+    execute ./Configure -desO                                                               \
+                        -D bash="$(type -P bash)"                                           \
+                        -D bin="${workspace}"/bin                                           \
+                        -D cc=/usr/bin/cc                                                   \
+                        -D d_gnu=/usr/lib/x86_64-linux-gnu                                  \
+                        -D find="$(type -P find)"                                           \
+                        -D gcc=/usr/bin/gcc                                                 \
+                        -D gzip="$(type -P gzip)"                                           \
+                        -D installmansrc="${workspace}"/share/man                           \
+                        -D ldflags="${LDFLAGS}"                                             \
+                        -D less="$(type -P less)"                                           \
+                        -D libpth='/lib /usr/lib'                                           \
+                        -D locincpth="${workspace}/include /usr/local/include /usr/include" \
+                        -D loclibpth="${workspace}/lib /usr/local/lib"                      \
+                        -D make="$(type -P make)"                                           \
+                        -D more="$(type -P more)"                                           \
+                        -D osname="${OS}"                                                   \
+                        -D perl="$(type -P perl)"                                           \
+                        -D prefix="${workspace}"                                            \
+                        -D privlib="${workspace}"/lib/c2man                                 \
+                        -D privlibexp="${workspace}"/lib/c2man                              \
+                        -D sleep="$(type -P sleep)"                                         \
+                        -D tail="$(type -P tail)"                                           \
+                        -D tar="$(type -P tar)"                                             \
+                        -D tr="$(type -P tr)"                                               \
+                        -D troff="$(type -P troff)"                                         \
+                        -D uniq="$(type -P uniq)"                                           \
+                        -D uuname="$(uname -s)"                                             \
+                        -D vi="$(type -P vi)"                                               \
+                        -D yacc="$(type -P yacc)"                                           \
+                        -D zip="$(type -P zip)"
     execute make depend
     execute make "-j${cpu_threads}"
     execute sudo make install
@@ -741,13 +729,14 @@ fi
 
 git_ver_fn 'fribidi/fribidi' 'T'
 if build 'fribidi' "${g_ver}"; then
-    download "https://codeload.github.com/fribidi/fribidi/tar.gz/refs/tags/v${g_ver}" "fribidi-${g_ver}.tar.gz"
-    extra_commands=(-D{deprecated,docs,tests}'=false')
-    execute meson setup build --prefix="${workspace}"  \
-                              --buildtype=release      \
-                              --default-library=static \
-                              --strip                  \
-                              "${extra_commands[@]}"
+    download "https://github.com/fribidi/fribidi/archive/refs/tags/v${g_ver}.tar.gz" "fribidi-${g_ver}.tar.gz"
+    extracommands=(-D{docs,tests}'=false')
+    execute autoreconf -fi
+        execute meson setup build --prefix="${workspace}" \
+                              --buildtype=release         \
+                              --default-library=static    \
+                              --strip                     \
+                               "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'fribidi' "${g_ver}"
@@ -768,16 +757,21 @@ fi
 
 git_ver_fn 'jemalloc/jemalloc' 'T'
 if build 'jemalloc' "${g_ver}"; then
-    download "https://codeload.github.com/jemalloc/jemalloc/tar.gz/refs/tags/${g_ver}" "jemalloc-${g_ver}.tar.gz"
+    download "https://github.com/jemalloc/jemalloc/archive/refs/tags/${g_ver}.tar.gz" "jemalloc-${g_ver}.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}"     \
-                        --{build,host}="${pc_type}" \
-                        --disable-doc               \
-                        --enable-autogen            \
-                        --enable-prof               \
-                        --enable-static
+    execute ./configure --prefix="${workspace}"           \
+                        --disable-debug                   \
+                        --disable-doc                     \
+                        --disable-fill                    \
+                        --disable-log                     \
+                        --disable-shared                  \
+                        --disable-prof                    \
+                        --disable-stats                   \
+                        --enable-autogen                  \
+                        --enable-static                   \
+                        --enable-xmalloc
     execute make "-j${cpu_threads}"
-    execute sudo make install
+    execute make install
     build_done 'jemalloc' "${g_ver}"
 fi
 
