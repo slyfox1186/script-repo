@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 imow()
 {
     local cnt_queue cnt_total dimensions pip_lock random_dir tmp_file v_noslash
