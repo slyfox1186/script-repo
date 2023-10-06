@@ -389,8 +389,9 @@ if build 'golang' '21.2'; then
     execute sudo cp -f bin/go bin/gofmt "${install_dir}"/bin
     sudo rm -fr "${install_dir}"/go 2>/dev/null
     sudo mkdir -p "${install_dir}"/go
-    export GOROOT="${install_dir}"/go
-    export PATH="${PATH}:${GOROOT}/bin"
+    GOROOT="${install_dir}"/go
+    PATH="${PATH}:${GOROOT}/bin"
+    export GOROOT PATH
     build_done 'golang' '21.2'
 fi
 
