@@ -1210,10 +1210,10 @@ fi
 if build 'nasm' '2.16.01'; then
     download 'https://www.nasm.us/pub/nasm/stable/nasm-2.16.01.tar.xz'
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}"             \
-                         --{build,host,target}="${pc_type}" \
-                         --disable-pedantic                 \
-                         --enable-ccache
+    execute ./configure --prefix="${workspace}"            \
+                        --{build,host,target}="${pc_type}" \
+                        --disable-pedantic                 \
+                        --enable-ccache
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'nasm' '2.16.01'
