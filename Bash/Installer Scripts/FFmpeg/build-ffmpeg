@@ -1577,8 +1577,10 @@ if build 'tesseract' "${g_ver}"; then
                         PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
     execute make "-j${cpu_threads}"
     execute make install
-    if [ -f "${workspace}/lib/libtesseract.so.5.0.3" ]; then
-        execute sudo ln -sf "${workspace}/lib/libtesseract.so.5.0.3" '/usr/lib/libtesseract.so.5'
+    tesseract_shared_lib="$(find "${workspace}"/lib -type f -name 'libtesseract.so.*')"
+    tesseract_shared_lib_trimmed="$(echo "${tesseract_shared_lib}" | sed 's/....$//g' | sed 's:.*/::')"
+    if [ -f "${tesseract_shared_lib}" ]; then
+        execute sudo ln -sf "${tesseract_shared_lib}" "/usr/lib/${tesseract_shared_lib_trimmed}"
     fi
     build_done 'tesseract' "${g_ver}"
 fi
