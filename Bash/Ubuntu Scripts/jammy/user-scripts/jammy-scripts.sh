@@ -3,9 +3,15 @@
 clear
 
 #
-# CREATE VARIABLES
+# DEFINE VARIABLES AND ARRAYS
 #
+
 random_dir="$(mktemp -d)"
+dl_url='https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Ubuntu%20Scripts/jammy/user-scripts/jammy-scripts.txt'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
+
+shell_array=(bash_aliases.sh bash_functions.sh)
+script_array=(.bash_aliases .bash_functions .bashrc)
 
 #
 # CREATE FUNCTIONS
@@ -13,49 +19,121 @@ random_dir="$(mktemp -d)"
 
 fail_fn()
 {
-    printf "\n%s\n\n" "$1"
+    printf "\n%s\n\n" "${1}"
     exit 1
 }
 
-# Create and cd into a random directory
-cd "$random_dir" || exit 1
+#
+# DOWNLAOD REQUIRED APT PACKAGES
+#
 
-# Download the user scripts from GitHub
-wget -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Ubuntu%20Scripts/jammy/user-scripts/jammy-scripts.txt'
+sudo apt-get -qq -y install wget
 
-# Delete all files except those that start with a '.' or end with '.sh'
+#
+# CD INTO A RANDOM FOLDER TO HOLD AND EXECUTE THE TEMP FILES
+#
+
+cd "${random_dir}" || exit 1
+
+#
+# DOWNLOAD THE USER SCRIPTS FROM GITHUB
+#
+
+wget -U "${user_agent}" -qN - -i "${dl_url}"
+
+#
+# DELETE ALL FILES EXCEPT THOSE THAT START WITH A "." OR END WITH ".sh"
+#
+
 find . ! \( -name '\.*' -o -name '*.sh' \) -type f -delete 2>/dev/null
 
-# define script array
-script_array=(.bash_aliases .bash_functions .bashrc)
+#
+# MOVE ".bashrc" TO THE USERS HOME FOLDER
+#
 
-# If the scripts exist, move each one to the user's home directory
+if ! mv -f '.bashrc' "${HOME}"; then
+    fail_fn "Failed to move the script \".bashrc\" to ${HOME}."
+fi
+
+#
+# PROMPT THE USER TO INSTALL APT-FAST
+#
+
+clear
+printf "%s\n\n%s\n%s\n\n" \
+    'Do you want to install and enable apt-fast as the primary download utility?' \
+    '[1] Yes' \
+    '[2] No'
+read -p 'Your choices are (1 or 2): ' answer
+clear
+
+case "${answer}" in
+    1)
+            bash -c "$(curl -sL https://git.io/vokNn)"
+            apt_flag=yes
+            ;;
+    2)      apt_flag=no;;
+    *)
+            clear
+            printf "%s\n\n" 'Bad user input. Please start over.'
+            exit 1
+            ;;
+esac
+unset answer
+clear
+
+#
+# RUN EACH SHELL SCRIPT TO INSTALL THE USER SCRIPTS
+#
+
+for i in ${shell_array[@]}
+do
+    bash "${i}" "${apt_flag}"
+done
+unset i
+
+#
+# UPDATE THE OWNERSHIP OF EACH USER SCRIPT TO THE USER
+#
+
 for i in ${script_array[@]}
 do
-    if ! mv -f "$i" "$HOME"; then
-        fail_fn "Failed to move scripts to: $HOME"
-    fi
-    if ! sudo chown "$USER":"$USER" "$HOME/$i"; then
-        fail_fn "Failed to update file permissions to: $USER:$USER"
+    if ! sudo chown "${USER}":"${USER}" "${HOME}/${i}"; then
+        fail_fn "Failed to update the file permissions for ${i}"
     fi
 done
 unset i
 
-# Open each script that is now in each user's home folder with an editor
+#
+# OPEN EACH SCRIPT WITH AN EDITOR
+#
+
 for i in ${script_array[@]}
 do
-    if which gedit &>/dev/null; then
-        gedit "$HOME/$i"
+    if which gted &>/dev/null; then
+        cd "${HOME}" || exit 1
+        gted "${i}"
+    elif which gedit &>/dev/null; then
+        cd "${HOME}" || exit 1
+        gedit "${i}"
     elif which nano &>/dev/null; then
-        nano "$HOME/$i"
+        cd "${HOME}" || exit 1
+        nano "${i}"
     elif which vim &>/dev/null; then
-        vi "$HOME/$i"
+        cd "${HOME}" || exit 1
+        vim "${i}"
+    elif which vi &>/dev/null; then
+        cd "${HOME}" || exit 1
+        vi "${i}"
     else
-        fail_fn 'Could not find an EDITOR to open the files with.'
+        fail_fn 'Could not find an EDITOR to open the user scripts.'
     fi
 done
 
-# Remove the installer script itself
-if [ -f 'scripts.sh' ]; then
-    sudo rm 'scripts.sh'
+#
+# DELETE THE LEFTOVER TEMP FILES
+#
+
+if [ -d "${random_dir}" ]; then
+    sudo rm -fr "${random_dir}"
 fi
