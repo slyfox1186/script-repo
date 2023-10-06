@@ -981,7 +981,7 @@ sort_libjxl_fn()
 
     if [ ! -f "${packages}"/libjxl.tar.gz ]; then
         case "${VER}" in
-            12)         libjxl_download="${url_base}-debian-bookworm-${url_suffix}";;
+            12|23.04)   libjxl_download="${url_base}-debian-bookworm-${url_suffix}";;
             11)         libjxl_download="${url_base}-debian-bullseye-${url_suffix}";;
             10)         libjxl_download="${url_base}-debian-buster-${url_suffix}";;
             22.04)      libjxl_download="${url_base}-ubuntu-22.04-${url_suffix}";;
