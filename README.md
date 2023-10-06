@@ -64,7 +64,7 @@ bash <(curl -fsSL https://7z.optimizethis.net)
 ------
 
 ## Install [ImageMagick 7](https://github.com/ImageMagick/ImageMagick)
-  - **Sourced from the most recent release on their official Git**
+  - **Sourced from the most recent release on the official Git**
   - **Tested on Windows WSL 2 Debian/Ubuntu**
   - **[Optimize JPG Images](https://github.com/slyfox1186/script-repo/tree/main/Bash/Installer%20Scripts/ImageMagick/scripts)**
   - **Supported OS:**
