@@ -1859,7 +1859,7 @@ fi
 
 pre_check_ver 'mstorsjo/fdk-aac' '1' 'T'
 if build 'libfdk-aac' '2.0.2'; then
-    download 'https://gigenet.dl.sourceforge.net/project/opencore-amr/fdk-aac/fdk-aac-2.0.2.tar.gz' 'libfdk-aac-2.0.2.tar.gz'
+    download 'https://netactuate.dl.sourceforge.net/project/opencore-amr/fdk-aac/fdk-aac-2.0.2.tar.gz' 'libfdk-aac-2.0.2.tar.gz'
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}" \
                         --disable-shared        \
