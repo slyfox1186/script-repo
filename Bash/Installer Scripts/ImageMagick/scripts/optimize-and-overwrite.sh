@@ -27,6 +27,7 @@ if [ -d pics-convert ]; then
 fi
 
 # GET THE FILE COUNT INSIDE THE DIRECTORY
+cnt_queue=$(find . -maxdepth 1 -type f -iname '*.jpg' | wc -l)
 cnt_total=$(find . -maxdepth 1 -type f -iname '*.jpg' | wc -l)
 
 clear
@@ -39,7 +40,7 @@ do
 Working Dir: ${PWD}
 
 Total files:    ${cnt_total}
-Files in queue: ${cnt_total}
+Files in queue: ${cnt_queue}
 
 Converting: ${i} > ${i%%.jpg}-IM.jpg
 
