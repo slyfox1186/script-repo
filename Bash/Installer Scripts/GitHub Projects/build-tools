@@ -3,7 +3,12 @@
 
 ##############################################################################################
 ##
-##  Install CMake, Ninja, Meson, Golang
+##  
+##
+##  Install the latest versions of ( CMake, Ninja, Meson, & Golang )
+##
+##  Updated: 10.06.23
+##  Script version: 2.5
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo/edit/main/shell/installers/build-tools
 ##
@@ -11,13 +16,10 @@
 ##                - Ubuntu 23.04 / 22.04
 ##                - Debian 10 / 11 / 12
 ##
-##  Updated: 10.02.23
-##
 ##  Added: The newest golang release version
 ##  Added: A new variable named debug to help with troubleshooting issues.
-##  Added: cmake gui
-##
-##  Script version: 2.4
+##  Added: cmake GUI
+##  Added: Go version 1.21.2
 ##
 ##############################################################################################
 
@@ -32,7 +34,7 @@ fi
 # CREATE SCRIPT VARIABLES
 #
 
-script_ver=2.4
+script_ver=2.5
 cwd="${PWD}"/build-tools-script
 packages="${cwd}"/packages
 install_dir=/usr/local
@@ -384,15 +386,15 @@ if build 'meson' "${g_ver1}"; then
     build_done 'meson' "${g_ver1}"
 fi
 
-if build 'golang' '21.2'; then
-    download 'https://go.dev/dl/go1.21.2.linux-amd64.tar.gz' 'golang-21.2.tar.gz'
+if build 'golang' '1.21.2'; then
+    download 'https://go.dev/dl/go1.21.2.linux-amd64.tar.gz' 'golang-1.21.2.tar.gz'
     execute sudo cp -f bin/go bin/gofmt "${install_dir}"/bin
     sudo rm -fr "${install_dir}"/go 2>/dev/null
     sudo mkdir -p "${install_dir}"/go
     GOROOT="${install_dir}"/go
     PATH="${PATH}:${GOROOT}/bin"
     export GOROOT PATH
-    build_done 'golang' '21.2'
+    build_done 'golang' '1.21.2'
 fi
 
 # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES
