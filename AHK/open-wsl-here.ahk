@@ -1,9 +1,6 @@
 /*____________________________________________________________________________________
     OpenWSLHere.ahk
 
-    By:
-    - SlyFox1186
-
     GitHub:
     - https://github.com/slyfox1186
 
@@ -11,48 +8,54 @@
     - https://pastebin.com/u/slyfox1186
     
     Purpose:
-    - This will open Windows' WSL terminal to the active file explorer folder or if no active window is found, %windir%\System32
+    - This will open Windows' WSL terminal to the active file explorer folder or if no active explorer window is found, ~
 
     Instructions:
-    - You need to replace the below variable "_osName" with the wsl distribution of your choosing
-    - To find the available distros run "wsl.exe -l --all" using powershell to get a list of available options
+    - You need to replace the below variable 'osName' with the wsl distribution of your choosing.
+      - To find the available distros run 'wsl.exe -l --all' using PowerShell to get a list of available options
+
+    Updated:
+    - 08.18.23
+
 */
 
-!w::_OpenWSLHere()
+!w up::OpenWSLHere()
 
-_OpenWSLHere()
+OpenWSLHere()
 {
-    ; Static vars so vars are not recreated each time
-    Static _convert := " !#$%&'()-.*:?@[]^_``{|}~/"
-    Static _osName := "Ubuntu-22.04"
-
-    If FileExist(A_ProgramFiles . "\PowerShell\7\pwsh.exe")
-        _myexe := A_ProgramFiles . "\PowerShell\7\pwsh.exe"
-    Else
-        _myexe := A_windir . "\System32\WindowsPowerShell\v1.0\powershell.exe"
-
-    If WinExist("ahk_class CabinetWClass ahk_exe explorer.exe")
-        _winHwnd := WinActive()
-
-    For win in ComObjCreate("Shell.Application").Windows
-        If (win.HWND = _winHwnd)
+    Static osName := "Debian"
+    Static wt := "C:\Users\" . A_UserName . "\AppData\Local\Microsoft\WindowsApps\wt.exe"
+    Static wsl := "C:\Windows\System32\wsl.exe"
+    Static win := "ahk_class CASCADIA_HOSTING_WINDOW_CLASS ahk_exe WindowsTerminal.exe"
+    if FileExist("C:\Program Files\PowerShell\7\pwsh.exe")
+        pshell := "C:\Program Files\PowerShell\7\pwsh.exe"
+    else
+        pshell := "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+    if !WinActive("ahk_class CabinetWClass ahk_exe explorer.exe")
+    {
+        Run(pshell ' -NoP -W Hidden -C "Start-Process -WindowStyle Hidden ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd ~ `' -Verb RunAs"')
+        if WinWait(win)
+            WinActivate(win)
+        return
+    }
+    hwnd := WinExist("A")
+    winObj := ComObject("Shell.Application").Windows
+    try activeTab := ControlGetHwnd("ShellTabWindowClass1", hwnd)
+    for win in winObj
+    {
+        if(win.hwnd != hwnd)
+            continue
+        if IsSet(activeTab)
         {
-            ; Get the string
-            _pwd := SubStr(win.LocationURL, 9)
-            ; Loop through the convert characters
-            Loop, Parse, % _convert
-                ; Create a %hex token using ord value of convert chars
-                _hex := "%" Format("{1:X}", Ord(A_LoopField))
-                ; Replace any hex tokens with their actual chars
-                ,_pwd := StrReplace(_pwd, _hex, A_LoopField)
-                ; Single quotes must be doubled for the command line below to work properly
-                _pwd := StrReplace(_pwd, "'", "''")
+            shellBrowser := ComObjQuery(win, "{000214E2-0000-0000-C000-000000000046}", "{000214E2-0000-0000-C000-000000000046}")
+            ComCall(3, shellBrowser, "uint*", &thisTab:=0)
+            if(thisTab != activeTab)
+                continue
         }
-
-    ; Converted both run commands to expression format
-    If (_pwd = "")
-        Run, %ComSpec% /D /C START "" "%_myexe%" -NoP -W Hidden -C "Start-Process wt.exe -Args '-w new-tab -M -d \"~\" wsl.exe -d \"%_osName%\"' -Verb RunAs",, Hide, _wPID
-    Else
-        Run, %ComSpec% /D /C START "" "%_myexe%" -NoP -W Hidden -C "Start-Process wt.exe -Args '-w new-tab -M -d \"%_pwd%\" wsl.exe -d \"%_osName%\"' -Verb RunAs",, Hide, _wPID
-    WinActivate, ahk_exe WindowsTerminal.exe
+        pwd := '"' win.Document.Folder.Self.Path '"'
+        break
+    }
+    Run(pshell ' -NoP -W Hidden -C "Start-Process -WindowStyle Hidden ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd \"' . pwd . '\" `' -Verb RunAs"')
+    if WinWait(win)
+        WinActivate(win)
 }
