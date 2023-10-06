@@ -1617,14 +1617,14 @@ fi
 if build 'lv2' 'git'; then
     download_git 'https://github.com/lv2/lv2.git'
     case "${VER}" in
-        12)     pulgins_switch=disabled;;
-        *)      pulgins_switch=enabled;;
+        10|11)      pulgins_switch=enabled;;
+        *)          pulgins_switch=disabled;;
     esac
     rm_pip_lock="$(sudo find /usr/lib/python3* -type f -name 'EXTERNALLY-MANAGED')"
     if [ -n "${rm_pip_lock}" ]; then
         sudo rm "${rm_pip_lock}"
     fi
-    extracommands=(-D{docs,tests}'=false')
+    extracommands=(-D{docs,tests}'=disabled')
     execute pip install lxml Markdown Pygments rdflib
     execute meson setup build --prefix="${workspace}"       \
                               --buildtype=release           \
