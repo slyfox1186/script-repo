@@ -16,10 +16,9 @@
 ##                - Ubuntu 23.04 / 22.04
 ##                - Debian 10 / 11 / 12
 ##
-##  Added: The newest golang release version
+##  Added: Go version 1.21.2
 ##  Added: A new variable named debug to help with troubleshooting issues.
 ##  Added: cmake GUI
-##  Added: Go version 1.21.2
 ##
 ########################################################################################################################
 
