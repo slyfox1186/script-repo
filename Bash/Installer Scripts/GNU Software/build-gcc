@@ -565,16 +565,18 @@ os_ver_check_fn()
 {
     debian_shared_pkgs='libadacgi6-dev libgm2-12-dev libgm2-17'
     debian_bookworm='libasan8-x32-cross lib32ubsan1-x32-cross lib32stdc++6-x32-cross'
-    ubuntu_jammy_plus='linux-libc-dev:i386 libadacgi4-dev libgm2-15 libasan8-x32-cross lib32ubsan1 lib32stdc++-11-dev'
+    ubuntu_jammy='linux-libc-dev:i386 libadacgi4-dev libgm2-15 libasan8-x32-cross lib32ubsan1 lib32stdc++-11-dev'
+    ubuntu_lunar='linux-libc-dev:i386 libadacgi6-dev libgm2-15 libasan8-x32-cross lib32ubsan1 lib32stdc++-12-dev'
 
     case "${VER}" in
-            23.04|22.10|22.04)      pkgs_fn "${ubuntu_jammy_plus}";;
-            20.04)                  pkgs_fn 'libgm2-10-dev lib32ubsan1 lib32stdc++-10-dev';;
-            18.04)                  clear;;
-            12)                     pkgs_fn "${debian_shared_pkgs} gnat-12";;
-            11)                     pkgs_fn "${debian_shared_pkgs} gnat-10";;
-            10)                     pkgs_fn "${debian_shared_pkgs} gnat-8";;
-            *)                      fail_fn "Could not detect the OS version:Line ${LINENO}";;
+            23.04)              pkgs_fn "${ubuntu_lunar}";;
+            22.10|22.04)        pkgs_fn "${ubuntu_jammy}";;
+            20.04)              pkgs_fn 'libgm2-10-dev lib32ubsan1 lib32stdc++-10-dev';;
+            18.04)              clear;;
+            12)                 pkgs_fn "${debian_shared_pkgs} gnat-12";;
+            11)                 pkgs_fn "${debian_shared_pkgs} gnat-10";;
+            10)                 pkgs_fn "${debian_shared_pkgs} gnat-8";;
+            *)                  fail_fn "Could not detect the OS version:Line ${LINENO}";;
     esac
 }
 
@@ -911,7 +913,8 @@ build_gcc_13_fn()
 gcc_prompt()
 {
     local answer
-    printf "%s\n%s\n\n%s\n%s\n%s\n%s\n%s\n\n" \
+
+    printf "\n%s\n%s\n\n%s\n%s\n%s\n%s\n%s\n\n" \
         'Choose the GCC version(s) to install' \
         '======================================' \
         '[1] All' \
