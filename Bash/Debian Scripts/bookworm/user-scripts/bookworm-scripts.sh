@@ -6,7 +6,7 @@ clear
 # DEFINE VARIABLES AND ARRAYS
 #
 
-randir="$(mktemp -d)"
+random_dir="$(mktemp -d)"
 dl_url='https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Debian%20Scripts/bookworm/user-scripts/bookworm-scripts.txt'
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
 
@@ -33,7 +33,7 @@ sudo apt-get -qq -y install wget
 # CD INTO A RANDOM FOLDER TO HOLD AND EXECUTE THE TEMP FILES
 #
 
-cd "${randir}" || exit 1
+cd "${random_dir}" || exit 1
 
 #
 # DOWNLOAD THE USER SCRIPTS FROM GITHUB
@@ -134,6 +134,6 @@ done
 # DELETE THE LEFTOVER TEMP FILES
 #
 
-if [ -d "${randir}" ]; then
-    sudo rm -fr "${randir}"
+if [ -d "${random_dir}" ]; then
+    sudo rm -fr "${random_dir}"
 fi
