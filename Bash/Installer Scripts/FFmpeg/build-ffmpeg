@@ -5,7 +5,7 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
-##  Script version: 2.8.0
+##  Script version: 2.8.1
 ##  Last Update: 10.05.23
 ##
 ##  Supported Distro:
@@ -37,6 +37,7 @@
 ##  Added: cunit support library for libmysofa
 ##  Added: libcurl support library for cyanrip
 ##  Added: support for library files regarding opencl and libpulse
+##  Added: libpulse git pull
 ##
 ##  Fixed: libheif not building the specified plugins.
 ##
@@ -47,7 +48,7 @@
 #
 
 script_name="${0}"
-script_ver=2.8.0
+script_ver=2.8.1
 ffmpeg_ver=963937e408fc68b5925f938a253cfff1d506f784
 ffmpeg_sver="${ffmpeg_ver::7}"
 ffmpeg_archive=ffmpeg-"${ffmpeg_sver}".tar.gz
@@ -1813,6 +1814,21 @@ box_out_banner_audio()
     tput sgr 0
 }
 box_out_banner_audio 'Installing Audio Tools'
+
+git_ver_fn '810' '4'
+if build 'libpulse' 'git'; then
+    download_git 'https://github.com/pulseaudio/pulseaudio.git'
+    extracommands=(-D{daemon,man,tests}'=false')
+    execute meson setup build --prefix="${workspace}"  \
+                              --buildtype=release      \
+                              --default-library=static \
+                              --strip                  \
+                               "${extracommands[@]}"
+    execute ninja "-j${cpu_threads}" -C build
+    execute ninja "-j${cpu_threads}" -C build install
+    build_done 'libpulse' 'git'
+fi
+ffmpeg_libraries+=('--enable-libpulse')
 
 pre_check_ver 'xiph/ogg' '1' 'T'
 if build 'libogg' "${g_ver}"; then
