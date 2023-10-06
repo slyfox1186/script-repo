@@ -1,6 +1,24 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1091,SC2001,SC2162,SC2317
 
+clear
+
+printf "%s\n%s\n\n" \
+    'Install ~/.bash_aliases' \
+    '================================='
+
+#
+# SET VARIABLES
+#
+
+file="$HOME"/.bash_aliases
+
+#
+# CREATE FUNCTIONS
+#
+
+script_fn()
+{
+cat > "$file" <<'EOF'
 alias alien='sudo alien'
 alias apt-get='sudo apt-get'
 alias apt-fast='sudo apt-fast'
@@ -306,3 +324,28 @@ alias wine32='env WINEARCH=win32 WINEPREFIX=~/.wine32 wine $*'
 # FIND AND KILL PROCESSES BY PID OR NAME
 alias tk='kill -9'
 alias tka='killall -9'
+EOF
+}
+
+#
+# CHECK FOR ANY PASSED ARGUMENTS TO SET THE APT PACKAGE MANAGER
+#
+
+if [[ "$1" == 'yes' ]]; then
+    answer=1
+else
+    answer=2
+fi
+
+case "$answer" in
+    1)
+            script_fn
+            sed -i "s/apt /apt-fast /g" "$file"
+            ;;
+    2)      script_fn;;
+    *)
+            clear
+            printf "%s\n\n" 'Bad user input. Please start over.'
+            exit 1
+            ;;
+esac
