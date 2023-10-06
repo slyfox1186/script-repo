@@ -82,8 +82,8 @@ bash <(curl -fsSL https://magick.optimizethis.net)
   - **The CUDA SDK Toolkit which unlocks Hardware Acceleration is available during the installation to make things as easy as possible**
   -  **See the my dedicated ffmpeg build page for more info on supplying your own GitHub API tokens: [ffmpeg-build-script](https://github.com/slyfox1186/ffmpeg-build-script)**
   - **Supported OS:**
-    - Debian - 10 / 11
-    - Ubuntu - 18.04 / 20.04 / 22.04
+    - Debian - 10 / 11 / 12
+    - Ubuntu - 18.04 / 20.04 / 22.04 / 23.04
     - Other  - Debian-based distros may work as well
 
 **With GPL and <ins>non-free</ins> libraries: https://ffmpeg.org/legal.html**
