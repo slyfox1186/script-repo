@@ -125,15 +125,3 @@ export TSAN_OPTIONS='ignore_noninstrumented_modules=1'
 if [ -f "${HOME}"/.cargo/env ]; then
     source "${HOME}"/.cargo/env
 fi
-
-PERL5LIB="/home/jman/perl5/lib/perl5${PERL5LIB:+:${PERL5LIB}}"
-export PERL5LIB
-
-PERL_LOCAL_LIB_ROOT="/home/jman/perl5${PERL_LOCAL_LIB_ROOT:+:${PERL_LOCAL_LIB_ROOT}}"
-export PERL_LOCAL_LIB_ROOT
-
-PERL_MB_OPT="--install_base \"/home/jman/perl5\""
-export PERL_MB_OPT
-
-PERL_MM_OPT="INSTALL_BASE=/home/jman/perl5"
-export PERL_MM_OPT
