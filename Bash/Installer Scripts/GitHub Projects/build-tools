@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2162,SC2317
 
-##############################################################################################
+########################################################################################################################
 ##
-##  https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-tools
+##  GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-tools
 ##
-##  Install the latest versions of ( CMake, Ninja, Meson, & Golang )
+##  Purpose: Install the latest versions of ( CMake, Ninja, Meson, & Golang )
 ##
 ##  Updated: 10.06.23
 ##  Script version: 2.5
@@ -21,7 +21,7 @@
 ##  Added: cmake GUI
 ##  Added: Go version 1.21.2
 ##
-##############################################################################################
+########################################################################################################################
 
 clear
 
