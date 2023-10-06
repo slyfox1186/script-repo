@@ -95,17 +95,18 @@ fi
 # custom user vars
 PATH="\
 /usr/lib/ccache:\
+${HOME}/perl5/bin:\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
+/usr/local/cuda/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin:\
 /usr/games:\
 /usr/local/games:\
-/usr/local/cuda/bin:\
 /usr/lib/python3/dist-packages:\
 /snap/bin\
 "
