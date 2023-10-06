@@ -842,6 +842,7 @@ build_gcc_13_fn()
         download 'https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.xz'
         olt_13="nvptx-none=/build/gcc-13-aYYs71/gcc-13-13.1.0/debian/tmp-nvptx/${install_prefix}"
         olt_13+=",amdgcn-amdhsa=/build/gcc-13-aYYs71/gcc-13-13.1.0/debian/tmp-gcn/${install_prefix}"
+        langs_13='c,ada,c++,go,d,fortran,objc,obj-c++,m2,rust'
         execute autoreconf -fi
         execute sudo ./contrib/download_prerequisites
         mkdir builddir
@@ -858,11 +859,12 @@ build_gcc_13_fn()
                              --enable-clocale=gnu                         \
                              --enable-default-pie                         \
                              --enable-gnu-unique-object                   \
-                             --enable-languages=all                       \
+                             --enable-languages="${langs_13}"             \
                              --enable-libphobos-checking=release          \
                              --enable-libstdcxx-debug                     \
                              --enable-libstdcxx-time=yes                  \
                              --enable-linker-build-id                     \
+                             --enable-link-serialization=2                \
                              --enable-lto                                 \
                              --enable-multiarch                           \
                              --enable-multilib                            \
@@ -876,6 +878,7 @@ build_gcc_13_fn()
                              --program-prefix="${pc_type}"'-'             \
                              --program-suffix=-13                         \
                              --with-abi=m64                               \
+                             --with-arch-32=i686                          \
                              --with-build-config=bootstrap-lto-lean       \
                              --with-default-libstdcxx-abi=new             \
                              --with-gcc-major-version-only                \
