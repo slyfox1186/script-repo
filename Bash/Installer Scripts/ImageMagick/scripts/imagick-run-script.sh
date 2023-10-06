@@ -25,8 +25,3 @@ cd "${cwd}" || exit 1
 # CHANGE THE FILE PERMISSIONS OF EACH SCRIPT
 sudo chown "${USER}":"${USER}" 'imow'
 sudo chmod +rwx 'imow'
-
-# REMOVE THE INSTALLER SCRIPT ITSELF
-if [ -f "${0}" ]; then
-    sudo rm "${0}"
-fi
