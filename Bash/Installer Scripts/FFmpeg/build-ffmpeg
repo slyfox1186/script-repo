@@ -1626,7 +1626,6 @@ if build 'lv2' 'git'; then
     fi
     extracommands=(-D{docs,tests}'=false')
     execute pip install lxml Markdown Pygments rdflib
-    execute autoreconf -fi
     execute meson setup build --prefix="${workspace}"       \
                               --buildtype=release           \
                               --default-library=static      \
