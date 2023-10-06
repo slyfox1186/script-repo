@@ -1465,19 +1465,23 @@ fi
 ffmpeg_libraries+=('--enable-libwebp')
 
 git_ver_fn 'google/highway' '1' 'R'
-if build 'libhwy' "1.0.7"; then
-    download "https://github.com/google/highway/archive/refs/tags/1.0.7.tar.gz" "libhwy-1.0.7.tar.gz"
+if build 'libhwy' '1.0.7'; then
+    download 'https://github.com/google/highway/archive/refs/tags/1.0.7.tar.gz' 'libhwy-1.0.7.tar.gz'
     CFLAGS+=' -DHWY_COMPILE_ALL_ATTAINABLE'
     CXXFLAGS+=' -DHWY_COMPILE_ALL_ATTAINABLE'
     execute cmake -B build                              \
                   -DCMAKE_INSTALL_PREFIX="${workspace}" \
                   -DCMAKE_BUILD_TYPE=Release            \
-                  -DHWY_ENABLE_EXAMPLES=OFF             \
+                  -DINSTALL_GTEST=ON                    \
+                  -Dgtest_force_shared_crt=ON           \
                   -DHWY_ENABLE_TESTS=OFF                \
+                  -DBUILD_TESTING=OFF                   \
+                  -DHWY_ENABLE_EXAMPLES=OFF             \
+                  -DHWY_FORCE_STATIC_LIBS=ON            \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
-    build_done 'libhwy' "1.0.7"
+    build_done 'libhwy' '1.0.7'
 fi
 
 pre_check_ver 'google/brotli' '1' 'T'
