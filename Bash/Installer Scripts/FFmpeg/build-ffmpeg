@@ -1,11 +1,11 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # shellcheck disable=SC1091,SC2000,SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
 
 #############################################################################################################
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
-##  Script version: 2.8.1
+##  Script version: 2.8.0
 ##  Last Update: 10.05.23
 ##
 ##  Supported Distro:
@@ -37,7 +37,6 @@
 ##  Added: cunit support library for libmysofa
 ##  Added: libcurl support library for cyanrip
 ##  Added: support for library files regarding opencl and libpulse
-##  Added: libpulse git pull
 ##
 ##  Fixed: libheif not building the specified plugins.
 ##
@@ -48,7 +47,7 @@
 #
 
 script_name="${0}"
-script_ver=2.8.1
+script_ver=2.8.0
 ffmpeg_ver=963937e408fc68b5925f938a253cfff1d506f784
 ffmpeg_sver="${ffmpeg_ver::7}"
 ffmpeg_archive=ffmpeg-"${ffmpeg_sver}".tar.gz
@@ -383,6 +382,7 @@ git_4_fn()
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
         g_ver="${g_ver#pkg-config-}"
         g_ver="${g_ver#VER-}"
+        g_ver="${g_ver#v}"
     fi
 }
 
@@ -493,7 +493,7 @@ build()
         if grep -Fx "${2}" "${packages}/${1}.done" >/dev/null; then
             echo "${1} version ${2} already built. Remove ${packages}/${1}.done lockfile to rebuild it."
             return 1
-        elif ${latest}; then
+        elif "${latest}"; then
             echo "${1} is outdated and will be rebuilt using version ${2}"
             return 0
         else
@@ -504,7 +504,10 @@ build()
     return 0
 }
 
-build_done() { echo "${2}" > "${packages}/${1}.done"; }
+build_done()
+{
+    echo "${2}" > "${packages}/${1}.done"
+}
 
 installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
@@ -795,7 +798,9 @@ install_cuda_fn()
     fi
 
     if [ -n "${cuda_ver}" ]; then
-        if [ "${cuda_ver}" != "${cuda_latest_ver}" ]; then
+        if [ "${cuda_ver}" = "${cuda_latest_ver}" ]; then
+            printf "%s\n\n" "The CUDA SDK Toolkit is already installed and up to date."
+        else
             printf "%s\n%s\n%s\n\n%s\n\n%s\n%s\n\n" \
                 "The installed CUDA SDK Toolkit version is: ${cuda_ver}" \
                 "The latest version available is: ${cuda_latest_ver}"    \
@@ -842,8 +847,8 @@ pkgs_fn()
         'Installing the required APT packages' \
         '=============================================='
 
-    pkgs=("${1}" ant apt asciidoc autoconf autoconf-archive automake autopoint binutils bison build-essential cargo
-          ccache checkinstall clang clang-tools cmake curl doxygen fcitx-libs-dev flex flite1-dev freeglut3-dev
+    pkgs=("${1}" ant apt asciidoc autoconf autoconf-archive automake autopoint binutils bison build-essential
+          cargo ccache checkinstall clang clang-tools cmake curl doxygen fcitx-libs-dev flex flite1-dev freeglut3-dev
           frei0r-plugins-dev gawk gettext git gnome-desktop-testing gnustep-gui-runtime google-perftools gperf
           gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk libasound2-dev libass-dev libaudio-dev libavfilter-dev
           libbluray-dev libbs2b-dev libbz2-dev libc6 libc6-dev libcaca-dev libcairo2-dev libcdio-dev libcdio-paranoia-dev
@@ -857,11 +862,11 @@ pkgs_fn()
           libpstoedit-dev libpulse-dev librabbitmq-dev libraqm-dev libraw-dev librsvg2-dev librubberband-dev librust-gstreamer-base-sys-dev
           libshine-dev libsmbclient-dev libsnappy-dev libsndfile1-dev libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev
           libsrt-gnutls-dev libssh-dev libssl-dev libsvtav1-dev libsvtav1dec-dev libsvtav1enc-dev libtalloc-dev libtheora-dev
-          libticonv-dev libtool libtool-bin libtwolame-dev libudev-dev libv4l-dev libva-dev libvdpau-dev libvidstab-dev
-          libvlccore-dev libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libx265-dev libxcursor-dev libxext-dev libxfixes-dev
-          libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev
-          lshw lzma-dev m4 meson nasm ninja-build openjdk-17-jdk-headless pandoc python3 python3-pip ragel re2c scons sudo
-          texi2html texinfo tk-dev unzip wget xmlto zlib1g-dev)
+          libticonv-dev libtool libtool-bin libtwolame-dev libudev-dev libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev
+          libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libx265-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev
+          libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev lshw lzma-dev
+          m4 meson nasm ninja-build openjdk-17-jdk-headless pandoc python3 python3-pip ragel re2c scons sudo texi2html texinfo tk-dev
+          unzip wget xmlto zlib1g-dev)
 
     for pkg in ${pkgs[@]}
     do
@@ -881,11 +886,18 @@ pkgs_fn()
     fi
 }
 
-ffmpeg_fix_libs()
+libpulse_fix_libs()
 {
-    find_libpulse="$(sudo find /usr -type f -name 'libpulsecommon-*.so')"
-    if [ -n "${find_libpulse}" ]; then
-        sudo ln -sf "${find_libpulse}" /usr/lib/x86_64-linux-gnu
+    if [ ! -d /usr/lib/x86_64-linux-gnu/pulseaudio ]; then
+        sudo mkdir -p /usr/lib/x86_64-linux-gnu/pulseaudio
+    fi
+
+    libpulse_shared_lib="$(sudo find "${workspace}"/lib/x86_64-linux-gnu -type f -name 'libpulsecommon-*.so')"
+    libpulse_shared_lib_trimmed="$(echo "${libpulse_shared_lib}" | sed 's:.*/::' | head -n1)"
+
+    if [ -n "${libpulse_shared_lib}" ]; then
+        execute sudo cp -f "${libpulse_shared_lib}" /usr/lib/x86_64-linux-gnu/pulseaudio
+        execute sudo ln -sf "/usr/lib/x86_64-linux-gnu/pulseaudio/${libpulse_shared_lib_trimmed}" /usr/lib/x86_64-linux-gnu
     fi
 }
 
@@ -955,7 +967,7 @@ install_libjxl_fn()
 
 download_libjxl_fn()
 {
-    if ! curl -A "${user_agent}" -m 10 -Lso "${packages}"/libjxl.tar.gz "${1}"; then
+    if ! curl -A "${user_agent}" -Lso "${packages}"/libjxl.tar.gz "${1}"; then
         fail_fn "Failed to download the libjxl archive: ${packages}/libjxl.tar.gz Line: ${LINENO}"
     fi
 }
@@ -1825,7 +1837,8 @@ if build 'libpulse' 'git'; then
                               --strip                  \
                                "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute sudo ninja "-j${cpu_threads}" -C build install
+    libpulse_fix_libs
     build_done 'libpulse' 'git'
 fi
 ffmpeg_libraries+=('--enable-libpulse')
@@ -2253,10 +2266,10 @@ if build 'svt-av1' '1.4.0'; then
     execute cmake -S . -B Build/linux                        \
                        -DCMAKE_INSTALL_PREFIX="${workspace}" \
                        -DCMAKE_BUILD_TYPE=Release            \
+                       -DBUILD_SHARED_LIBS=OFF               \
                        -DBUILD_APPS=OFF                      \
                        -DBUILD_DEC=ON                        \
                        -DBUILD_ENC=ON                        \
-                       -DBUILD_SHARED_LIBS=OFF               \
                        -DBUILD_TESTING=OFF                   \
                        -DENABLE_NASM=ON                      \
                        -DENABLE_AVX512=ON                    \
@@ -2641,7 +2654,6 @@ if build 'ffmpeg' "${ffmpeg_sver}"; then
                 --enable-libflite                           \
                 --enable-libgme                             \
                 --enable-libmodplug                         \
-                --enable-libpulse                           \
                 --enable-libshine                           \
                 --enable-libsmbclient                       \
                 --enable-libsnappy                          \
@@ -2651,6 +2663,7 @@ if build 'ffmpeg' "${ffmpeg_sver}"; then
                 --enable-libtwolame                         \
                 --enable-libv4l2                            \
                 --enable-libvo-amrwbenc                     \
+                --enable-libzvbi                            \
                 --enable-lto                                \
                 --enable-nonfree                            \
                 --enable-opengl                             \
@@ -2674,9 +2687,6 @@ fi
 
 # MAKE SURE ALL OF THE FILES WERE COMPILED CORRECTLY
 ffmpeg_install_test
-
-# FIX KNOWN ISSUES WITH LIBS THAT FFMPEG CAN NOT FIND EVEN THOUGH IT SHOULD BE ABLE AS IT WAS TOLD EXACTLY WHERE THEY WERE LOCATED
-ffmpeg_fix_libs
 
 # EXECUTE THE LDCONFIG COMMAND TO ENSURE THAT ALL LIBRARY CHANGES ARE DETECTED BY FFMPEG
 sudo ldconfig 2>/dev/null
