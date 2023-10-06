@@ -894,7 +894,7 @@ build_gcc_13_fn()
                              --without-included-gettext                   \
                              "${cuda_check}"
         printf "\n%s\n%s\n\n" \
-            '$ Compiling gcc-13 with languages=all' \
+            "$ Compiling gcc-13 with languages=${langs_13}" \
             '$ This is going to take a while...'
         execute make "-j${cpu_threads}"
         execute sudo make install-strip
