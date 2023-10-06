@@ -840,8 +840,8 @@ build_gcc_13_fn()
     fi
     if build 'gcc-13' '13.2.0'; then
         download 'https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.xz'
-        olt_13="nvptx-none=/build/reproducible-path/gcc-13-13.2.0/debian/tmp-nvptx${install_prefix}"
-        olt_13+=",amdgcn-amdhsa=/build/reproducible-path/gcc-13-13.2.0/debian/tmp-gcn${install_prefix}"
+        olt_13="nvptx-none=/build/gcc-13-aYYs71/gcc-13-13.1.0/debian/tmp-nvptx/${install_prefix}"
+        olt_13+=",amdgcn-amdhsa=/build/gcc-13-aYYs71/gcc-13-13.1.0/debian/tmp-gcn/${install_prefix}"
         execute autoreconf -fi
         execute sudo ./contrib/download_prerequisites
         mkdir builddir
