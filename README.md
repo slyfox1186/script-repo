@@ -150,19 +150,10 @@ bash <(curl -fsSL https://mirrors-menu.optimizethis.net)
     .bash_aliases
     .bash_functions
     ```
-#### Ubuntu 23.04
+#### User scripts Menu
 ```bash
-bash <(curl -fsSL https://lunar-scripts.optimizethis.net)
+bash <(curl -fsSL https://user-scripts.optimizethis.net)
 ```
-#### Ubuntu 22.04 / 20.04 / 18.04
-```bash
-bash <(curl -fsSL https://jammy-scripts.optimizethis.net)
-```
-#### Debian 10 / 11 / 12
-```bash
-bash <(curl -fsSL https://bookworm-scripts.optimizethis.net)
-```
-------
 
 ## Quick Install **apt-fast**
 ```bash
