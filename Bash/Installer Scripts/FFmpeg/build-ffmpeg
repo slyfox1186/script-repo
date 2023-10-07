@@ -1841,6 +1841,21 @@ box_out_banner_audio()
 }
 box_out_banner_audio 'Installing Audio Tools'
 
+if build 'sdl2' 'git'; then
+    download_git 'https://github.com/libsdl-org/SDL.git' 'sdl2-git'
+    execute cmake -S . -B build                              \
+                       -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                       -DCMAKE_BUILD_TYPE=Release            \
+                       -DBUILD_SHARED_LIBS=OFF               \
+                       -DSDL_ALSA_SHARED=OFF                 \
+                       -DSDL_DISABLE_INSTALL_DOCS=ON         \
+                       -DSDL_CCACHE=ON                       \
+                       -G Ninja -Wno-dev
+    execute ninja "-j${cpu_threads}" -C build
+    execute ninja "-j${cpu_threads}" -C build install
+    build_done 'sdl2' 'git'
+fi
+
 git_ver_fn '810' '4'
 if build 'libpulse' 'git'; then
     download_git 'https://github.com/pulseaudio/pulseaudio.git'
