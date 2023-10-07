@@ -29,14 +29,14 @@ prompt_fn()
 
     printf "%s\n\n%s\n%s\n%s\n\n" \
         'Choose the kernel version:' \
-        '[1] 5.15.123.1 (08.08.23)' \
+        '[1] 5.15.133.1 (08.08.23)' \
         '[2] 6.1.21.2 (07.25.23)' \
         '[3] Exit'
     read -p 'Your choices are (1 to 3): ' answer
     clear
 
     case "${answer}" in
-        1)      archive_url='https://github.com/microsoft/WSL2-Linux-Kernel/archive/refs/tags/linux-msft-wsl-5.15.123.1.tar.gz';;
+        1)      archive_url='https://github.com/microsoft/WSL2-Linux-Kernel/archive/refs/tags/linux-msft-wsl-5.15.133.1.tar.gz';;
         2)      archive_url='https://github.com/microsoft/WSL2-Linux-Kernel/archive/refs/tags/linux-msft-wsl-6.1.21.2.tar.gz';;
         3)      exit 0;;
         *)
