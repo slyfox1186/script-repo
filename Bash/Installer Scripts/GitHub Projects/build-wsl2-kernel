@@ -132,12 +132,10 @@ fail_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autogen automake bat bc binutils bison build-essential ccache ccdiff
-      checkinstall clang cmake cmake-extras cmake-qt-gui colordiff cpu-checker curl
-      dbus-x11 dwarves flex git jq libdmalloc-dev libelf-dev libmimalloc-dev libperl-dev
-      libssl-dev libtalloc-dev libtbbmalloc2 libtool libtool-bin lzip m4 meson nano nasm
-      ninja-build shellcheck sqlite3 synaptic texinfo trash-cli unzip uuid-dev wget xclip
-      xsel yasm)
+pkgs=(autoconf autogen automake bc binutils bison build-essential ccache
+      curl dbus-x11 dwarves flex git jq libelf-dev libperl-dev libssl-dev
+      libtalloc-dev libtbbmalloc2 libtool libtool-bin lzip m4 nasm texinfo
+      unzip uuid-dev wget xclip xsel yasm)
 
 for i in ${pkgs[@]}
 do
