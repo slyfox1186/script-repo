@@ -9,8 +9,8 @@ export user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, li
 gedit() { "$(type -P gedit)" "${@}" &>/dev/null; }
 geds() { "$(type -P sudo)" -H -u root "$(type -P gedit)" "${@}" &>/dev/null; }
 
-gted() { "$(type -P gted)" "${@}" &>/dev/null; }
-gteds() { "$(type -P sudo)" -H -u root "$(type -P gted)" "${@}" &>/dev/null; }
+gnome-text-editor() { "$(type -P gnome-text-editor)" "${@}" &>/dev/null; }
+gnome-text-editors() { "$(type -P sudo)" -H -u root "$(type -P gnome-text-editor)" "${@}" &>/dev/null; }
 
 ###################
 ## FIND COMMANDS ##
@@ -126,7 +126,7 @@ rmdf()
 {
     clear
     perl -i -lne 's/\s*$//; print if ! $x{$_}++' "${1}"
-    gted "${1}"
+    gnome-text-editor "${1}"
 }
 
 ###################
@@ -321,7 +321,7 @@ showpkgs()
 {
     dpkg --get-selections |
     grep -v deinstall > "${HOME}"/tmp/packages.list
-    gted "${HOME}"/tmp/packages.list
+    gnome-text-editor "${HOME}"/tmp/packages.list
 }
 
 # PIPE ALL DEVELOPMENT PACKAGES NAMES TO file
@@ -331,7 +331,7 @@ getdev()
     grep "\-dev" |
     cut -d ' ' -f1 |
     sort > 'dev-packages.list'
-    gted 'dev-packages.list'
+    gnome-text-editor 'dev-packages.list'
 }
 
 ################
@@ -796,7 +796,7 @@ large_files()
     sudo find "${PWD}" -type f -name "*.${answer}" -printf '%s %h\n' | sort -ru -o 'large-files.txt'
 
     if [ -f 'large-files.txt' ]; then
-        sudo gted 'large-files.txt'
+        sudo gnome-text-editor 'large-files.txt'
         sudo rm 'large-files.txt'
     fi
 }
@@ -1624,7 +1624,7 @@ jpgsize()
     sed -i "s/^..//g" "${random_dir}/img-sizes.txt"
     sed -i "s|^|${PWD}\/|g" "${random_dir}/img-sizes.txt"
     clear
-    nohup gted "${random_dir}/img-sizes.txt" &>/dev/null &
+    nohup gnome-text-editor "${random_dir}/img-sizes.txt" &>/dev/null &
 }
 
 ##################

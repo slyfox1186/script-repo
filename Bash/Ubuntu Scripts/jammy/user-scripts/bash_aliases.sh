@@ -151,25 +151,25 @@ alias nsudo='sudo nano /etc/sudoers; cl'
 # nano [ /usr ]
 alias nlang='sudo nano /usr/share/gtksourceview-*/language-specs/sh.lang; cl'
 
-# gted [ /home/jman ]
-alias gba='gted ~/.bash_aliases; cl'
-alias gbf='gted ~/.bash_functions; cl'
-alias gbrc='gted ~/.bashrc; cl'
-alias gpro='gted ~/.profile; cl'
-# gted [ /etc ]
-alias g='gted'
-alias gapt='sudo gted /etc/apt/apt.conf; cl'
-alias gcron='sudo gted /etc/crontab; cl'
-alias gddc='sudo gted /etc/ddclient.conf; cl'
-alias ghosts='sudo gted /etc/hosts; cl'
-alias glist='sudo gted /etc/apt/sources.list; cl'
-alias glogin='sudo gted /etc/gdm*/daemon.conf; cl'
-alias ggted='sudo gted /etc/gtedrc; cl'
-alias gnet='sudo gted /etc/network/interfaces; cl'
-alias gssh='sudo gted /etc/ssh/sshd_config; cl'
-alias gsudo='sudo gted /etc/sudoers; cl'
-# gted [ /usr ]
-alias glang='sudo gted /usr/share/gtksourceview-*/language-specs/sh.lang; cl'
+# gnome-text-editor [ /home/jman ]
+alias gba='gnome-text-editor ~/.bash_aliases; cl'
+alias gbf='gnome-text-editor ~/.bash_functions; cl'
+alias gbrc='gnome-text-editor ~/.bashrc; cl'
+alias gpro='gnome-text-editor ~/.profile; cl'
+# gnome-text-editor [ /etc ]
+alias g='gnome-text-editor'
+alias gapt='sudo gnome-text-editor /etc/apt/apt.conf; cl'
+alias gcron='sudo gnome-text-editor /etc/crontab; cl'
+alias gddc='sudo gnome-text-editor /etc/ddclient.conf; cl'
+alias ghosts='sudo gnome-text-editor /etc/hosts; cl'
+alias glist='sudo gnome-text-editor /etc/apt/sources.list; cl'
+alias glogin='sudo gnome-text-editor /etc/gdm*/daemon.conf; cl'
+alias ggnome-text-editor='sudo gnome-text-editor /etc/gnome-text-editorrc; cl'
+alias gnet='sudo gnome-text-editor /etc/network/interfaces; cl'
+alias gssh='sudo gnome-text-editor /etc/ssh/sshd_config; cl'
+alias gsudo='sudo gnome-text-editor /etc/sudoers; cl'
+# gnome-text-editor [ /usr ]
+alias glang='sudo gnome-text-editor /usr/share/gtksourceview-*/language-specs/sh.lang; cl'
 
 # change directory
 alias cdaptd='pushd /etc/apt/apt.conf.d; cl'

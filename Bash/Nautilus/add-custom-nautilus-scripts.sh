@@ -65,8 +65,8 @@ EOF
 cat > 'Open with Tilix' <<'EOF'
 #!/bin/bash
 clear
-if which gted; then
-    editor=gted
+if which gnome-text-editor; then
+    editor=gnome-text-editor
 elif which gedit; then
     editor=gedit
 elif which nano; then
