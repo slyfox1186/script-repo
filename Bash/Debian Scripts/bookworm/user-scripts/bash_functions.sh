@@ -1622,9 +1622,9 @@ adlm()
     clear; ls -1AhFv --color --group-directories-first
 }
 
-#####################
-## GET FILES SIZES ##
-#####################
+####################
+## GET FILE SIZES ##
+####################
 
 big_files()
 {
