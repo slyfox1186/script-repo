@@ -101,8 +101,7 @@ $HOME/.local/bin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/local/cuda/bin:\
-/snap/bin\
+/usr/local/cuda/bin\
 "
 export PATH
 
