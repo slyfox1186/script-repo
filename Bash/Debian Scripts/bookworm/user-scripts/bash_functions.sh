@@ -1626,7 +1626,7 @@ adlm()
 ## GET FILES SIZES ##
 #####################
 
-topsize()
+big_files()
 {
     local cnt
     clear
