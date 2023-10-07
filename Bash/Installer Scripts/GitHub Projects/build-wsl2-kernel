@@ -7,9 +7,9 @@
 ##
 ##  Purpose: Build Official WSL2 Kernels
 ##
-##  Updated: 09.30.23
+##  Updated: 10.07.23
 ##
-##  Script version: 2.2
+##  Script version: 2.3
 ##
 ############################################################################################################################################
 
@@ -54,7 +54,7 @@ prompt_fn
 # SET VARIABLES
 #
 
-script_ver=2.2
+script_ver=2.3
 cwd="${PWD}"/wsl-build-script
 archive_ver="$(echo "${archive_url}" | sed 's/^.*\/.*-wsl-\(.*\)\.tar\.gz$/\1/')"
 archive_dir="${cwd}/wsl-kernel-${archive_ver}"
