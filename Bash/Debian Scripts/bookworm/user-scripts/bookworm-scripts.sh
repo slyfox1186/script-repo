@@ -110,9 +110,9 @@ unset i
 
 for i in ${script_array[@]}
 do
-    if which gted &>/dev/null; then
+    if which gnome-text-editor &>/dev/null; then
         cd "${HOME}" || exit 1
-        gted "${i}"
+        gnome-text-editor "${i}"
     elif which gedit &>/dev/null; then
         cd "${HOME}" || exit 1
         gedit "${i}"
