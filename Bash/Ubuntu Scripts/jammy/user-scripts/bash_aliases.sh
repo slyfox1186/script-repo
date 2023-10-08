@@ -21,7 +21,7 @@ script_fn()
 cat > "$file" <<'EOF'
 alias alien='sudo alien'
 alias apt-get='sudo apt-get'
-alias apt-fast='sudo apt-fast'
+alias apt='sudo apt'
 alias aptitude='sudo aptitude'
 alias apt-key='sudo apt-key'
 alias apt='sudo apt'
@@ -350,7 +350,7 @@ fi
 case "$answer" in
     1)
             script_fn
-            sed -i "s/apt /apt-fast /g" "$file"
+            sed -i "s/apt /apt /g" "$file"
             ;;
     2)      script_fn;;
     *)
