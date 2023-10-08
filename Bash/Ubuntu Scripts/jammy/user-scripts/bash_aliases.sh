@@ -93,9 +93,9 @@ alias dir='dir --color=auto'
 alias vdir='vdir --color=auto'
 
 # apt commands
-alias install="clear; apt -y install"
-alias remove="clear; apt remove"
-alias search="clear; apt search"
+alias install='clear; apt -y install'
+alias remove='clear; apt remove'
+alias search='clear; apt search'
 
 # fix missing gnu keys used to update packages
 alias fixkey='clear; apt-key adv --keyserver keyserver.ubuntu.com --recv-keys'
