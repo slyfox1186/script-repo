@@ -1630,10 +1630,10 @@ big_files()
         clear
     fi
 
-    printf "%s\n\n" "Largest ${cnt} files"
+    printf "%s\n\n" "${cnt} largest files"
     sudo find "${PWD}" -type f -exec du -Sh {} + | sort -hr | head -"${cnt}"
     echo
-    printf "%s\n\n" "Largest ${cnt} folders"
+    printf "%s\n\n" "${cnt} largest folders"
     sudo du -Bm "${PWD}" 2>/dev/null | sort -hr | head -"${cnt}"
 }
 
