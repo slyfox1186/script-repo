@@ -851,7 +851,7 @@ pkgs_fn()
           libde265-dev libdevil-dev libdmalloc-dev libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev
           libgbm-dev libgdbm-dev libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev libgnutls28-dev libgnutls30
           libgoogle-perftools-dev libgoogle-perftools4 libgsm1-dev libgvc6 libibus-1.0-dev libiconv-hook-dev libintl-perl
-          libjack-dev libjemalloc-dev libjxl-dev libladspa-ocaml-dev libleptonica-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev
+          libjack-dev libjemalloc-dev libladspa-ocaml-dev libleptonica-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev
           libmatroska-dev libmfx-dev libmodplug-dev libmp3lame-dev libmusicbrainz5-dev libmysofa-dev libnuma-dev libnuma1
           libopencore-amrnb-dev libopencore-amrwb-dev libopencv-dev libopenjp2-7-dev libopenmpt-dev libopus-dev libperl-dev
           libpstoedit-dev libpulse-dev librabbitmq-dev libraqm-dev libraw-dev librsvg2-dev librubberband-dev librust-gstreamer-base-sys-dev
@@ -1036,7 +1036,7 @@ ubuntu_os_version()
     focal_pkgs+=' libncursesw5-dev librust-jemalloc-sys-dev librust-malloc-buf-dev libsrt-doc libreadline-dev libcunit1 libcunit1-doc'
     jammy_pkgs='libmimalloc-dev libtbbmalloc2 libyuv-dev librust-jemalloc-sys-dev librust-malloc-buf-dev libncurses5-dev'
     jammy_pkgs+=' libncursesw5-dev libsrt-doc libreadline-dev libpipewire-0.3-dev libwayland-dev libdecor-0-dev libde265-dev'
-    lunar_kenetic_pkgs='librist-dev'
+    lunar_kenetic_pkgs='libjxl-dev librist-dev'
 
     case "${VER}" in
         23.04|22.10)    pkgs_fn "${lunar_kenetic_pkgs} ${jammy_pkgs}";;
