@@ -5,8 +5,8 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
-##  Script version: 2.8.1
-##  Last Update: 10.06.23
+##  Script version: 2.8.2
+##  Last Update: 10.08.23
 ##
 ##  Supported Distro:
 ##
@@ -40,6 +40,7 @@
 ##  Added: support for library files regarding opencl and libpulse
 ##
 ##  Fixed: libheif not building the specified plugins.
+##  Fixed: the code that prompts the user to install the cuda sdk toolkit
 ##
 #############################################################################################################
 
@@ -48,7 +49,7 @@
 #
 
 script_name="${0}"
-script_ver=2.8.1
+script_ver=2.8.2
 ffmpeg_ver=963937e408fc68b5925f938a253cfff1d506f784
 ffmpeg_sver="${ffmpeg_ver::7}"
 ffmpeg_archive=ffmpeg-"${ffmpeg_sver}".tar.gz
@@ -125,7 +126,7 @@ fi
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-set_cuda_folder_path="$(sudo find /usr/local/cuda* -type f -name nvcc | sed 's/\/bin\/nvcc//')"
+set_cuda_folder_path="$(sudo find /usr/local/cuda* -type f -name nvcc 2>/dev/null | sed 's/\/bin\/nvcc//')"
 
 if [ -n "${set_cuda_folder_path}" ]; then
     cuda_folder_path="${set_cuda_folder_path}"
@@ -723,36 +724,36 @@ cuda_download_fn()
 
     case "${cuda_choice}" in
         1)
-            wget --show progress -cqO "${packages}/nvidia-cuda/cuda-${cuda_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian10-12-2-local_12.2.2-535.104.05-1_amd64.deb"
-            sudo dpkg -i "${packages}/nvidia-cuda/cuda-${cuda_ver}.deb"
+            wget --show progress -cqO "${packages}/nvidia-cuda/cuda-buster-${cuda_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian10-12-2-local_12.2.2-535.104.05-1_amd64.deb"
+            sudo dpkg -i "${packages}/nvidia-cuda/cuda-buster-${cuda_ver}.deb"
             sudo cp -f /var/cuda-repo-debian10-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
             sudo add-apt-repository -y contrib
             ;;
         2)
-            wget --show progress -cqO "${packages}/nvidia-cuda/cuda-${cuda_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian11-12-2-local_12.2.2-535.104.05-1_amd64.deb"
-            sudo dpkg -i "${packages}/nvidia-cuda/cuda-${cuda_ver}.deb"
+            wget --show progress -cqO "${packages}/nvidia-cuda/cuda-bookworm-${cuda_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian11-12-2-local_12.2.2-535.104.05-1_amd64.deb"
+            sudo dpkg -i "${packages}/nvidia-cuda/cuda-bookworm-${cuda_ver}.deb"
             sudo cp -f /var/cuda-repo-debian11-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
             sudo add-apt-repository -y contrib
             ;;
         3)
             wget --show progress -cqO "${packages}/nvidia-cuda/cuda-ubuntu2004.pin" "${cuda_url}/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin"
             sudo mv "${packages}/nvidia-cuda/cuda-ubuntu2004.pin" /etc/apt/preferences.d/cuda-repository-pin-600
-            wget --show progress -cqO "${packages}/nvidia-cuda/cuda-${cuda_ver}.deb" "${cuda_url}/local_installers/cuda-repo-ubuntu2004-12-2-local_12.2.2-535.104.05-1_amd64.deb"
-            sudo dpkg -i "${packages}/nvidia-cuda/cuda-${cuda_ver}.deb"
+            wget --show progress -cqO "${packages}/nvidia-cuda/cuda-focal-${cuda_ver}.deb" "${cuda_url}/local_installers/cuda-repo-ubuntu2004-12-2-local_12.2.2-535.104.05-1_amd64.deb"
+            sudo dpkg -i "${packages}/nvidia-cuda/cuda-focal-${cuda_ver}.deb"
             sudo cp -f /var/cuda-repo-ubuntu2004-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
             ;;
         4)
             wget --show progress -cqO "${packages}/nvidia-cuda/cuda-ubuntu2204.pin" "${cuda_url}/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin"
             sudo mv "${packages}/nvidia-cuda/cuda-ubuntu2204.pin" /etc/apt/preferences.d/cuda-repository-pin-600
-            wget --show progress -cqO "${packages}/nvidia-cuda/cuda-${cuda_ver}.deb" "${cuda_url}/local_installers/cuda-repo-ubuntu2204-12-2-local_12.2.2-535.104.05-1_amd64.deb"
-            sudo dpkg -i "${packages}/nvidia-cuda/cuda-${cuda_ver}.deb"
+            wget --show progress -cqO "${packages}/nvidia-cuda/cuda-jammy-${cuda_ver}.deb" "${cuda_url}/local_installers/cuda-repo-ubuntu2204-12-2-local_12.2.2-535.104.05-1_amd64.deb"
+            sudo dpkg -i "${packages}/nvidia-cuda/cuda-jammy-${cuda_ver}.deb"
             sudo cp -f /var/cuda-repo-ubuntu2204-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
             ;;
         5)
             wget --show progress -cqO "${packages}/nvidia-cuda/cuda-wsl-ubuntu.pin" "${cuda_url}/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin"
             sudo mv "${packages}/nvidia-cuda/cuda-wsl-ubuntu.pin" /etc/apt/preferences.d/cuda-repository-pin-600
-            wget --show progress -cqO "${packages}/nvidia-cuda/cuda-${cuda_ver}.deb" "${cuda_url}/local_installers/cuda-repo-wsl-ubuntu-12-2-local_12.2.2-1_amd64.deb"
-            sudo dpkg -i "${packages}/nvidia-cuda/cuda-${cuda_ver}.deb"
+            wget --show progress -cqO "${packages}/nvidia-cuda/cuda-wsl-${cuda_ver}.deb" "${cuda_url}/local_installers/cuda-repo-wsl-ubuntu-12-2-local_12.2.2-1_amd64.deb"
+            sudo dpkg -i "${packages}/nvidia-cuda/cuda-wsl-${cuda_ver}.deb"
             sudo cp -f /var/cuda-repo-wsl-ubuntu-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
             ;;
     6)      exit_fn;;
@@ -789,34 +790,33 @@ install_cuda_fn()
     clear
 
     if [ -f "${cuda_folder_path}"/version.json ]; then
-        cuda_ver="$(cat "${cuda_folder_path}"/version.json | jq -r '.cuda.version')"
+        cuda_installed_ver="$(cat "${cuda_folder_path}"/version.json | jq -r '.cuda.version')"
+        cuda_ver="${cuda_installed_ver}"
+    else
+        cuda_ver="${cuda_latest_ver}"
     fi
 
-    if [ -n "${cuda_ver}" ]; then
-        if [ "${cuda_ver}" = "${cuda_latest_ver}" ]; then
-            printf "%s\n\n" "The CUDA SDK Toolkit is already installed and up to date."
-        else
-            printf "%s\n%s\n%s\n\n%s\n\n%s\n%s\n\n" \
-                "The installed CUDA SDK Toolkit version is: ${cuda_ver}" \
-                "The latest version available is: ${cuda_latest_ver}"    \
-                '====================================================='  \
-                'Do you want to update/reinstall it?' \
-                '[1] Yes' \
-                '[2] No'
-            read -p 'Your choices are (1 or 2): ' choice
-            clear
+    if [ -n "${cuda_installed_ver}" ]; then
+        printf "%s\n%s\n%s\n\n%s\n\n%s\n%s\n\n"                      \
+            "The installed CUDA SDK Toolkit version is: ${cuda_ver}" \
+            "The latest version available is: ${cuda_latest_ver}"    \
+            '====================================================='  \
+            'Do you want to update/reinstall it?'                    \
+            '[1] Yes'                                                \
+            '[2] No'
+        read -p 'Your choices are (1 or 2): ' choice
+        clear
 
-            case "${choice}" in
-                    1)      cuda_download_fn;;
-                    2)      export PATH="${PATH}:${cuda_path}";;
-                    *)      fail_fn "Bad user input. Line: ${LINENO}";;
-            esac
-        fi
+        case "${choice}" in
+            1)      cuda_download_fn;;
+            2)      export PATH="${PATH}:${cuda_path}";;
+            *)      fail_fn "Bad user input. Line: ${LINENO}";;
+        esac
     else
-        printf "\n%s\n\n%s\n%s\n\n%s\n%s\n\n" \
-            "The CUDA SDK Toolkit was not detected and the latest version is: v${cuda_latest_ver}" \
-            '====================================================================' \
-            'What do you want to do next?' \
+        printf "%s\n%s\n\n%s\n\n%s\n%s\n\n" \
+            "The CUDA SDK Toolkit was not detected and the latest version is: ${cuda_ver}" \
+            '=========================================================================' \
+            'Choose an option' \
             '[1] Install the toolkit and add it to PATH' \
             '[2] Continue the build without installing (hardware acceleration will be turned off)'
         read -p 'Your choices are (1 or 2): ' answer
@@ -1034,7 +1034,7 @@ ubuntu_os_version()
     focal_pkgs+=' libncursesw5-dev librust-jemalloc-sys-dev librust-malloc-buf-dev libsrt-doc libreadline-dev libcunit1 libcunit1-doc'
     jammy_pkgs='libmimalloc-dev libtbbmalloc2 libyuv-dev librust-jemalloc-sys-dev librust-malloc-buf-dev libncurses5-dev'
     jammy_pkgs+=' libncursesw5-dev libsrt-doc libreadline-dev libpipewire-0.3-dev libwayland-dev libdecor-0-dev libde265-dev'
-    lunar_kenetic_pkgs='libjxl-dev librist-dev'
+    lunar_kenetic_pkgs='librist-dev libjxl-dev'
 
     case "${VER}" in
         23.04|22.10)    pkgs_fn "${lunar_kenetic_pkgs} ${jammy_pkgs}";;
@@ -1100,6 +1100,7 @@ cuda_folder_path="$(sudo find "${cuda_folder_path}" -type f -name nvcc | sed 's/
 # INSTALL THE GLOBAL TOOLS
 #
 
+clear
 box_out_banner_global()
 {
     input_char=$(echo "${@}" | wc -c)
