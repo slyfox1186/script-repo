@@ -1,6 +1,26 @@
 #!/usr/bin/env bash
 
-export user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+clear
+
+printf "%s\n%s\n\n" \
+    'Install ~/.bash_functions' \
+    '================================='
+
+#
+# SET VARIABLES
+#
+
+file="${HOME}"/.bash_functions
+
+#
+# CREATE FUNCTIONS
+#
+
+script_fn()
+{
+cat > "${file}" <<'EOF'
+#!/usr/bin/env bash
+# shellcheck disable=SC1091,SC2001,SC2162,SC2317
 
 ######################################################################################
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
@@ -9,8 +29,8 @@ export user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, li
 gedit() { "$(type -P gedit)" "${@}" &>/dev/null; }
 geds() { "$(type -P sudo)" -H -u root "$(type -P gedit)" "${@}" &>/dev/null; }
 
-gnome-text-editor() { "$(type -P gnome-text-editor)" "${@}" &>/dev/null; }
-gnome-text-editors() { "$(type -P sudo)" -H -u root "$(type -P gnome-text-editor)" "${@}" &>/dev/null; }
+gted() { "$(type -P gted)" "${@}" &>/dev/null; }
+gteds() { "$(type -P sudo)" -H -u root "$(type -P gted)" "${@}" &>/dev/null; }
 
 ###################
 ## FIND COMMANDS ##
@@ -126,7 +146,7 @@ rmdf()
 {
     clear
     perl -i -lne 's/\s*$//; print if ! $x{$_}++' "${1}"
-    gnome-text-editor "${1}"
+    gted "${1}"
 }
 
 ###################
@@ -183,22 +203,22 @@ aptdl()
 clean()
 {
     clear
-    sudo apt -y autoremove
-    sudo apt clean
-    sudo apt autoclean
-    sudo apt -y purge
+    sudo apt-fast -y autoremove
+    sudo apt-fast clean
+    sudo apt-fast autoclean
+    sudo apt-fast -y purge
 }
 
 # UPDATE
 update()
 {
     clear
-    sudo apt update
-    sudo apt -Vsy full-upgrade
-    sudo apt -y autoremove
-    sudo apt clean
-    sudo apt autoclean
-    sudo apt -y purge
+    sudo apt-fast update
+    sudo apt-fast -y full-upgrade
+    sudo apt-fast -y autoremove
+    sudo apt-fast clean
+    sudo apt-fast autoclean
+    sudo apt-fast -y purge
 }
 
 # FIX BROKEN APT PACKAGES
@@ -208,13 +228,14 @@ fix()
     if [ -f /tmp/apt.lock ]; then
         sudo rm /tmp/apt.lock
     fi
-    sudo dpkg --configure -a
     sudo apt-fast -f -y install
     sudo apt-fast --fix-broken install
     sudo apt-fast --fix-missing update
+    dpkg --configure -a
     sudo apt-fast -y autoremove
     sudo apt-fast clean
     sudo apt-fast autoclean
+    sudo apt-fast update
 }
 
 list()
@@ -321,7 +342,7 @@ showpkgs()
 {
     dpkg --get-selections |
     grep -v deinstall > "${HOME}"/tmp/packages.list
-    gnome-text-editor "${HOME}"/tmp/packages.list
+    gted "${HOME}"/tmp/packages.list
 }
 
 # PIPE ALL DEVELOPMENT PACKAGES NAMES TO file
@@ -331,7 +352,7 @@ getdev()
     grep "\-dev" |
     cut -d ' ' -f1 |
     sort > 'dev-packages.list'
-    gnome-text-editor 'dev-packages.list'
+    gted 'dev-packages.list'
 }
 
 ################
@@ -503,7 +524,7 @@ myip()
 {
     clear
     lan="$(hostname -I)"
-    wan="$(dig +short myip.opendns.com @resolver1.opendns.com 2>/dev/null)"
+    wan="$(dig +short myip.opendns.com @resolver1.opendns.com)"
     clear
     printf "%s\n%s\n\n" \
         "LAN: ${lan}" \
@@ -575,97 +596,107 @@ rmf()
 # OPTIMIZE AND OVERWRITE THE ORIGINAL IMAGES
 imow()
 {
-    local cnt_queue cnt_total dimensions pip_lock random_dir tmp_file v_noslash
+    local apt_pkgs cnt_queue cnt_total dimensions fext missing_pkgs pip_lock random_dir tmp_file v_noslash
 
     clear
-    
+
+    # THE FILE EXTENSION TO SEARCH FOR (DO NOT INCLUDE A '.' WITH THE EXTENSION)
+    fext=jpg
+
+    #
     # REQUIRED APT PACKAGES
-    sudo apt-get -qq -y install libsox-dev sox
-    clear
-    
+    #
+
+    apt_pkgs=(sox libsox-dev)
+    for i in ${apt_pkgs[@]}
+    do
+        missing_pkg="$(dpkg -l | grep "${i}")"
+        if [ -z "${missing_pkg}" ]; then
+            missing_pkgs+=" ${i}"
+        fi
+    done
+
+    if [ -n "${missing_pkgs}" ]; then
+        sudo apt-fast -y install ${missing_pkgs}
+        sudo apt-fast -y autoremove
+        clear
+    fi
+    unset apt_pkgs i missing_pkg missing_pkgs
+
+    #
     # REQUIRED PIP PACKAGES
-    pip_lock="$(find /usr/lib/python3* -name 'EXTERNALLY-MANAGED')"
+    #
+
+    pip_lock="$(find /usr/lib/python3* -name EXTERNALLY-MANAGED)"
     if [ -n "${pip_lock}" ]; then
         sudo rm "${pip_lock}"
     fi
-    
-    test_pip="$(pip show google_speech 2>/dev/null)"
-    if [ -z "$test_pip" ]; then
+    if ! pip show google_speech &>/dev/null; then
         pip install google_speech
     fi
-    unset pip_lock test_pip
-    
+
+    unset p pip_lock pip_pkgs missing_pkg missing_pkgs
     # DELETE ANY USELESS ZONE IDENFIER FILES THAT SPAWN FROM COPYING A FILE FROM WINDOWS NTFS INTO A WSL DIRECTORY
-    find . -type f -iname "*:Zone.Identifier" -delete 2>/dev/null
-    
-    # GET THE UNMODIFIED PATH OF EACH MATCHING FILE
-    if [ -d pics-convert ]; then
-        cd pics-convert || exit 1
-    fi
-    
+    find . -type f -name "*:Zone.Identifier" -delete 2>/dev/null
+
     # GET THE FILE COUNT INSIDE THE DIRECTORY
-    cnt_queue=$(find . -maxdepth 1 -type f -iname '*.jpg' | wc -l)
-    cnt_total=$(find . -maxdepth 1 -type f -iname '*.jpg' | wc -l)
-    
-    clear
-    for i in *.jpg
+    cnt_queue=$(find . -maxdepth 2 -type f -iname "*.jpg" | wc -l)
+    cnt_total=$(find . -maxdepth 2 -type f -iname "*.jpg" | wc -l)
+    # GET THE UNMODIFIED PATH OF EACH MATCHING FILE
+
+    for i in ./*."${fext}"
     do
-        cnt_queue=$((cnt_queue-1))
-    cat <<EOF
+        cnt_queue=$(( cnt_queue-1 ))
+
+        cat <<EOT
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-Working Dir: ${PWD}
+File Path: ${PWD}
 
-Total files:    ${cnt_total}
+Folder: $(basename "${PWD}")
+
+Total Files:    ${cnt_total}
 Files in queue: ${cnt_queue}
 
-Converting: ${i} > ${i%%.jpg}-IM.jpg
+Converting:  ${i}
+
+ >> ${i%%.jpg}.mpc
+
+    >> ${i%%.jpg}.cache
+
+       >> ${i%%.jpg}-IM.jpg
 
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-EOF
-    
+EOT
+        echo
         random_dir="$(mktemp -d)"
         dimensions="$(identify -format '%wx%h' "${i}")"
-    
-        echo
-        convert "${i}"                            \
-                -monitor                          \
-                -filter Triangle                  \
-                -define filter:support=2          \
-                -thumbnail "${dimensions}"        \
-                -strip                            \
-                -unsharp '0.25x0.08+8.3+0.045'    \
-                -dither None                      \
-                -posterize 136                    \
-                -quality 82                       \
-                -define jpeg:fancy-upsampling=off \
-                -auto-level                       \
-                -enhance                          \
-                -interlace none                   \
-                -colorspace sRGB                  \
-                "${random_dir}/${i%%.jpg}.mpc"
-    
+        convert "${i}" -monitor -filter Triangle -define filter:support=2 -thumbnail "${dimensions}" -strip \
+            -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize 136 -quality 82 -define jpeg:fancy-upsampling=off \
+            -auto-level -enhance -interlace none -colorspace sRGB "${random_dir}/${i%%.jpg}.mpc"
+
+
         for file in "${random_dir}"/*.mpc
         do
             convert "${file}" -monitor "${file%%.mpc}.jpg"
             tmp_file="$(echo "${file}" | sed 's:.*/::')"
             mv "${file%%.mpc}.jpg" "${PWD}/${tmp_file%%.*}-IM.jpg"
             rm -f "${PWD}/${tmp_file%%.*}.jpg"
-    
             for v in ${file}
             do
                 v_noslash="${v%/}"
                 rm -fr "${v_noslash%/*}"
             done
         done
-        clear
     done
-    
+
     if [ "${?}" -eq '0' ]; then
         google_speech 'Image conversion completed.' 2>/dev/null
         exit 0
     else
+        echo
         google_speech 'Image conversion failed.' 2>/dev/null
+        echo
         read -p 'Press enter to exit.'
         exit 1
     fi
@@ -689,22 +720,18 @@ imdl()
     clear
     cwd="${PWD}"
     tmp_dir="$(mktemp -d)"
+    user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
     cd "${tmp_dir}" || exit 1
-    wget -U "${user_agent}" -Nq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-and-overwrite.sh'
-    sudo chown "${USER}":"${USER}" -- *
-    sudo chmod +rwx -- *
-    mv 'optimize-and-overwrite.sh' "${cwd}"/imow
+    curl -A "${user_agent}" -Lso 'imow' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-and-overwrite.sh'
+    sudo mv imow "${cwd}"
     sudo rm -fr "${tmp_dir}"
     cd "${cwd}" || exit 1
+    sudo chown "${USER}":"${USER}" imow
+    sudo chmod +rwx imow
+    if [ -f "${0}" ]; then
+        sudo rm "${0}"
+    fi
 }
-
-##################################################
-## SHOW FILE NAME AND SIZE IN CURRENT DIRECTORY ##
-##################################################
-
-fs() { clear; du --max-depth=1 -abh | grep -Eo '^[0-9A-Za-z\_\-\.]*|[a-zA-Z0-9\_\-]+\.jpg$'; }
-
-big_img() { clear; sudo find . -size +10M -type f -name '*.jpg' 2>/dev/null; }
 
 ###########################
 ## SHOW NVME TEMPERATURE ##
@@ -768,8 +795,9 @@ cuda_purge()
 
 ffdl()
 {
+    local user_agent
     clear
-    curl -A $"{user_agent}" -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
+    curl -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36' -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
     bash 'ff.sh'
     sudo rm 'ff.sh'
     clear; ls -1AhFv --color --group-directories-first
@@ -796,7 +824,7 @@ large_files()
     sudo find "${PWD}" -type f -name "*.${answer}" -printf '%s %h\n' | sort -ru -o 'large-files.txt'
 
     if [ -f 'large-files.txt' ]; then
-        sudo gnome-text-editor 'large-files.txt'
+        sudo gted 'large-files.txt'
         sudo rm 'large-files.txt'
     fi
 }
@@ -961,7 +989,7 @@ hw_mon()
 }
 
 # CREATE A 7ZIP FILE WITH MAX COMPRESSION SETTINGS
-7z_1()
+7z_7z_1()
 {
     local answer source output
     clear
@@ -1197,8 +1225,8 @@ tar_xz_9()
 ## FFMPEG COMMANDS ##
 #####################
 
-ffr() { clear; bash "${1}" --build --latest; }
-ffrv() { clear; bash -v "${1}" --build --latest; }
+ffr() { clear; bash "${1}" -b --latest --enable-gpl-and-non-free; }
+ffrv() { clear; bash -v "${1}" -b --latest --enable-gpl-and-non-free; }
 
 ###################
 ## WRITE CACHING ##
@@ -1346,18 +1374,14 @@ int main(void)
 }
 EOT
 
-    sudo chown "${USER}":"${USER}" /tmp/hello.c
-    sudo chmod +rwx /tmp/hello.c
-
     if [ -n "${1}" ]; then
-        sudo "${1}" -Q -v /tmp/hello.c
+        "${1}" -Q -v /tmp/hello.c
     else
         clear
         read -p 'Enter the GCC binary you wish to test (example: gcc-11): ' answer
         clear
-        sudo "${answer}" -Q -v /tmp/hello.c
+        "${answer}" -Q -v /tmp/hello.c
     fi
-    sleep 1
     sudo rm /tmp/hello.c
 }
 
@@ -1388,7 +1412,7 @@ tkapt()
     local i list
     clear
 
-    list=(apt-fast apt-fast apt-fast apt apt-fast apt-get aptitude dpkg)
+    list=(apt-fast apt-fast apt apt-fast apt-get aptitude dpkg)
 
     for i in ${list[@]}
     do
@@ -1590,11 +1614,11 @@ adlm()
     clear; ls -1AhFv --color --group-directories-first
 }
 
-#####################
-## GET FILES SIZES ##
-#####################
+####################
+## GET FILE SIZES ##
+####################
 
-topsize()
+big_files()
 {
     local cnt
     clear
@@ -1613,6 +1637,8 @@ topsize()
     sudo du -Bm "${PWD}" 2>/dev/null | sort -nr | head -"${cnt}"
 }
 
+big_img() { clear; sudo find . -size +10M -type f -name '*.jpg' 2>/dev/null; }
+
 jpgsize()
 {
     local random_dir size
@@ -1624,7 +1650,7 @@ jpgsize()
     sed -i "s/^..//g" "${random_dir}/img-sizes.txt"
     sed -i "s|^|${PWD}\/|g" "${random_dir}/img-sizes.txt"
     clear
-    nohup gnome-text-editor "${random_dir}/img-sizes.txt" &>/dev/null &
+    nohup gted "${random_dir}/img-sizes.txt" &>/dev/null &
 }
 
 ##################
@@ -1671,40 +1697,64 @@ cmf()
     ccmake ${rel_sdir}
 }
 
-###########################
-## REPLACE TEXT WITH SED ##
-###########################
+##########################
+## SORT IMAGES BY WIDTH ##
+##########################
 
-sedr()
+jpgs()
 {
     clear
-    if [ -z "${1}" ]; then
-        read -p 'Enter the file name to search ( ex: *.sh ): ' search_this
-        read -p 'Enter the text the will be replaced: ' replace_this
-        read -p 'Enter the text we will replace with: ' replace_with
-        clear
-        sudo find . -type f -iname "${search_this}" -exec sudo sed -i "s/${replace_this}/${replace_with}/g" '{}' \;
-    fi
+    sudo find . -type f -iname '*.jpg' -exec identify -format " ${PWD}/%f: %wx%h " '{}' > /tmp/img-sizes.txt \;
+    cat /tmp/img-sizes.txt | sed 's/\s\//\n\//g' | sort -h
+    sudo rm /tmp/img-sizes.txt
 }
 
-#################################
-## DOWNLOAD ALL GITHUB SCRIPTS ##
-#################################
+######################################
+## DOWNLOAD IMPORTANT BUILD SCRIPTS ##
+######################################
 
 gitdl()
 {
-    local cwd random_dir
     clear
-    cwd="${PWD}"
-    random_dir="$(mktemp -d)"
-    cd "${random_dir}" || return 1
-    wget -U "${user_agent}" -Nq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc'
-    wget -U "${user_agent}" -Nq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/FFmpeg/build-ffmpeg'
-    wget -U "${user_agent}" -Nq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/build-magick'
-    sudo chmod -R +rwx -- *
-    sudo chown "${USER}":"${USER}" -- *
-    mv -- * "${cwd}"
-    sudo rm -fr "${random_dir}"
-    cd "${cwd}" || return 1
-    clear; ls -1AhFv --color --group-directories-first
+    wget -cq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/FFmpeg/build-ffmpeg'
+    wget -cq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/build-magick'
+    wget -cq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc'
+    wget -cq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/FFmpeg/repo.sh'
+    sudo chmod -R build-gcc build-magick build-ffmpeg repo.sh -- *
+    sudo chown -R "${USER}":"${USER}" build-gcc build-magick build-ffmpeg repo.sh
+    clear
+    ls -1A --color --group-directories-first
 }
+EOF
+}
+
+#
+# CHECK FOR ANY PASSED ARGUMENTS TO SET THE APT PACKAGE MANAGER
+#
+
+if [[ "$1" == 'yes' ]]; then
+    answer=1
+else
+    answer=2
+fi
+
+case "$answer" in
+    1)
+            script_fn
+            sed -i 's/apt /apt-fast /g' "$file"
+            sed -i 's/apt-fast list/apt list/g' "$file"
+            sed -i 's/local apt-fast host/local apt host/g' "$file"
+            sed -i 's/for apt-fast in/for apt in/g' "$file"
+            sed -i 's/apt-fast apt-get aptitude dpkg/apt apt-fast apt-get aptitude dpkg/g' "$file"
+            sed -i 's/apt-fast search/apt search/g' "$file"
+            ;;
+    2)      script_fn;;
+    *)
+            clear
+            printf "%s\n\n" 'Bad user input. Please start over.'
+            exit 1
+            ;;
+esac
+
+clear
+printf "%s\n%s\n\n" 'The script has completed!'
