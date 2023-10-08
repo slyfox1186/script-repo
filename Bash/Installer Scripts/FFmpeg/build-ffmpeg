@@ -2318,8 +2318,6 @@ if build 'svt-av1' '1.4.0'; then
                        -DBUILD_TESTING=OFF                   \
                        -DENABLE_NASM=ON                      \
                        -DENABLE_AVX512=ON                    \
-                       -DSVT_AV1_LTO=ON                      \
-                       -DSVT_AV1_PGO=OFF                     \
                        -DNATIVE=ON                           \
                        -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C Build/linux
