@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-###########################################################################################################
+################################################################################################################################
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-aria2
 ##
@@ -14,7 +14,7 @@
 ##
 ##  Script version: 1.5
 ##
-###########################################################################################################
+################################################################################################################################
 
 clear
 
@@ -29,7 +29,7 @@ fi
 
 script_ver=1.5
 archive_dir=aria2-1.36.0
-archive_url=https://github.com/aria2/aria2/releases/download/release-1.36.0/${archive_dir}.tar.gz
+archive_url=https://github.com/aria2/aria2/releases/download/release-1.36.0/"${archive_dir}".tar.gz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 parent_dir="${PWD}"
