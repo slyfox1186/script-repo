@@ -175,7 +175,7 @@ export CC=gcc CXX=g++
 # SET THE COMPILER OPTIMIZATION FLAGS
 #
 
-CXXFLAGS='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
+CXXFLAGS='-g -O2 -march=native'
 CFLAGS="${CXXFLAGS} -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections"
 CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include"
 CPPFLAGS+=" -I/usr/include/${pc_type} -I/usr/lib/gcc/${pc_type}/11/include"

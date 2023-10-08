@@ -50,7 +50,7 @@ export CC=gcc CXX=g++
 # SET THE COMPILER OPTIMIZATION FLAGS TO TUNE THE BUILD FOR THE SPECIFIC COMPUTER RUNNING THE SCRIPT
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
+export {CFLAGS,CXXFLAGS}='-g -O2 -march=native -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections'
 
 #
 # CREATE OUTPUT DIRECTORIES
