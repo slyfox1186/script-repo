@@ -1,0 +1,246 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2162,SC2317
+
+###########################################################################################################
+##
+##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-17
+##
+##  Purpose: Build LLVM-17
+##
+##  Updated: 10.07.23
+##
+##  Script version: 1.0
+##
+###########################################################################################################
+
+clear
+
+if [ "${EUID}" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
+
+#
+# SET VARIABLES
+#
+
+script_ver=1.0
+clang_ver=17.0.2
+archive_url=https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.2/llvm-project-"${clang_ver}".src.tar.xz
+archive_ext="${archive_url//*.}"
+archive_dir="${PWD}"/clang-17-build-script
+archive_name="clang-${clang_ver}.tar.${archive_ext}"
+install_dir=/usr/local
+pc_type=x86_64-linux-gnu
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
+web_repo=https://github.com/slyfox1186/script-repo
+
+printf "%s\n%s\n\n" \
+    "Clang ${clang_ver} Build Script - v${script_ver}" \
+    '==============================================='
+
+#
+# CREATE OUTPUT DIRECTORY
+#
+
+if [ -d "${archive_dir}" ]; then
+    rm -fr "${archive_dir}"
+fi
+mkdir -p "${archive_dir}"
+
+#
+# SET THE C+CPP COMPILERS
+#
+
+CC=clang
+CXX=clang++
+
+#
+# EXPORT COMPILER OPTIMIZATION FLAGS
+#
+
+CFLAGS='-g -O3 -march=native'
+CXXFLAGS="${CFLAGS}"
+
+#
+# SET THE PATH VARIABLE
+#
+
+PATH="\
+/usr/lib/ccache:\
+${HOME}/.cargo/bin:\
+${HOME}/.local/bin:\
+/usr/local/sbin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin:\
+/usr/local/cuda/bin\
+"
+export PATH
+
+#
+# SET THE PKG_CONFIG_PATH VARIABLE
+#
+
+PKG_CONFIG_PATH="\
+/usr/local/lib64/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/share/pkgconfig:\
+/usr/lib64/pkgconfig:\
+/usr/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/open-coarrays/openmpi/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/openmpi/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/share/pkgconfig:\
+/lib64/pkgconfig:\
+/lib/pkgconfig:\
+/lib/x86_64-linux-gnu/pkgconfig\
+"
+export PKG_CONFIG_PATH
+
+LD_LIBRARY_PATH="\
+-L/usr/local/lib64:\
+-L/usr/local/lib:\
+-L/usr/lib/x86_64-linux-gnu:\
+-L/usr/lib64:\
+-L/usr/lib:\
+-L/lib64:\
+-L/lib\
+"
+export LD_LIBRARY_PATH
+
+#
+# CREATE FUNCTIONS
+#
+
+exit_fn()
+{
+    printf "\n%s\n\n%s\n\n" \
+        'Make sure to star this repository to show your support!' \
+        "${web_repo}"
+    exit 0
+}
+
+fail_fn()
+{
+    printf "\n%s\n\n%s\n\n" \
+        "${1}" \
+        "To report a bug create an issue at: ${web_repo}/issues"
+    exit 1
+}
+
+cleanup_fn()
+{
+    local choice
+
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
+        '============================================' \
+        '  Do you want to clean up the build files?  ' \
+        '============================================' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' choice
+
+    case "${choice}" in
+        1)      sudo rm -fr "${cwd}";;
+        2)      echo;;
+        *)
+                clear
+                printf "%s\n\n" 'Bad user input. Reverting script...'
+                sleep 3
+                unset choice
+                clear
+                cleanup_fn
+                ;;
+    esac
+}
+
+#
+# INSTALL REQUIRED APT PACKAGES
+#
+
+pkgs_fn()
+{
+    pkgs=(autoconf autoconf-archive autogen automake build-essential ccache
+          cmake curl git jq libtool libtool-bin lzip m4 pkg-config)
+
+    for i in ${pkgs[@]}
+    do
+        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+
+        if [ -z "${missing_pkg}" ]; then
+            missing_pkgs+=" ${i}"
+        fi
+    done
+
+    if [ -n "${missing_pkgs}" ]; then
+        sudo apt -y install ${missing_pkgs}
+        sudo apt -y autoremove
+        clear
+    fi
+}
+
+#
+# DOWNLOAD THE ARCHIVE FILE
+#
+
+if [ ! -f "${archive_name}" ]; then
+    printf "%s\n\n" 'Downloading the source code from GitHub'
+    wget --show-progress -U "${user_agent}" -cqO "${archive_name}" "${archive_url}"
+fi
+
+#
+# EXTRACT THE ARCHIVE FILE
+#
+
+if ! tar -xf "${archive_name}" -C "${archive_dir}" --strip-components 1; then
+    fail_fn "Failed to extract: ${archive_name}. Line: ${LINENO}"
+    exit 1
+fi
+
+#
+# BUILD PROGRAM FROM SOURCE
+#
+
+# ;clang-tools-extra
+
+cd "${archive_dir}" || exit 1
+cmake -S llvm -B build                             \
+         -DCMAKE_INSTALL_PREFIX="${install_dir}"   \
+         -DCMAKE_BUILD_TYPE=Release                \
+         -DBUILD_SHARED_LIBS=OFF                   \
+         -DBENCHMARK_INSTALL_DOCS=OFF              \
+         -DCMAKE_C_COMPILER="${CC}"                \
+         -DCMAKE_CXX_COMPILER="${CXX}"             \
+         -DCMAKE_C_FLAGS="${CFLAGS}"               \
+         -DCMAKE_CXX_FLAGS="${CXXFLAGS}"           \
+         -DLLVM_BUILD_BENCHMARKS=OFF               \
+         -DLLVM_CCACHE_BUILD=ON                    \
+         -DLLVM_DEFAULT_TARGET_TRIPLE="${pc_type}" \
+         -DLLVM_ENABLE_LTO=ON                      \
+         -DLLVM_ENABLE_PROJECTS=clang              \
+         -DLLVM_ENABLE_WARNINGS=ON                 \
+         -DLLVM_HOST_TRIPLE="${pc_type}"           \
+         -DLLVM_INCLUDE_TESTS=OFF                  \
+         -DLLVM_TARGET_ARCH=host                   \
+         -G Ninja -Wno-dev
+
+echo
+if ! ninja "-j$(nproc --all)" -C build; then
+    fail_fn "Failed to execute ninja -j$(nproc --all) -C build. Line: ${LINENO}"
+fi
+
+echo
+if ! sudo ninja "-j$(nproc --all)" -C build install; then
+    fail_fn "Failed to execute: sudo ninja -j$(nproc --all) -C build install:Line ${LINENO}"
+    exit 1
+fi
+
+# PROMPT USER TO CLEAN UP FILES
+cleanup_fn
+
+# SHOW EXIT MESSAGE
+exit_fn
