@@ -263,16 +263,8 @@ git_1_fn()
 
     github_repo="${1}"
     github_url="${2}"
-    git_token='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'
 
-    if curl_cmd="$(curl \
-                        -A "${user_agent}" \
-                        -m 10 \
-                        --request GET \
-                        --url "https://api.github.com/slyfox1186" \
-                        --header "Authorization: Bearer ${git_token}" \
-                        --header "X-GitHub-Api-Version: 2022-11-28" \
-                        -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
         g_url="$(echo "${curl_cmd}" | jq -r '.[1].tarball_url' 2>/dev/null)"
         g_ver="${g_ver#llvmorg-}"
