@@ -1412,7 +1412,7 @@ tkapt()
     local i list
     clear
 
-    list=(apt apt apt apt apt-get aptitude dpkg)
+    list=(apt apt apt apt apt apt-get aptitude dpkg)
 
     for i in ${list[@]}
     do
@@ -1630,11 +1630,11 @@ big_files()
         clear
     fi
 
-    printf "%s\n\n" "These are the largest ${cnt} files in this directory."
-    sudo find "${PWD}" -type f -printf "%s %p\n" | sort -nr | head -"${cnt}"
+    printf "%s\n\n" "Largest ${cnt} files"
+    sudo find "${PWD}" -type f -exec du -Sh {} + | sort -hr | head -"${cnt}"
     echo
-    printf "%s\n\n" "These are the largest ${cnt} folders in this directory."
-    sudo du -Bm "${PWD}" 2>/dev/null | sort -nr | head -"${cnt}"
+    printf "%s\n\n" "Largest ${cnt} folders"
+    sudo du -Bm "${PWD}" 2>/dev/null | sort -hr | head -"${cnt}"
 }
 
 big_img() { clear; sudo find . -size +10M -type f -name '*.jpg' 2>/dev/null; }
