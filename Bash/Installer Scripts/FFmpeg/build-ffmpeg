@@ -1895,8 +1895,6 @@ if build 'libflac' "${g_ver}"; then
                   -DCMAKE_BUILD_TYPE=Release            \
                   -DINSTALL_CMAKE_CONFIG_MODULE=ON      \
                   -DINSTALL_MANPAGES=OFF                \
-                  -DINSTALL_PKGCONFIG=ON                \
-                  -DINSTALL_MODULES=ON                  \
                   -DBUILD_CXXLIBS=ON                    \
                   -DBUILD_PROGRAMS=ON                   \
                   -DWITH_ASM=ON                         \
