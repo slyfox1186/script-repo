@@ -361,7 +361,7 @@ if build 'llvm' "${g_ver}"; then
           -DLLVM_CCACHE_BUILD=ON                     \
           -DLLVM_DEFAULT_TARGET_TRIPLE="${pc_type}"  \
           -DLLVM_ENABLE_CURL=ON                      \
-          -DLLVM_ENABLE_LTO=THIN                     \
+          -DLLVM_ENABLE_LTO=OFF                      \
           -DLLVM_ENABLE_OCAMLDOC=OFF                 \
           -DLLVM_ENABLE_PROJECTS="${project_pkgs}"   \
           -DLLVM_ENABLE_RUNTIMES="${runtime_pkgs}"   \
