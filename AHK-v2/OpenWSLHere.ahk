@@ -19,7 +19,7 @@
 
     Big Update:
     - Greatly improved the code. When explorer.exe has multiple tabs per window, it will
-      the correct tab the hotkey is trigged on instead of just activating the far left tab.
+      open the correct tab the hotkey is trigged on instead of just activating the far left tab.
 
 */
 
