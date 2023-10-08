@@ -32,8 +32,7 @@ archive_dir=aria2-1.36.0
 archive_url=https://github.com/aria2/aria2/releases/download/release-1.36.0/"${archive_dir}".tar.gz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
-parent_dir="${PWD}"
-cwd="${parent_dir}"/aria2-build-script
+cwd="${PWD}"/aria2-build-script
 install_dir=/usr/local
 cert_dir=/usr/lib/ssl/certs
 pem_file=cacert.pem
@@ -168,7 +167,7 @@ cleanup_fn()
     case "${choice}" in
         1)
                 sudo rm -fr "${cwd}"
-                cd "${parent_dir}" || exit 1
+                cd "${cwd}" || exit 1
                 if [ -f "${pem_file}" ]; then
                     sudo rm "${pem_file}"
                 fi
