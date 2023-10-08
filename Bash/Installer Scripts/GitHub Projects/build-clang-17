@@ -26,7 +26,6 @@ fi
 
 script_ver=1.1
 progname="${0}"
-clang_ver=17.0.2
 cwd="${PWD}"/clang-17-build-script
 install_prefix=/usr/local
 pc_type=x86_64-linux-gnu
