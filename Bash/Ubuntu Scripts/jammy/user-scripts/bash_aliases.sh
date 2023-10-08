@@ -44,6 +44,7 @@ alias killall='sudo killall'
 alias kill='sudo kill'
 alias ldconfig='sudo ldconfig'
 alias ln='sudo ln'
+alias mainline='sudo mainline'
 alias mount='sudo mount'
 alias netplan='sudo netplan'
 alias nordvpn='sudo nordvpn'
@@ -324,6 +325,15 @@ alias wine32='env WINEARCH=win32 WINEPREFIX=~/.wine32 wine $*'
 # FIND AND KILL PROCESSES BY PID OR NAME
 alias tk='kill -9'
 alias tka='killall -9'
+
+# MAINLINE
+alias ml='mainline'
+alias mll='mainline list | sort -h'
+alias mli='mainline install'
+alias mlu='mainline uninstall'
+
+# GRUB CUSTOMIZER
+alias sgc='sudo grub-customizer'
 EOF
 }
 
