@@ -1495,8 +1495,6 @@ if build 'libhwy' '1.0.7'; then
     execute cmake -B build                              \
                   -DCMAKE_INSTALL_PREFIX="${workspace}" \
                   -DCMAKE_BUILD_TYPE=Release            \
-                  -DINSTALL_GTEST=ON                    \
-                  -Dgtest_force_shared_crt=ON           \
                   -DHWY_ENABLE_TESTS=OFF                \
                   -DBUILD_TESTING=OFF                   \
                   -DHWY_ENABLE_EXAMPLES=OFF             \
