@@ -25,7 +25,7 @@ if [ "${EUID}" -eq '0' ]; then
 fi
 
 #
-# SET VARIABLES
+# SET THE SCRIPT VARIABLES
 #
 
 script_ver=1.8
@@ -39,7 +39,7 @@ user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 web_repo=https://github.com/slyfox1186/script-repo
 
 #
-# START PYTHON3 BUILD
+# START THE PYTHON3 BUILD
 #
 
 printf "%s\n%s\n\n" \
@@ -47,7 +47,7 @@ printf "%s\n%s\n\n" \
     '==============================================='
 
 #
-# CREATE OUTPUT DIRECTORY
+# CREATE THE OUTPUT DIRECTORY
 #
 
 if [ -d "${cwd}" ]; then
@@ -56,13 +56,13 @@ fi
 mkdir -p "${cwd}"
 
 #
-# SET THE C+CPP COMPILERS
+# SET THE C & CPP COMPILERS
 #
 
 export CC=gcc CXX=g++
 
 #
-# EXPORT COMPILER OPTIMIZATION FLAGS
+# SET THE COMPILER OPTIMIZATION FLAGS
 #
 
 LDFLAGS='-L/lib/"${install_dir}" -L/usr/lib/"${install_dir}" -L/usr/local/lib'
@@ -112,7 +112,7 @@ PKG_CONFIG_PATH="\
 export PKG_CONFIG_PATH
 
 #
-# SET LD_LIBRARY_PATH
+# SET THE LD_LIBRARY_PATH VARIABLE
 #
 
 cuda_lib_dir="$(find /usr/local/cuda* -type d -name lib64 | head -n1)"
@@ -172,6 +172,7 @@ show_ver_fn()
 cleanup_fn()
 {
     local answer
+    clear
 
     printf "\n%s\n\n%s\n%s\n\n" \
         'Do you want to remove the build files?' \
@@ -187,7 +188,6 @@ cleanup_fn()
                 printf "%s\n\n" 'Bad user input. Resetting script...'
                 sleep 3
                 unset answer
-                clear
                 cleanup_fn
                 ;;
     esac
@@ -213,7 +213,7 @@ if [ -n "${missing_pkgs}" ]; then
     for i in "${missing_pkgs}"
         do
             if ! sudo apt -y install $i; then
-                fail_fn "Failed to install the apt packages:Line ${LINENO}"
+                fail_fn "Failed to install the apt packages. Line: ${LINENO}"
             fi
         done
 else
@@ -230,7 +230,7 @@ if [ ! -f "${cwd}/${archive_name}" ]; then
 fi
 
 #
-# CREATE OUTPUT DIRECTORY
+# CREATE THE OUTPUT DIRECTORY
 #
 
 if [ -d "${cwd}/${archive_dir}" ]; then
@@ -239,34 +239,29 @@ fi
 mkdir -p "${cwd}/${archive_dir}/build"
 
 #
-# EXTRACT ARCHIVE FILES
+# EXTRACT THE ARCHIVE FILES
 #
 
 if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
-    fail_fn "Failed to extract: ${cwd}/${archive_name}:Line ${LINENO}"
+    fail_fn "Failed to extract: ${cwd}/${archive_name}. Line: ${LINENO}"
     exit 1
 fi
 
 #
-# GET OPENSSL DIR
+# LOCATE THE OPENSSL DIR
 #
 
 case "$(type -P openssl)" in
     /usr/local/bin/openssl)     openssl_dir=/usr/local;;
     /usr/bin/openssl)           openssl_dir=/usr;;
-    *)                          fail_fn "Failed to locate openssl. Please install it before running the script again. :Line {LINENO}";;
+    *)                          fail_fn "Failed to locate openssl. Please install it before running the script again. Line: {LINENO}";;
 esac
 
 #
-# BUILD PROGRAM FROM SOURCE
+# BUILD THE PROGRAM FROM SOURCE CODE
 #
 
 cd "${cwd}/${archive_dir}/build" || exit 1
-clear
-
-printf "%s\n%s\n\n" \
-    'Running: configure' \
-    '========================'
 ../configure --enable-optimizations               \
              --with-ensurepip=upgrade             \
              --with-lto=yes                       \
@@ -281,14 +276,20 @@ printf "%s\n%s\n\n" \
              CPPFLAGS="${CPPFLAGS}"               \
              LDFLAGS="${LDFLAGS}"                 \
              LIBS="$(pkg-config --libs openssl)"
-make "-j$(nproc --all)"
-if ! sudo make altinstall; then
-    fail_fn "Failed to execute: sudo make altinstall:Line ${LINENO}"
+if ! make "-j$(nproc --all)"; then
+    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
     exit 1
 fi
+if ! sudo make altinstall; then
+    fail_fn "Failed to execute: sudo make altinstall. Line: ${LINENO}"
+    exit 1
+fi
+
 # SHOW THE NEW VERSION
 show_ver_fn
-# PROMPT USER TO CLEAN UP FILES
+
+# PROMPT THE USER TO CLEAN UP THE BUILD FILES
 cleanup_fn
-# SHOW EXIT MESSAGE
+
+# SHOW THE EXIT MESSAGE
 exit_fn
