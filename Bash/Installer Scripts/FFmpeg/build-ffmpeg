@@ -71,7 +71,7 @@ latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 curl_timeout=10
-debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=ON # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -108,19 +108,7 @@ printf "\n%s\n\n" "The script will utilize (${cpu_threads}) CPU threads for para
 # SET THE C & C++ COMPILERS TO THE HIGHEST VERSION INSTALLED
 #
 
-locate_gcc="$(type -P gcc | sed 's:/[^/]*$::')"
-set_gcc="$(sudo find "${locate_gcc}" -maxdepth 1 -name 'gcc-*' | grep -Eo 'gcc-[0-9]+' | sort -r | head -n1)"
-set_gpp="$(sudo find "${locate_gcc}" -maxdepth 1 -name 'g++-*' | grep -Eo 'g\+\+-[0-9]+' | sort -r | head -n1)"
-
-if [ -n "${set_gcc}" ] && [ -n "${set_gpp}" ]; then
-    CC="${set_gcc}"
-    CXX="${set_gpp}"
-    export CC CXX
-else
-    clear
-    printf "%s\n\n" 'Failed to locate and set the highest gcc/g++ versions. Make sure they are installed before trying again!'
-    exit 1
-fi
+export CC='ccache clang-16' CXX='ccache clang++-16'
 
 #
 # SET COMPILER OPTIMIZATION FLAGS
@@ -229,10 +217,10 @@ download()
         echo "The file \"${dl_file}\" is already downloaded."
     else
         echo "Downloading \"${dl_url}\" saving as \"${dl_file}\""
-        if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
+        if ! wget -U "${user_agent}" -cqO "${target_file}" "${dl_url}"; then
             printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 10 seconds..."
             sleep 10
-            if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
+            if ! wget -U "${user_agent}" -cqO "${target_file}" "${dl_url}"; then
                 fail_fn "The script failed to download \"${dl_file}\" twice and will now exit. Line: ${LINENO}"
             fi
         fi
@@ -242,7 +230,6 @@ download()
     if [ -d "${target_dir}" ]; then
         sudo rm -fr "${target_dir}"
     fi
-
     mkdir -p "${target_dir}"
 
     if [ -n "${3}" ]; then
@@ -519,11 +506,6 @@ gpu_arch_fn()
 {
     local is_wsl gpu_name gpu_type
 
-    is_wsl="$(uname -a | grep -Eo 'WSL2')"
-    if [ -n "${is_wsl}" ]; then
-        sudo apt -y install nvidia-smi
-    fi
-
     gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -r | head -n 1)"
     if [ "${gpu_name}" = 'name' ]; then
         gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort | head -n 1)"
@@ -658,7 +640,6 @@ JAVA_HOME="${find_java}"
 export JAVA_HOME
 export PATH="${PATH}:${JAVA_HOME}/bin"
 
-#
 # SET THE PATH VARIABLE
 #
 
@@ -725,35 +706,35 @@ cuda_download_fn()
 
     case "${cuda_choice}" in
         1)
-            wget --show progress -cqO "${packages}/nvidia-cuda/cuda-buster-${cuda_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian10-12-2-local_12.2.2-535.104.05-1_amd64.deb"
+            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-buster-${cuda_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian10-12-2-local_12.2.2-535.104.05-1_amd64.deb"
             sudo dpkg -i "${packages}/nvidia-cuda/cuda-buster-${cuda_ver}.deb"
             sudo cp -f /var/cuda-repo-debian10-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
             sudo add-apt-repository -y contrib
             ;;
         2)
-            wget --show progress -cqO "${packages}/nvidia-cuda/cuda-bookworm-${cuda_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian11-12-2-local_12.2.2-535.104.05-1_amd64.deb"
+            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-bookworm-${cuda_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian11-12-2-local_12.2.2-535.104.05-1_amd64.deb"
             sudo dpkg -i "${packages}/nvidia-cuda/cuda-bookworm-${cuda_ver}.deb"
             sudo cp -f /var/cuda-repo-debian11-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
             sudo add-apt-repository -y contrib
             ;;
         3)
-            wget --show progress -cqO "${packages}/nvidia-cuda/cuda-ubuntu2004.pin" "${cuda_url}/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin"
+            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-ubuntu2004.pin" "${cuda_url}/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin"
             sudo mv "${packages}/nvidia-cuda/cuda-ubuntu2004.pin" /etc/apt/preferences.d/cuda-repository-pin-600
-            wget --show progress -cqO "${packages}/nvidia-cuda/cuda-focal-${cuda_ver}.deb" "${cuda_url}/local_installers/cuda-repo-ubuntu2004-12-2-local_12.2.2-535.104.05-1_amd64.deb"
+            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-focal-${cuda_ver}.deb" "${cuda_url}/local_installers/cuda-repo-ubuntu2004-12-2-local_12.2.2-535.104.05-1_amd64.deb"
             sudo dpkg -i "${packages}/nvidia-cuda/cuda-focal-${cuda_ver}.deb"
             sudo cp -f /var/cuda-repo-ubuntu2004-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
             ;;
         4)
-            wget --show progress -cqO "${packages}/nvidia-cuda/cuda-ubuntu2204.pin" "${cuda_url}/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin"
+            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-ubuntu2204.pin" "${cuda_url}/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin"
             sudo mv "${packages}/nvidia-cuda/cuda-ubuntu2204.pin" /etc/apt/preferences.d/cuda-repository-pin-600
-            wget --show progress -cqO "${packages}/nvidia-cuda/cuda-jammy-${cuda_ver}.deb" "${cuda_url}/local_installers/cuda-repo-ubuntu2204-12-2-local_12.2.2-535.104.05-1_amd64.deb"
+            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-jammy-${cuda_ver}.deb" "${cuda_url}/local_installers/cuda-repo-ubuntu2204-12-2-local_12.2.2-535.104.05-1_amd64.deb"
             sudo dpkg -i "${packages}/nvidia-cuda/cuda-jammy-${cuda_ver}.deb"
             sudo cp -f /var/cuda-repo-ubuntu2204-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
             ;;
         5)
-            wget --show progress -cqO "${packages}/nvidia-cuda/cuda-wsl-ubuntu.pin" "${cuda_url}/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin"
+            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-wsl-ubuntu.pin" 'https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin'
             sudo mv "${packages}/nvidia-cuda/cuda-wsl-ubuntu.pin" /etc/apt/preferences.d/cuda-repository-pin-600
-            wget --show progress -cqO "${packages}/nvidia-cuda/cuda-wsl-${cuda_ver}.deb" "${cuda_url}/local_installers/cuda-repo-wsl-ubuntu-12-2-local_12.2.2-1_amd64.deb"
+            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-wsl-${cuda_ver}.deb" 'https://developer.download.nvidia.com/compute/cuda/12.2.2/local_installers/cuda-repo-wsl-ubuntu-12-2-local_12.2.2-1_amd64.deb'
             sudo dpkg -i "${packages}/nvidia-cuda/cuda-wsl-${cuda_ver}.deb"
             sudo cp -f /var/cuda-repo-wsl-ubuntu-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
             ;;
@@ -798,7 +779,7 @@ install_cuda_fn()
     fi
 
     if [ -n "${cuda_installed_ver}" ]; then
-        printf "%s\n%s\n%s\n\n%s\n\n%s\n%s\n\n"                      \
+        printf "%s\n\n%s\n%s\n\n%s\n\n%s\n%s\n\n"                      \
             "The installed CUDA SDK Toolkit version is: ${cuda_ver}" \
             "The latest version available is: ${cuda_latest_ver}"    \
             '====================================================='  \
@@ -1065,6 +1046,14 @@ elif [ -n "${find_lsb_release}" ]; then
 else
     fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
 fi
+
+if [[ "$(grep -i Microsoft /proc/version)" ]]; then
+    VER_WSL=1
+fi
+
+case "${VER_WSL}" in
+    1)      sudo apt-get -qq -y install nvidia-utils-535;;
+esac
 
 if [ -z "${VER}" ]; then
     VER="${CODENAME}"
@@ -2727,7 +2716,7 @@ if build 'ffmpeg' "${ffmpeg_sver}"; then
                 --pkg-config-flags='--static'               \
                 --pkg-config="${workspace}"/bin/pkg-config  \
                 --pkgconfigdir="${workspace}"/lib/pkgconfig \
-                --strip="$(type -P strip)"
+                --strip="$(type -P llvm-strip)"
     execute make "-j${cpu_threads}"
     execute make install
 fi
