@@ -39,7 +39,7 @@ OpenWSLHere()
     
     if !WinActive("ahk_class CabinetWClass ahk_exe explorer.exe")
     {
-        Run(pshell ' -NoP -W H -C "Start-Process -WindowStyle Hidden ' . wt . ' -Args `'-w new-tab --profile ' . osName . ' ' . wsl . ' --cd ~ `' -Verb RunAs"',, "Hide")
+        Run(pshell ' -NoP -W H -C "Start-Process ' . wt . ' -Args `'-w new-tab --profile ' . osName . ' ' . wsl . ' --cd ~ `' -Verb RunAs"',, "Hide")
         if WinWait(win)
             WinActivate(win)
         return
@@ -64,7 +64,7 @@ OpenWSLHere()
         break
     }
 
-    Run(pshell ' -NoP -W H -C "Start-Process -WindowStyle Hidden ' . wt . ' -Args `'-w new-tab --profile ' . osName . ' ' . wsl . ' --cd \"' . pwd . '\" `' -Verb RunAs"',, "Hide")
+    Run(pshell ' -NoP -W H -C "Start-Process ' . wt . ' -Args `'-w new-tab --profile ' . osName . ' ' . wsl . ' --cd \"' . pwd . '\" `' -Verb RunAs"',, "Hide")
     if WinWait(win)
         WinActivate(win)
 }
