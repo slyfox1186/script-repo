@@ -884,7 +884,6 @@ if build 'openjpeg' "${g_ver2}"; then
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'openjpeg' "${g_ver2}"
 fi
-ffmpeg_libraries+=('--enable-libopenjpeg')
 
 #
 # BEGIN BUILDING IMAGEMAGICK
