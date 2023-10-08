@@ -11,7 +11,7 @@
     - This will open Windows' WSL terminal to the active file explorer folder or if no active explorer window is found, ~
 
     Instructions:
-    - You need to replace the below variable '_osName' with the wsl distribution of your choosing.
+    - You need to replace the below variable 'osName' with the wsl distribution of your choosing.
     - To find the available distros run 'wsl.exe -l --all' using PowerShell to get a list of available options
 
     Updated:
