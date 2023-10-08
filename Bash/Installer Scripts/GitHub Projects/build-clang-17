@@ -26,9 +26,9 @@ fi
 
 script_ver=1.1
 progname="${0}"
+clang_ver=17.0.2
 cwd="${PWD}"/clang-17-build-script
-packages="${cwd}"/packages
-install_dir=/usr/local
+install_prefix=/usr/local
 pc_type=x86_64-linux-gnu
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
@@ -38,23 +38,20 @@ debug=OFF # CHANGE THIS VARIABLE TO "ON" FOR HELP WITH TROUBLESHOOTING UNEXPECTE
 # CREATE OUTPUT DIRECTORIES
 #
 
-if [ -d "${packages}" ]; then
-    rm -fr "${packages}"
-fi
-mkdir -p "${packages}"
+mkdir -p "${cwd}"
 
 #
 # FIGURE OUT WHICH COMPILERS TO USE
 #
 
-export CC=gcc CXX=g++
+export CC=clang CXX=clang++
 
 #
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
+CFLAGS='-g -O2 -march=native'
 CXXFLAGS='-g -O2 -march=native'
-CFLAGS="${CXXFLAGS}"
 
 #
 # SET THE AVAILABLE CPU COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -121,7 +118,7 @@ cleanup_fn()
 {
     local choice
 
-    printf "\n%s\n\n%s\n%s\n\n"                  \
+    printf "%s\n\n%s\n%s\n\n"                    \
         'Do you want to remove the build files?' \
         '[1] Yes'                                \
         '[2] No'
@@ -141,18 +138,49 @@ cleanup_fn()
     esac
 }
 
+create_soft_link_fn()
+{
+    clear
+    if [ -f "${install_prefix}"/bin/clang++ ] && [ ! -f "${install_prefix}"/bin/clang++-17 ]; then
+        if ! sudo ln -s "${install_prefix}"/bin/clang++ "${install_prefix}"/bin/clang++-17; then
+            printf "\n%s\n\n" "Failed to create the clang++ soft link. Line: ${LINENO}"
+        fi
+    fi
+}
+
+show_ver_fn()
+{
+    printf "%s\n\n" 'The installed clang version is:'
+
+    if [ -f "${install_prefix}"/bin/clang-17 ]; then
+        printf "%s\n" 'clang-17:'
+        "${install_prefix}"/bin/clang-17 --version
+        echo
+    fi
+
+    if [ -f "${install_prefix}"/bin/clang++-17 ]; then
+        printf "%s\n" 'clang++-17:'
+        "${install_prefix}"/bin/clang++-17 --version
+        echo
+    elif [ -f "${install_prefix}"/bin/clang++ ]; then
+        printf "%s\n" 'clang-++:'
+        "${install_prefix}"/bin/clang++ --version
+        echo
+    fi
+}
+
 execute()
 {
     echo "$ ${*}"
 
     if [ "${debug}" = 'ON' ]; then
         if ! output="$("${@}")"; then
-            notify-send -t 5000 "Failed to execute: ${*}"
+            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
             fail_fn "Failed to execute: ${*}"
         fi
     else
         if ! output="$("${@}" 2>&1)"; then
-            notify-send -t 5000 "Failed to execute: ${*}"
+            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
             fail_fn "Failed to execute: ${*}"
         fi
     fi
@@ -164,20 +192,20 @@ build()
         "Building ${1} - version ${2}" \
         '=========================================='
 
-    if [ -f "${packages}/${1}.done" ]; then
-        if grep -Fx "${2}" "${packages}/${1}.done" >/dev/null; then
-            echo "${1} version ${2} already built. Remove ${packages}/${1}.done lockfile to rebuild it."
+    if [ -f "${cwd}/${1}.done" ]; then
+        if grep -Fx "${2}" "${cwd}/${1}.done" >/dev/null; then
+            echo "${1} version ${2} already built. Remove ${cwd}/${1}.done lockfile to rebuild it."
             return 1
         fi
     fi
     return 0
 }
 
-build_done() { echo "${2}" > "${packages}/${1}.done"; }
+build_done() { echo "${2}" > "${cwd}/${1}.done"; }
 
 download()
 {
-    dl_path="${packages}"
+    dl_path="${cwd}"
     dl_url="${1}"
     dl_file="${2:-"${1##*/}"}"
 
@@ -195,14 +223,14 @@ download()
         echo "The file \"${dl_file}\" is already downloaded."
     else
         echo "Downloading \"${dl_url}\" saving as \"${dl_file}\""
-        if ! wget -U "${user_agent}" -cqO "${target_file}" "${dl_url}"; then
+        if ! wget --show-progress -U "${user_agent}" -cqO "${target_file}" "${dl_url}"; then
             printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 10 seconds..."
             sleep 10
-            if ! wget -U "${user_agent}" -cqO "${target_file}" "${dl_url}"; then
+            if ! wget --show-progress -U "${user_agent}" -cqO "${target_file}" "${dl_url}"; then
                 fail_fn "The script failed to download \"${dl_file}\" twice and will now exit. Line: ${LINENO}"
             fi
         fi
-        echo 'Download Completed'
+        printf "\n%s\n\n" 'Download completed'
     fi
 
     if [ -d "${target_dir}" ]; then
@@ -225,8 +253,9 @@ download()
 
     printf "%s\n\n" "File extracted: ${dl_file}"
 
-    cd "${target_dir}" || fail_fn "Unable to change the working directory to \"${target_dir}\" Line: ${LINENO}"
+    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}. Line: ${LINENO}"
 }
+
 
 git_1_fn()
 {
@@ -234,8 +263,16 @@ git_1_fn()
 
     github_repo="${1}"
     github_url="${2}"
+    git_token='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'
 
-    if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl \
+                        -A "${user_agent}" \
+                        -m 10 \
+                        --request GET \
+                        --url "https://api.github.com/slyfox1186" \
+                        --header "Authorization: Bearer ${git_token}" \
+                        --header "X-GitHub-Api-Version: 2022-11-28" \
+                        -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
         g_url="$(echo "${curl_cmd}" | jq -r '.[1].tarball_url' 2>/dev/null)"
         g_ver="${g_ver#llvmorg-}"
@@ -250,8 +287,7 @@ git_ver_fn()
     v_flag="${2}"
 
     case "${v_flag}" in
-            B)      t_flag=branches;;
-            R)      t_flag='releases/latest';;
+            R)      t_flag=releases;;
             T)      t_flag=tags;;
     esac
 
@@ -262,30 +298,31 @@ git_ver_fn()
 # PRINT THE OPTIONS AVAILABLE WHEN MANUALLY RUNNING THE SCRIPT
 #
 
-pkgs_fn()
-{
-    local i missing_pkg missing_pkgs pkgs
+pkgs=(autoconf autoconf-archive automake autopoint binutils binutils-dev bison
+      build-essential clang cmake curl jq libc6 libc6-dev libedit-dev libtool
+      libtool-bin libxml2-dev m4 nasm ninja-build yasm zlib1g-dev)
 
-    pkgs=(autoconf autoconf-archive automake autopoint binutils bison build-essential
-          cmake curl jq libc6 libc6-dev libtool libtool-bin m4 nasm ninja-build yasm
-          zlib1g-dev)
+for i in ${pkgs[@]}
+do
+    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
 
-    for i in ${pkgs[@]}
-    do
-        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
-        fi
-    done
-
-    if [ -n "${missing_pkgs}" ]; then
-        sudo apt -y install ${missing_pkgs}
-        clear
-    else
-        printf "%s\n" 'The APT packages are already installed'
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${i}"
     fi
-}
+done
+
+if [ -n "${missing_pkgs}" ]; then
+    sudo apt -y install ${missing_pkgs}
+    clear
+else
+    printf "%s\n" 'The APT packages are already installed'
+fi
+
+#
+# REFRESH LIBRARYS
+#
+
+sudo ldconfig 2>/dev/null
 
 #
 # BEGIN BUILDING CLANG
@@ -311,42 +348,48 @@ box_out_banner "Clang Build Script - Version ${script_ver}"
 git_ver_fn 'llvm/llvm-project' 'T'
 if build 'llvm' "${g_ver}"; then
     download "${g_url}" "llvm-${g_ver}.tar.gz"
-    project_pkgs='clang;clang-tools-extra;openmp'
+    project_pkgs='clang;clang-tools-extra'
     runtime_pkgs='libcxx;libcxxabi;libunwind;compiler-rt'
-    cmake -S llvm -B build                          \
-          -DCMAKE_INSTALL_PREFIX="${install_dir}"   \
-          -DCMAKE_BUILD_TYPE=Release                \
-          -DBUILD_SHARED_LIBS=OFF                   \
-          -DBENCHMARK_INSTALL_DOCS=OFF              \
-          -DCMAKE_C_COMPILER="${CC}"                \
-          -DCMAKE_C_FLAGS="${CFLAGS}"               \
-          -DCMAKE_CXX_STANDARD=17                   \
-          -DCMAKE_CXX_COMPILER="${CXX}"             \
-          -DCMAKE_CXX_FLAGS="${CXXFLAGS}"           \
-          -DCPACK_BINARY_DEB=ON                     \
-          -DHAVE_STD_REGEX=ON                       \
-          -DLLVM_BUILD_BENCHMARKS=OFF               \
-          -DLLVM_CCACHE_BUILD=ON                    \
-          -DLLVM_DEFAULT_TARGET_TRIPLE="${pc_type}" \
-          -DLLVM_ENABLE_LTO=OFF                     \
-          -DLLVM_ENABLE_PIC=ON                      \
-          -DLLVM_ENABLE_PROJECTS="${project_pkgs}"  \
-          -DLLVM_ENABLE_RUNTIMES="${runtime_pkgs}"  \
-          -DLLVM_ENABLE_WARNINGS=ON                 \
-          -DLLVM_HOST_TRIPLE="${pc_type}"           \
-          -DLLVM_INCLUDE_TESTS=OFF                  \
-          -DLLVM_TARGET_ARCH=host                   \
-          -DLLVM_TARGETS_TO_BUILD=all               \
+    cmake -S llvm -B build                           \
+          -DCMAKE_INSTALL_PREFIX="${install_prefix}" \
+          -DCMAKE_BUILD_TYPE=Release                 \
+          -DBUILD_SHARED_LIBS=OFF                    \
+          -DBENCHMARK_DOWNLOAD_DEPENDENCIES=ON       \
+          -DBENCHMARK_ENABLE_TESTING=ON              \
+          -DBENCHMARK_INSTALL_DOCS=OFF               \
+          -DCLANG_INCLUDE_DOCS=OFF                   \
+          -DCMAKE_C_COMPILER="${CC}"                 \
+          -DCMAKE_C_FLAGS="${CFLAGS}"                \
+          -DCMAKE_CXX_COMPILER="${CXX}"              \
+          -DCMAKE_CXX_FLAGS="${CXXFLAGS}"            \
+          -DCMAKE_CXX_STANDARD=17                    \
+          -DLLVM_BUILD_BENCHMARKS=OFF                \
+          -DLLVM_BUILD_RUNTIME=ON                    \
+          -DLLVM_BUILD_RUNTIMES=ON                   \
+          -DLLVM_CCACHE_BUILD=ON                     \
+          -DLLVM_DEFAULT_TARGET_TRIPLE="${pc_type}"  \
+          -DLLVM_ENABLE_CURL=ON                      \
+          -DLLVM_ENABLE_LTO=THIN                     \
+          -DLLVM_ENABLE_OCAMLDOC=OFF                 \
+          -DLLVM_ENABLE_PROJECTS="${project_pkgs}"   \
+          -DLLVM_ENABLE_RUNTIMES="${runtime_pkgs}"   \
+          -DLLVM_ENABLE_WARNINGS=OFF                 \
+          -DLLVM_HOST_TRIPLE="${pc_type}"            \
+          -DLLVM_INCLUDE_DOCS=OFF                    \
+          -DLLVM_INCLUDE_TESTS=OFF                   \
+          -DLLVM_TARGET_ARCH=HOST                    \
+          -DLLVM_TOOL_CLANG_BUILD=ON                 \
           -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
+    echo
+    ninja "-j${cpu_threads}" -C build
     execute sudo ninja "-j${cpu_threads}" -C build install
 fi
 
-# CREATE SOFT LINKS
-create_links_fn
-
 # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE MAGICK COMMAND WILL NOT WORK
 sudo ldconfig 2>/dev/null
+
+# CREATE A SOFT LINK FROM CLANG++ TO CLANG++-17
+create_soft_link_fn
 
 # SHOW THE NEWLY INSTALLED MAGICK VERSION
 show_ver_fn
