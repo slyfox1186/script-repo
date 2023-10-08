@@ -11,11 +11,15 @@
     - This will open Windows' WSL terminal to the active file explorer folder or if no active explorer window is found, ~
 
     Instructions:
-    - You need to replace the below variable 'osName' with the wsl distribution of your choosing.
-      - To find the available distros run 'wsl.exe -l --all' using PowerShell to get a list of available options
+    - You need to replace the below variable '_osName' with the wsl distribution of your choosing.
+    - To find the available distros run 'wsl.exe -l --all' using PowerShell to get a list of available options
 
     Updated:
-    - 10.06.23
+    - 09.10.23
+
+    Big Update:
+    - Greatly improved the code. When explorer.exe has multiple tabs per window, it will
+      the correct tab the hotkey is trigged on instead of just activating the far left tab.
 
 */
 
