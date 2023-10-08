@@ -989,7 +989,7 @@ hw_mon()
 }
 
 # CREATE A 7ZIP FILE WITH MAX COMPRESSION SETTINGS
-7z_7z_1()
+7z_1()
 {
     local answer source output
     clear
