@@ -40,7 +40,7 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' answer
 
     case "${answer}" in
-        1)      sudo rm -fr "${cwd}";;
+        1)      sudo rm -fr "${cwd}"; clear;;
         2)      echo;;
         *)
                 printf "\n%s\n\n" 'Bad user input. Re-asking question...'
@@ -139,10 +139,5 @@ do
 done
 
 clear
+
 find . -maxdepth 1 -type f -iname '*.sh' -exec bash -c "echo '1' | bash '{}'; mv '{}' completed" \;
-
-# CLEANUP THE FILES
-cleanup_fn
-
-# SHOW THE EXIT MESSAGE
-exit_fn
