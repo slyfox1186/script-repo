@@ -20,12 +20,13 @@
 ##  Added: Autotrace for Ubuntu (18/20/22).04 and Debian 10/11
 ##
 ##  Fixed: Incorrect pkg-config location when building ImageMagick
+##  Fixed: libjxl dependency
 ##
 ##  Changed: Some support libraries prefix paths to avoid installing into the system
 ##
-##  Updated: 10.05.23
+##  Updated: 10.08.23
 ##
-##  Script Version: 3.3
+##  Script Version: 3.4
 ##
 #############################################################################################################
 
@@ -40,7 +41,7 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-script_ver=3.3
+script_ver=3.4
 progname="${0}"
 cwd="${PWD}"/magick-build-script
 packages="${cwd}"/packages
@@ -376,11 +377,11 @@ pkgs_fn()
 
     pkgs=("${1}" alien asciidoc autoconf autoconf-archive automake autopoint binutils bison build-essential
           cmake curl flex gettext gimp-data git gperf imagemagick jq libc6 libc6-dev libfreetype-dev libgc-dev
-          libgimp2.0-dev libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev libheif-dev libltdl-dev
-          libpango1.0-dev libpaper-dev libpng-dev libpstoedit-dev libraw-dev librsvg2-dev librust-bzip2-dev
-          libsdl2-dev libstdc++-12-dev libtcmalloc-minimal4 libtool libtool-bin libnuma-dev libxml2-dev
-          libzip-dev m4 meson nasm ninja-build opencl-headers opencl-c-headers php php-cli pstoedit xmlto
-          zlib1g-dev yasm)
+          libgimp2.0-dev libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev libheif-dev libjxl-gimp-plugin
+          libltdl-dev libnuma-dev libpango1.0-dev libpaper-dev libpng-dev libpstoedit-dev libraw-dev librsvg2-dev
+          librust-bzip2-dev libsdl2-dev libstdc++-12-dev libtcmalloc-minimal4 libtool libtool-bin libxml2-dev
+          libzip-dev m4 meson nasm ninja-build opencl-c-headers opencl-headers php php-cli pstoedit xmlto yasm
+          zlib1g-dev)
 
     for i in ${pkgs[@]}
     do
