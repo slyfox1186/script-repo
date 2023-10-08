@@ -98,7 +98,7 @@ export PKG_CONFIG_PATH
 
 exit_fn()
 {
-    printf "%s\n\n%s\n%s\n\n"                                     \
+    printf "\n%s\n\n%s\n%s\n\n"                                    \
         'The script has completed'                                \
         'Make sure to star this repository to show your support!' \
         "${web_repo}"
