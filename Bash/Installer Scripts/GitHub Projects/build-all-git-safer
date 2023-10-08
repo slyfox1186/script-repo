@@ -40,7 +40,7 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' answer
 
     case "${answer}" in
-        1)      sudo rm -fr "${cwd}" "${0}";;
+        1)      sudo rm -fr "${cwd}";;
         2)      echo;;
         *)
                 printf "\n%s\n\n" 'Bad user input. Re-asking question...'
