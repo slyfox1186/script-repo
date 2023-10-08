@@ -195,7 +195,7 @@ mvf()
 aptdl()
 {
     clear
-    wget -c "$(apt-fast --print-uris -qq --reinstall install ${1} 2>/dev/null | cut -d''\''' -f2)"
+    wget -c "$(apt --print-uris -qq --reinstall install ${1} 2>/dev/null | cut -d''\''' -f2)"
     clear; ls -1AhFv --color --group-directories-first
 }
 
@@ -203,22 +203,22 @@ aptdl()
 clean()
 {
     clear
-    sudo apt-fast -y autoremove
-    sudo apt-fast clean
-    sudo apt-fast autoclean
-    sudo apt-fast -y purge
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt -y purge
 }
 
 # UPDATE
 update()
 {
     clear
-    sudo apt-fast update
-    sudo apt-fast -y full-upgrade
-    sudo apt-fast -y autoremove
-    sudo apt-fast clean
-    sudo apt-fast autoclean
-    sudo apt-fast -y purge
+    sudo apt update
+    sudo apt -y full-upgrade
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt -y purge
 }
 
 # FIX BROKEN APT PACKAGES
@@ -228,14 +228,14 @@ fix()
     if [ -f /tmp/apt.lock ]; then
         sudo rm /tmp/apt.lock
     fi
-    sudo apt-fast -f -y install
-    sudo apt-fast --fix-broken install
-    sudo apt-fast --fix-missing update
-    dpkg --configure -a
-    sudo apt-fast -y autoremove
-    sudo apt-fast clean
-    sudo apt-fast autoclean
-    sudo apt-fast update
+    sudo apt -f -y install
+    sudo apt --fix-broken install
+    sudo apt --fix-missing update
+    sudo dpkg --configure -a
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt update
 }
 
 list()
@@ -617,8 +617,8 @@ imow()
     done
 
     if [ -n "${missing_pkgs}" ]; then
-        sudo apt-fast -y install ${missing_pkgs}
-        sudo apt-fast -y autoremove
+        sudo apt -y install ${missing_pkgs}
+        sudo apt -y autoremove
         clear
     fi
     unset apt_pkgs i missing_pkg missing_pkgs
@@ -785,9 +785,9 @@ cuda_purge()
         echo 'Purging the cuda-sdk-toolkit from your computer.'
         echo '================================================'
         echo
-        sudo sudo apt-fast -y --purge remove "*cublas*" "cuda*" "nsight*"
-        sudo sudo apt-fast -y autoremove
-        sudo sudo apt-fast update
+        sudo sudo apt -y --purge remove "*cublas*" "cuda*" "nsight*"
+        sudo sudo apt -y autoremove
+        sudo sudo apt update
     elif [[ "${answer}" -eq '2' ]]; then
         return 0
     fi
@@ -924,7 +924,7 @@ hw_mon()
 
     # install lm-sensors if not already
     if ! which lm-sensors &>/dev/null; then
-        sudo apt-fast -y install lm-sensors
+        sudo apt -y install lm-sensors
     fi
 
     # Add modprobe to system startup tasks if not already added
@@ -1412,7 +1412,7 @@ tkapt()
     local i list
     clear
 
-    list=(apt-fast apt-fast apt apt-fast apt-get aptitude dpkg)
+    list=(apt apt apt apt apt-get aptitude dpkg)
 
     for i in ${list[@]}
     do
@@ -1500,7 +1500,7 @@ up_icon()
     for i in ${pkgs[@]}
     do
         if ! sudo dpkg -l "${i}"; then
-            sudo apt-fast -y install "${i}"
+            sudo apt -y install "${i}"
             clear
         fi
     done
@@ -1683,7 +1683,7 @@ cmf()
 {
     local rel_sdir
     if ! sudo dpkg -l | grep -o cmake-curses-gui; then
-        sudo apt-fast -y install cmake-curses-gui
+        sudo apt -y install cmake-curses-gui
     fi
     clear
 
@@ -1741,12 +1741,12 @@ fi
 case "$answer" in
     1)
             script_fn
-            sed -i 's/apt /apt-fast /g' "$file"
-            sed -i 's/apt-fast list/apt list/g' "$file"
-            sed -i 's/local apt-fast host/local apt host/g' "$file"
-            sed -i 's/for apt-fast in/for apt in/g' "$file"
-            sed -i 's/apt-fast apt-get aptitude dpkg/apt apt-fast apt-get aptitude dpkg/g' "$file"
-            sed -i 's/apt-fast search/apt search/g' "$file"
+            sed -i 's/apt /apt /g' "$file"
+            sed -i 's/apt list/apt list/g' "$file"
+            sed -i 's/local apt host/local apt host/g' "$file"
+            sed -i 's/for apt in/for apt in/g' "$file"
+            sed -i 's/apt apt-get aptitude dpkg/apt apt apt-get aptitude dpkg/g' "$file"
+            sed -i 's/apt search/apt search/g' "$file"
             ;;
     2)      script_fn;;
     *)
