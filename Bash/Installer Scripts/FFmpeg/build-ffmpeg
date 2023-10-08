@@ -5,7 +5,7 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
-##  Script version: 2.8.2
+##  Script version: 2.9.0
 ##  Last Update: 10.08.23
 ##
 ##  Supported Distro:
@@ -29,7 +29,7 @@
 ##               - enabled when compiling FFmpeg
 ##
 ##  Updated: x265 library
-##  Updated: aom/av1 library
+##  Updated: aom/av1 library to the latest stable version
 ##
 ##  Added: Ubuntu Lunar 23.04 support
 ##  Added: Debian OS Support for Bookworm (12)
@@ -38,9 +38,12 @@
 ##  Added: cunit support library for libmysofa
 ##  Added: libcurl support library for cyanrip
 ##  Added: support for library files regarding opencl and libpulse
+##  Added: Clang support
+##  Added: WSL support
 ##
 ##  Fixed: libheif not building the specified plugins.
 ##  Fixed: the code that prompts the user to install the cuda sdk toolkit
+##  Fixed: broken wsl cuda sdk toolkit url
 ##
 #############################################################################################################
 
@@ -49,15 +52,15 @@
 #
 
 script_name="${0}"
-script_ver=2.8.2
+script_ver=2.9.0
 ffmpeg_ver=963937e408fc68b5925f938a253cfff1d506f784
 ffmpeg_sver="${ffmpeg_ver::7}"
 ffmpeg_archive=ffmpeg-"${ffmpeg_sver}".tar.gz
 ffmpeg_url=https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/"${ffmpeg_ver}".tar.gz
 ###############################################################################
-# FFMPEG STABLE VERSION
-# ffmpeg_ver=5.1.3
-# ffmpeg_url=https://ffmpeg.org/releases/${ffmpeg_ver}.tar.xz
+# SNAPSHOT
+# ffmpeg_ver=963937e408fc68b5925f938a253cfff1d506f784
+# ffmpeg_archive=ffmpeg-"${ffmpeg_sver}".tar.gz
 ###############################################################################
 cuda_latest_ver=12.2.2
 cwd="${PWD}"/ffmpeg-build-script
@@ -65,7 +68,7 @@ packages="${cwd}"/packages
 workspace="${cwd}"/workspace
 install_dir=/usr/local
 pc_type=x86_64-linux-gnu
-LDEXEFLAGS=''
+LDEXEFLAGS=
 ffmpeg_libraries=()
 latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
@@ -108,7 +111,7 @@ printf "\n%s\n\n" "The script will utilize (${cpu_threads}) CPU threads for para
 # SET THE C & C++ COMPILERS TO THE HIGHEST VERSION INSTALLED
 #
 
-export CC='ccache clang-16' CXX='ccache clang++-16'
+export CC=gcc CXX=g++
 
 #
 # SET COMPILER OPTIMIZATION FLAGS
@@ -454,12 +457,12 @@ execute()
 
     if [ "${debug}" = 'ON' ]; then
         if ! output=$("${@}"); then
-            notify-send -t 5000 "Failed to execute: ${*}"
+            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
             fail_fn "Failed to execute: ${*}"
         fi
     else
         if ! output=$("${@}" 2>&1); then
-            notify-send -t 5000 "Failed to execute: ${*}"
+            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
             fail_fn "Failed to execute: ${*}"
         fi
     fi
@@ -2056,7 +2059,7 @@ box_out_banner_video()
 box_out_banner_video 'Installing Video Tools'
 
 # NEED TO UPDATE THIS REPO FROM TIME TO TIME MANUALLY
-av1_ver=61bddf1e5f233e048280cf33cc31f72eecc2954a
+av1_ver=6054fae218eda6e53e1e3b4f7ef0fff4877c7bf1
 av1_sver="${av1_ver::7}"
 if build 'av1' "${av1_sver}"; then
     download "https://aomedia.googlesource.com/aom/+archive/${av1_ver}.tar.gz" "av1-${av1_sver}.tar.gz" 'av1'
@@ -2700,13 +2703,13 @@ if build 'ffmpeg' "${ffmpeg_sver}"; then
                 --enable-libv4l2                            \
                 --enable-libvo-amrwbenc                     \
                 --enable-libzvbi                            \
-                --enable-lto                                \
                 --enable-nonfree                            \
                 --enable-opengl                             \
                 --enable-pic                                \
                 --enable-pthreads                           \
                 --enable-small                              \
                 --enable-static                             \
+                --enable-lto                                \
                 --enable-version3                           \
                 --extra-cflags="${CFLAGS}"                  \
                 --extra-cxxflags="${CXXFLAGS}"              \
