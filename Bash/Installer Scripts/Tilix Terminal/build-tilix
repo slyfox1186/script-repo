@@ -6,9 +6,9 @@
 ##
 ##  Purpose: Compile the Advanced Linux Terminal Tilix from its official GitHub Repository 
 ##
-##  Updated: 09.07.23
+##  Updated: 10.07.23
 ##
-##  Script version: 3.0
+##  Script version: 3.1
 ##
 ##############################################################################################################################
 
@@ -23,12 +23,12 @@ fi
 # SET VARIABLES
 #
 
-script_ver=3.0
+script_ver=3.1
 cwd="$PWD"/tilix-build-script
 packages="${cwd}"/packages
 schemes_dir="${HOME}"/.config/tilix/schemes
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
-web_web_repo=https://github.com/slyfox1186/script-repo
+web_repo=https://github.com/slyfox1186/script-repo
 debug=OFF
 
 #
@@ -228,10 +228,10 @@ fi
 # DOWNLOAD D COMPILER
 #
 
-if build 'dmd' '2.105.1-0'; then
-    download 'https://downloads.dlang.org/releases/2023/dmd_2.105.1-0_amd64.deb' 'dmd-2.105.1-0.deb'
-    execute sudo apt -y install ./dmd-2.105.1-0.deb
-    build_done 'dmd' '2.105.1-0'
+if build 'dmd' '2.105.2-0'; then
+    download 'https://downloads.dlang.org/releases/2023/dmd_2.105.2-0_amd64.deb' 'dmd-2.105.2-0.deb'
+    execute sudo apt -y install ./dmd-2.105.2-0.deb
+    build_done 'dmd' '2.105.2-0'
 fi
 
 #
