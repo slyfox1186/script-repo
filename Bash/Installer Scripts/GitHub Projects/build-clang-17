@@ -362,6 +362,7 @@ if build 'llvm' "${g_ver}"; then
           -DLLVM_ENABLE_CURL=ON                      \
           -DLLVM_ENABLE_LTO=OFF                      \
           -DLLVM_ENABLE_OCAMLDOC=OFF                 \
+          -DLLVM_ENABLE_PIC=ON                       \
           -DLLVM_ENABLE_PROJECTS="${project_pkgs}"   \
           -DLLVM_ENABLE_RUNTIMES="${runtime_pkgs}"   \
           -DLLVM_ENABLE_WARNINGS=OFF                 \
