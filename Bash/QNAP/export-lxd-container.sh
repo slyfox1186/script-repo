@@ -42,7 +42,7 @@ clear
 
 # Display the user's choices before executing
 echo -e "${White}Input: ${Green}${cName}${EC}\\n"
-echo -e "${White}Output: ${Green}${FOLDER}/${oName}-${TIME}.tar.gz${EC}\\n"
+echo -e "${White}Output: ${Green}${folder}/${oName}-${TIME}.tar.gz${EC}\\n"
 
 # Prompt user to continue
 echo -e "${Red}Important ${Yellow}!${Red}: ${Red}You have 30 seconds to exit by pressing ${Yellow}^Z${EC}\\n"
@@ -50,7 +50,7 @@ read -t 30 -p 'Press Enter to continue...'
 clear
 
 # Display command line used
-echo -e "${Cyan}Executing: ${Green}lxc export ${Purple}\"${cName}\" \"${FOLDER}/${oName}-${TIME}.tar.gz\" ${Orange}--optimized-storage -v\\n${EC}"
+echo -e "${Cyan}Executing: ${Green}lxc export ${Purple}\"${cName}\" \"${folder}/${oName}-${TIME}.tar.gz\" ${Orange}--optimized-storage -v\\n${EC}"
 
 # Compressed mode
-lxc export "${cName}" "${FOLDER}/${oName}-${TIME}.tar.gz" --optimized-storage -v
+lxc export "${cName}" "${folder}/${oName}-${TIME}.tar.gz" --optimized-storage -v
