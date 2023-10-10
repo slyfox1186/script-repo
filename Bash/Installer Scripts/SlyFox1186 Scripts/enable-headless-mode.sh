@@ -13,7 +13,7 @@ echo
 read -p 'Press enter to continue.'
 clear
 
-FILE='/etc/default/grub'
+file='/etc/default/grub'
 
 if [ ! "${file}" ]; then
     echo "The main file: ${file} was not found."

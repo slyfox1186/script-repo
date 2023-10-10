@@ -103,7 +103,7 @@ echo 'Use the sed command to edit /etc/log2ram.conf'
 echo '============================================='
 echo
 
-FILE='/etc/log2ram.conf'
+file='/etc/log2ram.conf'
 
 if [ -f "${file}" ]; then
     sed -i 's/SIZE=40M/SIZE=512M/g' "${file}"
