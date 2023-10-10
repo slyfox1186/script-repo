@@ -26,14 +26,14 @@ fi
 # IF SET OR UNSET IS THE FIRST ARGUMENT RUN THE COMMANDS BELOW
 # OTHERWISE THROW AN ERROR
 if [ "$1" == "set" ]; then
-    setfacl -m user:$2:rx "$CONTAINER_VOLUME1"
-    setfacl -m user:$2:rx "$CONTAINER_VOLUME1"/container-station-data/lib
-    setfacl -m user:$2:rx "$CONTAINER_VOLUME1"/container-station-data/lib/lxd
-    setfacl -m user:$2:rx "$CONTAINER_VOLUME2"/container-station
-    setfacl -m user:$2:rx "$CONTAINER_VOLUME2"/container-station/lib
-    setfacl -m user:$2:rx "$CONTAINER_VOLUME2"/container-station/var
-   # setfacl -R -m user:$2:rx "$CONTAINER_VOLUME2"/container-station ## RECURSIVE
-    setfacl -R -m user:$2:rx "$CONTAINER_VOLUME2"/container-station/usr
+    setfacl -m user:$2:rx "$container_volume1"
+    setfacl -m user:$2:rx "$container_volume1"/container-station-data/lib
+    setfacl -m user:$2:rx "$container_volume1"/container-station-data/lib/lxd
+    setfacl -m user:$2:rx "$container_volume2"/container-station
+    setfacl -m user:$2:rx "$container_volume2"/container-station/lib
+    setfacl -m user:$2:rx "$container_volume2"/container-station/var
+   # setfacl -R -m user:$2:rx "$container_volume2"/container-station ## RECURSIVE
+    setfacl -R -m user:$2:rx "$container_volume2"/container-station/usr
     setfacl -m user:$2:rx /var/lib/lxd
     setfacl -m user:$2:rx /var/lib/lxd/containers
     setfacl -m user:$2:rx /var/lib/lxd/devices
@@ -43,8 +43,8 @@ if [ "$1" == "set" ]; then
     setfacl -m user:$2:rx /var/lib/lxd/storage-pools/default/containers
 	sleep 2
   elif [ "$1" == "unset" ]; then
-    setfacl -R -x user:$2 "$CONTAINER_VOLUME1"
-    setfacl -R -x user:$2 "$CONTAINER_VOLUME2"/container-station
+    setfacl -R -x user:$2 "$container_volume1"
+    setfacl -R -x user:$2 "$container_volume2"/container-station
     setfacl -R -x user:$2 /var/lib/lxd/
     setfacl -x user:$2 /var/lib/lxd
 	sleep 2
