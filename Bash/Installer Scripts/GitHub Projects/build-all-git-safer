@@ -141,3 +141,7 @@ done
 clear
 
 find . -maxdepth 1 -type f -iname '*.sh' -exec bash -c "echo '1' | bash '{}'; mv '{}' completed" \;
+
+sudo rm -fr "${cwd}"
+clear
+exit_fn
