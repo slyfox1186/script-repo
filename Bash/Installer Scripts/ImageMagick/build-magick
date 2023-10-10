@@ -24,9 +24,9 @@
 ##
 ##  Changed: Some support libraries prefix paths to avoid installing into the system
 ##
-##  Updated: 10.08.23
+##  Updated: 10.10.23
 ##
-##  Script Version: 3.4
+##  Script Version: 3.5
 ##
 #############################################################################################################
 
@@ -41,7 +41,7 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-script_ver=3.4
+script_ver=3.5
 progname="${0}"
 cwd="${PWD}"/magick-build-script
 packages="${cwd}"/packages
@@ -336,8 +336,9 @@ git_1_fn()
 git_2_fn()
 {
     repo="${1}"
-    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.freedesktop.org/api/v4/projects/${repo}/repository/tags")"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://gitlab.freedesktop.org/api/v4/projects/${repo}/repository/tags")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
+        g_ver="${g_ver#VER-}"
     fi
 }
 
@@ -350,13 +351,13 @@ git_ver_fn()
 
     if [ -n "${3}" ]; then
         v_flag="${3}"
+        case "${v_flag}" in
+                B)      t_flag=branches;;
+                R)      t_flag=releases;;
+                T)      t_flag=tags;;
+                *)      fail_fn "Could not detect the variable \"v_flag\" in the function \"git_ver_fn\". Line: ${LINENO}"
+        esac
     fi
-
-    case "${v_flag}" in
-            B)      t_flag=branches;;
-            R)      t_flag=releases;;
-            T)      t_flag=tags;;
-    esac
 
     case "${v_tag}" in
             1)      u_flag=git_1_fn;;
@@ -379,9 +380,9 @@ pkgs_fn()
           cmake curl flex gettext gimp-data git gperf imagemagick jq libc6 libc6-dev libfreetype-dev libgc-dev
           libgimp2.0-dev libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev libheif-dev libjxl-gimp-plugin
           libltdl-dev libnuma-dev libpango1.0-dev libpaper-dev libpng-dev libpstoedit-dev libraw-dev librsvg2-dev
-          librust-bzip2-dev libsdl2-dev libstdc++-12-dev libtcmalloc-minimal4 libtool libtool-bin libxml2-dev
-          libzip-dev m4 meson nasm ninja-build opencl-c-headers opencl-headers php php-cli pstoedit xmlto yasm
-          zlib1g-dev)
+          librust-bzip2-dev libsdl2-dev libstdc++-12-dev libtcmalloc-minimal4 libticonv-dev libtool libtool-bin
+          libxml2-dev libzip-dev m4 meson nasm ninja-build opencl-c-headers opencl-headers php php-cli pstoedit
+          xmlto yasm zlib1g-dev)
 
     for i in ${pkgs[@]}
     do
@@ -402,22 +403,37 @@ pkgs_fn()
 
 install_autotrace_fn()
 {
-    if ! curl -A "${user_agent}" -Lso "${packages}"/deb-files/autotrace_0.40.0.deb 'https://github.com/autotrace/autotrace/releases/download/travis-20200219.65/autotrace_0.40.0-20200219_all.deb'; then
+    if ! curl -A "${user_agent}" -Lso "${packages}"/deb-files/autotrace.deb 'https://github.com/autotrace/autotrace/releases/download/travis-20200219.65/autotrace_0.40.0-20200219_all.deb'; then
         fail_fn "Failed to install autotrace. Line: ${LINENO}"
     fi
 
     cd "${packages}"/deb-files || exit 1
 
-    sudo apt -y install ./autotrace_0.40.0.deb
+    if ! sudo apt -y install ./autotrace.deb; then
+        sudo dpkg --configure -a
+        sudo apt --fix-broken install
+        sudo apt -f -y install
+        sudo apt -y autoremove
+        sudo apt clean
+        sudo apt autoclean
+        sudo apt update
+    fi
 }
 
 install_libjxl_fn()
 {
     cd "${packages}"/deb-files || exit 1
-
-    if sudo dpkg -i 'libjxl_0.8.2_amd64.deb'; then
-        sudo rm 'libjxl_0.8.2_amd64.deb' &>/dev/null
+    if ! sudo dpkg -i libjxl_0.8.2_amd64.deb; then
+        sudo dpkg --configure -a
+        sudo apt --fix-broken install
+        sudo apt -f -y install
+        sudo apt -y autoremove
+        sudo apt clean
+        sudo apt autoclean
+        sudo apt update
+        sudo apt-get -qq -y install gimp-data libgimp2.0-dev libjxl-gimp-plugin
     fi
+    sudo rm libjxl_0.8.2_amd64.deb &>/dev/null
     sudo dpkg -i ./*.deb
 }
 
@@ -462,7 +478,7 @@ sort_libjxl_fn()
 # ANNOUNCE THE BUILD HAS BEGUN
 #
 
-box_out_banner1()
+box_out_banner_script_header()
 {
     input_char=$(echo "${@}" | wc -c)
     line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
@@ -476,7 +492,7 @@ box_out_banner1()
     echo " ${line}"
     tput sgr 0
 }
-box_out_banner1 "ImageMagick Build Script v${script_ver}"
+box_out_banner_script_header "ImageMagick Build Script v${script_ver}"
 
 #
 # INSTALL APT LIBRARIES
@@ -493,7 +509,7 @@ debian_ver_fn()
     pkgs_debian='libcpu-features-dev libfontconfig-dev libgc1 libdmalloc-dev libdmalloc5 libjemalloc-dev'
     pkgs_debian+=' libjemalloc2 librust-malloc-buf-dev libyuv-utils libyuv-dev libyuv0 libsharp-dev'
     pkgs_bullseye="${pkgs_debian} libvmmalloc1 libvmmalloc-dev"
-    pkgs_bookworm+="${pkgs_debian} libhwy-dev libticonv-dev"
+    pkgs_bookworm+="${pkgs_debian} libhwy-dev"
 
     case "${VER}" in
         12)     pkgs_fn "${pkgs_bookworm}";;
@@ -616,46 +632,6 @@ fi
 # BEGIN BUILDING FROM SOURCE CODE
 #
 
-if build 'm4' 'latest'; then
-    download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
-    execute ./configure --prefix="${workspace}"            \
-                        --{build,host,target}="${pc_type}" \
-                        --disable-nls                      \
-                        --enable-c++
-    execute make "-j${cpu_threads}"
-    execute make install
-    build_done 'm4' 'latest'
-fi
-
-if build 'autoconf' 'latest'; then
-    download 'http://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz'
-    execute autoreconf -fi
-    execute ./configure --prefix="${workspace}"     \
-                        --{build,host}="${pc_type}" \
-                        M4="${workspace}"/bin/m4
-    execute make "-j${cpu_threads}"
-    execute make install
-    build_done 'autoconf' 'latest'
-fi
-
-# UBUNTU AND DEBIAN REQUIRE DIFFERENT LIBTOOL VERSIONS
-case "${OS}" in
-    Debian)     lt_ver=2.4.7;;
-    Ubuntu)     lt_ver=2.4.6;;
-    *)          fail_fn "Script failure on line: ${LINENO}";;
-esac
-
-if build 'libtool' "${lt_ver}"; then
-    download "https://ftp.gnu.org/gnu/libtool/libtool-${lt_ver}.tar.xz"
-    execute ./configure --prefix="${workspace}"     \
-                        --{build,host}="${pc_type}" \
-                        --with-pic                  \
-                        M4="${workspace}"/bin/m4
-    execute make "-j${cpu_threads}"
-    execute make install
-    build_done 'libtool' "${lt_ver}"
-fi
-
 git_ver_fn 'libsdl-org/libtiff' '1' 'T'
 if build 'tiff' "${g_ver}"; then
     download "https://codeload.github.com/libsdl-org/libtiff/tar.gz/refs/tags/v${g_ver}" "tiff-${g_ver}.tar.gz"
@@ -735,42 +711,53 @@ if build 'libwebp' 'git'; then
                   -DWEBP_BUILD_WEBPINFO=OFF             \
                   -DWEBP_BUILD_WEBPMUX=OFF              \
                   -DWEBP_ENABLE_SWAP_16BIT_CSP=OFF      \
-                  -DWEBP_LINK_STATIC=OFF                \
+                  -DWEBP_LINK_STATIC=ON                 \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'libwebp' 'git'
 fi
 
-if build 'freetype' '2.13.2'; then
-    download 'https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-2-13-2/freetype-VER-2-13-2.tar.bz2' 'freetype-2.13.2.tar.bz2'
+git_ver_fn '7950' '2'
+g_ver1="${g_ver//-/.}"
+if build 'freetype' "${g_ver1}"; then
+    download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-${g_ver}/freetype-VER-${g_ver}.tar.bz2" "freetype-${g_ver1}.tar.bz2"
     extracommands=(-D{harfbuzz,png,bzip2,brotli,zlib,tests}'=disabled')
     execute ./autogen.sh
-        execute meson setup build --prefix="${workspace}"  \
-                                  --buildtype=release      \
-                                  --default-library=static \
-                                  --strip                  \
-                                   "${extracommands[@]}"
+    execute meson setup build --prefix="${workspace}"  \
+                              --buildtype=release      \
+                              --default-library=static \
+                              --strip                  \
+                              -Db_lto_threads=1        \
+                              -Dc_args="${CFLAGS}"     \
+                              -Dcpp_args="${CXXFLAGS}" \
+                              "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
-    build_done 'freetype' '2.13.2'
+    build_done 'freetype' "${g_ver1}"
 fi
 
 git_ver_fn '890' '2'
-if build 'fontconfig' '2.14.2'; then
-    download 'https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/2.14.2/fontconfig-2.14.2.tar.bz2'
-    execute ./autogen.sh --noconf
-    execute autoreconf -fi
-    execute autoupdate
+if build 'fontconfig' "${g_ver}"; then
+    download "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/${g_ver}/fontconfig-${g_ver}.tar.bz2"
     LDFLAGS+=' -DLIBXML_STATIC'
     sed -i 's|Cflags:|& -DLIBXML_STATIC|' fontconfig.pc.in
-    execute ./configure --prefix="${workspace}" \
-                        --disable-docs          \
-                        --enable-shared         \
+    execute ./autogen.sh --noconf
+    execute ./configure --prefix="${workspace}"     \
+                        --{build,host}="${pc_type}" \
+                        --disable-docbook           \
+                        --disable-docs              \
+                        --disable-shared            \
+                        --disable-nls               \
+                        --enable-iconv              \
+                        --enable-libxml2            \
+                        --enable-static             \
+                        --with-arch="$(uname -m)"   \
+                        --with-libiconv-prefix=/usr \
                         --with-pic
     execute make "-j${cpu_threads}"
     execute make install
-    build_done 'fontconfig' '2.14.2'
+    build_done 'fontconfig' "${g_ver}"
 fi
 
 if build 'c2man' 'git'; then
@@ -890,7 +877,7 @@ fi
 #
 
 echo
-box_out_banner2()
+box_out_banner_magick()
 {
     input_char=$(echo "${@}" | wc -c)
     line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
@@ -904,7 +891,7 @@ box_out_banner2()
     echo " ${line}"
     tput sgr 0
 }
-box_out_banner2 'Build ImageMagick'
+box_out_banner_magick 'Build ImageMagick'
 
 git_ver_fn 'imagemagick/imagemagick' '1' 'T'
 if build 'ImageMagick' "${g_ver}"; then
