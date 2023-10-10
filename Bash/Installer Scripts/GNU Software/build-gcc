@@ -475,7 +475,7 @@ git_ver_fn()
 pkgs_fn()
 {
     pkgs=("${1}" autoconf autoconf-archive autogen automake bison build-essential ccache curl
-          dejagnu flex gdc gdc-multilib gfortran gfortran-multilib git gnat gnulib guile-3.0-dev
+          dejagnu flex gdc gdc-multilib gfortran gfortran-multilib git gnulib guile-3.0-dev
           help2man jq libc++abi-dev libacl1-dev libasan8 libdebuginfod-dev libdmalloc5 libdmalloc-dev
           libeigen3-dev libffi-dev libfontconfig1-dev libfreetype6 libgd-dev libgm2-12-dev libgmp-dev
           libiberty-dev libicu-dev libintl-perl libisl-dev libjpeg-dev libltdl-dev libmpc-dev libmpfr-dev
@@ -574,7 +574,7 @@ os_ver_check_fn()
             20.04)              pkgs_fn 'libgm2-10-dev lib32ubsan1 lib32stdc++-10-dev';;
             18.04)              clear;;
             12)                 pkgs_fn "${debian_shared_pkgs} gnat-12";;
-            11)                 pkgs_fn "${debian_shared_pkgs} gnat-10";;
+            11)                 pkgs_fn "${debian_shared_pkgs} gnat-12";;
             10)                 pkgs_fn "${debian_shared_pkgs} gnat-8";;
             *)                  fail_fn "Could not detect the OS version:Line ${LINENO}";;
     esac
