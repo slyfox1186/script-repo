@@ -18,7 +18,7 @@
 clear
 
 # Verify the script has root access before continuing
-if [ "$EUID" -eq '0' ]; then
+if [ "${EUID}" -eq '0' ]; then
     echo 'You must run this script WITHOUT root/sudo.'
     echo
     exit 1
