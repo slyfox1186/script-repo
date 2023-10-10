@@ -136,6 +136,7 @@ bash <(curl -fsSL https://dl-tools.optimizethis.net)
   - **Supported OS:**
     - Ubuntu - 18.04 / 20.04 / 22.04 / 23.04
     - Debian - 11 / 12
+
 **Warning! This will overwrite your files!**
 ```bash
 bash <(curl -fsSL https://mirrors-menu.optimizethis.net)
