@@ -37,7 +37,9 @@ debug=OFF # CHANGE THIS VARIABLE TO "ON" FOR HELP WITH TROUBLESHOOTING UNEXPECTE
 # CREATE OUTPUT DIRECTORIES
 #
 
-mkdir -p "${cwd}"
+if [ ! -d "${cwd}" ]; then
+    mkdir -p "${cwd}"
+fi
 
 #
 # FIGURE OUT WHICH COMPILERS TO USE
