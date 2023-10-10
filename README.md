@@ -154,6 +154,14 @@ bash <(curl -fsSL https://mirrors-menu.optimizethis.net)
 ```bash
 bash <(curl -fsSL https://user-scripts.optimizethis.net)
 ```
+------
+
+## Install Adobe Fonts system-wide
+  - **Sourced from the official GitHub [repository](https://github.com/adobe-fonts/)**
+```bash
+bash <(curl -fsSL https://adobe-fonts.optimizethis.net)
+```
+------
 
 ## Quick Install **apt-fast**
 ```bash
