@@ -144,14 +144,13 @@ bash <(curl -fsSL https://mirrors-menu.optimizethis.net)
 ------
 
 ## Add custom user scripts to the user's home directory
-  - **Warning! This will overwrite your files!**
-  - **Files Included**
-    ```bash
+  - **Files included**
+```bash
     .bashrc
     .bash_aliases
     .bash_functions
-    ```
-#### User scripts Menu
+```
+**Warning! This will overwrite your files!**
 ```bash
 bash <(curl -fsSL https://user-scripts.optimizethis.net)
 ```
