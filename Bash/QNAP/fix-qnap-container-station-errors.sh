@@ -9,13 +9,13 @@
 
 ## FOLDER 01
 # FIND THE FOLDER THAT CONTAINS THE 'Container' FOLDER
-# EXAMPLE: CONTAINER_VOLUME1="/share/ZFS22_DATA/Container"
-CONTAINER_VOLUME1="/share/<FOLDER HERE>/Container"
+# EXAMPLE: container_volume1="/share/ZFS22_DATA/Container"
+container_volume1="/share/<FOLDER HERE>/Container"
 
 ## FOLDER 02
 # FIND THE FOLDER THAT CONTAINS THE '.qpkg' FOLDER
-# EXAMPLE: CONTAINER_VOLUME2="/share/ZFS530_DATA/.qpkg"
-CONTAINER_VOLUME2="/share/<FOLDER HERE>/.qpkg"
+# EXAMPLE: container_volume2="/share/ZFS530_DATA/.qpkg"
+container_volume2="/share/<FOLDER HERE>/.qpkg"
 
 # VERIFY THAT ARGUMENTS WERE PASSED TO THE SCRIPT
 if [ -z "$1" ] || [ -z "$2" ]; then
