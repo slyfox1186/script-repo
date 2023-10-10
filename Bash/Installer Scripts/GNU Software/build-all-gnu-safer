@@ -74,7 +74,7 @@ if [ -n "${missing_pkgs}" ]; then
     clear
 fi
 
-dl_files=(m4 autoconf libtool make bash pkg-config sed tar gawk grep nano eog isl wget)
+dl_files=(m4 autoconf libtool make bash pkg-config sed tar gawk grep nano isl wget)
 cnt=0
 
 for dl_file in ${dl_files[@]}
@@ -86,7 +86,7 @@ done
 unset cnt
 
 # RENAME FILES WITH NUMBERS 10 AND HIGHER SO THEY EXECUTE IN THE INTENDED ORDER
-files=(gawk grep nano eog isl wget)
+files=(gawk grep nano isl wget)
 cnt=9
 
 for i in 1
