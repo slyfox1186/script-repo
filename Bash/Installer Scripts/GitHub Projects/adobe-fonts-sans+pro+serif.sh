@@ -70,7 +70,6 @@ exit_fn()
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         "${web_repo}"
-        sudo rm -fr "${cwd}" >2/dev/null
     exit 0
 }
 
@@ -90,6 +89,10 @@ if [ -d "${pro_dir}" ] && [ -d "${sans_dir}" ] && [ -d "${serif_dir}" ]; then
     sudo rm -fr "${pro_dir}" "${sans_dir}" "${serif_dir}"
 fi
 mkdir -p "${pro_dir}" "${sans_dir}" "${serif_dir}"
+
+#
+# CREATE THE FONT OUTPUT DIRECTORIES
+#
 
 sudo mkdir -p "${install_dir_pro}" "${install_dir_sans}" "${install_dir_serif}" 2>/dev/null
 
@@ -113,6 +116,8 @@ if [ ! -f "${serif_dir}".tar.gz ]; then
         fail_fn "Failed to download the archive file \"${serif_dir}.tar.gz\". Line: ${LINENO}"
     fi
 fi
+echo
+
 #
 # EXTRACT THE ARCHIVE FILES
 #
@@ -126,6 +131,7 @@ fi
 if ! tar -zxf "${serif_dir}".tar.gz -C "${serif_dir}" --strip-components 1; then
     fail_fn "Failed to extract the archive \"${serif_dir}.tar.gz\". Line: ${LINENO}"
 fi
+echo
 
 #
 # FIND AND MOVE THE FONT FILES TO THE OUTPUT FOLDER
@@ -143,6 +149,7 @@ cd "${serif_dir}" || exit 1
 sudo find . -type f -name '*.ttf' -exec sudo mv -f '{}' "${install_dir_serif}" \;
 sudo find . -type f -name '*.otf' -exec sudo mv -f '{}' "${install_dir_serif}" \;
 sudo find . -type f -name '*.woff' -exec sudo mv -f '{}' "${install_dir_serif}" \;
+echo
 
 #
 # MAKE SURE THERE THE FILES WERE MOVED SUCCESSFULLY AND THEN UPDATE THE FONT CACHE
