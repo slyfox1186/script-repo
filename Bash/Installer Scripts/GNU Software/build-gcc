@@ -163,7 +163,7 @@ pc_type=x86_64-linux-gnu
 latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
-debug=OFF # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
+debug=ON # CHANGE THE DEBUG VARIABLE BELOW TO "ON" TO HELP TROUBLESHOOT BUGS DURING THE BUILD
 
 #
 # SET THE C & C++ COMPILERS
@@ -531,9 +531,7 @@ case "${get_gcc_ver}" in
     *)      fail_fn "Failed to store the GCC version number in the variable \"get_gcc_ver\":Line ${LINENO}";;
 esac
 
-if [ -n "${apt_gcc_ver}" ]; then
-    pkgs_fn "${apt_gcc_ver}"
-fi
+pkgs_fn "${apt_gcc_ver}"
 
 #
 # INSTALL PYTHON MODULES
@@ -558,13 +556,11 @@ if [ -n "${missing_py_pkgs}" ]; then
 fi
 
 #
-# DETERMINE WHAT VERSION OF LINUX WE ARE ON
+# DETERMINE WHAT VERSION OF LINUX IS RUNNING
 #
 
-os_ver_check_fn()
+debian_os_version()
 {
-    debian_shared_pkgs='libadacgi6-dev libgm2-12-dev libgm2-17'
-    debian_bookworm='libasan8-x32-cross lib32ubsan1-x32-cross lib32stdc++6-x32-cross'
     ubuntu_jammy='linux-libc-dev:i386 libadacgi4-dev libgm2-15 libasan8-x32-cross lib32ubsan1 lib32stdc++-11-dev'
     ubuntu_lunar='linux-libc-dev:i386 libadacgi6-dev libgm2-15 libasan8-x32-cross lib32ubsan1 lib32stdc++-12-dev'
 
@@ -573,6 +569,16 @@ os_ver_check_fn()
             22.10|22.04)        pkgs_fn "${ubuntu_jammy}";;
             20.04)              pkgs_fn 'libgm2-10-dev lib32ubsan1 lib32stdc++-10-dev';;
             18.04)              clear;;
+            *)                  fail_fn "Could not detect the OS version:Line ${LINENO}";;
+    esac
+}
+
+ubuntu_os_version()
+{
+    debian_shared_pkgs='libadacgi6-dev libgm2-12-dev libgm2-17'
+    debian_bookworm='libasan8-x32-cross lib32ubsan1-x32-cross lib32stdc++6-x32-cross'
+
+    case "${VER}" in
             12)                 pkgs_fn "${debian_shared_pkgs} gnat-12";;
             11)                 pkgs_fn "${debian_shared_pkgs} gnat-12";;
             10)                 pkgs_fn "${debian_shared_pkgs} gnat-8";;
@@ -581,18 +587,23 @@ os_ver_check_fn()
 }
 
 #
-# GET CURRENT OS INFORMATION
+# TEST THE OS AND ITS VERSION
 #
 
-find_lsb_release="$(sudo find /usr -type f -name lsb_release)"
+find_lsb_release="$(sudo find /usr -type f -name 'lsb_release')"
 
 if [ -f /etc/os-release ]; then
     source /etc/os-release
-    OS="$NAME"
-    VER="$VERSION_ID"
-else [ -n "${find_lsb_release}" ]
+    OS_TMP="$NAME"
+    VER_TMP="$VERSION_ID"
+    CODENAME="$VERSION_CODENAME"
+    OS="$(echo "${OS_TMP}" | awk '{print $1}')"
+    VER="$(echo "${VER_TMP}" | awk '{print $1}')"
+elif [ -n "${find_lsb_release}" ]; then
     OS="$(lsb_release -d | awk '{print $2}')"
     VER="$(lsb_release -r | awk '{print $2}')"
+else
+    fail_fn "Failed to define the $OS and/or $VER variables. Line: ${LINENO}"
 fi
 
 #
@@ -600,11 +611,12 @@ fi
 #
 
 case "${OS}" in
-    Debia*|Ubunt*)      os_ver_check_fn;;
-    *)                  fail_fn "Could not detect the OS architecture:Line ${LINENO}";;
+    Debian|n/a)         debian_os_version;;
+    Ubuntu)             ubuntu_os_version;;
+    *)                  fail_fn "Could not detect the OS architecture. Line: ${LINENO}";
 esac
 
-os_first_token="$(echo "${OS}" | awk '{print $1}')"
+os_first_token="${OS}"
 
 #
 # CREATE SOFT LINKS TO FIX LINKING BUGS
@@ -620,7 +632,7 @@ fi
 # IF THE CUDA SDK TOOLKIT IS INSTALLED ENABLE IT WHEN BUILDING GCC
 #
 
-iscuda="$(sudo find /usr/local/ -type f -name nvcc)"
+iscuda="$(sudo find /usr/local/ -type f -name 'nvcc')"
 
 if [ -n "${iscuda}" ]; then
     cuda_check=--with-cuda-driver
@@ -663,7 +675,8 @@ fi
 
 if build 'pkg-config' '0.29.2'; then
     download "https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz"
-    execute ./configure --prefix="${workspace}" --with-pc-path="${PKG_CONFIG_PATH}"
+    execute ./configure --prefix="${workspace}" \
+                        --with-pc-path="${PKG_CONFIG_PATH}"
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'pkg-config' '0.29.2'
@@ -682,8 +695,11 @@ g_ver="${g_ver#Zstandard v}"
 if build 'zstd' "${g_ver}"; then
     download "https://github.com/facebook/zstd/releases/download/v${g_ver}/zstd-${g_ver}.tar.gz"
     cd build/cmake || exit 1
-    execute cmake -B build -DCMAKE_{INSTALL_PREFIX="${workspace}",BUILD_TYPE=Release} \
-                  -DBUILD_SHARED_LIBS=OFF -G Ninja -Wno-dev
+    execute cmake -B build                              \ 
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DBUILD_SHARED_LIBS=OFF               \
+                  -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'zstd' "${g_ver}"
@@ -842,9 +858,10 @@ build_gcc_13_fn()
     fi
     if build 'gcc-13' '13.2.0'; then
         download 'https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.xz'
+        export CC=gnatgcc CXX=g++
         olt_13="nvptx-none=/build/gcc-13-aYYs71/gcc-13-13.1.0/debian/tmp-nvptx/${install_prefix}"
         olt_13+=",amdgcn-amdhsa=/build/gcc-13-aYYs71/gcc-13-13.1.0/debian/tmp-gcn/${install_prefix}"
-        langs_13='c,ada,c++,go,d,fortran,objc,obj-c++,m2'
+        langs_13='c,ada,c++,d,fortran,go,lto,m2,objc,obj-c++'
         execute autoreconf -fi
         execute sudo ./contrib/download_prerequisites
         mkdir builddir
