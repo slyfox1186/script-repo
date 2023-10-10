@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 clear
 
@@ -39,7 +39,7 @@ esac
 #
 
 cat > 'Open in New Window' <<'EOF'
-#!/bin/bash
+#!/usr/bin/env bash
 clear
 nohup nautilus -w "$PWD/$1" >/dev/null 2>&1 &
 EOF
@@ -49,7 +49,7 @@ EOF
 #
 
 cat > 'Empty Trash' <<'EOF'
-#!/bin/bash
+#!/usr/bin/env bash
 clear
 pushd "$HOME"/.local/share/Trash/files || exit 1
 sudo rm -fr *
@@ -63,7 +63,7 @@ EOF
 #
 
 cat > 'Open with Tilix' <<'EOF'
-#!/bin/bash
+#!/usr/bin/env bash
 clear
 if which gnome-text-editor; then
     editor=gnome-text-editor
