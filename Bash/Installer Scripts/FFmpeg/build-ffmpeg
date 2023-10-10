@@ -1335,13 +1335,21 @@ git_ver_fn '890' '4'
 if build 'fontconfig' "${g_ver}"; then
     download "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/${g_ver}/fontconfig-${g_ver}.tar.bz2"
     execute ./autogen.sh --noconf
-    execute autoreconf -fi
     execute autoupdate
     LDFLAGS+=' -DLIBXML_STATIC'
     sed -i 's|Cflags:|& -DLIBXML_STATIC|' fontconfig.pc.in
-    execute ./configure --prefix="${workspace}" \
-                        --disable-docs          \
-                        --disable-shared
+    execute ./configure --prefix="${workspace}"     \
+                        --{build,host}="${pc_type}" \
+                        --disable-docbook           \
+                        --disable-docs              \
+                        --disable-shared            \
+                        --disable-nls               \
+                        --enable-iconv              \
+                        --enable-libxml2            \
+                        --enable-static             \
+                        --with-arch="$(uname -m)"   \
+                        --with-libiconv-prefix=/usr \
+                        --with-pic
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'fontconfig' "${g_ver}"
