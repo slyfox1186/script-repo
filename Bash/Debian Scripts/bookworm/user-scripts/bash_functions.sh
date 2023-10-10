@@ -228,10 +228,9 @@ fix()
     if [ -f /tmp/apt.lock ]; then
         sudo rm /tmp/apt.lock
     fi
-    sudo apt -f -y install
-    sudo apt --fix-broken install
-    sudo apt --fix-missing update
     sudo dpkg --configure -a
+    sudo apt --fix-broken install
+    sudo apt -f -y install
     sudo apt -y autoremove
     sudo apt clean
     sudo apt autoclean
