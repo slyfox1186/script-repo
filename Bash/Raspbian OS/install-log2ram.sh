@@ -105,18 +105,18 @@ echo
 
 FILE='/etc/log2ram.conf'
 
-if [ -f "${FILE}" ]; then
-    sed -i 's/SIZE=40M/SIZE=512M/g' "${FILE}"
-    sed -i 's/LOG_DISK_SIZE=256M/LOG_DISK_SIZE=1024M/g' "${FILE}"
+if [ -f "${file}" ]; then
+    sed -i 's/SIZE=40M/SIZE=512M/g' "${file}"
+    sed -i 's/LOG_DISK_SIZE=256M/LOG_DISK_SIZE=1024M/g' "${file}"
 fi
 
 # FIND AN EDITOR TO OPEN THE CONF FILE
 if which nano &>/dev/null; then
-    nano "${FILE}"
+    nano "${file}"
 elif which vim &>/dev/null; then
-    vim "${FILE}"
+    vim "${file}"
 elif which vi &>/dev/null; then
-    vi "${FILE}"
+    vi "${file}"
 else
     echo
     echo 'No editors were found to open the /etc/log2ram.conf file!'
