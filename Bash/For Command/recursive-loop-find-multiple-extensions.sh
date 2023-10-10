@@ -12,9 +12,9 @@ printf "%s\n\n%s\n%s\n\n" \
 read -p 'Your choices are (1 or 2): ' choice
 clear
 
-case "$choice" in
-    1)      store_paths="$(find . -type f \( -iname \*.$fext_1 -o -iname \*.$fext_2 \) -exec bash -c "echo {} | sed -E 's/.*\s(.*)/\1/'" \;)";;
-    2)      store_paths="$(find . -mindepth 2 -type f \( -iname \*.$fext_1 -o -iname \*.$fext_2 \) -exec bash -c "echo {} | sed -E 's/.*\s(.*)/\1/'" \;)";;
+case "${choice}" in
+    1)      store_paths="$(find . -type f \( -iname \*.${fext_1} -o -iname \*.${fext_2} \) -exec bash -c "echo {} | sed -E 's/.*\s(.*)/\1/'" \;)";;
+    2)      store_paths="$(find . -mindepth 2 -type f \( -iname \*.${fext_1} -o -iname \*.${fext_2} \) -exec bash -c "echo {} | sed -E 's/.*\s(.*)/\1/'" \;)";;
     *)
             clear
             printf "%s\n\n" 'Bad user input.'

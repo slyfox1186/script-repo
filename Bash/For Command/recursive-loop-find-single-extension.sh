@@ -11,7 +11,7 @@ printf "%s\n\n%s\n%s\n\n" \
 read -p 'Your choices are (1 or 2): ' choice
 clear
 
-case "$choice" in
+case "${choice}" in
     1)      store_paths="$(find . -type f -iname "*.$fext" -exec bash -c "echo {} | sed -E 's/.*\s(.*)/\1/'" \;)";;
     2)      store_paths="$(find . -mindepth 2 -type f -iname "*.$fext" -exec bash -c "echo {} | sed -E 's/.*\s(.*)/\1/'" \;)";;
     *)
