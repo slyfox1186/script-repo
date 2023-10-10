@@ -230,7 +230,7 @@ continue=true
 daemon=true
 # Set host and port as entry points to the IPv4 DHT network.
 dht-entry-point=dht.transmissionbt.com:43345
-# Change the IPv4 DHT routing table file to PATH. Default: $HOME/.aria2/dht.dat if present, otherwise $XDG_CACHE_HOME/aria2/dht.dat.
+# Change the IPv4 DHT routing table file to PATH. Default: ${HOME}/.aria2/dht.dat if present, otherwise $XDG_CACHE_HOME/aria2/dht.dat.
 dht-file-path=${HOME}/.aria2/dht.dat
 # Set UDP listening port used by DHT(IPv4, IPv6) and UDP tracker. Default: 6881-6999
 dht-listen-port=${dht_listen_port}

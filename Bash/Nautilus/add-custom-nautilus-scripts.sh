@@ -11,7 +11,7 @@ fi
 # CHANGE THE WORKING DIRECTORY TO THE NAUTILUS SCRIPTS DIRECTORY
 #
 
-cd "$HOME/.local/share/nautilus/scripts" || exit 1
+cd "${HOME}/.local/share/nautilus/scripts" || exit 1
 
 #
 # DELETE ANY FOUND SCRIPTS
@@ -51,7 +51,7 @@ EOF
 cat > 'Empty Trash' <<'EOF'
 #!/usr/bin/env bash
 clear
-pushd "$HOME"/.local/share/Trash/files || exit 1
+pushd "${HOME}"/.local/share/Trash/files || exit 1
 sudo rm -fr *
 popd
 clear

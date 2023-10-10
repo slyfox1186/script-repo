@@ -144,14 +144,14 @@ cpf()
 {
     clear
 
-    if [ ! -d "$HOME/tmp" ]; then
-        mkdir -p "$HOME/tmp"
+    if [ ! -d "${HOME}/tmp" ]; then
+        mkdir -p "${HOME}/tmp"
     fi
 
-    cp "$1" "$HOME/tmp/$1"
+    cp "$1" "${HOME}/tmp/$1"
 
-    chown -R "$USER":"$USER" "$HOME/tmp/$1"
-    chmod -R 744 "$HOME/tmp/$1"
+    chown -R "$USER":"$USER" "${HOME}/tmp/$1"
+    chmod -R 744 "${HOME}/tmp/$1"
 
     clear; ls -1AhFv --color --group-directories-first
 }
@@ -161,14 +161,14 @@ mvf()
 {
     clear
 
-    if [ ! -d "$HOME/tmp" ]; then
-        mkdir -p "$HOME/tmp"
+    if [ ! -d "${HOME}/tmp" ]; then
+        mkdir -p "${HOME}/tmp"
     fi
 
-    mv "$1" "$HOME/tmp/$1"
+    mv "$1" "${HOME}/tmp/$1"
 
-    chown -R "${USER}":"${USER}" "$HOME/tmp/$1"
-    chmod -R 744 "$HOME/tmp/$1"
+    chown -R "${USER}":"${USER}" "${HOME}/tmp/$1"
+    chmod -R 744 "${HOME}/tmp/$1"
 
     clear; ls -1AhFv --color --group-directories-first
 }
@@ -325,8 +325,8 @@ toa()
 showpkgs()
 {
     dpkg --get-selections |
-    grep -v deinstall > "$HOME"/tmp/packages.list
-    ged "$HOME"/tmp/packages.list
+    grep -v deinstall > "${HOME}"/tmp/packages.list
+    ged "${HOME}"/tmp/packages.list
 }
 
 # PIPE ALL DEVELOPMENT PACKAGES NAMES TO file
@@ -425,8 +425,8 @@ keytopub()
     fi
     ssh-keygen -b '4096' -y -f "$okey" > "$opub"
     chmod 644 "$opub"
-    cp "$opub" "$HOME"/.ssh/authorized_keys
-    chmod 600 "$HOME"/.ssh/authorized_keys
+    cp "$opub" "${HOME}"/.ssh/authorized_keys
+    chmod 600 "${HOME}"/.ssh/authorized_keys
     unset "$okey"
     unset "$opub"
 }
@@ -441,7 +441,7 @@ gzip() { clear; gzip -d "$@"; }
 show_time() { clear; date +%r | cut -d " " -f1-2 | grep -E '^.*$'; }
 
 # CHANGE DIRECTORY
-cdsys() { pushd "$HOME"/system || exit 1; cl; }
+cdsys() { pushd "${HOME}"/system || exit 1; cl; }
 
 ##################
 ## SOURCE FILES ##
@@ -451,7 +451,7 @@ sbrc()
 {
     clear
 
-    source "$HOME"/.bashrc && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
+    source "${HOME}"/.bashrc && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
     sleep 1
 
     clear; ls -1AhFv --color --group-directories-first
@@ -461,7 +461,7 @@ spro()
 {
     clear
 
-    source "$HOME"/.profile && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
+    source "${HOME}"/.profile && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
     sleep 1
 
     clear; ls -1AhFv --color --group-directories-first
@@ -476,7 +476,7 @@ aria2_on()
 {
     clear
 
-    if aria2c --conf-path="$HOME"/.aria2/aria2.conf; then
+    if aria2c --conf-path="${HOME}"/.aria2/aria2.conf; then
         echo -e "\\nCommand Executed Successfully\\n"
     else
         echo -e "\\nCommand Failed\\n"
@@ -719,8 +719,8 @@ nvme_temp()
 rftn()
 {
     clear
-    sudo rm -fr "$HOME"/.cache/thumbnails/*
-    ls -al "$HOME"/.cache/thumbnails
+    sudo rm -fr "${HOME}"/.cache/thumbnails/*
+    ls -al "${HOME}"/.cache/thumbnails
 }
 
 #######################
@@ -809,7 +809,7 @@ mi()
 ## FFMPEG ##
 ############
 
-cdff() { clear; cd "$HOME/tmp/ffmpeg-build" || exit 1; cl; }
+cdff() { clear; cd "${HOME}/tmp/ffmpeg-build" || exit 1; cl; }
 ffm() { clear; bash <(curl -sSL 'http://ffmpeg.optimizethis.net'); }
 ffp() { clear; bash <(curl -sSL 'http://ffpb.optimizethis.net'); }
 

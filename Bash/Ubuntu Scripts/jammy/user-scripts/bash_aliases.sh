@@ -10,7 +10,7 @@ printf "%s\n%s\n\n" \
 # SET VARIABLES
 #
 
-file="$HOME"/.bash_aliases
+file="${HOME}"/.bash_aliases
 
 #
 # CREATE FUNCTIONS
