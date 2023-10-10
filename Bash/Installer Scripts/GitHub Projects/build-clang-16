@@ -336,8 +336,7 @@ box_out_banner()
 }
 box_out_banner "Clang Build Script - Version ${script_ver}"
 
-git_ver_fn 'llvm/llvm-project' 'T'
-if build 'llvm' "${g_ver}"; then
+if build 'llvm' '16.0.6'; then
     download 'https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.6/llvm-project-16.0.6.src.tar.xz' 'llvm-16.0.6.tar.gz'
     project_pkgs='clang;clang-tools-extra'
     runtime_pkgs='libcxx;libcxxabi;libunwind;compiler-rt'
