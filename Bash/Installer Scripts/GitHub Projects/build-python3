@@ -9,11 +9,13 @@
 ##
 ##  Features: Static build, OpenSSL backend
 ##
-##  Updated: 10.02.23
+##  Updated: 10.10.23
 ##
 ##  Upgraded to version: 3.12.0
 ##
-##  Script version: 1.8
+##  Added support for Debian 10 Bullseye
+##
+##  Script version: 1.9
 ##
 #################################################################################################################################
 
@@ -28,7 +30,7 @@ fi
 # SET THE SCRIPT VARIABLES
 #
 
-script_ver=1.8
+script_ver=1.9
 py_ver=3.12.0
 archive_dir=Python-${py_ver}.tar.xz
 archive_url=https://www.python.org/ftp/python/3.12.0/${archive_dir}
@@ -71,7 +73,7 @@ LDFLAGS+=' -L/usr/local/lib64 -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 export CXXFLAGS='-g -O2 -march=native'
 export CFLAGS="-I/usr/include/openssl ${CXXFLAGS}"
 export CPPFLAGS='-I/usr/include/openssl -I/usr/local/include -I/usr/include'
-export CXXFLAGS CFLAGS LDFLAGS
+export CFLAGS CXXFLAGS LDFLAGS
 
 #
 # SET THE PATH VARIABLE
@@ -196,9 +198,9 @@ cleanup_fn()
 installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
 pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache cmake
-      curl git itstool libb2-dev libexempi-dev libgnome-desktop-3-dev libgnome-desktop-4-dev
-      libhandy-1-dev libpeas-dev libpeasd-3-dev libportal-dev libportal-gtk3-dev libportal-gtk4-dev
-      libssl-dev libtool libtool-bin m4 meson nasm ninja-build openssl python3 valgrind yasm zlib1g-dev)
+      curl git itstool libb2-dev libexempi-dev libgnome-desktop-3-dev libhandy-1-dev
+      libpeas-dev libpeasd-3-dev libssl-dev libtool libtool-bin m4 meson nasm ninja-build
+      openssl python3 valgrind yasm zlib1g-dev)
 
 for pkg in ${pkgs[@]}
 do
@@ -220,6 +222,80 @@ else
     echo '$ The packages are already installed.'
     echo
 fi
+
+#
+# INSTALL REQUIRED APT PACKAGES
+#
+
+install_libportal_fn()
+{
+    if ! wget --show-progress -U "${user_agent}" -cq 'https://github.com/flatpak/libportal/releases/download/0.7.1/libportal-0.7.1.tar.xz'; then
+        clear
+        printf "%s\n\n" "Failed to download the libportal archive file. Line: ${LINENO}"
+        exit 1
+    fi
+    mkdir libportal-0.7.1
+    tar -xf libportal-0.7.1.tar.xz -C libportal-0.7.1 --strip-components 1
+    cd libportal-0.7.1 || exit 1
+    meson setup build --prefix=/usr/local      \
+                      --buildtype=release      \
+                      --default-library=static \
+                      --strip                  \
+                      -Dc_args="${CFLAGS}"     \
+                      -Dcpp_args="${CXXFLAGS}"
+    ninja "-j$(nproc --all)" -C build
+    sudo ninja "-j$(nproc --all)" -C build install
+}
+
+debian_os_version()
+{
+    case "${VER}" in
+        trixie|12)      pkgs_fn 'libgnome-desktop-4-dev libportal-dev libportal-gtk3-dev libportal-gtk4-dev';;
+        10|11)
+                        pkgs_fn 'libgnome-desktop-3-dev'
+                        install_libportal_fn
+                        ;;
+        *)              fail_fn "Could not detect the Debian version. Line: ${LINENO}";;
+    esac
+}
+
+#
+# TEST THE OS AND ITS VERSION IF UBUNTU THEN CALL THE pkgs_fn
+#
+
+find_lsb_release="$(sudo find /usr -type f -name 'lsb_release')"
+
+if [ -f /etc/os-release ]; then
+    source /etc/os-release
+    OS_TMP="$NAME"
+    VER_TMP="$VERSION_ID"
+    CODENAME="$VERSION_CODENAME"
+    OS="$(echo "${OS_TMP}" | awk '{print $1}')"
+    VER="$(echo "${VER_TMP}" | awk '{print $1}')"
+elif [ -n "${find_lsb_release}" ]; then
+    OS="$(lsb_release -d | awk '{print $2}')"
+    VER="$(lsb_release -r | awk '{print $2}')"
+else
+    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
+fi
+
+if [[ "$(grep -i Microsoft /proc/version)" ]]; then
+    VER_WSL=1
+fi
+
+case "${VER_WSL}" in
+    1)      sudo apt-get -qq -y install nvidia-utils-535;;
+esac
+
+if [ -z "${VER}" ]; then
+    VER="${CODENAME}"
+fi
+
+case "${OS}" in
+    Debian|n/a)         debian_os_version;;
+    Ubuntu)             pkgs_fn;;
+    *)                  fail_fn "Could not detect the OS architecture. Line: ${LINENO}";
+esac
 
 #
 # DOWNLOAD THE ARCHIVE FILE
