@@ -1724,6 +1724,15 @@ gitdl()
     clear
     ls -1A --color --group-directories-first
 }
+
+# COUNT ITEMS IN THE CURRENT FOLDER W/O SUBDIRECTORIES INCLUDED
+cntf()
+{
+    local folder_cnt
+    clear
+    folder_cnt="$(ls -1 | wc -l)"
+    printf "%s\n" "There are ${folder_cnt} files in this folder"
+}
 EOF
 }
 
