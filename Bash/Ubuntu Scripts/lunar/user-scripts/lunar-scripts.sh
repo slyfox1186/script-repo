@@ -25,10 +25,10 @@ script_array=(.bash_aliases .bash_functions .bashrc)
 # If the scripts exist, move each one to the users home directory
 for script in ${script_array[@]}
 do
-    if ! mv -f "$PWD/$script" "$HOME"; then
-        fail_fn "Failed to move scripts to: $HOME"
+    if ! mv -f "$PWD/$script" "${HOME}"; then
+        fail_fn "Failed to move scripts to: ${HOME}"
     fi
-    if ! sudo chown "$USER":"$USER" "$HOME/$script"; then
+    if ! sudo chown "$USER":"$USER" "${HOME}/$script"; then
         fail_fn "Failed to update file permissions to: $USER:$USER"
     fi
 done
@@ -37,13 +37,13 @@ done
 for i in ${script_array[@]}
 do
     if which gnome-text-editor &>/dev/null; then
-        gnome-text-editor "$HOME/$i"
+        gnome-text-editor "${HOME}/$i"
     elif which gedit &>/dev/null; then
-        gedit "$HOME/$i"
+        gedit "${HOME}/$i"
     elif which nano &>/dev/null; then
-        nano "$HOME/$i"
+        nano "${HOME}/$i"
     elif which vim &>/dev/null; then
-        vi "$HOME/$i"
+        vi "${HOME}/$i"
     else
         fail_fn 'Could not find an EDITOR to open the files with.'
     fi
