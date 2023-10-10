@@ -5,52 +5,47 @@
 clear
 
 # Set the output directory
-FOLDER='<change this to the path where you want to save the output file>'
+folder='<change this to the full PATH of where you want to save the output file to>'
 
 # Bold
-Blue='\033[1;34m'         # Blue
-Cyan='\033[1;36m'         # Cyan
-Green='\033[1;32m'        # Green
-Purple='\033[1;35m'       # Purple
-Red='\033[1;31m'          # Red
-White='\033[1;37m'        # White
-Yellow='\033[1;33m'       # Yellow
-Orange='\e[0;1;38;5;220m' # Other
-EC='\e[0m'                # Line Clear
+blue='\033[1;34m'         # blue
+cyan='\033[1;36m'         # cyan
+green='\033[1;32m'        # green
+purple='\033[1;35m'       # purple
+red='\033[1;31m'          # red
+white='\033[1;37m'        # white
+yellow='\033[1;33m'       # yellow
+orange='\e[0;1;38;5;220m' # Other
+ec='\e[0m'                # Line Clear
 
-# Set the output directory
-FOLDER='/share/Container'
 # Create a time var
-TIME="$(date "+%m.%d.%Y_%I.%M.%S.%p")"
+time="$(date "+%m.%d.%Y_%I.%M.%S.%p")"
 
 clear
 
 # Display THE AVAILABLE PACKAGES FOR EXPORT
-echo -e "${Green}"
+printf "%s\n" "${green}"
 lxc list
 
 # Display the current working directory
-echo -e "\\n${Cyan}Current Working Directory:${EC} ${Red}$PWD${EC}\\n"
+printf "\n%s\n" "${cyan}Current Working Directory:${ec} ${red}$PWD${ec}"
 
 # prompt user for input
-echo -e "${Orange}Enter the ${Blue}input ${Orange}container name:${EC} "
-read cName
-clear
-echo -e "${Orange}Enter the ${Blue}output ${Orange}file name ${Red}(${Cyan}date ${Orange}and ${Cyan}extension ${Orange}will be ${Cyan}appended${Red})${EC}:"
-read oName
+read -p "${orange}Enter the ${blue}input ${orange}container name:${ec} " cname
+read -p "${orange}Enter the ${blue}output ${orange}file name ${red}(${cyan}date ${orange}and ${cyan}extension ${orange}will be ${cyan}appended${red})${ec}:" oname
 clear
 
 # Display the user's choices before executing
-echo -e "${White}Input: ${Green}${cName}${EC}\\n"
-echo -e "${White}Output: ${Green}${folder}/${oName}-${TIME}.tar.gz${EC}\\n"
+printf "%s\n" "${white}Input: ${green}${cname}${ec}"
+printf "%s\n" "${white}Output: ${green}${folder}/${oname}-${time}.tar.gz${ec}"
 
 # Prompt user to continue
-echo -e "${Red}Important ${Yellow}!${Red}: ${Red}You have 30 seconds to exit by pressing ${Yellow}^Z${EC}\\n"
+printf "%s\n" "${red}Important ${yellow}!${red}: ${red}You have 30 seconds to exit by pressing ${yellow}^Z${ec}"
 read -t 30 -p 'Press Enter to continue...'
 clear
 
 # Display command line used
-echo -e "${Cyan}Executing: ${Green}lxc export ${Purple}\"${cName}\" \"${folder}/${oName}-${TIME}.tar.gz\" ${Orange}--optimized-storage -v\\n${EC}"
+printf "%s\n" "${cyan}Executing: ${green}lxc export ${purple}\"${cname}\" \"${folder}/${oname}-${time}.tar.gz\" ${orange}--optimized-storage -v${ec}"
 
 # Compressed mode
-lxc export "${cName}" "${folder}/${oName}-${TIME}.tar.gz" --optimized-storage -v
+lxc export "${cname}" "${folder}/${oname}-${time}.tar.gz" --optimized-storage -v
