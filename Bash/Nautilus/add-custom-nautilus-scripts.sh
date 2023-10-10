@@ -24,7 +24,7 @@ printf "%s\n\n%s\n%s\n\n" \
 read -p 'Your choices are (1 or 2): ' choice
 clear
 
-case "$choice" in
+case "${choice}" in
     1)    sudo rm *;
     2)    clear;
     *)

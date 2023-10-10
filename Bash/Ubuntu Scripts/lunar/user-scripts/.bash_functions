@@ -752,14 +752,14 @@ cuda_purge()
     read -p 'Your choices are (1 or 2): ' answer
     clear
 
-    if [[ "$answer" -eq '1' ]]; then
+    if [[ "${answer}" -eq '1' ]]; then
         echo 'Purging the cuda-sdk-toolkit from your computer.'
         echo '================================================'
         echo
         sudo sudo apt-fast -y --purge remove "*cublas*" "cuda*" "nsight*"
         sudo sudo apt-fast -y autoremove
         sudo sudo apt-fast update
-    elif [[ "$answer" -eq '2' ]]; then
+    elif [[ "${answer}" -eq '2' ]]; then
         return 0
     fi
 }
@@ -778,7 +778,7 @@ large_files()
     echo
     read -p 'Enter your choice: ' answer
     clear
-    find "$PWD" -type f -name "*.$answer" -printf '%h\n' | sort -u -o 'large-files.txt'
+    find "$PWD" -type f -name "*.${answer}" -printf '%h\n' | sort -u -o 'large-files.txt'
     if [ -f 'large-files.txt' ]; then
         sudo ged 'large-files.txt'
     fi

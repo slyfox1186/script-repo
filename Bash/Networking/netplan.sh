@@ -53,14 +53,14 @@ apply_settings_fn()
 
 create_dhcp_yaml_fn()
 {
-    sudo cat > "$yaml_file" <<EOF
+    sudo cat > "${yaml_file}" <<EOF
 # This file describes the network interfaces available on your system
 # For more information, see netplan(5).
 network:
   version: 2
   renderer: networkd
   ethernets:
-    $con_id:
+    ${con_id}:
       dhcp4: yes
 EOF
 
@@ -77,36 +77,36 @@ create_static_yaml_fn()
     local ip_address_sed
 
 # CREATE NETPLAN STATIC IP file
-    sudo cat > "$yaml_file" <<EOF
+    sudo cat > "${yaml_file}" <<EOF
 # This file describes the network interfaces available on your system
 # For more information, see netplan(5).
 network:
   version: 2
   renderer: networkd
   ethernets:
-    $con_id:
+    ${con_id}:
       addresses:
-        - $ip_address
-      gateway4: $gateway
+        - ${ip_address}
+      gateway4: ${gateway}
       nameservers:
-          addresses: [$dns_master]
+          addresses: [${dns_master}]
 EOF
 
     # RASPBIAN BULLSEYE HAS A BUG WHERE TWO IP ADDRESSES WILL BE SHOWN WHEN RUNNING COMMAND 'ip a'
     # THIS CHANGES THE DHCP CONFIG FILE AND SEEMS TO FIX THE ISSUE AFTER A REBOOT
-    ip_address_sed="$(echo "$ip_address" | sed 's/\//\\\//g')"
-    dns_master_sed="$(echo "$dns_master" | sed 's/,//g')"
-    sudo sed -i "0,/^#interface $con_id/s//interface $con_id/" /etc/dhcpcd.conf
-    sudo sed -Ei "0,/^#static ip_address=(.*)$/s//static ip_address=$ip_address_sed/" /etc/dhcpcd.conf
-    sudo sed -Ei "0,/^#static routers=(.*)$/s//static routers=$gateway/" /etc/dhcpcd.conf
-    sudo sed -Ei "0,/^#static domain_name_servers=(.*)$/s//static domain_name_servers=$dns_master_sed/" /etc/dhcpcd.conf
+    ip_address_sed="$(echo "${ip_address}" | sed 's/\//\\\//g')"
+    dns_master_sed="$(echo "${dns_master}" | sed 's/,//g')"
+    sudo sed -i "0,/^#interface ${con_id}/s//interface ${con_id}/" /etc/dhcpcd.conf
+    sudo sed -Ei "0,/^#static ip_address=(.*)$/s//static ip_address=${ip_address}_sed/" /etc/dhcpcd.conf
+    sudo sed -Ei "0,/^#static routers=(.*)$/s//static routers=${gateway}/" /etc/dhcpcd.conf
+    sudo sed -Ei "0,/^#static domain_name_servers=(.*)$/s//static domain_name_servers=${dns_master}_sed/" /etc/dhcpcd.conf
 }
 
 sort_method_fn()
 {
-    if [ "$dhcp_answer" = 'Static IP' ]; then
+    if [ "${dhcp_answer}" = 'Static IP' ]; then
         create_static_yaml_fn
-    elif [ "$dhcp_answer" = 'DHCP' ]; then
+    elif [ "${dhcp_answer}" = 'DHCP' ]; then
         create_dhcp_yaml_fn
     fi
 }
@@ -130,12 +130,12 @@ set_static_fn()
     read -p 'Nameserver 3 (example: 1.0.0.1 or leave blank): ' dns3
     clear
 
-    if [ -n "$dns1" ] && [ -z "$dns2" ] && [ -z "$dns3" ]; then
-        dns_master="$dns1"
-    elif [ -n "$dns1" ] && [ -n "$dns2" ] && [ -z "$dns3" ]; then
-        dns_master="$dns1, $dns2"
-    elif [ -n "$dns1" ] && [ -n "$dns2" ] && [ -n "$dns3" ]; then
-        dns_master="$dns1, $dns2, $dns3"
+    if [ -n "${dns1}" ] && [ -z "${dns2}" ] && [ -z "${dns3}" ]; then
+        dns_master="${dns1}"
+    elif [ -n "${dns1}" ] && [ -n "${dns2}" ] && [ -z "${dns3}" ]; then
+        dns_master="${dns1}, ${dns2}"
+    elif [ -n "${dns1}" ] && [ -n "${dns2}" ] && [ -n "${dns3}" ]; then
+        dns_master="${dns1}, ${dns2}, ${dns3}"
     fi
 }
 
@@ -148,7 +148,7 @@ printf "\n%s\n\n%s\n%s\n%s\n\n" \
 read -p 'Your choices are (1 to 3): ' choice
 clear
 
-case "$choice" in
+case "${choice}" in
     1)
             set_dhcp_fn
             dhcp_answer=DHCP
@@ -163,13 +163,13 @@ unset choice
 
 # ECHO THE CHOSEN OPTIONS
 cat <<EOF
-Connection: $con_id
-IP Address: $ip_address
-Gateway: $gateway
-DNS 1: $dns1
-DNS 2: $dns2
-DNS 3: $dns3
-Method: $dhcp_answer
+Connection: ${con_id}
+IP Address: ${ip_address}
+Gateway: ${gateway}
+DNS 1: ${dns1}
+DNS 2: ${dns2}
+DNS 3: ${dns3}
+Method: ${dhcp_answer}
 EOF
 
 # PROMPT USER TO CONTINUE
@@ -180,7 +180,7 @@ printf "\n%s\n\n%s\n%s\n\n" \
 read -p 'Your choices are (1 or 2): ' choice
 clear
 
-case "$choice" in
+case "${choice}" in
     1)
             sort_method_fn
             apply_settings_fn

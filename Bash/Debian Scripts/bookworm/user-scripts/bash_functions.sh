@@ -1746,7 +1746,7 @@ else
     answer=2
 fi
 
-case "$answer" in
+case "${answer}" in
     1)
             script_fn
             sed -i 's/apt /apt /g' "$file"
