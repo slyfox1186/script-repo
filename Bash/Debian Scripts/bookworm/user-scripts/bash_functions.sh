@@ -1554,15 +1554,11 @@ adl()
 
     if [ "${?}" -eq '0' ]; then
         google_speech 'Download completed.' 2>/dev/null
-        exit 0
     else
         google_speech 'Download failed.' 2>/dev/null
-        read -p 'Press enter to exit.'
-        exit 1
     fi
 
     find . -type f -iname "*:Zone.Identifier" -delete 2>/dev/null
-
     clear; ls -1AhFv --color --group-directories-first
 }
 
@@ -1601,15 +1597,11 @@ adlm()
 
     if [ "${?}" -eq '0' ]; then
         google_speech 'Download completed.' 2>/dev/null
-        exit 0
     else
         google_speech 'Download failed.' 2>/dev/null
-        read -p 'Press enter to exit.'
-        exit 1
     fi
 
     find . -type f -iname "*:Zone.Identifier" -delete 2>/dev/null
-
     clear; ls -1AhFv --color --group-directories-first
 }
 
