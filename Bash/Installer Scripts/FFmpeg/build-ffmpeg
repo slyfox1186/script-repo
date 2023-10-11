@@ -2110,8 +2110,8 @@ if build 'dav1d' "${g_ver1}"; then
 fi
 ffmpeg_libraries+=('--enable-libdav1d')
 
-# RAV1E FAILS TO BUILD ON UBUNTU BIONIC
-if [ "${VER}" != '18.04' ]; then
+# RAV1E FAILS TO BUILD ON UBUNTU BIONIC AND DEBIAN 11 BULLSEYE
+if [ "${VER}" != '18.04' ] && [ "${VER}" != '11' ]; then
     pre_check_ver 'xiph/rav1e' '1' 'T'
     if build 'rav1e' 'p20231003'; then
         echo '$ Installing RustUp'
