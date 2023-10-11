@@ -5,8 +5,8 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
-##  Script version: 2.9.1
-##  Last Update: 10.10.23
+##  Script version: 2.9.2
+##  Last Update: 10.11.23
 ##
 ##  Supported Distro:
 ##
@@ -33,6 +33,7 @@
 ##  Reverted: nv-codec-headers to version - 12.0.16.1 due to a 20% decrease in FPS
 ##
 ##  Added: Ubuntu Lunar 23.04 support
+##  Added: Debian 11 Bullseye support
 ##  Added: Debian OS Support for Bookworm (12)
 ##  Added: cyanrip
 ##  Added: vapoursynth
@@ -42,9 +43,12 @@
 ##  Added: Clang support
 ##  Added: WSL support
 ##
+##  Removed: Unrequired python3 build code
+##
 ##  Fixed: libheif not building the specified plugins.
 ##  Fixed: the code that prompts the user to install the cuda sdk toolkit
 ##  Fixed: broken wsl cuda sdk toolkit url
+##  Fixed: APT package errors for Debian 11 Bullseye
 ##
 #############################################################################################################
 
@@ -112,7 +116,7 @@ printf "\n%s\n\n" "The script will utilize (${cpu_threads}) CPU threads for para
 # SET THE C & C++ COMPILERS TO THE HIGHEST VERSION INSTALLED
 #
 
-export CC=gcc CXX=g++
+export CC=gcc-10 CXX=g++-10
 
 #
 # SET COMPILER OPTIMIZATION FLAGS
@@ -828,24 +832,28 @@ pkgs_fn()
         'Installing the required APT packages' \
         '=============================================='
 
-    pkgs=("${1}" ant apt asciidoc autoconf autoconf-archive automake autopoint binutils bison build-essential cargo ccache
-          checkinstall clang clang-tools cmake curl doxygen fcitx-libs-dev flex flite1-dev freeglut3-dev frei0r-plugins-dev
-          gawk gettext git gnome-desktop-testing gnustep-gui-runtime google-perftools gperf gtk-doc-tools guile-3.0-dev help2man
-          jq junit ladspa-sdk libasound2-dev libass-dev libaudio-dev libavfilter-dev libbluray-dev libbs2b-dev libbz2-dev libc6
-          libc6-dev libcaca-dev libcairo2-dev libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libchromaprint-dev libcodec2-dev
-          libcrypto++-dev libcurl4-openssl-dev libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev libdrm-dev libdvbpsi-dev
-          libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev
-          libgnutls28-dev libgnutls30 libgoogle-perftools4 libgoogle-perftools-dev libgsm1-dev libgvc6 libibus-1.0-dev libiconv-hook-dev
-          libintl-perl libjack-dev libjemalloc-dev libladspa-ocaml-dev libleptonica-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev
-          libmatroska-dev libmfx-dev libmodplug-dev libmp3lame-dev libmusicbrainz5-dev libmysofa-dev libnuma1 libnuma-dev libopencore-amrnb-dev
-          libopencore-amrwb-dev libopencv-dev libopenjp2-7-dev libopenmpt-dev libopus-dev libperl-dev libpstoedit-dev libpulse-dev
-          librabbitmq-dev libraqm-dev libraw-dev librsvg2-dev librubberband-dev librust-gstreamer-base-sys-dev libshine-dev libsmbclient-dev
-          libsnappy-dev libsndfile1-dev libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev libsrt-gnutls-dev libssh-dev libssl-dev
-          libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libtalloc-dev libtheora-dev libticonv-dev libtool libtool-bin libtwolame-dev
-          libudev-dev libunwind-dev libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev libvpx-dev
-          libx11-dev libx264-dev libx265-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev
-          libxvidcore-dev libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev lshw lzma-dev m4 meson nasm ninja-build openjdk-17-jdk-headless
-          pandoc python3 python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip valgrind wget xmlto zlib1g-dev)
+    pkgs=("${1}" ant apt asciidoc autoconf autoconf-archive automake autopoint binutils bison build-essential cargo
+          ccache checkinstall clang clang-tools cmake curl doxygen fcitx-libs-dev flex flite1-dev freeglut3-dev
+          frei0r-plugins-dev gawk gettext gimp-data git gnome-desktop-testing gnustep-gui-runtime google-perftools
+          gperf gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk libamd2 libasound2-dev libass-dev libaudio-dev
+          libavfilter-dev libbabl-0.1-0 libbluray-dev libbs2b-dev libbz2-dev libc6 libc6-dev libcaca-dev libcairo2-dev
+          libcamd2 libccolamd2 libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libcholmod3 libchromaprint-dev
+          libcodec2-dev libcolamd2 libcrypto++-dev libcurl4-openssl-dev libdbus-1-dev libde265-dev libdevil-dev
+          libdmalloc-dev libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev
+          libgegl-0.4-0 libgegl-common libgimp2.0 libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev
+          libgnutls28-dev libgnutls30 libgoogle-perftools4 libgoogle-perftools-dev libgsm1-dev libgvc6 libibus-1.0-dev
+          libiconv-hook-dev libintl-perl libjack-dev libjemalloc-dev libladspa-ocaml-dev libleptonica-dev liblz-dev
+          liblzma-dev liblzo2-dev libmathic-dev libmatroska-dev libmetis5 libmfx-dev libmodplug-dev libmp3lame-dev
+          libmusicbrainz5-dev libmysofa-dev libnuma1 libnuma-dev libopencore-amrnb-dev libopencore-amrwb-dev libopencv-dev
+          libopenjp2-7-dev libopenmpt-dev libopus-dev libperl-dev libpstoedit-dev libpulse-dev librabbitmq-dev libraqm-dev
+          libraw-dev librsvg2-dev librubberband-dev librust-gstreamer-base-sys-dev libshine-dev libsmbclient-dev libsnappy-dev
+          libsndfile1-dev libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev libsrt-gnutls-dev libssh-dev libssl-dev
+          libsuitesparseconfig5 libtalloc-dev libtheora-dev libticonv-dev libtool libtool-bin libtwolame-dev libudev-dev
+          libumfpack5 libunwind-dev libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev
+          libvpx-dev libx11-dev libx264-dev libx265-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev
+          libxrandr-dev libxss-dev libxvidcore-dev libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev lshw lzma-dev m4 meson nasm
+          ninja-build openjdk-17-jdk-headless pandoc python3 python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip
+          valgrind wget xmlto zlib1g-dev)
 
     for pkg in ${pkgs[@]}
     do
@@ -934,22 +942,6 @@ ffmpeg_install_choice()
     esac
 }
 
-extract_static_jxl_fn()
-{
-    local i
-    echo '$ Installing libjxl static binaries'
-    for i in *
-    do
-        sudo cp -f "${i}" /usr/bin
-    done
-}
-
-extract_deb_jxl_fn()
-{
-    echo '$ Installing libjxl debian files'
-
-}
-
 install_libjxl_fn()
 {
     cd "${packages}"/deb-files || exit 1
@@ -1003,11 +995,12 @@ sort_libjxl_fn()
 
 debian_os_version()
 {
+    debian_common_pkgs='libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev'
     debian_pkgs='libdmalloc5 libjemalloc2 libtcmalloc-minimal4 libyuv-dev libyuv-utils libyuv0 libsharp-dev'
 
     case "${VER}" in
-        trixie)         pkgs_fn "${debian_pkgs} libncurses-dev libncurses6 libncursesw6 librist-dev";;
-        12)             pkgs_fn "${debian_pkgs} librist-dev libncurses5-dev libncursesw5-dev";;
+        trixie)         pkgs_fn "${debian_common_pkgs} ${debian_pkgs} libncurses-dev libncurses6 libncursesw6 librist-dev";;
+        12)             pkgs_fn "${debian_common_pkgs} ${debian_pkgs} librist-dev libncurses5-dev libncursesw5-dev";;
         10|11)          pkgs_fn "${debian_pkgs} libncurses5-dev libncursesw5-dev";;
         *)              fail_fn "Could not detect the Debian version. Line: ${LINENO}";;
     esac
@@ -1015,6 +1008,7 @@ debian_os_version()
 
 ubuntu_os_version()
 {
+    ubuntu_common_pkgs='libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev'
     bionic_pkgs='libdmalloc5 libjemalloc1 libtcmalloc-minimal4 libvmmalloc-dev libvmmalloc1 libreadline-gplv2-dev'
     focal_pkgs='libjemalloc2 libtcmalloc-minimal4 libvmmalloc1 libvmmalloc-dev libdmalloc5 libcunit1-dev libde265-dev libncurses5-dev'
     focal_pkgs+=' libncursesw5-dev librust-jemalloc-sys-dev librust-malloc-buf-dev libsrt-doc libreadline-dev libcunit1 libcunit1-doc'
@@ -1023,8 +1017,8 @@ ubuntu_os_version()
     lunar_kenetic_pkgs='librist-dev libjxl-dev'
 
     case "${VER}" in
-        23.04|22.10)    pkgs_fn "${lunar_kenetic_pkgs} ${jammy_pkgs}";;
-        22.04)          pkgs_fn "${jammy_pkgs}";;
+        23.04|22.10)    pkgs_fn "${ubuntu_common_pkgs} ${lunar_kenetic_pkgs} ${jammy_pkgs}";;
+        22.04)          pkgs_fn "${ubuntu_common_pkgs} ${jammy_pkgs}";;
         20.04)          pkgs_fn "${focal_pkgs}";;
         18.04)          pkgs_fn "${bionic_pkgs}";;
         *)              fail_fn "Could not detect the Ubuntu version. Line: ${LINENO}";;
@@ -1059,22 +1053,11 @@ case "${VER_WSL}" in
     1)      sudo apt-get -qq -y install nvidia-utils-535;;
 esac
 
-if [ -z "${VER}" ]; then
-    VER="${CODENAME}"
-fi
-
 case "${OS}" in
     Debian|n/a)         debian_os_version;;
     Ubuntu)             ubuntu_os_version;;
     *)                  fail_fn "Could not detect the OS architecture. Line: ${LINENO}";
 esac
-
-check_python3_ver()
-{
-    local python3_ver
-    python3_ver="$(python3 --version | grep -Eo '[0-9\.]+')"
-    python3_rm_decimals="${python3_ver//\./}"
-}
 
 #
 # PROMPT THE USER TO INSTALL THE GEFORCE CUDA SDK-TOOLKIT
@@ -1115,6 +1098,34 @@ case "${VER}" in
     10|11|12|23.04)         lt_ver=2.4.7;;
     18.04|20.04|22.04)      lt_ver=2.4.6;;
     *)                      fail_fn "Unable to get the OS version. Line: ${LINENO}"
+esac
+
+if build 'm4' 'latest'; then
+    download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
+    execute ./configure --prefix="${workspace}"                \
+                        --{build,host,target}=x86_64-linux-gnu \
+                        --disable-nls                          \
+                        --enable-c++
+    execute make "-j${cpu_threads}"
+    execute make install
+    build_done 'm4' 'latest'
+fi
+
+if build 'autoconf' 'latest'; then
+    download 'http://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz'
+    execute autoreconf -fi
+    execute ./configure --prefix="${workspace}"         \
+                        --{build,host}=x86_64-linux-gnu \
+                        M4="${workspace}"/bin/m4
+    execute make "-j${cpu_threads}"
+    execute make install
+    build_done 'autoconf' 'latest'
+fi
+
+case "${VER}" in
+    12|23.04)                   lt_ver='2.4.7';;
+    10|11|18.04|20.04|22.04)    lt_ver='2.4.6';;
+    *)                          fail_fn "Unable to get the OS version:Line ${LINENO}"
 esac
 
 if build 'libtool' "${lt_ver}"; then
@@ -1164,28 +1175,6 @@ if build 'openssl' '3.1.3'; then
     build_done 'openssl' '3.1.3'
 fi
 ffmpeg_libraries+=('--enable-openssl')
-
-# UBUNTU BIONIC NEEDS A RECENT VERSION OF PYTHON3 TO INSTALL A RECENT VERSION OF MESON
-check_python3_ver
-if [ "${python3_rm_decimals}" -lt '700' ]; then
-    if build 'python3' '3.9.16'; then
-        download 'https://www.python.org/ftp/python/3.9.16/Python-3.9.16.tar.xz' 'python3-3.9.16.tar.xz'
-        rm_pip_lock="$(sudo find /usr/lib/python3* -type f -name 'EXTERNALLY-MANAGED')"
-        if [ -n "${rm_pip_lock}" ]; then
-            sudo rm "${rm_pip_lock}"
-        fi
-        if ! pip show setuptools; then
-            execute pip install setuptools --disable-pip-version-check --no-cache-dir --quiet --upgrade
-        fi
-        execute sudo ./configure --enable-optimizations
-        execute sudo make "-j${cpu_threads}"
-        execute sudo make altinstall
-        build_done 'python3' '3.9.16'
-    fi
-    python_var='python3.9'
-else
-    python_var='python3'
-fi
 
 pre_check_ver 'yasm/yasm' '1' 'T'
 if build 'yasm' "${g_ver}"; then
@@ -1649,10 +1638,6 @@ if build 'lv2' 'git'; then
                               --buildtype=release           \
                               --default-library=static      \
                               --strip                       \
-                              -Db_lto_threads=1             \
-                              -Dc_args="${CFLAGS}"          \
-                              -Dcpp_args="${CXXFLAGS}"      \
-                              -Dplugins="${pulgins_switch}" \
                               "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
