@@ -29,6 +29,8 @@
 ##         any issues with dbus or x-11 display issues
 ##  Added: options to choose what GCC versions to install
 ##  Added: the LIBRARY_PATH variable to include the default paths of the APT "gcc" version
+##  Added: Debian 11 Bullseye APT package support
+##  Added: GCC v10.5.0 to the list of possible build options
 ##
 ##  Optimized: code by removing redundant loops by passing variables to functions
 ##
@@ -321,12 +323,12 @@ execute()
     if [ "${debug}" = 'ON' ]; then
         if ! output=$("${@}"); then
             notify-send -t 5000 "Failed to execute: ${*}"
-            fail_fn "Failed to execute: ${*}:Line ${LINENO}"
+            fail_fn "Failed to execute: ${*}. Line: ${LINENO}"
         fi
     else
         if ! output=$("${@}" 2>&1); then
             notify-send -t 5000 "Failed to execute: ${*}"
-            fail_fn "Failed to execute: ${*}:Line ${LINENO}"
+            fail_fn "Failed to execute: ${*}. Line: ${LINENO}"
         fi
     fi
 }
@@ -355,7 +357,7 @@ download()
             printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 5 seconds..."
             sleep 5
             if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
-                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit:Line ${LINENO}"
+                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit. Line: ${LINENO}"
             fi
         fi
         echo 'Download Completed'
@@ -370,18 +372,18 @@ download()
     if [ -n "${3}" ]; then
         if ! tar -xf "${target_file}" -C "${target_dir}" 2>/dev/null >/dev/null; then
             sudo rm "${target_file}"
-            fail_fn "Failed to extract \"${dl_file}\" so it was deleted. Please run the script again:Line ${LINENO}"
+            fail_fn "Failed to extract \"${dl_file}\" so it was deleted. Please run the script again. Line: ${LINENO}"
         fi
     else
         if ! tar -xf "${target_file}" -C "${target_dir}" --strip-components 1 2>/dev/null >/dev/null; then
             sudo rm "${target_file}"
-            fail_fn "Failed to extract \"${dl_file}\" so it was deleted. Please run the script again:Line ${LINENO}"
+            fail_fn "Failed to extract \"${dl_file}\" so it was deleted. Please run the script again. Line: ${LINENO}"
         fi
     fi
 
     echo -e "File extracted: ${dl_file}\\n"
 
-    cd "${target_dir}" || fail_fn "Unable to change the working directory to \"${target_dir}\":Line ${LINENO}"
+    cd "${target_dir}" || fail_fn "Unable to change the working directory to \"${target_dir}\". Line: ${LINENO}"
 }
 
 download_git()
@@ -403,13 +405,13 @@ download_git()
         printf "\n%s\n\n" "The script failed to clone the git repository \"${target_dir}\" and will try again in 10 seconds..."
         sleep 10
         if ! git clone -q "${dl_url}" "${target_dir}"; then
-            fail_fn "The script failed to clone \"${target_dir}\" twice and will now exit the build:Line ${LINENO}"
+            fail_fn "The script failed to clone \"${target_dir}\" twice and will now exit the build. Line: ${LINENO}"
         fi
     else
         echo -e "Successfully cloned: ${target_dir}\\n"
     fi
 
-    cd "${target_dir}" || fail_fn "Unable to change the working directory to \"${target_dir}\":Line ${LINENO}"
+    cd "${target_dir}" || fail_fn "Unable to change the working directory to \"${target_dir}\". Line: ${LINENO}"
 }
 
 build()
@@ -462,7 +464,7 @@ git_ver_fn()
     case "${v_flag}" in
             R)      t_flag=releases;;
             T)      t_flag=tags;;
-            *)      fail_fn "Could not detect the variable \"v_flag\":Line ${LINENO}"
+            *)      fail_fn "Could not detect the variable \"v_flag\". Line: ${LINENO}"
     esac
 
     git_1_fn "${v_url}" "${t_flag}" 2>/dev/null
@@ -528,7 +530,7 @@ case "${get_gcc_ver}" in
     11)     apt_gcc_ver="${gcc_11}";;
     12)     apt_gcc_ver="${gcc_12}";;
     13)     apt_gcc_ver="${gcc_13}";;
-    *)      fail_fn "Failed to store the GCC version number in the variable \"get_gcc_ver\":Line ${LINENO}";;
+    *)      fail_fn "Failed to store the GCC version number in the variable \"get_gcc_ver\". Line: ${LINENO}";;
 esac
 
 pkgs_fn "${apt_gcc_ver}"
@@ -570,7 +572,7 @@ ubuntu_os_version()
             22.10|22.04)        pkgs_fn "${ubuntu_jammy}";;
             20.04)              pkgs_fn 'libgm2-10-dev lib32ubsan1 lib32stdc++-10-dev';;
             18.04)              clear;;
-            *)                  fail_fn "Could not detect the OS version:Line ${LINENO}";;
+            *)                  fail_fn "Could not detect the OS version. Line: ${LINENO}";;
     esac
 
 }
@@ -586,7 +588,7 @@ debian_os_version()
             12)                 pkgs_fn "${debian_bookworm} gnat-12";;
             11)                 pkgs_fn "${debian_bullseye} gnat-10";;
             10)                 pkgs_fn 'gnat-8';;
-            *)                  fail_fn "Could not detect the OS version:Line ${LINENO}";;
+            *)                  fail_fn "Could not detect the OS version. Line: ${LINENO}";;
     esac
 }
 
@@ -719,6 +721,69 @@ if build 'zlib' "${g_ver}"; then
     build_done 'zlib' "${g_ver}"
 fi
 
+build_gcc_10_fn()
+{
+    if [ -d "${packages}/gcc-10.5.0" ]; then
+        sudo rm -fr "${packages}/gcc-10.5.0"
+    fi
+    if build 'gcc-10' '10.5.0'; then
+        download 'https://ftp.gnu.org/gnu/gcc/gcc-10.5.0/gcc-10.5.0.tar.xz'
+        olt_10="nvptx-none=/build/gcc-10-Km9U7s/gcc-10-10.2.1/debian/tmp-nvptx${install_prefix}"
+        olt_10+=",amdgcn-amdhsa=/build/gcc-10-Km9U7s/gcc-10-10.2.1/debian/tmp-gcn${install_prefix},hsa"
+        langs_10='c,ada,c++,go,brig,d,fortran,objc,obj-c++,m2'
+        execute autoreconf -fi
+        execute sudo ./contrib/download_prerequisites
+        mkdir builddir
+        cd builddir || exit 1
+        execute ../configure --prefix="${install_prefix}"                 \
+                             --{build,host,target}="${pc_type}"           \
+                             --disable-assembly                           \
+                             --disable-nls                                \
+                             --disable-vtable-verify                      \
+                             --disable-werror                             \
+                             --enable-bootstrap                           \
+                             --enable-checking=release                    \
+                             --enable-clocale=gnu                         \
+                             --enable-default-pie                         \
+                             --enable-gnu-unique-object                   \
+                             --enable-languages="${langs_10}"             \
+                             --enable-libphobos-checking=release          \
+                             --enable-libstdcxx-debug                     \
+                             --enable-libstdcxx-time=yes                  \
+                             --enable-linker-build-id                     \
+                             --enable-link-mutex                          \
+                             --enable-multiarch                           \
+                             --enable-multilib                            \
+                             --enable-offload-targets="${olt_10}"         \
+                             --enable-plugin                              \
+                             --enable-shared                              \
+                             --enable-threads=posix                       \
+                             --libdir="${install_prefix}"/lib             \
+                             --libexecdir="${install_prefix}"/libexec     \
+                             --program-prefix="${pc_type}"'-'             \
+                             --program-suffix=-10                         \
+                             --with-abi=m64                               \
+                             --with-build-config=bootstrap-lto-lean       \
+                             --with-default-libstdcxx-abi=new             \
+                             --with-gcc-major-version-only                \
+                             --with-multilib-list=m32,m64,mx32            \
+                             --with-pkgversion="${os_first_token} 10.5.0" \
+                             --with-system-zlib                           \
+                             --with-target-system-zlib=auto               \
+                             --with-tune=generic                          \
+                             --without-included-gettext                   \
+                             "${cuda_check}"
+        printf "\n%s\n%s\n\n" \
+            "$ Compiling gcc-10 with languages=${langs_10}" \
+            '$ This is going to take a while...'
+        execute make "-j${cpu_threads}"
+        execute sudo make install-strip
+        execute sudo libtool --finish "${install_prefix}/libexec/gcc/${pc_type}/11"
+        execute sudo libtool --finish "${install_prefix}/lib"
+        build_done 'gcc-10' '10.5.0'
+    fi
+}
+
 build_gcc_11_fn()
 {
     if [ -d "${packages}/gcc-11.4.0" ]; then
@@ -775,7 +840,7 @@ build_gcc_11_fn()
                              --with-tune=generic                          \
                              --with-zstd="${workspace}"                   \
                              --without-included-gettext                   \
-                             --without-cuda-driver
+                             "${cuda_check}"
         printf "\n%s\n%s\n\n" \
             '$ Compiling gcc-11 with languages=all' \
             '$ This is going to take a while...'
@@ -843,7 +908,7 @@ build_gcc_12_fn()
                              --with-tune=generic                          \
                              --with-zstd="${workspace}"                   \
                              --without-included-gettext                   \
-                             --without-cuda-driver
+                             "${cuda_check}"
         printf "\n%s\n%s\n\n" \
             "$ Compiling gcc-12 with languages=all" \
             '$ This is going to take a while...'
@@ -934,52 +999,36 @@ build_gcc_13_fn()
 gcc_prompt()
 {
     local answer
+    clear
 
     printf "\n%s\n%s\n\n%s\n%s\n%s\n%s\n%s\n\n" \
         'Choose the GCC version(s) to install' \
         '======================================' \
         '[1] All' \
-        '[2] GCC 12+13' \
+        '[2] GCC 10' \
         '[3] GCC 11' \
         '[4] GCC 12' \
         '[5] GCC 13'
-        read -p 'Your choices are (1 to 5): ' answer
+    read -p 'Your choices are (1 to 5): ' answer
 
     case "${answer}" in
-        1)      gcc_choice=1;;
-        2)      gcc_choice=2;;
-        3)      gcc_choice=3;;
-        4)      gcc_choice=4;;
-        5)      gcc_choice=5;;
+        1)
+                build_gcc_10_fn
+                build_gcc_11_fn
+                build_gcc_12_fn
+                build_gcc_13_fn
+                ;;
+        2)      build_gcc_10_fn;;
+        3)      build_gcc_11_fn;;
+        4)      build_gcc_12_fn;;
+        5)      build_gcc_13_fn;;
         *)
-                clear
-                printf "%s\n\n" 'Bad user input. Resetting script...'
-                sleep 3
                 unset answer
-                clear
                 gcc_prompt
                 ;;
     esac
 }
-
 gcc_prompt
-clear
-
-case "${gcc_choice}" in
-    1)
-            build_gcc_11_fn
-            build_gcc_12_fn
-            build_gcc_13_fn
-            ;;
-    2)
-            build_gcc_12_fn
-            build_gcc_13_fn
-            ;;
-    3)      build_gcc_11_fn;;
-    4)      build_gcc_12_fn;;
-    5)      build_gcc_13_fn;;
-    *)      fail_fn "Unable to find the gcc_choice variable. It could be due to bad user input...:Line ${LINENO}";;
-esac
 
 # CREATE SOFT LINKS TO SHORTEN THE BINARY NAMES
 create_gcc_links_fn
