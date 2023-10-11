@@ -31,7 +31,7 @@ archive_url=https://github.com/facebook/zstd/releases/download/v1.5.5/${archive_
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/zstd-build-script
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
 
 printf "\n%s\n%s\n\n" \
     "ZStd Build Script - v${script_ver}" \
