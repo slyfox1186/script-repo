@@ -928,8 +928,8 @@ build_gcc_13_fn()
     if build 'gcc-13' '13.2.0'; then
         download 'https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.xz'
         export CC=gnatgcc CXX=g++
-        olt_13="nvptx-none=/build/gcc-13-aYYs71/gcc-13-13.1.0/debian/tmp-nvptx/${install_prefix}"
-        olt_13+=",amdgcn-amdhsa=/build/gcc-13-aYYs71/gcc-13-13.1.0/debian/tmp-gcn/${install_prefix}"
+        olt_13="nvptx-none=/build/gcc-13-aYYs71/gcc-13-13.1.0/debian/tmp-nvptx${install_prefix}"
+        olt_13+=",amdgcn-amdhsa=/build/gcc-13-aYYs71/gcc-13-13.1.0/debian/tmp-gcn${install_prefix}"
         langs_13='c,ada,c++,d,fortran,go,lto,m2,objc,obj-c++'
         execute autoreconf -fi
         execute sudo ./contrib/download_prerequisites
