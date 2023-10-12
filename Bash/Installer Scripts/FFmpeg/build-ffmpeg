@@ -1269,7 +1269,7 @@ if build 'libtiff' "$g_ver"; then
 fi
 
 pre_check_ver 'nkoriyama/aribb24' '1' 'T'
-if build 'aribb24' "{$g_ver}"; then
+if build 'aribb24' "${g_ver}"; then
     download "https://github.com/nkoriyama/aribb24/archive/refs/tags/v${g_ver}.tar.gz" "aribb24-${g_ver}.tar.gz"
     execute autoreconf -fi
     execute ./configure --prefix="${workspace}" \
@@ -1278,7 +1278,7 @@ if build 'aribb24' "{$g_ver}"; then
                         PKG_CONFIG="${workspace}"/bin/pkg-config
     execute make "-j${cpu_threads}"
     execute make install
-    build_done 'aribb24' "{$g_ver}"
+    build_done 'aribb24' "${g_ver}"
 fi
 ffmpeg_libraries+=('--enable-libaribb24')
 
