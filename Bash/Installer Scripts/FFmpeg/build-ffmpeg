@@ -2609,8 +2609,6 @@ if build 'libheif' "${g_ver}"; then
                   -DAOM_LIBRARY="${workspace}"/lib/libaom.a                      \
                   -DDAV1D_INCLUDE_DIR="${workspace}"/include                     \
                   -DDAV1D_LIBRARY="${workspace}"/lib/x86_64-linux-gnu/libdav1d.a \
-                  -DRAV1E_INCLUDE_DIR="${workspace}"/include/rav1e               \
-                  -DRAV1E_LIBRARY="${workspace}"/lib/librav1e.a                  \
                   -DLIBDE265_INCLUDE_DIR="${workspace}"/include                  \
                   -DLIBDE265_LIBRARY=/usr/lib/x86_64-linux-gnu/libde265.so       \
                   -DX265_INCLUDE_DIR="${workspace}"/include                      \
