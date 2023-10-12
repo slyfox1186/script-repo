@@ -116,7 +116,7 @@ printf "\n%s\n\n" "The script will utilize (${cpu_threads}) CPU threads for para
 # SET THE C & C++ COMPILERS TO THE HIGHEST VERSION INSTALLED
 #
 
-export CC=gcc-10 CXX=g++-10
+export CC=gcc CXX=g++
 
 #
 # SET COMPILER OPTIMIZATION FLAGS
