@@ -1460,6 +1460,8 @@ if build 'libwebp' 'git'; then
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
+    execute sudo cp -f build/libwebp.so.7.1.8 /usr/lib/x86_64-linux-gnu
+    execute sudo ln -sf /usr/lib/x86_64-linux-gnu/libwebp.so.7.1.8 /usr/lib/x86_64-linux-gnu/libwebp.so
     build_done 'libwebp' 'git'
 fi
 ffmpeg_libraries+=('--enable-libwebp')
