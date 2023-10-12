@@ -2503,7 +2503,8 @@ if build 'vapoursynth' "${g_ver}"; then
 fi
 ffmpeg_libraries+=('--enable-vapoursynth')
 
-if [ "${VER}" != '22.04' ]; then
+# CYANRIP WILL NOT BUILD ON JAMMY AND DEBIAN 11 BULLSEYE
+if [ "${VER}" != '22.04' ] && [ "${VER}" != '11' ]; then
     pre_check_ver 'cyanreg/cyanrip' '1' 'T'
     if build 'cyanrip' "${g_ver}"; then
         download "https://github.com/cyanreg/cyanrip/archive/refs/tags/v${g_ver}.tar.gz" "cyanrip-${g_ver}.tar.gz"
