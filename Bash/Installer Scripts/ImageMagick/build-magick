@@ -379,10 +379,10 @@ pkgs_fn()
     pkgs=("${1}" alien asciidoc autoconf autoconf-archive automake autopoint binutils bison build-essential
           cmake curl flex gettext gimp-data git gperf imagemagick jq libc6 libc6-dev libfreetype-dev libgc-dev
           libgimp2.0-dev libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev libheif-dev libjxl-gimp-plugin
-          libltdl-dev libnuma-dev libpango1.0-dev libpaper-dev libpng-dev libpstoedit-dev libraw-dev librsvg2-dev
-          librust-bzip2-dev libsdl2-dev libstdc++-12-dev libtcmalloc-minimal4 libticonv-dev libtool libtool-bin
-          libxml2-dev libzip-dev m4 meson nasm ninja-build opencl-c-headers opencl-headers php php-cli pstoedit
-          xmlto yasm zlib1g-dev)
+          libltdl-dev libnuma-dev libomp-dev libpango1.0-dev libpaper-dev libpng-dev libpstoedit-dev libraw-dev
+          librsvg2-dev librust-bzip2-dev libsdl2-dev libstdc++-12-dev libtcmalloc-minimal4 libticonv-dev libtool
+          libtool-bin libxml2-dev libzip-dev m4 meson nasm ninja-build opencl-c-headers opencl-headers php php-cli
+          pstoedit xmlto yasm zlib1g-dev)
 
     for i in ${pkgs[@]}
     do
