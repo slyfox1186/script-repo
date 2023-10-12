@@ -862,6 +862,20 @@ if build 'jemalloc' "${g_ver}"; then
     build_done 'jemalloc' "${g_ver}"
 fi
 
+git_ver_fn 'khronosgroup/opencl-headers' '1' 'T'
+if build 'opencl-headers' "${g_ver}"; then
+    download "https://github.com/KhronosGroup/OpenCL-Headers/archive/refs/tags/v${g_ver}.tar.gz" "opencl-headers-${g_ver}.tar.gz"
+    execute cmake -B build                              \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DOPENCL_HEADERS_BUILD_CXX_TESTS=OFF  \
+                  -DBUILD_TESTING=OFF                   \
+                  -G Ninja -Wno-dev
+    execute ninja "-j${cpu_threads}" -C build
+    execute ninja "-j${cpu_threads}" -C build install
+    build_done 'opencl-headers' "${g_ver}"
+fi
+
 git_ver_fn 'uclouvain/openjpeg' '1' 'R'
 if build 'openjpeg' "${g_ver2}"; then
     download "https://codeload.github.com/uclouvain/openjpeg/tar.gz/refs/tags/v${g_ver2}" "openjpeg-${g_ver2}.tar.gz"
