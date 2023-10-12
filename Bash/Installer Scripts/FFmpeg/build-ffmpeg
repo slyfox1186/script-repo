@@ -2598,8 +2598,6 @@ if build 'libheif' "${g_ver}"; then
                   -DWITH_DAV1D=ON                                                \
                   -DWITH_LIBDE265=ON                                             \
                   -DWITH_LIBSHARPYUV=ON                                          \
-                  -DWITH_RAV1E=ON                                                \
-                  -DWITH_RAV1E_PLUGIN=ON                                         \
                   -DWITH_SvtEnc=ON                                               \
                   -DWITH_SvtEnc_PLUGIN=ON                                        \
                   -DWITH_GDK_PIXBUF="${pixbuf_var}"                              \
