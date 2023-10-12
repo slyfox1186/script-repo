@@ -1440,23 +1440,23 @@ fi
 if build 'libwebp' 'git'; then
     download_git 'https://chromium.googlesource.com/webm/libwebp' 'libwebp-git'
     execute autoreconf -fi
-    execute cmake -B build                              \
-                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
-                  -DCMAKE_BUILD_TYPE=Release            \
-                  -DBUILD_SHARED_LIBS=OFF               \
-                  -DZLIB_INCLUDE_DIR="${workspace}"     \
-                  -DWEBP_BUILD_ANIM_UTILS=OFF           \
-                  -DWEBP_BUILD_EXTRAS=OFF               \
-                  -DWEBP_BUILD_GIF2WEBP=OFF             \
-                  -DWEBP_BUILD_IMG2WEBP=OFF             \
-                  -DWEBP_BUILD_LIBWEBPMUX=OFF           \
-                  -DWEBP_BUILD_VWEBP=OFF                \
-                  -DWEBP_BUILD_WEBPINFO=OFF             \
-                  -DWEBP_BUILD_WEBPMUX=OFF              \
-                  -DWEBP_ENABLE_SWAP_16BIT_CSP=OFF      \
-                  -DWEBP_LINK_STATIC=OFF                \
-                  -DWEBP_BUILD_CWEBP=ON                 \
-                  -DWEBP_BUILD_DWEBP=ON                 \
+    execute cmake -B build                                  \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}"     \
+                  -DCMAKE_BUILD_TYPE=Release                \
+                  -DBUILD_SHARED_LIBS=ON                    \
+                  -DZLIB_INCLUDE_DIR="${workspace}"/include \
+                  -DWEBP_BUILD_ANIM_UTILS=OFF               \
+                  -DWEBP_BUILD_EXTRAS=OFF                   \
+                  -DWEBP_BUILD_GIF2WEBP=OFF                 \
+                  -DWEBP_BUILD_IMG2WEBP=OFF                 \
+                  -DWEBP_BUILD_LIBWEBPMUX=OFF               \
+                  -DWEBP_BUILD_VWEBP=OFF                    \
+                  -DWEBP_BUILD_WEBPINFO=OFF                 \
+                  -DWEBP_BUILD_WEBPMUX=OFF                  \
+                  -DWEBP_ENABLE_SWAP_16BIT_CSP=OFF          \
+                  -DWEBP_LINK_STATIC=OFF                    \
+                  -DWEBP_BUILD_CWEBP=ON                     \
+                  -DWEBP_BUILD_DWEBP=ON                     \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
