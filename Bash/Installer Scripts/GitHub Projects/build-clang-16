@@ -292,8 +292,8 @@ git_ver_fn()
 #
 
 pkgs=(autoconf autoconf-archive automake autopoint binutils binutils-dev bison
-      build-essential clang cmake curl jq libc6 libc6-dev libedit-dev libtool
-      libtool-bin libxml2-dev m4 nasm ninja-build yasm zlib1g-dev)
+      build-essential ccache clang cmake curl jq libc6 libc6-dev libedit-dev
+      libtool libtool-bin libxml2-dev m4 nasm ninja-build yasm zlib1g-dev)
 
 for i in ${pkgs[@]}
 do
