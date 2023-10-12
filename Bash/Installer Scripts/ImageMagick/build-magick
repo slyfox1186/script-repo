@@ -632,6 +632,23 @@ fi
 # BEGIN BUILDING FROM SOURCE CODE
 #
 
+case "${VER}" in
+    12|23.04)                   lt_ver='2.4.7';;
+    10|11|18.04|20.04|22.04)    lt_ver='2.4.6';;
+    *)                          fail_fn "Unable to get the OS version:Line ${LINENO}"
+esac
+
+if build 'libtool' "${lt_ver}"; then
+    download "https://ftp.gnu.org/gnu/libtool/libtool-${lt_ver}.tar.xz"
+    execute ./configure --prefix="${workspace}"     \
+                        --{build,host}="${pc_type}" \
+                        --with-pic                  \
+                        M4="${workspace}"/bin/m4
+    execute make "-j${cpu_threads}"
+    execute make install
+    build_done 'libtool' "${lt_ver}"
+fi
+
 git_ver_fn 'libsdl-org/libtiff' '1' 'T'
 if build 'tiff' "${g_ver}"; then
     download "https://codeload.github.com/libsdl-org/libtiff/tar.gz/refs/tags/v${g_ver}" "tiff-${g_ver}.tar.gz"
