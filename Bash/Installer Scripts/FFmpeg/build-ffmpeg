@@ -2114,7 +2114,7 @@ fi
 ffmpeg_libraries+=('--enable-libdav1d')
 
 # RAV1E FAILS TO BUILD ON UBUNTU BIONIC AND DEBIAN 11 BULLSEYE
-if [ "${VER}" != '18.04' ] && [ "${VER}" != '11' ]; then
+if [ "${VER}" != '18.04' ] || [ "${VER}" != '11' ]; then
     pre_check_ver 'xiph/rav1e' '1' 'T'
     if build 'rav1e' 'p20231003'; then
         echo '$ Installing RustUp'
@@ -2507,7 +2507,7 @@ fi
 ffmpeg_libraries+=('--enable-vapoursynth')
 
 # CYANRIP WILL NOT BUILD ON JAMMY AND DEBIAN 11 BULLSEYE
-if [ "${VER}" != '22.04' ] && [ "${VER}" != '11' ]; then
+if [ "${VER}" != '22.04' ] || [ "${VER}" != '11' ]; then
     pre_check_ver 'cyanreg/cyanrip' '1' 'T'
     if build 'cyanrip' "${g_ver}"; then
         download "https://github.com/cyanreg/cyanrip/archive/refs/tags/v${g_ver}.tar.gz" "cyanrip-${g_ver}.tar.gz"
