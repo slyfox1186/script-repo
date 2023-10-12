@@ -2736,6 +2736,7 @@ ffmpeg_install_test
 
 # EXECUTE THE LDCONFIG COMMAND TO ENSURE THAT ALL LIBRARY CHANGES ARE DETECTED BY FFMPEG
 sudo ldconfig 2>/dev/null
+sudo ldconfig /usr/local/lib64 2>/dev/null
 
 # DISPLAY FFMPEG'S VERSION
 if [ -f "${workspace}"/bin/ffmpeg ]; then
