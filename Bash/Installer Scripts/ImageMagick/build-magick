@@ -856,8 +856,7 @@ if build 'jemalloc' "${g_ver}"; then
                         --disable-stats                   \
                         --enable-autogen                  \
                         --enable-static                   \
-                        --enable-xmalloc                  \
-                        --with-pic
+                        --enable-xmalloc
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'jemalloc' "${g_ver}"
