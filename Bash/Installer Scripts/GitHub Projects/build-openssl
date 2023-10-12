@@ -36,7 +36,7 @@ archive_name="${archive_dir}.tar.${archive_ext}"
 parent_dir="${PWD}"
 cwd="${parent_dir}"/openssl-build-script
 install_dir=/usr/local
-ssl_dir=/usr/local/lib/ssl
+ssl_dir=/usr/local/ssl
 cert_dir="${ssl_dir}/certs"
 pem_file=cacert.pem
 pem_in="${cwd}/${pem_file}"
@@ -55,7 +55,7 @@ printf "%s\n%s\n\n" \
 if [ -d "${cwd}" ]; then
     sudo rm -fr "${cwd}"
 fi
-mkdir -p "${cwd}"
+mkdir -p "${cwd}" "${cert_dir}"
 
 #
 # SET THE C+CPP COMPILERS
@@ -191,7 +191,7 @@ if [ ! -f "${pem_out}" ]; then
     printf "%s\n%s\n\n" \
         'Download the latest security certificate' \
         '================================================'
-    curl -A "${user_agent}" -Lso "${pem_in}" "https://curl.se/ca/${pem_file}"
+    wget -U "${user_agent}" -cqO "${pem_in}" "https://curl.se/ca/${pem_file}"
     if ! sudo mv "${pem_in}" "${pem_out}"; then
         fail_fn "Failed to move \"${pem_in}\" to \"${pem_out}\":Line ${LINENO}"
     fi
@@ -202,7 +202,7 @@ fi
 #
 
 if [ ! -f "${cwd}/${archive_name}" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
+    wget -U "${user_agent}" -cqO "${cwd}/${archive_name}" "${archive_url}"
 fi
 
 #
@@ -289,6 +289,9 @@ fi
 
 # REQUIRED FOR FIPS FUNCTIONALITY TO WORK
 sudo openssl fipsinstall >/dev/null
+
+# UPDATE THE LIBRARIES FOR LD
+sudo ldconfig /usr/local/lib64/
 
 # ENSURE THE CORRECT PERMISSIONS ARE ATTACHED TO THE CUSTOM PEM FILE THAT WAS ADDED
 if [ -f "${pem_out}" ]; then
