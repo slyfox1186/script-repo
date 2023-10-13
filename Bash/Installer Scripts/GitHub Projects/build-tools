@@ -329,7 +329,8 @@ printf "%s\n%s\n\n" \
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf automake autogen build-essential ccache cmake curl jq git libssl-dev qt6-base-dev)
+pkgs=(autoconf automake autogen build-essential ccache cmake curl
+      jq git libssl-dev python3 python3-pip qt6-base-dev)
 
 for i in ${pkgs[@]}
 do
