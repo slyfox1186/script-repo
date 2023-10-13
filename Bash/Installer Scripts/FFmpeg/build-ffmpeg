@@ -64,7 +64,7 @@ ffmpeg_archive=ffmpeg-"${ffmpeg_sver}".tar.gz
 ffmpeg_url=https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/"${ffmpeg_ver}".tar.gz
 ###############################################################################
 # SNAPSHOT
-# ffmpeg_ver=963937e408fc68b5925f938a253cfff1d506f784
+# ffmpeg_sver=963937e408fc68b5925f938a253cfff1d506f784
 # ffmpeg_archive=https://www.ffmpeg.org/releases/ffmpeg-"${ffmpeg_sver}".tar.gz
 ###############################################################################
 cuda_latest_ver=12.2.2
