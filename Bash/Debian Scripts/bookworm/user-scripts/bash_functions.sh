@@ -727,9 +727,6 @@ imdl()
     cd "${cwd}" || exit 1
     sudo chown "${USER}":"${USER}" imow
     sudo chmod +rwx imow
-    if [ -f "${0}" ]; then
-        sudo rm "${0}"
-    fi
 }
 
 ###########################
