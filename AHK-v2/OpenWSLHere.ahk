@@ -15,11 +15,14 @@
     - To find the available distros run 'wsl.exe -l --all' using PowerShell to get a list of available options
 
     Updated:
-    - 10.08.23
+    - 10.12.23
 
     Big Update:
-    - Greatly improved the code. When explorer.exe has multiple tabs per window, it will
+    - Improved the code. When explorer.exe has multiple tabs per window, it will
       open the correct tab the hotkey is trigged on instead of just activating the far left tab.
+
+    Fixed:
+    - single quotes need to be doubled up
 
 */
 
@@ -61,6 +64,7 @@ OpenWSLHere()
                 continue
         }
         pwd := '"' win.Document.Folder.Self.Path '"'
+        pwd := StrReplace(pwd, "'", "''")
         break
     }
 
