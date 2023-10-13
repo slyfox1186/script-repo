@@ -639,15 +639,6 @@ if [ -n "${LDEXEFLAGS}" ]; then
     printf "%s\n\n" 'The script has been configured to run in full static mode.'
 fi
 
-#
-# SET JAVA VARIABLES
-#
-
-find_java="$(sudo find /usr/lib/jvm -type d -name 'java-*-openjdk-*' | sort -r | head -n1)"
-JAVA_HOME="${find_java}"
-export JAVA_HOME
-export PATH="${PATH}:${JAVA_HOME}/bin"
-
 # SET THE PATH VARIABLE
 #
 
@@ -1058,6 +1049,15 @@ case "${OS}" in
     Ubuntu)             ubuntu_os_version;;
     *)                  fail_fn "Could not detect the OS architecture. Line: ${LINENO}";
 esac
+
+#
+# SET JAVA VARIABLES
+#
+
+find_java="$(sudo find /usr/lib/jvm -type d -name 'java-*-openjdk-*' | sort -r | head -n1)"
+JAVA_HOME="${find_java}"
+export JAVA_HOME
+export PATH="${PATH}:${JAVA_HOME}/bin"
 
 #
 # CHECK IF THE CUDA FOLDER EXISTS TO DETERMINE INSTALLATION STATUS
