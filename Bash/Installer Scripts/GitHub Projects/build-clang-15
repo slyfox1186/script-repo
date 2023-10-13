@@ -257,7 +257,6 @@ download()
     cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}. Line: ${LINENO}"
 }
 
-
 git_1_fn()
 {
     local curl_cmd github_repo github_url
