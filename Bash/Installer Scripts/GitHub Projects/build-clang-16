@@ -335,7 +335,7 @@ box_out_banner()
     echo " ${line}"
     tput sgr 0
 }
-box_out_banner "Clang Build Script - Version ${script_ver}"
+box_out_banner "Clang Build Script - version ${script_ver}"
 
 if build 'llvm' '16.0.6'; then
     download 'https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.6/llvm-project-16.0.6.src.tar.xz' 'llvm-16.0.6.tar.gz'
