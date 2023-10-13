@@ -752,7 +752,7 @@ cuda_download_fn()
     sudo apt update
     sudo apt -y install cuda
 
-    cuda_ver="$(cat "${cuda_folder_path}"/version.json | jq -r '.cuda.version')"
+    cuda_ver="$(cat /usr/local/cuda/version.json | jq -r '.cuda.version')"
 
     if [ -z "${cuda_ver}" ]; then
         fail_fn "Unable to locate the file: ${cuda_folder_path}/version.json. Line: ${LINENO}"
