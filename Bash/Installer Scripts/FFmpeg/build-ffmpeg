@@ -1262,8 +1262,7 @@ if build 'libtiff' "$g_ver"; then
     execute ./configure --prefix="${workspace}"     \
                         --{build,host}="${pc_type}" \
                         --disable-shared            \
-                        --enable-cxx                \
-                        --with-pic
+                        --enable-cxx
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'libtiff' "$g_ver"
