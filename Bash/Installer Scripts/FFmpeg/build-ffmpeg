@@ -1450,14 +1450,14 @@ if build 'libwebp' 'git'; then
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
-    libwebp_shared_lib="$(find "${workspace}"/build -type f -name 'libwebp.so.*')"
+    libwebp_shared_lib="$(find "${workspace}"/lib -type f -name 'libwebp.so.*')"
     libwebp_trimmed_full="$(echo "${libwebp_shared_lib}" | sed 's:.*/::')"
     libwebp_trimmed_short="$(echo "${libwebp_shared_lib}" | sed 's/....$//g' | sed 's:.*/::')"
     if [ -f "${libwebp_shared_lib}" ]; then
         execute sudo cp -f "${libwebp_shared_lib}" "/usr/lib/x86_64-linux-gnu/${libwebp_trimmed_full}"
         execute sudo ln -sf "/usr/lib/x86_64-linux-gnu/${libwebp_trimmed_full}" "/usr/lib/x86_64-linux-gnu/${libwebp_trimmed_short}"
     fi
-    libyuv_shared_lib="$(find "${workspace}"/build -type f -name 'libsharpyuv.so.*')"
+    libyuv_shared_lib="$(find "${workspace}"/lib -type f -name 'libsharpyuv.so.*')"
     libyuv_trimmed_full="$(echo "${libyuv_shared_lib}" | sed 's:.*/::')"
     libyuv_trimmed_short="$(echo "${libyuv_shared_lib}" | sed 's/....$//g' | sed 's:.*/::')"
     if [ -f "${libyuv_shared_lib}" ]; then
@@ -1562,7 +1562,7 @@ if build 'leptonica' '1.83.1'; then
                         PKG_CONFIG="${workspace}"/bin/pkg-config
     execute make "-j${cpu_threads}"
     execute make install
-    leptonica_shared_lib="$(find "${workspace}"/lib -type f -name 'libleptonica.so.*')"
+    leptonica_shared_lib="$(find . -type f -name 'libleptonica.so.*')"
     leptonica_trimmed_full="$(echo "${leptonica_shared_lib}" | sed 's:.*/::')"
     leptonica_trimmed_short="$(echo "${leptonica_shared_lib}" | sed 's/....$//g' | sed 's:.*/::')"
     if [ -f "${leptonica_shared_lib}" ]; then
@@ -1585,7 +1585,7 @@ if build 'tesseract' "${g_ver}"; then
                         PKG_CONFIG="${workspace}"/bin/pkg-config
     execute make "-j${cpu_threads}"
     execute make install
-    tesseract_shared_lib="$(find "${workspace}"/lib -type f -name 'libtesseract.so.*')"
+    tesseract_shared_lib="$(find . -type f -name 'libtesseract.so.*')"
     tesseract_trimmed_full="$(echo "${tesseract_shared_lib}" | sed 's:.*/::')"
     tesseract_trimmed_short="$(echo "${tesseract_shared_lib}" | sed 's/....$//g' | sed 's:.*/::')"
     if [ -f "${tesseract_shared_lib}" ]; then
