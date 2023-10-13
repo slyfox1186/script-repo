@@ -63,13 +63,15 @@ deb http://mirror.pit.teraswitch.com/ubuntu/ lunar-backports main restricted uni
 EOF
 
 # OPEN AN EDITOR TO VIEW THE CHANGES
-if which 'gnome-text-editor' &>/dev/null; then
+if which gnome-text-editor &>/dev/null; then
     sudo gnome-text-editor "$list"
-elif which 'gedit' &>/dev/null; then
+elif which gedit &>/dev/null; then
     sudo gedit "$list"
-elif which 'nano' &>/dev/null; then
+elif which nano &>/dev/null; then
     sudo nano "$list"
-elif which 'vi' &>/dev/null; then
+elif which vim &>/dev/null; then
+    sudo vim "$list"
+elif which vi &>/dev/null; then
     sudo vi "$list"
 else
     printf "\n%s\n\n" \
