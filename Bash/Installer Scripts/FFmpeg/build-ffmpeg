@@ -1261,8 +1261,8 @@ if build 'libtiff' "$g_ver"; then
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}"     \
                         --{build,host}="${pc_type}" \
-                        --disable-shared            \
-                        --enable-cxx
+                        --enable-cxx                \
+                        --with-pic
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'libtiff' "$g_ver"
