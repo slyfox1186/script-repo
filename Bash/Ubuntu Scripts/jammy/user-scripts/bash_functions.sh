@@ -1722,6 +1722,14 @@ cntf()
     folder_cnt="$(ls -1 | wc -l)"
     printf "%s\n" "There are ${folder_cnt} files in this folder"
 }
+
+## RECURSIVELY UNZIP ZIP FILES AND NAME THE OUTPUT FOLDER THE SAME NAME AS THE ZIP FILE
+zipr()
+{
+    clear
+    sudo find . -type f -iname '*.zip' -exec sh -c 'unzip -o -d "${0%.*}" "$0"' '{}' \;
+    sudo find . -type f -iname '*.zip' -exec trash-put '{}' \;
+}
 EOF
 }
 
