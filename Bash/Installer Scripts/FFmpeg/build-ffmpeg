@@ -134,7 +134,7 @@ source_flags_fn()
 {
     EXTRALIBS="-ldl -lpthread -lm -lz -L${cuda_folder_path}/targets/x86_64-linux/lib -lOpenCL"
     EXTRALIBS+=" -L${workspace}/lib -L/usr/lib/x86_64-linux-gnu -ltesseract -lcurl"
-    CXXFLAGS='-g -O2 -march=native'
+    CXXFLAGS='-g -O2 -pthread -march=native'
     CFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2"
     CFLAGS+=" -I/usr/lib/x86_64-linux-gnu/pulseaudio -I/usr/include/openjpeg-2.5 -I${workspace}/include/CL ${CXXFLAGS}"
     CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/openjpeg-2.5"
@@ -880,11 +880,11 @@ libpulse_fix_libs()
     fi
 
     libpulse_shared_lib="$(sudo find "${workspace}"/lib/x86_64-linux-gnu -type f -name 'libpulsecommon-*.so')"
-    libpulse_shared_lib_trimmed="$(echo "${libpulse_shared_lib}" | sed 's:.*/::' | head -n1)"
+    libpulse_trimmed="$(echo "${libpulse_shared_lib}" | sed 's:.*/::' | head -n1)"
 
     if [ -n "${libpulse_shared_lib}" ]; then
         execute sudo cp -f "${libpulse_shared_lib}" /usr/lib/x86_64-linux-gnu/pulseaudio
-        execute sudo ln -sf "/usr/lib/x86_64-linux-gnu/pulseaudio/${libpulse_shared_lib_trimmed}" /usr/lib/x86_64-linux-gnu
+        execute sudo ln -sf "/usr/lib/x86_64-linux-gnu/pulseaudio/${libpulse_trimmed}" /usr/lib/x86_64-linux-gnu
     fi
 }
 
@@ -1256,8 +1256,8 @@ if build 'libpng' '1.6.40'; then
 fi
 
 git_ver_fn '4720790' '3' 'T'
-if build 'libtiff' "$g_ver"; then
-    download "https://gitlab.com/libtiff/libtiff/-/archive/v$g_ver/libtiff-v$g_ver.tar.bz2" "libtiff-$g_ver.tar.bz2"
+if build 'libtiff' "${g_ver}"; then
+    download "https://gitlab.com/libtiff/libtiff/-/archive/v${g_ver}/libtiff-v${g_ver}.tar.bz2" "libtiff-${g_ver}.tar.bz2"
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}"     \
                         --{build,host}="${pc_type}" \
@@ -1265,7 +1265,14 @@ if build 'libtiff' "$g_ver"; then
                         --with-pic
     execute make "-j${cpu_threads}"
     execute make install
-    build_done 'libtiff' "$g_ver"
+    tiff_shared_lib="$(find "${workspace}"/lib -type f -name 'libtiff.so.*')"
+    tiff_trimmed_full="$(echo "${tiff_shared_lib}" | sed 's:.*/::')"
+    tiff_trimmed_short="$(echo "${tiff_shared_lib}" | sed 's/....$//g' | sed 's:.*/::')"
+    if [ -f "${tiff_shared_lib}" ]; then
+        execute sudo cp -f "${tiff_shared_lib}" "/usr/lib/x86_64-linux-gnu/${tiff_trimmed_full}"
+        execute sudo ln -sf "/usr/lib/x86_64-linux-gnu/${tiff_trimmed_full}" "/usr/lib/x86_64-linux-gnu/${tiff_trimmed_short}"
+    fi
+    build_done 'libtiff' "${g_ver}"
 fi
 
 pre_check_ver 'nkoriyama/aribb24' '1' 'T'
@@ -1292,8 +1299,6 @@ if build 'freetype' "${g_ver1}"; then
                               --buildtype=release      \
                               --default-library=static \
                               --strip                  \
-                              -Dc_args="${CFLAGS}"     \
-                              -Dcpp_args="${CXXFLAGS}" \
                               "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
@@ -1336,9 +1341,6 @@ if [ "${VER}" != '18.04' ]; then
                               --buildtype=release      \
                               --default-library=static \
                               --strip                  \
-                              -Db_lto_threads=1        \
-                              -Dc_args="${CFLAGS}"     \
-                              -Dcpp_args="${CXXFLAGS}" \
                               "${extracommands[@]}"
         execute ninja "-j${cpu_threads}" -C build
         execute ninja "-j${cpu_threads}" -C build install
@@ -1394,9 +1396,6 @@ if build 'fribidi' "${g_ver}"; then
                               --buildtype=release      \
                               --default-library=static \
                               --strip                  \
-                              -Db_lto_threads=1        \
-                              -Dc_args="${CFLAGS}"     \
-                              -Dcpp_args="${CXXFLAGS}" \
                               "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
@@ -1577,9 +1576,11 @@ if build 'tesseract' "${g_ver}"; then
     execute make "-j${cpu_threads}"
     execute make install
     tesseract_shared_lib="$(find "${workspace}"/lib -type f -name 'libtesseract.so.*')"
-    tesseract_shared_lib_trimmed="$(echo "${tesseract_shared_lib}" | sed 's/....$//g' | sed 's:.*/::')"
+    tesseract_trimmed_full="$(echo "${tesseract_shared_lib}" | sed 's:.*/::')"
+    tesseract_trimmed_short="$(echo "${tesseract_shared_lib}" | sed 's/....$//g' | sed 's:.*/::')"
     if [ -f "${tesseract_shared_lib}" ]; then
-        execute sudo ln -sf "${tesseract_shared_lib}" "/usr/lib/${tesseract_shared_lib_trimmed}"
+        execute sudo cp -f "${tesseract_shared_lib}" "/usr/lib/${tesseract_trimmed_full}"
+        execute sudo ln -sf "/usr/lib/${tesseract_trimmed_full}" "/usr/lib/${tesseract_shared_lib_trimmed_short}"
     fi
     build_done 'tesseract' "${g_ver}"
 fi
@@ -1636,10 +1637,10 @@ if build 'lv2' 'git'; then
         sudo rm "${rm_pip_lock}"
     fi
     execute pip install lxml Markdown Pygments rdflib
-    execute meson setup build --prefix="${workspace}"       \
-                              --buildtype=release           \
-                              --default-library=static      \
-                              --strip                       \
+    execute meson setup build --prefix="${workspace}"  \
+                              --buildtype=release      \
+                              --default-library=static \
+                              --strip                  \
                               "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
@@ -1661,9 +1662,6 @@ if build 'serd' "${g_ver}"; then
                               --buildtype=release      \
                               --default-library=static \
                               --strip                  \
-                              -Db_lto_threads=1        \
-                              -Dc_args="${CFLAGS}"     \
-                              -Dcpp_args="${CXXFLAGS}" \
                               -Dstatic=true            \
                               "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
@@ -1692,9 +1690,6 @@ if build 'zix' '0.4.0'; then
                               --buildtype=release      \
                               --default-library=static \
                               --strip                  \
-                              -Db_lto_threads=1        \
-                              -Dc_args="${CFLAGS}"     \
-                              -Dcpp_args="${CXXFLAGS}" \
                               "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
@@ -1710,9 +1705,6 @@ if build 'sord' "${g_sver1}"; then
                               --buildtype=release      \
                               --default-library=static \
                               --strip                  \
-                              -Db_lto_threads=1        \
-                              -Dc_args="${CFLAGS}"     \
-                              -Dcpp_args="${CXXFLAGS}" \
                               "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
@@ -1727,9 +1719,6 @@ if build 'sratom' "${g_ver}"; then
                               --buildtype=release      \
                               --default-library=static \
                               --strip                  \
-                              -Db_lto_threads=1        \
-                              -Dc_args="${CFLAGS}"     \
-                              -Dcpp_args="${CXXFLAGS}" \
                               "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
@@ -1744,9 +1733,6 @@ if build 'lilv' "${g_ver}"; then
                               --buildtype=release      \
                               --default-library=static \
                               --strip                  \
-                              -Db_lto_threads=1        \
-                              -Dc_args="${CFLAGS}"     \
-                              -Dcpp_args="${CXXFLAGS}" \
                               "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
@@ -1855,9 +1841,6 @@ if build 'libpulse' 'git'; then
                               --buildtype=release      \
                               --default-library=static \
                               --strip                  \
-                              -Db_lto_threads=1        \
-                              -Dc_args="${CFLAGS}"     \
-                              -Dcpp_args="${CXXFLAGS}" \
                                "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute sudo ninja "-j${cpu_threads}" -C build install
@@ -2102,9 +2085,6 @@ if build 'dav1d' "${g_ver1}"; then
                               --buildtype=release      \
                               --default-library=static \
                               --strip                  \
-                              -Db_lto_threads=1        \
-                              -Dc_args="${CFLAGS}"     \
-                              -Dcpp_args="${CXXFLAGS}" \
                                "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
@@ -2513,10 +2493,7 @@ if [ "${VER}" != '22.04' ] || [ "${VER}" != '11' ]; then
         execute meson setup build --prefix="${workspace}"  \
                                   --buildtype=release      \
                                   --default-library=static \
-                                  --strip                  \
-                                  -Db_lto_threads=1        \
-                                  -Dc_args="${CFLAGS}"     \
-                                  -Dcpp_args="${CXXFLAGS}"
+                                  --strip
         execute ninja -C build "-j${cpu_threads}"
         execute ninja -C build "-j${cpu_threads}" install
         build_done 'cyanrip' "${g_ver}"
