@@ -4,7 +4,7 @@
 ### Why this repository exists:
 1. This repository was created as a way to share my custom scripts
 2. Make the scripts publicly available with the hope that they are beneficial to others
-3. Spark ideas for better and more efficient ways of coding that leads to an overall improvement in the efficiency and usefulness of each script
+3. Spark ideas for better and more efficient ways of coding that lead to an overall improvement in the efficiency and usefulness of each script
 4. Have a centralized zone where users can access the scripts they need quickly and efficiently
 
 ### Included languages
@@ -68,7 +68,7 @@ bash <(curl -fsSL https://7z.optimizethis.net)
   - **Tested on Windows WSL 2 Debian/Ubuntu**
   - **[Optimize JPG Images](https://github.com/slyfox1186/script-repo/tree/main/Bash/Installer%20Scripts/ImageMagick/scripts)**
   - **Supported OS:**
-    - Debian - 10 / 11
+    - Debian - 10 / 11 / 12
     - Ubuntu - 18.04 / 20.04 / 22.04
     - Other  - Debian-based distros may work as well
   
@@ -98,7 +98,7 @@ bash <(curl -fsSL https://fast-build-ffmpeg.optimizethis.net)
 
 ## Install [CMake](https://cmake.org/), [Ninja](https://github.com/ninja-build/ninja), [Meson](https://github.com/mesonbuild/meson) & [Golang](https://github.com/golang/go)
   - **Supported OS:**
-    - Debian - 10 / 11
+    - Debian - 10 / 11 / 12
     - Ubuntu - 18.04 / 20.04 / 22.04
     - Other  - Debian-based distros may work as well
 
@@ -110,7 +110,7 @@ bash <(curl -fsSL https://build-tools.optimizethis.net)
 ## Install [ARIA2C](https://github.com/aria2/aria2)
   - Aria2 max connections increased from 16 to 64
   - **Supported OS:**
-    - Debian - 10 / 11
+    - Debian - 10 / 11 / 12
     - Ubuntu - 18.04 / 20.04 / 22.04
     - Other  - Debian-based distros may work as well
 
@@ -122,7 +122,7 @@ bash <(curl -fsSL aria2.optimizethis.net)
 ## Install [cURL](https://github.com/curl/curl), [WGET](https://ftp.gnu.org/gnu/wget) & [ARIA2C](https://github.com/aria2/aria2)
   - Aria2 max connections increased from 16 to 64
   - **Supported OS:**
-    - Debian - 10 / 11
+    - Debian - 10 / 11 / 12
     - Ubuntu - 18.04 / 20.04 / 22.04
     - Other  - Debian-based distros may work as well
 
@@ -134,8 +134,8 @@ bash <(curl -fsSL https://dl-tools.optimizethis.net)
 
 ## Add custom mirrors to: /etc/apt/sources.list
   - **Supported OS:**
+    - Debian - 10 / 11 / 12
     - Ubuntu - 18.04 / 20.04 / 22.04 / 23.04
-    - Debian - 11 / 12
 
 **Warning! This will overwrite your files!**
 ```bash
@@ -194,7 +194,7 @@ bash <(curl -fsSL https://netplan.optimizethis.net)
 ------
 
 ## Debian Package Downloader
-  - Download APT packages to your pc by entering a space-separated list of values.
+  - Download APT packages to your PC by entering a space-separated list of values.
   - Input a single entry or an entire list of APT packages and the script will download its respective .deb file to the current directory.
 ```bash
 bash <(curl -fsSL https://download.optimizethis.net)
@@ -205,11 +205,7 @@ bash <(curl -fsSL https://download.optimizethis.net)
   - **Supported OS:**
     - Debian - 10 / 11 / 12
     - Ubuntu - 18.04 / 20.04 / 22.04
-    - Other  - Debian-based distros may work as well
-  - To install with no other actions required execute the first command, otherwise, use the second command to
-    only download the files without executing the scripts immediately.
-     - Open the file `install-tilix` and read the instructions at the top of the script to easily customize the
-       color themes further and then run `bash install-tilix`
+    - Other Debian-based distros may work as well
 ```bash
 bash <(curl -fsSL https://tilix.optimizethis.net)
 ````
@@ -217,7 +213,7 @@ bash <(curl -fsSL https://tilix.optimizethis.net)
 
 ## Install [Python3](https://devguide.python.org/getting-started/setup-building/#get-the-source-code) v3.11.4
   - **Supported OS:**
-    - Debian - 10 / 11
+    - Debian - 10 / 11 / 12
     - Ubuntu - 18.04 / 20.04 / 22.04
     - Other  - Debian-based distros may work as well
 
@@ -228,7 +224,7 @@ bash <(curl -fsSL https://python3.optimizethis.net)
 
 ## Install the [WSL2](https://github.com/microsoft/WSL2-Linux-Kernel) latest kernel release from [Linux](https://github.com/torvalds/linux)
   - **Supported OS:**
-    - Debian - 10 / 11
+    - Debian - 10 / 11 / 12
     - Ubuntu - 18.04 / 20.04 / 22.04
     - Other  - Debian-based distros may work as well
 
@@ -274,7 +270,7 @@ bash <(curl -fsSL https://gparted.optimizethis.net)
  1. **Prompt user with instructions**
     - **Main Menu:**
       1. **Check if public key files exist and if not walk the user through the creation of files**
-      2. **Walkthrough the user copying their ssh public key to a remote computer**
+      2. **Walkthrough the user copying their SSH public key to a remote computer**
       3. **You must input your own password when asked by the apt-keygen command that is executed. This is to keep your security strong!**
 ```bash
 curl -Lso ssh-keys.sh https://ssh-keys.optimizethis.net; sudo bash ssh-keys.sh
@@ -344,7 +340,7 @@ curl.exe -Lso features.bat https://win-optional-features.optimizethis.net && CAL
 ```batch
 curl.exe -fsSL https://open-wsl-here.optimizethis.net > open-wsl-here.bat && call open-wsl-here.bat
 ```
-3. **To remove to the context menu, paste the below command into cmd.exe and press enter to execute**
+3. **To remove the context menu, paste the below command into cmd.exe and press enter to execute**
 ```batch
 curl.exe -fsSL https://open-wsl-here-rm.optimizethis.net > open-wsl-here-rm.bat && call open-wsl-here-rm.bat
 ```
