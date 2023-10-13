@@ -848,15 +848,15 @@ git_ver_fn 'jemalloc/jemalloc' '1' 'T'
 if build 'jemalloc' "${g_ver}"; then
     download "https://github.com/jemalloc/jemalloc/archive/refs/tags/${g_ver}.tar.gz" "jemalloc-${g_ver}.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}"           \
-                        --disable-debug                   \
-                        --disable-doc                     \
-                        --disable-fill                    \
-                        --disable-log                     \
-                        --disable-prof                    \
-                        --disable-stats                   \
-                        --enable-autogen                  \
-                        --enable-static                   \
+    execute ./configure --prefix="${workspace}" \
+                        --disable-debug         \
+                        --disable-doc           \
+                        --disable-fill          \
+                        --disable-log           \
+                        --disable-prof          \
+                        --disable-stats         \
+                        --enable-autogen        \
+                        --enable-static         \
                         --enable-xmalloc
     execute make "-j${cpu_threads}"
     execute make install
