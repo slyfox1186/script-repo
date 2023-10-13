@@ -409,6 +409,7 @@ install_autotrace_fn()
 
     cd "${packages}"/deb-files || exit 1
 
+    echo '$ sudo apt -y install ./autotrace.deb'
     if ! sudo apt -y install ./autotrace.deb; then
         sudo dpkg --configure -a
         sudo apt --fix-broken install
