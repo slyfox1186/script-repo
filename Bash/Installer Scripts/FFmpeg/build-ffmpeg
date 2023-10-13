@@ -2443,7 +2443,7 @@ if [ -n "${iscuda}" ]; then
 
     CFLAGS+=" -I${cuda_folder_path}/include"
     LDFLAGS+=" -L${cuda_folder_path}/lib64"
-    ffmpeg_libraries+=(--enable-{cuda-nvcc,cuda-llvm,cuvid,nvenc})
+    ffmpeg_libraries+=(--enable-{cuda-nvcc,cuda-llvm,cuvid,nvdec,nvenc,ffnvcodec})
 
     if [ -n "${LDEXEFLAGS}" ]; then
         ffmpeg_libraries+=('--enable-libnpp')
@@ -2694,7 +2694,6 @@ if build 'ffmpeg' "${ffmpeg_sver}"; then
                 --disable-shared                            \
                 "${ffmpeg_libraries[@]}"                    \
                 --enable-chromaprint                        \
-                --enable-ffnvcodec                          \
                 --enable-gpl                                \
                 --enable-ladspa                             \
                 --enable-libbs2b                            \
