@@ -1580,7 +1580,7 @@ if build 'tesseract' "${g_ver}"; then
     tesseract_trimmed_short="$(echo "${tesseract_shared_lib}" | sed 's/....$//g' | sed 's:.*/::')"
     if [ -f "${tesseract_shared_lib}" ]; then
         execute sudo cp -f "${tesseract_shared_lib}" "/usr/lib/${tesseract_trimmed_full}"
-        execute sudo ln -sf "/usr/lib/${tesseract_trimmed_full}" "/usr/lib/${tesseract_shared_lib_trimmed_short}"
+        execute sudo ln -sf "/usr/lib/${tesseract_trimmed_full}" "/usr/lib/${tesseract_trimmed_short}"
     fi
     build_done 'tesseract' "${g_ver}"
 fi
