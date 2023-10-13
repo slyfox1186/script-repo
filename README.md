@@ -213,9 +213,6 @@ bash <(curl -fsSL https://download.optimizethis.net)
 ```bash
 bash <(curl -fsSL https://tilix.optimizethis.net)
 ````
-```bash
-curl -Lso build-tilix https://tilix.optimizethis.net
-````
 ------
 
 ## Install [Python3](https://devguide.python.org/getting-started/setup-building/#get-the-source-code) v3.11.4
