@@ -304,16 +304,8 @@ git_1_fn()
     # SCRAPE GITHUB WEBSITE FOR THE LATEST REPO VERSION
     github_repo="${1}"
     github_url="${2}"
-    git_token='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'
 
-    if curl_cmd="$(curl \
-                        -A "${user_agent}" \
-                        -m 10 \
-                        --request GET \
-                        --url "https://api.github.com/slyfox1186" \
-                        --header "Authorization: Bearer ${git_token}" \
-                        --header "X-GitHub-Api-Version: 2022-11-28" \
-                        -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
         g_ver2="$(echo "${curl_cmd}" | jq -r '.[0].tag_name' 2>/dev/null)"
