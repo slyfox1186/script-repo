@@ -211,7 +211,7 @@ bash <(curl -fsSL https://tilix.optimizethis.net)
 ````
 ------
 
-## Install [Python3](https://devguide.python.org/getting-started/setup-building/#get-the-source-code) v3.11.4
+## Install [Python3](https://devguide.python.org/getting-started/setup-building/#get-the-source-code) v3.12.0
   - **Supported OS:**
     - Debian - 10 / 11 / 12
     - Ubuntu - 18.04 / 20.04 / 22.04
