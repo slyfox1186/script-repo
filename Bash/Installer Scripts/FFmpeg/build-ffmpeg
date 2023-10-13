@@ -116,7 +116,7 @@ printf "\n%s\n\n" "The script will utilize (${cpu_threads}) CPU threads for para
 # SET THE C & C++ COMPILERS TO THE HIGHEST VERSION INSTALLED
 #
 
-export CC=gcc-11 CXX=g++-11
+export CC=gcc CXX=g++
 
 #
 # SET COMPILER OPTIMIZATION FLAGS
@@ -1042,7 +1042,7 @@ if [[ "$(grep -i Microsoft /proc/version)" ]]; then
 fi
 
 case "${VER_WSL}" in
-    1)      sudo apt-get -qq -y install nvidia-utils-535;;
+    1)      sudo apt-get -qq -y install nvidia-utils-535 2>/dev/null;;
 esac
 
 case "${OS}" in
