@@ -69,6 +69,6 @@ OpenWSLHere()
     }
 
     Run(pshell ' -NoP -C "Start-Process ' . wt . ' -Args `'-w new-tab --profile ' . osName . ' ' . wsl . ' --cd \"' . pwd . '\" `' -Verb RunAs"',, "Hide")
-    if WinWait(win)
+    if WinWait(win,, 1)
         WinActivate(win)
 }
