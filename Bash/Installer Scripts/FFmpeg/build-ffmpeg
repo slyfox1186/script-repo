@@ -126,7 +126,7 @@ source_flags_fn()
 {
     EXTRALIBS="-ldl -lpthread -lm -lz -L/usr/local/cuda/targets/x86_64-linux/lib -lOpenCL"
     EXTRALIBS+=" -L${workspace}/lib -L/usr/lib/x86_64-linux-gnu -ltesseract -lcurl"
-    CXXFLAGS='-g -O2 -march=znver3'
+    CXXFLAGS='-g -O2 -march=native'
     CFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2"
     CFLAGS+=" -I/usr/lib/x86_64-linux-gnu/pulseaudio -I/usr/include/openjpeg-2.5 -I${workspace}/include/CL ${CXXFLAGS}"
     CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/openjpeg-2.5"
