@@ -2324,10 +2324,11 @@ if build 'x264' "${g_sver}"; then
 fi
 ffmpeg_libraries+=('--enable-libx264')
 
+# X265 GIVES MORE FPS IF BUILT WITH CLANG
+export CC=clang CXX=clang++
 # ENTER A SNAPSHOT ID FOR X265
 g_ver=8ee01d45b05cdbc9da89b884815257807a514bc8
 g_sver="${g_ver::7}"
-
 if build 'x265' "${g_sver}"; then
     download "https://bitbucket.org/multicoreware/x265_git/get/${g_ver}.tar.bz2" "x265-${g_sver}.tar.bz2"
     cd build/linux || exit 1
@@ -2401,6 +2402,8 @@ EOF
     build_done 'x265' "${g_sver}"
 fi
 ffmpeg_libraries+=('--enable-libx265')
+
+export CC=gcc CXX=g++
 
 # Vaapi doesn't work well with static links FFmpeg.
 if [ -z "${LDEXEFLAGS}" ]; then
