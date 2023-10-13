@@ -1730,6 +1730,20 @@ zipr()
     sudo find . -type f -iname '*.zip' -exec sh -c 'unzip -o -d "${0%.*}" "$0"' '{}' \;
     sudo find . -type f -iname '*.zip' -exec trash-put '{}' \;
 }
+
+###################################
+## FFPROBE LIST IMAGE DIMENSIONS ##
+###################################
+
+ffp()
+{
+    clear
+    if [ -f 00-pic-sizes.txt ]; then
+        sudo rm 00-pic-sizes.txt
+    fi
+    sudo find "${PWD}" -type f -iname '*.jpg' -exec bash -c "identify -format "%wx%h" \"{}\"; echo \" {}\"" > 00-pic-sizes.txt \;
+}
+
 EOF
 }
 
