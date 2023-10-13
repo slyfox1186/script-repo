@@ -51,7 +51,7 @@ mkdir -p "${cwd}"
 # SET THE C+CPP COMPILERS
 #
 
-export CC=gcc CXX=g++
+export CC=clang CXX=clang++
 
 #
 # EXPORT COMPILER OPTIMIZATION FLAGS
