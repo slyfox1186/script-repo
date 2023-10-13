@@ -651,16 +651,16 @@ if build 'libtool' "${lt_ver}"; then
 fi
 
 git_ver_fn 'libsdl-org/libtiff' '1' 'T'
-if build 'tiff' "${g_ver}"; then
-    download "https://codeload.github.com/libsdl-org/libtiff/tar.gz/refs/tags/v${g_ver}" "tiff-${g_ver}.tar.gz"
+if build 'libtiff' "${g_ver}"; then
+    download "https://codeload.github.com/libsdl-org/libtiff/tar.gz/refs/tags/v${g_ver}" "libtiff-${g_ver}.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}"     \
                         --{build,host}="${pc_type}" \
-                        --enable-cxx                \
-                        --with-pic
+                        --disable-shared            \
+                        --enable-cxx
     execute make "-j${cpu_threads}"
     execute make install
-    build_done 'tiff' "${g_ver}"
+    build_done 'libtiff' "${g_ver}"
 fi
 
 if build 'jpeg-turbo' 'git'; then
