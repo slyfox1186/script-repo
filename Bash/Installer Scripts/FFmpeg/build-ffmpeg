@@ -995,12 +995,12 @@ sort_libjxl_fn()
 
 debian_os_version()
 {
-    debian_common_pkgs='libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev'
-    debian_pkgs='libdmalloc5 libjemalloc2 libtcmalloc-minimal4 libyuv-dev libyuv-utils libyuv0 libsharp-dev'
+    debian_pkgs='libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libdmalloc5 libjemalloc2'
+    debian_pkgs+=' libtcmalloc-minimal4 libyuv-dev libyuv-utils libyuv0 libsharp-dev'
 
     case "${VER}" in
-        trixie)         pkgs_fn "${debian_common_pkgs} ${debian_pkgs} libncurses-dev libncurses6 libncursesw6 librist-dev";;
-        12)             pkgs_fn "${debian_common_pkgs} ${debian_pkgs} librist-dev libncurses5-dev libncursesw5-dev";;
+        trixie)         pkgs_fn "${debian_pkgs} libncurses-dev libncurses6 libncursesw6 librist-dev";;
+        12)             pkgs_fn "${debian_pkgs} librist-dev libncurses5-dev libncursesw5-dev";;
         10|11)          pkgs_fn "${debian_pkgs} libncurses5-dev libncursesw5-dev";;
         *)              fail_fn "Could not detect the Debian version. Line: ${LINENO}";;
     esac
