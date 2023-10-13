@@ -196,10 +196,11 @@ fi
 #
 
 cd "${cwd}/${archive_dir}/build/meson" || exit 1
-meson setup build --prefix=/usr/local    \
-                  --buildtype=release    \
-                  --default-library=both \
-                  --strip
+meson setup build --prefix="${workspace}"  \
+                  --buildtype=release      \
+                  --default-library=static \
+                  --strip                  \
+                  -Dbin_tests=false
 ninja "-j$(nproc --all)" -C build
 if ! sudo ninja "-j$(nproc --all)" -C build install; then
     fail_fn "Failed to execute: sudo ninja -j$(nproc --all) -C build install:Line ${LINENO}"
