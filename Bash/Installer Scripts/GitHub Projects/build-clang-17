@@ -335,7 +335,7 @@ box_out_banner()
     echo " ${line}"
     tput sgr 0
 }
-box_out_banner "Clang Build Script - Version ${script_ver}"
+box_out_banner "Clang Build Script - version ${script_ver}"
 
 git_ver_fn 'llvm/llvm-project' 'T'
 if build 'llvm' "${g_ver}"; then
