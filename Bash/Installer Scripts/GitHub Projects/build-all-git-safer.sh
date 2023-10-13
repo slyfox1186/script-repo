@@ -128,7 +128,7 @@ install_choice_fn()
 cd "${cwd}" || exit 1
 
 # RENAME FILES WITH NUMBERS 10 AND HIGHER SO THEY EXECUTE IN THE INTENDED ORDER
-files=(git zlib tools zstd openssl aria2 python3)
+files=(adobe-fonts git zlib tools zstd openssl aria2 python3)
 cnt=0
 
 for file in ${files[@]}
