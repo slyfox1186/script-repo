@@ -5,8 +5,8 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
-##  Script version: 2.9.2
-##  Last Update: 10.11.23
+##  Script version: 3.0.0
+##  Last Update: 10.12.23
 ##
 ##  Supported Distro:
 ##
@@ -57,7 +57,7 @@
 #
 
 script_name="${0}"
-script_ver=2.9.1
+script_ver=3.0.0
 ffmpeg_ver=963937e408fc68b5925f938a253cfff1d506f784
 ffmpeg_sver="${ffmpeg_ver::7}"
 ffmpeg_archive=ffmpeg-"${ffmpeg_sver}".tar.gz
@@ -116,25 +116,17 @@ printf "\n%s\n\n" "The script will utilize (${cpu_threads}) CPU threads for para
 # SET THE C & C++ COMPILERS TO THE HIGHEST VERSION INSTALLED
 #
 
-export CC=gcc CXX=g++
+export CC=gcc-11 CXX=g++-11
 
 #
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-set_cuda_folder_path="$(sudo find /usr/local/cuda* -type f -name nvcc 2>/dev/null | sed 's/\/bin\/nvcc//')"
-
-if [ -n "${set_cuda_folder_path}" ]; then
-    cuda_folder_path="${set_cuda_folder_path}"
-else
-    cuda_folder_path=/usr/local/cuda
-fi
-
 source_flags_fn()
 {
-    EXTRALIBS="-ldl -lpthread -lm -lz -L${cuda_folder_path}/targets/x86_64-linux/lib -lOpenCL"
+    EXTRALIBS="-ldl -lpthread -lm -lz -L/usr/local/cuda/targets/x86_64-linux/lib -lOpenCL"
     EXTRALIBS+=" -L${workspace}/lib -L/usr/lib/x86_64-linux-gnu -ltesseract -lcurl"
-    CXXFLAGS='-g -O2 -pthread -march=native'
+    CXXFLAGS='-g -O2 -march=znver3'
     CFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2"
     CFLAGS+=" -I/usr/lib/x86_64-linux-gnu/pulseaudio -I/usr/include/openjpeg-2.5 -I${workspace}/include/CL ${CXXFLAGS}"
     CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/openjpeg-2.5"
@@ -312,8 +304,16 @@ git_1_fn()
     # SCRAPE GITHUB WEBSITE FOR THE LATEST REPO VERSION
     github_repo="${1}"
     github_url="${2}"
+    git_token='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'
 
-    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl \
+                        -A "${user_agent}" \
+                        -m 10 \
+                        --request GET \
+                        --url "https://api.github.com/slyfox1186" \
+                        --header "Authorization: Bearer ${git_token}" \
+                        --header "X-GitHub-Api-Version: 2022-11-28" \
+                        -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
         g_ver2="$(echo "${curl_cmd}" | jq -r '.[0].tag_name' 2>/dev/null)"
@@ -662,7 +662,7 @@ ${HOME}/.local/bin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-${cuda_folder_path}/bin:\
+/usr/local/cuda/bin:\
 /snap/bin\
 "
 export PATH
@@ -761,10 +761,10 @@ cuda_download_fn()
     sudo apt update
     sudo apt -y install cuda
 
-    cuda_ver="$(cat "${cuda_folder_path}"/version.json | jq -r '.cuda.version')"
+    cuda_ver="$(cat /usr/local/cuda/version.json | jq -r '.cuda.version')"
 
     if [ -z "${cuda_ver}" ]; then
-        fail_fn "Unable to locate the file: ${cuda_folder_path}/version.json. Line: ${LINENO}"
+        fail_fn "Unable to locate the file: /usr/local/cuda/version.json. Line: ${LINENO}"
     else
         export PATH="${PATH}:${cuda_path}"
     fi
@@ -779,8 +779,8 @@ install_cuda_fn()
     local answer choice
     clear
 
-    if [ -f "${cuda_folder_path}"/version.json ]; then
-        cuda_installed_ver="$(cat "${cuda_folder_path}"/version.json | jq -r '.cuda.version')"
+    if [ -f /usr/local/cuda/version.json ]; then
+        cuda_installed_ver="$(cat /usr/local/cuda/version.json | jq -r '.cuda.version')"
         cuda_ver="${cuda_installed_ver}"
     else
         cuda_ver="${cuda_latest_ver}"
@@ -1069,9 +1069,8 @@ install_cuda_fn
 # CHECK IF THE CUDA FOLDER EXISTS TO DETERMINE INSTALLATION STATUS
 #
 
-iscuda="$(sudo find "${cuda_folder_path}" -type f -name nvcc 2>/dev/null)"
-cuda_path="$(sudo find "${cuda_folder_path}" -type f -name nvcc | grep -Eo '^.*/bin?')"
-cuda_folder_path="$(sudo find "${cuda_folder_path}" -type f -name nvcc | sed 's/\/bin\/nvcc//')"
+iscuda="$(sudo find /usr/local/cuda -type f -name nvcc 2>/dev/null)"
+cuda_path="$(sudo find /usr/local/cuda -type f -name nvcc | grep -Eo '^.*/bin?')"
 
 #
 # INSTALL THE GLOBAL TOOLS
@@ -1123,8 +1122,8 @@ if build 'autoconf' 'latest'; then
 fi
 
 case "${VER}" in
-    12|23.04)                   lt_ver='2.4.7';;
-    10|11|18.04|20.04|22.04)    lt_ver='2.4.6';;
+    12|23.04)                   lt_ver=2.4.7;;
+    10|11|18.04|20.04|22.04)    lt_ver=2.4.6;;
     *)                          fail_fn "Unable to get the OS version:Line ${LINENO}"
 esac
 
@@ -1459,8 +1458,20 @@ if build 'libwebp' 'git'; then
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
-    execute sudo cp -f build/libwebp.so.7.1.8 /usr/lib/x86_64-linux-gnu
-    execute sudo ln -sf /usr/lib/x86_64-linux-gnu/libwebp.so.7.1.8 /usr/lib/x86_64-linux-gnu/libwebp.so
+    libwebp_shared_lib="$(find "${workspace}"/build -type f -name 'libwebp.so.*')"
+    libwebp_trimmed_full="$(echo "${libwebp_shared_lib}" | sed 's:.*/::')"
+    libwebp_trimmed_short="$(echo "${libwebp_shared_lib}" | sed 's/....$//g' | sed 's:.*/::')"
+    if [ -f "${libwebp_shared_lib}" ]; then
+        execute sudo cp -f "${libwebp_shared_lib}" "/usr/lib/x86_64-linux-gnu/${libwebp_trimmed_full}"
+        execute sudo ln -sf "/usr/lib/x86_64-linux-gnu/${libwebp_trimmed_full}" "/usr/lib/x86_64-linux-gnu/${libwebp_trimmed_short}"
+    fi
+    libyuv_shared_lib="$(find "${workspace}"/build -type f -name 'libsharpyuv.so.*')"
+    libyuv_trimmed_full="$(echo "${libyuv_shared_lib}" | sed 's:.*/::')"
+    libyuv_trimmed_short="$(echo "${libyuv_shared_lib}" | sed 's/....$//g' | sed 's:.*/::')"
+    if [ -f "${libyuv_shared_lib}" ]; then
+        execute sudo cp -f "${libyuv_shared_lib}" "/usr/lib/x86_64-linux-gnu/${libyuv_trimmed_full}"
+        execute sudo ln -sf "/usr/lib/x86_64-linux-gnu/${libyuv_trimmed_full}" "/usr/lib/x86_64-linux-gnu/${libyuv_trimmed_short}"
+    fi
     build_done 'libwebp' 'git'
 fi
 ffmpeg_libraries+=('--enable-libwebp')
@@ -1559,6 +1570,13 @@ if build 'leptonica' '1.83.1'; then
                         PKG_CONFIG="${workspace}"/bin/pkg-config
     execute make "-j${cpu_threads}"
     execute make install
+    leptonica_shared_lib="$(find "${workspace}"/lib -type f -name 'libleptonica.so.*')"
+    leptonica_trimmed_full="$(echo "${leptonica_shared_lib}" | sed 's:.*/::')"
+    leptonica_trimmed_short="$(echo "${leptonica_shared_lib}" | sed 's/....$//g' | sed 's:.*/::')"
+    if [ -f "${leptonica_shared_lib}" ]; then
+        execute sudo cp -f "${leptonica_shared_lib}" "/usr/lib/x86_64-linux-gnu/${leptonica_trimmed_full}"
+        execute sudo ln -sf "/usr/lib/x86_64-linux-gnu/${leptonica_trimmed_full}" "/usr/lib/x86_64-linux-gnu/${leptonica_trimmed_short}"
+    fi
     build_done 'leptonica' '1.83.1'
 fi
 
@@ -2324,11 +2342,10 @@ if build 'x264' "${g_sver}"; then
 fi
 ffmpeg_libraries+=('--enable-libx264')
 
-# X265 GIVES MORE FPS IF BUILT WITH CLANG
-export CC=clang CXX=clang++
 # ENTER A SNAPSHOT ID FOR X265
 g_ver=8ee01d45b05cdbc9da89b884815257807a514bc8
 g_sver="${g_ver::7}"
+
 if build 'x265' "${g_sver}"; then
     download "https://bitbucket.org/multicoreware/x265_git/get/${g_ver}.tar.bz2" "x265-${g_sver}.tar.bz2"
     cd build/linux || exit 1
@@ -2403,8 +2420,6 @@ EOF
 fi
 ffmpeg_libraries+=('--enable-libx265')
 
-export CC=gcc CXX=g++
-
 # Vaapi doesn't work well with static links FFmpeg.
 if [ -z "${LDEXEFLAGS}" ]; then
     # If the libva development SDK is installed, enable vaapi.
@@ -2424,8 +2439,8 @@ if [ -n "${iscuda}" ]; then
         build_done 'nv-codec-headers' '12.0.16.1'
     fi
 
-    CFLAGS+=" -I${cuda_folder_path}/include"
-    LDFLAGS+=" -L${cuda_folder_path}/lib64"
+    CFLAGS+=" -I/usr/local/cuda/include"
+    LDFLAGS+=" -L/usr/local/cuda/lib64"
     ffmpeg_libraries+=(--enable-{cuda-nvcc,cuda-llvm,cuvid,nvenc})
 
     if [ -n "${LDEXEFLAGS}" ]; then
