@@ -1470,7 +1470,7 @@ if build 'libwebp' 'git'; then
     libyuv_trimmed_short="$(echo "${libyuv_shared_lib}" | sed 's/....$//g' | sed 's:.*/::')"
     if [ -f "${libyuv_shared_lib}" ]; then
         execute sudo cp -f "${libyuv_shared_lib}" "/usr/lib/x86_64-linux-gnu/${libyuv_trimmed_full}"
-        execute sudo ln -sf "/usr/lib/x86_64-linux-gnu/${libyuv_trimmed_full}" "/usr/lib/x86_64-linux-gnu/${libyuv_trimmed_short}"
+        execute sudo ln -sf "/usr/lib/x86_64-linux-gnu/${libyuv_trimmed_full}" '/usr/lib/x86_64-linux-gnu/libsharpyuv.so'
     fi
     build_done 'libwebp' 'git'
 fi
