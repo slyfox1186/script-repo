@@ -1060,18 +1060,18 @@ case "${OS}" in
 esac
 
 #
-# PROMPT THE USER TO INSTALL THE GEFORCE CUDA SDK-TOOLKIT
-#
-
-install_cuda_fn
-
-#
 # CHECK IF THE CUDA FOLDER EXISTS TO DETERMINE INSTALLATION STATUS
 #
 
 iscuda="$(sudo find "${cuda_folder_path}" -type f -name nvcc 2>/dev/null)"
 cuda_path="$(sudo find "${cuda_folder_path}" -type f -name nvcc | grep -Eo '^.*/bin?')"
 cuda_folder_path="$(sudo find "${cuda_folder_path}" -type f -name nvcc | sed 's/\/bin\/nvcc//')"
+
+#
+# PROMPT THE USER TO INSTALL THE GEFORCE CUDA SDK-TOOLKIT
+#
+
+install_cuda_fn
 
 #
 # INSTALL THE GLOBAL TOOLS
