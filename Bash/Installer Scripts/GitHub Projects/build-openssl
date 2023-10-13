@@ -55,7 +55,8 @@ printf "%s\n%s\n\n" \
 if [ -d "${cwd}" ]; then
     sudo rm -fr "${cwd}"
 fi
-mkdir -p "${cwd}" "${cert_dir}"
+mkdir -p "${cwd}"
+sudo mkdir -p "${cert_dir}"
 
 #
 # SET THE C+CPP COMPILERS
