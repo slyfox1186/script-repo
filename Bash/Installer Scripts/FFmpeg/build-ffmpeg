@@ -831,7 +831,7 @@ pkgs_fn()
           libchromaprint-dev libcodec2-dev libcolamd2 libcrypto++-dev libcurl4-openssl-dev libdbus-1-dev libdevil-dev
           libdmalloc-dev libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev
           libgegl-0.4-0 libgegl-common libgimp2.0 libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev
-          libgnutls28-dev libgnutls30 libgoogle-perftools4 libgoogle-perftools-dev libgsm1-dev libgvc6 libhwy-dev
+          libgnutls28-dev libgnutls30 libgoogle-perftools4 libgoogle-perftools-dev libgsm1-dev libgtest-dev libgvc6 libhwy-dev
           libibus-1.0-dev libiconv-hook-dev libintl-perl libjack-dev libjemalloc-dev libladspa-ocaml-dev libleptonica-dev
           liblz-dev liblzma-dev liblzo2-dev libmathic-dev libmatroska-dev libmetis5 libmfx-dev libmodplug-dev libmp3lame-dev
           libmusicbrainz5-dev libmysofa-dev libnuma1 libnuma-dev libopencore-amrnb-dev libopencore-amrwb-dev libopencv-dev
@@ -1431,22 +1431,23 @@ if build 'libwebp' 'git'; then
 fi
 ffmpeg_libraries+=('--enable-libwebp')
 
-git_ver_fn 'google/highway' '1' 'R'
-if build 'libhwy' '1.0.7'; then
-    download 'https://github.com/google/highway/archive/refs/tags/1.0.7.tar.gz' 'libhwy-1.0.7.tar.gz'
+pre_check_ver 'google/highway' 'R'
+if build 'libhwy' "${g_ver}"; then
+    download "https://github.com/google/highway/archive/refs/tags/${g_ver}.tar.gz" "libhwy-${g_ver}.tar.gz"
     CFLAGS+=' -DHWY_COMPILE_ALL_ATTAINABLE'
     CXXFLAGS+=' -DHWY_COMPILE_ALL_ATTAINABLE'
-    execute cmake -B build                              \
-                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
-                  -DCMAKE_BUILD_TYPE=Release            \
-                  -DBUILD_TESTING=OFF                   \
-                  -DHWY_ENABLE_EXAMPLES=OFF             \
-                  -DHWY_ENABLE_TESTS=OFF                \
-                  -DHWY_FORCE_STATIC_LIBS=ON            \
+    execute cmake -B build                                   \
+                  -DCMAKE_INSTALL_PREFIX="${install_prefix}" \
+                  -DCMAKE_BUILD_TYPE=Release                 \
+                  -DHWY_ENABLE_TESTS=OFF                     \
+                  -DHWY_SYSTEM_GTEST=OFF                     \
+                  -DBUILD_TESTING=OFF                        \
+                  -DHWY_ENABLE_EXAMPLES=OFF                  \
+                  -DHWY_FORCE_STATIC_LIBS=ON                 \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
-    build_done 'libhwy' '1.0.7'
+    execute sudo ninja "-j${cpu_threads}" -C build install
+    build_done 'libhwy' "${g_ver}"
 fi
 
 pre_check_ver 'google/brotli' '1' 'T'
