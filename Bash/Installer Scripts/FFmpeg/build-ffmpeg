@@ -1421,7 +1421,7 @@ if build 'libwebp' 'git'; then
 fi
 ffmpeg_libraries+=('--enable-libwebp')
 
-pre_check_ver 'google/highway' 'R'
+pre_check_ver 'google/highway' '1' 'R'
 if build 'libhwy' "${g_ver}"; then
     download "https://github.com/google/highway/archive/refs/tags/${g_ver}.tar.gz" "libhwy-${g_ver}.tar.gz"
     CFLAGS+=' -DHWY_COMPILE_ALL_ATTAINABLE'
