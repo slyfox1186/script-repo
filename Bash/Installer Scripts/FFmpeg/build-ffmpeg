@@ -2728,7 +2728,7 @@ if build 'ffmpeg' "${ffmpeg_sver}"; then
                 --pkg-config-flags='--static'               \
                 --pkg-config="${workspace}"/bin/pkg-config  \
                 --pkgconfigdir="${workspace}"/lib/pkgconfig \
-                --strip="$(type -P llvm-strip)"
+                --strip="$(type -P strip)"
     execute make "-j${cpu_threads}"
     execute make install
 fi
