@@ -3,7 +3,7 @@
 
 ########################################################################
 ##
-##  Install libgcrypt LTS + libgcrypt-error
+##  Install libhwy
 ##
 ##  Supported OS:
 ##  - Debian
@@ -28,7 +28,7 @@ fi
 
 script_ver=1.0
 install_prefix=/usr/local
-cwd="${PWD}"/gcrypt-build-script
+cwd="${PWD}"/libhwy-build-script
 packages="${cwd}"/packages
 workspace="${cwd}"/workspace
 pc_type=x86_64-linux-gnu
@@ -73,7 +73,7 @@ export CPPFLAGS LDFLAGS
 #
 
 printf "%s\n%s\n%s\n" \
-    "libgcrypt build script - v${script_ver}" \
+    "libhwy build script - v${script_ver}" \
     '=========================================' \
     "This script will utilize (${cpu_threads}) CPU threads for parallel processing to accelerate the build process."
 
@@ -174,35 +174,13 @@ git_1_fn()
 
     if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
-        g_url="$(echo "${curl_cmd}" | jq -r '.[0].tarball_url' 2>/dev/null)"
-        g_ver="${g_ver#cares-}"
-        g_ver="${g_ver#aria2 }"
-        g_ver="${g_ver#nghttp2 v}"
-        g_ver="${g_ver#nghttp3 v}"
-        g_ver="${g_ver#OpenSSL }"
-        g_ver="${g_ver#release-}"
-        g_ver="${g_ver#v}"
     fi
 
 }
 
 git_ver_fn()
 {
-    local v_flag v_url v_tag url_tag t_url
-
-    v_url="${1}"
-    v_tag="${2}"
-
-    if [ -n "${3}" ]; then
-        v_flag="${3}"
-        case "${v_flag}" in
-            T)      t_url=tags;;
-            R)      t_url=releases;;
-            *)      fail_fn 'Failed to pass "tags" and "releases" to the command: curl_cmd.';;
-        esac
-    fi
-
-    git_1_fn "${v_url}" "${t_url}" 2>/dev/null
+    git_1_fn "${1}" 'releases' 2>/dev/null
 }
 
 execute()
@@ -258,12 +236,12 @@ download()
     mkdir -p "${target_dir}"
 
     if [ -n "${3}" ]; then
-        if ! tar -xf "${target_file}" -C "${target_dir}" 2>/dev/null >/dev/null; then
+        if ! tar -zxf "${target_file}" -C "${target_dir}" 2>/dev/null >/dev/null; then
             sudo rm "${target_file}"
             fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script. Line: ${LINENO}"
         fi
     else
-        if ! tar -xf "${target_file}" -C "${target_dir}" --strip-components 1 2>/dev/null >/dev/null; then
+        if ! tar -zxf "${target_file}" -C "${target_dir}" --strip-components 1 2>/dev/null >/dev/null; then
             sudo rm "${target_file}"
             fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script. Line: ${LINENO}"
         fi
@@ -308,7 +286,8 @@ installed()
 #
 
 pkgs=(autoconf autoconf-archive autogen automake autotools-dev
-      build-essential ccache curl libtool libtool-bin m4 pkg-config)
+      build-essential ccache cmake curl libgtest-dev libtool
+      libtool-bin m4 ninja-build pkg-config)
 
 for pkg in ${pkgs[@]}
 do
@@ -333,38 +312,23 @@ fi
 # BUILD LIBRARIES FROM SOURCE
 #
 
-if build 'libgpg-error' '1.47'; then
-    download 'https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-1.47.tar.bz2' 'libgpg-error-1.47.tar.bz2'
-    execute ./autogen.sh
-    execute ./configure --prefix="${install_prefix}" \
-                        --{build,host}="${pc_type}"  \
-                        --disable-doc                \
-                        --disable-nls                \
-                        --disable-tests              \
-                        --disable-werror             \
-                        --enable-maintainer-mode     \
-                        --enable-static              \
-                        --enable-threads=posix       \
-                        --with-libiconv-prefix=/usr  \
-                        --with-libintl-prefix=/usr   \
-                        --with-pic
-    execute make "-j${cpu_threads}"
-    execute sudo make install
-    execute sudo cp -f 'src/gpg-error-config' "${install_prefix}"/bin
-    build_done 'libgpg-error' '1.47'
-fi
-
-if build 'libgcrypt' '1.8.10-LTS'; then
-    download 'https://gnupg.org/ftp/gcrypt/libgcrypt/libgcrypt-1.8.10.tar.bz2' 'libgcrypt-1.8.10-LTS.tar.bz2'
-    execute ./autogen.sh
-    ./configure --prefix="${install_prefix}"                   \
-                --{build,host}="${pc_type}"                    \
-                --enable-static                                \
-                --with-libgpg-error-prefix="${install_prefix}" \
-                --with-pic
-    execute make "-j${cpu_threads}"
-    execute sudo make install
-    build_done 'libgcrypt' '1.8.10-LTS'
+git_ver_fn 'google/highway' 'R'
+if build 'libhwy' "${g_ver}"; then
+    download "https://github.com/google/highway/archive/refs/tags/${g_ver}.tar.gz" "libhwy-${g_ver}.tar.gz"
+    CFLAGS+=' -DHWY_COMPILE_ALL_ATTAINABLE'
+    CXXFLAGS+=' -DHWY_COMPILE_ALL_ATTAINABLE'
+    execute cmake -B build                                   \
+                  -DCMAKE_INSTALL_PREFIX="${install_prefix}" \
+                  -DCMAKE_BUILD_TYPE=Release                 \
+                  -DHWY_ENABLE_TESTS=OFF                     \
+                  -DHWY_SYSTEM_GTEST=OFF                     \
+                  -DBUILD_TESTING=OFF                        \
+                  -DHWY_ENABLE_EXAMPLES=OFF                  \
+                  -DHWY_FORCE_STATIC_LIBS=ON                 \
+                  -G Ninja -Wno-dev
+    execute ninja "-j${cpu_threads}" -C build
+    execute sudo ninja "-j${cpu_threads}" -C build install
+    build_done 'libhwy' "${g_ver}"
 fi
 
 # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE VERSION COMMANDS MIGHT NOT WORK
