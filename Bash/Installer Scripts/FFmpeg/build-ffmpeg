@@ -1092,12 +1092,6 @@ box_out_banner_global()
 }
 box_out_banner_global 'Installing Global Tools'
 
-case "${VER}" in
-    10|11|12|23.04)         lt_ver=2.4.7;;
-    18.04|20.04|22.04)      lt_ver=2.4.6;;
-    *)                      fail_fn "Unable to get the OS version. Line: ${LINENO}"
-esac
-
 if build 'm4' 'latest'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
     execute ./configure --prefix="${workspace}"                \
