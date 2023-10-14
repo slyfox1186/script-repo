@@ -59,12 +59,12 @@ export CC=gcc CXX=g++
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-cuda_folder_path="$(sudo find /usr/local/cuda* -type f -name nvcc | sed 's/\/bin\/nvcc//')"
+set_cuda_folder_path="$(sudo find /usr/local/cuda* -type f -name nvcc | sed 's/\/bin\/nvcc//')"
 
-if [ -n "${cuda_folder_path}" ]; then
-    set_cuda_folder_path="${cuda_folder_path}"
+if [ -n "${set_cuda_folder_path}" ]; then
+    cuda_folder_path="${set_cuda_folder_path}"
 else
-    set_cuda_folder_path='/usr/local/cuda'
+    cuda_folder_path='/usr/local/cuda'
 fi
 
 export {CFLAGS,CXXFLAGS}='-g -O2 -march=native'
