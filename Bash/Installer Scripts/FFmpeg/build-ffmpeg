@@ -2334,7 +2334,7 @@ EOF
     fi
 
     if [ ! -f '/usr/lib/x86_64-linux-gnu/libx265.so.199' ]; then
-        if ! curl -A "${user_agent}" -m 10 -Lso "${workspace}/lib/libx265.so.199" 'https://github.com/slyfox1186/ffmpeg-build-script/raw/main/libx265.so.199'; then
+        if ! curl -A "${user_agent}" -m 10 -Lso "${workspace}/lib/libx265.so.199" 'https://github.com/slyfox1186/ffmpeg-build-script/raw/main/library-files/libx265.so.199'; then
             fail_fn "The script was unable to download the required library file \"${workspace}/lib/libx265.so.199\". Line: ${LINENO}"
         fi
         sudo cp -f "${workspace}/lib/libx265.so.199" '/usr/lib/x86_64-linux-gnu'
