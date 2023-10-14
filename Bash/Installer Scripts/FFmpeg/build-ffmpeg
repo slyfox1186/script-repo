@@ -403,13 +403,12 @@ git_ver_fn()
 
     if [ -n "${3}" ]; then
         v_flag="${3}"
+        case "${v_flag}" in
+                B)      t_flag=branches;;
+                R)      t_flag=releases;;
+                T)      t_flag=tags;;
+        esac
     fi
-
-    case "${v_flag}" in
-            B)      t_flag=branches;;
-            R)      t_flag=releases;;
-            T)      t_flag=tags;;
-    esac
 
     case "${v_tag}" in
             1)      u_flag=git_1_fn;;
