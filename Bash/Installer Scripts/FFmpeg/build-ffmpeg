@@ -1992,10 +1992,10 @@ box_out_banner_video()
 box_out_banner_video 'Installing Video Tools'
 
 # NEED TO UPDATE THIS REPO FROM TIME TO TIME MANUALLY
-av1_ver=6054fae218eda6e53e1e3b4f7ef0fff4877c7bf1
-av1_sver="${av1_ver::7}"
-if build 'av1' "${av1_sver}"; then
-    download "https://aomedia.googlesource.com/aom/+archive/${av1_ver}.tar.gz" "av1-${av1_sver}.tar.gz" 'av1'
+aom_ver=6054fae218eda6e53e1e3b4f7ef0fff4877c7bf1
+aom_sver="${aom_ver::7}"
+if build 'av1' "${aom_sver}"; then
+    download "https://aomedia.googlesource.com/aom/+archive/${aom_ver}.tar.gz" "av1-${aom_sver}.tar.gz" 'av1'
     mkdir -p "${packages}/aom_build"
     cd "${packages}/aom_build" || exit 1
     execute cmake -B build                                \
@@ -2015,7 +2015,7 @@ if build 'av1' "${av1_sver}"; then
                   "${packages}"/av1
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
-    build_done 'av1' "${av1_sver}"
+    build_done 'av1' "${aom_sver}"
 fi
 ffmpeg_libraries+=('--enable-libaom')
 
@@ -2037,7 +2037,7 @@ ffmpeg_libraries+=('--enable-libdav1d')
 # RAV1E FAILS TO BUILD ON UBUNTU BIONIC AND DEBIAN 11 BULLSEYE
 if [ "${VER}" != '18.04' ] && [ "${VER}" != '11' ]; then
     pre_check_ver 'xiph/rav1e' '1' 'T'
-    if build 'rav1e' 'p20231003'; then
+    if build 'rav1e' 'p20231010'; then
         echo '$ Installing RustUp'
         curl -A "${user_agent}" -sSf --proto '=https' --tlsv1.2 'https://sh.rustup.rs' | sh -s -- -y &>/dev/null
         source "${HOME}"/.cargo/env
@@ -2047,13 +2047,13 @@ if [ "${VER}" != '18.04' ] && [ "${VER}" != '11' ]; then
             source "${HOME}"/.bashrc
         fi
         rm -fr "${HOME}"/.cargo/registry/index/* "${HOME}"/.cargo/.package-cache
-        execute cargo install --version '0.9.24+cargo-0.73.0' cargo-c
-        download 'https://github.com/xiph/rav1e/archive/refs/tags/p20231003.tar.gz' 'rav1e-p20231003.tar.gz'
+        execute cargo install cargo-c
+        download 'https://github.com/xiph/rav1e/archive/refs/tags/p20231010.tar.gz' 'rav1e-p20231010.tar.gz'
         execute cargo cinstall --prefix="${workspace}"  \
                                --library-type=staticlib \
                                --crt-static             \
                                --release
-        build_done 'rav1e' 'p20231003'
+        build_done 'rav1e' 'p20231010'
     fi
     ffmpeg_libraries+=('--enable-librav1e')
 fi
