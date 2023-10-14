@@ -49,6 +49,16 @@ debug=OFF
 mkdir -p "${packages}" "${workspace}"
 
 #
+# GET CPU CORE COUNT FOR PARALLEL PROCESSING
+#
+
+if [ -f /proc/cpuinfo ]; then
+    cpu_threads="$(grep --count ^processor /proc/cpuinfo)"
+else
+    cpu_threads="$(nproc --all)"
+fi
+
+#
 # SET THE C & C++ COMPILERS
 #
 
@@ -63,6 +73,10 @@ CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include"
 LDFLAGS="-L${workspace}/lib64 -L${workspace}/lib -L${workspace}/lib/x86_64-linux-gnu -L/usr/local/lib64"
 LDFLAGS+=' -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 export CPPFLAGS LDFLAGS
+
+#
+# CREATE FUNCTIONS
+#
 
 add_suffix_fn()
 {
@@ -106,16 +120,6 @@ suffix_choice_fn()
     esac
 }
 suffix_choice_fn
-
-#
-# GET CPU CORE COUNT FOR PARALLEL PROCESSING
-#
-
-if [ -f /proc/cpuinfo ]; then
-    cpu_threads="$(grep --count ^processor /proc/cpuinfo)"
-else
-    cpu_threads="$(nproc --all)"
-fi
 
 #
 # PRINT BANNER
