@@ -16,7 +16,7 @@
 ##                - Debian 10/11/12
 ##                - Ubuntu (20/22/23).04
 ##
-##  Added: Go version 1.21.2
+##  Added: Go version 1.21.3
 ##  Added: A new variable named debug to help with troubleshooting issues.
 ##  Added: cmake GUI
 ##
