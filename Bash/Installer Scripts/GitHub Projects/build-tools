@@ -13,8 +13,8 @@
 ##  GitHub: https://github.com/slyfox1186/script-repo/edit/main/shell/installers/build-tools
 ##
 ##  Supported OS:
-##                - Ubuntu 23.04 / 22.04
-##                - Debian 10 / 11 / 12
+##                - Debian 10/11/12
+##                - Ubuntu (20/22/23).04
 ##
 ##  Added: Go version 1.21.2
 ##  Added: A new variable named debug to help with troubleshooting issues.
@@ -146,8 +146,6 @@ cleanup_fn()
         1)      sudo rm -fr "${cwd}";;
         2)      return 0;;
         *)
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
                 unset answer
                 clear
                 cleanup_fn
@@ -179,12 +177,12 @@ execute()
 
     if [ "${debug}" = 'ON' ]; then
         if ! output="$("${@}")"; then
-            notify-send -t 5000 "Failed to execute: ${*}"
+            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
             fail_fn "Failed to execute: ${*}"
         fi
     else
         if ! output="$("${@}" 2>&1)"; then
-            notify-send -t 5000 "Failed to execute: ${*}"
+            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
             fail_fn "Failed to execute: ${*}"
         fi
     fi
@@ -261,8 +259,6 @@ build()
     return 0
 }
 
-curl_timeout=10
-
 git_1_fn()
 {
     local curl_cmd github_repo github_url g_sver g_sver1
@@ -271,7 +267,7 @@ git_1_fn()
     github_repo="${1}"
     github_url="${2}"
 
-    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_sver="$(echo "${curl_cmd}" | jq -r '.[0].tag_name' 2>/dev/null)"
         g_sver1="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver="${g_sver#v}"
@@ -284,7 +280,7 @@ git_2_fn()
     gitlab_repo="${1}"
     github_url="${2}"
 
-    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}" | jq -r '.[0].name')"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}" | jq -r '.[0].name')"; then
         g_ver="${curl_cmd#v}"
     fi
 }
@@ -298,13 +294,12 @@ git_ver_fn()
 
     if [ -n "${3}" ]; then
         v_flag="${3}"
+        case "${v_flag}" in
+                R)      t_flag=releases;;
+                T)      t_flag=tags;;
+                *)      fail_fn "Could not detect the variable \"v_flag\":Line ${LINENO}"
+        esac
     fi
-
-    case "${v_flag}" in
-            R)      t_flag=releases;;
-            T)      t_flag=tags;;
-            *)      fail_fn "Could not detect the variable \"v_flag\":Line ${LINENO}"
-    esac
 
     case "${v_tag}" in
             1)      u_flag=git_1_fn;;
@@ -321,7 +316,7 @@ build_done() { echo "${2}" > "${cwd}/${1}.done"; }
 # PRINT SCRIPT BANNER
 #
 
-printf "%s\n%s\n\n" \
+printf "%s\n%s\n\n"                      \
     "Build-tools script: v${script_ver}" \
     '===================================='
 
@@ -361,7 +356,10 @@ export ACLOCAL_PATH=/usr/share/aclocal
 git_ver_fn '541' '2' 'T'
 if build 'cmake' "${g_ver}"; then
     download "https://gitlab.kitware.com/cmake/cmake/-/archive/v${g_ver}/cmake-v${g_ver}.tar.bz2" "cmake-${g_ver}.tar.bz2"
-    execute ./bootstrap --prefix=/usr/local --enable-ccache --parallel="$(nproc --all)" --qt-gui
+    execute ./bootstrap --prefix=/usr/local         \
+                        --enable-ccache             \
+                        --parallel="$(nproc --all)" \
+                        --qt-gui
     execute make "-j${cpu_threads}"
     execute sudo make install
     build_done 'cmake' "${g_ver}"
@@ -371,8 +369,12 @@ git_ver_fn 'ninja-build/ninja' '1' 'T'
 if build 'ninja' "${g_ver1}"; then
     download "https://codeload.github.com/ninja-build/ninja/tar.gz/refs/tags/v${g_ver1}" "ninja-${g_ver1}.tar.gz"
     re2c_path="$(type -P re2c)"
-    execute cmake -B build -DCMAKE_{install_dir="${install_dir}",BUILD_TYPE=Release} \
-        -DRE2C="${re2c_path}" -DBUILD_TESTING=OFF -G 'Unix Makefiles' -Wno-dev
+    execute cmake -B build                             \
+                  -DCMAKE_install_dir="${install_dir}" \
+                  -DCMAKE_BUILD_TYPE=Release           \
+                  -DRE2C="${re2c_path}"                \
+                  -DBUILD_TESTING=OFF                  \
+                  -Wno-dev
     execute make "-j${cpu_threads}" -C build
     execute sudo make -C build install
     build_done 'ninja' "${g_ver1}"
@@ -386,15 +388,17 @@ if build 'meson' "${g_ver1}"; then
     build_done 'meson' "${g_ver1}"
 fi
 
-if build 'golang' '1.21.2'; then
-    download 'https://go.dev/dl/go1.21.2.linux-amd64.tar.gz' 'golang-1.21.2.tar.gz'
+if build 'golang' '1.21.3'; then
+    download 'https://go.dev/dl/go1.21.3.linux-amd64.tar.gz' 'golang-1.21.3.tar.gz'
     execute sudo cp -f bin/go bin/gofmt "${install_dir}"/bin
-    sudo rm -fr "${install_dir}"/go 2>/dev/null
+    if [ -d  "${install_dir}"/go ]; then
+        sudo rm -fr "${install_dir}"/go
+    fi
     sudo mkdir -p "${install_dir}"/go
     GOROOT="${install_dir}"/go
     PATH="${PATH}:${GOROOT}/bin"
     export GOROOT PATH
-    build_done 'golang' '1.21.2'
+    build_done 'golang' '1.21.3'
 fi
 
 # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES
