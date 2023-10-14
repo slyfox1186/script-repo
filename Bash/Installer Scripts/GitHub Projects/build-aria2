@@ -167,10 +167,6 @@ cleanup_fn()
     case "${choice}" in
         1)
                 sudo rm -fr "${cwd}"
-                cd "${cwd}" || exit 1
-                if [ -f "${pem_file}" ]; then
-                    sudo rm "${pem_file}"
-                fi
                 if [ -f /usr/bin/aria2c ]; then
                     sudo apt -y remove aria2
                     sudo apt -y autoremove
