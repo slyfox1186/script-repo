@@ -2224,7 +2224,7 @@ if build 'gpac' "${g_ver}"; then
     build_done 'gpac' "${g_ver}"
 fi
 
-# ANY VERSION HIGHER THAN 1.4.0 BREAKS FFMPEG DURING IT'S BUILD
+# VERSIONS >= 1.4.0 BREAKS FFMPEG DURING THE BUILD
 git_ver_fn '24327400' '3' 'T'
 if build 'svt-av1' '1.4.0'; then
     download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v1.4.0/SVT-AV1-v1.4.0.tar.bz2' 'svt-av1-1.4.0.tar.bz2'
@@ -2236,8 +2236,8 @@ if build 'svt-av1' '1.4.0'; then
                        -DBUILD_DEC=ON                        \
                        -DBUILD_ENC=ON                        \
                        -DBUILD_TESTING=OFF                   \
-                       -DENABLE_NASM=ON                      \
                        -DENABLE_AVX512=ON                    \
+                       -DENABLE_NASM=ON                      \
                        -DNATIVE=ON                           \
                        -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C Build/linux
@@ -2280,10 +2280,10 @@ if build 'x265' "${g_sver}"; then
     execute cmake ../../../source                       \
                   -DCMAKE_INSTALL_PREFIX="${workspace}" \
                   -DCMAKE_BUILD_TYPE=Release            \
-                  -DHIGH_BIT_DEPTH=ON                   \
-                  -DEXPORT_C_API=OFF                    \
                   -DENABLE_CLI=OFF                      \
                   -DENABLE_SHARED=OFF                   \
+                  -DEXPORT_C_API=OFF                    \
+                  -DHIGH_BIT_DEPTH=ON                   \
                   -DMAIN12=ON                           \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}"
@@ -2292,11 +2292,11 @@ if build 'x265' "${g_sver}"; then
     execute cmake ../../../source                       \
                   -DCMAKE_INSTALL_PREFIX="${workspace}" \
                   -DCMAKE_BUILD_TYPE=Release            \
-                  -DHIGH_BIT_DEPTH=ON                   \
-                  -DEXPORT_C_API=OFF                    \
                   -DENABLE_CLI=OFF                      \
                   -DENABLE_HDR10_PLUS=ON                \
                   -DENABLE_SHARED=OFF                   \
+                  -DEXPORT_C_API=OFF                    \
+                  -DHIGH_BIT_DEPTH=ON                   \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}"
     echo '$ making 8bit binaries'
@@ -2306,9 +2306,9 @@ if build 'x265' "${g_sver}"; then
     execute cmake ../../../source                           \
                   -DCMAKE_INSTALL_PREFIX="${workspace}"     \
                   -DCMAKE_BUILD_TYPE=Release                \
+                  -DENABLE_PIC=ON                           \
                   -DEXTRA_LIB='x265_main10.a;x265_main12.a' \
                   -DEXTRA_LINK_FLAGS=-L.                    \
-                  -DENABLE_PIC=ON                           \
                   -DLINKED_10BIT=ON                         \
                   -DLINKED_12BIT=ON                         \
                   -G Ninja -Wno-dev
@@ -2364,8 +2364,8 @@ if [ -n "${iscuda}" ]; then
         build_done 'nv-codec-headers' '12.0.16.1'
     fi
 
-    CFLAGS+=" -I/usr/local/cuda/include"
-    LDFLAGS+=" -L/usr/local/cuda/lib64"
+    CFLAGS+=' -I/usr/local/cuda/include'
+    LDFLAGS+=' -L/usr/local/cuda/lib64'
     ffmpeg_libraries+=('--enable-'{cuda-nvcc,cuda-llvm,cuvid,nvdec,nvenc,ffnvcodec})
 
     if [ -n "${LDEXEFLAGS}" ]; then
@@ -2445,15 +2445,15 @@ fi
 
 if build 'libgav1' 'git'; then
     download_git 'https://chromium.googlesource.com/codecs/libgav1' 'libgav1-git'
-    execute git clone -b 20220623.0 --depth 1 https://github.com/abseil/abseil-cpp.git third_party/abseil-cpp
+    execute git clone -b 20230802.1 --depth 1 'https://github.com/abseil/abseil-cpp.git third_party/abseil-cpp'
     execute cmake -B build                              \
                   -DCMAKE_INSTALL_PREFIX="${workspace}" \
                   -DCMAKE_BUILD_TYPE=Release            \
+                  -DABSL_ENABLE_INSTALL=ON              \
+                  -DABSL_PROPAGATE_CXX_STD=ON           \
                   -DBUILD_SHARED_LIBS=OFF               \
                   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON    \
                   -DCMAKE_INSTALL_SBINDIR=sbin          \
-                  -DABSL_ENABLE_INSTALL=ON              \
-                  -DABSL_PROPAGATE_CXX_STD=ON           \
                   -DLIBGAV1_ENABLE_TESTS=OFF            \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
@@ -2470,11 +2470,11 @@ if build 'xvidcore' "${g_ver}"; then
     execute make "-j${cpu_threads}"
     execute make install
 
-    if [ ! -f "${workspace}/lib/libxvidcore.so.4@" ]; then
-        execute ln -sf 'build/libxvidcore.so.4.3' "${workspace}/lib/libxvidcore.so.4@"
+    if [ ! -f "${workspace}/lib/libxvidcore.so.4" ]; then
+        execute ln -sf 'build/libxvidcore.so.4.3' "${workspace}/lib/libxvidcore.so.4"
     fi
     if [ ! -f "${workspace}/lib/libxvidcore.so" ]; then
-        execute ln -sf "build/libxvidcore.so.4@" "${workspace}/lib/libxvidcore.so"
+        execute ln -sf "build/libxvidcore.so.4" "${workspace}/lib/libxvidcore.so"
     fi
 
     build_done 'xvidcore' "${g_ver}"
@@ -2515,6 +2515,14 @@ if build 'libheif' "${g_ver}"; then
                   -DCMAKE_INSTALL_PREFIX="${workspace}"                          \
                   -DCMAKE_BUILD_TYPE=Release                                     \
                   -DBUILD_SHARED_LIBS=OFF                                        \
+                  -DAOM_INCLUDE_DIR="${workspace}"/include                       \
+                  -DAOM_LIBRARY="${workspace}"/lib/libaom.a                      \
+                  -DDAV1D_INCLUDE_DIR="${workspace}"/include                     \
+                  -DDAV1D_LIBRARY="${workspace}"/lib/x86_64-linux-gnu/libdav1d.a \
+                  -DLIBDE265_INCLUDE_DIR="${workspace}"/include                  \
+                  -DLIBDE265_LIBRARY=/usr/lib/x86_64-linux-gnu/libde265.so       \
+                  -DLIBSHARPYUV_INCLUDE_DIR="${workspace}"/include/webp          \
+                  -DLIBSHARPYUV_LIBRARY="${workspace}"/lib/libsharpyuv.so        \
                   -DWITH_AOM_DECODER=ON                                          \
                   -DWITH_AOM_ENCODER=ON                                          \
                   -DWITH_DAV1D=ON                                                \
@@ -2525,16 +2533,8 @@ if build 'libheif' "${g_ver}"; then
                   -DWITH_REDUCED_VISIBILITY=OFF                                  \
                   -DWITH_SvtEnc=OFF                                              \
                   -DWITH_SvtEnc_PLUGIN=OFF                                       \
-                  -DAOM_INCLUDE_DIR="${workspace}"/include                       \
-                  -DAOM_LIBRARY="${workspace}"/lib/libaom.a                      \
-                  -DDAV1D_INCLUDE_DIR="${workspace}"/include                     \
-                  -DDAV1D_LIBRARY="${workspace}"/lib/x86_64-linux-gnu/libdav1d.a \
-                  -DLIBDE265_INCLUDE_DIR="${workspace}"/include                  \
-                  -DLIBDE265_LIBRARY=/usr/lib/x86_64-linux-gnu/libde265.so       \
                   -DX265_INCLUDE_DIR="${workspace}"/include                      \
                   -DX265_LIBRARY="${workspace}"/lib/libx265.so                   \
-                  -DLIBSHARPYUV_INCLUDE_DIR="${workspace}"/include/webp          \
-                  -DLIBSHARPYUV_LIBRARY="${workspace}"/lib/libsharpyuv.so        \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
