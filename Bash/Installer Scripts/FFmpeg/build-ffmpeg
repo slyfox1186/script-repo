@@ -1113,7 +1113,7 @@ fi
 case "${VER}" in
     12|23.04)                   lt_ver=2.4.7;;
     10|11|18.04|20.04|22.04)    lt_ver=2.4.6;;
-    *)                          fail_fn "Unable to get the OS version:Line ${LINENO}"
+    *)                          fail_fn "Unable to get the OS version. Line: ${LINENO}"
 esac
 
 if build 'libtool' "${lt_ver}"; then
