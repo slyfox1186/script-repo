@@ -370,7 +370,7 @@ if build 'libgpg-error' '1.47'; then
                         --with-pic
     execute make "-j${cpu_threads}"
     execute sudo make install
-    execute cp -f 'src/gpg-error-config' "${install_prefix}"/bin
+    execute sudo cp -f 'src/gpg-error-config' "${install_prefix}"/bin
     build_done 'libgpg-error' '1.47'
 fi
 
