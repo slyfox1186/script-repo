@@ -5,8 +5,8 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
-##  Script version: 3.0.1
-##  Last Update: 10.13.23
+##  Script version: 3.0.2
+##  Last Update: 10.14.23
 ##
 ##  Supported Distro:
 ##
@@ -57,7 +57,7 @@
 #
 
 script_name="${0}"
-script_ver=3.0.1
+script_ver=3.0.2
 ffmpeg_ver=963937e408fc68b5925f938a253cfff1d506f784
 ffmpeg_sver="${ffmpeg_ver::7}"
 ffmpeg_archive=ffmpeg-"${ffmpeg_sver}".tar.gz
@@ -79,7 +79,7 @@ latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 curl_timeout=10
-debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=ON # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -653,7 +653,7 @@ ${HOME}/.local/bin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-${cuda_folder_path}/bin:\
+/usr/local/cuda/bin:\
 /snap/bin\
 "
 export PATH
@@ -755,7 +755,7 @@ cuda_download_fn()
     cuda_ver="$(cat /usr/local/cuda/version.json | jq -r '.cuda.version')"
 
     if [ -z "${cuda_ver}" ]; then
-        fail_fn "Unable to locate the file: ${cuda_folder_path}/version.json. Line: ${LINENO}"
+        fail_fn "Unable to locate the file: /usr/local/cuda/version.json. Line: ${LINENO}"
     else
         export PATH="${PATH}:${cuda_path}"
     fi
@@ -770,7 +770,7 @@ install_cuda_fn()
     local answer choice
     clear
 
-    if [ -f "${cuda_folder_path}"/version.json ]; then
+    if [ -f /usr/local/cuda/version.json ]; then
         cuda_installed_ver="$(cat "${cuda_folder_path}"/version.json | jq -r '.cuda.version')"
         cuda_ver="${cuda_installed_ver}"
     else
@@ -824,12 +824,12 @@ pkgs_fn()
         '=============================================='
 
     pkgs=("${1}" ant apt asciidoc autoconf autoconf-archive automake autopoint binutils bison build-essential cargo
-          ccache checkinstall clang clang-tools cmake curl doxygen fcitx-libs-dev flex flite1-dev freeglut3-dev
-          frei0r-plugins-dev gawk gettext gimp-data git gnome-desktop-testing gnustep-gui-runtime google-perftools
-          gperf gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk libamd2 libasound2-dev libass-dev libaudio-dev
-          libavfilter-dev libbabl-0.1-0 libbluray-dev libbs2b-dev libbz2-dev libc6 libc6-dev libcaca-dev libcairo2-dev
-          libcamd2 libccolamd2 libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libcholmod3 libchromaprint-dev
-          libcodec2-dev libcolamd2 libcrypto++-dev libcurl4-openssl-dev libdbus-1-dev libde265-dev libdevil-dev
+          ccache checkinstall clang clang-tools cmake curl default-jdk-headless doxygen fcitx-libs-dev flex flite1-dev
+          freeglut3-dev frei0r-plugins-dev gawk gettext gimp-data git gnome-desktop-testing gnustep-gui-runtime
+          google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk libamd2 libasound2-dev
+          libass-dev libaudio-dev libavfilter-dev libbabl-0.1-0 libbluray-dev libbs2b-dev libbz2-dev libc6 libc6-dev
+          libcaca-dev libcairo2-dev libcamd2 libccolamd2 libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libcholmod3
+          libchromaprint-dev libcodec2-dev libcolamd2 libcrypto++-dev libcurl4-openssl-dev libdbus-1-dev libdevil-dev
           libdmalloc-dev libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev
           libgegl-0.4-0 libgegl-common libgimp2.0 libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev
           libgnutls28-dev libgnutls30 libgoogle-perftools4 libgoogle-perftools-dev libgsm1-dev libgvc6 libhwy-dev
@@ -841,10 +841,9 @@ pkgs_fn()
           libsndfile1-dev libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev libsrt-gnutls-dev libssh-dev libssl-dev
           libsuitesparseconfig5 libtalloc-dev libtheora-dev libticonv-dev libtool libtool-bin libtwolame-dev libudev-dev
           libumfpack5 libunwind-dev libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev
-          libvpx-dev libx11-dev libx264-dev libx265-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev
-          libxrandr-dev libxss-dev libxvidcore-dev libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev lshw lzma-dev m4 meson nasm
-          ninja-build openjdk-17-jdk-headless pandoc python3 python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip
-          valgrind wget xmlto zlib1g-dev)
+          libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev
+          libxss-dev libxvidcore-dev libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev lshw lzma-dev m4 meson nasm ninja-build
+          pandoc python3 python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip valgrind wget xmlto zlib1g-dev)
 
     for pkg in ${pkgs[@]}
     do
@@ -990,7 +989,7 @@ debian_os_version()
     debian_pkgs='libdmalloc5 libjemalloc2 libtcmalloc-minimal4 libyuv-dev libyuv-utils libyuv0 libsharp-dev'
 
     case "${VER}" in
-        trixie)         pkgs_fn "${debian_common_pkgs} ${debian_pkgs} libncurses-dev libncurses6 libncursesw6 librist-dev";;
+        trixie)         pkgs_fn "${debian_common_pkgs} ${debian_pkgs} librist-dev libncurses-dev libncurses6 libncursesw6";;
         12)             pkgs_fn "${debian_common_pkgs} ${debian_pkgs} librist-dev libncurses5-dev libncursesw5-dev";;
         10|11)          pkgs_fn "${debian_pkgs} libncurses5-dev libncursesw5-dev";;
         *)              fail_fn "Could not detect the Debian version. Line: ${LINENO}";;
@@ -1001,10 +1000,10 @@ ubuntu_os_version()
 {
     ubuntu_common_pkgs='libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev'
     bionic_pkgs='libdmalloc5 libjemalloc1 libtcmalloc-minimal4 libvmmalloc-dev libvmmalloc1 libreadline-gplv2-dev'
-    focal_pkgs='libjemalloc2 libtcmalloc-minimal4 libvmmalloc1 libvmmalloc-dev libdmalloc5 libcunit1-dev libde265-dev libncurses5-dev'
+    focal_pkgs='libjemalloc2 libtcmalloc-minimal4 libvmmalloc1 libvmmalloc-dev libdmalloc5 libcunit1-dev libncurses5-dev'
     focal_pkgs+=' libncursesw5-dev librust-jemalloc-sys-dev librust-malloc-buf-dev libsrt-doc libreadline-dev libcunit1 libcunit1-doc'
     jammy_pkgs='libmimalloc-dev libtbbmalloc2 libyuv-dev librust-jemalloc-sys-dev librust-malloc-buf-dev libncurses5-dev'
-    jammy_pkgs+=' libncursesw5-dev libsrt-doc libreadline-dev libpipewire-0.3-dev libwayland-dev libdecor-0-dev libde265-dev'
+    jammy_pkgs+=' libncursesw5-dev libsrt-doc libreadline-dev libpipewire-0.3-dev libwayland-dev libdecor-0-dev'
     lunar_kenetic_pkgs='librist-dev libjxl-dev'
 
     case "${VER}" in
@@ -1063,9 +1062,9 @@ export PATH="${PATH}:${JAVA_HOME}/bin"
 # CHECK IF THE CUDA FOLDER EXISTS TO DETERMINE INSTALLATION STATUS
 #
 
-iscuda="$(sudo find "${cuda_folder_path}" -type f -name nvcc 2>/dev/null)"
-cuda_path="$(sudo find "${cuda_folder_path}" -type f -name nvcc | grep -Eo '^.*/bin?')"
-cuda_folder_path="$(sudo find "${cuda_folder_path}" -type f -name nvcc | sed 's/\/bin\/nvcc//')"
+iscuda="$(sudo find /usr/local/cuda* -type f -name nvcc 2>/dev/null)"
+cuda_path="$(sudo find /usr/local/cuda* -type f -name nvcc | grep -Eo '^.*/bin?')"
+cuda_folder_path="$(sudo find /usr/local/cuda* -type f -name nvcc | sed 's/\/bin\/nvcc//')"
 
 #
 # PROMPT THE USER TO INSTALL THE GEFORCE CUDA SDK-TOOLKIT
@@ -1221,17 +1220,6 @@ if [ "${VER}" != '18.04' ]; then
                       -DCMAKE_INSTALL_PREFIX="${workspace}" \
                       -DCMAKE_BUILD_TYPE=Release            \
                       -DBUILD_SHARED_LIBS=OFF               \
-                      -DCMAKE_EXPORT_COMPILE_COMMANDS=OFF   \
-                      -DCMAKE_VERBOSE_MAKEFILE=OFF          \
-                      -DCPACK_BINARY_DEB=ON                 \
-                      -DCPACK_BINARY_FREEBSD=ON             \
-                      -DCPACK_BINARY_IFW=ON                 \
-                      -DCPACK_BINARY_NSIS=ON                \
-                      -DCPACK_BINARY_RPM=ON                 \
-                      -DCPACK_BINARY_TBZ2=ON                \
-                      -DCPACK_BINARY_TXZ=ON                 \
-                      -DCPACK_SOURCE_RPM=ON                 \
-                      -DCPACK_SOURCE_ZIP=ON                 \
                       -G Ninja -Wno-dev
         execute ninja "-j${cpu_threads}" -C build
         execute ninja "-j${cpu_threads}" -C build install
@@ -1274,8 +1262,7 @@ if build 'aribb24' "${g_ver}"; then
     execute autoreconf -fi
     execute ./configure --prefix="${workspace}" \
                         --disable-shared        \
-                        --with-pic              \
-                        PKG_CONFIG="${workspace}"/bin/pkg-config
+                        --with-pic
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'aribb24' "${g_ver}"
@@ -1286,15 +1273,13 @@ git_ver_fn '7950' '4'
 g_ver1="${g_ver//-/.}"
 if build 'freetype' "${g_ver1}"; then
     download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-${g_ver}/freetype-VER-${g_ver}.tar.bz2" "freetype-${g_ver1}.tar.bz2"
-    extracommands=(-D{harfbuzz,png,bzip2,brotli,zlib,tests}'=disabled')
+    extracmds=('-D'{harfbuzz,png,bzip2,brotli,zlib,tests}'=disabled')
     execute ./autogen.sh
     execute meson setup build --prefix="${workspace}"  \
                               --buildtype=release      \
                               --default-library=static \
                               --strip                  \
-                              -Dc_args="${CFLAGS}"     \
-                              -Dcpp_args="${CXXFLAGS}" \
-                              "${extracommands[@]}"
+                              "${extracmds[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'freetype' "${g_ver1}"
@@ -1304,21 +1289,18 @@ ffmpeg_libraries+=('--enable-libfreetype')
 git_ver_fn '890' '4'
 if build 'fontconfig' "${g_ver}"; then
     download "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/${g_ver}/fontconfig-${g_ver}.tar.bz2"
+    extracmds=('--disable-'{docbook,docs,nls,shared})
     LDFLAGS+=' -DLIBXML_STATIC'
     sed -i 's|Cflags:|& -DLIBXML_STATIC|' fontconfig.pc.in
     execute ./autogen.sh --noconf
     execute autoupdate
     execute ./configure --prefix="${workspace}"     \
                         --{build,host}="${pc_type}" \
-                        --disable-docbook           \
-                        --disable-docs              \
-                        --disable-shared            \
-                        --disable-nls               \
+                        "${extracmds[@]}"           \
                         --enable-iconv              \
                         --enable-static             \
                         --with-arch="$(uname -m)"   \
-                        --with-libiconv-prefix=/usr \
-                        --with-pic
+                        --with-libiconv-prefix=/usr
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'fontconfig' "${g_ver}"
@@ -1330,16 +1312,13 @@ if [ "${VER}" != '18.04' ]; then
     pre_check_ver 'harfbuzz/harfbuzz' '1' 'R'
     if build 'harfbuzz' "${g_ver}"; then
         download "https://github.com/harfbuzz/harfbuzz/archive/refs/tags/${g_ver}.tar.gz" "harfbuzz-${g_ver}.tar.gz"
-        extracommands=(-D{benchmark,cairo,docs,glib,gobject,icu,introspection,tests}'=disabled')
+        extracmds=('-D'{benchmark,cairo,docs,glib,gobject,icu,introspection,tests}'=disabled')
         execute ./autogen.sh
     execute meson setup build --prefix="${workspace}"  \
                               --buildtype=release      \
                               --default-library=static \
                               --strip                  \
-                              -Db_lto_threads=1        \
-                              -Dc_args="${CFLAGS}"     \
-                              -Dcpp_args="${CXXFLAGS}" \
-                              "${extracommands[@]}"
+                              "${extracmds[@]}"
         execute ninja "-j${cpu_threads}" -C build
         execute ninja "-j${cpu_threads}" -C build install
         build_done 'harfbuzz' "${g_ver}"
@@ -1359,9 +1338,9 @@ if build 'c2man' 'git'; then
                         -D installmansrc="${workspace}"/share/man                           \
                         -D ldflags="${LDFLAGS}"                                             \
                         -D less="$(type -P less)"                                           \
-                        -D libpth='/lib /usr/lib'                                           \
+                        -D libpth='/usr/lib64 /usr/lib /lib64 /lib'                         \
                         -D locincpth="${workspace}/include /usr/local/include /usr/include" \
-                        -D loclibpth="${workspace}/lib /usr/local/lib"                      \
+                        -D loclibpth="${workspace}/lib /usr/local/lib64 /usr/local/lib"     \
                         -D make="$(type -P make)"                                           \
                         -D more="$(type -P more)"                                           \
                         -D osname="${OS}"                                                   \
@@ -1388,16 +1367,13 @@ fi
 pre_check_ver 'fribidi/fribidi' '1' 'T'
 if build 'fribidi' "${g_ver}"; then
     download "https://github.com/fribidi/fribidi/archive/refs/tags/v${g_ver}.tar.gz" "fribidi-${g_ver}.tar.gz"
-    extracommands=(-D{docs,tests}'=false')
+    extracmds=('-D'{docs,tests}'=false')
     execute autoreconf -fi
     execute meson setup build --prefix="${workspace}"  \
                               --buildtype=release      \
                               --default-library=static \
                               --strip                  \
-                              -Db_lto_threads=1        \
-                              -Dc_args="${CFLAGS}"     \
-                              -Dcpp_args="${CXXFLAGS}" \
-                              "${extracommands[@]}"
+                              "${extracmds[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'fribidi' "${g_ver}"
@@ -1425,12 +1401,9 @@ if build 'freeglut' "${g_ver}"; then
                   -DCMAKE_INSTALL_PREFIX="${workspace}" \
                   -DCMAKE_BUILD_TYPE=Release            \
                   -DFREEGLUT_BUILD_SHARED_LIBS=OFF      \
-                  -DFREEGLUT_GLES=OFF                   \
-                  -DFREEGLUT_PRINT_WARNINGS=OFF         \
                   -DFREEGLUT_BUILD_STATIC_LIBS=ON       \
-                  -DFREEGLUT_PRINT_ERRORS=ON            \
-                  -DFREEGLUT_REPLACE_GLUT=ON            \
-                  -DFREEGLUT_WAYLAND=ON                 \
+                  -DFREEGLUT_PRINT_ERRORS=OFF           \
+                  -DFREEGLUT_PRINT_WARNINGS=OFF         \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
@@ -1440,23 +1413,18 @@ fi
 if build 'libwebp' 'git'; then
     download_git 'https://chromium.googlesource.com/webm/libwebp' 'libwebp-git'
     execute autoreconf -fi
-    execute cmake -B build                              \
-                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
-                  -DCMAKE_BUILD_TYPE=Release            \
-                  -DBUILD_SHARED_LIBS=ON                \
-                  -DZLIB_INCLUDE_DIR="${workspace}"     \
-                  -DWEBP_BUILD_ANIM_UTILS=OFF           \
-                  -DWEBP_BUILD_EXTRAS=OFF               \
-                  -DWEBP_BUILD_GIF2WEBP=OFF             \
-                  -DWEBP_BUILD_IMG2WEBP=OFF             \
-                  -DWEBP_BUILD_LIBWEBPMUX=OFF           \
-                  -DWEBP_BUILD_VWEBP=OFF                \
-                  -DWEBP_BUILD_WEBPINFO=OFF             \
-                  -DWEBP_BUILD_WEBPMUX=OFF              \
-                  -DWEBP_ENABLE_SWAP_16BIT_CSP=OFF      \
-                  -DWEBP_LINK_STATIC=OFF                \
-                  -DWEBP_BUILD_CWEBP=ON                 \
-                  -DWEBP_BUILD_DWEBP=ON                 \
+    execute cmake -B build                                  \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}"     \
+                  -DCMAKE_BUILD_TYPE=Release                \
+                  -DBUILD_SHARED_LIBS=ON                    \
+                  -DZLIB_INCLUDE_DIR="${workspace}"/include \
+                  -DWEBP_BUILD_ANIM_UTILS=OFF               \
+                  -DWEBP_BUILD_CWEBP=ON                     \
+                  -DWEBP_BUILD_DWEBP=ON                     \
+                  -DWEBP_BUILD_EXTRAS=OFF                   \
+                  -DWEBP_BUILD_VWEBP=OFF                    \
+                  -DWEBP_ENABLE_SWAP_16BIT_CSP=OFF          \
+                  -DWEBP_LINK_STATIC=ON                     \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
@@ -1472,9 +1440,9 @@ if build 'libhwy' '1.0.7'; then
     execute cmake -B build                              \
                   -DCMAKE_INSTALL_PREFIX="${workspace}" \
                   -DCMAKE_BUILD_TYPE=Release            \
-                  -DHWY_ENABLE_TESTS=OFF                \
                   -DBUILD_TESTING=OFF                   \
                   -DHWY_ENABLE_EXAMPLES=OFF             \
+                  -DHWY_ENABLE_TESTS=OFF                \
                   -DHWY_FORCE_STATIC_LIBS=ON            \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
@@ -1554,8 +1522,7 @@ if build 'leptonica' '1.83.1'; then
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}"     \
                         --{build,host}="${pc_type}" \
-                        --with-pic                  \
-                        PKG_CONFIG="${workspace}"/bin/pkg-config
+                        --with-pic
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'leptonica' '1.83.1'
@@ -1570,15 +1537,13 @@ if build 'tesseract' "${g_ver}"; then
                         --disable-doc                                \
                         --with-extra-includes="${workspace}"/include \
                         --with-extra-libraries="${workspace}"/lib    \
-                        --with-pic                                   \
-                        PKG_CONFIG="${workspace}"/bin/pkg-config
+                        --with-pic
     execute make "-j${cpu_threads}"
     execute make install
-    tesseract_shared_lib="$(find "${workspace}"/lib -type f -name 'libtesseract.so.*')"
-    tesseract_shared_lib_trimmed="$(echo "${tesseract_shared_lib}" | sed 's/....$//g' | sed 's:.*/::')"
-    if [ -f "${tesseract_shared_lib}" ]; then
-        execute sudo ln -sf "${tesseract_shared_lib}" "/usr/lib/${tesseract_shared_lib_trimmed}"
-    fi
+    tesseract_lib="$(find "${workspace}"/lib -type f -name 'libtesseract.so.*' | sed 's:.*/::')"
+    tesseract_lib_trim="$(echo "${tesseract_lib}" | sed 's/....$//g' | sed 's:.*/::')"
+    execute sudo cp -f "${workspace}/lib/${tesseract_lib}" "/usr/lib/${tesseract_lib}"
+    execute sudo ln -sf "/usr/lib/${tesseract_lib}" "/usr/lib/${tesseract_lib_trim}"
     build_done 'tesseract' "${g_ver}"
 fi
 ffmpeg_libraries+=('--enable-libtesseract')
@@ -1624,21 +1589,22 @@ fi
 
 if build 'lv2' 'git'; then
     download_git 'https://github.com/lv2/lv2.git'
-    extracommands=(-D{docs,tests}'=disabled')
+    extracmds=('-D'{docs,tests}'=disabled')
     case "${VER}" in
-        10|11)      pulgins_switch=enabled;;
-        *)          pulgins_switch=disabled;;
+        10|11)      pswitch=enabled;;
+        *)          pswitch=disabled;;
     esac
     rm_pip_lock="$(sudo find /usr/lib/python3* -type f -name 'EXTERNALLY-MANAGED')"
     if [ -n "${rm_pip_lock}" ]; then
         sudo rm "${rm_pip_lock}"
     fi
     execute pip install lxml Markdown Pygments rdflib
-    execute meson setup build --prefix="${workspace}"       \
-                              --buildtype=release           \
-                              --default-library=static      \
-                              --strip                       \
-                              "${extracommands[@]}"
+    execute meson setup build --prefix="${workspace}"  \
+                              --buildtype=release      \
+                              --default-library=static \
+                              --strip                  \
+                              -Dplugins="${pswitch}"   \
+                              "${extracmds[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'lv2' 'git'
@@ -1654,16 +1620,13 @@ fi
 git_ver_fn '5048975' '3' 'T'
 if build 'serd' "${g_ver}"; then
     download "https://gitlab.com/drobilla/serd/-/archive/v${g_ver}/serd-v${g_ver}.tar.bz2" "serd-${g_ver}.tar.bz2"
-    extracommands=(-D{docs,tests}'=disabled')
+    extracmds=('-D'{docs,tests}'=disabled')
     execute meson setup build --prefix="${workspace}"  \
                               --buildtype=release      \
                               --default-library=static \
                               --strip                  \
-                              -Db_lto_threads=1        \
-                              -Dc_args="${CFLAGS}"     \
-                              -Dcpp_args="${CXXFLAGS}" \
                               -Dstatic=true            \
-                              "${extracommands[@]}"
+                              "${extracmds[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'serd' "${g_ver}"
@@ -1685,15 +1648,12 @@ fi
 git_ver_fn '14889806' '3' 'B'
 if build 'zix' '0.4.0'; then
     download 'https://gitlab.com/drobilla/zix/-/archive/v0.4.0/zix-v0.4.0.tar.bz2' 'zix-0.4.0.tar.bz2'
-    extracommands=(-D{benchmarks,docs,singlehtml,tests,tests_cpp}=disabled)
+    extracmds=('-D'{benchmarks,docs,singlehtml,tests,tests_cpp}'=disabled')
     execute meson setup build --prefix="${workspace}"  \
                               --buildtype=release      \
                               --default-library=static \
                               --strip                  \
-                              -Db_lto_threads=1        \
-                              -Dc_args="${CFLAGS}"     \
-                              -Dcpp_args="${CXXFLAGS}" \
-                              "${extracommands[@]}"
+                              "${extracmds[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'zix' '0.4.0'
@@ -1703,15 +1663,12 @@ git_ver_fn '11853362' '3' 'B'
 if build 'sord' "${g_sver1}"; then
     CFLAGS+=" -I${workspace}/include/serd-0"
     download "https://gitlab.com/drobilla/sord/-/archive/${g_ver1}/sord-${g_ver1}.tar.bz2" "sord-${g_sver1}.tar.bz2"
-    extracommands=(-D{docs,tests}=disabled)
+    extracmds=('-D'{docs,tests}'=disabled')
     execute meson setup build --prefix="${workspace}"  \
                               --buildtype=release      \
                               --default-library=static \
                               --strip                  \
-                              -Db_lto_threads=1        \
-                              -Dc_args="${CFLAGS}"     \
-                              -Dcpp_args="${CXXFLAGS}" \
-                              "${extracommands[@]}"
+                              "${extracmds[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'sord' "${g_sver1}"
@@ -1720,15 +1677,12 @@ fi
 git_ver_fn '11853194' '3' 'T'
 if build 'sratom' "${g_ver}"; then
     download "https://gitlab.com/lv2/sratom/-/archive/v${g_ver}/sratom-v${g_ver}.tar.bz2" "sratom-${g_ver}.tar.bz2"
-    extracommands=(-D{docs,tests}=disabled)
+    extracmds=('-D'{docs,tests}'=disabled')
     execute meson setup build --prefix="${workspace}"  \
                               --buildtype=release      \
                               --default-library=static \
                               --strip                  \
-                              -Db_lto_threads=1        \
-                              -Dc_args="${CFLAGS}"     \
-                              -Dcpp_args="${CXXFLAGS}" \
-                              "${extracommands[@]}"
+                              "${extracmds[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'sratom' "${g_ver}"
@@ -1737,15 +1691,12 @@ fi
 git_ver_fn '11853176' '3' 'T'
 if build 'lilv' "${g_ver}"; then
     download "https://gitlab.com/lv2/lilv/-/archive/v${g_ver}/lilv-v${g_ver}.tar.bz2" "lilv-${g_ver}.tar.bz2"
-    extracommands=(-D{docs,tests}=disabled)
+    extracmds=('-D'{docs,tests}'=disabled')
     execute meson setup build --prefix="${workspace}"  \
                               --buildtype=release      \
                               --default-library=static \
                               --strip                  \
-                              -Db_lto_threads=1        \
-                              -Dc_args="${CFLAGS}"     \
-                              -Dcpp_args="${CXXFLAGS}" \
-                              "${extracommands[@]}"
+                              "${extracmds[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'lilv' "${g_ver}"
@@ -1782,18 +1733,12 @@ fi
 pre_check_ver 'jemalloc/jemalloc' '1' 'T'
 if build 'jemalloc' "${g_ver}"; then
     download "https://github.com/jemalloc/jemalloc/archive/refs/tags/${g_ver}.tar.gz" "jemalloc-${g_ver}.tar.gz"
+    extracmds1=('--disable-'{debug,doc,fill,log,shared,prof,stats})
+    extracmds2=('--enable-'{autogen,static,xmalloc})
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}"           \
-                        --disable-debug                   \
-                        --disable-doc                     \
-                        --disable-fill                    \
-                        --disable-log                     \
-                        --disable-shared                  \
-                        --disable-prof                    \
-                        --disable-stats                   \
-                        --enable-autogen                  \
-                        --enable-static                   \
-                        --enable-xmalloc
+    execute ./configure --prefix="${workspace}" \
+                        "${extracmds1[@]}"      \
+                        "${extracmds2[@]}"
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'jemalloc' "${g_ver}"
@@ -1848,15 +1793,12 @@ fi
 git_ver_fn '810' '4'
 if build 'libpulse' 'git'; then
     download_git 'https://github.com/pulseaudio/pulseaudio.git'
-    extracommands=(-D{daemon,man,tests}'=false')
+    extracmds=('-D'{daemon,man,tests}'=false')
     execute meson setup build --prefix="${workspace}"  \
                               --buildtype=release      \
                               --default-library=static \
                               --strip                  \
-                              -Db_lto_threads=1        \
-                              -Dc_args="${CFLAGS}"     \
-                              -Dcpp_args="${CXXFLAGS}" \
-                               "${extracommands[@]}"
+                               "${extracmds[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute sudo ninja "-j${cpu_threads}" -C build install
     libpulse_fix_libs
@@ -1871,8 +1813,8 @@ if build 'libogg' "${g_ver}"; then
     execute cmake -B build                              \
                   -DCMAKE_INSTALL_PREFIX="${workspace}" \
                   -DCMAKE_BUILD_TYPE=Release            \
-                  -DBUILD_TESTING=OFF                   \
                   -DBUILD_SHARED_LIBS=OFF               \
+                  -DBUILD_TESTING=OFF                   \
                   -DCPACK_BINARY_DEB=OFF                \
                   -DCPACK_SOURCE_ZIP=OFF                \
                   -G Ninja -Wno-dev
@@ -1888,6 +1830,7 @@ if build 'libflac' "${g_ver}"; then
     execute cmake -B build                              \
                   -DCMAKE_INSTALL_PREFIX="${workspace}" \
                   -DCMAKE_BUILD_TYPE=Release            \
+                  -DBUILD_SHARED_LIBS=OFF               \
                   -DINSTALL_CMAKE_CONFIG_MODULE=ON      \
                   -DINSTALL_MANPAGES=OFF                \
                   -DBUILD_CXXLIBS=ON                    \
@@ -2071,14 +2014,10 @@ if build 'av1' "${av1_sver}"; then
                   -DCMAKE_INSTALL_PREFIX="${workspace}"   \
                   -DCMAKE_BUILD_TYPE=Release              \
                   -DBUILD_SHARED_LIBS=OFF                 \
-                  -DCONFIG_ANALYZER=0                     \
-                  -DCONFIG_AV1_TEMPORAL_DENOISING=0       \
-                  -DCONFIG_BIG_ENDIAN=0                   \
-                  -DCONFIG_COLLECT_RD_STATS=0             \
-                  -DCONFIG_ENTROPY_STATS=0                \
                   -DCONFIG_AV1_DECODER=1                  \
                   -DCONFIG_AV1_ENCODER=1                  \
                   -DCONFIG_AV1_HIGHBITDEPTH=1             \
+                  -DCONFIG_AV1_TEMPORAL_DENOISING=1       \
                   -DCONFIG_DENOISE=1                      \
                   -DCONFIG_DISABLE_FULL_PIXEL_SPLIT_8X8=1 \
                   -DENABLE_CCACHE=1                       \
@@ -2095,15 +2034,12 @@ ffmpeg_libraries+=('--enable-libaom')
 pre_check_ver '198' '2' 'T'
 if build 'dav1d' "${g_ver1}"; then
     download "https://code.videolan.org/videolan/dav1d/-/archive/${g_ver1}/dav1d-${g_ver1}.tar.bz2"
-    extracommands=(-D{enable_tests,logging}'=false')
+    extracmds=('-D'{enable_tests,logging}'=false')
     execute meson setup build --prefix="${workspace}"  \
                               --buildtype=release      \
                               --default-library=static \
                               --strip                  \
-                              -Db_lto_threads=1        \
-                              -Dc_args="${CFLAGS}"     \
-                              -Dcpp_args="${CXXFLAGS}" \
-                               "${extracommands[@]}"
+                               "${extracmds[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'dav1d' "${g_ver1}"
@@ -2196,8 +2132,8 @@ if build 'libbluray' "${g_ver1}"; then
     execute autoreconf -fi
     execute ./configure --prefix="${workspace}"     \
                         --{build,host}="${pc_type}" \
-                        --disable-extra-warnings    \
                         --disable-examples          \
+                        --disable-extra-warnings    \
                         --disable-shared            \
                         --without-libxml2
     execute make "-j${cpu_threads}"
@@ -2268,7 +2204,6 @@ if build 'frei0r' "${g_ver}"; then
                   -DCMAKE_INSTALL_PREFIX="${workspace}" \
                   -DCMAKE_BUILD_TYPE=Release            \
                   -DBUILD_SHARED_LIBS=OFF               \
-                  -DCMAKE_EXPORT_COMPILE_COMMANDS=OFF   \
                   -DWITHOUT_OPENCV=OFF                  \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
@@ -2443,7 +2378,7 @@ if [ -n "${iscuda}" ]; then
 
     CFLAGS+=" -I${cuda_folder_path}/include"
     LDFLAGS+=" -L${cuda_folder_path}/lib64"
-    ffmpeg_libraries+=(--enable-{cuda-nvcc,cuda-llvm,cuvid,nvdec,nvenc,ffnvcodec})
+    ffmpeg_libraries+=('--enable-'{cuda-nvcc,cuda-llvm,cuvid,nvdec,nvenc,ffnvcodec})
 
     if [ -n "${LDEXEFLAGS}" ]; then
         ffmpeg_libraries+=('--enable-libnpp')
@@ -2451,7 +2386,6 @@ if [ -n "${iscuda}" ]; then
 
     # GET THE GPU ARCHITECTURE
     # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
-
     gpu_arch_fn
 fi
 ffmpeg_libraries+=("--nvccflags=-gencode arch=${gpu_arch}")
@@ -2485,6 +2419,8 @@ if build 'avisynth' "${g_ver}"; then
     download "https://github.com/AviSynth/AviSynthPlus/archive/refs/tags/v${g_ver}.tar.gz" "avisynth-${g_ver}.tar.gz"
     execute cmake -B build                              \
                   -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DBUILD_SHARED_LIBS=OFF               \
                   -DHEADERS_ONLY=OFF
     execute make "-j${cpu_threads}" -C build VersionGen install
     build_done 'avisynth' "${g_ver}"
@@ -2512,10 +2448,7 @@ if [ "${VER}" != '22.04' ]; then
         execute meson setup build --prefix="${workspace}"  \
                                   --buildtype=release      \
                                   --default-library=static \
-                                  --strip                  \
-                                  -Db_lto_threads=1        \
-                                  -Dc_args="${CFLAGS}"     \
-                                  -Dcpp_args="${CXXFLAGS}"
+                                  --strip
         execute ninja -C build "-j${cpu_threads}"
         execute ninja -C build "-j${cpu_threads}" install
         build_done 'cyanrip' "${g_ver}"
@@ -2585,9 +2518,8 @@ pre_check_ver 'strukturag/libheif' '1' 'T'
 if build 'libheif' "${g_ver}"; then
     download "https://github.com/strukturag/libheif/archive/refs/tags/v${g_ver}.tar.gz" "libheif-${g_ver}.tar.gz"
     case "${VER}" in
-        18.04|20.04)                        pixbuf_var=OFF;;
-        10|11|12|22.04|22.10|23.04|n/a)     pixbuf_var=ON;;
-        *)                                  fail_fn "Unable to vet the OS version inside the libheif repository. Line: ${LINENO}";;
+        18.04|20.04)    pixbuf_switch=OFF;;
+        *)              pixbuf_switch=ON;;
     esac
     third_party="${packages}/libheif-${g_ver}/third-party"
     export {CFLAGS,CXXFLAGS}='-g -O2 -fno-lto -march=native'
@@ -2598,23 +2530,17 @@ if build 'libheif' "${g_ver}"; then
                   -DWITH_AOM_DECODER=ON                                          \
                   -DWITH_AOM_ENCODER=ON                                          \
                   -DWITH_DAV1D=ON                                                \
+                  -DWITH_EXAMPLES=OFF                                            \
+                  -DWITH_GDK_PIXBUF="${pixbuf_switch}"                           \
                   -DWITH_LIBDE265=ON                                             \
                   -DWITH_LIBSHARPYUV=ON                                          \
-                  -DWITH_RAV1E=ON                                                \
-                  -DWITH_RAV1E_PLUGIN=ON                                         \
-                  -DWITH_SvtEnc=ON                                               \
-                  -DWITH_SvtEnc_PLUGIN=ON                                        \
-                  -DWITH_GDK_PIXBUF="${pixbuf_var}"                              \
-                  -DWITH_EXAMPLES=OFF                                            \
                   -DWITH_REDUCED_VISIBILITY=OFF                                  \
-                  -DSvtEnc_INCLUDE_DIR="${workspace}"/include                    \
-                  -DSvtEnc_LIBRARY="${workspace}"/lib/libSvtAv1Enc.a             \
+                  -DWITH_SvtEnc=OFF                                              \
+                  -DWITH_SvtEnc_PLUGIN=OFF                                       \
                   -DAOM_INCLUDE_DIR="${workspace}"/include                       \
                   -DAOM_LIBRARY="${workspace}"/lib/libaom.a                      \
                   -DDAV1D_INCLUDE_DIR="${workspace}"/include                     \
                   -DDAV1D_LIBRARY="${workspace}"/lib/x86_64-linux-gnu/libdav1d.a \
-                  -DRAV1E_INCLUDE_DIR="${workspace}"/include/rav1e               \
-                  -DRAV1E_LIBRARY="${workspace}"/lib/librav1e.a                  \
                   -DLIBDE265_INCLUDE_DIR="${workspace}"/include                  \
                   -DLIBDE265_LIBRARY=/usr/lib/x86_64-linux-gnu/libde265.so       \
                   -DX265_INCLUDE_DIR="${workspace}"/include                      \
@@ -2634,19 +2560,8 @@ if build 'openjpeg' "${g_ver2}"; then
     execute cmake -B build                              \
                   -DCMAKE_INSTALL_PREFIX="${workspace}" \
                   -DCMAKE_BUILD_TYPE=Release            \
+                  -DBUILD_SHARED_LIBS=OFF               \
                   -DBUILD_TESTING=OFF                   \
-                  -DBUILD_SHARED_LIBS=ON                \
-                  -DBUILD_THIRDPARTY=ON                 \
-                  -DCPACK_BINARY_DEB=ON                 \
-                  -DCPACK_BINARY_FREEBSD=ON             \
-                  -DCPACK_BINARY_IFW=ON                 \
-                  -DCPACK_BINARY_NSIS=ON                \
-                  -DCPACK_BINARY_RPM=ON                 \
-                  -DCPACK_BINARY_TBZ2=ON                \
-                  -DCPACK_BINARY_TXZ=ON                 \
-                  -DCPACK_SOURCE_RPM=ON                 \
-                  -DCPACK_SOURCE_ZIP=ON                 \
-                  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON    \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
