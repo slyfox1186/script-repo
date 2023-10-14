@@ -20,9 +20,18 @@
 
 clear
 
+if [ "${EUID}" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
+
+#
+# SET THE VARIABLES
+#
+
 script_ver=1.1
 install_prefix=/usr/local
-cwd="${PWD}"/dltools-build-script
+cwd="${PWD}"/download-tools-build-script
 packages="${cwd}"/packages
 workspace="${cwd}"/workspace
 pc_type=x86_64-linux-gnu
@@ -31,7 +40,7 @@ pem_file=cacert.pem
 pem_target="${cert_dir}/${pem_file}"
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
-debug=ON
+debug=OFF
 
 #
 # CREATE OUTPUT DIRECTORIES
@@ -49,19 +58,11 @@ export CC=gcc CXX=g++
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-set_cuda_folder_path="$(sudo find /usr/local/cuda* -type f -name nvcc | sed 's/\/bin\/nvcc//')"
-
-if [ -n "${set_cuda_folder_path}" ]; then
-    cuda_folder_path="${set_cuda_folder_path}"
-else
-    cuda_folder_path='/usr/local/cuda'
-fi
-
 export {CFLAGS,CXXFLAGS}='-g -O2 -march=native'
-export CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include"
-export LDFLAGS="-L${workspace}/lib64 -L${workspace}/lib -L${workspace}/lib/x86_64-linux-gnu -L/usr/local/lib64"
-export LDFLAGS+=' -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
-export LDFLAGS+=" -L${cuda_folder_path}/nvvm/lib64 -L${cuda_folder_path}/targets/x86_64-linux/lib"
+CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include"
+LDFLAGS="-L${workspace}/lib64 -L${workspace}/lib -L${workspace}/lib/x86_64-linux-gnu -L/usr/local/lib64"
+LDFLAGS+=' -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+export CPPFLAGS LDFLAGS
 
 add_suffix_fn()
 {
@@ -464,7 +465,7 @@ pkgs_fn()
 # DETERMINE WHAT VERSION OF LINUX WE ARE ON
 #
 
-find_lsb_release="$(sudo find /usr -type f -name lsb_release)"
+find_lsb_release="$(sudo find /usr -type f -name 'lsb_release')"
 
 if [ -f /etc/os-release ]; then
     source /etc/os-release
@@ -636,11 +637,6 @@ fi
 # DETERMINE IF HTTP3 SUPPORT IS ENABLED
 #
 
-case "${hflag}" in
-    1)      hflag='';;
-    *)      hflag='--without-nghttp3';;
-esac
-
 git_ver_fn 'curl/curl' '1' 'R'
 if build 'curl' "${g_ver}"; then
     download "https://curl.se/download/curl-${g_ver}.tar.xz"
@@ -699,11 +695,10 @@ if build 'aria2' '1.36.0'; then
                  LDFLAGS="${LDFLAGS}"                     \
                  PKG_CONFIG="${workspace}"/bin/pkg-config \
                  PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
-    exit
     execute make "-j${cpu_threads}"
     execute sudo make install
+    build_done 'aria2' '1.36.0'
 fi
-#    build_done 'aria2' '1.36.0'
 
 # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE VERSION COMMANDS MIGHT NOT WORK
 sudo ldconfig 2>/dev/null
