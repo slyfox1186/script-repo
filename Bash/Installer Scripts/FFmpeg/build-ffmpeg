@@ -1087,7 +1087,7 @@ box_out_banner_global()
     tput sgr 0
 }
 box_out_banner_global 'Installing Global Tools'
-debian_os_version()
+
 if build 'm4' 'latest'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
     execute ./configure --prefix="${workspace}"                \
