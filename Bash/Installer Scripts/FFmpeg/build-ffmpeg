@@ -5,7 +5,7 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
-##  Script version: 3.0.2
+##  Script version: 3.0.3
 ##  Last Update: 10.14.23
 ##
 ##  Supported Distro:
@@ -30,6 +30,8 @@
 ##
 ##  Updated: x265 library
 ##  Updated: aom/av1 library to the latest stable version
+##  Updated: libvpx
+##  Updated: abseil
 ##  Reverted: nv-codec-headers to version - 12.0.16.1 due to a 20% decrease in FPS
 ##
 ##  Added: Ubuntu Lunar 23.04 support
@@ -57,7 +59,7 @@
 #
 
 script_name="${0}"
-script_ver=3.0.2
+script_ver=3.0.3
 ffmpeg_ver=963937e408fc68b5925f938a253cfff1d506f784
 ffmpeg_sver="${ffmpeg_ver::7}"
 ffmpeg_archive=ffmpeg-"${ffmpeg_sver}".tar.gz
