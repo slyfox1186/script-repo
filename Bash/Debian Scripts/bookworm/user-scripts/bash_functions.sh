@@ -1408,7 +1408,7 @@ tkapt()
     local i list
     clear
 
-    list=(apt apt apt apt apt apt-get aptitude dpkg)
+    list=(apt apt apt-get aptitude dpkg)
 
     for i in ${list[@]}
     do
