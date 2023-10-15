@@ -37,7 +37,7 @@ workspace="${cwd}"/workspace
 pc_type=x86_64-linux-gnu
 cert_dir=/etc/ssl/certs
 pem_file=cacert.pem
-pem_target="${cert_dir}/${pem_file}"
+pem_out="${cert_dir}/${pem_file}"
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 debug=OFF
@@ -499,12 +499,12 @@ esac
 # INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
 #
 
-if [ ! -f "${pem_target}" ]; then
+if [ ! -f "${pem_out}" ]; then
     printf "%s\n%s\n\n" \
         'Download the latest security certificate' \
         '================================================'
     curl -A "${user_agent}" -Lso "${packages}/${pem_file}" "https://curl.se/ca/${pem_file}"
-    sudo cp -f "${packages}/${pem_file}" "${pem_target}"
+    sudo cp -f "${packages}/${pem_file}" "${pem_out}"
 fi
 
 #
@@ -654,7 +654,7 @@ if build 'curl' "${g_ver}"; then
     eopts+=('--enable-'{proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static,telnet})
     eopts+=('--enable-'{tftp,threaded-resolver,tls-srp,unix-sockets,websockets})
     wopts=('--with-'{gnutls='/usr/include',libssh2,nghttp2='/usr/include',nghttp3='/usr/include'})
-    wopts+=('--with-'{ca-bundle="${pem_target}",ca-fallback,ca-path="${cert_dir}",secure-transport})
+    wopts+=('--with-'{ca-bundle="${pem_out}",ca-fallback,ca-path="${cert_dir}",secure-transport})
     execute autoreconf -fi
     ./configure --prefix="${install_prefix}" \
                 "${dopts[@]}"                \
@@ -677,28 +677,29 @@ if build 'aria2' '1.36.0'; then
     execute sed -i 's/1, 16/1, 128/g' 'src/OptionHandlerFactory.cc'
     mkdir build
     cd build || exit 1
-    ../configure --prefix="${install_dir}"                \
-                 --{build,host,target}="${pc_type}"       \
-                 --disable-nls                            \
-                 --disable-shared                         \
-                 --disable-werror                         \
-                 --enable-libaria2                        \
-                 --enable-static                          \
-                 --with-ca-bundle="${pem_target}"         \
-                 --with-libiconv-prefix=/usr              \
-                 --with-libintl-prefix=/usr               \
-                 --with-libuv                             \
-                 --with-jemalloc                          \
-                 --with-openssl                           \
-                 --with-pic                               \
-                 --without-gnutls                         \
-                 ARIA2_STATIC=yes                         \
-                 CFLAGS="${CFLAGS}"                       \
-                 CXXFLAGS="${CXXFLAGS}"                   \
-                 CPPFLAGS="${CPPFLAGS}"                   \
-                 LDFLAGS="${LDFLAGS}"                     \
-                 PKG_CONFIG="${workspace}"/bin/pkg-config \
-                 PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
+    ../configure --prefix="${install_dir}"               \
+                 --{build,host,target}="${pc_type}"      \
+                 --disable-nls                           \
+                 --disable-shared                        \
+                 --disable-werror                        \
+                 --enable-libaria2                       \
+                 --enable-static                         \
+                 --with-ca-bundle="${pem_out}"           \
+                 --with-libgcrypt=/usr                   \
+                 --with-libiconv-prefix=/usr             \
+                 --with-libintl-prefix=/usr              \
+                 --with-libuv                            \
+                 --with-jemalloc                         \
+                 --with-openssl                          \
+                 --with-pic                              \
+                 --without-gnutls                        \
+                 ARIA2_STATIC=yes                        \
+                 CFLAGS="${CFLAGS}"                      \
+                 CXXFLAGS="${CXXFLAGS}"                  \
+                 CPPFLAGS="${CPPFLAGS}"                  \
+                 EXPAT_LIBS="$(pkg-config --libs expat)" \
+                 LDFLAGS="${LDFLAGS}"                    \
+                 LIBS="$(pkg-config --libs libuv) $(pkg-config --libs libgcrypt)"
     execute make "-j${cpu_threads}"
     execute sudo make install
     build_done 'aria2' '1.36.0'
