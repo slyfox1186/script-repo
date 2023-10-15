@@ -196,8 +196,8 @@ fi
 #
 
 pkgs=(autoconf autogen automake build-essential ca-certificates ccache clang curl
-      libaria2-0 libaria2-0-dev libc-ares-dev libdmalloc-dev libgcrypt20-dev libgmp-dev
-      libgnutls28-dev libgpg-error-dev libjemalloc-dev libmbedtls-dev libnghttp2-dev
+      libaria2-0 libaria2-0-dev libc-ares-dev libdmalloc-dev libexpat1-dev libgcrypt20-dev
+      libgmp-dev libgnutls28-dev libgpg-error-dev libjemalloc-dev libmbedtls-dev libnghttp2-dev
       librust-openssl-dev libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev libuv1-dev
       libxml2-dev pkg-config zlib1g-dev)
 
@@ -272,7 +272,7 @@ cd build || exit 1
              CPPFLAGS="${CPPFLAGS}"                  \
              EXPAT_LIBS="$(pkg-config --libs expat)" \
              LDFLAGS="${LDFLAGS}"                    \
-             LIBS=LIBS="$(pkg-config --libs libuv) $(pkg-config --libs libgcrypt)"
+             LIBS="$(pkg-config --libs libuv) $(pkg-config --libs libgcrypt)"
 
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
