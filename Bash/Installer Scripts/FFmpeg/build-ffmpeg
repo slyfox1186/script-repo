@@ -2340,6 +2340,14 @@ EOF
         sed -i.backup 's/lgcc_s/lgcc_eh/g' "${workspace}"/lib/pkgconfig/x265.pc
     fi
 
+    x265_lib="$(find . -type f -name 'libx265.so.*' | sed 's/^..//g')"
+
+    if [ -f "${workspace}/lib/${x265_lib}" ]; then
+        sudo cp -f "${workspace}/lib/${x265_lib}" '/usr/lib/x86_64-linux-gnu'
+    else
+        fail_fn "The sript could not located the file \"${workspace}/lib/${x265_lib}\" and needs to be updated. Line: ${LINENO}"
+    fi
+
     if [ ! -f '/usr/lib/x86_64-linux-gnu/libx265.so.199' ]; then
         if ! curl -A "${user_agent}" -m 10 -Lso "${workspace}/lib/libx265.so.199" 'https://github.com/slyfox1186/ffmpeg-build-script/raw/main/library-files/libx265.so.199'; then
             fail_fn "The script was unable to download the required library file \"${workspace}/lib/libx265.so.199\". Line: ${LINENO}"
