@@ -2454,7 +2454,7 @@ fi
 
 if build 'libgav1' 'git'; then
     download_git 'https://chromium.googlesource.com/codecs/libgav1' 'libgav1-git'
-    execute git clone -b 20230802.1 --depth 1 https://github.com/abseil/abseil-cpp.git third_party/abseil-cpp
+    execute git clone -b 20220623.1 --depth 1 https://github.com/abseil/abseil-cpp.git third_party/abseil-cpp
     execute cmake -B build                              \
                   -DCMAKE_INSTALL_PREFIX="${workspace}" \
                   -DCMAKE_BUILD_TYPE=Release            \
