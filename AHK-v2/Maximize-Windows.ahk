@@ -29,7 +29,7 @@
         wClass := WinGetClass(wTitle . " ahk_exe " . A_LoopField)
         wPID := WinGetPID(wTitle . " ahk_class " . wClass . " ahk_exe " . A_LoopField)
         wFull := wTitle . " ahk_class " . wClass . " ahk_exe " . A_LoopField . " ahk_pid " . wPID
-        WinMaximize wFull
+        WinMaximize(wFull)
         }
         Catch
             Continue
