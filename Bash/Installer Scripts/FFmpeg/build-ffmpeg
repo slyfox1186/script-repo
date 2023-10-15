@@ -31,7 +31,7 @@
 ##  Updated: x265 library
 ##  Updated: aom/av1 library to the latest stable version
 ##  Updated: libvpx download code to source the latest version available at build
-##  Updated: abseil to the latest release - version 20230802.1
+##  Updated: abseil to - version 20220623.1
 ##  Updated: rav1e to the latest release - version p20231010 (10.09.23)
 ##
 ##  Reverted: nv-codec-headers due to a 20% decrease in FPS to version - n12.0.16.1
