@@ -5,7 +5,7 @@
              and maximize them all at once.
 */
 
-^+c up::
+^+c Up::
 {
 
     _processNames := "
