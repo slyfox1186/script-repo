@@ -6,11 +6,9 @@
 ##
 ##  Purpose: Build aria2c with max connections changed from 16 to 128
 ##
-##  Features: Static build, OpenSSL backend
+##  Features: Static build, with an OpenSSL backend
 ##
-##  Updated: 09.11.23
-##
-##  Updated: cacert.pem security file
+##  Updated: 10.14.23
 ##
 ##  Script version: 1.5
 ##
@@ -34,6 +32,7 @@ archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/aria2-build-script
 install_dir=/usr/local
+pc_type=x86_64-linux-gnu
 cert_dir=/etc/ssl/certs
 pem_file=cacert.pem
 pem_in="${cwd}/${pem_file}"
@@ -42,11 +41,20 @@ user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 web_repo=https://github.com/slyfox1186/script-repo
 
 #
+# CREATE THE OUTPUT DIRECTORY
+#
+
+if [ -d "${cwd}" ]; then
+    sudo rm -fr "${cwd}"
+fi
+mkdir -p "${cwd}"
+
+#
 # PRINT THE SCRIPT BANNER
 #
 
-printf "%s\n%s\n\n" \
-    "Aria2 Build Script - v${script_ver}" \
+printf "%s\n%s\n\n"                              \
+    "Aria2 Build Script - version ${script_ver}" \
     '==============================================='
 
 #
@@ -59,28 +67,12 @@ export CC=gcc CXX=g++
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-set_cuda_folder_path="$(sudo find /usr/local/cuda* -type f -name nvcc | sed 's/\/bin\/nvcc//')"
-
-if [ -n "${set_cuda_folder_path}" ]; then
-    cuda_folder_path="${set_cuda_folder_path}"
-else
-    cuda_folder_path='/usr/local/cuda'
-fi
-
-export {CFLAGS,CXXFLAGS}='-g -O2 -march=native'
-export CPPFLAGS='-I/usr/local/include -I/usr/include'
-export LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
-export LDFLAGS+=" -L${set_cuda_folder_path}/nvvm/lib64 -L${set_cuda_folder_path}/targets/x86_64-linux/lib"
-export LIBS="$(pkg-config --libs libuv) $(pkg-config --libs libgcrypt)"
-
-#
-# CREATE THE OUTPUT DIRECTORY
-#
-
-if [ -d "${cwd}" ]; then
-    sudo rm -fr "${cwd}"
-fi
-mkdir -p "${cwd}"
+CFLAGS='-g -O2 -march=native'
+CXXFLAGS='-g -O2 -march=native'
+CPPFLAGS='-I/usr/local/include -I/usr/include'
+LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu'
+LDFLAGS+=' -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+export CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
 #
 # SET THE PATH VARIABLE
@@ -108,15 +100,17 @@ export PATH
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
-/usr/local/lib/"${install_dir}"/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/share/pkgconfig:\
 /usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
-/usr/lib/"${install_dir}"/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/open-coarrays/openmpi/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/openmpi/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/share/pkgconfig:\
 /lib64/pkgconfig:\
 /lib/pkgconfig:\
-/lib/"${install_dir}"/pkgconfig\
+/lib/x86_64-linux-gnu/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -144,17 +138,16 @@ fail_fn()
 
 show_ver_fn()
 {
-    save_ver="$(aria2c --version | grep -Eo '[0-9\.]+$' | head -n1 2>/dev/null | xargs -I{} echo {})"
+    local save_ver
     clear
-    printf "%s\n\n" "The updated Aria2c version is: ${save_ver}"
+    save_ver="$(aria2c --version | grep -Eo '[0-9\.]+$' | head -n1 2>/dev/null | xargs -I{} echo {})"
+    printf "%s\n\n" "The newly installed aria2c version is: ${save_ver}"
     sleep 3
 }
 
 cleanup_fn()
 {
     local choice
-
-    unset archive_dir archive_ext archive_name archive_url CC CXX i missing_pkg missing_pkgs pem_out pkgs script_ver
 
     printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
         '============================================' \
@@ -163,6 +156,7 @@ cleanup_fn()
         '[1] Yes' \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
+    clear
 
     case "${choice}" in
         1)
@@ -181,9 +175,6 @@ cleanup_fn()
                 fi
                 ;;
         *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
                 unset choice
                 clear
                 cleanup_fn
@@ -197,17 +188,18 @@ cleanup_fn()
 
 curl -A "${user_agent}" -Lso "${pem_in}" "https://curl.se/ca/${pem_file}"
 if ! sudo mv "${pem_in}" "${pem_out}"; then
-    fail_fn "Failed to move cacert.pem:Line ${LINENO}"
+    fail_fn "Failed to move cacert.pem. Line: ${LINENO}"
 fi
 
 #
 # INSTALL THE REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autogen automake build-essential ca-certificates ccache clang curl libaria2-0 libaria2-0-dev
-      libc-ares-dev libdmalloc-dev libgcrypt20-dev libgmp-dev libgnutls28-dev libgpg-error-dev libjemalloc-dev
-      libmbedtls-dev libnghttp2-dev librust-openssl-dev libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev
-      libuv1-dev libxml2-dev pkg-config zlib1g-dev)
+pkgs=(autoconf autogen automake build-essential ca-certificates ccache clang curl
+      libaria2-0 libaria2-0-dev libc-ares-dev libdmalloc-dev libgcrypt20-dev libgmp-dev
+      libgnutls28-dev libgpg-error-dev libjemalloc-dev libmbedtls-dev libnghttp2-dev
+      librust-openssl-dev libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev libuv1-dev
+      libxml2-dev pkg-config zlib1g-dev)
 
 for i in ${pkgs[@]}
 do
@@ -229,7 +221,7 @@ fi
 #
 
 if [ ! -f "${cwd}/${archive_name}" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
+    curl -A "${user_agent}" -m 10 -Lso "${cwd}/${archive_name}" "${archive_url}"
 fi
 
 #
@@ -251,16 +243,6 @@ if ! tar -zxf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-compon
 fi
 
 #
-# REMOVE THE APT VERSION OF ARIA2 IF FOUND
-#
-
-if [ -f /usr/bin/aria2c ]; then
-    sudo apt -y remove aria2
-    sudo apt -y autoremove
-    clear
-fi
-
-#
 # BUILD ARIA2 FROM SOURCE CODE
 #
 
@@ -269,7 +251,7 @@ cd "${cwd}/${archive_dir}" || exit 1
 sed -i 's/1, 16/1, 128/g' 'src/OptionHandlerFactory.cc'
 cd build || exit 1
 ../configure --prefix="${install_dir}"               \
-             --{build,host,target}=x86_64-linux-gnu  \
+             --{build,host,target}="${pc_type}"      \
              --disable-nls                           \
              --disable-shared                        \
              --disable-werror                        \
@@ -290,23 +272,37 @@ cd build || exit 1
              CPPFLAGS="${CPPFLAGS}"                  \
              EXPAT_LIBS="$(pkg-config --libs expat)" \
              LDFLAGS="${LDFLAGS}"                    \
-             LIBS="${LIBS}"                          \
-             PKG_CONFIG="$(type -P pkg-config)"
-make "-j$(nproc --all)"
-if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
+             LIBS=LIBS="$(pkg-config --libs libuv) $(pkg-config --libs libgcrypt)"
+
+if ! make "-j$(nproc --all)"; then
+    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
     exit 1
+fi
+
+if ! sudo make install; then
+    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
+    exit 1
+fi
+
+#
+# REMOVE THE APT PACKAGE VERSION OF ARIA2C IF LOCATED
+#
+
+if [ -f '/usr/bin/aria2c' ]; then
+    sudo apt -y remove aria2
+    sudo apt -y autoremove
+    clear
 fi
 
 #
 # CREATE SOFT LINKS
 #
 
-if [ -f "/usr/local/bin/x86_64-linux-gnu-aria2c" ]; then
-    sudo ln -sf "/usr/local/bin/x86_64-linux-gnu-aria2c" '/usr/local/bin/aria2c'
+if [ -f "/usr/local/bin/${pc_type}-aria2c" ]; then
+    sudo ln -sf "/usr/local/bin/${pc_type}-aria2c" '/usr/local/bin/aria2c'
     sudo chmod 755 '/usr/local/bin/aria2c'
 else
-    fail_fn "Failed to create a soft link to: /usr/local/bin/aria2c:Line ${LINENO}"
+    fail_fn "Failed to create a soft link from \"/usr/local/bin/${pc_type}-aria2c\" to \"/usr/local/bin/aria2c\". Line: ${LINENO}"
 fi
 
 # SHOW THE NEW VERSION
