@@ -2353,8 +2353,9 @@ EOF
             fail_fn "The script was unable to download the required library file \"${workspace}/lib/libx265.so.199\". Line: ${LINENO}"
         fi
         sudo cp -f "${workspace}/lib/libx265.so.199" '/usr/lib/x86_64-linux-gnu'
-        sudo ln -sf '/usr/lib/x86_64-linux-gnu/libx265.so.199' '/usr/lib/x86_64-linux-gnu/libx265.so'
     fi
+    sudo ln -sf '/usr/lib/x86_64-linux-gnu/libx265.so.199' '/usr/lib/x86_64-linux-gnu/libx265.so'
+
     build_done 'x265' "${g_sver}"
 fi
 ffmpeg_libraries+=('--enable-libx265')
