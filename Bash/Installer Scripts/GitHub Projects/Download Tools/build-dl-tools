@@ -660,7 +660,8 @@ if build 'curl' "${g_ver}"; then
                 "${dopts[@]}"                \
                 "${eopts[@]}"                \
                 "${wopts[@]}"                \
-                "${csuffix}"
+                "${csuffix}"                 \
+                 LIBS="$(pkg-config --libs libnghttp3)"
     execute make "-j${cpu_threads}"
     execute sudo make install
     build_done 'curl' "${g_ver}"
