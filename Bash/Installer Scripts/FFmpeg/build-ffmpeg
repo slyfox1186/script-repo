@@ -22,34 +22,36 @@
 ##    - Build FFmpeg from source code with addon development libraries also compiled from
 ##    - source to ensure the latest extra functionality
 ##
-##  GeForce CUDA:
-##               - Updated: Version to 12.2.2
-##               - If the cuda libraries are not installed (for Geforce graphics cards only) the user
-##               - will be prompted by the script to install them so that hardware acceleration is
-##               - enabled when compiling FFmpeg
+##  Updated: GeForce CUDA SDK ToolKit
+##                            - version 12.2.2
+##                            - If the cuda libraries are not installed (for Geforce graphics cards only) the user
+##                            - will be prompted by the script to install them so that hardware acceleration is
+##                            - enabled when compiling FFmpeg
 ##
 ##  Updated: x265 library
 ##  Updated: aom/av1 library to the latest stable version
-##  Updated: libvpx
-##  Updated: abseil
-##  Reverted: nv-codec-headers to version - 12.0.16.1 due to a 20% decrease in FPS
+##  Updated: libvpx download code to source the latest version available at build
+##  Updated: abseil to the latest release - version 20230802.1
+##  Updated: rav1e to the latest release - version p20231010 (10.09.23)
 ##
-##  Added: Ubuntu Lunar 23.04 support
+##  Reverted: nv-codec-headers due to a 20% decrease in FPS to version - n12.0.16.1
+##
+##  Added: Ubuntu 23.04 Lunar support
 ##  Added: Debian 11 Bullseye support
-##  Added: Debian OS Support for Bookworm (12)
-##  Added: cyanrip
-##  Added: vapoursynth
-##  Added: cunit support library for libmysofa
+##  Added: Debian 12 Bookworm support
+##  Added: Windows WSL/2 support
+##  Added: cyanrip software
+##  Added: vapoursynth library support
+##  Added: cUnit support library for libmysofa
 ##  Added: libcurl support library for cyanrip
-##  Added: support for library files regarding opencl and libpulse
-##  Added: Clang support
-##  Added: WSL support
+##  Added: support libraries for opencl and libpulse
+##  Added: clang compilers to build the x265 library because it gives better FPS output than when built with gcc
 ##
-##  Removed: Unrequired python3 build code
+##  Removed: python3 build code that became useless
 ##
-##  Fixed: libheif not building the specified plugins.
-##  Fixed: the code that prompts the user to install the cuda sdk toolkit
-##  Fixed: broken wsl cuda sdk toolkit url
+##  Fixed: libheif not building the specified plugins
+##  Fixed: the code that prompts the user to install the CUDA SDK ToolKit
+##  Fixed: a broken download url for the WSL version of the CUDA SDK ToolKit
 ##  Fixed: APT package errors for Debian 11 Bullseye
 ##
 #############################################################################################################
