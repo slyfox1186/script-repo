@@ -634,6 +634,7 @@ if [ -n "${LDEXEFLAGS}" ]; then
     printf "%s\n\n" 'The script has been configured to run in full static mode.'
 fi
 
+#
 # SET THE PATH VARIABLE
 #
 
@@ -652,6 +653,10 @@ ${HOME}/.local/bin:\
 /snap/bin\
 "
 export PATH
+
+#
+# SET THE PKG_CONFIG_PATH VARIABLE
+#
 
 PKG_CONFIG_PATH="\
 ${workspace}/usr/lib/pkgconfig:\
