@@ -832,7 +832,7 @@ pkgs_fn()
           google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk libamd2 libasound2-dev
           libass-dev libaudio-dev libavfilter-dev libbabl-0.1-0 libbluray-dev libbs2b-dev libbz2-dev libc6 libc6-dev
           libcaca-dev libcairo2-dev libcamd2 libccolamd2 libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libcholmod3
-          libchromaprint-dev libcodec2-dev libcolamd2 libcrypto++-dev libcurl4-openssl-dev libdbus-1-dev libdevil-dev
+          libchromaprint-dev libcodec2-dev libcolamd2 libcrypto++-dev libcurl4-openssl-dev libdbus-1-dev libde265 libdevil-dev
           libdmalloc-dev libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev
           libgegl-0.4-0 libgegl-common libgimp2.0 libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev
           libgnutls28-dev libgnutls30 libgoogle-perftools4 libgoogle-perftools-dev libgsm1-dev libgtest-dev libgvc6 libhwy-dev
