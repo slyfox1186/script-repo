@@ -41,7 +41,7 @@ install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 latest=false
-debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=ON # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
 # PRINT SCRIPT BANNER
@@ -384,6 +384,15 @@ fi
 # INSTALL REQUIRED APT/PACMAN PACKAGES
 #
 
+python2_arch_fn()
+{
+    if build 'python2' 'git'; then
+        download_git 'https://aur.archlinux.org/python2.git' 'python2-AUR'
+            makepkg -si --noconfirm
+        build_done 'python2' 'git'
+    fi
+}
+
 python2_setuptools_arch_fn()
 {
     if build 'python2-setuptools' 'git'; then
@@ -404,14 +413,15 @@ jq_arch_fn()
 
 pkgs_arch_fn()
 {
-    pkgs=(autoconf automake autogen base-devel ccache cmake curl
-          git openssl python python-pip python-setuptools qt6-base)
+    pkgs_arch=(autoconf automake autogen bluez-qt5 base-devel ccache cmake curl
+          git libnghttp2 libnghttp3 openssl python python-pip python-setuptools
+          qt5-base qt6-base)
 
     if [ -f /var/lib/pacman/db.lck ]; then
         sudo rm /var/lib/pacman/db.lck
     fi
 
-    for i in ${pkgs[@]}
+    for i in ${pkgs_arch[@]}
     do
         missing_pkg="$(sudo pacman -Qi | grep -o "${i}")"
 
@@ -425,18 +435,24 @@ pkgs_arch_fn()
     fi
 
     # INSTALL JQ FROM AUR
-    jq_arch_fn
-    python2_setuptools_arch_fn
-    clear
-
+    if ! sudo pacman -Qi | grep -o 'python2' &>/dev/null; then
+        python2_arch_fn
+    fi
+    if ! sudo pacman -Qi | grep -o 'jq' &>/dev/null; then
+        jq_arch_fn
+    fi
+    if ! sudo pacman -Qi | grep -o 'python-setuptools' &>/dev/null; then
+        python2_setuptools_arch_fn
+    fi
+    
     rm_pip_lock="$(sudo find /usr/lib/python3* -type f -name 'EXTERNALLY-MANAGED')"
     if [ -n "${rm_pip_lock}" ]; then
         sudo rm "${rm_pip_lock}"
     fi
 
     # INSTALL PYTHON PIP PACKAGES
-    pip uninstall -q -y setuptools 2>/dev/null
-    sudo pip install -q --no-input setuptools 2>/dev/null
+    pip uninstall -q -y setuptools
+    sudo pip install -q --no-input setuptools
 }
 
 pkgs_fn()
