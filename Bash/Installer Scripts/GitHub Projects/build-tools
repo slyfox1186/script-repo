@@ -421,7 +421,7 @@ pkgs_arch_fn()
     done
 
     if [ -n "${missing_pkgs}" ]; then
-         yes | sudo pacman -S ${missing_pkgs}
+         sudo pacman -S --noconfirm ${missing_pkgs}
     fi
 
     # INSTALL JQ FROM AUR
