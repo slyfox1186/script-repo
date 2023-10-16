@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+
+clear
+
+cwd="${PWD}"/build-all-gnu-safer-arch-script
+workspace="${cwd}"/workspace
+web_repo=https://github.com/slyfox1186/script-repo
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
+
+if [ -d "${cwd}" ]; then
+    sudo rm -fr "${cwd}"
+fi
+mkdir -p "${cwd}"/completed
+
+cd "${cwd}" || exit 1
+
+exit_fn()
+{
+    printf "\n%s\n\n%s\n\n" \
+        'Make sure to star this repository to show your support!' \
+        "${web_repo}"
+    exit 0
+}
+
+fail_fn()
+{
+    printf "\n%s\n\n%s\n\n" \
+        "${1}" \
+        "To report a bug create an issue at: ${web_repo}/issues"
+    exit 1
+}
+
+cleanup_fn()
+{
+    local answer
+
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
+        '============================================' \
+        '  Do you want to clean up the build files?  ' \
+        '============================================' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' answer
+
+    case "${answer}" in
+        1)      sudo rm -fr "${cwd}"; clear;;
+        2)      echo;;
+        *)
+                printf "\n%s\n\n" 'Bad user input. Re-asking question...'
+                sleep 3
+                unset answer
+                clear
+                cleanup_fn
+                ;;
+    esac
+}
+
+pkgs=(asciidoc autogen autoconf autoconf-archive automake binutils bison base-devel bzip2
+      ccache cmake curl glibc perl-libintl-perl libtool lzip m4 meson nasm ninja texinfo
+      xmlto xz yasm zlib)
+
+for i in ${pkgs[@]}
+do
+    missing_pkg="$(sudo pacman -Qi | grep -o "${i}")"
+
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${i}"
+    fi
+done
+
+if [ -n "${missing_pkgs}" ]; then
+    sudo yes|pacman -S ${missing_pkgs}
+    clear
+fi
+
+dl_files=(m4 autoconf libtool make bash pkg-config sed tar gawk grep nano isl wget)
+cnt=0
+
+for dl_file in ${dl_files[@]}
+do
+    let cnt=cnt+1
+    wget -U "${user_agent}" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-${dl_file}"
+    mv "build-${dl_file}" "0${cnt}-build-${dl_file}"'.sh' 2>/dev/null
+done
+unset cnt
+
+# RENAME FILES WITH NUMBERS 10 AND HIGHER SO THEY EXECUTE IN THE INTENDED ORDER
+files=(gawk grep nano isl wget)
+cnt=9
+
+for i in 1
+do
+    for file in ${files[@]}
+    do
+        ((cnt++)) # << start counting here
+        mv "0${cnt}-build-${file}" "${cnt}-build-${file}" 2>/dev/null # << move the files, thus renaming them
+    done
+done
+
+clear
+
+find . -maxdepth 1 -type f -iname '*.sh' -exec bash -c "echo '1' | bash '{}'; mv '{}' completed" \;
+
+sudo rm -fr "${cwd}"
+
+exit_fn
