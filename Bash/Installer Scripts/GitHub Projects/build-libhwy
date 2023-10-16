@@ -340,6 +340,7 @@ python2_arch_fn()
 {
     if build 'python2' 'git'; then
         download_git 'https://aur.archlinux.org/python2.git' 'python2-AUR'
+            gpg --recv-keys 04C367C218ADD4FF
             makepkg -si --noconfirm
         build_done 'python2' 'git'
     fi
