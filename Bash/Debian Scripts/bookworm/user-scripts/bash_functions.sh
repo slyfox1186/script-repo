@@ -1760,12 +1760,12 @@ fi
 case "${answer}" in
     1)
             script_fn
-            sed -i 's/apt /apt /g' "$file"
-            sed -i 's/apt list/apt list/g' "$file"
-            sed -i 's/local apt host/local apt host/g' "$file"
-            sed -i 's/for apt in/for apt in/g' "$file"
-            sed -i 's/apt apt-get aptitude dpkg/apt apt apt-get aptitude dpkg/g' "$file"
-            sed -i 's/apt search/apt search/g' "$file"
+            sed -i 's/apt /apt-fast /g' "$file"
+            sed -i 's/apt list /apt-fast list /g' "$file"
+            sed -i 's/local apt host /local apt-fast host /g' "$file"
+            sed -i 's/for apt in /for apt-fast in /g' "$file"
+            sed -i 's/apt apt-get aptitude dpkg/apt-fast apt-get aptitude dpkg/g' "$file"
+            sed -i 's/apt search /apt-fast search /g' "$file"
             ;;
     2)      script_fn;;
     *)
