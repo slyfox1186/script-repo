@@ -44,6 +44,14 @@ latest=false
 debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
+# PRINT SCRIPT BANNER
+#
+
+printf "%s\n%s\n\n"                      \
+    "Build-tools script: v${script_ver}" \
+    '===================================='
+
+#
 # GET CPU CORE COUNT FOR PARALLEL PROCESSING
 #
 
@@ -371,29 +379,6 @@ elif [ -n "${find_lsb_release}" ]; then
 else
     fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
 fi
-
-if [[ "$(grep -i Microsoft /proc/version)" ]]; then
-    VER_WSL=1
-fi
-
-case "${VER_WSL}" in
-    1)      sudo apt-get -qq -y install nvidia-utils-535 nvidia-smi 2>/dev/null;;
-esac
-
-case "${OS}" in
-    Arch)               arch_os_version;;
-    Debian|n/a)         debian_os_version;;
-    Ubuntu)             ubuntu_os_version;;
-    *)                  fail_fn "Could not detect the OS architecture. Line: ${LINENO}";
-esac
-
-#
-# PRINT SCRIPT BANNER
-#
-
-printf "%s\n%s\n\n"                      \
-    "Build-tools script: v${script_ver}" \
-    '===================================='
 
 #
 # INSTALL REQUIRED APT/PACMAN PACKAGES
