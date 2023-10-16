@@ -2,11 +2,17 @@
 
 clear
 
-# LIST DISKS
+################
+## LIST DISKS ##
+################
+
 fdisk -l
 fdisk /dev/nvmeXX
 
-# PARTITION DISK
+####################
+## PARTITION DISK ##
+####################
+
 cfdisk /dev/nvmeXXX
 # SET EFI PARTITION
 /dev/nvmeXXp1
@@ -25,6 +31,10 @@ Type: Linux Filesystem
 Size: +32GB
 Type: Swap
 
+#######################
+## FORMAT PARTITIONS ##
+#######################
+
 # FORMAT PARTITION 1
 mkfs.fat -F32 /dev/nvmeXXp1
 # FORMAT PARTITION 2
@@ -35,5 +45,8 @@ mkfs.ext4 /dev/nvmeXXp3
 mkswap /dev/nvmeXXp4
 swapon /dev/nvmeXXp4
 echo 'UUID=xxxxxx-xx-x-x-x-x-x none swap defaults 0 0' > /etc/fstab
+
+
+
 
 linux linux-headers
