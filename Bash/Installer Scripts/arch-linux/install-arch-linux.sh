@@ -13,7 +13,9 @@ fdisk /dev/nvmeXX
 ## PARTITION DISK ##
 ####################
 
+# LOAD THE INTERACTIVE PARTITIONER PROGRAM
 cfdisk /dev/nvmeXXX
+
 # SET EFI PARTITION
 /dev/nvmeXXp1
 Size: +512M
