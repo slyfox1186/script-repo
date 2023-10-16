@@ -1,4 +1,25 @@
 #!/usr/bin/env bash
+
+clear
+
+printf "%s\n%s\n\n" \
+    'Install ~/.bash_functions' \
+    '================================='
+
+#
+# SET VARIABLES
+#
+
+file="${HOME}"/.bash_functions
+
+#
+# CREATE FUNCTIONS
+#
+
+script_fn()
+{
+cat > "$file" <<'EOF'
+#!/usr/bin/env bash
 # shellcheck disable=SC1091,SC2001,SC2162,SC2317
 
 ######################################################################################
@@ -1560,3 +1581,9 @@ ffp()
     sudo find "${PWD}" -type f -iname '*.jpg' -exec bash -c "identify -format "%wx%h" \"{}\"; echo \" {}\"" > 00-pic-sizes.txt \;
 }
 
+EOF
+}
+
+script_fn
+clear
+printf "%s\n%s\n\n" 'The script has completed!'
