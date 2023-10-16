@@ -50,10 +50,11 @@ swapon /dev/nvmeXXp4
 ## GET THE UUID OF THE SWAP PARTITION ##
 ########################################
 
-# TRY THIS COMMAND FIRST
+# ONLY IF NEEDED TRY THIS COMMAND
 ls -lha /dev/disk/by-uuid
-# TRY THIS COMMAND SECOND
-lsblk -f
+
+pacman -S core
+pacman -S nano
 
 # INPUT THE ABOVE UUID YOU FOUND IN THE FILE /ETC/FSTAB
 nano /etc/fstab
