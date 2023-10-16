@@ -41,7 +41,7 @@ install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 latest=false
-debug=ON # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
 # PRINT SCRIPT BANNER
@@ -388,6 +388,7 @@ python2_arch_fn()
 {
     if build 'python2' 'git'; then
         download_git 'https://aur.archlinux.org/python2.git' 'python2-AUR'
+            gpg --recv-keys 04C367C218ADD4FF
             makepkg -si --noconfirm
         build_done 'python2' 'git'
     fi
