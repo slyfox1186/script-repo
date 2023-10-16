@@ -21,15 +21,15 @@ Size: +512M
 Type: EFI
 # SET EFI PARTITION
 /dev/nvmeXXp2
-Size: +460GB
+Size: +364G
 Type: Linux Filesystem
 # SET EFI PARTITION
 /dev/nvmeXXp3
-Size: +512M
+Size: +80G
 Type: Linux Filesystem
 # SET EFI PARTITION
 /dev/nvmeXXp4
-Size: +32GB
+Size: +32G
 Type: Swap
 
 #######################
