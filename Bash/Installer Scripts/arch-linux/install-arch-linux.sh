@@ -106,3 +106,38 @@ umount -R /mnt
 
 # REBOOT THE PC
 reboot
+
+####################################
+## AFTER YOU LOAD INTO ARCH LINUX ##
+####################################
+
+# LOGIN TO ROOT AND ENTER THE ROOT PASSWD YOU SET
+root
+<ENTER THE ROOT PASSWORD>
+
+# CREATE A NEW USER ACCOUNT
+useradd -m -g users -G wheel -s /bin/bash user-name
+
+# CREATE A NEW USER PASSWORD
+passwd user-name
+<ENTER THE USER PASSWORD>
+
+# SET VISUDO ENV VAR
+EDITOR=nano visudo
+
+# NOW UNCOMMENT THE LINE
+# %wheel ALL=(ALL:ALL) NOPASSWD: ALL
+
+# ENTER THE NEWLY CREATED USER NAME TO LOGIN AS USER
+user-name
+<ENTER THE USER PASSWORD>
+
+# INSTALL REQUIRED SOFTWARE USING PACMAN
+pacman -S pulseaudio pulseaudio-alsa xorg xorg-init xorg-server gnome lightdm lightdm-gtk-greeter nvidia virtualbox-guest-utils
+
+# LOGIN TO GNOME DESKTOP
+sudo systemctl start gdm.service
+sudo systemctl enable gdm.service
+sudo reboot
+
+sudo pacman -S firefox vlc leafpad
