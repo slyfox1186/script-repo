@@ -62,7 +62,7 @@ lsblk
 ## INSTALL SOFTWARE ON MOUNT ##
 ###############################
 
-pacstrap -i /mnt base base-devel linux linux-headers nano networkmanager
+pacstrap -i /mnt base base-devel efibootmgr grub linux linux-headers nano networkmanager
 
 genfstab -U -p /mnt  >> /mnt/etc/fstab
 
@@ -76,9 +76,23 @@ ln -sf /usr/share/zoneinfo/US/Eastern /etc/localtime
 
 hwclock --systohc --utc
 
-echo "NAME OF COMPUTER" > /etc/hostname
+echo "NAME-OF-COMPUTER" > /etc/hostname
 
 nano /etc/hosts
+echo '127.0.1.1 localhost.localdomain NAME-OF-COMPUTER' >> /etc/hosts
+systemctl enable NetworkManager
 
-127.0.1.1 localhost.localdomain "NAME OF COMPUTER"
+passwd root
+
+mkdir /boot/efi
+
+/dev/nvmeXXp1 /boot/efi
+lsblk
+
+grub-install --target=x86_x64-efi --bootloader-id=GRUB --efi-directory=/boot/efi
+
+grub-mkconfig -o  /boot/grub/grub.cfg
+
+mkdir /boot/efi/EFI/BOOT
+
 
