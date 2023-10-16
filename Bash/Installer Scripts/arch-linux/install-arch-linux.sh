@@ -44,7 +44,19 @@ mkfs.ext4 /dev/nvmeXXp3
 # FORMAT PARTITION 4
 mkswap /dev/nvmeXXp4
 swapon /dev/nvmeXXp4
-echo 'UUID=xxxxxx-xx-x-x-x-x-x none swap defaults 0 0' > /etc/fstab
+
+########################################
+## GET THE UUID OF THE SWAP PARTITION ##
+########################################
+
+# TRY THIS COMMAND FIRST
+ls -lha /dev/disk/by-uuid
+# TRY THIS COMMAND SECOND
+lsblk -f
+
+# INPUT THE ABOVE UUID YOU FOUND IN THE FILE /ETC/FSTAB
+nano /etc/fstab
+ENTER NEW LINE = UUID=xxxxxx-xx-x-x-x-x-x none swap defaults 0 0
 
 #################
 ## MOUNT DISKS ##
