@@ -1,3 +1,24 @@
+#!/usr/bin/env bash
+
+clear
+
+printf "%s\n%s\n\n" \
+    'Install ~/.bash_aliases' \
+    '================================='
+
+#
+# SET VARIABLES
+#
+
+file="${HOME}"/.bash_aliases
+
+#
+# CREATE FUNCTIONS
+#
+
+script_fn()
+{
+cat > "$file" <<'EOF'
 alias aria2c='sudo aria2c'
 alias cat='sudo cat'
 alias chmod='sudo chmod'
@@ -309,3 +330,10 @@ alias mlu='mainline uninstall'
 
 # GRUB CUSTOMIZER
 alias sgc='sudo grub-customizer'
+
+EOF
+}
+
+script_fn
+clear
+printf "%s\n\n" 'Script completed successfully!'
