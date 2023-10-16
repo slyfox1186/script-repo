@@ -46,7 +46,29 @@ mkswap /dev/nvmeXXp4
 swapon /dev/nvmeXXp4
 echo 'UUID=xxxxxx-xx-x-x-x-x-x none swap defaults 0 0' > /etc/fstab
 
+#################
+## MOUNT DISKS ##
+#################
+
+# MOUNT PARTITION 2
+mount /dev/nvmeXXp2 /mnt
+# MOUNT PARTITION 3
+mkdir /mnt/home
+mount /dev/nvmeXXp3 /mnt/home
+# VERIFY MOUNTS
+lsblk
+
+###############################
+## INSTALL SOFTWARE ON MOUNT ##
+###############################
+
+pacstrap -i /mnt base base-devel linux linux-headers nano
+
+genfstab -U -p /mnt  >> /mnt/etc/fstab
+
+arch-chroot /mnt /bin/bash
+
+nano /etc/locale.gen
+  >> FIND and uncomment the line "#en_US.UTF-8 UTF-8"
 
 
-
-linux linux-headers
