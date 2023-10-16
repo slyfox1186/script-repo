@@ -351,7 +351,7 @@ fi
 case "${answer}" in
     1)
             script_fn
-            sed -i "s/apt /apt /g" "$file"
+            sed -i "s/apt /apt-fast /g" "$file"
             ;;
     2)      script_fn;;
     *)
