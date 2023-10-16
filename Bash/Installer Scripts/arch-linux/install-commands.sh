@@ -62,7 +62,7 @@ lsblk
 ## INSTALL SOFTWARE ON MOUNT ##
 ###############################
 
-pacstrap -i /mnt base base-devel linux linux-headers nano
+pacstrap -i /mnt base base-devel linux linux-headers nano networkmanager
 
 genfstab -U -p /mnt  >> /mnt/etc/fstab
 
@@ -71,4 +71,14 @@ arch-chroot /mnt /bin/bash
 nano /etc/locale.gen
   >> FIND and uncomment the line "#en_US.UTF-8 UTF-8"
 
+locale-gen
+ln -sf /usr/share/zoneinfo/US/Eastern /etc/localtime
+
+hwclock --systohc --utc
+
+echo "NAME OF COMPUTER" > /etc/hostname
+
+nano /etc/hosts
+
+127.0.1.1 localhost.localdomain "NAME OF COMPUTER"
 
