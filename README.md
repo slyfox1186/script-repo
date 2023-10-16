@@ -1,6 +1,13 @@
 # Slys Script Repository
 ## A mix of my favorite scripts for both Windows and Linux.
 
+## Update 10.16.23
+  - Added ArchLinux support to some of the build scripts. Additional scripts will be converted to add this support in the future
+### OS Support
+  - ArchLinux
+  - Debian 10/11/12
+  - Ubuntu (22,20,18).04
+
 ### Why this repository exists:
 1. This repository was created as a way to share my custom scripts
 2. Make the scripts publicly available with the hope that they are beneficial to others
