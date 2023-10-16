@@ -7,18 +7,19 @@
 ##
 ##  Purpose: Install the latest versions of ( CMake, Ninja, Meson, & Golang )
 ##
-##  Updated: 10.06.23
-##  Script version: 2.5
+##  Updated: 10.16.23
+##  Script version: 2.6
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo/edit/main/shell/installers/build-tools
 ##
 ##  Supported OS:
+##                - ArchLinux 2023.10.14
 ##                - Debian 10/11/12
 ##                - Ubuntu (20/22/23).04
 ##
 ##  Added: Go version 1.21.3
 ##  Added: A new variable named debug to help with troubleshooting issues.
-##  Added: cmake GUI
+##  Added: CMake GUI
 ##
 ########################################################################################################################
 
@@ -33,12 +34,13 @@ fi
 # CREATE SCRIPT VARIABLES
 #
 
-script_ver=2.5
+script_ver=2.6
 cwd="${PWD}"/build-tools-script
 packages="${cwd}"/packages
 install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
+latest=false
 debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
@@ -55,9 +57,6 @@ fi
 # CREATE OUTPUT DIRECTORIES
 #
 
-if [ -d "${packages}" ]; then
-    sudo rm -fr "${packages}" 
-fi
 mkdir -p "${packages}"
 
 #
@@ -73,13 +72,22 @@ export CC=gcc CXX=g++
 export {CFLAGS,CXXFLAGS}='-g -O2 -march=native'
 
 #
+# MAKE SURE WE USE THE CORRECT M4 FOLDER
+#
+
+export ACLOCAL_PATH=/usr/share/aclocal
+
+#
 # SET THE PATH VARIABLE
 #
 
 PATH="\
+/usr/lib/ccache:/bin\
 /usr/lib/ccache:\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
+${HOME}/.local/lib/python3.11/site-packages:\
+/home/jman/.local/lib/python3.11/site-packages
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
@@ -240,24 +248,62 @@ download()
     cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}:Line ${LINENO}"
 }
 
+download_git()
+{
+    local dl_path dl_url dl_file target_dir
+
+    dl_path="${packages}"
+    dl_url="${1}"
+    dl_file="${2:-"${1##*/}"}"
+    dl_file="${dl_file//\./-}"
+    target_dir="${dl_path}/${dl_file}"
+
+    if [ -n "${3}" ]; then
+        output_dir="${dl_path}/${3}"
+        target_dir="${output_dir}"
+    fi
+
+    if [ -d "${target_dir}" ]; then
+        sudo rm -fr "${target_dir}"
+    fi
+
+    echo "Downloading ${dl_url} as ${dl_file}"
+
+    if ! git clone -q "${dl_url}" "${target_dir}"; then
+        printf "\n%s\n\n" "The script failed to clone the directory \"${target_dir}\" and will try again in 10 seconds..."
+        sleep 10
+        if ! git clone -q "${dl_url}" "${target_dir}"; then
+            fail_fn "The script failed to clone the directory \"${target_dir}\" twice and will now exit the buildLine: ${LINENO}"
+        fi
+    else
+        printf "%s\n\n" "Successfully cloned: ${target_dir}"
+    fi
+
+    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}. Line: ${LINENO}"
+}
+
 build()
 {
-    echo
-    echo "Building ${1} - version ${2}"
-    echo '===================================='
+    printf "\n%s\n%s\n" \
+        "Building ${1} - version ${2}" \
+        '===================================='
 
     if [ -f "${packages}/${1}.done" ]; then
         if grep -Fx "${2}" "${packages}/${1}.done" >/dev/null; then
-            echo "${1} version ${2} is already built. Remove ${packages}/${1}.done lockfile to rebuild it."
+            echo "${1} version ${2} already built. Remove ${packages}/${1}.done lockfile to rebuild it."
             return 1
+        elif "${latest}"; then
+            echo "${1} is outdated and will be rebuilt using version ${2}"
+            return 0
         else
             echo "${1} is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove ${packages}/${1}.done lockfile."
             return 1
         fi
     fi
-
     return 0
 }
+
+build_done() { echo "${2}" > "${packages}/${1}.done"; }
 
 git_1_fn()
 {
@@ -310,7 +356,36 @@ git_ver_fn()
     "${u_flag}" "${v_url}" "${t_flag}" 2>/dev/null
 }
 
-build_done() { echo "${2}" > "${cwd}/${1}.done"; }
+find_lsb_release="$(sudo find /usr -type f -name 'lsb_release')"
+
+if [ -f /etc/os-release ]; then
+    source /etc/os-release
+    OS_TMP="$NAME"
+    VER_TMP="$VERSION_ID"
+    CODENAME="$VERSION_CODENAME"
+    OS="$(echo "${OS_TMP}" | awk '{print $1}')"
+    VER="$(echo "${VER_TMP}" | awk '{print $1}')"
+elif [ -n "${find_lsb_release}" ]; then
+    OS="$(lsb_release -d | awk '{print $2}')"
+    VER="$(lsb_release -r | awk '{print $2}')"
+else
+    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
+fi
+
+if [[ "$(grep -i Microsoft /proc/version)" ]]; then
+    VER_WSL=1
+fi
+
+case "${VER_WSL}" in
+    1)      sudo apt-get -qq -y install nvidia-utils-535 nvidia-smi 2>/dev/null;;
+esac
+
+case "${OS}" in
+    Arch)               arch_os_version;;
+    Debian|n/a)         debian_os_version;;
+    Ubuntu)             ubuntu_os_version;;
+    *)                  fail_fn "Could not detect the OS architecture. Line: ${LINENO}";
+esac
 
 #
 # PRINT SCRIPT BANNER
@@ -321,33 +396,89 @@ printf "%s\n%s\n\n"                      \
     '===================================='
 
 #
-# INSTALL REQUIRED APT PACKAGES
+# INSTALL REQUIRED APT/PACMAN PACKAGES
 #
 
-pkgs=(autoconf automake autogen build-essential ccache cmake curl
-      jq git libssl-dev python3 python3-pip qt6-base-dev)
-
-for i in ${pkgs[@]}
-do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+python2_setuptools_arch_fn()
+{
+    if build 'python2-setuptools' 'git'; then
+        download_git 'https://aur.archlinux.org/python2-setuptools.git' 'python2-setuptools-AUR'
+            makepkg -si --noconfirm
+        build_done 'python2-setuptools' 'git'
     fi
-done
+}
 
-if [ -n "${missing_pkgs}" ]; then
-    sudo apt -y install ${missing_pkgs}
-    sudo apt -y autoremove
+jq_arch_fn()
+{
+    if build 'jq' 'git'; then
+        download_git 'https://aur.archlinux.org/jq-git.git' 'jq-AUR'
+            makepkg -si --noconfirm
+        build_done 'jq' 'git'
+    fi
+}
+
+pkgs_arch_fn()
+{
+    pkgs=(autoconf automake autogen base-devel ccache cmake curl
+          git openssl python python-pip python-setuptools qt6-base)
+
+    if [ -f /var/lib/pacman/db.lck ]; then
+        sudo rm /var/lib/pacman/db.lck
+    fi
+
+    for i in ${pkgs[@]}
+    do
+        missing_pkg="$(sudo pacman -Qi | grep -o "${i}")"
+
+        if [ -z "${missing_pkg}" ]; then
+            missing_pkgs+=" ${i}"
+        fi
+    done
+
+    if [ -n "${missing_pkgs}" ]; then
+         yes | sudo pacman -S ${missing_pkgs}
+    fi
+
+    # INSTALL JQ FROM AUR
+    jq_arch_fn
+    python2_setuptools_arch_fn
     clear
-fi
-unset i missing_pkgs
 
-#
-# MAKE SURE WE USE THE CORRECT M4 FOLDER
-#
+    rm_pip_lock="$(sudo find /usr/lib/python3* -type f -name 'EXTERNALLY-MANAGED')"
+    if [ -n "${rm_pip_lock}" ]; then
+        sudo rm "${rm_pip_lock}"
+    fi
 
-export ACLOCAL_PATH=/usr/share/aclocal
+    # INSTALL PYTHON PIP PACKAGES
+    pip uninstall -q -y setuptools 2>/dev/null
+    sudo pip install -q --no-input setuptools 2>/dev/null
+}
+
+pkgs_fn()
+{
+    pkgs=(autoconf automake autogen build-essential ccache cmake curl
+          jq git libssl-dev python3 python3-pip qt6-base-dev)
+
+    for i in ${pkgs[@]}
+    do
+        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+
+        if [ -z "${missing_pkg}" ]; then
+            missing_pkgs+=" ${i}"
+        fi
+    done
+
+    if [ -n "${missing_pkgs}" ]; then
+        sudo apt -y install ${missing_pkgs}
+        sudo apt -y autoremove
+        clear
+    fi
+}
+
+case "${OS}" in
+    Arch)   pkgs_arch_fn;;
+    *)      pkgs_fn;;
+esac
 
 #
 # INSTALL FROM SOURCE CODE
@@ -383,8 +514,8 @@ fi
 git_ver_fn 'mesonbuild/meson' '1' 'T'
 if build 'meson' "${g_ver1}"; then
     download "https://codeload.github.com/mesonbuild/meson/tar.gz/refs/tags/${g_ver1}" "meson-${g_ver1}.tar.gz"
-    execute python3 setup.py build
-    execute sudo python3 setup.py install --prefix="${install_dir}"
+    execute python setup.py build
+    execute sudo python setup.py install --prefix="${install_dir}"
     build_done 'meson' "${g_ver1}"
 fi
 
