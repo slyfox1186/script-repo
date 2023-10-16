@@ -334,6 +334,7 @@ alias mlu='mainline uninstall'
 
 # GRUB CUSTOMIZER
 alias sgc='sudo grub-customizer'
+
 EOF
 }
 
