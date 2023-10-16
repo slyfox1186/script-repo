@@ -7,7 +7,6 @@ clear
 ################
 
 fdisk -l
-fdisk /dev/nvmeXX
 
 ####################
 ## PARTITION DISK ##
