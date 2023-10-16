@@ -164,7 +164,7 @@ if [ -n "${missing_pkgs}" ]; then
 fi
 
 #
-# DOWNLOAD THE ARCHIVE FILE--with-libsigsegv-prefix
+# DOWNLOAD THE ARCHIVE FILE
 #
 
 if [ ! -f "${cwd}/${archive_name}" ]; then
