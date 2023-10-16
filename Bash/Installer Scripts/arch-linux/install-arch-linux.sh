@@ -100,7 +100,7 @@ passwd root
 
 mkdir /boot/efi
 
-/dev/nvmeXXp1 /boot/efi
+mount /dev/nvmeXXp1 /boot/efi
 lsblk
 
 grub-install --target=x86_x64-efi --bootloader-id=GRUB --efi-directory=/boot/efi
