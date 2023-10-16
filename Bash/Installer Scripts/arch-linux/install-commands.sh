@@ -69,17 +69,17 @@ genfstab -U -p /mnt  >> /mnt/etc/fstab
 arch-chroot /mnt /bin/bash
 
 nano /etc/locale.gen
-  >> FIND and uncomment the line "#en_US.UTF-8 UTF-8"
+FIND AND UNCOMMENT = #en_US.UTF-8 UTF-8
 
 locale-gen
 ln -sf /usr/share/zoneinfo/US/Eastern /etc/localtime
 
 hwclock --systohc --utc
 
-echo "NAME-OF-COMPUTER" > /etc/hostname
+nano "NAME-OF-COMPUTER" > /etc/hostname
 
 nano /etc/hosts
-echo '127.0.1.1 localhost.localdomain NAME-OF-COMPUTER' >> /etc/hosts
+NEW LINE = 127.0.1.1 localhost.localdomain NAME-OF-COMPUTER
 systemctl enable NetworkManager
 
 passwd root
@@ -94,5 +94,15 @@ grub-install --target=x86_x64-efi --bootloader-id=GRUB --efi-directory=/boot/efi
 grub-mkconfig -o  /boot/grub/grub.cfg
 
 mkdir /boot/efi/EFI/BOOT
+cp /boot/efi/EFI/GRUB/grubx64.efi /boot/efi/EFI/BOOT/BOOTX64.EFI
 
+nano /boot/efi/startup.sh
+LINE 1 = bcf boot add 1 fs0:\EFI\GRUB\grubx64.efi "My GRUB Bootloader"
+LINE 2 = exit
 
+# NEXT YOU NEED TO EXIT THE CURRENT LOGIN SHELL YOU ARE IN
+exit
+umount -R /mnt
+
+# REBOOT THE PC
+reboot
