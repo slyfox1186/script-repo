@@ -15,14 +15,9 @@ sudo apt-get -qq -y install curl
 green='\e[32m'
 blue='\e[34m'
 clear='\e[0m'
-ColorGreen()
-{
-    echo -ne "${green}${1}${clear}"
-}
-ColorBlue()
-{
-    echo -ne "${blue}${1}${clear}"
-}
+
+ColorGreen() { echo -ne "${green}${1}${clear}"; }
+ColorBlue() { echo -ne "${blue}${1}${clear}"; }
 
 #
 # SHOW SCRIPT BANNER
@@ -55,6 +50,7 @@ echo -ne "
 $(ColorGreen '1)') Debian 10/11/12
 $(ColorGreen '2)') Ubuntu (18/20/22).04
 $(ColorGreen '3)') Ubuntu 23.04
+$(ColorGreen '4)') Arch Linux
 $(ColorGreen '0)') Exit
 $(ColorBlue 'Choose the operating system:') "
     read answer
@@ -63,6 +59,7 @@ $(ColorBlue 'Choose the operating system:') "
         1)      bash <(curl -fsSL https://bookworm-scripts.optimizethis.net);;
         2)      bash <(curl -fsSL https://jammy-scripts.optimizethis.net);;
         3)      bash <(curl -fsSL https://lunar-scripts.optimizethis.net);;
+        4)      bash <(curl -fsSL https://arch-scripts.optimizethis.net);;
         0)      return 0;;
         *)      main_menu;;
     esac
