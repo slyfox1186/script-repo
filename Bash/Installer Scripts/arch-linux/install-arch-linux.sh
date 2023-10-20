@@ -19,15 +19,15 @@ cfdisk /dev/nvmeXXX
 /dev/nvmeXXp1
 Size: +512M
 Type: EFI
-# SET EFI PARTITION
+# SET ROOT PARTITION
 /dev/nvmeXXp2
 Size: +364G
 Type: Linux Filesystem
-# SET EFI PARTITION
+# SET HOME PARTITION
 /dev/nvmeXXp3
 Size: +80G
 Type: Linux Filesystem
-# SET EFI PARTITION
+# SET SWAP PARTITION
 /dev/nvmeXXp4
 Size: +32G
 Type: Swap
