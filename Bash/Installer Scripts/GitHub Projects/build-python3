@@ -279,14 +279,6 @@ else
     fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
 fi
 
-if [[ "$(grep -i Microsoft /proc/version)" ]]; then
-    VER_WSL=1
-fi
-
-case "${VER_WSL}" in
-    1)      sudo apt-get -qq -y install nvidia-utils-535;;
-esac
-
 if [ -z "${VER}" ]; then
     VER="${CODENAME}"
 fi
