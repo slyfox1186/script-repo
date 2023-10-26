@@ -32,15 +32,15 @@ cfdisk /dev/nvmeXXX
 /dev/nvmeXXp1
 Size: +512M
 Type: EFI
+## SET SWAP PARTITION ##
+# ON UEFI SWAP PARTITIONS ARE TYPE = 0657FD6D-A4AB-43C4-84E5-0933C84B4F4F
+/dev/nvmeXXp2
+Size: +32G
+Type: Linux swap
 # SET ROOT PARTITION
 /dev/nvmeXXp3
 Size: +364G
-Type: Linux Filesystem
-# SET SWAP PARTITION
-# ON UEFI SWAP PARITIONS ARE TYPE = 0657FD6D-A4AB-43C4-84E5-0933C84B4F4F
-/dev/nvmeXXp2
-Size: +32G
-Type: Swap
+Type: Linux x86-64 root
 
 #######################
 ## FORMAT PARTITIONS ##
@@ -49,7 +49,7 @@ Type: Swap
 # FORMAT PARTITION 1
 mkfs.fat -F32 /dev/nvmeXXp1
 # FORMAT PARTITION 2
-ext.fat16 /dev/nvmeXXp2
+mkswap /dev/nvmeXXp2
 # FORMAT PARTITION 3
 mkfs.ext4 /dev/nvmeXXp3
 
