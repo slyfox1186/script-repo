@@ -2,10 +2,23 @@
 
 clear
 
+loadkeys en_US.UTF-8
+# OR TRY
+loadkeys C.UTF-8
+
+localectl set-keymap --no-convert en_US.UTF-8
+
+setfont ter-132b
+
+cat /sys/firmware/efi/fw_platform_size
+
+timedatectl
+
 ################
 ## LIST DISKS ##
 ################
 
+clear
 fdisk -l
 
 ####################
@@ -20,15 +33,12 @@ cfdisk /dev/nvmeXXX
 Size: +512M
 Type: EFI
 # SET ROOT PARTITION
-/dev/nvmeXXp2
+/dev/nvmeXXp3
 Size: +364G
 Type: Linux Filesystem
-# SET HOME PARTITION
-/dev/nvmeXXp3
-Size: +80G
-Type: Linux Filesystem
 # SET SWAP PARTITION
-/dev/nvmeXXp4
+# ON UEFI SWAP PARITIONS ARE TYPE = 0657FD6D-A4AB-43C4-84E5-0933C84B4F4F
+/dev/nvmeXXp2
 Size: +32G
 Type: Swap
 
@@ -39,36 +49,29 @@ Type: Swap
 # FORMAT PARTITION 1
 mkfs.fat -F32 /dev/nvmeXXp1
 # FORMAT PARTITION 2
-mkfs.ext4 /dev/nvmeXXp2
+ext.fat16 /dev/nvmeXXp2
 # FORMAT PARTITION 3
 mkfs.ext4 /dev/nvmeXXp3
-# FORMAT PARTITION 4
-mkswap /dev/nvmeXXp4
-swapon /dev/nvmeXXp4
 
 ########################################
 ## GET THE UUID OF THE SWAP PARTITION ##
 ########################################
 
-# ONLY IF NEEDED TRY THIS COMMAND
-ls -lha /dev/disk/by-uuid
+# *ONLY* IF NEEDED TRY THIS COMMAND
+# ls -lha /dev/disk/by-uuid
 
-pacman -S core
-pacman -S nano
-
-# INPUT THE ABOVE UUID YOU FOUND IN THE FILE /ETC/FSTAB
-nano /etc/fstab
-ENTER NEW LINE = UUID=xxxxxx-xx-x-x-x-x-x none swap defaults 0 0
+pacman -S core nano
 
 #################
 ## MOUNT DISKS ##
 #################
 
-# MOUNT PARTITION 2
-mount /dev/nvmeXXp2 /mnt
 # MOUNT PARTITION 3
-mkdir /mnt/home
-mount /dev/nvmeXXp3 /mnt/home
+mount /dev/nvmeXXp3 /mnt
+# MOUNT PARTITION 1
+mount --mkdir /dev/nvmeXXp1 /mnt/boot
+# MOUNT PARTITION 2
+mount /dev/nvmeXXp2 /swap
 # VERIFY MOUNTS
 lsblk
 
@@ -76,27 +79,31 @@ lsblk
 ## INSTALL SOFTWARE ON MOUNT ##
 ###############################
 
-pacstrap -i /mnt base base-devel efibootmgr grub linux linux-headers nano networkmanager
+pacstrap -K /mnt base base-devel efibootmgr grub linux linux-headers linux-firmware nano NetworkManager
 
-genfstab -U -p /mnt  >> /mnt/etc/fstab
+genfstab -U /mnt >> /mnt/etc/fstab
 
 arch-chroot /mnt /bin/bash
 
-nano /etc/locale.gen
-FIND AND UNCOMMENT = #en_US.UTF-8 UTF-8
-
-locale-gen
 ln -sf /usr/share/zoneinfo/US/Eastern /etc/localtime
 
-hwclock --systohc --utc
+hwclock --systohc
 
-nano "NAME-OF-COMPUTER" > /etc/hostname
+locale-gen
 
-nano /etc/hosts
-NEW LINE = 127.0.1.1 localhost.localdomain NAME-OF-COMPUTER
+echo 'LANG=en_US.UTF-8' > /etc/locale.conf
+
+echo 'NAME-OF-COMPUTER' > /etc/hostname
+
+mkinitcpio -P
+
+echo '127.0.1.1 localhost.localdomain NAME-OF-COMPUTER' >> /etc/hosts
+
 systemctl enable NetworkManager
 
 passwd root
+
+## THE OFFICIAL GUIDE SAYS YOU CAN REBOOT AT THIS POINT
 
 mkdir /boot/efi
 
