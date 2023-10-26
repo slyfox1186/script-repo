@@ -7,11 +7,11 @@
 ##
 ##  Script version
 ##
-##    - 3.0.3
+##    - 3.1.0
 ##
 ##  Updated on
 ##
-##    - 10.16.23
+##    - 10.25.23
 ##
 ##  Purpose:
 ##
@@ -20,7 +20,7 @@
 ##
 ##  Supported Distro:
 ##
-##    - ArchLinux
+##    - Arch Linux
 ##    - Debian (10|11|12)
 ##    - Ubuntu (18|20|22|23).04
 ##
@@ -28,38 +28,39 @@
 ##
 ##    - x86_64
 ##
-##  ArchLinux notes
+##  Arch Linux notes
 ##
-##    - required pacman packages for ArchLinux
-##    - updated the source code libraries to compile successfully using a partial mix of AUR (Arch User Repository)
+##    - Required pacman packages for ArchLinux
+##    - Updated the source code libraries to compile successfully using a partial mix of AUR (Arch User Repository)
 ##
-##  GeForce CUDA SDK Toolkit
+##  GeForce CUDA SDK Toolkit notes
 ##
-##    - updated to version 12.2.2
-##    - reverted the nv-codec-headers to version n12.0.16.1 due to a 20% decrease in fps using x265 with nvenc cuda
-##    - if the cuda libraries are not installed (for Geforce graphics cards only) the user will be prompted
+##    - Updated to version 12.3.0
+##    - Reverted the nv-codec-headers to version n12.0.16.1 due to a 20% decrease in fps using x265 with nvenc cuda
+##    - If the cuda libraries are not installed (for Geforce graphics cards only) the user will be prompted
 ##      by the script to install them so that hardware acceleration is enabled during the build
 ##
 ##  Updated
 ##
-##    - x265 library
+##    - ffmpeg to snapshot version 566aa38d98f5f492995127e82ab9a516f59bf952
+##    - abseil library
 ##    - aom/av1 library
 ##    - libvpx library
-##    - abseil library
-##    - rav1e library p20231010 (10.09.23)
+##    - rav1e library to version p20231024 (10.21.23)
+##    - x265 library
 ##
 ##  Added
 ##
-##    - Debian 11 Bullseye support
-##    - Debian 12 Bookworm support
-##    - Ubuntu 23.04 Lunar support
-##    - Windows WSL support
+##    - Clang compilers to build the x265 library because it gives better FPS output than when built with gcc
+##    - cUnit support library for libmysofa
 ##    - Cyanrip software
 ##    - Cyanrip libcurl support library for
-##    - VapourSynth library support
-##    - cUnit support library for libmysofa
+##    - Debian 11 (Bullseye) support
+##    - Debian 12 (Bookworm) support
 ##    - OpenCL and libpulse support libraries
-##    - Clang compilers to build the x265 library because it gives better FPS output than when built with gcc
+##    - Ubuntu 23.04 (Lunar) support
+##    - VapourSynth library support
+##    - Windows WSL2 support
 ##
 ##  Removed
 ##
@@ -67,6 +68,8 @@
 ##
 ##  Fixed
 ##
+##    - the nvidia-smi command not being installed for Debian OS versions
+##    - gpac build issue due to the sdl2 library not being found in the workspace folder
 ##    - libheif not building the specified plugins
 ##    - the code that prompts the user to install the CUDA SDK ToolKit
 ##    - a broken download url for the WSL version of the CUDA SDK ToolKit
@@ -79,8 +82,8 @@
 #
 
 script_name="${0}"
-script_ver=3.0.3
-ffmpeg_ver=963937e408fc68b5925f938a253cfff1d506f784
+script_ver=3.1.0
+ffmpeg_ver=566aa38d98f5f492995127e82ab9a516f59bf952
 ffmpeg_sver="${ffmpeg_ver::7}"
 ffmpeg_archive=ffmpeg-"${ffmpeg_sver}".tar.gz
 ffmpeg_url=https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/"${ffmpeg_ver}".tar.gz
@@ -89,8 +92,9 @@ ffmpeg_url=https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/"${ffmpeg_ver}".tar
 # ffmpeg_sver=963937e408fc68b5925f938a253cfff1d506f784
 # ffmpeg_archive=https://www.ffmpeg.org/releases/ffmpeg-"${ffmpeg_sver}".tar.gz
 ###############################################################################
-cuda_latest_ver=12.2.2
-cuda_url="https://developer.download.nvidia.com/compute/cuda/${cuda_ver}"
+cuda_latest_ver=12.3.0
+cuda_url="https://developer.download.nvidia.com/compute/cuda/${cuda_latest_ver}"
+cuda_pin_url='https://developer.download.nvidia.com/compute/cuda/repos'
 cwd="${PWD}"/ffmpeg-build-script
 packages="${cwd}"/packages
 workspace="${cwd}"/workspace
@@ -102,18 +106,19 @@ latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 curl_timeout=10
-debug=ON # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
 #
 
-if [ -f /proc/cpuinfo ]; then
-    cpu_threads="$(grep --count ^processor /proc/cpuinfo)"
+if [ -f '/proc/cpuinfo' ]; then
+    cpu_threads="$(grep --count ^processor '/proc/cpuinfo')"
+    export MAKEFLAGS="$(grep --count ^processor '/proc/cpuinfo')"
 else
     cpu_threads="$(nproc --all)"
+    export MAKEFLAGS="-j$(nproc --all)"
 fi
-export MAKEFLAGS="-j$(nproc --all)"
 
 #
 # PRINT SCRIPT BANNER
@@ -156,7 +161,7 @@ source_flags_fn()
     CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/openjpeg-2.5 -I/usr/include/flite"
     LDFLAGS="-L${workspace}/lib64 -L${workspace}/lib -L${workspace}/lib/x86_64-linux-gnu -L/usr/local/lib64"
     LDFLAGS+=' -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
-    export CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
+    export CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 }
 source_flags_fn
 
@@ -703,56 +708,70 @@ export PKG_CONFIG_PATH
 
 cuda_download_fn()
 {
-    local choice cuda_url
+    local choice
     clear
 
-    printf "%s\n\n%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n\n"   \
-        'Pick your Linux distro from the list below:' \
-        'Supported architecture: x86_64'              \
-        '[1] Debian 10'                               \
-        '[2] Debian 11|12'                            \
-        '[3] Ubuntu 20.04'                            \
-        '[4] Ubuntu 22.04'                            \
-        '[5] Ubuntu WSL'                              \
-        '[6] Skip this'
+    printf "%s\n\n%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n\n" \
+        'Pick your Linux distro from the list below:'   \
+        'Supported architecture: x86_64'                \
+        '[1] Debian 10'                                 \
+        '[2] Debian 11'                                 \
+        '[3] Debian 12'                                 \
+        '[4] Ubuntu 20.04'                              \
+        '[5] Ubuntu 22.04'                              \
+        '[6] Ubuntu WSL'                                \
+        '[7] Exit'
     read -p 'Your choices are (1 to 7): ' choice
     clear
 
+    printf "%s\n%s\n\n"                                             \
+        "Downloading CUDA SDK Toolkit - version ${cuda_latest_ver}" \
+        '===================================================='
+
     case "${choice}" in
         1)
-            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-buster-${cuda_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian10-12-2-local_12.2.2-535.104.05-1_amd64.deb"
-            sudo dpkg -i "${packages}/nvidia-cuda/cuda-buster-${cuda_ver}.deb"
-            sudo cp -f /var/cuda-repo-debian10-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
+            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-buster-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian10-12-3-local_12.3.0-545.23.06-1_amd64.deb"
+            sudo dpkg -i "${packages}/nvidia-cuda/cuda-buster-${cuda_latest_ver}.deb"
+            sudo cp -f /var/cuda-repo-debian10-12-3-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             sudo add-apt-repository -y contrib
             ;;
         2)
-            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-bookworm-${cuda_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian11-12-2-local_12.2.2-535.104.05-1_amd64.deb"
-            sudo dpkg -i "${packages}/nvidia-cuda/cuda-bookworm-${cuda_ver}.deb"
-            sudo cp -f /var/cuda-repo-debian11-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
+            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-bullseye-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian11-12-3-local_12.3.0-545.23.06-1_amd64.deb"
+            sudo dpkg -i "${packages}/nvidia-cuda/cuda-bullseye-${cuda_latest_ver}.deb"
+            sudo cp -f /var/cuda-repo-debian11-12-3-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             sudo add-apt-repository -y contrib
             ;;
         3)
-            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-ubuntu2004.pin" "${cuda_url}/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin"
-            sudo mv "${packages}/nvidia-cuda/cuda-ubuntu2004.pin" /etc/apt/preferences.d/cuda-repository-pin-600
-            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-focal-${cuda_ver}.deb" "${cuda_url}/local_installers/cuda-repo-ubuntu2004-12-2-local_12.2.2-535.104.05-1_amd64.deb"
-            sudo dpkg -i "${packages}/nvidia-cuda/cuda-focal-${cuda_ver}.deb"
-            sudo cp -f /var/cuda-repo-ubuntu2004-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
+            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-bookworm-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian12-12-3-local_12.3.0-545.23.06-1_amd64.deb"
+            sudo dpkg -i "${packages}/nvidia-cuda/cuda-bookworm-${cuda_latest_ver}.deb"
+            sudo cp -f /var/cuda-repo-debian11-12-2-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
+            sudo add-apt-repository -y contrib
             ;;
         4)
-            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-ubuntu2204.pin" "${cuda_url}/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin"
-            sudo mv "${packages}/nvidia-cuda/cuda-ubuntu2204.pin" /etc/apt/preferences.d/cuda-repository-pin-600
-            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-jammy-${cuda_ver}.deb" "${cuda_url}/local_installers/cuda-repo-ubuntu2204-12-2-local_12.2.2-535.104.05-1_amd64.deb"
-            sudo dpkg -i "${packages}/nvidia-cuda/cuda-jammy-${cuda_ver}.deb"
-            sudo cp -f /var/cuda-repo-ubuntu2204-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
+            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-ubuntu2004.pin" "${cuda_pin_url}/ubuntu2004/x86_64/cuda-ubuntu2004.pin"
+            sudo mv "${packages}/nvidia-cuda/cuda-ubuntu2004.pin" '/etc/apt/preferences.d/cuda-repository-pin-600'
+            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-focal-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-ubuntu2004-12-3-local_12.3.0-545.23.06-1_amd64.deb"
+            sudo dpkg -i "${packages}/nvidia-cuda/cuda-focal-${cuda_latest_ver}.deb"
+            sudo cp -f /var/cuda-repo-ubuntu2004-12-3-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             ;;
         5)
-            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-wsl-ubuntu.pin" 'https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin'
-            sudo mv "${packages}/nvidia-cuda/cuda-wsl-ubuntu.pin" /etc/apt/preferences.d/cuda-repository-pin-600
-            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-wsl-${cuda_ver}.deb" 'https://developer.download.nvidia.com/compute/cuda/12.2.2/local_installers/cuda-repo-wsl-ubuntu-12-2-local_12.2.2-1_amd64.deb'
-            sudo dpkg -i "${packages}/nvidia-cuda/cuda-wsl-${cuda_ver}.deb"
-            sudo cp -f /var/cuda-repo-wsl-ubuntu-12-2-local/cuda-*-keyring.gpg /usr/share/keyrings/
+            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-ubuntu2204.pin" "${cuda_pin_url}/ubuntu2204/x86_64/cuda-ubuntu2204.pin"
+            sudo mv "${packages}/nvidia-cuda/cuda-ubuntu2204.pin" '/etc/apt/preferences.d/cuda-repository-pin-600'
+            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-jammy-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-ubuntu2204-12-3-local_12.3.0-545.23.06-1_amd64.deb"
+            sudo dpkg -i "${packages}/nvidia-cuda/cuda-jammy-${cuda_latest_ver}.deb"
+            sudo cp /var/cuda-repo-ubuntu2204-12-3-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             ;;
-    6)      exit_fn;;
+        6)
+            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-wsl-ubuntu.pin" "${cuda_pin_url}/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin"
+            sudo mv "${packages}/nvidia-cuda/cuda-wsl-ubuntu.pin" '/etc/apt/preferences.d/cuda-repository-pin-600'
+            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-wsl-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-wsl-ubuntu-12-3-local_12.3.0-1_amd64.deb"
+            sudo dpkg -i "${packages}/nvidia-cuda/cuda-wsl-${cuda_latest_ver}.deb"
+            sudo cp -f /var/cuda-repo-wsl-ubuntu-12-3-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
+            ;;
+    7)
+            clear
+            exit_fn
+            ;;
     *)
             unset choice
             cuda_download_fn
@@ -761,7 +780,8 @@ cuda_download_fn()
 
     # UPDATE THE APT PACKAGES THEN INSTALL THE CUDA-SDK-TOOLKIT
     sudo apt update
-    sudo apt -y install cuda
+    sudo apt -y install cuda-toolkit-12-3
+    clear
 
     cuda_ver="$(cat '/usr/local/cuda/version.json' | jq -r '.cuda.version')"
 
@@ -781,23 +801,20 @@ install_cuda_fn()
     local choice
     clear
 
-    if [ "${OS}" = 'Arch' ]; then
+    if [[ "${OS}" == 'Arch' ]]; then
         clear
     else
         if [ -f '/usr/local/cuda/version.json' ]; then
             cuda_ver_test="$(cat '/usr/local/cuda/version.json' | jq -r '.cuda.version')"
-            cuda_ver="${cuda_ver_test}"
-        else
-            cuda_ver="${cuda_latest_ver}"
         fi
 
         if [ -n "${cuda_ver_test}" ]; then
-            printf "%s\n\n%s\n%s\n\n%s\n\n%s\n%s\n\n"                    \
-                "The installed CUDA SDK Toolkit version is: ${cuda_ver}" \
-                "The latest version available is: ${cuda_latest_ver}"    \
-                '====================================================='  \
-                'Do you want to update/reinstall it?'                    \
-                '[1] Yes'                                                \
+            printf "%s\n%s\n%s\n%s\n\n%s\n%s\n\n"                             \
+                "The installed CUDA SDK Toolkit version is: ${cuda_ver_test}" \
+                "The latest version available is: ${cuda_latest_ver}"         \
+                '====================================================='       \
+                'Do you want to update/reinstall it?'                         \
+                '[1] Yes'                                                     \
                 '[2] No'
             read -p 'Your choices are (1 or 2): ' choice
             clear
@@ -815,10 +832,10 @@ install_cuda_fn()
             esac
         else
             printf "%s\n%s\n\n%s\n\n%s\n%s\n\n" \
-                "The CUDA SDK Toolkit was not detected and the latest version is: ${cuda_ver}" \
-                '========================================================================='    \
-                'Choose an option'                                                             \
-                '[1] Install the toolkit and add it to your PATH'                              \
+                "The CUDA SDK Toolkit was not detected and the latest version is: ${cuda_latest_ver}" \
+                '========================================================================='           \
+                'Choose an option'                                                                    \
+                '[1] Install the CUDA SDK Toolkit and add it to your PATH'                            \
                 '[2] Continue without installing (hardware acceleration will be turned off)'
             read -p 'Your choices are (1 or 2): ' choice
             clear
@@ -853,18 +870,18 @@ pkgs_fn()
           google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk libamd2 libasound2-dev
           libass-dev libaudio-dev libavfilter-dev libbabl-0.1-0 libbluray-dev libbs2b-dev libbz2-dev libc6 libc6-dev
           libcaca-dev libcairo2-dev libcamd2 libccolamd2 libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libcholmod3
-          libchromaprint-dev libcodec2-dev libcolamd2 libcrypto++-dev libcurl4-openssl-dev libdbus-1-dev libde265-dev libdevil-dev
-          libdmalloc-dev libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev
-          libgegl-0.4-0 libgegl-common libgimp2.0 libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev
+          libchromaprint-dev libcjson-dev libcodec2-dev libcolamd2 libcrypto++-dev libcurl4-openssl-dev libdbus-1-dev
+          libde265-dev libdevil-dev libdmalloc-dev libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev
+          libgdbm-dev libgegl-0.4-0 libgegl-common libgimp2.0 libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev
           libgnutls28-dev libgnutls30 libgoogle-perftools4 libgoogle-perftools-dev libgsm1-dev libgtest-dev libgvc6 libhwy-dev
           libibus-1.0-dev libiconv-hook-dev libintl-perl libjack-dev libjemalloc-dev libladspa-ocaml-dev libleptonica-dev
-          liblz-dev liblzma-dev liblzo2-dev libmathic-dev libmatroska-dev libmetis5 libmfx-dev libmodplug-dev libmp3lame-dev
-          libmusicbrainz5-dev libmysofa-dev libnuma1 libnuma-dev libopencore-amrnb-dev libopencore-amrwb-dev libopencv-dev
-          libopenjp2-7-dev libopenmpt-dev libopus-dev libperl-dev libpstoedit-dev libpulse-dev librabbitmq-dev libraqm-dev
-          libraw-dev librsvg2-dev librubberband-dev librust-gstreamer-base-sys-dev libshine-dev libsmbclient-dev libsnappy-dev
-          libsndfile1-dev libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev libsrt-gnutls-dev libssh-dev libssl-dev
-          libsuitesparseconfig5 libtalloc-dev libtheora-dev libticonv-dev libtool libtool-bin libtwolame-dev libudev-dev
-          libumfpack5 libunwind-dev libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev
+          liblz-dev liblzma-dev liblzo2-dev libmathic-dev libmatroska-dev libmbedtls-dev libmetis5 libmfx-dev libmodplug-dev
+          libmp3lame-dev libmusicbrainz5-dev libmysofa-dev libnuma1 libnuma-dev libopencore-amrnb-dev libopencore-amrwb-dev
+          libopencv-dev libopenjp2-7-dev libopenmpt-dev libopus-dev libperl-dev libpstoedit-dev libpulse-dev librabbitmq-dev
+          libraqm-dev libraw-dev librsvg2-dev librubberband-dev librust-gstreamer-base-sys-dev libshine-dev libsmbclient-dev
+          libsnappy-dev libsndfile1-dev libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev libsrt-gnutls-dev libssh-dev
+          libssl-dev libsuitesparseconfig5 libtalloc-dev libtheora-dev libticonv-dev libtool libtool-bin libtwolame-dev
+          libudev-dev libumfpack5 libunwind-dev libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev
           libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev
           libxss-dev libxvidcore-dev libyuv-dev libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev lshw lzma-dev m4 meson nasm
           ninja-build pandoc python3 python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip valgrind wget xmlto
@@ -915,14 +932,14 @@ x265_fix_libs_fn()
     esac
 }
 
-libpulse_fix_libs()
+libpulse_fix_libs_fn()
 {
     local libpulse_lib libpulse_trim
 
     libpulse_lib="$(find "${workspace}"/lib -type f -name 'libpulsecommon-*.so')"
     libpulse_trim="$(echo "${libpulse_lib}" | sed 's:.*/::' | head -n1)"
 
-    if [ "${OS}" = 'Arch' ]; then
+    if [[ "${OS}" == 'Arch' ]]; then
         if [ ! -d /usr/lib/pulseaudio ]; then
             sudo mkdir -p /usr/lib/pulseaudio
         fi
@@ -933,7 +950,7 @@ libpulse_fix_libs()
     fi
 
     if [ -n "${libpulse_lib}" ]; then
-        if [ "${OS}" = 'Arch' ]; then
+        if [[ "${OS}" == 'Arch' ]]; then
             execute sudo cp -f "${libpulse_lib}" '/usr/lib/pulseaudio'
             execute sudo ln -sf "/usr/lib/pulseaudio/${libpulse_trim}" '/usr/lib'
         else
@@ -1023,12 +1040,12 @@ sort_libjxl_fn()
 
     if [ ! -f "${packages}"/libjxl.tar.gz ]; then
         case "${VER}" in
-            12)         libjxl_download="${url_base}-debian-bookworm-${url_suffix}";;
-            11)         libjxl_download="${url_base}-debian-bullseye-${url_suffix}";;
-            10)         libjxl_download="${url_base}-debian-buster-${url_suffix}";;
-            22.04)      libjxl_download="${url_base}-ubuntu-22.04-${url_suffix}";;
-            20.04)      libjxl_download="${url_base}-ubuntu-20.04-${url_suffix}";;
-            18.04)      libjxl_download="${url_base}-ubuntu-18.04-${url_suffix}";;
+            '10')         libjxl_download="${url_base}-debian-buster-${url_suffix}";;
+            '11')         libjxl_download="${url_base}-debian-bullseye-${url_suffix}";;
+            '12')         libjxl_download="${url_base}-debian-bookworm-${url_suffix}";;
+            '18.04')      libjxl_download="${url_base}-ubuntu-18.04-${url_suffix}";;
+            '20.04')      libjxl_download="${url_base}-ubuntu-20.04-${url_suffix}";;
+            '22.04')      libjxl_download="${url_base}-ubuntu-22.04-${url_suffix}";;            
             *)          echo;;
         esac
 
@@ -1057,6 +1074,17 @@ patch_ffmpeg_fn()
 #
 # ARCHLINUX FUNCTION SECTION
 #
+
+python2_arch_fn()
+{
+    if build 'python2' 'git'; then
+        download_git 'https://aur.archlinux.org/python2.git' 'python2-AUR'
+            gpg --recv-keys 04C367C218ADD4FF
+            makepkg -si --noconfirm
+        build_done 'python2' 'git'
+    fi
+}
+
 vo-amrwbenc_arch_fn()
 {
     if build 'vo-amrwbenc' 'git'; then
@@ -1120,15 +1148,6 @@ jq_arch_fn()
     fi
 }
 
-python2_arch_fn()
-{
-    if build 'python2' 'git'; then
-        download_git 'https://aur.archlinux.org/python2.git' 'python2-AUR'
-        execute makepkg -si --noconfirm
-        build_done 'python2' 'git'
-    fi
-}
-
 python2_bin_arch_fn()
 {
     if build 'python2-bin' 'git'; then
@@ -1138,11 +1157,11 @@ python2_bin_arch_fn()
     fi
 }
 
-arch_os_version()
+arch_os_ver_fn()
 {
-    arch_pkgs=(svt-av1 av1an cmake cuda dav1d devil flite gettext git gperf gperftools
-               lib32-gcc-libs libde265 libmusicbrainz5 libnghttp2 libwebp libyuv meson
-               ninja numactl openjdk21-src pd sudo texlive-basic texlive-binextra valgrind)
+    arch_pkgs=(svt-av1 av1an bluez-libs clang cmake cuda dav1d devil flite gdb gettext git gperf gperftools
+               lib32-gcc-libs libde265 libmusicbrainz5 libnghttp2 libwebp libyuv meson ninja numactl openjdk21-src pd
+               sudo texlive-basic texlive-binextra tk valgrind xorg-server-xvfb xterm)
 
     # REMOVE ANY LOCKS ON PACMAN
     if [ -f /var/lib/pacman/db.lck ]; then
@@ -1166,25 +1185,25 @@ arch_os_version()
     sudo pip install setuptools 2>/dev/null
 
     # INSTALL ARCH LINUX AUR GIT PACKAGES
-    jq_arch_fn
     python2_arch_fn
+    jq_arch_fn
     python2_bin_arch_fn
     shine_arch_fn
     vo-amrwbenc_arch_fn
 }
 
-debian_os_version()
+debian_os_ver_fn()
 {
     debian_pkgs='libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils libyuv0 libsharp-dev libdmalloc5'
 
     case "${VER}" in
-        12|trixie)      pkgs_fn "${debian_pkgs} librist-dev";;
+        12|trixie)      pkgs_fn "${debian_pkgs} cppcheck librist-dev";;
         10|11)          pkgs_fn "${debian_pkgs}";;
         *)              fail_fn "Could not detect the Debian version. Line: ${LINENO}";;
     esac
 }
 
-ubuntu_os_version()
+ubuntu_os_ver_fn()
 {
     ubuntu_common_pkgs='libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev'
     bionic_pkgs='libdmalloc5 libjemalloc1 libvmmalloc-dev libvmmalloc1 libreadline-gplv2-dev'
@@ -1196,7 +1215,7 @@ ubuntu_os_version()
 
     case "${VER}" in
         23.04|22.10)    pkgs_fn "${ubuntu_common_pkgs} ${lunar_kenetic_pkgs} ${jammy_pkgs}";;
-        22.04)          pkgs_fn "${ubuntu_common_pkgs} ${jammy_pkgs}";;
+        22.04)          pkgs_fn "${ubuntu_common_pkgs} ${jammy_pkgs} cppcheck";;
         20.04)          pkgs_fn "${focal_pkgs}";;
         18.04)          pkgs_fn "${bionic_pkgs}";;
         *)              fail_fn "Could not detect the Ubuntu version. Line: ${LINENO}";;
@@ -1207,10 +1226,10 @@ ubuntu_os_version()
 # TEST THE OS AND ITS VERSION
 #
 
-find_lsb_release="$(sudo find /usr -type f -name 'lsb_release')"
+find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
 
-if [ -f /etc/os-release ]; then
-    source /etc/os-release
+if [ -f '/etc/os-release' ]; then
+    source '/etc/os-release'
     OS_TMP="$NAME"
     VER_TMP="$VERSION_ID"
     CODENAME="$VERSION_CODENAME"
@@ -1223,22 +1242,24 @@ else
     fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
 fi
 
-if [[ "$(grep -i Microsoft /proc/version)" ]]; then
-    VER_WSL=1
+if [[ "$(grep -i 'Microsoft' '/proc/version')" ]]; then
+    wsl_switch=1
 fi
 
-case "${VER_WSL}" in
-    1)      sudo apt-get -qq -y install nvidia-utils-535 nvidia-smi 2>/dev/null;;
-esac
+if [ "${OS}" != 'Arch' ]; then
+    case "${wsl_switch}" in
+        1)      sudo apt-get -qq -y install nvidia-utils-535 2>/dev/null;;
+    esac
+fi
 
 #
 # INSTALL REQUIRED APT PACKAGES
 #
 
 case "${OS}" in
-    Arch)               arch_os_version;;
-    Debian|n/a)         debian_os_version;;
-    Ubuntu)             ubuntu_os_version;;
+    'Arch')             arch_os_ver_fn;;
+    'Debian'|'n/a')     debian_os_ver_fn;;
+    'Ubuntu')           ubuntu_os_ver_fn;;
     *)                  fail_fn "Could not detect the OS architecture. Line: ${LINENO}";
 esac
 
@@ -1256,7 +1277,7 @@ export PATH="${PATH}:${JAVA_HOME}/bin"
 #
 
 case "${OS}" in
-    Arch)
+    'Arch')
             iscuda="$(sudo find /opt/cuda* -type f -name 'nvcc' 2>/dev/null)"
             cuda_path="$(sudo find /opt/cuda* -type f -name 'nvcc' 2>/dev/null | grep -Eo '^.*/bin?')"
             ;;
@@ -1315,16 +1336,15 @@ if build 'autoconf' 'latest'; then
     build_done 'autoconf' 'latest'
 fi
 
-if [ "${OS}" = 'Arch' ]; then
+if [[ "${OS}" == 'Arch' ]]; then
     if build 'libtool' "${lt_ver}"; then
-        sudo yes|pacman -S libtool
+        sudo pacman -S --noconfirm libtool
         build_done 'libtool' "${lt_ver}"
     fi
 else
     case "${VER}" in
-        12|23.04)                   lt_ver=2.4.7;;
-        10|11|18.04|20.04|22.04)    lt_ver=2.4.6;;
-        *)                          fail_fn "Unable to get OS version for libtool. Line: ${LINENO}";;
+        12|23.04)       lt_ver=2.4.7;;
+        *)              lt_ver=2.4.6;;
     esac
     if build 'libtool' "${lt_ver}"; then
         download "https://ftp.gnu.org/gnu/libtool/libtool-${lt_ver}.tar.xz"
@@ -1347,7 +1367,7 @@ if build 'pkg-config' '0.29.2'; then
     build_done 'pkg-config' '0.29.2'
 fi
 
-if [ "${OS}" = 'Arch' ]; then
+if [[ "${OS}" == 'Arch' ]]; then
     librist_arch_fn
 else
     if build 'librist' 'git'; then
@@ -1373,8 +1393,8 @@ if build 'zlib' "${g_ver}"; then
     build_done 'zlib' "${g_ver}"
 fi
 
-if build 'openssl' '3.1.3'; then
-    download 'https://www.openssl.org/source/openssl-3.1.3.tar.gz'
+if build 'openssl' '3.1.4'; then
+    download 'https://www.openssl.org/source/openssl-3.1.4.tar.gz'
     execute ./Configure --prefix="${workspace}"                    \
                         enable-egd                                 \
                         enable-fips                                \
@@ -1388,7 +1408,7 @@ if build 'openssl' '3.1.3'; then
     execute make "-j${cpu_threads}"
     execute sudo make install_sw
     execute sudo make install_fips
-    build_done 'openssl' '3.1.3'
+    build_done 'openssl' '3.1.4'
 fi
 ffmpeg_libraries+=('--enable-openssl')
 
@@ -1712,7 +1732,7 @@ if build 'gflags' "${g_ver}"; then
     build_done 'gflags' "${g_ver}"
 fi
 
-if [ "${OS}" = 'Arch' ]; then
+if [[ "${OS}" == 'Arch' ]]; then
     jxl_arch_fn
 else
     if build 'libjxl' '0.8.2'; then
@@ -1750,8 +1770,8 @@ if build 'leptonica' '1.83.1'; then
 fi
 
 pre_check_ver 'tesseract-ocr/tesseract' '1' 'T'
-if build 'tesseract' "${g_ver}"; then
-    download "https://github.com/tesseract-ocr/tesseract/archive/refs/tags/${g_ver}.tar.gz" "tesseract-${g_ver}.tar.gz"
+if build 'tesseract' '5.3.2'; then
+    download 'https://github.com/tesseract-ocr/tesseract/archive/refs/tags/5.3.2.tar.gz' 'tesseract-5.3.2.tar.gz'
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}"                      \
                         --{build,host}="${pc_type}"                  \
@@ -1765,7 +1785,7 @@ if build 'tesseract' "${g_ver}"; then
     tesseract_lib_trim="$(echo "${tesseract_lib}" | sed 's/....$//g' | sed 's:.*/::')"
     execute sudo cp -f "${workspace}/lib/${tesseract_lib}" "/usr/lib/${tesseract_lib}"
     execute sudo ln -sf "/usr/lib/${tesseract_lib}" "/usr/lib/${tesseract_lib_trim}"
-    build_done 'tesseract' "${g_ver}"
+    build_done 'tesseract' '5.3.2'
 fi
 ffmpeg_libraries+=('--enable-libtesseract')
 
@@ -1797,12 +1817,11 @@ g_tag="${g_ver//\./_}"
 if build 'c-ares' "${g_ver}"; then
     download "https://github.com/c-ares/c-ares/archive/refs/tags/cares-${g_tag}.tar.gz" "c-ares-${g_ver}.tar.gz"
     execute autoreconf -fi
-    execute autoupdate
     execute ./configure --prefix="${workspace}"     \
                         --{build,host}="${pc_type}" \
                         --disable-debug             \
-                        --disable-shared            \
-                        --disable-warnings
+                        --disable-warnings          \
+                        --with-pic
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'c-ares' "${g_ver}"
@@ -2270,23 +2289,26 @@ ffmpeg_libraries+=('--enable-libdav1d')
 # RAV1E FAILS TO BUILD ON UBUNTU BIONIC AND DEBIAN 11 BULLSEYE
 if [ "${VER}" != '18.04' ] && [ "${VER}" != '11' ]; then
     pre_check_ver 'xiph/rav1e' '1' 'T'
-    if build 'rav1e' 'p20231010'; then
-        echo '$ Installing RustUp'
-        curl -A "${user_agent}" -sSf --proto '=https' --tlsv1.2 'https://sh.rustup.rs' | sh -s -- -y &>/dev/null
-        source "${HOME}"/.cargo/env
-        if [ -f "${HOME}"/.zshrc ]; then
-            source "${HOME}"/.zshrc
-        else
-            source "${HOME}"/.bashrc
+    if build 'rav1e' 'p20231024'; then
+        get_rustc_ver="$(rustc --version | grep -Eo '[0-9\.]+' | head -n1)"
+        if [ "${get_rustc_ver}" != '1.73.0' ]; then
+            echo '$ Installing RustUp'
+            curl -A "${user_agent}" -sSf --proto '=https' --tlsv1.2 'https://sh.rustup.rs' | sh -s -- -y &>/dev/null
+            source "${HOME}"/.cargo/env
+            if [ -f "${HOME}"/.zshrc ]; then
+                source "${HOME}"/.zshrc
+            else
+                source "${HOME}"/.bashrc
+            fi
+            rm -fr "${HOME}"/.cargo/registry/index/* "${HOME}"/.cargo/.package-cache
         fi
-        rm -fr "${HOME}"/.cargo/registry/index/* "${HOME}"/.cargo/.package-cache
         execute cargo install cargo-c
-        download 'https://github.com/xiph/rav1e/archive/refs/tags/p20231010.tar.gz' 'rav1e-p20231010.tar.gz'
+        download 'https://github.com/xiph/rav1e/archive/refs/tags/p20231024.tar.gz' 'rav1e-p20231024.tar.gz'
         execute cargo cinstall --prefix="${workspace}"  \
                                --library-type=staticlib \
                                --crt-static             \
                                --release
-        build_done 'rav1e' 'p20231010'
+        build_done 'rav1e' 'p20231024'
     fi
     ffmpeg_libraries+=('--enable-librav1e')
 fi
@@ -2358,7 +2380,7 @@ if build 'ant' 'git'; then
     build_done 'ant' 'git'
 fi
 
-if [ "${OS}" = 'Arch' ]; then
+if [[ "${OS}" == 'Arch' ]]; then
     libbluray_arch_fn
 else
     git_ver_fn '206' '2' 'T'
@@ -2459,7 +2481,7 @@ if build 'amf' "${g_sver}"; then
 fi
 ffmpeg_libraries+=('--enable-amf')
 
-if [ "${OS}" = 'Arch' ]; then
+if [[ "${OS}" == 'Arch' ]]; then
     pre_check_ver 'gpac/gpac' '1' 'T'
     if build 'gpac' "${g_ver}"; then
         sudo pacman --noconfirm gpac
@@ -2472,14 +2494,13 @@ else
         gpac_lib1="$(sudo find /usr -type f -name 'libgpac_static.a')"
         gpac_lib2="$(sudo find /usr -name 'libgpac.so')"
         gpac_lib3="$(sudo find /usr -type f -name 'libgpac.so.12.11.0')"
-        execute sudo ./configure --prefix="${workspace}"  \
-                                         --use-a52=local  \
-                                         --use-faad=local \
-                                         --use-mad=local
-        sudo cp -f "${gpac_lib1}" bin/gcc
-        sudo cp -f "${gpac_lib2}" bin/gcc
-        sudo cp -f "${gpac_lib3}" bin/gcc
-        execute sudo make "-j${cpu_threads}" install
+        execute sudo ./configure --prefix="/home/jman/tmp/ffmpeg-build-script/workspace"  \
+                                             --use-a52=local                              \
+                                             --use-faad=local                             \
+                                             --use-mad=local                              \
+                                             --sdl-cfg="${workspace}"/include/SDL3
+        execute sudo make "-j${cpu_threads}"
+        execute sudo make install
         build_done 'gpac' "${g_ver}"
     fi
 fi
@@ -2619,7 +2640,7 @@ if [ -n "${iscuda}" ]; then
         build_done 'nv-codec-headers' '12.0.16.1'
     fi
 
-    if [ "${OS}" = 'Arch' ]; then
+    if [[ "${OS}" == 'Arch' ]]; then
         export PATH+=':/opt/cuda/bin'
         CFLAGS+=' -I/opt/cuda/include'
         LDFLAGS+=' -L/opt/cuda/lib64'
@@ -2628,15 +2649,21 @@ if [ -n "${iscuda}" ]; then
         LDFLAGS+=' -L/usr/local/cuda/lib64'
     fi
 
-    ffmpeg_libraries+=('--enable-'{cuda-nvcc,cuda-llvm,cuvid,nvdec,nvenc,ffnvcodec})
-
-    if [ -n "${LDEXEFLAGS}" ]; then
-        ffmpeg_libraries+=('--enable-libnpp')
+    if [ "${OS}" != 'Arch' ]; then
+        if ! sudo dpkg -l | grep -o nvidia-smi &>/dev/null; then
+            sudo apt -y install nvidia-smi 2>/dev/null
+        fi
     fi
 
     # GET THE GPU ARCHITECTURE
     # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
     gpu_arch_fn
+
+    ffmpeg_libraries+=('--enable-'{cuda-nvcc,cuda-llvm,cuvid,nvdec,nvenc,ffnvcodec})
+
+    if [ -n "${LDEXEFLAGS}" ]; then
+        ffmpeg_libraries+=('--enable-libnpp')
+    fi
 fi
 ffmpeg_libraries+=("--nvccflags=-gencode arch=${gpu_arch}")
 
@@ -2858,7 +2885,7 @@ fi
 
 if build 'ffmpeg' "${ffmpeg_sver}"; then
     download ${ff_cmd}
-    if [ "${OS}" = 'Arch' ]; then
+    if [[ "${OS}" == 'Arch' ]]; then
         patch_ffmpeg_fn
     fi
     ./configure --prefix="${workspace}"                     \
