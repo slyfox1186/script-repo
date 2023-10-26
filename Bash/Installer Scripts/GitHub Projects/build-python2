@@ -163,9 +163,10 @@ pkgs_fn()
 {
     clear
 
-    pkgs=("${1}" autoconf autoconf-archive autogen automake binutils build-essential ccache curl git
-          itstool libb2-dev libexempi-dev libgnome-desktop-3-dev libhandy-1-dev libpeas-dev libpeasd-3-dev\
-          libtool libtool-bin m4 packaging-dev python3 valgrind yasm zlib1g-dev)
+    pkgs=("${1}" autoconf autoconf-archive autogen automake binutils build-essential ccache
+          curl git itstool libb2-dev libexempi-dev libgnome-desktop-3-dev libhandy-1-dev
+          libpeas-dev libpeasd-3-dev libtool libtool-bin m4 packaging-dev python3 valgrind
+          yasm zlib1g-dev)
 
     for pkg in ${pkgs[@]}
     do
