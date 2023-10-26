@@ -33,13 +33,12 @@ cfdisk /dev/nvmeXXX
 Size: +512M
 Type: EFI
 ## SET SWAP PARTITION ##
-# ON UEFI SWAP PARTITIONS ARE TYPE = 0657FD6D-A4AB-43C4-84E5-0933C84B4F4F
 /dev/nvmeXXp2
-Size: +32G
+Size: +2G
 Type: Linux swap
 # SET ROOT PARTITION
 /dev/nvmeXXp3
-Size: +364G
+Size: remainder of disk
 Type: Linux x86-64 root
 
 #######################
@@ -71,7 +70,7 @@ mount /dev/nvmeXXp3 /mnt
 # MOUNT PARTITION 1
 mount --mkdir /dev/nvmeXXp1 /mnt/boot
 # MOUNT PARTITION 2
-mount /dev/nvmeXXp2 /swap
+swapon /dev/nvmeXXp2
 # VERIFY MOUNTS
 lsblk
 
@@ -103,8 +102,6 @@ systemctl enable NetworkManager
 
 passwd root
 
-## THE OFFICIAL GUIDE SAYS YOU CAN REBOOT AT THIS POINT
-
 mkdir /boot/efi
 
 mount /dev/nvmeXXp1 /boot/efi
@@ -124,8 +121,6 @@ LINE 2 = exit
 # NEXT YOU NEED TO EXIT THE CURRENT LOGIN SHELL YOU ARE IN
 exit
 umount -R /mnt
-
-# REBOOT THE PC
 reboot
 
 ####################################
