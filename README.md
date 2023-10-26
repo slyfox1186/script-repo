@@ -62,8 +62,8 @@ bash <(curl -fsSL https://gcc.optimizethis.net)
 
 ## Install [7-Zip](www.7-zip.org/download.html)
   - **Installs the latest static version of 7-Zip based on your PC's Processor and Architecture**
-    - **Arch**         - i386|x86_x64
-    - **Processor**    - Linux|ARM
+    - **Arch**         - **i386** | **x86_x64**
+    - **Processor**    - **Linux** | **ARM**
 ### v23.01 Release
 ```bash
 bash <(curl -fsSL https://7z.optimizethis.net)
