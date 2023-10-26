@@ -1,7 +1,17 @@
 # Slys Script Repository
 ## A mix of my favorite scripts for both Windows and Linux.
 
-## Update 10.16.23
+### Included languages
+ -   [x] AutoHotkey
+ -   [x] Batch
+ -   [x] Powershell
+ -   [x] Shell / Bash
+ -   [x] Visual Basic / VBS
+ -   [x] Windows Registry
+ -   [x] XML
+------
+
+## Updated 10.16.23
   - Added ArchLinux support to some of the build scripts. Additional scripts will be converted to add this support in the future
 ### OS Support
   - Arch Linux
@@ -13,16 +23,6 @@
 2. Make the scripts publicly available with the hope that they are beneficial to others
 3. Spark ideas for better and more efficient ways of coding that lead to an overall improvement in the efficiency and usefulness of each script
 4. Have a centralized zone where users can access the scripts they need quickly and efficiently
-
-### Included languages
- -   [x] AutoHotkey
- -   [x] Batch
- -   [x] Powershell
- -   [x] Shell / Bash
- -   [x] Visual Basic / VBS
- -   [x] Windows Registry
- -   [x] XML
-------
 
 ## Build Menu
   - All of the below Linux installers are located in one menu.
