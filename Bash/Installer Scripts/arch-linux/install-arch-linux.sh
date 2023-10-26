@@ -2,13 +2,7 @@
 
 clear
 
-loadkeys en_US.UTF-8
-# OR TRY
-loadkeys C.UTF-8
-
 localectl set-keymap --no-convert en_US.UTF-8
-
-setfont ter-132b
 
 cat /sys/firmware/efi/fw_platform_size
 
@@ -88,9 +82,9 @@ ln -sf /usr/share/zoneinfo/US/Eastern /etc/localtime
 
 hwclock --systohc
 
-locale-gen
+echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen
 
-echo 'LANG=en_US.UTF-8' > /etc/locale.conf
+locale-gen
 
 echo 'NAME-OF-COMPUTER' > /etc/hostname
 
