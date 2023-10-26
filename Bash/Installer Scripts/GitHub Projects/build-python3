@@ -36,6 +36,7 @@ archive_dir=Python-${py_ver}.tar.xz
 archive_url=https://www.python.org/ftp/python/3.12.0/${archive_dir}
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
+install_dir=/usr/local
 cwd="${PWD}"/python3-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
@@ -67,8 +68,8 @@ export CC=gcc CXX=g++
 # SET THE COMPILER OPTIMIZATION FLAGS
 #
 
-LDFLAGS='-L/lib/"${install_dir}" -L/usr/lib/"${install_dir}" -L/usr/local/lib'
-LDFLAGS+=' -L/usr/local/lib64 -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+LDFLAGS="-L/lib/"${install_dir}" -L/usr/lib/"${install_dir}" -L/usr/local/lib"
+LDFLAGS+=" -L/usr/local/lib64 -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib"
 
 export CXXFLAGS='-g -O2 -march=native'
 export CFLAGS="-I/usr/include/openssl ${CXXFLAGS}"
@@ -304,7 +305,8 @@ esac
 #
 
 cd "${cwd}/${archive_dir}/build" || exit 1
-../configure --enable-optimizations               \
+../configure --prefix="${install_dir}"            \
+             --enable-optimizations               \
              --with-ensurepip=upgrade             \
              --with-lto=yes                       \
              --with-openssl-rpath=auto            \
