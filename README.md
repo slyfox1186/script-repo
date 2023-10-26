@@ -51,9 +51,9 @@ bash <(curl -fsSL https://build-all-git.optimizethis.net)
   - **For personal/testing use only**
   - **Check the top of the script for build [results](https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc)**
   - **Supported OS:**
-    - Debian - 10 / 11 / 12
-    - Ubuntu - 18.04 / 20.04 / 22.04
-    - Other  - Debian-based distros may work as well
+    - Ubuntu - (18/20/22).04
+    - Debian - 10/11/12
+    - Other Debian-based distros may work as well
 
 #### For native Linux systems (Windows WSL not working)
 ```bash
@@ -61,9 +61,9 @@ bash <(curl -fsSL https://gcc.optimizethis.net)
 ```
 
 ## Install [7-Zip](www.7-zip.org/download.html)
-  - **Auto installs based on your os architecture. No user input is required.**
-    - **Arch** - i386 + x86_x64
-    - **Processor** - Linux + ARM
+  - **Installs a static version of 7-Zip inside PATH based on the PC's OS and Architecture**
+    - **Architecture** - i386|x86_x64
+    - **Processor**    - Linux|ARM
 ### v23.01 Release
 ```bash
 bash <(curl -fsSL https://7z.optimizethis.net)
