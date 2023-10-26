@@ -197,31 +197,34 @@ cleanup_fn()
 
 installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
-pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache cmake
-      curl git itstool libb2-dev libexempi-dev libgnome-desktop-3-dev libhandy-1-dev
-      libpeas-dev libpeasd-3-dev libssl-dev libtool libtool-bin m4 meson nasm ninja-build
-      openssl python3 valgrind yasm zlib1g-dev)
+pkgs_fn()
+{
+    pkgs=("${1}" autoconf autoconf-archive autogen automake binutils build-essential ccache cmake
+          curl git itstool libb2-dev libexempi-dev libgnome-desktop-3-dev libhandy-1-dev libpeas-dev
+          libpeasd-3-dev libssl-dev libtool libtool-bin m4 meson nasm ninja-build openssl python3 valgrind
+          yasm zlib1g-dev)
 
-for pkg in ${pkgs[@]}
-do
-    if ! installed "${pkg}"; then
-        missing_pkgs+=" ${pkg}"
+    for pkg in ${pkgs[@]}
+    do
+        if ! installed "${pkg}"; then
+            missing_pkgs+=" ${pkg}"
+        fi
+    done
+
+    if [ -n "${missing_pkgs}" ]; then
+        echo '$ Installing missing packages'
+        echo
+        for i in "${missing_pkgs}"
+            do
+                if ! sudo apt -y install $i; then
+                    fail_fn "Failed to install the apt packages. Line: ${LINENO}"
+                fi
+            done
+    else
+        echo '$ The packages are already installed.'
+        echo
     fi
-done
-
-if [ -n "${missing_pkgs}" ]; then
-    echo '$ Installing missing packages'
-    echo
-    for i in "${missing_pkgs}"
-        do
-            if ! sudo apt -y install $i; then
-                fail_fn "Failed to install the apt packages. Line: ${LINENO}"
-            fi
-        done
-else
-    echo '$ The packages are already installed.'
-    echo
-fi
+}
 
 #
 # INSTALL REQUIRED APT PACKAGES
