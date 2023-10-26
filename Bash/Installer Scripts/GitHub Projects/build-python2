@@ -161,6 +161,8 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok ins
 
 pkgs_fn()
 {
+    clear
+
     pkgs=("${1}" autoconf autoconf-archive autogen automake binutils build-essential ccache cmake
           curl git itstool libb2-dev libexempi-dev libgnome-desktop-3-dev libhandy-1-dev libpeas-dev
           libpeasd-3-dev libssl-dev libtool libtool-bin m4 meson nasm ninja-build openssl packaging-dev
@@ -174,17 +176,17 @@ pkgs_fn()
     done
 
     if [ -n "${missing_pkgs}" ]; then
-        echo '$ Installing missing packages'
-        echo
+        printf "%s\n%s\n\n"                   \
+            'Installing missing APT packages' \
+            '======================================'
         for i in "${missing_pkgs}"
             do
-                if ! sudo apt -y install $i; then
-                    fail_fn "Failed to install the apt packages. Line: ${LINENO}"
+                if ! sudo apt -y install ${i}; then
+                    fail_fn "Failed to install the following APT packages: ${i}. Line: ${LINENO}"
                 fi
             done
     else
-        echo '$ The packages are already installed.'
-        echo
+        printf "%s\n\n" '$ The APT packages are already installed.'
     fi
 }
 
