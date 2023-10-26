@@ -227,7 +227,7 @@ debian_os_version()
 }
 
 #
-# TEST THE OS AND ITS VERSION IF UBUNTU THEN CALL THE pkgs_fn
+# TEST THE OS AND ITS VERSION
 #
 
 find_lsb_release="$(sudo find /usr -type f -name 'lsb_release')"
