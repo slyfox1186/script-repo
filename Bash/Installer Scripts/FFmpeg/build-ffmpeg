@@ -7,11 +7,11 @@
 ##
 ##  Script version
 ##
-##    - 3.1.0
+##    - 3.1.1
 ##
 ##  Updated on
 ##
-##    - 10.25.23
+##    - 10.26.23
 ##
 ##  Purpose:
 ##
@@ -32,6 +32,7 @@
 ##
 ##    - Required pacman packages for ArchLinux
 ##    - Updated the source code libraries to compile successfully using a partial mix of AUR (Arch User Repository)
+##    - Removed the AUR install of libbluray as it was not needed and can be done with the GitHub repository
 ##
 ##  GeForce CUDA SDK Toolkit notes
 ##
@@ -42,7 +43,6 @@
 ##
 ##  Updated
 ##
-##    - ffmpeg to snapshot version 566aa38d98f5f492995127e82ab9a516f59bf952
 ##    - abseil library
 ##    - aom/av1 library
 ##    - libvpx library
@@ -82,14 +82,19 @@
 #
 
 script_name="${0}"
-script_ver=3.1.0
-ffmpeg_ver=566aa38d98f5f492995127e82ab9a516f59bf952
+script_ver=3.1.1
+ffmpeg_ver=963937e408fc68b5925f938a253cfff1d506f784
 ffmpeg_sver="${ffmpeg_ver::7}"
 ffmpeg_archive=ffmpeg-"${ffmpeg_sver}".tar.gz
 ffmpeg_url=https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/"${ffmpeg_ver}".tar.gz
 ###############################################################################
 # SNAPSHOT
-# ffmpeg_sver=963937e408fc68b5925f938a253cfff1d506f784
+# ffmpeg_ver=963937e408fc68b5925f938a253cfff1d506f784
+# ffmpeg_sver="${ffmpeg_ver::7}"
+# ffmpeg_archive=ffmpeg-"${ffmpeg_sver}".tar.gz
+# ffmpeg_url=https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/"${ffmpeg_ver}".tar.gz
+# STABLE
+# ffmpeg_sver=5.1.3
 # ffmpeg_archive=https://www.ffmpeg.org/releases/ffmpeg-"${ffmpeg_sver}".tar.gz
 ###############################################################################
 cuda_latest_ver=12.3.0
@@ -106,7 +111,7 @@ latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 curl_timeout=10
-debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=ON # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -114,11 +119,10 @@ debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 if [ -f '/proc/cpuinfo' ]; then
     cpu_threads="$(grep --count ^processor '/proc/cpuinfo')"
-    export MAKEFLAGS="$(grep --count ^processor '/proc/cpuinfo')"
 else
     cpu_threads="$(nproc --all)"
-    export MAKEFLAGS="-j$(nproc --all)"
 fi
+export MAKEFLAGS="-j$(nproc --all)"
 
 #
 # PRINT SCRIPT BANNER
@@ -153,11 +157,11 @@ export CC=gcc CXX=g++
 
 source_flags_fn()
 {
-    EXTRALIBS="-ldl -lpthread -lm -lz -L/usr/local/cuda/targets/x86_64-linux/lib -lOpenCL"
-    EXTRALIBS+=" -L${workspace}/lib -L/usr/lib/x86_64-linux-gnu -ltesseract -lcurl"
-    CXXFLAGS='-g -O2 -march=native'
-    CFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2"
-    CFLAGS+=" -I/usr/lib/x86_64-linux-gnu/pulseaudio -I/usr/include/openjpeg-2.5 -I${workspace}/include/CL ${CXXFLAGS}"
+    EXTRALIBS='-ldl -lpthread -lm -lz -L${workspace}/lib -L/usr/lib/x86_64-linux-gnu'
+    EXTRALIBS+=" -ltesseract -lcurl -L${workspace}/lib -lhwy -lbrotlidec -lbrotlienc"
+    CXXFLAGS='-g -O2 -march=native -DHWY_COMPILE_ONLY_SCALAR'
+    CFLAGS="-I${workspace}/include -I${workspace}/include/jxl -I${workspace}/include/CL -I/usr/local/include -I/usr/include"
+    CFLAGS+=" -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2 -I/usr/lib/x86_64-linux-gnu/pulseaudio -I/usr/include/openjpeg-2.5 ${CXXFLAGS}"
     CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/openjpeg-2.5 -I/usr/include/flite"
     LDFLAGS="-L${workspace}/lib64 -L${workspace}/lib -L${workspace}/lib/x86_64-linux-gnu -L/usr/local/lib64"
     LDFLAGS+=' -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
@@ -169,7 +173,7 @@ source_flags_fn
 # CREATE THE OUTPUT DIRECTORIES
 #
 
-mkdir -p "${packages}"/deb-files "${packages}"/nvidia-cuda "${workspace}"/logs
+mkdir -p "${packages}"/nvidia-cuda "${workspace}"/logs
 
 #
 # DEFINE FUNCTIONS
@@ -569,7 +573,7 @@ gpu_arch_fn()
         'NVIDIA GeForce RTX 3060')      gpu_type=4;;
         'NVIDIA GeForce RTX 3070')      gpu_type=4;;
         'NVIDIA GeForce RTX 3080')      gpu_type=4;;
-        'NVIDIA GeForce RTX 3080 Ti')   gpu_type=4;;
+        'NVIDIA GeForce RTX 3080 Ti')   gpu_type=3;;
         'NVIDIA GeForce RTX 3090')      gpu_type=4;;
         'NVIDIA RTX A2000')             gpu_type=4;;
         'NVIDIA RTX A3000')             gpu_type=4;;
@@ -663,11 +667,17 @@ fi
 # SET THE PATH VARIABLE
 #
 
+cuda_bin_path="$(sudo find /usr/local/ -type d -name 'cuda' | head -n1)"
+cuda_bin_path="$(sudo find /opt/ -type d -name 'cuda' | head -n1)"
+cuda_bin_path+='/bin'
+
+path_fn()
+{
 PATH="\
 /usr/lib/ccache/bin:\
 /usr/lib/ccache:\
+${cuda_bin_path}:\
 ${workspace}/bin:\
-${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
@@ -675,10 +685,29 @@ ${HOME}/.local/bin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/local/cuda/bin:\
 /usr/local/ant/bin\
 "
 export PATH
+}
+path_fn
+
+path_clean_fn()
+{
+PATH="\
+/usr/lib/ccache/bin:\
+/usr/lib/ccache:\
+${cuda_bin_path}:\
+${HOME}/.local/bin:\
+/usr/local/sbin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin:\
+/usr/local/ant/bin\
+"
+export PATH
+}
 
 #
 # SET THE PKG_CONFIG_PATH VARIABLE
@@ -720,7 +749,8 @@ cuda_download_fn()
         '[4] Ubuntu 20.04'                              \
         '[5] Ubuntu 22.04'                              \
         '[6] Ubuntu WSL'                                \
-        '[7] Exit'
+        '[7] Arch Linux'                                \
+        '[8] Exit'
     read -p 'Your choices are (1 to 7): ' choice
     clear
 
@@ -769,6 +799,12 @@ cuda_download_fn()
             sudo cp -f /var/cuda-repo-wsl-ubuntu-12-3-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             ;;
     7)
+            git clone -q 'https://gitlab.archlinux.org/archlinux/packaging/packages/cuda.git'
+            cd cuda || exit 1
+            makepkg -sif --cleanbuild --noconfirm
+            return 0
+            ;;
+    8)
             clear
             exit_fn
             ;;
@@ -782,14 +818,6 @@ cuda_download_fn()
     sudo apt update
     sudo apt -y install cuda-toolkit-12-3
     clear
-
-    cuda_ver="$(cat '/usr/local/cuda/version.json' | jq -r '.cuda.version')"
-
-    if [ -z "${cuda_ver}" ]; then
-        fail_fn "Unable to locate the file: /usr/local/cuda/version.json. Line: ${LINENO}"
-    else
-        export PATH="${PATH}:${cuda_path}"
-    fi
 }
 
 #
@@ -802,53 +830,59 @@ install_cuda_fn()
     clear
 
     if [[ "${OS}" == 'Arch' ]]; then
-        clear
+        cuda_ver_test="$(nvcc --version | sed -n 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')"
+        cuda_ver_test+='.0'
     else
-        if [ -f '/usr/local/cuda/version.json' ]; then
-            cuda_ver_test="$(cat '/usr/local/cuda/version.json' | jq -r '.cuda.version')"
-        fi
+        cuda_ver_test="$(cat '/usr/local/cuda/version.json' | jq -r '.cuda.version')"
+    fi
+    cuda_ver="${cuda_ver_test}"
 
-        if [ -n "${cuda_ver_test}" ]; then
-            printf "%s\n%s\n%s\n%s\n\n%s\n%s\n\n"                             \
-                "The installed CUDA SDK Toolkit version is: ${cuda_ver_test}" \
-                "The latest version available is: ${cuda_latest_ver}"         \
-                '====================================================='       \
-                'Do you want to update/reinstall it?'                         \
-                '[1] Yes'                                                     \
-                '[2] No'
-            read -p 'Your choices are (1 or 2): ' choice
-            clear
+    if [ -n "${cuda_ver_test}" ]; then
+        printf "%s\n%s\n%s\n%s\n\n%s\n%s\n\n"                             \
+            "The installed CUDA SDK Toolkit version is: ${cuda_ver_test}" \
+            "The latest version available is: ${cuda_latest_ver}"         \
+            '====================================================='       \
+            'Do you want to update/reinstall it?'                         \
+            '[1] Yes'                                                     \
+            '[2] No'
+        read -p 'Your choices are (1 or 2): ' choice
+        clear
 
-            case "${choice}" in
-                1)      cuda_download_fn;;
-                2)
-                        PATH="${PATH}:${cuda_path}"
-                        export PATH
-                        ;;
-                *)
-                        unset choice
-                        install_cuda_fn
-                        ;;
-            esac
-        else
-            printf "%s\n%s\n\n%s\n\n%s\n%s\n\n" \
-                "The CUDA SDK Toolkit was not detected and the latest version is: ${cuda_latest_ver}" \
-                '========================================================================='           \
-                'Choose an option'                                                                    \
-                '[1] Install the CUDA SDK Toolkit and add it to your PATH'                            \
-                '[2] Continue without installing (hardware acceleration will be turned off)'
-            read -p 'Your choices are (1 or 2): ' choice
-            clear
+        case "${choice}" in
+            1)      cuda_download_fn;;
+            2)
+                    PATH="${PATH}:${cuda_path}"
+                    export PATH
+                    ;;
+            *)
+                    unset choice
+                    install_cuda_fn
+                    ;;
+        esac
+    else
+        printf "%s\n%s\n\n%s\n\n%s\n%s\n\n" \
+            "The CUDA SDK Toolkit was not detected and the latest version is: ${cuda_latest_ver}" \
+            '========================================================================='           \
+            'Choose an option'                                                                    \
+            '[1] Install the CUDA SDK Toolkit and add it to your PATH'                            \
+            '[2] Continue without installing (hardware acceleration will be turned off)'
+        read -p 'Your choices are (1 or 2): ' choice
+        clear
 
-            case "${choice}" in
-                1)      cuda_download_fn;;
-                2)      echo;;
-                *)
-                        unset choice
-                        install_cuda_fn
-                        ;;
-            esac
-        fi
+        case "${choice}" in
+            1)      cuda_download_fn;;
+            2)      echo;;
+            *)
+                    unset choice
+                    install_cuda_fn
+                    ;;
+        esac
+    fi
+
+    if [ -z "${cuda_ver}" ]; then
+        fail_fn "Unable to locate the file: /usr/local/cuda/version.json. Line: ${LINENO}"
+    else
+        export PATH="${PATH}:${cuda_path}"
     fi
 }
 
@@ -885,7 +919,7 @@ pkgs_fn()
           libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev
           libxss-dev libxvidcore-dev libyuv-dev libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev lshw lzma-dev m4 meson nasm
           ninja-build pandoc python3 python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip valgrind wget xmlto
-          zlib1g-dev)
+          zlib1g-dev libnvidia-encode1)
 
     for pkg in ${pkgs[@]}
     do
@@ -1018,20 +1052,16 @@ install_libjxl_fn()
 {
     cd "${packages}"/deb-files || exit 1
 
+    # INSTALL THE MAIN DEBIAN FILE FIRST BEFORE INSTALLING THE OTHERS
     if sudo dpkg -i 'libjxl_0.8.2_amd64.deb'; then
         sudo rm 'libjxl_0.8.2_amd64.deb' &>/dev/null
     fi
+
+    # INSTALL THE REMAINING DEBIAN FILES
     sudo dpkg -i ./*.deb
 }
 
-download_libjxl_fn()
-{
-    if ! curl -A "${user_agent}" -Lso "${packages}"/libjxl.tar.gz "${1}"; then
-        fail_fn "Failed to download the libjxl archive: ${packages}/libjxl.tar.gz Line: ${LINENO}"
-    fi
-}
-
-sort_libjxl_fn()
+dl_libjxl_fn()
 {
     local url_base url_suffix
 
@@ -1040,24 +1070,46 @@ sort_libjxl_fn()
 
     if [ ! -f "${packages}"/libjxl.tar.gz ]; then
         case "${VER}" in
-            '10')         libjxl_download="${url_base}-debian-buster-${url_suffix}";;
-            '11')         libjxl_download="${url_base}-debian-bullseye-${url_suffix}";;
-            '12')         libjxl_download="${url_base}-debian-bookworm-${url_suffix}";;
-            '18.04')      libjxl_download="${url_base}-ubuntu-18.04-${url_suffix}";;
-            '20.04')      libjxl_download="${url_base}-ubuntu-20.04-${url_suffix}";;
-            '22.04')      libjxl_download="${url_base}-ubuntu-22.04-${url_suffix}";;            
+            '10')
+                        libjxl_download="${url_base}-debian-buster-${url_suffix}"
+                        libjxl_name='debian-buster'
+                        ;;
+            '11')
+                        libjxl_download="${url_base}-debian-bullseye-${url_suffix}"
+                        libjxl_name='debian-bullseye'
+                        ;;
+            '12')
+                        libjxl_download="${url_base}-debian-bookworm-${url_suffix}"
+                        libjxl_name='debian-bookworm'
+                        ;;
+            '18.04')
+                        libjxl_download="${url_base}-ubuntu-18.04-${url_suffix}"
+                        libjxl_name='ubuntu-18.04'
+                        ;;
+            '20.04')
+                        libjxl_download="${url_base}-ubuntu-20.04-${url_suffix}"
+                        libjxl_name='ubuntu-20.04'
+                        ;;
+            '22.04')
+                        libjxl_download="${url_base}-ubuntu-22.04-${url_suffix}"
+                        libjxl_name='ubuntu-22.04'
+                        ;;           
             *)          echo;;
         esac
 
-        # CALL THE DOWNLOAD FUNCTION FOR THE LIBJXL DEBIAN FILES
-        download_libjxl_fn "${libjxl_download}"
+        if ! curl -A "${user_agent}" -Lso "${packages}/${libjxl_name}.tar.gz" "${libjxl_download}"; then
+            fail_fn "Failed to download the libjxl archive: ${packages}/${libjxl_name}.tar.gz Line: ${LINENO}"
+        fi
 
-        if ! tar -zxf "${packages}"/libjxl.tar.gz -C "${packages}"/deb-files --strip-components 1; then
-            fail_fn "Could not extract the libjxl archive \"${packages}/libjxl.tar.gz\" Line: ${LINENO}"
+        if [ ! -d "${packages}"/deb-files ]; then
+            mkdir -p "${packages}"/deb-files
+        fi
+        if ! tar -zxf "${packages}/${libjxl_name}.tar.gz" -C "${packages}"/deb-files --strip-components 1; then
+            fail_fn "Could not extract the libjxl archive ${packages}/${libjxl_name}.tar.gz Line: ${LINENO}"
         fi
 
         # INSTALL THE DOWNLOADED LIBJXL DEBIAN PACKAGES
-        install_libjxl_fn
+        install_libjxl_fn "${libjxl_name}"
     fi
 }
 
@@ -1067,20 +1119,47 @@ sort_libjxl_fn()
 
 patch_ffmpeg_fn()
 {
-    execute curl -A "${user_agent}" -Lso mathops.patch https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/patches/mathops.patch
-    execute patch -d libavcodec/x86 -i ../../mathops.patch
+    execute curl -A "${user_agent}" -Lso 'mathops.patch' 'https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/patches/mathops.patch'
+    execute patch -d libavcodec/x86 -i '../../mathops.patch'
 }
 
 #
 # ARCHLINUX FUNCTION SECTION
 #
 
+python2_bin_arch_fn()
+{
+    if build 'python2-bin' 'git'; then
+        download_git 'https://aur.archlinux.org/python2-bin.git'
+        execute makepkg -sif --cleanbuild --noconfirm
+        build_done 'python2-bin' 'git'
+    fi
+}
+
+python2_six_fn()
+{
+    if build 'python2-six' 'git'; then
+        download_git https://aur.archlinux.org/python2-six.git
+        execute makepkg -sif --cleanbuild --noconfirm
+        build_done 'python2-six' 'git'
+    fi
+}
+
+python2_setuptools_arch_fn()
+{
+    if build 'python2-setuptools' 'git'; then
+        download_git https://aur.archlinux.org/python2-setuptools.git
+        execute makepkg -sif --cleanbuild --noconfirm
+        build_done 'python2-setuptools' 'git'
+    fi
+}
+
 python2_arch_fn()
 {
     if build 'python2' 'git'; then
-        download_git 'https://aur.archlinux.org/python2.git' 'python2-AUR'
-            gpg --recv-keys 04C367C218ADD4FF
-            makepkg -si --noconfirm
+        download_git 'https://aur.archlinux.org/python2.git'
+        gpg --recv-keys 04C367C218ADD4FF 2>/dev/null
+        makepkg -sif --noconfirm
         build_done 'python2' 'git'
     fi
 }
@@ -1089,7 +1168,7 @@ vo-amrwbenc_arch_fn()
 {
     if build 'vo-amrwbenc' 'git'; then
         download_git 'https://aur.archlinux.org/vo-amrwbenc.git' 'vo-amrwbenc-AUR'
-        execute makepkg -si --noconfirm
+        execute makepkg -sif --cleanbuild --noconfirm
         build_done 'vo-amrwbenc' 'git'
     fi
 }
@@ -1098,7 +1177,8 @@ shine_arch_fn()
 {
     if build 'shine' 'git'; then
         download_git 'https://aur.archlinux.org/shine.git' 'shine-AUR'
-        execute makepkg -si --noconfirm
+        execute makepkg -sif --cleanbuild --noconfirm
+        execute libtool --finish /usr/lib
         build_done 'shine' 'git'
     fi
 }
@@ -1107,26 +1187,53 @@ gpac_arch_fn()
 {
     if build 'gpac-git' 'git'; then
         download_git 'https://aur.archlinux.org/gpac-git.git' 'gpac-git-AUR'
-        execute makepkg -si --noconfirm
+        execute makepkg -sif --cleanbuild --noconfirm
         build_done 'gpac-git' 'git'
     fi
 }
 
-libbluray_arch_fn()
+asciidoc_arch_fn()
 {
-    if build 'libbluray' 'git'; then
-        download_git 'https://aur.archlinux.org/libbluray-git.git' 'libbluray-AUR'
-        execute makepkg -si --noconfirm
-        build_done 'libbluray' 'git'
+    if build 'asciidoc' '10.2.0'; then
+        download 'https://github.com/asciidoc-py/asciidoc-py/releases/download/10.2.0/asciidoc-10.2.0.tar.gz'
+        execute python3 setup.py build
+        execute python3 setup.py install --prefix="${workspace}"
+        build_done 'asciidoc' '10.2.0'
     fi
 }
 
 jxl_arch_fn()
 {
     if build 'libjxl' 'git'; then
-        download_git 'https://aur.archlinux.org/libjxl-git.git' 'libjxl-AUR'
-        execute makepkg -si --noconfirm
+        download_git 'https://github.com/libjxl/libjxl.git'
+        export CC=clang CXX=clang++
+        execute ./deps.sh
+        execute cmake -B build                              \
+                      -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                      -DCMAKE_BUILD_TYPE=Release            \
+                      -DBUILD_SHARED_LIBS=OFF               \
+                      -DBUILD_TESTING=OFF                   \
+                      -DJPEGXL_ENABLE_BENCHMARK=OFF         \
+                      -DJPEGXL_ENABLE_DOXYGEN=OFF           \
+                      -DJPEGXL_ENABLE_EXAMPLES=OFF          \
+                      -DJPEGXL_ENABLE_MANPAGES=OFF          \
+                      -DJPEGXL_FORCE_SYSTEM_HWY=ON          \
+                      -G Ninja -Wno-dev
+                      sed -i 's/Version: 0.9.0/Version: 1.0.0/g' "${workspace}"/lib/pkgconfig/libjxl.pc
+                      sed -i 's/libdir=/libdir=${exec_prefix}\/lib/g' "${workspace}"/lib/pkgconfig/https://download.videolan.org/pub/contrib/dxva2api.hlibjxl_cms.pc
+                      sed -i 's/includedir=/includedir=${exec_prefix}\/include/g' "${workspace}"/lib/pkgconfig/libjxl_cms.pc
+        execute ninja "-j${cpu_threads}" -C build
+        execute ninja "-j${cpu_threads}" -C build install
         build_done 'libjxl' 'git'
+    fi
+}
+
+apache_ant_fn()
+{
+    if build 'apache-ant' 'git'; then
+        download_git 'https://aur.archlinux.org/apache-ant-contrib.git' 'apache-ant-AUR'
+        execute makepkg -sif --cleanbuild --noconfirm
+        build_done 'apache-ant' 'git'
     fi
 }
 
@@ -1134,7 +1241,7 @@ librist_arch_fn()
 {
     if build 'librist' 'git'; then
         download_git 'https://aur.archlinux.org/librist.git' 'librist-AUR'
-        execute makepkg -si --noconfirm
+        execute makepkg -sif --cleanbuild --noconfirm
         build_done 'librist' 'git'
     fi
 }
@@ -1142,54 +1249,65 @@ librist_arch_fn()
 jq_arch_fn()
 {
     if build 'jq' 'git'; then
-        download_git 'https://aur.archlinux.org/jq-git.git' 'jq-AUR'
-        execute makepkg -si --noconfirm
+        download_git 'https://github.com/stedolan/jq.git'
+        execute git submodule update --init
+        execute autoreconf -fi
+        execute ./configure --prefix=/usr/local         \
+                            --{build,host}="${pc_type}" \
+                            --with-oniguruma=builtin    \
+                            --disable-maintainer-mode   \
+                            --disable-shared            \
+                            --enable-all-static
+        execute make "-j${cpu_threads}"
+        execute sudo make install
+        execute libtool --finish /usr/lib
         build_done 'jq' 'git'
     fi
 }
 
-python2_bin_arch_fn()
+fix_arch_lib_dir_fn()
 {
-    if build 'python2-bin' 'git'; then
-        download_git 'https://aur.archlinux.org/python2-bin.git' 'python2-bin-AUR'
-        execute makepkg -si --noconfirm
-        build_done 'python2-bin' 'git'
+    if [ -f '/usr/lib/x86_64-linux-gnu' ]; then
+        sudo rm '/usr/lib/x86_64-linux-gnu'
+    fi
+    if [ ! -d '/usr/lib/x86_64-linux-gnu' ]; then
+        sudo mkdir -p '/usr/lib/x86_64-linux-gnu'
     fi
 }
 
 arch_os_ver_fn()
 {
-    arch_pkgs=(svt-av1 av1an bluez-libs clang cmake cuda dav1d devil flite gdb gettext git gperf gperftools
-               lib32-gcc-libs libde265 libmusicbrainz5 libnghttp2 libwebp libyuv meson ninja numactl openjdk21-src pd
-               sudo texlive-basic texlive-binextra tk valgrind xorg-server-xvfb xterm)
+    arch_pkgs=(svt-av1 av1an bluez-libs clang cmake dav1d devil docbook5-xml flite gdb gettext git gperf gperftools
+               ladspa lib32-gcc-libs libde265 libmusicbrainz5 libnghttp2 libwebp libyuv meson nasm ninja numactl opencv
+               pd sudo texlive-basic texlive-binextra tk valgrind xorg-server-xvfb webp-pixbuf-loader xterm yasm perl-datetime
+               jre17-openjdk-headless jdk17-openjdk libjpeg-turbo libjpeg6-turbo)
 
     # REMOVE ANY LOCKS ON PACMAN
-    if [ -f /var/lib/pacman/db.lck ]; then
-        sudo rm /var/lib/pacman/db.lck
+    if [ -f '/var/lib/pacman/db.lck' ]; then
+        sudo rm '/var/lib/pacman/db.lck'
     fi
-
-    for i in ${arch_pkgs[@]}
+ 
+    for i in "${arch_pkgs[@]}"
     do
-        missing_pkg="$(sudo pacman -Qi | grep -o "${i}")"
-
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
-        fi
+        sudo pacman -Sq --needed --noconfirm ${i} 2>&1
+        clear
     done
 
-    if [ -n "${missing_pkgs}" ]; then
-        sudo pacman -Sq --noconfirm ${missing_pkgs}
-    fi
-
     # INSTALL REQUIRED PIP MODULES
-    sudo pip install setuptools 2>/dev/null
+    sudo pip install DateTime Sphinx wheel
+    clear
 
     # INSTALL ARCH LINUX AUR GIT PACKAGES
+    python2_bin_arch_fn
+    path_clean_fn
+    python2_setuptools_arch_fn
+    python2_six_fn
     python2_arch_fn
     jq_arch_fn
-    python2_bin_arch_fn
     shine_arch_fn
     vo-amrwbenc_arch_fn
+    fix_arch_lib_dir_fn
+    path_fn
 }
 
 debian_os_ver_fn()
@@ -1267,10 +1385,21 @@ esac
 # SET JAVA VARIABLES
 #
 
+path_fn
 find_java="$(sudo find /usr/lib/jvm -type d -name 'java-*-openjdk*' | rev | sort | rev | head -n1)"
-JAVA_HOME="${find_java}"
-export JAVA_HOME
+java_config="$(sudo find /usr/lib -type f -name 'jni.h'  | rev | sort -r | rev | head -n1 | sed 's/\(^.*\)\/.*$/\1/')"
+export CPPFLAGS+=" -I${java_config}"
+export JDK_HOME="${find_java}"
+export JAVA_HOME="${find_java}"
 export PATH="${PATH}:${JAVA_HOME}/bin"
+
+ant_path_fn()
+{
+    export ANT_HOME=/usr/local/ant
+    if [ ! -d /usr/local/ant/bin ] || [ ! -d /usr/local/ant/lib ]; then
+        sudo mkdir -p /usr/local/ant/bin /usr/local/ant/lib 2>/dev/null
+    fi
+}
 
 #
 # CHECK IF THE CUDA FOLDER EXISTS TO DETERMINE INSTALLATION STATUS
@@ -1415,6 +1544,7 @@ ffmpeg_libraries+=('--enable-openssl')
 pre_check_ver 'yasm/yasm' '1' 'T'
 if build 'yasm' "${g_ver}"; then
     download "https://github.com/yasm/yasm/archive/refs/tags/v${g_ver}.tar.gz" "yasm-${g_ver}.tar.gz"
+    export PYTHONHOME=/usr/local
     execute autoreconf -fi
     execute cmake -B build                              \
                   -DCMAKE_INSTALL_PREFIX="${workspace}" \
@@ -1486,6 +1616,9 @@ if build 'libtiff' "$g_ver"; then
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}"     \
                         --{build,host}="${pc_type}" \
+                        --disable-docs              \
+                        --disable-sphinx            \
+                        --disable-tests             \
                         --enable-cxx                \
                         --with-pic
     execute make "-j${cpu_threads}"
@@ -1528,7 +1661,7 @@ if build 'fontconfig' "${g_ver}"; then
     download "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/${g_ver}/fontconfig-${g_ver}.tar.bz2"
     extracmds=('--disable-'{docbook,docs,nls,shared})
     LDFLAGS+=' -DLIBXML_STATIC'
-    sed -i 's|Cflags:|& -DLIBXML_STATIC|' fontconfig.pc.in
+    sed -i 's|Cflags:|& -DLIBXML_STATIC|' 'fontconfig.pc.in'
     execute ./autogen.sh --noconf
     execute autoupdate
     execute ./configure --prefix="${workspace}"     \
@@ -1593,8 +1726,7 @@ if build 'c2man' 'git'; then
                         -D uniq="$(type -P uniq)"                                           \
                         -D uuname="$(uname -s)"                                             \
                         -D vi="$(type -P vi)"                                               \
-                        -D yacc="$(type -P yacc)"                                           \
-                        -D zip="$(type -P zip)"
+                        -D yacc="$(type -P yacc)"
     execute make depend
     execute make "-j${cpu_threads}"
     execute sudo make install
@@ -1707,7 +1839,7 @@ if build 'lcms2' "${g_ver}"; then
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}"     \
                         --{build,host}="${pc_type}" \
-                        --with-pic                  \
+                        --disable-shared            \
                         --with-threaded
     execute make "-j${cpu_threads}"
     execute make install
@@ -1732,15 +1864,37 @@ if build 'gflags' "${g_ver}"; then
     build_done 'gflags' "${g_ver}"
 fi
 
+if build 'jpeg-turbo' 'git'; then
+    download_git 'https://github.com/imageMagick/jpeg-turbo.git'
+    execute cmake -S .                                  \
+                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
+                  -DCMAKE_BUILD_TYPE=Release            \
+                  -DENABLE_SHARED=ON                    \
+                  -DENABLE_STATIC=ON                    \
+                  -G Ninja -Wno-dev
+    execute ninja "-j${cpu_threads}"
+    execute sudo ninja "-j${cpu_threads}" install
+    build_done 'jpeg-turbo' 'git'
+fi
+
 if [[ "${OS}" == 'Arch' ]]; then
+    asciidoc_arch_fn
     jxl_arch_fn
 else
     if build 'libjxl' '0.8.2'; then
-        sort_libjxl_fn
+        dl_libjxl_fn
         build_done 'libjxl' '0.8.2'
     fi
 fi
-ffmpeg_libraries+=('--enable-libjxl')
+
+# libjxl has a bug in the decoder bit decoding and must be disabled on Arch Linux
+if [[ "${OS}" == 'Arch' ]]; then
+    ffmpeg_libraries+=('--disable-libjxl')
+else
+    ffmpeg_libraries+=('--enable-libjxl')
+fi
+# RESUME COMPILING WITH GCC
+export CC=gcc CXX=g++
 
 pre_check_ver 'khronosgroup/opencl-headers' '1' 'T'
 if build 'opencl-headers' "${g_ver}"; then
@@ -2031,9 +2185,9 @@ if build 'sdl2' 'git'; then
 fi
 
 git_ver_fn '810' '4'
-if build 'libpulse' 'git'; then
-    download_git 'https://github.com/pulseaudio/pulseaudio.git'
-    extracmds=('-D'{daemon,man,tests}'=false')
+if build 'libpulse' "${g_ver}"; then
+    download_git 'https://gitlab.freedesktop.org/pulseaudio/pulseaudio.git' "libpulse-${g_ver}.tar.gz"
+    extracmds=('-D'{daemon,doxygen,ipv6,man,tests}'=false')
     execute meson setup build --prefix="${workspace}"  \
                               --buildtype=release      \
                               --default-library=static \
@@ -2042,7 +2196,7 @@ if build 'libpulse' 'git'; then
     execute ninja "-j${cpu_threads}" -C build
     execute sudo ninja "-j${cpu_threads}" -C build install
     libpulse_fix_libs_fn
-    build_done 'libpulse' 'git'
+    build_done 'libpulse' "${g_ver}"
 fi
 ffmpeg_libraries+=('--enable-libpulse')
 
@@ -2319,7 +2473,7 @@ if build 'avif' "${g_ver}"; then
     execute cmake -B build                              \
                   -DCMAKE_INSTALL_PREFIX="${workspace}" \
                   -DCMAKE_BUILD_TYPE=Release            \
-                  -DBUILD_SHARED_LIBS=OFF               \
+                  -DBUILD_SHARED_LIBS=ON                \
                   -DAVIF_CODEC_AOM=ON                   \
                   -DAVIF_CODEC_AOM_DECODE=ON            \
                   -DAVIF_CODEC_AOM_ENCODE=ON            \
@@ -2369,34 +2523,31 @@ if build 'udfread' "${g_ver1}"; then
     build_done 'udfread' "${g_ver1}"
 fi
 
+ant_path_fn
 if build 'ant' 'git'; then
     download_git 'https://github.com/apache/ant.git'
-    export ANT_HOME=/usr/local/ant
-    if [ ! -d /usr/local/ant/bin ] || [ ! -d /usr/local/ant/lib ]; then
-        sudo mkdir -p /usr/local/ant/bin /usr/local/ant/lib 2>/dev/null
-    fi
     sudo chmod 777 -R /usr/local/ant
     execute sh build.sh install-lite
     build_done 'ant' 'git'
 fi
 
 if [[ "${OS}" == 'Arch' ]]; then
-    libbluray_arch_fn
-else
-    git_ver_fn '206' '2' 'T'
-    if build 'libbluray' "${g_ver1}"; then
-        download "https://code.videolan.org/videolan/libbluray/-/archive/${g_ver1}/${g_ver1}.tar.gz" "libbluray-${g_ver1}.tar.gz"
-        execute autoreconf -fi
-        execute ./configure --prefix="${workspace}"     \
-                            --{build,host}="${pc_type}" \
-                            --disable-examples          \
-                            --disable-extra-warnings    \
-                            --disable-shared            \
-                            --without-libxml2
-        execute make "-j${cpu_threads}"
-        execute make install
-        build_done 'libbluray' "${g_ver1}"
-    fi
+    apache_ant_fn
+fi
+
+git_ver_fn '206' '2' 'T'
+if build 'libbluray' "${g_ver1}"; then
+    download "https://code.videolan.org/videolan/libbluray/-/archive/${g_ver1}/${g_ver1}.tar.gz" "libbluray-${g_ver1}.tar.gz"
+    execute autoreconf -fi
+    execute ./configure --prefix="${workspace}"     \
+                        --{build,host}="${pc_type}" \
+                        --disable-examples          \
+                        --disable-extra-warnings    \
+                        --disable-shared            \
+                        --without-libxml2
+    execute make "-j${cpu_threads}"
+    execute make install
+    build_done 'libbluray' "${g_ver1}"
 fi
 ffmpeg_libraries+=('--enable-libbluray')
 
@@ -2517,7 +2668,7 @@ if build 'svt-av1' '1.4.0'; then
                        -DBUILD_DEC=ON                        \
                        -DBUILD_ENC=ON                        \
                        -DBUILD_TESTING=OFF                   \
-                       -DENABLE_AVX512=ON                    \
+                       -DENABLE_AVX512=OFF                   \
                        -DENABLE_NASM=ON                      \
                        -DNATIVE=ON                           \
                        -G Ninja -Wno-dev
@@ -2642,11 +2793,13 @@ if [ -n "${iscuda}" ]; then
 
     if [[ "${OS}" == 'Arch' ]]; then
         export PATH+=':/opt/cuda/bin'
-        CFLAGS+=' -I/opt/cuda/include'
-        LDFLAGS+=' -L/opt/cuda/lib64'
+        CFLAGS+=' -I/opt/cuda/include -I/opt/cuda/targets/x86_64-linux/include'
+        LDFLAGS+=' -L/opt/cuda/lib64 -L/opt/cuda/lib -L/opt/cuda/targets/x86_64-linux/lib'
+        EXTRALIBS+=' -L/opt/cuda/targets/x86_64-linux/lib -lOpenCL'
     else
         CFLAGS+=' -I/usr/local/cuda/include'
         LDFLAGS+=' -L/usr/local/cuda/lib64'
+        EXTRALIBS+=' -L/usr/local/cuda/targets/x86_64-linux/lib -lOpenCL'
     fi
 
     if [ "${OS}" != 'Arch' ]; then
@@ -2734,7 +2887,7 @@ fi
 
 if build 'libgav1' 'git'; then
     download_git 'https://chromium.googlesource.com/codecs/libgav1' 'libgav1-git'
-    execute git clone -b 20220623.1 --depth 1 https://github.com/abseil/abseil-cpp.git third_party/abseil-cpp
+    execute git clone -q -b '20220623.1' --depth 1 'https://github.com/abseil/abseil-cpp.git' 'third_party/abseil-cpp'
     execute cmake -B build                              \
                   -DCMAKE_INSTALL_PREFIX="${workspace}" \
                   -DCMAKE_BUILD_TYPE=Release            \
@@ -2795,7 +2948,7 @@ pre_check_ver 'strukturag/libheif' '1' 'T'
 if build 'libheif' "${g_ver}"; then
     download "https://github.com/strukturag/libheif/archive/refs/tags/v${g_ver}.tar.gz" "libheif-${g_ver}.tar.gz"
     export {CFLAGS,CXXFLAGS}='-g -O2 -fno-lto -march=native'
-    libde265_libs="$(sudo find /usr -name 'libde265.so')"
+    libde265_libs="$(sudo find /usr -type f -name 'libde265.so')"
     if [ -f "${libde265_libs}" ] && [ ! -f '/usr/lib/x86_64-linux-gnu/libde265.so' ]; then
         sudo cp -f "${libde265_libs}" '/usr/lib/x86_64-linux-gnu'
         sudo chmod 777 '/usr/lib/x86_64-linux-gnu/libde265.so'
@@ -2806,9 +2959,12 @@ if build 'libheif' "${g_ver}"; then
         fi
         cp -f "${workspace}/lib/libdav1d.a"  "${workspace}/lib/x86_64-linux-gnu/libdav1d.a"
     fi
+    if [ -f '/usr/lib/libde265.so' ] && [ ! -f '/usr/lib/x86_64-linux-gnu/libde265.so' ]; then
+        sudo cp -f '/usr/lib/libde265.so' '/usr/lib/x86_64-linux-gnu'
+    fi
     case "${VER}" in
-        18.04|20.04)    pixbuf_switch=OFF;;
-        *)              pixbuf_switch=ON;;
+        18.04|20.04)    pixbuf_switch='OFF';;
+        *)              pixbuf_switch='ON';;
     esac
     execute cmake -B build                                                       \
                   -DCMAKE_INSTALL_PREFIX="${workspace}"                          \
@@ -2847,7 +3003,7 @@ if build 'openjpeg' "${g_ver2}"; then
     execute cmake -B build                              \
                   -DCMAKE_INSTALL_PREFIX="${workspace}" \
                   -DCMAKE_BUILD_TYPE=Release            \
-                  -DBUILD_SHARED_LIBS=OFF               \
+                  -DBUILD_SHARED_LIBS=ON                \
                   -DBUILD_TESTING=OFF                   \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
@@ -2883,6 +3039,17 @@ else
     ff_cmd="${ffmpeg_url}"
 fi
 
+if [[ "${OS}" == 'Arch' ]]; then
+    ladspa_switch='--disable-ladspa'
+else
+    ladspa_switch='--enable-ladspa'
+fi
+
+curl -A "${user_agent}" -Lso "${packages}"/dxva2api.h 'https://download.videolan.org/pub/contrib/dxva2api.h'
+sudo cp -f "${packages}"/dxva2api.h /usr/include
+curl -A "${user_agent}" -Lso "${packages}"/objbase.h 'https://raw.githubusercontent.com/wine-mirror/wine/master/include/objbase.h'
+sudo cp -f "${packages}"/objbase.h /usr/local
+
 if build 'ffmpeg' "${ffmpeg_sver}"; then
     download ${ff_cmd}
     if [[ "${OS}" == 'Arch' ]]; then
@@ -2897,10 +3064,10 @@ if build 'ffmpeg' "${ffmpeg_sver}"; then
                 --disable-doc                               \
                 --disable-large-tests                       \
                 --disable-shared                            \
+                "${ladspa_switch}"                          \
                 "${ffmpeg_libraries[@]}"                    \
                 --enable-chromaprint                        \
                 --enable-gpl                                \
-                --enable-ladspa                             \
                 --enable-libbs2b                            \
                 --enable-libcaca                            \
                 --enable-libcdio                            \
