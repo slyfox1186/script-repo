@@ -1293,7 +1293,6 @@ arch_os_ver_fn()
     for i in "${arch_pkgs[@]}"
     do
         sudo pacman -Sq --needed --noconfirm ${i} 2>&1
-        clear
     done
 
     # INSTALL REQUIRED PIP MODULES
