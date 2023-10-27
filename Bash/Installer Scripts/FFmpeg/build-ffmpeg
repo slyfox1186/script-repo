@@ -573,7 +573,7 @@ gpu_arch_fn()
         'NVIDIA GeForce RTX 3060')      gpu_type=4;;
         'NVIDIA GeForce RTX 3070')      gpu_type=4;;
         'NVIDIA GeForce RTX 3080')      gpu_type=4;;
-        'NVIDIA GeForce RTX 3080 Ti')   gpu_type=3;;
+        'NVIDIA GeForce RTX 3080 Ti')   gpu_type=4;;
         'NVIDIA GeForce RTX 3090')      gpu_type=4;;
         'NVIDIA RTX A2000')             gpu_type=4;;
         'NVIDIA RTX A3000')             gpu_type=4;;
