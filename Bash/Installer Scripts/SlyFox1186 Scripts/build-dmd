@@ -57,7 +57,7 @@ else
     set_cuda_folder_path='/usr/local/cuda'
 fi
 
-export {CFLAGS,CXXFLAGS}='-g -O2 -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O2 -pipe -march=native'
 export CPPFLAGS='-I/usr/local/include -I/usr/include'
 export LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 export LDFLAGS+=" -L${set_cuda_folder_path}/nvvm/lib64 -L${set_cuda_folder_path}/targets/x86_64-linux/lib"
