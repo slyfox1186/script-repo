@@ -1277,10 +1277,13 @@ fix_arch_lib_dir_fn()
 
 arch_os_ver_fn()
 {
-    arch_pkgs=(svt-av1 av1an bluez-libs clang cmake dav1d devil docbook5-xml flite gdb gettext git gperf gperftools
-               ladspa lib32-gcc-libs libde265 libmusicbrainz5 libnghttp2 libwebp libyuv meson nasm ninja numactl opencv
-               pd sudo texlive-basic texlive-binextra tk valgrind xorg-server-xvfb webp-pixbuf-loader xterm yasm perl-datetime
-               jre17-openjdk-headless jdk17-openjdk libjpeg-turbo libjpeg6-turbo)
+    local arch_pkgs i
+    clear
+    
+    arch_pkgs=(av1an bluez-libs clang cmake dav1d devil docbook5-xml flite gdb gettext git gperf
+               gperftools jdk17-openjdk ladspa libde265 libjpeg-turbo libjpeg6-turbo libmusicbrainz5
+               libnghttp2 libwebp libyuv meson nasm ninja numactl opencv pd perl-datetime sudo texlive-basic
+               texlive-binextra tk valgrind webp-pixbuf-loader xterm yasm)
 
     # REMOVE ANY LOCKS ON PACMAN
     if [ -f '/var/lib/pacman/db.lck' ]; then
