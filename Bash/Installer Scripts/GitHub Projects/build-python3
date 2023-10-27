@@ -71,7 +71,7 @@ export CC=gcc CXX=g++
 LDFLAGS="-L/lib/"${install_dir}" -L/usr/lib/"${install_dir}" -L/usr/local/lib"
 LDFLAGS+=" -L/usr/local/lib64 -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib"
 
-export CXXFLAGS='-g -O2 -march=native'
+export CXXFLAGS='-g -O2 -pipe -march=native'
 export CFLAGS="-I/usr/include/openssl ${CXXFLAGS}"
 export CPPFLAGS='-I/usr/include/openssl -I/usr/local/include -I/usr/include'
 export CFLAGS CXXFLAGS LDFLAGS
