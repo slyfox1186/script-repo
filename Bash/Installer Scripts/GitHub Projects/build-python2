@@ -286,8 +286,8 @@ fi
 # STORE FILE PATHS IN VARIABLES FOR USE WITH THE CONFIGURE SCRIPT
 #
 
-libm_lib="$(sudo find /usr/lib/x86_64-linux-gnu -type f -name libm.so | head -n1)"
-libc_lib="$(sudo find /usr/lib/x86_64-linux-gnu -type f -name libc.so | head -n1)"
+libm_lib="$(sudo find /usr/lib/ -type f -name libm.so | head -n1)"
+libc_lib="$(sudo find /usr/lib/ -type f -name libc.so | head -n1)"
 
 #
 # BUILD THE PROGRAM FROM SOURCE CODE
