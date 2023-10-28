@@ -254,6 +254,7 @@ if build 'tilix-themes' 'git'; then
     if [ ! -d "${schemes_dir}" ]; then
         execute mkdir -p "${schemes_dir}"
     fi
+
     cd 'Themes' || exit 1
     execute cp -f 'argonaut.json' 'dracula.json' "${schemes_dir}"
     cd ../ || exit 1
