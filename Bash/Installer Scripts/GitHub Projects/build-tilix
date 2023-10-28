@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+    #!/usr/bin/env bash
 
 ##############################################################################################################################
 ##
@@ -204,8 +204,8 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok ins
 # INSTALL APT PACKAGES
 #
 
-pkgs=(autoconf autogen automake build-essential ccache curl gettext git gtk-doc-tools libgtk-3-dev libgtk-4-dev
-      libgtkd-3-dev libhwy-dev libtool libtool-bin m4 ninja-build pkg-config python3-nautilus tilix tilix-common)
+pkgs=(autoconf autogen automake build-essential ccache curl gettext git gtk-doc-tools libgtk-3-dev
+      libgtkd-3-dev libtool libtool-bin m4 ninja-build pkg-config python3-nautilus tilix tilix-common)
 
 for pkg in ${pkgs[@]}
 do
