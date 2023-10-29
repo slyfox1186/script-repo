@@ -69,6 +69,8 @@ case "${TERM}" in
     *)               echo;;
 esac
 
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
+
 # alias definitions
 if [ -f "${HOME}"/.bash_aliases ]; then
     . "${HOME}"/.bash_aliases
@@ -96,7 +98,6 @@ fi
 PATH="\
 /usr/lib/ccache:\
 ${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
@@ -116,7 +117,7 @@ export threads="$(nproc --all)"
 export cpus="$((threads / 2))"
 export lan="$(hostname -I)"
 # export wan="$(dig +short myip.opendns.com @resolver1.opendns.com)"
-export wan="$(curl -sS https://checkip.amazonaws.com)"
+export wan="$(curl -A "${user_agent}" -fsS 'https://checkip.amazonaws.com')"
 export tmp="${HOME}"/tmp
 export PS1='\n\[\e[0;96m\]\w\n\[\e[0;38;5;220m\]\T\n\[\e[0;38;5;208m\]\h\[\e[0m\]@\[\e[0;38;5;201m\]\u\[\e[0;93m\]$\[\e[0m\]'
 export PYTHONUTF8=1
