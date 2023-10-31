@@ -22,25 +22,19 @@ cat > /etc/apt/sources.list <<'EOF'
 ##
 ## DEFAULT
 ##
-# deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware
-# deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware
-# deb http://deb.debian.org/debian bookworm-backports main contrib non-free non-free-firmware
 deb http://security.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware
 ##
 ## MAIN
 ##
 deb http://atl.mirrors.clouvider.net/debian/ bookworm main contrib non-free non-free-firmware
-deb http://mirror.us.leaseweb.net/debian/ bookworm main contrib non-free non-free-firmware
 ##
 ## UPDATES
 ##
 deb http://atl.mirrors.clouvider.net/debian/ bookworm-updates main contrib non-free non-free-firmware
-deb http://mirror.us.leaseweb.net/debian/ bookworm-updates main contrib non-free non-free-firmware
 ##
 ## BACKPORTS
 ##
 deb http://atl.mirrors.clouvider.net/debian/ bookworm-backports main contrib non-free non-free-firmware
-deb http://mirror.us.leaseweb.net/debian/ bookworm-backports main contrib non-free non-free-firmware
 EOF
 
 # Open the sources.list file for review
