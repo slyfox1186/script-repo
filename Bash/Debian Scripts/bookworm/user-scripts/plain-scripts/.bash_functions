@@ -438,16 +438,6 @@ gettime() { clear; date +%r | cut -d " " -f1-2 | grep -E '^.*$'; }
 ## SOURCE FILES ##
 ##################
 
-sbrc()
-{
-    clear
-
-    source "${HOME}"/.bashrc && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
-    sleep 1
-
-    clear; ls -1AhFv --color --group-directories-first
-}
-
 spro()
 {
     clear
