@@ -2,6 +2,8 @@
 
 clear
 
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
+
 #
 # MENU COLOR FUNCTIONS
 #
@@ -37,15 +39,14 @@ box_out_banner 'Installer Script Menu'
 # DOWNLOAD SCRIPTS
 #
 
-szip_release_fn() { bash <(curl -fsSL https://7z.optimizethis.net); }
-dl_tools_fn() { bash <(curl -fsSL https://dl-tools.optimizethis.net); }
-build_tools_fn() { bash <(curl -fsSL https://build-tools.optimizethis.net); }
-magick_fn() { bash <(curl -fsSL https://magick.optimizethis.net); }
-ffmpeg_fn() { bash <(curl -fsSL https://build-ffmpeg.optimizethis.net) --build --latest; }
-go_fn() { bash <(curl -fsSL https://go.optimizethis.net); }
-gparted_fn() { bash <(curl -fsSL https://gparted.optimizethis.net); }
-deb_dl_fn() { bash <(curl -fsSL https://download.optimizethis.net); }
-video_fn() { bash <(curl -fsSL https://players.optimizethis.net); }
+szip_release_fn() { bash <(curl -A "${user_agent}" -fsSL 'https://7z.optimizethis.net'); }
+dl_tools_fn() { bash <(curl -A "${user_agent}" -fsSL 'https://dl-tools.optimizethis.net'); }
+build_tools_fn() { bash <(curl -A "${user_agent}" -fsSL 'https://build-tools.optimizethis.net'); }
+magick_fn() { bash <(curl -A "${user_agent}" -fsSL 'https://magick.optimizethis.net'); }
+ffmpeg_fn() { bash <(curl -A "${user_agent}" -fsSL 'https://build-ffmpeg.optimizethis.net') --build --latest; }
+gparted_fn() { bash <(curl -A "${user_agent}" -fsSL 'https://gparted.optimizethis.net'); }
+deb_dl_fn() { bash <(curl -A "${user_agent}" -fsSL 'https://download.optimizethis.net'); }
+video_fn() { bash <(curl -A "${user_agent}" -fsSL 'https://players.optimizethis.net'); }
 
 #
 # DISPLAY THE CUSTOM USER SCRIPTS MENU
@@ -63,13 +64,13 @@ $(ColorBlue 'Choose an option:') "
     clear
     case "${answer}" in
         1)
-                bash <(curl -fsSL https://lunar-scripts.optimizethis.net)
+                bash <(curl -A "${user_agent}" -fsSL 'https://lunar-scripts.optimizethis.net')
                 unset answer
                 clear
                 main_menu
                 ;;
         2)
-                bash <(curl -fsSL https://jammy-scripts.optimizethis.net)
+                bash <(curl -A "${user_agent}" -fsSL 'https://jammy-scripts.optimizethis.net')
                 unset answer
                 clear
                 main_menu
@@ -106,43 +107,43 @@ $(ColorBlue 'Choose an option:') "
     clear
     case "${answer}" in
         1)
-                curl -Lso mirrors.sh https://lunar-mirrors.optimizethis.net
-                sudo bash mirrors.sh
+                curl -A "${user_agent}" -Lso 'lunar-mirrors.sh' 'https://lunar-mirrors.optimizethis.net'
+                sudo bash 'lunar-mirrors.sh'
                 unset answer
                 clear
                 main_menu
                 ;;
         2)
-                curl -Lso mirrors.sh https://jammy-mirrors.optimizethis.net
-                sudo bash mirrors.sh
+                curl -A "${user_agent}" -Lso 'jammy-mirrors.sh' 'https://jammy-mirrors.optimizethis.net'
+                sudo bash 'jammy-mirrors.sh'
                 unset answer
                 clear
                 main_menu
                 ;;
         3)
-                curl -Lso mirrors.sh https://focal-mirrors.optimizethis.net
-                sudo bash mirrors.sh
+                curl -A "${user_agent}" -Lso 'focal-mirrors.sh' 'https://focal-mirrors.optimizethis.net'
+                sudo bash 'focal-mirrors.sh'
                 unset answer
                 clear
                 main_menu
                 ;;
         4)
-                curl -Lso mirrors.sh https://bionic-mirrors.optimizethis.net
-                sudo bash mirrors.sh
+                curl -A "${user_agent}" -Lso 'bionic-mirrors.sh' 'https://bionic-mirrors.optimizethis.net'
+                sudo bash 'bionic-mirrors.sh'
                 unset answer
                 clear
                 main_menu
                 ;;
         5)
-                curl -Lso mirrors.sh https://bullseye-mirrors.optimizethis.net
-                sudo bash mirrors.sh
+                curl -A "${user_agent}" -Lso 'bullseye-mirrors.sh' 'https://bullseye-mirrors.optimizethis.net'
+                sudo bash 'bullseye-mirrors.sh'
                 unset answer
                 clear
                 main_menu
                 ;;
         6)
-                curl -Lso mirrors.sh https://bookworm-mirrors.optimizethis.net
-                sudo bash mirrors.sh
+                curl -A "${user_agent}" -Lso 'bookworm-mirrors.sh' 'https://bookworm-mirrors.optimizethis.net'
+                sudo bash 'bookworm-mirrors.sh'
                 unset answer
                 clear
                 main_menu
@@ -153,8 +154,6 @@ $(ColorBlue 'Choose an option:') "
                 main_menu
                 ;;
         *)
-                printf "%s\n\n" 'Bad user input. Reloading menu...'
-                sleep 2
                 unset answer
                 clear
                 extra_mirrors
@@ -168,17 +167,18 @@ $(ColorBlue 'Choose an option:') "
 
 main_menu()
 {
+    printf "%s\n\n" 'If you choose a build script it will be sourced from the latest version available.'
     local answer
 echo -ne "
 $(ColorGreen '1)')  7-Zip v23.01
-$(ColorGreen '2)')  cURL, WGET and Aria2c (Latest releases available)
-$(ColorGreen '3)')  CMake, Meson, Ninja, and GoLang (Latest releases available)
-$(ColorGreen '4)')  ImageMagick 7 (Latest release available)
+$(ColorGreen '2)')  cURL, WGET and Aria2c
+$(ColorGreen '3)')  CMake, Meson, Ninja, and GoLang
+$(ColorGreen '4)')  ImageMagick 7
 $(ColorGreen '5)')  FFmpeg (This is a large script, be prepared to sit back for a while)
-$(ColorGreen '6)')  GParted (Includes all support libraries)
+$(ColorGreen '6)')  GParted with all optional libraries
 $(ColorGreen '7)')  Video Players
-$(ColorGreen '8)')  Custom User Scripts [ .bashrc | .bash_aliases | .bash_functions ] (Warning! This will overwrite your files!)
-$(ColorGreen '9)')  Extra Source Mirrors [ /etc/apt/sources.list ] (Warning! This will overwrite your files!)
+$(ColorGreen '8)')  Custom User Scripts (.bashrc, .bash_aliases, .bash_functions) Warning! This will overwrite your files!
+$(ColorGreen '9)')  Extra Source Mirrors (/etc/apt/sources.list) Warning! This will overwrite your files!
 $(ColorGreen '10)') APT to Debian Package Downloader
 $(ColorGreen '0)')  Exit
 $(ColorBlue 'Choose an option:') "
@@ -247,13 +247,10 @@ $(ColorBlue 'Choose an option:') "
                 ;;
         0)      exit 0;;
         *)
-                printf "%s\n\n" 'Bad user input. Reloading menu...'
-                sleep 2
                 unset answer
                 clear
                 main_menu
                 ;;
     esac
 }
-
 main_menu
