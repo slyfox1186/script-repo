@@ -24,8 +24,8 @@ fi
 #
 
 script_ver=1.0
-debian_dir=dmd_2.105.2-0_amd64
-debian_url=https://downloads.dlang.org/releases/2023/${debian_dir}.deb
+debian_dir=dmd_2.105.3-0_amd64
+debian_url=https://downloads.dlang.org/releases/2.x/2.105.3/"${debian_dir}".deb
 debian_name="${debian_dir}".deb
 cwd="${PWD}"/dmd-install-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
@@ -49,12 +49,12 @@ export CC=gcc CXX=g++
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-cuda_folder_path="$(sudo find /usr/local/cuda* -type f -name nvcc | sed 's/\/bin\/nvcc//')"
+cuda_folder_path="$(sudo find /usr/local/ -type f -name nvcc | sed 's/\/bin\/nvcc//')"
 
 if [ -n "${cuda_folder_path}" ]; then
     set_cuda_folder_path="${cuda_folder_path}"
 else
-    set_cuda_folder_path='/usr/local/cuda'
+    set_cuda_folder_path=/usr/local/cuda
 fi
 
 export {CFLAGS,CXXFLAGS}='-g -O2 -pipe -march=native'
