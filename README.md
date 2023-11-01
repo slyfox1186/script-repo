@@ -172,23 +172,6 @@ bash -c "$(curl -fsL https://git.io/vokNn)"
 ```
 ------
 
-## Install apt and ppa packages
-  - **What I consider to be core apt packages or "must haves" that everyone should consider installing**
-
-**Ubuntu 22.04**
-```bash
-bash <(curl -fsSL pkgs.sh https://jammy-pkgs.optimizethis.net)
-```
-**Ubuntu 20.04**
-```bash
-bash <(curl -fsSL pkgs.sh https://focal-pkgs.optimizethis.net)
-```
-**Debian 10 / 11 / 12**
-```bash
-bash <(curl -fsSL pkgs.sh https://debian-pkgs.optimizethis.net))
-```
-------
-
 ## Change your network settings to Static or DHCP with netplan.io
   - The user will be prompted to enter the network settings
 ```bash
