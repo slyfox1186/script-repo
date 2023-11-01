@@ -334,6 +334,10 @@ alias mlu='mainline uninstall'
 
 # GRUB CUSTOMIZER
 alias sgc='sudo grub-customizer'
+
+# FIND WHICH PROCESSES ARE BEING HELD UP AND KILL THEM
+alias tkpid='clear; lsof +D ./ | awk '\''{print $2}'\'' | tail -n +2 | xargs -I{} sudo kill -9 {}'
+
 EOF
 }
 
@@ -350,7 +354,7 @@ fi
 case "${answer}" in
     1)
             script_fn
-            sed -i "s/apt /apt /g" "$file"
+            sed -i "s/apt /apt-fast /g" "$file"
             ;;
     2)      script_fn;;
     *)
