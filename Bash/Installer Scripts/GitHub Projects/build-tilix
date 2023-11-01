@@ -228,10 +228,10 @@ fi
 # DOWNLOAD D COMPILER
 #
 
-if build 'dmd' '2.105.2-0'; then
-    download 'https://downloads.dlang.org/releases/2023/dmd_2.105.2-0_amd64.deb' 'dmd-2.105.2-0.deb'
-    execute sudo apt -y install ./dmd-2.105.2-0.deb
-    build_done 'dmd' '2.105.2-0'
+if build 'dmd' 'dmd_2.105.3-0'; then
+    download 'https://downloads.dlang.org/releases/2.x/2.105.3/dmd_2.105.3-0_amd64.deb' 'dmd_2.105.3-0.deb'
+    execute sudo apt -y install ./dmd_2.105.3-0.deb
+    build_done 'dmd' 'dmd_2.105.3-0'
 fi
 
 #
