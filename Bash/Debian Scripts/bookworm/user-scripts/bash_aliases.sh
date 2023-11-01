@@ -335,6 +335,9 @@ alias mlu='mainline uninstall'
 # GRUB CUSTOMIZER
 alias sgc='sudo grub-customizer'
 
+# FIND WHICH PROCESSES ARE BEING HELD UP AND KILL THEM
+alias tkpid='clear; lsof +D ./ | awk '\''{print $2}'\'' | tail -n +2 | xargs -I{} sudo kill -9 {}'
+
 EOF
 }
 
