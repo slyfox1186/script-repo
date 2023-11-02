@@ -118,7 +118,7 @@ export lan="$(hostname -I)"
 # export wan="$(dig +short myip.opendns.com @resolver1.opendns.com)"
 export wan="$(curl -sS https://checkip.amazonaws.com)"
 export tmp="${HOME}"/tmp
-export PS1='\n\[\e[0;96m\]\w\n\[\e[0;38;5;220m\]\T\n\[\e[0;38;5;208m\]\h\[\e[0m\]@\[\e[0;38;5;201m\]\u\[\e[0;93m\]$\[\e[0m\]'
+export PS1='\[\e[38;5;228m\]\w\n\[\e[38;5;214m\]\u\[\e[97;1m\]@\[\e[0;38;5;81m\]\h\[\e[38;5;227m\]\\$\[\e[0m\]'
 export PYTHONUTF8=1
 export TSAN_OPTIONS='ignore_noninstrumented_modules=1'
 
