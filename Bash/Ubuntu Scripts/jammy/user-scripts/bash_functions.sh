@@ -32,6 +32,24 @@ geds() { "$(type -P sudo)" -H -u root "$(type -P gedit)" "${@}" &>/dev/null; }
 gted() { "$(type -P gted)" "${@}" &>/dev/null; }
 gteds() { "$(type -P sudo)" -H -u root "$(type -P gted)" "${@}" &>/dev/null; }
 
+################################################
+## GET THE OS AND ARCH OF THE ACTIVE COMPUTER ##
+################################################
+
+mypc()
+{
+    local OS VER
+    
+    source '/etc/os-release'
+    OS="$NAME"
+    VER="$VERSION_ID"
+
+    clear
+    printf "%s\n%s\n\n"           \
+        "Operating System: ${OS}" \
+        "Specific Version: ${VER}"
+}
+
 ###################
 ## FIND COMMANDS ##
 ###################
@@ -1408,7 +1426,7 @@ tkapt()
     local i list
     clear
 
-    list=(apt apt apt-get aptitude dpkg)
+    list=(apt apt apt apt apt apt apt-get aptitude dpkg)
 
     for i in ${list[@]}
     do
@@ -1742,6 +1760,58 @@ ffp()
         sudo rm 00-pic-sizes.txt
     fi
     sudo find "${PWD}" -type f -iname '*.jpg' -exec bash -c "identify -format "%wx%h" \"{}\"; echo \" {}\"" > 00-pic-sizes.txt \;
+}
+
+####################
+## RSYNC COMMANDS ##
+####################
+
+rsr()
+{
+    local destination modified_source source 
+    clear
+
+    # you must add an extra folder that is a period '/./' between the full path to the source folder and the source folder itself
+    # or rsync will copy the files to the destination directory and it will be the full path of the source folder instead of the source
+    # folder and its subfiles only.
+
+    printf "%s\n%s\n%s\n%s\n\n"                                                                    \
+        'This rsync command will recursively copy the source folder to the chosen destination.'    \
+        'The original files will still be located in the source folder.'                           \
+        'If you want to move the files (which deletes the originals then use the function "rsrd".' \
+        'Please enter the full paths of the source and destination directories.'
+
+    printf "%s\n\n" 
+    read -p 'Enter the source path: ' source
+    read -p 'Enter the destination path: ' destination
+    modified_source="$(echo "${source}" | sed 's:/[^/]*$::')"'/./'"$(echo "${source}" | sed 's:.*/::')"
+    clear
+
+    rsync -aqvR --acls --perms --mkpath --info=progress2 "${modified_source}" "${destination}"
+}
+
+rsrd()
+{
+    local destination modified_source source 
+    clear
+
+    # you must add an extra folder that is a period '/./' between the full path to the source folder and the source folder itself
+    # or rsync will copy the files to the destination directory and it will be the full path of the souce folder instead of the source
+    # folder and its subfiles only.
+
+    printf "%s\n%s\n%s\n%s\n\n"                                                                    \
+        'This rsync command will recursively copy the source folder to the chosen destination.'    \
+        'The original files will be DELETED after they have been copied to the destination.'       \
+        'If you want to move the files (which deletes the originals then use the function "rsrd".' \
+        'Please enter the full paths of the source and destination directories.'
+
+    printf "%s\n\n" 
+    read -p 'Enter the source path: ' source
+    read -p 'Enter the destination path: ' destination
+    modified_source="$(echo "${source}" | sed 's:/[^/]*$::')"'/./'"$(echo "${source}" | sed 's:.*/::')"
+    clear
+
+    rsync -aqvR --acls --perms --mkpath --remove-source-files "${modified_source}" "${destination}"
 }
 
 EOF
