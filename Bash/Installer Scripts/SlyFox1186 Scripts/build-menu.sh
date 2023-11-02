@@ -58,7 +58,6 @@ custom_user_scripts()
 echo -ne "
 $(ColorGreen '1)')  Ubuntu Lunar
 $(ColorGreen '2)')  Ubuntu Jammy, Focal, or Bionic
-$(ColorGreen '3)')  Ubuntu Lunar
 $(ColorGreen '0)')  Exit
 $(ColorBlue 'Choose an option:') "
     read answer
@@ -72,12 +71,6 @@ $(ColorBlue 'Choose an option:') "
                 ;;
         2)
                 bash <(curl -A "${user_agent}" -fsSL 'https://jammy-scripts.optimizethis.net')
-                unset answer
-                clear
-                main_menu
-                ;;
-        3)
-                bash <(curl -A "${user_agent}" -fsSL 'https://raspi-scripts.optimizethis.net')
                 unset answer
                 clear
                 main_menu
@@ -105,6 +98,7 @@ $(ColorGreen '3)')  Ubuntu Focal
 $(ColorGreen '4)')  Ubuntu Bionic
 $(ColorGreen '5)')  Debian Bullseye
 $(ColorGreen '6)')  Debian Bookworm
+$(ColorGreen '7)')  Raspberry Pi (Based on Debian Bookworm)
 $(ColorGreen '0)')  Exit
 $(ColorBlue 'Choose an option:') "
     read answer
@@ -148,6 +142,13 @@ $(ColorBlue 'Choose an option:') "
         6)
                 curl -A "${user_agent}" -Lso 'bookworm-mirrors.sh' 'https://bookworm-mirrors.optimizethis.net'
                 sudo bash 'bookworm-mirrors.sh'
+                unset answer
+                clear
+                main_menu
+                ;;
+        3)
+                curl -A "${user_agent}" -Lso 'raspi-scripts.sh' 'https://raspi-scripts.optimizethis.net'
+                sudo bash 'raspi-scripts.sh'
                 unset answer
                 clear
                 main_menu
