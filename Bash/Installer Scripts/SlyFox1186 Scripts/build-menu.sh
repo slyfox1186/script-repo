@@ -22,7 +22,7 @@ ColorBlue() { echo -ne "${blue}${1}${clear}"; }
 box_out_banner()
 {
     input_char=$(echo "${@}" | wc -c)
-    line=$(for i in `seq 0 ${input_char}`; do printf "-"; done)
+    line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
@@ -58,6 +58,7 @@ custom_user_scripts()
 echo -ne "
 $(ColorGreen '1)')  Ubuntu Lunar
 $(ColorGreen '2)')  Ubuntu Jammy, Focal, or Bionic
+$(ColorGreen '3)')  Ubuntu Lunar
 $(ColorGreen '0)')  Exit
 $(ColorBlue 'Choose an option:') "
     read answer
@@ -75,11 +76,14 @@ $(ColorBlue 'Choose an option:') "
                 clear
                 main_menu
                 ;;
+        3)
+                bash <(curl -A "${user_agent}" -fsSL 'https://raspi-scripts.optimizethis.net')
+                unset answer
+                clear
+                main_menu
+                ;;
         0)      main_menu;;
         *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reloading menu...'
-                sleep 2
                 unset answer
                 clear
                 custom_user_scripts
