@@ -790,7 +790,7 @@ ffdl()
 {
     local user_agent
     clear
-    curl -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36' -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
+    curl -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36' -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
     bash 'ff.sh'
     sudo rm 'ff.sh'
     clear; ls -1AhFv --color --group-directories-first
