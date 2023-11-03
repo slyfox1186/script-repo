@@ -56,7 +56,7 @@ export CC=gcc CXX=g++
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O2 -fPIC -ffunction-sections -fdata-sections -pipe -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
 
 #
 # SET THE PATH VARIABLE

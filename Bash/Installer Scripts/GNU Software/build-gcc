@@ -177,13 +177,12 @@ export CC=gcc CXX=g++
 # SET THE COMPILER OPTIMIZATION FLAGS
 #
 
-CFLAGS='-g -O2 -pipe -march=native'
-CXXFLAGS='-g -O2 -pipe -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
 CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include"
 CPPFLAGS+=" -I/usr/include/${pc_type} -I/usr/lib/gcc/${pc_type}/11/include"
 CPPFLAGS+=" -I/usr/lib/gcc/${pc_type}/12/include -I/usr/lib/gcc/${pc_type}/13/include"
 
-export CXXFLAGS CFLAGS CPPFLAGS
+export CPPFLAGS
 
 #
 # SET THE AVAILABLE CPU THREADS AND CORE COUNT FOR PARALLEL PROCESSING (TO SPEED UP THE BUILD PROCESS)

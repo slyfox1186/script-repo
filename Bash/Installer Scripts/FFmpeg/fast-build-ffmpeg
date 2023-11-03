@@ -57,11 +57,11 @@ CFLAGS="\
 -I/usr/local/cuda-12.2/targets/x86_64-linux/include \
 -I/usr/local/cuda-12.2/include \
 -I/usr/include \
--g -O2 -ffunction-sections -fdata-sections -pipe -march=native\
+-g -O3 -pipe -march=native\
 "
 export CFLAGS
 
-export CXXFLAGS='-g -O2 -ffunction-sections -fdata-sections -pipe -march=native'
+export CXXFLAGS='-g -O3 -pipe -march=native'
 
 PKG_CONFIG_PATH="\
 /usr/share/pkgconfig:\
