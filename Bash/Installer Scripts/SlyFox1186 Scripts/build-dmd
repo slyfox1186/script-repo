@@ -28,7 +28,7 @@ debian_dir=dmd_2.105.3-0_amd64
 debian_url=https://downloads.dlang.org/releases/2.x/2.105.3/"${debian_dir}".deb
 debian_name="${debian_dir}".deb
 cwd="${PWD}"/dmd-install-script
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
 #
