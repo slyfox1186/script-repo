@@ -159,7 +159,7 @@ source_flags_fn()
 {
     EXTRALIBS='-ldl -lpthread -lm -lz -L${workspace}/lib -L/usr/lib/x86_64-linux-gnu'
     EXTRALIBS+=" -ltesseract -lcurl -L${workspace}/lib -lhwy -lbrotlidec -lbrotlienc"
-    CXXFLAGS='-g -O2 -pipe -march=native -DHWY_COMPILE_ONLY_SCALAR'
+    CXXFLAGS='-g -O3 -pipe -march=native -DHWY_COMPILE_ONLY_SCALAR'
     CFLAGS="-I${workspace}/include -I${workspace}/include/jxl -I${workspace}/include/CL -I/usr/local/include -I/usr/include"
     CFLAGS+=" -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2 -I/usr/lib/x86_64-linux-gnu/pulseaudio -I/usr/include/openjpeg-2.5 ${CXXFLAGS}"
     CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/openjpeg-2.5 -I/usr/include/flite"
@@ -2949,7 +2949,7 @@ box_out_banner_images 'Installing Image Tools'
 pre_check_ver 'strukturag/libheif' '1' 'T'
 if build 'libheif' "${g_ver}"; then
     download "https://github.com/strukturag/libheif/archive/refs/tags/v${g_ver}.tar.gz" "libheif-${g_ver}.tar.gz"
-    export {CFLAGS,CXXFLAGS}='-g -O2 -fno-lto -march=native'
+    export {CFLAGS,CXXFLAGS}='-g -O3 -fno-lto -march=native'
     libde265_libs="$(sudo find /usr -type f -name 'libde265.so')"
     if [ -f "${libde265_libs}" ] && [ ! -f '/usr/lib/x86_64-linux-gnu/libde265.so' ]; then
         sudo cp -f "${libde265_libs}" '/usr/lib/x86_64-linux-gnu'

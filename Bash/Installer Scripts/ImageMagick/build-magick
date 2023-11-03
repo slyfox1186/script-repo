@@ -68,7 +68,7 @@ export CC=gcc CXX=g++
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-CXXFLAGS='-g -O2 -pipe -march=native'
+CXXFLAGS='-g -O3 -pipe -march=native'
 CFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu"
 CFLAGS+=" -I/usr/include/openjpeg-2.5 -I${workspace}/include/CL ${CXXFLAGS}"
 CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/openjpeg-2.5"

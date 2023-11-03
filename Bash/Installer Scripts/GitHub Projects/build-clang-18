@@ -57,13 +57,14 @@ export CC=clang CXX=clang++
 # EXPORT COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O2 -ffunction-sections -fdata-sections -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
 
 #
 # SET THE PATH VARIABLE
 #
 
 PATH="\
+/usr/lib/ccache/bin:\
 /usr/lib/ccache:\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\

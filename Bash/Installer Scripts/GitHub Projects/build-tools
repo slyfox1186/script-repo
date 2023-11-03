@@ -77,7 +77,7 @@ export CC=gcc CXX=g++
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O2 -pipe -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
 
 #
 # MAKE SURE WE USE THE CORRECT M4 FOLDER

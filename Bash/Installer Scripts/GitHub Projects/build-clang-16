@@ -51,8 +51,8 @@ export CC=clang CXX=clang++
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-CFLAGS='-g -O2 -pipe -march=native'
-CXXFLAGS='-g -O2 -pipe -march=native'
+CFLAGS='-g -O3 -pipe -march=native'
+CXXFLAGS='-g -O3 -pipe -march=native'
 
 #
 # SET THE AVAILABLE CPU COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
