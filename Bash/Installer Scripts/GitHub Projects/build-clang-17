@@ -290,9 +290,13 @@ git_ver_fn()
 # PRINT THE OPTIONS AVAILABLE WHEN MANUALLY RUNNING THE SCRIPT
 #
 
+# GET THE HIGHEST VERSION AVAILABLE ON APT FOR THE PACKAGE libstdc++
+get_libstdc="$(sudo apt list 'libstdc++-*-dev' 2>/dev/null | grep -Eo '^libstdc\+\+-[0-9]{2}-dev' | sort -r | head -n1)"
+
 pkgs=(autoconf autoconf-archive automake autopoint binutils binutils-dev bison
       build-essential ccache clang cmake curl jq libc6 libc6-dev libedit-dev
-      libtool libtool-bin libxml2-dev m4 nasm ninja-build yasm zlib1g-dev)
+      libtool libtool-bin libxml2-dev m4 nasm ninja-build yasm zlib1g-dev
+      ${get_libstdc})
 
 for i in ${pkgs[@]}
 do
