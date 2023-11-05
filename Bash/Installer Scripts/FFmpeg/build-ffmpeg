@@ -1629,6 +1629,14 @@ if build 'libtiff' "$g_ver"; then
                         --with-pic
     execute make "-j${cpu_threads}"
     execute make install
+    libtiff_lib="$(find "${workspace}"/lib/ -type f -name 'libtiff.so.6.*' | sed 's:.*/::')"
+    if [ "${OS}" != 'Arch' ]; then
+        execute sudo cp -f "${workspace}/lib/${libtiff_lib}" '/usr/lib/x86_64-linux-gnu'
+        execute sudo ln -sf "/usr/lib/x86_64-linux-gnu/${libtiff_lib}" '/usr/lib/x86_64-linux-gnu/libtiff.so.6'
+    else
+        execute sudo cp -f "${workspace}/lib/${libtiff_lib}" '/usr/lib'
+        execute sudo ln -sf "/usr/lib/${libtiff_lib}" '/usr/lib/libtiff.so.6'
+    fi
     build_done 'libtiff' "$g_ver"
 fi
 
