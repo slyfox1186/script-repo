@@ -2677,10 +2677,11 @@ else
         gpac_lib2="$(sudo find /usr -name 'libgpac.so')"
         gpac_lib3="$(sudo find /usr -type f -name 'libgpac.so.12.11.0')"
         execute sudo ./configure --prefix="/home/jman/tmp/ffmpeg-build-script/workspace"  \
-                                             --use-a52=local                              \
-                                             --use-faad=local                             \
-                                             --use-mad=local                              \
-                                             --sdl-cfg="${workspace}"/include/SDL3
+                                 --static-bin                                             \
+                                 --use-a52=local                                          \
+                                 --use-faad=local                                         \
+                                 --use-mad=local                                          \
+                                 --sdl-cfg="${workspace}"/include/SDL3
         execute sudo make "-j${cpu_threads}"
         execute sudo make install
         build_done 'gpac' "${g_ver}"
