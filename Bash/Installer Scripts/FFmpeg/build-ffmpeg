@@ -1009,11 +1009,10 @@ ffmpeg_install_test()
     for i in ${binaries[@]}
     do
         if [ ! -f "${workspace}/bin/${i}" ]; then
-            printf "\n%s\n\n%s\n\n%s\n\n" \
-                "Unable to locate the binary file: ${workspace}/bin/${i}" \
-                "Please report this at:" \
-                "${web_repo}/issues"
-            read -p 'You can press enter to continue, however, please be aware that it is missing and I haven'\''t been able to figure out why.'
+            printf "\n%s\n%s\n\n"                                                  \
+                "Warning: Unable to locate the binary file: ${workspace}/bin/${i}" \
+                'I have read online that this is a bug of some sort and people are unsure why it happens.'
+            read -p 'You can press enter to continue, however, please be aware that it is missing.'
             echo
         fi
     done
