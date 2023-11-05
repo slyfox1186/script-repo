@@ -914,16 +914,15 @@ pkgs_fn()
           libgoogle-perftools-dev libgsm1-dev libgtest-dev libgvc6 libhwy-dev libibus-1.0-dev libiconv-hook-dev
           libintl-perl libjack-dev libjemalloc-dev libladspa-ocaml-dev libleptonica-dev liblz-dev liblzma-dev
           liblzo2-dev libmathic-dev libmatroska-dev libmbedtls-dev libmetis5 libmfx-dev libmodplug-dev libmp3lame-dev
-          libmusicbrainz5-dev libmysofa-dev libnuma1 libnuma-dev libnvidia-encode-545 libopencore-amrnb-dev
-          libopencore-amrwb-dev libopencv-dev libopenjp2-7-dev libopenmpt-dev libopus-dev libperl-dev libpstoedit-dev
-          libpulse-dev librabbitmq-dev libraqm-dev libraw-dev librsvg2-dev librubberband-dev librust-gstreamer-base-sys-dev
-          libshine-dev libsmbclient-dev libsnappy-dev libsndfile1-dev libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev
-          libsrt-gnutls-dev libssh-dev libssl-dev libsuitesparseconfig5 libtalloc-dev libtheora-dev libticonv-dev libtool
-          libtool-bin libtwolame-dev libudev-dev libumfpack5 libunwind-dev libv4l-dev libva-dev libvdpau-dev libvidstab-dev
-          libvlccore-dev libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev libxfixes-dev
-          libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libyuv-dev libzmq3-dev libzstd-dev
-          libzvbi-dev libzzip-dev lshw lzma-dev m4 meson nasm ninja-build pandoc python3 python3-pip ragel re2c
-          scons sudo texi2html texinfo tk-dev unzip valgrind wget xmlto zlib1g-dev)
+          libmusicbrainz5-dev libmysofa-dev libnuma1 libnuma-dev libopencore-amrnb-dev libopencore-amrwb-dev libopencv-dev
+          libopenjp2-7-dev libopenmpt-dev libopus-dev libperl-dev libpstoedit-dev libpulse-dev librabbitmq-dev libraqm-dev
+          libraw-dev librsvg2-dev librubberband-dev librust-gstreamer-base-sys-dev libshine-dev libsmbclient-dev libsnappy-dev
+          libsndfile1-dev libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev libsrt-gnutls-dev libssh-dev libssl-dev
+          libsuitesparseconfig5 libtalloc-dev libtheora-dev libticonv-dev libtool libtool-bin libtwolame-dev libudev-dev
+          libumfpack5 libunwind-dev libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev
+          libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev
+          libxss-dev libxvidcore-dev libyuv-dev libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev lshw lzma-dev m4 meson nasm
+          ninja-build pandoc python3 python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip valgrind wget xmlto zlib1g-dev)
 
     for pkg in ${pkgs[@]}
     do
@@ -1319,7 +1318,7 @@ arch_os_ver_fn()
 
 debian_os_ver_fn()
 {
-    debian_pkgs='libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils libyuv0 libsharp-dev libdmalloc5'
+    debian_pkgs='libnvidia-encode-545 libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils libyuv0 libsharp-dev libdmalloc5'
 
     case "${VER}" in
         12|trixie)      pkgs_fn "${debian_pkgs} cppcheck librist-dev";;
@@ -1330,7 +1329,7 @@ debian_os_ver_fn()
 
 ubuntu_os_ver_fn()
 {
-    ubuntu_common_pkgs='libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev'
+    ubuntu_common_pkgs='libnvidia-encode-545 libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev'
     bionic_pkgs='libdmalloc5 libjemalloc1 libvmmalloc-dev libvmmalloc1 libreadline-gplv2-dev'
     focal_pkgs='libvmmalloc1 libvmmalloc-dev libdmalloc5 libcunit1-dev'
     focal_pkgs+=' librust-jemalloc-sys-dev librust-malloc-buf-dev libsrt-doc libreadline-dev libcunit1 libcunit1-doc'
@@ -1373,7 +1372,7 @@ fi
 
 if [ "${OS}" != 'Arch' ]; then
     case "${wsl_switch}" in
-        1)      sudo apt-get -qq -y install nvidia-utils-545 2>/dev/null;;
+        1)      sudo apt -y install libnvidia-encode1 2>/dev/null;;
     esac
 fi
 
@@ -2836,7 +2835,7 @@ if [ -n "${iscuda}" ]; then
 
     if [ "${OS}" != 'Arch' ]; then
         if ! sudo dpkg -l | grep -o nvidia-smi &>/dev/null; then
-            sudo apt -y install nvidia-smi 2>/dev/null
+            sudo apt -y install nvidia-smi &>/dev/null
         fi
     fi
 
