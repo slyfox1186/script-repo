@@ -7,11 +7,11 @@
 ##
 ##  Script version
 ##
-##    - 3.1.1
+##    - 3.1.2
 ##
 ##  Updated on
 ##
-##    - 10.26.23
+##    - 11.05.23
 ##
 ##  Purpose:
 ##
@@ -51,7 +51,7 @@
 ##
 ##  Added
 ##
-##    - Clang compilers to build the x265 library because it gives better FPS output than when built with gcc
+##    - Set the x265 libs to be built with clang because it gives better FPS output than when built with gcc
 ##    - cUnit support library for libmysofa
 ##    - Cyanrip software
 ##    - Cyanrip libcurl support library for
@@ -68,6 +68,7 @@
 ##
 ##  Fixed
 ##
+##    - gpac was missing a required .so file from libjpeg-turbo
 ##    - the nvidia-smi command not being installed for Debian OS versions
 ##    - gpac build issue due to the sdl2 library not being found in the workspace folder
 ##    - libheif not building the specified plugins
@@ -108,10 +109,10 @@ pc_type=x86_64-linux-gnu
 LDEXEFLAGS=''
 ffmpeg_libraries=()
 latest=false
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 curl_timeout=10
-debug=ON # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -128,6 +129,7 @@ export MAKEFLAGS="-j$(nproc --all)"
 # PRINT SCRIPT BANNER
 #
 
+clear
 box_out_banner1()
 {
     input_char=$(echo "${@}" | wc -c)
@@ -159,7 +161,7 @@ source_flags_fn()
 {
     EXTRALIBS='-ldl -lpthread -lm -lz -L${workspace}/lib -L/usr/lib/x86_64-linux-gnu'
     EXTRALIBS+=" -ltesseract -lcurl -L${workspace}/lib -lhwy -lbrotlidec -lbrotlienc"
-    CXXFLAGS='-g -O3 -pipe -march=native -DHWY_COMPILE_ONLY_SCALAR'
+    CXXFLAGS='-g -O2 -march=native -DHWY_COMPILE_ONLY_SCALAR'
     CFLAGS="-I${workspace}/include -I${workspace}/include/jxl -I${workspace}/include/CL -I/usr/local/include -I/usr/include"
     CFLAGS+=" -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2 -I/usr/lib/x86_64-linux-gnu/pulseaudio -I/usr/include/openjpeg-2.5 ${CXXFLAGS}"
     CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/openjpeg-2.5 -I/usr/include/flite"
@@ -740,18 +742,18 @@ cuda_download_fn()
     local choice
     clear
 
-    printf "%s\n\n%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n\n" \
-        'Pick your Linux distro from the list below:'   \
-        'Supported architecture: x86_64'                \
-        '[1] Debian 10'                                 \
-        '[2] Debian 11'                                 \
-        '[3] Debian 12'                                 \
-        '[4] Ubuntu 20.04'                              \
-        '[5] Ubuntu 22.04'                              \
-        '[6] Ubuntu WSL'                                \
-        '[7] Arch Linux'                                \
+    printf "%s\n\n%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n\n" \
+        'Pick your Linux distro from the list below:'       \
+        'Supported architecture: x86_64'                    \
+        '[1] Debian 10'                                     \
+        '[2] Debian 11'                                     \
+        '[3] Debian 12'                                     \
+        '[4] Ubuntu 20.04'                                  \
+        '[5] Ubuntu 22.04'                                  \
+        '[6] Ubuntu WSL'                                    \
+        '[7] Arch Linux'                                    \
         '[8] Exit'
-    read -p 'Your choices are (1 to 7): ' choice
+    read -p 'Your choices are (1 to 8): ' choice
     clear
 
     printf "%s\n%s\n\n"                                             \
@@ -801,7 +803,7 @@ cuda_download_fn()
     7)
             git clone -q 'https://gitlab.archlinux.org/archlinux/packaging/packages/cuda.git'
             cd cuda || exit 1
-            makepkg -sif --cleanbuild --noconfirm
+            makepkg -sif --cleanbuild --noconfirm --needed
             return 0
             ;;
     8)
@@ -833,7 +835,7 @@ install_cuda_fn()
         cuda_ver_test="$(nvcc --version | sed -n 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')"
         cuda_ver_test+='.0'
     else
-        cuda_ver_test="$(cat '/usr/local/cuda/version.json' | jq -r '.cuda.version')"
+        cuda_ver_test="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
     fi
     cuda_ver="${cuda_ver_test}"
 
@@ -879,6 +881,7 @@ install_cuda_fn()
         esac
     fi
 
+    cuda_ver="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
     if [ -z "${cuda_ver}" ]; then
         fail_fn "Unable to locate the file: /usr/local/cuda/version.json. Line: ${LINENO}"
     else
@@ -898,28 +901,29 @@ pkgs_fn()
         'Installing the required APT packages' \
         '=============================================='
 
-    pkgs=("${1}" ant apt asciidoc autoconf autoconf-archive automake autopoint binutils bison build-essential cargo
-          ccache checkinstall clang clang-tools cmake curl default-jdk-headless doxygen fcitx-libs-dev flex flite1-dev
-          freeglut3-dev frei0r-plugins-dev gawk gettext gimp-data git gnome-desktop-testing gnustep-gui-runtime
-          google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk libamd2 libasound2-dev
-          libass-dev libaudio-dev libavfilter-dev libbabl-0.1-0 libbluray-dev libbs2b-dev libbz2-dev libc6 libc6-dev
-          libcaca-dev libcairo2-dev libcamd2 libccolamd2 libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libcholmod3
-          libchromaprint-dev libcjson-dev libcodec2-dev libcolamd2 libcrypto++-dev libcurl4-openssl-dev libdbus-1-dev
-          libde265-dev libdevil-dev libdmalloc-dev libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev
-          libgdbm-dev libgegl-0.4-0 libgegl-common libgimp2.0 libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev
-          libgnutls28-dev libgnutls30 libgoogle-perftools4 libgoogle-perftools-dev libgsm1-dev libgtest-dev libgvc6 libhwy-dev
-          libibus-1.0-dev libiconv-hook-dev libintl-perl libjack-dev libjemalloc-dev libladspa-ocaml-dev libleptonica-dev
-          liblz-dev liblzma-dev liblzo2-dev libmathic-dev libmatroska-dev libmbedtls-dev libmetis5 libmfx-dev libmodplug-dev
-          libmp3lame-dev libmusicbrainz5-dev libmysofa-dev libnuma1 libnuma-dev libopencore-amrnb-dev libopencore-amrwb-dev
-          libopencv-dev libopenjp2-7-dev libopenmpt-dev libopus-dev libperl-dev libpstoedit-dev libpulse-dev librabbitmq-dev
-          libraqm-dev libraw-dev librsvg2-dev librubberband-dev librust-gstreamer-base-sys-dev libshine-dev libsmbclient-dev
-          libsnappy-dev libsndfile1-dev libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev libsrt-gnutls-dev libssh-dev
-          libssl-dev libsuitesparseconfig5 libtalloc-dev libtheora-dev libticonv-dev libtool libtool-bin libtwolame-dev
-          libudev-dev libumfpack5 libunwind-dev libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev
-          libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev
-          libxss-dev libxvidcore-dev libyuv-dev libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev lshw lzma-dev m4 meson nasm
-          ninja-build pandoc python3 python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip valgrind wget xmlto
-          zlib1g-dev libnvidia-encode1)
+    pkgs=("${1}" ant apt asciidoc autoconf autoconf-archive automake autopoint binutils bison build-essential
+          cargo ccache checkinstall clang clang-tools cmake curl default-jdk-headless doxygen fcitx-libs-dev
+          flex flite1-dev freeglut3-dev frei0r-plugins-dev gawk gettext gimp-data git gnome-desktop-testing
+          gnustep-gui-runtime google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk
+          libamd2 libasound2-dev libass-dev libaudio-dev libavfilter-dev libbabl-0.1-0 libbluray-dev libbs2b-dev
+          libbz2-dev libc6 libc6-dev libcaca-dev libcairo2-dev libcamd2 libccolamd2 libcdio-dev libcdio-paranoia-dev
+          libcdparanoia-dev libcholmod3 libchromaprint-dev libcjson-dev libcodec2-dev libcolamd2 libcrypto++-dev
+          libcurl4-openssl-dev libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev libdrm-dev libdvbpsi-dev
+          libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev libgegl-0.4-0 libgegl-common libgimp2.0
+          libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev libgnutls28-dev libgnutls30 libgoogle-perftools4
+          libgoogle-perftools-dev libgsm1-dev libgtest-dev libgvc6 libhwy-dev libibus-1.0-dev libiconv-hook-dev
+          libintl-perl libjack-dev libjemalloc-dev libladspa-ocaml-dev libleptonica-dev liblz-dev liblzma-dev
+          liblzo2-dev libmathic-dev libmatroska-dev libmbedtls-dev libmetis5 libmfx-dev libmodplug-dev libmp3lame-dev
+          libmusicbrainz5-dev libmysofa-dev libnuma1 libnuma-dev libnvidia-encode-535 libopencore-amrnb-dev
+          libopencore-amrwb-dev libopencv-dev libopenjp2-7-dev libopenmpt-dev libopus-dev libperl-dev libpstoedit-dev
+          libpulse-dev librabbitmq-dev libraqm-dev libraw-dev librsvg2-dev librubberband-dev librust-gstreamer-base-sys-dev
+          libshine-dev libsmbclient-dev libsnappy-dev libsndfile1-dev libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev
+          libsrt-gnutls-dev libssh-dev libssl-dev libsuitesparseconfig5 libtalloc-dev libtheora-dev libticonv-dev libtool
+          libtool-bin libtwolame-dev libudev-dev libumfpack5 libunwind-dev libv4l-dev libva-dev libvdpau-dev libvidstab-dev
+          libvlccore-dev libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev libxfixes-dev
+          libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libyuv-dev libzmq3-dev libzstd-dev
+          libzvbi-dev libzzip-dev lshw lzma-dev m4 meson nasm ninja-build pandoc python3 python3-pip ragel re2c
+          scons sudo texi2html texinfo tk-dev unzip valgrind wget xmlto zlib1g-dev)
 
     for pkg in ${pkgs[@]}
     do
@@ -1131,7 +1135,7 @@ python2_bin_arch_fn()
 {
     if build 'python2-bin' 'git'; then
         download_git 'https://aur.archlinux.org/python2-bin.git'
-        execute makepkg -sif --cleanbuild --noconfirm
+        execute makepkg -sif --cleanbuild --noconfirm --needed
         build_done 'python2-bin' 'git'
     fi
 }
@@ -1140,7 +1144,7 @@ python2_six_fn()
 {
     if build 'python2-six' 'git'; then
         download_git https://aur.archlinux.org/python2-six.git
-        execute makepkg -sif --cleanbuild --noconfirm
+        execute makepkg -sif --cleanbuild --noconfirm --needed
         build_done 'python2-six' 'git'
     fi
 }
@@ -1149,7 +1153,7 @@ python2_setuptools_arch_fn()
 {
     if build 'python2-setuptools' 'git'; then
         download_git https://aur.archlinux.org/python2-setuptools.git
-        execute makepkg -sif --cleanbuild --noconfirm
+        execute makepkg -sif --cleanbuild --noconfirm --needed
         build_done 'python2-setuptools' 'git'
     fi
 }
@@ -1168,7 +1172,7 @@ vo-amrwbenc_arch_fn()
 {
     if build 'vo-amrwbenc' 'git'; then
         download_git 'https://aur.archlinux.org/vo-amrwbenc.git' 'vo-amrwbenc-AUR'
-        execute makepkg -sif --cleanbuild --noconfirm
+        execute makepkg -sif --cleanbuild --noconfirm --needed
         build_done 'vo-amrwbenc' 'git'
     fi
 }
@@ -1177,7 +1181,7 @@ shine_arch_fn()
 {
     if build 'shine' 'git'; then
         download_git 'https://aur.archlinux.org/shine.git' 'shine-AUR'
-        execute makepkg -sif --cleanbuild --noconfirm
+        execute makepkg -sif --cleanbuild --noconfirm --needed
         execute libtool --finish /usr/lib
         build_done 'shine' 'git'
     fi
@@ -1187,7 +1191,7 @@ gpac_arch_fn()
 {
     if build 'gpac-git' 'git'; then
         download_git 'https://aur.archlinux.org/gpac-git.git' 'gpac-git-AUR'
-        execute makepkg -sif --cleanbuild --noconfirm
+        execute makepkg -sif --cleanbuild --noconfirm --needed
         build_done 'gpac-git' 'git'
     fi
 }
@@ -1232,7 +1236,7 @@ apache_ant_fn()
 {
     if build 'apache-ant' 'git'; then
         download_git 'https://aur.archlinux.org/apache-ant-contrib.git' 'apache-ant-AUR'
-        execute makepkg -sif --cleanbuild --noconfirm
+        execute makepkg -sif --cleanbuild --noconfirm --needed
         build_done 'apache-ant' 'git'
     fi
 }
@@ -1241,7 +1245,7 @@ librist_arch_fn()
 {
     if build 'librist' 'git'; then
         download_git 'https://aur.archlinux.org/librist.git' 'librist-AUR'
-        execute makepkg -sif --cleanbuild --noconfirm
+        execute makepkg -sif --cleanbuild --noconfirm --needed
         build_done 'librist' 'git'
     fi
 }
@@ -1546,7 +1550,6 @@ ffmpeg_libraries+=('--enable-openssl')
 pre_check_ver 'yasm/yasm' '1' 'T'
 if build 'yasm' "${g_ver}"; then
     download "https://github.com/yasm/yasm/archive/refs/tags/v${g_ver}.tar.gz" "yasm-${g_ver}.tar.gz"
-    export PYTHONHOME=/usr/local
     execute autoreconf -fi
     execute cmake -B build                              \
                   -DCMAKE_INSTALL_PREFIX="${workspace}" \
@@ -1876,6 +1879,14 @@ if build 'jpeg-turbo' 'git'; then
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}"
     execute sudo ninja "-j${cpu_threads}" install
+    jpeg_turbo_lib="$(find "${workspace}"/lib -type f -name 'libjpeg.so.62.*' | sed 's:.*/::')"
+    if [ "${OS}" != 'Arch' ]; then
+        execute sudo cp -f "${workspace}/lib/${jpeg_turbo_lib}" '/usr/lib/x86_64-linux-gnu'
+        execute sudo ln -sf "/usr/lib/x86_64-linux-gnu/${jpeg_turbo_lib}" '/usr/lib/x86_64-linux-gnu/libjpeg.so.62'
+    else
+        execute sudo cp -f "${workspace}/lib/${jpeg_turbo_lib}" '/usr/lib'
+        execute sudo ln -sf "/usr/lib/${jpeg_turbo_lib}" '/usr/lib/libjpeg.so.62'
+    fi
     build_done 'jpeg-turbo' 'git'
 fi
 
@@ -2949,7 +2960,7 @@ box_out_banner_images 'Installing Image Tools'
 pre_check_ver 'strukturag/libheif' '1' 'T'
 if build 'libheif' "${g_ver}"; then
     download "https://github.com/strukturag/libheif/archive/refs/tags/v${g_ver}.tar.gz" "libheif-${g_ver}.tar.gz"
-    export {CFLAGS,CXXFLAGS}='-g -O3 -fno-lto -march=native'
+    export {CFLAGS,CXXFLAGS}='-g -O2 -fno-lto -march=native'
     libde265_libs="$(sudo find /usr -type f -name 'libde265.so')"
     if [ -f "${libde265_libs}" ] && [ ! -f '/usr/lib/x86_64-linux-gnu/libde265.so' ]; then
         sudo cp -f "${libde265_libs}" '/usr/lib/x86_64-linux-gnu'
