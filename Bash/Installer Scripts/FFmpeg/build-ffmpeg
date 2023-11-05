@@ -159,9 +159,9 @@ export CC=gcc CXX=g++
 
 source_flags_fn()
 {
-    EXTRALIBS='-ldl -lpthread -lm -lz -L${workspace}/lib -L/usr/lib/x86_64-linux-gnu'
-    EXTRALIBS+=" -ltesseract -lcurl -L${workspace}/lib -lhwy -lbrotlidec -lbrotlienc"
-    CXXFLAGS='-g -O2 -march=native -DHWY_COMPILE_ONLY_SCALAR'
+    EXTRALIBS='-ldl -lpthread -lm -lz -L${workspace}/lib -L/usr/lib/x86_64-linux-gnu -ltesseract -lcurl'
+    EXTRALIBS+=" -L${workspace}/lib -lhwy -lbrotlidec -lbrotlienc -L/usr/local/cuda/targets/x86_64-linux/lib -lOpenCL"
+    CXXFLAGS='-g -O3 -march=native -DHWY_COMPILE_ONLY_SCALAR'
     CFLAGS="-I${workspace}/include -I${workspace}/include/jxl -I${workspace}/include/CL -I/usr/local/include -I/usr/include"
     CFLAGS+=" -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2 -I/usr/lib/x86_64-linux-gnu/pulseaudio -I/usr/include/openjpeg-2.5 ${CXXFLAGS}"
     CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/openjpeg-2.5 -I/usr/include/flite"
