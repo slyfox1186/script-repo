@@ -1934,6 +1934,15 @@ if build 'leptonica' '1.83.1'; then
                         --with-pic
     execute make "-j${cpu_threads}"
     execute make install
+    leptonica_lib="$(find "${workspace}"/lib/ -type f -name 'libleptonica.so.6.*' | sed 's:.*/::')"
+    if [ "${OS}" != 'Arch' ]; then
+        execute sudo cp -f "${workspace}/lib/${leptonica_lib}" '/usr/lib/x86_64-linux-gnu'
+        execute sudo ln -sf "/usr/lib/x86_64-linux-gnu/${leptonica_lib}" '/usr/lib/x86_64-linux-gnu/libleptonica.so.6'
+    else
+        execute sudo cp -f "${workspace}/lib/${leptonica_lib}" '/usr/lib'
+        execute sudo ln -sf "/usr/lib/${leptonica_lib}" '/usr/lib/libleptonica.so.6'
+    fi
+    
     build_done 'leptonica' '1.83.1'
 fi
 
