@@ -18,15 +18,16 @@
 ##  Added: A CPPFLAGS variable to ImageMagick's configure script
 ##  Added: A case command to determine the required libtool version based on the active OS
 ##  Added: Autotrace for Ubuntu (18/20/22).04 and Debian 10/11
+##  Added: LCMS Support
 ##
 ##  Fixed: Incorrect pkg-config location when building ImageMagick
 ##  Fixed: libjxl dependency
 ##
 ##  Changed: Some support libraries prefix paths to avoid installing into the system
 ##
-##  Updated: 10.10.23
+##  Updated: 11.06.23
 ##
-##  Script Version: 3.5
+##  Script Version: 3.6
 ##
 #############################################################################################################
 
@@ -41,7 +42,7 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-script_ver=3.5
+script_ver=3.6
 progname="${0}"
 cwd="${PWD}"/magick-build-script
 packages="${cwd}"/packages
@@ -424,6 +425,8 @@ install_autotrace_fn()
 install_libjxl_fn()
 {
     cd "${packages}"/deb-files || exit 1
+    sudo apt -y install gimp-data libgimp2.0-dev libjxl-gimp-plugin
+
     if ! sudo dpkg -i libjxl_0.8.2_amd64.deb; then
         sudo dpkg --configure -a
         sudo apt --fix-broken install
@@ -432,7 +435,6 @@ install_libjxl_fn()
         sudo apt clean
         sudo apt autoclean
         sudo apt update
-        sudo apt-get -qq -y install gimp-data libgimp2.0-dev libjxl-gimp-plugin
     fi
     sudo rm libjxl_0.8.2_amd64.deb &>/dev/null
     sudo dpkg -i ./*.deb
@@ -584,17 +586,13 @@ fi
 #
 
 # AUTOTRACE FAILS ON DEBIAN 12
-if build 'autotrace' 'travis-20200219.65'; then
-    case "${OS}" in
-        Ubuntu)
-                    install_autotrace_fn
-                    autotrace_flag=1
-                    ;;
-    esac
-    build_done 'autotrace' 'travis-20200219.65'
-fi
-
-if [ "${autotrace_flag}" = '1' ]; then
+case "${OS}" in
+    Ubuntu)
+                install_autotrace_fn
+                autotrace_flag=true
+                ;;
+esac
+if [[ "${autotrace_flag}" == 'true' ]]; then
     set_autotrace='--with-autotrace'
 else
     set_autotrace='--without-autotrace'
@@ -687,15 +685,15 @@ if build 'libfpx' 'git'; then
     build_done 'libfpx' 'git'
 fi
 
-if build 'ghostscript' '10.02.0'; then
-    download 'https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10020/ghostscript-10.02.0.tar.xz'
+if build 'ghostscript' '10.02.1'; then
+    download 'https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10021/ghostscript-10.02.1.tar.xz'
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}"     \
                         --{build,host}="${pc_type}" \
                         --with-libiconv=native
     execute make "-j${cpu_threads}"
     execute make install
-    build_done 'ghostscript' '10.02.0'
+    build_done 'ghostscript' '10.02.1'
 fi
 
 if build 'png12' '1.2.59'; then
@@ -900,6 +898,21 @@ if build 'openjpeg' "${g_ver2}"; then
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'openjpeg' "${g_ver2}"
+fi
+
+if build 'lcms' 'git'; then
+    download_git 'https://github.com/ImageMagick/lcms.git'
+    execute ./autogen.sh
+    execute ./configure --prefix="${workspace}"     \
+                        --{build,host}="${pc_type}" \
+                        --disable-shared            \
+                        --with-jpeg="${workspace}"  \
+                        --with-tiff="${workspace}"  \
+                        --with-fastfloat            \
+                        --with-threaded
+    execute make "-j${cpu_threads}"
+    execute make install
+    build_done 'lcms' 'git'
 fi
 
 #
