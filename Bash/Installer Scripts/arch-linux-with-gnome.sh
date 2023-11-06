@@ -72,7 +72,7 @@ lsblk
 ## INSTALL SOFTWARE ON MOUNT ##
 ###############################
 
-pacstrap -K /mnt base base-devel efibootmgr grub linux linux-headers linux-firmware nano NetworkManager
+pacstrap -K /mnt base base-devel efibootmgr grub linux linux-headers linux-firmware nano gnome-text-editor gedit gedit-plugins nvidia networkmanager
 
 genfstab -U /mnt >> /mnt/etc/fstab
 
