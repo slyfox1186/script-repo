@@ -18,9 +18,11 @@ file="${HOME}"/.bash_functions
 
 script_fn()
 {
-cat > "$file" <<'EOF'
+cat > "${file}" <<'EOF'
 #!/usr/bin/env bash
 # shellcheck disable=SC1091,SC2001,SC2162,SC2317
+
+export user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
 
 ######################################################################################
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
@@ -261,11 +263,11 @@ list()
     clear
 
     if [ -n "${1}" ]; then
-        sudo apt list "*${1}*" 2>/dev/null | awk -F'/' '{print $1}'
+        sudo apt list "*${1}*" 2>/dev/null | awk -F'/' '{print ${1}}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt list "*${1}*" 2>/dev/null | awk -F'/' '{print $1}'
+        sudo apt list "*${1}*" 2>/dev/null | awk -F'/' '{print ${1}}'
     fi
 }
 
@@ -275,11 +277,11 @@ listd()
     clear
 
     if [ -n "${1}" ]; then
-        sudo apt list -- "*${1}*"-dev 2>/dev/null | awk -F'/' '{print $1}'
+        sudo apt list -- "*${1}*"-dev 2>/dev/null | awk -F'/' '{print ${1}}'
     else
         read -p 'Enter the string to search: ' search_cache
         clear
-        sudo apt list -- "*${1}*"-dev 2>/dev/null | awk -F'/' '{print $1}'
+        sudo apt list -- "*${1}*"-dev 2>/dev/null | awk -F'/' '{print ${1}}'
     fi
 }
 
@@ -305,11 +307,11 @@ csearch()
     local cache
 
     if [ -n "${1}" ]; then
-        apt-cache search --names-only "${1}.*" | awk '{print $1}'
+        apt-cache search --names-only "${1}.*" | awk '{print ${1}}'
     else
         read -p 'Enter the string to search: ' cache
         clear
-        apt-cache search --names-only "${cache}.*" | awk '{print $1}'
+        apt-cache search --names-only "${cache}.*" | awk '{print ${1}}'
     fi
 }
 
@@ -733,11 +735,10 @@ im50()
 
 imdl()
 {
-    local cwd tmp_dir user_agent
+    local cwd tmp_dir
     clear
     cwd="${PWD}"
     tmp_dir="$(mktemp -d)"
-    user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
     cd "${tmp_dir}" || exit 1
     curl -A "${user_agent}" -Lso 'imow' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-and-overwrite.sh'
     sudo mv imow "${cwd}"
@@ -809,9 +810,7 @@ cuda_purge()
 
 ffdl()
 {
-    local user_agent
-    clear
-    curl -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36' -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
+    curl -A "${user_agent}" -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
     bash 'ff.sh'
     sudo rm 'ff.sh'
     clear; ls -1AhFv --color --group-directories-first
@@ -1837,7 +1836,7 @@ EOF
 # CHECK FOR ANY PASSED ARGUMENTS TO SET THE APT PACKAGE MANAGER
 #
 
-if [[ "$1" == 'yes' ]]; then
+if [[ "${1}" == 'yes' ]]; then
     answer=1
 else
     answer=2
@@ -1846,12 +1845,12 @@ fi
 case "${answer}" in
     1)
             script_fn
-            sed -i 's/apt /apt /g' "$file"
-            sed -i 's/apt list/apt list/g' "$file"
-            sed -i 's/local apt host/local apt host/g' "$file"
-            sed -i 's/for apt in/for apt in/g' "$file"
-            sed -i 's/apt apt-get aptitude dpkg/apt apt apt-get aptitude dpkg/g' "$file"
-            sed -i 's/apt search/apt search/g' "$file"
+            sed -i 's/apt /apt /g' "${file}"
+            sed -i 's/apt list/apt list/g' "${file}"
+            sed -i 's/local apt host/local apt host/g' "${file}"
+            sed -i 's/for apt in/for apt in/g' "${file}"
+            sed -i 's/apt apt-get aptitude dpkg/apt apt apt-get aptitude dpkg/g' "${file}"
+            sed -i 's/apt search/apt search/g' "${file}"
             ;;
     2)      script_fn;;
     *)
