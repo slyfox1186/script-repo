@@ -6,9 +6,9 @@
 ##
 ##  Purpose: build gnu texinfo
 ##
-##  Updated: 10.01.23
+##  Updated: 11.06.23
 ##
-##  Script version: 1.1
+##  Script version: 1.2
 ##
 ###########################################################################################################
 
@@ -23,9 +23,9 @@ fi
 # SET THE VARIABLES
 #
 
-script_ver=1.1
-archive_dir=texinfo-7.0.3
-archive_url=https://ftp.gnu.org/gnu/texinfo/${archive_dir}.tar.xz
+script_ver=1.2
+archive_dir=texinfo-7.1
+archive_url=https://ftp.gnu.org/gnu/texinfo/"${archive_dir}".tar.xz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/texinfo-build-script
