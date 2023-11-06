@@ -1279,7 +1279,7 @@ nopen()
     exit
 }
 
-tkan()
+tkn()
 {
     local parent_dir
     parent_dir="${PWD}"
