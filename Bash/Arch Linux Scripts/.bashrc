@@ -110,7 +110,7 @@ export PATH
 
 export threads="$(nproc --all)"
 export cpus="$((threads / 2))"
-# export wan="$(dig +short 'myip.opendns.com' @resolver1.opendns.com)"
+export lan="$(ip route get 1.2.3.4 | awk '{print $7}')"
 export wan="$(curl -sS 'https://checkip.amazonaws.com')"
 export tmp="${HOME}"/tmp
 export PS1='\n\[\e[38;5;227m\]\w\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38;5;117m\]\h\[\e[97;1m\]\\$\[\e[0m\]'
