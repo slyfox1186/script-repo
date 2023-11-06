@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 
-###########################################################################################################################
+###############################################################################################################################
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-git
 ##
 ##  Purpose: Build Git
 ##
-##  Updated: 09.05.23
+##  Updated: 11.06.23
 ##
-##  Script version: 1.0
+##  Script version: 1.1
 ##
-###########################################################################################################################
+###############################################################################################################################
 
 clear
 
@@ -23,9 +23,9 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.0
-archive_dir=2.42.0
-archive_url=https://github.com/git/git/archive/refs/tags/v${archive_dir}.tar.gz
+script_ver=1.1
+archive_dir=2.42.1
+archive_url=https://github.com/git/git/archive/refs/tags/v"${archive_dir}".tar.gz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/git-build-script
