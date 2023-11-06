@@ -377,9 +377,10 @@ aria2()
 # PRINT LAN & WAN IP ADDRESSES
 myip()
 {
+    local lan wan
     clear
-    lan="$(hostname -I)"
-    wan="$(dig +short myip.opendns.com @resolver1.opendns.com)"
+    lan="$(ip route get 1.2.3.4 | awk '{print $7}')"
+    wan="$(curl -A "${user_agent}" -fsS 'https://checkip.amazonaws.com')"
     clear
     printf "%s\n%s\n\n" \
         "LAN: ${lan}" \
