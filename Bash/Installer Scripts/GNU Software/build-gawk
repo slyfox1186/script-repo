@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 
-###########################################################################################################
+############################################################################################################################
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-gawk
 ##
 ##  Purpose: build gnu gawk
 ##
-##  Updated: 09.07.23
+##  Updated: 11.06.23
 ##
-##  Script version: 1.1
+##  Script version: 1.2
 ##
-###########################################################################################################
+############################################################################################################################
 
 clear
 
@@ -23,9 +23,9 @@ fi
 # SET THE VARIABLES
 #
 
-script_ver=1.1
-archive_dir=gawk-5.2.2
-archive_url=https://ftp.gnu.org/gnu/gawk/gawk-5.2.2.tar.lz
+script_ver=1.2
+archive_dir=gawk-5.3.0
+archive_url=https://ftp.gnu.org/gnu/gawk/"${archive_dir}".tar.lz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/gawk-build-script
