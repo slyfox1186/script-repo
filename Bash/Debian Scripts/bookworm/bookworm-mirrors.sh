@@ -10,30 +10,9 @@ if [ ! -f "$list.bak" ]; then
 fi
 
 cat > /etc/apt/sources.list <<'EOF'
-##################################################################
-##
-##  DEBIAN BOOKWORM MIRRORS
-##
-##  /etc/apt/sources.list
-##
-##  ALL MIRRORS IN EACH CATEGORY ARE LISTED AS BEING LOCATED IN THE UNITED STATES
-##
-##################################################################
-##
-## DEFAULT
-##
 deb http://security.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware
-##
-## MAIN
-##
 deb http://atl.mirrors.clouvider.net/debian/ bookworm main contrib non-free non-free-firmware
-##
-## UPDATES
-##
 deb http://atl.mirrors.clouvider.net/debian/ bookworm-updates main contrib non-free non-free-firmware
-##
-## BACKPORTS
-##
 deb http://atl.mirrors.clouvider.net/debian/ bookworm-backports main contrib non-free non-free-firmware
 EOF
 
