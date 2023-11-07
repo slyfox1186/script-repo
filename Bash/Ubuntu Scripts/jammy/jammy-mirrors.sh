@@ -10,32 +10,10 @@ if [ ! -f "${list}.bak" ]; then
 fi
 
 cat > "${list}" <<EOF
-###################################################
-##
-##  UBUNTU JAMMY
-##      -  22.04
-##
-##  /etc/apt/sources.list
-##
-##  ALL MIRRORS IN EACH CATAGORY ARE LISTED AS BEING
-##  IN THE USA. IF YOU USE ALL THE LISTS YOU CAN RUN
-##  INTO APT COMMAND ISSUES THAT STATE THERE ARE TOO
-##  MANY FILES. JUST AN FYI FOR YOU.
-##
-######################################################################
-##  CUSTOM APT PKG MIRRORS SOURCED FROM UBUNTU'S DEDICATED WEB PAGE
-##  ON THE official GITHUB REPO ITSELF. The official security updates WERE LEFT ENABLED 
-## FOR REASONS THAT NEED TO BE SO OBVIOUS I JUST CAN'T.
-######################################################################
-##
-##  SECURITY UPDATES
-##
 deb http://security.ubuntu.com/ubuntu/ jammy-security main restricted universe multiverse
-##
-##  THE MIRRORS BELOW THAT WE HAND-PICKED ARE FASTER THAN A GREYHOUND WITH THE RUNS
-##
+deb https://mirror.enzu.com/ubuntu/ jammy-security main restricted universe multiverse
+deb https://mirror.enzu.com/ubuntu/ jammy main restricted universe multiverse
 deb https://mirror.enzu.com/ubuntu/ jammy-updates main restricted universe multiverse
-##
 deb https://mirror.enzu.com/ubuntu/ jammy-backports main restricted universe multiverse
 EOF
 
