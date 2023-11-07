@@ -118,7 +118,7 @@ bash <(curl -fsSL https://build-tools.optimizethis.net)
     - Other  - Debian-based distros may work as well
 
 ```bash
-bash <(curl -fsSL aria2.optimizethis.net)
+bash <(curl -fsSL https://aria2.optimizethis.net)
 ````
 ------
 
