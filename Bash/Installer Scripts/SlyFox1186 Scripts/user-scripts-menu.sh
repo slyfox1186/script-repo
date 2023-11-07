@@ -26,7 +26,7 @@ ColorBlue() { echo -ne "${blue}${1}${clear}"; }
 function box_out_banner()
 {
     input_char=$(echo "${@}" | wc -c)
-    line=$(for i in `seq 0 ${input_char}`; do printf "-"; done)
+    line=$(for i in $(seq 0 "${input_char}"); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
@@ -56,7 +56,7 @@ $(ColorBlue 'Choose the operating system:') "
     read answer
     clear
     case "${answer}" in
-        1)      bash <(curl -fsSL https://bookworm-scripts.optimizethis.net);;
+        1)      bash <(curl -fsSL https://www.bookworm-scripts.optimizethis.net);;
         2)      bash <(curl -fsSL https://jammy-scripts.optimizethis.net);;
         3)      bash <(curl -fsSL https://lunar-scripts.optimizethis.net);;
         4)      bash <(curl -fsSL https://arch-scripts.optimizethis.net);;
