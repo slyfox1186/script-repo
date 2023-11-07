@@ -27,7 +27,7 @@ user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 if [ -d "${cwd}" ]; then
     sudo rm -fr "${cwd}"
 fi
-mkdir -p "${cwd}"/completed "${cwd}"/failed
+mkdir -p "${cwd}"/completed
 
 cd "${cwd}" || exit 1
 
@@ -107,6 +107,9 @@ do
     if echo '1' | bash "${f}"; then
         mv "${f}" 'completed'
     else
+        if [ ! -d "${cwd}"/failed ]; then
+            mkdir -p "${cwd}"/failed
+        fi
         mv "${f}" 'failed'
     fi
 done
