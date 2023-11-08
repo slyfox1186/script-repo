@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2162,SC2317
+# shellcheck disable=SC2086,SC1091,SC2162
 
 #############################################################################
 ##
@@ -208,7 +208,7 @@ if [ ! -f "${pem_out}" ]; then
         '================================================'
     wget -U "${user_agent}" -cqO "${pem_in}" "https://curl.se/ca/${pem_file}"
     if ! sudo mv "${pem_in}" "${pem_out}"; then
-        fail_fn "Failed to move \"${pem_in}\" to \"${pem_out}\":Line ${LINENO}"
+        fail_fn "Failed to move \"${pem_in}\" to \"${pem_out}\". Line: ${LINENO}"
     fi
 fi
 
@@ -217,7 +217,7 @@ fi
 #
 
 if [ ! -f "${cwd}/${archive_name}" ]; then
-    wget -U "${user_agent}" -cqO "${cwd}/${archive_name}" "${archive_url}"
+    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
 fi
 
 #
@@ -244,23 +244,19 @@ fi
 
 ubuntu_os_version() { sudo ln -sf /usr/lib64/libcrypto.so.3 /lib/"${install_dir}"/; }
 
-if [ -f /etc/os-release ]; then
-    source /etc/os-release
-    OS="${NAME}"
-    VER="${VERSION_ID}"
+if [ -f '/etc/os-release' ]; then
+    source '/etc/os-release'
+    OS_TMP=$NAME
+    OS="$(echo "${OS_TMP}" | awk '{print $1}')"
 elif type lsb_release >/dev/null 2>&1; then
     OS="$(lsb_release -si)"
-    VER="$(lsb_release -sr)"
-elif [ -f /etc/lsb-release ]; then
-    source /etc/lsb-release
+elif [ -f '/etc/lsb-release' ]; then
+    source '/etc/lsb-release'
     OS="${DISTRIB_ID}"
-    VER="${DISTRIB_RELEASE}"
-elif [ -f /etc/debian_version ]; then
+elif [ -f '/etc/debian_version' ]; then
     OS=Debian
-    VER="$(cat /etc/debian_version)"
 else
     OS="$(uname -s)"
-    VER="$(uname -r)"
 fi
 
 #
@@ -268,25 +264,51 @@ fi
 #
 
 case "${OS}" in
-    Debia*)         clear;;
-    Ubunt*)         ubuntu_os_version;;
-    *)              fail_fn "Could not detect the OS architecture:Line ${LINENO}";;
+    Debian)         clear;;
+    Ubuntu)         ubuntu_os_version;;
+    *)              fail_fn "Could not detect the OS architecture. Line: ${LINENO}";;
 esac
+
+#
+# SET COMPILER OPTIMIZATION FLAGS
+#
+
+CC=gcc
+CXX=g++
+LDLIBS='-ldl -lpthread -lm -lz'
+CPPFLAGS='-I/usr/local/include -I/usr/include'
+LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu'
+LDFLAGS+=' -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 
 #
 # BUILD PROGRAM FROM SOURCE
 #
 
-clear
 cd "${cwd}/${archive_dir}/build" || exit 1
-../config --prefix="${install_dir}" \
-          --openssldir="${ssl_dir}" \
-          shared                    \
-          zlib                      \
-          threads
+clear
+../Configure --prefix="${install_dir}"  \
+             --openssldir="${ssl_dir}"  \
+             enable-ec_nistp_64_gcc_128 \
+             enable-egd                 \
+             enable-fips                \
+             enable-rc5                 \
+             enable-trace               \
+             enable-zlib                \
+             no-legacy                  \
+             no-tests                   \
+             sctp                       \
+             shared                     \
+             threads                    \
+             CC="${CC}"                 \
+             CXX="${CXX}"               \
+             CPPFLAGS="${CPPFLAGS}"     \
+             LDFLAGS="${LDFLAGS}"
 make "-j$(nproc --all)"
-make "-j$(nproc --all)" test
-sudo make install
+sudo make build_sw
+sudo make install_fips
+
+# REQUIRED FOR FIPS FUNCTIONALITY TO WORK
+sudo openssl fipsinstall
 
 # CREATE A CONFIG SCRIPT FOR THE LD LINKER TO LOAD LETTING IT KNOW WHERE THE OPENSSL LIBS ARE LOCATED
 sudo bash -c 'echo "/usr/local/ssl/lib64" > "/etc/ld.so.conf.d/openssl-3.0.7.conf"'
@@ -295,11 +317,15 @@ sudo bash -c 'echo "/usr/local/ssl/lib64" > "/etc/ld.so.conf.d/openssl-3.0.7.con
 sudo ldconfig -v
 
 # BACKUP KEY BINARY FILES AS IT WOULD BE BAD TO LOSE THE WITHOUT RECOURSE
-sudo mv '/usr/bin/c_rehash' '/usr/bin/c_rehash.bak'
-sudo mv '/usr/bin/openssl' '/usr/bin/openssl.bak'
+if [ -f '/usr/bin/c_rehash' ]; then
+    sudo mv '/usr/bin/c_rehash' '/usr/bin/c_rehash.bak'
+fi
+if [ -f '/usr/bin/openssl' ]; then
+    sudo mv '/usr/bin/openssl' '/usr/bin/openssl.bak'
+fi
 
 # ADD THE NEW OPENSSL BINARY FILE PATH TO /ETC/ENVIRONMENT FILE SO IT LOADS DURING CRITICAL MOMENTS AS THE OS BOOTS OR RESTARTS
-sudo bash -c 'echo "PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/ssl/bin\"" >> "/etc/environment"'
+sudo bash -c 'echo "PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/ssl/bin\"" > "/etc/environment"'
 
 source /etc/environment
 
