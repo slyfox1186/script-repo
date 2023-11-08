@@ -13,7 +13,7 @@
 ##
 ##  Updated: 10.01.23
 ##
-##  Script version: 1.4
+##  Script version: 1.5
 ##
 #############################################################################
 
@@ -28,14 +28,14 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.4
+script_ver=1.5
 archive_dir=openssl-3.1.4
 archive_url="https://www.openssl.org/source/${archive_dir}.tar.gz"
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 parent_dir="${PWD}"
 cwd="${parent_dir}"/openssl-build-script
-install_dir=/usr/local
+install_dir=/usr/local/ssl
 ssl_dir=/usr/local/ssl
 cert_dir="${ssl_dir}/certs"
 pem_file=cacert.pem
@@ -279,42 +279,43 @@ esac
 
 clear
 cd "${cwd}/${archive_dir}/build" || exit 1
-../Configure --prefix="${install_dir}"        \
-             --openssldir="${ssl_dir}"        \
-             --with-rand-seed=os              \
-             --with-zlib-include=/usr/include \
-             --with-zlib-lib=/usr/lib         \
-             enable-egd                       \
-             enable-fips                      \
-             enable-md2                       \
-             enable-rc5                       \
-             enable-trace                     \
-             threads                          \
-             zlib
+../config --prefix="${install_dir}" \
+          --openssldir="${ssl_dir}" \
+          shared                    \
+          zlib                      \
+          threads
 make "-j$(nproc --all)"
-if ! sudo make install_sw; then
-    fail_fn "Failed to execute: sudo make install_sw:Line ${LINENO}"
-    exit 1
-fi
+make "-j$(nproc --all)" test
+sudo make install
 
-if ! sudo make install_fips; then
-    fail_fn "Failed to execute: sudo make install_fips:Line ${LINENO}"
-    exit 1
-fi
-
-# REQUIRED FOR FIPS FUNCTIONALITY TO WORK
-sudo openssl fipsinstall >/dev/null
+# CREATE A CONFIG SCRIPT FOR THE LD LINKER TO LOAD LETTING IT KNOW WHERE THE OPENSSL LIBS ARE LOCATED
+sudo bash -c 'echo "/usr/local/ssl/lib64" > "/etc/ld.so.conf.d/openssl-3.0.7.conf"'
 
 # UPDATE THE LIBRARIES FOR LD
-sudo ldconfig /usr/local/lib64/
+sudo ldconfig -v
+
+# BACKUP KEY BINARY FILES AS IT WOULD BE BAD TO LOSE THE WITHOUT RECOURSE
+sudo mv '/usr/bin/c_rehash' '/usr/bin/c_rehash.bak'
+sudo mv '/usr/bin/openssl' '/usr/bin/openssl.bak'
+
+# ADD THE NEW OPENSSL BINARY FILE PATH TO /ETC/ENVIRONMENT FILE SO IT LOADS DURING CRITICAL MOMENTS AS THE OS BOOTS OR RESTARTS
+sudo bash -c 'echo "PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/ssl/bin\"" >> "/etc/environment"'
+
+source /etc/environment
 
 # ENSURE THE CORRECT PERMISSIONS ARE ATTACHED TO THE CUSTOM PEM FILE THAT WAS ADDED
 if [ -f "${pem_out}" ]; then
     sudo chmod 644 "${pem_out}"
 fi
 
+# DISPLAY THE UPDATED OPENSSL VERSIO INFORMATION
+openssl version -a
+echo
+read -p 'Press enter to continue.'
+
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
 
 # SHOW EXIT MESSAGE
 exit_fn
+
