@@ -3,145 +3,88 @@
 clear
 
 # VERIFY THE SCRIPT HAS ROOT ACCESS BEFORE CONTINUING
-if [ "${EUID}" -gt '0' ]; then
-    echo 'You must run this script as root/sudo'
-    echo
+if [ "${EUID}" -ne '0' ]; then
+    printf "%s\n\n" 'You must run this script WITH root/sudo'
     exit 1
 fi
 
-echo 'Installing log2ram'
-echo '=================='
-echo
-sleep 3
-clear
-
-echo 'Updating APT Packages'
-echo '====================='
-echo
+printf "%s\n%s\n\n"      \
+    'Installing log2ram' \
+    '==========================='
+sleep 2
 
 apt update
 apt -y full-upgrade
 echo
 
-if ! which mail &> /dev/null; then
-    echo 'Install mailutils'
-    echo '================='
-    echo
-    echo 'The required mailutils package is missing and must be installed for log2ram to function'
-    echo
-    read -p 'Press enter to install mailutils or press Ctr+Z to exit the script.'
-    echo
+if ! sudo dpkg -l | grep -o 'mailutils' &>/dev/null; then
     apt -y install mailutils
     echo
 fi
 
-if ! which rsync &> /dev/null; then
-    echo 'Install RSync'
-    echo '============='
-    echo
-    echo 'The required rsync package is missing and must be installed for log2ram to function'
-    echo
-    read -p 'Press enter to install rsync or press Ctr+Z to exit the script.'
-    echo
+if ! sudo dpkg -l | grep -o 'rsync' &>/dev/null; then
     apt -y install rsync
     echo
 fi
 
-echo 'Downloading log2ram from the GitHub Repository'
-echo '=============================================='
-echo
-sleep 3
+printf "%s\n%s\n\n"                                  \
+    'Downloading log2ram from the GitHub Repository' \
+    '=============================================='
+sleep 2
 echo
 
 if [ ! -f 'log2ram.tar.gz' ]; then
     wget --show-progress -cqO 'log2ram.tar.gz' 'https://github.com/azlux/log2ram/archive/master.tar.gz'
 fi
 
-if [ ! -f 'log2ram.tar.gz' ]; then
-    echo 'wget failed to download log2ram.tar.gz'
-    echo
-    exit 1
-else
-    echo 'Extracting log2ram tar.gz file'
-    echo '=============================='
-    echo
-    tar -xf 'log2ram.tar.gz'
-fi
+mkdir 'log2ram'
+tar -zxf 'log2ram.tar.gz' -C 'log2ram' --strip-components 1
+cd 'log2ram' || exit 1
 
-if [ ! -d 'log2ram-master' ]; then
-    clear
-    echo 'The script failed to find the directory: log2ram-master'
-    echo
-    exit 1
-else
-    cd 'log2ram-master' || exit 1
-    echo
-fi
+./install.sh
 
-echo 'Executing install.sh'
-echo '===================='
-echo
-
-if [ -f 'install.sh' ]; then
-    ./install.sh
-    echo
-else
-    echo 'Failed to cd into the log2ram-master directory'
-    echo
-    exit 1
-echo
-
-if service log2ram status &> /dev/null; then
-    echo 'Stopping log2ram service before editing the conf file with sed'
-    echo '=============================================================='
-    echo
+if service log2ram status &>/dev/null; then
     service log2ram stop
 fi
 
-echo
-echo 'Use the sed command to edit /etc/log2ram.conf'
-echo '============================================='
-echo
 
-file='/etc/log2ram.conf'
+printf "\n%s\n%s\n\n"                               \
+    'Use the sed command to edit /etc/log2ram.conf' \
+    '============================================='
 
-if [ -f "${file}" ]; then
-    sed -i 's/SIZE=40M/SIZE=512M/g' "${file}"
-    sed -i 's/LOG_DISK_SIZE=256M/LOG_DISK_SIZE=1024M/g' "${file}"
+cfile='/etc/log2ram.conf'
+
+if [ -f "${cfile}" ]; then
+    sed -i 's/SIZE=40M/SIZE=512M/g' "${cfile}"
+    sed -i 's/LOG_DISK_SIZE=256M/LOG_DISK_SIZE=1024M/g' "${cfile}"
 fi
 
 # FIND AN EDITOR TO OPEN THE CONF FILE
-if which nano &>/dev/null; then
-    nano "${file}"
+if which gedit &>/dev/null; then
+    gedit "${cfile}"
+elif which nano &>/dev/null; then
+    nano "${cfile}"
 elif which vim &>/dev/null; then
-    vim "${file}"
+    vim "${cfile}"
 elif which vi &>/dev/null; then
-    vi "${file}"
-else
-    echo
-    echo 'No editors were found to open the /etc/log2ram.conf file!'
-    echo
-    read -p 'Press enter to continue.'
-    clear
+    vi "${cfile}"
 fi
 
-echo
-echo 'You must reboot to enable log2ram'
-echo '================================='
-echo
-echo 'Do you want to reboot now?'
-echo
-echo '[1] Yes'
-echo '[2] No'
-echo '[3] Exit'
-echo
-read -p 'Your choices are (1 to 3): ' ANSWER
+printf "\n%s\n%s\n\n%s\n\n%s\n%s\n\n"    \
+    'You must reboot to enable log2ram'      \
+    '======================================' \
+    'Do you want to reboot now?'             \
+    '[1] Yes'                                \
+    '[2] No'
+read -p 'Your choices are (1 or 2): ' choice
 clear
 
-if [[ "${ANSWER}" -eq '1' ]]; then
-    sudo reboot
-elif [[ "${ANSWER}" -eq '2' ]]; then
-    echo
-elif [[ "${ANSWER}" -eq '3' ]]; then
-    exit 0
-fi
+case "${choice}" in
+    1)      sudo reboot;;
+    2)      exit 0;;
+    *)
+            clear
+            printf "%s\n\n" 'Bad user input.'
+            exit 1
+            ;;
+esac
