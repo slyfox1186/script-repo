@@ -1643,6 +1643,22 @@ big_files()
     sudo du -Bm "${PWD}" 2>/dev/null | sort -hr | head -"${cnt}"
 }
 
+big_vids()
+{
+    local cnt
+    clear
+
+    if [ -n "${1}" ]; then
+        cnt="${1}"
+    else
+        read -p 'Enter the max number of results: ' cnt
+        clear
+    fi
+
+    printf "%s\n\n" "Listing the ${cnt} largest videos"
+    sudo find "${PWD}" -type f \( -iname '*.mkv' -o -iname '*.mp4' \) -exec du -Sh {} + | grep -Ev '\(x265\)' | sort -hr | head -n"${cnt}"
+}
+
 big_img() { clear; sudo find . -size +10M -type f -name '*.jpg' 2>/dev/null; }
 
 jpgsize()
