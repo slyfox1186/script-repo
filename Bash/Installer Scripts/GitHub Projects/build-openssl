@@ -311,7 +311,7 @@ sudo make install_fips
 sudo openssl fipsinstall
 
 # CREATE A CONFIG SCRIPT FOR THE LD LINKER TO LOAD LETTING IT KNOW WHERE THE OPENSSL LIBS ARE LOCATED
-sudo bash -c 'echo "/usr/local/ssl/lib64" > "/etc/ld.so.conf.d/openssl-3.0.7.conf"'
+sudo bash -c 'echo "/usr/local/ssl/lib64" > "/etc/ld.so.conf.d/openssl-3.1.4.conf"'
 
 # UPDATE THE LIBRARIES FOR LD
 sudo ldconfig -v
