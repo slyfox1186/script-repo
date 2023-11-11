@@ -1379,22 +1379,28 @@ if build 'zlib' "${g_ver}"; then
     build_done 'zlib' "${g_ver}"
 fi
 
-if build 'openssl' '3.1.4'; then
-    download 'https://www.openssl.org/source/openssl-3.1.4.tar.gz'
-    execute ./Configure --prefix="${workspace}"                    \
-                        enable-egd                                 \
-                        enable-fips                                \
-                        enable-md2                                 \
-                        enable-rc5                                 \
-                        enable-trace                               \
-                        threads zlib                               \
-                        --with-rand-seed=os                        \
-                        --with-zlib-include="${workspace}"/include \
-                        --with-zlib-lib="${workspace}"/lib
-    execute make "-j${cpu_threads}"
-    execute sudo make install_sw
-    execute sudo make install_fips
+if [[ "${OS}" == 'Arch' ]]; then
+    if build 'openssl' '3.1.4'; then
+        sudo pacman -Sq --needed --noconfirm openssl
     build_done 'openssl' '3.1.4'
+else
+    if build 'openssl' '3.1.4'; then
+        download 'https://www.openssl.org/source/openssl-3.1.4.tar.gz'
+        execute ./Configure --prefix="${workspace}"                    \
+                            enable-egd                                 \
+                            enable-fips                                \
+                            enable-md2                                 \
+                            enable-rc5                                 \
+                            enable-trace                               \
+                            threads zlib                               \
+                            --with-rand-seed=os                        \
+                            --with-zlib-include="${workspace}"/include \
+                            --with-zlib-lib="${workspace}"/lib
+        execute make "-j${cpu_threads}"
+        execute sudo make install_sw
+        execute sudo make install_fips
+        build_done 'openssl' '3.1.4'
+    fi
 fi
 ffmpeg_libraries+=('--enable-openssl')
 
