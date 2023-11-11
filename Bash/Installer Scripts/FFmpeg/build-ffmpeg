@@ -1382,7 +1382,8 @@ fi
 if [[ "${OS}" == 'Arch' ]]; then
     if build 'openssl' '3.1.4'; then
         sudo pacman -Sq --needed --noconfirm openssl
-    build_done 'openssl' '3.1.4'
+        build_done 'openssl' '3.1.4'
+    fi
 else
     if build 'openssl' '3.1.4'; then
         download 'https://www.openssl.org/source/openssl-3.1.4.tar.gz'
