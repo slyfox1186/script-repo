@@ -7,7 +7,7 @@ clear
 #
 
 random_dir="$(mktemp -d)"
-dl_url='https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ArchLinux-Scripts/user-scripts/arch-scripts.txt'
+dl_url='https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Arch%20Linux%20Scripts/arch-scripts.txt'
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
 shell_array=(bash_aliases.sh bash_functions.sh)
