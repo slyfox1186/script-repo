@@ -37,7 +37,7 @@ fi
 script_ver=2.6
 cwd="${PWD}"/build-tools-script
 install_dir=/usr/local
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 latest=false
 debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
@@ -46,7 +46,7 @@ debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 # PRINT SCRIPT BANNER
 #
 
-printf "%s\n%s\n\n"                      \
+printf "%s\n%s\n"                        \
     "Build-tools script: v${script_ver}" \
     '===================================='
 sleep 2
@@ -83,7 +83,7 @@ export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
 # MAKE SURE WE USE THE CORRECT M4 FOLDER
 #
 
-export ACLOCAL_PATH=/usr/share/aclocal
+export ACLOCAL_PATH='/usr/share/aclocal'
 
 #
 # SET THE PATH VARIABLE
@@ -452,8 +452,7 @@ pkgs_arch_fn()
     fi
 
     # INSTALL PYTHON PIP PACKAGES
-    pip uninstall -q -y setuptools
-    sudo pip install -q --no-input setuptools
+    pip install -q --user --no-input setuptools wheel
 }
 
 pkgs_fn()
