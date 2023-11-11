@@ -1335,7 +1335,7 @@ else
     esac
     if build 'libtool' "${lt_ver}"; then
         download "https://ftp.gnu.org/gnu/libtool/libtool-${lt_ver}.tar.xz"
-        execute ./configure --prefix=${install_dir}        \
+        execute ./configure --prefix=${install_dir}     \
                             --{build,host}="${pc_type}" \
                             --with-pic                  \
                             M4=/usr/local/bin/m4
