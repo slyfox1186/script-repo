@@ -1,5 +1,5 @@
 What you were trying to accomplish
-I am trying to build a standard release version of FFmpeg with as many addon optional libraries as I can fit.
+  - I am trying to build a standard release version of FFmpeg with as many addon optional libraries as I can fit.
 
 The problem you encountered (e.g., "ffmpeg crashed, see the gdb and valgrind output below" or "The output video was all green")
 Here is the tail end of the file `config.log`
