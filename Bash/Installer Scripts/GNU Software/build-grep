@@ -144,9 +144,9 @@ cleanup_fn()
 # EXPORT PKG_CONFIG_PATH
 #
 
-lib_combined="$(sudo find /lib -type d -name pkgconfig | awk '{printf("%s:",$0)}' | sed 's/.$//')"
-lib64_combined="$(sudo find /lib64 -type d -name pkgconfig | awk '{printf("%s:",$0)}' | sed 's/.$//')"
-usr_combined="$(sudo find /usr -type d -name pkgconfig | awk '{printf("%s:",$0)}' | sed 's/.$//')"
+lib_combined="$(sudo find /lib -type d -name pkgconfig 2>/dev/null | awk '{printf("%s:",$0)}' | sed 's/.$//')"
+lib64_combined="$(sudo find /lib64 -type d -name pkgconfig 2>/dev/null | awk '{printf("%s:",$0)}' | sed 's/.$//')"
+usr_combined="$(sudo find /usr -type d -name pkgconfig 2>/dev/null | awk '{printf("%s:",$0)}' | sed 's/.$//')"
 
 if [ -n "${usr_combined}" ] && [ -z "${lib_combined}" ] && [ -z "${lib64_combined}" ]; then
     all_combined="${usr_combined}"
