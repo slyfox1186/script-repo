@@ -1996,6 +1996,7 @@ fi
 
 if build 'cunit' 'git'; then
     download_git 'https://github.com/jacklicn/cunit.git'
+    execute mv configure.in configure.ac
     execute autoreconf -fi
     execute ./configure --prefix="${workspace}" \
                         --disable-shared
