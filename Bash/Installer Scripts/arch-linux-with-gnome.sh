@@ -134,7 +134,7 @@ user-name
 <ENTER THE USER PASSWORD>
 
 # INSTALL REQUIRED SOFTWARE USING PACMAN
-pacman -S pulseaudio pulseaudio-alsa xorg xorg-xinit xorg-server gnome lightdm lightdm-gtk-greeter nvidia virtualbox-guest-utils
+pacman -S pulseaudio pulseaudio-alsa xorg xorg-xinit xorg-server gnome lightdm lightdm-gtk-greeter
 
 # LOGIN TO GNOME DESKTOP
 sudo systemctl start gdm.service
