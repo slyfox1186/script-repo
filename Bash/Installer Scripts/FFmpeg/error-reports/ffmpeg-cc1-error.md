@@ -42,5 +42,4 @@ The exact command line you were using (e.g., "ffmpeg -i input.mov -an -vcodec fo
 
 Sufficient information, including any required input files, to reproduce the bug and confirm a potential fix.
 
-I dont't know what to say. It is a bonafide bug. It should be using `-march=native` and instead the code uses `-march=16`
-```
+I don't know what to say. It is a bonafide bug. It should be using `-march=native` and instead the code uses `-march=16`
