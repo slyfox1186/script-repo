@@ -479,8 +479,8 @@ else
     git_ver_fn 'mesonbuild/meson' '1' 'T'
     if build 'meson' "${g_ver1}"; then
         download "https://codeload.github.com/mesonbuild/meson/tar.gz/refs/tags/${g_ver1}" "meson-${g_ver1}.tar.gz"
-        execute ${python} setup.py build
-        execute sudo ${python} setup.py install --prefix="${install_dir}"
+        execute python3 setup.py build
+        execute sudo python3 setup.py install --prefix="${install_dir}"
         build_done 'meson' "${g_ver1}"
     fi
 fi
