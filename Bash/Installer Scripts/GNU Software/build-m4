@@ -7,7 +7,7 @@
 ##  Purpose: build gnu m4
 ##
 ##  Updated: 08.19.23
-##
+##7
 ##  Script version: 1.1
 ##
 #########################################################################################################################
@@ -202,7 +202,7 @@ cd "${cwd}/${archive_dir}/build" || exit 1
              --with-dmalloc
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
+    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
     exit 1
 fi
 
