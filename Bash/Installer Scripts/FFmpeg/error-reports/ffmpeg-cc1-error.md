@@ -1,10 +1,10 @@
 What you were trying to accomplish
   - I am trying to build a standard release version of FFmpeg with as many addon optional libraries as I can fit.
 
-The problem you encountered (e.g., "ffmpeg crashed, see the gdb and valgrind output below" or "The output video was all green")
-Here is the tail end of the file `config.log`
-Please notice the line `cc1: error: bad value ('16') for '-march=' switch`
-It thinks -march=native is -march=16 .... I DO NOT have it coded that way i checked 100 times.
+The problem you encountered
+  - Below is the tail end of the file `config.log`
+  - Please notice the line `cc1: error: bad value ('16') for '-march=' switch`
+  - It thinks `-march=native` is `-march=16`
 
 ```
 zlib_decoder='yes'
