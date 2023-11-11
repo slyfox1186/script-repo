@@ -336,38 +336,10 @@ fi
 # INSTALL REQUIRED APT/PACMAN PACKAGES
 #
 
-python2_arch_fn()
-{
-    if build 'python2' 'git'; then
-        download_git 'https://aur.archlinux.org/python2.git' 'python2-AUR'
-            gpg --recv-keys 04C367C218ADD4FF
-            makepkg -si --noconfirm
-        build_done 'python2' 'git'
-    fi
-}
-
-python2_setuptools_arch_fn()
-{
-    if build 'python2-setuptools' 'git'; then
-        download_git 'https://aur.archlinux.org/python2-setuptools.git' 'python2-setuptools-AUR'
-            makepkg -si --noconfirm
-        build_done 'python2-setuptools' 'git'
-    fi
-}
-
-jq_arch_fn()
-{
-    if build 'jq' 'git'; then
-        download_git 'https://aur.archlinux.org/jq-git.git' 'jq-AUR'
-            makepkg -si --noconfirm
-        build_done 'jq' 'git'
-    fi
-}
-
 pkgs_arch_fn()
 {
     pkgs=(autoconf autoconf-archive autogen automake xorg-util-macros autogen
-          base-devel ccache cmake curl git gtest libtool m4 ninja openssl
+          base-devel ccache cmake curl git gtest jq libtool m4 ninja openssl
           pkg-config python python-pip python-setuptools qt6-base)
 
     if [ -f /var/lib/pacman/db.lck ]; then
@@ -386,11 +358,6 @@ pkgs_arch_fn()
     if [ -n "${missing_pkgs}" ]; then
          sudo pacman -S --noconfirm ${missing_pkgs}
     fi
-
-    # INSTALL JQ FROM AUR
-    python2_arch_fn
-    python2_setuptools_arch_fn
-    jq_arch_fn
 
     rm_pip_lock="$(sudo find /usr/lib/python3* -type f -name 'EXTERNALLY-MANAGED')"
     if [ -n "${rm_pip_lock}" ]; then
