@@ -2794,10 +2794,12 @@ git_ver_fn '8268' '6'
 g_ver="${g_ver//debian\/2%/}"
 if build 'xvidcore' "${g_ver}"; then
     download "https://salsa.debian.org/multimedia-team/xvidcore/-/archive/debian/2%25${g_ver}/xvidcore-debian-2%25${g_ver}.tar.bz2" "xvidcore-${g_ver}.tar.bz2"
-    cd build/generic || exit 1
-    execute ./configure --prefix=/usr/local
+    cd 'build/generic' || exit 1
+    execute ./bootstrap.sh
+    execute ./configure --prefix=${workspace} \
+                        --{build,host,target}="${pc_type}"
     execute make "-j${cpu_threads}"
-    execute sudo make install
+    execute make install
     build_done 'xvidcore' "${g_ver}"
 fi
 ffmpeg_libraries+=('--enable-libxvid')
