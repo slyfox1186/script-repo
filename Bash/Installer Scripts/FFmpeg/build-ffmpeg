@@ -869,7 +869,13 @@ install_cuda_fn()
         esac
     fi
 
-    cuda_ver="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
+    if [[ "${OS}" == 'Arch' ]]; then
+        cuda_ver_test="$(nvcc --version | sed -n 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')"
+        cuda_ver_test+='.0'
+    else
+        cuda_ver_test="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
+    fi
+    cuda_ver="${cuda_ver_test}"
 
     if [ -z "${cuda_ver}" ]; then
         fail_fn "Unable to locate the file: /usr/local/cuda/version.json. Line: ${LINENO}"
