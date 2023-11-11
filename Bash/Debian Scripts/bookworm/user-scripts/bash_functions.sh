@@ -536,16 +536,12 @@ aria2()
     aria2c --out="${file}" "${link}"
 }
 
-# PRINT LAN & WAN IP ADDRESSES
 myip()
 {
     clear
-    lan="$(ip route get 1.2.3.4 | awk '{print $7}')"
-    wan="$(dig +short 'myip.opendns.com' @resolver1.opendns.com)"
-    clear
-    printf "%s\n%s\n\n" \
-        "LAN: ${lan}" \
-        "WAN: ${wan}"
+    printf "%s\n%s\n\n"                                   \
+        "LAN: $(ip route get 1.2.3.4 | awk '{print $7}')" \
+        "WAN: $(dig +short 'myip.opendns.com' @resolver1.opendns.com)"
 }
 
 # WGET COMMAND
