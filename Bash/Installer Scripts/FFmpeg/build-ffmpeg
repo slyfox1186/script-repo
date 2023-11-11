@@ -1302,6 +1302,7 @@ box_out_banner_global 'Installing Global Tools'
 
 if build 'm4' 'latest'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
+    execute autoreconf -fi
     execute ./configure --prefix=${install_dir}            \
                         --{build,host,target}="${pc_type}" \
                         --disable-nls                      \
