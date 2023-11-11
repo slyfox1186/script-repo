@@ -255,10 +255,9 @@ if build 'tilix-themes' 'git'; then
         execute mkdir -p "${schemes_dir}"
     fi
 
-    cd 'Themes' || exit 1
+    cd Themes || exit 1
     execute cp -f 'argonaut.json' 'dracula.json' "${schemes_dir}"
-    cd ../ || exit 1
-    cd 'Themes-2' || exit 1
+    cd ../Themes-2 || exit 1
     execute cp -f 'neopolitan.json'  'vibrant-ink.json' "${schemes_dir}"
     build_done 'tilix-themes' 'git'
 fi
