@@ -244,15 +244,6 @@ alias cpu_leach='clear; ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%mem | head -n10'
 ## GET LIST OF ALL DIRECTORY SIZES
 alias dir_size='clear; ncdu -q'
 
-# MAINLINE
-alias ml='mainline'
-alias mll='mainline list | sort -h'
-alias mli='mainline install'
-alias mlu='mainline uninstall'
-
-# GRUB CUSTOMIZER
-alias sgc='sudo grub-customizer'
-
 # PIHOLE
 alias pis='clear; pihole status'
 alias pir='clear; pihole restartdns'
