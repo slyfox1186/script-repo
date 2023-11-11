@@ -1019,15 +1019,22 @@ ffmpeg_install_test()
 
 install_libjxl_fn()
 {
+    local i
+
     cd "${packages}"/deb-files || exit 1
 
     # INSTALL THE MAIN DEBIAN FILE FIRST BEFORE INSTALLING THE OTHERS
-    if sudo dpkg -i 'libjxl_0.8.2_amd64.deb'; then
+    printf "%s\n" '$ sudo dpkg -i libjxl_0.8.2_amd64.deb'
+    if sudo dpkg -i 'libjxl_0.8.2_amd64.deb' &>/dev/null; then
         sudo rm 'libjxl_0.8.2_amd64.deb' &>/dev/null
     fi
 
     # INSTALL THE REMAINING DEBIAN FILES
-    sudo dpkg -i ./*.deb
+    for i in *.deb
+    do
+        printf "%s\n" "\$ sudo dpkg -i ${i}"
+        sudo dpkg -i ./"${i}" &>/dev/null
+    done
 }
 
 dl_libjxl_fn()
