@@ -33,7 +33,7 @@ gcc -I/home/jman/tmp/ffmpeg-build-script/workspace/include -I/usr/local/include 
 cc1: error: bad value ('16') for '-march=' switch
 cc1: note: valid arguments to '-march=' switch are: nocona core2 nehalem corei7 westmere sandybridge corei7-avx ivybridge core-avx-i haswell core-avx2 broadwell skylake skylake-avx512 cannonlake icelake-client rocketlake icelake-server cascadelake tigerlake cooperlake sapphirerapids alderlake bonnell atom silvermont slm goldmont goldmont-plus tremont knl knm x86-64 x86-64-v2 x86-64-v3 x86-64-v4 eden-x2 nano nano-1000 nano-2000 nano-3000 nano-x2 eden-x4 nano-x4 k8 k8-sse3 opteron opteron-sse3 athlon64 athlon64-sse3 athlon-fx amdfam10 barcelona bdver1 bdver2 bdver3 bdver4 znver1 znver2 znver3 btver1 btver2 native
 C compiler test failed.
-
+```
 
 The exact command line you were using (e.g., "ffmpeg -i input.mov -an -vcodec foo output.avi")
 ```
