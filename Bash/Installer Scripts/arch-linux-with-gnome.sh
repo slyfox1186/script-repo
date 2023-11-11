@@ -46,15 +46,6 @@ mkswap /dev/nvmeXXp2
 # FORMAT PARTITION 3
 mkfs.ext4 /dev/nvmeXXp3
 
-########################################
-## GET THE UUID OF THE SWAP PARTITION ##
-########################################
-
-# *ONLY* IF NEEDED TRY THIS COMMAND
-# ls -lha /dev/disk/by-uuid
-
-pacman -S core nano
-
 #################
 ## MOUNT DISKS ##
 #################
