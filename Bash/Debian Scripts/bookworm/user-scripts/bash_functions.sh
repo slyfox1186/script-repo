@@ -1293,7 +1293,7 @@ rmf()
         files="${*}"
     fi
 
-    sudo rm "${file}s"
+    sudo rm "${files}"
     clear
     ls -1A --color --group-directories-first
 }
