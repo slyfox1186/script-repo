@@ -2,7 +2,7 @@
 
 clear
 
-localectl set-keymap --no-convert en_US.UTF-8
+localectl set-keymap --no-convert us
 
 cat /sys/firmware/efi/fw_platform_size
 
