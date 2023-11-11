@@ -540,7 +540,7 @@ aria2()
 myip()
 {
     clear
-    lan="$(hostname -I)"
+    lan="$(ip route get 1.2.3.4 | awk '{print $7}')"
     wan="$(dig +short myip.opendns.com @resolver1.opendns.com)"
     clear
     printf "%s\n%s\n\n" \
