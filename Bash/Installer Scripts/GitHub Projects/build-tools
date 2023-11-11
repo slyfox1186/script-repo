@@ -449,7 +449,7 @@ esac
 git_ver_fn '541' '2' 'T'
 if build 'cmake' "${g_ver}"; then
     download "https://gitlab.kitware.com/cmake/cmake/-/archive/v${g_ver}/cmake-v${g_ver}.tar.bz2" "cmake-${g_ver}.tar.bz2"
-    execute ./bootstrap --prefix=/usr/local         \
+    execute ./bootstrap --prefix="${install_dir}"   \
                         --enable-ccache             \
                         --parallel="$(nproc --all)" \
                         --qt-gui
@@ -473,25 +473,36 @@ if build 'ninja' "${g_ver1}"; then
     build_done 'ninja' "${g_ver1}"
 fi
 
-git_ver_fn 'mesonbuild/meson' '1' 'T'
-if build 'meson' "${g_ver1}"; then
-    download "https://codeload.github.com/mesonbuild/meson/tar.gz/refs/tags/${g_ver1}" "meson-${g_ver1}.tar.gz"
-    execute python3 setup.py build
-    execute sudo python3 setup.py install --prefix="${install_dir}"
-    build_done 'meson' "${g_ver1}"
+if [[ "${OS}" == 'Arch' ]]; then
+    sudo pacman -Sq --needed --noconfirm meson 2>&1
+else
+    git_ver_fn 'mesonbuild/meson' '1' 'T'
+    if build 'meson' "${g_ver1}"; then
+        download "https://codeload.github.com/mesonbuild/meson/tar.gz/refs/tags/${g_ver1}" "meson-${g_ver1}.tar.gz"
+        execute ${python} setup.py build
+        execute sudo ${python} setup.py install --prefix="${install_dir}"
+        build_done 'meson' "${g_ver1}"
+    fi
 fi
 
-if build 'golang' '1.21.3'; then
-    download 'https://go.dev/dl/go1.21.3.linux-amd64.tar.gz' 'golang-1.21.3.tar.gz'
-    execute sudo cp -f bin/go bin/gofmt "${install_dir}"/bin
-    if [ -d  "${install_dir}"/go ]; then
-        sudo rm -fr "${install_dir}"/go
+if [[ "${OS}" == 'Arch' ]]; then
+    sudo pacman -Sq --needed --noconfirm go 2>&1
+    mkdir -p  "${HOME}"/go
+    export GOPATH="${HOME}"/go
+    source "${HOME}"/.bash_profile
+else
+    if build 'golang' '1.21.3'; then
+        download 'https://go.dev/dl/go1.21.3.linux-amd64.tar.gz' 'golang-1.21.3.tar.gz'
+        execute sudo cp -f bin/go bin/gofmt "${install_dir}"/bin
+        if [ -d  "${install_dir}"/go ]; then
+            sudo rm -fr "${install_dir}"/go
+        fi
+        sudo mkdir -p "${install_dir}"/go
+        GOROOT="${install_dir}"/go
+        PATH="${PATH}:${GOROOT}/bin"
+        export GOROOT PATH
+        build_done 'golang' '1.21.3'
     fi
-    sudo mkdir -p "${install_dir}"/go
-    GOROOT="${install_dir}"/go
-    PATH="${PATH}:${GOROOT}/bin"
-    export GOROOT PATH
-    build_done 'golang' '1.21.3'
 fi
 
 # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES
