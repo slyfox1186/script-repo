@@ -9333,7 +9333,7 @@ PATHS_LIST='
     install_name_dir
 '
 PKG_CONFIG_PATH='/home/jman/tmp/ffmpeg-build-script/workspace/usr/lib/pkgconfig:/home/jman/tmp/ffmpeg-build-script/workspace/lib64/pkgconfig:/home/jman/tmp/ffmpeg-build-script/workspace/lib/pkgconfig:/home/jman/tmp/ffmpeg-build-script/workspace/lib/x86_64-linux-gnu/pkgconfig:/home/jman/tmp/ffmpeg-build-script/workspace/share/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/share/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/open-coarrays/openmpi/pkgconfig:/usr/lib/x86_64-linux-gnu/openmpi/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig:/lib64/pkgconfig:/lib/pkgconfig:/lib/x86_64-linux-gnu/pkgconfig'
-PPID='179516'
+PPID='183943'
 PROGRAM_LIST='
     ffplay
     ffprobe
@@ -15581,13 +15581,13 @@ zoompan_filter_deps='swscale'
 zscale_filter='yes'
 zscale_filter_deps='libzimg const_nan'
 mktemp -u XXXXXX
-j0c06s
+se8ev9
 test_ld cc
 test_cc
-BEGIN /tmp/ffconf.tjr8XurC/test.c
+BEGIN /tmp/ffconf.3UfNLB5H/test.c
     1	int main(void){ return 0; }
-END /tmp/ffconf.tjr8XurC/test.c
-gcc -I/home/jman/tmp/ffmpeg-build-script/workspace/include -I/usr/local/include -I/usr/include -I/usr/lib/jvm/java-17-openjdk-amd64/include -g -O3 -march=native -I/home/jman/tmp/ffmpeg-build-script/workspace/include -I/home/jman/tmp/ffmpeg-build-script/workspace/include/jxl -I/usr/local/include -I/usr/include -I/home/jman/tmp/ffmpeg-build-script/workspace/include/CL -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2 -I/usr/lib/x86_64-linux-gnu/pulseaudio -I/usr/include/openjpeg-2.5 -I/usr/include/vk_video -I/usr/include/vulkan -I/home/jman/tmp/ffmpeg-build-script/workspace/include/avisynth -I/usr/include/flite -I/home/jman/tmp/ffmpeg-build-script/workspace/include/lilv-0 -I/usr/local/cuda/include -g -O3 -march=native -I/home/jman/tmp/ffmpeg-build-script/workspace/include -I/home/jman/tmp/ffmpeg-build-script/workspace/include/jxl -I/usr/local/include -I/usr/include -I/home/jman/tmp/ffmpeg-build-script/workspace/include/CL -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2 -I/usr/lib/x86_64-linux-gnu/pulseaudio -I/usr/include/openjpeg-2.5 -I/usr/include/vk_video -I/usr/include/vulkan -I/home/jman/tmp/ffmpeg-build-script/workspace/include/avisynth -I/usr/include/flite -I/home/jman/tmp/ffmpeg-build-script/workspace/include/lilv-0 -I/usr/local/cuda/include -march=16 -c -o /tmp/ffconf.tjr8XurC/test.o /tmp/ffconf.tjr8XurC/test.c
+END /tmp/ffconf.3UfNLB5H/test.c
+gcc -I/home/jman/tmp/ffmpeg-build-script/workspace/include -I/usr/local/include -I/usr/include -I/usr/lib/jvm/java-17-openjdk-amd64/include -g -O3 -march=native -I/home/jman/tmp/ffmpeg-build-script/workspace/include -I/home/jman/tmp/ffmpeg-build-script/workspace/include/jxl -I/usr/local/include -I/usr/include -I/home/jman/tmp/ffmpeg-build-script/workspace/include/CL -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2 -I/usr/lib/x86_64-linux-gnu/pulseaudio -I/usr/include/openjpeg-2.5 -I/usr/include/vk_video -I/usr/include/vulkan -I/home/jman/tmp/ffmpeg-build-script/workspace/include/avisynth -I/usr/include/flite -I/home/jman/tmp/ffmpeg-build-script/workspace/include/lilv-0 -I/usr/local/cuda/include -g -O3 -march=native -I/home/jman/tmp/ffmpeg-build-script/workspace/include -I/home/jman/tmp/ffmpeg-build-script/workspace/include/jxl -I/usr/local/include -I/usr/include -I/home/jman/tmp/ffmpeg-build-script/workspace/include/CL -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2 -I/usr/lib/x86_64-linux-gnu/pulseaudio -I/usr/include/openjpeg-2.5 -I/usr/include/vk_video -I/usr/include/vulkan -I/home/jman/tmp/ffmpeg-build-script/workspace/include/avisynth -I/usr/include/flite -I/home/jman/tmp/ffmpeg-build-script/workspace/include/lilv-0 -I/usr/local/cuda/include -march=16 -c -o /tmp/ffconf.3UfNLB5H/test.o /tmp/ffconf.3UfNLB5H/test.c
 cc1: error: bad value ('16') for '-march=' switch
 cc1: note: valid arguments to '-march=' switch are: nocona core2 nehalem corei7 westmere sandybridge corei7-avx ivybridge core-avx-i haswell core-avx2 broadwell skylake skylake-avx512 cannonlake icelake-client rocketlake icelake-server cascadelake tigerlake cooperlake sapphirerapids alderlake bonnell atom silvermont slm goldmont goldmont-plus tremont knl knm x86-64 x86-64-v2 x86-64-v3 x86-64-v4 eden-x2 nano nano-1000 nano-2000 nano-3000 nano-x2 eden-x4 nano-x4 k8 k8-sse3 opteron opteron-sse3 athlon64 athlon64-sse3 athlon-fx amdfam10 barcelona bdver1 bdver2 bdver3 bdver4 znver1 znver2 znver3 btver1 btver2 native
 C compiler test failed.
