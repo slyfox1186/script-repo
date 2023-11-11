@@ -199,7 +199,7 @@ make configure
 ./configure --prefix="${install_dir}"
 make "-j$(nproc --all)" all doc
 if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install install-doc install-html:Line ${LINENO}"
+    fail_fn "Failed to execute: sudo make install install-doc install-html. Line: ${LINENO}"
     exit 1
 fi
 
