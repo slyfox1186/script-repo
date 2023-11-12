@@ -13,21 +13,22 @@
 ##  Method: The script will search GitHub for the latest released version and upon execution will import the
 ##          information into the script.
 ##
-##  Added: Debian OS support for versions, 10 | 11 | 12
+##  Added: Debian OS support for versions, 11 & 12
 ##  Added: A browser user-agent string to the curl command
 ##  Added: A CPPFLAGS variable to ImageMagick's configure script
 ##  Added: A case command to determine the required libtool version based on the active OS
 ##  Added: Autotrace for Ubuntu (18/20/22).04 and Debian 10/11
 ##  Added: LCMS Support
+##  Added: Deja-Vu Fonts
 ##
 ##  Fixed: Incorrect pkg-config location when building ImageMagick
 ##  Fixed: libjxl dependency
 ##
 ##  Changed: Some support libraries prefix paths to avoid installing into the system
 ##
-##  Updated: 11.11.23
+##  Updated: 11.12.23
 ##
-##  Script Version: 3.7
+##  Script Version: 3.8
 ##
 #############################################################################################################
 
@@ -42,7 +43,7 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-script_ver=3.7
+script_ver=3.8
 progname="${0}"
 cwd="${PWD}"/magick-build-script
 packages="${cwd}"/packages
@@ -366,14 +367,16 @@ git_ver_fn()
 pkgs_fn()
 {
     local missing_pkg missing_pkgs pkg pkgs
+    sudo add-apt-repository ppa:fontforge/fontforge &>/dev/null
+    sudo apt update
 
     pkgs=("${1}" alien asciidoc autoconf autoconf-archive automake autopoint binutils bison build-essential
-          cmake curl dbus-x11 flex gettext gimp-data git gperf imagemagick jq libc6 libc6-dev libfreetype-dev
-          libgc-dev libgimp2.0-dev libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev libheif-dev libjxl-gimp-plugin
-          libltdl-dev libnotify-bin libnuma-dev libomp-dev libpango1.0-dev libpaper-dev libpng-dev libpstoedit-dev
-          libraw-dev librsvg2-dev librust-bzip2-dev libsdl2-dev libstdc++-12-dev libtcmalloc-minimal4 libticonv-dev
-          libtool libtool-bin libxml2-dev libzip-dev m4 meson nasm ninja-build opencl-c-headers opencl-headers php
-          php-cli pstoedit xmlto yasm zlib1g-dev)
+          cmake curl dbus-x11 flex fontforge gettext gimp-data git gperf imagemagick jq libc6 libc6-dev libfont-ttf-perl
+          libfreetype-dev libgc-dev libgimp2.0-dev libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev libheif-dev
+          libjxl-gimp-plugin libltdl-dev libnotify-bin libnuma-dev libomp-dev libpango1.0-dev libpaper-dev libpng-dev
+          libpstoedit-dev libraw-dev librsvg2-dev librust-bzip2-dev libsdl2-dev libstdc++-12-dev libtcmalloc-minimal4
+          libticonv-dev libtool libtool-bin libxml2-dev libzip-dev m4 meson nasm ninja-build opencl-c-headers opencl-headers
+          php php-cli pstoedit software-properties-common xmlto yasm zlib1g-dev)
 
     for pkg in ${pkgs[@]}
     do
@@ -933,6 +936,25 @@ if build 'lcms' 'git'; then
     build_done 'lcms' 'git'
 fi
 
+if build 'dejavu-fonts' 'git'; then
+    download_git 'https://github.com/dejavu-fonts/dejavu-fonts.git'
+    execute wget -U "${user_agent}" -P 'resources' 'http://www.unicode.org/Public/UNIDATA/UnicodeData.txt' 'http://www.unicode.org/Public/UNIDATA/Blocks.txt'
+    if [ ! -d "${packages}"/fontconfig ]; then
+        mkdir -p "${packages}"/fontconfig
+    fi
+    execute git clone 'git://anongit.freedesktop.org/git/fontconfig' "${packages}"/fontconfig
+    execute ln -sf "${packages}"/fontconfig/fc-lang resources/fc-lang
+    execute make "-j${cpu_threads}"
+    cd "${packages}"/fontconfig || exit 1
+    execute ./autogen.sh --sysconfdir=/etc --prefix=/usr --mandir=/usr/share/man
+    execute make "-j${cpu_threads}"
+    execute sudo make install
+    execute ./configure
+    execute make "-j${cpu_threads}"
+    execute sudo make install
+    build_done 'dejavu-fonts' 'git'
+fi
+
 #
 # BEGIN BUILDING IMAGEMAGICK
 #
@@ -969,6 +991,7 @@ if build 'ImageMagick' 'git'; then
                  --enable-hugepages                                           \
                  --enable-legacy-support                                      \
                  --enable-opencl                                              \
+                 --with-dejavu-font-dir=/usr/share/fonts/truetype/dejavu      \
                  --with-dmalloc                                               \
                  --with-fontpath=/usr/share/fonts                             \
                  --with-fpx                                                   \
