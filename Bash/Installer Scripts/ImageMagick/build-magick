@@ -636,7 +636,8 @@ if build 'm4' 'latest'; then
     execute autoreconf -fi
     execute ./configure --prefix="${workspace}" \
                         --disable-nls           \
-                        --enable-c++
+                        --enable-c++            \
+                        --enable-threads=posix
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'm4' 'latest'
