@@ -1306,7 +1306,8 @@ if build 'm4' 'latest'; then
     execute ./configure --prefix=${install_dir}            \
                         --{build,host,target}="${pc_type}" \
                         --disable-nls                      \
-                        --enable-c++
+                        --enable-c++                       \
+                        --enable-threads=posix
     execute make "-j${cpu_threads}"
     execute sudo make install
     build_done 'm4' 'latest'
