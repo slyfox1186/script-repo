@@ -2907,7 +2907,7 @@ sudo cp -f "${packages}"/dxva2api.h /usr/include
 curl -A "${user_agent}" -Lso "${packages}"/objbase.h 'https://raw.githubusercontent.com/wine-mirror/wine/master/include/objbase.h'
 sudo cp -f "${packages}"/objbase.h /usr/local
 
-if build 'ffmpeg' 'git'; then
+if build 'ffmpeg' "${ffmpeg_sver}"; then
     download ${ff_cmd}
     if [[ "${OS}" == 'Arch' ]]; then
         patch_ffmpeg_fn
