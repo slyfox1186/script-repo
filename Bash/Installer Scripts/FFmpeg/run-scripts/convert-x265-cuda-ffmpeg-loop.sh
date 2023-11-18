@@ -11,126 +11,42 @@ if [ -d "${HOME}/.local/bin" ]; then
     export PATH="${PATH}:${HOME}/.local/bin"
 fi
 
-#
-# CREATE THE OUTPUT DIRECTORIES
-#
+if [ -f 'list.txt' ]; then
+    sudo rm 'list.txt'
+fi
 
-mkdir 'completed' 'original' 2>/dev/null
+cat > 'list.txt' <<'EOF'
+/path/to/video/video.mp4
+/path/to/video/video.mkv
+EOF
 
-#
-# INSTALLL THE REQUIRED APT PACKAGES
-#
-
-installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
-
-pkgs=(bc ffmpegthumbnailer ffmpegthumbs libffmpegthumbnailer4v5 sox libsox-dev trash-cli)
-
-for pkg in ${pkgs[@]}
+while read -u 9 video
 do
-    if ! installed "${pkg}"; then
-        missing_pkgs+=" ${pkg}"
-    fi
-done
-
-if [ -n "${missing_pkgs}" ]; then
-    echo '$ Installing missing packages'
-    echo
-    for i in "${missing_pkgs[@]}"
-    do
-        if ! sudo apt -y install ${i}; then
-            fail_fn 'Failed to run APT package manager.'
-        fi
-    done
-fi
-
-#
-# INSTALL THE REQUIRED PIP PACKAGES
-#
-
-pip_dir="$(mktemp -d)"
-echo 'ffpb' > "${pip_dir}"/requirements.txt
-echo 'google_speech' >> "${pip_dir}"/requirements.txt
-if ! pip install -r "${pip_dir}"/requirements.txt &>/dev/null; then
-    printf "%s\n\n" 'Failed to install the pip packages.'
-    exit 1
-fi
-sudo rm -fr "${pip_dir}"
-unset pip_dir
-
-#
-# DELETE ANY FILES FROM PREVIOUS RUNS
-#
-
-del_this="$(du -ah --max-depth=1 | grep -Eo '[\/].*\(x265\)\.m(p4|kv)$' | grep -Eo '[A-Za-z0-9].*\(x265\)\.m(p4|kv)$')"
-
-if [ -n "${del_this}" ]; then
-    printf "%s\n\n%s\n%s\n%s\n\n" \
-        "Do you want to delete this video before continuing?: ${del_this}" \
-        '[1] Yes' \
-        '[2] No' \
-        '[3] Exit'
-    read -p 'Your choices are (1 to 3): ' choice
-
-    case "${choice}" in
-        1)      rm "${del_this}"; clear;;
-        2)      clear;;
-        3)      exit 0;;
-        *)
-                clear
-                printf "%s\n\n" 'Bad user input.'
-                exit 1
-                ;;
-    esac
-fi
-
-# MAKE SURE THERE ARE VIDEOS AVAILABLE TO CONVERT
-vid_test="$(find ./ -maxdepth 1 -type f \( -iname \*.mp4 -o -iname \*.mkv \) | xargs -0n1 | head -n1)"
-if [ -z "${vid_test}" ]; then
-    google_speech 'No videos were located. Please add some.' 2>/dev/null
-    clear
-    exit 0
-fi
-unset vid_test
-
-# CREATE A TEMPORARY OUTPUT FOLDER IN THE /TMP DIRECTORY
-ff_dir="$(mktemp -d)"
-
-for vid in *.{mp4,mkv}
-do
-    vid_test="$(find ./ -maxdepth 1 -type f \( -iname \*.mp4 -o -iname \*.mkv \) | xargs -0n1 | head -n1)"
-    if [ -z "${vid_test}" ]; then
-        exit 0
-    fi
-
     # STORES THE CURRENT VIDEO WIDTH, ASPECT RATIO, PROFILE, BIT RATE, AND TOTAL DURATION IN VARIABLES FOR USE LATER IN THE FFMPEG COMMAND LINE
-    aspect_ratio="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 -pretty "${vid}" 2>/dev/null)"
-    file_length="$(ffprobe -hide_banner -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${vid}" 2>/dev/null)"
-    max_rate="$(ffprobe -hide_banner -show_entries format=bit_rate -of default=nk=1:nw=1 -pretty "${vid}" 2>/dev/null)"
-    file_height="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 -pretty "${vid}" 2>/dev/null)"
-    file_width="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 -pretty "${vid}" 2>/dev/null)"
+    aratio="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 -pretty "${video}" 2>/dev/null)"
+    length="$(ffprobe -hide_banner -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${video}" 2>/dev/null)"
+    maxrate="$(ffprobe -hide_banner -show_entries format=bit_rate -of default=nk=1:nw=1 -pretty "${video}" 2>/dev/null)"
+    height="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 -pretty "${video}" 2>/dev/null)"
+    width="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 -pretty "${video}" 2>/dev/null)"
 
     # MODIFY VARS TO GET FILE INPUT AND OUTPUT NAMES
-    file_in="${vid}"
-    fext="${file_in#*.}"
-    file_out="${ff_dir}/${file_in%.*} (x265).${fext}"
-
-    # TRIM THE STRINGS
-    trim="${max_rate::-11}"
+    file_in="${video}"
+    fext="${video#*.}"
+    file_out="${video%.*} (x265).${fext}"
 
     # GETS THE INPUT VIDEOS MAX DATARATE AND APPLIES LOGIC TO DETERMINE bitrate, bufsize, AND MAXRATE VARIABLES
-    trim="$(bc <<< "scale=2 ; ${trim} * 1000")"
-    br="$(bc <<< "scale=2 ; ${trim} / 2")"
-    bitrate="${br::-3}"
-    maxrate="$(( bitrate * 2 ))"
-    bs="$(bc <<< "scale=2 ; ${br} * 2")"
-    bufsize="${bs::-3}"
-    length="$(( ${file_length::-7} / 60 ))"
+    trim="$(bc <<< "scale=2 ; ${maxrate::-11} * 1000")"
+    btr="$(bc <<< "scale=2 ; ${trim} / 2")"
+    bitrate="${btr::-3}"
+    maxrate="$(( bitrate * 3 ))"
+    bfs="$(bc <<< "scale=2 ; ${btr} * 2")"
+    bufsize="${bfs::-3}"
+    length="$(( ${length::-7} / 60 ))"
 
     #
     # PRINT THE VIDEO STATS IN THE TERMINAL
     #
 
-    clear
     cat <<EOF
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
@@ -139,8 +55,8 @@ Working Dir:     ${PWD}
 Input File:      ${file_in}
 Output File:     ${file_out}
 
-Aspect Ratio:    ${aspect_ratio}
-Dimensions:      ${file_width}x${file_height}
+Aspect Ratio:    ${aratio}
+Dimensions:      ${width}x${height}
 
 Maxrate:         ${maxrate}k
 Bufsize:         ${bufsize}k
@@ -156,20 +72,21 @@ EOF
     #
 
     echo
-    if ffmpeg \
+    if ffpb \
             -y \
             -threads 0 \
             -hide_banner \
             -hwaccel_output_format cuda \
             -i "${file_in}" \
-            -pix_fmt p010le \
-            -movflags frag_keyframe+empty_moov \
             -c:v hevc_nvenc \
             -preset:v medium \
-            -profile:v main \
+            -profile:v main10 \
+            -pix_fmt:v p010le \
             -rc:v vbr \
+            -tune:v hq \
             -b:v "${bitrate}"k \
             -bufsize:v "${bufsize}"k \
+            -maxrate:v "${maxrate}"k \
             -bf:v 4 \
             -b_ref_mode:v middle \
             -qmin:v 0 \
@@ -184,18 +101,12 @@ EOF
             "${file_out}"; then
         google_speech 'Video conversion completed.' 2>/dev/null
         if [ -f "${file_out}" ]; then
-            mv "${file_in}" "${PWD}"/original
-            mv "${file_out}" "${PWD}"/completed
+            trash-put "${file_in}"
         fi
     else
         google_speech 'Video conversion failed.' 2>/dev/null
         echo
-        read -p 'Press enter to exit.'
-        sudo rm -fr "${ff_dir}"
         exit 1
     fi
     clear
-done
-
-# REMOVE THE TEMPORARY DIRECTORY
-sudo rm -fr "${ff_dir}"
+done 9< 'list.txt'
