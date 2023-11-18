@@ -7,11 +7,11 @@
 ##
 ##  Script version
 ##
-##    - 3.1.4
+##    - 3.1.5
 ##
 ##  Updated on
 ##
-##    - 11.11.23
+##    - 11.17.23
 ##
 ##  Purpose:
 ##
@@ -36,7 +36,7 @@
 ##
 ##  GeForce CUDA SDK Toolkit notes
 ##
-##    - Updated to version 12.3.0
+##    - Updated to version 12.3.1
 ##    - Reverted the nv-codec-headers to version n12.0.16.1 due to a 20% decrease in fps using x265 with nvenc cuda
 ##    - If the cuda libraries are not installed (for Geforce graphics cards only) the user will be prompted
 ##      by the script to install them so that hardware acceleration is enabled during the build
@@ -87,11 +87,11 @@
 #
 
 script_name="${0}"
-script_ver=3.1.4
+script_ver=3.1.5
 ffmpeg_sver=n5.1.4
 ffmpeg_archive=ffmpeg-"${ffmpeg_sver}"
 ffmpeg_url=https://github.com/FFmpeg/FFmpeg/archive/refs/tags/"${ffmpeg_sver}".tar.gz
-cuda_latest_ver=12.3.0
+cuda_latest_ver=12.3.1
 cuda_url="https://developer.download.nvidia.com/compute/cuda/${cuda_latest_ver}"
 cuda_pin_url='https://developer.download.nvidia.com/compute/cuda/repos'
 cwd="${PWD}"/ffmpeg-build-script
@@ -750,48 +750,48 @@ cuda_download_fn()
 
     case "${choice}" in
         1)
-            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-buster-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian10-12-3-local_12.3.0-545.23.06-1_amd64.deb"
+            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-buster-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian10-12-3-local_12.3.1-545.23.08-1_amd64.deb"
             sudo dpkg -i "${packages}/nvidia-cuda/cuda-buster-${cuda_latest_ver}.deb"
             sudo cp -f /var/cuda-repo-debian10-12-3-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             sudo add-apt-repository -y contrib
             ;;
         2)
-            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-bullseye-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian11-12-3-local_12.3.0-545.23.06-1_amd64.deb"
+            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-bullseye-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian11-12-3-local_12.3.1-545.23.08-1_amd64.deb"
             sudo dpkg -i "${packages}/nvidia-cuda/cuda-bullseye-${cuda_latest_ver}.deb"
             sudo cp -f /var/cuda-repo-debian11-12-3-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             sudo add-apt-repository -y contrib
             ;;
         3)
-            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-bookworm-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian12-12-3-local_12.3.0-545.23.06-1_amd64.deb"
+            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-bookworm-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian12-12-3-local_12.3.1-545.23.08-1_amd64.deb"
             sudo dpkg -i "${packages}/nvidia-cuda/cuda-bookworm-${cuda_latest_ver}.deb"
-            sudo cp /var/cuda-repo-debian12-12-3-local/cuda-*-keyring.gpg /usr/share/keyrings/
+            sudo cp -f /var/cuda-repo-debian12-12-3-local/cuda-*-keyring.gpg /usr/share/keyrings/
             sudo add-apt-repository -y contrib
             ;;
         4)
             wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-ubuntu2004.pin" "${cuda_pin_url}/ubuntu2004/x86_64/cuda-ubuntu2004.pin"
             sudo mv "${packages}/nvidia-cuda/cuda-ubuntu2004.pin" '/etc/apt/preferences.d/cuda-repository-pin-600'
-            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-focal-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-ubuntu2004-12-3-local_12.3.0-545.23.06-1_amd64.deb"
+            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-focal-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-ubuntu2004-12-3-local_12.3.1-545.23.08-1_amd64.deb"
             sudo dpkg -i "${packages}/nvidia-cuda/cuda-focal-${cuda_latest_ver}.deb"
-            sudo cp -f /var/cuda-repo-ubuntu2004-12-3-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
+            sudo cp -f /var/cuda-repo-ubuntu2004-12-3-local/cuda-*-keyring.gpg '    /usr/share/keyrings/'
             ;;
         5)
             wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-ubuntu2204.pin" "${cuda_pin_url}/ubuntu2204/x86_64/cuda-ubuntu2204.pin"
             sudo mv "${packages}/nvidia-cuda/cuda-ubuntu2204.pin" '/etc/apt/preferences.d/cuda-repository-pin-600'
-            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-jammy-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-ubuntu2204-12-3-local_12.3.0-545.23.06-1_amd64.deb"
+            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-jammy-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-ubuntu2204-12-3-local_12.3.1-545.23.08-1_amd64.deb"
             sudo dpkg -i "${packages}/nvidia-cuda/cuda-jammy-${cuda_latest_ver}.deb"
-            sudo cp /var/cuda-repo-ubuntu2204-12-3-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
+            sudo cp -f /var/cuda-repo-ubuntu2204-12-3-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             ;;
         6)
             wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-wsl-ubuntu.pin" "${cuda_pin_url}/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin"
             sudo mv "${packages}/nvidia-cuda/cuda-wsl-ubuntu.pin" '/etc/apt/preferences.d/cuda-repository-pin-600'
-            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-wsl-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-wsl-ubuntu-12-3-local_12.3.0-1_amd64.deb"
+            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-wsl-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-wsl-ubuntu-12-3-local_12.3.1-1_amd64.deb"
             sudo dpkg -i "${packages}/nvidia-cuda/cuda-wsl-${cuda_latest_ver}.deb"
             sudo cp -f /var/cuda-repo-wsl-ubuntu-12-3-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             ;;
     7)
             git clone -q 'https://gitlab.archlinux.org/archlinux/packaging/packages/cuda.git'
             cd cuda || exit 1
-            makepkg -sif --cleanbuild --noconfirm --needed
+            makepkg -sif --cleanbuild --needed --noconfirm
             return 0
             ;;
     8)
@@ -869,13 +869,7 @@ install_cuda_fn()
         esac
     fi
 
-    if [[ "${OS}" == 'Arch' ]]; then
-        cuda_ver_test="$(nvcc --version | sed -n 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')"
-        cuda_ver_test+='.0'
-    else
-        cuda_ver_test="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
-    fi
-    cuda_ver="${cuda_ver_test}"
+    cuda_ver="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
 
     if [ -z "${cuda_ver}" ]; then
         fail_fn "Unable to locate the file: /usr/local/cuda/version.json. Line: ${LINENO}"
@@ -1302,12 +1296,10 @@ box_out_banner_global 'Installing Global Tools'
 
 if build 'm4' 'latest'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
-    execute autoreconf -fi
     execute ./configure --prefix=${install_dir}            \
                         --{build,host,target}="${pc_type}" \
                         --disable-nls                      \
-                        --enable-c++                       \
-                        --enable-threads=posix
+                        --enable-c++
     execute make "-j${cpu_threads}"
     execute sudo make install
     build_done 'm4' 'latest'
@@ -1336,7 +1328,7 @@ else
     esac
     if build 'libtool' "${lt_ver}"; then
         download "https://ftp.gnu.org/gnu/libtool/libtool-${lt_ver}.tar.xz"
-        execute ./configure --prefix=${install_dir}     \
+        execute ./configure --prefix=${install_dir}        \
                             --{build,host}="${pc_type}" \
                             --with-pic                  \
                             M4=/usr/local/bin/m4
@@ -1381,29 +1373,22 @@ if build 'zlib' "${g_ver}"; then
     build_done 'zlib' "${g_ver}"
 fi
 
-if [[ "${OS}" == 'Arch' ]]; then
-    if build 'openssl' '3.1.4'; then
-        sudo pacman -Sq --needed --noconfirm openssl
-        build_done 'openssl' '3.1.4'
-    fi
-else
-    if build 'openssl' '3.1.4'; then
-        download 'https://www.openssl.org/source/openssl-3.1.4.tar.gz'
-        execute ./Configure --prefix="${workspace}"                    \
-                            enable-egd                                 \
-                            enable-fips                                \
-                            enable-md2                                 \
-                            enable-rc5                                 \
-                            enable-trace                               \
-                            threads zlib                               \
-                            --with-rand-seed=os                        \
-                            --with-zlib-include="${workspace}"/include \
-                            --with-zlib-lib="${workspace}"/lib
-        execute make "-j${cpu_threads}"
-        execute sudo make install_sw
-        execute sudo make install_fips
-        build_done 'openssl' '3.1.4'
-    fi
+if build 'openssl' '3.1.4'; then
+    download 'https://www.openssl.org/source/openssl-3.1.4.tar.gz'
+    execute ./Configure --prefix="${workspace}"                    \
+                        enable-egd                                 \
+                        enable-fips                                \
+                        enable-md2                                 \
+                        enable-rc5                                 \
+                        enable-trace                               \
+                        threads zlib                               \
+                        --with-rand-seed=os                        \
+                        --with-zlib-include="${workspace}"/include \
+                        --with-zlib-lib="${workspace}"/lib
+    execute make "-j${cpu_threads}"
+    execute sudo make install_sw
+    execute sudo make install_fips
+    build_done 'openssl' '3.1.4'
 fi
 ffmpeg_libraries+=('--enable-openssl')
 
@@ -1997,7 +1982,6 @@ fi
 
 if build 'cunit' 'git'; then
     download_git 'https://github.com/jacklicn/cunit.git'
-    execute mv configure.in configure.ac
     execute autoreconf -fi
     execute ./configure --prefix="${workspace}" \
                         --disable-shared
