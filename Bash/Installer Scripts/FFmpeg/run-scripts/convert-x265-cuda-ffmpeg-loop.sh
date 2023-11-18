@@ -72,7 +72,7 @@ EOF
     #
 
     echo
-    if ffpb \
+    if ffmpeg \
             -y \
             -threads 0 \
             -hide_banner \
