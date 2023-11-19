@@ -71,7 +71,7 @@ Length:          ${length} mins
 EOF
 
     #
-    # EXECUTE FFPB
+    # EXECUTE FFMPEG
     #
 
     echo
