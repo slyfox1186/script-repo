@@ -3,6 +3,8 @@
 
 clear
 
+sudo apt -y install trash-cli
+
 #
 # SET THE PATH VARIABLE
 #
