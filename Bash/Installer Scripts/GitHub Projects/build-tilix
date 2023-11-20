@@ -1,4 +1,4 @@
-    #!/usr/bin/env bash
+#!/usr/bin/env bash
 
 ##############################################################################################################################
 ##
@@ -27,7 +27,7 @@ script_ver=3.1
 cwd="$PWD"/tilix-build-script
 packages="${cwd}"/packages
 schemes_dir="${HOME}"/.config/tilix/schemes
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 debug=OFF
 
@@ -110,12 +110,12 @@ execute()
 
     if [ "${debug}" = 'ON' ]; then
         if ! output=$("${@}"); then
-            notify-send -t 5000 "Failed to execute: ${*}"
+            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
             fail_fn "Failed to execute: ${*}"
         fi
     else
         if ! output=$("${@}" 2>&1); then
-            notify-send -t 5000 "Failed to execute: ${*}"
+            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
             fail_fn "Failed to execute: ${*}"
         fi
     fi
@@ -255,10 +255,9 @@ if build 'tilix-themes' 'git'; then
         execute mkdir -p "${schemes_dir}"
     fi
 
-    cd 'Themes' || exit 1
+    cd Themes || exit 1
     execute cp -f 'argonaut.json' 'dracula.json' "${schemes_dir}"
-    cd ../ || exit 1
-    cd 'Themes-2' || exit 1
+    cd ../Themes-2 || exit 1
     execute cp -f 'neopolitan.json'  'vibrant-ink.json' "${schemes_dir}"
     build_done 'tilix-themes' 'git'
 fi

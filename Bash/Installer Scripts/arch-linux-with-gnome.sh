@@ -2,7 +2,7 @@
 
 clear
 
-localectl set-keymap --no-convert en_US.UTF-8
+localectl set-keymap --no-convert us
 
 cat /sys/firmware/efi/fw_platform_size
 
@@ -46,15 +46,6 @@ mkswap /dev/nvmeXXp2
 # FORMAT PARTITION 3
 mkfs.ext4 /dev/nvmeXXp3
 
-########################################
-## GET THE UUID OF THE SWAP PARTITION ##
-########################################
-
-# *ONLY* IF NEEDED TRY THIS COMMAND
-# ls -lha /dev/disk/by-uuid
-
-pacman -S core nano
-
 #################
 ## MOUNT DISKS ##
 #################
@@ -72,7 +63,7 @@ lsblk
 ## INSTALL SOFTWARE ON MOUNT ##
 ###############################
 
-pacstrap -K /mnt base base-devel efibootmgr grub linux linux-headers linux-firmware nano NetworkManager
+pacstrap -K /mnt base base-devel efibootmgr grub linux linux-headers linux-firmware nano gnome-text-editor gedit gedit-plugins nvidia networkmanager
 
 genfstab -U /mnt >> /mnt/etc/fstab
 
@@ -143,7 +134,7 @@ user-name
 <ENTER THE USER PASSWORD>
 
 # INSTALL REQUIRED SOFTWARE USING PACMAN
-pacman -S pulseaudio pulseaudio-alsa xorg xorg-xinit xorg-server gnome lightdm lightdm-gtk-greeter nvidia virtualbox-guest-utils
+pacman -Sy pulseaudio pulseaudio-alsa xorg xorg-xinit xorg-server gnome lightdm lightdm-gtk-greeter
 
 # LOGIN TO GNOME DESKTOP
 sudo systemctl start gdm.service

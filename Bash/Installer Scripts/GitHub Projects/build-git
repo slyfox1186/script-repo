@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 
-###########################################################################################################################
+###############################################################################################################################
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-git
 ##
 ##  Purpose: Build Git
 ##
-##  Updated: 09.05.23
+##  Updated: 11.06.23
 ##
-##  Script version: 1.0
+##  Script version: 1.1
 ##
-###########################################################################################################################
+###############################################################################################################################
 
 clear
 
@@ -23,14 +23,14 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.0
-archive_dir=2.42.0
-archive_url=https://github.com/git/git/archive/refs/tags/v${archive_dir}.tar.gz
+script_ver=1.1
+archive_dir=2.42.1
+archive_url=https://github.com/git/git/archive/refs/tags/v"${archive_dir}".tar.gz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/git-build-script
 install_dir=/usr
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
@@ -199,7 +199,7 @@ make configure
 ./configure --prefix="${install_dir}"
 make "-j$(nproc --all)" all doc
 if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install install-doc install-html:Line ${LINENO}"
+    fail_fn "Failed to execute: sudo make install install-doc install-html. Line: ${LINENO}"
     exit 1
 fi
 

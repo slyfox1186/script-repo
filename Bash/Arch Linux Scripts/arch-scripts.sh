@@ -7,10 +7,10 @@ clear
 #
 
 random_dir="$(mktemp -d)"
-dl_url='https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ArchLinux-Scripts/user-scripts/arch-scripts.txt'
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+dl_url='https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Arch%20Linux%20Scripts/arch-scripts.txt'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
-shell_array=(bash_aliases.sh bash_functions.sh)
+shell_scripts=(bash_aliases.sh bash_functions.sh)
 script_array=(.bash_aliases .bash_functions .bashrc)
 
 #
@@ -27,7 +27,7 @@ fail_fn()
 # DOWNLAOD REQUIRED APT PACKAGES
 #
 
-sudo pacman -S curl wget git
+sudo pacman -Sq --needed --noconfirm curl wget git
 
 #
 # CD INTO A RANDOM FOLDER TO HOLD AND EXECUTE THE TEMP FILES
@@ -39,7 +39,7 @@ cd "${random_dir}" || exit 1
 # DOWNLOAD THE USER SCRIPTS FROM GITHUB
 #
 
-wget -U "${user_agent}" -qN - -i "${dl_url}"
+wget --show-progress -U "${user_agent}" -qN - -i "${dl_url}"
 
 #
 # DELETE ALL FILES EXCEPT THOSE THAT START WITH A "." OR END WITH ".sh"
@@ -56,38 +56,48 @@ if ! mv -f '.bashrc' "${HOME}"; then
 fi
 
 #
+# RUN EACH SHELL SCRIPT TO INSTALL THE USER SCRIPTS
+#
+
+for script in ${shell_scripts[@]}
+do
+    bash "${script}"
+done
+unset script
+
+#
 # UPDATE THE OWNERSHIP OF EACH USER SCRIPT TO THE USER
 #
 
-for i in ${script_array[@]}
+for script in ${script_array[@]}
 do
-    if ! sudo chown "${USER}":"${USER}" "${HOME}/${i}"; then
-        fail_fn "Failed to update the file permissions for ${i}"
+    if ! sudo chown ${USER}:wheel "${HOME}/${script}"; then
+        fail_fn "Failed to update the file permissions for ${script}"
     fi
 done
-unset i
+unset script
 
 #
 # OPEN EACH SCRIPT WITH AN EDITOR
 #
 
-for i in ${script_array[@]}
+for script in ${script_array[@]}
 do
     if which gnome-text-editor &>/dev/null; then
         cd "${HOME}" || exit 1
-        gnome-text-editor "${i}"
+        gnome-text-editor "${script}"
     elif which gedit &>/dev/null; then
         cd "${HOME}" || exit 1
-        gedit "${i}"
+        gedit "${script}"
     elif which nano &>/dev/null; then
         cd "${HOME}" || exit 1
-        nano "${i}"
+        nano "${script}"
     elif which vim &>/dev/null; then
         cd "${HOME}" || exit 1
-        vim "${i}"
+        vim "${script}"
     elif which vi &>/dev/null; then
         cd "${HOME}" || exit 1
-        vi "${i}"
+        vi "${script}"
     else
         fail_fn 'Could not find an EDITOR to open the user scripts.'
     fi

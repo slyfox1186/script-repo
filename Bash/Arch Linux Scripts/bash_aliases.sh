@@ -7,18 +7,10 @@ printf "%s\n%s\n\n" \
     '================================='
 
 #
-# SET VARIABLES
-#
-
-file="${HOME}"/.bash_aliases
-
-#
 # CREATE FUNCTIONS
 #
 
-script_fn()
-{
-cat > "$file" <<'EOF'
+cat > "${HOME}"/.bash_aliases <<'EOF'
 alias aria2c='sudo aria2c'
 alias cat='sudo cat'
 alias chmod='sudo chmod'
@@ -189,7 +181,7 @@ alias cdb1='pushd /usr/bin; cl'
 alias cdb2='pushd /usr/local/bin; cl'
 alias cdv='pushd ~/Videos ; cl'
 
-# change directory fast commands
+# Change directory fast commands
 alias cd.='cd ..; cl'
 alias cd..='cd ..; cl'
 
@@ -260,7 +252,7 @@ alias showarch='dpkg --print-architecture'
 # ddclient commands
 alias ddcu='ddclient -daemon=0 -debug -verbose -noquiet'
 
-# find and kill process by pid or name
+# Find and kill a process by pid or name
 alias tk='sudo kill -9'
 
 # SNAP COMMANDS
@@ -287,7 +279,7 @@ alias wgpu='clear; watch ndivia-smi'
 # UBUNTU VERSION
 alias uver="clear; lsb_release -d | grep -Eo 'Ubuntu [0-9\.]+.*$'"
 
-# FIX GPG KEY ERRORS DURING APT UPDATE THAT SHOWS THEY ARE "DEPRECIATED"
+# FIX GPG KEY ERRORS DURING APT UPDATE THAT SHOW THEY ARE "DEPRECIATED"
 alias fix_gpg='sudo cp /etc/apt/trusted.gpg /etc/apt/trusted.gpg.d'
 
 # WATCH COMMAND
@@ -321,6 +313,7 @@ alias wine32='env WINEARCH=win32 WINEPREFIX=~/.wine32 wine $*'
 # FIND AND KILL PROCESSES BY PID OR NAME
 alias tk='kill -9'
 alias tka='killall -9'
+alias tkan='killall -9 nautilus'
 
 # MAINLINE
 alias ml='mainline'
@@ -332,8 +325,5 @@ alias mlu='mainline uninstall'
 alias sgc='sudo grub-customizer'
 
 EOF
-}
 
-script_fn
-clear
-printf "%s\n\n" 'Script completed successfully!'
+printf "\n%s\n\n" 'Script completed successfully!'

@@ -6,9 +6,9 @@
 ##
 ##  Purpose: build gnu bash
 ##
-##  Updated: 09.03.23
+##  Updated: 11.10.23
 ##
-##  Script version: 2.0
+##  Script version: 2.1
 ##
 ###########################################################################################################################
 
@@ -23,19 +23,20 @@ fi
 # SET THE VARIABLES
 #
 
-script_ver=2.0
-archive_dir=bash-5.2.15
-archive_url=https://ftp.gnu.org/gnu/bash/bash-5.2.15.tar.gz
+script_ver=2.1
+archive_dir=bash-5.2.21
+archive_url=https://ftp.gnu.org/gnu/bash/"${archive_dir}".tar.gz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/bash-build-script
 install_dir=/usr/local
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
     "bash build script - v${script_ver}" \
     '==============================================='
+sleep 2
 
 #
 # CREATE OUTPUT DIRECTORY
@@ -102,8 +103,9 @@ export PKG_CONFIG_PATH
 
 exit_fn()
 {
-    printf "\n%s\n\n%s\n\n" \
-        'Make sure to star this repository to show your support!' \
+    printf "\n%s\n%s\n\n%s\n\n"                                                  \
+        'Don'\''t forget to close and reopen your terminal to show the changes!' \
+        'Make sure to star this repository to show your support!'                \
         "${web_repo}"
     exit 0
 }
@@ -111,7 +113,7 @@ exit_fn()
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "${1}" \
+        "${1}"              \
         "To report a bug create an issue at: ${web_repo}/issues"
     exit 1
 }
@@ -120,11 +122,11 @@ cleanup_fn()
 {
     local choice
 
-    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n"                \
         '============================================' \
         '  Do you want to clean up the build files?  ' \
         '============================================' \
-        '[1] Yes' \
+        '[1] Yes'                                      \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
 

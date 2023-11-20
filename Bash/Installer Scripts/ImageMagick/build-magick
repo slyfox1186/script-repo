@@ -13,20 +13,22 @@
 ##  Method: The script will search GitHub for the latest released version and upon execution will import the
 ##          information into the script.
 ##
-##  Added: Debian OS support for versions, 10 | 11 | 12
+##  Added: Debian OS support for versions, 11 & 12
 ##  Added: A browser user-agent string to the curl command
 ##  Added: A CPPFLAGS variable to ImageMagick's configure script
 ##  Added: A case command to determine the required libtool version based on the active OS
 ##  Added: Autotrace for Ubuntu (18/20/22).04 and Debian 10/11
+##  Added: LCMS Support
+##  Added: Deja-Vu Fonts
 ##
 ##  Fixed: Incorrect pkg-config location when building ImageMagick
 ##  Fixed: libjxl dependency
 ##
 ##  Changed: Some support libraries prefix paths to avoid installing into the system
 ##
-##  Updated: 10.10.23
+##  Updated: 11.12.23
 ##
-##  Script Version: 3.5
+##  Script Version: 3.8
 ##
 #############################################################################################################
 
@@ -41,14 +43,13 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-script_ver=3.5
+script_ver=3.8
 progname="${0}"
 cwd="${PWD}"/magick-build-script
 packages="${cwd}"/packages
 workspace="${cwd}"/workspace
 install_dir=/usr/local
-pc_type=x86_64-linux-gnu
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 debug=OFF # CHANGE THIS VARIABLE TO "ON" FOR HELP WITH TROUBLESHOOTING UNEXPECTED ISSUES DURING THE BUILD
 
@@ -68,12 +69,13 @@ export CC=gcc CXX=g++
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
+CFLAGS="-g -O3 -pipe -march=native -I${workspace}/include -I${workspace}/include/CL -I/usr/local/include -I/usr/include"
+CFLAGS+=' -I/usr/include/x86_64-linux-gnu -I/usr/include/openjpeg-2.5'
 CXXFLAGS='-g -O3 -pipe -march=native'
-CFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/x86_64-linux-gnu"
-CFLAGS+=" -I/usr/include/openjpeg-2.5 -I${workspace}/include/CL ${CXXFLAGS}"
-CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include -I/usr/include/openjpeg-2.5"
-LDFLAGS="-L${workspace}/lib64 -L${workspace}/lib -L${workspace}/lib/x86_64-linux-gnu -L/usr/local/lib64"
-LDFLAGS+=' -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+CPPFLAGS="-I${workspace}/include -I${workspace}/include/CL -I/usr/local/include -I/usr/include"
+CPPFLAGS+=' -I/usr/include/x86_64-linux-gnu -I/usr/include/openjpeg-2.5'
+LDFLAGS="-L${workspace}/lib64 -L${workspace}/lib -L/usr/local/lib64"
+LDFLAGS+=' -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 export CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
 
 #
@@ -81,7 +83,7 @@ export CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
 #
 
 if [ -f /proc/cpuinfo ]; then
-    cpu_threads="$(grep --count ^processor /proc/cpuinfo)"
+    cpu_threads="$(grep --count ^processor '/proc/cpuinfo')"
 else
     cpu_threads="$(nproc --all)"
 fi
@@ -93,21 +95,22 @@ ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
+/usr/local/cuda/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/local/cuda/bin:\
 /snap/bin\
 "
 export PATH
 
 PKG_CONFIG_PATH="\
 ${workspace}/lib64/pkgconfig:\
-${workspace}/lib/pkgconfig:\
 ${workspace}/lib/x86_64-linux-gnu/pkgconfig:\
+${workspace}/lib/pkgconfig:\
 ${workspace}/usr/lib/pkgconfig:\
 ${workspace}/share/pkgconfig:\
+/usr/local/ssl/lib64/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
@@ -115,9 +118,12 @@ ${workspace}/share/pkgconfig:\
 /usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/dbus-1.0/debug-build/lib/pkgconfig:\
 /usr/share/pkgconfig:\
 /lib64/pkgconfig:\
-/lib/pkgconfig\
+/lib/pkgconfig:\
+/snap/core20/2015/usr/share/pkgconfig:\
+/snap/certbot/3462/usr/lib/x86_64-linux-gnu/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -157,27 +163,11 @@ cleanup_fn()
         1)      sudo rm -fr "${cwd}";;
         2)      clear;;
         *)
-                clear
-                printf "%s\n\n" 'Error: bad user input. Reverting script...'
-                sleep 3
                 unset choice
                 clear
                 cleanup_fn
                 ;;
     esac
-}
-
-create_links_fn()
-{
-    local gcc_long_name gcc_short_name
-
-    gcc_long_name="$(sudo find ${install_dir}/bin -name 'x86_64-linux-gnu-*' | grep -Eo 'x86_64-linux-gnu-[A-Za-z\+\-]+$')"
-    for i in ${gcc_long_name[@]}
-    do
-        gcc_short_name="$(echo "${i}" | sed 's/^x86_64-linux-gnu-\(.*\)$/\1/')"
-        sudo ln -fs "${install_dir}/bin/${i}" "${install_dir}/bin/${gcc_short_name}"
-        sudo chmod 755 -R "${install_dir}/bin/${i}" "${install_dir}/bin/${gcc_short_name}"
-    done
 }
 
 execute()
@@ -186,12 +176,12 @@ execute()
 
     if [ "${debug}" = 'ON' ]; then
         if ! output="$("${@}")"; then
-            notify-send -t 5000 "Failed to execute: ${*}"
+            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
             fail_fn "Failed to execute: ${*}"
         fi
     else
         if ! output="$("${@}" 2>&1)"; then
-            notify-send -t 5000 "Failed to execute: ${*}"
+            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
             fail_fn "Failed to execute: ${*}"
         fi
     fi
@@ -300,14 +290,16 @@ download_git()
         printf "%s\n\n" 'Git clone successful'
     fi
 
-    cd "${target_dir}" || fail_fn "Unable to change the working directory to \"${target_dir}\" Line: ${LINENO}"
+    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}. Line: ${LINENO}"
 }
 
 show_ver_fn()
 {
     printf "\n%s\n\n" 'ImageMagick'\''s new version is:'
     if ! magick -version 2>/dev/null; then
-        fail_fn "Failure to execute the command: magick -version Line: ${LINENO}"
+        fail_fn "Failure to execute the command: magick -version. Line: ${LINENO}"
+    else
+        sleep 2
     fi
 }
 
@@ -374,27 +366,30 @@ git_ver_fn()
 
 pkgs_fn()
 {
-    local i missing_pkg missing_pkgs pkgs
+    local missing_pkg missing_pkgs pkg pkgs
+    sudo add-apt-repository ppa:fontforge/fontforge &>/dev/null
+    sudo apt update
 
     pkgs=("${1}" alien asciidoc autoconf autoconf-archive automake autopoint binutils bison build-essential
-          cmake curl flex gettext gimp-data git gperf imagemagick jq libc6 libc6-dev libfreetype-dev libgc-dev
-          libgimp2.0-dev libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev libheif-dev libjxl-gimp-plugin
-          libltdl-dev libnuma-dev libomp-dev libpango1.0-dev libpaper-dev libpng-dev libpstoedit-dev libraw-dev
-          librsvg2-dev librust-bzip2-dev libsdl2-dev libstdc++-12-dev libtcmalloc-minimal4 libticonv-dev libtool
-          libtool-bin libxml2-dev libzip-dev m4 meson nasm ninja-build opencl-c-headers opencl-headers php php-cli
-          pstoedit xmlto yasm zlib1g-dev)
+          cmake curl dbus-x11 flex fontforge gettext gimp-data git gperf imagemagick jq libc6 libc6-dev libfont-ttf-perl
+          libfreetype-dev libgc-dev libgimp2.0-dev libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev libheif-dev
+          libjxl-gimp-plugin libltdl-dev libnotify-bin libnuma-dev libomp-dev libpango1.0-dev libpaper-dev libpng-dev
+          libpstoedit-dev libraw-dev librsvg2-dev librust-bzip2-dev libsdl2-dev libstdc++-12-dev libtcmalloc-minimal4
+          libticonv-dev libtool libtool-bin libxml2-dev libzip-dev m4 meson nasm ninja-build opencl-c-headers opencl-headers
+          php php-cli pstoedit software-properties-common xmlto yasm zlib1g-dev)
 
-    for i in ${pkgs[@]}
+    for pkg in ${pkgs[@]}
     do
-        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+        missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
 
         if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
+            missing_pkgs+=" ${pkg}"
         fi
     done
 
     if [ -n "${missing_pkgs}" ]; then
         sudo apt -y install ${missing_pkgs}
+        sudo apt -y install libnotify-dev &>/dev/null
         clear
     else
         printf "%s\n" 'The APT packages are already installed'
@@ -403,9 +398,7 @@ pkgs_fn()
 
 install_autotrace_fn()
 {
-    if ! curl -A "${user_agent}" -Lso "${packages}"/deb-files/autotrace.deb 'https://github.com/autotrace/autotrace/releases/download/travis-20200219.65/autotrace_0.40.0-20200219_all.deb'; then
-        fail_fn "Failed to install autotrace. Line: ${LINENO}"
-    fi
+    curl -A "${user_agent}" -Lso "${packages}"/deb-files/autotrace.deb 'https://github.com/autotrace/autotrace/releases/download/travis-20200219.65/autotrace_0.40.0-20200219_all.deb'
 
     cd "${packages}"/deb-files || exit 1
 
@@ -413,10 +406,6 @@ install_autotrace_fn()
     if ! sudo apt -y install ./autotrace.deb; then
         sudo dpkg --configure -a
         sudo apt --fix-broken install
-        sudo apt -f -y install
-        sudo apt -y autoremove
-        sudo apt clean
-        sudo apt autoclean
         sudo apt update
     fi
 }
@@ -424,52 +413,62 @@ install_autotrace_fn()
 install_libjxl_fn()
 {
     cd "${packages}"/deb-files || exit 1
-    if ! sudo dpkg -i libjxl_0.8.2_amd64.deb; then
+
+    if ! sudo dpkg -i ./libjxl_0.8.2_amd64.deb; then
         sudo dpkg --configure -a
         sudo apt --fix-broken install
-        sudo apt -f -y install
-        sudo apt -y autoremove
-        sudo apt clean
-        sudo apt autoclean
         sudo apt update
-        sudo apt-get -qq -y install gimp-data libgimp2.0-dev libjxl-gimp-plugin
+        sudo dpkg -i ./libjxl_0.8.2_amd64.deb
+    else
+        sudo rm libjxl_0.8.2_amd64.deb 2>/dev/null
     fi
-    sudo rm libjxl_0.8.2_amd64.deb &>/dev/null
     sudo dpkg -i ./*.deb
 }
 
-download_libjxl_fn()
-{
-    if ! curl -A "${user_agent}" -m 10 -Lso "${packages}"/libjxl.tar.gz "${1}"; then
-        fail_fn "Failed to download the libjxl archive: ${packages}/libjxl.tar.gz Line: ${LINENO}"
-    fi
-}
-
-sort_libjxl_fn()
+dl_libjxl_fn()
 {
     local url_base url_suffix
 
-    url_base=https://github.com/libjxl/libjxl/releases/download/v0.8.2/jxl-debs-amd64
-    url_suffix=v0.8.2.tar.gz
+    url_base='https://github.com/libjxl/libjxl/releases/download/v0.8.2/jxl-debs-amd64'
+    url_suffix='v0.8.2.tar.gz'
 
     if [ ! -f "${packages}"/libjxl.tar.gz ]; then
         case "${VER}" in
-            12)         libjxl_download="${url_base}-debian-bookworm-${url_suffix}";;
-            11)         libjxl_download="${url_base}-debian-bullseye-${url_suffix}";;
-            10)         libjxl_download="${url_base}-debian-buster-${url_suffix}";;
-            22.04)      libjxl_download="${url_base}-ubuntu-22.04-${url_suffix}";;
-            20.04)      libjxl_download="${url_base}-ubuntu-20.04-${url_suffix}";;
-            18.04)      libjxl_download="${url_base}-ubuntu-18.04-${url_suffix}";;
+            12)
+                        libjxl_download="${url_base}-debian-bookworm-${url_suffix}"
+                        libjxl_name='debian-bookworm'
+                        ;;
+            11)
+                        libjxl_download="${url_base}-debian-bullseye-${url_suffix}"
+                        libjxl_name='debian-bullseye'
+                        ;;
+            10)
+                        libjxl_download="${url_base}-debian-buster-${url_suffix}"
+                        libjxl_name='debian-buster'
+                        ;;
+            22.04)
+                        libjxl_download="${url_base}-ubuntu-22.04-${url_suffix}"
+                        libjxl_name='ubuntu-22.04'
+                        ;;
+            20.04)
+                        libjxl_download="${url_base}-ubuntu-20.04-${url_suffix}"
+                        libjxl_name='ubuntu-20.04'
+                        ;;
+            18.04)
+                        libjxl_download="${url_base}-ubuntu-18.04-${url_suffix}"
+                        libjxl_name='ubuntu-18.04'
+                        ;;
             *)          fail_fn "Unable to determine the OS architecture. Line: ${LINENO}";;
         esac
 
-        # CALL THE DOWNLOAD FUNCTION FOR THE LIBJXL DEBIAN FILES
-        download_libjxl_fn "${libjxl_download}"
-
-        if ! tar -zxf "${packages}"/libjxl.tar.gz -C "${packages}"/deb-files --strip-components 1; then
-            fail_fn "Could not extract the libjxl archive \"${packages}/libjxl.tar.gz\" Line: ${LINENO}"
+        # DOWNLOAD THE LIBJXL DEBIAN FILES
+        if ! curl -A "${user_agent}" -m 10 -Lso "${packages}/libjxl-${libjxl_name}.tar.gz" "${libjxl_download}"; then
+            fail_fn "Failed to download the libjxl archive: ${packages}/libjxl-${libjxl_name}.tar.gz. Line: ${LINENO}"
         fi
-
+        # EXTRACT THE DEBIAN FILES FOR INSTALL
+        if ! tar -zxf "${packages}/libjxl-${libjxl_name}.tar.gz" -C "${packages}"/deb-files --strip-components 1; then
+            fail_fn "Could not extract the libjxl archive: ${packages}/libjxl-${libjxl_name}.tar.gz. Line: ${LINENO}"
+        fi
         # INSTALL THE DOWNLOADED LIBJXL DEBIAN PACKAGES
         install_libjxl_fn
     fi
@@ -538,8 +537,8 @@ ubuntu_ver_fn()
 
 find_lsb_release="$(sudo find /usr -type f -name 'lsb_release')"
 
-if [ -f /etc/os-release ]; then
-    source /etc/os-release
+if [ -f '/etc/os-release' ]; then
+    source '/etc/os-release'
     OS_TMP="$NAME"
     VER_TMP="$VERSION_ID"
     OS="$(echo "${OS_TMP}" | awk '{print $1}')"
@@ -556,6 +555,7 @@ fi
 #
 
 case "${OS}" in
+    Arch)       echo;;
     Debian)     debian_ver_fn;;
     Ubuntu)     ubuntu_ver_fn;;
     *)          fail_fn "Could not detect the OS architecture. Line: ${LINENO}";;
@@ -575,7 +575,12 @@ if build 'magick-libs' "${g_ver}"; then
         fail_fn "Failed to download the magick-libs file. Line: ${LINENO}"
     fi
     sudo alien -d ./*.rpm
-    sudo dpkg -i ./*.deb
+    if ! sudo dpkg -i ./*.deb; then
+        sudo dpkg --configure -a
+        sudo apt --fix-broken install
+        sudo apt update
+        sudo dpkg -i ./*.deb
+    fi
     build_done 'magick-libs' "${g_ver}"
 fi
 
@@ -584,17 +589,13 @@ fi
 #
 
 # AUTOTRACE FAILS ON DEBIAN 12
-if build 'autotrace' 'travis-20200219.65'; then
-    case "${OS}" in
-        Ubuntu)
-                    install_autotrace_fn
-                    autotrace_flag=1
-                    ;;
-    esac
-    build_done 'autotrace' 'travis-20200219.65'
-fi
-
-if [ "${autotrace_flag}" = '1' ]; then
+case "${OS}" in
+    Ubuntu)
+                install_autotrace_fn
+                autotrace_flag=true
+                ;;
+esac
+if [[ "${autotrace_flag}" == 'true' ]]; then
     set_autotrace='--with-autotrace'
 else
     set_autotrace='--without-autotrace'
@@ -604,7 +605,7 @@ fi
 # INSTALL COMPOSER TO COMPILE GRAPHVIZ
 #
 
-if [ ! -f /usr/bin/composer ]; then
+if [ ! -f '/usr/bin/composer' ]; then
     EXPECTED_CHECKSUM="$(php -r 'copy("https://composer.github.io/installer.sig", "php://stdout");')"
     php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
     ACTUAL_CHECKSUM="$(php -r "echo hash_file('sha384', 'composer-setup.php');")"
@@ -614,8 +615,8 @@ if [ ! -f /usr/bin/composer ]; then
         rm 'composer-setup.php'
         return 1
     fi
-    if ! sudo php composer-setup.php --install-dir=/usr/bin --filename=composer --quiet; then
-        fail_fn "Failed to install /usr/bin/composer Line: ${LINENO}"
+    if ! sudo php composer-setup.php --install-dir='/usr/bin' --filename=composer --quiet; then
+        fail_fn "Failed to install: /usr/bin/composer. Line: ${LINENO}"
     fi
     rm 'composer-setup.php'
 fi
@@ -625,13 +626,25 @@ fi
 #
 
 if build 'libjxl' '0.8.2'; then
-    sort_libjxl_fn
+    dl_libjxl_fn
     build_done 'libjxl' '0.8.2'
 fi
 
 #
 # BEGIN BUILDING FROM SOURCE CODE
 #
+
+if build 'm4' 'latest'; then
+    download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
+    execute autoreconf -fi
+    execute ./configure --prefix="${workspace}" \
+                        --disable-nls           \
+                        --enable-c++            \
+                        --enable-threads=posix
+    execute make "-j${cpu_threads}"
+    execute make install
+    build_done 'm4' 'latest'
+fi
 
 case "${VER}" in
     12|23.04)                   lt_ver='2.4.7';;
@@ -641,9 +654,8 @@ esac
 
 if build 'libtool' "${lt_ver}"; then
     download "https://ftp.gnu.org/gnu/libtool/libtool-${lt_ver}.tar.xz"
-    execute ./configure --prefix="${workspace}"     \
-                        --{build,host}="${pc_type}" \
-                        --with-pic                  \
+    execute ./configure --prefix="${workspace}" \
+                        --with-pic              \
                         M4="${workspace}"/bin/m4
     execute make "-j${cpu_threads}"
     execute make install
@@ -654,9 +666,8 @@ git_ver_fn 'libsdl-org/libtiff' '1' 'T'
 if build 'libtiff' "${g_ver}"; then
     download "https://codeload.github.com/libsdl-org/libtiff/tar.gz/refs/tags/v${g_ver}" "libtiff-${g_ver}.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}"     \
-                        --{build,host}="${pc_type}" \
-                        --enable-cxx                \
+    execute ./configure --prefix="${workspace}" \
+                        --enable-cxx            \
                         --with-pic
     execute make "-j${cpu_threads}"
     execute make install
@@ -679,30 +690,27 @@ fi
 if build 'libfpx' 'git'; then
     download_git 'https://github.com/imageMagick/libfpx.git'
     execute autoreconf -fi
-    execute ./configure --prefix="${workspace}"            \
-                        --{build,host,target}="${pc_type}" \
+    execute ./configure --prefix="${workspace}" \
                         --with-pic
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'libfpx' 'git'
 fi
 
-if build 'ghostscript' '10.02.0'; then
-    download 'https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10020/ghostscript-10.02.0.tar.xz'
+if build 'ghostscript' '10.02.1'; then
+    download 'https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10021/ghostscript-10.02.1.tar.xz'
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}"     \
-                        --{build,host}="${pc_type}" \
+    execute ./configure --prefix="${workspace}" \
                         --with-libiconv=native
     execute make "-j${cpu_threads}"
     execute make install
-    build_done 'ghostscript' '10.02.0'
+    build_done 'ghostscript' '10.02.1'
 fi
 
 if build 'png12' '1.2.59'; then
     download 'https://github.com/glennrp/libpng/archive/refs/tags/v1.2.59.tar.gz' 'libpng-1.2.59.tar.gz'
     execute ./autogen.sh
-    execute ./configure --prefix="${workspace}"     \
-                        --{build,host}="${pc_type}" \
+    execute ./configure --prefix="${workspace}" \
                         --with-pic
     execute make "-j${cpu_threads}"
     execute make install
@@ -739,16 +747,13 @@ git_ver_fn '7950' '2'
 g_ver1="${g_ver//-/.}"
 if build 'freetype' "${g_ver1}"; then
     download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-${g_ver}/freetype-VER-${g_ver}.tar.bz2" "freetype-${g_ver1}.tar.bz2"
-    extracommands=(-D{harfbuzz,png,bzip2,brotli,zlib,tests}'=disabled')
+    extracmds=('-D'{harfbuzz,png,bzip2,brotli,zlib,tests}'=disabled')
     execute ./autogen.sh
     execute meson setup build --prefix="${workspace}"  \
                               --buildtype=release      \
-                              --default-library=static \
+                              --default-library=both   \
                               --strip                  \
-                              -Db_lto_threads=1        \
-                              -Dc_args="${CFLAGS}"     \
-                              -Dcpp_args="${CXXFLAGS}" \
-                              "${extracommands[@]}"
+                              "${extracmds[@]}"
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'freetype' "${g_ver1}"
@@ -761,7 +766,6 @@ if build 'fontconfig' "${g_ver}"; then
     sed -i 's|Cflags:|& -DLIBXML_STATIC|' fontconfig.pc.in
     execute ./autogen.sh --noconf
     execute ./configure --prefix="${workspace}"     \
-                        --{build,host}="${pc_type}" \
                         --disable-docbook           \
                         --disable-docs              \
                         --disable-shared            \
@@ -782,10 +786,10 @@ if build 'c2man' 'git'; then
     execute ./Configure -desO                                                               \
                         -D bash="$(type -P bash)"                                           \
                         -D bin="${workspace}"/bin                                           \
-                        -D cc=/usr/bin/cc                                                   \
-                        -D d_gnu=/usr/lib/x86_64-linux-gnu                                  \
+                        -D cc='/usr/bin/cc'                                                 \
+                        -D d_gnu='/usr/lib/x86_64-linux-gnu'                                \
                         -D find="$(type -P find)"                                           \
-                        -D gcc=/usr/bin/gcc                                                 \
+                        -D gcc='/usr/bin/gcc'                                               \
                         -D gzip="$(type -P gzip)"                                           \
                         -D installmansrc="${workspace}"/share/man                           \
                         -D ldflags="${LDFLAGS}"                                             \
@@ -819,7 +823,7 @@ fi
 git_ver_fn 'fribidi/fribidi' '1' 'T'
 if build 'fribidi' "${g_ver}"; then
     download "https://github.com/fribidi/fribidi/archive/refs/tags/v${g_ver}.tar.gz" "fribidi-${g_ver}.tar.gz"
-    extracommands=(-D{docs,tests}'=false')
+    extracommands=('-D'{docs,tests}'=false')
     execute autoreconf -fi
         execute meson setup build --prefix="${workspace}" \
                               --buildtype=release         \
@@ -863,18 +867,34 @@ if build 'jemalloc' "${g_ver}"; then
     build_done 'jemalloc' "${g_ver}"
 fi
 
-git_ver_fn 'khronosgroup/opencl-headers' '1' 'T'
-if build 'opencl-headers' "${g_ver}"; then
-    download "https://github.com/KhronosGroup/OpenCL-Headers/archive/refs/tags/v${g_ver}.tar.gz" "opencl-headers-${g_ver}.tar.gz"
-    execute cmake -B build                              \
-                  -DCMAKE_INSTALL_PREFIX="${workspace}" \
-                  -DCMAKE_BUILD_TYPE=Release            \
-                  -DOPENCL_HEADERS_BUILD_CXX_TESTS=OFF  \
-                  -DBUILD_TESTING=OFF                   \
-                  -G Ninja -Wno-dev
+git_ver_fn 'KhronosGroup/OpenCL-SDK' '1' 'T'
+if build 'opencl-sdk' "${g_ver}"; then
+    download_git 'https://github.com/KhronosGroup/OpenCL-SDK.git' 'opencl-sdk-git'
+    execute git submodule init
+    execute git submodule update
+    execute cmake \
+            -S .                                      \
+            -B build                                  \
+            -DCMAKE_INSTALL_PREFIX="${workspace}"     \
+            -DCMAKE_BUILD_TYPE=Release                \
+            -DBUILD_SHARED_LIBS=ON                    \
+            -DBUILD_TESTING=OFF                       \
+            -DBUILD_DOCS=OFF                          \
+            -DBUILD_EXAMPLES=OFF                      \
+            -DOPENCL_SDK_BUILD_SAMPLES=ON             \
+            -DOPENCL_SDK_TEST_SAMPLES=OFF             \
+            -DCMAKE_C_FLAGS='-g -O3 -pipe -Wno-dev'   \
+            -DCMAKE_CXX_FLAGS='-g -O3 -pipe -Wno-dev' \
+            -DOPENCL_HEADERS_BUILD_CXX_TESTS=OFF      \
+            -DOPENCL_ICD_LOADER_BUILD_SHARED_LIBS=ON  \
+            -DOPENCL_SDK_BUILD_OPENGL_SAMPLES=OFF     \
+            -DOPENCL_SDK_BUILD_SAMPLES=OFF            \
+            -DOPENCL_SDK_TEST_SAMPLES=OFF             \
+            -DTHREADS_PREFER_PTHREAD_FLAG=ON          \
+            -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
-    build_done 'opencl-headers' "${g_ver}"
+    build_done 'opencl-sdk' "${g_ver}"
 fi
 
 git_ver_fn 'uclouvain/openjpeg' '1' 'R'
@@ -902,6 +922,39 @@ if build 'openjpeg' "${g_ver2}"; then
     build_done 'openjpeg' "${g_ver2}"
 fi
 
+if build 'lcms' 'git'; then
+    download_git 'https://github.com/ImageMagick/lcms.git'
+    execute ./autogen.sh
+    execute ./configure --prefix="${workspace}"    \
+                        --disable-shared           \
+                        --with-jpeg="${workspace}" \
+                        --with-tiff="${workspace}" \
+                        --with-fastfloat           \
+                        --with-threaded
+    execute make "-j${cpu_threads}"
+    execute make install
+    build_done 'lcms' 'git'
+fi
+
+if build 'dejavu-fonts' 'git'; then
+    download_git 'https://github.com/dejavu-fonts/dejavu-fonts.git'
+    execute wget -U "${user_agent}" -P 'resources' 'http://www.unicode.org/Public/UNIDATA/UnicodeData.txt' 'http://www.unicode.org/Public/UNIDATA/Blocks.txt'
+    if [ ! -d "${packages}"/fontconfig ]; then
+        mkdir -p "${packages}"/fontconfig
+    fi
+    execute git clone 'git://anongit.freedesktop.org/git/fontconfig' "${packages}"/fontconfig
+    execute ln -sf "${packages}"/fontconfig/fc-lang resources/fc-lang
+    execute make "-j${cpu_threads}"
+    cd "${packages}"/fontconfig || exit 1
+    execute ./autogen.sh --sysconfdir=/etc --prefix=/usr --mandir=/usr/share/man
+    execute make "-j${cpu_threads}"
+    execute sudo make install
+    execute ./configure
+    execute make "-j${cpu_threads}"
+    execute sudo make install
+    build_done 'dejavu-fonts' 'git'
+fi
+
 #
 # BEGIN BUILDING IMAGEMAGICK
 #
@@ -923,47 +976,51 @@ box_out_banner_magick()
 }
 box_out_banner_magick 'Build ImageMagick'
 
-git_ver_fn 'imagemagick/imagemagick' '1' 'T'
-if build 'ImageMagick' "${g_ver}"; then
-    download "https://codeload.github.com/imagemagick/imagemagick/tar.gz/refs/tags/${g_ver}" "imagemagick-${g_ver}.tar.gz"
-    execute autoreconf -fi -I /usr/share/aclocal
+# FIND ANY MANUALLY INSTALLED ACLOCAL FOLDERS
+aclocal_dir="$(sudo find /usr/ -type d -name 'aclocal' | sort | head -n1)"
+
+if build 'ImageMagick' 'git'; then
+    download_git 'https://github.com/ImageMagick/ImageMagick.git' 'imagemagick-git'
+    execute autoreconf -fi -I "${aclocal_dir}"
     mkdir build
     cd build || exit 1
-    ../configure --prefix="${install_dir}"                        \
-                 --{build,host,target}="${pc_type}"               \
-                 --enable-ccmalloc                                \
-                 --enable-hdri                                    \
-                 --enable-hugepages                               \
-                 --enable-legacy-support                          \
-                 --enable-opencl                                  \
-                 --with-dmalloc                                   \
-                 --with-fpx                                       \
-                 --with-gslib                                     \
-                 --with-gvc                                       \
-                 --with-heic                                      \
-                 --with-jemalloc                                  \
-                 --with-modules                                   \
-                 --with-perl                                      \
-                 --with-pic                                       \
-                 --with-pkgconfigdir="${workspace}"/lib/pkgconfig \
-                 --with-quantum-depth=16                          \
-                 --with-rsvg                                      \
-                 --with-tcmalloc                                  \
-                 "${set_autotrace}"                               \
-                 CPPFLAGS="${CPPFLAGS}"                           \
-                 CXXFLAGS="${CXXFLAGS}"                           \
-                 CFLAGS="${CFLAGS}"                               \
-                 LDFLAGS="${LDFLAGS}"                             \
+    ../configure --prefix="${install_dir}"                                    \
+                 --enable-ccmalloc                                            \
+                 --enable-delegate-build                                      \
+                 --enable-hdri                                                \
+                 --enable-hugepages                                           \
+                 --enable-legacy-support                                      \
+                 --enable-opencl                                              \
+                 --with-dejavu-font-dir=/usr/share/fonts/truetype/dejavu      \
+                 --with-dmalloc                                               \
+                 --with-fontpath=/usr/share/fonts                             \
+                 --with-fpx                                                   \
+                 --with-gcc-arch=native                                       \
+                 --with-gslib                                                 \
+                 --with-gvc                                                   \
+                 --with-heic                                                  \
+                 --with-jemalloc                                              \
+                 --with-modules                                               \
+                 --with-perl                                                  \
+                 --with-pic                                                   \
+                 --with-pkgconfigdir="${workspace}"/lib/pkgconfig             \
+                 --with-quantum-depth=16                                      \
+                 --with-rsvg                                                  \
+                 --with-tcmalloc                                              \
+                 --with-urw-base35-font-dir=/usr/share/fonts/type1/urw-base35 \
+                 --with-utilities                                             \
+                 "${set_autotrace}"                                           \
+                 CPPFLAGS="${CPPFLAGS}"                                       \
+                 CXXFLAGS="${CXXFLAGS}"                                       \
+                 CFLAGS="${CFLAGS}"                                           \
+                 LDFLAGS="${LDFLAGS}"                                         \
                  PKG_CONFIG="$(type -P pkg-config)"
     execute make "-j${cpu_threads}"
     execute sudo make install
 fi
 
-# CREATE SOFT LINKS
-create_links_fn
-
 # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE MAGICK COMMAND WILL NOT WORK
-sudo ldconfig 2>/dev/null
+sudo ldconfig -v 2>/dev/null
 
 # SHOW THE NEWLY INSTALLED MAGICK VERSION
 show_ver_fn

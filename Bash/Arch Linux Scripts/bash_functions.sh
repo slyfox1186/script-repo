@@ -16,11 +16,11 @@ file="${HOME}"/.bash_functions
 # CREATE FUNCTIONS
 #
 
-script_fn()
-{
 cat > "$file" <<'EOF'
 #!/usr/bin/env bash
 # shellcheck disable=SC1091,SC2001,SC2162,SC2317
+
+export user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
 ######################################################################################
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
@@ -164,7 +164,7 @@ cpf()
 
     cp "${1}" "${HOME}/tmp/${1}"
 
-    chown -R "${USER}":"${USER}" "${HOME}/tmp/${1}"
+    chown -R "${USER}":'users' "${HOME}/tmp/${1}"
     chmod -R 744 "${HOME}/tmp/${1}"
 
     clear; ls -1AhFv --color --group-directories-first
@@ -181,7 +181,7 @@ mvf()
 
     mv "${1}" "${HOME}/tmp/${1}"
 
-    chown -R "${USER}":"${USER}" "${HOME}/tmp/${1}"
+    chown -R "${USER}":'users' "${HOME}/tmp/${1}"
     chmod -R 744 "${HOME}/tmp/${1}"
 
     clear; ls -1AhFv --color --group-directories-first
@@ -193,7 +193,7 @@ mvf()
 toa()
 {
     clear
-    chown -R "${USER}":"${USER}" "${PWD}"
+    chown -R "${USER}":'users' "${PWD}"
     chmod -R 744 "${PWD}"
     clear; ls -1AhFv --color --group-directories-first
 }
@@ -208,16 +208,6 @@ showpkgs()
     dpkg --get-selections |
     grep -v deinstall > "${HOME}"/tmp/packages.list
     gted "${HOME}"/tmp/packages.list
-}
-
-# PIPE ALL DEVELOPMENT PACKAGES NAMES TO file
-getdev()
-{
-    apt-cache search dev |
-    grep "\-dev" |
-    cut -d ' ' -f1 |
-    sort > 'dev-packages.list'
-    gted 'dev-packages.list'
 }
 
 ################
@@ -387,9 +377,10 @@ aria2()
 # PRINT LAN & WAN IP ADDRESSES
 myip()
 {
+    local lan wan
     clear
-    lan="$(hostname -I)"
-    wan="$(dig +short myip.opendns.com @resolver1.opendns.com)"
+    lan="$(ip route get 1.2.3.4 | awk '{print $7}')"
+    wan="$(curl -A "${user_agent}" -fsS 'https://checkip.amazonaws.com')"
     clear
     printf "%s\n%s\n\n" \
         "LAN: ${lan}" \
@@ -461,32 +452,15 @@ rmf()
 # OPTIMIZE AND OVERWRITE THE ORIGINAL IMAGES
 imow()
 {
-    local apt_pkgs cnt_queue cnt_total dimensions fext missing_pkgs pip_lock random_dir tmp_file v_noslash
+    local cnt_queue cnt_total dimensions fext missing_pkgs pip_lock random_dir tmp_file v_noslash
 
     clear
 
     # THE FILE EXTENSION TO SEARCH FOR (DO NOT INCLUDE A '.' WITH THE EXTENSION)
     fext=jpg
 
-    #
-    # REQUIRED APT PACKAGES
-    #
-
-    apt_pkgs=(sox libsox-dev)
-    for i in ${apt_pkgs[@]}
-    do
-        missing_pkg="$(dpkg -l | grep "${i}")"
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
-        fi
-    done
-
-    if [ -n "${missing_pkgs}" ]; then
-        sudo apt -y install ${missing_pkgs}
-        sudo apt -y autoremove
-        clear
-    fi
-    unset apt_pkgs i missing_pkg missing_pkgs
+    # REQUIRED PACMAN
+    sudo pacman -Sq --noconfirm --needed sox
 
     #
     # REQUIRED PIP PACKAGES
@@ -581,17 +555,16 @@ im50()
 
 imdl()
 {
-    local cwd tmp_dir user_agent
+    local cwd tmp_dir
     clear
     cwd="${PWD}"
     tmp_dir="$(mktemp -d)"
-    user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
     cd "${tmp_dir}" || exit 1
     curl -A "${user_agent}" -Lso 'imow' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-and-overwrite.sh'
     sudo mv imow "${cwd}"
     sudo rm -fr "${tmp_dir}"
     cd "${cwd}" || exit 1
-    sudo chown "${USER}":"${USER}" imow
+    sudo chown "${USER}":'users' imow
     sudo chmod +rwx imow
 }
 
@@ -655,9 +628,7 @@ cuda_purge()
 
 ffdl()
 {
-    local user_agent
-    clear
-    curl -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36' -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
+    curl -A "${user_agent}" -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
     bash 'ff.sh'
     sudo rm 'ff.sh'
     clear; ls -1AhFv --color --group-directories-first
@@ -1309,7 +1280,7 @@ nopen()
     exit
 }
 
-tkan()
+tkn()
 {
     local parent_dir
     parent_dir="${PWD}"
@@ -1369,7 +1340,7 @@ adl()
 
     aria2c \
         --console-log-level=notice \
-        --user-agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36' \
+        --user-agent="${user_agent}" \
         -x16 \
         -j5 \
         --split=32 \
@@ -1412,7 +1383,7 @@ adlm()
 
     aria2c \
         --console-log-level=notice \
-        --user-agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36' \
+        --user-agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' \
         -x16 \
         -j5 \
         --split=32 \
@@ -1462,6 +1433,22 @@ big_files()
     sudo du -Bm "${PWD}" 2>/dev/null | sort -hr | head -"${cnt}"
 }
 
+big_vids()
+{
+    local cnt
+    clear
+
+    if [ -n "${1}" ]; then
+        cnt="${1}"
+    else
+        read -p 'Enter the max number of results: ' cnt
+        clear
+    fi
+
+    printf "%s\n\n" "Listing the ${cnt} largest videos"
+    sudo find "${PWD}" -type f \( -iname '*.mkv' -o -iname '*.mp4' \) -exec du -Sh {} + | grep -Ev '\(x265\)' | sort -hr | head -n"${cnt}"
+}
+
 big_img() { clear; sudo find . -size +10M -type f -name '*.jpg' 2>/dev/null; }
 
 jpgsize()
@@ -1508,7 +1495,7 @@ cmf()
 {
     local rel_sdir
     if ! sudo dpkg -l | grep -o cmake-curses-gui; then
-        sudo apt -y install cmake-curses-gui
+        sudo pacman -Sq --needed --noconfirm cmake
     fi
     clear
 
@@ -1540,13 +1527,17 @@ jpgs()
 
 gitdl()
 {
+    local base_url
     clear
-    wget -cq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/FFmpeg/build-ffmpeg'
-    wget -cq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/build-magick'
-    wget -cq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc'
-    wget -cq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/FFmpeg/repo.sh'
+
+    base_url='https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts'
+
+    wget -cq "${base_url}/FFmpeg/build-ffmpeg"
+    wget -cq "${base_url}/ImageMagick/build-magick"
+    wget -cq "${base_url}/GNU%20Software/build-gcc"
+    wget -cq "${base_url}/FFmpeg/repo.sh"
     sudo chmod -R build-gcc build-magick build-ffmpeg repo.sh -- *
-    sudo chown -R "${USER}":"${USER}" build-gcc build-magick build-ffmpeg repo.sh
+    sudo chown -R "${USER}":'users' build-gcc build-magick build-ffmpeg repo.sh
     clear
     ls -1A --color --group-directories-first
 }
@@ -1582,8 +1573,5 @@ ffp()
 }
 
 EOF
-}
 
-script_fn
-clear
-printf "%s\n%s\n\n" 'The script has completed!'
+printf "\n%s\n%s\n\n" 'The script has completed!'

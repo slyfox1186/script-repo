@@ -9,13 +9,11 @@
 ##
 ##  Features: Static build, OpenSSL backend
 ##
-##  Updated: 10.10.23
+##  Updated: 11.02.23
 ##
 ##  Upgraded to version: 3.12.0
 ##
-##  Added: Debian 10 Bullseye support
-##
-##  Script version: 1.9
+##  Script version: 2.0
 ##
 #################################################################################################################################
 
@@ -30,7 +28,7 @@ fi
 # SET THE SCRIPT VARIABLES
 #
 
-script_ver=1.9
+script_ver=2.0
 py_ver=3.12.0
 archive_dir=Python-${py_ver}.tar.xz
 archive_url=https://www.python.org/ftp/python/3.12.0/${archive_dir}
@@ -38,7 +36,7 @@ archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 install_dir=/usr/local
 cwd="${PWD}"/python3-build-script
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
 #
@@ -291,34 +289,25 @@ if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-compone
 fi
 
 #
-# LOCATE THE OPENSSL DIR
-#
-
-case "$(type -P openssl)" in
-    /usr/local/bin/openssl)     openssl_dir=/usr/local;;
-    /usr/bin/openssl)           openssl_dir=/usr;;
-    *)                          fail_fn "Failed to locate openssl. Please install it before running the script again. Line: {LINENO}";;
-esac
-
-#
 # BUILD THE PROGRAM FROM SOURCE CODE
 #
 
 cd "${cwd}/${archive_dir}/build" || exit 1
-../configure --prefix="${install_dir}"            \
-             --enable-optimizations               \
-             --with-ensurepip=upgrade             \
-             --with-lto=yes                       \
-             --with-openssl-rpath=auto            \
-             --with-openssl="${openssl_dir}"      \
-             --with-pkg-config=yes                \
-             --with-ssl-default-suites=openssl    \
-             --with-valgrind                      \
-             PKG_CONFIG="$(type -P pkg-config)"   \
-             PKG_CONFIG_PATH="${PKG_CONFIG_PATH}" \
-             CFLAGS="${CFLAGS}"                   \
-             CPPFLAGS="${CPPFLAGS}"               \
-             LDFLAGS="${LDFLAGS}"                 \
+../configure --prefix="${install_dir}"    
+             --disable-test-modules                                                   \
+             --enable-optimizations                                                   \
+             --with-ensurepip=install                                                 \
+             --with-lto=yes                                                           \
+             --with-openssl-rpath=auto                                                \
+             --with-openssl="$(echo "$(type -P openssl)" | sed 's|\/bin\/openssl||')" \
+             --with-pkg-config=yes                                                    \
+             --with-ssl-default-suites=openssl                                        \
+             --with-valgrind                                                          \
+             PKG_CONFIG="$(type -P pkg-config)"                                       \
+             PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"                                     \
+             CFLAGS="${CFLAGS}"                                                       \
+             CPPFLAGS="${CPPFLAGS}"                                                   \
+             LDFLAGS="${LDFLAGS}"                                                     \
              LIBS="$(pkg-config --libs openssl)"
 
 if ! make "-j$(nproc --all)"; then

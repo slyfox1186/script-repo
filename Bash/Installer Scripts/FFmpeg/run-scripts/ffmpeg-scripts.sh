@@ -5,7 +5,7 @@ clear
 # CREATE VARIABLES
 parent_dir="${PWD}"
 tmp_dir="$(mktemp -d)"
-scripts=(ffmpeg ffpb ffpb-loop)
+scripts=(ffmpeg ffpb ffpb-loop loop-paths.sh)
 
 # CREATE AND CD INTO A RANDOM DIRECTORY
 cd "${tmp_dir}" || exit 1
