@@ -25,12 +25,12 @@ fi
 
 script_ver=1.1
 archive_dir=wget-latest
-archive_url=https://ftp.gnu.org/gnu/wget/wget-latest.tar.lz
+archive_url=https://ftp.gnu.org/gnu/wget/"${archive_dir}".tar.lz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/wget-build-script
 install_dir=/usr/local
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
@@ -219,18 +219,22 @@ cd "${cwd}/${archive_dir}/build" || exit 1
              --with-included-libunistring       \
              --with-libiconv-prefix=/usr        \
              --with-libintl-prefix=/usr         \
-             --with-libssl-prefix=/usr/lib64    \
+             --with-libssl-prefix=/usr          \
              --with-libunistring-prefix=/usr    \
              --with-linux-crypto                \
              --with-metalink                    \
-             --with-openssl=auto                \
+             --with-openssl=yes                 \
              --with-ssl=openssl                 \
-             PKG_CONFIG="$(type -P pkg-config)"
+             PKG_CONFIG="$(type -P pkg-config)" \
+             OPENSSL_LIBS=/usr/local/ssl/lib64  \
+             OPENSSL_CFLAGS='-I/usr/local/ssl/include'
 make "-j$(nproc --all)"
 if ! sudo make install; then
     fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
     exit 1
 fi
+
+printf "\nca_directory=/etc/ssl/certs" | sudo tee -a '/usr/local/etc/wgetrc'
 
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn

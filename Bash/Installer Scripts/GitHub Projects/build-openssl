@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2162,SC2317
+# shellcheck disable=SC2086,SC1091,SC2162
 
 #############################################################################
 ##
@@ -11,9 +11,9 @@
 ##  
 ##  Enabled features: egd, fips, md2, rc5, trace, sctp, threads, and zlib
 ##
-##  Updated: 10.01.23
+##  Updated: 11.08.23
 ##
-##  Script version: 1.4
+##  Script version: 1.6
 ##
 #############################################################################
 
@@ -28,20 +28,20 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.4
-archive_dir=openssl-3.1.3
+script_ver=1.6
+archive_dir=openssl-3.1.4
 archive_url="https://www.openssl.org/source/${archive_dir}.tar.gz"
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 parent_dir="${PWD}"
 cwd="${parent_dir}"/openssl-build-script
-install_dir=/usr/local
+install_dir=/usr/local/ssl
 ssl_dir=/usr/local/ssl
 cert_dir="${ssl_dir}/certs"
 pem_file=cacert.pem
 pem_in="${cwd}/${pem_file}"
 pem_out="${cert_dir}/${pem_file}"
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
@@ -107,6 +107,20 @@ PKG_CONFIG_PATH="\
 /lib/usr/local/pkgconfig\
 "
 export PKG_CONFIG_PATH
+
+LD_LIBRARY_PATH="\
+/usr/local/lib64:\
+/usr/local/lib:\
+/usr/share/gdb/auto-load/usr/x86_64-linux-gnux32/lib64:\
+/usr/lib/x86_64-linux-gnu:\
+/usr/x86_64-linux-gnux32/lib64:\
+/usr/lib64:\
+/usr/lib:\
+/lib64:\
+/lib\
+"
+export LD_LIBRARY_PATH
+
 
 #
 # CREATE FUNCTIONS
@@ -194,7 +208,7 @@ if [ ! -f "${pem_out}" ]; then
         '================================================'
     wget -U "${user_agent}" -cqO "${pem_in}" "https://curl.se/ca/${pem_file}"
     if ! sudo mv "${pem_in}" "${pem_out}"; then
-        fail_fn "Failed to move \"${pem_in}\" to \"${pem_out}\":Line ${LINENO}"
+        fail_fn "Failed to move \"${pem_in}\" to \"${pem_out}\". Line: ${LINENO}"
     fi
 fi
 
@@ -203,7 +217,7 @@ fi
 #
 
 if [ ! -f "${cwd}/${archive_name}" ]; then
-    wget -U "${user_agent}" -cqO "${cwd}/${archive_name}" "${archive_url}"
+    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
 fi
 
 #
@@ -230,23 +244,19 @@ fi
 
 ubuntu_os_version() { sudo ln -sf /usr/lib64/libcrypto.so.3 /lib/"${install_dir}"/; }
 
-if [ -f /etc/os-release ]; then
-    source /etc/os-release
-    OS="${NAME}"
-    VER="${VERSION_ID}"
+if [ -f '/etc/os-release' ]; then
+    source '/etc/os-release'
+    OS_TMP=$NAME
+    OS="$(echo "${OS_TMP}" | awk '{print $1}')"
 elif type lsb_release >/dev/null 2>&1; then
     OS="$(lsb_release -si)"
-    VER="$(lsb_release -sr)"
-elif [ -f /etc/lsb-release ]; then
-    source /etc/lsb-release
+elif [ -f '/etc/lsb-release' ]; then
+    source '/etc/lsb-release'
     OS="${DISTRIB_ID}"
-    VER="${DISTRIB_RELEASE}"
-elif [ -f /etc/debian_version ]; then
+elif [ -f '/etc/debian_version' ]; then
     OS=Debian
-    VER="$(cat /etc/debian_version)"
 else
     OS="$(uname -s)"
-    VER="$(uname -r)"
 fi
 
 #
@@ -254,53 +264,84 @@ fi
 #
 
 case "${OS}" in
-    Debia*)         clear;;
-    Ubunt*)         ubuntu_os_version;;
-    *)              fail_fn "Could not detect the OS architecture:Line ${LINENO}";;
+    Debian)         clear;;
+    Ubuntu)         ubuntu_os_version;;
+    *)              fail_fn "Could not detect the OS architecture. Line: ${LINENO}";;
 esac
+
+#
+# SET COMPILER OPTIMIZATION FLAGS
+#
+
+CC=gcc
+CXX=g++
+LDLIBS='-ldl -lpthread -lm -lz'
+CPPFLAGS='-I/usr/local/include -I/usr/include'
+LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu'
+LDFLAGS+=' -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 
 #
 # BUILD PROGRAM FROM SOURCE
 #
 
-clear
 cd "${cwd}/${archive_dir}/build" || exit 1
-../Configure --prefix="${install_dir}"        \
-             --openssldir="${ssl_dir}"        \
-             --with-rand-seed=os              \
-             --with-zlib-include=/usr/include \
-             --with-zlib-lib=/usr/lib         \
-             enable-egd                       \
-             enable-fips                      \
-             enable-md2                       \
-             enable-rc5                       \
-             enable-trace                     \
-             threads                          \
-             zlib
+clear
+../Configure --prefix="${install_dir}"  \
+             --openssldir="${ssl_dir}"  \
+             enable-ec_nistp_64_gcc_128 \
+             enable-egd                 \
+             enable-fips                \
+             enable-rc5                 \
+             enable-trace               \
+             enable-zlib                \
+             no-legacy                  \
+             no-tests                   \
+             sctp                       \
+             shared                     \
+             threads                    \
+             CC="${CC}"                 \
+             CXX="${CXX}"               \
+             CPPFLAGS="${CPPFLAGS}"     \
+             LDFLAGS="${LDFLAGS}"
 make "-j$(nproc --all)"
-if ! sudo make install_sw; then
-    fail_fn "Failed to execute: sudo make install_sw:Line ${LINENO}"
-    exit 1
-fi
-
-if ! sudo make install_fips; then
-    fail_fn "Failed to execute: sudo make install_fips:Line ${LINENO}"
-    exit 1
-fi
+sudo make build_sw
+sudo make install_fips
 
 # REQUIRED FOR FIPS FUNCTIONALITY TO WORK
-sudo openssl fipsinstall >/dev/null
+sudo openssl fipsinstall
+
+# CREATE A CONFIG SCRIPT FOR THE LD LINKER TO LOAD LETTING IT KNOW WHERE THE OPENSSL LIBS ARE LOCATED
+sudo bash -c 'echo "/usr/local/ssl/lib64" > "/etc/ld.so.conf.d/openssl-3.1.4.conf"'
 
 # UPDATE THE LIBRARIES FOR LD
-sudo ldconfig /usr/local/lib64/
+sudo ldconfig -v
+
+# BACKUP KEY BINARY FILES AS IT WOULD BE BAD TO LOSE THE WITHOUT RECOURSE
+if [ -f '/usr/bin/c_rehash' ]; then
+    sudo mv '/usr/bin/c_rehash' '/usr/bin/c_rehash.bak'
+fi
+if [ -f '/usr/bin/openssl' ]; then
+    sudo mv '/usr/bin/openssl' '/usr/bin/openssl.bak'
+fi
+
+# ADD THE NEW OPENSSL BINARY FILE PATH TO /ETC/ENVIRONMENT FILE SO IT LOADS DURING CRITICAL MOMENTS AS THE OS BOOTS OR RESTARTS
+sudo bash -c 'echo "PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/ssl/bin\"" > "/etc/environment"'
+
+source /etc/environment
 
 # ENSURE THE CORRECT PERMISSIONS ARE ATTACHED TO THE CUSTOM PEM FILE THAT WAS ADDED
 if [ -f "${pem_out}" ]; then
     sudo chmod 644 "${pem_out}"
 fi
 
+# DISPLAY THE UPDATED OPENSSL VERSIO INFORMATION
+openssl version -a
+echo
+read -p 'Press enter to continue.'
+
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
 
 # SHOW EXIT MESSAGE
 exit_fn
+

@@ -118,7 +118,7 @@ bash <(curl -fsSL https://build-tools.optimizethis.net)
     - Other  - Debian-based distros may work as well
 
 ```bash
-bash <(curl -fsSL aria2.optimizethis.net)
+bash <(curl -fsSL https://aria2.optimizethis.net)
 ````
 ------
 
@@ -148,11 +148,10 @@ bash <(curl -fsSL https://mirrors-menu.optimizethis.net)
 
 ## Add custom user scripts to the user's home directory
   - **Files included**
-```bash
-    .bashrc
-    .bash_aliases
-    .bash_functions
-```
+  - .bashrc
+  - .bash_aliases
+  - .bash_functions
+
 **Warning! This will overwrite your files!**
 ```bash
 bash <(curl -fsSL https://user-scripts.optimizethis.net)

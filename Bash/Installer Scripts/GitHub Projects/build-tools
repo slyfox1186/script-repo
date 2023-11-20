@@ -36,9 +36,8 @@ fi
 
 script_ver=2.6
 cwd="${PWD}"/build-tools-script
-packages="${cwd}"/packages
 install_dir=/usr/local
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 latest=false
 debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
@@ -47,9 +46,10 @@ debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 # PRINT SCRIPT BANNER
 #
 
-printf "%s\n%s\n\n"                      \
+printf "%s\n%s\n"                        \
     "Build-tools script: v${script_ver}" \
     '===================================='
+sleep 2
 
 #
 # GET CPU CORE COUNT FOR PARALLEL PROCESSING
@@ -65,7 +65,7 @@ fi
 # CREATE OUTPUT DIRECTORIES
 #
 
-mkdir -p "${packages}"
+mkdir -p "${cwd}"
 
 #
 # SET THE C + CPP COMPILERS
@@ -83,7 +83,7 @@ export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
 # MAKE SURE WE USE THE CORRECT M4 FOLDER
 #
 
-export ACLOCAL_PATH=/usr/share/aclocal
+export ACLOCAL_PATH='/usr/share/aclocal'
 
 #
 # SET THE PATH VARIABLE
@@ -94,8 +94,8 @@ PATH="\
 /usr/lib/ccache:\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
-${HOME}/.local/lib/python3.11/site-packages:\
-/home/jman/.local/lib/python3.11/site-packages
+${HOME}/.local/lib/python3.11/site-cwd:\
+/home/jman/.local/lib/python3.11/site-cwd
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
@@ -132,8 +132,8 @@ export PKG_CONFIG_PATH
 
 exit_fn()
 {
-    printf "\n%s\n\n%s\n%s\n\n" \
-        'The script has completed' \
+    printf "\n%s\n\n%s\n%s\n\n"                                   \
+        'The script has completed'                                \
         'Make sure to star this repository to show your support!' \
         "${web_repo}"
     exit 0
@@ -141,8 +141,8 @@ exit_fn()
 
 fail_fn()
 {
-    printf "\n\n%s\n\n%s\n\n%s\n\n" \
-        "${1}" \
+    printf "\n\n%s\n\n%s\n\n%s\n\n"                  \
+        "${1}"                                       \
         'To report a bug please create an issue at:' \
         "${web_repo}/issues"
     exit 1
@@ -152,9 +152,9 @@ cleanup_fn()
 {
     local answer
 
-    printf "\n%s\n\n%s\n%s\n\n" \
+    printf "\n%s\n\n%s\n%s\n\n"                  \
         'Do you want to remove the build files?' \
-        '[1] Yes' \
+        '[1] Yes'                                \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
 
@@ -206,7 +206,7 @@ execute()
 
 download()
 {
-    dl_path="${packages}"
+    dl_path="${cwd}"
     dl_url="${1}"
     dl_file="${2:-"${1##*/}"}"
 
@@ -260,7 +260,7 @@ download_git()
 {
     local dl_path dl_url dl_file target_dir
 
-    dl_path="${packages}"
+    dl_path="${cwd}"
     dl_url="${1}"
     dl_file="${2:-"${1##*/}"}"
     dl_file="${dl_file//\./-}"
@@ -281,7 +281,7 @@ download_git()
         printf "\n%s\n\n" "The script failed to clone the directory \"${target_dir}\" and will try again in 10 seconds..."
         sleep 10
         if ! git clone -q "${dl_url}" "${target_dir}"; then
-            fail_fn "The script failed to clone the directory \"${target_dir}\" twice and will now exit the buildLine: ${LINENO}"
+            fail_fn "The script failed to clone the directory \"${target_dir}\" twice and will now exit the build. Line: ${LINENO}"
         fi
     else
         printf "%s\n\n" "Successfully cloned: ${target_dir}"
@@ -296,22 +296,22 @@ build()
         "Building ${1} - version ${2}" \
         '===================================='
 
-    if [ -f "${packages}/${1}.done" ]; then
-        if grep -Fx "${2}" "${packages}/${1}.done" >/dev/null; then
-            echo "${1} version ${2} already built. Remove ${packages}/${1}.done lockfile to rebuild it."
+    if [ -f "${cwd}/${1}.done" ]; then
+        if grep -Fx "${2}" "${cwd}/${1}.done" >/dev/null; then
+            echo "${1} version ${2} already built. Remove ${cwd}/${1}.done lockfile to rebuild it."
             return 1
         elif "${latest}"; then
             echo "${1} is outdated and will be rebuilt using version ${2}"
             return 0
         else
-            echo "${1} is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove ${packages}/${1}.done lockfile."
+            echo "${1} is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove ${cwd}/${1}.done lockfile."
             return 1
         fi
     fi
     return 0
 }
 
-build_done() { echo "${2}" > "${packages}/${1}.done"; }
+build_done() { echo "${2}" > "${cwd}/${1}.done"; }
 
 git_1_fn()
 {
@@ -351,14 +351,14 @@ git_ver_fn()
         case "${v_flag}" in
                 R)      t_flag=releases;;
                 T)      t_flag=tags;;
-                *)      fail_fn "Could not detect the variable \"v_flag\":Line ${LINENO}"
+                *)      fail_fn "Could not detect the variable \"v_flag\". Line: ${LINENO}"
         esac
     fi
 
     case "${v_tag}" in
             1)      u_flag=git_1_fn;;
             2)      u_flag=git_2_fn;;
-            *)      fail_fn "Could not detect the variable \"v_tag\":Line ${LINENO}"
+            *)      fail_fn "Could not detect the variable \"v_tag\". Line: ${LINENO}"
     esac
 
     "${u_flag}" "${v_url}" "${t_flag}" 2>/dev/null
@@ -384,39 +384,11 @@ fi
 # INSTALL REQUIRED APT/PACMAN PACKAGES
 #
 
-python2_arch_fn()
-{
-    if build 'python2' 'git'; then
-        download_git 'https://aur.archlinux.org/python2.git' 'python2-AUR'
-            gpg --recv-keys 04C367C218ADD4FF
-            makepkg -si --noconfirm
-        build_done 'python2' 'git'
-    fi
-}
-
-python2_setuptools_arch_fn()
-{
-    if build 'python2-setuptools' 'git'; then
-        download_git 'https://aur.archlinux.org/python2-setuptools.git' 'python2-setuptools-AUR'
-            makepkg -si --noconfirm
-        build_done 'python2-setuptools' 'git'
-    fi
-}
-
-jq_arch_fn()
-{
-    if build 'jq' 'git'; then
-        download_git 'https://aur.archlinux.org/jq-git.git' 'jq-AUR'
-            makepkg -si --noconfirm
-        build_done 'jq' 'git'
-    fi
-}
-
 pkgs_arch_fn()
 {
     pkgs_arch=(autoconf automake autogen bluez-qt5 base-devel ccache cmake curl
-          git libnghttp2 libnghttp3 openssl python python-pip python-setuptools
-          qt5-base qt6-base)
+               git jq libnghttp2 libnghttp3 openssl python python-pip qt5-base
+               qt6-base)
 
     if [ -f /var/lib/pacman/db.lck ]; then
         sudo rm /var/lib/pacman/db.lck
@@ -432,28 +404,16 @@ pkgs_arch_fn()
     done
 
     if [ -n "${missing_pkgs}" ]; then
-         sudo pacman -S --noconfirm ${missing_pkgs}
+         sudo pacman -Sq --needed --noconfirm ${missing_pkgs}
     fi
 
-    # INSTALL JQ FROM AUR
-    if ! sudo pacman -Qi | grep -o 'python2' &>/dev/null; then
-        python2_arch_fn
-    fi
-    if ! sudo pacman -Qi | grep -o 'jq' &>/dev/null; then
-        jq_arch_fn
-    fi
-    if ! sudo pacman -Qi | grep -o 'python-setuptools' &>/dev/null; then
-        python2_setuptools_arch_fn
-    fi
-    
     rm_pip_lock="$(sudo find /usr/lib/python3* -type f -name 'EXTERNALLY-MANAGED')"
     if [ -n "${rm_pip_lock}" ]; then
         sudo rm "${rm_pip_lock}"
     fi
 
     # INSTALL PYTHON PIP PACKAGES
-    pip uninstall -q -y setuptools
-    sudo pip install -q --no-input setuptools
+    pip install -q --user --no-input setuptools wheel
 }
 
 pkgs_fn()
@@ -489,7 +449,7 @@ esac
 git_ver_fn '541' '2' 'T'
 if build 'cmake' "${g_ver}"; then
     download "https://gitlab.kitware.com/cmake/cmake/-/archive/v${g_ver}/cmake-v${g_ver}.tar.bz2" "cmake-${g_ver}.tar.bz2"
-    execute ./bootstrap --prefix=/usr/local         \
+    execute ./bootstrap --prefix="${install_dir}"   \
                         --enable-ccache             \
                         --parallel="$(nproc --all)" \
                         --qt-gui
@@ -513,25 +473,36 @@ if build 'ninja' "${g_ver1}"; then
     build_done 'ninja' "${g_ver1}"
 fi
 
-git_ver_fn 'mesonbuild/meson' '1' 'T'
-if build 'meson' "${g_ver1}"; then
-    download "https://codeload.github.com/mesonbuild/meson/tar.gz/refs/tags/${g_ver1}" "meson-${g_ver1}.tar.gz"
-    execute python3 setup.py build
-    execute sudo python3 setup.py install --prefix="${install_dir}"
-    build_done 'meson' "${g_ver1}"
+if [[ "${OS}" == 'Arch' ]]; then
+    sudo pacman -Sq --needed --noconfirm meson 2>&1
+else
+    git_ver_fn 'mesonbuild/meson' '1' 'T'
+    if build 'meson' "${g_ver1}"; then
+        download "https://codeload.github.com/mesonbuild/meson/tar.gz/refs/tags/${g_ver1}" "meson-${g_ver1}.tar.gz"
+        execute python3 setup.py build
+        execute sudo python3 setup.py install --prefix="${install_dir}"
+        build_done 'meson' "${g_ver1}"
+    fi
 fi
 
-if build 'golang' '1.21.3'; then
-    download 'https://go.dev/dl/go1.21.3.linux-amd64.tar.gz' 'golang-1.21.3.tar.gz'
-    execute sudo cp -f bin/go bin/gofmt "${install_dir}"/bin
-    if [ -d  "${install_dir}"/go ]; then
-        sudo rm -fr "${install_dir}"/go
+if [[ "${OS}" == 'Arch' ]]; then
+    sudo pacman -Sq --needed --noconfirm go 2>&1
+    mkdir -p  "${HOME}"/go
+    export GOPATH="${HOME}"/go
+    source "${HOME}"/.bash_profile
+else
+    if build 'golang' '1.21.3'; then
+        download 'https://go.dev/dl/go1.21.3.linux-amd64.tar.gz' 'golang-1.21.3.tar.gz'
+        execute sudo cp -f bin/go bin/gofmt "${install_dir}"/bin
+        if [ -d  "${install_dir}"/go ]; then
+            sudo rm -fr "${install_dir}"/go
+        fi
+        sudo mkdir -p "${install_dir}"/go
+        GOROOT="${install_dir}"/go
+        PATH="${PATH}:${GOROOT}/bin"
+        export GOROOT PATH
+        build_done 'golang' '1.21.3'
     fi
-    sudo mkdir -p "${install_dir}"/go
-    GOROOT="${install_dir}"/go
-    PATH="${PATH}:${GOROOT}/bin"
-    export GOROOT PATH
-    build_done 'golang' '1.21.3'
 fi
 
 # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES

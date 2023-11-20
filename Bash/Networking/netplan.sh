@@ -7,18 +7,15 @@ if [ "${EUID}" -eq '0' ]; then
     exit 1
 fi
 
-if ! sudo dpkg -l | grep 'netplan' &>/dev/null; then
-    sudo apt -y install netplan.io
-    sudo apt -y autoremove
-    clear
-fi
+sudo apt -y install netplan.io
+clear
 
 #
 # SET SCRIPT VARIABLES
 #
 
 repo=https://github.com/slyfox1186/script-repo
-yaml_file=/etc/netplan/01-netcfg.yaml
+yfile=/etc/netplan/01-netcfg.yaml
 
 #
 # CREATE FUNCTIONS
@@ -53,7 +50,7 @@ apply_settings_fn()
 
 create_dhcp_yaml_fn()
 {
-    sudo cat > "${yaml_file}" <<EOF
+    sudo cat > "${yfile}" <<EOF
 # This file describes the network interfaces available on your system
 # For more information, see netplan(5).
 network:
@@ -77,7 +74,7 @@ create_static_yaml_fn()
     local ip_address_sed
 
 # CREATE NETPLAN STATIC IP file
-    sudo cat > "${yaml_file}" <<EOF
+    sudo cat > "${yfile}" <<EOF
 # This file describes the network interfaces available on your system
 # For more information, see netplan(5).
 network:

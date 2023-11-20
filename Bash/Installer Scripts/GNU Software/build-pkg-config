@@ -30,7 +30,7 @@ archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/pkg-config-build-script
 install_dir=/usr
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
@@ -147,9 +147,9 @@ cleanup_fn()
 #
 
 pkgs=("${1}" autoconf autoconf-archive autogen automake build-essential ca-certificates ccache clang curl libaria2-0 libaria2-0-dev
-      libc-ares-dev libdmalloc-dev libgcrypt20-dev libgmp-dev libgnutls28-dev libgpg-error-dev libjemalloc-dev
-      libmbedtls-dev libnghttp2-dev librust-openssl-dev libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev
-      libxml2-dev pkg-config zlib1g-dev)
+      libglib2.0-dev libc-ares-dev libdmalloc-dev libgcrypt20-dev libgmp-dev libgnutls28-dev libgpg-error-dev libjemalloc-dev
+      libmbedtls-dev libnghttp2-dev librust-openssl-dev libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev libxml2-dev pkg-config
+      zlib1g-dev)
 
 for i in ${pkgs[@]}
 do

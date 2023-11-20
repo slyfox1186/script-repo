@@ -96,7 +96,6 @@ fi
 PATH="\
 /usr/lib/ccache/bin:\
 ${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
@@ -105,19 +104,16 @@ ${HOME}/.local/bin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/games:\
-/usr/local/games:\
-/usr/lib/python3/dist-packages:\
-/snap/bin\
+/usr/lib/python3/dist-packages\
 "
 export PATH
 
 export threads="$(nproc --all)"
 export cpus="$((threads / 2))"
-# export wan="$(dig +short myip.opendns.com @resolver1.opendns.com)"
-export wan="$(curl -sS https://checkip.amazonaws.com)"
+export lan="$(ip route get 1.2.3.4 | awk '{print $7}')"
+export wan="$(curl -sS 'https://checkip.amazonaws.com')"
 export tmp="${HOME}"/tmp
-export PS1='\n\[\e[0;96m\]\w\n\[\e[0;38;5;220m\]\T\n\[\e[0;38;5;208m\]\h\[\e[0m\]@\[\e[0;38;5;201m\]\u\[\e[0;93m\]$\[\e[0m\]'
+export PS1='\n\[\e[38;5;227m\]\w\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38;5;117m\]\h\[\e[97;1m\]\\$\[\e[0m\]'
 export PYTHONUTF8=1
 export TSAN_OPTIONS='ignore_noninstrumented_modules=1'
 

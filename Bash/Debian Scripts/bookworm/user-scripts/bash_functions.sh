@@ -536,16 +536,12 @@ aria2()
     aria2c --out="${file}" "${link}"
 }
 
-# PRINT LAN & WAN IP ADDRESSES
 myip()
 {
     clear
-    lan="$(hostname -I)"
-    wan="$(dig +short myip.opendns.com @resolver1.opendns.com)"
-    clear
-    printf "%s\n%s\n\n" \
-        "LAN: ${lan}" \
-        "WAN: ${wan}"
+    printf "%s\n%s\n\n"                                   \
+        "LAN: $(ip route get 1.2.3.4 | awk '{print $7}')" \
+        "WAN: $(dig +short 'myip.opendns.com' @resolver1.opendns.com)"
 }
 
 # WGET COMMAND
@@ -737,7 +733,7 @@ imdl()
     clear
     cwd="${PWD}"
     tmp_dir="$(mktemp -d)"
-    user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+    user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     cd "${tmp_dir}" || exit 1
     curl -A "${user_agent}" -Lso 'imow' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-and-overwrite.sh'
     sudo mv imow "${cwd}"
@@ -811,7 +807,7 @@ ffdl()
 {
     local user_agent
     clear
-    curl -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36' -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
+    curl -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
     bash 'ff.sh'
     sudo rm 'ff.sh'
     clear; ls -1AhFv --color --group-directories-first
@@ -1293,7 +1289,7 @@ rmf()
         files="${*}"
     fi
 
-    sudo rm "${file}s"
+    sudo rm "${files}"
     clear
     ls -1A --color --group-directories-first
 }
@@ -1641,6 +1637,22 @@ big_files()
     echo
     printf "%s\n\n" "${cnt} largest folders"
     sudo du -Bm "${PWD}" 2>/dev/null | sort -hr | head -"${cnt}"
+}
+
+big_vids()
+{
+    local cnt
+    clear
+
+    if [ -n "${1}" ]; then
+        cnt="${1}"
+    else
+        read -p 'Enter the max number of results: ' cnt
+        clear
+    fi
+
+    printf "%s\n\n" "Listing the ${cnt} largest videos"
+    sudo find "${PWD}" -type f \( -iname '*.mkv' -o -iname '*.mp4' \) -exec du -Sh {} + | grep -Ev '\(x265\)' | sort -hr | head -n"${cnt}"
 }
 
 big_img() { clear; sudo find . -size +10M -type f -name '*.jpg' 2>/dev/null; }

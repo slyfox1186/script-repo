@@ -1,0 +1,300 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2086,SC1091,SC2162
+
+####################################################################################
+##
+##  Install OpenSSL from the source code with multiple optional features enabled.
+##
+##  Updated: 11.11.23
+##
+##  Script version: 1.0
+##
+####################################################################################
+
+clear
+
+if [ "${EUID}" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
+
+#
+# SET VARIABLES
+#
+
+script_ver=1.0
+archive_dir=openssl-1.1.1w
+archive_url=https://www.openssl.org/source/"${archive_dir}".tar.gz
+archive_ext="${archive_url//*.}"
+archive_name="${archive_dir}.tar.${archive_ext}"
+parent_dir="${PWD}"
+cwd="${parent_dir}"/openssl-build-script-lite
+install_dir=/usr/local/ssl
+ssl_dir="${install_dir}"
+cert_dir="${install_dir}/certs"
+pem_file=cacert.pem
+pem_in="${cwd}/${pem_file}"
+pem_out="${install_dir}/certs/${pem_file}"
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+web_repo=https://github.com/slyfox1186/script-repo
+
+printf "%s\n%s\n\n"                              \
+    "OpenSSL Build Script Lite - v${script_ver}" \
+    '==============================================='
+sleep 2
+
+#
+# CREATE OUTPUT DIRECTORY
+#
+
+if [ -d "${cwd}" ]; then
+    sudo rm -fr "${cwd}"
+fi
+mkdir -p "${cwd}"
+sudo mkdir -p "${cert_dir}"
+
+#
+# SET THE COMPILERS
+#
+
+export CC=gcc CXX=g++
+
+#
+# SET THE COMPILER OPTIMIZATION FLAGS
+#
+
+LDLIBS='-ldl -lpthread -lm -lz'
+CPPFLAGS='-I/usr/local/include -I/usr/include'
+LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu'
+LDFLAGS+=' -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+export LDLIBS CPPFLAGS LDFLAGS
+
+#
+# SET THE PATH VARIABLE
+#
+
+PATH="\
+/usr/lib/ccache:\
+${HOME}/.cargo/bin:\
+${HOME}/.local/bin:\
+/usr/local/sbin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin:\
+/usr/local/cuda/bin:\
+/snap/bin\
+"
+export PATH
+
+#
+# SET THE PKG_CONFIG_PATH VARIABLE
+#
+
+PKG_CONFIG_PATH="\
+/usr/local/lib64/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/local/lib/usr/local/pkgconfig:\
+/usr/local/share/pkgconfig:\
+/usr/lib64/pkgconfig:\
+/usr/lib/pkgconfig:\
+/usr/lib/usr/local/pkgconfig:\
+/usr/share/pkgconfig:\
+/lib64/pkgconfig:\
+/lib/pkgconfig:\
+/lib/usr/local/pkgconfig\
+"
+export PKG_CONFIG_PATH
+
+export LD_LIBRARY_PATH="${install_dir}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+#
+# CREATE FUNCTIONS
+#
+
+exit_fn()
+{
+    printf "\n%s\n\n%s\n\n"                                       \
+        'Make sure to star this repository to show your support!' \
+        "${web_repo}"
+    exit 0
+}
+
+fail_fn()
+{
+    printf "\n\n%s\n\n%s\n\n%s\n\n"                  \
+        "${1}"                                       \
+        'To report a bug please create an issue at:' \
+        "${web_repo}/issues"
+    exit 1
+}
+
+cleanup_fn()
+{
+    local choice
+
+    printf "%s\n%s\n%s\n\n%s\n%s\n\n"                  \
+        '============================================' \
+        '  Do you want to clean up the build files?  ' \
+        '============================================' \
+        '[1] Yes'                                      \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' choice
+
+    case "${choice}" in
+        1)
+                sudo rm -fr "${cwd}"
+                cd "${parent_dir}" || exit 1
+                if [ -f "${pem_file}" ]; then
+                    sudo rm "${pem_file}"
+                fi
+                ;;
+        2)      clear;;
+        *)
+                unset choice
+                clear
+                cleanup_fn
+                ;;
+    esac
+}
+
+#
+# INSTALL REQUIRED APT PACKAGES
+#
+
+pkgs=(autoconf autogen automake build-essential ca-certificates ccache curl libc-ares-dev libcurl4-openssl-dev
+      libdmalloc-dev libgcrypt20-dev libgmp-dev libgpg-error-dev libjemalloc-dev libmbedtls-dev libsctp-dev
+      libssh2-1-dev libssh-dev libssl-dev libtool libtool-bin libxml2-dev m4 zlib1g-dev)
+
+for pkg in ${pkgs[@]}
+do
+    missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
+
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${pkg}"
+    fi
+done
+
+if [ -n "${missing_pkgs}" ]; then
+    sudo apt -y install ${missing_pkgs}
+    clear
+fi
+
+#
+# INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
+#
+
+if [ ! -f "${pem_out}" ]; then
+    printf "%s\n%s\n\n" \
+        'Download the latest security certificate' \
+        '================================================'
+    wget -U "${user_agent}" -cqO "${pem_in}" "https://curl.se/ca/${pem_file}"
+    if ! sudo mv "${pem_in}" "${pem_out}"; then
+        fail_fn "Failed to move \"${pem_in}\" to \"${pem_out}\". Line: ${LINENO}"
+    fi
+fi
+
+#
+# DOWNLOAD THE ARCHIVE FILE
+#
+
+if [ ! -f "${cwd}/${archive_name}" ]; then
+    wget -U "${user_agent}" -cqO "${cwd}/${archive_name}" "${archive_url}"
+fi
+
+#
+# CREATE OUTPUT DIRECTORY
+#
+
+if [ -d "${cwd}/${archive_dir}" ]; then
+    sudo rm -fr "${cwd}/${archive_dir}"
+fi
+mkdir -p "${cwd}/${archive_dir}/build"
+
+#
+# EXTRACT ARCHIVE FILES
+#
+
+if ! tar -zxf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
+    exit 1
+fi
+
+#
+# IF UBUNTU IS THE CURRENT OS THEN YOU MUST SOFTLINK FOR OPENSSL TO FUNCTION
+#
+
+ubuntu_os_version() { sudo ln -sf /usr/lib64/libcrypto.so.3 /lib/"${install_dir}"/; }
+
+if [ -f '/etc/os-release' ]; then
+    source '/etc/os-release'
+    OS_TMP=$NAME
+    OS="$(echo "${OS_TMP}" | awk '{print $1}')"
+elif type lsb_release >/dev/null 2>&1; then
+    OS="$(lsb_release -si)"
+elif [ -f '/etc/lsb-release' ]; then
+    source '/etc/lsb-release'
+    OS="${DISTRIB_ID}"
+elif [ -f '/etc/debian_version' ]; then
+    OS=Debian
+else
+    OS="$(uname -s)"
+fi
+
+#
+# TEST THE OS AND ITS VERSION IF UBUNTU THEN CALL THE pkgs_fn
+#
+
+case "${OS}" in
+    Debian)         clear;;
+    Ubuntu)         ubuntu_os_version;;
+    *)              fail_fn "Could not detect the OS architecture. Line: ${LINENO}";;
+esac
+
+cd "${cwd}/${archive_dir}/build" || exit 1
+clear
+../config --prefix="${install_dir}"     \
+          --openssldir="${install_dir}" \
+          sctp                          \
+          shared                        \
+          threads                       \
+          zlib                          \
+          CPPFLAGS="${CPPFLAGS}"        \
+          LDFLAGS="${LDFLAGS}"
+make "-j$(nproc --all)"
+sudo make install_sw
+
+# CREATE A CONFIG SCRIPT FOR THE LD LINKER TO LOAD LETTING IT KNOW WHERE THE OPENSSL LIBS ARE LOCATED
+sudo bash -c 'echo '\''/usr/local/ssl/lib64'\'' > '\''/etc/ld.so.conf.d/openssl-3.1.4.conf'\'''
+
+# UPDATE THE LIBRARIES FOR LD
+sudo ldconfig -v
+
+# BACKUP KEY BINARY FILES AS IT WOULD BE BAD TO LOSE THE WITHOUT RECOURSE
+if [ -f '/usr/bin/c_rehash' ] && [ ! -f '/usr/bin/c_rehash.bak' ]; then
+    sudo mv '/usr/bin/c_rehash' '/usr/bin/c_rehash.bak'
+fi
+if [ -f '/usr/bin/openssl' ] && [ ! -f '/usr/bin/openssl.bak' ]; then
+    sudo mv '/usr/bin/openssl' '/usr/bin/openssl.bak'
+fi
+
+# ADD THE NEW OPENSSL BINARY FILE PATH TO /ETC/ENVIRONMENT FILE SO IT LOADS DURING CRITICAL MOMENTS AS THE OS BOOTS OR RESTARTS
+sudo bash -c 'echo "PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/ssl/bin\"" > "/etc/environment"'
+source '/etc/environment'
+
+# ENSURE THE CORRECT PERMISSIONS ARE ATTACHED TO THE CUSTOM PEM FILE THAT WAS ADDED
+if [ -f "${pem_out}" ]; then
+    sudo chmod 644 "${pem_out}"
+fi
+
+# DISPLAY THE UPDATED OPENSSL VERSIO INFORMATION
+"$(type -P openssl)" version -a
+echo
+read -p 'Press enter to continue.'
+
+# PROMPT USER TO CLEAN UP FILES
+cleanup_fn
+
+# SHOW EXIT MESSAGE
+exit_fn
