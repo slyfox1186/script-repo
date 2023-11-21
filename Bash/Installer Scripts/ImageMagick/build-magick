@@ -20,13 +20,14 @@
 ##  Added: Autotrace for Ubuntu (18/20/22).04 and Debian 10/11
 ##  Added: LCMS Support
 ##  Added: Deja-Vu Fonts
+##  Added: APT packages
 ##
 ##  Fixed: Incorrect pkg-config location when building ImageMagick
 ##  Fixed: libjxl dependency
 ##
 ##  Changed: Some support libraries prefix paths to avoid installing into the system
 ##
-##  Updated: 11.12.23
+##  Updated: 11.21.23
 ##
 ##  Script Version: 3.8
 ##
@@ -370,13 +371,17 @@ pkgs_fn()
     sudo add-apt-repository ppa:fontforge/fontforge &>/dev/null
     sudo apt update
 
-    pkgs=("${1}" alien asciidoc autoconf autoconf-archive automake autopoint binutils bison build-essential
-          cmake curl dbus-x11 flex fontforge gettext gimp-data git gperf imagemagick jq libc6 libc6-dev libfont-ttf-perl
-          libfreetype-dev libgc-dev libgimp2.0-dev libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev libheif-dev
-          libjxl-gimp-plugin libltdl-dev libnotify-bin libnuma-dev libomp-dev libpango1.0-dev libpaper-dev libpng-dev
-          libpstoedit-dev libraw-dev librsvg2-dev librust-bzip2-dev libsdl2-dev libstdc++-12-dev libtcmalloc-minimal4
-          libticonv-dev libtool libtool-bin libxml2-dev libzip-dev m4 meson nasm ninja-build opencl-c-headers opencl-headers
-          php php-cli pstoedit software-properties-common xmlto yasm zlib1g-dev)
+    pkgs=("${1}" alien asciidoc autoconf autoconf-archive automake autopoint binutils bison
+          build-essential cmake curl dbus-x11 flex fontforge gettext gimp-data git gperf
+          imagemagick jq libamd2 libbabl-0.1-0 libc6 libc6-dev libcamd2 libccolamd2 libcholmod3
+          libcolamd2 libfont-ttf-perl libfreetype-dev libgc-dev libgegl-0.4-0 libgegl-common
+          libgimp2.0 libgimp2.0-dev libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev libheif-dev
+          libhwy-dev libjxl-gimp-plugin libltdl-dev libmetis5 libnotify-bin libnuma-dev libomp-dev
+          libpango1.0-dev libpaper-dev libpng-dev libpstoedit-dev libraw-dev librsvg2-dev
+          librust-bzip2-dev libsdl2-dev libstdc++-12-dev libsuitesparseconfig5 libtcmalloc-minimal4
+          libticonv-dev libtool libtool-bin libumfpack5 libxml2-dev libzip-dev m4 meson nasm ninja-build
+          opencl-c-headers opencl-headers php php-cli pstoedit software-properties-common xmlto yasm
+          zlib1g-dev)
 
     for pkg in ${pkgs[@]}
     do
