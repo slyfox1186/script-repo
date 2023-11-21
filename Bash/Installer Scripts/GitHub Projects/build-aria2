@@ -1,20 +1,27 @@
 #!/usr/bin/env bash
 
-################################################################################################################################
+####################################################################################################################################
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-aria2
 ##
-##  Purpose: Build aria2c with max connections changed from 16 to 128
-##
-##  Features: Static build, with an OpenSSL backend
+##  Purpose: Build aria2 from source code
 ##
 ##  Updated: 11.21.23
 ##
-##  Fixed: Soft linking error
-##
 ##  Script version: 1.6
 ##
-################################################################################################################################
+##  Features:
+##            - Static build
+##            - OpenSSL backend
+##            - Increased the max connections from 16 >> 128
+##
+##  Added:
+##         - If openssl is manually installed using the build-openssl script then use its certs directory instead of the default.
+##         - Build jemalloc from the latest source code
+##
+##  Fixed: Soft linking error
+##
+####################################################################################################################################
 
 clear
 
@@ -27,19 +34,23 @@ fi
 # SET THE VARIABLES
 #
 
-script_ver=1.6
-archive_dir=aria2-1.36.0
-archive_url=https://github.com/aria2/aria2/releases/download/release-1.36.0/"${archive_dir}".tar.gz
+script_ver='1.6'
+archive_dir='aria2-1.36.0'
+archive_url="https://github.com/aria2/aria2/releases/download/release-1.36.0/${archive_dir}.tar.gz"
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/aria2-build-script
-install_dir=/usr/local
-cert_dir=/etc/ssl/certs
-pem_file=cacert.pem
+install_dir='/usr/local'
+if [ -d '/usr/local/ssl/certs' ]; then
+    cert_dir='/usr/local/ssl/certs'
+else
+    cert_dir='/etc/ssl/certs'
+fi
+pem_file='cacert.pem'
 pem_in="${cwd}/${pem_file}"
 pem_out="${cert_dir}/${pem_file}"
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/script-repo
+web_repo='https://github.com/slyfox1186/script-repo'
 
 #
 # CREATE THE OUTPUT DIRECTORY
@@ -63,17 +74,18 @@ sleep 2
 # SET THE SOURCE CODE COMPILERS
 #
 
-export CC=clang CXX=clang++
+export CC='clang' CXX='clang++'
 
 #
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
+EXTRALIBS="$(pkg-config --libs libuv) $(pkg-config --libs libgcrypt)"
 export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
-CPPFLAGS='-I/usr/local/include -I/usr/include'
+export CPPFLAGS='-I/usr/local/include -I/usr/include'
 LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu'
 LDFLAGS+=' -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
-export CPPFLAGS LDFLAGS
+export LDFLAGS
 
 #
 # SET THE PATH VARIABLE
@@ -121,7 +133,7 @@ export PKG_CONFIG_PATH
 
 exit_fn()
 {
-    printf "%s\n\n%s\n%s\n\n"                                     \
+    printf "\n%s\n\n%s\n%s\n\n"                                   \
         'The script has completed'                                \
         'Make sure to star this repository to show your support!' \
         "${web_repo}"
@@ -142,7 +154,7 @@ show_ver_fn()
     local save_ver
     clear
     save_ver="$(aria2c --version | grep -Eo '[0-9\.]+$' | head -n1 2>/dev/null | xargs -I{} echo {})"
-    printf "%s\n\n" "The newly installed aria2c version is: ${save_ver}"
+    printf "%s\n\n" "The installed aria2c version is: ${save_ver}"
     sleep 3
 }
 
@@ -150,37 +162,33 @@ cleanup_fn()
 {
     local choice
 
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
+    printf "%s\n%s\n%s\n\n%s\n%s\n\n"                  \
         '============================================' \
         '  Do you want to clean up the build files?  ' \
         '============================================' \
-        '[1] Yes' \
+        '[1] Yes'                                      \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
     clear
 
     case "${choice}" in
-        1)
-                sudo rm -fr "${cwd}"
-                if [ -f /usr/bin/aria2c ]; then
-                    sudo apt -y remove aria2
-                    sudo apt -y autoremove
-                    clear
-                fi
-                ;;
-        2)
-                if [ -f /usr/bin/aria2c ]; then
-                    sudo apt -y remove aria2
-                    sudo apt -y autoremove
-                    clear
-                fi
-                ;;
+        1)      sudo rm -fr "${cwd}";;
+        2)      clear;;
         *)
                 unset choice
                 clear
                 cleanup_fn
                 ;;
     esac
+}
+
+remove_apt_ver_fn()
+{
+    if [ -f '/usr/bin/aria2c' ]; then
+        sudo apt -y remove aria2
+        sudo apt -y autoremove
+    fi
+    clear
 }
 
 #
@@ -198,9 +206,9 @@ fi
 
 pkgs=(autoconf autogen automake build-essential ca-certificates ccache clang curl
       libaria2-0 libaria2-0-dev libc-ares-dev libdmalloc-dev libexpat1-dev libgcrypt20-dev
-      libgmp-dev libgnutls28-dev libgpg-error-dev libjemalloc-dev liblzma-dev libmbedtls-dev
-      libnghttp2-dev librust-openssl-dev libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev
-      libuv1-dev libxml2-dev pkg-config zlib1g-dev)
+      libgmp-dev libgnutls28-dev libgpg-error-dev liblzma-dev libmbedtls-dev libnghttp2-dev
+      librust-openssl-dev libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev libuv1-dev
+      libxml2-dev pkg-config zlib1g-dev)
 
 for i in ${pkgs[@]}
 do
@@ -214,11 +222,73 @@ done
 if [ -n "${missing_pkgs}" ]; then
     sudo apt -y install ${missing_pkgs}
     sudo apt -y autoremove
-    clear
+fi
+clear
+
+#
+# BUILD JEMALLOC FROM SOURCE CODE
+#
+
+printf "%s\n%s\n\n"                  \
+    'Build Jemalloc - version 5.3.0' \
+    '==============================================='
+sleep 1
+
+#
+# CREATE JEMALLOC OUTPUT DIRECTORY
+#
+
+mkdir -p "${cwd}/jemalloc-5.3.0/build"
+
+#
+# DOWNLOAD JEMALLOC SOURCE CODE
+#
+
+if [ ! -f "${cwd}/jemalloc-5.3.0.tar.gz" ]; then
+    if ! curl -A "${user_agent}" -m 10 -Lso "${cwd}/jemalloc-5.3.0.tar.gz" 'https://github.com/jemalloc/jemalloc/archive/refs/tags/5.3.0.tar.gz'; then
+        fail_fn "Failed to download the file: ${cwd}/jemalloc-5.3.0.tar.gz. Line: ${LINENO}"
+    fi
 fi
 
 #
-# DOWNLOAD THE ARCHIVE FILE
+# EXTRACT JEMALLOC INTO OUTPUT DIRECTORY
+#
+
+tar -zxf "${cwd}/jemalloc-5.3.0.tar.gz" -C "${cwd}/jemalloc-5.3.0" --strip-components 1
+
+#
+# CD INTO OUTPUT DIRECTORY AND CONFIGURE JEMALLOC
+#
+
+cd "${cwd}/jemalloc-5.3.0" || exit 1
+extracmds1=('--disable-'{debug,doc,fill,log,shared,prof,stats})
+extracmds2=('--enable-'{autogen,static,xmalloc})
+autoreconf -fi
+cd build || exit 1
+../configure --prefix='/usr/local' \
+             "${extracmds1[@]}"    \
+             "${extracmds2[@]}"
+
+# MAKE JEMALLOC
+if ! make "-j$(nproc --all)"; then
+    fail_fn "Failed to execute the jemalloc command: make -j$(nproc --all). Line: ${LINENO}"
+    exit 1
+fi
+
+# INSTALL JEMALLOC
+if ! sudo make install; then
+    fail_fn "Failed to execute the jemalloc command: sudo make install. Line: ${LINENO}"
+    exit 1
+fi
+
+#
+# CREATE THE ARIA2 OUTPUT DIRECTORY
+#
+
+mkdir -p "${cwd}/${archive_dir}/build"
+
+#
+# DOWNLOAD THE ARIA2 SOURCE CODE
 #
 
 if [ ! -f "${cwd}/${archive_name}" ]; then
@@ -226,16 +296,7 @@ if [ ! -f "${cwd}/${archive_name}" ]; then
 fi
 
 #
-# CREATE THE OUTPUT DIRECTORY
-#
-
-if [ -d "${cwd}/${archive_dir}" ]; then
-    sudo rm -fr "${cwd}/${archive_dir}"
-fi
-mkdir -p "${cwd}/${archive_dir}/build"
-
-#
-# EXTRACT THE ARCHIVE FILE
+# EXTRACT THE ARIA2 SOURCE CODE INTO THE OUTPUT DIRECTORY
 #
 
 if ! tar -zxf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
@@ -247,32 +308,34 @@ fi
 # BUILD ARIA2 FROM SOURCE CODE
 #
 
+printf "\n%s\n%s\n\n"              \
+    "Build Aria2 - version 1.36.0" \
+    '==============================================='
+sleep 1
+
 cd "${cwd}/${archive_dir}" || exit 1
 # INCREASE THE MAX NUMBER OF CONNECTIONS FROM 16 TO 128
 sed -i 's/1, 16/1, 128/g' 'src/OptionHandlerFactory.cc'
 cd build || exit 1
-../configure --prefix="${install_dir}"               \
-             --disable-nls                           \
-             --disable-shared                        \
-             --disable-werror                        \
-             --enable-libaria2                       \
-             --enable-static                         \
-             --with-ca-bundle="${pem_out}"           \
-             --with-libgcrypt=/usr                   \
-             --with-libiconv-prefix=/usr             \
-             --with-libintl-prefix=/usr              \
-             --with-libuv                            \
-             --with-jemalloc                         \
-             --with-openssl                          \
-             --with-pic                              \
-             --without-gnutls                        \
-             ARIA2_STATIC=yes                        \
-             CFLAGS="${CFLAGS}"                      \
-             CXXFLAGS="${CXXFLAGS}"                  \
-             CPPFLAGS="${CPPFLAGS}"                  \
-             EXPAT_LIBS="$(pkg-config --libs expat)" \
-             LDFLAGS="${LDFLAGS}"                    \
-             LIBS="$(pkg-config --libs libuv) $(pkg-config --libs libgcrypt)"
+../configure --prefix="${install_dir}"                     \
+             --disable-nls                                 \
+             --disable-shared                              \
+             --disable-werror                              \
+             --enable-libaria2                             \
+             --enable-static                               \
+             --with-ca-bundle="${pem_out}"                 \
+             --with-libgcrypt='/usr'                       \
+             --with-libiconv-prefix='/usr'                 \
+             --with-libintl-prefix='/usr'                  \
+             --with-libuv                                  \
+             --with-jemalloc                               \
+             --with-openssl                                \
+             --without-gnutls                              \
+             ARIA2_STATIC='yes'                            \
+             EXPAT_LIBS="$(pkg-config --libs expat)"       \
+             JEMALLOC_CFLAGS='/usr/local/include/jemalloc' \
+             JEMALLOC_LIBS='-L/usr/local/lib -ljemalloc'   \
+             LIBS="${EXTRALIBS}"
 
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
@@ -284,15 +347,8 @@ if ! sudo make install; then
     exit 1
 fi
 
-#
-# REMOVE THE APT PACKAGE VERSION OF ARIA2C IF LOCATED
-#
-
-if [ -f '/usr/bin/aria2c' ]; then
-    sudo apt -y remove aria2
-    sudo apt -y autoremove
-    clear
-fi
+# REMOVE ANY APT INSTALLED VERSION OF ARIA2
+remove_apt_ver_fn
 
 # SHOW THE NEW VERSION
 show_ver_fn
