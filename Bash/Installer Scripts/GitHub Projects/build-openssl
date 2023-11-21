@@ -121,12 +121,6 @@ exit_fn()
     exit 0
 }
 
-warn_path_fn()
-{
-    clear
-    printf "%s\n" 'Make sure to add '\''/usr/local/ssl/bin'\'' to your PATH variable in your ~/.bashrc file.'
-}
-
 fail_fn()
 {
     printf "\n\n%s\n\n%s\n\n%s\n\n"                  \
@@ -306,7 +300,7 @@ sudo openssl fipsinstall >/dev/null
 # UPDATE THE LIBRARIES FOR LD
 sudo ldconfig /usr/local/lib64/
 
-# BACKUP KEY BINARY FILES AS IT WOULD BE BAD TO LOSE THEM WITHOUT RECOURSE
+# BACKUP KEY BINARY FILES AS IT WOULD BE BAD TO LOSE THE WITHOUT RECOURSE
 if [ -f '/usr/bin/c_rehash' ]; then
     sudo mv '/usr/bin/c_rehash' '/usr/bin/c_rehash.bak'
 fi
@@ -314,7 +308,7 @@ if [ -f '/usr/bin/openssl' ]; then
     sudo mv '/usr/bin/openssl' '/usr/bin/openssl.bak'
 fi
 
-# ADD THE NEW OPENSSL BINARY FILE PATH TO THE '/etc/environment' FILE SO IT LOADS DURING CRITICAL MOMENTS AS THE OS BOOTS OR RESTARTS
+# ADD THE NEW OPENSSL BINARY FILE PATH TO /ETC/ENVIRONMENT FILE SO IT LOADS DURING CRITICAL MOMENTS AS THE OS BOOTS OR RESTARTS
 sudo bash -c 'echo "PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/ssl/bin\"" > "/etc/environment"'
 
 # ENSURE THE CORRECT PERMISSIONS ARE ATTACHED TO THE CUSTOM PEM FILE THAT WAS ADDED
@@ -324,9 +318,6 @@ fi
 
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
-
-# WARN USER TO ADD TO PATH
-warn_path_fn
 
 # SHOW EXIT MESSAGE
 exit_fn
