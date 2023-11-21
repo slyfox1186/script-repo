@@ -284,18 +284,17 @@ alias nqc='nordvpn connect'
 alias nd='nordvpn disconnect'
 
 # watch commands (system monitoring)
+alias cwatch='watch -n1 ccache --print-stats'
+alias twatch='clear; watch sudo sensors -u'
+alias wgpu='clear; watch ndivia-smi'
 alias wmem='clear; watch free -m'
 alias wtemp='clear; watch sensors'
-alias wgpu='clear; watch ndivia-smi'
 
 # UBUNTU VERSION
 alias uver="clear; lsb_release -d | grep -Eo 'Ubuntu [0-9\.]+.*$'"
 
 # FIX GPG KEY ERRORS DURING APT UPDATE THAT SHOWS THEY ARE "DEPRECIATED"
 alias fix_gpg='sudo cp /etc/apt/trusted.gpg /etc/apt/trusted.gpg.d'
-
-# WATCH COMMAND
-alias cwatch='watch -n1 ccache --print-stats'
 
 # GET KERNEL VERSION
 alias kv='cat /proc/version | grep -Eo "([0-9\.\-]+-generic)"'
