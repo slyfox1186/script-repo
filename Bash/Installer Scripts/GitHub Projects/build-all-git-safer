@@ -100,7 +100,15 @@ do
 done
 
 # CLEANUP LEFTOVER FILES
-sudo rm -fr "${cwd}"
+if [ -d "${cwd}"/failed ]; then
+    sudo rm -fr "${cwd}"/completed
+    clear
+    printf "%s\n\n" 'A script failed to install. You can find the script that failed inside the "failed" folder.'
+    read -p 'Press enter to continue.'
+    clear
+else
+    sudo rm -fr "${cwd}"
+fi
 
 # DISPLAY EXIT MESSAGE
 exit_fn
