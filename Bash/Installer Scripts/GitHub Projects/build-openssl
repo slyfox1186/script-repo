@@ -291,14 +291,14 @@ if ! sudo make install_fips; then
     exit 1
 fi
 
-# EXPORT PATH VARIABLE
-export PATH="${PATH}:/usr/local/ssl/bin"
-
 # REQUIRED FOR FIPS FUNCTIONALITY TO WORK
 sudo openssl fipsinstall >/dev/null
 
+# CREATE A CONFIG SCRIPT FOR THE LD LINKER TO LOAD LETTING IT KNOW WHERE THE OPENSSL LIBS ARE LOCATED
+sudo bash -c "echo '/usr/local/ssl/lib64' > '/etc/ld.so.conf.d/${archive_dir}.conf'"
+
 # UPDATE THE LIBRARIES FOR LD
-sudo ldconfig /usr/local/lib64/
+sudo ldconfig '/usr/local/lib64/'
 
 # BACKUP KEY BINARY FILES AS IT WOULD BE BAD TO LOSE THEM WITHOUT RECOURSE
 if [ -f '/usr/bin/c_rehash' ]; then
