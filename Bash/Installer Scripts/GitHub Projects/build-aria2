@@ -49,7 +49,7 @@ fi
 pem_file='cacert.pem'
 pem_in="${cwd}/${pem_file}"
 pem_out="${cert_dir}/${pem_file}"
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) Applpc_typeeWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo='https://github.com/slyfox1186/script-repo'
 
 #
@@ -80,12 +80,15 @@ export CC='clang' CXX='clang++'
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-EXTRALIBS="$(pkg-config --libs libuv) $(pkg-config --libs libgcrypt)"
 export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
 export CPPFLAGS='-I/usr/local/include -I/usr/include'
 LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu'
 LDFLAGS+=' -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 export LDFLAGS
+explibs="$(pkg-config --libs expat)"
+jmflags='/usr/local/include/jemalloc'
+jmlibs='-L/usr/local/lib -ljemalloc'
+extralibs="$(pkg-config --libs libuv) $(pkg-config --libs libgcrypt)"
 
 #
 # SET THE PATH VARIABLE
@@ -133,7 +136,7 @@ export PKG_CONFIG_PATH
 
 exit_fn()
 {
-    printf "\n%s\n\n%s\n%s\n\n"                                   \
+    printf "%s\n\n%s\n%s\n\n"                                     \
         'The script has completed'                                \
         'Make sure to star this repository to show your support!' \
         "${web_repo}"
@@ -154,8 +157,8 @@ show_ver_fn()
     local save_ver
     clear
     save_ver="$(aria2c --version | grep -Eo '[0-9\.]+$' | head -n1 2>/dev/null | xargs -I{} echo {})"
-    printf "%s\n\n" "The installed aria2c version is: ${save_ver}"
-    sleep 3
+    printf "%s\n\n" "The installed aria2 version is: ${save_ver}"
+    sleep 2
 }
 
 cleanup_fn()
@@ -317,33 +320,33 @@ cd "${cwd}/${archive_dir}" || exit 1
 # INCREASE THE MAX NUMBER OF CONNECTIONS FROM 16 TO 128
 sed -i 's/1, 16/1, 128/g' 'src/OptionHandlerFactory.cc'
 cd build || exit 1
-../configure --prefix="${install_dir}"                     \
-             --disable-nls                                 \
-             --disable-shared                              \
-             --disable-werror                              \
-             --enable-libaria2                             \
-             --enable-static                               \
-             --with-ca-bundle="${pem_out}"                 \
-             --with-libgcrypt='/usr'                       \
-             --with-libiconv-prefix='/usr'                 \
-             --with-libintl-prefix='/usr'                  \
-             --with-libuv                                  \
-             --with-jemalloc                               \
-             --with-openssl                                \
-             --without-gnutls                              \
-             ARIA2_STATIC='yes'                            \
-             EXPAT_LIBS="$(pkg-config --libs expat)"       \
-             JEMALLOC_CFLAGS='/usr/local/include/jemalloc' \
-             JEMALLOC_LIBS='-L/usr/local/lib -ljemalloc'   \
-             LIBS="${EXTRALIBS}"
+../configure --prefix="${install_dir}"     \
+             --disable-nls                 \
+             --disable-shared              \
+             --disable-werror              \
+             --enable-libaria2             \
+             --enable-static               \
+             --with-ca-bundle="${pem_out}" \
+             --with-libgcrypt='/usr'       \
+             --with-libiconv-prefix='/usr' \
+             --with-libintl-prefix='/usr'  \
+             --with-libuv                  \
+             --with-jemalloc               \
+             --with-openssl                \
+             --without-gnutls              \
+             ARIA2_STATIC='yes'            \
+             EXPAT_LIBS="${explibs}"       \
+             JEMALLOC_CFLAGS="${jmflags}"  \
+             JEMALLOC_LIBS="${jmlibs}"     \
+             LIBS="${extralibs}"
 
 if ! make "-j$(nproc --all)"; then
-    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
+    fail_fn "Failed to execute the aria2 command: make -j$(nproc --all). Line: ${LINENO}"
     exit 1
 fi
 
 if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
+    fail_fn "Failed to execute the aria2 command: sudo make install. Line: ${LINENO}"
     exit 1
 fi
 
