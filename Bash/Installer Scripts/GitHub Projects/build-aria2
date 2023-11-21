@@ -80,15 +80,21 @@ export CC='clang' CXX='clang++'
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
-export CPPFLAGS='-I/usr/local/include -I/usr/include'
-LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu'
-LDFLAGS+=' -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
-export LDFLAGS
+CFLAGS='-g -O3 -pipe -march=native'
+CXXFLAGS="${CFLAGS}"
+CPPFLAGS="-I${install_dir}/include -I${install_dir}/include/x86_64-linux-gnu -I/usr/include"
+LDFLAGS="-L${install_dir}/lib64 -L${install_dir}/lib -L${install_dir}/lib/x86_64-linux-gnu"
+LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+export CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
+
+#
+# ADD EXTRA LIBRARYS TO THE ARIA2 CONFIGURE SCRIPT
+#
+
 explibs="$(pkg-config --libs expat)"
-jmflags='/usr/local/include/jemalloc'
-jmlibs='-L/usr/local/lib -ljemalloc'
 extralibs="$(pkg-config --libs libuv) $(pkg-config --libs libgcrypt)"
+jmflags="-I${install_dir}/include/jemalloc"
+jmlibs="-L${install_dir}/lib -ljemalloc"
 
 #
 # SET THE PATH VARIABLE
