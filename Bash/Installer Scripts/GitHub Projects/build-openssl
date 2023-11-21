@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2086,SC1091,SC2162
+# shellcheck disable=SC2162,SC2317
 
 #############################################################################
 ##
@@ -11,9 +11,9 @@
 ##  
 ##  Enabled features: egd, fips, md2, rc5, trace, sctp, threads, and zlib
 ##
-##  Updated: 11.08.23
+##  Updated: 11.21.23
 ##
-##  Script version: 1.6
+##  Script version: 1.8
 ##
 #############################################################################
 
@@ -28,7 +28,7 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.6
+script_ver=1.8
 archive_dir=openssl-3.1.4
 archive_url="https://www.openssl.org/source/${archive_dir}.tar.gz"
 archive_ext="${archive_url//*.}"
@@ -36,7 +36,7 @@ archive_name="${archive_dir}.tar.${archive_ext}"
 parent_dir="${PWD}"
 cwd="${parent_dir}"/openssl-build-script
 install_dir=/usr/local/ssl
-ssl_dir=/usr/local/ssl
+ssl_dir="${install_dir}"
 cert_dir="${ssl_dir}/certs"
 pem_file=cacert.pem
 pem_in="${cwd}/${pem_file}"
@@ -47,6 +47,7 @@ web_repo=https://github.com/slyfox1186/script-repo
 printf "%s\n%s\n\n" \
     "OpenSSL Build Script - v${script_ver}" \
     '==============================================='
+sleep 2
 
 #
 # CREATE OUTPUT DIRECTORY
@@ -108,36 +109,28 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-LD_LIBRARY_PATH="\
-/usr/local/lib64:\
-/usr/local/lib:\
-/usr/share/gdb/auto-load/usr/x86_64-linux-gnux32/lib64:\
-/usr/lib/x86_64-linux-gnu:\
-/usr/x86_64-linux-gnux32/lib64:\
-/usr/lib64:\
-/usr/lib:\
-/lib64:\
-/lib\
-"
-export LD_LIBRARY_PATH
-
-
 #
 # CREATE FUNCTIONS
 #
 
 exit_fn()
 {
-    printf "\n%s\n\n%s\n\n" \
+    printf "\n%s\n\n%s\n\n"                                       \
         'Make sure to star this repository to show your support!' \
         "${web_repo}"
     exit 0
 }
 
+warn_path_fn()
+{
+    clear
+    printf "%s\n" 'Make sure to add '\''/usr/local/ssl/bin'\'' to your PATH variable in your ~/.bashrc file.'
+}
+
 fail_fn()
 {
-    printf "\n\n%s\n\n%s\n\n%s\n\n" \
-        "${1}" \
+    printf "\n\n%s\n\n%s\n\n%s\n\n"                  \
+        "${1}"                                       \
         'To report a bug please create an issue at:' \
         "${web_repo}/issues"
     exit 1
@@ -147,11 +140,11 @@ cleanup_fn()
 {
     local choice
 
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n"                \
         '============================================' \
         '  Do you want to clean up the build files?  ' \
         '============================================' \
-        '[1] Yes' \
+        '[1] Yes'                                      \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
 
@@ -203,12 +196,14 @@ unset i missing_pkgs
 #
 
 if [ ! -f "${pem_out}" ]; then
-    printf "%s\n%s\n\n" \
+    printf "%s\n%s\n\n"                            \
         'Download the latest security certificate' \
         '================================================'
+
     wget -U "${user_agent}" -cqO "${pem_in}" "https://curl.se/ca/${pem_file}"
+
     if ! sudo mv "${pem_in}" "${pem_out}"; then
-        fail_fn "Failed to move \"${pem_in}\" to \"${pem_out}\". Line: ${LINENO}"
+        fail_fn "Failed to move \"${pem_in}\" to \"${pem_out}\":Line ${LINENO}"
     fi
 fi
 
@@ -217,7 +212,7 @@ fi
 #
 
 if [ ! -f "${cwd}/${archive_name}" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
+    wget -U "${user_agent}" -cqO "${cwd}/${archive_name}" "${archive_url}"
 fi
 
 #
@@ -244,19 +239,23 @@ fi
 
 ubuntu_os_version() { sudo ln -sf /usr/lib64/libcrypto.so.3 /lib/"${install_dir}"/; }
 
-if [ -f '/etc/os-release' ]; then
-    source '/etc/os-release'
-    OS_TMP=$NAME
-    OS="$(echo "${OS_TMP}" | awk '{print $1}')"
+if [ -f /etc/os-release ]; then
+    source /etc/os-release
+    OS="${NAME}"
+    VER="${VERSION_ID}"
 elif type lsb_release >/dev/null 2>&1; then
     OS="$(lsb_release -si)"
-elif [ -f '/etc/lsb-release' ]; then
-    source '/etc/lsb-release'
+    VER="$(lsb_release -sr)"
+elif [ -f /etc/lsb-release ]; then
+    source /etc/lsb-release
     OS="${DISTRIB_ID}"
-elif [ -f '/etc/debian_version' ]; then
+    VER="${DISTRIB_RELEASE}"
+elif [ -f /etc/debian_version ]; then
     OS=Debian
+    VER="$(cat /etc/debian_version)"
 else
     OS="$(uname -s)"
+    VER="$(uname -r)"
 fi
 
 #
@@ -264,59 +263,50 @@ fi
 #
 
 case "${OS}" in
-    Debian)         clear;;
-    Ubuntu)         ubuntu_os_version;;
-    *)              fail_fn "Could not detect the OS architecture. Line: ${LINENO}";;
+    Debia*)         clear;;
+    Ubunt*)         ubuntu_os_version;;
+    *)              fail_fn "Could not detect the OS architecture:Line ${LINENO}";;
 esac
-
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
-
-CC=gcc
-CXX=g++
-LDLIBS='-ldl -lpthread -lm -lz'
-CPPFLAGS='-I/usr/local/include -I/usr/include'
-LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu'
-LDFLAGS+=' -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 
 #
 # BUILD PROGRAM FROM SOURCE
 #
 
-cd "${cwd}/${archive_dir}/build" || exit 1
 clear
-../Configure --prefix="${install_dir}"  \
-             --openssldir="${ssl_dir}"  \
-             enable-ec_nistp_64_gcc_128 \
-             enable-egd                 \
-             enable-fips                \
-             enable-rc5                 \
-             enable-trace               \
-             enable-zlib                \
-             no-legacy                  \
-             no-tests                   \
-             sctp                       \
-             shared                     \
-             threads                    \
-             CC="${CC}"                 \
-             CXX="${CXX}"               \
-             CPPFLAGS="${CPPFLAGS}"     \
-             LDFLAGS="${LDFLAGS}"
+cd "${cwd}/${archive_dir}/build" || exit 1
+../Configure --prefix="${install_dir}"        \
+             --openssldir="${ssl_dir}"        \
+             --with-rand-seed=os              \
+             --with-zlib-include=/usr/include \
+             --with-zlib-lib=/usr/lib         \
+             enable-egd                       \
+             enable-fips                      \
+             enable-md2                       \
+             enable-rc5                       \
+             enable-trace                     \
+             threads                          \
+             zlib
 make "-j$(nproc --all)"
-sudo make build_sw
-sudo make install_fips
+if ! sudo make install_sw; then
+    fail_fn "Failed to execute: sudo make install_sw:Line ${LINENO}"
+    exit 1
+fi
+
+if ! sudo make install_fips; then
+    fail_fn "Failed to execute: sudo make install_fips:Line ${LINENO}"
+    exit 1
+fi
+
+# EXPORT PATH VARIABLE
+export PATH="${PATH}:/usr/local/ssl/bin"
 
 # REQUIRED FOR FIPS FUNCTIONALITY TO WORK
-sudo openssl fipsinstall
-
-# CREATE A CONFIG SCRIPT FOR THE LD LINKER TO LOAD LETTING IT KNOW WHERE THE OPENSSL LIBS ARE LOCATED
-sudo bash -c 'echo "/usr/local/ssl/lib64" > "/etc/ld.so.conf.d/openssl-3.1.4.conf"'
+sudo openssl fipsinstall >/dev/null
 
 # UPDATE THE LIBRARIES FOR LD
-sudo ldconfig -v
+sudo ldconfig /usr/local/lib64/
 
-# BACKUP KEY BINARY FILES AS IT WOULD BE BAD TO LOSE THE WITHOUT RECOURSE
+# BACKUP KEY BINARY FILES AS IT WOULD BE BAD TO LOSE THEM WITHOUT RECOURSE
 if [ -f '/usr/bin/c_rehash' ]; then
     sudo mv '/usr/bin/c_rehash' '/usr/bin/c_rehash.bak'
 fi
@@ -324,24 +314,19 @@ if [ -f '/usr/bin/openssl' ]; then
     sudo mv '/usr/bin/openssl' '/usr/bin/openssl.bak'
 fi
 
-# ADD THE NEW OPENSSL BINARY FILE PATH TO /ETC/ENVIRONMENT FILE SO IT LOADS DURING CRITICAL MOMENTS AS THE OS BOOTS OR RESTARTS
+# ADD THE NEW OPENSSL BINARY FILE PATH TO THE '/etc/environment' FILE SO IT LOADS DURING CRITICAL MOMENTS AS THE OS BOOTS OR RESTARTS
 sudo bash -c 'echo "PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/ssl/bin\"" > "/etc/environment"'
-
-source /etc/environment
 
 # ENSURE THE CORRECT PERMISSIONS ARE ATTACHED TO THE CUSTOM PEM FILE THAT WAS ADDED
 if [ -f "${pem_out}" ]; then
     sudo chmod 644 "${pem_out}"
 fi
 
-# DISPLAY THE UPDATED OPENSSL VERSIO INFORMATION
-openssl version -a
-echo
-read -p 'Press enter to continue.'
-
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
 
+# WARN USER TO ADD TO PATH
+warn_path_fn
+
 # SHOW EXIT MESSAGE
 exit_fn
-
