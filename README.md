@@ -110,11 +110,12 @@ bash <(curl -fsSL https://build-tools.optimizethis.net)
 ````
 ------
 
-## Install [ARIA2C](https://github.com/aria2/aria2)
+## Install [Aria2](https://github.com/aria2/aria2)
+  - Updated to version 1.37.0
   - Aria2 max connections increased from 16 to 64
   - **Supported OS:**
-    - Debian - 10/11/12
-    - Ubuntu - (18/20/22).04
+    - Debian - 11/12
+    - Ubuntu - (20/22/23).04
     - Other  - Debian-based distros may work as well
 
 ```bash
