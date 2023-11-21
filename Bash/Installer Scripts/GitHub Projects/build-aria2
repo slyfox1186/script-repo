@@ -8,9 +8,11 @@
 ##
 ##  Features: Static build, with an OpenSSL backend
 ##
-##  Updated: 10.14.23
+##  Updated: 11.21.23
 ##
-##  Script version: 1.5
+##  Fixed: Soft linking error
+##
+##  Script version: 1.6
 ##
 ################################################################################################################################
 
@@ -25,14 +27,13 @@ fi
 # SET THE VARIABLES
 #
 
-script_ver=1.5
+script_ver=1.6
 archive_dir=aria2-1.36.0
 archive_url=https://github.com/aria2/aria2/releases/download/release-1.36.0/"${archive_dir}".tar.gz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/aria2-build-script
 install_dir=/usr/local
-pc_type=x86_64-linux-gnu
 cert_dir=/etc/ssl/certs
 pem_file=cacert.pem
 pem_in="${cwd}/${pem_file}"
@@ -56,12 +57,13 @@ mkdir -p "${cwd}"
 printf "%s\n%s\n\n"                              \
     "Aria2 Build Script - version ${script_ver}" \
     '==============================================='
+sleep 2
 
 #
 # SET THE SOURCE CODE COMPILERS
 #
 
-export CC=gcc CXX=g++
+export CC=clang CXX=clang++
 
 #
 # SET COMPILER OPTIMIZATION FLAGS
@@ -120,8 +122,8 @@ export PKG_CONFIG_PATH
 
 exit_fn()
 {
-    printf "\n%s\n\n%s\n%s\n\n" \
-        'The script has completed' \
+    printf "%s\n\n%s\n%s\n\n"                                     \
+        'The script has completed'                                \
         'Make sure to star this repository to show your support!' \
         "${web_repo}"
     exit 0
@@ -129,8 +131,8 @@ exit_fn()
 
 fail_fn()
 {
-    printf "\n\n%s\n\n%s\n\n%s\n\n" \
-        "${1}" \
+    printf "\n\n%s\n\n%s\n\n%s\n\n"                              \
+        "${1}"                                                   \
         'Please create a support ticket so I can work on a fix.' \
         "${web_repo}/issues"
     exit 1
@@ -291,17 +293,6 @@ if [ -f '/usr/bin/aria2c' ]; then
     sudo apt -y remove aria2
     sudo apt -y autoremove
     clear
-fi
-
-#
-# CREATE SOFT LINKS
-#
-
-if [ -f "/usr/local/bin/${pc_type}-aria2c" ]; then
-    sudo ln -sf "/usr/local/bin/${pc_type}-aria2c" '/usr/local/bin/aria2c'
-    sudo chmod 755 '/usr/local/bin/aria2c'
-else
-    fail_fn "Failed to create a soft link from \"/usr/local/bin/${pc_type}-aria2c\" to \"/usr/local/bin/aria2c\". Line: ${LINENO}"
 fi
 
 # SHOW THE NEW VERSION
