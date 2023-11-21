@@ -285,7 +285,7 @@ alias nd='nordvpn disconnect'
 
 # watch commands (system monitoring)
 alias cwatch='watch -n1 ccache --print-stats'
-alias twatch='clear; watch sudo sensors -u'
+alias twatch='clear; watch -n0.5 sudo sensors -u'
 alias wgpu='clear; watch ndivia-smi'
 alias wmem='clear; watch free -m'
 alias wtemp='clear; watch sensors'
