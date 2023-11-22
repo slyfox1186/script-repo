@@ -1,6 +1,24 @@
 #!/usr/bin/env bash
 
+###########################################################################################################################
+##
+##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-bash
+##
+##  Purpose: build gnu bash
+##
+##  Updated: 11.10.23
+##
+##  Script version: 2.1
+##
+###########################################################################################################################
+
 clear
+
+if [ "${EUID}" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
+
 
 #
 # CREATE VARIABLES
