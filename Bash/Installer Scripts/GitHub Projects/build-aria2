@@ -87,15 +87,6 @@ LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 export CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
 #
-# ADD EXTRA LIBRARIES TO THE ARIA2 CONFIGURE SCRIPT
-#
-
-explibs="$(pkg-config --libs expat)"
-extralibs="$(pkg-config --libs libuv) $(pkg-config --libs libgcrypt)"
-jmflags="$(pkg-config --cflags jemalloc)"
-jmlibs="$(pkg-config --libs jemalloc)"
-
-#
 # SET THE PATH VARIABLE
 #
 
@@ -318,25 +309,25 @@ cd "${cwd}/${archive_dir}" || exit 1
 # INCREASE THE MAX NUMBER OF CONNECTIONS FROM 16 TO 128
 sed -i 's/1, 16/1, 128/g' 'src/OptionHandlerFactory.cc'
 cd build || exit 1
-../configure --prefix="${install_dir}"     \
-             --disable-nls                 \
-             --disable-shared              \
-             --disable-werror              \
-             --enable-libaria2             \
-             --enable-static               \
-             --with-ca-bundle="${pem_out}" \
-             --with-libgcrypt=/usr         \
-             --with-libiconv-prefix=/usr   \
-             --with-libintl-prefix=/usr    \
-             --with-libuv                  \
-             --with-jemalloc               \
-             --with-openssl                \
-             --without-gnutls              \
-             ARIA2_STATIC=yes              \
-             EXPAT_LIBS="${explibs}"       \
-             JEMALLOC_CFLAGS="${jmflags}"  \
-             JEMALLOC_LIBS="${jmlibs}"     \
-             LIBS="${extralibs}"
+../configure --prefix="${install_dir}"                         \
+             --disable-nls                                     \
+             --disable-shared                                  \
+             --disable-werror                                  \
+             --enable-libaria2                                 \
+             --enable-static                                   \
+             --with-ca-bundle="${pem_out}"                     \
+             --with-libgcrypt=/usr                             \
+             --with-libiconv-prefix=/usr                       \
+             --with-libintl-prefix=/usr                        \
+             --with-libuv                                      \
+             --with-jemalloc                                   \
+             --with-openssl                                    \
+             --without-gnutls                                  \
+             ARIA2_STATIC=yes                                  \
+             EXPAT_LIBS="$(pkg-config --libs expat)"           \
+             JEMALLOC_CFLAGS="$(pkg-config --cflags jemalloc)" \
+             JEMALLOC_LIBS="$(pkg-config --libs jemalloc)"     \
+             LIBS="$(pkg-config --libs libuv) $(pkg-config --libs libgcrypt)"
 
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute the aria2 command: make -j$(nproc --all). Line: ${LINENO}"
