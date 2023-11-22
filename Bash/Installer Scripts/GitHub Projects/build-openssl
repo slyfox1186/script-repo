@@ -297,16 +297,16 @@ sudo bash -c 'echo "PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sb
 cat >> "${HOME}"/.bashrc <<'EOF'
 
 add_str='/usr/lib/ccache:/usr/local/ssl/bin'
-export PATH="${add_str}:${PATH}"
+PATH="${add_str}:${PATH}"
 tmp_dir="$(mktemp -d)"
 pre_file="${tmp_dir}"/file1.txt
 post_file="${tmp_dir}"/file2.txt
-echo "${PATH}" > "${pre_file}"
+tmp_file="${tmp_dir}"/file3.txt
+echo "${PATH}" | tee "${tmp_file}" "${pre_file}" >/dev/null
 sed -E 's/(:)/\n/g' "${pre_file}" | tee "${post_file}"
 awk '!NF || !seen[$0]++' "${post_file}" > "${pre_file}"
 join_str="$(tr '\n' ':' < "${pre_file}")"
-PATH="$(echo "${join_str}" | sed 's/:$//g')"
-export PATH
+export PATH="$(echo "${join_str}" | sed 's/:$//g')"
 if [ -d "${tmp_dir}" ]; then
     sudo rm -fr "${tmp_dir}"
 fi
