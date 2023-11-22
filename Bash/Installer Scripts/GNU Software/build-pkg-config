@@ -146,10 +146,10 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=("${1}" autoconf autoconf-archive autogen automake build-essential ca-certificates ccache clang curl libaria2-0 libaria2-0-dev
-      libglib2.0-dev libc-ares-dev libdmalloc-dev libgcrypt20-dev libgmp-dev libgnutls28-dev libgpg-error-dev libjemalloc-dev
-      libmbedtls-dev libnghttp2-dev librust-openssl-dev libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev libxml2-dev pkg-config
-      zlib1g-dev)
+pkgs=("${1}" autoconf autoconf-archive autogen automake build-essential ca-certificates ccache clang curl
+      libaria2-0 libaria2-0-dev libc-ares-dev libdmalloc-dev libgcrypt20-dev libgmp-dev libgnutls28-dev
+      libgpg-error-dev libjemalloc-dev libmbedtls-dev libnghttp2-dev librust-openssl-dev libsqlite3-dev
+      libssh2-1-dev libssh-dev libssl-dev libxml2-dev pkg-config zlib1g-dev)
 
 for i in ${pkgs[@]}
 do
