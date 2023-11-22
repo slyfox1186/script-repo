@@ -1746,8 +1746,8 @@ if build 'opencl-sdk' "${g_ver}"; then
             -DBUILD_EXAMPLES=OFF                      \
             -DOPENCL_SDK_BUILD_SAMPLES=ON             \
             -DOPENCL_SDK_TEST_SAMPLES=OFF             \
-            -DCMAKE_C_FLAGS='-g -O3 -pipe -Wno-dev'   \
-            -DCMAKE_CXX_FLAGS='-g -O3 -pipe -Wno-dev' \
+            -DCMAKE_C_FLAGS="${CFLAGS} -Wno-dev"      \
+            -DCMAKE_CXX_FLAGS="${CXXFLAGS} -Wno-dev"  \
             -DOPENCL_HEADERS_BUILD_CXX_TESTS=OFF      \
             -DOPENCL_ICD_LOADER_BUILD_SHARED_LIBS=ON  \
             -DOPENCL_SDK_BUILD_OPENGL_SAMPLES=OFF     \
@@ -1759,6 +1759,7 @@ if build 'opencl-sdk' "${g_ver}"; then
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'opencl-sdk' "${g_ver}"
 fi
+ffmpeg_libraries+=('--enable-opencl')
 
 pre_check_ver 'DanBloomberg/leptonica' '1' 'T'
 if build 'leptonica' '1.83.1'; then
