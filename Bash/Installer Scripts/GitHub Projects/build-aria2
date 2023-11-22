@@ -325,7 +325,7 @@ cd build || exit 1
              EXPAT_LIBS="$(pkg-config --libs expat)"           \
              JEMALLOC_CFLAGS="$(pkg-config --cflags jemalloc)" \
              JEMALLOC_LIBS="$(pkg-config --libs jemalloc)"     \
-             LIBS="$(pkg-config --libs libuv) $(pkg-config --libs libgcrypt)"
+             LIBS="$(pkg-config --libs libuv)"
 
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute the aria2 command: make -j$(nproc --all). Line: ${LINENO}"
