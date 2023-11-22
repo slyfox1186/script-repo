@@ -198,8 +198,9 @@ fi
 
 pkgs=(autoconf autoconf-archive autogen automake build-essential ca-certificates ccache
       curl libaria2-0 libaria2-0-dev libc-ares-dev libdmalloc-dev libexpat1-dev libgmp-dev
-      liblzma-dev libmbedtls-dev libnghttp2-dev librust-openssl-dev libsqlite3-dev libssh2-1-dev
-      libssh-dev libssl-dev libtool libtool-bin libuv1-dev libxml2-dev m4 pkg-config zlib1g-dev)
+      libintl-perl liblzma-dev libmbedtls-dev libnghttp2-dev librust-openssl-dev libsqlite3-dev
+      libssh2-1-dev libssh-dev libssl-dev libticonv-dev libtool libtool-bin libuv1-dev libxml2-dev
+      m4 pkg-config zlib1g-dev)
 
 for i in ${pkgs[@]}
 do
@@ -235,9 +236,9 @@ mkdir -p "${cwd}/jemalloc-5.3.0/build"
 # DOWNLOAD JEMALLOC SOURCE CODE
 #
 
-if [ ! -f "${cwd}/jemalloc-5.3.0.tar.gz" ]; then
-    if ! curl -A "${user_agent}" -m 10 -Lso "${cwd}/jemalloc-5.3.0.tar.gz" 'https://github.com/jemalloc/jemalloc/archive/refs/tags/5.3.0.tar.gz'; then
-        fail_fn "Failed to download the file: ${cwd}/jemalloc-5.3.0.tar.gz. Line: ${LINENO}"
+if [ ! -f "${cwd}/jemalloc-5.3.0.tar.bz2" ]; then
+    if ! curl -A "${user_agent}" -m 10 -Lso "${cwd}/jemalloc-5.3.0.tar.bz2" 'https://github.com/jemalloc/jemalloc/releases/download/5.3.0/jemalloc-5.3.0.tar.bz2'; then
+        fail_fn "Failed to download the file: ${cwd}/jemalloc-5.3.0.tar.bz2. Line: ${LINENO}"
     fi
 fi
 
@@ -245,7 +246,10 @@ fi
 # EXTRACT JEMALLOC INTO OUTPUT DIRECTORY
 #
 
-tar -zxf "${cwd}/jemalloc-5.3.0.tar.gz" -C "${cwd}/jemalloc-5.3.0" --strip-components 1
+if ! tar -jxf "${cwd}/jemalloc-5.3.0.tar.bz2" -C "${cwd}/jemalloc-5.3.0" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: ${cwd}/jemalloc-5.3.0.tar.bz2"
+    exit 1
+fi
 
 #
 # CD INTO OUTPUT DIRECTORY AND CONFIGURE JEMALLOC
@@ -269,6 +273,71 @@ fi
 # INSTALL JEMALLOC
 if ! sudo make install; then
     fail_fn "Failed to execute the jemalloc command: sudo make install. Line: ${LINENO}"
+    exit 1
+fi
+
+#
+# BUILD GCRYPT-ERROR FROM SOURCE CODE
+#
+
+printf "\n%s\n%s\n\n"                    \
+    'Build GCrypt-Error - version 5.3.0' \
+    '==============================================='
+sleep 1
+
+#
+# CREATE GCRYPT-ERROR OUTPUT DIRECTORY
+#
+
+mkdir -p "${cwd}/gcrypt-error-1.47/build"
+
+#
+# DOWNLOAD GCRYPT-ERROR SOURCE CODE
+#
+
+if [ ! -f "${cwd}/gcrypt-error-1.47.tar.bz2" ]; then
+    if ! curl -A "${user_agent}" -m 10 -Lso "${cwd}/gcrypt-error-1.47.tar.bz2" 'https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-1.47.tar.bz2'; then
+        fail_fn "Failed to download the file: ${cwd}/gcrypt-error-1.47.tar.bz2. Line: ${LINENO}"
+    fi
+fi
+
+#
+# EXTRACT GCRYPT-ERROR INTO OUTPUT DIRECTORY
+#
+
+if ! tar -jxf "${cwd}/gcrypt-error-1.47.tar.bz2" -C "${cwd}/gcrypt-error-1.47" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: ${cwd}/gcrypt-error-1.47.tar.bz2"
+    exit 1
+fi
+
+#
+# CD INTO OUTPUT DIRECTORY AND CONFIGURE GCRYPT-ERROR
+#
+
+cd "${cwd}/gcrypt-error-1.47" || exit 1
+./autogen.sh
+cd build || exit 1
+../configure --prefix="${install_dir}"         \
+             --disable-doc                     \
+             --disable-languages               \
+             --disable-nls                     \
+             --disable-shared                  \
+             --disable-tests                   \
+             --enable-install-gpg-error-config \
+             --enable-static                   \
+             --enable-threads=posix            \
+             --with-libiconv-prefix=/usr       \
+             --with-libintl-prefix=/usr
+
+# MAKE GCRYPT-ERROR
+if ! make "-j$(nproc --all)"; then
+    fail_fn "Failed to execute the gcrypt-error command: make -j$(nproc --all). Line: ${LINENO}"
+    exit 1
+fi
+
+# INSTALL GCRYPT-ERROR
+if ! sudo make install; then
+    fail_fn "Failed to execute the gcrypt-error command: sudo make install. Line: ${LINENO}"
     exit 1
 fi
 
