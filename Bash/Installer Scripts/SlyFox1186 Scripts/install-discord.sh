@@ -33,9 +33,22 @@ user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 # INSTALL REQUIRED APT PACKAGES
 #
 
-if ! sudo dpkg -l | grep -o 'wget'; then
-    sudo apt -y install wget
+pkgs=(curl wget)
+
+for pkg in ${pkgs[@]}
+do
+    missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
+
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${pkg}"
+    fi
+done
+
+if [ -n "${missing_pkgs}" ]; then
+    sudo apt -y install ${missing_pkgs}
     clear
+else
+    printf "%s\n" 'The APT packages are already installed'
 fi
 
 #
