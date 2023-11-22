@@ -76,7 +76,7 @@ if [ -n "${missing_pkgs}" ]; then
     clear
 fi
 
-scripts=(m4 autoconf libtool bash pkg-config make sed tar gawk grep nano wget)
+scripts=(pkg-config m4 autoconf autoconf-archive libtool bash make sed tar gawk grep nano wget)
 cnt=0
 
 for script in ${scripts[@]}
@@ -88,7 +88,7 @@ done
 unset cnt script scripts
 
 # RENAME FILES WITH NUMBERS 10 AND HIGHER SO THEY EXECUTE IN THE INTENDED ORDER
-scripts=(gawk grep nano wget)
+scripts=(tar gawk grep nano wget)
 cnt=9
 
 for i in 1
