@@ -35,23 +35,23 @@ fi
 # SET THE VARIABLES
 #
 
-script_ver='1.7'
-archive_dir='aria2-1.37.0'
+script_ver=1.7
+archive_dir=aria2-1.37.0
 archive_url="https://github.com/aria2/aria2/releases/download/release-1.37.0/${archive_dir}.tar.gz"
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/aria2-build-script
-install_dir='/usr/local'
-if [ -d '/usr/local/ssl/certs' ]; then
-    cert_dir='/usr/local/ssl/certs'
+install_dir=/usr/local
+if [ -d /usr/local/ssl/certs ]; then
+    cert_dir=/usr/local/ssl/certs
 else
-    cert_dir='/etc/ssl/certs'
+    cert_dir=/etc/ssl/certs
 fi
-pem_file='cacert.pem'
+pem_file=cacert.pem
 pem_in="${cwd}/${pem_file}"
 pem_out="${cert_dir}/${pem_file}"
 user_agent='Mozilla/5.0 (X11; Linux x86_64) Applpc_typeeWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-web_repo='https://github.com/slyfox1186/script-repo'
+web_repo=https://github.com/slyfox1186/script-repo
 
 #
 # CREATE THE OUTPUT DIRECTORY
