@@ -89,7 +89,7 @@ done
 unset cnt script scripts
 
 # RENAME FILES WITH NUMBERS 10 AND HIGHER SO THEY EXECUTE IN THE INTENDED ORDER
-scripts=(gawk grep nano wget)
+scripts=(tar gawk grep nano wget)
 cnt=9
 
 for i in 1
