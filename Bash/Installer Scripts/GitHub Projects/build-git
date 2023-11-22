@@ -147,7 +147,8 @@ cleanup_fn()
 
 pkgs=(autoconf autoconf-archive autogen automake binutils bison build-essential bzip2
       ccache curl docbook2x install-info libc6-dev libintl-perl libtool libtool-bin
-      libzstd-dev lzip lzma lzma-dev m4 nasm texinfo xz-utils zlib1g-dev zstd yasm)
+      libzstd-dev lzip lzma lzma-dev m4 nasm python3 python3-pip texinfo xz-utils
+      zlib1g-dev zstd yasm)
 
 for pkg in ${pkgs[@]}
 do
