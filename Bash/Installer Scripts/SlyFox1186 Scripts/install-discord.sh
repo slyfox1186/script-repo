@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
 
-###########################################################################################################################
+########################################################################################################################################
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/SlyFox1186%20Scripts/install-discord.sh
 ##
-##  Purpose: build gnu bash
+##  Purpose: Install the latest Discord version sourced from the official website
 ##
-##  Updated: 11.10.23
+##  Features: Fully automated, self-updating script.
 ##
-##  Script version: 2.1
+##  Updated: 11.22.23
 ##
-###########################################################################################################################
+##  Script version: 1.0
+##
+########################################################################################################################################
 
 clear
 
@@ -18,7 +20,6 @@ if [ "${EUID}" -eq '0' ]; then
     printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
     exit 1
 fi
-
 
 #
 # CREATE VARIABLES
@@ -54,7 +55,7 @@ fi
 EOF
 
 #
-# UPDATE DISCORD VERSION IF AVAILABLE
+# DISCOVER THE LATEST UPDATE
 #
 
 update_fn()
@@ -73,12 +74,17 @@ update_fn()
     done
     if [ "${latest_ver}" = "${current_ver}" ]; then
         clear
-        printf "%s\n\n" 'Same Discord version detected!'
-        sleep 3
+        printf "%s\n\n%s\n\n"                      \
+            'The Discord version has not changed!' \
+            'Executing install script in 5 seconds...'
+        sleep 5
     else
         clear
-        printf "%s\n\n" 'A new Discord version was detected!'
-        sleep 3
+        printf "%s\n\n%s\n\n"                     \
+            'A new Discord version was detected!' \
+            'Executing install script in 5 seconds...'
+        sleep 5
+        # UPDATE THIS SCRIPT WITH THE CURRENT VERSION
         sed -i "s/0.0.${current_ver}/0.0.${latest_ver}/g" 'download_discord.sh'
         cp -f 'update-discord.sh' 'tmp.txt'
         sed -E -i "s/^current_ver\=[0-9]+/current_ver\=${latest_ver}/g" 'tmp.txt'
@@ -88,7 +94,7 @@ update_fn()
 update_fn
 
 #
-# LOOP INSTALL DEBIAN PACKAGES USING APT
+# CONCAT THE INSTALL CODE TO THE DOWNLOAD SCRIPT
 #
 
 cat >> 'download_discord.sh' <<'EOF'
@@ -101,10 +107,17 @@ do
     sudo apt -y install ./"${i}"
     sudo rm "${i}"
 done
-
 EOF
 
+#
+# EXECUTE THE DOWNLOAD SCRIPT
+#
+
 bash 'download_discord.sh'
+
+#
+# REMOVE THE LEFTOVER DOWNLOAD SCRIPT
+#
 
 if [ -f 'download_discord.sh' ]; then
     sudo rm 'download_discord.sh'
