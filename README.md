@@ -60,6 +60,13 @@ bash <(curl -fsSL https://build-all-git.optimizethis.net)
 bash <(curl -fsSL https://gcc.optimizethis.net)
 ```
 
+## Install [Discord](https://discord.com/)
+  - **Self-updating script that auto-installs the latest Discord version**
+```bash
+bash <(curl -fsSL https://discord.optimizethis.net)
+```
+------
+
 ## Install [7-Zip](www.7-zip.org/download.html)
   - **Installs the latest static version of 7-Zip based on your PC's processor and architecture**
     - **Arch**         - **i386** | **x86_x64**
