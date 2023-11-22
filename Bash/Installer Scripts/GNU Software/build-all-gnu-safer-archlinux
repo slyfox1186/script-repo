@@ -77,7 +77,7 @@ if [ -n "${missing_pkgs}" ]; then
     clear
 fi
 
-scripts=(m4 autoconf libtool bash pkg-config make sed tar gawk grep nano wget)
+scripts=(pkg-config m4 autoconf autoconf-archive libtool bash make sed tar gawk grep nano wget)
 cnt=0
 
 for script in ${scripts[@]}
@@ -103,12 +103,12 @@ done
 
 clear
 
-for f in $(ls -v)
+for file in $(ls -v)
 do
-    if echo '1' | bash "${f}"; then
-        mv "${f}" 'completed'
+    if echo '1' | bash "${file}"; then
+        mv "${file}" 'completed'
     else
-        mv "${f}" 'failed'
+        mv "${file}" 'failed'
     fi
 done
 
