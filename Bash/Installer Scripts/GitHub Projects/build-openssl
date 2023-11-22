@@ -244,12 +244,6 @@ elif [ -f /etc/lsb-release ]; then
     source /etc/lsb-release
     OS="${DISTRIB_ID}"
     VER="${DISTRIB_RELEASE}"
-elif [ -f /etc/debian_version ]; then
-    OS=Debian
-    VER="$(cat /etc/debian_version)"
-else
-    OS="$(uname -s)"
-    VER="$(uname -r)"
 fi
 
 #
@@ -298,19 +292,12 @@ sudo openssl fipsinstall >/dev/null
 sudo bash -c "echo '/usr/local/ssl/lib64' > '/etc/ld.so.conf.d/${archive_dir}.conf'"
 
 # UPDATE THE LIBRARIES FOR LD
-sudo ldconfig '/usr/local/lib64/'
-
-# BACKUP KEY BINARY FILES AS IT WOULD BE BAD TO LOSE THEM WITHOUT RECOURSE
-if [ -f '/usr/bin/c_rehash' ]; then
-    sudo mv '/usr/bin/c_rehash' '/usr/bin/c_rehash.bak'
-fi
-if [ -f '/usr/bin/openssl' ]; then
-    sudo mv '/usr/bin/openssl' '/usr/bin/openssl.bak'
-fi
+sudo ldconfig '/usr/local/ssl/lib64/'
 
 # ADD THE NEW OPENSSL BINARY FILE PATH TO THE '/etc/environment' FILE SO IT LOADS DURING CRITICAL MOMENTS AS THE OS BOOTS OR RESTARTS
 sudo bash -c 'echo "PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/ssl/bin\"" > "/etc/environment"'
 source /etc/environment
+source "${HOME}"/.bashrc
 
 # ENSURE THE CORRECT PERMISSIONS ARE ATTACHED TO THE CUSTOM PEM FILE THAT WAS ADDED
 if [ -f "${pem_out}" ]; then
