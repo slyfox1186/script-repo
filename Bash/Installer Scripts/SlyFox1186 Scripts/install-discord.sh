@@ -79,6 +79,12 @@ do
         continue
     fi
 done
+
+
+#
+# PARSE THE CURRENT VERSION AND INSTALL DISCORD
+#
+
 if [ "${latest_ver}" = "${current_ver}" ]; then
     clear
     printf "%s\n\n%s\n\n"                      \
