@@ -63,7 +63,7 @@ clear
 user_agent='${user_agent}'
 
 printf "%s\n%s\n" \\
-    'Installing: Discord' \\
+    'Installing Discord' \\
     '==================================='
 sleep 1
 
