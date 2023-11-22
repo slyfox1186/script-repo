@@ -314,8 +314,7 @@ cd build || exit 1
              --disable-werror                                  \
              --enable-libaria2                                 \
              --enable-static                                   \
-             --with-ca-bundle="${pem_out}"                     \
-             --with-libgcrypt=/usr                             \
+             --with-ca-bundle="${cert_dir}/${pem_file}"        \
              --with-libiconv-prefix=/usr                       \
              --with-libintl-prefix=/usr                        \
              --with-libuv                                      \
