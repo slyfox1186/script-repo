@@ -75,7 +75,7 @@ sleep 2
 # SET THE SOURCE CODE COMPILERS
 #
 
-export CC='clang' CXX='clang++'
+export CC=clang CXX=clang++
 
 #
 # SET COMPILER OPTIMIZATION FLAGS
