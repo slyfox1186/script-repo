@@ -48,7 +48,7 @@ web_repo=https://github.com/slyfox1186/script-repo
 printf "%s\n%s\n\n"                         \
     "OpenSSL Build Script - v${script_ver}" \
     '==============================================='
-sleep 2
+sleep 1
 
 #
 # CREATE OUTPUT DIRECTORY
