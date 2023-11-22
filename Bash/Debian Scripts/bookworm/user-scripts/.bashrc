@@ -91,9 +91,8 @@ if [ -f ~/.bash_aliases ]; then
     . ~/.bash_aliases
 fi
 
-# enable programmable completion features (you don't need to enable
-# this, if it's already enabled in /etc/bash.bashrc and /etc/profile
-# sources /etc/bash.bashrc).
+# You don't need to enable this, if it's already enabled in /etc/bash.bashrc and /etc/profile
+# sources /etc/bash.bashrc
 if ! shopt -oq posix; then
   if [ -f /usr/share/bash-completion/bash_completion ]; then
     . /usr/share/bash-completion/bash_completion
@@ -141,5 +140,5 @@ export PS1='\n\[\e[38;5;227m\]\w\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38
 export PYTHONUTF8=1
 
 if [ -f ~/.cargo/env ]; then
-    source ~/.cargo/env
+    . ~/.cargo/env
 fi
