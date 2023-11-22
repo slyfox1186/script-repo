@@ -291,7 +291,7 @@ sudo bash -c "echo '/usr/local/ssl/lib64' > '/etc/ld.so.conf.d/${archive_dir}.co
 sudo bash -c 'echo "PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/ssl/bin\"" > "/etc/environment"'
 
 #
-# REMOVE DUPLICATE LINES FROM THE PATH VARIABLE
+# ADD THE NEWLY CREATED OPENSSL BINARY DIRECTORY TO THE PATH VARIABLE THEN REMOVE DUPLICATE LINES IN PATH
 #
 
 cat >> "${HOME}"/.bashrc <<'EOF'
