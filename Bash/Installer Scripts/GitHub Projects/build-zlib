@@ -295,7 +295,7 @@ fi
 
 git_ver_fn 'madler/zlib' 'T'
 if build 'zlib' "${g_ver}"; then
-    download "https://github.com/madler/zlib/releases/download/v${g_ver}/zlib-${g_ver}.tar.gz"
+    download "https://github.com/madler/zlib/releases/download/v${g_ver}/zlib-${g_ver}.tar.xz"
     mkdir build
     cd build || exit 1
     execute ../configure --prefix="${install_dir}"             \
