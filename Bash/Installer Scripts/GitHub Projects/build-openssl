@@ -48,7 +48,7 @@ web_repo=https://github.com/slyfox1186/script-repo
 printf "%s\n%s\n\n"                         \
     "OpenSSL Build Script - v${script_ver}" \
     '==============================================='
-sleep 1
+sleep 2
 
 #
 # CREATE OUTPUT DIRECTORY
@@ -158,9 +158,10 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autogen automake build-essential ca-certificates ccache curl libc-ares-dev libcurl4-openssl-dev
-      libdmalloc-dev libgcrypt20-dev libgmp-dev libgpg-error-dev libjemalloc-dev libmbedtls-dev libsctp-dev
-      libssh2-1-dev libssh-dev libssl-dev libtool libtool-bin libxml2-dev m4 zlib1g-dev)
+pkgs=(autoconf autogen automake build-essential ca-certificates ccache checkinstall curl libc-ares-dev
+      libcurl4-openssl-dev libdmalloc-dev libgcrypt20-dev libgmp-dev libgpg-error-dev libjemalloc-dev
+      libmbedtls-dev libsctp-dev libssh2-1-dev libssh-dev libssl-dev libtool libtool-bin libxml2-dev
+      m4 zlib1g-dev)
 
 for i in ${pkgs[@]}
 do
@@ -253,19 +254,19 @@ esac
 
 clear
 cd "${cwd}/${archive_dir}/build" || exit 1
-../Configure --prefix="${install_dir}"        \
-             --openssldir="${ssl_dir}"        \
-             --with-rand-seed=os              \
-             --with-zlib-include=/usr/include \
-             --with-zlib-lib=/usr/lib         \
-             enable-egd                       \
-             enable-fips                      \
-             enable-md2                       \
-             enable-rc5                       \
-             enable-trace                     \
-             threads                          \
-             zlib
-make "-j$(nproc --all)"
+../config --prefix="${install_dir}" \
+          --openssldir="${ssl_dir}" \
+          enable-fips               \
+          enable-rc5                \
+          shared                    \
+          threads                   \
+          zlib
+
+if ! make "-j$(nproc --all)"; then
+    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
+    exit 1
+fi
+
 if ! sudo make install_sw; then
     fail_fn "Failed to execute: sudo make install_sw. Line: ${LINENO}"
     exit 1
@@ -277,56 +278,67 @@ if ! sudo make install_fips; then
 fi
 
 # REQUIRED FOR FIPS FUNCTIONALITY TO WORK
-sudo openssl fipsinstall >/dev/null
-
-# ENSURE THE CORRECT PERMISSIONS ARE ATTACHED TO THE CUSTOM PEM FILE THAT WAS ADDED
-if [ -f "${cert_dir}"/cacert.pem ]; then
-    sudo chmod 644 "${cert_dir}"/cacert.pem
-fi
+sudo openssl fipsinstall
+clear
 
 # CREATE A CONFIG SCRIPT FOR THE LD LINKER TO LOAD LETTING IT KNOW WHERE THE OPENSSL LIBS ARE LOCATED
 sudo bash -c "echo '/usr/local/ssl/lib64' > '/etc/ld.so.conf.d/${archive_dir}.conf'"
-
-# ADD THE NEW OPENSSL BINARY FILE PATH TO THE '/etc/environment' FILE SO IT LOADS DURING CRITICAL MOMENTS AS THE OS BOOTS OR RESTARTS
-sudo bash -c 'echo "PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/ssl/bin\"" > "/etc/environment"'
-
-#
-# ADD THE NEWLY CREATED OPENSSL BINARY DIRECTORY TO THE PATH VARIABLE THEN REMOVE DUPLICATE LINES IN PATH
-#
-
-cat >> "${HOME}"/.bashrc <<'EOF'
-
-add_str='/usr/lib/ccache:/usr/local/ssl/bin'
-PATH="${add_str}:${PATH}"
-tmp_dir="$(mktemp -d)"
-pre_file="${tmp_dir}"/file1.txt
-post_file="${tmp_dir}"/file2.txt
-tmp_file="${tmp_dir}"/file3.txt
-echo "${PATH}" | tee "${tmp_file}" "${pre_file}" >/dev/null
-sed -E 's/(:)/\n/g' "${pre_file}" | tee "${post_file}"
-awk '!NF || !seen[$0]++' "${post_file}" > "${pre_file}"
-join_str="$(tr '\n' ':' < "${pre_file}")"
-export PATH="$(echo "${join_str}" | sed 's/:$//g')"
-if [ -d "${tmp_dir}" ]; then
-    sudo rm -fr "${tmp_dir}"
-fi
-EOF
-
-#
-# SOURCE THE UPDATED SCRIPTS
-#
-
-source '/etc/environment'
-source "${HOME}"/.bashrc
-
-# UPDATE THE LIBRARIES FOR LD
-show_libs_path="$(sudo ldconfig -v | grep -Eo '^\/usr\/local\/ssl\/lib64' | grep -Eo '^\/usr.*')"
+sudo ldconfig -v
+clear
+show_libs_path="$(sudo ldconfig -v 2>/dev/null | grep -Eo '^\/usr\/local\/ssl\/lib64.*$')"
 show_libs="$(sudo ldconfig -v | grep -Eo '(libssl.so*|libcrypto.so*)' | grep -Eo '^lib.*[^\s]+' | uniq | head -n2 | xargs -I{} echo Library Files: {})"
 clear
 printf "%s\n\n%s\n%s\n"                                                 \
     'The below libraries are now in the search path for the LD linker.' \
     "Library PATH: ${show_libs_path}"                                   \
     "${show_libs}"
+
+#
+# BACKUP THE OLD BINARY FILES
+#
+
+if [ -f '/usr/bin/c_rehash' ] && [ ! -f '/usr/bin/c_rehash.bak' ]; then
+    sudo mv '/usr/bin/c_rehash' '/usr/bin/c_rehash.bak'
+fi
+if [ -f '/usr/bin/openssl' ] && [ ! -f '/usr/bin/openssl.bak' ]; then
+    sudo mv '/usr/bin/openssl' '/usr/bin/openssl.bak'
+fi
+
+# ADD THE NEW OPENSSL BINARY FILE PATH TO THE '/etc/environment' FILE SO IT LOADS DURING CRITICAL MOMENTS AS THE OS BOOTS OR RESTARTS
+sudo bash -c "echo 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/ssl/bin' > '/etc/environment'"
+
+# ADD CODE TO SOURCE THE /etc/environment FILE IN THE USER'S .BASHRC FILE 
+cat >> ~/.bashrc <<EOF
+
+PATH="\
+/usr/lib/ccache:\
+${HOME}/perl5/bin:\
+${HOME}/.cargo/bin:\
+${HOME}/.local/bin:\
+/usr/local/sbin:\
+/usr/local/ssl/bin:\
+/usr/local/bin:\
+/usr/local/cuda/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin:\
+/usr/local/games:\
+/usr/games:\
+/snap/bin\
+"
+export PATH
+EOF
+
+# SOURCE THE BASHRC FILE TO UPDATE THE PATH
+if [ -f ~/.bashrc ]; then
+    source ~/.bashrc
+fi
+
+# ENSURE THE CORRECT PERMISSIONS ARE ATTACHED TO THE CUSTOM PEM FILE THAT WAS ADDED
+if [ -f "${cert_dir}"/cacert.pem ]; then
+    sudo chmod 644 "${cert_dir}"/cacert.pem
+fi
 
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
