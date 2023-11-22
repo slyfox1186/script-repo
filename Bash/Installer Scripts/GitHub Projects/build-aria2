@@ -224,7 +224,7 @@ clear
 printf "%s\n%s\n\n"                  \
     'Build Jemalloc - version 5.3.0' \
     '==============================================='
-sleep 1
+sleep 2
 
 #
 # CREATE JEMALLOC OUTPUT DIRECTORY
@@ -283,7 +283,7 @@ fi
 printf "\n%s\n%s\n\n"                    \
     'Build GCrypt-Error - version 5.3.0' \
     '==============================================='
-sleep 1
+sleep 2
 
 #
 # CREATE GCRYPT-ERROR OUTPUT DIRECTORY
@@ -371,7 +371,7 @@ fi
 printf "\n%s\n%s\n\n"              \
     "Build Aria2 - version 1.37.0" \
     '==============================================='
-sleep 1
+sleep 2
 
 cd "${cwd}/${archive_dir}" || exit 1
 # INCREASE THE MAX NUMBER OF CONNECTIONS FROM 16 TO 128
