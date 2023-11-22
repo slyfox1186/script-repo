@@ -1,21 +1,26 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2162,SC2317
 
-#############################################################################
+################################################################################################
 ##
-##  Install OpenSSL from the source code with multiple optional
-##  features enabled.
-## 
-##  The script also installs SCTP Module Support which allows OpenSSL
-##  to enable its own SCTP feature support. 
-##  
-##  Enabled features: egd, fips, md2, rc5, trace, sctp, threads, and zlib
+##  PurposeL: Build the latest stable release of OpenSSL from the official website's source code
+##            which will update OpenSSL and the SSL certificate directory to the latest version.
 ##
 ##  Updated: 11.21.23
 ##
 ##  Script version: 1.8
 ##
-#############################################################################
+##  Enabled features:
+##                    - egd
+##                    - fips
+##                    - md2
+##                    - rc5
+##                    - trace
+##                    - sctp
+##                    - threads
+##                    - zlib
+##
+################################################################################################
 
 clear
 
@@ -38,9 +43,6 @@ cwd="${parent_dir}"/openssl-build-script
 install_dir=/usr/local/ssl
 ssl_dir="${install_dir}"
 cert_dir="${ssl_dir}/certs"
-pem_file=cacert.pem
-pem_in="${cwd}/${pem_file}"
-pem_out="${cert_dir}/${pem_file}"
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
@@ -186,15 +188,15 @@ unset i missing_pkgs
 # INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
 #
 
-if [ ! -f "${pem_out}" ]; then
+if [ ! -f "${cert_dir}"/cacert.pem ]; then
     printf "%s\n%s\n\n"                            \
         'Download the latest security certificate' \
         '================================================'
 
-    wget -U "${user_agent}" -cqO "${pem_in}" "https://curl.se/ca/${pem_file}"
+    wget -U "${user_agent}" -cqO ""${cwd}"/cacert.pem "https://curl.se/ca/${pem_file}"
 
-    if ! sudo mv "${pem_in}" "${pem_out}"; then
-        fail_fn "Failed to move \"${pem_in}\" to \"${pem_out}\". Line: ${LINENO}"
+    if ! sudo mv "${cwd}"/cacert.pem "${cert_dir}"/cacert.pem; then
+        fail_fn "Failed to move file: '${cwd}/cacert.pem' to '${cert_dir}/cacert.pem'. Line: ${LINENO}"
     fi
 fi
 
@@ -297,8 +299,8 @@ source /etc/environment
 source "${HOME}"/.bashrc
 
 # ENSURE THE CORRECT PERMISSIONS ARE ATTACHED TO THE CUSTOM PEM FILE THAT WAS ADDED
-if [ -f "${pem_out}" ]; then
-    sudo chmod 644 "${pem_out}"
+if [ -f "${cert_dir}"/cacert.pem ]; then
+    sudo chmod 644 "${cert_dir}"/cacert.pem
 fi
 
 # PROMPT USER TO CLEAN UP FILES
