@@ -307,6 +307,9 @@ awk '!NF || !seen[$0]++' "${post_file}" > "${pre_file}"
 join_str="$(tr '\n' ':' < "${pre_file}")"
 PATH="$(echo "${join_str}" | sed 's/:$//g')"
 export PATH
+if [ -d "${tmp_dir}" ]; then
+    sudo rm -fr "${tmp_dir}"
+fi
 EOF
 
 #
