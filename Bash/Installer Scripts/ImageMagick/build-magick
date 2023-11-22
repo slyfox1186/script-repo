@@ -376,12 +376,11 @@ pkgs_fn()
           imagemagick jq libamd2 libbabl-0.1-0 libc6 libc6-dev libcamd2 libccolamd2 libcholmod3
           libcolamd2 libfont-ttf-perl libfreetype-dev libgc-dev libgegl-0.4-0 libgegl-common
           libgimp2.0 libgimp2.0-dev libgl2ps-dev libglib2.0-dev libgraphviz-dev libgs-dev libheif-dev
-          libhwy-dev libjxl-gimp-plugin libltdl-dev libmetis5 libnotify-bin libnuma-dev libomp-dev
-          libpango1.0-dev libpaper-dev libpng-dev libpstoedit-dev libraw-dev librsvg2-dev
-          librust-bzip2-dev libsdl2-dev libstdc++-12-dev libsuitesparseconfig5 libtcmalloc-minimal4
-          libticonv-dev libtool libtool-bin libumfpack5 libxml2-dev libzip-dev m4 meson nasm ninja-build
-          opencl-c-headers opencl-headers php php-cli pstoedit software-properties-common xmlto yasm
-          zlib1g-dev)
+          libhwy-dev libltdl-dev libmetis5 libnotify-bin libnuma-dev libomp-dev libpango1.0-dev
+          libpaper-dev libpng-dev libpstoedit-dev libraw-dev librsvg2-dev librust-bzip2-dev libsdl2-dev
+          libstdc++-12-dev libsuitesparseconfig5 libtcmalloc-minimal4 libticonv-dev libtool libtool-bin
+          libumfpack5 libxml2-dev libzip-dev m4 meson nasm ninja-build opencl-c-headers opencl-headers
+          php php-cli pstoedit software-properties-common xmlto yasm zlib1g-dev)
 
     for pkg in ${pkgs[@]}
     do
