@@ -43,9 +43,9 @@ archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/aria2-build-script
 install_dir=/usr/local
 if [ -d /usr/local/ssl/certs ]; then
-    cert_dir=/usr/local/ssl/certs
+    certs_dir=/usr/local/ssl/certs
 else
-    cert_dir=/etc/ssl/certs
+    certs_dir=/etc/ssl/certs
 fi
 pem_file=cacert.pem
 user_agent='Mozilla/5.0 (X11; Linux x86_64) Applpc_typeeWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -188,7 +188,7 @@ cleanup_fn()
 #
 
 curl -A "${user_agent}" -Lso "${cwd}/${pem_file}" "https://curl.se/ca/${pem_file}"
-if ! sudo mv "${cwd}/${pem_file}" "${cert_dir}/${pem_file}"; then
+if ! sudo mv "${cwd}/${pem_file}" "${certs_dir}/${pem_file}"; then
     fail_fn "Failed to move cacert.pem. Line: ${LINENO}"
 fi
 
@@ -383,7 +383,7 @@ cd build || exit 1
              --disable-werror                                  \
              --enable-libaria2                                 \
              --enable-static                                   \
-             --with-ca-bundle="${cert_dir}/${pem_file}"        \
+             --with-ca-bundle="${certs_dir}/${pem_file}"       \
              --with-libiconv-prefix=/usr                       \
              --with-libintl-prefix=/usr                        \
              --with-libuv                                      \
