@@ -4,11 +4,13 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-git
 ##
-##  Purpose: Build Git
+##  Purpose: Build git from source code
 ##
-##  Updated: 11.06.23
+##  Script updated on: 11.21.23
 ##
-##  Script version: 1.1
+##  Git version: 2.43.0
+##
+##  Script version: 1.2
 ##
 ###############################################################################################################################
 
@@ -23,8 +25,8 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.1
-archive_dir=2.42.1
+script_ver=1.2
+archive_dir=2.43.0
 archive_url=https://github.com/git/git/archive/refs/tags/v"${archive_dir}".tar.gz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
@@ -34,8 +36,9 @@ user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 web_repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
-    "git build script - v${script_ver}" \
+    "Git Build Script - v${script_ver}" \
     '==============================================='
+sleep 2
 
 #
 # CREATE OUTPUT DIRECTORY
@@ -56,7 +59,7 @@ export CC=gcc CXX=g++
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
 
 #
 # SET THE PATH VARIABLE
@@ -131,9 +134,6 @@ cleanup_fn()
         1)      sudo rm -fr "${cwd}";;
         2)      echo;;
         *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
                 unset choice
                 clear
                 cleanup_fn
@@ -145,16 +145,16 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autoconf-archive autogen automake binutils bison build-essential bzip2 ccache
-      curl docbook2x install-info libc6-dev libintl-perl libtool libtool-bin libzstd-dev lzip
-      lzma lzma-dev m4 nasm texinfo xz-utils zlib1g-dev zstd yasm)
+pkgs=(autoconf autoconf-archive autogen automake binutils bison build-essential bzip2
+      ccache curl docbook2x install-info libc6-dev libintl-perl libtool libtool-bin
+      libzstd-dev lzip lzma lzma-dev m4 nasm texinfo xz-utils zlib1g-dev zstd yasm)
 
-for i in ${pkgs[@]}
+for pkg in ${pkgs[@]}
 do
-	missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+	missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
 
 	if [ -z "${missing_pkg}" ]; then
-		missing_pkgs+=" ${i}"
+		missing_pkgs+=" ${pkg}"
 	fi
 done
 
@@ -163,6 +163,21 @@ if [ -n "${missing_pkgs}" ]; then
 	sudo apt -y autoremove
 	clear
 fi
+
+#
+# REMOVE PYTHON3 PIP LOCK
+#
+
+rm_pip_lock="$(sudo find /usr/lib/python3* -type f -name 'EXTERNALLY-MANAGED')"
+if [ -n "${rm_pip_lock}" ]; then
+    sudo rm "${rm_pip_lock}"
+fi
+
+#
+# INSTALL PIP ASCIIDOC
+#
+
+pip install --user asciidoc &>/dev/null
 
 #
 # DOWNLOAD THE ARCHIVE FILE
@@ -195,10 +210,15 @@ fi
 #
 
 cd "${cwd}/${archive_dir}" || exit 1
-make configure
+make "-j$(nproc --all)" configure
 ./configure --prefix="${install_dir}"
-make "-j$(nproc --all)" all doc
-if ! sudo make install; then
+
+if ! make "-j$(nproc --all)" all doc; then
+    fail_fn "Failed to execute: make -j$(nproc --all) all doc. Line: ${LINENO}"
+    exit 1
+fi
+
+if ! sudo make install install-doc install-html; then
     fail_fn "Failed to execute: sudo make install install-doc install-html. Line: ${LINENO}"
     exit 1
 fi
