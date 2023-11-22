@@ -87,8 +87,8 @@ export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quo
 # ~/.bash_aliases, instead of adding them here directly.
 # See /usr/share/doc/bash-doc/examples in the bash-doc package.
 
-if [ -f "${HOME}"/.bash_aliases ]; then
-    . "${HOME}"/.bash_aliases
+if [ -f ~/.bash_aliases ]; then
+    . ~/.bash_aliases
 fi
 
 # enable programmable completion features (you don't need to enable
@@ -106,11 +106,14 @@ fi
 ## CUSTOM SECTION ##
 ####################
 
-if [ -f "${HOME}"/.bash_functions ]; then
-    . "${HOME}"/.bash_functions
+if [ -f ~/.bash_functions ]; then
+    . ~/.bash_functions
 fi
 
-# custom user vars
+#
+# SET THE SCRIPT'S PATH VARIABLE
+#
+
 PATH="\
 /usr/lib/ccache:\
 ${HOME}/perl5/bin:\
@@ -132,11 +135,11 @@ export PATH
 export threads="$(nproc --all)"
 export cpus="$((threads / 2))"
 export lan="$(hostname -I)"
-export wan="$(curl -sS 'https://checkip.amazonaws.com')"
-export tmp="${HOME}"/tmp
+export wan="$(curl -s 'https://checkip.amazonaws.com')"
+export tmp="cd ${HOME}/tmp"
 export PS1='\n\[\e[38;5;227m\]\w\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38;5;117m\]\h\[\e[97;1m\]\\$\[\e[0m\]'
 export PYTHONUTF8=1
 
-if [ -f "${HOME}"/.cargo/env ]; then
-    source "${HOME}"/.cargo/env
+if [ -f ~/.cargo/env ]; then
+    source ~/.cargo/env
 fi
