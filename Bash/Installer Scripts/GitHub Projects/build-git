@@ -35,7 +35,7 @@ install_dir=/usr
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
-printf "%s\n%s\n\n" \
+printf "%s\n%s\n\n"                     \
     "Git Build Script - v${script_ver}" \
     '==============================================='
 sleep 2
@@ -104,7 +104,7 @@ export PKG_CONFIG_PATH
 
 exit_fn()
 {
-    printf "\n%s\n\n%s\n\n" \
+    printf "\n%s\n\n%s\n\n"                                       \
         'Make sure to star this repository to show your support!' \
         "${web_repo}"
     exit 0
@@ -113,7 +113,7 @@ exit_fn()
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "${1}" \
+        "${1}"              \
         "To report a bug create an issue at: ${web_repo}/issues"
     exit 1
 }
@@ -122,11 +122,11 @@ cleanup_fn()
 {
     local choice
 
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
+    printf "%s\n%s\n%s\n\n%s\n%s\n\n"                  \
         '============================================' \
         '  Do you want to clean up the build files?  ' \
         '============================================' \
-        '[1] Yes' \
+        '[1] Yes'                                      \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
 
@@ -195,7 +195,7 @@ fi
 if [ -d "${cwd}/${archive_dir}" ]; then
     sudo rm -fr "${cwd}/${archive_dir}"
 fi
-mkdir -p "${cwd}/${archive_dir}/build"
+mkdir -p "${cwd}/${archive_dir}"
 
 #
 # EXTRACT ARCHIVE FILES
