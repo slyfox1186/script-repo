@@ -541,7 +541,7 @@ myip()
     clear
     printf "%s\n%s\n\n"                                   \
         "LAN: $(ip route get 1.2.3.4 | awk '{print $7}')" \
-        "WAN: $(dig +short 'myip.opendns.com' @resolver1.opendns.com)"
+        "WAN: $(curl -s 'https://checkip.amazonaws.com')"
 }
 
 # WGET COMMAND
