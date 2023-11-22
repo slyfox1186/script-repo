@@ -1430,7 +1430,7 @@ fi
 # UBUNTU BIONIC FAILS TO BUILD XML2
 if [ "${VER}" != '18.04' ]; then
     git_ver_fn '1665' '5' 'T'
-    if build 'xml2' "${g_ver}"; then
+    if build 'libxml2' "${g_ver}"; then
         download "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v${g_ver}/libxml2-v${g_ver}.tar.bz2" "xml2-${g_ver}.tar.bz2"
         CFLAGS+=' -DNOLIBTOOL'
         execute ./autogen.sh
@@ -1441,7 +1441,7 @@ if [ "${VER}" != '18.04' ]; then
                       -G Ninja -Wno-dev
         execute ninja "-j${cpu_threads}" -C build
         execute ninja "-j${cpu_threads}" -C build install
-        build_done 'xml2' "${g_ver}"
+        build_done 'libxml2' "${g_ver}"
     fi
     ffmpeg_libraries+=('--enable-libxml2')
 fi
