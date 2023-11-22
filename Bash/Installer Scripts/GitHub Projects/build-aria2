@@ -13,7 +13,7 @@
 ##  Features:
 ##            - Static build
 ##            - OpenSSL backend
-##            - Increased the max connections from 16 >> 128
+##            - Increased the max connections from 16 to 128
 ##
 ##  Added:
 ##         - Updated aria2 to the latest version - 1.37.0
