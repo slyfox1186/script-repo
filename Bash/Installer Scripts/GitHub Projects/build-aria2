@@ -89,13 +89,13 @@ LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 export CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
 #
-# ADD EXTRA LIBRARYS TO THE ARIA2 CONFIGURE SCRIPT
+# ADD EXTRA LIBRARIES TO THE ARIA2 CONFIGURE SCRIPT
 #
 
 explibs="$(pkg-config --libs expat)"
 extralibs="$(pkg-config --libs libuv) $(pkg-config --libs libgcrypt)"
-jmflags="-I${install_dir}/include/jemalloc"
-jmlibs="-L${install_dir}/lib -ljemalloc"
+jmflags="$(pkg-config --cflags jemalloc)"
+jmlibs="$(pkg-config --libs jemalloc)"
 
 #
 # SET THE PATH VARIABLE
@@ -161,10 +161,12 @@ fail_fn()
 
 show_ver_fn()
 {
-    local save_ver
+    local show_ver
     clear
-    save_ver="$(aria2c --version | grep -Eo '[0-9\.]+$' | head -n1 2>/dev/null | xargs -I{} echo {})"
-    printf "%s\n\n" "The installed aria2 version is: ${save_ver}"
+
+    show_ver="$(aria2c --version | grep -Eo '[0-9\.]+$' | head -n1 2>/dev/null | xargs -I{} echo {})"
+
+    printf "%s\n\n" "The installed aria2 version is: ${show_ver}"
     sleep 2
 }
 
@@ -192,21 +194,12 @@ cleanup_fn()
     esac
 }
 
-remove_apt_ver_fn()
-{
-    if [ -f '/usr/bin/aria2c' ]; then
-        sudo apt -y remove aria2
-        sudo apt -y autoremove
-    fi
-    clear
-}
-
 #
 # INSTALL THE LATEST CA CERTS FROM CURL'S OFFICIAL WEBSITE
 #
 
-curl -A "${user_agent}" -Lso "${pem_in}" "https://curl.se/ca/${pem_file}"
-if ! sudo mv "${pem_in}" "${pem_out}"; then
+curl -A "${user_agent}" -Lso "${cwd}/${pem_in}" "https://curl.se/ca/${pem_file}"
+if ! sudo mv "${cwd}/${pem_in}" "${pem_out}"; then
     fail_fn "Failed to move cacert.pem. Line: ${LINENO}"
 fi
 
@@ -214,11 +207,11 @@ fi
 # INSTALL THE REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autogen automake build-essential ca-certificates ccache clang curl
-      libaria2-0 libaria2-0-dev libc-ares-dev libdmalloc-dev libexpat1-dev libgcrypt20-dev
-      libgmp-dev libgnutls28-dev libgpg-error-dev liblzma-dev libmbedtls-dev libnghttp2-dev
-      librust-openssl-dev libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev libuv1-dev
-      libxml2-dev pkg-config zlib1g-dev)
+pkgs=(autoconf autoconf-archive autogen automake build-essential ca-certificates ccache
+      clang curl libaria2-0 libaria2-0-dev libc-ares-dev libdmalloc-dev libexpat1-dev
+      libgmp-dev liblzma-dev libmbedtls-dev libnghttp2-dev librust-openssl-dev libsqlite3-dev
+      libssh2-1-dev libssh-dev libssl-dev libtool libtool-bin libuv1-dev libxml2-dev
+      m4 pkg-config zlib1g-dev)
 
 for i in ${pkgs[@]}
 do
@@ -334,14 +327,14 @@ cd build || exit 1
              --enable-libaria2             \
              --enable-static               \
              --with-ca-bundle="${pem_out}" \
-             --with-libgcrypt='/usr'       \
-             --with-libiconv-prefix='/usr' \
-             --with-libintl-prefix='/usr'  \
+             --with-libgcrypt=/usr         \
+             --with-libiconv-prefix=/usr   \
+             --with-libintl-prefix=/usr    \
              --with-libuv                  \
              --with-jemalloc               \
              --with-openssl                \
              --without-gnutls              \
-             ARIA2_STATIC='yes'            \
+             ARIA2_STATIC=yes              \
              EXPAT_LIBS="${explibs}"       \
              JEMALLOC_CFLAGS="${jmflags}"  \
              JEMALLOC_LIBS="${jmlibs}"     \
@@ -358,7 +351,10 @@ if ! sudo make install; then
 fi
 
 # REMOVE ANY APT INSTALLED VERSION OF ARIA2
-remove_apt_ver_fn
+if [ -f '/usr/bin/aria2c' ]; then
+    sudo apt -y remove aria2
+    sudo apt -y autoremove
+fi
 
 # SHOW THE NEW VERSION
 show_ver_fn
