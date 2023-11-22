@@ -33,7 +33,7 @@ user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 # CREATE DISCORD DOWNLOAD SCRIPT
 #
 
-cat > 'download_discord.sh' <<EOF
+cat > download_discord.sh <<EOF
 #!/usr/bin/env bash
 
 clear
@@ -41,9 +41,9 @@ clear
 user_agent='${user_agent}'
 
 printf "%s\n%s\n" \\
-    'Installing: Debian packages' \\
+    'Installing: Discord' \\
     '==================================='
-sleep 2
+sleep 1
 
 #
 # DOWNLOAD THE DISCORD DEBIAN ARCHIVE
@@ -58,46 +58,42 @@ EOF
 # DISCOVER THE LATEST UPDATE
 #
 
-update_fn()
-{
-    until false
-    do
-        test_url="$(curl -A "${user_agent}" -is "https://dl.discordapp.net/apps/linux/0.0.${cnt}/discord-0.0.${cnt}.deb" | head -n 1 | grep -o '200')"
-        if [[ "${test_url}" != '200' ]]; then
-            ((cnt--))
-            latest_ver="${cnt}"
-            break
-        elif [[ "${test_url}" = '200' ]]; then
-            ((cnt++))
-            continue
-        fi
-    done
-    if [ "${latest_ver}" = "${current_ver}" ]; then
-        clear
-        printf "%s\n\n%s\n\n"                      \
-            'The Discord version has not changed!' \
-            'Executing install script in 5 seconds...'
-        sleep 5
-    else
-        clear
-        printf "%s\n\n%s\n\n"                     \
-            'A new Discord version was detected!' \
-            'Executing install script in 5 seconds...'
-        sleep 5
-        # UPDATE THIS SCRIPT WITH THE CURRENT VERSION
-        sed -i "s/0.0.${current_ver}/0.0.${latest_ver}/g" 'download_discord.sh'
-        cp -f 'update-discord.sh' 'tmp.txt'
-        sed -E -i "s/^current_ver\=[0-9]+/current_ver\=${latest_ver}/g" 'tmp.txt'
-        mv 'tmp.txt' 'update-discord.sh'
+until false
+do
+    test_url="$(curl -A "${user_agent}" -is "https://dl.discordapp.net/apps/linux/0.0.${cnt}/discord-0.0.${cnt}.deb" | head -n 1 | grep -o '200')"
+    if [[ "${test_url}" != '200' ]]; then
+        ((cnt--))
+        latest_ver="${cnt}"
+        break
+    elif [[ "${test_url}" = '200' ]]; then
+        ((cnt++))
+        continue
     fi
-}
-update_fn
+done
+if [ "${latest_ver}" = "${current_ver}" ]; then
+    clear
+    printf "%s\n\n%s\n\n"                      \
+        'The Discord version has not changed!' \
+        'Executing install script in 5 seconds...'
+    sleep 5
+else
+    clear
+    printf "%s\n\n%s\n\n"                     \
+        'A new Discord version was detected!' \
+        'Executing install script in 5 seconds...'
+    sleep 5
+    # UPDATE THIS SCRIPT WITH THE CURRENT VERSION
+    sed -i "s/0.0.${current_ver}/0.0.${latest_ver}/g" 'download_discord.sh'
+    cp -f 'update-discord.sh' 'tmp.txt'
+    sed -E -i "s/^current_ver\=[0-9]+/current_ver\=${latest_ver}/g" 'tmp.txt'
+    mv 'tmp.txt' 'update-discord.sh'
+fi
 
 #
 # CONCAT THE INSTALL CODE TO THE DOWNLOAD SCRIPT
 #
 
-cat >> 'download_discord.sh' <<'EOF'
+cat >> download_discord.sh <<'EOF'
 
 for i in *.deb
 do
@@ -113,7 +109,7 @@ EOF
 # EXECUTE THE DOWNLOAD SCRIPT
 #
 
-bash 'download_discord.sh'
+bash download_discord.sh
 
 #
 # REMOVE THE LEFTOVER DOWNLOAD SCRIPT
