@@ -2,7 +2,7 @@
 
 ###########################################################################################################################
 ##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-bash
+##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/SlyFox1186%20Scripts/install-discord.sh
 ##
 ##  Purpose: build gnu bash
 ##
