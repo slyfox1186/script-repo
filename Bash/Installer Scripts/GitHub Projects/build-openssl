@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2162,SC2317
+# shellcheck disable=SC2068,SC2086,SC2162,SC2317
 
 ################################################################################################
 ##
@@ -38,8 +38,7 @@ archive_dir=openssl-3.1.4
 archive_url="https://www.openssl.org/source/${archive_dir}.tar.gz"
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
-parent_dir="${PWD}"
-cwd="${parent_dir}"/openssl-build-script
+cwd="${PWD}"/openssl-build-script
 install_dir=/usr/local/ssl
 ssl_dir="${install_dir}"
 cert_dir="${ssl_dir}/certs"
@@ -145,13 +144,7 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' choice
 
     case "${choice}" in
-        1)
-                sudo rm -fr "${cwd}"
-                cd "${parent_dir}" || exit 1
-                if [ -f "${pem_file}" ]; then
-                    sudo rm "${pem_file}"
-                fi
-                ;;
+        1)      sudo rm -fr "${cwd}";;
         2)      clear;;
         *)
                 unset choice
@@ -193,7 +186,7 @@ if [ ! -f "${cert_dir}"/cacert.pem ]; then
         'Download the latest security certificate' \
         '================================================'
 
-    wget -U "${user_agent}" -cqO ""${cwd}"/cacert.pem "https://curl.se/ca/${pem_file}"
+    wget -U "${user_agent}" -cqO "${cwd}"/cacert.pem 'https://curl.se/ca/cacert.pem'
 
     if ! sudo mv "${cwd}"/cacert.pem "${cert_dir}"/cacert.pem; then
         fail_fn "Failed to move file: '${cwd}/cacert.pem' to '${cert_dir}/cacert.pem'. Line: ${LINENO}"
@@ -230,19 +223,18 @@ fi
 # IF UBUNTU IS THE CURRENT OS THEN YOU MUST SOFTLINK FOR OPENSSL TO FUNCTION
 #
 
-ubuntu_os_version() { sudo ln -sf /usr/lib64/libcrypto.so.3 /lib/"${install_dir}"/; }
+ubuntu_os_version() { sudo ln -sf '/usr/lib64/libcrypto.so.3' "/lib/${install_dir}/"; }
 
-if [ -f /etc/os-release ]; then
-    source /etc/os-release
-    OS="${NAME}"
-    VER="${VERSION_ID}"
-elif type lsb_release >/dev/null 2>&1; then
-    OS="$(lsb_release -si)"
-    VER="$(lsb_release -sr)"
-elif [ -f /etc/lsb-release ]; then
-    source /etc/lsb-release
-    OS="${DISTRIB_ID}"
-    VER="${DISTRIB_RELEASE}"
+find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
+
+if [ -f '/etc/os-release' ]; then
+    source '/etc/os-release'
+    OS_TMP="$NAME"
+    OS="$(echo "${OS_TMP}" | awk '{print $1}')"
+elif [ -n "${find_lsb_release}" ]; then
+    OS="$(lsb_release -d | awk '{print $2}')"
+else
+    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
 fi
 
 #
@@ -287,21 +279,51 @@ fi
 # REQUIRED FOR FIPS FUNCTIONALITY TO WORK
 sudo openssl fipsinstall >/dev/null
 
-# CREATE A CONFIG SCRIPT FOR THE LD LINKER TO LOAD LETTING IT KNOW WHERE THE OPENSSL LIBS ARE LOCATED
-sudo bash -c "echo '/usr/local/ssl/lib64' > '/etc/ld.so.conf.d/${archive_dir}.conf'"
-
-# UPDATE THE LIBRARIES FOR LD
-sudo ldconfig '/usr/local/ssl/lib64/'
-
-# ADD THE NEW OPENSSL BINARY FILE PATH TO THE '/etc/environment' FILE SO IT LOADS DURING CRITICAL MOMENTS AS THE OS BOOTS OR RESTARTS
-sudo bash -c 'echo "PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/ssl/bin\"" > "/etc/environment"'
-source /etc/environment
-source "${HOME}"/.bashrc
-
 # ENSURE THE CORRECT PERMISSIONS ARE ATTACHED TO THE CUSTOM PEM FILE THAT WAS ADDED
 if [ -f "${cert_dir}"/cacert.pem ]; then
     sudo chmod 644 "${cert_dir}"/cacert.pem
 fi
+
+# CREATE A CONFIG SCRIPT FOR THE LD LINKER TO LOAD LETTING IT KNOW WHERE THE OPENSSL LIBS ARE LOCATED
+sudo bash -c "echo '/usr/local/ssl/lib64' > '/etc/ld.so.conf.d/${archive_dir}.conf'"
+
+# ADD THE NEW OPENSSL BINARY FILE PATH TO THE '/etc/environment' FILE SO IT LOADS DURING CRITICAL MOMENTS AS THE OS BOOTS OR RESTARTS
+sudo bash -c 'echo "PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/ssl/bin\"" > "/etc/environment"'
+
+#
+# REMOVE DUPLICATE LINES FROM THE PATH VARIABLE
+#
+
+cat >> "${HOME}"/.bashrc <<'EOF'
+
+add_str='/usr/lib/ccache:/usr/local/ssl/bin'
+export PATH="${add_str}:${PATH}"
+tmp_dir="$(mktemp -d)"
+pre_file="${tmp_dir}"/file1.txt
+post_file="${tmp_dir}"/file2.txt
+echo "${PATH}" > "${pre_file}"
+sed -E 's/(:)/\n/g' "${pre_file}" | tee "${post_file}"
+awk '!NF || !seen[$0]++' "${post_file}" > "${pre_file}"
+join_str="$(tr '\n' ':' < "${pre_file}")"
+PATH="$(echo "${join_str}" | sed 's/:$//g')"
+export PATH
+EOF
+
+#
+# SOURCE THE UPDATED SCRIPTS
+#
+
+source '/etc/environment'
+source "${HOME}"/.bashrc
+
+# UPDATE THE LIBRARIES FOR LD
+show_libs_path="$(sudo ldconfig -v | grep -Eo '^\/usr\/local\/ssl\/lib64' | grep -Eo '^\/usr.*')"
+show_libs="$(sudo ldconfig -v | grep -Eo '(libssl.so*|libcrypto.so*)' | grep -Eo '^lib.*[^\s]+' | uniq | head -n2 | xargs -I{} echo Library Files: {})"
+clear
+printf "%s\n\n%s\n%s\n"                                                 \
+    'The below libraries are now in the search path for the LD linker.' \
+    "Library PATH: ${show_libs_path}"                                   \
+    "${show_libs}"
 
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
