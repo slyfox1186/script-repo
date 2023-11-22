@@ -369,7 +369,7 @@ fi
 #
 
 printf "\n%s\n%s\n\n"              \
-    "Build Aria2 - version 1.36.0" \
+    "Build Aria2 - version 1.37.0" \
     '==============================================='
 sleep 1
 
