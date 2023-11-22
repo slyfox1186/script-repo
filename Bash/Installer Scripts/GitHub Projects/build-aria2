@@ -48,8 +48,6 @@ else
     cert_dir=/etc/ssl/certs
 fi
 pem_file=cacert.pem
-pem_in="${cwd}/${pem_file}"
-pem_out="${cert_dir}/${pem_file}"
 user_agent='Mozilla/5.0 (X11; Linux x86_64) Applpc_typeeWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
@@ -198,8 +196,8 @@ cleanup_fn()
 # INSTALL THE LATEST CA CERTS FROM CURL'S OFFICIAL WEBSITE
 #
 
-curl -A "${user_agent}" -Lso "${cwd}/${pem_in}" "https://curl.se/ca/${pem_file}"
-if ! sudo mv "${cwd}/${pem_in}" "${pem_out}"; then
+curl -A "${user_agent}" -Lso "${cwd}/${pem_file}" "https://curl.se/ca/${pem_file}"
+if ! sudo mv "${cwd}/${pem_file}" "${cert_dir}/${pem_file}"; then
     fail_fn "Failed to move cacert.pem. Line: ${LINENO}"
 fi
 
