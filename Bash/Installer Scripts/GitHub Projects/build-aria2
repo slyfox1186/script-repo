@@ -73,7 +73,7 @@ sleep 2
 # SET THE SOURCE CODE COMPILERS
 #
 
-export CC=clang CXX=clang++
+export CC=gcc CXX=g++
 
 #
 # SET COMPILER OPTIMIZATION FLAGS
@@ -197,10 +197,9 @@ fi
 #
 
 pkgs=(autoconf autoconf-archive autogen automake build-essential ca-certificates ccache
-      clang curl libaria2-0 libaria2-0-dev libc-ares-dev libdmalloc-dev libexpat1-dev
-      libgmp-dev liblzma-dev libmbedtls-dev libnghttp2-dev librust-openssl-dev libsqlite3-dev
-      libssh2-1-dev libssh-dev libssl-dev libtool libtool-bin libuv1-dev libxml2-dev
-      m4 pkg-config zlib1g-dev)
+      curl libaria2-0 libaria2-0-dev libc-ares-dev libdmalloc-dev libexpat1-dev libgmp-dev
+      liblzma-dev libmbedtls-dev libnghttp2-dev librust-openssl-dev libsqlite3-dev libssh2-1-dev
+      libssh-dev libssl-dev libtool libtool-bin libuv1-dev libxml2-dev m4 pkg-config zlib1g-dev)
 
 for i in ${pkgs[@]}
 do
