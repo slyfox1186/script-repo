@@ -44,7 +44,7 @@ pem_out="${cert_dir}/${pem_file}"
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
-printf "%s\n%s\n\n" \
+printf "%s\n%s\n\n"                         \
     "OpenSSL Build Script - v${script_ver}" \
     '==============================================='
 sleep 2
@@ -152,9 +152,6 @@ cleanup_fn()
                 ;;
         2)      clear;;
         *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
                 unset choice
                 clear
                 cleanup_fn
@@ -197,7 +194,7 @@ if [ ! -f "${pem_out}" ]; then
     wget -U "${user_agent}" -cqO "${pem_in}" "https://curl.se/ca/${pem_file}"
 
     if ! sudo mv "${pem_in}" "${pem_out}"; then
-        fail_fn "Failed to move \"${pem_in}\" to \"${pem_out}\":Line ${LINENO}"
+        fail_fn "Failed to move \"${pem_in}\" to \"${pem_out}\". Line: ${LINENO}"
     fi
 fi
 
@@ -251,9 +248,9 @@ fi
 #
 
 case "${OS}" in
-    Debia*)         clear;;
-    Ubunt*)         ubuntu_os_version;;
-    *)              fail_fn "Could not detect the OS architecture:Line ${LINENO}";;
+    Debian)         clear;;
+    Ubuntu)         ubuntu_os_version;;
+    *)              fail_fn "Could not detect the OS architecture. Line: ${LINENO}";;
 esac
 
 #
@@ -276,12 +273,12 @@ cd "${cwd}/${archive_dir}/build" || exit 1
              zlib
 make "-j$(nproc --all)"
 if ! sudo make install_sw; then
-    fail_fn "Failed to execute: sudo make install_sw:Line ${LINENO}"
+    fail_fn "Failed to execute: sudo make install_sw. Line: ${LINENO}"
     exit 1
 fi
 
 if ! sudo make install_fips; then
-    fail_fn "Failed to execute: sudo make install_fips:Line ${LINENO}"
+    fail_fn "Failed to execute: sudo make install_fips. Line: ${LINENO}"
     exit 1
 fi
 
