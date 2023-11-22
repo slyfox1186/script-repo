@@ -24,6 +24,16 @@ cwd="${PWD}"/build-all-gnu-safer-script
 web_repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
+#
+# DETECT THE PC ARCHITECTURE
+#
+
+case "$(uname -m)" in
+      x86_64)                       arch_ver=pkg-config;;
+      aarch64*|armv8*|arm|armv7)    arch_ver=pkg-config-arm;;
+      *)                            fail_fn "Unrecognized architecture: '$(uname -m)'";;
+esac
+
 if [ -d "${cwd}" ]; then
     sudo rm -fr "${cwd}"
 fi
@@ -76,7 +86,7 @@ if [ -n "${missing_pkgs}" ]; then
     clear
 fi
 
-scripts=(pkg-config m4 autoconf autoconf-archive libtool bash make sed tar gawk grep nano wget)
+scripts=(${arch_ver} m4 autoconf autoconf-archive libtool bash make sed tar gawk grep nano wget)
 cnt=0
 
 for script in ${scripts[@]}
