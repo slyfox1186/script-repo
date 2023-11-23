@@ -124,6 +124,13 @@ do
     fi
 done
 
+if [ -d "${cwd}"/failed ]; then
+    printf "%s\n\n%s\n\n"                                  \
+        'One of the scripts failed to build successfully.' \
+        "You can find the failed script at: ${cwd}/failed"
+    exit_fn
+fi
+
 # CLEANUP LEFTOVER FILES
 sudo rm -fr "${cwd}"
 
