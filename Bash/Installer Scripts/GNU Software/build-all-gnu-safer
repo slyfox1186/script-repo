@@ -82,7 +82,7 @@ fi
 
 case "$(uname -m)" in
       x86_64)                       arch_ver=pkg-config;;
-      aarch64*|armv8*|arm|armv7)    arch_ver=pkg-config-arm;;
+      aarch64*|armv8*|arm|armv7*)    arch_ver=pkg-config-arm;;
       *)                            fail_fn "Unrecognized architecture: '$(uname -m)'";;
 esac
 
