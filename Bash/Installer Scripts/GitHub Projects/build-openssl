@@ -41,7 +41,7 @@ archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/openssl-build-script
 install_dir=/usr/local/ssl
 ssl_dir=/usr/local/ssl
-#cert_dir="${ssl_dir}"/certs
+cert_dir="${ssl_dir}"/certs
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
@@ -58,7 +58,6 @@ if [ -d "${cwd}" ]; then
     sudo rm -fr "${cwd}"
 fi
 mkdir -p "${cwd}"
-#sudo mkdir -p "${cert_dir}"
 
 #
 # SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
@@ -66,10 +65,13 @@ mkdir -p "${cwd}"
 
 CC=clang
 CXX=clang++
-CFLAGS='-g -O3 -pipe -fPIC -pthread -march=native'
+CFLAGS='-g -O2 -pipe -march=native'
 CXXFLAGS="${CFLAGS}"
 CPPFLAGS='-I/usr/local/include -I/usr/include'
-export CC CXX CFLAGS CPPFLAGS CXXFLAGS
+LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+LDLIBS="${LDFLAGS}"
+LD_LIBRARY_PATH="${install_dir}/lib64"
+export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS LD_LIBRARY_PATH LDLIBS
 
 #
 # SET THE PATH
@@ -79,6 +81,7 @@ PATH="\
 /usr/lib/ccache:\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
+${install_dir}/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
@@ -134,7 +137,7 @@ cleanup_fn()
 {
     local choice
 
-    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n"                \
+    printf "%s\n%s\n%s\n\n%s\n%s\n\n"                  \
         '============================================' \
         '  Do you want to clean up the build files?  ' \
         '============================================' \
@@ -175,22 +178,6 @@ if [ -n "${missing_pkgs}" ]; then
     sudo apt -y install ${missing_pkgs}
     clear
 fi
-
-#
-# INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
-#
-
-#if [ ! -f "${cert_dir}"/cacert.pem ]; then
-#    printf "%s\n%s\n\n"                            \
-#       'Download the latest security certificate' \
-#        '================================================'
-#
-#    wget -U "${user_agent}" -cqO "${cwd}"/cacert.pem 'https://curl.se/ca/cacert.pem'
-#
-#    if ! sudo mv "${cwd}"/cacert.pem "${cert_dir}"/cacert.pem; then
-#        fail_fn "Failed to move file: '${cwd}/cacert.pem' to '${cert_dir}/cacert.pem'. Line: ${LINENO}"
-#    fi
-#fi
 
 #
 # DOWNLOAD THE ARCHIVE FILE
@@ -250,9 +237,24 @@ esac
 
 cd "${cwd}/${archive_dir}/build" || exit 1
 clear
-../config --prefix="${install_dir}" \
-          --openssldir="${ssl_dir}" \
-          shared                    \
+../config --prefix="${install_dir}"                   \
+          --openssldir="${ssl_dir}"                   \
+          --with-brotli-include=/usr/include          \
+          --with-brotli-lib=/usr/lib/x86_64-linux-gnu \
+          --with-zlib-include=/usr/include            \
+          --with-zlib-lib=/usr/lib/x86_64-linux-gnu   \
+          --with-zstd-include==/usr/include           \
+          --with-zstd-lib=/usr/lib                    \
+          enable-brotli                               \
+          enable-ec_nistp_64_gcc_128                  \
+          enable-egd                                  \
+          enable-fips                                 \
+          enable-tfo                                  \
+          enable-zstd                                 \
+          no-docs                                     \
+          shared                                      \
+          no-tests                                    \
+          threads                                     \
           zlib
 echo
 if ! make "-j$(nproc --all)"; then
@@ -260,12 +262,69 @@ if ! make "-j$(nproc --all)"; then
 fi
 
 echo
-if ! sudo make install_sw; then
-    fail_fn "Failed to execute: sudo make install_sw. Line: ${LINENO}"
+if ! sudo make install_sw install_fips; then
+    fail_fn "Failed to execute: sudo make install_sw install_fips. Line: ${LINENO}"
+else
+    openssl fipsinstall
 fi
 
-# RUN LDCONFIG TO UPDATE THE LINKER LIBRARY FILES
-sudo ldconfig "${install_dir}"/lib64 2>/dev/null
+#
+# INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
+#
+
+printf "%s\n%s\n\n"                                                 \
+   'Install the latest security certificate from cURL'\''s website' \
+   '==================================================================='
+
+# CREATE CERTS DIRECTORY IF MISSING
+if [ ! -d "${cert_dir}" ]; then
+    sudo mkdir -p "${cert_dir}"
+fi
+
+# DOWNLOAD THE LATEST CACERT.PEM FILE FROM THE OFFICIAL CURL WEBSITE
+if ! curl -A "${user_agent}" -Lso "${cwd}"/cacert.pem 'https://curl.se/ca/cacert.pem'; then
+    fail_fn "Failed to download the latest \"cacert.pem\" file. Line: ${LINENO}"
+fi
+
+# MOVE THE PEM FILE TO THE NEWLY CREATED CERTS DIRECTORY
+if ! sudo mv "${cwd}"/cacert.pem "${cert_dir}"/cacert.pem; then
+    fail_fn "Failed to move file: '${cwd}/cacert.pem' to '${cert_dir}/cacert.pem'. Line: ${LINENO}"
+fi
+
+# COPY ALL EXISTING CERT FILES LOCATED IN THE DIRECTORY /etc/ssl/certs TO THE NEWLY CREATED CERTS DIRECTORY
+sudo cp -f /etc/ssl/certs/* "${cert_dir}"
+
+# COPY THE PEM FILE AS A CRT FILE IN THE SPECIAL CA-CERTIFICATES FOLDER SO THE COMMAND WILL FIND AND USE IT WHEN IT IS EXECUTED
+if [ ! -f '/usr/local/share/ca-certificates/curl-cacert.crt' ]; then
+    sudo cp "${cert_dir}/cacert.pem" '/usr/local/share/ca-certificates/curl-cacert.crt'
+fi
+
+# UPDATE THE SECURITY CERTS THAT WERE MOVED FROM THE /etc/ssl/certs FOLDER
+cd "${cert_dir}" || exit 1
+sudo c_rehash .
+sudo update-ca-certificates
+
+# RUN LDCONFIG TO UPDATE THE LINKER LIBRARY SEARCH PATH TO INCLUDE THE OPENSSL LIB64 DIRECTORY
+if [ ! -f '/etc/ld.so.conf.d/openssl-compiled.conf' ]; then
+    echo "${install_dir}/lib64" | sudo tee '/etc/ld.so.conf.d/openssl-compiled.conf'
+    sudo ldconfig
+    # sudo ldconfig "${install_dir}/lib64" 2>/dev/null
+fi
+
+# ADD THE NEW OPENSSL BIN TO THE USER'S ~/.bashrc FILE
+if grep -o '/usr/local/sbin:\\' "${HOME}/.bashrc" &>/dev/null; then
+    sed -i '\/usr\/local\/sbin:/i \/usr\/local\/ssl\/bin:\\' "${HOME}/.bashrc"
+else
+    sed -i 's/\/usr\/local\/sbin/\/usr\/local\/ssl\/bin:\/usr\/local\/sbin/g' "${HOME}/.bashrc"
+fi
+
+# DISPLAY THE NEWLY INSTALLED OPENSSL STATS
+clear
+printf "%s\n\n" 'The newly installed OpenSSL version information is listed below.'
+openssl version -a
+echo
+read -p 'Press enter to continue.'
+clear
 
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
