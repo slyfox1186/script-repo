@@ -69,7 +69,7 @@ $(ColorBlue 'Choose the operating system:') "
         2)      bash <(curl -A "${user_agent}" -fsSL 'https://jammy-scripts.optimizethis.net');;
         3)      bash <(curl -A "${user_agent}" -fsSL 'https://lunar-scripts.optimizethis.net');;
         4)      bash <(curl -A "${user_agent}" -fsSL 'https://arch-scripts.optimizethis.net');;
-        5)      bash <(curl -A "${user_agent}" -fsSL 'https://raspi-scripts.optimizethis.net')
+        5)      bash <(curl -A "${user_agent}" -fsSL 'https://raspi-scripts.optimizethis.net');;
         0)      return 0;;
         *)
                 unset answer
