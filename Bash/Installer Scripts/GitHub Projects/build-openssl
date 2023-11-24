@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2068,SC2086,SC2162,SC2317
+# shellcheck disable=SC2068,SC2086,SC2162
+#SC2317
 
 ################################################################################################
 ##
@@ -182,7 +183,7 @@ cleanup_fn()
 
     case "${choice}" in
         1)      sudo rm -fr "${cwd}";;
-        2)      clear;;
+        2)      echo;;
         *)
                 unset choice
                 clear
@@ -196,9 +197,9 @@ cleanup_fn()
 #
 
 pkgs=(autoconf autogen automake build-essential ca-certificates ccache checkinstall clang curl
-      libc-ares-dev libclang-dev libcurl4-openssl-dev libdmalloc-dev libgcrypt20-dev libgmp-dev
-      libgpg-error-dev libjemalloc-dev libmbedtls-dev libsctp-dev libssh2-1-dev libssh-dev libssl-dev
-      libtool libtool-bin libxml2-dev m4 zlib1g-dev)
+      libc-ares-dev libcurl4-openssl-dev libdmalloc-dev libgcrypt20-dev libgmp-dev libgpg-error-dev
+      libjemalloc-dev libmbedtls-dev libsctp-dev libssh2-1-dev libssh-dev libssl-dev libtool libtool-bin
+      libxml2-dev m4 zlib1g-dev)
 
 for pkg in ${pkgs[@]}
 do
@@ -265,7 +266,7 @@ ubuntu_os_version() { sudo ln -sf '/usr/lib64/libcrypto.so.3' "/lib/${install_di
 find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
 
 if [ -f '/etc/os-release' ]; then
-    . '/etc/os-release'
+    source '/etc/os-release'
     OS_TMP="$NAME"
     OS="$(echo "${OS_TMP}" | awk '{print $1}')"
 elif [ -n "${find_lsb_release}" ]; then
@@ -279,17 +280,15 @@ fi
 #
 
 case "${OS}" in
-    Debian)         clear;;
-    Ubuntu)         ubuntu_os_version;;
-    *)              fail_fn "Could not detect the OS architecture. Line: ${LINENO}";;
+    Ubuntu)     ubuntu_os_version;;
 esac
 
 #
 # BUILD PROGRAM FROM SOURCE
 #
 
-clear
 cd "${cwd}/${archive_dir}/build" || exit 1
+clear
 ../config --prefix="${install_dir}" \
           --openssldir="${ssl_dir}" \
           enable-fips               \
@@ -301,13 +300,11 @@ cd "${cwd}/${archive_dir}/build" || exit 1
 echo
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
-    exit 1
 fi
 
 echo
 if ! sudo make install_sw install_fips; then
     fail_fn "Failed to execute: sudo make install_sw install_fips. Line: ${LINENO}"
-    exit 1
 else
     # REQUIRED FOR FIPS FUNCTIONALITY TO WORK
     sudo openssl fipsinstall
