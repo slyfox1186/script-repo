@@ -311,7 +311,7 @@ if ! sudo make install_sw install_fips; then
 else
     # REQUIRED FOR FIPS FUNCTIONALITY TO WORK
     sudo openssl fipsinstall
-    clear
+    echo
 fi
 
 #
