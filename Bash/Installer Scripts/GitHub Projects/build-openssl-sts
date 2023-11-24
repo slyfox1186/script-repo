@@ -263,8 +263,8 @@ if ! make "-j$(nproc --all)"; then
 fi
 
 echo
-if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
+if ! sudo make install_sw; then
+    fail_fn "Failed to execute: sudo make install_sw. Line: ${LINENO}"
 fi
 
 #
