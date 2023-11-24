@@ -40,7 +40,7 @@ archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/openssl-build-script
 install_dir=/usr/local/ssl
-ssl_dir="${install_dir}"
+ssl_dir=/usr/local/ssl
 #cert_dir="${ssl_dir}"/certs
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
@@ -58,7 +58,7 @@ if [ -d "${cwd}" ]; then
     sudo rm -fr "${cwd}"
 fi
 mkdir -p "${cwd}"
-sudo mkdir -p "${cert_dir}"
+#sudo mkdir -p "${cert_dir}"
 
 #
 # SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
@@ -108,44 +108,6 @@ PKG_CONFIG_PATH="\
 /lib/usr/local/pkgconfig\
 "
 export PKG_CONFIG_PATH
-
-#
-# SET THE LINKER LIBRARY_PATH
-#
-
-LIBRARY_PATH="\
-/usr/local/cuda/targets/x86_64-linux/lib:\
-/usr/local/lib64:\
-/usr/local/lib:\
-/usr/local/lib/x86_64-linux-gnu:\
-/usr/lib/x86_64-linux-gnu:\
-/usr/lib64:\
-/usr/lib:\
-/lib64:\
-/lib/x86_64-linux-gnu:\
-/lib32:\
-/lib\
-"
-export LIBRARY_PATH
-
-#
-# SET THE LD_LIBRARY_PATH
-#
-
-LD_LIBRARY_PATH="\
-/usr/local/cuda/targets/x86_64-linux/lib:\
-/usr/local/lib64:\
-/usr/local/lib:\
-/usr/local/lib/x86_64-linux-gnu:\
-/usr/lib/x86_64-linux-gnu:\
-/usr/lib64:\
-/usr/lib:\
-/lib64:\
-/lib/x86_64-linux-gnu:\
-/lib32:\
-/lib\
-"
-export LD_LIBRARY_PATH
 
 #
 # CREATE FUNCTIONS
@@ -265,7 +227,7 @@ ubuntu_os_version() { sudo ln -sf '/usr/lib64/libcrypto.so.3' "/lib/${install_di
 find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
 
 if [ -f '/etc/os-release' ]; then
-    source '/etc/os-release'
+    . '/etc/os-release'
     OS_TMP="$NAME"
     OS="$(echo "${OS_TMP}" | awk '{print $1}')"
 elif [ -n "${find_lsb_release}" ]; then
