@@ -250,11 +250,17 @@ alias pir='clear; pihole restartdns'
 alias pit='clear; pihole -t'
 alias piu='clear; pihole -up'
 alias piq='clear; pihole -q'
+alias pig='clear; pihole -g'
+
+# DIRECTORY SIZE
+alias dsize='clear; du -sh'
 
 # SQUID
-alias sqt1='clear; tail -f '\''/var/log/squid/access.log'\'''
-alias sqt2='clear; tail -f '\''/var/log/squid/cache.log'\'''
+alias sqtl='clear; tail -f '\''/var/log/squid/access.log'\'''
+alias sqtc='clear; tail -f '\''/var/log/squid/cache.log'\'''
 alias sqr='clear; service squid restart && service squid status'
 alias sq1='clear; service squid stop && service squid status'
 alias sq2='clear; service squid start && service squid status'
 alias sqcs='clear; sudo du -ch '\''/var/spool/squid'\'''
+alias sparse='clear; sudo squid -k parse'
+alias sqcf='clear; sudo nano squid.conf && sudo squid -k parse'
