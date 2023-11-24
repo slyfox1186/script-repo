@@ -4,11 +4,15 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/Installer%20Scripts/GNU%20Software/build-wget
 ##
-##  Purpose: build gnu wget
+##  Purpose: Build GNU Wget from source code
 ##
-##  Updated: 08.31.23
+##  Features: +cares +digest +gpgme +https -ipv6 +iri +large-file +metalink -nls +ntlm +opie +psl +ssl/openssl
 ##
-##  Script version: 1.1
+##  Updated: 11.24.23
+##
+##  Script version: 1.2
+##
+##  Added: libmetalink-dev library files
 ##
 #################################################################################################################################
 
@@ -23,19 +27,21 @@ fi
 # SET THE VARIABLES
 #
 
-script_ver=1.1
+script_ver=1.2
 archive_dir=wget-latest
 archive_url=https://ftp.gnu.org/gnu/wget/"${archive_dir}".tar.lz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/wget-build-script
 install_dir=/usr/local
+pc_type=x86_64-linux-gnu
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
-printf "%s\n%s\n\n" \
-    "wget build script - v${script_ver}" \
+printf "%s\n%s\n\n"                      \
+    "Wget Build Script - v${script_ver}" \
     '==============================================='
+sleep 2
 
 #
 # CREATE OUTPUT DIRECTORY
@@ -54,35 +60,24 @@ CC=gcc
 CXX=g++
 CFLAGS='-g -O3 -pipe -march=native'
 CXXFLAGS="${CFLAGS}"
-CPPFLAGS='-I/usr/local/include -I/usr/include'
-LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu'
-LDFLAGS+=' -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
-export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
+CPPFLAGS='-I/usr/local/include -I/usr/include/libxml2 -I/usr/include'
+LDFLAGS='-L/usr/local/ssl/lib -L/usr/local/lib64 -L/usr/local/lib'
+LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+LIBS="$(pkg-config --libs libxml-2.0)"
+export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS LIBS
 
 #
 # SET THE PATH VARIABLE
 #
 
-PATH="\
-/usr/lib/ccache:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
-/usr/local/sbin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/cuda/bin:\
-/snap/bin\
-"
-export PATH
+export PATH="/usr/lib/ccache:${PATH}"
 
 #
 # SET THE PKG_CONFIG_PATH VARIABLE
 #
 
 PKG_CONFIG_PATH="\
+/usr/local/ssl/lib/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
@@ -121,26 +116,31 @@ cleanup_fn()
 {
     local choice
 
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
+    printf "%s\n%s\n%s\n\n%s\n%s\n\n"                  \
         '============================================' \
         '  Do you want to clean up the build files?  ' \
         '============================================' \
-        '[1] Yes' \
+        '[1] Yes'                                      \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
+    clear
 
     case "${choice}" in
         1)      sudo rm -fr "${cwd}";;
-        2)      echo;;
+        2)      return 0;;
         *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
                 unset choice
                 clear
                 cleanup_fn
                 ;;
     esac
+}
+
+version_fn()
+{
+    clear
+    printf "%s\n\n" 'The newly installed Wget stats are listed below.'
+    wget -V | grep -Ev '^(<|Copy|License|Orig|Please|This|There)' | sed -e 's/GNU //g' -e 's/ built on linux-gnu//g' | sed -E 's/.$//g'
 }
 
 #
@@ -175,64 +175,51 @@ if [ -n "${missing_pkgs}" ]; then
 fi
 
 #
-# DOWNLOAD THE ARCHIVE FILE
+# DOWNLOAD THE ARCHIVE FILE METALINK
 #
 
-if [ ! -f "${cwd}/${archive_name}" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
+if [ ! -f "${cwd}"/libmetalink-0.1.3.tar.xz ]; then
+    curl -A "${user_agent}" -Lso "${cwd}"/libmetalink-0.1.3.tar.xz 'https://github.com/metalink-dev/libmetalink/releases/download/release-0.1.3/libmetalink-0.1.3.tar.xz'
 fi
 
 #
-# CREATE OUTPUT DIRECTORY
+# CREATE OUTPUT DIRECTORY METALINK
 #
 
-if [ -d "${cwd}/${archive_dir}" ]; then
-    sudo rm -fr "${cwd}/${archive_dir}"
+if [ -d "${cwd}"/libmetalink-0.1.3 ]; then
+    sudo rm -fr "${cwd}"/libmetalink-0.1.3
 fi
-mkdir -p "${cwd}/${archive_dir}/build"
+mkdir -p "${cwd}"/libmetalink-0.1.3/build
 
 #
-# EXTRACT THE ARCHIVE FILE
+# EXTRACT THE ARCHIVE FILE METALINK
 #
 
-if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
-    exit 1
-fi
-
-#
-# BUILD PROGRAM FROM SOURCE
-#
-
-if which update-ca-certificates &>/dev/null; then
-    sudo update-ca-certificates 2>/dev/null
+if ! tar -xf "${cwd}"/libmetalink-0.1.3.tar.xz -C "${cwd}"/libmetalink-0.1.3 --strip-components 1; then
+    fail_fn "Failed to extract: ${cwd}/libmetalink-0.1.3.tar.xz"
 fi
 
-# FIND THE CORRECT OPENSSL DIRECTORIES
-openssl_lib_dir="$(pkg-config --libs-only-L openssl | awk '{print $1}' | sed 's/-L//')"
-openssl_include_dir="$(pkg-config --cflags-only-I openssl | awk '{print $1}' | sed 's/-I//')"
+#
+# BUILD PROGRAM FROM SOURCE METALINK
+#
 
-cd "${cwd}/${archive_dir}/build" || exit 1
+printf "%s\n%s\n\n"                     \
+    'Build libmetalink - version 0.1.3' \
+    '==============================================='
+sleep 2
+
+cd "${cwd}"/libmetalink-0.1.3 || exit 1
+autoreconf -fi
+cd build || exit 1
+../buildconf
 ../configure --prefix="${install_dir}"          \
-             --{build,host}=x86_64-linux-gnu    \
-             --disable-nls                      \
-             --enable-threads=posix             \
-             --enable-valgrind-tests            \
-             --enable-year2038                  \
-             --with-cares                       \
-             --with-gpgme-prefix=/usr           \
-             --with-included-libunistring       \
-             --with-libiconv-prefix=/usr        \
-             --with-libintl-prefix=/usr         \
-             --with-libssl-prefix=/usr          \
-             --with-libunistring-prefix=/usr    \
-             --with-linux-crypto                \
-             --with-metalink                    \
-             --with-openssl=yes                 \
-             --with-ssl=openssl                 \
-             PKG_CONFIG="$(type -P pkg-config)" \
-             OPENSSL_LIBS="${openssl_lib_dir}"  \
-             OPENSSL_CFLAGS="${openssl_include_dir}"
+             --{build,host,target}="${pc_type}" \
+             --enable-silent-rules              \
+             --with-pic                         \
+             --with-libexpat                    \
+             --with-libxml2                     \
+             --with-xml-prefix=/usr             \
+             PKG_CONFIG="$(type -P pkg-config)"
 
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
@@ -244,10 +231,114 @@ if ! sudo make install; then
     exit 1
 fi
 
-printf "ca_directory=/etc/ssl/certs" | sudo tee '/usr/local/etc/wgetrc' >/dev/null
+# FIX MISSING LIBRARY .SO FILE
+metalink_lib="$(sudo find /usr/ -type f -name 'libmetalink.so*')"
+metalink_trim="$(echo "${metalink_lib}" | sed 's|\(.*\)/.*|\1|')"
+
+if [ -n "${metalink_lib}" ]; then
+    if [ ! -f "${metalink_trim}"/libmetalink.so.3 ]; then
+        sudo ln -s "${metalink_lib}" "${metalink_trim}"/libmetalink.so.3
+    fi
+fi
+
+# UPDATE THE METALINK LD LINKER LIBRARY FILES
+sudo ldconfig "${metalink_trim}"
+
+#
+# CREATE OUTPUT DIRECTORY WGET
+#
+
+if [ -d "${cwd}/${archive_dir}" ]; then
+    sudo rm -fr "${cwd}/${archive_dir}"
+fi
+mkdir -p "${cwd}/${archive_dir}/build"
+
+#
+# DOWNLOAD THE ARCHIVE FILE WGET
+#
+
+if [ ! -f "${cwd}/${archive_name}" ]; then
+    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
+fi
+
+#
+# EXTRACT THE ARCHIVE FILE WGET
+#
+
+if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
+    fail_fn "Failed to extract: ${cwd}/${archive_name}"
+fi
+
+if type -P 'update-ca-certificates' &>/dev/null; then
+    sudo update-ca-certificates
+fi
+
+#
+# BUILD PROGRAM FROM SOURCE WGET
+#
+
+printf "\n%s\n%s\n\n"             \
+    'Build Wget - version latest' \
+    '==============================================='
+sleep 2
+
+# FIND THE CORRECT OPENSSL DIRECTORIES
+openssl_lib_dir="$(pkg-config --libs-only-L openssl | awk '{print $1}' | sed 's/-L//')"
+openssl_include_dir="$(pkg-config --cflags-only-I openssl | awk '{print $1}' | sed 's/-I//')"
+
+cd "${cwd}/${archive_dir}/build" || exit 1
+../configure --prefix="${install_dir}"               \
+             --{build,host}="${pc_type}"             \
+             --disable-debug                         \
+             --disable-ipv6                          \
+             --disable-nls                           \
+             --enable-silent-rules                   \
+             --enable-threads=posix                  \
+             --enable-valgrind-tests                 \
+             --enable-year2038                       \
+             --with-cares                            \
+             --with-gpgme-prefix=/usr                \
+             --with-included-libunistring            \
+             --with-libiconv-prefix=/usr             \
+             --with-libintl-prefix=/usr              \
+             --with-libssl-prefix=/usr               \
+             --with-libunistring-prefix=/usr         \
+             --with-linux-crypto                     \
+             --with-metalink                         \
+             --with-openssl=yes                      \
+             --with-ssl=openssl                      \
+             PKG_CONFIG="$(type -P pkg-config)"      \
+             OPENSSL_LIBS="${openssl_lib_dir}"       \
+             OPENSSL_CFLAGS="${openssl_include_dir}" \
+             GPGME_LIBS="$(pkg-config --libs gpgme)" \
+             GPGME_CFLAGS='-I/usr/include'
+
+if ! make "-j$(nproc --all)"; then
+    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
+    exit 1
+fi
+
+if ! sudo make install; then
+    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
+    exit 1
+fi
+
+#
+# SET THE CERTS DIRECTORY LOCATION FOR WGET
+#
+
+openssl_certs_dir="$(sudo find /usr -type d -name certs | sort -r | head -n1)"
+if [ -n "${openssl_certs_dir}" ]; then
+    echo "ca_directory=${openssl_certs_dir}" | sudo tee '/usr/local/etc/wgetrc' >/dev/null
+else
+    echo 'ca_directory=/etc/ssl/certs' | sudo tee '/usr/local/etc/wgetrc' >/dev/null
+fi
 
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
+
+# SHOW VERSION
+version_fn
 
 # SHOW EXIT MESSAGE
 exit_fn
