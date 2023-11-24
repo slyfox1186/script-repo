@@ -275,6 +275,7 @@ fi
 printf "%s\n%s\n\n"                                                 \
    'Install the latest security certificate from cURL'\''s website' \
    '==================================================================='
+sleep 2
 
 # CREATE CERTS DIRECTORY IF MISSING
 if [ ! -d "${cert_dir}" ]; then
