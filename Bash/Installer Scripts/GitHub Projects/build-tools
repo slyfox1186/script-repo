@@ -5,10 +5,12 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-tools
 ##
-##  Purpose: Install the latest versions of ( CMake, Ninja, Meson, & Golang )
+##  Purpose: Install the latest versions of: CMake, Ninja, Meson, & Golang
 ##
-##  Updated: 10.16.23
-##  Script version: 2.6
+##  Updated:
+##           - Script date: 11.23.23
+##           - Script version: 2.7
+##           - Golang version: 1.21.4
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo/edit/main/shell/installers/build-tools
 ##
@@ -17,9 +19,8 @@
 ##                - Debian 10/11/12
 ##                - Ubuntu (20/22/23).04
 ##
-##  Added: Go version 1.21.3
-##  Added: A new variable named debug to help with troubleshooting issues.
-##  Added: CMake GUI
+##  Added: A debug variable to help with troubleshooting issues.
+##  Added: Build CMake GUI code
 ##
 ########################################################################################################################
 
@@ -78,31 +79,34 @@ export CC=gcc CXX=g++
 #
 
 export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
+export CPPFLAGS='-I/usr/local/include -I/usr/include'
 
 #
 # MAKE SURE WE USE THE CORRECT M4 FOLDER
 #
 
-export ACLOCAL_PATH='/usr/share/aclocal'
+aclocal_dir="$(sudo find /usr -type d -name 'aclocal' | sort | head -n1)"
+
+export ACLOCAL_PATH="${aclocal_dir}"
 
 #
 # SET THE PATH VARIABLE
 #
 
 PATH="\
-/usr/lib/ccache:/bin\
+/usr/lib/ccache/bin:\
 /usr/lib/ccache:\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 ${HOME}/.local/lib/python3.11/site-cwd:\
-/home/jman/.local/lib/python3.11/site-cwd
+/home/jman/.local/lib/python3.11/site-cwd:\
+/usr/local/cuda/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/local/cuda/bin:\
 /snap/bin\
 "
 export PATH
@@ -367,7 +371,7 @@ git_ver_fn()
 find_lsb_release="$(sudo find /usr -type f -name 'lsb_release')"
 
 if [ -f /etc/os-release ]; then
-    source /etc/os-release
+    . /etc/os-release
     OS_TMP="$NAME"
     VER_TMP="$VERSION_ID"
     CODENAME="$VERSION_CODENAME"
@@ -418,20 +422,30 @@ pkgs_arch_fn()
 
 pkgs_fn()
 {
-    pkgs=(autoconf automake autogen build-essential ccache cmake curl
-          jq git libssl-dev python3 python3-pip qt6-base-dev)
+    pkgs=(autoconf autoconf-archive automake autogen build-essential ccache
+          cmake curl jq git libssl-dev libtool libtool-bin m4 python3 python3-pip
+          qt6-base-dev)
 
-    for i in ${pkgs[@]}
+    for pkg in ${pkgs[@]}
     do
-        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+        missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
 
         if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
+            missing_pkgs+=" ${pkg}"
         fi
     done
 
     if [ -n "${missing_pkgs}" ]; then
-        sudo apt -y install ${missing_pkgs}
+        if ! sudo apt -y install ${missing_pkgs}; then
+            sudo killall -9 apt
+            sudo killall -9 apt-get
+            sudo killall -9 dpkg
+            sudo dpkg --configure -a
+            sudo apt --fix-broken install
+            sudo apt -f -y install
+            sudo apt update
+            sudo apt -y install ${missing_pkgs}
+        fi
         sudo apt -y autoremove
         clear
     fi
@@ -491,8 +505,8 @@ if [[ "${OS}" == 'Arch' ]]; then
     export GOPATH="${HOME}"/go
     source "${HOME}"/.bash_profile
 else
-    if build 'golang' '1.21.3'; then
-        download 'https://go.dev/dl/go1.21.3.linux-amd64.tar.gz' 'golang-1.21.3.tar.gz'
+    if build 'golang' '1.21.4'; then
+        download 'https://go.dev/dl/go1.21.4.linux-amd64.tar.gz' 'golang-1.21.4.tar.gz'
         execute sudo cp -f bin/go bin/gofmt "${install_dir}"/bin
         if [ -d  "${install_dir}"/go ]; then
             sudo rm -fr "${install_dir}"/go
@@ -501,7 +515,7 @@ else
         GOROOT="${install_dir}"/go
         PATH="${PATH}:${GOROOT}/bin"
         export GOROOT PATH
-        build_done 'golang' '1.21.3'
+        build_done 'golang' '1.21.4'
     fi
 fi
 
