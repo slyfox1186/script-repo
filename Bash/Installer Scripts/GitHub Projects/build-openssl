@@ -39,9 +39,9 @@ archive_url="https://www.openssl.org/source/${archive_dir}.tar.gz"
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/openssl-build-script
-install_dir=/usr/local
-ssl_dir="${install_dir}"/lib/ssl
-cert_dir="${ssl_dir}"/certs
+install_dir=/usr/local/ssl
+ssl_dir="${install_dir}"
+#cert_dir="${ssl_dir}"/certs
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
@@ -218,17 +218,17 @@ fi
 # INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
 #
 
-if [ ! -f "${cert_dir}"/cacert.pem ]; then
-    printf "%s\n%s\n\n"                            \
-        'Download the latest security certificate' \
-        '================================================'
-
-    wget -U "${user_agent}" -cqO "${cwd}"/cacert.pem 'https://curl.se/ca/cacert.pem'
-
-    if ! sudo mv "${cwd}"/cacert.pem "${cert_dir}"/cacert.pem; then
-        fail_fn "Failed to move file: '${cwd}/cacert.pem' to '${cert_dir}/cacert.pem'. Line: ${LINENO}"
-    fi
-fi
+#if [ ! -f "${cert_dir}"/cacert.pem ]; then
+#    printf "%s\n%s\n\n"                            \
+#       'Download the latest security certificate' \
+#        '================================================'
+#
+#    wget -U "${user_agent}" -cqO "${cwd}"/cacert.pem 'https://curl.se/ca/cacert.pem'
+#
+#    if ! sudo mv "${cwd}"/cacert.pem "${cert_dir}"/cacert.pem; then
+#        fail_fn "Failed to move file: '${cwd}/cacert.pem' to '${cert_dir}/cacert.pem'. Line: ${LINENO}"
+#    fi
+#fi
 
 #
 # DOWNLOAD THE ARCHIVE FILE
@@ -290,11 +290,7 @@ cd "${cwd}/${archive_dir}/build" || exit 1
 clear
 ../config --prefix="${install_dir}" \
           --openssldir="${ssl_dir}" \
-          enable-fips               \
-          enable-rc5                \
-          enable-tfo                \
           shared                    \
-          threads                   \
           zlib
 echo
 if ! make "-j$(nproc --all)"; then
@@ -302,37 +298,8 @@ if ! make "-j$(nproc --all)"; then
 fi
 
 echo
-if ! sudo make install_sw install_fips; then
-    fail_fn "Failed to execute: sudo make install_sw install_fips. Line: ${LINENO}"
-else
-    # REQUIRED FOR FIPS FUNCTIONALITY TO WORK
-    sudo openssl fipsinstall
-    echo
-fi
-
-#
-# BACKUP THE OLD BINARY FILES
-#
-
-if [ -f '/usr/bin/c_rehash' ] && [ ! -f '/usr/bin/c_rehash.bak' ]; then
-    sudo mv '/usr/bin/c_rehash' '/usr/bin/c_rehash.bak'
-fi
-if [ -f '/usr/bin/openssl' ] && [ ! -f '/usr/bin/openssl.bak' ]; then
-    sudo mv '/usr/bin/openssl' '/usr/bin/openssl.bak'
-fi
-
-#
-# SOFT LINK THE ORIGINAL CERTS FILES TO THE NEWLY CREATED CERTS DIRECTORY 
-#
-
-if ! sudo ln -sf /etc/ssl/certs/* "${cert_dir}"; then
-    printf "\n%s\n\n" "Failed to execute the command: sudo ln -sf /etc/ssl/certs/* ${cert_dir}"
-    sleep 3
-fi
-
-# ENSURE THE CORRECT PERMISSIONS ARE ATTACHED TO THE CUSTOM PEM FILE THAT WAS ADDED
-if [ -f "${cert_dir}"/cacert.pem ]; then
-    sudo chmod 644 "${cert_dir}"/cacert.pem
+if ! sudo make install_sw; then
+    fail_fn "Failed to execute: sudo make install_sw. Line: ${LINENO}"
 fi
 
 # RUN LDCONFIG TO UPDATE THE LINKER LIBRARY FILES
