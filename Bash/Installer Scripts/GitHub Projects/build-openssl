@@ -6,17 +6,17 @@
 ##  PurposeL: Build the latest stable release of OpenSSL from the official website's source code
 ##            which will update OpenSSL and the SSL certificate directory to the latest version.
 ##
-##  Updated: 11.21.23
+##  Updated:
+##           - Script: 11.23.23
+##           - OpenSSL: v3.2.0
 ##
-##  Script version: 1.8
+##  Script version: 1.9
 ##
 ##  Enabled features:
-##                    - egd
 ##                    - fips
-##                    - md2
 ##                    - rc5
-##                    - trace
-##                    - sctp
+##                    - shared
+##                    - tfo
 ##                    - threads
 ##                    - zlib
 ##
@@ -33,15 +33,15 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.8
-archive_dir=openssl-3.1.4
+script_ver=1.9
+archive_dir=openssl-3.2.0
 archive_url="https://www.openssl.org/source/${archive_dir}.tar.gz"
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/openssl-build-script
-install_dir=/usr/local/ssl
-ssl_dir="${install_dir}"
-cert_dir="${ssl_dir}/certs"
+install_dir=/usr/local
+ssl_dir="${install_dir}"/lib/ssl
+cert_dir="${ssl_dir}"/certs
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
@@ -61,19 +61,18 @@ mkdir -p "${cwd}"
 sudo mkdir -p "${cert_dir}"
 
 #
-# SET THE C+CPP COMPILERS
+# SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
 #
 
-export CC=gcc CXX=g++
+CC=clang
+CXX=clang++
+CFLAGS='-g -O3 -pipe -fPIC -pthread -march=native'
+CXXFLAGS="${CFLAGS}"
+CPPFLAGS='-I/usr/local/include -I/usr/include'
+export CC CXX CFLAGS CPPFLAGS CXXFLAGS
 
 #
-# EXPORT COMPILER OPTIMIZATION FLAGS
-#
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
-
-#
-# SET THE PATH VARIABLE
+# SET THE PATH
 #
 
 PATH="\
@@ -92,7 +91,7 @@ ${HOME}/.local/bin:\
 export PATH
 
 #
-# SET THE PKG_CONFIG_PATH VARIABLE
+# SET THE PKG_CONFIG_PATH
 #
 
 PKG_CONFIG_PATH="\
@@ -109,6 +108,44 @@ PKG_CONFIG_PATH="\
 /lib/usr/local/pkgconfig\
 "
 export PKG_CONFIG_PATH
+
+#
+# SET THE LINKER LIBRARY_PATH
+#
+
+LIBRARY_PATH="\
+/usr/local/cuda/targets/x86_64-linux/lib:\
+/usr/local/lib64:\
+/usr/local/lib:\
+/usr/local/lib/x86_64-linux-gnu:\
+/usr/lib/x86_64-linux-gnu:\
+/usr/lib64:\
+/usr/lib:\
+/lib64:\
+/lib/x86_64-linux-gnu:\
+/lib32:\
+/lib\
+"
+export LIBRARY_PATH
+
+#
+# SET THE LD_LIBRARY_PATH
+#
+
+LD_LIBRARY_PATH="\
+/usr/local/cuda/targets/x86_64-linux/lib:\
+/usr/local/lib64:\
+/usr/local/lib:\
+/usr/local/lib/x86_64-linux-gnu:\
+/usr/lib/x86_64-linux-gnu:\
+/usr/lib64:\
+/usr/lib:\
+/lib64:\
+/lib/x86_64-linux-gnu:\
+/lib32:\
+/lib\
+"
+export LD_LIBRARY_PATH
 
 #
 # CREATE FUNCTIONS
@@ -158,17 +195,17 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autogen automake build-essential ca-certificates ccache checkinstall curl libc-ares-dev
-      libcurl4-openssl-dev libdmalloc-dev libgcrypt20-dev libgmp-dev libgpg-error-dev libjemalloc-dev
-      libmbedtls-dev libsctp-dev libssh2-1-dev libssh-dev libssl-dev libtool libtool-bin libxml2-dev
-      m4 zlib1g-dev)
+pkgs=(autoconf autogen automake build-essential ca-certificates ccache checkinstall clang curl
+      libc-ares-dev libcurl4-openssl-dev libdmalloc-dev libgcrypt20-dev libgmp-dev libgpg-error-dev
+      libjemalloc-dev libmbedtls-dev libsctp-dev libssh2-1-dev libssh-dev libssl-dev libtool libtool-bin
+      libxml2-dev m4 zlib1g-dev)
 
-for i in ${pkgs[@]}
+for pkg in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+    missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
 
     if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+        missing_pkgs+=" ${pkg}"
     fi
 done
 
@@ -176,7 +213,6 @@ if [ -n "${missing_pkgs}" ]; then
     sudo apt -y install ${missing_pkgs}
     clear
 fi
-unset i missing_pkgs
 
 #
 # INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
@@ -229,7 +265,7 @@ ubuntu_os_version() { sudo ln -sf '/usr/lib64/libcrypto.so.3' "/lib/${install_di
 find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
 
 if [ -f '/etc/os-release' ]; then
-    source '/etc/os-release'
+    . '/etc/os-release'
     OS_TMP="$NAME"
     OS="$(echo "${OS_TMP}" | awk '{print $1}')"
 elif [ -n "${find_lsb_release}" ]; then
@@ -258,40 +294,25 @@ cd "${cwd}/${archive_dir}/build" || exit 1
           --openssldir="${ssl_dir}" \
           enable-fips               \
           enable-rc5                \
+          enable-tfo                \
           shared                    \
           threads                   \
           zlib
-
+echo
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
     exit 1
 fi
 
-if ! sudo make install_sw; then
-    fail_fn "Failed to execute: sudo make install_sw. Line: ${LINENO}"
+echo
+if ! sudo make install_sw install_fips; then
+    fail_fn "Failed to execute: sudo make install_sw install_fips. Line: ${LINENO}"
     exit 1
+else
+    # REQUIRED FOR FIPS FUNCTIONALITY TO WORK
+    sudo openssl fipsinstall
+    clear
 fi
-
-if ! sudo make install_fips; then
-    fail_fn "Failed to execute: sudo make install_fips. Line: ${LINENO}"
-    exit 1
-fi
-
-# REQUIRED FOR FIPS FUNCTIONALITY TO WORK
-sudo openssl fipsinstall
-clear
-
-# CREATE A CONFIG SCRIPT FOR THE LD LINKER TO LOAD LETTING IT KNOW WHERE THE OPENSSL LIBS ARE LOCATED
-sudo bash -c "echo '/usr/local/ssl/lib64' > '/etc/ld.so.conf.d/${archive_dir}.conf'"
-sudo ldconfig -v
-clear
-show_libs_path="$(sudo ldconfig -v 2>/dev/null | grep -Eo '^\/usr\/local\/ssl\/lib64.*$')"
-show_libs="$(sudo ldconfig -v | grep -Eo '(libssl.so*|libcrypto.so*)' | grep -Eo '^lib.*[^\s]+' | uniq | head -n2 | xargs -I{} echo Library Files: {})"
-clear
-printf "%s\n\n%s\n%s\n"                                                 \
-    'The below libraries are now in the search path for the LD linker.' \
-    "Library PATH: ${show_libs_path}"                                   \
-    "${show_libs}"
 
 #
 # BACKUP THE OLD BINARY FILES
@@ -304,41 +325,22 @@ if [ -f '/usr/bin/openssl' ] && [ ! -f '/usr/bin/openssl.bak' ]; then
     sudo mv '/usr/bin/openssl' '/usr/bin/openssl.bak'
 fi
 
-# ADD THE NEW OPENSSL BINARY FILE PATH TO THE '/etc/environment' FILE SO IT LOADS DURING CRITICAL MOMENTS AS THE OS BOOTS OR RESTARTS
-sudo bash -c "echo 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/ssl/bin' > '/etc/environment'"
+#
+# SOFT LINK THE ORIGINAL CERTS FILES TO THE NEWLY CREATED CERTS DIRECTORY 
+#
 
-# ADD CODE TO SOURCE THE /etc/environment FILE IN THE USER'S .BASHRC FILE 
-cat >> ~/.bashrc <<EOF
-
-PATH="\
-/usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
-/usr/local/sbin:\
-/usr/local/ssl/bin:\
-/usr/local/bin:\
-/usr/local/cuda/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
-EOF
-
-# SOURCE THE BASHRC FILE TO UPDATE THE PATH
-if [ -f ~/.bashrc ]; then
-    source ~/.bashrc
+if ! sudo ln -sf /etc/ssl/certs/* "${cert_dir}"; then
+    printf "\n%s\n\n" "Failed to execute the command: sudo ln -sf /etc/ssl/certs/* ${cert_dir}"
+    sleep 3
 fi
 
 # ENSURE THE CORRECT PERMISSIONS ARE ATTACHED TO THE CUSTOM PEM FILE THAT WAS ADDED
 if [ -f "${cert_dir}"/cacert.pem ]; then
     sudo chmod 644 "${cert_dir}"/cacert.pem
 fi
+
+# RUN LDCONFIG TO UPDATE THE LINKER LIBRARY FILES
+sudo ldconfig "${install_dir}"/lib64 2>/dev/null
 
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
