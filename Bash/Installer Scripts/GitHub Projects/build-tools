@@ -437,9 +437,7 @@ pkgs_fn()
 
     if [ -n "${missing_pkgs}" ]; then
         if ! sudo apt -y install ${missing_pkgs}; then
-            sudo killall -9 apt
-            sudo killall -9 apt-get
-            sudo killall -9 dpkg
+            sudo killall -9 apt apt-get dpkg
             sudo dpkg --configure -a
             sudo apt --fix-broken install
             sudo apt -f -y install
