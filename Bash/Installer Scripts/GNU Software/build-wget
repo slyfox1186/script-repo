@@ -234,11 +234,11 @@ if ! tar -xf "${cwd}"/libmetalink-0.1.3.tar.xz -C "${cwd}"/libmetalink-0.1.3 --s
 fi
 
 #
-# BUILD PROGRAM FROM SOURCE METALINK
+# BEGIN BUILDING METALINK DEVELOPMENT LIBRARIES FROM SOURCE CODE
 #
 
-printf "%s\n%s\n\n"                     \
-    'Build libmetalink - version 0.1.3' \
+printf "%s\n%s\n\n"                         \
+    'Build libmetalink-dev - version 0.1.3' \
     '==============================================='
 sleep 2
 
@@ -266,7 +266,7 @@ if ! sudo make install; then
     exit 1
 fi
 
-# FIX MISSING LIBRARY .SO FILE
+# FIX A BUG REGARDING A MISSING METALINK SHARED LIBRARY FILE
 metalink_lib="$(sudo find /usr/ -type f -name 'libmetalink.so*')"
 metalink_trim="$(echo "${metalink_lib}" | sed 's|\(.*\)/.*|\1|')"
 
@@ -278,6 +278,15 @@ fi
 
 # UPDATE THE METALINK LD LINKER LIBRARY FILES
 sudo ldconfig "${metalink_trim}"
+
+#
+# BEGIN BUILDING WGET FROM SOURCE CODE
+#
+
+printf "\n%s\n%s\n\n"             \
+    'Build Wget - version latest' \
+    '==============================================='
+sleep 2
 
 #
 # CREATE OUTPUT DIRECTORY WGET
@@ -304,18 +313,10 @@ if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-compone
     fail_fn "Failed to extract: ${cwd}/${archive_name}"
 fi
 
+# UPDATE THE SYSTEM SECURITY CERTIFICATES BEFORE INSTALLING WGET
 if type -P 'update-ca-certificates' &>/dev/null; then
     sudo update-ca-certificates
 fi
-
-#
-# BUILD PROGRAM FROM SOURCE WGET
-#
-
-printf "\n%s\n%s\n\n"             \
-    'Build Wget - version latest' \
-    '==============================================='
-sleep 2
 
 # FIND THE CORRECT OPENSSL DIRECTORIES
 openssl_lib_dir="$(pkg-config --libs-only-L openssl | awk '{print $1}' | sed 's/-L//')"
