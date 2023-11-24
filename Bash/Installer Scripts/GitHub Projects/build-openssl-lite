@@ -3,11 +3,15 @@
 
 ####################################################################################
 ##
-##  Install OpenSSL from the source code with multiple optional features enabled.
+##  Purpose:
+##          - Install OpenSSL (lite version) from the source code.
 ##
-##  Updated: 11.11.23
+##  Script:
+##          - Date: 11.23.23
+##          - Version: 1.1
 ##
-##  Script version: 1.0
+##  OpenSSL:
+##          - Version: l-1.1.1w
 ##
 ####################################################################################
 
@@ -22,24 +26,20 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.0
+script_ver=1.1
 archive_dir=openssl-1.1.1w
 archive_url=https://www.openssl.org/source/"${archive_dir}".tar.gz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
-parent_dir="${PWD}"
-cwd="${parent_dir}"/openssl-build-script-lite
+cwd="${PWD}"/openssl-build-script
 install_dir=/usr/local/ssl
-ssl_dir="${install_dir}"
-cert_dir="${install_dir}/certs"
-pem_file=cacert.pem
-pem_in="${cwd}/${pem_file}"
-pem_out="${install_dir}/certs/${pem_file}"
+ssl_dir=/usr/local/ssl
+cert_dir="${ssl_dir}"/certs
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n"                              \
-    "OpenSSL Build Script Lite - v${script_ver}" \
+    "OpenSSL Lite Build Script - v${script_ver}" \
     '==============================================='
 sleep 2
 
@@ -51,32 +51,30 @@ if [ -d "${cwd}" ]; then
     sudo rm -fr "${cwd}"
 fi
 mkdir -p "${cwd}"
-sudo mkdir -p "${cert_dir}"
 
 #
-# SET THE COMPILERS
+# SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
 #
 
-export CC=gcc CXX=g++
-
-#
-# SET THE COMPILER OPTIMIZATION FLAGS
-#
-
-LDLIBS='-ldl -lpthread -lm -lz'
+CC=clang
+CXX=clang++
+CFLAGS='-g -O2 -pipe -march=native'
+CXXFLAGS="${CFLAGS}"
 CPPFLAGS='-I/usr/local/include -I/usr/include'
-LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu'
-LDFLAGS+=' -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
-export LDLIBS CPPFLAGS LDFLAGS
+LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+LDLIBS="${LDFLAGS}"
+LD_LIBRARY_PATH="${install_dir}/lib64"
+export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS LD_LIBRARY_PATH LDLIBS
 
 #
-# SET THE PATH VARIABLE
+# SET THE PATH
 #
 
 PATH="\
 /usr/lib/ccache:\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
+${install_dir}/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
@@ -89,7 +87,7 @@ ${HOME}/.local/bin:\
 export PATH
 
 #
-# SET THE PKG_CONFIG_PATH VARIABLE
+# SET THE PKG_CONFIG_PATH
 #
 
 PKG_CONFIG_PATH="\
@@ -106,8 +104,6 @@ PKG_CONFIG_PATH="\
 /lib/usr/local/pkgconfig\
 "
 export PKG_CONFIG_PATH
-
-export LD_LIBRARY_PATH="${install_dir}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 #
 # CREATE FUNCTIONS
@@ -143,14 +139,8 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' choice
 
     case "${choice}" in
-        1)
-                sudo rm -fr "${cwd}"
-                cd "${parent_dir}" || exit 1
-                if [ -f "${pem_file}" ]; then
-                    sudo rm "${pem_file}"
-                fi
-                ;;
-        2)      clear;;
+        1)      sudo rm -fr "${cwd}";;
+        2)      echo;;
         *)
                 unset choice
                 clear
@@ -163,9 +153,10 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autogen automake build-essential ca-certificates ccache curl libc-ares-dev libcurl4-openssl-dev
-      libdmalloc-dev libgcrypt20-dev libgmp-dev libgpg-error-dev libjemalloc-dev libmbedtls-dev libsctp-dev
-      libssh2-1-dev libssh-dev libssl-dev libtool libtool-bin libxml2-dev m4 zlib1g-dev)
+pkgs=(autoconf autogen automake build-essential ca-certificates ccache checkinstall clang curl
+      libc-ares-dev libcurl4-openssl-dev libdmalloc-dev libgcrypt20-dev libgmp-dev libgpg-error-dev
+      libjemalloc-dev libmbedtls-dev libsctp-dev libssh2-1-dev libssh-dev libssl-dev libtool libtool-bin
+      libxml2-dev m4 zlib1g-dev)
 
 for pkg in ${pkgs[@]}
 do
@@ -179,20 +170,6 @@ done
 if [ -n "${missing_pkgs}" ]; then
     sudo apt -y install ${missing_pkgs}
     clear
-fi
-
-#
-# INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
-#
-
-if [ ! -f "${pem_out}" ]; then
-    printf "%s\n%s\n\n" \
-        'Download the latest security certificate' \
-        '================================================'
-    wget -U "${user_agent}" -cqO "${pem_in}" "https://curl.se/ca/${pem_file}"
-    if ! sudo mv "${pem_in}" "${pem_out}"; then
-        fail_fn "Failed to move \"${pem_in}\" to \"${pem_out}\". Line: ${LINENO}"
-    fi
 fi
 
 #
@@ -225,21 +202,18 @@ fi
 # IF UBUNTU IS THE CURRENT OS THEN YOU MUST SOFTLINK FOR OPENSSL TO FUNCTION
 #
 
-ubuntu_os_version() { sudo ln -sf /usr/lib64/libcrypto.so.3 /lib/"${install_dir}"/; }
+ubuntu_os_version() { sudo ln -sf '/usr/lib64/libcrypto.so.3' "/lib/${install_dir}/"; }
+
+find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
 
 if [ -f '/etc/os-release' ]; then
-    source '/etc/os-release'
-    OS_TMP=$NAME
+    . '/etc/os-release'
+    OS_TMP="$NAME"
     OS="$(echo "${OS_TMP}" | awk '{print $1}')"
-elif type lsb_release >/dev/null 2>&1; then
-    OS="$(lsb_release -si)"
-elif [ -f '/etc/lsb-release' ]; then
-    source '/etc/lsb-release'
-    OS="${DISTRIB_ID}"
-elif [ -f '/etc/debian_version' ]; then
-    OS=Debian
+elif [ -n "${find_lsb_release}" ]; then
+    OS="$(lsb_release -d | awk '{print $2}')"
 else
-    OS="$(uname -s)"
+    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
 fi
 
 #
@@ -247,51 +221,87 @@ fi
 #
 
 case "${OS}" in
-    Debian)         clear;;
-    Ubuntu)         ubuntu_os_version;;
-    *)              fail_fn "Could not detect the OS architecture. Line: ${LINENO}";;
+    Ubuntu)     ubuntu_os_version;;
 esac
+
+#
+# BUILD PROGRAM FROM SOURCE
+#
 
 cd "${cwd}/${archive_dir}/build" || exit 1
 clear
-../config --prefix="${install_dir}"     \
-          --openssldir="${install_dir}" \
-          sctp                          \
-          shared                        \
-          threads                       \
-          zlib                          \
-          CPPFLAGS="${CPPFLAGS}"        \
-          LDFLAGS="${LDFLAGS}"
-make "-j$(nproc --all)"
-sudo make install_sw
-
-# CREATE A CONFIG SCRIPT FOR THE LD LINKER TO LOAD LETTING IT KNOW WHERE THE OPENSSL LIBS ARE LOCATED
-sudo bash -c 'echo '\''/usr/local/ssl/lib64'\'' > '\''/etc/ld.so.conf.d/openssl-3.1.4.conf'\'''
-
-# UPDATE THE LIBRARIES FOR LD
-sudo ldconfig -v
-
-# BACKUP KEY BINARY FILES AS IT WOULD BE BAD TO LOSE THE WITHOUT RECOURSE
-if [ -f '/usr/bin/c_rehash' ] && [ ! -f '/usr/bin/c_rehash.bak' ]; then
-    sudo mv '/usr/bin/c_rehash' '/usr/bin/c_rehash.bak'
-fi
-if [ -f '/usr/bin/openssl' ] && [ ! -f '/usr/bin/openssl.bak' ]; then
-    sudo mv '/usr/bin/openssl' '/usr/bin/openssl.bak'
+../config --prefix="${install_dir}"                   \
+          --openssldir="${ssl_dir}"                   \
+          enable-ec_nistp_64_gcc_128                  \
+          enable-egd                                  \
+          shared                                      \
+          no-tests                                    \
+          threads                                     \
+          zlib
+echo
+if ! make "-j$(nproc --all)"; then
+    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
 fi
 
-# ADD THE NEW OPENSSL BINARY FILE PATH TO /ETC/ENVIRONMENT FILE SO IT LOADS DURING CRITICAL MOMENTS AS THE OS BOOTS OR RESTARTS
-sudo bash -c 'echo "PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/ssl/bin\"" > "/etc/environment"'
-source '/etc/environment'
-
-# ENSURE THE CORRECT PERMISSIONS ARE ATTACHED TO THE CUSTOM PEM FILE THAT WAS ADDED
-if [ -f "${pem_out}" ]; then
-    sudo chmod 644 "${pem_out}"
+echo
+if ! sudo make install_sw; then
+    fail_fn "Failed to execute: sudo make install_sw. Line: ${LINENO}"
+else
+    openssl fipsinstall
 fi
 
-# DISPLAY THE UPDATED OPENSSL VERSIO INFORMATION
-"$(type -P openssl)" version -a
+#
+# INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
+#
+
+printf "%s\n%s\n\n"                                                 \
+   'Install the latest security certificate from cURL'\''s website' \
+   '==================================================================='
+
+# CREATE CERTS DIRECTORY IF MISSING
+if [ ! -d "${cert_dir}" ]; then
+    sudo mkdir -p "${cert_dir}"
+fi
+
+# DOWNLOAD THE LATEST CACERT.PEM FILE FROM THE OFFICIAL CURL WEBSITE
+if ! curl -A "${user_agent}" -Lso "${cwd}"/cacert.pem 'https://curl.se/ca/cacert.pem'; then
+    fail_fn "Failed to download the latest \"cacert.pem\" file. Line: ${LINENO}"
+fi
+
+# MOVE THE PEM FILE TO THE NEWLY CREATED CERTS DIRECTORY
+if ! sudo mv "${cwd}"/cacert.pem "${cert_dir}"/cacert.pem; then
+    fail_fn "Failed to move file: '${cwd}/cacert.pem' to '${cert_dir}/cacert.pem'. Line: ${LINENO}"
+fi
+
+# COPY ALL EXISTING CERT FILES LOCATED IN THE DIRECTORY /etc/ssl/certs TO THE NEWLY CREATED CERTS DIRECTORY
+sudo cp -f /etc/ssl/certs/* "${cert_dir}"
+
+# COPY THE PEM FILE AS A CRT FILE IN THE SPECIAL CA-CERTIFICATES FOLDER SO THE COMMAND WILL FIND AND USE IT WHEN IT IS EXECUTED
+sudo cp "${cert_dir}/cacert.pem" '/usr/local/share/ca-certificates/curl-cacert.crt'
+
+# UPDATE THE SECURITY CERTS THAT WERE MOVED FROM THE /etc/ssl/certs FOLDER
+cd "${cert_dir}" || exit 1
+sudo c_rehash .
+sudo update-ca-certificates
+
+# RUN LDCONFIG TO UPDATE THE LINKER LIBRARY SEARCH PATH TO INCLUDE THE OPENSSL LIB64 DIRECTORY
+echo "${install_dir}/lib" | sudo tee '/etc/ld.so.conf.d/openssl-compiled.conf'
+sudo ldconfig
+
+# ADD THE NEW OPENSSL BIN TO THE USER'S ~/.bashrc FILE
+if grep -o '/usr/local/sbin:\\' "${HOME}/.bashrc" &>/dev/null; then
+    sed -i '\/usr\/local\/sbin:/i \/usr\/local\/ssl\/bin:\\' "${HOME}/.bashrc"
+else
+    sed -i 's/\/usr\/local\/sbin/\/usr\/local\/ssl\/bin:\/usr\/local\/sbin/g' "${HOME}/.bashrc"
+fi
+
+# DISPLAY THE NEWLY INSTALLED OPENSSL STATS
+clear
+printf "%s\n\n" 'The newly installed OpenSSL version information is listed below.'
+openssl version -a
 echo
 read -p 'Press enter to continue.'
+clear
 
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
