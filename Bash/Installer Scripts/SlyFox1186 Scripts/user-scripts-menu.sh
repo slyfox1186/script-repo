@@ -6,15 +6,22 @@ clear
 # INSTALL CURL
 #
 
-sudo apt-get -qq -y install curl
+if ! sudo dpkg -l | grep -o curl &>/dev/null; then
+    sudo apt -y install curl
+fi
+
+#
+# CREATE SCRIPT VARIABLES
+#
+
+export user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+green='\e[32m'
+blue='\e[34m'
+clear='\e[0m'
 
 #
 # MENU COLOR FUNCTIONS
 #
-
-green='\e[32m'
-blue='\e[34m'
-clear='\e[0m'
 
 ColorGreen() { echo -ne "${green}${1}${clear}"; }
 ColorBlue() { echo -ne "${blue}${1}${clear}"; }
@@ -26,7 +33,7 @@ ColorBlue() { echo -ne "${blue}${1}${clear}"; }
 function box_out_banner()
 {
     input_char=$(echo "${@}" | wc -c)
-    line=$(for i in $(seq 0 "${input_char}"); do printf "-"; done)
+    line=$(for i in $(seq 0 "${input_char}"); do printf '-'; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
@@ -51,17 +58,24 @@ $(ColorGreen '1)') Debian 10/11/12
 $(ColorGreen '2)') Ubuntu (18/20/22).04
 $(ColorGreen '3)') Ubuntu 23.04
 $(ColorGreen '4)') Arch Linux
+$(ColorGreen '5)') Raspberry Pi
 $(ColorGreen '0)') Exit
 $(ColorBlue 'Choose the operating system:') "
     read answer
     clear
+
     case "${answer}" in
-        1)      bash <(curl -fsSL https://www.bookworm-scripts.optimizethis.net);;
-        2)      bash <(curl -fsSL https://jammy-scripts.optimizethis.net);;
-        3)      bash <(curl -fsSL https://lunar-scripts.optimizethis.net);;
-        4)      bash <(curl -fsSL https://arch-scripts.optimizethis.net);;
+        1)      bash <(curl -A "${user_agent}" -fsSL 'https://bookworm-scripts.optimizethis.net');;
+        2)      bash <(curl -A "${user_agent}" -fsSL 'https://jammy-scripts.optimizethis.net');;
+        3)      bash <(curl -A "${user_agent}" -fsSL 'https://lunar-scripts.optimizethis.net');;
+        4)      bash <(curl -A "${user_agent}" -fsSL 'https://arch-scripts.optimizethis.net');;
+        5)      bash <(curl -A "${user_agent}" -fsSL 'https://raspi-scripts.optimizethis.net')
         0)      return 0;;
-        *)      main_menu;;
+        *)
+                unset answer
+                clear
+                main_menu
+                ;;
     esac
 }
 main_menu
