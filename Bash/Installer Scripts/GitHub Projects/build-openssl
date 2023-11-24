@@ -307,7 +307,7 @@ sudo update-ca-certificates
 
 # RUN LDCONFIG TO UPDATE THE LINKER LIBRARY SEARCH PATH TO INCLUDE THE OPENSSL LIB64 DIRECTORY
 if [ ! -f '/etc/ld.so.conf.d/openssl-compiled.conf' ]; then
-    echo "${install_dir}/lib64" | sudo tee '/etc/ld.so.conf.d/openssl-compiled.conf'
+    echo "${install_dir}/lib64" | sudo tee '/etc/ld.so.conf.d/openssl-compiled.conf' >/dev/null
     sudo ldconfig
     # sudo ldconfig "${install_dir}/lib64" 2>/dev/null
 fi
