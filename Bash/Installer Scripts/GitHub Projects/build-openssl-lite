@@ -4,14 +4,14 @@
 ####################################################################################
 ##
 ##  Purpose:
-##          - Install OpenSSL (lite version) from the source code.
+##          - Install OpenSSL (Short Term Support) from the source code.
 ##
 ##  Script:
-##          - Date: 11.23.23
-##          - Version: 1.1
+##          - Updated: 11.24.23
+##          - Version: 1.2
 ##
 ##  OpenSSL:
-##          - Version: l-1.1.1w
+##          - Version: 1.1.1w
 ##
 ####################################################################################
 
@@ -26,15 +26,15 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.1
+script_ver=1.2
 archive_dir=openssl-1.1.1w
 archive_url=https://www.openssl.org/source/"${archive_dir}".tar.gz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/openssl-lite-build-script
 install_dir=/usr/local/ssl
-ssl_dir=/usr/local/ssl
-cert_dir="${ssl_dir}"/certs
+ssl_dir="${install_dir}"
+cert_dir="${install_dir}"/certs
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
@@ -61,7 +61,8 @@ CXX=clang++
 CFLAGS='-g -O2 -pipe -march=native'
 CXXFLAGS="${CFLAGS}"
 CPPFLAGS='-I/usr/local/include -I/usr/include'
-LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+LDFLAGS='-L/usr/local/ssl/lib -L/usr/local/lib64 -L/usr/local/lib'
+LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 LDLIBS="${LDFLAGS}"
 LD_LIBRARY_PATH="${install_dir}/lib64"
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS LD_LIBRARY_PATH LDLIBS
