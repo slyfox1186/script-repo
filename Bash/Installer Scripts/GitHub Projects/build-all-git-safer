@@ -79,7 +79,7 @@ if [ -n "${missing_pkgs}" ]; then
     clear
 fi
 
-scripts=(openssl-lite tools aria2 zlib zstd git python3 adobe-fonts)
+scripts=(openssl-sts tools aria2 zlib zstd git python3 adobe-fonts)
 cnt=0
 
 for script in ${scripts[@]}
