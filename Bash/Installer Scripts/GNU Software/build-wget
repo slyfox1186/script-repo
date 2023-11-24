@@ -218,7 +218,8 @@ cd build || exit 1
              --with-libexpat                    \
              --with-libxml2                     \
              --with-xml-prefix=/usr             \
-             PKG_CONFIG="$(type -P pkg-config)"
+             PKG_CONFIG="$(type -P pkg-config)" \
+             LIBS="$(pkg-config --libs libxml-2.0)"
 
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
@@ -310,8 +311,7 @@ cd "${cwd}/${archive_dir}/build" || exit 1
              OPENSSL_LIBS="${openssl_lib_dir}"       \
              OPENSSL_CFLAGS="${openssl_include_dir}" \
              GPGME_LIBS="$(pkg-config --libs gpgme)" \
-             GPGME_CFLAGS='-I/usr/include'           \
-             LIBS="$(pkg-config --libs libxml-2.0)"
+             GPGME_CFLAGS='-I/usr/include'
 
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
