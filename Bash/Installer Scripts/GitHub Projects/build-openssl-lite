@@ -31,7 +31,7 @@ archive_dir=openssl-1.1.1w
 archive_url=https://www.openssl.org/source/"${archive_dir}".tar.gz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
-cwd="${PWD}"/openssl-build-script
+cwd="${PWD}"/openssl-lite-build-script
 install_dir=/usr/local/ssl
 ssl_dir=/usr/local/ssl
 cert_dir="${ssl_dir}"/certs
@@ -111,7 +111,7 @@ export PKG_CONFIG_PATH
 
 exit_fn()
 {
-    printf "\n%s\n\n%s\n\n"                                       \
+    printf "\n%s\n\n%s\n\n"                                         \
         'Make sure to star this repository to show your support!' \
         "${web_repo}"
     exit 0
@@ -130,7 +130,7 @@ cleanup_fn()
 {
     local choice
 
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n"                  \
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n"                \
         '============================================' \
         '  Do you want to clean up the build files?  ' \
         '============================================' \
@@ -147,6 +147,13 @@ cleanup_fn()
                 cleanup_fn
                 ;;
     esac
+}
+
+display_stats_fn()
+{
+    clear
+    printf "%s\n\n" 'The newly installed OpenSSL version information is listed below.'
+    openssl version -a
 }
 
 #
@@ -280,7 +287,7 @@ else
 fi
 
 # COPY ALL EXISTING CERT FILES LOCATED IN THE DIRECTORY /etc/ssl/certs TO THE NEWLY CREATED CERTS DIRECTORY
-sudo cp -f /etc/ssl/certs/* "${cert_dir}"
+sudo cp -fr /etc/ssl/certs/* "${cert_dir}"
 
 # UPDATE THE SECURITY CERTS THAT WERE MOVED FROM THE /etc/ssl/certs FOLDER
 cd "${cert_dir}" || exit 1
@@ -288,7 +295,7 @@ sudo c_rehash .
 sudo update-ca-certificates
 
 # RUN LDCONFIG TO UPDATE THE LINKER LIBRARY SEARCH PATH TO INCLUDE THE OPENSSL LIB64 DIRECTORY
-echo "${install_dir}/lib" | sudo tee '/etc/ld.so.conf.d/openssl-compiled.conf'
+echo "${install_dir}/lib" | sudo tee '/etc/ld.so.conf.d/openssl-compiled.conf' >/dev/null
 sudo ldconfig
 
 # ADD THE NEW OPENSSL BIN TO THE USER'S ~/.bashrc FILE IF NOT ALREADY PRESENT
@@ -300,16 +307,11 @@ if ! grep -o '/usr/local/ssl/bin' "${HOME}"/.bashrc &>/dev/null; then
     fi
 fi
 
-# DISPLAY THE NEWLY INSTALLED OPENSSL STATS
-clear
-printf "%s\n\n" 'The newly installed OpenSSL version information is listed below.'
-openssl version -a
-echo
-read -p 'Press enter to continue.'
-clear
-
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
+
+# DISPLAY THE UPDATE OPENSSL STATS
+display_stats_fn
 
 # SHOW EXIT MESSAGE
 exit_fn
