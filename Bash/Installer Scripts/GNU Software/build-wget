@@ -63,8 +63,7 @@ CXXFLAGS="${CFLAGS}"
 CPPFLAGS='-I/usr/local/include -I/usr/include/libxml2 -I/usr/include'
 LDFLAGS='-L/usr/local/ssl/lib -L/usr/local/lib64 -L/usr/local/lib'
 LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
-LIBS="$(pkg-config --libs libxml-2.0)"
-export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS LIBS
+export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
 #
 # SET THE PATH VARIABLE
@@ -311,7 +310,8 @@ cd "${cwd}/${archive_dir}/build" || exit 1
              OPENSSL_LIBS="${openssl_lib_dir}"       \
              OPENSSL_CFLAGS="${openssl_include_dir}" \
              GPGME_LIBS="$(pkg-config --libs gpgme)" \
-             GPGME_CFLAGS='-I/usr/include'
+             GPGME_CFLAGS='-I/usr/include'           \
+             LIBS="$(pkg-config --libs libxml-2.0)"
 
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
