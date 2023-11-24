@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2086,SC1091,SC2162
+# shellcheck disable=SC2068,SC2086,SC1003,SC1091,SC2162
 
 ####################################################################################
 ##
@@ -11,7 +11,7 @@
 ##          - Version: 1.1
 ##
 ##  OpenSSL:
-##          - Version: 1.1.1w
+##          - Version: l-1.1.1w
 ##
 ####################################################################################
 
@@ -232,12 +232,17 @@ cd "${cwd}/${archive_dir}/build" || exit 1
 clear
 ../config --prefix="${install_dir}"                   \
           --openssldir="${ssl_dir}"                   \
+          --release                                   \
+          --with-zlib-include='/usr/include'          \
+          --with-zlib-lib='/usr/lib/x86_64-linux-gnu' \
           enable-ec_nistp_64_gcc_128                  \
           enable-egd                                  \
-          shared                                      \
-          no-tests                                    \
-          threads                                     \
-          zlib
+          enable-rc5                                  \
+          enable-sctp                                 \
+          enable-shared                               \
+          enable-threads                              \
+          enable-zlib                                 \
+          no-tests
 echo
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
@@ -246,8 +251,6 @@ fi
 echo
 if ! sudo make install_sw; then
     fail_fn "Failed to execute: sudo make install_sw. Line: ${LINENO}"
-else
-    openssl fipsinstall
 fi
 
 #
@@ -270,14 +273,14 @@ fi
 
 # MOVE THE PEM FILE TO THE NEWLY CREATED CERTS DIRECTORY
 if ! sudo mv "${cwd}"/cacert.pem "${cert_dir}"/cacert.pem; then
-    fail_fn "Failed to move file: '${cwd}/cacert.pem' to '${cert_dir}/cacert.pem'. Line: ${LINENO}"
+    fail_fn "Failed to move file: ${cwd}/cacert.pem >> ${cert_dir}/cacert.pem. Line: ${LINENO}"
+else
+    # COPY THE PEM FILE AS A CRT FILE IN THE SPECIAL CA-CERTIFICATES FOLDER SO THE COMMAND WILL FIND AND USE IT WHEN IT IS EXECUTED
+    sudo cp "${cert_dir}"/cacert.pem '/usr/local/share/ca-certificates/curl-cacert.crt'
 fi
 
 # COPY ALL EXISTING CERT FILES LOCATED IN THE DIRECTORY /etc/ssl/certs TO THE NEWLY CREATED CERTS DIRECTORY
 sudo cp -f /etc/ssl/certs/* "${cert_dir}"
-
-# COPY THE PEM FILE AS A CRT FILE IN THE SPECIAL CA-CERTIFICATES FOLDER SO THE COMMAND WILL FIND AND USE IT WHEN IT IS EXECUTED
-sudo cp "${cert_dir}/cacert.pem" '/usr/local/share/ca-certificates/curl-cacert.crt'
 
 # UPDATE THE SECURITY CERTS THAT WERE MOVED FROM THE /etc/ssl/certs FOLDER
 cd "${cert_dir}" || exit 1
@@ -288,11 +291,13 @@ sudo update-ca-certificates
 echo "${install_dir}/lib" | sudo tee '/etc/ld.so.conf.d/openssl-compiled.conf'
 sudo ldconfig
 
-# ADD THE NEW OPENSSL BIN TO THE USER'S ~/.bashrc FILE
-if grep -o '/usr/local/sbin:\\' "${HOME}/.bashrc" &>/dev/null; then
-    sed -i '\/usr\/local\/sbin:/i \/usr\/local\/ssl\/bin:\\' "${HOME}/.bashrc"
-else
-    sed -i 's/\/usr\/local\/sbin/\/usr\/local\/ssl\/bin:\/usr\/local\/sbin/g' "${HOME}/.bashrc"
+# ADD THE NEW OPENSSL BIN TO THE USER'S ~/.bashrc FILE IF NOT ALREADY PRESENT
+if ! grep -o '/usr/local/ssl/bin' "${HOME}"/.bashrc &>/dev/null; then
+    if grep -o '/usr/local/sbin:\\' "${HOME}"/.bashrc &>/dev/null; then
+        sed -i '\/usr\/local\/sbin:\\/i \/usr\/local\/ssl\/bin:\\' "${HOME}"/.bashrc
+    else
+        sed -i 's/\/usr\/local\/sbin/\/usr\/local\/ssl\/bin:\/usr\/local\/sbin/g' "${HOME}"/.bashrc
+    fi
 fi
 
 # DISPLAY THE NEWLY INSTALLED OPENSSL STATS
