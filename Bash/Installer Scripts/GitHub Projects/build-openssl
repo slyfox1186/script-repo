@@ -196,9 +196,9 @@ cleanup_fn()
 #
 
 pkgs=(autoconf autogen automake build-essential ca-certificates ccache checkinstall clang curl
-      libc-ares-dev libcurl4-openssl-dev libdmalloc-dev libgcrypt20-dev libgmp-dev libgpg-error-dev
-      libjemalloc-dev libmbedtls-dev libsctp-dev libssh2-1-dev libssh-dev libssl-dev libtool libtool-bin
-      libxml2-dev m4 zlib1g-dev)
+      libc-ares-dev libclang-dev libcurl4-openssl-dev libdmalloc-dev libgcrypt20-dev libgmp-dev
+      libgpg-error-dev libjemalloc-dev libmbedtls-dev libsctp-dev libssh2-1-dev libssh-dev libssl-dev
+      libtool libtool-bin libxml2-dev m4 zlib1g-dev)
 
 for pkg in ${pkgs[@]}
 do
