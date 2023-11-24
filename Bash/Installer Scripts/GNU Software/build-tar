@@ -196,8 +196,10 @@ fi
 # INSTALL 7Z FOR USE IN THE CONFIGURE COMMAND LINE BELOW
 #
 
-bash <(curl -A "${user_agent}" -fsSL https://7z.optimizethis.net)
-echo
+if [ ! -f '/usr/local/bin/7z' ]; then
+    bash <(curl -A "${user_agent}" -fsSL https://7z.optimizethis.net)
+    echo
+fi
 
 #
 # BUILD PROGRAM FROM SOURCE
