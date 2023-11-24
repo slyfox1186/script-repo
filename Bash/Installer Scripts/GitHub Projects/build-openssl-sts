@@ -58,14 +58,15 @@ mkdir -p "${cwd}"
 
 CC=clang
 CXX=clang++
-CFLAGS='-g -O2 -pipe -march=native'
+CFLAGS='-Wall -pthread -g -O2 -pipe -march=native'
 CXXFLAGS="${CFLAGS}"
+SHARED_CFLAG='-fPIC'
 CPPFLAGS='-I/usr/local/include -I/usr/include'
 LDFLAGS='-L/usr/local/ssl/lib -L/usr/local/lib64 -L/usr/local/lib'
 LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 LDLIBS="${LDFLAGS}"
 LD_LIBRARY_PATH="${install_dir}/lib64:${LD_LIBRARY_PATH}"
-export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS LD_LIBRARY_PATH LDLIBS
+export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS LD_LIBRARY_PATH LDLIBS SHARED_CFLAG
 
 #
 # SET THE PATH
@@ -235,36 +236,42 @@ esac
 # BUILD PROGRAM FROM SOURCE
 #
 
-cd "${cwd}/${archive_dir}/build" || exit 1
-clear
-../config --prefix="${install_dir}"                   \
-          --openssldir="${ssl_dir}"                   \
-          --release                                   \
-          --with-zlib-include='/usr/include'          \
-          --with-zlib-lib='/usr/lib/x86_64-linux-gnu' \
-          enable-ec_nistp_64_gcc_128                  \
-          enable-egd                                  \
-          enable-rc5                                  \
-          enable-sctp                                 \
-          enable-shared                               \
-          enable-threads                              \
-          enable-zlib                                 \
-          no-tests
+cd "${cwd}/${archive_dir}" || exit 1
+sed -i 's/linux-x86_64-clang/linux-x86_64-rpath/g' 'config'
+cd build || exit 1
+../Configure linux-x86_64-clang                        \
+             -DOPENSSL_USE_IPV6=0                      \
+             -Wl,-rpath="${install_dir}"/lib           \
+             -Wl,--enable-new-dtags                    \
+             --prefix="${install_dir}"                 \
+             --openssldir="${ssl_dir}"                 \
+             --release                                 \
+             --with-zlib-include=/usr/include          \
+             --with-zlib-lib=/usr/lib/x86_64-linux-gnu \
+             enable-ec_nistp_64_gcc_128                \
+             enable-egd                                \
+             enable-rc5                                \
+             enable-sctp                               \
+             enable-shared                             \
+             enable-threads                            \
+             enable-zlib                               \
+             no-tests
+
 echo
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
 fi
 
 echo
-if ! sudo make install_sw; then
-    fail_fn "Failed to execute: sudo make install_sw. Line: ${LINENO}"
+if ! sudo make install; then
+    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
 fi
 
 #
 # INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
 #
 
-printf "%s\n%s\n\n"                                                 \
+printf "\n%s\n%s\n\n"                                               \
    'Install the latest security certificate from cURL'\''s website' \
    '==================================================================='
 sleep 2
