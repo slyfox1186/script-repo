@@ -3,7 +3,7 @@
 
 ################################################################################################
 ##
-##  PurposeL: Build the latest stable release of OpenSSL from the official website's source code
+##  Purpose: Build the latest stable release of OpenSSL from the official website's source code
 ##            which will update OpenSSL and the SSL certificate directory to the latest version.
 ##
 ##  Updated:
