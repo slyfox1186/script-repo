@@ -202,8 +202,7 @@ mkdir -p "${cwd}/${archive_dir}/build"
 #
 
 if ! tar -zxf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
-    exit 1
+    fail_fn "Failed to extract: ${cwd}/${archive_name}"
 fi
 
 #
@@ -268,6 +267,7 @@ fi
 printf "%s\n%s\n\n"                                                 \
    'Install the latest security certificate from cURL'\''s website' \
    '==================================================================='
+sleep 2
 
 # CREATE CERTS DIRECTORY IF MISSING
 if [ ! -d "${cert_dir}" ]; then
