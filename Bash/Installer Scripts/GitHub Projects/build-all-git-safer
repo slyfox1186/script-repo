@@ -4,11 +4,15 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-all-git-safer
 ##
-##  Purpose: Loops multiple build scripts to optimize efficiency. This is the safer of the two scripts.
+##  Purpose: Loops multiple build scripts and installs them.
 ##
-##  Updated: 11.06.23
+##  Disclaimer: This is the safer of the two scripts offered on this repo. This means that this script is less likely to have
+##              bugs of various severity. It DOES NOT mean that this script is 100% guaranteed safe. New code is always coming
+##              out and problems can unfortunately happen unexpectedly.
 ##
-##  Script version: 1.0
+##  Updated: 11.24.23
+##
+##  Script version: 1.1
 ##
 ################################################################################################################################
 
@@ -19,7 +23,7 @@ if [ "${EUID}" -eq '0' ]; then
     exit 1
 fi
 
-script_ver=1.0
+script_ver=1.1
 cwd="${PWD}"/build-all-git-safer-script
 web_repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -87,15 +91,15 @@ done
 
 clear
 
-for f in $(ls -v)
+for file in $(ls -v)
 do
-    if echo '1' | bash "${f}"; then
-        mv "${f}" 'completed'
+    if echo '1' | bash "${file}"; then
+        mv "${file}" 'completed'
     else
         if [ ! -d "${cwd}"/failed ]; then
             mkdir -p "${cwd}"/failed
         fi
-        mv "${f}" 'failed'
+        mv "${file}" 'failed'
     fi
 done
 
