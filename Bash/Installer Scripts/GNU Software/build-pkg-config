@@ -47,16 +47,17 @@ fi
 mkdir -p "${cwd}"
 
 #
-# SET THE C + CPP COMPILERS
+# SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
 #
 
-export CC=gcc CXX=g++
-
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
+CC=gcc
+CXX=g++
+CFLAGS='-g -O3 -pipe -march=native'
+CXXFLAGS="${CFLAGS}"
+CPPFLAGS="-I${install_dir}/include -I${install_dir}/include/x86_64-linux-gnu -I/usr/include"
+LDFLAGS="-L${install_dir}/lib64 -L${install_dir}/lib -L${install_dir}/lib/x86_64-linux-gnu"
+LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
 #
 # SET THE PATH VARIABLE
