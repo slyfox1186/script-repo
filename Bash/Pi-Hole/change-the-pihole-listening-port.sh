@@ -29,6 +29,6 @@ clear
 
 pihole_ip="$(ip route get 1.2.3.4 | awk '{print $7}')"
 
-printf "%s\n\n%s\n\n"                             \
+printf "%s\n\n%s\n\n"                              \
     'Pi-Hole'\''s new web address is shown below.' \
     "http://${pihole_ip}:${custom_port}/admin"
