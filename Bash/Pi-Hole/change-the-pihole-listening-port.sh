@@ -55,14 +55,10 @@ if sudo dpkg -l | grep -o 'apache2' &>/dev/null; then
 fi
 
 #
-# RESTART LIGHTTPD
+# RESTART LIGHTTPD FOR THE CHANGES TO TAKE EFFECT
 #
 
-if ! sudo service lighttpd restart; then
-    sleep 3
-    sudo service lighttpd restart
-    clear
-fi
+sudo service lighttpd restart
 
 # THE NEW WEB GUI WILL LOOK SOMETHING LIKE DEPENDING
 # ON IF YOU CHANGED THE NUMBER 100 TO SOMETHING ELSE
