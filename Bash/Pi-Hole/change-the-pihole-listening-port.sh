@@ -60,8 +60,9 @@ fi
 
 sudo service lighttpd restart
 
-# THE NEW WEB GUI WILL LOOK SOMETHING LIKE DEPENDING
-# ON IF YOU CHANGED THE NUMBER 100 TO SOMETHING ELSE
+#
+# DISPLAY THE UPDATED PIHOLE WEB GUI URL FOR THE USER TO VIEW
+#
 
 clear
 printf "%s\n\n%s\n\n"                            \
