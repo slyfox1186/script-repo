@@ -16,8 +16,6 @@ if ! sudo dpkg -l | grep -o 'lighttpd' &>/dev/null; then
     clear
 fi
 
-pihole_ip="$(ip route get 1.2.3.4 | awk '{print $7}')"
-
 # CHECK TO SEE IF YOU PASSED THE NEW PORT NUMBER AS THE FIRST ARGUMENT TO THE SCRIPT
 if [ -z "${1}" ]; then
     clear
@@ -27,22 +25,19 @@ else
     custom_port="${1}"
 fi
 
-#
-# MODIFY LIGHTHTTPD'S CONFIG FILE PORT NUMBER
-#
+echo "server.port := ${custom_port}" | sudo tee '/etc/lighttpd/conf-available/04-external.conf' >/dev/null
 
-if ! sudo sed -E -i "s/^server\.port                 \= [0-9]+/server\.port                 = ${custom_port}/g" '/etc/lighttpd/lighttpd.conf'; then
-    printf "%s\n\n" 'Failed to modify: /etc/lighttpd/lighttpd.conf'
-    exit 1
-fi
-
-sudo service lighttpd restart
+cd '/etc/lighttpd/conf-enabled' || exit 1
+sudo ln -sf '../conf-available/04-external.conf' '04-external.conf'
+sudo systemctl restart lighttpd.service
+clear
 
 #
 # DISPLAY THE UPDATED PIHOLE WEB GUI URL FOR THE USER TO VIEW
 #
 
-clear
-printf "%s\n\n%s\n\n"                            \
-    'Pi-Hole'\''s new web address is show below' \
+pihole_ip="$(ip route get 1.2.3.4 | awk '{print $7}')"
+
+printf "%s\n\n%s\n\n"                             \
+    'Pi-Hole'\''s new web address is shown below' \
     "http://${pihole_ip}:${custom_port}/admin"
