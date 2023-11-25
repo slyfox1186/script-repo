@@ -42,6 +42,14 @@ archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/aria2-build-script
 install_dir=/usr/local
+# FIND THE CORRECT OPENSSL DIRECTORIES
+openssl_lib_dir="$(pkg-config --variable=libdir openssl)"
+openssl_libs="$(pkg-config --libs openssl)"
+certs_dir="${openssl_lib_dir} ${openssl_libs}"
+clear
+echo "${certs_dir}"
+exit
+openssl_include_dir="$(pkg-config --cflags-only-I openssl | awk '{print $1}' | sed 's/-I//')"
 if [ -d /usr/local/ssl/certs ]; then
     certs_dir=/usr/local/ssl/certs
 else
@@ -50,6 +58,26 @@ fi
 pem_file=cacert.pem
 user_agent='Mozilla/5.0 (X11; Linux x86_64) Applpc_typeeWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
+
+#
+# TEST THE OS AND ITS VERSION
+#
+
+find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
+
+if [ -f '/etc/os-release' ]; then
+    source '/etc/os-release'
+    OS_TMP="$NAME"
+    VER_TMP="$VERSION_ID"
+    CODENAME="$VERSION_CODENAME"
+    OS="$(echo "${OS_TMP}" | awk '{print $1}')"
+    VER="$(echo "${VER_TMP}" | awk '{print $1}')"
+elif [ -n "${find_lsb_release}" ]; then
+    OS="$(lsb_release -d | awk '{print $2}')"
+    VER="$(lsb_release -r | awk '{print $2}')"
+else
+    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
+fi
 
 #
 # CREATE THE OUTPUT DIRECTORY
@@ -70,22 +98,17 @@ printf "%s\n%s\n\n"                              \
 sleep 2
 
 #
-# SET THE SOURCE CODE COMPILERS
+# SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
 #
 
-export CC=gcc CXX=g++
-
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
-
+CC=gcc
+CXX=g++
 CFLAGS='-g -O3 -pipe -march=native'
 CXXFLAGS="${CFLAGS}"
 CPPFLAGS="-I${install_dir}/include -I${install_dir}/include/x86_64-linux-gnu -I/usr/include"
 LDFLAGS="-L${install_dir}/lib64 -L${install_dir}/lib -L${install_dir}/lib/x86_64-linux-gnu"
 LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
-export CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
-
+export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 #
 # SET THE PATH VARIABLE
 #
