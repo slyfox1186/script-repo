@@ -315,8 +315,8 @@ if ! make "-j$(nproc --all)"; then
     exit 1
 fi
 
-if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
+if ! sudo make altinstall; then
+    fail_fn "Failed to execute: sudo make altinstall. Line: ${LINENO}"
     exit 1
 fi
 
