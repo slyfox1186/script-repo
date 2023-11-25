@@ -36,28 +36,6 @@ if ! sudo sed -E -i "s/^server\.port                 \= [0-9]+/server\.port     
     exit 1
 fi
 
-#
-# WHITELIST THE NEW PORT NUMBER IN UFW SO SSH DOESN'T STOP WORKING
-#
-
-clear
-if ! sudo dpkg -l | grep -o 'ufw' &>/dev/null; then
-    sudo apt -y install ufw
-fi
-sudo ufw allow "${custom_port}"/tcp
-
-#
-# RESTART APACHE2 IF INSTALLED
-#
-
-if sudo dpkg -l | grep -o 'apache2' &>/dev/null; then
-    sudo service apache2 restart
-fi
-
-#
-# RESTART LIGHTTPD FOR THE CHANGES TO TAKE EFFECT
-#
-
 sudo service lighttpd restart
 
 #
