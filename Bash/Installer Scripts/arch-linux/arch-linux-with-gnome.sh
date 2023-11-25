@@ -140,5 +140,3 @@ pacman -Sy pulseaudio pulseaudio-alsa xorg xorg-xinit xorg-server gnome lightdm 
 sudo systemctl start gdm.service
 sudo systemctl enable gdm.service
 sudo reboot
-
-sudo pacman -S firefox vlc leafpad
