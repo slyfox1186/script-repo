@@ -12,7 +12,6 @@ if ! sudo dpkg -l | grep -o 'lighttpd' &>/dev/null; then
     clear
 fi
 
-# CHECK TO SEE IF YOU PASSED THE NEW PORT NUMBER AS THE FIRST ARGUMENT TO THE SCRIPT
 if [ -z "${1}" ]; then
     clear
     read -p 'Please enter the new listening port for Pi-Hole (example: 20000): ' custom_port
@@ -27,10 +26,6 @@ cd '/etc/lighttpd/conf-enabled' || exit 1
 sudo ln -sf '../conf-available/04-external.conf' '04-external.conf'
 sudo systemctl restart lighttpd.service
 clear
-
-#
-# DISPLAY THE UPDATED PIHOLE WEB GUI URL FOR THE USER TO VIEW
-#
 
 pihole_ip="$(ip route get 1.2.3.4 | awk '{print $7}')"
 
