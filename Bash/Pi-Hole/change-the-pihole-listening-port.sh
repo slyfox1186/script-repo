@@ -7,10 +7,6 @@ if [ "${EUID}" -eq '0' ]; then
     exit 1
 fi
 
-#
-# IF NOT INSTALLED, INSTALL LIGHTTPD
-#
-
 if ! sudo dpkg -l | grep -o 'lighttpd' &>/dev/null; then
     sudo apt -y install lighttpd
     clear
@@ -39,5 +35,5 @@ clear
 pihole_ip="$(ip route get 1.2.3.4 | awk '{print $7}')"
 
 printf "%s\n\n%s\n\n"                             \
-    'Pi-Hole'\''s new web address is shown below' \
+    'Pi-Hole'\''s new web address is shown below.' \
     "http://${pihole_ip}:${custom_port}/admin"
