@@ -118,6 +118,7 @@ PATH="\
 ${HOME}/perl5/bin:\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
+/usr/local/ssl/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/local/cuda/bin:\
@@ -135,10 +136,56 @@ export threads="$(nproc --all)"
 export cpus="$((threads / 2))"
 export lan="$(hostname -I)"
 export wan="$(curl -s 'https://checkip.amazonaws.com')"
-export tmp="cd ${HOME}/tmp"
+export tmp="${HOME}"/tmp
 export PS1='\n\[\e[38;5;227m\]\w\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38;5;117m\]\h\[\e[97;1m\]\\$\[\e[0m\]'
 export PYTHONUTF8=1
 
 if [ -f ~/.cargo/env ]; then
     . ~/.cargo/env
 fi
+
+LD_LIBRARY="\
+/ust/local/lib64:\
+/usr/share/texinfo/lib/libintl-perl/lib:\
+/usr/share/texinfo/lib:\
+/usr/share/gitk/lib:\
+/usr/share/git-gui/lib:\
+/usr/share/ghostscript/lib:\
+/usr/local/lib64:\
+/usr/local/lib/clang/17/lib:\
+/usr/local/lib:\
+/usr/lm32-elf/lib:\
+/usr/lib64:\
+/usr/lib32:\
+/usr/lib/llvm15/lib:\
+/usr/lib/gcc/x86_64-pc-linux-gnu/lib:\
+/usr/lib/clang/16/lib:\
+/usr/lib/bfd-plugins:\
+/usr/lib:\
+/lib64:\
+/lib\
+"
+export LD_LIBRARY
+
+LD_LIBRARY_PATH="\
+/ust/local/lib64:\
+/usr/share/texinfo/lib/libintl-perl/lib:\
+/usr/share/texinfo/lib:\
+/usr/share/gitk/lib:\
+/usr/share/git-gui/lib:\
+/usr/share/ghostscript/lib:\
+/usr/local/lib64:\
+/usr/local/lib/clang/17/lib:\
+/usr/local/lib:\
+/usr/lm32-elf/lib:\
+/usr/lib64:\
+/usr/lib32:\
+/usr/lib/llvm15/lib:\
+/usr/lib/gcc/x86_64-pc-linux-gnu/lib:\
+/usr/lib/clang/16/lib:\
+/usr/lib/bfd-plugins:\
+/usr/lib:\
+/lib64:\
+/lib\
+"
+export LD_LIBRARY_PATH
