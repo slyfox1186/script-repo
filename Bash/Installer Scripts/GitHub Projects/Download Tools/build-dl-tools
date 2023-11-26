@@ -50,12 +50,6 @@ debug=OFF
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ -d "${packages}" ]; then
-    sudo rm -fr "${packages}"
-fi
-if [ -d "${workspace}" ]; then
-    sudo rm -fr "${workspace}"
-fi
 mkdir -p "${packages}" "${workspace}"
 
 #
