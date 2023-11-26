@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 
-################################################################################################################################
+#####################################################################################################################################
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-all-gnu-safer
 ##
 ##  Purpose: Loops multiple build scripts to optimize efficiency. This is the safer of the two scripts.
 ##
-##  Updated: 11.06.23
+##  Updated: 11.26.23
 ##
-##  Script version: 1.0
+##  Script version: 1.1
 ##
-################################################################################################################################
+#####################################################################################################################################
 
 clear
 
@@ -18,18 +18,6 @@ if [ "${EUID}" -eq '0' ]; then
     printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
     exit 1
 fi
-
-script_ver=1.0
-cwd="${PWD}"/build-all-gnu-safer-script
-web_repo=https://github.com/slyfox1186/script-repo
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-
-if [ -d "${cwd}" ]; then
-    sudo rm -fr "${cwd}"
-fi
-mkdir -p "${cwd}"/completed
-
-cd "${cwd}" || exit 1
 
 #
 # PRINT THE SCRIPT BANNER
@@ -39,6 +27,16 @@ printf "%s\n%s\n\n"                                      \
     "Build All GNU Safer Script - version ${script_ver}" \
     '===================================================='
 sleep 2
+
+script_ver=1.1
+cwd="${PWD}"/build-all-gnu-safer-script
+web_repo=https://github.com/slyfox1186/script-repo
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+
+if [ -d "${cwd}" ]; then
+    sudo rm -fr "${cwd}"
+fi
+mkdir -p "${cwd}"/completed
 
 exit_fn()
 {
@@ -59,7 +57,7 @@ fail_fn()
 pkgs=(asciidoc autogen autoconf autoconf-archive automake binutils bison
       build-essential bzip2 ccache cmake curl libc6-dev libintl-perl
       libpth-dev libtool libtool-bin lzip lzma-dev m4 meson nasm ninja-build
-      texinfo xmlto yasm zlib1g-dev)
+      texinfo xmlto yasm wget zlib1g-dev)
 
 for pkg in ${pkgs[@]}
 do
@@ -77,12 +75,6 @@ if [ -n "${missing_pkgs}" ]; then
 fi
 
 #
-# ADD ADDITIONAL SEARCH PATHS TO THE LD LIBRARY LINKER
-#
-
-bash <(curl -A "${user_agent}" -sSL 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/ld-linker-search-paths.sh')
-
-#
 # DETECT THE PC ARCHITECTURE
 #
 
@@ -92,41 +84,29 @@ case "$(uname -m)" in
       *)                            fail_fn "Unrecognized architecture: '$(uname -m)'";;
 esac
 
+cd "${cwd}" || exit 1
+
 scripts=(${arch_ver} m4 autoconf autoconf-archive libtool bash make sed tar gawk grep nano wget)
 cnt=0
 
 for script in ${scripts[@]}
 do
     let cnt=cnt+1
-    curl -A "${user_agent}" -Lso "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-${script}"
-    mv "build-${script}" "0${cnt}-build-${script}"'.sh' 2>/dev/null
-done
-unset cnt script scripts
-
-# RENAME FILES WITH NUMBERS 10 AND HIGHER SO THEY EXECUTE IN THE INTENDED ORDER
-scripts=(tar gawk grep nano wget)
-cnt=9
-
-for i in 1
-do
-    for script in ${scripts[@]}
-    do
-        ((cnt++)) # << start counting here
-        mv "0${cnt}-build-${script}" "${cnt}-build-${script}" 2>/dev/null # << move the files, thus renaming them
-    done
+    wget --show-progress -U "${user_agent}" -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-${script}"
+    mv "build-${script}" "${cnt}-build-${script}.sh" 2>/dev/null
 done
 
 clear
 
-for f in $(ls -v)
+for f in $(find ./ -maxdepth 1 -type f | sort -V | sed 's/\.\///g')
 do
     if echo '1' | bash "${f}"; then
-        mv "${f}" 'completed'
+        mv "${f}" "${cwd}"/completed
     else
         if [ ! -d "${cwd}"/failed ]; then
             mkdir -p "${cwd}"/failed
         fi
-        mv "${f}" 'failed'
+        mv "${f}" "${cwd}"/failed
     fi
 done
 
