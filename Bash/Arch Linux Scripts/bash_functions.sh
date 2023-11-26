@@ -1572,6 +1572,18 @@ ffp()
     sudo find "${PWD}" -type f -iname '*.jpg' -exec bash -c "identify -format "%wx%h" \"{}\"; echo \" {}\"" > 00-pic-sizes.txt \;
 }
 
+#####################
+## PACMAN COMMANDS ##
+#####################
+
+
+# PACMAN COMMANDS
+alias install='clear; pacman -S --noconfirm'
+alias list='clear; pacman -Ss'
+alias remove='clear; pacman -R --noconfirm'
+alias qpkg='clear; pacman -Ql'
+alias update='clear; pacman -Syu'
+
 EOF
 
 printf "\n%s\n%s\n\n" 'The script has completed!'
