@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2016,SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
 
-########################################################################
+###################################################################################
 ##
 ##  Install the latest curl, wget, and aria2c releases from GitHub
 ##
@@ -9,14 +9,14 @@
 ##  - Debian - 10/11/12
 ##  - Ubuntu - (18/20/22).04
 ##
-##  Updated: 10.14.23
+##  Updated: 11.26.23
 ##
 ##  Added: aria2c increased the max connections allowed from 16 to 128
 ##  Added: the ability to specify suffixes before compiling
 ##
-##  Script version: 1.1
+##  Script version: 1.2
 ##
-########################################################################
+###################################################################################
 
 clear
 
@@ -26,10 +26,20 @@ if [ "${EUID}" -eq '0' ]; then
 fi
 
 #
+# SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
+#
+
+if [ -f '/proc/cpuinfo' ]; then
+    cpu_threads="$(grep --count ^processor '/proc/cpuinfo')"
+else
+    cpu_threads="$(nproc --all)"
+fi
+
+#
 # SET THE VARIABLES
 #
 
-script_ver=1.1
+script_ver=1.2
 install_prefix=/usr/local
 cwd="${PWD}"/download-tools-build-script
 packages="${cwd}"/packages
