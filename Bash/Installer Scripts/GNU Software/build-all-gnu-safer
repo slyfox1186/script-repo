@@ -59,7 +59,7 @@ fail_fn()
 pkgs=(asciidoc autogen autoconf autoconf-archive automake binutils bison
       build-essential bzip2 ccache cmake curl libc6-dev libintl-perl
       libpth-dev libtool libtool-bin lzip lzma-dev m4 meson nasm ninja-build
-      texinfo xmlto yasm wget zlib1g-dev)
+      texinfo xmlto yasm zlib1g-dev)
 
 for pkg in ${pkgs[@]}
 do
@@ -77,6 +77,12 @@ if [ -n "${missing_pkgs}" ]; then
 fi
 
 #
+# ADD ADDITIONAL SEARCH PATHS TO THE LD LIBRARY LINKER
+#
+
+bash <(curl -A "${user_agent}" -sSL 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/ld-linker-search-paths.sh')
+
+#
 # DETECT THE PC ARCHITECTURE
 #
 
@@ -92,7 +98,7 @@ cnt=0
 for script in ${scripts[@]}
 do
     let cnt=cnt+1
-    wget -U "${user_agent}" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-${script}"
+    curl -A "${user_agent}" -Lso "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-${script}"
     mv "build-${script}" "0${cnt}-build-${script}"'.sh' 2>/dev/null
 done
 unset cnt script scripts
