@@ -79,6 +79,16 @@ if [ -n "${missing_pkgs}" ]; then
     clear
 fi
 
+#
+# ADD ADDITIONAL SEARCH PATHS TO THE LD LIBRARY LINKER
+#
+
+bash <(curl -A "${user_agent}" -sSL 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/ld-linker-search-paths.sh')
+
+#
+# DOWNLOAD THE INSTALLER SCRIPTS
+#
+
 scripts=(openssl-sts tools aria2 zlib zstd git python3 adobe-fonts)
 cnt=0
 
