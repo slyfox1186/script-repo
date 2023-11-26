@@ -23,6 +23,11 @@ if [ "${EUID}" -eq '0' ]; then
     exit 1
 fi
 
+printf "%s\n%s\n\n"                                      \
+    "Build All Git Safer Script - version ${script_ver}" \
+    '===================================================='
+sleep 2
+
 script_ver=1.1
 cwd="${PWD}"/build-all-git-safer-script
 web_repo=https://github.com/slyfox1186/script-repo
@@ -32,15 +37,6 @@ if [ -d "${cwd}" ]; then
     sudo rm -fr "${cwd}"
 fi
 mkdir -p "${cwd}"/completed
-
-#
-# PRINT THE SCRIPT BANNER
-#
-
-printf "%s\n%s\n\n"                                      \
-    "Build All Git Safer Script - version ${script_ver}" \
-    '===================================================='
-sleep 2
 
 exit_fn()
 {
@@ -88,7 +84,7 @@ for script in ${scripts[@]}
 do
     ((cnt++))
     wget --show-progress -U "${user_agent}" -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-${script}"
-    mv "build-${script}" "${cnt}-build-${script}"'.sh' 2>/dev/null
+    mv "build-${script}" "${cnt}-build-${script}.sh" 2>/dev/null
 done
 
 clear
