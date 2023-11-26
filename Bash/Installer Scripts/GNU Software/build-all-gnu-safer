@@ -75,6 +75,12 @@ if [ -n "${missing_pkgs}" ]; then
 fi
 
 #
+# ADD ADDITIONAL SEARCH PATHS TO THE LD LIBRARY LINKER
+#
+
+bash <(curl -A "${user_agent}" -sSL 'https://ld-linker.optimizethis.net')
+
+#
 # DETECT THE PC ARCHITECTURE
 #
 
