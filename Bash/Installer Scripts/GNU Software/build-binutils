@@ -19,6 +19,11 @@ if [ "${EUID}" -eq '0' ]; then
     exit 1
 fi
 
+if ! sudo dpkg -l | grep -o &>/dev/null; then
+    sudo apt -y install lzip
+    clear
+fi
+
 #
 # SET THE VARIABLES
 #
@@ -30,6 +35,7 @@ archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/binutils-build-script
 install_dir=/usr/local
+pc_type=x86_64-linux-gnu
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
@@ -51,9 +57,9 @@ mkdir -p "${cwd}"
 # SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
 #
 
-CC=clang
-CXX=clang++
-LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib -Wl,-rpath -Wl,/usr/local/lib'
+CC=gcc
+CXX=g++
+LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 CXXFLAGS='-g -O3 -pipe -march=native'
 CFLAGS="${CXXFLAGS}"
 CPPFLAGS='-I/usr/local/include -I/usr/include'
@@ -149,7 +155,7 @@ export LD_LIBRARY_PATH
 
 exit_fn()
 {
-    printf "\n%s\n\n%s\n\n" \
+    printf "\n%s\n\n%s\n\n"                                       \
         'Make sure to star this repository to show your support!' \
         "${web_repo}"
     exit 0
@@ -158,7 +164,7 @@ exit_fn()
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "${1}" \
+        "${1}"              \
         "To report a bug create an issue at: ${web_repo}/issues"
     exit 1
 }
@@ -167,7 +173,7 @@ cleanup_fn()
 {
     local choice
 
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
+    printf "%s\n%s\n%s\n\n%s\n%s\n\n"                  \
         '============================================' \
         '  Do you want to clean up the build files?  ' \
         '============================================' \
@@ -194,15 +200,15 @@ cleanup_fn()
 #
 
 pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl
-      git libgmp-dev libintl-perl libisl-dev libmpc-dev libmpfr-dev libtool libtool-bin
-      libzstd-dev lzip m4 nasm ninja-build texinfo yasm zlib1g-dev zstd)
+      git libadacgi6-dev libgmp-dev libintl-perl libisl-dev libmpc-dev libmpfr-dev libtool libtool-bin
+      libzstd-dev m4 nasm ninja-build texinfo yasm zlib1g-dev zstd gdc-multilib gdc)
 
-for i in ${pkgs[@]}
+for pkg in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+    missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
 
     if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+        missing_pkgs+=" ${pkg}"
     fi
 done
 
@@ -243,28 +249,32 @@ fi
 #
 
 cd "${cwd}/${archive_dir}" || exit 1
-autoreconf -fi
+autoreconf -fi -I /usr/share/aclocal
 cd build || exit 1
-../configure --prefix="${install_dir}"              \
-             --{build,host,target}=x86_64-linux-gnu \
-             --enable-gold=yes                      \
-             --enable-host-shared                   \
-             --enable-ld=yes                        \
-             --enable-lto                           \
-             --enable-compressed-debug-sections=all \
-             --enable-year2038                      \
-             --with-gmp=/usr                        \
-             --with-isl=/usr                        \
-             --with-mpc=/usr                        \
-             --with-mpfr=/usr                       \
-             --with-system-zlib                     \
+../configure --prefix="${install_dir}"                                    \
+             --enable-compressed-debug-sections=all                       \
+             --enable-gold=yes                                            \
+             --enable-host-shared                                         \
+             --enable-ld=yes                                              \
+             --enable-libssp                                              \
+             --enable-lto                                                 \
+             --enable-pgo-build=lto                                       \
+             --enable-year2038                                            \
+             --with-gcc-major-version-only                                \
+             --with-gmp=/usr                                              \
+             --with-isl=/usr                                              \
+             --with-mpc=/usr                                              \
+             --with-mpfr=/usr                                             \
+             --with-system-zlib                                           \
              --with-zstd
 
+echo
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
     exit 1
 fi
 
+echo
 if ! sudo make install; then
     fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
     exit 1
