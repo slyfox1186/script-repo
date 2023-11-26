@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 
-################################################################################################################################
+#####################################################################################################################################
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-all-git-safer
 ##
 ##  Purpose: Loops multiple build scripts and installs them.
 ##
-##  Disclaimer: This is the safer of the two scripts offered on this repo. This means that this script is less likely to have
-##              bugs of various severity. It DOES NOT mean that this script is 100% guaranteed safe. New code is always coming
-##              out and problems can unfortunately happen unexpectedly.
+##  Disclaimer: This is the safer of the two scripts offered in the "GitHub Projects" repo. This is because this script is less likely
+##              to experience unexpected bugs of various types of severity. When the code gets updated, eventually unintentional bugs will
+##              happen, and you will unfortunately one day be there to experience it.... guaranteed.
 ##
-##  Updated: 11.24.23
+##  Updated: 11.26.23
 ##
 ##  Script version: 1.1
 ##
-################################################################################################################################
+#####################################################################################################################################
 
 clear
 
@@ -32,8 +32,6 @@ if [ -d "${cwd}" ]; then
     sudo rm -fr "${cwd}"
 fi
 mkdir -p "${cwd}"/completed
-
-cd "${cwd}" || exit 1
 
 #
 # PRINT THE SCRIPT BANNER
@@ -79,50 +77,43 @@ if [ -n "${missing_pkgs}" ]; then
     clear
 fi
 
-#
-# ADD ADDITIONAL SEARCH PATHS TO THE LD LIBRARY LINKER
-#
+bash <(curl -A "${user_agent}" -sSL 'https://ld-linker.optimizethis.net')
 
-bash <(curl -A "${user_agent}" -sSL 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/ld-linker-search-paths.sh')
+cd "${cwd}" || exit 1
 
-#
-# DOWNLOAD THE INSTALLER SCRIPTS
-#
-
-scripts=(openssl-sts tools aria2 zlib zstd git python3 adobe-fonts)
+scripts=(adobe-fonts openssl-sts tools aria2 zlib zstd git python3)
 cnt=0
 
 for script in ${scripts[@]}
 do
-    let cnt=cnt+1
-    wget -U "${user_agent}" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-${script}"
-    mv "build-${script}" "0${cnt}-build-${script}"'.sh' 2>/dev/null
+    ((cnt++))
+    wget --show-progress -U "${user_agent}" -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-${script}"
+    mv "build-${script}" "${cnt}-build-${script}"'.sh' 2>/dev/null
 done
 
 clear
 
-for file in $(ls -v)
+for f in $(find ./ -maxdepth 1 -type f | sort -V | sed 's/\.\///g')
 do
-    if echo '1' | bash "${file}"; then
-        mv "${file}" 'completed'
+    if echo '1' | bash "${f}"; then
+        mv "${f}" "${cwd}"/completed
     else
         if [ ! -d "${cwd}"/failed ]; then
             mkdir -p "${cwd}"/failed
         fi
-        mv "${file}" 'failed'
+        mv "${f}" "${cwd}"/failed
     fi
 done
 
-# CLEANUP LEFTOVER FILES
 if [ -d "${cwd}"/failed ]; then
-    sudo rm -fr "${cwd}"/completed
-    clear
-    printf "%s\n\n" 'A script failed to install. You can find the script that failed inside the "failed" folder.'
-    read -p 'Press enter to continue.'
-    clear
-else
-    sudo rm -fr "${cwd}"
+    printf "%s\n\n%s\n\n"                                  \
+        'One of the scripts failed to build successfully.' \
+        "You can find the failed script at: ${cwd}/failed"
+    exit_fn
 fi
+
+# CLEANUP LEFTOVER FILES
+sudo rm -fr "${cwd}"
 
 # DISPLAY EXIT MESSAGE
 exit_fn
