@@ -6,7 +6,7 @@
 ##
 ##  Purpose: Loops multiple build scripts and installs them.
 ##
-##  Disclaimer: This is the safer of the two scripts offered in the "GitHub Projects" repo. This is because this script is less likely
+##  Disclaimer: This is the safer of the two scripts offered in the "GitHub Projects" folder. This is because this script is less likely
 ##              to experience unexpected bugs of various types of severity. When the code gets updated, eventually unintentional bugs will
 ##              happen, and you will unfortunately one day be there to experience it.... guaranteed.
 ##
