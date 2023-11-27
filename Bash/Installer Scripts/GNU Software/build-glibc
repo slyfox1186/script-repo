@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-###########################################################################################################
+###############################################################################################################################
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-glibc
 ##
@@ -10,7 +10,7 @@
 ##
 ##  Script version: 1.0
 ##
-###########################################################################################################
+###############################################################################################################################
 
 clear
 
@@ -306,21 +306,8 @@ if ! sudo make "-j$(nproc --all)" headers_install; then
     exit 1
 fi
 
-#
 # UPDATE TIME INFO SO GLIBC CAN UTILIZE PARTS OF THEIR CODE BETTER
-#
-
 ln -sf '/usr/share/zoneinfo/US/Eastern' '/etc/localtime'
-
-#
-# TO AVOIDE OVERLAP WITH THE VERSION OF GLIBC THAT COMES WITH INSTALLING DEBIAN, REMOVE CERTAIN DIRECTORIES AND REPOPULATE THEM WITH THE NEWLY INSTALLED VERSIONS
-#
-
-sudo rm -fr '/usr/include/linux/'
-sudo rm -fr '/usr/include/asm/'
-sudo mkdir -p '/usr/include/linux/' '/usr/include/asm/'
-sudo cp -fr "${latest_linux_dir}"/include/* '/usr/include/linux/'
-sudo cp -fr "${latest_linux_dir}"/include/* '/usr/include/asm/'
 
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
