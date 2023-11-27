@@ -1024,3 +1024,29 @@ sqdc()
         *)  return 0;;
     esac
 }
+
+
+##################################
+## DETECT THE PC'S ARCHITECTURE ##
+##################################
+
+get_arch()
+{
+    local architecture
+    unset architecture
+    clear
+
+    case "$(uname -m)" in
+        i386|i686)      pc_arch=386;;
+        x86_64)         pc_arch=amd64;;
+        aarch64|arm)    sudo dpkg --print-architecture | grep -q arm64 && pc_arch=arm64 || pc_arch=arm;;
+        *)
+                        clear
+                        printf "%s\n\n" 'Failed to detect this pc'\''s architecture using the command: "${uname -m}"'
+                        return 1
+                        ;;
+    esac
+
+    clear
+    printf "%s\n\n" "The pc's architecture is: ${pc_arch}/$(uname -m)"
+}
