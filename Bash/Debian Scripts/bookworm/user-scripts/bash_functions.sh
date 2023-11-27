@@ -1828,6 +1828,16 @@ rsrd()
     rsync -aqvR --acls --perms --mkpath --remove-source-files "${modified_source}" "${destination}"
 }
 
+## Fixes the common issue where inputting the option -h command on a program that requires --help instead to access the help menu
+
+helpfix()
+{    
+    if [[ ${?} -ne 0 ]]; then
+       fc -nl -1 | grep -- "-h" && fc -s -- '-h'='--help'
+    fi 
+}
+export PROMPT_COMMAND=helpfix
+
 EOF
 }
 
