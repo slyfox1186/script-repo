@@ -109,6 +109,19 @@ if [ -f ~/.bash_functions ]; then
     . ~/.bash_functions
 fi
 
+if [ -f ~/.cargo/env ]; then
+    . ~/.cargo/env
+fi
+
+export threads="$(nproc --all)"
+export cpus="$((threads / 2))"
+export lan="$(hostname -I)"
+export wan="$(curl -s 'https://checkip.amazonaws.com')"
+export tmp="${HOME}"/tmp
+export PS1='\n\[\e[38;5;227m\]\w\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38;5;117m\]\h\[\e[97;1m\]\\$\[\e[0m\]'
+export PYTHONUTF8=1
+export PROMPT_COMMAND=helpfix
+
 #
 # SET THE SCRIPT'S PATH VARIABLE
 #
@@ -131,18 +144,6 @@ ${HOME}/.local/bin:\
 /snap/bin\
 "
 export PATH
-
-export threads="$(nproc --all)"
-export cpus="$((threads / 2))"
-export lan="$(hostname -I)"
-export wan="$(curl -s 'https://checkip.amazonaws.com')"
-export tmp="${HOME}"/tmp
-export PS1='\n\[\e[38;5;227m\]\w\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38;5;117m\]\h\[\e[97;1m\]\\$\[\e[0m\]'
-export PYTHONUTF8=1
-
-if [ -f ~/.cargo/env ]; then
-    . ~/.cargo/env
-fi
 
 LD_LIBRARY="\
 /ust/local/lib64:\
