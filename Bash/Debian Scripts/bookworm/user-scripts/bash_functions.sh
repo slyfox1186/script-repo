@@ -1836,7 +1836,6 @@ helpfix()
        fc -nl -1 | grep -- "-h" && fc -s -- '-h'='--help'
     fi 
 }
-export PROMPT_COMMAND=helpfix
 
 EOF
 }
