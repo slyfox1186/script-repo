@@ -1834,7 +1834,7 @@ rsrd()
 
 sc()
 {
-    local f fname
+    local f fname input_char line space
     clear
 
     if [ -z "${@}" ]; then
