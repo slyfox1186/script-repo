@@ -1828,13 +1828,42 @@ rsrd()
     rsync -aqvR --acls --perms --mkpath --remove-source-files "${modified_source}" "${destination}"
 }
 
-## IF A PROGRAM HELP COMMAND ONLY TAKES "--help" but not "-h" this will make "-h" work
+################
+## SHELLCHECK ##
+################
 
-helpfix()
-{    
-    if [[ "${?}" -ne '0' ]]; then
-       fc -nl -1 | grep -- -h && fc -s -- -h=--help
-    fi 
+sc()
+{
+    local fname
+    clear
+
+    if [ -z "${@}" ]; then
+        read -p 'Input the file path to check: ' fname
+        clear
+    else
+        fname="${@}"
+    fi
+
+    for f in ${fname[@]}
+    do
+        box_out_banner()
+        {
+            input_char=$(echo "${@}" | wc -c)
+            line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+            tput bold
+            line="$(tput setaf 3)${line}"
+            space=${line//-/ }
+            echo " ${line}"
+            printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+            printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
+            printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+            echo " ${line}"
+            tput sgr 0
+        }
+        box_out_banner "Parsing: ${f}"
+        shellcheck "${f}"
+        echo
+    done
 }
 
 EOF
