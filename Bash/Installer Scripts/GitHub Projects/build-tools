@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2162,SC2317
+# shellcheck source=/dev/null disable=SC2034,SC2068,SC2086,SC2162,SC2317
 
 ########################################################################################################################
 ##
@@ -8,8 +8,8 @@
 ##  Purpose: Install the latest versions of: CMake, Ninja, Meson, & Golang
 ##
 ##  Updated:
-##           - Script date: 11.23.23
-##           - Script version: 2.7
+##           - Script date: 11.28.23
+##           - Script version: 2.8
 ##           - Golang version: 1.21.4
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo/edit/main/shell/installers/build-tools
@@ -35,7 +35,7 @@ fi
 # CREATE SCRIPT VARIABLES
 #
 
-script_ver=2.7
+script_ver=2.8
 cwd="${PWD}"/build-tools-script
 install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -69,25 +69,16 @@ fi
 mkdir -p "${cwd}"
 
 #
-# SET THE C + CPP COMPILERS
+# SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
 #
 
-export CC=gcc CXX=g++
-
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
-export CPPFLAGS='-I/usr/local/include -I/usr/include'
-
-#
-# MAKE SURE WE USE THE CORRECT M4 FOLDER
-#
-
-aclocal_dir="$(sudo find /usr -type d -name 'aclocal' | sort | head -n1)"
-
-export ACLOCAL_PATH="${aclocal_dir}"
+CC=gcc
+CXX=g++
+CXXFLAGS='-g -O3 -pipe -march=native'
+CFLAGS="${CXXFLAGS}"
+CPPFLAGS='-I/usr/local/include -I/usr/include'
+LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
 #
 # SET THE PATH VARIABLE
@@ -98,15 +89,13 @@ PATH="\
 /usr/lib/ccache:\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
-${HOME}/.local/lib/python3.11/site-cwd:\
-/home/jman/.local/lib/python3.11/site-cwd:\
-/usr/local/cuda/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin:\
+/usr/local/cuda/bin:\
 /snap/bin\
 "
 export PATH
@@ -122,13 +111,71 @@ PKG_CONFIG_PATH="\
 /usr/local/share/pkgconfig:\
 /usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
-/usr/lib/usr/local/pkgconfig:\
+/usr/lib/${install_dir}/pkgconfig:\
 /usr/share/pkgconfig:\
 /lib64/pkgconfig:\
 /lib/pkgconfig:\
 /lib/usr/local/pkgconfig\
 "
 export PKG_CONFIG_PATH
+
+LD_LIBRARY="\
+/ust/local/lib64:\
+/ust/local/lib:\
+/usr/share/texinfo/lib:\
+/usr/local/x86_64-linux-gnu/lib:\
+/usr/local/ssl/lib:\
+/usr/local/lib/x86_64-linux-gnu:\
+/usr/local/lib/gprofng:\
+/usr/local/lib64:\
+/usr/local/lib:\
+/usr/local/cuda/targets/x86_64-linux/lib:\
+/usr/local/cuda-12/targets/x86_64-linux/lib:\
+/usr/local/cuda-12.3/targets/x86_64-linux/lib:\
+/usr/local/cuda-12.3/nvvm/lib64:\
+/usr/lib/x86_64-linux-gnu/libfakeroot:\
+/usr/lib/x86_64-linux-gnu:\
+/usr/libx32:\
+/usr/lib64:\
+/usr/lib32:\
+/usr/lib:\
+/usr/local/lib:\
+/lib/x86_64-linux-gnu:\
+/libx32:\
+/lib64:\
+/lib32:\
+/lib\
+"
+export LD_LIBRARY
+
+LD_LIBRARY_PATH="\
+/ust/local/lib64:\
+/ust/local/lib:\
+/usr/share/texinfo/lib:\
+/usr/local/x86_64-linux-gnu/lib:\
+/usr/local/ssl/lib:\
+/usr/local/lib/x86_64-linux-gnu:\
+/usr/local/lib/gprofng:\
+/usr/local/lib64:\
+/usr/local/lib:\
+/usr/local/cuda/targets/x86_64-linux/lib:\
+/usr/local/cuda-12/targets/x86_64-linux/lib:\
+/usr/local/cuda-12.3/targets/x86_64-linux/lib:\
+/usr/local/cuda-12.3/nvvm/lib64:\
+/usr/lib/x86_64-linux-gnu/libfakeroot:\
+/usr/lib/x86_64-linux-gnu:\
+/usr/libx32:\
+/usr/lib64:\
+/usr/lib32:\
+/usr/lib:\
+/usr/local/lib:\
+/lib/x86_64-linux-gnu:\
+/libx32:\
+/lib64:\
+/lib32:\
+/lib\
+"
+export LD_LIBRARY_PATH
 
 #
 # CREATE FUNCTIONS
@@ -373,13 +420,9 @@ find_lsb_release="$(sudo find /usr -type f -name 'lsb_release')"
 if [ -f /etc/os-release ]; then
     . /etc/os-release
     OS_TMP="$NAME"
-    VER_TMP="$VERSION_ID"
-    CODENAME="$VERSION_CODENAME"
     OS="$(echo "${OS_TMP}" | awk '{print $1}')"
-    VER="$(echo "${VER_TMP}" | awk '{print $1}')"
 elif [ -n "${find_lsb_release}" ]; then
     OS="$(lsb_release -d | awk '{print $2}')"
-    VER="$(lsb_release -r | awk '{print $2}')"
 else
     fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
 fi
@@ -394,8 +437,8 @@ pkgs_arch_fn()
                git jq libnghttp2 libnghttp3 openssl python python-pip qt5-base
                qt6-base)
 
-    if [ -f /var/lib/pacman/db.lck ]; then
-        sudo rm /var/lib/pacman/db.lck
+    if [ -f '/var/lib/pacman/db.lck' ]; then
+        sudo rm '/var/lib/pacman/db.lck'
     fi
 
     for i in ${pkgs_arch[@]}
@@ -417,7 +460,7 @@ pkgs_arch_fn()
     fi
 
     # INSTALL PYTHON PIP PACKAGES
-    pip install -q --user --no-input setuptools wheel
+    pip install -q --user --no-input setuptools wheel requests
 }
 
 pkgs_fn()
