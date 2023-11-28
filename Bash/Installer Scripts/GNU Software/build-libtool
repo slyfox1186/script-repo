@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 
-###########################################################################################################
+#####################################################################################################################################
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-libtool
 ##
 ##  Purpose: build gnu libtool
 ##
-##  Updated: 08.05.23
+##  Updated: 11.28.23
 ##
-##  Script version: 1.0
+##  Script version: 1.1
 ##
-###########################################################################################################
+#####################################################################################################################################
 
 clear
 
@@ -23,9 +23,9 @@ fi
 # SET THE VARIABLES
 #
 
-script_ver=1.0
+script_ver=1.1
 archive_dir=libtool-2.4.7
-archive_url=https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz
+archive_url=https://ftp.gnu.org/gnu/libtool/"${archive_dir}".tar.xz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/libtool-build-script
@@ -36,6 +36,7 @@ web_repo=https://github.com/slyfox1186/script-repo
 printf "%s\n%s\n\n" \
     "libtool build script - v${script_ver}" \
     '==============================================='
+sleep 2
 
 #
 # CREATE OUTPUT DIRECTORY
@@ -47,32 +48,33 @@ fi
 mkdir -p "${cwd}"
 
 #
-# SET THE C + CPP COMPILERS
+# SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
 #
 
-export CC=gcc CXX=g++
-
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
+CC=gcc
+CXX=g++
+CFLAGS='-g -O3 -pipe -march=native'
+CXXFLAGS="${CFLAGS}"
+CPPFLAGS='-I/usr/local/include -I/usr/include'
+LDFLAGS+='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
 #
 # SET THE PATH VARIABLE
 #
 
 PATH="\
+/usr/lib/ccache/bin:\
 /usr/lib/ccache:\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
+/usr/local/cuda/bin:\
 /usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/local/cuda/bin:\
 /snap/bin\
 "
 export PATH
@@ -84,17 +86,75 @@ export PATH
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/usr/local/pkgconfig:\
 /usr/local/share/pkgconfig:\
 /usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/usr/local/pkgconfig:\
 /usr/share/pkgconfig:\
 /lib64/pkgconfig:\
 /lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
+/lib/usr/local/pkgconfig\
 "
 export PKG_CONFIG_PATH
+
+LD_LIBRARY="\
+/ust/local/lib64:\
+/ust/local/lib:\
+/usr/share/texinfo/lib:\
+/usr/local/x86_64-linux-gnu/lib:\
+/usr/local/ssl/lib:\
+/usr/local/lib/x86_64-linux-gnu:\
+/usr/local/lib/gprofng:\
+/usr/local/lib64:\
+/usr/local/lib:\
+/usr/local/cuda/targets/x86_64-linux/lib:\
+/usr/local/cuda-12/targets/x86_64-linux/lib:\
+/usr/local/cuda-12.3/targets/x86_64-linux/lib:\
+/usr/local/cuda-12.3/nvvm/lib64:\
+/usr/lib/x86_64-linux-gnu/libfakeroot:\
+/usr/lib/x86_64-linux-gnu:\
+/usr/libx32:\
+/usr/lib64:\
+/usr/lib32:\
+/usr/lib:\
+/usr/local/lib:\
+/lib/x86_64-linux-gnu:\
+/libx32:\
+/lib64:\
+/lib32:\
+/lib\
+"
+export LD_LIBRARY
+
+LD_LIBRARY_PATH="\
+/ust/local/lib64:\
+/ust/local/lib:\
+/usr/share/texinfo/lib:\
+/usr/local/x86_64-linux-gnu/lib:\
+/usr/local/ssl/lib:\
+/usr/local/lib/x86_64-linux-gnu:\
+/usr/local/lib/gprofng:\
+/usr/local/lib64:\
+/usr/local/lib:\
+/usr/local/cuda/targets/x86_64-linux/lib:\
+/usr/local/cuda-12/targets/x86_64-linux/lib:\
+/usr/local/cuda-12.3/targets/x86_64-linux/lib:\
+/usr/local/cuda-12.3/nvvm/lib64:\
+/usr/lib/x86_64-linux-gnu/libfakeroot:\
+/usr/lib/x86_64-linux-gnu:\
+/usr/libx32:\
+/usr/lib64:\
+/usr/lib32:\
+/usr/lib:\
+/usr/local/lib:\
+/lib/x86_64-linux-gnu:\
+/libx32:\
+/lib64:\
+/lib32:\
+/lib\
+"
+export LD_LIBRARY_PATH
 
 #
 # CREATE FUNCTIONS
