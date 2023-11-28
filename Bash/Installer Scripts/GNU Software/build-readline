@@ -30,6 +30,7 @@ archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/readline-build-script
 install_dir=/usr/local
+pc_type=x86_64-linux-gnu
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
@@ -195,15 +196,21 @@ if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-compone
 fi
 
 #
+# DOWNLOAD PATCH TO FIX SHELL CRASH DUE TO INVALID LOCALE SPECIFICATION
+#
+
+curl -A "${user_agent}" -Lso 'fix-invalid-locale-specification.patch' 'https://www.linuxfromscratch.org/patches/downloads/readline/readline-8.2-upstream_fix-1.patch'
+
+#
 # BUILD PROGRAM FROM SOURCE
 #
 
 cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
+patch --ignore-whitespace --posix --verbose -R -p1 -i 'fix-invalid-locale-specification.patch'
 cd build || exit 1
-clear
-../configure --prefix="${install_dir}"       \
-             --{build,host}=x86_64-linux-gnu \
+../configure --prefix="${install_dir}"   \
+             --{build,host}="${pc_type}" \
              --disable-install-examples
 make "-j$(nproc --all)"
 if ! sudo make install; then
