@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# shellcheck source=/dev/null disable=SC2034,SC2068,SC2086,SC2162,SC2317
+# shellcheck disable=SC2162,SC2317
 
-########################################################################################################################
+##############################################################################################################################
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-tools
 ##
@@ -22,7 +22,7 @@
 ##  Added: A debug variable to help with troubleshooting issues.
 ##  Added: Build CMake GUI code
 ##
-########################################################################################################################
+##############################################################################################################################
 
 clear
 
@@ -77,8 +77,8 @@ CXX=g++
 CXXFLAGS='-g -O3 -pipe -march=native'
 CFLAGS="${CXXFLAGS}"
 CPPFLAGS='-I/usr/local/include -I/usr/include'
-LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
-export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
+LDFLAGS+='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+export CC CXX CFLAGS CPPFLAGS CXXFLAGS GLIBC_TEST_ALLOW_TIME_SETTING
 
 #
 # SET THE PATH VARIABLE
@@ -90,12 +90,12 @@ PATH="\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
+/usr/local/cuda/bin:\
 /usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/local/cuda/bin:\
 /snap/bin\
 "
 export PATH
@@ -417,8 +417,8 @@ git_ver_fn()
 
 find_lsb_release="$(sudo find /usr -type f -name 'lsb_release')"
 
-if [ -f /etc/os-release ]; then
-    . /etc/os-release
+if [ -f '/etc/os-release' ]; then
+    . '/etc/os-release'
     OS_TMP="$NAME"
     OS="$(echo "${OS_TMP}" | awk '{print $1}')"
 elif [ -n "${find_lsb_release}" ]; then
@@ -460,7 +460,7 @@ pkgs_arch_fn()
     fi
 
     # INSTALL PYTHON PIP PACKAGES
-    pip install -q --user --no-input setuptools wheel requests
+    pip install -q --user --no-input requests setuptools wheel
 }
 
 pkgs_fn()
@@ -541,14 +541,14 @@ else
 fi
 
 if [[ "${OS}" == 'Arch' ]]; then
-    sudo pacman -Sq --needed --noconfirm go 2>&1
+    sudo pacman -Sq --needed --noconfirm go
     mkdir -p  "${HOME}"/go
     export GOPATH="${HOME}"/go
     source "${HOME}"/.bash_profile
 else
     if build 'golang' '1.21.4'; then
         download 'https://go.dev/dl/go1.21.4.linux-amd64.tar.gz' 'golang-1.21.4.tar.gz'
-        execute sudo cp -f bin/go bin/gofmt "${install_dir}"/bin
+        execute sudo cp -f 'bin/go' 'bin/gofmt' "${install_dir}"/bin
         if [ -d  "${install_dir}"/go ]; then
             sudo rm -fr "${install_dir}"/go
         fi
