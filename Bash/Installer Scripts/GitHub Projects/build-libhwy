@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2016,SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
+# shellcheck source=/dev/null disable=SC2016,SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
 
 ########################################################################
 ##
 ##  Install libhwy
 ##
 ##  Supported OS:
-##  - Debian
-##  - Ubuntu
+##               - Debian
+##               - Ubuntu
 ##
 ##  Updated: 10.14.23
 ##
@@ -62,12 +62,13 @@ export CC=gcc CXX=g++
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
+CFLAGS='-g -O3 -pipe -march=native'
+CXXFLAGS="${CFLAGS}"
 CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include"
 LDFLAGS="-L${workspace}/lib64 -L${workspace}/lib -L${workspace}/lib/x86_64-linux-gnu -L/usr/local/lib64"
 LDFLAGS+=' -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
-export MAKEFLAGS="-j $(grep --count ^processor /proc/cpuinfo)"
-export CPPFLAGS LDFLAGS
+MAKEFLAGS="-j$(nproc --all)"
+export CFLAGS CPPFLAGS CXXFLAGS LDFLAGS MAKEFLAGS
 
 #
 # PRINT BANNER
@@ -319,7 +320,7 @@ installed()
 find_lsb_release="$(sudo find /usr -type f -name 'lsb_release')"
 
 if [ -f /etc/os-release ]; then
-    source /etc/os-release
+    . /etc/os-release
     OS_TMP="$NAME"
     VER_TMP="$VERSION_ID"
     CODENAME="$VERSION_CODENAME"
