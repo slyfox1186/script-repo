@@ -258,11 +258,11 @@ download()
     if [ -f "${target_file}" ]; then
         echo "The file \"${dl_file}\" is already downloaded."
     else
-        echo "Downloading \"${dl_url}\" saving as \"${dl_file}\""
-        if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
+        printf "%s\n\n" "Downloading \"${dl_url}\" saving as \"${dl_file}\""
+        if ! wget --show-progress -U "${user_agent}" -cqO "${target_file}" "${dl_url}"; then
             printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 10 seconds..."
             sleep 10
-            if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
+            if ! wget --show-progress -U "${user_agent}" -cqO "${target_file}" "${dl_url}"; then
                 fail_fn "The script failed to download \"${dl_file}\" twice and will now exit. Line: ${LINENO}"
             fi
         fi
@@ -330,7 +330,7 @@ get_libstdc="$(sudo apt list 'libstdc++-*-dev' 2>/dev/null | grep -Eo '^libstdc\
 
 pkgs=(autoconf autoconf-archive automake autopoint binutils binutils-dev bison
       build-essential ccache clang cmake curl doxygen jq libc6 libc6-dev libedit-dev
-      libtool libtool-bin libxml2-dev m4 nasm ninja-build yasm zlib1g-dev
+      libtool libtool-bin libxml2-dev m4 nasm ninja-build yasm zlib1g-dev wget
       ${get_libstdc})
 
 for  pkg in ${pkgs[@]}
