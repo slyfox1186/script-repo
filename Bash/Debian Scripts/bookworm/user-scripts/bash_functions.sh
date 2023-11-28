@@ -1870,6 +1870,11 @@ sc()
 ## CLIPBOARD ##
 ###############
 
+# COPY ANY TEXT. DOES NOT NEED TO BE IN QUOTES
+# EXAMPLE: ct This is so cool
+# OUTPUT WHEN PASTED: This is so cool
+# USAGE: cp <file name here>
+
 ct()
 {
     local pipe_this
@@ -1890,7 +1895,7 @@ ct()
     clear
 }
 
-# COPY A FILE PATH
+# COPY A FILE'S FULL PATH
 # USAGE: cp <file name here>
 
 cp()
@@ -1898,18 +1903,16 @@ cp()
     local pipe_this
     clear
 
-    if [ -z "${1}" ]; then
+    if [ -z "${@}" ]; then
         clear
         printf "%s\n\n%s\n%s\n\n"               \
             "The command syntax is shown below" \
             "cc INPUT"                          \
             'Example: cc $PWD'
         return 1
-    else
-        pipe_this="${1}"
     fi
 
-    readlink -fn "${pipe_this}" | xclip -i -sel clip
+    readlink -fn "${@}" | xclip -i -sel clip
     clear
 }
 
