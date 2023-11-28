@@ -1866,6 +1866,30 @@ sc()
     done
 }
 
+###############
+## CLIPBOARD ##
+###############
+
+cc()
+{
+    local pipe_this
+    clear
+
+    if [ -z "${1}" ]; then
+        clear
+        printf "%s\n\n%s\n%s\n\n"               \
+            "The command syntax is shown below" \
+            "cc INPUT"                          \
+            'Example: cc $PWD'
+        return 1
+    else
+        pipe_this=${1}
+    fi
+
+    readlink -fn "${pipe_this}" | xclip -i -sel clip
+    clear
+}
+
 EOF
 }
 
