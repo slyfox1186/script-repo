@@ -334,8 +334,6 @@ alias sgc='sudo grub-customizer'
 alias tkpid='clear; lsof +D ./ | awk '\''{print $2}'\'' | tail -n +2 | xargs -I{} sudo kill -9 {}'
 
 # CLIPBOARD
-alias c='xclip -sel clip'
-alias cf='cat file | xclip -i -sel clip'
 alias v='xclip -o'
 
 EOF
