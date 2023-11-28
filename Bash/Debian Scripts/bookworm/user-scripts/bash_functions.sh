@@ -1870,7 +1870,30 @@ sc()
 ## CLIPBOARD ##
 ###############
 
-cc()
+ct()
+{
+    local pipe_this
+    clear
+
+    if [ -z "${@}" ]; then
+        clear
+        printf "%s\n\n%s\n%s\n\n"               \
+            "The command syntax is shown below" \
+            "cc INPUT"                          \
+            'Example: cc $PWD'
+        return 1
+    else
+        pipe_this="${@}"
+    fi
+
+    echo "${pipe_this}" | xclip -i -rmlastnl -sel clip
+    clear
+}
+
+# COPY A FILE PATH
+# USAGE: cp <file name here>
+
+cp()
 {
     local pipe_this
     clear
@@ -1883,11 +1906,30 @@ cc()
             'Example: cc $PWD'
         return 1
     else
-        pipe_this=${1}
+        pipe_this="${1}"
     fi
 
     readlink -fn "${pipe_this}" | xclip -i -sel clip
     clear
+}
+
+# COPY THE CONTENT OF A FILE
+# USAGE: cf <file name here>
+
+function cf()
+{
+    clear
+
+    if [ -z "${1}" ]; then
+        clear
+        printf "%s\n\n%s\n%s\n\n"               \
+            "The command syntax is shown below" \
+            "cc INPUT"                          \
+            'Example: cc $PWD'
+        return 1
+    else
+        cat "${1}" | xclip -i -rmlastnl -sel clip
+    fi
 }
 
 EOF
