@@ -386,7 +386,7 @@ if build 'llvm' "${g_ver}"; then
           -DCMAKE_BUILD_TYPE=Release                 \
           -DBUILD_SHARED_LIBS=OFF                    \
           -DBENCHMARK_DOWNLOAD_DEPENDENCIES=ON       \
-          -DBENCHMARK_ENABLE_TESTING=OFF             \
+          -DBENCHMARK_ENABLE_TESTING=ON              \
           -DBENCHMARK_INSTALL_DOCS=OFF               \
           -DCLANG_INCLUDE_DOCS=OFF                   \
           -DCMAKE_C_COMPILER="${CC}"                 \
