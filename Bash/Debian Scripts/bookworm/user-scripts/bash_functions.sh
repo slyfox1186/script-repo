@@ -1834,7 +1834,7 @@ rsrd()
 
 sc()
 {
-    local fname
+    local f fname
     clear
 
     if [ -z "${@}" ]; then
