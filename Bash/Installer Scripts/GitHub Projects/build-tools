@@ -78,7 +78,7 @@ CXXFLAGS='-g -O3 -pipe -march=native'
 CFLAGS="${CXXFLAGS}"
 CPPFLAGS='-I/usr/local/include -I/usr/include'
 LDFLAGS+='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
-export CC CXX CFLAGS CPPFLAGS CXXFLAGS GLIBC_TEST_ALLOW_TIME_SETTING
+export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
 #
 # SET THE PATH VARIABLE
