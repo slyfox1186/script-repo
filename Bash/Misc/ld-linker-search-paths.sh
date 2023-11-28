@@ -12,7 +12,7 @@ printf "%s\n%s\n\n"                                           \
     '======================================================='
 sleep 2
 
-cat > '/etc/ld.so.conf.d/jman-custom-libraries.conf' <<'EOF'
+cat > '/etc/ld.so.conf.d/user-added-libraries.conf' <<'EOF'
 /ust/local/lib64
 /ust/local/lib
 /usr/share/texinfo/lib
