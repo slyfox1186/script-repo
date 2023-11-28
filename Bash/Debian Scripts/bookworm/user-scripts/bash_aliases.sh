@@ -129,10 +129,6 @@ alias gsync='clear; nano /etc/gravity-sync/gravity-sync.conf'
 # nameserver commands
 alias nss='clear; systemd-resolve --status'
 
-# clipboard
-alias clip='xclip -sel clip'
-alias paste='xclip -o'
-
 # nano [ /home/jman ]
 alias nba='nano ~/.bash_aliases; cl'
 alias nbf='nano ~/.bash_functions; cl'
@@ -188,7 +184,7 @@ alias cdpi='pushd /etc/pihole; cl'
 alias cdr='pushd /; cl'
 alias cds='pushd ~/scripts; cl'
 alias cdtmp='pushd ~/tmp ; cl'
-alias cdt='pushd ~/.local/share/trash/; cl'
+alias cdt='pushd ~/tmp; cl'
 alias cdb1='pushd /usr/bin; cl'
 alias cdb2='pushd /usr/local/bin; cl'
 alias cdv='pushd ~/Videos ; cl'
@@ -336,6 +332,11 @@ alias sgc='sudo grub-customizer'
 
 # FIND WHICH PROCESSES ARE BEING HELD UP AND KILL THEM
 alias tkpid='clear; lsof +D ./ | awk '\''{print $2}'\'' | tail -n +2 | xargs -I{} sudo kill -9 {}'
+
+# CLIPBOARD
+alias c='xclip -sel clip'
+alias cf='cat file | xclip -i -sel clip'
+alias v='xclip -o'
 
 EOF
 }
