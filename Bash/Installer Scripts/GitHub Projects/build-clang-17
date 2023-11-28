@@ -45,12 +45,12 @@ fi
 # SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
 #
 
-CC=clang-15
-CXX=clang++-15
-LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib -Wl,-rpath -Wl,/usr/local/lib'
+CC=clang
+CXX=clang++
 CFLAGS='-g -O3 -pipe -march=native'
 CXXFLAGS="${CFLAGS}"
 CPPFLAGS='-I/usr/local/include -I/usr/include'
+LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib -Wl,-rpath -Wl,/usr/local/lib'
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
 #
@@ -392,7 +392,7 @@ if build 'llvm' "${g_ver}"; then
           -DCMAKE_C_COMPILER="${CC}"                 \
           -DCMAKE_C_FLAGS="${CFLAGS}"                \
           -DCMAKE_CXX_COMPILER="${CXX}"              \
-          -DCMAKE_CXX_STANDARD=17                    \
+          -DCMAKE_CXX_STANDARD=20                    \
           -DLLVM_BUILD_BENCHMARKS=OFF                \
           -DLLVM_BUILD_RUNTIME=ON                    \
           -DLLVM_BUILD_RUNTIMES=ON                   \
