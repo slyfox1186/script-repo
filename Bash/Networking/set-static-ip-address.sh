@@ -27,7 +27,7 @@ iface lo inet loopback
 
 # The primary network interface
 auto ${interface}
-iface eth0 inet static
+iface ${interface} inet static
     address ${address}
     netmask ${netmask}
     broadcast ${broadcast}
