@@ -84,16 +84,19 @@ export PATH
 #
 
 PKG_CONFIG_PATH="\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/share/pkgconfig:\
+/usr/local/ssl/lib/pkgconfig:\
+/usr/local/share/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/usr/local/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/usr/local/pkgconfig:\
 /usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/share/pkgconfig\
+/lib/usr/local/pkgconfig:\
+/lib64/pkgconfig:\
+/lib/pkgconfig\
 "
 export PKG_CONFIG_PATH
 

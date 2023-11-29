@@ -12,22 +12,13 @@ printf "%s\n%s\n\n"                                           \
     '======================================================='
 sleep 2
 
-cat > '/etc/ld.so.conf.d/jman-custom-libraries.conf' <<'EOF'
-/ust/local/lib64
-/ust/local/lib
-/usr/share/texinfo/lib
-/usr/local/x86_64-linux-gnu/lib
+cat > '/etc/ld.so.conf.d/user-local-libs.conf' <<'EOF'
 /usr/local/ssl/lib
+/usr/local/x86_64-linux-gnu/lib
 /usr/local/lib64
-/usr/local/lib/gprofng
 /usr/local/lib
 /usr/local/cuda-12.3/targets/x86_64-linux/lib
 /usr/local/cuda-12.3/nvvm/lib64
-/usr/lib64
-/usr/lib
-/lib/x86_64-linux-gnu
-/lib64
-/lib
 EOF
 
 clear

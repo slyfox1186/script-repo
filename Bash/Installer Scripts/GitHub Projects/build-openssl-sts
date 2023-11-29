@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2068,SC2086,SC1003,SC1091,SC2162
+# shellcheck source=/dev/null disable=SC1003,SC2068,SC2086,SC2162
 
 ####################################################################################
 ##
@@ -7,8 +7,8 @@
 ##          - Install OpenSSL (Short Term Support) from the source code.
 ##
 ##  Script:
-##          - Updated: 11.24.23
-##          - Version: 1.2
+##          - Updated: 11.28.23
+##          - Version: 1.3
 ##
 ##  OpenSSL:
 ##          - Version: 1.1.1w
@@ -26,12 +26,12 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.2
+script_ver=1.3
 archive_dir=openssl-1.1.1w
 archive_url=https://www.openssl.org/source/"${archive_dir}".tar.gz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
-cwd="${PWD}"/openssl-lite-build-script
+cwd="${PWD}"/openssl-build-script
 install_dir=/usr/local/ssl
 ssl_dir="${install_dir}"
 cert_dir="${install_dir}"/certs
@@ -41,7 +41,6 @@ web_repo=https://github.com/slyfox1186/script-repo
 printf "%s\n%s\n\n"                              \
     "OpenSSL Lite Build Script - v${script_ver}" \
     '==============================================='
-sleep 2
 
 #
 # TEST THE OS AND ITS VERSION
@@ -52,13 +51,9 @@ find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
 if [ -f '/etc/os-release' ]; then
     source '/etc/os-release'
     OS_TMP="$NAME"
-    VER_TMP="$VERSION_ID"
-    CODENAME="$VERSION_CODENAME"
     OS="$(echo "${OS_TMP}" | awk '{print $1}')"
-    VER="$(echo "${VER_TMP}" | awk '{print $1}')"
 elif [ -n "${find_lsb_release}" ]; then
     OS="$(lsb_release -d | awk '{print $2}')"
-    VER="$(lsb_release -r | awk '{print $2}')"
 else
     fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
 fi
@@ -78,54 +73,112 @@ mkdir -p "${cwd}"
 
 CC=clang
 CXX=clang++
-CFLAGS='-Wall -pthread -g -O2 -pipe -march=native'
+CFLAGS="-D_REENTRANT -m64 -DL_ENDIAN -O3 -Wl,-rpath=${install_dir}/ssl/lib -fPIC -pipe -march=native"
 CXXFLAGS="${CFLAGS}"
-SHARED_CFLAG='-fPIC'
 CPPFLAGS='-I/usr/local/include -I/usr/include'
-LDFLAGS='-L/usr/local/ssl/lib -L/usr/local/lib64 -L/usr/local/lib'
-LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
-LDLIBS="${LDFLAGS}"
-LD_LIBRARY_PATH="${install_dir}/lib64:${LD_LIBRARY_PATH}"
-export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS LD_LIBRARY_PATH LDLIBS SHARED_CFLAG
+LDFLAGS="-Wl,-rpath=${install_dir}/lib -Wl,--enable-new-dtags -ldl -L/usr/local/ssl/lib -L/usr/local/lib64"
+LDFLAGS+=' -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
 #
-# SET THE PATH
+# SET THE PATH VARIABLE
 #
 
 PATH="\
+/usr/lib/ccache/bin:\
 /usr/lib/ccache:\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
-${install_dir}/bin:\
 /usr/local/sbin:\
+/usr/local/cuda/bin:\
+/usr/local/ssl/bin:\
 /usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/local/cuda/bin:\
 /snap/bin\
 "
 export PATH
 
 #
-# SET THE PKG_CONFIG_PATH
+# SET THE PKG_CONFIG_PATH VARIABLE
 #
 
 PKG_CONFIG_PATH="\
+/usr/share/pkgconfig:\
+/usr/local/ssl/lib/pkgconfig:\
+/usr/local/share/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/usr/local/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
-/usr/local/lib/usr/local/pkgconfig:\
-/usr/local/share/pkgconfig:\
+/usr/lib/usr/local/pkgconfig:\
 /usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
-/usr/lib/usr/local/pkgconfig:\
-/usr/share/pkgconfig:\
+/lib/usr/local/pkgconfig:\
 /lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/usr/local/pkgconfig\
+/lib/pkgconfig\
 "
 export PKG_CONFIG_PATH
+
+LD_LIBRARY="\
+/ust/local/lib64:\
+/ust/local/lib:\
+/usr/share/texinfo/lib:\
+/usr/local/x86_64-linux-gnu/lib:\
+/usr/local/ssl/lib:\
+/usr/local/lib/x86_64-linux-gnu:\
+/usr/local/lib/gprofng:\
+/usr/local/lib64:\
+/usr/local/lib:\
+/usr/local/cuda/targets/x86_64-linux/lib:\
+/usr/local/cuda-12/targets/x86_64-linux/lib:\
+/usr/local/cuda-12.3/targets/x86_64-linux/lib:\
+/usr/local/cuda-12.3/nvvm/lib64:\
+/usr/lib/x86_64-linux-gnu/libfakeroot:\
+/usr/lib/x86_64-linux-gnu:\
+/usr/libx32:\
+/usr/lib64:\
+/usr/lib32:\
+/usr/lib:\
+/usr/local/lib:\
+/lib/x86_64-linux-gnu:\
+/libx32:\
+/lib64:\
+/lib32:\
+/lib\
+"
+export LD_LIBRARY
+
+LD_LIBRARY_PATH="\
+/ust/local/lib64:\
+/ust/local/lib:\
+/usr/share/texinfo/lib:\
+/usr/local/x86_64-linux-gnu/lib:\
+/usr/local/ssl/lib:\
+/usr/local/lib/x86_64-linux-gnu:\
+/usr/local/lib/gprofng:\
+/usr/local/lib64:\
+/usr/local/lib:\
+/usr/local/cuda/targets/x86_64-linux/lib:\
+/usr/local/cuda-12/targets/x86_64-linux/lib:\
+/usr/local/cuda-12.3/targets/x86_64-linux/lib:\
+/usr/local/cuda-12.3/nvvm/lib64:\
+/usr/lib/x86_64-linux-gnu/libfakeroot:\
+/usr/lib/x86_64-linux-gnu:\
+/usr/libx32:\
+/usr/lib64:\
+/usr/lib32:\
+/usr/lib:\
+/usr/local/lib:\
+/lib/x86_64-linux-gnu:\
+/libx32:\
+/lib64:\
+/lib32:\
+/lib\
+"
+export LD_LIBRARY_PATH
 
 #
 # CREATE FUNCTIONS
@@ -175,7 +228,7 @@ display_stats_fn()
 {
     clear
     printf "%s\n\n" 'OpenSSL'\''s version output is listed below.'
-    openssl version -a
+    "$(type -P openssl)" version -a
 }
 
 pacman_pkgs_fn()
@@ -266,25 +319,30 @@ fi
 
 cd "${cwd}/${archive_dir}" || exit 1
 cd build || exit 1
-../Configure linux-x86_64-clang                        \
-             -DOPENSSL_USE_IPV6=0                      \
-             -Wl,-rpath="${install_dir}"/lib           \
-             -Wl,--enable-new-dtags                    \
-             --prefix="${install_dir}"                 \
-             --openssldir="${ssl_dir}"                 \
-             --release                                 \
-             --with-zlib-include=/usr/include          \
-             --with-zlib-lib=/usr/lib/x86_64-linux-gnu \
-             enable-ec_nistp_64_gcc_128                \
-             enable-egd                                \
-             enable-rc5                                \
-             enable-sctp                               \
-             enable-shared                             \
-             enable-threads                            \
-             enable-zlib                               \
-             no-tests
-
+../config --prefix="${install_dir}"                 \
+          --openssldir="${ssl_dir}"                 \
+          -Wl,-rpath="${install_dir}"/lib           \
+          -Wl,--enable-new-dtags                    \
+          -DOPENSSL_USE_IPV6=0                      \
+          --release                                 \
+          --with-zlib-include=/usr/include          \
+          --with-zlib-lib=/usr/lib/x86_64-linux-gnu \
+          enable-buildtest-c++                      \
+          enable-ec_nistp_64_gcc_128                \
+          enable-egd                                \
+          enable-pic                                \
+          enable-rc5                                \
+          enable-sctp                               \
+          enable-ssl3                               \
+          enable-shared                             \
+          enable-threads                            \
+          enable-zlib                               \
+          no-deprecated                             \
+          no-ssl2                                   \
+          no-tests
+ 
 # MODIFY THE MAKEFILE USING SED TO ACTIVATE THE RPATH FEATURE OF OPENSSL
+
 sed -i 's/linux-x86_64-clang/linux-x86_64-rpath/g' 'Makefile'
 
 echo
@@ -309,7 +367,6 @@ esac
 printf "\n%s\n%s\n\n"                             \
    'Install the latest cURL security certificate' \
    '==================================================='
-sleep 2
 
 # CREATE CERTS DIRECTORY IF MISSING
 if [ ! -d "${cert_dir}" ]; then
@@ -331,31 +388,41 @@ if [[ "${OS}" == 'Arch' ]]; then
     if ! sudo pacman -Qk | grep -o 'ca-certificates-utils' &>/dev/null; then
         sudo pacman -Sq --needed --noconfirm ca-certificates-utils
     fi
-    sudo cp "${cert_dir}"/cacert.pem '/usr/share/ca-certificates/trust-source/anchors/curl-cacert.crt'
+    if [ ! -d '/usr/share/ca-certificates/trust-source/anchors/' ]; then
+        if ! sudo mkdir -p '/usr/share/ca-certificates/trust-source/anchors/'; then
+            printf "\n%s\n\n" 'Failed to create the directory: /usr/share/ca-certificates/trust-source/anchors/'
+            exit 1
+        fi
+    fi
+    sudo cp -f "${cert_dir}"/cacert.pem '/usr/share/ca-certificates/trust-source/anchors/curl-cacert.crt'
     sudo ln -sf /etc/ssl/certs/* '/usr/share/ca-certificates/trust-source/anchors/'
     cd '/usr/share/ca-certificates/trust-source/anchors/' || exit 1
-    sudo c_rehash . 2>/dev/null
-    sudo update-ca-trust 2>/dev/null
+    sudo c_rehash .
+    sudo update-ca-trust
 else
-    if [ ! -d '/usr/local/share/ca-certificates' ]; then
-        sudo cp "${cert_dir}"/cacert.pem '/usr/share/ca-certificates/trust-source/anchors/curl-cacert.crt'
-        sudo ln -sf /etc/ssl/certs/* '/usr/share/ca-certificates/trust-source/anchors/'
-        cd '/usr/share/ca-certificates/trust-source/anchors/' || exit 1
-        sudo c_rehash .
-        sudo update-ca-trust 2>/dev/null
-        sudo update-ca-certificates 2>/dev/null
-    else
-        sudo cp "${cert_dir}"/cacert.pem '/usr/local/share/ca-certificates/trust-source/anchors/curl-cacert.crt'
-        sudo ln -sf /etc/ssl/certs/* '/usr/local/share/ca-certificates/trust-source/anchors/'
-        cd '/usr/local/share/ca-certificates/trust-source/anchors/' || exit 1
-        sudo c_rehash .
-        sudo update-ca-trust 2>/dev/null
-        sudo update-ca-certificates 2>/dev/null
+    if ! sudo dpkg -l | grep -o 'ca-certificates' &>/dev/null; then
+        sudo apt -y install ca-certificates
     fi
+    if [ ! -d '/usr/local/share/ca-certificates/trust-source/anchors/' ]; then
+        if ! sudo mkdir -p '/usr/local/share/ca-certificates/trust-source/anchors/'; then
+            printf "\n%s\n\n" 'Failed to create the directory: /usr/local/share/ca-certificates/trust-source/anchors/'
+            exit 1
+        fi
+    fi
+    sudo cp -f "${cert_dir}"/cacert.pem '/usr/local/share/ca-certificates/trust-source/anchors/curl-cacert.crt'
+    sudo ln -sf /etc/ssl/certs/* '/usr/local/share/ca-certificates/trust-source/anchors/'
+    cd '/usr/local/share/ca-certificates/trust-source/anchors/' || exit 1
+    sudo c_rehash .
+    sudo dpkg-reconfigure ca-certificates
+    sudo update-ca-certificates
 fi
 
 # RUN LDCONFIG TO UPDATE THE LINKER LIBRARY SEARCH PATH TO INCLUDE THE OPENSSL LIB64 DIRECTORY
-echo "${install_dir}/lib" | sudo tee '/etc/ld.so.conf.d/openssl-compiled.conf' >/dev/null
+if ! curl -A "${user_agent}" -Lso "${cwd}/ld-linker-search-paths.sh" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/ld-linker-search-paths.sh'; then
+    printf "\n%s\n\n" "Failed to download: ${cwd}/ld-linker-search-paths.sh. Line: ${LINENO}"
+    exit 1
+fi
+sudo bash "${cwd}/ld-linker-search-paths.sh"
 sudo ldconfig
 
 # ADD THE NEW OPENSSL BIN TO THE USER'S ~/.bashrc FILE IF NOT ALREADY PRESENT

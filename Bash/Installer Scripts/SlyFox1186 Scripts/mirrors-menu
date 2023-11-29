@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
+#shellcheck disable=SC2000,SC2034,2086,SC2162
 
 clear
+
+user_agent='Mozilla/5.0 (X11; Linux x86_64) Applpc_typeeWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
 #
 # MENU COLOR FUNCTIONS
@@ -9,14 +12,8 @@ clear
 green='\e[32m'
 blue='\e[34m'
 clear='\e[0m'
-ColorGreen()
-{
-    echo -ne "${green}${1}${clear}"
-}
-ColorBlue()
-{
-    echo -ne "${blue}${1}${clear}"
-}
+ColorGreen() { echo -ne "${green}${1}${clear}"; }
+ColorBlue() { echo -ne "${blue}${1}${clear}"; }
 
 #
 # SHOW SCRIPT BANNER
@@ -25,7 +22,7 @@ ColorBlue()
 function box_out_banner()
 {
     input_char=$(echo "${@}" | wc -c)
-    line=$(for i in `seq 0 ${input_char}`; do printf "-"; done)
+    line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space=${line//-/ }
@@ -42,49 +39,55 @@ box_out_banner 'Ubuntu Mirror Script'
 # DETERMINE WHAT DOWNLOADER TO USE
 #
 
-if type -P curl &>/dev/null; then
-    dl_app='curl -Lso'
-else
-    dl_app='wget -cqO'
+if ! sudo dpkg -l | grep -o curl &>/dev/null; then
+    sudo apt update
+    sudo apt -y install curl
+    clear
 fi
 
 #
 # DISPLAY DEBIAN MIRRORS MENU
 #
 
-debian_mirrors()
+debian_mirrors_fn()
 {
     local answer
 echo -ne "
 $(ColorGreen '1)') Debian 11 - Bullseye
 $(ColorGreen '2)') Debian 12 - Bookworm
-$(ColorGreen '0)') Back
+$(ColorGreen '3)') Back
 $(ColorBlue 'Choose the Debian release version:') "
     read answer
     clear
     case "${answer}" in
         1)
-                ${dl_app} bullseye-mirrors https://bullseye-mirrors.optimizethis.net; sudo bash bullseye-mirrors
-                rm bullseye-mirrors
-                clear
+                curl -A "${user_agent}" -Lso 'bullseye-mirrors' 'https://bullseye-mirrors.optimizethis.net'
+                sudo bash 'bullseye-mirrors'
+                rm 'bullseye-mirrors'
                 return 0
                 ;;
         2)
-                ${dl_app} bookworm-mirrors https://bookworm-mirrors.optimizethis.net; sudo bash bookworm-mirrors
-                rm bookworm-mirrors
-                clear
+                curl -A "${user_agent}" -Lso 'bookworm-mirrors' 'https://bookworm-mirrors.optimizethis.net'
+                sudo bash 'bookworm-mirrors'
+                rm 'bookworm-mirrors'
                 return 0
                 ;;
-        0)      main_menu;;
-        *)      debian_mirrors;;
+        3)      main_menu;;
+        *)
+                unset answer
+                clear
+                debian_mirrors_fn
+                ;;
     esac
+    clear
 }
+clear
 
 #
 # DISPLAY UBUNTU MIRRORS MENU
 #
 
-ubuntu_mirrors()
+ubuntu_mirrors_fn()
 {
     local answer
 echo -ne "
@@ -98,32 +101,37 @@ $(ColorBlue 'Choose the Ubuntu release version:') "
     clear
     case "${answer}" in
         1)
-                ${dl_app} lunar-mirrors https://lunar-mirrors.optimizethis.net; sudo bash lunar-mirrors
-                rm lunar-mirrors
-                clear
+                curl -A "${user_agent}" -Lso 'lunar-mirrors' 'https://lunar-mirrors.optimizethis.net'
+                sudo bash 'lunar-mirrors'
+                rm 'lunar-mirrors'
                 return 0
                 ;;
         2)
-                ${dl_app} jammy-mirrors https://jammy-mirrors.optimizethis.net; sudo bash jammy-mirrors
-                rm jammy-mirrors
-                clear
+                curl -A "${user_agent}" -Lso 'jammy-mirrors' 'https://jammy-mirrors.optimizethis.net'
+                sudo bash 'jammy-mirrors'
+                rm 'jammy-mirrors'
                 return 0
                 ;;
         3)
-                ${dl_app} focal-mirrors https://focal-mirrors.optimizethis.net; sudo bash focal-mirrors
-                rm focal-mirrors
-                clear
+                curl -A "${user_agent}" -Lso 'focal-mirrors' 'https://focal-mirrors.optimizethis.net'
+                sudo bash 'focal-mirrors'
+                rm 'focal-mirrors'
                 return 0
                 ;;
         4)
-                ${dl_app} bionic-mirrors https://bionic-mirrors.optimizethis.net; sudo bash bionic-mirrors
-                rm bionic-mirrors
-                clear
+                curl -A "${user_agent}" -Lso 'bionic-mirrors' 'https://bionic-mirrors.optimizethis.net'
+                sudo bash 'bionic-mirrors'
+                rm 'bionic-mirrors'
                 return 0
                 ;;
         0)      main_menu;;
-        *)      ubuntu_mirrors;;
+        *)
+                unset answer
+                clear
+                ubuntu_mirrors_fn
+                ;;
     esac
+    clear
 }
 
 #
@@ -136,16 +144,28 @@ main_menu()
 echo -ne "
 $(ColorGreen '1)') Ubuntu Mirrors
 $(ColorGreen '2)') Debian Mirrors
-$(ColorGreen '0)') Exit
+$(ColorGreen '3)') Raspberry Pi Mirrors - Bookworm
+$(ColorGreen '4)') Exit
 $(ColorBlue 'Choose an operating system:') "
     read answer
     clear
     case "${answer}" in
-        1)      ubuntu_mirrors;;
-        2)      debian_mirrors;;
-        0)      return 0;;
-        *)      main_menu;;
+        1)      ubuntu_mirrors_fn;;
+        2)      debian_mirrors_fn;;
+        3)
+                curl -A "${user_agent}" -Lso 'raspi-mirrors' 'https://raspi-mirrors.optimizethis.net'
+                sudo bash 'raspi-mirrors'
+                rm 'raspi-mirrors'
+                return 0
+                ;;
+        4)      return 0;;
+        *)
+                unset answer
+                clear
+                main_menu
+                ;;
     esac
+    clear
 }
 
 main_menu
