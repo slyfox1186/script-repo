@@ -1828,13 +1828,111 @@ rsrd()
     rsync -aqvR --acls --perms --mkpath --remove-source-files "${modified_source}" "${destination}"
 }
 
-## IF A PROGRAM HELP COMMAND ONLY TAKES "--help" but not "-h" this will make "-h" work
+################
+## SHELLCHECK ##
+################
 
-helpfix()
-{    
-    if [[ "${?}" -ne '0' ]]; then
-       fc -nl -1 | grep -- -h && fc -s -- -h=--help
-    fi 
+sc()
+{
+    local f fname input_char line space
+    clear
+
+    if [ -z "${@}" ]; then
+        read -p 'Input the file path to check: ' fname
+        clear
+    else
+        fname="${@}"
+    fi
+
+    for f in ${fname[@]}
+    do
+        box_out_banner()
+        {
+            input_char=$(echo "${@}" | wc -c)
+            line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+            tput bold
+            line="$(tput setaf 3)${line}"
+            space=${line//-/ }
+            echo " ${line}"
+            printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+            printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
+            printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+            echo " ${line}"
+            tput sgr 0
+        }
+        box_out_banner "Parsing: ${f}"
+        shellcheck "${f}"
+        echo
+    done
+}
+
+###############
+## CLIPBOARD ##
+###############
+
+# COPY ANY TEXT. DOES NOT NEED TO BE IN QUOTES
+# EXAMPLE: ct This is so cool
+# OUTPUT WHEN PASTED: This is so cool
+# USAGE: cp <file name here>
+
+ct()
+{
+    local pipe_this
+    clear
+
+    if [ -z "${@}" ]; then
+        clear
+        printf "%s\n\n%s\n%s\n\n"               \
+            "The command syntax is shown below" \
+            "cc INPUT"                          \
+            'Example: cc $PWD'
+        return 1
+    else
+        pipe_this="${@}"
+    fi
+
+    echo "${pipe_this}" | xclip -i -rmlastnl -sel clip
+    clear
+}
+
+# COPY A FILE'S FULL PATH
+# USAGE: cp <file name here>
+
+cp()
+{
+    local pipe_this
+    clear
+
+    if [ -z "${@}" ]; then
+        clear
+        printf "%s\n\n%s\n%s\n\n"               \
+            "The command syntax is shown below" \
+            "cc INPUT"                          \
+            'Example: cc $PWD'
+        return 1
+    fi
+
+    readlink -fn "${@}" | xclip -i -sel clip
+    clear
+}
+
+# COPY THE CONTENT OF A FILE
+# USAGE: cf <file name here>
+
+function cf()
+{
+    clear
+
+    if [ -z "${1}" ]; then
+        clear
+        printf "%s\n\n%s\n%s\n\n"               \
+            "The command syntax is shown below" \
+            "cc INPUT"                          \
+            'Example: cc $PWD'
+        return 1
+    else
+        cat "${1}" | xclip -i -rmlastnl -sel clip
+    fi
 }
 
 EOF
