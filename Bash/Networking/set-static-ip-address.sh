@@ -13,7 +13,7 @@ if [ ! -f "${fname}".bak ]; then
     sudo cp "${fname}" "${fname}".bak
     printf "%s\n\n" 'The interfaces file was just backed up. If required, you can find it in the same folder as the original.'
 else
-    printf "%s\n\n" 'This file was backed up and is located in the same directory as the original.'
+    printf "%s\n\n" 'No need to backup the original file as it has already been done.'
 fi
 sleep 4
 clear
