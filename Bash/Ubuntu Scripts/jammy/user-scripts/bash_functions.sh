@@ -13,7 +13,7 @@ sleep 2
 
 script_fn()
 {
-cat > file="${HOME}"/.bash_functions <<'EOF'
+cat > "${HOME}"/.bash_functions <<'EOF'
 #!/usr/bin/env bash
 # shellcheck disable=SC1091,SC2001,SC2162,SC2317
 
