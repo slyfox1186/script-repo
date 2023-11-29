@@ -77,13 +77,11 @@ untar()
 
         case "${ext}" in
             7z|zip)             7z x -o"${PWD}"/"${i%%.*}" "${PWD}"/"${i}";;
-            bz2|gz|tgz|xz)
-                                jflag=""
-                                gflag=""
-                                xflag=""
-                                [[ "${ext}" = 'bz2' && "${ext}" != 'gz' && "${ext}" != 'tgz' ]] && jflag="xfj"
-                                [[ "${ext}" != 'bz2' && "${ext}" = 'gz' || "${ext}" = 'tgz' ]] && gflag="zxf"
-                                [[ "${ext}" = 'xz' && "${ext}" != 'bz2' && "${ext}" != 'gz' && "${ext}" != 'tgz' ]] && xflag="xf"
+            bz2|gz|lz|tgz|xz)
+                                unset gflag jflag xflag
+                                [[ "${ext}" = 'bz2' && "${ext}" != 'gz' && "${ext}" != 'tgz' && "${ext}" != 'lz' ]] && jflag='jxf'
+                                [[ "${ext}" != 'lz' && "${ext}" != 'xz' && "${ext}" != 'bz2' && "${ext}" = 'gz' || "${ext}" = 'tgz' ]] && gflag='zxf'
+                                [[ "${ext}" = 'lz' || "${ext}" = 'xz' && "${ext}" != 'bz2' && "${ext}" != 'gz' && "${ext}" != 'tgz' ]] && xflag='xf'
                                 tar -${xflag}${gflag}${jflag} "${PWD}"/"${i}" -C "${PWD}"/"${i%%.*}" --strip-components 1
                                 ;;
         esac
