@@ -120,8 +120,8 @@ PKG_CONFIG_PATH="\
 export PKG_CONFIG_PATH
 
 LD_LIBRARY="\
-/ust/local/lib64:\
-/ust/local/lib:\
+/usr/local/lib64:\
+/usr/local/lib:\
 /usr/share/texinfo/lib:\
 /usr/local/x86_64-linux-gnu/lib:\
 /usr/local/ssl/lib:\
@@ -149,8 +149,8 @@ LD_LIBRARY="\
 export LD_LIBRARY
 
 LD_LIBRARY_PATH="\
-/ust/local/lib64:\
-/ust/local/lib:\
+/usr/local/lib64:\
+/usr/local/lib:\
 /usr/share/texinfo/lib:\
 /usr/local/x86_64-linux-gnu/lib:\
 /usr/local/ssl/lib:\
