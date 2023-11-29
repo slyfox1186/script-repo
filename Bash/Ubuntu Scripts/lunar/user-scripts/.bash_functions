@@ -793,6 +793,26 @@ ffdl()
 
 ffs() { curl -A "${user_agent}" -m 10 -Lso 'ff' 'https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/build-ffmpeg'; }
 
+dlfs()
+{
+    clear
+    
+    wget --show-progress -U "${user_agent}" -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/SlyFox1186%20Scripts/favorite-installer-scripts.txt'
+    
+    scripts=(build-ffmpeg build-all-git-safer build-all-gnu-safer build-magick)
+
+    for f in ${scripts[@]}
+    do
+        chown -R "${USER}":"${USER}" "${f}"
+        chmod -R 744 "${PWD}" "${f}"
+        [[ "${f}" == build-all-git-safer || "${f}" == build-all-gnu-safer ]] && mv "${f}" "${f%-safer}"
+        [ -n 'favorite-installer-scripts.txt' ] && sudo rm 'favorite-installer-scripts.txt'
+    done
+    
+    clear
+    ls -1AhFv --color --group-directories-first
+}
+
 ##############################
 ## LIST LARGE FILES BY TYPE ##
 ##############################
