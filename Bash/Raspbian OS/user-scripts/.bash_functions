@@ -87,7 +87,7 @@ untar()
                                 [[ "${ext}" = 'bz2' && "${ext}" != 'gz' && "${ext}" != 'tgz' ]] && jflag='xfj'
                                 [[ "${ext}" != 'bz2' && "${ext}" = 'gz' || "${ext}" = 'tgz' ]] && gflag='zxf'
                                 [[ "${ext}" = 'xz' && "${ext}" != 'bz2' && "${ext}" != 'gz' && "${ext}" != 'tgz' ]] && xflag='xf'
-                                tar -${xflag}${gflag}${jflag} "${PWD}"/"${i}" -C "${PWD}"/"${i%%.*}" 2>/dev/null
+                                tar -${xflag}${gflag}${jflag} "${PWD}"/"${i}" -C "${PWD}"/"${i%%.*}" --strip-components 1
                                 ;;
         esac
     done
