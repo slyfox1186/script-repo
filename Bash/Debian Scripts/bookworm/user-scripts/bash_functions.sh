@@ -807,7 +807,7 @@ ffdl()
     clear; ls -1AhFv --color --group-directories-first
 }
 
-ffs() { curl -A "${user_agent}" -m 10 -Lso 'ff.sh' 'https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/build-ffmpeg'; }
+ffs() { curl -A "${user_agent}" -m 10 -Lso 'ff' 'https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/build-ffmpeg'; }
 
 ##############################
 ## LIST LARGE FILES BY TYPE ##
