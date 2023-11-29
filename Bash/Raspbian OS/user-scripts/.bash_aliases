@@ -46,7 +46,7 @@ alias shutdown='sudo shutdown -h now'
 
 # enable color support of ls and also add handy aliases
 if [ -x '/usr/bin/dircolors' ]; then
-    test -r "${HOME}/.dircolors" && eval "$(dircolors -b "${HOME}"/.dircolors)" || eval "$(dircolors -b)"
+    test -r "${HOME}/.dircolors" && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
         # file navigation
         alias ls='ls -1AhFSv --color=always --group-directories-first'
         # grep commands
@@ -95,10 +95,10 @@ alias clip='xclip -sel clip'
 alias paste='xclip -o'
 
 # nano [ /home/jman ]
-alias nba='nano "${HOME}"/.bash_aliases; cl'
-alias nbf='nano "${HOME}"/.bash_functions; cl'
-alias nbrc='nano "${HOME}"/.bashrc; cl'
-alias npro='nano "${HOME}"/.profile; cl'
+alias nba='nano ~/.bash_aliases; cl'
+alias nbf='nano ~/.bash_functions; cl'
+alias nbrc='nano ~/.bashrc; cl'
+alias npro='nano ~/.profile; cl'
 # nano [ /etc ]
 alias napt='sudo nano /etc/apt/apt.conf; cl'
 alias ncron='sudo nano /etc/crontab; cl'
@@ -116,33 +116,32 @@ alias nlang='sudo nano /usr/share/gtksourceview-*/language-specs/sh.lang; cl'
 # change directory
 alias cdaptd='pushd /etc/apt/apt.conf.d; cl'
 alias cdapt='pushd /etc/apt; cl'
-alias cda='pushd "${HOME}"/.aria2 ; cl'
+alias cda='pushd ~/.aria2 ; cl'
 alias cdb='pushd /bin; cl'
 alias cddns='pushd /etc/dnsmasq.d; cl'
-alias cdd='pushd "${HOME}"/Downloads ; cl'
-alias cde='pushd "${HOME}"/Desktop ; cl'
+alias cdd='pushd ~/Downloads ; cl'
+alias cde='pushd ~/Desktop ; cl'
 alias cdetc='pushd /etc; cl'
-alias cdf='pushd "${HOME}"/Documents ; cl'
+alias cdf='pushd ~/Documents ; cl'
 alias cdh='pushd ~; cl'
-alias cdp='pushd "${HOME}"/Pictures ; cl'
+alias cdp='pushd ~/Pictures ; cl'
 alias cdpi='pushd /etc/pihole; cl'
 alias cdr='pushd /; cl'
-alias cds='pushd "${HOME}"/scripts; cl'
-alias cdtmp='pushd "${HOME}"/tmp ; cl'
-alias cdt='pushd "${HOME}"/.local/share/trash/; cl'
+alias cds='pushd ~/scripts; cl'
+alias cdt='pushd ~/tmp ; cl'
 alias cdb1='pushd /usr/bin; cl'
 alias cdb2='pushd /usr/local/bin; cl'
-alias cdv='pushd "${HOME}"/Videos ; cl'
+alias cdv='pushd ~/Videos ; cl'
 
 # change directory fast commands
 alias cd.='cd ..; cl'
 alias cd..='cd ..; cl'
 
 # cat [ /home/jman ]
-alias cba='cat "${HOME}"/.bash_aliases; cl'
-alias cbf='cat "${HOME}"/.bash_functions; cl'
-alias cbrc='cat "${HOME}"/.bashrc; cl'
-alias cpro='cat "${HOME}"/.profile; cl'
+alias cba='cat ~/.bash_aliases; cl'
+alias cbf='cat ~/.bash_functions; cl'
+alias cbrc='cat ~/.bashrc; cl'
+alias cpro='cat ~/.profile; cl'
 # cat [ /etc ]
 alias capt='clear; cat /etc/apt/sources.list'
 alias cbasrc='clear; cat /etc/bash.bashrc'
@@ -161,7 +160,7 @@ alias csudo='clear; cat /etc/sudoers'
 
 # ssh
 alias nsshd='clear; nano /etc/ssh/sshd_config; cl'
-alias nsshdk='clear; nano "${HOME}"/.ssh/authorized_keys; cl'
+alias nsshdk='clear; nano ~/.ssh/authorized_keys; cl'
 alias sshoff='clear; service ssh stop; service --status-all'
 alias sshon='clear; service ssh start; service --status-all'
 alias sshq='clear; systemctl status ssh.service && service --status-all'
@@ -197,7 +196,7 @@ alias psgpu='clear; lspci | grep -i vga'
 alias psarch='clear; dpkg --print-architecture'
 
 # USB
-alias psusb='lsblk -a | sort > "${HOME}"/usb.txt'
+alias psusb='lsblk -a | sort > ~/usb.txt'
 
 # get system architechture
 alias showarch='dpkg --print-architecture'
@@ -217,7 +216,7 @@ alias cat='clear; /usr/bin/batcat -p' # remove line numbers
 alias catn='clear; /usr/bin/batcat'   # show line numbers
 
 # temporary commands... delete when done
-alias runff='bash "${HOME}"/tmp/test.sh --build --enable-gpl-and-non-free --latest'
+alias runff='bash ~/tmp/test.sh --build --enable-gpl-and-non-free --latest'
 
 # nordvpn commands
 alias nc='nordvpn connect United_States Atlanta'
@@ -251,6 +250,7 @@ alias pit='clear; pihole -t'
 alias piu='clear; pihole -up'
 alias piq='clear; pihole -q'
 alias pig='clear; pihole -g'
+alias pifix='clear; pihole -r'
 
 # DIRECTORY SIZE
 alias dsize='clear; du -sh'
