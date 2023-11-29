@@ -1,4 +1,4 @@
-# "${HOME}/.bashrc": executed by bash(1) for non-login shells.
+# ~/.bashrc: executed by bash(1) for non-login shells.
 # see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
 # for examples
 
@@ -8,15 +8,15 @@ case $- in
       *) return;;
 esac
 
-# Don't put duplicate lines or lines starting with a space in the history.
+# don't put duplicate lines or lines starting with space in the history.
 # See bash(1) for more options
 HISTCONTROL=ignoreboth
 
-# Append to the history file, don't overwrite it
+# append to the history file, don't overwrite it
 shopt -s histappend
 
 # for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
-HISTSIZE=20000
+HISTSIZE=10000
 HISTFILESIZE=20000
 
 # check the window size after each command and, if necessary,
@@ -28,11 +28,11 @@ shopt -s checkwinsize
 shopt -s globstar
 
 # make less more friendly for non-text input files, see lesspipe(1)
-[ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
+[ -x '/usr/bin/lesspipe' ] && eval "$(SHELL=/bin/sh lesspipe)"
 
 # set variable identifying the chroot you work in (used in the prompt below)
-if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
-    debian_chroot=$(cat /etc/debian_chroot)
+if [ -z "${debian_chroot:-}" ] && [ -r '/etc/debian_chroot' ]; then
+    debian_chroot=$(cat '/etc/debian_chroot')
 fi
 
 # set a fancy prompt (non-color, unless we know we "want" color)
@@ -47,12 +47,12 @@ force_color_prompt=yes
 
 if [ -n "${force_color_prompt}" ]; then
     if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
-        # We have color support; assume it's compliant with Ecma-48
-        # (ISO/IEC-6429). (Lack of such support is extremely rare, and such
-        # a case would tend to support setf rather than setaf.)
-        color_prompt=yes
+	# We have color support; assume it's compliant with Ecma-48
+	# (ISO/IEC-6429). (Lack of such support is extremely rare, and such
+	# a case would tend to support setf rather than setaf.)
+	color_prompt=yes
     else
-        color_prompt=
+	color_prompt=
     fi
 fi
 
@@ -63,25 +63,41 @@ else
 fi
 unset color_prompt force_color_prompt
 
-# if this is an xterm set the title to user@host:dir
+# If this is an xterm set the title to user@host:dir
 case "${TERM}" in
-    xterm*|rxvt*)    PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1";;
-    *)               echo;;
+xterm*|rxvt*)
+    PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
+    ;;
+*)
+    ;;
 esac
 
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
-
-# alias definitions
-if [ -f "${HOME}"/.bash_aliases ]; then
-    . "${HOME}"/.bash_aliases
+# enable color support of ls and also add handy aliases
+if [ -x '/usr/bin/dircolors' ]; then
+    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+    alias ls='ls --color=always --group-directories-first'
+    alias grep='grep --color=always'
 fi
 
-# enable programmable completion features
+# colored GCC warnings and errors
+GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
+
+# Alias definitions.
+# You may want to put all your additions into a separate file like
+# ~/.bash_aliases, instead of adding them here directly.
+# See /usr/share/doc/bash-doc/examples in the bash-doc package.
+
+if [ -f ~/.bash_aliases ]; then
+    . ~/.bash_aliases
+fi
+
+# You don't need to enable this, if it's already enabled in /etc/bash.bashrc and /etc/profile
+# sources /etc/bash.bashrc
 if ! shopt -oq posix; then
-  if [ -f /usr/share/bash-completion/bash_completion ]; then
-    . /usr/share/bash-completion/bash_completion
-  elif [ -f /etc/bash_completion ]; then
-    . /etc/bash_completion
+  if [ -f '/usr/share/bash-completion/bash_completion' ]; then
+    . '/usr/share/bash-completion/bash_completion'
+  elif [ -f '/etc/bash_completion' ]; then
+    . '/etc/bash_completion'
   fi
 fi
 
@@ -89,15 +105,31 @@ fi
 ## CUSTOM SECTION ##
 ####################
 
-# function definitions
-if [ -f "${HOME}"/.bash_functions ]; then
-    . "${HOME}"/.bash_functions
+if [ -f ~/.bash_functions ]; then
+    . ~/.bash_functions
 fi
 
-# custom user vars
+if [ -f ~/.cargo/env ]; then
+    . ~/.cargo/env
+fi
+
+threads="$(nproc --all)"
+cpus="$((threads / 2))"
+lan="$(ip route get 1.2.3.4 | awk '{print $7}')"
+wan="$(curl -s 'https://checkip.amazonaws.com')"
+PS1='\n\[\e[38;5;227m\]\w\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38;5;117m\]\h\[\e[97;1m\]\\$\[\e[0m\]'
+PYTHONUTF8=1
+SHELL='/usr/bin/env bash'
+export cpus lan PS1 PYTHONUTF8 SHELL threads wan
+
+#
+# SET THE SCRIPT'S PATH VARIABLE
+#
+
 PATH="\
 /usr/lib/ccache:\
 ${HOME}/perl5/bin:\
+${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
@@ -106,23 +138,8 @@ ${HOME}/.local/bin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/games:\
 /usr/local/games:\
-/usr/lib/python3/dist-packages:\
+/usr/games:\
 /snap/bin\
 "
 export PATH
-
-export threads="$(nproc --all)"
-export cpus="$((threads / 2))"
-export lan="$(hostname -I)"
-# export wan="$(dig +short myip.opendns.com @resolver1.opendns.com)"
-export wan="$(curl -A "${user_agent}" -fsS 'https://checkip.amazonaws.com')"
-export tmp="${HOME}"/tmp
-export PS1='\n\[\e[38;5;227m\]\w\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38;5;117m\]\h\[\e[97;1m\]\\$\[\e[0m\]'
-export PYTHONUTF8=1
-export TSAN_OPTIONS='ignore_noninstrumented_modules=1'
-
-if [ -f "${HOME}"/.cargo/env ]; then
-    source "${HOME}"/.cargo/env
-fi
