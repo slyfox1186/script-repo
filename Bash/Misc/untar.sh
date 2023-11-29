@@ -6,7 +6,7 @@ clear
 ##
 ##  How to demonstrate:
 ##
-###  1) Add all of the following types of archives to an empty directoy
+###  1) Add all of the following types of archives to an empty directory
 ##      - name.tar.gz
 ##      - name.tar.tgz
 ##      - name.tar.xz
