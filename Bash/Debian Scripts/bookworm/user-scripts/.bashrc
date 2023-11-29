@@ -28,7 +28,7 @@ shopt -s checkwinsize
 shopt -s globstar
 
 # make less more friendly for non-text input files, see lesspipe(1)
-[ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
+[ -x '/usr/bin/lesspipe' ] && eval "$(SHELL=/bin/sh lesspipe)"
 
 # set variable identifying the chroot you work in (used in the prompt below)
 if [ -z "${debian_chroot:-}" ] && [ -r '/etc/debian_chroot' ]; then
@@ -36,7 +36,7 @@ if [ -z "${debian_chroot:-}" ] && [ -r '/etc/debian_chroot' ]; then
 fi
 
 # set a fancy prompt (non-color, unless we know we "want" color)
-case "$TERM" in
+case "${TERM}" in
     xterm-color|*-256color) color_prompt=yes;;
 esac
 
@@ -45,7 +45,7 @@ esac
 # should be on the output of commands, not on the prompt
 force_color_prompt=yes
 
-if [ -n "$force_color_prompt" ]; then
+if [ -n "${force_color_prompt}" ]; then
     if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
 	# We have color support; assume it's compliant with Ecma-48
 	# (ISO/IEC-6429). (Lack of such support is extremely rare, and such
@@ -56,7 +56,7 @@ if [ -n "$force_color_prompt" ]; then
     fi
 fi
 
-if [ "$color_prompt" = yes ]; then
+if [ "${color_prompt}" = yes ]; then
     PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
 else
     PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
@@ -64,7 +64,7 @@ fi
 unset color_prompt force_color_prompt
 
 # If this is an xterm set the title to user@host:dir
-case "$TERM" in
+case "${TERM}" in
 xterm*|rxvt*)
     PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
     ;;
@@ -73,9 +73,9 @@ xterm*|rxvt*)
 esac
 
 # enable color support of ls and also add handy aliases
-if [ -x /usr/bin/dircolors ]; then
+if [ -x '/usr/bin/dircolors' ]; then
     test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
-    alias ls='ls --color=always'
+    alias ls='ls --color=always --group-directories-first'
     alias grep='grep --color=always'
 fi
 
@@ -94,10 +94,10 @@ fi
 # You don't need to enable this, if it's already enabled in /etc/bash.bashrc and /etc/profile
 # sources /etc/bash.bashrc
 if ! shopt -oq posix; then
-  if [ -f /usr/share/bash-completion/bash_completion ]; then
-    . /usr/share/bash-completion/bash_completion
-  elif [ -f /etc/bash_completion ]; then
-    . /etc/bash_completion
+  if [ -f '/usr/share/bash-completion/bash_completion' ]; then
+    . '/usr/share/bash-completion/bash_completion'
+  elif [ -f '/etc/bash_completion' ]; then
+    . '/etc/bash_completion'
   fi
 fi
 
@@ -117,10 +117,8 @@ export threads="$(nproc --all)"
 export cpus="$((threads / 2))"
 export lan="$(hostname -I)"
 export wan="$(curl -s 'https://checkip.amazonaws.com')"
-export tmp="${HOME}"/tmp
 export PS1='\n\[\e[38;5;227m\]\w\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38;5;117m\]\h\[\e[97;1m\]\\$\[\e[0m\]'
 export PYTHONUTF8=1
-export PROMPT_COMMAND=helpfix
 
 #
 # SET THE SCRIPT'S PATH VARIABLE
@@ -131,7 +129,6 @@ PATH="\
 ${HOME}/perl5/bin:\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
-/usr/local/ssl/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/local/cuda/bin:\
@@ -144,49 +141,3 @@ ${HOME}/.local/bin:\
 /snap/bin\
 "
 export PATH
-
-LD_LIBRARY="\
-/ust/local/lib64:\
-/usr/share/texinfo/lib/libintl-perl/lib:\
-/usr/share/texinfo/lib:\
-/usr/share/gitk/lib:\
-/usr/share/git-gui/lib:\
-/usr/share/ghostscript/lib:\
-/usr/local/lib64:\
-/usr/local/lib/clang/17/lib:\
-/usr/local/lib:\
-/usr/lm32-elf/lib:\
-/usr/lib64:\
-/usr/lib32:\
-/usr/lib/llvm15/lib:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/lib:\
-/usr/lib/clang/16/lib:\
-/usr/lib/bfd-plugins:\
-/usr/lib:\
-/lib64:\
-/lib\
-"
-export LD_LIBRARY
-
-LD_LIBRARY_PATH="\
-/ust/local/lib64:\
-/usr/share/texinfo/lib/libintl-perl/lib:\
-/usr/share/texinfo/lib:\
-/usr/share/gitk/lib:\
-/usr/share/git-gui/lib:\
-/usr/share/ghostscript/lib:\
-/usr/local/lib64:\
-/usr/local/lib/clang/17/lib:\
-/usr/local/lib:\
-/usr/lm32-elf/lib:\
-/usr/lib64:\
-/usr/lib32:\
-/usr/lib/llvm15/lib:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/lib:\
-/usr/lib/clang/16/lib:\
-/usr/lib/bfd-plugins:\
-/usr/lib:\
-/lib64:\
-/lib\
-"
-export LD_LIBRARY_PATH
