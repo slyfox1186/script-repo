@@ -83,7 +83,7 @@ ffind()
 untar()
 {
     clear
-    local ext jflag
+    local ext gflag jflag xflag
 
     for i in *.*
     do
