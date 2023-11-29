@@ -47,3 +47,4 @@ untar()
         esac
     done
 }
+untar
