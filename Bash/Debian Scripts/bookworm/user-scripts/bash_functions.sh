@@ -735,7 +735,7 @@ imdl()
     clear
     cwd="${PWD}"
     tmp_dir="$(mktemp -d)"
-    user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    user_agent="${user_agent}"
     cd "${tmp_dir}" || exit 1
     curl -A "${user_agent}" -Lso 'imow' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-and-overwrite.sh'
     sudo mv imow "${cwd}"
@@ -809,7 +809,7 @@ ffdl()
 {
     local user_agent
     clear
-    curl -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
+    curl -A "${user_agent}" -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
     bash 'ff.sh'
     sudo rm 'ff.sh'
     clear; ls -1AhFv --color --group-directories-first
