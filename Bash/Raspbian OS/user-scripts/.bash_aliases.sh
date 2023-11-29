@@ -124,8 +124,7 @@ alias cde='pushd ~/Desktop ; cl'
 alias cdetc='pushd /etc; cl'
 alias cdf='pushd ~/Documents ; cl'
 alias cdh='pushd ~; cl'
-alias cdp='pushd ~/Pictures ; cl'
-alias cdpi='pushd /etc/pihole; cl'
+alias cdp='pushd /etc/pihole; cl'
 alias cdr='pushd /; cl'
 alias cds='pushd ~/scripts; cl'
 alias cdt='pushd ~/tmp ; cl'
@@ -253,7 +252,7 @@ alias pig='clear; pihole -g'
 alias pifix='clear; pihole -r'
 
 # DIRECTORY SIZE
-alias dsize='clear; du -sh'
+alias dirsize='clear; du -sh'
 
 # SQUID
 alias sqtl='clear; tail -f '\''/var/log/squid/access.log'\'''
