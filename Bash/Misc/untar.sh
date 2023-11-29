@@ -20,7 +20,7 @@ clear
 ##  3) Simply type "untar" in the same directory as the above archive files
 ##     - Second method is to run this script in the same direcotry with the archive files using the command "bash untar.sh"
 ##
-##  Result: All archives will be extracted and read to use
+##  Result: All archives will be extracted and ready to use
 ##
 ####################################################################################
 
