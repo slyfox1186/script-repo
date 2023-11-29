@@ -80,7 +80,7 @@ if [ -x '/usr/bin/dircolors' ]; then
 fi
 
 # colored GCC warnings and errors
-export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
+GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
 
 # Alias definitions.
 # You may want to put all your additions into a separate file like
@@ -113,12 +113,14 @@ if [ -f ~/.cargo/env ]; then
     . ~/.cargo/env
 fi
 
-export threads="$(nproc --all)"
-export cpus="$((threads / 2))"
-export lan="$(hostname -I)"
-export wan="$(curl -s 'https://checkip.amazonaws.com')"
-export PS1='\n\[\e[38;5;227m\]\w\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38;5;117m\]\h\[\e[97;1m\]\\$\[\e[0m\]'
-export PYTHONUTF8=1
+threads="$(nproc --all)"
+cpus="$((threads / 2))"
+lan="$(ip route get 1.2.3.4 | awk '{print $7}')"
+wan="$(curl -s 'https://checkip.amazonaws.com')"
+PS1='\n\[\e[38;5;227m\]\w\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38;5;117m\]\h\[\e[97;1m\]\\$\[\e[0m\]'
+PYTHONUTF8=1
+SHELL='/usr/bin/env bash'
+export cpus lan PS1 PYTHONUTF8 SHELL threads wan
 
 #
 # SET THE SCRIPT'S PATH VARIABLE
