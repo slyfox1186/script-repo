@@ -623,11 +623,14 @@ cuda_purge()
 
 ffdl()
 {
+    clear
     curl -A "${user_agent}" -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
     bash 'ff.sh'
     sudo rm 'ff.sh'
     clear; ls -1AhFv --color --group-directories-first
 }
+
+ffs() { curl -A "${user_agent}" -m 10 -Lso 'ff.sh' 'https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/build-ffmpeg'; }
 
 ##############################
 ## LIST LARGE FILES BY TYPE ##
