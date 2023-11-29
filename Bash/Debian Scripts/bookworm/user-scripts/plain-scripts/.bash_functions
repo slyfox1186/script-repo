@@ -1,15 +1,35 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1091,SC2001,SC2162,SC2317
 
+export user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+
 ######################################################################################
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 ######################################################################################
 
 gedit() { "$(type -P gedit)" "${@}" &>/dev/null; }
-geds() { "$(type -P sudo)" -H -u root "$(type -P gedit)" "${@}" &>/dev/null; }
+geds() { sudo -Hu root "$(type -P gedit)" "${@}" &>/dev/null; }
 
 gted() { "$(type -P gted)" "${@}" &>/dev/null; }
-gteds() { "$(type -P sudo)" -H -u root "$(type -P gted)" "${@}" &>/dev/null; }
+gteds() { sudo -Hu root "$(type -P gted)" "${@}" &>/dev/null; }
+
+################################################
+## GET THE OS AND ARCH OF THE ACTIVE COMPUTER ##
+################################################
+
+mypc()
+{
+    local OS VER
+    
+    . '/etcsource /os-release'
+    OS="$NAME"
+    VER="$VERSION_ID"
+
+    clear
+    printf "%s\n%s\n\n"           \
+        "Operating System: ${OS}" \
+        "Specific Version: ${VER}"
+}
 
 ###################
 ## FIND COMMANDS ##
@@ -438,11 +458,21 @@ gettime() { clear; date +%r | cut -d " " -f1-2 | grep -E '^.*$'; }
 ## SOURCE FILES ##
 ##################
 
+sbrc()
+{
+    clear
+
+    . ~/.bashrc && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
+    sleep 1
+
+    clear; ls -1AhFv --color --group-directories-first
+}
+
 spro()
 {
     clear
 
-    source "${HOME}"/.profile && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
+    . ~/.profile && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
     sleep 1
 
     clear; ls -1AhFv --color --group-directories-first
@@ -487,16 +517,12 @@ aria2()
     aria2c --out="${file}" "${link}"
 }
 
-# PRINT LAN & WAN IP ADDRESSES
 myip()
 {
     clear
-    lan="$(hostname -I)"
-    wan="$(dig +short myip.opendns.com @resolver1.opendns.com)"
-    clear
-    printf "%s\n%s\n\n" \
-        "LAN: ${lan}" \
-        "WAN: ${wan}"
+    printf "%s\n%s\n\n"                                   \
+        "LAN: $(ip route get 1.2.3.4 | awk '{print $7}')" \
+        "WAN: $(curl -s 'https://checkip.amazonaws.com')"
 }
 
 # WGET COMMAND
@@ -688,7 +714,7 @@ imdl()
     clear
     cwd="${PWD}"
     tmp_dir="$(mktemp -d)"
-    user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+    user_agent="${user_agent}"
     cd "${tmp_dir}" || exit 1
     curl -A "${user_agent}" -Lso 'imow' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-and-overwrite.sh'
     sudo mv imow "${cwd}"
@@ -762,7 +788,7 @@ ffdl()
 {
     local user_agent
     clear
-    curl -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36' -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
+    curl -A "${user_agent}" -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
     bash 'ff.sh'
     sudo rm 'ff.sh'
     clear; ls -1AhFv --color --group-directories-first
@@ -888,7 +914,7 @@ hw_mon()
     local found
 
     # install lm-sensors if not already
-    if ! which lm-sensors &>/dev/null; then
+    if ! type -P lm-sensors &>/dev/null; then
         sudo apt -y install lm-sensors
     fi
 
@@ -1244,7 +1270,7 @@ rmf()
         files="${*}"
     fi
 
-    sudo rm "${file}s"
+    sudo rm "${files}"
     clear
     ls -1A --color --group-directories-first
 }
@@ -1377,7 +1403,7 @@ tkapt()
     local i list
     clear
 
-    list=(apt apt apt-get aptitude dpkg)
+    list=(apt apt apt apt apt apt apt-get aptitude dpkg)
 
     for i in ${list[@]}
     do
@@ -1502,7 +1528,7 @@ adl()
     aria2c \
         --console-log-level=notice \
         --user-agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36' \
-        -x16 \
+        -x32 \
         -j5 \
         --split=32 \
         --allow-overwrite=true \
@@ -1545,7 +1571,7 @@ adlm()
     aria2c \
         --console-log-level=notice \
         --user-agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36' \
-        -x16 \
+        -x32 \
         -j5 \
         --split=32 \
         --allow-overwrite=true \
@@ -1592,6 +1618,22 @@ big_files()
     echo
     printf "%s\n\n" "${cnt} largest folders"
     sudo du -Bm "${PWD}" 2>/dev/null | sort -hr | head -"${cnt}"
+}
+
+big_vids()
+{
+    local cnt
+    clear
+
+    if [ -n "${1}" ]; then
+        cnt="${1}"
+    else
+        read -p 'Enter the max number of results: ' cnt
+        clear
+    fi
+
+    printf "%s\n\n" "Listing the ${cnt} largest videos"
+    sudo find "${PWD}" -type f \( -iname '*.mkv' -o -iname '*.mp4' \) -exec du -Sh {} + | grep -Ev '\(x265\)' | sort -hr | head -n"${cnt}"
 }
 
 big_img() { clear; sudo find . -size +10M -type f -name '*.jpg' 2>/dev/null; }
@@ -1711,4 +1753,163 @@ ffp()
         sudo rm 00-pic-sizes.txt
     fi
     sudo find "${PWD}" -type f -iname '*.jpg' -exec bash -c "identify -format "%wx%h" \"{}\"; echo \" {}\"" > 00-pic-sizes.txt \;
+}
+
+####################
+## RSYNC COMMANDS ##
+####################
+
+rsr()
+{
+    local destination modified_source source 
+    clear
+
+    # you must add an extra folder that is a period '/./' between the full path to the source folder and the source folder itself
+    # or rsync will copy the files to the destination directory and it will be the full path of the source folder instead of the source
+    # folder and its subfiles only.
+
+    printf "%s\n%s\n%s\n%s\n\n"                                                                    \
+        'This rsync command will recursively copy the source folder to the chosen destination.'    \
+        'The original files will still be located in the source folder.'                           \
+        'If you want to move the files (which deletes the originals then use the function "rsrd".' \
+        'Please enter the full paths of the source and destination directories.'
+
+    printf "%s\n\n" 
+    read -p 'Enter the source path: ' source
+    read -p 'Enter the destination path: ' destination
+    modified_source="$(echo "${source}" | sed 's:/[^/]*$::')"'/./'"$(echo "${source}" | sed 's:.*/::')"
+    clear
+
+    rsync -aqvR --acls --perms --mkpath --info=progress2 "${modified_source}" "${destination}"
+}
+
+rsrd()
+{
+    local destination modified_source source 
+    clear
+
+    # you must add an extra folder that is a period '/./' between the full path to the source folder and the source folder itself
+    # or rsync will copy the files to the destination directory and it will be the full path of the souce folder instead of the source
+    # folder and its subfiles only.
+
+    printf "%s\n%s\n%s\n%s\n\n"                                                                    \
+        'This rsync command will recursively copy the source folder to the chosen destination.'    \
+        'The original files will be DELETED after they have been copied to the destination.'       \
+        'If you want to move the files (which deletes the originals then use the function "rsrd".' \
+        'Please enter the full paths of the source and destination directories.'
+
+    printf "%s\n\n" 
+    read -p 'Enter the source path: ' source
+    read -p 'Enter the destination path: ' destination
+    modified_source="$(echo "${source}" | sed 's:/[^/]*$::')"'/./'"$(echo "${source}" | sed 's:.*/::')"
+    clear
+
+    rsync -aqvR --acls --perms --mkpath --remove-source-files "${modified_source}" "${destination}"
+}
+
+################
+## SHELLCHECK ##
+################
+
+sc()
+{
+    local f fname input_char line space
+    clear
+
+    if [ -z "${@}" ]; then
+        read -p 'Input the file path to check: ' fname
+        clear
+    else
+        fname="${@}"
+    fi
+
+    for f in ${fname[@]}
+    do
+        box_out_banner()
+        {
+            input_char=$(echo "${@}" | wc -c)
+            line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+            tput bold
+            line="$(tput setaf 3)${line}"
+            space=${line//-/ }
+            echo " ${line}"
+            printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+            printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
+            printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+            echo " ${line}"
+            tput sgr 0
+        }
+        box_out_banner "Parsing: ${f}"
+        shellcheck "${f}"
+        echo
+    done
+}
+
+###############
+## CLIPBOARD ##
+###############
+
+# COPY ANY TEXT. DOES NOT NEED TO BE IN QUOTES
+# EXAMPLE: ct This is so cool
+# OUTPUT WHEN PASTED: This is so cool
+# USAGE: cp <file name here>
+
+ct()
+{
+    local pipe_this
+    clear
+
+    if [ -z "${@}" ]; then
+        clear
+        printf "%s\n\n%s\n%s\n\n"               \
+            "The command syntax is shown below" \
+            "cc INPUT"                          \
+            'Example: cc $PWD'
+        return 1
+    else
+        pipe_this="${@}"
+    fi
+
+    echo "${pipe_this}" | xclip -i -rmlastnl -sel clip
+    clear
+}
+
+# COPY A FILE'S FULL PATH
+# USAGE: cp <file name here>
+
+cp()
+{
+    local pipe_this
+    clear
+
+    if [ -z "${@}" ]; then
+        clear
+        printf "%s\n\n%s\n%s\n\n"               \
+            "The command syntax is shown below" \
+            "cc INPUT"                          \
+            'Example: cc $PWD'
+        return 1
+    fi
+
+    readlink -fn "${@}" | xclip -i -sel clip
+    clear
+}
+
+# COPY THE CONTENT OF A FILE
+# USAGE: cf <file name here>
+
+function cf()
+{
+    clear
+
+    if [ -z "${1}" ]; then
+        clear
+        printf "%s\n\n%s\n%s\n\n"               \
+            "The command syntax is shown below" \
+            "cc INPUT"                          \
+            'Example: cc $PWD'
+        return 1
+    else
+        cat "${1}" | xclip -i -rmlastnl -sel clip
+    fi
 }

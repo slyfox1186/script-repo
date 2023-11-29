@@ -5,18 +5,15 @@ clear
 printf "%s\n%s\n\n" \
     'Install ~/.bash_functions' \
     '================================='
-
-#
-# SET VARIABLES
-#
-
-file="${HOME}"/.bash_functions
+sleep 2
 
 #
 # CREATE FUNCTIONS
 #
 
-cat > "$file" <<'EOF'
+script_fn()
+{
+cat > file="${HOME}"/.bash_functions <<'EOF'
 #!/usr/bin/env bash
 # shellcheck disable=SC1091,SC2001,SC2162,SC2317
 
@@ -27,10 +24,10 @@ export user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, li
 ######################################################################################
 
 gedit() { "$(type -P gedit)" "${@}" &>/dev/null; }
-geds() { "$(type -P sudo)" -H -u root "$(type -P gedit)" "${@}" &>/dev/null; }
+geds() { sudo -Hu root "$(type -P gedit)" "${@}" &>/dev/null; }
 
 gted() { "$(type -P gted)" "${@}" &>/dev/null; }
-gteds() { "$(type -P sudo)" -H -u root "$(type -P gted)" "${@}" &>/dev/null; }
+gteds() { sudo -Hu root "$(type -P gted)" "${@}" &>/dev/null; }
 
 ###################
 ## FIND COMMANDS ##
@@ -319,7 +316,7 @@ sbrc()
 {
     clear
 
-    source "${HOME}"/.bashrc && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
+    . ~/.bashrc && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
     sleep 1
 
     clear; ls -1AhFv --color --group-directories-first
@@ -329,7 +326,7 @@ spro()
 {
     clear
 
-    source "${HOME}"/.profile && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
+    . ~/.profile && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
     sleep 1
 
     clear; ls -1AhFv --color --group-directories-first
@@ -727,7 +724,7 @@ hw_mon()
     local found
 
     # install lm-sensors if not already
-    if ! which lm-sensors &>/dev/null; then
+    if ! type -P lm-sensors &>/dev/null; then
         sudo pacman -S i2c-tools --noconfirm
     fi
 
@@ -1341,7 +1338,7 @@ adl()
     aria2c \
         --console-log-level=notice \
         --user-agent="${user_agent}" \
-        -x16 \
+        -x32 \
         -j5 \
         --split=32 \
         --allow-overwrite=true \
@@ -1384,7 +1381,7 @@ adlm()
     aria2c \
         --console-log-level=notice \
         --user-agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' \
-        -x16 \
+        -x32 \
         -j5 \
         --split=32 \
         --allow-overwrite=true \

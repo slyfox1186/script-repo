@@ -8,7 +8,7 @@ export user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, li
 ######################################################################################
 
 nn() { "$(type -P nano)" "${@}" &>/dev/null; }
-nns() { "$(type -P sudo)" -H -u root "$(type -P nano)" "${@}" &>/dev/null; }
+nns() { sudo -Hu root "$(type -P nano)" "${@}" &>/dev/null; }
 
 ################################################
 ## GET THE OS AND ARCH OF THE ACTIVE COMPUTER ##
@@ -19,7 +19,7 @@ mypc()
     local os ver
     
     if [ -f '/etc/os-release' ]; then
-        source '/etc/os-release'
+        . '/etc/os-release'
         os="$NAME"
         ver="$VERSION_ID"
     else
@@ -304,13 +304,13 @@ get_time()
 sbrc()
 {
     clear
-    source "${HOME}"/.bashrc && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
+    . ~/.bashrc && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
 }
 
 spro()
 {
     clear
-    source "${HOME}"/.profile && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
+    . ~/.profile && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
 }
 
 ####################
@@ -454,7 +454,7 @@ twatch()
     clear
 
     # install lm-sensors if not already
-    if ! which lm-sensors &>/dev/null; then
+    if ! type -P lm-sensors &>/dev/null; then
         sudo apt -y install lm-sensors
     fi
 
@@ -872,7 +872,7 @@ adl()
     aria2c \
         --console-log-level=notice \
         --user-agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' \
-        -x16 \
+        -x32 \
         -j5 \
         --split=32 \
         --allow-overwrite=true \
@@ -916,7 +916,7 @@ adlm()
     aria2c \
         --console-log-level=notice \
         --user-agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' \
-        -x16 \
+        -x32 \
         -j5 \
         --split=32 \
         --allow-overwrite=true \
