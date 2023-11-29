@@ -88,16 +88,16 @@ export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quo
 # See /usr/share/doc/bash-doc/examples in the bash-doc package.
 
 if [ -f "${HOME}"/.bash_aliases ]; then
-    source "${HOME}"/.bash_aliases
+    . "${HOME}"/.bash_aliases
 fi
 
 # You don't need to enable this, if it's already enabled in /etc/bash.bashrc and /etc/profile
 # sources /etc/bash.bashrc
 if ! shopt -oq posix; then
   if [ -f /usr/share/bash-completion/bash_completion ]; then
-    source /usr/share/bash-completion/bash_completion
+    . /usr/share/bash-completion/bash_completion
   elif [ -f /etc/bash_completion ]; then
-    source /etc/bash_completion
+    . /etc/bash_completion
   fi
 fi
 
@@ -106,7 +106,7 @@ fi
 ####################
 
 if [ -f "${HOME}"/.bash_functions ]; then
-    source "${HOME}"/.bash_functions
+    . "${HOME}"/.bash_functions
 fi
 
 #
@@ -140,5 +140,5 @@ export PS1='\n\[\e[38;5;227m\]\w\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38
 export PYTHONUTF8=1
 
 if [ -f "${HOME}"/.cargo/env ]; then
-    source "${HOME}"/.cargo/env
+    . "${HOME}"/.cargo/env
 fi
