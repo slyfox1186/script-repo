@@ -6,7 +6,7 @@
 ##
 ##  1) Add all of the following types of archives to an empty directory
 ##      - name.tar.gz
-##      - name.tar.tgz
+##      - name.tgz
 ##      - name.tar.xz
 ##      - name.tar.bz2
 ##      - name.tar.lz
