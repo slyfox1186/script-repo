@@ -805,7 +805,7 @@ dlfs()
     do
         chown -R "${USER}":"${USER}" "${f}"
         chmod -R 744 "${PWD}" "${f}"
-        [[ "${f}" == build-all-git-safer || "${f}" == build-all-gnu-safer ]] && mv "${f}" "${f%-safer}"
+        [[ "${f}" == 'build-all-git-safer' || "${f}" == 'build-all-gnu-safer' ]] && mv "${f}" "${f%-safer}"
         [ -n 'favorite-installer-scripts.txt' ] && sudo rm 'favorite-installer-scripts.txt'
     done
     
