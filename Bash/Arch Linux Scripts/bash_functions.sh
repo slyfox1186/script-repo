@@ -67,20 +67,20 @@ untar()
     clear
     local ext gflag jflag xflag
 
-    for i in *.*
+    for archive in *.*
     do
-        ext="${i##*.}"
+        ext="${archive##*.}"
 
-        [[ ! -d "${PWD}"/"${i%%.*}" ]] && mkdir -p "${PWD}"/"${i%%.*}"
+        [[ ! -d "${PWD}"/"${archive%%.*}" ]] && mkdir -p "${PWD}"/"${archive%%.*}"
 
         case "${ext}" in
-            7z|zip)             7z x -o"${PWD}"/"${i%%.*}" "${PWD}"/"${i}";;
+            7z|zip)             7z x -o"${PWD}"/"${archive%%.*}" "${PWD}"/"${archive}";;
             bz2|gz|lz|tgz|xz)
                                 unset gflag jflag xflag
                                 [[ "${ext}" = 'bz2' && "${ext}" != 'gz' && "${ext}" != 'tgz' && "${ext}" != 'lz' ]] && jflag='jxf'
                                 [[ "${ext}" != 'lz' && "${ext}" != 'xz' && "${ext}" != 'bz2' && "${ext}" = 'gz' || "${ext}" = 'tgz' ]] && gflag='zxf'
                                 [[ "${ext}" = 'lz' || "${ext}" = 'xz' && "${ext}" != 'bz2' && "${ext}" != 'gz' && "${ext}" != 'tgz' ]] && xflag='xf'
-                                tar -${xflag}${gflag}${jflag} "${PWD}"/"${i}" -C "${PWD}"/"${i%%.*}" --strip-components 1
+                                tar -${xflag}${gflag}${jflag} "${PWD}"/"${archive}" -C "${PWD}"/"${archive%%.*}" --strip-components 1
                                 ;;
         esac
     done
