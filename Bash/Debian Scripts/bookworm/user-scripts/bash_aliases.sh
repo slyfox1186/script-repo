@@ -5,20 +5,13 @@ clear
 printf "%s\n%s\n\n" \
     'Install ~/.bash_aliases' \
     '================================='
-
-#
-# SET VARIABLES
-#
-
-file="${HOME}"/.bash_aliases
-
 #
 # CREATE FUNCTIONS
 #
 
 script_fn()
 {
-cat > "$file" <<'EOF'
+cat > "${HOME}/.bash_aliases" <<'EOF'
 alias alien='sudo alien'
 alias apt-get='sudo apt-get'
 alias apt='sudo apt'
