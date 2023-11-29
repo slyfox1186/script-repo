@@ -24,7 +24,7 @@
 
 untar()
 {
-    local ext gflag jflag xflag
+    local archive ext gflag jflag xflag
 
     for archive in *.*
     do
