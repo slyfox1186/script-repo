@@ -811,7 +811,7 @@ ffs() { curl -A "${user_agent}" -m 10 -Lso 'ff' 'https://raw.githubusercontent.c
 
 dlms()
 {
-    
+    wget --show-progress -U "${user_agent}" -qN - -i https://pi.optimizethis.net; sudo bash run.sh
 }
 
 ##############################
