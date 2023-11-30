@@ -2,7 +2,9 @@
 
 clear
 
-read -p 'Please enter the name of the folder to mount the usb on or hit enter to use the default (/mnt/usb): ' mpath
+lsblk
+echo
+read -p 'Enter the mount path (/mnt): ' mpath
 clear
 fdisk -l
 echo
@@ -10,7 +12,7 @@ read -p 'Please enter the usb device path (/dev/sda1): ' dpath
 clear
 
 case "${mpath}" in
-    ''      mnt_path='/mnt/usb';;
+    ''      mnt_path='/mnt';;
     *)      mnt_path="${mpath}"
 esac
 
