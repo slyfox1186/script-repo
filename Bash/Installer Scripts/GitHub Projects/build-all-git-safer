@@ -77,7 +77,7 @@ bash <(curl -A "${user_agent}" -sSL 'https://ld-linker.optimizethis.net')
 
 cd "${cwd}" || exit 1
 
-scripts=(adobe-fonts openssl-sts tools aria2 zlib zstd git python3)
+scripts=(adobe-fonts tools aria2 zlib zstd git libxml2 nasm yasm python3)
 
 for script in ${scripts[@]}
 do
