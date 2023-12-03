@@ -329,6 +329,9 @@ alias tkpid='clear; lsof +D ./ | awk '\''{print $2}'\'' | tail -n +2 | xargs -I{
 # CLIPBOARD
 alias v='xclip -o'
 
+# SHOW THE PATHS PKG-CONFIG COMMAND SEARCHES BY DEFAULT
+alias pkg-config-path='clear; pkg-config --variable pc_path pkg-config'
+
 EOF
 }
 
