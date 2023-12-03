@@ -43,9 +43,9 @@ if [ -n "${missing_pkgs}" ]; then
         printf "\n%s\n\n" 'The required APT packages were successfully installed!'
     fi
 else
-    printf "\n%s\n\n" 'The required APT packages are already installed.'
+    printf "%s\n\n" 'The required APT packages are already installed.'
 fi
-sleep 3
+sleep 2
 clear
 
 #
