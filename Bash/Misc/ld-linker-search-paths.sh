@@ -24,5 +24,4 @@ cat > '/etc/ld.so.conf.d/user-local-libs.conf' <<'EOF'
 /lib
 EOF
 
-clear
-sudo ldconfig -v
+sudo ldconfig
