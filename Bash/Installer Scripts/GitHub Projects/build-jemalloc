@@ -91,6 +91,7 @@ if ! sudo make install; then
     fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
 fi
 
+# ADD LIBRARY PATHS TO THE LD LINKER COMMAND
 sudo bash -c "bash <(curl -A ${user_agent} -sSL 'https://ld-linker.optimizethis.net')"
 
 sudo ldconfig -v
