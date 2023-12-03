@@ -1948,6 +1948,19 @@ function cf()
     fi
 }
 
+########################
+## PKG-CONFIG COMMAND ##
+########################
+
+# SHOW THE PATHS PKG-CONFIG COMMAND SEARCHES BY DEFAULT
+pkg_path()
+{
+    local split_path
+    split_path="$(pkg-config --variable pc_path pkg-config | tr ':' '\n')"
+    clear
+    echo "${split_path}"
+}
+
 EOF
 }
 
