@@ -55,7 +55,7 @@ clear
 pip_dir="$(mktemp -d)"
 echo 'ffpb' > "${pip_dir}"/requirements.txt
 echo 'google_speech' >> "${pip_dir}"/requirements.txt
-if ! pip install -r "${pip_dir}"/requirements.txt &>/dev/null; then
+if ! pip install --user -r "${pip_dir}"/requirements.txt &>/dev/null; then
     printf "%s\n\n" 'Failed to install the pip packages.'
     exit 1
 fi
