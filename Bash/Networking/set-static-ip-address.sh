@@ -22,7 +22,7 @@ cnt=0
 printf "%s\n\n" 'Disclaimer:'
 
 printf "%s\n\n%s\n%s\n\n" \
-    'I take NO responsibility for your system'\''s internet not working after running this script. By continuing, you AGREE to this and fully understand the implications, and will not hold me accountable for any damages suffered on your behalf!' \
+    'I take NO responsibility for your system'\''s internet not working after running this script. By continuing, you AGREE to this and fully understand the implications and will not hold me accountable for any damages suffered on your behalf!' \
     '[1] I fully understand and agree to continue using this script.' \
     '[2] I want to exit this script and not go any further.'
 read -p 'Your choices are (1 or 2): ' user_agreement
