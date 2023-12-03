@@ -148,19 +148,17 @@ pkgs=("${1}" autoconf autoconf-archive autogen automake build-essential ca-certi
       libgpg-error-dev libjemalloc-dev libmbedtls-dev libnghttp2-dev librust-openssl-dev libsqlite3-dev
       libssh2-1-dev libssh-dev libssl-dev libxml2-dev pkg-config zlib1g-dev)
 
-for i in ${pkgs[@]}
+for pkg in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep ${i})"
+    missing_pkg="$(sudo dpkg -l | grep -o ${pkg})"
 
     if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+        missing_pkgs+=" ${pkg}"
     fi
 done
-unset i
 
 if [ -n "${missing_pkgs}" ]; then
     sudo apt -y install ${missing_pkgs}
-    clear
 fi
 
 #
