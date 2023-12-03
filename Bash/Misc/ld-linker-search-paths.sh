@@ -13,12 +13,9 @@ printf "%s\n%s\n\n"                                           \
 sleep 2
 
 cat > '/etc/ld.so.conf.d/user-local-libs.conf' <<'EOF'
-/usr/local/ssl/lib
 /usr/local/x86_64-linux-gnu/lib
-/usr/local/lib64
-/usr/local/lib
-/usr/local/cuda-12.3/targets/x86_64-linux/lib
-/usr/local/cuda-12.3/nvvm/lib64
+/usr/local/cuda/nvvm/lib64
+/usr/local/cuda/targets/x86_64-linux/lib
 EOF
 
 clear
