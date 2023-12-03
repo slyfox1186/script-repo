@@ -6,9 +6,11 @@
 ##
 ##  Purpose: build gnu bash
 ##
-##  Updated: 11.10.23
+##  Updated: 12.03.23
 ##
-##  Script version: 2.1
+##  Script version: 2.2
+##
+##  Fixed: TEMPLATE error: removed "autoreconf -fi" then added >> "autoupdate & autoconf"
 ##
 ###########################################################################################################################
 
@@ -23,7 +25,7 @@ fi
 # SET THE VARIABLES
 #
 
-script_ver=2.1
+script_ver=2.2
 archive_dir=bash-5.2.21
 archive_url=https://ftp.gnu.org/gnu/bash/"${archive_dir}".tar.gz
 archive_ext="${archive_url//*.}"
@@ -68,12 +70,12 @@ PATH="\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
+/usr/local/cuda/bin:\
 /usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/local/cuda/bin:\
 /snap/bin\
 "
 export PATH
@@ -148,9 +150,9 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autoconf-archive autogen automake binutils bison build-essential bzip2 ccache curl
-      libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev
-      yasm)
+pkgs=(autoconf autoconf-archive autogen automake binutils bison build-essential
+      bzip2 ccache curl gettext libc6-dev libintl-perl libpth-dev libtool libtool-bin
+      lzip lzma-dev m4 nasm texinfo yasm zlib1g-dev)
 
 for i in ${pkgs[@]}
 do
@@ -198,7 +200,8 @@ fi
 #
 
 cd "${cwd}/${archive_dir}" || exit 1
-autoreconf -fi
+autoupdate
+autoconf
 cd build || exit 1
 ../configure --prefix="${install_dir}"       \
              --{build,host}=x86_64-linux-gnu \
