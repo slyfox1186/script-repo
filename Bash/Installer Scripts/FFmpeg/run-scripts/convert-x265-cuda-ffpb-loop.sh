@@ -15,33 +15,38 @@ fi
 # CREATE THE OUTPUT DIRECTORIES
 #
 
-mkdir 'completed' 'original' 2>/dev/null
+if [ ! -d 'completed' ] || [ ! -d 'original' ]; then
+    mkdir 'completed' 'original'
+fi
 
 #
 # INSTALLL THE REQUIRED APT PACKAGES
 #
 
-installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
+pkgs=(bc ffmpegthumbnailer ffmpegthumbs libffmpegthumbnailer4v5 libsox-dev python3-pip sox trash-cli)
 
-pkgs=(bc ffmpegthumbnailer ffmpegthumbs libffmpegthumbnailer4v5 sox libsox-dev trash-cli)
+clear
 
 for pkg in ${pkgs[@]}
 do
-    if ! installed "${pkg}"; then
+    missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
+    if [ -z "${missing_pkg}" ]; then
         missing_pkgs+=" ${pkg}"
     fi
 done
 
 if [ -n "${missing_pkgs}" ]; then
-    echo '$ Installing missing packages'
-    echo
-    for i in "${missing_pkgs[@]}"
-    do
-        if ! sudo apt -y install ${i}; then
-            fail_fn 'Failed to run APT package manager.'
-        fi
-    done
+    printf "%s\n\n" "$ Installing: ${missing_pkgs}"
+    if ! sudo apt -y install ${missing_pkgs}; then
+        fail_fn "Failed to install the required APT packages: ${missing_pkgs}"
+    else
+        printf "\n%s\n\n" 'The required APT packages were successfully installed!'
+    fi
+else
+    printf "\n%s\n\n" 'The required APT packages are already installed.'
 fi
+sleep 3
+clear
 
 #
 # INSTALL THE REQUIRED PIP PACKAGES
@@ -55,7 +60,6 @@ if ! pip install -r "${pip_dir}"/requirements.txt &>/dev/null; then
     exit 1
 fi
 sudo rm -fr "${pip_dir}"
-unset pip_dir
 
 #
 # DELETE ANY FILES FROM PREVIOUS RUNS
@@ -85,12 +89,12 @@ fi
 
 # MAKE SURE THERE ARE VIDEOS AVAILABLE TO CONVERT
 vid_test="$(find ./ -maxdepth 1 -type f \( -iname \*.mp4 -o -iname \*.mkv \) | xargs -0n1 | head -n1)"
+
 if [ -z "${vid_test}" ]; then
-    google_speech 'No videos were located. Please add some.' 2>/dev/null
+    google_speech 'No videos were located. Please add some to the script'\''s directory and try again.' 2>/dev/null
     clear
     exit 0
 fi
-unset vid_test
 
 # CREATE A TEMPORARY OUTPUT FOLDER IN THE /TMP DIRECTORY
 ff_dir="$(mktemp -d)"
