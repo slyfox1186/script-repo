@@ -1978,6 +1978,22 @@ show_rpath()
     chrpath -l "$(type -p ${find_rpath})"
 }
 
+######################################
+## DOWNLOAD CLANG INSTALLER SCRIPTS ##
+######################################
+
+dl_clang()
+{
+    clear
+    cd "${HOME}"/tmp || exit 1
+    wget --show-progress -U "${user_agent}" -cq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-16'
+    wget --show-progress -U "${user_agent}" -cq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-17'
+    sudo chmod a+rwx build-clang-16 build-clang-17
+    sudo chown jman:jman build-clang-16 build-clang-17
+    clear
+    ls -1A --color --group-directories-first
+}
+
 EOF
 }
 
