@@ -7,11 +7,6 @@ if [ "${EUID}" -ne '0' ]; then
     exit 1
 fi
 
-printf "%s\n%s\n\n"                                           \
-    'Creating a custom config file for the ld linker'         \
-    '======================================================='
-sleep 2
-
 cat > '/etc/ld.so.conf.d/user-local-libs.conf' <<'EOF'
 /usr/local/x86_64-linux-gnu/lib
 /usr/local/cuda/nvvm/lib64
