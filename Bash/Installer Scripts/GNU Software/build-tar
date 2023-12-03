@@ -47,16 +47,17 @@ fi
 mkdir -p "${cwd}"
 
 #
-# SET THE C + CPP COMPILERS
+# SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
 #
 
-export CC=gcc CXX=g++
-
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
+CC=gcc
+CXX=g++
+CFLAGS='-g -O3 -pipe -march=native'
+CXXFLAGS="${CFLAGS}"
+CPPFLAGS="-I${install_dir}/include -I${install_dir}/include/x86_64-linux-gnu -I/usr/include"
+LDFLAGS="-Wl,-rpath -Wl,${install_dir}/lib -Wl,--enable-new-dtags -L${install_dir}/lib64 -L${install_dir}/lib"
+LDFLAGS+=" -L${install_dir}/lib/x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib"
+export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
 #
 # SET THE PATH VARIABLE
@@ -67,12 +68,12 @@ PATH="\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
+/usr/local/cuda/bin:\
 /usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/local/cuda/bin:\
 /snap/bin\
 "
 export PATH
@@ -82,17 +83,11 @@ export PATH
 #
 
 PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/pkgconfig:\
+/lib/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -146,10 +141,9 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-
-pkgs=(autoconf autoconf-archive autogen automake binutils bison build-essential bzip2 ccache curl
-	  libc6-dev libintl-perl libtool libtool-bin libzstd-dev lzip lzma lzma-dev m4 nasm
-	  texinfo xz-utils zlib1g-dev zstd yasm)
+pkgs=(autoconf autoconf-archive autogen automake binutils bison build-essential bzip2 ccache
+      curl libc6-dev libintl-perl libtool libtool-bin libzstd-dev lzip lzma lzma-dev m4 nasm
+      texinfo xz-utils zlib1g-dev zstd yasm)
 
 for i in ${pkgs[@]}
 do
@@ -225,7 +219,7 @@ cd build || exit 1
              --with-zstd="$(type -P zstd)"
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
+    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
     exit 1
 fi
 
