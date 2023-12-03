@@ -162,20 +162,21 @@ EOF
             -hide_banner \
             -hwaccel_output_format cuda \
             -i "${file_in}" \
-            -pix_fmt p010le \
-            -movflags frag_keyframe+empty_moov \
             -c:v hevc_nvenc \
             -preset:v medium \
-            -profile:v main \
+            -profile:v main10 \
+            -pix_fmt:v p010le \
             -rc:v vbr \
+            -tune:v hq \
             -b:v "${bitrate}"k \
             -bufsize:v "${bufsize}"k \
+            -maxrate:v "${maxrate}"k \
             -bf:v 4 \
             -b_ref_mode:v middle \
             -qmin:v 0 \
             -qmax:v 99 \
             -temporal-aq:v 1 \
-            -rc-lookahead:v 20 \
+            -rc-lookahead:v 70 \
             -i_qfactor:v 0.75 \
             -b_qfactor:v 1.1 \
             -c:a libfdk_aac \
