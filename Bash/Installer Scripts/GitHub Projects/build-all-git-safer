@@ -73,7 +73,7 @@ if [ -n "${missing_pkgs}" ]; then
     clear
 fi
 
-bash <(curl -A "${user_agent}" -sSL 'https://ld-linker.optimizethis.net')
+sudo bash -c 'bash <(curl -sSL https://ld-linker.optimizethis.net)'
 
 cd "${cwd}" || exit 1
 
