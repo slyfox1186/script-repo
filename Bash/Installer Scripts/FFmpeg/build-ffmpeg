@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1091,SC2000,SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
 
-#############################################################################################################
+#############################################################################################################################
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
@@ -11,7 +11,7 @@
 ##
 ##  Updated on
 ##
-##    - 11.17.23
+##    - 12.03.23
 ##
 ##  Purpose:
 ##
@@ -44,10 +44,10 @@
 ##  Updated
 ##
 ##    - ffmpeg to version n5.1.4
+##    - rav1e library to version (p20231128 - 11.28.23)
 ##    - abseil library
 ##    - aom/av1 library
 ##    - libvpx library
-##    - rav1e library to version p20231024 (10.21.23)
 ##    - x265 library
 ##
 ##  Added
@@ -63,6 +63,7 @@
 ##    - VapourSynth library support
 ##    - Windows WSL2 support
 ##    - Vulkan Support
+##    - Extra code to support DSO symbols in the LDFLAGS compiler variable
 ##
 ##  Removed
 ##
@@ -72,15 +73,17 @@
 ##
 ##  Fixed
 ##
-##    - gpac was missing a required .so file from libjpeg-turbo
-##    - the nvidia-smi command not being installed for Debian OS versions
-##    - gpac build issue due to the sdl2 library not being found in the workspace folder
-##    - libheif not building the specified plugins
-##    - the code that prompts the user to install the CUDA SDK ToolKit
-##    - a broken download url for the WSL version of the CUDA SDK ToolKit
+##    - GPAC was missing a required .so file from libjpeg-turbo
+##    - GPAC build issue due to the sdl2 library not being found in the workspace folder
+##    - The nvidia-smi command not being installed for Debian OS versions
+##    - LibHeif not building the specified plugins
+##    - The code that prompts the user to install the CUDA SDK ToolKit
+##    - A broken download url for the WSL version of the CUDA SDK ToolKit
 ##    - APT package errors for Debian 11 Bullseye
+##    - Arch Linux error not being able to find a file tha does not exist on Arch when installing CUDA.
+##      The script will get the information sought by executing a different command that Arch does provide.
 ##
-#############################################################################################################
+#############################################################################################################################
 
 #
 # DEFINE GLOBAL VARIABLES
@@ -141,27 +144,22 @@ box_out_banner1 "FFmpeg Build Script - v${script_ver}"
 printf "\n%s\n\n" "The script will utilize (${cpu_threads}) CPU threads for parallel processing to accelerate the build speed."
 
 #
-# SET THE C & C++ COMPILERS TO THE HIGHEST VERSION INSTALLED
+# SET THE CC/CPP COMPILERS + CUSTOMIZED COMPILER OPTIMIZATION FLAGS
 #
-
-export CC=gcc CXX=g++
-
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
-
+ 
 source_flags_fn()
 {
-    EXTRALIBS="-ldl -lpthread -lm -lz -L/usr/lib/x86_64-linux-gnu -lcurl -lvulkan -L${workspace}/lib -llcms2 -llcms2_threaded"
-    EXTRALIBS+=" -lhwy -lbrotlidec -lbrotlienc -ltesseract -L/usr/local/cuda/targets/x86_64-linux/lib -lOpenCL"
-    CXXFLAGS='-g -O3 -march=native'
-    CFLAGS="${CXXFLAGS} -I${workspace}/include -I${workspace}/include/jxl -I${workspace}/include/fdk-aac -I/usr/local/include -I/usr/include"
-    CFLAGS+=" -I${workspace}/include/CL -I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2 -I/usr/lib/x86_64-linux-gnu/pulseaudio -I/usr/include/openjpeg-2.5"
-    CFLAGS+=" -I/usr/include/vk_video -I/usr/include/vulkan -I${workspace}/include/avisynth -I/usr/include/flite"
-    CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include"
-    LDFLAGS="-L${workspace}/lib64 -L${workspace}/lib -L${workspace}/lib/x86_64-linux-gnu -L/usr/local/lib64"
-    LDFLAGS+=' -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
-    export CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
+    CC=gcc
+    CXX=g++
+    EXTRALIBS="-ldl -lpthread -lm -lz -L${install_dir}/lib -lbrotlicommon -lbrotlidec -lbrotlienc -L${install_dir}/lib -lhwy -ltesseract"
+    EXTRALIBS+=" -L${workspace}/lib -llcms2 -llcms2_threaded -L${install_dir}/cuda/targets/x86_64-linux/lib -lOpenCL"
+    CXXFLAGS='-g -O3 -pipe -march=native'
+    CFLAGS="${CXXFLAGS} -I${workspace}/include -I${workspace}/include/jxl -I${workspace}/include/fdk-aac -I${workspace}/include/CL -I${workspace}/include/avisynth"
+    CFLAGS+=' -I/usr/include/SDL2 -I/usr/lib/x86_64-linux-gnu/pulseaudio -I/usr/include/openjpeg-2.5 -I/usr/include/vk_video -I/usr/include/vulkan -I/usr/include/flite'
+    CPPFLAGS="-I${workspace}/include"
+    LDFLAGS="-Wl,--copy-dt-needed-entries -Wl,--enable-new-dtags -L${workspace}/lib64 -L${workspace}/lib -L${workspace}/lib/x86_64-linux-gnu"
+    LDFLAGS+=" -L${install_dir}/lib64 -L${install_dir}/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib"
+    export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 }
 source_flags_fn
 
@@ -195,11 +193,11 @@ cleanup_fn()
 {
     local answer
 
-    printf "\n%s\n%s\n%s\n\n%s\n%s\n"                  \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes'                                      \
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n"                              \
+        '========================================================' \
+        '        Do you want to clean up the build files?        ' \
+        '========================================================' \
+        '[1] Yes'                                                  \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
 
@@ -216,10 +214,10 @@ cleanup_fn()
 
 ff_ver_fn()
 {
-    printf "\n%s\n%s\n%s\n\n"                          \
-        '============================================' \
-        '               FFmpeg Version               ' \
-        '============================================'
+    printf "\n%s\n%s\n%s\n\n"                                      \
+        '========================================================' \
+        '                     FFmpeg Version                     ' \
+        '========================================================'
     ffmpeg -version
     sleep 2
 }
@@ -495,7 +493,7 @@ build()
 {
     printf "\n%s\n%s\n"                \
         "Building ${1} - version ${2}" \
-        '===================================='
+        '========================================================'
 
     if [ -f "${packages}/${1}.done" ]; then
         if grep -Fx "${2}" "${packages}/${1}.done" >/dev/null; then
@@ -703,24 +701,21 @@ export PATH
 #
 
 PKG_CONFIG_PATH="\
-${workspace}/usr/lib/pkgconfig:\
 ${workspace}/lib64/pkgconfig:\
-${workspace}/lib/pkgconfig:\
 ${workspace}/lib/x86_64-linux-gnu/pkgconfig:\
+${workspace}/lib/pkgconfig:\
 ${workspace}/share/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/pkgconfig:\
 /usr/local/share/pkgconfig:\
 /usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/open-coarrays/openmpi/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/openmpi/lib/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/share/pkgconfig:\
 /lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
+/lib/x86_64-linux-gnu/pkgconfig:\
+/lib/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -790,7 +785,7 @@ cuda_download_fn()
     7)
             git clone -q 'https://gitlab.archlinux.org/archlinux/packaging/packages/cuda.git'
             cd cuda || exit 1
-            makepkg -sif --cleanbuild --needed --noconfirm
+            makepkg -sif -C --needed --noconfirm
             return 0
             ;;
     8)
@@ -895,7 +890,7 @@ pkgs_fn()
 
     printf "%s\n%s\n"                          \
         'Installing the required APT packages' \
-        '=============================================='
+        '========================================================'
 
     pkgs=("${1}" ant apt asciidoc autoconf autoconf-archive automake autopoint binutils bison build-essential
           cargo ccache checkinstall clang clang-tools cmake curl default-jdk-headless doxygen fcitx-libs-dev
@@ -2129,8 +2124,8 @@ if build 'libfdk-aac' '2.0.2'; then
     download 'https://master.dl.sourceforge.net/project/opencore-amr/fdk-aac/fdk-aac-2.0.2.tar.gz?viasf=1' 'libfdk-aac-2.0.2.tar.gz'
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}" \
-                        --disable-shared        \
-                        --enable-static
+                        --{build,host}="${pc_type}" \
+                        --disable-shared
     execute make "-j${cpu_threads}"
     execute make install
     build_done 'libfdk-aac' '2.0.2'
@@ -2349,7 +2344,7 @@ ffmpeg_libraries+=('--enable-libdav1d')
 # RAV1E FAILS TO BUILD ON UBUNTU BIONIC AND DEBIAN 11 BULLSEYE
 if [ "${VER}" != '18.04' ] && [ "${VER}" != '11' ]; then
     pre_check_ver 'xiph/rav1e' '1' 'T'
-    if build 'rav1e' 'p20231024'; then
+    if build 'rav1e' 'p20231128'; then
         get_rustc_ver="$(rustc --version | grep -Eo '[0-9\.]+' | head -n1)"
         if [ "${get_rustc_ver}" != '1.73.0' ]; then
             echo '$ Installing RustUp'
@@ -2363,12 +2358,12 @@ if [ "${VER}" != '18.04' ] && [ "${VER}" != '11' ]; then
             rm -fr "${HOME}"/.cargo/registry/index/* "${HOME}"/.cargo/.package-cache
         fi
         execute cargo install cargo-c
-        download 'https://github.com/xiph/rav1e/archive/refs/tags/p20231024.tar.gz' 'rav1e-p20231024.tar.gz'
+        download 'https://github.com/xiph/rav1e/archive/refs/tags/p20231128.tar.gz' 'rav1e-p20231128.tar.gz'
         execute cargo cinstall --prefix="${workspace}"  \
                                --library-type=staticlib \
                                --crt-static             \
                                --release
-        build_done 'rav1e' 'p20231024'
+        build_done 'rav1e' 'p20231128'
     fi
     ffmpeg_libraries+=('--enable-librav1e')
 fi
@@ -2589,7 +2584,6 @@ ffmpeg_libraries+=('--enable-libsvtav1')
 git_ver_fn '536' '2' 'B'
 g_sver="${g_ver::8}"
 if build 'x264' "${g_sver}"; then
-    LDFLAGS='-Wl,--copy-dt-needed-entries'
     download "https://code.videolan.org/videolan/x264/-/archive/${g_ver}/x264-${g_ver}.tar.bz2" "x264-${g_sver}.tar.bz2"
     execute ./configure --prefix="${workspace}" \
                         --bit-depth=all         \
@@ -2608,6 +2602,7 @@ source_flags_fn
 
 # X265 GIVES BETTER FPS WHEN BUILT WITH CLANG
 export CC=clang CXX=clang++
+
 # ENTER A SNAPSHOT ID FOR X265
 g_ver=8ee01d45b05cdbc9da89b884815257807a514bc8
 g_sver="${g_ver::7}"
@@ -2681,7 +2676,7 @@ fi
 ffmpeg_libraries+=('--enable-libx265')
 
 # CHANGE THE COMPILERS BACK TO GCC FOR THE REST OF THE BUILD
-export CC=gcc CXX=g++
+source_flags_fn
 
 # Vaapi doesn't work well with static links FFmpeg.
 if [ -z "${LDEXEFLAGS}" ]; then
@@ -2835,6 +2830,7 @@ box_out_banner_images 'Installing Image Tools'
 pre_check_ver 'strukturag/libheif' '1' 'T'
 if build 'libheif' "${g_ver}"; then
     download "https://github.com/strukturag/libheif/archive/refs/tags/v${g_ver}.tar.gz" "libheif-${g_ver}.tar.gz"
+    source_flags_fn
     export {CFLAGS,CXXFLAGS}='-g -O3 -fno-lto -pipe -march=native'
     libde265_libs="$(sudo find /usr -type f -name 'libde265.so')"
     if [ -f "${libde265_libs}" ] && [ ! -f '/usr/lib/x86_64-linux-gnu/libde265.so' ]; then
