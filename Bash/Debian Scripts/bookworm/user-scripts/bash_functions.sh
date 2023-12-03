@@ -1961,6 +1961,25 @@ pkg_path()
     echo "${split_path}"
 }
 
+######################################
+## SHOW BINARY RUNPATH IF IT EXISTS ##
+######################################
+
+show_rpath()
+{
+    local find_rpath
+    clear
+
+    if [ -z "${1}" ]; then
+        read -p 'Enter the full path to the binary/program: ' find_rpath
+    else
+        find_rpath="${1}"
+    fi
+
+    clear
+    chrpath -l "$(type -p ${find_rpath})"
+}
+
 EOF
 }
 
