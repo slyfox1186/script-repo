@@ -3,7 +3,8 @@
 
 clear
 
-sudo apt -y install trash-cli
+sudo apt -y install libsox-dev sox trash-cli python3-pip
+pip install --user ffpb google_speech
 clear
 
 #
@@ -75,7 +76,7 @@ EOF
     #
 
     echo
-    if ffmpeg \
+    if ffpb \
             -y \
             -threads 0 \
             -hide_banner \
@@ -95,7 +96,7 @@ EOF
             -qmin:v 0 \
             -qmax:v 99 \
             -temporal-aq:v 1 \
-            -rc-lookahead:v 20 \
+            -rc-lookahead:v 70 \
             -i_qfactor:v 0.75 \
             -b_qfactor:v 1.1 \
             -c:a libfdk_aac \
