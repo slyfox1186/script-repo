@@ -4,9 +4,12 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/Installer%20Scripts/GNU%20Software/build-curl
 ##
-##  Purpose: Build cURL
+##  Purpose: Build cURL with OpenSSL QUIC enabled to support experimental HTTP3.
 ##
-##  Updated: 12.02.23
+##  Important Info: This will install a custom version of OpenSSL that has been forked from the official branch and enables
+##                  QUIC protocol. So if you do not want to mess with installing OpenSSL then do not run this script!
+##
+##  Updated: 12.03.23
 ##
 ##  Script version: 1.0
 ##
