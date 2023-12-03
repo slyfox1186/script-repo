@@ -22,7 +22,7 @@ cnt=0
 printf "%s\n\n" 'Disclaimer:'
 
 printf "%s\n\n%s\n%s\n\n" \
-    'I take NO responsibility for your system'\''s internet not working after running this script. By continuing, you AGREE to this and fully understand the implications and will not hold me accountable for any damages suffered on your behalf!' \
+    'I take NO responsibility for your system'\''s internet not working after running this script. By continuing, you AGREE to this and fully understand the implications, and will not hold me accountable for any damages suffered on your behalf!' \
     '[1] I fully understand and agree to continue using this script.' \
     '[2] I want to exit this script and not go any further.'
 read -p 'Your choices are (1 or 2): ' user_agreement
@@ -44,7 +44,45 @@ if [ ! -f "${fname}".bak ]; then
     clear
 fi
 
-activate_fn()
+show_changes_fn()
+{
+    #
+    # PRINT THE CONTENTS OF THE UPDATED INTERFACE FILE
+    #
+
+    clear
+    printf "%s\n\n%s\n\n"                                     \
+        'The new "interfaces" file contents are shown below.' \
+        '=================================================================================='
+    cat "${fname}"
+
+    #
+    # PRINT INSTRUCTIONS AND OTHER INFO TO THE USER
+    #
+
+    printf "\n%s\n\n%s\n\n%s\n\n%s\n%s\n\n"                                                                      \
+        '=================================================================================='                     \
+        'To activate the changes you must reboot your PC or execute commands such as "sudo if down; sudo if up"' \
+        'Would you like the script to activate the changes now?'                                                 \
+        '[1] Yes'                                                                                                \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' enable_choice
+    clear
+
+    case "${enable_choice}" in
+        1)
+                # BRING DOWN THE USER-CHOSEN NETWORK INTERFACE
+                sudo ifdown "${interface}"
+                # CLEAR ANY CACHES THAT WOULD INTERFERE WITH THE IFUP COMMAND COMPLETING SUCCESSFULLY
+                sudo ip addr flush dev "${interface}" 2>&1
+                # BRING UP THE NETWORK
+                sudo ifup "${interface}"
+                ;;
+        2)      exit 0;;
+    esac
+}
+
+activate_static_fn()
 {
     if [ -n "${1}" ]; then
         add_ns="dns-nameservers ${1}"
@@ -70,6 +108,50 @@ iface ${interface} inet static
     ${add_ns}
 EOF
 }
+
+activate_dhcp_fn()
+{
+    cat > "${fname}" <<EOF
+# This file describes the network interfaces available on your system
+# and how to activate them. For more information, see interfaces(5).
+
+source /etc/network/interfaces.d/*
+
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+# The primary network interface
+auto ${interface}
+iface ${interface} inet dhcp
+EOF
+}
+
+choose_type_fn()
+{
+    printf "%s\n\n%s\n%s\n\n"                  \
+        'Choose the type of network interface' \
+        '[1] DHCP'                             \
+        '[2] Static IP'
+    read -p 'Your choices are (1 or 2): ' type_choice
+    clear
+
+    case "${type_choice}" in
+        1)
+                read -p 'Enter Network Interface: (eth0): '  interface
+                activate_dhcp_fn
+                show_changes_fn
+                exit 0
+                ;;
+        2)      clear;;
+        *)
+                unset type_choice
+                clear
+                choose_type_fn
+                ;;
+    esac
+}
+choose_type_fn
 
 #
 # PROMPT THE USER TO INPUT THE NETWORK SETTINGS
@@ -140,46 +222,11 @@ read -p 'Your choices are (1 or 2): ' choice
 clear
 
 case "${choice}" in
-    1)      activate_fn "${ns_cnt}";;
+    1)      activate_static_fn "${ns_cnt}";;
     2)      exit 0;;
     *)
             clear
             printf "%s\n\n" 'Bad user input. Please re-run the script and start over.'
             exit 1
             ;;
-esac
-
-#
-# PRINT THE CONTENTS OF THE UPDATED INTERFACE FILE
-#
-
-clear
-printf "%s\n\n%s\n\n"                                     \
-    'The new "interfaces" file contents are shown below.' \
-    '=================================================================================='
-cat "${fname}"
-
-#
-# PRINT INSTRUCTIONS AND OTHER INFO TO THE USER
-#
-
-printf "\n%s\n\n%s\n\n%s\n\n%s\n%s\n\n"                                                                      \
-    '=================================================================================='                     \
-    'To activate the changes you must reboot your PC or execute commands such as "sudo if down; sudo if up"' \
-    'Would you like the script to activate the changes now?'                                                 \
-    '[1] Yes'                                                                                                \
-    '[2] No'
-read -p 'Your choices are (1 or 2): ' enable_choice
-clear
-
-case "${enable_choice}" in
-    1)
-            # BRING DOWN THE USER-CHOSEN NETWORK INTERFACE
-            sudo ifdown "${interface}"
-            # CLEAR ANY CACHES THAT WOULD INTERFERE WITH THE IFUP COMMAND COMPLETING SUCCESSFULLY
-            sudo ip addr flush dev "${interface}" 2>&1
-            # BRING UP THE NETWORK
-            sudo ifup "${interface}"
-            ;;
-    2)      exit 0;;
 esac
