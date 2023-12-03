@@ -12,17 +12,15 @@ fi
 
 if [ ! -f "${fname}".bak ]; then
     sudo cp "${fname}" "${fname}".bak
-    printf "%s\n\n" 'The interfaces file was just backed up. If required, you can find it in the same folder as the original.'
-else
-    printf "%s\n\n" 'No need to backup the original file as it has already been done.'
+    printf "%s\n\n" 'The "interfaces" file has just been backed up. If required, you can find it in the same folder as the original.'
+    read -p 'Press enter to continue.'
+    clear
 fi
-sleep 4
-clear
 
 activate_fn()
 {
     if [ -n "${1}" ]; then
-        add_ns="$(dns-nameservers "${1}")"
+        add_ns="${1}"
     fi
 
 cat > "${fname}" <<EOF
@@ -42,11 +40,11 @@ iface ${interface} inet static
     netmask ${netmask}
     broadcast ${broadcast}
     gateway ${gateway}
-    ${add_ns}
+    dns-nameservers ${add_ns}
 EOF
 }
 
-cnt=1
+cnt=0
 
 get_input_fn()
 {
@@ -57,21 +55,23 @@ get_input_fn()
     read -p 'Enter Gateway: (192.168.2.1): '     gateway
     clear
 
-    while true
+    while [ "${cnt}" -lt '4' ]
     do
         ((cnt++))
         read -p "Enter Nameserver: (1.1.1.1): "  nameserver$cnt
         while true
         do
+            echo
             read -p 'Enter another? yes/no: ' reply
+            clear
             case "${reply}" in
                 Y|y|Yes|yes|"")     break;;
                 N|n|No|no)          break 2;;
                 *)
                                     clear
-                                    printf "%s\n\n" 'Bad user input. If you want more nameservers, re-run the script or wait 5 seconds to continue.'
+                                    printf "%s\n\n" 'Bad user input. Please re-run the script.'
                                     sleep 5
-                                    return 0
+                                    exit 1
                                     ;;
             esac
         done
@@ -84,18 +84,18 @@ clear
 case "${cnt}" in
     1)      ns_cnt="${nameserver1}";;
     2)      ns_cnt="${nameserver1} ${nameserver2}";;
-    3)      ns_cnt="${nameserver1 }${nameserver2} ${nameserver3}";;
+    3)      ns_cnt="${nameserver1} ${nameserver2} ${nameserver3}";;
     4)      ns_cnt="${nameserver1} ${nameserver2} ${nameserver3} ${nameserver4}";;
 esac
 
 printf "%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n\n"   \
     'The pending values are shown below...' \
-    "Network Interface: ${interface}"       \
+    "Interface:         ${interface}"       \
     "Static IP:         ${address}"         \
     "Netmask:           ${netmask}"         \
     "Broadcast:         ${broadcast}"       \
     "Gateway:           ${gateway}"         \
-    "Nameserver(s):     ${ns_cnt}"
+    "Nameserver:        ${ns_cnt}"
     
 read -p 'Press [1] to proceed [2] to exit: ' choice
 clear
