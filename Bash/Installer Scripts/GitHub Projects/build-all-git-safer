@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#####################################################################################################################################
+############################################################################################################################################
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-all-git-safer
 ##
@@ -14,7 +14,7 @@
 ##
 ##  Script version: 1.1
 ##
-#####################################################################################################################################
+############################################################################################################################################
 
 clear
 
@@ -33,10 +33,20 @@ cwd="${PWD}"/build-all-git-safer-script
 web_repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
+#
+# CREATE OUTPUT DIRECTORIES
+#
+
 if [ -d "${cwd}" ]; then
     sudo rm -fr "${cwd}"
 fi
 mkdir -p "${cwd}"/completed
+
+cd "${cwd}" || exit 1
+
+#
+# SET FUNCTIONS
+#
 
 exit_fn()
 {
@@ -53,6 +63,10 @@ fail_fn()
         "To report a bug create an issue at: ${web_repo}/issues"
     exit 1
 }
+
+#
+# INSTALL REQUIRED APT PACKAGES
+#
 
 pkgs=(asciidoc autoconf autoconf-archive autogen automake binutils bison
       build-essential bzip2 ccache cmake curl libtool libtool-bin lzip m4
@@ -73,9 +87,15 @@ if [ -n "${missing_pkgs}" ]; then
     clear
 fi
 
+#
+# ADD ADDITIONAL SEARCH PATHS TO THE LD LIBRARY LINKER
+#
+
 sudo bash -c 'bash <(curl -sSL https://ld-linker.optimizethis.net)'
 
-cd "${cwd}" || exit 1
+#
+# DOWNLOAD SCRIPTS
+#
 
 scripts=(adobe-fonts tools aria2 zlib zstd git libxml2 nasm yasm python3)
 
@@ -88,6 +108,10 @@ done
 
 clear
 
+#
+# LOOP AND EXECUTE THE SCRIPTS IN NUMERICAL ORDER
+#
+
 for f in $(find ./ -maxdepth 1 -type f | sort -V | sed 's/\.\///g')
 do
     if echo '1' | bash "${f}"; then
@@ -99,6 +123,10 @@ do
         mv "${f}" "${cwd}"/failed
     fi
 done
+
+#
+# IF A SCRIPT FAILED DURING THE LOOP, ALERT THE USER AND DO NOT DELTE THE FILE SO THE USER CAN TELL WHICH ONE IT WAS
+#
 
 if [ -d "${cwd}"/failed ]; then
     printf "%s\n\n%s\n\n"                                  \
