@@ -255,9 +255,11 @@ alias nqc='nordvpn connect'
 alias nd='nordvpn disconnect'
 
 # watch commands (system monitoring)
+alias cwatch='watch -n1 ccache --print-stats'
+alias twatch='clear; watch -n0.5 sudo sensors -u k10temp-pci-00c3'
+alias wgpu='clear; watch ndivia-smi'
 alias wmem='clear; watch free -m'
 alias wtemp='clear; watch sensors'
-alias wgpu='clear; watch ndivia-smi'
 
 # UBUNTU VERSION
 alias uver="clear; lsb_release -d | grep -Eo 'Ubuntu [0-9\.]+.*$'"
