@@ -10,8 +10,8 @@ random_dir="$(mktemp -d)"
 dl_url='https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Ubuntu%20Scripts/jammy/user-scripts/jammy-scripts.txt'
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
-shell_array=(bash_aliases.sh bash_functions.sh)
-script_array=(.bash_aliases .bash_functions .bashrc)
+shell_array=('bash_aliases.sh' 'bash_functions.sh')
+script_array=('.bash_aliases' '.bash_functions' '.bashrc)
 
 #
 # CREATE FUNCTIONS
@@ -27,7 +27,8 @@ fail_fn()
 # DOWNLAOD REQUIRED APT PACKAGES
 #
 
-sudo apt-get -qq -y install wget
+sudo apt -y install wget
+clear
 
 #
 # CD INTO A RANDOM FOLDER TO HOLD AND EXECUTE THE TEMP FILES
@@ -59,28 +60,31 @@ fi
 # PROMPT THE USER TO INSTALL APT-FAST
 #
 
-clear
-printf "%s\n\n%s\n%s\n\n" \
-    'Do you want to install and enable apt-fast as the primary download utility?' \
-    '[1] Yes' \
-    '[2] No'
-read -p 'Your choices are (1 or 2): ' answer
-clear
-
-case "${answer}" in
-    1)
-            bash -c "$(curl -sL https://git.io/vokNn)"
-            apt_flag=yes
-            ;;
-    2)      apt_flag=no;;
-    *)
-            clear
-            printf "%s\n\n" 'Bad user input. Please start over.'
-            exit 1
-            ;;
-esac
-unset answer
-clear
+prompt_fn()
+{
+    local choice
+    clear
+    printf "%s\n\n%s\n%s\n\n"                                                         \
+        'Do you want to install and enable apt-fast as the primary download utility?' \
+        '[1] Yes'                                                                     \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' choice
+    clear
+    
+    case "${choice}" in
+        1)
+                bash -c "$(curl -sL https://git.io/vokNn)"
+                apt_flag=yes
+                ;;
+        2)      apt_flag=no;;
+        *)
+                unset choice
+                clear
+                prompt_fn
+                ;;
+    esac
+}
+prompt_fn
 
 #
 # RUN EACH SHELL SCRIPT TO INSTALL THE USER SCRIPTS
