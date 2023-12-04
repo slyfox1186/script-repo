@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2068,SC2162
+
 
 clear
 
@@ -11,7 +13,7 @@ dl_url='https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Ubunt
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
 shell_array=('bash_aliases.sh' 'bash_functions.sh')
-script_array=('.bash_aliases' '.bash_functions' '.bashrc)
+script_array=('.bash_aliases' '.bash_functions' '.bashrc')
 
 #
 # CREATE FUNCTIONS
@@ -90,20 +92,20 @@ prompt_fn
 # RUN EACH SHELL SCRIPT TO INSTALL THE USER SCRIPTS
 #
 
-for i in ${shell_array[@]}
+for script in ${shell_array[@]}
 do
-    bash "${i}" "${apt_flag}"
+    bash "${script}" "${apt_flag}"
 done
-unset i
+unset script
 
 #
 # UPDATE THE OWNERSHIP OF EACH USER SCRIPT TO THE USER
 #
 
-for i in ${script_array[@]}
+for script in ${script_array[@]}
 do
-    if ! sudo chown "${USER}":"${USER}" "${HOME}/${i}"; then
-        fail_fn "Failed to update the file permissions for ${i}"
+    if ! sudo chown "${USER}":"${USER}" "${HOME}/${script}"; then
+        fail_fn "Failed to update the file permissions for ${script}"
     fi
 done
 unset i
