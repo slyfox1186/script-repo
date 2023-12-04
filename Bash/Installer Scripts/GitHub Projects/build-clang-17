@@ -341,9 +341,8 @@ if build 'llvm' "${g_ver}"; then
     project_pkgs='clang;clang-tools-extra;lld'
     runtime_pkgs='libunwind;libcxxabi;libcxx;openmp'
     cmake -S llvm -B build                                                            \
-          -DCMAKE_install_dir="${install_dir}"                                     \
+          -DCMAKE_install_dir="${install_dir}"                                        \
           -DCMAKE_BUILD_TYPE=Release                                                  \
-          -DLLVM_LOCAL_RPATH="${install_dir}"/lib                                     \
           -DBUILD_SHARED_LIBS=OFF                                                     \
           -DLLVM_ENABLE_LTO=OFF                                                       \
           -DBENCHMARK_ENABLE_LTO=OFF                                                  \
@@ -360,7 +359,6 @@ if build 'llvm' "${g_ver}"; then
           -DCMAKE_CXX_STANDARD=17                                                     \
           -DCMAKE_EXPORT_COMPILE_COMMANDS=OFF                                         \
           -DCMAKE_INSTALL_PACKAGEDIR=lib/cmake                                        \
-          -DCMAKE_INSTALL_RUNSTATEDIR="${install_dir}/lib:$ORIGIN"                    \
           -DCMAKE_LINKER="${ld_gold_linker}"                                          \
           -DGOLD_EXECUTABLE="${ld_gold_linker}"                                       \
           -DCPACK_BINARY_DEB=ON                                                       \
@@ -380,7 +378,7 @@ if build 'llvm' "${g_ver}"; then
           -DLLVM_INCLUDE_DOCS=OFF                                                     \
           -DLLVM_INCLUDE_EXAMPLES=OFF                                                 \
           -DLLVM_TARGETS_TO_BUILD=all                                                 \
-          -DLLVM_TOOL_{CLANG,GOLD,LIBCXX,LIBCXXABI,LIBUNWIND,LLD}_BUILD=ON            \
+          -DLLVM_TOOL_{CLANG,GOLD,LIBCXX,LIBCXXABI,LIBUNWIND,LLD,LLDB}_BUILD=ON       \
           -DLLVM_TOOL_LIBC_BUILD=OFF                                                  \
           -DLLVM_USE_STATIC_ZSTD=OFF                                                  \
           -G Ninja -Wno-Dev
