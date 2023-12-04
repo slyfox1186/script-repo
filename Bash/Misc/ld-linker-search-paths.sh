@@ -15,6 +15,7 @@ cat > '/etc/ld.so.conf.d/user-local-libs.conf' <<'EOF'
 /usr/local/lib/x86_64-linux-gnu
 /usr/local/lib
 /usr/lib64
+/usr/lib/x86_64-linux-gnu
 /usr/lib
 /lib64
 /lib/x86_64-linux-gnu
