@@ -5,7 +5,7 @@ clear
 printf "%s\n%s\n\n" \
     'Install ~/.bash_functions' \
     '================================='
-sleep 2
+sleep 1
 
 #
 # CREATE FUNCTIONS
@@ -1997,33 +1997,4 @@ dl_clang()
 EOF
 }
 
-#
-# CHECK FOR ANY PASSED ARGUMENTS TO SET THE APT PACKAGE MANAGER
-#
-
-if [[ "$1" == 'yes' ]]; then
-    answer=1
-else
-    answer=2
-fi
-
-case "${answer}" in
-    1)
-            script_fn
-            sed -i 's/apt /apt-fast /g' "$file"
-            sed -i 's/apt list /apt-fast list /g' "$file"
-            sed -i 's/local apt host /local apt-fast host /g' "$file"
-            sed -i 's/for apt in /for apt-fast in /g' "$file"
-            sed -i 's/apt apt-get aptitude dpkg/apt-fast apt-get aptitude dpkg/g' "$file"
-            sed -i 's/apt search /apt-fast search /g' "$file"
-            ;;
-    2)      script_fn;;
-    *)
-            clear
-            printf "%s\n\n" 'Bad user input. Please start over.'
-            exit 1
-            ;;
-esac
-
-clear
-printf "%s\n%s\n\n" 'The script has completed!'
+printf "\n%s\n%s\n\n" 'The script has completed!'
