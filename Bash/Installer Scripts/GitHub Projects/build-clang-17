@@ -27,8 +27,9 @@ fi
 script_ver=1.12
 progname="${0}"
 cwd="${PWD}"/clang-17-build-script
-install_prefix=/usr/local
+install_dir=/usr/local
 pc_type=x86_64-linux-gnu
+ld_gold_linker="$(sudo find /usr/ -type f -name 'ld.gold' | head -n1)"
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 debug=OFF # CHANGE THIS VARIABLE TO "ON" FOR HELP WITH TROUBLESHOOTING UNEXPECTED ISSUES DURING THE BUILD
@@ -37,21 +38,21 @@ debug=OFF # CHANGE THIS VARIABLE TO "ON" FOR HELP WITH TROUBLESHOOTING UNEXPECTE
 # CREATE OUTPUT DIRECTORIES
 #
 
-if [ ! -d "${cwd}" ]; then
-    mkdir -p "${cwd}"
+if [ -d "${cwd}"/llvm-17.0.6 ]; then
+    sudo rm -fr "${cwd}"/llvm-17.0.6
 fi
+mkdir -p "${cwd}"
 
 #
 # SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
 #
 
-CC=clang
-CXX=clang++
-CFLAGS='-g -O3 -pipe -march=native'
+CC=clang-15
+CXX=clang++-15
+CFLAGS='-g -O3 -fPIC -march=native'
 CXXFLAGS="${CFLAGS}"
-CPPFLAGS='-I/usr/local/include -I/usr/include'
-LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib -Wl,-rpath -Wl,/usr/local/lib'
-export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
+# LDFLAGS="-Wl,-rpath -Wl,${install_dir}/lib -Wl,--enable-new-dtags"
+export CC CXX CFLAGS CXXFLAGS
 
 #
 # SET THE PATH VARIABLE
@@ -63,12 +64,12 @@ PATH="\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
+/usr/local/cuda/bin:\
 /usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/local/cuda/bin:\
 /snap/bin\
 "
 export PATH
@@ -78,65 +79,14 @@ export PATH
 #
 
 PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/${install_dir}/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/${install_dir}/pkgconfig:\
 /usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/${install_dir}pkgconfig\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/pkgconfig:\
+/lib/pkgconfig\
 "
 export PKG_CONFIG_PATH
-
-LD_LIBRARY="\
-/usr/local/lib64:\
-/usr/share/texinfo/lib/libintl-perl/lib:\
-/usr/share/texinfo/lib:\
-/usr/share/gitk/lib:\
-/usr/share/git-gui/lib:\
-/usr/share/ghostscript/lib:\
-/usr/local/lib64:\
-/usr/local/lib/clang/17/lib:\
-/usr/local/lib:\
-/usr/lm32-elf/lib:\
-/usr/lib64:\
-/usr/lib32:\
-/usr/lib/llvm15/lib:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/lib:\
-/usr/lib/clang/16/lib:\
-/usr/lib/bfd-plugins:\
-/usr/lib:\
-/lib64:\
-/lib\
-"
-export LD_LIBRARY
-
-LD_LIBRARY_PATH="\
-/usr/local/lib64:\
-/usr/share/texinfo/lib/libintl-perl/lib:\
-/usr/share/texinfo/lib:\
-/usr/share/gitk/lib:\
-/usr/share/git-gui/lib:\
-/usr/share/ghostscript/lib:\
-/usr/local/lib64:\
-/usr/local/lib/clang/17/lib:\
-/usr/local/lib:\
-/usr/lm32-elf/lib:\
-/usr/lib64:\
-/usr/lib32:\
-/usr/lib/llvm15/lib:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/lib:\
-/usr/lib/clang/16/lib:\
-/usr/lib/bfd-plugins:\
-/usr/lib:\
-/lib64:\
-/lib\
-"
-export LD_LIBRARY_PATH
 
 #
 # CREATE FUNCTIONS
@@ -188,22 +138,24 @@ show_ver_fn()
 {
     printf "%s\n\n" 'The installed clang version is:'
 
-    if [ -f "${install_prefix}"/bin/clang-17 ]; then
+    if [ -f "${install_dir}"/bin/clang-17 ]; then
         printf "%s\n" 'clang-17:'
-        "${install_prefix}"/bin/clang-17 --version
+        "${install_dir}"/bin/clang-17 --version
         echo
     fi
 
-    if [ -f "${install_prefix}"/bin/clang++-17 ]; then
+    if [ -f "${install_dir}"/bin/clang++-17 ]; then
         printf "%s\n" 'clang++-17:'
-        "${install_prefix}"/bin/clang++-17 --version
+        "${install_dir}"/bin/clang++-17 --version
         echo
-    elif [ -f "${install_prefix}"/bin/clang++ ]; then
+    elif [ -f "${install_dir}"/bin/clang++ ]; then
         printf "%s\n" 'clang-++:'
-        "${install_prefix}"/bin/clang++ --version
+        "${install_dir}"/bin/clang++ --version
         echo
     fi
 }
+show_ver_fn
+exit
 
 execute()
 {
@@ -329,9 +281,9 @@ git_ver_fn()
 get_libstdc="$(sudo apt list 'libstdc++-*-dev' 2>/dev/null | grep -Eo '^libstdc\+\+-[0-9]{2}-dev' | sort -r | head -n1)"
 
 pkgs=(autoconf autoconf-archive automake autopoint binutils binutils-dev bison
-      build-essential ccache clang cmake curl doxygen jq libc6 libc6-dev libedit-dev
-      libtool libtool-bin libxml2-dev m4 nasm ninja-build yasm zlib1g-dev wget
-      ${get_libstdc})
+      build-essential ccache clang clang-15 cmake curl doxygen jq libc6 libc6-dev
+      libedit-dev libllvm-ocaml-dev libllvm-ocaml-15-dev libtool libtool-bin libxml2-dev
+      m4 nasm ninja-build yasm zlib1g-dev wget "${get_libstdc}")
 
 for  pkg in ${pkgs[@]}
 do
@@ -350,9 +302,18 @@ else
 fi
 
 #
-# REFRESH THE LD LINKER LIBRARY SHARED LIBRARY FILES USING THE FILE PATHS IT SEARCHES FOR THEM IN 
+# INSTALL BINUTILS TO ENABLE THE "GOLD" LD LINKER OPTION
 #
 
+if [ ! -f '/usr/local/bin/ld.gold' ]; then
+    bash <(curl -A "${user_agent}" -sSL 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-binutils')
+fi
+
+#
+# ADD ADDITIONAL LIBRARY SEARCH PATHS TO THE LD LINKER AND THEN ACTIVATE THE CHANGES 
+#
+
+sudo bash -c 'bash <(curl -sSL https://ld-linker.optimizethis.net)'
 sudo ldconfig -v
 
 #
@@ -379,41 +340,62 @@ box_out_banner "Clang-17 Build Script - version ${script_ver}"
 git_ver_fn 'llvm/llvm-project' 'T'
 if build 'llvm' "${g_ver}"; then
     download "${g_url}" "llvm-${g_ver}.tar.gz"
-    project_pkgs='clang;clang-tools-extra'
-    runtime_pkgs='libcxx;libcxxabi;libunwind;compiler-rt'
-    cmake -S llvm -B build                           \
-          -DCMAKE_INSTALL_PREFIX="${install_prefix}" \
-          -DCMAKE_BUILD_TYPE=Release                 \
-          -DBUILD_SHARED_LIBS=OFF                    \
-          -DBENCHMARK_DOWNLOAD_DEPENDENCIES=ON       \
-          -DBENCHMARK_ENABLE_TESTING=ON              \
-          -DBENCHMARK_INSTALL_DOCS=OFF               \
-          -DCLANG_INCLUDE_DOCS=OFF                   \
-          -DCMAKE_C_COMPILER="${CC}"                 \
-          -DCMAKE_C_FLAGS="${CFLAGS}"                \
-          -DCMAKE_CXX_COMPILER="${CXX}"              \
-          -DCMAKE_CXX_STANDARD=20                    \
-          -DLLVM_BUILD_BENCHMARKS=OFF                \
-          -DLLVM_BUILD_RUNTIME=ON                    \
-          -DLLVM_BUILD_RUNTIMES=ON                   \
-          -DLLVM_CCACHE_BUILD=ON                     \
-          -DLLVM_ENABLE_CURL=ON                      \
-          -DLLVM_ENABLE_LTO=OFF                      \
-          -DLLVM_ENABLE_OCAMLDOC=OFF                 \
-          -DLLVM_ENABLE_PIC=ON                       \
-          -DLLVM_ENABLE_PROJECTS="${project_pkgs}"   \
-          -DLLVM_ENABLE_RUNTIMES="${runtime_pkgs}"   \
-          -DLLVM_ENABLE_WARNINGS=OFF                 \
-          -DLLVM_HOST_TRIPLE="${pc_type}"            \
-          -DLLVM_INCLUDE_DOCS=OFF                    \
-          -DLLVM_INCLUDE_TESTS=OFF                   \
-          -DLLVM_TARGET_ARCH=HOST                    \
-          -DLLVM_TOOL_CLANG_BUILD=ON                 \
-          -G Ninja -Wno-dev
+    project_pkgs='clang;clang-tools-extra;lld'
+    runtime_pkgs='libunwind;libcxxabi;libcxx;openmp'
+    cmake -S llvm -B build                                                            \
+          -DCMAKE_install_dir="${install_dir}"                                     \
+          -DCMAKE_BUILD_TYPE=Release                                                  \
+          -DLLVM_LOCAL_RPATH="${install_dir}"/lib                                     \
+          -DBUILD_SHARED_LIBS=OFF                                                     \
+          -DLLVM_ENABLE_LTO=OFF                                                       \
+          -DBENCHMARK_ENABLE_LTO=OFF                                                  \
+          -DCLANG_TOOL_CLANG_CHECK_BUILD=ON                                           \
+          -DCLANGD_TIDY_CHECKS=OFF                                                    \
+          -DLLVM_BUILD_TOOLS=ON                                                       \
+          -DBENCHMARK_USE_BUNDLED_GTEST=OFF                                           \
+          -DLLVM_THINLTO_CACHE_PATH="${install_dir}"/lto.cache                        \
+          -DCCACHE_PROGRAM="$(type -P ccache)"                                        \
+          -DCMAKE_C_COMPILER="${CC}"                                                  \
+          -DCMAKE_CXX_COMPILER="${CXX}"                                               \
+          -DCMAKE_C_FLAGS="${CFLAGS}"                                                 \
+          -DCMAKE_CXX_FLAGS="${CXXFLAGS}"                                             \
+          -DCMAKE_CXX_STANDARD=17                                                     \
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=OFF                                         \
+          -DCMAKE_INSTALL_PACKAGEDIR=lib/cmake                                        \
+          -DCMAKE_INSTALL_RUNSTATEDIR="${install_dir}/lib:$ORIGIN"                    \
+          -DCMAKE_LINKER="${ld_gold_linker}"                                          \
+          -DGOLD_EXECUTABLE="${ld_gold_linker}"                                       \
+          -DCPACK_BINARY_DEB=ON                                                       \
+          -DCPACK_SOURCE_ZIP=ON                                                       \
+          -DLIBCLANG_BUILD_STATIC=ON                                                  \
+          -DLLVM_CCACHE_BUILD=ON                                                      \
+          -DLLVM_CCACHE_DIR="${HOME}"/.ccache                                         \
+          -DLLVM_DEFAULT_TARGET_TRIPLE="${pc_type}"                                   \
+          -DLLVM_ENABLE_CURL=ON                                                       \
+          -DLLVM_ENABLE_PROJECTS="${project_pkgs}"                                    \
+          -DLLVM_ENABLE_RUNTIMES="${runtime_pkgs}"                                    \
+          -DLLVM_BUILD_RUNTIME=ON                                                     \
+          -DLLVM_BUILD_RUNTIMES=ON                                                    \
+          -DLLVM_ENABLE_WARNINGS=OFF                                                  \
+          -DLLVM_ENABLE_ZLIB=ON                                                       \
+          -DLLVM_ENABLE_ZSTD=ON                                                       \
+          -DLLVM_INCLUDE_DOCS=OFF                                                     \
+          -DLLVM_INCLUDE_EXAMPLES=OFF                                                 \
+          -DLLVM_TARGETS_TO_BUILD=all                                                 \
+          -DLLVM_TOOL_{CLANG,GOLD,LIBCXX,LIBCXXABI,LIBUNWIND,LLD}_BUILD=ON            \
+          -DLLVM_TOOL_LIBC_BUILD=OFF                                                  \
+          -DLLVM_USE_STATIC_ZSTD=OFF                                                  \
+          -G Ninja -Wno-Dev
     echo
-    ninja "-j$(nproc --all)" -C build
+    if ! ninja "-j$(nproc --all)" -C build; then
+        printf "\n%s\n\n" "Failed to execute the command: ninja -j$(nproc --all) -C build. Line ${LINENO}"
+        exit 1
+    fi
     echo
-    sudo ninja -C build install
+    if ! sudo ninja -C build install; then
+        printf "\n%s\n\n" "Failed to execute the command: sudo ninja -C build install. Line ${LINENO}"
+        exit 1
+    fi
 fi
 
 # SHOW THE NEWLY INSTALLED MAGICK VERSION
