@@ -132,8 +132,8 @@ ${HOME}/perl5/bin:\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
-/usr/local/bin:\
 /usr/local/cuda/bin:\
+/usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
