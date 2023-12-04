@@ -7,7 +7,7 @@ if [ "${EUID}" -ne '0' ]; then
     exit 1
 fi
 
-cat > '/etc/ld.so.conf.d/user-local-libs.conf' <<'EOF'
+cat > '/etc/ld.so.conf.d/user-added.conf' <<'EOF'
 /usr/local/x86_64-linux-gnu/lib
 /usr/local/cuda/nvvm/lib64
 /usr/local/cuda/targets/x86_64-linux/lib
