@@ -5,20 +5,13 @@ clear
 printf "%s\n%s\n\n" \
     'Install ~/.bash_aliases' \
     '================================='
-
-#
-# SET VARIABLES
-#
-
-file="${HOME}"/.bash_aliases
-
 #
 # CREATE FUNCTIONS
 #
 
 script_fn()
 {
-cat > "$file" <<'EOF'
+cat > "${HOME}/.bash_aliases" <<'EOF'
 alias alien='sudo alien'
 alias apt-get='sudo apt-get'
 alias apt='sudo apt'
@@ -129,10 +122,6 @@ alias gsync='clear; nano /etc/gravity-sync/gravity-sync.conf'
 # nameserver commands
 alias nss='clear; systemd-resolve --status'
 
-# clipboard
-alias clip='xclip -sel clip'
-alias paste='xclip -o'
-
 # nano [ /home/jman ]
 alias nba='nano ~/.bash_aliases; cl'
 alias nbf='nano ~/.bash_functions; cl'
@@ -188,7 +177,7 @@ alias cdpi='pushd /etc/pihole; cl'
 alias cdr='pushd /; cl'
 alias cds='pushd ~/scripts; cl'
 alias cdtmp='pushd ~/tmp ; cl'
-alias cdt='pushd ~/.local/share/trash/; cl'
+alias cdt='pushd ~/tmp; cl'
 alias cdb1='pushd /usr/bin; cl'
 alias cdb2='pushd /usr/local/bin; cl'
 alias cdv='pushd ~/Videos ; cl'
@@ -284,18 +273,17 @@ alias nqc='nordvpn connect'
 alias nd='nordvpn disconnect'
 
 # watch commands (system monitoring)
+alias cwatch='watch -n1 ccache --print-stats'
+alias twatch='clear; watch -n0.5 sudo sensors -u k10temp-pci-00c3'
+alias wgpu='clear; watch ndivia-smi'
 alias wmem='clear; watch free -m'
 alias wtemp='clear; watch sensors'
-alias wgpu='clear; watch ndivia-smi'
 
 # UBUNTU VERSION
 alias uver="clear; lsb_release -d | grep -Eo 'Ubuntu [0-9\.]+.*$'"
 
 # FIX GPG KEY ERRORS DURING APT UPDATE THAT SHOWS THEY ARE "DEPRECIATED"
 alias fix_gpg='sudo cp /etc/apt/trusted.gpg /etc/apt/trusted.gpg.d'
-
-# WATCH COMMAND
-alias cwatch='watch -n1 ccache --print-stats'
 
 # GET KERNEL VERSION
 alias kv='cat /proc/version | grep -Eo "([0-9\.\-]+-generic)"'
@@ -337,6 +325,9 @@ alias sgc='sudo grub-customizer'
 
 # FIND WHICH PROCESSES ARE BEING HELD UP AND KILL THEM
 alias tkpid='clear; lsof +D ./ | awk '\''{print $2}'\'' | tail -n +2 | xargs -I{} sudo kill -9 {}'
+
+# CLIPBOARD
+alias v='xclip -o'
 
 EOF
 }
