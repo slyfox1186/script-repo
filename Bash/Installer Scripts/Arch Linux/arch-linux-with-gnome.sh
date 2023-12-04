@@ -137,6 +137,6 @@ user-name
 pacman -Sy pulseaudio pulseaudio-alsa xorg xorg-xinit xorg-server gnome lightdm lightdm-gtk-greeter
 
 # LOGIN TO GNOME DESKTOP
-sudo systemctl start gdm.service
 sudo systemctl enable gdm.service
+sudo systemctl start gdm.service
 sudo reboot
