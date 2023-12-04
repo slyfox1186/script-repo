@@ -26,8 +26,9 @@ fi
 #
 
 script_ver=1.1
-archive_dir=zstd-1.5.5
-archive_url=https://github.com/facebook/zstd/releases/download/v1.5.5/${archive_dir}.tar.gz
+archive_ver=1.5.5
+archive_dir="zstd-${archive_ver}"
+archive_url="https://github.com/facebook/zstd/releases/download/v${archive_ver}/${archive_dir}.tar.gz"
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/zstd-build-script
@@ -36,6 +37,7 @@ user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 printf "\n%s\n%s\n\n" \
     "ZStd Build Script - v${script_ver}" \
     '==============================================='
+sleep 2
 
 #
 # CREATE OUTPUT DIRECTORY
@@ -67,12 +69,12 @@ PATH="\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
+/usr/local/cuda/bin:\
 /usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/local/cuda/bin:\
 /snap/bin\
 "
 export PATH
@@ -82,17 +84,12 @@ export PATH
 #
 
 PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/"${install_dir}"/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/"${install_dir}"/pkgconfig:\
 /usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/"${install_dir}"/pkgconfig\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/pkgconfig:\
+/lib/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
