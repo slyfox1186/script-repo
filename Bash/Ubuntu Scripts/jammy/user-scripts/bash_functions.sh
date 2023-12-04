@@ -5,7 +5,7 @@ clear
 printf "%s\n%s\n\n" \
     'Install ~/.bash_functions' \
     '================================='
-sleep 2
+sleep 1
 
 #
 # CREATE FUNCTIONS
@@ -1874,7 +1874,7 @@ sc()
             tput sgr 0
         }
         box_out_banner "Parsing: ${f}"
-        shellcheck "${f}"
+        shellcheck --color=always -x --severity=warning --source-path="${HOME}:${HOME}/tmp:/etc:/usr/local/lib64:/usr/local/lib:/usr/local64:/usr/lib:/lib64:/lib:/lib32" "${f}"
         echo
     done
 }
@@ -1948,36 +1948,53 @@ function cf()
     fi
 }
 
+########################
+## PKG-CONFIG COMMAND ##
+########################
+
+# SHOW THE PATHS PKG-CONFIG COMMAND SEARCHES BY DEFAULT
+pkg_path()
+{
+    clear
+    pkg-config --variable pc_path pkg-config | tr ':' '\n'
+}
+
+######################################
+## SHOW BINARY RUNPATH IF IT EXISTS ##
+######################################
+
+show_rpath()
+{
+    local find_rpath
+    clear
+
+    if [ -z "${1}" ]; then
+        read -p 'Enter the full path to the binary/program: ' find_rpath
+    else
+        find_rpath="${1}"
+    fi
+
+    clear
+    chrpath -l "$(type -p ${find_rpath})"
+}
+
+######################################
+## DOWNLOAD CLANG INSTALLER SCRIPTS ##
+######################################
+
+dl_clang()
+{
+    clear
+    cd "${HOME}"/tmp || exit 1
+    wget --show-progress -U "${user_agent}" -cq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-16'
+    wget --show-progress -U "${user_agent}" -cq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-17'
+    sudo chmod a+rwx build-clang-16 build-clang-17
+    sudo chown jman:jman build-clang-16 build-clang-17
+    clear
+    ls -1A --color --group-directories-first
+}
+
 EOF
 }
 
-#
-# CHECK FOR ANY PASSED ARGUMENTS TO SET THE APT PACKAGE MANAGER
-#
-
-if [[ "${1}" == 'yes' ]]; then
-    answer=1
-else
-    answer=2
-fi
-
-case "${answer}" in
-    1)
-            script_fn
-            sed -i 's/apt /apt /g' "${file}"
-            sed -i 's/apt list/apt list/g' "${file}"
-            sed -i 's/local apt host/local apt host/g' "${file}"
-            sed -i 's/for apt in/for apt in/g' "${file}"
-            sed -i 's/apt apt-get aptitude dpkg/apt apt apt-get aptitude dpkg/g' "${file}"
-            sed -i 's/apt search/apt search/g' "${file}"
-            ;;
-    2)      script_fn;;
-    *)
-            clear
-            printf "%s\n\n" 'Bad user input. Please start over.'
-            exit 1
-            ;;
-esac
-
-clear
-printf "%s\n%s\n\n" 'The script has completed!'
+printf "\n%s\n%s\n\n" 'The script has completed!'
