@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+
+#################################################################################################################################
+##
+##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/Installer%20Scripts/GNU%20Software/build-jq
+##
+##  Purpose: Build jq
+##
+##  Updated: 12.04.23
+##
+##  Script version: 1.0
+##
+#################################################################################################################################
+
+clear
+
+if [ "${EUID}" -eq '0' ]; then
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    exit 1
+fi
+
+#
+# SET THE VARIABLES
+#
+
+script_ver=1.0
+jq_ver=1.7
+archive_dir=jq
+archive_url="https://github.com/jqlang/jq/releases/download/jq-${jq_ver}/jq-linux-amd64"
+cwd="${PWD}"/jq-build-script
+install_dir=/usr/local
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+
+#
+# CREATE OUTPUT DIRECTORY JEMALLOC
+#
+
+if [ -d "${cwd}/${archive_dir}" ]; then
+    sudo rm -fr "${cwd}/${archive_dir}"
+fi
+mkdir -p "${cwd}/${archive_dir}"
+
+#
+# DOWNLOAD THE ARCHIVE FILE JEMALLOC
+#
+
+if [ ! -f "${cwd}/${archive_dir}" ]; then
+    curl -A "${user_agent}" -Lso "${cwd}/${archive_dir}" "${archive_url}"
+fi
+
+#
+# INSTALL JEMALLOC
+#
+
+printf "\n%s\n%s\n\n"                        \
+    "Installing JQ - v${jq_ver}" \
+    '==============================================='
+sleep 2
+
+sudo chmod 755 "${cwd}/${archive_dir}"
+sudo chown root:root "${cwd}/${archive_dir}"
+
+sudo cp -f "${cwd}/${archive_dir}" "${install_dir}"/bin/jq
+
+sudo rm -fr "${cwd}"
+clear
+printf "%s\n\n" "The updated jq file is located at: $(type -P jq)"
+
+jq --version
+
