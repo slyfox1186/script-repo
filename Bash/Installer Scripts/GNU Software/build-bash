@@ -36,7 +36,7 @@ user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 web_repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
-    "bash build script - v${script_ver}" \
+    "Bash Build Script - v${script_ver}" \
     '==============================================='
 sleep 2
 
@@ -50,16 +50,14 @@ fi
 mkdir -p "${cwd}"
 
 #
-# SET THE C + CPP COMPILERS
+# SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
 #
 
-export CC=gcc CXX=g++
-
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
+CC=gcc
+CXX=g++
+CFLAGS='-g -O3 -pipe -march=native'
+CXXFLAGS="${CFLAGS}"
+export CC CXX CFLAGS CXXFLAGS
 
 #
 # SET THE PATH VARIABLE
@@ -85,17 +83,12 @@ export PATH
 #
 
 PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/pkgconfig:\
+/lib/pkgconfig\
 "
 export PKG_CONFIG_PATH
 

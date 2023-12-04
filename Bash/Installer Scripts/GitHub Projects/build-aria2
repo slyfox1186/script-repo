@@ -99,9 +99,8 @@ CC=clang
 CXX=clang++
 CFLAGS='-g -O3 -pipe -march=native'
 CXXFLAGS="${CFLAGS}"
-CPPFLAGS="-I${install_dir}/include -I${install_dir}/include/x86_64-linux-gnu -I/usr/include"
-LDFLAGS="-Wl,-rpath -Wl,${install_dir}/lib -Wl,--enable-new-dtags -L${install_dir}/lib"
-export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
+CPPFLAGS="-I${install_dir}/include/x86_64-linux-gnu"
+export CC CXX CFLAGS CPPFLAGS CXXFLAGS
 
 #
 # SET THE PATH VARIABLE
@@ -128,8 +127,9 @@ export PATH
 #
 
 PKG_CONFIG_PATH="\
-/usr/local/lib/pkgconfig:\
 /usr/share/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/lib/pkgconfig:\
 /lib/pkgconfig\
