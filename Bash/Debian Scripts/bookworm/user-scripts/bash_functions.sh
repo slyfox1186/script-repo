@@ -1874,7 +1874,7 @@ sc()
             tput sgr 0
         }
         box_out_banner "Parsing: ${f}"
-        shellcheck "${f}"
+        shellcheck --color=always -x --severity=warning --source-path="${HOME}:${HOME}/tmp:/etc:/usr/local/lib64:/usr/local/lib:/usr/local64:/usr/lib:/lib64:/lib:/lib32" "${f}"
         echo
     done
 }
