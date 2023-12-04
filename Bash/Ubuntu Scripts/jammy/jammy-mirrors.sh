@@ -30,6 +30,8 @@ else
     exit 1
 fi
 
-if [ -f 'jammy-mirrors.sh' ]; then
+if [[ "${0}" == 'jammy-mirrors' ]]; then
+    sudo rm 'jammy-mirrors'
+else
     sudo rm 'jammy-mirrors.sh'
 fi
