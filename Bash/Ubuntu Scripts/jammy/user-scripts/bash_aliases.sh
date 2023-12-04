@@ -87,6 +87,7 @@ alias vdir='vdir --color=auto'
 
 # apt commands
 alias install='clear; apt -y install'
+alias installr='clear; apt -y --reinstall install'
 alias remove='clear; apt remove'
 alias search='clear; apt search'
 
