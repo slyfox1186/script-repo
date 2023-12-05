@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1091,SC2000,SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
+# shellcheck disable=SC2068,SC2162,SC2317 source=/dev/null
 
 #############################################################################################################################
 ##
@@ -11,7 +11,7 @@
 ##
 ##  Updated on
 ##
-##    - 12.03.23
+##    - 12.05.23
 ##
 ##  Purpose:
 ##
@@ -90,10 +90,10 @@
 #
 
 script_name="${0}"
-script_ver=3.1.6
+script_ver=3.1.7
 ffmpeg_sver=n5.1.4
 ffmpeg_archive=ffmpeg-"${ffmpeg_sver}"
-ffmpeg_url=https://github.com/FFmpeg/FFmpeg/archive/refs/tags/"${ffmpeg_sver}".tar.gz
+ffmpeg_url=https://github.com/FFmpeg/FFmpeg/archive/refs/tags/"${ffmpeg_archive}".tar.gz
 cuda_latest_ver=12.3.1
 cuda_url="https://developer.download.nvidia.com/compute/cuda/${cuda_latest_ver}"
 cuda_pin_url='https://developer.download.nvidia.com/compute/cuda/repos'
@@ -108,7 +108,7 @@ latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 curl_timeout=10
-debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=ON # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -119,7 +119,8 @@ if [ -f '/proc/cpuinfo' ]; then
 else
     cpu_threads="$(nproc --all)"
 fi
-export MAKEFLAGS="-j$(nproc --all)"
+MAKEFLAGS="-j$(nproc --all)"
+export MAKEFLAGS
 
 #
 # PRINT SCRIPT BANNER
@@ -146,18 +147,19 @@ printf "\n%s\n\n" "The script will utilize (${cpu_threads}) CPU threads for para
 #
 # SET THE CC/CPP COMPILERS + CUSTOMIZED COMPILER OPTIMIZATION FLAGS
 #
- 
+
 source_flags_fn()
 {
     CC=gcc
     CXX=g++
-    EXTRALIBS="-ldl -lpthread -lm -lz -L${install_dir}/lib -lbrotlicommon -lbrotlidec -lbrotlienc -L${install_dir}/lib -lhwy -ltesseract"
-    EXTRALIBS+=" -L${workspace}/lib -llcms2 -llcms2_threaded -L${install_dir}/cuda/targets/x86_64-linux/lib -lOpenCL"
+    EXTRALIBS="-lm -lpthread -lz -lstdc++ -lgcc_s -lgcc -lrt -ldl -lnuma -Wl,--as-needed -L${install_dir}/lib -lbrotlicommon -lbrotlidec -lbrotlienc"
+    EXTRALIBS+=" -L${install_dir}/lib -lhwy -ltesseract -L${workspace}/lib -llcms2 -llcms2_threaded -L${install_dir}/cuda/targets/x86_64-linux/lib -lOpenCL"
+    EXTRALIBS+=" $(pkg-config --libs x265) $(pkg-config --libs libchromaprint)"
     CXXFLAGS='-g -O3 -pipe -march=native'
     CFLAGS="${CXXFLAGS} -I${workspace}/include -I${workspace}/include/jxl -I${workspace}/include/fdk-aac -I${workspace}/include/CL -I${workspace}/include/avisynth"
     CFLAGS+=' -I/usr/include/SDL2 -I/usr/lib/x86_64-linux-gnu/pulseaudio -I/usr/include/openjpeg-2.5 -I/usr/include/vk_video -I/usr/include/vulkan -I/usr/include/flite'
     CPPFLAGS="-I${workspace}/include"
-    LDFLAGS="-Wl,--copy-dt-needed-entries -Wl,--enable-new-dtags -L${workspace}/lib64 -L${workspace}/lib -L${workspace}/lib/x86_64-linux-gnu"
+    LDFLAGS="-L${workspace}/lib64 -L${workspace}/lib -L${workspace}/lib/x86_64-linux-gnu"
     LDFLAGS+=" -L${install_dir}/lib64 -L${install_dir}/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib"
     export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 }
@@ -284,7 +286,9 @@ download_git()
     dl_file="${dl_file//\./-}"
     target_dir="${dl_path}/${dl_file}"
 
-    if [ -n "${3}" ]; then
+    if [[ "${3}" == 'R' ]]; then
+        set_recurse='--recursive'
+    elif [ -n "${3}" ]; then
         output_dir="${dl_path}/${3}"
         target_dir="${output_dir}"
     fi
@@ -295,11 +299,11 @@ download_git()
 
     echo "Downloading ${dl_url} as ${dl_file}"
 
-    if ! git clone -q "${dl_url}" "${target_dir}"; then
+    if ! git clone ${set_recurse} -q "${dl_url}" "${target_dir}"; then
         printf "\n%s\n\n" "The script failed to clone the directory \"${target_dir}\" and will try again in 10 seconds..."
         sleep 10
-        if ! git clone -q "${dl_url}" "${target_dir}"; then
-            fail_fn "The script failed to clone the directory \"${target_dir}\" twice and will now exit the buildLine: ${LINENO}"
+        if ! git clone ${set_recurse} -q "${dl_url}" "${target_dir}"; then
+            fail_fn "The script failed to clone the directory \"${target_dir}\" twice and will now exit the build. Line: ${LINENO}"
         fi
     else
         printf "%s\n\n" "Successfully cloned: ${target_dir}"
@@ -524,7 +528,7 @@ library_exists()
 
 gpu_arch_fn()
 {
-    local is_wsl gpu_name gpu_type
+    local gpu_name gpu_type
 
     gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -r | head -n 1)"
     if [[ "${gpu_name}" == 'name' ]]; then
@@ -818,7 +822,7 @@ install_cuda_fn()
         cuda_ver_test="$(${find_nvcc} --version | sed -n 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')"
         cuda_ver_test+='.1'
     else
-        cuda_ver_test="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
+        cuda_ver_test="$(cat < '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
     fi
     cuda_ver="${cuda_ver_test}"
 
@@ -869,7 +873,7 @@ install_cuda_fn()
         cuda_ver_test="$(${find_nvcc} --version | sed -n 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')"
         cuda_ver_test+='.1'
     else
-        cuda_ver_test="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
+        cuda_ver_test="$(cat < '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
     fi
     cuda_ver="${cuda_ver_test}"
 
@@ -908,9 +912,9 @@ pkgs_fn()
           libmusicbrainz5-dev libmysofa-dev libnuma1 libnuma-dev libopencore-amrnb-dev libopencore-amrwb-dev libopencv-dev
           libopenjp2-7-dev libopenmpt-dev libopus-dev libperl-dev libpstoedit-dev libpulse-dev librabbitmq-dev libraqm-dev
           libraw-dev librsvg2-dev librubberband-dev librust-gstreamer-base-sys-dev libshine-dev libsmbclient-dev libsnappy-dev
-          libsndfile1-dev libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev libsrt-gnutls-dev libssh-dev libssl-dev
-          libsuitesparseconfig5 libtalloc-dev libtheora-dev libticonv-dev libtool libtool-bin libtwolame-dev libudev-dev
-          libumfpack5 libunwind-dev libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev
+          libsndfile1-dev libsndio-dev libsoxr-dev libspeex-dev libsystemd-dev libsqlite3-dev libsrt-gnutls-dev libssh-dev
+          libssl-dev libsuitesparseconfig5 libtalloc-dev libtheora-dev libticonv-dev libtool libtool-bin libtwolame-dev
+          libudev-dev libumfpack5 libunwind-dev libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev
           libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev
           libxss-dev libudev-dev libxvidcore-dev libyuv-dev libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev lshw lzma-dev m4 meson
           nasm ninja-build pandoc python3 python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip valgrind wget xmlto
@@ -945,22 +949,8 @@ x265_fix_libs_fn()
         Arch)       sudo cp -f "${x265_libs_208}" '/usr/lib';;
         *)          sudo cp -f "${x265_libs_208}" '/usr/lib/x86_64-linux-gnu';;
     esac
-
-    if [ ! -f "${x265_libs_199}" ]; then
-        if ! curl -A "${user_agent}" -m 10 -Lso "${workspace}/lib/libx265.so.199" 'https://github.com/slyfox1186/script-repo/raw/main/library-files/libx265.so.199'; then
-            fail_fn "The script was unable to download the required library file \"${workspace}/lib/libx265.so.199\". Line: ${LINENO}"
-        fi
-    fi
-
-    case "${OS}" in
-        Arch)
-                sudo cp -f "${workspace}/lib/libx265.so.199" '/usr/lib'
-                sudo ln -sf '/usr/lib/libx265.so.199' '/usr/lib/libx265.so'
-                ;;
-        *)      sudo cp -f "${workspace}/lib/libx265.so.199" '/usr/lib/x86_64-linux-gnu'
-                sudo ln -sf '/usr/lib/x86_64-linux-gnu/libx265.so.199' '/usr/lib/x86_64-linux-gnu/libx265.so'
-                ;;
-    esac
+    sudo apt -y remove libx265-199
+    sudo apt autoclean
 }
 
 libpulse_fix_libs_fn()
@@ -1113,12 +1103,6 @@ librist_arch_fn()
     fi
 }
 
-wsl2_os_ver_fn()
-{
-    wsl_common_pkgs="${1} libnvidia-encode1"
-    pkgs_fn "nvidia-smi cppcheck libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils libyuv0 libsharp-dev libdmalloc5"
-}
-
 arch_os_ver_fn()
 {
     local arch_pkgs i
@@ -1179,7 +1163,7 @@ ubuntu_os_ver_fn()
     case "${VER}" in
         23.04|22.10)        pkgs_fn "${ubuntu_common_pkgs} ${lunar_kenetic_pkgs} ${jammy_pkgs}";;
         22.04|msft)         pkgs_fn "${ubuntu_common_pkgs} ${ubuntu_wsl_pkgs} ${jammy_pkgs}";;
-        20.04|msft)         pkgs_fn "${ubuntu_common_pkgs} ${ubuntu_wsl_pkgs} ${focal_pkgs}";;
+        20.04)              pkgs_fn "${ubuntu_common_pkgs} ${ubuntu_wsl_pkgs} ${focal_pkgs}";;
         *)                  fail_fn "Could not detect the Ubuntu version. Line: ${LINENO}";;
     esac
 }
@@ -1191,10 +1175,9 @@ ubuntu_os_ver_fn()
 find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
 
 if [ -f '/etc/os-release' ]; then
-    source '/etc/os-release'
+    . '/etc/os-release'
     OS_TMP="$NAME"
     VER_TMP="$VERSION_ID"
-    CODENAME="$VERSION_CODENAME"
     OS="$(echo "${OS_TMP}" | awk '{print $1}')"
     VER="$(echo "${VER_TMP}" | awk '{print $1}')"
 elif [ -n "${find_lsb_release}" ]; then
@@ -1213,10 +1196,8 @@ nvidia_encode_var="$(sudo apt list libnvidia-encode* 2>&1 | grep -Eo 'libnvidia-
 
 if [ "$(grep -i 'microsoft' '/proc/version')" ]; then
     wsl_switch='yes_wsl'
-fi
-
-if [ "${wsl_switch}" = 'yes_wsl' ]; then
     OS=WSL2
+    wsl_common_pkgs='nvidia-smi cppcheck libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils libyuv0 libsharp-dev libdmalloc5 libnvidia-encode1'
 fi
 
 #
@@ -1229,8 +1210,8 @@ case "${OS}" in
     'Ubuntu')           ubuntu_os_ver_fn "${nvidia_encode_var} ${nvidia_utils_var}";;
     'WSL2')             
                         case "${OS}" in
-                            'Debian'|'n/a')     debian_os_ver_fn "${nvidia_encode_var} ${nvidia_utils_var}" "${wsl_switch}";;
-                            'Ubuntu')           ubuntu_os_ver_fn "${nvidia_encode_var} ${nvidia_utils_var}" "${wsl_switch}";;
+                            'Debian'|'n/a')     debian_os_ver_fn "${nvidia_encode_var} ${nvidia_utils_var}" "${wsl_switch}" "${wsl_common_pkgs}";;
+                            'Ubuntu')           ubuntu_os_ver_fn "${nvidia_encode_var} ${nvidia_utils_var}" "${wsl_switch}" "${wsl_common_pkgs}";;
                         esac
                         ;;
 esac
@@ -1344,6 +1325,7 @@ fi
 
 if build 'pkg-config' '0.29.2'; then
     download "https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz"
+    autoconf
     execute ./configure --prefix="${install_dir}" \
                         --with-pc-path="${PKG_CONFIG_PATH}"
     execute make "-j${cpu_threads}"
@@ -1363,7 +1345,7 @@ else
                                   -Dstatic_analyze=true    \
                                   -Dtest=false
         execute ninja "-j${cpu_threads}" -C build
-        execute ninja "-j${cpu_threads}" -C build install
+        execute ninja -C build install
         build_done 'librist' 'git'
     fi
 fi
@@ -1406,7 +1388,7 @@ if build 'yasm' "${g_ver}"; then
                   -DBUILD_SHARED_LIBS=OFF               \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'yasm' "${g_ver}"
 fi
 
@@ -1443,7 +1425,7 @@ if [ "${VER}" != '18.04' ]; then
                       -DBUILD_SHARED_LIBS=OFF               \
                       -G Ninja -Wno-dev
         execute ninja "-j${cpu_threads}" -C build
-        execute ninja "-j${cpu_threads}" -C build install
+        execute ninja -C build install
         build_done 'libxml2' '2.12.0'
     fi
     ffmpeg_libraries+=('--enable-libxml2')
@@ -1505,7 +1487,7 @@ if build 'freetype' "${g_ver1}"; then
                               --strip                  \
                               "${extracmds[@]}"
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'freetype' "${g_ver1}"
 fi
 ffmpeg_libraries+=('--enable-libfreetype')
@@ -1544,7 +1526,7 @@ if [ "${VER}" != '18.04' ]; then
                               --strip                  \
                               "${extracmds[@]}"
         execute ninja "-j${cpu_threads}" -C build
-        execute ninja "-j${cpu_threads}" -C build install
+        execute ninja -C build install
         build_done 'harfbuzz' "${g_ver}"
     fi
 fi
@@ -1598,7 +1580,7 @@ if build 'fribidi' "${g_ver}"; then
                               --strip                  \
                               "${extracmds[@]}"
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'fribidi' "${g_ver}"
 fi
 ffmpeg_libraries+=('--enable-libfribidi')
@@ -1629,7 +1611,7 @@ if build 'freeglut' "${g_ver}"; then
                   -DFREEGLUT_PRINT_WARNINGS=OFF         \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'freeglut' "${g_ver}"
 fi
 
@@ -1714,7 +1696,7 @@ if build 'gflags' "${g_ver}"; then
                   -DREGISTER_INSTALL_PREFIX=ON          \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'gflags' "${g_ver}"
 fi
 
@@ -1733,9 +1715,8 @@ else
     ffmpeg_libraries+=('--enable-libjxl')
 fi
 
-pre_check_ver 'KhronosGroup/OpenCL-SDK' '1' 'T'
 if build 'opencl-sdk' "${g_ver}"; then
-    download_git 'https://github.com/KhronosGroup/OpenCL-SDK.git' 'opencl-sdk-git'
+    download_git 'https://github.com/KhronosGroup/OpenCL-SDK.git' 'opencl-sdk-git' 'R'
     execute git submodule init
     execute git submodule update
     execute cmake \
@@ -1759,7 +1740,7 @@ if build 'opencl-sdk' "${g_ver}"; then
             -DTHREADS_PREFER_PTHREAD_FLAG=ON          \
             -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'opencl-sdk' "${g_ver}"
 fi
 
@@ -1861,7 +1842,7 @@ if build 'lv2' 'git'; then
                               -Dplugins="${pswitch}"   \
                               "${extracmds[@]}"
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'lv2' 'git'
 fi
 
@@ -1883,7 +1864,7 @@ if build 'serd' "${g_ver}"; then
                               -Dstatic=true            \
                               "${extracmds[@]}"
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'serd' "${g_ver}"
 fi
 
@@ -1910,7 +1891,7 @@ if build 'zix' '0.4.0'; then
                               --strip                  \
                               "${extracmds[@]}"
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'zix' '0.4.0'
 fi
 
@@ -1925,7 +1906,7 @@ if build 'sord' "${g_sver1}"; then
                               --strip                  \
                               "${extracmds[@]}"
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'sord' "${g_sver1}"
 fi
 
@@ -1939,7 +1920,7 @@ if build 'sratom' "${g_ver}"; then
                               --strip                  \
                               "${extracmds[@]}"
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'sratom' "${g_ver}"
 fi
 
@@ -1953,7 +1934,7 @@ if build 'lilv' "${g_ver}"; then
                               --strip                  \
                               "${extracmds[@]}"
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'lilv' "${g_ver}"
 fi
 CFLAGS+=" -I${workspace}/include/lilv-0"
@@ -2041,7 +2022,7 @@ if build 'sdl2' 'git'; then
                        -DSDL_CCACHE=ON                       \
                        -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'sdl2' 'git'
 fi
 
@@ -2115,7 +2096,7 @@ if build 'libflac' "${g_ver}"; then
                   -DBUILD_TESTING=OFF                   \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'libflac' "${g_ver}"
 fi
 
@@ -2160,7 +2141,7 @@ if build 'opus' "${g_ver}"; then
                   -DCPACK_SOURCE_ZIP=OFF                \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'opus' "${g_ver}"
 fi
 ffmpeg_libraries+=('--enable-libopus')
@@ -2175,7 +2156,7 @@ if build 'libmysofa' "${g_ver}"; then
                   -DBUILD_STATIC_LIBS=ON                \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'libmysofa' "${g_ver}"
 fi
 ffmpeg_libraries+=('--enable-libmysofa')
@@ -2282,13 +2263,13 @@ if build 'vulkan-headers' 'git'; then
                   -DCMAKE_STRIP="$(type -P strip)"             \
                   -G Ninja -Wno-devCMAKE_CXX_COMPILE
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'vulkan-headers' 'git'
 fi
 ffmpeg_libraries+=('--enable-libkvazaar')
 
 if build 'decklink' '12.7'; then
-    download "https://github.com/slyfox1186/script-repo/raw/main/library-files/Blackmagic-DeckLink-SDK-12.7.tar.xz" 'decklink-12.7.tar.xz'
+    download 'https://github.com/slyfox1186/ffmpeg-build-script/raw/main/library-files/Blackmagic-DeckLink-SDK-12.7.tar.xz' 'decklink-12.7.tar.xz'
     for files in *.{h,cpp}
     do
         mv "${files}" "${workspace}"/include
@@ -2321,7 +2302,7 @@ if build 'av1' "${aom_sver}"; then
                   -G Ninja -Wno-dev                       \
                   "${packages}"/av1
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'av1' "${aom_sver}"
 fi
 ffmpeg_libraries+=('--enable-libaom')
@@ -2336,7 +2317,7 @@ if build 'dav1d' "${g_ver1}"; then
                               --strip                  \
                                "${extracmds[@]}"
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'dav1d' "${g_ver1}"
 fi
 ffmpeg_libraries+=('--enable-libdav1d')
@@ -2349,15 +2330,15 @@ if [ "${VER}" != '18.04' ] && [ "${VER}" != '11' ]; then
         if [ "${get_rustc_ver}" != '1.73.0' ]; then
             echo '$ Installing RustUp'
             curl -A "${user_agent}" -sSf --proto '=https' --tlsv1.2 'https://sh.rustup.rs' | sh -s -- -y &>/dev/null
-            source "${HOME}"/.cargo/env
+            . "${HOME}"/.cargo/env
             if [ -f "${HOME}"/.zshrc ]; then
-                source "${HOME}"/.zshrc
+                . "${HOME}"/.zshrc
             else
-                source "${HOME}"/.bashrc
+                . "${HOME}"/.bashrc
             fi
             rm -fr "${HOME}"/.cargo/registry/index/* "${HOME}"/.cargo/.package-cache
         fi
-        execute cargo install cargo-c
+        execute cargo --verbose install cargo-c
         download 'https://github.com/xiph/rav1e/archive/refs/tags/p20231128.tar.gz' 'rav1e-p20231128.tar.gz'
         execute cargo cinstall --prefix="${workspace}"  \
                                --library-type=staticlib \
@@ -2502,7 +2483,7 @@ if build 'vid-stab' "${g_ver}"; then
                   -DUSE_OMP=ON                          \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'vid-stab' "${g_ver}"
 fi
 ffmpeg_libraries+=('--enable-libvidstab')
@@ -2517,7 +2498,7 @@ if build 'frei0r' "${g_ver}"; then
                   -DWITHOUT_OPENCV=OFF                  \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'frei0r' "${g_ver}"
 fi
 ffmpeg_libraries+=('--enable-frei0r')
@@ -2788,7 +2769,7 @@ if build 'libgav1' 'git'; then
                   -DLIBGAV1_ENABLE_TESTS=OFF            \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'libgav1' 'git'
 fi
 
@@ -2865,15 +2846,14 @@ if build 'libheif' "${g_ver}"; then
                   -DWITH_EXAMPLES=OFF                                            \
                   -DWITH_GDK_PIXBUF="${pixbuf_switch}"                           \
                   -DWITH_LIBDE265=ON                                             \
+                  -DWITH_X265=OFF                                                \
                   -DWITH_LIBSHARPYUV=ON                                          \
                   -DWITH_REDUCED_VISIBILITY=OFF                                  \
                   -DWITH_SvtEnc=OFF                                              \
                   -DWITH_SvtEnc_PLUGIN=OFF                                       \
-                  -DX265_INCLUDE_DIR="${install_dir}"/include                    \
-                  -DX265_LIBRARY="${install_dir}"/lib/libx265.so                 \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     source_flags_fn
     build_done 'libheif' "${g_ver}"
 fi

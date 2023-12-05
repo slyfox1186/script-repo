@@ -1,20 +1,4 @@
 #!/usr/bin/env bash
-
-clear
-
-printf "%s\n%s\n\n" \
-    'Install ~/.bash_functions' \
-    '================================='
-sleep 2
-
-#
-# CREATE FUNCTIONS
-#
-
-script_fn()
-{
-cat > file="${HOME}"/.bash_functions <<'EOF'
-#!/usr/bin/env bash
 # shellcheck disable=SC1091,SC2001,SC2162,SC2317
 
 export user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -28,6 +12,24 @@ geds() { sudo -Hu root "$(type -P gedit)" "${@}" &>/dev/null; }
 
 gted() { "$(type -P gted)" "${@}" &>/dev/null; }
 gteds() { sudo -Hu root "$(type -P gted)" "${@}" &>/dev/null; }
+
+################################################
+## GET THE OS AND ARCH OF THE ACTIVE COMPUTER ##
+################################################
+
+mypc()
+{
+    local OS VER
+    
+    . '/etc/os-release'
+    OS="$NAME"
+    VER="$VERSION_ID"
+
+    clear
+    printf "%s\n%s\n\n"           \
+        "Operating System: ${OS}" \
+        "Specific Version: ${VER}"
+}
 
 ###################
 ## FIND COMMANDS ##
@@ -104,7 +106,7 @@ mf()
         chmod 744 "${1}"
     fi
 
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 mdir()
@@ -122,7 +124,7 @@ mdir()
         cd "${PWD}/${1}" || exit 1
     fi
 
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 ##################
@@ -158,10 +160,10 @@ cpf()
 
     cp "${1}" "${HOME}/tmp/${1}"
 
-    chown -R "${USER}":'users' "${HOME}/tmp/${1}"
+    chown -R "${USER}":"${USER}" "${HOME}/tmp/${1}"
     chmod -R 744 "${HOME}/tmp/${1}"
 
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 # MOVE file
@@ -175,10 +177,144 @@ mvf()
 
     mv "${1}" "${HOME}/tmp/${1}"
 
-    chown -R "${USER}":'users' "${HOME}/tmp/${1}"
+    chown -R "${USER}":"${USER}" "${HOME}/tmp/${1}"
     chmod -R 744 "${HOME}/tmp/${1}"
 
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
+}
+
+##################
+## APT COMMANDS ##
+##################
+
+# DOWNLOAD AN APT PACKAGE + ALL ITS DEPENDENCIES IN ONE GO
+aptdl()
+{
+    clear
+    wget -c "$(apt --print-uris -qq --reinstall install ${1} 2>/dev/null | cut -d''\''' -f2)"
+    clear; ls -1AvhFhFv --color --group-directories-first
+}
+
+# CLEAN
+clean()
+{
+    clear
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt -y purge
+}
+
+# UPDATE
+update()
+{
+    clear
+    sudo apt update
+    sudo apt -y full-upgrade
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt -y purge
+}
+
+# FIX BROKEN APT PACKAGES
+fix()
+{
+    clear
+    if [ -f /tmp/apt.lock ]; then
+        sudo rm /tmp/apt.lock
+    fi
+    sudo dpkg --configure -a
+    sudo apt --fix-broken install
+    sudo apt -f -y install
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt update
+}
+
+list()
+{
+    local search_cache
+    clear
+
+    if [ -n "${1}" ]; then
+        sudo apt list "*${1}*" 2>/dev/null | awk -F'/' '{print $1}'
+    else
+        read -p 'Enter the string to search: ' search_cache
+        clear
+        sudo apt list "*${1}*" 2>/dev/null | awk -F'/' '{print $1}'
+    fi
+}
+
+listd()
+{
+    local search_cache
+    clear
+
+    if [ -n "${1}" ]; then
+        sudo apt list -- "*${1}*"-dev 2>/dev/null | awk -F'/' '{print $1}'
+    else
+        read -p 'Enter the string to search: ' search_cache
+        clear
+        sudo apt list -- "*${1}*"-dev 2>/dev/null | awk -F'/' '{print $1}'
+    fi
+}
+
+# USE SUDO APT TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
+apts()
+{
+    local search
+    clear
+
+    if [ -n "${1}" ]; then
+        sudo apt search "${1} ~i" -F "%p"
+    else
+        read -p 'Enter the string to search: ' search
+        clear
+        sudo apt search "${search} ~i" -F "%p"
+    fi
+}
+
+# USE APT CACHE TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
+csearch()
+{
+    clear
+    local cache
+
+    if [ -n "${1}" ]; then
+        apt-cache search --names-only "${1}.*" | awk '{print $1}'
+    else
+        read -p 'Enter the string to search: ' cache
+        clear
+        apt-cache search --names-only "${cache}.*" | awk '{print $1}'
+    fi
+}
+
+# FIX MISSING GPNU KEYS USED TO UPDATE PACKAGES
+fix_key()
+{
+    clear
+
+    local file url
+
+    if [[ -z "${1}" ]] && [[ -z "${2}" ]]; then
+        read -p 'Enter the file name to store in /etc/apt/trusted.gpg.d: ' file
+        echo
+        read -p 'Enter the gpg key url: ' url
+        clear
+    else
+        file="${1}"
+        url="${2}"
+    fi
+
+    curl -S# "${url}" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/${file}"
+
+    if curl -S# "${url}" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/${file}"; then
+        echo 'The key was successfully added!'
+    else
+        echo 'The key FAILED to add!'
+    fi
 }
 
 ##########################
@@ -187,9 +323,9 @@ mvf()
 toa()
 {
     clear
-    chown -R "${USER}":'users' "${PWD}"
+    chown -R "${USER}":"${USER}" "${PWD}"
     chmod -R 744 "${PWD}"
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 #################
@@ -202,6 +338,16 @@ showpkgs()
     dpkg --get-selections |
     grep -v deinstall > "${HOME}"/tmp/packages.list
     gted "${HOME}"/tmp/packages.list
+}
+
+# PIPE ALL DEVELOPMENT PACKAGES NAMES TO file
+getdev()
+{
+    apt-cache search dev |
+    grep "\-dev" |
+    cut -d ' ' -f1 |
+    sort > 'dev-packages.list'
+    gted 'dev-packages.list'
 }
 
 ################
@@ -273,7 +419,7 @@ new_key()
 # EXPORT THE PUBLIC SSH KEY STORED INSIDE A PRIVATE SSH KEY
 keytopub()
 {
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 
     local opub okey
 
@@ -316,7 +462,7 @@ sbrc()
     . ~/.bashrc && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
     sleep 1
 
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 spro()
@@ -326,7 +472,7 @@ spro()
     . ~/.profile && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
     sleep 1
 
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 ####################
@@ -368,23 +514,18 @@ aria2()
     aria2c --out="${file}" "${link}"
 }
 
-# PRINT LAN & WAN IP ADDRESSES
 myip()
 {
-    local lan wan
     clear
-    lan="$(ip route get 1.2.3.4 | awk '{print $7}')"
-    wan="$(curl -A "${user_agent}" -fsS 'https://checkip.amazonaws.com')"
-    clear
-    printf "%s\n%s\n\n" \
-        "LAN: ${lan}" \
-        "WAN: ${wan}"
+    printf "%s\n%s\n\n"                                   \
+        "LAN: $(ip route get 1.2.3.4 | awk '{print $7}')" \
+        "WAN: $(curl -s 'https://checkip.amazonaws.com')"
 }
 
 # WGET COMMAND
 mywget()
 {
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 
     local outfile url
 
@@ -446,15 +587,32 @@ rmf()
 # OPTIMIZE AND OVERWRITE THE ORIGINAL IMAGES
 imow()
 {
-    local cnt_queue cnt_total dimensions fext missing_pkgs pip_lock random_dir tmp_file v_noslash
+    local apt_pkgs cnt_queue cnt_total dimensions fext missing_pkgs pip_lock random_dir tmp_file v_noslash
 
     clear
 
     # THE FILE EXTENSION TO SEARCH FOR (DO NOT INCLUDE A '.' WITH THE EXTENSION)
     fext=jpg
 
-    # REQUIRED PACMAN
-    sudo pacman -Sq --noconfirm --needed sox
+    #
+    # REQUIRED APT PACKAGES
+    #
+
+    apt_pkgs=(sox libsox-dev)
+    for i in ${apt_pkgs[@]}
+    do
+        missing_pkg="$(dpkg -l | grep "${i}")"
+        if [ -z "${missing_pkg}" ]; then
+            missing_pkgs+=" ${i}"
+        fi
+    done
+
+    if [ -n "${missing_pkgs}" ]; then
+        sudo apt -y install ${missing_pkgs}
+        sudo apt -y autoremove
+        clear
+    fi
+    unset apt_pkgs i missing_pkg missing_pkgs
 
     #
     # REQUIRED PIP PACKAGES
@@ -549,16 +707,17 @@ im50()
 
 imdl()
 {
-    local cwd tmp_dir
+    local cwd tmp_dir user_agent
     clear
     cwd="${PWD}"
     tmp_dir="$(mktemp -d)"
+    user_agent="${user_agent}"
     cd "${tmp_dir}" || exit 1
     curl -A "${user_agent}" -Lso 'imow' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-and-overwrite.sh'
     sudo mv imow "${cwd}"
     sudo rm -fr "${tmp_dir}"
     cd "${cwd}" || exit 1
-    sudo chown "${USER}":'users' imow
+    sudo chown "${USER}":"${USER}" imow
     sudo chmod +rwx imow
 }
 
@@ -610,14 +769,16 @@ cuda_purge()
     read -p 'Your choices are (1 or 2): ' answer
     clear
 
-    case "${answer}" in
-        1)
-                printf "%s\n%s\n\n" 'Purging the cuda-sdk-toolkit from your computer.' \
-                    '================================================'
-                sudo pacman -R --noconfirm "*cublas*" "cuda*" "nsight*"
-                ;;
-        2)      return 0;;
-    esac
+    if [[ "${answer}" -eq '1' ]]; then
+        echo 'Purging the cuda-sdk-toolkit from your computer.'
+        echo '================================================'
+        echo
+        sudo sudo apt -y --purge remove "*cublas*" "cuda*" "nsight*"
+        sudo sudo apt -y autoremove
+        sudo sudo apt update
+    elif [[ "${answer}" -eq '2' ]]; then
+        return 0
+    fi
 }
 
 ffdl()
@@ -626,7 +787,7 @@ ffdl()
     curl -A "${user_agent}" -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
     bash 'ff.sh'
     sudo rm 'ff.sh'
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 ffs() { curl -A "${user_agent}" -m 10 -Lso 'ff' 'https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/build-ffmpeg'; }
@@ -648,7 +809,7 @@ dlfs()
     done
     
     clear
-    ls -1AhFv --color --group-directories-first
+    ls -1AvhFhFv --color --group-directories-first
 }
 
 ##############################
@@ -688,7 +849,7 @@ mi()
     local i
 
     if [ -z "${1}" ]; then
-        ls -1AhFv --color --group-directories-first
+        ls -1AvhFhFv --color --group-directories-first
         echo
         read -p 'Please enter the relative file path: ' i
         clear
@@ -705,6 +866,33 @@ mi()
 cdff() { clear; cd "${HOME}/tmp/ffmpeg-build" || exit 1; cl; }
 ffm() { clear; bash <(curl -sSL 'http://ffmpeg.optimizethis.net'); }
 ffp() { clear; bash <(curl -sSL 'http://ffpb.optimizethis.net'); }
+
+####################
+## LIST PPA REPOS ##
+####################
+
+listppas()
+{
+    clear
+
+    local apt host user ppa entry
+
+    for apt in $(find /etc/apt/ -type f -name \*.list)
+    do
+        grep -Po "(?<=^deb\s).*?(?=#|$)" "${apt}" | while read entry
+        do
+            host="$(echo "${entry}" | cut -d/ -f3)"
+            user="$(echo "${entry}" | cut -d/ -f4)"
+            ppa="$(echo "${entry}" | cut -d/ -f5)"
+            #echo sudo apt-add-repository ppa:${USER}/${ppa}
+            if [ "ppa.launchpad.net" = "${host}" ]; then
+                echo sudo apt-add-repository ppa:"${USER}/${ppa}"
+            else
+                echo sudo apt-add-repository \'deb "${entry}"\'
+            fi
+        done
+    done
+}
 
 #########################
 ## NVIDIA-SMI COMMANDS ##
@@ -745,7 +933,7 @@ hw_mon()
 
     # install lm-sensors if not already
     if ! type -P lm-sensors &>/dev/null; then
-        sudo pacman -S i2c-tools --noconfirm
+        sudo apt -y install lm-sensors
     fi
 
     # Add modprobe to system startup tasks if not already added
@@ -1073,7 +1261,7 @@ rmd()
     local dirs
 
     if [ -z "${*}" ]; then
-        clear; ls -1A --color --group-directories-first
+        clear; ls -1AvhF --color --group-directories-first
         echo
         read -p 'Enter the directory path(s) to delete: ' dirs
      else
@@ -1082,7 +1270,7 @@ rmd()
 
     sudo rm -fr "$dirs"
     clear
-    ls -1A --color --group-directories-first
+    ls -1AvhF --color --group-directories-first
 }
 
 
@@ -1093,16 +1281,16 @@ rmf()
     local files
 
     if [ -z "${*}" ]; then
-        clear; ls -1A --color --group-directories-first
+        clear; ls -1AvhF --color --group-directories-first
         echo
         read -p 'Enter the file path(s) to delete: ' files
      else
         files="${*}"
     fi
 
-    sudo rm "${file}s"
+    sudo rm "${files}"
     clear
-    ls -1A --color --group-directories-first
+    ls -1AvhF --color --group-directories-first
 }
 
 ## REMOVE BOM
@@ -1228,12 +1416,12 @@ rm_deb()
 ## KILLALL COMMANDS ##
 ######################
 
-tkpac()
+tkapt()
 {
     local i list
     clear
 
-    list=(dpkg)
+    list=(apt apt apt apt apt apt apt-get aptitude dpkg)
 
     for i in ${list[@]}
     do
@@ -1297,7 +1485,7 @@ nopen()
     exit
 }
 
-tkn()
+tkan()
 {
     local parent_dir
     parent_dir="${PWD}"
@@ -1320,8 +1508,8 @@ up_icon()
 
     for i in ${pkgs[@]}
     do
-        if ! sudo dpkg -l | grep -o "${i}"; then
-            sudo pacman -S "${i}"
+        if ! sudo dpkg -l "${i}"; then
+            sudo apt -y install "${i}"
             clear
         fi
     done
@@ -1357,7 +1545,7 @@ adl()
 
     aria2c \
         --console-log-level=notice \
-        --user-agent="${user_agent}" \
+        --user-agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36' \
         -x32 \
         -j5 \
         --split=32 \
@@ -1381,7 +1569,7 @@ adl()
     fi
 
     find . -type f -iname "*:Zone.Identifier" -delete 2>/dev/null
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 adlm()
@@ -1400,7 +1588,7 @@ adlm()
 
     aria2c \
         --console-log-level=notice \
-        --user-agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' \
+        --user-agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36' \
         -x32 \
         -j5 \
         --split=32 \
@@ -1424,7 +1612,7 @@ adlm()
     fi
 
     find . -type f -iname "*:Zone.Identifier" -delete 2>/dev/null
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 ####################
@@ -1512,7 +1700,7 @@ cmf()
 {
     local rel_sdir
     if ! sudo dpkg -l | grep -o cmake-curses-gui; then
-        sudo pacman -Sq --needed --noconfirm cmake
+        sudo apt -y install cmake-curses-gui
     fi
     clear
 
@@ -1544,19 +1732,15 @@ jpgs()
 
 gitdl()
 {
-    local base_url
     clear
-
-    base_url='https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts'
-
-    wget -cq "${base_url}/FFmpeg/build-ffmpeg"
-    wget -cq "${base_url}/ImageMagick/build-magick"
-    wget -cq "${base_url}/GNU%20Software/build-gcc"
-    wget -cq "${base_url}/FFmpeg/repo.sh"
+    wget -cq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/FFmpeg/build-ffmpeg'
+    wget -cq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/build-magick'
+    wget -cq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc'
+    wget -cq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/FFmpeg/repo.sh'
     sudo chmod -R build-gcc build-magick build-ffmpeg repo.sh -- *
-    sudo chown -R "${USER}":'users' build-gcc build-magick build-ffmpeg repo.sh
+    sudo chown -R "${USER}":"${USER}" build-gcc build-magick build-ffmpeg repo.sh
     clear
-    ls -1A --color --group-directories-first
+    ls -1AvhF --color --group-directories-first
 }
 
 # COUNT ITEMS IN THE CURRENT FOLDER W/O SUBDIRECTORIES INCLUDED
@@ -1589,18 +1773,223 @@ ffp()
     sudo find "${PWD}" -type f -iname '*.jpg' -exec bash -c "identify -format "%wx%h" \"{}\"; echo \" {}\"" > 00-pic-sizes.txt \;
 }
 
-#####################
-## PACMAN COMMANDS ##
-#####################
+####################
+## RSYNC COMMANDS ##
+####################
 
+rsr()
+{
+    local destination modified_source source 
+    clear
 
-# PACMAN COMMANDS
-alias install='clear; pacman -S --noconfirm'
-alias list='clear; pacman -Ss'
-alias remove='clear; pacman -R --noconfirm'
-alias qpkg='clear; pacman -Ql'
-alias update='clear; pacman -Syu'
+    # you must add an extra folder that is a period '/./' between the full path to the source folder and the source folder itself
+    # or rsync will copy the files to the destination directory and it will be the full path of the source folder instead of the source
+    # folder and its subfiles only.
 
-EOF
+    printf "%s\n%s\n%s\n%s\n\n"                                                                    \
+        'This rsync command will recursively copy the source folder to the chosen destination.'    \
+        'The original files will still be located in the source folder.'                           \
+        'If you want to move the files (which deletes the originals then use the function "rsrd".' \
+        'Please enter the full paths of the source and destination directories.'
 
-printf "\n%s\n%s\n\n" 'The script has completed!'
+    printf "%s\n\n" 
+    read -p 'Enter the source path: ' source
+    read -p 'Enter the destination path: ' destination
+    modified_source="$(echo "${source}" | sed 's:/[^/]*$::')"'/./'"$(echo "${source}" | sed 's:.*/::')"
+    clear
+
+    rsync -aqvR --acls --perms --mkpath --info=progress2 "${modified_source}" "${destination}"
+}
+
+rsrd()
+{
+    local destination modified_source source 
+    clear
+
+    # you must add an extra folder that is a period '/./' between the full path to the source folder and the source folder itself
+    # or rsync will copy the files to the destination directory and it will be the full path of the souce folder instead of the source
+    # folder and its subfiles only.
+
+    printf "%s\n%s\n%s\n%s\n\n"                                                                    \
+        'This rsync command will recursively copy the source folder to the chosen destination.'    \
+        'The original files will be DELETED after they have been copied to the destination.'       \
+        'If you want to move the files (which deletes the originals then use the function "rsrd".' \
+        'Please enter the full paths of the source and destination directories.'
+
+    printf "%s\n\n" 
+    read -p 'Enter the source path: ' source
+    read -p 'Enter the destination path: ' destination
+    modified_source="$(echo "${source}" | sed 's:/[^/]*$::')"'/./'"$(echo "${source}" | sed 's:.*/::')"
+    clear
+
+    rsync -aqvR --acls --perms --mkpath --remove-source-files "${modified_source}" "${destination}"
+}
+
+################
+## SHELLCHECK ##
+################
+
+sc()
+{
+    local f fname input_char line space
+    clear
+
+    if [ -z "${@}" ]; then
+        read -p 'Input the file path to check: ' fname
+        clear
+    else
+        fname="${@}"
+    fi
+
+    for f in ${fname[@]}
+    do
+        box_out_banner()
+        {
+            input_char=$(echo "${@}" | wc -c)
+            line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+            tput bold
+            line="$(tput setaf 3)${line}"
+            space=${line//-/ }
+            echo " ${line}"
+            printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+            printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
+            printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+            echo " ${line}"
+            tput sgr 0
+        }
+        box_out_banner "Parsing: ${f}"
+        shellcheck --color=always -x --severity=warning --source-path="${HOME}:${HOME}/tmp:/etc:/usr/local/lib64:/usr/local/lib:/usr/local64:/usr/lib:/lib64:/lib:/lib32" "${f}"
+        echo
+    done
+}
+
+###############
+## CLIPBOARD ##
+###############
+
+# COPY ANY TEXT. DOES NOT NEED TO BE IN QUOTES
+# EXAMPLE: ct This is so cool
+# OUTPUT WHEN PASTED: This is so cool
+# USAGE: cp <file name here>
+
+ct()
+{
+    local pipe_this
+    clear
+
+    if [ -z "${@}" ]; then
+        clear
+        printf "%s\n\n%s\n%s\n\n"               \
+            "The command syntax is shown below" \
+            "cc INPUT"                          \
+            'Example: cc $PWD'
+        return 1
+    else
+        pipe_this="${@}"
+    fi
+
+    echo "${pipe_this}" | xclip -i -rmlastnl -sel clip
+    clear
+}
+
+# COPY A FILE'S FULL PATH
+# USAGE: cp <file name here>
+
+cfp()
+{
+    local pipe_this
+    clear
+
+    if [ -z "${@}" ]; then
+        clear
+        printf "%s\n\n%s\n%s\n\n"               \
+            "The command syntax is shown below" \
+            "cc INPUT"                          \
+            'Example: cc $PWD'
+        return 1
+    fi
+
+    readlink -fn "${@}" | xclip -i -sel clip
+    clear
+}
+
+# COPY THE CONTENT OF A FILE
+# USAGE: cf <file name here>
+
+cfc()
+{
+    clear
+
+    if [ -z "${1}" ]; then
+        clear
+        printf "%s\n\n%s\n%s\n\n"               \
+            "The command syntax is shown below" \
+            "cc INPUT"                          \
+            'Example: cc $PWD'
+        return 1
+    else
+        cat "${1}" | xclip -i -rmlastnl -sel clip
+    fi
+}
+
+########################
+## PKG-CONFIG COMMAND ##
+########################
+
+# SHOW THE PATHS PKG-CONFIG COMMAND SEARCHES BY DEFAULT
+list_pc_path()
+{
+    clear
+    pkg-config --variable pc_path pkg-config | tr ':' '\n'
+}
+
+######################################
+## SHOW BINARY RUNPATH IF IT EXISTS ##
+######################################
+
+show_rpath()
+{
+    local find_rpath
+    clear
+
+    if [ -z "${1}" ]; then
+        read -p 'Enter the full path to the binary/program: ' find_rpath
+    else
+        find_rpath="${1}"
+    fi
+
+    clear
+    sudo chrpath -l "$(type -p ${find_rpath})"
+}
+
+######################################
+## DOWNLOAD CLANG INSTALLER SCRIPTS ##
+######################################
+
+dl_clang()
+{
+    clear
+    if [ ! -d "${HOME}/tmp" ]; then
+        mkdir -p "${HOME}/tmp"
+    fi
+    wget --show-progress -U "${user_agent}" -cqO "${HOME}/tmp/build-clang-16" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-16'
+    wget --show-progress -U "${user_agent}" -cqO "${HOME}/tmp/build-clang-17" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-17'
+    sudo chmod rwx "${HOME}/tmp/build-clang-16" "${HOME}/tmp/build-clang-17"
+    sudo chown "${USER}":"${USER}" "${HOME}/tmp/build-clang-16" "${HOME}/tmp/build-clang-17"
+    clear
+    ls -1AvhF--color --group-directories-first
+}
+
+#################
+## PYTHON3 PIP ##
+#################
+
+pipup()
+{
+    local pkg
+    clear
+    for pkg in $(pip list -o | awk 'NR > 2 {print $1}')
+    do
+        sudo pip install --upgrade --user ${pkg}
+    done
+}

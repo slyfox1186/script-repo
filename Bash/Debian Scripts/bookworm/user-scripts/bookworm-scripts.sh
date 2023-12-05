@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2068,SC2162
 
 clear
 
@@ -7,10 +8,9 @@ clear
 #
 
 random_dir="$(mktemp -d)"
+url='https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Debian%20Scripts/bookworm/user-scripts/bookworm-scripts.txt'
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-
-shell_scripts=(bash_aliases.sh bash_functions.sh)
-script_array=(.bash_aliases .bash_functions .bashrc)
+script_array=('.bashrc' '.bash_aliases' '.bash_functions')
 
 #
 # CREATE FUNCTIONS
@@ -26,7 +26,9 @@ fail_fn()
 # DOWNLAOD REQUIRED APT PACKAGES
 #
 
-sudo apt -y install curl git wget
+sudo apt update
+sudo apt -y install wget
+clear
 
 #
 # CD INTO A RANDOM FOLDER TO HOLD AND EXECUTE THE TEMP FILES
@@ -38,7 +40,7 @@ cd "${random_dir}" || exit 1
 # DOWNLOAD THE USER SCRIPTS FROM GITHUB
 #
 
-wget --show-progress -U "${user_agent}" -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Debian%20Scripts/bookworm/user-scripts/bookworm-scripts.txt'
+wget -U "${user_agent}" -qN - -i "${url}"
 
 #
 # DELETE ALL FILES EXCEPT THOSE THAT START WITH A "." OR END WITH ".sh"
@@ -50,17 +52,11 @@ find . ! \( -name '\.*' -o -name '*.sh' \) -type f -delete 2>/dev/null
 # MOVE ".bashrc" TO THE USERS HOME FOLDER
 #
 
-if ! mv -f '.bashrc' "${HOME}"; then
-    fail_fn "Failed to move the script \".bashrc\" to ${HOME}."
-fi
-
-#
-# RUN EACH SHELL SCRIPT TO INSTALL THE USER SCRIPTS
-#
-
-for script in ${shell_scripts[@]}
+for script in "${script_array[@]}"
 do
-    bash "${script}"
+    if ! mv -f "${script}" "${HOME}"; then
+        fail_fn "Failed to move all user scripts to: ${HOME}. Line ${LINENO}"
+    fi
 done
 unset script
 
@@ -71,32 +67,27 @@ unset script
 for script in ${script_array[@]}
 do
     if ! sudo chown "${USER}":"${USER}" "${HOME}/${script}"; then
-        fail_fn "Failed to update the file permissions for ${script}"
+        fail_fn "Failed to update the file permissions for: ${script}. Line ${LINENO}"
     fi
 done
-unset script
 
 #
 # OPEN EACH SCRIPT WITH AN EDITOR
 #
 
-for script in ${script_array[@]}
+cd "${HOME}" || exit 1
+for fname in ${script_array[@]}
 do
     if which gnome-text-editor &>/dev/null; then
-        cd "${HOME}" || exit 1
-        gnome-text-editor "${script}"
+        gnome-text-editor "${fname}"
     elif which gedit &>/dev/null; then
-        cd "${HOME}" || exit 1
-        gedit "${script}"
+        gedit "${fname}"
     elif which nano &>/dev/null; then
-        cd "${HOME}" || exit 1
-        nano "${script}"
+        nano "${fname}"
     elif which vim &>/dev/null; then
-        cd "${HOME}" || exit 1
-        vim "${script}"
+        vim "${fname}"
     elif which vi &>/dev/null; then
-        cd "${HOME}" || exit 1
-        vi "${script}"
+        vi "${fname}"
     else
         fail_fn 'Could not find an EDITOR to open the user scripts.'
     fi

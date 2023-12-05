@@ -119,64 +119,6 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-LD_LIBRARY="\
-/usr/local/lib64:\
-/usr/local/lib:\
-/usr/share/texinfo/lib:\
-/usr/local/x86_64-linux-gnu/lib:\
-/usr/local/ssl/lib:\
-/usr/local/lib/x86_64-linux-gnu:\
-/usr/local/lib/gprofng:\
-/usr/local/lib64:\
-/usr/local/lib:\
-/usr/local/cuda/targets/x86_64-linux/lib:\
-/usr/local/cuda-12/targets/x86_64-linux/lib:\
-/usr/local/cuda-12.3/targets/x86_64-linux/lib:\
-/usr/local/cuda-12.3/nvvm/lib64:\
-/usr/lib/x86_64-linux-gnu/libfakeroot:\
-/usr/lib/x86_64-linux-gnu:\
-/usr/libx32:\
-/usr/lib64:\
-/usr/lib32:\
-/usr/lib:\
-/usr/local/lib:\
-/lib/x86_64-linux-gnu:\
-/libx32:\
-/lib64:\
-/lib32:\
-/lib\
-"
-export LD_LIBRARY
-
-LD_LIBRARY_PATH="\
-/usr/local/lib64:\
-/usr/local/lib:\
-/usr/share/texinfo/lib:\
-/usr/local/x86_64-linux-gnu/lib:\
-/usr/local/ssl/lib:\
-/usr/local/lib/x86_64-linux-gnu:\
-/usr/local/lib/gprofng:\
-/usr/local/lib64:\
-/usr/local/lib:\
-/usr/local/cuda/targets/x86_64-linux/lib:\
-/usr/local/cuda-12/targets/x86_64-linux/lib:\
-/usr/local/cuda-12.3/targets/x86_64-linux/lib:\
-/usr/local/cuda-12.3/nvvm/lib64:\
-/usr/lib/x86_64-linux-gnu/libfakeroot:\
-/usr/lib/x86_64-linux-gnu:\
-/usr/libx32:\
-/usr/lib64:\
-/usr/lib32:\
-/usr/lib:\
-/usr/local/lib:\
-/lib/x86_64-linux-gnu:\
-/libx32:\
-/lib64:\
-/lib32:\
-/lib\
-"
-export LD_LIBRARY_PATH
-
 #
 # CREATE FUNCTIONS
 #
@@ -371,23 +313,45 @@ git_1_fn()
     # SCRAPE GITHUB'S API FOR THE LATEST REPO VERSION
     github_repo="${1}"
     github_url="${2}"
+    cnt=0
 
     if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_sver="$(echo "${curl_cmd}" | jq -r '.[0].tag_name' 2>/dev/null)"
         g_sver1="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver="${g_sver#v}"
         g_ver1="${g_sver1#v}"
+        ((cnt++))
     fi
+
+    get_str_end='-rc[0-9]'
+    while [[ ${g_ver} =~ ${get_str_end}$ ]]
+    do
+        if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}" | jq -r '.[$cnt].name')"; then
+            g_ver="${curl_cmd#v}"
+            ((cnt++))
+        fi  
+    done
 }
 
 git_2_fn()
 {
     gitlab_repo="${1}"
     github_url="${2}"
-
-    if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}" | jq -r '.[0].name')"; then
+    cnt=0
+    
+    if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}" | jq -r ".[$cnt].name")"; then
         g_ver="${curl_cmd#v}"
+        ((cnt++))
     fi
+    
+    get_str_end='-rc[0-9]'
+    while [[ ${g_ver} =~ ${get_str_end}$ ]]
+    do
+        if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}" | jq -r ".[$cnt].name")"; then
+            g_ver="${curl_cmd#v}"
+        fi
+        ((cnt++))
+    done
 }
 
 git_ver_fn()
@@ -501,6 +465,8 @@ esac
 # INSTALL FROM SOURCE CODE
 #
 
+
+# CHECK IF THE LATEST RELEASE IS A 'RC' AKA RELEASE CANDIDATE AND IF SO GO BACK TO THE PREVIOUS STABLE RELEASE
 git_ver_fn '541' '2' 'T'
 if build 'cmake' "${g_ver}"; then
     download "https://gitlab.kitware.com/cmake/cmake/-/archive/v${g_ver}/cmake-v${g_ver}.tar.bz2" "cmake-${g_ver}.tar.bz2"
