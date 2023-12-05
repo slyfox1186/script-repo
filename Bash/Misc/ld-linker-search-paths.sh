@@ -12,6 +12,7 @@ cat > '/etc/ld.so.conf.d/user-added.conf' <<'EOF'
 /usr/local/cuda/nvvm/lib64
 /usr/local/cuda/targets/x86_64-linux/lib
 /usr/local/lib64
+/usr/local/x86_64-linux-gnu/lib/ldscripts
 /usr/local/lib/x86_64-linux-gnu
 /usr/local/lib
 /usr/lib64
