@@ -6,9 +6,9 @@
 ##
 ##  Purpose: Build cURL
 ##
-##  Updated: 12.05.23
+##  Updated: 12.02.23
 ##
-##  Script version: 1.1
+##  Script version: 1.0
 ##
 #################################################################################################################################
 
@@ -23,7 +23,7 @@ fi
 # SET THE VARIABLES
 #
 
-script_ver=1.1
+script_ver=1.0
 curl_ver=8.4.0
 archive_dir=${curl_ver}
 archive_dir1=${curl_ver//./_}
@@ -221,7 +221,7 @@ eopts+=('--enable-'{openssl-auto-load-config,optimize,pop3,progress-meter})
 eopts+=('--enable-'{proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static,telnet})
 eopts+=('--enable-'{tftp,threaded-resolver,tls-srp,unix-sockets,websockets})
 wopts=('--with-'{gnutls='/usr/include',libssh2,nghttp2='/usr/include',nghttp3='/usr/include'})
-wopts+=('--with-'{ca-bundle="${certs_dir}",ca-fallback,ca-path="${cert_dir}",secure-transport})
+wopts+=('--with-'{ca-bundle="${pem_out}",ca-fallback,ca-path="${certs_dir}",secure-transport})
 autoreconf -fi
 cd build || exit 1
 ../configure --prefix="${install_prefix}" \
