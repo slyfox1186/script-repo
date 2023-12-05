@@ -33,7 +33,8 @@ archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/curl-build-script
 install_dir=/usr/local
 pem_file=cacert.pem
-pem_out="/etc/ssl/certs/${pem_file}"
+certs_dir='/etc/ssl/certs'
+pem_out="${certs_dir}/${pem_file}"
 pc_type=x86_64-linux-gnu
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
@@ -164,6 +165,18 @@ if [ -n "${missing_pkgs}" ]; then
 fi
 
 #
+# INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
+#
+
+if [ ! -f "${pem_out}" ]; then
+    printf "%s\n%s\n\n" \
+        'Download the latest security certificate' \
+        '================================================'
+    curl -A "${user_agent}" -Lso "${cwd}/${pem_file}" "https://curl.se/ca/${pem_file}"
+    sudo cp -f "${cwd}/${pem_file}" "${pem_out}"
+fi
+
+#
 # CREATE OUTPUT DIRECTORY CURL
 #
 
@@ -208,7 +221,7 @@ eopts+=('--enable-'{openssl-auto-load-config,optimize,pop3,progress-meter})
 eopts+=('--enable-'{proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static,telnet})
 eopts+=('--enable-'{tftp,threaded-resolver,tls-srp,unix-sockets,websockets})
 wopts=('--with-'{gnutls='/usr/include',libssh2,nghttp2='/usr/include',nghttp3='/usr/include'})
-wopts+=('--with-'{ca-bundle="${pem_out}",ca-fallback,ca-path="${cert_dir}",secure-transport})
+wopts+=('--with-'{ca-bundle="${certs_dir}",ca-fallback,ca-path="${cert_dir}",secure-transport})
 autoreconf -fi
 cd build || exit 1
 ../configure --prefix="${install_prefix}" \
