@@ -1,17 +1,3 @@
-#!/usr/bin/env bash
-
-clear
-
-printf "%s\n%s\n\n" \
-    'Install ~/.bash_aliases' \
-    '================================='
-#
-# CREATE FUNCTIONS
-#
-
-script_fn()
-{
-cat > "${HOME}/.bash_aliases" <<'EOF'
 alias alien='sudo alien'
 alias apt-get='sudo apt-get'
 alias apt='sudo apt'
@@ -225,7 +211,7 @@ alias piports="clear; netstat -nltup | grep 'Proto\|:53 \|:67 \|:80 \|:100 \|:41
 
 # list internet interfaces
 alias pse='clear; ip -4 -c -d -h address'
-alias pse1="clear; ifconfig -s | egrep '^(e|l|w|i).*$'"
+alias pse1='clear; ifconfig -s | egrep '\''^(e|l|w|i).*$'\'''
 alias pse2='clear; lshw -class network'
 alias pse3='clear; dnstop -4QRl 5 eth0'
 alias pse4='clear; tcpdump -c 50 -i eth0'
@@ -237,7 +223,7 @@ alias pscpu1='clear; ps auxf | head -c -0'
 
 # memory commands
 alias psmem='clear; free -m -l -t'
-alias psmem1="clear; inxi -FxzR | egrep '^.*RAID:.*|^.*System:.*|^.*Memory:.*$'"
+alias psmem1='clear; inxi -FxzR | egrep '\''^.*RAID:.*|^.*System:.*|^.*Memory:.*$'\'''
 
 # gpu commands
 alias psgpu='clear; lspci | grep -i vga'
@@ -254,7 +240,7 @@ alias showarch='dpkg --print-architecture'
 # ddclient commands
 alias ddcu='ddclient -daemon=0 -debug -verbose -noquiet'
 
-# find and kill process by pid or name
+# Find and kill a process by pid or name
 alias tk='sudo kill -9'
 
 # SNAP COMMANDS
@@ -281,7 +267,7 @@ alias wmem='clear; watch free -m'
 alias wtemp='clear; watch sensors'
 
 # UBUNTU VERSION
-alias uver="clear; lsb_release -d | grep -Eo 'Ubuntu [0-9\.]+.*$'"
+alias uver='clear; lsb_release -d | grep -Eo '\''Ubuntu [0-9\.]+.*$'\'''
 
 # FIX GPG KEY ERRORS DURING APT UPDATE THAT SHOWS THEY ARE "DEPRECIATED"
 alias fix_gpg='sudo cp /etc/apt/trusted.gpg /etc/apt/trusted.gpg.d'
@@ -329,29 +315,3 @@ alias tkpid='clear; lsof +D ./ | awk '\''{print $2}'\'' | tail -n +2 | xargs -I{
 
 # CLIPBOARD
 alias v='xclip -o'
-
-EOF
-}
-
-#
-# CHECK FOR ANY PASSED ARGUMENTS TO SET THE APT PACKAGE MANAGER
-#
-
-if [[ "$1" == 'yes' ]]; then
-    answer=1
-else
-    answer=2
-fi
-
-case "${answer}" in
-    1)
-            script_fn
-            sed -i "s/apt /apt-fast /g" "$file"
-            ;;
-    2)      script_fn;;
-    *)
-            clear
-            printf "%s\n\n" 'Bad user input. Please start over.'
-            exit 1
-            ;;
-esac
