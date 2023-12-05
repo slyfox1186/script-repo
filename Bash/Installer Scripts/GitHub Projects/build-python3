@@ -172,7 +172,7 @@ pkgs_fn()
     pkgs=("${1}" autoconf autoconf-archive autogen automake binutils build-essential ccache cmake
           curl git itstool libb2-dev libexempi-dev libgnome-desktop-3-dev libhandy-1-dev libpeas-dev
           libpeasd-3-dev libssl-dev libtool libtool-bin m4 meson nasm ninja-build openssl python3 valgrind
-          yasm zlib1g-dev)
+          yasm zlib1g-dev libgdbm-compat-dev)
 
     for pkg in ${pkgs[@]}
     do
