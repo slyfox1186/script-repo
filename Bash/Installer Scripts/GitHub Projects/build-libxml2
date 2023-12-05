@@ -280,7 +280,7 @@ if build 'libxml2' "${g_ver}"; then
                            -DCPACK_BINARY_IFW=OFF               \
                            -DCPACK_BINARY_NSIS=OFF              \
                            -DCPACK_BINARY_RPM=OFF               \
-                           -DCPACK_BINARY_TBZ2=OF               \
+                           -DCPACK_BINARY_TBZ2=OFF              \
                            -DCPACK_BINARY_TXZ=OFF               \
                            -DCPACK_SOURCE_RPM=ON                \
                            -DCPACK_SOURCE_ZIP=ON                \

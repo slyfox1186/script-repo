@@ -182,7 +182,7 @@ bash -c "$(curl -fsL https://git.io/vokNn)"
 ## Change your network settings to Static or DHCP with netplan.io
   - The user will be prompted to enter the network settings
 ```bash
-bash <(curl -fsSL https://netplan.optimizethis.net)
+bash <(curl -fsSL https://static-ip.optimizethis.net)
 ```
 ------
 

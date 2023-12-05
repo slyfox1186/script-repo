@@ -6,9 +6,9 @@
 ##
 ##  Purpose: build gnu binutils from source code
 ##
-##  Updated: 11.26.23
+##  Updated: 12.04.23
 ##
-##  Script version: 1.1
+##  Script version: 1.2
 ##
 ##################################################################################################################################
 
@@ -28,7 +28,7 @@ fi
 # SET THE VARIABLES
 #
 
-script_ver=1.1
+script_ver=1.2
 archive_dir=binutils-2.41
 archive_url=https://ftp.gnu.org/gnu/binutils/"${archive_dir}".tar.lz
 archive_ext="${archive_url//*.}"
@@ -36,11 +36,11 @@ archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/binutils-build-script
 install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-pc_type="$(curl -A "${user_agent}" -sSL 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess' | sh)"
+pc_type=x86_64-linux-gnu
 web_repo=https://github.com/slyfox1186/script-repo
 
-printf "%s\n%s\n\n" \
-    "binutils build script - v${script_ver}" \
+printf "%s\n%s\n\n"                          \
+    "Binutils Build Script - v${script_ver}" \
     '==============================================='
 sleep 2
 
@@ -72,6 +72,7 @@ export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 PATH="\
 /usr/lib/ccache/bin:\
 /usr/lib/ccache:\
+${cwd}/autoconf-build-script/workspace/bin:\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
@@ -103,64 +104,6 @@ PKG_CONFIG_PATH="\
 /lib/usr/local/pkgconfig\
 "
 export PKG_CONFIG_PATH
-
-LD_LIBRARY="\
-/usr/local/lib64:\
-/usr/local/lib:\
-/usr/share/texinfo/lib:\
-/usr/local/x86_64-linux-gnu/lib:\
-/usr/local/ssl/lib:\
-/usr/local/lib/x86_64-linux-gnu:\
-/usr/local/lib/gprofng:\
-/usr/local/lib64:\
-/usr/local/lib:\
-/usr/local/cuda/targets/x86_64-linux/lib:\
-/usr/local/cuda-12/targets/x86_64-linux/lib:\
-/usr/local/cuda-12.3/targets/x86_64-linux/lib:\
-/usr/local/cuda-12.3/nvvm/lib64:\
-/usr/lib/x86_64-linux-gnu/libfakeroot:\
-/usr/lib/x86_64-linux-gnu:\
-/usr/libx32:\
-/usr/lib64:\
-/usr/lib32:\
-/usr/lib:\
-/usr/local/lib:\
-/lib/x86_64-linux-gnu:\
-/libx32:\
-/lib64:\
-/lib32:\
-/lib\
-"
-export LD_LIBRARY
-
-LD_LIBRARY_PATH="\
-/usr/local/lib64:\
-/usr/local/lib:\
-/usr/share/texinfo/lib:\
-/usr/local/x86_64-linux-gnu/lib:\
-/usr/local/ssl/lib:\
-/usr/local/lib/x86_64-linux-gnu:\
-/usr/local/lib/gprofng:\
-/usr/local/lib64:\
-/usr/local/lib:\
-/usr/local/cuda/targets/x86_64-linux/lib:\
-/usr/local/cuda-12/targets/x86_64-linux/lib:\
-/usr/local/cuda-12.3/targets/x86_64-linux/lib:\
-/usr/local/cuda-12.3/nvvm/lib64:\
-/usr/lib/x86_64-linux-gnu/libfakeroot:\
-/usr/lib/x86_64-linux-gnu:\
-/usr/libx32:\
-/usr/lib64:\
-/usr/lib32:\
-/usr/lib:\
-/usr/local/lib:\
-/lib/x86_64-linux-gnu:\
-/libx32:\
-/lib64:\
-/lib32:\
-/lib\
-"
-export LD_LIBRARY_PATH
 
 #
 # CREATE FUNCTIONS
@@ -212,24 +155,58 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl
-      git libadacgi6-dev libgmp-dev libintl-perl libisl-dev libmpc-dev libmpfr-dev libtool libtool-bin
-      libzstd-dev m4 nasm ninja-build texinfo yasm zlib1g-dev zstd gdc-multilib gdc)
+pkgs_fn()
+{
+    pkgs=("${1}" autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl
+          git libgmp-dev libintl-perl libisl-dev libmpc-dev libmpfr-dev libtool libtool-bin libzstd-dev
+          m4 nasm ninja-build texinfo yasm zlib1g-dev zstd gdc-multilib gdc)
 
-for pkg in ${pkgs[@]}
-do
-    missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
+    for pkg in ${pkgs[@]}
+    do
+        missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
 
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${pkg}"
+        if [ -z "${missing_pkg}" ]; then
+            missing_pkgs+=" ${pkg}"
+        fi
+    done
+
+    if [ -n "${missing_pkgs}" ]; then
+        sudo apt -y install ${missing_pkgs}
+        sudo apt -y autoremove
+        clear
     fi
-done
+}
 
-if [ -n "${missing_pkgs}" ]; then
-    sudo apt -y install ${missing_pkgs}
-    sudo apt -y autoremove
-    clear
+#
+# TEST THE OS AND ITS VERSION
+#
+
+find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
+
+if [ -f '/etc/os-release' ]; then
+    . '/etc/os-release'
+    OS_TMP="$NAME"
+    OS="$(echo "${OS_TMP}" | awk '{print $1}')"
+elif [ -n "${find_lsb_release}" ]; then
+    OS="$(lsb_release -d | awk '{print $2}')"
+else
+    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
 fi
+
+case "${OS}" in
+    Debian)       pkgs_fn 'libadacgi6-dev';;
+    Ubuntu)       pkgs_fn 'libadacgi4-dev';;
+    *)            pkgs_fn;;
+esac
+
+#
+# INSTALL AUTOCONF 2.69 IN A TEMPORARY DIRECTORY OR BINUTILS WILL NOT COMPILE
+#
+
+cd "${cwd}" || exit 1
+
+curl -A "${user_agent}" -Lso "${cwd}/build-autoconf" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/autoconf-test'
+bash "${cwd}/build-autoconf" "${PWD}"
 
 #
 # DOWNLOAD THE ARCHIVE FILE
@@ -265,6 +242,7 @@ cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi -I /usr/share/aclocal
 cd build || exit 1
 ../configure --prefix="${install_dir}"              \
+             --{build,host}="${pc_type}"            \
              --enable-compressed-debug-sections=all \
              --enable-gold=yes                      \
              --enable-host-shared                   \
@@ -280,17 +258,13 @@ cd build || exit 1
              --with-mpfr=/usr                       \
              --with-system-zlib                     \
              --with-zstd
-
 echo
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
-    exit 1
 fi
-
 echo
 if ! sudo make install; then
     fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
-    exit 1
 fi
 
 # PROMPT USER TO CLEAN UP FILES

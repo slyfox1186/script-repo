@@ -81,7 +81,7 @@ untar()
             xz|lz)  flag='xf';;
         esac
 
-        [ -n "${flag}" ] && tar ${flag} ./"${archive}" -C ./"${archive%%.*}" --strip-components 1;;
+        [ -n "${flag}" ] && tar ${flag} ./"${archive}" -C ./"${archive%%.*}" --strip-components 1
     done
 }
             

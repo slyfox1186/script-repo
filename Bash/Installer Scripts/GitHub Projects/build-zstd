@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-###########################################################################################################
+###############################################################################################################################
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-zstd
 ##
@@ -8,11 +8,13 @@
 ##
 ##  Features: Static and shared build
 ##
-##  Updated: 09.07.23
+##  Changed: Static build to both
 ##
-##  Script version: 1.1
+##  Updated: 12.03.23
 ##
-###########################################################################################################
+##  Script version: 1.2
+##
+###############################################################################################################################
 
 clear
 
@@ -25,17 +27,20 @@ fi
 # SET THE VARIABLES
 #
 
-script_ver=1.1
-archive_dir=zstd-1.5.5
-archive_url=https://github.com/facebook/zstd/releases/download/v1.5.5/${archive_dir}.tar.gz
+script_ver=1.2
+archive_ver=1.5.5
+archive_dir="zstd-${archive_ver}"
+archive_url="https://github.com/facebook/zstd/releases/download/v${archive_ver}/${archive_dir}.tar.gz"
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
+install_dir=/usr/local
 cwd="${PWD}"/zstd-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
-printf "\n%s\n%s\n\n" \
+printf "\n%s\n%s\n\n"                    \
     "ZStd Build Script - v${script_ver}" \
     '==============================================='
+sleep 2
 
 #
 # CREATE OUTPUT DIRECTORY
@@ -67,12 +72,12 @@ PATH="\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
+/usr/local/cuda/bin:\
 /usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/local/cuda/bin:\
 /snap/bin\
 "
 export PATH
@@ -82,17 +87,12 @@ export PATH
 #
 
 PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/"${install_dir}"/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/"${install_dir}"/pkgconfig:\
 /usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/"${install_dir}"/pkgconfig\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/pkgconfig:\
+/lib/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -102,8 +102,8 @@ export PKG_CONFIG_PATH
 
 exit_fn()
 {
-    printf "\n%s\n\n%s\n%s\n\n" \
-        'The script has completed' \
+    printf "\n%s\n\n%s\n%s\n\n"                                   \
+        'The script has completed'                                \
         'Make sure to star this repository to show your support!' \
         "${web_repo}"
     exit 0
@@ -111,8 +111,8 @@ exit_fn()
 
 fail_fn()
 {
-    printf "\n\n%s\n\n%s\n\n%s\n\n" \
-        "${1}" \
+    printf "\n\n%s\n\n%s\n\n%s\n\n"                              \
+        "${1}"                                                   \
         'Please create a support ticket so I can work on a fix.' \
         "${web_repo}/issues"
     exit 1
@@ -120,23 +120,21 @@ fail_fn()
 
 cleanup_fn()
 {
-    local answer
+    local choice
+    clear
 
     printf "\n%s\n\n%s\n%s\n\n" \
         'Do you want to remove the build files?' \
         '[1] Yes' \
         '[2] No'
-    read -p 'Your choices are (1 or 2): ' answer
+    read -p 'Your choices are (1 or 2): ' choice
+    clear
 
-    case "${answer}" in
+    case "${choice}" in
         1)      sudo rm -fr "${cwd}" "${0}";;
         2)      return 0;;
         *)
-                clear
-                printf "%s\n\n" 'Bad user input. Resetting script...'
-                sleep 3
-                unset answer
-                clear
+                unset choice
                 cleanup_fn
                 ;;
     esac
@@ -150,12 +148,12 @@ pkgs=(autoconf autogen automake build-essential ccache clang cmake curl git libd
       libjemalloc-dev liblz4-dev liblzma-dev libtool libtool-bin m4 meson ninja-build
       pkg-config zlib1g-dev)
 
-for i in ${pkgs[@]}
+for pkg in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+    missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
 
     if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+        missing_pkgs+=" ${pkg}"
     fi
 done
 
@@ -188,7 +186,6 @@ mkdir -p "${cwd}/${archive_dir}"
 
 if ! tar -zxf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
     fail_fn "Failed to extract: ${cwd}/${archive_name}"
-    exit 1
 fi
 
 #
@@ -196,15 +193,18 @@ fi
 #
 
 cd "${cwd}/${archive_dir}/build/meson" || exit 1
-meson setup build --prefix=/usr/local      \
-                  --buildtype=release      \
-                  --default-library=static \
-                  --strip                  \
+meson setup build --prefix="${install_dir}" \
+                  --buildtype=release       \
+                  --default-library=both    \
+                  --strip                   \
                   -Dbin_tests=false
-ninja "-j$(nproc --all)" -C build
-if ! sudo ninja "-j$(nproc --all)" -C build install; then
-    fail_fn "Failed to execute: sudo ninja -j$(nproc --all) -C build install:Line ${LINENO}"
-    exit 1
+echo
+if ! ninja "-j$(nproc --all)" -C build; then
+    fail_fn "Failed to execute: ninja -j$(nproc --all) -C build install. Line: ${LINENO}"
+fi
+echo
+if ! sudo ninja -C build install; then
+    fail_fn "Failed to execute: sudo ninja -C build install. Line: ${LINENO}"
 fi
 
 # PROMPT USER TO CLEAN UP FILES

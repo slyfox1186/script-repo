@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2162,SC2317
 
-###########################################################################################################
+###############################################################################################################################
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-yasm
 ##
@@ -11,7 +11,7 @@
 ##
 ##  Script version: 1.1
 ##
-###########################################################################################################
+###############################################################################################################################
 
 clear
 
@@ -132,7 +132,7 @@ cleanup_fn()
         *)
                 clear
                 printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
+                sleep 3build-yasm
                 unset choice
                 clear
                 cleanup_fn
@@ -290,9 +290,8 @@ build_done() { echo "${2}" > "${packages}/${1}.done"; }
 # BUILD PROGRAM FROM SOURCE
 #
 
-git_ver_fn 'yasm/yasm' '1' 'T'
-if build 'yasm' "${g_ver}"; then
-    download "https://codeload.github.com/yasm/yasm/tar.gz/refs/tags/v${g_ver}" "yasm-${g_ver}.tar.gz"
+if build 'yasm' '1.3.0'; then
+    download 'https://github.com/yasm/yasm/archive/refs/tags/v1.3.0.tar.gz' 'yasm-1.3.0.tar.gz'
     execute autoreconf -fi
     execute cmake -B build -DCMAKE_install_dir="${install_dir}" \
                            -DCMAKE_BUILD_TYPE=Release           \
@@ -300,7 +299,7 @@ if build 'yasm' "${g_ver}"; then
                            -G Ninja -Wno-dev
     execute ninja "-j$(nproc --all)" -C build
     execute sudo ninja "-j$(nproc --all)" -C build install
-    build_done 'yasm' "${g_ver}"
+    build_done 'yasm' '1.3.0'
 fi
 
 # PROMPT USER TO CLEAN UP FILES
