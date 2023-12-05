@@ -35,7 +35,7 @@ archive_name="${archive_dir}.tar.${archive_ext}"
 if [ -n "${arg1}" ]; then
     cwd="${arg1}"/autoconf-build-script
     workspace="${cwd}"/workspace
-    ="${workspace}"
+    install_dir="${workspace}"
 else
     cwd="${PWD}"/autoconf-build-script
     install_dir=/usr/local
