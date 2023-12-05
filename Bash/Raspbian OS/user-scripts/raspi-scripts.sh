@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2068,SC2162
 
 clear
 
@@ -7,10 +8,9 @@ clear
 #
 
 random_dir="$(mktemp -d)"
-dl_url='https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Raspbian%20OS/user-scripts/raspi-scripts.txt'
+url='https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Raspbian%20OS/user-scripts/raspi-scripts.txt'
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-
-scripts=('.bashrc' '.bash_aliases' '.bash_functions')
+script_array=('.bashrc' '.bash_aliases' '.bash_functions')
 
 #
 # CREATE FUNCTIONS
@@ -26,7 +26,9 @@ fail_fn()
 # DOWNLAOD REQUIRED APT PACKAGES
 #
 
-sudo apt -y install curl wget git ccache
+sudo apt update
+sudo apt -y install wget
+clear
 
 #
 # CD INTO A RANDOM FOLDER TO HOLD AND EXECUTE THE TEMP FILES
@@ -38,7 +40,7 @@ cd "${random_dir}" || exit 1
 # DOWNLOAD THE USER SCRIPTS FROM GITHUB
 #
 
-wget --show-progress -U "${user_agent}" -qN - -i "${dl_url}"
+wget -U "${user_agent}" -qN - -i "${url}"
 
 #
 # DELETE ALL FILES EXCEPT THOSE THAT START WITH A "." OR END WITH ".sh"
@@ -47,41 +49,45 @@ wget --show-progress -U "${user_agent}" -qN - -i "${dl_url}"
 find . ! \( -name '\.*' -o -name '*.sh' \) -type f -delete 2>/dev/null
 
 #
-# MOVE SCRIPTS TO THE USER'S HOME FOLDER
+# MOVE ".bashrc" TO THE USERS HOME FOLDER
 #
 
-for script in ${scripts[@]}
+for script in "${script_array[@]}"
 do
-    sudo cp -f "${script}" "${HOME}"
-done
-unset script
-
-#
-# GRANT THE OWNERSHIP OF EACH USER SCRIPT BACK TO THE USER
-#
-
-for script in ${scripts[@]}
-do
-    if ! sudo chown "${USER}":"${USER}" "${HOME}/${script}"; then
-        fail_fn "Failed to update the file permissions for: ${script}"
+    if ! mv -f "${script}" "${HOME}"; then
+        fail_fn "Failed to move all user scripts to: ${HOME}. Line ${LINENO}"
     fi
 done
 unset script
+
+#
+# UPDATE THE OWNERSHIP OF EACH USER SCRIPT TO THE USER
+#
+
+for script in ${script_array[@]}
+do
+    if ! sudo chown "${USER}":"${USER}" "${HOME}/${script}"; then
+        fail_fn "Failed to update the file permissions for: ${script}. Line ${LINENO}"
+    fi
+done
 
 #
 # OPEN EACH SCRIPT WITH AN EDITOR
 #
 
 cd "${HOME}" || exit 1
-
-for script in ${scripts[@]}
+for fname in ${script_array[@]}
 do
-    if type -P nano &>/dev/null; then
-        nano "${script}"
-    elif type -P vim &>/dev/null; then
-        vim "${script}"
-    elif type -P vi &>/dev/null; then
-        vi "${script}"
+    if which gnome-text-editor &>/dev/null; then
+        gnome-text-editor "${fname}"
+    elif which gedit &>/dev/null; then
+        gedit "${fname}"
+    elif which nano &>/dev/null; then
+        nano "${fname}"
+    elif which vim &>/dev/null; then
+        vim "${fname}"
+    elif which vi &>/dev/null; then
+        vi "${fname}"
     else
         fail_fn 'Could not find an EDITOR to open the user scripts.'
     fi

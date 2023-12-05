@@ -1081,7 +1081,7 @@ sc()
             tput sgr 0
         }
         box_out_banner "Parsing: ${f}"
-        shellcheck "${f}"
+        shellcheck --color=always --source-path="${HOME}:${HOME}/tmp:/etc:/usr/local/lib64:/usr/local/lib:/usr/local64:/usr/lib:/lib64:/lib:/lib32" "${f}"
         echo
     done
 }
@@ -1118,7 +1118,7 @@ ct()
 # COPY A FILE'S FULL PATH
 # USAGE: cp <file name here>
 
-cp()
+cfp()
 {
     local pipe_this
     clear
@@ -1139,7 +1139,7 @@ cp()
 # COPY THE CONTENT OF A FILE
 # USAGE: cf <file name here>
 
-function cf()
+cfc()
 {
     clear
 
