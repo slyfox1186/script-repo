@@ -127,17 +127,20 @@ export cpus lan PS1 PYTHONUTF8 SHELL threads wan
 #
 
 PATH="\
-/usr/lib/ccache/bin:\
-/opt/cuda/bin:\
+/usr/lib/ccache:\
 ${HOME}/perl5/bin:\
+${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
-/usr/local/bin:\
 /usr/local/cuda/bin:\
-/usr/lib/python3/dist-packages:\
+/usr/local/x86_64-linux-gnu/bin:\
+/usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
-/bin\
+/bin:\
+/usr/local/games:\
+/usr/games:\
+/snap/bin\
 "
 export PATH
