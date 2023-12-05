@@ -95,8 +95,8 @@ mkdir -p "${cwd}"
 # SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
 #
 
-CC=clang
-CXX=clang++
+CC=gcc
+CXX=g++
 CFLAGS='-g -O3 -pipe -march=native'
 CXXFLAGS="${CFLAGS}"
 CPPFLAGS="-I${install_dir}/include/x86_64-linux-gnu"
