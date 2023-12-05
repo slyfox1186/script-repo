@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+if [ -n "${1}" ]; then
+    arg1="${1}"
+fi
+
 ###################################################################################################################################
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf
@@ -28,9 +32,10 @@ archive_dir=autoconf-2.69
 archive_url=https://ftp.gnu.org/gnu/autoconf/"${archive_dir}".tar.xz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
-if [ -n "${1}" ]; then
-    cwd="${1}"/autoconf-build-script
-    install_dir="${1}"
+if [ -n "${arg1}" ]; then
+    cwd="${arg1}"/autoconf-build-script
+    workspace="${cwd}"/workspace
+    ="${workspace}"
 else
     cwd="${PWD}"/autoconf-build-script
     install_dir=/usr/local
@@ -51,6 +56,10 @@ if [ -d "${cwd}" ]; then
     sudo rm -fr "${cwd}"
 fi
 mkdir -p "${cwd}"
+
+if [ -n "${arg1}" ]; then
+    mkdir -p "${workspace}"
+fi    
 
 #
 # SET THE C + CPP COMPILERS
