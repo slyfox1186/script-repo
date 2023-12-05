@@ -26,6 +26,7 @@ fail_fn()
 # DOWNLAOD REQUIRED APT PACKAGES
 #
 
+sudo apt update
 sudo apt -y install wget
 clear
 
@@ -74,22 +75,18 @@ done
 # OPEN EACH SCRIPT WITH AN EDITOR
 #
 
+cd "${HOME}" || exit 1
 for fname in ${script_array[@]}
 do
     if which gnome-text-editor &>/dev/null; then
-        cd "${HOME}" || exit 1
         gnome-text-editor "${fname}"
     elif which gedit &>/dev/null; then
-        cd "${HOME}" || exit 1
         gedit "${fname}"
     elif which nano &>/dev/null; then
-        cd "${HOME}" || exit 1
         nano "${fname}"
     elif which vim &>/dev/null; then
-        cd "${HOME}" || exit 1
         vim "${fname}"
     elif which vi &>/dev/null; then
-        cd "${HOME}" || exit 1
         vi "${fname}"
     else
         fail_fn 'Could not find an EDITOR to open the user scripts.'

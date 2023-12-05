@@ -1,20 +1,4 @@
 #!/usr/bin/env bash
-
-clear
-
-printf "%s\n%s\n\n" \
-    'Install ~/.bash_functions' \
-    '================================='
-sleep 2
-
-#
-# CREATE FUNCTIONS
-#
-
-script_fn()
-{
-cat > file="${HOME}"/.bash_functions <<'EOF'
-#!/usr/bin/env bash
 # shellcheck disable=SC1091,SC2001,SC2162,SC2317
 
 export user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -1600,7 +1584,3 @@ alias list='clear; pacman -Ss'
 alias remove='clear; pacman -R --noconfirm'
 alias qpkg='clear; pacman -Ql'
 alias update='clear; pacman -Syu'
-
-EOF
-
-printf "\n%s\n%s\n\n" 'The script has completed!'
