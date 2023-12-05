@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+libgcc-12-de#!/usr/bin/env bash
 
 #################################################################################################################################
 ##
@@ -137,17 +137,20 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
+libgcc_ver="$(sudo apt list libgcc-* | grep -Eo 'libgcc-[0-9]*-dev' | uniq | head -n1)"
+libgtk_ver="$(sudo apt list libgtk-* | grep -Eo 'libgtk-[0-9]+-doc' | head -n1)"
+
 pkgs=(apt-transport-https apt-utils autoconf autoconf-archive autogen automake autopoint autotools-dev
       build-essential bzip2 ca-certificates ccache clang cmake curl gfortran git google-perftools graphviz
       jq lcov libaria2-0 libaria2-0-dev libc-ares-dev libcppunit-dev libcunit1-dev libcurl4 libcurl4-openssl-dev
-      libdmalloc-dev libec-dev libedit-dev libev-dev libevent-dev libexiv2-27 libexpat1-dev libgcc-12-dev
-      libgcrypt20-dev libgexiv2-2 libgimp2.0 libgmp3-dev libgpg-error-dev libgtk-4-doc libgpgme-dev libicu-dev
+      libdmalloc-dev libec-dev libedit-dev libev-dev libevent-dev libexiv2-27 libexpat1-dev "${libgcc_ver}"
+      libgcrypt20-dev libgexiv2-2 libgimp2.0 libgmp3-dev libgpg-error-dev "${libgtk_ver}" libgpgme-dev libicu-dev
       libjemalloc-dev libkrb5-3 libldap2-dev libldap-dev liblttng-ust-dev liblzma-dev libmbedtls-dev libnghttp2-dev
       libntlm0-dev libparted-dev libpng-dev libpsl-dev librtmp-dev librust-bzip2-dev librust-openssl-dev libsqlite3-dev
       libssh2-1-dev libssh-dev libssl-dev libtinfo5 libticonv-dev libtinfo-dev libtool libtool-bin libunistring-dev
       libunwind8 libuv1-dev libxml2-dev libzstd-dev lzip m4 nettle-dev default-jdk-headless openssh-server pkg-config
       python3-dev python3-numpy python3-packaging python3-pip python3-pytest python3-setuptools python3-wheel re2c rsync
-      unzip valgrind zip zlib1g-dev libnghttp3-dev)
+      unzip valgrind zip zlib1g-dev)
 
 for pkg in ${pkgs[@]}
 do
