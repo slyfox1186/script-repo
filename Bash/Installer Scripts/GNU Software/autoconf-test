@@ -33,6 +33,7 @@ archive_url=https://ftp.gnu.org/gnu/autoconf/"${archive_dir}".tar.xz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 if [ -n "${arg1}" ]; then
+    arg1="${PWD}"
     cwd="${arg1}"/autoconf-build-script
     workspace="${cwd}"/workspace
     install_dir="${workspace}"
