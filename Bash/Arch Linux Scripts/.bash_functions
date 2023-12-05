@@ -88,7 +88,7 @@ mf()
         chmod 744 "${1}"
     fi
 
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 mdir()
@@ -106,7 +106,7 @@ mdir()
         cd "${PWD}/${1}" || exit 1
     fi
 
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 ##################
@@ -145,7 +145,7 @@ cpf()
     chown -R "${USER}":'users' "${HOME}/tmp/${1}"
     chmod -R 744 "${HOME}/tmp/${1}"
 
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 # MOVE file
@@ -162,7 +162,7 @@ mvf()
     chown -R "${USER}":'users' "${HOME}/tmp/${1}"
     chmod -R 744 "${HOME}/tmp/${1}"
 
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 ##########################
@@ -173,7 +173,7 @@ toa()
     clear
     chown -R "${USER}":'users' "${PWD}"
     chmod -R 744 "${PWD}"
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 #################
@@ -257,7 +257,7 @@ new_key()
 # EXPORT THE PUBLIC SSH KEY STORED INSIDE A PRIVATE SSH KEY
 keytopub()
 {
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 
     local opub okey
 
@@ -300,7 +300,7 @@ sbrc()
     . ~/.bashrc && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
     sleep 1
 
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 spro()
@@ -310,7 +310,7 @@ spro()
     . ~/.profile && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
     sleep 1
 
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 ####################
@@ -368,7 +368,7 @@ myip()
 # WGET COMMAND
 mywget()
 {
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 
     local outfile url
 
@@ -610,7 +610,7 @@ ffdl()
     curl -A "${user_agent}" -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
     bash 'ff.sh'
     sudo rm 'ff.sh'
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 ffs() { curl -A "${user_agent}" -m 10 -Lso 'ff' 'https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/build-ffmpeg'; }
@@ -632,7 +632,7 @@ dlfs()
     done
     
     clear
-    ls -1AhFv --color --group-directories-first
+    ls -1AvhFhFv --color --group-directories-first
 }
 
 ##############################
@@ -672,7 +672,7 @@ mi()
     local i
 
     if [ -z "${1}" ]; then
-        ls -1AhFv --color --group-directories-first
+        ls -1AvhFhFv --color --group-directories-first
         echo
         read -p 'Please enter the relative file path: ' i
         clear
@@ -1057,7 +1057,7 @@ rmd()
     local dirs
 
     if [ -z "${*}" ]; then
-        clear; ls -1A --color --group-directories-first
+        clear; ls -1AvhF --color --group-directories-first
         echo
         read -p 'Enter the directory path(s) to delete: ' dirs
      else
@@ -1066,7 +1066,7 @@ rmd()
 
     sudo rm -fr "$dirs"
     clear
-    ls -1A --color --group-directories-first
+    ls -1AvhF --color --group-directories-first
 }
 
 
@@ -1077,7 +1077,7 @@ rmf()
     local files
 
     if [ -z "${*}" ]; then
-        clear; ls -1A --color --group-directories-first
+        clear; ls -1AvhF --color --group-directories-first
         echo
         read -p 'Enter the file path(s) to delete: ' files
      else
@@ -1086,7 +1086,7 @@ rmf()
 
     sudo rm "${file}s"
     clear
-    ls -1A --color --group-directories-first
+    ls -1AvhF --color --group-directories-first
 }
 
 ## REMOVE BOM
@@ -1365,7 +1365,7 @@ adl()
     fi
 
     find . -type f -iname "*:Zone.Identifier" -delete 2>/dev/null
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 adlm()
@@ -1408,7 +1408,7 @@ adlm()
     fi
 
     find . -type f -iname "*:Zone.Identifier" -delete 2>/dev/null
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 ####################
@@ -1540,7 +1540,7 @@ gitdl()
     sudo chmod -R build-gcc build-magick build-ffmpeg repo.sh -- *
     sudo chown -R "${USER}":'users' build-gcc build-magick build-ffmpeg repo.sh
     clear
-    ls -1A --color --group-directories-first
+    ls -1AvhF --color --group-directories-first
 }
 
 # COUNT ITEMS IN THE CURRENT FOLDER W/O SUBDIRECTORIES INCLUDED
@@ -1560,6 +1560,24 @@ zipr()
     sudo find . -type f -iname '*.zip' -exec trash-put '{}' \;
 }
 
+######################################
+## DOWNLOAD CLANG INSTALLER SCRIPTS ##
+######################################
+
+dl_clang()
+{
+    clear
+    if [ ! -d "${HOME}/tmp" ]; then
+        mkdir -p "${HOME}/tmp"
+    fi
+    wget --show-progress -U "${user_agent}" -cqO "${HOME}/tmp/build-clang-16" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-16'
+    wget --show-progress -U "${user_agent}" -cqO "${HOME}/tmp/build-clang-17" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-17'
+    sudo chmod rwx "${HOME}/tmp/build-clang-16" "${HOME}/tmp/build-clang-17"
+    sudo chown "${USER}":"${USER}" "${HOME}/tmp/build-clang-16" "${HOME}/tmp/build-clang-17"
+    clear
+    ls -1AvhF--color --group-directories-first
+}
+
 ###################################
 ## FFPROBE LIST IMAGE DIMENSIONS ##
 ###################################
@@ -1576,11 +1594,3 @@ ffp()
 #####################
 ## PACMAN COMMANDS ##
 #####################
-
-
-# PACMAN COMMANDS
-alias install='clear; pacman -S --noconfirm'
-alias list='clear; pacman -Ss'
-alias remove='clear; pacman -R --noconfirm'
-alias qpkg='clear; pacman -Ql'
-alias update='clear; pacman -Syu'
