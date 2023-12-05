@@ -294,3 +294,10 @@ alias mlu='mainline uninstall'
 # GRUB CUSTOMIZER
 alias sgc='sudo grub-customizer'
 alias update-grub='grub-mkconfig -o /boot/grub/grub.cfg'
+
+# PACMAN COMMANDS
+alias install='clear; pacman -S --noconfirm'
+alias list='clear; pacman -Ss'
+alias remove='clear; pacman -R --noconfirm'
+alias qpkg='clear; pacman -Ql'
+alias update='clear; pacman -Syu'

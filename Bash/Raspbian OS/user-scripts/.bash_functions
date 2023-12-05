@@ -1118,7 +1118,7 @@ ct()
 # COPY A FILE'S FULL PATH
 # USAGE: cp <file name here>
 
-cp()
+cfp()
 {
     local pipe_this
     clear
@@ -1139,7 +1139,7 @@ cp()
 # COPY THE CONTENT OF A FILE
 # USAGE: cf <file name here>
 
-function cf()
+cfc()
 {
     clear
 
