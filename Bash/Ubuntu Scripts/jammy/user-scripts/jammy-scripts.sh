@@ -8,11 +8,9 @@ clear
 #
 
 random_dir="$(mktemp -d)"
-dl_url='https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Ubuntu%20Scripts/jammy/user-scripts/jammy-scripts.txt'
+url='https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Ubuntu%20Scripts/jammy/user-scripts/jammy-scripts.txt'
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-
-shell_array=('bash_aliases.sh' 'bash_functions.sh')
-script_array=('.bash_aliases' '.bash_functions' '.bashrc')
+script_array=('.bashrc' '.bash_aliases' '.bash_functions')
 
 #
 # CREATE FUNCTIONS
@@ -41,7 +39,7 @@ cd "${random_dir}" || exit 1
 # DOWNLOAD THE USER SCRIPTS FROM GITHUB
 #
 
-wget -U "${user_agent}" -qN - -i "${dl_url}"
+wget -U "${user_agent}" -qN - -i "${url}"
 
 #
 # DELETE ALL FILES EXCEPT THOSE THAT START WITH A "." OR END WITH ".sh"
@@ -53,47 +51,11 @@ find . ! \( -name '\.*' -o -name '*.sh' \) -type f -delete 2>/dev/null
 # MOVE ".bashrc" TO THE USERS HOME FOLDER
 #
 
-if ! mv -f '.bashrc' "${HOME}"; then
-    fail_fn "Failed to move the script \".bashrc\" to ${HOME}."
-fi
-
-#
-# PROMPT THE USER TO INSTALL APT-FAST
-#
-
-prompt_fn()
-{
-    local choice
-    clear
-    printf "%s\n\n%s\n%s\n\n"                                                         \
-        'Do you want to install and enable apt-fast as the primary download utility?' \
-        '[1] Yes'                                                                     \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
-    clear
-    
-    case "${choice}" in
-        1)
-                bash -c "$(curl -sL https://git.io/vokNn)"
-                apt_flag=yes
-                ;;
-        2)      apt_flag=no;;
-        *)
-                unset choice
-                clear
-                prompt_fn
-                ;;
-    esac
-}
-prompt_fn
-
-#
-# RUN EACH SHELL SCRIPT TO INSTALL THE USER SCRIPTS
-#
-
-for script in ${shell_array[@]}
+for script in "${script_array[@]}"
 do
-    bash "${script}" "${apt_flag}"
+    if ! mv -f "${script}" "${HOME}"; then
+        fail_fn "Failed to move all user scripts to: ${HOME}. Line ${LINENO}"
+    fi
 done
 unset script
 
@@ -104,32 +66,31 @@ unset script
 for script in ${script_array[@]}
 do
     if ! sudo chown "${USER}":"${USER}" "${HOME}/${script}"; then
-        fail_fn "Failed to update the file permissions for ${script}"
+        fail_fn "Failed to update the file permissions for: ${script}. Line ${LINENO}"
     fi
 done
-unset i
 
 #
 # OPEN EACH SCRIPT WITH AN EDITOR
 #
 
-for i in ${script_array[@]}
+for fname in ${script_array[@]}
 do
     if which gnome-text-editor &>/dev/null; then
         cd "${HOME}" || exit 1
-        gnome-text-editor "${i}"
+        gnome-text-editor "${fname}"
     elif which gedit &>/dev/null; then
         cd "${HOME}" || exit 1
-        gedit "${i}"
+        gedit "${fname}"
     elif which nano &>/dev/null; then
         cd "${HOME}" || exit 1
-        nano "${i}"
+        nano "${fname}"
     elif which vim &>/dev/null; then
         cd "${HOME}" || exit 1
-        vim "${i}"
+        vim "${fname}"
     elif which vi &>/dev/null; then
         cd "${HOME}" || exit 1
-        vi "${i}"
+        vi "${fname}"
     else
         fail_fn 'Could not find an EDITOR to open the user scripts.'
     fi
