@@ -212,24 +212,49 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl
-      git libadacgi6-dev libgmp-dev libintl-perl libisl-dev libmpc-dev libmpfr-dev libtool libtool-bin
-      libzstd-dev m4 nasm ninja-build texinfo yasm zlib1g-dev zstd gdc-multilib gdc)
+pkgs_fn()
+{
+    pkgs=("${1}" autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl
+          git libgmp-dev libintl-perl libisl-dev libmpc-dev libmpfr-dev libtool libtool-bin libzstd-dev
+          m4 nasm ninja-build texinfo yasm zlib1g-dev zstd gdc-multilib gdc)
 
-for pkg in ${pkgs[@]}
-do
-    missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
+    for pkg in ${pkgs[@]}
+    do
+        missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
 
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${pkg}"
+        if [ -z "${missing_pkg}" ]; then
+            missing_pkgs+=" ${pkg}"
+        fi
+    done
+
+    if [ -n "${missing_pkgs}" ]; then
+        sudo apt -y install ${missing_pkgs}
+        sudo apt -y autoremove
+        clear
     fi
-done
+}
 
-if [ -n "${missing_pkgs}" ]; then
-    sudo apt -y install ${missing_pkgs}
-    sudo apt -y autoremove
-    clear
+#
+# TEST THE OS AND ITS VERSION
+#
+
+find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
+
+if [ -f '/etc/os-release' ]; then
+    . '/etc/os-release'
+    OS_TMP="$NAME"
+    OS="$(echo "${OS_TMP}" | awk '{print $1}')"
+elif [ -n "${find_lsb_release}" ]; then
+    OS="$(lsb_release -d | awk '{print $2}')"
+else
+    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
 fi
+
+case "${OS}" in
+    Debian)       pkgs_fn 'libadacgi6-dev';;
+    Ubuntu)       pkgs_fn 'libadacgi4-dev';;
+    *)            pkgs_fn;;
+esac
 
 #
 # DOWNLOAD THE ARCHIVE FILE
