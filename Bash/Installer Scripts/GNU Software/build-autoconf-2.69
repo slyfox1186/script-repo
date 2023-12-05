@@ -33,6 +33,7 @@ archive_url=https://ftp.gnu.org/gnu/autoconf/"${archive_dir}".tar.xz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 if [ -n "${arg1}" ]; then
+    arg1="${PWD}"
     cwd="${arg1}"/autoconf-build-script
     workspace="${cwd}"/workspace
     install_dir="${workspace}"
@@ -219,7 +220,7 @@ cd build || exit 1
              M4="$(type -P m4)"
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
+    fail_fn "Failed to execute: sudo make instal. Line: ${LINENO}"
     exit 1
 fi
 
