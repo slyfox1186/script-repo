@@ -119,64 +119,6 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-LD_LIBRARY="\
-/usr/local/lib64:\
-/usr/local/lib:\
-/usr/share/texinfo/lib:\
-/usr/local/x86_64-linux-gnu/lib:\
-/usr/local/ssl/lib:\
-/usr/local/lib/x86_64-linux-gnu:\
-/usr/local/lib/gprofng:\
-/usr/local/lib64:\
-/usr/local/lib:\
-/usr/local/cuda/targets/x86_64-linux/lib:\
-/usr/local/cuda-12/targets/x86_64-linux/lib:\
-/usr/local/cuda-12.3/targets/x86_64-linux/lib:\
-/usr/local/cuda-12.3/nvvm/lib64:\
-/usr/lib/x86_64-linux-gnu/libfakeroot:\
-/usr/lib/x86_64-linux-gnu:\
-/usr/libx32:\
-/usr/lib64:\
-/usr/lib32:\
-/usr/lib:\
-/usr/local/lib:\
-/lib/x86_64-linux-gnu:\
-/libx32:\
-/lib64:\
-/lib32:\
-/lib\
-"
-export LD_LIBRARY
-
-LD_LIBRARY_PATH="\
-/usr/local/lib64:\
-/usr/local/lib:\
-/usr/share/texinfo/lib:\
-/usr/local/x86_64-linux-gnu/lib:\
-/usr/local/ssl/lib:\
-/usr/local/lib/x86_64-linux-gnu:\
-/usr/local/lib/gprofng:\
-/usr/local/lib64:\
-/usr/local/lib:\
-/usr/local/cuda/targets/x86_64-linux/lib:\
-/usr/local/cuda-12/targets/x86_64-linux/lib:\
-/usr/local/cuda-12.3/targets/x86_64-linux/lib:\
-/usr/local/cuda-12.3/nvvm/lib64:\
-/usr/lib/x86_64-linux-gnu/libfakeroot:\
-/usr/lib/x86_64-linux-gnu:\
-/usr/libx32:\
-/usr/lib64:\
-/usr/lib32:\
-/usr/lib:\
-/usr/local/lib:\
-/lib/x86_64-linux-gnu:\
-/libx32:\
-/lib64:\
-/lib32:\
-/lib\
-"
-export LD_LIBRARY_PATH
-
 #
 # CREATE FUNCTIONS
 #

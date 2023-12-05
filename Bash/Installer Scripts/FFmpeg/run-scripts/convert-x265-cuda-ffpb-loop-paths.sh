@@ -3,9 +3,6 @@
 
 clear
 
-sudo apt -y install trash-cli
-clear
-
 #
 # SET THE PATH VARIABLE
 #
@@ -14,9 +11,55 @@ if [ -d "${HOME}/.local/bin" ]; then
     export PATH="${PATH}:${HOME}/.local/bin"
 fi
 
-if [ -f 'list.txt' ]; then
-    sudo rm 'list.txt'
+#
+# CREATE THE OUTPUT DIRECTORIES
+#
+
+if [ ! -d 'completed' ] || [ ! -d 'original' ]; then
+    mkdir 'completed' 'original'
 fi
+
+#
+# INSTALLL THE REQUIRED APT PACKAGES
+#
+
+pkgs=(bc ffmpegthumbnailer ffmpegthumbs libffmpegthumbnailer4v5 libsox-dev python3-pip sox trash-cli)
+
+clear
+
+for pkg in ${pkgs[@]}
+do
+    missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${pkg}"
+    fi
+done
+
+if [ -n "${missing_pkgs}" ]; then
+    printf "%s\n\n" "$ Installing: ${missing_pkgs}"
+    if ! sudo apt -y install ${missing_pkgs}; then
+        fail_fn "Failed to install the required APT packages: ${missing_pkgs}"
+    else
+        printf "\n%s\n\n" 'The required APT packages were successfully installed!'
+    fi
+else
+    printf "%s\n\n" 'The required APT packages are already installed.'
+fi
+sleep 2
+clear
+
+#
+# INSTALL THE REQUIRED PIP PACKAGES
+#
+
+pip_dir="$(mktemp -d)"
+echo 'ffpb' > "${pip_dir}"/requirements.txt
+echo 'google_speech' >> "${pip_dir}"/requirements.txt
+if ! pip install --user -r "${pip_dir}"/requirements.txt &>/dev/null; then
+    printf "%s\n\n" 'Failed to install the pip packages.'
+    exit 1
+fi
+sudo rm -fr "${pip_dir}"
 
 cat > 'list.txt' <<'EOF'
 /path/to/video/video.mp4
@@ -75,7 +118,7 @@ EOF
     #
 
     echo
-    if ffmpeg \
+    if ffpb \
             -y \
             -threads 0 \
             -hide_banner \
@@ -95,7 +138,7 @@ EOF
             -qmin:v 0 \
             -qmax:v 99 \
             -temporal-aq:v 1 \
-            -rc-lookahead:v 20 \
+            -rc-lookahead:v 70 \
             -i_qfactor:v 0.75 \
             -b_qfactor:v 1.1 \
             -c:a libfdk_aac \

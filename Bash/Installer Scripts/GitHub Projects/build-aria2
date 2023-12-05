@@ -6,9 +6,9 @@
 ##
 ##  Purpose: Build aria2 from source code
 ##
-##  Updated: 11.21.23
+##  Updated: 12.03.23
 ##
-##  Script version: 1.7
+##  Script version: 1.8
 ##
 ##  Features:
 ##            - Static build
@@ -17,8 +17,9 @@
 ##
 ##  Added:
 ##         - Updated aria2 to the latest version - 1.37.0
-##         - If openssl is manually installed using the build-openssl script then use its certs directory instead of the default.
+##         - If OpenSSL is manually installed using the build-openssl script then use its certs directory instead of the default.
 ##         - Build jemalloc from the latest source code
+##         - RUNPATH to LDFLAGS
 ##
 ##  Fixed: Soft linking error
 ##
@@ -32,21 +33,13 @@ if [ "${EUID}" -eq '0' ]; then
 fi
 
 #
-# PRINT THE SCRIPT BANNER
-#
-
-printf "%s\n%s\n\n"                              \
-    "Aria2 Build Script - version ${script_ver}" \
-    '==============================================='
-sleep 2
-
-#
 # SET THE VARIABLES
 #
 
-script_ver=1.7
-archive_dir=aria2-1.37.0
-archive_url="https://github.com/aria2/aria2/releases/download/release-1.37.0/${archive_dir}.tar.gz"
+script_ver=1.8
+archive_ver=1.37.0
+archive_dir="aria2-${archive_ver}"
+archive_url="https://github.com/aria2/aria2/releases/download/release-${archive_ver}/${archive_dir}.tar.xz"
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/aria2-build-script
@@ -61,13 +54,22 @@ user_agent='Mozilla/5.0 (X11; Linux x86_64) Applpc_typeeWebKit/537.36 (KHTML, li
 web_repo=https://github.com/slyfox1186/script-repo
 
 #
+# PRINT THE SCRIPT BANNER
+#
+
+printf "%s\n%s\n\n"                              \
+    "Aria2 Build Script - version ${script_ver}" \
+    '==============================================='
+sleep 2
+
+#
 # TEST THE OS AND ITS VERSION
 #
 
 find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
 
 if [ -f '/etc/os-release' ]; then
-    source '/etc/os-release'
+    . '/etc/os-release'
     OS_TMP="$NAME"
     VER_TMP="$VERSION_ID"
     CODENAME="$VERSION_CODENAME"
@@ -93,13 +95,12 @@ mkdir -p "${cwd}"
 # SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
 #
 
-CC=clang
-CXX=clang++
-LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+CC=gcc
+CXX=g++
 CFLAGS='-g -O3 -pipe -march=native'
 CXXFLAGS="${CFLAGS}"
-CPPFLAGS='-I/usr/local/include -I/usr/include'
-export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
+CPPFLAGS="-I${install_dir}/include/x86_64-linux-gnu"
+export CC CXX CFLAGS CPPFLAGS CXXFLAGS
 
 #
 # SET THE PATH VARIABLE
@@ -111,12 +112,12 @@ PATH="\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
+/usr/local/cuda/bin:\
 /usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/local/cuda/bin:\
 /snap/bin\
 "
 export PATH
@@ -126,66 +127,14 @@ export PATH
 #
 
 PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/${install_dir}/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/${install_dir}/pkgconfig:\
 /usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/${install_dir}pkgconfig\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/pkgconfig:\
+/lib/pkgconfig\
 "
 export PKG_CONFIG_PATH
-
-LD_LIBRARY="\
-/usr/local/lib64:\
-/usr/share/texinfo/lib/libintl-perl/lib:\
-/usr/share/texinfo/lib:\
-/usr/share/gitk/lib:\
-/usr/share/git-gui/lib:\
-/usr/share/ghostscript/lib:\
-/usr/local/lib64:\
-/usr/local/lib/clang/17/lib:\
-/usr/local/lib:\
-/usr/lm32-elf/lib:\
-/usr/lib64:\
-/usr/lib32:\
-/usr/lib/llvm15/lib:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/lib:\
-/usr/lib/clang/16/lib:\
-/usr/lib/bfd-plugins:\
-/usr/lib:\
-/lib64:\
-/lib\
-"
-export LD_LIBRARY
-
-LD_LIBRARY_PATH="\
-/usr/local/lib64:\
-/usr/share/texinfo/lib/libintl-perl/lib:\
-/usr/share/texinfo/lib:\
-/usr/share/gitk/lib:\
-/usr/share/git-gui/lib:\
-/usr/share/ghostscript/lib:\
-/usr/local/lib64:\
-/usr/local/lib/clang/17/lib:\
-/usr/local/lib:\
-/usr/lm32-elf/lib:\
-/usr/lib64:\
-/usr/lib32:\
-/usr/lib/llvm15/lib:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/lib:\
-/usr/lib/clang/16/lib:\
-/usr/lib/bfd-plugins:\
-/usr/lib:\
-/lib64:\
-/lib\
-"
-export LD_LIBRARY_PATH
-
 
 #
 # CREATE FUNCTIONS
@@ -258,17 +207,17 @@ fi
 #
 
 pkgs=(autoconf autoconf-archive autogen automake build-essential ca-certificates ccache
-      curl libaria2-0 libaria2-0-dev libc-ares-dev libdmalloc-dev libexpat1-dev libgmp-dev
+      curl gettext libaria2-0 libaria2-0-dev libc-ares-dev libdmalloc-dev libexpat1-dev libgmp-dev
       libintl-perl liblzma-dev libmbedtls-dev libnghttp2-dev librust-openssl-dev libsqlite3-dev
       libssh2-1-dev libssh-dev libssl-dev libticonv-dev libtool libtool-bin libuv1-dev libxml2-dev
       m4 pkg-config zlib1g-dev)
 
-for i in ${pkgs[@]}
+for pkg in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+    missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
 
     if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+        missing_pkgs+=" ${pkg}"
     fi
 done
 
@@ -276,21 +225,22 @@ if [ -n "${missing_pkgs}" ]; then
     sudo apt -y install ${missing_pkgs}
     sudo apt -y autoremove
 fi
-clear
 
 #
 # BUILD JEMALLOC FROM SOURCE CODE
 #
 
-printf "%s\n%s\n\n"                  \
+printf "\n%s\n%s\n\n"                \
     'Build Jemalloc - version 5.3.0' \
     '==============================================='
-sleep 2
 
 #
 # CREATE JEMALLOC OUTPUT DIRECTORY
 #
 
+if [ -d "${cwd}/jemalloc-5.3.0" ]; then
+    sudo rm -fr "${cwd}/jemalloc-5.3.0"
+fi
 mkdir -p "${cwd}/jemalloc-5.3.0/build"
 
 #
@@ -319,19 +269,17 @@ fi
 cd "${cwd}/jemalloc-5.3.0" || exit 1
 extracmds1=('--disable-'{debug,doc,fill,log,shared,prof,stats})
 extracmds2=('--enable-'{autogen,static,xmalloc})
-autoreconf -fi
+./autogen.sh
 cd build || exit 1
-../configure --prefix='/usr/local' \
-             "${extracmds1[@]}"    \
+../configure --prefix="${install_dir}" \
+             "${extracmds1[@]}"        \
              "${extracmds2[@]}"
-
-# MAKE JEMALLOC
+echo
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute the jemalloc command: make -j$(nproc --all). Line: ${LINENO}"
     exit 1
 fi
-
-# INSTALL JEMALLOC
+echo
 if ! sudo make install; then
     fail_fn "Failed to execute the jemalloc command: sudo make install. Line: ${LINENO}"
     exit 1
@@ -344,12 +292,14 @@ fi
 printf "\n%s\n%s\n\n"                    \
     'Build GCrypt-Error - version 5.3.0' \
     '==============================================='
-sleep 2
 
 #
 # CREATE GCRYPT-ERROR OUTPUT DIRECTORY
 #
 
+if [ -d "${cwd}/gcrypt-error-1.47" ]; then
+    sudo rm -fr "${cwd}/gcrypt-error-1.47"
+fi
 mkdir -p "${cwd}/gcrypt-error-1.47/build"
 
 #
@@ -382,21 +332,19 @@ cd build || exit 1
              --disable-doc                     \
              --disable-languages               \
              --disable-nls                     \
-             --disable-shared                  \
              --disable-tests                   \
              --enable-install-gpg-error-config \
              --enable-static                   \
              --enable-threads=posix            \
              --with-libiconv-prefix=/usr       \
-             --with-libintl-prefix=/usr
-
-# MAKE GCRYPT-ERROR
+             --with-libintl-prefix=/usr        \
+             --with-pic
+echo
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute the gcrypt-error command: make -j$(nproc --all). Line: ${LINENO}"
     exit 1
 fi
-
-# INSTALL GCRYPT-ERROR
+echo
 if ! sudo make install; then
     fail_fn "Failed to execute the gcrypt-error command: sudo make install. Line: ${LINENO}"
     exit 1
@@ -406,9 +354,10 @@ fi
 # CREATE THE ARIA2 OUTPUT DIRECTORY
 #
 
-if [ ! -d "${cwd}/${archive_dir}" ]; then
-    mkdir -p "${cwd}/${archive_dir}/build"
+if [ -d "${cwd}/${archive_dir}" ]; then
+    sudo rm -fr "${cwd}/${archive_dir}"
 fi
+mkdir -p "${cwd}/${archive_dir}/build"
 
 #
 # DOWNLOAD THE ARIA2 SOURCE CODE
@@ -431,10 +380,9 @@ fi
 # BUILD ARIA2 FROM SOURCE CODE
 #
 
-printf "\n%s\n%s\n\n"              \
-    "Build Aria2 - version 1.37.0" \
+printf "\n%s\n%s\n\n"                      \
+    "Build Aria2 - version ${archive_ver}" \
     '==============================================='
-sleep 2
 
 cd "${cwd}/${archive_dir}" || exit 1
 # INCREASE THE MAX NUMBER OF CONNECTIONS FROM 16 TO 128
@@ -458,12 +406,12 @@ cd build || exit 1
              JEMALLOC_CFLAGS="$(pkg-config --cflags jemalloc)" \
              JEMALLOC_LIBS="$(pkg-config --libs jemalloc)"     \
              LIBS="$(pkg-config --libs libuv)"
-
+echo
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute the aria2 command: make -j$(nproc --all). Line: ${LINENO}"
     exit 1
 fi
-
+echo
 if ! sudo make install; then
     fail_fn "Failed to execute the aria2 command: sudo make install. Line: ${LINENO}"
     exit 1

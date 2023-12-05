@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2162,SC2317
+# shellcheck disable=SC1091,SC2001,SC2005,SC2068,SC2086,SC2162,SC2317
 
 #################################################################################################################################
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-python3
 ##
-##  Purpose: Install Python3 v3.12.0rc3 from the source code released by the official website: https://www.python.org/downloads
+##  Purpose: Install Python3 from the source code acquired from the official website: https://www.python.org/downloads
+##
+##  Version: 3.12.0
 ##
 ##  Features: Static build, OpenSSL backend
 ##
-##  Updated: 11.02.23
+##  Updated: 12.03.23
 ##
-##  Upgraded to version: 3.12.0
-##
-##  Script version: 2.0
+##  Script version: 2.1
 ##
 #################################################################################################################################
 
@@ -28,14 +28,15 @@ fi
 # SET THE SCRIPT VARIABLES
 #
 
-script_ver=2.0
+script_ver=2.1
 py_ver=3.12.0
 archive_dir=Python-${py_ver}.tar.xz
-archive_url=https://www.python.org/ftp/python/3.12.0/${archive_dir}
+archive_url="https://www.python.org/ftp/python/${py_ver}/${archive_dir}"
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 install_dir=/usr/local
 cwd="${PWD}"/python3-build-script
+openssl_prefix="$(echo "$(type -P openssl)" | sed 's|\/bin\/openssl||')"
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
@@ -43,9 +44,10 @@ web_repo=https://github.com/slyfox1186/script-repo
 # START THE PYTHON3 BUILD
 #
 
-printf "%s\n%s\n\n" \
-    "Python3 Build Script v${py_ver} - v${script_ver}" \
+printf "%s\n%s\n\n"                         \
+    "Python3 Build Script - v${script_ver}" \
     '==============================================='
+sleep 2
 
 #
 # CREATE THE OUTPUT DIRECTORY
@@ -57,38 +59,33 @@ fi
 mkdir -p "${cwd}"
 
 #
-# SET THE C & CPP COMPILERS
-#
-
-export CC=gcc CXX=g++
-
-#
 # SET THE COMPILER OPTIMIZATION FLAGS
 #
 
-LDFLAGS="-L/lib/"${install_dir}" -L/usr/lib/"${install_dir}" -L/usr/local/lib"
-LDFLAGS+=" -L/usr/local/lib64 -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib"
-
-export CXXFLAGS='-g -O3 -pipe -march=native'
-export CFLAGS="-I/usr/include/openssl ${CXXFLAGS}"
-export CPPFLAGS='-I/usr/include/openssl -I/usr/local/include -I/usr/include'
-export CFLAGS CXXFLAGS LDFLAGS
+CC=gcc
+CXX=g++
+CFLAGS='-g -O3 -pipe -march=native'
+CXXFLAGS="${CFLAGS}"
+CPPFLAGS="-I${install_dir}/include -I${install_dir}/include/x86_64-linux-gnu -I/usr/include"
+LDFLAGS="-Wl,-rpath -Wl,${install_dir}/lib -Wl,--enable-new-dtags -L${install_dir}/lib"
+export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
 #
 # SET THE PATH VARIABLE
 #
 
 PATH="\
+/usr/lib/ccache/bin:\
 /usr/lib/ccache:\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
+/usr/local/cuda/bin:\
 /usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/local/cuda/bin:\
 /snap/bin\
 "
 export PATH
@@ -98,17 +95,12 @@ export PATH
 #
 
 PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/usr/local/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/usr/local/pkgconfig:\
 /usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/usr/local/pkgconfig\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/pkgconfig:\
+/lib/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -118,8 +110,8 @@ export PKG_CONFIG_PATH
 
 exit_fn()
 {
-    printf "\n%s\n\n%s\n%s\n\n" \
-        'The script has completed!' \
+    printf "\n%s\n\n%s\n%s\n\n"                                   \
+        'The script has completed!'                               \
         'Make sure to star this repository to show your support!' \
         "${web_repo}"
     exit 0
@@ -127,8 +119,8 @@ exit_fn()
 
 fail_fn()
 {
-    printf "\n\n%s\n\n%s\n\n%s\n\n" \
-        "${1}" \
+    printf "\n\n%s\n\n%s\n\n%s\n\n"                              \
+        "${1}"                                                   \
         'Please create a support ticket so I can work on a fix.' \
         "${web_repo}/issues"
     exit 1
@@ -136,7 +128,7 @@ fail_fn()
 
 show_ver_fn()
 {
-    save_ver="$(sudo find /usr/local -type f -name python3.12 | grep -Eo '[0-9\.]+$')"
+    save_ver="$(sudo find /usr/local/ -type f -name 'python3.12' | grep -Eo '[0-9\.]+$')"
     printf "\n%s\n\n" "The installed Python3 version is: ${save_ver}"
     sleep 3
 }
@@ -146,9 +138,9 @@ cleanup_fn()
     local answer
     clear
 
-    printf "\n%s\n\n%s\n%s\n\n" \
+    printf "\n%s\n\n%s\n%s\n\n"                  \
         'Do you want to remove the build files?' \
-        '[1] Yes' \
+        '[1] Yes'                                \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
 
@@ -165,34 +157,24 @@ cleanup_fn()
     esac
 }
 
-installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
-
 pkgs_fn()
 {
-    pkgs=("${1}" autoconf autoconf-archive autogen automake binutils build-essential ccache cmake
-          curl git itstool libb2-dev libexempi-dev libgnome-desktop-3-dev libhandy-1-dev libpeas-dev
-          libpeasd-3-dev libssl-dev libtool libtool-bin m4 meson nasm ninja-build openssl python3 valgrind
-          yasm zlib1g-dev libgdbm-compat-dev)
+    pkgs=("${1}" autoconf autoconf-archive autogen automake binutils build-essential ccache curl git itstool
+          libb2-dev libexempi-dev libgnome-desktop-3-dev libhandy-1-dev libpeas-dev libpeasd-3-dev libssl-dev
+          libtool libtool-bin m4 meson nasm ninja-build openssl python3 valgrind yasm zlib1g-dev)
 
     for pkg in ${pkgs[@]}
     do
-        if ! installed "${pkg}"; then
+        missing_pkg="$(sudo dpkg -l | grep -o ${pkg})"
+
+        if [ -z "${missing_pkg}" ]; then
             missing_pkgs+=" ${pkg}"
         fi
     done
 
     if [ -n "${missing_pkgs}" ]; then
-        echo '$ Installing missing packages'
-        echo
-        for i in "${missing_pkgs}"
-            do
-                if ! sudo apt -y install $i; then
-                    fail_fn "Failed to install the apt packages. Line: ${LINENO}"
-                fi
-            done
-    else
-        echo '$ The packages are already installed.'
-        echo
+        sudo apt -y install ${missing_pkgs}
+        clear
     fi
 }
 
@@ -202,19 +184,17 @@ pkgs_fn()
 
 install_libportal_fn()
 {
-    if ! wget --show-progress -U "${user_agent}" -cq 'https://github.com/flatpak/libportal/releases/download/0.7.1/libportal-0.7.1.tar.xz'; then
-        clear
-        printf "%s\n\n" "Failed to download the libportal archive file. Line: ${LINENO}"
-        exit 1
+    if ! curl -A "${user_agent}" -Lso "${cwd}/libportal-0.7.1.tar.xz" 'https://github.com/flatpak/libportal/releases/download/0.7.1/libportal-0.7.1.tar.xz'; then
+        fail_fn "Failed to download the libportal archive file: ${cwd}/libportal-0.7.1.tar.xz. Line: ${LINENO}"
     fi
-    mkdir libportal-0.7.1
-    tar -xf libportal-0.7.1.tar.xz -C libportal-0.7.1 --strip-components 1
-    cd libportal-0.7.1 || exit 1
-    meson setup build --prefix=/usr/local      \
-                      --buildtype=release      \
-                      --default-library=static \
-                      --strip                  \
-                      -Dc_args="${CFLAGS}"     \
+    mkdir "${cwd}/libportal-0.7.1"
+    tar -xf "${cwd}/libportal-0.7.1.tar.xz" -C "${cwd}/libportal-0.7.1" --strip-components 1
+    cd "${cwd}/libportal-0.7.1" || exit 1
+    meson setup build --prefix="${install_dir}" \
+                      --buildtype=release       \
+                      --default-library=static  \
+                      --strip                   \
+                      -Dc_args="${CFLAGS}"      \
                       -Dcpp_args="${CXXFLAGS}"
     ninja "-j$(nproc --all)" -C build
     sudo ninja "-j$(nproc --all)" -C build install
@@ -236,10 +216,10 @@ debian_os_version()
 # TEST THE OS AND ITS VERSION IF UBUNTU THEN CALL THE pkgs_fn
 #
 
-find_lsb_release="$(sudo find /usr -type f -name 'lsb_release')"
+find_lsb_release="$(sudo find /usr/ -type f -name 'lsb_release')"
 
-if [ -f /etc/os-release ]; then
-    source /etc/os-release
+if [ -f '/etc/os-release' ]; then
+    . '/etc/os-release'
     OS_TMP="$NAME"
     VER_TMP="$VERSION_ID"
     CODENAME="$VERSION_CODENAME"
@@ -288,26 +268,30 @@ if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-compone
     exit 1
 fi
 
+printf "\n%s\n%s\n\n"            \
+    "Build Python3 - v${py_ver}" \
+    '==============================================='
+sleep 2
+
 #
 # BUILD THE PROGRAM FROM SOURCE CODE
 #
 
-cd "${cwd}/${archive_dir}/build" || exit 1
-../configure --prefix="${install_dir}"    
-             --disable-test-modules                                                   \
-             --enable-optimizations                                                   \
-             --with-ensurepip=install                                                 \
-             --with-lto=yes                                                           \
-             --with-openssl-rpath=auto                                                \
-             --with-openssl="$(echo "$(type -P openssl)" | sed 's|\/bin\/openssl||')" \
-             --with-pkg-config=yes                                                    \
-             --with-ssl-default-suites=openssl                                        \
-             --with-valgrind                                                          \
-             PKG_CONFIG="$(type -P pkg-config)"                                       \
-             PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"                                     \
-             CFLAGS="${CFLAGS}"                                                       \
-             CPPFLAGS="${CPPFLAGS}"                                                   \
-             LDFLAGS="${LDFLAGS}"                                                     \
+cd "${cwd}/${archive_dir}" || exit 1
+autoreconf -fi
+cd build || exit 1
+../configure --prefix="${install_dir}"            \
+             --disable-test-modules               \
+             --enable-optimizations               \
+             --with-ensurepip=install             \
+             --with-lto=yes                       \
+             --with-openssl-rpath=auto            \
+             --with-openssl="${openssl_prefix}"   \
+             --with-pkg-config=yes                \
+             --with-ssl-default-suites=openssl    \
+             --with-valgrind                      \
+             PKG_CONFIG="$(type -P pkg-config)"   \
+             PKG_CONFIG_PATH="${PKG_CONFIG_PATH}" \
              LIBS="$(pkg-config --libs openssl)"
 
 if ! make "-j$(nproc --all)"; then

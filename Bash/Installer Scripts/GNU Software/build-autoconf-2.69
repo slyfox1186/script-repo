@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
 
-###########################################################################################################################
+if [ -n "${1}" ]; then
+    arg1="${1}"
+fi
+
+###################################################################################################################################
 ##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-tar
+##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf
 ##
-##  Purpose: build gnu tar
+##  Purpose: build gnu autoconf
 ##
-##  Updated: 12.03.23
+##  Updated: 08.04.23
 ##
-##  Script version: 1.2
+##  Script version: 1.0
 ##
-###########################################################################################################################
+###################################################################################################################################
 
 clear
 
@@ -23,19 +27,27 @@ fi
 # SET THE VARIABLES
 #
 
-script_ver=1.2
-archive_dir=tar-latest
-archive_url=https://ftp.gnu.org/gnu/tar/tar-latest.tar.xz
+script_ver=1.0
+archive_dir=autoconf-2.69
+archive_url=https://ftp.gnu.org/gnu/autoconf/"${archive_dir}".tar.xz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
-cwd="${PWD}"/tar-build-script
-install_dir=/usr/local
+if [ -n "${arg1}" ]; then
+    arg1="${PWD}"
+    cwd="${arg1}"/autoconf-build-script
+    workspace="${cwd}"/workspace
+    install_dir="${workspace}"
+else
+    cwd="${PWD}"/autoconf-build-script
+    install_dir=/usr/local
+fi
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
-    "tar build script - v${script_ver}" \
+    "autoconf 2.69 build script - v${script_ver}" \
     '==============================================='
+sleep 2
 
 #
 # CREATE OUTPUT DIRECTORY
@@ -46,16 +58,21 @@ if [ -d "${cwd}" ]; then
 fi
 mkdir -p "${cwd}"
 
+if [ -n "${arg1}" ]; then
+    mkdir -p "${workspace}"
+fi    
+
 #
-# SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
+# SET THE C + CPP COMPILERS
 #
 
-CC=gcc
-CXX=g++
-CFLAGS='-g -O3 -pipe -march=native'
-CXXFLAGS="${CFLAGS}"
-CPPFLAGS="-I${install_dir}/include/x86_64-linux-gnu"
-export CC CXX CFLAGS CPPFLAGS CXXFLAGS
+export CC=gcc CXX=g++
+
+#
+# SET COMPILER OPTIMIZATION FLAGS
+#
+
+export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
 
 #
 # SET THE PATH VARIABLE
@@ -66,12 +83,12 @@ PATH="\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
-/usr/local/cuda/bin:\
 /usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin:\
+/usr/local/cuda/bin:\
 /snap/bin\
 "
 export PATH
@@ -81,12 +98,17 @@ export PATH
 #
 
 PKG_CONFIG_PATH="\
-/usr/share/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/share/pkgconfig:\
+/usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
-/lib/pkgconfig\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/share/pkgconfig:\
+/lib64/pkgconfig:\
+/lib/pkgconfig:\
+/lib/x86_64-linux-gnu/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -140,23 +162,23 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autoconf-archive autogen automake binutils bison build-essential bzip2 ccache
-      curl libc6-dev libintl-perl libtool libtool-bin libzstd-dev lzip lzma lzma-dev m4 nasm
-      texinfo xz-utils zlib1g-dev zstd yasm)
+pkgs=(autoconf autoconf-archive autogen automake autopoint autotools-dev binutils
+      bison build-essential bzip2 bzip2 ccache curl libc6-dev libpth-dev libtool
+      libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev yasm)
 
 for i in ${pkgs[@]}
 do
-	missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
 
-	if [ -z "${missing_pkg}" ]; then
-		missing_pkgs+=" ${i}"
-	fi
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${i}"
+    fi
 done
 
 if [ -n "${missing_pkgs}" ]; then
-	sudo apt -y install ${missing_pkgs}
-	sudo apt -y autoremove
-	clear
+    sudo apt -y install ${missing_pkgs}
+    sudo apt -y autoremove
+    clear
 fi
 
 #
@@ -186,39 +208,19 @@ if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-compone
 fi
 
 #
-# INSTALL 7Z FOR USE IN THE CONFIGURE COMMAND LINE BELOW
-#
-
-if [ ! -f '/usr/local/bin/7z' ]; then
-    bash <(curl -A "${user_agent}" -fsSL https://7z.optimizethis.net)
-    echo
-fi
-
-#
 # BUILD PROGRAM FROM SOURCE
 #
 
 cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
+autoupdate
 cd build || exit 1
 ../configure --prefix="${install_dir}"       \
              --{build,host}=x86_64-linux-gnu \
-             --disable-nls                   \
-             --enable-backup-scripts         \
-             --enable-gcc-warnings=no        \
-             --with-bzip2="$(type -P bzip2)" \
-             --with-compress="$(type -P 7z)" \
-             --with-gzip="$(type -P gzip)"   \
-             --with-libiconv-prefix=/usr     \
-             --with-libintl-prefix=/usr      \
-             --with-lzip="$(type -P lzip)"   \
-             --with-lzma="$(type -P lzma)"   \
-             --with-lzop="$(type -P lzop)"   \
-             --with-xz="$(type -P xz)"       \
-             --with-zstd="$(type -P zstd)"
+             M4="$(type -P m4)"
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
+    fail_fn "Failed to execute: sudo make instal. Line: ${LINENO}"
     exit 1
 fi
 

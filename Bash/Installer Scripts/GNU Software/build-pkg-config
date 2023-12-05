@@ -6,9 +6,9 @@
 ##
 ##  Purpose: build gnu pkg-config
 ##
-##  Updated: 09.05.23
+##  Updated: 12.03.23
 ##
-##  Script version: 1.3
+##  Script version: 1.4
 ##
 ###################################################################################################################################
 
@@ -23,7 +23,7 @@ fi
 # SET THE VARIABLES
 #
 
-script_ver=1.3
+script_ver=1.4
 archive_dir=pkg-config-0.29.2
 archive_url=https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz
 archive_ext="${archive_url//*.}"
@@ -54,9 +54,8 @@ CC=gcc
 CXX=g++
 CFLAGS='-g -O3 -pipe -march=native'
 CXXFLAGS="${CFLAGS}"
-CPPFLAGS="-I${install_dir}/include -I${install_dir}/include/x86_64-linux-gnu -I/usr/include"
+CPPFLAGS="-I${install_dir}/include -I${install_dir}/include/x86_64-linux-gnu"
 LDFLAGS="-L${install_dir}/lib64 -L${install_dir}/lib -L${install_dir}/lib/x86_64-linux-gnu"
-LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
 #
@@ -69,8 +68,8 @@ ${HOME}/perl5/bin:\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
-/usr/local/bin:\
 /usr/local/cuda/bin:\
+/usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
@@ -85,17 +84,10 @@ export PATH
 
 PKG_CONFIG_PATH="\
 /usr/share/pkgconfig:\
-/usr/local/ssl/lib/pkgconfig:\
-/usr/local/share/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/lib/usr/local/pkgconfig:\
-/usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
-/usr/lib/usr/local/pkgconfig:\
-/usr/lib64/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/lib/pkgconfig:\
-/lib/usr/local/pkgconfig:\
-/lib64/pkgconfig:\
 /lib/pkgconfig\
 "
 export PKG_CONFIG_PATH
@@ -123,6 +115,7 @@ fail_fn()
 cleanup_fn()
 {
     local choice
+    clear
 
     printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
         '============================================' \
@@ -131,16 +124,13 @@ cleanup_fn()
         '[1] Yes' \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
+    clear
 
     case "${choice}" in
         1)      sudo rm -fr "${cwd}";;
         2)      echo;;
         *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
                 unset choice
-                clear
                 cleanup_fn
                 ;;
     esac
@@ -155,19 +145,17 @@ pkgs=("${1}" autoconf autoconf-archive autogen automake build-essential ca-certi
       libgpg-error-dev libjemalloc-dev libmbedtls-dev libnghttp2-dev librust-openssl-dev libsqlite3-dev
       libssh2-1-dev libssh-dev libssl-dev libxml2-dev pkg-config zlib1g-dev)
 
-for i in ${pkgs[@]}
+for pkg in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep ${i})"
+    missing_pkg="$(sudo dpkg -l | grep -o ${pkg})"
 
     if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+        missing_pkgs+=" ${pkg}"
     fi
 done
-unset i
 
 if [ -n "${missing_pkgs}" ]; then
     sudo apt -y install ${missing_pkgs}
-    clear
 fi
 
 #
@@ -200,17 +188,21 @@ fi
 # BUILD PROGRAM FROM SOURCE
 #
 
-cd "${cwd}/${archive_dir}/build" || exit 1
+cd "${cwd}/${archive_dir}" || exit 1
+autoconf
+cd build || exit 1
 ../configure --prefix="${install_dir}"           \
              --enable-indirect-deps              \
              --with-internal-glib                \
              --with-pc-path="${PKG_CONFIG_PATH}" \
              --with-pic                          \
              PKG_CONFIG="$(type -P pkg-config)"
-make "-j$(nproc --all)"
+echo
+if ! make "-j$(nproc --all)"; then
+    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
+fi
 if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
-    exit 1
+    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
 fi
 
 # PROMPT USER TO CLEAN UP FILES

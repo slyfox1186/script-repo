@@ -78,16 +78,16 @@ fi
 # ADD ADDITIONAL SEARCH PATHS TO THE LD LIBRARY LINKER
 #
 
-bash <(curl -A "${user_agent}" -sSL 'https://ld-linker.optimizethis.net')
+sudo bash -c 'bash <(curl -sSL https://ld-linker.optimizethis.net)'
 
 #
 # DETECT THE PC ARCHITECTURE
 #
 
 case "$(uname -m)" in
-      x86_64)                       arch_ver=pkg-config;;
+      x86_64)                        arch_ver=pkg-config;;
       aarch64*|armv8*|arm|armv7*)    arch_ver=pkg-config-arm;;
-      *)                            fail_fn "Unrecognized architecture: '$(uname -m)'";;
+      *)                             fail_fn "Unrecognized architecture: '$(uname -m)'";;
 esac
 
 cd "${cwd}" || exit 1

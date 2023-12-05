@@ -6,9 +6,9 @@
 ##
 ##  Purpose: build gnu gawk
 ##
-##  Updated: 11.06.23
+##  Updated: 12.03.23
 ##
-##  Script version: 1.2
+##  Script version: 1.3
 ##
 ############################################################################################################################
 
@@ -23,7 +23,7 @@ fi
 # SET THE VARIABLES
 #
 
-script_ver=1.2
+script_ver=1.3
 archive_dir=gawk-5.3.0
 archive_url=https://ftp.gnu.org/gnu/gawk/"${archive_dir}".tar.lz
 archive_ext="${archive_url//*.}"
@@ -47,16 +47,15 @@ fi
 mkdir -p "${cwd}"
 
 #
-# SET THE C + CPP COMPILERS
+# SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
 #
 
-export CC=gcc CXX=g++
-
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
+CC=gcc
+CXX=g++
+CFLAGS='-g -O3 -pipe -march=native'
+CXXFLAGS="${CFLAGS}"
+CPPFLAGS="-I${install_dir}/include/x86_64-linux-gnu"
+export CC CXX CFLAGS CPPFLAGS CXXFLAGS
 
 #
 # SET THE PATH VARIABLE
@@ -67,12 +66,12 @@ PATH="\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
+/usr/local/cuda/bin:\
 /usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/local/cuda/bin:\
 /snap/bin\
 "
 export PATH
@@ -82,17 +81,12 @@ export PATH
 #
 
 PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/pkgconfig:\
+/lib/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -199,9 +193,14 @@ cd build || exit 1
 ../configure --prefix="${install_dir}"       \
              --{build,host}=x86_64-linux-gnu \
              --disable-nls
-make "-j$(nproc --all)"
+
+if ! make "-j$(nproc --all)"; then
+    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
+    exit 1
+fi
+
 if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
+    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
     exit 1
 fi
 
