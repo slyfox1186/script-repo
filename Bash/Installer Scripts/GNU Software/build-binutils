@@ -6,9 +6,9 @@
 ##
 ##  Purpose: build gnu binutils from source code
 ##
-##  Updated: 11.26.23
+##  Updated: 12.04.23
 ##
-##  Script version: 1.1
+##  Script version: 1.2
 ##
 ##################################################################################################################################
 
@@ -28,7 +28,7 @@ fi
 # SET THE VARIABLES
 #
 
-script_ver=1.1
+script_ver=1.2
 archive_dir=binutils-2.41
 archive_url=https://ftp.gnu.org/gnu/binutils/"${archive_dir}".tar.lz
 archive_ext="${archive_url//*.}"
