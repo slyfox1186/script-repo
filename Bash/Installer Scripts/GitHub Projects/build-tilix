@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2000,SC2034,SC2046,SC2068,SC2086,SC2154 source=/dev/null
 
 ##############################################################################################################################
 ##
@@ -9,7 +8,7 @@
 ##
 ##  Updated: 12.06.23
 ##
-##  Script version: 1.1
+##  Script version: 1.2
 ##
 ##############################################################################################################################
 
@@ -24,7 +23,7 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.1
+script_ver=1.2
 cwd="${PWD}"/tilix-build-script
 packages="${cwd}"/packages
 schemes_dir="${HOME}"/.config/tilix/schemes
@@ -58,13 +57,14 @@ box_out_banner "Tilix Build Script - v${script_ver}"
 
 mkdir -p "${packages}" "${schemes_dir}"
 
+
 #
 # CREATE FUNCTIONS
 #
 
 exit_fn()
 {
-    printf "\n%s\n\n%s\n\n"                                       \
+    printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         "${web_repo}"
     exit 0
@@ -73,9 +73,35 @@ exit_fn()
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "${1}"              \
+        "${1}" \
         "To report a bug create an issue at: ${web_repo}/issues"
     exit 1
+}
+
+cleanup_fn()
+{
+    local answer
+
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
+        '============================================' \
+        '  Do you want to clean up the build files?  ' \
+        '============================================' \
+        '[1] Yes' \
+        '[2] No'
+    read -p 'Your choices are (1 or 2): ' answer
+
+    case "${answer}" in
+        1)      sudo rm -fr "${cwd}" "${script_name}";;
+        2)      echo;;
+        *)
+                clear
+                printf "\n%s\n\n" 'Bad user input. Re-setting script...'
+                sleep 3
+                unset answer
+                clear
+                cleanup_fn
+                ;;
+    esac
 }
 
 execute()
@@ -84,12 +110,12 @@ execute()
 
     if [ "${debug}" = 'ON' ]; then
         if ! output=$("${@}"); then
-            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
+            notify-send -t 5000 "Failed to execute: ${*}"
             fail_fn "Failed to execute: ${*}"
         fi
     else
         if ! output=$("${@}" 2>&1); then
-            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
+            notify-send -t 5000 "Failed to execute: ${*}"
             fail_fn "Failed to execute: ${*}"
         fi
     fi
@@ -230,9 +256,8 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok ins
 # INSTALL APT PACKAGES
 #
 
-pkgs=(autoconf autogen automake build-essential ccache curl gettext git
-      gtk-doc-tools libgtk-3-dev libgtkd-3-dev libtool libtool-bin m4
-      ninja-build pkg-config python3-nautilus tilix tilix-common)
+pkgs=(autoconf autogen automake build-essential ccache curl gettext git gtk-doc-tools libgtk-3-dev libgtk-4-dev
+      libgtkd-3-dev libhwy-dev libtool libtool-bin m4 ninja-build pkg-config python3-nautilus tilix tilix-common)
 
 for pkg in ${pkgs[@]}
 do
@@ -257,7 +282,7 @@ fi
 
 if build 'dmd' 'dmd-2.106.0'; then
     download_deb 'https://downloads.dlang.org/releases/2.x/2.106.0/dmd_2.106.0-0_amd64.deb' 'dmd-2.106.0.deb'
-    execute sudo dpkg -i ./dmd-2.106.0.deb
+    execute sudo apt -y install ./dmd-2.106.0.deb
     build_done 'dmd' 'dmd-2.106.0'
 fi
 
@@ -266,12 +291,9 @@ fi
 #
 
 if build 'tilix' '1.9.6'; then
-    download 'https://github.com/gnunn1/tilix/releases/download/1.9.6/tilix-1.9.6_x86_64-linux-gnu.tar.gz' 'tilix-1.9.6.tar.gz'
-    execute sudo cp -f bin/libdruntime-ldc-shared.so.105 /usr/lib/x86_64-linux-gnu/
-    execute sudo cp -f bin/libphobos2-ldc-shared.so.105 /usr/lib/x86_64-linux-gnu/
-    execute sudo cp -f bin/libgtkd-3.so.0 /usr/lib/x86_64-linux-gnu/
-    execute sudo cp -f bin/libvted-3.so.0 /usr/lib/x86_64-linux-gnu/
-    execute sudo cp -fr share /usr/
+    download 'https://github.com/gnunn1/tilix/archive/refs/tags/1.9.6.tar.gz' 'tilix-1.9.6.tar.gz'
+    execute dub build --build=release
+    execute sudo sh install.sh
     build_done 'tilix' '1.9.6'
 fi
 
@@ -284,10 +306,10 @@ if build 'tilix-themes' 'git'; then
     if [ ! -d "${schemes_dir}" ]; then
         execute mkdir -p "${schemes_dir}"
     fi
-
-    cd Themes || exit 1
+    cd 'Themes' || exit 1
     execute cp -f 'argonaut.json' 'dracula.json' "${schemes_dir}"
-    cd ../Themes-2 || exit 1
+    cd ../ || exit 1
+    cd 'Themes-2' || exit 1
     execute cp -f 'neopolitan.json'  'vibrant-ink.json' "${schemes_dir}"
     build_done 'tilix-themes' 'git'
 fi
@@ -296,12 +318,10 @@ fi
 # MAKE TILIX THE DEFAULT TERMINAL
 #
 
-sudo update-alternatives --remove-all x-terminal-emulator
-sudo update-alternatives --install /usr/bin/x-terminal-emulator x-terminal-emulator /usr/bin/gnome-terminal 25
 sudo update-alternatives --install /usr/bin/x-terminal-emulator x-terminal-emulator /usr/bin/tilix 50
 
 # CLEANUP FILES
-sudo rm -fr "${cwd}"
+cleanup_fn
 
 # SHOW EXIT MESSAGE
 exit_fn
