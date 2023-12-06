@@ -283,7 +283,7 @@ pkgs=(autoconf autoconf-archive automake autopoint binutils binutils-dev bison
       libedit-dev libllvm-ocaml-dev libllvm-ocaml-15-dev libtool libtool-bin libxml2-dev
       m4 nasm ninja-build yasm zlib1g-dev wget "${get_libstdc}")
 
-for  pkg in ${pkgs[@]}
+for pkg in ${pkgs[@]}
 do
     missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
 
