@@ -9,7 +9,7 @@
 ##
 ##    - 3.2.0
 ##
-##  Major update
+##  Major updated
 ##
 ##    - 12.06.23
 ##
@@ -2712,15 +2712,15 @@ if [ -z "${LDEXEFLAGS}" ]; then
     fi
 fi
 
-# GET THE GPU ARCHITECTURE
-# https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
-gpu_arch_fn
-
 printf "\n%s\n%s\n"                                 \
     'Building nv-codec-headers - version 12.0.16.1' \
     '========================================================'
 
-if [[ ${RETURN} == '0' ]]; then
+# GET THE GPU ARCHITECTURE
+# https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
+gpu_arch_fn
+
+if [ ${?} -eq '0' ]; then
     if [ -n "${iscuda}" ]; then
         if build 'nv-codec-headers' '12.0.16.1'; then
             download 'https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.0.16.1/nv-codec-headers-12.0.16.1.tar.gz'
