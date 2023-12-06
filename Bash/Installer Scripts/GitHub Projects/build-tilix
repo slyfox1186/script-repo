@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2000,SC2034,SC2046,SC2068,SC2086,SC2154 source=/dev/null
 
 ##############################################################################################################################
 ##
@@ -6,9 +7,9 @@
 ##
 ##  Purpose: Compile the Advanced Linux Terminal Tilix from its official GitHub Repository 
 ##
-##  Updated: 10.07.23
+##  Updated: 12.06.23
 ##
-##  Script version: 3.1
+##  Script version: 1.1
 ##
 ##############################################################################################################################
 
@@ -23,8 +24,8 @@ fi
 # SET VARIABLES
 #
 
-script_ver=3.1
-cwd="$PWD"/tilix-build-script
+script_ver=1.1
+cwd="${PWD}"/tilix-build-script
 packages="${cwd}"/packages
 schemes_dir="${HOME}"/.config/tilix/schemes
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -64,7 +65,7 @@ mkdir -p "${packages}" "${schemes_dir}"
 
 exit_fn()
 {
-    printf "\n%s\n\n%s\n\n" \
+    printf "\n%s\n\n%s\n\n"                                       \
         'Make sure to star this repository to show your support!' \
         "${web_repo}"
     exit 0
@@ -73,35 +74,9 @@ exit_fn()
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "${1}" \
+        "${1}"              \
         "To report a bug create an issue at: ${web_repo}/issues"
     exit 1
-}
-
-cleanup_fn()
-{
-    local answer
-
-    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' answer
-
-    case "${answer}" in
-        1)      sudo rm -fr "${cwd}" "${script_name}";;
-        2)      echo;;
-        *)
-                clear
-                printf "\n%s\n\n" 'Bad user input. Re-setting script...'
-                sleep 3
-                unset answer
-                clear
-                cleanup_fn
-                ;;
-    esac
 }
 
 execute()
@@ -127,7 +102,15 @@ download()
     dl_url="${1}"
     dl_file="${2:-"${1##*/}"}"
 
+    if [[ "${dl_file}" =~ tar. ]]; then
+        output_dir="${dl_file%.*}"
+        output_dir="${3:-"${output_dir%.*}"}"
+    else
+        output_dir="${3:-"${dl_file%.*}"}"
+    fi
+
     target_file="${dl_path}/${dl_file}"
+    target_dir="${dl_path}/${output_dir}"
 
     if [ -f "${target_file}" ]; then
         echo "The file \"${dl_file}\" is already downloaded."
@@ -137,13 +120,32 @@ download()
             printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 10 seconds..."
             sleep 10
             if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
-                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit."
+                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit. Line: ${LINENO}"
             fi
         fi
         echo 'Download Completed'
     fi
 
-    cd "${packages}" || fail_fn "Unable to change the working directory to: ${packages}"
+    if [ -d "${target_dir}" ]; then
+        sudo rm -fr "${target_dir}"
+    fi
+    mkdir -p "${target_dir}"
+
+    if [ -n "${3}" ]; then
+        if ! tar -xf "${target_file}" -C "${target_dir}" 2>/dev/null >/dev/null; then
+            sudo rm "${target_file}"
+            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script. Line: ${LINENO}"
+        fi
+    else
+        if ! tar -xf "${target_file}" -C "${target_dir}" --strip-components 1 2>/dev/null >/dev/null; then
+            sudo rm "${target_file}"
+            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script. Line: ${LINENO}"
+        fi
+    fi
+
+    printf "%s\n\n" "File extracted: ${dl_file}"
+
+    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}. Line: ${LINENO}"
 }
 
 download_git()
@@ -173,6 +175,31 @@ download_git()
     fi
 
     cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}"
+}
+
+download_deb()
+{
+    dl_path="${packages}"
+    dl_url="${1}"
+    dl_file="${2:-"${1##*/}"}"
+
+    target_file="${dl_path}/${dl_file}"
+
+    if [ -f "${target_file}" ]; then
+        echo "The file \"${dl_file}\" is already downloaded."
+    else
+        echo "Downloading \"${dl_url}\" saving as \"${dl_file}\""
+        if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
+            printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 10 seconds..."
+            sleep 10
+            if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
+                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit."
+            fi
+        fi
+        echo 'Download Completed'
+    fi
+
+    cd "${packages}" || fail_fn "Unable to change the working directory to: ${packages}"
 }
 
 build()
@@ -228,21 +255,24 @@ fi
 # DOWNLOAD D COMPILER
 #
 
-if build 'dmd' 'dmd_2.105.3-0'; then
-    download 'https://downloads.dlang.org/releases/2.x/2.105.3/dmd_2.105.3-0_amd64.deb' 'dmd_2.105.3-0.deb'
-    execute sudo apt -y install ./dmd_2.105.3-0.deb
-    build_done 'dmd' 'dmd_2.105.3-0'
+if build 'dmd' 'dmd-2.106.0'; then
+    download_deb 'https://downloads.dlang.org/releases/2.x/2.106.0/dmd_2.106.0-0_amd64.deb' 'dmd-2.106.0.deb'
+    execute sudo dpkg -i ./dmd-2.106.0.deb
+    build_done 'dmd' 'dmd-2.106.0'
 fi
 
 #
 # INSTALL TILIX
 #
 
-if build 'tilix' 'git'; then
-    download_git 'https://github.com/gnunn1/tilix.git'
-    execute dub build --build=release
-    execute sudo sh install.sh
-    build_done 'tilix' 'git'
+if build 'tilix' '1.9.6'; then
+    download 'https://github.com/gnunn1/tilix/releases/download/1.9.6/tilix-1.9.6_x86_64-linux-gnu.tar.gz' 'tilix-1.9.6.tar.gz'
+    execute sudo cp -f bin/libdruntime-ldc-shared.so.105 /usr/lib/x86_64-linux-gnu/
+    execute sudo cp -f bin/libphobos2-ldc-shared.so.105 /usr/lib/x86_64-linux-gnu/
+    execute sudo cp -f bin/libgtkd-3.so.0 /usr/lib/x86_64-linux-gnu/
+    execute sudo cp -f bin/libvted-3.so.0 /usr/lib/x86_64-linux-gnu/
+    execute sudo cp -fr share /usr/
+    build_done 'tilix' '1.9.6'
 fi
 
 #
@@ -266,10 +296,12 @@ fi
 # MAKE TILIX THE DEFAULT TERMINAL
 #
 
+sudo update-alternatives --remove-all x-terminal-emulator
+sudo update-alternatives --install /usr/bin/x-terminal-emulator x-terminal-emulator /usr/bin/gnome-terminal 25
 sudo update-alternatives --install /usr/bin/x-terminal-emulator x-terminal-emulator /usr/bin/tilix 50
 
 # CLEANUP FILES
-cleanup_fn
+sudo rm -fr "${cwd}"
 
 # SHOW EXIT MESSAGE
 exit_fn
