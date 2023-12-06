@@ -7,11 +7,11 @@
 ##
 ##  Script version
 ##
-##    - 3.1.6
+##    - 3.2.0
 ##
-##  Updated on
+##  Major update
 ##
-##    - 12.05.23
+##    - 12.06.23
 ##
 ##  Purpose:
 ##
@@ -90,10 +90,10 @@
 #
 
 script_name="${0}"
-script_ver=3.1.7
+script_ver=3.2.0
 ffmpeg_sver=n5.1.4
-ffmpeg_archive=ffmpeg-"${ffmpeg_sver}"
-ffmpeg_url=https://github.com/FFmpeg/FFmpeg/archive/refs/tags/"${ffmpeg_archive}".tar.gz
+ffmpeg_archive="ffmpeg-${ffmpeg_sver}.tar.gz"
+ffmpeg_url="https://github.com/FFmpeg/FFmpeg/archive/refs/tags/${ffmpeg_sver}.tar.gz"
 cuda_latest_ver=12.3.1
 cuda_url="https://developer.download.nvidia.com/compute/cuda/${cuda_latest_ver}"
 cuda_pin_url='https://developer.download.nvidia.com/compute/cuda/repos'
@@ -152,14 +152,14 @@ source_flags_fn()
 {
     CC=gcc
     CXX=g++
-    EXTRALIBS="-lm -lpthread -lz -lstdc++ -lgcc_s -lgcc -lrt -ldl -lnuma -Wl,--as-needed -L${install_dir}/lib -lbrotlicommon -lbrotlidec -lbrotlienc"
+    EXTRALIBS="-lm -lpthread -lz -lstdc++ -lgcc_s -lgcc -lrt -ldl -lnuma -L${install_dir}/lib -lbrotlicommon -lbrotlidec -lbrotlienc"
     EXTRALIBS+=" -L${install_dir}/lib -lhwy -ltesseract -L${workspace}/lib -llcms2 -llcms2_threaded -L${install_dir}/cuda/targets/x86_64-linux/lib -lOpenCL"
-    EXTRALIBS+=" $(pkg-config --libs x265) $(pkg-config --libs libchromaprint)"
+    EXTRALIBS+=" $(pkg-config --libs x265 2>/dev/null) $(pkg-config --libs libchromaprint 2>/dev/null)"
     CXXFLAGS='-g -O3 -pipe -march=native'
     CFLAGS="${CXXFLAGS} -I${workspace}/include -I${workspace}/include/jxl -I${workspace}/include/fdk-aac -I${workspace}/include/CL -I${workspace}/include/avisynth"
     CFLAGS+=' -I/usr/include/SDL2 -I/usr/lib/x86_64-linux-gnu/pulseaudio -I/usr/include/openjpeg-2.5 -I/usr/include/vk_video -I/usr/include/vulkan -I/usr/include/flite'
     CPPFLAGS="-I${workspace}/include"
-    LDFLAGS="-L${workspace}/lib64 -L${workspace}/lib -L${workspace}/lib/x86_64-linux-gnu"
+    LDFLAGS="-Wl,--as-needed -L${workspace}/lib64 -L${workspace}/lib -L${workspace}/lib/x86_64-linux-gnu -L/usr/local/lib/x86_64-linux-gnu"
     LDFLAGS+=" -L${install_dir}/lib64 -L${install_dir}/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib"
     export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 }
@@ -244,10 +244,10 @@ download()
         echo "The file \"${dl_file}\" is already downloaded."
     else
         echo "Downloading \"${dl_url}\" saving as \"${dl_file}\""
-        if ! wget -U "${user_agent}" -cqO "${target_file}" "${dl_url}"; then
+        if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
             printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 10 seconds..."
             sleep 10
-            if ! wget -U "${user_agent}" -cqO "${target_file}" "${dl_url}"; then
+            if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
                 fail_fn "The script failed to download \"${dl_file}\" twice and will now exit. Line: ${LINENO}"
             fi
         fi
@@ -328,13 +328,12 @@ fi
 
 git_1_fn()
 {
-    local curl_cmd github_repo github_url git_token
+    local cnt curl_cmd git_repo git_url
+    git_repo="${1}"
+    git_url="${2}"
+    cnt=0
 
-    # SCRAPE GITHUB WEBSITE FOR THE LATEST REPO VERSION
-    github_repo="${1}"
-    github_url="${2}"
-
-    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://api.github.com/repos/${git_repo}/${git_url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
         g_ver2="$(echo "${curl_cmd}" | jq -r '.[0].tag_name' 2>/dev/null)"
@@ -355,14 +354,27 @@ git_1_fn()
         g_ver2="${g_ver2#v}"
     fi
 
+    # LOOP THE VARIABLE G_VER TO MAKE SURE WE DON'T USE 'RC' AKA RELEASE VERSIONS OF PACKAGES
+    get_str_end='-rc[0-9]'
+    while [[ ${g_ver} =~ ${get_str_end}$ ]]
+    do
+        if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}" | jq -r '.[$cnt].name')"; then
+            g_ver="${curl_cmd#v}"
+            ((cnt++))
+        fi  
+    done
+
     echo "${github_repo%/*}-${g_ver}" >> "${ver_file_tmp}"
     awk '!NF || !seen[$0]++' "${latest_txt_tmp}" > "${ver_file}"
 }
 
 git_2_fn()
 {
+    local cnt repo url
     repo="${1}"
     url="${2}"
+    cnt=0
+
     if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://code.videolan.org/api/v4/projects/${repo}/repository/${url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].commit.id')"
         g_sver="$(echo "${curl_cmd}" | jq -r '.[0].commit.short_id')"
@@ -370,6 +382,16 @@ git_2_fn()
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[0].name')"
         g_ver1="${g_ver1#v}"
     fi
+
+    # LOOP THE VARIABLE G_VER TO MAKE SURE WE DON'T USE ANY RELEASE CANDIDATES AKA 'RC'. STABLE RELEASES ONLY.
+    get_str_end='-rc[0-9]'
+    while [[ ${g_ver} =~ ${get_str_end}$ ]]
+    do
+        if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}" | jq -r ".[$cnt].name")"; then
+            g_ver="${curl_cmd#v}"
+        fi
+        ((cnt++))
+    done
 }
 
 git_3_fn()
@@ -530,66 +552,73 @@ gpu_arch_fn()
 {
     local gpu_name gpu_type
 
-    gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -r | head -n 1)"
-    if [[ "${gpu_name}" == 'name' ]]; then
-        gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort | head -n 1)"
-    fi
+    amd_gpu_test="$(glxinfo | grep -E 'OpenGL renderer' | grep -Eo 'AMD\s.*$')"
+    
+    if [ -z "${amd_gpu_test}" ]; then
+        gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -r | head -n 1)"
+        if [[ "${gpu_name}" == 'name' ]]; then
+            gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort | head -n 1)"
+        fi
 
-    case "${gpu_name}" in
-        'Quadro P2000')                 gpu_type=1;;
-        'NVIDIA GeForce GT 1010')       gpu_type=1;;
-        'NVIDIA GeForce GTX 1030')      gpu_type=1;;
-        'NVIDIA GeForce GTX 1050')      gpu_type=1;;
-        'NVIDIA GeForce GTX 1060')      gpu_type=1;;
-        'NVIDIA GeForce GTX 1070')      gpu_type=1;;
-        'NVIDIA GeForce GTX 1080')      gpu_type=1;;
-        'NVIDIA TITAN Xp')              gpu_type=1;;
-        'NVIDIA Tesla P40')             gpu_type=1;;
-        'NVIDIA Tesla P4')              gpu_type=1;;
-        'NVIDIA GeForce GTX 1180')      gpu_type=2;;
-        'NVIDIA GeForce GTX Titan V')   gpu_type=2;;
-        'Quadro GV100')                 gpu_type=2;;
-        'NVIDIA Tesla V100')            gpu_type=2;;
-        'NVIDIA GeForce GTX 1660 Ti')   gpu_type=3;;
-        'NVIDIA GeForce RTX 2060')      gpu_type=3;;
-        'NVIDIA GeForce RTX 2070')      gpu_type=3;;
-        'NVIDIA GeForce RTX 2080')      gpu_type=3;;
-        'Quadro 4000')                  gpu_type=3;;
-        'Quadro 5000')                  gpu_type=3;;
-        'Quadro 6000')                  gpu_type=3;;
-        'Quadro 8000')                  gpu_type=3;;
-        'NVIDIA T1000')                 gpu_type=3;;
-        'NVIDIA T2000')                 gpu_type=3;;
-        'NVIDIA Tesla T4')              gpu_type=3;;
-        'NVIDIA GeForce RTX 3050')      gpu_type=4;;
-        'NVIDIA GeForce RTX 3060')      gpu_type=4;;
-        'NVIDIA GeForce RTX 3070')      gpu_type=4;;
-        'NVIDIA GeForce RTX 3080')      gpu_type=4;;
-        'NVIDIA GeForce RTX 3080 Ti')   gpu_type=4;;
-        'NVIDIA GeForce RTX 3090')      gpu_type=4;;
-        'NVIDIA RTX A2000')             gpu_type=4;;
-        'NVIDIA RTX A3000')             gpu_type=4;;
-        'NVIDIA RTX A4000')             gpu_type=4;;
-        'NVIDIA RTX A5000')             gpu_type=4;;
-        'NVIDIA RTX A6000')             gpu_type=4;;
-        'NVIDIA GeForce RTX 4080')      gpu_type=5;;
-        'NVIDIA GeForce RTX 4090')      gpu_type=5;;
-        'NVIDIA H100')                  gpu_type=6;;
-        *)                              fail_fn "Unable to define the variable \"gpu_name\" in the function \"gpu_arch_fn\". Line: ${LINENO}";;
-    esac
-
-    if [ -n "${gpu_type}" ]; then
-        case "${gpu_type}" in
-            1)      gpu_arch='compute_61,code=sm_61';;
-            2)      gpu_arch='compute_70,code=sm_70';;
-            3)      gpu_arch='compute_75,code=sm_75';;
-            4)      gpu_arch='compute_86,code=sm_86';;
-            5)      gpu_arch='compute_89,code=sm_89';;
-            6)      gpu_arch='compute_90,code=sm_90';;
-            *)      fail_fn "Unable to define the variable \"gpu_arch\" in the function \"gpu_arch_fn\". Line: ${LINENO}";;
+        case "${gpu_name}" in
+            'Quadro P2000')                 gpu_type=1;;
+            'NVIDIA GeForce GT 1010')       gpu_type=1;;
+            'NVIDIA GeForce GTX 1030')      gpu_type=1;;
+            'NVIDIA GeForce GTX 1050')      gpu_type=1;;
+            'NVIDIA GeForce GTX 1060')      gpu_type=1;;
+            'NVIDIA GeForce GTX 1070')      gpu_type=1;;
+            'NVIDIA GeForce GTX 1080')      gpu_type=1;;
+            'NVIDIA TITAN Xp')              gpu_type=1;;
+            'NVIDIA Tesla P40')             gpu_type=1;;
+            'NVIDIA Tesla P4')              gpu_type=1;;
+            'NVIDIA GeForce GTX 1180')      gpu_type=2;;
+            'NVIDIA GeForce GTX Titan V')   gpu_type=2;;
+            'Quadro GV100')                 gpu_type=2;;
+            'NVIDIA Tesla V100')            gpu_type=2;;
+            'NVIDIA GeForce GTX 1660 Ti')   gpu_type=3;;
+            'NVIDIA GeForce RTX 2060')      gpu_type=3;;
+            'NVIDIA GeForce RTX 2070')      gpu_type=3;;
+            'NVIDIA GeForce RTX 2080')      gpu_type=3;;
+            'Quadro 4000')                  gpu_type=3;;
+            'Quadro 5000')                  gpu_type=3;;
+            'Quadro 6000')                  gpu_type=3;;
+            'Quadro 8000')                  gpu_type=3;;
+            'NVIDIA T1000')                 gpu_type=3;;
+            'NVIDIA T2000')                 gpu_type=3;;
+            'NVIDIA Tesla T4')              gpu_type=3;;
+            'NVIDIA GeForce RTX 3050')      gpu_type=4;;
+            'NVIDIA GeForce RTX 3060')      gpu_type=4;;
+            'NVIDIA GeForce RTX 3070')      gpu_type=4;;
+            'NVIDIA GeForce RTX 3080')      gpu_type=4;;
+            'NVIDIA GeForce RTX 3080 Ti')   gpu_type=4;;
+            'NVIDIA GeForce RTX 3090')      gpu_type=4;;
+            'NVIDIA RTX A2000')             gpu_type=4;;
+            'NVIDIA RTX A3000')             gpu_type=4;;
+            'NVIDIA RTX A4000')             gpu_type=4;;
+            'NVIDIA RTX A5000')             gpu_type=4;;
+            'NVIDIA RTX A6000')             gpu_type=4;;
+            'NVIDIA GeForce RTX 4080')      gpu_type=5;;
+            'NVIDIA GeForce RTX 4090')      gpu_type=5;;
+            'NVIDIA H100')                  gpu_type=6;;
+            *)                              fail_fn "Unable to define the variable \"gpu_name\" in the function \"gpu_arch_fn\". Line: ${LINENO}";;
         esac
+
+        if [ -n "${gpu_type}" ]; then
+            case "${gpu_type}" in
+                1)      gpu_arch='compute_61,code=sm_61';;
+                2)      gpu_arch='compute_70,code=sm_70';;
+                3)      gpu_arch='compute_75,code=sm_75';;
+                4)      gpu_arch='compute_86,code=sm_86';;
+                5)      gpu_arch='compute_89,code=sm_89';;
+                6)      gpu_arch='compute_90,code=sm_90';;
+                *)      fail_fn "Unable to define the variable \"gpu_arch\" in the function \"gpu_arch_fn\". Line: ${LINENO}";;
+            esac
+        else
+            fail_fn "Failed to find the variable: gpu_type Line: ${LINENO}"
+        fi
+        return 0
     else
-        fail_fn "Failed to find the variable: gpu_type Line: ${LINENO}"
+        return 1
     fi
 }
 
@@ -890,35 +919,35 @@ install_cuda_fn()
 
 pkgs_fn()
 {
-    local pkg pkgs missing_pkgs
+    local libcpp_pkgs pkg pkgs missing_pkg missing_pkgs
 
-    printf "%s\n%s\n"                          \
-        'Installing the required APT packages' \
-        '========================================================'
+    libcpp_pkg="$(sudo apt list libc++* 2>/dev/null | grep -Eo 'libc\+\+-[0-9\-]+-dev' | uniq | sort -r | head -n1)"
+    libcppabi_pkg="$(sudo apt list libc++abi* 2>/dev/null | grep -Eo 'libc\+\+abi-[0-9]+-dev' | uniq | sort -r | head -n1)"
+    libunwind_pkg="$(sudo apt list libunwind* 2>/dev/null | grep -Eo 'libunwind-[0-9]+-dev' | uniq | sort -r | head -n1)"
 
-    pkgs=("${1}" ant apt asciidoc autoconf autoconf-archive automake autopoint binutils bison build-essential
-          cargo ccache checkinstall clang clang-tools cmake curl default-jdk-headless doxygen fcitx-libs-dev
-          flex flite1-dev freeglut3-dev frei0r-plugins-dev gawk gettext gimp-data git gnome-desktop-testing
-          gnustep-gui-runtime google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk
-          libamd2 libasound2-dev libass-dev libaudio-dev libavfilter-dev libbabl-0.1-0 libbluray-dev libbs2b-dev
-          libbz2-dev libc6 libc6-dev libcaca-dev libcairo2-dev libcamd2 libccolamd2 libcdio-dev libcdio-paranoia-dev
-          libcdparanoia-dev libcholmod3 libchromaprint-dev libcjson-dev libcodec2-dev libcolamd2 libcrypto++-dev
-          libcurl4-openssl-dev libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev libdrm-dev libdvbpsi-dev
-          libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev libgegl-0.4-0 libgegl-common libgimp2.0
+    pkgs=("${1}" "${libcpp_pkg}" "${libunwind_pkg}" "${libcppabi_pkg}" ant apt asciidoc autoconf autoconf-archive
+          automake autopoint binutils bison build-essential cargo ccache checkinstall clang clang-tools cmake curl
+          default-jdk-headless doxygen fcitx-libs-dev flex flite1-dev freeglut3-dev frei0r-plugins-dev gawk gettext
+          gimp-data git gnome-desktop-testing gnustep-gui-runtime google-perftools gperf gtk-doc-tools guile-3.0-dev
+          lib32stdc++6 libamd2 libasound2-dev libass-dev libaudio-dev libavfilter-dev libbabl-0.1-0 libbluray-dev libbpf-dev
+          libbs2b-dev help2man jq junit ladspa-sdk libbz2-dev libc6 libc6-dev libcaca-dev libcairo2-dev libcamd2 libccolamd2
+          libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libcholmod3 libchromaprint-dev libcjson-dev libcodec2-dev
+          libcolamd2 libcrypto++-dev libcurl4-openssl-dev libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev libdrm-dev
+          libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev libgegl-0.4-0 libgegl-common libgimp2.0
           libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev libgnutls28-dev libgnutls30 libgoogle-perftools4
           libgoogle-perftools-dev libgsm1-dev libgtest-dev libgvc6 libhwy-dev libibus-1.0-dev libiconv-hook-dev
           libintl-perl libjack-dev libjemalloc-dev libladspa-ocaml-dev libleptonica-dev liblz-dev liblzma-dev
           liblzo2-dev libmathic-dev libmatroska-dev libmbedtls-dev libmetis5 libmfx-dev libmodplug-dev libmp3lame-dev
-          libmusicbrainz5-dev libmysofa-dev libnuma1 libnuma-dev libopencore-amrnb-dev libopencore-amrwb-dev libopencv-dev
-          libopenjp2-7-dev libopenmpt-dev libopus-dev libperl-dev libpstoedit-dev libpulse-dev librabbitmq-dev libraqm-dev
-          libraw-dev librsvg2-dev librubberband-dev librust-gstreamer-base-sys-dev libshine-dev libsmbclient-dev libsnappy-dev
-          libsndfile1-dev libsndio-dev libsoxr-dev libspeex-dev libsystemd-dev libsqlite3-dev libsrt-gnutls-dev libssh-dev
-          libssl-dev libsuitesparseconfig5 libtalloc-dev libtheora-dev libticonv-dev libtool libtool-bin libtwolame-dev
-          libudev-dev libumfpack5 libunwind-dev libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev
-          libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev
-          libxss-dev libudev-dev libxvidcore-dev libyuv-dev libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev lshw lzma-dev m4 meson
-          nasm ninja-build pandoc python3 python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip valgrind wget xmlto
-          zlib1g-dev)
+          libmusicbrainz5-dev libmysofa-dev libnuma-dev libopencore-amrnb-dev libopencore-amrwb-dev libopencv-dev
+          libopenjp2-7-dev libopenmpt-dev libopus-dev libpango1.0-dev libperl-dev libpstoedit-dev libpulse-dev librabbitmq-dev
+          libraqm-dev libraw-dev librsvg2-dev librubberband-dev librust-gstreamer-base-sys-dev libshine-dev libsmbclient-dev
+          libsnappy-dev libsndfile1-dev libsndio-dev libopencv-dev libsoxr-dev libspeex-dev libsystemd-dev libsqlite3-dev
+          libsrt-gnutls-dev libssh-dev libssl-dev libsuitesparseconfig5 libtalloc-dev libtheora-dev libticonv-dev libtool
+          libtool-bin libtwolame-dev libudev-dev libumfpack5 libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev
+          libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev
+          libxrandr-dev libxss-dev libudev-dev libxvidcore-dev libyuv-dev libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev llvm lshw
+          lzma-dev m4 meson nasm ninja-build pandoc python3 python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip valgrind
+          wget xmlto zlib1g-dev)
 
     for pkg in ${pkgs[@]}
     do
@@ -942,15 +971,20 @@ pkgs_fn()
 
 x265_fix_libs_fn()
 {
+    local x265_libs_208
+
     x265_libs_208="$(find /usr/local/lib/ -type f -name 'libx265.so.208' -print | head -n1)"
-    x265_libs_199="$(find "${workspace}"/lib/ -type f -name 'libx265.so.199' -print  | head -n1)"
 
     case "${OS}" in
-        Arch)       sudo cp -f "${x265_libs_208}" '/usr/lib';;
-        *)          sudo cp -f "${x265_libs_208}" '/usr/lib/x86_64-linux-gnu';;
+        Arch)
+                    sudo cp -f "${x265_libs_208}" '/usr/lib'
+                    sudo ln -sf '/usr/lib/libx265.so.208' '/usr/lib/libx265.so'
+                    ;;
+        *)
+                    sudo cp -f "${x265_libs_208}" '/usr/lib/x86_64-linux-gnu'
+                    sudo ln -sf '/usr/lib/x86_64-linux-gnu/libx265.so.208' '/usr/lib/x86_64-linux-gnu/libx265.so'
+                    ;;
     esac
-    sudo apt -y remove libx265-199
-    sudo apt autoclean
 }
 
 libpulse_fix_libs_fn()
@@ -1204,6 +1238,10 @@ fi
 # INSTALL REQUIRED APT PACKAGES
 #
 
+printf "%s\n%s\n"                          \
+    'Installing the required APT packages' \
+    '========================================================'
+
 case "${OS}" in
     'Arch')             arch_os_ver_fn;;
     'Debian'|'n/a')     debian_os_ver_fn "${nvidia_encode_var} ${nvidia_utils_var}";;
@@ -1256,6 +1294,12 @@ esac
 #
 
 install_cuda_fn
+
+#
+# UPDATE THE LD LINKER SEARCH PATHS
+#
+
+sudo ldconfig
 
 #
 # INSTALL THE GLOBAL TOOLS
@@ -1717,8 +1761,6 @@ fi
 
 if build 'opencl-sdk' "${g_ver}"; then
     download_git 'https://github.com/KhronosGroup/OpenCL-SDK.git' 'opencl-sdk-git' 'R'
-    execute git submodule init
-    execute git submodule update
     execute cmake \
             -S .                                      \
             -B build                                  \
@@ -2670,40 +2712,49 @@ if [ -z "${LDEXEFLAGS}" ]; then
     fi
 fi
 
-if [ -n "${iscuda}" ]; then
-    if build 'nv-codec-headers' '12.0.16.1'; then
-        download 'https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.0.16.1/nv-codec-headers-12.0.16.1.tar.gz'
-        execute make "-j${cpu_threads}"
-        execute make PREFIX="${workspace}" install
-        build_done 'nv-codec-headers' '12.0.16.1'
-    fi
+# GET THE GPU ARCHITECTURE
+# https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
+gpu_arch_fn
 
-    if [[ "${OS}" == 'Arch' ]]; then
-        export PATH+=':/opt/cuda/bin'
-        CFLAGS+=' -I/opt/cuda/include -I/opt/cuda/targets/x86_64-linux/include'
-        LDFLAGS+=' -L/opt/cuda/lib64 -L/opt/cuda/lib -L/opt/cuda/targets/x86_64-linux/lib'
-    else
-        CFLAGS+=" -I${install_dir}/cuda/include"
-        LDFLAGS+=" -L${install_dir}/cuda/lib64"
-    fi
+printf "\n%s\n%s\n"                                 \
+    'Building nv-codec-headers - version 12.0.16.1' \
+    '========================================================'
 
-    if [ "${OS}" != 'Arch' ]; then
-        if ! sudo dpkg -l | grep -o nvidia-smi &>/dev/null; then
-            sudo apt -y install nvidia-smi &>/dev/null
+if [[ ${RETURN} == '0' ]]; then
+    if [ -n "${iscuda}" ]; then
+        if build 'nv-codec-headers' '12.0.16.1'; then
+            download 'https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.0.16.1/nv-codec-headers-12.0.16.1.tar.gz'
+            execute make "-j${cpu_threads}"
+            execute make PREFIX="${workspace}" install
+            build_done 'nv-codec-headers' '12.0.16.1'
+        fi
+
+        if [[ "${OS}" == 'Arch' ]]; then
+            export PATH+=':/opt/cuda/bin'
+            CFLAGS+=' -I/opt/cuda/include -I/opt/cuda/targets/x86_64-linux/include'
+            LDFLAGS+=' -L/opt/cuda/lib64 -L/opt/cuda/lib -L/opt/cuda/targets/x86_64-linux/lib'
+        else
+            CFLAGS+=" -I${install_dir}/cuda/include"
+            LDFLAGS+=" -L${install_dir}/cuda/lib64"
+        fi
+
+        if [ "${OS}" != 'Arch' ]; then
+            if ! sudo dpkg -l | grep -o nvidia-smi &>/dev/null; then
+                sudo apt -y install nvidia-smi &>/dev/null
+            fi
+        fi
+
+        ffmpeg_libraries+=('--enable-'{cuda-nvcc,cuda-llvm,cuvid,nvdec,nvenc,ffnvcodec})
+
+        if [ -n "${LDEXEFLAGS}" ]; then
+            ffmpeg_libraries+=('--enable-libnpp')
         fi
     fi
-
-    # GET THE GPU ARCHITECTURE
-    # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
-    gpu_arch_fn
-
-    ffmpeg_libraries+=('--enable-'{cuda-nvcc,cuda-llvm,cuvid,nvdec,nvenc,ffnvcodec})
-
-    if [ -n "${LDEXEFLAGS}" ]; then
-        ffmpeg_libraries+=('--enable-libnpp')
-    fi
+    ffmpeg_libraries+=("--nvccflags=-gencode arch=${gpu_arch}")
+else
+    printf "\n%s\n\n" 'The Active GPU is made by AMD and the Geforce CUDA SDK Toolkit will not be enabled.'
+    sleep 5
 fi
-ffmpeg_libraries+=("--nvccflags=-gencode arch=${gpu_arch}")
 
 pre_check_ver 'Haivision/srt' '1' 'R'
 if build 'srt' "${g_ver}"; then
@@ -2910,6 +2961,16 @@ curl -A "${user_agent}" -Lso "${packages}"/dxva2api.h 'https://download.videolan
 sudo cp -f "${packages}"/dxva2api.h /usr/include
 curl -A "${user_agent}" -Lso "${packages}"/objbase.h 'https://raw.githubusercontent.com/wine-mirror/wine/master/include/objbase.h'
 sudo cp -f "${packages}"/objbase.h "${install_dir}"
+
+#
+# SINCE THE SCRIPT WILL LATER COMPILE THE LATEST VERSION OF X265 WHICH COMES WITH ITS OWN LIBRARY SO FILES
+# WE MUST REMOVE ANY X265 LIBRARIES THAT ARE ALREADY INSTALLED (FOR WHATEVER REASON). THE SCRIPT FAILS TO BUILD
+# FFMPEG WITH CHROMAPRINT ENABLED UNLESS THE NEXT TWO COMMANDS ARE EXECUTED. IF THAT DOESN'T WORK TRY TO FIND
+# THE X265 VERSION THAT IS INSTALLED ON YOUR PC AND REMOVE IT MANUALLY.
+#
+
+sudo dpkg --remove libx265-199 &>/dev/null
+echo
 
 if build 'ffmpeg' "${ffmpeg_sver}"; then
     download ${ff_cmd}
