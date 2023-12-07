@@ -259,8 +259,8 @@ cd build || exit 1
              --with-system-zlib                     \
              --with-zstd
 echo
-if ! make "-j$(nproc --all)" all-gold; then
-    fail_fn "Failed to execute: make -j$(nproc --all) all-gold. Line: ${LINENO}"
+if ! make "-j$(nproc --all)"; then
+    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
 fi
 echo
 if ! sudo make install; then
