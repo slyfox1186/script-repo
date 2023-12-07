@@ -7,11 +7,11 @@
 ##
 ##  Script version
 ##
-##    - 3.2.0
+##    - 3.2.1
 ##
 ##  Major updated
 ##
-##    - 12.06.23
+##    - 12.07.23
 ##
 ##  Purpose:
 ##
@@ -22,7 +22,7 @@
 ##
 ##    - Arch Linux
 ##    - Debian (11|12)
-##    - Ubuntu (20|22|23).04
+##    - Ubuntu (20|22|23).04 & 23.10
 ##
 ##  Supported architecture:
 ##
@@ -52,6 +52,7 @@
 ##
 ##  Added
 ##
+##    - Ubuntu 23.10 (Manic) support
 ##    - Set the x265 libs to be built with clang because it gives better FPS output than when built with gcc
 ##    - cUnit support library for libmysofa
 ##    - Cyanrip software
@@ -90,7 +91,7 @@
 #
 
 script_name="${0}"
-script_ver=3.2.0
+script_ver=3.2.1
 ffmpeg_sver=n5.1.4
 ffmpeg_archive="ffmpeg-${ffmpeg_sver}.tar.gz"
 ffmpeg_url="https://github.com/FFmpeg/FFmpeg/archive/refs/tags/${ffmpeg_sver}.tar.gz"
@@ -354,11 +355,11 @@ git_1_fn()
         g_ver2="${g_ver2#v}"
     fi
 
-    # LOOP THE VARIABLE G_VER TO MAKE SURE WE DON'T USE 'RC' AKA RELEASE VERSIONS OF PACKAGES
+    # LOOP THE VARIABLE G_VER TO MAKE SURE WE DON'T USE A RELEASE CANDIDATE VERSION AKA 'RC'
     get_str_end='-rc[0-9]'
     while [[ ${g_ver} =~ ${get_str_end}$ ]]
     do
-        if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}" | jq -r '.[$cnt].name')"; then
+        if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}" | jq -r '.[$cnt].name')"; then
             g_ver="${curl_cmd#v}"
             ((cnt++))
         fi  
@@ -387,7 +388,7 @@ git_2_fn()
     get_str_end='-rc[0-9]'
     while [[ ${g_ver} =~ ${get_str_end}$ ]]
     do
-        if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}" | jq -r ".[$cnt].name")"; then
+        if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://code.videolan.org/api/v4/projects/${repo}/repository/${url}" | jq -r ".[$cnt].name")"; then
             g_ver="${curl_cmd#v}"
         fi
         ((cnt++))
@@ -396,8 +397,11 @@ git_2_fn()
 
 git_3_fn()
 {
+    local cnt repo url
     repo="${1}"
     url="${2}"
+    cnt=0
+
     if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.com/api/v4/projects/${repo}/repository/${url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
@@ -406,35 +410,84 @@ git_3_fn()
         g_sver1="$(echo "${curl_cmd}" | jq -r '.[0].commit.short_id')"
         g_ver="${g_ver#VTM-}"
     fi
+
+    # LOOP THE VARIABLE G_VER TO MAKE SURE WE DON'T USE ANY RELEASE CANDIDATES AKA 'RC'. STABLE RELEASES ONLY.
+    get_str_end='-rc[0-9]'
+    while [[ ${g_ver} =~ ${get_str_end}$ ]]
+    do
+        if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.com/api/v4/projects/${repo}/repository/${url}" | jq -r ".[$cnt].name")"; then
+            g_ver="${curl_cmd#v}"
+        fi
+        ((cnt++))
+    done
 }
 
 git_4_fn()
 {
+    local cnt repo
     repo="${1}"
+    cnt=0
+
     if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.freedesktop.org/api/v4/projects/${repo}/repository/tags")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
         g_ver="${g_ver#pkg-config-}"
         g_ver="${g_ver#VER-}"
         g_ver="${g_ver#v}"
     fi
+
+    # LOOP THE VARIABLE G_VER TO MAKE SURE WE DON'T USE ANY RELEASE CANDIDATES AKA 'RC'. STABLE RELEASES ONLY.
+    get_str_end='-rc[0-9]'
+    while [[ ${g_ver} =~ ${get_str_end}$ ]]
+    do
+        if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.freedesktop.org/api/v4/projects/${repo}/repository/tags" | jq -r ".[$cnt].name")"; then
+            g_ver="${curl_cmd#v}"
+        fi
+        ((cnt++))
+    done
 }
 
 git_5_fn()
 {
+    local cnt repo
     repo="${1}"
+    cnt=0
+
     if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.gnome.org/api/v4/projects/${repo}/repository/tags")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
     fi
+
+    # LOOP THE VARIABLE G_VER TO MAKE SURE WE DON'T USE ANY RELEASE CANDIDATES AKA 'RC'. STABLE RELEASES ONLY.
+    get_str_end='-rc[0-9]'
+    while [[ ${g_ver} =~ ${get_str_end}$ ]]
+    do
+        if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.gnome.org/api/v4/projects/${repo}/repository/tags" | jq -r ".[$cnt].name")"; then
+            g_ver="${curl_cmd#v}"
+        fi
+        ((cnt++))
+    done
 }
 
 git_6_fn()
 {
+    local cnt repo
     repo="${1}"
+    cnt=0
+
     if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://salsa.debian.org/api/v4/projects/${repo}/repository/tags")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
         g_ver="${g_ver#v}"
     fi
+
+    # LOOP THE VARIABLE G_VER TO MAKE SURE WE DON'T USE ANY RELEASE CANDIDATES AKA 'RC'. STABLE RELEASES ONLY.
+    get_str_end='-rc[0-9]'
+    while [[ ${g_ver} =~ ${get_str_end}$ ]]
+    do
+        if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://salsa.debian.org/api/v4/projects/${repo}/repository/tags" | jq -r ".[$cnt].name")"; then
+            g_ver="${curl_cmd#v}"
+        fi
+        ((cnt++))
+    done
 }
 
 git_ver_fn()
@@ -1062,31 +1115,31 @@ dl_libjxl_fn()
 
     if [ ! -f "${packages}"/libjxl.tar.gz ]; then
         case "${VER}" in
-            '10')
-                        libjxl_download="${url_base}-debian-buster-${url_suffix}"
-                        libjxl_name='debian-buster'
-                        ;;
-            '11')
-                        libjxl_download="${url_base}-debian-bullseye-${url_suffix}"
-                        libjxl_name='debian-bullseye'
-                        ;;
-            '12')
-                        libjxl_download="${url_base}-debian-bookworm-${url_suffix}"
-                        libjxl_name='debian-bookworm'
-                        ;;
-            '18.04')
-                        libjxl_download="${url_base}-ubuntu-18.04-${url_suffix}"
-                        libjxl_name='ubuntu-18.04'
-                        ;;
-            '20.04')
-                        libjxl_download="${url_base}-ubuntu-20.04-${url_suffix}"
-                        libjxl_name='ubuntu-20.04'
-                        ;;
-            '22.04')
-                        libjxl_download="${url_base}-ubuntu-22.04-${url_suffix}"
-                        libjxl_name='ubuntu-22.04'
-                        ;;           
-            *)          echo;;
+            10)
+                                    libjxl_download="${url_base}-debian-buster-${url_suffix}"
+                                    libjxl_name='debian-buster'
+                                    ;;
+            11)
+                                    libjxl_download="${url_base}-debian-bullseye-${url_suffix}"
+                                    libjxl_name='debian-bullseye'
+                                    ;;
+            12)
+                                    libjxl_download="${url_base}-debian-bookworm-${url_suffix}"
+                                    libjxl_name='debian-bookworm'
+                                    ;;
+            18.04)
+                                    libjxl_download="${url_base}-ubuntu-18.04-${url_suffix}"
+                                    libjxl_name='ubuntu-18.04'
+                                   ;;
+            20.04)
+                                    libjxl_download="${url_base}-ubuntu-20.04-${url_suffix}"
+                                    libjxl_name='ubuntu-20.04'
+                                    ;;
+            23.10|23.04|22.04)
+                                    libjxl_download="${url_base}-ubuntu-22.04-${url_suffix}"
+                                    libjxl_name='ubuntu-22.04'
+                                    ;;           
+            *)                      echo;;
         esac
 
         if ! curl -A "${user_agent}" -Lso "${packages}/${libjxl_name}.tar.gz" "${libjxl_download}"; then
@@ -1195,10 +1248,10 @@ ubuntu_os_ver_fn()
     lunar_kenetic_pkgs='librist-dev libjxl-dev nvidia-utils-545'
 
     case "${VER}" in
-        23.04|22.10)        pkgs_fn "${ubuntu_common_pkgs} ${lunar_kenetic_pkgs} ${jammy_pkgs}";;
-        22.04|msft)         pkgs_fn "${ubuntu_common_pkgs} ${ubuntu_wsl_pkgs} ${jammy_pkgs}";;
-        20.04)              pkgs_fn "${ubuntu_common_pkgs} ${ubuntu_wsl_pkgs} ${focal_pkgs}";;
-        *)                  fail_fn "Could not detect the Ubuntu version. Line: ${LINENO}";;
+        23.10|23.04|22.10)      pkgs_fn "${ubuntu_common_pkgs} ${lunar_kenetic_pkgs} ${jammy_pkgs}";;
+        22.04|msft)             pkgs_fn "${ubuntu_common_pkgs} ${ubuntu_wsl_pkgs} ${jammy_pkgs}";;
+        20.04)                  pkgs_fn "${ubuntu_common_pkgs} ${ubuntu_wsl_pkgs} ${focal_pkgs}";;
+        *)                      fail_fn "Could not detect the Ubuntu version. Line: ${LINENO}";;
     esac
 }
 
@@ -1352,8 +1405,8 @@ if [[ "${OS}" == 'Arch' ]]; then
     fi
 else
     case "${VER}" in
-        12|23.04)       lt_ver=2.4.7;;
-        *)              lt_ver=2.4.6;;
+        12|23.10|23.04)     lt_ver=2.4.7;;
+        *)                  lt_ver=2.4.6;;
     esac
     if build 'libtool' "${lt_ver}"; then
         download "https://ftp.gnu.org/gnu/libtool/libtool-${lt_ver}.tar.xz"
@@ -2311,7 +2364,7 @@ fi
 ffmpeg_libraries+=('--enable-libkvazaar')
 
 if build 'decklink' '12.7'; then
-    download 'https://github.com/slyfox1186/ffmpeg-build-script/raw/main/library-files/Blackmagic-DeckLink-SDK-12.7.tar.xz' 'decklink-12.7.tar.xz'
+    download 'https://github.com/slyfox1186/script-repo/raw/main/library-files/Blackmagic-DeckLink-SDK-12.7.tar.xz' 'decklink-12.7.tar.xz'
     for files in *.{h,cpp}
     do
         mv "${files}" "${workspace}"/include
