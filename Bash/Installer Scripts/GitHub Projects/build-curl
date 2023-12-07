@@ -137,8 +137,8 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-libgcc_ver="$(sudo apt list libgcc-* | grep -Eo 'libgcc-[0-9]*-dev' | uniq | head -n1)"
-libgtk_ver="$(sudo apt list libgtk-* | grep -Eo 'libgtk-[0-9]+-doc' | head -n1)"
+libgcc_ver="$(sudo apt list libgcc-* 2>/dev/null | grep -Eo 'libgcc-[0-9]*-dev' | uniq | head -n1)"
+libgtk_ver="$(sudo apt list libgtk-* 2>/dev/null | grep -Eo 'libgtk-[0-9]+-doc' | head -n1)"
 
 pkgs=(apt-transport-https apt-utils autoconf autoconf-archive autogen automake autopoint autotools-dev
       build-essential bzip2 ca-certificates ccache clang cmake curl gfortran git google-perftools graphviz
