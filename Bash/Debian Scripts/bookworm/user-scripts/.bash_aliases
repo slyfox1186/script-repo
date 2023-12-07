@@ -90,12 +90,6 @@ alias mkdir='mkdir -p'
 # path commands
 alias psp='clear; echo -e ${PATH//:/\\n}'
 
-# mount commands
-alias mount='mount |column -t'
-
-# get system time
-#alias time='date +%r | cut -d " " -f1-2 | egrep '^.*$''
-
 # crontab commands
 alias crontab='crontab -e'
 
