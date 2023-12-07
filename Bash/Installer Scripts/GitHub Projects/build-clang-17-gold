@@ -184,33 +184,19 @@ cleanup_fn()
     esac
 }
 
+#
+# TEST IF LD HAS GOLD ENABLED
+#
 
-find_gold="$(sudo find /usr/ -type f -name 'ld.gold' | head -n1)"
+gold_check="$(sudo find /usr/ -type f -name 'ld.gold' | head -n1)"
 
-prompt_gold_fn()
-{
-    local choice
-    clear
-    if [ -z "${find_gold}" ]; then
-        printf "%s\n%s\n\n%s\n%s\n\n"                                                                     \
-            'The required file "ld.gold" was not located.'                                                \
-            'You can use the build-binutils script from the same GitHub repository to acquire that file.' \
-            'Do you want to download and install that script now?'                                        \
-            '[1] Yes'                                                                                     \
-            '[2] No'
-        read -p 'Your choices are (1 or 2): ' 
-
-        case "${choice}" in
-            1)      install_binutils_fn;;
-            2)      return 0;;
-            *)
-                    unset choice
-                    prompt_gold_fn
-                    ;;
-        esac
-    fi
-}
-prompt_gold_fn
+if [ -n "${gold_check}" ]; then
+    sudo mv /usr/bin/ld /usr/bin/ld.bak
+    sudo ln -sf "${gold_check}" /usr/bin/ld
+    gold_test=yes
+else
+    gold_test=default
+fi
 
 show_ver_fn()
 {
@@ -265,7 +251,7 @@ build()
     return 0
 }
 
-build_done() { echo "${2}" > "${cwd}/${1}.done"; }
+build_done() { echo "${2}" > "${packages}/${1}.done"; }
 
 download()
 {
@@ -377,6 +363,44 @@ else
     printf "%s\n" 'The APT packages are already installed'
 fi
 
+install_binutils_fn()
+{
+    if build 'binutils' '2.41'; then
+        execute curl -A "${user_agent}" -Lso 'build-binutils' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-binutils'
+        bash build-binutils
+        build_done 'binutils' '2.41'
+    fi
+}
+
+find_gold="$(sudo find /usr/ -type f -name 'ld.gold' | head -n1)"
+
+prompt_gold_fn()
+{
+    local choice
+    clear
+
+    if [ -z "${find_gold}" ]; then
+        printf "%s\n%s\n\n%s\n\n%s\n%s\n\n"                                                               \
+            'The required file "ld.gold" was not located.'                                                \
+            'You can use the build-binutils script from the same GitHub repository to acquire that file.' \
+            'Do you want to download and install that script now?'                                        \
+            '[1] Yes'                                                                                     \
+            '[2] No'
+        read -p 'Your choices are (1 or 2): '  choice
+        clear
+
+        case "${choice}" in
+            1)      install_binutils_fn;;
+            2)      return 0;;
+            *)
+                    unset choice
+                    prompt_gold_fn
+                    ;;
+        esac
+    fi
+}
+prompt_gold_fn
+
 #
 # REFRESH THE LD LINKER LIBRARY SHARED LIBRARY FILES USING THE FILE PATHS IT SEARCHES FOR THEM IN 
 #
@@ -437,6 +461,7 @@ if build 'llvm' "${g_ver}"; then
           -DLLVM_INCLUDE_TESTS=OFF                   \
           -DLLVM_TARGET_ARCH=HOST                    \
           -DLLVM_TOOL_CLANG_BUILD=ON                 \
+          -DLLVM_USE_LINKER=gold                     \
           -G Ninja -Wno-dev
     echo
     ninja "-j$(nproc --all)" -C build
