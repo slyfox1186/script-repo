@@ -998,42 +998,31 @@ hw_mon()
 }
 
 # CREATE A 7ZIP FILE WITH MAX COMPRESSION SETTINGS
+
 7z_1()
 {
     local answer source output
     clear
 
-    if [ -n "${1}" ]; then
-        if [ -f "${1}".7z ]; then
-            sudo rm "${1}".7z
-        fi
-        7z a -t7z -m0=lzma2 -mx1 "${1}".7z ./"${1}"/*
+    if [ -d "${1}" ]; then
+        source_dir="${1}"
+        7z a -y -t7z -m0=lzma2 -mx1 "${source_dir}".7z ./"${source_dir}"/*
     else
-        read -p 'Please enter the source folder path: ' source
-        echo
-        read -p 'Please enter the destination archive path (w/o extension): ' output
-        clear
-        if [ -f "${output}".7z ]; then
-            sudo rm "${output}".7z
-        fi
-        7z a -t7z -m0=lzma2 -mx1 "${output}".7z ./"${source}"/*
+        read -p 'Please enter the source folder path: ' source_dir
+        7z a -y -t7z -m0=lzma2 -mx1 "${source_dir}".7z ./"${source_dir}"/*
     fi
 
-    printf "\n%s\n\n%s\n%s\n\n" \
+    printf "\n%s\n\n%s\n%s\n\n"                    \
         'Do you want to delete the original file?' \
-        '[1] Yes' \
+        '[1] Yes'                                  \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
     clear
 
-    if [ -n "${1}" ]; then
-        source="${1}"
-    fi
-
     case "${answer}" in
-        1)      sudo rm -fr "${source}";;
+        1)      sudo rm -fr "${source_dir}";;
         2)      clear;;
-        '')     sudo rm -fr "${source}";;
+        '')     clear;;
         *)      printf "\n%s\n\n" 'Bad user input...';;
     esac
 }
@@ -1043,37 +1032,25 @@ hw_mon()
     local answer source output
     clear
 
-    if [ -n "${1}" ]; then
-        if [ -f "${1}".7z ]; then
-            sudo rm "${1}".7z
-        fi
-        7z a -t7z -m0=lzma2 -mx5 "${1}".7z ./"${1}"/*
+    if [ -d "${1}" ]; then
+        source_dir="${1}"
+        7z a -y -t7z -m0=lzma2 -mx5 "${source_dir}".7z ./"${source_dir}"/*
     else
-        read -p 'Please enter the source folder path: ' source
-        echo
-        read -p 'Please enter the destination archive path (w/o extension): ' output
-        clear
-        if [ -f "${output}".7z ]; then
-            sudo rm "${output}".7z
-        fi
-        7z a -t7z -m0=lzma2 -mx5 "${output}".7z ./"${source}"/*
+        read -p 'Please enter the source folder path: ' source_dir
+        7z a -y -t7z -m0=lzma2 -mx5 "${source_dir}".7z ./"${source_dir}"/*
     fi
 
-    printf "\n%s\n\n%s\n%s\n\n" \
+    printf "\n%s\n\n%s\n%s\n\n"                    \
         'Do you want to delete the original file?' \
-        '[1] Yes' \
+        '[1] Yes'                                  \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
     clear
 
-    if [ -n "${1}" ]; then
-        source="${1}"
-    fi
-
     case "${answer}" in
-        1)      sudo rm -fr "${source}";;
+        1)      sudo rm -fr "${source_dir}";;
         2)      clear;;
-        '')     sudo rm -fr "${source}";;
+        '')     clear;;
         *)      printf "\n%s\n\n" 'Bad user input...';;
     esac
 }
@@ -1083,37 +1060,25 @@ hw_mon()
     local answer source output
     clear
 
-    if [ -n "${1}" ]; then
-        if [ -f "${1}".7z ]; then
-            sudo rm "${1}".7z
-        fi
-        7z a -t7z -m0=lzma2 -mx9 "${1}".7z ./"${1}"/*
+    if [ -d "${1}" ]; then
+        source_dir="${1}"
+        7z a -y -t7z -m0=lzma2 -mx9 "${source_dir}".7z ./"${source_dir}"/*
     else
-        read -p 'Please enter the source folder path: ' source
-        echo
-        read -p 'Please enter the destination archive path (w/o extension): ' output
-        clear
-        if [ -f "${output}".7z ]; then
-            sudo rm "${output}".7z
-        fi
-        7z a -t7z -m0=lzma2 -mx9 "${output}".7z ./"${source}"/*
+        read -p 'Please enter the source folder path: ' source_dir
+        7z a -y -t7z -m0=lzma2 -mx9 "${source_dir}".7z ./"${source_dir}"/*
     fi
 
-    printf "\n%s\n\n%s\n%s\n\n" \
+    printf "\n%s\n\n%s\n%s\n\n"                    \
         'Do you want to delete the original file?' \
-        '[1] Yes' \
+        '[1] Yes'                                  \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
     clear
 
-    if [ -n "${1}" ]; then
-        source="${1}"
-    fi
-
     case "${answer}" in
-        1)      sudo rm -fr "${source}";;
+        1)      sudo rm -fr "${source_dir}";;
         2)      clear;;
-        '')     sudo rm -fr "${source}";;
+        '')     clear;;
         *)      printf "\n%s\n\n" 'Bad user input...';;
     esac
 }
