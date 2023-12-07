@@ -6,9 +6,9 @@
 ##
 ##  Purpose: Build cURL
 ##
-##  Updated: 12.02.23
+##  Updated: 12.07.23
 ##
-##  Script version: 1.1
+##  Script version: 1.2
 ##
 #################################################################################################################################
 
@@ -23,7 +23,7 @@ fi
 # SET THE VARIABLES
 #
 
-script_ver=1.1
+script_ver=1.2
 curl_ver=8.4.0
 archive_dir=${curl_ver}
 archive_dir1=${curl_ver//./_}
@@ -146,11 +146,11 @@ pkgs=(apt-transport-https apt-utils autoconf autoconf-archive autogen automake a
       libdmalloc-dev libec-dev libedit-dev libev-dev libevent-dev libexiv2-27 libexpat1-dev "${libgcc_ver}"
       libgcrypt20-dev libgexiv2-2 libgimp2.0 libgmp3-dev libgpg-error-dev "${libgtk_ver}" libgpgme-dev libicu-dev
       libjemalloc-dev libkrb5-3 libldap2-dev libldap-dev liblttng-ust-dev liblzma-dev libmbedtls-dev libnghttp2-dev
-      libntlm0-dev libparted-dev libpng-dev libpsl-dev librtmp-dev librust-bzip2-dev librust-openssl-dev libsqlite3-dev
-      libssh2-1-dev libssh-dev libssl-dev libtinfo5 libticonv-dev libtinfo-dev libtool libtool-bin libunistring-dev
-      libunwind8 libuv1-dev libxml2-dev libzstd-dev lzip m4 nettle-dev default-jdk-headless openssh-server pkg-config
-      python3-dev python3-numpy python3-packaging python3-pip python3-pytest python3-setuptools python3-wheel re2c rsync
-      unzip valgrind zip zlib1g-dev)
+      libnghttp3-dev libntlm0-dev libparted-dev libpng-dev libpsl-dev librtmp-dev librust-bzip2-dev librust-openssl-dev
+      libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev libtinfo5 libticonv-dev libtinfo-dev libtool libtool-bin
+      libunistring-dev libunwind8 libuv1-dev libxml2-dev libzstd-dev lzip m4 nettle-dev default-jdk-headless openssh-server
+      pkg-config python3-dev python3-numpy python3-packaging python3-pip python3-pytest python3-setuptools python3-wheel
+      re2c rsync unzip valgrind zip zlib1g-dev)
 
 for pkg in ${pkgs[@]}
 do
