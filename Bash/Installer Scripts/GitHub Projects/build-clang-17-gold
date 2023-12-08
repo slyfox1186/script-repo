@@ -384,42 +384,51 @@ box_out_banner "Clang-17 Build Script - version ${script_ver}"
 git_ver_fn 'llvm/llvm-project' 'T'
 if build 'llvm' "${g_ver}"; then
     download "${g_url}" "llvm-${g_ver}.tar.gz"
-    project_pkgs='clang;clang-tools-extra'
-    runtime_pkgs='libcxx;libcxxabi;libunwind;compiler-rt'
-    cmake -S llvm -B build                           \
-          -DCMAKE_INSTALL_PREFIX="${install_prefix}" \
-          -DCMAKE_BUILD_TYPE=Release                 \
-          -DBUILD_SHARED_LIBS=OFF                    \
-          -DBENCHMARK_DOWNLOAD_DEPENDENCIES=ON       \
-          -DBENCHMARK_ENABLE_TESTING=ON              \
-          -DBENCHMARK_INSTALL_DOCS=OFF               \
-          -DCLANG_INCLUDE_DOCS=OFF                   \
-          -DCMAKE_C_COMPILER="${CC}"                 \
-          -DCMAKE_C_FLAGS="${CFLAGS}"                \
-          -DCMAKE_CXX_COMPILER="${CXX}"              \
-          -DCMAKE_CXX_STANDARD=20                    \
-          -DLLVM_BUILD_BENCHMARKS=OFF                \
-          -DLLVM_BUILD_RUNTIME=ON                    \
-          -DLLVM_BUILD_RUNTIMES=ON                   \
-          -DLLVM_CCACHE_BUILD=ON                     \
-          -DLLVM_ENABLE_CURL=ON                      \
-          -DLLVM_ENABLE_LTO=OFF                      \
-          -DLLVM_ENABLE_OCAMLDOC=OFF                 \
-          -DLLVM_ENABLE_PIC=ON                       \
-          -DLLVM_ENABLE_PROJECTS="${project_pkgs}"   \
-          -DLLVM_ENABLE_RUNTIMES="${runtime_pkgs}"   \
-          -DLLVM_ENABLE_WARNINGS=OFF                 \
-          -DLLVM_HOST_TRIPLE="${pc_type}"            \
-          -DLLVM_INCLUDE_DOCS=OFF                    \
-          -DLLVM_INCLUDE_TESTS=OFF                   \
-          -DLLVM_TARGET_ARCH=HOST                    \
-          -DLLVM_TOOL_CLANG_BUILD=ON                 \
-          -DLLVM_USE_LINKER=gold                     \
+    project_pkgs='clang;clang-tools-extra;lld;lldb'
+    runtime_pkgs='libcxx;libcxxabi;libunwind;compiler-rt;openmp'
+    cmake -S llvm -B build                            \
+          -DCMAKE_INSTALL_PREFIX="${install_prefix}"  \
+          -DCMAKE_BUILD_TYPE=Release                  \
+          -DBUILD_SHARED_LIBS=OFF                     \
+          -DBENCHMARK_DOWNLOAD_DEPENDENCIES=ON        \
+          -DBENCHMARK_ENABLE_TESTING=ON               \
+          -DBENCHMARK_INSTALL_DOCS=OFF                \
+          -DCLANG_DEFAULT_LINKER="$(type -P ld.gold)" \
+          -DCLANG_INCLUDE_DOCS=OFF                    \
+          -DCMAKE_C_COMPILER="${CC}"                  \
+          -DCMAKE_C_FLAGS="${CFLAGS}"                 \
+          -DCMAKE_CXX_FLAGS="${CXXFLAGS}"             \
+          -DCMAKE_CXX_COMPILER="${CXX}"               \
+          -DCMAKE_CXX_STANDARD=20                     \
+          -DGOLD_EXECUTABLE="$(type -P ld.gold)"      \
+          -DLLVM_BUILD_BENCHMARKS=OFF                 \
+          -DLLVM_BUILD_RUNTIME=ON                     \
+          -DLLVM_BUILD_RUNTIMES=ON                    \
+          -DLLVM_CCACHE_BUILD=ON                      \
+          -DLLVM_ENABLE_CURL=ON                       \
+          -DLLVM_ENABLE_LTO=OFF                       \
+          -DLLVM_ENABLE_OCAMLDOC=OFF                  \
+          -DLLVM_ENABLE_PIC=ON                        \
+          -DLLVM_ENABLE_PROJECTS="${project_pkgs}"    \
+          -DLLVM_ENABLE_RUNTIMES="${runtime_pkgs}"    \
+          -DLLVM_ENABLE_WARNINGS=OFF                  \
+          -DLLVM_HOST_TRIPLE="${pc_type}"             \
+          -DLLVM_INCLUDE_DOCS=OFF                     \
+          -DLLVM_INCLUDE_TESTS=OFF                    \
+          -DLLVM_TARGET_ARCH=HOST                     \
+          -DLLVM_TOOL_CLANG_BUILD=ON                  \
+          -DLLVM_USE_LINKER=gold                      \
           -G Ninja -Wno-dev
     echo
-    ninja "-j$(nproc --all)" -C build
+    if ! ninja "-j$(nproc --all)" -C build; then
+        printf "\n%s\n\n" "Failed to execute: ninja -j$(nproc --all) -C build. Line: ${LINENO}"
+        exit 1
+    fi
     echo
-    sudo ninja -C build install
+    if ! sudo ninja -C build install; then
+        printf "\n%s\n\n" "Failed to execute: sudo ninja -C build install. Line: ${LINENO}"
+        exit 1
+    fi
 fi
 
 # SHOW THE NEWLY INSTALLED MAGICK VERSION
