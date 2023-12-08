@@ -368,7 +368,7 @@ git_ver_fn()
 pkgs_fn()
 {
     local missing_pkg missing_pkgs pkg pkgs
-    sudo add-apt-repository ppa:fontforge/fontforge &>/dev/null
+    sudo add-apt-repository ppa:fontforge/fontforge -y
     sudo apt update
 
     pkgs=("${1}" alien asciidoc autoconf autoconf-archive automake autopoint binutils bison
