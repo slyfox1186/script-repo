@@ -334,7 +334,7 @@ git_1_fn()
     git_url="${2}"
     cnt=0
 
-    if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://api.github.com/repos/${git_repo}/${git_url}")"; then
+    if curl_cmd="$(curl-A "${user_agent}"-m "${curl_timeout}" -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
         g_ver2="$(echo "${curl_cmd}" | jq -r '.[0].tag_name' 2>/dev/null)"
@@ -899,70 +899,74 @@ install_cuda_fn()
     local choice
     clear
 
-    if [[ "${OS}" == 'Arch' ]]; then
-        find_nvcc="$(sudo find /opt/ -type f -name 'nvcc')"
-        cuda_ver_test="$(${find_nvcc} --version | sed -n 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')"
-        cuda_ver_test+='.1'
-    else
-        cuda_ver_test="$(cat < '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
-    fi
-    cuda_ver="${cuda_ver_test}"
+    amd_gpu_test="$(glxinfo | grep -E 'OpenGL renderer' | grep -Eo 'AMD\s.*$')"
+    
+    if [ -z "${amd_gpu_test}" ]; then
+        if [[ "${OS}" == 'Arch' ]]; then
+            find_nvcc="$(sudo find /opt/ -type f -name 'nvcc')"
+            cuda_ver_test="$(${find_nvcc} --version | sed -n 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')"
+            cuda_ver_test+='.1'
+        else
+            cuda_ver_test="$(cat < '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
+        fi
+        cuda_ver="${cuda_ver_test}"
 
-    if [ -n "${cuda_ver_test}" ]; then
-        printf "%s\n%s\n%s\n%s\n\n%s\n%s\n\n"                             \
-            "The installed CUDA SDK Toolkit version is: ${cuda_ver_test}" \
-            "The latest version available is: ${cuda_latest_ver}"         \
-            '====================================================='       \
-            'Do you want to update/reinstall it?'                         \
-            '[1] Yes'                                                     \
-            '[2] No'
-        read -p 'Your choices are (1 or 2): ' choice
-        clear
+        if [ -n "${cuda_ver_test}" ]; then
+            printf "%s\n%s\n%s\n%s\n\n%s\n%s\n\n"                             \
+                "The installed CUDA SDK Toolkit version is: ${cuda_ver_test}" \
+                "The latest version available is: ${cuda_latest_ver}"         \
+                '====================================================='       \
+                'Do you want to update/reinstall it?'                         \
+                '[1] Yes'                                                     \
+                '[2] No'
+            read -p 'Your choices are (1 or 2): ' choice
+            clear
 
-        case "${choice}" in
-            1)      cuda_download_fn;;
-            2)
-                    PATH="${PATH}:${cuda_path}"
-                    export PATH
-                    ;;
-            *)
-                    unset choice
-                    install_cuda_fn
-                    ;;
-        esac
-    else
-        printf "%s\n%s\n\n%s\n\n%s\n%s\n\n" \
-            "The CUDA SDK Toolkit was not detected and the latest version is: ${cuda_latest_ver}" \
-            '========================================================================='           \
-            'Choose an option'                                                                    \
-            '[1] Install the CUDA SDK Toolkit and add it to your PATH'                            \
-            '[2] Continue without installing (hardware acceleration will be turned off)'
-        read -p 'Your choices are (1 or 2): ' choice
-        clear
+            case "${choice}" in
+                1)      cuda_download_fn;;
+                2)
+                        PATH="${PATH}:${cuda_path}"
+                        export PATH
+                        ;;
+                *)
+                        unset choice
+                        install_cuda_fn
+                        ;;
+            esac
+        else
+            printf "%s\n%s\n\n%s\n\n%s\n%s\n\n" \
+                "The CUDA SDK Toolkit was not detected and the latest version is: ${cuda_latest_ver}" \
+                '========================================================================='           \
+                'Choose an option'                                                                    \
+                '[1] Install the CUDA SDK Toolkit and add it to your PATH'                            \
+                '[2] Continue without installing (hardware acceleration will be turned off)'
+            read -p 'Your choices are (1 or 2): ' choice
+            clear
 
-        case "${choice}" in
-            1)      cuda_download_fn;;
-            2)      echo;;
-            *)
-                    unset choice
-                    install_cuda_fn
-                    ;;
-        esac
-    fi
+            case "${choice}" in
+                1)      cuda_download_fn;;
+                2)      echo;;
+                *)
+                        unset choice
+                        install_cuda_fn
+                        ;;
+            esac
+        fi
 
-    if [[ "${OS}" == 'Arch' ]]; then
-        find_nvcc="$(sudo find /opt/ -type f -name 'nvcc')"
-        cuda_ver_test="$(${find_nvcc} --version | sed -n 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')"
-        cuda_ver_test+='.1'
-    else
-        cuda_ver_test="$(cat < '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
-    fi
-    cuda_ver="${cuda_ver_test}"
+        if [[ "${OS}" == 'Arch' ]]; then
+            find_nvcc="$(sudo find /opt/ -type f -name 'nvcc')"
+            cuda_ver_test="$(${find_nvcc} --version | sed -n 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')"
+            cuda_ver_test+='.1'
+        else
+            cuda_ver_test="$(cat < '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
+        fi
+        cuda_ver="${cuda_ver_test}"
 
-    if [ -z "${cuda_ver}" ]; then
-        fail_fn "Unable to locate the file: /usr/local/cuda/version.json. Line: ${LINENO}"
-    else
-        export PATH="${PATH}:${cuda_path}"
+        if [ -z "${cuda_ver}" ]; then
+            fail_fn "Unable to locate the file: /usr/local/cuda/version.json. Line: ${LINENO}"
+        else
+            export PATH="${PATH}:${cuda_path}"
+        fi
     fi
 }
 
@@ -1000,7 +1004,7 @@ pkgs_fn()
           libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev
           libxrandr-dev libxss-dev libudev-dev libxvidcore-dev libyuv-dev libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev llvm lshw
           lzma-dev m4 meson nasm ninja-build pandoc python3 python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip valgrind
-          wget xmlto zlib1g-dev)
+          wget xmlto zlib1g-dev mesa-utils)
 
     for pkg in ${pkgs[@]}
     do
@@ -1244,7 +1248,7 @@ ubuntu_os_ver_fn()
     focal_pkgs='libvmmalloc1 libvmmalloc-dev libdmalloc5 libcunit1-dev nvidia-utils-535'
     focal_pkgs+=' librust-jemalloc-sys-dev librust-malloc-buf-dev libsrt-doc libreadline-dev libcunit1 libcunit1-doc'
     jammy_pkgs='libmimalloc-dev libtbbmalloc2 librust-jemalloc-sys-dev librust-malloc-buf-dev'
-    jammy_pkgs+=' libsrt-doc libreadline-dev libpipewire-0.3-dev libwayland-dev libdecor-0-dev nvidia-utils-545'
+    jammy_pkgs+=' libsrt-doc libreadline-dev libpipewire-0.3-dev libwayland-dev libdecor-0-dev nvidia-utils-535'
     lunar_kenetic_pkgs='librist-dev libjxl-dev nvidia-utils-545'
 
     case "${VER}" in
