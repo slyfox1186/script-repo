@@ -25,8 +25,8 @@ fi
 
 script_ver=1.0
 jq_ver=1.7
-archive_dir=jq
-archive_url="https://github.com/jqlang/jq/releases/download/jq-${jq_ver}/jq-linux-amd64"
+archive_dir="jq-${jq_ver}"
+archive_url="https://github.com/jqlang/jq/releases/download/jq-1.7/jq-linux-amd64"
 cwd="${PWD}"/jq-build-script
 install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -45,7 +45,7 @@ mkdir -p "${cwd}/${archive_dir}"
 #
 
 if [ ! -f "${cwd}/${archive_dir}" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/${archive_dir}" "${archive_url}"
+    wget -U "${user_agent}" -cq "${archive_url}"
 fi
 
 #
@@ -57,14 +57,14 @@ printf "\n%s\n%s\n\n"                        \
     '==============================================='
 sleep 2
 
-sudo chmod 755 "${cwd}/${archive_dir}"
-sudo chown root:root "${cwd}/${archive_dir}"
+sudo chmod 755 'jq-linux-amd64'
+sudo chown root:root 'jq-linux-amd64'
 
-sudo cp -f "${cwd}/${archive_dir}" "${install_dir}"/bin/jq
+sudo cp -f 'jq-linux-amd64' "${install_dir}"/bin/jq
 
-sudo rm -fr "${cwd}"
 clear
 printf "%s\n\n" "The updated jq file is located at: $(type -P jq)"
-
 jq --version
+
+sudo rm -fr "${cwd}"
 
