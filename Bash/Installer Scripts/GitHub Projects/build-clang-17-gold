@@ -314,10 +314,11 @@ install_binutils_fn()
 get_gold_fn()
 {
     gold_check="$(type -P ld.gold)"
+    saved_ld_path="$(type -P ld)"
 
     if [ -n "${gold_check}" ]; then
         sudo mv "$(type -P ld)" "$(type -P ld)".bak
-        sudo ln -sf "${gold_check}" "$(type -P ld)"
+        sudo ln -sf "${gold_check}" "${saved_ld_path}"
         gold_test=yes
     else
         gold_test=default
@@ -393,7 +394,6 @@ if build 'llvm' "${g_ver}"; then
           -DBENCHMARK_DOWNLOAD_DEPENDENCIES=ON        \
           -DBENCHMARK_ENABLE_TESTING=ON               \
           -DBENCHMARK_INSTALL_DOCS=OFF                \
-          -DCLANG_DEFAULT_LINKER="$(type -P ld.gold)" \
           -DCLANG_INCLUDE_DOCS=OFF                    \
           -DCMAKE_C_COMPILER="${CC}"                  \
           -DCMAKE_C_FLAGS="${CFLAGS}"                 \
