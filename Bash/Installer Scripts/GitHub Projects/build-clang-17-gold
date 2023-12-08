@@ -78,65 +78,14 @@ export PATH
 #
 
 PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/${install_dir}/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/${install_dir}/pkgconfig:\
 /usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/${install_dir}pkgconfig\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/pkgconfig:\
+/lib/pkgconfig\
 "
 export PKG_CONFIG_PATH
-
-LD_LIBRARY="\
-/usr/local/lib64:\
-/usr/share/texinfo/lib/libintl-perl/lib:\
-/usr/share/texinfo/lib:\
-/usr/share/gitk/lib:\
-/usr/share/git-gui/lib:\
-/usr/share/ghostscript/lib:\
-/usr/local/lib64:\
-/usr/local/lib/clang/17/lib:\
-/usr/local/lib:\
-/usr/lm32-elf/lib:\
-/usr/lib64:\
-/usr/lib32:\
-/usr/lib/llvm15/lib:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/lib:\
-/usr/lib/clang/16/lib:\
-/usr/lib/bfd-plugins:\
-/usr/lib:\
-/lib64:\
-/lib\
-"
-export LD_LIBRARY
-
-LD_LIBRARY_PATH="\
-/usr/local/lib64:\
-/usr/share/texinfo/lib/libintl-perl/lib:\
-/usr/share/texinfo/lib:\
-/usr/share/gitk/lib:\
-/usr/share/git-gui/lib:\
-/usr/share/ghostscript/lib:\
-/usr/local/lib64:\
-/usr/local/lib/clang/17/lib:\
-/usr/local/lib:\
-/usr/lm32-elf/lib:\
-/usr/lib64:\
-/usr/lib32:\
-/usr/lib/llvm15/lib:\
-/usr/lib/gcc/x86_64-pc-linux-gnu/lib:\
-/usr/lib/clang/16/lib:\
-/usr/lib/bfd-plugins:\
-/usr/lib:\
-/lib64:\
-/lib\
-"
-export LD_LIBRARY_PATH
 
 #
 # CREATE FUNCTIONS
@@ -183,20 +132,6 @@ cleanup_fn()
                 ;;
     esac
 }
-
-#
-# TEST IF LD HAS GOLD ENABLED
-#
-
-gold_check="$(sudo find /usr/ -type f -name 'ld.gold' | head -n1)"
-
-if [ -n "${gold_check}" ]; then
-    sudo mv /usr/bin/ld /usr/bin/ld.bak
-    sudo ln -sf "${gold_check}" /usr/bin/ld
-    gold_test=yes
-else
-    gold_test=default
-fi
 
 show_ver_fn()
 {
@@ -372,6 +307,23 @@ install_binutils_fn()
     fi
 }
 
+#
+# TEST IF LD HAS GOLD ENABLED
+#
+
+get_gold_fn()
+{
+    gold_check="$(type -P ld.gold)"
+
+    if [ -n "${gold_check}" ]; then
+        sudo mv "$(type -P ld)" "$(type -P ld)".bak
+        sudo ln -sf "${gold_check}" "$(type -P ld)"
+        gold_test=yes
+    else
+        gold_test=default
+    fi
+}
+
 find_gold="$(sudo find /usr/ -type f -name 'ld.gold' | head -n1)"
 
 prompt_gold_fn()
@@ -400,6 +352,7 @@ prompt_gold_fn()
     fi
 }
 prompt_gold_fn
+get_gold_fn
 
 #
 # REFRESH THE LD LINKER LIBRARY SHARED LIBRARY FILES USING THE FILE PATHS IT SEARCHES FOR THEM IN 
