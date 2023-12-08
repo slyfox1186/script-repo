@@ -194,7 +194,7 @@ mkdir -p "${cwd}"/libmetalink-0.1.3/build
 # EXTRACT THE ARCHIVE FILE METALINK
 #
 
-if ! tar -xf "${cwd}"/libmetalink-0.1.3.tar.xz -C "${cwd}"/libmetalink-0.1.3 --strip-components 1; then
+if ! tar -Jxf "${cwd}"/libmetalink-0.1.3.tar.xz -C "${cwd}"/libmetalink-0.1.3 --strip-components 1; then
     fail_fn "Failed to extract: ${cwd}/libmetalink-0.1.3.tar.xz"
 fi
 
@@ -205,27 +205,23 @@ fi
 printf "%s\n%s\n\n"                         \
     'Build libmetalink-dev - version 0.1.3' \
     '==============================================='
-sleep 2
+sleep 1
 
 cd "${cwd}"/libmetalink-0.1.3 || exit 1
-autoreconf -fi
+autoconf
 cd build || exit 1
 ../buildconf
 ../configure --prefix="${install_dir}"          \
              --{build,host,target}="${pc_type}" \
-             --enable-silent-rules              \
-             --with-pic                         \
              --with-libexpat                    \
              --with-libxml2                     \
-             --with-xml-prefix=/usr             \
-             PKG_CONFIG="$(type -P pkg-config)" \
-             LIBS="$(pkg-config --libs libxml-2.0)"
-
+             --with-pic
+echo
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
     exit 1
 fi
-
+echo
 if ! sudo make install; then
     fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
     exit 1
@@ -248,7 +244,7 @@ sudo ldconfig "${metalink_trim}"
 # BEGIN BUILDING WGET FROM SOURCE CODE
 #
 
-printf "\n%s\n%s\n\n"             \
+printf "\n\n%s\n%s\n\n"           \
     'Build Wget - version latest' \
     '==============================================='
 sleep 2
@@ -279,13 +275,12 @@ if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-compone
 fi
 
 # UPDATE THE SYSTEM SECURITY CERTIFICATES BEFORE INSTALLING WGET
-if type -P 'update-ca-certificates' &>/dev/null; then
+if type -P update-ca-certificates &>/dev/null; then
     sudo update-ca-certificates
 fi
 
 # FIND THE CORRECT OPENSSL DIRECTORIES
 openssl_lib_dir="$(pkg-config --libs-only-L openssl | awk '{print $1}' | sed 's/-L//')"
-openssl_include_dir="$(pkg-config --cflags-only-I openssl | awk '{print $1}' | sed 's/-I//')"
 
 cd "${cwd}/${archive_dir}/build" || exit 1
 ../configure --prefix="${install_dir}"               \
@@ -310,7 +305,7 @@ cd "${cwd}/${archive_dir}/build" || exit 1
              --with-ssl=openssl                      \
              PKG_CONFIG="$(type -P pkg-config)"      \
              OPENSSL_LIBS="${openssl_lib_dir}"       \
-             OPENSSL_CFLAGS="${openssl_include_dir}" \
+             OPENSSL_CFLAGS='-I/usr/include'         \
              GPGME_LIBS="$(pkg-config --libs gpgme)" \
              GPGME_CFLAGS='-I/usr/include'
 
