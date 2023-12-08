@@ -50,7 +50,7 @@ CXX=clang++
 CFLAGS='-g -O3 -pipe -march=native'
 CXXFLAGS="${CFLAGS}"
 CPPFLAGS='-I/usr/local/include -I/usr/include'
-LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib -Wl,-rpath -Wl,/usr/local/lib'
+LDFLAGS='-Wl,-rpath -Wl,/usr/local/lib -L/usr/local/lib64 -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
 #
@@ -63,12 +63,12 @@ PATH="\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
+/usr/local/cuda/bin:\
 /usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/local/cuda/bin:\
 /snap/bin\
 "
 export PATH
@@ -93,7 +93,7 @@ export PKG_CONFIG_PATH
 
 exit_fn()
 {
-    printf "\n%s\n\n%s\n%s\n\n"                                    \
+    printf "\n%s\n\n%s\n%s\n\n"                                   \
         'The script has completed'                                \
         'Make sure to star this repository to show your support!' \
         "${web_repo}"
@@ -314,14 +314,11 @@ install_binutils_fn()
 get_gold_fn()
 {
     gold_check="$(type -P ld.gold)"
-    saved_ld_path="$(type -P ld)"
 
     if [ -n "${gold_check}" ]; then
-        sudo mv "$(type -P ld)" "$(type -P ld)".bak
-        sudo ln -sf "${gold_check}" "${saved_ld_path}"
-        gold_test=yes
+        gold_test=gold
     else
-        gold_test=default
+        gold_test=ld
     fi
 }
 
@@ -417,7 +414,7 @@ if build 'llvm' "${g_ver}"; then
           -DLLVM_INCLUDE_TESTS=OFF                    \
           -DLLVM_TARGET_ARCH=HOST                     \
           -DLLVM_TOOL_CLANG_BUILD=ON                  \
-          -DLLVM_USE_LINKER=gold                      \
+          -DLLVM_USE_LINKER="${gold_test}"            \
           -G Ninja -Wno-dev
     echo
     if ! ninja "-j$(nproc --all)" -C build; then
