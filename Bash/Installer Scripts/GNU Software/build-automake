@@ -208,6 +208,11 @@ if ! sudo make install; then
     exit 1
 fi
 
+# Copy THE M4 FILES FROM APT VERSION OF AUTOMAKE'S ACLOCAL FOLDER TO THE NEWLY CREATED ONE
+if ! sudo cp /usr/share/aclocal/*.m4 '/usr/local/share/aclocal/'; then
+    printf "\n%s\n\n" "Failed to execute: sudo cp /usr/share/aclocal/*.m4 '/usr/local/share/aclocal/'. Line: ${LINENO}"
+fi
+
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
 
