@@ -27,9 +27,9 @@
 ##
 ##  Changed: Some support libraries prefix paths to avoid installing into the system
 ##
-##  Updated: 11.21.23
+##  Updated: 12.09.23
 ##
-##  Script Version: 3.8
+##  Script Version: 3.9
 ##
 #############################################################################################################
 
@@ -44,7 +44,7 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-script_ver=3.8
+script_ver=3.9
 progname="${0}"
 cwd="${PWD}"/magick-build-script
 packages="${cwd}"/packages
@@ -310,6 +310,7 @@ git_1_fn()
 
     github_repo="${1}"
     github_url="${2}"
+    git_token='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'
 
     if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
@@ -361,6 +362,8 @@ git_ver_fn()
     "${u_flag}" "${v_url}" "${t_flag}" 2>/dev/null
 }
 
+installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
+
 #
 # PRINT THE OPTIONS AVAILABLE WHEN MANUALLY RUNNING THE SCRIPT
 #
@@ -368,8 +371,6 @@ git_ver_fn()
 pkgs_fn()
 {
     local missing_pkg missing_pkgs pkg pkgs
-    sudo add-apt-repository ppa:fontforge/fontforge -y
-    sudo apt update
 
     pkgs=("${1}" alien asciidoc autoconf autoconf-archive automake autopoint binutils bison
           build-essential cmake curl dbus-x11 flex fontforge gettext gimp-data git gperf
@@ -384,19 +385,17 @@ pkgs_fn()
 
     for pkg in ${pkgs[@]}
     do
-        missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
-
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${pkg}"
+        if ! installed "$pkg"; then
+            missing_pkgs+=" $pkg"
         fi
     done
 
-    if [ -n "${missing_pkgs}" ]; then
-        sudo apt -y install ${missing_pkgs}
-        sudo apt -y install libnotify-dev &>/dev/null
-        clear
+    if [ -n "$missing_pkgs-" ]; then
+        sudo apt -y install $missing_pkgs
+        printf "\n%s\n\n" \
+            'The required APT packages were successfully installed.'
     else
-        printf "%s\n" 'The APT packages are already installed'
+        echo 'The required APT packages are already installed.'
     fi
 }
 
@@ -839,6 +838,21 @@ if build 'fribidi' "${g_ver}"; then
     build_done 'fribidi' "${g_ver}"
 fi
 
+git_ver_fn 'harfbuzz/harfbuzz' '1' 'R'
+if build 'harfbuzz' "${g_ver}"; then
+    download "https://github.com/harfbuzz/harfbuzz/archive/refs/tags/${g_ver}.tar.gz" "harfbuzz-${g_ver}.tar.gz"
+    extracmds=('-D'{benchmark,cairo,docs,glib,gobject,icu,introspection,tests}'=disabled')
+    execute ./autogen.sh
+    execute meson setup build --prefix="${workspace}"  \
+                              --buildtype=release      \
+                              --default-library=static \
+                              --strip                  \
+                              "${extracmds[@]}"
+    execute ninja "-j${cpu_threads}" -C build
+    execute ninja -C build install
+    build_done 'harfbuzz' "${g_ver}"
+fi
+
 git_ver_fn 'host-oman/libraqm' '1' 'T'
 if build 'raqm' "${g_ver}"; then
     download "https://codeload.github.com/host-oman/libraqm/tar.gz/refs/tags/v${g_ver}" "raqm-${g_ver}.tar.gz"
@@ -846,7 +860,8 @@ if build 'raqm' "${g_ver}"; then
                               --includedir="${workspace}"/include \
                               --buildtype=release                 \
                               --default-library=static            \
-                              --strip
+                              --strip                             \
+                              -Ddocs=false
     execute ninja "-j${cpu_threads}" -C build
     execute ninja "-j${cpu_threads}" -C build install
     build_done 'raqm' "${g_ver}"
@@ -942,15 +957,15 @@ fi
 
 if build 'dejavu-fonts' 'git'; then
     download_git 'https://github.com/dejavu-fonts/dejavu-fonts.git'
-    execute wget -U "${user_agent}" -P 'resources' 'http://www.unicode.org/Public/UNIDATA/UnicodeData.txt' 'http://www.unicode.org/Public/UNIDATA/Blocks.txt'
+    wget -U "${user_agent}" -P 'resources' 'http://www.unicode.org/Public/UNIDATA/UnicodeData.txt' 'http://www.unicode.org/Public/UNIDATA/Blocks.txt'
     if [ ! -d "${packages}"/fontconfig ]; then
         mkdir -p "${packages}"/fontconfig
     fi
     execute git clone 'git://anongit.freedesktop.org/git/fontconfig' "${packages}"/fontconfig
-    execute ln -sf "${packages}"/fontconfig/fc-lang resources/fc-lang
+    execute ln -sf "${packages}"/fontconfig/fc-lang 'resources/fc-lang'
     execute make "-j${cpu_threads}"
     cd "${packages}"/fontconfig || exit 1
-    execute ./autogen.sh --sysconfdir=/etc --prefix=/usr --mandir=/usr/share/man
+    execute ./autogen.sh --prefix=/usr --sysconfdir=/etc --mandir=/usr/share/man
     execute make "-j${cpu_threads}"
     execute sudo make install
     execute ./configure
