@@ -97,7 +97,7 @@ sudo bash -c 'bash <(curl -sSL https://ld-linker.optimizethis.net)'
 # DOWNLOAD SCRIPTS
 #
 
-scripts=(adobe-fonts curl tools aria2 zlib zstd git libxml2 nasm yasm python3)
+scripts=(adobe-fonts curl tools aria2 zlib zstd git jq libxml2 nasm yasm python3)
 
 for script in ${scripts[@]}
 do
