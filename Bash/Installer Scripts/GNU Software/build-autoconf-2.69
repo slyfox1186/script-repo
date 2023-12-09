@@ -47,7 +47,7 @@ web_repo=https://github.com/slyfox1186/script-repo
 printf "%s\n%s\n\n" \
     "autoconf 2.69 build script - v${script_ver}" \
     '==============================================='
-sleep 2
+sleep 1
 
 #
 # CREATE OUTPUT DIRECTORY
@@ -83,12 +83,12 @@ PATH="\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
+/usr/local/cuda/bin:\
 /usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/local/cuda/bin:\
 /snap/bin\
 "
 export PATH
@@ -130,32 +130,6 @@ fail_fn()
         "${1}" \
         "To report a bug create an issue at: ${web_repo}/issues"
     exit 1
-}
-
-cleanup_fn()
-{
-    local choice
-
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
-
-    case "${choice}" in
-        1)      sudo rm -fr "${cwd}";;
-        2)      echo;;
-        *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
-                unset choice
-                clear
-                cleanup_fn
-                ;;
-    esac
 }
 
 #
@@ -202,7 +176,7 @@ mkdir -p "${cwd}/${archive_dir}/build"
 # EXTRACT ARCHIVE FILES
 #
 
-if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
+if ! tar -Jxf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
     printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
     exit 1
 fi
@@ -215,17 +189,15 @@ cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi
 autoupdate
 cd build || exit 1
-../configure --prefix="${install_dir}"       \
-             --{build,host}=x86_64-linux-gnu \
-             M4="$(type -P m4)"
+../configure --prefix="${install_dir}"
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make instal. Line: ${LINENO}"
+    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
     exit 1
 fi
 
 # PROMPT USER TO CLEAN UP FILES
-cleanup_fn
+sudo rm -fr "${cwd}"
 
 # SHOW EXIT MESSAGE
 exit_fn
