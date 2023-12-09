@@ -142,7 +142,7 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(automake automake-archive autogen automake autopoint autotools-dev binutils
+pkgs=(autoconf autoconf-archive autogen automake autopoint autotools-dev binutils
       bison build-essential bzip2 bzip2 ccache curl libc6-dev libpth-dev libtool
       libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev yasm)
 
