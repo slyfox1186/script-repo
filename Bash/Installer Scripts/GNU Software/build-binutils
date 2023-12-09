@@ -37,7 +37,6 @@ cwd="${PWD}"/binutils-build-script
 install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
-
 printf "%s\n%s\n\n"                          \
     "Binutils Build Script - v${script_ver}" \
     '==============================================='
@@ -135,14 +134,12 @@ cleanup_fn()
         '[1] Yes' \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
+    clear
 
     case "${choice}" in
         1)      sudo rm -fr "${cwd}";;
         2)      echo;;
         *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
                 unset choice
                 clear
                 cleanup_fn
@@ -204,8 +201,8 @@ esac
 
 cd "${cwd}" || exit 1
 
-curl -A "${user_agent}" -Lso "${cwd}/build-autoconf" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/autoconf-test'
-bash "${cwd}/build-autoconf" "${PWD}"
+curl -A "${user_agent}" -Lso "${cwd}/build-autoconf-2.69" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf-2.69'
+echo '1' | bash "${cwd}/build-autoconf-2.69"
 
 #
 # DOWNLOAD THE ARCHIVE FILE
@@ -237,31 +234,40 @@ fi
 # BUILD PROGRAM FROM SOURCE
 #
 
+printf "%s\n%s\n\n"              \
+    "Build Binutils from source" \
+    '==============================================='
+sleep 1
+
 cd "${cwd}/${archive_dir}" || exit 1
 autoreconf -fi -I /usr/share/aclocal
 cd build || exit 1
-../configure --prefix="${install_dir}"              \
-             --enable-compressed-debug-sections=all \
-             --enable-gold=yes                      \
-             --enable-host-shared                   \
-             --enable-ld=yes                        \
-             --enable-libssp                        \
-             --enable-lto                           \
-             --enable-pgo-build=lto                 \
-             --enable-year2038                      \
-             --with-gcc-major-version-only          \
-             --with-gmp=/usr                        \
-             --with-isl=/usr                        \
-             --with-mpc=/usr                        \
-             --with-mpfr=/usr                       \
-             --with-system-zlib                     \
+../configure --prefix="${install_dir}"                                 \
+             --disable-werror                                          \
+             --enable-default-compressed-debug-sections-algorithm=zstd \
+             --enable-gold=default                                     \
+             --enable-host-shared                                      \
+             --enable-ld=yes                                           \
+             --enable-libssp                                           \
+             --enable-lto                                              \
+             --enable-pgo-build=lto                                    \
+             --enable-plugins                                          \
+             --enable-year2038                                         \
+             --with-boot-ldflags="${LDFLAGS}"                          \
+             --with-gcc-major-version-only                             \
+             --with-gmp=/usr                                           \
+             --with-isl=/usr                                           \
+             --with-mpc=/usr                                           \
+             --with-mpfr=/usr                                          \
+             --with-stage1-ldflags="${LDFLAGS}"                        \
+             --with-system-zlib                                        \
              --with-zstd
 echo
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
 fi
 echo
-if ! sudo make install; then
+if ! sudo make all-gold install; then
     fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
 fi
 
