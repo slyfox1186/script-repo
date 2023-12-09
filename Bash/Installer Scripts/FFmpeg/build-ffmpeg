@@ -2684,7 +2684,7 @@ source_flags_fn
 export CC=clang CXX=clang++
 
 # ENTER A SNAPSHOT ID FOR X265
-g_ver=8ee01d45b05cdbc9da89b884815257807a514bc8
+g_ver=24e3d2aba47d5e378c5c63a1bbfbc32658140b4d
 g_sver="${g_ver::7}"
 if build 'x265' "${g_sver}"; then
     download "https://bitbucket.org/multicoreware/x265_git/get/${g_ver}.tar.bz2" "x265-${g_sver}.tar.bz2"
