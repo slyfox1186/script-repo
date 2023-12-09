@@ -310,7 +310,6 @@ git_1_fn()
 
     github_repo="${1}"
     github_url="${2}"
-    git_token='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'
 
     if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
