@@ -10,7 +10,7 @@
 ##  Updated:
 ##           - Script date: 11.28.23
 ##           - Script version: 2.8
-##           - Golang version: 1.21.4
+##           - Golang version: 1.21.5
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo/edit/main/shell/installers/build-tools
 ##
@@ -512,8 +512,8 @@ if [[ "${OS}" == 'Arch' ]]; then
     export GOPATH="${HOME}"/go
     source "${HOME}"/.bash_profile
 else
-    if build 'golang' '1.21.4'; then
-        download 'https://go.dev/dl/go1.21.4.linux-amd64.tar.gz' 'golang-1.21.4.tar.gz'
+    if build 'golang' '1.21.5'; then
+        download 'https://go.dev/dl/go1.21.5.linux-amd64.tar.gz' 'golang-1.21.5.tar.gz'
         execute sudo cp -f 'bin/go' 'bin/gofmt' "${install_dir}"/bin
         if [ -d  "${install_dir}"/go ]; then
             sudo rm -fr "${install_dir}"/go
@@ -522,7 +522,7 @@ else
         GOROOT="${install_dir}"/go
         PATH="${PATH}:${GOROOT}/bin"
         export GOROOT PATH
-        build_done 'golang' '1.21.4'
+        build_done 'golang' '1.21.5'
     fi
 fi
 
