@@ -32,7 +32,7 @@ archive_url=https://www.openssl.org/source/"${archive_dir}".tar.gz
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/openssl-build-script
-install_dir=/usr/local/ssl
+install_dir=/usr/local
 ssl_dir="${install_dir}"
 cert_dir="${install_dir}"/certs
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -71,12 +71,12 @@ mkdir -p "${cwd}"
 # SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
 #
 
-CC=clang
-CXX=clang++
-CFLAGS="-D_REENTRANT -m64 -DL_ENDIAN -O3 -Wl,-rpath=${install_dir}/ssl/lib -fPIC -pipe -march=native"
+CC=gcc
+CXX=g++
+CFLAGS="-D_REENTRANT -m64 -DL_ENDIAN -O3 -fPIC -pipe -march=native"
 CXXFLAGS="${CFLAGS}"
 CPPFLAGS='-I/usr/local/include -I/usr/include'
-LDFLAGS="-Wl,-rpath=${install_dir}/lib -Wl,--enable-new-dtags -ldl -L/usr/local/ssl/lib -L/usr/local/lib64"
+LDFLAGS="-Wl,-rpath=/usr/local/lib -Wl,--enable-new-dtags -ldl -L/usr/local/lib64"
 LDFLAGS+=' -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
@@ -121,64 +121,6 @@ PKG_CONFIG_PATH="\
 /lib/pkgconfig\
 "
 export PKG_CONFIG_PATH
-
-LD_LIBRARY="\
-/ust/local/lib64:\
-/ust/local/lib:\
-/usr/share/texinfo/lib:\
-/usr/local/x86_64-linux-gnu/lib:\
-/usr/local/ssl/lib:\
-/usr/local/lib/x86_64-linux-gnu:\
-/usr/local/lib/gprofng:\
-/usr/local/lib64:\
-/usr/local/lib:\
-/usr/local/cuda/targets/x86_64-linux/lib:\
-/usr/local/cuda-12/targets/x86_64-linux/lib:\
-/usr/local/cuda-12.3/targets/x86_64-linux/lib:\
-/usr/local/cuda-12.3/nvvm/lib64:\
-/usr/lib/x86_64-linux-gnu/libfakeroot:\
-/usr/lib/x86_64-linux-gnu:\
-/usr/libx32:\
-/usr/lib64:\
-/usr/lib32:\
-/usr/lib:\
-/usr/local/lib:\
-/lib/x86_64-linux-gnu:\
-/libx32:\
-/lib64:\
-/lib32:\
-/lib\
-"
-export LD_LIBRARY
-
-LD_LIBRARY_PATH="\
-/ust/local/lib64:\
-/ust/local/lib:\
-/usr/share/texinfo/lib:\
-/usr/local/x86_64-linux-gnu/lib:\
-/usr/local/ssl/lib:\
-/usr/local/lib/x86_64-linux-gnu:\
-/usr/local/lib/gprofng:\
-/usr/local/lib64:\
-/usr/local/lib:\
-/usr/local/cuda/targets/x86_64-linux/lib:\
-/usr/local/cuda-12/targets/x86_64-linux/lib:\
-/usr/local/cuda-12.3/targets/x86_64-linux/lib:\
-/usr/local/cuda-12.3/nvvm/lib64:\
-/usr/lib/x86_64-linux-gnu/libfakeroot:\
-/usr/lib/x86_64-linux-gnu:\
-/usr/libx32:\
-/usr/lib64:\
-/usr/lib32:\
-/usr/lib:\
-/usr/local/lib:\
-/lib/x86_64-linux-gnu:\
-/libx32:\
-/lib64:\
-/lib32:\
-/lib\
-"
-export LD_LIBRARY_PATH
 
 #
 # CREATE FUNCTIONS
@@ -226,6 +168,7 @@ cleanup_fn()
 
 display_stats_fn()
 {
+    sudo ldconfig
     clear
     printf "%s\n\n" 'OpenSSL'\''s version output is listed below.'
     "$(type -P openssl)" version -a
@@ -321,12 +264,10 @@ cd "${cwd}/${archive_dir}" || exit 1
 cd build || exit 1
 ../config --prefix="${install_dir}"                 \
           --openssldir="${ssl_dir}"                 \
-          -Wl,-rpath="${install_dir}"/lib           \
-          -Wl,--enable-new-dtags                    \
-          -DOPENSSL_USE_IPV6=0                      \
           --release                                 \
           --with-zlib-include=/usr/include          \
           --with-zlib-lib=/usr/lib/x86_64-linux-gnu \
+          -DOPENSSL_USE_IPV6=0                      \
           enable-buildtest-c++                      \
           enable-ec_nistp_64_gcc_128                \
           enable-egd                                \
@@ -343,7 +284,7 @@ cd build || exit 1
  
 # MODIFY THE MAKEFILE USING SED TO ACTIVATE THE RPATH FEATURE OF OPENSSL
 
-sed -i 's/linux-x86_64-clang/linux-x86_64-rpath/g' 'Makefile'
+sed -i 's/linux-x86_64/linux-x86_64-rpath/g' 'Makefile'
 
 echo
 if ! make "-j$(nproc --all)"; then
@@ -423,7 +364,6 @@ if ! curl -A "${user_agent}" -Lso "${cwd}/ld-linker-search-paths.sh" 'https://ra
     exit 1
 fi
 sudo bash "${cwd}/ld-linker-search-paths.sh"
-sudo ldconfig
 
 # ADD THE NEW OPENSSL BIN TO THE USER'S ~/.bashrc FILE IF NOT ALREADY PRESENT
 if ! grep -o '/usr/local/ssl/bin' "${HOME}"/.bashrc &>/dev/null; then
