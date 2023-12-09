@@ -272,7 +272,7 @@ if build 'libxml2' "${g_ver}"; then
     execute cmake -B build -DCMAKE_install_dir="${install_dir}" \
                            -DCMAKE_EXPORT_COMPILE_COMMANDS=OFF  \
                            -DCMAKE_VERBOSE_MAKEFILE=OFF         \
-                           -DBUILD_SHARED_LIBS=OFF              \
+                           -DBUILD_SHARED_LIBS=ON               \
                            -DCPACK_BINARY_DEB=OFF               \
                            -DCPACK_BINARY_FREEBSD=OFF           \
                            -DCPACK_BINARY_IFW=OFF               \
