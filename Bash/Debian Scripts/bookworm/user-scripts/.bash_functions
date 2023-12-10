@@ -22,8 +22,8 @@ mypc()
     local OS VER
     
     . '/etc/os-release'
-    OS="$NAME"
-    VER="$VERSION_ID"
+    OS="${NAME}"
+    VER="${VERSION_ID}"
 
     clear
     printf "%s\n%s\n\n"           \
@@ -1330,33 +1330,64 @@ cnt_dirr()
     printf "%s %'d\n\n" "The total directory file count is (recursive):" "${keep_cnt}"
 }
 
-##############
-## TEST GCC ##
-##############
+######################
+## TEST GCC & CLANG ##
+######################
 
 test_gcc()
 {
-    local answer
+    local answer random_dir
+    clear
 
-# CREATE A TEMPORARY C FILE TO RUN OUR TESTS AGAINST
-cat > /tmp/hello.c <<'EOT'
+    random_dir="$(mktemp -d)"
+    
+    # CREATE A TEMPORARY C FILE TO RUN OUR TESTS AGAINST
+    cat > "${random_dir}"/hello.c <<'EOF'
 #include <stdio.h>
 int main(void)
 {
    printf("Hello World!\n");
    return 0;
 }
-EOT
+EOF
 
     if [ -n "${1}" ]; then
-        "${1}" -Q -v /tmp/hello.c
+        "${1}" -Q -v "${random_dir}"/hello.c
     else
         clear
         read -p 'Enter the GCC binary you wish to test (example: gcc-11): ' answer
         clear
-        "${answer}" -Q -v /tmp/hello.c
+        "${answer}" -Q -v "${random_dir}"/hello.c
     fi
-    sudo rm /tmp/hello.c
+    sudo rm -fr "${random_dir}"
+}
+
+test_clang()
+{
+    local answer random_dir
+    clear
+
+    random_dir="$(mktemp -d)"
+    
+    # CREATE A TEMPORARY C FILE TO RUN OUR TESTS AGAINST
+    cat > "${random_dir}"/hello.c <<'EOF'
+#include <stdio.h>
+int main(void)
+{
+   printf("Hello World!\n");
+   return 0;
+}
+EOF
+
+    if [ -n "${1}" ]; then
+        "${1}" -Q -v "${random_dir}"/hello.c
+    else
+        clear
+        read -p 'Enter the GCC binary you wish to test (example: gcc-11): ' answer
+        clear
+        "${answer}" -Q -v "${random_dir}"/hello.c
+    fi
+    sudo rm -fr "${random_dir}"
 }
 
 ############################
@@ -1958,3 +1989,43 @@ pipup()
         sudo pip install --upgrade --user ${pkg}
     done
 }
+
+####################
+## REGEX COMMANDS ##
+####################
+
+add_brackets()
+{
+    local choice fname
+    clear
+
+    if [ -z "${1}" ]; then
+        read -p 'Please enter the file path: ' fname
+    else
+        fname="${1}"
+    fi
+
+    sed -e 's/\(\$\)\([A-Za-z0-9\_]*\)/\1{\2}/g' "${fname}"
+
+    printf "%s\n\n%s\n%s\n\n"                          \
+        'Do you want to permanently change this file?' \
+        '[1] Yes'                                      \
+        '[2] Exit'
+    read -p 'Your choices are ( 1 or 2): ' choice
+    clear
+
+    case "${choice}" in
+        1)
+                sed -i 's/\(\$\)\([A-Za-z0-9\_]*\)/\1{\2}/g' "${fname}"
+                clear
+                cat < "${fname}"
+                printf "%s\n\n" 'The new file is show above!'
+                ;;
+        2)      exit 0;;
+        *)
+                unset choice
+                bvar "${fname}"
+                ;;
+    esac
+}
+
