@@ -68,18 +68,20 @@ export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 #
 
 PATH="\
-/usr/lib/ccache/bin:\
 /usr/lib/ccache:\
-${cwd}/autoconf-build-script/workspace/bin:\
+${HOME}/perl5/bin:\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
 /usr/local/cuda/bin:\
+/usr/local/x86_64-linux-gnu/bin:\
 /usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin:\
+/usr/local/games:\
+/usr/games:\
 /snap/bin\
 "
 export PATH

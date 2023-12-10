@@ -69,7 +69,24 @@ export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 # SET THE PATH VARIABLE
 #
 
-export PATH="/usr/lib/ccache:${PATH}"
+PATH="\
+/usr/lib/ccache:\
+${HOME}/perl5/bin:\
+${HOME}/.cargo/bin:\
+${HOME}/.local/bin:\
+/usr/local/sbin:\
+/usr/local/cuda/bin:\
+/usr/local/x86_64-linux-gnu/bin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin:\
+/usr/local/games:\
+/usr/games:\
+/snap/bin\
+"
+export PATH
 
 #
 # SET THE PKG_CONFIG_PATH VARIABLE

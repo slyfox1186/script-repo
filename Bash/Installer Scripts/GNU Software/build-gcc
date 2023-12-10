@@ -119,19 +119,20 @@ unset tmp_dbus tmp_display tmp_home tmp_pwd tmp_term var
 
 PATH="\
 /usr/lib/ccache:\
-${workspace}/bin:\
-${HOME}/.local/bin:\
+${HOME}/perl5/bin:\
 ${HOME}/.cargo/bin:\
-/usr/bin/${pc_type}-ld:\
+${HOME}/.local/bin:\
 /usr/local/sbin:\
+/usr/local/cuda/bin:\
+/usr/local/x86_64-linux-gnu/bin:\
 /usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/local/cuda/bin:\
-/snap/bin:\
-${PATH}\
+/usr/local/games:\
+/usr/games:\
+/snap/bin\
 "
 
 #
