@@ -28,6 +28,7 @@ fail_fn()
 
 if ! sudo dpkg -l | grep -o wget &>/dev/null; then
     sudo apt -y install wget
+    clear
 fi
 
 #
