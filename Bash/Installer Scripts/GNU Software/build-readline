@@ -37,6 +37,7 @@ web_repo=https://github.com/slyfox1186/script-repo
 printf "%s\n%s\n\n" \
     "readline build script - v${script_ver}" \
     '==============================================='
+sleep 2
 
 #
 # CREATE OUTPUT DIRECTORY
@@ -133,9 +134,6 @@ cleanup_fn()
         1)      sudo rm -fr "${cwd}";;
         2)      echo;;
         *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
                 unset choice
                 clear
                 cleanup_fn
@@ -190,7 +188,7 @@ mkdir -p "${cwd}/${archive_dir}/build"
 # EXTRACT ARCHIVE FILES
 #
 
-if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
+if ! tar -zxf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
     printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
     exit 1
 fi
