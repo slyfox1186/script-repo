@@ -26,9 +26,9 @@ fail_fn()
 # DOWNLAOD REQUIRED APT PACKAGES
 #
 
-sudo apt update
-sudo apt -y install wget
-clear
+if ! sudo dpkg -l | grep -o wget &>/dev/null; then
+    sudo apt -y install wget
+fi
 
 #
 # CD INTO A RANDOM FOLDER TO HOLD AND EXECUTE THE TEMP FILES
@@ -76,6 +76,7 @@ done
 #
 
 cd "${HOME}" || exit 1
+
 for fname in ${script_array[@]}
 do
     if which gnome-text-editor &>/dev/null; then
