@@ -26,7 +26,7 @@ fail_fn()
 # DOWNLAOD REQUIRED APT PACKAGES
 #
 
-if ! sudo dpkg -l | grep -o get &>/dev/null; then
+if ! sudo dpkg -l | grep -o wget &>/dev/null; then
     sudo apt -y install wget
     clear
 fi
