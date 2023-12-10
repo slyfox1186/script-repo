@@ -26,9 +26,10 @@ fail_fn()
 # DOWNLAOD REQUIRED APT PACKAGES
 #
 
-sudo apt update
-sudo apt -y install wget
-clear
+if ! sudo dpkg -l | grep -o wget &>/dev/null; then
+    sudo apt -y install wget
+    clear
+fi
 
 #
 # CD INTO A RANDOM FOLDER TO HOLD AND EXECUTE THE TEMP FILES
