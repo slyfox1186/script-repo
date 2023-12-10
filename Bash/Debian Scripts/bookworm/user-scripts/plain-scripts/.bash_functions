@@ -21,9 +21,9 @@ mypc()
 {
     local OS VER
     
-    . '/etcsource /os-release'
-    OS="$NAME"
-    VER="$VERSION_ID"
+    . '/etc/os-release'
+    OS="${NAME}"
+    VER="${VERSION_ID}"
 
     clear
     printf "%s\n%s\n\n"           \
@@ -106,7 +106,7 @@ mf()
         chmod 744 "${1}"
     fi
 
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 mdir()
@@ -124,7 +124,7 @@ mdir()
         cd "${PWD}/${1}" || exit 1
     fi
 
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 ##################
@@ -163,7 +163,7 @@ cpf()
     chown -R "${USER}":"${USER}" "${HOME}/tmp/${1}"
     chmod -R 744 "${HOME}/tmp/${1}"
 
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 # MOVE file
@@ -180,7 +180,7 @@ mvf()
     chown -R "${USER}":"${USER}" "${HOME}/tmp/${1}"
     chmod -R 744 "${HOME}/tmp/${1}"
 
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 ##################
@@ -192,7 +192,7 @@ aptdl()
 {
     clear
     wget -c "$(apt --print-uris -qq --reinstall install ${1} 2>/dev/null | cut -d''\''' -f2)"
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 # CLEAN
@@ -325,7 +325,7 @@ toa()
     clear
     chown -R "${USER}":"${USER}" "${PWD}"
     chmod -R 744 "${PWD}"
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 #################
@@ -419,7 +419,7 @@ new_key()
 # EXPORT THE PUBLIC SSH KEY STORED INSIDE A PRIVATE SSH KEY
 keytopub()
 {
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 
     local opub okey
 
@@ -462,7 +462,7 @@ sbrc()
     . ~/.bashrc && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
     sleep 1
 
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 spro()
@@ -472,7 +472,7 @@ spro()
     . ~/.profile && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
     sleep 1
 
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 ####################
@@ -525,7 +525,7 @@ myip()
 # WGET COMMAND
 mywget()
 {
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 
     local outfile url
 
@@ -787,7 +787,7 @@ ffdl()
     curl -A "${user_agent}" -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
     bash 'ff.sh'
     sudo rm 'ff.sh'
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 ffs() { curl -A "${user_agent}" -m 10 -Lso 'ff' 'https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/build-ffmpeg'; }
@@ -809,7 +809,7 @@ dlfs()
     done
     
     clear
-    ls -1AhFv --color --group-directories-first
+    ls -1AvhFhFv --color --group-directories-first
 }
 
 ##############################
@@ -849,7 +849,7 @@ mi()
     local i
 
     if [ -z "${1}" ]; then
-        ls -1AhFv --color --group-directories-first
+        ls -1AvhFhFv --color --group-directories-first
         echo
         read -p 'Please enter the relative file path: ' i
         clear
@@ -998,42 +998,31 @@ hw_mon()
 }
 
 # CREATE A 7ZIP FILE WITH MAX COMPRESSION SETTINGS
+
 7z_1()
 {
     local answer source output
     clear
 
-    if [ -n "${1}" ]; then
-        if [ -f "${1}".7z ]; then
-            sudo rm "${1}".7z
-        fi
-        7z a -t7z -m0=lzma2 -mx1 "${1}".7z ./"${1}"/*
+    if [ -d "${1}" ]; then
+        source_dir="${1}"
+        7z a -y -t7z -m0=lzma2 -mx1 "${source_dir}".7z ./"${source_dir}"/*
     else
-        read -p 'Please enter the source folder path: ' source
-        echo
-        read -p 'Please enter the destination archive path (w/o extension): ' output
-        clear
-        if [ -f "${output}".7z ]; then
-            sudo rm "${output}".7z
-        fi
-        7z a -t7z -m0=lzma2 -mx1 "${output}".7z ./"${source}"/*
+        read -p 'Please enter the source folder path: ' source_dir
+        7z a -y -t7z -m0=lzma2 -mx1 "${source_dir}".7z ./"${source_dir}"/*
     fi
 
-    printf "\n%s\n\n%s\n%s\n\n" \
+    printf "\n%s\n\n%s\n%s\n\n"                    \
         'Do you want to delete the original file?' \
-        '[1] Yes' \
+        '[1] Yes'                                  \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
     clear
 
-    if [ -n "${1}" ]; then
-        source="${1}"
-    fi
-
     case "${answer}" in
-        1)      sudo rm -fr "${source}";;
+        1)      sudo rm -fr "${source_dir}";;
         2)      clear;;
-        '')     sudo rm -fr "${source}";;
+        '')     clear;;
         *)      printf "\n%s\n\n" 'Bad user input...';;
     esac
 }
@@ -1043,37 +1032,25 @@ hw_mon()
     local answer source output
     clear
 
-    if [ -n "${1}" ]; then
-        if [ -f "${1}".7z ]; then
-            sudo rm "${1}".7z
-        fi
-        7z a -t7z -m0=lzma2 -mx5 "${1}".7z ./"${1}"/*
+    if [ -d "${1}" ]; then
+        source_dir="${1}"
+        7z a -y -t7z -m0=lzma2 -mx5 "${source_dir}".7z ./"${source_dir}"/*
     else
-        read -p 'Please enter the source folder path: ' source
-        echo
-        read -p 'Please enter the destination archive path (w/o extension): ' output
-        clear
-        if [ -f "${output}".7z ]; then
-            sudo rm "${output}".7z
-        fi
-        7z a -t7z -m0=lzma2 -mx5 "${output}".7z ./"${source}"/*
+        read -p 'Please enter the source folder path: ' source_dir
+        7z a -y -t7z -m0=lzma2 -mx5 "${source_dir}".7z ./"${source_dir}"/*
     fi
 
-    printf "\n%s\n\n%s\n%s\n\n" \
+    printf "\n%s\n\n%s\n%s\n\n"                    \
         'Do you want to delete the original file?' \
-        '[1] Yes' \
+        '[1] Yes'                                  \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
     clear
 
-    if [ -n "${1}" ]; then
-        source="${1}"
-    fi
-
     case "${answer}" in
-        1)      sudo rm -fr "${source}";;
+        1)      sudo rm -fr "${source_dir}";;
         2)      clear;;
-        '')     sudo rm -fr "${source}";;
+        '')     clear;;
         *)      printf "\n%s\n\n" 'Bad user input...';;
     esac
 }
@@ -1083,37 +1060,25 @@ hw_mon()
     local answer source output
     clear
 
-    if [ -n "${1}" ]; then
-        if [ -f "${1}".7z ]; then
-            sudo rm "${1}".7z
-        fi
-        7z a -t7z -m0=lzma2 -mx9 "${1}".7z ./"${1}"/*
+    if [ -d "${1}" ]; then
+        source_dir="${1}"
+        7z a -y -t7z -m0=lzma2 -mx9 "${source_dir}".7z ./"${source_dir}"/*
     else
-        read -p 'Please enter the source folder path: ' source
-        echo
-        read -p 'Please enter the destination archive path (w/o extension): ' output
-        clear
-        if [ -f "${output}".7z ]; then
-            sudo rm "${output}".7z
-        fi
-        7z a -t7z -m0=lzma2 -mx9 "${output}".7z ./"${source}"/*
+        read -p 'Please enter the source folder path: ' source_dir
+        7z a -y -t7z -m0=lzma2 -mx9 "${source_dir}".7z ./"${source_dir}"/*
     fi
 
-    printf "\n%s\n\n%s\n%s\n\n" \
+    printf "\n%s\n\n%s\n%s\n\n"                    \
         'Do you want to delete the original file?' \
-        '[1] Yes' \
+        '[1] Yes'                                  \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
     clear
 
-    if [ -n "${1}" ]; then
-        source="${1}"
-    fi
-
     case "${answer}" in
-        1)      sudo rm -fr "${source}";;
+        1)      sudo rm -fr "${source_dir}";;
         2)      clear;;
-        '')     sudo rm -fr "${source}";;
+        '')     clear;;
         *)      printf "\n%s\n\n" 'Bad user input...';;
     esac
 }
@@ -1261,7 +1226,7 @@ rmd()
     local dirs
 
     if [ -z "${*}" ]; then
-        clear; ls -1A --color --group-directories-first
+        clear; ls -1AvhF --color --group-directories-first
         echo
         read -p 'Enter the directory path(s) to delete: ' dirs
      else
@@ -1270,7 +1235,7 @@ rmd()
 
     sudo rm -fr "$dirs"
     clear
-    ls -1A --color --group-directories-first
+    ls -1AvhF --color --group-directories-first
 }
 
 
@@ -1281,7 +1246,7 @@ rmf()
     local files
 
     if [ -z "${*}" ]; then
-        clear; ls -1A --color --group-directories-first
+        clear; ls -1AvhF --color --group-directories-first
         echo
         read -p 'Enter the file path(s) to delete: ' files
      else
@@ -1290,7 +1255,7 @@ rmf()
 
     sudo rm "${files}"
     clear
-    ls -1A --color --group-directories-first
+    ls -1AvhF --color --group-directories-first
 }
 
 ## REMOVE BOM
@@ -1365,33 +1330,64 @@ cnt_dirr()
     printf "%s %'d\n\n" "The total directory file count is (recursive):" "${keep_cnt}"
 }
 
-##############
-## TEST GCC ##
-##############
+######################
+## TEST GCC & CLANG ##
+######################
 
 test_gcc()
 {
-    local answer
+    local answer random_dir
+    clear
 
-# CREATE A TEMPORARY C FILE TO RUN OUR TESTS AGAINST
-cat > /tmp/hello.c <<'EOT'
+    random_dir="$(mktemp -d)"
+    
+    # CREATE A TEMPORARY C FILE TO RUN OUR TESTS AGAINST
+    cat > "${random_dir}"/hello.c <<'EOF'
 #include <stdio.h>
 int main(void)
 {
    printf("Hello World!\n");
    return 0;
 }
-EOT
+EOF
 
     if [ -n "${1}" ]; then
-        "${1}" -Q -v /tmp/hello.c
+        "${1}" -Q -v "${random_dir}"/hello.c
     else
         clear
         read -p 'Enter the GCC binary you wish to test (example: gcc-11): ' answer
         clear
-        "${answer}" -Q -v /tmp/hello.c
+        "${answer}" -Q -v "${random_dir}"/hello.c
     fi
-    sudo rm /tmp/hello.c
+    sudo rm -fr "${random_dir}"
+}
+
+test_clang()
+{
+    local answer random_dir
+    clear
+
+    random_dir="$(mktemp -d)"
+    
+    # CREATE A TEMPORARY C FILE TO RUN OUR TESTS AGAINST
+    cat > "${random_dir}"/hello.c <<'EOF'
+#include <stdio.h>
+int main(void)
+{
+   printf("Hello World!\n");
+   return 0;
+}
+EOF
+
+    if [ -n "${1}" ]; then
+        "${1}" -Q -v "${random_dir}"/hello.c
+    else
+        clear
+        read -p 'Enter the GCC binary you wish to test (example: gcc-11): ' answer
+        clear
+        "${answer}" -Q -v "${random_dir}"/hello.c
+    fi
+    sudo rm -fr "${random_dir}"
 }
 
 ############################
@@ -1569,7 +1565,7 @@ adl()
     fi
 
     find . -type f -iname "*:Zone.Identifier" -delete 2>/dev/null
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 adlm()
@@ -1612,7 +1608,7 @@ adlm()
     fi
 
     find . -type f -iname "*:Zone.Identifier" -delete 2>/dev/null
-    clear; ls -1AhFv --color --group-directories-first
+    clear; ls -1AvhFhFv --color --group-directories-first
 }
 
 ####################
@@ -1740,7 +1736,7 @@ gitdl()
     sudo chmod -R build-gcc build-magick build-ffmpeg repo.sh -- *
     sudo chown -R "${USER}":"${USER}" build-gcc build-magick build-ffmpeg repo.sh
     clear
-    ls -1A --color --group-directories-first
+    ls -1AvhF --color --group-directories-first
 }
 
 # COUNT ITEMS IN THE CURRENT FOLDER W/O SUBDIRECTORIES INCLUDED
@@ -1858,7 +1854,7 @@ sc()
             tput sgr 0
         }
         box_out_banner "Parsing: ${f}"
-        shellcheck --color=always --source-path="${HOME}:${HOME}/tmp:/etc:/usr/local/lib64:/usr/local/lib:/usr/local64:/usr/lib:/lib64:/lib:/lib32" "${f}"
+        shellcheck --color=always -x --severity=warning --source-path="${HOME}:${HOME}/tmp:/etc:/usr/local/lib64:/usr/local/lib:/usr/local64:/usr/lib:/lib64:/lib:/lib32" "${f}"
         echo
     done
 }
@@ -1895,7 +1891,7 @@ ct()
 # COPY A FILE'S FULL PATH
 # USAGE: cp <file name here>
 
-cp()
+cfp()
 {
     local pipe_this
     clear
@@ -1916,7 +1912,7 @@ cp()
 # COPY THE CONTENT OF A FILE
 # USAGE: cf <file name here>
 
-function cf()
+cfc()
 {
     clear
 
@@ -1931,3 +1927,105 @@ function cf()
         cat "${1}" | xclip -i -rmlastnl -sel clip
     fi
 }
+
+########################
+## PKG-CONFIG COMMAND ##
+########################
+
+# SHOW THE PATHS PKG-CONFIG COMMAND SEARCHES BY DEFAULT
+list_pc_path()
+{
+    clear
+    pkg-config --variable pc_path pkg-config | tr ':' '\n'
+}
+
+######################################
+## SHOW BINARY RUNPATH IF IT EXISTS ##
+######################################
+
+show_rpath()
+{
+    local find_rpath
+    clear
+
+    if [ -z "${1}" ]; then
+        read -p 'Enter the full path to the binary/program: ' find_rpath
+    else
+        find_rpath="${1}"
+    fi
+
+    clear
+    sudo chrpath -l "$(type -p ${find_rpath})"
+}
+
+######################################
+## DOWNLOAD CLANG INSTALLER SCRIPTS ##
+######################################
+
+dl_clang()
+{
+    clear
+    if [ ! -d "${HOME}/tmp" ]; then
+        mkdir -p "${HOME}/tmp"
+    fi
+    wget --show-progress -U "${user_agent}" -cqO "${HOME}/tmp/build-clang-16" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-16'
+    wget --show-progress -U "${user_agent}" -cqO "${HOME}/tmp/build-clang-17" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-17'
+    sudo chmod rwx "${HOME}/tmp/build-clang-16" "${HOME}/tmp/build-clang-17"
+    sudo chown "${USER}":"${USER}" "${HOME}/tmp/build-clang-16" "${HOME}/tmp/build-clang-17"
+    clear
+    ls -1AvhF--color --group-directories-first
+}
+
+#################
+## PYTHON3 PIP ##
+#################
+
+pipup()
+{
+    local pkg
+    clear
+    for pkg in $(pip list -o | awk 'NR > 2 {print $1}')
+    do
+        sudo pip install --upgrade --user ${pkg}
+    done
+}
+
+####################
+## REGEX COMMANDS ##
+####################
+
+add_brackets()
+{
+    local choice fname
+    clear
+
+    if [ -z "${1}" ]; then
+        read -p 'Please enter the file path: ' fname
+    else
+        fname="${1}"
+    fi
+
+    sed -e 's/\(\$\)\([A-Za-z0-9\_]*\)/\1{\2}/g' "${fname}"
+
+    printf "%s\n\n%s\n%s\n\n"                          \
+        'Do you want to permanently change this file?' \
+        '[1] Yes'                                      \
+        '[2] Exit'
+    read -p 'Your choices are ( 1 or 2): ' choice
+    clear
+
+    case "${choice}" in
+        1)
+                sed -i 's/\(\$\)\([A-Za-z0-9\_]*\)/\1{\2}/g' "${fname}"
+                clear
+                cat < "${fname}"
+                printf "%s\n\n" 'The new file is show above!'
+                ;;
+        2)      exit 0;;
+        *)
+                unset choice
+                bvar "${fname}"
+                ;;
+    esac
+}
+
