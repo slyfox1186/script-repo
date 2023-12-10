@@ -323,8 +323,8 @@ fix_key()
 toa()
 {
     clear
-    chown -R "${USER}":"${USER}" "${PWD}"
-    chmod -R 744 "${PWD}"
+    sudo chown -R "${USER}":"${USER}" "${PWD}"
+    sudo chmod -R 744 "${PWD}"
     clear; ls -1AvhFhFv --color --group-directories-first
 }
 
@@ -727,15 +727,20 @@ imdl()
 
 nvme_temp()
 {
+    local n0 n1 n2
     clear
 
-    local n0 n1 n2
+    if [ -d '/dev/nvme0n1' ]; then
+        n0="$(sudo nvme smart-log /dev/nvme0n1)"
+    fi
+    if [ -d '/dev/nvme1n1' ]; then
+        n1="$(sudo nvme smart-log /dev/nvme0n1)"
+    fi
+    if [ -d '/dev/nvme2n1' ]; then
+        n2="$(sudo nvme smart-log /dev/nvme0n1)"
+    fi
 
-    n0="$(sudo nvme smart-log /dev/nvme0n1)"
-    n1="$(sudo nvme smart-log /dev/nvme1n1)"
-    n2="$(sudo nvme smart-log /dev/nvme2n1)"
-
-    printf "nvme0n1:\n\n%s\n\nnvme1n1:\n\n%s\n\nnvme2n1:\n\n%s\n\n" "${n0}" "${n1}" "${n2}"
+    printf "%s\n\n%s\n\n%s\n\n%s\n\n" "nvme0n1: ${n0}" "nnvme1n1: ${n1}" "nnvme2n1: ${n2}"
 }
 
 #############################
@@ -1933,7 +1938,7 @@ cfc()
 ########################
 
 # SHOW THE PATHS PKG-CONFIG COMMAND SEARCHES BY DEFAULT
-list_pc_path()
+pkg-config-path()
 {
     clear
     pkg-config --variable pc_path pkg-config | tr ':' '\n'
@@ -1988,45 +1993,6 @@ pipup()
     do
         sudo pip install --upgrade --user ${pkg}
     done
-}
-
-####################
-## REGEX COMMANDS ##
-####################
-
-add_brackets()
-{
-    local choice fname
-    clear
-
-    if [ -z "${1}" ]; then
-        read -p 'Please enter the file path: ' fname
-    else
-        fname="${1}"
-    fi
-
-    sed -e 's/\(\$\)\([A-Za-z0-9\_]*\)/\1{\2}/g' "${fname}"
-
-    printf "%s\n\n%s\n%s\n\n"                          \
-        'Do you want to permanently change this file?' \
-        '[1] Yes'                                      \
-        '[2] Exit'
-    read -p 'Your choices are ( 1 or 2): ' choice
-    clear
-
-    case "${choice}" in
-        1)
-                sed -i 's/\(\$\)\([A-Za-z0-9\_]*\)/\1{\2}/g' "${fname}"
-                clear
-                cat < "${fname}"
-                printf "%s\n\n" 'The new file is show above!'
-                ;;
-        2)      exit 0;;
-        *)
-                unset choice
-                bvar "${fname}"
-                ;;
-    esac
 }
 
 ####################
