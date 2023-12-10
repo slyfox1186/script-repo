@@ -205,24 +205,16 @@ cd build || exit 1
              --{build,host}="${pc_type}"   \
              --disable-nls                 \
              --disable-profiling           \
-             --enable-array-variables      \
              --enable-brace-expansion      \
-             --enable-cond-regexp          \
-             --enable-dparen-arithmetic    \
-             --enable-extended-glob        \
-             --enable-function-import      \
              --enable-history              \
-             --enable-readline             \
              --enable-separate-helpfiles   \
              --enable-strict-posix-default \
              --enable-threads=posix        \
              --with-bash-malloc            \
              --with-included-gettext       \
-             --with-installed-readline     \
              --with-libiconv-prefix=/usr   \
              --with-libintl-prefix=/usr    \
-             --with-libpth-prefix=/usr     \
-             --without-included-gettext
+             --with-libpth-prefix=/usr
 echo
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
