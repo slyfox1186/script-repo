@@ -2029,3 +2029,54 @@ add_brackets()
     esac
 }
 
+####################
+## REGEX COMMANDS ##
+####################
+
+bvar()
+{
+    local choice fext flag fname
+    clear
+
+    if [ -z "${1}" ]; then
+        read -p 'Please enter the file path: ' fname
+        fname_tmp="${fname}"
+    else
+        fname="${1}"
+        fname_tmp="${1}"
+    fi
+
+    fext="${fname#*.}"
+    if [ -n "${fext}" ]; then
+        fname+='.txt'
+        mv "${fname_tmp}" "${fname}"
+    fi
+
+    cat < "${fname}" | sed -e 's/\(\$\)\([A-Za-z0-9\_]*\)/\1{\2}/g' -e 's/\(\$\)\({}\)/\1/g'
+
+    printf "%s\n\n%s\n%s\n\n"                          \
+        'Do you want to permanently change this file?' \
+        '[1] Yes'                                      \
+        '[2] Exit'
+    read -p 'Your choices are ( 1 or 2): ' choice
+    clear
+
+    case "${choice}" in
+        1)
+                sed -e -i 's/\(\$\)\([A-Za-z0-9\_]*\)/\1{\2}/g' -e -i 's/\(\$\)\({}\)/\1/g' "${fname}"
+                mv "${fname}" "${fname_tmp}"
+                clear
+                cat < "${fname_tmp}"
+                printf "%s\n\n" 'The new file is show above!'
+                ;;
+        2)
+                mv "${fname}" "${fname_tmp}"
+                return 0
+                ;;
+        *)
+                unset choice
+                bvar "${fname_tmp}"
+                ;;
+    esac
+}
+
