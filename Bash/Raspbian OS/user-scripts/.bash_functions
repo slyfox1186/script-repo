@@ -2009,7 +2009,7 @@ bvar()
         fname_tmp="${fname}"
     else
         fname="${1}"
-        fname_tmp="${1}"
+        fname_tmp="${fname}"
     fi
 
     fext="${fname#*.}"
@@ -2018,7 +2018,7 @@ bvar()
         mv "${fname_tmp}" "${fname}"
     fi
 
-    cat < "${fname}" | sed -e 's/\(\$\)\([A-Za-z0-9\_]*\)/\1{\2}/g' -e 's/\(\$\)\({}\)/\1/g'
+    cat < "${fname}" | sed -e 's/\(\$\)\([A-Za-z0-9\_]*\)/\1{\2}/g' -e 's/\(\$\)\({}\)/\1/g' -e 's/\(\$\)\({}\)\({\)/\1\3/g'
 
     printf "%s\n\n%s\n%s\n\n"                          \
         'Do you want to permanently change this file?' \
@@ -2026,14 +2026,12 @@ bvar()
         '[2] Exit'
     read -p 'Your choices are ( 1 or 2): ' choice
     clear
-
     case "${choice}" in
         1)
-                sed -e -i 's/\(\$\)\([A-Za-z0-9\_]*\)/\1{\2}/g' -e -i 's/\(\$\)\({}\)/\1/g' "${fname}"
+                sed -i -e 's/\(\$\)\([A-Za-z0-9\_]*\)/\1{\2}/g' -i -e 's/\(\$\)\({}\)/\1/g' -i -e 's/\(\$\)\({}\)\({\)/\1\3/g' "${fname}"
                 mv "${fname}" "${fname_tmp}"
                 clear
                 cat < "${fname_tmp}"
-                printf "%s\n\n" 'The new file is show above!'
                 ;;
         2)
                 mv "${fname}" "${fname_tmp}"
