@@ -118,6 +118,7 @@ unset tmp_dbus tmp_display tmp_home tmp_pwd tmp_term var
 #
 
 PATH="\
+"${workspace}/bin":\
 /usr/lib/ccache:\
 ${HOME}/perl5/bin:\
 ${HOME}/.cargo/bin:\
