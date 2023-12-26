@@ -20,7 +20,7 @@
 ##
 ##  Updated: the LDFLAGS variable
 ##
-##  Added: multiarch support for GCC 11 / 12 / 13
+##  Added: multiarch support for GCC 10 / 11 / 12 / 13
 ##  Added: multiple support libraries using the latest versions available
 ##  Added: link time optimization support
 ##  Added: ada language support for all gcc versions
