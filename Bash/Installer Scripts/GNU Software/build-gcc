@@ -657,7 +657,7 @@ function box_out_banner()
     line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
     tput bold
     line="$(tput setaf 3)${line}"
-    space="${line//-/ }"
+    space=${line//-/ }
     echo " ${line}"
     printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
     printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
@@ -665,7 +665,6 @@ function box_out_banner()
     echo " ${line}"
     tput sgr 0
 }
-
 box_out_banner "GCC Build Script: v${script_ver}"
 
 #
