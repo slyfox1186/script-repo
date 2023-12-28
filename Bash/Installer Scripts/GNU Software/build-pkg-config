@@ -87,8 +87,8 @@ export PATH
 #
 
 PKG_CONFIG_PATH="\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib/pkgconfig:\
 /usr/share/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
