@@ -4,7 +4,7 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-bash
 ##
-##  Purpose: build gnu bash
+##  Purpose: Build GNU Bash
 ##
 ##  Updated: 12.28.23
 ##
@@ -88,9 +88,10 @@ export PATH
 #
 
 PKG_CONFIG_PATH="\
-/usr/share/pkgconfig:\
+/usr/local/lib64/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib/pkgconfig:\
+/usr/share/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/lib/pkgconfig:\
 /lib/pkgconfig\
@@ -198,22 +199,21 @@ fi
 #
 
 cd "${cwd}/${archive_dir}" || exit 1
-autoupdate
-autoconf
+autoreconf -fi
 cd build || exit 1
-../configure --prefix="${install_dir}"     \
-             --{build,host}="${pc_type}"   \
-             --disable-nls                 \
-             --disable-profiling           \
-             --enable-brace-expansion      \
-             --enable-history              \
-             --enable-separate-helpfiles   \
-             --enable-threads=posix        \
-             --with-bash-malloc            \
-             --with-included-gettext       \
-             --with-libiconv-prefix=/usr   \
-             --with-libintl-prefix=/usr    \
-             --with-libpth-prefix=/usr
+../configure --prefix="${install_dir}"   \
+             --{build,host}="${pc_type}" \
+             --disable-nls               \
+             --disable-profiling         \
+             --enable-brace-expansion    \
+             --enable-history            \
+             --enable-separate-helpfiles \
+             --enable-threads=posix      \
+             --with-bash-malloc          \
+             --with-libiconv-prefix=/usr \
+             --with-libintl-prefix=/usr  \
+             --with-libpth-prefix=/usr   \
+             --without-included-gettext
 echo
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
