@@ -120,32 +120,6 @@ fail_fn()
     exit 1
 }
 
-cleanup_fn()
-{
-    local choice
-
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
-
-    case "${choice}" in
-        1)      sudo rm -fr "${cwd}";;
-        2)      echo;;
-        *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
-                unset choice
-                clear
-                cleanup_fn
-                ;;
-    esac
-}
-
 #
 # INSTALL REQUIRED APT PACKAGES
 #
@@ -206,12 +180,12 @@ cd build || exit 1
 ../configure --prefix="${install_dir}"
 make "-j$(nproc --all)"
 if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
+    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
     exit 1
 fi
 
-# PROMPT USER TO CLEAN UP FILES
-cleanup_fn
+# CLEAN UP THE LEFTOVER FILES
+sudo rm -fr "${cwd}"
 
 # SHOW EXIT MESSAGE
 exit_fn
