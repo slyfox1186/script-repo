@@ -314,37 +314,26 @@ install_binutils_fn()
 # TEST IF LD HAS GOLD ENABLED
 #
 
-get_gold_fn()
-{
-    gold_check="$(type -P ld.gold)"
-
-    if [ -n "${gold_check}" ]; then
-        gold_test=gold
-    else
-        gold_test=ld
-    fi
-}
-
-find_gold="$(sudo find /usr/ -type f -name 'ld.gold' | head -n1)"
-
 prompt_gold_fn()
 {
-    local choice
+    local choice find_gold
     clear
 
+    find_gold="$(sudo find /usr/ -type f -name 'ld.gold' | head -n1)"
+
     if [ -z "${find_gold}" ]; then
-        printf "%s\n%s\n\n%s\n\n%s\n%s\n\n"                                                               \
-            'The required file "ld.gold" was not located.'                                                \
-            'You can use the build-binutils script from the same GitHub repository to acquire that file.' \
-            'Do you want to download and install that script now?'                                        \
-            '[1] Yes'                                                                                     \
+        printf "%s\n%s\n\n%s\n\n%s\n%s\n\n"                                                      \
+            'The required file "ld.gold" was not located.'                                       \
+            'You can use the "build-binutils" script to acquire that file.'                      \
+            'Do you want to download and install that script now? (It is required to continue!)' \
+            '[1] Yes'                                                                            \
             '[2] No'
         read -p 'Your choices are (1 or 2): '  choice
         clear
 
         case "${choice}" in
             1)      install_binutils_fn;;
-            2)      return 0;;
+            2)      exit 1;;
             *)
                     unset choice
                     prompt_gold_fn
@@ -353,7 +342,6 @@ prompt_gold_fn()
     fi
 }
 prompt_gold_fn
-get_gold_fn
 
 #
 # REFRESH THE LD LINKER LIBRARY SHARED LIBRARY FILES USING THE FILE PATHS IT SEARCHES FOR THEM IN 
@@ -418,7 +406,7 @@ if build 'llvm' "${g_ver}"; then
           -DLLVM_INCLUDE_TESTS=OFF                    \
           -DLLVM_TARGET_ARCH=HOST                     \
           -DLLVM_TOOL_CLANG_BUILD=ON                  \
-          -DLLVM_USE_LINKER="${gold_test}"            \
+          -DLLVM_USE_LINKER=gold                      \
           -G Ninja -Wno-dev
     echo
     if ! ninja "-j$(nproc --all)" -C build; then
