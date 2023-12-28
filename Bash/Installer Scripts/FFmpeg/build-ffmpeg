@@ -7,11 +7,11 @@
 ##
 ##  Script version
 ##
-##    - 3.2.2
+##    - 3.2.4
 ##
-##  Major updated
+##  Updated
 ##
-##    - 12.09.23
+##    - 12.28.23
 ##
 ##  Purpose:
 ##
@@ -21,7 +21,7 @@
 ##  Supported Distro:
 ##
 ##    - Arch Linux
-##    - Debian (11|12)
+##    - Debian 11|12
 ##    - Ubuntu (20|22|23).04 & 23.10
 ##
 ##  Supported architecture:
@@ -43,6 +43,8 @@
 ##
 ##  Updated
 ##
+##    - improved the regex coding to avoid downloading a release candidate version of any program during each API call (rev2)
+##    - libtesseract & leptonica to pull from their latest GitHub release
 ##    - ffmpeg to version n5.1.4
 ##    - rav1e library to version (p20231128 - 11.28.23)
 ##    - abseil library
@@ -65,7 +67,7 @@
 ##    - Windows WSL2 support
 ##    - Vulkan Support
 ##    - Extra code to support DSO symbols in the LDFLAGS compiler variable
-##
+##"
 ##  Removed
 ##
 ##    - python3 build code that became useless
@@ -74,6 +76,7 @@
 ##
 ##  Fixed
 ##
+##    - An issue with libtesseract regarding the file libcurl.a during it's build
 ##    - GPAC was missing a required .so file from libjpeg-turbo
 ##    - GPAC build issue due to the sdl2 library not being found in the workspace folder
 ##    - The nvidia-smi command not being installed for Debian OS versions
@@ -91,24 +94,25 @@
 #
 
 script_name="${0}"
-script_ver=3.2.2
-ffmpeg_sver=n5.1.4
+script_ver='3.2.4'
+ffmpeg_sver='n5.1.4'
 ffmpeg_archive="ffmpeg-${ffmpeg_sver}.tar.gz"
 ffmpeg_url="https://github.com/FFmpeg/FFmpeg/archive/refs/tags/${ffmpeg_sver}.tar.gz"
-cuda_latest_ver=12.3.1
+cuda_latest_ver='12.3.1'
 cuda_url="https://developer.download.nvidia.com/compute/cuda/${cuda_latest_ver}"
 cuda_pin_url='https://developer.download.nvidia.com/compute/cuda/repos'
 cwd="${PWD}"/ffmpeg-build-script
 packages="${cwd}"/packages
 workspace="${cwd}"/workspace
-install_dir=/usr/local
-pc_type=x86_64-linux-gnu
+install_dir='/usr/local'
+pc_type='x86_64-linux-gnu'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+web_repo='https://github.com/slyfox1186/script-repo'
+curl_timeout='10'
 LDEXEFLAGS=''
 ffmpeg_libraries=()
-latest=false
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/script-repo
-curl_timeout=10
+latest='false'
+regex_str='(rc|RC)+[0-9]+$' # SET THE REGEX VARIABLE TO CHECK FOR RELEASE CANDIDATES
 debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
@@ -124,6 +128,24 @@ MAKEFLAGS="-j$(nproc --all)"
 export MAKEFLAGS
 
 #
+# CREATE THE OUTPUT DIRECTORIES
+#
+
+mkdir -p "${packages}"/nvidia-cuda "${workspace}"/logs
+
+#
+# CREATE TXT FILES TO STORE VERSION NUMBERS TO AVOID UNNECESSARY API CALLS
+#
+
+ver_file_tmp="${workspace}"/latest-versions-tmp.txt
+ver_file="${workspace}"/latest-versions.txt
+sed -i -e '/null-/d' -e '/null /d' -e '/-null/d' -e '/-$/d' "${ver_file_tmp}" "${ver_file}" 2>/dev/null
+
+if [ ! -f "${ver_file_tmp}" ] || [ ! -f "${ver_file}" ]; then
+    touch "${ver_file_tmp}" "${ver_file}" 2>/dev/null
+fi
+
+#
 # PRINT SCRIPT BANNER
 #
 
@@ -134,7 +156,7 @@ box_out_banner1()
     line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
     tput bold
     line="$(tput setaf 3)${line}"
-    space=${line//-/ }
+    space="${line//-/ }"
     echo " ${line}"
     printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
     printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
@@ -144,6 +166,10 @@ box_out_banner1()
 }
 box_out_banner1 "FFmpeg Build Script - v${script_ver}"
 printf "\n%s\n\n" "The script will utilize (${cpu_threads}) CPU threads for parallel processing to accelerate the build speed."
+
+####################
+# CREATE FUNCTIONS #
+####################
 
 #
 # SET THE CC/CPP COMPILERS + CUSTOMIZED COMPILER OPTIMIZATION FLAGS
@@ -160,17 +186,11 @@ source_flags_fn()
     CFLAGS="${CXXFLAGS} -I${workspace}/include -I${workspace}/include/jxl -I${workspace}/include/fdk-aac -I${workspace}/include/CL -I${workspace}/include/avisynth"
     CFLAGS+=' -I/usr/include/SDL2 -I/usr/lib/x86_64-linux-gnu/pulseaudio -I/usr/include/openjpeg-2.5 -I/usr/include/vk_video -I/usr/include/vulkan -I/usr/include/flite'
     CPPFLAGS="-I${workspace}/include"
-    LDFLAGS="-Wl,--as-needed -L${workspace}/lib64 -L${workspace}/lib -L${workspace}/lib/x86_64-linux-gnu -L/usr/local/lib/x86_64-linux-gnu"
-    LDFLAGS+=" -L${install_dir}/lib64 -L${install_dir}/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib"
+    LDFLAGS="-Wl,--as-needed -L${workspace}/lib64 -L${workspace}/lib -L${workspace}/lib/x86_64-linux-gnu -L${install_dir}/lib/x86_64-linux-gnu"
+    LDFLAGS+=" -L${install_dir}/lib64 -L${install_dir}/lib -L/usr/lib64 -L/usr/lib/x86_64-linux-gnu -L/usr/lib -L/lib64 -L/lib"
     export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 }
 source_flags_fn
-
-#
-# CREATE THE OUTPUT DIRECTORIES
-#
-
-mkdir -p "${packages}"/nvidia-cuda "${workspace}"/logs
 
 #
 # DEFINE FUNCTIONS
@@ -263,12 +283,12 @@ download()
     if [ -n "${3}" ]; then
         if ! tar -xf "${target_file}" -C "${target_dir}" 2>/dev/null >/dev/null; then
             sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script. Line: ${LINENO}"
+            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script to try again. Line: ${LINENO}"
         fi
     else
         if ! tar -xf "${target_file}" -C "${target_dir}" --strip-components 1 2>/dev/null >/dev/null; then
             sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script. Line: ${LINENO}"
+            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script to try again. Line: ${LINENO}"
         fi
     fi
 
@@ -313,16 +333,6 @@ download_git()
     cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}. Line: ${LINENO}"
 }
 
-# CREATE TXT FILES TO STORE VERSION NUMBERS TO AVOID UNNECESSARY API CALLS
-ver_file_tmp="${workspace}"/latest-versions-tmp.txt
-ver_file="${workspace}"/latest-versions.txt
-
-sed -i -e '/null-/d' -e '/null /d' -e '/-null/d' -e '/-$/d' "${ver_file_tmp}" "${ver_file}" 2>/dev/null
-
-if [ ! -f "${ver_file_tmp}" ] || [ ! -f "${ver_file}" ]; then
-    touch "${ver_file_tmp}" "${ver_file}" 2>/dev/null
-fi
-
 #
 # PULL THE LATEST VERSIONS OF EACH PACKAGE FROM THE WEBSITE API
 #
@@ -334,7 +344,7 @@ git_1_fn()
     git_url="${2}"
     cnt=0
 
-    if curl_cmd="$(curl-A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${git_repo}/${git_url}")"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${git_repo}/${git_url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
         g_ver2="$(echo "${curl_cmd}" | jq -r '.[0].tag_name' 2>/dev/null)"
@@ -355,16 +365,17 @@ git_1_fn()
         g_ver2="${g_ver2#v}"
     fi
 
-    # LOOP THE VARIABLE G_VER TO MAKE SURE WE DON'T USE A RELEASE CANDIDATE VERSION AKA 'RC'
-    get_str_end='-rc[0-9]'
-    while [[ ${g_ver} =~ ${get_str_end}$ ]]
+    # LOOP THE VARIABLE G_VER TO MAKE SURE WE DON'T USE A RELEASE CANDIDATE VERSION OF ANY PROGRAM AKA 'RC'
+    while [[ ${g_ver} =~ ${regex_str} ]]
     do
-        if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}" | jq -r '.[$cnt].name')"; then
-            g_ver="${curl_cmd#v}"
-            ((cnt++))
+        if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${git_repo}/${git_url}")"; then
+            g_ver="$(echo "${curl_cmd}" | jq -r ".[${cnt}].name")"
+            g_ver="${g_ver#v}"
         fi
+        ((cnt++))
     done
 
+    # STORE EACH PROGRAM VERSION FOUND IN A TEMPORARY FILE TO HELP AVOID PULLS FROM THE GITHUB API
     echo "${github_repo%/*}-${g_ver}" >> "${ver_file_tmp}"
     awk '!NF || !seen[$0]++' "${latest_txt_tmp}" > "${ver_file}"
 }
@@ -384,12 +395,12 @@ git_2_fn()
         g_ver1="${g_ver1#v}"
     fi
 
-    # LOOP THE VARIABLE G_VER TO MAKE SURE WE DON'T USE ANY RELEASE CANDIDATES AKA 'RC'. STABLE RELEASES ONLY.
-    get_str_end='-rc[0-9]'
-    while [[ ${g_ver} =~ ${get_str_end}$ ]]
+    # LOOP THE VARIABLE G_VER TO MAKE SURE WE DON'T USE A RELEASE CANDIDATE VERSION OF ANY PROGRAM AKA 'RC'
+    while [[ ${g_ver} =~ ${regex_str} ]]
     do
-        if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://code.videolan.org/api/v4/projects/${repo}/repository/${url}" | jq -r ".[$cnt].name")"; then
-            g_ver="${curl_cmd#v}"
+        if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://code.videolan.org/api/v4/projects/${repo}/repository/${url}")"; then
+            g_ver="$(echo "${curl_cmd}" | jq -r ".[${cnt}].name")"
+            g_ver="${g_ver#v}"
         fi
         ((cnt++))
     done
@@ -411,14 +422,13 @@ git_3_fn()
         g_ver="${g_ver#VTM-}"
     fi
 
-    # LOOP THE VARIABLE G_VER TO MAKE SURE WE DON'T USE ANY RELEASE CANDIDATES AKA 'RC'. STABLE RELEASES ONLY.
-    get_str_end='-rc[0-9]'
-    while [[ ${g_ver} =~ ${get_str_end}$ ]]
+    # LOOP THE VARIABLE G_VER TO MAKE SURE WE DON'T USE A RELEASE CANDIDATE VERSION OF ANY PROGRAM AKA 'RC'
+    while [[ ${g_ver} =~ ${regex_str} ]]
     do
-        if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.com/api/v4/projects/${repo}/repository/${url}" | jq -r ".[$cnt].name")"; then
-            g_ver="${curl_cmd#v}"
+        if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.com/api/v4/projects/${repo}/repository/${url}")"; then
+            g_ver="$(echo "${curl_cmd}" | jq -r ".[${cnt}].name")"
+            g_ver="${g_ver#v}"
         fi
-        ((cnt++))
     done
 }
 
@@ -430,17 +440,15 @@ git_4_fn()
 
     if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.freedesktop.org/api/v4/projects/${repo}/repository/tags")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
-        g_ver="${g_ver#pkg-config-}"
-        g_ver="${g_ver#VER-}"
         g_ver="${g_ver#v}"
     fi
 
-    # LOOP THE VARIABLE G_VER TO MAKE SURE WE DON'T USE ANY RELEASE CANDIDATES AKA 'RC'. STABLE RELEASES ONLY.
-    get_str_end='-rc[0-9]'
-    while [[ ${g_ver} =~ ${get_str_end}$ ]]
+    # LOOP THE VARIABLE G_VER TO MAKE SURE WE DON'T USE A RELEASE CANDIDATE VERSION OF ANY PROGRAM AKA 'RC'
+    while [[ ${g_ver} =~ ${regex_str} ]]
     do
-        if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.freedesktop.org/api/v4/projects/${repo}/repository/tags" | jq -r ".[$cnt].name")"; then
-            g_ver="${curl_cmd#v}"
+        if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.freedesktop.org/api/v4/projects/${repo}/repository/tags")"; then
+            g_ver="$(echo "${curl_cmd}" | jq -r ".[${cnt}].name")"
+            g_ver="${g_ver#v}"
         fi
         ((cnt++))
     done
@@ -457,12 +465,12 @@ git_5_fn()
         g_ver="${g_ver#v}"
     fi
 
-    # LOOP THE VARIABLE G_VER TO MAKE SURE WE DON'T USE ANY RELEASE CANDIDATES AKA 'RC'. STABLE RELEASES ONLY.
-    get_str_end='-rc[0-9]'
-    while [[ ${g_ver} =~ ${get_str_end}$ ]]
+    # LOOP THE VARIABLE G_VER TO MAKE SURE WE DON'T USE A RELEASE CANDIDATE VERSION OF ANY PROGRAM AKA 'RC'
+    while [[ ${g_ver} =~ ${regex_str} ]]
     do
-        if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.gnome.org/api/v4/projects/${repo}/repository/tags" | jq -r ".[$cnt].name")"; then
-            g_ver="${curl_cmd#v}"
+        if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://gitlab.gnome.org/api/v4/projects/${repo}/repository/tags")"; then
+            g_ver="$(echo "${curl_cmd}" | jq -r ".[${cnt}].name")"
+            g_ver="${g_ver#v}"
         fi
         ((cnt++))
     done
@@ -479,12 +487,12 @@ git_6_fn()
         g_ver="${g_ver#v}"
     fi
 
-    # LOOP THE VARIABLE G_VER TO MAKE SURE WE DON'T USE ANY RELEASE CANDIDATES AKA 'RC'. STABLE RELEASES ONLY.
-    get_str_end='-rc[0-9]'
-    while [[ ${g_ver} =~ ${get_str_end}$ ]]
+    # LOOP THE VARIABLE G_VER TO MAKE SURE WE DON'T USE A RELEASE CANDIDATE VERSION OF ANY PROGRAM AKA 'RC'
+    while [[ ${g_ver} =~ ${regex_str} ]]
     do
-        if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://salsa.debian.org/api/v4/projects/${repo}/repository/tags" | jq -r ".[$cnt].name")"; then
-            g_ver="${curl_cmd#v}"
+        if curl_cmd="$(curl -A "${user_agent}" -m "${curl_timeout}" -sSL "https://salsa.debian.org/api/v4/projects/${repo}/repository/tags")"; then
+            g_ver="$(echo "${curl_cmd}" | jq -r ".[${cnt}].name")"
+            g_ver="${g_ver#v}"
         fi
         ((cnt++))
     done
@@ -500,19 +508,19 @@ git_ver_fn()
     if [ -n "${3}" ]; then
         v_flag="${3}"
         case "${v_flag}" in
-                B)      t_flag=branches;;
-                R)      t_flag=releases;;
-                T)      t_flag=tags;;
+                B)      t_flag='branches';;
+                R)      t_flag='releases';;
+                T)      t_flag='tags';;
         esac
     fi
 
     case "${v_tag}" in
-            1)      u_flag=git_1_fn;;
-            2)      u_flag=git_2_fn;;
-            3)      u_flag=git_3_fn;;
-            4)      u_flag=git_4_fn;;
-            5)      u_flag=git_5_fn;;
-            6)      u_flag=git_6_fn;;
+            1)      u_flag='git_1_fn';;
+            2)      u_flag='git_2_fn';;
+            3)      u_flag='git_3_fn';;
+            4)      u_flag='git_4_fn';;
+            5)      u_flag='git_5_fn';;
+            6)      u_flag='git_6_fn';;
             *)      fail_fn "Could not detect the variable \"v_tag\" in the function \"git_ver_fn\". Line: ${LINENO}"
     esac
 
@@ -529,9 +537,9 @@ check_version()
     check_ver="$(grep -Eo "${github_repo#*/}-[0-9\.]+$" "${latest_txt}" | sort | head -n1)"
 
     if [ -n "${check_ver}" ]; then
-        g_nocheck=0
+        g_nocheck='0'
     else
-        g_nocheck=1
+        g_nocheck='1'
     fi
 }
 
@@ -595,7 +603,7 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok ins
 
 library_exists()
 {
-    if ! [[ -x "$(pkg-config --exists --print-errors "${1}" 2>&1 >/dev/null)" ]]; then
+    if ! [[ -x "$(pkg-config --exists --print-errors "${1}" 2>&1)" ]]; then
         return 1
     fi
     return 0
@@ -833,41 +841,41 @@ cuda_download_fn()
 
     case "${choice}" in
         1)
-            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-buster-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian10-12-3-local_12.3.1-545.23.08-1_amd64.deb"
+            wget -U "${user_agent}" --show progress -cqO "${packages}/nvidia-cuda/cuda-buster-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian10-12-3-local_12.3.1-545.23.08-1_amd64.deb"
             sudo dpkg -i "${packages}/nvidia-cuda/cuda-buster-${cuda_latest_ver}.deb"
             sudo cp -f /var/cuda-repo-debian10-12-3-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             sudo add-apt-repository -y contrib
             ;;
         2)
-            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-bullseye-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian11-12-3-local_12.3.1-545.23.08-1_amd64.deb"
+            wget -U "${user_agent}" --show progress -cqO "${packages}/nvidia-cuda/cuda-bullseye-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian11-12-3-local_12.3.1-545.23.08-1_amd64.deb"
             sudo dpkg -i "${packages}/nvidia-cuda/cuda-bullseye-${cuda_latest_ver}.deb"
             sudo cp -f /var/cuda-repo-debian11-12-3-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             sudo add-apt-repository -y contrib
             ;;
         3)
-            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-bookworm-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian12-12-3-local_12.3.1-545.23.08-1_amd64.deb"
+            wget -U "${user_agent}" --show progress -cqO "${packages}/nvidia-cuda/cuda-bookworm-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-debian12-12-3-local_12.3.1-545.23.08-1_amd64.deb"
             sudo dpkg -i "${packages}/nvidia-cuda/cuda-bookworm-${cuda_latest_ver}.deb"
             sudo cp -f /var/cuda-repo-debian12-12-3-local/cuda-*-keyring.gpg /usr/share/keyrings/
             sudo add-apt-repository -y contrib
             ;;
         4)
-            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-ubuntu2004.pin" "${cuda_pin_url}/ubuntu2004/x86_64/cuda-ubuntu2004.pin"
+            wget -U "${user_agent}" --show progress -cqO "${packages}/nvidia-cuda/cuda-ubuntu2004.pin" "${cuda_pin_url}/ubuntu2004/x86_64/cuda-ubuntu2004.pin"
             sudo mv "${packages}/nvidia-cuda/cuda-ubuntu2004.pin" '/etc/apt/preferences.d/cuda-repository-pin-600'
-            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-focal-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-ubuntu2004-12-3-local_12.3.1-545.23.08-1_amd64.deb"
+            wget -U "${user_agent}" --show progress -cqO "${packages}/nvidia-cuda/cuda-focal-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-ubuntu2004-12-3-local_12.3.1-545.23.08-1_amd64.deb"
             sudo dpkg -i "${packages}/nvidia-cuda/cuda-focal-${cuda_latest_ver}.deb"
             sudo cp -f /var/cuda-repo-ubuntu2004-12-3-local/cuda-*-keyring.gpg '    /usr/share/keyrings/'
             ;;
         5)
-            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-ubuntu2204.pin" "${cuda_pin_url}/ubuntu2204/x86_64/cuda-ubuntu2204.pin"
+            wget -U "${user_agent}" --show progress -cqO "${packages}/nvidia-cuda/cuda-ubuntu2204.pin" "${cuda_pin_url}/ubuntu2204/x86_64/cuda-ubuntu2204.pin"
             sudo mv "${packages}/nvidia-cuda/cuda-ubuntu2204.pin" '/etc/apt/preferences.d/cuda-repository-pin-600'
-            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-jammy-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-ubuntu2204-12-3-local_12.3.1-545.23.08-1_amd64.deb"
+            wget -U "${user_agent}" --show progress -cqO "${packages}/nvidia-cuda/cuda-jammy-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-ubuntu2204-12-3-local_12.3.1-545.23.08-1_amd64.deb"
             sudo dpkg -i "${packages}/nvidia-cuda/cuda-jammy-${cuda_latest_ver}.deb"
             sudo cp -f /var/cuda-repo-ubuntu2204-12-3-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             ;;
         6)
-            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-wsl-ubuntu.pin" "${cuda_pin_url}/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin"
+            wget -U "${user_agent}" --show progress -cqO "${packages}/nvidia-cuda/cuda-wsl-ubuntu.pin" "${cuda_pin_url}/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin"
             sudo mv "${packages}/nvidia-cuda/cuda-wsl-ubuntu.pin" '/etc/apt/preferences.d/cuda-repository-pin-600'
-            wget --show progress -U "${user_agent}" -cqO "${packages}/nvidia-cuda/cuda-wsl-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-wsl-ubuntu-12-3-local_12.3.1-1_amd64.deb"
+            wget -U "${user_agent}" --show progress -cqO "${packages}/nvidia-cuda/cuda-wsl-${cuda_latest_ver}.deb" "${cuda_url}/local_installers/cuda-repo-wsl-ubuntu-12-3-local_12.3.1-1_amd64.deb"
             sudo dpkg -i "${packages}/nvidia-cuda/cuda-wsl-${cuda_latest_ver}.deb"
             sudo cp -f /var/cuda-repo-wsl-ubuntu-12-3-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             ;;
@@ -901,6 +909,7 @@ install_cuda_fn()
 {
     local choice
     clear
+
     amd_gpu_test="$(glxinfo | grep -E 'OpenGL renderer' | grep -Eo 'AMD\s.*$')"
 
     if [ -z "${amd_gpu_test}" ]; then
@@ -925,7 +934,11 @@ install_cuda_fn()
             clear
 
             case "${choice}" in
-                1)      cuda_download_fn;;
+                1)
+                        cuda_download_fn
+                        PATH="${PATH}:${cuda_path}"
+                        export PATH
+                        ;;
                 2)
                         PATH="${PATH}:${cuda_path}"
                         export PATH
@@ -993,20 +1006,19 @@ pkgs_fn()
           libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libcholmod3 libchromaprint-dev libcjson-dev libcodec2-dev
           libcolamd2 libcrypto++-dev libcurl4-openssl-dev libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev libdrm-dev
           libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev libgegl-0.4-0 libgegl-common libgimp2.0
-          libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev libgnutls28-dev libgnutls30 libgoogle-perftools4
-          libgoogle-perftools-dev libgsm1-dev libgtest-dev libgvc6 libhwy-dev libibus-1.0-dev libiconv-hook-dev
-          libintl-perl libjack-dev libjemalloc-dev libladspa-ocaml-dev libleptonica-dev liblz-dev liblzma-dev
-          liblzo2-dev libmathic-dev libmatroska-dev libmbedtls-dev libmetis5 libmfx-dev libmodplug-dev libmp3lame-dev
-          libmusicbrainz5-dev libmysofa-dev libnuma-dev libopencore-amrnb-dev libopencore-amrwb-dev libopencv-dev
-          libopenjp2-7-dev libopenmpt-dev libopus-dev libpango1.0-dev libperl-dev libpstoedit-dev libpulse-dev librabbitmq-dev
-          libraqm-dev libraw-dev librsvg2-dev librubberband-dev librust-gstreamer-base-sys-dev libshine-dev libsmbclient-dev
-          libsnappy-dev libsndfile1-dev libsndio-dev libopencv-dev libsoxr-dev libspeex-dev libsystemd-dev libsqlite3-dev
-          libsrt-gnutls-dev libssh-dev libssl-dev libsuitesparseconfig5 libtalloc-dev libtheora-dev libticonv-dev libtool
-          libtool-bin libtwolame-dev libudev-dev libumfpack5 libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev
-          libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev
-          libxrandr-dev libxss-dev libudev-dev libxvidcore-dev libyuv-dev libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev llvm lshw
-          lzma-dev m4 meson nasm ninja-build pandoc python3 python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip valgrind
-          wget xmlto zlib1g-dev mesa-utils)
+          libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev libgmock-dev libgnutls28-dev libgnutls30 libgoogle-perftools4
+          libgoogle-perftools-dev libgsm1-dev libgtest-dev libgvc6 libhwy-dev libibus-1.0-dev libiconv-hook-dev libintl-perl
+          libjack-dev libjemalloc-dev libladspa-ocaml-dev libleptonica-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev
+          libmatroska-dev libmbedtls-dev libmetis5 libmfx-dev libmodplug-dev libmp3lame-dev libmusicbrainz5-dev libmysofa-dev
+          libnuma-dev libopencore-amrnb-dev libopencore-amrwb-dev libopencv-dev libopenjp2-7-dev libopenmpt-dev libopus-dev
+          libpango1.0-dev libperl-dev libpstoedit-dev libpulse-dev librabbitmq-dev libraqm-dev libraw-dev librsvg2-dev librubberband-dev
+          librust-gstreamer-base-sys-dev libshine-dev libsmbclient-dev libsnappy-dev libsndfile1-dev libsndio-dev libopencv-dev
+          libsoxr-dev libspeex-dev libsystemd-dev libsqlite3-dev libsrt-gnutls-dev libssh-dev libssl-dev libsuitesparseconfig5
+          libtalloc-dev libtheora-dev libticonv-dev libtool libtool-bin libtwolame-dev libudev-dev libumfpack5 libv4l-dev
+          libva-dev libvdpau-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libxcursor-dev
+          libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libudev-dev libxvidcore-dev libyuv-dev
+          libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev llvm lshw lzma-dev m4 meson nasm ninja-build pandoc python3 python3-pip
+          ragel re2c scons sudo texi2html texinfo tk-dev unzip valgrind wget xmlto zlib1g-dev mesa-utils)
 
     for pkg in ${pkgs[@]}
     do
@@ -1114,52 +1126,47 @@ install_libjxl_fn()
 
 dl_libjxl_fn()
 {
-    local url_base url_suffix
+    local libjxl_cnt_type_1 libjxl_cnt_type_2 url_base url_suffix
 
-    url_base=https://github.com/libjxl/libjxl/releases/download/v0.8.2/jxl-debs-amd64
-    url_suffix=v0.8.2.tar.gz
+    url_base='https://github.com/libjxl/libjxl/releases/download/v0.8.2/jxl-debs-amd64'
+    url_suffix='v0.8.2.tar.gz'
 
     if [ ! -f "${packages}"/libjxl.tar.gz ]; then
         case "${VER}" in
-            10)
-                                    libjxl_download="${url_base}-debian-buster-${url_suffix}"
-                                    libjxl_name='debian-buster'
-                                    ;;
-            11)
-                                    libjxl_download="${url_base}-debian-bullseye-${url_suffix}"
-                                    libjxl_name='debian-bullseye'
-                                    ;;
-            12)
-                                    libjxl_download="${url_base}-debian-bookworm-${url_suffix}"
-                                    libjxl_name='debian-bookworm'
-                                    ;;
-            18.04)
-                                    libjxl_download="${url_base}-ubuntu-18.04-${url_suffix}"
-                                    libjxl_name='ubuntu-18.04'
-                                   ;;
-            20.04)
-                                    libjxl_download="${url_base}-ubuntu-20.04-${url_suffix}"
-                                    libjxl_name='ubuntu-20.04'
-                                    ;;
-            23.10|23.04|22.04)
-                                    libjxl_download="${url_base}-ubuntu-22.04-${url_suffix}"
-                                    libjxl_name='ubuntu-22.04'
-                                    ;;
+            10)                     libjxl_name='debian-buster';;
+            11)                     libjxl_name='debian-bullseye';;
+            12)                     libjxl_name='debian-bookworm';;
+            18.04)                  libjxl_name='ubuntu-18.04';;
+            20.04)                  libjxl_name='ubuntu-20.04';;
+            23.10|23.04|22.04)      libjxl_name='ubuntu-22.04';;
             *)                      echo;;
         esac
 
-        if ! curl -A "${user_agent}" -Lso "${packages}/${libjxl_name}.tar.gz" "${libjxl_download}"; then
+        if ! curl -A "${user_agent}" -Lso "${packages}/${libjxl_name}.tar.gz" "${url_base}-${libjxl_name}-${url_suffix}"; then
             fail_fn "Failed to download the libjxl archive: ${packages}/${libjxl_name}.tar.gz. Line: ${LINENO}"
         fi
 
+        # CREATE THE OUTPUT FILE DIRECTORY IF IT DOESN'T EXIST
         if [ ! -d "${packages}"/deb-files ]; then
             mkdir -p "${packages}"/deb-files
         fi
-        if ! tar -zxf "${packages}/${libjxl_name}.tar.gz" -C "${packages}"/deb-files --strip-components 1; then
-            fail_fn "Could not extract the libjxl archive ${packages}/${libjxl_name}.tar.gz. Line: ${LINENO}"
+        
+        # REMOVE AND LEFTOVER FILES FROM PREVIOUS RUNS
+        libjxl_cnt_type_1="$(ls -1 "${packages}"/deb-files/*.deb | wc -l)"
+        libjxl_cnt_type_2="$(ls -1 "${packages}"/deb-files/*.debb | wc -l)"
+        if [ "${libjxl_cnt_type_1}" -ne '0' ]; then
+            sudo rm "${packages}"/deb-files/*.deb
+        fi
+        if [ "${libjxl_cnt_type_2}" -ne '0' ]; then
+            sudo rm "${packages}"/deb-files/*.debb
         fi
 
-        # INSTALL THE DOWNLOADED LIBJXL DEBIAN PACKAGES
+        # EXTRACT THE LIBJXL DEBIAN FILES
+        if ! tar -zxf "${packages}/${libjxl_name}.tar.gz" -C "${packages}"/deb-files --strip-components 1; then
+            fail_fn "Could not extract the libjxl archive: ${packages}/${libjxl_name}.tar.gz. Line: ${LINENO}"
+        fi
+
+        # INSTALL THE LIBJXL DEBIAN PACKAGES
         install_libjxl_fn "${libjxl_name}"
     fi
 }
@@ -1221,6 +1228,7 @@ arch_os_ver_fn()
     clear
 }
 
+
 debian_os_ver_fn()
 {
     if [[ "${2}" = 'yes_wsl' ]]; then
@@ -1228,8 +1236,8 @@ debian_os_ver_fn()
         debian_wsl_pkgs="${1}"
     fi
 
-    debian_pkgs="${1} cppcheck libnvidia-encode1 libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev"
-    debian_pkgs+=' libyuv-utils libyuv0 libsharp-dev libdmalloc5'
+    debian_pkgs="${1} cppcheck libnvidia-encode1 libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils libyuv0"
+    debian_pkgs+=' libsharp-dev libdmalloc5 libumfpack5 libsuitesparseconfig5 libcolamd2 libcholmod3 libccolamd2 libcamd2 libamd2'
 
     case "${VER}" in
         12|trixie|sid)      pkgs_fn "${debian_pkgs} librist-dev";;
@@ -1242,22 +1250,24 @@ debian_os_ver_fn()
 ubuntu_os_ver_fn()
 {
     if [[ "${2}" = 'yes_wsl' ]]; then
-        VER=msft
+        VER='msft'
         ubuntu_wsl_pkgs="${1}"
     fi
 
-    ubuntu_common_pkgs=' libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev cppcheck'
-    focal_pkgs='libvmmalloc1 libvmmalloc-dev libdmalloc5 libcunit1-dev nvidia-utils-535'
-    focal_pkgs+=' librust-jemalloc-sys-dev librust-malloc-buf-dev libsrt-doc libreadline-dev libcunit1 libcunit1-doc'
-    jammy_pkgs='libmimalloc-dev libtbbmalloc2 librust-jemalloc-sys-dev librust-malloc-buf-dev'
-    jammy_pkgs+=' libsrt-doc libreadline-dev libpipewire-0.3-dev libwayland-dev libdecor-0-dev'
+    ubuntu_common_pkgs='cppcheck libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libumfpack5 libsuitesparseconfig5 libcolamd2 libcholmod3 libccolamd2 libcamd2 libamd2'
+    focal_pkgs='libvmmalloc1 libvmmalloc-dev libdmalloc5 libcunit1-dev nvidia-utils-535 librust-jemalloc-sys-dev'
+    focal_pkgs+=' librust-malloc-buf-dev libsrt-doc libreadline-dev libcunit1 libcunit1-doc'
+    jammy_pkgs='libmimalloc-dev libtbbmalloc2 librust-jemalloc-sys-dev librust-malloc-buf-dev libacl1-dev'
+    jammy_pkgs+=' liblz4-dev libsrt-doc libreadline-dev libpipewire-0.3-dev libwayland-dev libdecor-0-dev libpsl-dev'
     lunar_kenetic_pkgs='librist-dev libjxl-dev'
+    mantic_pkgs='cppcheck libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev'
 
     case "${VER}" in
-        23.10|23.04|22.10)      pkgs_fn "${1} ${ubuntu_common_pkgs} ${lunar_kenetic_pkgs} ${jammy_pkgs}";;
-        22.04|msft)             pkgs_fn "${1} ${ubuntu_common_pkgs} ${ubuntu_wsl_pkgs} ${jammy_pkgs}";;
-        20.04)                  pkgs_fn "${1} ${ubuntu_common_pkgs} ${ubuntu_wsl_pkgs} ${focal_pkgs}";;
-        *)                      fail_fn "Could not detect the Ubuntu version. Line: ${LINENO}";;
+        23.10)          pkgs_fn "${1} ${mantic_pkgs} ${lunar_kenetic_pkgs} ${jammy_pkgs}";;
+        23.04|22.10)    pkgs_fn "${1} ${ubuntu_common_pkgs} ${lunar_kenetic_pkgs} ${jammy_pkgs}";;
+        22.04|msft)     pkgs_fn "${1} ${ubuntu_common_pkgs} ${ubuntu_wsl_pkgs} ${jammy_pkgs}";;
+        20.04)          pkgs_fn "${1} ${ubuntu_common_pkgs} ${ubuntu_wsl_pkgs} ${focal_pkgs}";;
+        *)              fail_fn "Could not detect the Ubuntu version. Line: ${LINENO}";;
     esac
 }
 
@@ -1289,7 +1299,7 @@ nvidia_encode_var="$(sudo apt list libnvidia-encode* 2>&1 | grep -Eo 'libnvidia-
 
 if [ "$(grep -i 'microsoft' '/proc/version')" ]; then
     wsl_switch='yes_wsl'
-    OS=WSL2
+    OS='WSL2'
     wsl_common_pkgs='nvidia-smi cppcheck libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils libyuv0 libsharp-dev libdmalloc5 libnvidia-encode1'
 fi
 
@@ -1319,7 +1329,7 @@ esac
 
 path_fn
 find_java="$(sudo find /usr/lib/jvm/ -type d -name 'java-*-openjdk*' | rev | sort | rev | head -n1)"
-java_config="$(sudo find /usr/lib/ -type f -name 'jni.h'  | rev | sort -r | rev | head -n1 | sed 's/\(^.*\)\/.*$/\1/')"
+java_config="$(sudo find /usr/lib/ -type f -name 'jni.h' | sort -r | head -n1 | sed 's/\(^.*\)\/.*$/\1/')"
 export CPPFLAGS+=" -I${java_config}"
 export JDK_HOME="${find_java}"
 export JAVA_HOME="${find_java}"
@@ -1550,8 +1560,8 @@ if build 'libpng' '1.6.40'; then
 fi
 
 git_ver_fn '4720790' '3' 'T'
-if build 'libtiff' "$g_ver"; then
-    download "https://gitlab.com/libtiff/libtiff/-/archive/v$g_ver/libtiff-v$g_ver.tar.bz2" "libtiff-$g_ver.tar.bz2"
+if build 'libtiff' "${g_ver}"; then
+    download "https://gitlab.com/libtiff/libtiff/-/archive/v${g_ver}/libtiff-v${g_ver}.tar.bz2" "libtiff-${g_ver}.tar.bz2"
     execute ./autogen.sh
     execute ./configure --prefix="${install_dir}"   \
                         --{build,host}="${pc_type}" \
@@ -1562,7 +1572,7 @@ if build 'libtiff' "$g_ver"; then
                         --with-pic
     execute make "-j${cpu_threads}"
     execute sudo make install
-    build_done 'libtiff' "$g_ver"
+    build_done 'libtiff' "${g_ver}"
 fi
 
 pre_check_ver 'nkoriyama/aribb24' '1' 'T'
@@ -1579,6 +1589,7 @@ fi
 ffmpeg_libraries+=('--enable-libaribb24')
 
 git_ver_fn '7950' '4'
+g_ver="${g_ver#VER-}"
 g_ver1="${g_ver//-/.}"
 if build 'freetype' "${g_ver1}"; then
     download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-${g_ver}/freetype-VER-${g_ver}.tar.bz2" "freetype-${g_ver1}.tar.bz2"
@@ -1803,18 +1814,14 @@ if build 'gflags' "${g_ver}"; then
     build_done 'gflags' "${g_ver}"
 fi
 
+# LIBJXL HAS A BUG IN THE DECODER BIT AND MUST BE DISABLED ON ARCH LINUX
 if [[ "${OS}" == 'Arch' ]]; then
-    echo
+    ffmpeg_libraries+=('--disable-libjxl')
 else
     if build 'libjxl' '0.8.2'; then
         dl_libjxl_fn
         build_done 'libjxl' '0.8.2'
     fi
-fi
-# libjxl has a bug in the decoder bit decoding and must be disabled on Arch Linux
-if [[ "${OS}" == 'Arch' ]]; then
-    ffmpeg_libraries+=('--disable-libjxl')
-else
     ffmpeg_libraries+=('--enable-libjxl')
 fi
 
@@ -1845,31 +1852,34 @@ if build 'opencl-sdk' "${g_ver}"; then
     build_done 'opencl-sdk' "${g_ver}"
 fi
 
-pre_check_ver 'DanBloomberg/leptonica' '1' 'T'
-if build 'leptonica' '1.83.1'; then
-    download 'https://github.com/DanBloomberg/leptonica/archive/refs/tags/1.83.1.tar.gz' "leptonica-1.83.1.tar.gz"
+pre_check_ver 'DanBloomberg/leptonica' '1' 'R'
+g_ver="${g_ver//Leptonica version /}"
+if build 'leptonica' "${g_ver}"; then
+    download "https://github.com/DanBloomberg/leptonica/archive/refs/tags/${g_ver}.tar.gz" "leptonica-${g_ver}.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="${install_dir}"   \
                         --{build,host}="${pc_type}" \
                         --with-pic
     execute make "-j${cpu_threads}"
     execute sudo make install
-    build_done 'leptonica' '1.83.1'
+    build_done 'leptonica' "${g_ver}"
 fi
 
 pre_check_ver 'tesseract-ocr/tesseract' '1' 'T'
-if build 'tesseract' '5.3.2'; then
-    download 'https://github.com/tesseract-ocr/tesseract/archive/refs/tags/5.3.2.tar.gz' 'tesseract-5.3.2.tar.gz'
+if build 'tesseract' "${g_ver}"; then
+    download "https://github.com/tesseract-ocr/tesseract/archive/refs/tags/${g_ver}.tar.gz" "tesseract-${g_ver}.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="${install_dir}"                    \
                         --{build,host}="${pc_type}"                  \
                         --disable-doc                                \
                         --with-extra-includes="${workspace}"/include \
                         --with-extra-libraries="${workspace}"/lib    \
-                        --with-pic
+                        --with-pic                                   \
+                        --without-archive                            \
+                        --without-curl
     execute make "-j${cpu_threads}"
     execute sudo make install
-    build_done 'tesseract' '5.3.2'
+    build_done 'tesseract' "${g_ver}"
 fi
 ffmpeg_libraries+=('--enable-libtesseract')
 
@@ -1911,8 +1921,8 @@ ffmpeg_libraries+=('--enable-libzimg')
 pre_check_ver 'c-ares/c-ares' '1' 'R'
 g_ver="${g_ver//ares-/}"
 g_tag="${g_ver//\./_}"
-if build 'c-ares' "${g_ver}"; then
-    download "https://github.com/c-ares/c-ares/archive/refs/tags/cares-${g_tag}.tar.gz" "c-ares-${g_ver}.tar.gz"
+if build 'c-ares' '1.23.0'; then
+    download 'https://github.com/c-ares/c-ares/archive/refs/tags/cares-1_23_0.tar.gz' 'c-ares-1.23.0.tar.gz'
     execute autoreconf -fi
     execute ./configure --prefix="${install_dir}"   \
                         --{build,host}="${pc_type}" \
@@ -1921,7 +1931,7 @@ if build 'c-ares' "${g_ver}"; then
                         --with-pic
     execute make "-j${cpu_threads}"
     execute sudo make install
-    build_done 'c-ares' "${g_ver}"
+    build_done 'c-ares' '1.23.0'
 fi
 
 if build 'lv2' 'git'; then
@@ -1970,8 +1980,9 @@ if build 'serd' "${g_ver}"; then
 fi
 
 pre_check_ver 'pcre2project/pcre2' '1' 'T'
+gver="${gver//pcre2-pcre2-/}"
 if build 'pcre2' "${g_ver}"; then
-    download "https://github.com/PCRE2Project/pcre2/archive/refs/tags/pcre${g_ver}.tar.gz" "pcre2-${g_ver}.tar.gz"
+    download "https://github.com/PCRE2Project/pcre2/archive/refs/tags/pcre2-${g_ver}.tar.gz" "pcre2-${g_ver}.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}" \
                         --enable-jit            \
@@ -2354,23 +2365,26 @@ box_out_banner_video()
 }
 box_out_banner_video 'Installing Video Tools'
 
-if build 'vulkan-headers' 'git'; then
-    download_git 'https://github.com/KhronosGroup/Vulkan-Headers.git' 'vulkan-headers-git'
-    execute cmake -B build                                     \
-                  -DCMAKE_INSTALL_PREFIX="${workspace}"        \
-                  -DCMAKE_BUILD_TYPE=Release                   \
-                  -DBUILD_TESTS=OFF                            \
-                  -DCMAKE_C_FLAGS='-g -O3 -pipe -march=native' \
-                  -DCMAKE_STRIP="$(type -P strip)"             \
-                  -G Ninja -Wno-devCMAKE_CXX_COMPILE
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja -C build install
-    build_done 'vulkan-headers' 'git'
+amd_gpu_test="$(glxinfo | grep -E 'OpenGL renderer' | grep -Eo 'AMD\s.*$')"
+if [ -n "${amd_gpu_test}" ]; then
+    if build 'vulkan-headers' 'git'; then
+        download_git 'https://github.com/KhronosGroup/Vulkan-Headers.git' 'vulkan-headers-git'
+        execute cmake -B build                                     \
+                      -DCMAKE_INSTALL_PREFIX="${workspace}"        \
+                      -DCMAKE_BUILD_TYPE=Release                   \
+                      -DBUILD_TESTS=OFF                            \
+                      -DCMAKE_C_FLAGS='-g -O3 -pipe -march=native' \
+                      -DCMAKE_STRIP="$(type -P strip)"             \
+                      -G Ninja -Wno-devCMAKE_CXX_COMPILE
+        execute ninja "-j${cpu_threads}" -C build
+        execute ninja -C build install
+        build_done 'vulkan-headers' 'git'
+    fi
+    ffmpeg_libraries+=('--enable-vulkan')
 fi
-ffmpeg_libraries+=('--enable-libkvazaar')
 
 if build 'decklink' '12.7'; then
-    download 'https://github.com/slyfox1186/script-repo/raw/main/library-files/Blackmagic-DeckLink-SDK-12.7.tar.xz' 'decklink-12.7.tar.xz'
+    download 'GitHub: https://github.com/slyfox1186/script-repo/raw/main/library-files/Blackmagic-DeckLink-SDK-12.7.tar.xz' 'decklink-12.7.tar.xz'
     for files in *.{h,cpp}
     do
         mv "${files}" "${workspace}"/include
@@ -2381,7 +2395,7 @@ ffmpeg_libraries+=('--enable-decklink')
 
 # NEED TO UPDATE THIS REPO FROM TIME TO TIME MANUALLY
 aom_ver=6054fae218eda6e53e1e3b4f7ef0fff4877c7bf1
-# aom_ver=4783bb8b4ca42e15078225e3f58d246e13a93c28
+# FAILED TO BUILD FFMPEG 12.28.23 = d3b7ce41e0bd9afe93564124c31a3d12beb6eda7
 aom_sver="${aom_ver::7}"
 if build 'av1' "${aom_sver}"; then
     download "https://aomedia.googlesource.com/aom/+archive/${aom_ver}.tar.gz" "av1-${aom_sver}.tar.gz" 'av1'
@@ -2687,6 +2701,7 @@ export CC=clang CXX=clang++
 
 # ENTER A SNAPSHOT ID FOR X265
 g_ver=8ee01d45b05cdbc9da89b884815257807a514bc8
+# FAILED TO BUILD FFMPEG 12.28.23 = ce8642f22123f0b8cf105c88fc1e8af9888bd345
 g_sver="${g_ver::7}"
 if build 'x265' "${g_sver}"; then
     download "https://bitbucket.org/multicoreware/x265_git/get/${g_ver}.tar.bz2" "x265-${g_sver}.tar.bz2"
@@ -2744,13 +2759,13 @@ SAVE
 END
 EOF
 
-    execute sudo ninja "-j${cpu_threads}" install
+    execute sudo ninja install
 
     if [ -n "${LDEXEFLAGS}" ]; then
         sed -i.backup 's/lgcc_s/lgcc_eh/g' "${install_dir}/lib/pkgconfig/x265.pc"
     fi
 
-    # FIX x265 SHARED LIB ISSUES
+    # FIX THE x265 SHARED LIBRARY ISSUE
     x265_fix_libs_fn
 
     build_done 'x265' "${g_sver}"
@@ -2770,10 +2785,6 @@ if [ -z "${LDEXEFLAGS}" ]; then
         ffmpeg_libraries+=('--enable-vaapi')
     fi
 fi
-
-printf "\n%s\n%s\n"                                 \
-    'Building nv-codec-headers - version 12.0.16.1' \
-    '========================================================'
 
 # GET THE GPU ARCHITECTURE
 # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
@@ -2810,9 +2821,9 @@ if [ ${?} -eq '0' ]; then
         fi
     fi
     ffmpeg_libraries+=("--nvccflags=-gencode arch=${gpu_arch}")
-else
-    printf "\n%s\n\n" 'The Active GPU is made by AMD and the Geforce CUDA SDK Toolkit will not be enabled.'
-    sleep 5
+    else
+        printf "\n%s\n\n" 'The Active GPU is made by AMD and the Geforce CUDA SDK Toolkit will not be enabled.'
+        sleep 5
 fi
 
 pre_check_ver 'Haivision/srt' '1' 'R'
