@@ -308,6 +308,9 @@ install_binutils_fn()
         bash build-binutils
         build_done 'binutils' '2.41'
     fi
+    if [ -f 'build-binutils' ]; then
+        sudo rm 'build-binutils'
+    fi
 }
 
 #
