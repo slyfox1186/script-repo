@@ -96,10 +96,13 @@ export PATH
 #
 
 PKG_CONFIG_PATH="\
+/usr/local/lib64/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib/pkgconfig:\
-/usr/lib/pkgconfig:\
+/usr/share/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/share/pkgconfig\
+/usr/lib/pkgconfig:\
+/lib/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
