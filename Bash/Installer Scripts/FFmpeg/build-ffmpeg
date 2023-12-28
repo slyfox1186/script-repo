@@ -2810,7 +2810,11 @@ if [ ${?} -eq '0' ]; then
 
         if [ "${OS}" != 'Arch' ]; then
             if ! sudo dpkg -l | grep -o nvidia-smi &>/dev/null; then
-                sudo apt -y install nvidia-smi &>/dev/null
+                if ! sudo apt -y install nvidia-smi &>/dev/null; then
+                    sudo dpkg --configure -a
+                    sudo apt --fix-broken install
+                    sudo apt -y install nvidia-smi &>/dev/null
+                fi
             fi
         fi
 
