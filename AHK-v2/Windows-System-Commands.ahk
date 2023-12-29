@@ -6,33 +6,36 @@
     EMPTY RECYCLE BIN
 */
 
-!+r up::
+!+r Up::
 {
-    if FileRecycleEmpty
-    {
+    try
         FileRecycleEmpty
-        ComObj := ComObject("SAPI.SpVoice").Speak("Files Deleted")
-    }
-    else
+    catch
+    {
         ComObj := ComObject("SAPI.SpVoice").Speak("Failed to delete files")
+        MsgBox("Failed to delete files.",, "T2")
+        Reload
+    }
 }
 
 /*____________________________________________________________________________________
-    VIRTUAL DESKTOP LEFT
+    MOVE VIRTUAL DESKTOP LEFT
 */
 
-!a up::
+!a Up::
 {
-    Send "{LCtrl Down}{LWin Down}{Left Down}"
-    Send "{LCtrl Up}{LWin Up}{Left Up}"
+    SendInput "{LCtrl Down}{LWin Down}{Left Down}"
+    Sleep 25
+    SendInput "{LCtrl Up}{LWin Up}{Left Up}"
 }
 
 /*____________________________________________________________________________________
-    VIRTUAL DESKTOP RIGHT
+    MOVE VIRTUAL DESKTOP RIGHT
 */
 
-!d up::
+!d Up::
 {
-    Send "{LCtrl Down}{LWin Down}{Right Down}"
-    Send "{LCtrl Up} {LWin Up}{Right Up}"
+    SendInput "{LCtrl Down}{LWin Down}{Right Down}"
+    Sleep 25
+    SendInput "{LCtrl Up}{LWin Up}{Right Up}"
 }
