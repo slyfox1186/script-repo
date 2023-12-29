@@ -260,8 +260,7 @@ fi
 #
 
 if ! tar -jxf "${cwd}/jemalloc-5.3.0.tar.bz2" -C "${cwd}/jemalloc-5.3.0" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: ${cwd}/jemalloc-5.3.0.tar.bz2"
-    exit 1
+    fail_fn "Failed to extract: ${cwd}/jemalloc-5.3.0.tar.bz2"
 fi
 
 #
@@ -279,12 +278,10 @@ cd build || exit 1
 echo
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute the jemalloc command: make -j$(nproc --all). Line: ${LINENO}"
-    exit 1
 fi
 echo
 if ! sudo make install; then
     fail_fn "Failed to execute the jemalloc command: sudo make install. Line: ${LINENO}"
-    exit 1
 fi
 
 #
@@ -319,8 +316,7 @@ fi
 #
 
 if ! tar -jxf "${cwd}/gcrypt-error-1.47.tar.bz2" -C "${cwd}/gcrypt-error-1.47" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: ${cwd}/gcrypt-error-1.47.tar.bz2"
-    exit 1
+    fail_fn "Failed to extract: ${cwd}/gcrypt-error-1.47.tar.bz2"
 fi
 
 #
@@ -344,12 +340,10 @@ cd build || exit 1
 echo
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute the gcrypt-error command: make -j$(nproc --all). Line: ${LINENO}"
-    exit 1
 fi
 echo
 if ! sudo make install; then
     fail_fn "Failed to execute the gcrypt-error command: sudo make install. Line: ${LINENO}"
-    exit 1
 fi
 
 #
@@ -374,8 +368,7 @@ fi
 #
 
 if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
-    exit 1
+    fail_fn "Failed to extract: ${cwd}/${archive_name}"
 fi
 
 #
@@ -411,12 +404,10 @@ cd build || exit 1
 echo
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute the aria2 command: make -j$(nproc --all). Line: ${LINENO}"
-    exit 1
 fi
 echo
 if ! sudo make install; then
     fail_fn "Failed to execute the aria2 command: sudo make install. Line: ${LINENO}"
-    exit 1
 fi
 
 # REMOVE ANY APT INSTALLED VERSION OF ARIA2
