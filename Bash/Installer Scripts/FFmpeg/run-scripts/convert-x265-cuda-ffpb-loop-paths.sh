@@ -12,20 +12,10 @@ if [ -d "${HOME}/.local/bin" ]; then
 fi
 
 #
-# CREATE THE OUTPUT DIRECTORIES
-#
-
-if [ ! -d 'completed' ] || [ ! -d 'original' ]; then
-    mkdir 'completed' 'original'
-fi
-
-#
 # INSTALLL THE REQUIRED APT PACKAGES
 #
 
 pkgs=(bc ffmpegthumbnailer ffmpegthumbs libffmpegthumbnailer4v5 libsox-dev python3-pip sox trash-cli)
-
-clear
 
 for pkg in ${pkgs[@]}
 do
@@ -44,17 +34,17 @@ if [ -n "${missing_pkgs}" ]; then
     fi
 else
     printf "%s\n\n" 'The required APT packages are already installed.'
+    sleep 2
 fi
-sleep 2
 clear
 
 #
 # INSTALL THE REQUIRED PIP PACKAGES
 #
 
-pip_dir="$(mktemp -d)"
-echo 'ffpb' > "${pip_dir}"/requirements.txt
-echo 'google_speech' >> "${pip_dir}"/requirements.txt
+pip_dir="$(mktemp d)"
+cat 'ffpb' > "${pip_dir}"/requirements.txt
+cat 'google_speech' >> "${pip_dir}"/requirements.txt
 if ! pip install --user -r "${pip_dir}"/requirements.txt &>/dev/null; then
     printf "%s\n\n" 'Failed to install the pip packages.'
     exit 1
@@ -62,8 +52,8 @@ fi
 sudo rm -fr "${pip_dir}"
 
 cat > 'list.txt' <<'EOF'
-/path/to/video/video.mp4
-/path/to/video/video.mkv
+/path/to/video1.txt
+/path/to/video2.txt
 EOF
 
 while read -u 9 video
@@ -113,37 +103,36 @@ Length:          ${length} mins
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 EOF
 
-    #
-    # EXECUTE FFMPEG
-    #
+#
+# EXECUTE FFMPEG
+#
 
     echo
-    if ffpb \
-            -y \
-            -threads 0 \
-            -hide_banner \
+    if ffpb                             \
+            -y                          \
+            -threads 0                  \
+            -hide_banner                \
             -hwaccel_output_format cuda \
-            -i "${file_in}" \
-            -c:v hevc_nvenc \
-            -preset:v medium \
-            -profile:v main10 \
-            -pix_fmt:v p010le \
-            -rc:v vbr \
-            -tune:v hq \
-            -b:v "${bitrate}"k \
-            -bufsize:v "${bufsize}"k \
-            -maxrate:v "${maxrate}"k \
-            -bf:v 4 \
-            -b_ref_mode:v middle \
-            -qmin:v 0 \
-            -qmax:v 99 \
-            -temporal-aq:v 1 \
-            -rc-lookahead:v 70 \
-            -i_qfactor:v 0.75 \
-            -b_qfactor:v 1.1 \
-            -c:a libfdk_aac \
-            -qmin:a 1 \
-            -qmax:a 5 \
+            -i "${file_in}"             \
+            -c:v hevc_nvenc             \
+            -preset:v medium            \
+            -profile:v main10           \
+            -pix_fmt:v p010le           \
+            -rc:v vbr                   \
+            -tune:v hq                  \
+            -b:v "${bitrate}"k          \
+            -maxrate:v "${maxrate}"k    \
+            -bf:v 4                     \
+            -b_ref_mode:v middle        \
+            -qmin:v 0                   \
+            -qmax:v 99                  \
+            -temporal-aq:v 1            \
+            -rc-lookahead:v 70          \
+            -i_qfactor:v 0.75           \
+            -b_qfactor:v 1.1            \
+            -c:a libfdk_aac             \
+            -qmin:a 1                   \
+            -qmax:a 5                   \
             "${file_out}"; then
         google_speech 'Video conversion completed.' 2>/dev/null
         if [ -f "${file_out}" ]; then
