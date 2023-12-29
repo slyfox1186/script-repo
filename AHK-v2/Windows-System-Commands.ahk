@@ -12,8 +12,8 @@
         FileRecycleEmpty
     catch
     {
-        ComObj := ComObject("SAPI.SpVoice").Speak("Failed to delete files")
-        MsgBox("Failed to delete files.",, "T2")
+        ComObj := ComObject("SAPI.SpVoice").Speak("Failed to empty the trash")
+        MsgBox("Failed to empty the trash",, "T2")
         Reload
     }
 }
