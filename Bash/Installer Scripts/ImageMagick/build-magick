@@ -27,9 +27,9 @@
 ##
 ##  Changed: Some support libraries prefix paths to avoid installing into the system
 ##
-##  Updated: 12.09.23
+##  Updated: 12.29.23
 ##
-##  Script Version: 3.9
+##  Script Version: 4.0
 ##
 #############################################################################################################
 
@@ -44,7 +44,7 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-script_ver=3.9
+script_ver=4.0
 progname="${0}"
 cwd="${PWD}"/magick-build-script
 packages="${cwd}"/packages
@@ -70,10 +70,10 @@ export CC=gcc CXX=g++
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-CFLAGS="-g -O3 -pipe -march=native -I${workspace}/include -I${workspace}/include/CL -I/usr/local/include -I/usr/include"
+CFLAGS="-g -O3 -pipe -march=native -I${workspace}/include -I${install_dir}/include/CL -I/usr/local/include -I/usr/include"
 CFLAGS+=' -I/usr/include/x86_64-linux-gnu -I/usr/include/openjpeg-2.5'
 CXXFLAGS='-g -O3 -pipe -march=native'
-CPPFLAGS="-I${workspace}/include -I${workspace}/include/CL -I/usr/local/include -I/usr/include"
+CPPFLAGS="-I${workspace}/include -I${install_dir}/include/CL -I/usr/local/include -I/usr/include"
 CPPFLAGS+=' -I/usr/include/x86_64-linux-gnu -I/usr/include/openjpeg-2.5'
 LDFLAGS="-L${workspace}/lib64 -L${workspace}/lib -L/usr/local/lib64"
 LDFLAGS+=' -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
@@ -310,12 +310,12 @@ show_ver_fn()
 
 git_1_fn()
 {
-    local curl_cmd github_repo github_url
+    local curl_cmd git_repo git_url
 
-    github_repo="${1}"
-    github_url="${2}"
+    git_repo="${1}"
+    git_url="${2}"
 
-    if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${git_repo}/${git_url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
         g_ver2="$(echo "${curl_cmd}" | jq -r '.[0].tag_name' 2>/dev/null)"
@@ -471,7 +471,7 @@ dl_libjxl_fn()
         if ! curl -A "${user_agent}" -m 10 -Lso "${packages}/libjxl-${libjxl_name}.tar.gz" "${libjxl_download}"; then
             fail_fn "Failed to download the libjxl archive: ${packages}/libjxl-${libjxl_name}.tar.gz. Line: ${LINENO}"
         fi
-        # EXTRACT THE DEBIAN FILES FOR INSTALL
+        # EXTRACT THE DEBIAN FILES FOR INSTALLATION
         if ! tar -zxf "${packages}/libjxl-${libjxl_name}.tar.gz" -C "${packages}"/deb-files --strip-components 1; then
             fail_fn "Could not extract the libjxl archive: ${packages}/libjxl-${libjxl_name}.tar.gz. Line: ${LINENO}"
         fi
@@ -655,7 +655,7 @@ fi
 case "${VER}" in
     12|23.04)                   lt_ver='2.4.7';;
     10|11|18.04|20.04|22.04)    lt_ver='2.4.6';;
-    *)                          fail_fn "Unable to get the OS version:Line ${LINENO}"
+    *)                          fail_fn "Unable to get the OS version. Line: ${LINENO}"
 esac
 
 if build 'libtool' "${lt_ver}"; then
@@ -745,7 +745,7 @@ if build 'libwebp' 'git'; then
                   -DWEBP_LINK_STATIC=ON                 \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'libwebp' 'git'
 fi
 
@@ -761,11 +761,12 @@ if build 'freetype' "${g_ver1}"; then
                               --strip                  \
                               "${extracmds[@]}"
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'freetype' "${g_ver1}"
 fi
 
 git_ver_fn '890' '2'
+fc_dir="${packages}/fontconfig-${g_ver}"
 if build 'fontconfig' "${g_ver}"; then
     download "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/${g_ver}/fontconfig-${g_ver}.tar.bz2"
     LDFLAGS+=' -DLIBXML_STATIC'
@@ -837,7 +838,7 @@ if build 'fribidi' "${g_ver}"; then
                               --strip                     \
                                "${extracommands[@]}"
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'fribidi' "${g_ver}"
 fi
 
@@ -866,7 +867,7 @@ if build 'raqm' "${g_ver}"; then
                               --strip                             \
                               -Ddocs=false
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'raqm' "${g_ver}"
 fi
 
@@ -889,34 +890,21 @@ if build 'jemalloc' "${g_ver}"; then
     build_done 'jemalloc' "${g_ver}"
 fi
 
-git_ver_fn 'KhronosGroup/OpenCL-SDK' '1' 'T'
-if build 'opencl-sdk' "${g_ver}"; then
-    download_git 'https://github.com/KhronosGroup/OpenCL-SDK.git' 'opencl-sdk-git'
-    execute git submodule init
-    execute git submodule update
-    execute cmake \
-            -S .                                      \
-            -B build                                  \
-            -DCMAKE_INSTALL_PREFIX="${workspace}"     \
-            -DCMAKE_BUILD_TYPE=Release                \
-            -DBUILD_SHARED_LIBS=ON                    \
-            -DBUILD_TESTING=OFF                       \
-            -DBUILD_DOCS=OFF                          \
-            -DBUILD_EXAMPLES=OFF                      \
-            -DOPENCL_SDK_BUILD_SAMPLES=ON             \
-            -DOPENCL_SDK_TEST_SAMPLES=OFF             \
-            -DCMAKE_C_FLAGS='-g -O3 -pipe -Wno-dev'   \
-            -DCMAKE_CXX_FLAGS='-g -O3 -pipe -Wno-dev' \
-            -DOPENCL_HEADERS_BUILD_CXX_TESTS=OFF      \
-            -DOPENCL_ICD_LOADER_BUILD_SHARED_LIBS=ON  \
-            -DOPENCL_SDK_BUILD_OPENGL_SAMPLES=OFF     \
-            -DOPENCL_SDK_BUILD_SAMPLES=OFF            \
-            -DOPENCL_SDK_TEST_SAMPLES=OFF             \
-            -DTHREADS_PREFER_PTHREAD_FLAG=ON          \
+git_ver_fn 'KhronosGroup/OpenCL-Headers' '1' 'T'
+if build 'opencl-headers' '2023.12.14'; then
+    download 'https://github.com/KhronosGroup/OpenCL-Headers/archive/refs/tags/v2023.12.14.tar.gz' 'opencl-headers-2023.12.14.tar.gz'
+    execute cmake                                   \
+            -S .                                    \
+            -B build                                \
+            -DCMAKE_INSTALL_PREFIX="${install_dir}" \
+            -DCMAKE_BUILD_TYPE=Release              \
+            -DBUILD_TESTING=OFF                     \
+            -DOPENCL_HEADERS_BUILD_TESTING=OFF      \
+            -DOPENCL_HEADERS_BUILD_CXX_TESTS=OFF    \
             -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
-    build_done 'opencl-sdk' "${g_ver}"
+    execute sudo ninja -C build install
+    build_done 'opencl-headers' '2023.12.14'
 fi
 
 git_ver_fn 'uclouvain/openjpeg' '1' 'R'
@@ -940,7 +928,7 @@ if build 'openjpeg' "${g_ver2}"; then
                   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON    \
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja -C build install
     build_done 'openjpeg' "${g_ver2}"
 fi
 
@@ -959,21 +947,10 @@ if build 'lcms' 'git'; then
 fi
 
 if build 'dejavu-fonts' 'git'; then
-    download_git 'https://github.com/dejavu-fonts/dejavu-fonts.git'
+    download 'https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-2.37.tar.bz2'
     wget -U "${user_agent}" -P 'resources' 'http://www.unicode.org/Public/UNIDATA/UnicodeData.txt' 'http://www.unicode.org/Public/UNIDATA/Blocks.txt'
-    if [ ! -d "${packages}"/fontconfig ]; then
-        mkdir -p "${packages}"/fontconfig
-    fi
-    execute git clone 'git://anongit.freedesktop.org/git/fontconfig' "${packages}"/fontconfig
-    execute ln -sf "${packages}"/fontconfig/fc-lang 'resources/fc-lang'
-    execute make "-j${cpu_threads}"
-    cd "${packages}"/fontconfig || exit 1
-    execute ./autogen.sh --prefix=/usr --sysconfdir=/etc --mandir=/usr/share/man
-    execute make "-j${cpu_threads}"
-    execute sudo make install
-    execute ./configure
-    execute make "-j${cpu_threads}"
-    execute sudo make install
+    execute ln -sf "${fc_dir}"/fc-lang 'resources/fc-lang'
+    execute make "-j${cpu_threads}" full-ttf
     build_done 'dejavu-fonts' 'git'
 fi
 
@@ -1001,8 +978,9 @@ box_out_banner_magick 'Build ImageMagick'
 # FIND ANY MANUALLY INSTALLED ACLOCAL FOLDERS
 aclocal_dir="$(sudo find /usr/ -type d -name 'aclocal' | sort | head -n1)"
 
-if build 'ImageMagick' 'git'; then
-    download_git 'https://github.com/ImageMagick/ImageMagick.git' 'imagemagick-git'
+git_ver_fn 'ImageMagick/ImageMagick' '1' 'R'
+if build 'ImageMagick' '7.1.1-23'; then
+    download 'https://github.com/ImageMagick/ImageMagick/archive/refs/tags/7.1.1-23.tar.gz' 'imagemagick-7.1.1-23.tar.gz'
     execute autoreconf -fi -I "${aclocal_dir}"
     mkdir build
     cd build || exit 1
@@ -1052,3 +1030,4 @@ cleanup_fn
 
 # SHOW EXIT MESSAGE
 exit_fn
+
