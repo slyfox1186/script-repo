@@ -368,7 +368,7 @@ git_1_fn()
     # LOOP THE VARIABLE G_VER TO MAKE SURE WE DON'T USE A RELEASE CANDIDATE VERSION OF ANY PROGRAM AKA 'RC'
     while [[ ${g_ver} =~ ${regex_str} ]]
     do
-        if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${git_repo}/${git_url}")"; then
+            if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${git_repo}/${git_url}")"; then
             g_ver="$(echo "${curl_cmd}" | jq -r ".[${cnt}].name")"
             g_ver="${g_ver#v}"
         fi
@@ -603,7 +603,7 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok ins
 
 library_exists()
 {
-    if ! [[ -x "$(pkg-config --exists --print-errors "${1}" 2>&1)" ]]; then
+    if ! [[ -x "$(pkg-config --exists --print-errors "${1}" 2>&1 >/dev/null)" ]]; then
         return 1
     fi
     return 0
@@ -613,9 +613,10 @@ gpu_arch_fn()
 {
     local gpu_name gpu_type
 
-    amd_gpu_test="$(glxinfo | grep -E 'OpenGL renderer' | grep -Eo 'AMD\s.*$')"
+    amd_gpu_test="$(glxinfo | grep -E 'OpenGL renderer' | grep -Eo 'AMD')"
+    nvidia_gpu_test="$(cat < '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
 
-    if [ -z "${amd_gpu_test}" ]; then
+    if [ -z "${amd_gpu_test}" ] || [ -n "${nvidia_gpu_test}" ]; then
         gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -r | head -n 1)"
         if [[ "${gpu_name}" == 'name' ]]; then
             gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort | head -n 1)"
@@ -749,15 +750,19 @@ fi
 # SET THE PATH VARIABLE
 #
 
-cuda_bin_path="$(sudo find /usr/local/ -type d -name 'cuda' | head -n1)"
-cuda_bin_path="$(sudo find /opt/ -type d -name 'cuda' | head -n1)"
-cuda_bin_path+='/bin'
+cuda_bin_path="$(sudo find /usr/local -maxdepth 1 -name 'cuda' | head -n1)"
+cuda_bin_path="$(sudo find /opt -maxdepth 1 -name 'cuda' | head -n1)"
+
+if [ -d '/usr/lib/ccache/bin' ]; then
+    set_ccache_dir='/usr/lib/ccache/bin'
+else
+    set_ccache_dir='/usr/lib/ccache'
+fi
 
 path_fn()
 {
 PATH="\
-/usr/lib/ccache/bin:\
-/usr/lib/ccache:\
+${set_ccache_dir}:\
 ${cuda_bin_path}:\
 ${workspace}/bin:\
 ${HOME}/.local/bin:\
@@ -911,8 +916,10 @@ install_cuda_fn()
     clear
 
     amd_gpu_test="$(glxinfo | grep -E 'OpenGL renderer' | grep -Eo 'AMD\s.*$')"
+    nvidia_gpu_test="$(cat < '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
 
-    if [ -z "${amd_gpu_test}" ]; then
+    if [ -z "${amd_gpu_test}" ] || [ -n "${nvidia_gpu_test}" ]; then
+        get_ver_fn1
         if [[ "${OS}" == 'Arch' ]]; then
             find_nvcc="$(sudo find /opt/ -type f -name 'nvcc')"
             cuda_ver_test="$(${find_nvcc} --version | sed -n 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')"
@@ -1131,6 +1138,8 @@ dl_libjxl_fn()
     url_base='https://github.com/libjxl/libjxl/releases/download/v0.8.2/jxl-debs-amd64'
     url_suffix='v0.8.2.tar.gz'
 
+    get_ver_fn1
+
     if [ ! -f "${packages}"/libjxl.tar.gz ]; then
         case "${VER}" in
             10)                     libjxl_name='debian-buster';;
@@ -1228,21 +1237,20 @@ arch_os_ver_fn()
     clear
 }
 
-
 debian_os_ver_fn()
 {
     if [[ "${2}" = 'yes_wsl' ]]; then
-        VER=msft
+        VER='msft'
         debian_wsl_pkgs="${1}"
     fi
 
-    debian_pkgs="${1} cppcheck libnvidia-encode1 libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils libyuv0"
+    debian_pkgs="cppcheck libnvidia-encode1 libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils libyuv0"
     debian_pkgs+=' libsharp-dev libdmalloc5 libumfpack5 libsuitesparseconfig5 libcolamd2 libcholmod3 libccolamd2 libcamd2 libamd2'
 
     case "${VER}" in
-        12|trixie|sid)      pkgs_fn "${debian_pkgs} librist-dev";;
-        11)                 pkgs_fn "${debian_pkgs}";;
         msft)               pkgs_fn "${debian_wsl_pkgs} ${debian_pkgs} librist-dev";;
+        12|trixie|sid)      pkgs_fn "${1} ${debian_pkgs} librist-dev";;
+        11)                 pkgs_fn "${1} ${debian_pkgs}";;
         *)                  fail_fn "Could not detect the Debian version. Line: ${LINENO}";;
     esac
 }
@@ -1277,31 +1285,39 @@ ubuntu_os_ver_fn()
 
 find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
 
-if [ -f '/etc/os-release' ]; then
-    . '/etc/os-release'
-    OS_TMP="$NAME"
-    VER_TMP="$VERSION_ID"
-    OS="$(echo "${OS_TMP}" | awk '{print $1}')"
-    VER="$(echo "${VER_TMP}" | awk '{print $1}')"
-elif [ -n "${find_lsb_release}" ]; then
-    OS="$(lsb_release -d | awk '{print $2}')"
-    VER="$(lsb_release -r | awk '{print $2}')"
-else
-    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
-fi
+get_ver_fn1()
+{
+    if [ -f '/etc/os-release' ]; then
+        . '/etc/os-release'
+        OS_TMP="$NAME"
+        VER_TMP="$VERSION_ID"
+        OS="$(echo "${OS_TMP}" | awk '{print $1}')"
+        VER="$(echo "${VER_TMP}" | awk '{print $1}')"
+    elif [ -n "${find_lsb_release}" ]; then
+        OS="$(lsb_release -d | awk '{print $2}')"
+        VER="$(lsb_release -r | awk '{print $2}')"
+    else
+        fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
+    fi
 
-nvidia_utils_ver="$(sudo apt list nvidia-utils-* 2>/dev/null | grep -Eo '^nvidia-utils-[0-9]{3}' | sort -r | uniq | head -n1)"
-nvidia_encode_var="$(sudo apt list libnvidia-encode* 2>&1 | grep -Eo 'libnvidia-encode[1-]+[0-9]*$' | sort -r | head -n1)"
+    nvidia_utils_ver="$(sudo apt list nvidia-utils-* 2>/dev/null | grep -Eo '^nvidia-utils-[0-9]{3}' | sort -r | uniq | head -n1)"
+    nvidia_encode_var="$(sudo apt list libnvidia-encode* 2>&1 | grep -Eo 'libnvidia-encode[1-]+[0-9]*$' | sort -r | head -n1)"
+}
+get_ver_fn1
 
 #
 # CHECK IF RUNNING WINDOWS WSL2
 #
 
-if [ "$(grep -i 'microsoft' '/proc/version')" ]; then
-    wsl_switch='yes_wsl'
-    OS='WSL2'
-    wsl_common_pkgs='nvidia-smi cppcheck libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils libyuv0 libsharp-dev libdmalloc5 libnvidia-encode1'
-fi
+get_ver_fn2()
+{
+    if [ "$(grep -i 'microsoft' '/proc/version')" ]; then
+        wsl_switch='yes_wsl'
+        OS='WSL2'
+        wsl_common_pkgs='nvidia-smi cppcheck libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils libyuv0 libsharp-dev libdmalloc5 libnvidia-encode1'
+    fi
+}
+get_ver_fn2
 
 #
 # INSTALL REQUIRED APT PACKAGES
@@ -1316,6 +1332,7 @@ case "${OS}" in
     'Debian'|'n/a')     debian_os_ver_fn "${nvidia_encode_var} ${nvidia_utils_ver}";;
     'Ubuntu')           ubuntu_os_ver_fn "${nvidia_encode_var} ${nvidia_utils_ver}";;
     'WSL2')
+                        get_ver_fn1
                         case "${OS}" in
                             'Debian'|'n/a')     debian_os_ver_fn "${nvidia_encode_var} ${nvidia_utils_ver}" "${wsl_switch}" "${wsl_common_pkgs}";;
                             'Ubuntu')           ubuntu_os_ver_fn "${nvidia_encode_var} ${nvidia_utils_ver}" "${wsl_switch}" "${wsl_common_pkgs}";;
@@ -1328,7 +1345,7 @@ esac
 #
 
 path_fn
-find_java="$(sudo find /usr/lib/jvm/ -type d -name 'java-*-openjdk*' | rev | sort | rev | head -n1)"
+find_java="$(sudo find /usr/lib/jvm/ -type d -name 'java-*-openjdk*' | sort | head -n1)"
 java_config="$(sudo find /usr/lib/ -type f -name 'jni.h' | sort -r | head -n1 | sed 's/\(^.*\)\/.*$/\1/')"
 export CPPFLAGS+=" -I${java_config}"
 export JDK_HOME="${find_java}"
@@ -1393,24 +1410,24 @@ box_out_banner_global 'Installing Global Tools'
 
 if build 'm4' 'latest'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
-    execute ./configure --prefix="${install_dir}"          \
+    execute ./configure --prefix="${workspace}"            \
                         --{build,host,target}="${pc_type}" \
                         --disable-nls                      \
                         --enable-c++                       \
                         --enable-threads=posix
     execute make "-j${cpu_threads}"
-    execute sudo make install
+    execute make install
     build_done 'm4' 'latest'
 fi
 
 if build 'autoconf' 'latest'; then
     download 'http://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz'
     execute autoreconf -fi
-    execute ./configure --prefix="${install_dir}"   \
+    execute ./configure --prefix="${workspace}"     \
                         --{build,host}="${pc_type}" \
-                        M4="${install_dir}"/bin/m4
+                        M4="${workspace}"/bin/m4
     execute make "-j${cpu_threads}"
-    execute sudo make install
+    execute make install
     build_done 'autoconf' 'latest'
 fi
 
@@ -1420,10 +1437,16 @@ if [[ "${OS}" == 'Arch' ]]; then
         build_done 'libtool' "${lt_ver}"
     fi
 else
-    case "${VER}" in
-        12|23.10|23.04)     lt_ver=2.4.7;;
-        *)                  lt_ver=2.4.6;;
-    esac
+    get_ver_fn2
+    if [ "${VER}" = 'WSL2' ]; then
+        lt_ver=2.4.6
+    else
+        get_ver_fn1
+        case "${VER}" in
+            12|23.10|23.04)     lt_ver=2.4.7;;
+            *)                  lt_ver=2.4.6;;
+        esac
+    fi
     if build 'libtool' "${lt_ver}"; then
         download "https://ftp.gnu.org/gnu/libtool/libtool-${lt_ver}.tar.xz"
         execute ./configure --prefix="${install_dir}"   \
@@ -2214,7 +2237,7 @@ fi
 
 pre_check_ver 'mstorsjo/fdk-aac' '1' 'T'
 if build 'libfdk-aac' '2.0.2'; then
-    download 'https://master.dl.sourceforge.net/project/opencore-amr/fdk-aac/fdk-aac-2.0.2.tar.gz?viasf=1' 'libfdk-aac-2.0.2.tar.gz'
+    download 'https://phoenixnap.dl.sourceforge.net/project/opencore-amr/fdk-aac/fdk-aac-2.0.3.tar.gz' 'libfdk-aac-2.0.2.tar.gz'
     execute ./autogen.sh
     execute ./configure --prefix="${workspace}" \
                         --{build,host}="${pc_type}" \
@@ -2384,7 +2407,7 @@ if [ -n "${amd_gpu_test}" ]; then
 fi
 
 if build 'decklink' '12.7'; then
-    download 'GitHub: https://github.com/slyfox1186/script-repo/raw/main/library-files/Blackmagic-DeckLink-SDK-12.7.tar.xz' 'decklink-12.7.tar.xz'
+    download 'https://github.com/slyfox1186/script-repo/raw/main/library-files/Blackmagic-DeckLink-SDK-12.7.tar.xz' 'decklink-12.7.tar.xz'
     for files in *.{h,cpp}
     do
         mv "${files}" "${workspace}"/include
@@ -2799,6 +2822,8 @@ if [ ${?} -eq '0' ]; then
             build_done 'nv-codec-headers' '12.0.16.1'
         fi
 
+        get_ver_fn1
+
         if [[ "${OS}" == 'Arch' ]]; then
             export PATH+=':/opt/cuda/bin'
             CFLAGS+=' -I/opt/cuda/include -I/opt/cuda/targets/x86_64-linux/include'
@@ -2823,8 +2848,8 @@ if [ ${?} -eq '0' ]; then
         if [ -n "${LDEXEFLAGS}" ]; then
             ffmpeg_libraries+=('--enable-libnpp')
         fi
-    fi
-    ffmpeg_libraries+=("--nvccflags=-gencode arch=${gpu_arch}")
+        ffmpeg_libraries+=("--nvccflags=-gencode arch=${gpu_arch}")
+        fi
     else
         printf "\n%s\n\n" 'The Active GPU is made by AMD and the Geforce CUDA SDK Toolkit will not be enabled.'
         sleep 5
@@ -3121,3 +3146,4 @@ cleanup_fn
 
 # SHOW EXIT MESSAGE
 exit_fn
+
