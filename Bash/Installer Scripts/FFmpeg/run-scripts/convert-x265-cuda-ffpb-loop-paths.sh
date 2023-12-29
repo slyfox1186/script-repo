@@ -32,9 +32,6 @@ if [ -n "${missing_pkgs}" ]; then
     else
         printf "\n%s\n\n" 'The required APT packages were successfully installed!'
     fi
-else
-    printf "%s\n\n" 'The required APT packages are already installed.'
-    sleep 2
 fi
 clear
 
@@ -42,18 +39,23 @@ clear
 # INSTALL THE REQUIRED PIP PACKAGES
 #
 
-pip_dir="$(mktemp d)"
-cat 'ffpb' > "${pip_dir}"/requirements.txt
-cat 'google_speech' >> "${pip_dir}"/requirements.txt
+pip_dir="$(mktemp -d)"
+echo 'ffpb' > "${pip_dir}"/requirements.txt
+echo 'google_speech' >> "${pip_dir}"/requirements.txt
 if ! pip install --user -r "${pip_dir}"/requirements.txt &>/dev/null; then
     printf "%s\n\n" 'Failed to install the pip packages.'
     exit 1
 fi
 sudo rm -fr "${pip_dir}"
 
-cat > 'list.txt' <<'EOF'
-/path/to/video1.txt
-/path/to/video2.txt
+#
+# CREATE AN OUTPUT FILE THAT CONTAINS ALL OF THE VIDEO PATHS AND USE IT TO LOOP THE CONTENTS
+#
+
+tmp_list_dir="$(mktemp -d)"
+cat > "${tmp_list_dir}/list.txt" <<'EOF'
+/path/to/file.mp4
+/path/to/file.mkv
 EOF
 
 while read -u 9 video
@@ -108,6 +110,7 @@ EOF
 #
 
     echo
+
     if ffpb                             \
             -y                          \
             -threads 0                  \
@@ -136,7 +139,7 @@ EOF
             "${file_out}"; then
         google_speech 'Video conversion completed.' 2>/dev/null
         if [ -f "${file_out}" ]; then
-            trash-put "${file_in}"
+            sudo rm "${file_in}"
         fi
     else
         google_speech 'Video conversion failed.' 2>/dev/null
@@ -144,4 +147,4 @@ EOF
         exit 1
     fi
     clear
-done 9< 'list.txt'
+done 9< "${tmp_list_dir}/list.txt"
