@@ -250,12 +250,10 @@ cd build || exit 1
 echo
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
-    exit 1
 fi
 echo
 if ! sudo make install; then
     fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
-    exit 1
 fi
 
 # PROMPT USER TO CLEAN UP FILES
