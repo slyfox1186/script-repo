@@ -4,7 +4,7 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/Installer%20Scripts/GNU%20Software/build-curl
 ##
-##  Purpose: Build cURL with OpenSSL backend.
+##  Purpose: Build cURL with OpenSSL backend
 ##
 ##  Updated: 12.30.23
 ##
@@ -27,7 +27,7 @@ script_ver=1.4
 curl_ver=8.5.0
 archive_dir=${curl_ver}
 archive_dir1=${curl_ver//./_}
-archive_url=https://github.com/curl/curl/releases/download/curl-8_5_0/curl-8.5.0.tar.xz
+archive_url="https://github.com/curl/curl/releases/download/curl-${archive_dir1}/curl-${archive_dir}.tar.xz"
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="${PWD}"/curl-build-script
@@ -126,7 +126,7 @@ cleanup_fn()
 {
     local choice
 
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n"                  \
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n"                \
         '============================================' \
         '  Do you want to clean up the build files?  ' \
         '============================================' \
