@@ -7,10 +7,10 @@
 ##            which will update OpenSSL and the SSL certificate directory to the latest version.
 ##
 ##  Updated:
-##           - Script: 11.23.23
-##           - OpenSSL: v3.2.0
+##           - Script: 12.30.23
+##           - OpenSSL: v3.1.4
 ##
-##  Script version: 1.9
+##  Script version: 2.0
 ##
 ##  Enabled features:
 ##                    - fips
@@ -33,8 +33,8 @@ fi
 # SET VARIABLES
 #
 
-script_ver=1.9
-archive_dir=openssl-3.2.0
+script_ver=3.1.4
+archive_dir=openssl-3.1.4
 archive_url="https://www.openssl.org/source/${archive_dir}.tar.gz"
 archive_ext="${archive_url//*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
@@ -65,7 +65,7 @@ mkdir -p "${cwd}"
 
 CC=clang
 CXX=clang++
-CFLAGS='-Wall -pthread -g -O2 -pipe -march=native'
+CFLAGS='-Wall -pthread -g -O3 -pipe -march=native'
 CXXFLAGS="${CFLAGS}"
 SHARED_CFLAG='-fPIC'
 CPPFLAGS='-I/usr/local/include -I/usr/include'
@@ -142,7 +142,7 @@ cleanup_fn()
 {
     local choice
 
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n"                  \
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n"                \
         '============================================' \
         '  Do you want to clean up the build files?  ' \
         '============================================' \
@@ -159,6 +159,13 @@ cleanup_fn()
                 cleanup_fn
                 ;;
     esac
+}
+
+show_ver_fn()
+{
+    clear
+    show_ver="$(/usr/local/ssl/bin/openssl version -a | grep -Eo '[0-9\.]?+' | head -n1)"
+    printf "%s\n" "The updated OpenSSL version is: ${show_ver}"
 }
 
 #
@@ -248,24 +255,16 @@ cd "${cwd}/${archive_dir}/build" || exit 1
              --prefix="${install_dir}"                   \
              --openssldir="${ssl_dir}"                   \
              --release                                   \
-             --with-brotli-include=/usr/include          \
-             --with-brotli-lib=/usr/lib/x86_64-linux-gnu \
              --with-zlib-include=/usr/include            \
              --with-zlib-lib=/usr/lib/x86_64-linux-gnu   \
-             --with-zstd-include==/usr/include           \
-             --with-zstd-lib=/usr/lib                    \
-             enable-brotli                               \
              enable-ec_nistp_64_gcc_128                  \
              enable-egd                                  \
              enable-fips                                 \
              enable-rc5                                  \
              enable-sctp                                 \
              enable-shared                               \
-             enable-tfo                                  \
              enable-threads                              \
              enable-zlib                                 \
-             enable-zstd                                 \
-             no-docs                                     \
              no-tests
 
 echo
@@ -320,11 +319,14 @@ echo "${install_dir}/lib64" | sudo tee '/etc/ld.so.conf.d/openssl-compiled.conf'
 sudo ldconfig
 
 # ADD THE NEW OPENSSL BIN TO THE USER'S ~/.bashrc FILE IF NOT ALREADY PRESENT
+regex_str=':\\$'
+get_str="$(grep -o '/usr/sbin:\\' "${HOME}"/.bashrc 2>/dev/null)"
+
 if ! grep -o '/usr/local/ssl/bin' "${HOME}"/.bashrc &>/dev/null; then
-    if grep -o '/usr/local/sbin:\\' "${HOME}"/.bashrc &>/dev/null; then
-        sed -i '\/usr\/local\/sbin:\\/i \/usr\/local\/ssl\/bin:\\' "${HOME}"/.bashrc
+    if [[ "${get_str}" =~ ${regex_str} ]]; then
+        sed -i '\/usr\/sbin:\\/i \/usr\/local\/ssl\/bin:\\' "${HOME}"/.bashrc
     else
-        sed -i 's/\/usr\/local\/sbin/\/usr\/local\/ssl\/bin:\/usr\/local\/sbin/g' "${HOME}"/.bashrc
+        sed -i 's/\/usr\/sbin:/\/usr\/local\/ssl\/bin:\/usr\/sbin:/g' "${HOME}"/.bashrc
     fi
 fi
 
@@ -333,6 +335,9 @@ cleanup_fn
 
 # DISPLAY THE UPDATE OPENSSL STATS
 display_stats_fn
+
+# SHOW THE OPENSSL VERSION
+show_ver_fn
 
 # SHOW EXIT MESSAGE
 exit_fn
