@@ -7,9 +7,9 @@
 ##
 ##  Purpose: Build Official WSL2 Kernels
 ##
-##  Updated: 10.07.23
+##  Updated: 12.30.23
 ##
-##  Script version: 2.3
+##  Script version: 2.4
 ##
 ############################################################################################################################################
 
@@ -27,16 +27,16 @@ prompt_fn()
     local answer
     clear
 
-    printf "%s\n\n%s\n%s\n%s\n\n" \
+    printf "%s\n\n%s\n%s\n%s\n\n"    \
         'Choose the kernel version:' \
-        '[1] 5.15.133.1 (10.06.23)' \
-        '[2] 6.1.21.2 (07.25.23)' \
+        '[1] 5.15.137.3 (12.18.23)'  \
+        '[2] 6.1.21.2 (07.25.23)'    \
         '[3] Exit'
     read -p 'Your choices are (1 to 3): ' answer
     clear
 
     case "${answer}" in
-        1)      archive_url='https://github.com/microsoft/WSL2-Linux-Kernel/archive/refs/tags/linux-msft-wsl-5.15.133.1.tar.gz';;
+        1)      archive_url='https://github.com/microsoft/WSL2-Linux-Kernel/archive/refs/tags/linux-msft-wsl-5.15.137.3.tar.gz';;
         2)      archive_url='https://github.com/microsoft/WSL2-Linux-Kernel/archive/refs/tags/linux-msft-wsl-6.1.21.2.tar.gz';;
         3)      exit 0;;
         *)
@@ -54,7 +54,7 @@ prompt_fn
 # SET VARIABLES
 #
 
-script_ver=2.3
+script_ver=2.4
 cwd="${PWD}"/wsl-build-script
 archive_ver="$(echo "${archive_url}" | sed 's/^.*\/.*-wsl-\(.*\)\.tar\.gz$/\1/')"
 archive_dir="${cwd}/wsl-kernel-${archive_ver}"
@@ -63,7 +63,7 @@ archive_name="${archive_dir}.tar.${archive_ext}"
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
-printf "\n%s\n%s\n\n" \
+printf "\n%s\n%s\n\n"                    \
     "WSL2 Build Script - v${script_ver}" \
     '==============================================='
 
@@ -85,7 +85,7 @@ export CC=gcc CXX=g++
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O2 -march=native'
 
 #
 # SET PATH
@@ -93,20 +93,15 @@ export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
 
 PATH="\
 /usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
 /usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
+/usr/local/cuda/bin\
 "
 export PATH
 
@@ -116,8 +111,8 @@ export PATH
 
 exit_fn()
 {
-    printf "\n%s\n\n%s\n%s\n\n" \
-        'The script has completed' \
+    printf "\n%s\n\n%s\n%s\n\n"                                   \
+        'The script has completed'                                \
         'Make sure to star this repository to show your support!' \
         "${web_repo}"
     exit 0
@@ -125,8 +120,8 @@ exit_fn()
 
 fail_fn()
 {
-    printf "\n\n%s\n\n%s\n\n%s\n\n" \
-        "${1}" \
+    printf "\n\n%s\n\n%s\n\n%s\n\n"                              \
+        "${1}"                                                   \
         'Please create a support ticket so I can work on a fix.' \
         "${web_repo}/issues"
     exit 1
@@ -161,7 +156,7 @@ fi
 
 if [ ! -f "${archive_name}" ]; then
     printf "%s\n\n" 'Downloading the source code from GitHub...'
-    wget -U "${user_agent}" --show-progress -cqO "${archive_name}" "${archive_url}"
+    wget --show-progress -U "${user_agent}" -cqO "${archive_name}" "${archive_url}"
 fi
 
 #
