@@ -4,11 +4,11 @@
 ##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/Installer%20Scripts/GNU%20Software/build-curl-git
 ##
-##  Purpose: Build cURL with OpenSSL backend.
+##  Purpose: Build cURL with OpenSSL backend
 ##
-##  Updated: 12.09.23
+##  Updated: 12.30.23
 ##
-##  Script version: 1.0
+##  Script version: 1.1
 ##
 ######################################################################################################################################
 
@@ -23,7 +23,7 @@ fi
 # SET THE VARIABLES
 #
 
-script_ver=1.0
+script_ver=1.1
 archive_dir=curl-git
 git_url=https://github.com/curl/curl.git
 cwd="${PWD}"/curl-git-build-script
@@ -122,7 +122,7 @@ cleanup_fn()
 {
     local choice
 
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n"                  \
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n"                \
         '============================================' \
         '  Do you want to clean up the build files?  ' \
         '============================================' \
@@ -236,12 +236,10 @@ cd build || exit 1
 echo
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
-    exit 1
 fi
 echo
 if ! sudo make install; then
     fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
-    exit 1
 fi
 
 # PROMPT USER TO CLEAN UP FILES
