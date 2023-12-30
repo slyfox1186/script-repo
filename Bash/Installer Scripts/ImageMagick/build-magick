@@ -3,8 +3,8 @@
 
 #############################################################################################################
 ##
-##  Script Version: 4.1
-##  Updated: 12.29.23
+##  Script Version: 4.2
+##  Updated: 12.30.23
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo/blob/main/shell/installers/imagemagick/build-magick
 ##
@@ -28,7 +28,6 @@
 ##          - APT packages
 ##
 ##  Fixed:
-##          - removed autoreconf command from imagemagick
 ##          - Incorrect pkg-config location when building ImageMagick
 ##          - libjxl dependency
 ##
@@ -45,7 +44,7 @@ fi
 # SET GLOBAL VARIABLES
 #
 
-script_ver=4.1
+script_ver=4.2
 progname="${0}"
 cwd="${PWD}"/magick-build-script
 packages="${cwd}"/packages
@@ -323,7 +322,7 @@ git_1_fn()
     git_repo="${1}"
     git_url="${2}"
 
-    if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${git_repo}/${git_url}")"; then
+    if curl_cmd="$(curl-A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${git_repo}/${git_url}")"; then
         g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
         g_ver2="$(echo "${curl_cmd}" | jq -r '.[0].tag_name' 2>/dev/null)"
@@ -999,7 +998,8 @@ aclocal_dir="$(sudo find /usr/ -type d -name 'aclocal' | sort | head -n1)"
 
 git_ver_fn 'ImageMagick/ImageMagick' '1' 'R'
 if build 'ImageMagick' '7.1.1-23'; then
-    download 'https://github.com/ImageMagick/ImageMagick/archive/refs/tags/7.1.1-23.tar.gz' 'imagemagick-7.1.1-23.tar.gz'
+    download 'https://github.com/ImageMagick/ImageMagick/archive/refs/tags/7.1.1-24.tar.gz' 'imagemagick-7.1.1-23.tar.gz'
+    autoreconf -fi -I "${aclocal_dir}"
     mkdir build
     cd build || exit 1
     ../configure --prefix="${install_dir}"                                    \
