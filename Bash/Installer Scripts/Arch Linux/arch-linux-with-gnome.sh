@@ -83,7 +83,7 @@ mkinitcpio -P
 echo '127.0.0.1    localhost' > /etc/hosts
 echo '::1          localhost' >> /etc/hosts
 echo '' >> /etc/hosts
-echo '127.0.1.1    localhost.localdomain NAME-OF-COMPUTER' >> /etc/hosts
+echo "127.0.1.1    localhost.localdomain $computer_name" >> /etc/hosts
 
 # Set the root password (use a secure password here)
 echo "root:$root_password" | chpasswd
