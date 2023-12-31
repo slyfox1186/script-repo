@@ -2071,7 +2071,7 @@ chostname()
 
 drp()
 {
-    local choice
+    local choice restart_policy
     clear
 
     printf "%s\n\n%s\n%s\n%s\n%s\n\n"      \
