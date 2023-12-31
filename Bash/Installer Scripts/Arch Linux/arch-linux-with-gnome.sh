@@ -6,8 +6,8 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-# SET VARIABLES (YOU MUST EDIT THESE)
-# WARNING IT IS CONSIDERED BAD PRACTICE TO STORE PASSWORDS IN A FILE! MAKE SURE YOU CHANGE THESE AFTER YOU LOG INTO ARCH LINUX!
+# Set Variables (You must edit these)
+# WARNING! It is considered bad practice to store passwords in a file... MAKE SURE you change these after you log into Arch Linux!
 user_name='username'
 user_password='password'
 root_password='password'
