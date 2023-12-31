@@ -2069,7 +2069,7 @@ chostname()
 ## DOCKER ##
 ############
 
-dra()
+drp()
 {
     local choice
     clear
