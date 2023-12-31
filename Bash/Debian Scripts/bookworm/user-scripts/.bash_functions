@@ -2065,3 +2065,23 @@ chostname()
     hostname
 }
 
+############
+## DOCKER ##
+############
+
+dra()
+{
+    local choice
+    clear
+
+    printf "%s\n\n"          \
+        'Choose an option'   \
+        '[1] Restart Always'          \
+        '[2] Restart Unless Stopped ' \
+        '[3] On Failure'              \
+        '[4] No'
+    read -p 'Your choices are (1 to 4): ' choice
+    clear
+
+    docker update --restart="${choice}" 
+}
