@@ -2074,11 +2074,11 @@ drp()
     local choice
     clear
 
-    printf "%s\n\n%s\n%s\n%s\n%s\n\n" \
-        'Choose an option'            \
-        '[1] Restart Always'          \
-        '[2] Restart Unless Stopped ' \
-        '[3] On Failure'              \
+    printf "%s\n\n%s\n%s\n%s\n%s\n\n"      \
+        'Change the Docker restart policy' \
+        '[1] Restart Always'               \
+        '[2] Restart Unless Stopped '      \
+        '[3] On Failure'                   \
         '[4] No'
     read -p 'Your choices are (1 to 4): ' choice
     clear
