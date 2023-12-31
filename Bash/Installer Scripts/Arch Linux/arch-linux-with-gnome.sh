@@ -30,27 +30,34 @@ read -p 'Enter a drive path: ' drive_path
 fdisk "$drive_path" <<EOF
 g
 n
+1
 
 +512M
 t
 1
 n
+2
+
++900G
+t
+2
+23
+n
+3
 
 +2G
 t
-
-826
-n
-
+3
+19
 w
 EOF
 
 # Format the partitions
 regex_str='^\/dev\/sd'
 if [[ ! $drive_path =~ $regex_str ]]; then
-    mount "${drive_path}p2" /mnt
-    mount --mkdir "${drive_path}p1" /mnt/efi
-    swapon "${drive_path}p3"
+    mount "${drive_path}1p2" /mnt
+    mount --mkdir "${drive_path}1p1" /mnt/efi
+    swapon "${drive_path}1p3"
 else
     mount "${drive_path}2" /mnt
     mount --mkdir "${drive_path}1" /mnt/efi
