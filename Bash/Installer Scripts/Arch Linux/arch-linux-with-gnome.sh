@@ -1,142 +1,117 @@
-#!/usr/bin/env bash
+#!/bin/bash
+
+# Ensure script is run as root
+if [[ $EUID -ne 0 ]]; then
+   echo 'This script must be run as root' 
+   exit 1
+fi
+
+# SET VARIABLES (YOU MUST EDIT THESE)
+# WARNING IT IS CONSIDERED BAD PRACTICE TO STORE PASSWORDS IN A FILE! MAKE SURE YOU CHANGE THESE AFTER YOU LOG INTO ARCH LINUX!
+user_name='username'
+user_password='password'
+root_password='password'
+computer_name='name'
+
+# UPDATE THE SYSTEM CLOCK
+timedatectl set-ntp true
 
 clear
 
-localectl set-keymap --no-convert us
-
-cat /sys/firmware/efi/fw_platform_size
-
-timedatectl
-
-################
-## LIST DISKS ##
-################
-
-clear
 fdisk -l
 
-####################
-## PARTITION DISK ##
-####################
+printf "\n%s\n\n%s\n%s\n\n"                                   \
+    'Warning! Continuing will format the drive you specify!'  \
+    'Enter the full path of the drive you want to utilize...' \
+    'Examples [ /dev/sda | /dev/nvme1n ]'
+read -p 'Enter a drive path: ' drive_path
 
-# LOAD THE INTERACTIVE PARTITIONER PROGRAM
-cfdisk /dev/nvmeXXX
+# Partition the disk (Warning: This will erase your disk!)
+fdisk "$drive_path" <<EOF
+g
+n
 
-# SET EFI PARTITION
-/dev/nvmeXXp1
-Size: +512M
-Type: EFI
-## SET SWAP PARTITION ##
-/dev/nvmeXXp2
-Size: +2G
-Type: Linux swap
-# SET ROOT PARTITION
-/dev/nvmeXXp3
-Size: remainder of disk
-Type: Linux x86-64 root
++512M
+t
+1
+n
 
-#######################
-## FORMAT PARTITIONS ##
-#######################
++2G
+t
 
-# FORMAT PARTITION 1
-mkfs.fat -F32 /dev/nvmeXXp1
-# FORMAT PARTITION 2
-mkswap /dev/nvmeXXp2
-# FORMAT PARTITION 3
-mkfs.ext4 /dev/nvmeXXp3
+82
+n
 
-#################
-## MOUNT DISKS ##
-#################
+w
+EOF
 
-# MOUNT PARTITION 3
-mount /dev/nvmeXXp3 /mnt
-# MOUNT PARTITION 1
-mount --mkdir /dev/nvmeXXp1 /mnt/boot
-# MOUNT PARTITION 2
-swapon /dev/nvmeXXp2
-# VERIFY MOUNTS
-lsblk
+# Format the partitions
+regex_str='^\/dev\/sd'
+if [[ ! $drive_path =~ $regex_str ]]; then
+    mount "${drive_path}p2" /mnt
+    mount --mkdir "${drive_path}p1" /mnt/efi
+    swapon "${drive_path}p3"
+else
+    mount "${drive_path}2" /mnt
+    mount --mkdir "${drive_path}1" /mnt/efi
+    swapon "${drive_path}3"
+fi
+ 
+# Install the base system
+pacstrap -K /mnt base linux linux-firmware linux-headers
 
-###############################
-## INSTALL SOFTWARE ON MOUNT ##
-###############################
-
-pacstrap -K /mnt base base-devel efibootmgr grub linux linux-headers linux-firmware nano gnome-terminal gnome-text-editor gedit gedit-plugins nvidia networkmanager
-
+# Generate fstab
 genfstab -U /mnt >> /mnt/etc/fstab
 
-arch-chroot /mnt /bin/bash
-
+# Chroot into the new system
+arch-chroot /mnt /bin/bash <<EOF
+# Set timezone
 ln -sf /usr/share/zoneinfo/US/Eastern /etc/localtime
-
 hwclock --systohc
 
+# Set localization
 echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen
-
 locale-gen
+echo 'LANG=en_US.UTF-8' > /etc/locale.conf
 
-echo 'NAME-OF-COMPUTER' > /etc/hostname
+# Set hostname
+echo "$computer_name" > /etc/hostname
 
 mkinitcpio -P
 
-echo '127.0.1.1 localhost.localdomain NAME-OF-COMPUTER' >> /etc/hosts
+# Set the hosts file
+echo '127.0.0.1    localhost' > /etc/hosts
+echo '::1          localhost' >> /etc/hosts
+echo '' >> /etc/hosts
+echo '127.0.1.1    localhost.localdomain NAME-OF-COMPUTER' >> /etc/hosts
 
+# Set the root password (use a secure password here)
+echo "root:$root_password" | chpasswd
+
+# Create a new user with a password
+useradd -m $user_name
+echo "$user_name:$user_password" | chpasswd
+
+# Install essential packages
+pacman -Sy --needed --noconfirm base-devel efibootmgr grub nano gnome-terminal gnome-text-editor gedit gedit-plugins nvidia networkmanager
+
+# Enable the Network Manager service
 systemctl enable NetworkManager
 
-passwd root
-
-mkdir /boot/efi
-
-mount /dev/nvmeXXp1 /boot/efi
-lsblk
-
-grub-install --target=x86_64-efi --bootloader-id=GRUB --efi-directory=/boot/efi
-
-grub-mkconfig -o  /boot/grub/grub.cfg
+# Set up GRUB
+grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
+grub-mkconfig -o /boot/grub/grub.cfg
 
 mkdir /boot/efi/EFI/BOOT
 cp /boot/efi/EFI/GRUB/grubx64.efi /boot/efi/EFI/BOOT/BOOTX64.EFI
 
-nano /boot/efi/startup.sh
-LINE 1 = bcf boot add 1 fs0:\EFI\GRUB\grubx64.efi "My GRUB Bootloader"
-LINE 2 = exit
+echo 'bcf boot add 1 fs0:\EFI\GRUB\grubx64.efi "Arch Linux Bootloader"' > /boot/efi/startup.sh
+echo 'exit' >> /boot/efi/startup.sh
+EOF
 
-# NEXT YOU NEED TO EXIT THE CURRENT LOGIN SHELL YOU ARE IN
-exit
+# Unmount partitions
 umount -R /mnt
-reboot
+swapoff -a
 
-####################################
-## AFTER YOU LOAD INTO ARCH LINUX ##
-####################################
-
-# LOGIN TO ROOT AND ENTER THE ROOT PASSWD YOU SET
-root
-<ENTER THE ROOT PASSWORD>
-
-# CREATE A NEW USER ACCOUNT
-useradd -m -g users -G wheel -s /bin/bash user-name
-
-# CREATE A NEW USER PASSWORD
-passwd user-name
-<ENTER THE USER PASSWORD>
-
-# SET VISUDO ENV VAR
-EDITOR=nano visudo
-
-# NOW UNCOMMENT THE LINE
-# %wheel ALL=(ALL:ALL) NOPASSWD: ALL
-
-# ENTER THE NEWLY CREATED USER NAME TO LOGIN AS USER
-user-name
-<ENTER THE USER PASSWORD>
-
-# INSTALL REQUIRED SOFTWARE USING PACMAN
-pacman -Sy pulseaudio pulseaudio-alsa xorg xorg-xinit xorg-server gnome lightdm lightdm-gtk-greeter
-
-# LOGIN TO GNOME DESKTOP
-sudo systemctl enable gdm.service
-sudo systemctl start gdm.service
-sudo reboot
+# Reboot
+printf "\n%s\n\n" 'Arch Linux is installed. Please reboot.'
