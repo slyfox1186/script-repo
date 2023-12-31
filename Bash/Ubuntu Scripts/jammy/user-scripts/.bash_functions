@@ -2074,8 +2074,8 @@ drp()
     local choice
     clear
 
-    printf "%s\n\n"          \
-        'Choose an option'   \
+    printf "%s\n\n%s\n%s\n%s\n%s\n\n" \
+        'Choose an option'            \
         '[1] Restart Always'          \
         '[2] Restart Unless Stopped ' \
         '[3] On Failure'              \
