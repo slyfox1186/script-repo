@@ -2095,5 +2095,5 @@ drp()
                 ;;
     esac
 
-    docker update --restart="${choice}" 
+    docker update --restart="${restart_policy}" 
 }
