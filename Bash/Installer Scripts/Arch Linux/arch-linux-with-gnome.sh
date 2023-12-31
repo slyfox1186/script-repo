@@ -13,7 +13,7 @@ user_password='password'
 root_password='password'
 computer_name='name'
 
-# UPDATE THE SYSTEM CLOCK
+# Update the system clock
 timedatectl set-ntp true
 
 clear
