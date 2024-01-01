@@ -9,7 +9,7 @@ set -e
 ####################################
 
 # INSTALL REQUIRED SOFTWARE USING PACMAN
-pacman -Sy gnome lightdm lightdm-gtk-greeter nano gnome-terminal gnome-text-editor gedit gedit-plugins nvidia pulseaudio pulseaudio-alsa sudo xorg xorg-xinit xorg-server
+pacman -Sy gnome lightdm lightdm-gtk-greeter nano gnome-terminal gnome-text-editor gedit gedit-plugins git nvidia pulseaudio pulseaudio-alsa sudo xorg xorg-xinit xorg-server
 
 # SET VISUDO ENV VAR
 EDITOR=nano visudo
