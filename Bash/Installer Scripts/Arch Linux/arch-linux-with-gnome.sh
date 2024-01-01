@@ -1,122 +1,67 @@
 #!/bin/bash
 
-# Ensure script is run as root
-if [[ $EUID -ne 0 ]]; then
-   echo 'This script must be run as root' 
-   exit 1
-fi
+# Set the disk variable (modify as needed)
+DISK="/dev/nvme1n"
 
-# Set Variables (You must edit these)
-# WARNING! It is considered bad practice to store passwords in a file... MAKE SURE you change these after you log into Arch Linux!
-user_name='username'
-user_password='password'
-root_password='password'
-computer_name='name'
+# Wipe the disk
+sgdisk --zap-all $DISK
 
-# Update the system clock
-timedatectl set-ntp true
+# Create partitions
+# EFI partition
+sgdisk -n 1:0:+550M -t 1:EF00 $DISK
+# Swap partition
+sgdisk -n 2:0:+2G -t 2:8200 $DISK
+# Root partition
+sgdisk -n 3:0:0 -t 3:8300 $DISK
 
-clear
+# Inform the OS of partition table changes
+partprobe $DISK
 
-fdisk -l
+# Format partitions
+mkfs.fat -F32 "${DISK}1"     # EFI partition
+mkswap "${DISK}2"            # Swap partition
+swapon "${DISK}2"
+mkfs.ext4 "${DISK}3"         # Root partition
 
-printf "\n%s\n\n%s\n%s\n\n"                                   \
-    'Warning! Continuing will format the drive you specify!'  \
-    'Enter the full path of the drive you want to utilize...' \
-    'Examples [ /dev/sda | /dev/nvme1n ]'
-read -p 'Enter a drive path: ' drive_path
+# Mount the partitions
+mount "${DISK}3" /mnt
+mkdir /mnt/boot
+mount "${DISK}1" /mnt/boot
 
-# Partition the disk (Warning: This will erase your disk!)
-fdisk "$drive_path" <<EOF
-g
-n
-1
-
-+512M
-t
-1
-n
-2
-
-+900G
-t
-23
-n
-3
-
-+2G
-t
-19
-w
-EOF
-
-# Format the partitions
-regex_str='^\/dev\/sd'
-if [[ ! $drive_path =~ $regex_str ]]; then
-    mount "${drive_path}1p2" /mnt
-    mount --mkdir "${drive_path}1p1" /mnt/efi
-    swapon "${drive_path}1p3"
-else
-    mount "${drive_path}2" /mnt
-    mount --mkdir "${drive_path}1" /mnt/efi
-    swapon "${drive_path}3"
-fi
- 
-# Install the base system
-pacstrap -K /mnt base linux linux-firmware linux-headers
+# Install base system and basic packages (including grub for UEFI)
+pacstrap /mnt base linux linux-firmware vim intel-ucode grub efibootmgr networkmanager
 
 # Generate fstab
 genfstab -U /mnt >> /mnt/etc/fstab
 
-# Chroot into the new system
-arch-chroot /mnt /bin/bash <<EOF
-# Set timezone
-ln -sf /usr/share/zoneinfo/US/Eastern /etc/localtime
+# Chroot into the system
+arch-chroot /mnt
+
+# Timezone and locale settings (modify as needed)
+ln -sf /usr/share/zoneinfo/Region/City /etc/localtime
 hwclock --systohc
-
-# Set localization
-sed -i 's/#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
+echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
 locale-gen
-echo 'LANG=en_US.UTF-8' > /etc/locale.conf
+echo "LANG=en_US.UTF-8" > /etc/locale.conf
 
-# Set hostname
-echo "$computer_name" > /etc/hostname
+# Hostname configuration (modify as needed)
+echo "myarch" > /etc/hostname
+echo -e "127.0.0.1\tlocalhost\n::1\tlocalhost\n127.0.1.1\tmyarch.localdomain\tmyarch" >> /etc/hosts
 
-mkinitcpio -P
+# Set root password (change as needed)
+echo root:password | chpasswd
 
-# Set the hosts file
-echo '127.0.0.1    localhost' > /etc/hosts
-echo '::1          localhost' >> /etc/hosts
-echo '' >> /etc/hosts
-echo "127.0.1.1    localhost.localdomain $computer_name" >> /etc/hosts
-
-# Set the root password (use a secure password here)
-echo "root:$root_password" | chpasswd
-
-# Create a new user with a password
-useradd -m $user_name
-echo "$user_name:$user_password" | chpasswd
-
-# Install essential packages
-pacman -Sy --needed --noconfirm base-devel efibootmgr grub nano gnome-terminal gnome-text-editor gedit gedit-plugins nvidia networkmanager
-
-# Enable the Network Manager service
-systemctl enable NetworkManager
-
-# Set up GRUB
-grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
+# Install GRUB
+grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
 grub-mkconfig -o /boot/grub/grub.cfg
 
-mkdir /boot/efi/EFI/BOOT
-cp /boot/efi/EFI/GRUB/grubx64.efi /boot/efi/EFI/BOOT/BOOTX64.EFI
+# Enable NetworkManager
+systemctl enable NetworkManager
 
-echo 'bcf boot add 1 fs0:\EFI\GRUB\grubx64.efi "Arch Linux Bootloader"' > /boot/efi/startup.sh
-echo 'exit' >> /boot/efi/startup.sh
-EOF
+# Exit chroot
+exit
 
-# Unmount partitions
+# Unmount all partitions
 umount -R /mnt
-swapoff -a
 
-# Reboot
-printf "\n%s\n\n" 'Arch Linux is installed. Please reboot.'
+echo "Arch Linux is installed. Please reboot."
