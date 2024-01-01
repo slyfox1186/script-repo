@@ -67,7 +67,7 @@ unset script
 
 for script in ${script_array[@]}
 do
-    if ! sudo chown "${USER}":"${USER}" "${HOME}/${script}"; then
+    if ! sudo chown "${USER}":wheel "${HOME}/${script}"; then
         fail_fn "Failed to update the file permissions for: ${script}. Line ${LINENO}"
     fi
 done
