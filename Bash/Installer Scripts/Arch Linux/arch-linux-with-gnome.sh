@@ -2,68 +2,39 @@
 
 clear
 
+set -e
+
 localectl set-keymap --no-convert us
 
-cat /sys/firmware/efi/fw_platform_size
-
-timedatectl
-
-################
-## LIST DISKS ##
-################
-
-clear
-fdisk -l
-
-####################
-## PARTITION DISK ##
-####################
-
-# LOAD THE INTERACTIVE PARTITIONER PROGRAM
-cfdisk /dev/nvmeXXX
-
-# SET EFI PARTITION
-/dev/nvmeXXp1
-Size: +512M
-Type: EFI
-## SET SWAP PARTITION ##
-/dev/nvmeXXp2
-Size: +2G
-Type: Linux swap
-# SET ROOT PARTITION
-/dev/nvmeXXp3
-Size: remainder of disk
-Type: Linux x86-64 root
+timedatectl set-ntp true
 
 #######################
 ## FORMAT PARTITIONS ##
 #######################
 
 # FORMAT PARTITION 1
-mkfs.fat -F32 /dev/nvmeXXp1
+mkfs.fat -F32 /dev/nvmeXn1p1
 # FORMAT PARTITION 2
-mkswap /dev/nvmeXXp2
+mkswap /dev/nvmeXn1p2
 # FORMAT PARTITION 3
-mkfs.ext4 /dev/nvmeXXp3
+mkfs.ext4 /dev/nvmeXn1p3
 
 #################
 ## MOUNT DISKS ##
 #################
 
 # MOUNT PARTITION 3
-mount /dev/nvmeXXp3 /mnt
+mount /dev/nvmeXn1p3 /mnt
 # MOUNT PARTITION 1
-mount --mkdir /dev/nvmeXXp1 /mnt/boot
+mount --mkdir /dev/nvmeXn1p1 /mnt/boot
 # MOUNT PARTITION 2
-swapon /dev/nvmeXXp2
-# VERIFY MOUNTS
-lsblk
+swapon /dev/nvmeXn1p2
 
 ###############################
 ## INSTALL SOFTWARE ON MOUNT ##
 ###############################
 
-pacstrap -K /mnt base base-devel efibootmgr grub linux linux-headers linux-firmware nano gnome-terminal gnome-text-editor gedit gedit-plugins nvidia networkmanager
+pacstrap -K /mnt base efibootmgr grub linux linux-headers linux-firmware networkmanager
 
 genfstab -U /mnt >> /mnt/etc/fstab
 
@@ -105,6 +76,7 @@ LINE 2 = exit
 
 # NEXT YOU NEED TO EXIT THE CURRENT LOGIN SHELL YOU ARE IN
 exit
+
 umount -R /mnt
 reboot
 
@@ -134,8 +106,7 @@ user-name
 <ENTER THE USER PASSWORD>
 
 # INSTALL REQUIRED SOFTWARE USING PACMAN
-pacman -Sy pulseaudio pulseaudio-alsa xorg xorg-xinit xorg-server gnome lightdm lightdm-gtk-greeter
-
+pacman -Sy pulseaudio pulseaudio-alsa xorg xorg-xinit xorg-server gnome lightdm lightdm-gtk-greeter     nano gnome-terminal gnome-text-editor gedit gedit-plugins nvidia
 # LOGIN TO GNOME DESKTOP
 sudo systemctl enable gdm.service
 sudo systemctl start gdm.service
