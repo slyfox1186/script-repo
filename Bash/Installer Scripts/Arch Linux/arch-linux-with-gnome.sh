@@ -1,63 +1,142 @@
-#!/bin/bash
-
-# Ensure script is run as root
-if [[ $EUID -ne 0 ]]; then
-   echo 'This script must be run as root' 
-   exit 1
-fi
-
-# Set Variables (You must edit these)
-# WARNING! It is considered bad practice to store passwords in a file... MAKE SURE you change these after you log into Arch Linux!
-user_name='username'
-user_password='password'
-root_password='password'
-computer_name='name'
-
-# Update the system clock
-timedatectl set-ntp true
+#!/usr/bin/env bash
 
 clear
 
+localectl set-keymap --no-convert us
+
+cat /sys/firmware/efi/fw_platform_size
+
+timedatectl
+
+################
+## LIST DISKS ##
+################
+
+clear
 fdisk -l
 
-printf "\n%s\n\n%s\n%s\n\n"                                   \
-    'Warning! Continuing will format the drive you specify!'  \
-    'Enter the full path of the drive you want to utilize...' \
-    'Examples [ /dev/sda | /dev/nvme1n ]'
-read -p 'Enter a drive path: ' drive_path
+####################
+## PARTITION DISK ##
+####################
 
-# Partition the disk (Warning: This will erase your disk!)
-fdisk "$drive_path" <<EOF
-g
-n
-1
+# LOAD THE INTERACTIVE PARTITIONER PROGRAM
+cfdisk /dev/nvmeXXX
 
-+512M
-t
-1
-n
-2
+# SET EFI PARTITION
+/dev/nvmeXXp1
+Size: +512M
+Type: EFI
+## SET SWAP PARTITION ##
+/dev/nvmeXXp2
+Size: +2G
+Type: Linux swap
+# SET ROOT PARTITION
+/dev/nvmeXXp3
+Size: remainder of disk
+Type: Linux x86-64 root
 
-+1.8TB
-t
-23
-n
-3
+#######################
+## FORMAT PARTITIONS ##
+#######################
 
-+2G
-t
-19
-w
-EOF
+# FORMAT PARTITION 1
+mkfs.fat -F32 /dev/nvmeXXp1
+# FORMAT PARTITION 2
+mkswap /dev/nvmeXXp2
+# FORMAT PARTITION 3
+mkfs.ext4 /dev/nvmeXXp3
 
-# Format the partitions
-regex_str='^\/dev\/sd'
-if [[ ! $drive_path =~ $regex_str ]]; then
-    mount "${drive_path}1p2" /mnt
-    mount --mkdir "${drive_path}1p1" /mnt/efi
-    swapon "${drive_path}1p3"
-else
-    mount "${drive_path}2" /mnt
-    mount --mkdir "${drive_path}1" /mnt/efi
-    swapon "${drive_path}3"
-fi
+#################
+## MOUNT DISKS ##
+#################
+
+# MOUNT PARTITION 3
+mount /dev/nvmeXXp3 /mnt
+# MOUNT PARTITION 1
+mount --mkdir /dev/nvmeXXp1 /mnt/boot
+# MOUNT PARTITION 2
+swapon /dev/nvmeXXp2
+# VERIFY MOUNTS
+lsblk
+
+###############################
+## INSTALL SOFTWARE ON MOUNT ##
+###############################
+
+pacstrap -K /mnt base base-devel efibootmgr grub linux linux-headers linux-firmware nano gnome-terminal gnome-text-editor gedit gedit-plugins nvidia networkmanager
+
+genfstab -U /mnt >> /mnt/etc/fstab
+
+arch-chroot /mnt /bin/bash
+
+ln -sf /usr/share/zoneinfo/US/Eastern /etc/localtime
+
+hwclock --systohc
+
+echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen
+
+locale-gen
+
+echo 'NAME-OF-COMPUTER' > /etc/hostname
+
+mkinitcpio -P
+
+echo '127.0.1.1 localhost.localdomain NAME-OF-COMPUTER' >> /etc/hosts
+
+systemctl enable NetworkManager
+
+passwd root
+
+mkdir /boot/efi
+
+mount /dev/nvmeXXp1 /boot/efi
+lsblk
+
+grub-install --target=x86_64-efi --bootloader-id=GRUB --efi-directory=/boot/efi
+
+grub-mkconfig -o  /boot/grub/grub.cfg
+
+mkdir /boot/efi/EFI/BOOT
+cp /boot/efi/EFI/GRUB/grubx64.efi /boot/efi/EFI/BOOT/BOOTX64.EFI
+
+nano /boot/efi/startup.sh
+LINE 1 = bcf boot add 1 fs0:\EFI\GRUB\grubx64.efi "My GRUB Bootloader"
+LINE 2 = exit
+
+# NEXT YOU NEED TO EXIT THE CURRENT LOGIN SHELL YOU ARE IN
+exit
+umount -R /mnt
+reboot
+
+####################################
+## AFTER YOU LOAD INTO ARCH LINUX ##
+####################################
+
+# LOGIN TO ROOT AND ENTER THE ROOT PASSWD YOU SET
+root
+<ENTER THE ROOT PASSWORD>
+
+# CREATE A NEW USER ACCOUNT
+useradd -m -g users -G wheel -s /bin/bash user-name
+
+# CREATE A NEW USER PASSWORD
+passwd user-name
+<ENTER THE USER PASSWORD>
+
+# SET VISUDO ENV VAR
+EDITOR=nano visudo
+
+# NOW UNCOMMENT THE LINE
+# %wheel ALL=(ALL:ALL) NOPASSWD: ALL
+
+# ENTER THE NEWLY CREATED USER NAME TO LOGIN AS USER
+user-name
+<ENTER THE USER PASSWORD>
+
+# INSTALL REQUIRED SOFTWARE USING PACMAN
+pacman -Sy pulseaudio pulseaudio-alsa xorg xorg-xinit xorg-server gnome lightdm lightdm-gtk-greeter
+
+# LOGIN TO GNOME DESKTOP
+sudo systemctl enable gdm.service
+sudo systemctl start gdm.service
+sudo reboot
