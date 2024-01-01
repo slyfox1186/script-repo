@@ -13,6 +13,24 @@ geds() { sudo -Hu root "$(type -P gedit)" "${@}" &>/dev/null; }
 gted() { "$(type -P gted)" "${@}" &>/dev/null; }
 gteds() { sudo -Hu root "$(type -P gted)" "${@}" &>/dev/null; }
 
+################################################
+## GET THE OS AND ARCH OF THE ACTIVE COMPUTER ##
+################################################
+
+mypc()
+{
+    local OS VER
+    
+    . '/etc/os-release'
+    OS="${NAME}"
+    VER="${VERSION_ID}"
+
+    clear
+    printf "%s\n%s\n\n"           \
+        "Operating System: ${OS}" \
+        "Specific Version: ${VER}"
+}
+
 ###################
 ## FIND COMMANDS ##
 ###################
@@ -142,7 +160,7 @@ cpf()
 
     cp "${1}" "${HOME}/tmp/${1}"
 
-    chown -R "${USER}":'users' "${HOME}/tmp/${1}"
+    chown -R "${USER}":"${USER}" "${HOME}/tmp/${1}"
     chmod -R 744 "${HOME}/tmp/${1}"
 
     clear; ls -1AvhFhFv --color --group-directories-first
@@ -159,10 +177,144 @@ mvf()
 
     mv "${1}" "${HOME}/tmp/${1}"
 
-    chown -R "${USER}":'users' "${HOME}/tmp/${1}"
+    chown -R "${USER}":"${USER}" "${HOME}/tmp/${1}"
     chmod -R 744 "${HOME}/tmp/${1}"
 
     clear; ls -1AvhFhFv --color --group-directories-first
+}
+
+##################
+## APT COMMANDS ##
+##################
+
+# DOWNLOAD AN APT PACKAGE + ALL ITS DEPENDENCIES IN ONE GO
+aptdl()
+{
+    clear
+    wget -c "$(apt --print-uris -qq --reinstall install ${1} 2>/dev/null | cut -d''\''' -f2)"
+    clear; ls -1AvhFhFv --color --group-directories-first
+}
+
+# CLEAN
+clean()
+{
+    clear
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt -y purge
+}
+
+# UPDATE
+update()
+{
+    clear
+    sudo apt update
+    sudo apt -y full-upgrade
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt -y purge
+}
+
+# FIX BROKEN APT PACKAGES
+fix()
+{
+    clear
+    if [ -f /tmp/apt.lock ]; then
+        sudo rm /tmp/apt.lock
+    fi
+    sudo dpkg --configure -a
+    sudo apt --fix-broken install
+    sudo apt -f -y install
+    sudo apt -y autoremove
+    sudo apt clean
+    sudo apt autoclean
+    sudo apt update
+}
+
+list()
+{
+    local search_cache
+    clear
+
+    if [ -n "${1}" ]; then
+        sudo apt list "*${1}*" 2>/dev/null | awk -F'/' '{print $1}'
+    else
+        read -p 'Enter the string to search: ' search_cache
+        clear
+        sudo apt list "*${1}*" 2>/dev/null | awk -F'/' '{print $1}'
+    fi
+}
+
+listd()
+{
+    local search_cache
+    clear
+
+    if [ -n "${1}" ]; then
+        sudo apt list -- "*${1}*"-dev 2>/dev/null | awk -F'/' '{print $1}'
+    else
+        read -p 'Enter the string to search: ' search_cache
+        clear
+        sudo apt list -- "*${1}*"-dev 2>/dev/null | awk -F'/' '{print $1}'
+    fi
+}
+
+# USE SUDO APT TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
+apts()
+{
+    local search
+    clear
+
+    if [ -n "${1}" ]; then
+        sudo apt search "${1} ~i" -F "%p"
+    else
+        read -p 'Enter the string to search: ' search
+        clear
+        sudo apt search "${search} ~i" -F "%p"
+    fi
+}
+
+# USE APT CACHE TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
+csearch()
+{
+    clear
+    local cache
+
+    if [ -n "${1}" ]; then
+        apt-cache search --names-only "${1}.*" | awk '{print $1}'
+    else
+        read -p 'Enter the string to search: ' cache
+        clear
+        apt-cache search --names-only "${cache}.*" | awk '{print $1}'
+    fi
+}
+
+# FIX MISSING GPNU KEYS USED TO UPDATE PACKAGES
+fix_key()
+{
+    clear
+
+    local file url
+
+    if [[ -z "${1}" ]] && [[ -z "${2}" ]]; then
+        read -p 'Enter the file name to store in /etc/apt/trusted.gpg.d: ' file
+        echo
+        read -p 'Enter the gpg key url: ' url
+        clear
+    else
+        file="${1}"
+        url="${2}"
+    fi
+
+    curl -S# "${url}" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/${file}"
+
+    if curl -S# "${url}" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/${file}"; then
+        echo 'The key was successfully added!'
+    else
+        echo 'The key FAILED to add!'
+    fi
 }
 
 ##########################
@@ -171,8 +323,8 @@ mvf()
 toa()
 {
     clear
-    chown -R "${USER}":'users' "${PWD}"
-    chmod -R 744 "${PWD}"
+    sudo chown -R "${USER}":"${USER}" "${PWD}"
+    sudo chmod -R 744 "${PWD}"
     clear; ls -1AvhFhFv --color --group-directories-first
 }
 
@@ -186,6 +338,16 @@ showpkgs()
     dpkg --get-selections |
     grep -v deinstall > "${HOME}"/tmp/packages.list
     gted "${HOME}"/tmp/packages.list
+}
+
+# PIPE ALL DEVELOPMENT PACKAGES NAMES TO file
+getdev()
+{
+    apt-cache search dev |
+    grep "\-dev" |
+    cut -d ' ' -f1 |
+    sort > 'dev-packages.list'
+    gted 'dev-packages.list'
 }
 
 ################
@@ -352,17 +514,12 @@ aria2()
     aria2c --out="${file}" "${link}"
 }
 
-# PRINT LAN & WAN IP ADDRESSES
 myip()
 {
-    local lan wan
     clear
-    lan="$(ip route get 1.2.3.4 | awk '{print $7}')"
-    wan="$(curl -A "${user_agent}" -fsS 'https://checkip.amazonaws.com')"
-    clear
-    printf "%s\n%s\n\n" \
-        "LAN: ${lan}" \
-        "WAN: ${wan}"
+    printf "%s\n%s\n\n"                                   \
+        "LAN: $(ip route get 1.2.3.4 | awk '{print $7}')" \
+        "WAN: $(curl -s 'https://checkip.amazonaws.com')"
 }
 
 # WGET COMMAND
@@ -430,15 +587,32 @@ rmf()
 # OPTIMIZE AND OVERWRITE THE ORIGINAL IMAGES
 imow()
 {
-    local cnt_queue cnt_total dimensions fext missing_pkgs pip_lock random_dir tmp_file v_noslash
+    local apt_pkgs cnt_queue cnt_total dimensions fext missing_pkgs pip_lock random_dir tmp_file v_noslash
 
     clear
 
     # THE FILE EXTENSION TO SEARCH FOR (DO NOT INCLUDE A '.' WITH THE EXTENSION)
     fext=jpg
 
-    # REQUIRED PACMAN
-    sudo pacman -Sq --noconfirm --needed sox
+    #
+    # REQUIRED APT PACKAGES
+    #
+
+    apt_pkgs=(sox libsox-dev)
+    for i in ${apt_pkgs[@]}
+    do
+        missing_pkg="$(dpkg -l | grep "${i}")"
+        if [ -z "${missing_pkg}" ]; then
+            missing_pkgs+=" ${i}"
+        fi
+    done
+
+    if [ -n "${missing_pkgs}" ]; then
+        sudo apt -y install ${missing_pkgs}
+        sudo apt -y autoremove
+        clear
+    fi
+    unset apt_pkgs i missing_pkg missing_pkgs
 
     #
     # REQUIRED PIP PACKAGES
@@ -533,16 +707,17 @@ im50()
 
 imdl()
 {
-    local cwd tmp_dir
+    local cwd tmp_dir user_agent
     clear
     cwd="${PWD}"
     tmp_dir="$(mktemp -d)"
+    user_agent="${user_agent}"
     cd "${tmp_dir}" || exit 1
     curl -A "${user_agent}" -Lso 'imow' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-and-overwrite.sh'
     sudo mv imow "${cwd}"
     sudo rm -fr "${tmp_dir}"
     cd "${cwd}" || exit 1
-    sudo chown "${USER}":'users' imow
+    sudo chown "${USER}":"${USER}" imow
     sudo chmod +rwx imow
 }
 
@@ -552,15 +727,20 @@ imdl()
 
 nvme_temp()
 {
+    local n0 n1 n2
     clear
 
-    local n0 n1 n2
+    if [ -d '/dev/nvme0n1' ]; then
+        n0="$(sudo nvme smart-log /dev/nvme0n1)"
+    fi
+    if [ -d '/dev/nvme1n1' ]; then
+        n1="$(sudo nvme smart-log /dev/nvme0n1)"
+    fi
+    if [ -d '/dev/nvme2n1' ]; then
+        n2="$(sudo nvme smart-log /dev/nvme0n1)"
+    fi
 
-    n0="$(sudo nvme smart-log /dev/nvme0n1)"
-    n1="$(sudo nvme smart-log /dev/nvme1n1)"
-    n2="$(sudo nvme smart-log /dev/nvme2n1)"
-
-    printf "nvme0n1:\n\n%s\n\nnvme1n1:\n\n%s\n\nnvme2n1:\n\n%s\n\n" "${n0}" "${n1}" "${n2}"
+    printf "%s\n\n%s\n\n%s\n\n%s\n\n" "nvme0n1: ${n0}" "nnvme1n1: ${n1}" "nnvme2n1: ${n2}"
 }
 
 #############################
@@ -594,14 +774,16 @@ cuda_purge()
     read -p 'Your choices are (1 or 2): ' answer
     clear
 
-    case "${answer}" in
-        1)
-                printf "%s\n%s\n\n" 'Purging the cuda-sdk-toolkit from your computer.' \
-                    '================================================'
-                sudo pacman -R --noconfirm "*cublas*" "cuda*" "nsight*"
-                ;;
-        2)      return 0;;
-    esac
+    if [[ "${answer}" -eq '1' ]]; then
+        echo 'Purging the cuda-sdk-toolkit from your computer.'
+        echo '================================================'
+        echo
+        sudo sudo apt -y --purge remove "*cublas*" "cuda*" "nsight*"
+        sudo sudo apt -y autoremove
+        sudo sudo apt update
+    elif [[ "${answer}" -eq '2' ]]; then
+        return 0
+    fi
 }
 
 ffdl()
@@ -690,6 +872,33 @@ cdff() { clear; cd "${HOME}/tmp/ffmpeg-build" || exit 1; cl; }
 ffm() { clear; bash <(curl -sSL 'http://ffmpeg.optimizethis.net'); }
 ffp() { clear; bash <(curl -sSL 'http://ffpb.optimizethis.net'); }
 
+####################
+## LIST PPA REPOS ##
+####################
+
+listppas()
+{
+    clear
+
+    local apt host user ppa entry
+
+    for apt in $(find /etc/apt/ -type f -name \*.list)
+    do
+        grep -Po "(?<=^deb\s).*?(?=#|$)" "${apt}" | while read entry
+        do
+            host="$(echo "${entry}" | cut -d/ -f3)"
+            user="$(echo "${entry}" | cut -d/ -f4)"
+            ppa="$(echo "${entry}" | cut -d/ -f5)"
+            #echo sudo apt-add-repository ppa:${USER}/${ppa}
+            if [ "ppa.launchpad.net" = "${host}" ]; then
+                echo sudo apt-add-repository ppa:"${USER}/${ppa}"
+            else
+                echo sudo apt-add-repository \'deb "${entry}"\'
+            fi
+        done
+    done
+}
+
 #########################
 ## NVIDIA-SMI COMMANDS ##
 #########################
@@ -729,7 +938,7 @@ hw_mon()
 
     # install lm-sensors if not already
     if ! type -P lm-sensors &>/dev/null; then
-        sudo pacman -S i2c-tools --noconfirm
+        sudo apt -y install lm-sensors
     fi
 
     # Add modprobe to system startup tasks if not already added
@@ -794,42 +1003,31 @@ hw_mon()
 }
 
 # CREATE A 7ZIP FILE WITH MAX COMPRESSION SETTINGS
+
 7z_1()
 {
     local answer source output
     clear
 
-    if [ -n "${1}" ]; then
-        if [ -f "${1}".7z ]; then
-            sudo rm "${1}".7z
-        fi
-        7z a -t7z -m0=lzma2 -mx1 "${1}".7z ./"${1}"/*
+    if [ -d "${1}" ]; then
+        source_dir="${1}"
+        7z a -y -t7z -m0=lzma2 -mx1 "${source_dir}".7z ./"${source_dir}"/*
     else
-        read -p 'Please enter the source folder path: ' source
-        echo
-        read -p 'Please enter the destination archive path (w/o extension): ' output
-        clear
-        if [ -f "${output}".7z ]; then
-            sudo rm "${output}".7z
-        fi
-        7z a -t7z -m0=lzma2 -mx1 "${output}".7z ./"${source}"/*
+        read -p 'Please enter the source folder path: ' source_dir
+        7z a -y -t7z -m0=lzma2 -mx1 "${source_dir}".7z ./"${source_dir}"/*
     fi
 
-    printf "\n%s\n\n%s\n%s\n\n" \
+    printf "\n%s\n\n%s\n%s\n\n"                    \
         'Do you want to delete the original file?' \
-        '[1] Yes' \
+        '[1] Yes'                                  \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
     clear
 
-    if [ -n "${1}" ]; then
-        source="${1}"
-    fi
-
     case "${answer}" in
-        1)      sudo rm -fr "${source}";;
+        1)      sudo rm -fr "${source_dir}";;
         2)      clear;;
-        '')     sudo rm -fr "${source}";;
+        '')     clear;;
         *)      printf "\n%s\n\n" 'Bad user input...';;
     esac
 }
@@ -839,37 +1037,25 @@ hw_mon()
     local answer source output
     clear
 
-    if [ -n "${1}" ]; then
-        if [ -f "${1}".7z ]; then
-            sudo rm "${1}".7z
-        fi
-        7z a -t7z -m0=lzma2 -mx5 "${1}".7z ./"${1}"/*
+    if [ -d "${1}" ]; then
+        source_dir="${1}"
+        7z a -y -t7z -m0=lzma2 -mx5 "${source_dir}".7z ./"${source_dir}"/*
     else
-        read -p 'Please enter the source folder path: ' source
-        echo
-        read -p 'Please enter the destination archive path (w/o extension): ' output
-        clear
-        if [ -f "${output}".7z ]; then
-            sudo rm "${output}".7z
-        fi
-        7z a -t7z -m0=lzma2 -mx5 "${output}".7z ./"${source}"/*
+        read -p 'Please enter the source folder path: ' source_dir
+        7z a -y -t7z -m0=lzma2 -mx5 "${source_dir}".7z ./"${source_dir}"/*
     fi
 
-    printf "\n%s\n\n%s\n%s\n\n" \
+    printf "\n%s\n\n%s\n%s\n\n"                    \
         'Do you want to delete the original file?' \
-        '[1] Yes' \
+        '[1] Yes'                                  \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
     clear
 
-    if [ -n "${1}" ]; then
-        source="${1}"
-    fi
-
     case "${answer}" in
-        1)      sudo rm -fr "${source}";;
+        1)      sudo rm -fr "${source_dir}";;
         2)      clear;;
-        '')     sudo rm -fr "${source}";;
+        '')     clear;;
         *)      printf "\n%s\n\n" 'Bad user input...';;
     esac
 }
@@ -879,37 +1065,25 @@ hw_mon()
     local answer source output
     clear
 
-    if [ -n "${1}" ]; then
-        if [ -f "${1}".7z ]; then
-            sudo rm "${1}".7z
-        fi
-        7z a -t7z -m0=lzma2 -mx9 "${1}".7z ./"${1}"/*
+    if [ -d "${1}" ]; then
+        source_dir="${1}"
+        7z a -y -t7z -m0=lzma2 -mx9 "${source_dir}".7z ./"${source_dir}"/*
     else
-        read -p 'Please enter the source folder path: ' source
-        echo
-        read -p 'Please enter the destination archive path (w/o extension): ' output
-        clear
-        if [ -f "${output}".7z ]; then
-            sudo rm "${output}".7z
-        fi
-        7z a -t7z -m0=lzma2 -mx9 "${output}".7z ./"${source}"/*
+        read -p 'Please enter the source folder path: ' source_dir
+        7z a -y -t7z -m0=lzma2 -mx9 "${source_dir}".7z ./"${source_dir}"/*
     fi
 
-    printf "\n%s\n\n%s\n%s\n\n" \
+    printf "\n%s\n\n%s\n%s\n\n"                    \
         'Do you want to delete the original file?' \
-        '[1] Yes' \
+        '[1] Yes'                                  \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
     clear
 
-    if [ -n "${1}" ]; then
-        source="${1}"
-    fi
-
     case "${answer}" in
-        1)      sudo rm -fr "${source}";;
+        1)      sudo rm -fr "${source_dir}";;
         2)      clear;;
-        '')     sudo rm -fr "${source}";;
+        '')     clear;;
         *)      printf "\n%s\n\n" 'Bad user input...';;
     esac
 }
@@ -1084,7 +1258,7 @@ rmf()
         files="${*}"
     fi
 
-    sudo rm "${file}s"
+    sudo rm "${files}"
     clear
     ls -1AvhF --color --group-directories-first
 }
@@ -1161,33 +1335,64 @@ cnt_dirr()
     printf "%s %'d\n\n" "The total directory file count is (recursive):" "${keep_cnt}"
 }
 
-##############
-## TEST GCC ##
-##############
+######################
+## TEST GCC & CLANG ##
+######################
 
 test_gcc()
 {
-    local answer
+    local answer random_dir
+    clear
 
-# CREATE A TEMPORARY C FILE TO RUN OUR TESTS AGAINST
-cat > /tmp/hello.c <<'EOT'
+    random_dir="$(mktemp -d)"
+    
+    # CREATE A TEMPORARY C FILE TO RUN OUR TESTS AGAINST
+    cat > "${random_dir}"/hello.c <<'EOF'
 #include <stdio.h>
 int main(void)
 {
    printf("Hello World!\n");
    return 0;
 }
-EOT
+EOF
 
     if [ -n "${1}" ]; then
-        "${1}" -Q -v /tmp/hello.c
+        "${1}" -Q -v "${random_dir}"/hello.c
     else
         clear
         read -p 'Enter the GCC binary you wish to test (example: gcc-11): ' answer
         clear
-        "${answer}" -Q -v /tmp/hello.c
+        "${answer}" -Q -v "${random_dir}"/hello.c
     fi
-    sudo rm /tmp/hello.c
+    sudo rm -fr "${random_dir}"
+}
+
+test_clang()
+{
+    local answer random_dir
+    clear
+
+    random_dir="$(mktemp -d)"
+    
+    # CREATE A TEMPORARY C FILE TO RUN OUR TESTS AGAINST
+    cat > "${random_dir}"/hello.c <<'EOF'
+#include <stdio.h>
+int main(void)
+{
+   printf("Hello World!\n");
+   return 0;
+}
+EOF
+
+    if [ -n "${1}" ]; then
+        "${1}" -Q -v "${random_dir}"/hello.c
+    else
+        clear
+        read -p 'Enter the GCC binary you wish to test (example: gcc-11): ' answer
+        clear
+        "${answer}" -Q -v "${random_dir}"/hello.c
+    fi
+    sudo rm -fr "${random_dir}"
 }
 
 ############################
@@ -1212,12 +1417,12 @@ rm_deb()
 ## KILLALL COMMANDS ##
 ######################
 
-tkpac()
+tkapt()
 {
     local i list
     clear
 
-    list=(dpkg)
+    list=(apt apt apt apt apt apt apt-get aptitude dpkg)
 
     for i in ${list[@]}
     do
@@ -1281,7 +1486,7 @@ nopen()
     exit
 }
 
-tkn()
+tkan()
 {
     local parent_dir
     parent_dir="${PWD}"
@@ -1304,8 +1509,8 @@ up_icon()
 
     for i in ${pkgs[@]}
     do
-        if ! sudo dpkg -l | grep -o "${i}"; then
-            sudo pacman -S "${i}"
+        if ! sudo dpkg -l "${i}"; then
+            sudo apt -y install "${i}"
             clear
         fi
     done
@@ -1384,7 +1589,7 @@ adlm()
 
     aria2c \
         --console-log-level=notice \
-        --user-agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' \
+        --user-agent="${user_agent}" \
         -x32 \
         -j5 \
         --split=32 \
@@ -1496,7 +1701,7 @@ cmf()
 {
     local rel_sdir
     if ! sudo dpkg -l | grep -o cmake-curses-gui; then
-        sudo pacman -Sq --needed --noconfirm cmake
+        sudo apt -y install cmake-curses-gui
     fi
     clear
 
@@ -1528,17 +1733,13 @@ jpgs()
 
 gitdl()
 {
-    local base_url
     clear
-
-    base_url='https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts'
-
-    wget -cq "${base_url}/FFmpeg/build-ffmpeg"
-    wget -cq "${base_url}/ImageMagick/build-magick"
-    wget -cq "${base_url}/GNU%20Software/build-gcc"
-    wget -cq "${base_url}/FFmpeg/repo.sh"
+    wget -cq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/FFmpeg/build-ffmpeg'
+    wget -cq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/build-magick'
+    wget -cq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc'
+    wget -cq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/FFmpeg/repo.sh'
     sudo chmod -R build-gcc build-magick build-ffmpeg repo.sh -- *
-    sudo chown -R "${USER}":'users' build-gcc build-magick build-ffmpeg repo.sh
+    sudo chown -R "${USER}":"${USER}" build-gcc build-magick build-ffmpeg repo.sh
     clear
     ls -1AvhF --color --group-directories-first
 }
@@ -1560,6 +1761,208 @@ zipr()
     sudo find . -type f -iname '*.zip' -exec trash-put '{}' \;
 }
 
+###################################
+## FFPROBE LIST IMAGE DIMENSIONS ##
+###################################
+
+ffp()
+{
+    clear
+    if [ -f 00-pic-sizes.txt ]; then
+        sudo rm 00-pic-sizes.txt
+    fi
+    sudo find "${PWD}" -type f -iname '*.jpg' -exec bash -c "identify -format "%wx%h" \"{}\"; echo \" {}\"" > 00-pic-sizes.txt \;
+}
+
+####################
+## RSYNC COMMANDS ##
+####################
+
+rsr()
+{
+    local destination modified_source source 
+    clear
+
+    # you must add an extra folder that is a period '/./' between the full path to the source folder and the source folder itself
+    # or rsync will copy the files to the destination directory and it will be the full path of the source folder instead of the source
+    # folder and its subfiles only.
+
+    printf "%s\n%s\n%s\n%s\n\n"                                                                    \
+        'This rsync command will recursively copy the source folder to the chosen destination.'    \
+        'The original files will still be located in the source folder.'                           \
+        'If you want to move the files (which deletes the originals then use the function "rsrd".' \
+        'Please enter the full paths of the source and destination directories.'
+
+    printf "%s\n\n" 
+    read -p 'Enter the source path: ' source
+    read -p 'Enter the destination path: ' destination
+    modified_source="$(echo "${source}" | sed 's:/[^/]*$::')"'/./'"$(echo "${source}" | sed 's:.*/::')"
+    clear
+
+    rsync -aqvR --acls --perms --mkpath --info=progress2 "${modified_source}" "${destination}"
+}
+
+rsrd()
+{
+    local destination modified_source source 
+    clear
+
+    # you must add an extra folder that is a period '/./' between the full path to the source folder and the source folder itself
+    # or rsync will copy the files to the destination directory and it will be the full path of the souce folder instead of the source
+    # folder and its subfiles only.
+
+    printf "%s\n%s\n%s\n%s\n\n"                                                                    \
+        'This rsync command will recursively copy the source folder to the chosen destination.'    \
+        'The original files will be DELETED after they have been copied to the destination.'       \
+        'If you want to move the files (which deletes the originals then use the function "rsrd".' \
+        'Please enter the full paths of the source and destination directories.'
+
+    printf "%s\n\n" 
+    read -p 'Enter the source path: ' source
+    read -p 'Enter the destination path: ' destination
+    modified_source="$(echo "${source}" | sed 's:/[^/]*$::')"'/./'"$(echo "${source}" | sed 's:.*/::')"
+    clear
+
+    rsync -aqvR --acls --perms --mkpath --remove-source-files "${modified_source}" "${destination}"
+}
+
+################
+## SHELLCHECK ##
+################
+
+sc()
+{
+    local f fname input_char line space
+    clear
+
+    if [ -z "${@}" ]; then
+        read -p 'Input the file path to check: ' fname
+        clear
+    else
+        fname="${@}"
+    fi
+
+    for f in ${fname[@]}
+    do
+        box_out_banner()
+        {
+            input_char=$(echo "${@}" | wc -c)
+            line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+            tput bold
+            line="$(tput setaf 3)${line}"
+            space=${line//-/ }
+            echo " ${line}"
+            printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+            printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
+            printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+            echo " ${line}"
+            tput sgr 0
+        }
+        box_out_banner "Parsing: ${f}"
+        shellcheck --color=always -x --severity=warning --source-path="${HOME}:${HOME}/tmp:/etc:/usr/local/lib64:/usr/local/lib:/usr/local64:/usr/lib:/lib64:/lib:/lib32" "${f}"
+        echo
+    done
+}
+
+###############
+## CLIPBOARD ##
+###############
+
+# COPY ANY TEXT. DOES NOT NEED TO BE IN QUOTES
+# EXAMPLE: ct This is so cool
+# OUTPUT WHEN PASTED: This is so cool
+# USAGE: cp <file name here>
+
+ct()
+{
+    local pipe_this
+    clear
+
+    if [ -z "${@}" ]; then
+        clear
+        printf "%s\n\n%s\n%s\n\n"               \
+            "The command syntax is shown below" \
+            "cc INPUT"                          \
+            'Example: cc $PWD'
+        return 1
+    else
+        pipe_this="${@}"
+    fi
+
+    echo "${pipe_this}" | xclip -i -rmlastnl -sel clip
+    clear
+}
+
+# COPY A FILE'S FULL PATH
+# USAGE: cp <file name here>
+
+cfp()
+{
+    local pipe_this
+    clear
+
+    if [ -z "${@}" ]; then
+        clear
+        printf "%s\n\n%s\n%s\n\n"               \
+            "The command syntax is shown below" \
+            "cc INPUT"                          \
+            'Example: cc $PWD'
+        return 1
+    fi
+
+    readlink -fn "${@}" | xclip -i -sel clip
+    clear
+}
+
+# COPY THE CONTENT OF A FILE
+# USAGE: cf <file name here>
+
+cfc()
+{
+    clear
+
+    if [ -z "${1}" ]; then
+        clear
+        printf "%s\n\n%s\n%s\n\n"               \
+            "The command syntax is shown below" \
+            "cc INPUT"                          \
+            'Example: cc $PWD'
+        return 1
+    else
+        cat "${1}" | xclip -i -rmlastnl -sel clip
+    fi
+}
+
+########################
+## PKG-CONFIG COMMAND ##
+########################
+
+# SHOW THE PATHS PKG-CONFIG COMMAND SEARCHES BY DEFAULT
+pkg-config-path()
+{
+    clear
+    pkg-config --variable pc_path pkg-config | tr ':' '\n'
+}
+
+######################################
+## SHOW BINARY RUNPATH IF IT EXISTS ##
+######################################
+
+show_rpath()
+{
+    local find_rpath
+    clear
+
+    if [ -z "${1}" ]; then
+        read -p 'Enter the full path to the binary/program: ' find_rpath
+    else
+        find_rpath="${1}"
+    fi
+
+    clear
+    sudo chrpath -l "$(type -p ${find_rpath})"
+}
+
 ######################################
 ## DOWNLOAD CLANG INSTALLER SCRIPTS ##
 ######################################
@@ -1578,19 +1981,119 @@ dl_clang()
     ls -1AvhF--color --group-directories-first
 }
 
-###################################
-## FFPROBE LIST IMAGE DIMENSIONS ##
-###################################
+#################
+## PYTHON3 PIP ##
+#################
 
-ffp()
+pipup()
 {
+    local pkg
     clear
-    if [ -f 00-pic-sizes.txt ]; then
-        sudo rm 00-pic-sizes.txt
-    fi
-    sudo find "${PWD}" -type f -iname '*.jpg' -exec bash -c "identify -format "%wx%h" \"{}\"; echo \" {}\"" > 00-pic-sizes.txt \;
+    for pkg in $(pip list -o | awk 'NR > 2 {print $1}')
+    do
+        sudo pip install --upgrade --user ${pkg}
+    done
 }
 
-#####################
-## PACMAN COMMANDS ##
-#####################
+####################
+## REGEX COMMANDS ##
+####################
+
+bvar()
+{
+    local choice fext flag fname
+    clear
+
+    if [ -z "${1}" ]; then
+        read -p 'Please enter the file path: ' fname
+        fname_tmp="${fname}"
+    else
+        fname="${1}"
+        fname_tmp="${fname}"
+    fi
+
+    fext="${fname#*.}"
+    if [ -n "${fext}" ]; then
+        fname+='.txt'
+        mv "${fname_tmp}" "${fname}"
+    fi
+
+    cat < "${fname}" | sed -e 's/\(\$\)\([A-Za-z0-9\_]*\)/\1{\2}/g' -e 's/\(\$\)\({}\)/\1/g' -e 's/\(\$\)\({}\)\({\)/\1\3/g'
+
+    printf "%s\n\n%s\n%s\n\n"                          \
+        'Do you want to permanently change this file?' \
+        '[1] Yes'                                      \
+        '[2] Exit'
+    read -p 'Your choices are ( 1 or 2): ' choice
+    clear
+    case "${choice}" in
+        1)
+                sed -i -e 's/\(\$\)\([A-Za-z0-9\_]*\)/\1{\2}/g' -i -e 's/\(\$\)\({}\)/\1/g' -i -e 's/\(\$\)\({}\)\({\)/\1\3/g' "${fname}"
+                mv "${fname}" "${fname_tmp}"
+                clear
+                cat < "${fname_tmp}"
+                ;;
+        2)
+                mv "${fname}" "${fname_tmp}"
+                return 0
+                ;;
+        *)
+                unset choice
+                bvar "${fname_tmp}"
+                ;;
+    esac
+}
+
+###########################
+## CHANGE HOSTNAME OF PC ##
+###########################
+
+chostname()
+{
+    local name
+    clear
+
+    if [ -z "${1}" ]; then
+        read -p 'Please enter the new hostname: ' name
+    else
+        name="${1}"
+    fi
+
+    sudo nmcli g hostname "${name}"
+    clear
+    printf "%s\n\n" "The new hostname is listed below."
+    hostname
+}
+
+############
+## DOCKER ##
+############
+
+drp()
+{
+    local choice restart_policy
+    clear
+
+    printf "%s\n\n%s\n%s\n%s\n%s\n\n"      \
+        'Change the Docker restart policy' \
+        '[1] Restart Always'               \
+        '[2] Restart Unless Stopped '      \
+        '[3] On Failure'                   \
+        '[4] No'
+    read -p 'Your choices are (1 to 4): ' choice
+    clear
+
+    case "${choice}" in
+        1)      restart_policy='always' ;;
+        2)      restart_policy='unless-stopped' ;;
+        3)      restart_policy='on-failure' ;;
+        4)      restart_policy='no' ;;
+        *)
+                clear
+                printf "%s\n\n" 'Bad user input. Please try again...'
+                return 1
+                ;;
+    esac
+
+    docker update --restart="${restart_policy}" 
+}
