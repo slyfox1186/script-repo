@@ -132,7 +132,7 @@ ${HOME}/perl5/bin:\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
 /usr/local/sbin:\
-/usr/local/cuda/bin:\
+/opt/cuda/bin:\
 /usr/local/x86_64-linux-gnu/bin:\
 /usr/local/bin:\
 /usr/sbin:\
