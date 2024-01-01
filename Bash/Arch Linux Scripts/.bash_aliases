@@ -104,7 +104,7 @@ alias gsync='clear; nano /etc/gravity-sync/gravity-sync.conf'
 # nameserver commands
 alias nss='clear; systemd-resolve --status'
 
-# nano [ /home/jman ]
+# nano
 alias nba='nano ~/.bash_aliases; cl'
 alias nbf='nano ~/.bash_functions; cl'
 alias nbrc='nano ~/.bashrc; cl'
@@ -123,7 +123,7 @@ alias nsudo='sudo nano /etc/sudoers; cl'
 # nano [ /usr ]
 alias nlang='sudo nano /usr/share/gtksourceview-*/language-specs/sh.lang; cl'
 
-# gnome-text-editor [ /home/jman ]
+# gnome-text-editor
 alias gba='gnome-text-editor ~/.bash_aliases; cl'
 alias gbf='gnome-text-editor ~/.bash_functions; cl'
 alias gbrc='gnome-text-editor ~/.bashrc; cl'
@@ -168,7 +168,7 @@ alias cdv='pushd ~/Videos ; cl'
 alias cd.='cd ..; cl'
 alias cd..='cd ..; cl'
 
-# cat [ /home/jman ]
+# cat
 alias cba='\cat ~/.bash_aliases; cl'
 alias cbf='\cat ~/.bash_functions; cl'
 alias cbrc='\cat ~/.bashrc; cl'
