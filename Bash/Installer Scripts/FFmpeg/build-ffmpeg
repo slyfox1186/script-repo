@@ -614,7 +614,7 @@ gpu_arch_fn()
     local gpu_name gpu_type
 
     amd_gpu_test="$(glxinfo | grep -E 'OpenGL renderer' | grep -Eo 'AMD')"
-    nvidia_gpu_test="$(cat < '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
+    nvidia_gpu_test="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
 
     if [ -z "${amd_gpu_test}" ] || [ -n "${nvidia_gpu_test}" ]; then
         gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -r | head -n 1)"
@@ -916,7 +916,7 @@ install_cuda_fn()
     clear
 
     amd_gpu_test="$(glxinfo | grep -E 'OpenGL renderer' | grep -Eo 'AMD\s.*$')"
-    nvidia_gpu_test="$(cat < '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
+    nvidia_gpu_test="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
 
     if [ -z "${amd_gpu_test}" ] || [ -n "${nvidia_gpu_test}" ]; then
         get_ver_fn1
@@ -925,7 +925,7 @@ install_cuda_fn()
             cuda_ver_test="$(${find_nvcc} --version | sed -n 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')"
             cuda_ver_test+='.1'
         else
-            cuda_ver_test="$(cat < '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
+            cuda_ver_test="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
         fi
         cuda_ver="${cuda_ver_test}"
 
@@ -980,7 +980,7 @@ install_cuda_fn()
             cuda_ver_test="$(${find_nvcc} --version | sed -n 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')"
             cuda_ver_test+='.1'
         else
-            cuda_ver_test="$(cat < '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
+            cuda_ver_test="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
         fi
         cuda_ver="${cuda_ver_test}"
 
