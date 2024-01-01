@@ -1,36 +1,63 @@
 #!/bin/bash
 
-# Variables
-DISK="/dev/nvmeX"  # Replace with your NVMe drive, e.g., /dev/nvme0n1
-EFI_SIZE="512M"      # Size of the EFI partition
-SWAP_SIZE="2G"       # Size of the swap partition
+# Ensure script is run as root
+if [[ $EUID -ne 0 ]]; then
+   echo 'This script must be run as root' 
+   exit 1
+fi
+
+# Set Variables (You must edit these)
+# WARNING! It is considered bad practice to store passwords in a file... MAKE SURE you change these after you log into Arch Linux!
+user_name='username'
+user_password='password'
+root_password='password'
+computer_name='name'
 
 # Update the system clock
 timedatectl set-ntp true
 
-# Wipe the disk and create new GPT partition table
-parted -s $DISK mklabel gpt
+clear
 
-# Create partitions
-# EFI partition
-parted -s $DISK mkpart ESP fat32 1MiB $EFI_SIZE
-parted -s $DISK set 1 esp on
+fdisk -l
 
-# Swap partition
-parted -s $DISK mkpart primary linux-swap $EFI_SIZE $(($EFI_SIZE+$SWAP_SIZE))
+printf "\n%s\n\n%s\n%s\n\n"                                   \
+    'Warning! Continuing will format the drive you specify!'  \
+    'Enter the full path of the drive you want to utilize...' \
+    'Examples [ /dev/sda | /dev/nvme1n ]'
+read -p 'Enter a drive path: ' drive_path
 
-# Root partition
-parted -s $DISK mkpart primary ext4 $(($EFI_SIZE+$SWAP_SIZE)) 100%
+# Partition the disk (Warning: This will erase your disk!)
+fdisk "$drive_path" <<EOF
+g
+n
+1
+
++512M
+t
+1
+n
+2
+
++1.8TB
+t
+23
+n
+3
+
++2G
+t
+19
+w
+EOF
 
 # Format the partitions
-mkfs.fat -F32 ${DISK}n1p1
-mkswap ${DISK}n1p2
-mkfs.ext4 ${DISK}n1p3
-
-# Enable swap partition
-swapon ${DISK}n1p2
-
-# Mount the file systems
-mount ${DISK}p3 /mnt
-mkdir -p /mnt/boot
-mount ${DISK}p1 /mnt/boot
+regex_str='^\/dev\/sd'
+if [[ ! $drive_path =~ $regex_str ]]; then
+    mount "${drive_path}1p2" /mnt
+    mount --mkdir "${drive_path}1p1" /mnt/efi
+    swapon "${drive_path}1p3"
+else
+    mount "${drive_path}2" /mnt
+    mount --mkdir "${drive_path}1" /mnt/efi
+    swapon "${drive_path}3"
+fi
