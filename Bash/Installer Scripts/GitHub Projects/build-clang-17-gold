@@ -96,8 +96,7 @@ build_clang()
     cd "${cwd}" || exit 1
     git clone --depth=1 'https://github.com/llvm/llvm-project.git'
     cd llvm-project
-    project_pkgs='clang;clang-tools-extra;lld;lldb'
-    runtime_pkgs='compiler-rt'
+    project_pkgs='clang;clang-tools-extra'
     cmake -S llvm -B builddir                         \
           -DCMAKE_INSTALL_PREFIX="${install_prefix}"  \
           -DCMAKE_BUILD_TYPE=Release                  \
@@ -122,7 +121,6 @@ build_clang()
           -DLLVM_ENABLE_OCAMLDOC=OFF                  \
           -DLLVM_ENABLE_PIC=ON                        \
           -DLLVM_ENABLE_PROJECTS="${project_pkgs}"    \
-          -DLLVM_ENABLE_RUNTIMES="${runtime_pkgs}"    \
           -DLLVM_ENABLE_WARNINGS=OFF                  \
           -DLLVM_HOST_TRIPLE="${pc_type}"             \
           -DLLVM_INCLUDE_DOCS=OFF                     \
