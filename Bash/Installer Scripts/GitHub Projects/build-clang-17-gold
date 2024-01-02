@@ -143,17 +143,11 @@ build_clang()
     fi
 }
 
-show_ver_fn() {
-    clang --version
-}
+show_ver_fn() { clang --version; }
 
-cleanup_fn() {
-    rm -rf "${cwd}/build"
-}
+cleanup_fn() { rm -rf "${cwd}/build"; }
 
-exit_fn() {
-    echo "Clang-17 build completed successfully."
-}
+exit_fn() { echo "Clang-17 build completed successfully."; }
 
 # Script Execution
 setup_environment
