@@ -45,8 +45,7 @@ bash <(curl -fsSL https://build-all-git.optimizethis.net)
 ```
 ------
 
-## Install [GCC](https://github.com/gcc-mirror/gcc) versions - 11.4.0 / 12.3.0 / 13.2.0
-
+## Install [GCC](https://github.com/gcc-mirror/gcc) versions latest
   - **Sourced from the official GitHub repository**
   - **For personal/testing use only**
   - **Check the top of the script for build [results](https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc)**
