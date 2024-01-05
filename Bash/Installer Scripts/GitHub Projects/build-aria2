@@ -16,7 +16,7 @@
 ##            - Increased the max connections from 16 to 128
 ##
 ##  Added:
-##         - Updated aria2 to the latest version - 1.37.0
+##         - Updated Aria2 to the latest version - 1.37.0
 ##         - If OpenSSL is manually installed using the build-openssl script then use its certs directory instead of the default.
 ##         - Build jemalloc from the latest source code
 ##         - RUNPATH to LDFLAGS
@@ -57,10 +57,22 @@ web_repo=https://github.com/slyfox1186/script-repo
 # PRINT THE SCRIPT BANNER
 #
 
-printf "%s\n%s\n\n"                              \
-    "Aria2 Build Script - version ${script_ver}" \
-    '==============================================='
-sleep 2
+box_out_banner_aria2()
+{
+    input_char=$(echo "${@}" | wc -c)
+    line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
+    tput bold
+    line="$(tput setaf 3)${line}"
+    space="${line//-/ }"
+    echo " ${line}"
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
+    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    echo " ${line}"
+    tput sgr 0
+}
+box_out_banner_aria2 "Aria2 Build Script - v${script_ver}"
+echo
 
 #
 # TEST THE OS AND ITS VERSION
@@ -168,7 +180,7 @@ show_ver_fn()
 
     show_ver="$(aria2c --version | grep -Eo '[0-9\.]+$' | head -n1 2>/dev/null | xargs -I{} echo {})"
 
-    printf "%s\n\n" "The installed aria2 version is: ${show_ver}"
+    printf "%s\n\n" "The installed aria2c version is: ${show_ver}"
     sleep 2
 }
 
@@ -232,14 +244,6 @@ fi
 # BUILD JEMALLOC FROM SOURCE CODE
 #
 
-printf "\n%s\n%s\n\n"                \
-    'Build Jemalloc - version 5.3.0' \
-    '==============================================='
-
-#
-# CREATE JEMALLOC OUTPUT DIRECTORY
-#
-
 if [ -d "${cwd}/jemalloc-5.3.0" ]; then
     sudo rm -fr "${cwd}/jemalloc-5.3.0"
 fi
@@ -286,14 +290,6 @@ fi
 
 #
 # BUILD GCRYPT-ERROR FROM SOURCE CODE
-#
-
-printf "\n%s\n%s\n\n"                    \
-    'Build GCrypt-Error - version 5.3.0' \
-    '==============================================='
-
-#
-# CREATE GCRYPT-ERROR OUTPUT DIRECTORY
 #
 
 if [ -d "${cwd}/gcrypt-error-1.47" ]; then
