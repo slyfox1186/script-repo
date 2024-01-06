@@ -1024,6 +1024,7 @@ gcc_prompt()
         '[4] GCC 12' \
         '[5] GCC 13'
     read -p 'Your choices are (1 to 5): ' answer
+    clear
 
     case "${answer}" in
         1)
