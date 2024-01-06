@@ -38,7 +38,7 @@ download_clang()
 
     if [ ! -f "$filename" ]; then
         printf "%s\n\n" "Downloading Clang 17 source code from $url"
-        wget --show-progress -qO "$filename" "$url" || { echo 'Download failed!'; exit 1; }
+        wget --show-progress -cqO "$filename" "$url" || { echo 'Download failed!'; exit 1; }
         printf "%s\n\n" "Download complete. Extracting $filename..."
     fi
 
