@@ -169,10 +169,10 @@ alias cd.='cd ..; cl'
 alias cd..='cd ..; cl'
 
 # cat [ /home/jman ]
-alias cba='\cat ~/.bash_aliases; cl'
-alias cbf='\cat ~/.bash_functions; cl'
-alias cbrc='\cat ~/.bashrc; cl'
-alias cpro='\cat ~/.profile; cl'
+alias cba='cat ~/.bash_aliases; cl'
+alias cbf='cat ~/.bash_functions; cl'
+alias cbrc='cat ~/.bashrc; cl'
+alias cpro='cat ~/.profile; cl'
 # cat [ /etc ]
 alias capt='clear; cat /etc/apt/sources.list'
 alias cbasrc='clear; cat /etc/bash.bashrc'

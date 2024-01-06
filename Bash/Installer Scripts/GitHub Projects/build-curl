@@ -237,7 +237,7 @@ eopts+=('--enable-'{mime,mqtt,netrc,ntlm,ntlm-wb='/usr/bin/ntlm_auth'})
 eopts+=('--enable-'{openssl-auto-load-config,optimize,pop3,progress-meter})
 eopts+=('--enable-'{proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static,telnet})
 eopts+=('--enable-'{tftp,threaded-resolver,tls-srp,unix-sockets,websockets})
-wopts=('--with-'{libssh2,nghttp2='/usr/include',nghttp3='/usr/include',openssl='/usr'})
+wopts=('--with-'{libssh2,nghttp2='/usr/include',nghttp3='/usr/include',openssl='/usr',ssl,zlib})
 wopts+=('--with-'{ca-bundle="${pem_out}",ca-fallback,ca-path="${certs_dir}",secure-transport})
 autoreconf -fi
 cd build || exit 1

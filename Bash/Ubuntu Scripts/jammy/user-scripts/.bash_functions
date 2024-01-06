@@ -21,7 +21,7 @@ mypc()
 {
     local OS VER
     
-    . '/etc/os-release'
+    . /etc/os-release
     OS="${NAME}"
     VER="${VERSION_ID}"
 
