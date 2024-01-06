@@ -198,13 +198,16 @@ case "${OS}" in
 esac
 
 #
-# INSTALL AUTOCONF 2.69 IN A TEMPORARY DIRECTORY OR BINUTILS WILL NOT COMPILE
+# CHECK IF AUTOCONF VERSION 2.69 IS INSTALLED
 #
 
-cd "${cwd}" || exit 1
-
-curl -A "${user_agent}" -Lso "${cwd}/build-autoconf-2.69" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf-2.69'
-bash "${cwd}/build-autoconf-2.69"
+autoconf_version=$(autoconf --version 2>/dev/null | head -n 1 | awk '{print $NF}')
+if [[ "$autoconf_version" != '2.69' ]]; then
+    wget --show-progress -cqO build-autoconf-2.69 https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf-2.69
+    if bash build-autoconf-2.69; then
+        rm build-autoconf-2.69
+    fi
+fi
 
 #
 # DOWNLOAD THE ARCHIVE FILE
