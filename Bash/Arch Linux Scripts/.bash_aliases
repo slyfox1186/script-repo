@@ -224,8 +224,8 @@ alias snap_on='snap set core snapshots.automatic.retention=yes' # turn on snap a
 alias snap_off='snap set core snapshots.automatic.retention=no' # turn off snap automatic snapshots
 
 # BAT (COLORIZED CAT COMMAND ALTERNATIVE)
-alias cat='clear; /usr/bin/batcat -p' # remove line numbers
-alias catn='clear; /usr/bin/batcat'   # show line numbers
+alias cat='clear; /usr/sbin/bat -p' # remove line numbers
+alias catn='clear; /usr/sbin/bat'   # show line numbers
 
 # temporary commands... delete when done
 alias runff='bash ~/tmp/test.sh --build --enable-gpl-and-non-free --latest'
