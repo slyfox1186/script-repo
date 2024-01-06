@@ -56,7 +56,19 @@ ${HOME}/.local/bin:\
 "
 export PATH
 
+#
 # Function Definitions
+#
+
+fail_fn()
+{
+    printf "\n%s\n\n%s\n\n%s\n\n" \
+        "$1"                      \
+        'Please report this at:'  \
+        "$web_repo/issues"
+    exit 1
+}
+
 setup_environment()
 {
     echo "Setting up the environment for building Clang-17..."
@@ -66,8 +78,7 @@ setup_environment()
     for tool in "${required_tools[@]}"
     do
         if ! command -v "$tool" &> /dev/null; then
-            echo "Error: $tool is not installed. Please install $tool to proceed."
-            exit 1
+            fail_fn "Error: $tool is not installed. Please install $tool to proceed."
         fi
     done
 
@@ -76,8 +87,7 @@ setup_environment()
         printf "\n%s\n\n" "ld.gold not found. Attempting to install..."
         # Replace this with the actual URL or command to install ld.gold
         if ! curl -sSL "$web_repo/build-binutils" | sudo bash; then
-            printf "\n%s\n\n" "Failed to install ld.gold. Please install it manually."
-            exit 1
+            fail_fn "Failed to install ld.gold. Please install it manually."
         fi
     fi
 
@@ -133,13 +143,11 @@ build_clang()
           -G Ninja -Wno-dev
     echo
     if ! ninja "-j$(nproc --all)" -C builddir; then
-        printf "\n%s\n\n" "Failed to execute: ninja -j$(nproc --all) -C build. Line: ${LINENO}"
-        exit 1
+        fail_fn "Failed to execute: ninja -j$(nproc --all) -C build. Line: ${LINENO}"
     fi
     echo
     if ! sudo ninja -C builddir install; then
-        printf "\n%s\n\n" "Failed to execute: sudo ninja -C build install. Line: ${LINENO}"
-        exit 1
+        fail_fn "Failed to execute: sudo ninja -C build install. Line: ${LINENO}"
     fi
 }
 
