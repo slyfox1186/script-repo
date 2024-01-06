@@ -183,143 +183,10 @@ mvf()
     clear; ls -1AvhFhFv --color --group-directories-first
 }
 
-##################
-## APT COMMANDS ##
-##################
-
-# DOWNLOAD AN APT PACKAGE + ALL ITS DEPENDENCIES IN ONE GO
-aptdl()
-{
-    clear
-    wget -c "$(apt --print-uris -qq --reinstall install ${1} 2>/dev/null | cut -d''\''' -f2)"
-    clear; ls -1AvhFhFv --color --group-directories-first
-}
-
-# CLEAN
-clean()
-{
-    clear
-    sudo apt -y autoremove
-    sudo apt clean
-    sudo apt autoclean
-    sudo apt -y purge
-}
-
-# UPDATE
-update()
-{
-    clear
-    sudo apt update
-    sudo apt -y full-upgrade
-    sudo apt -y autoremove
-    sudo apt clean
-    sudo apt autoclean
-    sudo apt -y purge
-}
-
-# FIX BROKEN APT PACKAGES
-fix()
-{
-    clear
-    if [ -f /tmp/apt.lock ]; then
-        sudo rm /tmp/apt.lock
-    fi
-    sudo dpkg --configure -a
-    sudo apt --fix-broken install
-    sudo apt -f -y install
-    sudo apt -y autoremove
-    sudo apt clean
-    sudo apt autoclean
-    sudo apt update
-}
-
-list()
-{
-    local search_cache
-    clear
-
-    if [ -n "${1}" ]; then
-        sudo apt list "*${1}*" 2>/dev/null | awk -F'/' '{print $1}'
-    else
-        read -p 'Enter the string to search: ' search_cache
-        clear
-        sudo apt list "*${1}*" 2>/dev/null | awk -F'/' '{print $1}'
-    fi
-}
-
-listd()
-{
-    local search_cache
-    clear
-
-    if [ -n "${1}" ]; then
-        sudo apt list -- "*${1}*"-dev 2>/dev/null | awk -F'/' '{print $1}'
-    else
-        read -p 'Enter the string to search: ' search_cache
-        clear
-        sudo apt list -- "*${1}*"-dev 2>/dev/null | awk -F'/' '{print $1}'
-    fi
-}
-
-# USE SUDO APT TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
-apts()
-{
-    local search
-    clear
-
-    if [ -n "${1}" ]; then
-        sudo apt search "${1} ~i" -F "%p"
-    else
-        read -p 'Enter the string to search: ' search
-        clear
-        sudo apt search "${search} ~i" -F "%p"
-    fi
-}
-
-# USE APT CACHE TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
-csearch()
-{
-    clear
-    local cache
-
-    if [ -n "${1}" ]; then
-        apt-cache search --names-only "${1}.*" | awk '{print $1}'
-    else
-        read -p 'Enter the string to search: ' cache
-        clear
-        apt-cache search --names-only "${cache}.*" | awk '{print $1}'
-    fi
-}
-
-# FIX MISSING GPNU KEYS USED TO UPDATE PACKAGES
-fix_key()
-{
-    clear
-
-    local file url
-
-    if [[ -z "${1}" ]] && [[ -z "${2}" ]]; then
-        read -p 'Enter the file name to store in /etc/apt/trusted.gpg.d: ' file
-        echo
-        read -p 'Enter the gpg key url: ' url
-        clear
-    else
-        file="${1}"
-        url="${2}"
-    fi
-
-    curl -S# "${url}" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/${file}"
-
-    if curl -S# "${url}" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/${file}"; then
-        echo 'The key was successfully added!'
-    else
-        echo 'The key FAILED to add!'
-    fi
-}
-
 ##########################
 # TAKE OWNERSHIP COMMAND #
 ##########################
+
 toa()
 {
     clear
@@ -338,16 +205,6 @@ showpkgs()
     dpkg --get-selections |
     grep -v deinstall > "${HOME}"/tmp/packages.list
     gted "${HOME}"/tmp/packages.list
-}
-
-# PIPE ALL DEVELOPMENT PACKAGES NAMES TO file
-getdev()
-{
-    apt-cache search dev |
-    grep "\-dev" |
-    cut -d ' ' -f1 |
-    sort > 'dev-packages.list'
-    gted 'dev-packages.list'
 }
 
 ################
@@ -587,7 +444,7 @@ rmf()
 # OPTIMIZE AND OVERWRITE THE ORIGINAL IMAGES
 imow()
 {
-    local apt_pkgs cnt_queue cnt_total dimensions fext missing_pkgs pip_lock random_dir tmp_file v_noslash
+    local cnt_queue cnt_total dimensions fext missing_pkgs pip_lock random_dir tmp_file v_noslash pacman_pkgs
 
     clear
 
@@ -595,11 +452,11 @@ imow()
     fext=jpg
 
     #
-    # REQUIRED APT PACKAGES
+    # REQUIRED PACMAN PACKAGES
     #
 
-    apt_pkgs=(sox libsox-dev)
-    for i in ${apt_pkgs[@]}
+    pacman_pkgs=(sox libsox)
+    for i in ${pacman_pkgs[@]}
     do
         missing_pkg="$(dpkg -l | grep "${i}")"
         if [ -z "${missing_pkg}" ]; then
@@ -608,11 +465,10 @@ imow()
     done
 
     if [ -n "${missing_pkgs}" ]; then
-        sudo apt -y install ${missing_pkgs}
-        sudo apt -y autoremove
+        sudo pacman -S --needed --noconfirm ${missing_pkgs}
         clear
     fi
-    unset apt_pkgs i missing_pkg missing_pkgs
+    unset i missing_pkg missing_pkgs
 
     #
     # REQUIRED PIP PACKAGES
@@ -758,34 +614,6 @@ rftn()
 ## FFMPEG COMMANDS ##
 #####################
 
-cuda_purge()
-{
-    clear
-
-    local answer
-
-    echo 'Do you want to completely remove the cuda-sdk-toolkit?'
-    echo
-    echo 'WARNING: Do not reboot your PC without reinstalling the nvidia-driver first!'
-    echo
-    echo '[1] Yes'
-    echo '[2] Exit'
-    echo
-    read -p 'Your choices are (1 or 2): ' answer
-    clear
-
-    if [[ "${answer}" -eq '1' ]]; then
-        echo 'Purging the cuda-sdk-toolkit from your computer.'
-        echo '================================================'
-        echo
-        sudo sudo apt -y --purge remove "*cublas*" "cuda*" "nsight*"
-        sudo sudo apt -y autoremove
-        sudo sudo apt update
-    elif [[ "${answer}" -eq '2' ]]; then
-        return 0
-    fi
-}
-
 ffdl()
 {
     clear
@@ -872,33 +700,6 @@ cdff() { clear; cd "${HOME}/tmp/ffmpeg-build" || exit 1; cl; }
 ffm() { clear; bash <(curl -sSL 'http://ffmpeg.optimizethis.net'); }
 ffp() { clear; bash <(curl -sSL 'http://ffpb.optimizethis.net'); }
 
-####################
-## LIST PPA REPOS ##
-####################
-
-listppas()
-{
-    clear
-
-    local apt host user ppa entry
-
-    for apt in $(find /etc/apt/ -type f -name \*.list)
-    do
-        grep -Po "(?<=^deb\s).*?(?=#|$)" "${apt}" | while read entry
-        do
-            host="$(echo "${entry}" | cut -d/ -f3)"
-            user="$(echo "${entry}" | cut -d/ -f4)"
-            ppa="$(echo "${entry}" | cut -d/ -f5)"
-            #echo sudo apt-add-repository ppa:${USER}/${ppa}
-            if [ "ppa.launchpad.net" = "${host}" ]; then
-                echo sudo apt-add-repository ppa:"${USER}/${ppa}"
-            else
-                echo sudo apt-add-repository \'deb "${entry}"\'
-            fi
-        done
-    done
-}
-
 #########################
 ## NVIDIA-SMI COMMANDS ##
 #########################
@@ -938,7 +739,7 @@ hw_mon()
 
     # install lm-sensors if not already
     if ! type -P lm-sensors &>/dev/null; then
-        sudo apt -y install lm-sensors
+        sudo pacman -S lm-sensors
     fi
 
     # Add modprobe to system startup tasks if not already added
@@ -1417,12 +1218,12 @@ rm_deb()
 ## KILLALL COMMANDS ##
 ######################
 
-tkapt()
+tkpac()
 {
     local i list
     clear
 
-    list=(apt apt apt apt apt apt apt-get aptitude dpkg)
+    list=(pacman pacman dpkg)
 
     for i in ${list[@]}
     do
@@ -1510,7 +1311,7 @@ up_icon()
     for i in ${pkgs[@]}
     do
         if ! sudo dpkg -l "${i}"; then
-            sudo apt -y install "${i}"
+            sudo pacman -S --needed --noconfirm "${i}"
             clear
         fi
     done
@@ -1678,7 +1479,7 @@ cmf()
 {
     local rel_sdir
     if ! sudo dpkg -l | grep -o cmake-curses-gui; then
-        sudo apt -y install cmake-curses-gui
+        sudo pacman -S --needed --noconfirm cmake-curses-gui
     fi
     clear
 
