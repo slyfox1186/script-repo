@@ -1561,7 +1561,9 @@ adl()
     fi
 
     # Remove existing file with the same name to enable overwriting
-    rm -f "$filename"
+    if [ -f "$filename" ]; then
+        rm "$filename"
+    fi
 
     # Use aria2c to download the file with the given filename
     if aria2c                               \
