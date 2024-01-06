@@ -320,6 +320,7 @@ fix_key()
 ##########################
 # TAKE OWNERSHIP COMMAND #
 ##########################
+
 toa()
 {
     clear
