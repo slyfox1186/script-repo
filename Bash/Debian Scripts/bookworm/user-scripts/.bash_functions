@@ -1524,96 +1524,71 @@ up_icon()
 
 adl()
 {
-    local isWSL name url
-    clear
+    local disallowedCharsPattern fileExtensionPattern filename url urlPattern user_agent
 
-    # FIND OUT IF WSL OR NATIVE LINUX IS RUNNING BECAUSE WE HAVE TO CHANGE THE FILE ALLOCATION DEPENDING ON WHICH IS RUNNING
-    isWSL="$(echo "$(uname -a)" | grep -o 'WSL2')"
-    if [ -n "${isWSL}" ]; then
-        setalloc=prealloc
+    # Define patterns
+    urlPattern="^(http|https)://"
+    fileExtensionPattern=".*\.(tar\.gz|tar\.bz2|tar\.xz|tar|zip|7z|mp4|mp3|pdf|docx|jpg|jpeg|png|gif)$"
+    disallowedCharsPattern="[?*<>|:\"\\\/=-_+)('\`]"
+
+    # If a URL is provided as an argument, use it
+    if [[ "$1" =~ $urlPattern ]]; then
+        url="$1"
+        urlFilename=$(basename "$url")
+
+        if [[ "$urlFilename" =~ $fileExtensionPattern ]] && ! [[ "$urlFilename" =~ $disallowedCharsPattern ]]; then
+            filename="$urlFilename"
+        else
+            read -p "Enter the filename and extension: " filename
+        fi
     else
-        setalloc=falloc
+        # No URL argument provided, check clipboard
+        clipboardContent=$(xclip -selection clipboard -o)
+        if [[ "$clipboardContent" =~ $urlPattern ]]; then
+            url="$clipboardContent"
+            urlFilename=$(basename "$url")
+
+            if [[ "$urlFilename" =~ $fileExtensionPattern ]] && ! [[ "$urlFilename" =~ $disallowedCharsPattern ]]; then
+                filename="$urlFilename"
+            else
+                read -p "Enter the filename and extension: " filename
+            fi
+        else
+            # Prompt for URL and filename if not found
+            read -p "Enter the URL: " url
+            read -p "Enter the filename and extension: " filename
+        fi
     fi
 
-    if [ -z "${1}" ]; then
-        read -p 'Enter the file name (w/o extension): ' name
-        read -p 'Enter download URL: ' url
-        clear
+    # Remove existing file with the same name to enable overwriting
+    rm -f "$filename"
+
+    # Use aria2c to download the file with the given filename
+    if aria2c                               \
+           --console-log-level=notice       \
+           -U "$user_agent"                 \
+           -x32                             \
+           -j16                             \
+           --split=32                       \
+           --allow-overwrite=true           \
+           --allow-piece-length-change=true \
+           --always-resume=true             \
+           --async-dns=false                \
+           --auto-file-renaming=false       \
+           --min-split-size=8M              \
+           --disk-cache=64M                 \
+           --file-allocation=${setalloc}    \
+           --no-file-allocation-limit=8M    \
+           --continue=true                  \
+           --out="$filename"                \
+           "$url"
+    then
+           google_speech 'Download completed.' 2>/dev/null
     else
-        name="${1}"
-        url="${2}"
+           google_speech 'Download failed.' 2>/dev/null
     fi
 
-    aria2c \
-        --console-log-level=notice \
-        --user-agent="${user_agent}" \
-        -x32 \
-        -j5 \
-        --split=32 \
-        --allow-overwrite=true \
-        --allow-piece-length-change=true \
-        --always-resume=true \
-        --async-dns=false \
-        --auto-file-renaming=false \
-        --min-split-size=8M \
-        --disk-cache=64M \
-        --file-allocation=${setalloc} \
-        --no-file-allocation-limit=8M \
-        --continue=true \
-        --out="${name}" \
-        "${url}"
-
-    if [ "${?}" -eq '0' ]; then
-        google_speech 'Download completed.' 2>/dev/null
-    else
-        google_speech 'Download failed.' 2>/dev/null
-    fi
-
-    find . -type f -iname "*:Zone.Identifier" -delete 2>/dev/null
-    clear; ls -1AvhFhFv --color --group-directories-first
-}
-
-adlm()
-{
-    local name url
-    clear
-
-    if [ -z "${1}" ]; then
-        read -p 'Enter the video name (w/o extension): ' name
-        read -p 'Enter download URL: ' url
-        clear
-    else
-        name="${1}"
-        url="${2}"
-    fi
-
-    aria2c \
-        --console-log-level=notice \
-        --user-agent="${user_agent}" \
-        -x32 \
-        -j5 \
-        --split=32 \
-        --allow-overwrite=true \
-        --allow-piece-length-change=true \
-        --always-resume=true \
-        --async-dns=false \
-        --auto-file-renaming=false \
-        --min-split-size=8M \
-        --disk-cache=64M \
-        --file-allocation=prealloc \
-        --no-file-allocation-limit=8M \
-        --continue=true \
-        --out="${name}"'.mp4' \
-        "${url}"
-
-    if [ "${?}" -eq '0' ]; then
-        google_speech 'Download completed.' 2>/dev/null
-    else
-        google_speech 'Download failed.' 2>/dev/null
-    fi
-
-    find . -type f -iname "*:Zone.Identifier" -delete 2>/dev/null
-    clear; ls -1AvhFhFv --color --group-directories-first
+    clear; ls -1AvhF --color --group-directories-first
 }
 
 ####################
