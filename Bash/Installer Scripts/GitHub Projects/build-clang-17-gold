@@ -23,7 +23,6 @@ fi
 script_ver=1.12
 progname="${0}"
 web_repo='https://github.com/slyfox1186'
-bin_repo='https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-binutils'
 
 # Function to download and compile Clang 17 with clang-tools
 download_clang()
@@ -79,7 +78,7 @@ setup_environment()
     if ! command -v 'ld.gold' &>/dev/null; then
         printf "%s\n\n" 'ld.gold not found. Attempting to install...'
         # Replace this with the actual URL or command to install ld.gold
-        curl -Lso 'build-binutils' "$bin_repo"
+        wget -cq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-binutils'
         if ! bash 'build-binutils'; then
             printf "%s\n\n" 'Failed to install bintutils. Please install it manually with GOLD enabled.'
             exit 1
