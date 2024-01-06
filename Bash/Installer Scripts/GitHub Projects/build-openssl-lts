@@ -7,10 +7,10 @@
 ##            which will update OpenSSL and the SSL certificate directory to the latest version.
 ##
 ##  Updated:
-##           - Script: 12.30.23
-##           - OpenSSL: v3.1.4
+##                    - Script: 01.05.24
+##                    - OpenSSL: v3.1.4
 ##
-##  Script version: 2.0
+##  Script version: 2.1
 ##
 ##  Enabled features:
 ##                    - fips
@@ -19,6 +19,8 @@
 ##                    - tfo
 ##                    - threads
 ##                    - zlib
+##
+##  Added: Arch Linux support
 ##
 ################################################################################################
 
@@ -169,26 +171,91 @@ show_ver_fn()
 }
 
 #
+# TEST THE OS AND ITS VERSION
+#
+
+find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
+
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    OS_TMP="$NAME"
+    OS="$(echo "${OS_TMP}" | awk '{print $1}')"
+elif [ -n "${find_lsb_release}" ]; then
+    OS="$(lsb_release -d | awk '{print $2}')"
+else
+    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
+fi
+
+# IF UBUNTU IS THE CURRENT OS THEN YOU MUST SOFTLINK FOR OPENSSL TO FUNCTION
+ubuntu_os_ver() { sudo ln -sf '/usr/lib64/libcrypto.so.3' ; }
+
+case "${OS}" in
+    Ubuntu)     ubuntu_os_ver ;;
+esac
+
+#
+# INSTALL REQUIRED PACMAN PACKAGES
+#
+
+pkgs_arch_fn()
+{
+    local missing_pkg missing_pkgs pkg pkgs
+
+    pkgs=(autoconf autogen automake base-devel ca-certificates ccache clang curl
+          c-ares libcurl-gnutls gperftools mimalloc libgcrypt gmp libgpg-error
+          jemalloc mbedtls libssh libssh2 libtool libxml2 lksctp-tools m4 zlib-ng)
+    
+    for pkg in ${pkgs[@]}
+    do
+        missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
+    
+        if [ -z "${missing_pkg}" ]; then
+            missing_pkgs+=" ${pkg}"
+        fi
+    done
+    
+    if [ -n "${missing_pkgs}" ]; then
+        sudo pacman -S --needed --noconfirm ${missing_pkgs}
+        clear
+    fi
+}
+
+#
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=(autoconf autogen automake build-essential ca-certificates ccache checkinstall clang curl
-      libc-ares-dev libcurl4-openssl-dev libdmalloc-dev libgcrypt20-dev libgmp-dev libgpg-error-dev
-      libjemalloc-dev libmbedtls-dev libsctp-dev libssh2-1-dev libssh-dev libssl-dev libtool libtool-bin
-      libxml2-dev m4 zlib1g-dev)
+pkgs_fn()
+{
+    local missing_pkg missing_pkgs pkg pkgs
 
-for pkg in ${pkgs[@]}
-do
-    missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
-
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${pkg}"
+    pkgs=(autoconf autogen automake build-essential ca-certificates ccache checkinstall clang curl
+          libc-ares-dev libcurl4-openssl-dev libdmalloc-dev libgcrypt20-dev libgmp-dev libgpg-error-dev
+          libjemalloc-dev libmbedtls-dev libsctp-dev libssh2-1-dev libssh-dev libssl-dev libtool libtool-bin
+          libxml2-dev m4 zlib1g-dev)
+    
+    for pkg in ${pkgs[@]}
+    do
+        missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
+    
+        if [ -z "${missing_pkg}" ]; then
+            missing_pkgs+=" ${pkg}"
+        fi
+    done
+    
+    if [ -n "${missing_pkgs}" ]; then
+        sudo apt -y install ${missing_pkgs}
+        clear
     fi
-done
+}
 
-if [ -n "${missing_pkgs}" ]; then
-    sudo apt -y install ${missing_pkgs}
-    clear
+#
+# CALL THE PACKAGE INSTALLERS
+#
+
+if [[ $OS == Arch ]]; then
+    pkgs_arch_fn
+else
+    pkgs_fn
 fi
 
 #
@@ -216,32 +283,6 @@ if ! tar -zxf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-compon
     printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
     exit 1
 fi
-
-#
-# IF UBUNTU IS THE CURRENT OS THEN YOU MUST SOFTLINK FOR OPENSSL TO FUNCTION
-#
-
-ubuntu_os_version() { sudo ln -sf '/usr/lib64/libcrypto.so.3'; }
-
-find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
-
-if [ -f '/etc/os-release' ]; then
-    . '/etc/os-release'
-    OS_TMP="$NAME"
-    OS="$(echo "${OS_TMP}" | awk '{print $1}')"
-elif [ -n "${find_lsb_release}" ]; then
-    OS="$(lsb_release -d | awk '{print $2}')"
-else
-    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
-fi
-
-#
-# TEST THE OS AND ITS VERSION IF UBUNTU THEN CALL THE pkgs_fn
-#
-
-case "${OS}" in
-    Ubuntu)     ubuntu_os_version;;
-esac
 
 #
 # BUILD PROGRAM FROM SOURCE

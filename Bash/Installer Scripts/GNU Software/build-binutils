@@ -60,7 +60,7 @@ CXX=g++
 CFLAGS='-g -O3 -pipe -march=native'
 CXXFLAGS="${CFLAGS}"
 CPPFLAGS='-I/usr/local/include -I/usr/include'
-LDFLAGS+='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
 #
@@ -129,7 +129,7 @@ cleanup_fn()
 {
     local choice
 
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n"                  \
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n"                \
         '============================================' \
         '  Do you want to clean up the build files?  ' \
         '============================================' \
@@ -198,13 +198,16 @@ case "${OS}" in
 esac
 
 #
-# INSTALL AUTOCONF 2.69 IN A TEMPORARY DIRECTORY OR BINUTILS WILL NOT COMPILE
+# CHECK IF AUTOCONF VERSION 2.69 IS INSTALLED
 #
 
-cd "${cwd}" || exit 1
-
-curl -A "${user_agent}" -Lso "${cwd}/build-autoconf-2.69" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf-2.69'
-bash "${cwd}/build-autoconf-2.69"
+autoconf_version=$(autoconf --version 2>/dev/null | head -n 1 | awk '{print $NF}')
+if [[ "$autoconf_version" != '2.69' ]]; then
+    wget --show-progress -cqO build-autoconf-2.69 https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf-2.69
+    if bash build-autoconf-2.69; then
+        rm build-autoconf-2.69
+    fi
+fi
 
 #
 # DOWNLOAD THE ARCHIVE FILE

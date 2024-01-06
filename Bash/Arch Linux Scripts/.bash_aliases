@@ -1,9 +1,4 @@
 alias alien='sudo alien'
-alias apt-get='sudo apt-get'
-alias apt='sudo apt'
-alias aptitude='sudo aptitude'
-alias apt-key='sudo apt-key'
-alias apt='sudo apt'
 alias aria2c='sudo aria2c'
 alias cat='sudo cat'
 alias chmod='sudo chmod'
@@ -29,6 +24,7 @@ alias mount='sudo mount'
 alias netplan='sudo netplan'
 alias nordvpn='sudo nordvpn'
 alias passwd='sudo passwd'
+alias pacman='sudo pacman'
 alias rpm='sudo rpm'
 alias service='sudo service'
 alias snap='sudo snap'
@@ -72,15 +68,6 @@ alias cls='clear'
 alias dir='dir --color=auto'
 alias vdir='vdir --color=auto'
 
-# apt commands
-alias install='clear; apt -y install'
-alias installr='clear; apt -y --reinstall install'
-alias remove='clear; apt remove'
-alias search='clear; apt search'
-
-# fix missing gnu keys used to update packages
-alias fixkey='clear; apt-key adv --keyserver keyserver.ubuntu.com --recv-keys'
-
 # dos2unix
 alias d2u='dos2unix'
 
@@ -110,11 +97,10 @@ alias nbf='nano ~/.bash_functions; cl'
 alias nbrc='nano ~/.bashrc; cl'
 alias npro='nano ~/.profile; cl'
 # nano [ /etc ]
-alias napt='sudo nano /etc/apt/apt.conf; cl'
 alias ncron='sudo nano /etc/crontab; cl'
 alias nddc='sudo nano /etc/ddclient.conf; cl'
 alias nhosts='sudo nano /etc/hosts; cl'
-alias nlist='sudo nano /etc/apt/sources.list; cl'
+alias nlist='sudo nano /etc/pacman.conf; cl'
 alias nlogin='sudo nano /etc/gdm*/daemon.conf; cl'
 alias nnano='sudo nano /etc/nanorc; cl'
 alias nnet='sudo nano /etc/network/interfaces; cl'
@@ -130,11 +116,10 @@ alias gbrc='gnome-text-editor ~/.bashrc; cl'
 alias gpro='gnome-text-editor ~/.profile; cl'
 # gnome-text-editor [ /etc ]
 alias g='gnome-text-editor'
-alias gapt='sudo gnome-text-editor /etc/apt/apt.conf; cl'
 alias gcron='sudo gnome-text-editor /etc/crontab; cl'
 alias gddc='sudo gnome-text-editor /etc/ddclient.conf; cl'
 alias ghosts='sudo gnome-text-editor /etc/hosts; cl'
-alias glist='sudo gnome-text-editor /etc/apt/sources.list; cl'
+alias glist='sudo gnome-text-editor /etc/pacman.conf; cl'
 alias glogin='sudo gnome-text-editor /etc/gdm*/daemon.conf; cl'
 alias ggnome-text-editor='sudo gnome-text-editor /etc/gnome-text-editorrc; cl'
 alias gnet='sudo gnome-text-editor /etc/network/interfaces; cl'
@@ -144,8 +129,6 @@ alias gsudo='sudo gnome-text-editor /etc/sudoers; cl'
 alias glang='sudo gnome-text-editor /usr/share/gtksourceview-*/language-specs/sh.lang; cl'
 
 # change directory
-alias cdaptd='pushd /etc/apt/apt.conf.d; cl'
-alias cdapt='pushd /etc/apt; cl'
 alias cda='pushd ~/.aria2 ; cl'
 alias cdb='pushd /bin; cl'
 alias cddns='pushd /etc/dnsmasq.d; cl'
@@ -174,14 +157,12 @@ alias cbf='\cat ~/.bash_functions; cl'
 alias cbrc='\cat ~/.bashrc; cl'
 alias cpro='\cat ~/.profile; cl'
 # cat [ /etc ]
-alias capt='clear; cat /etc/apt/sources.list'
 alias cbasrc='clear; cat /etc/bash.bashrc'
 alias ccat='clear; cat /etc/catrc'
 alias ccron='clear; cat /etc/crontab'
 alias cddc='clear; cat /etc/ddclient.conf'
 alias chosts='clear; cat /etc/hosts'
 alias clangs='clear; cat /usr/share/gtksourceview-*/language-specs/sh.lang'
-alias clist='clear; cat /etc/apt/sources.list'
 alias clogin='clear; cat /etc/gdm*/daemon.conf'
 alias cmid='clear; cat /etc/machine-id' # get the machine-id number
 alias cnano='clear; cat /etc/nanorc'
@@ -243,8 +224,8 @@ alias snap_on='snap set core snapshots.automatic.retention=yes' # turn on snap a
 alias snap_off='snap set core snapshots.automatic.retention=no' # turn off snap automatic snapshots
 
 # BAT (COLORIZED CAT COMMAND ALTERNATIVE)
-alias cat='clear; /usr/bin/batcat -p' # remove line numbers
-alias catn='clear; /usr/bin/batcat'   # show line numbers
+alias cat='clear; /usr/sbin/bat -p' # remove line numbers
+alias catn='clear; /usr/sbin/bat'   # show line numbers
 
 # temporary commands... delete when done
 alias runff='bash ~/tmp/test.sh --build --enable-gpl-and-non-free --latest'
@@ -263,9 +244,6 @@ alias wtemp='clear; watch sensors'
 
 # UBUNTU VERSION
 alias uver="clear; lsb_release -d | grep -Eo 'Ubuntu [0-9\.]+.*$'"
-
-# FIX GPG KEY ERRORS DURING APT UPDATE THAT SHOWS THEY ARE "DEPRECIATED"
-alias fix_gpg='sudo cp /etc/apt/trusted.gpg /etc/apt/trusted.gpg.d'
 
 # GET KERNEL VERSION
 alias kv='cat /proc/version | grep -Eo "([0-9\.\-]+-generic)"'
@@ -320,3 +298,14 @@ alias dr='clear; docker rm'
 alias dl='clear; docker logs'
 alias dps='clear; docker ps'
 alias dpsa='clear; docker ps -a'
+
+# GRUB CUSTOMIZER
+alias sgc='sudo grub-customizer'
+alias update-grub='grub-mkconfig -o /boot/grub/grub.cfg'
+
+# PACMAN COMMANDS
+alias install='clear; pacman -S --needed --noconfirm'
+alias list='clear; pacman -Ss'
+alias remove='clear; pacman -R --noconfirm'
+alias qpkg='clear; pacman -Ql'
+alias update='clear; pacman -Syu'
