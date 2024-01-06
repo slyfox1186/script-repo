@@ -320,24 +320,30 @@ fix_key()
 ##########################
 # TAKE OWNERSHIP COMMAND #
 ##########################
+
 toa()
 {
     clear
     sudo chown -R "${USER}":"${USER}" "${PWD}"
     sudo chmod -R 744 "${PWD}"
-    clear; ls -1AvhFhFv --color --group-directories-first
+    clear; ls -1AvhF --color --group-directories-first
 }
 
-#################
-# DPKG COMMANDS #
-#################
-
-## SHOW ALL INSTALLED PACKAGES
-showpkgs()
+tod()
 {
-    dpkg --get-selections |
-    grep -v deinstall > "${HOME}"/tmp/packages.list
-    gted "${HOME}"/tmp/packages.list
+    local directory
+    clear
+
+    if [ -z "$1" ]; then
+        read -p 'Enter the folder name/path: ' directory
+    else
+        directory="$1"
+    fi
+
+    sudo chown -R "${USER}":"${USER}" "$directory"
+    sudo chmod -R 744 "$directory"
+
+    clear; ls -1AvhF --color --group-directories-first
 }
 
 # PIPE ALL DEVELOPMENT PACKAGES NAMES TO file
