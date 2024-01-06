@@ -14,7 +14,7 @@
 ####################################################################################################################################
 
 # Ensure the script is not run as root
-if [ "${EUID}" -eq 0 ]; then
+if [ "$EUID" -eq 0 ]; then
     echo 'You must run this script WITHOUT root/sudo.'
     exit 1
 fi
@@ -22,136 +22,133 @@ fi
 # SET GLOBAL VARIABLES
 script_ver=1.12
 progname="${0}"
-cwd="${PWD}/clang-17-build-script"
-install_prefix=/usr/local
-pc_type=x86_64-linux-gnu
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-web_repo='https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software'
-debug=OFF  # Set to "ON" for debugging
+web_repo='https://github.com/slyfox1186'
 
-# Check if the script is being run in the correct directory
-if [ -d "${cwd}" ]; then
-    rm -fr "${cwd}"
-fi
+# Function to download and compile Clang 17 with clang-tools
+download_clang()
+{
+    local base_url filename tag url
 
-printf "%s\n\n" "Creating build directory: ${cwd}"
-mkdir -p "${cwd}"
+    base_url='https://github.com/llvm/llvm-project/releases'
+    tag=$(curl -s "$base_url" | grep -oP 'llvmorg-17\.\d+\.\d+' | sort -V | tail -1)
+    url="https://github.com/llvm/llvm-project/archive/refs/tags/$tag.tar.gz"
+    filename="clang-${tag//llvmorg-/}.tar.gz"
+    src_dir="${filename%.tar.*}"
 
-# SET THE PATH VARIABLE
-PATH="\
-/usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games\
-"
-export PATH
+    if [ ! -f "$filename" ]; then
+        printf "%s\n\n" "Downloading Clang 17 source code from $url"
+        wget --show-progress -cqO "$filename" "$url" || { echo 'Download failed!'; exit 1; }
+        printf "%s\n\n" "Download complete. Extracting $filename..."
+    fi
 
-# Function Definitions
+    # Extract the files
+    if [ -d "$src_dir" ]; then
+        sudo rm -fr "$src_dir"
+    fi
+
+    mkdir -p "$src_dir/builddir"
+    tar -zxf "$filename" -C "$src_dir" --strip-components 1 || { echo 'Extraction failed!'; exit 1; }
+
+    printf "%s\n\n" "Building Clang and Clang Tools Extra from source..."
+}
+
 setup_environment()
 {
-    echo "Setting up the environment for building Clang-17..."
+    printf "%s\n\n" "Setting up the environment for building Clang-17..."
+
+    if [ -d '/usr/lib/ccache/bin' ]; then
+        CacheDir='/usr/lib/ccache/bin'
+    else
+        CacheDir='/usr/lib/ccache'
+    fi
+    PATH="$CacheDir:$PATH"
+    export PATH
 
     # Check for required tools: git, cmake, ninja, etc.
-    required_tools=("git" "cmake" "ninja" "clang" "clang++")
-    for tool in "${required_tools[@]}"
+    required_tools=('git' 'cmake' 'ninja' 'ccache' 'clang' 'clang++' 'lzip' 'wget' 'curl')
+    for tool in ${required_tools[@]}
     do
         if ! command -v "$tool" &> /dev/null; then
-            echo "Error: $tool is not installed. Please install $tool to proceed."
+            printf "%s\n\n" "Error: $tool is not installed. Please install $tool to proceed."
             exit 1
         fi
     done
 
     # Check for ld.gold
-    if ! command -v ld.gold &>/dev/null; then
-        printf "\n%s\n\n" "ld.gold not found. Attempting to install..."
+    if ! command -v 'ld.gold' &>/dev/null; then
+        printf "%s\n\n" 'ld.gold not found. Attempting to install...'
         # Replace this with the actual URL or command to install ld.gold
-        if ! curl -sSL "$web_repo/build-binutils" | sudo bash; then
-            printf "\n%s\n\n" "Failed to install ld.gold. Please install it manually."
+        wget -cq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-binutils'
+        if ! bash 'build-binutils'; then
+            printf "%s\n\n" 'Failed to install bintutils. Please install it manually with GOLD enabled.'
             exit 1
         fi
     fi
 
     # Check and set compiler flags
-    CC=clang
-    CXX=clang++
+    CC='clang'
+    CXX='clang++'
     CFLAGS='-g -O3 -pipe -march=native'
     CXXFLAGS="${CFLAGS}"
     CPPFLAGS='-I/usr/local/include -I/usr/include'
     LDFLAGS='-Wl,-rpath -Wl,/usr/local/lib -fuse-ld=gold -L/usr/local/lib'
+    pc_type="$(curl -fsSL 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess' | bash)"
     export CC CFLAGS CPPFLAGS LDFLAGS CXX CXXFLAGS
-    echo "Environment setup complete."
+    printf "%s\n\n" 'Environment setup complete.'
 }
 
 build_clang()
 {
     # The commands to build clang from source, including fetching the source code, configuring, and compiling
-    cd "${cwd}" || exit 1
-    git clone --depth=1 'https://github.com/llvm/llvm-project.git'
-    cd llvm-project
+    cd "$src_dir/builddir" || exit 1
     project_pkgs='clang;clang-tools-extra'
-    cmake -S llvm -B builddir                         \
-          -DCMAKE_INSTALL_PREFIX="${install_prefix}"  \
-          -DCMAKE_BUILD_TYPE=Release                  \
-          -DBUILD_SHARED_LIBS=OFF                     \
-          -DBENCHMARK_DOWNLOAD_DEPENDENCIES=ON        \
-          -DBENCHMARK_ENABLE_TESTING=ON               \
-          -DBENCHMARK_INSTALL_DOCS=OFF                \
-          -DCLANG_INCLUDE_DOCS=OFF                    \
-          -DCMAKE_C_COMPILER="${CC}"                  \
-          -DCMAKE_C_FLAGS="${CFLAGS}"                 \
-          -DCMAKE_CXX_FLAGS="${CXXFLAGS}"             \
-          -DCMAKE_CXX_COMPILER="${CXX}"               \
-          -DCMAKE_CXX_STANDARD=20                     \
-          -DGOLD_EXECUTABLE="$(type -P ld.gold)"      \
-          -DLLVM_BINUTILS_INCDIR=/usr/local/bin       \
-          -DLLVM_BUILD_BENCHMARKS=OFF                 \
-          -DLLVM_BUILD_RUNTIME=ON                     \
-          -DLLVM_BUILD_RUNTIMES=ON                    \
-          -DLLVM_CCACHE_BUILD=ON                      \
-          -DLLVM_ENABLE_CURL=ON                       \
-          -DLLVM_ENABLE_LTO=OFF                       \
-          -DLLVM_ENABLE_OCAMLDOC=OFF                  \
-          -DLLVM_ENABLE_PIC=ON                        \
-          -DLLVM_ENABLE_PROJECTS="${project_pkgs}"    \
-          -DLLVM_ENABLE_WARNINGS=OFF                  \
-          -DLLVM_HOST_TRIPLE="${pc_type}"             \
-          -DLLVM_INCLUDE_DOCS=OFF                     \
-          -DLLVM_INCLUDE_TESTS=OFF                    \
-          -DLLVM_TARGET_ARCH=HOST                     \
-          -DLLVM_TOOL_CLANG_BUILD=ON                  \
-          -DLLVM_USE_LINKER=gold                      \
+    cmake -S ../llvm                               \
+          -DCMAKE_INSTALL_PREFIX=/usr/local        \
+          -DCMAKE_BUILD_TYPE=Release               \
+          -DBUILD_SHARED_LIBS=OFF                  \
+          -DBENCHMARK_DOWNLOAD_DEPENDENCIES=ON     \
+          -DBENCHMARK_ENABLE_TESTING=ON            \
+          -DBENCHMARK_INSTALL_DOCS=OFF             \
+          -DCLANG_INCLUDE_DOCS=OFF                 \
+          -DCMAKE_C_COMPILER="${CC}"               \
+          -DCMAKE_C_FLAGS="${CFLAGS}"              \
+          -DCMAKE_CXX_FLAGS="${CXXFLAGS}"          \
+          -DCMAKE_CXX_COMPILER="${CXX}"            \
+          -DCMAKE_CXX_STANDARD=20                  \
+          -DGOLD_EXECUTABLE="$(type -P ld.gold)"   \
+          -DLLVM_BINUTILS_INCDIR=/usr/local/bin    \
+          -DLLVM_BUILD_BENCHMARKS=OFF              \
+          -DLLVM_BUILD_RUNTIME=ON                  \
+          -DLLVM_BUILD_RUNTIMES=ON                 \
+          -DLLVM_CCACHE_BUILD=ON                   \
+          -DLLVM_ENABLE_CURL=ON                    \
+          -DLLVM_ENABLE_LTO=OFF                    \
+          -DLLVM_ENABLE_OCAMLDOC=OFF               \
+          -DLLVM_ENABLE_PIC=ON                     \
+          -DLLVM_ENABLE_PROJECTS="${project_pkgs}" \
+          -DLLVM_ENABLE_WARNINGS=OFF               \
+          -DLLVM_HOST_TRIPLE="${pc_type}"          \
+          -DLLVM_INCLUDE_DOCS=OFF                  \
+          -DLLVM_INCLUDE_TESTS=OFF                 \
+          -DLLVM_TARGET_ARCH=HOST                  \
+          -DLLVM_TOOL_CLANG_BUILD=ON               \
+          -DLLVM_USE_LINKER=gold                   \
           -G Ninja -Wno-dev
     echo
-    if ! ninja "-j$(nproc --all)" -C builddir; then
-        printf "\n%s\n\n" "Failed to execute: ninja -j$(nproc --all) -C build. Line: ${LINENO}"
+    if ! ninja "-j$(nproc --all)"; then
+        printf "\n%s\n\n" "Failed to execute: ninja -j$(nproc --all). Line: ${LINENO}"
         exit 1
     fi
     echo
-    if ! sudo ninja -C builddir install; then
-        printf "\n%s\n\n" "Failed to execute: sudo ninja -C build install. Line: ${LINENO}"
+    if ! sudo ninja install; then
+        printf "\n%s\n\n" "Failed to execute: sudo ninja install. Line: ${LINENO}"
         exit 1
     fi
+
+    printf "%s\n\n" "Clang and Clang Tools compilation and installation complete."
 }
 
-show_ver_fn() { clang --version; }
-
-cleanup_fn() { rm -rf "${cwd}/build"; }
-
-exit_fn() { echo "Clang-17 build completed successfully."; }
-
-# Script Execution
+# Main script execution
 setup_environment
+download_clang
 build_clang
-show_ver_fn
-cleanup_fn
-exit_fn

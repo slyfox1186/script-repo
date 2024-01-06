@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+
+clear
+
+# Define the OpenSSL version and download URL
+openssl_version='openssl-3.2.0'
+openssl_url="https://www.openssl.org/source/$openssl_version.tar.gz"
+
+# Define the installation directory (optional)
+install_dir='/usr/local/ssl'
+
+# SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
+CC=clang
+CXX=clang++
+CFLAGS='-Wall -pthread -g -O3 -pipe -march=native'
+CXXFLAGS="${CFLAGS}"
+SHARED_CFLAG='-fPIC'
+CPPFLAGS='-I/usr/local/include -I/usr/include'
+LDFLAGS='-L/usr/local/ssl/lib -L/usr/local/lib64 -L/usr/local/lib'
+LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+LDLIBS="${LDFLAGS}"
+LD_LIBRARY_PATH="${install_dir}/lib64:${LD_LIBRARY_PATH}"
+export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS LD_LIBRARY_PATH LDLIBS SHARED_CFLAG
+
+# Download OpenSSL
+printf "%s\n\n" 'Downloading OpenSSL...'
+wget --show-progress -cq ${openssl_url}
+
+if [ -d $openssl_version ]; then
+    sudo rm -fr $openssl_version
+fi
+mkdir -p $openssl_version/build
+
+# Extract the tarball
+printf "%s\n\n" 'Extracting OpenSSL...'
+tar -xzf ${openssl_version}.tar.gz -C $openssl_version --strip-components 1
+
+# Change to the extracted directory
+cd ${openssl_version}/build || exit 1
+
+# Configure OpenSSL
+printf "%s\n\n" 'Configuring OpenSSL...'
+../Configure linux-x86_64-clang                        \
+             -DOPENSSL_USE_IPV6=0                      \
+             -Wl,-rpath="${install_dir}"/lib64         \
+             -Wl,--enable-new-dtags                    \
+             --prefix=${install_dir}                   \
+             --openssldir=${install_dir}               \
+             --release                                 \
+             --with-zlib-include=/usr/include          \
+             --with-zlib-lib=/usr/lib/x86_64-linux-gnu \
+             enable-brotli                             \
+             enable-ec_nistp_64_gcc_128                \
+             enable-egd                                \
+             enable-fips                               \
+             enable-rc5                                \
+             enable-sctp                               \
+             enable-shared                             \
+             enable-threads                            \
+             enable-zlib                               \
+             enable-zstd                               \
+             no-tests
+
+# Compile OpenSSL
+echo 'Compiling OpenSSL...'
+make "-j$(nproc --all)"
+
+# Install OpenSSL
+printf "%s\n\n" 'Installing OpenSSL...'
+sudo make install
+
+# Create a soft link to a directory that should be in PATH
+sudo ln -sf /usr/local/ssl/bin/openssl /usr/local/bin/openssl
+
+# Post-installation: Updating the shared library cache
+printf "%s\n\n" 'Updating shared library cache...'
+sudo ldconfig
+
+printf "%s\n\n" 'OpenSSL installation completed.'

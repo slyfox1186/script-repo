@@ -73,6 +73,7 @@ box_out_banner_aria2()
 }
 box_out_banner_aria2 "Aria2 Build Script - v${script_ver}"
 echo
+sleep 2
 
 #
 # TEST THE OS AND ITS VERSION
