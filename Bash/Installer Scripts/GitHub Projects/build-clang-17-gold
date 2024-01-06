@@ -14,7 +14,7 @@
 ####################################################################################################################################
 
 # Ensure the script is not run as root
-if [ "${EUID}" -eq 0 ]; then
+if [ "$EUID" -eq 0 ]; then
     echo 'You must run this script WITHOUT root/sudo.'
     exit 1
 fi
@@ -66,21 +66,22 @@ setup_environment()
     export PATH
 
     # Check for required tools: git, cmake, ninja, etc.
-    required_tools=('git' 'cmake' 'ninja' 'ccache' 'clang' 'clang++')
+    required_tools=('git' 'cmake' 'ninja' 'ccache' 'clang' 'clang++' 'lzip')
     for tool in ${required_tools[@]}
     do
         if ! command -v "$tool" &> /dev/null; then
-            printf "\n%s\n\n" "Error: $tool is not installed. Please install $tool to proceed."
+            printf "%s\n\n" "Error: $tool is not installed. Please install $tool to proceed."
             exit 1
         fi
     done
 
     # Check for ld.gold
     if ! command -v 'ld.gold' &>/dev/null; then
-        printf "\n%s\n\n" 'ld.gold not found. Attempting to install...'
+        printf "%s\n\n" 'ld.gold not found. Attempting to install...'
         # Replace this with the actual URL or command to install ld.gold
-        if ! curl -sSL "$bin_repo" | sudo bash; then
-            printf "\n%s\n\n" 'Failed to install ld.gold. Please install it manually.'
+        curl -Lso 'build-binutils' "$bin_repo"
+        if ! bash 'build-binutils'; then
+            printf "%s\n\n" 'Failed to install bintutils. Please install it manually with GOLD enabled.'
             exit 1
         fi
     fi
