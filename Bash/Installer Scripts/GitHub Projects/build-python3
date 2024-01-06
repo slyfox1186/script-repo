@@ -7,13 +7,11 @@
 ##
 ##  Purpose: Install Python3 from the source code acquired from the official website: https://www.python.org/downloads
 ##
-##  Version: 3.12.0
-##
 ##  Features: Static build, OpenSSL backend
 ##
-##  Updated: 12.03.23
+##  Updated: 01.05.24
 ##
-##  Script version: 2.1
+##  Script version: 2.2
 ##
 #################################################################################################################################
 
@@ -28,8 +26,8 @@ fi
 # SET THE SCRIPT VARIABLES
 #
 
-script_ver=2.1
-py_ver=3.12.0
+script_ver=2.2
+py_ver=3.12.1
 archive_dir=Python-${py_ver}.tar.xz
 archive_url="https://www.python.org/ftp/python/${py_ver}/${archive_dir}"
 archive_ext="${archive_url//*.}"
