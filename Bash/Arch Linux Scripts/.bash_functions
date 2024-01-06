@@ -190,9 +190,26 @@ mvf()
 toa()
 {
     clear
-    sudo chown -R "${USER}":"${USER}" "${PWD}"
+    sudo chown -R "${USER}":wheel "${PWD}"
     sudo chmod -R 744 "${PWD}"
-    clear; ls -1AvhFhFv --color --group-directories-first
+    clear; ls -1AvhF --color --group-directories-first
+}
+
+tod()
+{
+    local directory
+    clear
+
+    if [ -z "$1" ]; then
+        read -p 'Enter the folder name/path: ' directory
+    else
+        directory="$1"
+    fi
+
+    sudo chown -R "${USER}":wheel "$directory"
+    sudo chmod -R 744 "$directory"
+
+    clear; ls -1AvhF --color --group-directories-first
 }
 
 #################
