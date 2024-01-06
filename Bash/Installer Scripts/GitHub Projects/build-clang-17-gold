@@ -150,6 +150,6 @@ build_clang()
 }
 
 # Main script execution
-setup_environment
 download_clang
+setup_environment
 build_clang
