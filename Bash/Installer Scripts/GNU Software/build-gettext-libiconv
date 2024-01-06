@@ -1,296 +1,65 @@
 #!/usr/bin/env bash
 
-###########################################################################################################
-##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-gettext-libiconv
-##
-##  Purpose: build gnu gettext + libiconv
-##
-##  Updated: 08.31.23
-##
-##  Script version: 1.2
-##
-###########################################################################################################
-
 clear
+
+# GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-gettext-libiconv
+# Purpose: build gnu gettext + libiconv
+# Updated: 08.31.23
+# Script version: 1.2
+
+set -e
 
 if [ "${EUID}" -eq '0' ]; then
     printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
     exit 1
 fi
 
-#
-# SET THE VARIABLES
-#
-
 script_ver=1.2
 archive_dir1=libiconv-1.17
-archive_dir2=gettext-0.22.3
-archive_url1=https://ftp.gnu.org/gnu/libiconv/${archive_dir1}.tar.gz
-archive_url2=https://ftp.gnu.org/gnu/gettext/${archive_dir2}.tar.lz
-archive_ext1="${archive_url1//*.}"
-archive_ext2="${archive_url2//*.}"
+archive_dir2=gettext-0.22.4
+archive_url1=https://ftp.gnu.org/gnu/libiconv/$archive_dir1.tar.gz
+archive_url2=https://ftp.gnu.org/gnu/gettext/$archive_dir2.tar.lz
 cwd="${PWD}"/gettext-libiconv-build-script
 install_dir=/usr/local
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/script-repo
 
-printf "%s\n%s\n\n" \
-    "gettext + libiconv build script - v${script_ver}" \
-    '==============================================='
-
-#
-# CREATE OUTPUT DIRECTORY
-#
-
-if [ -d "${cwd}/${archive_dir1}" ] || [ -d "${cwd}/${archive_dir2}" ]; then
-    sudo rm -fr "${cwd}/${archive_dir1}" "${cwd}/${archive_dir2}"
-fi
-mkdir -p "${cwd}/${archive_dir1}" "${cwd}/${archive_dir2}"
-
-#
-# SET THE C + CPP COMPILERS
-#
-
-export CC=gcc CXX=g++
-
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
-
-#
-# SET THE PATH VARIABLE
-#
-
-PATH="\
-/usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
-
-#
-# SET THE PKG_CONFIG_PATH VARIABLE
-#
-
-PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
-"
-export PKG_CONFIG_PATH
-
-#
-# CREATE FUNCTIONS
-#
-
-exit_fn()
+# Helper function to download and extract archives
+download_and_extract()
 {
-    fail_fn "The script has completed:Line ${LINENO}"
-    exit 0
+    local archive_dir=$1
+    local archive_url=$2
+    local archive_ext="${archive_url##*.}"
+
+    mkdir -p "$cwd/$archive_dir"
+    curl -L "${archive_url}" -o "$cwd/$archive_dir.${archive_ext}"
+    tar -xf "$cwd/$archive_dir.${archive_ext}" -C "$cwd/$archive_dir" --strip-components 1
 }
 
-cleanup_fn()
+# Helper function for building and installing
+build_and_install()
 {
-    local choice
-
-    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
-
-    case "${choice}" in
-        1)      sudo rm -fr "${cwd}";;
-        2)      echo;;
-        *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
-                unset choice
-                clear
-                cleanup_fn
-                ;;
-    esac
-}
-
-fail_fn()
-{
-    printf "%s\n\n" "${1}"
-    exit 1
-}
-
-#
-# INSTALL REQUIRED APT PACKAGES
-#
-
-pkgs_fn()
-{
-    pkgs=("${1}" autoconf autoconf-archive autogen automake binutils bison build-essential ccache
-          libc6-dev libintl-perl libtool libtool-bin libxml2-dev lzip m4 nasm pkg-config yasm)
-
-    for i in ${pkgs[@]}
-    do
-        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
-        fi
-    done
-
-    if [ -n "${missing_pkgs}" ]; then
-        sudo apt -y install ${missing_pkgs}
-        clear
+    local archive_dir=$1
+    cd "$cwd/$archive_dir" || exit 1
+    mkdir -p build
+    cd build || exit 1
+    ../configure --prefix="$install_dir" --enable-static --with-pic
+    if ! make "-j$(nproc --all)"; then
+        printf "%s\n\n" "Failed to run make -j$(nproc --all)"
+        exit 1
     fi
-    unset i missing_pkgs
+    if ! sudo make install; then
+        printf "%s\n\n" 'Failed to run sudo make install'
+        exit 1
+    fi
+    sudo libtool --finish "$install_dir/lib"
 }
 
-#
-# DETERMINE WHAT VERSION OF LINUX WE ARE ON
-#
-
-os_ver_check_fn()
-{
-    case "${VER}" in
-            12|11|10)    pkgs_fn 'libticonv-dev';;
-    esac
-}
-
-#
-# GET CURRENT OS INFORMATION
-#
-
-if [ -f /etc/os-release ]; then
-    source /etc/os-release
-    OS="${NAME}"
-    VER="${VERSION_ID}"
-elif "$(type -P lsb_release)" &>/dev/null; then
-    OS="$(lsb_release -si)"
-    VER="$(lsb_release -sr)"
-elif [ -f /etc/lsb-release ]; then
-    source /etc/lsb-release
-    OS="${DISTRIB_ID}"
-    VER="${DISTRIB_RELEASE}"
-elif [ -f /etc/debian_version ]; then
-    OS=Debian
-    VER="$(cat /etc/debian_version)"
-else
-    OS="$(uname -s)"
-    VER="$(uname -r)"
-fi
-
-#
-# TEST THE OS AND ITS VERSION
-#
-
-case "${OS}" in
-    Debian*)            os_ver_check_fn;;
-    Ubuntu)             echo;;
-    *)                  fail_fn "Could not detect the OS architecture:Line ${LINENO}";;
-esac
-
-#
-# DOWNLOAD THE ARCHIVE FILES
-#
-
-if [ ! -f "${cwd}/${archive_dir1}.tar.gz" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/${archive_dir1}.${archive_ext1}" "${archive_url1}"
-fi
-
-if [ ! -f "${cwd}/${archive_dir2}.tar.lz" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/${archive_dir2}.${archive_ext2}" "${archive_url2}"
-fi
-
-#
-# CREATE OUTPUT DIRECTORIES
-#
-
-if [ -d "${cwd}/${archive_dir1}" ] || [ -d "${cwd}/${archive_dir2}" ]; then
-    sudo rm -fr "${cwd}/${archive_dir1}" "${cwd}/${archive_dir2}"
-fi
-mkdir -p "${cwd}/${archive_dir1}" "${cwd}/${archive_dir2}"
-
-#
-# EXTRACT THE ARCHIVE FILES
-#
-
-if ! tar -xf "${cwd}/${archive_dir1}.${archive_ext1}" -C "${cwd}/${archive_dir1}" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_dir1}.${archive_ext1}"
-fi
-if ! tar -xf "${cwd}/${archive_dir2}.${archive_ext2}" -C "${cwd}/${archive_dir2}" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_dir2}.${archive_ext2}"
-fi
-
-#
-# START BUILDING FROM SOURCE
-#
-
-printf "\n%s\n%s\n\n" \
-    'Building libiconv - v1.17' \
+# Main script execution
+printf "%s\n%s\n\n"                                  \
+    "gettext + libiconv build script - v$script_ver" \
     '==============================================='
 
-cd "${cwd}/${archive_dir1}" || exit 1
-mkdir build
-cd build || exit 1
-../configure --{build,host}=x86_64-linux-gnu  \
-             --prefix="${install_dir}" \
-             --disable-nls                \
-             --enable-static              \
-             --with-pic
-make "-j$(nproc --all)"
-if ! sudo make install; then
-    printf "\n%s\n\n" "Failed to install: ${archive_dir1}."
-    exit 1
-fi
-sudo libtool --finish "${install_dir}/lib"
+download_and_extract "$archive_dir1" "${archive_url1}"
+build_and_install "$archive_dir1"
 
-printf "\n%s\n%s\n\n" \
-    'Building gettext - v0.22' \
-    '==============================================='
-
-cd "${cwd}/${archive_dir2}" || exit 1
-autoupdate
-./autogen.sh
-mkdir build
-cd build || exit 1
-../configure --prefix="${install_dir}"        \
-             --{build,host}=x86_64-linux-gnu  \
-             --enable-shared                  \
-             --enable-static                  \
-             --with-pic
-make "-j$(nproc --all)"
-if ! sudo make install; then
-    printf "\n%s\n\n" "Failed to install: ${archive_dir2}."
-    exit 1
-fi
-sudo libtool --finish "${install_dir}/lib"
-
-# CLEANUP FILES
-cleanup_fn
-
-# SHOW EXIT MESSAGE
-exit_fn
+download_and_extract "$archive_dir2" "${archive_url2}"
+build_and_install "$archive_dir2"
