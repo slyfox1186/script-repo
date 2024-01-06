@@ -37,9 +37,16 @@ fi
 printf "%s\n\n" "Creating build directory: ${cwd}"
 mkdir -p "${cwd}"
 
-# SET THE PATH VARIABLE
+if [ -d '/usr/lib/ccache/bin' ]; then
+    ccache_dir='/usr/lib/ccache/bin'
+else
+    ccache_dir='/usr/lib/ccache'
+fi
+
+path_fn()
+{
 PATH="\
-/usr/lib/ccache:\
+${ccache_dir}:\
 ${HOME}/perl5/bin:\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
