@@ -962,7 +962,7 @@ build_gcc_13_fn()
                              --enable-default-pie                                    \
                              --enable-gnu-unique-object                              \
                              --enable-languages="${langs_13}"                        \
-                             --enable-libphobos-checking=release                     \           
+                             --enable-libphobos-checking=release                     \
                              --enable-libstdcxx-debug                                \
                              --enable-libstdcxx-time=yes                             \
                              --enable-linker-build-id                                \
