@@ -94,7 +94,7 @@ setup_environment()
     LDFLAGS='-Wl,-rpath -Wl,/usr/local/lib -fuse-ld=gold -L/usr/local/lib'
     pc_type="$(curl -fsSL 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess' | bash)"
     export CC CFLAGS CPPFLAGS LDFLAGS CXX CXXFLAGS
-    printf "\n%s\n\n" "Environment setup complete."
+    printf "%s\n\n" 'Environment setup complete.'
 }
 
 build_clang()
