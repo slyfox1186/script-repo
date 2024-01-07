@@ -596,8 +596,6 @@ build()
 
 build_done() { echo "$2" > "$packages/$1.done"; }
 
-installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
-
 library_exists()
 {
     if ! [[ -x "$(pkg-config --exists --print-errors "$1" 2>&1 >/dev/null)" ]]; then
