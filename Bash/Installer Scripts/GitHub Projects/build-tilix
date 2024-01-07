@@ -87,7 +87,7 @@ if [ ${#to_install[@]} -ne 0 ]; then
     echo "Installing packages: ${to_install[*]}"
     sudo apt -y install "${to_install[@]}"
 else
-    echo "All packages are already installed."
+    printf "\n%s\n\n" "All packages are already installed."
 fi
     
 # GET THE LATEST RELEASE VERSION OF TILIX
