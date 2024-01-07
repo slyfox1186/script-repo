@@ -38,11 +38,16 @@ unavailable_packages_file="unavailable_packages.txt"
 > "$unavailable_packages_file"
 
 # Check each package with apt-cache
-for pkg in "${packages[@]}"
-do
+for pkg in "${packages[@]}"; do
     if ! apt-cache show "$pkg" > /dev/null 2>&1; then
         echo "$pkg" | tee -a "$unavailable_packages_file"
     fi
 done
 
-# Check if the file has content and display the
+# Check if the file has content and display the result
+if [ -s "$unavailable_packages_file" ]; then
+    echo "The following packages are not available in the APT repositories:"
+    cat "$unavailable_packages_file"
+else
+    echo "All packages are available in the APT repositories."
+fi
