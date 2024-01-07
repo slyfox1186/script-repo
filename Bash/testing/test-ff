@@ -37,18 +37,12 @@ unavailable_packages_file="unavailable_packages.txt"
 # Clear or create the file
 > "$unavailable_packages_file"
 
-# Check each package with apt policy
-for pkg in "${packages[@]}"; do
-    policy_output=$(apt policy "$pkg" 2>&1 || true)
-    if echo "$policy_output" | grep -q "N: Unable to locate package $pkg"; then
+# Check each package with apt-cache
+for pkg in "${packages[@]}"
+do
+    if ! apt-cache show "$pkg" > /dev/null 2>&1; then
         echo "$pkg" | tee -a "$unavailable_packages_file"
     fi
 done
 
-# Echo unavailable packages at the end
-if [ -s "$unavailable_packages_file" ]; then
-    echo "The following packages are unavailable:"
-    cat "$unavailable_packages_file"
-else
-    echo "All packages are available."
-fi
+# Check if the file has content and display the
