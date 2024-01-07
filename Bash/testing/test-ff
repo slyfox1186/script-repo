@@ -31,17 +31,24 @@ packages=(
     texi2html texinfo tk-dev unzip valgrind wget xmlto zlib1g-dev mesa-utils
 )
 
-# File to store the list of missing packages
-missing_packages_file="missing_packages.txt"
+# File to store the list of unavailable packages
+unavailable_packages_file="unavailable_packages.txt"
 
 # Clear or create the file
-> "$missing_packages_file"
+> "$unavailable_packages_file"
 
-# Check each package and append to the file if not installed
+# Check each package with apt policy
 for pkg in "${packages[@]}"; do
-    if ! dpkg -l "$pkg" &> /dev/null; then
-        echo "$pkg" | tee -a "$missing_packages_file"
+    policy_output=$(apt policy "$pkg" 2>&1 || true)
+    if echo "$policy_output" | grep -q "N: Unable to locate package $pkg"; then
+        echo "$pkg" | tee -a "$unavailable_packages_file"
     fi
 done
 
-echo "Missing packages are listed in $missing_packages_file"
+# Echo unavailable packages at the end
+if [ -s "$unavailable_packages_file" ]; then
+    echo "The following packages are unavailable:"
+    cat "$unavailable_packages_file"
+else
+    echo "All packages are available."
+fi
