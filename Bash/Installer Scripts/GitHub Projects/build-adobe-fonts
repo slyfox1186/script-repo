@@ -27,10 +27,10 @@ script_ver=1.1
 pro_url=https://github.com/adobe-fonts/source-code-pro/archive/refs/tags/2.042R-u/1.062R-i/1.026R-vf.tar.gz
 sans_url=https://github.com/adobe-fonts/source-sans/archive/refs/tags/3.052R.tar.gz
 serif_url=https://github.com/adobe-fonts/source-serif/releases/download/4.004R/source-serif-4.004.zip
-cwd="${PWD}"/adobe-fonts-installer
-pro_dir="${cwd}"/pro-source
-sans_dir="${cwd}"/sans-source
-serif_dir="${cwd}"/serif-source
+cwd="$PWD"/adobe-fonts-installer
+pro_dir="$cwd"/pro-source
+sans_dir="$cwd"/sans-source
+serif_dir="$cwd"/serif-source
 install_dir_pro=/usr/local/share/fonts/adobe-pro
 install_dir_sans=/usr/local/share/fonts/adobe-sans
 install_dir_serif=/usr/local/share/fonts/adobe-serif
@@ -45,16 +45,16 @@ web_repo=https://github.com/slyfox1186/script-repo
 
 box_out_banner_header()
 {
-    input_char=$(echo "${@}" | wc -c)
+    input_char=$(echo "$@" | wc -c)
     line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
     tput bold
-    line="$(tput setaf 3)${line}"
+    line="$(tput setaf 3)$line"
     space=${line//-/ }
-    echo " ${line}"
+    echo " $line"
     printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
-    printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
+    printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
     printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
-    echo " ${line}"
+    echo " $line"
     tput sgr 0
 }
 box_out_banner_header "Installer Script - Adobe-Sans & Adobe-Pro Fonts - version ${script_ver}"
@@ -69,15 +69,15 @@ exit_fn()
 {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
-        "${web_repo}"
+        "$web_repo"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "${1}" \
-        "To report a bug create an issue at: ${web_repo}/issues"
+        "$1" \
+        "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
@@ -101,18 +101,18 @@ sudo mkdir -p "${install_dir_pro}" "${install_dir_sans}" "${install_dir_serif}" 
 #
 
 if [ ! -f "${pro_dir}".tar.gz ]; then
-    if ! wget --show-progress -U "${user_agent}" -cqO "${pro_dir}".tar.gz "${pro_url}"; then
+    if ! wget --show-progress -U "$user_agent" -cqO "${pro_dir}".tar.gz "${pro_url}"; then
         fail_fn "Failed to download the archive file \"${pro_dir}.tar.gz\". Line: ${LINENO}"
     fi
 fi
 
 if [ ! -f "${sans_dir}".tar.gz ]; then
-    if ! wget --show-progress -U "${user_agent}" -cqO "${sans_dir}".tar.gz "${sans_url}"; then
+    if ! wget --show-progress -U "$user_agent" -cqO "${sans_dir}".tar.gz "${sans_url}"; then
         fail_fn "Failed to download the archive file \"${sans_dir}.tar.gz\". Line: ${LINENO}"
     fi
 fi
 if [ ! -f "${serif_dir}".tar.gz ]; then
-    if ! wget --show-progress -U "${user_agent}" -cqO "${serif_dir}".tar.gz "${sans_url}"; then
+    if ! wget --show-progress -U "$user_agent" -cqO "${serif_dir}".tar.gz "${sans_url}"; then
         fail_fn "Failed to download the archive file \"${serif_dir}.tar.gz\". Line: ${LINENO}"
     fi
 fi
@@ -166,7 +166,7 @@ else
 fi
 
 # CLEANUP THE LEFTOVER BUILD FILES
-sudo rm -fr "${cwd}"
+sudo rm -fr "$cwd"
 
 # SHOW THE EXIT MESSAGE
 exit_fn

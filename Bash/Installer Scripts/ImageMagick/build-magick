@@ -179,12 +179,12 @@ execute()
     echo "$ ${*}"
 
     if [ "${debug}" = 'ON' ]; then
-        if ! output="$("${@}")"; then
+        if ! output="$("$@")"; then
             notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
             fail_fn "Failed to execute: ${*}"
         fi
     else
-        if ! output="$("${@}" 2>&1)"; then
+        if ! output="$("$@" 2>&1)"; then
             notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
             fail_fn "Failed to execute: ${*}"
         fi
@@ -323,9 +323,9 @@ git_1_fn()
     git_url="$2"
 
     if curl_cmd="$(curl-A "$user_agent" -m 10 -sSL "https://api.github.com/repos/${git_repo}/${git_url}")"; then
-        g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
-        g_ver1="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
-        g_ver2="$(echo "${curl_cmd}" | jq -r '.[0].tag_name' 2>/dev/null)"
+        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
+        g_ver1="$(echo "$curl_cmd" | jq -r '.[1].name' 2>/dev/null)"
+        g_ver2="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null)"
         g_ver="${g_ver#pkgconf-}"
         g_ver="${g_ver#release-}"
         g_ver="${g_ver#ver-}"
@@ -333,7 +333,7 @@ git_1_fn()
         g_ver1="${g_ver1#nasm-}"
         g_ver1="${g_ver1#v}"
         g_ver2="${g_ver2#v}"
-        g_url="$(echo "${curl_cmd}" | jq -r '.[0].tarball_url' 2>/dev/null)"
+        g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url' 2>/dev/null)"
     fi
 }
 
@@ -341,7 +341,7 @@ git_2_fn()
 {
     repo="$1"
     if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://gitlab.freedesktop.org/api/v4/projects/${repo}/repository/tags")"; then
-        g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name')"
+        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
     fi
 }
 
@@ -492,14 +492,14 @@ dl_libjxl_fn()
 
 box_out_banner_script_header()
 {
-    input_char=$(echo "${@}" | wc -c)
+    input_char=$(echo "$@" | wc -c)
     line=$(for i in $(seq 0 $input_char); do printf '-'; done)
     tput bold
     line="$(tput setaf 3)$line"
     space=${line//-/ }
     echo " $line"
     printf '|' ; echo -n "$space" ; printf "%s\n" '|';
-    printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
+    printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
     printf '|' ; echo -n "$space" ; printf "%s\n" '|';
     echo " $line"
     tput sgr 0
@@ -979,14 +979,14 @@ fi
 echo
 box_out_banner_magick()
 {
-    input_char=$(echo "${@}" | wc -c)
+    input_char=$(echo "$@" | wc -c)
     line=$(for i in $(seq 0 $input_char); do printf '-'; done)
     tput bold
     line="$(tput setaf 3)$line"
     space=${line//-/ }
     echo " $line"
     printf '|' ; echo -n "$space" ; printf "%s\n" '|';
-    printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
+    printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
     printf '|' ; echo -n "$space" ; printf "%s\n" '|';
     echo " $line"
     tput sgr 0

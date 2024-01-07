@@ -30,7 +30,7 @@ exit_fn()
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n%s\n\n" \
-        "${1}" \
+        "$1" \
         'If you think this is a bug please fill out a report.' \
         'https://github.com/slyfox1186/script-repo/issues'
     return 1
@@ -39,7 +39,7 @@ fail_fn()
 success_fn()
 {
     clear
-    echo "${1} was succesfully installed."
+    echo "$1 was succesfully installed."
     exit_fn
 }
 

@@ -28,9 +28,9 @@ fi
 
 script_ver=1.0
 install_prefix=/usr/local
-cwd="${PWD}"/libhwy-build-script
-packages="${cwd}"/packages
-workspace="${cwd}"/workspace
+cwd="$PWD"/libhwy-build-script
+packages="$cwd"/packages
+workspace="$cwd"/workspace
 pc_type=x86_64-linux-gnu
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
@@ -40,7 +40,7 @@ debug=OFF
 # CREATE OUTPUT DIRECTORIES
 #
 
-mkdir -p "${packages}" "${workspace}"
+mkdir -p "$packages" "$workspace"
 
 #
 # GET CPU CORE COUNT FOR PARALLEL PROCESSING
@@ -64,8 +64,8 @@ export CC=gcc CXX=g++
 
 CFLAGS='-g -O3 -pipe -march=native'
 CXXFLAGS="${CFLAGS}"
-CPPFLAGS="-I${workspace}/include -I/usr/local/include -I/usr/include"
-LDFLAGS="-L${workspace}/lib64 -L${workspace}/lib -L${workspace}/lib/x86_64-linux-gnu -L/usr/local/lib64"
+CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include"
+LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64"
 LDFLAGS+=' -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 MAKEFLAGS="-j$(nproc --all)"
 export CFLAGS CPPFLAGS CXXFLAGS LDFLAGS MAKEFLAGS
@@ -103,11 +103,11 @@ ${HOME}/.local/bin:\
 export PATH
 
 PKG_CONFIG_PATH="\
-${workspace}/usr/lib/pkgconfig:\
-${workspace}/lib64/pkgconfig:\
-${workspace}/lib/pkgconfig:\
-${workspace}/lib/x86_64-linux-gnu/pkgconfig:\
-${workspace}/share/pkgconfig:\
+$workspace/usr/lib/pkgconfig:\
+$workspace/lib64/pkgconfig:\
+$workspace/lib/pkgconfig:\
+$workspace/lib/x86_64-linux-gnu/pkgconfig:\
+$workspace/share/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
@@ -131,9 +131,9 @@ export PKG_CONFIG_PATH
 fail_fn()
 {
     printf "\n%s\n%s\n%s\n\n" \
-        "${1}" \
+        "$1" \
         'You can enable the script'\''s debugging feature by changing the variable "debug" to "ON"' \
-        "To report a bug visit: ${web_repo}/issues"
+        "To report a bug visit: $web_repo/issues"
     exit 1
 }
 
@@ -141,7 +141,7 @@ exit_fn()
 {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
-        "${web_repo}"
+        "$web_repo"
     exit 0
 }
 
@@ -157,7 +157,7 @@ cleanup_fn()
     clear
 
     case "${choice}" in
-        1)      sudo rm -fr "${cwd}";;
+        1)      sudo rm -fr "$cwd";;
         2)      clear;;
         *)
                 unset choice
@@ -174,18 +174,18 @@ git_1_fn()
 {
     local curl_cmd github_repo github_url
 
-    github_repo="${1}"
-    github_url="${2}"
+    github_repo="$1"
+    github_url="$2"
 
-    if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
-        g_ver="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
+    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
     fi
 
 }
 
 git_ver_fn()
 {
-    git_1_fn "${1}" 'releases' 2>/dev/null
+    git_1_fn "$1" 'releases' 2>/dev/null
 }
 
 execute()
@@ -193,12 +193,12 @@ execute()
     echo "$ ${*}"
 
     if [ "${debug}" = 'ON' ]; then
-        if ! output=$("${@}"); then
+        if ! output=$("$@"); then
             notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
             fail_fn "Failed to execute: ${*}"
         fi
     else
-        if ! output=$("${@}" 2>&1); then
+        if ! output=$("$@" 2>&1); then
             notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
             fail_fn "Failed to execute: ${*}"
         fi
@@ -207,102 +207,102 @@ execute()
 
 download()
 {
-    dl_path="${packages}"
-    dl_url="${1}"
+    dl_path="$packages"
+    dl_url="$1"
     dl_file="${2:-"${1##*/}"}"
 
-    if [[ "${dl_file}" =~ tar. ]]; then
+    if [[ "$dl_file" =~ tar. ]]; then
         output_dir="${dl_file%.*}"
         output_dir="${3:-"${output_dir%.*}"}"
     else
         output_dir="${3:-"${dl_file%.*}"}"
     fi
 
-    target_file="${dl_path}/${dl_file}"
-    target_dir="${dl_path}/${output_dir}"
+    target_file="$dl_path/$dl_file"
+    target_dir="$dl_path/$output_dir"
 
     if [ -f "${target_file}" ]; then
-        echo "The file \"${dl_file}\" is already downloaded."
+        echo "The file \"$dl_file\" is already downloaded."
     else
-        echo "Downloading \"${dl_url}\" saving as \"${dl_file}\""
-        if ! wget -U "${user_agent}" -cqO "${target_file}" "${dl_url}"; then
-            printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 10 seconds..."
+        echo "Downloading \"${dl_url}\" saving as \"$dl_file\""
+        if ! wget -U "$user_agent" -cqO "${target_file}" "${dl_url}"; then
+            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
-            if ! wget -U "${user_agent}" -cqO "${target_file}" "${dl_url}"; then
-                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit. Line: ${LINENO}"
+            if ! wget -U "$user_agent" -cqO "${target_file}" "${dl_url}"; then
+                fail_fn "The script failed to download \"$dl_file\" twice and will now exit. Line: ${LINENO}"
             fi
         fi
         echo 'Download Completed'
     fi
 
-    if [ -d "${target_dir}" ]; then
-        sudo rm -fr "${target_dir}"
+    if [ -d "$target_dir" ]; then
+        sudo rm -fr "$target_dir"
     fi
-    mkdir -p "${target_dir}"
+    mkdir -p "$target_dir"
 
-    if [ -n "${3}" ]; then
-        if ! tar -zxf "${target_file}" -C "${target_dir}" 2>/dev/null >/dev/null; then
+    if [ -n "$3" ]; then
+        if ! tar -zxf "${target_file}" -C "$target_dir" 2>/dev/null >/dev/null; then
             sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script. Line: ${LINENO}"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
         fi
     else
-        if ! tar -zxf "${target_file}" -C "${target_dir}" --strip-components 1 2>/dev/null >/dev/null; then
+        if ! tar -zxf "${target_file}" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
             sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script. Line: ${LINENO}"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
         fi
     fi
 
-    printf "%s\n\n" "File extracted: ${dl_file}"
+    printf "%s\n\n" "File extracted: $dl_file"
 
-    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}. Line: ${LINENO}"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: ${LINENO}"
 }
 
 download_git()
 {
     local dl_path dl_url dl_file target_dir
 
-    dl_path="${packages}"
-    dl_url="${1}"
+    dl_path="$packages"
+    dl_url="$1"
     dl_file="${2:-"${1##*/}"}"
     dl_file="${dl_file//\./-}"
-    target_dir="${dl_path}/${dl_file}"
+    target_dir="$dl_path/$dl_file"
 
-    if [ -n "${3}" ]; then
-        output_dir="${dl_path}/${3}"
-        target_dir="${output_dir}"
+    if [ -n "$3" ]; then
+        output_dir="$dl_path/$3"
+        target_dir="$output_dir"
     fi
 
-    if [ -d "${target_dir}" ]; then
-        sudo rm -fr "${target_dir}"
+    if [ -d "$target_dir" ]; then
+        sudo rm -fr "$target_dir"
     fi
 
-    echo "Downloading ${dl_url} as ${dl_file}"
+    echo "Downloading ${dl_url} as $dl_file"
 
-    if ! git clone -q "${dl_url}" "${target_dir}"; then
-        printf "\n%s\n\n" "The script failed to clone the directory \"${target_dir}\" and will try again in 10 seconds..."
+    if ! git clone -q "${dl_url}" "$target_dir"; then
+        printf "\n%s\n\n" "The script failed to clone the directory \"$target_dir\" and will try again in 10 seconds..."
         sleep 10
-        if ! git clone -q "${dl_url}" "${target_dir}"; then
-            fail_fn "The script failed to clone the directory \"${target_dir}\" twice and will now exit the buildLine: ${LINENO}"
+        if ! git clone -q "${dl_url}" "$target_dir"; then
+            fail_fn "The script failed to clone the directory \"$target_dir\" twice and will now exit the buildLine: ${LINENO}"
         fi
     else
-        printf "%s\n\n" "Successfully cloned: ${target_dir}"
+        printf "%s\n\n" "Successfully cloned: $target_dir"
     fi
 
-    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}. Line: ${LINENO}"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: ${LINENO}"
 }
 
 build()
 {
     printf "\n%s\n%s\n" \
-        "building ${1} - version ${2}" \
+        "building $1 - version $2" \
         '===================================='
 
-    if [ -f "${packages}/${1}.done" ]; then
-        if grep -Fx "${2}" "${packages}/${1}.done" > /dev/null; then
-            echo "${1} version ${2} already built. Remove ${packages}/${1}.done lockfile to rebuild it."
+    if [ -f "$packages/$1.done" ]; then
+        if grep -Fx "$2" "$packages/$1.done" > /dev/null; then
+            echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
             return 1
         else
-            echo "${1} is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove ${packages}/${1}.done lockfile."
+            echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
             return 1
         fi
     fi
@@ -312,12 +312,12 @@ build()
 
 build_done()
 {
-    echo "${2}" > "${packages}/${1}.done"
+    echo "$2" > "$packages/$1.done"
 }
 
 installed()
 {
-    return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
+    return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
 }
 
 find_lsb_release="$(sudo find /usr -type f -name 'lsb_release')"
@@ -415,12 +415,12 @@ fi
 #
 
 git_ver_fn 'google/highway' 'R'
-if build 'libhwy' "${g_ver}"; then
-    download "https://github.com/google/highway/archive/refs/tags/${g_ver}.tar.gz" "libhwy-${g_ver}.tar.gz"
+if build 'libhwy' "$g_ver"; then
+    download "https://github.com/google/highway/archive/refs/tags/$g_ver.tar.gz" "libhwy-$g_ver.tar.gz"
     CFLAGS+=' -DHWY_COMPILE_ALL_ATTAINABLE'
     CXXFLAGS+=' -DHWY_COMPILE_ALL_ATTAINABLE'
     execute cmake -B build                                   \
-                  -DCMAKE_INSTALL_PREFIX="${install_prefix}" \
+                  -DCMAKE_INSTALL_PREFIX="$install_prefix" \
                   -DCMAKE_BUILD_TYPE=Release                 \
                   -DHWY_ENABLE_TESTS=OFF                     \
                   -DHWY_SYSTEM_GTEST=OFF                     \
@@ -430,7 +430,7 @@ if build 'libhwy' "${g_ver}"; then
                   -G Ninja -Wno-dev
     execute ninja "-j${cpu_threads}" -C build
     execute sudo ninja "-j${cpu_threads}" -C build install
-    build_done 'libhwy' "${g_ver}"
+    build_done 'libhwy' "$g_ver"
 fi
 
 # LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE VERSION COMMANDS MIGHT NOT WORK

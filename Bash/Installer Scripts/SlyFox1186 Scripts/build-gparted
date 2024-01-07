@@ -11,16 +11,16 @@ exit_fn()
     printf "\n%s\n\n%s\n%s\n" \
         'The script has completed' \
         'Make sure to star this repository to show your support!' \
-        "${web_repo}"
+        "$web_repo"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n\n%s\n\n%s\n\n%s\n\n" \
-        "${1}" \
+        "$1" \
         'Please create a support ticket at the address below' \
-        "${web_repo}/issues"
+        "$web_repo/issues"
     exit 1
 }
 
@@ -30,7 +30,7 @@ version_fn()
     sleep 2
 }
 
-installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
+installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
 ##
 ## Install Missing Gparted Packages

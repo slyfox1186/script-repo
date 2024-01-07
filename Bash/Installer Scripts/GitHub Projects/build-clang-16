@@ -26,7 +26,7 @@ fi
 
 script_ver=1.2
 progname="${0}"
-cwd="${PWD}"/clang-16-build-script
+cwd="$PWD"/clang-16-build-script
 install_prefix=/usr/local
 pc_type=x86_64-linux-gnu
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -37,8 +37,8 @@ debug=OFF # CHANGE THIS VARIABLE TO "ON" FOR HELP WITH TROUBLESHOOTING UNEXPECTE
 # CREATE OUTPUT DIRECTORIES
 #
 
-if [ ! -d "${cwd}" ]; then
-    mkdir -p "${cwd}"
+if [ ! -d "$cwd" ]; then
+    mkdir -p "$cwd"
 fi
 
 #
@@ -106,16 +106,16 @@ exit_fn()
     printf "\n%s\n\n%s\n%s\n\n"                                    \
         'The script has completed'                                \
         'Make sure to star this repository to show your support!' \
-        "${web_repo}"
+        "$web_repo"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n\n%s\n\n%s\n\n%s\n\n"      \
-        "${1}"                           \
+        "$1"                           \
         'To report a bug please visit: ' \
-        "${web_repo}/issues"
+        "$web_repo/issues"
     exit 1
 }
 
@@ -130,7 +130,7 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' choice
 
     case "${choice}" in
-        1)      sudo rm -fr "${cwd}";;
+        1)      sudo rm -fr "$cwd";;
         2)      clear;;
         *)
                 clear
@@ -146,8 +146,8 @@ cleanup_fn()
 create_soft_link_fn()
 {
     clear
-    if [ -f "${install_prefix}"/bin/clang++ ] && [ ! -f "${install_prefix}"/bin/clang++-16 ]; then
-        if ! sudo ln -s "${install_prefix}"/bin/clang++ "${install_prefix}"/bin/clang++-16; then
+    if [ -f "$install_prefix"/bin/clang++ ] && [ ! -f "$install_prefix"/bin/clang++-16 ]; then
+        if ! sudo ln -s "$install_prefix"/bin/clang++ "$install_prefix"/bin/clang++-16; then
             printf "\n%s\n\n" "Failed to create the clang++ soft link. Line: ${LINENO}"
         fi
     fi
@@ -157,19 +157,19 @@ show_ver_fn()
 {
     printf "%s\n\n" 'The installed clang version is:'
 
-    if [ -f "${install_prefix}"/bin/clang-16 ]; then
+    if [ -f "$install_prefix"/bin/clang-16 ]; then
         printf "%s\n" 'clang-16:'
-        "${install_prefix}"/bin/clang-16 --version
+        "$install_prefix"/bin/clang-16 --version
         echo
     fi
 
-    if [ -f "${install_prefix}"/bin/clang++-16 ]; then
+    if [ -f "$install_prefix"/bin/clang++-16 ]; then
         printf "%s\n" 'clang++-16:'
-        "${install_prefix}"/bin/clang++-16 --version
+        "$install_prefix"/bin/clang++-16 --version
         echo
-    elif [ -f "${install_prefix}"/bin/clang++ ]; then
+    elif [ -f "$install_prefix"/bin/clang++ ]; then
         printf "%s\n" 'clang-++:'
-        "${install_prefix}"/bin/clang++ --version
+        "$install_prefix"/bin/clang++ --version
         echo
     fi
 }
@@ -179,12 +179,12 @@ execute()
     echo "$ ${*}"
 
     if [ "${debug}" = 'ON' ]; then
-        if ! output="$("${@}")"; then
+        if ! output="$("$@")"; then
             notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
             fail_fn "Failed to execute: ${*}"
         fi
     else
-        if ! output="$("${@}" 2>&1)"; then
+        if ! output="$("$@" 2>&1)"; then
             notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
             fail_fn "Failed to execute: ${*}"
         fi
@@ -194,83 +194,83 @@ execute()
 build()
 {
     printf "\n%s\n%s\n" \
-        "Building ${1} - version ${2}" \
+        "Building $1 - version $2" \
         '=========================================='
 
-    if [ -f "${cwd}/${1}.done" ]; then
-        if grep -Fx "${2}" "${cwd}/${1}.done" >/dev/null; then
-            echo "${1} version ${2} already built. Remove ${cwd}/${1}.done lockfile to rebuild it."
+    if [ -f "$cwd/$1.done" ]; then
+        if grep -Fx "$2" "$cwd/$1.done" >/dev/null; then
+            echo "$1 version $2 already built. Remove $cwd/$1.done lockfile to rebuild it."
             return 1
         fi
     fi
     return 0
 }
 
-build_done() { echo "${2}" > "${cwd}/${1}.done"; }
+build_done() { echo "$2" > "$cwd/$1.done"; }
 
 download()
 {
-    dl_path="${cwd}"
-    dl_url="${1}"
+    dl_path="$cwd"
+    dl_url="$1"
     dl_file="${2:-"${1##*/}"}"
 
-    if [[ "${dl_file}" =~ tar. ]]; then
+    if [[ "$dl_file" =~ tar. ]]; then
         output_dir="${dl_file%.*}"
         output_dir="${3:-"${output_dir%.*}"}"
     else
         output_dir="${3:-"${dl_file%.*}"}"
     fi
 
-    target_file="${dl_path}/${dl_file}"
-    target_dir="${dl_path}/${output_dir}"
+    target_file="$dl_path/$dl_file"
+    target_dir="$dl_path/$output_dir"
 
     if [ -f "${target_file}" ]; then
-        echo "The file \"${dl_file}\" is already downloaded."
+        echo "The file \"$dl_file\" is already downloaded."
     else
-        echo "Downloading \"${dl_url}\" saving as \"${dl_file}\""
-        if ! wget --show-progress -U "${user_agent}" -cqO "${target_file}" "${dl_url}"; then
-            printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 10 seconds..."
+        echo "Downloading \"${dl_url}\" saving as \"$dl_file\""
+        if ! wget --show-progress -U "$user_agent" -cqO "${target_file}" "${dl_url}"; then
+            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
-            if ! wget --show-progress -U "${user_agent}" -cqO "${target_file}" "${dl_url}"; then
-                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit. Line: ${LINENO}"
+            if ! wget --show-progress -U "$user_agent" -cqO "${target_file}" "${dl_url}"; then
+                fail_fn "The script failed to download \"$dl_file\" twice and will now exit. Line: ${LINENO}"
             fi
         fi
         printf "\n%s\n\n" 'Download completed'
     fi
 
-    if [ -d "${target_dir}" ]; then
-        sudo rm -fr "${target_dir}"
+    if [ -d "$target_dir" ]; then
+        sudo rm -fr "$target_dir"
     fi
 
-    mkdir -p "${target_dir}"
+    mkdir -p "$target_dir"
 
-    if [ -n "${3}" ]; then
-        if ! tar -xf "${target_file}" -C "${target_dir}" 2>/dev/null >/dev/null; then
+    if [ -n "$3" ]; then
+        if ! tar -xf "${target_file}" -C "$target_dir" 2>/dev/null >/dev/null; then
             sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script. Line: ${LINENO}"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
         fi
     else
-        if ! tar -xf "${target_file}" -C "${target_dir}" --strip-components 1 2>/dev/null >/dev/null; then
+        if ! tar -xf "${target_file}" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
             sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script. Line: ${LINENO}"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
         fi
     fi
 
-    printf "%s\n\n" "File extracted: ${dl_file}"
+    printf "%s\n\n" "File extracted: $dl_file"
 
-    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}. Line: ${LINENO}"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: ${LINENO}"
 }
 
 git_1_fn()
 {
     local curl_cmd github_repo github_url
 
-    github_repo="${1}"
-    github_url="${2}"
+    github_repo="$1"
+    github_url="$2"
 
-    if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
-        g_ver="$(echo "${curl_cmd}" | jq -r '.[1].name' 2>/dev/null)"
-        g_url="$(echo "${curl_cmd}" | jq -r '.[1].tarball_url' 2>/dev/null)"
+    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+        g_ver="$(echo "$curl_cmd" | jq -r '.[1].name' 2>/dev/null)"
+        g_url="$(echo "$curl_cmd" | jq -r '.[1].tarball_url' 2>/dev/null)"
         g_ver="${g_ver#llvmorg-}"
     fi
 }
@@ -279,8 +279,8 @@ git_ver_fn()
 {
     local t_flag v_flag v_url
 
-    v_url="${1}"
-    v_flag="${2}"
+    v_url="$1"
+    v_flag="$2"
 
     case "${v_flag}" in
             R)      t_flag=releases;;
@@ -327,16 +327,16 @@ sudo ldconfig 2>/dev/null
 clear
 box_out_banner()
 {
-    input_char=$(echo "${@}" | wc -c)
+    input_char=$(echo "$@" | wc -c)
     line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
     tput bold
-    line="$(tput setaf 3)${line}"
+    line="$(tput setaf 3)$line"
     space=${line//-/ }
-    echo " ${line}"
+    echo " $line"
     printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
-    printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
+    printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
     printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
-    echo " ${line}"
+    echo " $line"
     tput sgr 0
 }
 box_out_banner "Clang Build Script - version ${script_ver}"
@@ -346,7 +346,7 @@ if build 'llvm' '16.0.6'; then
     project_pkgs='clang;clang-tools-extra'
     runtime_pkgs='libcxx;libcxxabi;libunwind;compiler-rt'
     cmake -S llvm -B build                           \
-          -DCMAKE_INSTALL_PREFIX="${install_prefix}" \
+          -DCMAKE_INSTALL_PREFIX="$install_prefix" \
           -DCMAKE_BUILD_TYPE=Release                 \
           -DBUILD_SHARED_LIBS=OFF                    \
           -DBENCHMARK_DOWNLOAD_DEPENDENCIES=ON       \

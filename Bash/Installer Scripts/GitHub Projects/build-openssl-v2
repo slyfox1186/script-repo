@@ -19,7 +19,7 @@ CPPFLAGS='-I/usr/local/include -I/usr/include'
 LDFLAGS='-L/usr/local/ssl/lib -L/usr/local/lib64 -L/usr/local/lib'
 LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 LDLIBS="${LDFLAGS}"
-LD_LIBRARY_PATH="${install_dir}/lib64:${LD_LIBRARY_PATH}"
+LD_LIBRARY_PATH="$install_dir/lib64:${LD_LIBRARY_PATH}"
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS LD_LIBRARY_PATH LDLIBS SHARED_CFLAG
 
 # Download OpenSSL
@@ -42,10 +42,10 @@ cd ${openssl_version}/build || exit 1
 printf "%s\n\n" 'Configuring OpenSSL...'
 ../Configure linux-x86_64-clang                        \
              -DOPENSSL_USE_IPV6=0                      \
-             -Wl,-rpath="${install_dir}"/lib64         \
+             -Wl,-rpath="$install_dir"/lib64         \
              -Wl,--enable-new-dtags                    \
-             --prefix=${install_dir}                   \
-             --openssldir=${install_dir}               \
+             --prefix=$install_dir                   \
+             --openssldir=$install_dir               \
              --release                                 \
              --with-zlib-include=/usr/include          \
              --with-zlib-lib=/usr/lib/x86_64-linux-gnu \

@@ -52,11 +52,11 @@ prompt_fn
 #
 
 script_ver=2.4
-cwd="${PWD}"/wsl-build-script
+cwd="$PWD"/wsl-build-script
 archive_ver="$(echo "${archive_url}" | sed 's/^.*\/.*-wsl-\(.*\)\.tar\.gz$/\1/')"
-archive_dir="${cwd}/wsl-kernel-${archive_ver}"
+archive_dir="$cwd/wsl-kernel-${archive_ver}"
 archive_ext="${archive_url//*.}"
-archive_name="${archive_dir}.tar.${archive_ext}"
+archive_name="$archive_dir.tar.${archive_ext}"
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
@@ -68,8 +68,8 @@ printf "\n%s\n%s\n\n"                    \
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ ! -d "${cwd}" ]; then
-    mkdir -p "${cwd}"
+if [ ! -d "$cwd" ]; then
+    mkdir -p "$cwd"
 fi
 
 #
@@ -111,16 +111,16 @@ exit_fn()
     printf "\n%s\n\n%s\n%s\n\n"                                   \
         'The script has completed'                                \
         'Make sure to star this repository to show your support!' \
-        "${web_repo}"
+        "$web_repo"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n\n%s\n\n%s\n\n%s\n\n"                              \
-        "${1}"                                                   \
+        "$1"                                                   \
         'Please create a support ticket so I can work on a fix.' \
-        "${web_repo}/issues"
+        "$web_repo/issues"
     exit 1
 }
 
@@ -153,23 +153,23 @@ fi
 
 if [ ! -f "${archive_name}" ]; then
     printf "%s\n\n" 'Downloading the source code from GitHub...'
-    wget --show-progress -U "${user_agent}" -cqO "${archive_name}" "${archive_url}"
+    wget --show-progress -U "$user_agent" -cqO "${archive_name}" "${archive_url}"
 fi
 
 #
 # CREATE THE OUTPUT DIRECTORY
 #
 
-if [ -d "${archive_dir}" ]; then
-    sudo rm -fr "${archive_dir}"
+if [ -d "$archive_dir" ]; then
+    sudo rm -fr "$archive_dir"
 fi
-mkdir -p "${archive_dir}"
+mkdir -p "$archive_dir"
 
 #
 # EXTRACT THE ARCHIVE FILES INTO THE OUTPUT DIRECTORY
 #
 
-if ! tar -xf "${archive_name}" -C "${archive_dir}" --strip-components 1; then
+if ! tar -xf "${archive_name}" -C "$archive_dir" --strip-components 1; then
     fail_fn "Failed to extract the archive files. Line: ${LINENO}"
 fi
 
@@ -177,7 +177,7 @@ fi
 # BUILD PROGRAM FROM SOURCE
 #
 
-cd "${archive_dir}" || exit 1
+cd "$archive_dir" || exit 1
 echo 'yes' | make "-j$(nproc --all)" KCONFIG_CONFIG='Microsoft/config-wsl'
 
 # SHOW EXIT MESSAGE

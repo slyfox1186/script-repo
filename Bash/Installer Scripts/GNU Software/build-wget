@@ -29,10 +29,10 @@ fi
 
 script_ver=1.2
 archive_dir=wget-latest
-archive_url=https://ftp.gnu.org/gnu/wget/"${archive_dir}".tar.lz
+archive_url=https://ftp.gnu.org/gnu/wget/"$archive_dir".tar.lz
 archive_ext="${archive_url//*.}"
-archive_name="${archive_dir}.tar.${archive_ext}"
-cwd="${PWD}"/wget-build-script
+archive_name="$archive_dir.tar.${archive_ext}"
+cwd="$PWD"/wget-build-script
 install_dir=/usr/local
 pc_type=x86_64-linux-gnu
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -47,10 +47,10 @@ sleep 2
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ -d "${cwd}" ]; then
-    sudo rm -fr "${cwd}"
+if [ -d "$cwd" ]; then
+    sudo rm -fr "$cwd"
 fi
-mkdir -p "${cwd}"
+mkdir -p "$cwd"
 
 #
 # SET THE C/CXX COMPILERS & SET THE COMPILER OPTIMIZATION FLAGS
@@ -116,15 +116,15 @@ exit_fn()
 {
     printf "\n%s\n\n%s\n\n"                                       \
         'Make sure to star this repository to show your support!' \
-        "${web_repo}"
+        "$web_repo"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "${1}"              \
-        "To report a bug create an issue at: ${web_repo}/issues"
+        "$1"              \
+        "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
@@ -142,7 +142,7 @@ cleanup_fn()
     clear
 
     case "${choice}" in
-        1)      sudo rm -fr "${cwd}";;
+        1)      sudo rm -fr "$cwd";;
         2)      return 0;;
         *)
                 unset choice
@@ -194,25 +194,25 @@ fi
 # DOWNLOAD THE ARCHIVE FILE METALINK
 #
 
-if [ ! -f "${cwd}"/libmetalink-0.1.3.tar.xz ]; then
-    curl -A "${user_agent}" -Lso "${cwd}"/libmetalink-0.1.3.tar.xz 'https://github.com/metalink-dev/libmetalink/releases/download/release-0.1.3/libmetalink-0.1.3.tar.xz'
+if [ ! -f "$cwd"/libmetalink-0.1.3.tar.xz ]; then
+    curl -A "$user_agent" -Lso "$cwd"/libmetalink-0.1.3.tar.xz 'https://github.com/metalink-dev/libmetalink/releases/download/release-0.1.3/libmetalink-0.1.3.tar.xz'
 fi
 
 #
 # CREATE OUTPUT DIRECTORY METALINK
 #
 
-if [ -d "${cwd}"/libmetalink-0.1.3 ]; then
-    sudo rm -fr "${cwd}"/libmetalink-0.1.3
+if [ -d "$cwd"/libmetalink-0.1.3 ]; then
+    sudo rm -fr "$cwd"/libmetalink-0.1.3
 fi
-mkdir -p "${cwd}"/libmetalink-0.1.3/build
+mkdir -p "$cwd"/libmetalink-0.1.3/build
 
 #
 # EXTRACT THE ARCHIVE FILE METALINK
 #
 
-if ! tar -Jxf "${cwd}"/libmetalink-0.1.3.tar.xz -C "${cwd}"/libmetalink-0.1.3 --strip-components 1; then
-    fail_fn "Failed to extract: ${cwd}/libmetalink-0.1.3.tar.xz"
+if ! tar -Jxf "$cwd"/libmetalink-0.1.3.tar.xz -C "$cwd"/libmetalink-0.1.3 --strip-components 1; then
+    fail_fn "Failed to extract: $cwd/libmetalink-0.1.3.tar.xz"
 fi
 
 #
@@ -224,11 +224,11 @@ printf "%s\n%s\n\n"                         \
     '==============================================='
 sleep 1
 
-cd "${cwd}"/libmetalink-0.1.3 || exit 1
+cd "$cwd"/libmetalink-0.1.3 || exit 1
 autoconf
 cd build || exit 1
 ../buildconf
-../configure --prefix="${install_dir}"          \
+../configure --prefix="$install_dir"          \
              --{build,host,target}="${pc_type}" \
              --with-libexpat                    \
              --with-libxml2                     \
@@ -270,25 +270,25 @@ sleep 2
 # CREATE OUTPUT DIRECTORY WGET
 #
 
-if [ -d "${cwd}/${archive_dir}" ]; then
-    sudo rm -fr "${cwd}/${archive_dir}"
+if [ -d "$cwd/$archive_dir" ]; then
+    sudo rm -fr "$cwd/$archive_dir"
 fi
-mkdir -p "${cwd}/${archive_dir}/build"
+mkdir -p "$cwd/$archive_dir/build"
 
 #
 # DOWNLOAD THE ARCHIVE FILE WGET
 #
 
-if [ ! -f "${cwd}/${archive_name}" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
+if [ ! -f "$cwd/${archive_name}" ]; then
+    curl -A "$user_agent" -Lso "$cwd/${archive_name}" "${archive_url}"
 fi
 
 #
 # EXTRACT THE ARCHIVE FILE WGET
 #
 
-if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
-    fail_fn "Failed to extract: ${cwd}/${archive_name}"
+if ! tar -xf "$cwd/${archive_name}" -C "$cwd/$archive_dir" --strip-components 1; then
+    fail_fn "Failed to extract: $cwd/${archive_name}"
 fi
 
 # UPDATE THE SYSTEM SECURITY CERTIFICATES BEFORE INSTALLING WGET
@@ -299,8 +299,8 @@ fi
 # FIND THE CORRECT OPENSSL DIRECTORIES
 openssl_lib_dir="$(pkg-config --libs-only-L openssl | awk '{print $1}' | sed 's/-L//')"
 
-cd "${cwd}/${archive_dir}/build" || exit 1
-../configure --prefix="${install_dir}"               \
+cd "$cwd/$archive_dir/build" || exit 1
+../configure --prefix="$install_dir"               \
              --{build,host}="${pc_type}"             \
              --disable-debug                         \
              --disable-ipv6                          \

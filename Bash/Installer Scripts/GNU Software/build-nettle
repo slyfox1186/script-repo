@@ -44,8 +44,8 @@ script_ver=1.1
 archive_dir=nettle-3.9.1
 archive_url=https://ftp.gnu.org/gnu/nettle/nettle-3.9.1.tar.gz
 archive_ext="${archive_url//*.}"
-archive_name="${archive_dir}.tar.${archive_ext}"
-cwd="${PWD}"/nettle-build-script
+archive_name="$archive_dir.tar.${archive_ext}"
+cwd="$PWD"/nettle-build-script
 install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
@@ -58,10 +58,10 @@ printf "%s\n%s\n\n" \
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ -d "${cwd}" ]; then
-    sudo rm -fr "${cwd}"
+if [ -d "$cwd" ]; then
+    sudo rm -fr "$cwd"
 fi
-mkdir -p "${cwd}"
+mkdir -p "$cwd"
 
 #
 # SET THE C + CPP COMPILERS
@@ -125,15 +125,15 @@ exit_fn()
 {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
-        "${web_repo}"
+        "$web_repo"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "${1}" \
-        "To report a bug create an issue at: ${web_repo}/issues"
+        "$1" \
+        "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
@@ -150,7 +150,7 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' choice
 
     case "${choice}" in
-        1)      sudo rm -fr "${cwd}";;
+        1)      sudo rm -fr "$cwd";;
         2)      echo;;
         *)
                 clear
@@ -169,7 +169,7 @@ cleanup_fn()
 
 pkgs_fn()
 {
-    pkgs=("${1}" apt-transport-https apt-utils autoconf autoconf-archive autogen automake autopoint autotools-dev build-essential bzip2
+    pkgs=("$1" apt-transport-https apt-utils autoconf autoconf-archive autogen automake autopoint autotools-dev build-essential bzip2
           ca-certificates ccache clang cmake curl gfortran git google-perftools graphviz jq lcov libaria2-0 libaria2-0-dev
           libc-ares-dev libcppunit-dev libcunit1-dev libcurl4 libcurl4-openssl-dev libdmalloc-dev libec-dev libedit-dev
           libev-dev libevent-dev libexiv2-27 libexpat1-dev libgcc-12-dev libgcrypt20-dev libgexiv2-2 libgimp2.0 libgmp3-dev
@@ -200,25 +200,25 @@ pkgs_fn()
 # DOWNLOAD THE ARCHIVE FILE
 #
 
-if [ ! -f "${cwd}/${archive_name}" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
+if [ ! -f "$cwd/${archive_name}" ]; then
+    curl -A "$user_agent" -Lso "$cwd/${archive_name}" "${archive_url}"
 fi
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ -d "${cwd}/${archive_dir}" ]; then
-    sudo rm -fr "${cwd}/${archive_dir}"
+if [ -d "$cwd/$archive_dir" ]; then
+    sudo rm -fr "$cwd/$archive_dir"
 fi
-mkdir -p "${cwd}/${archive_dir}/build"
+mkdir -p "$cwd/$archive_dir/build"
 
 #
 # EXTRACT ARCHIVE FILES
 #
 
-if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
+if ! tar -xf "$cwd/${archive_name}" -C "$cwd/$archive_dir" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: $cwd/${archive_name}"
     exit 1
 fi
 
@@ -238,10 +238,10 @@ lib_dirs='/usr/local/lib:/usr/lib64:/usr/lib:/usr/local/cuda-12.2/nvvm/lib64:/us
 lib_dirs+=':/usr/i686-w64-mingw32/lib:/usr/lib/xen-4.17/lib:/usr/lib/llvm-14/lib:/usr/x86_64-linux-gnu/lib'
 lib_dirs+=':/usr/x86_64-w64-mingw32/lib:/usr/share/lintian/lib:/usr/share/gitk/lib:/usr/share/texinfo/lib:/usr/share/git-gui/lib'
 
-cd "${cwd}/${archive_dir}" || exit 1
+cd "$cwd/$archive_dir" || exit 1
 autoreconf -fi
 cd build || exit 1
-../configure --prefix="${install_dir}"             \
+../configure --prefix="$install_dir"             \
              --disable-documentation               \
              --with-lib-path="${lib_dirs}"         \
              --with-include-path="${include_dirs}" \
