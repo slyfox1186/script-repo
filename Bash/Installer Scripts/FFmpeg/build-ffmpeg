@@ -1002,28 +1002,29 @@ pkgs_fn()
     libunwind_pkg="$(sudo apt list libunwind* 2>/dev/null | grep -Eo 'libunwind-[0-9]+-dev' | uniq | sort -r | head -n1)"
 
     # INSTALL APT PACKAGES
-    packages=($1 $libcpp_pkg $libunwind_pkg $libcppabi_pkg ant apt asciidoc autoconf autoconf-archive
-              automake autopoint binutils bison build-essential cargo ccache checkinstall clang clang-tools cmake curl
-              default-jdk-headless doxygen fcitx-libs-dev flex flite1-dev freeglut3-dev frei0r-plugins-dev gawk gettext
-              gimp-data git gnome-desktop-testing gnustep-gui-runtime google-perftools gperf gtk-doc-tools guile-3.0-dev
-              lib32stdc++6 libamd2 libasound2-dev libass-dev libaudio-dev libavfilter-dev libbabl-0.1-0 libbluray-dev libbpf-dev
-              libbs2b-dev help2man jq junit ladspa-sdk libbz2-dev libc6 libc6-dev libcaca-dev libcairo2-dev libcamd2 libccolamd2
-              libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libcholmod3 libchromaprint-dev libcjson-dev libcodec2-dev
-              libcolamd2 libcrypto++-dev libcurl4-openssl-dev libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev libdrm-dev
-              libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev libgegl-0.4-0 libgegl-common libgimp2.0
-              libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev libgmock-dev libgnutls28-dev libgnutls30 libgoogle-perftools4
-              libgoogle-perftools-dev libgsm1-dev libgtest-dev libgvc6 libhwy-dev libibus-1.0-dev libiconv-hook-dev libintl-perl
-              libjack-dev libjemalloc-dev libladspa-ocaml-dev libleptonica-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev
-              libmatroska-dev libmbedtls-dev libmetis5 libmfx-dev libmodplug-dev libmp3lame-dev libmusicbrainz5-dev libmysofa-dev
-              libnuma-dev libopencore-amrnb-dev libopencore-amrwb-dev libopencv-dev libopenjp2-7-dev libopenmpt-dev libopus-dev
-              libpango1.0-dev libperl-dev libpstoedit-dev libpulse-dev librabbitmq-dev libraqm-dev libraw-dev librsvg2-dev librubberband-dev
-              librust-gstreamer-base-sys-dev libshine-dev libsmbclient-dev libsnappy-dev libsndfile1-dev libsndio-dev libopencv-dev
-              libsoxr-dev libspeex-dev libsystemd-dev libsqlite3-dev libsrt-gnutls-dev libssh-dev libssl-dev libsuitesparseconfig5
-              libtalloc-dev libtheora-dev libticonv-dev libtool libtool-bin libtwolame-dev libudev-dev libumfpack5 libv4l-dev
-              libva-dev libvdpau-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libxcursor-dev
-              libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libudev-dev libxvidcore-dev libyuv-dev
-              libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev llvm lshw lzma-dev m4 meson nasm ninja-build pandoc python3 python3-pip
-              ragel re2c scons sudo texi2html texinfo tk-dev unzip valgrind wget xmlto zlib1g-dev mesa-utils)
+    pkgs=(
+        $1 $libcpp_pkg $libunwind_pkg $libcppabi_pkg ant apt asciidoc autoconf autoconf-archive automake autopoint binutils
+        bison build-essential cargo ccache checkinstall clang clang-tools cmake curl default-jdk-headless doxygen fcitx-libs-dev
+        flex flite1-dev freeglut3-dev frei0r-plugins-dev gawk gettext gimp-data git gnome-desktop-testing gnustep-gui-runtime
+        google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk lib32stdc++6 libamd2 libasound2-dev
+        libass-dev libaudio-dev libavfilter-dev libbabl-0.1-0 libbluray-dev libbpf-dev libbs2b-dev libbz2-dev libc6 libc6-dev
+        libcaca-dev libcairo2-dev libcamd2 libccolamd2 libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libcholmod3
+        libchromaprint-dev libcjson-dev libcodec2-dev libcolamd2 libcrypto++-dev libcurl4-openssl-dev libdbus-1-dev libde265-dev
+        libdevil-dev libdmalloc-dev libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev
+        libgegl-0.4-0 libgegl-common libgimp2.0 libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev libgmock-dev
+        libgnutls28-dev libgnutls30 libgoogle-perftools4 libgoogle-perftools-dev libgsm1-dev libgtest-dev libgvc6 libibus-1.0-dev
+        libiconv-hook-dev libintl-perl libjack-dev libjemalloc-dev libladspa-ocaml-dev libleptonica-dev liblz-dev liblzma-dev
+        liblzo2-dev libmathic-dev libmatroska-dev libmbedtls-dev libmetis5 libmfx-dev libmodplug-dev libmp3lame-dev libmusicbrainz5-dev
+        libmysofa-dev libnuma-dev libopencore-amrnb-dev libopencore-amrwb-dev libopencv-dev libopenjp2-7-dev libopenmpt-dev
+        libopus-dev libpango1.0-dev libperl-dev libpstoedit-dev libpulse-dev librabbitmq-dev libraqm-dev libraw-dev librsvg2-dev
+        librubberband-dev librust-gstreamer-base-sys-dev libshine-dev libsmbclient-dev libsnappy-dev libsndfile1-dev libsndio-dev
+        libsoxr-dev libspeex-dev libsqlite3-dev libssh-dev libssl-dev libsuitesparseconfig5 libsystemd-dev libtalloc-dev libtheora-dev
+        libticonv-dev libtool libtool-bin libtwolame-dev libudev-dev libumfpack5 libv4l-dev libva-dev libvdpau-dev libvidstab-dev
+        libvlccore-dev libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev
+        libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev llvm lshw lzma-dev
+        m4 mesa-utils meson nasm ninja-build pandoc python3 python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip valgrind
+        wget xmlto zlib1g-dev
+    )
 
     # Array to hold packages that need to be installed
     to_install=()
@@ -1036,7 +1037,7 @@ pkgs_fn()
     }
 
     # Check each package and add to the install list if not installed
-    for pkg in "${packages[@]}"
+    for pkg in "${pkgs[@]}"
     do
         if ! is_installed "$pkg"; then
             to_install+=("$pkg")
@@ -1267,23 +1268,23 @@ ubuntu_os_ver_fn()
         ubuntu_wsl_pkgs="$1"
     fi
 
-    ubuntu_common_pkgs='cppcheck libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libumfpack5 libsuitesparseconfig5 libcolamd2 libcholmod3 libccolamd2 libcamd2 libamd2'
+    ubuntu_common_pkgs='cppcheck libumfpack5 libsuitesparseconfig5 libcolamd2 libcholmod3 libccolamd2 libcamd2 libamd2'
     focal_pkgs='libvmmalloc1 libvmmalloc-dev libdmalloc5 libcunit1-dev nvidia-utils-535 librust-jemalloc-sys-dev'
     focal_pkgs+=' librust-malloc-buf-dev libsrt-doc libreadline-dev libcunit1 libcunit1-doc'
-    jammy_pkgs='libmimalloc-dev libtbbmalloc2 librust-jemalloc-sys-dev librust-malloc-buf-dev libacl1-dev'
-    jammy_pkgs+=' liblz4-dev libsrt-doc libreadline-dev libpipewire-0.3-dev libwayland-dev libdecor-0-dev libpsl-dev'
-    lunar_kenetic_pkgs='librist-dev libjxl-dev'
-    mantic_pkgs='cppcheck libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev'
+    jammy_pkgs='libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libmimalloc-dev libtbbmalloc2 librust-jemalloc-sys-dev librust-malloc-buf-dev'
+    jammy_pkgs+=' liblz4-dev libsrt-doc libreadline-dev libpipewire-0.3-dev libwayland-dev libdecor-0-dev libpsl-dev libacl1-dev'
+    lunar_kenetic_pkgs='libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev librist-dev libjxl-dev'
+    mantic_pkgs='libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev'
 
     case "$VER" in
-        23.10)          pkgs_fn "$1 $mantic_pkgs $lunar_kenetic_pkgs $jammy_pkgs";;
+        23.10)          pkgs_fn "$1 $mantic_pkgs $lunar_kenetic_pkgs $jammy_pkgs $focal_pkgs";;
         23.04|22.10)    pkgs_fn "$1 $ubuntu_common_pkgs $lunar_kenetic_pkgs $jammy_pkgs";;
         22.04|msft)     pkgs_fn "$1 $ubuntu_common_pkgs $ubuntu_wsl_pkgs $jammy_pkgs";;
         20.04)          pkgs_fn "$1 $ubuntu_common_pkgs $ubuntu_wsl_pkgs $focal_pkgs";;
         *)              fail_fn "Could not detect the Ubuntu version. Line: $LINENO";;
     esac
 }
-
+libhwy-dev libsrt-gnutls-dev libyuv-dev
 #
 # TEST THE OS AND ITS VERSION
 #
