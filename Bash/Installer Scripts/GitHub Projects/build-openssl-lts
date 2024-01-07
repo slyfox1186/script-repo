@@ -37,13 +37,13 @@ fi
 
 script_ver=3.1.4
 archive_dir=openssl-3.1.4
-archive_url="https://www.openssl.org/source/${archive_dir}.tar.gz"
+archive_url="https://www.openssl.org/source/$archive_dir.tar.gz"
 archive_ext="${archive_url//*.}"
-archive_name="${archive_dir}.tar.${archive_ext}"
-cwd="${PWD}"/openssl-build-script
+archive_name="$archive_dir.tar.${archive_ext}"
+cwd="$PWD"/openssl-build-script
 install_dir=/usr/local/ssl
-ssl_dir="${install_dir}"
-cert_dir="${install_dir}"/certs
+ssl_dir="$install_dir"
+cert_dir="$install_dir"/certs
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
@@ -56,10 +56,10 @@ sleep 2
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ -d "${cwd}" ]; then
-    sudo rm -fr "${cwd}"
+if [ -d "$cwd" ]; then
+    sudo rm -fr "$cwd"
 fi
-mkdir -p "${cwd}"
+mkdir -p "$cwd"
 
 #
 # SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
@@ -74,7 +74,7 @@ CPPFLAGS='-I/usr/local/include -I/usr/include'
 LDFLAGS='-L/usr/local/ssl/lib -L/usr/local/lib64 -L/usr/local/lib'
 LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 LDLIBS="${LDFLAGS}"
-LD_LIBRARY_PATH="${install_dir}/lib64:${LD_LIBRARY_PATH}"
+LD_LIBRARY_PATH="$install_dir/lib64:${LD_LIBRARY_PATH}"
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS LD_LIBRARY_PATH LDLIBS SHARED_CFLAG
 
 #
@@ -127,16 +127,16 @@ exit_fn()
 {
     printf "\n%s\n\n%s\n\n"                                       \
         'Make sure to star this repository to show your support!' \
-        "${web_repo}"
+        "$web_repo"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n\n%s\n\n%s\n\n%s\n\n"                  \
-        "${1}"                                       \
+        "$1"                                       \
         'To report a bug please create an issue at:' \
-        "${web_repo}/issues"
+        "$web_repo/issues"
     exit 1
 }
 
@@ -153,7 +153,7 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' choice
 
     case "${choice}" in
-        1)      sudo rm -fr "${cwd}";;
+        1)      sudo rm -fr "$cwd";;
         2)      echo;;
         *)
                 unset choice
@@ -262,25 +262,25 @@ fi
 # DOWNLOAD THE ARCHIVE FILE
 #
 
-if [ ! -f "${cwd}/${archive_name}" ]; then
-    wget -U "${user_agent}" -cqO "${cwd}/${archive_name}" "${archive_url}"
+if [ ! -f "$cwd/${archive_name}" ]; then
+    wget -U "$user_agent" -cqO "$cwd/${archive_name}" "${archive_url}"
 fi
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ -d "${cwd}/${archive_dir}" ]; then
-    sudo rm -fr "${cwd}/${archive_dir}"
+if [ -d "$cwd/$archive_dir" ]; then
+    sudo rm -fr "$cwd/$archive_dir"
 fi
-mkdir -p "${cwd}/${archive_dir}/build"
+mkdir -p "$cwd/$archive_dir/build"
 
 #
 # EXTRACT ARCHIVE FILES
 #
 
-if ! tar -zxf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
+if ! tar -zxf "$cwd/${archive_name}" -C "$cwd/$archive_dir" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: $cwd/${archive_name}"
     exit 1
 fi
 
@@ -288,12 +288,12 @@ fi
 # BUILD PROGRAM FROM SOURCE
 #
 
-cd "${cwd}/${archive_dir}/build" || exit 1
+cd "$cwd/$archive_dir/build" || exit 1
 ../Configure linux-x86_64-clang                          \
              -DOPENSSL_USE_IPV6=0                        \
-             -Wl,-rpath="${install_dir}"/lib64           \
+             -Wl,-rpath="$install_dir"/lib64           \
              -Wl,--enable-new-dtags                      \
-             --prefix="${install_dir}"                   \
+             --prefix="$install_dir"                   \
              --openssldir="${ssl_dir}"                   \
              --release                                   \
              --with-zlib-include=/usr/include            \
@@ -335,13 +335,13 @@ if [ ! -d "${cert_dir}" ]; then
 fi
 
 # DOWNLOAD THE LATEST CACERT.PEM FILE FROM THE OFFICIAL CURL WEBSITE
-if ! curl -A "${user_agent}" -Lso "${cwd}"/cacert.pem 'https://curl.se/ca/cacert.pem'; then
+if ! curl -A "$user_agent" -Lso "$cwd"/cacert.pem 'https://curl.se/ca/cacert.pem'; then
     fail_fn "Failed to download the latest \"cacert.pem\" file. Line: ${LINENO}"
 fi
 
 # MOVE THE PEM FILE TO THE NEWLY CREATED CERTS DIRECTORY
-if ! sudo mv "${cwd}"/cacert.pem "${cert_dir}"/cacert.pem; then
-    fail_fn "Failed to move file: ${cwd}/cacert.pem >> ${cert_dir}/cacert.pem. Line: ${LINENO}"
+if ! sudo mv "$cwd"/cacert.pem "${cert_dir}"/cacert.pem; then
+    fail_fn "Failed to move file: $cwd/cacert.pem >> ${cert_dir}/cacert.pem. Line: ${LINENO}"
 else
     # COPY THE PEM FILE AS A CRT FILE IN THE SPECIAL CA-CERTIFICATES FOLDER SO THE COMMAND WILL FIND AND USE IT WHEN IT IS EXECUTED
     sudo cp "${cert_dir}"/cacert.pem '/usr/local/share/ca-certificates/curl-cacert.crt'
@@ -356,7 +356,7 @@ sudo c_rehash .
 sudo update-ca-certificates
 
 # RUN LDCONFIG TO UPDATE THE LINKER LIBRARY SEARCH PATH TO INCLUDE THE OPENSSL LIB64 DIRECTORY
-echo "${install_dir}/lib64" | sudo tee '/etc/ld.so.conf.d/openssl-compiled.conf' >/dev/null
+echo "$install_dir/lib64" | sudo tee '/etc/ld.so.conf.d/openssl-compiled.conf' >/dev/null
 sudo ldconfig
 
 # ADD THE NEW OPENSSL BIN TO THE USER'S ~/.bashrc FILE IF NOT ALREADY PRESENT
@@ -364,7 +364,7 @@ regex_str=':\\$'
 get_str="$(grep -o '/usr/sbin:\\' "${HOME}"/.bashrc 2>/dev/null)"
 
 if ! grep -o '/usr/local/ssl/bin' "${HOME}"/.bashrc &>/dev/null; then
-    if [[ "${get_str}" =~ ${regex_str} ]]; then
+    if [[ "${get_str}" =~ $regex_str ]]; then
         sed -i '\/usr\/sbin:\\/i \/usr\/local\/ssl\/bin:\\' "${HOME}"/.bashrc
     else
         sed -i 's/\/usr\/sbin:/\/usr\/local\/ssl\/bin:\/usr\/sbin:/g' "${HOME}"/.bashrc

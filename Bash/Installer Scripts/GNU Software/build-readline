@@ -27,8 +27,8 @@ script_ver=1.1
 archive_dir=readline-8.2
 archive_url=https://ftp.gnu.org/gnu/readline/readline-8.2.tar.gz
 archive_ext="${archive_url//*.}"
-archive_name="${archive_dir}.tar.${archive_ext}"
-cwd="${PWD}"/readline-build-script
+archive_name="$archive_dir.tar.${archive_ext}"
+cwd="$PWD"/readline-build-script
 install_dir=/usr/local
 pc_type=x86_64-linux-gnu
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -43,10 +43,10 @@ sleep 2
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ -d "${cwd}" ]; then
-    sudo rm -fr "${cwd}"
+if [ -d "$cwd" ]; then
+    sudo rm -fr "$cwd"
 fi
-mkdir -p "${cwd}"
+mkdir -p "$cwd"
 
 #
 # SET THE C + CPP COMPILERS
@@ -110,15 +110,15 @@ exit_fn()
 {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
-        "${web_repo}"
+        "$web_repo"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "${1}" \
-        "To report a bug create an issue at: ${web_repo}/issues"
+        "$1" \
+        "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
@@ -135,7 +135,7 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' choice
 
     case "${choice}" in
-        1)      sudo rm -fr "${cwd}";;
+        1)      sudo rm -fr "$cwd";;
         2)      echo;;
         *)
                 unset choice
@@ -151,7 +151,7 @@ cleanup_fn()
 
 pkgs_fn()
 {
-    pkgs=("${1}" autoconf autoconf-archive autogen automake autopoint autotools-dev build-essential bzip2
+    pkgs=("$1" autoconf autoconf-archive autogen automake autopoint autotools-dev build-essential bzip2
           ccache curl git libaudit-dev libintl-perl libtool libtool-bin lzip pkg-config
           valgrind zlib1g-dev librust-polling-dev)
 
@@ -175,25 +175,25 @@ pkgs_fn()
 # DOWNLOAD THE ARCHIVE FILE
 #
 
-if [ ! -f "${cwd}/${archive_name}" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
+if [ ! -f "$cwd/${archive_name}" ]; then
+    curl -A "$user_agent" -Lso "$cwd/${archive_name}" "${archive_url}"
 fi
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ -d "${cwd}/${archive_dir}" ]; then
-    sudo rm -fr "${cwd}/${archive_dir}"
+if [ -d "$cwd/$archive_dir" ]; then
+    sudo rm -fr "$cwd/$archive_dir"
 fi
-mkdir -p "${cwd}/${archive_dir}/build"
+mkdir -p "$cwd/$archive_dir/build"
 
 #
 # EXTRACT ARCHIVE FILES
 #
 
-if ! tar -zxf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
+if ! tar -zxf "$cwd/${archive_name}" -C "$cwd/$archive_dir" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: $cwd/${archive_name}"
     exit 1
 fi
 
@@ -201,17 +201,17 @@ fi
 # DOWNLOAD PATCH TO FIX SHELL CRASH DUE TO INVALID LOCALE SPECIFICATION
 #
 
-curl -A "${user_agent}" -Lso 'fix-invalid-locale-specification.patch' 'https://www.linuxfromscratch.org/patches/downloads/readline/readline-8.2-upstream_fix-1.patch'
+curl -A "$user_agent" -Lso 'fix-invalid-locale-specification.patch' 'https://www.linuxfromscratch.org/patches/downloads/readline/readline-8.2-upstream_fix-1.patch'
 
 #
 # BUILD PROGRAM FROM SOURCE
 #
 
-cd "${cwd}/${archive_dir}" || exit 1
+cd "$cwd/$archive_dir" || exit 1
 autoreconf -fi
 patch --ignore-whitespace --posix --verbose -R -p1 -i 'fix-invalid-locale-specification.patch'
 cd build || exit 1
-../configure --prefix="${install_dir}"   \
+../configure --prefix="$install_dir"   \
              --{build,host}="${pc_type}" \
              --disable-install-examples  \
              --disable-shared            \
@@ -222,7 +222,7 @@ if ! sudo make install; then
     exit 1
 fi
 
-sudo ldconfig "${install_dir}"/lib
+sudo ldconfig "$install_dir"/lib
 
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn

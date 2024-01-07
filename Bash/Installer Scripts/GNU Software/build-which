@@ -25,10 +25,10 @@ fi
 
 script_ver=1.0
 archive_dir=which-2.21
-archive_url=https://carlowood.github.io/which/"${archive_dir}".tar.gz
+archive_url=https://carlowood.github.io/which/"$archive_dir".tar.gz
 archive_ext="${archive_url//*.}"
-archive_name="${archive_dir}.tar.${archive_ext}"
-cwd="${PWD}"/which-build-script
+archive_name="$archive_dir.tar.${archive_ext}"
+cwd="$PWD"/which-build-script
 install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
@@ -41,10 +41,10 @@ printf "%s\n%s\n\n" \
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ -d "${cwd}" ]; then
-    sudo rm -fr "${cwd}"
+if [ -d "$cwd" ]; then
+    sudo rm -fr "$cwd"
 fi
-mkdir -p "${cwd}"
+mkdir -p "$cwd"
 
 #
 # SET THE C + CPP COMPILERS
@@ -108,15 +108,15 @@ exit_fn()
 {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
-        "${web_repo}"
+        "$web_repo"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "${1}" \
-        "To report a bug create an issue at: ${web_repo}/issues"
+        "$1" \
+        "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
@@ -133,7 +133,7 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' choice
 
     case "${choice}" in
-        1)      sudo rm -fr "${cwd}";;
+        1)      sudo rm -fr "$cwd";;
         2)      echo;;
         *)
                 unset choice
@@ -170,25 +170,25 @@ fi
 # DOWNLOAD THE ARCHIVE FILE
 #
 
-if [ ! -f "${cwd}/${archive_name}" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
+if [ ! -f "$cwd/${archive_name}" ]; then
+    curl -A "$user_agent" -Lso "$cwd/${archive_name}" "${archive_url}"
 fi
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ -d "${cwd}/${archive_dir}" ]; then
-    sudo rm -fr "${cwd}/${archive_dir}"
+if [ -d "$cwd/$archive_dir" ]; then
+    sudo rm -fr "$cwd/$archive_dir"
 fi
-mkdir -p "${cwd}/${archive_dir}/build"
+mkdir -p "$cwd/$archive_dir/build"
 
 #
 # EXTRACT ARCHIVE FILES
 #
 
-if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
+if ! tar -xf "$cwd/${archive_name}" -C "$cwd/$archive_dir" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: $cwd/${archive_name}"
     exit 1
 fi
 
@@ -196,11 +196,11 @@ fi
 # BUILD PROGRAM FROM SOURCE
 #
 
-cd "${cwd}/${archive_dir}" || exit 1
+cd "$cwd/$archive_dir" || exit 1
 autoupdate
 autoreconf -fi
 cd build || exit 1
-../configure --prefix="${install_dir}" \
+../configure --prefix="$install_dir" \
              --enable-silent-rules
 echo
 if ! make "-j$(nproc --all)"; then

@@ -36,7 +36,7 @@ fi
 #
 
 script_ver=2.8
-cwd="${PWD}"/build-tools-script
+cwd="$PWD"/build-tools-script
 install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
@@ -66,7 +66,7 @@ fi
 # CREATE OUTPUT DIRECTORIES
 #
 
-mkdir -p "${cwd}"
+mkdir -p "$cwd"
 
 #
 # SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
@@ -114,7 +114,7 @@ PKG_CONFIG_PATH="\
 /usr/local/share/pkgconfig:\
 /usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
-/usr/lib/${install_dir}/pkgconfig:\
+/usr/lib/$install_dir/pkgconfig:\
 /usr/share/pkgconfig:\
 /lib64/pkgconfig:\
 /lib/pkgconfig:\
@@ -131,16 +131,16 @@ exit_fn()
     printf "\n%s\n\n%s\n%s\n\n"                                   \
         'The script has completed'                                \
         'Make sure to star this repository to show your support!' \
-        "${web_repo}"
+        "$web_repo"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n\n%s\n\n%s\n\n%s\n\n"                  \
-        "${1}"                                       \
+        "$1"                                       \
         'To report a bug please create an issue at:' \
-        "${web_repo}/issues"
+        "$web_repo/issues"
     exit 1
 }
 
@@ -155,7 +155,7 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' answer
 
     case "${answer}" in
-        1)      sudo rm -fr "${cwd}";;
+        1)      sudo rm -fr "$cwd";;
         2)      return 0;;
         *)
                 unset answer
@@ -188,12 +188,12 @@ execute()
     echo "$ ${*}"
 
     if [ "${debug}" = 'ON' ]; then
-        if ! output="$("${@}")"; then
+        if ! output="$("$@")"; then
             notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
             fail_fn "Failed to execute: ${*}"
         fi
     else
-        if ! output="$("${@}" 2>&1)"; then
+        if ! output="$("$@" 2>&1)"; then
             notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
             fail_fn "Failed to execute: ${*}"
         fi
@@ -202,134 +202,134 @@ execute()
 
 download()
 {
-    dl_path="${cwd}"
-    dl_url="${1}"
+    dl_path="$cwd"
+    dl_url="$1"
     dl_file="${2:-"${1##*/}"}"
 
-    if [[ "${dl_file}" =~ tar. ]]; then
+    if [[ "$dl_file" =~ tar. ]]; then
         output_dir="${dl_file%.*}"
         output_dir="${3:-"${output_dir%.*}"}"
     else
         output_dir="${3:-"${dl_file%.*}"}"
     fi
 
-    target_file="${dl_path}/${dl_file}"
-    target_dir="${dl_path}/${output_dir}"
+    target_file="$dl_path/$dl_file"
+    target_dir="$dl_path/$output_dir"
 
     if [ -f "${target_file}" ]; then
-        echo "The file \"${dl_file}\" is already downloaded."
+        echo "The file \"$dl_file\" is already downloaded."
     else
-        echo "Downloading \"${dl_url}\" saving as \"${dl_file}\""
-        if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
-            printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 10 seconds..."
+        echo "Downloading \"${dl_url}\" saving as \"$dl_file\""
+        if ! curl -A "$user_agent" -Lso "${target_file}" "${dl_url}"; then
+            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
-            if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
-                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit:Line ${LINENO}"
+            if ! curl -A "$user_agent" -Lso "${target_file}" "${dl_url}"; then
+                fail_fn "The script failed to download \"$dl_file\" twice and will now exit:Line ${LINENO}"
             fi
         fi
         echo 'Download Completed'
     fi
 
-    if [ -d "${target_dir}" ]; then
-        sudo rm -fr "${target_dir}"
+    if [ -d "$target_dir" ]; then
+        sudo rm -fr "$target_dir"
     fi
-    mkdir -p "${target_dir}"
+    mkdir -p "$target_dir"
 
-    if [ -n "${3}" ]; then
-        if ! tar -xf "${target_file}" -C "${target_dir}" 2>/dev/null >/dev/null; then
+    if [ -n "$3" ]; then
+        if ! tar -xf "${target_file}" -C "$target_dir" 2>/dev/null >/dev/null; then
             sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script:Line ${LINENO}"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script:Line ${LINENO}"
         fi
     else
-        if ! tar -xf "${target_file}" -C "${target_dir}" --strip-components 1 2>/dev/null >/dev/null; then
+        if ! tar -xf "${target_file}" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
             sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script:Line ${LINENO}"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script:Line ${LINENO}"
         fi
     fi
 
-    printf "%s\n\n" "File extracted: ${dl_file}"
+    printf "%s\n\n" "File extracted: $dl_file"
 
-    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}:Line ${LINENO}"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir:Line ${LINENO}"
 }
 
 download_git()
 {
     local dl_path dl_url dl_file target_dir
 
-    dl_path="${cwd}"
-    dl_url="${1}"
+    dl_path="$cwd"
+    dl_url="$1"
     dl_file="${2:-"${1##*/}"}"
     dl_file="${dl_file//\./-}"
-    target_dir="${dl_path}/${dl_file}"
+    target_dir="$dl_path/$dl_file"
 
-    if [ -n "${3}" ]; then
-        output_dir="${dl_path}/${3}"
-        target_dir="${output_dir}"
+    if [ -n "$3" ]; then
+        output_dir="$dl_path/$3"
+        target_dir="$output_dir"
     fi
 
-    if [ -d "${target_dir}" ]; then
-        sudo rm -fr "${target_dir}"
+    if [ -d "$target_dir" ]; then
+        sudo rm -fr "$target_dir"
     fi
 
-    echo "Downloading ${dl_url} as ${dl_file}"
+    echo "Downloading ${dl_url} as $dl_file"
 
-    if ! git clone -q "${dl_url}" "${target_dir}"; then
-        printf "\n%s\n\n" "The script failed to clone the directory \"${target_dir}\" and will try again in 10 seconds..."
+    if ! git clone -q "${dl_url}" "$target_dir"; then
+        printf "\n%s\n\n" "The script failed to clone the directory \"$target_dir\" and will try again in 10 seconds..."
         sleep 10
-        if ! git clone -q "${dl_url}" "${target_dir}"; then
-            fail_fn "The script failed to clone the directory \"${target_dir}\" twice and will now exit the build. Line: ${LINENO}"
+        if ! git clone -q "${dl_url}" "$target_dir"; then
+            fail_fn "The script failed to clone the directory \"$target_dir\" twice and will now exit the build. Line: ${LINENO}"
         fi
     else
-        printf "%s\n\n" "Successfully cloned: ${target_dir}"
+        printf "%s\n\n" "Successfully cloned: $target_dir"
     fi
 
-    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}. Line: ${LINENO}"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: ${LINENO}"
 }
 
 build()
 {
     printf "\n%s\n%s\n" \
-        "Building ${1} - version ${2}" \
+        "Building $1 - version $2" \
         '===================================='
 
-    if [ -f "${cwd}/${1}.done" ]; then
-        if grep -Fx "${2}" "${cwd}/${1}.done" >/dev/null; then
-            echo "${1} version ${2} already built. Remove ${cwd}/${1}.done lockfile to rebuild it."
+    if [ -f "$cwd/$1.done" ]; then
+        if grep -Fx "$2" "$cwd/$1.done" >/dev/null; then
+            echo "$1 version $2 already built. Remove $cwd/$1.done lockfile to rebuild it."
             return 1
         elif "${latest}"; then
-            echo "${1} is outdated and will be rebuilt using version ${2}"
+            echo "$1 is outdated and will be rebuilt using version $2"
             return 0
         else
-            echo "${1} is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove ${cwd}/${1}.done lockfile."
+            echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $cwd/$1.done lockfile."
             return 1
         fi
     fi
     return 0
 }
 
-build_done() { echo "${2}" > "${cwd}/${1}.done"; }
+build_done() { echo "$2" > "$cwd/$1.done"; }
 
 git_1_fn()
 {
     local curl_cmd github_repo github_url g_sver g_sver1
 
     # SCRAPE GITHUB'S API FOR THE LATEST REPO VERSION
-    github_repo="${1}"
-    github_url="${2}"
+    github_repo="$1"
+    github_url="$2"
     cnt=0
 
-    if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
-        g_sver="$(echo "${curl_cmd}" | jq -r '.[0].tag_name' 2>/dev/null)"
-        g_sver1="$(echo "${curl_cmd}" | jq -r '.[0].name' 2>/dev/null)"
+    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+        g_sver="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null)"
+        g_sver1="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_ver="${g_sver#v}"
         g_ver1="${g_sver1#v}"
         ((cnt++))
     fi
 
     get_str_end='-rc[0-9]'
-    while [[ ${g_ver} =~ ${get_str_end}$ ]]
+    while [[ $g_ver =~ ${get_str_end}$ ]]
     do
-        if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}" | jq -r '.[$cnt].name')"; then
+        if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}" | jq -r '.[$cnt].name')"; then
             g_ver="${curl_cmd#v}"
             ((cnt++))
         fi  
@@ -338,19 +338,19 @@ git_1_fn()
 
 git_2_fn()
 {
-    gitlab_repo="${1}"
-    github_url="${2}"
+    gitlab_repo="$1"
+    github_url="$2"
     cnt=0
     
-    if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}" | jq -r ".[$cnt].name")"; then
+    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}" | jq -r ".[$cnt].name")"; then
         g_ver="${curl_cmd#v}"
         ((cnt++))
     fi
     
     get_str_end='-rc[0-9]'
-    while [[ ${g_ver} =~ ${get_str_end}$ ]]
+    while [[ $g_ver =~ ${get_str_end}$ ]]
     do
-        if curl_cmd="$(curl -A "${user_agent}" -m 10 -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}" | jq -r ".[$cnt].name")"; then
+        if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}" | jq -r ".[$cnt].name")"; then
             g_ver="${curl_cmd#v}"
         fi
         ((cnt++))
@@ -361,11 +361,11 @@ git_ver_fn()
 {
     local t_flag u_flag v_flag v_tag v_url
 
-    v_url="${1}"
-    v_tag="${2}"
+    v_url="$1"
+    v_tag="$2"
 
-    if [ -n "${3}" ]; then
-        v_flag="${3}"
+    if [ -n "$3" ]; then
+        v_flag="$3"
         case "${v_flag}" in
                 R)      t_flag=releases;;
                 T)      t_flag=tags;;
@@ -471,41 +471,41 @@ esac
 
 # CHECK IF THE LATEST RELEASE IS A 'RC' AKA RELEASE CANDIDATE AND IF SO GO BACK TO THE PREVIOUS STABLE RELEASE
 git_ver_fn '541' '2' 'T'
-if build 'cmake' "${g_ver}"; then
-    download "https://gitlab.kitware.com/cmake/cmake/-/archive/v${g_ver}/cmake-v${g_ver}.tar.bz2" "cmake-${g_ver}.tar.bz2"
-    execute ./bootstrap --prefix="${install_dir}"   \
+if build 'cmake' "$g_ver"; then
+    download "https://gitlab.kitware.com/cmake/cmake/-/archive/v$g_ver/cmake-v$g_ver.tar.bz2" "cmake-$g_ver.tar.bz2"
+    execute ./bootstrap --prefix="$install_dir"   \
                         --enable-ccache             \
                         --parallel="$(nproc --all)" \
                         --qt-gui
     execute make "-j${cpu_threads}"
     execute sudo make install
-    build_done 'cmake' "${g_ver}"
+    build_done 'cmake' "$g_ver"
 fi
 
 git_ver_fn 'ninja-build/ninja' '1' 'T'
-if build 'ninja' "${g_ver1}"; then
-    download "https://codeload.github.com/ninja-build/ninja/tar.gz/refs/tags/v${g_ver1}" "ninja-${g_ver1}.tar.gz"
+if build 'ninja' "$g_ver1"; then
+    download "https://codeload.github.com/ninja-build/ninja/tar.gz/refs/tags/v$g_ver1" "ninja-$g_ver1.tar.gz"
     re2c_path="$(type -P re2c)"
     execute cmake -B build                             \
-                  -DCMAKE_install_dir="${install_dir}" \
+                  -DCMAKE_install_dir="$install_dir" \
                   -DCMAKE_BUILD_TYPE=Release           \
                   -DRE2C="${re2c_path}"                \
                   -DBUILD_TESTING=OFF                  \
                   -Wno-dev
     execute make "-j${cpu_threads}" -C build
     execute sudo make -C build install
-    build_done 'ninja' "${g_ver1}"
+    build_done 'ninja' "$g_ver1"
 fi
 
 if [[ "${OS}" == 'Arch' ]]; then
     sudo pacman -Sq --needed --noconfirm meson 2>&1
 else
     git_ver_fn 'mesonbuild/meson' '1' 'T'
-    if build 'meson' "${g_ver1}"; then
-        download "https://codeload.github.com/mesonbuild/meson/tar.gz/refs/tags/${g_ver1}" "meson-${g_ver1}.tar.gz"
+    if build 'meson' "$g_ver1"; then
+        download "https://codeload.github.com/mesonbuild/meson/tar.gz/refs/tags/$g_ver1" "meson-$g_ver1.tar.gz"
         execute python3 setup.py build
-        execute sudo python3 setup.py install --prefix="${install_dir}"
-        build_done 'meson' "${g_ver1}"
+        execute sudo python3 setup.py install --prefix="$install_dir"
+        build_done 'meson' "$g_ver1"
     fi
 fi
 
@@ -517,12 +517,12 @@ if [[ "${OS}" == 'Arch' ]]; then
 else
     if build 'golang' '1.21.5'; then
         download 'https://go.dev/dl/go1.21.5.linux-amd64.tar.gz' 'golang-1.21.5.tar.gz'
-        execute sudo cp -f 'bin/go' 'bin/gofmt' "${install_dir}"/bin
-        if [ -d  "${install_dir}"/go ]; then
-            sudo rm -fr "${install_dir}"/go
+        execute sudo cp -f 'bin/go' 'bin/gofmt' "$install_dir"/bin
+        if [ -d  "$install_dir"/go ]; then
+            sudo rm -fr "$install_dir"/go
         fi
-        sudo mkdir -p "${install_dir}"/go
-        GOROOT="${install_dir}"/go
+        sudo mkdir -p "$install_dir"/go
+        GOROOT="$install_dir"/go
         PATH="${PATH}:${GOROOT}/bin"
         export GOROOT PATH
         build_done 'golang' '1.21.5'

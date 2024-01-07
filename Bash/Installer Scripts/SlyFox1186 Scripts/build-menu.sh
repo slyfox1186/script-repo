@@ -12,8 +12,8 @@ green='\e[32m'
 blue='\e[34m'
 clear='\e[0m'
 
-ColorGreen() { echo -ne "${green}${1}${clear}"; }
-ColorBlue() { echo -ne "${blue}${1}${clear}"; }
+ColorGreen() { echo -ne "${green}$1${clear}"; }
+ColorBlue() { echo -ne "${blue}$1${clear}"; }
 
 #
 # SHOW SCRIPT BANNER
@@ -21,16 +21,16 @@ ColorBlue() { echo -ne "${blue}${1}${clear}"; }
 
 box_out_banner()
 {
-    input_char=$(echo "${@}" | wc -c)
+    input_char=$(echo "$@" | wc -c)
     line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
     tput bold
-    line="$(tput setaf 3)${line}"
+    line="$(tput setaf 3)$line"
     space=${line//-/ }
-    echo " ${line}"
+    echo " $line"
     printf '|'; echo -n "${space}"; printf "%s\n" '|';
-    printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3; printf "%s\n" ' |';
+    printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3; printf "%s\n" ' |';
     printf '|'; echo -n "${space}"; printf "%s\n" '|';
-    echo " ${line}"
+    echo " $line"
     tput sgr 0
 }
 box_out_banner 'Installer Script Menu'
@@ -39,14 +39,14 @@ box_out_banner 'Installer Script Menu'
 # DOWNLOAD SCRIPTS
 #
 
-szip_release_fn() { bash <(curl -A "${user_agent}" -fsSL 'https://7z.optimizethis.net'); }
-dl_tools_fn() { bash <(curl -A "${user_agent}" -fsSL 'https://dl-tools.optimizethis.net'); }
-build_tools_fn() { bash <(curl -A "${user_agent}" -fsSL 'https://build-tools.optimizethis.net'); }
-magick_fn() { bash <(curl -A "${user_agent}" -fsSL 'https://magick.optimizethis.net'); }
-ffmpeg_fn() { bash <(curl -A "${user_agent}" -fsSL 'https://build-ffmpeg.optimizethis.net') --build --latest; }
-gparted_fn() { bash <(curl -A "${user_agent}" -fsSL 'https://gparted.optimizethis.net'); }
-deb_dl_fn() { bash <(curl -A "${user_agent}" -fsSL 'https://download.optimizethis.net'); }
-video_fn() { bash <(curl -A "${user_agent}" -fsSL 'https://players.optimizethis.net'); }
+szip_release_fn() { bash <(curl -A "$user_agent" -fsSL 'https://7z.optimizethis.net'); }
+dl_tools_fn() { bash <(curl -A "$user_agent" -fsSL 'https://dl-tools.optimizethis.net'); }
+build_tools_fn() { bash <(curl -A "$user_agent" -fsSL 'https://build-tools.optimizethis.net'); }
+magick_fn() { bash <(curl -A "$user_agent" -fsSL 'https://magick.optimizethis.net'); }
+ffmpeg_fn() { bash <(curl -A "$user_agent" -fsSL 'https://build-ffmpeg.optimizethis.net') --build --latest; }
+gparted_fn() { bash <(curl -A "$user_agent" -fsSL 'https://gparted.optimizethis.net'); }
+deb_dl_fn() { bash <(curl -A "$user_agent" -fsSL 'https://download.optimizethis.net'); }
+video_fn() { bash <(curl -A "$user_agent" -fsSL 'https://players.optimizethis.net'); }
 
 #
 # DISPLAY THE CUSTOM USER SCRIPTS MENU
@@ -64,13 +64,13 @@ $(ColorBlue 'Choose an option:') "
     clear
     case "${answer}" in
         1)
-                bash <(curl -A "${user_agent}" -fsSL 'https://lunar-scripts.optimizethis.net')
+                bash <(curl -A "$user_agent" -fsSL 'https://lunar-scripts.optimizethis.net')
                 unset answer
                 clear
                 main_menu
                 ;;
         2)
-                bash <(curl -A "${user_agent}" -fsSL 'https://jammy-scripts.optimizethis.net')
+                bash <(curl -A "$user_agent" -fsSL 'https://jammy-scripts.optimizethis.net')
                 unset answer
                 clear
                 main_menu
@@ -105,49 +105,49 @@ $(ColorBlue 'Choose an option:') "
     clear
     case "${answer}" in
         1)
-                curl -A "${user_agent}" -Lso 'lunar-mirrors.sh' 'https://lunar-mirrors.optimizethis.net'
+                curl -A "$user_agent" -Lso 'lunar-mirrors.sh' 'https://lunar-mirrors.optimizethis.net'
                 sudo bash 'lunar-mirrors.sh'
                 unset answer
                 clear
                 main_menu
                 ;;
         2)
-                curl -A "${user_agent}" -Lso 'jammy-mirrors.sh' 'https://jammy-mirrors.optimizethis.net'
+                curl -A "$user_agent" -Lso 'jammy-mirrors.sh' 'https://jammy-mirrors.optimizethis.net'
                 sudo bash 'jammy-mirrors.sh'
                 unset answer
                 clear
                 main_menu
                 ;;
         3)
-                curl -A "${user_agent}" -Lso 'focal-mirrors.sh' 'https://focal-mirrors.optimizethis.net'
+                curl -A "$user_agent" -Lso 'focal-mirrors.sh' 'https://focal-mirrors.optimizethis.net'
                 sudo bash 'focal-mirrors.sh'
                 unset answer
                 clear
                 main_menu
                 ;;
         4)
-                curl -A "${user_agent}" -Lso 'bionic-mirrors.sh' 'https://bionic-mirrors.optimizethis.net'
+                curl -A "$user_agent" -Lso 'bionic-mirrors.sh' 'https://bionic-mirrors.optimizethis.net'
                 sudo bash 'bionic-mirrors.sh'
                 unset answer
                 clear
                 main_menu
                 ;;
         5)
-                curl -A "${user_agent}" -Lso 'bullseye-mirrors.sh' 'https://bullseye-mirrors.optimizethis.net'
+                curl -A "$user_agent" -Lso 'bullseye-mirrors.sh' 'https://bullseye-mirrors.optimizethis.net'
                 sudo bash 'bullseye-mirrors.sh'
                 unset answer
                 clear
                 main_menu
                 ;;
         6)
-                curl -A "${user_agent}" -Lso 'bookworm-mirrors.sh' 'https://bookworm-mirrors.optimizethis.net'
+                curl -A "$user_agent" -Lso 'bookworm-mirrors.sh' 'https://bookworm-mirrors.optimizethis.net'
                 sudo bash 'bookworm-mirrors.sh'
                 unset answer
                 clear
                 main_menu
                 ;;
         3)
-                curl -A "${user_agent}" -Lso 'raspi-scripts.sh' 'https://raspi-scripts.optimizethis.net'
+                curl -A "$user_agent" -Lso 'raspi-scripts.sh' 'https://raspi-scripts.optimizethis.net'
                 sudo bash 'raspi-scripts.sh'
                 unset answer
                 clear

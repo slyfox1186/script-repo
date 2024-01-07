@@ -28,8 +28,8 @@ jemalloc_ver=5.3.0
 archive_dir=jemalloc-${jemalloc_ver}
 archive_url=https://github.com/jemalloc/jemalloc/archive/refs/tags/"${jemalloc_ver}".tar.gz
 archive_ext="${archive_url//*.}"
-archive_name="${archive_dir}.tar.${archive_ext}"
-cwd="${PWD}"/jemalloc-build-script
+archive_name="$archive_dir.tar.${archive_ext}"
+cwd="$PWD"/jemalloc-build-script
 install_dir=/usr/local
 pc_type=x86_64-linux-gnu
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -39,25 +39,25 @@ web_repo=https://github.com/slyfox1186/script-repo
 # CREATE OUTPUT DIRECTORY JEMALLOC
 #
 
-if [ -d "${cwd}/${archive_dir}" ]; then
-    sudo rm -fr "${cwd}/${archive_dir}"
+if [ -d "$cwd/$archive_dir" ]; then
+    sudo rm -fr "$cwd/$archive_dir"
 fi
-mkdir -p "${cwd}/${archive_dir}/build"
+mkdir -p "$cwd/$archive_dir/build"
 
 #
 # DOWNLOAD THE ARCHIVE FILE JEMALLOC
 #
 
-if [ ! -f "${cwd}/${archive_dir}.tar.gz" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/${archive_dir}.tar.gz" "${archive_url}"
+if [ ! -f "$cwd/$archive_dir.tar.gz" ]; then
+    curl -A "$user_agent" -Lso "$cwd/$archive_dir.tar.gz" "${archive_url}"
 fi
 
 #
 # EXTRACT THE ARCHIVE FILE JEMALLOC
 #
 
-if ! tar -zxf "${cwd}/${archive_dir}.tar.gz" -C "${cwd}/${archive_dir}" --strip-components 1; then
-    fail_fn "Failed to extract: ${cwd}/${archive_dir}.tar.gz"
+if ! tar -zxf "$cwd/$archive_dir.tar.gz" -C "$cwd/$archive_dir" --strip-components 1; then
+    fail_fn "Failed to extract: $cwd/$archive_dir.tar.gz"
 fi
 
 #
@@ -68,10 +68,10 @@ printf "\n%s\n%s\n\n"                        \
     "Installing Jemalloc - v${jemalloc_ver}" \
     '==============================================='
 
-cd "${cwd}/${archive_dir}" || exit 1
+cd "$cwd/$archive_dir" || exit 1
 ./autogen.sh
 cd build || exit 1
-../configure --prefix="${install_dir}"   \
+../configure --prefix="$install_dir"   \
              --disable-debug             \
              --disable-doc               \
              --disable-fill              \

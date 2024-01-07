@@ -19,7 +19,7 @@ archive_dir1=libiconv-1.17
 archive_dir2=gettext-0.22.4
 archive_url1=https://ftp.gnu.org/gnu/libiconv/$archive_dir1.tar.gz
 archive_url2=https://ftp.gnu.org/gnu/gettext/$archive_dir2.tar.lz
-cwd="${PWD}"/gettext-libiconv-build-script
+cwd="$PWD"/gettext-libiconv-build-script
 install_dir=/usr/local
 
 # Helper function to download and extract archives

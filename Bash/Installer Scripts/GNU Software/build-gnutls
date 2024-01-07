@@ -42,11 +42,11 @@ fi
 
 script_ver=1.0
 archive_dir=guile-gnutls-4.0.0
-archive_url=https://ftp.gnu.org/gnu/gnutls/${archive_dir}.tar.gz
+archive_url=https://ftp.gnu.org/gnu/gnutls/$archive_dir.tar.gz
 archive_ext="${archive_url//*.}"
-archive_name="${archive_dir}.tar.${archive_ext}"
+archive_name="$archive_dir.tar.${archive_ext}"
 install_dir=/usr/local
-cwd="${PWD}"/gnutls-build-script
+cwd="$PWD"/gnutls-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
@@ -58,10 +58,10 @@ printf "%s\n%s\n\n" \
 # CREATE THE OUTPUT DIRECTORY
 #
 
-if [ -d "${cwd}" ]; then
-    sudo rm -fr "${cwd}"
+if [ -d "$cwd" ]; then
+    sudo rm -fr "$cwd"
 fi
-mkdir -p "${cwd}"
+mkdir -p "$cwd"
 
 #
 # SET THE C + CPP COMPILERS
@@ -125,15 +125,15 @@ exit_fn()
 {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
-        "${web_repo}"
+        "$web_repo"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "${1}" \
-        "To report a bug create an issue at: ${web_repo}/issues"
+        "$1" \
+        "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
@@ -150,7 +150,7 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' choice
 
     case "${choice}" in
-        1)      sudo rm -fr "${cwd}";;
+        1)      sudo rm -fr "$cwd";;
         2)      echo;;
         *)
                 clear
@@ -169,7 +169,7 @@ cleanup_fn()
 
 pkgs_fn()
 {
-    pkgs=("${1}" autoconf autoconf-archive autogen automake binutils build-essential ccache
+    pkgs=("$1" autoconf autoconf-archive autogen automake binutils build-essential ccache
           cmake curl guile-3.0-dev git libgmp-dev libintl-perl libtool libtool-bin m4 nasm
           ninja-build texinfo zlib1g-dev yasm)
 
@@ -193,25 +193,25 @@ pkgs_fn()
 # DOWNLOAD THE ARCHIVE FILE
 #
 
-if [ ! -f "${cwd}/${archive_name}" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
+if [ ! -f "$cwd/${archive_name}" ]; then
+    curl -A "$user_agent" -Lso "$cwd/${archive_name}" "${archive_url}"
 fi
 
 #
 # CREATE THE OUTPUT DIRECTORY
 #
 
-if [ -d "${cwd}/${archive_dir}" ]; then
-    sudo rm -fr "${cwd}/${archive_dir}"
+if [ -d "$cwd/$archive_dir" ]; then
+    sudo rm -fr "$cwd/$archive_dir"
 fi
-mkdir -p "${cwd}/${archive_dir}/build"
+mkdir -p "$cwd/$archive_dir/build"
 
 #
 # EXTRACT THE ARCHIVE FILES
 #
 
-if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
+if ! tar -xf "$cwd/${archive_name}" -C "$cwd/$archive_dir" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: $cwd/${archive_name}"
     exit 1
 fi
 
@@ -219,10 +219,10 @@ fi
 # BUILD GnuTLS FROM IT'S SOURCE CODE
 #
 
-cd "${cwd}/${archive_dir}" || exit 1
+cd "$cwd/$archive_dir" || exit 1
 autoreconf -fi
 cd build || exit 1
-../configure --prefix="${install_dir}"            \
+../configure --prefix="$install_dir"            \
              --{build,host}=x86_64-linux-gnu      \
              --disable-nls                        \
              --enable-static                      \

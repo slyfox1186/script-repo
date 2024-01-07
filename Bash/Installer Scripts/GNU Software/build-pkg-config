@@ -27,8 +27,8 @@ script_ver=1.4
 archive_dir=pkg-config-0.29.2
 archive_url=https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz
 archive_ext="${archive_url//*.}"
-archive_name="${archive_dir}.tar.${archive_ext}"
-cwd="${PWD}"/pkg-config-build-script
+archive_name="$archive_dir.tar.${archive_ext}"
+cwd="$PWD"/pkg-config-build-script
 install_dir=/usr
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
@@ -42,10 +42,10 @@ sleep 2
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ -d "${cwd}" ]; then
-    sudo rm -fr "${cwd}"
+if [ -d "$cwd" ]; then
+    sudo rm -fr "$cwd"
 fi
-mkdir -p "${cwd}"
+mkdir -p "$cwd"
 
 #
 # SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
@@ -55,8 +55,8 @@ CC=gcc
 CXX=g++
 CFLAGS='-g -O3 -pipe -march=native'
 CXXFLAGS="${CFLAGS}"
-CPPFLAGS="-I${install_dir}/include -I${install_dir}/include/x86_64-linux-gnu"
-LDFLAGS="-L${install_dir}/lib64 -L${install_dir}/lib -L${install_dir}/lib/x86_64-linux-gnu"
+CPPFLAGS="-I$install_dir/include -I$install_dir/include/x86_64-linux-gnu"
+LDFLAGS="-L$install_dir/lib64 -L$install_dir/lib -L$install_dir/lib/x86_64-linux-gnu"
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
 #
@@ -105,15 +105,15 @@ exit_fn()
 {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
-        "${web_repo}"
+        "$web_repo"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "${1}" \
-        "To report a bug create an issue at: ${web_repo}/issues"
+        "$1" \
+        "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
@@ -132,7 +132,7 @@ cleanup_fn()
     clear
 
     case "${choice}" in
-        1)      sudo rm -fr "${cwd}";;
+        1)      sudo rm -fr "$cwd";;
         2)      echo;;
         *)
                 unset choice
@@ -145,7 +145,7 @@ cleanup_fn()
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs=("${1}" autoconf autoconf-archive autogen automake build-essential ca-certificates ccache clang curl
+pkgs=("$1" autoconf autoconf-archive autogen automake build-essential ca-certificates ccache clang curl
       libaria2-0 libaria2-0-dev libc-ares-dev libdmalloc-dev libgcrypt20-dev libgmp-dev libgnutls28-dev
       libgpg-error-dev libjemalloc-dev libmbedtls-dev libnghttp2-dev librust-openssl-dev libsqlite3-dev
       libssh2-1-dev libssh-dev libssl-dev libxml2-dev pkg-config zlib1g-dev)
@@ -167,25 +167,25 @@ fi
 # DOWNLOAD THE ARCHIVE FILE
 #
 
-if [ ! -f "${cwd}/${archive_name}" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
+if [ ! -f "$cwd/${archive_name}" ]; then
+    curl -A "$user_agent" -Lso "$cwd/${archive_name}" "${archive_url}"
 fi
 
 #
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ -d "${cwd}/${archive_dir}" ]; then
-    sudo rm -fr "${cwd}/${archive_dir}"
+if [ -d "$cwd/$archive_dir" ]; then
+    sudo rm -fr "$cwd/$archive_dir"
 fi
-mkdir -p "${cwd}/${archive_dir}/build"
+mkdir -p "$cwd/$archive_dir/build"
 
 #
 # EXTRACT ARCHIVE FILES
 #
 
-if ! tar -zxf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: ${cwd}/${archive_name}"
+if ! tar -zxf "$cwd/${archive_name}" -C "$cwd/$archive_dir" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: $cwd/${archive_name}"
     exit 1
 fi
 
@@ -193,10 +193,10 @@ fi
 # BUILD PROGRAM FROM SOURCE
 #
 
-cd "${cwd}/${archive_dir}" || exit 1
+cd "$cwd/$archive_dir" || exit 1
 autoconf
 cd build || exit 1
-../configure --prefix="${install_dir}"           \
+../configure --prefix="$install_dir"           \
              --enable-indirect-deps              \
              --with-internal-glib                \
              --with-pc-path="${PKG_CONFIG_PATH}" \

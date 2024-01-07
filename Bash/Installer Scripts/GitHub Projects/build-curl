@@ -27,14 +27,14 @@ script_ver=1.4
 curl_ver=8.5.0
 archive_dir=${curl_ver}
 archive_dir1=${curl_ver//./_}
-archive_url="https://github.com/curl/curl/releases/download/curl-${archive_dir1}/curl-${archive_dir}.tar.xz"
+archive_url="https://github.com/curl/curl/releases/download/curl-${archive_dir1}/curl-$archive_dir.tar.xz"
 archive_ext="${archive_url//*.}"
-archive_name="${archive_dir}.tar.${archive_ext}"
-cwd="${PWD}"/curl-build-script
+archive_name="$archive_dir.tar.${archive_ext}"
+cwd="$PWD"/curl-build-script
 install_prefix=/usr/local
 pem_file=cacert.pem
 certs_dir='/etc/ssl/certs'
-pem_out="${certs_dir}/${pem_file}"
+pem_out="$certs_dir/$pem_file"
 pc_type=x86_64-linux-gnu
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
@@ -48,10 +48,10 @@ sleep 2
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ -d "${cwd}" ]; then
-    sudo rm -fr "${cwd}"
+if [ -d "$cwd" ]; then
+    sudo rm -fr "$cwd"
 fi
-mkdir -p "${cwd}"
+mkdir -p "$cwd"
 
 #
 # SET THE C/CXX COMPILERS & SET THE COMPILER OPTIMIZATION FLAGS
@@ -110,15 +110,15 @@ exit_fn()
 {
     printf "\n%s\n\n%s\n\n"                                       \
         'Make sure to star this repository to show your support!' \
-        "${web_repo}"
+        "$web_repo"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "${1}"              \
-        "To report a bug create an issue at: ${web_repo}/issues"
+        "$1"              \
+        "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
@@ -136,7 +136,7 @@ cleanup_fn()
     clear
 
     case "${choice}" in
-        1)      sudo rm -fr "${cwd}";;
+        1)      sudo rm -fr "$cwd";;
         2)      return 0;;
         *)
                 unset choice
@@ -188,33 +188,33 @@ if [ ! -f "${pem_out}" ]; then
     printf "%s\n%s\n\n" \
         'Download the latest security certificate' \
         '================================================'
-    curl -A "${user_agent}" -Lso "${cwd}/${pem_file}" "https://curl.se/ca/${pem_file}"
-    sudo cp -f "${cwd}/${pem_file}" "${pem_out}"
+    curl -A "$user_agent" -Lso "$cwd/$pem_file" "https://curl.se/ca/$pem_file"
+    sudo cp -f "$cwd/$pem_file" "${pem_out}"
 fi
 
 #
 # CREATE OUTPUT DIRECTORY CURL
 #
 
-if [ -d "${cwd}/${archive_dir}" ]; then
-    sudo rm -fr "${cwd}/${archive_dir}"
+if [ -d "$cwd/$archive_dir" ]; then
+    sudo rm -fr "$cwd/$archive_dir"
 fi
-mkdir -p "${cwd}/${archive_dir}/build"
+mkdir -p "$cwd/$archive_dir/build"
 
 #
 # DOWNLOAD THE ARCHIVE FILE CURL
 #
 
-if [ ! -f "${cwd}/${archive_name}" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
+if [ ! -f "$cwd/${archive_name}" ]; then
+    curl -A "$user_agent" -Lso "$cwd/${archive_name}" "${archive_url}"
 fi
 
 #
 # EXTRACT THE ARCHIVE FILE CURL
 #
 
-if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
-    fail_fn "Failed to extract: ${cwd}/${archive_name}"
+if ! tar -xf "$cwd/${archive_name}" -C "$cwd/$archive_dir" --strip-components 1; then
+    fail_fn "Failed to extract: $cwd/${archive_name}"
 fi
 
 # UPDATE THE SYSTEM SECURITY CERTIFICATES BEFORE INSTALLING CURL
@@ -227,9 +227,9 @@ fi
 #
 
 
-cd "${cwd}/${archive_dir}" || exit 1
+cd "$cwd/$archive_dir" || exit 1
 dopts=('--disable-'{get-easy-options,shared,verbose,versioned-symbols})
-eopts=('--enable-'{alt-svc,ares="${workspace}",cookies})
+eopts=('--enable-'{alt-svc,ares="$workspace",cookies})
 eopts+=('--enable-'{dict,dnsshuffle,doh,file,ftp,gopher})
 eopts+=('--enable-'{headers-api,hsts,http,http-auth,imap})
 eopts+=('--enable-'{ipv6,ldap,ldaps,libcurl-option,libgcc,manual})
@@ -238,10 +238,10 @@ eopts+=('--enable-'{openssl-auto-load-config,optimize,pop3,progress-meter})
 eopts+=('--enable-'{proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static,telnet})
 eopts+=('--enable-'{tftp,threaded-resolver,tls-srp,unix-sockets,websockets})
 wopts=('--with-'{libssh2,nghttp2='/usr/include',nghttp3='/usr/include',openssl='/usr',ssl,zlib})
-wopts+=('--with-'{ca-bundle="${pem_out}",ca-fallback,ca-path="${certs_dir}",secure-transport})
+wopts+=('--with-'{ca-bundle="${pem_out}",ca-fallback,ca-path="$certs_dir",secure-transport})
 autoreconf -fi
 cd build || exit 1
-../configure --prefix="${install_prefix}" \
+../configure --prefix="$install_prefix" \
             "${dopts[@]}"                 \
             "${eopts[@]}"                 \
             "${wopts[@]}"                 \

@@ -24,8 +24,8 @@ fi
 #
 
 script_ver=1.2
-cwd="${PWD}"/tilix-build-script
-packages="${cwd}"/packages
+cwd="$PWD"/tilix-build-script
+packages="$cwd"/packages
 schemes_dir="${HOME}"/.config/tilix/schemes
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
@@ -37,16 +37,16 @@ debug=OFF
 
 box_out_banner()
 {
-    input_char=$(echo "${@}" | wc -c)
+    input_char=$(echo "$@" | wc -c)
     line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
     tput bold
-    line="$(tput setaf 3)${line}"
+    line="$(tput setaf 3)$line"
     space=${line//-/ }
-    echo " ${line}"
+    echo " $line"
     printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
-    printf '| ' ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" ' |';
+    printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
     printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
-    echo " ${line}"
+    echo " $line"
     tput sgr 0
 }
 box_out_banner "Tilix Build Script - v${script_ver}"
@@ -55,7 +55,7 @@ box_out_banner "Tilix Build Script - v${script_ver}"
 # CREATE OUTPUT DIRECTORIES
 #
 
-mkdir -p "${packages}" "${schemes_dir}"
+mkdir -p "$packages" "${schemes_dir}"
 
 
 #
@@ -66,15 +66,15 @@ exit_fn()
 {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
-        "${web_repo}"
+        "$web_repo"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "${1}" \
-        "To report a bug create an issue at: ${web_repo}/issues"
+        "$1" \
+        "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
@@ -91,7 +91,7 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' answer
 
     case "${answer}" in
-        1)      sudo rm -fr "${cwd}" "${script_name}";;
+        1)      sudo rm -fr "$cwd" "${script_name}";;
         2)      echo;;
         *)
                 clear
@@ -109,12 +109,12 @@ execute()
     echo "$ ${*}"
 
     if [ "${debug}" = 'ON' ]; then
-        if ! output=$("${@}"); then
+        if ! output=$("$@"); then
             notify-send -t 5000 "Failed to execute: ${*}"
             fail_fn "Failed to execute: ${*}"
         fi
     else
-        if ! output=$("${@}" 2>&1); then
+        if ! output=$("$@" 2>&1); then
             notify-send -t 5000 "Failed to execute: ${*}"
             fail_fn "Failed to execute: ${*}"
         fi
@@ -123,134 +123,134 @@ execute()
 
 download()
 {
-    dl_path="${packages}"
-    dl_url="${1}"
+    dl_path="$packages"
+    dl_url="$1"
     dl_file="${2:-"${1##*/}"}"
 
-    if [[ "${dl_file}" =~ tar. ]]; then
+    if [[ "$dl_file" =~ tar. ]]; then
         output_dir="${dl_file%.*}"
         output_dir="${3:-"${output_dir%.*}"}"
     else
         output_dir="${3:-"${dl_file%.*}"}"
     fi
 
-    target_file="${dl_path}/${dl_file}"
-    target_dir="${dl_path}/${output_dir}"
+    target_file="$dl_path/$dl_file"
+    target_dir="$dl_path/$output_dir"
 
     if [ -f "${target_file}" ]; then
-        echo "The file \"${dl_file}\" is already downloaded."
+        echo "The file \"$dl_file\" is already downloaded."
     else
-        echo "Downloading \"${dl_url}\" saving as \"${dl_file}\""
-        if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
-            printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 10 seconds..."
+        echo "Downloading \"${dl_url}\" saving as \"$dl_file\""
+        if ! curl -A "$user_agent" -Lso "${target_file}" "${dl_url}"; then
+            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
-            if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
-                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit. Line: ${LINENO}"
+            if ! curl -A "$user_agent" -Lso "${target_file}" "${dl_url}"; then
+                fail_fn "The script failed to download \"$dl_file\" twice and will now exit. Line: ${LINENO}"
             fi
         fi
         echo 'Download Completed'
     fi
 
-    if [ -d "${target_dir}" ]; then
-        sudo rm -fr "${target_dir}"
+    if [ -d "$target_dir" ]; then
+        sudo rm -fr "$target_dir"
     fi
-    mkdir -p "${target_dir}"
+    mkdir -p "$target_dir"
 
-    if [ -n "${3}" ]; then
-        if ! tar -xf "${target_file}" -C "${target_dir}" 2>/dev/null >/dev/null; then
+    if [ -n "$3" ]; then
+        if ! tar -xf "${target_file}" -C "$target_dir" 2>/dev/null >/dev/null; then
             sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script. Line: ${LINENO}"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
         fi
     else
-        if ! tar -xf "${target_file}" -C "${target_dir}" --strip-components 1 2>/dev/null >/dev/null; then
+        if ! tar -xf "${target_file}" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
             sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"${dl_file}\" so it was deleted. Please re-run the script. Line: ${LINENO}"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
         fi
     fi
 
-    printf "%s\n\n" "File extracted: ${dl_file}"
+    printf "%s\n\n" "File extracted: $dl_file"
 
-    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}. Line: ${LINENO}"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: ${LINENO}"
 }
 
 download_git()
 {
     local dl_path dl_url dl_file target_dir
 
-    dl_path="${packages}"
-    dl_url="${1}"
+    dl_path="$packages"
+    dl_url="$1"
     dl_file="${2:-"${1##*/}"}"
     dl_file="${dl_file//\./-}"
-    target_dir="${dl_path}/${dl_file}"
+    target_dir="$dl_path/$dl_file"
 
-    if [ -d "${target_dir}" ]; then
-        sudo rm -fr "${target_dir}"
+    if [ -d "$target_dir" ]; then
+        sudo rm -fr "$target_dir"
     fi
 
-    echo "Downloading ${dl_url} as ${dl_file}"
+    echo "Downloading ${dl_url} as $dl_file"
 
-    if ! git clone -q "${dl_url}" "${target_dir}"; then
-        printf "\n%s\n\n" "The script failed to clone the directory \"${target_dir}\" and will try again in 10 seconds..."
+    if ! git clone -q "${dl_url}" "$target_dir"; then
+        printf "\n%s\n\n" "The script failed to clone the directory \"$target_dir\" and will try again in 10 seconds..."
         sleep 10
-        if ! git clone -q "${dl_url}" "${target_dir}"; then
-            fail_fn "The script failed to clone the directory \"${target_dir}\" twice and will now exit the build."
+        if ! git clone -q "${dl_url}" "$target_dir"; then
+            fail_fn "The script failed to clone the directory \"$target_dir\" twice and will now exit the build."
         fi
     else
-        printf "%s\n\n" "Successfully cloned: ${target_dir}"
+        printf "%s\n\n" "Successfully cloned: $target_dir"
     fi
 
-    cd "${target_dir}" || fail_fn "Unable to change the working directory to: ${target_dir}"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
 }
 
 download_deb()
 {
-    dl_path="${packages}"
-    dl_url="${1}"
+    dl_path="$packages"
+    dl_url="$1"
     dl_file="${2:-"${1##*/}"}"
 
-    target_file="${dl_path}/${dl_file}"
+    target_file="$dl_path/$dl_file"
 
     if [ -f "${target_file}" ]; then
-        echo "The file \"${dl_file}\" is already downloaded."
+        echo "The file \"$dl_file\" is already downloaded."
     else
-        echo "Downloading \"${dl_url}\" saving as \"${dl_file}\""
-        if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
-            printf "\n%s\n\n" "The script failed to download \"${dl_file}\" and will try again in 10 seconds..."
+        echo "Downloading \"${dl_url}\" saving as \"$dl_file\""
+        if ! curl -A "$user_agent" -Lso "${target_file}" "${dl_url}"; then
+            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
-            if ! curl -A "${user_agent}" -Lso "${target_file}" "${dl_url}"; then
-                fail_fn "The script failed to download \"${dl_file}\" twice and will now exit."
+            if ! curl -A "$user_agent" -Lso "${target_file}" "${dl_url}"; then
+                fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
             fi
         fi
         echo 'Download Completed'
     fi
 
-    cd "${packages}" || fail_fn "Unable to change the working directory to: ${packages}"
+    cd "$packages" || fail_fn "Unable to change the working directory to: $packages"
 }
 
 build()
 {
     printf "\n%s\n%s\n" \
-        "Building ${1} - version ${2}" \
+        "Building $1 - version $2" \
         '===================================='
 
-    if [ -f "${packages}/${1}.done" ]; then
-        if grep -Fx "${2}" "${packages}/${1}.done" >/dev/null; then
-            echo "${1} version ${2} already built. Remove ${packages}/${1}.done lockfile to rebuild it."
+    if [ -f "$packages/$1.done" ]; then
+        if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
+            echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
             return 1
         elif ${latest}; then
-            echo "${1} is outdated and will be rebuilt using version ${2}"
+            echo "$1 is outdated and will be rebuilt using version $2"
             return 0
         else
-            echo "${1} is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove ${packages}/${1}.done lockfile."
+            echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
             return 1
         fi
     fi
     return 0
 }
 
-build_done() { echo "${2}" >"${packages}/${1}.done"; }
+build_done() { echo "$2" >"$packages/$1.done"; }
 
-installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
+installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
 #
 # INSTALL APT PACKAGES

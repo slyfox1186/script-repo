@@ -2,27 +2,27 @@
 
 clear
 
-cwd="${PWD}"/build-all-git-master
+cwd="$PWD"/build-all-git-master
 web_repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
-if [ ! -d "${cwd}"/completed ]; then
-    mkdir -p "${cwd}"/completed
+if [ ! -d "$cwd"/completed ]; then
+    mkdir -p "$cwd"/completed
 fi
 
 exit_fn()
 {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
-        "${web_repo}"
+        "$web_repo"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "${1}" \
-        "To report a bug create an issue at: ${web_repo}/issues"
+        "$1" \
+        "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
@@ -39,7 +39,7 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' answer
 
     case "${answer}" in
-        1)      sudo rm -fr "${cwd}" "${0}";;
+        1)      sudo rm -fr "$cwd" "${0}";;
         2)      echo;;
         *)
                 printf "\n%s\n\n" 'Bad user input. Re-asking question...'
@@ -115,7 +115,7 @@ install_choice_fn()
 # DOWNLOAD ALL OF THE GIT-PROJECT SCRIPTS AND NUMBER THEM ASCENDING STARTING WITH ONE
 #
 
-cd "${cwd}" || exit 1
+cd "$cwd" || exit 1
 
 scripts=(aria2 brotli clang-16 clang-18 garbage-collector git libpng libxml2 nasm openssl python3 terminator-terminal tools wsl2-kernel yasm zlib zstd)
 cnt=0
@@ -123,8 +123,8 @@ cnt=0
 for script in ${scripts[@]}
 do
     let cnt=cnt+1
-    wget -U "${user_agent}" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-${script}"
-    mv "build-${script}" "0${cnt}-build-${script}"
+    wget -U "$user_agent" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-${script}"
+    mv "build-${script}" "0$cnt-build-${script}"
 done
 
 #
@@ -139,7 +139,7 @@ do
     for file in ${files[@]}
     do
         ((cnt++)) # << start counting here
-        mv "0${cnt}-build-${file}" "${cnt}-build-${file}" # << move the files, thus renaming them
+        mv "0$cnt-build-${file}" "$cnt-build-${file}" # << move the files, thus renaming them
     done
 done
 

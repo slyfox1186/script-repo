@@ -30,14 +30,14 @@ script_ver=1.0
 curl_ver=8.4.0
 archive_dir=${curl_ver}
 archive_dir1=${curl_ver//./_}
-archive_url=https://github.com/curl/curl/releases/download/curl-${archive_dir1}/curl-${archive_dir}.tar.xz
+archive_url=https://github.com/curl/curl/releases/download/curl-${archive_dir1}/curl-$archive_dir.tar.xz
 archive_ext="${archive_url//*.}"
-archive_name="${archive_dir}.tar.${archive_ext}"
-cwd="${PWD}"/curl-build-script
+archive_name="$archive_dir.tar.${archive_ext}"
+cwd="$PWD"/curl-build-script
 install_dir=/usr/local
 cert_dir=/etc/ssl/certs
 pem_file=cacert.pem
-pem_out="${cert_dir}/${pem_file}"
+pem_out="${cert_dir}/$pem_file"
 pc_type=x86_64-linux-gnu
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
@@ -50,10 +50,10 @@ printf "%s\n%s\n\n"                      \
 # CREATE OUTPUT DIRECTORY
 #
 
-if [ -d "${cwd}" ]; then
-    sudo rm -fr "${cwd}"
+if [ -d "$cwd" ]; then
+    sudo rm -fr "$cwd"
 fi
-mkdir -p "${cwd}"
+mkdir -p "$cwd"
 
 #
 # SET THE C/CXX COMPILERS & SET THE COMPILER OPTIMIZATION FLAGS
@@ -119,15 +119,15 @@ exit_fn()
 {
     printf "\n%s\n\n%s\n\n"                                       \
         'Make sure to star this repository to show your support!' \
-        "${web_repo}"
+        "$web_repo"
     exit 0
 }
 
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "${1}"              \
-        "To report a bug create an issue at: ${web_repo}/issues"
+        "$1"              \
+        "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
@@ -145,7 +145,7 @@ cleanup_fn()
     clear
 
     case "${choice}" in
-        1)      sudo rm -fr "${cwd}";;
+        1)      sudo rm -fr "$cwd";;
         2)      return 0;;
         *)
                 unset choice
@@ -190,25 +190,25 @@ fi
 # CREATE OUTPUT DIRECTORY OPENSSL-QUIC
 #
 
-if [ -d "${cwd}/openssl-quic-3.1.4" ]; then
-    sudo rm -fr "${cwd}/openssl-quic-3.1.4"
+if [ -d "$cwd/openssl-quic-3.1.4" ]; then
+    sudo rm -fr "$cwd/openssl-quic-3.1.4"
 fi
-mkdir -p "${cwd}/openssl-quic-3.1.4"
+mkdir -p "$cwd/openssl-quic-3.1.4"
 
 #
 # DOWNLOAD THE ARCHIVE FILE OPENSSL-QUIC
 #
 
-if [ ! -f "${cwd}/openssl-quic-3.1.4.tar.gz" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/openssl-quic-3.1.4.tar.gz" 'https://github.com/quictls/openssl/archive/refs/tags/openssl-3.1.4-quic1.tar.gz'
+if [ ! -f "$cwd/openssl-quic-3.1.4.tar.gz" ]; then
+    curl -A "$user_agent" -Lso "$cwd/openssl-quic-3.1.4.tar.gz" 'https://github.com/quictls/openssl/archive/refs/tags/openssl-3.1.4-quic1.tar.gz'
 fi
 
 #
 # EXTRACT THE ARCHIVE FILE OPENSSL-QUIC
 #
 
-if ! tar -zxf "${cwd}/openssl-quic-3.1.4.tar.gz" -C "${cwd}/openssl-quic-3.1.4" --strip-components 1; then
-    fail_fn "Failed to extract: ${cwd}/openssl-quic-3.1.4.tar.gz"
+if ! tar -zxf "$cwd/openssl-quic-3.1.4.tar.gz" -C "$cwd/openssl-quic-3.1.4" --strip-components 1; then
+    fail_fn "Failed to extract: $cwd/openssl-quic-3.1.4.tar.gz"
 fi
 
 #
@@ -219,11 +219,11 @@ printf "%s\n%s\n\n"                    \
     "Installing OpenSSL-QUIC - v3.1.4" \
     '==============================================='
 
-cd "${cwd}/openssl-quic-3.1.4" || exit 1
+cd "$cwd/openssl-quic-3.1.4" || exit 1
 ./config linux-x86_64                              \
-         --prefix="${install_dir}"                 \
-         --openssldir="${install_dir}"             \
-         -Wl,-rpath="${install_dir}"/lib64         \
+         --prefix="$install_dir"                 \
+         --openssldir="$install_dir"             \
+         -Wl,-rpath="$install_dir"/lib64         \
          -Wl,--enable-new-dtags                    \
          -DOPENSSL_USE_IPV6=0                      \
          --release                                 \
@@ -255,25 +255,25 @@ sudo ldconfig '/usr/local/lib64'
 # CREATE OUTPUT DIRECTORY JEMALLOC
 #
 
-if [ -d "${cwd}/jemalloc-5.3.0" ]; then
-    sudo rm -fr "${cwd}/jemalloc-5.3.0"
+if [ -d "$cwd/jemalloc-5.3.0" ]; then
+    sudo rm -fr "$cwd/jemalloc-5.3.0"
 fi
-mkdir -p "${cwd}/jemalloc-5.3.0/build"
+mkdir -p "$cwd/jemalloc-5.3.0/build"
 
 #
 # DOWNLOAD THE ARCHIVE FILE JEMALLOC
 #
 
-if [ ! -f "${cwd}/jemalloc-5.3.0.tar.gz" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/jemalloc-5.3.0.tar.gz" 'https://github.com/jemalloc/jemalloc/archive/refs/tags/5.3.0.tar.gz'
+if [ ! -f "$cwd/jemalloc-5.3.0.tar.gz" ]; then
+    curl -A "$user_agent" -Lso "$cwd/jemalloc-5.3.0.tar.gz" 'https://github.com/jemalloc/jemalloc/archive/refs/tags/5.3.0.tar.gz'
 fi
 
 #
 # EXTRACT THE ARCHIVE FILE JEMALLOC
 #
 
-if ! tar -zxf "${cwd}/jemalloc-5.3.0.tar.gz" -C "${cwd}/jemalloc-5.3.0" --strip-components 1; then
-    fail_fn "Failed to extract: ${cwd}/jemalloc-5.3.0.tar.gz"
+if ! tar -zxf "$cwd/jemalloc-5.3.0.tar.gz" -C "$cwd/jemalloc-5.3.0" --strip-components 1; then
+    fail_fn "Failed to extract: $cwd/jemalloc-5.3.0.tar.gz"
 fi
 
 #
@@ -284,10 +284,10 @@ printf "\n%s\n%s\n\n"              \
     "Installing Jemalloc - v5.3.0" \
     '==============================================='
 
-cd "${cwd}/jemalloc-5.3.0" || exit 1
+cd "$cwd/jemalloc-5.3.0" || exit 1
 ./autogen.sh
 cd build || exit 1
-../configure --prefix="${install_dir}" \
+../configure --prefix="$install_dir" \
              --disable-debug           \
              --disable-doc             \
              --disable-fill            \
@@ -310,36 +310,36 @@ fi
 # CREATE OUTPUT DIRECTORY HTTP 2/3
 #
 
-if [ -d "${cwd}/ngtcp2-1.58.0" ]; then
-    sudo rm -fr "${cwd}/ngtcp2-1.58.0"
+if [ -d "$cwd/ngtcp2-1.58.0" ]; then
+    sudo rm -fr "$cwd/ngtcp2-1.58.0"
 fi
-mkdir -p "${cwd}/ngtcp2-1.58.0"
+mkdir -p "$cwd/ngtcp2-1.58.0"
 
-if [ -d "${cwd}/nghttp3-1.1.0" ]; then
-    sudo rm -fr "${cwd}/nghttp3-1.1.0"
+if [ -d "$cwd/nghttp3-1.1.0" ]; then
+    sudo rm -fr "$cwd/nghttp3-1.1.0"
 fi
-mkdir -p "${cwd}/nghttp3-1.1.0"
+mkdir -p "$cwd/nghttp3-1.1.0"
 
 #
 # DOWNLOAD THE ARCHIVE FILE HTTP 2/3
 #
 
-if [ ! -f "${cwd}/nghttp3-1.1.0.tar.xz" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/nghttp3-1.1.0.tar.xz" 'https://github.com/ngtcp2/nghttp3/releases/download/v1.1.0/nghttp3-1.1.0.tar.xz'
+if [ ! -f "$cwd/nghttp3-1.1.0.tar.xz" ]; then
+    curl -A "$user_agent" -Lso "$cwd/nghttp3-1.1.0.tar.xz" 'https://github.com/ngtcp2/nghttp3/releases/download/v1.1.0/nghttp3-1.1.0.tar.xz'
 fi
-if [ ! -f "${cwd}/ngtcp2-1.58.0.tar.xz" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/ngtcp2-1.58.0.tar.xz" 'https://github.com/nghttp2/nghttp2/releases/download/v1.58.0/nghttp2-1.58.0.tar.xz'
+if [ ! -f "$cwd/ngtcp2-1.58.0.tar.xz" ]; then
+    curl -A "$user_agent" -Lso "$cwd/ngtcp2-1.58.0.tar.xz" 'https://github.com/nghttp2/nghttp2/releases/download/v1.58.0/nghttp2-1.58.0.tar.xz'
 fi
 
 #
 # EXTRACT THE ARCHIVE FILE HTTP 2/3
 #
 
-if ! tar -xf "${cwd}/ngtcp2-1.58.0.tar.xz" -C "${cwd}/ngtcp2-1.58.0" --strip-components 1; then
-    fail_fn "Failed to extract: ${cwd}/ngtcp2-1.58.0.tar.xz"
+if ! tar -xf "$cwd/ngtcp2-1.58.0.tar.xz" -C "$cwd/ngtcp2-1.58.0" --strip-components 1; then
+    fail_fn "Failed to extract: $cwd/ngtcp2-1.58.0.tar.xz"
 fi
-if ! tar -xf "${cwd}/nghttp3-1.1.0.tar.xz" -C "${cwd}/nghttp3-1.1.0" --strip-components 1; then
-    fail_fn "Failed to extract: ${cwd}/nghttp3-1.1.0.tar.xz"
+if ! tar -xf "$cwd/nghttp3-1.1.0.tar.xz" -C "$cwd/nghttp3-1.1.0" --strip-components 1; then
+    fail_fn "Failed to extract: $cwd/nghttp3-1.1.0.tar.xz"
 fi
 
 #
@@ -350,9 +350,9 @@ printf "\n%s\n%s\n\n"           \
     "Installing HTTP3 - v1.1.0" \
     '==============================================='
 
-cd "${cwd}/nghttp3-1.1.0" || exit 1
+cd "$cwd/nghttp3-1.1.0" || exit 1
 autoreconf -fi
-./configure --prefix="${install_dir}"            \
+./configure --prefix="$install_dir"            \
             --{build,host,target}="${pc_type}"   \
             --enable-lib-only                    \
             --with-pic
@@ -369,25 +369,25 @@ fi
 # CREATE OUTPUT DIRECTORY NGTCP2
 #
 
-if [ -d "${cwd}/ngtcp2-1.1.0" ]; then
-    sudo rm -fr "${cwd}/ngtcp2-1.1.0"
+if [ -d "$cwd/ngtcp2-1.1.0" ]; then
+    sudo rm -fr "$cwd/ngtcp2-1.1.0"
 fi
-mkdir -p "${cwd}/ngtcp2-1.1.0/build"
+mkdir -p "$cwd/ngtcp2-1.1.0/build"
 
 #
 # DOWNLOAD THE ARCHIVE FILE NGTCP2
 #
 
-if [ ! -f "${cwd}/ngtcp2-1.1.0.tar.gz" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/ngtcp2-1.1.0.tar.gz" 'https://github.com/ngtcp2/ngtcp2/releases/download/v1.1.0/ngtcp2-1.1.0.tar.xz'
+if [ ! -f "$cwd/ngtcp2-1.1.0.tar.gz" ]; then
+    curl -A "$user_agent" -Lso "$cwd/ngtcp2-1.1.0.tar.gz" 'https://github.com/ngtcp2/ngtcp2/releases/download/v1.1.0/ngtcp2-1.1.0.tar.xz'
 fi
 
 #
 # EXTRACT THE ARCHIVE FILE NGTCP2
 #
 
-if ! tar -xf "${cwd}/ngtcp2-1.1.0.tar.gz" -C "${cwd}/ngtcp2-1.1.0" --strip-components 1; then
-    fail_fn "Failed to extract: ${cwd}/ngtcp2-1.1.0.tar.gz"
+if ! tar -xf "$cwd/ngtcp2-1.1.0.tar.gz" -C "$cwd/ngtcp2-1.1.0" --strip-components 1; then
+    fail_fn "Failed to extract: $cwd/ngtcp2-1.1.0.tar.gz"
 fi
 
 #
@@ -398,10 +398,10 @@ printf "\n%s\n%s\n\n"            \
     "Installing ngtcp2 - v1.1.0" \
     '==============================================='
 
-cd "${cwd}/ngtcp2-1.1.0" || exit 1
+cd "$cwd/ngtcp2-1.1.0" || exit 1
 ./autogen.sh
 cd build || exit 1
-../configure --prefix="${install_dir}"         \
+../configure --prefix="$install_dir"         \
             --{build,host,target}="${pc_type}" \
             --enable-lib-only                  \
             --with-pic                         \
@@ -427,9 +427,9 @@ printf "\n%s\n%s\n\n"            \
     "Installing HTTP2 - v1.58.0" \
     '==============================================='
 
-cd "${cwd}/ngtcp2-1.58.0" || exit 1
+cd "$cwd/ngtcp2-1.58.0" || exit 1
 autoreconf -fi
-./configure --prefix="${install_dir}"          \
+./configure --prefix="$install_dir"          \
             --{build,host,target}="${pc_type}" \
             --disable-examples                 \
             --enable-http3                     \
@@ -454,25 +454,25 @@ fi
 # CREATE OUTPUT DIRECTORY C-ARES
 #
 
-if [ -d "${cwd}/c-ares-1.23.0" ]; then
-    sudo rm -fr "${cwd}/c-ares-1.23.0"
+if [ -d "$cwd/c-ares-1.23.0" ]; then
+    sudo rm -fr "$cwd/c-ares-1.23.0"
 fi
-mkdir -p "${cwd}/c-ares-1.23.0/build"
+mkdir -p "$cwd/c-ares-1.23.0/build"
 
 #
 # DOWNLOAD THE ARCHIVE FILE C-ARES
 #
 
-if [ ! -f "${cwd}/c-ares-1.23.0.tar.gz" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/c-ares-1.23.0.tar.gz" 'https://github.com/c-ares/c-ares/archive/refs/tags/cares-1_23_0.tar.gz'
+if [ ! -f "$cwd/c-ares-1.23.0.tar.gz" ]; then
+    curl -A "$user_agent" -Lso "$cwd/c-ares-1.23.0.tar.gz" 'https://github.com/c-ares/c-ares/archive/refs/tags/cares-1_23_0.tar.gz'
 fi
 
 #
 # EXTRACT THE ARCHIVE FILE C-ARES
 #
 
-if ! tar -zxf "${cwd}/c-ares-1.23.0.tar.gz" -C "${cwd}/c-ares-1.23.0" --strip-components 1; then
-    fail_fn "Failed to extract: ${cwd}/c-ares-1.23.0.tar.gz"
+if ! tar -zxf "$cwd/c-ares-1.23.0.tar.gz" -C "$cwd/c-ares-1.23.0" --strip-components 1; then
+    fail_fn "Failed to extract: $cwd/c-ares-1.23.0.tar.gz"
 fi
 
 #
@@ -483,10 +483,10 @@ printf "\n%s\n%s\n\n"             \
     "Installing c-ares - v1.23.0" \
     '==============================================='
 
-cd "${cwd}/c-ares-1.23.0" || exit 1
+cd "$cwd/c-ares-1.23.0" || exit 1
 autoreconf -fi
 cd build || exit 1
-../configure --prefix="${install_dir}"           \
+../configure --prefix="$install_dir"           \
                      --{build,host}="${pc_type}" \
                      --disable-debug             \
                      --disable-warnings          \
@@ -504,25 +504,25 @@ fi
 # CREATE OUTPUT DIRECTORY CURL
 #
 
-if [ -d "${cwd}/${archive_dir}" ]; then
-    sudo rm -fr "${cwd}/${archive_dir}"
+if [ -d "$cwd/$archive_dir" ]; then
+    sudo rm -fr "$cwd/$archive_dir"
 fi
-mkdir -p "${cwd}/${archive_dir}/build"
+mkdir -p "$cwd/$archive_dir/build"
 
 #
 # DOWNLOAD THE ARCHIVE FILE CURL
 #
 
-if [ ! -f "${cwd}/${archive_name}" ]; then
-    curl -A "${user_agent}" -Lso "${cwd}/${archive_name}" "${archive_url}"
+if [ ! -f "$cwd/${archive_name}" ]; then
+    curl -A "$user_agent" -Lso "$cwd/${archive_name}" "${archive_url}"
 fi
 
 #
 # EXTRACT THE ARCHIVE FILE CURL
 #
 
-if ! tar -xf "${cwd}/${archive_name}" -C "${cwd}/${archive_dir}" --strip-components 1; then
-    fail_fn "Failed to extract: ${cwd}/${archive_name}"
+if ! tar -xf "$cwd/${archive_name}" -C "$cwd/$archive_dir" --strip-components 1; then
+    fail_fn "Failed to extract: $cwd/${archive_name}"
 fi
 
 #
@@ -534,12 +534,12 @@ printf "\n%s\n%s\n\n"                                               \
    '==================================================================='
 
 # DOWNLOAD THE LATEST CACERT.PEM FILE FROM THE OFFICIAL CURL WEBSITE
-if ! curl -A "${user_agent}" -Lso "${cwd}"/cacert.pem 'https://curl.se/ca/cacert.pem'; then
+if ! curl -A "$user_agent" -Lso "$cwd"/cacert.pem 'https://curl.se/ca/cacert.pem'; then
     fail_fn "Failed to download the latest \"cacert.pem\" file. Line: ${LINENO}"
 fi
 
 # MOVE THE PEM FILE TO THE NEWLY CREATED CERTS DIRECTORY
-if sudo cp -f "${cwd}"/cacert.pem "${cert_dir}"/cacert.pem; then
+if sudo cp -f "$cwd"/cacert.pem "${cert_dir}"/cacert.pem; then
     # COPY THE PEM FILE AS A CRT FILE IN THE SPECIAL CA-CERTIFICATES FOLDER SO THE COMMAND WILL FIND AND USE IT WHEN IT IS EXECUTED
     sudo cp "${cert_dir}"/cacert.pem '/usr/local/share/ca-certificates/curl-cacert.crt'
 fi
@@ -557,9 +557,9 @@ printf "\n%s\n%s\n\n"          \
     "Installing cURL - v8.4.0" \
     '==============================================='
 
-cd "${cwd}/${archive_dir}" || exit 1
+cd "$cwd/$archive_dir" || exit 1
 dopts=('--disable-'{get-easy-options,shared,verbose,versioned-symbols})
-eopts=('--enable-'{alt-svc,ares="${workspace}",cookies})
+eopts=('--enable-'{alt-svc,ares="$workspace",cookies})
 eopts+=('--enable-'{dict,dnsshuffle,doh,file,ftp,gopher})
 eopts+=('--enable-'{headers-api,hsts,http,http-auth,imap})
 eopts+=('--enable-'{ipv6,ldap,ldaps,libcurl-option,libgcc,manual})
@@ -572,7 +572,7 @@ wopts+=('--with-'{ca-bundle="${pem_out}",ca-fallback,ca-path="${cert_dir}",secur
 
 autoreconf -fi
 cd build || exit 1
-../configure --prefix="${install_dir}" \
+../configure --prefix="$install_dir" \
             "${dopts[@]}"              \
             "${eopts[@]}"              \
             "${wopts[@]}"              \
