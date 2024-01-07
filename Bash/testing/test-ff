@@ -40,8 +40,10 @@ unavailable_packages_file="unavailable_packages.txt"
 # Clear or create the file
 > "$unavailable_packages_file"
 
+clear
+printf "%s\n\n" 'Testing the packages please be patient...'
 # Check each package with apt-cache
-for pkg in "${packages[@]}"
+for pkg in "${pkgs[@]}"
 do
     if ! apt-cache show "$pkg" > /dev/null 2>&1; then
         echo "$pkg" | tee -a "$unavailable_packages_file"
