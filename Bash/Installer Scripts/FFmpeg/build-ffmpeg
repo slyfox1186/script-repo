@@ -1002,7 +1002,7 @@ pkgs_fn()
     libunwind_pkg="$(sudo apt list libunwind* 2>/dev/null | grep -Eo 'libunwind-[0-9]+-dev' | uniq | sort -r | head -n1)"
 
     # INSTALL APT PACKAGES
-    packages=($1 $libcpp_pkg $libunwind_pkg $libcppabi_pkg ant apt asciidoc autoconf autoconf-archive
+    pkgs_fn=($1 $libcpp_pkg $libunwind_pkg $libcppabi_pkg ant apt asciidoc autoconf autoconf-archive
               automake autopoint binutils bison build-essential cargo ccache checkinstall clang clang-tools cmake curl
               default-jdk-headless doxygen fcitx-libs-dev flex flite1-dev freeglut3-dev frei0r-plugins-dev gawk gettext
               gimp-data git gnome-desktop-testing gnustep-gui-runtime google-perftools gperf gtk-doc-tools guile-3.0-dev
