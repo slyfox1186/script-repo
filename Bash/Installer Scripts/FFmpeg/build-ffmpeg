@@ -1013,21 +1013,20 @@ pkgs_fn()
          libde265-dev libdevil-dev libdmalloc-dev libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev
          libffi-dev libgbm-dev libgdbm-dev libgegl-0.4-0 libgegl-common libgimp2.0 libgl1-mesa-dev
          libgles2-mesa-dev libglib2.0-dev libgme-dev libgmock-dev libgnutls28-dev libgnutls30
-         libgoogle-perftools-dev libgoogle-perftools4 libgsm1-dev libgtest-dev libgvc6 libhwy-dev
-         libibus-1.0-dev libiconv-hook-dev libintl-perl libjack-dev libjemalloc-dev libladspa-ocaml-dev
-         libleptonica-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev libmatroska-dev libmbedtls-dev
-         libmetis5 libmfx-dev libmodplug-dev libmp3lame-dev libmusicbrainz5-dev libmysofa-dev libnuma-dev
-         libopencore-amrnb-dev libopencore-amrwb-dev libopencv-dev libopenjp2-7-dev libopenmpt-dev
-         libopus-dev libpango1.0-dev libperl-dev libpstoedit-dev libpulse-dev librabbitmq-dev libraqm-dev
-         libraw-dev librsvg2-dev librubberband-dev librust-gstreamer-base-sys-dev libshine-dev
-         libsmbclient-dev libsnappy-dev libsndfile1-dev libsndio-dev libsoxr-dev libspeex-dev
-         libsqlite3-dev libsrt-gnutls-dev libssh-dev libssl-dev libsuitesparseconfig5 libsystemd-dev
-         libtalloc-dev libtheora-dev libticonv-dev libtool libtool-bin libtwolame-dev libudev-dev
-         libumfpack5 libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev
-         libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev
-         libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libyuv-dev libzmq3-dev libzstd-dev
-         libzvbi-dev libzzip-dev llvm lshw lzma-dev m4 mesa-utils meson nasm ninja-build pandoc python3
-         python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip valgrind wget xmlto zlib1g-dev
+         libgoogle-perftools-dev libgoogle-perftools4 libgsm1-dev libgtest-dev libgvc6 libibus-1.0-dev
+         libiconv-hook-dev libintl-perl libjack-dev libjemalloc-dev libladspa-ocaml-dev libleptonica-dev
+         liblz-dev liblzma-dev liblzo2-dev libmathic-dev libmatroska-dev libmbedtls-dev libmetis5 libmfx-dev
+         libmodplug-dev libmp3lame-dev libmusicbrainz5-dev libmysofa-dev libnuma-dev libopencore-amrnb-dev
+         libopencore-amrwb-dev libopencv-dev libopenjp2-7-dev libopenmpt-dev libopus-dev libpango1.0-dev
+         libperl-dev libpstoedit-dev libpulse-dev librabbitmq-dev libraqm-dev libraw-dev librsvg2-dev
+         librubberband-dev librust-gstreamer-base-sys-dev libshine-dev libsmbclient-dev libsnappy-dev
+         libsndfile1-dev libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev libssh-dev libssl-dev
+         libsuitesparseconfig5 libsystemd-dev libtalloc-dev libtheora-dev libticonv-dev libtool libtool-bin
+         libtwolame-dev libudev-dev libumfpack5 libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev
+         libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev
+         libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzmq3-dev libzstd-dev libzvbi-dev
+         libzzip-dev llvm lshw lzma-dev m4 mesa-utils meson nasm ninja-build pandoc python3 python3-pip ragel
+         re2c scons sudo texi2html texinfo tk-dev unzip valgrind wget xmlto zlib1g-dev
 )
 
     # LOOP THROUGH THE PKGS ARRAY
@@ -1245,7 +1244,7 @@ debian_os_ver_fn()
         debian_wsl_pkgs="$1"
     fi
 
-    debian_pkgs="cppcheck libnvidia-encode1 libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils libyuv0"
+    debian_pkgs='cppcheck libnvidia-encode1 libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils libyuv0 libhwy-dev libsrt-gnutls-dev libyuv-dev'
     debian_pkgs+=' libsharp-dev libdmalloc5 libumfpack5 libsuitesparseconfig5 libcolamd2 libcholmod3 libccolamd2 libcamd2 libamd2'
 
     case "$VER" in
@@ -1265,11 +1264,11 @@ ubuntu_os_ver_fn()
 
     ubuntu_common_pkgs='cppcheck libumfpack5 libsuitesparseconfig5 libcolamd2 libcholmod3 libccolamd2 libcamd2 libamd2'
     focal_pkgs='libvmmalloc1 libvmmalloc-dev libdmalloc5 libcunit1-dev nvidia-utils-535 librust-jemalloc-sys-dev'
-    focal_pkgs+=' librust-malloc-buf-dev libsrt-doc libreadline-dev libcunit1 libcunit1-doc'
+    focal_pkgs+=' librust-malloc-buf-dev libsrt-doc libreadline-dev libcunit1 libcunit1-doc libhwy-dev libsrt-gnutls-dev libyuv-dev'
     jammy_pkgs='libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libmimalloc-dev libtbbmalloc2 librust-jemalloc-sys-dev librust-malloc-buf-dev'
     jammy_pkgs+=' liblz4-dev libsrt-doc libreadline-dev libpipewire-0.3-dev libwayland-dev libdecor-0-dev libpsl-dev libacl1-dev'
-    lunar_kenetic_pkgs='libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev librist-dev libjxl-dev'
-    mantic_pkgs='libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev'
+    lunar_kenetic_pkgs='libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev librist-dev libjxl-dev libhwy-dev libsrt-gnutls-dev libyuv-dev'
+    mantic_pkgs='libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libhwy-dev libsrt-gnutls-dev libyuv-dev'
 
     case "$VER" in
         23.10)          pkgs_fn "$1 $mantic_pkgs $lunar_kenetic_pkgs $jammy_pkgs $focal_pkgs";;
@@ -1279,7 +1278,7 @@ ubuntu_os_ver_fn()
         *)              fail_fn "Could not detect the Ubuntu version. Line: $LINENO";;
     esac
 }
-libhwy-dev libsrt-gnutls-dev libyuv-dev
+
 #
 # TEST THE OS AND ITS VERSION
 #
