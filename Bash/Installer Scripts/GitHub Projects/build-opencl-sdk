@@ -1,65 +1,40 @@
 #!/usr/bin/env bash
 
-######################################################################################################################################
-##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/Installer%20Scripts/GNU%20Software/build-opecl-sdk
-##
-##  Purpose: Build OpenCL SDK
-##
-##  Updated: 12.05.23
-##
-##  Script version: 1.0
-##
-######################################################################################################################################
+# GitHub Script for Building OpenCL SDK
+# Script version: 1.0
+# Updated: 01.08.24
+# URL: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-opencl-sdk
 
 clear
 
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+# Check for root privileges
+if [[ $EUID -eq 0 ]]; then
+    printf "%s\n\n" "You must run this script WITHOUT root/sudo."
     exit 1
 fi
 
-#
-# SET THE VARIABLES
-#
-
+# Set the script variables
 script_ver=1.0
 archive_dir=OpenCL-SDK
 archive_url='https://github.com/KhronosGroup/OpenCL-SDK.git'
-archive_ext="${archive_url//*.}"
-archive_name="$archive_dir.tar.${archive_ext}"
-cwd="$PWD"/opencl-sdk-build-script
+cwd="$PWD/opencl-sdk-build-script"
 install_dir=/usr/local
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/script-repo
 
-#
-# SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
-#
+# Set compiler variables
+export CC=gcc CXX=g++ CFLAGS='-O3 -pipe -march=native' CXXFLAGS="$CFLAGS"
 
-CC=gcc
-CXX=g++
-CFLAGS='-g -O3 -pipe -march=native'
-CXXFLAGS="${CFLAGS} $(pkg-config --cflags opencl-12.3)"
-CPPFLAGS='-I/usr/local/include -I/usr/include/libxml2 -I/usr/include'
-LIBS="-L/usr/lib/x86_64-linux-gnu -lOpenCL"
-export CC CXX CFLAGS CPPFLAGS CXXFLAGSf
 
-#
-# SET THE PATH VARIABLE
-#
-
+# Set PATH variable
 PATH="\
 /usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
+$HOME/perl5/bin:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/cuda/bin:\
 /usr/local/x86_64-linux-gnu/bin:\
 /usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
+/usr/sbin:/usr/bin:\
 /sbin:\
 /bin:\
 /usr/local/games:\
@@ -68,10 +43,7 @@ ${HOME}/.local/bin:\
 "
 export PATH
 
-#
-# SET THE PKG_CONFIG_PATH VARIABLE
-#
-
+# Set PKG_CONFIG_PATH variable
 PKG_CONFIG_PATH="\
 /usr/share/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
@@ -82,120 +54,65 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-#
-# CREATE FUNCTIONS
-#
-
-exit_fn()
-{
-    printf "\n%s\n\n%s\n%s\n\n"                                   \
-        'The script has completed'                                \
-        'Make sure to star this repository to show your support!' \
-        "$web_repo"
-    exit 0
-}
-
-fail_fn()
-{
-    printf "\n\n%s\n\n%s\n\n%s\n\n"                  \
-        "$1"                                       \
-        'To report a bug please create an issue at:' \
-        "$web_repo/issues"
-    exit 1
-}
-
-cleanup_fn()
-{
-    local answer
-
-    printf "\n%s\n\n%s\n%s\n\n"                  \
-        'Do you want to remove the build files?' \
-        '[1] Yes'                                \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' answer
-
-    case "${answer}" in
-        1)      sudo rm -fr "$cwd";;
-        2)      return 0;;
-        *)
-                unset answer
-                clear
-                cleanup_fn
-                ;;
-    esac
-}
-
-#
-# INSTALL REQUIRED APT PACKAGES
-#
-
-pkgs=(autoconf autoconf-archive autogen automake binutils bison build-essential bzip2
-      ccache curl install-info libc6-dev libglew-dev libtool libtool-bin libudev-dev
-      libzstd-dev m4 nasm python3 python3-pip texinfo xz-utilszlib1g-dev zstd yasm)
+# Install required APT packages
+pkgs=(
+      autoconf autoconf-archive autogen automake binutils bison build-essential bzip2 ccache
+      curl install-info libc6-dev libglew-dev libtool libtool-bin libudev-dev libzstd-dev m4
+      nasm python3 python3-pip texinfo xz-utils zlib1g-dev zstd yasm
+)
 
 for pkg in ${pkgs[@]}
 do
-	missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
-
-	if [ -z "${missing_pkg}" ]; then
-		missing_pkgs+=" ${pkg}"
-	fi
+    if ! sudo dpkg -l | grep -oq "$pkg"; then
+        missing_pkgs="$pkg "
+    fi
 done
 
-if [ -n "${missing_pkgs}" ]; then
-	sudo apt -y install ${missing_pkgs}
-	clear
+if [ -n $missing_pkgs ]; then
+    sudo apt -y install $missing_pkgs
 fi
 
-#
-# REMOVE ANY LEFTOVER FILES FROM PREVIOUS RUNS
-#
+# Remove any leftover files from previous runs
+sudo rm -fr "$cwd/$archive_dir"
 
-if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
-fi
+# Clone the repository
+git clone --recursive "$archive_url" "$cwd/$archive_dir" || { echo "Clone failed"; exit 1; }
 
-#
-# DOWNLOAD THE ARCHIVE FILE
-#
-
-git clone --recursive "${archive_url}" "$cwd/$archive_dir"
-
-#
-# BUILD PROGRAM FROM SOURCE
-#
-
+# Build the SDK
 cd "$cwd" || exit 1
-cmake -S OpenCL-SDK                             \
-      -B build                                  \
-      -DCMAKE_INSTALL_PREFIX="$install_dir"   \
-      -DCMAKE_BUILD_TYPE=Release                \
-      -DBUILD_SHARED_LIBS=ON                    \
-      -DBUILD_TESTING=OFF                       \
-      -DBUILD_DOCS=OFF                          \
-      -DBUILD_EXAMPLES=OFF                      \
-      -DOPENCL_SDK_BUILD_SAMPLES=ON             \
-      -DCMAKE_C_FLAGS="${CFLAGS}"               \
-      -DCMAKE_CXX_FLAGS="${CXXFLAGS}"           \
-      -DOPENCL_HEADERS_BUILD_CXX_TESTS=OFF      \
-      -DOPENCL_ICD_LOADER_BUILD_SHARED_LIBS=ON  \
-      -DOPENCL_SDK_BUILD_OPENGL_SAMPLES=OFF     \
-      -DOPENCL_SDK_BUILD_SAMPLES=OFF            \
-      -DTHREADS_PREFER_PTHREAD_FLAG=ON          \
+cmake -S OpenCL-SDK -B build                   \
+      -DCMAKE_INSTALL_PREFIX="$install_dir"    \
+      -DCMAKE_BUILD_TYPE=Release               \
+      -DBUILD_SHARED_LIBS=ON                   \
+      -DBUILD_TESTING=OFF                      \
+      -DBUILD_DOCS=OFF                         \
+      -DBUILD_EXAMPLES=OFF                     \
+      -DOPENCL_SDK_BUILD_SAMPLES=ON            \
+      -DCMAKE_C_FLAGS="${CFLAGS}"              \
+      -DCMAKE_CXX_FLAGS="${CXXFLAGS}"          \
+      -DOPENCL_HEADERS_BUILD_CXX_TESTS=OFF     \
+      -DOPENCL_ICD_LOADER_BUILD_SHARED_LIBS=ON \
+      -DOPENCL_SDK_BUILD_OPENGL_SAMPLES=OFF    \
+      -DOPENCL_SDK_BUILD_SAMPLES=OFF           \
+      -DTHREADS_PREFER_PTHREAD_FLAG=ON         \
       -G Ninja -Wno-dev
-echo
+
 if ! ninja "-j$(nproc --all)" -C build; then
-    fail_fn "Failed to execute: ninja -j$(nproc --all) -C build. Line: ${LINENO}"
+    printf "\n%s\n\n" "Ninja build failed"
     exit 1
 fi
-echo
+
 if ! sudo ninja -C build install; then
-    fail_fn "Failed to execute: sudo ninja -C build install. Line: ${LINENO}"
+    printf "\n%s\n\n" "Ninja install failed"
     exit 1
 fi
 
-# PROMPT USER TO CLEAN UP FILES
-cleanup_fn
+# Clean up files
+read -p "Do you want to remove build directories? (y/n): " choice
+case "$choice" in 
+    [yY]|[yY][eE][sS])  sudo rm -fr "$cwd";;
+    *)                  printf "\n%s\n\n" "Build directories retained.";;
+esac
 
-# SHOW EXIT MESSAGE
-exit_fn
+# Exit message
+printf "\n%s\n\n" "OpenCL SDK build process completed."
