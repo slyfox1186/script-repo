@@ -2080,3 +2080,27 @@ drp()
 
     docker update --restart="${restart_policy}" 
 }
+
+rm_curly()
+{
+    local content file transform_string
+    # FUNCTION TO TRANSFORM THE STRING
+    transform_string()
+    {
+        content=$(cat "$1")
+        echo "${content//\$\{/\$}" | sed 's/\}//g'
+    }
+
+    # LOOP OVER EACH ARGUMENT
+    for file in "$@"
+    do
+        if [ -f "$file" ]; then
+            # PERFORM THE TRANSFORMATION AND OVERWRITE THE FILE
+            transform_string "$file" > "$file.tmp"
+            mv "$file.tmp" "$file"
+            echo "Modified file: $file"
+        else
+            echo "File not found: $file"
+        fi
+    done
+}
