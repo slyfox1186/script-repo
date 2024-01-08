@@ -1043,7 +1043,7 @@ pkgs_fn()
         printf "\n%s\n\n" "Installing missing apt packages..."
         sudo apt-get -qq -y install $missing_pkgs
     else
-        printf "\n%s\n\n" "All apt packages are already installed."
+        printf "%s\n\n" "All apt packages are already installed."
     fi
 }
 
