@@ -2786,7 +2786,7 @@ if [ ${?} -eq '0' ]; then
         ffmpeg_libraries+=("--nvccflags=-gencode arch=$gpu_arch")
         fi
     else
-        printf " \n%s\n \n" 'The Active GPU is made by AMD and the Geforce CUDA SDK Toolkit will not be enabled.'
+        printf "%s\n\n" 'The Active GPU is made by AMD and the Geforce CUDA SDK Toolkit will not be enabled.'
         sleep 5
 fi
 
