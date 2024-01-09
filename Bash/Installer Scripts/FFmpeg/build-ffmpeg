@@ -107,7 +107,7 @@ curl_timeout='10'
 LDEXEFLAGS=''
 ffmpeg_libraries=()
 latest='false'
-regex_str='(rc|RC)+[0-9]+$' # SET THE REGEX VARIABLE TO CHECK FOR RELEASE CANDIDATES
+regex_str='(rc|RC|master)+[0-9]*$' # SET THE REGEX VARIABLE TO CHECK FOR RELEASE CANDIDATES
 debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
@@ -2130,7 +2130,7 @@ if build 'libpulse' 'git'; then
                               --strip \
                                "${extracmds[@]}"
     execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
+    execute sudo ninja "-j$cpu_threads" -C build install
     libpulse_fix_libs_fn
     build_done 'libpulse' 'git'
 fi
