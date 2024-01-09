@@ -1793,7 +1793,7 @@ else
     ffmpeg_libraries+=('--enable-libjxl')
 fi
 
-if build 'opencl-sdk' "$g_ver"; then
+if build 'opencl-sdk' 'git'; then
     download_git 'https://github.com/KhronosGroup/OpenCL-SDK.git' 'opencl-sdk-git' 'R'
     execute cmake \
             -S . \
@@ -1817,7 +1817,7 @@ if build 'opencl-sdk' "$g_ver"; then
             -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    build_done 'opencl-sdk' "$g_ver"
+    build_done 'opencl-sdk' 'git'
 fi
 
 git_ver_fn 'DanBloomberg/leptonica' '1' 'L'
