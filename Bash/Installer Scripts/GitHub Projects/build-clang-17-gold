@@ -65,7 +65,7 @@ setup_environment()
     export PATH
 
     # Check for required tools: git, cmake, ninja, etc.
-    required_tools=('git' 'cmake' 'ninja' 'ccache' 'clang' 'clang++' 'lzip' 'wget' 'curl')
+    required_tools=('git' 'ccache' 'clang' 'clang++' 'cmake' 'curl' 'ninja' 'lzip' 'mesa-utils' 'wget')
     for tool in ${required_tools[@]}
     do
         if ! command -v "$tool" &> /dev/null; then
