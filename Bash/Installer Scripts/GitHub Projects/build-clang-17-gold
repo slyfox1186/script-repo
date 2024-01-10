@@ -15,7 +15,7 @@
 
 # Ensure the script is not run as root
 if [ "$EUID" -eq 0 ]; then
-    echo 'You must run this script WITHOUT root/sudo.'
+    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
     exit 1
 fi
 
