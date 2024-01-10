@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2162,SC2317
 
-####################################################################################################################################
+#########################################################################################################################################
 ##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-17
+##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-17-gold
 ##
 ##  Purpose: Build LLVM Clang-17
 ##
@@ -11,7 +11,7 @@
 ##
 ##  Script version: 1.4
 ##
-####################################################################################################################################
+#########################################################################################################################################
 
 # Ensure the script is not run as root
 if [ "$EUID" -eq 0 ]; then
