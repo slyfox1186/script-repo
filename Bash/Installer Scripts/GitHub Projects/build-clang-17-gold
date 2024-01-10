@@ -22,11 +22,13 @@ fi
 # SET GLOBAL VARIABLES
 flag=false
 
-amdgpu_test() { glxinfo | grep 'OpenGL renderer' | grep -Eqo 'AMD\s.*$'; }
+amdgpu_test() {
+    sudo apt-get -y -qq install mesa-utils
+    glxinfo | grep 'OpenGL renderer' | grep -Eqo 'AMD\s.*$'
+}
 
 # Function to download and compile Clang 17 with clang-tools
-download_clang()
-{
+download_clang() {
     local base_url filename tag url
 
     base_url='https://github.com/llvm/llvm-project/releases'
@@ -52,8 +54,7 @@ download_clang()
     printf "%s\n\n" "Building Clang and Clang Tools Extra from source..."
 }
 
-setup_environment()
-{
+setup_environment() {
     printf "%s\n\n" "Setting up the environment for building Clang-17..."
 
     if [ -d '/usr/lib/ccache/bin' ]; then
@@ -65,7 +66,7 @@ setup_environment()
     export PATH
 
     # Check for required tools: git, cmake, ninja, etc.
-    required_tools=('git' 'ccache' 'clang' 'clang++' 'cmake' 'curl' 'ninja' 'lzip' 'mesa-utils' 'wget')
+    required_tools=('git' 'ccache' 'clang' 'clang++' 'cmake' 'curl' 'ninja' 'lzip' 'wget')
     for tool in ${required_tools[@]}
     do
         if ! command -v "$tool" &> /dev/null; then
@@ -75,7 +76,7 @@ setup_environment()
     done
 
     # Check for ld.gold
-    if ! command -v 'ld.gold' &>/dev/null; then
+    if [ ! -f /usr/local/bin/ld.gold ]; then
         printf "%s\n\n" 'ld.gold not found. Attempting to install...'
         # Replace this with the actual URL or command to install ld.gold
         wget -cq 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-binutils'
@@ -97,8 +98,7 @@ setup_environment()
     printf "%s\n\n" 'Environment setup complete.'
 }
 
-build_clang()
-{
+build_clang() {
     # if the flag is set to true then enable the AMDGPU target
     if [[ $flag == true ]]; then
         target_pkgs='-DLLVM_TARGETS_TO_BUILD=X86;AMDGPU'
