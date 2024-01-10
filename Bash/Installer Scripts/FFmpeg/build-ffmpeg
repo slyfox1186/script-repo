@@ -126,7 +126,7 @@ export MAKEFLAGS
 # CREATE THE OUTPUT DIRECTORIES
 #
 
-mkdir -p "$workspace"/logs
+mkdir -p "$packages" "$workspace"/logs
 
 #
 # PRINT SCRIPT BANNER
