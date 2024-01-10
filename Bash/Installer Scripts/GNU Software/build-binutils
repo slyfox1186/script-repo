@@ -239,9 +239,10 @@ fi
 # BUILD PROGRAM FROM SOURCE
 #
 
-printf "%s\n%s\n\n"              \
+printf "%s\n%s\n%s\n\n" \
     "Build Binutils from source" \
-    '==============================================='
+    '===============================================' \
+    'Downloading the install files...'
 sleep 1
 
 cd "$cwd/$archive_dir" || exit 1
