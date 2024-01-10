@@ -126,7 +126,7 @@ export MAKEFLAGS
 # CREATE THE OUTPUT DIRECTORIES
 #
 
-mkdir -p "$packages" "$workspace"/logs
+mkdir -p "$packages"/nvidia-cuda "$workspace"/logs
 
 #
 # PRINT SCRIPT BANNER
@@ -757,8 +757,6 @@ cuda_download_fn()
 {
     local choice
     clear
-
-    mkdir -p "$packages"/nvidia-cuda 
 
     printf "%s\n\n%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n\n" \
         'Pick your Linux distro from the list below:' \
