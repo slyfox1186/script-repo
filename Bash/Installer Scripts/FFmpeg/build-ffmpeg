@@ -2264,7 +2264,7 @@ if build 'opencore-amr' "${g_ver}"; then
     execute make install
     build_done 'opencore-amr' "${g_ver}"
 fi
-ffmpeg_libraries+=('--enable-libopencore-amrnb' '--enable-libopencore-amrwb')
+ffmpeg_libraries+=('--enable-libopencore-'{amrnb,amrwb})
 
 if build 'liblame' '3.100'; then
     download 'https://zenlayer.dl.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz'
