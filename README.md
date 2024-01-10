@@ -50,7 +50,7 @@ bash <(curl -fsSL https://build-all-git.optimizethis.net)
   - **For personal/testing use only**
   - **Check the top of the script for build [results](https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc)**
   - **Supported OS:**
-    - Ubuntu - (18/20/22).04
+    - Ubuntu - (20/22/23).04
     - Debian - 10/11/12
     - Other Debian-based distros may work as well
 
@@ -82,7 +82,7 @@ bash <(curl -fsSL https://7z.optimizethis.net)
   - **[Optimize JPG Images](https://github.com/slyfox1186/script-repo/tree/main/Bash/Installer%20Scripts/ImageMagick/scripts)**
   - **Supported OS:**
     - Debian - 10/11/12
-    - Ubuntu - (18/20/22).04
+    - Ubuntu - (20/22/23).04
     - Other  - Debian-based distros may work as well
   
 ```bash
@@ -96,7 +96,7 @@ bash <(curl -fsSL https://magick.optimizethis.net)
   -  **See the my dedicated ffmpeg build page for more info on supplying your own GitHub API tokens: [ffmpeg-build-script](https://github.com/slyfox1186/ffmpeg-build-script)**
   - **Supported OS:**
     - Debian - 10/11/12
-    - Ubuntu - (18/20/22).04 / 23.04
+    - Ubuntu - (20/22/23).04 / 23.04
     - Other  - Debian-based distros may work as well
 
 **With GPL and <ins>non-free</ins> libraries: https://ffmpeg.org/legal.html**
@@ -105,10 +105,21 @@ bash <(curl -fsSL https://build-ffmpeg.optimizethis.net) --build --latest
 ```
 ------
 
+## Install [Rust](https://github.com/rust-lang/rust)
+  - **Supported OS:**
+    - Debian - 10/11/12
+    - Ubuntu - (20/22/23).04
+    - Other  - Debian-based distros may work as well
+
+```bash
+bash <(curl -fsSL https://rust.optimizethis.net)
+````
+------
+
 ## Install [CMake](https://cmake.org/), [Ninja](https://github.com/ninja-build/ninja), [Meson](https://github.com/mesonbuild/meson) & [Golang](https://github.com/golang/go)
   - **Supported OS:**
     - Debian - 10/11/12
-    - Ubuntu - (18/20/22).04
+    - Ubuntu - (20/22/23).04
     - Other  - Debian-based distros may work as well
 
 ```bash
@@ -133,7 +144,7 @@ bash <(curl -fsSL https://aria2.optimizethis.net)
   - Aria2 max connections increased from 16 to 64
   - **Supported OS:**
     - Debian - 10/11/12
-    - Ubuntu - (18/20/22).04
+    - Ubuntu - (20/22/23).04
     - Other  - Debian-based distros may work as well
 
 #### List of Libraries activated during build: [Libs](https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/installers/GitHub%20Projects/Download%20Tools/build-dl-tools.txt)
@@ -145,7 +156,7 @@ bash <(curl -fsSL https://dl-tools.optimizethis.net)
 ## Add custom mirrors to: /etc/apt/sources.list
   - **Supported OS:**
     - Debian - 10/11/12
-    - Ubuntu - (18/20/22).04 / 23.04
+    - Ubuntu - (20/22/23).04 / 23.04
 
 **Warning! This will overwrite your files!**
 ```bash
@@ -196,7 +207,7 @@ bash <(curl -fsSL https://download.optimizethis.net)
   - Dracula theme included + many others
   - **Supported OS:**
     - Debian - 10/11/12
-    - Ubuntu - (18/20/22).04
+    - Ubuntu - (20/22/23).04
     - Other Debian-based distros may work as well
 ```bash
 bash <(curl -fsSL https://tilix.optimizethis.net)
@@ -206,7 +217,7 @@ bash <(curl -fsSL https://tilix.optimizethis.net)
 ## Install [Python3](https://devguide.python.org/getting-started/setup-building/#get-the-source-code) v3.12.0
   - **Supported OS:**
     - Debian - 10/11/12
-    - Ubuntu - (18/20/22).04
+    - Ubuntu - (20/22/23).04
     - Other  - Debian-based distros may work as well
 
 ```bash
@@ -217,7 +228,7 @@ bash <(curl -fsSL https://python3.optimizethis.net)
 ## Install the [WSL2](https://github.com/microsoft/WSL2-Linux-Kernel) latest kernel release from [Linux](https://github.com/torvalds/linux)
   - **Supported OS:**
     - Debian - 10/11/12
-    - Ubuntu - (18/20/22).04
+    - Ubuntu - (20/22/23).04
     - Other  - Debian-based distros may work as well
 
 ```bash
