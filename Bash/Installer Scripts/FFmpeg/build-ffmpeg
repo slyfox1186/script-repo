@@ -332,7 +332,6 @@ git_1_fn()
         if echo "$line" | grep -qP '[v]*(\d+\.\d+(?:\.\d*){0,2})\.tar\.gz'; then
             # Extract and print the version number
             g_ver=$(echo "$line" | grep -oP '(\d+\.\d+(?:\.\d+){0,2})')
-            echo "Match found: $version"
             break
         else
             # Increment the cnt if no match is found
