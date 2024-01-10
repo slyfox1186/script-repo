@@ -1,0 +1,51 @@
+#!usr/bin/env bash
+
+## GitHub:  https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-rust
+## Purpose: Install Rust (v1.75.0)
+## Source:  https://github.com/rust-lang/rust
+## Date:    01.09.24
+
+# Make sure the script is run without superuser privileges
+if [ "$EUID" -eq 0 ]; then
+    echo "Please run this script WITHOUT root or sudo."
+    exit 1
+fi
+
+# Remove any files from previous runs
+if [ -d rust ]; then
+    sudo rm -fr rust
+fi
+
+# Clone the Rust repository without recursively fetching submodules (this gets the latest version only and saves time and disk space'
+git clone --branch master --depth 1 --single-branch https://github.com/rust-lang/rust.git
+
+# Navigate to the Rust source code directory
+cd rust || exit 1
+
+# Run the Rust install script
+echo
+if ! python3 x.py build; then
+    printf "%s\n\n" 'Error: Failed to execute python3 x.py build'
+    exit 1
+fi
+echo
+if ! python3 x.py install; then
+    printf "%s\n\n" 'Error: Failed to execute python3 x.py install'
+    exit 1
+fi
+
+# Add Rust to the system PATH by appending the following code to the bottom of the users .bashrc file
+cat >> "$HOME"/.bashrc <<'EOF'
+
+if [ -f "$HOME"/.cargo/env ]; then
+    . "$HOME"/.cargo/env
+fi
+EOF
+
+# Source the users .bashrc file
+source "$HOME"/.bashrc
+
+# Verify the installation by displaying the Rust version
+printf "\n%s\n\n" "Rust ${rust_version} from the master branch has been successfully installed."
+
+rustc --version
