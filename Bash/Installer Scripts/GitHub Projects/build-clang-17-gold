@@ -7,9 +7,9 @@
 ##
 ##  Purpose: Build LLVM Clang-17
 ##
-##  Updated: 01.06.24
+##  Updated: 01.10.24
 ##
-##  Script version: 1.3
+##  Script version: 1.4
 ##
 ####################################################################################################################################
 
@@ -20,9 +20,9 @@ if [ "$EUID" -eq 0 ]; then
 fi
 
 # SET GLOBAL VARIABLES
-script_ver=1.12
-progname="${0}"
-web_repo='https://github.com/slyfox1186'
+flag=false
+
+amdgpu_test() { glxinfo | grep 'OpenGL renderer' | grep -Eqo 'AMD\s.*$'; }
 
 # Function to download and compile Clang 17 with clang-tools
 download_clang()
@@ -33,7 +33,7 @@ download_clang()
     tag=$(curl -s "$base_url" | grep -oP 'llvmorg-17\.\d+\.\d+' | sort -V | tail -1)
     url="https://github.com/llvm/llvm-project/archive/refs/tags/$tag.tar.gz"
     filename="clang-${tag//llvmorg-/}.tar.gz"
-    src_dir="${filename%.tar.*}"
+    src_dir="$filename%.tar.*}"
 
     if [ ! -f "$filename" ]; then
         printf "%s\n\n" "Downloading Clang 17 source code from $url"
@@ -89,7 +89,7 @@ setup_environment()
     CC='clang'
     CXX='clang++'
     CFLAGS='-g -O3 -pipe -march=native'
-    CXXFLAGS="${CFLAGS}"
+    CXXFLAGS="$CFLAGS"
     CPPFLAGS='-I/usr/local/include -I/usr/include'
     LDFLAGS='-Wl,-rpath -Wl,/usr/local/lib -fuse-ld=gold -L/usr/local/lib'
     pc_type="$(curl -fsSL 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess' | bash)"
@@ -99,49 +99,54 @@ setup_environment()
 
 build_clang()
 {
+    # if the flag is set to true then enable the AMDGPU target
+    if [[ $flag == true ]]; then
+        target_pkgs='-DLLVM_TARGETS_TO_BUILD=X86;AMDGPU'
+    fi
     # The commands to build clang from source, including fetching the source code, configuring, and compiling
     cd "$src_dir/builddir" || exit 1
     project_pkgs='clang;clang-tools-extra'
-    cmake -S ../llvm                               \
-          -DCMAKE_INSTALL_PREFIX=/usr/local        \
-          -DCMAKE_BUILD_TYPE=Release               \
-          -DBUILD_SHARED_LIBS=OFF                  \
-          -DBENCHMARK_DOWNLOAD_DEPENDENCIES=ON     \
-          -DBENCHMARK_ENABLE_TESTING=ON            \
-          -DBENCHMARK_INSTALL_DOCS=OFF             \
-          -DCLANG_INCLUDE_DOCS=OFF                 \
-          -DCMAKE_C_COMPILER="${CC}"               \
-          -DCMAKE_C_FLAGS="${CFLAGS}"              \
-          -DCMAKE_CXX_FLAGS="${CXXFLAGS}"          \
-          -DCMAKE_CXX_COMPILER="${CXX}"            \
-          -DCMAKE_CXX_STANDARD=20                  \
-          -DGOLD_EXECUTABLE="$(type -P ld.gold)"   \
-          -DLLVM_BINUTILS_INCDIR=/usr/local/bin    \
-          -DLLVM_BUILD_BENCHMARKS=OFF              \
-          -DLLVM_BUILD_RUNTIME=ON                  \
-          -DLLVM_BUILD_RUNTIMES=ON                 \
-          -DLLVM_CCACHE_BUILD=ON                   \
-          -DLLVM_ENABLE_CURL=ON                    \
-          -DLLVM_ENABLE_LTO=OFF                    \
-          -DLLVM_ENABLE_OCAMLDOC=OFF               \
-          -DLLVM_ENABLE_PIC=ON                     \
-          -DLLVM_ENABLE_PROJECTS="${project_pkgs}" \
-          -DLLVM_ENABLE_WARNINGS=OFF               \
-          -DLLVM_HOST_TRIPLE="${pc_type}"          \
-          -DLLVM_INCLUDE_DOCS=OFF                  \
-          -DLLVM_INCLUDE_TESTS=OFF                 \
-          -DLLVM_TARGET_ARCH=HOST                  \
-          -DLLVM_TOOL_CLANG_BUILD=ON               \
-          -DLLVM_USE_LINKER=gold                   \
-          -G Ninja -Wno-dev
+    cmake -S ../llvm                             \
+          -DCMAKE_INSTALL_PREFIX=/usr/local      \
+          -DCMAKE_BUILD_TYPE=Release             \
+          -DBUILD_SHARED_LIBS=OFF                \
+          -DBENCHMARK_DOWNLOAD_DEPENDENCIES=ON   \
+          -DBENCHMARK_ENABLE_TESTING=ON          \
+          -DBENCHMARK_INSTALL_DOCS=OFF           \
+          -DCLANG_INCLUDE_DOCS=OFF               \
+          -DCMAKE_C_COMPILER="$CC"               \
+          -DCMAKE_C_FLAGS="$CFLAGS"              \
+          -DCMAKE_CXX_FLAGS="$CXXFLAGS"          \
+          -DCMAKE_CXX_COMPILER="$CXX"            \
+          -DCMAKE_CXX_STANDARD=20                \
+          -DGOLD_EXECUTABLE="$(type -P ld.gold)" \
+          -DLLVM_BINUTILS_INCDIR=/usr/local/bin  \
+          -DLLVM_BUILD_BENCHMARKS=OFF            \
+          -DLLVM_BUILD_RUNTIME=ON                \
+          -DLLVM_BUILD_RUNTIMES=ON               \
+          -DLLVM_CCACHE_BUILD=ON                 \
+          -DLLVM_ENABLE_CURL=ON                  \
+          -DLLVM_ENABLE_LTO=OFF                  \
+          -DLLVM_ENABLE_OCAMLDOC=OFF             \
+          -DLLVM_ENABLE_PIC=ON                   \
+          -DLLVM_ENABLE_PROJECTS="$project_pkgs" \
+          -DLLVM_ENABLE_RTTI=ON                  \
+          -DLLVM_ENABLE_WARNINGS=OFF             \
+          -DLLVM_HOST_TRIPLE="$pc_type"          \
+          -DLLVM_INCLUDE_DOCS=OFF                \
+          -DLLVM_INCLUDE_TESTS=OFF               \
+          -DLLVM_TARGET_ARCH=HOST                \
+          -DLLVM_TOOL_CLANG_BUILD=ON             \
+          -DLLVM_USE_LINKER=gold                 \
+          -G Ninja -Wno-dev "$target_pkgs"
     echo
     if ! ninja "-j$(nproc --all)"; then
-        printf "\n%s\n\n" "Failed to execute: ninja -j$(nproc --all). Line: ${LINENO}"
+        printf "\n%s\n\n" "Failed to execute: ninja -j$(nproc --all). Line: $LINENO"
         exit 1
     fi
     echo
     if ! sudo ninja install; then
-        printf "\n%s\n\n" "Failed to execute: sudo ninja install. Line: ${LINENO}"
+        printf "\n%s\n\n" "Failed to execute: sudo ninja install. Line: $LINENO"
         exit 1
     fi
 
@@ -151,4 +156,7 @@ build_clang()
 # Main script execution
 setup_environment
 download_clang
+if amdgpu_test; then
+    flag=true
+fi
 build_clang
