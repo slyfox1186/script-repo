@@ -2240,8 +2240,8 @@ fi
 ffmpeg_libraries+=('--enable-libmysofa')
 
 git_ver_fn 'webmproject/libvpx' '1' 'T'
-if build 'vpx' "$g_ver"; then
-    download "https://github.com/webmproject/libvpx/archive/refs/tags/v$g_ver.tar.gz" "libvpx-$g_ver.tar.gz"
+if build 'vpx' '1.13.1'; then
+    download 'https://github.com/webmproject/libvpx/archive/refs/tags/v1.13.1.tar.gz' 'libvpx-1.13.1.tar.gz'
     execute ./configure --prefix="$workspace" \
                         --as=yasm \
                         --disable-unit-tests \
@@ -2250,7 +2250,7 @@ if build 'vpx' "$g_ver"; then
                         --enable-vp9-highbitdepth
     execute make "-j$cpu_threads"
     execute make install
-    build_done 'vpx' "$g_ver"
+    build_done 'vpx' '1.13.1'
 fi
 ffmpeg_libraries+=('--enable-libvpx')
 
