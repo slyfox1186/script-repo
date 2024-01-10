@@ -313,37 +313,37 @@ download_git()
 
 git_1_fn()
 {
+    # Initial cnt
     local cnt curl_cmd git_repo git_url
     git_repo="$1"
     git_url="$2"
-    cnt=0
+    git_tag="$3"
+    cnt=1
 
-    if g_ver=$(curl -sSL "https://github.com/$git_repo/$git_url"); then
-        g_ver="$(echo "$g_ver" | grep -oP "$git_repo/releases/tag/\K[^\"]+" | sed -n '1p' | head -n1)"
-        g_ver1="$(echo "$g_ver" | grep -oP "$git_repo/archive/refs/tags/v\K[^\"]+" | sed -n '2p' | head -n1)"
-        g_ver="${g_ver#cares-}"
-        g_ver="${g_ver#FAAC }"
-        g_ver="${g_ver#lcms}"
-        g_ver="${g_ver#OpenJPEG }"
-        g_ver="${g_ver#OpenSSL }"
-        g_ver="${g_ver#pcre}"
-        g_ver="${g_ver#pkgconf-}"
-        g_ver="${g_ver#release-}"
-        g_ver="${g_ver#Rust }"
-        g_ver="${g_ver//-snapshot/}"
-        g_ver="${g_ver#ver-}"
-        g_ver="${g_ver#v}"
-        g_ver1="${g_ver1#v}"
-    fi
-
-    # DENY INSTALLING A RELEASE CANDIDATE
-    while [[ $g_ver =~ $regex_str ]]
+    # Loop until the condition is met or a maximum limit is reached
+    while [ $cnt -le 10 ]  # You can set an upper limit to prevent an infinite loop
     do
-        if g_ver="$(echo "$g_ver" | grep -v -i 'RC' | head -1)"; then
-           g_ver="${g_ver#v}"
+        curl_cmd="$(curl -sSL "https://github.com/$git_repo/$git_url" | grep -o 'href="[^"]*\.tar\.gz"')"
+
+        # Extract the specific line
+        line=$(echo "$curl_cmd" | grep -o 'href="[^"]*\.tar\.gz"' | sed -n "${cnt}p")
+
+        # Check if the line matches the pattern (version without 'RC'/'rc')
+        if echo "$line" | grep -qP '[v]*(\d+\.\d+(?:\.\d*){0,2})\.tar\.gz'; then
+            # Extract and print the version number
+            g_ver=$(echo "$line" | grep -oP '(\d+\.\d+(?:\.\d+){0,2})')
+            echo "Match found: $version"
+            break
+        else
+            # Increment the cnt if no match is found
+            ((cnt++))
         fi
-        ((cnt++))
     done
+
+    # Check if a version was found
+    if [ $cnt -gt 10 ]; then
+        echo "No matching version found without RC/rc suffix."
+    fi
 }
 
 git_2_fn()
@@ -1429,7 +1429,7 @@ else
     fi
 fi
 
-git_ver_fn 'madler/zlib' '1' 'L'
+git_ver_fn 'madler/zlib' '1' 'T'
 if build 'zlib' "$g_ver"; then
     download "https://github.com/madler/zlib/releases/download/v$g_ver/zlib-$g_ver.tar.gz"
     execute ./configure --prefix="$workspace"
@@ -1457,7 +1457,7 @@ if build 'openssl' '3.1.4'; then
 fi
 ffmpeg_libraries+=('--enable-openssl')
 
-git_ver_fn 'yasm/yasm' '1' 'L'
+git_ver_fn 'yasm/yasm' '1' 'T'
 if build 'yasm' "$g_ver"; then
     download "https://github.com/yasm/yasm/archive/refs/tags/v$g_ver.tar.gz" "yasm-$g_ver.tar.gz"
     execute autoreconf -fi
@@ -1541,7 +1541,7 @@ if build 'libtiff' "$g_ver"; then
     build_done 'libtiff' "$g_ver"
 fi
 
-git_ver_fn 'nkoriyama/aribb24' '1' 'L'
+git_ver_fn 'nkoriyama/aribb24' '1' 'T'
 if build 'aribb24' '1.0.3'; then
     download 'https://github.com/nkoriyama/aribb24/archive/refs/tags/v1.0.3.tar.gz' 'aribb24-1.0.3.tar.gz'
     execute autoreconf -fi
@@ -1595,7 +1595,7 @@ ffmpeg_libraries+=('--enable-libfontconfig')
 
 # UBUNTU BIONIC FAILS TO BUILD XML2
 if [ "$VER" != '18.04' ]; then
-    git_ver_fn 'harfbuzz/harfbuzz' '1' 'L'
+    git_ver_fn 'harfbuzz/harfbuzz' '1' 'T'
     if build 'harfbuzz' "$g_ver"; then
         download "https://github.com/harfbuzz/harfbuzz/archive/refs/tags/$g_ver.tar.gz" "harfbuzz-$g_ver.tar.gz"
         extracmds=('-D'{benchmark,cairo,docs,glib,gobject,icu,introspection,tests}'=disabled')
@@ -1649,7 +1649,7 @@ if build 'c2man' 'git'; then
     build_done 'c2man' 'git'
 fi
 
-git_ver_fn 'fribidi/fribidi' '1' 'L'
+git_ver_fn 'fribidi/fribidi' '1' 'T'
 if build 'fribidi' "$g_ver"; then
     download "https://github.com/fribidi/fribidi/archive/refs/tags/v$g_ver.tar.gz" "fribidi-$g_ver.tar.gz"
     extracmds=('-D'{docs,tests}'=false')
@@ -1665,7 +1665,7 @@ if build 'fribidi' "$g_ver"; then
 fi
 ffmpeg_libraries+=('--enable-libfribidi')
 
-git_ver_fn 'libass/libass' '1' 'L'
+git_ver_fn 'libass/libass' '1' 'T'
 if build 'libass' "$g_ver"; then
     download "https://github.com/libass/libass/archive/refs/tags/$g_ver.tar.gz" "libass-$g_ver.tar.gz"
     execute ./autogen.sh
@@ -1678,7 +1678,7 @@ if build 'libass' "$g_ver"; then
 fi
 ffmpeg_libraries+=('--enable-libass')
 
-git_ver_fn 'freeglut/freeglut' '1' 'L'
+git_ver_fn 'freeglut/freeglut' '1' 'T'
 if build 'freeglut' "$g_ver"; then
     download "https://github.com/freeglut/freeglut/releases/download/v$g_ver/freeglut-$g_ver.tar.gz"
     CFLAGS+=' -DFREEGLUT_STATIC'
@@ -1717,7 +1717,7 @@ if build 'libwebp' 'git'; then
 fi
 ffmpeg_libraries+=('--enable-libwebp')
 
-git_ver_fn 'google/highway' '1' 'L'
+git_ver_fn 'google/highway' '1' 'T'
 if build 'libhwy' "$g_ver"; then
     download "https://github.com/google/highway/archive/refs/tags/$g_ver.tar.gz" "libhwy-$g_ver.tar.gz"
     CFLAGS+=' -DHWY_COMPILE_ALL_ATTAINABLE'
@@ -1735,7 +1735,7 @@ if build 'libhwy' "$g_ver"; then
     build_done 'libhwy' "$g_ver"
 fi
 
-git_ver_fn 'google/brotli' '1' 'L'
+git_ver_fn 'google/brotli' '1' 'T'
 if build 'brotli' "$g_ver"; then
     download "https://github.com/google/brotli/archive/refs/tags/v$g_ver.tar.gz" "brotli-$g_ver.tar.gz"
     execute cmake -B build \
@@ -1749,7 +1749,7 @@ if build 'brotli' "$g_ver"; then
     build_done 'brotli' "$g_ver"
 fi
 
-git_ver_fn 'mm2/Little-CMS' '1' 'L'
+git_ver_fn 'mm2/Little-CMS' '1' 'T'
 if build 'lcms2' "$g_ver"; then
     download "https://github.com/mm2/Little-CMS/archive/refs/tags/lcms$g_ver.tar.gz" "lcms2-$g_ver.tar.gz"
     execute ./autogen.sh
@@ -1763,7 +1763,7 @@ if build 'lcms2' "$g_ver"; then
 fi
 ffmpeg_libraries+=('--enable-lcms2')
 
-git_ver_fn 'gflags/gflags' '1' 'L'
+git_ver_fn 'gflags/gflags' '1' 'T'
 if build 'gflags' "$g_ver"; then
     download "https://github.com/gflags/gflags/archive/refs/tags/v$g_ver.tar.gz" "gflags-$g_ver.tar.gz"
     execute cmake -B build \
@@ -1818,7 +1818,7 @@ if build 'opencl-sdk' 'git'; then
     build_done 'opencl-sdk' 'git'
 fi
 
-git_ver_fn 'DanBloomberg/leptonica' '1' 'L'
+git_ver_fn 'DanBloomberg/leptonica' '1' 'T'
 g_ver="${g_ver//Leptonica version /}"
 if build 'leptonica' "$g_ver"; then
     download "https://github.com/DanBloomberg/leptonica/archive/refs/tags/$g_ver.tar.gz" "leptonica-$g_ver.tar.gz"
@@ -1831,7 +1831,7 @@ if build 'leptonica' "$g_ver"; then
     build_done 'leptonica' "$g_ver"
 fi
 
-git_ver_fn 'tesseract-ocr/tesseract' '1' 'L'
+git_ver_fn 'tesseract-ocr/tesseract' '1' 'T'
 if build 'tesseract' "$g_ver"; then
     download "https://github.com/tesseract-ocr/tesseract/archive/refs/tags/$g_ver.tar.gz" "tesseract-$g_ver.tar.gz"
     execute ./autogen.sh
@@ -1869,7 +1869,7 @@ if build 'rubberband' 'git'; then
 fi
 ffmpeg_libraries+=('--enable-librubberband')
 
-git_ver_fn 'sekrit-twc/zimg' '1' 'L'
+git_ver_fn 'sekrit-twc/zimg' '1' 'T'
 if build 'zimg' "$g_ver"; then
     download "https://github.com/sekrit-twc/zimg/archive/refs/tags/release-$g_ver.tar.gz" "zimg-$g_ver.tar.gz"
     execute libtoolize -fiq
@@ -1884,7 +1884,7 @@ if build 'zimg' "$g_ver"; then
 fi
 ffmpeg_libraries+=('--enable-libzimg')
 
-git_ver_fn 'c-ares/c-ares' '1' 'L'
+git_ver_fn 'c-ares/c-ares' '1' 'T'
 g_ver="${g_ver//ares-/}"
 g_tag="${g_ver//\./_}"
 if build 'c-ares' '1.23.0'; then
@@ -1945,7 +1945,7 @@ if build 'serd' "$g_ver"; then
     build_done 'serd' "$g_ver"
 fi
 
-git_ver_fn 'pcre2project/pcre2' '1' 'L'
+git_ver_fn 'pcre2project/pcre2' '1' 'T'
 g_ver="${g_ver//2-/}"
 target_url="https://github.com/PCRE2Project/pcre2/releases/download/pcre2-$tag_urls/pcre2-$tag_urls.tar.gz"
 if build 'pcre2' "$g_ver"; then
@@ -2035,7 +2035,7 @@ if build 'libmpg123' 'git'; then
     build_done 'libmpg123' 'git'
 fi
 
-git_ver_fn 'akheron/jansson' '1' 'L'
+git_ver_fn 'akheron/jansson' '1' 'T'
 if build 'jansson' "$g_ver"; then
     download "https://github.com/akheron/jansson/archive/refs/tags/v$g_ver.tar.gz" "jansson-$g_ver.tar.gz"
     execute autoreconf -fi
@@ -2045,7 +2045,7 @@ if build 'jansson' "$g_ver"; then
     build_done 'jansson' "$g_ver"
 fi
 
-git_ver_fn 'jemalloc/jemalloc' '1' 'L'
+git_ver_fn 'jemalloc/jemalloc' '1' 'T'
 if build 'jemalloc' "$g_ver"; then
     download "https://github.com/jemalloc/jemalloc/archive/refs/tags/$g_ver.tar.gz" "jemalloc-$g_ver.tar.gz"
     extracmds1=('--disable-'{debug,doc,fill,log,shared,prof,stats})
@@ -2104,7 +2104,7 @@ if build 'sdl2' 'git'; then
     build_done 'sdl2' 'git'
 fi
 
-git_ver_fn 'libsndfile/libsndfile' '1' 'L'
+git_ver_fn 'libsndfile/libsndfile' '1' 'T'
 if build 'libsndfile' "$g_ver"; then
     download "https://github.com/libsndfile/libsndfile/releases/download/$g_ver/libsndfile-$g_ver.tar.xz"
     execute autoreconf -fi
@@ -2134,7 +2134,7 @@ if build 'libpulse' 'git'; then
 fi
 ffmpeg_libraries+=('--enable-libpulse')
 
-git_ver_fn 'xiph/ogg' '1' 'L'
+git_ver_fn 'xiph/ogg' '1' 'T'
 if build 'libogg' "$g_ver"; then
     download "https://github.com/xiph/ogg/archive/refs/tags/v$g_ver.tar.gz" "libogg-$g_ver.tar.gz"
     execute autoreconf -fi
@@ -2151,7 +2151,7 @@ if build 'libogg' "$g_ver"; then
     build_done 'libogg' "$g_ver"
 fi
 
-git_ver_fn 'xiph/flac' '1' 'L'
+git_ver_fn 'xiph/flac' '1' 'T'
 if build 'libflac' "$g_ver"; then
     download "https://github.com/xiph/flac/archive/refs/tags/$g_ver.tar.gz" "libflac-$g_ver.tar.gz"
     execute ./autogen.sh
@@ -2178,7 +2178,7 @@ if build 'libflac' "$g_ver"; then
     build_done 'libflac' "$g_ver"
 fi
 
-git_ver_fn 'mstorsjo/fdk-aac' '1' 'L'
+git_ver_fn 'mstorsjo/fdk-aac' '1' 'T'
 if build 'libfdk-aac' '2.0.2'; then
     download 'https://phoenixnap.dl.sourceforge.net/project/opencore-amr/fdk-aac/fdk-aac-2.0.3.tar.gz' 'libfdk-aac-2.0.2.tar.gz'
     execute ./autogen.sh
@@ -2191,7 +2191,7 @@ if build 'libfdk-aac' '2.0.2'; then
 fi
 ffmpeg_libraries+=('--enable-libfdk-aac')
 
-git_ver_fn 'xiph/vorbis' '1' 'L'
+git_ver_fn 'xiph/vorbis' '1' 'T'
 if build 'vorbis' "$g_ver"; then
     download "https://github.com/xiph/vorbis/archive/refs/tags/v$g_ver.tar.gz" "vorbis-$g_ver.tar.gz"
     execute ./autogen.sh
@@ -2208,7 +2208,7 @@ if build 'vorbis' "$g_ver"; then
 fi
 ffmpeg_libraries+=('--enable-libvorbis')
 
-git_ver_fn 'xiph/opus' '1' 'L'
+git_ver_fn 'xiph/opus' '1' 'T'
 if build 'opus' "$g_ver"; then
     download "https://github.com/xiph/opus/archive/refs/tags/v$g_ver.tar.gz" "opus-$g_ver.tar.gz"
     execute autoreconf -fis
@@ -2224,7 +2224,7 @@ if build 'opus' "$g_ver"; then
 fi
 ffmpeg_libraries+=('--enable-libopus')
 
-git_ver_fn 'hoene/libmysofa' '1' 'L'
+git_ver_fn 'hoene/libmysofa' '1' 'T'
 if build 'libmysofa' "$g_ver"; then
     download "https://github.com/hoene/libmysofa/archive/refs/tags/v$g_ver.tar.gz" "libmysofa-$g_ver.tar.gz"
     execute cmake -B build \
@@ -2240,8 +2240,8 @@ fi
 ffmpeg_libraries+=('--enable-libmysofa')
 
 git_ver_fn 'webmproject/libvpx' '1' 'T'
-if build 'vpx' '1.13.1'; then
-    download 'https://github.com/webmproject/libvpx/archive/refs/tags/v1.13.1.tar.gz' 'libvpx-1.13.1.tar.gz'
+if build 'vpx' "$g_ver"; then
+    download "https://github.com/webmproject/libvpx/archive/refs/tags/v$g_ver.tar.gz" "libvpx-$g_ver.tar.gz"
     execute ./configure --prefix="$workspace" \
                         --as=yasm \
                         --disable-unit-tests \
@@ -2250,7 +2250,7 @@ if build 'vpx' '1.13.1'; then
                         --enable-vp9-highbitdepth
     execute make "-j$cpu_threads"
     execute make install
-    build_done 'vpx' '1.13.1'
+    build_done 'vpx' "$g_ver"
 fi
 ffmpeg_libraries+=('--enable-libvpx')
 
@@ -2395,7 +2395,7 @@ ffmpeg_libraries+=('--enable-libdav1d')
 
 # RAV1E FAILS TO BUILD ON UBUNTU BIONIC AND DEBIAN 11 BULLSEYE
 if [ "$VER" != '18.04' ] && [ "$VER" != '11' ]; then
-    git_ver_fn 'xiph/rav1e' '1' 'L'
+    git_ver_fn 'xiph/rav1e' '1' 'T'
     if build 'rav1e' 'p20240102'; then
         get_rustc_ver="$(rustc --version | grep -Eo '[0-9 \.]+' | head -n1)"
         if [ "$get_rustc_ver" != '1.73.0' ]; then
@@ -2420,7 +2420,7 @@ if [ "$VER" != '18.04' ] && [ "$VER" != '11' ]; then
     ffmpeg_libraries+=('--enable-librav1e')
 fi
 
-git_ver_fn 'AOMediaCodec/libavif' '1' 'L'
+git_ver_fn 'AOMediaCodec/libavif' '1' 'T'
 if build 'avif' "$g_ver"; then
     download "https://github.com/AOMediaCodec/libavif/archive/refs/tags/v$g_ver.tar.gz" "avif-$g_ver.tar.gz"
     execute cmake -B build \
@@ -2438,7 +2438,7 @@ if build 'avif' "$g_ver"; then
     build_done 'avif' "$g_ver"
 fi
 
-git_ver_fn 'ultravideo/kvazaar' '1' 'L'
+git_ver_fn 'ultravideo/kvazaar' '1' 'T'
 if build 'kvazaar' "$g_ver"; then
     download_git 'https://github.com/ultravideo/kvazaar.git'
     execute ./autogen.sh
@@ -2504,7 +2504,7 @@ if build 'libbluray' "$g_ver1"; then
 fi
 ffmpeg_libraries+=('--enable-libbluray')
 
-git_ver_fn 'mediaarea/zenLib' '1' 'L'
+git_ver_fn 'mediaarea/zenLib' '1' 'T'
 if build 'zenlib' "$g_ver"; then
     download "https://github.com/MediaArea/ZenLib/archive/refs/tags/v$g_ver.tar.gz" "zenlib-$g_ver.tar.gz"
     cd Project/GNU/Library || exit 1
@@ -2517,7 +2517,7 @@ if build 'zenlib' "$g_ver"; then
     build_done 'zenlib' "$g_ver"
 fi
 
-git_ver_fn 'MediaArea/MediaInfoLib' '1' 'L'
+git_ver_fn 'MediaArea/MediaInfoLib' '1' 'T'
 if build 'mediainfo-lib' "$g_ver"; then
     download "https://github.com/MediaArea/MediaInfoLib/archive/refs/tags/v$g_ver.tar.gz" "mediainfo-lib-$g_ver.tar.gz"
     cd 'Project/GNU/Library' || exit 1
@@ -2530,7 +2530,7 @@ if build 'mediainfo-lib' "$g_ver"; then
     build_done 'mediainfo-lib' "$g_ver"
 fi
 
-git_ver_fn 'MediaArea/MediaInfo' '1' 'L'
+git_ver_fn 'MediaArea/MediaInfo' '1' 'T'
 if build 'mediainfo-cli' "$g_ver"; then
     download "https://github.com/MediaArea/MediaInfo/archive/refs/tags/v$g_ver.tar.gz" "mediainfo-cli-$g_ver.tar.gz"
     cd Project/GNU/CLI || exit 1
@@ -2559,7 +2559,7 @@ if build 'vid-stab' "$g_ver"; then
 fi
 ffmpeg_libraries+=('--enable-libvidstab')
 
-git_ver_fn 'dyne/frei0r' '1' 'L'
+git_ver_fn 'dyne/frei0r' '1' 'T'
 if build 'frei0r' "$g_ver"; then
     download "https://github.com/dyne/frei0r/archive/refs/tags/v$g_ver.tar.gz" "frei0r-$g_ver.tar.gz"
     execute cmake -B build \
@@ -2574,7 +2574,7 @@ if build 'frei0r' "$g_ver"; then
 fi
 ffmpeg_libraries+=('--enable-frei0r')
 
-git_ver_fn 'GPUOpen-LibrariesAndSDKs/AMF' '1' 'L'
+git_ver_fn 'GPUOpen-LibrariesAndSDKs/AMF' '1' 'T'
 g_sver="$(echo "$g_ver" | sed -E 's/^\.//g')"
 if build 'amf' "$g_sver"; then
     download "https://github.com/GPUOpen-LibrariesAndSDKs/AMF/archive/refs/tags/v$g_ver.tar.gz" "amf-$g_sver.tar.gz"
@@ -2586,13 +2586,13 @@ fi
 ffmpeg_libraries+=('--enable-amf')
 
 if [[ "$OS" == 'Arch' ]]; then
-    git_ver_fn 'gpac/gpac' '1' 'L'
+    git_ver_fn 'gpac/gpac' '1' 'T'
     if build 'gpac' "$g_ver"; then
         sudo pacman --noconfirm gpac
         build_done 'gpac' "$g_ver"
     fi
 else
-    git_ver_fn 'gpac/gpac' '1' 'L'
+    git_ver_fn 'gpac/gpac' '1' 'T'
     if build 'gpac' "$g_ver"; then
         download_git 'https://github.com/gpac/gpac.git'
         execute sudo ./configure --prefix="$install_dir" \
@@ -2784,11 +2784,11 @@ if [ ${?} -eq '0' ]; then
         ffmpeg_libraries+=("--nvccflags=-gencode arch=$gpu_arch")
         fi
     else
-        printf "%s\n\n" 'The Active GPU is made by AMD and the Geforce CUDA SDK Toolkit will not be enabled.'
+        printf " \n%s\n \n" 'The Active GPU is made by AMD and the Geforce CUDA SDK Toolkit will not be enabled.'
         sleep 5
 fi
 
-git_ver_fn 'Haivision/srt' '1' 'L'
+git_ver_fn 'Haivision/srt' '1' 'T'
 if build 'srt' "$g_ver"; then
     download "https://github.com/Haivision/srt/archive/refs/tags/v$g_ver.tar.gz" "srt-$g_ver.tar.gz"
     export OPENSSL_ROOT_DIR="$workspace"
@@ -2812,7 +2812,7 @@ if build 'srt' "$g_ver"; then
 fi
 ffmpeg_libraries+=('--enable-libsrt')
 
-git_ver_fn 'avisynth/avisynthplus' '1' 'L'
+git_ver_fn 'avisynth/avisynthplus' '1' 'T'
 if build 'avisynth' "$g_ver"; then
     download "https://github.com/AviSynth/AviSynthPlus/archive/refs/tags/v$g_ver.tar.gz" "avisynth-$g_ver.tar.gz"
     execute cmake -B build \
@@ -2825,15 +2825,15 @@ if build 'avisynth' "$g_ver"; then
 fi
 ffmpeg_libraries+=('--enable-avisynth')
 
-git_ver_fn 'vapoursynth/vapoursynth' '1' 'L'
-if build 'vapoursynth' "$g_ver"; then
-    download "https://github.com/vapoursynth/vapoursynth/archive/refs/tags/$g_ver.tar.gz" "vapoursynth-$g_ver.tar.gz"
+git_ver_fn 'vapoursynth/vapoursynth' '1' 'T'
+if build 'vapoursynth' 'R65'; then
+    download 'https://github.com/vapoursynth/vapoursynth/archive/refs/tags/R65.tar.gz' 'vapoursynth-R65.tar.gz'
     execute pip install Cython==0.29.36
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$cpu_threads"
     execute make install
-    build_done 'vapoursynth' "$g_ver"
+    build_done 'vapoursynth' 'R65'
 fi
 ffmpeg_libraries+=('--enable-vapoursynth')
 
@@ -2889,7 +2889,7 @@ box_out_banner_images()
 }
 box_out_banner_images 'Installing Image Tools'
 
-git_ver_fn 'strukturag/libheif' '1' 'L'
+git_ver_fn 'strukturag/libheif' '1' 'T'
 if build 'libheif' "$g_ver"; then
     download "https://github.com/strukturag/libheif/archive/refs/tags/v$g_ver.tar.gz" "libheif-$g_ver.tar.gz"
     source_flags_fn
@@ -2939,7 +2939,7 @@ if build 'libheif' "$g_ver"; then
     build_done 'libheif' "$g_ver"
 fi
 
-git_ver_fn 'uclouvain/openjpeg' '1' 'L'
+git_ver_fn 'uclouvain/openjpeg' '1' 'T'
 if build 'openjpeg' "$g_ver"; then
     download "https://codeload.github.com/uclouvain/openjpeg/tar.gz/refs/tags/v$g_ver" "openjpeg-$g_ver.tar.gz"
     execute cmake -B build \
