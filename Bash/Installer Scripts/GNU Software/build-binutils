@@ -37,10 +37,6 @@ cwd="$PWD"/binutils-build-script
 install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
-printf "%s\n%s\n\n"                          \
-    "Binutils Build Script - v${script_ver}" \
-    '==============================================='
-sleep 2
 
 #
 # CREATE OUTPUT DIRECTORY
@@ -240,15 +236,16 @@ fi
 #
 
 printf "%s\n%s\n%s\n\n" \
-    "Build Binutils from source" \
+    "Binutils Build Script - v${script_ver}" \
     '===============================================' \
     'Downloading the install files...'
 sleep 1
 
 cd "$cwd/$archive_dir" || exit 1
+
 autoreconf -fi -I /usr/share/aclocal
 cd build || exit 1
-../configure --prefix="$install_dir"                                 \
+../configure --prefix="$install_dir"                                   \
              --disable-werror                                          \
              --enable-default-compressed-debug-sections-algorithm=zstd \
              --enable-gold=default                                     \
