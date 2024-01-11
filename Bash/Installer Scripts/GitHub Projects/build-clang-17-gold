@@ -93,7 +93,7 @@ setup_environment() {
     CXXFLAGS="$CFLAGS"
     CPPFLAGS='-I/usr/local/include -I/usr/include'
     LDFLAGS='-Wl,-rpath -Wl,/usr/local/lib -fuse-ld=gold -L/usr/local/lib'
-    pc_type="$(curl -fsSL 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess' | bash)"
+    pc_type='x86_64-linux-gnu'
     export CC CFLAGS CPPFLAGS LDFLAGS CXX CXXFLAGS
     printf "%s\n\n" 'Environment setup complete.'
 }
