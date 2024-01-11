@@ -35,7 +35,7 @@ download_clang() {
     tag=$(curl -s "$base_url" | grep -oP 'llvmorg-17\.\d+\.\d+' | sort -V | tail -1)
     url="https://github.com/llvm/llvm-project/archive/refs/tags/$tag.tar.gz"
     filename="clang-${tag//llvmorg-/}.tar.gz"
-    src_dir="$filename%.tar.*}"
+    src_dir="${filename%.tar.*}"
 
     if [ ! -f "$filename" ]; then
         printf "%s\n\n" "Downloading Clang 17 source code from $url"
