@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import shutil
 import subprocess
 from datetime import datetime
 import smtplib
@@ -26,78 +27,27 @@ if not is_package_installed("python3-twilio"):
 
 from twilio.rest import Client
 
-def is_nas_available(path):
-    # Check if the directory exists and we have read access
-    available = os.path.isdir(path) and os.access(path, os.R_OK)
-    if not available:
-        error_message = "NAS drive is not available or not accessible. Please check the connection and permissions."
-        return available
-
 # Variables
-container_id = "replace-this"
-backup_folder = "/path/to/your/minecraft/backup/folder"
-server_files_path = "/path/to/your/logs/folder"
+max_backups = 4  # Maximum number of backups to keep
+container_id = "docker_container_id"
+backup_folder = "/path/to/backup/folder"
+server_files_path = "/path/to/minecraft/server/files"
 log_file_path = os.path.join(server_files_path, "backup_log.txt")
 
 # Twilio configuration
-twilio_account_sid = 'replace_this'
-twilio_auth_token = 'replace_this'
-twilio_phone_number = 'replace_this'  # Twilio provided phone number
-my_phone_number = 'replace_this'  # Your personal phone number to receive SMS
+twilio_account_sid = 'change-this'
+twilio_auth_token = 'change-this'
+twilio_phone_number = '+1xxxxxxxxxx'  # Twilio provided phone number ( +1 is for USA )
+my_phone_number = '+1xxxxxxxxxx'  # Your personal phone number to receive SMS ( +1 is for USA )
 
 # Email configuration
-email_sender = 'replace_this'
-email_password = 'replace_this'  # Use the App-Specific Password here
-email_receiver = 'replace_this'
-smtp_server = 'replace_this'
-smtp_port = replace_this  # 587 or 465 for SSL
+email_sender = 'an-email-address-that-sends-the-email'
+email_password = 'email-password'  # Use the App-Specific Password here
+email_receiver = 'an-email-address-that-receives-the-email'
+smtp_server = 'smtp.email.com'
+smtp_port = 587
 
-def get_timestamped_backup_folder(base_path):
-    timestamp = datetime.now().strftime("%I.%M.%p-%m.%d.%y")
-    return os.path.join(base_path, f"minecraft-forge-{timestamp}")
-
-def backup_files_with_rsync(source, destination):
-    try:
-        subprocess.run([
-            "rsync", "-avz", "--info=progress2", "--progress",
-            source, destination
-        ], check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-        log_message(f"Files from {source} backed up to {destination} successfully.")
-    except subprocess.CalledProcessError as e:
-        error_message = f"Error during backup: {e}"
-        log_message(error_message)
-        send_email("Backup Script Error", error_message)
-        send_sms(error_message)
-
-def send_email(subject, body):
-    msg = MIMEText(body)
-    msg['Subject'] = subject
-    msg['From'] = email_sender
-    msg['To'] = email_receiver
-
-    try:
-        server = smtplib.SMTP(smtp_server, smtp_port)
-        server.starttls()
-        server.login(email_sender, email_password)
-        server.sendmail(email_sender, email_receiver, msg.as_string())
-        server.quit()
-        print("Email sent successfully")
-    except Exception as e:
-        print(f"Error sending email: {e}")
-
-def send_sms(message):
-    client = Client(twilio_account_sid, twilio_auth_token)
-    try:
-        client.messages.create(to=my_phone_number, from_=twilio_phone_number, body=message)
-        print("SMS sent successfully")
-    except Exception as e:
-        print(f"Error sending SMS: {e}")
-
-def log_message(message):
-    timestamp = datetime.now().strftime("%I.%M.%p-%m.%d.%y")
-    with open(log_file_path, "a") as log_file:
-        log_file.write(f"{timestamp} - {message}\n")
-    print(message)
+# Function definitions and rest of the script...
 
 def is_nas_available(path):
     # Check if the directory exists and we have read access
@@ -122,15 +72,59 @@ def backup_files_with_rsync(source, destination):
         send_email("Backup Script Error", error_message)
         send_sms(error_message)
 
+def limit_backups(backup_folder):
+    # Get all directories in the backup folder
+    backup_dirs = [os.path.join(backup_folder, d) for d in os.listdir(backup_folder) if os.path.isdir(os.path.join(backup_folder, d))]
+    # Sort directories by creation time
+    backup_dirs.sort(key=lambda x: os.path.getctime(x))
+
+    # Remove the oldest backups if there are more than max_backups
+    while len(backup_dirs) > max_backups:
+        oldest_backup = backup_dirs.pop(0)
+        shutil.rmtree(oldest_backup)
+        log_message(f"Deleted old backup: {oldest_backup}")
+
+def get_timestamped_backup_folder(base_folder):
+    timestamp = datetime.now().strftime('%I.%M.%p-%m.%d.%y')
+    return os.path.join(base_folder, f"minecraft-forge-{timestamp}")
+
+def log_message(message):
+    timestamp = datetime.now().strftime('%I.%M.%p-%m.%d.%y')
+    formatted_message = f"{timestamp} - {message}"
+    print(formatted_message)  # Print to console
+    with open(log_file_path, "a") as log_file:  # Append to the log file
+        log_file.write(formatted_message + "\n")
+
+def stop_docker_container(container_id):
+    try:
+        subprocess.run(["docker", "stop", container_id], check=True)
+        log_message(f"Docker container {container_id} stopped successfully.")
+    except subprocess.CalledProcessError as e:
+        log_message(f"Failed to stop Docker container {container_id}: {e}")
+
+def start_docker_container(container_id):
+    try:
+        subprocess.run(["docker", "start", container_id], check=True)
+        log_message(f"Docker container {container_id} started successfully.")
+    except subprocess.CalledProcessError as e:
+        log_message(f"Failed to start Docker container {container_id}: {e}")
+
 def main():
     import sys
-    print(f"Running with Python interpreter: {sys.executable}")
     log_message("Backup script started.")
 
-    timestamped_backup_folder = get_timestamped_backup_folder(backup_folder)
+    # Stop the Docker container before backup
+    stop_docker_container(container_id)
 
-    if is_nas_available(backup_folder):
-        backup_files_with_rsync(server_files_path, timestamped_backup_folder)
+    try:
+        timestamped_backup_folder = get_timestamped_backup_folder(backup_folder)
+
+        if is_nas_available(backup_folder):
+            backup_files_with_rsync(server_files_path, timestamped_backup_folder)
+        limit_backups(backup_folder)
+    finally:
+        # Start the Docker container after backup, regardless of success
+        start_docker_container(container_id)
     
     log_message("Backup script finished.")
 
