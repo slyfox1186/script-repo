@@ -5,6 +5,7 @@
  -   [x] AutoHotkey
  -   [x] Batch
  -   [x] Powershell
+ -   [x] Python 3
  -   [x] Shell / Bash
  -   [x] Visual Basic / VBS
  -   [x] Windows Registry
