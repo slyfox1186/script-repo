@@ -86,7 +86,7 @@ def limit_backups(backup_folder):
 
 def get_timestamped_backup_folder(base_folder):
     timestamp = datetime.now().strftime('%I.%M.%p-%m.%d.%y')
-    return os.path.join(base_folder, f"minecraft-forge-{timestamp}")
+    return os.path.join(base_folder, f"mc-server-backup-{timestamp}")
 
 def log_message(message):
     timestamp = datetime.now().strftime('%I.%M.%p-%m.%d.%y')
