@@ -14,7 +14,13 @@ def log_message(message):
     with open(log_file_path, 'a') as log_file:
         log_file.write(f"{datetime.now().strftime('%I.%M.%p-%m.%d.%y')} - {message}")
 
+
 def backup_minecraft_server():
+    # Stop the Minecraft server Docker container
+    subprocess.run(['docker', 'stop', docker_container_id])
+    log_message('Minecraft server stopped for backup.')
+
+    
     # Creating a timestamp for the backup
     timestamp = datetime.now().strftime('%I.%M.%p-%m.%d.%y')
     backup_folder_name = f'minecraft_backup_{timestamp}'
@@ -30,7 +36,13 @@ def backup_minecraft_server():
         if minecraft_server_directory:
             # Copying the Minecraft server directory to the backup directory
             shutil.copytree(minecraft_server_directory, backup_path)
-            log_message(f'Backup successful. Backup stored in {backup_path}')
+            
+    log_message(f'Backup successful. Backup stored in {backup_path}')
+
+    # Restart the Minecraft server Docker container
+    subprocess.run(['docker', 'start', docker_container_id])
+    log_message('Minecraft server restarted after backup.')
+    
         else:
             log_message('Error: Could not find Minecraft server directory in Docker container.')
     except subprocess.CalledProcessError as e:
