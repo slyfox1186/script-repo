@@ -967,7 +967,8 @@ pkgs_fn()
     missing_packages=""
 
     # Loop through the array
-    for pkg in "${pkgs[@]}"; do
+    for pkg in "${pkgs[@]}"
+    do
         # Check if the package is installed
         if ! dpkg -l "$pkg" &>/dev/null; then
             # If not installed, add it to the missing packages list
