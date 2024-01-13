@@ -7,7 +7,7 @@ import os
 def setup_logger():
     """Setup a logger for the script."""
     logger = logging.getLogger('DockerMonitor')
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.ERROR)
     handler = logging.FileHandler(os.path.join(os.path.dirname(__file__), 'monitor.log'))
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     handler.setFormatter(formatter)
@@ -46,9 +46,9 @@ def restart_containers(containers, logger):
     """
     for container in containers:
         try:
-            logger.info(f"Attempting to restart container '{container}'.")
+            logger.debug(f"Attempting to restart container '{container}'.")
             subprocess.check_output(["docker", "restart", container])
-            logger.info(f"Container '{container}' has been restarted.")
+            logger.debug(f"Container '{container}' has been restarted.")
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to restart container '{container}'. Error: {e}")
 
