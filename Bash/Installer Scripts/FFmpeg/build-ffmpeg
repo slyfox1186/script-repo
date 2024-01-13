@@ -933,7 +933,7 @@ pkgs_fn()
     libcppabi_pkg="$(sudo apt list libc++abi* 2>/dev/null | grep -Eo 'libc\+\+abi-[0-9]+-dev' | uniq | sort -r | head -n1)"
     libunwind_pkg="$(sudo apt list libunwind* 2>/dev/null | grep -Eo 'libunwind-[0-9]+-dev' | uniq | sort -r | head -n1)"
 
-    # DEFINE AN ARRAY OF PACKAGE NAMES
+    # Define an array of apt package names
     pkgs=(
             $1 $libcppabi_pkg $libcpp_pkg $libunwind_pkg ant apt asciidoc autoconf autoconf-archive
             automake autopoint binutils bison build-essential cargo ccache checkinstall clang clang-tools
@@ -957,27 +957,31 @@ pkgs_fn()
             libsndfile1-dev libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev libssh-dev libssl-dev
             libsuitesparseconfig5 libsystemd-dev libtalloc-dev libtheora-dev libticonv-dev libtool libtool-bin
             libtwolame-dev libudev-dev libumfpack5 libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev
-            libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev
-            libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzmq3-dev libzstd-dev libzvbi-dev
-            libzzip-dev llvm lshw lzma-dev m4 mesa-utils meson nasm ninja-build pandoc python3 python3-pip ragel
-            re2c scons sudo texi2html texinfo tk-dev unzip valgrind wget xmlto zlib1g-dev
+            libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev libxfixes-dev
+            libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzmq3-dev libzstd-dev
+            libzvbi-dev libzzip-dev llvm lshw lzma-dev m4 mesa-utils meson nasm ninja-build pandoc python3
+            python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip valgrind wget xmlto zlib1g-dev
 )
 
-    # LOOP THROUGH THE PKGS ARRAY
-    missing_pkgs=""
-    for pkg in "${pkgs[@]}"
-    do
-        if [ "$(dpkg-query -W -f='${Status}' "$pkg" | grep -c 'ok installed')" -eq 0 ]; then
-            missing_pkgs+="$pkg "
+    # Initialize an empty string for missing packages
+    missing_packages=""
+
+    # Loop through the array
+    for pkg in "${pkgs[@]}"; do
+        # Check if the package is installed
+        if ! dpkg -l "$pkg" &>/dev/null; then
+            # If not installed, add it to the missing packages list
+            missing_packages+="$pkg "
         fi
     done
 
-    # CHECK IF THERE ARE ANY PKGS TO INSTALL
-    if [ -n "$missing_pkgs" ]; then
+    # Check if there are any missing packages
+    if [ -n "$missing_packages" ]; then
+        # Install missing packages
         printf "\n%s\n\n" "Installing missing apt packages..."
-        sudo apt-get -qq -y install $missing_pkgs
-    else=
-        printf "%s\n\n" "The packages are already installed."
+        sudo apt -y install $missing_packages
+    else
+        printf "%s\n\n" "All packages are already installed."
     fi
 }
 
