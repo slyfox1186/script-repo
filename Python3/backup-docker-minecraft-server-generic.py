@@ -16,7 +16,7 @@ def log_message(message):
 
 def backup_minecraft_server():
     # Creating a timestamp for the backup
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    timestamp = datetime.now().strftime('%I.%M.%p-%m.%d.%y')
     backup_folder_name = f'minecraft_backup_{timestamp}'
     backup_path = os.path.join(backup_directory, backup_folder_name)
 
