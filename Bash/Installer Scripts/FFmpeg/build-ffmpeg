@@ -7,7 +7,7 @@
 ##
 ##  Script version: 3.3.2
 ##
-##  Updated: 01.10.24
+##  Updated: 01.08.24
 ##
 ##  Purpose:
 ##
@@ -42,7 +42,7 @@
 ##    - improved the regex coding to avoid downloading a RELEASE CANDIDATE OF A PROGRAM during each API call (rev2)
 ##    - libtesseract & leptonica to pull from their latest GitHub release
 ##    - ffmpeg to version n5.1.4
-##    - rav1e library to version (p20240102 - 11.28.23)
+##    - rav1e library to version (0.7.1 - 11.28.23)
 ##    - abseil library
 ##    - aom/av1 library
 ##    - libvpx library
@@ -108,7 +108,6 @@ LDEXEFLAGS=''
 ffmpeg_libraries=()
 latest='false'
 regex_str='(rc|RC|master)+[0-9]*$' # SET THE REGEX VARIABLE TO CHECK FOR RELEASE CANDIDATES
-cuda_flag=true
 debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
@@ -160,13 +159,13 @@ source_flags_fn()
     CC='gcc'
     CXX='g++'
     CXXFLAGS='-g -O3 -march=native'
-    CFLAGS="$CXXFLAGS -I$workspace/include -I$workspace/include/jxl -I$workspace/include/fdk-aac"
-    CFLAGS+=" -I$workspace/include/CL -I$workspace/include/avisynth -I/usr/include/SDL2 -I/usr/lib/x86_64-linux-gnu/pulseaudio"
+    CFLAGS="$CXXFLAGS -I$workspace/include -I$workspace/include/jxl -I$workspace/include/fdk-aac -I$workspace/include/CL"
+    CFLAGS+=" -I$workspace/include/avisynth  -I/usr/local/include -I/usr/include -I/usr/include/SDL2 -I/usr/lib/x86_64-linux-gnu/pulseaudio"
     CFLAGS+=' -I/usr/include/openjpeg-2.5 -I/usr/include/vk_video -I/usr/include/vulkan -I/usr/include/flite'
-    CPPFLAGS="-I$workspace/include"
+    CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include"
     EXTRALIBS="-lm -lpthread -lz -lstdc++ -lgcc_s -lgcc -lrt -ldl -lnuma -L/usr/local/lib -lbrotlicommon -lbrotlidec -lbrotlienc"
     EXTRALIBS+=" -L/usr/local/lib -lhwy -ltesseract -L$workspace/lib -llcms2 -llcms2_threaded -L/usr/local/cuda/targets/x86_64-linux/lib -lOpenCL"
-    EXTRALIBS+=" $(pkg-config --libs x265 2>/dev/null) $(pkg-config --libs libchromaprint 2>/dev/null)"
+    EXTRALIBS+=" $(pkg-config --libs x265 2>/dev/null) $(pkg-config --libs libchromaprint 2>/dev/null) $(pkg-config --libs aom 2>/dev/null)"
     LDFLAGS="-Wl,--as-needed -L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu"
     LDFLAGS+=' -L/usr/local/lib/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/local/lib'
     LDFLAGS+=' -L/usr/lib64 -L/usr/lib/x86_64-linux-gnu -L/usr/lib -L/lib64 -L/lib'
@@ -547,73 +546,75 @@ gpu_arch_fn()
 {
     local gpu_name gpu_type
 
+    amd_gpu_test="$(glxinfo | grep -E 'OpenGL renderer' | grep -Eo 'AMD')"
     nvidia_gpu_test="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
 
-    if [ -n "$nvidia_gpu_test" ]; then
+    if [ -z "$amd_gpu_test" ] || [ -n "$nvidia_gpu_test" ]; then
         gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -r | head -n 1)"
-    fi
-    if [[ "$gpu_name" == 'name' ]]; then
-        gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort | head -n 1)"
-    fi
+        if [[ "$gpu_name" == 'name' ]]; then
+            gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort | head -n 1)"
+        fi
 
-    case "$gpu_name" in
-        'Quadro P2000')                 gpu_type=1;;
-        'NVIDIA GeForce GT 1010')       gpu_type=1;;
-        'NVIDIA GeForce GTX 1030')      gpu_type=1;;
-        'NVIDIA GeForce GTX 1050')      gpu_type=1;;
-        'NVIDIA GeForce GTX 1060')      gpu_type=1;;
-        'NVIDIA GeForce GTX 1070')      gpu_type=1;;
-        'NVIDIA GeForce GTX 1080')      gpu_type=1;;
-        'NVIDIA TITAN Xp')              gpu_type=1;;
-        'NVIDIA Tesla P40')             gpu_type=1;;
-        'NVIDIA Tesla P4')              gpu_type=1;;
-        'NVIDIA GeForce GTX 1180')      gpu_type=2;;
-        'NVIDIA GeForce GTX Titan V')   gpu_type=2;;
-        'Quadro GV100')                 gpu_type=2;;
-        'NVIDIA Tesla V100')            gpu_type=2;;
-        'NVIDIA GeForce GTX 1660 Ti')   gpu_type=3;;
-        'NVIDIA GeForce RTX 2060')      gpu_type=3;;
-        'NVIDIA GeForce RTX 2070')      gpu_type=3;;
-        'NVIDIA GeForce RTX 2080')      gpu_type=3;;
-        'Quadro 4000')                  gpu_type=3;;
-        'Quadro 5000')                  gpu_type=3;;
-        'Quadro 6000')                  gpu_type=3;;
-        'Quadro 8000')                  gpu_type=3;;
-        'NVIDIA T1000')                 gpu_type=3;;
-        'NVIDIA T2000')                 gpu_type=3;;
-        'NVIDIA Tesla T4')              gpu_type=3;;
-        'NVIDIA GeForce RTX 3050')      gpu_type=4;;
-        'NVIDIA GeForce RTX 3060')      gpu_type=4;;
-        'NVIDIA GeForce RTX 3070')      gpu_type=4;;
-        'NVIDIA GeForce RTX 3080')      gpu_type=4;;
-        'NVIDIA GeForce RTX 3080 Ti')   gpu_type=4;;
-        'NVIDIA GeForce RTX 3090')      gpu_type=4;;
-        'NVIDIA RTX A2000')             gpu_type=4;;
-        'NVIDIA RTX A3000')             gpu_type=4;;
-        'NVIDIA RTX A4000')             gpu_type=4;;
-        'NVIDIA RTX A5000')             gpu_type=4;;
-        'NVIDIA RTX A6000')             gpu_type=4;;
-        'NVIDIA GeForce RTX 4080')      gpu_type=5;;
-        'NVIDIA GeForce RTX 4090')      gpu_type=5;;
-        'NVIDIA H100')                  gpu_type=6;;
-        *)                              fail_fn "Error: Unable to define \"\$gpu_name\" in the function \"gpu_arch_fn\". (Line: $LINENO)";;
-    esac
-
-    if [ -n "$gpu_type" ]; then
-        case "$gpu_type" in
-            1)      gpu_arch='compute_61,code=sm_61';;
-            2)      gpu_arch='compute_70,code=sm_70';;
-            3)      gpu_arch='compute_75,code=sm_75';;
-            4)      gpu_arch='compute_86,code=sm_86';;
-            5)      gpu_arch='compute_89,code=sm_89';;
-            6)      gpu_arch='compute_90,code=sm_90';;
-            *)      fail_fn "Error: Unable to define \"\$gpu_arch\" in the function \"gpu_arch_fn\". (Line: $LINENO)";;
+        case "$gpu_name" in
+            'Quadro P2000')                 gpu_type=1;;
+            'NVIDIA GeForce GT 1010')       gpu_type=1;;
+            'NVIDIA GeForce GTX 1030')      gpu_type=1;;
+            'NVIDIA GeForce GTX 1050')      gpu_type=1;;
+            'NVIDIA GeForce GTX 1060')      gpu_type=1;;
+            'NVIDIA GeForce GTX 1070')      gpu_type=1;;
+            'NVIDIA GeForce GTX 1080')      gpu_type=1;;
+            'NVIDIA TITAN Xp')              gpu_type=1;;
+            'NVIDIA Tesla P40')             gpu_type=1;;
+            'NVIDIA Tesla P4')              gpu_type=1;;
+            'NVIDIA GeForce GTX 1180')      gpu_type=2;;
+            'NVIDIA GeForce GTX Titan V')   gpu_type=2;;
+            'Quadro GV100')                 gpu_type=2;;
+            'NVIDIA Tesla V100')            gpu_type=2;;
+            'NVIDIA GeForce GTX 1660 Ti')   gpu_type=3;;
+            'NVIDIA GeForce RTX 2060')      gpu_type=3;;
+            'NVIDIA GeForce RTX 2070')      gpu_type=3;;
+            'NVIDIA GeForce RTX 2080')      gpu_type=3;;
+            'Quadro 4000')                  gpu_type=3;;
+            'Quadro 5000')                  gpu_type=3;;
+            'Quadro 6000')                  gpu_type=3;;
+            'Quadro 8000')                  gpu_type=3;;
+            'NVIDIA T1000')                 gpu_type=3;;
+            'NVIDIA T2000')                 gpu_type=3;;
+            'NVIDIA Tesla T4')              gpu_type=3;;
+            'NVIDIA GeForce RTX 3050')      gpu_type=4;;
+            'NVIDIA GeForce RTX 3060')      gpu_type=4;;
+            'NVIDIA GeForce RTX 3070')      gpu_type=4;;
+            'NVIDIA GeForce RTX 3080')      gpu_type=4;;
+            'NVIDIA GeForce RTX 3080 Ti')   gpu_type=4;;
+            'NVIDIA GeForce RTX 3090')      gpu_type=4;;
+            'NVIDIA RTX A2000')             gpu_type=4;;
+            'NVIDIA RTX A3000')             gpu_type=4;;
+            'NVIDIA RTX A4000')             gpu_type=4;;
+            'NVIDIA RTX A5000')             gpu_type=4;;
+            'NVIDIA RTX A6000')             gpu_type=4;;
+            'NVIDIA GeForce RTX 4080')      gpu_type=5;;
+            'NVIDIA GeForce RTX 4090')      gpu_type=5;;
+            'NVIDIA H100')                  gpu_type=6;;
+            *)                              fail_fn "Error: Unable to define \"\$gpu_name\" in the function \"gpu_arch_fn\". (Line: $LINENO)";;
         esac
-    else
-        fail_fn "Error: Failed to define \"\$gpu_type\". (Line: $LINENO)"
-    fi
 
-    return 0
+        if [ -n "$gpu_type" ]; then
+            case "$gpu_type" in
+                1)      gpu_arch='compute_61,code=sm_61';;
+                2)      gpu_arch='compute_70,code=sm_70';;
+                3)      gpu_arch='compute_75,code=sm_75';;
+                4)      gpu_arch='compute_86,code=sm_86';;
+                5)      gpu_arch='compute_89,code=sm_89';;
+                6)      gpu_arch='compute_90,code=sm_90';;
+                *)      fail_fn "Error: Unable to define \"\$gpu_arch\" in the function \"gpu_arch_fn\". (Line: $LINENO)";;
+            esac
+        else
+            fail_fn "Error: Failed to define \"\$gpu_type\". (Line: $LINENO)"
+        fi
+        return 0
+    else
+        return 1
+    fi
 }
 
 # PRINT THE SCRIPT OPTIONS
@@ -844,9 +845,9 @@ install_cuda_fn()
     local choice
 
     amd_gpu_test="$(glxinfo | grep -E 'OpenGL renderer' | grep -Eo 'AMD\s.*$')"
-    if [ -f '/usr/local/cuda/version.json' ]; then
-        nvidia_gpu_test="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
-        # Update the OS variable before continuing
+    nvidia_gpu_test="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
+
+    if [ -z "$amd_gpu_test" ] || [ -n "$nvidia_gpu_test" ]; then
         get_ver_fn1
         if [[ "$OS" == 'Arch' ]]; then
             find_nvcc="$(sudo find /opt/ -type f -name 'nvcc')"
@@ -875,7 +876,6 @@ install_cuda_fn()
                         export PATH
                         ;;
                 2)
-                        cuda_flag=false
                         PATH="$PATH:$cuda_path"
                         export PATH
                         ;;
@@ -976,25 +976,26 @@ pkgs_fn()
     if [ -n "$missing_pkgs" ]; then
         printf "\n%s\n\n" "Installing missing apt packages..."
         sudo apt-get -qq -y install $missing_pkgs
-    else
+    else=
         printf "%s\n\n" "The packages are already installed."
     fi
 }
 
 x265_fix_libs_fn()
 {
-    local x265_libs_208
+    local x265_libs x265_libs_trim
 
-    x265_libs_208="$(find /usr/local/lib/ -type f -name 'libx265.so.208' -print | head -n1)"
+    x265_libs="$(find /usr/local/lib/ -type f -name 'libx265.so.*')"
+    x265_libs_trim="$(echo "$x265_libs" | sed 's:.*/::' | head -n1)"
 
     case "$OS" in
         Arch)
-                    sudo cp -f "$x265_libs_208" '/usr/lib'
-                    sudo ln -sf '/usr/lib/libx265.so.208' '/usr/lib/libx265.so'
+                    sudo cp -f "$x265_libs" '/usr/lib'
+                    sudo ln -sf "/usr/lib/$x265_libs_trim" '/usr/lib/libx265.so'
                     ;;
         *)
-                    sudo cp -f "$x265_libs_208" '/usr/lib/x86_64-linux-gnu'
-                    sudo ln -sf '/usr/lib/x86_64-linux-gnu/libx265.so.208' '/usr/lib/x86_64-linux-gnu/libx265.so'
+                    sudo cp -f "$x265_libs" '/usr/lib/x86_64-linux-gnu'
+                    sudo ln -sf "/usr/lib/x86_64-linux-gnu/$x265_libs_trim" '/usr/lib/x86_64-linux-gnu/libx265.so'
                     ;;
     esac
 }
@@ -1411,6 +1412,14 @@ if build 'pkg-config' '0.29.2'; then
     build_done 'pkg-config' '0.29.2'
 fi
 
+git_ver_fn 'mesonbuild/meson' '1' 'T'
+if build 'meson' "$g_ver"; then
+    download "https://github.com/mesonbuild/meson/archive/refs/tags/$g_ver.tar.gz" "meson-$g_ver.tar.gz"
+    execute python3 setup.py build
+    execute sudo python3 setup.py install --prefix="$install_dir"
+    build_done 'meson' "$g_ver"
+fi
+
 if [[ "$OS" == 'Arch' ]]; then
     librist_arch_fn
 else
@@ -1518,9 +1527,7 @@ if build 'libpng' '1.6.40'; then
                         --enable-hardware-optimizations=yes \
                         --with-pic
     execute make "-j$cpu_threads"
-    execute make install-header-links
-    execute make install-library-links
-    execute make install
+    execute make install-header-links install-library-links install
     build_done 'libpng' '1.6.40'
 fi
 
@@ -2038,7 +2045,9 @@ git_ver_fn 'akheron/jansson' '1' 'T'
 if build 'jansson' "$g_ver"; then
     download "https://github.com/akheron/jansson/archive/refs/tags/v$g_ver.tar.gz" "jansson-$g_ver.tar.gz"
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace"
+    execute ./configure --prefix="$workspace" \
+                        --{build,host}="$pc_type" \
+                        --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     build_done 'jansson' "$g_ver"
@@ -2198,8 +2207,8 @@ if build 'vorbis' "$g_ver"; then
                   -DCMAKE_INSTALL_PREFIX="$install_dir" \
                   -DCMAKE_BUILD_TYPE=Release \
                   -DBUILD_SHARED_LIBS=ON \
-                  -DOGG_INCLUDE_DIR="$install_dir"/include \
-                  -DOGG_LIBRARY="$install_dir"/lib/libogg.so \
+                  -DOGG_INCLUDE_DIR="$install_dir/include" \
+                  -DOGG_LIBRARY="$install_dir/lib/libogg.so" \
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute sudo ninja "-j$cpu_threads" -C build install
@@ -2349,7 +2358,7 @@ if [ -n "$amd_gpu_test" ]; then
 fi
 
 # NEED TO UPDATE THIS REPO FROM TIME TO TIME MANUALLY
-aom_ver=6054fae218eda6e53e1e3b4f7ef0fff4877c7bf1
+aom_ver=db0844e82a90aa32a04bb1a9b0ab5d050092cda6
 # FAILED TO BUILD FFMPEG 12.28.23 = d3b7ce41e0bd9afe93564124c31a3d12beb6eda7
 aom_sver="${aom_ver::7}"
 if build 'av1' "$aom_sver"; then
@@ -2357,7 +2366,7 @@ if build 'av1' "$aom_sver"; then
     mkdir -p "$packages/aom_build"
     cd "$packages/aom_build" || exit 1
     execute cmake -B build \
-                  -DCMAKE_INSTALL_PREFIX="$workspace" \
+                  -DCMAKE_INSTALL_PREFIX="$install_dir" \
                   -DCMAKE_BUILD_TYPE=Release \
                   -DBUILD_SHARED_LIBS=OFF \
                   -DCONFIG_AV1_DECODER=1 \
@@ -2372,7 +2381,7 @@ if build 'av1' "$aom_sver"; then
                   -G Ninja -Wno-dev \
                   "$packages"/av1
     execute ninja "-j$cpu_threads" -C build
-    execute ninja -C build install
+    execute sudo ninja -C build install
     build_done 'av1' "$aom_sver"
 fi
 ffmpeg_libraries+=('--enable-libaom')
@@ -2395,26 +2404,26 @@ ffmpeg_libraries+=('--enable-libdav1d')
 # RAV1E FAILS TO BUILD ON UBUNTU BIONIC AND DEBIAN 11 BULLSEYE
 if [ "$VER" != '18.04' ] && [ "$VER" != '11' ]; then
     git_ver_fn 'xiph/rav1e' '1' 'T'
-    if build 'rav1e' 'p20240102'; then
+    if build 'rav1e' '0.7.1'; then
         get_rustc_ver="$(rustc --version | grep -Eo '[0-9 \.]+' | head -n1)"
         if [ "$get_rustc_ver" != '1.73.0' ]; then
             echo '$ Installing RustUp'
             curl -sSf --proto '=https' --tlsv1.2 'https://sh.rustup.rs' | sh -s -- -y &>/dev/null
-            . "$HOME"/.cargo/env
+            source "$HOME"/.cargo/env
             if [ -f "$HOME"/.zshrc ]; then
-                . "$HOME"/.zshrc
+                source "$HOME"/.zshrc
             else
-                . "$HOME"/.bashrc
+                source "$HOME"/.bashrc
             fi
             rm -fr "$HOME"/.cargo/registry/index/* "$HOME"/.cargo/.package-cache
         fi
         execute cargo install cargo-c
-        download 'https://github.com/xiph/rav1e/archive/refs/tags/p20240102.tar.gz' 'rav1e-p20240102.tar.gz'
+        download 'https://github.com/xiph/rav1e/archive/refs/tags/v0.7.1.tar.gz' 'rav1e-0.7.1.tar.gz'
         execute cargo cinstall --prefix="$workspace" \
                                --library-type=staticlib \
                                --crt-static \
                                --release
-        build_done 'rav1e' 'p20240102'
+        build_done 'rav1e' '0.7.1'
     fi
     ffmpeg_libraries+=('--enable-librav1e')
 fi
@@ -2610,8 +2619,8 @@ fi
 
 # VERSIONS >= 1.4.0 BREAKS FFMPEG DURING THE BUILD
 git_ver_fn '24327400' '3' 'T'
-if build 'svt-av1' '1.4.0'; then
-    download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v1.4.0/SVT-AV1-v1.4.0.tar.bz2' 'svt-av1-1.4.0.tar.bz2'
+if build 'svt-av1' '1.8.0'; then
+    download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v1.8.0/SVT-AV1-v1.8.0.tar.bz2' 'svt-av1-1.8.0.tar.bz2'
     execute cmake -S . -B Build/linux \
                        -DCMAKE_INSTALL_PREFIX="$workspace" \
                        -DCMAKE_BUILD_TYPE=Release \
@@ -2628,7 +2637,7 @@ if build 'svt-av1' '1.4.0'; then
     execute ninja "-j$cpu_threads" -C Build/linux install
     cp -f 'Build/linux/SvtAv1Enc.pc' "$workspace"/lib/pkgconfig
     cp -f 'Build/linux/SvtAv1Dec.pc' "$workspace"/lib/pkgconfig
-    build_done 'svt-av1' '1.4.0'
+    build_done 'svt-av1' '1.8.0'
 fi
 ffmpeg_libraries+=('--enable-libsvtav1')
 
@@ -2658,8 +2667,8 @@ export CC=clang CXX=clang++
 g_ver=8ee01d45b05cdbc9da89b884815257807a514bc8
 # FAILED TO BUILD FFMPEG 12.28.23 = ce8642f22123f0b8cf105c88fc1e8af9888bd345
 g_sver="${g_ver::7}"
-if build 'x265' "$g_sver"; then
-    download "https://bitbucket.org/multicoreware/x265_git/get/$g_ver.tar.bz2" "x265-$g_sver.tar.bz2"
+if build 'x265' '3.5'; then
+    download 'https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz' 'x265-3.5.tar.gz'
     cd build/linux || exit 1
     rm -fr {8,10,12}bit 2>/dev/null
     mkdir -p {8,10,12}bit
@@ -2723,7 +2732,7 @@ EOF
     # FIX THE x265 SHARED LIBRARY ISSUE
     x265_fix_libs_fn
 
-    build_done 'x265' "$g_sver"
+    build_done 'x265' '3.5'
 fi
 ffmpeg_libraries+=('--enable-libx265')
 
@@ -2743,7 +2752,9 @@ fi
 
 # GET THE GPU ARCHITECTURE
 # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
-if gpu_arch_fn; then
+gpu_arch_fn
+
+if [ ${?} -eq '0' ]; then
     if [ -n "$iscuda" ]; then
         if build 'nv-codec-headers' '12.0.16.1'; then
             download 'https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.0.16.1/nv-codec-headers-12.0.16.1.tar.gz'
@@ -2781,8 +2792,7 @@ if gpu_arch_fn; then
         ffmpeg_libraries+=("--nvccflags=-gencode arch=$gpu_arch")
         fi
     else
-        printf " \n%s\n \n" 'The Active GPU is made by AMD and the Geforce CUDA SDK Toolkit will not be enabled.'
-        sleep 5
+        echo 'The Active GPU is made by AMD and the Geforce CUDA SDK Toolkit will not be enabled.'
 fi
 
 git_ver_fn 'Haivision/srt' '1' 'T'
