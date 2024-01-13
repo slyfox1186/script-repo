@@ -97,9 +97,9 @@ ffmpeg_url="https://github.com/FFmpeg/FFmpeg/archive/refs/tags/$ffmpeg_sver.tar.
 cuda_latest_ver='12.3.2'
 cuda_url="https://developer.download.nvidia.com/compute/cuda/$cuda_latest_ver"
 cuda_pin_url='https://developer.download.nvidia.com/compute/cuda/repos'
-cwd="$PWD"/ffmpeg-build-script
-packages="$cwd"/packages
-workspace="$cwd"/workspace
+cwd="$PWD/ffmpeg-build-script"
+packages="$cwd/packages"
+workspace="$cwd/workspace"
 install_dir='/usr/local'
 pc_type='x86_64-linux-gnu'
 web_repo='https://github.com/slyfox1186/script-repo'
@@ -126,15 +126,14 @@ export MAKEFLAGS
 # CREATE THE OUTPUT DIRECTORIES
 #
 
-mkdir -p "$packages"/nvidia-cuda "$workspace"/logs
+mkdir -p "$packages/nvidia-cuda" "$workspace/logs"
 
 #
 # PRINT SCRIPT BANNER
 #
 
 clear
-box_out_banner1()
-{
+box_out_banner1() {
     input_char=$(echo "${@}" | wc -c)
     line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
     tput bold
@@ -154,8 +153,7 @@ printf "\n%s\n\n" "Utilizing ($cpu_threads) CPU threads. Parallel processing ini
 # SET THE CC/CPP COMPILERS + CUSTOMIZED COMPILER OPTIMIZATION FLAGS
 #
 
-source_flags_fn()
-{
+source_flags_fn() {
     CC='gcc'
     CXX='g++'
     CXXFLAGS='-g -O3 -march=native'
@@ -173,21 +171,18 @@ source_flags_fn()
 }
 source_flags_fn
 
-exit_fn()
-{
+exit_fn() {
     printf "%s\n%s\n\n" \
         'Make sure to star this repository to show your support!' "$web_repo"
     exit 0
 }
 
-fail_fn()
-{
+fail_fn() {
     printf "\n%s\n\n%s\n\n" "$1" "For help or to report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
-cleanup_fn()
-{
+cleanup_fn() {
     local choice
 
     printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
@@ -209,8 +204,7 @@ cleanup_fn()
     esac
 }
 
-ff_ver_fn()
-{
+ff_ver_fn() {
     printf "\n%s\n%s\n%s\n\n" \
         '========================================================' \
         '                     FFmpeg Version                     ' \
@@ -219,8 +213,7 @@ ff_ver_fn()
     sleep 3
 }
 
-download()
-{
+download() {
     dl_path="$packages"
     dl_url="$1"
     dl_file="${2:-"${1##*/}"}"
@@ -271,8 +264,7 @@ download()
     cd "$target_dir" || fail_fn "Error: Failed to cd into \"$target_dir\". (Line: $LINENO)"
 }
 
-download_git()
-{
+download_git() {
     local dl_path dl_url dl_file target_dir
 
     dl_path="$packages"
@@ -311,8 +303,7 @@ download_git()
 # PULL THE LATEST VERSIONS OF EACH PACKAGE FROM THE WEBSITE API
 #
 
-git_1_fn()
-{
+git_1_fn() {
     # Initial cnt
     local cnt curl_cmd git_repo git_url
     git_repo="$1"
@@ -345,8 +336,7 @@ git_1_fn()
     fi
 }
 
-git_2_fn()
-{
+git_2_fn() {
     local cnt repo url
     repo="$1"
     url="$2"
@@ -371,8 +361,7 @@ git_2_fn()
     done
 }
 
-git_3_fn()
-{
+git_3_fn() {
     local cnt repo url
     repo="$1"
     url="$2"
@@ -398,8 +387,7 @@ git_3_fn()
     done
 }
 
-git_4_fn()
-{
+git_4_fn() {
     local cnt repo
     repo="$1"
     cnt=0
@@ -420,8 +408,7 @@ git_4_fn()
     done
 }
 
-git_5_fn()
-{
+git_5_fn() {
     local cnt repo
     repo="$1"
     cnt=0
@@ -442,8 +429,7 @@ git_5_fn()
     done
 }
 
-git_6_fn()
-{
+git_6_fn() {
     local cnt repo
     repo="$1"
     cnt=0
@@ -464,8 +450,7 @@ git_6_fn()
     done
 }
 
-git_ver_fn()
-{
+git_ver_fn() {
     local t_flag u_flag v_flag v_tag v_url
 
     v_url="$1"
@@ -494,8 +479,7 @@ git_ver_fn()
     "$u_flag" "$v_url" "$t_flag" 2>/dev/null
 }
 
-execute()
-{
+execute() {
     echo "$ $*"
 
     if [ "$debug" = 'ON' ]; then
@@ -511,8 +495,7 @@ execute()
     fi
 }
 
-build()
-{
+build() {
     printf "\n%s\n%s\n" \
         "Building $1 - version $2" \
         '========================================================'
@@ -534,19 +517,17 @@ build()
 
 build_done() { echo "$2" > "$packages/$1.done"; }
 
-library_exists()
-{
+library_exists() {
     if ! [[ -x "$(pkg-config --exists --print-errors "$1" 2>&1 >/dev/null)" ]]; then
         return 1
     fi
     return 0
 }
 
-gpu_arch_fn()
-{
+gpu_arch_fn() {
     local gpu_name gpu_type
 
-    amd_gpu_test="$(glxinfo | grep -E 'OpenGL renderer' | grep -Eo 'AMD')"
+    amd_gpu_test="$(glxinfo 2>/dev/null | grep -E 'OpenGL renderer' | grep -Eo 'AMD')"
     nvidia_gpu_test="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
 
     if [ -z "$amd_gpu_test" ] || [ -n "$nvidia_gpu_test" ]; then
@@ -618,8 +599,7 @@ gpu_arch_fn()
 }
 
 # PRINT THE SCRIPT OPTIONS
-usage()
-{
+usage() {
     printf "%s\n\n" "Usage: $script_name [OPTIONS]"
     echo 'Options:'
     echo '    -h, --help                                       Display usage information'
@@ -692,8 +672,7 @@ else
     set_ccache_dir='/usr/lib/ccache'
 fi
 
-path_fn()
-{
+path_fn() {
 PATH="\
 $set_ccache_dir:\
 $cuda_bin_path:\
@@ -711,11 +690,9 @@ export PATH
 }
 path_fn
 
-path_clean_fn()
-{
+path_clean_fn() {
 PATH="\
-/usr/lib/ccache/bin:\
-/usr/lib/ccache:\
+$set_ccache_dir:\
 $cuda_bin_path:\
 $HOME/.local/bin:\
 /usr/local/sbin:\
@@ -752,8 +729,7 @@ $workspace/share/pkgconfig:\
 "
 export PKG_CONFIG_PATH
 
-cuda_download_fn()
-{
+cuda_download_fn() {
     local choice
     clear
 
@@ -840,11 +816,10 @@ cuda_download_fn()
 # REQUIRED GEFORCE CUDA DEVELOPMENT PACKAGES
 #
 
-install_cuda_fn()
-{
+install_cuda_fn() {
     local choice
 
-    amd_gpu_test="$(glxinfo | grep -E 'OpenGL renderer' | grep -Eo 'AMD\s.*$')"
+    amd_gpu_test="$(glxinfo 2>/dev/null | grep -E 'OpenGL renderer' | grep -Eo 'AMD\s.*$')"
     nvidia_gpu_test="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
 
     if [ -z "$amd_gpu_test" ] || [ -n "$nvidia_gpu_test" ]; then
@@ -925,8 +900,7 @@ install_cuda_fn()
 # REQUIRED BUILD PACKAGES
 #
 
-pkgs_fn()
-{
+pkgs_fn() {
     local libcpp_pkgs pkg pkgs missing_pkg missing_pkgs
 
     libcpp_pkg="$(sudo apt list libc++* 2>/dev/null | grep -Eo 'libc\+\+-[0-9\-]+-dev' | uniq | sort -r | head -n1)"
@@ -969,8 +943,8 @@ pkgs_fn()
     # Loop through the array
     for pkg in "${pkgs[@]}"
     do
-        # Check if the package is installed
-        if ! dpkg -l "$pkg" &>/dev/null; then
+        # Check if the package is installed using dpkg-query
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             # If not installed, add it to the missing packages list
             missing_packages+="$pkg "
         fi
@@ -979,15 +953,14 @@ pkgs_fn()
     # Check if there are any missing packages
     if [ -n "$missing_packages" ]; then
         # Install missing packages
-        printf "\n%s\n\n" "Installing missing apt packages..."
+        printf "\n%s\n\n" "Installing missing packages: $missing_packages"
         sudo apt -y install $missing_packages
     else
         printf "%s\n\n" "All packages are already installed."
     fi
 }
 
-x265_fix_libs_fn()
-{
+x265_fix_libs_fn() {
     local x265_libs x265_libs_trim
 
     x265_libs="$(find /usr/local/lib/ -type f -name 'libx265.so.*')"
@@ -1005,11 +978,10 @@ x265_fix_libs_fn()
     esac
 }
 
-libpulse_fix_libs_fn()
-{
+libpulse_fix_libs_fn() {
     local libpulse_lib libpulse_trim
 
-    libpulse_lib="$(find "$workspace"/lib/ -type f -name 'libpulsecommon-*.so')"
+    libpulse_lib="$(find "$workspace/lib"/ -type f -name 'libpulsecommon-*.so')"
     libpulse_trim="$(echo "$libpulse_lib" | sed 's:.*/::' | head -n1)"
 
     if [[ "$OS" == 'Arch' ]]; then
@@ -1033,8 +1005,7 @@ libpulse_fix_libs_fn()
     fi
 }
 
-ffmpeg_install_test()
-{
+ffmpeg_install_test() {
     local binaries i
 
     binaries=(
@@ -1055,11 +1026,10 @@ ffmpeg_install_test()
     done
 }
 
-install_libjxl_fn()
-{
+install_libjxl_fn() {
     local i
 
-    cd "$packages"/deb-files || exit 1
+    cd "$packages/deb-files" || exit 1
 
     # INSTALL THE MAIN DEBIAN FILE FIRST BEFORE INSTALLING THE OTHERS
     printf "%s\n" '$ sudo dpkg -i libjxl_0.8.2_amd64.deb'
@@ -1075,8 +1045,7 @@ install_libjxl_fn()
     done
 }
 
-dl_libjxl_fn()
-{
+dl_libjxl_fn() {
     local libjxl_cnt_type_1 libjxl_cnt_type_2 url_base url_suffix
 
     url_base='https://github.com/libjxl/libjxl/releases/download/v0.8.2/jxl-debs-amd64'
@@ -1084,7 +1053,7 @@ dl_libjxl_fn()
 
     get_ver_fn1
 
-    if [ ! -f "$packages"/libjxl.tar.gz ]; then
+    if [ ! -f "$packages/libjxl.tar.gz" ]; then
         case "$VER" in
             10)                     libjxl_name='debian-buster';;
             11)                     libjxl_name='debian-bullseye';;
@@ -1100,8 +1069,8 @@ dl_libjxl_fn()
         fi
 
         # CREATE THE OUTPUT FILE DIRECTORY IF IT DOESN'T EXIST
-        if [ ! -d "$packages"/deb-files ]; then
-            mkdir -p "$packages"/deb-files
+        if [ ! -d "$packages/deb-files" ]; then
+            mkdir -p "$packages/deb-files"
         fi
         
         # REMOVE AND LEFTOVER FILES FROM PREVIOUS RUNS
@@ -1115,7 +1084,7 @@ dl_libjxl_fn()
         fi
 
         # EXTRACT THE LIBJXL DEBIAN FILES
-        if ! tar -zxf "$packages/$libjxl_name.tar.gz" -C "$packages"/deb-files --strip-components 1; then
+        if ! tar -zxf "$packages/$libjxl_name.tar.gz" -C "$packages/deb-files" --strip-components 1; then
             fail_fn "Error: Could not extract the libjxl archive. (Line: $LINENO)"
         fi
 
@@ -1128,8 +1097,7 @@ dl_libjxl_fn()
 # PATCH FUNCTIONS
 #
 
-patch_ffmpeg_fn()
-{
+patch_ffmpeg_fn() {
     execute curl -Lso 'mathops.patch' 'https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/patches/mathops.patch'
     execute patch -d 'libavcodec/x86' -i '../../mathops.patch'
 }
@@ -1138,8 +1106,7 @@ patch_ffmpeg_fn()
 # ARCHLINUX FUNCTION SECTION
 #
 
-apache_ant_fn()
-{
+apache_ant_fn() {
     if build 'apache-ant' 'git'; then
         download_git 'https://aur.archlinux.org/apache-ant-contrib.git' 'apache-ant-AUR'
         execute makepkg -sif --cleanbuild --noconfirm --needed
@@ -1147,8 +1114,7 @@ apache_ant_fn()
     fi
 }
 
-librist_arch_fn()
-{
+librist_arch_fn() {
     if build 'librist' 'git'; then
         download_git 'https://aur.archlinux.org/librist.git' 'librist-AUR'
         execute makepkg -sif --cleanbuild --noconfirm --needed
@@ -1156,8 +1122,7 @@ librist_arch_fn()
     fi
 }
 
-arch_os_ver_fn()
-{
+arch_os_ver_fn() {
     local arch_pkgs pkg
     clear
 
@@ -1183,8 +1148,7 @@ arch_os_ver_fn()
     clear
 }
 
-debian_os_ver_fn()
-{
+debian_os_ver_fn() {
     if [[ "$2" = 'yes_wsl' ]]; then
         VER='msft'
         debian_wsl_pkgs="$1"
@@ -1201,8 +1165,7 @@ debian_os_ver_fn()
     esac
 }
 
-ubuntu_os_ver_fn()
-{
+ubuntu_os_ver_fn() {
     if [[ "$2" = 'yes_wsl' ]]; then
         VER='msft'
         ubuntu_wsl_pkgs="$1"
@@ -1231,8 +1194,7 @@ ubuntu_os_ver_fn()
 
 find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
 
-get_ver_fn1()
-{
+get_ver_fn1() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
         OS_TMP="$NAME"
@@ -1255,8 +1217,7 @@ get_ver_fn1
 # CHECK IF RUNNING WINDOWS WSL2
 #
 
-get_ver_fn2()
-{
+get_ver_fn2() {
     if [ "$(grep -i 'microsoft' '/proc/version')" ]; then
         wsl_switch='yes_wsl'
         OS='WSL2'
@@ -1299,8 +1260,7 @@ export JDK_HOME="$find_java"
 export JAVA_HOME="$find_java"
 export PATH="$PATH:$JAVA_HOME/bin"
 
-ant_path_fn()
-{
+ant_path_fn() {
     export ANT_HOME="$install_dir/ant"
     if [ ! -d "$install_dir/ant/bin" ] || [ ! -d "$install_dir/ant/lib" ]; then
         sudo mkdir -p "$install_dir/ant/bin" "$install_dir/ant/lib" 2>/dev/null
@@ -1339,8 +1299,7 @@ sudo ldconfig
 #
 
 clear
-box_out_banner_global()
-{
+box_out_banner_global() {
     input_char=$(echo "${@}" | wc -c)
     line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
     tput bold
@@ -1372,7 +1331,7 @@ if build 'autoconf' 'latest'; then
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" \
                         --{build,host}="$pc_type" \
-                        M4="$workspace"/bin/m4
+                        M4="$workspace/bin/m4"
     execute make "-j$cpu_threads"
     execute make install
     build_done 'autoconf' 'latest'
@@ -1399,7 +1358,7 @@ else
         execute ./configure --prefix="$install_dir" \
                             --{build,host}="$pc_type" \
                             --with-pic \
-                            M4="$install_dir"/bin/m4
+                            M4="$install_dir/bin/m4"
         execute make "-j$cpu_threads"
         execute sudo make install
         build_done 'libtool' "$lt_ver"
@@ -1461,8 +1420,8 @@ if build 'openssl' '3.1.4'; then
                         enable-trace \
                         threads zlib \
                         --with-rand-seed=os \
-                        --with-zlib-include="$workspace"/include \
-                        --with-zlib-lib="$workspace"/lib
+                        --with-zlib-include="$workspace/include" \
+                        --with-zlib-lib="$workspace/lib"
     execute make "-j$cpu_threads"
     execute sudo make install_sw
     execute sudo make install_fips
@@ -1626,13 +1585,13 @@ if build 'c2man' 'git'; then
     download_git 'https://github.com/fribidi/c2man.git'
     execute ./Configure -desO \
                         -D bash="$(type -P bash)" \
-                        -D bin="$workspace"/bin \
+                        -D bin="$workspace/bin" \
                         -D cc=/usr/bin/cc \
                         -D d_gnu=/usr/lib/x86_64-linux-gnu \
                         -D find="$(type -P find)" \
                         -D gcc=/usr/bin/gcc \
                         -D gzip="$(type -P gzip)" \
-                        -D installmansrc="$workspace"/share/man \
+                        -D installmansrc="$workspace/share/man" \
                         -D ldflags="$LDFLAGS" \
                         -D less="$(type -P less)" \
                         -D libpth='/usr/lib64 /usr/lib /lib64 /lib' \
@@ -1643,8 +1602,8 @@ if build 'c2man' 'git'; then
                         -D osname="$OS" \
                         -D perl="$(type -P perl)" \
                         -D prefix="$workspace" \
-                        -D privlib="$workspace"/lib/c2man \
-                        -D privlibexp="$workspace"/lib/c2man \
+                        -D privlib="$workspace/lib/c2man" \
+                        -D privlibexp="$workspace/lib/c2man" \
                         -D sleep="$(type -P sleep)" \
                         -D tail="$(type -P tail)" \
                         -D tar="$(type -P tar)" \
@@ -1713,7 +1672,7 @@ if build 'libwebp' 'git'; then
                   -DCMAKE_INSTALL_PREFIX="$install_dir" \
                   -DCMAKE_BUILD_TYPE=Release \
                   -DBUILD_SHARED_LIBS=ON \
-                  -DZLIB_INCLUDE_DIR="$workspace"/include \
+                  -DZLIB_INCLUDE_DIR="$workspace/include" \
                   -DWEBP_BUILD_ANIM_UTILS=OFF \
                   -DWEBP_BUILD_CWEBP=ON \
                   -DWEBP_BUILD_DWEBP=ON \
@@ -1849,8 +1808,8 @@ if build 'tesseract' "$g_ver"; then
     execute ./configure --prefix="$install_dir" \
                         --{build,host}="$pc_type" \
                         --disable-doc \
-                        --with-extra-includes="$workspace"/include \
-                        --with-extra-libraries="$workspace"/lib \
+                        --with-extra-includes="$workspace/include" \
+                        --with-extra-libraries="$workspace/lib" \
                         --with-pic \
                         --without-archive \
                         --without-curl
@@ -2086,8 +2045,7 @@ fi
 #
 
 echo
-box_out_banner_audio()
-{
+box_out_banner_audio() {
     input_char=$(echo "${@}" | wc -c)
     line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
     tput bold
@@ -2125,7 +2083,7 @@ if build 'libsndfile' "$g_ver"; then
                         --{build,host}="$pc_type" \
                         --enable-static \
                         --with-pic \
-                        --with-pkgconfigdir="$workspace"/lib/pkgconfig
+                        --with-pkgconfigdir="$workspace/lib/pkgconfig"
     execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'libsndfile' "$g_ver"
@@ -2311,11 +2269,11 @@ if build 'libtheora' '1.1.1'; then
                         --disable-sdltest \
                         --disable-vorbistest \
                         --with-ogg="$workspace" \
-                        --with-ogg-includes="$workspace"/include \
-                        --with-ogg-libraries="$workspace"/lib \
+                        --with-ogg-includes="$workspace/include" \
+                        --with-ogg-libraries="$workspace/lib" \
                         --with-vorbis="$workspace" \
-                        --with-vorbis-includes="$workspace"/include \
-                        --with-vorbis-libraries="$workspace"/lib \
+                        --with-vorbis-includes="$workspace/include" \
+                        --with-vorbis-libraries="$workspace/lib" \
                         --with-pic
     execute make "-j$cpu_threads"
     execute sudo make install
@@ -2328,8 +2286,7 @@ ffmpeg_libraries+=('--enable-libtheora')
 #
 
 echo
-box_out_banner_video()
-{
+box_out_banner_video() {
     input_char=$(echo "${@}" | wc -c)
     line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
     tput bold
@@ -2344,7 +2301,7 @@ box_out_banner_video()
 }
 box_out_banner_video 'Installing Video Tools'
 
-amd_gpu_test="$(glxinfo | grep -E 'OpenGL renderer' | grep -Eo 'AMD \s.*$')"
+amd_gpu_test="$(glxinfo 2>/dev/null | grep -E 'OpenGL renderer' | grep -Eo 'AMD \s.*$')"
 if [ -n "$amd_gpu_test" ]; then
     if build 'vulkan-headers' 'git'; then
         download_git 'https://github.com/KhronosGroup/Vulkan-Headers.git' 'vulkan-headers-git'
@@ -2384,7 +2341,7 @@ if build 'av1' "$aom_sver"; then
                   -DENABLE_EXAMPLES=0 \
                   -DENABLE_TESTS=0 \
                   -G Ninja -Wno-dev \
-                  "$packages"/av1
+                  "$packages/av1"
     execute ninja "-j$cpu_threads" -C build
     execute sudo ninja -C build install
     build_done 'av1' "$aom_sver"
@@ -2414,13 +2371,13 @@ if [ "$VER" != '18.04' ] && [ "$VER" != '11' ]; then
         if [ "$get_rustc_ver" != '1.73.0' ]; then
             echo '$ Installing RustUp'
             curl -sSf --proto '=https' --tlsv1.2 'https://sh.rustup.rs' | sh -s -- -y &>/dev/null
-            source "$HOME"/.cargo/env
-            if [ -f "$HOME"/.zshrc ]; then
-                source "$HOME"/.zshrc
+            source "$HOME/.cargo/env"
+            if [ -f "$HOME/.zshrc" ]; then
+                source "$HOME/.zshrc"
             else
-                source "$HOME"/.bashrc
+                source "$HOME/.bashrc"
             fi
-            rm -fr "$HOME"/.cargo/registry/index/* "$HOME"/.cargo/.package-cache
+            rm -fr "$HOME"/.cargo/registry/index/* "$HOME/.cargo/.package-cache"
         fi
         execute cargo install cargo-c
         download 'https://github.com/xiph/rav1e/archive/refs/tags/v0.7.1.tar.gz' 'rav1e-0.7.1.tar.gz'
@@ -2492,7 +2449,7 @@ fi
 ant_path_fn
 if build 'ant' 'git'; then
     download_git 'https://github.com/apache/ant.git'
-    sudo chmod 777 -R "$install_dir"/ant
+    sudo chmod 777 -R "$install_dir/ant"
     execute sh build.sh install-lite
     build_done 'ant' 'git'
 fi
@@ -2591,9 +2548,9 @@ git_ver_fn 'GPUOpen-LibrariesAndSDKs/AMF' '1' 'T'
 g_sver="$(echo "$g_ver" | sed -E 's/^\.//g')"
 if build 'amf' "$g_sver"; then
     download "https://github.com/GPUOpen-LibrariesAndSDKs/AMF/archive/refs/tags/v$g_ver.tar.gz" "amf-$g_sver.tar.gz"
-    execute rm -fr "$workspace"/include/AMF
-    execute mkdir -p "$workspace"/include/AMF
-    execute cp -fr "$packages"/amf-"$g_sver"/amf/public/include/* "$workspace"/include/AMF
+    execute rm -fr "$workspace/include/AMF"
+    execute mkdir -p "$workspace/include/AMF"
+    execute cp -fr "$packages/amf-$g_sver/amf/public/include"/* "$workspace/include/AMF"
     build_done 'amf' "$g_sver"
 fi
 ffmpeg_libraries+=('--enable-amf')
@@ -2615,7 +2572,7 @@ else
                                  --use-faad=local \
                                  --use-freetype=local \
                                  --use-mad=local \
-                                 --sdl-cfg="$workspace"/include/SDL3
+                                 --sdl-cfg="$workspace/include/SDL3"
         execute sudo make "-j$cpu_threads"
         execute sudo make install
         build_done 'gpac' "$g_ver"
@@ -2640,8 +2597,8 @@ if build 'svt-av1' '1.8.0'; then
                        -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C Build/linux
     execute ninja "-j$cpu_threads" -C Build/linux install
-    cp -f 'Build/linux/SvtAv1Enc.pc' "$workspace"/lib/pkgconfig
-    cp -f 'Build/linux/SvtAv1Dec.pc' "$workspace"/lib/pkgconfig
+    cp -f 'Build/linux/SvtAv1Enc.pc' "$workspace/lib/pkgconfig"
+    cp -f 'Build/linux/SvtAv1Dec.pc' "$workspace/lib/pkgconfig"
     build_done 'svt-av1' '1.8.0'
 fi
 ffmpeg_libraries+=('--enable-libsvtav1')
@@ -2804,8 +2761,8 @@ git_ver_fn 'Haivision/srt' '1' 'T'
 if build 'srt' "$g_ver"; then
     download "https://github.com/Haivision/srt/archive/refs/tags/v$g_ver.tar.gz" "srt-$g_ver.tar.gz"
     export OPENSSL_ROOT_DIR="$workspace"
-    export OPENSSL_LIB_DIR="$workspace"/lib
-    export OPENSSL_INCLUDE_DIR="$workspace"/include
+    export OPENSSL_LIB_DIR="$workspace/lib"
+    export OPENSSL_INCLUDE_DIR="$workspace/include"
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
@@ -2818,7 +2775,7 @@ if build 'srt' "$g_ver"; then
     execute ninja -C build "-j$cpu_threads"
     execute ninja -C build "-j$cpu_threads" install
     if [ -n "$LDEXEFLAGS" ]; then
-        sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "$workspace"/lib/pkgconfig/srt.pc
+        sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "$workspace/lib/pkgconfig/srt.pc"
     fi
     build_done 'srt' "$g_ver"
 fi
@@ -2885,8 +2842,7 @@ ffmpeg_libraries+=('--enable-libxvid')
 #
 
 echo
-box_out_banner_images()
-{
+box_out_banner_images() {
     input_char=$(echo "${@}" | wc -c)
     line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
     tput bold
@@ -2925,14 +2881,14 @@ if build 'libheif' "$g_ver"; then
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
                   -DBUILD_SHARED_LIBS=OFF \
-                  -DAOM_INCLUDE_DIR="$workspace"/include \
-                  -DAOM_LIBRARY="$workspace"/lib/libaom.a \
-                  -DDAV1D_INCLUDE_DIR="$workspace"/include \
-                  -DDAV1D_LIBRARY="$workspace"/lib/x86_64-linux-gnu/libdav1d.a \
-                  -DLIBDE265_INCLUDE_DIR="$install_dir"/include \
+                  -DAOM_INCLUDE_DIR="$workspace/include" \
+                  -DAOM_LIBRARY="$workspace/lib/libaom.a" \
+                  -DDAV1D_INCLUDE_DIR="$workspace/include" \
+                  -DDAV1D_LIBRARY="$workspace/lib/x86_64-linux-gnu/libdav1d.a" \
+                  -DLIBDE265_INCLUDE_DIR="$install_dir/include" \
                   -DLIBDE265_LIBRARY=/usr/lib/x86_64-linux-gnu/libde265.so \
-                  -DLIBSHARPYUV_INCLUDE_DIR="$install_dir"/include/webp \
-                  -DLIBSHARPYUV_LIBRARY="$install_dir"/lib/libsharpyuv.so \
+                  -DLIBSHARPYUV_INCLUDE_DIR="$install_dir/include/webp" \
+                  -DLIBSHARPYUV_LIBRARY="$install_dir/lib/libsharpyuv.so" \
                   -DWITH_AOM_DECODER=ON \
                   -DWITH_AOM_ENCODER=ON \
                   -DWITH_DAV1D=ON \
@@ -2971,8 +2927,7 @@ ffmpeg_libraries+=('--enable-libopenjpeg')
 #
 
 echo
-box_out_banner_ffmpeg()
-{
+box_out_banner_ffmpeg() {
     input_char=$(echo "${@}" | wc -c)
     line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
     tput bold
@@ -2993,10 +2948,10 @@ else
     ladspa_switch='--enable-ladspa'
 fi
 
-curl -Lso "$packages"/dxva2api.h 'https://download.videolan.org/pub/contrib/dxva2api.h'
-sudo cp -f "$packages"/dxva2api.h /usr/include
-curl -Lso "$packages"/objbase.h 'https://raw.githubusercontent.com/wine-mirror/wine/master/include/objbase.h'
-sudo cp -f "$packages"/objbase.h "$install_dir"
+curl -Lso "$packages/dxva2api.h" 'https://download.videolan.org/pub/contrib/dxva2api.h'
+sudo cp -f "$packages/dxva2api.h" '/usr/include'
+curl -Lso "$packages/objbase.h" 'https://raw.githubusercontent.com/wine-mirror/wine/master/include/objbase.h'
+sudo cp -f "$packages/objbase.h" "$install_dir"
 
 if [ -n "$ffmpeg_archive" ]; then
     ff_cmd=" $ffmpeg_archive"
@@ -3052,8 +3007,8 @@ if build 'ffmpeg' "$ffmpeg_sver"; then
                  --extra-ldexeflags="$LDEXEFLAGS" \
                  --extra-libs="$EXTRALIBS" \
                  --pkg-config-flags='--static' \
-                 --pkg-config="$install_dir"/bin/pkg-config \
-                 --pkgconfigdir="$install_dir"/lib/pkgconfig \
+                 --pkg-config="$install_dir/bin/pkg-config" \
+                 --pkgconfigdir="$install_dir/lib/pkgconfig" \
                  --strip="$(type -P strip)"
     execute make "-j$cpu_threads"
     execute sudo make install
@@ -3066,7 +3021,7 @@ ffmpeg_install_test
 sudo ldconfig 2>/dev/null
 
 # DISPLAY FFMPEG'S VERSION
-if [ -f "$install_dir"/bin/ffmpeg ]; then
+if [ -f "$install_dir/bin/ffmpeg" ]; then
     ff_ver_fn
 else
     fail_fn "Error: Failed to locate \"$install_dir/bin/ffmpeg\". (Line: $LINENO)"
