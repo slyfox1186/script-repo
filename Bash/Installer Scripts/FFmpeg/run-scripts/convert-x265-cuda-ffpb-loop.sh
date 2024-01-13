@@ -27,6 +27,7 @@ pkgs=(bc ffmpegthumbnailer ffmpegthumbs libffmpegthumbnailer4v5 libsox-dev pytho
 
 clear
 
+missing_pkgs=''
 for pkg in ${pkgs[@]}
 do
     missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
