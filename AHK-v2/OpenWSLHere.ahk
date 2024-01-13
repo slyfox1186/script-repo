@@ -18,7 +18,7 @@
     - 01.13.24
 
     Big Update:
-    - Automatic detect of the following OS versions (will open the appropriate OS depending on which folder was active when you activated the Hotkey).
+    - Automatic detection of the following OS versions (will open the appropriate OS depending on which folder was active when you activated the Hotkey).
         - Debian
         - Ubuntu-22.04
         - Arch Linux
