@@ -2,14 +2,20 @@
 
 ## GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/SlyFox1186%20Scripts/build-dmd
 ## Purpose: Install DLang D Compiler (DMD)
-## Date: 01.08.24
+## Date: 01.13.24
 
 clear
 
+printf "%s\n%s\n" \
+    'Installing DMD -- version latest' \
+    '======================================'
+
 # Download the install script
+echo 'Downloading the install script.'
 curl -sO https://dlang.org/install.sh
 
 # Make the script executable
+echo 'Setting script permissions.'
 chmod +x install.sh
 
 # Run the script silently and capture the output
@@ -20,22 +26,22 @@ version="$(echo "$output" | grep -oP 'dmd-\K[0-9]+\.[0-9]+(?:\.[0-9]+)?' | head 
 
 # Check if version is captured
 if [ -z "$version" ]; then
-    echo "Failed to capture DLang version"
+    printf "%s\n\n" 'Failed to capture DLang version.'
     exit 1
 fi
 
 # Source the activate script with the captured version
 if source "$HOME/dlang/dmd-$version/activate" 2>/dev/null; then
-    printf "%s\n%s\n\n" \
-        "Installation successfull" \
+    printf "\n%s\n%s\n\n" \
+        "Installation successful!" \
         "DLang - version $version"
 else
-    printf "\n%s\n\n" \
+    printf "\n%s\n%s\n\n" \
         "Failed to source DLang - version $version" \
-        "You must manually run the command \"source ~/dlang/dmd-$version/activate\""
+        "You must manually run the command \"source $HOME/dlang/dmd-$version/activate\""
 fi
 
-printf "%s\n%s\n" \
+printf "%s\n%s\n\n" \
     'Make sure to star this repository to show your support!' \
     'https://github.com/slyfox1186/script-repo'
 exit 0
