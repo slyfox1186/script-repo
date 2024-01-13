@@ -6,42 +6,47 @@
 
 clear
 
-printf "%s\n%s\n" \
+printf "%s\\n%s\\n" \
     'Installing DMD -- version latest' \
     '======================================'
 
-# Download the install script
-echo 'Downloading the install script.'
-curl -sO https://dlang.org/install.sh
-
-# Make the script executable
-echo 'Setting script permissions.'
-chmod +x install.sh
-
-# Run the script silently and capture the output
-output="$(./install.sh 2>&1)"
-
-# Extract the version number
-version="$(echo "$output" | grep -oP 'dmd-\K[0-9]+\.[0-9]+(?:\.[0-9]+)?' | head -n1)"
+# Fetch and store the latest DMD version
+echo 'Fetching the latest DMD version.'
+version=$(curl -s https://downloads.dlang.org/releases/LATEST)
 
 # Check if version is captured
 if [ -z "$version" ]; then
-    printf "%s\n\n" 'Failed to capture DLang version.'
+    printf "%s\\n\\n" 'Failed to capture DLang version.'
     exit 1
 fi
 
+# Download the install script
+echo "Downloading the install script for DMD version $version."
+temp_script=$(mktemp)
+curl -s https://dlang.org/install.sh -o "$temp_script"
+
+# Make the script executable
+echo 'Setting script permissions.'
+chmod +x "$temp_script"
+
+# Run the script silently and capture the output
+echo "Installing DMD version $version"
+
 # Source the activate script with the captured version
 if source "$HOME/dlang/dmd-$version/activate" 2>/dev/null; then
-    printf "\n%s\n%s\n\n" \
+    printf "\\n%s\\n%s\\n\\n" \
         "Installation successful!" \
         "DLang - version $version"
 else
-    printf "\n%s\n%s\n\n" \
+    printf "\\n%s\\n%s\\n\\n" \
         "Failed to source DLang - version $version" \
         "You must manually run the command \"source $HOME/dlang/dmd-$version/activate\""
 fi
 
-printf "%s\n%s\n\n" \
+printf "%s\\n%s\\n\\n" \
     'Make sure to star this repository to show your support!' \
     'https://github.com/slyfox1186/script-repo'
+
+# Delete the install script
+rm -f "$temp_script"
 exit 0
