@@ -104,7 +104,7 @@ $(ColorBlue 'Choose the Ubuntu release version:') "
                 return 0
                 ;;
         2)
-                curl -A "$user_agent" -Lso 'jammy-mirrors' 'https://jammy-mirrors.optimizethis.net'
+                curl -A "$user_agent" -Lso 'jammy-mirrors' 'https://jammy.optimizethis.net'
                 sudo bash 'jammy-mirrors'
                 rm 'jammy-mirrors'
                 return 0
