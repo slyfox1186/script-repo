@@ -10,7 +10,7 @@ if [ ! -f "$fname".bak ]; then
     cp -f "$fname" "$fname".bak
 fi
 
-cat > "$fname" <<EOF
+cat > "$fname" <<'EOF'
 #
 # /etc/pacman.conf
 #
