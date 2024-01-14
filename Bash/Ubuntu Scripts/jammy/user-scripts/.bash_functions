@@ -35,27 +35,39 @@ mypc() {
 ###################
 
 ffind() {
-    local fname fpath ftype
-    clear
+    local fname ftype fpath find_cmd
 
-    read -p 'Enter the name to search for: ' fname
-    echo
-    read -p 'Enter a type of file (d|f|blank): ' ftype
-    echo
-    read -p 'Enter the starting path: ' fpath
-    clear
+    fname="$1"
+    ftype="$2"
+    fpath="$3"
+    find_cmd
 
-    if [ -n "$fname" ] && [ -z "$ftype" ] && [ -z "$fpath" ]; then
-        sudo find . -iname "$fname" | while read line; do echo "$line"; done
-    elif [ -n "$fname" ] && [ -z "$ftype" ] && [ -n "$fpath" ]; then
-        sudo find "$fpath" -iname "$fname" | while read line; do echo "$line"; done
-    elif [ -n "$fname" ] && [ -n "$ftype" ] && [ -n "$fpath" ]; then
-        sudo find "$fpath" -type "$ftype" -iname "$fname" | while read line; do echo "$line"; done
-    elif [ -n "$fname" ] && [ -z "$ftype" ] && [ "$fpath" ]; then
-        sudo find . -iname "$fname" | while read line; do echo "$line"; done
-    elif [ -n "$fname" ] && [ -n "$ftype" ] && [ "$fpath" = '.' ]; then
-        sudo find . -type "$ftype" -iname "$fname" | while read line; do echo "$line"; done
-     fi
+    # Check if any argument is passed
+    if [ $# -eq 0 ]; then
+        read -p 'Enter the name to search for: ' fname
+        echo
+        read -p 'Enter a type of file (d|f|blank for any): ' ftype
+        echo
+        read -p 'Enter the starting path (blank for current directory): ' fpath
+        echo
+    fi
+
+    # Default to current directory if fpath is empty
+    fpath=${fpath:-.}
+
+    # Construct the find command based on input
+    find_cmd="find \"$fpath\" -iname \"$fname\""
+    if [ -n "$ftype" ]; then
+        if [[ "$ftype" == "d" || "$ftype" == "f" ]]; then
+            find_cmd="$find_cmd -type $ftype"
+        else
+            echo "Invalid file type. Please use 'd' for directories or 'f' for files."
+            return 1
+        fi
+    fi
+
+    # Execute the command
+    eval "$find_cmd"
 }
 
 ######################
