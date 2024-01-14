@@ -128,17 +128,17 @@ EOF
 
 # OPEN AN EDITOR TO VIEW THE CHANGES
 if type -P gnome-text-editor &>/dev/null; then
-    sudo gnome-text-editor "$fname"
+    sudo gnome-text-editor "$fname" "$mlist"
 elif type -P gedit &>/dev/null; then
-    sudo gedit "$fname"
+    sudo gedit "$fname" "$mlist"
 elif type -P nano &>/dev/null; then
-    sudo nano "$fname"
+    sudo nano "$fname" "$mlist"
 elif type -P vim &>/dev/null; then
-    sudo vim "$fname"
+    sudo vim "$fname" "$mlist"
 elif type -P vi &>/dev/null; then
-    sudo vi "$fname"
+    sudo vi "$fname" "$mlist"
 else
-    printf "\n%s\n\n" "Could not find an EDITOR to open \"$fname\""
+    printf "\n%s\n\n" "Could not find an EDITOR to open the files \"$fname\" or \"$mlist\""
     exit 1
 fi
 
