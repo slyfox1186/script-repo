@@ -21,8 +21,8 @@ mypc() {
     local OS VER
     
     source /etc/os-release
-    OS="$name"
-    VER="${VERSION_ID}"
+    OS="$NAME"
+    VER="$VERSION_ID"
 
     clear
     printf "%s\n%s\n\n" \
