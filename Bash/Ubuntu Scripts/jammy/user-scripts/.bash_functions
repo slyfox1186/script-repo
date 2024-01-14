@@ -35,12 +35,10 @@ mypc() {
 ###################
 
 ffind() {
-    local fname ftype fpath find_cmd
-
-    fname="$1"
-    ftype="$2"
-    fpath="$3"
-    find_cmd
+    local fname="$1"
+    local ftype="$2"
+    local fpath="$3"
+    local find_cmd
 
     # Check if any argument is passed
     if [ $# -eq 0 ]; then
