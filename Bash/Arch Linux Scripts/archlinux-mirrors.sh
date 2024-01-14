@@ -103,7 +103,7 @@ if [ ! -f "$mlist".bak ]; then
     cp -f "$mlist" "$mlist".bak
 fi
 
-cat > $mlist <<'EOF'
+cat > "$mlist" <<'EOF'
 Server = https://forksystems.mm.fcix.net/archlinux/$repo/os/$arch
 Server = https://america.mirror.pkgbuild.com/$repo/os/$arch
 Server = https://arch.mirror.constant.com/$repo/os/$arch
