@@ -419,17 +419,17 @@ if build 'libhwy' "$g_ver"; then
     download "https://github.com/google/highway/archive/refs/tags/$g_ver.tar.gz" "libhwy-$g_ver.tar.gz"
     CFLAGS+=' -DHWY_COMPILE_ALL_ATTAINABLE'
     CXXFLAGS+=' -DHWY_COMPILE_ALL_ATTAINABLE'
-    execute cmake -B build                                   \
+    execute cmake -S . \
                   -DCMAKE_INSTALL_PREFIX="$install_prefix" \
-                  -DCMAKE_BUILD_TYPE=Release                 \
-                  -DHWY_ENABLE_TESTS=OFF                     \
-                  -DHWY_SYSTEM_GTEST=OFF                     \
-                  -DBUILD_TESTING=OFF                        \
-                  -DHWY_ENABLE_EXAMPLES=OFF                  \
-                  -DHWY_FORCE_STATIC_LIBS=ON                 \
+                  -DCMAKE_BUILD_TYPE=Release \
+                  -DHWY_ENABLE_TESTS=OFF \
+                  -DHWY_SYSTEM_GTEST=OFF \
+                  -DBUILD_TESTING=OFF \
+                  -DHWY_ENABLE_EXAMPLES=OFF \
+                  -DHWY_FORCE_STATIC_LIBS=ON \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
-    execute sudo ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j${cpu_threads}"
+    execute sudo ninja install
     build_done 'libhwy' "$g_ver"
 fi
 
