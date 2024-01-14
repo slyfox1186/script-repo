@@ -368,7 +368,7 @@ git_ver_fn()
             *)      fail_fn "Could not detect the variable \"v_tag\" in the function \"git_ver_fn\". Line: ${LINENO}"
     esac
 
-    "u_flag" "$v_url" "$t_flag" 2>/dev/null
+    "$u_flag" "$v_url" "$t_flag" 2>/dev/null
 }
 
 installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
