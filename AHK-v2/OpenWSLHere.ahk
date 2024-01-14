@@ -64,11 +64,16 @@ OpenWSLHereArch()
         pwd := StrReplace(pwd, "'", "''")
         pwd := StrReplace(pwd, "\\wsl.localhost", "")
         RegExMatch(pwd, "Arch|Debian|Ubuntu-22.04", &OSDir)
-        osName := OSDir[]
-        pwd := StrReplace(pwd, "\Arch", "")
-        pwd := StrReplace(pwd, "\Debian", "")
-        pwd := StrReplace(pwd, "\Ubuntu-22.04", "")
-        pwd := StrReplace(pwd, "\", "/")
+        try
+        {
+            osName := OSDir[]
+            pwd := StrReplace(pwd, "\Arch", "")
+            pwd := StrReplace(pwd, "\Debian", "")
+            pwd := StrReplace(pwd, "\Ubuntu-22.04", "")
+            pwd := StrReplace(pwd, "\", "/")
+        }
+        catch
+            pwd := StrReplace(pwd, "\", "/")
         break
     }
 
@@ -76,4 +81,4 @@ OpenWSLHereArch()
     if WinWait(win)
         WinActivate(win)
     Return
-} 
+}
