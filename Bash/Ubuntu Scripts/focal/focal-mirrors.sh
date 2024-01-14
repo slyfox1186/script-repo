@@ -10,11 +10,10 @@ if [ ! -f "$list.bak" ]; then
 fi
 
 cat > "$list" <<EOF
+deb https://atl.mirrors.clouvider.net/ubuntu/ focal main restricted universe multiverse
+deb https://atl.mirrors.clouvider.net/ubuntu/ focal-updates main restricted universe multiverse
+deb https://atl.mirrors.clouvider.net/ubuntu/ focal-backports main restricted universe multiverse
 deb http://security.ubuntu.com/ubuntu/ focal-security main restricted universe multiverse
-deb https://mirror.enzu.com/ubuntu/ focal-security main restricted universe multiverse
-deb https://mirror.enzu.com/ubuntu/ focal main restricted universe multiverse
-deb https://mirror.enzu.com/ubuntu/ focal-updates main restricted universe multiverse
-deb https://mirror.enzu.com/ubuntu/ focal-backports main restricted universe multiverse
 EOF
 
 # OPEN AN EDITOR TO VIEW THE CHANGES
