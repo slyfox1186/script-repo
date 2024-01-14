@@ -21,7 +21,7 @@ mypc() {
     local OS VER
     
     source /etc/os-release
-    OS="$name"
+    OS="$NAME"
     VER="${VERSION_ID}"
 
     clear
