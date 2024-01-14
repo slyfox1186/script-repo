@@ -2011,3 +2011,52 @@ dsh() {
 
     sudo bash '/usr/local/bin/start-stop-or-restart-docker-images.sh'
 }
+
+#########################
+## MOUNT NETWORK DRIVE ##
+#########################
+
+mnd() {
+    clear
+
+    # Define variables
+    local drive_ip='192.168.2.2'
+    local drive_name='Cloud'
+    local mount_point='m'  # Mount point set to /m
+
+    # Function to check if the drive is already mounted
+    is_mounted() {
+        sudo mountpoint -q /"${mount_point}"
+    }
+
+    # Function to mount the drive
+    mount_drive() {
+        if is_mounted; then
+            echo "Drive '${drive_name}' is already mounted at ${mount_point}."
+        else
+            sudo mkdir -p /"${mount_point}"
+            sudo mount -t drvfs "\\\\${drive_ip}\\${drive_name}" /"${mount_point}" && echo "Drive '${drive_name}' mounted successfully at ${mount_point}."
+        fi
+    }
+
+    # Function to unmount the drive
+    unmount_drive() {
+        if is_mounted; then
+            sudo umount /"${mount_point}" && echo "Drive '${drive_name}' unmounted successfully from ${mount_point}."
+        else
+            echo "Drive '${drive_name}' is not mounted."
+        fi
+    }
+
+    # Main menu for user interaction
+    echo "Select an option:"
+    echo "1) Mount the network drive"
+    echo "2) Unmount the network drive"
+    read -p "Enter your choice (1/2): " user_choice
+
+    case $user_choice in
+        1) mount_drive ;;
+        2) unmount_drive ;;
+        *) echo "Invalid choice. Please enter 1 or 2." ;;
+    esac
+}
