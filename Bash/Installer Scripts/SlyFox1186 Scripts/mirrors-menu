@@ -19,8 +19,7 @@ ColorBlue() { echo -ne "${blue}${1}${clear}"; }
 # SHOW SCRIPT BANNER
 #
 
-function box_out_banner()
-{
+box_out_banner() {
     input_char=$(echo "${@}" | wc -c)
     line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
     tput bold
@@ -33,7 +32,7 @@ function box_out_banner()
     echo " ${line}"
     tput sgr 0
 }
-box_out_banner 'Ubuntu Mirror Script'
+box_out_banner 'Linux Mirrors Script'
 
 #
 # DETERMINE WHAT DOWNLOADER TO USE
@@ -49,8 +48,7 @@ fi
 # DISPLAY DEBIAN MIRRORS MENU
 #
 
-debian_mirrors_fn()
-{
+debian_mirrors_fn() {
     local answer
 echo -ne "
 $(ColorGreen '1)') Debian 11 - Bullseye
@@ -61,13 +59,13 @@ $(ColorBlue 'Choose the Debian release version:') "
     clear
     case "${answer}" in
         1)
-                curl -A "${user_agent}" -Lso 'bullseye-mirrors' 'https://bullseye-mirrors.optimizethis.net'
+                curl -A "$user_agent" -Lso 'bullseye-mirrors' 'https://bullseye-mirrors.optimizethis.net'
                 sudo bash 'bullseye-mirrors'
                 rm 'bullseye-mirrors'
                 return 0
                 ;;
         2)
-                curl -A "${user_agent}" -Lso 'bookworm-mirrors' 'https://bookworm-mirrors.optimizethis.net'
+                curl -A "$user_agent" -Lso 'bookworm-mirrors' 'https://bookworm-mirrors.optimizethis.net'
                 sudo bash 'bookworm-mirrors'
                 rm 'bookworm-mirrors'
                 return 0
@@ -87,8 +85,7 @@ clear
 # DISPLAY UBUNTU MIRRORS MENU
 #
 
-ubuntu_mirrors_fn()
-{
+ubuntu_mirrors_fn() {
     local answer
 echo -ne "
 $(ColorGreen '1)') Ubuntu 23.04 - Lunar Lobster
@@ -101,25 +98,25 @@ $(ColorBlue 'Choose the Ubuntu release version:') "
     clear
     case "${answer}" in
         1)
-                curl -A "${user_agent}" -Lso 'lunar-mirrors' 'https://lunar-mirrors.optimizethis.net'
+                curl -A "$user_agent" -Lso 'lunar-mirrors' 'https://lunar-mirrors.optimizethis.net'
                 sudo bash 'lunar-mirrors'
                 rm 'lunar-mirrors'
                 return 0
                 ;;
         2)
-                curl -A "${user_agent}" -Lso 'jammy-mirrors' 'https://jammy-mirrors.optimizethis.net'
+                curl -A "$user_agent" -Lso 'jammy-mirrors' 'https://jammy-mirrors.optimizethis.net'
                 sudo bash 'jammy-mirrors'
                 rm 'jammy-mirrors'
                 return 0
                 ;;
         3)
-                curl -A "${user_agent}" -Lso 'focal-mirrors' 'https://focal-mirrors.optimizethis.net'
+                curl -A "$user_agent" -Lso 'focal-mirrors' 'https://focal-mirrors.optimizethis.net'
                 sudo bash 'focal-mirrors'
                 rm 'focal-mirrors'
                 return 0
                 ;;
         4)
-                curl -A "${user_agent}" -Lso 'bionic-mirrors' 'https://bionic-mirrors.optimizethis.net'
+                curl -A "$user_agent" -Lso 'bionic-mirrors' 'https://bionic-mirrors.optimizethis.net'
                 sudo bash 'bionic-mirrors'
                 rm 'bionic-mirrors'
                 return 0
@@ -138,14 +135,14 @@ $(ColorBlue 'Choose the Ubuntu release version:') "
 # DISPLAY THE MAIN MENU
 #
 
-main_menu()
-{
+main_menu() {
     local answer
 echo -ne "
-$(ColorGreen '1)') Ubuntu Mirrors
-$(ColorGreen '2)') Debian Mirrors
-$(ColorGreen '3)') Raspberry Pi Mirrors - Bookworm
-$(ColorGreen '4)') Exit
+$(ColorGreen '1)') Ubuntu
+$(ColorGreen '2)') Debian
+$(ColorGreen '3)') Raspberry Pi (Bookworm)
+$(ColorGreen '4)') Arch Linux
+$(ColorGreen '5)') Exit
 $(ColorBlue 'Choose an operating system:') "
     read answer
     clear
@@ -153,12 +150,16 @@ $(ColorBlue 'Choose an operating system:') "
         1)      ubuntu_mirrors_fn;;
         2)      debian_mirrors_fn;;
         3)
-                curl -A "${user_agent}" -Lso 'raspi-mirrors' 'https://raspi-mirrors.optimizethis.net'
+                curl -A "$user_agent" -Lso 'raspi-mirrors' 'https://raspi-mirrors.optimizethis.net'
                 sudo bash 'raspi-mirrors'
-                rm 'raspi-mirrors'
                 return 0
                 ;;
-        4)      return 0;;
+        4)
+                curl -A "$user_agent" -Lso 'archlinux-mirrors' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Arch%20Linux%20Scripts/archlinux-mirrors.sh'
+                sudo bash 'archlinux-mirrors'
+                return 0
+                ;;
+        5)      return 0;;
         *)
                 unset answer
                 clear
