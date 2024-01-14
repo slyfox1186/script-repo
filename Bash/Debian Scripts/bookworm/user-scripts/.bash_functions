@@ -22,7 +22,7 @@ mypc() {
     
     source /etc/os-release
     OS="$NAME"
-    VER="${VERSION_ID}"
+    VER="$VERSION_ID"
 
     clear
     printf "%s\n%s\n\n" \
