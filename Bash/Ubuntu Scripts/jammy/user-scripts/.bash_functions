@@ -52,10 +52,10 @@ ffind() {
         echo
     fi
 
-    # Default to current directory if fpath is empty
+    # Default to the current directory if fpath is empty
     fpath=${fpath:-.}
 
-    # Construct the find command based on input
+    # Construct the find command based on the input
     find_cmd="find \"$fpath\" -iname \"$fname\""
     if [ -n "$ftype" ]; then
         if [[ "$ftype" == "d" || "$ftype" == "f" ]]; then
