@@ -17,7 +17,7 @@ gnome-text-editors() { sudo -Hu root "$(type -P gnome-text-editor)" "$@" &>/dev/
 ## GET THE OS AND ARCH OF THE ACTIVE COMPUTER ##
 ################################################
 
-mypc() {
+this_pc() {
     local OS VER
     
     source /etc/os-release
