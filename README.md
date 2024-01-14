@@ -161,7 +161,7 @@ bash <(curl -fsSL https://dl-tools.optimizethis.net)
 
 **Warning! This will overwrite your files!**
 ```bash
-bash <(curl -fsSL https://mirrors-menu.optimizethis.net)
+bash <(curl -fsSL https://mirrors.optimizethis.net)
 ```
 ------
 
