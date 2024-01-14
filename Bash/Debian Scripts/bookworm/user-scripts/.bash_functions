@@ -26,8 +26,8 @@ mypc() {
 
     clear
     printf "%s\n%s\n\n" \
-        "Operating System: ${OS}" \
-        "Specific Version: ${VER}"
+        "Operating System: $OS" \
+        "Specific Version: $VER"
 }
 
 ###################
