@@ -15,13 +15,11 @@
     - To find the available distros run 'wsl.exe -l --all' using PowerShell to get a list of available options
 
     Updated:
-    - 01.13.24
+    - 01.04.24
 
     Big Update:
-    - Automatic detection of the following OS versions (will open the appropriate OS depending on which folder was active when you activated the Hotkey).
-        - Debian
-        - Ubuntu-22.04
-        - Arch Linux
+    - Greatly improved the code. When explorer.exe has multiple tabs per window, it will
+      open the correct tab the hotkey is trigged on instead of just activating the far left tab.
 
 */
 
@@ -29,7 +27,7 @@
 
 OpenWSLHereArch()
 {
-    osName := "Debian"
+    osName := "Ubuntu"
     Static wt := "C:\Users\" . A_UserName . "\AppData\Local\Microsoft\WindowsApps\wt.exe"
     Static wsl := "C:\Windows\System32\wsl.exe"
     Static win := "ahk_class CASCADIA_HOSTING_WINDOW_CLASS ahk_exe WindowsTerminal.exe"
@@ -63,13 +61,16 @@ OpenWSLHereArch()
         pwd := '"' win.Document.Folder.Self.Path '"'
         pwd := StrReplace(pwd, "'", "''")
         pwd := StrReplace(pwd, "\\wsl.localhost", "")
-        RegExMatch(pwd, "Arch|Debian|Ubuntu-22.04|Ubuntu", &OSDir)
+        RegExMatch(pwd, "Arch|Debian|Ubuntu-22\.04|Ubuntu-20\.04|Ubuntu-18\.04|Ubuntu", &OSDir)
         try
         {
             osName := OSDir[]
             pwd := StrReplace(pwd, "\Arch", "")
             pwd := StrReplace(pwd, "\Debian", "")
             pwd := StrReplace(pwd, "\Ubuntu-22.04", "")
+            pwd := StrReplace(pwd, "\Ubuntu-20.04", "")
+            pwd := StrReplace(pwd, "\Ubuntu-18.04", "")
+            pwd := StrReplace(pwd, "\Ubuntu", "")
             pwd := StrReplace(pwd, "\", "/")
         }
         catch
