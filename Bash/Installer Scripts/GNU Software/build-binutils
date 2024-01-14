@@ -1,16 +1,9 @@
 #!/usr/bin/env bash
 
-##################################################################################################################################
-##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-binutils
-##
 ##  Purpose: build gnu binutils from source code
-##
-##  Updated: 12.04.23
-##
-##  Script version: 1.2
-##
-##################################################################################################################################
+##  Updated: 01.14.24
+##  Script version: 1.3
 
 clear
 
@@ -28,13 +21,13 @@ fi
 # SET THE VARIABLES
 #
 
-script_ver=1.2
+script_ver=1.3
 archive_dir=binutils-2.41
 archive_url=https://ftp.gnu.org/gnu/binutils/"$archive_dir".tar.lz
 archive_ext="${archive_url//*.}"
 archive_name="$archive_dir.tar.${archive_ext}"
 cwd="$PWD"/binutils-build-script
-install_dir=/usr/local
+install_dir=/usr/local/binutils
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
@@ -63,8 +56,14 @@ export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 # SET THE PATH VARIABLE
 #
 
+if [ -d /usr/lib/ccache/bin ]; then
+    set_ccache_dir='/usr/lib/ccache/bin'
+else
+    set_ccache_dir='/usr/lib/ccache'
+fi
+
 PATH="\
-/usr/lib/ccache:\
+$set_ccache_dir:\
 ${HOME}/perl5/bin:\
 ${HOME}/.cargo/bin:\
 ${HOME}/.local/bin:\
@@ -143,6 +142,27 @@ cleanup_fn()
                 cleanup_fn
                 ;;
     esac
+}
+
+link_fn()
+{
+    local link_names
+
+    cd "$install_dir/bin" || exit 1
+
+    link_names=(
+        addr2line ar as c++filt dwp elfedit gprof gprofng gp-archive gp-collect-app
+        gp-display-html gp-display-src gp-display-text ld ld.bfd ld.gold nm objcopy
+        objdump ranlib readelf size strings strip
+    )
+
+    for name in ${link_names[@]}
+    do
+        if ! sudo ln -f "$PWD/$name" '/usr/local/bin'; then
+            printf "%s\n\n" "Failed to link $name"
+            exit 1
+        fi
+    done
 }
 
 #
@@ -273,6 +293,9 @@ echo
 if ! sudo make all-gold install; then
     fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
 fi
+
+# CREATE SOFT LINKS TO A COMMON PATH
+link_fn
 
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
