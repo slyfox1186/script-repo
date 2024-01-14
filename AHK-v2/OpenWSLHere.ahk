@@ -63,7 +63,7 @@ OpenWSLHereArch()
         pwd := '"' win.Document.Folder.Self.Path '"'
         pwd := StrReplace(pwd, "'", "''")
         pwd := StrReplace(pwd, "\\wsl.localhost", "")
-        RegExMatch(pwd, "Arch|Debian|Ubuntu-22.04", &OSDir)
+        RegExMatch(pwd, "Arch|Debian|Ubuntu-22.04|Ubuntu", &OSDir)
         try
         {
             osName := OSDir[]
