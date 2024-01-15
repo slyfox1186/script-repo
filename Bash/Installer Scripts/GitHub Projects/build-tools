@@ -1,32 +1,13 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2162,SC2317
 
-##############################################################################################################################
-##
 ##  GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-tools
-##
 ##  Purpose: Install the latest versions of: CMake, Ninja, Meson, & Golang
-##
-##  Updated:
-##           - Script date: 11.28.23
-##           - Script version: 2.8
-##           - Golang version: 1.21.5
-##
-##  GitHub: https://github.com/slyfox1186/script-repo/edit/main/shell/installers/build-tools
-##
-##  Supported OS:
-##                - ArchLinux 2023.10.14
-##                - Debian 10/11/12
-##                - Ubuntu (20/22/23).04
-##
-##  Added: A debug variable to help with troubleshooting issues.
-##  Added: Build CMake GUI code
-##
-##############################################################################################################################
+##  Updated: 11.28.23
 
 clear
 
-if [ "${EUID}" -eq '0' ]; then
+if [ "$EUID" -eq '0' ]; then
     printf "%s\n\n" 'You must run this script WITHOUT root/sudo'
     exit 1
 fi
@@ -41,14 +22,14 @@ install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 latest=false
-debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=ON # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
 # PRINT SCRIPT BANNER
 #
 
 printf "%s\n%s\n"                        \
-    "Build-tools script: v${script_ver}" \
+    "Build-tools script: v$script_ver" \
     '===================================='
 sleep 2
 
@@ -56,8 +37,8 @@ sleep 2
 # GET CPU CORE COUNT FOR PARALLEL PROCESSING
 #
 
-if [ -f /proc/cpuinfo ]; then
-    cpu_threads="$(grep --count ^processor /proc/cpuinfo)"
+if [ -f '/proc/cpuinfo' ]; then
+    cpu_threads="$(grep --count ^processor '/proc/cpuinfo')"
 else
     cpu_threads="$(nproc --all)"
 fi
@@ -75,7 +56,7 @@ mkdir -p "$cwd"
 CC=gcc
 CXX=g++
 CFLAGS='-g -O3 -pipe -march=native'
-CXXFLAGS="${CFLAGS}"
+CXXFLAGS="$CFLAGS"
 CPPFLAGS='-I/usr/local/include -I/usr/include'
 LDFLAGS+='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
@@ -86,9 +67,9 @@ export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
 PATH="\
 /usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
+$HOME/perl5/bin:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/cuda/bin:\
 /usr/local/x86_64-linux-gnu/bin:\
@@ -96,10 +77,7 @@ ${HOME}/.local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
+/bin\
 "
 export PATH
 
@@ -146,19 +124,19 @@ fail_fn()
 
 cleanup_fn()
 {
-    local answer
+    local choice
 
     printf "\n%s\n\n%s\n%s\n\n"                  \
         'Do you want to remove the build files?' \
         '[1] Yes'                                \
         '[2] No'
-    read -p 'Your choices are (1 or 2): ' answer
+    read -p 'Your choices are (1 or 2): ' choice
 
-    case "${answer}" in
+    case "$choice" in
         1)      sudo rm -fr "$cwd";;
         2)      return 0;;
         *)
-                unset answer
+                unset choice
                 clear
                 cleanup_fn
                 ;;
@@ -177,25 +155,25 @@ show_versions_fn()
 
         printf "%s\n\n%s\n%s\n%s\n%s\n" \
             'The updated versions are:' \
-            "CMake:  ${show_cmake_ver}" \
-            "Ninja:  ${show_ninja_ver}" \
-            "Meson:  ${show_meson_ver}" \
-            "GoLang: ${show_go_ver}"
+            "CMake:  $show_cmake_ver" \
+            "Ninja:  $show_ninja_ver" \
+            "Meson:  $show_meson_ver" \
+            "GoLang: $show_go_ver"
 }
 
 execute()
 {
-    echo "$ ${*}"
+    echo "$ $*"
 
-    if [ "${debug}" = 'ON' ]; then
+    if [ "$debug" = 'ON' ]; then
         if ! output="$("$@")"; then
-            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
-            fail_fn "Failed to execute: ${*}"
+            notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
+            fail_fn "Failed to execute: $*"
         fi
     else
         if ! output="$("$@" 2>&1)"; then
-            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
-            fail_fn "Failed to execute: ${*}"
+            notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
+            fail_fn "Failed to execute: $*"
         fi
     fi
 }
@@ -216,15 +194,15 @@ download()
     target_file="$dl_path/$dl_file"
     target_dir="$dl_path/$output_dir"
 
-    if [ -f "${target_file}" ]; then
+    if [ -f "$target_file" ]; then
         echo "The file \"$dl_file\" is already downloaded."
     else
-        echo "Downloading \"${dl_url}\" saving as \"$dl_file\""
-        if ! curl -A "$user_agent" -Lso "${target_file}" "${dl_url}"; then
+        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
+        if ! curl -A "$user_agent" -Lso "$target_file" "$dl_url"; then
             printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
-            if ! curl -A "$user_agent" -Lso "${target_file}" "${dl_url}"; then
-                fail_fn "The script failed to download \"$dl_file\" twice and will now exit:Line ${LINENO}"
+            if ! curl -A "$user_agent" -Lso "$target_file" "$dl_url"; then
+                fail_fn "The script failed to download \"$dl_file\" twice and will now exit:Line $LINENO"
             fi
         fi
         echo 'Download Completed'
@@ -236,20 +214,20 @@ download()
     mkdir -p "$target_dir"
 
     if [ -n "$3" ]; then
-        if ! tar -xf "${target_file}" -C "$target_dir" 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script:Line ${LINENO}"
+        if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
+            sudo rm "$target_file"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
         fi
     else
-        if ! tar -xf "${target_file}" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script:Line ${LINENO}"
+        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
+            sudo rm "$target_file"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
         fi
     fi
 
     printf "%s\n\n" "File extracted: $dl_file"
 
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir:Line ${LINENO}"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: $LINENO"
 }
 
 download_git()
@@ -271,19 +249,19 @@ download_git()
         sudo rm -fr "$target_dir"
     fi
 
-    echo "Downloading ${dl_url} as $dl_file"
+    echo "Downloading $dl_url as $dl_file"
 
-    if ! git clone -q "${dl_url}" "$target_dir"; then
+    if ! git clone -q "$dl_url" "$target_dir"; then
         printf "\n%s\n\n" "The script failed to clone the directory \"$target_dir\" and will try again in 10 seconds..."
         sleep 10
-        if ! git clone -q "${dl_url}" "$target_dir"; then
-            fail_fn "The script failed to clone the directory \"$target_dir\" twice and will now exit the build. Line: ${LINENO}"
+        if ! git clone -q "$dl_url" "$target_dir"; then
+            fail_fn "The script failed to clone the directory \"$target_dir\" twice and will now exit the build. Line: $LINENO"
         fi
     else
         printf "%s\n\n" "Successfully cloned: $target_dir"
     fi
 
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: ${LINENO}"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: $LINENO"
 }
 
 build()
@@ -309,100 +287,17 @@ build()
 
 build_done() { echo "$2" > "$cwd/$1.done"; }
 
-git_1_fn()
-{
-    local curl_cmd github_repo github_url g_sver g_sver1
-
-    # SCRAPE GITHUB'S API FOR THE LATEST REPO VERSION
-    github_repo="$1"
-    github_url="$2"
-    cnt=0
-
-    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
-        g_sver="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null)"
-        g_sver1="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
-        g_ver="${g_sver#v}"
-        g_ver1="${g_sver1#v}"
-        ((cnt++))
-    fi
-
-    get_str_end='-rc[0-9]'
-    while [[ $g_ver =~ ${get_str_end}$ ]]
-    do
-        if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}" | jq -r '.[$cnt].name')"; then
-            g_ver="${curl_cmd#v}"
-            ((cnt++))
-        fi  
-    done
-}
-
-git_2_fn()
-{
-    gitlab_repo="$1"
-    github_url="$2"
-    cnt=0
-    
-    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}" | jq -r ".[$cnt].name")"; then
-        g_ver="${curl_cmd#v}"
-        ((cnt++))
-    fi
-    
-    get_str_end='-rc[0-9]'
-    while [[ $g_ver =~ ${get_str_end}$ ]]
-    do
-        if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://gitlab.kitware.com/api/v4/projects/${gitlab_repo}/repository/${github_url}" | jq -r ".[$cnt].name")"; then
-            g_ver="${curl_cmd#v}"
-        fi
-        ((cnt++))
-    done
-}
-
-git_ver_fn()
-{
-    local t_flag u_flag v_flag v_tag v_url
-
-    v_url="$1"
-    v_tag="$2"
-
-    if [ -n "$3" ]; then
-        v_flag="$3"
-        case "${v_flag}" in
-                R)      t_flag=releases;;
-                T)      t_flag=tags;;
-                *)      fail_fn "Could not detect the variable \"v_flag\". Line: ${LINENO}"
-        esac
-    fi
-
-    case "${v_tag}" in
-            1)      u_flag=git_1_fn;;
-            2)      u_flag=git_2_fn;;
-            *)      fail_fn "Could not detect the variable \"v_tag\". Line: ${LINENO}"
-    esac
-
-    "${u_flag}" "${v_url}" "${t_flag}" 2>/dev/null
-}
-
-find_lsb_release="$(sudo find /usr -type f -name 'lsb_release')"
-
-if [ -f '/etc/os-release' ]; then
-    . '/etc/os-release'
-    OS_TMP="$NAME"
-    OS="$(echo "${OS_TMP}" | awk '{print $1}')"
-elif [ -n "${find_lsb_release}" ]; then
-    OS="$(lsb_release -d | awk '{print $2}')"
-else
-    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
-fi
-
 #
 # INSTALL REQUIRED APT/PACMAN PACKAGES
 #
 
 pkgs_arch_fn()
 {
-    pkgs_arch=(autoconf automake autogen bluez-qt5 base-devel ccache cmake curl
-               git jq libnghttp2 libnghttp3 openssl python python-pip qt5-base
-               qt6-base)
+    pkgs_arch=(
+        autoconf automake autogen bluez-qt5 base-devel ccache cmake curl
+        git libnghttp2 libnghttp3 openssl python python-pip qt5-base
+        qt6-base
+    )
 
     if [ -f '/var/lib/pacman/db.lck' ]; then
         sudo rm '/var/lib/pacman/db.lck'
@@ -410,20 +305,20 @@ pkgs_arch_fn()
 
     for i in ${pkgs_arch[@]}
     do
-        missing_pkg="$(sudo pacman -Qi | grep -o "${i}")"
+        missing_pkg="$(sudo pacman -Qi | grep -o "$i")"
 
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
+        if [ -z "$missing_pkg" ]; then
+            missing_pkgs+=" $i"
         fi
     done
 
-    if [ -n "${missing_pkgs}" ]; then
-         sudo pacman -Sq --needed --noconfirm ${missing_pkgs}
+    if [ -n "$missing_pkgs" ]; then
+         sudo pacman -Sq --needed --noconfirm $missing_pkgs
     fi
 
     rm_pip_lock="$(sudo find /usr/lib/python3* -type f -name 'EXTERNALLY-MANAGED')"
-    if [ -n "${rm_pip_lock}" ]; then
-        sudo rm "${rm_pip_lock}"
+    if [ -n "$rm_pip_lock" ]; then
+        sudo rm "$rm_pip_lock"
     fi
 
     # INSTALL PYTHON PIP PACKAGES
@@ -432,100 +327,156 @@ pkgs_arch_fn()
 
 pkgs_fn()
 {
-    pkgs=(autoconf autoconf-archive automake autogen build-essential ccache
-          cmake curl jq git libssl-dev libtool libtool-bin m4 python3 python3-pip
-          qt6-base-dev)
+    pkgs=(
+        autoconf autoconf-archive automake autogen build-essential ccache
+        cmake curl git libssl-dev libtool libtool-bin m4 python3 python3-pip
+        qtbase5-dev
+    )
 
-    for pkg in ${pkgs[@]}
+    # Initialize arrays for missing, available, and unavailable packages
+    missing_packages=()
+    available_packages=()
+    unavailable_packages=()
+
+    # Loop through the array to find missing packages
+    for pkg in "${pkgs[@]}"
     do
-        missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
-
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${pkg}"
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+            missing_packages+=("$pkg")
         fi
     done
 
-    if [ -n "${missing_pkgs}" ]; then
-        if ! sudo apt -y install ${missing_pkgs}; then
-            sudo killall -9 apt apt-get dpkg
-            sudo dpkg --configure -a
-            sudo apt --fix-broken install
-            sudo apt -f -y install
-            sudo apt update
-            sudo apt -y install ${missing_pkgs}
+    # Check availability of missing packages and categorize them
+    for pkg in "${missing_packages[@]}"
+    do
+        if apt-cache show "$pkg" > /dev/null 2>&1; then
+            available_packages+=("$pkg")
+        else
+            unavailable_packages+=("$pkg")
         fi
-        sudo apt -y autoremove
-        clear
+    done
+
+    # Print unavailable packages
+    if [ "${#unavailable_packages[@]}" -gt 0 ]; then
+        echo "Unavailable packages: ${unavailable_packages[*]}"
+    fi
+
+    # Install available missing packages
+    if [ "${#available_packages[@]}" -gt 0 ]; then
+        echo "Installing available missing packages: ${available_packages[*]}"
+        sudo apt -y install "${available_packages[@]}"
+    else
+        printf "%s\n\n" "No missing packages to install or all missing packages are unavailable."
     fi
 }
 
-case "${OS}" in
+git_1_fn() {
+    # Initial cnt
+    local cnt curl_cmd git_repo
+    git_repo="$1"
+    cnt=1
+
+    # Loop until the condition is met or a maximum limit is reached
+    while [ $cnt -le 10 ]
+    do
+        curl_cmd="$(curl -sSL "https://github.com/$git_repo/tags")"
+
+        # Extract the specific line
+        line=$(echo "$curl_cmd" | grep -o 'href="[^"]*\.tar\.gz"' | sed -n "${cnt}p")
+
+        # Check if the line matches the pattern (version without 'RC'/'rc')
+        if echo "$line" | grep -qP '[v]*(\d+\.\d+(?:\.\d*){0,2})\.tar\.gz'; then
+            # Extract and print the version number
+            g_ver=$(echo "$line" | grep -oP '(\d+\.\d+(?:\.\d+){0,2})')
+            break
+        else
+            # Increment the cnt if no match is found
+            ((cnt++))
+        fi
+    done
+
+    # Check if a version was found
+    if [ $cnt -gt 10 ]; then
+        echo "No matching version found without RC/rc suffix."
+    fi
+}
+
+# Function to extract the first word from a string
+get_first_word() { echo "$1" | awk '{print $1}'; }
+
+# Try to detect the OS using /etc/os-release, fall back to lsb_release if available
+if [ -f '/etc/os-release' ]; then
+    . '/etc/os-release'
+    OS=$(get_first_word "$NAME")
+elif lsb_release -d &> /dev/null; then
+    OS=$(lsb_release -d | awk '{print $2}')
+else
+    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: $LINENO"
+fi
+
+case "$OS" in
     Arch)   pkgs_arch_fn;;
     *)      pkgs_fn;;
 esac
 
-#
-# INSTALL FROM SOURCE CODE
-#
-
-
 # CHECK IF THE LATEST RELEASE IS A 'RC' AKA RELEASE CANDIDATE AND IF SO GO BACK TO THE PREVIOUS STABLE RELEASE
-git_ver_fn '541' '2' 'T'
+git_1_fn 'Kitware/CMake'
 if build 'cmake' "$g_ver"; then
-    download "https://gitlab.kitware.com/cmake/cmake/-/archive/v$g_ver/cmake-v$g_ver.tar.bz2" "cmake-$g_ver.tar.bz2"
-    execute ./bootstrap --prefix="$install_dir"   \
-                        --enable-ccache             \
+    download "https://github.com/Kitware/CMake/archive/refs/tags/v$g_ver.tar.gz" "cmake-$g_ver.tar.gz"
+    execute ./bootstrap --prefix="$install_dir" \
+                        --enable-ccache \
                         --parallel="$(nproc --all)" \
                         --qt-gui
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'cmake' "$g_ver"
 fi
 
-git_ver_fn 'ninja-build/ninja' '1' 'T'
-if build 'ninja' "$g_ver1"; then
-    download "https://codeload.github.com/ninja-build/ninja/tar.gz/refs/tags/v$g_ver1" "ninja-$g_ver1.tar.gz"
+git_1_fn 'ninja-build/ninja'
+if build 'ninja' "$g_ver"; then
+    download "https://github.com/ninja-build/ninja/archive/refs/tags/v$g_ver.tar.gz" "ninja-$g_ver.tar.gz"
     re2c_path="$(type -P re2c)"
-    execute cmake -B build                             \
-                  -DCMAKE_install_dir="$install_dir" \
-                  -DCMAKE_BUILD_TYPE=Release           \
-                  -DRE2C="${re2c_path}"                \
-                  -DBUILD_TESTING=OFF                  \
+    execute cmake -B build \
+                  -DCMAKE_INSTALL_PREFIX="$install_dir" \
+                  -DCMAKE_BUILD_TYPE=Release \
+                  -DRE2C="$re2c_path" \
+                  -DBUILD_TESTING=OFF \
                   -Wno-dev
-    execute make "-j${cpu_threads}" -C build
+    execute make "-j$cpu_threads" -C build
     execute sudo make -C build install
-    build_done 'ninja' "$g_ver1"
+    build_done 'ninja' "$g_ver"
 fi
 
 if [[ "${OS}" == 'Arch' ]]; then
     sudo pacman -Sq --needed --noconfirm meson 2>&1
 else
-    git_ver_fn 'mesonbuild/meson' '1' 'T'
-    if build 'meson' "$g_ver1"; then
-        download "https://codeload.github.com/mesonbuild/meson/tar.gz/refs/tags/$g_ver1" "meson-$g_ver1.tar.gz"
+    git_1_fn 'mesonbuild/meson'
+    if build 'meson' "$g_ver"; then
+        download "https://github.com/mesonbuild/meson/archive/refs/tags/$g_ver.tar.gz" "meson-$g_ver.tar.gz"
         execute python3 setup.py build
         execute sudo python3 setup.py install --prefix="$install_dir"
-        build_done 'meson' "$g_ver1"
+        build_done 'meson' "$g_ver"
     fi
 fi
 
-if [[ "${OS}" == 'Arch' ]]; then
+if [[ "$OS" == 'Arch' ]]; then
     sudo pacman -Sq --needed --noconfirm go
-    mkdir -p  "${HOME}"/go
-    export GOPATH="${HOME}"/go
-    source "${HOME}"/.bash_profile
+    mkdir -p  "$HOME/go"
+    GOPATH="$HOME/go"
+    export GOPATH
+    source "$HOME/.bash_profile"
 else
-    if build 'golang' '1.21.5'; then
-        download 'https://go.dev/dl/go1.21.5.linux-amd64.tar.gz' 'golang-1.21.5.tar.gz'
-        execute sudo cp -f 'bin/go' 'bin/gofmt' "$install_dir"/bin
-        if [ -d  "$install_dir"/go ]; then
-            sudo rm -fr "$install_dir"/go
+    if build 'golang' '1.21.6'; then
+        download 'https://go.dev/dl/go1.21.6.linux-amd64.tar.gz' 'golang-1.21.6.tar.gz'
+        execute sudo cp -f 'bin/go' 'bin/gofmt' "$install_dir/bin"
+        if [ -d  "$install_dir/go" ]; then
+            sudo rm -fr "$install_dir/go"
         fi
-        sudo mkdir -p "$install_dir"/go
-        GOROOT="$install_dir"/go
-        PATH="${PATH}:${GOROOT}/bin"
+        sudo mkdir -p "$install_dir/go"
+        GOROOT="$install_dir/go"
+        PATH="$PATH:$GOROOT/bin"
         export GOROOT PATH
-        build_done 'golang' '1.21.5'
+        build_done 'golang' '1.21.6'
     fi
 fi
 
