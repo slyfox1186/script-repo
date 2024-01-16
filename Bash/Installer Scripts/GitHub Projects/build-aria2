@@ -76,6 +76,8 @@ pkgs_fn() {
     fi
 }
 
+pkgs_fn
+
 # Determine OS
 if [ -f /etc/os-release ]; then
     . /etc/os-release
