@@ -15,7 +15,7 @@
 ##         - RUNPATH to LDFLAGS
 ##  Fixed: Soft linking error
 
-# Exit on error and uninitialized variables
+# Exit on an error and uninitialized variables
 set -euo pipefail
 clear
 
@@ -46,7 +46,7 @@ do
 done
 
 if [ -n "${missing_pkgs}" ]; then
-    sudo apt -y install ${missing_pkgs}
+    sudo apt install ${missing_pkgs}
 fi
 
 
