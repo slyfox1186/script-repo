@@ -1,421 +1,98 @@
 #!/usr/bin/env bash
 
-####################################################################################################################################
-##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-aria2
-##
 ##  Purpose: Build aria2 from source code
-##
 ##  Updated: 12.03.23
-##
 ##  Script version: 1.8
-##
 ##  Features:
 ##            - Static build
 ##            - OpenSSL backend
 ##            - Increased the max connections from 16 to 128
-##
 ##  Added:
 ##         - Updated Aria2 to the latest version - 1.37.0
 ##         - If OpenSSL is manually installed using the build-openssl script then use its certs directory instead of the default.
 ##         - Build jemalloc from the latest source code
 ##         - RUNPATH to LDFLAGS
-##
 ##  Fixed: Soft linking error
-##
-####################################################################################################################################
 
+# Exit on error and uninitialized variables
+set -euo pipefail
 clear
 
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+# Script and Aria2 version
+script_ver="1.8"
+aria2_ver="1.37.0"
+
+# Check for non-root execution
+if [ "$EUID" -eq 0 ]; then
+    echo 'This script must be run without root/sudo privileges.'
     exit 1
 fi
 
-#
-# SET THE VARIABLES
-#
-
-script_ver=1.8
-archive_ver=1.37.0
-archive_dir="aria2-${archive_ver}"
-archive_url="https://github.com/aria2/aria2/releases/download/release-${archive_ver}/$archive_dir.tar.xz"
-archive_ext="${archive_url//*.}"
-archive_name="$archive_dir.tar.${archive_ext}"
-cwd="$PWD"/aria2-build-script
-install_dir=/usr/local
-# MAKE SURE WE LOCATES AND THEN USE THE CORRECT ARIA2 LIBRARY DIRECTORY AND EXTRA LIBS
-openssl_lib_dir="$(pkg-config --variable=libdir openssl)"
-openssl_libs="$(pkg-config --libs openssl)"
-certs_dir="${openssl_lib_dir}"
-openssl_include_dir="$(pkg-config --cflags-only-I openssl | awk '{print $1}' | sed 's/-I//')"
-pem_file=cacert.pem
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/script-repo
-
-#
-# PRINT THE SCRIPT BANNER
-#
-
-box_out_banner_aria2()
-{
-    input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
-    tput bold
-    line="$(tput setaf 3)$line"
-    space="${line//-/ }"
-    echo " $line"
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
-    printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
-    echo " $line"
-    tput sgr 0
+# Function to handle errors
+handle_error() {
+    echo "Error occurred: $1"
+    exit 1
 }
-box_out_banner_aria2 "Aria2 Build Script - v${script_ver}"
-echo
-sleep 2
 
-#
-# TEST THE OS AND ITS VERSION
-#
-
-find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
-
+# Determine OS
 if [ -f /etc/os-release ]; then
     . /etc/os-release
-    OS_TMP="$NAME"
-    CODENAME="$VERSION_CODENAME"
-    OS="$(echo "${OS_TMP}" | awk '{print $1}')"
-elif [ -n "${find_lsb_release}" ]; then
-    OS="$(lsb_release -d | awk '{print $2}')"
+    OS=${NAME%% *}
+    echo "Detected OS: $OS"
+elif command -v lsb_release >/dev/null; then
+    OS=$(lsb_release -si)
+    echo "Detected OS: $OS"
 else
-    fail_fn "Failed to define the \$OS variable. Line: ${LINENO}"
+    handle_error 'Unable to determine operating system.'
 fi
 
-#
-# CREATE THE OUTPUT DIRECTORY
-#
+# Directories and URLs
+build_dir="$HOME/aria2-build"
+install_dir="/usr/local"
+archive_url="https://github.com/aria2/aria2/releases/download/release-$aria2_ver/aria2-$aria2_ver.tar.xz"
+certs_dir="$(pkg-config --variable=libdir openssl)"
 
-if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
-fi
-mkdir -p "$cwd"
+# Prepare build directory
+echo "Creating build directory: $build_dir"
+mkdir -p "$build_dir" && cd "$build_dir"
 
-#
-# SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
-#
+# Download and extract Aria2
+echo "Downloading and extracting Aria2..."
+curl -sL "$archive_url" | tar -xJ || handle_error "Failed to download and extract Aria2"
 
-CC=gcc
-CXX=g++
-CFLAGS='-g -O3 -pipe -march=native'
-CXXFLAGS="${CFLAGS}"
-CPPFLAGS="-I$install_dir/include/x86_64-linux-gnu"
-export CC CXX CFLAGS CPPFLAGS CXXFLAGS
+# Build jemalloc
+printf '\n%s\n%s\n\n' 'Compiling jemalloc...' '================================'
+jemalloc_ver="5.3.0"
+jemalloc_url="https://github.com/jemalloc/jemalloc/releases/download/$jemalloc_ver/jemalloc-$jemalloc_ver.tar.bz2"
+curl -sL "$jemalloc_url" | tar -xj || handle_error "Failed to download jemalloc"
+cd "jemalloc-$jemalloc_ver"
+./configure --prefix="$install_dir" || handle_error "Failed to configure jemalloc"
+make -j"$(nproc)" && sudo make install || handle_error "Failed to build and install jemalloc"
+cd ..
 
-#
-# SET THE PATH VARIABLE
-#
+# Build gcrypt-error
+printf '\n%s\n%s\n\n' 'Compiling gcrypt-error...' '================================'
+gcrypt_error_ver="1.47"
+gcrypt_error_url="https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-$gcrypt_error_ver.tar.bz2"
+curl -sL "$gcrypt_error_url" | tar -xj || handle_error "Failed to download gcrypt-error"
+cd "libgpg-error-$gcrypt_error_ver"
+./configure --prefix="$install_dir" || handle_error "Failed to configure gcrypt-error"
+make -j"$(nproc)" && sudo make install || handle_error "Failed to build and install gcrypt-error"
+cd ..
 
-PATH="\
-/usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
-
-#
-# SET THE PKG_CONFIG_PATH VARIABLE
-#
-
-PKG_CONFIG_PATH="\
-/usr/share/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/pkgconfig:\
-/lib/pkgconfig\
-"
-export PKG_CONFIG_PATH
-
-#
-# CREATE FUNCTIONS
-#
-
-exit_fn()
-{
-    printf "%s\n\n%s\n%s\n\n"                                     \
-        'The script has completed'                                \
-        'Make sure to star this repository to show your support!' \
-        "$web_repo"
-    exit 0
-}
-
-fail_fn()
-{
-    printf "\n\n%s\n\n%s\n\n%s\n\n"                              \
-        "$1"                                                   \
-        'Please create a support ticket so I can work on a fix.' \
-        "$web_repo/issues"
-    exit 1
-}
-
-show_ver_fn()
-{
-    local show_ver
-    clear
-
-    show_ver="$(aria2c --version | grep -Eo '[0-9\.]+$' | head -n1 2>/dev/null | xargs -I{} echo {})"
-
-    printf "%s\n\n" "The installed aria2c version is: ${show_ver}"
-    sleep 2
-}
-
-cleanup_fn()
-{
-    local choice
-
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n"                  \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes'                                      \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
-    clear
-
-    case "${choice}" in
-        1)      sudo rm -fr "$cwd";;
-        2)      clear;;
-        *)
-                unset choice
-                clear
-                cleanup_fn
-                ;;
-    esac
-}
-
-#
-# INSTALL THE LATEST CA CERTS FROM CURL'S OFFICIAL WEBSITE
-#
-
-curl -A "$user_agent" -Lso "$cwd/$pem_file" "https://curl.se/ca/$pem_file"
-if ! sudo mv "$cwd/$pem_file" "$certs_dir/$pem_file"; then
-    fail_fn "Failed to move cacert.pem. Line: ${LINENO}"
-fi
-
-#
-# INSTALL THE REQUIRED APT PACKAGES
-#
-
-pkgs=(autoconf autoconf-archive autogen automake build-essential ca-certificates ccache
-      curl gettext libaria2-0 libaria2-0-dev libc-ares-dev libdmalloc-dev libexpat1-dev libgmp-dev
-      libintl-perl liblzma-dev libmbedtls-dev libnghttp2-dev librust-openssl-dev libsqlite3-dev
-      libssh2-1-dev libssh-dev libssl-dev libticonv-dev libtool libtool-bin libuv1-dev libxml2-dev
-      m4 pkg-config zlib1g-dev)
-
-for pkg in ${pkgs[@]}
-do
-    missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
-
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${pkg}"
-    fi
-done
-
-if [ -n "${missing_pkgs}" ]; then
-    sudo apt -y install ${missing_pkgs}
-fi
-
-#
-# BUILD JEMALLOC FROM SOURCE CODE
-#
-
-if [ -d "$cwd/jemalloc-5.3.0" ]; then
-    sudo rm -fr "$cwd/jemalloc-5.3.0"
-fi
-mkdir -p "$cwd/jemalloc-5.3.0/build"
-
-#
-# DOWNLOAD JEMALLOC SOURCE CODE
-#
-
-if [ ! -f "$cwd/jemalloc-5.3.0.tar.bz2" ]; then
-    if ! curl -A "$user_agent" -m 10 -Lso "$cwd/jemalloc-5.3.0.tar.bz2" 'https://github.com/jemalloc/jemalloc/releases/download/5.3.0/jemalloc-5.3.0.tar.bz2'; then
-        fail_fn "Failed to download the file: $cwd/jemalloc-5.3.0.tar.bz2. Line: ${LINENO}"
-    fi
-fi
-
-#
-# EXTRACT JEMALLOC INTO OUTPUT DIRECTORY
-#
-
-if ! tar -jxf "$cwd/jemalloc-5.3.0.tar.bz2" -C "$cwd/jemalloc-5.3.0" --strip-components 1; then
-    fail_fn "Failed to extract: $cwd/jemalloc-5.3.0.tar.bz2"
-fi
-
-#
-# CD INTO OUTPUT DIRECTORY AND CONFIGURE JEMALLOC
-#
-
-cd "$cwd/jemalloc-5.3.0" || exit 1
-extracmds1=('--disable-'{debug,doc,fill,log,shared,prof,stats})
-extracmds2=('--enable-'{autogen,static,xmalloc})
-./autogen.sh
-cd build || exit 1
-../configure --prefix="$install_dir" \
-             "${extracmds1[@]}"        \
-             "${extracmds2[@]}"
-echo
-if ! make "-j$(nproc --all)"; then
-    fail_fn "Failed to execute the jemalloc command: make -j$(nproc --all). Line: ${LINENO}"
-fi
-echo
-if ! sudo make install; then
-    fail_fn "Failed to execute the jemalloc command: sudo make install. Line: ${LINENO}"
-fi
-
-#
-# BUILD GCRYPT-ERROR FROM SOURCE CODE
-#
-
-if [ -d "$cwd/gcrypt-error-1.47" ]; then
-    sudo rm -fr "$cwd/gcrypt-error-1.47"
-fi
-mkdir -p "$cwd/gcrypt-error-1.47/build"
-
-#
-# DOWNLOAD GCRYPT-ERROR SOURCE CODE
-#
-
-if [ ! -f "$cwd/gcrypt-error-1.47.tar.bz2" ]; then
-    if ! curl -A "$user_agent" -m 10 -Lso "$cwd/gcrypt-error-1.47.tar.bz2" 'https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-1.47.tar.bz2'; then
-        fail_fn "Failed to download the file: $cwd/gcrypt-error-1.47.tar.bz2. Line: ${LINENO}"
-    fi
-fi
-
-#
-# EXTRACT GCRYPT-ERROR INTO OUTPUT DIRECTORY
-#
-
-if ! tar -jxf "$cwd/gcrypt-error-1.47.tar.bz2" -C "$cwd/gcrypt-error-1.47" --strip-components 1; then
-    fail_fn "Failed to extract: $cwd/gcrypt-error-1.47.tar.bz2"
-fi
-
-#
-# CD INTO OUTPUT DIRECTORY AND CONFIGURE GCRYPT-ERROR
-#
-
-cd "$cwd/gcrypt-error-1.47" || exit 1
-./autogen.sh
-cd build || exit 1
-../configure --prefix="$install_dir"         \
-             --disable-doc                     \
-             --disable-languages               \
-             --disable-nls                     \
-             --disable-tests                   \
-             --enable-install-gpg-error-config \
-             --enable-static                   \
-             --enable-threads=posix            \
-             --with-libiconv-prefix=/usr       \
-             --with-libintl-prefix=/usr        \
-             --with-pic
-echo
-if ! make "-j$(nproc --all)"; then
-    fail_fn "Failed to execute the gcrypt-error command: make -j$(nproc --all). Line: ${LINENO}"
-fi
-echo
-if ! sudo make install; then
-    fail_fn "Failed to execute the gcrypt-error command: sudo make install. Line: ${LINENO}"
-fi
-
-#
-# CREATE THE ARIA2 OUTPUT DIRECTORY
-#
-
-if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
-fi
-mkdir -p "$cwd/$archive_dir/build"
-
-#
-# DOWNLOAD THE ARIA2 SOURCE CODE
-#
-
-if [ ! -f "$cwd/${archive_name}" ]; then
-    curl -A "$user_agent" -m 10 -Lso "$cwd/${archive_name}" "${archive_url}"
-fi
-
-#
-# EXTRACT THE ARIA2 SOURCE CODE INTO THE OUTPUT DIRECTORY
-#
-
-if ! tar -xf "$cwd/${archive_name}" -C "$cwd/$archive_dir" --strip-components 1; then
-    fail_fn "Failed to extract: $cwd/${archive_name}"
-fi
-
-#
-# BUILD ARIA2 FROM SOURCE CODE
-#
-
-printf "\n%s\n%s\n\n"                      \
-    "Build Aria2 - version ${archive_ver}" \
-    '==============================================='
-
-cd "$cwd/$archive_dir" || exit 1
-# INCREASE THE MAX NUMBER OF CONNECTIONS FROM 16 TO 128
+# Compile Aria2
+printf '\n%s\n%s\n\n' 'Compiling Aria2...' '================================'
+cd "aria2-$aria2_ver"
 sed -i 's/1, 16/1, 128/g' 'src/OptionHandlerFactory.cc'
-cd build || exit 1
-../configure --prefix="$install_dir"                         \
-             --disable-nls                                     \
-             --disable-shared                                  \
-             --disable-werror                                  \
-             --enable-libaria2                                 \
-             --enable-static                                   \
-             --with-ca-bundle="$certs_dir/$pem_file"       \
-             --with-libiconv-prefix=/usr                       \
-             --with-libintl-prefix=/usr                        \
-             --with-libuv                                      \
-             --with-jemalloc                                   \
-             --with-openssl                                    \
-             --without-gnutls                                  \
-             ARIA2_STATIC=yes                                  \
-             EXPAT_LIBS="$(pkg-config --libs expat)"           \
-             JEMALLOC_CFLAGS="$(pkg-config --cflags jemalloc)" \
-             JEMALLOC_LIBS="$(pkg-config --libs jemalloc)"     \
-             LIBS="$(pkg-config --libs libuv)"
-echo
-if ! make "-j$(nproc --all)"; then
-    fail_fn "Failed to execute the aria2 command: make -j$(nproc --all). Line: ${LINENO}"
-fi
-echo
-if ! sudo make install; then
-    fail_fn "Failed to execute the aria2 command: sudo make install. Line: ${LINENO}"
-fi
+./configure --prefix="$install_dir" --without-gnutls --with-openssl \
+            --with-ca-bundle="$certs_dir/cacert.pem" \
+            CFLAGS='-O3 -march=native' CXXFLAGS='-O3 -march=native' || handle_error "Failed to configure Aria2"
+make -j"$(nproc)" || handle_error "Failed to build Aria2"
+sudo make install || handle_error "Failed to install Aria2"
 
-# REMOVE ANY APT INSTALLED VERSION OF ARIA2
-if [ -f '/usr/bin/aria2c' ]; then
-    sudo apt -y remove aria2
-    sudo apt -y autoremove
-    clear
-fi
+# Cleanup
+printf '\n%s' 'Cleaning up...'
+rm -rf "$build_dir"
 
-# SHOW THE NEW VERSION
-show_ver_fn
-
-# PROMPT USER TO CLEAN UP FILES
-cleanup_fn
-
-# SHOW EXIT MESSAGE
-exit_fn
+printf '\n%s\n\n' "Aria2 version $aria2_ver installed successfully."
