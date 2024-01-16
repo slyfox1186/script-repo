@@ -33,11 +33,10 @@ pkgs_fn() {
     local missing_pkg missing_packages pkg pkgs available_packages unavailable_packages
 
     # Install Required APT packages
-    pkgs=(autoconf autoconf-archive autogen automake build-essential ca-certificates ccache
-          curl gettext libaria2-0 libaria2-0-dev libc-ares-dev libdmalloc-dev libexpat1-dev libgmp-dev
-          libintl-perl liblzma-dev libmbedtls-dev libnghttp2-dev librust-openssl-dev libsqlite3-dev
-          libssh2-1-dev libssh-dev libssl-dev libticonv-dev libtool libtool-bin libuv1-dev libxml2-dev
-          m4 pkg-config zlib1g-dev)
+    pkgs=(
+        autoconf autoconf-archive autogen automake build-essential ca-certificates
+        ccache curl libssl-dev libtool libtool-bin m4 pkg-config zlib1g-dev
+    )
 
     # Initialize arrays for missing, available, and unavailable packages
     missing_packages=()
