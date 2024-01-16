@@ -6,9 +6,7 @@
 
 clear
 
-printf "%s\\n%s\\n" \
-    'Installing DMD -- version latest' \
-    '======================================'
+printf "Installing DMD -- version latest\n======================================\n"
 
 # Fetch and store the latest DMD version
 echo 'Fetching the latest DMD version.'
@@ -16,36 +14,53 @@ version=$(curl -s https://downloads.dlang.org/releases/LATEST)
 
 # Check if version is captured
 if [ -z "$version" ]; then
-    printf "%s\\n\\n" 'Failed to capture DLang version.'
+    printf "Failed to capture DLang version.\n\n"
     exit 1
 fi
 
-# Download the install script
+# Define user agents for wget retries
+user_agents=("Mozilla/5.0" "Opera/9.80" "Chrome/41.0.2228.0" "Safari/537.36")
+
+# Download the install script with retries using different user agents
 echo "Downloading the install script for DMD version $version."
 temp_script=$(mktemp)
-curl -s https://dlang.org/install.sh -o "$temp_script"
+download_success=0
+
+for agent in "${user_agents[@]}"; do
+    if wget -U "$agent" -nv --tries=3 --timeout=10 -O "$temp_script" https://dlang.org/install.sh; then
+        download_success=1
+        break
+    else
+        echo "Download failed with user agent: $agent"
+    fi
+done
+
+if [ $download_success -eq 0 ]; then
+    printf "Failed to download the install script after retries.\n\n"
+    rm -f "$temp_script"
+    exit 1
+fi
 
 # Make the script executable
 echo 'Setting script permissions.'
 chmod +x "$temp_script"
 
-# Run the script silently and capture the output
+# Run the script and redirect verbose output to /dev/null
 echo "Installing DMD version $version"
-
-# Source the activate script with the captured version
-if source "$HOME/dlang/dmd-$version/activate" 2>/dev/null; then
-    printf "\\n%s\\n%s\\n\\n" \
-        "Installation successful!" \
-        "DLang - version $version"
-else
-    printf "\\n%s\\n%s\\n\\n" \
-        "Failed to source DLang - version $version" \
-        "You must manually run the command \"source $HOME/dlang/dmd-$version/activate\""
+if ! "$temp_script" > /dev/null 2>&1; then
+    printf "\nInstallation of DMD failed.\n\n"
+    rm -f "$temp_script"
+    exit 1
 fi
 
-printf "%s\\n%s\\n\\n" \
-    'Make sure to star this repository to show your support!' \
-    'https://github.com/slyfox1186/script-repo'
+# Activate DMD
+if source "$HOME/dlang/dmd-$version/activate" 2>/dev/null; then
+    printf "\nActivation of DMD successful!\nDLang - version $version\n\n"
+else
+    printf "\nFailed to source DLang - version $version\nYou must manually run the command \"source $HOME/dlang/dmd-$version/activate\"\n\n"
+fi
+
+printf "Make sure to star this repository to show your support!\nhttps://github.com/slyfox1186/script-repo\n"
 
 # Delete the install script
 rm -f "$temp_script"
