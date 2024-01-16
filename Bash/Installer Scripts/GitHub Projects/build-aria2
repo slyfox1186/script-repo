@@ -29,6 +29,27 @@ if [ "$EUID" -eq 0 ]; then
     exit 1
 fi
 
+# Install Required APT packages
+pkgs=(autoconf autoconf-archive autogen automake build-essential ca-certificates ccache
+      curl gettext libaria2-0 libaria2-0-dev libc-ares-dev libdmalloc-dev libexpat1-dev libgmp-dev
+      libintl-perl liblzma-dev libmbedtls-dev libnghttp2-dev librust-openssl-dev libsqlite3-dev
+      libssh2-1-dev libssh-dev libssl-dev libticonv-dev libtool libtool-bin libuv1-dev libxml2-dev
+      m4 pkg-config zlib1g-dev)
+
+for pkg in ${pkgs[@]}
+do
+    missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
+
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${pkg}"
+    fi
+done
+
+if [ -n "${missing_pkgs}" ]; then
+    sudo apt -y install ${missing_pkgs}
+fi
+
+
 # Function to handle errors
 handle_error() {
     echo "Error occurred: $1"
