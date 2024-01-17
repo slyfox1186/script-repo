@@ -1,51 +1,91 @@
 #!/usr/bin/env bash
 
-## GitHub:  https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-rust
-## Purpose: Install Rust (v1.75.0)
-## Source:  https://github.com/rust-lang/rust
-## Date:    01.09.24
+clear
 
-# Make sure the script is run without superuser privileges
+# Check if the script is running as root
 if [ "$EUID" -eq 0 ]; then
-    echo "Please run this script WITHOUT root or sudo."
+    echo "This script should not be run as root or with sudo."
     exit 1
 fi
 
-# Remove any files from previous runs
-if [ -d rust ]; then
-    sudo rm -fr rust
-fi
+log() { echo -e "\e[32m$1\e[0m"; }
+log_error() { echo -e "\e[31m$1\e[0m" >&2; }
 
-# Clone the Rust repository without recursively fetching submodules (this gets the latest version only and saves time and disk space'
-git clone --branch master --depth 1 --single-branch https://github.com/rust-lang/rust.git
+# Define optimization flags
+export OPT_FLAGS="-O3 -pipe -march=native"
 
-# Navigate to the Rust source code directory
-cd rust || exit 1
+# Check for necessary dependencies
+for cmd in git curl python3; do
+    if ! command -v "$cmd" &> /dev/null; then
+        log_error ""$cmd could not be found""
+        exit 1
+    fi
+done
 
-# Run the Rust install script
-echo
-if ! python3 x.py build; then
-    printf "%s\n\n" 'Error: Failed to execute python3 x.py build'
+# Rust installation variables
+RUST_GIT_URL="https://github.com/rust-lang/rust.git"
+RUST_SRC_DIR="rust-src"
+
+# Check and install rustup
+rustup_check() {
+    log "Checking rustup installation..."
+    if ! command -v rustup &> /dev/null; then
+        log "Installing rustup..."
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+        source "$HOME/.cargo/env"
+    fi
+    rustup default nightly
+}
+
+# Fetch the latest Rust version
+fetch_latest_rust_version() {
+    latest_version=$(git ls-remote --tags "$RUST_GIT_URL" | \
+                     awk -F/ '/tags\/[0-9]+\.[0-9]+\.[0-9]+$/ {print $3}' | \
+                     sort -V | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | tail -n1)
+    echo "$latest_version"
+}
+
+log "Fetching the latest stable Rust version..."
+RUST_VERSION=$(fetch_latest_rust_version)
+if [ -z "$RUST_VERSION" ]; then
+    log_error "Failed to fetch the latest Rust version."
     exit 1
 fi
-echo
-if ! python3 x.py install; then
-    printf "%s\n\n" 'Error: Failed to execute python3 x.py install'
-    exit 1
-fi
 
-# Add Rust to the system PATH by appending the following code to the bottom of the users .bashrc file
-cat >> "$HOME"/.bashrc <<'EOF'
+log "Latest stable Rust version: $RUST_VERSION"
 
-if [ -f "$HOME"/.cargo/env ]; then
-    . "$HOME"/.cargo/env
-fi
-EOF
+clone_rust_source() {
+    [ -d "$RUST_SRC_DIR" ] && rm -fr "$RUST_SRC_DIR"
+    log "Cloning Rust source code into an empty directory..."
+    git clone --branch "$RUST_VERSION" --depth 1 "$RUST_GIT_URL" "$RUST_SRC_DIR" || exit 1
+}
 
-# Source the users .bashrc file
-source "$HOME"/.bashrc
+# Configure Rust build
+configure_rust() {
+    log "Configuring and building Rust..."
+    rm "config.toml"
+    ./configure --enable-docs --enable-ccache--enable-llvm-static-stdcpp --enable-rpath \
+                --python="$(type -P python3)" --enable-use-libcxx --enable-optimize-llvm \
+                --enable-extended --llvm-cflags="$OPT_FLAGS" --llvm-cxxflags="$OPT_FLAGS" \
+                --release-channel=stable
+}
 
-# Verify the installation by displaying the Rust version
-printf "\n%s\n\n" "Rust ${rust_version} from the master branch has been successfully installed."
+build_rust() {
+    log "Installing Rust..."
+        python3 x.py build || exit 1
+}
 
-rustc --version
+install_rust() {
+    log "Installing Rust..."
+        python3 x.py install || exit 1
+}
+
+rustup_check
+fetch_latest_rust_version
+clone_rust_source
+cd "$RUST_SRC_DIR" || exit 1
+configure_rust
+build_rust
+install_rust
+
+log "Rust installation completed successfully."
