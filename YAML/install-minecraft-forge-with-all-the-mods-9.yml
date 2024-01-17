@@ -19,8 +19,8 @@ services:
       REMOVE_OLD_MODS: "true"
       SERVER_NAME: "Server Name Here"
       VIEW_DISTANCE: 15
-    tty: true
-    stdin_open: true
+    tty: "true"
+    stdin_open: "true"
     restart: always
     ports:
       - 25565:25565
