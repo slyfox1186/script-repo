@@ -5,29 +5,28 @@ services:
     image: itzg/minecraft-server:java17
     environment:
       ANNOUNCE_PLAYER_ACHIEVEMENTS: "false"
-      ENABLE_QUERY: "true"
-      DIFFICULTY: "normal"
       EULA: "true"
-      CF_SERVER_MOD: "https://mediafilez.forgecdn.net/files/4985/960/Server-Files-0.2.34.zip" # Replace with a direct download link to your desired modpack server files
+      CF_SERVER_MOD: "https://mediafilez.forgecdn.net/files/4985/960/Server-Files-0.2.36.zip"
       DIFFICULTY: "normal"
       ENABLE_QUERY: "true"
       ENABLE_RCON: "false"
-      MAX_TICK_TIME: 120000 # This needs to be higher to optimize the server for the specific mops that are installed
+      MAX_TICK_TIME: 60000
       MEMORY: 12G
       MAX_PLAYERS: 20
-      MOTD: > 
-        Line 1
-        Line 2
-      PVP: "TRUE"
-      TYPE: "CURSEFORGE"
+      MOTD: "Line1\nLine2\nLine3"
+      PVP: "true"
+      TYPE: CURSEFORGE
       REMOVE_OLD_MODS: "true"
-      SERVER_NAME: "SERVER NAME"
-      VIEW_DISTANCE: 10
+      SERVER_NAME: "Server Name Here"
+      VIEW_DISTANCE: 15
     tty: true
     stdin_open: true
     restart: always
     ports:
-      - "25565:25565"
+      - 25565:25565
     volumes:
-      - ./modpacks:/modpacks:ro
-      - ./minecraft-forge:/data
+      - /home/username/minecraft-forge-server:/data
+      - /home/username/minecraft-forge-server/modpacks:/modpacks:ro
+
+# This MUST be run with the command "docker compose pull; docker compose up -d"
+# THE old command is "docker-compose pull; docker-compose up -d"
