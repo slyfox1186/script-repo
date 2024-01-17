@@ -240,7 +240,7 @@ build_and_install_llvm_clang() {
               -DLLVM_ENABLE_LLD=OFF \
               -DLLVM_ENABLE_LLVM_LIBC=OFF \
               -DLLVM_ENABLE_LOCAL_SUBMODULE_VISIBILITY=ON \
-              -DLLVM_ENABLE_LTO=THIN \
+              -DLLVM_ENABLE_LTO=OFF \
               -DLLVM_ENABLE_MODULES=OFF \
               -DLLVM_ENABLE_MODULE_DEBUGGING=OFF \
               -DLLVM_ENABLE_NEW_PASS_MANAGER=ON \
@@ -290,7 +290,7 @@ build_and_install_llvm_clang() {
               -DLLVM_TOOL_LIBCXXABI_BUILD=OFF \
               -DLLVM_TOOL_LIBCXX_BUILD=OFF \
               -DLLVM_TOOL_LIBC_BUILD=OFF \
-              -DLLVM_TOOL_LIBUNWIND_BUILD=OFF \
+              -DLLVM_TOOL_LIBUNWIND_BUILD=ON \
               -DLLVM_TOOL_LLDB_BUILD=OFF \
               -DLLVM_TOOL_LLD_BUILD=OFF \
               -DLLVM_TOOL_MLIR_BUILD=OFF \
