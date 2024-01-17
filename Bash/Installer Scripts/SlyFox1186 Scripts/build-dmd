@@ -53,13 +53,6 @@ if ! "$temp_script" > /dev/null 2>&1; then
     exit 1
 fi
 
-# Activate DMD
-if source "$HOME/dlang/dmd-$version/activate" 2>/dev/null; then
-    printf "\nActivation of DMD successful!\nDLang - version $version\n\n"
-else
-    printf "\nFailed to source DLang - version $version\nYou must manually run the command \"source $HOME/dlang/dmd-$version/activate\"\n\n"
-fi
-
 printf "Make sure to star this repository to show your support!\nhttps://github.com/slyfox1186/script-repo\n"
 
 # Add dub to the users .bashrc file
@@ -67,6 +60,9 @@ cat >> "$HOME/.bashrc" <<EOF
 
 export PATH="\$PATH:\$HOME/dlang/dmd-$version/linux/bin64"
 EOF
+
+# Activate DMD
+source "$HOME"/.bashrc
 
 # Delete the install script
 rm -f "$temp_script"
