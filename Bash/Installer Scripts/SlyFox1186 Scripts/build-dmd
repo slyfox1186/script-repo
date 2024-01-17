@@ -63,8 +63,10 @@ fi
 printf "Make sure to star this repository to show your support!\nhttps://github.com/slyfox1186/script-repo\n"
 
 # Add dub to the users .bashrc file
-echo >> "$HOME"/.bashrc
-echo "$HOME/dlang/dmd-$version/linux/bin64" >> "$HOME"/.bashrc
+cat > "$HOME/.bashrc" <<'EOF'
+
+export PATH="$PATH:$HOME/dlang/dmd-$version/linux/bin64"
+EOF
 
 # Delete the install script
 rm -f "$temp_script"
