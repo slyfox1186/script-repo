@@ -96,8 +96,8 @@ export PKG_CONFIG_PATH
 
 exit_fn()
 {
-    printf "\n%s\n\n%s\n%s\n\n"                                    \
-        'The script has completed'                                \
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'The script has completed' \
         'Make sure to star this repository to show your support!' \
         "$web_repo"
     exit 0
@@ -105,8 +105,8 @@ exit_fn()
 
 fail_fn()
 {
-    printf "\n\n%s\n\n%s\n\n%s\n\n"      \
-        "$1"                           \
+    printf "\n\n%s\n\n%s\n\n%s\n\n" \
+        "$1" \
         'To report a bug please visit: ' \
         "$web_repo/issues"
     exit 1
@@ -116,9 +116,9 @@ cleanup_fn()
 {
     local choice
 
-    printf "%s\n\n%s\n%s\n\n"                    \
+    printf "%s\n\n%s\n%s\n\n" \
         'Do you want to remove the build files?' \
-        '[1] Yes'                                \
+        '[1] Yes' \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
 
@@ -310,50 +310,6 @@ install_binutils_fn()
     fi
 }
 
-find_gold="$(sudo find /usr/ -type f -name 'ld.gold' | head -n1)"
-
-if [ -z "${find_gold}" ]; then
-    prompt_gold_fn()
-    {
-        local choice
-        clear
-
-        printf "\n%s\n%s\n\n%s\n\n%s\n%s\n\n"                                                             \
-            'The required file "ld.gold" was not located.'                                                \
-            'You can use the build-binutils script from the same GitHub repository to acquire that file.' \
-            'Do you want to download and install that script now?'                                        \
-            '[1] Yes'                                                                                     \
-            '[2] No'
-        read -p 'Your choices are (1 or 2): '  choice
-        clear
-
-        case "${choice}" in
-            1)      install_binutils_fn;;
-            2)      return 0;;
-            *)
-                    unset choice
-                    prompt_gold_fn
-                    ;;
-        esac
-    }
-    prompt_gold_fn
-fi
-
-#
-# TEST IF LD HAS GOLD ENABLED
-#
-
-gold_check="$(type -P ld.gold)"
-saved_ld_path="$(type -P ld)"
-
-if [ -n "${gold_check}" ]; then
-    sudo mv "$(type -P ld)" "$(type -P ld)".bak
-    sudo ln -sf "${gold_check}" "${saved_ld_path}"
-    gold_test=gold
-else
-    gold_test=ld
-fi
-
 #
 # REFRESH THE LD LINKER LIBRARY SHARED LIBRARY FILES USING THE FILE PATHS IT SEARCHES FOR THEM IN 
 #
@@ -386,40 +342,40 @@ if build 'llvm' "$g_ver"; then
     download "${g_url}" "llvm-$g_ver.tar.gz"
     project_pkgs='clang;clang-tools-extra;lld;lldb'
     runtime_pkgs='libcxx;libcxxabi;libunwind;compiler-rt;openmp'
-    cmake -S llvm -B build                            \
-          -DCMAKE_INSTALL_PREFIX="$install_prefix"  \
-          -DCMAKE_BUILD_TYPE=Release                  \
-          -DBUILD_SHARED_LIBS=OFF                     \
-          -DBENCHMARK_DOWNLOAD_DEPENDENCIES=ON        \
-          -DBENCHMARK_ENABLE_TESTING=ON               \
-          -DBENCHMARK_INSTALL_DOCS=OFF                \
-          -DCLANG_INCLUDE_DOCS=OFF                    \
-          -DCMAKE_C_COMPILER="${CC}"                  \
-          -DCMAKE_C_FLAGS="${CFLAGS}"                 \
-          -DCMAKE_CXX_FLAGS="${CXXFLAGS}"             \
-          -DCMAKE_CXX_COMPILER="${CXX}"               \
-          -DCMAKE_CXX_STANDARD=20                     \
-          -DGOLD_EXECUTABLE="$(type -P ld)"           \
-          -DLLVM_BUILD_BENCHMARKS=OFF                 \
-          -DLLVM_BUILD_RUNTIME=ON                     \
-          -DLLVM_BUILD_RUNTIMES=ON                    \
-          -DLLVM_CCACHE_BUILD=ON                      \
-          -DLLVM_ENABLE_CURL=ON                       \
-          -DLLVM_ENABLE_LTO=OFF                       \
-          -DLLVM_ENABLE_OCAMLDOC=OFF                  \
-          -DLLVM_ENABLE_PIC=ON                        \
-          -DLLVM_ENABLE_PROJECTS="${project_pkgs}"    \
-          -DLLVM_ENABLE_RUNTIMES="${runtime_pkgs}"    \
-          -DLLVM_ENABLE_WARNINGS=OFF                  \
-          -DLLVM_HOST_TRIPLE="${pc_type}"             \
-          -DLLVM_INCLUDE_DOCS=OFF                     \
-          -DLLVM_INCLUDE_TESTS=OFF                    \
-          -DLLVM_TARGET_ARCH=HOST                     \
-          -DLLVM_TOOL_CLANG_BUILD=ON                  \
-          -DLLVM_USE_LINKER="${gold_test}"            \
+    cmake -S llvm -B build \
+          -DCMAKE_INSTALL_PREFIX="$install_prefix" \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DBENCHMARK_DOWNLOAD_DEPENDENCIES=ON \
+          -DBENCHMARK_ENABLE_TESTING=ON \
+          -DBENCHMARK_INSTALL_DOCS=OFF \
+          -DCLANG_INCLUDE_DOCS=OFF \
+          -DCMAKE_C_COMPILER="${CC}" \
+          -DCMAKE_C_FLAGS="${CFLAGS}" \
+          -DCMAKE_CXX_FLAGS="${CXXFLAGS}" \
+          -DCMAKE_CXX_COMPILER="${CXX}" \
+          -DCMAKE_CXX_STANDARD=20 \
+          -DGOLD_EXECUTABLE="$(type -P ld)" \
+          -DLLVM_BUILD_BENCHMARKS=OFF \
+          -DLLVM_BUILD_RUNTIME=ON \
+          -DLLVM_BUILD_RUNTIMES=ON \
+          -DLLVM_CCACHE_BUILD=ON \
+          -DLLVM_ENABLE_CURL=ON \
+          -DLLVM_ENABLE_LTO=OFF \
+          -DLLVM_ENABLE_OCAMLDOC=OFF \
+          -DLLVM_ENABLE_PIC=ON \
+          -DLLVM_ENABLE_PROJECTS="${project_pkgs}" \
+          -DLLVM_ENABLE_RUNTIMES="${runtime_pkgs}" \
+          -DLLVM_ENABLE_WARNINGS=OFF \
+          -DLLVM_HOST_TRIPLE="${pc_type}" \
+          -DLLVM_INCLUDE_DOCS=OFF \
+          -DLLVM_INCLUDE_TESTS=OFF \
+          -DLLVM_TARGET_ARCH=HOST \
+          -DLLVM_TOOL_CLANG_BUILD=ON \
+          -DLLVM_USE_LINKER=ld \
           -G Ninja -Wno-dev
     echo
-    if ! ninja "-j$(nproc --all)" -C build; then
+    if ! ninja -j16 -C build; then
         printf "\n%s\n\n" "Failed to execute: ninja -j$(nproc --all) -C build. Line: ${LINENO}"
         exit 1
     fi
