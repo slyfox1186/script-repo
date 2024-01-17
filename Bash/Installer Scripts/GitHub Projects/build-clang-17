@@ -340,8 +340,7 @@ box_out_banner "Clang-17 Build Script - version ${script_ver}"
 git_ver_fn 'llvm/llvm-project' 'T'
 if build 'llvm' "$g_ver"; then
     download "${g_url}" "llvm-$g_ver.tar.gz"
-    project_pkgs='clang;clang-tools-extra;lld;lldb'
-    runtime_pkgs='libcxx;libcxxabi;libunwind;compiler-rt;openmp'
+    project_pkgs='clang;clang-tools-extra'
     cmake -S llvm -B build \
           -DCMAKE_INSTALL_PREFIX="$install_prefix" \
           -DCMAKE_BUILD_TYPE=Release \
@@ -365,7 +364,6 @@ if build 'llvm' "$g_ver"; then
           -DLLVM_ENABLE_OCAMLDOC=OFF \
           -DLLVM_ENABLE_PIC=ON \
           -DLLVM_ENABLE_PROJECTS="${project_pkgs}" \
-          -DLLVM_ENABLE_RUNTIMES="${runtime_pkgs}" \
           -DLLVM_ENABLE_WARNINGS=OFF \
           -DLLVM_HOST_TRIPLE="${pc_type}" \
           -DLLVM_INCLUDE_DOCS=OFF \
