@@ -11,16 +11,6 @@ fail_fn() {
     exit 1
 }
 
-# Function to display a banner
-box_out_banner() {
-    local line text
-    text="$1"
-    line=$(printf '%s' "$text" | sed 's/./-/g')
-    echo " $line"
-    printf '| %s |\n' "$text"
-    echo " $line"
-}
-
 # Function to check if running as root/sudo
 check_root() {
     if [ "$EUID" -ne 0 ]; then
