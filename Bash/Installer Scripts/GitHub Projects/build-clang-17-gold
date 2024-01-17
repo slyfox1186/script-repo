@@ -38,8 +38,8 @@ install_required_packages() {
     done
 
     if [ "${#missing_packages[@]}" -gt 0 ]; then
-        apt-get update
-        apt-get install "${missing_packages[@]}"
+        apt update
+        apt install "${missing_packages[@]}"
     else
         echo "All required packages are already installed."
     fi
