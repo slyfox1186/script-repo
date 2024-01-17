@@ -49,7 +49,7 @@ install_required_packages() {
 
     if [ "${#missing_packages[@]}" -gt 0 ]; then
         apt-get update
-        apt-get install -y "${missing_packages[@]}"
+        apt-get install "${missing_packages[@]}"
     else
         echo "All required packages are already installed."
     fi
