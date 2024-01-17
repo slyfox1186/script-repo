@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2162,SC2317
+
+##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-17-gold
+##  Purpose: Build LLVM Clang-17 with GOLD enabled
+##  Updated: 01.17.24
+##  Script version: 1.5
 
 fail_fn() {
     printf "\n%s\n\n%s\n\n" "$1" "For help or to report a bug create an issue at: $web_repo/issues"
@@ -7,8 +13,9 @@ fail_fn() {
 
 # Function to display a banner
 box_out_banner() {
-    local text="$1"
-    local line=$(printf '%s' "$text" | sed 's/./-/g')
+    local line text
+    text="$1"
+    line=$(printf '%s' "$text" | sed 's/./-/g')
     echo " $line"
     printf '| %s |\n' "$text"
     echo " $line"
@@ -59,11 +66,8 @@ fix_missing_x265_lib() {
 }
 
 find_highest_clang_version() {
-    local highest_version
-    
-    # Use awk to extract version numbers, sort them numerically, and choose the highest
-    highest_version="$(apt list --installed 2>/dev/null | grep -Eo 'clang-[0-9.]+' | awk -F- '{print $2}' | sort -n | tail -n1)"
-    
+    local clang_version
+
     # Check if a specific version is installed, in descending order of preference
     for clang_version in "15" "14" "13" "12"
     do
@@ -108,7 +112,7 @@ download_and_extract() {
 
 # Function to retrieve the latest Git tag version from a repository
 git_ver_fn() {
-    local cnt git_repo git_url max_attempts
+    local cnt git_repo max_attempts
 
     git_repo="$1"
     cnt=1
@@ -143,7 +147,6 @@ build_and_install_llvm_clang() {
     git_ver_fn 'llvm/llvm-project'
     local llvm_version="$g_ver"
     local llvm_url="https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-$llvm_version.tar.gz"
-    local project_pkgs='clang;clang-tools-extra'
 
     # Specify the directory where you want to extract the LLVM source code
     local llvm_code_dir="$workspace"
@@ -175,7 +178,7 @@ build_and_install_llvm_clang() {
     fi
 
     mkdir -p "$workspace/build"
-    cd "$workspace"
+    cd "$workspace" || exit 1
 
     echo
     if build 'llvm' "$llvm_version"; then
@@ -402,15 +405,11 @@ clear
 check_root
 
 # Set global variables
-script_ver="1.12"
-progname="${0}"
 source_files_dir="$PWD/clang-17-build-script"
 workspace="$PWD/clang-17-build-script/workspace"
 install_dir="/usr/local"
 pc_type="x86_64-linux-gnu"
-user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 web_repo="https://github.com/slyfox1186/script-repo"
-debug="OFF" # CHANGE THIS VARIABLE TO "ON" FOR HELP WITH TROUBLESHOOTING UNEXPECTED ISSUES DURING THE BUILD
 
 # Remove files from previous attempts to keep things clean
 if [ -d "$workspace" ]; then
