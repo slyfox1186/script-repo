@@ -30,3 +30,4 @@ services:
 
 # This MUST be run with the command "docker compose pull; docker compose up -d"
 # THE old command is "docker-compose pull; docker-compose up -d"
+# The source repo is: https://github.com/itzg/docker-minecraft-server
