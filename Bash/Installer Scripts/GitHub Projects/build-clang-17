@@ -373,7 +373,7 @@ if build 'llvm' "$g_ver"; then
           -DLLVM_USE_LINKER=ld \
           -G Ninja -Wno-dev
     echo
-    if ! ninja -j16 -C build; then
+    if ! ninja "-j$(nproc --all)" -C build; then
         printf "\n%s\n\n" "Failed to execute: ninja -j$(nproc --all) -C build. Line: ${LINENO}"
         exit 1
     fi
