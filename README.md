@@ -60,16 +60,9 @@ bash <(curl -fsSL https://build-all-git.optimizethis.net)
 bash <(curl -fsSL https://gcc.optimizethis.net)
 ```
 ## Install [Clang-17](https://github.com/llvm/llvm-project)
-  - **Self-updating script that auto-installs the latest Discord version**
+  - **Automatically finds the latest release version and installs clang from source code.**
 ```bash
 bash <(curl -fsSL https://clang.optimizethis.net)
-```
-------
-
-## Install [Discord](https://discord.com/)
-  - **Self-updating script that auto-installs the latest Discord version**
-```bash
-bash <(curl -fsSL https://discord.optimizethis.net)
 ```
 ------
 
