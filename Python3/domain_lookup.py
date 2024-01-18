@@ -21,7 +21,7 @@ try:
         print(f"Domain '{domain}' is not found or is not registered.")
     else:
         # Extract and display various information about the domain
-        print(f"Domain Information for '{domain}':")
+        print(f"Domain Information for '{domain}':\n")
 
         # Registrant Information
         registrant_name = domain_info.name
@@ -29,7 +29,7 @@ try:
         registrar = domain_info.registrar
         print(f"Registrant Name: {registrant_name}")
         print(f"Registrant Organization: {registrant_organization}")
-        print(f"Registrar: {registrar}")
+        print(f"Registrar: {registrar}\n")
 
         # Dates
         creation_date = domain_info.creation_date
@@ -53,7 +53,7 @@ try:
 
         print(f"Creation Date(s): {creation_date}")
         print(f"Expiration Date(s): {expiration_date}")
-        print(f"Updated Date(s): {updated_date}")
+        print(f"Updated Date(s): {updated_date}\n")
 
         # Additional Information
         nameservers = domain_info.name_servers
@@ -67,15 +67,15 @@ try:
                 print(f"- {ns}")
 
         if domain_status:
-            print("Domain Status:")
+            print("\nDomain Status:")
             for status in domain_status:
                 print(f"- {status}")
 
         if dnssec:
-            print(f"DNSSEC: {dnssec}")
+            print(f"\nDNSSEC: {dnssec}")
 
         if emails:
-            print("Contact Emails:")
+            print("\nContact Emails:")
             for email in emails:
                 print(f"- {email}")
 except Exception as e:
