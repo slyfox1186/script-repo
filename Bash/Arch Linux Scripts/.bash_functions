@@ -1780,13 +1780,19 @@ dl_clang()
 ## PYTHON3 PIP ##
 #################
 
-pipup()
-{
-    local pkg
-    clear
-    for pkg in $(pip list -o | awk 'NR > 2 {print $1}')
+pip_up() {
+    local list_pkgs pkg
+
+    list_pkgs="$(pip list | awk '{print $1}')"
+    
+    pip install --upgrade pip
+    
+    for pkg in ${list_pkgs[@]}
     do
-        sudo pip install --upgrade --user ${pkg}
+        if [ $pkg != wxPython ]; then
+            pip install --user --upgrade $pkg
+        fi
+        echo
     done
 }
 
