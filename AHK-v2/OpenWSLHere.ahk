@@ -23,9 +23,9 @@
 
 */
 
-!w Up::OpenWSLHereArch()
+!w Up::OpenWSLHere()
 
-OpenWSLHereArch()
+OpenWSLHere()
 {
     osName := "Ubuntu"
     Static wt := "C:\Users\" . A_UserName . "\AppData\Local\Microsoft\WindowsApps\wt.exe"
