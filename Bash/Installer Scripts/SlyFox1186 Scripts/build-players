@@ -1,17 +1,11 @@
 #!/usr/bin/env bash
 
-############################
-##
-## Install Media Players
-##
 ## 1. VLC
 ## 2. Kodi
 ## 3. SMPlayer
 ## 4. GNOME Videos (Totem)
 ## 5. Bomi
 ## 6. Exit
-##
-############################
 
 clear
 
