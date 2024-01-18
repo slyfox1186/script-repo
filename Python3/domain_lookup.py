@@ -21,7 +21,7 @@ try:
         print(f"Domain '{domain}' is not found or is not registered.")
     else:
         # Extract and display various information about the domain
-        print(f"\nDomain Information for '{domain}':")
+        print(f"\nDomain Searched: '{domain}'")
 
         # Registrant Information
         registrant_name = domain_info.name
