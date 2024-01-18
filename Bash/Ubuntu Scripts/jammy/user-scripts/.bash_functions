@@ -2068,7 +2068,6 @@ mnd() {
     esac
 }
 
-
 ##################
 ## PORT NUMBERS ##
 ##################
@@ -2084,7 +2083,8 @@ check_port() {
 
     echo
     # Getting the process information using lsof
-    while IFS= read -r line; do
+    while IFS= read -r line
+    do
         if [[ "$line" == p* ]]; then
             pid=${line#p}
         elif [[ "$line" == c* ]]; then
