@@ -64,16 +64,11 @@ try:
         if nameservers:
             print("\nName Servers:")
             for ns in nameservers:
+
                 print(f"- {ns}")
 
-        domain_status = domain_info.status
         dnssec = domain_info.dnssec
         emails = domain_info.emails
-
-        if domain_status:
-            print("\nDomain Status:")
-            for status in domain_status:
-                print(f"- {status}")
 
         if dnssec:
             print(f"\nDNSSEC: {dnssec}")
