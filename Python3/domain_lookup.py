@@ -64,7 +64,6 @@ try:
         if nameservers:
             print("\nName Servers:")
             for ns in nameservers:
-
                 print(f"- {ns}")
 
         dnssec = domain_info.dnssec
