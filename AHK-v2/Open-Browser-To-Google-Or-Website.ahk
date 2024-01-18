@@ -15,21 +15,23 @@
     mail.google.com
     https://github.com/slyfox1186/script-repo/
 
+https://github.com/ImageMagick/ImageMagick/tags
+
   */
 
-^!c up::
+^!c Up::
 {
     Browser := 'C:\Program Files\Google\Chrome Beta\Application\chrome.exe' ; YOU MUST CHANGE THIS AS NECESSARY
     win := 'ahk_class Chrome_WidgetWin_1 ahk_exe chrome.exe' ; YOU MUST CHANGE THIS AS NECESSARY
 
-    SetControlDelay 1 ; make sure the script is run as fast as possible without overdoing it.
-
     ClipSaved := ClipboardAll() ; save current A_Clipboard contents to its own variable
-    A_Clipboard := "" ; Empty the clipboard
 
-    Send '^c'
-    if !ClipWait(1.0)
-        A_Clipboard := ClipSaved ; if nothing is saved in the A_Clipboard from the clipwait command then use the current A_Clipboard contents
+    SendInput "^c"
+    if !ClipWait(1)
+    {
+        A_Clipboard := ClipSaved
+        ClipSaved := ""
+    }
 
     ; A_Clipboard is the text-only bit of the clipboard.
     ; trim whitespace including "enter", because some apps are overzealous when selecting text. Trim does spaces and tabs by default.
@@ -53,4 +55,5 @@
     MinMax := WinGetMinMax(win)
     if (MinMax < 1)
         WinMaximize(win)
+    A_Clipboard := ""
 }
