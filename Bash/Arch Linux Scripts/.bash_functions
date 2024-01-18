@@ -1922,3 +1922,42 @@ rm_curly()
         fi
     done
 }
+
+##################
+## PORT NUMBERS ##
+##################
+
+check_port() {
+    local choice kill_choice pid name
+
+    if [ -z "$1" ]; then
+        read -p 'Enter the port number: ' choice
+    else
+        choice="$1"
+    fi
+
+    echo
+    # Getting the process information using lsof
+    while IFS= read -r line; do
+        if [[ "$line" == p* ]]; then
+            pid=${line#p}
+        elif [[ "$line" == c* ]]; then
+            name=${line#c}
+        fi
+    done < <(lsof -i :"$choice" -sTCP:LISTEN -Fpc)
+
+    if [ -n "$pid" ] && [ -n "$name" ]; then
+        echo "Process using port $choice: $name (PID: $pid)"
+        read -p "Do you want to kill the process? (yes/no): " kill_choice
+
+        shopt -s nocasematch
+        case "$kill_choice" in
+            yes|y|"") sudo kill -9 "$pid" ;;
+            no|n)     return ;;
+            *)        echo "Invalid option. Exiting." ;;
+        esac
+        shopt -u nocasematch
+    else
+        echo "No process is using port $choice."
+    fi
+}
