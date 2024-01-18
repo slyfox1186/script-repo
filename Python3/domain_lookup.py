@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import whois
 import sys
 from datetime import datetime
