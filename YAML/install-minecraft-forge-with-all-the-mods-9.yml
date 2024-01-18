@@ -13,19 +13,17 @@ services:
       MAX_TICK_TIME: 60000
       MEMORY: 12G
       MAX_PLAYERS: 30
-      MOTD: "Jeffy Boy's Minecraft Server\nNo griefing, stealing, destroying, or killing other players. You will be banned!"
+      MOTD: "Line1\nLine2\nLine3"
       PVP: "true"
       TYPE: CURSEFORGE
       REMOVE_OLD_MODS: "true"
-      SERVER_NAME: "GET REKT"
+      SERVER_NAME: "Server Name Here"
       VIEW_DISTANCE: 15
-    tty: true
-    stdin_open: true
+    tty: "true"
+    stdin_open: "true"
     restart: always
     ports:
       - 25565:25565
     volumes:
-      - /home/jman/Servers/minecraft-forge:/data
-      - /home/jman/Servers/minecraft-forge/modpacks:/modpacks:ro
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
+      - /home/username/minecraft-forge-server:/data
+      - /home/username/minecraft-forge-server/modpacks:/modpacks:ro
