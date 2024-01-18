@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import whois
 import sys
 from datetime import datetime
@@ -21,7 +20,7 @@ try:
         print(f"Domain '{domain}' is not found or is not registered.")
     else:
         # Extract and display various information about the domain
-        print(f"Domain Information for '{domain}':\n")
+        print(f"\nDomain Information for '{domain}':")
 
         # Registrant Information
         registrant_name = domain_info.name
@@ -29,7 +28,7 @@ try:
         registrar = domain_info.registrar
         print(f"Registrant Name: {registrant_name}")
         print(f"Registrant Organization: {registrant_organization}")
-        print(f"Registrar: {registrar}\n")
+        print(f"Registrar: {registrar}")
 
         # Dates
         creation_date = domain_info.creation_date
@@ -51,20 +50,24 @@ try:
         else:
             updated_date = updated_date.strftime('%m-%d-%Y %H:%M:%S UTC')
 
-        print(f"Creation Date(s): {creation_date}")
+        print(f"\nCreation Date(s): {creation_date}")
         print(f"Expiration Date(s): {expiration_date}")
-        print(f"Updated Date(s): {updated_date}\n")
+        print(f"Updated Date(s): {updated_date}")
 
         # Additional Information
-        nameservers = domain_info.name_servers
+        nameservers = list(set([ns.lower() for ns in domain_info.name_servers]))  # Remove duplicates and lowercase
+
+        # Sort the nameservers numerically
+        nameservers.sort(key=lambda x: int(x[2:]) if x.startswith('ns') and x[2:].isdigit() else x)
+
+        if nameservers:
+            print("\nName Servers:")
+            for ns in nameservers:
+                print(f"- {ns}")
+
         domain_status = domain_info.status
         dnssec = domain_info.dnssec
         emails = domain_info.emails
-
-        if nameservers:
-            print("Name Servers:")
-            for ns in nameservers:
-                print(f"- {ns}")
 
         if domain_status:
             print("\nDomain Status:")
