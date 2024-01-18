@@ -28,7 +28,7 @@
     A_Clipboard := "" ; Empty the clipboard
 
     Send '^c'
-    if !ClipWait(0.75)
+    if !ClipWait(1.0)
         A_Clipboard := ClipSaved ; if nothing is saved in the A_Clipboard from the clipwait command then use the current A_Clipboard contents
 
     ; A_Clipboard is the text-only bit of the clipboard.
