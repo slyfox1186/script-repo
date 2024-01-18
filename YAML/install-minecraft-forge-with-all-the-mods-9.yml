@@ -6,28 +6,26 @@ services:
     environment:
       ANNOUNCE_PLAYER_ACHIEVEMENTS: "false"
       EULA: "true"
-      CF_SERVER_MOD: "https://mediafilez.forgecdn.net/files/4985/960/Server-Files-0.2.36.zip"
+      CF_SERVER_MOD: "https://mediafilez.forgecdn.net/files/4985/960/Server-Files-0.2.34.zip"
       DIFFICULTY: "normal"
       ENABLE_QUERY: "true"
       ENABLE_RCON: "false"
       MAX_TICK_TIME: 60000
       MEMORY: 12G
-      MAX_PLAYERS: 20
-      MOTD: "Line1\nLine2\nLine3"
+      MAX_PLAYERS: 30
+      MOTD: "Jeffy Boy's Minecraft Server\nNo griefing, stealing, destroying, or killing other players. You will be banned!"
       PVP: "true"
       TYPE: CURSEFORGE
       REMOVE_OLD_MODS: "true"
-      SERVER_NAME: "Server Name Here"
+      SERVER_NAME: "GET REKT"
       VIEW_DISTANCE: 15
-    tty: "true"
-    stdin_open: "true"
+    tty: true
+    stdin_open: true
     restart: always
     ports:
       - 25565:25565
     volumes:
-      - /home/username/minecraft-forge-server:/data
-      - /home/username/minecraft-forge-server/modpacks:/modpacks:ro
-
-# This MUST be run with the command "docker compose pull; docker compose up -d"
-# THE old command is "docker-compose pull; docker-compose up -d"
-# The source repo is: https://github.com/itzg/docker-minecraft-server
+      - /home/jman/Servers/minecraft-forge:/data
+      - /home/jman/Servers/minecraft-forge/modpacks:/modpacks:ro
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
