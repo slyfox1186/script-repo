@@ -13,7 +13,7 @@
 ------
 
 ## Updated 10.16.23
-  - Added ArchLinux support to some of the build scripts. Additional scripts will be converted to add this support in the future
+  - Added Arch Linux support to some of the build scripts. Additional scripts will be converted to add this support in the future
 ### OS Support
   - Arch Linux
   - Debian 10/11/12
