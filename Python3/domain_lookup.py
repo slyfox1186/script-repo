@@ -6,7 +6,7 @@ from datetime import datetime
 
 # Check if a domain or subdomain is provided as an argument
 if len(sys.argv) != 2:
-    print("Usage: python3 domain_lookup.py <domain/subdomain>")
+    print(f"Usage: python3 {sys.argv[0]} <domain/subdomain>")
     sys.exit(1)
 
 # Extract the domain from the argument
