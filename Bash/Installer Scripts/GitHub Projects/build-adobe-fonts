@@ -34,7 +34,7 @@ serif_dir="$cwd"/serif-source
 install_dir_pro=/usr/local/share/fonts/adobe-pro
 install_dir_sans=/usr/local/share/fonts/adobe-sans
 install_dir_serif=/usr/local/share/fonts/adobe-serif
-user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
 # sudo rm -fr /usr/local/share/fonts/adobe-pro /usr/local/share/fonts/adobe-sans /usr/local/share/fonts/adobe-serif

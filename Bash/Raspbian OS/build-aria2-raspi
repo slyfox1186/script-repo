@@ -29,7 +29,7 @@ archive_dir=aria2-1.37.0
 archive_url=https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0.tar.gz
 archive_ext="${archive_url//*.}"
 cwd="$PWD"/aria2-build-script
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
 printf "\n%s\n%s\n\n" \
