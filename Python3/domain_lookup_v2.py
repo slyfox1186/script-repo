@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-# Added the below functionality
-#  - Batch processing for passing multiple domains at once to the script
-#  - Added the ability to create an output file at the end of the command using '-o filename.ext'
-#    - Example command: python3 domain_lookup_v2.py reddit.com google.com -o output.txt
+#  Improved script features with the below added functionality
+#   - Batch processing for passing multiple domains at once to the script
+#   - Added the ability to create an output file at the end of the command using '-o filename.ext'
+#     - Example command: python3 domain_lookup_v2.py reddit.com google.com -o output.txt
 
 import whois
 import sys
