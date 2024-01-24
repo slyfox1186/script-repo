@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-#  Improved script features with the below added functionality
+#  Improved script features with the below-added functionality
+#   - Added separators for each domain to make for easier reading.
 #   - Batch processing for passing multiple domains at once to the script
 #   - Added the ability to create an output file at the end of the command using '-o filename.ext'
 #     - Example command: python3 domain_lookup_v2.py reddit.com google.com -o output.txt
@@ -20,7 +21,9 @@ def format_dates(dates):
 def display_info(domain_info, domain_name, verbose=False):
     output = []
 
-    output.append(f"\nDomain Searched: {domain_name}")
+    # New Separator for each domain
+    output.append(f"\n{'=' * 40}\nDomain: {domain_name}\n{'=' * 40}")
+
     output.append(f"Registrant Name: {domain_info.name}")
     output.append(f"Registrant Organization: {domain_info.org}")
     output.append(f"Registrar: {domain_info.registrar}")
