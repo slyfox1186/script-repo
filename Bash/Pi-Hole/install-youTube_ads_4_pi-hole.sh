@@ -2,7 +2,7 @@
 
 clear
 
-user_agent='Mozilla/5.0 (X11; Linux x86_64) Applpc_typeeWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) Applpc_typeeWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 random_dir="$(mktemp -d)"
 gravity="$(find /etc/ -type f -name 'gravity.db')"
 yt_adlist="${random_dir}/yt-adlist.txt"
