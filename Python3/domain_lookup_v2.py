@@ -1,53 +1,50 @@
 #!/usr/bin/env python3
 
-# Added batch functionality so you can pass multiple domains at once.
+# Added the below functionality
+#  - Batch processing for passing multiple domains at once to the script
+#  - Added the ability to create an output file at the end of the command using '-o filename.ext'
+#    - Example command: python3 domain_lookup_v2.py reddit.com google.com -o output.txt
 
 import whois
 import sys
 from datetime import datetime
 
-def format_date(date):
-    if isinstance(date, list):
-        return ", ".join([d.strftime('%m-%d-%Y %H:%M:%S UTC') for d in date])
+def format_dates(dates):
+    if isinstance(dates, list):
+        return ", ".join([date.strftime('%m-%d-%Y %H:%M:%S UTC') for date in dates])
+    elif dates:
+        return dates.strftime('%m-%d-%Y %H:%M:%S UTC')
     else:
-        return date.strftime('%m-%d-%Y %H:%M:%S UTC')
+        return "N/A"
 
 def display_info(domain_info, domain_name, verbose=False):
     output = []
 
-    # Use the input domain name directly
     output.append(f"\nDomain Searched: {domain_name}")
-
-    # Other details remain the same
     output.append(f"Registrant Name: {domain_info.name}")
     output.append(f"Registrant Organization: {domain_info.org}")
     output.append(f"Registrar: {domain_info.registrar}")
 
-    # Dates
-    output.append(f"\nCreation Date(s): {format_date(domain_info.creation_date)}")
-    output.append(f"Expiration Date(s): {format_date(domain_info.expiration_date)}")
-    output.append(f"Updated Date(s): {format_date(domain_info.updated_date)}")
+    output.append(f"\nCreation Date: {format_dates(domain_info.creation_date)}")
+    output.append(f"Expiration Date: {format_dates(domain_info.expiration_date)}")
+    output.append(f"Updated Date: {format_dates(domain_info.updated_date)}")
 
-    # Nameservers
-    nameservers = list(set([ns.lower() for ns in domain_info.name_servers]))
-    nameservers.sort(key=lambda x: int(x[2:]) if x.startswith('ns') and x[2:].isdigit() else x)
+    nameservers = sorted(set([ns.lower() for ns in domain_info.name_servers]))
     if nameservers:
         output.append("\nName Servers:")
         for ns in nameservers:
             output.append(f"- {ns}")
 
-    # Additional Information
     if domain_info.dnssec:
         output.append(f"\nDNSSEC: {domain_info.dnssec}")
 
     if domain_info.emails:
         output.append("\nContact Emails:")
         if isinstance(domain_info.emails, list):
-            output.append(", ".join(domain_info.emails))
+            output.extend([f"- {email}" for email in domain_info.emails])
         else:
-            output.append(domain_info.emails)
+            output.append(f"- {domain_info.emails}")
 
-    # Verbose Mode
     if verbose:
         output.append("\n[Verbose Mode]")
         output.append(f"Domain Status: {domain_info.status}")
@@ -58,7 +55,7 @@ def display_info(domain_info, domain_name, verbose=False):
 def is_domain_available(domain):
     try:
         whois_result = whois.whois(domain)
-        return False if whois_result.domain_name else True
+        return not whois_result.domain_name
     except:
         return True
 
@@ -84,14 +81,14 @@ def process_domains(domains, verbose=False, output_file=None):
         with open(output_file, 'w') as file:
             file.write(final_output)
 
-# Handling command-line arguments
-if len(sys.argv) < 2:
-    print(f"Usage: python3 {sys.argv[0]} <domain/subdomain> [-v] [-o output_file]")
-    sys.exit(1)
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print(f"Usage: python3 {sys.argv[0]} <domain/subdomain> [-v] [-o output_file]")
+        sys.exit(1)
 
-verbose = '-v' in sys.argv
-output_file = None
-domain_list = sys.argv[1:]  # Get all domains passed as arguments
+    verbose = '-v' in sys.argv
+    output_file_flag = '-o' in sys.argv
+    output_file = sys.argv[sys.argv.index('-o') + 1] if output_file_flag and sys.argv.index('-o') + 1 < len(sys.argv) else None
+    domain_list = [arg for arg in sys.argv[1:] if arg != '-v' and arg != '-o']
 
-# Main execution
-process_domains(domain_list, verbose, output_file)
+    process_domains(domain_list, verbose, output_file)
