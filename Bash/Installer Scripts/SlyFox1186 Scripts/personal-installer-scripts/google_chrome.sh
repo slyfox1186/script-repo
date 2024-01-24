@@ -3,7 +3,7 @@
 clear
 
 parent_dir="${PWD}"
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 chrome_url='https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb'
 
 printf "%s\n%s\n\n"                     \
