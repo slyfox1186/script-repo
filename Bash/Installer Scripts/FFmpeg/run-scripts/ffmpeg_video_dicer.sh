@@ -19,7 +19,7 @@ concat_video_segments() {
     do
         local segment="$tmp_dir/segment$i.$ext"
         echo "Processing segment: $segment"
-        ffmpeg -hide_banner -y -ss "${start[i]}" -to "${stops[i]}" -i "$video_path" -c copy "$segment"
+        ffmpeg -hide_banner -ss "${start[i]}" -to "${stops[i]}" -i "$video_path" -c copy "$segment"
         echo "file '$segment'" >> "$concat_file"
     done
 
@@ -27,7 +27,7 @@ concat_video_segments() {
     cat "$concat_file"
 
     echo "Concatenating to $output_name"
-    ffmpeg -hide_banner -y -f concat -safe 0 -i "$concat_file" -c copy "$output_name"
+    ffmpeg -hide_banner -f concat -safe 0 -i "$concat_file" -c copy "$output_name"
 
     # Clean up temporary files
     rm -r "$tmp_dir"
