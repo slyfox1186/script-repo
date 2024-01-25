@@ -36,7 +36,7 @@ concat_video_segments() {
 # Video path and start/stop times
 video_path='/path/to/video.mp4' # Replace with your actual video file path
 
-# Each start on top corresponds with the stop time directly below it.
+# Each start variable on top corresponds with the stop variable directly below it.
 # Add additional matching start and stop times as needed.
 start=("00:02:00" "00:06:18")
 stops=("00:04:10" "00:07:12")
