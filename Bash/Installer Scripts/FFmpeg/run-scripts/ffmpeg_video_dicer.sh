@@ -4,7 +4,7 @@
 
 concat_video_segments() {
     local video_path=$1
-    local start=("${@:2:$(($#/2))}") # First half of arguments are 'start'
+    local start=("${@:2:$(($#/2))}") # First half of arguments are 'starts'
     local stops=("${@:$(($#/2 + 2))}") # Second half of arguments are 'stops'
 
     local ext="${video_path##*.}"
