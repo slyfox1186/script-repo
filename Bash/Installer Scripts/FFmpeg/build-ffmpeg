@@ -1025,23 +1025,23 @@ pkgs_fn() {
     done
 
     # Print unavailable packages
-    if [[ "${#unavailable_packages[@]}" -gt 0 ]]; then
+    if [ "${#unavailable_packages[@]}" -gt 0 ]; then
         echo "Unavailable packages: ${unavailable_packages[*]}"
     fi
 
     # Install available missing packages
-    if [[ "${#available_packages[@]}" -gt 0 ]]; then
+    if [ "${#available_packages[@]}" -gt 0 ]; then
         echo "Installing available missing packages: ${available_packages[*]}"
         sudo apt install "${available_packages[@]}"
     else
-        printf "%s\n\n" "No missing packages to install or all missing packages are unavailable."
+        echo "No missing packages to install or all missing packages are unavailable."
     fi
 }
 
 fix_missing_x265_lib() {
     if [[ ! -f "/usr/lib/x86_64-linux-gnu/libstdc++.so" ]] && [[ -f "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30" ]]; then
         echo "$ sudo ln -sf /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30 /usr/lib/x86_64-linux-gnu/libstdc++.so"
-        sudo ln -sf /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30 /usr/lib/x86_64-linux-gnu/libstdc++.so
+        sudo ln -sf "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30" "/usr/lib/x86_64-linux-gnu/libstdc++.so"
     fi
 }
 
@@ -1274,8 +1274,8 @@ ubuntu_os_ver_fn() {
 find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
 
 get_ver_fn1() {
-    if [[ -f /etc/os-release ]]; then
-        . /etc/os-release
+    if [[ -f "/etc/os-release" ]]; then
+        . "/etc/os-release"
         OS_TMP="$NAME"
         VER_TMP="$VERSION_ID"
         OS="$(echo "$OS_TMP" | awk '{print $1}')"
@@ -1413,8 +1413,8 @@ else
     else
         get_ver_fn1
         case "$VER" in
-            12|23.10|23.04)     lt_ver=2.4.7;;
-            *)                  lt_ver=2.4.6;;
+            12|23.10|23.04)     lt_ver="2.4.7" ;;
+            *)                  lt_ver="2.4.6" ;;
         esac
     fi
     if build "libtool" "$lt_ver"; then
