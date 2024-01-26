@@ -5,6 +5,7 @@
 ##  Purpose: Build LLVM Clang-17 with GOLD enabled
 ##  Updated: 01.26.24
 ##  Script version: 1.6
+##  Added the ability to pass the version you want to install as the first argument to the script.
 
 fail_fn() {
     printf "\n%s\n\n%s\n\n" "$1" "For help or to report a bug, create an issue at: $web_repo/issues"
@@ -124,15 +125,16 @@ download_and_extract() {
 build_and_install_llvm_clang() {
     local repo_url="https://github.com/llvm/llvm-project.git"
     local latest_git_version=$(curl -sH "Content-Type: text/plain" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/source-git-version.sh" | bash -s "$repo_url")
-    local llvm_url="https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-$latest_git_version.tar.gz"
+    local clang_version_check="${1:-$latest_git_version}"  # Checks if a version number was passed to the script
+    local llvm_url="https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-$clang_version_check.tar.gz"
 
     # Specify the directory where you want to extract the LLVM source code
     local llvm_code_dir="$workspace"
     local llvm_source_file_dir="$source_files_dir"
 
     # Check if the source file already exists or download it
-    local llvm_tar_url="https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-$latest_git_version.tar.gz"
-    local llvm_tar_filename="$llvm_source_file_dir/llvmorg-$latest_git_version.tar.gz"
+    local llvm_tar_url="https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-$clang_version_check.tar.gz"
+    local llvm_tar_filename="$llvm_source_file_dir/llvmorg-$clang_version_check.tar.gz"
 
     if [ -f "$llvm_tar_filename" ]; then
         echo "The LLVM source file $llvm_tar_filename is already downloaded."
@@ -151,7 +153,7 @@ build_and_install_llvm_clang() {
     if [ ! -d "$llvm_code_dir" ]; then
         echo "LLVM source directory not found. Cloning LLVM source..."
         download_and_extract "$llvm_url" "/tmp"
-        mv "/tmp/llvm-project-llvmorg-$latest_git_version" "$llvm_code_dir"
+        mv "/tmp/llvm-project-llvmorg-$clang_version_check" "$llvm_code_dir"
         echo "LLVM source code moved from /tmp to $llvm_code_dir"
     fi
 
@@ -447,7 +449,7 @@ ldconfig
 find_highest_clang_version
 
 # Build and install LLVM Clang-17
-build_and_install_llvm_clang
+build_and_install_llvm_clang "$1"
 
 # Show the newly installed Clang version
 show_installed_clang_version
