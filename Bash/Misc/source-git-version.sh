@@ -5,7 +5,7 @@ get_latest_git_tag() {
     local url="$1"
     local tag_version
 
-    tag_version=$(git ls-remote --tags "$url" | awk -F/ '/[0-9]+\.[0-9]+[0-9\.]*$/ {print $NF}' | sed 's/^llvmorg-//' | sort -V | tail -n1)
+    tag_version=$(git ls-remote --tags "$url" | awk -F/ '/[0-9]+\.[0-9]+[0-9\.]*$/ {print $NF}' | grep -Eo '[0-9\.]+' | sort -V | tail -n1)
     
     echo "$tag_version"
 }
