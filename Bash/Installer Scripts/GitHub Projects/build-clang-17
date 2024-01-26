@@ -123,7 +123,7 @@ download_and_extract() {
 # Function to build and install LLVM Clang-17
 build_and_install_llvm_clang() {
     local repo_url="https://github.com/llvm/llvm-project.git"
-    local latest_git_version=$(curl -sH "Content-Type: text/plain" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/test.sh" | bash -s "$repo_url")
+    local latest_git_version=$(curl -sH "Content-Type: text/plain" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/source-git-version.sh" | bash -s "$repo_url")
     local llvm_url="https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-$latest_git_version.tar.gz"
 
     # Specify the directory where you want to extract the LLVM source code
