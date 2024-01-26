@@ -29,7 +29,7 @@ cwd="$PWD"/zstd-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 
 printf "%s\n%s\n\n" \
-    "ZStd Build Script - v${script_ver}" \
+    "ZStd Build Script - v$script_ver" \
     '==============================================='
 sleep 2
 
@@ -144,10 +144,10 @@ pkgs=(autoconf autogen automake build-essential ccache clang cmake curl git libd
 
 for pkg in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
+    missing_pkg="$(sudo dpkg -l | grep -o "$pkg")"
 
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${pkg}"
+    if [ -z "$missing_pkg" ]; then
+        missing_pkgs+="$pkg "
     fi
 done
 
@@ -162,7 +162,7 @@ fi
 #
 
 if [ ! -f "$cwd/${archive_name}" ]; then
-    curl -A "$user_agent" -Lso "$cwd/${archive_name}" "${archive_url}"
+    curl -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
 #
@@ -178,8 +178,8 @@ mkdir -p "$cwd/$archive_dir"
 # EXTRACT THE ARCHIVE FILE
 #
 
-if ! tar -zxf "$cwd/${archive_name}" -C "$cwd/$archive_dir" --strip-components 1; then
-    fail_fn "Failed to extract: $cwd/${archive_name}"
+if ! tar -zxf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
+    fail_fn "Failed to extract: $cwd/$archive_name"
 fi
 
 #
@@ -194,11 +194,11 @@ meson setup build --prefix="$install_dir" \
                   -Dbin_tests=false
 echo
 if ! ninja "-j$(nproc --all)" -C build; then
-    fail_fn "Failed to execute: ninja -j$(nproc --all) -C build install. Line: ${LINENO}"
+    fail_fn "Failed to execute: ninja -j$(nproc --all) -C build install. Line: $LINENO"
 fi
 echo
 if ! sudo ninja -C build install; then
-    fail_fn "Failed to execute: sudo ninja -C build install. Line: ${LINENO}"
+    fail_fn "Failed to execute: sudo ninja -C build install. Line: $LINENO"
 fi
 
 # PROMPT USER TO CLEAN UP FILES
