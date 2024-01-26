@@ -4,6 +4,7 @@
 git_tag() {
     for url in "$@"
     do
+        echo "Processing $url..."
         result=$(git ls-remote --tags "$url" | \
         awk -F/ '/[0-9]+[0-9_.]+[0-9_.]*$/ {print $NF}' | \
         grep -Eo '[0-9.\_]+' | \
@@ -13,7 +14,7 @@ git_tag() {
         # Replace underscores with dots
         result=${result//_/\.}
         
-        echo "$result"
+        echo "Latest tag for $url: $result"
     done
 }
 
