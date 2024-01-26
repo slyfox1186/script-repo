@@ -1,20 +1,11 @@
 #!/usr/bin/env bash
 
-###############################################################################################################################
-##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-zstd
-##
 ##  Purpose: Build zstd compression software
-##
 ##  Features: Static and shared build
-##
 ##  Changed: Static build to both
-##
 ##  Updated: 12.03.23
-##
 ##  Script version: 1.2
-##
-###############################################################################################################################
 
 clear
 
@@ -29,7 +20,7 @@ fi
 
 script_ver=1.2
 archive_ver=1.5.5
-archive_dir="zstd-${archive_ver}"
+archive_dir="zstd-$archive_ver"
 archive_url="https://github.com/facebook/zstd/releases/download/v${archive_ver}/$archive_dir.tar.gz"
 archive_ext="${archive_url//*.}"
 archive_name="$archive_dir.tar.${archive_ext}"
@@ -37,7 +28,7 @@ install_dir=/usr/local
 cwd="$PWD"/zstd-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 
-printf "\n%s\n%s\n\n"                    \
+printf "%s\n%s\n\n" \
     "ZStd Build Script - v${script_ver}" \
     '==============================================='
 sleep 2
@@ -69,9 +60,9 @@ export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
 
 PATH="\
 /usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
+$HOME/perl5/bin:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/cuda/bin:\
 /usr/local/x86_64-linux-gnu/bin:\
@@ -106,8 +97,8 @@ export PKG_CONFIG_PATH
 
 exit_fn()
 {
-    printf "\n%s\n\n%s\n%s\n\n"                                   \
-        'The script has completed'                                \
+    printf "\n%s\n\n%s\n%s\n\n" \
+        'The script has completed' \
         'Make sure to star this repository to show your support!' \
         "$web_repo"
     exit 0
@@ -115,8 +106,8 @@ exit_fn()
 
 fail_fn()
 {
-    printf "\n\n%s\n\n%s\n\n%s\n\n"                              \
-        "$1"                                                   \
+    printf "\n\n%s\n\n%s\n\n%s\n\n" \
+        "$1" \
         'Please create a support ticket so I can work on a fix.' \
         "$web_repo/issues"
     exit 1
@@ -125,7 +116,6 @@ fail_fn()
 cleanup_fn()
 {
     local choice
-    clear
 
     printf "\n%s\n\n%s\n%s\n\n" \
         'Do you want to remove the build files?' \
@@ -198,9 +188,9 @@ fi
 
 cd "$cwd/$archive_dir/build/meson" || exit 1
 meson setup build --prefix="$install_dir" \
-                  --buildtype=release       \
-                  --default-library=both    \
-                  --strip                   \
+                  --buildtype=release \
+                  --default-library=both \
+                  --strip \
                   -Dbin_tests=false
 echo
 if ! ninja "-j$(nproc --all)" -C build; then
