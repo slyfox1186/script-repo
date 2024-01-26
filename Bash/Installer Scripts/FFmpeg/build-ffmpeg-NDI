@@ -931,13 +931,13 @@ pkgs_fn()
         fi
     done
 
-    if [ -n "${missing_pkgs}" ]; then
-        if sudo apt install ${missing_pkgs}; then
+    if [ -n "$missing_pkgs" ]; then
+        if sudo apt install $missing_pkgs; then
             sudo apt -y autoremove
             clear
             echo 'The required APT packages were installed.'
         else
-            fail_fn "These required APT packages failed to install: ${missing_pkgs}. Line: ${LINENO}"
+            fail_fn "These required APT packages failed to install: $missing_pkgs. Line: ${LINENO}"
         fi
     else
         echo 'The required APT packages are already installed.'

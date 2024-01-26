@@ -69,7 +69,7 @@ do
     fi
 done
 
-if [ -n "${missing_pkgs}" ]; then
+if [ -n "$missing_pkgs" ]; then
     for pkg in "${missing_pkgs[@]}"
     do
         sudo pacman -Sq --noconfirm ${pkg}

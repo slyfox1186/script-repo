@@ -275,8 +275,8 @@ do
     fi
 done
 
-if [ -n "${missing_pkgs}" ]; then
-    sudo apt install ${missing_pkgs}
+if [ -n "$missing_pkgs" ]; then
+    sudo apt install $missing_pkgs
     clear
 else
     printf "%s\n" 'The APT packages are already installed'
