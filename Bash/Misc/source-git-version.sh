@@ -5,7 +5,12 @@ get_latest_git_tag() {
     local url="$1"
     local tag_version
 
-    tag_version=$(git ls-remote --tags "$url" | awk -F/ '/[0-9]+[0-9_.]+[0-9_.]*$/ {print $NF}' | grep -Eo '[0-9.]+' | sort -V | tail -n1)
+    # Fetch the latest tag version, sort, and keep the last one
+    tag_version=$(git ls-remote --tags "$url" | \
+                  awk -F/ '/[0-9]+[0-9_.]+[0-9_.]*$/ {print $NF}' | \
+                  grep -Eo '[0-9._]+' | \
+                  sort -V | \
+                  tail -n1)
     
     echo "$tag_version"
 }
@@ -19,6 +24,6 @@ fi
 repo_url="$1"
 latest_tag="$(get_latest_git_tag "$repo_url")"
 
-# Return the latest tag to the caller script
-latest_tag="${latest_tag//_/.}"
-echo "$latest_tag"
+# Correct the tag format by replacing underscores with dots
+corrected_tag="${latest_tag//_/.}"
+echo "$corrected_tag"
