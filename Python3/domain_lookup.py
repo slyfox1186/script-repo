@@ -89,7 +89,7 @@ def calculate_domain_age(creation_date):
     return "Domain Age: N/A"
 
 def display_info(domain_info, domain_name, verbose=False):
-    output = [f"\n{'=' * 40}\nDomain: {domain_name}\n{'=' * 40}"]
+    output = [f"\n{'=' * 40}\n\nDomain: {domain_name}"]
 
     output.append(f"Registrant Name: {domain_info.name}")
     output.append(f"Registrant Organization: {domain_info.org}")
