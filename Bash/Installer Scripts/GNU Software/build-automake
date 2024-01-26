@@ -159,7 +159,7 @@ do
 done
 
 if [ -n "${missing_pkgs}" ]; then
-    sudo apt -y install ${missing_pkgs}
+    sudo apt install ${missing_pkgs}
     sudo apt -y autoremove
     clear
 fi

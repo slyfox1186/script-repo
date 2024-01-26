@@ -60,9 +60,9 @@ case "$media_selection" in
         ;;
     2)
         echo -e "Installing Kodi Media Player\\n"
-        sudo apt -y install software-properties-common 2>/dev/null
+        sudo apt install software-properties-common 2>/dev/null
         sudo add-apt-repository -y ppa:team-xbmc/ppa 2>/dev/null
-        if sudo apt -y install kodi; then
+        if sudo apt install kodi; then
              success_fn 'Kodi Media Player'
         else
             fail_fn 'Kodi Media Player failed to install.'
@@ -70,7 +70,7 @@ case "$media_selection" in
         ;;
     3)
         echo -e "Installing SMPlayer\\n"
-        if sudo apt -y install smplayer; then
+        if sudo apt install smplayer; then
              success_fn 'SMPlayer'
         else
             fail_fn 'SMPlayer failed to install.'
@@ -78,7 +78,7 @@ case "$media_selection" in
         ;;
     4)
         echo -e "GNOME Videos (Totem)\\n"
-        if sudo apt -y install totem; then
+        if sudo apt install totem; then
              success_fn 'GNOME Videos (Totem)'
         else
             fail_fn 'GNOME Videos (Totem) failed to install.'
@@ -88,7 +88,7 @@ case "$media_selection" in
         echo -e "Installing Bomi\\n"
         sudo add-apt-repository ppa:nemonein/bomi 2>/dev/null
         sudo apt update 2>/dev/null
-        if sudo apt -y install bomi; then
+        if sudo apt install bomi; then
              success_fn 'Bomi'
         else
             fail_fn 'Bomi failed to install.'

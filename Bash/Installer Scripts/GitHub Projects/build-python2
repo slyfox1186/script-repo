@@ -185,7 +185,7 @@ pkgs_fn()
             '======================================'
         for i in "${missing_pkgs}"
             do
-                if ! sudo apt -y install ${i}; then
+                if ! sudo apt install ${i}; then
                     fail_fn "Failed to install the following APT packages: ${i}. Line: ${LINENO}"
                 fi
             done

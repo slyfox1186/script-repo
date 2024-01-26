@@ -119,7 +119,7 @@ done
 
 if [ -n "$missing_pkgs" ]; then
     printf 'Installing missing packages: %s\n' "$missing_pkgs"
-    sudo apt -y install $missing_pkgs
+    sudo apt install $missing_pkgs
 fi
 
 # INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE

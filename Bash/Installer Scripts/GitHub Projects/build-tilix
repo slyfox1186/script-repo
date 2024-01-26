@@ -85,7 +85,7 @@ done
 # Install the packages if there are any to install
 if [ ${#to_install[@]} -ne 0 ]; then
     echo "Installing packages: ${to_install[*]}"
-    sudo apt -y install "${to_install[@]}"
+    sudo apt install "${to_install[@]}"
 else
     printf "\n%s\n\n" "All packages are already installed."
 fi
