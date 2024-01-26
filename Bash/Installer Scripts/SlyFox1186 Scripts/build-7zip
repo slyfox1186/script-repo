@@ -64,7 +64,7 @@ download_with_retry() {
 
 # Check if wget is not installed and install it
 if ! command -v wget &>/dev/null; then
-    sudo apt -y install wget
+    sudo apt install wget
     sudo apt -y autoremove
     clear
 fi

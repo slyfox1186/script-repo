@@ -219,7 +219,7 @@ apt_pkgs_fn()
     done
 
     if [ -n "${missing_pkgs}" ]; then
-        sudo apt -y install ${missing_pkgs}
+        sudo apt install ${missing_pkgs}
     fi
 }
 
@@ -344,7 +344,7 @@ if [[ "${OS}" == 'Arch' ]]; then
     sudo update-ca-trust
 else
     if ! sudo dpkg -l | grep -o 'ca-certificates' &>/dev/null; then
-        sudo apt -y install ca-certificates
+        sudo apt install ca-certificates
     fi
     if [ ! -d '/usr/local/share/ca-certificates/trust-source/anchors/' ]; then
         if ! sudo mkdir -p '/usr/local/share/ca-certificates/trust-source/anchors/'; then
