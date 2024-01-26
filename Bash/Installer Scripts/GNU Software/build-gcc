@@ -496,8 +496,8 @@ pkgs_fn()
         fi
     done
 
-    if [ -n "${missing_pkgs}" ]; then
-        for i in "${missing_pkgs}"
+    if [ -n "$missing_pkgs" ]; then
+        for i in "$missing_pkgs"
         do
             sudo apt install ${i}
             sudo apt -y autoremove

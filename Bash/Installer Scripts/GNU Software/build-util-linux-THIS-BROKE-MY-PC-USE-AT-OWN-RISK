@@ -165,11 +165,11 @@ do
     fi
 done
 
-if [ -n "${missing_pkgs}" ]; then
+if [ -n "$missing_pkgs" ]; then
     clear
     echo '$ Installing missing packages'
     echo
-    for i in "${missing_pkgs}"
+    for i in "$missing_pkgs"
         do
             if ! sudo apt install ${i}; then
                 fail_fn "Failed to install the APT packages:Line ${LINENO}"

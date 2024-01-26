@@ -179,11 +179,11 @@ pkgs_fn()
         fi
     done
 
-    if [ -n "${missing_pkgs}" ]; then
+    if [ -n "$missing_pkgs" ]; then
         printf "%s\n%s\n\n"                   \
             'Installing missing APT packages' \
             '======================================'
-        for i in "${missing_pkgs}"
+        for i in "$missing_pkgs"
             do
                 if ! sudo apt install ${i}; then
                     fail_fn "Failed to install the following APT packages: ${i}. Line: ${LINENO}"

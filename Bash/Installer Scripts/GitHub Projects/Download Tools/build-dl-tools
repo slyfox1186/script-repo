@@ -544,8 +544,8 @@ pkgs_fn()
         'Installing required apt packages' \
         '================================================'
 
-    if [ -n "${missing_pkgs}" ]; then
-        sudo apt install ${missing_pkgs}
+    if [ -n "$missing_pkgs" ]; then
+        sudo apt install $missing_pkgs
         sudo apt -y autoremove
         printf "%s\n" 'The required APT packages were installed.'
     else
