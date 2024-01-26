@@ -1,5 +1,4 @@
-# Clear the terminal
-clear
+#!/usr/bin/env bash
 
 # Function to retrieve the latest Git tag version from multiple repositories
 git_tag() {
