@@ -22,6 +22,10 @@ LDLIBS="${LDFLAGS}"
 LD_LIBRARY_PATH="$install_dir/lib64:${LD_LIBRARY_PATH}"
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS LD_LIBRARY_PATH LDLIBS SHARED_CFLAG
 
+# Install required apt packages
+sudo apt install libsctp-dev
+echo
+
 # Download OpenSSL
 printf "%s\n\n" 'Downloading OpenSSL...'
 wget --show-progress -cq ${openssl_url}
