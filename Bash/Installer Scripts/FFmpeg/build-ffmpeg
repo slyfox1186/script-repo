@@ -5,9 +5,9 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
-##  Script version: 3.3.4
+##  Script version: 3.3.5
 ##
-##  Updated: 01.24.24
+##  Updated: 01.26.24
 ##
 ##  Purpose:
 ##
@@ -32,13 +32,13 @@
 ##
 ##    - updated to version 12.3.2 (01.08.2024)
 ##    - reverted the nv-codec-headers to version n12.0.16.1 due to a 20% decrease in fps using x265 with nvenc cuda
-##    - if the cuda libraries are not installed (for geforce graphics cards only) the user will be prompted
+##    - if the cuda libraries are not installed (for GeForce graphics cards only) the user will be prompted
 ##      by the script to install them so that hardware acceleration is enabled during the build
 ##
 ##  Updated:
 ##
 ##    - any apt packages detected that need installing will now prompt the user before installing
-##    - libvpx had an update that would not compile so i manually set it back at version (1.13.1) - date of change: 01.24.24
+##    - libvpx had an update that would not compile so I manually set it back to version (1.13.1) - date of change: 01.24.24
 ##    - added or removed apt packages for all distros to fix errors or update as the code requires.
 ##    - removed the need to use github api which avoids the user having to replace the code manually.
 ##    - improved the regex coding to avoid downloading a release candidate of a program during each api call (rev2)
@@ -69,24 +69,24 @@
 ##  Removed:
 ##
 ##    - python3 build code that became useless
-##    - removed support for debian 10 (buster)
-##    - removed support for ubuntu 18.04 (bionic)
+##    - removed support for debian 10 (Buster)
+##    - removed support for Ubuntu 18.04 (bionic)
 ##
 ##  Fixed:
 ##
-##    - libvpx has a bug in their code in file vpx_ext_ratectrl.h and i used the sed command to edit the code and fix it.
-##    - libant would not build unexpectedly so I had edited APT to download java v8 which works for some unknown reason.
+##    - libvpx has a bug in their code in file vpx_ext_ratectrl.h and I used the sed command to edit the code and fix it.
+##    - libant would not build unexpectedly so I edited APT to download Java v8 which works for some unknown reason.
 ##    - a missing library related to libc6 for x265 to compile on windows wsl
 ##    - an issue with libtesseract regarding the file libcurl.a during it's build
 ##    - gpac was missing a required .so file from libjpeg-turbo
 ##    - gpac build issue due to the sdl2 library not being found in the workspace folder
-##    - the nvidia-smi command not being installed for debian os versions
+##    - the nvidia-smi command is not being installed for Debian OS versions
 ##    - libheif not building the specified plugins
 ##    - the code that prompts the user to install the cuda sdk toolkit
 ##    - a broken download url for the wsl version of the cuda sdk toolkit
 ##    - apt package errors for debian 11 bullseye
-##    - arch linux error not being able to find a file tha does not exist on arch when installing cuda.
-##      the script will get the information sought by executing a different command that arch does provide.
+##    - Arch Linux error not being able to find a file that does not exist on Arch when installing cuda.
+##      The script will get the information sought by executing a different command that arch provides.
 ##
 #############################################################################################################################
 
@@ -95,7 +95,7 @@
 #
 
 script_name="${0}"
-script_ver="3.3.4"
+script_ver="3.3.5"
 ffmpeg_ver="n5.1.4"
 ffmpeg_archive="ffmpeg-$ffmpeg_ver.tar.gz"
 ffmpeg_url="https://github.com/FFmpeg/FFmpeg/archive/refs/tags/$ffmpeg_ver.tar.gz"
@@ -967,34 +967,36 @@ install_cuda_fn() {
 pkgs_fn() {
     local missing_pkg missing_packages pkg pkgs available_packages unavailable_packages
 
+    openjdk_pkg="$(apt-cache search --names-only '^openjdk-[0-9]+-jdk$' | awk '{print $1}' | sort -rV | head -n1)"
     libcpp_pkg="$(sudo apt list libc++* 2>&1 | grep -Eo 'libc\+\+-[0-9\-]+-dev' | uniq | sort -r | head -n1)"
     libcppabi_pkg="$(sudo apt list libc++abi* 2>/dev/null | grep -Eo 'libc\+\+abi-[0-9]+-dev' | uniq | sort -r | head -n1)"
     libunwind_pkg="$(sudo apt list libunwind* 2>/dev/null | grep -Eo 'libunwind-[0-9]+-dev' | uniq | sort -r | head -n1)"
 
     # Define an array of apt package names
     pkgs=(
-        $1 $libcppabi_pkg $libcpp_pkg $libunwind_pkg ant apt asciidoc autoconf autoconf-archive
-        automake autopoint binutils bison build-essential cargo ccache checkinstall clang clang-tools
-        cmake curl openjdk-8-jdk-headless doxygen fcitx-libs-dev flex flite1-dev freeglut3-dev
-        frei0r-plugins-dev gawk gettext gimp-data git gnome-desktop-testing gnustep-gui-runtime
-        google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk lib32stdc++6
-        libamd2 libasound2-dev libass-dev libaudio-dev libavfilter-dev libbabl-0.1-0 libbluray-dev
-        libbpf-dev libbs2b-dev libbz2-dev libc6 libc6-dev libcaca-dev libcairo2-dev libcamd2
-        libccolamd2 libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libcholmod3 libchromaprint-dev
-        libcjson-dev libcodec2-dev libcolamd2 libcrypto++-dev libcurl4-openssl-dev libdbus-1-dev
-        libde265-dev libdevil-dev libdmalloc-dev libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev
-        libffi-dev libgbm-dev libgdbm-dev libgegl-0.4-0 libgegl-common libgimp2.0 libgl1-mesa-dev
-        libgles2-mesa-dev libglib2.0-dev libgme-dev libgmock-dev libgnutls28-dev libgnutls30
-        libgoogle-perftools-dev libgoogle-perftools4 libgsm1-dev libgtest-dev libgvc6 libibus-1.0-dev
-        libiconv-hook-dev libintl-perl libjack-dev libjemalloc-dev libladspa-ocaml-dev libleptonica-dev
-        liblz-dev liblzma-dev liblzo2-dev libmathic-dev libmatroska-dev libmbedtls-dev libmetis5 libmfx-dev
-        libmodplug-dev libmp3lame-dev libmusicbrainz5-dev libmysofa-dev libnuma-dev libopencore-amrnb-dev
-        libopencore-amrwb-dev libopencv-dev libopenjp2-7-dev libopenmpt-dev libopus-dev libpango1.0-dev
-        libperl-dev libpstoedit-dev libpulse-dev librabbitmq-dev libraqm-dev libraw-dev librsvg2-dev
-        librubberband-dev librust-gstreamer-base-sys-dev libshine-dev libsmbclient-dev libsnappy-dev
-        libsndfile1-dev libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev libssh-dev libssl-dev
-        libsuitesparseconfig5 libsystemd-dev libtalloc-dev libtheora-dev libticonv-dev libtool libtool-bin
-        libtwolame-dev libudev-dev libumfpack5 libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev
+        $1 $libcppabi_pkg $libcpp_pkg $libunwind_pkg $openjdk_pkg ant apt asciidoc autoconf
+        autoconf-archive automake autopoint binutils bison build-essential cargo ccache
+        checkinstall clang clang-tools cmake curl doxygen fcitx-libs-dev flex flite1-dev
+        freeglut3-dev frei0r-plugins-dev gawk gettext gimp-data git gnome-desktop-testing
+        gnustep-gui-runtime google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq
+        junit ladspa-sdk lib32stdc++6 libamd2 libasound2-dev libass-dev libaudio-dev libavfilter-dev
+        libbabl-0.1-0 libbluray-dev libbpf-dev libbs2b-dev libbz2-dev libc6 libc6-dev libcaca-dev
+        libcairo2-dev libcamd2 libccolamd2 libcdio-dev libcdio-paranoia-dev libcdparanoia-dev
+        libcholmod3 libchromaprint-dev libcjson-dev libcodec2-dev libcolamd2 libcrypto++-dev
+        libcurl4-openssl-dev libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev libdrm-dev
+        libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev libgegl-0.4-0
+        libgegl-common libgimp2.0 libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev
+        libgmock-dev libgnutls28-dev libgnutls30 libgoogle-perftools-dev libgoogle-perftools4
+        libgsm1-dev libgtest-dev libgvc6 libibus-1.0-dev libiconv-hook-dev libintl-perl libjack-dev
+        libjemalloc-dev libladspa-ocaml-dev libleptonica-dev liblz-dev liblzma-dev liblzo2-dev
+        libmathic-dev libmatroska-dev libmbedtls-dev libmetis5 libmfx-dev libmodplug-dev libmp3lame-dev
+        libmusicbrainz5-dev libmysofa-dev libnuma-dev libopencore-amrnb-dev libopencore-amrwb-dev
+        libopencv-dev libopenjp2-7-dev libopenmpt-dev libopus-dev libpango1.0-dev libperl-dev
+        libpstoedit-dev libpulse-dev librabbitmq-dev libraqm-dev libraw-dev librsvg2-dev librubberband-dev
+        librust-gstreamer-base-sys-dev libshine-dev libsmbclient-dev libsnappy-dev libsndfile1-dev
+        libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev libssh-dev libssl-dev libsuitesparseconfig5
+        libsystemd-dev libtalloc-dev libtheora-dev libticonv-dev libtool libtool-bin libtwolame-dev
+        libudev-dev libumfpack5 libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev
         libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev libxfixes-dev
         libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzmq3-dev libzstd-dev
         libzvbi-dev libzzip-dev llvm lshw lzma-dev m4 mesa-utils meson nasm ninja-build pandoc python3
@@ -1025,23 +1027,23 @@ pkgs_fn() {
     done
 
     # Print unavailable packages
-    if [ "${#unavailable_packages[@]}" -gt 0 ]; then
+    if [[ "${#unavailable_packages[@]}" -gt 0 ]]; then
         echo "Unavailable packages: ${unavailable_packages[*]}"
     fi
 
     # Install available missing packages
-    if [ "${#available_packages[@]}" -gt 0 ]; then
+    if [[ "${#available_packages[@]}" -gt 0 ]]; then
         echo "Installing available missing packages: ${available_packages[*]}"
         sudo apt install "${available_packages[@]}"
     else
-        echo "No missing packages to install or all missing packages are unavailable."
+        printf "%s\n\n" "No missing packages to install or all missing packages are unavailable."
     fi
 }
 
 fix_missing_x265_lib() {
     if [[ ! -f "/usr/lib/x86_64-linux-gnu/libstdc++.so" ]] && [[ -f "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30" ]]; then
         echo "$ sudo ln -sf /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30 /usr/lib/x86_64-linux-gnu/libstdc++.so"
-        sudo ln -sf "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30" "/usr/lib/x86_64-linux-gnu/libstdc++.so"
+        sudo ln -sf /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30 /usr/lib/x86_64-linux-gnu/libstdc++.so
     fi
 }
 
@@ -1274,8 +1276,8 @@ ubuntu_os_ver_fn() {
 find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
 
 get_ver_fn1() {
-    if [[ -f "/etc/os-release" ]]; then
-        . "/etc/os-release"
+    if [[ -f /etc/os-release ]]; then
+        . /etc/os-release
         OS_TMP="$NAME"
         VER_TMP="$VERSION_ID"
         OS="$(echo "$OS_TMP" | awk '{print $1}')"
@@ -1413,8 +1415,8 @@ else
     else
         get_ver_fn1
         case "$VER" in
-            12|23.10|23.04)     lt_ver="2.4.7" ;;
-            *)                  lt_ver="2.4.6" ;;
+            12|23.10|23.04)     lt_ver=2.4.7;;
+            *)                  lt_ver=2.4.6;;
         esac
     fi
     if build "libtool" "$lt_ver"; then
