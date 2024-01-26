@@ -6,7 +6,7 @@ import subprocess
 
 # Configuration
 docker_container_id = 'replace_with_docker_container_id'  # Docker container ID for the Minecraft server
-backup_directory = '/path/to/backup/folder'  # Path to the backup directory on local PC
+backup_directory = '/path/to/backup/directory'  # Path to the backup directory on local PC
 log_file_path = '/path/to/backup.log'  # Path to the log file
 max_backups = 3  # Maximum number of backups to keep
 
@@ -18,14 +18,17 @@ def log_message(message):
     except Exception as e:
         print(f"Logging Error: {e}")
 
-def run_command(command):
+def run_command(command, capture_output=True):
     try:
         log_message(f"Running command: {' '.join(command)}")
-        output = subprocess.check_output(command, stderr=subprocess.STDOUT).decode()
-        log_message(f"Command output: {output}")
-        return output
+        if capture_output:
+            output = subprocess.check_output(command, stderr=subprocess.STDOUT).decode()
+            log_message(f"Command output: {output}")
+            return output
+        else:
+            subprocess.run(command, check=True)
     except subprocess.CalledProcessError as e:
-        log_message(f"Command error: {e.output.decode()}")
+        log_message(f"Command error: {e.output.decode() if capture_output else str(e)}")
         raise
 
 def manage_backups():
@@ -35,7 +38,7 @@ def manage_backups():
 
         while len(backups) > max_backups:
             oldest_backup = backups.pop(0)
-            run_command(['rm', '-rf', oldest_backup])
+            run_command(['rm', '-rf', oldest_backup], capture_output=False)
             log_message(f'Removed old backup: {oldest_backup}')
     except Exception as e:
         log_message(f'Error managing backups: {e}')
@@ -81,7 +84,8 @@ def backup_minecraft_server():
 
         if os.path.exists(minecraft_server_directory):
             # Using rsync for efficient copying
-            run_command(['rsync', '-avz', '--info=progress2', minecraft_server_directory, backup_path])
+            rsync_command = ['rsync', '-avz', '--info=progress2', '--verbose', minecraft_server_directory + '/', backup_path]
+            run_command(rsync_command, capture_output=False)
             log_message(f'Backup successful. Backup stored in {backup_path}')
 
             # Manage old backups
@@ -94,6 +98,13 @@ def backup_minecraft_server():
         run_command(['docker', 'start', docker_container_id])  # Attempt to restart even in case of failure
         log_message('Minecraft server attempted to restart after failed backup.')
         return
+
+    # Restart the Minecraft server Docker container
+    try:
+        run_command(['docker', 'start', docker_container_id])
+        log_message('Minecraft server restarted after backup.')
+    except Exception as e:
+        log_message(f'Error restarting Docker container: {e}')
 
 if __name__ == '__main__':
     backup_minecraft_server()
