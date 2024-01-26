@@ -3,11 +3,11 @@
 
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-17-gold
 ##  Purpose: Build LLVM Clang-17 with GOLD enabled
-##  Updated: 01.17.24
-##  Script version: 1.5
+##  Updated: 01.26.24
+##  Script version: 1.6
 
 fail_fn() {
-    printf "\n%s\n\n%s\n\n" "$1" "For help or to report a bug create an issue at: $web_repo/issues"
+    printf "\n%s\n\n%s\n\n" "$1" "For help or to report a bug, create an issue at: $web_repo/issues"
     exit 1
 }
 
@@ -19,7 +19,7 @@ check_root() {
     fi
 }
 
-# Function to install required APT packages
+# Function to check and install missing packages
 install_required_packages() {
     local pkgs=(
         autoconf autoconf-archive automake autopoint binutils binutils-dev
@@ -28,20 +28,40 @@ install_required_packages() {
         yasm zlib1g-dev
     )
 
-    local missing_packages=()
+    # Initialize arrays for missing, available, and unavailable packages
+    missing_packages=()
+    available_packages=()
+    unavailable_packages=()
 
+    # Loop through the array to find missing packages
     for pkg in "${pkgs[@]}"
     do
-        if ! dpkg-query -W -f='${Status}' "$pkg" | grep -q "ok installed"; then
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             missing_packages+=("$pkg")
         fi
     done
 
-    if [ "${#missing_packages[@]}" -gt 0 ]; then
-        apt update
-        apt install "${missing_packages[@]}"
+    # Check the availability of missing packages and categorize them
+    for pkg in "${missing_packages[@]}"
+    do
+        if apt-cache show "$pkg" > /dev/null 2>&1; then
+            available_packages+=("$pkg")
+        else
+            unavailable_packages+=("$pkg")
+        fi
+    done
+
+    # Print unavailable packages
+    if [[ "${#unavailable_packages[@]}" -gt 0 ]]; then
+        echo "Unavailable packages: ${unavailable_packages[*]}"
+    fi
+
+    # Install available missing packages
+    if [[ "${#available_packages[@]}" -gt 0 ]]; then
+        echo "Installing available missing packages: ${available_packages[*]}"
+        sudo apt install "${available_packages[@]}"
     else
-        echo "All required packages are already installed."
+        printf "%s\n\n" "No missing packages to install or all missing packages are unavailable."
     fi
 }
 
@@ -67,7 +87,7 @@ find_highest_clang_version() {
             return
         fi
     done
-    
+
     # If none of the specific versions are found, fall back to "clang" if it's installed
     if command -v clang &>/dev/null; then
         CC="clang"
@@ -90,7 +110,7 @@ download_and_extract() {
         echo "Downloading $url saving as $filename"
         wget --show-progress -cqO "$target_dir/$filename" "$url"
         echo "Download completed"
-        
+
         if [[ "$filename" == *tar* ]]; then
             tar -zxf "$target_dir/$filename" -C "$target_dir/$filename" 2>&1
         else
@@ -100,51 +120,19 @@ download_and_extract() {
     fi
 }
 
-# Function to retrieve the latest Git tag version from a repository
-git_ver_fn() {
-    local cnt git_repo max_attempts
-
-    git_repo="$1"
-    cnt=1
-    max_attempts=10
-
-    if [[ -z "$git_repo" ]]; then
-        echo "Error: Git repository and URL are required."
-        return 1
-    fi
-
-    while [ $cnt -le $max_attempts ]
-    do
-        curl_cmd="$(curl -sSL "https://github.com/$git_repo/tags" | grep -o 'href="[^"]*\.tar\.gz"')"
-
-        # Extract the specific line
-        line="$(echo "$curl_cmd" | grep -o 'href="[^"]*\.tar\.gz"' | sed -n "${cnt}p")"
-
-        # Check if the line matches the pattern (version without 'RC'/'rc')
-        if echo "$line" | grep -qP '[v]*(\d+\.\d+(?:\.\d*){0,2})\.tar\.gz'; then
-            # Extract and print the version number
-            g_ver=$(echo "$line" | grep -oP '(\d+\.\d+(?:\.\d+){0,2})')
-            break
-        else
-            # Increment the cnt if no match is found
-            ((cnt++))
-        fi
-    done
-}
-
 # Function to build and install LLVM Clang-17
 build_and_install_llvm_clang() {
-    git_ver_fn 'llvm/llvm-project'
-    local llvm_version="$g_ver"
-    local llvm_url="https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-$llvm_version.tar.gz"
+    local repo_url="https://github.com/llvm/llvm-project.git"
+    local latest_git_version=$(curl -sH "Content-Type: text/plain" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/test.sh" | bash -s "$repo_url")
+    local llvm_url="https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-$latest_git_version.tar.gz"
 
     # Specify the directory where you want to extract the LLVM source code
     local llvm_code_dir="$workspace"
     local llvm_source_file_dir="$source_files_dir"
 
     # Check if the source file already exists or download it
-    local llvm_tar_url="https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-$llvm_version.tar.gz"
-    local llvm_tar_filename="$llvm_source_file_dir/llvmorg-$llvm_version.tar.gz"
+    local llvm_tar_url="https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-$latest_git_version.tar.gz"
+    local llvm_tar_filename="$llvm_source_file_dir/llvmorg-$latest_git_version.tar.gz"
 
     if [ -f "$llvm_tar_filename" ]; then
         echo "The LLVM source file $llvm_tar_filename is already downloaded."
@@ -163,7 +151,7 @@ build_and_install_llvm_clang() {
     if [ ! -d "$llvm_code_dir" ]; then
         echo "LLVM source directory not found. Cloning LLVM source..."
         download_and_extract "$llvm_url" "/tmp"
-        mv "/tmp/llvm-project-llvmorg-$llvm_version" "$llvm_code_dir"
+        mv "/tmp/llvm-project-llvmorg-$latest_git_version" "$llvm_code_dir"
         echo "LLVM source code moved from /tmp to $llvm_code_dir"
     fi
 
@@ -171,7 +159,7 @@ build_and_install_llvm_clang() {
     cd "$workspace" || exit 1
 
     echo
-    if build 'llvm' "$llvm_version"; then
+    if build 'llvm' "$latest_git_version"; then
         cmake -S llvm -B build \
               -DBENCHMARK_BUILD_32_BITS=OFF \
               -DBENCHMARK_DOWNLOAD_DEPENDENCIES=OFF \
@@ -321,15 +309,15 @@ build_and_install_llvm_clang() {
 # Function to show installed Clang version
 show_installed_clang_version() {
     local clang_versions=(
-        clang-17 clang++-17 clang++
+        clang-17 clang++
     )
-    
-    echo "The installed clang versions are:"
-    
+
+    printf "\n%s\n\n" "The installed clang versions are:"
+
     for clang_version in "${clang_versions[@]}"
     do
         local clang_path="$install_dir/bin/$clang_version"
-        
+
         if [ -f "$clang_path" ]; then
             echo "$clang_version:"
             "$clang_path" --version
@@ -341,9 +329,10 @@ show_installed_clang_version() {
 # Function to prompt the user to clean up the build files
 cleanup_build_files() {
     local choice
-    echo "Do you want to remove the build files?"
-    echo "[1] Yes"
-    echo "[2] No"
+    printf "%s\n%s\n%s\n\n" \
+        "Do you want to remove the build files?" \
+        "[1] Yes" \
+        "[2] No"
     read -p "Your choices are (1 or 2): " choice
 
     case "$choice" in
@@ -395,8 +384,8 @@ clear
 check_root
 
 # Set global variables
-source_files_dir="$PWD/clang-17-build-script"
-workspace="$PWD/clang-17-build-script/workspace"
+source_files_dir="$PWD/clang-build-script"
+workspace="$source_files_dir/workspace"
 install_dir="/usr/local"
 pc_type="x86_64-linux-gnu"
 web_repo="https://github.com/slyfox1186/script-repo"
