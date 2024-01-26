@@ -17,14 +17,11 @@ git_tag() {
     done
 }
 
-# Check if script is being run directly and not sourced
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    # Check if at least one URL is provided as an argument
     if [ $# -eq 0 ]; then
         echo "Usage: $0 <repo_url1> [<repo_url2> ...]"
         exit 1
     fi
 
-    # Call the git_tag function with provided repository URLs
     git_tag "$@"
 fi
