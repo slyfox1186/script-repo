@@ -20,4 +20,5 @@ repo_url="$1"
 latest_tag="$(get_latest_git_tag "$repo_url")"
 
 # Return the latest tag to the caller script
+latest_tag="${latest_tag//_/.}"
 echo "$latest_tag"
