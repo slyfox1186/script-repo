@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
 
+# Clear the terminal
+clear
+
 # Function to retrieve the latest Git tag version from a repository
 get_latest_git_tag() {
     local url="$1"
     local tag_version
 
-    tag_version=$(git ls-remote --tags "$url" | awk -F/ '/[0-9]+\.[0-9]+[0-9\.]*$/ {print $NF}' | grep -Eo '[0-9\.]+' | sort -V | tail -n1)
+    # Extracting the version number using a regular expression
+    tag_version=$(git ls-remote --tags "$url" | awk -F/ '{print $NF}' | grep -Eo '([0-9]+[-_])+[0-9]+' | sort -V | tail -n1)
+
+    # Replace underscores with dots in the version number
+    tag_version=${tag_version//_/.}
     
     echo "$tag_version"
 }
