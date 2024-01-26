@@ -7,64 +7,40 @@
 
 clear
 
-if [ "$EUID" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo'
+if [ "$EUID" -eq 0 ]; then
+    printf "%s\n\n" "You must run this script WITHOUT root/sudo"
     exit 1
 fi
 
-#
 # CREATE SCRIPT VARIABLES
-#
-
-script_ver=2.8
-cwd="$PWD"/build-tools-script
-install_dir=/usr/local
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/script-repo
+script_ver="2.8"
+cwd="$PWD/build-tools-script"
+install_dir="/usr/local"
+user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+web_repo="https://github.com/slyfox1186/script-repo"
 latest=false
 debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
-#
 # PRINT SCRIPT BANNER
-#
-
-printf "%s\n%s\n"                        \
-    "Build-tools script: v$script_ver" \
-    '===================================='
+printf "%s\n%s\n" "Build-tools script: v$script_ver" "===================================="
 sleep 2
 
-#
 # GET CPU CORE COUNT FOR PARALLEL PROCESSING
-#
+cpu_threads=$(grep --count ^processor '/proc/cpuinfo' 2>/dev/null || nproc --all)
 
-if [ -f '/proc/cpuinfo' ]; then
-    cpu_threads="$(grep --count ^processor '/proc/cpuinfo')"
-else
-    cpu_threads="$(nproc --all)"
-fi
-
-#
 # CREATE OUTPUT DIRECTORIES
-#
-
 mkdir -p "$cwd"
 
-#
 # SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
-#
-
 CC=gcc
 CXX=g++
-CFLAGS='-g -O3 -pipe -march=native'
+CFLAGS="-g -O3 -pipe -march=native"
 CXXFLAGS="$CFLAGS"
-CPPFLAGS='-I/usr/local/include -I/usr/include'
-LDFLAGS+='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+CPPFLAGS="-I/usr/local/include -I/usr/include"
+LDFLAGS+="-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib"
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
-#
 # SET THE PATH VARIABLE
-#
-
 PATH="\
 /usr/lib/ccache:\
 $HOME/perl5/bin:\
@@ -81,10 +57,7 @@ $HOME/.local/bin:\
 "
 export PATH
 
-#
 # SET THE PKG_CONFIG_PATH VARIABLE
-#
-
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
@@ -100,72 +73,49 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-#
 # CREATE FUNCTIONS
-#
-
-exit_fn()
-{
-    printf "\n%s\n\n%s\n%s\n\n"                                   \
-        'The script has completed'                                \
-        'Make sure to star this repository to show your support!' \
-        "$web_repo"
+exit_fn() {
+    printf "\n%s\n\n%s\n%s\n\n" "The script has completed" "Make sure to star this repository to show your support!" "$web_repo"
     exit 0
 }
 
-fail_fn()
-{
-    printf "\n\n%s\n\n%s\n\n%s\n\n"                  \
-        "$1"                                       \
-        'To report a bug please create an issue at:' \
-        "$web_repo/issues"
+fail_fn() {
+    printf "\n\n%s\n\n%s\n\n%s\n\n" "$1" "To report a bug please create an issue at:" "$web_repo/issues"
     exit 1
 }
 
-cleanup_fn()
-{
+cleanup_fn() {
     local choice
-
-    printf "\n%s\n\n%s\n%s\n\n"                  \
-        'Do you want to remove the build files?' \
-        '[1] Yes'                                \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
+    printf "\n%s\n\n%s\n%s\n\n" "Do you want to remove the build files?" "[1] Yes" "[2] No"
+    read -p "Your choices are (1 or 2): " choice
 
     case "$choice" in
-        1)      sudo rm -fr "$cwd";;
-        2)      return 0;;
+        1) sudo rm -fr "$cwd" ;;
+        2) return 0 ;;
         *)
-                unset choice
-                clear
-                cleanup_fn
-                ;;
+           unset choice
+           clear
+           cleanup_fn
+           ;;
     esac
 }
 
-show_versions_fn()
-{
-    local show_cmake_ver show_ninja_ver show_meson_ver
+show_versions_fn() {
+    local show_cmake_ver show_ninja_ver show_meson_ver show_go_ver
     clear
 
-    show_cmake_ver="$(cmake --version | sed -e 's/cmake version //g' -e 's/CMake suite maintained and supported by Kitware (kitware.com\/cmake).//g' | xargs -n1)"
-    show_ninja_ver="$(ninja --version)"
-    show_meson_ver="$(meson --version)"
-    show_go_ver="$(go version | grep -Eo '[0-9\.]+ | xargs -n1')"
+    show_cmake_ver=$(cmake --version | sed -e 's/cmake version //g' -e 's/CMake suite maintained and supported by Kitware (kitware.com\/cmake).//g' | xargs -n1)
+    show_ninja_ver=$(ninja --version)
+    show_meson_ver=$(meson --version)
+    show_go_ver=$(go version | grep -Eo '[0-9\.]+ | xargs -n1')
 
-        printf "%s\n\n%s\n%s\n%s\n%s\n" \
-            'The updated versions are:' \
-            "CMake:  $show_cmake_ver" \
-            "Ninja:  $show_ninja_ver" \
-            "Meson:  $show_meson_ver" \
-            "GoLang: $show_go_ver"
+    printf "%s\n\n%s\n%s\n%s\n%s\n" "The updated versions are:" "CMake:  $show_cmake_ver" "Ninja:  $show_ninja_ver" "Meson:  $show_meson_ver" "GoLang: $show_go_ver"
 }
 
-execute()
-{
+execute() {
     echo "$ $*"
 
-    if [ "$debug" = 'ON' ]; then
+    if [ "$debug" = "ON" ]; then
         if ! output="$("$@")"; then
             notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
             fail_fn "Failed to execute: $*"
@@ -178,8 +128,7 @@ execute()
     fi
 }
 
-download()
-{
+download() {
     dl_path="$cwd"
     dl_url="$1"
     dl_file="${2:-"${1##*/}"}"
@@ -205,7 +154,7 @@ download()
                 fail_fn "The script failed to download \"$dl_file\" twice and will now exit:Line $LINENO"
             fi
         fi
-        echo 'Download Completed'
+        echo "Download Completed"
     fi
 
     if [ -d "$target_dir" ]; then
@@ -230,8 +179,7 @@ download()
     cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: $LINENO"
 }
 
-download_git()
-{
+download_git() {
     local dl_path dl_url dl_file target_dir
 
     dl_path="$cwd"
@@ -264,11 +212,8 @@ download_git()
     cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: $LINENO"
 }
 
-build()
-{
-    printf "\n%s\n%s\n" \
-        "Building $1 - version $2" \
-        '===================================='
+build() {
+    printf "\n%s\n%s\n" "Building $1 - version $2" "===================================="
 
     if [ -f "$cwd/$1.done" ]; then
         if grep -Fx "$2" "$cwd/$1.done" >/dev/null; then
@@ -287,21 +232,16 @@ build()
 
 build_done() { echo "$2" > "$cwd/$1.done"; }
 
-#
 # INSTALL REQUIRED APT/PACMAN PACKAGES
-#
-
-pkgs_arch_fn()
-{
+pkgs_arch_fn() {
     pkgs_arch=(
         autoconf automake autogen bluez-qt5 base-devel ccache cmake curl
         git libnghttp2 libnghttp3 openssl python python-pip qt5-base
         qt6-base
     )
 
-    if [ -f '/var/lib/pacman/db.lck' ]; then
-        sudo rm '/var/lib/pacman/db.lck'
-    fi
+    # Remove any locks on pacman
+    [ -f "/var/lib/pacman/db.lck" ] && sudo rm "/var/lib/pacman/db.lck"
 
     for i in ${pkgs_arch[@]}
     do
@@ -316,17 +256,13 @@ pkgs_arch_fn()
          sudo pacman -Sq --needed --noconfirm $missing_pkgs
     fi
 
-    rm_pip_lock="$(sudo find /usr/lib/python3* -type f -name 'EXTERNALLY-MANAGED')"
-    if [ -n "$rm_pip_lock" ]; then
-        sudo rm "$rm_pip_lock"
-    fi
+    [ -n "$(sudo find /usr/lib/python3* -type f -name 'EXTERNALLY-MANAGED')" ] && sudo rm "$rm_pip_lock"
 
     # INSTALL PYTHON PIP PACKAGES
     pip install -q --user --no-input requests setuptools wheel
 }
 
-pkgs_fn()
-{
+pkgs_fn() {
     pkgs=(
         autoconf autoconf-archive automake autogen build-essential ccache
         cmake curl git libssl-dev libtool libtool-bin m4 python3 python3-pip
@@ -405,8 +341,8 @@ git_1_fn() {
 get_first_word() { echo "$1" | awk '{print $1}'; }
 
 # Try to detect the OS using /etc/os-release, fall back to lsb_release if available
-if [ -f '/etc/os-release' ]; then
-    . '/etc/os-release'
+if [ -f "/etc/os-release" ]; then
+    . "/etc/os-release"
     OS=$(get_first_word "$NAME")
 elif lsb_release -d &> /dev/null; then
     OS=$(lsb_release -d | awk '{print $2}')
@@ -415,13 +351,13 @@ else
 fi
 
 case "$OS" in
-    Arch)   pkgs_arch_fn;;
-    *)      pkgs_fn;;
+    Arch)   pkgs_arch_fn ;;
+    *)      pkgs_fn ;;
 esac
 
-# CHECK IF THE LATEST RELEASE IS A 'RC' AKA RELEASE CANDIDATE AND IF SO GO BACK TO THE PREVIOUS STABLE RELEASE
-git_1_fn 'Kitware/CMake'
-if build 'cmake' "$g_ver"; then
+# CHECK IF THE LATEST RELEASE IS A "RC" AKA RELEASE CANDIDATE AND IF SO GO BACK TO THE PREVIOUS STABLE RELEASE
+git_1_fn "Kitware/CMake"
+if build "cmake" "$g_ver"; then
     download "https://github.com/Kitware/CMake/archive/refs/tags/v$g_ver.tar.gz" "cmake-$g_ver.tar.gz"
     execute ./bootstrap --prefix="$install_dir" \
                         --enable-ccache \
@@ -429,11 +365,11 @@ if build 'cmake' "$g_ver"; then
                         --qt-gui
     execute make "-j$cpu_threads"
     execute sudo make install
-    build_done 'cmake' "$g_ver"
+    build_done "cmake" "$g_ver"
 fi
 
-git_1_fn 'ninja-build/ninja'
-if build 'ninja' "$g_ver"; then
+git_1_fn "ninja-build/ninja"
+if build "ninja" "$g_ver"; then
     download "https://github.com/ninja-build/ninja/archive/refs/tags/v$g_ver.tar.gz" "ninja-$g_ver.tar.gz"
     re2c_path="$(type -P re2c)"
     execute cmake -B build \
@@ -444,31 +380,31 @@ if build 'ninja' "$g_ver"; then
                   -Wno-dev
     execute make "-j$cpu_threads" -C build
     execute sudo make -C build install
-    build_done 'ninja' "$g_ver"
+    build_done "ninja" "$g_ver"
 fi
 
-if [[ "${OS}" == 'Arch' ]]; then
+if [[ "${OS}" == "Arch" ]]; then
     sudo pacman -Sq --needed --noconfirm meson 2>&1
 else
-    git_1_fn 'mesonbuild/meson'
-    if build 'meson' "$g_ver"; then
+    git_1_fn "mesonbuild/meson"
+    if build "meson" "$g_ver"; then
         download "https://github.com/mesonbuild/meson/archive/refs/tags/$g_ver.tar.gz" "meson-$g_ver.tar.gz"
         execute python3 setup.py build
         execute sudo python3 setup.py install --prefix="$install_dir"
-        build_done 'meson' "$g_ver"
+        build_done "meson" "$g_ver"
     fi
 fi
 
-if [[ "$OS" == 'Arch' ]]; then
+if [[ "$OS" == "Arch" ]]; then
     sudo pacman -Sq --needed --noconfirm go
     mkdir -p  "$HOME/go"
     GOPATH="$HOME/go"
     export GOPATH
     source "$HOME/.bash_profile"
 else
-    if build 'golang' '1.21.6'; then
-        download 'https://go.dev/dl/go1.21.6.linux-amd64.tar.gz' 'golang-1.21.6.tar.gz'
-        execute sudo cp -f 'bin/go' 'bin/gofmt' "$install_dir/bin"
+    if build "golang" "1.21.6"; then
+        download "https://go.dev/dl/go1.21.6.linux-amd64.tar.gz" "golang-1.21.6.tar.gz"
+        execute sudo cp -f "bin/go" "bin/gofmt" "$install_dir/bin"
         if [ -d  "$install_dir/go" ]; then
             sudo rm -fr "$install_dir/go"
         fi
@@ -476,7 +412,7 @@ else
         GOROOT="$install_dir/go"
         PATH="$PATH:$GOROOT/bin"
         export GOROOT PATH
-        build_done 'golang' '1.21.6'
+        build_done "golang" "1.21.6"
     fi
 fi
 
