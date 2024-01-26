@@ -45,7 +45,7 @@ IF NOT EXIST "%MDIR%" IF EXIST "!ROOT!" RD /S /Q "!ROOT!"
 
 REM CHOOSE TO CONVERT IMAGE, OR SKIP STRAIGHT TO MOUNT/UNMOUNT/REPAIR
 CLS
-ECHO YOU MUST FIRST EXPORT THE WINDOWS INDEX THAT MATCHES THE VERSION OF WINDOWS WE ARE TRYING TO REPAIR (USUALLY THIS PC). & ECHO=
+ECHO YOU MUST FIRST EXPORT THE WINDOWS INDEX THAT MATCHES THE VERSION OF WINDOWS WE ARE TRYING TO REPAIR ^(USUALLY THIS PC^). & ECHO=
 ECHO IF YOU HAVE DONE THAT ALREADY YOU MAY SKIP AHEAD BY CHOOSING OPTION "2". & ECHO=
 ECHO [1] EXPORT IMAGE INDEX
 ECHO [2] SKIP AHEAD AND RUN THE "MOUNT/UNMOUNT/REPAIR" OPTIONS.
@@ -158,7 +158,7 @@ ECHO The index image must be ready to run the repairs at this stage. If you have
 ECHO It is recommended you go in order by, mounting, running the offline repairs, the unmounting the leftover files. & ECHO=
 ECHO [1] Mount the offline image files
 ECHO [2] Run Windows repairs using the offline mounted files
-ECHO [3] Unmount the offline files (Do this after you are finished running the repairs)
+ECHO [3] Unmount the offline files ^(Do this after you are finished running the repairs^)
 ECHO [4] Exit & ECHO=
 
 CHOICE /C 1234 /N & CLS
