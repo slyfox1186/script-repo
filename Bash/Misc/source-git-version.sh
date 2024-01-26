@@ -17,7 +17,7 @@ if [ -z "$1" ]; then
 fi
 
 repo_url="$1"
-latest_tag=$(get_latest_git_tag "$repo_url")
+latest_tag="$(get_latest_git_tag)"
 
 # Return the latest tag to the caller script
 echo "$latest_tag"
