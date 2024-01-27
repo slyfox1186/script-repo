@@ -1,384 +1,308 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2068,SC2086,SC2162,SC2317
 
-################################################################################################
-##
-##  Purpose: Build the latest stable release of OpenSSL from the official website's source code
-##            which will update OpenSSL and the SSL certificate directory to the latest version.
-##
-##  Updated:
-##                    - Script: 01.05.24
-##                    - OpenSSL: v3.1.4
-##
-##  Script version: 2.1
-##
-##  Enabled features:
-##                    - fips
-##                    - rc5
-##                    - shared
-##                    - tfo
-##                    - threads
-##                    - zlib
-##
-##  Added: Arch Linux support
-##
-################################################################################################
+# Purpose: Build the latest stable release of OpenSSL from the official website's source code
+# Enabled features: fips, rc5, shared, tfo, threads, zlib
+# Version: 2.1
 
-clear
-
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+# Check for root/and exit if detected
+if [ "$EUID" -ne 0 ]; then
+    printf "%s\n\n" "You must run this script with root/sudo."
     exit 1
 fi
 
-#
-# SET VARIABLES
-#
-
-script_ver=3.1.4
-archive_dir=openssl-3.1.4
-archive_url="https://www.openssl.org/source/$archive_dir.tar.gz"
-archive_ext="${archive_url//*.}"
-archive_name="$archive_dir.tar.${archive_ext}"
-cwd="$PWD"/openssl-build-script
-install_dir=/usr/local/ssl
-ssl_dir="$install_dir"
-cert_dir="$install_dir"/certs
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/script-repo
-
-printf "%s\n%s\n\n"                              \
-    "OpenSSL LTS Build Script - v${script_ver}" \
-    '==============================================='
-sleep 2
-
-#
-# CREATE OUTPUT DIRECTORY
-#
-
-if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
-fi
-mkdir -p "$cwd"
-
-#
-# SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
-#
-
-CC=clang
-CXX=clang++
-CFLAGS='-Wall -pthread -g -O3 -pipe -march=native'
-CXXFLAGS="${CFLAGS}"
-SHARED_CFLAG='-fPIC'
-CPPFLAGS='-I/usr/local/include -I/usr/include'
-LDFLAGS='-L/usr/local/ssl/lib -L/usr/local/lib64 -L/usr/local/lib'
-LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
-LDLIBS="${LDFLAGS}"
-LD_LIBRARY_PATH="$install_dir/lib64:${LD_LIBRARY_PATH}"
-export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS LD_LIBRARY_PATH LDLIBS SHARED_CFLAG
-
-#
-# SET THE PATH
-#
-
-PATH="\
-/usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
-
-#
-# SET THE PKG_CONFIG_PATH
-#
-
-PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/usr/local/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/usr/local/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/usr/local/pkgconfig\
-"
-export PKG_CONFIG_PATH
-
-#
-# CREATE FUNCTIONS
-#
-
-exit_fn()
-{
-    printf "\n%s\n\n%s\n\n"                                       \
-        'Make sure to star this repository to show your support!' \
-        "$web_repo"
+# Function to print a message and exit
+exit_fn() {
+    printf "\n%s\n\n%s\n\n" \
+        "Make sure to star this repository to show your support!" \
+        "https://github.com/slyfox1186/script-repo"
     exit 0
 }
 
-fail_fn()
-{
-    printf "\n\n%s\n\n%s\n\n%s\n\n"                  \
-        "$1"                                       \
-        'To report a bug please create an issue at:' \
-        "$web_repo/issues"
+# Function to print an error message and exit
+fail_fn() {
+    printf "\n\n%s\n\n%s\n\n%s\n\n" \
+        "$1" \
+        "To report a bug please create an issue at:" \
+        "https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
-cleanup_fn()
-{
+# Function to prompt user for cleanup
+cleanup_fn() {
     local choice
 
-    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n"                \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes'                                      \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
+        "============================================" \
+        "  Do you want to clean up the build files?  " \
+        "============================================" \
+        "[1] Yes" \
+        "[2] No"
+    read -p "Your choices are (1 or 2): " choice
 
-    case "${choice}" in
-        1)      sudo rm -fr "$cwd";;
-        2)      echo;;
+    case "$choice" in
+        1)  rm -fr "$cwd" ;;
+        2)  echo ;;
         *)
-                unset choice
-                clear
-                cleanup_fn
-                ;;
+            unset choice
+            clear
+            cleanup_fn
+            ;;
     esac
 }
 
-show_ver_fn()
-{
+# Function to display the OpenSSL version
+show_ver_fn() {
     clear
-    show_ver="$(/usr/local/ssl/bin/openssl version -a | grep -Eo '[0-9\.]?+' | head -n1)"
-    printf "%s\n" "The updated OpenSSL version is: ${show_ver}"
+    show_ver="$(/usr/local/ssl/bin/openssl version -a | grep -Eo "[0-9\.]?+" | head -n1)"
+    printf "%s\n" "The updated OpenSSL version is: $show_ver"
 }
 
-#
-# TEST THE OS AND ITS VERSION
-#
+# Function to install required packages on Arch Linux
+pkgs_arch_fn() {
+    local missing_pkgs
 
-find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
+    pkgs=(
+        autoconf autogen automake base-devel ca-certificates ccache clang curl
+        c-ares libcurl-gnutls gperftools mimalloc libgcrypt gmp libgpg-error
+        jemalloc mbedtls libssh libssh2 libtool libxml2 lksctp-tools m4 zlib-ng
+    )
 
-if [ -f /etc/os-release ]; then
-    . /etc/os-release
+    for pkg in "${pkgs[@]}"
+    do
+        if ! pacman -Qs "$pkg" >/dev/null; then
+            missing_pkgs+=("$pkg ")
+        fi
+    done
+
+    if [ -n "$missing_pkgs" ]; then
+        pacman -S --needed --noconfirm ${missing_pkgs[@]}
+        clear
+    fi
+}
+
+# Function to install required packages on Debian/Ubuntu
+pkgs_fn() {
+    local missing_packages available_packages unavailable_packages
+
+    pkgs=(
+        autoconf autogen automake build-essential ca-certificates ccache
+        checkinstall clang curl libc-ares-dev libcurl4-openssl-dev
+        libdmalloc-dev libgcrypt20-dev libgmp-dev libgpg-error-dev
+        libjemalloc-dev libmbedtls-dev libsctp-dev libssh2-1-dev
+        libssh-dev libssl-dev libtool libtool-bin libxml2-dev m4 perl
+        zlib1g-dev
+    )
+
+    # Initialize arrays for missing, available, and unavailable packages
+    missing_packages=()
+    available_packages=()
+    unavailable_packages=()
+
+    # Loop through the array to find missing packages
+    for pkg in "${pkgs[@]}"
+    do
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+            missing_packages+=("$pkg")
+        fi
+    done
+
+    # Check availability of missing packages and categorize them
+    for pkg in "${missing_packages[@]}"
+    do
+        if apt-cache show "$pkg" > /dev/null 2>&1; then
+            available_packages+=("$pkg")
+        else
+            unavailable_packages+=("$pkg")
+        fi
+    done
+
+    # Print unavailable packages
+    if [[ "${#unavailable_packages[@]}" -gt 0 ]]; then
+        echo "Unavailable packages: ${unavailable_packages[*]}"
+    fi
+
+    # Install available missing packages
+    if [[ "${#available_packages[@]}" -gt 0 ]]; then
+        echo "Installing available missing packages: ${available_packages[*]}"
+        apt install "${available_packages[@]}"
+    else
+        printf "%s\n\n" "No missing packages to install or all missing packages are unavailable."
+    fi
+}
+
+# Function to check and create directories
+create_dir() {
+    local dir="$1"
+    if [ ! -d "$dir" ]; then
+        mkdir -p "$dir"
+    fi
+}
+
+# Function to download a file
+download_file() {
+    local url="$1"
+    local output_file="$2"
+    if [ ! -f "$output_file" ]; then
+        wget -cqO "$output_file" "$url"
+    fi
+}
+
+# Function to extract an archive
+extract_archive() {
+    local archive_file="$1"
+    local target_dir="$2"
+    if ! tar -zxf "$archive_file" -C "$target_dir" --strip-components 1; then
+        printf "%s\n\n" "Failed to extract: $archive_file"
+        exit 1
+    fi
+}
+
+add_to_path() {
+    [[ -f "/usr/local/bin/openssl" ]] && rm "/usr/local/bin/openssl"
+    ln -sf "/usr/local/ssl/bin/openssl" "/usr/local/bin"
+}
+
+# Function to configure and build OpenSSL
+build_openssl() {
+    cd "$1" || exit 1
+    ../Configure linux-x86_64-clang \
+                 -DOPENSSL_USE_IPV6=0 \
+                 -Wl,-rpath="$install_dir/lib64" \
+                 -Wl,--enable-new-dtags \
+                 --prefix="$install_dir" \
+                 --openssldir="$ssl_dir" \
+                 --release \
+                 --with-zlib-include="/usr/include" \
+                 --with-zlib-lib="/usr/lib/x86_64-linux-gnu" \
+                 enable-ec_nistp_64_gcc_128 \
+                 enable-egd \
+                 enable-fips \
+                 enable-rc5 \
+                 enable-sctp \
+                 enable-shared \
+                 enable-threads \
+                 enable-zlib \
+                 no-tests
+
+    echo
+    if ! make "-j$(nproc --all)"; then
+        fail_fn "Failed to execute: make -j$(nproc --all). Line: $LINENO"
+    fi
+
+    echo
+    if ! make install_sw install_fips; then
+        fail_fn "Failed to execute: make install_sw install_fips. Line: $LINENO"
+    else
+        openssl fipsinstall
+    fi
+}
+
+# Function to install CA certificates from cURL's website
+install_ca_certs() {
+    printf "\n%s\n%s\n\n" \
+        "Install the latest security certificate from cURL's website" \
+        "==================================================================="
+    sleep 2
+
+    create_dir "$cert_dir"
+
+    download_file "https://curl.se/ca/cacert.pem" "$cwd/cacert.pem"
+
+    if ! mv "$cwd/cacert.pem" "$cert_dir/cacert.pem"; then
+        fail_fn "Failed to move file: $cwd/cacert.pem >> $cert_dir/cacert.pem. Line: $LINENO"
+    else
+        cp "$cert_dir/cacert.pem" "/usr/local/share/ca-certificates/curl-cacert.crt"
+    fi
+
+    cp -fr /etc/ssl/certs/* "$cert_dir"
+
+    cd "$cert_dir" || exit 1
+    c_rehash .
+    update-ca-certificates
+}
+
+# Function to update the linker library search path
+update_ldconfig() {
+    echo "$install_dir/lib64" | tee "/etc/ld.so.conf.d/openssl-compiled.conf" >/dev/null
+    ldconfig "/usr/local/ssl/lib64"
+}
+
+# Set script variables
+script_ver="2.1"
+openssl_ver="$(curl -s https://www.openssl.org/source/ | grep -o "openssl-3.1\.[4-9]\{1,2\}" | head -n 1)"
+archive_url="https://www.openssl.org/source/$openssl_ver.tar.gz"
+archive_ext="${archive_url//*./}"
+archive_name="$openssl_ver.tar.$archive_ext"
+cwd="$PWD/openssl-build-script"
+install_dir="/usr/local/ssl"
+ssl_dir="$install_dir"
+cert_dir="$install_dir/certs"
+
+# Print header
+printf "%s\n%s\n\n" \
+    "OpenSSL LTS Build Script - v$script_ver" \
+    "==============================================="
+sleep 2
+
+# Create output directory
+create_dir "$cwd"
+
+# Detect OS and version
+find_lsb_release="$(find /usr/bin/ -type f -name "lsb_release")"
+
+if [ -f "/etc/os-release" ]; then
+    . "/etc/os-release"
     OS_TMP="$NAME"
-    OS="$(echo "${OS_TMP}" | awk '{print $1}')"
-elif [ -n "${find_lsb_release}" ]; then
-    OS="$(lsb_release -d | awk '{print $2}')"
+    OS="$(echo "$OS_TMP" | awk "{print $1}")"
+elif [ -n "$find_lsb_release" ]; then
+    OS="$(lsb_release -d | awk "{print $2}")"
 else
-    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
+    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: $LINENO"
 fi
 
-# IF UBUNTU IS THE CURRENT OS THEN YOU MUST SOFTLINK FOR OPENSSL TO FUNCTION
-ubuntu_os_ver() { sudo ln -sf '/usr/lib64/libcrypto.so.3' ; }
+# If Ubuntu is the current OS, softlink for OpenSSL to function
+ubuntu_os_ver() {
+    ln -sf "/usr/lib64/libcrypto.so.3" "/usr/lib64/libcrypto.so"
+}
 
-case "${OS}" in
-    Ubuntu)     ubuntu_os_ver ;;
+case "$OS" in
+    Ubuntu) ubuntu_os_ver ;;
 esac
 
-#
-# INSTALL REQUIRED PACMAN PACKAGES
-#
-
-pkgs_arch_fn()
-{
-    local missing_pkg missing_pkgs pkg pkgs
-
-    pkgs=(autoconf autogen automake base-devel ca-certificates ccache clang curl
-          c-ares libcurl-gnutls gperftools mimalloc libgcrypt gmp libgpg-error
-          jemalloc mbedtls libssh libssh2 libtool libxml2 lksctp-tools m4 zlib-ng)
-    
-    for pkg in ${pkgs[@]}
-    do
-        missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
-    
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${pkg}"
-        fi
-    done
-    
-    if [ -n "$missing_pkgs" ]; then
-        sudo pacman -S --needed --noconfirm $missing_pkgs
-        clear
-    fi
-}
-
-#
-# INSTALL REQUIRED APT PACKAGES
-#
-
-pkgs_fn()
-{
-    local missing_pkg missing_pkgs pkg pkgs
-
-    pkgs=(autoconf autogen automake build-essential ca-certificates ccache checkinstall clang curl
-          libc-ares-dev libcurl4-openssl-dev libdmalloc-dev libgcrypt20-dev libgmp-dev libgpg-error-dev
-          libjemalloc-dev libmbedtls-dev libsctp-dev libssh2-1-dev libssh-dev libssl-dev libtool libtool-bin
-          libxml2-dev m4 zlib1g-dev)
-    
-    for pkg in ${pkgs[@]}
-    do
-        missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
-    
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${pkg}"
-        fi
-    done
-    
-    if [ -n "$missing_pkgs" ]; then
-        sudo apt install $missing_pkgs
-        clear
-    fi
-}
-
-#
-# CALL THE PACKAGE INSTALLERS
-#
-
-if [[ $OS == Arch ]]; then
+# Install required packages based on OS
+if [[ "$OS" == "Arch" ]]; then
     pkgs_arch_fn
 else
     pkgs_fn
 fi
 
-#
-# DOWNLOAD THE ARCHIVE FILE
-#
+# Download the archive file
+download_file "$archive_url" "$cwd/$archive_name"
 
-if [ ! -f "$cwd/${archive_name}" ]; then
-    wget -U "$user_agent" -cqO "$cwd/${archive_name}" "${archive_url}"
-fi
+# Create output directory for extraction
+create_dir "$cwd/$openssl_ver/build"
 
-#
-# CREATE OUTPUT DIRECTORY
-#
+# Extract archive files
+extract_archive "$cwd/$archive_name" "$cwd/$openssl_ver"
 
-if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
-fi
-mkdir -p "$cwd/$archive_dir/build"
+# Build OpenSSL from source
+build_openssl "$cwd/$openssl_ver/build"
 
-#
-# EXTRACT ARCHIVE FILES
-#
+# Install CA certificates from cURL's website
+install_ca_certs
 
-if ! tar -zxf "$cwd/${archive_name}" -C "$cwd/$archive_dir" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: $cwd/${archive_name}"
-    exit 1
-fi
+# Update linker library search path
+update_ldconfig
 
-#
-# BUILD PROGRAM FROM SOURCE
-#
+# Add OpenSSL bin to user's ~/.bashrc file
+add_to_path
 
-cd "$cwd/$archive_dir/build" || exit 1
-../Configure linux-x86_64-clang                          \
-             -DOPENSSL_USE_IPV6=0                        \
-             -Wl,-rpath="$install_dir"/lib64           \
-             -Wl,--enable-new-dtags                      \
-             --prefix="$install_dir"                   \
-             --openssldir="${ssl_dir}"                   \
-             --release                                   \
-             --with-zlib-include=/usr/include            \
-             --with-zlib-lib=/usr/lib/x86_64-linux-gnu   \
-             enable-ec_nistp_64_gcc_128                  \
-             enable-egd                                  \
-             enable-fips                                 \
-             enable-rc5                                  \
-             enable-sctp                                 \
-             enable-shared                               \
-             enable-threads                              \
-             enable-zlib                                 \
-             no-tests
-
-echo
-if ! make "-j$(nproc --all)"; then
-    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
-fi
-
-echo
-if ! sudo make install_sw install_fips; then
-    fail_fn "Failed to execute: sudo make install_sw install_fips. Line: ${LINENO}"
-else
-    sudo openssl fipsinstall
-fi
-
-#
-# INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
-#
-
-printf "\n%s\n%s\n\n"                                               \
-   'Install the latest security certificate from cURL'\''s website' \
-   '==================================================================='
-sleep 2
-
-# CREATE CERTS DIRECTORY IF MISSING
-if [ ! -d "${cert_dir}" ]; then
-    sudo mkdir -p "${cert_dir}"
-fi
-
-# DOWNLOAD THE LATEST CACERT.PEM FILE FROM THE OFFICIAL CURL WEBSITE
-if ! curl -A "$user_agent" -Lso "$cwd"/cacert.pem 'https://curl.se/ca/cacert.pem'; then
-    fail_fn "Failed to download the latest \"cacert.pem\" file. Line: ${LINENO}"
-fi
-
-# MOVE THE PEM FILE TO THE NEWLY CREATED CERTS DIRECTORY
-if ! sudo mv "$cwd"/cacert.pem "${cert_dir}"/cacert.pem; then
-    fail_fn "Failed to move file: $cwd/cacert.pem >> ${cert_dir}/cacert.pem. Line: ${LINENO}"
-else
-    # COPY THE PEM FILE AS A CRT FILE IN THE SPECIAL CA-CERTIFICATES FOLDER SO THE COMMAND WILL FIND AND USE IT WHEN IT IS EXECUTED
-    sudo cp "${cert_dir}"/cacert.pem '/usr/local/share/ca-certificates/curl-cacert.crt'
-fi
-
-# COPY ALL EXISTING CERT FILES LOCATED IN THE DIRECTORY /etc/ssl/certs TO THE NEWLY CREATED CERTS DIRECTORY
-sudo cp -fr /etc/ssl/certs/* "${cert_dir}"
-
-# UPDATE THE SECURITY CERTS THAT WERE MOVED FROM THE /etc/ssl/certs FOLDER
-cd "${cert_dir}" || exit 1
-sudo c_rehash .
-sudo update-ca-certificates
-
-# RUN LDCONFIG TO UPDATE THE LINKER LIBRARY SEARCH PATH TO INCLUDE THE OPENSSL LIB64 DIRECTORY
-echo "$install_dir/lib64" | sudo tee '/etc/ld.so.conf.d/openssl-compiled.conf' >/dev/null
-sudo ldconfig
-
-# ADD THE NEW OPENSSL BIN TO THE USER'S ~/.bashrc FILE IF NOT ALREADY PRESENT
-regex_str=':\\$'
-get_str="$(grep -o '/usr/sbin:\\' "${HOME}"/.bashrc 2>/dev/null)"
-
-if ! grep -o '/usr/local/ssl/bin' "${HOME}"/.bashrc &>/dev/null; then
-    if [[ "${get_str}" =~ $regex_str ]]; then
-        sed -i '\/usr\/sbin:\\/i \/usr\/local\/ssl\/bin:\\' "${HOME}"/.bashrc
-    else
-        sed -i 's/\/usr\/sbin:/\/usr\/local\/ssl\/bin:\/usr\/sbin:/g' "${HOME}"/.bashrc
-    fi
-fi
-
-# PROMPT USER TO CLEAN UP FILES
+# Prompt user to clean up files
 cleanup_fn
 
-# DISPLAY THE UPDATE OPENSSL STATS
-display_stats_fn
-
-# SHOW THE OPENSSL VERSION
+# Display updated OpenSSL version
 show_ver_fn
 
-# SHOW EXIT MESSAGE
+# Exit with message
 exit_fn
