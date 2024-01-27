@@ -15,6 +15,5 @@ do
     mogrify -path output/ -monitor -filter Triangle -define filter:support=2 -thumbnail "$dimensions" \
             -unsharp 0.25x0.08+8.3+0.045 -dither None -posterize 136 -quality 90% -define jpeg:fancy-upsampling=off \
             -define jpeg:optimize-coding=true -define jpeg:colorspace=RGB -define jpeg:sampling-factor=2x2,1x1,1x1 \
-            -define png:compression-filter=5 -define png:compression-level=9 -define png:compression-strategy=1 \
-            -define png:exclude-chunk=all -interlace Plane -colorspace sRGB -format jpg "$f"
+            -interlace Plane -colorspace sRGB -format jpg "$f"
 done
