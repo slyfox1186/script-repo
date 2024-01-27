@@ -3,7 +3,7 @@
 
 ##  Script Version: 4.5
 ##  Updated: 01.17.24
-##  GitHub: https://github.com/slyfox1186/imagemagick-build-script
+##  GitHub: https://github.com/slyfox1186/script-repo
 ##  Purpose: Build ImageMagick 7 from the source code obtained from ImageMagick's official GitHub repository
 ##  Function: ImageMagick is the leading open-source command line image processor. It can blur, sharpen, warp,
 ##            reduce total file size, ect... The possibilities are vast
@@ -31,21 +31,21 @@ script_ver=4.5
 # ANNOUNCE THE BUILD HAS BEGUN
 box_out_banner_header() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 $input_char); do printf '-'; done)
+    line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)$line"
     space=${line//-/ }
     echo " $line"
-    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
-    printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
-    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
+    printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
     echo " $line"
     tput sgr 0
 }
 box_out_banner_header "ImageMagick Build Script v$script_ver"
 
-if [ "$EUID" -eq '0' ]; then
-    printf "%s\n\n" 'This script must be run WITHOUT root/sudo'
+if [ "$EUID" -eq "0" ]; then
+    printf "%s\n\n" "This script must be run WITHOUT root/sudo"
     exit 1
 fi
 
@@ -55,8 +55,8 @@ cwd="$PWD"/magick-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
 install_dir=/usr/local
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/imagemagick-build-script
+user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+web_repo=https://github.com/slyfox1186/script-repo
 regex_str='(rc|RC|master)+[0-9]*$'
 debug=OFF # CHANGE THIS VARIABLE TO "ON" FOR HELP WITH TROUBLESHOOTING UNEXPECTED ISSUES DURING THE BUILD
 
@@ -65,7 +65,7 @@ mkdir -p "$packages" "$workspace"
 
 # SET THE COMPILERS TO USE
 
-export CC=gcc CXX=g++
+export CC="gcc" CXX="g++"
 
 # Download the script and capture only the last line of the output
 march=$(curl -sSL "https://get-gcc.optimizethis.net" | bash | tail -n1)
@@ -113,10 +113,10 @@ else
 fi
 
 # SET THE PATH
-if [ -d '/usr/lib/ccache/bin' ]; then
-    ccache_dir='/usr/lib/ccache/bin'
+if [ -d "/usr/lib/ccache/bin" ]; then
+    ccache_dir="/usr/lib/ccache/bin"
 else
-    ccache_dir='/usr/lib/ccache'
+    ccache_dir="/usr/lib/ccache"
 fi
 
 PATH="\
@@ -156,8 +156,8 @@ export PKG_CONFIG_PATH
 # CREATE FUNCTIONS
 exit_fn() {
     printf "%s\n\n%s\n%s\n\n" \
-        'The script has completed' \
-        'Make sure to star this repository to show your support!' \
+        "The script has completed" \
+        "Make sure to star this repository to show your support!" \
         "$web_repo"
     exit 0
 }
@@ -165,7 +165,7 @@ exit_fn() {
 fail_fn() {
     printf "\n\n%s\n\n%s\n\n%s\n\n" \
         "$1" \
-        'To report a bug please visit: ' \
+        "To report a bug please visit: " \
         "$web_repo/issues"
     exit 1
 }
@@ -174,10 +174,10 @@ cleanup_fn() {
     local choice
 
     printf "\n%s\n\n%s\n%s\n\n" \
-        'Do you want to remove the build files?' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
+        "Do you want to remove the build files?" \
+        "[1] Yes" \
+        "[2] No"
+    read -p "Your choices are (1 or 2): " choice
 
     case "$choice" in
         1)      sudo rm -fr "$cwd" ;;
@@ -193,7 +193,7 @@ cleanup_fn() {
 execute() {
     echo "$ $*"
 
-    if [ "$debug" = 'ON' ]; then
+    if [ "$debug" = "ON" ]; then
         if ! output="$("$@")"; then
             notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
             fail_fn "Failed to execute: $*"
@@ -209,7 +209,7 @@ execute() {
 build() {
     printf "\n%s\n%s\n" \
         "Building $1 - version $2" \
-        '=========================================='
+        "=========================================="
 
     if [ -f "$packages/$1.done" ]; then
         if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
@@ -255,7 +255,7 @@ download() {
                 fail_fn "The script failed to download \"$dl_file\" twice and will now exit. Line: $LINENO"
             fi
         fi
-        echo 'Download Completed'
+        echo "Download Completed"
     fi
 
     if [ -d "$target_dir" ]; then
@@ -290,8 +290,8 @@ download_git() {
     dl_file="${dl_file//\./-}"
     target_dir="$dl_path/$dl_file"
 
-    if [[ "$3" == 'R' ]]; then
-        set_recurse='--recursive'
+    if [[ "$3" == "R" ]]; then
+        set_recurse="--recursive"
     elif [ -n "$3" ]; then
         output_dir="$dl_path/$3"
         target_dir="$output_dir"
@@ -317,7 +317,7 @@ download_git() {
 }
 
 show_ver_fn() {
-    printf "%s\n\n" 'ImageMagick'\''s new version is:'
+    printf "%s\n\n" "ImageMagick's new version is:"
     if ! magick -version 2>/dev/null; then
         fail_fn "Failure to execute the command: magick -version. Line: $LINENO"
     fi
@@ -492,7 +492,7 @@ install_autotrace_fn() {
         curl -A "$user_agent" -Lso "$packages"/deb-files/autotrace.deb 'https://github.com/autotrace/autotrace/releases/download/travis-20200219.65/autotrace_0.40.0-20200219_all.deb'
         cd "$packages"/deb-files || exit 1
         echo '$ sudo apt install ./autotrace.deb'
-        if ! sudo apt install ./autotrace.deb; then
+        if ! sudo apt -y install ./autotrace.deb; then
             sudo dpkg --configure -a
             sudo apt --fix-broken install
             sudo apt update
@@ -612,8 +612,8 @@ get_os_ver_fn() {
 get_os_ver_fn
 
 # INSTALL OFFICIAL IMAGEMAGICK LIBS
-git_ver_fn 'imagemagick/imagemagick' '1' 'T'
-if build 'magick-libs' "$g_ver"; then
+git_ver_fn "imagemagick/imagemagick" "1" "T"
+if build "magick-libs" "$g_ver"; then
     if [ ! -d "$packages"/deb-files ]; then
         mkdir -p "$packages"/deb-files
     fi
@@ -623,8 +623,8 @@ if build 'magick-libs' "$g_ver"; then
     fi
     sudo alien -d ./*.rpm || fail_fn "Error: sudo alien -d ./*.rpm Line: $LINENO"
     if ! sudo dpkg -i ./*.deb; then
-        '$ error: sudo dpkg -i ./*.deb'
-        '$ attempting to fix APT...'
+        echo "$ error: sudo dpkg -i ./*.deb"
+        echo "$ attempting to fix APT..."
         sudo dpkg --configure -a
         sudo apt --fix-broken install
         sudo apt update
@@ -640,38 +640,38 @@ case "$OS" in
                 autotrace_flag=true
                 ;;
 esac
-if [[ "$autotrace_flag" == 'true' ]]; then
-    set_autotrace='--with-autotrace'
+if [[ "$autotrace_flag" == "true" ]]; then
+    set_autotrace="--with-autotrace"
 else
-    set_autotrace='--without-autotrace'
+    set_autotrace="--without-autotrace"
 fi
 
 # INSTALL COMPOSER TO COMPILE GRAPHVIZ
-if [ ! -f '/usr/bin/composer' ]; then
+if [ ! -f "/usr/bin/composer" ]; then
     EXPECTED_CHECKSUM="$(php -r 'copy("https://composer.github.io/installer.sig", "php://stdout");')"
     php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
     ACTUAL_CHECKSUM="$(php -r "echo hash_file('sha384', 'composer-setup.php');")"
 
     if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
-        >&2 echo 'ERROR: Invalid installer checksum'
-        rm 'composer-setup.php'
+        >&2 echo "ERROR: Invalid installer checksum"
+        rm "composer-setup.php"
         return 1
     fi
     if ! sudo php composer-setup.php --install-dir='/usr/bin' --filename=composer --quiet; then
         fail_fn "Failed to install: /usr/bin/composer. Line: $LINENO"
     fi
-    rm 'composer-setup.php'
+    rm "composer-setup.php"
 fi
 
 # INSTALL LIBJXL FROM DEBIAN FILES
-if build 'libjxl' '0.8.2'; then
+if build "libjxl" "0.8.2"; then
     dl_libjxl_fn
-    build_done 'libjxl' '0.8.2'
+    build_done "libjxl" "0.8.2"
 fi
 
 # BEGIN BUILDING FROM SOURCE CODE
-if build 'm4' 'latest'; then
-    download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
+if build "m4" "latest"; then
+    download "https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" \
                         --disable-nls \
@@ -679,37 +679,37 @@ if build 'm4' 'latest'; then
                         --enable-threads=posix
     execute make "-j$cpu_threads"
     execute make install
-    build_done 'm4' 'latest'
+    build_done "m4" "latest"
 fi
 
-if build 'autoconf' 'latest'; then
-    download 'http://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz'
+if build "autoconf" "latest"; then
+    download "http://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" \
                         --{build,host}="$pc_type" \
                         M4="$workspace/bin/m4"
     execute make "-j$cpu_threads"
     execute make install
-    build_done 'autoconf' 'latest'
+    build_done "autoconf" "latest"
 fi
 
 case "$VER" in
-    12)     lt_ver='2.4.7' ;;
-    *)      lt_ver='2.4.6' ;;
+    12)     lt_ver="2.4.7" ;;
+    *)      lt_ver="2.4.6" ;;
 esac
 
-if build 'libtool' "$lt_ver"; then
+if build "libtool" "$lt_ver"; then
     download "https://ftp.gnu.org/gnu/libtool/libtool-$lt_ver.tar.xz"
     execute ./configure --prefix="$workspace" \
                         --with-pic \
                         M4="$workspace"/bin/m4
     execute make "-j$cpu_threads"
     execute make install
-    build_done 'libtool' "$lt_ver"
+    build_done "libtool" "$lt_ver"
 fi
 
-git_ver_fn 'libsdl-org/libtiff' '1' 'T'
-if build 'libtiff' "$g_ver"; then
+git_ver_fn "libsdl-org/libtiff" "1" "T"
+if build "libtiff" "$g_ver"; then
     download "https://codeload.github.com/libsdl-org/libtiff/tar.gz/refs/tags/v$g_ver" "libtiff-$g_ver.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" \
@@ -717,11 +717,11 @@ if build 'libtiff' "$g_ver"; then
                         --with-pic
     execute make "-j$cpu_threads"
     execute make install
-    build_done 'libtiff' "$g_ver"
+    build_done "libtiff" "$g_ver"
 fi
 
-if build 'jpeg-turbo' 'git'; then
-    download_git 'https://github.com/imageMagick/jpeg-turbo.git'
+if build "jpeg-turbo" "git"; then
+    download_git "https://github.com/imageMagick/jpeg-turbo.git"
     execute cmake -S . \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
@@ -730,41 +730,41 @@ if build 'jpeg-turbo' 'git'; then
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads"
     execute ninja "-j$cpu_threads" install
-    build_done 'jpeg-turbo' 'git'
+    build_done "jpeg-turbo" "git"
 fi
 
-if build 'libfpx' 'git'; then
-    download_git 'https://github.com/imageMagick/libfpx.git'
+if build "libfpx" "git"; then
+    download_git "https://github.com/imageMagick/libfpx.git"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" \
                         --with-pic
     execute make "-j$cpu_threads"
     execute make install
-    build_done 'libfpx' 'git'
+    build_done "libfpx" "git"
 fi
 
-if build 'ghostscript' '10.02.1'; then
-    download 'https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10021/ghostscript-10.02.1.tar.xz'
+if build "ghostscript" "10.02.1"; then
+    download "https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10021/ghostscript-10.02.1.tar.xz"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" \
                         --with-libiconv=native
     execute make "-j$cpu_threads"
     execute make install
-    build_done 'ghostscript' '10.02.1'
+    build_done "ghostscript" "10.02.1"
 fi
 
-if build 'png12' '1.2.59'; then
-    download 'https://github.com/glennrp/libpng/archive/refs/tags/v1.2.59.tar.gz' 'libpng-1.2.59.tar.gz'
+if build "png12" "1.2.59"; then
+    download "https://github.com/glennrp/libpng/archive/refs/tags/v1.2.59.tar.gz" "libpng-1.2.59.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" \
                         --with-pic
     execute make "-j$cpu_threads"
     execute make install
-    build_done 'png12' '1.2.59'
+    build_done "png12" "1.2.59"
 fi
 
-if build 'libwebp' 'git'; then
-    download_git 'https://chromium.googlesource.com/webm/libwebp' 'libwebp-git'
+if build "libwebp" "git"; then
+    download_git "https://chromium.googlesource.com/webm/libwebp" "libwebp-git"
     execute autoreconf -fi
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
@@ -786,15 +786,15 @@ if build 'libwebp' 'git'; then
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    build_done 'libwebp' 'git'
+    build_done "libwebp" "git"
 fi
 
-git_ver_fn '7950' '2'
+git_ver_fn "7950" "2"
 g_ver="${g_ver#VER-}"
 g_ver1="${g_ver//-/.}"
-if build 'freetype' "$g_ver1"; then
+if build "freetype" "$g_ver1"; then
     download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-$g_ver/freetype-VER-$g_ver.tar.bz2" "freetype-$g_ver1.tar.bz2"
-    extracmds=('-D'{harfbuzz,png,bzip2,brotli,zlib,tests}'=disabled')
+    extracmds=("-D"{harfbuzz,png,bzip2,brotli,zlib,tests}"=disabled")
     execute ./autogen.sh
     execute meson setup build --prefix="$workspace" \
                               --buildtype=release \
@@ -803,34 +803,34 @@ if build 'freetype' "$g_ver1"; then
                               "${extracmds[@]}"
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    build_done 'freetype' "$g_ver1"
+    build_done "freetype" "$g_ver1"
 fi
-ffmpeg_libraries+=('--enable-libfreetype')
+ffmpeg_libraries+=("--enable-libfreetype")
 
-git_ver_fn '1665' '3' 'T'
-if build 'libxml2' '2.12.0'; then
-    download 'https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.12.0/libxml2-v2.12.0.tar.bz2' 'libxml2-2.12.0.tar.bz2'
-    CFLAGS+=' -DNOLIBTOOL'
+git_ver_fn "1665" "3" "T"
+if build "libxml2" "2.12.0"; then
+    download "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.12.0/libxml2-v2.12.0.tar.bz2" "libxml2-2.12.0.tar.bz2"
+    CFLAGS+=" -DNOLIBTOOL"
     execute ./autogen.sh
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
                   -DBUILD_SHARED_LIBS=OFF \
-                  -DPYTHON_INCLUDE_DIR="$(python -c "import sysconfig; print(sysconfig.get_path('include'))")" \
-                  -DPYTHON_LIBRARY="$(python -c "import sysconfig; print(sysconfig.get_config_var('LIBDIR'))")" \
+                  -DPYTHON_INCLUDE_DIR="$(python -c "import sysconfig; print(sysconfig.get_path("include"))")" \
+                  -DPYTHON_LIBRARY="$(python -c "import sysconfig; print(sysconfig.get_config_var("LIBDIR"))")" \
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    build_done 'libxml2' '2.12.0'
+    build_done "libxml2" "2.12.0"
 fi
-ffmpeg_libraries+=('--enable-libxml2')
+ffmpeg_libraries+=("--enable-libxml2")
 
-git_ver_fn '890' '2'
+git_ver_fn "890" "2"
 fc_dir="$packages/fontconfig-$g_ver"
-if build 'fontconfig' "$g_ver"; then
+if build "fontconfig" "$g_ver"; then
     download "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/$g_ver/fontconfig-$g_ver.tar.bz2"
-    LDFLAGS+=' -DLIBXML_STATIC'
-    sed -i 's|Cflags:|& -DLIBXML_STATIC|' fontconfig.pc.in
+    LDFLAGS+=" -DLIBXML_STATIC"
+    sed -i "s|Cflags:|& -DLIBXML_STATIC|" fontconfig.pc.in
     execute ./autogen.sh --noconf
     execute ./configure --prefix="$workspace" \
                         --disable-docbook \
@@ -845,23 +845,23 @@ if build 'fontconfig' "$g_ver"; then
                         --with-pic
     execute make "-j$cpu_threads"
     execute make install
-    build_done 'fontconfig' "$g_ver"
+    build_done "fontconfig" "$g_ver"
 fi
 
-if build 'c2man' 'git'; then
-    download_git 'https://github.com/fribidi/c2man.git'
+if build "c2man" "git"; then
+    download_git "https://github.com/fribidi/c2man.git"
     execute ./Configure -desO \
                         -D bash="$(type -P bash)" \
                         -D bin="$workspace"/bin \
-                        -D cc='/usr/bin/cc' \
-                        -D d_gnu='/usr/lib/x86_64-linux-gnu' \
+                        -D cc="/usr/bin/cc" \
+                        -D d_gnu="/usr/lib/x86_64-linux-gnu" \
                         -D find="$(type -P find)" \
-                        -D gcc='/usr/bin/gcc' \
+                        -D gcc="/usr/bin/gcc" \
                         -D gzip="$(type -P gzip)" \
                         -D installmansrc="$workspace"/share/man \
                         -D ldflags="$LDFLAGS" \
                         -D less="$(type -P less)" \
-                        -D libpth='/lib /usr/lib' \
+                        -D libpth="/lib /usr/lib" \
                         -D locincpth="$workspace/include /usr/local/include /usr/include" \
                         -D loclibpth="$workspace/lib /usr/local/lib" \
                         -D make="$(type -P make)" \
@@ -884,13 +884,13 @@ if build 'c2man' 'git'; then
     execute make depend
     execute make "-j$cpu_threads"
     execute sudo make install
-    build_done 'c2man' 'git'
+    build_done "c2man" "git"
 fi
 
-git_ver_fn 'fribidi/fribidi' '1' 'T'
-if build 'fribidi' "$g_ver"; then
+git_ver_fn "fribidi/fribidi" "1" "T"
+if build "fribidi" "$g_ver"; then
     download "https://github.com/fribidi/fribidi/archive/refs/tags/v$g_ver.tar.gz" "fribidi-$g_ver.tar.gz"
-    extracmds=('-D'{docs,tests}'=false')
+    extracmds=("-D"{docs,tests}"=false")
     execute autoreconf -fi
         execute meson setup build --prefix="$workspace" \
                               --buildtype=release \
@@ -899,13 +899,13 @@ if build 'fribidi' "$g_ver"; then
                                "${extracmds[@]}"
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    build_done 'fribidi' "$g_ver"
+    build_done "fribidi" "$g_ver"
 fi
 
-git_ver_fn 'harfbuzz/harfbuzz' '1' 'T'
-if build 'harfbuzz' "$g_ver"; then
+git_ver_fn "harfbuzz/harfbuzz" "1" "T"
+if build "harfbuzz" "$g_ver"; then
     download "https://github.com/harfbuzz/harfbuzz/archive/refs/tags/$g_ver.tar.gz" "harfbuzz-$g_ver.tar.gz"
-    extracmds=('-D'{benchmark,cairo,docs,glib,gobject,icu,introspection,tests}'=disabled')
+    extracmds=("-D"{benchmark,cairo,docs,glib,gobject,icu,introspection,tests}"=disabled")
     execute ./autogen.sh
     execute meson setup build --prefix="$workspace" \
                               --buildtype=release \
@@ -914,11 +914,11 @@ if build 'harfbuzz' "$g_ver"; then
                               "${extracmds[@]}"
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    build_done 'harfbuzz' "$g_ver"
+    build_done "harfbuzz" "$g_ver"
 fi
 
-git_ver_fn 'host-oman/libraqm' '1' 'T'
-if build 'raqm' "$g_ver"; then
+git_ver_fn "host-oman/libraqm" "1" "T"
+if build "raqm" "$g_ver"; then
     download "https://codeload.github.com/host-oman/libraqm/tar.gz/refs/tags/v$g_ver" "raqm-$g_ver.tar.gz"
     execute meson setup build --prefix="$workspace" \
                               --includedir="$workspace"/include \
@@ -928,11 +928,11 @@ if build 'raqm' "$g_ver"; then
                               -Ddocs=false
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    build_done 'raqm' "$g_ver"
+    build_done "raqm" "$g_ver"
 fi
 
-git_ver_fn 'jemalloc/jemalloc' '1' 'T'
-if build 'jemalloc' "$g_ver"; then
+git_ver_fn "jemalloc/jemalloc" "1" "T"
+if build "jemalloc" "$g_ver"; then
     download "https://github.com/jemalloc/jemalloc/archive/refs/tags/$g_ver.tar.gz" "jemalloc-$g_ver.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" \
@@ -947,11 +947,11 @@ if build 'jemalloc' "$g_ver"; then
                         --enable-xmalloc
     execute make "-j$cpu_threads"
     execute make install
-    build_done 'jemalloc' "$g_ver"
+    build_done "jemalloc" "$g_ver"
 fi
 
-if build 'opencl-sdk' 'git'; then
-    download_git 'https://github.com/KhronosGroup/OpenCL-SDK.git' 'opencl-sdk-git' 'R'
+if build "opencl-sdk" "git"; then
+    download_git "https://github.com/KhronosGroup/OpenCL-SDK.git" "opencl-sdk-git" "R"
     execute cmake \
             -S . \
             -B build \
@@ -974,11 +974,11 @@ if build 'opencl-sdk' 'git'; then
             -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    build_done 'opencl-sdk' 'git'
+    build_done "opencl-sdk" "git"
 fi
 
-git_ver_fn 'uclouvain/openjpeg' '1' 'T'
-if build 'openjpeg' "$g_ver"; then
+git_ver_fn "uclouvain/openjpeg" "1" "T"
+if build "openjpeg" "$g_ver"; then
     download "https://codeload.github.com/uclouvain/openjpeg/tar.gz/refs/tags/v$g_ver" "openjpeg-$g_ver.tar.gz"
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
@@ -999,11 +999,11 @@ if build 'openjpeg' "$g_ver"; then
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    build_done 'openjpeg' "$g_ver"
+    build_done "openjpeg" "$g_ver"
 fi
 
-if build 'lcms' 'git'; then
-    download_git 'https://github.com/ImageMagick/lcms.git'
+if build "lcms" "git"; then
+    download_git "https://github.com/ImageMagick/lcms.git"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" \
                         --disable-shared \
@@ -1013,37 +1013,37 @@ if build 'lcms' 'git'; then
                         --with-threaded
     execute make "-j$cpu_threads"
     execute make install
-    build_done 'lcms' 'git'
+    build_done "lcms" "git"
 fi
 
-if build 'dejavu-fonts' 'git'; then
-    download_git 'https://github.com/dejavu-fonts/dejavu-fonts.git'
-    wget -cqU "$user_agent" -P 'resources' 'http://www.unicode.org/Public/UNIDATA/UnicodeData.txt' 'http://www.unicode.org/Public/UNIDATA/Blocks.txt'
-    execute ln -sf "$fc_dir"/fc-lang 'resources/fc-lang'
+if build "dejavu-fonts" "git"; then
+    download_git "https://github.com/dejavu-fonts/dejavu-fonts.git"
+    wget -cqU "$user_agent" -P "resources" "http://www.unicode.org/Public/UNIDATA/UnicodeData.txt" "http://www.unicode.org/Public/UNIDATA/Blocks.txt"
+    execute ln -sf "$fc_dir"/fc-lang "resources/fc-lang"
     execute make "-j$cpu_threads" full-ttf
-    build_done 'dejavu-fonts' 'git'
+    build_done "dejavu-fonts" "git"
 fi
 
 # BEGIN BUILDING IMAGEMAGICK
 echo
 box_out_banner_magick() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 $input_char); do printf '-'; done)
+    line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)$line"
     space=${line//-/ }
     echo " $line"
-    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
-    printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
-    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
+    printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
     echo " $line"
     tput sgr 0
 }
-box_out_banner_magick 'Build ImageMagick'
+box_out_banner_magick "Build ImageMagick"
 
-git_ver_fn 'ImageMagick/ImageMagick' '1' 'T'
-if build 'ImageMagick' '7.1.1-23'; then
-    download 'https://github.com/ImageMagick/ImageMagick/archive/refs/tags/7.1.1-23.tar.gz' 'imagemagick-7.1.1-23.tar.gz'
+git_ver_fn "ImageMagick/ImageMagick" "1" "T"
+if build "ImageMagick" "7.1.1-23"; then
+    download "https://github.com/ImageMagick/ImageMagick/archive/refs/tags/7.1.1-23.tar.gz" "imagemagick-7.1.1-23.tar.gz"
     execute autoreconf -fi
     mkdir build
     cd build || exit 1
@@ -1054,11 +1054,11 @@ if build 'ImageMagick' '7.1.1-23'; then
                          --enable-hugepages \
                          --enable-legacy-support \
                          --enable-opencl \
-                         --with-dejavu-font-dir=/usr/share/fonts/truetype/dejavu \
+                         --with-dejavu-font-dir="/usr/share/fonts/truetype/dejavu" \
                          --with-dmalloc \
                          --with-fontpath=/usr/share/fonts \
                          --with-fpx \
-                         --with-gcc-arch=native \
+                         --with-gcc-arch="$march" \
                          --with-gslib \
                          --with-gvc \
                          --with-heic \
@@ -1066,16 +1066,17 @@ if build 'ImageMagick' '7.1.1-23'; then
                          --with-modules \
                          --with-perl \
                          --with-pic \
-                         --with-pkgconfigdir="$workspace"/lib/pkgconfig \
+                         --with-png \
+                         --with-pkgconfigdir="$workspace/lib/pkgconfig" \
                          --with-quantum-depth=16 \
                          --with-rsvg \
                          --with-tcmalloc \
-                         --with-urw-base35-font-dir=/usr/share/fonts/type1/urw-base35 \
+                         --with-urw-base35-font-dir="/usr/share/fonts/type1/urw-base35" \
                          --with-utilities \
                          "$set_autotrace" \
+                         CFLAGS="$CFLAGS" \
                          CPPFLAGS="$CPPFLAGS" \
                          CXXFLAGS="$CXXFLAGS" \
-                         CFLAGS="$CFLAGS" \
                          LDFLAGS="$LDFLAGS" \
                          PKG_CONFIG="$(type -P pkg-config)"
     execute make "-j$cpu_threads"
