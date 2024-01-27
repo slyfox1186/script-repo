@@ -39,7 +39,7 @@ def get_geolocation(ip_address):
         data = response.json()
         return f"Country: {data['country']}, City: {data['city']}, ISP: {data['isp']}"
     except Exception as e:
-        return f"Error retrieving geolocation"
+        return "Error retrieving geolocation"
 
 def get_ssl_info(domain_name):
     try:
@@ -49,7 +49,7 @@ def get_ssl_info(domain_name):
                 cert = ssock.getpeercert()
                 valid_from = datetime.strptime(cert['notBefore'], '%b %d %H:%M:%S %Y %Z').strftime('%m-%d-%Y %H:%M:%S UTC')
                 valid_until = datetime.strptime(cert['notAfter'], '%b %d %H:%M:%S %Y %Z').strftime('%m-%d-%Y %H:%M:%S UTC')
-                return f"SSL Valid:\n  - From:  {valid_from}\n  - Until: {valid_until}"
+                return f"SSL Valid:\n  - From: {valid_from}\n  - Until: {valid_until}"
     except ssl.SSLError:
         return "SSL Error: No SSL certificate found"
     except socket.timeout:
@@ -64,13 +64,14 @@ def get_http_headers(domain_name):
         response = requests.get(f"http://{domain_name}", timeout=10)
         headers = response.headers
         key_headers = ['Server', 'Content-Type', 'Last-Modified']
-        return "\n".join([f"  - {header}: {headers.get(header, 'Not Available')}" for header in key_headers])
+        header_info = "\n".join([f"  - {header}: {headers.get(header, 'Not Available')}" for header in key_headers])
+        return header_info
     except requests.ConnectionError:
-        return "  - Could not establish a connection"
+        return "Could not establish a connection"
     except requests.Timeout:
-        return "  - Connection timed out"
+        return "Connection timed out"
     except Exception as e:
-        return f"  - Error: {e}"
+        return f"Error: {e}"
 
 def get_alexa_rank(domain_name):
     try:
@@ -126,8 +127,12 @@ def display_info(domain_info, domain_name, verbose=False):
     output.append(f"{calculate_domain_age(domain_info.creation_date)}")
     output.append(f"Geolocation: {get_geolocation(ip_address)}")
 
-    output.append("\nHTTP Header Information:")
-    output.append(get_http_headers(domain_name))
+    http_headers = get_http_headers(domain_name)
+    if http_headers.startswith("Error") or http_headers.startswith("Could not") or http_headers.startswith("Connection timed"):
+        output.append(f"\nHTTP Header Information: {http_headers}")
+    else:
+        output.append("\nHTTP Header Information:")
+        output.append(http_headers)
 
     ssl_info = get_ssl_info(domain_name)
     if "SSL Valid:" in ssl_info:
