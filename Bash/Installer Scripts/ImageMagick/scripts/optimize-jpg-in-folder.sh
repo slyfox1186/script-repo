@@ -7,7 +7,6 @@
 # Create the output directory
 [ ! -d "output" ] && mkdir "output"
 
-# FIND ALL JPG FILES AND OPTIMIZE THEM
 for f in *.jpg
 do
     dimensions=$(identify +ping -format "%wx%h" "$f")
