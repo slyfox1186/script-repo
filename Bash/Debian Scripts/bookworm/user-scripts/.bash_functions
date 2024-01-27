@@ -968,9 +968,9 @@ hw_mon() {
         7z a -y -t7z -m0=lzma2 -mx1 "${source_dir}".7z ./"${source_dir}"/*
     fi
 
-    printf "\n%s\n\n%s\n%s\n\n"                    \
+    printf "\n%s\n\n%s\n%s\n\n" \
         'Do you want to delete the original file?' \
-        '[1] Yes'                                  \
+        '[1] Yes' \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
     clear
@@ -995,9 +995,9 @@ hw_mon() {
         7z a -y -t7z -m0=lzma2 -mx5 "${source_dir}".7z ./"${source_dir}"/*
     fi
 
-    printf "\n%s\n\n%s\n%s\n\n"                    \
+    printf "\n%s\n\n%s\n%s\n\n" \
         'Do you want to delete the original file?' \
-        '[1] Yes'                                  \
+        '[1] Yes' \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
     clear
@@ -1022,9 +1022,9 @@ hw_mon() {
         7z a -y -t7z -m0=lzma2 -mx9 "${source_dir}".7z ./"${source_dir}"/*
     fi
 
-    printf "\n%s\n\n%s\n%s\n\n"                    \
+    printf "\n%s\n\n%s\n%s\n\n" \
         'Do you want to delete the original file?' \
-        '[1] Yes'                                  \
+        '[1] Yes' \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
     clear
@@ -1442,65 +1442,47 @@ up_icon() {
 ############
 
 adl() {
-    local disallowedCharsPattern fileExtensionPattern filename url urlPattern user_agent
+    local filename url
 
-    # Define patterns
-    urlPattern="^(http|https)://"
-    fileExtensionPattern=".*\.(tar\.gz|tar\.bz2|tar\.xz|tar|zip|7z|mp4|mp3|pdf|docx|jpg|jpeg|png|gif)$"
-    disallowedCharsPattern="[?*<>|:\"\\\/=-_+)('\`]"
-
-    # If a URL is provided as an argument, use it
-    if [[ "$1" =~ $urlPattern ]]; then
-        url="$1"
-        urlFilename=$(basename "$url")
-
-        if [[ "$urlFilename" =~ $fileExtensionPattern ]] && ! [[ "$urlFilename" =~ $disallowedCharsPattern ]]; then
-            filename="$urlFilename"
-        else
-            read -p "Enter the filename and extension: " filename
-        fi
+    # Check if two arguments are provided
+    if [ $# -eq 2 ]; then
+        filename="$1"
+        url="$2"
     else
-        # No URL argument provided, check clipboard
-        clipboardContent=$(xclip -selection clipboard -o)
-        if [[ "$clipboardContent" =~ $urlPattern ]]; then
-            url="$clipboardContent"
-            urlFilename=$(basename "$url")
-
-            if [[ "$urlFilename" =~ $fileExtensionPattern ]] && ! [[ "$urlFilename" =~ $disallowedCharsPattern ]]; then
-                filename="$urlFilename"
-            else
-                read -p "Enter the filename and extension: " filename
-            fi
-        else
-            # Prompt for URL and filename if not found
-            read -p "Enter the URL: " url
-            read -p "Enter the filename and extension: " filename
-        fi
+        # If not two arguments, prompt for input
+        read -p "Enter the filename and extension: " filename
+        read -p "Enter the URL: " url
     fi
 
-    # Remove existing file with the same name to enable overwriting
+    # Check for an existing file with the same name and prompt to overwrite
     if [ -f "$filename" ]; then
-        rm "$filename"
+        read -p "File $filename exists. Overwrite? (y/n): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            rm "$filename"
+        else
+            echo "Download canceled."
+            return
+        fi
     fi
 
     # Use aria2c to download the file with the given filename
-    if aria2c                               \
-           --console-log-level=notice       \
-           -U "$user_agent"                 \
-           -x32                             \
-           -j16                             \
-           --split=32                       \
-           --allow-overwrite=true           \
+    if aria2c \
+           --console-log-level=notice \
+           -x32 \
+           -j16 \
+           --split=32 \
+           --allow-overwrite=true \
            --allow-piece-length-change=true \
-           --always-resume=true             \
-           --async-dns=false                \
-           --auto-file-renaming=false       \
-           --min-split-size=8M              \
-           --disk-cache=64M                 \
-           --file-allocation=${setalloc}    \
-           --no-file-allocation-limit=8M    \
-           --continue=true                  \
-           --out="$filename"                \
+           --always-resume=true \
+           --async-dns=false \
+           --auto-file-renaming=false \
+           --min-split-size=8M \
+           --disk-cache=64M \
+           --file-allocation=none \
+           --no-file-allocation-limit=8M \
+           --continue=true \
+           --out="$filename" \
            "$url"
     then
            google_speech 'Download completed.' 2>/dev/null
@@ -1508,7 +1490,8 @@ adl() {
            google_speech 'Download failed.' 2>/dev/null
     fi
 
-    clear; ls -1AvhF --color --group-directories-first
+    echo
+    ls -1AvhF --color --group-directories-first
 }
 
 ####################
@@ -1671,9 +1654,9 @@ rsr() {
     # or rsync will copy the files to the destination directory and it will be the full path of the source folder instead of the source
     # folder and its subfiles only.
 
-    printf "%s\n%s\n%s\n%s\n\n"                                                                    \
-        'This rsync command will recursively copy the source folder to the chosen destination.'    \
-        'The original files will still be located in the source folder.'                           \
+    printf "%s\n%s\n%s\n%s\n\n" \
+        'This rsync command will recursively copy the source folder to the chosen destination.' \
+        'The original files will still be located in the source folder.' \
         'If you want to move the files (which deletes the originals then use the function "rsrd".' \
         'Please enter the full paths of the source and destination directories.'
 
@@ -1694,9 +1677,9 @@ rsrd() {
     # or rsync will copy the files to the destination directory and it will be the full path of the souce folder instead of the source
     # folder and its subfiles only.
 
-    printf "%s\n%s\n%s\n%s\n\n"                                                                    \
-        'This rsync command will recursively copy the source folder to the chosen destination.'    \
-        'The original files will be DELETED after they have been copied to the destination.'       \
+    printf "%s\n%s\n%s\n%s\n\n" \
+        'This rsync command will recursively copy the source folder to the chosen destination.' \
+        'The original files will be DELETED after they have been copied to the destination.' \
         'If you want to move the files (which deletes the originals then use the function "rsrd".' \
         'Please enter the full paths of the source and destination directories.'
 
@@ -1760,9 +1743,9 @@ ct() {
 
     if [ -z "$@" ]; then
         clear
-        printf "%s\n\n%s\n%s\n\n"               \
+        printf "%s\n\n%s\n%s\n\n" \
             "The command syntax is shown below" \
-            "cc INPUT"                          \
+            "cc INPUT" \
             'Example: cc $PWD'
         return 1
     else
@@ -1782,9 +1765,9 @@ cfp() {
 
     if [ -z "$@" ]; then
         clear
-        printf "%s\n\n%s\n%s\n\n"               \
+        printf "%s\n\n%s\n%s\n\n" \
             "The command syntax is shown below" \
-            "cc INPUT"                          \
+            "cc INPUT" \
             'Example: cc $PWD'
         return 1
     fi
@@ -1801,9 +1784,9 @@ cfc() {
 
     if [ -z "$1" ]; then
         clear
-        printf "%s\n\n%s\n%s\n\n"               \
+        printf "%s\n\n%s\n%s\n\n" \
             "The command syntax is shown below" \
-            "cc INPUT"                          \
+            "cc INPUT" \
             'Example: cc $PWD'
         return 1
     else
@@ -1900,9 +1883,9 @@ bvar() {
 
     cat < "$fname" | sed -e 's/\(\$\)\([A-Za-z0-9\_]*\)/\1{\2}/g' -e 's/\(\$\)\({}\)/\1/g' -e 's/\(\$\)\({}\)\({\)/\1\3/g'
 
-    printf "%s\n\n%s\n%s\n\n"                          \
+    printf "%s\n\n%s\n%s\n\n" \
         'Do you want to permanently change this file?' \
-        '[1] Yes'                                      \
+        '[1] Yes' \
         '[2] Exit'
     read -p 'Your choices are ( 1 or 2): ' choice
     clear
@@ -1952,11 +1935,11 @@ drp() {
     local choice restart_policy
     clear
 
-    printf "%s\n\n%s\n%s\n%s\n%s\n\n"      \
+    printf "%s\n\n%s\n%s\n%s\n%s\n\n" \
         'Change the Docker restart policy' \
-        '[1] Restart Always'               \
-        '[2] Restart Unless Stopped '      \
-        '[3] On Failure'                   \
+        '[1] Restart Always' \
+        '[2] Restart Unless Stopped ' \
+        '[3] On Failure' \
         '[4] No'
     read -p 'Your choices are (1 to 4): ' choice
     clear
@@ -2104,3 +2087,20 @@ check_port() {
         echo "No process is using port $choice."
     fi
 }
+
+dlu() {
+    local domain_list=()
+
+    if [ -z "$1" ]; then
+        read -p "Enter the domain(s) to pass: " -a domain_list
+    else
+        domain_list=("$@")
+    fi
+
+    if [[ -f /usr/local/bin/domain_lookup.py ]]; then
+        python3 /usr/local/bin/domain_lookup.py "${domain_list[@]}"
+    else
+        printf "\n%s\n\n" "The Python script not found at /usr/local/bin/domain_lookup.py"
+    fi
+}
+
