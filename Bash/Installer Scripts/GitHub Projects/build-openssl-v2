@@ -1,83 +1,188 @@
 #!/usr/bin/env bash
 
-clear
-
-# Define the OpenSSL version and download URL
-openssl_version='openssl-3.2.0'
+# Define OpenSSL version and download URL
+openssl_version="$(curl -s https://www.openssl.org/source/ | grep -o 'openssl-3\.2\.[0-9]' | head -n 1)"
 openssl_url="https://www.openssl.org/source/$openssl_version.tar.gz"
+tar_file="$cwd/$openssl_version.tar.gz"
 
-# Define the installation directory (optional)
-install_dir='/usr/local/ssl'
+fail_fn() {
+    echo
+    echo "$1"
+    echo "Please report errors at: https://github.com/slyfox1186/script-repo/issues"
+    echo
+    exit 1
+}
 
-# SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
-CC=clang
-CXX=clang++
-CFLAGS='-Wall -pthread -g -O3 -pipe -march=native'
-CXXFLAGS="${CFLAGS}"
-SHARED_CFLAG='-fPIC'
-CPPFLAGS='-I/usr/local/include -I/usr/include'
-LDFLAGS='-L/usr/local/ssl/lib -L/usr/local/lib64 -L/usr/local/lib'
-LDFLAGS+=' -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
-LDLIBS="${LDFLAGS}"
-LD_LIBRARY_PATH="$install_dir/lib64:${LD_LIBRARY_PATH}"
-export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS LD_LIBRARY_PATH LDLIBS SHARED_CFLAG
+# Function to install required packages
+install_required_packages() {
+    local pkgs=(
+        autoconf autogen automake build-essential ca-certificates ccache
+        checkinstall clang curl libc-ares-dev libcurl4-openssl-dev
+        libdmalloc-dev libgcrypt20-dev libgmp-dev libgpg-error-dev
+        libjemalloc-dev libmbedtls-dev libsctp-dev libssh2-1-dev
+        libssh-dev libssl-dev libtool libtool-bin libxml2-dev m4 perl
+        zlib1g-dev
+    )
 
-# Install required apt packages
-sudo apt install libsctp-dev
-echo
+    # Initialize arrays for missing and available packages
+    local missing_packages=()
+    local available_packages=()
 
-# Download OpenSSL
-printf "%s\n\n" 'Downloading OpenSSL...'
-wget --show-progress -cq ${openssl_url}
+    # Check for missing packages
+    for pkg in "${pkgs[@]}"
+    do
+        dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed" || missing_packages+=("$pkg")
+    done
 
-if [ -d $openssl_version ]; then
-    sudo rm -fr $openssl_version
-fi
-mkdir -p $openssl_version/build
+    # Install missing packages
+    if [[ "${#missing_packages[@]}" -gt 0 ]]; then
+        echo "Installing missing packages: ${missing_packages[*]}"
+        apt install "${missing_packages[@]}"
+    else
+        echo "No missing packages to install."
+    fi
+}
 
-# Extract the tarball
-printf "%s\n\n" 'Extracting OpenSSL...'
-tar -xzf ${openssl_version}.tar.gz -C $openssl_version --strip-components 1
+set_compiler_flags() {
+    export CC="clang-16" CXX="clang++-16"
+    # Download the script and capture only the last line of the output
+    local march=$(curl -sSL "https://get-gcc.optimizethis.net" | bash | tail -n1)
 
-# Change to the extracted directory
-cd ${openssl_version}/build || exit 1
+    # Check if arch has a value
+    if [ -n "$march" ]; then
+        printf "\n%s\n%s\n" "GCC architechure script sourced" "=========================================="
+        echo "Retrieved architecture: $march"
+    else
+        echo "Failed to source the script or retrieve the architecture."
+        exit 1
+    fi
 
-# Configure OpenSSL
-printf "%s\n\n" 'Configuring OpenSSL...'
-../Configure linux-x86_64-clang                        \
-             -DOPENSSL_USE_IPV6=0                      \
-             -Wl,-rpath="$install_dir"/lib64         \
-             -Wl,--enable-new-dtags                    \
-             --prefix=$install_dir                   \
-             --openssldir=$install_dir               \
-             --release                                 \
-             --with-zlib-include=/usr/include          \
-             --with-zlib-lib=/usr/lib/x86_64-linux-gnu \
-             enable-brotli                             \
-             enable-ec_nistp_64_gcc_128                \
-             enable-egd                                \
-             enable-fips                               \
-             enable-rc5                                \
-             enable-sctp                               \
-             enable-shared                             \
-             enable-threads                            \
-             enable-zlib                               \
-             enable-zstd                               \
-             no-tests
+    # Define directories
+    local include_dirs=("/usr/local/include" "/usr/include/x86_64-linux-gnu" "/usr/include")
 
-# Compile OpenSSL
-echo 'Compiling OpenSSL...'
-make "-j$(nproc --all)"
+    local lib_dirs=("/usr/local/lib64" "/usr/local/lib" "/usr/lib64" "/usr/lib" "/lib64" "/lib")
 
-# Install OpenSSL
-printf "%s\n\n" 'Installing OpenSSL...'
-sudo make install
+    # Set compiler optimization flags
+    generate_flags() {
+        local flag_type="$1"
+        shift
+        printf " $flag_type%s" "$@"
+    }
+
+    # Generate flags
+    local common_flags="-g -O3 -pipe -march=$march"
+    local include_flags="$(generate_flags -I "${include_dirs[@]}")"
+    local lib_flags="$(generate_flags -L "${lib_dirs[@]}")"
+
+    # Declare and set compiler flag variables
+    CFLAGS="$common_flags"
+    CXXFLAGS="$CFLAGS"
+    CPPFLAGS="$include_flags"
+    LDFLAGS="$lib_flags"
+
+    # Export the flags
+    export CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
+}
+
+# Function to update the shared library cache
+update_shared_library_cache() {
+    echo "Updating shared library cache..."
+    ldconfig "$install_dir/lib64"
+}
 
 # Create a soft link to a directory that should be in PATH
-sudo ln -sf /usr/local/ssl/bin/openssl /usr/local/bin/openssl
+add_openssl_to_path() {
+    echo "Adding OpenSSL to PATH..."
+    [[ -f "/usr/local/bin/openssl" ]] && rm "/usr/local/bin/openssl"
+    ln -sf "$install_dir/bin/openssl" "/usr/local/bin"
+}
 
-# Post-installation: Updating the shared library cache
-printf "%s\n\n" 'Updating shared library cache...'
-sudo ldconfig
+# Function to download OpenSSL
+download_openssl() {
+    echo "Downloading OpenSSL..."
+    wget --show-progress -cqO "$tar_file" "$openssl_url" || { fail_fn "Failed to download the tar file. Line: $LINENO" }
+}
 
-printf "%s\n\n" 'OpenSSL installation completed.'
+# Function to extract the tarball
+extract_openssl() {
+    echo "Extracting OpenSSL..."
+    tar -xzf "$tar_file" -C "$cwd" --strip-components 1 || { fail_fn "Failed to extract the tar file. Line: $LINENO" }
+}
+
+# Function to configure OpenSSL
+configure_openssl() {
+    echo "Configuring OpenSSL..."
+    ../Configure linux-x86_64-clang \
+                 -DOPENSSL_USE_IPV6=0 \
+                 -Wl,-rpath="$install_dir/lib64" \
+                 -Wl,--enable-new-dtags \
+                 --prefix="$install_dir" \
+                 --openssldir="$install_dir" \
+                 --release \
+                 --with-zlib-include="/usr/include" \
+                 --with-zlib-lib="/usr/lib/x86_64-linux-gnu" \
+                 enable-brotli \
+                 enable-buildtest-c++ \
+                 enable-external-tests \
+                 enable-ec_nistp_64_gcc_128 \
+                 enable-egd \
+                 enable-fips \
+                 enable-pic \
+                 enable-rc5 \
+                 enable-sctp \
+                 enable-shared \
+                 enable-threads \
+                 enable-zlib \
+                 enable-zstd \
+                 no-tests
+}
+
+# Function to compile and install OpenSSL
+build_and_install_openssl() {
+    echo "Compiling and Installing OpenSSL..."
+    make "-j$(nproc --all)" || { fail_fn "Failed to execute: make -j$(nproc --all). Line: $LINENO" }
+    echo "Installing OpenSSL..."
+    make install_sw install_fips || { fail_fn "Failed to execute: make install_sw install_fips. Line: $LINENO" }
+    openssl fipsinstall
+}
+
+# Main script starts here
+
+# Define global variables
+cwd="$PWD/openssl-build-script"
+install_dir="/usr/local/ssl"
+
+# Set compiler and optimization flags
+set_compiler_flags
+
+# Create the output directory
+mkdir -p "$cwd/build"
+
+# Install required packages
+install_required_packages
+
+# Download OpenSSL
+download_openssl
+
+# Extract the tarball
+extract_openssl
+
+# Change to the extracted directory
+cd "$cwd/build" || exit 1
+
+# Configure OpenSSL
+configure_openssl
+
+# Compile and install OpenSSL
+build_and_install_openssl
+
+# Add OpenSSL to PATH
+add_openssl_to_path
+
+# Update the shared library cache
+update_shared_library_cache
+
+# Remove leftover files
+[[ -d "$cwd" ]] && rm -fr "$cwd"
+
+echo -e "\nOpenSSL installation completed."
