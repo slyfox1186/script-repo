@@ -51,7 +51,7 @@ def get_ssl_info(domain_name):
                 valid_until = datetime.strptime(cert['notAfter'], '%b %d %H:%M:%S %Y %Z').strftime('%m-%d-%Y %H:%M:%S UTC')
                 return f"SSL Valid:\n  - From:  {valid_from}\n  - Until: {valid_until}"
     except Exception as e:
-        return f"SSL Error: {e}"
+        return f"Error retrieving SSL certificate"
 
 def get_http_headers(domain_name):
     try:
