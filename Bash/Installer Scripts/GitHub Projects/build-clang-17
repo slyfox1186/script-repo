@@ -20,25 +20,6 @@ check_root() {
     fi
 }
 
-# Function to find and install the latest version of Clang
-install_latest_clang() {
-    echo "Updating the apt package database..."
-    sudo apt update
-
-    echo "Searching for the latest version of Clang..."
-    local clang_package
-    clang_package=$(apt-cache search ^clang | grep -Eo 'clang-[0-9]+' | sort -Vr | head -n1)
-    
-    if [[ -z "$clang_package" ]]; then
-        echo "No Clang package found."
-        exit 1
-    fi
-
-    echo "Latest Clang package found: $clang_package"
-    echo "Installing $clang_package..."
-    sudo apt-get install -y $clang_package
-}
-
 # Function to check and install missing packages
 install_required_packages() {
     local pkgs=(
@@ -49,9 +30,9 @@ install_required_packages() {
     )
 
     # Initialize arrays for missing, available, and unavailable packages
-    local missing_packages=()
-    local available_packages=()
-    local unavailable_packages=()
+    missing_packages=()
+    available_packages=()
+    unavailable_packages=()
 
     # Loop through the array to find missing packages
     for pkg in "${pkgs[@]}"
@@ -77,11 +58,11 @@ install_required_packages() {
     fi
 
     # Install available missing packages
-    if [[ ${#missing_packages[@]} -gt 0 ]]; then
-        echo "Installing missing packages: ${missing_packages[*]}"
-        sudo apt install "${missing_packages[@]}" || { echo "Failed to install required packages"; return 1; }
+    if [[ "${#available_packages[@]}" -gt 0 ]]; then
+        echo "Installing available missing packages: ${available_packages[*]}"
+        sudo apt install "${available_packages[@]}"
     else
-        echo "All required packages are already installed."
+        printf "%s\n\n" "No missing packages to install or all missing packages are unavailable."
     fi
 }
 
@@ -96,98 +77,88 @@ fix_missing_x265_lib() {
 }
 
 find_highest_clang_version() {
-    local available_versions
-    readarray -t available_versions < <(compgen -c clang- | grep -Eo 'clang-[0-9]+' | sort -Vr)
+    local clang_version
 
-    for version in "${available_versions[@]}"
+    # Check if a specific version is installed, in descending order of preference
+    for clang_version in "15" "14" "13" "12"
     do
-        if command -v "$version" &>/dev/null; then
-            CC=$version
-            CXX="${version/clang/clang++}"
+        if command -v "clang-$clang_version" &>/dev/null; then
+            CC="clang-$clang_version"
+            CXX="clang++-$clang_version"
             return
         fi
     done
 
+    # If none of the specific versions are found, fall back to "clang" if it's installed
     if command -v clang &>/dev/null; then
-        CC=clang
-        CXX=clang++
+        CC="clang"
+        CXX="clang++"
     else
-        echo "Error: Clang is not installed."
+        printf "%s\n\n" "Error: Clang is not installed."
         exit 1
     fi
 }
 
-# Optimized download_and_extract function
+# Function to download and extract a file
 download_and_extract() {
     local url="$1"
     local target_dir="$2"
     local filename="${url##*/}"
 
-    if [ ! -f "$target_dir/$filename" ]; then
+    if [ -f "$target_dir/$filename" ]; then
+        echo "The file $filename is already downloaded."
+    else
         echo "Downloading $url saving as $filename"
-        wget --show-progress -cqO "$target_dir/$filename" "$url" || { echo "Failed to download $filename"; return 1; }
+        wget --show-progress -cqO "$target_dir/$filename" "$url"
         echo "Download completed"
+
+        if [[ "$filename" == *tar* ]]; then
+            tar -zxf "$target_dir/$filename" -C "$target_dir/$filename" 2>&1
+        else
+            tar -zxf "$target_dir/$filename" -C "$target_dir/$filename" --strip-components 1 2>&1
+        fi
+        echo "File extracted: $filename"
     fi
-
-    echo "Extracting $filename..."
-    case "$filename" in
-        *.tar.bz2) tar_opt="-jxf" ;;
-        *.tar.gz)  tar_opt="-zxf" ;;
-        *.tar.lz)  tar_opt="-xf" ;;
-        *.tar.xz)  tar_opt="-Jxf" ;;
-        *) echo "Unknown file format for $filename"; exit 1 ;;
-    esac
-
-    tar $tar_opt "$target_dir/$filename" -C "$target_dir" || { echo "Failed to extract $filename"; return 1; }
-    echo "File extracted: $filename"
 }
 
 # Function to build and install LLVM Clang-17
 build_and_install_llvm_clang() {
     local repo_url="https://github.com/llvm/llvm-project.git"
-    local latest_git_version=$(curl -sH "Content-Type: text/plain" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/source-git-version.sh" | bash -s "$repo_url")
+    local latest_git_version
+    latest_git_version=$(curl -sH "Content-Type: text/plain" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/source-git-version.sh" | bash -s "$repo_url")
     local clang_version_check="${1:-$latest_git_version}"  # Checks if a version number was passed to the script
     local llvm_url="https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-$clang_version_check.tar.gz"
 
     # Specify the directory where you want to extract the LLVM source code
     local llvm_code_dir="$workspace"
     local llvm_source_file_dir="$source_files_dir"
+    local llvm_tar_filename="$llvm_source_file_dir/llvmorg-$clang_version_check.tar.gz"
 
-    # Check if the source directory exists or clone LLVM if not
-    if [ ! -d "$llvm_code_dir/llvm" ]; then
-        echo "LLVM source directory not found. Downloading LLVM source..."
-        download_and_extract "$llvm_url" "$llvm_code_dir"
-    fi
+    # Function to validate and download the LLVM tarball
+    download_and_validate_llvm_tarball() {
+        echo "Checking integrity of $llvm_tar_filename..."
+        if tar -tzf "$llvm_tar_filename" >/dev/null 2>&1; then
+            echo "The LLVM tarball is valid."
+        else
+            echo "The LLVM tarball is corrupted or incomplete. Redownloading..."
+            rm -f "$llvm_tar_filename"
+            wget --show-progress -cqO "$llvm_tar_filename" "$llvm_url"
+            echo "Redownload completed"
+        fi
+    }
 
-    mkdir -p "$workspace/build"
-    cd "$workspace" || exit 1
-
-    echo "Running CMake..."
-    if cmake -S llvm -B build [rest of the CMake command]; then
-        echo "CMake configuration successful"
-    else
-        echo "Error in CMake configuration"
-        exit 1
-    fi
+    download_and_validate_llvm_tarball
 
     # Extract the source file
     echo "Extracting LLVM source to $llvm_code_dir..."
+    mkdir -p "$llvm_code_dir"
     tar -zxf "$llvm_tar_filename" -C "$llvm_code_dir" --strip-components 1
     echo "LLVM source code extracted to $llvm_code_dir"
 
-    # Check if the source directory exists or clone LLVM if not
-    if [ ! -d "$llvm_code_dir" ]; then
-        echo "LLVM source directory not found. Cloning LLVM source..."
-        download_and_extract "$llvm_url" "/tmp"
-        mv "/tmp/llvm-project-llvmorg-$clang_version_check" "$llvm_code_dir"
-        echo "LLVM source code moved from /tmp to $llvm_code_dir"
-    fi
-
-    mkdir -p "$workspace/build"
     cd "$workspace" || exit 1
 
     echo
-    if build 'llvm' "$latest_git_version"; then
+    if build 'llvm' "$clang_version_check"; then
         cmake -S llvm -B build \
               -DBENCHMARK_BUILD_32_BITS=OFF \
               -DBENCHMARK_DOWNLOAD_DEPENDENCIES=OFF \
@@ -404,8 +375,6 @@ build_done() {
     echo "$pkg_version" > "$workspace/$pkg_name.done"
 }
 
-# Main script starts here
-
 clear
 
 # Check if running as root/sudo
@@ -425,7 +394,7 @@ if [ -d "$workspace" ]; then
 fi
 
 # Create output directories
-mkdir -p "$workspace" "$source_files_dir"
+mkdir -p "$workspace/build" "$source_files_dir"
 
 # Set the CC/CXX compilers & the compiler optimization flags
 CFLAGS="-g -O3 -pipe -march=native"
@@ -434,18 +403,36 @@ CPPFLAGS="-I/usr/local/include -I/usr/include"
 LDFLAGS="-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib -Wl,-rpath -Wl,/usr/local/lib -Wl,--as-needed"
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
-# Simplified PATH and PKG_CONFIG_PATH
-PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/sbin:/usr/local/cuda/bin:/usr/local/x86_64-linux-gnu/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+# Set the PATH variable
+PATH="\
+/usr/lib/ccache:\
+$HOME/perl5/bin:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
+/usr/local/sbin:\
+/usr/local/cuda/bin:\
+/usr/local/x86_64-linux-gnu/bin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin\
+"
 export PATH
 
-PKG_CONFIG_PATH="/usr/share/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/lib/pkgconfig"
+# Set the PKG_CONFIG_PATH variable
+PKG_CONFIG_PATH="\
+/usr/share/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib/pkgconfig:\
+/lib/pkgconfig\
+"
 export PKG_CONFIG_PATH
 
 # Install required APT packages
 install_required_packages
-
-# Install the latest version of clang available from APT
-install_latest_clang
 
 # Fix missing 'x265' library symlink
 fix_missing_x265_lib
