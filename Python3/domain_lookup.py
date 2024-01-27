@@ -49,13 +49,7 @@ def get_ssl_info(domain_name):
                 cert = ssock.getpeercert()
                 valid_from = datetime.strptime(cert['notBefore'], '%b %d %H:%M:%S %Y %Z').strftime('%m-%d-%Y %H:%M:%S UTC')
                 valid_until = datetime.strptime(cert['notAfter'], '%b %d %H:%M:%S %Y %Z').strftime('%m-%d-%Y %H:%M:%S UTC')
-                return f"SSL Valid:\n  - From: {valid_from}\n  - Until: {valid_until}"
-    except ssl.SSLError:
-        return "SSL Error: No SSL certificate found"
-    except socket.timeout:
-        return "SSL Error: Connection timed out"
-    except ConnectionRefusedError:
-        return "SSL Error: Connection refused (No SSL service running on port 443)"
+                return f"SSL Valid:\n  - From:  {valid_from}\n  - Until: {valid_until}"
     except Exception as e:
         return f"SSL Error: {e}"
 
@@ -138,7 +132,7 @@ def display_info(domain_info, domain_name, verbose=False):
     if "SSL Valid:" in ssl_info:
         output.append("\n" + ssl_info)
     else:
-        output.append("\n" + ssl_info.split(":")[0])
+        output.append("\nSSL Information: " + ssl_info)
 
     if verbose:
         output.append("\n[Verbose Mode]")
