@@ -39,7 +39,7 @@ def get_geolocation(ip_address):
         data = response.json()
         return f"Country: {data['country']}, City: {data['city']}, ISP: {data['isp']}"
     except Exception as e:
-        return f"Error retrieving geolocation - {e}"
+        return f"Error retrieving geolocation"
 
 def get_ssl_info(domain_name):
     try:
