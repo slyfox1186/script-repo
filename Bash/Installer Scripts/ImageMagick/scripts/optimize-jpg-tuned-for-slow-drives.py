@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# WARNING this WILL overwrite the original images!
+# WARNING: this WILL overwrite the original images!
 # You have been warned!
 
 import os
@@ -16,7 +16,25 @@ def find_jpg_files(directory):
 
 def convert_image(image_path):
     output_path = image_path.parent / f"{image_path.stem}-IM.jpg"
-    subprocess.run(["convert", str(image_path), str(output_path)])
+    # Using the original ImageMagick convert command
+    subprocess.run([
+        "convert", str(image_path),
+        "-monitor",
+        "-filter", "Triangle",
+        "-define", "filter:support=2",
+        "-thumbnail", "100%",
+        "-strip",
+        "-unsharp", "0.25x0.08+8.3+0.045",
+        "-dither", "None",
+        "-posterize", "136",
+        "-quality", "82",
+        "-define", "jpeg:fancy-upsampling=off",
+        "-auto-level",
+        "-enhance",
+        "-interlace", "none",
+        "-colorspace", "sRGB",
+        str(output_path)
+    ])
     os.remove(image_path)
     return image_path.name
 
@@ -25,12 +43,10 @@ def main():
     files = list(find_jpg_files(directory))
     total_files = len(files)
 
-    # Tune this number based on performance and system capabilities
-    max_workers = 4
+    print("Starting image conversion...")
 
-    print("Starting image conversion...\nPlease be patient while the script calculates the number of files to process...")
-
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+    with ProcessPoolExecutor() as executor:
+        # Map the convert_image function to the files
         future_to_file = {executor.submit(convert_image, file): file for file in files}
 
         for index, future in enumerate(as_completed(future_to_file), start=1):
@@ -41,7 +57,7 @@ def main():
             except Exception as e:
                 print(f"Error converting file {filename}: {e}")
 
-            # Stagger the file processing to reduce I/O load
+            # Stagger file processing to reduce I/O load
             time.sleep(0.5)  # Adjust the sleep time as needed
 
             # Update progress bar
