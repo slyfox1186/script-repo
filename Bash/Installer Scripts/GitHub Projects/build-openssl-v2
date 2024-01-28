@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+#shellcheck disable=SC2155
+
+if [[ "$EUID" -ne 0 ]]; then
+    printf "%s\n\n" "You must run this script as root/sudo."
+    exit 1
+fi
 
 # Define OpenSSL version and download URL
 openssl_version="$(curl -s https://www.openssl.org/source/ | grep -o 'openssl-3\.2\.[0-9]' | head -n 1)"
@@ -24,27 +30,45 @@ install_required_packages() {
         zlib1g-dev
     )
 
-    # Initialize arrays for missing and available packages
-    local missing_packages=()
-    local available_packages=()
+    # Initialize arrays for missing, available, and unavailable packages
+    missing_packages=()
+    available_packages=()
+    unavailable_packages=()
 
-    # Check for missing packages
+    # Loop through the array to find missing packages
     for pkg in "${pkgs[@]}"
     do
-        dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed" || missing_packages+=("$pkg")
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+            missing_packages+=("$pkg")
+        fi
     done
 
-    # Install missing packages
-    if [[ "${#missing_packages[@]}" -gt 0 ]]; then
-        echo "Installing missing packages: ${missing_packages[*]}"
-        apt install "${missing_packages[@]}"
+    # Check availability of missing packages and categorize them
+    for pkg in "${missing_packages[@]}"
+    do
+        if apt-cache show "$pkg" > /dev/null 2>&1; then
+            available_packages+=("$pkg")
+        else
+            unavailable_packages+=("$pkg")
+        fi
+    done
+
+    # Print unavailable packages
+    if [[ "${#unavailable_packages[@]}" -gt 0 ]]; then
+        echo "Unavailable packages: ${unavailable_packages[*]}"
+    fi
+
+    # Install available missing packages
+    if [[ "${#available_packages[@]}" -gt 0 ]]; then
+        echo "Installing available missing packages: ${available_packages[*]}"
+        sudo apt install "${available_packages[@]}"
     else
-        echo "No missing packages to install."
+        printf "%s\n\n" "No missing packages to install or all missing packages are unavailable."
     fi
 }
 
 set_compiler_flags() {
-    export CC="clang-16" CXX="clang++-16"
+    export CC="clang" CXX="clang++"
     # Download the script and capture only the last line of the output
     local march=$(curl -sSL "https://get-gcc.optimizethis.net" | bash | tail -n1)
 
@@ -100,13 +124,13 @@ add_openssl_to_path() {
 # Function to download OpenSSL
 download_openssl() {
     echo "Downloading OpenSSL..."
-    wget --show-progress -cqO "$tar_file" "$openssl_url" || { fail_fn "Failed to download the tar file. Line: $LINENO" }
+    wget --show-progress -cqO "$tar_file" "$openssl_url" || fail_fn "Failed to download the tar file. Line: $LINENO"
 }
 
 # Function to extract the tarball
 extract_openssl() {
     echo "Extracting OpenSSL..."
-    tar -xzf "$tar_file" -C "$cwd" --strip-components 1 || { fail_fn "Failed to extract the tar file. Line: $LINENO" }
+    tar -xzf "$tar_file" -C "$cwd" --strip-components 1 || fail_fn "Failed to extract the tar file. Line: $LINENO"
 }
 
 # Function to configure OpenSSL
@@ -140,9 +164,9 @@ configure_openssl() {
 # Function to compile and install OpenSSL
 build_and_install_openssl() {
     echo "Compiling and Installing OpenSSL..."
-    make "-j$(nproc --all)" || { fail_fn "Failed to execute: make -j$(nproc --all). Line: $LINENO" }
+    make "-j$(nproc --all)" || fail_fn "Failed to execute: make -j$(nproc --all). Line: $LINENO"
     echo "Installing OpenSSL..."
-    make install_sw install_fips || { fail_fn "Failed to execute: make install_sw install_fips. Line: $LINENO" }
+    make install_sw install_fips || fail_fn "Failed to execute: make install_sw install_fips. Line: $LINENO"
     openssl fipsinstall
 }
 
