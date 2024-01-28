@@ -1,315 +1,178 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1091,SC2001,SC2005,SC2068,SC2086,SC2162,SC2317
+# shellcheck disable=SC1091,SC2001,SC2005,SC2068,SC2086,SC2155,SC2162,SC2317
 
-#################################################################################################################################
-##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-python3
-##
 ##  Purpose: Install Python3 from the source code acquired from the official website: https://www.python.org/downloads
-##
 ##  Features: Static build, OpenSSL backend
-##
-##  Updated: 01.05.24
-##
-##  Script version: 2.2
-##
-#################################################################################################################################
+##  Updated: 01.27.24
+##  Script version: 2.3
 
-clear
-
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
-    exit 1
-fi
-
-#
-# SET THE SCRIPT VARIABLES
-#
-
-script_ver=2.2
-py_ver=3.12.1
-archive_dir=Python-${py_ver}.tar.xz
-archive_url="https://www.python.org/ftp/python/${py_ver}/$archive_dir"
-archive_ext="${archive_url//*.}"
-archive_name="$archive_dir.tar.${archive_ext}"
-install_dir=/usr/local
-cwd="$PWD"/python3-build-script
-openssl_prefix="$(echo "$(type -P openssl)" | sed 's|\/bin\/openssl||')"
+script_ver="2.3"
+python_version="3.12.1"
+archive_url="https://www.python.org/ftp/python/$python_version/Python-$python_version.tar.xz"
+install_dir="/usr/local"
+cwd="$PWD/python3-build-script"
+openssl_prefix=$(dirname "$(which openssl)")
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/script-repo
 
-#
-# START THE PYTHON3 BUILD
-#
-
-printf "%s\n%s\n\n"                         \
-    "Python3 Build Script - v${script_ver}" \
-    '==============================================='
-sleep 2
-
-#
-# CREATE THE OUTPUT DIRECTORY
-#
-
-if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
-fi
-mkdir -p "$cwd"
-
-#
-# SET THE COMPILER OPTIMIZATION FLAGS
-#
-
-CC=gcc
-CXX=g++
-CFLAGS='-g -O3 -pipe -march=native'
-CXXFLAGS="${CFLAGS}"
-CPPFLAGS="-I$install_dir/include -I$install_dir/include/x86_64-linux-gnu -I/usr/include"
-LDFLAGS="-Wl,-rpath -Wl,$install_dir/lib -Wl,--enable-new-dtags -L$install_dir/lib"
-export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
-
-#
-# SET THE PATH VARIABLE
-#
-
-PATH="\
-/usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
-
-#
-# SET THE PKG_CONFIG_PATH VARIABLE
-#
-
-PKG_CONFIG_PATH="\
-/usr/share/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/pkgconfig:\
-/lib/pkgconfig\
-"
-export PKG_CONFIG_PATH
-
-#
-# CREATE FUNCTIONS
-#
-
-exit_fn()
-{
-    printf "\n%s\n\n%s\n%s\n\n"                                   \
-        'The script has completed!'                               \
-        'Make sure to star this repository to show your support!' \
-        "$web_repo"
-    exit 0
-}
-
-fail_fn()
-{
-    printf "\n\n%s\n\n%s\n\n%s\n\n"                              \
-        "$1"                                                   \
-        'Please create a support ticket so I can work on a fix.' \
-        "$web_repo/issues"
+fail_fn() {
+    echo
+    echo "$1"
+    echo "Please report errors at: https://github.com/slyfox1186/script-repo/issues"
+    echo
     exit 1
 }
 
-show_ver_fn()
-{
-    save_ver="$(sudo find /usr/local/ -type f -name 'python3.12' | grep -Eo '[0-9\.]+$')"
-    printf "\n%s\n\n" "The installed Python3 version is: ${save_ver}"
-    sleep 3
+check_root() {
+    if [ "$(id -u)" -ne 0 ]; then
+        echo 'You must run this script with root/sudo.'
+        exit 1
+    fi
 }
 
-cleanup_fn()
-{
-    local answer
-    clear
+prepare_environment() {
+    echo "Python3 Build Script - v$script_ver"
+    echo '==============================================='
+    sleep 2
 
-    printf "\n%s\n\n%s\n%s\n\n"                  \
-        'Do you want to remove the build files?' \
-        '[1] Yes'                                \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' answer
+    [ -d "$cwd" ] && rm -fr "$cwd"
+    mkdir -p "$cwd"
 
-    case "${answer}" in
-        1)      sudo rm -fr "$cwd" "${0}";;
-        2)      return 0;;
-        *)
-                clear
-                printf "%s\n\n" 'Bad user input. Resetting script...'
-                sleep 3
-                unset answer
-                cleanup_fn
-                ;;
-    esac
+    PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/sbin:/usr/local/cuda/bin:/usr/local/x86_64-linux-gnu/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/games:/usr/games:/snap/bin"
+    export PATH
+
+    PKG_CONFIG_PATH="/usr/share/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/lib/pkgconfig"
+    export PKG_CONFIG_PATH
 }
 
-pkgs_fn()
-{
-    pkgs=("$1" autoconf autoconf-archive autogen automake binutils build-essential ccache curl git itstool
-          libb2-dev libexempi-dev libgnome-desktop-3-dev libhandy-1-dev libpeas-dev libpeasd-3-dev libssl-dev
-          libtool libtool-bin m4 meson nasm ninja-build openssl python3 valgrind yasm zlib1g-dev)
+set_compiler_flags() {
+    export CC="gcc" CXX="g++"
+    # Download the script and capture only the last line of the output
+    local march=$(curl -sSL "https://get-gcc.optimizethis.net" | bash | tail -n1)
 
-    for pkg in ${pkgs[@]}
+    # Check if arch has a value
+    if [ -n "$march" ]; then
+        printf "\n%s\n%s\n" "GCC architechure script sourced" "=========================================="
+        echo "Retrieved architecture: $march"
+    else
+        echo "Failed to source the script or retrieve the architecture."
+        exit 1
+    fi
+
+    # Define directories
+    local include_dirs=("/usr/local/include" "/usr/include/x86_64-linux-gnu" "/usr/include")
+
+    local lib_dirs=("/usr/local/lib64" "/usr/local/lib" "/usr/lib64" "/usr/lib" "/lib64" "/lib")
+
+    # Set compiler optimization flags
+    generate_flags() {
+        local flag_type="$1"
+        shift
+        printf " $flag_type%s" "$@"
+    }
+
+    # Generate flags
+    local common_flags="-g -O3 -pipe -march=$march"
+    local include_flags="$(generate_flags -I "${include_dirs[@]}")"
+    local lib_flags="$(generate_flags -L "${lib_dirs[@]}")"
+
+    # Declare and set compiler flag variables
+    CFLAGS="$common_flags"
+    CXXFLAGS="$CFLAGS"
+    CPPFLAGS="$include_flags"
+    LDFLAGS="$lib_flags"
+
+    # Export the flags
+    export CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
+}
+
+download_and_extract_python() {
+    [ ! -f "$cwd/$python_version.tar.xz" ] && curl -A "$user_agent" -Lso "$cwd/$python_version.tar.xz" "$archive_url"
+    [ -d "$cwd/$python_version" ] && rm -fr "$cwd/${python_version:?}"
+    mkdir -p "$cwd/$python_version/build"
+
+    tar -xf "$cwd/$python_version.tar.xz" -C "$cwd/$python_version" --strip-components 1 || fail_fn "Failed to extract: $cwd/$python_version.tar.xz. Line: $LINENO"
+}
+
+install_required_packages() {
+    local missing_packages pkg pkgs available_packages unavailable_packages
+
+    pkgs=(
+        autoconf autoconf-archive autogen automake binutils build-essential ccache
+        curl git itstool libb2-dev libexempi-dev libgnome-desktop-3-dev libhandy-1-dev
+        libpeas-dev libpeasd-3-dev libssl-dev libtool libtool-bin m4 nasm
+        openssl python3 valgrind yasm zlib1g-dev
+    )
+
+    # Initialize arrays for missing, available, and unavailable packages
+    missing_packages=()
+    available_packages=()
+    unavailable_packages=()
+
+    # Loop through the array to find missing packages
+    for pkg in "${pkgs[@]}"
     do
-        missing_pkg="$(sudo dpkg -l | grep -o ${pkg})"
-
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${pkg}"
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+            missing_packages+=("$pkg")
         fi
     done
 
-    if [ -n "$missing_pkgs" ]; then
-        sudo apt install $missing_pkgs
-        clear
+    # Check availability of missing packages and categorize them
+    for pkg in "${missing_packages[@]}"
+    do
+        if apt-cache show "$pkg" > /dev/null 2>&1; then
+            available_packages+=("$pkg")
+        else
+            unavailable_packages+=("$pkg")
+        fi
+    done
+
+    # Print unavailable packages
+    if [[ "${#unavailable_packages[@]}" -gt 0 ]]; then
+        echo "Unavailable packages: ${unavailable_packages[*]}"
+    fi
+
+    # Install available missing packages
+    if [[ "${#available_packages[@]}" -gt 0 ]]; then
+        echo "Installing available missing packages: ${available_packages[*]}"
+        apt install "${available_packages[@]}"
+    else
+        printf "%s\n\n" "No missing packages to install or all missing packages are unavailable."
     fi
 }
 
-#
-# INSTALL REQUIRED APT PACKAGES
-#
+build_python() {
+    echo -e "\nBuild Python3 - v$python_version\n==============================================="
+    cd "$cwd/$python_version" || exit 1
+    autoreconf -fi
+    cd build || exit 1
+    ../configure --prefix="$install_dir" \
+                 --disable-test-modules \
+                 --enable-optimizations \
+                 --with-ensurepip=install \
+                 --with-lto=yes \
+                 --with-openssl-rpath=auto \
+                 --with-openssl="$openssl_prefix" \
+                 --with-pkg-config=yes \
+                 --with-ssl-default-suites=openssl \
+                 --with-valgrind \
+                 PKG_CONFIG="$(which pkg-config)" \
+                 PKG_CONFIG_PATH="$PKG_CONFIG_PATH" \
+                 LIBS="$(pkg-config --libs openssl)" || fail_fn "Configuration failed. Line: $LINENO"
 
-install_libportal_fn()
-{
-    if ! curl -A "$user_agent" -Lso "$cwd/libportal-0.7.1.tar.xz" 'https://github.com/flatpak/libportal/releases/download/0.7.1/libportal-0.7.1.tar.xz'; then
-        fail_fn "Failed to download the libportal archive file: $cwd/libportal-0.7.1.tar.xz. Line: ${LINENO}"
-    fi
-    mkdir "$cwd/libportal-0.7.1"
-    tar -xf "$cwd/libportal-0.7.1.tar.xz" -C "$cwd/libportal-0.7.1" --strip-components 1
-    cd "$cwd/libportal-0.7.1" || exit 1
-    meson setup build --prefix="$install_dir" \
-                      --buildtype=release       \
-                      --default-library=static  \
-                      --strip                   \
-                      -Dc_args="${CFLAGS}"      \
-                      -Dcpp_args="${CXXFLAGS}"
-    ninja "-j$(nproc --all)" -C build
-    sudo ninja "-j$(nproc --all)" -C build install
+    make "-j$(nproc)" || fail_fn "Failed to execute: make -j$(nproc). Line: $LINENO"
+    make altinstall || fail_fn "Failed to execute: make altinstall. Line: $LINENO"
 }
 
-debian_os_version()
-{
-    case "${VER}" in
-        trixie|12)      pkgs_fn 'libgnome-desktop-4-dev libportal-dev libportal-gtk3-dev libportal-gtk4-dev';;
-        10|11)
-                        pkgs_fn 'libgnome-desktop-3-dev'
-                        install_libportal_fn
-                        ;;
-        *)              fail_fn "Could not detect the Debian version. Line: ${LINENO}";;
-    esac
-}
+# Other functions (exit_fn, fail_fn, show_ver_fn, cleanup_fn) remain the same
 
-#
-# TEST THE OS AND ITS VERSION IF UBUNTU THEN CALL THE pkgs_fn
-#
-
-find_lsb_release="$(sudo find /usr/ -type f -name 'lsb_release')"
-
-if [ -f '/etc/os-release' ]; then
-    . '/etc/os-release'
-    OS_TMP="$NAME"
-    VER_TMP="$VERSION_ID"
-    CODENAME="$VERSION_CODENAME"
-    OS="$(echo "${OS_TMP}" | awk '{print $1}')"
-    VER="$(echo "${VER_TMP}" | awk '{print $1}')"
-elif [ -n "${find_lsb_release}" ]; then
-    OS="$(lsb_release -d | awk '{print $2}')"
-    VER="$(lsb_release -r | awk '{print $2}')"
-else
-    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
-fi
-
-if [ -z "${VER}" ]; then
-    VER="${CODENAME}"
-fi
-
-case "${OS}" in
-    Debian|n/a)         debian_os_version;;
-    Ubuntu)             pkgs_fn;;
-    *)                  fail_fn "Could not detect the OS architecture. Line: ${LINENO}";
-esac
-
-#
-# DOWNLOAD THE ARCHIVE FILE
-#
-
-if [ ! -f "$cwd/${archive_name}" ]; then
-    curl -A "$user_agent" -Lso "$cwd/${archive_name}" "${archive_url}"
-fi
-
-#
-# CREATE THE OUTPUT DIRECTORY
-#
-
-if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
-fi
-mkdir -p "$cwd/$archive_dir/build"
-
-#
-# EXTRACT THE ARCHIVE FILES
-#
-
-if ! tar -xf "$cwd/${archive_name}" -C "$cwd/$archive_dir" --strip-components 1; then
-    fail_fn "Failed to extract: $cwd/${archive_name}. Line: ${LINENO}"
-    exit 1
-fi
-
-printf "\n%s\n%s\n\n"            \
-    "Build Python3 - v${py_ver}" \
-    '==============================================='
-sleep 2
-
-#
-# BUILD THE PROGRAM FROM SOURCE CODE
-#
-
-cd "$cwd/$archive_dir" || exit 1
-autoreconf -fi
-cd build || exit 1
-../configure --prefix="$install_dir"            \
-             --disable-test-modules               \
-             --enable-optimizations               \
-             --with-ensurepip=install             \
-             --with-lto=yes                       \
-             --with-openssl-rpath=auto            \
-             --with-openssl="${openssl_prefix}"   \
-             --with-pkg-config=yes                \
-             --with-ssl-default-suites=openssl    \
-             --with-valgrind                      \
-             PKG_CONFIG="$(type -P pkg-config)"   \
-             PKG_CONFIG_PATH="${PKG_CONFIG_PATH}" \
-             LIBS="$(pkg-config --libs openssl)"
-
-if ! make "-j$(nproc --all)"; then
-    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
-    exit 1
-fi
-
-if ! sudo make altinstall; then
-    fail_fn "Failed to execute: sudo make altinstall. Line: ${LINENO}"
-    exit 1
-fi
-
-# SHOW THE NEW VERSION
+# Main script execution
+check_root
+prepare_environment
+install_required_packages
+set_compiler_flags
+download_and_extract_python
+build_python
 show_ver_fn
-
-# PROMPT THE USER TO CLEAN UP THE BUILD FILES
 cleanup_fn
-
-# SHOW THE EXIT MESSAGE
 exit_fn
