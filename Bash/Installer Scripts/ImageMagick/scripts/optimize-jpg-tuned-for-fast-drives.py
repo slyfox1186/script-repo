@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# WARNING this WILL overwrite the original images!
+# WARNING: this WILL overwrite the original images!
 # You have been warned!
 
 import os
@@ -15,7 +15,25 @@ def find_jpg_files(directory):
 
 def convert_image(image_path):
     output_path = image_path.parent / f"{image_path.stem}-IM.jpg"
-    subprocess.run(["convert", str(image_path), str(output_path)])
+    # Using the specific ImageMagick convert command
+    subprocess.run([
+        "convert", str(image_path),
+        "-monitor",
+        "-filter", "Triangle",
+        "-define", "filter:support=2",
+        "-thumbnail", "100%",
+        "-strip",
+        "-unsharp", "0.25x0.08+8.3+0.045",
+        "-dither", "None",
+        "-posterize", "136",
+        "-quality", "82",
+        "-define", "jpeg:fancy-upsampling=off",
+        "-auto-level",
+        "-enhance",
+        "-interlace", "none",
+        "-colorspace", "sRGB",
+        str(output_path)
+    ])
     os.remove(image_path)
     return image_path.name
 
