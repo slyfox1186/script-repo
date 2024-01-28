@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# WARNING: This will overwrite your files!
+
 import os
 import subprocess
 from pathlib import Path
@@ -31,6 +33,7 @@ def convert_image(image_path):
             "-colorspace", "sRGB",
             str(output_path)
         ], stdout=devnull, stderr=devnull)
+    os.remove(image_path)
     return image_path.name
 
 def main():
