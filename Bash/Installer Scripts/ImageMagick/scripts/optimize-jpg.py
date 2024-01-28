@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# WARNING this WILL overwrite the original images!
+# You have been warned!
+
 import os
 import subprocess
 from pathlib import Path
