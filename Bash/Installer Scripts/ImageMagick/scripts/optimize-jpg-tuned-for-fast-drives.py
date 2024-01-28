@@ -7,6 +7,7 @@ import os
 import subprocess
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, as_completed
+import multiprocessing
 
 def find_jpg_files(directory):
     for path in Path(directory).rglob('*.jpg'):
@@ -44,9 +45,12 @@ def main():
 
     print("Starting image conversion...")
 
-    with ProcessPoolExecutor() as executor:
+    # Dynamically determine the number of processes based on available CPU cores
+    num_processes = multiprocessing.cpu_count()
+
+    with ProcessPoolExecutor(max_workers=num_processes) as executor:
         future_to_file = {executor.submit(convert_image, file): file for file in files}
-        
+
         for index, future in enumerate(as_completed(future_to_file), start=1):
             filename = future_to_file[future]
             try:
