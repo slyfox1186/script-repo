@@ -7,7 +7,7 @@
 ##
 ##  Script version: 3.3.5
 ##
-##  Updated: 01.26.24
+##  Updated: 01.28.24
 ##
 ##  Purpose:
 ##
@@ -2690,10 +2690,12 @@ g_sver="${g_ver::8}"
 if build "x264" "$g_sver"; then
     download "https://code.videolan.org/videolan/x264/-/archive/$g_ver/x264-$g_ver.tar.bz2" "x264-$g_sver.tar.bz2"
     execute ./configure --prefix="$workspace" \
-                        --bit-depth=all \
-                        --chroma-format=all \
+                        --host="$pc_type" \
+                        --bit-depth="all" \
+                        --chroma-format="all" \
                         --enable-debug \
                         --enable-gprof \
+                        --enable-lto \
                         --enable-static \
                         --enable-strip
     execute sudo make "-j$cpu_threads"
