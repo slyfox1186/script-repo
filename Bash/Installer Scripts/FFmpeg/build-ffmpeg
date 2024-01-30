@@ -910,6 +910,7 @@ install_cuda_fn() {
     echo "AMD GPU Test Output: $amd_gpu_test"
     echo "NVIDIA GPU Test Output: $nvidia_gpu_test"
     echo "Expected Latest CUDA Version: $cuda_latest_ver"
+    echo
 
     if [ "$amd_gpu_test" == "AMD GPU detected." ] || [ "$nvidia_gpu_test" != "$cuda_latest_ver" ]; then
         if [[ -n "$nvidia_gpu_test" ]] || [[ -n "$wsl_test" ]]; then
@@ -1125,7 +1126,7 @@ libpulse_fix_libs_fn() {
 ffmpeg_install_test() {
     local binaries i
 
-    binaries=("ffmpeg" "ffplay" "ffprobe")
+binaries=("ffmpeg" "ffplay" "ffprobe")
 
     for i in ${binaries[@]}
     do
@@ -1580,9 +1581,9 @@ if [[ "$VER" != "18.04" ]]; then
     ffmpeg_libraries+=("--enable-libxml2")
 fi
 
-## MANUALLY UPDATE THIS FROM TIME TO TIME (g_ver returns = 1.7.0beta88)
-if build "libpng" "1.6.40"; then
-    download "https://github.com/glennrp/libpng/archive/refs/tags/v1.6.40.tar.gz" "libpng-1.6.40.tar.gz"
+git_ver_fn "/glennrp/libpng" "1" "T"
+if build "libpng" "$g_ver"; then
+    download "https://github.com/glennrp/libpng/archive/refs/tags/v$g_ver.tar.gz" "libpng-$g_ver.tar.gz"
     execute autoupdate
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" \
@@ -1590,7 +1591,7 @@ if build "libpng" "1.6.40"; then
                         --with-pic
     execute make "-j$cpu_threads"
     execute make install-header-links install-library-links install
-    build_done "libpng" "1.6.40"
+    build_done "libpng" "$g_ver"
 fi
 
 git_ver_fn "4720790" "3" "T"
