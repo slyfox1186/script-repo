@@ -98,7 +98,7 @@ cnt=0
 for script in ${scripts[@]}
 do
     let cnt=cnt+1
-    wget --show-progress -U "$user_agent" -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-${script}"
+    wget --show-progress -t 2 -cqO "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-${script}"
     mv "build-${script}" "$cnt-build-${script}.sh" 2>/dev/null
 done
 

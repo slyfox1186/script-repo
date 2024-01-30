@@ -102,7 +102,7 @@ scripts=(adobe-fonts curl tools aria2 zlib zstd git jq libxml2 nasm yasm python3
 for script in ${scripts[@]}
 do
     ((cnt++))
-    wget --show-progress -U "$user_agent" -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-${script}"
+    wget --show-progress -t 2 -cqO "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-${script}"
     mv "build-${script}" "$cnt-build-${script}.sh" 2>/dev/null
 done
 

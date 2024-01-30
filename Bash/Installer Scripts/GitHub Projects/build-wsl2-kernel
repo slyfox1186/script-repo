@@ -153,7 +153,7 @@ fi
 
 if [ ! -f "${archive_name}" ]; then
     printf "%s\n\n" 'Downloading the source code from GitHub...'
-    wget --show-progress -U "$user_agent" -cqO "${archive_name}" "${archive_url}"
+    wget --show-progress -t 2 -cqO "${archive_name}" "${archive_url}"
 fi
 
 #

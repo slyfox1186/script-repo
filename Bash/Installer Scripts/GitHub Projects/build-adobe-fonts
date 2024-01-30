@@ -101,18 +101,18 @@ sudo mkdir -p "${install_dir_pro}" "${install_dir_sans}" "${install_dir_serif}" 
 #
 
 if [ ! -f "${pro_dir}".tar.gz ]; then
-    if ! wget --show-progress -U "$user_agent" -cqO "${pro_dir}".tar.gz "${pro_url}"; then
+    if ! wget --show-progress -t 2 -cqO "${pro_dir}".tar.gz "${pro_url}"; then
         fail_fn "Failed to download the archive file \"${pro_dir}.tar.gz\". Line: ${LINENO}"
     fi
 fi
 
 if [ ! -f "${sans_dir}".tar.gz ]; then
-    if ! wget --show-progress -U "$user_agent" -cqO "${sans_dir}".tar.gz "${sans_url}"; then
+    if ! wget --show-progress -t 2 -cqO "${sans_dir}".tar.gz "${sans_url}"; then
         fail_fn "Failed to download the archive file \"${sans_dir}.tar.gz\". Line: ${LINENO}"
     fi
 fi
 if [ ! -f "${serif_dir}".tar.gz ]; then
-    if ! wget --show-progress -U "$user_agent" -cqO "${serif_dir}".tar.gz "${sans_url}"; then
+    if ! wget --show-progress -t 2 -cqO "${serif_dir}".tar.gz "${sans_url}"; then
         fail_fn "Failed to download the archive file \"${serif_dir}.tar.gz\". Line: ${LINENO}"
     fi
 fi
