@@ -1125,11 +1125,7 @@ libpulse_fix_libs_fn() {
 ffmpeg_install_test() {
     local binaries i
 
-    binaries=(
-                ffmpeg
-                ffplay
-                ffprobe
-    )
+    binaries=("ffmpeg" "ffplay" "ffprobe")
 
     for i in ${binaries[@]}
     do

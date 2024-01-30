@@ -2,8 +2,8 @@
 
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-aria2
 ##  Purpose: Build aria2 from source code
-##  Updated: 12.03.23
-##  Script version: 1.8
+##  Updated: 01.30.24
+##  Script version: 1.9
 ##  Features:
 ##            - Static build
 ##            - OpenSSL backend
@@ -20,12 +20,12 @@ set -euo pipefail
 clear
 
 # Script and Aria2 version
-script_ver="1.8"
+script_ver="1.9"
 aria2_ver="1.37.0"
 
 # Check for non-root execution
 if [ "$EUID" -eq 0 ]; then
-    echo 'This script must be run without root/sudo privileges.'
+    echo "This script must be run without root/sudo privileges."
     exit 1
 fi
 
@@ -86,7 +86,7 @@ elif command -v lsb_release >/dev/null; then
     OS=$(lsb_release -si)
     echo "Detected OS: $OS"
 else
-    handle_error 'Unable to determine operating system.'
+    handle_error "Unable to determine operating system."
 fi
 
 # Directories and URLs
@@ -104,7 +104,7 @@ echo "Downloading and extracting Aria2..."
 curl -sL "$archive_url" | tar -xJ || handle_error "Failed to download and extract Aria2"
 
 # Build jemalloc
-printf '\n%s\n%s\n\n' 'Compiling jemalloc...' '================================'
+printf "\n%s\n%s\n\n" "Compiling jemalloc..." "================================"
 jemalloc_ver="5.3.0"
 jemalloc_url="https://github.com/jemalloc/jemalloc/releases/download/$jemalloc_ver/jemalloc-$jemalloc_ver.tar.bz2"
 curl -sL "$jemalloc_url" | tar -xj || handle_error "Failed to download jemalloc"
@@ -114,7 +114,7 @@ make -j"$(nproc)" && sudo make install || handle_error "Failed to build and inst
 cd ..
 
 # Build gcrypt-error
-printf '\n%s\n%s\n\n' 'Compiling gcrypt-error...' '================================'
+printf "\n%s\n%s\n\n" "Compiling gcrypt-error..." "================================"
 gcrypt_error_ver="1.47"
 gcrypt_error_url="https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-$gcrypt_error_ver.tar.bz2"
 curl -sL "$gcrypt_error_url" | tar -xj || handle_error "Failed to download gcrypt-error"
@@ -124,17 +124,17 @@ make -j"$(nproc)" && sudo make install || handle_error "Failed to build and inst
 cd ..
 
 # Compile Aria2
-printf '\n%s\n%s\n\n' 'Compiling Aria2...' '================================'
+printf "\n%s\n%s\n\n" "Compiling Aria2..." "================================"
 cd "aria2-$aria2_ver"
-sed -i 's/1, 16/1, 128/g' 'src/OptionHandlerFactory.cc'
+sed -i "s/1, 16/1, 128/g" "src/OptionHandlerFactory.cc"
 ./configure --prefix="$install_dir" --without-gnutls --with-openssl \
             --with-ca-bundle="$certs_dir/cacert.pem" \
-            CFLAGS='-O3 -march=native' CXXFLAGS='-O3 -march=native' || handle_error "Failed to configure Aria2"
+            CFLAGS="-O3 -march=native" CXXFLAGS="-O3 -march=native" || handle_error "Failed to configure Aria2"
 make -j"$(nproc)" || handle_error "Failed to build Aria2"
 sudo make install || handle_error "Failed to install Aria2"
 
 # Cleanup
-printf '\n%s' 'Cleaning up...'
+printf "\n%s" "Cleaning up..."
 rm -rf "$build_dir"
 
-printf '\n%s\n\n' "Aria2 version $aria2_ver installed successfully."
+printf "\n%s\n\n" "Aria2 version $aria2_ver installed successfully."
