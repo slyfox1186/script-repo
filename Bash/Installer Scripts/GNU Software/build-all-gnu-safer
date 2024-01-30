@@ -16,18 +16,17 @@ fi
 # PRINT THE SCRIPT BANNER
 #
 
-script_ver=1.1
+script_ver="1.1"
 cwd="$PWD/build-all-gnu-safer-script"
 web_repo="https://github.com/slyfox1186/script-repo"
-user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
 
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
 fi
-mkdir -p "$cwd"/completed
+mkdir -p "$cwd/completed"
 
 exit_fn() {
-    printf "\n%s\n\n%s\n\n"                                       \
+    printf "\n%s\n\n%s\n\n" \
         "Make sure to star this repository to show your support!" \
         "$web_repo"
     exit 0
@@ -35,7 +34,7 @@ exit_fn() {
 
 fail_fn() {
     printf "\n%s\n\n%s\n\n" \
-        "$1"              \
+        "$1" \
         "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
@@ -74,7 +73,7 @@ sudo bash -c "bash <(curl -sSL https://ld-linker.optimizethis.net)"
 case "$(uname -m)" in
     x86_64)                        arch_ver="pkg-config" ;;
     aarch64*|armv8*|arm|armv7*)    arch_ver="pkg-config-arm" ;;
-    *)                             fail_fn "Unrecognized architecture: $(uname -m)";;
+    *)                             fail_fn "Unrecognized architecture: $(uname -m)" ;;
 esac
 
 cd "$cwd" || exit 1
@@ -100,7 +99,7 @@ for f in $(find ./ -maxdepth 1 -type f | sort -V | sed 's/\.\///g'); do
 done
 
 if [ -d "$cwd/failed" ]; then
-    printf "%s\n\n%s\n\n"                                  \
+    printf "%s\n\n%s\n\n" \
         "One of the scripts failed to build successfully." \
         "You can find the failed script at: $cwd/failed"
     exit_fn
