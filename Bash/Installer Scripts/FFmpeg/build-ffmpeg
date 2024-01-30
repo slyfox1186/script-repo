@@ -671,7 +671,7 @@ gpu_arch_fn() {
             fail_fn "Error: Failed to define \"\$gpu_type\". (Line: $LINENO)"
         fi
     else
-        return 0
+        return 1
     fi
 }
 
