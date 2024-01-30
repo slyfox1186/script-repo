@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-clear
-
 if [[ "$EUID" -ne 0 ]]; then
     echo "You must run use root/sudo to execute this script."
     exit 1
