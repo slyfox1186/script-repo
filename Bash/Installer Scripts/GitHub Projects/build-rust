@@ -144,6 +144,11 @@ install_rust() {
     python3 x.py install || exit 1
 }
 
+cleanup_files() {
+    cd ../ || exit 1
+    rm -fr "$RUST_SRC_DIR"
+}
+
 install_gcc_and_set_variables
 rustup_check
 fetch_latest_rust_version
@@ -152,5 +157,6 @@ cd "$RUST_SRC_DIR" || exit 1
 configure_rust
 build_rust
 install_rust
+cleanup_files
 
 log "Rust installation completed successfully."
