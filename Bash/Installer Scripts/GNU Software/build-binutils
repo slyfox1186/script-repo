@@ -14,8 +14,8 @@ if [ "${EUID}" -eq 0 ]; then
 fi
 
 # SET THE VARIABLES
-script_ver=1.4
-archive_dir=binutils-2.42
+script_ver="1.4"
+archive_dir="binutils-2.42"
 archive_url="https://ftp.gnu.org/gnu/binutils/$archive_dir.tar.lz"
 archive_ext="${archive_url##*.}"
 archive_name="$archive_dir.tar.$archive_ext"
