@@ -17,28 +17,25 @@ REPO_URL="https://github.com/docker/compose/releases"
 
 # Function to determine the correct Docker Compose binary for the system
 get_compose_filename() {
-    local os_type
-    local arch_type
-
-    # Detect OS type
+    # Detect OS type and convert to lowercase
     os_type=$(uname -s | tr '[:upper:]' '[:lower:]')
-    # Detect architecture
-    arch_type=$(uname -m)
+    # Detect architecture and remove any unwanted characters
+    arch_type=$(uname -m | tr -d '\n\r')
 
     case "$os_type" in
-        "linux")
+        linux)
             case "$arch_type" in
-                "x86_64") arch_type="x86_64" ;;
-                "armv6l"|"armv6") arch_type="armv6" ;;
-                "armv7l"|"armv7") arch_type="armv7" ;;
-                "aarch64") arch_type="aarch64" ;;
+                x86_64) arch_type="x86_64" ;;
+                armv6l|"armv6") arch_type="armv6" ;;
+                armv7l|"armv7") arch_type="armv7" ;;
+                aarch64) arch_type="aarch64" ;;
                 *) echo "Unsupported Linux architecture: $arch_type"; exit 1 ;;
             esac
             ;;
-        "darwin")
+        darwin)
             case "$arch_type" in
-                "x86_64") arch_type="x86_64" ;;
-                "arm64") arch_type="aarch64" ;;
+                x86_64) arch_type="x86_64" ;;
+                arm64) arch_type="aarch64" ;;
                 *) echo "Unsupported Darwin architecture: $arch_type"; exit 1 ;;
             esac
             ;;
@@ -55,31 +52,31 @@ get_compose_filename() {
 fetch_and_install_docker_compose() {
     log "Fetching the latest release information from $REPO_URL..."
 
-    local page_content=$(curl -sSL $REPO_URL)
-    local compose_filename=$(get_compose_filename)
+    local file_name=$(get_compose_filename)
 
     # Match the pattern and construct the download link
-    local base_link=$(echo "$page_content" | grep -oP "/docker/compose/releases/download/v[0-9.]+/${compose_filename}" | head -1)
-    local download_link="https://github.com${base_link}"
-
+    local base_link=$(curl -sSL "$REPO_URL" | grep -oP "/docker/compose/releases/download/v[0-9.]+/" | head -1)
+    local download_link="https://github.com${base_link}${file_name}"
+    
     if [[ -z $base_link ]]; then
-        error "Failed to find the Docker Compose release link for $compose_filename."
+        error "Failed to find the Docker Compose release link for $file_name"
         return 1
     fi
 
-    local file_name="/usr/local/bin/docker-compose"
+    output_file_name="${file_name//-linux-x86_64/}"
+    save_to_path="/usr/local/bin/$output_file_name"
 
-    log "Latest release found for $compose_filename. Download link: $download_link"
-
+    log "Latest release found for $file_name Download link: $download_link"
     log "Downloading Docker Compose..."
-    sudo curl -L "$download_link" -o "$file_name"
 
-    if [[ ! -f "$file_name" || ! -s "$file_name" ]]; then
+    sudo curl -Lso "$save_to_path" "$download_link"
+
+    if [[ ! -f "$save_to_path" || ! -s "$save_to_path" ]]; then
         error "Failed to download Docker Compose or the file is empty."
         return 1
     fi
 
-    sudo chmod +x "$file_name"
+    sudo chmod +x "$save_to_path"
 
     log "Docker Compose installed successfully."
 }
