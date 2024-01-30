@@ -11,11 +11,9 @@ fi
 log() { echo -e "\e[32m$1\e[0m"; }
 log_error() { echo -e "\e[31m$1\e[0m" >&2; }
 
-# Define optimization flags
-export OPT_FLAGS="-O3 -pipe -march=native"
-
 # Check for necessary dependencies
-for cmd in git curl python3; do
+for cmd in git curl python3
+do
     if ! command -v "$cmd" &> /dev/null; then
         log_error "$cmd could not be found"
         exit 1
@@ -24,10 +22,37 @@ done
 
 # Rust installation variables
 RUST_GIT_URL="https://github.com/rust-lang/rust.git"
-RUST_SRC_DIR="rust-src"
+RUST_SRC_DIR="rust-build-script"
 
-# Function to install the latest available version of specified clang versions and set CC and CXX
-install_clang_and_set_variables() {
+set_gcc_arch_flags() {
+    # Download the script and capture only the last line of the output
+    march="$(curl -sSL "https://get-gcc.optimizethis.net" | bash | tail -n1)"
+
+    # Check if arch has a value
+    if [ -n "$march" ]; then
+        printf "\n%s\n%s\n" "GCC architechure script sourced" "=========================================="
+        echo "Retrieved architecture: $march"
+    else
+        echo "Failed to source the script or retrieve the architecture."
+        exit 1
+    fi
+
+    # Define optimization flags
+    OPT_FLAGS="-O3 -pipe -march=$march"
+    export OPT_FLAGS
+
+    # Check for necessary dependencies
+    for cmd in git curl python3
+    do
+        if ! command -v "$cmd" &> /dev/null; then
+            log_error "$cmd could not be found"
+            exit 1
+        fi
+    done
+}
+
+# Function to install the latest available version of specified gcc versions and set CC and CXX
+install_gcc_and_set_variables() {
     # Update the package list
     sudo apt update
 
@@ -37,7 +62,8 @@ install_clang_and_set_variables() {
     installed_version=""
 
     # Install the latest available version
-    for version in "${versions[@]}"; do
+    for version in "${versions[@]}"
+    do
         if apt search "^${version}$" | grep -q "^${version}/"; then
             echo "Installing ${version}..."
             if ! sudo apt install -y "${version}"; then
@@ -54,7 +80,7 @@ install_clang_and_set_variables() {
         exit 1
     fi
 
-    # Set CC to the specific version of clang and CXX to the specific version of clang++
+    # Set CC to the specific version of gcc and CXX to the specific version of g++
     CC="$installed_version"
     MODIFY_CXX="${installed_version/clang-/}"
     CXX="clang++-${MODIFY_CXX}"
@@ -64,15 +90,12 @@ install_clang_and_set_variables() {
     echo "CXX variable set to $CXX"
 }
 
-# Execute the function
-install_specific_clang_and_set_variables
-
 # Check and install rustup
 rustup_check() {
     log "Checking rustup installation..."
     if ! command -v rustup &> /dev/null; then
         log "Installing rustup..."
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+        curl --proto '=https' --tlsv1.2 -sSf "https://sh.rustup.rs" | sh
         source "$HOME/.cargo/env"
     fi
     rustup default nightly
@@ -121,7 +144,7 @@ install_rust() {
     python3 x.py install || exit 1
 }
 
-install_clang_and_set_variables
+install_gcc_and_set_variables
 rustup_check
 fetch_latest_rust_version
 clone_rust_source
