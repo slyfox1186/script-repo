@@ -2,6 +2,11 @@
 
 clear
 
+if [[ "$EUID" -ne 0 ]]; then
+    echo "You must run use root/sudo to execute this script."
+    exit 1
+fi
+
 # Function to log messages
 log() {
     echo "[LOG] $1"
