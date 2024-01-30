@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 
+#####################################################################################################################################
+##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-all-gnu-safer
+##
 ##  Purpose: Loops multiple build scripts to optimize efficiency. This is the safer of the two scripts.
+##
 ##  Updated: 11.26.23
+##
 ##  Script version: 1.1
+##
+#####################################################################################################################################
 
 clear
 
@@ -85,7 +92,7 @@ esac
 
 cd "$cwd" || exit 1
 
-scripts=(${arch_ver} m4 autoconf-2.71 autoconf-archive libtool bash make sed tar gawk grep nano wget)
+scripts=("${arch_ver}" "m4" "autoconf-2.71" "autoconf-archive" "libtool" "bash" "make" "sed" "tar" "gawk" "grep" "nano" "wget")
 cnt=0
 
 for script in ${scripts[@]}
@@ -95,7 +102,6 @@ do
     mv "build-${script}" "$cnt-build-${script}.sh" 2>/dev/null
 done
 
-clear
 for f in $(find ./ -maxdepth 1 -type f | sort -V | sed 's/\.\///g')
 do
     if echo '1' | bash "${f}"; then
