@@ -1,21 +1,14 @@
-#!/usr/bin/env bash 
+#!/usr/bin/env bash
 
-###########################################################################################################
-##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-grep
-##
 ##  Purpose: build gnu grep
-##
 ##  Updated: 08.13.23
-##
 ##  Script version: 1.2
-##
-###########################################################################################################
 
 clear
 
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+if [ "$EUID" -ne 0 ]; then
+    printf "%s\n\n" "You must run this script WITHOUT root/sudo."
     exit 1
 fi
 
@@ -23,19 +16,18 @@ fi
 # SET THE VARIABLES
 #
 
-script_ver=1.2
-archive_dir=grep-3.11
-archive_url=https://ftp.gnu.org/gnu/grep/grep-3.11.tar.xz
-archive_ext="${archive_url//*.}"
-archive_name="$archive_dir.tar.${archive_ext}"
-cwd="$PWD"/grep-build-script
-install_dir=/usr/local
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/script-repo
+script_ver="1.2"
+archive_dir="grep-3.11"
+archive_url="https://ftp.gnu.org/gnu/grep/grep-3.11.tar.xz"
+archive_ext="${archive_url##*.}"
+archive_name="$archive_dir.tar.$archive_ext"
+cwd="$PWD/grep-build-script"
+install_dir="/usr/local"
+web_repo="https://github.com/slyfox1186/script-repo"
 
 printf "%s\n%s\n\n" \
-    "grep build script - v${script_ver}" \
-    '==============================================='
+    "grep build script - v$script_ver" \
+    "==============================================="
 
 #
 # CREATE OUTPUT DIRECTORY
@@ -50,145 +42,84 @@ mkdir -p "$cwd"
 # SET THE C + CPP COMPILERS
 #
 
-export CC=gcc CXX=g++
+export CC="gcc" CXX="g++"
 
 #
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
+export CFLAGS="-g -O3 -pipe -march=native" CXXFLAGS="$CFLAGS"
 
 #
 # SET THE PATH VARIABLE
 #
 
-PATH="\
-/usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
+export PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/sbin:/usr/local/cuda/bin:/usr/local/x86_64-linux-gnu/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/games:/usr/games:/snap/bin"
 
 #
 # SET THE PKG_CONFIG_PATH VARIABLE
 #
 
-PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
-"
-export PKG_CONFIG_PATH
+export PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/share/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig:/lib64/pkgconfig:/lib/pkgconfig:/lib/x86_64-linux-gnu/pkgconfig"
 
 #
 # CREATE FUNCTIONS
 #
 
-exit_fn()
-{
+exit_fn() {
     printf "\n%s\n\n%s\n\n" \
-        'Make sure to star this repository to show your support!' \
+        "Make sure to star this repository to show your support!" \
         "$web_repo"
     exit 0
 }
 
-fail_fn()
-{
+fail_fn() {
     printf "%s\n\n" "$1"
     exit 1
 }
 
-cleanup_fn()
-{
+cleanup_fn() {
     local answer
 
     printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' answer
+        "============================================" \
+        "  Do you want to clean up the build files?  " \
+        "============================================" \
+        "[1] Yes" \
+        "[2] No"
+    read -p "Your choices are (1 or 2): " answer
 
-    case "${answer}" in
-        1)      sudo rm -fr "$cwd";;
-        2)      echo;;
-        *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
-                unset choice
-                clear
-                cleanup_fn
-                ;;
+    case "$answer" in
+        1) sudo rm -fr "$cwd" ;;
+        2) return ;;
+        *) clear
+           printf "%s\n\n" "Bad user input. Reverting script..."
+           sleep 3
+           cleanup_fn
+           ;;
     esac
 }
-
-#
-# EXPORT PKG_CONFIG_PATH
-#
-
-lib_combined="$(sudo find /lib -type d -name pkgconfig 2>/dev/null | awk '{printf("%s:",$0)}' | sed 's/.$//')"
-lib64_combined="$(sudo find /lib64 -type d -name pkgconfig 2>/dev/null | awk '{printf("%s:",$0)}' | sed 's/.$//')"
-usr_combined="$(sudo find /usr -type d -name pkgconfig 2>/dev/null | awk '{printf("%s:",$0)}' | sed 's/.$//')"
-
-if [ -n "${usr_combined}" ] && [ -z "${lib_combined}" ] && [ -z "${lib64_combined}" ]; then
-    all_combined="${usr_combined}"
-elif [ -n "${usr_combined}" ] && [ -n "${lib_combined}" ] && [ -z "${lib64_combined}" ]; then
-    all_combined="${usr_combined}:${lib_combined}"
-elif [ -n "${usr_combined}" ] && [ -n "${lib_combined}" ] && [ -n "${lib64_combined}" ]; then
-    all_combined="${usr_combined}:${lib_combined}:${lib64_combined}"
-else
-    clear
-    printf "%s\n\n" 'No pkgconfig directories were found.'
-    exit 1
-fi
-
-export PKG_CONFIG_PATH="${all_combined}"
 
 #
 # INSTALL REQUIRED APT PACKAGES
 #
 
-pkgs_fn()
-{
-    local i missing_pkgs pkgs
+pkgs_fn() {
+    local i missing_pkgs
+    pkgs=(
+        "autoconf" "autoconf-archive" "autogen" "automake" "binutils" "build-essential" "ccache" "cmake" "curl" "git"
+        "libgmp-dev" "libintl-perl" "libmpfr-dev" "libreadline-dev" "libsigsegv-dev" "libticonv-dev" "libtool"
+        "libtool-bin" "lzip" "m4" "nasm" "ninja-build" "texinfo" "zlib1g-dev" "yasm"
+    )
 
-    pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl git
-          libgmp-dev libintl-perl libmpfr-dev libreadline-dev libsigsegv-dev libticonv-dev libtool
-          libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev yasm)
-
-    for i in ${pkgs[@]}
-    do
-        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
+    for i in "${pkgs[@]}"; do
+        if ! dpkg -l | grep -q "$i"; then
+            missing_pkgs+=("$i")
         fi
     done
 
-    if [ -n "$missing_pkgs" ]; then
-        sudo apt install $missing_pkgs
+    if [ "${#missing_pkgs[@]}" -gt 0 ]; then
+        sudo apt install "${missing_pkgs[@]}"
         sudo apt -y autoremove
         clear
     fi
@@ -198,8 +129,8 @@ pkgs_fn()
 # DOWNLOAD THE ARCHIVE FILE
 #
 
-if [ ! -f "$cwd/${archive_name}" ]; then
-    curl -A "$user_agent" -Lso "$cwd/${archive_name}" "${archive_url}"
+if [ ! -f "$cwd/$archive_name" ]; then
+    curl -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
 #
@@ -215,8 +146,8 @@ mkdir -p "$cwd/$archive_dir/build"
 # EXTRACT ARCHIVE FILES
 #
 
-if ! tar -xf "$cwd/${archive_name}" -C "$cwd/$archive_dir" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: $cwd/${archive_name}"
+if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
     exit 1
 fi
 
@@ -227,20 +158,23 @@ fi
 cd "$cwd/$archive_dir" || exit 1
 autoreconf -fi
 cd build || exit 1
-../configure --prefix="$install_dir"          \
-             --disable-nls                      \
-             --enable-gcc-warnings=no           \
-             --enable-threads=posix             \
-             --with-libsigsegv                  \
-             --with-libsigsegv-prefix=/usr      \
-             --with-libiconv-prefix=/usr        \
-             --with-libintl-prefix=/usr         \
+../configure --prefix="$install_dir" \
+             --disable-nls \
+             --enable-gcc-warnings=no \
+             --enable-threads=posix \
+             --with-libsigsegv \
+             --with-libsigsegv-prefix=/usr \
+             --with-libiconv-prefix=/usr \
+             --with-libintl-prefix=/usr \
              PKG_CONFIG="$(type -P pkg-config)" \
-             PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
-make "-j$(nproc --all)"
+             PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
+echo
+if ! make "-j$(nproc --all)"; then
+    fail_fn "Failed to execute: make -j$(nproc --all). Line: $LINENO"
+fi
+echo
 if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
-    exit 1
+    fail_fn "Failed to execute: sudo make install. Line: $LINENO"
 fi
 
 # PROMPT USER TO CLEAN UP FILES
