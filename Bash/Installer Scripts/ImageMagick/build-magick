@@ -68,7 +68,7 @@ mkdir -p "$packages" "$workspace"
 export CC="gcc" CXX="g++"
 
 # Download the script and capture only the last line of the output
-march=$(curl -sSL "https://get-gcc.optimizethis.net" | bash | tail -n1)
+march="$(bash <(curl -fsSL https://gitver.optimizethis.net) https://github.com/ImageMagick/ImageMagick.git)"
 
 # Check if the arch has a value
 if [ -n "$march" ]; then
