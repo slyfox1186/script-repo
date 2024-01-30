@@ -228,10 +228,10 @@ download()
         echo "The file \"$dl_file\" is already downloaded."
     else
         echo "Downloading \"${dl_url}\" saving as \"$dl_file\""
-        if ! wget --show-progress -U "$user_agent" -cqO "${target_file}" "${dl_url}"; then
+        if ! wget --show-progress -t 2 -cqO "${target_file}" "${dl_url}"; then
             printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
-            if ! wget --show-progress -U "$user_agent" -cqO "${target_file}" "${dl_url}"; then
+            if ! wget --show-progress -t 2 -cqO "${target_file}" "${dl_url}"; then
                 fail_fn "The script failed to download \"$dl_file\" twice and will now exit. Line: ${LINENO}"
             fi
         fi

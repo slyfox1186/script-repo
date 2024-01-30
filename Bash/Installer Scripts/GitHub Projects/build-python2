@@ -200,7 +200,7 @@ pkgs_fn()
 
 install_libportal_fn()
 {
-    if ! wget --show-progress -U "$user_agent" -cq 'https://github.com/flatpak/libportal/releases/download/0.7.1/libportal-0.7.1.tar.xz'; then
+    if ! wget --show-progress -t 2 -cqO 'https://github.com/flatpak/libportal/releases/download/0.7.1/libportal-0.7.1.tar.xz'; then
         clear
         printf "%s\n\n" "Failed to download the libportal archive file. Line: ${LINENO}"
         exit 1
