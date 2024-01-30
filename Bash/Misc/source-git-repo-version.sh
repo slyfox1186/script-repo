@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-clear
 
 # Function to retrieve the latest Git tag version from a repository
 get_latest_git_tag() {
