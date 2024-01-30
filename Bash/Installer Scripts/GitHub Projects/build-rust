@@ -57,7 +57,7 @@ install_gcc_and_set_variables() {
     sudo apt update
 
     # Clang versions to search for in order of preference
-    versions=("clang-16" "clang-15" "clang-14")
+    versions=("gcc-12" "gcc-11" "gcc-10" "gcc-9gcc")
 
     installed_version=""
 
@@ -82,8 +82,8 @@ install_gcc_and_set_variables() {
 
     # Set CC to the specific version of gcc and CXX to the specific version of g++
     CC="$installed_version"
-    MODIFY_CXX="${installed_version/clang-/}"
-    CXX="clang++-${MODIFY_CXX}"
+    MODIFY_CXX="${installed_version/gcc-/}"
+    CXX="g++-${MODIFY_CXX}"
     export CC CXX
 
     echo "CC variable set to $CC"
