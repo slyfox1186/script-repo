@@ -582,6 +582,12 @@ library_exists() {
     return 0
 }
 
+find_cuda_json_file() {
+    locate_cuda_json_file="$(sudo find /usr/local/cuda/ -type f -name 'version.json' 2>/dev/null)"
+    locate_cuda_json_file="$(sudo find /opt/cuda/ -type f -name 'version.json' 2>/dev/null)"
+    echo "$locate_cuda_json_file"
+}
+
 check_nvidia_gpu() {
     nvidia_gpu_test="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version' 2>/dev/null)"
     echo "$nvidia_gpu_test"
@@ -602,10 +608,7 @@ check_amd_gpu() {
 gpu_arch_fn() {
     local gpu_name gpu_type
 
-    amd_gpu_test="$(glxinfo 2>/dev/null | grep -E 'OpenGL renderer' | grep -Eo 'AMD')"
-    [[ -f '/usr/local/cuda/version.json' ]] && nvidia_gpu_test="$(check_nvidia_gpu)"
-
-    if [[ -z "$amd_gpu_test" ]] || [[ -n "$nvidia_gpu_test" ]]; then
+    if [ -n "$(find_cuda_json_file)" ]; then
         gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -r | head -n 1)"
         if [[ "$gpu_name" == "name" ]]; then
             gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort | head -n 1)"
@@ -667,9 +670,8 @@ gpu_arch_fn() {
         else
             fail_fn "Error: Failed to define \"\$gpu_type\". (Line: $LINENO)"
         fi
-        return 0
     else
-        return 1
+        return 0
     fi
 }
 
@@ -2827,7 +2829,7 @@ fi
 # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
 gpu_arch_fn
 
-if [[ ${?} -eq "0" ]]; then
+if [[ "$?" -eq 0 ]]; then
     if [[ -n "$iscuda" ]]; then
         if build "nv-codec-headers" "12.0.16.1"; then
             download "https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.0.16.1/nv-codec-headers-12.0.16.1.tar.gz"
