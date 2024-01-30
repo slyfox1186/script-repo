@@ -66,7 +66,14 @@ fetch_and_install_docker_compose() {
         return 1
     fi
 
-    output_file_name="${file_name//-linux-$arch_type/}"
+        case "$file_name" in
+            docker-compose-linux-x86_64) output_file_name="${file_name/docker-compose-linux-x86_64/docker-compose}" ;;
+            docker-compose-linux-armv6) output_file_name="${file_name/docker-compose-linux-armv6/docker-compose}" ;;
+            docker-compose-linux-armv7) output_file_name="${file_name/docker-compose-linux-armv7/docker-compose}" ;;
+            docker-compose-linux-aarch64) output_file_name="${file_name/docker-compose-linux-aarch64/docker-compose}" ;;
+            *) echo "Could not trim the Arch type: $arch_type"; exit 1 ;;
+        esac
+
     save_to_path="/usr/local/bin/$output_file_name"
 
     log "Latest release found for $file_name Download link: $download_link"
