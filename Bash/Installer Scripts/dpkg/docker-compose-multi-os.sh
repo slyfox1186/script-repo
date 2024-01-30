@@ -67,12 +67,12 @@ fetch_and_install_docker_compose() {
     fi
 
         case "$file_name" in
-            docker-compose-linux-x86_64) output_file_name="${file_name/docker-compose-linux-x86_64/docker-compose}" ;;
-            docker-compose-linux-armv6) output_file_name="${file_name/docker-compose-linux-armv6/docker-compose}" ;;
-            docker-compose-linux-armv7) output_file_name="${file_name/docker-compose-linux-armv7/docker-compose}" ;;
-            docker-compose-linux-aarch64) output_file_name="${file_name/docker-compose-linux-aarch64/docker-compose}" ;;
-            docker-compose-darwin-x86_64) output_file_name="${file_name/docker-compose-darwin-x86_64/docker-compose}" ;;
-            docker-compose-darwin-aarch64) output_file_name="${file_name/docker-compose-darwin-aarch64/docker-compose}" ;;
+            docker-compose-linux-x86_64) output_file_name="${file_name/$file_name/docker-compose}" ;;
+            docker-compose-linux-armv6) output_file_name="${file_name/$file_name/docker-compose}" ;;
+            docker-compose-linux-armv7) output_file_name="${file_name/$file_name/docker-compose}" ;;
+            docker-compose-linux-aarch64) output_file_name="${file_name/$file_name/docker-compose}" ;;
+            docker-compose-darwin-x86_64) output_file_name="${file_name/$file_name/docker-compose}" ;;
+            docker-compose-darwin-aarch64) output_file_name="${file_name/$file_name/docker-compose}" ;;
             *) echo "Could not trim the Arch type: $arch_type"; exit 1 ;;
         esac
 
