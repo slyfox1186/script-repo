@@ -17,7 +17,7 @@ export OPT_FLAGS="-O3 -pipe -march=native"
 # Check for necessary dependencies
 for cmd in git curl python3; do
     if ! command -v "$cmd" &> /dev/null; then
-        log_error ""$cmd could not be found""
+        log_error "$cmd could not be found"
         exit 1
     fi
 done
@@ -64,7 +64,7 @@ clone_rust_source() {
 configure_rust() {
     log "Configuring and building Rust..."
     rm "config.toml"
-    ./configure --enable-docs --enable-ccache--enable-llvm-static-stdcpp --enable-rpath \
+    ./configure --enable-docs --enable-ccache --enable-llvm-static-stdcpp --enable-rpath \
                 --python="$(type -P python3)" --enable-use-libcxx --enable-optimize-llvm \
                 --enable-extended --llvm-cflags="$OPT_FLAGS" --llvm-cxxflags="$OPT_FLAGS" \
                 --release-channel=stable
@@ -72,12 +72,12 @@ configure_rust() {
 
 build_rust() {
     log "Installing Rust..."
-        python3 x.py build || exit 1
+    python3 x.py build || exit 1
 }
 
 install_rust() {
     log "Installing Rust..."
-        python3 x.py install || exit 1
+    python3 x.py install || exit 1
 }
 
 rustup_check
