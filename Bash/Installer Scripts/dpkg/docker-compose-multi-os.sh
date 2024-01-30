@@ -72,14 +72,14 @@ fetch_and_install_docker_compose() {
     log "Latest release found for $file_name Download link: $download_link"
     log "Downloading Docker Compose..."
 
-    sudo curl -Lso "$save_to_path" "$download_link"
+    curl -Lso "$save_to_path" "$download_link"
 
     if [[ ! -f "$save_to_path" || ! -s "$save_to_path" ]]; then
         error "Failed to download Docker Compose or the file is empty."
         return 1
     fi
 
-    sudo chmod +x "$save_to_path"
+    chmod +x "$save_to_path"
 
     log "Docker Compose installed successfully."
 }
