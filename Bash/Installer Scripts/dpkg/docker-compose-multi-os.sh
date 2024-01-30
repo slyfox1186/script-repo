@@ -66,7 +66,13 @@ fetch_and_install_docker_compose() {
         return 1
     fi
 
-    output_file_name="${file_name//-linux-x86_64/}"
+        case "$arch_type" in
+            x86_64) output_file_name="${file_name//-linux-x86_64/}" ;;
+            armv6l|armv6) output_file_name="${file_name//-linux-armv6/}" ;;
+            armv7l|armv7) output_file_name="${file_name//-linux-armv7/}" ;;
+            aarch64) output_file_name="${file_name//-linux-aarch64/}" ;;
+            *) echo "Unsupported Linux architecture: $arch_type"; exit 1 ;;
+        esac
     save_to_path="/usr/local/bin/$output_file_name"
 
     log "Latest release found for $file_name Download link: $download_link"
