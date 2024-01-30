@@ -26,6 +26,47 @@ done
 RUST_GIT_URL="https://github.com/rust-lang/rust.git"
 RUST_SRC_DIR="rust-src"
 
+# Function to install the latest available version of specified clang versions and set CC and CXX
+install_clang_and_set_variables() {
+    # Update the package list
+    sudo apt update
+
+    # Clang versions to search for in order of preference
+    versions=("clang-16" "clang-15" "clang-14")
+
+    installed_version=""
+
+    # Install the latest available version
+    for version in "${versions[@]}"; do
+        if apt search "^${version}$" | grep -q "^${version}/"; then
+            echo "Installing ${version}..."
+            if ! sudo apt install -y "${version}"; then
+                echo "Error: Failed to install the latest clang version using APT."
+                exit 1
+            fi
+            installed_version="$version"
+            break
+        fi
+    done
+
+    if [ -z "$installed_version" ]; then
+        echo "Error: No specified version of clang found."
+        exit 1
+    fi
+
+    # Set CC to the specific version of clang and CXX to the specific version of clang++
+    CC="$installed_version"
+    MODIFY_CXX="${installed_version/clang-/}"
+    CXX="clang++-${MODIFY_CXX}"
+    export CC CXX
+
+    echo "CC variable set to $CC"
+    echo "CXX variable set to $CXX"
+}
+
+# Execute the function
+install_specific_clang_and_set_variables
+
 # Check and install rustup
 rustup_check() {
     log "Checking rustup installation..."
@@ -80,6 +121,7 @@ install_rust() {
     python3 x.py install || exit 1
 }
 
+install_clang_and_set_variables
 rustup_check
 fetch_latest_rust_version
 clone_rust_source
