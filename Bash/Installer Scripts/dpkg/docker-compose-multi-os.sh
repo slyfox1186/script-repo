@@ -87,11 +87,12 @@ fetch_and_install_docker_compose() {
 
     curl -Lso "$save_to_path" "$download_link"
 
-    echo
-    log "Successfully saved the file as: $save_to_path"
     if [[ ! -f "$save_to_path" || ! -s "$save_to_path" ]]; then
         error "Failed to download Docker Compose or the file is empty."
         return 1
+    else
+        echo
+        log "Successfully saved the file as: $save_to_path"
     fi
 
     chmod +x "$save_to_path"
