@@ -24,28 +24,59 @@ for pkg in "${required_pkgs[@]}"; do
     fi
 done
 
-# Function to download Discord
-download_discord() {
+# Function to check the installed version of Discord
+get_installed_version() {
+    dpkg-query --showformat='${Version}' --show discord 2>/dev/null | grep -oP '0.0.\K\d+'
+}
+
+# Function to download and install Discord
+download_and_install_discord() {
     local current_ver="$1"
     local file_name="discord-0.0.$current_ver.deb"
     local url="https://dl.discordapp.net/apps/linux/0.0.$current_ver/$file_name"
 
-    if [ ! -f "$file_name" ]; then
+    local installed_ver=$(get_installed_version)
+
+    if [ "$installed_ver" != "$current_ver" ] && [ ! -f "$file_name" ]; then
         echo "Downloading $file_name"
         wget --show-progress -U "$user_agent" -O "$file_name" "$url"
         sudo apt-get install -y "./$file_name"
         rm -f "$file_name"
+    elif [ "$installed_ver" == "$current_ver" ]; then
+        echo "Discord version $current_ver is already installed."
     else
         echo "$file_name already exists."
     fi
 }
 
+# Function to uninstall Discord
+uninstall_discord() {
+    echo "Uninstalling Discord..."
+    sudo apt-get remove -y discord
+}
+
 # Discover the latest version
 latest_ver=$(curl -s -A "$user_agent" "https://discord.com/api/download?platform=linux&format=deb" | grep -oP 'discord-0.0.\K\d+' | head -n1)
 
-# Check if a new version is available and download it
-if [ -n "$latest_ver" ]; then
-    download_discord "$latest_ver"
-else
-    echo "Failed to find the latest Discord version."
-fi
+# Main function
+main() {
+    echo "Choose an option:"
+    echo "1. Install latest Discord release"
+    echo "2. Uninstall Discord"
+    read -p "Enter your choice (1/2): " choice
+
+    case $choice in
+        1)
+            if [ -n "$latest_ver" ]; then
+                download_and_install_discord "$latest_ver"
+            else
+                echo "Failed to find the latest Discord version."
+            fi
+            ;;
+        2) uninstall_discord ;;
+        *) echo "Invalid choice. Exiting." ;;
+    esac
+}
+
+# Execute the main function
+main
