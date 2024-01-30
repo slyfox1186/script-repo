@@ -2276,7 +2276,7 @@ ffmpeg_libraries+=('--enable-libkvazaar')
 
 git_ver_fn '12072756' '3' 'B'
 if build 'decklink' '12.7'; then
-    download "https://github.com/slyfox1186/script-repo/raw/main/header-files/Blackmagic-DeckLink-SDK-12.7.tar.xz" 'decklink-12.7.tar.xz'
+    download "https://github.com/slyfox1186/script-repo/raw/main/headers/Blackmagic-DeckLink-SDK-12.7.tar.xz" 'decklink-12.7.tar.xz'
     for files in *.{h,cpp}
     do
         mv "${files}" "$workspace"/include

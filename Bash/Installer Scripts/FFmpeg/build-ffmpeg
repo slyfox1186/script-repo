@@ -5,7 +5,7 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
-##  Script version: 3.3.5
+##  Script version: 3.3.6
 ##
 ##  Updated: 01.28.24
 ##
@@ -49,6 +49,7 @@
 ##    - aom/av1 library
 ##    - libvpx library
 ##    - x265 library
+##    - the parsing to check if an amd gpu is installed 
 ##
 ##  Added:
 ##
@@ -74,6 +75,7 @@
 ##
 ##  Fixed:
 ##
+##    - Fixed an error output cause by a missing cuda json file
 ##    - libvpx has a bug in their code in file vpx_ext_ratectrl.h and I used the sed command to edit the code and fix it.
 ##    - libant would not build unexpectedly so I edited APT to download Java v8 which works for some unknown reason.
 ##    - a missing library related to libc6 for x265 to compile on windows wsl
@@ -95,7 +97,7 @@
 #
 
 script_name="${0}"
-script_ver="3.3.5"
+script_ver="3.3.6"
 ffmpeg_ver="n5.1.4"
 ffmpeg_archive="ffmpeg-$ffmpeg_ver.tar.gz"
 ffmpeg_url="https://github.com/FFmpeg/FFmpeg/archive/refs/tags/$ffmpeg_ver.tar.gz"
@@ -580,11 +582,28 @@ library_exists() {
     return 0
 }
 
+check_nvidia_gpu() {
+    nvidia_gpu_test="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version' 2>/dev/null)"
+    echo "$nvidia_gpu_test"
+}
+
+check_amd_gpu() {
+  if lshw -C display 2>&1 | grep -qEio 'AMD|amdgpu'; then
+    echo "AMD GPU detected."
+  elif dpkg -l 2>&1 | grep -qi 'amdgpu'; then
+    echo "AMD GPU detected."
+  elif lspci 2>&1 | grep -i 'AMD'; then
+    echo "AMD GPU detected."
+  else
+    echo "No AMD GPU detected."
+  fi
+}
+
 gpu_arch_fn() {
     local gpu_name gpu_type
 
     amd_gpu_test="$(glxinfo 2>/dev/null | grep -E 'OpenGL renderer' | grep -Eo 'AMD')"
-    nvidia_gpu_test="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
+    [[ -f '/usr/local/cuda/version.json' ]] && nvidia_gpu_test="$(check_nvidia_gpu)"
 
     if [[ -z "$amd_gpu_test" ]] || [[ -n "$nvidia_gpu_test" ]]; then
         gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -r | head -n 1)"
@@ -882,81 +901,89 @@ cuda_download_fn() {
 install_cuda_fn() {
     local choice
 
-    amd_gpu_test="$(glxinfo 2>/dev/null | grep -E 'OpenGL renderer' | grep -Eo 'AMD\s.*$')"
-    nvidia_gpu_test="$(cat '/usr/local/cuda/version.json' 2>&1 | jq -r '.cuda.version')"
+    amd_gpu_test="$(check_amd_gpu)"
+    [[ -f '/usr/local/cuda/version.json' ]] && nvidia_gpu_test="$(check_nvidia_gpu)"
     wsl_test="$(grep -i Microsoft '/proc/version')"
 
-    if [[ -z "$amd_gpu_test" ]] || [[ -n "$nvidia_gpu_test" ]] || [[ -n "$wsl_test" ]]; then
-        get_ver_fn1
-        if [[ "$OS" == "Arch" ]]; then
-            find_nvcc="$(sudo find /opt/ -type f -name 'nvcc')"
-            cuda_ver_test="$($find_nvcc --version | sed -n 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')"
-            cuda_ver_test+=".2"
-        else
-            cuda_ver_test="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
+    echo "AMD GPU Test Output: $amd_gpu_test"
+    echo "NVIDIA GPU Test Output: $nvidia_gpu_test"
+    echo "Expected Latest CUDA Version: $cuda_latest_ver"
+
+    if [ "$amd_gpu_test" == "AMD GPU detected." ] || [ "$nvidia_gpu_test" != "$cuda_latest_ver" ]; then
+        if [[ -n "$nvidia_gpu_test" ]] || [[ -n "$wsl_test" ]]; then
+            get_ver_fn1
+            if [[ "$OS" == "Arch" ]]; then
+                find_nvcc="$(sudo find /opt/ -type f -name 'nvcc')"
+                cuda_ver_test="$($find_nvcc --version | sed -n 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')"
+                cuda_ver_test+=".2"
+            else
+                cuda_ver_test="$nvidia_gpu_test"
+            fi
+            cuda_ver="$cuda_ver_test"
+
+            if [[ -n "$cuda_ver_test" ]]; then
+                printf "%s\n%s\n%s\n%s\n\n%s\n%s\n\n" \
+                    "The installed CUDA SDK Toolkit version is: $cuda_ver_test" \
+                    "The latest version available is: $cuda_latest_ver" \
+                    "=====================================================" \
+                    "Do you want to update/reinstall CUDA?" \
+                    "[1] Yes" \
+                    "[2] No"
+                read -p "Your choices are (1 or 2): " choice
+                clear
+
+                case "$choice" in
+                    1)
+                            cuda_download_fn
+                            PATH="$PATH:$cuda_path"
+                            export PATH
+                            ;;
+                    2)
+                            PATH="$PATH:$cuda_path"
+                            export PATH
+                            ;;
+                    *)
+                            unset choice
+                            install_cuda_fn
+                            ;;
+                esac
+            else
+                printf "%s\n%s\n\n%s\n\n%s\n%s\n\n" \
+                    "The CUDA SDK Toolkit was not detected and the latest version is: $cuda_latest_ver" \
+                    "=========================================================================" \
+                    "Choose an option" \
+                    "[1] Install the CUDA SDK Toolkit and add it to your PATH." \
+                    "[2] Continue without installing. (Hardware acceleration will be turned off)"
+                read -p "Your choices are (1 or 2): " choice
+                clear
+
+                case "$choice" in
+                    1)      cuda_download_fn;;
+                    2)      echo;;
+                    *)
+                            unset choice
+                            install_cuda_fn
+                            ;;
+                esac
+            fi
+
+            if [[ "$OS" == "Arch" ]]; then
+                find_nvcc="$(sudo find /opt/ -type f -name "nvcc")"
+                cuda_ver_test="$($find_nvcc --version | sed -n "s/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p")"
+                cuda_ver_test+=".1"
+            else
+                cuda_ver_test="$(cat '/usr/local/cuda/version.json' 2>&1 | jq -r '.cuda.version')"
+            fi
+            cuda_ver="$cuda_ver_test"
+
+            if [[ -z "$cuda_ver" ]]; then
+                fail_fn "Error: Unable to locate \"/usr/local/cuda/version.json\". (Line: $LINENO)"
+            else
+                export PATH="$PATH:$cuda_path"
+            fi
         fi
-        cuda_ver="$cuda_ver_test"
-
-        if [[ -n "$cuda_ver_test" ]]; then
-            printf "%s\n%s\n%s\n%s\n\n%s\n%s\n\n" \
-                "The installed CUDA SDK Toolkit version is: $cuda_ver_test" \
-                "The latest version available is: $cuda_latest_ver" \
-                "=====================================================" \
-                "Do you want to update/reinstall CUDA?" \
-                "[1] Yes" \
-                "[2] No"
-            read -p "Your choices are (1 or 2): " choice
-            clear
-
-            case "$choice" in
-                1)
-                        cuda_download_fn
-                        PATH="$PATH:$cuda_path"
-                        export PATH
-                        ;;
-                2)
-                        PATH="$PATH:$cuda_path"
-                        export PATH
-                        ;;
-                *)
-                        unset choice
-                        install_cuda_fn
-                        ;;
-            esac
-        else
-            printf "%s\n%s\n\n%s\n\n%s\n%s\n\n" \
-                "The CUDA SDK Toolkit was not detected and the latest version is: $cuda_latest_ver" \
-                "=========================================================================" \
-                "Choose an option" \
-                "[1] Install the CUDA SDK Toolkit and add it to your PATH." \
-                "[2] Continue without installing. (Hardware acceleration will be turned off)"
-            read -p "Your choices are (1 or 2): " choice
-            clear
-
-            case "$choice" in
-                1)      cuda_download_fn;;
-                2)      echo;;
-                *)
-                        unset choice
-                        install_cuda_fn
-                        ;;
-            esac
-        fi
-
-        if [[ "$OS" == "Arch" ]]; then
-            find_nvcc="$(sudo find /opt/ -type f -name "nvcc")"
-            cuda_ver_test="$($find_nvcc --version | sed -n "s/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p")"
-            cuda_ver_test+=".1"
-        else
-            cuda_ver_test="$(cat '/usr/local/cuda/version.json' 2>&1 | jq -r '.cuda.version')"
-        fi
-        cuda_ver="$cuda_ver_test"
-
-        if [[ -z "$cuda_ver" ]]; then
-            fail_fn "Error: Unable to locate \"/usr/local/cuda/version.json\". (Line: $LINENO)"
-        else
-            export PATH="$PATH:$cuda_path"
-        fi
+    else
+        gpu_flag="1"
     fi
 }
 
@@ -1001,6 +1028,7 @@ pkgs_fn() {
         libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzmq3-dev libzstd-dev
         libzvbi-dev libzzip-dev llvm lshw lzma-dev m4 mesa-utils meson nasm ninja-build pandoc python3
         python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip valgrind wget xmlto zlib1g-dev
+        default-jdk-headless
 )
 
     # Initialize arrays for missing, available, and unavailable packages
@@ -1331,8 +1359,8 @@ esac
 
 # SET THE JAVA VARIABLES
 path_fn
-locate_java="$(sudo find /usr/lib/jvm/ -type d -name 'java-*-openjdk*' | sort -r | head -n1)"
-java_include="$(sudo find /usr/lib/jvm/ -type f -name 'javac' | sort -r | head -n1 | xargs dirname | sed 's/bin/include/')"
+locate_java="$(sudo find /usr/lib/jvm/ -type d -name 'java-*-openjdk*' | sort | head -n1)"
+java_include="$(sudo find /usr/lib/jvm/ -type f -name 'javac' | sort | head -n1 | xargs dirname | sed 's/bin/include/')"
 export CPPFLAGS+=" -I$java_include"
 export JDK_HOME="$locate_java"
 export JAVA_HOME="$locate_java"
@@ -1364,7 +1392,7 @@ install_cuda_fn
 sudo ldconfig
 
 # INSTALL THE GLOBAL TOOLS
-clear
+echo
 box_out_banner_global() {
     input_char="$(echo "${@}" | wc -c)"
     line="$(for i in $(seq 0 ${input_char}); do printf "-"; done)"
@@ -1379,6 +1407,11 @@ box_out_banner_global() {
     tput sgr 0
 }
 box_out_banner_global "Installing Global Tools"
+
+# Alert the user that an AMD GPU was found without a GeForce GPU present
+if [[ "$gpu_flag" -eq 1 ]]; then
+    printf "\n%s\n" "AMD GPU detected without GeForce present."
+fi
 
 if build "m4" "latest"; then
     download "https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz"
