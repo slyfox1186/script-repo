@@ -26,8 +26,8 @@ get_compose_filename() {
         linux)
             case "$arch_type" in
                 x86_64) arch_type="x86_64" ;;
-                armv6l|"armv6") arch_type="armv6" ;;
-                armv7l|"armv7") arch_type="armv7" ;;
+                armv6l|armv6) arch_type="armv6" ;;
+                armv7l|armv7) arch_type="armv7" ;;
                 aarch64) arch_type="aarch64" ;;
                 *) echo "Unsupported Linux architecture: $arch_type"; exit 1 ;;
             esac
