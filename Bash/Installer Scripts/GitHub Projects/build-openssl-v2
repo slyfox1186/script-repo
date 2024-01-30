@@ -124,7 +124,7 @@ add_openssl_to_path() {
 # Function to download OpenSSL
 download_openssl() {
     echo "Downloading OpenSSL..."
-    wget --show-progress -cqO "$tar_file" "$openssl_url" || fail_fn "Failed to download the tar file. Line: $LINENO"
+    wget --show-progress -t 2 -cqO "$tar_file" "$openssl_url" || fail_fn "Failed to download the tar file. Line: $LINENO"
 }
 
 # Function to extract the tarball

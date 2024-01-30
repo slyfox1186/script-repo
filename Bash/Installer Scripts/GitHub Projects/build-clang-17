@@ -109,7 +109,7 @@ download_and_extract() {
         echo "The file $filename is already downloaded."
     else
         echo "Downloading $url saving as $filename"
-        wget --show-progress -cqO "$target_dir/$filename" "$url"
+        wget --show-progress -t 2 -cqO "$target_dir/$filename" "$url"
         echo "Download completed"
 
         if [[ "$filename" == *tar* ]]; then
@@ -142,7 +142,7 @@ build_and_install_llvm_clang() {
         else
             echo "The LLVM tarball is corrupted or incomplete. Redownloading..."
             rm -f "$llvm_tar_filename"
-            wget --show-progress -cqO "$llvm_tar_filename" "$llvm_url"
+            wget --show-progress -t 2 -cqO "$llvm_tar_filename" "$llvm_url"
             echo "Redownload completed"
         fi
     }
