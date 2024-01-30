@@ -78,7 +78,7 @@ fi
 # ADD ADDITIONAL SEARCH PATHS TO THE LD LIBRARY LINKER
 #
 
-sudo bash -c 'bash <(curl -sSL https://ld-linker.optimizethis.net)'
+sudo bash -c "bash <(curl -sSL https://ld-linker.optimizethis.net)"
 
 #
 # DETECT THE PC ARCHITECTURE
