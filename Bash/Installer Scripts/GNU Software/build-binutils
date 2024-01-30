@@ -29,16 +29,16 @@ cd "$cwd"
 # SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
 CC=gcc
 CXX=g++
-CFLAGS='-g -O3 -pipe -march=native'
+CFLAGS="-g -O3 -pipe -march=native"
 CXXFLAGS="$CFLAGS"
-CPPFLAGS='-I/usr/local/include -I/usr/include'
-LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+CPPFLAGS="-I/usr/local/include -I/usr/include"
+LDFLAGS="-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib"
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
 if [ -d /usr/lib/ccache/bin ]; then
-    ccache_dir='/usr/lib/ccache/bin'
+    ccache_dir="/usr/lib/ccache/bin"
 else
-    ccache_dir='/usr/lib/ccache'
+    ccache_dir="/usr/lib/ccache"
 fi
 
 # SET THE PATH VARIABLE
@@ -93,7 +93,7 @@ pkgs_fn() {
     # Loop through the array to find missing packages
     for pkg in "${pkgs[@]}"
     do
-        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q 'ok installed'; then
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             missing_packages+=("$pkg")
         fi
     done
@@ -126,19 +126,19 @@ pkgs_fn() {
 get_first_word() { echo "$1" | awk '{print $1}'; }
 
 # Try to detect the OS using /etc/os-release, fall back to lsb_release if available
-if [ -f '/etc/os-release' ]; then
-    source '/etc/os-release'
+if [ -f "/etc/os-release" ]; then
+    source "/etc/os-release"
     OS=$(get_first_word "$NAME")
 elif lsb_release -d &> /dev/null; then
-    OS=$(lsb_release -d | awk '{print $2}')
+    OS=$(lsb_release -d | awk "{print $2}")
 else
     fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
 fi
 
 # Select the package based on the OS
 case "${OS}" in
-    Debian)     pkgs_fn 'libadacgi6-dev' ;;
-    Ubuntu)     pkgs_fn 'libadacgi4-dev' ;;
+    Debian)     pkgs_fn "libadacgi6-dev" ;;
+    Ubuntu)     pkgs_fn "libadacgi4-dev" ;;
     *)          pkgs_fn ;;
 esac
 
@@ -146,21 +146,21 @@ esac
 # CHECK IF AUTOCONF VERSION 2.69 IS INSTALLED
 #
 
-ac_ver=$(autoconf --version 2>/dev/null | head -n 1 | awk '{print $NF}')
-if [[ "$ac_ver" != '2.69' ]]; then
-    wget --show-progress -cqO build-autoconf-2.69 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf-2.69'
+ac_ver=$(autoconf --version 2>/dev/null | head -n 1 | awk "{print $NF}")
+if [[ "$ac_ver" != "2.69" ]]; then
+    wget --show-progress -t 2 -cqO build-autoconf-2.69 "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf-2.69"
     if bash build-autoconf-2.69; then
         rm build-autoconf-2.69
     else
-        printf "%s\n\n" 'Failed to install autoconf-v2.69'
+        printf "%s\n\n" "Failed to install autoconf-v2.69"
         exit 1
     fi
 fi
 
 # Download and extract archive
-wget --show-progress --tries=2 -cqO - "$archive_url" | tar --lzip -xf -
+wget --show-progress -t 2 -cqO - "$archive_url" | tar --lzip -xf -
 
-cd "$archive_dir"
+cd "$archive_dir" || exit 1
 
 autoreconf -fi -I /usr/share/aclocal
 mkdir -p build
