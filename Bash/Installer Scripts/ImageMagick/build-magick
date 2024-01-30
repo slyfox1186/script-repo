@@ -68,11 +68,11 @@ mkdir -p "$packages" "$workspace"
 export CC="gcc" CXX="g++"
 
 # Download the script and capture only the last line of the output
-march=$(curl -sSL "https://get-gcc.optimizethis.net" | bash | tail -n1)
+march="$(bash <(curl -fsSL https://gitver.optimizethis.net) https://github.com/ImageMagick/ImageMagick.git)"
 
-# Check if arch has a value
+# Check if the arch has a value
 if [ -n "$march" ]; then
-    printf "\n%s\n%s\n" "GCC architechure script sourced" "=========================================="
+    printf "\n%s\n%s\n" "GCC architecture script sourced" "=========================================="
     echo "Retrieved architecture: $march"
 else
     echo "Failed to source the script or retrieve the architecture."

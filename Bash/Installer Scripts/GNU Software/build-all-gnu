@@ -2,140 +2,116 @@
 
 clear
 
-cwd="$PWD"/build-all-gnu-master
-web_repo=https://github.com/slyfox1186/script-repo
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
+cwd="$PWD/build-all-gnu-master"
+web_repo="https://github.com/slyfox1186/script-repo"
 
-if [ ! -d "$cwd"/completed ]; then
-    mkdir -p "$cwd"/completed
+if [ ! -d "$cwd/completed" ]; then
+    mkdir -p "$cwd/completed"
 fi
 
-exit_fn()
-{
+exit_fn() {
     printf "\n%s\n\n%s\n\n" \
-        'Make sure to star this repository to show your support!' \
+        "Make sure to star this repository to show your support!" \
         "$web_repo"
     exit 0
 }
 
-fail_fn()
-{
+fail_fn() {
     printf "\n%s\n\n%s\n\n" \
         "$1" \
         "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
-cleanup_fn()
-{
+cleanup_fn() {
     local answer
 
     printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' answer
+        "============================================" \
+        "  Do you want to clean up the build files?  " \
+        "============================================" \
+        "[1] Yes" \
+        "[2] No"
+    read -p "Your choices are (1 or 2): " answer
 
-    case "${answer}" in
-        1)      sudo rm -fr "$cwd" "${0}";;
-        2)      echo;;
-        *)
-                printf "\n%s\n\n" 'Bad user input. Re-asking question...'
-                sleep 3
-                unset answer
-                clear
-                cleanup_fn
-                ;;
+    case "$answer" in
+        1)  sudo rm -fr "$cwd" "${0}" ;;
+        2)  echo ;;
+        *)  printf "\n%s\n\n" "Bad user input. Re-asking question..."
+            sleep 3
+            clear
+            cleanup_fn
+            ;;
     esac
 }
 
-pkgs=(asciidoc autogen autoconf autoconf-archive automake binutils bison build-essential bzip2 ccache cmake
-      curl libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev m4 meson nasm ninja-build
-      texinfo xmlto yasm zlib1g-dev)
+pkgs=(
+    asciidoc autogen autoconf autoconf-archive automake binutils bison build-essential bzip2 ccache cmake
+    curl libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev m4 meson nasm ninja-build
+    texinfo xmlto yasm zlib1g-dev
+)
 
-for i in ${pkgs[@]}
+for i in "${pkgs[@]}"
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+    if ! dpkg -l | grep -q "$i"; then
+        missing_pkgs+=("$i")
     fi
 done
 
-if [ -n "${missing_pkg}s" ]; then
-    sudo apt install $missing_pkgs
+if [ "${#missing_pkgs[@]}" -ne 0 ]; then
+    sudo apt install "${missing_pkgs[@]}"
     sudo apt -y autoremove
     clear
 fi
 
-install_scripts_fn()
-{
-    local i scripts
+install_scripts_fn() {
+    local i
     clear
 
-    scripts="$(sudo find . -maxdepth 1 -type f -name '*' | sed 's/^..//g' | sort)"
-
-    for i in ${scripts[@]}
+    for i in *.sh
     do
-        if bash "${i}"; then
-            sudo find . -maxdepth 1 -type f -name "${i}" -exec mv {} completed \;
-            printf "\n%s\n\n" "Script finished: ${i}"
+        if bash "$i"; then
+            mv "$i" completed
+            printf "\n%s\n\n" "Script finished: $i"
         else
-            fail_fn "Failed to install: ${i}"
+            fail_fn "Failed to install: $i"
         fi
         sleep 2
     done
 }
 
-install_choice_fn()
-{
-    printf "\n%s\n\n%s\n\n%s\n%s\n\n" \
-        'Do you want to install all of the scripts now?' \
-        'You must manually remove any scripts you do not want to install before continuing.' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' answer
+install_choice_fn() {
+    local answer
 
-    case "${answer}" in
-        1)      install_scripts_fn;;
-        2)      exit_fn;;
-        *)
-                printf "%s\n\n" 'Bad user input... Resetting script.'
-                sleep 3
-                unset answer
-                clear
-                install_choice_fn
-                ;;
+    printf "\n%s\n\n%s\n\n%s\n%s\n\n" \
+        "Do you want to install all of the scripts now?" \
+        "You must manually remove any scripts you do not want to install before continuing." \
+        "[1] Yes" \
+        "[2] No"
+    read -p "Your choices are (1 or 2): " answer
+
+    case "$answer" in
+        1)  install_scripts_fn ;;
+        2)  exit_fn ;;
+        *)  printf "%s\n\n" "Bad user input... Resetting script."
+            sleep 3
+            clear
+            install_choice_fn
+            ;;
     esac
 }
 
 cd "$cwd" || exit 1
 
-scripts=(attr autoconf bash binutils coreutils dbus diffutils emacs eog gawk gcc gettext-libiconv gnutls grep gzip
-         imath isl libtool m4 make nano ncurses nettle pkg-config readline sed systemd tar texinfo util-linux wget)
-cnt=0
+scripts=(
+    attr autoconf bash binutils coreutils dbus diffutils emacs eog gawk gcc gettext-libiconv gnutls grep gzip
+    imath isl libtool m4 make nano ncurses nettle pkg-config readline sed systemd tar texinfo wget
+)
 
-for script in ${scripts[@]}
+for script in "${scripts[@]}"
 do
-    let cnt=cnt+1
-    wget -U "$user_agent" --show-progress -cq "https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-${script}"
-    mv "build-${script}" "0$cnt-build-${script}"
-done
-
-# RENAME FILES WITH NUMBERS 10 AND HIGHER SO THEY EXECUTE IN THE INTENDED ORDER
-files=(gawk gcc gettext-libiconv gnutls grep gzip imath isl libtool m4 make nano
-       ncurses nettle pkg-config readline sed systemd tar texinfo util-linux wget)
-cnt=9
-
-for i in 1
-do
-    for file in ${files[@]}
-    do
-        ((cnt++)) # << start counting here
-        mv "0$cnt-build-${file}" "$cnt-build-${file}" # << move the files, thus renaming them
-    done
+    wget --show-progress -cq "https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-${script}"
+    mv "build-${script}" "$(printf "%02d" "${#scripts[@]}")-build-${script}"
 done
 
 # ASK THE USER IF THEY WANT TO INSTALL ALL OF THE SCRIPTS
