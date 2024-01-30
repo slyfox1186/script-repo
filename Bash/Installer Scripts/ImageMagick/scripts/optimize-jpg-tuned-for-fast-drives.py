@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-# WARNING: this WILL overwrite the original images!
-# You have been warned!
+# WARNING: This will overwrite your files!
 
 import os
 import subprocess
@@ -10,13 +9,12 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing
 
 def find_jpg_files(directory):
-    for path in Path(directory).rglob('*.jpg'):
-        if '-IM.jpg' not in path.name:
-            yield path
+    jpg_files = [path for path in Path(directory).rglob('*.jpg') if '-IM.jpg' not in path.name]
+    jpg_files = sorted(jpg_files, key=lambda f: int(''.join(filter(str.isdigit, f.name))))
+    return jpg_files
 
 def convert_image(image_path):
     output_path = image_path.parent / f"{image_path.stem}-IM.jpg"
-    # Suppress all output from the convert command
     with open(os.devnull, 'wb') as devnull:
         subprocess.run([
             "convert", str(image_path),
@@ -40,30 +38,21 @@ def convert_image(image_path):
 
 def main():
     directory = '.'  # Current directory
-    files = list(find_jpg_files(directory))
+    files = find_jpg_files(directory)
     total_files = len(files)
 
     print("Starting image conversion...")
-
-    # Dynamically determine the number of processes based on available CPU cores
-    num_processes = multiprocessing.cpu_count()
+    num_processes = 36  # Set to use 36 logical cores
 
     with ProcessPoolExecutor(max_workers=num_processes) as executor:
-        future_to_file = {executor.submit(convert_image, file): file for file in files}
-
-        for index, future in enumerate(as_completed(future_to_file), start=1):
-            filename = future_to_file[future]
+        for index, future in enumerate(as_completed([executor.submit(convert_image, file) for file in files]), start=1):
+            filename = files[index - 1].name
             try:
                 result = future.result()
-                print(f"Converted: {result}")
+                percent = (index / total_files) * 100
+                print(f"Converted: {filename} ({percent:.2f}%)")
             except Exception as e:
                 print(f"Error converting file {filename}: {e}")
-
-            bar_length = 30
-            filled_length = int(bar_length * index // total_files)
-            bar = '█' * filled_length + '-' * (bar_length - filled_length)
-            percent = (index / total_files) * 100
-            print(f"\rProgress: |{bar}| {percent:.2f}%", end='\r')
 
     print("\nImage conversion completed.")
 
