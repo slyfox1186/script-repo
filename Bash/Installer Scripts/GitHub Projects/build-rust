@@ -3,8 +3,8 @@
 clear
 
 # Check if the script is running as root
-if [ "$EUID" -ne 0 ]; then
-    echo "This script must be run as root or with sudo."
+if [ "$EUID" -eq 0 ]; then
+    echo "This script must not be run as root or with sudo."
     exit 1
 fi
 
@@ -95,7 +95,7 @@ rustup_check() {
     log "Checking rustup installation..."
     if ! command -v rustup &> /dev/null; then
         log "Installing rustup..."
-        curl --proto '=https' --tlsv1.2 -sSf "https://sh.rustup.rs" | sh
+        curl -sSf --proto "=https" --tlsv1.2 "https://sh.rustup.rs" | sh -s -- -y &>/dev/null
         source "$HOME/.cargo/env"
     fi
     rustup default nightly
