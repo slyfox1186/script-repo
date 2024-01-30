@@ -78,7 +78,11 @@ fetch_and_install_docker_compose() {
 
     save_to_path="/usr/local/bin/$output_file_name"
 
-    log "Latest release found for $file_name Download link: $download_link"
+    echo
+    log "Successfully identified the latest release"
+    log "File Name: $file_name"
+    log "Download link: $download_link"
+    echo
     log "Downloading Docker Compose..."
 
     curl -Lso "$save_to_path" "$download_link"
