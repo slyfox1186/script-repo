@@ -123,7 +123,9 @@ pkgs_fn() {
 }
 
 # Function to extract the first word from a string
-get_first_word() { echo "$1" | awk '{print $1}'; }
+get_first_word() {
+    echo "$1" | awk '{print $1}'
+}
 
 # Try to detect the OS using /etc/os-release, fall back to lsb_release if available
 if [ -f "/etc/os-release" ]; then
