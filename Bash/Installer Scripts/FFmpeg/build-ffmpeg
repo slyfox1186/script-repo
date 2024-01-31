@@ -5,9 +5,9 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
-##  Script version: 3.3.7
+##  Script version: 3.4.0
 ##
-##  Updated: 01.30.24
+##  Updated: 01.31.24
 ##
 ##  Purpose:
 ##
@@ -37,6 +37,7 @@
 ##
 ##  Updated:
 ##
+##    - the git repositories source using git clone now store the specific branch id and will update each time an update is detected.
 ##    - any apt packages detected that need installing will now prompt the user before installing
 ##    - libvpx had an update that would not compile so I manually set it back to version (1.13.1) - date of change: 01.24.24
 ##    - added or removed apt packages for all distros to fix errors or update as the code requires.
@@ -97,7 +98,7 @@
 #
 
 script_name="${0}"
-script_ver="3.3.7"
+script_ver="3.4.0"
 ffmpeg_ver="n5.1.4"
 ffmpeg_archive="ffmpeg-$ffmpeg_ver.tar.gz"
 ffmpeg_url="https://github.com/FFmpeg/FFmpeg/archive/refs/tags/$ffmpeg_ver.tar.gz"
@@ -270,41 +271,6 @@ download() {
     cd "$target_dir" || fail_fn "Error: Failed to cd into \"$target_dir\". (Line: $LINENO)"
 }
 
-download_git() {
-    local dl_path dl_url dl_file target_dir
-
-    dl_path="$packages"
-    dl_url="$1"
-    dl_file="${2:-"${1##*/}"}"
-    dl_file="${dl_file//\./-}"
-    target_dir="$dl_path/$dl_file"
-
-    if [[ "$3" == "R" ]]; then
-        set_recurse="--recursive"
-    elif [[ -n "$3" ]]; then
-        output_dir="$dl_path/$3"
-        target_dir="$output_dir"
-    fi
-
-    if [[ -d "$target_dir" ]]; then
-        sudo rm -fr "$target_dir"
-    fi
-
-    echo "Downloading $dl_url as $dl_file"
-
-    if ! git clone $set_recurse -q "$dl_url" "$target_dir"; then
-        printf "\n%s\n\n" "Error: Failed to clone \"$target_dir\". Second attempt in 10 seconds..."
-        sleep 10
-        if ! git clone $set_recurse -q "$dl_url" "$target_dir"; then
-            fail_fn "Error: Failed to clone \"$target_dir\". Exiting script. (Line: $LINENO)"
-        fi
-    else
-        printf "%s\n\n" "Successfully cloned: $target_dir"
-    fi
-
-    cd "$target_dir" || fail_fn "Error: Failed to cd into \"$target_dir\". (Line: $LINENO)"
-}
-
 install_rustc_fn() {
     get_rustc_ver="$(rustc --version | grep -Eo "[0-9 \.]+" | head -n1)"
     if [[ "$get_rustc_ver" != "1.73.0" ]]; then
@@ -318,6 +284,65 @@ install_rustc_fn() {
         fi
         rm -fr "$HOME"/.cargo/registry/index/* "$HOME"/.cargo/.package-cache
     fi
+}
+
+git_call_fn() {
+    git_url="$1"
+    repo_name="$2"
+    version="$(download_git "$git_url" "$repo_name")"
+    version="${version//Building version: /}"
+}
+
+download_git() {
+    local dl_url="$1"
+    local dl_file="${2:-"${1##*/}"}"
+    local dl_file="${dl_file//\./-}"
+    local target_dir="$packages/$dl_file"
+    local version
+
+    # Try to get the latest tag
+    version=$(git ls-remote --tags "$dl_url" |
+             awk -F'/' '/\/v?[0-9]+\.[0-9]+(\.[0-9]+)?(\^\{\})?$/ {print $3}' |
+             grep -v '\^{}' |
+             sort -V |
+             tail -n1 |
+             sed 's/^v//')
+
+    # If no tags found, use the latest commit hash as the version
+    if [[ -z "$version" ]]; then
+        version=$(git ls-remote "$dl_url" | grep HEAD | awk '{print substr($1,1,7)}')
+        if [[ -z "$version" ]]; then
+            version="unknown"
+        fi
+    fi
+
+    [[ -f "$packages/${dl_file}.done" ]] && store_prior_version="$(cat "$packages/${dl_file}.done")"
+    
+    if [[ ! "$version" == "$store_prior_version" ]]; then
+        if [[ "$2" == "R" ]]; then
+            recurse="--recursive"
+        elif [[ -n "$3" ]]; then
+            output_dir="$dl_path/$3"
+            target_dir="$output_dir"
+        fi
+        [[ -d "$target_dir" ]] && rm -fr "$target_dir"
+        # Clone the repository
+        if ! git clone --depth 1 $recurse -q "$dl_url" "$target_dir"; then
+            printf "\n%s\n\n" "Error: Failed to clone \"$target_dir\". Second attempt in 10 seconds..."
+            sleep 10
+            if ! git clone --depth 1 $recurse -q "$dl_url" "$target_dir"; then
+                fail_fn "Error: Failed to clone \"$target_dir\". Exiting script. (Line: $LINENO)"
+            fi
+        else
+            printf "%s\n\n" "Successfully cloned: $target_dir" >&2
+        fi
+        cd "$target_dir" || fail_fn "Error: Failed to cd into \"$target_dir\". (Line: $LINENO)"
+    else
+        git_built_flag=""
+        git_built_flag="1"
+    fi
+        echo "Building version: $version"
+    return 0
 }
 
 # LOCATE GITHUB RELEASE VERSION NUMBERS USING GIT CLONE
@@ -578,10 +603,10 @@ build() {
     printf "\n%s\n%s\n" \
         "Building $1 - version $2" \
         "========================================================"
-
     if [[ -f "$packages/$1.done" ]]; then
         if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
-            echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
+            echo "$1 version $2 already built."
+            echo "Remove $packages/$1.done lockfile to rebuild it."
             return 1
         elif "$latest"; then
             echo "$1 is outdated and will be rebuilt using version $2"
@@ -1028,7 +1053,7 @@ pkgs_fn() {
     # Define an array of apt package names
     pkgs=(
         $1 $libcppabi_pkg $libcpp_pkg $libunwind_pkg $openjdk_pkg ant apt asciidoc autoconf
-        autoconf-archive automake autopoint binutils bison build-essential cargo ccache
+        autoconf-archive automake autopoint binutils bison build-essential cargo cargo-c ccache
         checkinstall clang clang-tools cmake curl doxygen fcitx-libs-dev flex flite1-dev
         freeglut3-dev frei0r-plugins-dev gawk gettext gimp-data git gnome-desktop-testing
         gnustep-gui-runtime google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq
@@ -1119,11 +1144,26 @@ x265_fix_libs_fn() {
     esac
 }
 
+fix_pulse_meson_build_file() {
+    FILE_PATH="meson.build"
+
+    # Replace the original pa_version_minor and pa_version_micro blocks
+    sed -i "/pa_version_major = version_split\[0\].split('v')\[0\]/a \\
+if version_split.length() > 1\\n  pa_version_minor = version_split[1]\\nelse\\n  pa_version_minor = '0'\\nendif" "$FILE_PATH"
+
+    sed -i "/pa_version_minor = '0'/a \\
+\\nif version_split.length() > 2\\n  pa_version_micro = version_split[2]\\nelse\\n  pa_version_micro = '0'\\nendif" "$FILE_PATH"
+
+    # Remove the original pa_version_minor and pa_version_micro lines
+    sed -i '/pa_version_minor = version_split\[1\]/d' "$FILE_PATH"
+    sed -i '/pa_version_micro = version_split\[2\]/d' "$FILE_PATH"
+}
+
 libpulse_fix_libs_fn() {
     local libpulse_lib libpulse_trim
 
-    libpulse_lib="$(find "$workspace/lib"/ -type f -name 'libpulsecommon-*.so')"
-    libpulse_trim="$(echo "$libpulse_lib" | sed "s:.*/::" | head -n1)"
+    libpulse_lib="$(find $workspace/lib/ -type f -name 'libpulsecommon-*.so' | head -n1)"
+    libpulse_trim="$(echo "$libpulse_lib" | sed 's:.*/::' | head -n1)"
 
     if [[ "$OS" == "Arch" ]]; then
         if [[ ! -d "/usr/lib/pulseaudio" ]]; then
@@ -1509,8 +1549,9 @@ fi
 if [[ "$OS" == "Arch" ]]; then
     librist_arch_fn
 else
-    if build "librist" "git"; then
-        download_git "https://code.videolan.org/rist/librist.git"
+    git_ver_fn "816" "2" "T"
+    if build "librist" "$g_ver1"; then
+        download "https://code.videolan.org/rist/librist/-/archive/v$g_ver1/librist-v$g_ver1.tar.bz2" "librist-$g_ver1.tar.bz2"
         execute meson setup build --prefix="$workspace" \
                                   --buildtype=release \
                                   --default-library=static \
@@ -1519,7 +1560,7 @@ else
                                   -Dtest=false
         execute ninja "-j$cpu_threads" -C build
         execute ninja -C build install
-        build_done "librist" "git"
+        build_done "librist" "$g_ver1"
     fi
 fi
 
@@ -1704,15 +1745,16 @@ if [[ "$VER" != "18.04" ]]; then
     fi
 fi
 
-if build "c2man" "git"; then
-    download_git "https://github.com/fribidi/c2man.git"
+git_call_fn "https://github.com/fribidi/c2man.git" "c2man-git"
+if build "$repo_name" "$version"; then
+    download_git "$git_url"
     execute ./Configure -desO \
                         -D bash="$(type -P bash)" \
                         -D bin="$workspace/bin" \
-                        -D cc=/usr/bin/cc \
-                        -D d_gnu=/usr/lib/x86_64-linux-gnu \
+                        -D cc="/usr/bin/cc" \
+                        -D d_gnu="/usr/lib/x86_64-linux-gnu" \
                         -D find="$(type -P find)" \
-                        -D gcc=/usr/bin/gcc \
+                        -D gcc="/usr/bin/gcc" \
                         -D gzip="$(type -P gzip)" \
                         -D installmansrc="$workspace/share/man" \
                         -D ldflags="$LDFLAGS" \
@@ -1739,7 +1781,7 @@ if build "c2man" "git"; then
     execute make depend
     execute make "-j$cpu_threads"
     execute sudo make install
-    build_done "c2man" "git"
+    $(build_done "$repo_name" "$version")
 fi
 
 git_ver_fn "fribidi/fribidi" "1" "T"
@@ -1788,8 +1830,9 @@ if build "freeglut" "$g_ver"; then
     build_done "freeglut" "$g_ver"
 fi
 
-if build "libwebp" "git"; then
-    download_git "https://chromium.googlesource.com/webm/libwebp" "libwebp-git"
+git_call_fn "https://chromium.googlesource.com/webm/libwebp" "libwebp-git"
+if build "$repo_name" "$version"; then
+    download_git "$git_url"
     execute autoreconf -fi
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$install_dir" \
@@ -1806,7 +1849,7 @@ if build "libwebp" "git"; then
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute sudo ninja "-j$cpu_threads" -C build install
-    build_done "libwebp" "git"
+    $(build_done "$repo_name" "$version")
 fi
 ffmpeg_libraries+=("--enable-libwebp")
 
@@ -1884,8 +1927,9 @@ else
     ffmpeg_libraries+=("--enable-libjxl")
 fi
 
-if build "opencl-sdk" "git"; then
-    download_git "https://github.com/KhronosGroup/OpenCL-SDK.git" "opencl-sdk-git" "R"
+git_call_fn "https://github.com/KhronosGroup/OpenCL-SDK.git" "opencl-sdk-git" 2>&1
+if build "$repo_name" "$version"; then
+    download_git "$git_url" "R"
     execute cmake \
             -S . \
             -B build \
@@ -1908,7 +1952,7 @@ if build "opencl-sdk" "git"; then
             -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    build_done "opencl-sdk" "git"
+    $(build_done "$repo_name" "$version")
 fi
 
 git_ver_fn "DanBloomberg/leptonica" "1" "T"
@@ -1942,8 +1986,9 @@ if build "tesseract" "$g_ver"; then
 fi
 ffmpeg_libraries+=("--enable-libtesseract")
 
-if build "jpeg-turbo" "git"; then
-    download_git "https://github.com/imageMagick/jpeg-turbo.git"
+git_call_fn "https://github.com/imageMagick/jpeg-turbo.git" "jpeg-turbo-git"
+if build "$repo_name" "$version"; then
+    download_git "$git_url"
     execute cmake -S . \
                   -DCMAKE_INSTALL_PREFIX="$install_dir" \
                   -DCMAKE_BUILD_TYPE=Release \
@@ -1952,13 +1997,15 @@ if build "jpeg-turbo" "git"; then
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads"
     execute sudo ninja "-j$cpu_threads" install
-    build_done "jpeg-turbo" "git"
+    save_version="$(build_done "$repo_name" "$version")"
+    $(build_done "$repo_name" "$version")
 fi
 
-if build "rubberband" "git"; then
-    download_git "https://github.com/m-ab-s/rubberband.git"
+git_call_fn "https://github.com/m-ab-s/rubberband.git" "rubberband-git"
+if build "$repo_name" "$version"; then
+    download_git "$git_url"
     execute make "-j$cpu_threads" PREFIX="$workspace" install-static
-    build_done "rubberband" "git"
+    $(build_done "$repo_name" "$version")
 fi
 ffmpeg_libraries+=("--enable-librubberband")
 
@@ -1993,8 +2040,9 @@ if build "c-ares" "1.23.0"; then
     build_done "c-ares" "1.23.0"
 fi
 
-if build "lv2" "git"; then
-    download_git "https://github.com/lv2/lv2.git"
+git_call_fn "https://github.com/lv2/lv2.git" "lv2-git"
+if build "$repo_name" "$version"; then
+    download_git "$git_url"
     extracmds=("-D"{docs,tests}"=disabled")
     case "$VER" in
         10|11)      pswitch=enabled;;
@@ -2013,7 +2061,7 @@ if build "lv2" "git"; then
                               "${extracmds[@]}"
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    build_done "lv2" "git"
+    $(build_done "$repo_name" "$version")
 fi
 
 git_ver_fn "7131569" "3" "T"
@@ -2112,8 +2160,9 @@ fi
 CFLAGS+=" -I$workspace/include/lilv-0"
 ffmpeg_libraries+=("--enable-lv2")
 
-if build "libmpg123" "git"; then
-    download_git "https://github.com/gypified/libmpg123.git"
+git_call_fn "https://github.com/gypified/libmpg123.git" "libmpg123-git"
+if build "$repo_name" "$version"; then
+    download_git "$git_url"
     execute rm -fr aclocal.m4
     execute aclocal --force -I m4
     execute autoconf -f -W all,no-obsolete
@@ -2125,7 +2174,7 @@ if build "libmpg123" "git"; then
                         --with-cpu=x86-64
     execute make "-j$cpu_threads"
     execute make install
-    build_done "libmpg123" "git"
+    $(build_done "$repo_name" "$version")
 fi
 
 git_ver_fn "akheron/jansson" "1" "T"
@@ -2154,13 +2203,14 @@ if build "jemalloc" "$g_ver"; then
     build_done "jemalloc" "$g_ver"
 fi
 
-if build "cunit" "git"; then
-    download_git "https://github.com/jacklicn/cunit.git"
+git_call_fn "https://github.com/jacklicn/cunit.git" "cunit-git"
+if build "$repo_name" "$version"; then
+    download_git "$git_url"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$cpu_threads"
     execute make install
-    build_done "cunit" "git"
+    $(build_done "$repo_name" "$version")
 fi
 
 #
@@ -2183,8 +2233,9 @@ box_out_banner_audio() {
 }
 box_out_banner_audio "Installing Audio Tools"
 
-if build "sdl2" "git"; then
-    download_git "https://github.com/libsdl-org/SDL.git" "sdl2-git"
+git_call_fn "https://github.com/libsdl-org/SDL.git" "sdl2-git"
+if build "$repo_name" "$version"; then
+    download_git "$git_url"
     execute cmake -S . -B build \
                        -DCMAKE_INSTALL_PREFIX="$workspace" \
                        -DCMAKE_BUILD_TYPE=Release \
@@ -2195,7 +2246,7 @@ if build "sdl2" "git"; then
                        -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    build_done "sdl2" "git"
+    $(build_done "$repo_name" "$version")
 fi
 
 git_ver_fn "libsndfile/libsndfile" "1" "T"
@@ -2212,9 +2263,11 @@ if build "libsndfile" "$g_ver"; then
     build_done "libsndfile" "$g_ver"
 fi
 
-git_ver_fn "810" "4"
-if build "libpulse" "git"; then
-    download_git "https://gitlab.freedesktop.org/pulseaudio/pulseaudio.git"
+# git_ver_fn "810" "4"
+git_call_fn "https://gitlab.freedesktop.org/pulseaudio/pulseaudio.git" "pulseaudio-git"
+if build "$repo_name" "$version"; then
+    download_git "$git_url"
+    fix_pulse_meson_build_file
     extracmds=("-D"{daemon,doxygen,ipv6,man,tests}"=false")
     execute meson setup build --prefix="$workspace" \
                               --buildtype=release \
@@ -2224,7 +2277,7 @@ if build "libpulse" "git"; then
     execute ninja "-j$cpu_threads" -C build
     execute sudo ninja "-j$cpu_threads" -C build install
     libpulse_fix_libs_fn
-    build_done "libpulse" "git"
+    $(build_done "$repo_name" "$version")
 fi
 ffmpeg_libraries+=("--enable-libpulse")
 
@@ -2434,10 +2487,11 @@ box_out_banner_video() {
 }
 box_out_banner_video "Installing Video Tools"
 
-amd_gpu_test="$(glxinfo 2>/dev/null | grep -E "OpenGL renderer" | grep -Eo "AMD \s.*$")"
+amd_gpu_test="$(check_amd_gpu)"
+git_call_fn "https://github.com/KhronosGroup/Vulkan-Headers.git" "vulkan-headers-git"
 if [[ -n "$amd_gpu_test" ]]; then
-    if build "vulkan-headers" "git"; then
-        download_git "https://github.com/KhronosGroup/Vulkan-Headers.git" "vulkan-headers-git"
+    if build "$repo_name" "$version"; then
+        download_git "$git_url" "vulkan-headers-git"
         execute cmake -B build \
                       -DCMAKE_INSTALL_PREFIX="$workspace" \
                       -DCMAKE_BUILD_TYPE=Release \
@@ -2447,7 +2501,7 @@ if [[ -n "$amd_gpu_test" ]]; then
                       -G Ninja -Wno-dev
         execute ninja "-j$cpu_threads" -C build
         execute ninja -C build install
-        build_done "vulkan-headers" "git"
+        $(build_done "$repo_name" "$version")
     fi
     ffmpeg_libraries+=("--enable-vulkan")
 fi
@@ -2495,9 +2549,10 @@ if build "dav1d" "$g_ver1"; then
 fi
 ffmpeg_libraries+=("--enable-libdav1d")
 
+# MANUALLY UPDATE THIS FROM TIME TO TIME
 # RAV1E FAILS TO BUILD ON UBUNTU BIONIC AND DEBIAN 11 BULLSEYE
 if [[ "$VER" != "18.04" ]] && [[ "$VER" != "11" ]]; then
-    git_ver_fn "xiph/rav1e" "1" "T" "/releases/tag"
+    # git_ver_fn "xiph/rav1e" "1" "T" "/releases/tag"
     if build "rav1e" "0.7.1"; then
         install_rustc_fn
         execute cargo install cargo-c
@@ -2529,16 +2584,16 @@ if build "avif" "$g_ver"; then
     build_done "avif" "$g_ver"
 fi
 
-git_ver_fn "ultravideo/kvazaar" "1" "T"
-if build "kvazaar" "$g_ver"; then
-    download_git "https://github.com/ultravideo/kvazaar.git"
+git_call_fn "https://github.com/ultravideo/kvazaar.git" "kvazaar-git"
+if build "$repo_name" "$version"; then
+    download_git "$git_url"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" \
                         --{build,host}="$pc_type" \
                         --disable-shared
     execute make "-j$cpu_threads"
     execute make install
-    build_done "kvazaar" "$g_ver"
+    $(build_done "$repo_name" "$version")
 fi
 ffmpeg_libraries+=("--enable-libkvazaar")
 
@@ -2571,11 +2626,12 @@ if [[ "$OS" == "Arch" ]]; then
     apache_ant_fn
 else
     ant_path_fn
-    if build "ant" "git"; then
-        download_git "https://github.com/apache/ant.git"
+    git_call_fn "https://github.com/apache/ant.git" "ant-git"
+    if build "$repo_name" "$version"; then
+        download_git "$git_url"
         sudo chmod 777 -R "$install_dir/ant"
         execute sh build.sh install-lite
-        build_done "ant" "git"
+        $(build_done "$repo_name" "$version")
     fi
 fi
 
@@ -2688,9 +2744,9 @@ if [[ "$OS" == "Arch" ]]; then
         build_done "gpac" "$g_ver"
     fi
 else
-    git_ver_fn "gpac/gpac" "1" "T"
-    if build "gpac" "$g_ver"; then
-        download_git "https://github.com/gpac/gpac.git"
+    git_call_fn "https://github.com/gpac/gpac.git" "gpac-git"
+    if build "$repo_name" "$version"; then
+        download_git "$git_url"
         execute sudo ./configure --prefix="$install_dir" \
                                  --static-bin \
                                  --static-modules \
@@ -2701,7 +2757,7 @@ else
                                  --sdl-cfg="$workspace/include/SDL3"
         execute sudo make "-j$cpu_threads"
         execute sudo make install
-        build_done "gpac" "$g_ver"
+        $(build_done "$repo_name" "$version")
     fi
 fi
 
@@ -2928,8 +2984,9 @@ if build "vapoursynth" "R65"; then
 fi
 ffmpeg_libraries+=("--enable-vapoursynth")
 
-if build "libgav1" "git"; then
-    download_git "https://chromium.googlesource.com/codecs/libgav1" "libgav1-git"
+git_call_fn "https://chromium.googlesource.com/codecs/libgav1" "libgav1-git"
+if build "$repo_name" "$version"; then
+    download_git "$git_url"
     execute git clone -q -b "20220623.1" --depth 1 "https://github.com/abseil/abseil-cpp.git" "third_party/abseil-cpp"
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
@@ -2943,7 +3000,7 @@ if build "libgav1" "git"; then
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    build_done "libgav1" "git"
+    $(build_done "$repo_name" "$version")
 fi
 
 git_ver_fn "8268" "6"
