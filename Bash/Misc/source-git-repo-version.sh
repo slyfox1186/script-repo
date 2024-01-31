@@ -3,19 +3,25 @@
 # Function to retrieve the latest Git tag version from a repository
 get_latest_git_tag() {
     local url="$1"
+    local tags_url="${url/.git/}/tags"
     local tag_version
 
-    # Fetch the latest tag version, sort, and keep the last one
-    tag_version=$(git ls-remote --tags "$url" | \
-                  awk -F'/' '{print $NF}' | \
-                  grep -Eo '[0-9]+[-_\.]*[0-9]+([-_\.]*[0-9]+)*' | \
-                  sort -V | \
-                  tail -n1)
-    
-    # Format the version by replacing underscores and possible preceding characters with dots
-    formatted_version=$(echo "$tag_version" | sed 's/[^0-9]*\([0-9]\+\)[-_]\?\([0-9]\+\)[-_]\?\([0-9]\+\).*/\1.\2.\3/')
+    # Try fetching from the original URL
+    tag_version=$(curl -sSL "$url" | parse_version)
+    if [[ -z "$tag_version" ]]; then
+        # If no version found, try the alternative URL
+        tag_version=$(curl -sSL "$tags_url" | parse_version)
+    fi
 
-    echo "$formatted_version"
+    echo "$tag_version"
+}
+
+parse_version() {
+    grep -Eo 'href="[^"]*\/tag\/[a-z\.\-]*[0-9][0-9\.\_]+[0-9\.\-]*"' |
+    grep -Eo '[0-9][0-9\.\_]+[0-9\.\-]*' |
+    grep -Ev 'rc|RC' |
+    sort -rV |
+    head -n1
 }
 
 # Check if a URL is provided as an argument
