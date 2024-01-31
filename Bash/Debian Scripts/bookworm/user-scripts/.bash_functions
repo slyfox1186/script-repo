@@ -1369,6 +1369,40 @@ gc() {
     fi
 }
 
+kill_process() {
+    local program_name=$1
+    clear
+
+    if [[ -z "$program_name" ]]; then
+        printf "%s\n\n" "Usage: kill_process name."
+        return 1
+    fi
+
+    echo "Checking for running instances of '$program_name'..."
+
+    # Find all PIDs for the given process
+    local pids=$(pgrep -f "$program_name")
+
+    if [[ -z "$pids" ]]; then
+        echo "No instances of '$program_name' are running."
+        return 0
+    fi
+
+    echo "Found instances of '$program_name' with PIDs: $pids"
+    echo "Attempting to kill all instances of '$program_name'..."
+
+    local pid
+    for pid in $pids; do
+        echo "Killing PID $pid..."
+        sudo kill -9 "$pid" || {
+            echo "Failed to kill PID $pid. Check your permissions."
+            continue
+        }
+    done
+
+    echo "All instances of '$program_name' have been attempted to be killed."
+}
+
 ####################
 ## NOHUP COMMANDS ##
 ####################
