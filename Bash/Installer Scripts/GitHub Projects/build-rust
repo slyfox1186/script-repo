@@ -3,6 +3,8 @@
 # Clear the terminal
 clear
 
+RUST_SRC_DIR="rust-build-script"
+
 # Function to log messages
 log_message() {
     echo "[LOG] $1"
@@ -13,9 +15,6 @@ handle_error() {
     echo "[ERROR] $1"
     exit 1
 }
-
-RUST_SRC_DIR="rust-build-script"
-
 # Cleanup leftover files from previous runs
 [[ -d "$RUST_SRC_DIR" ]] && rm -fr "$RUST_SRC_DIR"
 
