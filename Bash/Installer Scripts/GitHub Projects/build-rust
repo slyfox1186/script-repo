@@ -1,162 +1,42 @@
 #!/usr/bin/env bash
 
+# Clear the terminal
 clear
 
-# Check if the script is running as root
-if [ "$EUID" -eq 0 ]; then
-    echo "This script must not be run as root or with sudo."
+# Function to log messages
+log_message() {
+    echo "[LOG] $1"
+}
+
+# Function to handle errors
+handle_error() {
+    echo "[ERROR] $1"
     exit 1
-fi
+}
 
-log() { echo -e "\e[32m$1\e[0m"; }
-log_error() { echo -e "\e[31m$1\e[0m" >&2; }
-
-# Check for necessary dependencies
-for cmd in git curl python3
-do
-    if ! command -v "$cmd" &>/dev/null; then
-        log_error "$cmd could not be found"
-        exit 1
-    fi
-done
-
-# Rust installation variables
-RUST_GIT_URL="https://github.com/rust-lang/rust.git"
 RUST_SRC_DIR="rust-build-script"
 
-set_gcc_arch_flags() {
-    # Download the script and capture only the last line of the output
-    march="$(curl -sSL "https://get-gcc.optimizethis.net" | bash | tail -n1)"
+# Cleanup leftover files from previous runs
+[[ -d "$RUST_SRC_DIR" ]] && rm -fr "$RUST_SRC_DIR"
 
-    # Check if arch has a value
-    if [ -n "$march" ]; then
-        printf "\n%s\n%s\n" "GCC architechure script sourced" "=========================================="
-        echo "Retrieved architecture: $march"
-    else
-        echo "Failed to source the script or retrieve the architecture."
-        exit 1
-    fi
+# Shallow clone option (uncomment if needed)
+log_message "Performing a shallow clone of the Rust repository..."
+git clone --depth 1 "https://github.com/rust-lang/rust.git" "$RUST_SRC_DIR" || handle_error "Failed to perform a shallow clone."
+cd "$RUST_SRC_DIR" || handle_error "Failed to change directory to the cloned repository."
 
-    # Define optimization flags
-    OPT_FLAGS="-O3 -pipe -march=$march"
-    export OPT_FLAGS
+# Create a config.toml
+log_message "Creating a config.toml file..."
+./x setup dist || handle_error "Failed to run './x setup'."
 
-    # Check for necessary dependencies
-    for cmd in git curl python3
-    do
-        if ! command -v "$cmd" &> /dev/null; then
-            log_error "$cmd could not be found"
-            exit 1
-        fi
-    done
-}
+# Build the compiler
+log_message "Building the compiler..."
+./x build library || handle_error "Failed to build the compiler."
 
-# Function to install the latest available version of specified gcc versions and set CC and CXX
-install_gcc_and_set_variables() {
-    # Update the package list
-    sudo apt update
+# Creating rustup toolchains
+log_message "Creating rustup toolchains..."
+rustup toolchain link stage0 build/host/stage0-sysroot || handle_error "Failed to create stage0 toolchain."
+rustup toolchain link stage1 build/host/stage1 || handle_error "Failed to create stage1 toolchain."
+rustup toolchain link stage2 build/host/stage2 || handle_error "Failed to create stage2 toolchain."
 
-    # Clang versions to search for in order of preference
-    versions=("gcc-12" "gcc-11" "gcc-10" "gcc-9gcc")
+log_message "Rust compiler installation and build process completed successfully."
 
-    installed_version=""
-
-    # Install the latest available version
-    for version in "${versions[@]}"
-    do
-        if apt search "^${version}$" | grep -q "^${version}/"; then
-            echo "Installing ${version}..."
-            if ! sudo apt install -y "${version}"; then
-                echo "Error: Failed to install the latest clang version using APT."
-                exit 1
-            fi
-            installed_version="$version"
-            break
-        fi
-    done
-
-    if [ -z "$installed_version" ]; then
-        echo "Error: No specified version of clang found."
-        exit 1
-    fi
-
-    # Set CC to the specific version of gcc and CXX to the specific version of g++
-    CC="$installed_version"
-    MODIFY_CXX="${installed_version/gcc-/}"
-    CXX="g++-${MODIFY_CXX}"
-    export CC CXX
-
-    echo "CC variable set to $CC"
-    echo "CXX variable set to $CXX"
-}
-
-# Check and install rustup
-rustup_check() {
-    log "Checking rustup installation..."
-    if ! command -v rustup &> /dev/null; then
-        log "Installing rustup..."
-        curl -sSf --proto "=https" --tlsv1.2 "https://sh.rustup.rs" | sh -s -- -y &>/dev/null
-        source "$HOME/.cargo/env"
-    fi
-    rustup default nightly
-}
-
-# Fetch the latest Rust version
-fetch_latest_rust_version() {
-    latest_version=$(git ls-remote --tags "$RUST_GIT_URL" | \
-                     awk -F/ '/tags\/[0-9]+\.[0-9]+\.[0-9]+$/ {print $3}' | \
-                     sort -V | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | tail -n1)
-    echo "$latest_version"
-}
-
-log "Fetching the latest stable Rust version..."
-RUST_VERSION=$(fetch_latest_rust_version)
-if [ -z "$RUST_VERSION" ]; then
-    log_error "Failed to fetch the latest Rust version."
-    exit 1
-fi
-
-log "Latest stable Rust version: $RUST_VERSION"
-
-clone_rust_source() {
-    [ -d "$RUST_SRC_DIR" ] && rm -fr "$RUST_SRC_DIR"
-    log "Cloning Rust source code into an empty directory..."
-    git clone --branch "$RUST_VERSION" --depth 1 "$RUST_GIT_URL" "$RUST_SRC_DIR" || exit 1
-}
-
-# Configure Rust build
-configure_rust() {
-    log "Configuring and building Rust..."
-    rm "config.toml"
-    ./configure --enable-docs --enable-ccache --enable-llvm-static-stdcpp --enable-rpath \
-                --python="$(type -P python3)" --enable-use-libcxx --enable-optimize-llvm \
-                --enable-extended --llvm-cflags="$OPT_FLAGS" --llvm-cxxflags="$OPT_FLAGS" \
-                --release-channel=stable
-}
-
-build_rust() {
-    log "Installing Rust..."
-    python3 x.py build || exit 1
-}
-
-install_rust() {
-    log "Installing Rust..."
-    python3 x.py install || exit 1
-}
-
-cleanup_files() {
-    cd ../ || exit 1
-    rm -fr "$RUST_SRC_DIR"
-}
-
-install_gcc_and_set_variables
-rustup_check
-fetch_latest_rust_version
-clone_rust_source
-cd "$RUST_SRC_DIR" || exit 1
-configure_rust
-build_rust
-install_rust
-cleanup_files
-
-log "Rust installation completed successfully."
