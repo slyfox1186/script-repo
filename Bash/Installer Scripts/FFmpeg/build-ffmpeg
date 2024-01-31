@@ -292,7 +292,7 @@ git_call_fn() {
     recurse_flag=""
     [ -n "$3" ] && recurse_flag="1"
     version="$(download_git "$git_url" "$repo_name")"
-    version="${version//Building version: /}"
+    version="${version//\$ Successfully cloned: /}"
 }
 
 download_git() {
@@ -341,7 +341,7 @@ download_git() {
         git_built_flag=""
         git_built_flag="1"
     fi
-        echo "Building version: $version"
+    echo "\$ Successfully cloned: $version"
     return 0
 }
 
@@ -958,7 +958,6 @@ install_cuda_fn() {
     echo "AMD GPU Test Output: $amd_gpu_test"
     echo "NVIDIA GPU Test Output: $nvidia_gpu_test"
     echo "Expected Latest CUDA Version: $cuda_latest_ver"
-    echo
 
     if [ "$amd_gpu_test" == "AMD GPU detected." ] || [ "$nvidia_gpu_test" != "$cuda_latest_ver" ]; then
         if [[ -n "$nvidia_gpu_test" ]] || [[ -n "$wsl_test" ]]; then
