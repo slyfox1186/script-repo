@@ -1929,7 +1929,7 @@ fi
 
 git_call_fn "https://github.com/KhronosGroup/OpenCL-SDK.git" "opencl-sdk-git" 2>&1
 if build "$repo_name" "$version"; then
-    download_git "$git_url" "R"
+    download_git "$git_url"
     execute cmake \
             -S . \
             -B build \
