@@ -21,7 +21,7 @@ fi
 script_ver=1.2
 archive_ver=1.5.5
 archive_dir="zstd-$archive_ver"
-archive_url="https://github.com/facebook/zstd/releases/download/v${archive_ver}/$archive_dir.tar.gz"
+archive_url="https://github.com/facebook/zstd/releases/download/v$archive_ver/$archive_dir.tar.gz"
 archive_ext="${archive_url//*.}"
 archive_name="$archive_dir.tar.${archive_ext}"
 install_dir=/usr/local
@@ -161,8 +161,8 @@ fi
 # DOWNLOAD THE ARCHIVE FILE
 #
 
-if [ ! -f "$cwd/${archive_name}" ]; then
-    curl -Lso "$cwd/$archive_name" "$archive_url"
+if [ ! -f "$cwd/$archive_name" ]; then
+    wget --show-progress -cqO "$cwd/$archive_name" "$archive_url"
 fi
 
 #
@@ -199,6 +199,11 @@ fi
 echo
 if ! sudo ninja -C build install; then
     fail_fn "Failed to execute: sudo ninja -C build install. Line: $LINENO"
+fi
+
+if [[ ! -f "/usr/lib/x86_64-linux-gnu/libzstd.so.1.5.5" ]]; then
+    sudo cp -f "$install_dir/lib/x86_64-linux-gnu/libzstd.so.1.5.5" "/usr/lib/x86_64-linux-gnu/libzstd.so.1.5.5"
+    sudo ln -sf "/usr/lib/x86_64-linux-gnu/libzstd.so.1.5.5" "/usr/lib/x86_64-linux-gnu/libzstd.so.1"
 fi
 
 # PROMPT USER TO CLEAN UP FILES
