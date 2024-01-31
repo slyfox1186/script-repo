@@ -1927,7 +1927,7 @@ else
     ffmpeg_libraries+=("--enable-libjxl")
 fi
 
-git_call_fn "https://github.com/KhronosGroup/OpenCL-SDK.git" "opencl-sdk-git" 2>&1
+git_call_fn "https://github.com/KhronosGroup/OpenCL-SDK.git" "opencl-sdk-git"
 if build "$repo_name" "$version"; then
     download_git "$git_url"
     execute cmake \
