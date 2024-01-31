@@ -289,6 +289,8 @@ install_rustc_fn() {
 git_call_fn() {
     git_url="$1"
     repo_name="$2"
+    recurse_flag=""
+    [ -n "$3" ] && recurse_flag="1"
     version="$(download_git "$git_url" "$repo_name")"
     version="${version//Building version: /}"
 }
@@ -319,7 +321,7 @@ download_git() {
     [[ -f "$packages/${dl_file}.done" ]] && store_prior_version="$(cat "$packages/${dl_file}.done")"
     
     if [[ ! "$version" == "$store_prior_version" ]]; then
-        if [[ "$2" == "R" ]]; then
+        if [[ "$recurse_flag" == 1 ]]; then
             recurse="--recursive"
         elif [[ -n "$3" ]]; then
             output_dir="$dl_path/$3"
@@ -333,8 +335,6 @@ download_git() {
             if ! git clone --depth 1 $recurse -q "$dl_url" "$target_dir"; then
                 fail_fn "Error: Failed to clone \"$target_dir\". Exiting script. (Line: $LINENO)"
             fi
-        else
-            printf "%s\n\n" "Successfully cloned: $target_dir" >&2
         fi
         cd "$target_dir" || fail_fn "Error: Failed to cd into \"$target_dir\". (Line: $LINENO)"
     else
@@ -1927,7 +1927,7 @@ else
     ffmpeg_libraries+=("--enable-libjxl")
 fi
 
-git_call_fn "https://github.com/KhronosGroup/OpenCL-SDK.git" "opencl-sdk-git"
+git_call_fn "https://github.com/KhronosGroup/OpenCL-SDK.git" "opencl-sdk-git" "R"
 if build "$repo_name" "$version"; then
     download_git "$git_url"
     execute cmake \
