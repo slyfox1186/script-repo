@@ -1327,22 +1327,34 @@ arch_os_ver_fn() {
     arch_pkgs=(
                 av1an bluez-libs clang cmake dav1d devil docbook5-xml flite gdb gettext git gperf
                 gperftools jdk17-openjdk ladspa jq libde265 libjpeg-turbo libjxl libjpeg6-turbo libmusicbrainz5
-                libnghttp2 libwebp libyuv meson nasm ninja numactl opencv pd perl-datetime texlive-basic
+                libnghttp2 libwebp libyuv meson nasm ninja numactl opencv pd perl-datetime sudo texlive-basic
                 texlive-binextra tk valgrind webp-pixbuf-loader xterm yasm
     )
 
-    # REMOVE ANY LOCKS ON PACMAN
+    # Check for Pacman lock file and if Pacman is running
     if [[ -f "/var/lib/pacman/db.lck" ]]; then
-        rm "/var/lib/pacman/db.lck"
+        echo "Pacman lock file found. Checking if Pacman is running..."
+        while pgrep -x pacman > /dev/null; do
+            echo "Pacman is currently running. Waiting for it to finish..."
+            sleep 5 # Wait for 5 seconds before checking again
+        done
+        
+        # If Pacman is not running after the loop, it's safe to assume it was previously interrupted.
+        if ! pgrep -x pacman > /dev/null; then
+            echo "Pacman is not running. Removing stale lock file..."
+            sudo rm "/var/lib/pacman/db.lck"
+        fi
     fi
 
     for pkg in "${arch_pkgs[@]}"
     do
-        pacman -Sq --needed --noconfirm $pkg 2>&1
+        echo "Installing $pkg..."
+        sudo pacman -Sq --needed --noconfirm $pkg 2>&1
     done
 
-    # INSTALL REQUIRED PIP MODULES
-    pip install DateTime Sphinx wheel
+    # Install required PIP modules
+    echo "Installing Python modules with PIP..."
+    sudo pip install DateTime Sphinx wheel
     clear
 }
 
