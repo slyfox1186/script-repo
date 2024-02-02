@@ -2285,6 +2285,24 @@ if build "libsndfile" "$g_ver"; then
     build_done "libsndfile" "$g_ver"
 fi
 
+# git_ver_fn "810" "4"
+git_call_fn "https://gitlab.freedesktop.org/pulseaudio/pulseaudio.git" "pulseaudio-git"
+if build "$repo_name" "${version//\$ /}"; then
+    download_git "$git_url"
+    fix_pulse_meson_build_file
+    extracmds=("-D"{daemon,doxygen,ipv6,man,tests}"=false")
+    execute meson setup build --prefix="$workspace" \
+                              --buildtype=release \
+                              --default-library=static \
+                              --strip \
+                               "${extracmds[@]}"
+    execute ninja "-j$cpu_threads" -C build
+    execute sudo ninja "-j$cpu_threads" -C build install
+    libpulse_fix_libs_fn
+    $(build_done "$repo_name" "$version")
+fi
+ffmpeg_libraries+=("--enable-libpulse")
+
 git_ver_fn "xiph/ogg" "1" "T"
 if build "libogg" "$g_ver"; then
     download "https://github.com/xiph/ogg/archive/refs/tags/v$g_ver.tar.gz" "libogg-$g_ver.tar.gz"
