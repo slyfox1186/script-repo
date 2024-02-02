@@ -121,9 +121,9 @@ debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 #
 
 if [[ -f "/proc/cpuinfo" ]]; then
-    cpu_threads="$(grep --count ^processor "/proc/cpuinfo")"
+    cpu_threads=$(grep --count ^processor "/proc/cpuinfo")
 else
-    cpu_threads="$(nproc --all)"
+    cpu_threads=$(nproc --all)
 fi
 MAKEFLAGS="-j$cpu_threads"
 export MAKEFLAGS
@@ -140,10 +140,10 @@ mkdir -p "$packages/nvidia-cuda"
 
 clear
 box_out_banner1() {
-    input_char="$(echo "${@}" | wc -c)"
-    line="$(for i in $(seq 0 ${input_char}); do printf "-"; done)"
+    input_char=$(echo "${@}" | wc -c)
+    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
     tput bold
-    line="$(tput setaf 3)${line}"
+    line=$(tput setaf 3)${line}
     space="${line//-/ }"
     echo " ${line}"
     printf "|" ; echo -n "${space}" ; printf "%s\n" "|";
@@ -270,7 +270,7 @@ download() {
 }
 
 install_rustc_fn() {
-    get_rustc_ver="$(rustc --version | grep -Eo "[0-9 \.]+" | head -n1)"
+    get_rustc_ver=$(rustc --version | grep -Eo "[0-9 \.]+" | head -n1)
     if [[ "$get_rustc_ver" != "1.73.0" ]]; then
         echo "$ Installing RustUp"
         curl -sSf --proto "=https" --tlsv1.2 "https://sh.rustup.rs" | sh -s -- -y &>/dev/null
@@ -289,7 +289,7 @@ git_call_fn() {
     repo_name="$2"
     recurse_flag=""
     [ -n "$3" ] && recurse_flag="1"
-    version="$(download_git "$git_url" "$repo_name")"
+    version=$(download_git "$git_url" "$repo_name")
     version="${version//Cloning completed: /}"
 }
 
@@ -316,7 +316,7 @@ download_git() {
         fi
     fi
 
-    [[ -f "$packages/${dl_file}.done" ]] && store_prior_version="$(cat "$packages/${dl_file}.done")"
+    [[ -f "$packages/${dl_file}.done" ]] && store_prior_version=$(cat "$packages/${dl_file}.done")
     
     if [[ ! "$version" == "$store_prior_version" ]]; then
         if [[ "$recurse_flag" == 1 ]]; then
@@ -350,7 +350,11 @@ git_ver_check_fn() {
     awk_number="$2"
     awk_print="print \$${awk_number}"
 
-    git_ver_check="$(git ls-remote --tags "$1" | awk -F/ "/tags\/[A-Za-z]*[0-9]+\.[0-9]+\.[0-9]+$/ {$awk_print}" | sort -V | tail -n1)"
+    git_ver_check=$(git ls-remote --tags "$1" |
+                    awk -F/ "/tags\/[A-Za-z]*[0-9]+\.[0-9]+\.[0-9]+$/ {$awk_print}" |
+                    sort -rV |
+                    head -n1
+                   )
 }
 
 # LOCATE GITHUB RELEASE VERSION NUMBERS
@@ -375,9 +379,9 @@ git_1_fn() {
     while [ $cnt -le $max_attempts ]
     do
         if [[ "$url_flag" -eq 1 ]]; then
-            curl_cmd="$(curl -sSL "https://github.com/xiph/rav1e/tags" | grep -Eo "href=\"$git_url_path/v[0-9]+\.[0-9]+\.[0-9]+\"" | head -n1)"
+            curl_cmd=$(curl -sSL "https://github.com/xiph/rav1e/tags" | grep -Eo "href=\"$git_url_path/v[0-9]+\.[0-9]+\.[0-9]+\"" | head -n1)
         else
-            curl_cmd="$(curl -sSL "https://github.com/$git_repo/$git_url" | grep -o 'href="[^"]*\.tar\.gz"')"
+            curl_cmd=$(curl -sSL "https://github.com/$git_repo/$git_url" | grep -o 'href="[^"]*\.tar\.gz"')
         fi
 
         # Extract the specific line
@@ -397,7 +401,7 @@ git_1_fn() {
     # DENY INSTALLING A RELEASE CANDIDATE
     while [[ $g_ver =~ $regex_str ]]
     do
-        curl_cmd="$(curl -sSL "https://github.com/$git_repo/$git_url" | grep -o 'href="[^"]*\.tar\.gz"')"
+        curl_cmd=$(curl -sSL "https://github.com/$git_repo/$git_url" | grep -o 'href="[^"]*\.tar\.gz"')
 
         # Extract the specific line
         line=$(echo "$curl_cmd" | grep -o 'href="[^"]*\.tar\.gz"' | sed -n "${cnt}p")
@@ -427,19 +431,19 @@ git_2_fn() {
         return 1
     fi
 
-    if curl_cmd="$(curl -sSL "https://code.videolan.org/api/v4/projects/$repo/repository/$url")"; then
-        g_ver="$(echo "$curl_cmd" | jq -r ".[0].commit.id")"
-        g_sver="$(echo "$curl_cmd" | jq -r ".[0].commit.short_id")"
-        g_sver="${g_sver::7}"
-        g_ver1="$(echo "$curl_cmd" | jq -r ".[0].name")"
-        g_ver1="${g_ver1#v}"
+    if curl_cmd=$(curl -sSL "https://code.videolan.org/api/v4/projects/$repo/repository/$url"); then
+        g_ver=$(echo "$curl_cmd" | jq -r ".[0].commit.id")
+        g_sver=$(echo "$curl_cmd" | jq -r ".[0].commit.short_id")
+        g_sver=${g_sver::7}
+        g_ver1=$(echo "$curl_cmd" | jq -r ".[0].name")
+        g_ver1=${g_ver1#v}
     fi
 
     # DENY INSTALLING A RELEASE CANDIDATE
     while [[ $g_ver =~ $regex_str ]]
     do
-        if curl_cmd="$(curl -sSL "https://code.videolan.org/api/v4/projects/$repo/repository/$url")"; then
-            g_ver="$(echo "$curl_cmd" | jq -r ".[$cnt].name")"
+        if curl_cmd=$(curl -sSL "https://code.videolan.org/api/v4/projects/$repo/repository/$url"); then
+            g_ver=$(echo "$curl_cmd" | jq -r ".[$cnt].name")
             g_ver="${g_ver#v}"
         fi
         ((cnt++))
@@ -455,20 +459,20 @@ git_3_fn() {
     g_ver1=""
     g_sver1=""
 
-    if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.com/api/v4/projects/$repo/repository/$url")"; then
-        g_ver="$(echo "$curl_cmd" | jq -r ".[0].name")"
+    if curl_cmd=$(curl -m "$curl_timeout" -sSL "https://gitlab.com/api/v4/projects/$repo/repository/$url"); then
+        g_ver=$(echo "$curl_cmd" | jq -r ".[0].name")
         g_ver="${g_ver#v}"
-        g_ver1="$(echo "$curl_cmd" | jq -r ".[0].commit.id")"
+        g_ver1=$(echo "$curl_cmd" | jq -r ".[0].commit.id")
         g_ver1="${g_ver1#v}"
-        g_sver1="$(echo "$curl_cmd" | jq -r ".[0].commit.short_id")"
+        g_sver1=$(echo "$curl_cmd" | jq -r ".[0].commit.short_id")
         g_ver="${g_ver#VTM-}"
     fi
 
     # DENY INSTALLING A RELEASE CANDIDATE
     while [[ $g_ver =~ $regex_str ]]
     do
-        if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.com/api/v4/projects/$repo/repository/$url")"; then
-            g_ver="$(echo "$curl_cmd" | jq -r ".[$cnt].name")"
+        if curl_cmd=$(curl -m "$curl_timeout" -sSL "https://gitlab.com/api/v4/projects/$repo/repository/$url"); then
+            g_ver=$(echo "$curl_cmd" | jq -r ".[$cnt].name")
             g_ver="${g_ver#v}"
         fi
         ((cnt++))
@@ -483,8 +487,8 @@ git_4_fn() {
 
     while true
     do
-        if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.freedesktop.org/api/v4/projects/$repo/repository/tags")"; then
-            g_ver="$(echo "$curl_cmd" | jq -r ".[$cnt].name")"
+        if curl_cmd=$(curl -m "$curl_timeout" -sSL "https://gitlab.freedesktop.org/api/v4/projects/$repo/repository/tags"); then
+            g_ver=$(echo "$curl_cmd" | jq -r ".[$cnt].name")
             g_ver="${g_ver#v}"
 
             # Check if g_ver contains "RC" and skip it
@@ -512,15 +516,15 @@ git_5_fn() {
         return 1
     fi
 
-    if curl_cmd="$(curl -sSL "https://gitlab.gnome.org/api/v4/projects/$repo/repository/tags")"; then
-        g_ver="$(echo "$curl_cmd" | jq -r ".[0].name")"
+    if curl_cmd=$(curl -sSL "https://gitlab.gnome.org/api/v4/projects/$repo/repository/tags"); then
+        g_ver=$(echo "$curl_cmd" | jq -r ".[0].name")
         g_ver="${g_ver#v}"
     fi
 
     # DENY INSTALLING A RELEASE CANDIDATE
     while [[ $g_ver =~ $regex_str ]]; do
-        if curl_cmd="$(curl -sSL "https://gitlab.gnome.org/api/v4/projects/$repo/repository/tags")"; then
-            g_ver="$(echo "$curl_cmd" | jq -r ".[$cnt].name")"
+        if curl_cmd=$(curl -sSL "https://gitlab.gnome.org/api/v4/projects/$repo/repository/tags"); then
+            g_ver=$(echo "$curl_cmd" | jq -r ".[$cnt].name")
             g_ver="${g_ver#v}"
         fi
         ((cnt++))
@@ -539,16 +543,16 @@ git_6_fn() {
         return 1
     fi
 
-    if curl_cmd="$(curl -sSL "https://salsa.debian.org/api/v4/projects/$repo/repository/tags")"; then
-        g_ver="$(echo "$curl_cmd" | jq -r ".[0].name")"
+    if curl_cmd=$(curl -sSL "https://salsa.debian.org/api/v4/projects/$repo/repository/tags"); then
+        g_ver=$(echo "$curl_cmd" | jq -r ".[0].name")
         g_ver="${g_ver#v}"
     fi
 
     # DENY INSTALLING A RELEASE CANDIDATE
     while [[ $g_ver =~ $regex_str ]]
     do
-        if curl_cmd="$(curl -sSL "https://salsa.debian.org/api/v4/projects/$repo/repository/tags")"; then
-            g_ver="$(echo "$curl_cmd" | jq -r ".[$cnt].name")"
+        if curl_cmd=$(curl -sSL "https://salsa.debian.org/api/v4/projects/$repo/repository/tags"); then
+            g_ver=$(echo "$curl_cmd" | jq -r ".[$cnt].name")
             g_ver="${g_ver#v}"
         fi
         ((cnt++))
@@ -608,7 +612,7 @@ build() {
             echo "Remove $packages/$1.done lockfile to rebuild it."
             return 1
         elif "$latest"; then
-            echo "\$ $1 is outdated and will be rebuilt using version $2"
+            echo "$1 is outdated and will be rebuilt using version $2"
             return 0
         else
             echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
@@ -623,15 +627,15 @@ build_done() {
 }
 
 library_exists() {
-    if ! [[ -x "$(pkg-config --exists --print-errors "$1" 2>&1 >/dev/null)" ]]; then
+    if ! [[ -x $(pkg-config --exists --print-errors "$1" 2>&1 >/dev/null) ]]; then
         return 1
     fi
     return 0
 }
 
 find_cuda_json_file() {
-    locate_cuda_json_file="$(sudo find /usr/local/cuda/ -type f -name 'version.json' 2>/dev/null)"
-    locate_cuda_json_file="$(sudo find /opt/cuda/ -type f -name 'version.json' 2>/dev/null)"
+    locate_cuda_json_file=$(sudo find /usr/local/cuda/ -type f -name 'version.json' 2>/dev/null)
+    locate_cuda_json_file=$(sudo find /opt/cuda/ -type f -name 'version.json' 2>/dev/null)
     echo "$locate_cuda_json_file"
 }
 
@@ -701,10 +705,10 @@ fi
 #
 
 if sudo find /usr/local -maxdepth 1 -name "cuda" &>/dev/null | head -n1; then
-    cuda_bin_path="$(sudo find /usr/local -maxdepth 1 -name "cuda" &>/dev/null | head -n1)"
+    cuda_bin_path=$(sudo find /usr/local -maxdepth 1 -name "cuda" &>/dev/null | head -n1)
     cuda_bin_path+="/bin"
 elif sudo find /opt -maxdepth 1 -name "cuda" &>/dev/null | head -n1; then
-    cuda_bin_path="$(sudo find /opt -maxdepth 1 -name "cuda" &>/dev/null | head -n1)"
+    cuda_bin_path=$(sudo find /opt -maxdepth 1 -name "cuda" &>/dev/null | head -n1)
     cuda_bin_path+="/bin"
 fi
 
@@ -774,7 +778,7 @@ $workspace/share/pkgconfig:\
 export PKG_CONFIG_PATH
 
 check_nvidia_gpu() {
-    nvidia_gpu_test="$(cat "/usr/local/cuda/version.json" 2>/dev/null | jq -r '.cuda.version' 2>/dev/null)"
+    nvidia_gpu_test=$(cat "/usr/local/cuda/version.json" 2>/dev/null | jq -r '.cuda.version' 2>/dev/null)
     echo "$nvidia_gpu_test"
 }
 
@@ -812,10 +816,10 @@ fetch_and_parse_cuda_version() {
 gpu_arch_fn() {
     local gpu_name gpu_type
 
-    if [ -n "$(find_cuda_json_file)" ]; then
-        gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -r | head -n 1)"
+    if [ -n $(find_cuda_json_file) ]; then
+        gpu_name=$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -r | head -n 1)
         if [[ "$gpu_name" == "name" ]]; then
-            gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort | head -n 1)"
+            gpu_name=$(nvidia-smi --query-gpu=gpu_name --format=csv | sort | head -n 1)
         fi
 
         case "$gpu_name" in
@@ -973,9 +977,9 @@ install_cuda_fn() {
 
     fetch_and_parse_cuda_version
 
-    amd_gpu_test="$(check_amd_gpu)"
-    nvidia_gpu_test="$(check_nvidia_gpu)"
-    wsl_test="$(grep -i Microsoft '/proc/version')"
+    amd_gpu_test=$(check_amd_gpu)
+    nvidia_gpu_test=$(check_nvidia_gpu)
+    wsl_test=$(grep -i Microsoft '/proc/version')
 
     echo "AMD GPU Test Output: $amd_gpu_test"
     echo "NVIDIA GPU Test Output: $nvidia_gpu_test"
@@ -985,8 +989,8 @@ install_cuda_fn() {
         if [[ -n "$nvidia_gpu_test" ]] || [[ -n "$wsl_test" ]]; then
             get_ver_fn1
             if [[ "$OS" == "Arch" ]]; then
-                find_nvcc="$(sudo find /opt/ -type f -name 'nvcc')"
-                cuda_ver_test="$($find_nvcc --version | sed -n 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')"
+                find_nvcc=$(sudo find /opt/ -type f -name 'nvcc')
+                cuda_ver_test=$($find_nvcc --version | sed -n 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')
                 cuda_ver_test+=".2"
             else
                 cuda_ver_test="$nvidia_gpu_test"
@@ -1036,11 +1040,11 @@ install_cuda_fn() {
             fi
 
             if [[ "$OS" == "Arch" ]]; then
-                find_nvcc="$(sudo find /opt/ -type f -name "nvcc")"
-                cuda_ver_test="$($find_nvcc --version | sed -n "s/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p")"
+                find_nvcc=$(sudo find /opt/ -type f -name "nvcc")
+                cuda_ver_test=$($find_nvcc --version | sed -n "s/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p")
                 cuda_ver_test+=".1"
             else
-                cuda_ver_test="$(cat '/usr/local/cuda/version.json' 2>&1 | jq -r '.cuda.version')"
+                cuda_ver_test=$(cat '/usr/local/cuda/version.json' 2>&1 | jq -r '.cuda.version')
             fi
             cuda_ver="$cuda_ver_test"
 
@@ -1062,10 +1066,10 @@ install_cuda_fn() {
 pkgs_fn() {
     local missing_pkg missing_packages pkg pkgs available_packages unavailable_packages
 
-    openjdk_pkg="$(apt-cache search --names-only '^openjdk-[0-9]+-jdk$' | awk '{print $1}' | sort -rV | head -n1)"
-    libcpp_pkg="$(sudo apt list libc++* 2>&1 | grep -Eo 'libc\+\+-[0-9\-]+-dev' | uniq | sort -r | head -n1)"
-    libcppabi_pkg="$(sudo apt list libc++abi* 2>/dev/null | grep -Eo 'libc\+\+abi-[0-9]+-dev' | uniq | sort -r | head -n1)"
-    libunwind_pkg="$(sudo apt list libunwind* 2>/dev/null | grep -Eo 'libunwind-[0-9]+-dev' | uniq | sort -r | head -n1)"
+    openjdk_pkg=$(apt-cache search --names-only '^openjdk-[0-9]+-jdk$' | awk '{print $1}' | sort -rV | head -n1)
+    libcpp_pkg=$(sudo apt list libc++* 2>&1 | grep -Eo 'libc\+\+-[0-9\-]+-dev' | uniq | sort -r | head -n1)
+    libcppabi_pkg=$(sudo apt list libc++abi* 2>/dev/null | grep -Eo 'libc\+\+abi-[0-9]+-dev' | uniq | sort -r | head -n1)
+    libunwind_pkg=$(sudo apt list libunwind* 2>/dev/null | grep -Eo 'libunwind-[0-9]+-dev' | uniq | sort -r | head -n1)
 
     # Define an array of apt package names
     pkgs=(
@@ -1131,6 +1135,7 @@ pkgs_fn() {
     if [[ "${#available_packages[@]}" -gt 0 ]]; then
         echo "Installing available missing packages: ${available_packages[*]}"
         sudo apt install "${available_packages[@]}"
+        echo
     else
         printf "%s\n\n" "No missing packages to install or all missing packages are unavailable."
     fi
@@ -1146,8 +1151,8 @@ fix_missing_x265_lib() {
 x265_fix_libs_fn() {
     local x265_libs x265_libs_trim
 
-    x265_libs="$(find /usr/local/lib/ -type f -name 'libx265.so.*')"
-    x265_libs_trim="$(echo "$x265_libs" | sed "s:.*/::" | head -n1)"
+    x265_libs=$(find /usr/local/lib/ -type f -name 'libx265.so.*')
+    x265_libs_trim=$(echo "$x265_libs" | sed "s:.*/::" | head -n1)
 
     case "$OS" in
         Arch)
@@ -1179,8 +1184,8 @@ if version_split.length() > 1\\n  pa_version_minor = version_split[1]\\nelse\\n 
 libpulse_fix_libs_fn() {
     local libpulse_lib libpulse_trim
 
-    libpulse_lib="$(find $workspace/lib/ -type f -name 'libpulsecommon-*.so' | head -n1)"
-    libpulse_trim="$(echo "$libpulse_lib" | sed 's:.*/::' | head -n1)"
+    libpulse_lib=$(find $workspace/lib/ -type f -name 'libpulsecommon-*.so' | head -n1)
+    libpulse_trim=$(echo "$libpulse_lib" | sed 's:.*/::' | head -n1)
 
     if [[ "$OS" == "Arch" ]]; then
         if [[ ! -d "/usr/lib/pulseaudio" ]]; then
@@ -1268,8 +1273,8 @@ dl_libjxl_fn() {
         fi
 
         # REMOVE AND LEFTOVER FILES FROM PREVIOUS RUNS
-        libjxl_cnt_type_1="$(ls -1A "$packages"/deb-files/*.deb 2>/dev/null | wc -l)"
-        libjxl_cnt_type_2="$(ls -1A "$packages"/deb-files/*.debb 2>/dev/null | wc -l)"
+        libjxl_cnt_type_1=$(ls -1A "$packages"/deb-files/*.deb 2>/dev/null | wc -l)
+        libjxl_cnt_type_2=$(ls -1A "$packages"/deb-files/*.debb 2>/dev/null | wc -l)
         if [[ "$libjxl_cnt_type_1" -ne "0" ]]; then
             sudo rm "$packages"/deb-files/*.deb
         fi
@@ -1380,24 +1385,24 @@ ubuntu_os_ver_fn() {
 # TEST THE OS AND ITS VERSION
 #
 
-find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
+find_lsb_release=$(sudo find /usr/bin/ -type f -name 'lsb_release')
 
 get_ver_fn1() {
     if [[ -f /etc/os-release ]]; then
         . /etc/os-release
         OS_TMP="$NAME"
         VER_TMP="$VERSION_ID"
-        OS="$(echo "$OS_TMP" | awk '{print $1}')"
-        VER="$(echo "$VER_TMP" | awk '{print $1}')"
+        OS=$(echo "$OS_TMP" | awk '{print $1}')
+        VER=$(echo "$VER_TMP" | awk '{print $1}')
     elif [[ -n "$find_lsb_release" ]]; then
-        OS="$(lsb_release -d | awk '{print $2}')"
-        VER="$(lsb_release -r | awk '{print $2}')"
+        OS=$(lsb_release -d | awk '{print $2}')
+        VER=$(lsb_release -r | awk '{print $2}')
     else
         fail_fn "Error: Failed to define \"\$OS\" and/or \"\$VER\". (Line: $LINENO)"
     fi
 
-    nvidia_utils_ver="$(sudo apt list nvidia-utils-* 2>/dev/null | grep -Eo '^nvidia-utils-[0-9]{3}' | sort -r | uniq | head -n1)"
-    nvidia_encode_var="$(sudo apt list libnvidia-encode* 2>&1 | grep -Eo 'libnvidia-encode[1-]+[0-9]*$' | sort -r | head -n1)"
+    nvidia_utils_ver=$(sudo apt list nvidia-utils-* 2>/dev/null | grep -Eo '^nvidia-utils-[0-9]{3}' | sort -r | uniq | head -n1)
+    nvidia_encode_var=$(sudo apt list libnvidia-encode* 2>&1 | grep -Eo 'libnvidia-encode[1-]+[0-9]*$' | sort -r | head -n1)
 }
 get_ver_fn1
 
@@ -1406,7 +1411,7 @@ get_ver_fn1
 #
 
 get_ver_fn2() {
-    if [[ "$(grep -i "microsoft" "/proc/version")" ]]; then
+    if [[ $(grep -i "microsoft" "/proc/version") ]]; then
         wsl_switch="yes_wsl"
         OS="WSL2"
         wsl_common_pkgs="nvidia-smi cppcheck libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils libyuv0 libsharp-dev libdmalloc5 libnvidia-encode1"
@@ -1438,8 +1443,8 @@ esac
 
 # SET THE JAVA VARIABLES
 path_fn
-locate_java="$(sudo find /usr/lib/jvm/ -type d -name 'java-*-openjdk*' | sort | head -n1)"
-java_include="$(sudo find /usr/lib/jvm/ -type f -name 'javac' | sort | head -n1 | xargs dirname | sed 's/bin/include/')"
+locate_java=$(sudo find /usr/lib/jvm/ -type d -name 'java-*-openjdk*' | sort | head -n1)
+java_include=$(sudo find /usr/lib/jvm/ -type f -name 'javac' | sort | head -n1 | xargs dirname | sed 's/bin/include/')
 export CPPFLAGS+=" -I$java_include"
 export JDK_HOME="$locate_java"
 export JAVA_HOME="$locate_java"
@@ -1455,12 +1460,12 @@ ant_path_fn() {
 # CHECK IF THE CUDA FOLDER EXISTS TO DETERMINE INSTALLATION STATUS
 case "$OS" in
     Arch)
-            iscuda="$(sudo find /opt/cuda* -type f -name 'nvcc' 2>/dev/null)"
-            cuda_path="$(sudo find /opt/cuda* -type f -name 'nvcc' 2>/dev/null | grep -Eo '^.*/bin?')"
+            iscuda=$(sudo find /opt/cuda* -type f -name 'nvcc' 2>/dev/null)
+            cuda_path=$(sudo find /opt/cuda* -type f -name 'nvcc' 2>/dev/null | grep -Eo '^.*/bin?')
             ;;
     *)
-            iscuda="$(sudo find /usr/local/cuda* -type f -name 'nvcc' 2>/dev/null)"
-            cuda_path="$(sudo find /usr/local/cuda* -type f -name 'nvcc' 2>/dev/null | grep -Eo '^.*/bin?')"
+            iscuda=$(sudo find /usr/local/cuda* -type f -name 'nvcc' 2>/dev/null)
+            cuda_path=$(sudo find /usr/local/cuda* -type f -name 'nvcc' 2>/dev/null | grep -Eo '^.*/bin?')
             ;;
 esac
 
@@ -1473,8 +1478,8 @@ sudo ldconfig
 # INSTALL THE GLOBAL TOOLS
 echo
 box_out_banner_global() {
-    input_char="$(echo "${@}" | wc -c)"
-    line="$(for i in $(seq 0 ${input_char}); do printf "-"; done)"
+    input_char=$(echo "${@}" | wc -c)
+    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space="${line//-/ }"
@@ -1736,7 +1741,7 @@ if build "fontconfig" "$g_ver"; then
                         "${extracmds[@]}" \
                         --enable-iconv \
                         --enable-static \
-                        --with-arch="$(uname -m)" \
+                        --with-arch=$(uname -m) \
                         --with-libiconv-prefix=/usr
     execute make "-j$cpu_threads"
     execute make install
@@ -1766,35 +1771,35 @@ git_call_fn "https://github.com/fribidi/c2man.git" "c2man-git"
 if build "$repo_name" "${version//\$ /}"; then
     download_git "$git_url"
     execute ./Configure -desO \
-                        -D bash="$(type -P bash)" \
+                        -D bash=$(type -P bash) \
                         -D bin="$workspace/bin" \
                         -D cc="/usr/bin/cc" \
                         -D d_gnu="/usr/lib/x86_64-linux-gnu" \
-                        -D find="$(type -P find)" \
+                        -D find=$(type -P find) \
                         -D gcc="/usr/bin/gcc" \
-                        -D gzip="$(type -P gzip)" \
+                        -D gzip=$(type -P gzip) \
                         -D installmansrc="$workspace/share/man" \
                         -D ldflags="$LDFLAGS" \
-                        -D less="$(type -P less)" \
+                        -D less=$(type -P less) \
                         -D libpth="/usr/lib64 /usr/lib /lib64 /lib" \
                         -D locincpth="$workspace/include /usr/local/include /usr/include" \
                         -D loclibpth="$workspace/lib /usr/local/lib64 /usr/local/lib" \
-                        -D make="$(type -P make)" \
-                        -D more="$(type -P more)" \
+                        -D make=$(type -P make) \
+                        -D more=$(type -P more) \
                         -D osname="$OS" \
-                        -D perl="$(type -P perl)" \
+                        -D perl=$(type -P perl) \
                         -D prefix="$workspace" \
                         -D privlib="$workspace/lib/c2man" \
                         -D privlibexp="$workspace/lib/c2man" \
-                        -D sleep="$(type -P sleep)" \
-                        -D tail="$(type -P tail)" \
-                        -D tar="$(type -P tar)" \
-                        -D tr="$(type -P tr)" \
-                        -D troff="$(type -P troff)" \
-                        -D uniq="$(type -P uniq)" \
-                        -D uuname="$(uname -s)" \
-                        -D vi="$(type -P vi)" \
-                        -D yacc="$(type -P yacc)"
+                        -D sleep=$(type -P sleep) \
+                        -D tail=$(type -P tail) \
+                        -D tar=$(type -P tar) \
+                        -D tr=$(type -P tr) \
+                        -D troff=$(type -P troff) \
+                        -D uniq=$(type -P uniq) \
+                        -D uuname=$(uname -s) \
+                        -D vi=$(type -P vi) \
+                        -D yacc=$(type -P yacc)
     execute make depend
     execute make "-j$cpu_threads"
     execute sudo make install
@@ -2014,7 +2019,7 @@ if build "$repo_name" "${version//\$ /}"; then
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads"
     execute sudo ninja "-j$cpu_threads" install
-    save_version="$(build_done "$repo_name" "$version")"
+    save_version=$(build_done "$repo_name" "$version")
     $(build_done "$repo_name" "$version")
 fi
 
@@ -2065,7 +2070,7 @@ if build "$repo_name" "${version//\$ /}"; then
         10|11)      pswitch=enabled;;
         *)          pswitch=disabled;;
     esac
-    rm_pip_lock="$(sudo find /usr/lib/python3* -type f -name "EXTERNALLY-MANAGED")"
+    rm_pip_lock=$(sudo find /usr/lib/python3* -type f -name "EXTERNALLY-MANAGED")
     if [[ -n "$rm_pip_lock" ]]; then
         sudo rm "$rm_pip_lock"
     fi
@@ -2236,8 +2241,8 @@ fi
 
 echo
 box_out_banner_audio() {
-    input_char="$(echo "${@}" | wc -c)"
-    line="$(for i in $(seq 0 ${input_char}); do printf "-"; done)"
+    input_char=$(echo "${@}" | wc -c)
+    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space="${line//-/ }"
@@ -2490,8 +2495,8 @@ ffmpeg_libraries+=("--enable-libtheora")
 
 echo
 box_out_banner_video() {
-    input_char="$(echo "${@}" | wc -c)"
-    line="$(for i in $(seq 0 ${input_char}); do printf "-"; done)"
+    input_char=$(echo "${@}" | wc -c)
+    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space="${line//-/ }"
@@ -2504,7 +2509,7 @@ box_out_banner_video() {
 }
 box_out_banner_video "Installing Video Tools"
 
-amd_gpu_test="$(check_amd_gpu)"
+amd_gpu_test=$(check_amd_gpu)
 git_call_fn "https://github.com/KhronosGroup/Vulkan-Headers.git" "vulkan-headers-git"
 if [[ -n "$amd_gpu_test" ]]; then
     if build "$repo_name" "${version//\$ /}"; then
@@ -2514,7 +2519,7 @@ if [[ -n "$amd_gpu_test" ]]; then
                       -DCMAKE_BUILD_TYPE=Release \
                       -DBUILD_TESTS=OFF \
                       -DCMAKE_C_FLAGS="$CFLAGS" \
-                      -DCMAKE_STRIP="$(type -P strip)" \
+                      -DCMAKE_STRIP=$(type -P strip) \
                       -G Ninja -Wno-dev
         execute ninja "-j$cpu_threads" -C build
         execute ninja -C build install
@@ -2744,7 +2749,7 @@ fi
 ffmpeg_libraries+=("--enable-frei0r")
 
 git_ver_fn "GPUOpen-LibrariesAndSDKs/AMF" "1" "T"
-g_sver="$(echo "$g_ver" | sed -E "s/^\.//g")"
+g_sver=$(echo "$g_ver" | sed -E "s/^\.//g")
 if build "amf" "$g_sver"; then
     download "https://github.com/GPUOpen-LibrariesAndSDKs/AMF/archive/refs/tags/v$g_ver.tar.gz" "amf-$g_sver.tar.gz"
     execute rm -fr "$workspace/include/AMF"
@@ -3039,8 +3044,8 @@ ffmpeg_libraries+=("--enable-libxvid")
 
 echo
 box_out_banner_images() {
-    input_char="$(echo "${@}" | wc -c)"
-    line="$(for i in $(seq 0 ${input_char}); do printf "-"; done)"
+    input_char=$(echo "${@}" | wc -c)
+    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space="${line//-/ }"
@@ -3058,7 +3063,7 @@ if build "libheif" "$g_ver"; then
     download "https://github.com/strukturag/libheif/archive/refs/tags/v$g_ver.tar.gz" "libheif-$g_ver.tar.gz"
     source_flags_fn
     export {CFLAGS,CXXFLAGS}="-g -O3 -fno-lto -pipe -march=native"
-    libde265_libs="$(sudo find /usr -type f -name "libde265.so")"
+    libde265_libs=$(sudo find /usr -type f -name "libde265.so")
     if [[ -f "$libde265_libs" ]] && [[ ! -f "/usr/lib/x86_64-linux-gnu/libde265.so" ]]; then
         sudo cp -f "$libde265_libs" "/usr/lib/x86_64-linux-gnu"
         sudo chmod 755 "/usr/lib/x86_64-linux-gnu/libde265.so"
@@ -3124,8 +3129,8 @@ ffmpeg_libraries+=("--enable-libopenjpeg")
 
 echo
 box_out_banner_ffmpeg() {
-    input_char="$(echo "${@}" | wc -c)"
-    line="$(for i in $(seq 0 ${input_char}); do printf "-"; done)"
+    input_char=$(echo "${@}" | wc -c)
+    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)${line}"
     space="${line//-/ }"
@@ -3171,8 +3176,8 @@ if build "ffmpeg" "$ffmpeg_ver"; then
     mkdir build
     cd build || exit 1
     ../configure --prefix="$install_dir" \
-                 --arch="$(uname -m)" \
-                 --cpu="$((cpu_threads / 2))" \
+                 --arch=$(uname -m) \
+                 --cpu=$((cpu_threads / 2)) \
                  --cc="$CC" \
                  --cxx="$CXX" \
                  --disable-debug \
@@ -3214,7 +3219,7 @@ if build "ffmpeg" "$ffmpeg_ver"; then
                  --pkg-config-flags="--static" \
                  --pkg-config="$install_dir/bin/pkg-config" \
                  --pkgconfigdir="$install_dir/lib/pkgconfig" \
-                 --strip="$(type -P strip)"
+                 --strip=$(type -P strip)
     execute make "-j$cpu_threads"
     execute sudo make install
 fi
