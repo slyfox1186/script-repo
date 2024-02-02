@@ -3243,7 +3243,6 @@ if build "ffmpeg" "$ffmpeg_ver"; then
     cd build || exit 1
     ../configure --prefix="$install_dir" \
                  --arch=$(uname -m) \
-                 --cpu=$((cpu_threads / 2)) \
                  --cc="$CC" \
                  --cxx="$CXX" \
                  --disable-debug \
