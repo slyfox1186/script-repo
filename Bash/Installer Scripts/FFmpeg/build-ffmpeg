@@ -98,7 +98,7 @@
 #
 
 script_name="${0}"
-script_ver="3.4.0"
+script_ver="3.4.1"
 ffmpeg_ver="n5.1.4"
 ffmpeg_archive="ffmpeg-$ffmpeg_ver.tar.gz"
 ffmpeg_url="https://github.com/FFmpeg/FFmpeg/archive/refs/tags/$ffmpeg_ver.tar.gz"
