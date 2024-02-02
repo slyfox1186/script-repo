@@ -1551,6 +1551,7 @@ if build "pkg-config" "0.29.2"; then
     download "https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz"
     execute autoconf
     execute ./configure --prefix="$install_dir" \
+                        --{build,host}="$pc_type" \
                         --enable-silent-rules \
                         --with-pc-path="$PKG_CONFIG_PATH"
     execute make "-j$cpu_threads"
@@ -1700,6 +1701,7 @@ if build "aribb24" "1.0.3"; then
     download "https://github.com/nkoriyama/aribb24/archive/refs/tags/v1.0.3.tar.gz" "aribb24-1.0.3.tar.gz"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" \
+                        --{build,host}="$pc_type" \
                         --disable-shared \
                         --with-pic
     execute make "-j$cpu_threads"
@@ -2065,19 +2067,19 @@ if build "$repo_name" "${version//\$ /}"; then
     download_git "$git_url"
     extracmds=("-D"{docs,tests}"=disabled")
     case "$VER" in
-        10|11)      pswitch=enabled;;
-        *)          pswitch=disabled;;
+        10|11)      lv2_switch=enabled;;
+        *)          lv2_switch=disabled;;
     esac
-    rm_pip_lock=$(sudo find /usr/lib/python3* -type f -name "EXTERNALLY-MANAGED")
-    if [[ -n "$rm_pip_lock" ]]; then
-        sudo rm "$rm_pip_lock"
+    mv_pip_lock=$(sudo find /usr/lib/python3* -type f -name "EXTERNALLY-MANAGED")
+    if [[ -n "$mv_pip_lock" ]]; then
+        sudo mv "$mv_pip_lock" "${mv_pip_lock}-backup"
     fi
     execute pip install lxml Markdown Pygments rdflib
     execute meson setup build --prefix="$workspace" \
                               --buildtype=release \
                               --default-library=static \
                               --strip \
-                              -Dplugins="$pswitch" \
+                              -Dplugins="$lv2_switch" \
                               "${extracmds[@]}"
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
@@ -2574,7 +2576,6 @@ if [[ "$VER" != "18.04" ]] && [[ "$VER" != "11" ]]; then
     find_git_repo "xiph/rav1e" "1" "T" "enabled"
     if build "rav1e" "$g_ver"; then
         install_rustc_fn
-        execute cargo install cargo-c
         download "https://github.com/xiph/rav1e/archive/refs/tags/v$g_ver.tar.gz" "rav1e-$g_ver.tar.gz"
         execute cargo cinstall --prefix="$workspace" \
                                --library-type=staticlib \
