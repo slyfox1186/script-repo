@@ -289,8 +289,10 @@ install_rustc_fn() {
 git_call_fn() {
     git_url="$1"
     repo_name="$2"
+    recurse_flag=""
+    [ -n "$3" ] && recurse_flag="1"
     version="$(download_git "$git_url" "$repo_name")"
-    version="${version//Building version: /}"
+    version="${version//\$ Successfully cloned: /}"
 }
 
 download_git() {
@@ -319,7 +321,7 @@ download_git() {
     [[ -f "$packages/${dl_file}.done" ]] && store_prior_version="$(cat "$packages/${dl_file}.done")"
     
     if [[ ! "$version" == "$store_prior_version" ]]; then
-        if [[ "$2" == "R" ]]; then
+        if [[ "$recurse_flag" == 1 ]]; then
             recurse="--recursive"
         elif [[ -n "$3" ]]; then
             output_dir="$dl_path/$3"
@@ -339,7 +341,7 @@ download_git() {
         git_built_flag=""
         git_built_flag="1"
     fi
-        echo "Building version: $version"
+    echo "\$ Successfully cloned: $version"
     return 0
 }
 
@@ -956,7 +958,6 @@ install_cuda_fn() {
     echo "AMD GPU Test Output: $amd_gpu_test"
     echo "NVIDIA GPU Test Output: $nvidia_gpu_test"
     echo "Expected Latest CUDA Version: $cuda_latest_ver"
-    echo
 
     if [ "$amd_gpu_test" == "AMD GPU detected." ] || [ "$nvidia_gpu_test" != "$cuda_latest_ver" ]; then
         if [[ -n "$nvidia_gpu_test" ]] || [[ -n "$wsl_test" ]]; then
@@ -1925,9 +1926,9 @@ else
     ffmpeg_libraries+=("--enable-libjxl")
 fi
 
-git_call_fn "https://github.com/KhronosGroup/OpenCL-SDK.git" "opencl-sdk-git" 2>&1
+git_call_fn "https://github.com/KhronosGroup/OpenCL-SDK.git" "opencl-sdk-git" "R"
 if build "$repo_name" "$version"; then
-    download_git "$git_url" "R"
+    download_git "$git_url"
     execute cmake \
             -S . \
             -B build \
