@@ -5,9 +5,9 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
-##  Script version: 3.4.0
+##  Script version: 3.4.1
 ##
-##  Updated: 01.31.24
+##  Updated: 02.01.24
 ##
 ##  Purpose:
 ##
@@ -102,8 +102,6 @@ script_ver="3.4.0"
 ffmpeg_ver="n5.1.4"
 ffmpeg_archive="ffmpeg-$ffmpeg_ver.tar.gz"
 ffmpeg_url="https://github.com/FFmpeg/FFmpeg/archive/refs/tags/$ffmpeg_ver.tar.gz"
-cuda_latest_ver="12.3.2"
-cuda_url="https://developer.download.nvidia.com/compute/cuda/$cuda_latest_ver"
 cuda_pin_url="https://developer.download.nvidia.com/compute/cuda/repos"
 cwd="$PWD/ffmpeg-build-script"
 packages="$cwd/packages"
@@ -155,7 +153,7 @@ box_out_banner1() {
     tput sgr 0
 }
 box_out_banner1 "FFmpeg Build Script - v$script_ver"
-printf "\n%s\n\n" "Utilizing ($cpu_threads) CPU threads. Parallel processing initalized!"
+printf "\n%s\n\n" "Utilizing ($cpu_threads) CPU threads."
 
 #
 # SET THE CC/CPP COMPILERS + CUSTOMIZED COMPILER OPTIMIZATION FLAGS
@@ -292,7 +290,7 @@ git_call_fn() {
     recurse_flag=""
     [ -n "$3" ] && recurse_flag="1"
     version="$(download_git "$git_url" "$repo_name")"
-    version="${version//\$ Successfully cloned: /}"
+    version="${version//Cloning completed: /}"
 }
 
 download_git() {
@@ -329,6 +327,7 @@ download_git() {
         fi
         [[ -d "$target_dir" ]] && rm -fr "$target_dir"
         # Clone the repository
+        echo "Cloning \"$dl_file\" saving version \"$version\"" &>2
         if ! git clone --depth 1 $recurse -q "$dl_url" "$target_dir"; then
             printf "\n%s\n\n" "Error: Failed to clone \"$target_dir\". Second attempt in 10 seconds..."
             sleep 10
@@ -341,7 +340,7 @@ download_git() {
         git_built_flag=""
         git_built_flag="1"
     fi
-    echo "\$ Successfully cloned: $version"
+    echo "Cloning completed: $version"
     return 0
 }
 
@@ -609,7 +608,7 @@ build() {
             echo "Remove $packages/$1.done lockfile to rebuild it."
             return 1
         elif "$latest"; then
-            echo "$1 is outdated and will be rebuilt using version $2"
+            echo "\$ $1 is outdated and will be rebuilt using version $2"
             return 0
         else
             echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
@@ -634,93 +633,6 @@ find_cuda_json_file() {
     locate_cuda_json_file="$(sudo find /usr/local/cuda/ -type f -name 'version.json' 2>/dev/null)"
     locate_cuda_json_file="$(sudo find /opt/cuda/ -type f -name 'version.json' 2>/dev/null)"
     echo "$locate_cuda_json_file"
-}
-
-check_nvidia_gpu() {
-    nvidia_gpu_test="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version' 2>/dev/null)"
-    echo "$nvidia_gpu_test"
-}
-
-check_amd_gpu() {
-  if lshw -C display 2>&1 | grep -qEio 'AMD|amdgpu'; then
-    echo "AMD GPU detected."
-  elif dpkg -l 2>&1 | grep -qi 'amdgpu'; then
-    echo "AMD GPU detected."
-  elif lspci 2>&1 | grep -i 'AMD'; then
-    echo "AMD GPU detected."
-  else
-    echo "No AMD GPU detected."
-  fi
-}
-
-gpu_arch_fn() {
-    local gpu_name gpu_type
-
-    if [ -n "$(find_cuda_json_file)" ]; then
-        gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -r | head -n 1)"
-        if [[ "$gpu_name" == "name" ]]; then
-            gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort | head -n 1)"
-        fi
-
-        case "$gpu_name" in
-            "Quadro P2000")                 gpu_type=1;;
-            "NVIDIA GeForce GT 1010")       gpu_type=1;;
-            "NVIDIA GeForce GTX 1030")      gpu_type=1;;
-            "NVIDIA GeForce GTX 1050")      gpu_type=1;;
-            "NVIDIA GeForce GTX 1060")      gpu_type=1;;
-            "NVIDIA GeForce GTX 1070")      gpu_type=1;;
-            "NVIDIA GeForce GTX 1080")      gpu_type=1;;
-            "NVIDIA TITAN Xp")              gpu_type=1;;
-            "NVIDIA Tesla P40")             gpu_type=1;;
-            "NVIDIA Tesla P4")              gpu_type=1;;
-            "NVIDIA GeForce GTX 1180")      gpu_type=2;;
-            "NVIDIA GeForce GTX Titan V")   gpu_type=2;;
-            "Quadro GV100")                 gpu_type=2;;
-            "NVIDIA Tesla V100")            gpu_type=2;;
-            "NVIDIA GeForce GTX 1660 Ti")   gpu_type=3;;
-            "NVIDIA GeForce RTX 2060")      gpu_type=3;;
-            "NVIDIA GeForce RTX 2070")      gpu_type=3;;
-            "NVIDIA GeForce RTX 2080")      gpu_type=3;;
-            "Quadro 4000")                  gpu_type=3;;
-            "Quadro 5000")                  gpu_type=3;;
-            "Quadro 6000")                  gpu_type=3;;
-            "Quadro 8000")                  gpu_type=3;;
-            "NVIDIA T1000")                 gpu_type=3;;
-            "NVIDIA T2000")                 gpu_type=3;;
-            "NVIDIA Tesla T4")              gpu_type=3;;
-            "NVIDIA GeForce RTX 3050")      gpu_type=4;;
-            "NVIDIA GeForce RTX 3060")      gpu_type=4;;
-            "NVIDIA GeForce RTX 3070")      gpu_type=4;;
-            "NVIDIA GeForce RTX 3080")      gpu_type=4;;
-            "NVIDIA GeForce RTX 3080 Ti")   gpu_type=4;;
-            "NVIDIA GeForce RTX 3090")      gpu_type=4;;
-            "NVIDIA RTX A2000")             gpu_type=4;;
-            "NVIDIA RTX A3000")             gpu_type=4;;
-            "NVIDIA RTX A4000")             gpu_type=4;;
-            "NVIDIA RTX A5000")             gpu_type=4;;
-            "NVIDIA RTX A6000")             gpu_type=4;;
-            "NVIDIA GeForce RTX 4080")      gpu_type=5;;
-            "NVIDIA GeForce RTX 4090")      gpu_type=5;;
-            "NVIDIA H100")                  gpu_type=6;;
-            *)                              fail_fn "Error: Unable to define \"\$gpu_name\" in the function \"gpu_arch_fn\". (Line: $LINENO)";;
-        esac
-
-        if [[ -n "$gpu_type" ]]; then
-            case "$gpu_type" in
-                1)      gpu_arch="compute_61,code=sm_61";;
-                2)      gpu_arch="compute_70,code=sm_70";;
-                3)      gpu_arch="compute_75,code=sm_75";;
-                4)      gpu_arch="compute_86,code=sm_86";;
-                5)      gpu_arch="compute_89,code=sm_89";;
-                6)      gpu_arch="compute_90,code=sm_90";;
-                *)      fail_fn "Error: Unable to define \"\$gpu_arch\" in the function \"gpu_arch_fn\". (Line: $LINENO)";;
-            esac
-        else
-            fail_fn "Error: Failed to define \"\$gpu_type\". (Line: $LINENO)"
-        fi
-    else
-        return 1
-    fi
 }
 
 # PRINT THE SCRIPT OPTIONS
@@ -861,6 +773,112 @@ $workspace/share/pkgconfig:\
 "
 export PKG_CONFIG_PATH
 
+check_nvidia_gpu() {
+    nvidia_gpu_test="$(cat "/usr/local/cuda/version.json" 2>/dev/null | jq -r '.cuda.version' 2>/dev/null)"
+    echo "$nvidia_gpu_test"
+}
+
+check_amd_gpu() {
+  if lshw -C display 2>&1 | grep -qEio 'AMD|amdgpu'; then
+    echo "AMD GPU detected."
+  elif dpkg -l 2>&1 | grep -qi 'amdgpu'; then
+    echo "AMD GPU detected."
+  elif lspci 2>&1 | grep -i 'AMD'; then
+    echo "AMD GPU detected."
+  else
+    echo "No AMD GPU detected."
+  fi
+}
+
+fetch_and_parse_cuda_version() {
+    local url="https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html"
+
+    # Use curl to fetch the HTML content of the page
+    local content=$(curl -s "$url")
+
+    # Parse the version directly from the fetched content
+    if [[ $content =~ CUDA\ ([0-9]+\.[0-9]+)(\ Update\ ([0-9]+))? ]]; then
+        local base_version=${BASH_REMATCH[1]}
+        local update_version=${BASH_REMATCH[3]}
+        cuda_latest_ver="$base_version"
+
+        # Append the update number if present
+        if [[ -n $update_version ]]; then
+          cuda_latest_ver+=".$update_version"
+        fi
+    fi
+}
+
+gpu_arch_fn() {
+    local gpu_name gpu_type
+
+    if [ -n "$(find_cuda_json_file)" ]; then
+        gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -r | head -n 1)"
+        if [[ "$gpu_name" == "name" ]]; then
+            gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort | head -n 1)"
+        fi
+
+        case "$gpu_name" in
+            "Quadro P2000")                 gpu_type=1;;
+            "NVIDIA GeForce GT 1010")       gpu_type=1;;
+            "NVIDIA GeForce GTX 1030")      gpu_type=1;;
+            "NVIDIA GeForce GTX 1050")      gpu_type=1;;
+            "NVIDIA GeForce GTX 1060")      gpu_type=1;;
+            "NVIDIA GeForce GTX 1070")      gpu_type=1;;
+            "NVIDIA GeForce GTX 1080")      gpu_type=1;;
+            "NVIDIA TITAN Xp")              gpu_type=1;;
+            "NVIDIA Tesla P40")             gpu_type=1;;
+            "NVIDIA Tesla P4")              gpu_type=1;;
+            "NVIDIA GeForce GTX 1180")      gpu_type=2;;
+            "NVIDIA GeForce GTX Titan V")   gpu_type=2;;
+            "Quadro GV100")                 gpu_type=2;;
+            "NVIDIA Tesla V100")            gpu_type=2;;
+            "NVIDIA GeForce GTX 1660 Ti")   gpu_type=3;;
+            "NVIDIA GeForce RTX 2060")      gpu_type=3;;
+            "NVIDIA GeForce RTX 2070")      gpu_type=3;;
+            "NVIDIA GeForce RTX 2080")      gpu_type=3;;
+            "Quadro 4000")                  gpu_type=3;;
+            "Quadro 5000")                  gpu_type=3;;
+            "Quadro 6000")                  gpu_type=3;;
+            "Quadro 8000")                  gpu_type=3;;
+            "NVIDIA T1000")                 gpu_type=3;;
+            "NVIDIA T2000")                 gpu_type=3;;
+            "NVIDIA Tesla T4")              gpu_type=3;;
+            "NVIDIA GeForce RTX 3050")      gpu_type=4;;
+            "NVIDIA GeForce RTX 3060")      gpu_type=4;;
+            "NVIDIA GeForce RTX 3070")      gpu_type=4;;
+            "NVIDIA GeForce RTX 3080")      gpu_type=4;;
+            "NVIDIA GeForce RTX 3080 Ti")   gpu_type=4;;
+            "NVIDIA GeForce RTX 3090")      gpu_type=4;;
+            "NVIDIA RTX A2000")             gpu_type=4;;
+            "NVIDIA RTX A3000")             gpu_type=4;;
+            "NVIDIA RTX A4000")             gpu_type=4;;
+            "NVIDIA RTX A5000")             gpu_type=4;;
+            "NVIDIA RTX A6000")             gpu_type=4;;
+            "NVIDIA GeForce RTX 4080")      gpu_type=5;;
+            "NVIDIA GeForce RTX 4090")      gpu_type=5;;
+            "NVIDIA H100")                  gpu_type=6;;
+            *)                              fail_fn "Error: Unable to define \"\$gpu_name\" in the function \"gpu_arch_fn\". (Line: $LINENO)";;
+        esac
+
+        if [[ -n "$gpu_type" ]]; then
+            case "$gpu_type" in
+                1)      gpu_arch="compute_61,code=sm_61";;
+                2)      gpu_arch="compute_70,code=sm_70";;
+                3)      gpu_arch="compute_75,code=sm_75";;
+                4)      gpu_arch="compute_86,code=sm_86";;
+                5)      gpu_arch="compute_89,code=sm_89";;
+                6)      gpu_arch="compute_90,code=sm_90";;
+                *)      fail_fn "Error: Unable to define \"\$gpu_arch\" in the function \"gpu_arch_fn\". (Line: $LINENO)";;
+            esac
+        else
+            fail_fn "Error: Failed to define \"\$gpu_type\". (Line: $LINENO)"
+        fi
+    else
+        return 1
+    fi
+}
+
 cuda_download_fn() {
     local choice
     clear
@@ -882,6 +900,8 @@ cuda_download_fn() {
     printf "%s\n%s\n\n" \
         "Downloading CUDA SDK Toolkit - version $cuda_latest_ver" \
         "===================================================="
+
+    local cuda_url="https://developer.download.nvidia.com/compute/cuda/$cuda_latest_ver"
 
     case "$choice" in
         1)
@@ -951,8 +971,10 @@ cuda_download_fn() {
 install_cuda_fn() {
     local choice
 
+    fetch_and_parse_cuda_version
+
     amd_gpu_test="$(check_amd_gpu)"
-    [[ -f '/usr/local/cuda/version.json' ]] && nvidia_gpu_test="$(check_nvidia_gpu)"
+    nvidia_gpu_test="$(check_nvidia_gpu)"
     wsl_test="$(grep -i Microsoft '/proc/version')"
 
     echo "AMD GPU Test Output: $amd_gpu_test"
@@ -972,10 +994,7 @@ install_cuda_fn() {
             cuda_ver="$cuda_ver_test"
 
             if [[ -n "$cuda_ver_test" ]]; then
-                printf "%s\n%s\n%s\n%s\n\n%s\n%s\n\n" \
-                    "The installed CUDA SDK Toolkit version is: $cuda_ver_test" \
-                    "The latest version available is: $cuda_latest_ver" \
-                    "=====================================================" \
+                printf "\n%s\n\n%s\n%s\n\n" \
                     "Do you want to update/reinstall CUDA?" \
                     "[1] Yes" \
                     "[2] No"
@@ -998,18 +1017,17 @@ install_cuda_fn() {
                             ;;
                 esac
             else
-                printf "%s\n%s\n\n%s\n\n%s\n%s\n\n" \
+                printf "\n%s\n%s\n\n%s\n%s\n\n" \
                     "The CUDA SDK Toolkit was not detected and the latest version is: $cuda_latest_ver" \
                     "=========================================================================" \
-                    "Choose an option" \
                     "[1] Install the CUDA SDK Toolkit and add it to your PATH." \
                     "[2] Continue without installing. (Hardware acceleration will be turned off)"
                 read -p "Your choices are (1 or 2): " choice
                 clear
 
                 case "$choice" in
-                    1)      cuda_download_fn;;
-                    2)      echo;;
+                    1)      cuda_download_fn ;;
+                    2)      return ;;
                     *)
                             unset choice
                             install_cuda_fn
@@ -1745,7 +1763,7 @@ if [[ "$VER" != "18.04" ]]; then
 fi
 
 git_call_fn "https://github.com/fribidi/c2man.git" "c2man-git"
-if build "$repo_name" "$version"; then
+if build "$repo_name" "${version//\$ /}"; then
     download_git "$git_url"
     execute ./Configure -desO \
                         -D bash="$(type -P bash)" \
@@ -1830,7 +1848,7 @@ if build "freeglut" "$g_ver"; then
 fi
 
 git_call_fn "https://chromium.googlesource.com/webm/libwebp" "libwebp-git"
-if build "$repo_name" "$version"; then
+if build "$repo_name" "${version//\$ /}"; then
     download_git "$git_url"
     execute autoreconf -fi
     execute cmake -B build \
@@ -1927,7 +1945,7 @@ else
 fi
 
 git_call_fn "https://github.com/KhronosGroup/OpenCL-SDK.git" "opencl-sdk-git" "R"
-if build "$repo_name" "$version"; then
+if build "$repo_name" "${version//\$ /}"; then
     download_git "$git_url"
     execute cmake \
             -S . \
@@ -1986,7 +2004,7 @@ fi
 ffmpeg_libraries+=("--enable-libtesseract")
 
 git_call_fn "https://github.com/imageMagick/jpeg-turbo.git" "jpeg-turbo-git"
-if build "$repo_name" "$version"; then
+if build "$repo_name" "${version//\$ /}"; then
     download_git "$git_url"
     execute cmake -S . \
                   -DCMAKE_INSTALL_PREFIX="$install_dir" \
@@ -2001,7 +2019,7 @@ if build "$repo_name" "$version"; then
 fi
 
 git_call_fn "https://github.com/m-ab-s/rubberband.git" "rubberband-git"
-if build "$repo_name" "$version"; then
+if build "$repo_name" "${version//\$ /}"; then
     download_git "$git_url"
     execute make "-j$cpu_threads" PREFIX="$workspace" install-static
     $(build_done "$repo_name" "$version")
@@ -2040,7 +2058,7 @@ if build "c-ares" "1.23.0"; then
 fi
 
 git_call_fn "https://github.com/lv2/lv2.git" "lv2-git"
-if build "$repo_name" "$version"; then
+if build "$repo_name" "${version//\$ /}"; then
     download_git "$git_url"
     extracmds=("-D"{docs,tests}"=disabled")
     case "$VER" in
@@ -2160,7 +2178,7 @@ CFLAGS+=" -I$workspace/include/lilv-0"
 ffmpeg_libraries+=("--enable-lv2")
 
 git_call_fn "https://github.com/gypified/libmpg123.git" "libmpg123-git"
-if build "$repo_name" "$version"; then
+if build "$repo_name" "${version//\$ /}"; then
     download_git "$git_url"
     execute rm -fr aclocal.m4
     execute aclocal --force -I m4
@@ -2203,7 +2221,7 @@ if build "jemalloc" "$g_ver"; then
 fi
 
 git_call_fn "https://github.com/jacklicn/cunit.git" "cunit-git"
-if build "$repo_name" "$version"; then
+if build "$repo_name" "${version//\$ /}"; then
     download_git "$git_url"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" --disable-shared
@@ -2233,7 +2251,7 @@ box_out_banner_audio() {
 box_out_banner_audio "Installing Audio Tools"
 
 git_call_fn "https://github.com/libsdl-org/SDL.git" "sdl2-git"
-if build "$repo_name" "$version"; then
+if build "$repo_name" "${version//\$ /}"; then
     download_git "$git_url"
     execute cmake -S . -B build \
                        -DCMAKE_INSTALL_PREFIX="$workspace" \
@@ -2264,7 +2282,7 @@ fi
 
 # git_ver_fn "810" "4"
 git_call_fn "https://gitlab.freedesktop.org/pulseaudio/pulseaudio.git" "pulseaudio-git"
-if build "$repo_name" "$version"; then
+if build "$repo_name" "${version//\$ /}"; then
     download_git "$git_url"
     fix_pulse_meson_build_file
     extracmds=("-D"{daemon,doxygen,ipv6,man,tests}"=false")
@@ -2489,7 +2507,7 @@ box_out_banner_video "Installing Video Tools"
 amd_gpu_test="$(check_amd_gpu)"
 git_call_fn "https://github.com/KhronosGroup/Vulkan-Headers.git" "vulkan-headers-git"
 if [[ -n "$amd_gpu_test" ]]; then
-    if build "$repo_name" "$version"; then
+    if build "$repo_name" "${version//\$ /}"; then
         download_git "$git_url" "vulkan-headers-git"
         execute cmake -B build \
                       -DCMAKE_INSTALL_PREFIX="$workspace" \
@@ -2584,7 +2602,7 @@ if build "avif" "$g_ver"; then
 fi
 
 git_call_fn "https://github.com/ultravideo/kvazaar.git" "kvazaar-git"
-if build "$repo_name" "$version"; then
+if build "$repo_name" "${version//\$ /}"; then
     download_git "$git_url"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" \
@@ -2626,7 +2644,7 @@ if [[ "$OS" == "Arch" ]]; then
 else
     ant_path_fn
     git_call_fn "https://github.com/apache/ant.git" "ant-git"
-    if build "$repo_name" "$version"; then
+    if build "$repo_name" "${version//\$ /}"; then
         download_git "$git_url"
         sudo chmod 777 -R "$install_dir/ant"
         execute sh build.sh install-lite
@@ -2744,7 +2762,7 @@ if [[ "$OS" == "Arch" ]]; then
     fi
 else
     git_call_fn "https://github.com/gpac/gpac.git" "gpac-git"
-    if build "$repo_name" "$version"; then
+    if build "$repo_name" "${version//\$ /}"; then
         download_git "$git_url"
         execute sudo ./configure --prefix="$install_dir" \
                                  --static-bin \
@@ -2984,7 +3002,7 @@ fi
 ffmpeg_libraries+=("--enable-vapoursynth")
 
 git_call_fn "https://chromium.googlesource.com/codecs/libgav1" "libgav1-git"
-if build "$repo_name" "$version"; then
+if build "$repo_name" "${version//\$ /}"; then
     download_git "$git_url"
     execute git clone -q -b "20220623.1" --depth 1 "https://github.com/abseil/abseil-cpp.git" "third_party/abseil-cpp"
     execute cmake -B build \
