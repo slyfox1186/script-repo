@@ -50,7 +50,7 @@
 ##    - aom/av1 library
 ##    - libvpx library
 ##    - x265 library
-##    - the parsing to check if an amd gpu is installed 
+##    - the parsing to check if an amd gpu is installed
 ##
 ##  Added:
 ##
@@ -201,8 +201,7 @@ cleanup_fn() {
     case "$choice" in
         1)      sudo rm -fr "$cwd";;
         2)      echo;;
-        *)
-                unset choice
+        *)      unset choice
                 clear
                 cleanup_fn
                 ;;
@@ -317,7 +316,7 @@ download_git() {
     fi
 
     [[ -f "$packages/${dl_file}.done" ]] && store_prior_version=$(cat "$packages/${dl_file}.done")
-    
+
     if [[ ! "$version" == "$store_prior_version" ]]; then
         if [[ "$recurse_flag" == 1 ]]; then
             recurse="--recursive"
@@ -641,49 +640,51 @@ find_cuda_json_file() {
 
 # PRINT THE SCRIPT OPTIONS
 usage() {
-    printf "%s\n\n" "Usage: $script_name [OPTIONS]"
+    clear
+    echo "Usage: ./script [options]"
+    echo
     echo "Options:"
     echo "    -h, --help                                       Display usage information"
     echo "        --version                                    Display version information"
-    echo "    -b, --build                                      Starts the build process"
     echo "    -c, --cleanup                                    Remove all working dirs"
-    echo "        --latest                                     Build latest version of dependencies if newer available"
+    echo "    -b, --build                                      Starts the build process"
+    echo "    -l, --latest                                     Force the script to build the latest version of dependencies if newer version is available"
     echo
+    echo "Example: ./script --build --latest"
 }
 
 while (("${#}" > 0))
 do
     case "$1" in
-        -h | --help)
-                usage
-                echo
-                exit 0
-                ;;
-        --version)
-                printf "%s\n\n" "The script version is: $script_ver"
-                exit 0
-                ;;
+        -h | --help) usage
+                     echo
+                     exit 0
+                     ;;
+        --version)   printf "%s\n\n" "The script version is: $script_ver"
+                     exit 0
+                     ;;
         -*)
-                if [[ "$1" == "--build" || "$1" =~ "-b" ]]; then
-                    bflag="-b"
-                fi
-                if [[ "$1" == "--cleanup" || "$1" =~ "-c" && ! "$1" =~ "--" ]]; then
-                    cflag="-c"
-                    cleanup_fn
-                fi
-                if [[ "$1" == "--full-static" ]]; then
-                    LDEXEFLAGS="-static"
-                fi
-                if [[ "$1" == "--latest" ]]; then
-                    latest=true
-                fi
-                shift
-                ;;
-        *)
-                usage
-                echo
-                exit 1
-                ;;
+                     if [[ "$1" == "--build" || "$1" =~ "-b" ]]; then
+                         bflag="-b"
+                     fi
+                     if [[ "$1" == "--cleanup" || "$1" =~ "-c" && ! "$1" =~ "--" ]]; then
+                         cflag="-c"
+                         clear
+                         cleanup_fn
+                     fi
+                     if [[ "$1" == "--full-static" ]]; then
+                         LDEXEFLAGS="-static"
+                      fi
+                     if [[ "$2" == "--latest" || "$2" =~ "-l" ]]; then
+                         latest=true
+                     fi
+                     shift
+                     ;;
+             *)
+                     usage
+                     echo
+                     exit 1
+                     ;;
     esac
 done
 
@@ -987,7 +988,7 @@ install_cuda_fn() {
 
     if [ "$amd_gpu_test" == "AMD GPU detected." ] || [ "$nvidia_gpu_test" != "$cuda_latest_ver" ]; then
         if [[ -n "$nvidia_gpu_test" ]] || [[ -n "$wsl_test" ]]; then
-            get_ver_fn1
+            get_the_os_version_1
             if [[ "$OS" == "Arch" ]]; then
                 find_nvcc=$(sudo find /opt/ -type f -name 'nvcc')
                 cuda_ver_test=$($find_nvcc --version | sed -n 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')
@@ -1250,7 +1251,7 @@ dl_libjxl_fn() {
     url_base="https://github.com/libjxl/libjxl/releases/download/v0.8.2/jxl-debs-amd64"
     url_suffix="v0.8.2.tar.gz"
 
-    get_ver_fn1
+    get_the_os_version_1
 
     if [[ ! -f "$packages/libjxl.tar.gz" ]]; then
         case "$VER" in
@@ -1387,7 +1388,7 @@ ubuntu_os_ver_fn() {
 
 find_lsb_release=$(sudo find /usr/bin/ -type f -name 'lsb_release')
 
-get_ver_fn1() {
+get_the_os_version_1() {
     if [[ -f /etc/os-release ]]; then
         . /etc/os-release
         OS_TMP="$NAME"
@@ -1404,20 +1405,20 @@ get_ver_fn1() {
     nvidia_utils_ver=$(sudo apt list nvidia-utils-* 2>/dev/null | grep -Eo '^nvidia-utils-[0-9]{3}' | sort -r | uniq | head -n1)
     nvidia_encode_var=$(sudo apt list libnvidia-encode* 2>&1 | grep -Eo 'libnvidia-encode[1-]+[0-9]*$' | sort -r | head -n1)
 }
-get_ver_fn1
+get_the_os_version_1
 
 #
 # CHECK IF RUNNING WINDOWS WSL2
 #
 
-get_ver_fn2() {
+get_the_os_version_2() {
     if [[ $(grep -i "microsoft" "/proc/version") ]]; then
-        wsl_switch="yes_wsl"
+        wsl_flag="yes_wsl"
         OS="WSL2"
         wsl_common_pkgs="nvidia-smi cppcheck libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils libyuv0 libsharp-dev libdmalloc5 libnvidia-encode1"
     fi
 }
-get_ver_fn2
+get_the_os_version_2
 
 #
 # INSTALL REQUIRED APT PACKAGES
@@ -1432,11 +1433,10 @@ case "$OS" in
     Arch)           arch_os_ver_fn;;
     Debian|n/a)     debian_os_ver_fn "$nvidia_encode_var $nvidia_utils_ver";;
     Ubuntu)         ubuntu_os_ver_fn "$nvidia_encode_var $nvidia_utils_ver";;
-    WSL2)
-                    get_ver_fn1
+    WSL2)           get_the_os_version_1
                     case "$OS" in
-                        Debian|n/a)     debian_os_ver_fn "$nvidia_encode_var $nvidia_utils_ver" "$wsl_switch" "$wsl_common_pkgs";;
-                        Ubuntu)         ubuntu_os_ver_fn "$nvidia_encode_var $nvidia_utils_ver" "$wsl_switch" "$wsl_common_pkgs";;
+                        Debian|n/a)     debian_os_ver_fn "$nvidia_encode_var $nvidia_utils_ver" "$wsl_flag" "$wsl_common_pkgs";;
+                        Ubuntu)         ubuntu_os_ver_fn "$nvidia_encode_var $nvidia_utils_ver" "$wsl_flag" "$wsl_common_pkgs";;
                     esac
                     ;;
 esac
@@ -1457,22 +1457,20 @@ ant_path_fn() {
     fi
 }
 
-# CHECK IF THE CUDA FOLDER EXISTS TO DETERMINE INSTALLATION STATUS
+# Check if the cuda folder exists to determine installation status
 case "$OS" in
-    Arch)
-            iscuda=$(sudo find /opt/cuda* -type f -name 'nvcc' 2>/dev/null)
+    Arch)   iscuda=$(sudo find /opt/cuda* -type f -name 'nvcc' 2>/dev/null)
             cuda_path=$(sudo find /opt/cuda* -type f -name 'nvcc' 2>/dev/null | grep -Eo '^.*/bin?')
             ;;
-    *)
-            iscuda=$(sudo find /usr/local/cuda* -type f -name 'nvcc' 2>/dev/null)
+    *)      iscuda=$(sudo find /usr/local/cuda* -type f -name 'nvcc' 2>/dev/null)
             cuda_path=$(sudo find /usr/local/cuda* -type f -name 'nvcc' 2>/dev/null | grep -Eo '^.*/bin?')
             ;;
 esac
 
-# PROMPT THE USER TO INSTALL THE GEFORCE CUDA SDK-TOOLKIT
+# Prompt the user to install the geforce cuda sdk-toolkit
 install_cuda_fn
 
-# UPDATE THE LD LINKER SEARCH PATHS
+# Update the ld linker search paths
 sudo ldconfig
 
 # INSTALL THE GLOBAL TOOLS
@@ -1492,7 +1490,7 @@ box_out_banner_global() {
 }
 box_out_banner_global "Installing Global Tools"
 
-# Alert the user that an AMD GPU was found without a GeForce GPU present
+# Alert the user that an amd gpu was found without a geforce gpu present
 if [[ "$gpu_flag" -eq 1 ]]; then
     printf "\n%s\n" "AMD GPU detected without GeForce present."
 fi
@@ -1526,11 +1524,11 @@ if [[ "$OS" == "Arch" ]]; then
         build_done "libtool" "$lt_ver"
     fi
 else
-    get_ver_fn2
+    get_the_os_version_2
     if [[ "$VER" = "WSL2" ]]; then
         lt_ver=2.4.6
     else
-        get_ver_fn1
+        get_the_os_version_1
         case "$VER" in
             12|23.10|23.04)     lt_ver=2.4.7;;
             *)                  lt_ver=2.4.6;;
@@ -1549,7 +1547,7 @@ else
 fi
 
 if build "pkg-config" "0.29.2"; then
-    # download "https://web.archive.org/web/20220622114555if_/https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz"
+    # Download "https://web.archive.org/web/20220622114555if_/https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz"
     download "https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz"
     execute autoconf
     execute ./configure --prefix="$install_dir" \
@@ -1642,7 +1640,7 @@ fi
 
 if build "giflib" "5.2.1"; then
     download "https://cfhcable.dl.sourceforge.net/project/giflib/giflib-5.2.1.tar.gz"
-    # PARELLEL BUILDING NOT AVAILABLE FOR THIS LIBRARY
+    # Parellel building not available for this library
     execute make
     execute make PREFIX="$workspace" install
     build_done "giflib" "5.2.1"
@@ -2924,7 +2922,7 @@ if [[ "$?" -eq 0 ]]; then
             build_done "nv-codec-headers" "12.0.16.1"
         fi
 
-        get_ver_fn1
+        get_the_os_version_1
 
         if [[ "$OS" == "Arch" ]]; then
             export PATH+=":/opt/cuda/bin"
