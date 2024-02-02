@@ -333,8 +333,6 @@ download_git() {
             if ! git clone --depth 1 $recurse -q "$dl_url" "$target_dir"; then
                 fail_fn "Error: Failed to clone \"$target_dir\". Exiting script. (Line: $LINENO)"
             fi
-        else
-            printf "%s\n\n" "Successfully cloned: $target_dir" >&2
         fi
         cd "$target_dir" || fail_fn "Error: Failed to cd into \"$target_dir\". (Line: $LINENO)"
     else
