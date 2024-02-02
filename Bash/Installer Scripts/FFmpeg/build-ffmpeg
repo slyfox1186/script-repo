@@ -276,7 +276,7 @@ download() {
 
 # Function to check if cargo-c is installed and install it if not
 check_and_install_cargo_c() {
-    if ! ls "$HOME/.cargo/bin" | grep -Eo '^(cargo-(cbuild|cinstall))' &>/dev/null; then
+    if [ -z "$(ls "$HOME/.cargo/bin" | grep -Eo '^(cargo-(cbuild|cinstall))')" ] && [ -z "$(command -v cargo-cinstall)" ]; then
         echo "cargo-c could not be found, installing..."
         # Remove any stale locks on cargo
         if ps aux | grep -E 'cargo|rustc' | grep -v grep &>/dev/null; then
