@@ -159,7 +159,7 @@ box_out_banner1() {
     tput sgr 0
 }
 box_out_banner1 "FFmpeg Build Script - v$script_ver"
-printf "\n%s\n\n" "Utilizing ($cpu_threads) CPU threads."
+printf "\n%s\n\n" "Utilizing $cpu_threads CPU threads."
 
 #
 # SET THE CC/CPP COMPILERS + CUSTOMIZED COMPILER OPTIMIZATION FLAGS
