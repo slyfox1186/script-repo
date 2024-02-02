@@ -363,7 +363,7 @@ git_1_fn() {
 
     git_repo="$1"
     git_url="$2"
-    git_url_path="$3"
+    git_url_flag="$3"
 
     cnt=1
     max_attempts=10
@@ -374,12 +374,12 @@ git_1_fn() {
         return 1
     fi
 
-    [ -n "$git_url_path" ] && url_flag="1"
+    [ -n "$git_url_flag" ] && url_flag=1
 
     while [ $cnt -le $max_attempts ]
     do
         if [[ "$url_flag" -eq 1 ]]; then
-            curl_cmd=$(curl -sSL "https://github.com/xiph/rav1e/tags" | grep -Eo "href=\"$git_url_path/v[0-9]+\.[0-9]+\.[0-9]+\"" | head -n1)
+            curl_cmd=$(curl -sSL "https://github.com/xiph/rav1e/tags" | grep -Eo 'href="[^"]*v?[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz"' | head -n1)
         else
             curl_cmd=$(curl -sSL "https://github.com/$git_repo/$git_url" | grep -o 'href="[^"]*\.tar\.gz"')
         fi
@@ -2571,19 +2571,18 @@ if build "dav1d" "$g_ver1"; then
 fi
 ffmpeg_libraries+=("--enable-libdav1d")
 
-# MANUALLY UPDATE THIS FROM TIME TO TIME
 # RAV1E FAILS TO BUILD ON UBUNTU BIONIC AND DEBIAN 11 BULLSEYE
 if [[ "$VER" != "18.04" ]] && [[ "$VER" != "11" ]]; then
-    # git_ver_fn "xiph/rav1e" "1" "T" "/releases/tag"
-    if build "rav1e" "0.7.1"; then
+    git_ver_fn "xiph/rav1e" "1" "T" "enabled"
+    if build "rav1e" "$g_ver"; then
         install_rustc_fn
         execute cargo install cargo-c
-        download "https://github.com/xiph/rav1e/archive/refs/tags/v0.7.1.tar.gz" "rav1e-0.7.1.tar.gz"
+        download "https://github.com/xiph/rav1e/archive/refs/tags/v$g_ver.tar.gz" "rav1e-$g_ver.tar.gz"
         execute cargo cinstall --prefix="$workspace" \
                                --library-type=staticlib \
                                --crt-static \
                                --release
-        build_done "rav1e" "0.7.1"
+        build_done "rav1e" "$g_ver"
     fi
     ffmpeg_libraries+=("--enable-librav1e")
 fi
