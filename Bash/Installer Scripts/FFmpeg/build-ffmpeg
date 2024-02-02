@@ -1274,9 +1274,9 @@ install_libjxl_fn() {
     cd "$packages/deb-files" || exit 1
 
     # INSTALL THE MAIN DEBIAN FILE FIRST BEFORE INSTALLING THE OTHERS
-    printf "%s\n" "$ dpkg -i libjxl_0.8.2_amd64.deb"
-    if dpkg -i "libjxl_0.8.2_amd64.deb" &>/dev/null; then
-        rm "libjxl_0.8.2_amd64.deb" &>/dev/null
+    printf "%s\n" "$ dpkg -i libjxl_0.9.1_amd64.deb"
+    if dpkg -i "libjxl_0.9.1_amd64.deb" &>/dev/null; then
+        rm "libjxl_0.9.1_amd64.deb" &>/dev/null
     fi
 
     # INSTALL THE REMAINING DEBIAN FILES
@@ -1290,8 +1290,8 @@ install_libjxl_fn() {
 dl_libjxl_fn() {
     local libjxl_cnt_type_1 libjxl_cnt_type_2 url_base url_suffix
 
-    url_base="https://github.com/libjxl/libjxl/releases/download/v0.8.2/jxl-debs-amd64"
-    url_suffix="v0.8.2.tar.gz"
+    url_base="https://github.com/libjxl/libjxl/releases/download/v0.9.1/jxl-debs-amd64"
+    url_suffix="v0.9.1.tar.gz"
 
     get_the_os_version_1
 
@@ -2002,9 +2002,9 @@ fi
 if [[ "$OS" == "Arch" ]]; then
     ffmpeg_libraries+=("--disable-libjxl")
 else
-    if build "libjxl" "0.8.2"; then
+    if build "libjxl" "0.9.1"; then
         dl_libjxl_fn
-        build_done "libjxl" "0.8.2"
+        build_done "libjxl" "0.9.1"
     fi
     ffmpeg_libraries+=("--enable-libjxl")
 fi
@@ -2131,8 +2131,8 @@ if build "$repo_name" "${version//\$ /}"; then
         *)          lv2_switch=disabled ;;
     esac
 
-    venv_path="$workspace/python_virtual_environment/arch_os/lv2-git"
-    venv_packages="(lxml Markdown Pygments rdflib)"
+    venv_path="$workspace/python_virtual_environment/lv2-git"
+    venv_packages=("lxml" "Markdown" "Pygments" "rdflib")
     setup_python_venv_and_install_packages "$venv_path" "${venv_packages[@]}"
 
     # Assuming the build process continues here
@@ -3059,8 +3059,8 @@ ffmpeg_libraries+=("--enable-avisynth")
 if build "vapoursynth" "R65"; then
     download "https://github.com/vapoursynth/vapoursynth/archive/refs/tags/R65.tar.gz" "vapoursynth-R65.tar.gz"
 
-    venv_path="$workspace/python_virtual_environment/arch_os/vapoursynth"
-    venv_packages=(Cython==0.29.36)
+    venv_path="$workspace/python_virtual_environment/vapoursynth"
+    venv_packages=("Cython==0.29.36")
     setup_python_venv_and_install_packages "$venv_path" "${venv_packages[@]}"
 
     # Assuming autogen, configure, make, and install steps for VapourSynth
