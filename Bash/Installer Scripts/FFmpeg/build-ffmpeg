@@ -5,7 +5,7 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
-##  Script version: 3.4.1
+##  Script version: 3.4.2
 ##
 ##  Updated: 02.01.24
 ##
@@ -37,6 +37,7 @@
 ##
 ##  Updated:
 ##
+##    - added virtual environments when building python pip modules amd removed code that is not required anymore due to this
 ##    - the git repositories source using git clone now store the specific branch id and will update each time an update is detected.
 ##    - any apt packages detected that need installing will now prompt the user before installing
 ##    - libvpx had an update that would not compile so I manually set it back to version (1.13.1) - date of change: 01.24.24
@@ -103,7 +104,7 @@ fi
 #
 
 script_name="${0}"
-script_ver="3.4.1"
+script_ver="3.4.2"
 ffmpeg_ver="n5.1.4"
 ffmpeg_archive="ffmpeg-$ffmpeg_ver.tar.gz"
 ffmpeg_url="https://github.com/FFmpeg/FFmpeg/archive/refs/tags/$ffmpeg_ver.tar.gz"
@@ -297,29 +298,38 @@ git_call_fn() {
 }
 
 download_git() {
-    local dl_url="$1"
-    local dl_file="${2:-"${1##*/}"}"
-    local dl_file="${dl_file//\./-}"
-    local target_dir="$packages/$dl_file"
+    local repo_url="$1"
+    local repo_name="${2:-"${1##*/}"}"
+    local repo_name="${repo_name//\./-}"
+    local repo_flag="$3"
+    local target_dir="$packages/$repo_name"
     local version
 
     # Try to get the latest tag
-    version=$(git ls-remote --tags "$dl_url" |
-             awk -F'/' '/\/v?[0-9]+\.[0-9]+(\.[0-9]+)?(\^\{\})?$/ {print $3}' |
-             grep -v '\^{}' |
-             sort -V |
-             tail -n1 |
-             sed 's/^v//')
+    if [[ "$repo_flag" == "ant" ]]; then
+        version=$(git ls-remote --tags "$repo_url" |
+              awk -F'/' '/\/v?[0-9]+\.[0-9]+(\.[0-9]+)?(\^\{\})?$/ {print $4}' |
+              grep -v '\^{}' |
+              sort -rV |
+              head -n1)
+    else
+        version=$(git ls-remote --tags "$repo_url" |
+                 awk -F'/' '/\/v?[0-9]+\.[0-9]+(\.[0-9]+)?(\^\{\})?$/ {print $3}' |
+                 grep -v '\^{}' |
+                 sort -rV |
+                 head -n1 |
+                 sed 's/^v//')
+    fi
 
     # If no tags found, use the latest commit hash as the version
     if [[ -z "$version" ]]; then
-        version=$(git ls-remote "$dl_url" | grep HEAD | awk '{print substr($1,1,7)}')
+        version=$(git ls-remote "$repo_url" | grep HEAD | awk '{print substr($1,1,7)}')
         if [[ -z "$version" ]]; then
             version="unknown"
         fi
     fi
 
-    [[ -f "$packages/${dl_file}.done" ]] && store_prior_version=$(cat "$packages/${dl_file}.done")
+    [[ -f "$packages/${repo_name}.done" ]] && store_prior_version=$(cat "$packages/${repo_name}.done")
 
     if [[ ! "$version" == "$store_prior_version" ]]; then
         if [[ "$recurse_flag" == 1 ]]; then
@@ -330,11 +340,11 @@ download_git() {
         fi
         [[ -d "$target_dir" ]] && rm -fr "$target_dir"
         # Clone the repository
-        echo "Cloning \"$dl_file\" saving version \"$version\"" &>2
-        if ! git clone --depth 1 $recurse -q "$dl_url" "$target_dir"; then
+        echo "Cloning \"$repo_name\" saving version \"$version\"" &>2
+        if ! git clone --depth 1 $recurse -q "$repo_url" "$target_dir"; then
             printf "\n%s\n\n" "Error: Failed to clone \"$target_dir\". Second attempt in 10 seconds..."
             sleep 10
-            if ! git clone --depth 1 $recurse -q "$dl_url" "$target_dir"; then
+            if ! git clone --depth 1 $recurse -q "$repo_url" "$target_dir"; then
                 fail_fn "Error: Failed to clone \"$target_dir\". Exiting script. (Line: $LINENO)"
             fi
         fi
@@ -362,15 +372,13 @@ git_ver_check_fn() {
 
 # LOCATE GITHUB RELEASE VERSION NUMBERS
 github_repo() {
-    local count github_regex_string repo url max_attempts url_flag
+    local repo="$1"
+    local url="$2"
+    local url_flag="$3"
 
-    repo="$1"
-    url="$2"
-    url_flag="$3"
-
-    count=1
-    max_attempts=10
-    github_regex_string='[v]*(\d+\.\d+(?:\.\d*){0,2})\.tar\.gz'
+    local count=1
+    local max_attempts=10
+    local github_regex_string='[v]*(\d+\.\d+(?:\.\d*){0,2})\.tar\.gz'
 
     if [[ -z "$repo" || -z "$url" ]]; then
         echo "Error: Git repository and URL are required."
@@ -422,11 +430,9 @@ github_repo() {
 }
 
 videolan_repo() {
-    local count repo url
-
-    repo="$1"
-    url="$2"
-    count=0
+    local repo="$1"
+    local url="$2"
+    local count=0
     g_ver=""
 
     if [[ -z "$repo" || -z "$url" ]]; then
@@ -454,10 +460,9 @@ videolan_repo() {
 }
 
 gitlab_repo() {
-    local count repo url
-    repo="$1"
-    url="$2"
-    count=0
+    local repo="$1"
+    local url="$2"
+    local count=0
     g_ver=""
     g_ver1=""
     g_sver1=""
@@ -483,9 +488,8 @@ gitlab_repo() {
 }
 
 gitlab_freedesktop_repo() {
-    local count repo
-    repo="$1"
-    count=0
+    local repo="$1"
+    local count=0
     g_ver=""
 
     while true
@@ -508,10 +512,8 @@ gitlab_freedesktop_repo() {
 }
 
 gitlab_gnome_repo() {
-    local count repo
-
-    repo="$1"
-    count=0
+    local repo="$1"
+    local count=0
     g_ver=""
 
     if [[ -z "$repo" ]]; then
@@ -535,10 +537,8 @@ gitlab_gnome_repo() {
 }
 
 debian_salsa_repo() {
-    local count repo
-
-    repo="$1"
-    count=0
+    local repo="$1"
+    local count=0
     g_ver=""
 
     if [[ -z "$repo" ]]; then
@@ -563,11 +563,9 @@ debian_salsa_repo() {
 }
 
 find_git_repo() {
-    local url_action git_repo_type url
-
-    url="$1"
-    git_repo_type="$2"
-    url_action="$3"
+    local url="$1"
+    local git_repo_type="$2"
+    local url_action="$3"
 
     case "$git_repo_type" in
         1) set_repo="github_repo" ;;
@@ -636,6 +634,27 @@ library_exists() {
     return 0
 }
 
+# Function to setup Python virtual environment and install packages
+setup_python_venv_and_install_packages() {
+    local parse_path="$1"
+    shift
+    local parse_package=("$@")
+
+    echo "Creating a Python virtual environment at $parse_package..."
+    python3 -m venv "$parse_package" || fail_fn "Failed to create virtual environment"
+
+    echo "Activating the virtual environment..."
+    source "$parse_package/bin/activate" || fail_fn "Failed to activate virtual environment"
+
+    echo "Installing Python packages: ${packages[*]}..."
+    pip install "${parse_package[@]}" || fail_fn "Failed to install packages"
+
+    echo "Deactivating the virtual environment..."
+    deactivate
+
+    echo "Python virtual environment setup and package installation completed."
+}
+
 find_cuda_json_file() {
     locate_cuda_json_file=$(find /usr/local/cuda/ -type f -name 'version.json' 2>/dev/null)
     locate_cuda_json_file=$(find /opt/cuda/ -type f -name 'version.json' 2>/dev/null)
@@ -657,7 +676,7 @@ usage() {
     echo "Example: ./script --build --latest"
 }
 
-while (("${#}" > 0))
+while (("$#" > 0))
 do
     case "$1" in
         -h | --help) usage
@@ -667,8 +686,7 @@ do
         --version)   printf "%s\n\n" "The script version is: $script_ver"
                      exit 0
                      ;;
-        -*)
-                     if [[ "$1" == "--build" || "$1" =~ "-b" ]]; then
+        -*)          if [[ "$1" == "--build" || "$1" =~ "-b" ]]; then
                          bflag="-b"
                      fi
                      if [[ "$1" == "--cleanup" || "$1" =~ "-c" && ! "$1" =~ "--" ]]; then
@@ -684,8 +702,7 @@ do
                      fi
                      shift
                      ;;
-             *)
-                     usage
+             *)      usage
                      echo
                      exit 1
                      ;;
@@ -812,7 +829,7 @@ fetch_and_parse_cuda_version() {
         cuda_latest_ver="$base_version"
 
         # Append the update number if present
-        if [[ -n $update_version ]]; then
+        if [[ -n "$update_version" ]]; then
           cuda_latest_ver+=".$update_version"
         fi
     fi
@@ -821,10 +838,10 @@ fetch_and_parse_cuda_version() {
 gpu_arch_fn() {
     local gpu_name gpu_type
 
-    if [ -n $(find_cuda_json_file) ]; then
-        gpu_name=$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -r | head -n 1)
+    if [[ -n "$(find_cuda_json_file)" ]]; then
+        gpu_name=$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -rV | head -n 1)
         if [[ "$gpu_name" == "name" ]]; then
-            gpu_name=$(nvidia-smi --query-gpu=gpu_name --format=csv | sort | head -n 1)
+            gpu_name=$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -V | head -n 1)
         fi
 
         case "$gpu_name" in
@@ -984,14 +1001,13 @@ install_cuda_fn() {
 
     amd_gpu_test=$(check_amd_gpu)
     nvidia_gpu_test=$(check_nvidia_gpu)
-    wsl_test=$(grep -i Microsoft '/proc/version')
 
     echo "AMD GPU Test Output: $amd_gpu_test"
     echo "NVIDIA GPU Test Output: $nvidia_gpu_test"
     echo "Expected Latest CUDA Version: $cuda_latest_ver"
 
-    if [ "$amd_gpu_test" == "AMD GPU detected." ] || [ "$nvidia_gpu_test" != "$cuda_latest_ver" ]; then
-        if [[ -n "$nvidia_gpu_test" ]] || [[ -n "$wsl_test" ]]; then
+    if [[ "$amd_gpu_test" == "AMD GPU detected." ]] || [[ ! "$nvidia_gpu_test" == "$cuda_latest_ver" ]]; then
+        if [[ -n "$nvidia_gpu_test" ]] || [[ -n "$(grep -i Microsoft /proc/version)" ]]; then
             get_the_os_version_1
             if [[ "$OS" == "Arch" ]]; then
                 find_nvcc=$(find /opt/ -type f -name 'nvcc')
@@ -1072,9 +1088,9 @@ pkgs_fn() {
     local missing_pkg missing_packages pkg pkgs available_packages unavailable_packages
 
     openjdk_pkg=$(apt search --names-only '^openjdk-[0-9]+-jdk$' 2>/dev/null | grep -oP '^openjdk-\d+-jdk/' | sed 's|/||' | sort -rV | head -n1)
-    libcpp_pkg=$(apt list libc++* 2>&1 | grep -Eo 'libc\+\+-[0-9\-]+-dev' | uniq | sort -r | head -n1)
-    libcppabi_pkg=$(apt list libc++abi* 2>/dev/null | grep -Eo 'libc\+\+abi-[0-9]+-dev' | uniq | sort -r | head -n1)
-    libunwind_pkg=$(apt list libunwind* 2>/dev/null | grep -Eo 'libunwind-[0-9]+-dev' | uniq | sort -r | head -n1)
+    libcpp_pkg=$(apt list libc++* 2>&1 | grep -Eo 'libc\+\+-[0-9\-]+-dev' | uniq | sort -rV | head -n1)
+    libcppabi_pkg=$(apt list libc++abi* 2>/dev/null | grep -Eo 'libc\+\+abi-[0-9]+-dev' | uniq | sort -rV | head -n1)
+    libunwind_pkg=$(apt list libunwind* 2>/dev/null | grep -Eo 'libunwind-[0-9]+-dev' | uniq | sort -rV | head -n1)
 
     # Define an array of apt package names
     pkgs=(
@@ -1105,7 +1121,7 @@ pkgs_fn() {
         libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzmq3-dev libzstd-dev
         libzvbi-dev libzzip-dev llvm lshw lzma-dev m4 mesa-utils meson nasm ninja-build pandoc python3
         python3-pip ragel re2c scons texi2html texinfo tk-dev unzip valgrind wget xmlto zlib1g-dev
-        default-jdk-headless
+        default-jdk-headless python3-venv
 )
 
     # Initialize arrays for missing, available, and unavailable packages
@@ -1325,10 +1341,10 @@ arch_os_ver_fn() {
     clear
 
     arch_pkgs=(
-                av1an bluez-libs clang cmake dav1d devil docbook5-xml flite gdb gettext git gperf
-                gperftools jdk17-openjdk ladspa jq libde265 libjpeg-turbo libjxl libjpeg6-turbo libmusicbrainz5
-                libnghttp2 libwebp libyuv meson nasm ninja numactl opencv pd perl-datetime sudo texlive-basic
-                texlive-binextra tk valgrind webp-pixbuf-loader xterm yasm
+        av1an bluez-libs clang cmake dav1d devil docbook5-xml flite gdb gettext git gperf
+        gperftools jdk17-openjdk ladspa jq libde265 libjpeg-turbo libjxl libjpeg6-turbo libmusicbrainz5
+        libnghttp2 libwebp libyuv meson nasm ninja numactl opencv pd perl-datetime texlive-basic
+        texlive-binextra tk valgrind webp-pixbuf-loader xterm yasm
     )
 
     # Check for Pacman lock file and if Pacman is running
@@ -1336,10 +1352,9 @@ arch_os_ver_fn() {
         echo "Pacman lock file found. Checking if Pacman is running..."
         while pgrep -x pacman > /dev/null; do
             echo "Pacman is currently running. Waiting for it to finish..."
-            sleep 5 # Wait for 5 seconds before checking again
+            sleep 5
         done
         
-        # If Pacman is not running after the loop, it's safe to assume it was previously interrupted.
         if ! pgrep -x pacman > /dev/null; then
             echo "Pacman is not running. Removing stale lock file..."
             sudo rm "/var/lib/pacman/db.lck"
@@ -1352,11 +1367,18 @@ arch_os_ver_fn() {
         sudo pacman -Sq --needed --noconfirm $pkg 2>&1
     done
 
-    # Install required PIP modules
-    echo "Installing Python modules with PIP..."
-    sudo pip install DateTime Sphinx wheel
+    # Set the path for the Python virtual environment
+    local venv_path="$workspace/python_virtual_environment/arch_os"
+
+    # Python packages to install
+    local python_packages=("DateTime" "Sphinx" "wheel")
+
+    # Call the function to setup Python venv and install packages
+    setup_python_venv_and_install_packages "$venv_path" "${python_packages[@]}"
+
     clear
 }
+
 
 debian_os_ver_fn() {
     if [[ "$2" = "yes_wsl" ]]; then
@@ -1418,8 +1440,8 @@ get_the_os_version_1() {
         fail_fn "Error: Failed to define \"\$OS\" and/or \"\$VER\". (Line: $LINENO)"
     fi
 
-    nvidia_utils_ver=$(apt list nvidia-utils-* 2>/dev/null | grep -Eo '^nvidia-utils-[0-9]{3}' | sort -r | uniq | head -n1)
-    nvidia_encode_var=$(apt list libnvidia-encode* 2>&1 | grep -Eo 'libnvidia-encode[1-]+[0-9]*$' | sort -r | head -n1)
+    nvidia_utils_ver=$(apt list nvidia-utils-* 2>/dev/null | grep -Eo '^nvidia-utils-[0-9]{3}' | sort -rV | uniq | head -n1)
+    nvidia_encode_var=$(apt list libnvidia-encode* 2>&1 | grep -Eo 'libnvidia-encode[1-]+[0-9]*$' | sort -rV | head -n1)
 }
 get_the_os_version_1
 
@@ -1428,7 +1450,7 @@ get_the_os_version_1
 #
 
 get_the_os_version_2() {
-    if [[ $(grep -i "microsoft" "/proc/version") ]]; then
+    if [[ $(grep -i "Microsoft" /proc/version) ]]; then
         wsl_flag="yes_wsl"
         OS="WSL2"
         wsl_common_pkgs="nvidia-smi cppcheck libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils libyuv0 libsharp-dev libdmalloc5 libnvidia-encode1"
@@ -1536,7 +1558,7 @@ fi
 
 if [[ "$OS" == "Arch" ]]; then
     if build "libtool" "$lt_ver"; then
-        pacman -S --noconfirm libtool
+        pacman -Sq --needed --noconfirm libtool
         build_done "libtool" "$lt_ver"
     fi
 else
@@ -2086,11 +2108,12 @@ if build "$repo_name" "${version//\$ /}"; then
         10|11)      lv2_switch=enabled ;;
         *)          lv2_switch=disabled ;;
     esac
-    mv_pip_lock=$(find /usr/lib/python3* -type f -name "EXTERNALLY-MANAGED")
-    if [[ -n "$mv_pip_lock" ]]; then
-        mv "$mv_pip_lock" "${mv_pip_lock}-backup"
-    fi
-    execute pip install lxml Markdown Pygments rdflib
+
+    venv_path="$workspace/python_virtual_environment/arch_os/lv2-git"
+    venv_packages="(lxml Markdown Pygments rdflib)"
+    setup_python_venv_and_install_packages "$venv_path" "${venv_packages[@]}"
+
+    # Assuming the build process continues here
     execute meson setup build --prefix="$workspace" \
                               --buildtype=release \
                               --default-library=static \
@@ -2663,7 +2686,7 @@ if [[ "$OS" == "Arch" ]]; then
     apache_ant_fn
 else
     ant_path_fn
-    git_call_fn "https://github.com/apache/ant.git" "ant-git"
+    git_call_fn "https://github.com/apache/ant.git" "ant-git" "ant"
     if build "$repo_name" "${version//\$ /}"; then
         download_git "$git_url"
         chmod 777 -R "$install_dir/ant"
@@ -2766,7 +2789,7 @@ ffmpeg_libraries+=("--enable-frei0r")
 find_git_repo "GPUOpen-LibrariesAndSDKs/AMF" "1" "T"
 g_sver="$(echo "$g_ver" | sed -E "s/^\.//g")"
 if build "amf" "$g_sver"; then
-    download "https://github.com/GPUOpen-LibrariesAndSDKs/AMF/archive/refs/tags/v$g_ver.tar.gz" "amf-$g_sver.tar.gz"
+    download "https://codeload.github.com/GPUOpen-LibrariesAndSDKs/AMF/tar.gz/refs/tags/v$g_ver" "amf-$g_sver.tar.gz"
     execute rm -fr "$workspace/include/AMF"
     execute mkdir -p "$workspace/include/AMF"
     execute cp -fr "$packages/amf-$g_sver/amf/public/include"/* "$workspace/include/AMF"
@@ -2777,7 +2800,7 @@ ffmpeg_libraries+=("--enable-amf")
 if [[ "$OS" == "Arch" ]]; then
     find_git_repo "gpac/gpac" "1" "T"
     if build "gpac" "$g_ver"; then
-        pacman --noconfirm gpac
+        pacman -Sq --needed --noconfirm gpac
         build_done "gpac" "$g_ver"
     fi
 else
@@ -2927,9 +2950,9 @@ if [[ -z "$LDEXEFLAGS" ]]; then
     fi
 fi
 
-# GET THE GPU ARCHITECTURE
+# GET THE NVIDIA GPU ARCHITECTURE TO BUILD CUDA
 # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
-gpu_arch_fn
+[[ -n "$nvidia_gpu_test" ]] || [[ -n "$wsl_test" ]] && gpu_arch_fn
 
 if [[ "$?" -eq 0 ]]; then
     if [[ -n "$iscuda" ]]; then
@@ -3009,10 +3032,15 @@ if build "avisynth" "$g_ver"; then
 fi
 ffmpeg_libraries+=("--enable-avisynth")
 
-find_git_repo "vapoursynth/vapoursynth" "1" "T"
+# find_git_repo "vapoursynth/vapoursynth" "1" "T"
 if build "vapoursynth" "R65"; then
     download "https://github.com/vapoursynth/vapoursynth/archive/refs/tags/R65.tar.gz" "vapoursynth-R65.tar.gz"
-    execute pip install Cython==0.29.36
+
+    venv_path="$workspace/python_virtual_environment/arch_os/vapoursynth"
+    venv_packages=(Cython==0.29.36)
+    setup_python_venv_and_install_packages "$venv_path" "${venv_packages[@]}"
+
+    # Assuming autogen, configure, make, and install steps for VapourSynth
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$cpu_threads"
