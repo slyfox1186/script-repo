@@ -274,10 +274,29 @@ download() {
     cd "$target_dir" || fail_fn "Error: Failed to cd into \"$target_dir\". (Line: $LINENO)"
 }
 
+# Function to check if cargo-c is installed and install it if not
+check_and_install_cargo_c() {
+    if ! ls "$HOME/.cargo/bin" | grep -Eo '^(cargo-(cbuild|cinstall))' &>/dev/null; then
+        echo "cargo-c could not be found, installing..."
+        # Remove any stale locks on cargo
+        if ps aux | grep -E 'cargo|rustc' | grep -v grep &>/dev/null; then
+            cargo clean
+            find ~/.cargo/registry/index -type f -name ".cargo-lock" -delete
+        fi
+        if ! execute cargo install cargo-c; then
+            echo "\$ The command \"cargo install cargo-c\" failed as well. The script will now exit."
+            exit 1
+        fi
+        echo "cargo-c installation completed."
+    else
+        echo "cargo-c is already installed."
+    fi
+}
+
 install_rustc_fn() {
     get_rustc_ver=$(rustc --version | grep -Eo '[0-9 \.]+' | head -n1)
-    if [ "$get_rustc_ver" != "1.73.0" ]; then
-        echo "$ Installing RustUp"
+    if [ "$get_rustc_ver" != "1.75.0" ]; then
+        echo "Installing RustUp"
         curl -sSm "$curl_timeout" --proto "=https" --tlsv1.2 "https://sh.rustup.rs" | sh -s -- -y &>/dev/null
         source "$HOME/.cargo/env"
         if [[ -f "$HOME/.zshrc" ]]; then
@@ -585,6 +604,7 @@ find_git_repo() {
         L) set_action="releases/latest" ;;
         R) set_action="releases" ;;
         T) set_action="tags" ;;
+        *) set_action="$3" ;;
     esac
 
     "$set_repo" "$url" "$set_action" 2>/dev/null
@@ -2618,6 +2638,7 @@ if [[ "$VER" != "18.04" ]] && [[ "$VER" != "11" ]]; then
     find_git_repo "xiph/rav1e" "1" "T" "enabled"
     if build "rav1e" "$g_ver"; then
         install_rustc_fn
+        check_and_install_cargo_c
         download "https://github.com/xiph/rav1e/archive/refs/tags/v$g_ver.tar.gz" "rav1e-$g_ver.tar.gz"
         rm -fr "$HOME/.cargo/registry/index/"* "$HOME/.cargo/.package-cache"
         execute cargo cinstall --prefix="$workspace" \
