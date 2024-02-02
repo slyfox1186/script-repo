@@ -93,6 +93,11 @@
 ##
 #############################################################################################################################
 
+if [[ "$EUID" -ne 0 ]]; then
+    echo "You must run this script with root/sudo"
+    exit 1
+fi
+
 #
 # DEFINE GLOBAL VARIABLES
 #
@@ -199,7 +204,7 @@ cleanup_fn() {
     read -p "Your choices are (1 or 2): " choice
 
     case "$choice" in
-        1)      sudo rm -fr "$cwd";;
+        1)      rm -fr "$cwd";;
         2)      echo;;
         *)      unset choice
                 clear
@@ -247,18 +252,18 @@ download() {
     fi
 
     if [[ -d "$target_dir" ]]; then
-        sudo rm -fr "$target_dir"
+        rm -fr "$target_dir"
     fi
     mkdir -p "$target_dir"
 
     if [[ -n "$3" ]]; then
         if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
-            sudo rm "$target_file"
+            rm "$target_file"
             fail_fn "Error: Failed to extract the tarball \"$dl_file\" and was deleted. Re-run the script to try again. (Line: $LINENO)"
         fi
     else
         if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-            sudo rm "$target_file"
+            rm "$target_file"
             fail_fn "Error: Failed to extract the tarball \"$dl_file\" and was deleted. Re-run the script to try again. (Line: $LINENO)"
         fi
     fi
@@ -323,7 +328,7 @@ download_git() {
             output_dir="$dl_path/$3"
             target_dir="$output_dir"
         fi
-        [[ -d "$target_dir" ]] && sudo rm -fr "$target_dir"
+        [[ -d "$target_dir" ]] && rm -fr "$target_dir"
         # Clone the repository
         echo "Cloning \"$dl_file\" saving version \"$version\"" &>2
         if ! git clone --depth 1 $recurse -q "$dl_url" "$target_dir"; then
@@ -632,8 +637,8 @@ library_exists() {
 }
 
 find_cuda_json_file() {
-    locate_cuda_json_file=$(sudo find /usr/local/cuda/ -type f -name 'version.json' 2>/dev/null)
-    locate_cuda_json_file=$(sudo find /opt/cuda/ -type f -name 'version.json' 2>/dev/null)
+    locate_cuda_json_file=$(find /usr/local/cuda/ -type f -name 'version.json' 2>/dev/null)
+    locate_cuda_json_file=$(find /opt/cuda/ -type f -name 'version.json' 2>/dev/null)
     echo "$locate_cuda_json_file"
 }
 
@@ -704,11 +709,11 @@ fi
 # SET THE PATH VARIABLE
 #
 
-if sudo find /usr/local -maxdepth 1 -name "cuda" &>/dev/null | head -n1; then
-    cuda_bin_path=$(sudo find /usr/local -maxdepth 1 -name "cuda" &>/dev/null | head -n1)
+if find /usr/local -maxdepth 1 -name "cuda" &>/dev/null | head -n1; then
+    cuda_bin_path=$(find /usr/local -maxdepth 1 -name "cuda" &>/dev/null | head -n1)
     cuda_bin_path+="/bin"
-elif sudo find /opt -maxdepth 1 -name "cuda" &>/dev/null | head -n1; then
-    cuda_bin_path=$(sudo find /opt -maxdepth 1 -name "cuda" &>/dev/null | head -n1)
+elif find /opt -maxdepth 1 -name "cuda" &>/dev/null | head -n1; then
+    cuda_bin_path=$(find /opt -maxdepth 1 -name "cuda" &>/dev/null | head -n1)
     cuda_bin_path+="/bin"
 fi
 
@@ -910,42 +915,42 @@ cuda_download_fn() {
     case "$choice" in
         1)
             wget --show progress -cqO "$packages/nvidia-cuda/cuda-buster-$cuda_latest_ver.deb" "$cuda_url/local_installers/cuda-repo-debian10-12-3-local_12.3.2-545.23.08-1_amd64.deb"
-            sudo dpkg -i "$packages/nvidia-cuda/cuda-buster-$cuda_latest_ver.deb"
-            sudo cp -f /var/cuda-repo-debian10-12-3-local/cuda-*-keyring.gpg /usr/share/keyrings/
-            sudo add-apt-repository -y contrib
+            dpkg -i "$packages/nvidia-cuda/cuda-buster-$cuda_latest_ver.deb"
+            cp -f /var/cuda-repo-debian10-12-3-local/cuda-*-keyring.gpg /usr/share/keyrings/
+            add-apt-repository -y contrib
             ;;
         2)
             wget --show progress -cqO "$packages/nvidia-cuda/cuda-bullseye-$cuda_latest_ver.deb" "$cuda_url/local_installers/cuda-repo-debian11-12-3-local_12.3.2-545.23.08-1_amd64.deb"
-            sudo dpkg -i "$packages/nvidia-cuda/cuda-bullseye-$cuda_latest_ver.deb"
-            sudo cp -f /var/cuda-repo-debian11-12-3-local/cuda-*-keyring.gpg /usr/share/keyrings/
-            sudo add-apt-repository -y contrib
+            dpkg -i "$packages/nvidia-cuda/cuda-bullseye-$cuda_latest_ver.deb"
+            cp -f /var/cuda-repo-debian11-12-3-local/cuda-*-keyring.gpg /usr/share/keyrings/
+            add-apt-repository -y contrib
             ;;
         3)
             wget --show progress -cqO "$packages/nvidia-cuda/cuda-bookworm-$cuda_latest_ver.deb" "$cuda_url/local_installers/cuda-repo-debian12-12-3-local_12.3.2-545.23.08-1_amd64.deb"
-            sudo dpkg -i "$packages/nvidia-cuda/cuda-bookworm-$cuda_latest_ver.deb"
-            sudo cp -f /var/cuda-repo-debian12-12-3-local/cuda-*-keyring.gpg /usr/share/keyrings/
-            sudo add-apt-repository -y contrib
+            dpkg -i "$packages/nvidia-cuda/cuda-bookworm-$cuda_latest_ver.deb"
+            cp -f /var/cuda-repo-debian12-12-3-local/cuda-*-keyring.gpg /usr/share/keyrings/
+            add-apt-repository -y contrib
             ;;
         4)
             wget --show progress -cqO "$packages/nvidia-cuda/cuda-ubuntu2004.pin" "$cuda_pin_url/ubuntu2004/x86_64/cuda-ubuntu2004.pin"
-            sudo mv "$packages/nvidia-cuda/cuda-ubuntu2004.pin" /etc/apt/preferences.d/cuda-repository-pin-600
+            mv "$packages/nvidia-cuda/cuda-ubuntu2004.pin" /etc/apt/preferences.d/cuda-repository-pin-600
             wget --show progress -cqO "$packages/nvidia-cuda/cuda-focal-$cuda_latest_ver.deb" "$cuda_url/local_installers/cuda-repo-ubuntu2004-12-3-local_12.3.2-545.23.08-1_amd64.deb"
-            sudo dpkg -i "$packages/nvidia-cuda/cuda-focal-$cuda_latest_ver.deb"
-            sudo cp -f /var/cuda-repo-ubuntu2004-12-3-local/cuda-*-keyring.gpg /usr/share/keyrings/
+            dpkg -i "$packages/nvidia-cuda/cuda-focal-$cuda_latest_ver.deb"
+            cp -f /var/cuda-repo-ubuntu2004-12-3-local/cuda-*-keyring.gpg /usr/share/keyrings/
             ;;
         5)
             wget --show progress -cqO "$packages/nvidia-cuda/cuda-ubuntu2204.pin" "$cuda_pin_url/ubuntu2204/x86_64/cuda-ubuntu2204.pin"
-            sudo mv "$packages/nvidia-cuda/cuda-ubuntu2204.pin" /etc/apt/preferences.d/cuda-repository-pin-600
+            mv "$packages/nvidia-cuda/cuda-ubuntu2204.pin" /etc/apt/preferences.d/cuda-repository-pin-600
             wget --show progress -cqO "$packages/nvidia-cuda/cuda-jammy-$cuda_latest_ver.deb" "$cuda_url/local_installers/cuda-repo-ubuntu2204-12-3-local_12.3.2-545.23.08-1_amd64.deb"
-            sudo dpkg -i "$packages/nvidia-cuda/cuda-jammy-$cuda_latest_ver.deb"
-            sudo cp -f /var/cuda-repo-ubuntu2204-12-3-local/cuda-*-keyring.gpg /usr/share/keyrings/
+            dpkg -i "$packages/nvidia-cuda/cuda-jammy-$cuda_latest_ver.deb"
+            cp -f /var/cuda-repo-ubuntu2204-12-3-local/cuda-*-keyring.gpg /usr/share/keyrings/
             ;;
         6)
             wget --show progress -cqO "$packages/nvidia-cuda/cuda-wsl-ubuntu.pin" "$cuda_pin_url/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin"
-            sudo mv "$packages/nvidia-cuda/cuda-wsl-ubuntu.pin" /etc/apt/preferences.d/cuda-repository-pin-600
+            mv "$packages/nvidia-cuda/cuda-wsl-ubuntu.pin" /etc/apt/preferences.d/cuda-repository-pin-600
             wget --show progress -cqO "$packages/nvidia-cuda/cuda-wsl-$cuda_latest_ver.deb" "$cuda_url/local_installers/cuda-repo-wsl-ubuntu-12-3-local_12.3.2-1_amd64.deb"
-            sudo dpkg -i "$packages/nvidia-cuda/cuda-wsl-$cuda_latest_ver.deb"
-            sudo cp -f /var/cuda-repo-wsl-ubuntu-12-3-local/cuda-*-keyring.gpg /usr/share/keyrings/
+            dpkg -i "$packages/nvidia-cuda/cuda-wsl-$cuda_latest_ver.deb"
+            cp -f /var/cuda-repo-wsl-ubuntu-12-3-local/cuda-*-keyring.gpg /usr/share/keyrings/
             ;;
     7)
             git clone -q "https://gitlab.archlinux.org/archlinux/packaging/packages/cuda.git"
@@ -963,8 +968,8 @@ cuda_download_fn() {
     esac
 
     # UPDATE THE APT PACKAGES THEN INSTALL THE CUDA-SDK-TOOLKIT
-    sudo apt update
-    sudo apt install cuda-toolkit-12-3
+    apt update
+    apt install cuda-toolkit-12-3
     clear
 }
 
@@ -989,7 +994,7 @@ install_cuda_fn() {
         if [[ -n "$nvidia_gpu_test" ]] || [[ -n "$wsl_test" ]]; then
             get_the_os_version_1
             if [[ "$OS" == "Arch" ]]; then
-                find_nvcc=$(sudo find /opt/ -type f -name 'nvcc')
+                find_nvcc=$(find /opt/ -type f -name 'nvcc')
                 cuda_ver_test=$($find_nvcc --version | sed -n 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')
                 cuda_ver_test+=".2"
             else
@@ -1040,7 +1045,7 @@ install_cuda_fn() {
             fi
 
             if [[ "$OS" == "Arch" ]]; then
-                find_nvcc=$(sudo find /opt/ -type f -name "nvcc")
+                find_nvcc=$(find /opt/ -type f -name "nvcc")
                 cuda_ver_test=$($find_nvcc --version | sed -n "s/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p")
                 cuda_ver_test+=".1"
             else
@@ -1067,9 +1072,9 @@ pkgs_fn() {
     local missing_pkg missing_packages pkg pkgs available_packages unavailable_packages
 
     openjdk_pkg=$(apt search --names-only '^openjdk-[0-9]+-jdk$' 2>/dev/null | grep -oP '^openjdk-\d+-jdk/' | sed 's|/||' | sort -rV | head -n1)
-    libcpp_pkg=$(sudo apt list libc++* 2>&1 | grep -Eo 'libc\+\+-[0-9\-]+-dev' | uniq | sort -r | head -n1)
-    libcppabi_pkg=$(sudo apt list libc++abi* 2>/dev/null | grep -Eo 'libc\+\+abi-[0-9]+-dev' | uniq | sort -r | head -n1)
-    libunwind_pkg=$(sudo apt list libunwind* 2>/dev/null | grep -Eo 'libunwind-[0-9]+-dev' | uniq | sort -r | head -n1)
+    libcpp_pkg=$(apt list libc++* 2>&1 | grep -Eo 'libc\+\+-[0-9\-]+-dev' | uniq | sort -r | head -n1)
+    libcppabi_pkg=$(apt list libc++abi* 2>/dev/null | grep -Eo 'libc\+\+abi-[0-9]+-dev' | uniq | sort -r | head -n1)
+    libunwind_pkg=$(apt list libunwind* 2>/dev/null | grep -Eo 'libunwind-[0-9]+-dev' | uniq | sort -r | head -n1)
 
     # Define an array of apt package names
     pkgs=(
@@ -1099,7 +1104,7 @@ pkgs_fn() {
         libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev libxfixes-dev
         libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzmq3-dev libzstd-dev
         libzvbi-dev libzzip-dev llvm lshw lzma-dev m4 mesa-utils meson nasm ninja-build pandoc python3
-        python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip valgrind wget xmlto zlib1g-dev
+        python3-pip ragel re2c scons texi2html texinfo tk-dev unzip valgrind wget xmlto zlib1g-dev
         default-jdk-headless
 )
 
@@ -1134,7 +1139,7 @@ pkgs_fn() {
     # Install available missing packages
     if [[ "${#available_packages[@]}" -gt 0 ]]; then
         echo "Installing available missing packages: ${available_packages[*]}"
-        sudo apt install "${available_packages[@]}"
+        apt install "${available_packages[@]}"
         echo
     else
         printf "%s\n\n" "No missing packages to install or all missing packages are unavailable."
@@ -1143,8 +1148,8 @@ pkgs_fn() {
 
 fix_missing_x265_lib() {
     if [[ ! -f "/usr/lib/x86_64-linux-gnu/libstdc++.so" ]] && [[ -f "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30" ]]; then
-        echo "$ sudo ln -sf /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30 /usr/lib/x86_64-linux-gnu/libstdc++.so"
-        sudo ln -sf /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30 /usr/lib/x86_64-linux-gnu/libstdc++.so
+        echo "$ ln -sf /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30 /usr/lib/x86_64-linux-gnu/libstdc++.so"
+        ln -sf /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30 /usr/lib/x86_64-linux-gnu/libstdc++.so
     fi
 }
 
@@ -1156,12 +1161,12 @@ x265_fix_libs_fn() {
 
     case "$OS" in
         Arch)
-                    sudo cp -f "$x265_libs" "/usr/lib"
-                    sudo ln -sf "/usr/lib/$x265_libs_trim" "/usr/lib/libx265.so"
+                    cp -f "$x265_libs" "/usr/lib"
+                    ln -sf "/usr/lib/$x265_libs_trim" "/usr/lib/libx265.so"
                     ;;
         *)
-                    sudo cp -f "$x265_libs" "/usr/lib/x86_64-linux-gnu"
-                    sudo ln -sf "/usr/lib/x86_64-linux-gnu/$x265_libs_trim" "/usr/lib/x86_64-linux-gnu/libx265.so"
+                    cp -f "$x265_libs" "/usr/lib/x86_64-linux-gnu"
+                    ln -sf "/usr/lib/x86_64-linux-gnu/$x265_libs_trim" "/usr/lib/x86_64-linux-gnu/libx265.so"
                     ;;
     esac
 }
@@ -1189,21 +1194,21 @@ libpulse_fix_libs_fn() {
 
     if [[ "$OS" == "Arch" ]]; then
         if [[ ! -d "/usr/lib/pulseaudio" ]]; then
-            sudo mkdir -p "/usr/lib/pulseaudio"
+            mkdir -p "/usr/lib/pulseaudio"
         fi
     else
         if [[ ! -d "/usr/lib/x86_64-linux-gnu/pulseaudio" ]]; then
-            sudo mkdir -p "/usr/lib/x86_64-linux-gnu/pulseaudio"
+            mkdir -p "/usr/lib/x86_64-linux-gnu/pulseaudio"
         fi
     fi
 
     if [[ -n "$libpulse_lib" ]]; then
         if [[ "$OS" == "Arch" ]]; then
-            execute sudo cp -f "$libpulse_lib" "/usr/lib/pulseaudio"
-            execute sudo ln -sf "/usr/lib/pulseaudio/$libpulse_trim" "/usr/lib"
+            execute cp -f "$libpulse_lib" "/usr/lib/pulseaudio"
+            execute ln -sf "/usr/lib/pulseaudio/$libpulse_trim" "/usr/lib"
         else
-            execute sudo cp -f "$libpulse_lib" "/usr/lib/x86_64-linux-gnu/pulseaudio"
-            execute sudo ln -sf "/usr/lib/x86_64-linux-gnu/pulseaudio/$libpulse_trim" "/usr/lib/x86_64-linux-gnu"
+            execute cp -f "$libpulse_lib" "/usr/lib/x86_64-linux-gnu/pulseaudio"
+            execute ln -sf "/usr/lib/x86_64-linux-gnu/pulseaudio/$libpulse_trim" "/usr/lib/x86_64-linux-gnu"
         fi
     fi
 }
@@ -1231,16 +1236,16 @@ install_libjxl_fn() {
     cd "$packages/deb-files" || exit 1
 
     # INSTALL THE MAIN DEBIAN FILE FIRST BEFORE INSTALLING THE OTHERS
-    printf "%s\n" "$ sudo dpkg -i libjxl_0.8.2_amd64.deb"
-    if sudo dpkg -i "libjxl_0.8.2_amd64.deb" &>/dev/null; then
-        sudo rm "libjxl_0.8.2_amd64.deb" &>/dev/null
+    printf "%s\n" "$ dpkg -i libjxl_0.8.2_amd64.deb"
+    if dpkg -i "libjxl_0.8.2_amd64.deb" &>/dev/null; then
+        rm "libjxl_0.8.2_amd64.deb" &>/dev/null
     fi
 
     # INSTALL THE REMAINING DEBIAN FILES
     for i in *.deb
     do
-        printf "%s\n" "\$ sudo dpkg -i $i"
-        sudo dpkg -i ./"$i" &>/dev/null
+        printf "%s\n" "\$ dpkg -i $i"
+        dpkg -i ./"$i" &>/dev/null
     done
 }
 
@@ -1276,10 +1281,10 @@ dl_libjxl_fn() {
         libjxl_cnt_type_1=$(ls -1A "$packages"/deb-files/*.deb 2>/dev/null | wc -l)
         libjxl_cnt_type_2=$(ls -1A "$packages"/deb-files/*.debb 2>/dev/null | wc -l)
         if [[ "$libjxl_cnt_type_1" -ne "0" ]]; then
-            sudo rm "$packages"/deb-files/*.deb
+            rm "$packages"/deb-files/*.deb
         fi
         if [[ "$libjxl_cnt_type_2" -ne "0" ]]; then
-            sudo rm "$packages"/deb-files/*.debb
+            rm "$packages"/deb-files/*.debb
         fi
 
         # EXTRACT THE LIBJXL DEBIAN FILES
@@ -1322,22 +1327,22 @@ arch_os_ver_fn() {
     arch_pkgs=(
                 av1an bluez-libs clang cmake dav1d devil docbook5-xml flite gdb gettext git gperf
                 gperftools jdk17-openjdk ladspa jq libde265 libjpeg-turbo libjxl libjpeg6-turbo libmusicbrainz5
-                libnghttp2 libwebp libyuv meson nasm ninja numactl opencv pd perl-datetime sudo texlive-basic
+                libnghttp2 libwebp libyuv meson nasm ninja numactl opencv pd perl-datetime texlive-basic
                 texlive-binextra tk valgrind webp-pixbuf-loader xterm yasm
     )
 
     # REMOVE ANY LOCKS ON PACMAN
     if [[ -f "/var/lib/pacman/db.lck" ]]; then
-        sudo rm "/var/lib/pacman/db.lck"
+        rm "/var/lib/pacman/db.lck"
     fi
 
     for pkg in "${arch_pkgs[@]}"
     do
-        sudo pacman -Sq --needed --noconfirm $pkg 2>&1
+        pacman -Sq --needed --noconfirm $pkg 2>&1
     done
 
     # INSTALL REQUIRED PIP MODULES
-    sudo pip install DateTime Sphinx wheel
+    pip install DateTime Sphinx wheel
     clear
 }
 
@@ -1385,7 +1390,7 @@ ubuntu_os_ver_fn() {
 # TEST THE OS AND ITS VERSION
 #
 
-find_lsb_release=$(sudo find /usr/bin/ -type f -name 'lsb_release')
+find_lsb_release=$(find /usr/bin/ -type f -name 'lsb_release')
 
 get_the_os_version_1() {
     if [[ -f /etc/os-release ]]; then
@@ -1401,8 +1406,8 @@ get_the_os_version_1() {
         fail_fn "Error: Failed to define \"\$OS\" and/or \"\$VER\". (Line: $LINENO)"
     fi
 
-    nvidia_utils_ver=$(sudo apt list nvidia-utils-* 2>/dev/null | grep -Eo '^nvidia-utils-[0-9]{3}' | sort -r | uniq | head -n1)
-    nvidia_encode_var=$(sudo apt list libnvidia-encode* 2>&1 | grep -Eo 'libnvidia-encode[1-]+[0-9]*$' | sort -r | head -n1)
+    nvidia_utils_ver=$(apt list nvidia-utils-* 2>/dev/null | grep -Eo '^nvidia-utils-[0-9]{3}' | sort -r | uniq | head -n1)
+    nvidia_encode_var=$(apt list libnvidia-encode* 2>&1 | grep -Eo 'libnvidia-encode[1-]+[0-9]*$' | sort -r | head -n1)
 }
 get_the_os_version_1
 
@@ -1442,8 +1447,8 @@ esac
 
 # SET THE JAVA VARIABLES
 path_fn
-locate_java=$(sudo find /usr/lib/jvm/ -type d -name 'java-*-openjdk*' | sort -rV | head -n1)
-java_include=$(sudo find /usr/lib/jvm/ -type f -name 'javac' | sort -rV | head -n1 | xargs dirname | sed 's/bin/include/')
+locate_java=$(find /usr/lib/jvm/ -type d -name 'java-*-openjdk*' | sort -rV | head -n1)
+java_include=$(find /usr/lib/jvm/ -type f -name 'javac' | sort -rV | head -n1 | xargs dirname | sed 's/bin/include/')
 export CPPFLAGS+=" -I$java_include"
 export JDK_HOME="$locate_java"
 export JAVA_HOME="$locate_java"
@@ -1452,17 +1457,17 @@ export PATH="$PATH:$JAVA_HOME/bin"
 ant_path_fn() {
     export ANT_HOME="$install_dir/ant"
     if [[ ! -d "$install_dir/ant/bin" ]] || [[ ! -d "$install_dir/ant/lib" ]]; then
-        sudo mkdir -p "$install_dir/ant/bin" "$install_dir/ant/lib" 2>/dev/null
+        mkdir -p "$install_dir/ant/bin" "$install_dir/ant/lib" 2>/dev/null
     fi
 }
 
 # Check if the cuda folder exists to determine installation status
 case "$OS" in
-    Arch)   iscuda=$(sudo find /opt/cuda* -type f -name 'nvcc' 2>/dev/null)
-            cuda_path=$(sudo find /opt/cuda* -type f -name 'nvcc' 2>/dev/null | grep -Eo '^.*/bin?')
+    Arch)   iscuda=$(find /opt/cuda* -type f -name 'nvcc' 2>/dev/null)
+            cuda_path=$(find /opt/cuda* -type f -name 'nvcc' 2>/dev/null | grep -Eo '^.*/bin?')
             ;;
-    *)      iscuda=$(sudo find /usr/local/cuda* -type f -name 'nvcc' 2>/dev/null)
-            cuda_path=$(sudo find /usr/local/cuda* -type f -name 'nvcc' 2>/dev/null | grep -Eo '^.*/bin?')
+    *)      iscuda=$(find /usr/local/cuda* -type f -name 'nvcc' 2>/dev/null)
+            cuda_path=$(find /usr/local/cuda* -type f -name 'nvcc' 2>/dev/null | grep -Eo '^.*/bin?')
             ;;
 esac
 
@@ -1470,7 +1475,7 @@ esac
 install_cuda_fn
 
 # Update the ld linker search paths
-sudo ldconfig
+ldconfig
 
 # INSTALL THE GLOBAL TOOLS
 echo
@@ -1519,7 +1524,7 @@ fi
 
 if [[ "$OS" == "Arch" ]]; then
     if build "libtool" "$lt_ver"; then
-        sudo pacman -S --noconfirm libtool
+        pacman -S --noconfirm libtool
         build_done "libtool" "$lt_ver"
     fi
 else
@@ -1540,7 +1545,7 @@ else
                             --with-pic \
                             M4="$install_dir/bin/m4"
         execute make "-j$cpu_threads"
-        execute sudo make install
+        execute make install
         build_done "libtool" "$lt_ver"
     fi
 fi
@@ -1554,7 +1559,7 @@ if build "pkg-config" "0.29.2"; then
                         --enable-silent-rules \
                         --with-pc-path="$PKG_CONFIG_PATH"
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done "pkg-config" "0.29.2"
 fi
 
@@ -1562,7 +1567,7 @@ find_git_repo "mesonbuild/meson" "1" "T"
 if build "meson" "$g_ver"; then
     download "https://github.com/mesonbuild/meson/archive/refs/tags/$g_ver.tar.gz" "meson-$g_ver.tar.gz"
     execute python3 setup.py build
-    execute sudo python3 setup.py install --prefix="$install_dir"
+    execute python3 setup.py install --prefix="$install_dir"
     build_done "meson" "$g_ver"
 fi
 
@@ -1606,8 +1611,8 @@ if build "openssl" "3.1.4"; then
                         --with-zlib-include="$workspace/include" \
                         --with-zlib-lib="$workspace/lib"
     execute make "-j$cpu_threads"
-    execute sudo make install_sw
-    execute sudo make install_fips
+    execute make install_sw
+    execute make install_fips
     build_done "openssl" "3.1.4"
 fi
 ffmpeg_libraries+=("--enable-openssl")
@@ -1691,7 +1696,7 @@ if build "libtiff" "$g_ver"; then
                         --enable-cxx \
                         --with-pic
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done "libtiff" "$g_ver"
 fi
 
@@ -1801,7 +1806,7 @@ if build "$repo_name" "${version//\$ /}"; then
                         -D yacc=$(type -P yacc)
     execute make depend
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     $(build_done "$repo_name" "$version")
 fi
 
@@ -1869,7 +1874,7 @@ if build "$repo_name" "${version//\$ /}"; then
                   -DWEBP_LINK_STATIC=ON \
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
-    execute sudo ninja "-j$cpu_threads" -C build install
+    execute ninja "-j$cpu_threads" -C build install
     $(build_done "$repo_name" "$version")
 fi
 ffmpeg_libraries+=("--enable-libwebp")
@@ -1888,7 +1893,7 @@ if build "libhwy" "$g_ver"; then
                   -DHWY_FORCE_STATIC_LIBS=ON \
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
-    execute sudo ninja "-j$cpu_threads" -C build install
+    execute ninja "-j$cpu_threads" -C build install
     build_done "libhwy" "$g_ver"
 fi
 
@@ -1902,7 +1907,7 @@ if build "brotli" "$g_ver"; then
                   -DBUILD_TESTING=OFF \
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
-    execute sudo ninja "-j$cpu_threads" -C build install
+    execute ninja "-j$cpu_threads" -C build install
     build_done "brotli" "$g_ver"
 fi
 
@@ -1985,7 +1990,7 @@ if build "leptonica" "$g_ver"; then
                         --{build,host}="$pc_type" \
                         --with-pic
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done "leptonica" "$g_ver"
 fi
 
@@ -2002,7 +2007,7 @@ if build "tesseract" "$g_ver"; then
                         --without-archive \
                         --without-curl
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done "tesseract" "$g_ver"
 fi
 ffmpeg_libraries+=("--enable-libtesseract")
@@ -2017,7 +2022,7 @@ if build "$repo_name" "${version//\$ /}"; then
                   -DENABLE_STATIC=ON \
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads"
-    execute sudo ninja "-j$cpu_threads" install
+    execute ninja "-j$cpu_threads" install
     save_version=$(build_done "$repo_name" "$version")
     $(build_done "$repo_name" "$version")
 fi
@@ -2057,7 +2062,7 @@ if build "c-ares" "1.23.0"; then
                         --disable-warnings \
                         --with-pic
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done "c-ares" "1.23.0"
 fi
 
@@ -2069,9 +2074,9 @@ if build "$repo_name" "${version//\$ /}"; then
         10|11)      lv2_switch=enabled;;
         *)          lv2_switch=disabled;;
     esac
-    mv_pip_lock=$(sudo find /usr/lib/python3* -type f -name "EXTERNALLY-MANAGED")
+    mv_pip_lock=$(find /usr/lib/python3* -type f -name "EXTERNALLY-MANAGED")
     if [[ -n "$mv_pip_lock" ]]; then
-        sudo mv "$mv_pip_lock" "${mv_pip_lock}-backup"
+        mv "$mv_pip_lock" "${mv_pip_lock}-backup"
     fi
     execute pip install lxml Markdown Pygments rdflib
     execute meson setup build --prefix="$workspace" \
@@ -2280,7 +2285,7 @@ if build "libsndfile" "$g_ver"; then
                         --with-pic \
                         --with-pkgconfigdir="$workspace/lib/pkgconfig"
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done "libsndfile" "$g_ver"
 fi
 
@@ -2296,7 +2301,7 @@ if build "$repo_name" "${version//\$ /}"; then
                               --strip \
                                "${extracmds[@]}"
     execute ninja "-j$cpu_threads" -C build
-    execute sudo ninja "-j$cpu_threads" -C build install
+    execute ninja "-j$cpu_threads" -C build install
     libpulse_fix_libs_fn
     $(build_done "$repo_name" "$version")
 fi
@@ -2315,7 +2320,7 @@ if build "libogg" "$g_ver"; then
                   -DCPACK_SOURCE_ZIP=OFF \
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
-    execute sudo ninja "-j$cpu_threads" -C build install
+    execute ninja "-j$cpu_threads" -C build install
     build_done "libogg" "$g_ver"
 fi
 
@@ -2371,7 +2376,7 @@ if build "vorbis" "$g_ver"; then
                   -DOGG_LIBRARY="$install_dir/lib/libogg.so" \
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
-    execute sudo ninja "-j$cpu_threads" -C build install
+    execute ninja "-j$cpu_threads" -C build install
     build_done "vorbis" "$g_ver"
 fi
 ffmpeg_libraries+=("--enable-libvorbis")
@@ -2483,7 +2488,7 @@ if build "libtheora" "1.1.1"; then
                         --with-vorbis-libraries="$workspace/lib" \
                         --with-pic
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
     build_done "libtheora" "1.1.1"
 fi
 ffmpeg_libraries+=("--enable-libtheora")
@@ -2550,7 +2555,7 @@ if build "av1" "$aom_sver"; then
                   -G Ninja -Wno-dev \
                   "$packages/av1"
     execute ninja "-j$cpu_threads" -C build
-    execute sudo ninja -C build install
+    execute ninja -C build install
     build_done "av1" "$aom_sver"
 fi
 ffmpeg_libraries+=("--enable-libaom")
@@ -2600,7 +2605,7 @@ if build "avif" "$g_ver"; then
                   -DAVIF_ENABLE_WERROR=OFF \
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
-    execute sudo ninja "-j$cpu_threads" -C build install
+    execute ninja "-j$cpu_threads" -C build install
     build_done "avif" "$g_ver"
 fi
 
@@ -2649,7 +2654,7 @@ else
     git_call_fn "https://github.com/apache/ant.git" "ant-git"
     if build "$repo_name" "${version//\$ /}"; then
         download_git "$git_url"
-        sudo chmod 777 -R "$install_dir/ant"
+        chmod 777 -R "$install_dir/ant"
         execute sh build.sh install-lite
         $(build_done "$repo_name" "$version")
     fi
@@ -2760,14 +2765,14 @@ ffmpeg_libraries+=("--enable-amf")
 if [[ "$OS" == "Arch" ]]; then
     find_git_repo "gpac/gpac" "1" "T"
     if build "gpac" "$g_ver"; then
-        sudo pacman --noconfirm gpac
+        pacman --noconfirm gpac
         build_done "gpac" "$g_ver"
     fi
 else
     git_call_fn "https://github.com/gpac/gpac.git" "gpac-git"
     if build "$repo_name" "${version//\$ /}"; then
         download_git "$git_url"
-        execute sudo ./configure --prefix="$install_dir" \
+        execute ./configure --prefix="$install_dir" \
                                  --static-bin \
                                  --static-modules \
                                  --use-a52=local \
@@ -2775,8 +2780,8 @@ else
                                  --use-freetype=local \
                                  --use-mad=local \
                                  --sdl-cfg="$workspace/include/SDL3"
-        execute sudo make "-j$cpu_threads"
-        execute sudo make install
+        execute make "-j$cpu_threads"
+        execute make install
         $(build_done "$repo_name" "$version")
     fi
 fi
@@ -2818,9 +2823,9 @@ if build "x264" "$g_sver"; then
                         --enable-lto \
                         --enable-static \
                         --enable-strip
-    execute sudo make "-j$cpu_threads"
-    execute sudo make install
-    execute sudo make install-lib-static
+    execute make "-j$cpu_threads"
+    execute make install
+    execute make install-lib-static
     build_done "x264" "$g_sver"
 fi
 ffmpeg_libraries+=("--enable-libx264")
@@ -2883,7 +2888,7 @@ SAVE
 END
 EOF
 
-    execute sudo ninja install
+    execute ninja install
 
     if [[ -n "$LDEXEFLAGS" ]]; then
         sed -i.backup "s/lgcc_s/lgcc_eh/g" "$install_dir/lib/pkgconfig/x265.pc"
@@ -2935,11 +2940,11 @@ if [[ "$?" -eq 0 ]]; then
         fi
 
         if [[ "$OS" != "Arch" ]]; then
-            if ! sudo dpkg -l | grep -o nvidia-smi &>/dev/null; then
-                if ! sudo apt install nvidia-smi &>/dev/null; then
-                    sudo dpkg --configure -a
-                    sudo apt --fix-broken install
-                    sudo apt install nvidia-smi &>/dev/null
+            if ! dpkg -l | grep -o nvidia-smi &>/dev/null; then
+                if ! apt install nvidia-smi &>/dev/null; then
+                    dpkg --configure -a
+                    apt --fix-broken install
+                    apt install nvidia-smi &>/dev/null
                 fi
             fi
         fi
@@ -3061,10 +3066,10 @@ if build "libheif" "$g_ver"; then
     download "https://github.com/strukturag/libheif/archive/refs/tags/v$g_ver.tar.gz" "libheif-$g_ver.tar.gz"
     source_flags_fn
     export {CFLAGS,CXXFLAGS}="-g -O3 -fno-lto -pipe -march=native"
-    libde265_libs=$(sudo find /usr -type f -name "libde265.so")
+    libde265_libs=$(find /usr -type f -name "libde265.so")
     if [[ -f "$libde265_libs" ]] && [[ ! -f "/usr/lib/x86_64-linux-gnu/libde265.so" ]]; then
-        sudo cp -f "$libde265_libs" "/usr/lib/x86_64-linux-gnu"
-        sudo chmod 755 "/usr/lib/x86_64-linux-gnu/libde265.so"
+        cp -f "$libde265_libs" "/usr/lib/x86_64-linux-gnu"
+        chmod 755 "/usr/lib/x86_64-linux-gnu/libde265.so"
     fi
     if [[ -f "$workspace/lib/libdav1d.a" ]] && [[ ! -f "$workspace/lib/x86_64-linux-gnu/libdav1d.a" ]]; then
         if [[ ! -d "$workspace/lib/x86_64-linux-gnu" ]]; then
@@ -3116,7 +3121,7 @@ if build "openjpeg" "$g_ver"; then
                   -DBUILD_TESTING=OFF \
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
-    execute sudo ninja "-j$cpu_threads" -C build install
+    execute ninja "-j$cpu_threads" -C build install
     build_done "openjpeg" "$g_ver"
 fi
 ffmpeg_libraries+=("--enable-libopenjpeg")
@@ -3148,9 +3153,9 @@ else
 fi
 
 curl -m "$curl_timeout" -LSso "$workspace/include/dxva2api.h" "https://download.videolan.org/pub/contrib/dxva2api.h"
-sudo cp -f "$workspace/include/dxva2api.h" "/usr/include"
+cp -f "$workspace/include/dxva2api.h" "/usr/include"
 curl -m "$curl_timeout" -LSso "$workspace/include/objbase.h" "https://raw.githubusercontent.com/wine-mirror/wine/master/include/objbase.h"
-sudo cp -f "$workspace/include/objbase.h" "$install_dir"
+cp -f "$workspace/include/objbase.h" "$install_dir"
 
 if [[ -n "$ffmpeg_archive" ]]; then
     ff_cmd=" $ffmpeg_archive"
@@ -3219,14 +3224,14 @@ if build "ffmpeg" "$ffmpeg_ver"; then
                  --pkgconfigdir="$install_dir/lib/pkgconfig" \
                  --strip=$(type -P strip)
     execute make "-j$cpu_threads"
-    execute sudo make install
+    execute make install
 fi
 
 # MAKE SURE ALL OF THE FILES WERE COMPILED CORRECTLY
 ffmpeg_install_test
 
 # EXECUTE THE LDCONFIG COMMAND TO ENSURE THAT ALL LIBRARY CHANGES ARE DETECTED BY FFMPEG
-sudo ldconfig 2>/dev/null
+ldconfig 2>/dev/null
 
 # DISPLAY FFMPEG'S VERSION
 if [[ -f "$install_dir/bin/ffmpeg" ]]; then
