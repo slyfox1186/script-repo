@@ -1511,9 +1511,9 @@ export JAVA_HOME="$locate_java"
 export PATH="$PATH:$JAVA_HOME/bin"
 
 ant_path_fn() {
-    export ANT_HOME="$install_dir/ant"
-    if [[ ! -d "$install_dir/ant/bin" ]] || [[ ! -d "$install_dir/ant/lib" ]]; then
-        mkdir -p "$install_dir/ant/bin" "$install_dir/ant/lib" 2>/dev/null
+    export ANT_HOME="$workspace/ant"
+    if [[ ! -d "$workspace/ant/bin" ]] || [[ ! -d "$workspace/ant/lib" ]]; then
+        mkdir -p "$workspace/ant/bin" "$workspace/ant/lib" 2>/dev/null
     fi
 }
 
@@ -1596,10 +1596,10 @@ else
     fi
     if build "libtool" "$lt_ver"; then
         download "https://ftp.gnu.org/gnu/libtool/libtool-$lt_ver.tar.xz"
-        execute ./configure --prefix="$install_dir" \
+        execute ./configure --prefix="$workspace" \
                             --{build,host}="$pc_type" \
                             --with-pic \
-                            M4="$install_dir/bin/m4"
+                            M4="$workspace/bin/m4"
         execute make "-j$cpu_threads"
         execute make install
         build_done "libtool" "$lt_ver"
@@ -1610,7 +1610,7 @@ if build "pkg-config" "0.29.2"; then
     # Download "https://web.archive.org/web/20220622114555if_/https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz"
     download "https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz"
     execute autoconf
-    execute ./configure --prefix="$install_dir" \
+    execute ./configure --prefix="$workspace" \
                         --{build,host}="$pc_type" \
                         --enable-silent-rules \
                         --with-pc-path="$PKG_CONFIG_PATH"
@@ -1623,7 +1623,7 @@ find_git_repo "mesonbuild/meson" "1" "T"
 if build "meson" "$g_ver"; then
     download "https://github.com/mesonbuild/meson/archive/refs/tags/$g_ver.tar.gz" "meson-$g_ver.tar.gz"
     execute python3 setup.py build
-    execute python3 setup.py install --prefix="$install_dir"
+    execute python3 setup.py install --prefix="$workspace"
     build_done "meson" "$g_ver"
 fi
 
@@ -1744,7 +1744,7 @@ find_git_repo "4720790" "3" "T"
 if build "libtiff" "$g_ver"; then
     download "https://gitlab.com/libtiff/libtiff/-/archive/v$g_ver/libtiff-v$g_ver.tar.bz2" "libtiff-$g_ver.tar.bz2"
     execute ./autogen.sh
-    execute ./configure --prefix="$install_dir" \
+    execute ./configure --prefix="$workspace" \
                         --{build,host}="$pc_type" \
                         --disable-docs \
                         --disable-sphinx \
@@ -1917,7 +1917,7 @@ if build "$repo_name" "${version//\$ /}"; then
     download_git "$git_url"
     execute autoreconf -fi
     execute cmake -B build \
-                  -DCMAKE_INSTALL_PREFIX="$install_dir" \
+                  -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
                   -DBUILD_SHARED_LIBS=ON \
                   -DZLIB_INCLUDE_DIR="$workspace/include" \
@@ -1941,7 +1941,7 @@ if build "libhwy" "$g_ver"; then
     CFLAGS+=" -DHWY_COMPILE_ALL_ATTAINABLE"
     CXXFLAGS+=" -DHWY_COMPILE_ALL_ATTAINABLE"
     execute cmake -B build \
-                  -DCMAKE_INSTALL_PREFIX="$install_dir" \
+                  -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
                   -DHWY_ENABLE_TESTS=OFF \
                   -DBUILD_TESTING=OFF \
@@ -1957,7 +1957,7 @@ find_git_repo "google/brotli" "1" "T"
 if build "brotli" "$g_ver"; then
     download "https://github.com/google/brotli/archive/refs/tags/v$g_ver.tar.gz" "brotli-$g_ver.tar.gz"
     execute cmake -B build \
-                  -DCMAKE_INSTALL_PREFIX="$install_dir" \
+                  -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
                   -DBUILD_SHARED_LIBS=ON \
                   -DBUILD_TESTING=OFF \
@@ -2042,7 +2042,7 @@ g_ver="${g_ver//Leptonica version /}"
 if build "leptonica" "$g_ver"; then
     download "https://github.com/DanBloomberg/leptonica/archive/refs/tags/$g_ver.tar.gz" "leptonica-$g_ver.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="$install_dir" \
+    execute ./configure --prefix="$workspace" \
                         --{build,host}="$pc_type" \
                         --with-pic
     execute make "-j$cpu_threads"
@@ -2054,7 +2054,7 @@ find_git_repo "tesseract-ocr/tesseract" "1" "T"
 if build "tesseract" "$g_ver"; then
     download "https://github.com/tesseract-ocr/tesseract/archive/refs/tags/$g_ver.tar.gz" "tesseract-$g_ver.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="$install_dir" \
+    execute ./configure --prefix="$workspace" \
                         --{build,host}="$pc_type" \
                         --disable-doc \
                         --with-extra-includes="$workspace/include" \
@@ -2072,7 +2072,7 @@ git_call_fn "https://github.com/imageMagick/jpeg-turbo.git" "jpeg-turbo-git"
 if build "$repo_name" "${version//\$ /}"; then
     download_git "$git_url"
     execute cmake -S . \
-                  -DCMAKE_INSTALL_PREFIX="$install_dir" \
+                  -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
                   -DENABLE_SHARED=ON \
                   -DENABLE_STATIC=ON \
@@ -2112,7 +2112,7 @@ g_tag="${g_ver//\./_}"
 if build "c-ares" "1.23.0"; then
     download "https://github.com/c-ares/c-ares/archive/refs/tags/cares-1_23_0.tar.gz" "c-ares-1.23.0.tar.gz"
     execute autoreconf -fi
-    execute ./configure --prefix="$install_dir" \
+    execute ./configure --prefix="$workspace" \
                         --{build,host}="$pc_type" \
                         --disable-debug \
                         --disable-warnings \
@@ -2336,7 +2336,7 @@ find_git_repo "libsndfile/libsndfile" "1" "T"
 if build "libsndfile" "$g_ver"; then
     download "https://github.com/libsndfile/libsndfile/releases/download/$g_ver/libsndfile-$g_ver.tar.xz"
     execute autoreconf -fi
-    execute ./configure --prefix="$install_dir" \
+    execute ./configure --prefix="$workspace" \
                         --{build,host}="$pc_type" \
                         --enable-static \
                         --with-pic \
@@ -2369,7 +2369,7 @@ if build "libogg" "$g_ver"; then
     download "https://github.com/xiph/ogg/archive/refs/tags/v$g_ver.tar.gz" "libogg-$g_ver.tar.gz"
     execute autoreconf -fi
     execute cmake -B build \
-                  -DCMAKE_INSTALL_PREFIX="$install_dir" \
+                  -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
                   -DBUILD_SHARED_LIBS=ON \
                   -DBUILD_TESTING=OFF \
@@ -2426,11 +2426,11 @@ if build "vorbis" "$g_ver"; then
     download "https://github.com/xiph/vorbis/archive/refs/tags/v$g_ver.tar.gz" "vorbis-$g_ver.tar.gz"
     execute ./autogen.sh
     execute cmake -B build \
-                  -DCMAKE_INSTALL_PREFIX="$install_dir" \
+                  -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
                   -DBUILD_SHARED_LIBS=ON \
-                  -DOGG_INCLUDE_DIR="$install_dir/include" \
-                  -DOGG_LIBRARY="$install_dir/lib/libogg.so" \
+                  -DOGG_INCLUDE_DIR="$workspace/include" \
+                  -DOGG_LIBRARY="$workspace/lib/libogg.so" \
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja "-j$cpu_threads" -C build install
@@ -2531,7 +2531,7 @@ if build "libtheora" "1.1.1"; then
     execute rm config.guess
     execute curl -m "$curl_timeout" -LSso "config.guess" "https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess"
     chmod +x config.guess
-    execute ./configure --prefix="$install_dir" \
+    execute ./configure --prefix="$workspace" \
                         --{build,host,target}="$pc_type" \
                         --disable-examples \
                         --disable-oggtest \
@@ -2597,7 +2597,7 @@ if build "av1" "$aom_sver"; then
     mkdir -p "$packages/aom_build"
     cd "$packages/aom_build" || exit 1
     execute cmake -B build \
-                  -DCMAKE_INSTALL_PREFIX="$install_dir" \
+                  -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
                   -DBUILD_SHARED_LIBS=OFF \
                   -DCONFIG_AV1_DECODER=1 \
@@ -2653,7 +2653,7 @@ find_git_repo "AOMediaCodec/libavif" "1" "T"
 if build "avif" "$g_ver"; then
     download "https://github.com/AOMediaCodec/libavif/archive/refs/tags/v$g_ver.tar.gz" "avif-$g_ver.tar.gz"
     execute cmake -B build \
-                  -DCMAKE_INSTALL_PREFIX="$install_dir" \
+                  -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
                   -DBUILD_SHARED_LIBS=ON \
                   -DAVIF_CODEC_AOM=ON \
@@ -2712,7 +2712,7 @@ else
     git_call_fn "https://github.com/apache/ant.git" "ant-git" "ant"
     if build "$repo_name" "${version//\$ /}"; then
         download_git "$git_url"
-        chmod 777 -R "$install_dir/ant"
+        chmod 777 -R "$workspace/ant"
         execute sh build.sh install-lite
         $(build_done "$repo_name" "$version")
     fi
@@ -2830,7 +2830,7 @@ else
     git_call_fn "https://github.com/gpac/gpac.git" "gpac-git"
     if build "$repo_name" "${version//\$ /}"; then
         download_git "$git_url"
-        execute ./configure --prefix="$install_dir" \
+        execute ./configure --prefix="$workspace" \
                                  --static-bin \
                                  --static-modules \
                                  --use-a52=local \
@@ -2898,7 +2898,7 @@ if build "x265" "3.5"; then
     cd 12bit || exit 1
     echo "$ making 12bit binaries"
     execute cmake ../../../source \
-                  -DCMAKE_INSTALL_PREFIX="$install_dir" \
+                  -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
                   -DENABLE_CLI=OFF \
                   -DENABLE_SHARED=OFF \
@@ -2910,7 +2910,7 @@ if build "x265" "3.5"; then
     echo "$ making 10bit binaries"
     cd ../10bit || exit 1
     execute cmake ../../../source \
-                  -DCMAKE_INSTALL_PREFIX="$install_dir" \
+                  -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
                   -DENABLE_CLI=OFF \
                   -DENABLE_HDR10_PLUS=ON \
@@ -2924,7 +2924,7 @@ if build "x265" "3.5"; then
     ln -sf "../10bit/libx265.a" "libx265_main10.a"
     ln -sf "../12bit/libx265.a" "libx265_main12.a"
     execute cmake ../../../source \
-                  -DCMAKE_INSTALL_PREFIX="$install_dir" \
+                  -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
                   -DENABLE_SHARED=ON \
                   -DENABLE_PIC=ON \
@@ -2949,7 +2949,7 @@ EOF
     execute ninja install
 
     if [[ -n "$LDEXEFLAGS" ]]; then
-        sed -i.backup "s/lgcc_s/lgcc_eh/g" "$install_dir/lib/pkgconfig/x265.pc"
+        sed -i.backup "s/lgcc_s/lgcc_eh/g" "$workspace/lib/pkgconfig/x265.pc"
     fi
 
     # FIX THE x265 SHARED LIBRARY ISSUE
@@ -2993,8 +2993,8 @@ if [[ "$?" -eq 0 ]]; then
             CFLAGS+=" -I/opt/cuda/include -I/opt/cuda/targets/x86_64-linux/include"
             LDFLAGS+=" -L/opt/cuda/lib64 -L/opt/cuda/lib -L/opt/cuda/targets/x86_64-linux/lib"
         else
-            CFLAGS+=" -I$install_dir/cuda/include"
-            LDFLAGS+=" -L$install_dir/cuda/lib64"
+            CFLAGS+=" -I$workspace/cuda/include"
+            LDFLAGS+=" -L$workspace/cuda/lib64"
         fi
 
         if [[ "$OS" != "Arch" ]]; then
@@ -3152,10 +3152,10 @@ if build "libheif" "$g_ver"; then
                   -DAOM_LIBRARY="$workspace/lib/libaom.a" \
                   -DDAV1D_INCLUDE_DIR="$workspace/include" \
                   -DDAV1D_LIBRARY="$workspace/lib/x86_64-linux-gnu/libdav1d.a" \
-                  -DLIBDE265_INCLUDE_DIR="$install_dir/include" \
+                  -DLIBDE265_INCLUDE_DIR="$workspace/include" \
                   -DLIBDE265_LIBRARY=/usr/lib/x86_64-linux-gnu/libde265.so \
-                  -DLIBSHARPYUV_INCLUDE_DIR="$install_dir/include/webp" \
-                  -DLIBSHARPYUV_LIBRARY="$install_dir/lib/libsharpyuv.so" \
+                  -DLIBSHARPYUV_INCLUDE_DIR="$workspace/include/webp" \
+                  -DLIBSHARPYUV_LIBRARY="$workspace/lib/libsharpyuv.so" \
                   -DWITH_AOM_DECODER=ON \
                   -DWITH_AOM_ENCODER=ON \
                   -DWITH_DAV1D=ON \
@@ -3178,7 +3178,7 @@ find_git_repo "uclouvain/openjpeg" "1" "T"
 if build "openjpeg" "$g_ver"; then
     download "https://codeload.github.com/uclouvain/openjpeg/tar.gz/refs/tags/v$g_ver" "openjpeg-$g_ver.tar.gz"
     execute cmake -B build \
-                  -DCMAKE_INSTALL_PREFIX="$install_dir" \
+                  -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
                   -DBUILD_SHARED_LIBS=ON \
                   -DBUILD_TESTING=OFF \
@@ -3218,7 +3218,7 @@ fi
 curl -m "$curl_timeout" -LSso "$workspace/include/dxva2api.h" "https://download.videolan.org/pub/contrib/dxva2api.h"
 cp -f "$workspace/include/dxva2api.h" "/usr/include"
 curl -m "$curl_timeout" -LSso "$workspace/include/objbase.h" "https://raw.githubusercontent.com/wine-mirror/wine/master/include/objbase.h"
-cp -f "$workspace/include/objbase.h" "$install_dir"
+cp -f "$workspace/include/objbase.h" "$workspace"
 
 if [[ -n "$ffmpeg_archive" ]]; then
     ff_cmd=" $ffmpeg_archive"
@@ -3283,8 +3283,8 @@ if build "ffmpeg" "$ffmpeg_ver"; then
                  --extra-ldexeflags="$LDEXEFLAGS" \
                  --extra-libs="$EXTRALIBS" \
                  --pkg-config-flags="--static" \
-                 --pkg-config="$install_dir/bin/pkg-config" \
-                 --pkgconfigdir="$install_dir/lib/pkgconfig" \
+                 --pkg-config="$workspace/bin/pkg-config" \
+                 --pkgconfigdir="$workspace/lib/pkgconfig" \
                  --strip=$(type -P strip)
     execute make "-j$cpu_threads"
     execute make install
