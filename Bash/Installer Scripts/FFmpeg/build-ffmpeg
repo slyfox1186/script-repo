@@ -269,8 +269,8 @@ download() {
 }
 
 install_rustc_fn() {
-    get_rustc_ver=$(rustc --version | grep -Eo "[0-9 \.]+" | head -n1)
-    if [[ "$get_rustc_ver" != "1.73.0" ]]; then
+    get_rustc_ver=$(rustc --version | grep -Eo '[0-9 \.]+' | head -n1)
+    if [ "$get_rustc_ver" != "1.73.0" ]; then
         echo "$ Installing RustUp"
         curl -sSm "$curl_timeout" --proto "=https" --tlsv1.2 "https://sh.rustup.rs" | sh -s -- -y &>/dev/null
         source "$HOME/.cargo/env"
@@ -280,7 +280,6 @@ install_rustc_fn() {
             source "$HOME/.bashrc"
         fi
     fi
-    rm -fr "$HOME/.cargo/registry/index/"* "$HOME/.cargo/.package-cache"
 }
 
 git_call_fn() {
@@ -349,8 +348,8 @@ git_ver_check_fn() {
     awk_number="$2"
     awk_print="print \$${awk_number}"
 
-    git_ver_check=$(git ls-remote --tags "$1" |
-                    awk -F/ "/tags\/[A-Za-z]*[0-9]+\.[0-9]+\.[0-9]+$/ {$awk_print}" |
+    git_ver_check=$(git ls-remote --tags "https://github.com/FFmpeg/FFmpeg.git" |
+                    grep -Eo '/tags/n?[0-9]+[0-9\.]+[a-z0-9\.\-]*$' |
                     sort -rV |
                     head -n1
                    )
@@ -2577,6 +2576,7 @@ if [[ "$VER" != "18.04" ]] && [[ "$VER" != "11" ]]; then
     if build "rav1e" "$g_ver"; then
         install_rustc_fn
         download "https://github.com/xiph/rav1e/archive/refs/tags/v$g_ver.tar.gz" "rav1e-$g_ver.tar.gz"
+        rm -fr "$HOME/.cargo/registry/index/"* "$HOME/.cargo/.package-cache"
         execute cargo cinstall --prefix="$workspace" \
                                --library-type=staticlib \
                                --crt-static \
@@ -2747,7 +2747,7 @@ fi
 ffmpeg_libraries+=("--enable-frei0r")
 
 find_git_repo "GPUOpen-LibrariesAndSDKs/AMF" "1" "T"
-g_sver=$(echo "$g_ver" | sed -E "s/^\.//g")
+g_sver="$(echo "$g_ver" | sed -E "s/^\.//g")"
 if build "amf" "$g_sver"; then
     download "https://github.com/GPUOpen-LibrariesAndSDKs/AMF/archive/refs/tags/v$g_ver.tar.gz" "amf-$g_sver.tar.gz"
     execute rm -fr "$workspace/include/AMF"
@@ -3157,11 +3157,11 @@ if [[ -n "$ffmpeg_archive" ]]; then
 fi
 
 git_ver_check_fn "https://github.com/FFmpeg/FFmpeg.git" "3"
-if [[ "$git_ver_check" != "$ffmpeg_ver" ]]; then
-    ffmpeg_update_check="${git_ver_check/v/n}"
+if [[ ! "$git_ver_check" == "$ffmpeg_ver" ]]; then
+    print_git_ver_check="${git_ver_check//\/tags\/}"
     printf "\n%s\n%s\n%s\n" \
         "The FFmpeg version you are installing is: $ffmpeg_ver" \
-        "The script detected a new version: $ffmpeg_update_check" \
+        "The script detected a new version: $git_ver_check" \
         "You can modify the variable \"ffmpeg_ver\" if desired to change versions."
 fi
 
