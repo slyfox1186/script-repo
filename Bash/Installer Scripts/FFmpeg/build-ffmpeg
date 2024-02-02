@@ -325,7 +325,7 @@ download_git() {
             output_dir="$dl_path/$3"
             target_dir="$output_dir"
         fi
-        [[ -d "$target_dir" ]] && rm -fr "$target_dir"
+        [[ -d "$target_dir" ]] && sudo rm -fr "$target_dir"
         # Clone the repository
         echo "Cloning \"$dl_file\" saving version \"$version\"" &>2
         if ! git clone --depth 1 $recurse -q "$dl_url" "$target_dir"; then
