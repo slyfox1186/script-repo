@@ -292,7 +292,7 @@ git_call_fn() {
     git_url="$1"
     repo_name="$2"
     recurse_flag=""
-    [ -n "$3" ] && recurse_flag="1"
+    [[ -n "$3" ]] && recurse_flag="1"
     version=$(download_git "$git_url" "$repo_name")
     version="${version//Cloning completed: /}"
 }
@@ -308,17 +308,23 @@ download_git() {
     # Try to get the latest tag
     if [[ "$repo_flag" == "ant" ]]; then
         version=$(git ls-remote --tags "$repo_url" |
-              awk -F'/' '/\/v?[0-9]+\.[0-9]+(\.[0-9]+)?(\^\{\})?$/ {print $4}' |
-              grep -v '\^{}' |
-              sort -rV |
-              head -n1)
+                  awk -F'/' '/\/v?[0-9]+\.[0-9]+(\.[0-9]+)?(\^\{\})?$/ {
+                      tag = $3;  # Assuming the version tag is in the 3rd field
+                     sub(/^v/, "", tag);  # Remove the leading 'v' from the tag
+                     if (tag !~ /\^\{\}$/) print tag  # Print if tag does not end with ^{}
+                  }' |
+                  sort -rV |
+                  head -n1)
     else
         version=$(git ls-remote --tags "$repo_url" |
-                 awk -F'/' '/\/v?[0-9]+\.[0-9]+(\.[0-9]+)?(\^\{\})?$/ {print $3}' |
-                 grep -v '\^{}' |
-                 sort -rV |
-                 head -n1 |
-                 sed 's/^v//')
+                  awk -F'/' '/\/v?[0-9]+\.[0-9]+(\.[0-9]+)?(-[0-9]+)?(\^\{\})?$/ {
+                      tag = $3;
+                      sub(/^v/, "", tag);  # Remove the leading 'v' from the tag
+                      print tag
+                  }' |
+                  grep -v '\^{}' |
+                  sort -rV |
+                  head -n1)
     fi
 
     # If no tags found, use the latest commit hash as the version
@@ -358,16 +364,13 @@ download_git() {
 }
 
 # LOCATE GITHUB RELEASE VERSION NUMBERS USING GIT CLONE
-git_ver_check_fn() {
-    git_repo="$1"
-    awk_number="$2"
-    awk_print="print \$${awk_number}"
+ffmpeg_version_check_fn() {
+    local git_repo="$1"
 
-    git_ver_check=$(git ls-remote --tags "https://github.com/FFmpeg/FFmpeg.git" |
-                    grep -Eo '/tags/n?[0-9]+[0-9\.]+[a-z0-9\.\-]*$' |
+    git_ver_check=$(git ls-remote --tags "$git_repo" |
+                    awk -F'/' '/n[0-9]+(\.[0-9]+)*(-dev)?$/ {print $3}' |
                     sort -rV |
-                    head -n1
-                   )
+                    head -n1)
 }
 
 # LOCATE GITHUB RELEASE VERSION NUMBERS
@@ -3201,7 +3204,7 @@ if [[ -n "$ffmpeg_archive" ]]; then
     ff_cmd=" $ffmpeg_archive"
 fi
 
-git_ver_check_fn "https://github.com/FFmpeg/FFmpeg.git" "3"
+ffmpeg_version_check_fn "https://github.com/FFmpeg/FFmpeg.git" "3"
 if [[ ! "$git_ver_check" == "$ffmpeg_ver" ]]; then
     print_git_ver_check="${git_ver_check//\/tags\/}"
     printf "\n%s\n%s\n%s\n" \
