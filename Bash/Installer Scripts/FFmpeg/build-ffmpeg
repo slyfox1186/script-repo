@@ -204,8 +204,8 @@ cleanup_fn() {
     read -p "Your choices are (1 or 2): " choice
 
     case "$choice" in
-        1)      rm -fr "$cwd";;
-        2)      echo;;
+        1)      rm -fr "$cwd" ;;
+        2)      return ;;
         *)      unset choice
                 clear
                 cleanup_fn
@@ -828,57 +828,57 @@ gpu_arch_fn() {
         fi
 
         case "$gpu_name" in
-            "Quadro P2000")                 gpu_type=1;;
-            "NVIDIA GeForce GT 1010")       gpu_type=1;;
-            "NVIDIA GeForce GTX 1030")      gpu_type=1;;
-            "NVIDIA GeForce GTX 1050")      gpu_type=1;;
-            "NVIDIA GeForce GTX 1060")      gpu_type=1;;
-            "NVIDIA GeForce GTX 1070")      gpu_type=1;;
-            "NVIDIA GeForce GTX 1080")      gpu_type=1;;
-            "NVIDIA TITAN Xp")              gpu_type=1;;
-            "NVIDIA Tesla P40")             gpu_type=1;;
-            "NVIDIA Tesla P4")              gpu_type=1;;
-            "NVIDIA GeForce GTX 1180")      gpu_type=2;;
-            "NVIDIA GeForce GTX Titan V")   gpu_type=2;;
-            "Quadro GV100")                 gpu_type=2;;
-            "NVIDIA Tesla V100")            gpu_type=2;;
-            "NVIDIA GeForce GTX 1660 Ti")   gpu_type=3;;
-            "NVIDIA GeForce RTX 2060")      gpu_type=3;;
-            "NVIDIA GeForce RTX 2070")      gpu_type=3;;
-            "NVIDIA GeForce RTX 2080")      gpu_type=3;;
-            "Quadro 4000")                  gpu_type=3;;
-            "Quadro 5000")                  gpu_type=3;;
-            "Quadro 6000")                  gpu_type=3;;
-            "Quadro 8000")                  gpu_type=3;;
-            "NVIDIA T1000")                 gpu_type=3;;
-            "NVIDIA T2000")                 gpu_type=3;;
-            "NVIDIA Tesla T4")              gpu_type=3;;
-            "NVIDIA GeForce RTX 3050")      gpu_type=4;;
-            "NVIDIA GeForce RTX 3060")      gpu_type=4;;
-            "NVIDIA GeForce RTX 3070")      gpu_type=4;;
-            "NVIDIA GeForce RTX 3080")      gpu_type=4;;
-            "NVIDIA GeForce RTX 3080 Ti")   gpu_type=4;;
-            "NVIDIA GeForce RTX 3090")      gpu_type=4;;
-            "NVIDIA RTX A2000")             gpu_type=4;;
-            "NVIDIA RTX A3000")             gpu_type=4;;
-            "NVIDIA RTX A4000")             gpu_type=4;;
-            "NVIDIA RTX A5000")             gpu_type=4;;
-            "NVIDIA RTX A6000")             gpu_type=4;;
-            "NVIDIA GeForce RTX 4080")      gpu_type=5;;
-            "NVIDIA GeForce RTX 4090")      gpu_type=5;;
-            "NVIDIA H100")                  gpu_type=6;;
-            *)                              fail_fn "Error: Unable to define \"\$gpu_name\" in the function \"gpu_arch_fn\". (Line: $LINENO)";;
+            "Quadro P2000")                 gpu_type=1 ;;
+            "NVIDIA GeForce GT 1010")       gpu_type=1 ;;
+            "NVIDIA GeForce GTX 1030")      gpu_type=1 ;;
+            "NVIDIA GeForce GTX 1050")      gpu_type=1 ;;
+            "NVIDIA GeForce GTX 1060")      gpu_type=1 ;;
+            "NVIDIA GeForce GTX 1070")      gpu_type=1 ;;
+            "NVIDIA GeForce GTX 1080")      gpu_type=1 ;;
+            "NVIDIA TITAN Xp")              gpu_type=1 ;;
+            "NVIDIA Tesla P40")             gpu_type=1 ;;
+            "NVIDIA Tesla P4")              gpu_type=1 ;;
+            "NVIDIA GeForce GTX 1180")      gpu_type=2 ;;
+            "NVIDIA GeForce GTX Titan V")   gpu_type=2 ;;
+            "Quadro GV100")                 gpu_type=2 ;;
+            "NVIDIA Tesla V100")            gpu_type=2 ;;
+            "NVIDIA GeForce GTX 1660 Ti")   gpu_type=3 ;;
+            "NVIDIA GeForce RTX 2060")      gpu_type=3 ;;
+            "NVIDIA GeForce RTX 2070")      gpu_type=3 ;;
+            "NVIDIA GeForce RTX 2080")      gpu_type=3 ;;
+            "Quadro 4000")                  gpu_type=3 ;;
+            "Quadro 5000")                  gpu_type=3 ;;
+            "Quadro 6000")                  gpu_type=3 ;;
+            "Quadro 8000")                  gpu_type=3 ;;
+            "NVIDIA T1000")                 gpu_type=3 ;;
+            "NVIDIA T2000")                 gpu_type=3 ;;
+            "NVIDIA Tesla T4")              gpu_type=3 ;;
+            "NVIDIA GeForce RTX 3050")      gpu_type=4 ;;
+            "NVIDIA GeForce RTX 3060")      gpu_type=4 ;;
+            "NVIDIA GeForce RTX 3070")      gpu_type=4 ;;
+            "NVIDIA GeForce RTX 3080")      gpu_type=4 ;;
+            "NVIDIA GeForce RTX 3080 Ti")   gpu_type=4 ;;
+            "NVIDIA GeForce RTX 3090")      gpu_type=4 ;;
+            "NVIDIA RTX A2000")             gpu_type=4 ;;
+            "NVIDIA RTX A3000")             gpu_type=4 ;;
+            "NVIDIA RTX A4000")             gpu_type=4 ;;
+            "NVIDIA RTX A5000")             gpu_type=4 ;;
+            "NVIDIA RTX A6000")             gpu_type=4 ;;
+            "NVIDIA GeForce RTX 4080")      gpu_type=5 ;;
+            "NVIDIA GeForce RTX 4090")      gpu_type=5 ;;
+            "NVIDIA H100")                  gpu_type=6 ;;
+            *)                              fail_fn "Error: Unable to define \"\$gpu_name\" in the function \"gpu_arch_fn\". (Line: $LINENO)" ;;
         esac
 
         if [[ -n "$gpu_type" ]]; then
             case "$gpu_type" in
-                1)      gpu_arch="compute_61,code=sm_61";;
-                2)      gpu_arch="compute_70,code=sm_70";;
-                3)      gpu_arch="compute_75,code=sm_75";;
-                4)      gpu_arch="compute_86,code=sm_86";;
-                5)      gpu_arch="compute_89,code=sm_89";;
-                6)      gpu_arch="compute_90,code=sm_90";;
-                *)      fail_fn "Error: Unable to define \"\$gpu_arch\" in the function \"gpu_arch_fn\". (Line: $LINENO)";;
+                1)      gpu_arch="compute_61,code=sm_61" ;;
+                2)      gpu_arch="compute_70,code=sm_70" ;;
+                3)      gpu_arch="compute_75,code=sm_75" ;;
+                4)      gpu_arch="compute_86,code=sm_86" ;;
+                5)      gpu_arch="compute_89,code=sm_89" ;;
+                6)      gpu_arch="compute_90,code=sm_90" ;;
+                *)      fail_fn "Error: Unable to define \"\$gpu_arch\" in the function \"gpu_arch_fn\". (Line: $LINENO)" ;;
             esac
         else
             fail_fn "Error: Failed to define \"\$gpu_type\". (Line: $LINENO)"
@@ -1259,13 +1259,13 @@ dl_libjxl_fn() {
 
     if [[ ! -f "$packages/libjxl.tar.gz" ]]; then
         case "$VER" in
-            10)                     libjxl_name="debian-buster";;
-            11)                     libjxl_name="debian-bullseye";;
-            12)                     libjxl_name="debian-bookworm";;
-            18.04)                  libjxl_name="ubuntu-18.04";;
-            20.04)                  libjxl_name="ubuntu-20.04";;
-            23.10|23.04|22.04)      libjxl_name="ubuntu-22.04";;
-            *)                      echo;;
+            10)                     libjxl_name="debian-buster" ;;
+            11)                     libjxl_name="debian-bullseye" ;;
+            12)                     libjxl_name="debian-bookworm" ;;
+            18.04)                  libjxl_name="ubuntu-18.04" ;;
+            20.04)                  libjxl_name="ubuntu-20.04" ;;
+            23.10|23.04|22.04)      libjxl_name="ubuntu-22.04" ;;
+            *)                      echo ;;
         esac
 
         if ! curl -LSso "$packages/$libjxl_name.tar.gz" "$url_base-$libjxl_name-$url_suffix"; then
@@ -1368,10 +1368,10 @@ debian_os_ver_fn() {
     debian_pkgs+=" libsharp-dev libdmalloc5 libumfpack5 libsuitesparseconfig5 libcolamd2 libcholmod3 libccolamd2 libcamd2 libamd2"
 
     case "$VER" in
-        msft)               pkgs_fn "$debian_wsl_pkgs $debian_pkgs librist-dev";;
-        12|trixie|sid)      pkgs_fn "$1 $debian_pkgs librist-dev";;
-        11)                 pkgs_fn "$1 $debian_pkgs";;
-        *)                  fail_fn "Error: Could not detect the Debian release version. (Line: $LINENO)";;
+        msft)               pkgs_fn $debian_wsl_pkgs $debian_pkgs librist-dev ;;
+        12|trixie|sid)      pkgs_fn $1 $debian_pkgs librist-dev ;;
+        11)                 pkgs_fn $1 $debian_pkgs ;;
+        *)                  fail_fn "Error: Could not detect the Debian release version. (Line: $LINENO)" ;;
     esac
 }
 
@@ -1390,11 +1390,11 @@ ubuntu_os_ver_fn() {
     mantic_pkgs="libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libhwy-dev libsrt-gnutls-dev libyuv-dev"
 
     case "$VER" in
-        23.10)          pkgs_fn "$1 $mantic_pkgs $lunar_kenetic_pkgs $jammy_pkgs $focal_pkgs";;
-        23.04|22.10)    pkgs_fn "$1 $ubuntu_common_pkgs $lunar_kenetic_pkgs $jammy_pkgs";;
-        22.04|msft)     pkgs_fn "$1 $ubuntu_common_pkgs $ubuntu_wsl_pkgs $jammy_pkgs";;
-        20.04)          pkgs_fn "$1 $ubuntu_common_pkgs $ubuntu_wsl_pkgs $focal_pkgs";;
-        *)              fail_fn "Error: Could not detect the Ubuntu release version. (Line: $LINENO)";;
+        23.10)          pkgs_fn $1 $mantic_pkgs $lunar_kenetic_pkgs $jammy_pkgs $focal_pkgs ;;
+        23.04|22.10)    pkgs_fn $1 $ubuntu_common_pkgs $lunar_kenetic_pkgs $jammy_pkgs ;;
+        22.04|msft)     pkgs_fn $1 $ubuntu_common_pkgs $ubuntu_wsl_pkgs $jammy_pkgs ;;
+        20.04)          pkgs_fn $1 $ubuntu_common_pkgs $ubuntu_wsl_pkgs $focal_pkgs ;;
+        *)              fail_fn "Error: Could not detect the Ubuntu release version. (Line: $LINENO)" ;;
     esac
 }
 
@@ -1446,13 +1446,13 @@ printf "%s\n%s\n%s\n" \
     "Checking installation status of each package..."
 
 case "$OS" in
-    Arch)           arch_os_ver_fn;;
-    Debian|n/a)     debian_os_ver_fn "$nvidia_encode_var $nvidia_utils_ver";;
-    Ubuntu)         ubuntu_os_ver_fn "$nvidia_encode_var $nvidia_utils_ver";;
+    Arch)           arch_os_ver_fn ;;
+    Debian|n/a)     debian_os_ver_fn "$nvidia_encode_var $nvidia_utils_ver" ;;
+    Ubuntu)         ubuntu_os_ver_fn "$nvidia_encode_var $nvidia_utils_ver" ;;
     WSL2)           get_the_os_version_1
                     case "$OS" in
-                        Debian|n/a)     debian_os_ver_fn "$nvidia_encode_var $nvidia_utils_ver" "$wsl_flag" "$wsl_common_pkgs";;
-                        Ubuntu)         ubuntu_os_ver_fn "$nvidia_encode_var $nvidia_utils_ver" "$wsl_flag" "$wsl_common_pkgs";;
+                        Debian|n/a)     debian_os_ver_fn "$nvidia_encode_var $nvidia_utils_ver" "$wsl_flag" "$wsl_common_pkgs" ;;
+                        Ubuntu)         ubuntu_os_ver_fn "$nvidia_encode_var $nvidia_utils_ver" "$wsl_flag" "$wsl_common_pkgs" ;;
                     esac
                     ;;
 esac
@@ -1546,8 +1546,8 @@ else
     else
         get_the_os_version_1
         case "$VER" in
-            12|23.10|23.04)     lt_ver=2.4.7;;
-            *)                  lt_ver=2.4.6;;
+            12|23.10|23.04)     lt_ver=2.4.7 ;;
+            *)                  lt_ver=2.4.6 ;;
         esac
     fi
     if build "libtool" "$lt_ver"; then
@@ -2083,8 +2083,8 @@ if build "$repo_name" "${version//\$ /}"; then
     download_git "$git_url"
     extracmds=("-D"{docs,tests}"=disabled")
     case "$VER" in
-        10|11)      lv2_switch=enabled;;
-        *)          lv2_switch=disabled;;
+        10|11)      lv2_switch=enabled ;;
+        *)          lv2_switch=disabled ;;
     esac
     mv_pip_lock=$(find /usr/lib/python3* -type f -name "EXTERNALLY-MANAGED")
     if [[ -n "$mv_pip_lock" ]]; then
@@ -3090,8 +3090,8 @@ if build "libheif" "$g_ver"; then
         cp -f "$workspace/lib/libdav1d.a"  "$workspace/lib/x86_64-linux-gnu/libdav1d.a"
     fi
     case "$VER" in
-        18.04|20.04)    pixbuf_switch="OFF";;
-        *)              pixbuf_switch="ON";;
+        18.04|20.04)    pixbuf_switch="OFF" ;;
+        *)              pixbuf_switch="ON" ;;
     esac
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
