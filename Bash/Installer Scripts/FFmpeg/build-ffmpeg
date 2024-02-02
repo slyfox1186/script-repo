@@ -237,10 +237,10 @@ download() {
         echo "$dl_file is already downloaded."
     else
         echo "Downloading \"$dl_url\" saving as \"$dl_file\""
-        if ! curl -Lso "$target_file" "$dl_url"; then
+        if ! curl -m "$curl_timeout" -LSso "$target_file" "$dl_url"; then
             printf "\n%s\n\n" "Error: Failed to download \"$dl_file\". Second attempt in 10 seconds..."
             sleep 10
-            if ! curl -Lso "$target_file" "$dl_url"; then
+            if ! curl -m "$curl_timeout" -LSso "$target_file" "$dl_url"; then
                 fail_fn "Error: Failed to download \"$dl_file\". Exiting... (Line: $LINENO)"
             fi
         fi
@@ -273,14 +273,14 @@ install_rustc_fn() {
     get_rustc_ver=$(rustc --version | grep -Eo "[0-9 \.]+" | head -n1)
     if [[ "$get_rustc_ver" != "1.73.0" ]]; then
         echo "$ Installing RustUp"
-        curl -sSf --proto "=https" --tlsv1.2 "https://sh.rustup.rs" | sh -s -- -y &>/dev/null
+        curl -sSm "$curl_timeout" --proto "=https" --tlsv1.2 "https://sh.rustup.rs" | sh -s -- -y &>/dev/null
         source "$HOME/.cargo/env"
         if [[ -f "$HOME/.zshrc" ]]; then
             source "$HOME/.zshrc"
         else
             source "$HOME/.bashrc"
         fi
-        rm -fr "$HOME"/.cargo/registry/index/* "$HOME"/.cargo/.package-cache
+        rm -fr "$HOME/.cargo/registry/index/"* "$HOME/.cargo/.package-cache"
     fi
 }
 
@@ -358,72 +358,72 @@ git_ver_check_fn() {
 }
 
 # LOCATE GITHUB RELEASE VERSION NUMBERS
-git_1_fn() {
-    local cnt git_1_reg_str git_repo git_url max_attempts url_flag
+github_repo() {
+    local count github_regex_string repo url max_attempts url_flag
 
-    git_repo="$1"
-    git_url="$2"
-    git_url_flag="$3"
+    repo="$1"
+    url="$2"
+    url_flag="$3"
 
-    cnt=1
+    count=1
     max_attempts=10
-    git_1_reg_str='[v]*(\d+\.\d+(?:\.\d*){0,2})\.tar\.gz'
+    github_regex_string='[v]*(\d+\.\d+(?:\.\d*){0,2})\.tar\.gz'
 
-    if [[ -z "$git_repo" || -z "$git_url" ]]; then
+    if [[ -z "$repo" || -z "$url" ]]; then
         echo "Error: Git repository and URL are required."
         return 1
     fi
 
-    [ -n "$git_url_flag" ] && url_flag=1
+    [ -n "$url_flag" ] && url_flag=1
 
-    while [ $cnt -le $max_attempts ]
+    while [ $count -le $max_attempts ]
     do
         if [[ "$url_flag" -eq 1 ]]; then
-            curl_cmd=$(curl -sSL "https://github.com/xiph/rav1e/tags" | grep -Eo 'href="[^"]*v?[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz"' | head -n1)
+            curl_cmd=$(curl -LSsm "$curl_timeout" "https://github.com/xiph/rav1e/tags" | grep -Eo 'href="[^"]*v?[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz"' | head -n1)
         else
-            curl_cmd=$(curl -sSL "https://github.com/$git_repo/$git_url" | grep -o 'href="[^"]*\.tar\.gz"')
+            curl_cmd=$(curl -LSsm "$curl_timeout" "https://github.com/$repo/$url" | grep -o 'href="[^"]*\.tar\.gz"')
         fi
 
         # Extract the specific line
-        line=$(echo "$curl_cmd" | grep -o 'href="[^"]*\.tar\.gz"' | sed -n "${cnt}p")
+        line=$(echo "$curl_cmd" | grep -o 'href="[^"]*\.tar\.gz"' | sed -n "${count}p")
 
         # Check if the line matches the pattern (version without 'RC'/'rc')
-        if echo "$line" | grep -qP "$git_1_reg_str"; then
+        if echo "$line" | grep -qP "$github_regex_string"; then
             # Extract and print the version number
             g_ver=$(echo "$line" | grep -oP '(\d+\.\d+(?:\.\d+){0,2})')
             break
         else
-            # Increment the cnt if no match is found
-            ((cnt++))
+            # Increment the count if no match is found
+            ((count++))
         fi
     done
 
     # DENY INSTALLING A RELEASE CANDIDATE
     while [[ $g_ver =~ $regex_str ]]
     do
-        curl_cmd=$(curl -sSL "https://github.com/$git_repo/$git_url" | grep -o 'href="[^"]*\.tar\.gz"')
+        curl_cmd=$(curl -LSsm "$curl_timeout" "https://github.com/$repo/$url" | grep -o 'href="[^"]*\.tar\.gz"')
 
         # Extract the specific line
-        line=$(echo "$curl_cmd" | grep -o 'href="[^"]*\.tar\.gz"' | sed -n "${cnt}p")
+        line=$(echo "$curl_cmd" | grep -o 'href="[^"]*\.tar\.gz"' | sed -n "${count}p")
 
         # Check if the line matches the pattern (version without 'RC'/'rc')
-        if echo "$line" | grep -qP "$git_1_reg_str"; then
+        if echo "$line" | grep -qP "$github_regex_string"; then
             # Extract and print the version number
             g_ver=$(echo "$line" | grep -oP '(\d+\.\d+(?:\.\d+){0,2})')
             break
         else
-            # Increment the cnt if no match is found
-            ((cnt++))
+            # Increment the count if no match is found
+            ((count++))
         fi
     done
 }
 
-git_2_fn() {
-    local cnt repo url
+videolan_repo() {
+    local count repo url
 
     repo="$1"
     url="$2"
-    cnt=0
+    count=0
     g_ver=""
 
     if [[ -z "$repo" || -z "$url" ]]; then
@@ -431,7 +431,7 @@ git_2_fn() {
         return 1
     fi
 
-    if curl_cmd=$(curl -sSL "https://code.videolan.org/api/v4/projects/$repo/repository/$url"); then
+    if curl_cmd=$(curl -sSm "$curl_timeout" "https://code.videolan.org/api/v4/projects/$repo/repository/$url"); then
         g_ver=$(echo "$curl_cmd" | jq -r ".[0].commit.id")
         g_sver=$(echo "$curl_cmd" | jq -r ".[0].commit.short_id")
         g_sver=${g_sver::7}
@@ -442,24 +442,24 @@ git_2_fn() {
     # DENY INSTALLING A RELEASE CANDIDATE
     while [[ $g_ver =~ $regex_str ]]
     do
-        if curl_cmd=$(curl -sSL "https://code.videolan.org/api/v4/projects/$repo/repository/$url"); then
-            g_ver=$(echo "$curl_cmd" | jq -r ".[$cnt].name")
+        if curl_cmd=$(curl -sSm "$curl_timeout" "https://code.videolan.org/api/v4/projects/$repo/repository/$url"); then
+            g_ver=$(echo "$curl_cmd" | jq -r ".[$count].name")
             g_ver="${g_ver#v}"
         fi
-        ((cnt++))
+        ((count++))
     done
 }
 
-git_3_fn() {
-    local cnt repo url
+gitlab_repo() {
+    local count repo url
     repo="$1"
     url="$2"
-    cnt=0
+    count=0
     g_ver=""
     g_ver1=""
     g_sver1=""
 
-    if curl_cmd=$(curl -m "$curl_timeout" -sSL "https://gitlab.com/api/v4/projects/$repo/repository/$url"); then
+    if curl_cmd=$(curl -sSm "$curl_timeout" "https://gitlab.com/api/v4/projects/$repo/repository/$url"); then
         g_ver=$(echo "$curl_cmd" | jq -r ".[0].name")
         g_ver="${g_ver#v}"
         g_ver1=$(echo "$curl_cmd" | jq -r ".[0].commit.id")
@@ -471,29 +471,29 @@ git_3_fn() {
     # DENY INSTALLING A RELEASE CANDIDATE
     while [[ $g_ver =~ $regex_str ]]
     do
-        if curl_cmd=$(curl -m "$curl_timeout" -sSL "https://gitlab.com/api/v4/projects/$repo/repository/$url"); then
-            g_ver=$(echo "$curl_cmd" | jq -r ".[$cnt].name")
+        if curl_cmd=$(curl -sSm "$curl_timeout" "https://gitlab.com/api/v4/projects/$repo/repository/$url"); then
+            g_ver=$(echo "$curl_cmd" | jq -r ".[$count].name")
             g_ver="${g_ver#v}"
         fi
-        ((cnt++))
+        ((count++))
     done
 }
 
-git_4_fn() {
-    local cnt repo
+gitlab_freedesktop_repo() {
+    local count repo
     repo="$1"
-    cnt=0
+    count=0
     g_ver=""
 
     while true
     do
-        if curl_cmd=$(curl -m "$curl_timeout" -sSL "https://gitlab.freedesktop.org/api/v4/projects/$repo/repository/tags"); then
-            g_ver=$(echo "$curl_cmd" | jq -r ".[$cnt].name")
+        if curl_cmd=$(curl -sSm "$curl_timeout" "https://gitlab.freedesktop.org/api/v4/projects/$repo/repository/tags"); then
+            g_ver=$(echo "$curl_cmd" | jq -r ".[$count].name")
             g_ver="${g_ver#v}"
 
             # Check if g_ver contains "RC" and skip it
             if [[ $g_ver =~ $regex_str ]]; then
-                ((cnt++))
+                ((count++))
             else
                 break  # Exit the loop when a non-RC version is found
             fi
@@ -504,11 +504,11 @@ git_4_fn() {
     done
 }
 
-git_5_fn() {
-    local cnt repo
+gitlab_gnome_repo() {
+    local count repo
 
     repo="$1"
-    cnt=0
+    count=0
     g_ver=""
 
     if [[ -z "$repo" ]]; then
@@ -516,26 +516,26 @@ git_5_fn() {
         return 1
     fi
 
-    if curl_cmd=$(curl -sSL "https://gitlab.gnome.org/api/v4/projects/$repo/repository/tags"); then
+    if curl_cmd=$(curl -sSm "$curl_timeout" "https://gitlab.gnome.org/api/v4/projects/$repo/repository/tags"); then
         g_ver=$(echo "$curl_cmd" | jq -r ".[0].name")
         g_ver="${g_ver#v}"
     fi
 
     # DENY INSTALLING A RELEASE CANDIDATE
     while [[ $g_ver =~ $regex_str ]]; do
-        if curl_cmd=$(curl -sSL "https://gitlab.gnome.org/api/v4/projects/$repo/repository/tags"); then
-            g_ver=$(echo "$curl_cmd" | jq -r ".[$cnt].name")
+        if curl_cmd=$(curl -sSm "$curl_timeout" "https://gitlab.gnome.org/api/v4/projects/$repo/repository/tags"); then
+            g_ver=$(echo "$curl_cmd" | jq -r ".[$count].name")
             g_ver="${g_ver#v}"
         fi
-        ((cnt++))
+        ((count++))
     done
 }
 
-git_6_fn() {
-    local cnt repo
+debian_salsa_repo() {
+    local count repo
 
     repo="$1"
-    cnt=0
+    count=0
     g_ver=""
 
     if [[ -z "$repo" ]]; then
@@ -543,7 +543,7 @@ git_6_fn() {
         return 1
     fi
 
-    if curl_cmd=$(curl -sSL "https://salsa.debian.org/api/v4/projects/$repo/repository/tags"); then
+    if curl_cmd=$(curl -sSm "$curl_timeout" "https://salsa.debian.org/api/v4/projects/$repo/repository/tags"); then
         g_ver=$(echo "$curl_cmd" | jq -r ".[0].name")
         g_ver="${g_ver#v}"
     fi
@@ -551,39 +551,39 @@ git_6_fn() {
     # DENY INSTALLING A RELEASE CANDIDATE
     while [[ $g_ver =~ $regex_str ]]
     do
-        if curl_cmd=$(curl -sSL "https://salsa.debian.org/api/v4/projects/$repo/repository/tags"); then
-            g_ver=$(echo "$curl_cmd" | jq -r ".[$cnt].name")
+        if curl_cmd=$(curl -sSm "$curl_timeout" "https://salsa.debian.org/api/v4/projects/$repo/repository/tags"); then
+            g_ver=$(echo "$curl_cmd" | jq -r ".[$count].name")
             g_ver="${g_ver#v}"
         fi
-        ((cnt++))
+        ((count++))
     done
 }
 
-git_ver_fn() {
-    local v_flag v_tag v_url
+find_git_repo() {
+    local url_action git_repo_type url
 
-    v_url="$1"
-    v_tag="$2"
-    v_flag="$3"
+    url="$1"
+    git_repo_type="$2"
+    url_action="$3"
 
-    case "$v_tag" in
-        1) u_flag="git_1_fn" ;;
-        2) u_flag="git_2_fn" ;;
-        3) u_flag="git_3_fn" ;;
-        4) u_flag="git_4_fn" ;;
-        5) u_flag="git_5_fn" ;;
-        6) u_flag="git_6_fn" ;;
-        *) fail_fn "Error: Could not detect the variable \"\$v_tag\" in the function \"git_ver_fn\". (Line: $LINENO)"
+    case "$git_repo_type" in
+        1) set_repo="github_repo" ;;
+        2) set_repo="videolan_repo" ;;
+        3) set_repo="gitlab_repo" ;;
+        4) set_repo="gitlab_freedesktop_repo" ;;
+        5) set_repo="gitlab_gnome_repo" ;;
+        6) set_repo="debian_salsa_repo" ;;
+        *) fail_fn "Error: Could not detect the variable \"\$git_repo_type\" in the function \"find_git_repo\". (Line: $LINENO)"
     esac
 
-    case "$v_flag" in
-        B) t_flag="branches" ;;
-        L) t_flag="releases/latest" ;;
-        R) t_flag="releases" ;;
-        T) t_flag="tags" ;;
+    case "$url_action" in
+        B) set_action="branches" ;;
+        L) set_action="releases/latest" ;;
+        R) set_action="releases" ;;
+        T) set_action="tags" ;;
     esac
 
-    "$u_flag" "$v_url" "$t_flag" 2>/dev/null
+    "$set_repo" "$url" "$set_action" 2>/dev/null
 }
 
 execute() {
@@ -798,7 +798,7 @@ fetch_and_parse_cuda_version() {
     local url="https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html"
 
     # Use curl to fetch the HTML content of the page
-    local content=$(curl -s "$url")
+    local content=$(curl -sSm "$curl_timeout" "$url")
 
     # Parse the version directly from the fetched content
     if [[ $content =~ CUDA\ ([0-9]+\.[0-9]+)(\ Update\ ([0-9]+))? ]]; then
@@ -1263,7 +1263,7 @@ dl_libjxl_fn() {
             *)                      echo;;
         esac
 
-        if ! curl -Lso "$packages/$libjxl_name.tar.gz" "$url_base-$libjxl_name-$url_suffix"; then
+        if ! curl -LSso "$packages/$libjxl_name.tar.gz" "$url_base-$libjxl_name-$url_suffix"; then
             fail_fn "Error: Failed to download \"$packages/$libjxl_name.tar.gz\". (Line: $LINENO)"
         fi
 
@@ -1294,7 +1294,7 @@ dl_libjxl_fn() {
 
 # PATCH FUNCTIONS
 patch_ffmpeg_fn() {
-    execute curl -Lso "mathops.patch" "https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/patches/mathops.patch"
+    execute curl -m "$curl_timeout" -LSso "mathops.patch" "https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/patches/mathops.patch"
     execute patch -d "libavcodec/x86" -i "../../mathops.patch"
 }
 
@@ -1560,7 +1560,7 @@ if build "pkg-config" "0.29.2"; then
     build_done "pkg-config" "0.29.2"
 fi
 
-git_ver_fn "mesonbuild/meson" "1" "T"
+find_git_repo "mesonbuild/meson" "1" "T"
 if build "meson" "$g_ver"; then
     download "https://github.com/mesonbuild/meson/archive/refs/tags/$g_ver.tar.gz" "meson-$g_ver.tar.gz"
     execute python3 setup.py build
@@ -1571,7 +1571,7 @@ fi
 if [[ "$OS" == "Arch" ]]; then
     librist_arch_fn
 else
-    git_ver_fn "816" "2" "T"
+    find_git_repo "816" "2" "T"
     if build "librist" "$g_ver1"; then
         download "https://code.videolan.org/rist/librist/-/archive/v$g_ver1/librist-v$g_ver1.tar.bz2" "librist-$g_ver1.tar.bz2"
         execute meson setup build --prefix="$workspace" \
@@ -1586,7 +1586,7 @@ else
     fi
 fi
 
-git_ver_fn "madler/zlib" "1" "T"
+find_git_repo "madler/zlib" "1" "T"
 if build "zlib" "$g_ver"; then
     download "https://github.com/madler/zlib/releases/download/v$g_ver/zlib-$g_ver.tar.gz"
     execute ./configure --prefix="$workspace"
@@ -1614,7 +1614,7 @@ if build "openssl" "3.1.4"; then
 fi
 ffmpeg_libraries+=("--enable-openssl")
 
-git_ver_fn "yasm/yasm" "1" "T"
+find_git_repo "yasm/yasm" "1" "T"
 if build "yasm" "$g_ver"; then
     download "https://github.com/yasm/yasm/archive/refs/tags/v$g_ver.tar.gz" "yasm-$g_ver.tar.gz"
     execute autoreconf -fi
@@ -1650,7 +1650,7 @@ fi
 
 # UBUNTU BIONIC FAILS TO BUILD XML2
 if [[ "$VER" != "18.04" ]]; then
-    git_ver_fn "1665" "5" "T"
+    find_git_repo "1665" "5" "T"
     if build "libxml2" "$g_ver"; then
         download "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v$g_ver/libxml2-v$g_ver.tar.bz2" "libxml2-$g_ver.tar.bz2"
         CFLAGS+=" -DNOLIBTOOL"
@@ -1667,7 +1667,7 @@ if [[ "$VER" != "18.04" ]]; then
     ffmpeg_libraries+=("--enable-libxml2")
 fi
 
-git_ver_fn "/glennrp/libpng" "1" "T"
+find_git_repo "/glennrp/libpng" "1" "T"
 if build "libpng" "$g_ver"; then
     download "https://github.com/glennrp/libpng/archive/refs/tags/v$g_ver.tar.gz" "libpng-$g_ver.tar.gz"
     execute autoupdate
@@ -1681,7 +1681,7 @@ if build "libpng" "$g_ver"; then
     build_done "libpng" "$g_ver"
 fi
 
-git_ver_fn "4720790" "3" "T"
+find_git_repo "4720790" "3" "T"
 if build "libtiff" "$g_ver"; then
     download "https://gitlab.com/libtiff/libtiff/-/archive/v$g_ver/libtiff-v$g_ver.tar.bz2" "libtiff-$g_ver.tar.bz2"
     execute ./autogen.sh
@@ -1697,7 +1697,7 @@ if build "libtiff" "$g_ver"; then
     build_done "libtiff" "$g_ver"
 fi
 
-git_ver_fn "nkoriyama/aribb24" "1" "T"
+find_git_repo "nkoriyama/aribb24" "1" "T"
 if build "aribb24" "1.0.3"; then
     download "https://github.com/nkoriyama/aribb24/archive/refs/tags/v1.0.3.tar.gz" "aribb24-1.0.3.tar.gz"
     execute autoreconf -fi
@@ -1710,7 +1710,7 @@ if build "aribb24" "1.0.3"; then
 fi
 ffmpeg_libraries+=("--enable-libaribb24")
 
-git_ver_fn "7950" "4"
+find_git_repo "7950" "4"
 g_ver="${g_ver#VER-}"
 g_ver1="${g_ver//-/.}"
 if build "freetype" "$g_ver1"; then
@@ -1728,7 +1728,7 @@ if build "freetype" "$g_ver1"; then
 fi
 ffmpeg_libraries+=("--enable-libfreetype")
 
-git_ver_fn "890" "4"
+find_git_repo "890" "4"
 if build "fontconfig" "$g_ver"; then
     download "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/$g_ver/fontconfig-$g_ver.tar.bz2"
     extracmds=("--disable-"{docbook,docs,nls,shared})
@@ -1751,7 +1751,7 @@ ffmpeg_libraries+=("--enable-libfontconfig")
 
 # UBUNTU BIONIC FAILS TO BUILD XML2
 if [[ "$VER" != "18.04" ]]; then
-    git_ver_fn "harfbuzz/harfbuzz" "1" "T"
+    find_git_repo "harfbuzz/harfbuzz" "1" "T"
     if build "harfbuzz" "$g_ver"; then
         download "https://github.com/harfbuzz/harfbuzz/archive/refs/tags/$g_ver.tar.gz" "harfbuzz-$g_ver.tar.gz"
         extracmds=("-D"{benchmark,cairo,docs,glib,gobject,icu,introspection,tests}"=disabled")
@@ -1806,7 +1806,7 @@ if build "$repo_name" "${version//\$ /}"; then
     $(build_done "$repo_name" "$version")
 fi
 
-git_ver_fn "fribidi/fribidi" "1" "T"
+find_git_repo "fribidi/fribidi" "1" "T"
 if build "fribidi" "$g_ver"; then
     download "https://github.com/fribidi/fribidi/archive/refs/tags/v$g_ver.tar.gz" "fribidi-$g_ver.tar.gz"
     extracmds=("-D"{docs,tests}"=false")
@@ -1822,7 +1822,7 @@ if build "fribidi" "$g_ver"; then
 fi
 ffmpeg_libraries+=("--enable-libfribidi")
 
-git_ver_fn "libass/libass" "1" "T"
+find_git_repo "libass/libass" "1" "T"
 if build "libass" "$g_ver"; then
     download "https://github.com/libass/libass/archive/refs/tags/$g_ver.tar.gz" "libass-$g_ver.tar.gz"
     execute ./autogen.sh
@@ -1835,7 +1835,7 @@ if build "libass" "$g_ver"; then
 fi
 ffmpeg_libraries+=("--enable-libass")
 
-git_ver_fn "freeglut/freeglut" "1" "T"
+find_git_repo "freeglut/freeglut" "1" "T"
 if build "freeglut" "$g_ver"; then
     download "https://github.com/freeglut/freeglut/releases/download/v$g_ver/freeglut-$g_ver.tar.gz"
     CFLAGS+=" -DFREEGLUT_STATIC"
@@ -1875,7 +1875,7 @@ if build "$repo_name" "${version//\$ /}"; then
 fi
 ffmpeg_libraries+=("--enable-libwebp")
 
-git_ver_fn "google/highway" "1" "T"
+find_git_repo "google/highway" "1" "T"
 if build "libhwy" "$g_ver"; then
     download "https://github.com/google/highway/archive/refs/tags/$g_ver.tar.gz" "libhwy-$g_ver.tar.gz"
     CFLAGS+=" -DHWY_COMPILE_ALL_ATTAINABLE"
@@ -1893,7 +1893,7 @@ if build "libhwy" "$g_ver"; then
     build_done "libhwy" "$g_ver"
 fi
 
-git_ver_fn "google/brotli" "1" "T"
+find_git_repo "google/brotli" "1" "T"
 if build "brotli" "$g_ver"; then
     download "https://github.com/google/brotli/archive/refs/tags/v$g_ver.tar.gz" "brotli-$g_ver.tar.gz"
     execute cmake -B build \
@@ -1907,7 +1907,7 @@ if build "brotli" "$g_ver"; then
     build_done "brotli" "$g_ver"
 fi
 
-git_ver_fn "mm2/Little-CMS" "1" "T"
+find_git_repo "mm2/Little-CMS" "1" "T"
 if build "lcms2" "$g_ver"; then
     download "https://github.com/mm2/Little-CMS/archive/refs/tags/lcms$g_ver.tar.gz" "lcms2-$g_ver.tar.gz"
     execute ./autogen.sh
@@ -1921,7 +1921,7 @@ if build "lcms2" "$g_ver"; then
 fi
 ffmpeg_libraries+=("--enable-lcms2")
 
-git_ver_fn "gflags/gflags" "1" "T"
+find_git_repo "gflags/gflags" "1" "T"
 if build "gflags" "$g_ver"; then
     download "https://github.com/gflags/gflags/archive/refs/tags/v$g_ver.tar.gz" "gflags-$g_ver.tar.gz"
     execute cmake -B build \
@@ -1977,7 +1977,7 @@ if build "$repo_name" "${version//\$ /}"; then
     $(build_done "$repo_name" "$version")
 fi
 
-git_ver_fn "DanBloomberg/leptonica" "1" "T"
+find_git_repo "DanBloomberg/leptonica" "1" "T"
 g_ver="${g_ver//Leptonica version /}"
 if build "leptonica" "$g_ver"; then
     download "https://github.com/DanBloomberg/leptonica/archive/refs/tags/$g_ver.tar.gz" "leptonica-$g_ver.tar.gz"
@@ -1990,7 +1990,7 @@ if build "leptonica" "$g_ver"; then
     build_done "leptonica" "$g_ver"
 fi
 
-git_ver_fn "tesseract-ocr/tesseract" "1" "T"
+find_git_repo "tesseract-ocr/tesseract" "1" "T"
 if build "tesseract" "$g_ver"; then
     download "https://github.com/tesseract-ocr/tesseract/archive/refs/tags/$g_ver.tar.gz" "tesseract-$g_ver.tar.gz"
     execute ./autogen.sh
@@ -2031,7 +2031,7 @@ if build "$repo_name" "${version//\$ /}"; then
 fi
 ffmpeg_libraries+=("--enable-librubberband")
 
-git_ver_fn "sekrit-twc/zimg" "1" "T"
+find_git_repo "sekrit-twc/zimg" "1" "T"
 if build "zimg" "$g_ver"; then
     download "https://github.com/sekrit-twc/zimg/archive/refs/tags/release-$g_ver.tar.gz" "zimg-$g_ver.tar.gz"
     execute libtoolize -fiq
@@ -2046,7 +2046,7 @@ if build "zimg" "$g_ver"; then
 fi
 ffmpeg_libraries+=("--enable-libzimg")
 
-git_ver_fn "c-ares/c-ares" "1" "T"
+find_git_repo "c-ares/c-ares" "1" "T"
 g_ver="${g_ver//ares-/}"
 g_tag="${g_ver//\./_}"
 if build "c-ares" "1.23.0"; then
@@ -2086,14 +2086,14 @@ if build "$repo_name" "${version//\$ /}"; then
     $(build_done "$repo_name" "$version")
 fi
 
-git_ver_fn "7131569" "3" "T"
+find_git_repo "7131569" "3" "T"
 g_ver="${g_ver//waf-/}"
 if build "waflib" "$g_ver"; then
     download "https://gitlab.com/ita1024/waf/-/archive/waf-$g_ver/waf-waf-$g_ver.tar.bz2" "waflib-$g_ver.tar.bz2"
     build_done "waflib" "$g_ver"
 fi
 
-git_ver_fn "5048975" "3" "T"
+find_git_repo "5048975" "3" "T"
 if build "serd" "$g_ver"; then
     download "https://gitlab.com/drobilla/serd/-/archive/v$g_ver/serd-v$g_ver.tar.bz2" "serd-$g_ver.tar.bz2"
     extracmds=("-D"{docs,tests}"=disabled")
@@ -2108,7 +2108,7 @@ if build "serd" "$g_ver"; then
     build_done "serd" "$g_ver"
 fi
 
-git_ver_fn "pcre2project/pcre2" "1" "T"
+find_git_repo "pcre2project/pcre2" "1" "T"
 g_ver="${g_ver//2-/}"
 target_url="https://github.com/PCRE2Project/pcre2/releases/download/pcre2-$tag_urls/pcre2-$tag_urls.tar.gz"
 if build "pcre2" "$g_ver"; then
@@ -2123,7 +2123,7 @@ if build "pcre2" "$g_ver"; then
     build_done "pcre2" "$g_ver"
 fi
 
-git_ver_fn "14889806" "3" "B"
+find_git_repo "14889806" "3" "B"
 if build "zix" "0.4.0"; then
     download "https://gitlab.com/drobilla/zix/-/archive/v0.4.0/zix-v0.4.0.tar.bz2" "zix-0.4.0.tar.bz2"
     extracmds=("-D"{benchmarks,docs,singlehtml,tests,tests_cpp}"=disabled")
@@ -2137,7 +2137,7 @@ if build "zix" "0.4.0"; then
     build_done "zix" "0.4.0"
 fi
 
-git_ver_fn "11853362" "3" "B"
+find_git_repo "11853362" "3" "B"
 if build "sord" "$g_sver1"; then
     CFLAGS+=" -I$workspace/include/serd-0"
     download "https://gitlab.com/drobilla/sord/-/archive/$g_ver1/sord-$g_ver1.tar.bz2" "sord-$g_sver1.tar.bz2"
@@ -2152,7 +2152,7 @@ if build "sord" "$g_sver1"; then
     build_done "sord" "$g_sver1"
 fi
 
-git_ver_fn "11853194" "3" "T"
+find_git_repo "11853194" "3" "T"
 if build "sratom" "$g_ver"; then
     download "https://gitlab.com/lv2/sratom/-/archive/v$g_ver/sratom-v$g_ver.tar.bz2" "sratom-$g_ver.tar.bz2"
     extracmds=("-D"{docs,tests}"=disabled")
@@ -2166,7 +2166,7 @@ if build "sratom" "$g_ver"; then
     build_done "sratom" "$g_ver"
 fi
 
-git_ver_fn "11853176" "3" "T"
+find_git_repo "11853176" "3" "T"
 if build "lilv" "$g_ver"; then
     download "https://gitlab.com/lv2/lilv/-/archive/v$g_ver/lilv-v$g_ver.tar.bz2" "lilv-$g_ver.tar.bz2"
     extracmds=("-D"{docs,tests}"=disabled")
@@ -2199,7 +2199,7 @@ if build "$repo_name" "${version//\$ /}"; then
     $(build_done "$repo_name" "$version")
 fi
 
-git_ver_fn "akheron/jansson" "1" "T"
+find_git_repo "akheron/jansson" "1" "T"
 if build "jansson" "$g_ver"; then
     download "https://github.com/akheron/jansson/archive/refs/tags/v$g_ver.tar.gz" "jansson-$g_ver.tar.gz"
     execute autoreconf -fi
@@ -2211,7 +2211,7 @@ if build "jansson" "$g_ver"; then
     build_done "jansson" "$g_ver"
 fi
 
-git_ver_fn "jemalloc/jemalloc" "1" "T"
+find_git_repo "jemalloc/jemalloc" "1" "T"
 if build "jemalloc" "$g_ver"; then
     download "https://github.com/jemalloc/jemalloc/archive/refs/tags/$g_ver.tar.gz" "jemalloc-$g_ver.tar.gz"
     extracmds1=("--disable-"{debug,doc,fill,log,shared,prof,stats})
@@ -2271,7 +2271,7 @@ if build "$repo_name" "${version//\$ /}"; then
     $(build_done "$repo_name" "$version")
 fi
 
-git_ver_fn "libsndfile/libsndfile" "1" "T"
+find_git_repo "libsndfile/libsndfile" "1" "T"
 if build "libsndfile" "$g_ver"; then
     download "https://github.com/libsndfile/libsndfile/releases/download/$g_ver/libsndfile-$g_ver.tar.xz"
     execute autoreconf -fi
@@ -2285,7 +2285,7 @@ if build "libsndfile" "$g_ver"; then
     build_done "libsndfile" "$g_ver"
 fi
 
-# git_ver_fn "810" "4"
+# find_git_repo "810" "4"
 git_call_fn "https://gitlab.freedesktop.org/pulseaudio/pulseaudio.git" "pulseaudio-git"
 if build "$repo_name" "${version//\$ /}"; then
     download_git "$git_url"
@@ -2303,7 +2303,7 @@ if build "$repo_name" "${version//\$ /}"; then
 fi
 ffmpeg_libraries+=("--enable-libpulse")
 
-git_ver_fn "xiph/ogg" "1" "T"
+find_git_repo "xiph/ogg" "1" "T"
 if build "libogg" "$g_ver"; then
     download "https://github.com/xiph/ogg/archive/refs/tags/v$g_ver.tar.gz" "libogg-$g_ver.tar.gz"
     execute autoreconf -fi
@@ -2320,7 +2320,7 @@ if build "libogg" "$g_ver"; then
     build_done "libogg" "$g_ver"
 fi
 
-git_ver_fn "xiph/flac" "1" "T"
+find_git_repo "xiph/flac" "1" "T"
 if build "libflac" "$g_ver"; then
     download "https://github.com/xiph/flac/archive/refs/tags/$g_ver.tar.gz" "libflac-$g_ver.tar.gz"
     execute ./autogen.sh
@@ -2347,7 +2347,7 @@ if build "libflac" "$g_ver"; then
     build_done "libflac" "$g_ver"
 fi
 
-git_ver_fn "mstorsjo/fdk-aac" "1" "T"
+find_git_repo "mstorsjo/fdk-aac" "1" "T"
 if build "libfdk-aac" "2.0.2"; then
     download "https://phoenixnap.dl.sourceforge.net/project/opencore-amr/fdk-aac/fdk-aac-2.0.3.tar.gz" "libfdk-aac-2.0.2.tar.gz"
     execute ./autogen.sh
@@ -2360,7 +2360,7 @@ if build "libfdk-aac" "2.0.2"; then
 fi
 ffmpeg_libraries+=("--enable-libfdk-aac")
 
-git_ver_fn "xiph/vorbis" "1" "T"
+find_git_repo "xiph/vorbis" "1" "T"
 if build "vorbis" "$g_ver"; then
     download "https://github.com/xiph/vorbis/archive/refs/tags/v$g_ver.tar.gz" "vorbis-$g_ver.tar.gz"
     execute ./autogen.sh
@@ -2377,7 +2377,7 @@ if build "vorbis" "$g_ver"; then
 fi
 ffmpeg_libraries+=("--enable-libvorbis")
 
-git_ver_fn "xiph/opus" "1" "T"
+find_git_repo "xiph/opus" "1" "T"
 if build "opus" "$g_ver"; then
     download "https://github.com/xiph/opus/archive/refs/tags/v$g_ver.tar.gz" "opus-$g_ver.tar.gz"
     execute autoreconf -fis
@@ -2393,7 +2393,7 @@ if build "opus" "$g_ver"; then
 fi
 ffmpeg_libraries+=("--enable-libopus")
 
-git_ver_fn "hoene/libmysofa" "1" "T"
+find_git_repo "hoene/libmysofa" "1" "T"
 if build "libmysofa" "$g_ver"; then
     download "https://github.com/hoene/libmysofa/archive/refs/tags/v$g_ver.tar.gz" "libmysofa-$g_ver.tar.gz"
     execute cmake -B build \
@@ -2408,7 +2408,7 @@ if build "libmysofa" "$g_ver"; then
 fi
 ffmpeg_libraries+=("--enable-libmysofa")
 
-git_ver_fn "webmproject/libvpx" "1" "T"
+find_git_repo "webmproject/libvpx" "1" "T"
 if build "libvpx" "$g_ver"; then
     download "https://github.com/webmproject/libvpx/archive/refs/tags/v$g_ver.tar.gz" "libvpx-$g_ver.tar.gz"
     execute sed -i 's/#include "\.\/vpx_tpl\.h"/#include ".\/vpx\/vpx_tpl.h"/' "vpx/vpx_ext_ratectrl.h"
@@ -2433,7 +2433,7 @@ if build "libvpx" "$g_ver"; then
 fi
 ffmpeg_libraries+=("--enable-libvpx")
 
-git_ver_fn "8143" "6"
+find_git_repo "8143" "6"
 g_ver="${g_ver//debian\//}"
 if build "opencore-amr" "${g_ver}"; then
     download "https://salsa.debian.org/multimedia-team/opencore-amr/-/archive/debian/${g_ver}/opencore-amr-debian-${g_ver}.tar.bz2" "opencore-amr-${g_ver}.tar.bz2"
@@ -2460,7 +2460,7 @@ if build "liblame" "3.100"; then
 fi
 ffmpeg_libraries+=("--enable-libmp3lame")
 
-git_ver_fn "xiph/theora" "1" "T"
+find_git_repo "xiph/theora" "1" "T"
 if build "libtheora" "1.1.1"; then
     download "https://github.com/xiph/theora/archive/refs/tags/v1.1.1.tar.gz" "libtheora-1.1.1.tar.gz"
     execute ./autogen.sh
@@ -2468,7 +2468,7 @@ if build "libtheora" "1.1.1"; then
     chmod +x configure.patched
     execute mv configure.patched configure
     execute rm config.guess
-    execute curl -Lso "config.guess" "https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess"
+    execute curl -m "$curl_timeout" -LSso "config.guess" "https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess"
     chmod +x config.guess
     execute ./configure --prefix="$install_dir" \
                         --{build,host,target}="$pc_type" \
@@ -2556,7 +2556,7 @@ if build "av1" "$aom_sver"; then
 fi
 ffmpeg_libraries+=("--enable-libaom")
 
-git_ver_fn "198" "2" "T"
+find_git_repo "198" "2" "T"
 if build "dav1d" "$g_ver1"; then
     download "https://code.videolan.org/videolan/dav1d/-/archive/$g_ver1/dav1d-$g_ver1.tar.bz2"
     extracmds=("-D"{enable_tests,logging}"=false")
@@ -2573,7 +2573,7 @@ ffmpeg_libraries+=("--enable-libdav1d")
 
 # RAV1E FAILS TO BUILD ON UBUNTU BIONIC AND DEBIAN 11 BULLSEYE
 if [[ "$VER" != "18.04" ]] && [[ "$VER" != "11" ]]; then
-    git_ver_fn "xiph/rav1e" "1" "T" "enabled"
+    find_git_repo "xiph/rav1e" "1" "T" "enabled"
     if build "rav1e" "$g_ver"; then
         install_rustc_fn
         execute cargo install cargo-c
@@ -2587,7 +2587,7 @@ if [[ "$VER" != "18.04" ]] && [[ "$VER" != "11" ]]; then
     ffmpeg_libraries+=("--enable-librav1e")
 fi
 
-git_ver_fn "AOMediaCodec/libavif" "1" "T"
+find_git_repo "AOMediaCodec/libavif" "1" "T"
 if build "avif" "$g_ver"; then
     download "https://github.com/AOMediaCodec/libavif/archive/refs/tags/v$g_ver.tar.gz" "avif-$g_ver.tar.gz"
     execute cmake -B build \
@@ -2618,7 +2618,7 @@ if build "$repo_name" "${version//\$ /}"; then
 fi
 ffmpeg_libraries+=("--enable-libkvazaar")
 
-git_ver_fn "76" "2" "T"
+find_git_repo "76" "2" "T"
 if build "libdvdread" "$g_ver1"; then
     download "https://code.videolan.org/videolan/libdvdread/-/archive/$g_ver1/libdvdread-$g_ver1.tar.bz2"
     execute autoreconf -fi
@@ -2631,7 +2631,7 @@ if build "libdvdread" "$g_ver1"; then
     build_done "libdvdread" "$g_ver1"
 fi
 
-git_ver_fn "363" "2" "T"
+find_git_repo "363" "2" "T"
 if build "udfread" "$g_ver1"; then
     download "https://code.videolan.org/videolan/libudfread/-/archive/$g_ver1/libudfread-$g_ver1.tar.bz2"
     execute autoreconf -fi
@@ -2656,7 +2656,7 @@ else
     fi
 fi
 
-git_ver_fn "206" "2" "T"
+find_git_repo "206" "2" "T"
 if build "libbluray" "$g_ver1"; then
     download "https://code.videolan.org/videolan/libbluray/-/archive/$g_ver1/$g_ver1.tar.gz" "libbluray-$g_ver1.tar.gz"
     execute autoreconf -fi
@@ -2677,7 +2677,7 @@ if build "libbluray" "$g_ver1"; then
 fi
 ffmpeg_libraries+=("--enable-libbluray")
 
-git_ver_fn "mediaarea/zenLib" "1" "T"
+find_git_repo "mediaarea/zenLib" "1" "T"
 if build "zenlib" "$g_ver"; then
     download "https://github.com/MediaArea/ZenLib/archive/refs/tags/v$g_ver.tar.gz" "zenlib-$g_ver.tar.gz"
     cd Project/GNU/Library || exit 1
@@ -2690,7 +2690,7 @@ if build "zenlib" "$g_ver"; then
     build_done "zenlib" "$g_ver"
 fi
 
-git_ver_fn "MediaArea/MediaInfoLib" "1" "T"
+find_git_repo "MediaArea/MediaInfoLib" "1" "T"
 if build "mediainfo-lib" "$g_ver"; then
     download "https://github.com/MediaArea/MediaInfoLib/archive/refs/tags/v$g_ver.tar.gz" "mediainfo-lib-$g_ver.tar.gz"
     cd "Project/GNU/Library" || exit 1
@@ -2703,7 +2703,7 @@ if build "mediainfo-lib" "$g_ver"; then
     build_done "mediainfo-lib" "$g_ver"
 fi
 
-git_ver_fn "MediaArea/MediaInfo" "1" "T"
+find_git_repo "MediaArea/MediaInfo" "1" "T"
 if build "mediainfo-cli" "$g_ver"; then
     download "https://github.com/MediaArea/MediaInfo/archive/refs/tags/v$g_ver.tar.gz" "mediainfo-cli-$g_ver.tar.gz"
     cd Project/GNU/CLI || exit 1
@@ -2717,7 +2717,7 @@ if build "mediainfo-cli" "$g_ver"; then
     build_done "mediainfo-cli" "$g_ver"
 fi
 
-git_ver_fn "georgmartius/vid.stab" "1" "T"
+find_git_repo "georgmartius/vid.stab" "1" "T"
 if build "vid-stab" "$g_ver"; then
     download "https://github.com/georgmartius/vid.stab/archive/refs/tags/v$g_ver.tar.gz" "vid-stab-$g_ver.tar.gz"
     execute cmake -B build \
@@ -2732,7 +2732,7 @@ if build "vid-stab" "$g_ver"; then
 fi
 ffmpeg_libraries+=("--enable-libvidstab")
 
-git_ver_fn "dyne/frei0r" "1" "T"
+find_git_repo "dyne/frei0r" "1" "T"
 if build "frei0r" "$g_ver"; then
     download "https://github.com/dyne/frei0r/archive/refs/tags/v$g_ver.tar.gz" "frei0r-$g_ver.tar.gz"
     execute cmake -B build \
@@ -2747,7 +2747,7 @@ if build "frei0r" "$g_ver"; then
 fi
 ffmpeg_libraries+=("--enable-frei0r")
 
-git_ver_fn "GPUOpen-LibrariesAndSDKs/AMF" "1" "T"
+find_git_repo "GPUOpen-LibrariesAndSDKs/AMF" "1" "T"
 g_sver=$(echo "$g_ver" | sed -E "s/^\.//g")
 if build "amf" "$g_sver"; then
     download "https://github.com/GPUOpen-LibrariesAndSDKs/AMF/archive/refs/tags/v$g_ver.tar.gz" "amf-$g_sver.tar.gz"
@@ -2759,7 +2759,7 @@ fi
 ffmpeg_libraries+=("--enable-amf")
 
 if [[ "$OS" == "Arch" ]]; then
-    git_ver_fn "gpac/gpac" "1" "T"
+    find_git_repo "gpac/gpac" "1" "T"
     if build "gpac" "$g_ver"; then
         sudo pacman --noconfirm gpac
         build_done "gpac" "$g_ver"
@@ -2783,7 +2783,7 @@ else
 fi
 
 # VERSIONS >= 1.4.0 BREAKS FFMPEG DURING THE BUILD
-git_ver_fn "24327400" "3" "T"
+find_git_repo "24327400" "3" "T"
 if build "svt-av1" "1.8.0"; then
     download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v1.8.0/SVT-AV1-v1.8.0.tar.bz2" "svt-av1-1.8.0.tar.bz2"
     execute cmake -S . -B Build/linux \
@@ -2806,7 +2806,7 @@ if build "svt-av1" "1.8.0"; then
 fi
 ffmpeg_libraries+=("--enable-libsvtav1")
 
-git_ver_fn "536" "2" "B"
+find_git_repo "536" "2" "B"
 g_sver="${g_ver::8}"
 if build "x264" "$g_sver"; then
     download "https://code.videolan.org/videolan/x264/-/archive/$g_ver/x264-$g_ver.tar.bz2" "x264-$g_sver.tar.bz2"
@@ -2956,7 +2956,7 @@ if [[ "$?" -eq 0 ]]; then
         echo "The Active GPU is made by AMD and the Geforce CUDA SDK Toolkit will not be enabled."
 fi
 
-git_ver_fn "Haivision/srt" "1" "T"
+find_git_repo "Haivision/srt" "1" "T"
 if build "srt" "$g_ver"; then
     download "https://github.com/Haivision/srt/archive/refs/tags/v$g_ver.tar.gz" "srt-$g_ver.tar.gz"
     export OPENSSL_ROOT_DIR="$workspace"
@@ -2980,7 +2980,7 @@ if build "srt" "$g_ver"; then
 fi
 ffmpeg_libraries+=("--enable-libsrt")
 
-git_ver_fn "avisynth/avisynthplus" "1" "T"
+find_git_repo "avisynth/avisynthplus" "1" "T"
 if build "avisynth" "$g_ver"; then
     download "https://github.com/AviSynth/AviSynthPlus/archive/refs/tags/v$g_ver.tar.gz" "avisynth-$g_ver.tar.gz"
     execute cmake -B build \
@@ -2993,7 +2993,7 @@ if build "avisynth" "$g_ver"; then
 fi
 ffmpeg_libraries+=("--enable-avisynth")
 
-git_ver_fn "vapoursynth/vapoursynth" "1" "T"
+find_git_repo "vapoursynth/vapoursynth" "1" "T"
 if build "vapoursynth" "R65"; then
     download "https://github.com/vapoursynth/vapoursynth/archive/refs/tags/R65.tar.gz" "vapoursynth-R65.tar.gz"
     execute pip install Cython==0.29.36
@@ -3024,7 +3024,7 @@ if build "$repo_name" "${version//\$ /}"; then
     $(build_done "$repo_name" "$version")
 fi
 
-git_ver_fn "8268" "6"
+find_git_repo "8268" "6"
 g_ver="${g_ver//debian\/2%/}"
 if build "xvidcore" "$g_ver"; then
     download "https://salsa.debian.org/multimedia-team/xvidcore/-/archive/debian/2%25$g_ver/xvidcore-debian-2%25$g_ver.tar.bz2" "xvidcore-$g_ver.tar.bz2"
@@ -3057,7 +3057,7 @@ box_out_banner_images() {
 }
 box_out_banner_images "Installing Image Tools"
 
-git_ver_fn "strukturag/libheif" "1" "T"
+find_git_repo "strukturag/libheif" "1" "T"
 if build "libheif" "$g_ver"; then
     download "https://github.com/strukturag/libheif/archive/refs/tags/v$g_ver.tar.gz" "libheif-$g_ver.tar.gz"
     source_flags_fn
@@ -3107,7 +3107,7 @@ if build "libheif" "$g_ver"; then
     build_done "libheif" "$g_ver"
 fi
 
-git_ver_fn "uclouvain/openjpeg" "1" "T"
+find_git_repo "uclouvain/openjpeg" "1" "T"
 if build "openjpeg" "$g_ver"; then
     download "https://codeload.github.com/uclouvain/openjpeg/tar.gz/refs/tags/v$g_ver" "openjpeg-$g_ver.tar.gz"
     execute cmake -B build \
@@ -3148,9 +3148,9 @@ else
     ladspa_switch="--enable-ladspa"
 fi
 
-curl -Lso "$workspace/include/dxva2api.h" "https://download.videolan.org/pub/contrib/dxva2api.h"
+curl -m "$curl_timeout" -LSso "$workspace/include/dxva2api.h" "https://download.videolan.org/pub/contrib/dxva2api.h"
 sudo cp -f "$workspace/include/dxva2api.h" "/usr/include"
-curl -Lso "$workspace/include/objbase.h" "https://raw.githubusercontent.com/wine-mirror/wine/master/include/objbase.h"
+curl -m "$curl_timeout" -LSso "$workspace/include/objbase.h" "https://raw.githubusercontent.com/wine-mirror/wine/master/include/objbase.h"
 sudo cp -f "$workspace/include/objbase.h" "$install_dir"
 
 if [[ -n "$ffmpeg_archive" ]]; then
