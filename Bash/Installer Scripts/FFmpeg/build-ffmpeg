@@ -279,8 +279,8 @@ install_rustc_fn() {
         else
             source "$HOME/.bashrc"
         fi
-        rm -fr "$HOME/.cargo/registry/index/"* "$HOME/.cargo/.package-cache"
     fi
+    rm -fr "$HOME/.cargo/registry/index/"* "$HOME/.cargo/.package-cache"
 }
 
 git_call_fn() {
