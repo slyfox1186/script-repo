@@ -816,7 +816,7 @@ gpu_arch_fn() {
     local gpu_name gpu_type
     cuda_compile_flag=""
 
-    if [[ -n "$(find_cuda_json_file)" ]]; then
+    if [ -n $(find_cuda_json_file) ]; then
         cuda_compile_flag=1
         gpu_name=$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -rV | head -n 1)
         if [[ "$gpu_name" == "name" ]]; then
@@ -981,7 +981,7 @@ install_cuda_fn() {
 
     if [[ "$amd_gpu_test" == "AMD GPU detected." ]] || [[ ! "$nvidia_gpu_test" == "$cuda_latest_ver" ]]; then
         if [[ -n "$nvidia_gpu_test" ]] || [[ -n "$(grep -i Microsoft /proc/version)" ]]; then
-            get_the_os_version_1
+            get_os_version_1
             if [[ "$OS" == "Arch" ]]; then
                 find_nvcc=$(find /opt/ -type f -name 'nvcc')
                 cuda_ver_test=$($find_nvcc --version | sed -n 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')
@@ -1089,9 +1089,9 @@ pkgs_fn() {
         libtool-bin libtwolame-dev libudev-dev libumfpack5 libv4l-dev libva-dev libvdpau-dev libvidstab-dev
         libvlccore-dev libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev
         libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzimg-dev
-        libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev llvm lshw lzma-dev m4 mesa-utils meson nasm ninja-build
-        pandoc python3 python3-pip python3-venv ragel re2c scons texi2html texinfo tk-dev unzip valgrind
-        wget xmlto zlib1g-dev
+        libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev llvm lshw lzma-dev m4 mesa-utils meson nasm
+        ninja-build nvidia-smi pandoc python3 python3-pip python3-venv ragel re2c scons texi2html
+        texinfo tk-dev unzip valgrind wget xmlto zlib1g-dev
 )
 
     # Initialize arrays for missing, available, and unavailable packages
@@ -1240,7 +1240,7 @@ dl_libjxl_fn() {
     url_base="https://github.com/libjxl/libjxl/releases/download/v0.7.0/jxl-debs-amd64"
     url_suffix="v0.7.0.tar.gz"
 
-    get_the_os_version_1
+    get_os_version_1
 
     if [[ ! -f "$packages/libjxl.tar.gz" ]]; then
         case "$VER" in
@@ -1391,7 +1391,7 @@ ubuntu_os_ver_fn() {
 
 find_lsb_release=$(find /usr/bin/ -type f -name 'lsb_release')
 
-get_the_os_version_1() {
+get_os_version_1() {
     if [[ -f /etc/os-release ]]; then
         . /etc/os-release
         OS_TMP="$NAME"
@@ -1408,20 +1408,20 @@ get_the_os_version_1() {
     nvidia_utils_ver=$(apt list nvidia-utils-* 2>/dev/null | grep -Eo '^nvidia-utils-[0-9]{3}' | sort -rV | uniq | head -n1)
     nvidia_encode_var=$(apt list libnvidia-encode* 2>&1 | grep -Eo 'libnvidia-encode[1-]+[0-9]*$' | sort -rV | head -n1)
 }
-get_the_os_version_1
+get_os_version_1
 
 #
 # CHECK IF RUNNING WINDOWS WSL2
 #
 
-get_the_os_version_2() {
+get_os_version_2() {
     if [[ $(grep -i "Microsoft" /proc/version) ]]; then
         wsl_flag="yes_wsl"
         OS="WSL2"
-        wsl_common_pkgs="nvidia-smi cppcheck libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils libyuv0 libsharp-dev libdmalloc5 libnvidia-encode1"
+        wsl_common_pkgs="cppcheck libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils libyuv0 libsharp-dev libdmalloc5 libnvidia-encode1"
     fi
 }
-get_the_os_version_2
+get_os_version_2
 
 #
 # INSTALL REQUIRED APT PACKAGES
@@ -1436,7 +1436,7 @@ case "$OS" in
     Arch)           arch_os_ver_fn ;;
     Debian|n/a)     debian_os_ver_fn "$nvidia_encode_var $nvidia_utils_ver" ;;
     Ubuntu)         ubuntu_os_ver_fn "$nvidia_encode_var $nvidia_utils_ver" ;;
-    WSL2)           get_the_os_version_1
+    WSL2)           get_os_version_1
                     case "$OS" in
                         Debian|n/a)     debian_os_ver_fn "$nvidia_encode_var $nvidia_utils_ver" "$wsl_flag" "$wsl_common_pkgs" ;;
                         Ubuntu)         ubuntu_os_ver_fn "$nvidia_encode_var $nvidia_utils_ver" "$wsl_flag" "$wsl_common_pkgs" ;;
@@ -1528,11 +1528,11 @@ if [[ "$OS" == "Arch" ]]; then
         build_done "libtool" "$lt_ver"
     fi
 else
-    get_the_os_version_2
+    get_os_version_2
     if [[ "$VER" = "WSL2" ]]; then
         lt_ver=2.4.6
     else
-        get_the_os_version_1
+        get_os_version_1
         case "$VER" in
             12|23.10|23.04)     lt_ver=2.4.7 ;;
             *)                  lt_ver=2.4.6 ;;
@@ -2894,7 +2894,7 @@ if [[ "$cuda_compile_flag" -eq 1 ]]; then
             build_done "nv-codec-headers" "12.0.16.1"
         fi
 
-        get_the_os_version_1
+        get_os_version_1
 
         if [[ "$OS" == "Arch" ]]; then
             PATH+=":/opt/cuda/bin"
@@ -2904,16 +2904,6 @@ if [[ "$cuda_compile_flag" -eq 1 ]]; then
         else
             CFLAGS+=" -I$workspace/cuda/include"
             LDFLAGS+=" -L$workspace/cuda/lib64"
-        fi
-
-        if [[ "$OS" != "Arch" ]]; then
-            if ! dpkg -l | grep -o nvidia-smi &>/dev/null; then
-                if ! apt install nvidia-smi &>/dev/null; then
-                    dpkg --configure -a
-                    apt --fix-broken install
-                    apt install nvidia-smi &>/dev/null
-                fi
-            fi
         fi
 
         ffmpeg_libraries+=("--enable-"{cuda-nvcc,cuda-llvm,cuvid,nvdec,nvenc,ffnvcodec})
