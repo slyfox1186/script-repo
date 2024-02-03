@@ -31,44 +31,15 @@
 ##  GeForce CUDA SDK Toolkit:
 ##
 ##    - updated to version 12.3.2 (01.08.2024)
-##    - reverted the nv-codec-headers to version n12.0.16.1 due to a 20% decrease in fps using x265 with nvenc cuda
-##    - if the cuda libraries are not installed (for GeForce graphics cards only) the user will be prompted
-##      by the script to install them so that hardware acceleration is enabled during the build
 ##
 ##  Updated:
 ##
 ##    - ffmpeg to retrieve the latest release version
-##    - added virtual environments when building python pip modules amd removed code that is not required anymore due to this
-##    - the git repositories source using git clone now store the specific branch id and will update each time an update is detected.
-##    - any apt packages detected that need installing will now prompt the user before installing
-##    - libvpx had an update that would not compile so I manually set it back to version (1.13.1) - date of change: 01.24.24
-##    - added or removed apt packages for all distros to fix errors or update as the code requires.
-##    - removed the need to use github api which avoids the user having to replace the code manually.
-##    - improved the regex coding to avoid downloading a release candidate of a program during each api call (rev2)
-##    - libtesseract & leptonica to pull from their latest github release
-##    - ffmpeg to version n5.1.4
-##    - rav1e library to version (0.7.1 - 11.28.23)
-##    - abseil library
-##    - aom/av1 library
-##    - libvpx library
-##    - x265 library
-##    - the parsing to check if an amd gpu is installed
 ##
 ##  Added:
 ##
 ##    - ubuntu 23.10 (manic) support
 ##    - set the x265 libs to be built with clang because it gives better fps output than when built with gcc
-##    - cunit support library for libmysofa
-##    - cyanrip software
-##    - cyanrip libcurl support library for
-##    - debian 11 (bullseye) support
-##    - debian 12 (bookworm) support
-##    - opencl and libpulse support libraries
-##    - ubuntu 23.04 (lunar) support
-##    - vapoursynth library support
-##    - windows wsl2 support
-##    - vulkan support
-##    - extra code to support dso symbols in the ldflags compiler variable
 ##
 ##  Removed:
 ##
@@ -83,16 +54,6 @@
 ##    - libvpx has a bug in their code in file vpx_ext_ratectrl.h and I used the sed command to edit the code and fix it.
 ##    - libant would not build unexpectedly so I edited APT to download Java v8 which works for some unknown reason.
 ##    - a missing library related to libc6 for x265 to compile on windows wsl
-##    - an issue with libtesseract regarding the file libcurl.a during it's build
-##    - gpac was missing a required .so file from libjpeg-turbo
-##    - gpac build issue due to the sdl2 library not being found in the workspace folder
-##    - the nvidia-smi command is not being installed for Debian OS versions
-##    - libheif not building the specified plugins
-##    - the code that prompts the user to install the cuda sdk toolkit
-##    - a broken download url for the wsl version of the cuda sdk toolkit
-##    - apt package errors for debian 11 bullseye
-##    - Arch Linux error not being able to find a file that does not exist on Arch when installing cuda.
-##      The script will get the information sought by executing a different command that arch provides.
 ##
 #############################################################################################################################
 
@@ -338,6 +299,7 @@ download_git() {
                   grep -v '\^{}' |
                   sort -rV |
                   head -n1)
+
         # If no tags found, use the latest commit hash as the version
         if [[ -z "$version" ]]; then
             version=$(git ls-remote "$repo_url" | grep HEAD | awk '{print substr($1,1,7)}')
@@ -367,10 +329,8 @@ download_git() {
             fi
         fi
         cd "$target_dir" || fail_fn "Error: Failed to cd into \"$target_dir\". (Line: $LINENO)"
-    else
-        git_built_flag=""
-        git_built_flag=1
     fi
+
     echo "Cloning completed: $version"
     return 0
 }
@@ -1282,16 +1242,15 @@ dl_libjxl_fn() {
 
     if [[ ! -f "$packages/libjxl.tar.gz" ]]; then
         case "$VER" in
-            10)                     libjxl_name="debian-buster" ;;
-            11)                     libjxl_name="debian-bullseye" ;;
-            12)                     libjxl_name="debian-bookworm" ;;
-            18.04)                  libjxl_name="ubuntu-18.04" ;;
-            20.04)                  libjxl_name="ubuntu-20.04" ;;
-            23.10|23.04|22.04)      libjxl_name="ubuntu-22.04" ;;
-            *)                      echo ;;
+            10)                      libjxl_name="debian-buster" ;;
+            11)                      libjxl_name="debian-bullseye" ;;
+            12)                      libjxl_name="debian-bookworm" ;;
+            18.04)                   libjxl_name="ubuntu-18.04" ;;
+            23.10|23.04|22.04|20.04) libjxl_name="ubuntu-20.04" ;;
+            *)                      fail_fn "Could not locate the \$VER in the function \"dl_libjxl_fn\"" ;;
         esac
 
-        if ! curl -LSso "$packages/$libjxl_name.tar.gz" "$url_base-$libjxl_name-$url_suffix"; then
+        if ! curl -LsSo "$packages/$libjxl_name.tar.gz" "$url_base-$libjxl_name-$url_suffix"; then
             fail_fn "Error: Failed to download \"$packages/$libjxl_name.tar.gz\". (Line: $LINENO)"
         fi
 
@@ -1981,6 +1940,8 @@ if build "gflags" "$g_ver"; then
     build_done "gflags" "$g_ver"
 fi
 
+clear
+set -x
 # LIBJXL HAS A BUG IN THE DECODER BIT AND MUST BE DISABLED ON ARCH LINUX
 if [[ "$OS" == "Arch" ]]; then
     ffmpeg_libraries+=("--disable-libjxl")
