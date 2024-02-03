@@ -79,7 +79,7 @@ LDEXEFLAGS=""
 ffmpeg_libraries=()
 latest=false
 regex_str='(rc|RC|master)+[0-9]*$' # SET THE REGEX VARIABLE TO CHECK FOR RELEASE CANDIDATES
-debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=ON # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -814,8 +814,10 @@ fetch_and_parse_cuda_version() {
 
 gpu_arch_fn() {
     local gpu_name gpu_type
+    cuda_compile_flag=""
 
     if [[ -n "$(find_cuda_json_file)" ]]; then
+        cuda_compile_flag=1
         gpu_name=$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -rV | head -n 1)
         if [[ "$gpu_name" == "name" ]]; then
             gpu_name=$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -V | head -n 1)
@@ -1133,14 +1135,14 @@ pkgs_fn() {
 fix_missing_x265_lib() {
     if [[ ! -f "/usr/lib/x86_64-linux-gnu/libstdc++.so" ]] && [[ -f "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30" ]]; then
         echo "$ ln -sf /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30 /usr/lib/x86_64-linux-gnu/libstdc++.so"
-        ln -sf /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30 /usr/lib/x86_64-linux-gnu/libstdc++.so
+        ln -sf "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30" "/usr/lib/x86_64-linux-gnu/libstdc++.so"
     fi
 }
 
 x265_fix_libs_fn() {
     local x265_libs x265_libs_trim
-
-    x265_libs=$(find /usr/local/lib/ -type f -name 'libx265.so.*')
+fix_
+    x265_libs=$(find "$workspace/lib/" -type f -name 'libx265.so.*')
     x265_libs_trim=$(echo "$x265_libs" | sed "s:.*/::" | head -n1)
 
     case "$OS" in
@@ -1172,7 +1174,7 @@ if version_split.length() > 1\\n  pa_version_minor = version_split[1]\\nelse\\n 
 
 libpulse_fix_libs_fn() {
     local pulse_version="$1"
-    local libpulse_lib=$(find $workspace/lib/ -type f -name 'libpulsecommon-*.so' | head -n1)
+    local libpulse_lib=$(find "$workspace/lib/" -type f -name 'libpulsecommon-*.so' | head -n1)
     local libpulse_trim=$(echo "$libpulse_lib" | sed 's:.*/::' | head -n1)
 
     if [[ "$OS" == "Arch" ]]; then
@@ -2883,7 +2885,7 @@ fi
 # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
 [[ -n "$nvidia_gpu_test" ]] || [[ -n "$wsl_test" ]] && gpu_arch_fn
 
-if [[ "$?" -eq 0 ]]; then
+if [[ "$cuda_compile_flag" -eq 1 ]]; then
     if [[ -n "$iscuda" ]]; then
         if build "nv-codec-headers" "12.0.16.1"; then
             download "https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.0.16.1/nv-codec-headers-12.0.16.1.tar.gz"
