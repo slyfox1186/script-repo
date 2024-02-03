@@ -5,9 +5,9 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/script-repo
 ##
-##  Script version: 3.4.2
+##  Script version: 3.4.3
 ##
-##  Updated: 02.01.24
+##  Updated: 02.03.24
 ##
 ##  Purpose:
 ##
@@ -37,6 +37,7 @@
 ##
 ##  Updated:
 ##
+##    - ffmpeg to retrieve the latest release version
 ##    - added virtual environments when building python pip modules amd removed code that is not required anymore due to this
 ##    - the git repositories source using git clone now store the specific branch id and will update each time an update is detected.
 ##    - any apt packages detected that need installing will now prompt the user before installing
@@ -71,6 +72,7 @@
 ##
 ##  Removed:
 ##
+##    - unncessary compiler flags
 ##    - python3 build code that became useless
 ##    - removed support for debian 10 (Buster)
 ##    - removed support for Ubuntu 18.04 (bionic)
@@ -104,10 +106,7 @@ fi
 #
 
 script_name="${0}"
-script_ver=3.4.2
-ffmpeg_ver=n6.1.1
-ffmpeg_archive=ffmpeg-$ffmpeg_ver.tar.gz
-ffmpeg_url=https://github.com/FFmpeg/FFmpeg/archive/refs/tags/$ffmpeg_ver.tar.gz
+script_ver=3.4.3
 cuda_pin_url=https://developer.download.nvidia.com/compute/cuda/repos
 cwd="$PWD/ffmpeg-build-script"
 packages="$cwd/packages"
@@ -119,7 +118,7 @@ LDEXEFLAGS=""
 ffmpeg_libraries=()
 latest=false
 regex_str='(rc|RC|master)+[0-9]*$' # SET THE REGEX VARIABLE TO CHECK FOR RELEASE CANDIDATES
-debug=ON # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -175,7 +174,7 @@ source_flags_fn() {
 source_flags_fn
 
 exit_fn() {
-    printf "%s\n%s\n\n" "Make sure to star this repository to show your support!" "$web_repo"
+    printf "\n%s\n%s\n\n" "Make sure to star this repository to show your support!" "$web_repo"
     exit 0
 }
 
@@ -378,10 +377,11 @@ download_git() {
 
 # LOCATE GITHUB RELEASE VERSION NUMBERS USING GIT CLONE
 ffmpeg_version_check_fn() {
-    local git_repo="$1"
+    local ffmpeg_repo="$1"
 
-    git_ver_check=$(git ls-remote --tags "$git_repo" |
+    ffmpeg_ver_check=$(git ls-remote --tags "$ffmpeg_repo" |
                     awk -F'/' '/n[0-9]+(\.[0-9]+)*(-dev)?$/ {print $3}' |
+                    grep -Ev '\-dev' |
                     sort -rV |
                     head -n1)
 }
@@ -2402,7 +2402,7 @@ if build "libfdk-aac" "2.0.2"; then
     execute make install
     build_done "libfdk-aac" "2.0.2"
 fi
-# ffmpeg_libraries+=("--enable-libfdk-aac")
+ffmpeg_libraries+=("--enable-libfdk-aac")
 
 find_git_repo "xiph/vorbis" "1" "T"
 if build "vorbis" "$g_ver"; then
@@ -3153,7 +3153,7 @@ if build "openjpeg" "$g_ver"; then
     execute ninja -C build install
     build_done "openjpeg" "$g_ver"
 fi
-# ffmpeg_libraries+=("--enable-libopenjpeg")
+ffmpeg_libraries+=("--enable-libopenjpeg")
 
 #
 # BUILD FFMPEG
@@ -3190,12 +3190,16 @@ if [[ -n "$ffmpeg_archive" ]]; then
     ff_cmd="$ffmpeg_archive"
 fi
 
+# Get the latest FFmpeg version by parsing its repository
 ffmpeg_version_check_fn "https://github.com/FFmpeg/FFmpeg.git" "3"
-if [[ ! "$git_ver_check" == "$ffmpeg_ver" ]]; then
-    print_git_ver_check="${git_ver_check//\/tags\/}"
+ffmpeg_ver="$ffmpeg_ver_check"
+ffmpeg_archive="ffmpeg-$ffmpeg_ver.tar.gz"
+ffmpeg_url="https://github.com/FFmpeg/FFmpeg/archive/refs/tags/n6.1.1.tar.gz"
+
+if [[ ! "$ffmpeg_ver_check" == "$ffmpeg_ver" ]]; then
     printf "\n%s\n%s\n%s\n" \
         "The FFmpeg version you are installing is: $ffmpeg_ver" \
-        "The script detected a new version: $git_ver_check" \
+        "The script detected a new version: $ffmpeg_ver_check" \
         "You can modify the variable \"ffmpeg_ver\" if desired to change versions."
 fi
 
