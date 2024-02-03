@@ -206,6 +206,9 @@ if [[ ! -f "/usr/lib/x86_64-linux-gnu/libzstd.so.1.5.5" ]]; then
     sudo ln -sf "/usr/lib/x86_64-linux-gnu/libzstd.so.1.5.5" "/usr/lib/x86_64-linux-gnu/libzstd.so.1"
 fi
 
+[[ -f "/usr/local/lib/x86_64-linux-gnu/libzstd.so.1" ]] && sudo rm "/usr/local/lib/x86_64-linux-gnu/libzstd.so.1"
+[[ -f "/usr/local/lib/x86_64-linux-gnu/libzstd.so" ]] && sudo rm "/usr/local/lib/x86_64-linux-gnu/libzstd.so"
+
 # PROMPT USER TO CLEAN UP FILES
 cleanup_fn
 
