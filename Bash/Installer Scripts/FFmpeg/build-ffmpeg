@@ -2008,7 +2008,7 @@ if build "tesseract" "$g_ver"; then
     execute make install
     build_done "tesseract" "$g_ver"
 fi
-# ffmpeg_libraries+=("--enable-libtesseract")
+ffmpeg_libraries+=("--enable-libtesseract")
 
 git_call_fn "https://github.com/imageMagick/jpeg-turbo.git" "jpeg-turbo-git"
 if build "$repo_name" "${version//\$ /}"; then
