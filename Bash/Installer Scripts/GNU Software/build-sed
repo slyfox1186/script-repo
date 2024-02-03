@@ -1,20 +1,13 @@
 #!/usr/bin/env bash
 
-###########################################################################################################
-##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-sed
-##
 ##  Purpose: build gnu sed
-##
-##  Updated: 08.03.23
-##
-##  Script version: 1.0
-##
-###########################################################################################################
+##  Updated: 02.03.24
+##  Script version: 1.1
 
 clear
 
-if [ "${EUID}" -eq '0' ]; then
+if [ "$EUID" -eq 0 ]; then
     printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
     exit 1
 fi
@@ -27,14 +20,13 @@ script_ver=1.0
 archive_dir=sed-4.9
 archive_url=https://ftp.gnu.org/gnu/sed/sed-4.9.tar.xz
 archive_ext="${archive_url//*.}"
-archive_name="$archive_dir.tar.${archive_ext}"
-cwd="$PWD"/sed-build-script
+archive_name="$archive_dir.tar.$archive_ext"
+cwd="$PWD/sed-build-script"
 install_dir=/usr/local
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
-    "sed build script - v${script_ver}" \
+    "sed build script - v$script_ver" \
     '==============================================='
 
 #
@@ -125,21 +117,17 @@ cleanup_fn()
     local choice
 
     printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
+        "============================================" \
+        "  Do you want to clean up the build files?  " \
+        "============================================" \
+        "[1] Yes" \
+        "[2] No"
+    read -p "Your choices are (1 or 2): " choice
 
-    case "${choice}" in
-        1)      sudo rm -fr "$cwd";;
-        2)      echo;;
-        *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
-                unset choice
+    case "$choice" in
+        1)      sudo rm -fr "$cwd" ;;
+        2)      return ;;
+        *)      unset choice
                 clear
                 cleanup_fn
                 ;;
@@ -152,9 +140,11 @@ cleanup_fn()
 
 pkgs_fn()
 {
-    pkgs=(autoconf autoconf-archive autogen automake autopoint autotools-dev build-essential bzip2
-          ccache curl git libaudit-dev libintl-perl libticonv-dev libtool libtool-bin lzip pkg-config
-          valgrind zlib1g-dev librust-polling-dev)
+    pkgs=(
+    autoconf autoconf-archive autogen automake autopoint autotools-dev build-essential bzip2
+    ccache curl git libaudit-dev libintl-perl libticonv-dev libtool libtool-bin lzip pkg-config
+    valgrind zlib1g-dev librust-polling-dev
+)
 
     for i in ${pkgs[@]}
     do
@@ -172,62 +162,52 @@ pkgs_fn()
     fi
 }
 
-#
 # DOWNLOAD THE ARCHIVE FILE
-#
-
-if [ ! -f "$cwd/${archive_name}" ]; then
-    curl -A "$user_agent" -Lso "$cwd/${archive_name}" "${archive_url}"
+if [ ! -f "$cwd/$archive_name" ]; then
+    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
-#
 # CREATE OUTPUT DIRECTORY
-#
-
 if [ -d "$cwd/$archive_dir" ]; then
     sudo rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
-#
 # EXTRACT ARCHIVE FILES
-#
-
-if ! tar -xf "$cwd/${archive_name}" -C "$cwd/$archive_dir" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: $cwd/${archive_name}"
+if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
     exit 1
 fi
 
-#
 # TEST IF LIBICONV WAS INSTALLED BY APT OR MANUALLY
-#
-
-if [ -f /usr/local/bin/iconv ]; then
+if [ -f "/usr/local/bin/iconv" ]; then
     pkgs_fn
     iconv_prefix=/usr/local
 elif [ -f /usr/bin/iconv ]; then
     pkgs_fn
     iconv_prefix=/usr
 else
-    pkgs_fn 'libiconv-hook-dev libiconv-hook1'
+    pkgs_fn "libticonv-dev"
     iconv_prefix=/usr
 fi
 
-#
 # BUILD PROGRAM FROM SOURCE
-#
-
 cd "$cwd/$archive_dir" || exit 1
 cd build || exit 1
-../configure --prefix="$install_dir"       \
+../configure --prefix="$install_dir" \
              --{build,host}=x86_64-linux-gnu \
-             --enable-threads=posix          \
-             --disable-nls                   \
-             --with-libiconv-prefix=/usr     \
+             --enable-threads=posix \
+             --disable-nls \
+             --with-libiconv-prefix=/usr \
              --with-libintl-prefix=/usr
-make "-j$(nproc --all)"
+echo
+if ! make "-j$(nproc --all)"; then
+    fail_fn "Failed to execute: make -j$(nproc --all). Line $LINENO"
+    exit 1
+fi
+echo
 if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
+    fail_fn "Failed to execute: sudo make install. Line $LINENO"
     exit 1
 fi
 
