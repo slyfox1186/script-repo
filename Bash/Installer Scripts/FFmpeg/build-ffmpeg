@@ -618,14 +618,14 @@ setup_python_venv_and_install_packages() {
     shift
     local parse_package=("$@")
 
-    echo "Creating a Python virtual environment at $parse_package..."
-    python3 -m venv "$parse_package" || fail_fn "Failed to create virtual environment"
+    echo "Creating a Python virtual environment at $parse_path..."
+    python3 -m venv "$parse_path" || fail_fn "Failed to create virtual environment"
 
     echo "Activating the virtual environment..."
-    source "$parse_package/bin/activate" || fail_fn "Failed to activate virtual environment"
+    source "$parse_path/bin/activate" || fail_fn "Failed to activate virtual environment"
 
     echo "Installing Python packages: ${packages[*]}..."
-    pip install "${parse_package[@]}" || fail_fn "Failed to install packages"
+    pip install --break-system-packages "${parse_package[@]}" || fail_fn "Failed to install packages"
 
     echo "Deactivating the virtual environment..."
     deactivate
@@ -1086,8 +1086,8 @@ pkgs_fn() {
         libssl-dev libsuitesparseconfig5 libsystemd-dev libtalloc-dev libtheora-dev libticonv-dev libtool
         libtool-bin libtwolame-dev libudev-dev libumfpack5 libv4l-dev libva-dev libvdpau-dev libvidstab-dev
         libvlccore-dev libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev
-        libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzmq3-dev
-        libzstd-dev libzvbi-dev libzzip-dev llvm lshw lzma-dev m4 mesa-utils meson nasm ninja-build
+        libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzimg-dev
+        libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev llvm lshw lzma-dev m4 mesa-utils meson nasm ninja-build
         pandoc python3 python3-pip python3-venv ragel re2c scons texi2html texinfo tk-dev unzip valgrind
         wget xmlto zlib1g-dev
 )
@@ -2032,21 +2032,6 @@ if build "$repo_name" "${version//\$ /}"; then
     $(build_done "$repo_name" "$version")
 fi
 ffmpeg_libraries+=("--enable-librubberband")
-
-find_git_repo "sekrit-twc/zimg" "1" "T"
-if build "zimg" "$g_ver"; then
-    download "https://github.com/sekrit-twc/zimg/archive/refs/tags/release-$g_ver.tar.gz" "zimg-$g_ver.tar.gz"
-    execute libtoolize -fiq
-    execute autoupdate
-    execute autoreconf -fi
-    execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type" \
-                        --disable-shared
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done "zimg" "$g_ver"
-fi
-ffmpeg_libraries+=("--enable-libzimg")
 
 find_git_repo "c-ares/c-ares" "1" "T"
 g_ver="${g_ver//ares-/}"
