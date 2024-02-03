@@ -1940,8 +1940,6 @@ if build "gflags" "$g_ver"; then
     build_done "gflags" "$g_ver"
 fi
 
-clear
-set -x
 # LIBJXL HAS A BUG IN THE DECODER BIT AND MUST BE DISABLED ON ARCH LINUX
 if [[ "$OS" == "Arch" ]]; then
     ffmpeg_libraries+=("--disable-libjxl")
