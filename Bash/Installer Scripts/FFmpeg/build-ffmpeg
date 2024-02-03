@@ -104,30 +104,29 @@ fi
 #
 
 script_name="${0}"
-script_ver="3.4.2"
-ffmpeg_ver="n5.1.4"
-ffmpeg_archive="ffmpeg-$ffmpeg_ver.tar.gz"
-ffmpeg_url="https://github.com/FFmpeg/FFmpeg/archive/refs/tags/$ffmpeg_ver.tar.gz"
-cuda_pin_url="https://developer.download.nvidia.com/compute/cuda/repos"
+script_ver=3.4.2
+ffmpeg_ver=n6.1.1
+ffmpeg_archive=ffmpeg-$ffmpeg_ver.tar.gz
+ffmpeg_url=https://github.com/FFmpeg/FFmpeg/archive/refs/tags/$ffmpeg_ver.tar.gz
+cuda_pin_url=https://developer.download.nvidia.com/compute/cuda/repos
 cwd="$PWD/ffmpeg-build-script"
 packages="$cwd/packages"
 workspace="$cwd/workspace"
-install_dir="/usr/local"
-pc_type="x86_64-linux-gnu"
-web_repo="https://github.com/slyfox1186/script-repo"
-curl_timeout="10"
+install_dir=/usr/local
+pc_type=x86_64-linux-gnu
+web_repo=https://github.com/slyfox1186/script-repo
 LDEXEFLAGS=""
 ffmpeg_libraries=()
-latest="false"
+latest=false
 regex_str='(rc|RC|master)+[0-9]*$' # SET THE REGEX VARIABLE TO CHECK FOR RELEASE CANDIDATES
-debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=ON # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
 #
 
-if [[ -f "/proc/cpuinfo" ]]; then
-    cpu_threads=$(grep --count ^processor "/proc/cpuinfo")
+if [[ -f /proc/cpuinfo ]]; then
+    cpu_threads=$(grep --count ^processor /proc/cpuinfo)
 else
     cpu_threads=$(nproc --all)
 fi
@@ -144,18 +143,18 @@ mkdir -p "$packages/nvidia-cuda"
 # PRINT SCRIPT BANNER
 #
 
-clear
+echo
 box_out_banner1() {
-    input_char=$(echo "${@}" | wc -c)
+    input_char=$(echo "$@" | wc -c)
     line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
     tput bold
-    line=$(tput setaf 3)${line}
+    line=$(tput setaf 3)$line
     space="${line//-/ }"
-    echo " ${line}"
-    printf "|" ; echo -n "${space}" ; printf "%s\n" "|";
-    printf "| " ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" " |";
-    printf "|" ; echo -n "${space}" ; printf "%s\n" "|";
-    echo " ${line}"
+    echo " $line"
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
+    printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
+    echo " $line"
     tput sgr 0
 }
 box_out_banner1 "FFmpeg Build Script - v$script_ver"
@@ -166,20 +165,12 @@ printf "\n%s\n\n" "Utilizing $cpu_threads CPU threads"
 #
 
 source_flags_fn() {
-    CC="gcc"
-    CXX="g++"
+    CC=gcc
+    CXX=g++
+    CFLAGS="-g -O3 -march=native"
     CXXFLAGS="-g -O3 -march=native"
-    CFLAGS="$CXXFLAGS -I$workspace/include -I$workspace/include/jxl -I$workspace/include/fdk-aac -I$workspace/include/CL"
-    CFLAGS+=" -I$workspace/include/avisynth -I/usr/local/include -I/usr/include -I/usr/include/SDL2 -I/usr/lib/x86_64-linux-gnu/pulseaudio"
-    CFLAGS+=" -I/usr/include/openjpeg-2.5 -I/usr/include/vk_video -I/usr/include/vulkan -I/usr/include/flite"
-    CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include"
-    EXTRALIBS="-lm -lpthread -lz -lstdc++ -lgcc_s -lgcc -lrt -ldl -lnuma -L/usr/local/lib -lbrotlicommon -lbrotlidec -lbrotlienc"
-    EXTRALIBS+=" -L/usr/local/lib -lhwy -ltesseract -L$workspace/lib -llcms2 -llcms2_threaded -L/usr/local/cuda/targets/x86_64-linux/lib -lOpenCL"
-    EXTRALIBS+=" $(pkg-config --libs x265 2>/dev/null) $(pkg-config --libs libchromaprint 2>/dev/null) $(pkg-config --libs aom 2>/dev/null)"
-    LDFLAGS="-Wl,--as-needed -L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu"
-    LDFLAGS+=" -L/usr/local/lib/x86_64-linux-gnu -L/usr/local/lib64 -L/usr/local/lib"
-    LDFLAGS+=" -L/usr/lib64 -L/usr/lib/x86_64-linux-gnu -L/usr/lib -L/lib64 -L/lib"
-    export CC CFLAGS CPPFLAGS CXX CXXFLAGS LDFLAGS
+    EXTRALIBS="-lm -lpthread -lz -lstdc++ -lgcc_s -lrt -ldl -lnuma"
+    export CC CFLAGS CPPFLAGS CXX CXXFLAGS
 }
 source_flags_fn
 
@@ -208,7 +199,6 @@ cleanup_fn() {
         1)      rm -fr "$cwd" ;;
         2)      return ;;
         *)      unset choice
-                clear
                 cleanup_fn
                 ;;
     esac
@@ -242,10 +232,10 @@ download() {
         echo "$dl_file is already downloaded."
     else
         echo "Downloading \"$dl_url\" saving as \"$dl_file\""
-        if ! curl -m "$curl_timeout" -LSso "$target_file" "$dl_url"; then
+        if ! curl -LsSo "$target_file" "$dl_url"; then
             printf "\n%s\n\n" "Error: Failed to download \"$dl_file\". Second attempt in 10 seconds..."
             sleep 10
-            if ! curl -m "$curl_timeout" -LSso "$target_file" "$dl_url"; then
+            if ! curl -LsSo "$target_file" "$dl_url"; then
                 fail_fn "Error: Failed to download \"$dl_file\". Exiting... (Line: $LINENO)"
             fi
         fi
@@ -281,7 +271,7 @@ check_and_install_cargo_c() {
         # Remove any stale locks on cargo
         if ps aux | grep -E 'cargo|rustc' | grep -v grep &>/dev/null; then
             cargo clean
-            find ~/.cargo/registry/index -type f -name ".cargo-lock" -delete
+            find $HOME/.cargo/registry/index -type f -name ".cargo-lock" -delete
         fi
         if ! execute cargo install cargo-c; then
             echo "\$ The command \"cargo install cargo-c\" failed as well. The script will now exit."
@@ -297,7 +287,7 @@ install_rustc_fn() {
     get_rustc_ver=$(rustc --version | grep -Eo '[0-9 \.]+' | head -n1)
     if [ "$get_rustc_ver" != "1.75.0" ]; then
         echo "Installing RustUp"
-        curl -sSm "$curl_timeout" --proto "=https" --tlsv1.2 "https://sh.rustup.rs" | sh -s -- -y &>/dev/null
+        curl -sS --proto "=https" --tlsv1.2 "https://sh.rustup.rs" | sh -s -- -y &>/dev/null
         source "$HOME/.cargo/env"
         if [[ -f "$HOME/.zshrc" ]]; then
             source "$HOME/.zshrc"
@@ -311,8 +301,13 @@ git_call_fn() {
     git_url="$1"
     repo_name="$2"
     recurse_flag=""
-    [[ -n "$3" ]] && recurse_flag="1"
-    version=$(download_git "$git_url" "$repo_name")
+    if [[ "$3" == "recurse" ]]; then
+        recurse_flag=1
+    elif [[ "$3" == "ant" ]]; then
+        version=$(download_git "$git_url" "$repo_name" "ant")
+    else
+        version=$(download_git "$git_url" "$repo_name")
+    fi
     version="${version//Cloning completed: /}"
 }
 
@@ -326,9 +321,9 @@ download_git() {
 
     # Try to get the latest tag
     if [[ "$repo_flag" == "ant" ]]; then
-        version=$(git ls-remote --tags "$repo_url" |
+        version=$(git ls-remote --tags "https://github.com/apache/ant.git" |
                   awk -F'/' '/\/v?[0-9]+\.[0-9]+(\.[0-9]+)?(\^\{\})?$/ {
-                      tag = $3;  # Assuming the version tag is in the 3rd field
+                      tag = $4;  # Assuming the version tag is in the 4rd field
                      sub(/^v/, "", tag);  # Remove the leading 'v' from the tag
                      if (tag !~ /\^\{\}$/) print tag  # Print if tag does not end with ^{}
                   }' |
@@ -344,20 +339,19 @@ download_git() {
                   grep -v '\^{}' |
                   sort -rV |
                   head -n1)
-    fi
-
-    # If no tags found, use the latest commit hash as the version
-    if [[ -z "$version" ]]; then
-        version=$(git ls-remote "$repo_url" | grep HEAD | awk '{print substr($1,1,7)}')
+        # If no tags found, use the latest commit hash as the version
         if [[ -z "$version" ]]; then
-            version="unknown"
+            version=$(git ls-remote "$repo_url" | grep HEAD | awk '{print substr($1,1,7)}')
+            if [[ -z "$version" ]]; then
+                version="unknown"
+            fi
         fi
     fi
 
     [[ -f "$packages/${repo_name}.done" ]] && store_prior_version=$(cat "$packages/${repo_name}.done")
 
     if [[ ! "$version" == "$store_prior_version" ]]; then
-        if [[ "$recurse_flag" == 1 ]]; then
+        if [[ "$recurse_flag" -eq 1 ]]; then
             recurse="--recursive"
         elif [[ -n "$3" ]]; then
             output_dir="$dl_path/$3"
@@ -376,7 +370,7 @@ download_git() {
         cd "$target_dir" || fail_fn "Error: Failed to cd into \"$target_dir\". (Line: $LINENO)"
     else
         git_built_flag=""
-        git_built_flag="1"
+        git_built_flag=1
     fi
     echo "Cloning completed: $version"
     return 0
@@ -397,6 +391,7 @@ github_repo() {
     local repo="$1"
     local url="$2"
     local url_flag="$3"
+    g_ver=""
 
     local count=1
     local max_attempts=10
@@ -412,9 +407,9 @@ github_repo() {
     while [ $count -le $max_attempts ]
     do
         if [[ "$url_flag" -eq 1 ]]; then
-            curl_cmd=$(curl -LSsm "$curl_timeout" "https://github.com/xiph/rav1e/tags" | grep -Eo 'href="[^"]*v?[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz"' | head -n1)
+            curl_cmd=$(curl -LSs "https://github.com/xiph/rav1e/tags" | grep -Eo 'href="[^"]*v?[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz"' | head -n1)
         else
-            curl_cmd=$(curl -LSsm "$curl_timeout" "https://github.com/$repo/$url" | grep -o 'href="[^"]*\.tar\.gz"')
+            curl_cmd=$(curl -LSs "https://github.com/$repo/$url" | grep -o 'href="[^"]*\.tar\.gz"')
         fi
 
         # Extract the specific line
@@ -434,7 +429,7 @@ github_repo() {
     # DENY INSTALLING A RELEASE CANDIDATE
     while [[ $g_ver =~ $regex_str ]]
     do
-        curl_cmd=$(curl -LSsm "$curl_timeout" "https://github.com/$repo/$url" | grep -o 'href="[^"]*\.tar\.gz"')
+        curl_cmd=$(curl -LSs "https://github.com/$repo/$url" | grep -o 'href="[^"]*\.tar\.gz"')
 
         # Extract the specific line
         line=$(echo "$curl_cmd" | grep -o 'href="[^"]*\.tar\.gz"' | sed -n "${count}p")
@@ -462,7 +457,7 @@ videolan_repo() {
         return 1
     fi
 
-    if curl_cmd=$(curl -sSm "$curl_timeout" "https://code.videolan.org/api/v4/projects/$repo/repository/$url"); then
+    if curl_cmd=$(curl -sS "https://code.videolan.org/api/v4/projects/$repo/repository/$url"); then
         g_ver=$(echo "$curl_cmd" | jq -r ".[0].commit.id")
         g_sver=$(echo "$curl_cmd" | jq -r ".[0].commit.short_id")
         g_sver=${g_sver::7}
@@ -473,7 +468,7 @@ videolan_repo() {
     # DENY INSTALLING A RELEASE CANDIDATE
     while [[ $g_ver =~ $regex_str ]]
     do
-        if curl_cmd=$(curl -sSm "$curl_timeout" "https://code.videolan.org/api/v4/projects/$repo/repository/$url"); then
+        if curl_cmd=$(curl -sS "https://code.videolan.org/api/v4/projects/$repo/repository/$url"); then
             g_ver=$(echo "$curl_cmd" | jq -r ".[$count].name")
             g_ver="${g_ver#v}"
         fi
@@ -489,7 +484,7 @@ gitlab_repo() {
     g_ver1=""
     g_sver1=""
 
-    if curl_cmd=$(curl -sSm "$curl_timeout" "https://gitlab.com/api/v4/projects/$repo/repository/$url"); then
+    if curl_cmd=$(curl -sS "https://gitlab.com/api/v4/projects/$repo/repository/$url"); then
         g_ver=$(echo "$curl_cmd" | jq -r ".[0].name")
         g_ver="${g_ver#v}"
         g_ver1=$(echo "$curl_cmd" | jq -r ".[0].commit.id")
@@ -501,7 +496,7 @@ gitlab_repo() {
     # DENY INSTALLING A RELEASE CANDIDATE
     while [[ $g_ver =~ $regex_str ]]
     do
-        if curl_cmd=$(curl -sSm "$curl_timeout" "https://gitlab.com/api/v4/projects/$repo/repository/$url"); then
+        if curl_cmd=$(curl -sS "https://gitlab.com/api/v4/projects/$repo/repository/$url"); then
             g_ver=$(echo "$curl_cmd" | jq -r ".[$count].name")
             g_ver="${g_ver#v}"
         fi
@@ -516,7 +511,7 @@ gitlab_freedesktop_repo() {
 
     while true
     do
-        if curl_cmd=$(curl -sSm "$curl_timeout" "https://gitlab.freedesktop.org/api/v4/projects/$repo/repository/tags"); then
+        if curl_cmd=$(curl -sS "https://gitlab.freedesktop.org/api/v4/projects/$repo/repository/tags"); then
             g_ver=$(echo "$curl_cmd" | jq -r ".[$count].name")
             g_ver="${g_ver#v}"
 
@@ -543,14 +538,14 @@ gitlab_gnome_repo() {
         return 1
     fi
 
-    if curl_cmd=$(curl -sSm "$curl_timeout" "https://gitlab.gnome.org/api/v4/projects/$repo/repository/tags"); then
+    if curl_cmd=$(curl -sS "https://gitlab.gnome.org/api/v4/projects/$repo/repository/tags"); then
         g_ver=$(echo "$curl_cmd" | jq -r ".[0].name")
         g_ver="${g_ver#v}"
     fi
 
     # DENY INSTALLING A RELEASE CANDIDATE
     while [[ $g_ver =~ $regex_str ]]; do
-        if curl_cmd=$(curl -sSm "$curl_timeout" "https://gitlab.gnome.org/api/v4/projects/$repo/repository/tags"); then
+        if curl_cmd=$(curl -sS "https://gitlab.gnome.org/api/v4/projects/$repo/repository/tags"); then
             g_ver=$(echo "$curl_cmd" | jq -r ".[$count].name")
             g_ver="${g_ver#v}"
         fi
@@ -568,7 +563,7 @@ debian_salsa_repo() {
         return 1
     fi
 
-    if curl_cmd=$(curl -sSm "$curl_timeout" "https://salsa.debian.org/api/v4/projects/$repo/repository/tags"); then
+    if curl_cmd=$(curl -sS "https://salsa.debian.org/api/v4/projects/$repo/repository/tags"); then
         g_ver=$(echo "$curl_cmd" | jq -r ".[0].name")
         g_ver="${g_ver#v}"
     fi
@@ -576,7 +571,7 @@ debian_salsa_repo() {
     # DENY INSTALLING A RELEASE CANDIDATE
     while [[ $g_ver =~ $regex_str ]]
     do
-        if curl_cmd=$(curl -sSm "$curl_timeout" "https://salsa.debian.org/api/v4/projects/$repo/repository/tags"); then
+        if curl_cmd=$(curl -sS "https://salsa.debian.org/api/v4/projects/$repo/repository/tags"); then
             g_ver=$(echo "$curl_cmd" | jq -r ".[$count].name")
             g_ver="${g_ver#v}"
         fi
@@ -619,7 +614,7 @@ execute() {
             fail_fn "Error: Failed to execute $*"
         fi
     else
-        if ! output=$("$@" 2>&1); then
+        if ! output=$("$@" 2>/dev/null >/dev/null); then
             notify-send -t 5000 "Failed to execute $*" 2>/dev/null
             fail_fn "Error: Failed to execute $*"
         fi
@@ -632,17 +627,17 @@ build() {
         "========================================================"
     if [[ -f "$packages/$1.done" ]]; then
         if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
-            echo "$1 version $2 already built."
-            echo "Remove $packages/$1.done lockfile to rebuild it."
+            echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
             return 1
-        elif "$latest"; then
-            echo "$1 is outdated and will be rebuilt using version $2"
+        elif $latest; then
+            echo "$1 is outdated and will be rebuilt with latest version $2"
             return 0
         else
             echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
             return 1
         fi
     fi
+
     return 0
 }
 
@@ -651,7 +646,7 @@ build_done() {
 }
 
 library_exists() {
-    if ! [[ -x $(pkg-config --exists --print-errors "$1" 2>&1 >/dev/null) ]]; then
+    if ! [[ -x $(pkg-config --exists --print-errors "$1" 2>/dev/null >/dev/null >/dev/null) ]]; then
         return 1
     fi
     return 0
@@ -714,7 +709,6 @@ do
                      fi
                      if [[ "$1" == "--cleanup" || "$1" =~ "-c" && ! "$1" =~ "--" ]]; then
                          cflag="-c"
-                         clear
                          cleanup_fn
                      fi
                      if [[ "$1" == "--full-static" ]]; then
@@ -828,22 +822,22 @@ check_nvidia_gpu() {
 }
 
 check_amd_gpu() {
-  if lshw -C display 2>&1 | grep -qEio 'AMD|amdgpu'; then
-    echo "AMD GPU detected."
-  elif dpkg -l 2>&1 | grep -qi 'amdgpu'; then
-    echo "AMD GPU detected."
-  elif lspci 2>&1 | grep -i 'AMD'; then
-    echo "AMD GPU detected."
-  else
-    echo "No AMD GPU detected."
-  fi
+    if lshw -C display 2>&1 | grep -qEio 'AMD|amdgpu'; then
+        echo "AMD GPU detected."
+    elif dpkg -l 2>&1 | grep -qi 'amdgpu'; then
+        echo "AMD GPU detected."
+    elif lspci 2>&1 | grep -i 'AMD'; then
+        echo "AMD GPU detected."
+    else
+        echo "No AMD GPU detected."
+    fi
 }
 
 fetch_and_parse_cuda_version() {
     local url="https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html"
 
     # Use curl to fetch the HTML content of the page
-    local content=$(curl -sSm "$curl_timeout" "$url")
+    local content=$(curl -sS "$url")
 
     # Parse the version directly from the fetched content
     if [[ $content =~ CUDA\ ([0-9]+\.[0-9]+)(\ Update\ ([0-9]+))? ]]; then
@@ -930,9 +924,8 @@ gpu_arch_fn() {
 
 cuda_download_fn() {
     local choice
-    clear
 
-    printf "%s\n\n%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n\n" \
+    printf "\n%s\n\n%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n\n" \
         "Pick your Linux distro from the list below:" \
         "Supported architecture: x86_64" \
         "[1] Debian 10" \
@@ -944,9 +937,8 @@ cuda_download_fn() {
         "[7] Arch Linux" \
         "[8] Exit"
     read -p "Your choices are (1 to 8): " choice
-    clear
 
-    printf "%s\n%s\n\n" \
+    printf "\n%s\n%s\n\n" \
         "Downloading CUDA SDK Toolkit - version $cuda_latest_ver" \
         "===================================================="
 
@@ -997,10 +989,7 @@ cuda_download_fn() {
             cd cuda || exit 1
             makepkg -sif -C --needed --noconfirm
             ;;
-    8)
-            clear
-            exit_fn
-            ;;
+    8)      exit_fn ;;
     *)
             unset choice
             cuda_download_fn
@@ -1010,7 +999,6 @@ cuda_download_fn() {
     # UPDATE THE APT PACKAGES THEN INSTALL THE CUDA-SDK-TOOLKIT
     apt update
     apt install cuda-toolkit-12-3
-    clear
 }
 
 #
@@ -1047,7 +1035,6 @@ install_cuda_fn() {
                     "[1] Yes" \
                     "[2] No"
                 read -p "Your choices are (1 or 2): " choice
-                clear
 
                 case "$choice" in
                     1)
@@ -1071,7 +1058,6 @@ install_cuda_fn() {
                     "[1] Install the CUDA SDK Toolkit and add it to your PATH." \
                     "[2] Continue without installing. (Hardware acceleration will be turned off)"
                 read -p "Your choices are (1 or 2): " choice
-                clear
 
                 case "$choice" in
                     1)      cuda_download_fn ;;
@@ -1099,7 +1085,7 @@ install_cuda_fn() {
             fi
         fi
     else
-        gpu_flag="1"
+        gpu_flag=1
     fi
 }
 
@@ -1225,10 +1211,9 @@ if version_split.length() > 1\\n  pa_version_minor = version_split[1]\\nelse\\n 
 }
 
 libpulse_fix_libs_fn() {
-    local libpulse_lib libpulse_trim
-
-    libpulse_lib=$(find $workspace/lib/ -type f -name 'libpulsecommon-*.so' | head -n1)
-    libpulse_trim=$(echo "$libpulse_lib" | sed 's:.*/::' | head -n1)
+    local pulse_version="$1"
+    local libpulse_lib=$(find $workspace/lib/ -type f -name 'libpulsecommon-*.so' | head -n1)
+    local libpulse_trim=$(echo "$libpulse_lib" | sed 's:.*/::' | head -n1)
 
     if [[ "$OS" == "Arch" ]]; then
         if [[ ! -d "/usr/lib/pulseaudio" ]]; then
@@ -1242,11 +1227,11 @@ libpulse_fix_libs_fn() {
 
     if [[ -n "$libpulse_lib" ]]; then
         if [[ "$OS" == "Arch" ]]; then
-            execute cp -f "$libpulse_lib" "/usr/lib/pulseaudio"
-            execute ln -sf "/usr/lib/pulseaudio/$libpulse_trim" "/usr/lib"
+            execute cp -f "$libpulse_lib" "/usr/lib/pulseaudio/libpulsecommon-$pulse_version.so"
+            execute ln -sf "/usr/lib/pulseaudio/libpulsecommon-$pulse_version.so" "/usr/lib"
         else
-            execute cp -f "$libpulse_lib" "/usr/lib/x86_64-linux-gnu/pulseaudio"
-            execute ln -sf "/usr/lib/x86_64-linux-gnu/pulseaudio/$libpulse_trim" "/usr/lib/x86_64-linux-gnu"
+            execute cp -f "$libpulse_lib" "/usr/lib/x86_64-linux-gnu/pulseaudio/libpulsecommon-$pulse_version.so"
+            execute ln -sf "/usr/lib/x86_64-linux-gnu/pulseaudio/libpulsecommon-$pulse_version.so" "/usr/lib/x86_64-linux-gnu"
         fi
     fi
 }
@@ -1274,9 +1259,9 @@ install_libjxl_fn() {
     cd "$packages/deb-files" || exit 1
 
     # INSTALL THE MAIN DEBIAN FILE FIRST BEFORE INSTALLING THE OTHERS
-    printf "%s\n" "$ dpkg -i libjxl_0.8.2_amd64.deb"
-    if dpkg -i "libjxl_0.8.2_amd64.deb" &>/dev/null; then
-        rm "libjxl_0.8.2_amd64.deb" &>/dev/null
+    printf "%s\n" "$ dpkg -i libjxl_0.7.0_amd64.deb"
+    if dpkg -i "libjxl_0.7.0_amd64.deb" &>/dev/null; then
+        rm "libjxl_0.7.0_amd64.deb" &>/dev/null
     fi
 
     # INSTALL THE REMAINING DEBIAN FILES
@@ -1290,8 +1275,8 @@ install_libjxl_fn() {
 dl_libjxl_fn() {
     local libjxl_cnt_type_1 libjxl_cnt_type_2 url_base url_suffix
 
-    url_base="https://github.com/libjxl/libjxl/releases/download/v0.8.2/jxl-debs-amd64"
-    url_suffix="v0.8.2.tar.gz"
+    url_base="https://github.com/libjxl/libjxl/releases/download/v0.7.0/jxl-debs-amd64"
+    url_suffix="v0.7.0.tar.gz"
 
     get_the_os_version_1
 
@@ -1337,7 +1322,7 @@ dl_libjxl_fn() {
 
 # PATCH FUNCTIONS
 patch_ffmpeg_fn() {
-    execute curl -m "$curl_timeout" -LSso "mathops.patch" "https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/patches/mathops.patch"
+    execute curl -LsSo "mathops.patch" "https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/patches/mathops.patch"
     execute patch -d "libavcodec/x86" -i "../../mathops.patch"
 }
 
@@ -1360,7 +1345,6 @@ librist_arch_fn() {
 
 arch_os_ver_fn() {
     local arch_pkgs pkg
-    clear
 
     arch_pkgs=(
         av1an bluez-libs clang cmake dav1d devil docbook5-xml flite gdb gettext git gperf
@@ -1397,8 +1381,6 @@ arch_os_ver_fn() {
 
     # Call the function to setup Python venv and install packages
     setup_python_venv_and_install_packages "$venv_path" "${python_packages[@]}"
-
-    clear
 }
 
 
@@ -1505,7 +1487,8 @@ esac
 path_fn
 locate_java=$(find /usr/lib/jvm/ -type d -name 'java-*-openjdk*' | sort -rV | head -n1)
 java_include=$(find /usr/lib/jvm/ -type f -name 'javac' | sort -rV | head -n1 | xargs dirname | sed 's/bin/include/')
-export CPPFLAGS+=" -I$java_include"
+CPPFLAGS+=" -I$java_include"
+export CPPFLAGS
 export JDK_HOME="$locate_java"
 export JAVA_HOME="$locate_java"
 export PATH="$PATH:$JAVA_HOME/bin"
@@ -1536,23 +1519,23 @@ ldconfig
 # INSTALL THE GLOBAL TOOLS
 echo
 box_out_banner_global() {
-    input_char=$(echo "${@}" | wc -c)
+    input_char=$(echo "$@" | wc -c)
     line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
     tput bold
-    line="$(tput setaf 3)${line}"
+    line="$(tput setaf 3)$line"
     space="${line//-/ }"
-    echo " ${line}"
-    printf "|" ; echo -n "${space}" ; printf "%s\n" "|";
-    printf "| " ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" " |";
-    printf "|" ; echo -n "${space}" ; printf "%s\n" "|";
-    echo " ${line}"
+    echo " $line"
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
+    printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
+    echo " $line"
     tput sgr 0
 }
 box_out_banner_global "Installing Global Tools"
 
 # Alert the user that an amd gpu was found without a geforce gpu present
 if [[ "$gpu_flag" -eq 1 ]]; then
-    printf "\n%s\n" "AMD GPU detected without GeForce present."
+    printf "\n%s\n" "AMD GPU detected without a GeForce GPU present."
 fi
 
 if build "m4" "latest"; then
@@ -1654,8 +1637,8 @@ if build "zlib" "$g_ver"; then
     build_done "zlib" "$g_ver"
 fi
 
-if build "openssl" "3.1.4"; then
-    download "https://www.openssl.org/source/openssl-3.1.4.tar.gz"
+if build "openssl" "3.1.5"; then
+    download "https://www.openssl.org/source/openssl-3.1.5.tar.gz"
     execute ./Configure --prefix="$workspace" \
                         enable-egd \
                         enable-fips \
@@ -1669,7 +1652,7 @@ if build "openssl" "3.1.4"; then
     execute make "-j$cpu_threads"
     execute make install_sw
     execute make install_fips
-    build_done "openssl" "3.1.4"
+    build_done "openssl" "3.1.5"
 fi
 ffmpeg_libraries+=("--enable-openssl")
 
@@ -1930,7 +1913,7 @@ if build "$repo_name" "${version//\$ /}"; then
                   -DWEBP_LINK_STATIC=ON \
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
+    execute ninja -C build install
     $(build_done "$repo_name" "$version")
 fi
 ffmpeg_libraries+=("--enable-libwebp")
@@ -1949,7 +1932,7 @@ if build "libhwy" "$g_ver"; then
                   -DHWY_FORCE_STATIC_LIBS=ON \
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
+    execute ninja -C build install
     build_done "libhwy" "$g_ver"
 fi
 
@@ -1963,7 +1946,7 @@ if build "brotli" "$g_ver"; then
                   -DBUILD_TESTING=OFF \
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
+    execute ninja -C build install
     build_done "brotli" "$g_ver"
 fi
 
@@ -1973,7 +1956,7 @@ if build "lcms2" "$g_ver"; then
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" \
                         --{build,host}="$pc_type" \
-                        --disable-shared \
+                        --with-pic \
                         --with-threaded
     execute make "-j$cpu_threads"
     execute make install
@@ -2002,14 +1985,14 @@ fi
 if [[ "$OS" == "Arch" ]]; then
     ffmpeg_libraries+=("--disable-libjxl")
 else
-    if build "libjxl" "0.8.2"; then
+    if build "libjxl" "0.7.0"; then
         dl_libjxl_fn
-        build_done "libjxl" "0.8.2"
+        build_done "libjxl" "0.7.0"
     fi
     ffmpeg_libraries+=("--enable-libjxl")
 fi
 
-git_call_fn "https://github.com/KhronosGroup/OpenCL-SDK.git" "opencl-sdk-git" "R"
+git_call_fn "https://github.com/KhronosGroup/OpenCL-SDK.git" "opencl-sdk-git" "recurse"
 if build "$repo_name" "${version//\$ /}"; then
     download_git "$git_url"
     execute cmake \
@@ -2066,7 +2049,7 @@ if build "tesseract" "$g_ver"; then
     execute make install
     build_done "tesseract" "$g_ver"
 fi
-ffmpeg_libraries+=("--enable-libtesseract")
+# ffmpeg_libraries+=("--enable-libtesseract")
 
 git_call_fn "https://github.com/imageMagick/jpeg-turbo.git" "jpeg-turbo-git"
 if build "$repo_name" "${version//\$ /}"; then
@@ -2302,16 +2285,16 @@ fi
 
 echo
 box_out_banner_audio() {
-    input_char=$(echo "${@}" | wc -c)
+    input_char=$(echo "$@" | wc -c)
     line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
     tput bold
-    line="$(tput setaf 3)${line}"
+    line="$(tput setaf 3)$line"
     space="${line//-/ }"
-    echo " ${line}"
-    printf "|" ; echo -n "${space}" ; printf "%s\n" "|";
-    printf "| " ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" " |";
-    printf "|" ; echo -n "${space}" ; printf "%s\n" "|";
-    echo " ${line}"
+    echo " $line"
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
+    printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
+    echo " $line"
     tput sgr 0
 }
 box_out_banner_audio "Installing Audio Tools"
@@ -2358,8 +2341,8 @@ if build "$repo_name" "${version//\$ /}"; then
                               --strip \
                                "${extracmds[@]}"
     execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
-    libpulse_fix_libs_fn
+    execute ninja -C build install
+    libpulse_fix_libs_fn "${version//\$ /}"
     $(build_done "$repo_name" "$version")
 fi
 ffmpeg_libraries+=("--enable-libpulse")
@@ -2377,7 +2360,7 @@ if build "libogg" "$g_ver"; then
                   -DCPACK_SOURCE_ZIP=OFF \
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
+    execute ninja -C build install
     build_done "libogg" "$g_ver"
 fi
 
@@ -2419,7 +2402,7 @@ if build "libfdk-aac" "2.0.2"; then
     execute make install
     build_done "libfdk-aac" "2.0.2"
 fi
-ffmpeg_libraries+=("--enable-libfdk-aac")
+# ffmpeg_libraries+=("--enable-libfdk-aac")
 
 find_git_repo "xiph/vorbis" "1" "T"
 if build "vorbis" "$g_ver"; then
@@ -2433,7 +2416,7 @@ if build "vorbis" "$g_ver"; then
                   -DOGG_LIBRARY="$workspace/lib/libogg.so" \
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
+    execute ninja -C build install
     build_done "vorbis" "$g_ver"
 fi
 ffmpeg_libraries+=("--enable-libvorbis")
@@ -2529,7 +2512,7 @@ if build "libtheora" "1.1.1"; then
     chmod +x configure.patched
     execute mv configure.patched configure
     execute rm config.guess
-    execute curl -m "$curl_timeout" -LSso "config.guess" "https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess"
+    execute curl -LsSo "config.guess" "https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess"
     chmod +x config.guess
     execute ./configure --prefix="$workspace" \
                         --{build,host,target}="$pc_type" \
@@ -2556,38 +2539,19 @@ ffmpeg_libraries+=("--enable-libtheora")
 
 echo
 box_out_banner_video() {
-    input_char=$(echo "${@}" | wc -c)
+    input_char=$(echo "$@" | wc -c)
     line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
     tput bold
-    line="$(tput setaf 3)${line}"
+    line="$(tput setaf 3)$line"
     space="${line//-/ }"
-    echo " ${line}"
-    printf "|" ; echo -n "${space}" ; printf "%s\n" "|";
-    printf "| " ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" " |";
-    printf "|" ; echo -n "${space}" ; printf "%s\n" "|";
-    echo " ${line}"
+    echo " $line"
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
+    printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
+    echo " $line"
     tput sgr 0
 }
 box_out_banner_video "Installing Video Tools"
-
-amd_gpu_test=$(check_amd_gpu)
-git_call_fn "https://github.com/KhronosGroup/Vulkan-Headers.git" "vulkan-headers-git"
-if [[ -n "$amd_gpu_test" ]]; then
-    if build "$repo_name" "${version//\$ /}"; then
-        download_git "$git_url" "vulkan-headers-git"
-        execute cmake -B build \
-                      -DCMAKE_INSTALL_PREFIX="$workspace" \
-                      -DCMAKE_BUILD_TYPE=Release \
-                      -DBUILD_TESTS=OFF \
-                      -DCMAKE_C_FLAGS="$CFLAGS" \
-                      -DCMAKE_STRIP=$(type -P strip) \
-                      -G Ninja -Wno-dev
-        execute ninja "-j$cpu_threads" -C build
-        execute ninja -C build install
-        $(build_done "$repo_name" "$version")
-    fi
-    ffmpeg_libraries+=("--enable-vulkan")
-fi
 
 # NEED TO UPDATE THIS REPO FROM TIME TO TIME MANUALLY
 aom_ver=8a3dfd53958db24f0e29ed43275fe3379acd164e
@@ -2663,7 +2627,7 @@ if build "avif" "$g_ver"; then
                   -DAVIF_ENABLE_WERROR=OFF \
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
+    execute ninja -C build install
     build_done "avif" "$g_ver"
 fi
 
@@ -2809,17 +2773,6 @@ if build "frei0r" "$g_ver"; then
 fi
 ffmpeg_libraries+=("--enable-frei0r")
 
-find_git_repo "GPUOpen-LibrariesAndSDKs/AMF" "1" "T"
-g_sver="$(echo "$g_ver" | sed -E "s/^\.//g")"
-if build "amf" "$g_sver"; then
-    download "https://codeload.github.com/GPUOpen-LibrariesAndSDKs/AMF/tar.gz/refs/tags/v$g_ver" "amf-$g_sver.tar.gz"
-    execute rm -fr "$workspace/include/AMF"
-    execute mkdir -p "$workspace/include/AMF"
-    execute cp -fr "$packages/amf-$g_sver/amf/public/include"/* "$workspace/include/AMF"
-    build_done "amf" "$g_sver"
-fi
-ffmpeg_libraries+=("--enable-amf")
-
 if [[ "$OS" == "Arch" ]]; then
     find_git_repo "gpac/gpac" "1" "T"
     if build "gpac" "$g_ver"; then
@@ -2900,10 +2853,12 @@ if build "x265" "3.5"; then
     execute cmake ../../../source \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
+                  -DENABLE_LIBVMAF=OFF \
                   -DENABLE_CLI=OFF \
                   -DENABLE_SHARED=OFF \
                   -DEXPORT_C_API=OFF \
                   -DHIGH_BIT_DEPTH=ON \
+                  -DNATIVE_BUILD=ON \
                   -DMAIN12=ON \
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads"
@@ -2912,11 +2867,14 @@ if build "x265" "3.5"; then
     execute cmake ../../../source \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
+                  -DENABLE_LIBVMAF=OFF \
                   -DENABLE_CLI=OFF \
                   -DENABLE_HDR10_PLUS=ON \
                   -DENABLE_SHARED=OFF \
                   -DEXPORT_C_API=OFF \
                   -DHIGH_BIT_DEPTH=ON \
+                  -DNATIVE_BUILD=ON \
+                  -DNUMA_ROOT_DIR=/usr \
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads"
     echo "$ making 8bit binaries"
@@ -2926,12 +2884,16 @@ if build "x265" "3.5"; then
     execute cmake ../../../source \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
-                  -DENABLE_SHARED=ON \
+                  -DENABLE_LIBVMAF=OFF \
                   -DENABLE_PIC=ON \
+                  -DENABLE_SHARED=ON \
                   -DEXTRA_LIB="x265_main10.a;x265_main12.a" \
                   -DEXTRA_LINK_FLAGS="-L." \
+                  -DHIGH_BIT_DEPTH=ON \
                   -DLINKED_10BIT=ON \
                   -DLINKED_12BIT=ON \
+                  -DNATIVE_BUILD=ON \
+                  -DNUMA_ROOT_DIR=/usr \
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads"
 
@@ -2989,7 +2951,8 @@ if [[ "$?" -eq 0 ]]; then
         get_the_os_version_1
 
         if [[ "$OS" == "Arch" ]]; then
-            export PATH+=":/opt/cuda/bin"
+            PATH+=":/opt/cuda/bin"
+            export PATH
             CFLAGS+=" -I/opt/cuda/include -I/opt/cuda/targets/x86_64-linux/include"
             LDFLAGS+=" -L/opt/cuda/lib64 -L/opt/cuda/lib -L/opt/cuda/targets/x86_64-linux/lib"
         else
@@ -3097,8 +3060,9 @@ if build "xvidcore" "$g_ver"; then
     download "https://salsa.debian.org/multimedia-team/xvidcore/-/archive/debian/2%25$g_ver/xvidcore-debian-2%25$g_ver.tar.bz2" "xvidcore-$g_ver.tar.bz2"
     cd "build/generic" || exit 1
     execute ./bootstrap.sh
-    execute ./configure --prefix=${workspace} --{build,host,target}="$pc_type"
+    execute ./configure --prefix="$workspace" --{build,host,target}="$pc_type"
     execute make "-j$cpu_threads"
+    [[ -f "$workspace/lib/libxvidcore.so" ]] && rm "$workspace/lib/libxvidcore.so" "$workspace/lib/libxvidcore.so.4"
     execute make install
     build_done "xvidcore" "$g_ver"
 fi
@@ -3110,16 +3074,16 @@ ffmpeg_libraries+=("--enable-libxvid")
 
 echo
 box_out_banner_images() {
-    input_char=$(echo "${@}" | wc -c)
+    input_char=$(echo "$@" | wc -c)
     line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
     tput bold
-    line="$(tput setaf 3)${line}"
+    line="$(tput setaf 3)$line"
     space="${line//-/ }"
-    echo " ${line}"
-    printf "|" ; echo -n "${space}" ; printf "%s\n" "|";
-    printf "| " ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" " |";
-    printf "|" ; echo -n "${space}" ; printf "%s\n" "|";
-    echo " ${line}"
+    echo " $line"
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
+    printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
+    echo " $line"
     tput sgr 0
 }
 box_out_banner_images "Installing Image Tools"
@@ -3128,7 +3092,8 @@ find_git_repo "strukturag/libheif" "1" "T"
 if build "libheif" "$g_ver"; then
     download "https://github.com/strukturag/libheif/archive/refs/tags/v$g_ver.tar.gz" "libheif-$g_ver.tar.gz"
     source_flags_fn
-    export {CFLAGS,CXXFLAGS}="-g -O3 -fno-lto -pipe -march=native"
+    {CFLAGS,CXXFLAGS}="-g -O3 -fno-lto -pipe -march=native"
+    export CFLAGS CXXFLAGS
     libde265_libs=$(find /usr -type f -name "libde265.so")
     if [[ -f "$libde265_libs" ]] && [[ ! -f "/usr/lib/x86_64-linux-gnu/libde265.so" ]]; then
         cp -f "$libde265_libs" "/usr/lib/x86_64-linux-gnu"
@@ -3180,14 +3145,15 @@ if build "openjpeg" "$g_ver"; then
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
-                  -DBUILD_SHARED_LIBS=ON \
+                  -DBUILD_SHARED_LIBS=OFF \
                   -DBUILD_TESTING=OFF \
+                  -DBUILD_THIRDPARTY=ON \
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
-    execute ninja "-j$cpu_threads" -C build install
+    execute ninja -C build install
     build_done "openjpeg" "$g_ver"
 fi
-ffmpeg_libraries+=("--enable-libopenjpeg")
+# ffmpeg_libraries+=("--enable-libopenjpeg")
 
 #
 # BUILD FFMPEG
@@ -3195,16 +3161,16 @@ ffmpeg_libraries+=("--enable-libopenjpeg")
 
 echo
 box_out_banner_ffmpeg() {
-    input_char=$(echo "${@}" | wc -c)
+    input_char=$(echo "$@" | wc -c)
     line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
     tput bold
-    line="$(tput setaf 3)${line}"
+    line="$(tput setaf 3)$line"
     space="${line//-/ }"
-    echo " ${line}"
-    printf "|" ; echo -n "${space}" ; printf "%s\n" "|";
-    printf "| " ;tput setaf 4; echo -n "${@}"; tput setaf 3 ; printf "%s\n" " |";
-    printf "|" ; echo -n "${space}" ; printf "%s\n" "|";
-    echo " ${line}"
+    echo " $line"
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
+    printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
+    echo " $line"
     tput sgr 0
 }
 box_out_banner_ffmpeg "Building FFmpeg"
@@ -3215,13 +3181,13 @@ else
     ladspa_switch="--enable-ladspa"
 fi
 
-curl -m "$curl_timeout" -LSso "$workspace/include/dxva2api.h" "https://download.videolan.org/pub/contrib/dxva2api.h"
+curl -LsSo "$workspace/include/dxva2api.h" "https://download.videolan.org/pub/contrib/dxva2api.h"
 cp -f "$workspace/include/dxva2api.h" "/usr/include"
-curl -m "$curl_timeout" -LSso "$workspace/include/objbase.h" "https://raw.githubusercontent.com/wine-mirror/wine/master/include/objbase.h"
+curl -LsSo "$workspace/include/objbase.h" "https://raw.githubusercontent.com/wine-mirror/wine/master/include/objbase.h"
 cp -f "$workspace/include/objbase.h" "$workspace"
 
 if [[ -n "$ffmpeg_archive" ]]; then
-    ff_cmd=" $ffmpeg_archive"
+    ff_cmd="$ffmpeg_archive"
 fi
 
 ffmpeg_version_check_fn "https://github.com/FFmpeg/FFmpeg.git" "3"
@@ -3241,6 +3207,7 @@ if build "ffmpeg" "$ffmpeg_ver"; then
 
     mkdir build
     cd build || exit 1
+    LDFLAGS+=" -Wl,-rpath,'\$ORIGIN/:\$ORIGIN/lib'"
     ../configure --prefix="$install_dir" \
                  --arch=$(uname -m) \
                  --cc="$CC" \
