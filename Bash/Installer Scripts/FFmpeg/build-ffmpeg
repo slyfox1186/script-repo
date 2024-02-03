@@ -170,7 +170,6 @@ ff_ver_fn() {
         "                     FFmpeg Version                     " \
         "========================================================"
     "$install_dir/bin/ffmpeg" -version
-    sleep 3
 }
 
 download() {
@@ -283,9 +282,9 @@ download_git() {
     if [[ "$repo_flag" == "ant" ]]; then
         version=$(git ls-remote --tags "https://github.com/apache/ant.git" |
                   awk -F'/' '/\/v?[0-9]+\.[0-9]+(\.[0-9]+)?(\^\{\})?$/ {
-                      tag = $4;  # Assuming the version tag is in the 4rd field
-                     sub(/^v/, "", tag);  # Remove the leading 'v' from the tag
-                     if (tag !~ /\^\{\}$/) print tag  # Print if tag does not end with ^{}
+                      tag = $4;
+                     sub(/^v/, "", tag);
+                     if (tag !~ /\^\{\}$/) print tag
                   }' |
                   sort -rV |
                   head -n1)
@@ -293,7 +292,7 @@ download_git() {
         version=$(git ls-remote --tags "$repo_url" |
                   awk -F'/' '/\/v?[0-9]+\.[0-9]+(\.[0-9]+)?(-[0-9]+)?(\^\{\})?$/ {
                       tag = $3;
-                      sub(/^v/, "", tag);  # Remove the leading 'v' from the tag
+                      sub(/^v/, "", tag);
                       print tag
                   }' |
                   grep -v '\^{}' |
@@ -355,7 +354,7 @@ github_repo() {
 
     local count=1
     local max_attempts=10
-    local github_regex_string='[v]*(\d+\.\d+(?:\.\d*){0,2})\.tar\.gz'
+    local github_regex_string='[v]*(\d+[\._]\d+(?:[\._]\d*){0,2})\.tar\.gz'
 
     if [[ -z "$repo" || -z "$url" ]]; then
         echo "Error: Git repository and URL are required."
@@ -378,7 +377,7 @@ github_repo() {
         # Check if the line matches the pattern (version without 'RC'/'rc')
         if echo "$line" | grep -qP "$github_regex_string"; then
             # Extract and print the version number
-            g_ver=$(echo "$line" | grep -oP '(\d+\.\d+(?:\.\d+){0,2})')
+            g_ver=$(echo "$line" | grep -oP '(\d+[\._]\d+(?:[\._]\d+){0,2})')
             break
         else
             # Increment the count if no match is found
@@ -397,7 +396,7 @@ github_repo() {
         # Check if the line matches the pattern (version without 'RC'/'rc')
         if echo "$line" | grep -qP "$github_regex_string"; then
             # Extract and print the version number
-            g_ver=$(echo "$line" | grep -oP '(\d+\.\d+(?:\.\d+){0,2})')
+            g_ver=$(echo "$line" | grep -oP '(\d+[\._]\d+(?:[\._]\d+){0,2})')
             break
         else
             # Increment the count if no match is found
@@ -1551,7 +1550,6 @@ else
 fi
 
 if build "pkg-config" "0.29.2"; then
-    # Download "https://web.archive.org/web/20220622114555if_/https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz"
     download "https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz"
     execute autoconf
     execute ./configure --prefix="$workspace" \
@@ -1701,8 +1699,8 @@ if build "libtiff" "$g_ver"; then
 fi
 
 find_git_repo "nkoriyama/aribb24" "1" "T"
-if build "aribb24" "1.0.3"; then
-    download "https://github.com/nkoriyama/aribb24/archive/refs/tags/v1.0.3.tar.gz" "aribb24-1.0.3.tar.gz"
+if build "aribb24" "$g_ver"; then
+    download "https://github.com/nkoriyama/aribb24/archive/refs/tags/v$g_ver.tar.gz" "aribb24-$g_ver.tar.gz"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" \
                         --{build,host}="$pc_type" \
@@ -1710,7 +1708,7 @@ if build "aribb24" "1.0.3"; then
                         --with-pic
     execute make "-j$cpu_threads"
     execute make install
-    build_done "aribb24" "1.0.3"
+    build_done "aribb24" "$g_ver"
 fi
 ffmpeg_libraries+=("--enable-libaribb24")
 
@@ -2036,10 +2034,10 @@ fi
 ffmpeg_libraries+=("--enable-librubberband")
 
 find_git_repo "c-ares/c-ares" "1" "T"
-g_ver="${g_ver//ares-/}"
-g_tag="${g_ver//\./_}"
-if build "c-ares" "1.23.0"; then
-    download "https://github.com/c-ares/c-ares/archive/refs/tags/cares-1_23_0.tar.gz" "c-ares-1.23.0.tar.gz"
+g_ver="${g_ver//c-ares-/}"
+g_tag="${g_ver//_/\.}"
+if build "c-ares" "$g_tag"; then
+    download "https://github.com/c-ares/c-ares/archive/refs/tags/cares-$g_ver.tar.gz" "c-ares-$g_ver.tar.gz"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" \
                         --{build,host}="$pc_type" \
@@ -2048,7 +2046,7 @@ if build "c-ares" "1.23.0"; then
                         --with-pic
     execute make "-j$cpu_threads"
     execute make install
-    build_done "c-ares" "1.23.0"
+    build_done "c-ares" "$g_tag"
 fi
 
 git_call_fn "https://github.com/lv2/lv2.git" "lv2-git"
@@ -2114,8 +2112,8 @@ if build "pcre2" "$g_ver"; then
 fi
 
 find_git_repo "14889806" "3" "B"
-if build "zix" "0.4.0"; then
-    download "https://gitlab.com/drobilla/zix/-/archive/v0.4.0/zix-v0.4.0.tar.bz2" "zix-0.4.0.tar.bz2"
+if build "zix" "0.4.2"; then
+    download "https://gitlab.com/drobilla/zix/-/archive/v0.4.2/zix-v0.4.2.tar.bz2" "zix-0.4.2.tar.bz2"
     extracmds=("-D"{benchmarks,docs,singlehtml,tests,tests_cpp}"=disabled")
     execute meson setup build --prefix="$workspace" \
                               --buildtype=release \
@@ -2124,7 +2122,7 @@ if build "zix" "0.4.0"; then
                               "${extracmds[@]}"
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    build_done "zix" "0.4.0"
+    build_done "zix" "0.4.2"
 fi
 
 find_git_repo "11853362" "3" "B"
