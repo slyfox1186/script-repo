@@ -2,6 +2,7 @@
 
 import subprocess
 import re
+import sys
 from fuzzywuzzy import process
 
 # ANSI color codes
@@ -39,7 +40,7 @@ def fetch_package_details(package_name):
         colorize_and_print_details(details, package_name)
     else:
         print(f"{RED}Package '{package_name}' not found.{RESET}")
-        suggest_close_matches(package_name)  # Suggest close matches if no exact match found
+        suggest_close_matches(package_name)
 
 def colorize_and_print_details(details, package_name):
     """Colorize and print package details based on predefined rules."""
@@ -58,11 +59,17 @@ def colorize_line(line, package_name):
     return line
 
 def main():
-    package_name = input("Enter a package name for detailed info, or 'exit' to quit: ").strip()
-    while package_name.lower() != 'exit':
+    # Check if a command-line argument is provided
+    if len(sys.argv) > 1:
+        package_name = sys.argv[1]
         fetch_package_details(package_name)
-        package_name = input("\nEnter a package name for detailed info, or 'exit' to quit: ").strip()
-    print("Exiting the Package Information Tool.")
+    else:
+        # Interactive mode
+        package_name = input("Enter a package name for detailed info, or 'exit' to quit: ").strip()
+        while package_name.lower() != 'exit':
+            fetch_package_details(package_name)
+            package_name = input("\nEnter a package name for detailed info, or 'exit' to quit: ").strip()
+        print("Exiting the Package Information Tool.")
 
 if __name__ == "__main__":
     main()
