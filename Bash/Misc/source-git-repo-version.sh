@@ -17,9 +17,9 @@ get_latest_git_tag() {
 }
 
 parse_version() {
-    grep -Eo 'href="[^"]*\/tag\/[a-z\.\-]*[0-9][0-9\.\_]+[0-9\.\-]*"' |
-    grep -Eo '[0-9][0-9\.\_]+[0-9\.\-]*' |
-    grep -Ev 'rc|RC' |
+    grep -Eo 'href="[^"]*\/tag\/[a-z\.\-]*[0-9][0-9\.\_]+[a-zA-Z0-9\.\-]*"' |
+    grep -Eo '[0-9][0-9\.\_]+[a-zA-Z0-9\.\-]*' |
+    grep -Eiv 'alpha|beta|pre|rc|tentative' |
     sort -rV |
     head -n1
 }
