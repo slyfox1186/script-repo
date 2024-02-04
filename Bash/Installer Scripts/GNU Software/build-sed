@@ -23,7 +23,6 @@ archive_ext="${archive_url//*.}"
 archive_name="$archive_dir.tar.$archive_ext"
 cwd="$PWD/sed-build-script"
 install_dir=/usr/local
-pc_type=$(./build-aux/config.guess)
 web_repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
@@ -196,7 +195,7 @@ fi
 cd "$cwd/$archive_dir" || exit 1
 cd build || exit 1
 ../configure --prefix="$install_dir" \
-             --{build,host}="$pc_type" \
+             --{build,host}=$(../build-aux/config.guess) \
              --enable-threads=posix \
              --disable-nls \
              --with-libiconv-prefix=/usr \
