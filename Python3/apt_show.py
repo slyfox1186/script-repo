@@ -2,7 +2,7 @@
 
 import subprocess
 import re
-from fuzzywuzzy import process  # Import the process module from fuzzywuzzy
+from fuzzywuzzy import process
 
 # ANSI color codes
 RED = "\033[1;31m"
