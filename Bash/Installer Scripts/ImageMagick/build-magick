@@ -54,6 +54,7 @@ cwd="$PWD"/magick-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
 install_dir=/usr/local
+pc_type=x86_64-linux-gnu
 user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
 web_repo=https://github.com/slyfox1186/imagemagick-build-script
 regex_str='(rc|RC|master)+[0-9]*$'
@@ -63,45 +64,19 @@ debug=OFF # CHANGE THIS VARIABLE TO "ON" FOR HELP WITH TROUBLESHOOTING UNEXPECTE
 mkdir -p "$packages" "$workspace"
 
 # SET THE COMPILERS TO USE
-export CC="gcc" CXX="g++"
-
-# Download the script and capture only the last line of the output
-march="$(bash <(curl -fsSL https://gitver.optimizethis.net) https://github.com/ImageMagick/ImageMagick.git)"
-
-# Check if arch has a value
-if [ -n "$march" ]; then
-    printf "\n%s\n%s\n" "GCC architechure script sourced" "=========================================="
-    echo "Retrieved architecture: $march"
-else
-    echo "Failed to source the script or retrieve the architecture."
-    exit 1
-fi
+CC=gcc CXX=g++
+export CC CXX
 
 # SET COMPILER OPTIMIZATION FLAGS
-generate_flags() {
-    local flag_type="$1"
-    shift
-    printf " $flag_type%s" "$@"
+source_flags_fn() {
+    CC=gcc
+    CXX=g++
+    CFLAGS="-g -O3 -march=native"
+    CXXFLAGS="$CFLAGS"
+    EXTRALIBS="-lm -lpthread -lz -lstdc++ -lgcc_s -lrt -ldl -lnuma"
+    export CC CFLAGS CPPFLAGS CXX CXXFLAGS
 }
-
-# Define directories
-include_dirs=("$workspace/include" "/usr/local/include/CL" "/usr/local/include" "/usr/include" "/usr/include/x86_64-linux-gnu" "/usr/include/openjpeg-2.5")
-
-lib_dirs=("$workspace/lib64" "$workspace/lib" "/usr/local/lib64" "/usr/local/lib" "/usr/lib64" "/usr/lib" "/lib64" "/lib")
-
-# Generate flags
-common_flags="-g -O3 -pipe -march=$march"
-include_flags="$(generate_flags -I "${include_dirs[@]}")"
-lib_flags="$(generate_flags -L "${lib_dirs[@]}")"
-
-# Declare and set compiler flag variables
-CFLAGS="$common_flags"
-CXXFLAGS="$CFLAGS"
-CPPFLAGS="$include_flags"
-LDFLAGS="$lib_flags"
-
-# Export the flags
-export CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
+source_flags_fn
 
 # SET THE AVAILABLE CPU COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
 if [ -f /proc/cpuinfo ]; then
@@ -674,8 +649,8 @@ fi
 # BEGIN BUILDING FROM SOURCE CODE
 if build "m4" "latest"; then
     download "https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz"
-    execute autoreconf -fi
     execute ./configure --prefix="$workspace" \
+                        --{build,host,target}="$pc_type" \
                         --disable-nls \
                         --enable-c++ \
                         --enable-threads=posix
