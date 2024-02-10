@@ -3,7 +3,7 @@
 
 ##  Script Version: 4.5
 ##  Updated: 01.17.24
-##  GitHub: https://github.com/slyfox1186/script-repo
+##  GitHub: https://github.com/slyfox1186/imagemagick-build-script
 ##  Purpose: Build ImageMagick 7 from the source code obtained from ImageMagick's official GitHub repository
 ##  Function: ImageMagick is the leading open-source command line image processor. It can blur, sharpen, warp,
 ##            reduce total file size, ect... The possibilities are vast
@@ -22,7 +22,6 @@
 ##  Fixed:
 ##          - Incorrect pkg-config location when building ImageMagick
 ##          - libjxl dependency
-
 
 clear
 
@@ -56,7 +55,7 @@ packages="$cwd"/packages
 workspace="$cwd"/workspace
 install_dir=/usr/local
 user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
-web_repo=https://github.com/slyfox1186/script-repo
+web_repo=https://github.com/slyfox1186/imagemagick-build-script
 regex_str='(rc|RC|master)+[0-9]*$'
 debug=OFF # CHANGE THIS VARIABLE TO "ON" FOR HELP WITH TROUBLESHOOTING UNEXPECTED ISSUES DURING THE BUILD
 
@@ -64,22 +63,21 @@ debug=OFF # CHANGE THIS VARIABLE TO "ON" FOR HELP WITH TROUBLESHOOTING UNEXPECTE
 mkdir -p "$packages" "$workspace"
 
 # SET THE COMPILERS TO USE
-
 export CC="gcc" CXX="g++"
 
 # Download the script and capture only the last line of the output
 march="$(bash <(curl -fsSL https://gitver.optimizethis.net) https://github.com/ImageMagick/ImageMagick.git)"
 
-# Check if the arch has a value
+# Check if arch has a value
 if [ -n "$march" ]; then
-    printf "\n%s\n%s\n" "GCC architecture script sourced" "=========================================="
+    printf "\n%s\n%s\n" "GCC architechure script sourced" "=========================================="
     echo "Retrieved architecture: $march"
 else
     echo "Failed to source the script or retrieve the architecture."
     exit 1
 fi
 
-# SET COMPILER OPTIMIZATION FLAGs
+# SET COMPILER OPTIMIZATION FLAGS
 generate_flags() {
     local flag_type="$1"
     shift
@@ -107,7 +105,7 @@ export CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
 
 # SET THE AVAILABLE CPU COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
 if [ -f /proc/cpuinfo ]; then
-    cpu_threads="$(grep --count ^processor '/proc/cpuinfo')"
+    cpu_threads="$(grep --count ^processor /proc/cpuinfo)"
 else
     cpu_threads="$(nproc --all)"
 fi
@@ -583,6 +581,10 @@ debian_ver_fn() {
     esac
 }
 
+ubuntu_ver_fn() {
+    pkgs_fn
+}
+
 find_lsb_release="$(sudo find /usr -type f -name 'lsb_release')"
 
 if [ -n "$find_lsb_release" ]; then
@@ -603,7 +605,7 @@ get_os_ver_fn() {
     case "$OS" in
         Arch)       return ;;
         Debian)     debian_ver_fn ;;
-        Ubuntu)     return ;;
+        Ubuntu)     ubuntu_ver_fn ;;
         *)          fail_fn "Could not detect the OS architecture. Line: $LINENO" ;;
     esac
 }
