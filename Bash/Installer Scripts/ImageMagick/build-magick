@@ -64,19 +64,15 @@ debug=OFF # CHANGE THIS VARIABLE TO "ON" FOR HELP WITH TROUBLESHOOTING UNEXPECTE
 mkdir -p "$packages" "$workspace"
 
 # SET THE COMPILERS TO USE
-CC=gcc CXX=g++
-export CC CXX
+CC=gcc
+CXX=g++
 
 # SET COMPILER OPTIMIZATION FLAGS
-source_flags_fn() {
-    CC=gcc
-    CXX=g++
-    CFLAGS="-g -O3 -march=native"
-    CXXFLAGS="$CFLAGS"
-    EXTRALIBS="-lm -lpthread -lz -lstdc++ -lgcc_s -lrt -ldl -lnuma"
-    export CC CFLAGS CPPFLAGS CXX CXXFLAGS
-}
-source_flags_fn
+CFLAGS="-g -O3 -march=native"
+CXXFLAGS="$CFLAGS"
+EXTRALIBS="-lm -lpthread -lz -lstdc++ -lgcc_s -lrt -ldl"
+
+export CC CFLAGS CPPFLAGS CXX CXXFLAGS
 
 # SET THE AVAILABLE CPU COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
 if [ -f /proc/cpuinfo ]; then
