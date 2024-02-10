@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-# Clear the terminal
 clear
 
 RUST_SRC_DIR="rust-build-script"
