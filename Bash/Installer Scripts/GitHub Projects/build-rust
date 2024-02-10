@@ -55,3 +55,4 @@ rustup toolchain link stage2 build/host/stage2 || handle_error "Failed to create
 
 log_message "Rust compiler installation and build process completed successfully."
 
+rm -fr "$RUST_SRC_DIR"
