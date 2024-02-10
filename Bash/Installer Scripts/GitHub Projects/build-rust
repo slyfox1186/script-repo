@@ -18,6 +18,22 @@ handle_error() {
 # Cleanup leftover files from previous runs
 [[ -d "$RUST_SRC_DIR" ]] && rm -fr "$RUST_SRC_DIR"
 
+install_rustc_fn() {
+    get_rustc_ver=$(rustc --version | grep -Eo '[0-9 \.]+' | head -n1)
+    if [ "$get_rustc_ver" != "1.75.0" ]; then
+        echo "Installing RustUp"
+        curl -sS --proto "=https" --tlsv1.2 "https://sh.rustup.rs" | sh -s -- -y &>/dev/null
+        source "$HOME/.cargo/env"
+        if [[ -f "$HOME/.zshrc" ]]; then
+            source "$HOME/.zshrc"
+        else
+            source "$HOME/.bashrc"
+        fi
+    fi
+}
+
+install_rustc_fn
+
 # Shallow clone option (uncomment if needed)
 log_message "Performing a shallow clone of the Rust repository..."
 git clone --depth 1 "https://github.com/rust-lang/rust.git" "$RUST_SRC_DIR" || handle_error "Failed to perform a shallow clone."
