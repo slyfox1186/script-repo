@@ -59,7 +59,7 @@ find_highest_clang_version() {
     local clang_version
 
     # Check if a specific version is installed, in descending order of preference
-    for clang_version in "15" "14" "13" "12"
+    for clang_version in 16 15 14 13
     do
         if command -v "clang-$clang_version" &>/dev/null; then
             CC="clang-$clang_version"
