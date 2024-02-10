@@ -416,7 +416,7 @@ pkgs_fn() {
         libgs-dev libheif-dev libhwy-dev libjemalloc-dev libjemalloc2 libnotify-bin
         libpstoedit-dev librust-jpeg-decoder-dev librust-malloc-buf-dev libsharp-dev
         libticonv-dev libtool libtool-bin libyuv-dev libyuv-utils libyuv0 m4 meson nasm
-        ninja-build python3-dev yasm zlib1g-dev
+        ninja-build python3-dev yasm zlib1g-dev php-dev
 )
 
     # Initialize arrays for missing, available, and unavailable packages
