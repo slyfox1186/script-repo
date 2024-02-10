@@ -140,19 +140,6 @@ bash <(curl -fsSL https://aria2.optimizethis.net)
 ````
 ------
 
-## Install [cURL](https://github.com/curl/curl), [WGET](https://ftp.gnu.org/gnu/wget) & [ARIA2C](https://github.com/aria2/aria2)
-  - Aria2 max connections increased from 16 to 64
-  - **Supported OS:**
-    - Debian - 10/11/12
-    - Ubuntu - (20/22/23).04
-    - Other  - Debian-based distros may work as well
-
-#### List of Libraries activated during build: [Libs](https://raw.githubusercontent.com/slyfox1186/script-repo/main/shell/installers/GitHub%20Projects/Download%20Tools/build-dl-tools.txt)
-```bash
-bash <(curl -fsSL https://dl-tools.optimizethis.net)
-````
-------
-
 ## Add custom mirrors to: /etc/apt/sources.list
   - **Supported OS:**
     - Debian - 10/11/12
