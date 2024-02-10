@@ -62,7 +62,7 @@ bash <(curl -fsSL https://gcc.optimizethis.net)
 ## Install [Clang-17](https://github.com/llvm/llvm-project)
   - **Automatically finds the latest release version and installs clang from source code.**
 ```bash
-bash <(curl -fsSL https://clang.optimizethis.net)
+curl -fsSLo build-clang https://clang.optimizethis.net; sudo bash build-clang
 ```
 ------
 
