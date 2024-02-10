@@ -3,8 +3,8 @@
 
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-17-gold
 ##  Purpose: Build LLVM Clang-17 with GOLD enabled
-##  Updated: 01.17.24
-##  Script version: 1.5
+##  Updated: 02.10.24
+##  Script version: 1.6
 
 fail_fn() {
     printf "\n%s\n\n%s\n\n" "$1" "For help or to report a bug create an issue at: $web_repo/issues"
