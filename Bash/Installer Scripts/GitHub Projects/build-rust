@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-clear
-
 RUST_SRC_DIR="rust-build-script"
 
 # Function to log messages
