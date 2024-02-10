@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1091,SC2001,SC2005,SC2068,SC2086,SC2155,SC2162,SC2317
+clear
+
+# Disable specific shellcheck warnings that are not applicable after optimizations
+# shellcheck disable=SC1091,SC2001,SC2068,SC2086,SC2155,SC2162,SC2317
 
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-python3
 ##  Purpose: Install Python3 from the source code acquired from the official website: https://www.python.org/downloads
 ##  Features: Static build, OpenSSL backend
 ##  Updated: 01.27.24
-##  Script version: 2.3
+##  Script version: 2.4 (Optimized and Corrected)
 
-script_ver="2.3"
+script_ver="2.4"
 python_version="3.12.1"
 archive_url="https://www.python.org/ftp/python/$python_version/Python-$python_version.tar.xz"
 install_dir="/usr/local"
@@ -38,106 +41,46 @@ prepare_environment() {
     [ -d "$cwd" ] && rm -fr "$cwd"
     mkdir -p "$cwd"
 
-    PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/sbin:/usr/local/cuda/bin:/usr/local/x86_64-linux-gnu/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/games:/usr/games:/snap/bin"
-    export PATH
-
-    PKG_CONFIG_PATH="/usr/share/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/lib/pkgconfig"
-    export PKG_CONFIG_PATH
+    export PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/sbin:/usr/local/cuda/bin:/usr/local/x86_64-linux-gnu/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/games:/usr/games:/snap/bin"
+    export PKG_CONFIG_PATH="/usr/share/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/lib/pkgconfig"
 }
 
 set_compiler_flags() {
-    export CC="gcc" CXX="g++"
-    # Download the script and capture only the last line of the output
-    local march=$(curl -sSL "https://get-gcc.optimizethis.net" | bash | tail -n1)
-
-    # Check if arch has a value
-    if [ -n "$march" ]; then
-        printf "\n%s\n%s\n" "GCC architechure script sourced" "=========================================="
-        echo "Retrieved architecture: $march"
-    else
-        echo "Failed to source the script or retrieve the architecture."
-        exit 1
-    fi
-
-    # Define directories
-    local include_dirs=("/usr/local/include" "/usr/include/x86_64-linux-gnu" "/usr/include")
-
-    local lib_dirs=("/usr/local/lib64" "/usr/local/lib" "/usr/lib64" "/usr/lib" "/lib64" "/lib")
-
-    # Set compiler optimization flags
-    generate_flags() {
-        local flag_type="$1"
-        shift
-        printf " $flag_type%s" "$@"
-    }
-
-    # Generate flags
-    local common_flags="-g -O3 -pipe -march=$march"
-    local include_flags="$(generate_flags -I "${include_dirs[@]}")"
-    local lib_flags="$(generate_flags -L "${lib_dirs[@]}")"
-
-    # Declare and set compiler flag variables
-    CFLAGS="$common_flags"
+    CC="gcc"
+    CXX="g++"
+    CFLAGS="-g -O3 -pipe -march=native"
     CXXFLAGS="$CFLAGS"
-    CPPFLAGS="$include_flags"
-    LDFLAGS="$lib_flags"
 
-    # Export the flags
-    export CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
+    export CC CFLAGS CXX CXXFLAGS
 }
 
 download_and_extract_python() {
-    [ ! -f "$cwd/$python_version.tar.xz" ] && curl -A "$user_agent" -Lso "$cwd/$python_version.tar.xz" "$archive_url"
-    [ -d "$cwd/$python_version" ] && rm -fr "$cwd/${python_version:?}"
+    if [ ! -f "$cwd/$python_version.tar.xz" ]; then
+        curl -A "$user_agent" -Lso "$cwd/$python_version.tar.xz" "$archive_url"
+    fi
+    if [ -d "$cwd/$python_version" ]; then
+        rm -fr "$cwd/${python_version:?}"
+    fi
     mkdir -p "$cwd/$python_version/build"
 
     tar -xf "$cwd/$python_version.tar.xz" -C "$cwd/$python_version" --strip-components 1 || fail_fn "Failed to extract: $cwd/$python_version.tar.xz. Line: $LINENO"
 }
 
 install_required_packages() {
-    local missing_packages pkg pkgs available_packages unavailable_packages
+    local pkgs missing_packages
 
-    pkgs=(
-        autoconf autoconf-archive autogen automake binutils build-essential ccache
-        curl git itstool libb2-dev libexempi-dev libgnome-desktop-3-dev libhandy-1-dev
-        libpeas-dev libpeasd-3-dev libssl-dev libtool libtool-bin m4 nasm
-        openssl python3 valgrind yasm zlib1g-dev
-    )
+    pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache curl git itstool libb2-dev libexempi-dev libgnome-desktop-3-dev libhandy-1-dev libpeas-dev libpeasd-3-dev libssl-dev libtool libtool-bin m4 nasm openssl python3 valgrind yasm zlib1g-dev)
 
-    # Initialize arrays for missing, available, and unavailable packages
-    missing_packages=()
-    available_packages=()
-    unavailable_packages=()
-
-    # Loop through the array to find missing packages
-    for pkg in "${pkgs[@]}"
-    do
-        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
-            missing_packages+=("$pkg")
+    for pkg in "${pkgs[@]}"; do
+        if ! dpkg-query -W -f='${Status}' $pkg 2>/dev/null | grep -q "ok installed"; then
+            missing_packages+=($pkg)
         fi
     done
 
-    # Check availability of missing packages and categorize them
-    for pkg in "${missing_packages[@]}"
-    do
-        if apt-cache show "$pkg" > /dev/null 2>&1; then
-            available_packages+=("$pkg")
-        else
-            unavailable_packages+=("$pkg")
-        fi
-    done
-
-    # Print unavailable packages
-    if [[ "${#unavailable_packages[@]}" -gt 0 ]]; then
-        echo "Unavailable packages: ${unavailable_packages[*]}"
-    fi
-
-    # Install available missing packages
-    if [[ "${#available_packages[@]}" -gt 0 ]]; then
-        echo "Installing available missing packages: ${available_packages[*]}"
-        apt install "${available_packages[@]}"
+    if [ ${#missing_packages[@]} -gt 0 ]; then
+        apt install -y ${missing_packages[@]} || fail_fn "Failed to install required packages. Line: $LINENO"
     else
-        printf "%s\n\n" "No missing packages to install or all missing packages are unavailable."
+        echo "All required packages are already installed."
     fi
 }
 
@@ -150,21 +93,49 @@ build_python() {
                  --disable-test-modules \
                  --enable-optimizations \
                  --with-ensurepip=install \
-                 --with-lto=yes \
+                 --with-lto=no \
                  --with-openssl-rpath=auto \
                  --with-openssl="$openssl_prefix" \
                  --with-pkg-config=yes \
                  --with-ssl-default-suites=openssl \
-                 --with-valgrind \
-                 PKG_CONFIG="$(which pkg-config)" \
-                 PKG_CONFIG_PATH="$PKG_CONFIG_PATH" \
-                 LIBS="$(pkg-config --libs openssl)" || fail_fn "Configuration failed. Line: $LINENO"
+                 --with-valgrind || fail_fn "Configuration failed. Line: $LINENO"
 
     make "-j$(nproc)" || fail_fn "Failed to execute: make -j$(nproc). Line: $LINENO"
     make altinstall || fail_fn "Failed to execute: make altinstall. Line: $LINENO"
 }
 
-# Other functions (exit_fn, fail_fn, show_ver_fn, cleanup_fn) remain the same
+exit_fn() {
+    printf "\n%s\n%s\n\n" "Make sure to star this repository to show your support!" "$web_repo"
+    exit 0
+}
+
+cleanup_fn() {
+    local choice
+
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
+        "========================================================" \
+        "        Do you want to clean up the build files?        " \
+        "========================================================" \
+        "[1] Yes" \
+        "[2] No"
+    read -p "Your choices are (1 or 2): " choice
+
+    case "$choice" in
+        1)      rm -fr "$cwd" ;;
+        2)      return ;;
+        *)      unset choice
+                cleanup_fn
+                ;;
+    esac
+}
+
+ff_ver_fn() {
+    printf "\n%s\n%s\n%s\n\n" \
+        "========================================================" \
+        "                     FFmpeg Version                     " \
+        "========================================================"
+    "$install_dir/bin/ffmpeg" -version
+}
 
 # Main script execution
 check_root
