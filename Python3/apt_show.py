@@ -58,18 +58,39 @@ def colorize_line(line, package_name):
         line = f"{YELLOW}{key}:{RESET} {value}"
     return line
 
-def main():
-    # Check if a command-line argument is provided
-    if len(sys.argv) > 1:
-        package_name = sys.argv[1]
+def process_interactive_input(input_string):
+    """Process each package name entered in interactive mode."""
+    package_names = input_string.split()
+    for package_name in package_names:
         fetch_package_details(package_name)
-    else:
-        # Interactive mode
-        package_name = input("Enter a package name for detailed info, or 'exit' to quit: ").strip()
-        while package_name.lower() != 'exit':
-            fetch_package_details(package_name)
-            package_name = input("\nEnter a package name for detailed info, or 'exit' to quit: ").strip()
+        print()  # Add an empty line between package details for better readability
+
+def main():
+    if len(sys.argv) == 1 or (len(sys.argv) == 2 and sys.argv[1] == "--help"):
+        # Interactive mode with support for multiple package names
+        print(f"{WHITE}Enter package names separated by spaces for detailed info, or 'exit' to quit. For batch processing, use '{sys.argv[0]} package_name1 [package_name2 ...]' or '--file filename'{RESET}")
+        input_string = input("Enter package names: ").strip()
+        while input_string.lower() != 'exit':
+            process_interactive_input(input_string)
+            input_string = input("\nEnter package names for detailed info, or 'exit' to quit: ").strip()
         print("Exiting the Package Information Tool.")
+    elif len(sys.argv) > 1:
+        if sys.argv[1] == "--file":
+            if len(sys.argv) != 3:
+                print(f"{RED}Usage: {sys.argv[0]} --file filename{RESET}")
+                sys.exit(1)
+            filename = sys.argv[2]
+            try:
+                with open(filename, 'r') as f:
+                    package_names = [line.strip() for line in f.readlines()]
+            except FileNotFoundError:
+                print(f"{RED}File '{filename}' not found.{RESET}")
+                sys.exit(1)
+        else:
+            package_names = sys.argv[1:]
+        for package_name in package_names:
+            fetch_package_details(package_name)
+            print()  # Add an empty line between package details for better readability
 
 if __name__ == "__main__":
     main()
