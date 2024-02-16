@@ -3,7 +3,8 @@
 
 ##  GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-tools
 ##  Purpose: Install the latest versions of: CMake, Ninja, Meson, & Golang
-##  Updated: 01.14.24
+##  Updated: 02.16.24
+##  Added: Automatic version check for Golang.
 
 clear
 
@@ -306,6 +307,20 @@ pkgs_fn() {
     fi
 }
 
+# Function to find the latest release version of GoLang
+find_latest_golang_version() {
+    # Use curl to fetch the HTML content and grep to find lines with download links
+    local versions=$(curl -s https://go.dev/dl/ | grep -oP 'go[0-9]+\.[0-9]+\.[0-9]+\.linux-amd64.tar.gz' | sort -Vr | uniq | head -n 1)
+
+    # Extract and print the version number
+    local latest_version=$(echo $versions | awk -F. '{print $1"."$2"."$3}' | sed 's/go//g' | sed 's/.linux-amd64.tar.gz//g')
+    
+    echo "$latest_version"
+}
+
+# Call the function and store its output in a variable
+latest_version=$(find_latest_golang_version)
+
 git_1_fn() {
     # Initial cnt
     local cnt curl_cmd git_repo
@@ -403,7 +418,7 @@ if [[ "$OS" == "Arch" ]]; then
     source "$HOME/.bash_profile"
 else
     if build "golang" "1.21.6"; then
-        download "https://go.dev/dl/go1.21.6.linux-amd64.tar.gz" "golang-1.21.6.tar.gz"
+        download "https://go.dev/dl/go${latest_version}.linux-amd64.tar.gz" "golang-${latest_version}.tar.gz"
         execute sudo cp -f "bin/go" "bin/gofmt" "$install_dir/bin"
         if [ -d  "$install_dir/go" ]; then
             sudo rm -fr "$install_dir/go"
