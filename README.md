@@ -16,7 +16,7 @@
   - Added Arch Linux support to some of the build scripts. Additional scripts will be converted to add this support in the future
 ### OS Support
   - Arch Linux
-  - Debian 10/11/12
+  - Debian 11/12
   - Ubuntu (22/20/18).04
 
 ### Why this repository exists:
@@ -52,7 +52,7 @@ bash <(curl -fsSL https://build-all-git.optimizethis.net)
   - **Check the top of the script for build [results](https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc)**
   - **Supported OS:**
     - Ubuntu - (20/22/23).04
-    - Debian - 10/11/12
+    - Debian - 11/12
     - Other Debian-based distros may work as well
 
 #### For native Linux systems (Windows WSL not working)
@@ -81,7 +81,7 @@ bash <(curl -fsSL https://7z.optimizethis.net)
   - **Tested on Windows WSL 2 Debian/Ubuntu**
   - **[Optimize JPG Images](https://github.com/slyfox1186/script-repo/tree/main/Bash/Installer%20Scripts/ImageMagick/scripts)**
   - **Supported OS:**
-    - Debian - 10/11/12
+    - Debian - 11/12
     - Ubuntu - (20/22/23).04
     - Other  - Debian-based distros may work as well
   
@@ -95,7 +95,7 @@ bash <(curl -fsSL https://magick.optimizethis.net)
   - **The CUDA SDK Toolkit which unlocks Hardware Acceleration is available during the installation to make things as easy as possible**
   -  **See my dedicated FFmpeg build page for more info: [ffmpeg-build-script](https://github.com/slyfox1186/ffmpeg-build-script)**
   - **Supported OS:**
-    - Debian - 10/11/12
+    - Debian - 11/12
     - Ubuntu - (20/22/23).04 / 23.04
     - Other  - Debian-based distros may work as well
 
@@ -107,7 +107,7 @@ bash <(curl -fsSL https://build-ffmpeg.optimizethis.net) --build --latest
 
 ## Install [Rust](https://github.com/rust-lang/rust)
   - **Supported OS:**
-    - Debian - 10/11/12
+    - Debian - 11/12
     - Ubuntu - (20/22/23).04
     - Other  - Debian-based distros may work as well
 
@@ -118,7 +118,7 @@ bash <(curl -fsSL https://rust.optimizethis.net)
 
 ## Install [CMake](https://cmake.org/), [Ninja](https://github.com/ninja-build/ninja), [Meson](https://github.com/mesonbuild/meson) & [Golang](https://github.com/golang/go)
   - **Supported OS:**
-    - Debian - 10/11/12
+    - Debian - 11/12
     - Ubuntu - (20/22/23).04
     - Other  - Debian-based distros may work as well
 
@@ -142,7 +142,7 @@ bash <(curl -fsSL https://aria2.optimizethis.net)
 
 ## Add custom mirrors to: /etc/apt/sources.list
   - **Supported OS:**
-    - Debian - 10/11/12
+    - Debian - 11/12
     - Ubuntu - (20/22/23).04 / 23.04
 
 **Warning! This will overwrite your files!**
@@ -193,7 +193,7 @@ bash <(curl -fsSL https://download.optimizethis.net)
 ## Install [Tilix](https://github.com/gnunn1/tilix) Advanced Terminal with custom color themes
   - Dracula theme included + many others
   - **Supported OS:**
-    - Debian - 10/11/12
+    - Debian - 11/12
     - Ubuntu - (20/22/23).04
     - Other Debian-based distros may work as well
 ```bash
@@ -203,7 +203,7 @@ bash <(curl -fsSL https://tilix.optimizethis.net)
 
 ## Install [Python3](https://devguide.python.org/getting-started/setup-building/#get-the-source-code) v3.12.0
   - **Supported OS:**
-    - Debian - 10/11/12
+    - Debian - 11/12
     - Ubuntu - (20/22/23).04
     - Other  - Debian-based distros may work as well
 
@@ -214,7 +214,7 @@ bash <(curl -fsSL https://python3.optimizethis.net)
 
 ## Install the [WSL2](https://github.com/microsoft/WSL2-Linux-Kernel) latest kernel release from [Linux](https://github.com/torvalds/linux)
   - **Supported OS:**
-    - Debian - 10/11/12
+    - Debian - 11/12
     - Ubuntu - (20/22/23).04
     - Other  - Debian-based distros may work as well
 
