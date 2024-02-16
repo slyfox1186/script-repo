@@ -329,8 +329,11 @@ add_go_path_command_to_bashrc() {
         echo "Command already exists in .bashrc. No action taken."
     else
         echo "Adding command to .bashrc file..."
-        echo "$command" >> "$bashrc"
-        echo "Command added to .bashrc successfully."
+        if echo "$command" >> "$bashrc"; then
+            echo "Command added to .bashrc successfully."
+        else
+            echo "Failed to add GOROOT to the USER's PATH!"
+        fi
     fi
 }
 
