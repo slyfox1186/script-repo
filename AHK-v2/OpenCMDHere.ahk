@@ -21,7 +21,7 @@ OpenCMDHereNew()
     win2 := 'ahk_class ConsoleWindowClass ahk_exe cmd.exe'
     if !WinActive(win1)
     {
-        Run(A_ComSpec ' /E:ON /T:0A /K pushd C:\Users\' . A_UserName . '\Downloads',, 'Max', &OutputVarPID)
+        Run(A_ComSpec ' /E:ON /T:0A /K pushd C:\Users\' . A_UserName . "\Downloads",, "Max", &OutputVarPID)
         if WinWait('ahk_pid ' OutputVarPID)
             WinActivate('ahk_pid ' OutputVarPID)
         return
@@ -43,7 +43,7 @@ OpenCMDHereNew()
         pwd := '"' win.Document.Folder.Self.Path '"'
         break
     }
-    Run(A_ComSpec ' /E:ON /T:0A /K pushd ' . pwd,, 'Max', &OutputVarPID)
+    Run(A_ComSpec ' /E:ON /T:0A /K pushd ' . pwd,, "Max", &OutputVarPID)
     if WinWait('ahk_pid ' OutputVarPID)
         WinActivate('ahk_pid ' OutputVarPID)
 }
