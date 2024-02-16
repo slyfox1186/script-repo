@@ -3,11 +3,11 @@
 
 #############################################################################################################################
 ##
-##  GitHub: https://github.com/slyfox1186/script-repo
+##  GitHub: https://github.com/slyfox1186/ffmpeg-build-script
 ##
-##  Script version: 3.4.4
+##  Script version: 3.4.7
 ##
-##  Updated: 02.07.24
+##  Updated: 02.10.24
 ##
 ##  Purpose:
 ##
@@ -38,20 +38,24 @@
 ##
 ##  Added:
 ##
+##    - a check to skip compiling libbluray if the OS is Ubuntu Jammy due to compile issues. Use the APT version instead.
+##    - code to get the latest OpenSSL version 3.1.X
 ##    - ubuntu 23.10 (manic) support
 ##    - set the x265 libs to be built with clang because it gives better fps output than when built with gcc
 ##
 ##  Removed:
 ##
-##    - unncessary compiler flags
+##    - let APT manage libdav1d
+##    - unnecessary compiler flags
 ##    - python3 build code that became useless
 ##    - removed support for debian 10 (Buster)
 ##    - removed support for Ubuntu 18.04 (bionic)
 ##
 ##  Fixed:
 ##
+##    - python pip virtual environment build errors
 ##    - Regex parsing error for libencode
-##    - Fixed an error output cause by a missing cuda json file
+##    - Fixed an error output caused by a missing Cuda JSON file
 ##    - libvpx has a bug in their code in file vpx_ext_ratectrl.h and I used the sed command to edit the code and fix it.
 ##    - libant would not build unexpectedly so I edited APT to download Java v8 which works for some unknown reason.
 ##    - a missing library related to libc6 for x265 to compile on windows wsl
@@ -68,7 +72,7 @@ fi
 #
 
 script_name="${0}"
-script_ver=3.4.4
+script_ver=3.4.7
 cuda_pin_url=https://developer.download.nvidia.com/compute/cuda/repos
 cwd="$PWD/ffmpeg-build-script"
 packages="$cwd/packages"
@@ -80,7 +84,7 @@ LDEXEFLAGS=""
 ffmpeg_libraries=()
 latest=false
 regex_str='(rc|RC|master)+[0-9]*$' # SET THE REGEX VARIABLE TO CHECK FOR RELEASE CANDIDATES
-debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=OFF
 
 #
 # SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
@@ -129,7 +133,7 @@ source_flags_fn() {
     CC=gcc
     CXX=g++
     CFLAGS="-g -O3 -march=native"
-    CXXFLAGS="-g -O3 -march=native"
+    CXXFLAGS="$CFLAGS"
     EXTRALIBS="-lm -lpthread -lz -lstdc++ -lgcc_s -lrt -ldl -lnuma"
     export CC CFLAGS CPPFLAGS CXX CXXFLAGS
 }
@@ -624,8 +628,8 @@ setup_python_venv_and_install_packages() {
     echo "Activating the virtual environment..."
     source "$parse_path/bin/activate" || fail_fn "Failed to activate virtual environment"
 
-    echo "Installing Python packages: ${packages[*]}..."
-    pip install --break-system-packages "${parse_package[@]}" || fail_fn "Failed to install packages"
+    echo "Installing Python packages: ${parse_package[*]}..."
+    pip install "${parse_package[@]}" || fail_fn "Failed to install packages"
 
     echo "Deactivating the virtual environment..."
     deactivate
@@ -1072,7 +1076,7 @@ pkgs_fn() {
         google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk
         lib32stdc++6 libamd2 libasound2-dev libass-dev libaudio-dev libavfilter-dev libbabl-0.1-0
         libbluray-dev libbpf-dev libbs2b-dev libbz2-dev libc6 libc6-dev libcaca-dev libcairo2-dev
-        libcamd2 libccolamd2 libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libcholmod3
+        libcamd2 libccolamd2 libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libcholmod3 libdav1d-dev
         libchromaprint-dev libcjson-dev libcodec2-dev libcolamd2 libcrypto++-dev libcurl4-openssl-dev
         libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev libdrm-dev libdvbpsi-dev libebml-dev
         libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev libgegl-0.4-0 libgegl-common libgimp2.0
@@ -1215,6 +1219,25 @@ binaries=("ffmpeg" "ffplay" "ffprobe")
     done
 }
 
+find_latest_nasm_version() {
+    # URL of the NASM stable releases directory
+    local url="https://www.nasm.us/pub/nasm/stable/"
+    
+    # Fetch the HTML, extract links, sort them, and get the last one
+    local latest_version=$(curl -s $url | grep -oP 'nasm-\K[0-9]+\.[0-9]+\.[0-9]+(?=\.tar\.xz)' | sort -V | tail -n 1)
+    
+    if [ -z "$latest_version" ]; then
+        echo "Failed to find the latest NASM version."
+        return 1
+    fi
+
+    # Print the version and download link without additional messages
+    echo "$latest_version"
+}
+
+# To use the function and store its result in a variable:
+latest_nasm_version=$(find_latest_nasm_version)
+
 install_libjxl_fn() {
     local i
 
@@ -1279,6 +1302,10 @@ dl_libjxl_fn() {
         # INSTALL THE LIBJXL DEBIAN PACKAGES
         install_libjxl_fn "$libjxl_name"
     fi
+}
+
+get_openssl_version() {
+    g_ver="$(curl -s "https://www.openssl.org/source/" | grep -oP 'openssl-3.1.[0-9]+.tar.gz' | sort -V | tail -1 | grep -oP '3.1.[0-9]+')"
 }
 
 # PATCH FUNCTIONS
@@ -1580,7 +1607,7 @@ else
                                   --buildtype=release \
                                   --default-library=static \
                                   --strip \
-                                  -Dstatic_analyze=true \
+                                  -Dstatic_analyze=false \
                                   -Dtest=false
         execute ninja "-j$cpu_threads" -C build
         execute ninja -C build install
@@ -1597,8 +1624,9 @@ if build "zlib" "$g_ver"; then
     build_done "zlib" "$g_ver"
 fi
 
-if build "openssl" "3.1.5"; then
-    download "https://www.openssl.org/source/openssl-3.1.5.tar.gz"
+get_openssl_version
+if build "openssl" "$g_ver"; then
+    download "https://www.openssl.org/source/openssl-$g_ver.tar.gz"
     execute ./Configure --prefix="$workspace" \
                         enable-egd \
                         enable-fips \
@@ -1612,7 +1640,7 @@ if build "openssl" "3.1.5"; then
     execute make "-j$cpu_threads"
     execute make install_sw
     execute make install_fips
-    build_done "openssl" "3.1.5"
+    build_done "openssl" "$g_ver"
 fi
 ffmpeg_libraries+=("--enable-openssl")
 
@@ -1630,8 +1658,9 @@ if build "yasm" "$g_ver"; then
     build_done "yasm" "$g_ver"
 fi
 
-if build "nasm" "2.16.01"; then
-    download "https://www.nasm.us/pub/nasm/stable/nasm-2.16.01.tar.xz"
+if build "nasm" "$latest_nasm_version"; then
+    find_latest_nasm_version
+    download "https://www.nasm.us/pub/nasm/stable/nasm-$latest_nasm_version.tar.xz"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" \
                         --{build,host,target}="$pc_type" \
@@ -1639,7 +1668,7 @@ if build "nasm" "2.16.01"; then
                         --enable-ccache
     execute make "-j$cpu_threads"
     execute make install
-    build_done "nasm" "2.16.01"
+    build_done "nasm" "$latest_nasm_version"
 fi
 
 if build "giflib" "5.2.1"; then
@@ -2063,7 +2092,15 @@ if build "$repo_name" "${version//\$ /}"; then
     venv_packages=("lxml" "Markdown" "Pygments" "rdflib")
     setup_python_venv_and_install_packages "$venv_path" "${venv_packages[@]}"
 
-    # Assuming the build process continues here
+    # Set PYTHONPATH to include the virtual environment's site-packages directory
+    PYTHONPATH="$venv_path/lib/python$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')/site-packages"
+    export PYTHONPATH
+
+    # Optionally, ensure the virtual environment's Python is the first in PATH
+    PATH="$venv_path/bin:$PATH"
+    export PATH
+
+    # Assuming the build process continues here with Meson and Ninja
     execute meson setup build --prefix="$workspace" \
                               --buildtype=release \
                               --default-library=static \
@@ -2526,21 +2563,6 @@ if build "av1" "$aom_sver"; then
 fi
 ffmpeg_libraries+=("--enable-libaom")
 
-find_git_repo "198" "2" "T"
-if build "dav1d" "$g_ver1"; then
-    download "https://code.videolan.org/videolan/dav1d/-/archive/$g_ver1/dav1d-$g_ver1.tar.bz2"
-    extracmds=("-D"{enable_tests,logging}"=false")
-    execute meson setup build --prefix="$workspace" \
-                              --buildtype=release \
-                              --default-library=static \
-                              --strip \
-                               "${extracmds[@]}"
-    execute ninja "-j$cpu_threads" -C build
-    execute ninja -C build install
-    build_done "dav1d" "$g_ver1"
-fi
-ffmpeg_libraries+=("--enable-libdav1d")
-
 # RAV1E FAILS TO BUILD ON UBUNTU BIONIC AND DEBIAN 11 BULLSEYE
 if [[ "$VER" != "18.04" ]] && [[ "$VER" != "11" ]]; then
     find_git_repo "xiph/rav1e" "1" "T" "enabled"
@@ -2627,26 +2649,29 @@ else
     fi
 fi
 
-find_git_repo "206" "2" "T"
-if build "libbluray" "$g_ver1"; then
-    download "https://code.videolan.org/videolan/libbluray/-/archive/$g_ver1/$g_ver1.tar.gz" "libbluray-$g_ver1.tar.gz"
-    execute autoreconf -fi
-    execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type" \
-                        --disable-doxygen-doc \
-                        --disable-doxygen-dot \
-                        --disable-doxygen-html \
-                        --disable-doxygen-ps \
-                        --disable-doxygen-pdf \
-                        --disable-examples \
-                        --disable-extra-warnings \
-                        --disable-shared \
-                        --without-libxml2
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done "libbluray" "$g_ver1"
+# Ubuntu Jammy gives an error so use the APT version instead
+if [[ ! "$OS" == "Ubuntu" ]]; then
+    find_git_repo "206" "2" "T"
+    if build "libbluray" "$g_ver1"; then
+        download "https://code.videolan.org/videolan/libbluray/-/archive/$g_ver1/$g_ver1.tar.gz" "libbluray-$g_ver1.tar.gz"
+        execute autoreconf -fi
+        execute ./configure --prefix="$workspace" \
+                            --{build,host}="$pc_type" \
+                            --disable-doxygen-doc \
+                            --disable-doxygen-dot \
+                            --disable-doxygen-html \
+                            --disable-doxygen-ps \
+                            --disable-doxygen-pdf \
+                            --disable-examples \
+                            --disable-extra-warnings \
+                            --disable-shared \
+                            --without-libxml2
+        execute make "-j$cpu_threads"
+        execute make install
+        build_done "libbluray" "$g_ver1"
+    fi
+    ffmpeg_libraries+=("--enable-libbluray")
 fi
-ffmpeg_libraries+=("--enable-libbluray")
 
 find_git_repo "mediaarea/zenLib" "1" "T"
 if build "zenlib" "$g_ver"; then
@@ -2785,7 +2810,6 @@ if build "x264" "$g_sver"; then
     build_done "x264" "$g_sver"
 fi
 ffmpeg_libraries+=("--enable-libx264")
-source_flags_fn
 
 if build "x265" "3.5"; then
     fix_missing_x265_lib
@@ -2865,9 +2889,6 @@ EOF
     build_done "x265" "3.5"
 fi
 ffmpeg_libraries+=("--enable-libx265")
-
-# CHANGE THE COMPILERS BACK TO GCC FOR THE REST OF THE BUILD
-source_flags_fn
 
 # Vaapi doesn"t work well with static links FFmpeg.
 if [[ -z "$LDEXEFLAGS" ]]; then
@@ -2961,11 +2982,21 @@ if build "vapoursynth" "R65"; then
     venv_packages=("Cython==0.29.36")
     setup_python_venv_and_install_packages "$venv_path" "${venv_packages[@]}"
 
+    # Activate the virtual environment for the build process
+    source "$venv_path/bin/activate" || fail_fn "Failed to re-activate virtual environment"
+
+    # Explicitly set the PYTHON environment variable to the virtual environment's Python
+    export PYTHON="$venv_path/bin/python"
+
     # Assuming autogen, configure, make, and install steps for VapourSynth
-    execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --disable-shared
-    execute make "-j$cpu_threads"
-    execute make install
+    execute ./autogen.sh || fail_fn "Failed to execute autogen.sh"
+    execute ./configure --prefix="$workspace" --disable-shared || fail_fn "Failed to configure"
+    execute make -j"$cpu_threads" || fail_fn "Failed to make"
+    execute make install || fail_fn "Failed to make install"
+    
+    # Deactivate the virtual environment after the build
+    deactivate
+
     build_done "vapoursynth" "R65"
 fi
 ffmpeg_libraries+=("--enable-vapoursynth")
@@ -3027,18 +3058,13 @@ find_git_repo "strukturag/libheif" "1" "T"
 if build "libheif" "$g_ver"; then
     download "https://github.com/strukturag/libheif/archive/refs/tags/v$g_ver.tar.gz" "libheif-$g_ver.tar.gz"
     source_flags_fn
-    {CFLAGS,CXXFLAGS}="-g -O3 -fno-lto -pipe -march=native"
+    CFLAGS="-g -O3 -fno-lto -pipe -march=native"
+    CXXFLAGS="-g -O3 -fno-lto -pipe -march=native"
     export CFLAGS CXXFLAGS
-    libde265_libs=$(find /usr -type f -name "libde265.so")
+    libde265_libs=$(find /usr/ -type f -name "libde265.so")
     if [[ -f "$libde265_libs" ]] && [[ ! -f "/usr/lib/x86_64-linux-gnu/libde265.so" ]]; then
         cp -f "$libde265_libs" "/usr/lib/x86_64-linux-gnu"
         chmod 755 "/usr/lib/x86_64-linux-gnu/libde265.so"
-    fi
-    if [[ -f "$workspace/lib/libdav1d.a" ]] && [[ ! -f "$workspace/lib/x86_64-linux-gnu/libdav1d.a" ]]; then
-        if [[ ! -d "$workspace/lib/x86_64-linux-gnu" ]]; then
-            mkdir -p "$workspace/lib/x86_64-linux-gnu"
-        fi
-        cp -f "$workspace/lib/libdav1d.a"  "$workspace/lib/x86_64-linux-gnu/libdav1d.a"
     fi
     case "$VER" in
         18.04|20.04)    pixbuf_switch="OFF" ;;
@@ -3050,15 +3076,13 @@ if build "libheif" "$g_ver"; then
                   -DBUILD_SHARED_LIBS=OFF \
                   -DAOM_INCLUDE_DIR="$workspace/include" \
                   -DAOM_LIBRARY="$workspace/lib/libaom.a" \
-                  -DDAV1D_INCLUDE_DIR="$workspace/include" \
-                  -DDAV1D_LIBRARY="$workspace/lib/x86_64-linux-gnu/libdav1d.a" \
                   -DLIBDE265_INCLUDE_DIR="$workspace/include" \
                   -DLIBDE265_LIBRARY=/usr/lib/x86_64-linux-gnu/libde265.so \
                   -DLIBSHARPYUV_INCLUDE_DIR="$workspace/include/webp" \
                   -DLIBSHARPYUV_LIBRARY="$workspace/lib/libsharpyuv.so" \
                   -DWITH_AOM_DECODER=ON \
                   -DWITH_AOM_ENCODER=ON \
-                  -DWITH_DAV1D=ON \
+                  -DWITH_DAV1D=OFF \
                   -DWITH_EXAMPLES=OFF \
                   -DWITH_GDK_PIXBUF="$pixbuf_switch" \
                   -DWITH_LIBDE265=ON \
@@ -3122,7 +3146,7 @@ curl -LsSo "$workspace/include/objbase.h" "https://raw.githubusercontent.com/win
 cp -f "$workspace/include/objbase.h" "$workspace"
 
 if [[ -n "$ffmpeg_archive" ]]; then
-    ff_cmd="$ffmpeg_archive"
+    ff_cmd="ffmpeg-$ffmpeg_archive"
 fi
 
 # Get the latest FFmpeg version by parsing its repository
@@ -3138,6 +3162,8 @@ if [[ ! "$ffmpeg_ver_check" == "$ffmpeg_ver" ]]; then
         "You can modify the variable \"ffmpeg_ver\" if desired to change versions."
 fi
 
+source_flags_fn
+
 if build "ffmpeg" "$ffmpeg_ver"; then
     download $ffmpeg_url $ff_cmd
     if [[ "$OS" == "Arch" ]]; then
@@ -3146,7 +3172,7 @@ if build "ffmpeg" "$ffmpeg_ver"; then
 
     mkdir build
     cd build || exit 1
-    LDFLAGS+=" -Wl,-rpath,'\$ORIGIN/:\$ORIGIN/lib'"
+    LDFLAGS+=" -Wl,-rpath,$ORIGIN:$ORIGIN/../lib"
     ../configure --prefix="$install_dir" \
                  --arch=$(uname -m) \
                  --cc="$CC" \
