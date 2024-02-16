@@ -60,12 +60,7 @@ PKG_CONFIG_PATH="\
 /usr/local/lib/usr/local/pkgconfig:\
 /usr/local/share/pkgconfig:\
 /usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/$install_dir/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/usr/local/pkgconfig\
+/usr/share/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
