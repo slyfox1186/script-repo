@@ -8,8 +8,8 @@
 
 clear
 
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+if [ "${EUID}" -ne '0' ]; then
+    printf "%s\n\n" 'You must run this script with root/sudo.'
     exit 1
 fi
 
@@ -38,7 +38,7 @@ sleep 2
 #
 
 if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
+    rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
@@ -124,7 +124,7 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' choice
 
     case "${choice}" in
-        1)      sudo rm -fr "$cwd";;
+        1)      rm -fr "$cwd";;
         2)      echo;;
         *)
                 clear
@@ -149,7 +149,7 @@ pkgs=(
 
 for i in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+    missing_pkg="$(dpkg -l | grep -o "${i}")"
 
     if [ -z "${missing_pkg}" ]; then
         missing_pkgs+=" ${i}"
@@ -157,8 +157,8 @@ do
 done
 
 if [ -n "$missing_pkgs" ]; then
-    sudo apt install $missing_pkgs
-    sudo apt -y autoremove
+    apt install $missing_pkgs
+    apt -y autoremove
     clear
 fi
 
@@ -175,7 +175,7 @@ fi
 #
 
 if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
+    rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
@@ -214,8 +214,8 @@ if ! make "-j$(nproc --all)"; then
     exit 1
 fi
 echo
-if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
+if ! make install; then
+    fail_fn "Failed to execute: make install. Line: ${LINENO}"
     exit 1
 fi
 
