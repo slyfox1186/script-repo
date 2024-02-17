@@ -14,15 +14,15 @@
 
 clear
 
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+if [ "${EUID}" -ne '0' ]; then
+    printf "%s\n\n" 'You must run this script with root/sudo.'
     exit 1
 fi
 
 #
 # SET THE VARIABLES
 #
-
+https://ftp.gnu.org/gnu/texinfo/texinfo-7.1.tar.xz
 script_ver=1.2
 archive_dir=texinfo-7.1
 archive_url=https://ftp.gnu.org/gnu/texinfo/"$archive_dir".tar.xz
@@ -42,7 +42,7 @@ printf "%s\n%s\n\n" \
 #
 
 if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
+    rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
@@ -133,7 +133,7 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' choice
 
     case "${choice}" in
-        1)      sudo rm -fr "$cwd";;
+        1)      rm -fr "$cwd";;
         2)      echo;;
         *)
                 clear
@@ -158,7 +158,7 @@ pkgs_fn()
 
     for i in ${pkgs[@]}
     do
-        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+        missing_pkg="$(dpkg -l | grep -o "${i}")"
     
         if [ -z "${missing_pkg}" ]; then
             missing_pkgs+=" ${i}"
@@ -166,8 +166,8 @@ pkgs_fn()
     done
     
     if [ -n "$missing_pkgs" ]; then
-        sudo apt install $missing_pkgs
-        sudo apt -y autoremove
+        apt install $missing_pkgs
+        apt -y autoremove
         clear
     fi
 }
@@ -185,7 +185,7 @@ fi
 #
 
 if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
+    rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
@@ -215,8 +215,8 @@ cd build || exit 1
              --with-libiconv-prefix=/usr     \
              --with-libintl-prefix=/usr
 make "-j$(nproc --all)"
-if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
+if ! make install; then
+    fail_fn "Failed to execute: make install:Line ${LINENO}"
     exit 1
 fi
 
