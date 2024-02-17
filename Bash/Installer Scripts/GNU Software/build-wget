@@ -91,7 +91,7 @@ version_fn() {
 
 pkgs=(
     autoconf autoconf-archive automake bzip2 ca-certificates cmake curl gfortran libcurl4-openssl-dev 
-    libexpat1-dev libgcrypt20-dev libgpgme-dev libssl-dev m4 pkg-config zlib1g-dev
+    libexpat1-dev libgcrypt20-dev libgpgme-dev libssl-dev libunistring-dev m4 pkg-config zlib1g-dev
 )
 
 for pkg in "${pkgs[@]}"; do
