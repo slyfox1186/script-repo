@@ -1,21 +1,14 @@
 #!/usr/bin/env bash
 
-#####################################################################################################################################
-##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-libtool
-##
 ##  Purpose: build gnu libtool
-##
 ##  Updated: 11.28.23
-##
 ##  Script version: 1.1
-##
-#####################################################################################################################################
 
 clear
 
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+if [ "${EUID}" -ne '0' ]; then
+    printf "%s\n\n" 'You must run this script with root/sudo.'
     exit 1
 fi
 
@@ -43,7 +36,7 @@ sleep 2
 #
 
 if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
+    rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
@@ -192,7 +185,7 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' choice
 
     case "${choice}" in
-        1)      sudo rm -fr "$cwd";;
+        1)      rm -fr "$cwd";;
         2)      echo;;
         *)
                 clear
@@ -215,7 +208,7 @@ pkgs_fn()
     
     for i in ${pkgs[@]}
     do
-        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+        missing_pkg="$(dpkg -l | grep -o "${i}")"
     
         if [ -z "${missing_pkg}" ]; then
             missing_pkgs+=" ${i}"
@@ -223,8 +216,8 @@ pkgs_fn()
     done
     
     if [ -n "$missing_pkgs" ]; then
-        sudo apt install $missing_pkgs
-        sudo apt -y autoremove
+        apt install $missing_pkgs
+        apt -y autoremove
         clear
     fi
 }
@@ -242,7 +235,7 @@ fi
 #
 
 if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
+    rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
@@ -265,8 +258,8 @@ cd build || exit 1
              --{build,host}=x86_64-linux-gnu \
              --enable-ltdl-install             
 make "-j$(nproc --all)"
-if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
+if ! make install; then
+    fail_fn "Failed to execute: make install:Line ${LINENO}"
     exit 1
 fi
 
