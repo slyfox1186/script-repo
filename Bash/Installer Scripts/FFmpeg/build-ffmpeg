@@ -1082,20 +1082,21 @@ pkgs_fn() {
         libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev libgegl-0.4-0 libgegl-common libgimp2.0
         libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev libgmock-dev libgnutls28-dev
         libgnutls30 libgoogle-perftools-dev libgoogle-perftools4 libgsm1-dev libgtest-dev libgvc6
-        libibus-1.0-dev libiconv-hook-dev libintl-perl libjack-dev libjemalloc-dev libladspa-ocaml-dev
-        libleptonica-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev libmatroska-dev libmbedtls-dev
-        libmetis5 libmfx-dev libmodplug-dev libmp3lame-dev libmusicbrainz5-dev libmysofa-dev libnuma-dev
-        libopencore-amrnb-dev libopencore-amrwb-dev libopencv-dev libopenjp2-7-dev libopenmpt-dev
-        libopus-dev libpango1.0-dev libperl-dev libpstoedit-dev libpulse-dev librabbitmq-dev libraqm-dev
-        libraw-dev librsvg2-dev librubberband-dev librust-gstreamer-base-sys-dev libshine-dev libsmbclient-dev
-        libsnappy-dev libsndfile1-dev libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev libssh-dev
-        libssl-dev libsuitesparseconfig5 libsystemd-dev libtalloc-dev libtheora-dev libticonv-dev libtool
-        libtool-bin libtwolame-dev libudev-dev libumfpack5 libv4l-dev libva-dev libvdpau-dev libvidstab-dev
-        libvlccore-dev libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev
-        libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzimg-dev
-        libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev llvm lshw lzma-dev m4 mesa-utils meson nasm
-        ninja-build pandoc python3 python3-pip python3-venv ragel re2c scons texi2html
-        texinfo tk-dev unzip valgrind wget xmlto zlib1g-dev
+        libibus-1.0-dev libiconv-hook-dev libintl-perl libjack-dev libjemalloc-dev  libjxl-dev
+        libladspa-ocaml-dev libleptonica-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev
+        libmatroska-dev libmbedtls-dev libmetis5 libmfx-dev libmodplug-dev libmp3lame-dev
+        libmusicbrainz5-dev libmysofa-dev libnuma-dev libopencore-amrnb-dev libopencore-amrwb-dev
+        libopencv-dev libopenjp2-7-dev libopenmpt-dev libopus-dev libpango1.0-dev libperl-dev
+        libpstoedit-dev libpulse-dev librabbitmq-dev libraqm-dev libraw-dev librsvg2-dev librubberband-dev
+        librust-gstreamer-base-sys-dev libshine-dev libsmbclient-dev libsnappy-dev libsndfile1-dev
+        libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev libssh-dev libssl-dev libsuitesparseconfig5
+        libsystemd-dev libtalloc-dev libtheora-dev libticonv-dev libtool libtool-bin libtwolame-dev
+        libudev-dev libumfpack5 libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev
+        libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev libxfixes-dev
+        libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzimg-dev libzmq3-dev
+        libzstd-dev libzvbi-dev libzzip-dev llvm lshw lzma-dev m4 mesa-utils meson nasm ninja-build
+        pandoc python3 python3-pip python3-venv ragel re2c scons texi2html texinfo tk-dev unzip
+        valgrind wget xmlto zlib1g-dev
 )
 
     # Initialize arrays for missing, available, and unavailable packages
@@ -1237,72 +1238,6 @@ find_latest_nasm_version() {
 
 # To use the function and store its result in a variable:
 latest_nasm_version=$(find_latest_nasm_version)
-
-install_libjxl_fn() {
-    local i
-
-    cd "$packages/deb-files" || exit 1
-
-    # INSTALL THE MAIN DEBIAN FILE FIRST BEFORE INSTALLING THE OTHERS
-    printf "%s\n" "$ dpkg -i libjxl_0.7.0_amd64.deb"
-    if dpkg -i "libjxl_0.7.0_amd64.deb" &>/dev/null; then
-        rm "libjxl_0.7.0_amd64.deb" &>/dev/null
-    fi
-
-    # INSTALL THE REMAINING DEBIAN FILES
-    for i in *.deb
-    do
-        printf "%s\n" "\$ dpkg -i $i"
-        dpkg -i ./"$i" &>/dev/null
-    done
-}
-
-dl_libjxl_fn() {
-    local libjxl_cnt_type_1 libjxl_cnt_type_2 url_base url_suffix
-
-    url_base="https://github.com/libjxl/libjxl/releases/download/v0.7.0/jxl-debs-amd64"
-    url_suffix="v0.7.0.tar.gz"
-
-    get_os_version_1
-
-    if [[ ! -f "$packages/libjxl.tar.gz" ]]; then
-        case "$VER" in
-            10)                      libjxl_name="debian-buster" ;;
-            11)                      libjxl_name="debian-bullseye" ;;
-            12)                      libjxl_name="debian-bookworm" ;;
-            18.04)                   libjxl_name="ubuntu-18.04" ;;
-            23.10|23.04|22.04|20.04) libjxl_name="ubuntu-20.04" ;;
-            *)                      fail_fn "Could not locate the \$VER in the function \"dl_libjxl_fn\"" ;;
-        esac
-
-        if ! curl -LsSo "$packages/$libjxl_name.tar.gz" "$url_base-$libjxl_name-$url_suffix"; then
-            fail_fn "Error: Failed to download \"$packages/$libjxl_name.tar.gz\". (Line: $LINENO)"
-        fi
-
-        # CREATE THE OUTPUT FILE DIRECTORY IF IT DOESN'T EXIST
-        if [[ ! -d "$packages/deb-files" ]]; then
-            mkdir -p "$packages/deb-files"
-        fi
-
-        # REMOVE AND LEFTOVER FILES FROM PREVIOUS RUNS
-        libjxl_cnt_type_1=$(ls -1A "$packages"/deb-files/*.deb 2>/dev/null | wc -l)
-        libjxl_cnt_type_2=$(ls -1A "$packages"/deb-files/*.debb 2>/dev/null | wc -l)
-        if [[ "$libjxl_cnt_type_1" -ne "0" ]]; then
-            rm "$packages"/deb-files/*.deb
-        fi
-        if [[ "$libjxl_cnt_type_2" -ne "0" ]]; then
-            rm "$packages"/deb-files/*.debb
-        fi
-
-        # EXTRACT THE LIBJXL DEBIAN FILES
-        if ! tar -zxf "$packages/$libjxl_name.tar.gz" -C "$packages/deb-files" --strip-components 1; then
-            fail_fn "Error: Could not extract the libjxl archive. (Line: $LINENO)"
-        fi
-
-        # INSTALL THE LIBJXL DEBIAN PACKAGES
-        install_libjxl_fn "$libjxl_name"
-    fi
-}
 
 get_openssl_version() {
     g_ver="$(curl -s "https://www.openssl.org/source/" | grep -oP 'openssl-3.1.[0-9]+.tar.gz' | sort -V | tail -1 | grep -oP '3.1.[0-9]+')"
@@ -1970,17 +1905,6 @@ if build "gflags" "$g_ver"; then
     build_done "gflags" "$g_ver"
 fi
 
-# LIBJXL HAS A BUG IN THE DECODER BIT AND MUST BE DISABLED ON ARCH LINUX
-if [[ "$OS" == "Arch" ]]; then
-    ffmpeg_libraries+=("--disable-libjxl")
-else
-    if build "libjxl" "0.7.0"; then
-        dl_libjxl_fn
-        build_done "libjxl" "0.7.0"
-    fi
-    ffmpeg_libraries+=("--enable-libjxl")
-fi
-
 git_call_fn "https://github.com/KhronosGroup/OpenCL-SDK.git" "opencl-sdk-git" "recurse"
 if build "$repo_name" "${version//\$ /}"; then
     download_git "$git_url"
@@ -2205,7 +2129,7 @@ if build "lilv" "$g_ver"; then
     execute ninja -C build install
     build_done "lilv" "$g_ver"
 fi
-CFLAGS+=" -I$workspace/include/lilv-0"
+# CFLAGS+=" -I$workspace/include/lilv-0"
 ffmpeg_libraries+=("--enable-lv2")
 
 git_call_fn "https://github.com/gypified/libmpg123.git" "libmpg123-git"
@@ -2907,11 +2831,11 @@ fi
 
 if [[ "$cuda_compile_flag" -eq 1 ]]; then
     if [[ -n "$iscuda" ]]; then
-        if build "nv-codec-headers" "12.0.16.1"; then
-            download "https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.0.16.1/nv-codec-headers-12.0.16.1.tar.gz"
+        if build "nv-codec-headers" "12.1.14.0"; then
+            download "https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.1.14.0/nv-codec-headers-12.1.14.0.tar.gz"
             execute make "-j$cpu_threads"
             execute make PREFIX="$workspace" install
-            build_done "nv-codec-headers" "12.0.16.1"
+            build_done "nv-codec-headers" "12.1.14.0"
         fi
 
         get_os_version_1
@@ -3172,7 +3096,7 @@ if build "ffmpeg" "$ffmpeg_ver"; then
 
     mkdir build
     cd build || exit 1
-    LDFLAGS+=" -Wl,-rpath,$ORIGIN:$ORIGIN/../lib"
+    LDFLAGS+=" -Wl,-rpath,$install_dir/bin:$install_dir/lib"
     ../configure --prefix="$install_dir" \
                  --arch=$(uname -m) \
                  --cc="$CC" \
