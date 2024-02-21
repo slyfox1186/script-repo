@@ -95,9 +95,9 @@ def main():
     selection_input = input("\nEnter the number(s) of the folder(s) you want to open (e.g., '1,3,5' or '2-4'): ")
     selected_numbers = parse_folder_selection(selection_input, len(sorted_folders))
     selected_folders = [sorted_folders[number - 1][0] for number in selected_numbers]
-
+ 
     viewer_choice = input("Choose the program to open the folders with ('e' for explorer.exe, 'f' for fsviewer.exe): ").lower()
-    create_and_execute_open_folders_bash_script(selected_folders, viewerchoice)
+    create_and_execute_open_folders_bash_script(selected_folders, viewer_choice)
 
 if __name__ == "__main__":
     main()
