@@ -705,18 +705,16 @@ im50() {
 }
 
 imdl() {
-    local cwd tmp_dir user_agent
-    clear
+    local cwd tmp_dir
 
     cwd="$PWD"
     tmp_dir="$(mktemp -d)"
-    user_agent="$user_agent"
 
     cd "$tmp_dir" || exit 1
 
-    curl -A "$user_agent" -Lso 'imow' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-and-overwrite.sh'
+    curl -Lso imow "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
 
-    sudo mv imow "${cwd}"
+    sudo mv imow "$cwd"
     sudo rm -fr "$tmp_dir"
 
     cd "${cwd}" || exit 1
