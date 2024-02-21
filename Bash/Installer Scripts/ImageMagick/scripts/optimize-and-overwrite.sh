@@ -2,93 +2,48 @@
 
 clear
 
-# REQUIRED APT PACKAGES
-sudo apt-get -qq -y install libsox-dev sox
-clear
+# Define the output directory
+output_dir="output"
+# Check and create the output directory if it doesn't exist
+[ ! -d "$output_dir" ] && mkdir "$output_dir"
 
-# REQUIRED PIP PACKAGES
-pip_lock="$(find /usr/lib/python3* -name 'EXTERNALLY-MANAGED')"
-if [ -n "${pip_lock}" ]; then
-    sudo rm "${pip_lock}"
-fi
+# Export the output_dir to be accessible within the process_image function in parallel execution
+export output_dir
 
-test_pip="$(pip show google_speech 2>/dev/null)"
-if [ -z "$test_pip" ]; then
-    pip install google_speech
-fi
-unset pip_lock test_pip
+# Define the function to process images
+process_image() {
+    local infile="$1"
+    local infile_name=$(basename "$infile")
 
-# DELETE ANY USELESS ZONE IDENFIER FILES THAT SPAWN FROM COPYING A FILE FROM WINDOWS NTFS INTO A WSL DIRECTORY
-find . -type f -iname "*:Zone.Identifier" -delete 2>/dev/null
+    # Create a unique directory in /tmp for the MPC file of this image
+    local temp_dir="/tmp/${infile_name%%.jpg}_$(date +%s%N)_mpc"
+    mkdir -p "$temp_dir"
 
-# GET THE UNMODIFIED PATH OF EACH MATCHING FILE
-if [ -d pics-convert ]; then
-    cd pics-convert || exit 1
-fi
+    # Specify the path for the output MPC file and the final JPG file
+    local outfile_mpc="${temp_dir}/${infile_name%%.jpg}.mpc"
+    local outfile_jpg="${output_dir}/${infile_name%%.jpg}.jpg"
 
-# GET THE FILE COUNT INSIDE THE DIRECTORY
-cnt_queue=$(find . -maxdepth 1 -type f -iname '*.jpg' | wc -l)
-cnt_total=$(find . -maxdepth 1 -type f -iname '*.jpg' | wc -l)
+    echo "Processing: $infile"
 
-clear
-for i in *.jpg
-do
-    cnt_queue=$((cnt_queue-1))
-    cat <<EOF
-::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    # Execute the convert command with the correct parameters and paths
+    convert "$infile" -monitor -filter Triangle -define filter:support=2 \
+            -thumbnail "$(identify -ping -format '%wx%h' "$infile")" \
+            -strip -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize 136 -quality 82 \
+            -define jpeg:fancy-upsampling=off -auto-level -enhance -interlace none \
+            -colorspace sRGB "$outfile_mpc"
 
-Working Dir: ${PWD}
+    # Convert the MPC file back to a JPG file
+    convert "$outfile_mpc" "$outfile_jpg"
 
-Total files:    ${cnt_total}
-Files in queue: ${cnt_queue}
+    echo "Finished processing: $infile, output MPC: $outfile_mpc, output JPG: $outfile_jpg"
 
-Converting: ${i} > ${i%%.jpg}-IM.jpg
+    # Cleanup: remove the temporary directory
+    rm -r "$temp_dir"
+    echo "Cleaned up temporary directory: $temp_dir"
+}
 
-::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-EOF
+# Export the function to make it accessible to parallel
+export -f process_image
 
-    random_dir="$(mktemp -d)"
-    dimensions="$(identify -format '%wx%h' "${i}")"
-
-    echo
-    convert "${i}"                            \
-            -monitor                          \
-            -filter Triangle                  \
-            -define filter:support=2          \
-            -thumbnail "${dimensions}"        \
-            -strip                            \
-            -unsharp '0.25x0.08+8.3+0.045'    \
-            -dither None                      \
-            -posterize 136                    \
-            -quality 82                       \
-            -define jpeg:fancy-upsampling=off \
-            -auto-level                       \
-            -enhance                          \
-            -interlace none                   \
-            -colorspace sRGB                  \
-            "${random_dir}/${i%%.jpg}.mpc"
-
-    for file in "${random_dir}"/*.mpc
-    do
-        convert "${file}" -monitor "${file%%.mpc}.jpg"
-        tmp_file="$(echo "${file}" | sed 's:.*/::')"
-        mv "${file%%.mpc}.jpg" "${PWD}/${tmp_file%%.*}-IM.jpg"
-        rm -f "${PWD}/${tmp_file%%.*}.jpg"
-
-        for v in ${file}
-        do
-            v_noslash="${v%/}"
-            rm -fr "${v_noslash%/*}"
-        done
-    done
-    clear
-done
-
-if [ "${?}" -eq '0' ]; then
-    google_speech 'Image conversion completed.' 2>/dev/null
-    exit 0
-else
-    google_speech 'Image conversion failed.' 2>/dev/null
-    read -p 'Press enter to exit.'
-    exit 1
-fi
+# Find .jpg files and process them in parallel
+find . -maxdepth 1 -name '*.jpg' -type f | parallel process_image
