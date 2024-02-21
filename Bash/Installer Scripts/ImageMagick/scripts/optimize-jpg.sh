@@ -36,7 +36,7 @@ echo "Working directory: $working_dir"
 # Check and install the google_speech Python module if not already installed
 if ! python3 -c "import google_speech" &>/dev/null; then
     echo "google_speech module not found. Installing..."
-    pip3 install google_speech || { echo "Failed to install google_speech. Please install it manually."; exit 1; }
+    pip install --user google_speech || { echo "Failed to install google_speech. Please install it manually."; exit 1; }
 else
     echo "google_speech module is already installed."
 fi
