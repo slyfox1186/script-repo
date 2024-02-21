@@ -1,5 +1,39 @@
 #!/usr/bin/env bash
 
+# Define usage function
+usage() {
+    echo "Usage: $0 [options]"
+    echo
+    echo "Options:"
+    echo "    -b, --backup                                     Enable backup mode. Original images will be backed up before processing."
+    echo "    -d, --dir <path>                                 Specify the working directory where images are located."
+    echo "    -h, --help                                       Display usage information"
+    echo
+    echo "Example:"
+    echo "    $0 --backup -d pics-convert           Process images in 'pics-convert' directory with backups of the originals."
+}
+
+# Parse command-line options
+backup_mode=0
+working_dir="."
+
+while [ "$1" != "" ]; do
+    case "$1" in
+        -b | --backup )     backup_mode=1 ;;
+        -d | --dir )        shift
+                            working_dir="$1" ;;
+        -h | --help )       usage
+                            exit ;;
+        * )                 usage
+                            exit 1 ;;
+    esac
+    shift
+done
+
+echo "Backup mode: $backup_mode"
+echo "Working directory: $working_dir"
+
+# Initial setup
 # Check and install the google_speech Python module if not already installed
 if ! python3 -c "import google_speech" &>/dev/null; then
     echo "google_speech module not found. Installing..."
@@ -8,21 +42,21 @@ else
     echo "google_speech module is already installed."
 fi
 
-# Check if a specific parameter (e.g., --backup) is passed
-backup_mode=0
-for arg in "$@"; do
-    if [[ "$arg" == "--backup" ]]; then
-        backup_mode=1
-        echo "Backup mode enabled. Original images will be backed up."
-    fi
-done
-
-# Change directory to "pics-convert" if it exists, otherwise scan the script's directory
-if [[ -d pics-convert ]]; then
-    cd pics-convert
-    echo "Changed directory to pics-convert."
+# Check if GNU parallel is installed
+if ! dpkg -s parallel &>/dev/null && ! which parallel &>/dev/null; then
+    echo "GNU parallel is not installed. Installing..."
+    sudo apt -y install parallel || { echo "Failed to install GNU parallel. Please install it manually."; exit 1; }
 else
-    echo "Directory pics-convert does not exist. Using the script's current directory."
+    echo "GNU parallel is already installed."
+fi
+
+# Change to the specified working directory
+if [[ -d $working_dir ]]; then
+    cd "$working_dir"
+    echo "Changed directory to $working_dir."
+else
+    echo "Specified directory $working_dir does not exist. Exiting."
+    exit 1
 fi
 
 process_image() {
@@ -68,7 +102,7 @@ process_image() {
     fi
 
     rm -r "$temp_dir"
-    printf "%s\n\n" "Cleaned up temporary directory: $temp_dir"
+    printf "%s\n\n" "Cleaned up the temporary directory: $temp_dir"
 }
 
 export -f process_image
