@@ -29,12 +29,14 @@ def load_folder_info(filename="folder_info.json"):
         with open(filename, 'r') as file:
             return json.load(file)
     except FileNotFoundError:
-        return {}
+        return {}  # Return an empty dictionary if the file does not exist
 
 def update_progress_bar(progress, total):
     percent = 100 * (progress / total)
     bar = '#' * int(percent) + '-' * (100 - int(percent))
     print(f"\r[{bar}] {percent:.2f}% Completed", end="")
+    if progress == total:
+        print()  # Ensure there's a new line after the progress completion
 
 def process_images(jpg_files):
     folder_max_density = {}
@@ -50,6 +52,7 @@ def process_images(jpg_files):
             if (width, height, pixel_count) > folder_max_density.get(folder, (0, 0, 0)):
                 folder_max_density[folder] = (width, height, pixel_count)
     print()  # Ensure there's a new line after progress completion
+    return folder_max_density
 
 def parse_folder_selection(selection, max_number):
     selected_folders = set()
@@ -94,7 +97,7 @@ def main():
     selected_folders = [sorted_folders[number - 1][0] for number in selected_numbers]
 
     viewer_choice = input("Choose the program to open the folders with ('e' for explorer.exe, 'f' for fsviewer.exe): ").lower()
-    create_and_execute_open_folders_bash_script(selected_folders, viewer_choice)
+    create_and_execute_open_folders_bash_script(selected_folders, viewerchoice)
 
 if __name__ == "__main__":
     main()
