@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+# sudo apt -y install parallel
+if ! command -v parallel &>/dev/null; then
+    sudo apt -y install parallel
+fi
+
 # Capture the directory where the script is located
 script_dir=$(dirname "$(realpath "$0")")
 
