@@ -7,7 +7,7 @@ trim_video() {
 
     echo "Processing file: $input_file"
 
-    # Correctly trim the first $trim_time seconds without entering interactive mode
+    # Correctly trim the first $trim_time in seconds from the start of the video
     if ffmpeg -y -loglevel 16 -hide_banner -ss "$trim_time" -i "$input_file" -c copy "$temp_file" 2>&1; then
         echo "Successfully trimmed: $input_file"
         mv "$temp_file" "$input_file"
