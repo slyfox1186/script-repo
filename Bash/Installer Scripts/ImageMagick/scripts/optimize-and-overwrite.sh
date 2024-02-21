@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-# Clear the terminal
-clear
-
 # Capture the directory where the script is located
 script_dir=$(dirname "$(realpath "$0")")
 
