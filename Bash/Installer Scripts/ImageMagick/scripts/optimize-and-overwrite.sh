@@ -7,10 +7,10 @@ usage() {
     echo "Options:"
     echo "    -b, --backup                                     Enable backup mode. Original images will be backed up before processing."
     echo "    -d, --dir <path>                                 Specify the working directory where images are located."
-    echo "    -h, --help                                       Display usage information"
-    echo
+    echo "    -h, --help                                       Display this help message and exit."
+    echo ""
     echo "Example:"
-    echo "    $0 --backup -d pics-convert           Process images in 'pics-convert' directory with backups of the originals."
+    echo "    $0 --backup -d pictures               Process images in 'pictures' directory with backups of the originals."
 }
 
 # Parse command-line options
@@ -33,7 +33,6 @@ done
 echo "Backup mode: $backup_mode"
 echo "Working directory: $working_dir"
 
-# Initial setup
 # Check and install the google_speech Python module if not already installed
 if ! python3 -c "import google_speech" &>/dev/null; then
     echo "google_speech module not found. Installing..."
@@ -51,18 +50,13 @@ else
 fi
 
 # Change to the specified working directory
-if [[ -d $working_dir ]]; then
-    cd "$working_dir"
-    echo "Changed directory to $working_dir."
-else
-    echo "Specified directory $working_dir does not exist. Exiting."
-    exit 1
-fi
+cd "$working_dir" || { echo "Specified directory $working_dir does not exist. Exiting."; exit 1; }
 
 process_image() {
     local infile="$1"
     local infile_name="${infile##*/}"
     local base_name="${infile_name%%.jpg}"
+    local backup_name="${infile%.*}_1.jpg"
 
     # Check if the output file already exists
     local outfile="${infile%.*}-IM.jpg"
@@ -73,6 +67,7 @@ process_image() {
 
     local temp_dir="/tmp/$base_name_$(date +%s%N)_mpc"
     mkdir -p "$temp_dir"
+    echo
     echo "Created temporary directory: $temp_dir"
 
     local mpc_file="$temp_dir/$base_name.mpc"
@@ -87,9 +82,9 @@ process_image() {
             -define jpeg:fancy-upsampling=off -auto-level -enhance -interlace none \
             -colorspace sRGB "$mpc_file"; then
         if [[ $backup_mode -eq 1 ]]; then
-            # Backup original file
-            mv "$infile" "${infile}.backup"
-            echo "Original image backed up as ${infile}.backup"
+            # Backup original file with new naming scheme
+            mv "$infile" "$backup_name"
+            echo "Backup created: $backup_name"
         else
             # Remove original file
             rm "$infile"
@@ -102,16 +97,19 @@ process_image() {
     fi
 
     rm -r "$temp_dir"
-    printf "%s\n\n" "Cleaned up the temporary directory: $temp_dir"
+    echo "Cleaned up temporary directory: $temp_dir"
 }
 
 export -f process_image
+
+# Explicitly export backup_mode to make it available to subprocesses
+export backup_mode
 
 # Determine the number of parallel jobs
 num_jobs=$(nproc --all)
 echo "Starting image processing with $num_jobs parallel jobs..."
 
-if find . -maxdepth 1 -name "*.jpg" -type f | parallel -j $num_jobs process_image; then
+if find . -maxdepth 1 -name "*.jpg" -type f | parallel --env backup_mode -j $num_jobs process_image; then
     google_speech "Images successfully optimized."
 else
     google_speech "Failed to optimize images."
