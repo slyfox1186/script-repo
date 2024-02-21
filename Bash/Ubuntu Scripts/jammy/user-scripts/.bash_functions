@@ -705,11 +705,10 @@ im50() {
 }
 
 imdl() {
-    local cwd tmp_dir user_agent
+    local cwd tmp_dir
 
     cwd="$PWD"
     tmp_dir="$(mktemp -d)"
-    user_agent="$user_agent"
 
     cd "$tmp_dir" || exit 1
 
