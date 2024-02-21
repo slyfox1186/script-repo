@@ -7,7 +7,7 @@ trim_video() {
 
     echo "Processing file: $input_file"
 
-    # Correctly trim the first 18 seconds without entering interactive mode
+    # Correctly trim the first $trim_time seconds without entering interactive mode
     if ffmpeg -y -loglevel 16 -hide_banner -ss "$trim_time" -i "$input_file" -c copy "$temp_file" 2>&1; then
         echo "Successfully trimmed: $input_file"
         mv "$temp_file" "$input_file"
@@ -19,7 +19,6 @@ trim_video() {
     echo
 }
 
-# Export the function so it is useable
 export -f trim_video
 
 # Find all mp4 files and trim them
