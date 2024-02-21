@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Made for use with Windows WSL
+# Made to be used on Windows WSL
 
 import os
 import subprocess
