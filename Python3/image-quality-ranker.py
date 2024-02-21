@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Made to be used on Windows WSL
+# Made for use with windows WSL
 
 import os
 import subprocess
@@ -9,11 +9,20 @@ from PIL import Image, UnidentifiedImageError
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-def find_jpg_files(directory):
-    """Yield file paths to all jpg files in the specified directory and subdirectories."""
+# Adjust the pixel limit here if you decide to process larger images
+Image.MAX_IMAGE_PIXELS = None # Removes the limit entirely
+# Or
+# PIXEL_LIMIT = 1000000  # Sets a specific pixel limit
+# Image.MAX_IMAGE_PIXELS = PIXEL_LIMIT
+
+output_directory = Path("/tmp")
+
+def find_image_files(directory):
+    """Yield file paths to all image files (jpg, jpeg, png, tif) in the specified directory and subdirectories."""
+    valid_extensions = (".jpg", ".jpeg", ".png", ".tif")
     for root, dirs, files in os.walk(directory):
         for file in files:
-            if file.endswith(".jpg"):
+            if file.lower().endswith(valid_extensions):
                 yield os.path.join(root, file)
 
 def get_max_pixel_density(image_path):
@@ -23,21 +32,22 @@ def get_max_pixel_density(image_path):
             width, height = img.size
             pixel_count = width * height
             return width, height, pixel_count
-    except UnidentifiedImageError:
-        print(f"Cannot identify image file: {image_path}")
+    except (UnidentifiedImageError, Exception) as e:  # Catch any exception, including decompression bomb warnings/errors
+        print(f"Error processing image file: {image_path}. Error: {e}")
         return 0, 0, 0
 
 def save_folder_info(folder_info, filename="folder_info.json"):
     """Save folder information to a JSON file."""
-    with open(filename, 'w') as file:
+    with open(output_directory / filename, 'w') as file:
         json.dump(folder_info, file)
 
 def load_folder_info(filename="folder_info.json"):
     """Load folder information from a JSON file."""
     try:
-        with open(filename, 'r') as file:
+        with open(output_directory / filename, 'r') as file:
             return json.load(file)
     except FileNotFoundError:
+        print("No existing folder info found. Starting a new scan.")
         return {}
 
 def update_progress_bar(progress, total):
@@ -50,14 +60,13 @@ def update_progress_bar(progress, total):
 
 def create_and_execute_open_folders_bash_script(folders, viewer_choice, filename="open_folders.sh", delay_seconds=2):
     """Create and execute a bash script to open selected folders with the specified viewer."""
-    script_dir = Path(os.path.dirname(os.path.realpath(__file__)))
-    script_path = script_dir / filename
+    script_path = output_directory / filename
 
     viewer_executable = 'fsviewer.exe' if viewer_choice == 'f' else 'explorer.exe'
 
     with open(script_path, 'w') as file:
         file.write("#!/usr/bin/env bash\n")
-        file.write("clear\n")  # Optional: Clear the terminal at the beginning of the script
+        file.write("clear\n")  # Clear the terminal at the beginning of the script
         for folder in folders:
             transformed_path = subprocess.check_output(["wslpath", "-w", folder]).decode().strip()
             transformed_path = transformed_path.replace("\\", "\\\\")
@@ -82,20 +91,30 @@ def parse_folder_selection(selection, max_number):
 
 def main():
     """Main function to orchestrate the script's workflow."""
-    script_dir = Path(os.path.dirname(os.path.realpath(__file__)))
-    jpg_files = list(find_jpg_files(str(script_dir)))
+    action = input("Do you want to 'scan' for new files or 'remove' existing files? (scan/remove): ").lower()
+    if action == 'remove':
+        try:
+            os.remove(output_directory / "folder_info.json")
+            os.remove(output_directory / "open_folders.sh")
+            print("Files removed successfully.")
+        except FileNotFoundError:
+            print("No files to remove.")
+        return
+
+    script_dir = Path(os.getcwd())
+    image_files = list(find_image_files(str(script_dir)))
 
     folder_info = load_folder_info()
     if not folder_info:
         folder_max_density = {}
         with ThreadPoolExecutor() as executor:
-            futures = [executor.submit(get_max_pixel_density, path) for path in jpg_files]
+            futures = [executor.submit(get_max_pixel_density, path) for path in image_files]
             progress = 0
-            total_files = len(jpg_files)
+            total_files = len(image_files)
 
             for future in as_completed(futures):
                 width, height, pixel_count = future.result()
-                folder = str(Path(jpg_files[progress]).parent)
+                folder = str(Path(image_files[progress]).parent)
                 if (width, height, pixel_count) > folder_max_density.get(folder, (0, 0, 0)):
                     folder_max_density[folder] = (width, height, pixel_count)
                 progress += 1
@@ -106,8 +125,10 @@ def main():
     else:
         folder_max_density = folder_info
 
+    # Sort folders by the highest pixel count found in their images, then by max resolution as a tiebreaker
     sorted_folders = sorted(folder_max_density.items(), key=lambda x: (x[1][2], max(x[1][0:2])), reverse=True)
 
+    print("Ranked Folders by Image Quality:")
     for i, (folder, (width, height, pixel_count)) in enumerate(sorted_folders, start=1):
         print(f"{i}. {folder} - Max Resolution: {width}x{height}, Pixel Count: {pixel_count}")
 
