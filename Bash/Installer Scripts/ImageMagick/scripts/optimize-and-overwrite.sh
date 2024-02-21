@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 
-# sudo apt -y install parallel
+# Capture the directory where the script is located
+script_dir=$(dirname "$(realpath "$0")")
 
-# Define the output directory
-output_dir="output"
+# Change the directory to "pics-convert"
+cd pics-convert || { echo "Failed to change directory to pics-convert. Exiting..."; exit 1; }
 
+# Define the output directory using the script's location
+output_dir="${script_dir}/output"
 # Check and create the output directory if it doesn't exist
 [ ! -d "$output_dir" ] && mkdir "$output_dir"
 
@@ -40,7 +43,7 @@ process_image() {
 
     # Cleanup: remove the temporary directory
     rm -r "$temp_dir"
-    echo "Cleaned up temporary directory: $temp_dir"
+    echo "Cleaned up the temporary directory: $temp_dir"
 }
 
 # Export the function to make it accessible to parallel
