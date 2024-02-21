@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Change the directory to "pics-convert"
+# Change directory to "pics-convert"
 cd pics-convert || { echo "Failed to change directory to pics-convert. Exiting..."; exit 1; }
 
 # Define the function to process images
@@ -32,16 +32,21 @@ process_image() {
         rm "$infile"
         echo "Finished processing: $infile, output: $outfile"
     else
-        echo "Error: Failed to process the file: \"$infile\""
+        echo "Error: Failed to process the file: $infile"
     fi
 
     # Cleanup: remove the temporary directory
     rm -r "$temp_dir"
-    echo "Cleaned up temporary directory: $temp_dir."
+    echo "Cleaned up temporary directory: $temp_dir"
+    echo
 }
 
 # Export the function to make it accessible to parallel
 export -f process_image
 
 # Find .jpg files and process them in parallel
-find . -maxdepth 1 -name "*.jpg" -type f | parallel process_image
+if find . -maxdepth 1 -name "*.jpg" -type f | parallel -j $(nproc --all) process_image; then
+    google_speech "Images successfully optimized."
+else
+    google_speech "Failed to optimize images."
+fi
