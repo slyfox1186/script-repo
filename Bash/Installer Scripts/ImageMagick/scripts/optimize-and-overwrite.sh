@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
-clear
+# sudo apt -y install parallel
 
 # Define the output directory
 output_dir="output"
+
 # Check and create the output directory if it doesn't exist
 [ ! -d "$output_dir" ] && mkdir "$output_dir"
 
