@@ -700,7 +700,7 @@ im50() {
 
     for pic in ./*.jpg
     do
-        convert "${pic}" -monitor -colorspace sRGB -filter LanczosRadius -distort Resize 50% -colorspace sRGB "$i"
+        convert "$pic" -monitor -colorspace sRGB -filter LanczosRadius -distort Resize 50% -colorspace sRGB "$i"
     done
 }
 
