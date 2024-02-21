@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 
-# Capture the directory where the script is located
-script_dir=$(dirname "$(realpath "$0")")
-
-# Change directory to "pics-convert"
+# Change the directory to "pics-convert"
 cd pics-convert || { echo "Failed to change directory to pics-convert. Exiting..."; exit 1; }
 
 # Define the function to process images
