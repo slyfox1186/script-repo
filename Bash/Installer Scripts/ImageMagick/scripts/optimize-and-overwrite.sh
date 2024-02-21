@@ -32,6 +32,7 @@ process_image() {
         # Append '-IM' to the filename before the .jpg extension and save it
         local outfile="${infile%.*}-IM.jpg"
         convert "$mpc_file" "$outfile"
+        rm "$infile"
         echo "Finished processing: $infile, output: $outfile"
     else
         echo "Error: Failed to process the file: \"$infile\""
