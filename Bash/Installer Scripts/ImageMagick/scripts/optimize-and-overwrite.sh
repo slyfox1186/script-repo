@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# Change directory to "pics-convert"
-cd pics-convert || { echo "Failed to change directory to pics-convert. Exiting..."; exit 1; }
+# Change directory to "pics-convert" if it exists otherwise scan the script's directory
+[[ -d pics-convert ]] && cd pics-convert
 
 # Define the function to process images
 process_image() {
