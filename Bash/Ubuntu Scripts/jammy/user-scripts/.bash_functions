@@ -700,13 +700,12 @@ im50() {
 
     for pic in ./*.jpg
     do
-        convert "${pic}" -monitor -colorspace sRGB -filter LanczosRadius -distort Resize 50% -colorspace sRGB "$i"
+        convert "$pic" -monitor -colorspace sRGB -filter LanczosRadius -distort Resize 50% -colorspace sRGB "$i"
     done
 }
 
 imdl() {
     local cwd tmp_dir user_agent
-    clear
 
     cwd="$PWD"
     tmp_dir="$(mktemp -d)"
@@ -714,9 +713,9 @@ imdl() {
 
     cd "$tmp_dir" || exit 1
 
-    curl -A "$user_agent" -Lso 'imow' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-and-overwrite.sh'
+    curl -Lso imow "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
 
-    sudo mv imow "${cwd}"
+    sudo mv imow "$cwd"
     sudo rm -fr "$tmp_dir"
 
     cd "${cwd}" || exit 1
