@@ -264,15 +264,16 @@ install_rustc_fn() {
 git_call_fn() {
     git_url="$1"
     repo_name="$2"
-    recurse_flag=""
+    recurse_flag=0
+
     if [[ "$3" == "recurse" ]]; then
         recurse_flag=1
     elif [[ "$3" == "ant" ]]; then
-        version=$(download_git "$git_url" "$repo_name" "ant")
+        download_git "$git_url" "$repo_name" "ant"
     else
-        version=$(download_git "$git_url" "$repo_name")
+        download_git "$git_url" "$repo_name"
     fi
-    version="${version//Cloning completed: /}"
+    version="$store_version"
 }
 
 download_git() {
@@ -283,11 +284,14 @@ download_git() {
     local target_dir="$packages/$repo_name"
     local version
 
+    # Set a flag to generate the desired echo output in terminal
+    git_is_running=1
+
     # Try to get the latest tag
     if [[ "$repo_flag" == "ant" ]]; then
         version=$(git ls-remote --tags "https://github.com/apache/ant.git" |
                   awk -F'/' '/\/v?[0-9]+\.[0-9]+(\.[0-9]+)?(\^\{\})?$/ {
-                      tag = $4;
+                     tag = $4;
                      sub(/^v/, "", tag);
                      if (tag !~ /\^\{\}$/) print tag
                   }' |
@@ -324,7 +328,6 @@ download_git() {
         fi
         [[ -d "$target_dir" ]] && rm -fr "$target_dir"
         # Clone the repository
-        echo "Cloning \"$repo_name\" saving version \"$version\"" &>2
         if ! git clone --depth 1 $recurse -q "$repo_url" "$target_dir"; then
             printf "\n%s\n\n" "Error: Failed to clone \"$target_dir\". Second attempt in 10 seconds..."
             sleep 10
@@ -335,7 +338,7 @@ download_git() {
         cd "$target_dir" || fail_fn "Error: Failed to cd into \"$target_dir\". (Line: $LINENO)"
     fi
 
-    echo "Cloning completed: $version"
+    store_version=$(echo "$version")
     return 0
 }
 
@@ -1736,7 +1739,9 @@ fi
 
 git_call_fn "https://github.com/fribidi/c2man.git" "c2man-git"
 if build "$repo_name" "${version//\$ /}"; then
+    echo "Cloning \"$repo_name\" saving version \"$version\""
     download_git "$git_url"
+    echo "Cloning completed"
     execute ./Configure -desO \
                         -D bash=$(type -P bash) \
                         -D bin="$workspace/bin" \
@@ -1770,7 +1775,7 @@ if build "$repo_name" "${version//\$ /}"; then
     execute make depend
     execute make "-j$cpu_threads"
     execute make install
-    $(build_done "$repo_name" "$version")
+    build_done "$repo_name" "$version"
 fi
 
 find_git_repo "fribidi/fribidi" "1" "T"
@@ -1821,7 +1826,9 @@ fi
 
 git_call_fn "https://chromium.googlesource.com/webm/libwebp" "libwebp-git"
 if build "$repo_name" "${version//\$ /}"; then
+    echo "Cloning \"$repo_name\" saving version \"$version\""
     download_git "$git_url"
+    echo "Cloning completed"
     execute autoreconf -fi
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
@@ -1838,7 +1845,7 @@ if build "$repo_name" "${version//\$ /}"; then
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    $(build_done "$repo_name" "$version")
+    build_done "$repo_name" "$version"
 fi
 ffmpeg_libraries+=("--enable-libwebp")
 
@@ -1907,7 +1914,9 @@ fi
 
 git_call_fn "https://github.com/KhronosGroup/OpenCL-SDK.git" "opencl-sdk-git" "recurse"
 if build "$repo_name" "${version//\$ /}"; then
+    echo "Cloning \"$repo_name\" saving version \"$version\""
     download_git "$git_url"
+    echo "Cloning completed"
     execute cmake \
             -S . \
             -B build \
@@ -1930,7 +1939,7 @@ if build "$repo_name" "${version//\$ /}"; then
             -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    $(build_done "$repo_name" "$version")
+    build_done "$repo_name" "$version"
 fi
 
 find_git_repo "DanBloomberg/leptonica" "1" "T"
@@ -1966,7 +1975,9 @@ ffmpeg_libraries+=("--enable-libtesseract")
 
 git_call_fn "https://github.com/imageMagick/jpeg-turbo.git" "jpeg-turbo-git"
 if build "$repo_name" "${version//\$ /}"; then
+    echo "Cloning \"$repo_name\" saving version \"$version\""
     download_git "$git_url"
+    echo "Cloning completed"
     execute cmake -S . \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
@@ -1975,15 +1986,17 @@ if build "$repo_name" "${version//\$ /}"; then
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads"
     execute ninja "-j$cpu_threads" install
-    save_version=$(build_done "$repo_name" "$version")
-    $(build_done "$repo_name" "$version")
+    save_version=build_done "$repo_name" "$version"
+    build_done "$repo_name" "$version"
 fi
 
 git_call_fn "https://github.com/m-ab-s/rubberband.git" "rubberband-git"
 if build "$repo_name" "${version//\$ /}"; then
+    echo "Cloning \"$repo_name\" saving version \"$version\""
     download_git "$git_url"
+    echo "Cloning completed"
     execute make "-j$cpu_threads" PREFIX="$workspace" install-static
-    $(build_done "$repo_name" "$version")
+    build_done "$repo_name" "$version"
 fi
 ffmpeg_libraries+=("--enable-librubberband")
 
@@ -2005,7 +2018,9 @@ fi
 
 git_call_fn "https://github.com/lv2/lv2.git" "lv2-git"
 if build "$repo_name" "${version//\$ /}"; then
+    echo "Cloning \"$repo_name\" saving version \"$version\""
     download_git "$git_url"
+    echo "Cloning completed"
     extracmds=("-D"{docs,tests}"=disabled")
     case "$VER" in
         10|11)      lv2_switch=enabled ;;
@@ -2033,7 +2048,7 @@ if build "$repo_name" "${version//\$ /}"; then
                               "${extracmds[@]}"
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    $(build_done "$repo_name" "$version")
+    build_done "$repo_name" "$version"
 fi
 
 find_git_repo "7131569" "3" "T"
@@ -2134,7 +2149,9 @@ ffmpeg_libraries+=("--enable-lv2")
 
 git_call_fn "https://github.com/gypified/libmpg123.git" "libmpg123-git"
 if build "$repo_name" "${version//\$ /}"; then
+    echo "Cloning \"$repo_name\" saving version \"$version\""
     download_git "$git_url"
+    echo "Cloning completed"
     execute rm -fr aclocal.m4
     execute aclocal --force -I m4
     execute autoconf -f -W all,no-obsolete
@@ -2146,7 +2163,7 @@ if build "$repo_name" "${version//\$ /}"; then
                         --with-cpu=x86-64
     execute make "-j$cpu_threads"
     execute make install
-    $(build_done "$repo_name" "$version")
+    build_done "$repo_name" "$version"
 fi
 
 find_git_repo "akheron/jansson" "1" "T"
@@ -2177,12 +2194,14 @@ fi
 
 git_call_fn "https://github.com/jacklicn/cunit.git" "cunit-git"
 if build "$repo_name" "${version//\$ /}"; then
+    echo "Cloning \"$repo_name\" saving version \"$version\""
     download_git "$git_url"
+    echo "Cloning completed"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$cpu_threads"
     execute make install
-    $(build_done "$repo_name" "$version")
+    build_done "$repo_name" "$version"
 fi
 
 #
@@ -2207,7 +2226,9 @@ box_out_banner_audio "Installing Audio Tools"
 
 git_call_fn "https://github.com/libsdl-org/SDL.git" "sdl2-git"
 if build "$repo_name" "${version//\$ /}"; then
+    echo "Cloning \"$repo_name\" saving version \"$version\""
     download_git "$git_url"
+    echo "Cloning completed"
     execute cmake -S . -B build \
                        -DCMAKE_INSTALL_PREFIX="$workspace" \
                        -DCMAKE_BUILD_TYPE=Release \
@@ -2218,7 +2239,7 @@ if build "$repo_name" "${version//\$ /}"; then
                        -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    $(build_done "$repo_name" "$version")
+    build_done "$repo_name" "$version"
 fi
 
 find_git_repo "libsndfile/libsndfile" "1" "T"
@@ -2238,7 +2259,9 @@ fi
 # find_git_repo "810" "4"
 git_call_fn "https://gitlab.freedesktop.org/pulseaudio/pulseaudio.git" "pulseaudio-git"
 if build "$repo_name" "${version//\$ /}"; then
+    echo "Cloning \"$repo_name\" saving version \"$version\""
     download_git "$git_url"
+    echo "Cloning completed"
     fix_pulse_meson_build_file
     extracmds=("-D"{daemon,doxygen,ipv6,man,tests}"=false")
     execute meson setup build --prefix="$workspace" \
@@ -2249,7 +2272,7 @@ if build "$repo_name" "${version//\$ /}"; then
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
     libpulse_fix_libs_fn "${version//\$ /}"
-    $(build_done "$repo_name" "$version")
+    build_done "$repo_name" "$version"
 fi
 ffmpeg_libraries+=("--enable-libpulse")
 
@@ -2524,14 +2547,16 @@ fi
 
 git_call_fn "https://github.com/ultravideo/kvazaar.git" "kvazaar-git"
 if build "$repo_name" "${version//\$ /}"; then
+    echo "Cloning \"$repo_name\" saving version \"$version\""
     download_git "$git_url"
+    echo "Cloning completed"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" \
                         --{build,host}="$pc_type" \
                         --disable-shared
     execute make "-j$cpu_threads"
     execute make install
-    $(build_done "$repo_name" "$version")
+    build_done "$repo_name" "$version"
 fi
 ffmpeg_libraries+=("--enable-libkvazaar")
 
@@ -2566,10 +2591,12 @@ else
     ant_path_fn
     git_call_fn "https://github.com/apache/ant.git" "ant-git" "ant"
     if build "$repo_name" "${version//\$ /}"; then
+        echo "Cloning \"$repo_name\" saving version \"$version\""
         download_git "$git_url"
+        echo "Cloning completed"
         chmod 777 -R "$workspace/ant"
         execute sh build.sh install-lite
-        $(build_done "$repo_name" "$version")
+        build_done "$repo_name" "$version"
     fi
 fi
 
@@ -2676,7 +2703,9 @@ if [[ "$OS" == "Arch" ]]; then
 else
     git_call_fn "https://github.com/gpac/gpac.git" "gpac-git"
     if build "$repo_name" "${version//\$ /}"; then
+        echo "Cloning \"$repo_name\" saving version \"$version\""
         download_git "$git_url"
+        echo "Cloning completed"
         execute ./configure --prefix="$workspace" \
                                  --static-bin \
                                  --static-modules \
@@ -2687,7 +2716,7 @@ else
                                  --sdl-cfg="$workspace/include/SDL3"
         execute make "-j$cpu_threads"
         execute make install
-        $(build_done "$repo_name" "$version")
+        build_done "$repo_name" "$version"
     fi
 fi
 
@@ -2927,7 +2956,9 @@ ffmpeg_libraries+=("--enable-vapoursynth")
 
 git_call_fn "https://chromium.googlesource.com/codecs/libgav1" "libgav1-git"
 if build "$repo_name" "${version//\$ /}"; then
+    echo "Cloning \"$repo_name\" saving version \"$version\""
     download_git "$git_url"
+    echo "Cloning completed"
     execute git clone -q -b "20220623.1" --depth 1 "https://github.com/abseil/abseil-cpp.git" "third_party/abseil-cpp"
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
@@ -2941,7 +2972,7 @@ if build "$repo_name" "${version//\$ /}"; then
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    $(build_done "$repo_name" "$version")
+    build_done "$repo_name" "$version"
 fi
 
 find_git_repo "8268" "6"
