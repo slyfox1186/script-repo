@@ -3096,7 +3096,8 @@ if build "ffmpeg" "$ffmpeg_ver"; then
 
     mkdir build
     cd build || exit 1
-    LDFLAGS+="-Wl,-rpath,$install_dir/lib"
+    LDEXEFLAGS=-Wl,-rpath,\''$$ORIGIN/../lib'\' \
+    LDSOFLAGS=-Wl,-rpath,\''$$$$ORIGIN'\' \
     ../configure --prefix="$install_dir" \
                  --arch=$(uname -m) \
                  --cc="$CC" \
@@ -3134,9 +3135,8 @@ if build "ffmpeg" "$ffmpeg_ver"; then
                  --enable-version3 \
                  --extra-cflags="$CFLAGS" \
                  --extra-cxxflags="$CXXFLAGS" \
-                 --extra-ldflags="$LDFLAGS" \
-                 --extra-ldexeflags="$LDEXEFLAGS" \
                  --extra-libs="$EXTRALIBS" \
+                 --extra-ldflags="-pie" \
                  --pkg-config-flags="--static" \
                  --pkg-config="$workspace/bin/pkg-config" \
                  --pkgconfigdir="$workspace/lib/pkgconfig" \
