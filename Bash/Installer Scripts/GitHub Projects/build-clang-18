@@ -1,73 +1,45 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2162,SC2317
 
-###########################################################################################################
-##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-18
-##
 ##  Purpose: Build LLVM-18
-##
 ##  Updated: 09.08.23
-##
 ##  Script version: 1.0
-##
-###########################################################################################################
 
-clear
-
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+if [ "$EUID" -ne 0 ]; then
+    printf "%s\n\n" "You must run this script with root/sudo."
     exit 1
 fi
 
-#
-# SET VARIABLES
-#
-
+# Set variables
 script_ver=1.1
 git_dir=llvm-project-18.0.0
 git_url=https://github.com/llvm/llvm-project.git
-cwd="$PWD"/llvm18-build-script
+cwd="$PWD/llvm18-build-script"
 install_dir=/usr/local
 web_repo=https://github.com/slyfox1186/script-repo
 
-list1='clang;clang-tools-extra;openmp'
-list2='libcxx;libcxxabi;libunwind;compiler-rt'
+echo "Clang 18 Build Script- v$script_ver"
+echo "==============================================="
 
-printf "\n%s\n%s\n\n" \
-    "LLVM Build Script - v${script_ver}" \
-    '==============================================='
-
-#
-# CREATE OUTPUT DIRECTORY
-#
-
+# Create output directory
 if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
+    rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-#
-# SET THE C+CPP COMPILERS
-#
-
+# Set the c+cpp compilers
 export CC=clang CXX=clang++
+CFLAGS="-g -O3 -pipe -march=native"
+CXXFLAGS="-g -O3 -pipe -march=native"
+export CC CFLAGS CXX CXXFLAGS
 
-#
-# EXPORT COMPILER OPTIMIZATION FLAGS
-#
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
-
-#
-# SET THE PATH VARIABLE
-#
-
+# Set the path variable
 PATH="\
 /usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
+$HOME/perl5/bin:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/cuda/bin:\
 /usr/local/x86_64-linux-gnu/bin:\
@@ -76,16 +48,11 @@ ${HOME}/.local/bin:\
 /usr/bin:\
 /sbin:\
 /bin:\
-/usr/local/games:\
-/usr/games:\
 /snap/bin\
 "
 export PATH
 
-#
-# SET THE PKG_CONFIG_PATH VARIABLE
-#
-
+# Set the pkg_config_path variable
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
@@ -101,111 +68,92 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-#
-# CREATE FUNCTIONS
-#
-
-exit_fn()
-{
+# Create functions
+exit_fn() {
     printf "\n%s\n\n%s\n\n" \
-        'Make sure to star this repository to show your support!' \
+        "Make sure to star this repository to show your support!" \
         "$web_repo"
     exit 0
 }
 
-fail_fn()
-{
+fail_fn() {
     printf "\n%s\n\n%s\n\n" \
         "$1" \
         "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
-cleanup_fn()
-{
+cleanup_fn() {
     local choice
 
     printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
+        "============================================" \
+        "  Do you want to clean up the build files?  " \
+        "============================================" \
+        "[1] Yes" \
+        "[2] No"
+    read -p "Your choices are (1 or 2): " choice
 
     case "${choice}" in
-        1)      sudo rm -fr "$cwd";;
+        1)      rm -fr "$cwd";;
         2)      echo;;
-        *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
-                unset choice
+        *)      unset choice
                 clear
                 cleanup_fn
                 ;;
     esac
 }
 
-#
-# INSTALL REQUIRED APT PACKAGES
-#
-
-pkgs_fn()
-{
+# Install the required apt packages
+pkgs_fn() {
     pkgs=(autoconf autoconf-archive autogen automake build-essential ccache
           cmake curl git jq libtool libtool-bin lzip m4 pkg-config)
 
-    for i in ${pkgs[@]}
+    for pkg in ${pkgs[@]}
     do
-        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+        missing_pkg="$(dpkg -l | grep -o "$pkg")"
 
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
+        if [ -z "$missing_pkg" ]; then
+            missing_pkgs+=" $pkg"
         fi
     done
 
     if [ -n "$missing_pkgs" ]; then
-        sudo apt install $missing_pkgs
-        sudo apt -y autoremove
-        clear
+        apt install $missing_pkgs
     fi
 }
 
-#
-# DOWNLOAD THE ARCHIVE FILE
-#
-
+# Download the archive file
 cd "$cwd" || exit 1
 
 if [ ! -d llvm-project ]; then
-    git clone --depth=1 "${git_url}" "${git_dir}"
+    git clone --depth=1 "$git_url" "$git_dir"
 fi
 
-#
-# BUILD PROGRAM FROM SOURCE
-#
-
-cd "${git_dir}" || exit 1
+# Build the program from it's source code
+cd "$git_dir" || exit 1
 
 mkdir build
 cd build || exit 1
-cmake -S ../llvm                     \
--G Ninja -Wno-dev                    \
+cmake -S ../llvm \
+-G Ninja -Wno-dev \
 -DCMAKE_INSTALL_DIR="$install_dir" \
--DCMAKE_BUILD_TYPE=Release           \
--DCMAKE_C_COMPILER=gcc               \
--DCMAKE_CXX_COMPILER=g++             \
--DLLVM_TARGETS_TO_BUILD=host         \
--DLLVM_ENABLE_PROJECTS="${list1}"    \
--DLLVM_ENABLE_RUNTIMES="${list2}"
-ninja "-j$(nproc --all)"
-if ! sudo ninja "-j$(nproc --all)" install; then
-    fail_fn "Failed to execute: sudo ninja -j$(nproc --all) install:Line ${LINENO}"
-    exit 1
+-DCMAKE_BUILD_TYPE=Release \
+-DCMAKE_C_COMPILER="$CC" \
+-DCMAKE_CXX_COMPILER="$CXX" \
+-DLLVM_TARGETS_TO_BUILD=host \
+-DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra"
+echo
+if ! ninja "-j$(nproc --all)"; then
+    fail_fn "Failed to execute: ninja -j$(nproc --all). Line: $LINENO"
+fi
+echo
+if ! ninja install; then
+    fail_fn "Failed to execute: ninja install. Line: $LINENO"
 fi
 
-# PROMPT USER TO CLEAN UP FILES
+# Prompt the user to clean up the build files
 cleanup_fn
-# SHOW EXIT MESSAGE
+
+# Show the exit message
 exit_fn
