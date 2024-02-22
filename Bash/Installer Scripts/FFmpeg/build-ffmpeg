@@ -130,10 +130,10 @@ printf "\n%s\n\n" "Utilizing $cpu_threads CPU threads"
 #
 
 source_flags_fn() {
-    CC=clang
-    CXX=clang++
+    CC=gcc
+    CXX=g++
     CFLAGS="-g -O3 -march=native"
-    CXXFLAGS="$CFLAGS"
+    CXXFLAGS="$CFLAGS -std=c++20"
     EXTRALIBS="-lm -lpthread -lz -lstdc++ -lgcc_s -lrt -ldl -lnuma"
     export CC CFLAGS CPPFLAGS CXX CXXFLAGS
 }
@@ -780,19 +780,18 @@ $workspace/share/pkgconfig:\
 export PKG_CONFIG_PATH
 
 check_nvidia_gpu() {
-    nvidia_gpu_test=$(cat "/usr/local/cuda/version.json" 2>/dev/null | jq -r '.cuda.version' 2>/dev/null)
-    echo "$nvidia_gpu_test"
+    cuda_version_test=$(cat "/usr/local/cuda/version.json" 2>/dev/null | jq -r '.cuda.version' 2>/dev/null)
 }
 
 check_amd_gpu() {
     if lshw -C display 2>&1 | grep -qEio 'AMD|amdgpu'; then
-        echo "AMD GPU detected."
+        echo "AMD GPU detected"
     elif dpkg -l 2>&1 | grep -qi 'amdgpu'; then
-        echo "AMD GPU detected."
+        echo "AMD GPU detected"
     elif lspci 2>&1 | grep -i 'AMD'; then
-        echo "AMD GPU detected."
+        echo "AMD GPU detected"
     else
-        echo "No AMD GPU detected."
+        echo "No AMD GPU detected"
     fi
 }
 
@@ -966,31 +965,86 @@ cuda_download_fn() {
     apt install cuda-toolkit-12-3
 }
 
-#
-# REQUIRED GEFORCE CUDA DEVELOPMENT PACKAGES
-#
+# Function to detect the environment and check for an NVIDIA GPU
+nvidia_gpu_check_fn() {
+    # Check for NVIDIA GPU in native Linux
+    if ! grep -qi microsoft /proc/version; then
+        if lspci | grep -i nvidia > /dev/null; then
+            is_nvidia_gpu_present="NVIDIA GPU detected"
+        else
+            is_nvidia_gpu_present="NVIDIA GPU not detected"
+        fi
+    else
+        # WSL environment: Define base directories
+        local c_drive_paths=("/mnt/c" "/c")
+        local path_exists=0
+        local found=0
+        local gpu_info=""
 
+        for dir in "${c_drive_paths[@]}"; do
+            if [[ -d "$dir/Windows/System32" ]]; then
+                path_exists=1
+                if [[ -f "$dir/Windows/System32/cmd.exe" ]]; then
+                    # Attempt to suppress unnecessary messages by redirecting stderr to null
+                    gpu_info=$("$dir/Windows/System32/cmd.exe" /c "wmic path win32_VideoController get name | findstr /i nvidia" 2>/dev/null)
+                    
+                    if [[ -n "$gpu_info" ]]; then
+                        found=1
+                        is_nvidia_gpu_present="NVIDIA GPU detected"
+                        break
+                    fi
+                fi
+            fi
+        done
+
+        if [[ $path_exists -eq 0 ]]; then
+            is_nvidia_gpu_present="C drive paths '/mnt/c/' and '/c/' do not exist."
+        elif [[ $found -eq 0 ]]; then
+            is_nvidia_gpu_present="NVIDIA GPU not detected"
+        fi
+    fi
+}
+
+# REQUIRED GEFORCE CUDA DEVELOPMENT PACKAGES
 install_cuda_fn() {
     local choice
 
+    nvidia_gpu_check_fn
     fetch_and_parse_cuda_version
 
+    echo "Checking GPU Status"
+    echo "========================================================"
+
     amd_gpu_test=$(check_amd_gpu)
-    nvidia_gpu_test=$(check_nvidia_gpu)
+    echo "$amd_gpu_test"
 
-    echo "AMD GPU Test Output: $amd_gpu_test"
-    echo "NVIDIA GPU Test Output: $nvidia_gpu_test"
-    echo "Expected Latest CUDA Version: $cuda_latest_ver"
+    nvidia_gpu_status="$is_nvidia_gpu_present"
+    nvidia_cuda_test="$cuda_version_test"
 
-    if [[ "$amd_gpu_test" == "AMD GPU detected." ]] || [[ ! "$nvidia_gpu_test" == "$cuda_latest_ver" ]]; then
-        if [[ -n "$nvidia_gpu_test" ]] || [[ -n "$(grep -i Microsoft /proc/version)" ]]; then
+    # Determine if the PC has an Nvidia GPU available
+    if [[ "$nvidia_gpu_status" == "NVIDIA GPU detected" ]]; then
+        echo "Nvidia GPU detected"
+        echo "Determining if CUDA is installed..."
+        # Determine the installed CUDA version if any
+        if [ -n "$nvidia_cuda_test" ]; then
+            echo "The installed CUDA version is: $nvidia_cuda_test"
+        else
+            echo "CUDA is not installed"
+        fi
+        echo "The latest CUDA version available is: $cuda_latest_ver"
+    else
+        echo "Nvidia GPU not detected"
+    fi
+
+    if [[ "$amd_gpu_test" == "AMD GPU detected" ]] || [[ ! "$nvidia_cuda_test" == "$cuda_latest_ver" ]]; then
+        if [[ -n "$nvidia_gpu_status" ]] || [[ -n "$(grep -i Microsoft /proc/version)" ]]; then
             get_os_version_1
             if [[ "$OS" == "Arch" ]]; then
                 find_nvcc=$(find /opt/ -type f -name 'nvcc')
                 cuda_ver_test=$($find_nvcc --version | sed -n 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')
                 cuda_ver_test+=".2"
             else
-                cuda_ver_test="$nvidia_gpu_test"
+                cuda_ver_test="$nvidia_gpu_status"
             fi
             cuda_ver="$cuda_ver_test"
 
@@ -1062,7 +1116,7 @@ pkgs_fn() {
     local missing_pkg missing_packages pkg pkgs available_packages unavailable_packages
 
     openjdk_pkg=$(apt search --names-only '^openjdk-[0-9]+-jdk$' 2>/dev/null | grep -oP '^openjdk-\d+-jdk/' | sed 's|/||' | sort -rV | head -n1)
-    libcpp_pkg=$(apt list libc++* 2>&1 | grep -Eo 'libc\+\+-[0-9\-]+-dev' | uniq | sort -rV | head -n1)
+    libcpp_pkg=$(apt list libc++* 2>/dev/null | grep -Eo 'libc\+\+-[0-9\-]+-dev' | uniq | sort -rV | head -n1)
     libcppabi_pkg=$(apt list libc++abi* 2>/dev/null | grep -Eo 'libc\+\+abi-[0-9]+-dev' | uniq | sort -rV | head -n1)
     libunwind_pkg=$(apt list libunwind* 2>/dev/null | grep -Eo 'libunwind-[0-9]+-dev' | uniq | sort -rV | head -n1)
 
@@ -1085,17 +1139,17 @@ pkgs_fn() {
         libladspa-ocaml-dev libleptonica-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev
         libmatroska-dev libmbedtls-dev libmetis5 libmfx-dev libmodplug-dev libmp3lame-dev
         libmusicbrainz5-dev libmysofa-dev libnuma-dev libopencore-amrnb-dev libopencore-amrwb-dev
-        libopencv-dev libopenjp2-7-dev libopenmpt-dev libopus-dev libpango1.0-dev libperl-dev
+        libopencv-dev libopenmpt-dev libopus-dev libpango1.0-dev libperl-dev
         libpstoedit-dev libpulse-dev librabbitmq-dev libraqm-dev libraw-dev librsvg2-dev librubberband-dev
         librust-gstreamer-base-sys-dev libshine-dev libsmbclient-dev libsnappy-dev libsndfile1-dev
         libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev libssh-dev libssl-dev libsuitesparseconfig5
         libsystemd-dev libtalloc-dev libtheora-dev libticonv-dev libtool libtool-bin libtwolame-dev
         libudev-dev libumfpack5 libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev
-        libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libxcursor-dev libxext-dev libxfixes-dev
-        libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzimg-dev libzmq3-dev
-        libzstd-dev libzvbi-dev libzzip-dev llvm lshw lzma-dev m4 mesa-utils meson nasm ninja-build
-        pandoc python3 python3-pip python3-venv ragel re2c scons texi2html texinfo tk-dev unzip
-        valgrind wget xmlto zlib1g-dev
+        libvo-amrwbenc-dev libvpx-dev libx11-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev
+        libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzimg-dev libzmq3-dev libzstd-dev
+        libzvbi-dev libzzip-dev llvm lshw lzma-dev m4 mesa-utils meson nasm ninja-build pandoc python3
+        python3-pip python3-venv ragel re2c scons texi2html texinfo tk-dev unzip valgrind wget xmlto
+        zlib1g-dev
 )
 
     # Initialize arrays for missing, available, and unavailable packages
@@ -2738,8 +2792,11 @@ if build "x264" "$g_sver"; then
                         --enable-debug \
                         --enable-gprof \
                         --enable-lto \
+                        --enable-pic \
                         --enable-static \
-                        --enable-strip
+                        --enable-strip \
+                        CFLAGS="$CFLAGS -fPIC" \
+                        CXXFLAGS="$CXXFLAGS"
     execute make "-j$cpu_threads"
     execute make install
     execute make install-lib-static
@@ -2839,7 +2896,7 @@ fi
 
 # GET THE NVIDIA GPU ARCHITECTURE TO BUILD CUDA
 # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
-[[ -n "$nvidia_gpu_test" ]] || [[ -n "$wsl_test" ]] && gpu_arch_fn
+[[ -n "$cuda_version_test" ]] || [[ "$wsl_flag" == "yes_wsl" ]] && gpu_arch_fn
 
 if [[ "$cuda_compile_flag" -eq 1 ]]; then
     if [[ -n "$iscuda" ]]; then
@@ -2868,9 +2925,9 @@ if [[ "$cuda_compile_flag" -eq 1 ]]; then
             ffmpeg_libraries+=("--enable-libnpp")
         fi
         ffmpeg_libraries+=("--nvccflags=-gencode arch=$gpu_arch")
-        fi
-    else
-        echo "The Active GPU is made by AMD and the Geforce CUDA SDK Toolkit will not be enabled."
+    fi
+else
+    echo "The Active GPU is made by AMD and the Geforce CUDA SDK Toolkit will not be enabled."
 fi
 
 find_git_repo "Haivision/srt" "1" "T"
