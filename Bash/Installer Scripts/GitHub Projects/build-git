@@ -1,197 +1,73 @@
 #!/usr/bin/env bash
 
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-git
+##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-git/
 ##  Purpose: Build git from source code
 ##  Script updated on: 11.24.23
 ##  Git version: 2.43.0
 ##  Script version: 1.3
 
-clear
-
-if [ "${EUID}" -eq 0 ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
-    exit 1
-fi
-
-# SET VARIABLES
-script_ver=1.3
-archive_dir=2.43.0
-archive_url="https://github.com/git/git/archive/refs/tags/v$archive_dir.tar.gz"
-archive_ext="${archive_url//*.}"
-archive_name="$archive_dir.tar.${archive_ext}"
-cwd="$PWD/git-build-script"
-install_dir="/usr"
-web_repo="https://github.com/slyfox1186/script-repo"
-
-printf "%s\n%s\n\n"                     \
-    "Git Build Script - v${script_ver}" \
-    "==============================================="
-sleep 2
-
-# CREATE OUTPUT DIRECTORY
-if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
-fi
-mkdir -p "$cwd"
-
-# SET THE CC/CXX COMPILERS & OPTIMIZATION FLAGS
 CC=gcc
 CXX=g++
 CFLAGS="-g -O3 -pipe -march=native"
-CXXFLAGS="${CFLAGS}"
-CPPFLAGS="-I/usr/local/include -I/usr/include"
-LDFLAGS="-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib"
-export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
+CXXFLAGS="-g -O3 -pipe -march=native"
+export CC CFLAGS CXX CXXFLAGS
 
-# SET THE PATH VARIABLE
-PATH="\
-/usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
-
-# SET THE PKG_CONFIG_PATH VARIABLE
-PKG_CONFIG_PATH="\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/$install_dir/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/$install_dir/pkgconfig:\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/$install_dir/pkgconfig:\
-/usr/share/pkgconfig\
-"
-export PKG_CONFIG_PATH
-
-# CREATE FUNCTIONS
-exit_fn()
-{
-    printf "\n%s\n\n%s\n\n"                                       \
-        "Make sure to star this repository to show your support!" \
-        "$web_repo"
-    exit 0
+# Function to log messages
+log() {
+    echo "[LOG] $(date '+%Y-%m-%d %H:%M:%S'): $1"
 }
 
-fail_fn()
-{
-    printf "\n%s\n\n%s\n\n" \
-        "$1"              \
-        "To report a bug create an issue at: $web_repo/issues"
-    exit 1
-}
-
-cleanup_fn()
-{
-    local choice
-
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n"                  \
-        "============================================" \
-        "  Do you want to clean up the build files?  " \
-        "============================================" \
-        "[1] Yes"                                      \
-        "[2] No"
-    read -p "Your choices are (1 or 2): " choice
-
-    case "${choice}" in
-        1)      sudo rm -fr "$cwd";;
-        2)      echo;;
-        *)
-                unset choice
-                clear
-                cleanup_fn
-                ;;
-    esac
-}
-
-# INSTALL REQUIRED APT PACKAGES
-pkgs=(
-    autoconf autoconf-archive autogen automake binutils bison build-essential bzip2
-    ccache curl docbook2x install-info libc6-dev libcurl4-openssl-dev libticonv-dev
-    libintl-perl libpcre2-dev libtool libtool-bin libzstd-dev lzip lzma lzma-dev
-    m4 nasm python3 python3-pip texinfo xz-utils zlib1g-dev zstd yasm
-)
-
-for pkg in ${pkgs[@]}
-do
-    missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
-
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${pkg}"
+# Installing necessary dependencies for building Git
+install_dependencies() {
+    log "Installing dependencies necessary for building Git from source..."
+    sudo apt update
+    sudo apt install libz-dev libssl-dev libcurl4-gnutls-dev libexpat1-dev gettext cmake gcc -y
+    if [ $? -eq 0 ]; then
+        log "Successfully installed build dependencies."
+    else
+        log "Failed to install build dependencies."
+        exit 1
     fi
-done
+}
 
-if [ -n "$missing_pkgs" ]; then
-    sudo apt install $missing_pkgs
-    sudo apt -y autoremove
-    clear
-fi
+# Download, compile, and install Git from source
+install_git() {
+    log "Fetching the latest Git source code..."
+    cd /usr/src
+    sudo wget https://github.com/git/git/archive/refs/tags/v2.43.2.tar.gz -O git.tar.gz
+    if [ $? -ne 0 ]; then
+        log "Failed to download Git source code."
+        exit 1
+    fi
+    
+    log "Extracting Git source code..."
+    sudo tar -zxf git.tar.gz
+    cd git-*
+    
+    log "Compiling Git from source. This may take a while..."
+    sudo make "-j$(nproc --all)" prefix=/usr/local all
+    if [ $? -ne 0 ]; then
+        log "Compilation of Git failed."
+        exit 1
+    fi
+    
+    log "Installing Git..."
+    sudo make install
+    if [ $? -eq 0 ]; then
+        log "Git has been successfully installed from source."
+    else
+        log "Failed to install Git."
+        exit 1
+    fi
+}
 
-# REMOVE PYTHON3 PIP LOCK
-rm_pip_lock="$(sudo find /usr/lib/python3* -type f -name 'EXTERNALLY-MANAGED')"
-if [ -n "${rm_pip_lock}" ]; then
-    sudo rm "${rm_pip_lock}"
-fi
+# Main function to control the flow of the script
+main() {
+    log "Starting the script to install Git from source."
+    install_dependencies
+    install_git
+    log "Script completed."
+}
 
-# INSTALL PIP ASCIIDOC
-pip install --user asciidoc &>/dev/null
-
-# DOWNLOAD THE ARCHIVE FILE
-if [ ! -f "$cwd/${archive_name}" ]; then
-    curl -A "$user_agent" -Lso "$cwd/${archive_name}" "${archive_url}"
-fi
-
-# CREATE OUTPUT DIRECTORY
-if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
-fi
-mkdir -p "$cwd/$archive_dir"
-
-# EXTRACT ARCHIVE FILES
-if ! tar -zxf "$cwd/${archive_name}" -C "$cwd/$archive_dir" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: $cwd/${archive_name}"
-    exit 1
-fi
-
-# BUILD PROGRAM FROM SOURCE
-cd "$cwd/$archive_dir" || exit 1
-make "-j$(nproc --all)" configure
-./configure --prefix="$install_dir" \
-            --without-openssl \
-            --with-iconv="/usr" \
-            --with-libpcre2
-echo
-if ! make "-j$(nproc --all)" all doc; then
-    fail_fn "Failed to execute: make -j$(nproc --all) all doc. Line: ${LINENO}"
-    exit 1
-fi
-echo
-if ! sudo make install install-doc install-html; then
-    fail_fn "Failed to execute: sudo make install install-doc install-html. Line: ${LINENO}"
-    exit 1
-fi
-
-# Fix bug
-if [[ ! -f "/usr/bin/git-remote-https" ]]; then
-    sudo ln -s "/usr/lib/git-core/git-remote-https" "/usr/bin/"
-fi
-
-# PROMPT USER TO CLEAN UP FILES
-cleanup_fn
-
-# SHOW EXIT MESSAGE
-exit_fn
+# Calling the main function
+main
