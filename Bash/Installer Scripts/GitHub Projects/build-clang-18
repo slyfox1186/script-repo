@@ -16,7 +16,6 @@ script_ver=1.1
 git_dir=llvm-project-18.0.0
 git_url=https://github.com/llvm/llvm-project.git
 cwd="$PWD/llvm18-build-script"
-install_dir=/usr/local
 web_repo=https://github.com/slyfox1186/script-repo
 
 echo "Clang 18 Build Script- v$script_ver"
@@ -137,7 +136,6 @@ mkdir build
 cd build || exit 1
 cmake -S ../llvm \
 -G Ninja -Wno-dev \
--DCMAKE_INSTALL_DIR="$install_dir" \
 -DCMAKE_BUILD_TYPE=Release \
 -DCMAKE_C_COMPILER="$CC" \
 -DCMAKE_CXX_COMPILER="$CXX" \
