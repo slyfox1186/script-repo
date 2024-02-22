@@ -1,157 +1,76 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2162,SC2317
+# Purpose: Build LLVM-18 for all Linux versions
 
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-18
-##  Purpose: Build LLVM-18
-##  Updated: 09.08.23
-##  Script version: 1.0
+# Variables
+LLVM_VERSION="llvmorg-18.1.0-rc3"
+CFLAGS="-g -O3 -march=native"
+CXXFLAGS="-g -O3 -march=native"
 
-if [ "$EUID" -ne 0 ]; then
-    printf "%s\n\n" "You must run this script with root/sudo."
-    exit 1
-fi
-
-# Set variables
-script_ver=1.1
-git_dir=llvm-project-18.0.0
-git_url=https://github.com/llvm/llvm-project.git
-cwd="$PWD/llvm18-build-script"
-web_repo=https://github.com/slyfox1186/script-repo
-
-echo "Clang 18 Build Script- v$script_ver"
-echo "==============================================="
-
-# Create output directory
-if [ -d "$cwd" ]; then
-    rm -fr "$cwd"
-fi
-mkdir -p "$cwd"
-
-# Set the c+cpp compilers
-export CC=clang CXX=clang++
-CFLAGS="-g -O3 -pipe -march=native"
-CXXFLAGS="-g -O3 -pipe -march=native"
-export CC CFLAGS CXX CXXFLAGS
-
-# Set the path variable
-PATH="\
-/usr/lib/ccache:\
-$HOME/perl5/bin:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/snap/bin\
-"
-export PATH
-
-# Set the pkg_config_path variable
-PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
-"
-export PKG_CONFIG_PATH
-
-# Create functions
-exit_fn() {
-    printf "\n%s\n\n%s\n\n" \
-        "Make sure to star this repository to show your support!" \
-        "$web_repo"
-    exit 0
-}
-
-fail_fn() {
-    printf "\n%s\n\n%s\n\n" \
-        "$1" \
-        "To report a bug create an issue at: $web_repo/issues"
-    exit 1
-}
-
-cleanup_fn() {
-    local choice
-
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
-        "============================================" \
-        "  Do you want to clean up the build files?  " \
-        "============================================" \
-        "[1] Yes" \
-        "[2] No"
-    read -p "Your choices are (1 or 2): " choice
-
-    case "${choice}" in
-        1)      rm -fr "$cwd";;
-        2)      echo;;
-        *)      unset choice
-                clear
-                cleanup_fn
-                ;;
-    esac
-}
-
-# Install the required apt packages
-pkgs_fn() {
-    pkgs=(autoconf autoconf-archive autogen automake build-essential ccache
-          cmake curl git jq libtool libtool-bin lzip m4 pkg-config)
-
-    for pkg in ${pkgs[@]}
-    do
-        missing_pkg="$(dpkg -l | grep -o "$pkg")"
-
-        if [ -z "$missing_pkg" ]; then
-            missing_pkgs+=" $pkg"
-        fi
-    done
-
-    if [ -n "$missing_pkgs" ]; then
-        apt install $missing_pkgs
+detect_package_manager() {
+    if command -v apt >/dev/null; then
+        echo "apt"
+    elif command -v yum >/dev/null; then
+        echo "yum"
+    elif command -v zypper >/dev/null; then
+        echo "zypper"
+    else
+        error_exit "No compatible package manager found."
     fi
 }
 
-# Download the archive file
-cd "$cwd" || exit 1
+install_dependencies() {
+    local PKG_MANAGER=$(detect_package_manager)
+    log_message "Using package manager: $PKG_MANAGER"
+    log_message "Updating package lists..."
+    if [ "$PKG_MANAGER" = "apt" ]; then
+        sudo apt update || error_exit "Failed to update package lists."
+        sudo apt install -y git cmake ninja-build python3 build-essential clang || error_exit "Failed to install build dependencies."
+    elif [ "$PKG_MANAGER" = "yum" ]; then
+        sudo yum update || error_exit "Failed to update package lists."
+        sudo yum install -y git cmake ninja-build python3 build-essential clang clang++ || error_exit "Failed to install build dependencies."
+    elif [ "$PKG_MANAGER" = "zypper" ]; then
+        sudo zypper refresh || error_exit "Failed to update package lists."
+        sudo zypper install -y git cmake ninja-build python3-devel gcc gcc-c++ clang clang++ || error_exit "Failed to install build dependencies."
+    fi
+}
 
-if [ ! -d llvm-project ]; then
-    git clone --depth=1 "$git_url" "$git_dir"
-fi
+log_message() {
+    echo "[LOG - DATE:$(date '+%m-%d-%Y') TIME:$(date '+%I:%M:%S %p'): $1]"
+}
 
-# Build the program from it's source code
-cd "$git_dir" || exit 1
+error_exit() {
+    echo "[ERROR - DATE:$(date '+%m-%d-%Y') TIME:$(date '+%I:%M:%S %p'): $1]" >&2
+    exit 1
+}
 
-mkdir build
-cd build || exit 1
-cmake -S ../llvm \
--G Ninja -Wno-dev \
--DCMAKE_BUILD_TYPE=Release \
--DCMAKE_C_COMPILER="$CC" \
--DCMAKE_CXX_COMPILER="$CXX" \
--DLLVM_TARGETS_TO_BUILD=host \
--DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra"
-echo
-if ! ninja "-j$(nproc --all)"; then
-    fail_fn "Failed to execute: ninja -j$(nproc --all). Line: $LINENO"
-fi
-echo
-if ! ninja install; then
-    fail_fn "Failed to execute: ninja install. Line: $LINENO"
-fi
+clone_llvm_project() {
+    if [ ! -d "llvm-project" ]; then
+        log_message "Cloning LLVM project repository..."
+        git clone --depth 1 https://github.com/llvm/llvm-project.git || error_exit "Failed to clone LLVM project repository."
+    else
+        log_message "LLVM project already cloned. Skipping..."
+    fi
+    cd llvm-project || error_exit "Failed to change directory to llvm-project."
+    git checkout $LLVM_VERSION || error_exit "Failed to checkout $LLVM_VERSION."
+}
 
-# Prompt the user to clean up the build files
-cleanup_fn
+build_clang() {
+    log_message "Building LLVM and Clang from source..."
+    mkdir -p build && cd build || error_exit "Failed to create or change to build directory."
+    cmake ../llvm \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" \
+          -DLLVM_TARGETS_TO_BUILD="X86" \
+          -G Ninja \
+          || error_exit "CMake configuration failed."
+    ninja || error_exit "Ninja build failed."
+    log_message "LLVM and Clang build completed."
+}
 
-# Show the exit message
-exit_fn
+main() {
+    install_dependencies
+    clone_llvm_project
+    build_clang
+}
+
+main "$@"
