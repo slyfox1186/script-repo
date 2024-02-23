@@ -14,13 +14,17 @@ if [[ "$EUID" -ne 0 ]]; then
     exit 1
 fi
 
-script_ver="2.4"
-python_version="3.12.2"
+script_ver=2.4
+python_version=3.12.2
 archive_url="https://www.python.org/ftp/python/$python_version/Python-$python_version.tar.xz"
 install_dir="/usr/local"
 cwd="$PWD/python3-build-script"
 openssl_prefix=$(dirname "$(readlink -f "$(type -P openssl)")")
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
+
+exit_fn() {
+    printf "\n%s\n%s\n\n" "Make sure to star this repository to show your support!" "$web_repo"
+    exit 0
+}
 
 fail_fn() {
     echo
@@ -28,6 +32,32 @@ fail_fn() {
     echo "Please report errors at: https://github.com/slyfox1186/script-repo/issues"
     echo
     exit 1
+}
+
+cleanup_fn() {
+    local choice
+
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
+        "========================================================" \
+        "        Do you want to clean up the build files?        " \
+        "========================================================" \
+        "[1] Yes" \
+        "[2] No"
+    read -p "Your choices are (1 or 2): " choice
+
+    case "$choice" in
+        1)      rm -fr "$cwd" ;;
+        2)      return ;;
+        *)      unset choice
+                cleanup_fn
+                ;;
+    esac
+}
+
+show_ver_fn() {
+    save_ver="$(sudo find $install_dir -type f -name 'python3.12' | grep -Eo '[0-9\.]+$')"
+    printf "\n%s\n\n" "The installed Python3 version is: ${save_ver}"
+    sleep 3
 }
 
 check_root() {
@@ -60,7 +90,7 @@ set_compiler_flags() {
 
 download_and_extract_python() {
     if [ ! -f "$cwd/$python_version.tar.xz" ]; then
-        curl -A "$user_agent" -Lso "$cwd/$python_version.tar.xz" "$archive_url"
+        curl -Lso "$cwd/$python_version.tar.xz" "$archive_url"
     fi
     if [ -d "$cwd/$python_version" ]; then
         rm -fr "$cwd/${python_version:?}"
@@ -73,7 +103,12 @@ download_and_extract_python() {
 install_required_packages() {
     local pkgs missing_packages
 
-    pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache curl git itstool libb2-dev libexempi-dev libgnome-desktop-3-dev libhandy-1-dev libpeas-dev libpeasd-3-dev libssl-dev libtool libtool-bin m4 nasm openssl python3 valgrind yasm zlib1g-dev)
+    pkgs=(
+        autoconf autoconf-archive autogen automake binutils build-essential ccache
+        curl git itstool libb2-dev libexempi-dev libgnome-desktop-3-dev libhandy-1-dev
+        libpeas-dev libpeasd-3-dev libssl-dev libtool libtool-bin m4 nasm openssl python3
+        valgrind yasm zlib1g-dev
+    )
 
     for pkg in "${pkgs[@]}"; do
         if ! dpkg-query -W -f='${Status}' $pkg 2>/dev/null | grep -q "ok installed"; then
@@ -106,39 +141,6 @@ build_python() {
 
     make "-j$(nproc)" || fail_fn "Failed to execute: make -j$(nproc). Line: $LINENO"
     make altinstall || fail_fn "Failed to execute: make altinstall. Line: $LINENO"
-}
-
-exit_fn() {
-    printf "\n%s\n%s\n\n" "Make sure to star this repository to show your support!" "$web_repo"
-    exit 0
-}
-
-cleanup_fn() {
-    local choice
-
-    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
-        "========================================================" \
-        "        Do you want to clean up the build files?        " \
-        "========================================================" \
-        "[1] Yes" \
-        "[2] No"
-    read -p "Your choices are (1 or 2): " choice
-
-    case "$choice" in
-        1)      rm -fr "$cwd" ;;
-        2)      return ;;
-        *)      unset choice
-                cleanup_fn
-                ;;
-    esac
-}
-
-ff_ver_fn() {
-    printf "\n%s\n%s\n%s\n\n" \
-        "========================================================" \
-        "                     FFmpeg Version                     " \
-        "========================================================"
-    "$install_dir/bin/ffmpeg" -version
 }
 
 # Main script execution
