@@ -1,72 +1,48 @@
 #!/usr/bin/env bash
 
-###########################################################################################################
-##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf
-##
 ##  Purpose: build gnu autoconf
-##
 ##  Updated: 08.04.23
-##
 ##  Script version: 1.0
-##
-###########################################################################################################
 
-clear
-
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+if [ "$EUID" -ne 0 ]; then
+    printf "%s\n\n" 'You must run this script with root/sudo.'
     exit 1
 fi
 
-#
 # SET THE VARIABLES
-#
-
 script_ver=1.0
 archive_dir=autoconf-2.69
-archive_url=https://ftp.gnu.org/gnu/autoconf/"$archive_dir".tar.xz
+archive_url="https://ftp.gnu.org/gnu/autoconf/$archive_dir.tar.xz"
 archive_ext="${archive_url//*.}"
-archive_name="$archive_dir.tar.${archive_ext}"
+archive_name="${archive_dir}.tar.$archive_ext"
 cwd="$PWD"/autoconf-build-script
 install_dir=/usr/local
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
+# Set the c + cpp compilers
+CC=gcc
+CXX=g++
+CFLAGS="-g -O3 -pipe -march=native"
+CXXFLAGS="-g -O3 -pipe -march=native"
+export CC CFLAGS CXX CXXFLAGS
+
 printf "%s\n%s\n\n" \
-    "autoconf build script - v${script_ver}" \
-    '==============================================='
+    "autoconf build script - v$script_ver" \
+    "==============================================="
 
-#
 # CREATE OUTPUT DIRECTORY
-#
-
 if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
+    rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-#
-# SET THE C + CPP COMPILERS
-#
-
-export CC=gcc CXX=g++
-
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
-
-#
-# SET THE PATH VARIABLE
-#
-
+# Set the path variable
 PATH="\
 /usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
+$HOME/perl5/bin:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/cuda/bin:\
 /usr/local/x86_64-linux-gnu/bin:\
@@ -74,17 +50,11 @@ ${HOME}/.local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
+/bin\
 "
 export PATH
 
-#
-# SET THE PKG_CONFIG_PATH VARIABLE
-#
-
+# Set the pkg_config_path variable
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
@@ -100,92 +70,72 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-#
-# CREATE FUNCTIONS
-#
-
-exit_fn()
-{
+# Create functions
+exit_fn() {
     printf "\n%s\n\n%s\n\n" \
-        'Make sure to star this repository to show your support!' \
+        "Make sure to star this repository to show your support!" \
         "$web_repo"
     exit 0
 }
 
-fail_fn()
-{
+fail_fn() {
     printf "\n%s\n\n%s\n\n" \
         "$1" \
         "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
-#
-# INSTALL REQUIRED APT PACKAGES
-#
+# Install required apt packages
+pkgs=(
+    autoconf autoconf-archive autogen automake autopoint autotools-dev binutils
+    bison build-essential bzip2 bzip2 ccache curl libc6-dev libpth-dev libtool
+    libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev yasm
+)
 
-pkgs=(autoconf autoconf-archive autogen automake autopoint autotools-dev binutils
-      bison build-essential bzip2 bzip2 ccache curl libc6-dev libpth-dev libtool
-      libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev yasm)
+for pkg in ${pkgs[@]}; do
+    missing_pkg="$(dpkg -l | grep -o "$pkg")"
 
-for i in ${pkgs[@]}
-do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+    if [ -z "$missing_pkg" ]; then
+        missing_pkgs+=" $pkg"
     fi
 done
 
 if [ -n "$missing_pkgs" ]; then
-    sudo apt install $missing_pkgs
-    sudo apt -y autoremove
+    apt -y install $missing_pkgs
     clear
 fi
 
-#
-# DOWNLOAD THE ARCHIVE FILE
-#
-
-if [ ! -f "$cwd/${archive_name}" ]; then
-    curl -A "$user_agent" -Lso "$cwd/${archive_name}" "${archive_url}"
+# Download the archive file
+if [ ! -f "$cwd/$archive_name" ]; then
+    curl -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
-#
-# CREATE OUTPUT DIRECTORY
-#
-
+# Create output directory
 if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
+    rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
-#
-# EXTRACT ARCHIVE FILES
-#
-
-if ! tar -xf "$cwd/${archive_name}" -C "$cwd/$archive_dir" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: $cwd/${archive_name}"
+# Extract archive files
+if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
+    printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
     exit 1
 fi
 
-#
-# BUILD PROGRAM FROM SOURCE
-#
-
+# Build program from source
 cd "$cwd/$archive_dir" || exit 1
 autoupdate
 autoconf
 cd build || exit 1
 ../configure --prefix="$install_dir"
 make "-j$(nproc --all)"
-if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
+if ! make install; then
+    fail_fn "Failed to execute: make install. Line: $LINENO"
     exit 1
 fi
 
-# CLEAN UP THE LEFTOVER FILES
-sudo rm -fr "$cwd"
+# Clean up the leftover files
+rm -fr "$cwd"
 
-# SHOW EXIT MESSAGE
+# Show exit message
 exit_fn
