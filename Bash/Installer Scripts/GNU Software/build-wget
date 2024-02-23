@@ -1,229 +1,134 @@
 #!/usr/bin/env bash
 
-##  GitHub Script: "https://github.com/slyfox1186/script-repo/edit/main/util-linux/Installer%20Scripts/GNU%20Software/build-wget"
-##  Purpose: "Build GNU Wget from source code"
-##  Features: "+cares +digest +gpgme +https -ipv6 +iri +large-file +metalink -nls +ntlm +opie +psl +ssl/openssl"
-##  Updated: "01.30.24"
-##  Script version: "1.3"
-##  Added: "libmetalink-dev library files"
+# GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/Installer%20Scripts/GNU%20Software/build-wget
+# Purpose: Build GNU Wget from source code
+# Features: +cares +digest +gpgme +https -ipv6 +iri +large-file +metalink -nls +ntlm +opie +psl +ssl/openssl
+# Updated: 01.30.24
+# Script version: 1.4
+# Added: libmetalink-dev library files
 
-clear
+# Terminal colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
 
+# Ensure running as root
 if [ "$EUID" -ne 0 ]; then
-    printf "%s\n\n" "You must run this script with root/sudo."
+    echo -e "${RED}This script must be run as root. Exiting.${NC}" >&2
     exit 1
 fi
 
-script_ver="1.3"
+# Script variables
+script_ver="1.4"
+cwd="$PWD/wget-build-script"
 archive_dir="wget-latest"
 archive_url="https://ftp.gnu.org/gnu/wget/$archive_dir.tar.lz"
-archive_ext="${archive_url##*.}"
-archive_name="$archive_dir.tar.$archive_ext"
-cwd="$PWD/wget-build-script"
 install_dir="/usr/local"
-pc_type="x86_64-linux-gnu"
-web_repo="https://github.com/slyfox1186/script-repo"
+pc_type="$(uname -m)-linux-gnu"
+verbose=0
 
-printf "%s\n%s\n\n" \
-    "WGet Build Script - v$script_ver" \
-    "==============================================="
-sleep 2
-
-if [ -d "$cwd" ]; then
-    rm -fr "$cwd"
-fi
-mkdir -p "$cwd"
-
-CC="gcc"
-CXX="g++"
-CFLAGS="-g -O3 -pipe -march=native"
-CXXFLAGS="$CFLAGS"
-CPPFLAGS="-I/usr/local/include -I/usr/include/libxml2 -I/usr/include"
-LDFLAGS="-L/usr/local/ssl/lib -L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib"
-export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
-
-PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/sbin:/usr/local/cuda/bin:/usr/local/x86_64-linux-gnu/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/games:/usr/games:/snap/bin"
-export PATH
-
-PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/share/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig:/lib64/pkgconfig:/lib/pkgconfig:/lib/x86_64-linux-gnu/pkgconfig"
-export PKG_CONFIG_PATH
-
-exit_fn() {
-    printf "\n%s\n\n%s\n\n" \
-        "Make sure to star this repository to show your support!" \
-        "$web_repo"
+# Function definitions
+display_help() {
+    echo "Usage: $0 [OPTION]..."
+    echo -e "\nOptions:"
+    echo -e "  -v, --verbose\t\tEnable verbose logging."
+    echo -e "  -h, --help\t\tDisplay this help message and exit."
+    echo -e "\nExample:"
+    echo -e "  $0 --verbose"
     exit 0
 }
 
-fail_fn() {
-    printf "\n%s\n\n%s\n\n" \
-        "$1" \
-        "To report a bug create an issue at: $web_repo/issues"
-    exit 1
-}
-
-cleanup_fn() {
-    local choice
-
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
-        "============================================" \
-        "  Do you want to clean up the build files?  " \
-        "============================================" \
-        "[1] Yes" \
-        "[2] No"
-    read -p "Your choices are (1 or 2): " choice
-    clear
-
-    case "$choice" in
-        1)  rm -fr "$cwd" ;;
-        2)  return 0 ;;
-        *)  clear
-            cleanup_fn
-            ;;
-    esac
-}
-
-version_fn() {
-    clear
-    printf "%s\n\n" "The newly installed Wget stats are listed below."
-    wget -V | grep -Ev "^(<|Copy|License|Orig|Please|This|There)" | sed -e "s/GNU //g" -e "s/ built on linux-gnu//g" -e "s/.$//g"
-}
-
-pkgs=(
-    autoconf autoconf-archive automake bzip2 ca-certificates cmake curl gfortran libcurl4-openssl-dev 
-    libexpat1-dev libgcrypt20-dev libgpgme-dev libssl-dev libunistring-dev m4 pkg-config zlib1g-dev
-)
-
-for pkg in "${pkgs[@]}"; do
-    if ! dpkg -l | grep -q "$pkg"; then
-        missing_pkgs+="$pkg "
+log() {
+    if [[ $verbose -eq 1 ]]; then
+        echo -e "${GREEN}[INFO]${NC} $1"
     fi
-done
+}
 
-if [ -n "$missing_pkgs" ]; then
-    apt install $missing_pkgs
-    apt -y autoremove
-    clear
-fi
-
-if [ ! -f "$cwd/libmetalink-0.1.3.tar.xz" ]; then
-    curl -Lso "$cwd/libmetalink-0.1.3.tar.xz" "https://github.com/metalink-dev/libmetalink/releases/download/release-0.1.3/libmetalink-0.1.3.tar.xz"
-fi
-
-if [ -d "$cwd/libmetalink-0.1.3" ]; then
-    rm -fr "$cwd/libmetalink-0.1.3"
-fi
-mkdir -p "$cwd/libmetalink-0.1.3/build"
-
-if ! tar -Jxf "$cwd/libmetalink-0.1.3.tar.xz" -C "$cwd/libmetalink-0.1.3" --strip-components 1; then
-    fail_fn "Failed to extract: $cwd/libmetalink-0.1.3.tar.xz"
-fi
-
-printf "%s\n%s\n\n" \
-    "Build libmetalink-dev - version 0.1.3" \
-    "==============================================="
-sleep 1
-
-cd "$cwd/libmetalink-0.1.3" || exit 1
-autoconf
-cd build || exit 1
-../buildconf
-../configure --prefix="$install_dir" \
-             --build="$pc_type" \
-             --host="$pc_type" \
-             --target="$pc_type" \
-             --with-libexpat \
-             --with-libxml2 \
-             --with-pic
-echo
-if ! make "-j$(nproc --all)"; then
-    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
+error() {
+    echo -e "${RED}[ERROR]${NC} $1" >&2
     exit 1
-fi
-echo
-if ! make install; then
-    fail_fn "Failed to execute: make install. Line: ${LINENO}"
-    exit 1
-fi
+}
 
-metalink_lib="$(find /usr/ -type f -name "libmetalink.so*")"
-metalink_trim="$(echo "$metalink_lib" | sed 's|\(.*\)/.*|\1|')"
+warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
 
-if [ -n "$metalink_lib" ] && [ ! -f "$metalink_trim/libmetalink.so.3" ]; then
-    ln -s "$metalink_lib" "$metalink_trim/libmetalink.so.3"
-fi
+check_dependencies() {
+    log "Checking for required dependencies..."
+    local dependencies=(autoconf automake bzip2 curl gfortran libcurl4-openssl-dev libexpat1-dev libgcrypt20-dev libgpgme-dev libssl-dev libunistring-dev pkg-config zlib1g-dev)
+    local to_install=()
+    for dep in "${dependencies[@]}"; do
+        if ! dpkg -l | grep -qw "$dep"; then
+            to_install+=("$dep")
+        fi
+    done
+    if [ ${#to_install[@]} -gt 0 ]; then
+        apt update
+        apt install -y "${to_install[@]}" || error "Failed to install dependencies."
+    fi
+}
 
-ldconfig "$metalink_trim"
+build_libmetalink() {
+    log "Building libmetalink..."
+    local libmetalink_dir="$cwd/libmetalink"
+    mkdir -p "$libmetalink_dir" && cd "$libmetalink_dir"
+    curl -Lso "libmetalink.tar.xz" "https://github.com/metalink-dev/libmetalink/releases/download/release-0.1.3/libmetalink-0.1.3.tar.xz"
+    tar -xf "libmetalink.tar.xz" --strip-components=1
+    ./configure --prefix="$install_dir" && make -j"$(nproc)" && make install || error "Failed to build libmetalink."
+    log "libmetalink built successfully."
+}
 
-printf "\n\n%s\n%s\n\n" \
-    "Build Wget - version latest" \
-    "==============================================="
-sleep 2
+build_wget() {
+    log "Building wget from source..."
+    local wget_dir="$cwd/wget"
+    mkdir -p "$wget_dir" && cd "$wget_dir"
+    curl -Lso "$archive_dir.tar.lz" "$archive_url"
+    tar --lzip -xf "$archive_dir.tar.lz" --strip-components=1
+    ./configure --prefix="$install_dir" \
+                --with-ssl=openssl \
+                --with-libssl-prefix="$install_dir" \
+                --with-metalink \
+                --with-libunistring-prefix=/usr \
+                --with-libcares \
+                --without-ipv6 \
+                --disable-nls && make -j"$(nproc)" && make install || error "Failed to build wget."
+    log "wget built and installed successfully."
+}
 
-if [ -d "$cwd/$archive_dir" ]; then
-    rm -fr "$cwd/$archive_dir"
-fi
-mkdir -p "$cwd/$archive_dir/build"
+cleanup() {
+    log "Cleaning up build directories..."
+    rm -rf "$cwd"
+    log "Cleanup complete."
+}
 
-if [ ! -f "$cwd/$archive_name" ]; then
-    curl -Lso "$cwd/$archive_name" "$archive_url"
-fi
+# Parse command line arguments
+parse_args() {
+    while (( "$#" )); do
+        case "$1" in
+            -v|--verbose)
+                verbose=1
+                shift
+                ;;
+            -h|--help)
+                display_help
+                ;;
+            *)
+                warn "Ignoring unrecognized option: $1"
+                shift
+                ;;
+        esac
+    done
+}
 
-if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
-    fail_fn "Failed to extract: $cwd/$archive_name"
-fi
+# Main execution flow
+main() {
+    parse_args "$@"
+    check_dependencies
+    build_libmetalink
+    build_wget
+    cleanup
+    log "Wget build script completed successfully."
+}
 
-if type -P update-ca-certificates &>/dev/null; then
-    update-ca-certificates
-fi
-
-openssl_lib_dir="$(pkg-config --libs-only-L openssl | awk '{print $1}' | sed 's/-L//')"
-
-cd "$cwd/$archive_dir/build" || exit 1
-../configure --prefix="$install_dir" \
-             --build="$pc_type" \
-             --host="$pc_type" \
-             --disable-debug \
-             --disable-ipv6 \
-             --disable-nls \
-             --enable-silent-rules \
-             --enable-threads=posix \
-             --enable-valgrind-tests \
-             --enable-year2038 \
-             --with-cares \
-             --with-gpgme-prefix=/usr \
-             --with-included-libunistring \
-             --with-libiconv-prefix=/usr \
-             --with-libintl-prefix=/usr \
-             --with-libssl-prefix=/usr \
-             --with-libunistring-prefix=/usr \
-             --with-linux-crypto \
-             --with-metalink \
-             --with-openssl=yes \
-             --with-ssl=openssl \
-             PKG_CONFIG="$(type -P pkg-config)" \
-             OPENSSL_LIBS="$openssl_lib_dir" \
-             OPENSSL_CFLAGS="-I/usr/include" \
-             GPGME_LIBS="$(pkg-config --libs gpgme)" \
-             GPGME_CFLAGS="-I/usr/include"
-
-if ! make "-j$(nproc --all)"; then
-    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
-    exit 1
-fi
-
-if ! make install; then
-    fail_fn "Failed to execute: make install. Line: ${LINENO}"
-    exit 1
-fi
-
-openssl_certs_dir="$(find /usr -type d -name certs | sort -r | head -n1)"
-if [ -n "$openssl_certs_dir" ]; then
-    echo "ca_directory=$openssl_certs_dir" | tee "/usr/local/etc/wgetrc" >/dev/null
-else
-    echo "ca_directory=/etc/ssl/certs" | tee "/usr/local/etc/wgetrc" >/dev/null
-fi
-
-cleanup_fn
-version_fn
-exit_fn
+main "$@"
