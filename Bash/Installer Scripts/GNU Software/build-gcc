@@ -152,7 +152,7 @@ unset join_str post_file pre_file tmp_dir
 # Set the global script variables
 script_ver=4.8
 install_prefix=/usr/local
-pc_type=x86_64-linux-gnu
+pc_type=$(gcc -dumpmachine)
 latest=false
 web_repo=https://github.com/slyfox1186/script-repo
 debug=ON # Change the DEBUG variable below to "on" to help troubleshoot bugs during the build
