@@ -1,196 +1,122 @@
 #!/usr/bin/env bash
 
-# GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-binutils
-# Purpose: build GNU binutils from source code
-# Updated: 01.14.24
-# Script version: 1.4
-
-set -e
-set -o pipefail
-
-if [ "${EUID}" -eq 0 ]; then
-    echo "You must run this script WITHOUT root/sudo."
-    exit 1
-fi
-
-# SET THE VARIABLES
-script_ver="1.4"
-archive_dir="binutils-2.42"
-archive_url="https://ftp.gnu.org/gnu/binutils/$archive_dir.tar.lz"
-archive_ext="${archive_url##*.}"
-archive_name="$archive_dir.tar.$archive_ext"
-cwd="$PWD/binutils-build-script"
-install_dir="/usr/local/binutils"
-
-# CREATE OUTPUT DIRECTORY
-mkdir -p "$cwd"
-cd "$cwd"
-
-# SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
-CC=gcc
-CXX=g++
-CFLAGS="-g -O3 -pipe -march=native"
-CXXFLAGS="$CFLAGS"
-CPPFLAGS="-I/usr/local/include -I/usr/include"
-LDFLAGS="-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib"
-export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
-
-if [ -d /usr/lib/ccache/bin ]; then
-    ccache_dir="/usr/lib/ccache/bin"
-else
-    ccache_dir="/usr/lib/ccache"
-fi
-
-# SET THE PATH VARIABLE
-PATH="\
-$ccache_dir:\
-$HOME/perl5/bin:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin\
-"
-export PATH
-
-# SET THE PKG_CONFIG_PATH VARIABLE
-PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/share/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig:\
-/lib/pkgconfig\
-"
-export PKG_CONFIG_PATH
-
-pkgs_fn() {
-    local missing_packages pkg pkgs available_packages unavailable_packages
-
-    pkgs=(
-        "$1" alien asciidoc autoconf autoconf-archive automake autopoint binutils bison
-        build-essential cmake curl dbus-x11 flex fontforge gettext gimp-data git gperf
-        imagemagick jq libamd2 libbabl-0.1-0 libc6 libc6-dev libcamd2 libccolamd2
-        libgegl-common libcholmod3 libcolamd2 libfont-ttf-perl libfreetype-dev libgc-dev
-        libgegl-0.4-0 libgimp2.0 libgimp2.0-dev libgl2ps-dev libglib2.0-dev libgraphviz-dev
-        libgs-dev libheif-dev libltdl-dev libmetis5 libnotify-bin libnuma-dev libomp-dev
-        libpango1.0-dev libpaper-dev libpng-dev libpstoedit-dev libraw-dev librsvg2-dev
-        librust-bzip2-dev libsdl2-dev libsuitesparseconfig5 libtcmalloc-minimal4 libticonv-dev
-        libtool libtool-bin libumfpack5 libxml2-dev libzip-dev libzstd-dev m4 meson nasm
-        ninja-build opencl-c-headers opencl-headers php php-cli pstoedit software-properties-common
-        xmlto yasm zlib1g-dev
-)
-
-    # Initialize arrays for missing, available, and unavailable packages
-    missing_packages=()
-    available_packages=()
-    unavailable_packages=()
-
-    # Loop through the array to find missing packages
-    for pkg in "${pkgs[@]}"
-    do
-        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
-            missing_packages+=("$pkg")
-        fi
-    done
-
-    # Check availability of missing packages and categorize them
-    for pkg in "${missing_packages[@]}"
-    do
-        if apt-cache show "$pkg" > /dev/null 2>&1; then
-            available_packages+=("$pkg")
-        else
-            unavailable_packages+=("$pkg")
-        fi
-    done
-
-    # Print unavailable packages
-    if [ "${#unavailable_packages[@]}" -gt 0 ]; then
-        echo "Unavailable packages: ${unavailable_packages[*]}"
-    fi
-
-    # Install available missing packages
-    if [ "${#available_packages[@]}" -gt 0 ]; then
-        echo "Installing available missing packages: ${available_packages[*]}"
-        sudo apt install "${available_packages[@]}"
-    else
-        printf "%s\n\n" "No missing packages to install or all missing packages are unavailable."
-    fi
-}
-
-# Function to extract the first word from a string
-get_first_word() {
-    echo "$1" | awk '{print $1}'
-}
-
-# Try to detect the OS using /etc/os-release, fall back to lsb_release if available
-if [ -f "/etc/os-release" ]; then
-    source "/etc/os-release"
-    OS=$(get_first_word "$NAME")
-elif lsb_release -d &> /dev/null; then
-    OS=$(lsb_release -d | awk "{print $2}")
-else
-    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
-fi
-
-# Select the package based on the OS
-case "${OS}" in
-    Debian)     pkgs_fn "libadacgi6-dev" ;;
-    Ubuntu)     pkgs_fn "libadacgi4-dev" ;;
-    *)          pkgs_fn ;;
-esac
-
-#
-# CHECK IF AUTOCONF VERSION 2.69 IS INSTALLED
-#
-
-ac_ver=$(autoconf --version 2>/dev/null | head -n 1 | awk "{print $NF}")
-if [[ "$ac_ver" != "2.69" ]]; then
-    wget --show-progress -t 2 -cqO build-autoconf-2.69 "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf-2.69"
-    if bash build-autoconf-2.69; then
-        rm build-autoconf-2.69
-    else
-        printf "%s\n\n" "Failed to install autoconf-v2.69"
+if [ "$EUID" -ne 0 ]; then
+        printf "%s\n\n" 'You must run this script with root/sudo.'
         exit 1
-    fi
 fi
 
-# Download and extract archive
-wget --show-progress -t 2 -cqO - "$archive_url" | tar --lzip -xf -
+# Color Codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
 
-cd "$archive_dir" || exit 1
+# Default Values
+PREFIX="/usr/local/binutils"
+TARGET="x86_64-elf"
+VERSION="2.38"
+BUILD_DIR="build-binutils"
 
-autoreconf -fi -I /usr/share/aclocal
-mkdir -p build
-cd build
-../configure --prefix="$install_dir" \
-             --disable-werror \
-             --enable-default-compressed-debug-sections-algorithm=zstd \
-             --enable-gold=default \
-             --enable-host-shared \
-             --enable-ld=yes \
-             --enable-libssp \
-             --enable-lto \
-             --enable-pgo-build=lto \
-             --enable-plugins \
-             --enable-year2038 \
-             --with-boot-ldflags="$LDFLAGS" \
-             --with-gcc-major-version-only \
-             --with-gmp=/usr \
-             --with-mpc=/usr \
-             --with-mpfr=/usr \
-             --with-stage1-ldflags="$LDFLAGS" \
-             --with-system-zlib \
-             --with-zstd
+# Print Usage Information
+usage() {
+    echo -e "${GREEN}Usage:${NC} $0 [-v version] [-p prefix] [-t target] [-h]"
+    echo "    -v    Specify binutils version to download (default: $VERSION)"
+    echo "    -p    Specify installation prefix (default: $PREFIX)"
+    echo "    -t    Specify target for binutils (default: $TARGET)"
+    echo "    -h    Display this help message and exit"
+}
 
-make "-j$(nproc --all)"
-sudo make all-gold install
+# Print error messages
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1" >&2
+}
+
+# Print info messages
+print_info() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+# Parse Command Line Arguments
+parse_arguments() {
+    while getopts ":v:p:t:h" opt; do
+        case ${opt} in
+            v ) VERSION="$OPTARG"
+                    ;;
+            p ) PREFIX="$OPTARG"
+                    ;;
+            t ) TARGET="$OPTARG"
+                    ;;
+            h ) usage
+                    exit 0
+                    ;;
+            \? ) print_error "Invalid option: $OPTARG"
+                     exit 1
+                    ;;
+            : ) print_error "Option -$OPTARG requires an argument."
+                    exit 1
+                    ;;
+        esac
+    done
+}
+
+# Check for autoconf version
+check_autoconf() {
+    local ac_ver=$(autoconf --version 2>/dev/null | head -n1 | awk '{print $NF}')
+    if [[ "$ac_ver" != "2.69" ]]; then
+        print_info "Autoconf version 2.69 is not installed. Attempting to install..."
+        wget --show-progress -t 2 -cqO build-autoconf-2.69 "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf-2.69"
+        if bash build-autoconf-2.69; then
+            rm build-autoconf-2.69
+            print_info "Successfully installed autoconf version 2.69."
+        else
+            print_error "Failed to install autoconf version 2.69."
+            exit 1
+        fi
+    else
+        print_info "Autoconf version 2.69 is already installed."
+    fi
+}
+
+# Cleanup Function
+cleanup() {
+    read -p "Do you want to remove the build directory $BUILD_DIR? [Y/n] " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        rm -rf "$BUILD_DIR"
+        print_info "Build directory removed."
+    else
+        print_info "Build directory not removed."
+    fi
+}
+
+# Exit Function
+exit_fn() {
+    local exit_code=$1
+    cleanup
+    exit $exit_code
+}
+
+# Main Installation Function
+install_binutils() {
+    check_autoconf
+    mkdir -p $BUILD_DIR
+    cd $BUILD_DIR || exit_fn 1
+    wget "https://ftp.gnu.org/gnu/binutils/binutils-$VERSION.tar.xz"
+    tar xf "binutils-$VERSION.tar.xz"
+    mkdir build && cd build || exit_fn 1
+    ../binutils-$VERSION/configure --target=$TARGET --prefix=$PREFIX --with-sysroot --disable-nls --disable-werror
+    make
+    make install || exit_fn 1
+    print_info "Binutils version $VERSION installed successfully to $PREFIX."
+    cd ../..
+}
 
 # Link the installed binaries (optional)
-sudo ln -sf "$install_dir"/bin/* /usr/local/bin/
+link_binutils() {
+    sudo ln -sf "$install_dir"/bin/* /usr/local/bin/
+}
 
-printf "%s\n\n" "Binutils installation complete."
+# Script Execution
+parse_arguments "$@"
+install_binutils
+link_binutils
+exit_fn 0
