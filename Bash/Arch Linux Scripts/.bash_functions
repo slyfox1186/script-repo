@@ -1969,7 +1969,7 @@ check_port() {
         fi
 
         case $choice in
-            [Yy][Ee][Ss]|[Yy])
+            [Yy][Ee][Ss]|[Yy]|"")
                 echo -e "\nKilling process $pid...\n"
                 if sudo kill -9 "$pid" 2>/dev/null; then
                     echo -e "Process $pid killed successfully.\n"
