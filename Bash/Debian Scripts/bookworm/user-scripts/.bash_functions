@@ -2225,3 +2225,10 @@ venv() {
         source venv/bin/activate
     fi
 }
+
+## SERVICES SELECTOR SCRIPT
+sss() {
+    local script="/usr/local/bin/services-selector.sh"
+    [[ ! -f "$script" ]] && sudo wget -cNO "$script" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/services-selector.sh"
+    sudo bash "$script"
+}
