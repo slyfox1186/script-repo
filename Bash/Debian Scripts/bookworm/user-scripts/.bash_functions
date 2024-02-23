@@ -2126,45 +2126,68 @@ mnd() {
 ##################
 
 check_port() {
-    local choice kill_choice pid name protocol
+    local port="$1"
+    local -A pid_protocol_map
+    local pid name protocol choice process_found=false
 
-    if [ -z "$1" ]; then
-        read -p 'Enter the port number: ' choice
-    else
-        choice="$1"
+    if [ -z "$port" ]; then
+        read -p 'Enter the port number: ' port < /dev/tty
     fi
 
-    if [ -z "$choice" ] && [ -z "$1" ]; then
-        echo "Error: No port was specified. Please pass the port to the function or enter it when prompted."
-        return 1
-    fi
+    echo -e "\nChecking for processes using port $port...\n"
 
-    echo "Checking for processes using port $choice..."
-
-    # Improved process information retrieval using lsof for both TCP and UDP
+    # Collect information
     while IFS= read -r line; do
         pid=$(echo "$line" | awk '{print $2}')
         name=$(echo "$line" | awk '{print $1}')
         protocol=$(echo "$line" | awk '{print $8}')
 
         if [ -n "$pid" ] && [ -n "$name" ]; then
-            echo "Process using port $choice: $name (PID: $pid, Protocol: $protocol)"
-            read -p "Do you want to kill this process? (yes/no): " kill_choice
-
-            shopt -s nocasematch
-            case "$kill_choice" in
-                yes|y|"") sudo kill -9 "$pid"
-                          echo "Process $pid killed."
-                          ;;
-                no|n)     echo "Process $pid not killed."
-                          ;;
-                *)        echo "Invalid option. Exiting." ;;
-            esac
-            shopt -u nocasematch
-        else
-            echo "No process is using port $choice."
+            process_found=true
+            # Ensure protocol is only listed once per process
+            [[ "${pid_protocol_map[$pid,$name]}" != *"$protocol"* ]] && pid_protocol_map["$pid,$name"]+="$protocol "
         fi
-    done < <(sudo lsof -i :"$choice" -nP | grep -v "COMMAND")
+    done < <(sudo lsof -i :"$port" -nP | grep -v "COMMAND")
+
+    # Process information
+    for key in "${!pid_protocol_map[@]}"; do
+        IFS=',' read -r pid name <<< "$key"
+        protocol=${pid_protocol_map[$key]}
+        # Removing trailing space
+        protocol=${protocol% }
+
+        # Display process and protocol information
+        echo -e "Process: $name (PID: $pid) using ${protocol// /, }"
+
+        if [[ $protocol == *"TCP"* && $protocol == *"UDP"* ]]; then
+            echo -e "\nBoth the TCP and UDP protocols are being used by the same process.\n"
+            read -p "Do you want to kill it? (yes/no): " choice < /dev/tty
+        else
+            read -p "Do you want to kill this process? (yes/no): " choice < /dev/tty
+        fi
+
+        case $choice in
+            [Yy][Ee][Ss]|[Yy])
+                echo -e "\nKilling process $pid...\n"
+                if sudo kill -9 "$pid" 2>/dev/null; then
+                    echo -e "Process $pid killed successfully.\n"
+                else
+                    echo -e "Failed to kill process $pid. It may have already exited or you lack the necessary permissions.\n"
+                fi
+                ;;
+            [Nn][Oo]|[Nn])
+                echo -e "\nProcess $pid not killed.\n"
+                ;;
+            *)
+                echo -e "\nInvalid response. Exiting.\n"
+                return
+                ;;
+        esac
+    done
+
+    if [ "$process_found" = false ]; then
+        echo -e "No process is using port $port.\n"
+    fi
 }
 
 dlu() {
