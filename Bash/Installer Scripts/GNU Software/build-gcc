@@ -155,7 +155,7 @@ install_prefix=/usr/local
 pc_type=$(gcc -dumpmachine)
 latest=false
 web_repo=https://github.com/slyfox1186/script-repo
-debug=ON # Change the DEBUG variable below to "on" to help troubleshoot bugs during the build
+debug=OFF # Change the DEBUG variable below to "on" to help troubleshoot bugs during the build
 
 # Set the c & cpp compilers with the optimization flags
 CC=gcc
