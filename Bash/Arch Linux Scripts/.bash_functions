@@ -1928,7 +1928,7 @@ rm_curly()
 ##################
 
 check_port() {
-    local choice kill_choice pid name
+    local choice kill_choice pid name protocol
 
     if [ -z "$1" ]; then
         read -p 'Enter the port number: ' choice
@@ -1936,29 +1936,35 @@ check_port() {
         choice="$1"
     fi
 
-    echo
-    # Getting the process information using lsof
-    while IFS= read -r line
-    do
-        if [[ "$line" == p* ]]; then
-            pid=${line#p}
-        elif [[ "$line" == c* ]]; then
-            name=${line#c}
-        fi
-    done < <(lsof -i :"$choice" -sTCP:LISTEN -Fpc)
-
-    if [ -n "$pid" ] && [ -n "$name" ]; then
-        echo "Process using port $choice: $name (PID: $pid)"
-        read -p "Do you want to kill the process? (yes/no): " kill_choice
-
-        shopt -s nocasematch
-        case "$kill_choice" in
-            yes|y|"") sudo kill -9 "$pid" ;;
-            no|n)     return ;;
-            *)        echo "Invalid option. Exiting." ;;
-        esac
-        shopt -u nocasematch
-    else
-        echo "No process is using port $choice."
+    if [ -z "$choice" ] && [ -z "$1" ]; then
+        echo "Error: No port was specified. Please pass the port to the function or enter it when prompted."
+        return 1
     fi
+
+    echo "Checking for processes using port $choice..."
+
+    # Improved process information retrieval using lsof for both TCP and UDP
+    while IFS= read -r line; do
+        pid=$(echo "$line" | awk '{print $2}')
+        name=$(echo "$line" | awk '{print $1}')
+        protocol=$(echo "$line" | awk '{print $8}')
+
+        if [ -n "$pid" ] && [ -n "$name" ]; then
+            echo "Process using port $choice: $name (PID: $pid, Protocol: $protocol)"
+            read -p "Do you want to kill this process? (yes/no): " kill_choice
+
+            shopt -s nocasematch
+            case "$kill_choice" in
+                yes|y|"") sudo kill -9 "$pid"
+                          echo "Process $pid killed."
+                          ;;
+                no|n)     echo "Process $pid not killed."
+                          ;;
+                *)        echo "Invalid option. Exiting." ;;
+            esac
+            shopt -u nocasematch
+        else
+            echo "No process is using port $choice."
+        fi
+    done < <(sudo lsof -i :"$choice" -nP | grep -v "COMMAND")
 }
