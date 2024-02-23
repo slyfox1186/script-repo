@@ -44,7 +44,7 @@ install_prefix=/usr/local
 cwd="$PWD"/download-tools-build-script
 packages="$cwd"/packages
 workspace="$cwd"/workspace
-pc_type=x86_64-linux-gnu
+pc_type=$(gcc -dumpmachine)
 if [ -d '/usr/local/ssl/certs' ]; then
     cert_dir='/usr/local/ssl/certs'
 else
