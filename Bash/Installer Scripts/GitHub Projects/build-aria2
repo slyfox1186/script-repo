@@ -93,7 +93,7 @@ fi
 build_dir="$HOME/aria2-build"
 install_dir="/usr/local"
 archive_url="https://github.com/aria2/aria2/releases/download/release-$aria2_ver/aria2-$aria2_ver.tar.xz"
-certs_dir="$(pkg-config --variable=libdir openssl)"
+certs_dir="/etc/ssl/certs"
 
 # Prepare build directory
 echo "Creating build directory: $build_dir"
@@ -122,6 +122,9 @@ cd "libgpg-error-$gcrypt_error_ver"
 ./configure --prefix="$install_dir" || handle_error "Failed to configure gcrypt-error"
 make -j"$(nproc)" && sudo make install || handle_error "Failed to build and install gcrypt-error"
 cd ..
+
+# Source the latest caert from curl.se
+sudo curl -t 2 -Lso "$certs_dir/cacert.pem" "https://curl.se/ca/cacert.pem"
 
 # Compile Aria2
 printf "\n%s\n%s\n\n" "Compiling Aria2..." "================================"
