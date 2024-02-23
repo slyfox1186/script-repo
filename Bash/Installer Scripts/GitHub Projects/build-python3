@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-clear
 
 # Disable specific shellcheck warnings that are not applicable after optimizations
 # shellcheck disable=SC1091,SC2001,SC2068,SC2086,SC2155,SC2162,SC2317
@@ -10,8 +9,13 @@ clear
 ##  Updated: 01.27.24
 ##  Script version: 2.4 (Optimized and Corrected)
 
+if [[ "$EUID" -ne 0 ]]; then
+    printf "%s\n\n" "You must run this script with root/sudo."
+    exit 1
+fi
+
 script_ver="2.4"
-python_version="3.12.1"
+python_version="3.12.2"
 archive_url="https://www.python.org/ftp/python/$python_version/Python-$python_version.tar.xz"
 install_dir="/usr/local"
 cwd="$PWD/python3-build-script"
