@@ -1,215 +1,99 @@
 #!/usr/bin/env bash
 
-############################################################################################################################
-##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-gawk
-##
-##  Purpose: build gnu gawk
-##
-##  Updated: 12.03.23
-##
-##  Script version: 1.3
-##
-############################################################################################################################
+# Purpose: Build GNU gawk optimized for x86_64/amd64 PCs
+# Updated: 02.24.24
+# Script version: 1.4
 
-clear
-
-if [ "${EUID}" -ne '0' ]; then
-    printf "%s\n\n" 'You must run this script with root/sudo.'
+if [[ $EUID -ne 0 ]]; then
+    echo -e "\033[31mThis script must be run as root or with sudo.\033[0m"
     exit 1
 fi
 
-#
-# SET THE VARIABLES
-#
+script_ver="1.4"
+cwd="$PWD/gawk-build-script"
+install_dir="/usr/local"
+web_repo="https://github.com/slyfox1186/script-repo"
+gnu_ftp="https://ftp.gnu.org/gnu/gawk/"
 
-script_ver=1.3
-archive_dir=gawk-5.3.0
-archive_url=https://ftp.gnu.org/gnu/gawk/"$archive_dir".tar.lz
-archive_ext="${archive_url//*.}"
-archive_name="$archive_dir.tar.${archive_ext}"
-cwd="$PWD"/gawk-build-script
-install_dir=/usr/local
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/script-repo
-
-printf "%s\n%s\n\n" \
-    "gawk build script - v${script_ver}" \
-    '==============================================='
-
-#
-# CREATE OUTPUT DIRECTORY
-#
-
-if [ -d "$cwd" ]; then
-    rm -fr "$cwd"
-fi
-mkdir -p "$cwd"
-
-#
-# SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
-#
-
-CC=gcc
-CXX=g++
-CFLAGS='-g -O3 -pipe -march=native'
-CXXFLAGS="${CFLAGS}"
-CPPFLAGS="-I$install_dir/include/x86_64-linux-gnu"
-export CC CXX CFLAGS CPPFLAGS CXXFLAGS
-
-#
-# SET THE PATH VARIABLE
-#
-
-PATH="\
-/usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
-
-#
-# SET THE PKG_CONFIG_PATH VARIABLE
-#
-
-PKG_CONFIG_PATH="\
-/usr/share/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/pkgconfig:\
-/lib/pkgconfig\
-"
-export PKG_CONFIG_PATH
-
-#
-# CREATE FUNCTIONS
-#
-
-exit_fn()
-{
-    printf "\n%s\n\n%s\n\n" \
-        'Make sure to star this repository to show your support!' \
-        "$web_repo"
-    exit 0
-}
-
-fail_fn()
-{
-    printf "\n%s\n\n%s\n\n" \
-        "$1" \
-        "To report a bug create an issue at: $web_repo/issues"
-    exit 1
-}
-
-cleanup_fn()
-{
-    local choice
-
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
-
-    case "${choice}" in
-        1)      rm -fr "$cwd";;
-        2)      echo;;
-        *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
-                unset choice
-                clear
-                cleanup_fn
-                ;;
+print_color() {
+    case $1 in
+        green) echo -e "\033[0;32m$2\033[0m" ;;
+        red) echo -e "\033[0;31m$2\033[0m" ;;
+        *) echo "$2" ;;
     esac
 }
 
-#
-# INSTALL REQUIRED APT PACKAGES
-#
+print_banner() {
+    print_color green "gawk build script - v${script_ver}"
+    echo "==============================================="
+}
 
-pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache cmake
-      curl git libtool libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev yasm)
+cleanup() {
+    print_color green "Cleaning up..."
+    rm -fr "$cwd"
+}
 
-for i in ${pkgs[@]}
-do
-    missing_pkg="$(dpkg -l | grep -o "${i}")"
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+handle_failure() {
+    print_color red "\nAn error occurred. Exiting..."
+    cleanup
+    exit 1
+}
+
+install_missing_packages() {
+    print_color green "Checking and installing missing packages..."
+    if command -v apt > /dev/null; then
+        pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl git libtool libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev yasm)
+        apt update
+        for pkg in "${pkgs[@]}"; do
+            if ! dpkg -l | grep -qw $pkg; then
+                apt install -y $pkg
+            fi
+        done
+    elif command -v yum > /dev/null; then
+        yum install -y autoconf automake binutils gcc gcc-c++ make
+    else
+        print_color red "Unsupported package manager. Please install dependencies manually."
+        exit 1
     fi
-done
+}
 
-if [ -n "$missing_pkgs" ]; then
-    apt install $missing_pkgs
-    apt -y autoremove
+find_latest_release() {
     clear
-fi
+    print_color green "Finding the latest gawk release..."
+    latest_release=$(curl -sL $gnu_ftp | grep tar.lz | grep -v '.sig' | sed -n 's/.*href="\([^"]*\).*/\1/p' | sort -V | tail -n 1)
+    if [[ -z $latest_release ]]; then
+        print_color red "Failed to find the latest gawk release. Exiting..."
+        exit 1
+    fi
+    archive_url="${gnu_ftp}${latest_release}"
+    archive_name="${latest_release}"
+    archive_dir=$(echo $latest_release | sed 's/.tar.lz//')
+}
 
-#
-# DOWNLOAD THE ARCHIVE FILE
-#
+download_and_extract() {
+    print_color green "Downloading and extracting gawk..."
+    mkdir -p "$cwd"
+    cd "$cwd" || exit
+    if [[ ! -f $archive_name ]]; then
+        curl -Lso $archive_name $archive_url
+    fi
+    mkdir -p "$archive_dir/build"
+    tar --lzip -xf $archive_name -C "$archive_dir/build" --strip-components 1 || handle_failure
+}
 
-if [ ! -f "$cwd/${archive_name}" ]; then
-    curl -A "$user_agent" -Lso "$cwd/${archive_name}" "${archive_url}"
-fi
+build_and_install() {
+    print_color green "Building and installing gawk..."
+    cd "$archive_dir/build" || exit 1
+    ./configure --prefix=/usr/local/gawk CFLAGS="-g -O3 -pipe -march=native" --build=x86_64-linux-gnu --host=x86_64-linux-gnu || handle_failure
+    make "-j$(nproc)" || handle_failure
+    make install || handle_failure
+    print_color green "gawk installation completed successfully."
+}
 
-#
-# CREATE OUTPUT DIRECTORY
-#
-
-if [ -d "$cwd/$archive_dir" ]; then
-    rm -fr "$cwd/$archive_dir"
-fi
-mkdir -p "$cwd/$archive_dir/build"
-
-#
-# EXTRACT ARCHIVE FILES
-#
-
-if ! tar -xf "$cwd/${archive_name}" -C "$cwd/$archive_dir" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: $cwd/${archive_name}"
-    exit 1
-fi
-
-#
-# BUILD PROGRAM FROM SOURCE
-#
-
-cd "$cwd/$archive_dir" || exit 1
-autoreconf -fi
-cd build || exit 1
-../configure --prefix="$install_dir"       \
-             --{build,host}=x86_64-linux-gnu \
-             --disable-nls
-
-if ! make "-j$(nproc --all)"; then
-    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
-    exit 1
-fi
-
-if ! make install; then
-    fail_fn "Failed to execute: make install. Line: ${LINENO}"
-    exit 1
-fi
-
-# PROMPT USER TO CLEAN UP FILES
-cleanup_fn
-
-# SHOW EXIT MESSAGE
-exit_fn
+# Start the script
+print_banner
+install_missing_packages
+find_latest_release
+download_and_extract
+build_and_install
+cleanup
