@@ -78,7 +78,7 @@ cwd="$PWD/ffmpeg-build-script"
 packages="$cwd/packages"
 workspace="$cwd/workspace"
 install_dir=/usr/local
-pc_type=$(gcc -dumpmachine)
+pc_type=x86_64-linux-gnu
 web_repo=https://github.com/slyfox1186/script-repo
 LDEXEFLAGS=""
 ffmpeg_libraries=()
@@ -779,7 +779,7 @@ $workspace/share/pkgconfig:\
 "
 export PKG_CONFIG_PATH
 
-check_nvidia_gpu() {
+check_installed_cuda_version() {
     cuda_version_test=$(cat "/usr/local/cuda/version.json" 2>/dev/null | jq -r '.cuda.version' 2>/dev/null)
 }
 
@@ -795,7 +795,7 @@ check_amd_gpu() {
     fi
 }
 
-fetch_and_parse_cuda_version() {
+check_remote_cuda_version() {
     local url="https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html"
 
     # Use curl to fetch the HTML content of the page
@@ -966,7 +966,7 @@ cuda_download_fn() {
 }
 
 # Function to detect the environment and check for an NVIDIA GPU
-nvidia_gpu_check_fn() {
+check_nvidia_gpu_fn() {
     # Check for NVIDIA GPU in native Linux
     if ! grep -qi microsoft /proc/version; then
         if lspci | grep -i nvidia > /dev/null; then
@@ -1009,15 +1009,14 @@ nvidia_gpu_check_fn() {
 install_cuda_fn() {
     local choice
 
-    nvidia_gpu_check_fn
-    fetch_and_parse_cuda_version
+    check_nvidia_gpu_fn
+    check_installed_cuda_version
+    check_remote_cuda_version
 
     echo "Checking GPU Status"
     echo "========================================================"
 
     amd_gpu_test=$(check_amd_gpu)
-    echo "$amd_gpu_test"
-
     nvidia_gpu_status="$is_nvidia_gpu_present"
     nvidia_cuda_test="$cuda_version_test"
 
@@ -3156,6 +3155,7 @@ if [[ ! "$ffmpeg_ver_check" == "$ffmpeg_ver" ]]; then
         "You can modify the variable \"ffmpeg_ver\" if desired to change versions."
 fi
 
+# Clean the cflags and cxxflags before building ffmpeg
 source_flags_fn
 
 if build "ffmpeg" "$ffmpeg_ver"; then
@@ -3166,8 +3166,6 @@ if build "ffmpeg" "$ffmpeg_ver"; then
 
     mkdir build
     cd build || exit 1
-    LDEXEFLAGS=-Wl,-rpath,\''$$ORIGIN/../lib'\' \
-    LDSOFLAGS=-Wl,-rpath,\''$$$$ORIGIN'\' \
     ../configure --prefix="$install_dir" \
                  --arch=$(uname -m) \
                  --cc="$CC" \
