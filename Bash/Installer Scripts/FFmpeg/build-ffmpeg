@@ -3155,11 +3155,13 @@ if [[ ! "$ffmpeg_ver_check" == "$ffmpeg_ver" ]]; then
         "You can modify the variable \"ffmpeg_ver\" if desired to change versions."
 fi
 
-# Clean the cflags and cxxflags before building ffmpeg
 source_flags_fn
 
-if build "ffmpeg" "$ffmpeg_ver"; then
-    download $ffmpeg_url $ff_cmd
+git_call_fn "https://git.ffmpeg.org/ffmpeg.git" "ffmpeg-git"
+if build "$repo_name" "${version//\$ /}"; then
+    echo "Cloning \"$repo_name\" saving version \"$version\""
+    download_git "$git_url"
+
     if [[ "$OS" == "Arch" ]]; then
         patch_ffmpeg_fn
     fi
