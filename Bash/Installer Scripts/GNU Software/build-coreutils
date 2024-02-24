@@ -1,222 +1,74 @@
 #!/usr/bin/env bash
 
-###########################################################################################################
-##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-coreutils
-##
-##  Purpose: build gnu coreutils
-##
-##  Updated: 08.31.23
-##
-##  Script version: 1.2
-##
-###########################################################################################################
+# This script builds and installs GNU Core Utilities from source.
 
-clear
-
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
-    exit 1
-fi
-
-#
-# SET THE VARIABLES
-#
-
-script_ver=1.2
-archive_dir=coreutils-9.4
-archive_url=https://ftp.gnu.org/gnu/coreutils/$archive_dir.tar.xz
-archive_ext="${archive_url//*.}"
-archive_name="$archive_dir.tar.${archive_ext}"
-cwd="$PWD"/coreutils-build-script
-install_dir=/usr/local
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/script-repo
-
-printf "%s\n%s\n\n" \
-    "coreutils build script - v${script_ver}" \
-    '==============================================='
-
-#
-# CREATE THE OUTPUT DIRECTORY
-#
-
-if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
-fi
-mkdir -p "$cwd"
-
-#
-# SET THE C + CPP COMPILERS
-#
-
-export CC=gcc CXX=g++
-
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
-
-#
-# SET THE PATH VARIABLE
-#
-
-PATH="\
-/usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
-
-#
-# SET THE PKG_CONFIG_PATH VARIABLE
-#
-
-PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
-"
-export PKG_CONFIG_PATH
-
-#
-# CREATE THE FUNCTIONS
-#
-
-exit_fn()
-{
-    printf "\n%s\n\n%s\n\n" \
-        'Make sure to star this repository to show your support!' \
-        "$web_repo"
-    exit 0
-}
-
-fail_fn()
-{
-    printf "\n%s\n\n%s\n\n" \
-        "$1" \
-        "To report a bug create an issue at: $web_repo/issues"
-    exit 1
-}
-
-cleanup_fn()
-{
-    local choice
-
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
-
-    case "${choice}" in
-        1)      sudo rm -fr "$cwd";;
-        2)      echo;;
-        *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
-                unset choice
-                clear
-                cleanup_fn
-                ;;
+# Function to print messages in color
+print_color() {
+    case $1 in
+        green) echo -e "\033[0;32m$2\033[0m" ;;
+        red) echo -e "\033[0;31m$2\033[0m" ;;
+        *) echo "$2" ;;
     esac
 }
 
-#
-# INSTALL THE REQUIRED APT PACKAGES
-#
+# Check for root privileges
+if [[ $EUID -ne 0 ]]; then
+    print_color red "This script must be run as root or with sudo."
+    exit 1
+fi
 
-pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache
-      clang clang-tools cmake curl git libtool libtool-bin m4 nasm ninja-build
-      texinfo zlib1g-dev yasm)
-
-for i in ${pkgs[@]}
-do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+# Function to install dependencies
+install_dependencies() {
+    print_color green "Installing necessary dependencies..."
+    if command -v apt > /dev/null; then
+        apt update
+        apt install -y wget build-essential autoconf autoconf-archive
+    elif command -v yum > /dev/null; then
+        yum install -y wget gcc make
+    else
+        print_color red "Unsupported package manager. Please install dependencies manually."
+        exit 1
     fi
-done
+}
 
-if [ -n "$missing_pkgs" ]; then
-    sudo apt install $missing_pkgs
-    sudo apt -y autoremove
-    clear
-fi
+# Function to download and extract coreutils
+download_coreutils() {
+    print_color green "Downloading GNU Core Utilities..."
+    wget --show-progress -cq https://ftp.gnu.org/gnu/coreutils/coreutils-9.4.tar.xz
+    tar -xf coreutils-9.4.tar.xz
+    cd coreutils-9.4
+}
 
-#
-# DOWNLOAD THE ARCHIVE FILE
-#
+# Function to configure, compile, and install coreutils
+build_and_install() {
+    print_color green "Running autoreconf..."
+    autoreconf -fi
+    print_color green "Configuring GNU Core Utilities..."
+    ./configure --prefix=/usr/local/coreutils \
+                --{build,host}=x86_64-linux-gnu \
+                --disable-nls \
+                --disable-gcc-warnings \
+                --enable-threads=posix \
+                --with-clang=system \
+                --with-openssl=auto \
+                --with-pic
+    print_color green "Compiling GNU Core Utilities... This may take a while."
+    make "-j$(nproc --all)"
+    print_color green "Installing GNU Core Utilities..."
+    make install
+    print_color green "GNU Core Utilities installed successfully."
+}
 
-if [ ! -f "$cwd/${archive_name}" ]; then
-    curl -A "$user_agent" -Lso "$cwd/${archive_name}" "${archive_url}"
-fi
+# Link the installed binaries (optional)
+link_coretils() {
+    ln -sf /usr/local/coreutils/bin/* /usr/local/bin/
+}
 
-#
-# CREATE THE OUTPUT DIRECTORY
-#
+main() {
+    install_dependencies
+    download_coreutils
+    build_and_install
+    link_coretils
+}
 
-if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
-fi
-mkdir -p "$cwd/$archive_dir/build"
-
-#
-# EXTRACT THE ARCHIVE FILES
-#
-
-if ! tar -xf "$cwd/${archive_name}" -C "$cwd/$archive_dir" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: $cwd/${archive_name}"
-    exit 1
-fi
-
-#
-# BUILD COREUTILS FROM IT'S SOURCE CODE
-#
-
-cd "$cwd/$archive_dir" || exit 1
-autoreconf -fi
-cd build || exit 1
-../configure --prefix="$install_dir"       \
-             --{build,host}=x86_64-linux-gnu \
-             --disable-nls                   \
-             --disable-gcc-warnings          \
-             --enable-threads=posix          \
-             --with-clang=system             \
-             --with-openssl=auto             \
-             --with-pic
-make "-j$(nproc --all)"
-if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
-    exit 1
-fi
-
-# PROMPT THE USER TO CLEAN UP THE LEFTOVER FILES
-cleanup_fn
-
-# SHOW THE EXIT MESSAGE
-exit_fn
+main "$@"
