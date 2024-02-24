@@ -31,15 +31,41 @@ if [ -n "$missing_pkgs" ]; then
 fi
 clear
 
-# INSTALL THE REQUIRED PIP PACKAGES
-pip_dir="$(mktemp -d)"
-echo "ffpb" > "$pip_dir/requirements.txt"
-echo "google_speech" >> "$pip_dir/requirements.txt"
-if ! pip install --break-system-packages -U -r "$pip_dir/requirements.txt" &>/dev/null; then
-    printf "%s\n\n" "Failed to install the pip packages."
-    exit 1
+# Install the required pip packages
+# Specify a permanent location for the virtual environment
+venv_dir="$HOME/my_venv"
+
+# Check if the virtual environment already exists
+if [ ! -d "$venv_dir" ]; then
+    echo "Creating virtual environment in $venv_dir"
+    python3 -m venv "$venv_dir"
+else
+    echo "Using existing virtual environment in $venv_dir"
 fi
-sudo rm -fr "$pip_dir"
+
+# Activate the virtual environment
+source "$venv_dir/bin/activate"
+
+# Function to check if a package is installed
+is_package_installed() {
+    pip list | grep "^$1 " > /dev/null
+}
+
+# List of required packages
+required_packages=("ffpb" "google_speech")
+
+# Iterate over the required packages and install if not already installed
+for pkg in "${required_packages[@]}"; do
+    if is_package_installed "$pkg"; then
+        echo "$pkg is already installed."
+    else
+        echo "Installing $pkg..."
+        pip install "$pkg" > /dev/null && echo "$pkg installed successfully." || { echo "Failed to install $pkg."; exit 1; }
+    fi
+done
+
+echo "Setup complete. The python virtual environment is ready to use."
+
 
 # CREATE AN OUTPUT FILE THAT CONTAINS ALL OF THE VIDEO PATHS AND USE IT TO LOOP THE CONTENTS
 tmp_list_dir="$(mktemp -d)"
