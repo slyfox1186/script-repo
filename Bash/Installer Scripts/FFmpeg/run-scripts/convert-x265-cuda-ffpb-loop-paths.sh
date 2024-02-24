@@ -37,7 +37,7 @@ venv_dir="$HOME/my_venv"
 
 # Check if the virtual environment already exists
 if [ ! -d "$venv_dir" ]; then
-    echo "Creating virtual environment in $venv_dir"
+    echo "Creating a virtual environment in $venv_dir"
     python3 -m venv "$venv_dir"
 else
     echo "Using existing virtual environment in $venv_dir"
@@ -52,7 +52,7 @@ is_package_installed() {
 }
 
 # List of required packages
-required_packages=("ffpb" "google_speech")
+required_packages=(ffpb google_speech)
 
 # Iterate over the required packages and install if not already installed
 for pkg in "${required_packages[@]}"; do
@@ -119,31 +119,29 @@ Length:          $length mins
 EOF
 
     echo
-    if ffpb \
-            -y \
-            -threads 0 \
+    if ffpb -y \
+            -vsync 0 \
             -hide_banner \
             -hwaccel_output_format cuda \
             -i "$file_in" \
             -c:v hevc_nvenc \
-            -preset:v medium \
-            -profile:v main10 \
-            -pix_fmt:v p010le \
+            -preset medium \
+            -profile main10 \
+            -pix_fmt p010le \
             -rc:v vbr \
-            -tune:v hq \
+            -tune hq \
             -b:v "${bitrate}k" \
-            -maxrate:v "${maxrate}k" \
-            -bf:v 4 \
-            -b_ref_mode:v middle \
-            -qmin:v 0 \
-            -qmax:v 99 \
-            -temporal-aq:v 1 \
-            -rc-lookahead:v 70 \
-            -i_qfactor:v 0.75 \
-            -b_qfactor:v 1.1 \
-            -c:a libfdk_aac \
-            -qmin:a 1 \
-            -qmax:a 5 \
+            -bufsize "${bitrate}k" \
+            -maxrate "${maxrate}k" \
+            -bf:v 3 \
+            -g 250 \
+            -b_ref_mode middle \
+            -qmin 0 \
+            -temporal-aq 1 \
+            -rc-lookahead 20 \
+            -i_qfactor 0.75 \
+            -b_qfactor 1.1 \
+            -c:a copy \
             "$file_out"; then
         google_speech "Video conversion completed." 2>/dev/null
         if [ -f "$file_out" ]; then
