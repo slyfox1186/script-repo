@@ -57,11 +57,28 @@ build_and_install() {
     print_color green "Building and installing..."
     cd "$cwd/$archive_dir"
     autoreconf -fi
-    ./configure --prefix=/usr/local \
-        CFLAGS="-O2" && \
+    echo ./configure --prefix=/usr/local/$archive_dir \
+                --disable-nls \
+                --enable-backup-scripts \
+                --enable-gcc-warnings=no \
+                --with-libiconv-prefix=/usr/local \
+                --with-libintl-prefix=/usr \
+                CFLAGS="-g -O3 -pipe -march=native" \
+                CXXFLAGS="-g -O3 -pipe -march=native" \
+                DEFAULT_ARCHIVE_FORMAT=posix && \
     make "-j$(nproc --all)" && \
     make install
     print_color green "Installation completed successfully."
+}
+
+# Link the installed binaries (optional)
+link_tar() {
+    print_color green "Creating softlink..."
+    if ln -sf /usr/local/$archive_dir/bin/* /usr/local/bin/; then
+        print_color green "Softlink created successfully."
+    else
+        print_color red "Softlink failed to create."
+    fi
 }
 
 cleanup() {
@@ -75,6 +92,7 @@ main() {
     find_latest_tar_tarball
     download_and_extract
     build_and_install
+    link_tar
     cleanup
 }
 
