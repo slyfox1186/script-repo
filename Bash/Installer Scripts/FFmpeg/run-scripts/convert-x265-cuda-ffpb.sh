@@ -161,6 +161,7 @@ if ffpb \
         -y \
         -threads 0 \
         -hide_banner \
+        -hwaccel cuda \
         -hwaccel_output_format cuda \
         -i "${file_in}" \
         -pix_fmt p010le \

@@ -1928,37 +1928,73 @@ rm_curly()
 ##################
 
 check_port() {
-    local choice kill_choice pid name
+    local port="$1"
+    local -A pid_protocol_map
+    local pid name protocol choice process_found=false
 
-    if [ -z "$1" ]; then
-        read -p 'Enter the port number: ' choice
-    else
-        choice="$1"
+    if [ -z "$port" ]; then
+        read -p 'Enter the port number: ' port < /dev/tty
     fi
 
-    echo
-    # Getting the process information using lsof
-    while IFS= read -r line
-    do
-        if [[ "$line" == p* ]]; then
-            pid=${line#p}
-        elif [[ "$line" == c* ]]; then
-            name=${line#c}
+    echo -e "\nChecking for processes using port $port...\n"
+
+    # Collect information
+    while IFS= read -r line; do
+        pid=$(echo "$line" | awk '{print $2}')
+        name=$(echo "$line" | awk '{print $1}')
+        protocol=$(echo "$line" | awk '{print $8}')
+
+        if [ -n "$pid" ] && [ -n "$name" ]; then
+            process_found=true
+            # Ensure protocol is only listed once per process
+            [[ "${pid_protocol_map[$pid,$name]}" != *"$protocol"* ]] && pid_protocol_map["$pid,$name"]+="$protocol "
         fi
-    done < <(lsof -i :"$choice" -sTCP:LISTEN -Fpc)
+    done < <(sudo lsof -i :"$port" -nP | grep -v "COMMAND")
 
-    if [ -n "$pid" ] && [ -n "$name" ]; then
-        echo "Process using port $choice: $name (PID: $pid)"
-        read -p "Do you want to kill the process? (yes/no): " kill_choice
+    # Process information
+    for key in "${!pid_protocol_map[@]}"; do
+        IFS=',' read -r pid name <<< "$key"
+        protocol=${pid_protocol_map[$key]}
+        # Removing trailing space
+        protocol=${protocol% }
 
-        shopt -s nocasematch
-        case "$kill_choice" in
-            yes|y|"") sudo kill -9 "$pid" ;;
-            no|n)     return ;;
-            *)        echo "Invalid option. Exiting." ;;
+        # Display process and protocol information
+        echo -e "Process: $name (PID: $pid) using ${protocol// /, }"
+
+        if [[ $protocol == *"TCP"* && $protocol == *"UDP"* ]]; then
+            echo -e "\nBoth the TCP and UDP protocols are being used by the same process.\n"
+            read -p "Do you want to kill it? (yes/no): " choice < /dev/tty
+        else
+            read -p "Do you want to kill this process? (yes/no): " choice < /dev/tty
+        fi
+
+        case $choice in
+            [Yy][Ee][Ss]|[Yy]|"")
+                echo -e "\nKilling process $pid...\n"
+                if sudo kill -9 "$pid" 2>/dev/null; then
+                    echo -e "Process $pid killed successfully.\n"
+                else
+                    echo -e "Failed to kill process $pid. It may have already exited or you lack the necessary permissions.\n"
+                fi
+                ;;
+            [Nn][Oo]|[Nn])
+                echo -e "\nProcess $pid not killed.\n"
+                ;;
+            *)
+                echo -e "\nInvalid response. Exiting.\n"
+                return
+                ;;
         esac
-        shopt -u nocasematch
-    else
-        echo "No process is using port $choice."
+    done
+
+    if [ "$process_found" = false ]; then
+        echo -e "No process is using port $port.\n"
     fi
+}
+
+## SERVICES SELECTOR SCRIPT
+sss() {
+    local script="/usr/local/bin/services-selector.sh"
+    [[ ! -f "$script" ]] && sudo wget -cNO "$script" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/services-selector.sh"
+    sudo bash "$script"
 }

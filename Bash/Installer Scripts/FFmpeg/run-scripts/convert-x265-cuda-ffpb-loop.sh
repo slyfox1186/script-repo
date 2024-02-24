@@ -165,6 +165,7 @@ EOF
             -y \
             -threads 0 \
             -hide_banner \
+            -hwaccel cuda \
             -hwaccel_output_format cuda \
             -i "${file_in}" \
             -c:v hevc_nvenc \
