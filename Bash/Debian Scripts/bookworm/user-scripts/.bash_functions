@@ -1540,23 +1540,21 @@ adl() {
     fi
 
     # Use aria2c to download the file with the given filename
-    if aria2c \
-           --console-log-level=notice \
-           -x32 \
-           -j16 \
-           --split=32 \
-           --allow-overwrite=true \
-           --allow-piece-length-change=true \
-           --always-resume=true \
-           --async-dns=false \
-           --auto-file-renaming=false \
-           --min-split-size=8M \
-           --disk-cache=64M \
-           --file-allocation=none \
-           --no-file-allocation-limit=8M \
-           --continue=true \
-           --out="$filename" \
-           "$url"
+    if aria2c --console-log-level=notice \
+               -x32 \
+               -j16 \
+               --split=32 \
+               --allow-overwrite=true \
+               --allow-piece-length-change=true \
+               --always-resume=true \
+               --auto-file-renaming=false \
+               --min-split-size=8M \
+               --disk-cache=64M \
+               --file-allocation=none \
+               --no-file-allocation-limit=8M \
+               --continue=true \
+               --out="$filename" \
+               "$url"
     then
            google_speech 'Download completed.' 2>/dev/null
     else
