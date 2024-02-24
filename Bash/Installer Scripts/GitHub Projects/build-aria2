@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-aria2
 ##  Purpose: Build aria2 from source code
 ##  Updated: 01.30.24
@@ -15,129 +17,138 @@
 ##         - RUNPATH to LDFLAGS
 ##  Fixed: Soft linking error
 
-# Exit on an error and uninitialized variables
-set -euo pipefail
-clear
-
-# Script and Aria2 version
-script_ver="1.9"
-aria2_ver="1.37.0"
-
-# Check for non-root execution
-if [ "$EUID" -eq 0 ]; then
-    echo "This script must be run without root/sudo privileges."
+# Ensure the script is run with superuser privileges
+if [[ $EUID -ne 0 ]]; then
+    echo "This script must be run as root or with sudo."
     exit 1
 fi
 
-pkgs_fn() {
-    local missing_pkg missing_packages pkg pkgs available_packages unavailable_packages
+# Script information
+script_ver="1.9"
+echo "GitHub Script for building aria2 from source. Version: $script_ver"
 
-    # Install Required APT packages
-    pkgs=(
+# Define color codes
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+# Logging function for standardized messages
+log() {
+    echo -e "${GREEN}[LOG]${NC} $(date +'%Y-%m-%d %H:%M:%S') - $*"
+}
+
+# Error handling function
+handle_error() {
+    echo -e "${RED}[ERROR]${NC} $(date +'%Y-%m-%d %H:%M:%S') - $*"
+    exit 1
+}
+
+# Install required packages
+install_packages() {
+    local pkgs=(
         autoconf autoconf-archive autogen automake build-essential ca-certificates
         ccache curl libssl-dev libtool libtool-bin m4 pkg-config zlib1g-dev
     )
-
-    # Initialize arrays for missing, available, and unavailable packages
-    missing_packages=()
-    available_packages=()
-    unavailable_packages=()
-
-    # Loop through the array to find missing packages
-    for pkg in "${pkgs[@]}"
-    do
+    log "Attempting to install required packages..."
+    sudo apt install -y "${pkgs[@]}"
+    
+    for pkg in "${pkgs[@]}"; do
         if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
-            missing_packages+=("$pkg")
+            handle_error "Failed to install: $pkg"
         fi
     done
+    
+    log "Installation of required packages completed."
+}
 
-    # Check availability of missing packages and categorize them
-    for pkg in "${missing_packages[@]}"
-    do
-        if apt-cache show "$pkg" > /dev/null 2>&1; then
-            available_packages+=("$pkg")
-        else
-            unavailable_packages+=("$pkg")
-        fi
-    done
+# Retrieve the latest release version of a GitHub repository
+github_latest_release_version() {
+    github_version=$(
+                      curl -sLH "Content-Type: text/plain" "https://gitver.optimizethis.net" |
+                      bash -s "$1"
+                  )
+    echo "$github_version"
+}
 
-    # Print unavailable packages
-    if [ "${#unavailable_packages[@]}" -gt 0 ]; then
-        echo "Unavailable packages: ${unavailable_packages[*]}"
-    fi
+libgpg_latest_release_version() {
+    local url="$1"
+    local latest_version=$(
+                            curl -s "$url" |
+                            grep -Eo 'href="libgpg-error-[0-9]+\.[0-9]+\.tar\.bz2"' |
+                            head -n1 |
+                            grep -Eo '[0-9]+\.[0-9]+'
+                        )
 
-    # Install available missing packages
-    if [ "${#available_packages[@]}" -gt 0 ]; then
-        echo "Installing available missing packages: ${available_packages[*]}"
-        sudo apt install "${available_packages[@]}"
+    if [[ -z "$latest_version" ]]; then
+        echo "Failed to find the latest version of libgpg-error."
+        exit 1
     else
-        printf "%s\n\n" "No missing packages to install or all missing packages are unavailable."
+        echo "$latest_version"
     fi
 }
 
-pkgs_fn
+# Prepare the build environment
+prepare_build_environment() {
+    build_dir="$PWD/aria2-build"
+    log "Creating build directory: $build_dir"
+    mkdir -p "$build_dir"
+    cd "$build_dir" || handle_error "Failed to create or navigate to build directory."
+}
 
-# Determine OS
-if [ -f /etc/os-release ]; then
-    . /etc/os-release
-    OS=${NAME%% *}
-    echo "Detected OS: $OS"
-elif command -v lsb_release >/dev/null; then
-    OS=$(lsb_release -si)
-    echo "Detected OS: $OS"
-else
-    handle_error "Unable to determine operating system."
-fi
+# Build and install jemalloc
+build_jemalloc() {
+    log "Compiling jemalloc..."
+    local jemalloc_version=$(github_latest_release_version "https://github.com/jemalloc/jemalloc.git")
+    local jemalloc_url="https://github.com/jemalloc/jemalloc/releases/download/$jemalloc_version/jemalloc-$jemalloc_version.tar.bz2"
+    curl -Ls "$jemalloc_url" | tar -xj
+    cd "jemalloc-$jemalloc_version"
+    ./configure --prefix=/usr/local
+    make "-j$(nproc)" && sudo make install
+    cd ../
+}
 
-# Directories and URLs
-build_dir="$HOME/aria2-build"
-install_dir="/usr/local"
-archive_url="https://github.com/aria2/aria2/releases/download/release-$aria2_ver/aria2-$aria2_ver.tar.xz"
-certs_dir="/etc/ssl/certs"
+# Build and install libgpg-error
+build_libgpg_error() {
+    log "Compiling libgpg-error..."
+    local libgpg_error_version=$(libgpg_latest_release_version "https://gnupg.org/ftp/gcrypt/libgpg-error/")
+    local libgpg_error_url="https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-$libgpg_error_version.tar.bz2"
+    curl -Ls "$libgpg_error_url" | tar -xj
+    cd "libgpg-error-${libgpg_error_version}"
+    ./configure --prefix=/usr/local
+    make "-j$(nproc)" && sudo make install
+    cd ../
+}
 
-# Prepare build directory
-echo "Creating build directory: $build_dir"
-mkdir -p "$build_dir" && cd "$build_dir"
+# Compile and install Aria2
+compile_aria2() {
+    log "Compiling Aria2..."
+    local aria2_version=$(github_latest_release_version "https://github.com/aria2/aria2.git")
+    local aria2_url="https://github.com/aria2/aria2/releases/download/release-$aria2_version/aria2-$aria2_version.tar.xz"
+    curl -Ls "$aria2_url" | tar -xJ
+    cd "aria2-$aria2_version"
+    sed -i "s/1, 16/1, 128/g" "src/OptionHandlerFactory.cc"
+    ./configure --prefix=/usr/local --without-gnutls --with-openssl --with-ca-bundle=/etc/ssl/certs/ca-certificates.crt
+    make "-j$(nproc)"
+    sudo make install
+    cd ../
+}
 
-# Download and extract Aria2
-echo "Downloading and extracting Aria2..."
-curl -sL "$archive_url" | tar -xJ || handle_error "Failed to download and extract Aria2"
+# Cleanup the build environment
+cleanup() {
+    log "Cleaning up..."
+    rm -fr "$build_dir"
+    log "Cleanup completed."
+}
 
-# Build jemalloc
-printf "\n%s\n%s\n\n" "Compiling jemalloc..." "================================"
-jemalloc_ver="5.3.0"
-jemalloc_url="https://github.com/jemalloc/jemalloc/releases/download/$jemalloc_ver/jemalloc-$jemalloc_ver.tar.bz2"
-curl -sL "$jemalloc_url" | tar -xj || handle_error "Failed to download jemalloc"
-cd "jemalloc-$jemalloc_ver"
-./configure --prefix="$install_dir" || handle_error "Failed to configure jemalloc"
-make -j"$(nproc)" && sudo make install || handle_error "Failed to build and install jemalloc"
-cd ..
+main() {
+    log "Starting aria2 build process..."
+    install_packages
+    prepare_build_environment
+    build_jemalloc
+    build_libgpg_error
+    compile_aria2
+    cleanup
+    log "Aria2 build process completed successfully."
+}
 
-# Build gcrypt-error
-printf "\n%s\n%s\n\n" "Compiling gcrypt-error..." "================================"
-gcrypt_error_ver="1.47"
-gcrypt_error_url="https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-$gcrypt_error_ver.tar.bz2"
-curl -sL "$gcrypt_error_url" | tar -xj || handle_error "Failed to download gcrypt-error"
-cd "libgpg-error-$gcrypt_error_ver"
-./configure --prefix="$install_dir" || handle_error "Failed to configure gcrypt-error"
-make -j"$(nproc)" && sudo make install || handle_error "Failed to build and install gcrypt-error"
-cd ..
-
-# Source the latest caert from curl.se
-sudo curl -t 2 -Lso "$certs_dir/cacert.pem" "https://curl.se/ca/cacert.pem"
-
-# Compile Aria2
-printf "\n%s\n%s\n\n" "Compiling Aria2..." "================================"
-cd "aria2-$aria2_ver"
-sed -i "s/1, 16/1, 128/g" "src/OptionHandlerFactory.cc"
-./configure --prefix="$install_dir" --without-gnutls --with-openssl \
-            --with-ca-bundle="$certs_dir/cacert.pem" \
-            CFLAGS="-O3 -march=native" CXXFLAGS="-O3 -march=native" || handle_error "Failed to configure Aria2"
-make -j"$(nproc)" || handle_error "Failed to build Aria2"
-sudo make install || handle_error "Failed to install Aria2"
-
-# Cleanup
-printf "\n%s" "Cleaning up..."
-rm -rf "$build_dir"
-
-printf "\n%s\n\n" "Aria2 version $aria2_ver installed successfully."
+main "$@"
