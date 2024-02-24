@@ -175,7 +175,7 @@ EOF
             -rc:v vbr \
             -tune:v hq \
             -b:v "${bitrate}"k \
-            -bufsize:v "${bufsize}"k \
+            -bufsize:v "${bitrate}"k \
             -maxrate:v "${maxrate}"k \
             -bf:v 3 \
             -g 250 \
