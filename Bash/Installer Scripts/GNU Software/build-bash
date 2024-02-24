@@ -57,6 +57,7 @@ download_and_extract() {
 build_and_install() {
     print_color green "Building and installing..."
     cd "$cwd/$archive_dir"
+    autoreconf -fi
     ./configure --prefix=/usr/local/$archive_dir \
         --disable-nls \
         --disable-profiling \
