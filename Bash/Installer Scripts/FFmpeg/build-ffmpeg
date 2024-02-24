@@ -1018,15 +1018,15 @@ install_cuda_fn() {
 
     amd_gpu_test=$(check_amd_gpu)
     nvidia_gpu_status="$is_nvidia_gpu_present"
-    nvidia_cuda_test="$cuda_version_test"
+    cuda_version_test_results="$cuda_version_test"
 
     # Determine if the PC has an Nvidia GPU available
     if [[ "$nvidia_gpu_status" == "NVIDIA GPU detected" ]]; then
         echo "Nvidia GPU detected"
         echo "Determining if CUDA is installed..."
         # Determine the installed CUDA version if any
-        if [ -n "$nvidia_cuda_test" ]; then
-            echo "The installed CUDA version is: $nvidia_cuda_test"
+        if [ -n "$cuda_version_test_results" ]; then
+            echo "The installed CUDA version is: $cuda_version_test_results"
         else
             echo "CUDA is not installed"
         fi
@@ -1035,57 +1035,52 @@ install_cuda_fn() {
         echo "Nvidia GPU not detected"
     fi
 
-    if [[ "$amd_gpu_test" == "AMD GPU detected" ]] || [[ ! "$nvidia_cuda_test" == "$cuda_latest_ver" ]]; then
-        if [[ -n "$nvidia_gpu_status" ]] || [[ -n "$(grep -i Microsoft /proc/version)" ]]; then
-            get_os_version_1
-            if [[ "$OS" == "Arch" ]]; then
-                find_nvcc=$(find /opt/ -type f -name 'nvcc')
-                cuda_ver_test=$($find_nvcc --version | sed -n 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')
-                cuda_ver_test+=".2"
-            else
-                cuda_ver_test="$nvidia_gpu_status"
-            fi
-            cuda_ver="$cuda_ver_test"
+    if [[ -n "$nvidia_gpu_status" ]] || [[ -n "$(grep -i Microsoft /proc/version)" ]]; then
+        get_os_version_1
+        if [[ "$OS" == "Arch" ]]; then
+            find_nvcc=$(find /opt/ -type f -name 'nvcc')
+        else
+            cuda_ver_test="$cuda_version_test_results"
+        fi
 
-            if [[ -n "$cuda_ver_test" ]]; then
-                printf "\n%s\n\n%s\n%s\n\n" \
-                    "Do you want to update/reinstall CUDA?" \
-                    "[1] Yes" \
-                    "[2] No"
-                read -p "Your choices are (1 or 2): " choice
+        if [[ -n "$cuda_ver_test" ]]; then
+            printf "\n%s\n\n%s\n%s\n\n" \
+                "Do you want to update/reinstall CUDA?" \
+                "[1] Yes" \
+                "[2] No"
+            read -p "Your choices are (1 or 2): " choice
 
-                case "$choice" in
-                    1)
-                            cuda_download_fn
-                            PATH="$PATH:$cuda_path"
-                            export PATH
-                            ;;
-                    2)
-                            PATH="$PATH:$cuda_path"
-                            export PATH
-                            ;;
-                    *)
-                            unset choice
-                            install_cuda_fn
-                            ;;
-                esac
-            else
-                printf "\n%s\n%s\n\n%s\n%s\n\n" \
-                    "The CUDA SDK Toolkit was not detected and the latest version is: $cuda_latest_ver" \
-                    "=========================================================================" \
-                    "[1] Install the CUDA SDK Toolkit and add it to your PATH." \
-                    "[2] Continue without installing. (Hardware acceleration will be turned off)"
-                read -p "Your choices are (1 or 2): " choice
+            case "$choice" in
+                1)
+                        cuda_download_fn
+                        PATH="$PATH:$cuda_path"
+                        export PATH
+                        ;;
+                2)
+                        PATH="$PATH:$cuda_path"
+                        export PATH
+                        ;;
+                *)
+                        unset choice
+                        install_cuda_fn
+                        ;;
+            esac
+        else
+            printf "\n%s\n%s\n\n%s\n%s\n\n" \
+                "The CUDA SDK Toolkit was not detected and the latest version is: $cuda_latest_ver" \
+                "=========================================================================" \
+                "[1] Install the CUDA SDK Toolkit and add it to your PATH." \
+                "[2] Continue without installing. (Hardware acceleration will be turned off)"
+            read -p "Your choices are (1 or 2): " choice
 
-                case "$choice" in
-                    1)      cuda_download_fn ;;
-                    2)      return ;;
-                    *)
-                            unset choice
-                            install_cuda_fn
-                            ;;
-                esac
-            fi
+            case "$choice" in
+                1)      cuda_download_fn ;;
+                2)      return ;;
+                *)
+                        unset choice
+                        install_cuda_fn
+                        ;;
+            esac
 
             if [[ "$OS" == "Arch" ]]; then
                 find_nvcc=$(find /opt/ -type f -name "nvcc")
