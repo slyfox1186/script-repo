@@ -36,7 +36,13 @@ install_missing_packages() {
 
 find_latest_tar_tarball() {
     print_color green "Finding the latest release..."
-    local latest_tar_tarball=$(curl -s "$gnu_ftp" | grep 'tar-[0-9].*\.tar\.gz' | grep -v '.sig' | sed -n 's/.*href="\([^"]*\).*/\1/p' | sort -V | tail -n1)
+    local latest_tar_tarball=$(
+                                curl -s "$gnu_ftp" |
+                                grep 'tar-[0-9].*\.tar\.gz' |
+                                grep -v '.sig' | sed -n 's/.*href="\([^"]*\).*/\1/p' |
+                                sort -V |
+                                tail -n1
+                            )
     if [[ -z $latest_tar_tarball ]]; then
         print_color red "Failed to find the latest release. Exiting..."
         exit 1
