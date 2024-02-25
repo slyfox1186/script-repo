@@ -1,0 +1,68 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <pthread.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+#define MAX_DOWNLOADS 10
+#define DOWNLOAD_CMD "aria2c --no-conf=true --console-log-level=notice --max-connection-per-server=16 --max-concurrent-downloads=5 --split=10 --allow-overwrite=true --always-resume=true --auto-file-renaming=false --min-split-size=5M --disk-cache=256M --file-allocation=none --continue=true --http-accept-gzip=true --retry-wait=2 --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36\" --stream-piece-selector=inorder"
+
+typedef struct {
+    char *filename;
+    char *url;
+} DownloadArgs;
+
+void *download_file(void *arguments) {
+    DownloadArgs *args = (DownloadArgs *)arguments;
+    char cmd[4096];
+
+    snprintf(cmd, sizeof(cmd), DOWNLOAD_CMD " --out=\"%s\" \"%s\"", args->filename, args->url);
+    printf("Initiating download for %s...\n", args->filename);
+
+    int status = system(cmd);
+    if (status == -1) {
+        printf("Command execution failed for %s\n", args->filename);
+    } else {
+        if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+            printf("%s download complete.\n", args->filename);
+        } else {
+            printf("Download failed for %s with exit code %d.\n", args->filename, WEXITSTATUS(status));
+        }
+    }
+
+    pthread_exit(NULL);
+}
+
+int main(int argc, char *argv[]) {
+    if (argc < 3 || argc % 2 != 1) {
+        printf("Usage: %s [filename url]...\n", argv[0]);
+        return 1;
+    }
+
+    int pairsCount = (argc - 1) / 2;
+    pthread_t *threads = malloc(pairsCount * sizeof(pthread_t));
+    DownloadArgs *args = malloc(pairsCount * sizeof(DownloadArgs));
+
+    for (int i = 0, threadCount = 0; i < pairsCount; i++) {
+        args[threadCount].filename = argv[2*i + 1];
+        args[threadCount].url = argv[2*i + 2];
+        if (pthread_create(&threads[threadCount], NULL, download_file, (void *)&args[threadCount]) != 0) {
+            perror("Failed to create thread");
+            continue;
+        }
+        threadCount++;
+    }
+
+    for (int i = 0; i < pairsCount; i++) {
+        if (pthread_join(threads[i], NULL) != 0) {
+            perror("Failed to join thread");
+        }
+    }
+
+    printf("All downloads have been completed.\n");
+
+    free(threads);
+    free(args);
+    return 0;
+}
