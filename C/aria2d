@@ -3,8 +3,10 @@
 #include <string.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <sys/wait.h>
 
 #define MAX_DOWNLOADS 10
+#define DOWNLOAD_CMD "aria2c --no-conf=true --console-log-level=notice --max-connection-per-server=16 --max-concurrent-downloads=5 --split=10 --allow-overwrite=true --always-resume=true --auto-file-renaming=false --min-split-size=5M --disk-cache=256M --file-allocation=none --continue=true --http-accept-gzip=true --retry-wait=2 --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36\" --stream-piece-selector=inorder"
 
 typedef struct {
     char *filename;
@@ -13,36 +15,11 @@ typedef struct {
 
 void *download_file(void *arguments) {
     DownloadArgs *args = (DownloadArgs *)arguments;
-    char cmd[4096]; // Adjusted buffer size for the command
+    char cmd[4096];
 
-    // Construct the aria2c command with Chrome's user-agent and provided working options
-    snprintf(cmd, sizeof(cmd),
-             "aria2c "
-             "--console-log-level=notice "
-             "-x32 "
-             "-j16 "
-             "--split=16 "
-             "--allow-overwrite=true "
-             "--allow-piece-length-change=true "
-             "--always-resume=true "
-             "--auto-file-renaming=false "
-             "--min-split-size=1M "
-             "--disk-cache=256M "
-             "--file-allocation=none "
-             "--no-file-allocation-limit=8M "
-             "--continue=true "
-             "--http-accept-gzip=true "
-             "--retry-wait=2 "
-             "--max-concurrent-downloads=10 "
-             "--optimize-concurrent-downloads=true "
-             "--enable-http-keep-alive=true "
-             "--stream-piece-selector=inorder "
-             "--user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36\" "
-             "--out=\"%s\" \"%s\"", args->filename, args->url);
-
+    snprintf(cmd, sizeof(cmd), DOWNLOAD_CMD " --out=\"%s\" \"%s\"", args->filename, args->url);
     printf("Initiating download for %s...\n", args->filename);
 
-    // Execute the download command
     int status = system(cmd);
     if (status == -1) {
         printf("Command execution failed for %s\n", args->filename);
@@ -58,31 +35,34 @@ void *download_file(void *arguments) {
 }
 
 int main(int argc, char *argv[]) {
-    pthread_t threads[MAX_DOWNLOADS];
-    DownloadArgs args[MAX_DOWNLOADS];
-    int parallelDownloads = 0;
-    int threadCount = 0;
-
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-pd") == 0 || strcmp(argv[i], "--parallel-downloads") == 0) {
-            parallelDownloads = 1;
-            continue;
-        }
-
-        if (parallelDownloads) {
-            if (i + 1 < argc) {
-                args[threadCount].filename = argv[i++];
-                args[threadCount].url = argv[i];
-                pthread_create(&threads[threadCount], NULL, download_file, (void *)&args[threadCount]);
-                threadCount++;
-            }
-        }
+    if (argc < 3 || argc % 2 != 1) {
+        printf("Usage: %s [filename url]...\n", argv[0]);
+        return 1;
     }
 
-    for (int i = 0; i < threadCount; i++) {
-        pthread_join(threads[i], NULL);
+    int pairsCount = (argc - 1) / 2;
+    pthread_t *threads = malloc(pairsCount * sizeof(pthread_t));
+    DownloadArgs *args = malloc(pairsCount * sizeof(DownloadArgs));
+
+    for (int i = 0, threadCount = 0; i < pairsCount; i++) {
+        args[threadCount].filename = argv[2*i + 1];
+        args[threadCount].url = argv[2*i + 2];
+        if (pthread_create(&threads[threadCount], NULL, download_file, (void *)&args[threadCount]) != 0) {
+            perror("Failed to create thread");
+            continue;
+        }
+        threadCount++;
+    }
+
+    for (int i = 0; i < pairsCount; i++) {
+        if (pthread_join(threads[i], NULL) != 0) {
+            perror("Failed to join thread");
+        }
     }
 
     printf("All downloads have been completed.\n");
+
+    free(threads);
+    free(args);
     return 0;
 }
