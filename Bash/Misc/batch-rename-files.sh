@@ -1,41 +1,48 @@
 #!/usr/bin/env bash
 
-# Define the folder where the images are located (current directory by default).
-image_folder="./output"
+# Define the path to the text file containing file paths
+INPUT_FILE="/tmp/folder-paths.txt"
+OUPUT_FOLDER="/path/to/output/folder"
 
-# Check if the user has provided a prefix, otherwise use a default value.
-if [ -z "$1" ]; then
-    read -p 'Enter the prefix for each file: ' prefix
-else
-    prefix="$1"
-fi
+# Define color codes
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+PURPLE='\033[0;35m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
 
-# Ensure the folder exists and is accessible.
-if [ ! -d "$image_folder" ]; then
-    printf "%s\n\n" "Error: The specified folder '$image_folder' does not exist."
+# Create the text file that holds the folder paths (do not surround with quotes)
+cat > "$INPUT_FILE" <<'EOF'
+/folders/to/move
+/folders/to/move
+EOF
+
+# Function to process each file path
+process_file_path() {
+    local file_path=$1
+
+    echo -e "${CYAN}Processing file${YELLOW}: ${PURPLE}$file_path${NC}"
+
+    if sudo mv "$file_path" "$OUPUT_FOLDER"; then
+        echo -e "${GREEN}[LOG]${NC} Command executed successfully\\n"
+    else
+        echo -e "${RED}[ERROR]${NC} Failed to execute command\\n" >&2
+    fi
+}
+
+# Main script logic
+if [ ! -f "$INPUT_FILE" ]; then
+    echo "Error: File '$INPUT_FILE' not found." >&2
     exit 1
 fi
 
-# Counter for numbering the files.
-cnt=1
-
-# Loop through all image files in the folder.
-for file in "$image_folder"/*.{jpg,jpeg,gif,png,ico,icon}
-do
-    if [ -f "$file" ]; then
-        # Determine the file extension.
-        ext="${file##*.}"
-
-        # Generate the new filename.
-        new_filename="${prefix}-$(printf "%02d" $cnt).$ext"
-
-        # Rename the file.
-        mv "$file" "$image_folder/$new_filename"
-
-        # Increment the cnter.
-        cnt=$((cnt + 1))
+while IFS= read -r line; do
+    # Skip empty lines
+    if [ -z "$line" ]; then
+        continue
     fi
-done
+    process_file_path "$line"
+done < "$INPUT_FILE"
 
-# Print a message when the renaming is complete.
-printf "\n%s\n\n" "Batch renaming of images in '$image_folder' is complete."
+echo "Script completed."
