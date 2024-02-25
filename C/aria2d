@@ -4,31 +4,93 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <regex.h>
 
 #define MAX_DOWNLOADS 10
-#define DOWNLOAD_CMD "aria2c --no-conf=true --console-log-level=notice --max-connection-per-server=16 --max-concurrent-downloads=5 --split=10 --allow-overwrite=true --always-resume=true --auto-file-renaming=false --min-split-size=5M --disk-cache=256M --file-allocation=none --continue=true --http-accept-gzip=true --retry-wait=2 --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36\" --stream-piece-selector=inorder"
+#define MAX_CMD_ARGS 20
 
 typedef struct {
     char *filename;
     char *url;
 } DownloadArgs;
 
+int validate_input(const char *filename, const char *url) {
+    regex_t regex;
+    int reti;
+
+    // Simple regex to validate the filename (basic example, adjust as needed)
+    reti = regcomp(&regex, "^[a-zA-Z0-9._-]+$", REG_EXTENDED);
+    if (reti) {
+        fprintf(stderr, "Could not compile regex\n");
+        return 0;
+    }
+
+    // Validate filename
+    reti = regexec(&regex, filename, 0, NULL, 0);
+    if (reti == REG_NOMATCH) {
+        printf("Invalid filename: %s\n", filename);
+        regfree(&regex);
+        return 0;
+    }
+
+    // Simple URL validation (very basic, consider improving for real use cases)
+    reti = regcomp(&regex, "^https?://", REG_EXTENDED | REG_NOSUB);
+    if (reti) {
+        fprintf(stderr, "Could not compile regex\n");
+        return 0;
+    }
+
+    // Validate URL
+    reti = regexec(&regex, url, 0, NULL, 0);
+    if (reti == REG_NOMATCH) {
+        printf("Invalid URL: %s\n", url);
+        regfree(&regex);
+        return 0;
+    }
+
+    regfree(&regex);
+    return 1;
+}
+
 void *download_file(void *arguments) {
     DownloadArgs *args = (DownloadArgs *)arguments;
-    char cmd[4096];
+    pid_t pid;
+    int status;
 
-    snprintf(cmd, sizeof(cmd), DOWNLOAD_CMD " --out=\"%s\" \"%s\"", args->filename, args->url);
-    printf("Initiating download for %s...\n", args->filename);
+    if (!validate_input(args->filename, args->url)) {
+        pthread_exit((void *)1); // Exit with error code if validation fails
+    }
 
-    int status = system(cmd);
-    if (status == -1) {
-        printf("Command execution failed for %s\n", args->filename);
-    } else {
-        if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+    char *cmd[MAX_CMD_ARGS] = {
+        "aria2c",
+        "--max-connection-per-server=16",
+        "--max-concurrent-downloads=5",
+        "--split=10",
+        "--min-split-size=5M",
+        "--disk-cache=256M",
+        "--file-allocation=none",
+        "--out", args->filename,
+        args->url,
+        NULL
+    };
+
+    pid = fork();
+    if (pid == 0) { // Child process
+        execvp(cmd[0], cmd);
+        // If execvp returns, it must have failed.
+        printf("Failed to start aria2c for %s\n", args->filename);
+        exit(EXIT_FAILURE);
+    } else if (pid > 0) { // Parent process
+        waitpid(pid, &status, 0);
+        if (status == 0) {
             printf("%s download complete.\n", args->filename);
         } else {
-            printf("Download failed for %s with exit code %d.\n", args->filename, WEXITSTATUS(status));
+            printf("Download failed for %s.\n", args->filename);
         }
+    } else {
+        // Fork failed
+        perror("fork");
+        exit(EXIT_FAILURE);
     }
 
     pthread_exit(NULL);
@@ -41,28 +103,32 @@ int main(int argc, char *argv[]) {
     }
 
     int pairsCount = (argc - 1) / 2;
-    pthread_t *threads = malloc(pairsCount * sizeof(pthread_t));
-    DownloadArgs *args = malloc(pairsCount * sizeof(DownloadArgs));
+    pthread_t threads[pairsCount];
+    DownloadArgs args[pairsCount];
+    void *thread_result;
+    int validation_failure = 0;
 
-    for (int i = 0, threadCount = 0; i < pairsCount; i++) {
-        args[threadCount].filename = argv[2*i + 1];
-        args[threadCount].url = argv[2*i + 2];
-        if (pthread_create(&threads[threadCount], NULL, download_file, (void *)&args[threadCount]) != 0) {
+    for (int i = 0; i < pairsCount; i++) {
+        args[i].filename = argv[2 * i + 1];
+        args[i].url = argv[2 * i + 2];
+        if (pthread_create(&threads[i], NULL, download_file, (void *)&args[i]) != 0) {
             perror("Failed to create thread");
-            continue;
+            return 1;
         }
-        threadCount++;
     }
 
     for (int i = 0; i < pairsCount; i++) {
-        if (pthread_join(threads[i], NULL) != 0) {
-            perror("Failed to join thread");
+        pthread_join(threads[i], &thread_result);
+        if (thread_result != NULL) {
+            validation_failure = 1;
         }
     }
 
-    printf("All downloads have been completed.\n");
+    if (validation_failure) {
+        printf("One or more downloads were not initiated due to validation failure.\n");
+    } else {
+        printf("All downloads have been completed.\n");
+    }
 
-    free(threads);
-    free(args);
     return 0;
 }
