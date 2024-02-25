@@ -9,6 +9,9 @@
 #define MAX_DOWNLOADS 10
 #define MAX_CMD_ARGS 20
 
+// To compile and move execute the below command.
+// gcc -O2 -pipe -march=native aria2d1.c -o aria2d -lpthread; sudo mv aria2d /usr/local/bin
+
 typedef struct {
     char *filename;
     char *url;
