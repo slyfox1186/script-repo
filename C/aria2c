@@ -1,0 +1,88 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <pthread.h>
+#include <unistd.h>
+
+#define MAX_DOWNLOADS 10
+
+typedef struct {
+    char *filename;
+    char *url;
+} DownloadArgs;
+
+void *download_file(void *arguments) {
+    DownloadArgs *args = (DownloadArgs *)arguments;
+    char cmd[4096]; // Adjusted buffer size for the command
+
+    // Construct the aria2c command with Chrome's user-agent and provided working options
+    snprintf(cmd, sizeof(cmd),
+             "aria2c "
+             "--console-log-level=notice "
+             "-x32 "
+             "-j16 "
+             "--split=16 "
+             "--allow-overwrite=true "
+             "--allow-piece-length-change=true "
+             "--always-resume=true "
+             "--auto-file-renaming=false "
+             "--min-split-size=1M "
+             "--disk-cache=256M "
+             "--file-allocation=none "
+             "--no-file-allocation-limit=8M "
+             "--continue=true "
+             "--http-accept-gzip=true "
+             "--retry-wait=2 "
+             "--max-concurrent-downloads=10 "
+             "--optimize-concurrent-downloads=true "
+             "--enable-http-keep-alive=true "
+             "--stream-piece-selector=inorder "
+             "--user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36\" "
+             "--out=\"%s\" \"%s\"", args->filename, args->url);
+
+    printf("Initiating download for %s...\n", args->filename);
+
+    // Execute the download command
+    int status = system(cmd);
+    if (status == -1) {
+        printf("Command execution failed for %s\n", args->filename);
+    } else {
+        if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+            printf("%s download complete.\n", args->filename);
+        } else {
+            printf("Download failed for %s with exit code %d.\n", args->filename, WEXITSTATUS(status));
+        }
+    }
+
+    pthread_exit(NULL);
+}
+
+int main(int argc, char *argv[]) {
+    pthread_t threads[MAX_DOWNLOADS];
+    DownloadArgs args[MAX_DOWNLOADS];
+    int parallelDownloads = 0;
+    int threadCount = 0;
+
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-pd") == 0 || strcmp(argv[i], "--parallel-downloads") == 0) {
+            parallelDownloads = 1;
+            continue;
+        }
+
+        if (parallelDownloads) {
+            if (i + 1 < argc) {
+                args[threadCount].filename = argv[i++];
+                args[threadCount].url = argv[i];
+                pthread_create(&threads[threadCount], NULL, download_file, (void *)&args[threadCount]);
+                threadCount++;
+            }
+        }
+    }
+
+    for (int i = 0; i < threadCount; i++) {
+        pthread_join(threads[i], NULL);
+    }
+
+    printf("All downloads have been completed.\n");
+    return 0;
+}
