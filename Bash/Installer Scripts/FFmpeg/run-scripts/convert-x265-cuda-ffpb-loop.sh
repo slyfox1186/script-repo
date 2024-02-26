@@ -137,7 +137,7 @@ EOF
 
     # EXECUTE FFPB
     echo
-    if ffpb -y \
+    if pv ffmpeg -y \
             -vsync 0 \
             -hide_banner \
             -hwaccel_output_format cuda \
