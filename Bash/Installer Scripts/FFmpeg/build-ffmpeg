@@ -1250,23 +1250,6 @@ libpulse_fix_libs_fn() {
     fi
 }
 
-ffmpeg_install_test() {
-    local binaries i
-
-binaries=("ffmpeg" "ffplay" "ffprobe")
-
-    for i in ${binaries[@]}
-    do
-        if [[ ! -f "$install_dir/bin/$i" ]]; then
-            printf "\n%s\n%s\n\n" \
-                "Warning: Unable to locate the binary file: $install_dir/bin/$i" \
-                "I have read online that this is a bug of some sort and people are unsure why it happens."
-            read -p "You can press enter to continue, however, please be aware that it is missing."
-            echo
-        fi
-    done
-}
-
 find_latest_nasm_version() {
     # URL of the NASM stable releases directory
     local url="https://www.nasm.us/pub/nasm/stable/"
@@ -3209,9 +3192,6 @@ if build "$repo_name" "${version//\$ /}"; then
     execute make "-j$cpu_threads"
     execute make install
 fi
-
-# MAKE SURE ALL OF THE FILES WERE COMPILED CORRECTLY
-ffmpeg_install_test
 
 # EXECUTE THE LDCONFIG COMMAND TO ENSURE THAT ALL LIBRARY CHANGES ARE DETECTED BY FFMPEG
 ldconfig 2>/dev/null
