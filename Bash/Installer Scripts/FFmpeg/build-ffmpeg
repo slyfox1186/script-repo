@@ -143,8 +143,8 @@ warn() {
 
 exit_fn() {
     echo
-    echo -e "${GREEN}Make sure to star this repository to show your support!${NC}"
-    echo "$web_repo"
+    echo -e "${GREEN}[INFO]${NC} Make sure to star this repository to show your support!"
+    echo -e "${GREEN}[INFO]${NC} $web_repo"
     echo
     exit 0
 }
@@ -153,7 +153,7 @@ fail() {
     echo
     echo -e "${RED}[ERROR]${NC} $1"
     echo
-    echo "For help or to report a bug create an issue at: $web_repo/issues"
+    echo -e "${GREEN}[INFO]${NC} For help or to report a bug create an issue at: $web_repo/issues"
     echo
     exit 1
 }
