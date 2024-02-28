@@ -669,8 +669,14 @@ setup_python_venv_and_install_packages() {
 }
 
 find_cuda_json_file() {
-    locate_cuda_json_file=$(find /usr/local/cuda/ -type f -name 'version.json' 2>/dev/null)
-    locate_cuda_json_file=$(find /opt/cuda/ -type f -name 'version.json' 2>/dev/null)
+    if [[ -f /opt/cuda/version.json ]]; then
+        locate_cuda_json_file=/opt/cuda/version.json
+    elif [[ -f /usr/local/cuda/version.json ]]; then
+        locate_cuda_json_file=/usr/local/cuda/version.json
+    else
+        locate_cuda_json_file=""
+    fi
+
     echo "$locate_cuda_json_file"
 }
 
@@ -2878,7 +2884,7 @@ fi
 
 # Get the Nvidia GPU architecture to build CUDA
 # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
-[[ -n "$cuda_version_test" ]] || [[ "$wsl_flag" == "yes_wsl" ]] && gpu_arch_fn
+[[ -n "$cuda_version_test_results" ]] || [[ "$wsl_flag" == "yes_wsl" ]] && gpu_arch_fn
 
 if [[ "$cuda_compile_flag" -eq 1 ]]; then
     if [[ -n "$iscuda" ]]; then
