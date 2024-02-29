@@ -2787,8 +2787,8 @@ if build "x264" "$repo_short_version_1"; then
     download "https://code.videolan.org/videolan/x264/-/archive/$repo_version/x264-$repo_version.tar.bz2" "x264-$repo_short_version_1.tar.bz2"
     execute ./configure --prefix="$workspace" \
                         --host="$pc_type" \
-                        --bit-depth="all" \
-                        --chroma-format="all" \
+                        --bit-depth=all \
+                        --chroma-format=all \
                         --enable-debug \
                         --enable-gprof \
                         --enable-lto \
@@ -2872,9 +2872,7 @@ EOF
 
     execute ninja install
 
-    if [[ -n "$LDEXEFLAGS" ]]; then
-        sed -i.backup "s/lgcc_s/lgcc_eh/g" "$workspace/lib/pkgconfig/x265.pc"
-    fi
+     [[ -n "$LDEXEFLAGS" ]] && sed -i.backup "s/lgcc_s/lgcc_eh/g" "$workspace/lib/pkgconfig/x265.pc"
 
     # FIX THE x265 SHARED LIBRARY ISSUE
     x265_fix_libs_fn
@@ -3052,15 +3050,17 @@ if build "libheif" "$repo_version"; then
     CFLAGS="-g -O3 -fno-lto -pipe -march=native"
     CXXFLAGS="-g -O3 -fno-lto -pipe -march=native"
     export CFLAGS CXXFLAGS
-    libde265_libs=$(find /usr/ -type f -name "libde265.so")
+    libde265_libs$(sudo find /usr/ -type f -name 'libde265.s*')
     if [[ -f "$libde265_libs" ]] && [[ ! -f "/usr/lib/x86_64-linux-gnu/libde265.so" ]]; then
-        cp -f "$libde265_libs" "/usr/lib/x86_64-linux-gnu"
+        sudo ln -sf "$libde265_libs" "/usr/lib/x86_64-linux-gnu/libde265.so"
         chmod 755 "/usr/lib/x86_64-linux-gnu/libde265.so"
     fi
+
     case "$VER" in
-        18.04|20.04)    pixbuf_switch="OFF" ;;
-        *)              pixbuf_switch="ON" ;;
+        20.04) pixbuf_switch=OFF ;;
+        *)     pixbuf_switch=ON ;;
     esac
+
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
@@ -3068,7 +3068,7 @@ if build "libheif" "$repo_version"; then
                   -DAOM_INCLUDE_DIR="$workspace/include" \
                   -DAOM_LIBRARY="$workspace/lib/libaom.a" \
                   -DLIBDE265_INCLUDE_DIR="$workspace/include" \
-                  -DLIBDE265_LIBRARY=/usr/lib/x86_64-linux-gnu/libde265.so \
+                  -DLIBDE265_LIBRARY="/usr/lib/x86_64-linux-gnu/libde265.so" \
                   -DLIBSHARPYUV_INCLUDE_DIR="$workspace/include/webp" \
                   -DLIBSHARPYUV_LIBRARY="$workspace/lib/libsharpyuv.so" \
                   -DWITH_AOM_DECODER=ON \
