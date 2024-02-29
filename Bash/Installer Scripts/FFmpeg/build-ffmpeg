@@ -2890,10 +2890,6 @@ if [[ -z "$LDEXEFLAGS" ]]; then
     fi
 fi
 
-# Get the Nvidia GPU architecture to build CUDA
-# https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
-[[ -n "$remote_cuda_version" ]] || [[ "$wsl_flag" == "yes_wsl" ]] && nvidia_architecture
-
 if [[ "$cuda_compile_flag" -eq 1 ]]; then
     if [[ -n "$iscuda" ]]; then
         if build "nv-codec-headers" "12.1.14.0"; then
@@ -2920,7 +2916,13 @@ if [[ "$cuda_compile_flag" -eq 1 ]]; then
         if [[ -n "$LDEXEFLAGS" ]]; then
             ffmpeg_libraries+=("--enable-libnpp")
         fi
-        ffmpeg_libraries+=("--nvccflags=-gencode arch=$nvidia_arch_type")
+
+        # Get the Nvidia GPU architecture to build CUDA
+        # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
+        if [[ -n "$remote_cuda_version" ]] || [[ "$wsl_flag" == "yes_wsl" ]]; then
+            nvidia_architecture
+            ffmpeg_libraries+=("--nvccflags=-gencode arch=$nvidia_arch_type")
+        fi
     fi
 else
     alert_no_cuda=1
