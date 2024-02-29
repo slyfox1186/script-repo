@@ -5,9 +5,9 @@
 ##
 ##  GitHub: https://github.com/slyfox1186/ffmpeg-build-script
 ##
-##  Script version: 3.4.8
+##  Script version: 3.5.0
 ##
-##  Updated: 02.10.24
+##  Updated: 02.29.24
 ##
 ##  Purpose:
 ##
@@ -39,6 +39,7 @@
 ##
 ##  Added:
 ##
+##    - the user can choose either a free or non-free build of FFmpeg by passing '--enable-gpl-and-non-free' to the script.
 ##    - colored text
 ##    - additional functions to warn or alert the user in terminal
 ##    - a check to skip compiling libbluray if the OS is Ubuntu Jammy due to compile issues. Use the APT version instead.
@@ -72,7 +73,7 @@ fi
 
 # Define global variables
 script_name="${0}"
-script_ver=3.4.8
+script_ver=3.5.0
 ffmpeg_release_version=n6.1.1
 cwd="$PWD/ffmpeg-build-script"
 packages="$cwd/packages"
