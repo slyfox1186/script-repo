@@ -848,10 +848,8 @@ set_ant_path() {
 
 nvidia_architecture() {
     local gpu_name gpu_type
-    cuda_compile_flag=0
 
     if [[ -n $(find_cuda_json_file) ]]; then
-        cuda_compile_flag=1
         gpu_name=$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -rV | head -n1)
         [[ "$gpu_name" == "name" ]] && gpu_name=$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -V | head -n1)
 
@@ -2887,40 +2885,36 @@ if [[ -z "$LDEXEFLAGS" ]]; then
     fi
 fi
 
-nvidia_architecture
-if [[ "$cuda_compile_flag" -eq 1 ]]; then
-    if [[ -n "$iscuda" ]]; then
-        if build "nv-codec-headers" "12.1.14.0"; then
-            download "https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.1.14.0/nv-codec-headers-12.1.14.0.tar.gz"
-            execute make "-j$cpu_threads"
-            execute make PREFIX="$workspace" install
-            build_done "nv-codec-headers" "12.1.14.0"
-        fi
-
-        get_os_version
-
-        if [[ "$OS" == "Arch" ]]; then
-            PATH+=":/opt/cuda/bin"
-            export PATH
-            CFLAGS+=" -I/opt/cuda/include -I/opt/cuda/targets/x86_64-linux/include"
-            LDFLAGS+=" -L/opt/cuda/lib64 -L/opt/cuda/lib -L/opt/cuda/targets/x86_64-linux/lib"
-        else
-            CFLAGS+=" -I/usr/local/cuda/include"
-            LDFLAGS+=" -L/usr/local/cuda/lib64"
-        fi
-
-        ffmpeg_libraries+=("--enable-"{cuda-nvcc,cuda-llvm,cuvid,nvdec,nvenc,ffnvcodec})
-
-        if [[ -n "$LDEXEFLAGS" ]]; then
-            ffmpeg_libraries+=("--enable-libnpp")
-        fi
-
-        # Get the Nvidia GPU architecture to build CUDA
-        # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
-        if [[ -n "$remote_cuda_version" ]] || [[ "$wsl_flag" == "yes_wsl" ]]; then
-            ffmpeg_libraries+=("--nvccflags=-gencode arch=$nvidia_arch_type")
-        fi
+if [[ -n "$iscuda" ]]; then
+    if build "nv-codec-headers" "12.1.14.0"; then
+        download "https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.1.14.0/nv-codec-headers-12.1.14.0.tar.gz"
+        execute make "-j$cpu_threads"
+        execute make PREFIX="$workspace" install
+        build_done "nv-codec-headers" "12.1.14.0"
     fi
+
+    get_os_version
+
+    if [[ "$OS" == "Arch" ]]; then
+        PATH+=":/opt/cuda/bin"
+        export PATH
+        CFLAGS+=" -I/opt/cuda/include -I/opt/cuda/targets/x86_64-linux/include"
+        LDFLAGS+=" -L/opt/cuda/lib64 -L/opt/cuda/lib -L/opt/cuda/targets/x86_64-linux/lib"
+    else
+        CFLAGS+=" -I/usr/local/cuda/include"
+        LDFLAGS+=" -L/usr/local/cuda/lib64"
+    fi
+
+    ffmpeg_libraries+=("--enable-"{cuda-nvcc,cuda-llvm,cuvid,nvdec,nvenc,ffnvcodec})
+
+    if [[ -n "$LDEXEFLAGS" ]]; then
+        ffmpeg_libraries+=("--enable-libnpp")
+    fi
+
+    # Get the Nvidia GPU architecture to build CUDA
+    # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
+    nvidia_architecture
+    ffmpeg_libraries+=("--nvccflags=-gencode arch=$nvidia_arch_type")
 else
     alert_no_cuda=1
 fi
