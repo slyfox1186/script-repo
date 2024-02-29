@@ -736,10 +736,7 @@ if [[ -n "$LDEXEFLAGS" ]]; then
     printf "%s\n\n" "The script has been configured to run in full static mode."
 fi
 
-#
-# SET THE PATH VARIABLE
-#
-
+# Set the path variable
 if find /usr/local -maxdepth 1 -name "cuda" &>/dev/null | head -n1; then
     cuda_bin_path=$(find /usr/local -maxdepth 1 -name "cuda" &>/dev/null | head -n1)
     cuda_bin_path+=/bin
@@ -767,10 +764,7 @@ path_clean_fn() {
     export PATH
 }
 
-#
-# SET THE PKG_CONFIG_PATH VARIABLE
-#
-
+# Set the pkg_config_path variable
 PKG_CONFIG_PATH="\
 $workspace/lib64/pkgconfig:\
 $workspace/lib/x86_64-linux-gnu/pkgconfig:\
@@ -817,6 +811,32 @@ check_remote_cuda_version() {
 
         # Append the update number if present
         [[ -n "$update_version" ]] && remote_cuda_version_test+=".$update_version"
+    fi
+}
+
+set_java_variables() {
+    path_fn
+    locate_java=$(find /usr/lib/jvm/ -type d -name 'java-*-openjdk*' |
+                  sort -rV |
+                  head -n1
+              )
+    java_include=$(find /usr/lib/jvm/ -type f -name 'javac' |
+                   sort -rV |
+                   head -n1 |
+                   xargs dirname |
+                   sed 's/bin/include/'
+               )
+    CPPFLAGS+=" -I$java_include"
+    export CPPFLAGS
+    export JDK_HOME="$locate_java"
+    export JAVA_HOME="$locate_java"
+    export PATH="$PATH:$JAVA_HOME/bin"
+}
+
+set_ant_path() {
+    export ANT_HOME="$workspace/ant"
+    if [[ ! -d "$workspace/ant/bin" ]] || [[ ! -d "$workspace/ant/lib" ]]; then
+        mkdir -p "$workspace/ant/bin" "$workspace/ant/lib" 2>/dev/null
     fi
 }
 
@@ -1041,7 +1061,7 @@ install_cuda() {
             cuda_version_test=$($find_nvcc --version | sed -n "s/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p")
             cuda_version_test+=".1"
         else
-            cuda_version_test=$(cat '/usr/local/cuda/version.json' 2>&1 | jq -r '.cuda.version')
+            cuda_version_test=$(cat /usr/local/cuda/version.json 2>&1 | jq -r '.cuda.version')
         fi
         cuda_version="$cuda_version_test"
 
@@ -1056,9 +1076,7 @@ install_cuda() {
 
     if [[ "$nvidia_gpu_status" == "Nvidia GPU detected" ]] || [[ -n "$(grep -i microsoft /proc/version)" ]]; then
         get_os_version
-        if [[ "$OS" == "Arch" ]]; then
-            find_nvcc=$(find /opt/ -type f -name nvcc)
-        fi
+        [[ "$OS" == "Arch" ]] && find_nvcc=$(find /opt/ -type f -name nvcc)
 
         if [[ "$local_cuda_version" == "$remote_cuda_version" ]]; then
             echo
@@ -1083,12 +1101,12 @@ install_cuda() {
                         install_cuda
                         ;;
             esac
-
-            return 0
         fi
     else
         gpu_flag=1
     fi
+
+    return 0
 }
 
 # Required build packages
@@ -1473,29 +1491,7 @@ case "$OS" in
 esac
 
 # Set the JAVA variables
-path_fn
-locate_java=$(find /usr/lib/jvm/ -type d -name 'java-*-openjdk*' |
-              sort -rV |
-              head -n1
-          )
-java_include=$(find /usr/lib/jvm/ -type f -name 'javac' |
-               sort -rV |
-               head -n1 |
-               xargs dirname |
-               sed 's/bin/include/'
-           )
-CPPFLAGS+=" -I$java_include"
-export CPPFLAGS
-export JDK_HOME="$locate_java"
-export JAVA_HOME="$locate_java"
-export PATH="$PATH:$JAVA_HOME/bin"
-
-ant_path_fn() {
-    export ANT_HOME="$workspace/ant"
-    if [[ ! -d "$workspace/ant/bin" ]] || [[ ! -d "$workspace/ant/lib" ]]; then
-        mkdir -p "$workspace/ant/bin" "$workspace/ant/lib" 2>/dev/null
-    fi
-}
+set_java_variables
 
 # Check if the cuda folder exists to determine installation status
 case "$OS" in
@@ -2628,7 +2624,7 @@ fi
 if [[ "$OS" == "Arch" ]]; then
     apache_ant_fn
 else
-    ant_path_fn
+    set_ant_path
     git_caller "https://github.com/apache/ant.git" "ant-git" "ant"
     if build "$repo_name" "${version//\$ /}"; then
         echo "Cloning \"$repo_name\" saving version \"$version\""
