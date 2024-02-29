@@ -1368,9 +1368,9 @@ debian_os_version() {
 
 ubuntu_msft() {
     case "$OS" in
-        23.04) apt_pkgs $1 $ubuntu_common_pkgs $jammy_pkgs $ubuntu_wsl_pkgs ;;
-        22.04) apt_pkgs $1 $ubuntu_common_pkgs $jammy_pkgs $ubuntu_wsl_pkgs ;;
-        20.04) apt_pkgs $1 $ubuntu_common_pkgs $focal_pkgs $ubuntu_wsl_pkgs ;;
+        23.04) apt_pkgs $1 "${ubuntu_common_pkgs[@]}" "${jammy_pkgs[@]}" $ubuntu_wsl_pkgs ;;
+        22.04) apt_pkgs $1 "${ubuntu_common_pkgs[@]}" "${jammy_pkgs[@]}" $ubuntu_wsl_pkgs ;;
+        20.04) apt_pkgs $1 "${ubuntu_common_pkgs[@]}" "${focal_pkgs[@]}" $ubuntu_wsl_pkgs ;;
         *)     fail "Faield to parse the Ubutnu MSFT version. Line: $LINENO" ;;
     esac
 }
@@ -1381,20 +1381,29 @@ ubuntu_os_version() {
         ubuntu_wsl_pkgs="$1"
     fi
 
-    ubuntu_common_pkgs="cppcheck libumfpack5 libsuitesparseconfig5 libcolamd2 libcholmod3 libccolamd2 libcamd2 libamd2"
-    focal_pkgs="libvmmalloc1 libvmmalloc-dev libdmalloc5 libcunit1-dev nvidia-utils-535 librust-jemalloc-sys-dev"
-    focal_pkgs+=" librust-malloc-buf-dev libsrt-doc libreadline-dev libcunit1 libcunit1-doc libhwy-dev libsrt-gnutls-dev libyuv-dev"
-    jammy_pkgs="libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libmimalloc-dev libtbbmalloc2 librust-jemalloc-sys-dev librust-malloc-buf-dev"
-    jammy_pkgs+=" liblz4-dev libsrt-doc libreadline-dev libpipewire-0.3-dev libwayland-dev libdecor-0-dev libpsl-dev libacl1-dev"
-    lunar_kenetic_pkgs="libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev librist-dev libjxl-dev libhwy-dev libsrt-gnutls-dev libyuv-dev"
+    ubuntu_common_pkgs=(cppcheck libumfpack5 libsuitesparseconfig5 libcolamd2
+                        libcholmod3 libccolamd2 libcamd2 libamd2
+                    )
+    focal_pkgs=(libvmmalloc1 libvmmalloc-dev libdmalloc5 libcunit1-dev nvidia-utils-535
+                librust-jemalloc-sys-dev librust-malloc-buf-dev libsrt-doc libreadline-dev
+                libcunit1 libcunit1-doc libhwy-dev libsrt-gnutls-dev libyuv-dev
+            )
+    jammy_pkgs=(libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libmimalloc-dev
+                libtbbmalloc2 librust-jemalloc-sys-dev librust-malloc-buf-dev
+                liblz4-dev libsrt-doc libreadline-dev libpipewire-0.3-dev
+                libwayland-dev libdecor-0-dev libpsl-dev libacl1-dev
+            )
+    lunar_kenetic_pkgs=(libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev librist-dev
+                        libjxl-dev libhwy-dev libsrt-gnutls-dev libyuv-dev
+                    )
     mantic_pkgs="libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libhwy-dev libsrt-gnutls-dev libyuv-dev"
 
     case "$VER" in
         msft)        ubuntu_msft ;;
-        23.10)       apt_pkgs $1 $mantic_pkgs $lunar_kenetic_pkgs $jammy_pkgs $focal_pkgs ;;
-        23.04|22.10) apt_pkgs $1 $ubuntu_common_pkgs $lunar_kenetic_pkgs $jammy_pkgs ;;
-        22.04)       apt_pkgs $1 $ubuntu_common_pkgs $jammy_pkgs ;;
-        20.04)       apt_pkgs $1 $ubuntu_common_pkgs $focal_pkgs ;;
+        23.10)       apt_pkgs $1 $mantic_pkgs "${lunar_kenetic_pkgs[@]}" "${jammy_pkgs[@]}" "${focal_pkgs[@]}" ;;
+        23.04|22.10) apt_pkgs $1 "${ubuntu_common_pkgs[@]}" "${lunar_kenetic_pkgs[@]}" "${jammy_pkgs[@]}" ;;
+        22.04)       apt_pkgs $1 "${ubuntu_common_pkgs[@]}" "${jammy_pkgs[@]}" ;;
+        20.04)       apt_pkgs $1 "${ubuntu_common_pkgs[@]}" "${focal_pkgs[@]}" ;;
         *)           fail "Could not detect the Ubuntu release version. Line: $LINENO" ;;
     esac
 }
@@ -1433,7 +1442,7 @@ get_os_version
 
 # Check if running Windows WSL2
 get_wsl_version() {
-    if [[ $(grep -i "Microsoft" /proc/version) ]]; then
+    if [[ $(grep -i "microsoft" /proc/version) ]]; then
         wsl_flag="yes_wsl"
         OS="WSL2"
         wsl_common_pkgs=(cppcheck libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev
