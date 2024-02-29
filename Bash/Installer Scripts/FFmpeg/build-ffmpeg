@@ -73,6 +73,7 @@ fi
 # Define global variables
 script_name="${0}"
 script_ver=3.4.8
+ffmpeg_release_version=n6.1.1
 cuda_pin_url=https://developer.download.nvidia.com/compute/cuda/repos
 cwd="$PWD/ffmpeg-build-script"
 packages="$cwd/packages"
@@ -92,18 +93,6 @@ GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
-# Set the available CPU thread and core count for parallel processing (speeds up the build process)
-if [[ -f /proc/cpuinfo ]]; then
-    cpu_threads=$(grep --count ^processor /proc/cpuinfo)
-else
-    cpu_threads=$(nproc --all)
-fi
-MAKEFLAGS="-j$cpu_threads"
-export MAKEFLAGS
-
-# Create the output directories
-mkdir -p "$packages/nvidia-cuda"
-
 # Print script banner
 echo
 box_out_banner() {
@@ -120,7 +109,22 @@ box_out_banner() {
     tput sgr 0
 }
 box_out_banner "FFmpeg Build Script - v$script_ver"
-printf "\n%s\n\n" "Utilizing $cpu_threads CPU threads"
+
+# Set the available CPU thread and core count for parallel processing (speeds up the build process)
+if [[ -f /proc/cpuinfo ]]; then
+    cpu_threads=$(grep --count ^processor /proc/cpuinfo)
+else
+    cpu_threads=$(nproc --all)
+fi
+MAKEFLAGS="-j$cpu_threads"
+export MAKEFLAGS
+
+echo
+echo "Utilizing $cpu_threads CPU threads"
+echo
+
+# Create output directories
+mkdir -p "$packages"
 
 # Set the CC/CPP compilers + customized compiler optimization flags
 source_flags_fn() {
@@ -128,8 +132,10 @@ source_flags_fn() {
     CXX=g++
     CFLAGS="-g -O3 -march=native"
     CXXFLAGS="-g -O3 -march=native"
+    LDFLAGS="-L$workspace/lib64 -L$workspace/lib"
+    CPPFLAGS="-I$workspace/include"
     EXTRALIBS="-ldl -lpthread -lm -lz"
-    export CC CFLAGS CPPFLAGS CXX CXXFLAGS
+    export CC CFLAGS CPPFLAGS CXX CXXFLAGS LDFLAGS
 }
 source_flags_fn
 
@@ -298,6 +304,17 @@ install_rustc() {
     fi
 }
 
+check_ffmpeg_version() {
+    local ffmpeg_repo="$1"
+
+    ffmpeg_git_version=$(git ls-remote --tags "$ffmpeg_repo" |
+                              awk -F'/' '/n[0-9]+(\.[0-9]+)*(-dev)?$/ {print $3}' |
+                              grep -Ev '\-dev' |
+                              sort -rV |
+                              head -n1
+                          )
+}
+
 git_caller() {
     git_url="$1"
     repo_name="$2"
@@ -384,18 +401,6 @@ git_clone() {
 
     echo "Cloning completed: $version"
     return 0
-}
-
-# Locate github release version numbers using git clone
-check_latest_ffmpeg_version() {
-    local ffmpeg_repo="$1"
-
-    ffmpeg_git_version=$(git ls-remote --tags "$ffmpeg_repo" |
-                              awk -F'/' '/n[0-9]+(\.[0-9]+)*(-dev)?$/ {print $3}' |
-                              grep -Ev '\-dev' |
-                              sort -rV |
-                              head -n1
-                          )
 }
 
 # Locate github release version numbers
@@ -613,7 +618,7 @@ execute() {
 
 build() {
     echo
-    echo "Building $1 - version $2"
+    echo -e "${GREEN}Building${NC} ${YELLOW}$1${NC} - ${GREEN}version $2${NC}"
     echo "========================================================"
 
     if [[ -f "$packages/$1.done" ]]; then
@@ -889,22 +894,18 @@ nvidia_architecture() {
             "NVIDIA GeForce RTX 4080")    gpu_type=5 ;;
             "NVIDIA GeForce RTX 4090")    gpu_type=5 ;;
             "NVIDIA H100")                gpu_type=6 ;;
-            *)                              fail "Unable to define the variable \"gpu_name\" in the function \"nvidia_architecture\". Line: $LINENO" ;;
+            *)                            fail "Unable to define the variable \"gpu_name\" in the function \"nvidia_architecture\". Line: $LINENO" ;;
         esac
 
-        if [[ -n "$gpu_type" ]]; then
-            case "$gpu_type" in
-                1) nvidia_arch_type="compute_61,code=sm_61" ;;
-                2) nvidia_arch_type="compute_70,code=sm_70" ;;
-                3) nvidia_arch_type="compute_75,code=sm_75" ;;
-                4) nvidia_arch_type="compute_86,code=sm_86" ;;
-                5) nvidia_arch_type="compute_89,code=sm_89" ;;
-                6) nvidia_arch_type="compute_90,code=sm_90" ;;
-                *) fail "Unable to define the variable \"nvidia_arch_type\" in the function \"nvidia_architecture\". Line: $LINENO" ;;
-            esac
-        else
-            fail "Failed to define \"\$gpu_type\". Line: $LINENO"
-        fi
+        case "$gpu_type" in
+            1) nvidia_arch_type="compute_61,code=sm_61" ;;
+            2) nvidia_arch_type="compute_70,code=sm_70" ;;
+            3) nvidia_arch_type="compute_75,code=sm_75" ;;
+            4) nvidia_arch_type="compute_86,code=sm_86" ;;
+            5) nvidia_arch_type="compute_89,code=sm_89" ;;
+            6) nvidia_arch_type="compute_90,code=sm_90" ;;
+            *) fail "Unable to define the variable \"nvidia_arch_type\" in the function \"nvidia_architecture\". Line: $LINENO" ;;
+        esac
     else
         return 1
     fi
@@ -930,10 +931,7 @@ cuda_download() {
     local cuda_version_number="$remote_cuda_version_test"
     local cuda_pin_url="https://developer.download.nvidia.com/compute/cuda/repos"
     local cuda_url="https://developer.download.nvidia.com/compute/cuda/$cuda_version_number"
-    local distro
-    local pkg_ext
-    local pin_file
-    local installer_path
+    local distro installer_path pin_file pkg_ext
 
     case "$choice" in
         1) distro="debian10"; pkg_ext="deb"; installer_path="local_installers/cuda-repo-debian10-12-3-local_${cuda_version_number}-545.23.08-1_amd64.deb" ;;
@@ -944,20 +942,21 @@ cuda_download() {
         6) distro="wsl-ubuntu"; pkg_ext="pin"; pin_file="wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin"; installer_path="local_installers/cuda-repo-wsl-ubuntu-12-3-local_${cuda_version_number}-545.23.08-1_amd64.deb" ;;
         7) git clone -q "https://gitlab.archlinux.org/archlinux/packaging/packages/cuda.git" && cd cuda && makepkg -sif -C --needed --noconfirm; return ;;
         8) return ;;
-        *) echo "Invalid choice. Please try again."; cuda_download; return ;;
+        *) echo "Invalid choice. Please try again."; cuda_download ;;
     esac
 
     echo "Downloading CUDA SDK Toolkit - version $cuda_version_number"
+    mkdir -p "$packages/nvidia-cuda"
 
     if [[ "$pkg_ext" == "deb" ]]; then
-        local package_name="${packages}/nvidia-cuda/cuda-$distro-$cuda_version_number.$pkg_ext"
+        local package_name="$packages/nvidia-cuda/cuda-$distro-$cuda_version_number.$pkg_ext"
         wget --show-progress -cqO "$package_name" "$cuda_url/$installer_path"
         dpkg -i "$package_name"
         cp -f /var/cuda-repo-${distro}-12-3-local/cuda-*-keyring.gpg /usr/share/keyrings/
         [[ "$distro" == debian* ]] && add-apt-repository -y contrib
     elif [[ "$pkg_ext" == "pin" ]]; then
         wget --show-progress -cqO "/etc/apt/preferences.d/cuda-repository-pin-600" "$cuda_pin_url/$pin_file"
-        local package_name="${packages}/nvidia-cuda/cuda-$distro-$cuda_version_number.deb"
+        local package_name="$packages/nvidia-cuda/cuda-$distro-$cuda_version_number.deb"
         wget --show-progress -cqO "$package_name" "$cuda_url/$installer_path"
         dpkg -i "$package_name"
         cp -f /var/cuda-repo-${distro}-12-3-local/cuda-*-keyring.gpg /usr/share/keyrings/
@@ -1201,7 +1200,8 @@ apt_pkgs() {
         apt install "${available_packages[@]}"
         echo
     else
-        printf "%s\n\n" "No missing packages to install or all missing packages are unavailable."
+        echo "No missing packages to install or all missing packages are unavailable."
+        echo
     fi
 }
 
@@ -3130,21 +3130,13 @@ cp -f "$workspace/include/dxva2api.h" "/usr/include"
 curl -sSLo "$workspace/include/objbase.h" "https://raw.githubusercontent.com/wine-mirror/wine/master/include/objbase.h"
 cp -f "$workspace/include/objbase.h" "$workspace"
 
-if [[ -n "$ffmpeg_archive" ]]; then
-    ff_cmd="ffmpeg-$ffmpeg_archive"
-fi
-
 # Get the latest FFmpeg version by parsing its repository
-check_latest_ffmpeg_version "https://github.com/FFmpeg/FFmpeg.git" "3"
-ffmperepo_version="$ffmpeg_git_version"
-ffmpeg_archive="ffmpeg-$ffmperepo_version.tar.gz"
-ffmpeg_url="https://github.com/FFmpeg/FFmpeg/archive/refs/tags/n6.1.1.tar.gz"
+check_ffmpeg_version "https://github.com/FFmpeg/FFmpeg.git" "3"
+ffmpeg_latest_version="$ffmpeg_git_version"
 
-if [[ ! "$ffmpeg_git_version" == "$ffmperepo_version" ]]; then
-    printf "\n%s\n%s\n%s\n" \
-        "The FFmpeg version you are installing is: $ffmperepo_version" \
-        "The script detected a new version: $ffmpeg_git_version" \
-        "You can modify the variable \"ffmperepo_version\" if desired to change versions."
+if [[ ! "$ffmpeg_release_version" == "$ffmpeg_latest_version" ]]; then
+    echo
+    echo "The script detected a new release version of FFmpeg: $ffmpeg_git_version"
 fi
 
 # Clean the compilter flags before building FFmpeg
