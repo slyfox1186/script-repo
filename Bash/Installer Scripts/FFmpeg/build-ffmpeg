@@ -80,6 +80,7 @@ workspace="$cwd/workspace"
 install_dir=/usr/local
 pc_type=x86_64-linux-gnu
 web_repo=https://github.com/slyfox1186/script-repo
+NONFREE_AND_GPL=false
 LDEXEFLAGS=""
 ffmpeg_libraries=()
 latest=false
@@ -700,13 +701,14 @@ usage() {
     echo "Usage: ./$script_name [options]"
     echo
     echo "Options:"
-    echo "    -h, --help                                       Display usage information"
-    echo "        --version                                    Display version information"
-    echo "    -c, --cleanup                                    Remove all working dirs"
-    echo "    -b, --build                                      Starts the build process"
-    echo "    -l, --latest                                     Force the script to build the latest version of dependencies if newer version is available"
+    echo "    -h, --help                       Display usage information"
+    echo "        --version                    Display version information"
+    echo "    -c, --cleanup                    Remove all working dirs"
+    echo "    -b, --build                      Starts the build process"
+    echo "      --enable-gpl-and-non-free      Enable GPL and non-free codecs  - https://ffmpeg.org/legal.html"
+    echo "    -l, --latest                     Force the script to build the latest version of dependencies if newer version is available"
     echo
-    echo "Example: ./script --build --latest"
+    echo "Example: ./${0} --build --latest"
     echo
 }
 
@@ -722,6 +724,13 @@ while (("$#" > 0)); do
                    ;;
         -*)        if [[ "$1" == "--build" || "$1" =~ "-b" ]]; then
                        bflag="-b"
+                   fi
+                   if [[ "$1" == "--enable-gpl-and-non-free" ]]; then
+                       CONFIGURE_OPTIONS+=("--enable-nonfree")
+                       CONFIGURE_OPTIONS+=("--enable-gpl")
+                       CONFIGURE_OPTIONS+=("--enable-libcdio")
+                       CONFIGURE_OPTIONS+=("--enable-libsmbclient")
+                       NONFREE_AND_GPL=true
                    fi
                    if [[ "$1" == "--cleanup" || "$1" =~ "-c" && ! "$1" =~ "--" ]]; then
                        cflag="-c"
@@ -749,6 +758,11 @@ if [[ -z "$bflag" ]]; then
         exit 1
     fi
     exit 0
+fi
+
+if $NONFREE_AND_GPL; then
+    echo "With GPL and non-free codecs"
+    echo
 fi
 
 if [[ -n "$LDEXEFLAGS" ]]; then
@@ -1090,6 +1104,7 @@ install_cuda() {
         if [[ "$local_cuda_version" == "$remote_cuda_version" ]]; then
             echo
             echo "Do you want to update/reinstall CUDA?"
+            echo
             echo "[1] Yes"
             echo "[2] No"
             echo
@@ -1120,32 +1135,21 @@ install_cuda() {
 
 # Required build packages
 apt_pkgs() {
-    local missing_pkg missing_packages pkg pkgs available_packages unavailable_packages
+    local pkg pkgs available_packages unavailable_packages
 
-    openjdk_pkg=$(apt search --names-only '^openjdk-[0-9]+-jdk$' 2>/dev/null |
-                  grep -oP '^openjdk-\d+-jdk/' |
-                  sed 's|/||' |
-                  sort -rV |
-                  head -n1
-              )
-    libcpp_pkg=$(apt list libc++* 2>/dev/null |
-                 grep -Eo 'libc\+\+-[0-9\-]+-dev' |
-                 uniq |
-                 sort -rV |
-                 head -n1
-             )
-    libcppabi_pkg=$(apt list libc++abi* 2>/dev/null |
-                    grep -Eo 'libc\+\+abi-[0-9]+-dev' |
-                    uniq |
-                    sort -rV |
-                    head -n1
-                )
-    libunwind_pkg=$(apt list libunwind* 2>/dev/null |
-                    grep -Eo 'libunwind-[0-9]+-dev' |
-                    uniq |
-                    sort -rV |
-                    head -n1
-                )
+    # Function to find the latest version of a package by pattern
+    find_latest_pkg_version() {
+        apt search --names-only "$1" 2>/dev/null |
+        grep -oP "$2" |
+        sort -rV |
+        head -n1
+    }
+
+    # Use the function to find the latest versions of specific packages
+    local openjdk_pkg=$(find_latest_pkg_version '^openjdk-[0-9]+-jdk$' '^openjdk-[0-9]+-jdk')
+    local libcpp_pkg=$(find_latest_pkg_version 'libc++*' 'libc\+\+-[0-9\-]+-dev')
+    local libcppabi_pkg=$(find_latest_pkg_version 'libc++abi*' 'libc\+\+abi-[0-9]+-dev')
+    local libunwind_pkg=$(find_latest_pkg_version 'libunwind*' 'libunwind-[0-9]+-dev')
 
     # Define an array of apt package names
     pkgs=($1 $libcppabi_pkg $libcpp_pkg $libunwind_pkg $openjdk_pkg ant apt asciidoc autoconf
@@ -1639,25 +1643,55 @@ if build "zlib" "$repo_version"; then
     build_done "zlib" "$repo_version"
 fi
 
-get_openssl_version
-if build "openssl" "$repo_version"; then
-    download "https://www.openssl.org/source/openssl-$repo_version.tar.gz"
-    execute ./Configure --prefix="$workspace" \
-                        enable-egd \
-                        enable-fips \
-                        enable-md2 \
-                        enable-rc5 \
-                        enable-trace \
-                        threads zlib \
-                        --with-rand-seed=os \
-                        --with-zlib-include="$workspace/include" \
-                        --with-zlib-lib="$workspace/lib"
-    execute make "-j$cpu_threads"
-    execute make install_sw
-    execute make install_fips
-    build_done "openssl" "$repo_version"
+
+if $NONFREE_AND_GPL; then
+    get_openssl_version
+    if build "openssl" "$repo_version"; then
+        download "https://www.openssl.org/source/openssl-$repo_version.tar.gz"
+        execute ./Configure --prefix="$workspace" \
+                            enable-egd \
+                            enable-fips \
+                            enable-md2 \
+                            enable-rc5 \
+                            enable-trace \
+                            threads zlib \
+                            --with-rand-seed=os \
+                            --with-zlib-include="$workspace/include" \
+                            --with-zlib-lib="$workspace/lib"
+        execute make "-j$cpu_threads"
+        execute make install_sw
+        execute make install_fips
+        build_done "openssl" "$repo_version"
+    fi
+    ffmpeg_libraries+=("--enable-openssl")
+else
+    if build "gmp" "6.2.1"; then
+        download "https://ftp.gnu.org/gnu/gmp/gmp-6.2.1.tar.xz"
+        execute ./configure --prefix="$workspace" --disable-shared --enable-static
+        execute make "-j$cpu_threads"
+        execute make install
+        build_done "gmp" "6.2.1"
+    fi
+
+    if build "nettle" "3.9.1"; then
+        download "https://ftp.gnu.org/gnu/nettle/nettle-3.9.1.tar.gz"
+        execute ./configure --prefix="$workspace" --disable-shared --enable-static --disable-openssl --disable-documentation --libdir="$workspace"/lib CPPFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS"
+        execute make "-j$cpu_threads"
+        execute make install
+        build_done "nettle" "3.9.1"
+    fi
+
+    if [[ ! $ARCH == "arm64" ]]; then
+    if build "gnutls" "3.8.2"; then
+        download "https://www.gnupg.org/ftp/gcrypt/gnutls/v3.8/gnutls-3.8.2.tar.xz"
+        execute ./configure --prefix="$workspace" --disable-shared --enable-static --disable-doc --disable-tools --disable-cxx --disable-tests --disable-gtk-doc-html --disable-libdane --disable-nls --enable-local-libopts --disable-guile --with-included-libtasn1 --with-included-unistring --without-p11-kit CPPFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS"
+        execute make "-j$cpu_threads"
+        execute make install
+        build_done "gnutls" "3.8.2"
+    fi
+    # CONFIGURE_OPTIONS+=("--enable-gmp" "--enable-gnutls")
+    fi
 fi
-ffmpeg_libraries+=("--enable-openssl")
 
 find_git_repo "yasm/yasm" "1" "T"
 if build "yasm" "$repo_version"; then
@@ -1743,19 +1777,21 @@ if build "libtiff" "$repo_version"; then
     build_done "libtiff" "$repo_version"
 fi
 
-find_git_repo "nkoriyama/aribb24" "1" "T"
-if build "aribb24" "$repo_version"; then
-    download "https://github.com/nkoriyama/aribb24/archive/refs/tags/v$repo_version.tar.gz" "aribb24-$repo_version.tar.gz"
-    execute autoreconf -fi
-    execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type" \
-                        --disable-shared \
-                        --with-pic
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done "aribb24" "$repo_version"
+if $NONFREE_AND_GPL; then
+    find_git_repo "nkoriyama/aribb24" "1" "T"
+    if build "aribb24" "$repo_version"; then
+        download "https://github.com/nkoriyama/aribb24/archive/refs/tags/v$repo_version.tar.gz" "aribb24-$repo_version.tar.gz"
+        execute autoreconf -fi
+        execute ./configure --prefix="$workspace" \
+                            --{build,host}="$pc_type" \
+                            --disable-shared \
+                            --with-pic
+        execute make "-j$cpu_threads"
+        execute make install
+        build_done "aribb24" "$repo_version"
+    fi
+    ffmpeg_libraries+=("--enable-libaribb24")
 fi
-ffmpeg_libraries+=("--enable-libaribb24")
 
 find_git_repo "7950" "4"
 repo_version="${repo_version#VER-}"
@@ -2049,14 +2085,16 @@ if build "$repo_name" "${version//\$ /}"; then
     build_done "$repo_name" "$version"
 fi
 
-git_caller "https://github.com/m-ab-s/rubberband.git" "rubberband-git"
-if build "$repo_name" "${version//\$ /}"; then
-    echo "Cloning \"$repo_name\" saving version \"$version\""
-    git_clone "$git_url"
-    execute make "-j$cpu_threads" PREFIX="$workspace" install-static
-    build_done "$repo_name" "$version"
+if $NONFREE_AND_GPL; then
+    git_caller "https://github.com/m-ab-s/rubberband.git" "rubberband-git"
+    if build "$repo_name" "${version//\$ /}"; then
+        echo "Cloning \"$repo_name\" saving version \"$version\""
+        git_clone "$git_url"
+        execute make "-j$cpu_threads" PREFIX="$workspace" install-static
+        build_done "$repo_name" "$version"
+    fi
+    ffmpeg_libraries+=("--enable-librubberband")
 fi
-ffmpeg_libraries+=("--enable-librubberband")
 
 find_git_repo "c-ares/c-ares" "1" "T"
 repo_version="${repo_version//c-ares-/}"
@@ -2368,18 +2406,20 @@ if build "libflac" "$repo_version"; then
     build_done "libflac" "$repo_version"
 fi
 
-find_git_repo "mstorsjo/fdk-aac" "1" "T"
-if build "libfdk-aac" "2.0.3"; then
-    download "https://phoenixnap.dl.sourceforge.net/project/opencore-amr/fdk-aac/fdk-aac-2.0.3.tar.gz" "libfdk-aac-2.0.3.tar.gz"
-    execute ./autogen.sh
-    execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type" \
-                        --disable-shared
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done "libfdk-aac" "2.0.3"
+if $NONFREE_AND_GPL; then
+    find_git_repo "mstorsjo/fdk-aac" "1" "T"
+    if build "libfdk-aac" "2.0.3"; then
+        download "https://phoenixnap.dl.sourceforge.net/project/opencore-amr/fdk-aac/fdk-aac-2.0.3.tar.gz" "libfdk-aac-2.0.3.tar.gz"
+        execute ./autogen.sh
+        execute ./configure --prefix="$workspace" \
+                            --{build,host}="$pc_type" \
+                            --disable-shared
+        execute make "-j$cpu_threads"
+        execute make install
+        build_done "libfdk-aac" "2.0.3"
+    fi
+    ffmpeg_libraries+=("--enable-libfdk-aac")
 fi
-ffmpeg_libraries+=("--enable-libfdk-aac")
 
 find_git_repo "xiph/vorbis" "1" "T"
 if build "vorbis" "$repo_version"; then
@@ -2458,7 +2498,7 @@ find_git_repo "8143" "6"
 repo_version="${repo_version//debian\//}"
 if build "opencore-amr" "${repo_version}"; then
     download "https://salsa.debian.org/multimedia-team/opencore-amr/-/archive/debian/${repo_version}/opencore-amr-debian-${repo_version}.tar.bz2" "opencore-amr-${repo_version}.tar.bz2"
-    execute ./configure --prefix="${workspace}" \
+    execute ./configure --prefix="$workspace" \
                         --{build,host}="${pc_type}" \
                         --disable-shared
     execute make "-j${cpu_threads}"
@@ -2711,35 +2751,39 @@ if build "mediainfo-cli" "$repo_version"; then
     build_done "mediainfo-cli" "$repo_version"
 fi
 
-find_git_repo "georgmartius/vid.stab" "1" "T"
-if build "vid-stab" "$repo_version"; then
-    download "https://github.com/georgmartius/vid.stab/archive/refs/tags/v$repo_version.tar.gz" "vid-stab-$repo_version.tar.gz"
-    execute cmake -B build \
-                  -DCMAKE_INSTALL_PREFIX="$workspace" \
-                  -DCMAKE_BUILD_TYPE=Release \
-                  -DBUILD_SHARED_LIBS=OFF \
-                  -DUSE_OMP=ON \
-                  -G Ninja
-    execute ninja "-j$cpu_threads" -C build
-    execute ninja -C build install
-    build_done "vid-stab" "$repo_version"
+if $NONFREE_AND_GPL; then
+    find_git_repo "georgmartius/vid.stab" "1" "T"
+    if build "vid-stab" "$repo_version"; then
+        download "https://github.com/georgmartius/vid.stab/archive/refs/tags/v$repo_version.tar.gz" "vid-stab-$repo_version.tar.gz"
+        execute cmake -B build \
+                      -DCMAKE_INSTALL_PREFIX="$workspace" \
+                      -DCMAKE_BUILD_TYPE=Release \
+                      -DBUILD_SHARED_LIBS=OFF \
+                      -DUSE_OMP=ON \
+                      -G Ninja
+        execute ninja "-j$cpu_threads" -C build
+        execute ninja -C build install
+        build_done "vid-stab" "$repo_version"
+    fi
+    ffmpeg_libraries+=("--enable-libvidstab")
 fi
-ffmpeg_libraries+=("--enable-libvidstab")
 
-find_git_repo "dyne/frei0r" "1" "T"
-if build "frei0r" "$repo_version"; then
-    download "https://github.com/dyne/frei0r/archive/refs/tags/v$repo_version.tar.gz" "frei0r-$repo_version.tar.gz"
-    execute cmake -B build \
-                  -DCMAKE_INSTALL_PREFIX="$workspace" \
-                  -DCMAKE_BUILD_TYPE=Release \
-                  -DBUILD_SHARED_LIBS=OFF \
-                  -DWITHOUT_OPENCV=OFF \
-                  -G Ninja
-    execute ninja "-j$cpu_threads" -C build
-    execute ninja -C build install
-    build_done "frei0r" "$repo_version"
+if $NONFREE_AND_GPL; then
+    find_git_repo "dyne/frei0r" "1" "T"
+    if build "frei0r" "$repo_version"; then
+        download "https://github.com/dyne/frei0r/archive/refs/tags/v$repo_version.tar.gz" "frei0r-$repo_version.tar.gz"
+        execute cmake -B build \
+                      -DCMAKE_INSTALL_PREFIX="$workspace" \
+                      -DCMAKE_BUILD_TYPE=Release \
+                      -DBUILD_SHARED_LIBS=OFF \
+                      -DWITHOUT_OPENCV=OFF \
+                      -G Ninja
+        execute ninja "-j$cpu_threads" -C build
+        execute ninja -C build install
+        build_done "frei0r" "$repo_version"
+    fi
+    ffmpeg_libraries+=("--enable-frei0r")
 fi
-ffmpeg_libraries+=("--enable-frei0r")
 
 if [[ "$OS" == "Arch" ]]; then
     find_git_repo "gpac/gpac" "1" "T"
@@ -2790,87 +2834,90 @@ if build "svt-av1" "1.8.0"; then
 fi
 ffmpeg_libraries+=("--enable-libsvtav1")
 
-find_git_repo "536" "2" "B"
-repo_short_version_1="${repo_version::8}"
-if build "x264" "$repo_short_version_1"; then
-    download "https://code.videolan.org/videolan/x264/-/archive/$repo_version/x264-$repo_version.tar.bz2" "x264-$repo_short_version_1.tar.bz2"
-    execute ./configure --prefix="$workspace" \
-                        --host="$pc_type" \
-                        --bit-depth=all \
-                        --chroma-format=all \
-                        --enable-debug \
-                        --enable-gprof \
-                        --enable-lto \
-                        --enable-pic \
-                        --enable-static \
-                        --enable-strip \
-                        CFLAGS="$CFLAGS -fPIC" \
-                        CXXFLAGS="$CXXFLAGS"
-    execute make "-j$cpu_threads"
-    execute make install
-    execute make install-lib-static
-    build_done "x264" "$repo_short_version_1"
+if $NONFREE_AND_GPL; then
+    find_git_repo "536" "2" "B"
+    repo_short_version_1="${repo_version::8}"
+    if build "x264" "$repo_short_version_1"; then
+        download "https://code.videolan.org/videolan/x264/-/archive/$repo_version/x264-$repo_version.tar.bz2" "x264-$repo_short_version_1.tar.bz2"
+        execute ./configure --prefix="$workspace" \
+                            --host="$pc_type" \
+                            --bit-depth=all \
+                            --chroma-format=all \
+                            --enable-debug \
+                            --enable-gprof \
+                            --enable-lto \
+                            --enable-pic \
+                            --enable-static \
+                            --enable-strip \
+                            CFLAGS="$CFLAGS -fPIC" \
+                            CXXFLAGS="$CXXFLAGS"
+        execute make "-j$cpu_threads"
+        execute make install
+        execute make install-lib-static
+        build_done "x264" "$repo_short_version_1"
+    fi
+    ffmpeg_libraries+=("--enable-libx264")
 fi
-ffmpeg_libraries+=("--enable-libx264")
 
-if build "x265" "3.5"; then
-    fix_missing_x265_libs
-    download "https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz" "x265-3.5.tar.gz"
-    cd build/linux || exit 1
-    rm -fr {8,10,12}bit 2>/dev/null
-    mkdir -p {8,10,12}bit
-    cd 12bit || exit 1
-    echo "$ making 12bit binaries"
-    execute cmake ../../../source \
-                  -DCMAKE_INSTALL_PREFIX="$workspace" \
-                  -DCMAKE_BUILD_TYPE=Release \
-                  -DENABLE_LIBVMAF=OFF \
-                  -DENABLE_CLI=OFF \
-                  -DENABLE_SHARED=OFF \
-                  -DEXPORT_C_API=OFF \
-                  -DHIGH_BIT_DEPTH=ON \
-                  -DNATIVE_BUILD=ON \
-                  -DMAIN12=ON \
-                  -G Ninja
-    execute ninja "-j$cpu_threads"
-    echo "$ making 10bit binaries"
-    cd ../10bit || exit 1
-    execute cmake ../../../source \
-                  -DCMAKE_INSTALL_PREFIX="$workspace" \
-                  -DCMAKE_BUILD_TYPE=Release \
-                  -DENABLE_LIBVMAF=OFF \
-                  -DENABLE_CLI=OFF \
-                  -DENABLE_HDR10_PLUS=ON \
-                  -DENABLE_SHARED=OFF \
-                  -DEXPORT_C_API=OFF \
-                  -DHIGH_BIT_DEPTH=ON \
-                  -DNATIVE_BUILD=ON \
-                  -DNUMA_ROOT_DIR=/usr \
-                  -G Ninja
-    execute ninja "-j$cpu_threads"
-    echo "$ making 8bit binaries"
-    cd ../8bit || exit 1
-    ln -sf "../10bit/libx265.a" "libx265_main10.a"
-    ln -sf "../12bit/libx265.a" "libx265_main12.a"
-    execute cmake ../../../source \
-                  -DCMAKE_INSTALL_PREFIX="$workspace" \
-                  -DCMAKE_BUILD_TYPE=Release \
-                  -DENABLE_LIBVMAF=OFF \
-                  -DENABLE_PIC=ON \
-                  -DENABLE_SHARED=ON \
-                  -DEXTRA_LIB="x265_main10.a;x265_main12.a" \
-                  -DEXTRA_LINK_FLAGS="-L." \
-                  -DHIGH_BIT_DEPTH=ON \
-                  -DLINKED_10BIT=ON \
-                  -DLINKED_12BIT=ON \
-                  -DNATIVE_BUILD=ON \
-                  -DNUMA_ROOT_DIR=/usr \
-                  -G Ninja
-    execute ninja "-j$cpu_threads"
+if $NONFREE_AND_GPL; then
+    if build "x265" "3.5"; then
+        fix_missing_x265_libs
+        download "https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz" "x265-3.5.tar.gz"
+        cd build/linux || exit 1
+        rm -fr {8,10,12}bit 2>/dev/null
+        mkdir -p {8,10,12}bit
+        cd 12bit || exit 1
+        echo "$ making 12bit binaries"
+        execute cmake ../../../source \
+                      -DCMAKE_INSTALL_PREFIX="$workspace" \
+                      -DCMAKE_BUILD_TYPE=Release \
+                      -DENABLE_LIBVMAF=OFF \
+                      -DENABLE_CLI=OFF \
+                      -DENABLE_SHARED=OFF \
+                      -DEXPORT_C_API=OFF \
+                      -DHIGH_BIT_DEPTH=ON \
+                      -DNATIVE_BUILD=ON \
+                      -DMAIN12=ON \
+                      -G Ninja
+        execute ninja "-j$cpu_threads"
+        echo "$ making 10bit binaries"
+        cd ../10bit || exit 1
+        execute cmake ../../../source \
+                      -DCMAKE_INSTALL_PREFIX="$workspace" \
+                      -DCMAKE_BUILD_TYPE=Release \
+                      -DENABLE_LIBVMAF=OFF \
+                      -DENABLE_CLI=OFF \
+                      -DENABLE_HDR10_PLUS=ON \
+                      -DENABLE_SHARED=OFF \
+                      -DEXPORT_C_API=OFF \
+                      -DHIGH_BIT_DEPTH=ON \
+                      -DNATIVE_BUILD=ON \
+                      -DNUMA_ROOT_DIR=/usr \
+                      -G Ninja
+        execute ninja "-j$cpu_threads"
+        echo "$ making 8bit binaries"
+        cd ../8bit || exit 1
+        ln -sf "../10bit/libx265.a" "libx265_main10.a"
+        ln -sf "../12bit/libx265.a" "libx265_main12.a"
+        execute cmake ../../../source \
+                      -DCMAKE_INSTALL_PREFIX="$workspace" \
+                      -DCMAKE_BUILD_TYPE=Release \
+                      -DENABLE_LIBVMAF=OFF \
+                      -DENABLE_PIC=ON \
+                      -DENABLE_SHARED=ON \
+                      -DEXTRA_LIB="x265_main10.a;x265_main12.a" \
+                      -DEXTRA_LINK_FLAGS="-L." \
+                      -DHIGH_BIT_DEPTH=ON \
+                      -DLINKED_10BIT=ON \
+                      -DLINKED_12BIT=ON \
+                      -DNATIVE_BUILD=ON \
+                      -DNUMA_ROOT_DIR=/usr \
+                      -G Ninja
+        execute ninja "-j$cpu_threads"
 
-    mv "libx265.a" "libx265_main.a"
+        mv "libx265.a" "libx265_main.a"
 
-    execute ar -M <<EOF
+        execute ar -M <<EOF
 CREATE libx265.a
 ADDLIB libx265_main.a
 ADDLIB libx265_main10.a
@@ -2879,16 +2926,17 @@ SAVE
 END
 EOF
 
-    execute ninja install
+        execute ninja install
 
-     [[ -n "$LDEXEFLAGS" ]] && sed -i.backup "s/lgcc_s/lgcc_eh/g" "$workspace/lib/pkgconfig/x265.pc"
+         [[ -n "$LDEXEFLAGS" ]] && sed -i.backup "s/lgcc_s/lgcc_eh/g" "$workspace/lib/pkgconfig/x265.pc"
 
-    # FIX THE x265 SHARED LIBRARY ISSUE
-    x265_fix_libs
+        # FIX THE x265 SHARED LIBRARY ISSUE
+        x265_fix_libs
 
-    build_done "x265" "3.5"
+        build_done "x265" "3.5"
+    fi
+    ffmpeg_libraries+=("--enable-libx265")
 fi
-ffmpeg_libraries+=("--enable-libx265")
 
 # Vaapi doesn"t work well with static links FFmpeg.
 if [[ -z "$LDEXEFLAGS" ]]; then
@@ -2901,76 +2949,80 @@ if [[ -z "$LDEXEFLAGS" ]]; then
     fi
 fi
 
-if [[ -n "$iscuda" ]]; then
-    if build "nv-codec-headers" "12.1.14.0"; then
-        download "https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.1.14.0/nv-codec-headers-12.1.14.0.tar.gz"
-        execute make "-j$cpu_threads"
-        execute make PREFIX="$workspace" install
-        build_done "nv-codec-headers" "12.1.14.0"
+if $NONFREE_AND_GPL; then
+    if [[ -n "$iscuda" ]]; then
+        if build "nv-codec-headers" "12.1.14.0"; then
+            download "https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.1.14.0/nv-codec-headers-12.1.14.0.tar.gz"
+            execute make "-j$cpu_threads"
+            execute make PREFIX="$workspace" install
+            build_done "nv-codec-headers" "12.1.14.0"
+        fi
+
+        get_os_version
+
+        if [[ "$OS" == "Arch" ]]; then
+            PATH+=":/opt/cuda/bin"
+            export PATH
+            CFLAGS+=" -I/opt/cuda/include -I/opt/cuda/targets/x86_64-linux/include"
+            LDFLAGS+=" -L/opt/cuda/lib64 -L/opt/cuda/lib -L/opt/cuda/targets/x86_64-linux/lib"
+        else
+            CFLAGS+=" -I/usr/local/cuda/include"
+            LDFLAGS+=" -L/usr/local/cuda/lib64"
+        fi
+
+        ffmpeg_libraries+=("--enable-"{cuda-nvcc,cuda-llvm,cuvid,nvdec,nvenc,ffnvcodec})
+
+        if [[ -n "$LDEXEFLAGS" ]]; then
+            ffmpeg_libraries+=("--enable-libnpp")
+        fi
+
+        # Get the Nvidia GPU architecture to build CUDA
+        # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
+        nvidia_architecture
+        ffmpeg_libraries+=("--nvccflags=-gencode arch=$nvidia_arch_type")
     fi
-
-    get_os_version
-
-    if [[ "$OS" == "Arch" ]]; then
-        PATH+=":/opt/cuda/bin"
-        export PATH
-        CFLAGS+=" -I/opt/cuda/include -I/opt/cuda/targets/x86_64-linux/include"
-        LDFLAGS+=" -L/opt/cuda/lib64 -L/opt/cuda/lib -L/opt/cuda/targets/x86_64-linux/lib"
-    else
-        CFLAGS+=" -I/usr/local/cuda/include"
-        LDFLAGS+=" -L/usr/local/cuda/lib64"
-    fi
-
-    ffmpeg_libraries+=("--enable-"{cuda-nvcc,cuda-llvm,cuvid,nvdec,nvenc,ffnvcodec})
-
-    if [[ -n "$LDEXEFLAGS" ]]; then
-        ffmpeg_libraries+=("--enable-libnpp")
-    fi
-
-    # Get the Nvidia GPU architecture to build CUDA
-    # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
-    nvidia_architecture
-    ffmpeg_libraries+=("--nvccflags=-gencode arch=$nvidia_arch_type")
-else
-    alert_no_cuda=1
 fi
 
-find_git_repo "Haivision/srt" "1" "T"
-if build "srt" "$repo_version"; then
-    download "https://github.com/Haivision/srt/archive/refs/tags/v$repo_version.tar.gz" "srt-$repo_version.tar.gz"
-    export OPENSSL_ROOT_DIR="$workspace"
-    export OPENSSL_LIB_DIR="$workspace/lib"
-    export OPENSSL_INCLUDE_DIR="$workspace/include"
-    execute cmake -B build \
-                  -DCMAKE_INSTALL_PREFIX="$workspace" \
-                  -DCMAKE_BUILD_TYPE=Release \
-                  -DBUILD_SHARED_LIBS=OFF \
-                  -DENABLE_APPS=OFF \
-                  -DENABLE_SHARED=OFF \
-                  -DENABLE_STATIC=ON \
-                  -DUSE_STATIC_LIBSTDCXX=ON \
-                  -G Ninja
-    execute ninja -C build "-j$cpu_threads"
-    execute ninja -C build "-j$cpu_threads" install
-    if [[ -n "$LDEXEFLAGS" ]]; then
-        sed -i.backup "s/-lgcc_s/-lgcc_eh/g" "$workspace/lib/pkgconfig/srt.pc"
+if $NONFREE_AND_GPL; then
+    find_git_repo "Haivision/srt" "1" "T"
+    if build "srt" "$repo_version"; then
+        download "https://github.com/Haivision/srt/archive/refs/tags/v$repo_version.tar.gz" "srt-$repo_version.tar.gz"
+        export OPENSSL_ROOT_DIR="$workspace"
+        export OPENSSL_LIB_DIR="$workspace/lib"
+        export OPENSSL_INCLUDE_DIR="$workspace/include"
+        execute cmake -B build \
+                      -DCMAKE_INSTALL_PREFIX="$workspace" \
+                      -DCMAKE_BUILD_TYPE=Release \
+                      -DBUILD_SHARED_LIBS=OFF \
+                      -DENABLE_APPS=OFF \
+                      -DENABLE_SHARED=OFF \
+                      -DENABLE_STATIC=ON \
+                      -DUSE_STATIC_LIBSTDCXX=ON \
+                      -G Ninja
+        execute ninja -C build "-j$cpu_threads"
+        execute ninja -C build "-j$cpu_threads" install
+        if [[ -n "$LDEXEFLAGS" ]]; then
+            sed -i.backup "s/-lgcc_s/-lgcc_eh/g" "$workspace/lib/pkgconfig/srt.pc"
+        fi
+        build_done "srt" "$repo_version"
     fi
-    build_done "srt" "$repo_version"
+    ffmpeg_libraries+=("--enable-libsrt")
 fi
-ffmpeg_libraries+=("--enable-libsrt")
 
-find_git_repo "avisynth/avisynthplus" "1" "T"
-if build "avisynth" "$repo_version"; then
-    download "https://github.com/AviSynth/AviSynthPlus/archive/refs/tags/v$repo_version.tar.gz" "avisynth-$repo_version.tar.gz"
-    execute cmake -B build \
-                  -DCMAKE_INSTALL_PREFIX="$workspace" \
-                  -DCMAKE_BUILD_TYPE=Release \
-                  -DBUILD_SHARED_LIBS=OFF \
-                  -DHEADERS_ONLY=OFF
-    execute make "-j$cpu_threads" -C build VersionGen install
-    build_done "avisynth" "$repo_version"
+if $NONFREE_AND_GPL; then
+    find_git_repo "avisynth/avisynthplus" "1" "T"
+    if build "avisynth" "$repo_version"; then
+        download "https://github.com/AviSynth/AviSynthPlus/archive/refs/tags/v$repo_version.tar.gz" "avisynth-$repo_version.tar.gz"
+        execute cmake -B build \
+                      -DCMAKE_INSTALL_PREFIX="$workspace" \
+                      -DCMAKE_BUILD_TYPE=Release \
+                      -DBUILD_SHARED_LIBS=OFF \
+                      -DHEADERS_ONLY=OFF
+        execute make "-j$cpu_threads" -C build VersionGen install
+        build_done "avisynth" "$repo_version"
+    fi
+    ffmpeg_libraries+=("--enable-avisynth")
 fi
-ffmpeg_libraries+=("--enable-avisynth")
 
 # find_git_repo "vapoursynth/vapoursynth" "1" "T"
 if build "vapoursynth" "R65"; then
@@ -3019,19 +3071,21 @@ if build "$repo_name" "${version//\$ /}"; then
     build_done "$repo_name" "$version"
 fi
 
-find_git_repo "8268" "6"
-repo_version="${repo_version//debian\/2%/}"
-if build "xvidcore" "$repo_version"; then
-    download "https://salsa.debian.org/multimedia-team/xvidcore/-/archive/debian/2%25$repo_version/xvidcore-debian-2%25$repo_version.tar.bz2" "xvidcore-$repo_version.tar.bz2"
-    cd "build/generic" || exit 1
-    execute ./bootstrap.sh
-    execute ./configure --prefix="$workspace" --{build,host,target}="$pc_type"
-    execute make "-j$cpu_threads"
-    [[ -f "$workspace/lib/libxvidcore.so" ]] && rm "$workspace/lib/libxvidcore.so" "$workspace/lib/libxvidcore.so.4"
-    execute make install
-    build_done "xvidcore" "$repo_version"
+if $NONFREE_AND_GPL; then
+    find_git_repo "8268" "6"
+    repo_version="${repo_version//debian\/2%/}"
+    if build "xvidcore" "$repo_version"; then
+        download "https://salsa.debian.org/multimedia-team/xvidcore/-/archive/debian/2%25$repo_version/xvidcore-debian-2%25$repo_version.tar.bz2" "xvidcore-$repo_version.tar.bz2"
+        cd "build/generic" || exit 1
+        execute ./bootstrap.sh
+        execute ./configure --prefix="$workspace" --{build,host,target}="$pc_type"
+        execute make "-j$cpu_threads"
+        [[ -f "$workspace/lib/libxvidcore.so" ]] && rm "$workspace/lib/libxvidcore.so" "$workspace/lib/libxvidcore.so.4"
+        execute make install
+        build_done "xvidcore" "$repo_version"
+    fi
+    ffmpeg_libraries+=("--enable-libxvid")
 fi
-ffmpeg_libraries+=("--enable-libxvid")
 
 # Image libraries
 echo
@@ -3152,13 +3206,6 @@ fi
 # Clean the compilter flags before building FFmpeg
 source_flags
 
-# Alert the user that CUDA will not be enabled
-if [[ "$alert_no_cuda" -eq 1 ]]; then
-    echo
-    echo "The Active GPU is made by AMD and the Geforce CUDA SDK Toolkit will not be enabled."
-    echo
-fi
-
 # Build FFmpeg from source using the latest git clone
 git_caller "https://git.ffmpeg.org/ffmpeg.git" "ffmpeg-git" "ffmpeg"
 if build "$repo_name" "${version//\$ /}"; then
@@ -3182,14 +3229,11 @@ if build "$repo_name" "${version//\$ /}"; then
                  "$ladspa_switch" \
                  "${ffmpeg_libraries[@]}" \
                  --enable-chromaprint \
-                 --enable-gpl \
                  --enable-libbs2b \
                  --enable-libcaca \
-                 --enable-libcdio \
                  --enable-libgme \
                  --enable-libmodplug \
                  --enable-libshine \
-                 --enable-libsmbclient \
                  --enable-libsnappy \
                  --enable-libsoxr \
                  --enable-libspeex \
@@ -3199,7 +3243,6 @@ if build "$repo_name" "${version//\$ /}"; then
                  --enable-libvo-amrwbenc \
                  --enable-libzvbi \
                  --enable-lto \
-                 --enable-nonfree \
                  --enable-opengl \
                  --enable-pic \
                  --enable-pthreads \
