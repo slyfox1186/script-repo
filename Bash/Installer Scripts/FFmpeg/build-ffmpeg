@@ -127,7 +127,7 @@ echo
 mkdir -p "$packages"
 
 # Set the CC/CPP compilers + customized compiler optimization flags
-source_flags_fn() {
+source_flags() {
     CC=gcc
     CXX=g++
     CFLAGS="-g -O3 -march=native"
@@ -137,7 +137,7 @@ source_flags_fn() {
     EXTRALIBS="-ldl -lpthread -lm -lz"
     export CC CFLAGS CPPFLAGS CXX CXXFLAGS LDFLAGS
 }
-source_flags_fn
+source_flags
 
 log() {
     echo -e "${GREEN}[INFO]${NC} $1"
@@ -1201,16 +1201,16 @@ apt_pkgs() {
     fi
 }
 
-fix_missing_x265_lib() {
+fix_missing_x265_libs() {
     if [[ ! -f "/usr/lib/x86_64-linux-gnu/libstdc++.so" ]] && [[ -f "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30" ]]; then
         echo "$ ln -sf /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30 /usr/lib/x86_64-linux-gnu/libstdc++.so"
         ln -sf "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30" "/usr/lib/x86_64-linux-gnu/libstdc++.so"
     fi
 }
 
-x265_fix_libs_fn() {
+x265_fix_libs() {
     local x265_libs x265_libs_trim
-fix_
+
     x265_libs=$(find "$workspace/lib/" -type f -name 'libx265.so.*')
     x265_libs_trim=$(echo "$x265_libs" | sed "s:.*/::" | head -n1)
 
@@ -2798,7 +2798,7 @@ fi
 ffmpeg_libraries+=("--enable-libx264")
 
 if build "x265" "3.5"; then
-    fix_missing_x265_lib
+    fix_missing_x265_libs
     download "https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz" "x265-3.5.tar.gz"
     cd build/linux || exit 1
     rm -fr {8,10,12}bit 2>/dev/null
@@ -2868,7 +2868,7 @@ EOF
      [[ -n "$LDEXEFLAGS" ]] && sed -i.backup "s/lgcc_s/lgcc_eh/g" "$workspace/lib/pkgconfig/x265.pc"
 
     # FIX THE x265 SHARED LIBRARY ISSUE
-    x265_fix_libs_fn
+    x265_fix_libs
 
     build_done "x265" "3.5"
 fi
@@ -3037,7 +3037,7 @@ box_out_banner_images "Installing Image Tools"
 find_git_repo "strukturag/libheif" "1" "T"
 if build "libheif" "$repo_version"; then
     download "https://github.com/strukturag/libheif/archive/refs/tags/v$repo_version.tar.gz" "libheif-$repo_version.tar.gz"
-    source_flags_fn
+    source_flags
     CFLAGS="-g -O3 -fno-lto -pipe -march=native"
     CXXFLAGS="-g -O3 -fno-lto -pipe -march=native"
     export CFLAGS CXXFLAGS
@@ -3076,7 +3076,7 @@ if build "libheif" "$repo_version"; then
                   -G Ninja
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    source_flags_fn
+    source_flags
     build_done "libheif" "$repo_version"
 fi
 
@@ -3134,7 +3134,7 @@ if [[ ! "$ffmpeg_release_version" == "$ffmpeg_latest_version" ]]; then
 fi
 
 # Clean the compilter flags before building FFmpeg
-source_flags_fn
+source_flags
 
 # Alert the user that CUDA will not be enabled
 if [[ "$alert_no_cuda" -eq 1 ]]; then
