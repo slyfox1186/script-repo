@@ -757,18 +757,12 @@ else
     set_ccache_dir=/usr/lib/ccache
 fi
 
-path_fn() {
+source_path() {
     PATH=""
     PATH="$set_ccache_dir:$cuda_bin_path:$workspace/bin:$HOME/.local/bin:/usr/local/ant/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
     export PATH
 }
-path_fn
-
-path_clean_fn() {
-    PATH=""
-    PATH="$set_ccache_dir:$cuda_bin_path:$HOME/.local/bin:/usr/local/ant/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-    export PATH
-}
+source_path
 
 # Set the pkg_config_path variable
 PKG_CONFIG_PATH="\
@@ -821,7 +815,7 @@ check_remote_cuda_version() {
 }
 
 set_java_variables() {
-    path_fn
+    source_path
     locate_java=$(find /usr/lib/jvm/ -type d -name 'java-*-openjdk*' |
                   sort -rV |
                   head -n1
@@ -1241,7 +1235,7 @@ if version_split.length() > 1\\n  pa_version_minor = version_split[1]\\nelse\\n 
     sed -i '/pa_version_micro = version_split\[2\]/d' "$file_path"
 }
 
-libpulse_fix_libs_fn() {
+libpulse_fix_libs() {
     local pulse_version="$1"
     local libpulse_lib=$(find "$workspace/lib/" -type f -name "libpulsecommon-*.so" | head -n1)
     local libpulse_trim=$(echo "$libpulse_lib" |
@@ -1298,13 +1292,13 @@ get_openssl_version() {
 }
 
 # Patch functions
-patch_ffmpeg_fn() {
+patch_ffmpeg() {
     execute curl -sSLo mathops.patch https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/patches/mathops.patch
     execute patch -d "libavcodec/x86" -i "../../mathops.patch"
 }
 
 # Arch Linux function section
-apache_ant_fn() {
+apache_ant() {
     if build "apache-ant" "git"; then
         git_clone "https://aur.archlinux.org/apache-ant-contrib.git" "apache-ant-AUR"
         execute makepkg -sif --cleanbuild --noconfirm --needed
@@ -1312,7 +1306,7 @@ apache_ant_fn() {
     fi
 }
 
-librist_arch_fn() {
+librist_arch() {
     if build "librist" "git"; then
         git_clone "https://aur.archlinux.org/librist.git" "librist-AUR"
         execute makepkg -sif --cleanbuild --noconfirm --needed
@@ -1320,7 +1314,7 @@ librist_arch_fn() {
     fi
 }
 
-arch_os_ver_fn() {
+arch_os_ver() {
     local arch_pkgs pkg
 
     arch_pkgs=(av1an bluez-libs clang cmake dav1d devil docbook5-xml
@@ -1475,7 +1469,7 @@ get_wsl_version
     echo "Checking installation status of each package..."
 
 case "$OS" in
-    Arch)       arch_os_ver_fn ;;
+    Arch)       arch_os_ver ;;
     Debian|n/a) debian_os_version "$nvidia_encode_version $nvidia_utils_version" ;;
     Ubuntu)     ubuntu_os_version "$nvidia_encode_version $nvidia_utils_version" ;;
     WSL2)       get_os_version
@@ -1599,7 +1593,7 @@ if build "meson" "$repo_version"; then
 fi
 
 if [[ "$OS" == "Arch" ]]; then
-    librist_arch_fn
+    librist_arch
 else
     find_git_repo "816" "2" "T"
     if build "librist" "$repo_version_1"; then
@@ -2303,7 +2297,7 @@ if build "$repo_name" "${version//\$ /}"; then
                                "${extracmds[@]}"
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    libpulse_fix_libs_fn "${version//\$ /}"
+    libpulse_fix_libs "${version//\$ /}"
     build_done "$repo_name" "$version"
 fi
 ffmpeg_libraries+=("--enable-libpulse")
@@ -2618,7 +2612,7 @@ if build "udfread" "$repo_version_1"; then
 fi
 
 if [[ "$OS" == "Arch" ]]; then
-    apache_ant_fn
+    apache_ant
 else
     set_ant_path
     git_caller "https://github.com/apache/ant.git" "ant-git" "ant"
@@ -3150,7 +3144,7 @@ if build "$repo_name" "${version//\$ /}"; then
     git_clone "$git_url"
 
     if [[ "$OS" == "Arch" ]]; then
-        patch_ffmpeg_fn
+        patch_ffmpeg
     fi
 
     mkdir build
