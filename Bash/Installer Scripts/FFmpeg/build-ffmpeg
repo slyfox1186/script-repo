@@ -1381,7 +1381,7 @@ ubuntu_msft() {
         23.04) apt_pkgs $1 $ubuntu_common_pkgs $jammy_pkgs $ubuntu_wsl_pkgs ;;
         22.04) apt_pkgs $1 $ubuntu_common_pkgs $jammy_pkgs $ubuntu_wsl_pkgs ;;
         20.04) apt_pkgs $1 $ubuntu_common_pkgs $focal_pkgs $ubuntu_wsl_pkgs ;;
-        *)     fail "Faield to parse the Ubutnu MSFT version. Line: $LINENO"
+        *)     fail "Faield to parse the Ubutnu MSFT version. Line: $LINENO" ;;
     esac
 }
 
@@ -1400,7 +1400,7 @@ ubuntu_os_version() {
     mantic_pkgs="libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libhwy-dev libsrt-gnutls-dev libyuv-dev"
 
     case "$VER" in
-        msft)        ubuntu_msft
+        msft)        ubuntu_msft ;;
         23.10)       apt_pkgs $1 $mantic_pkgs $lunar_kenetic_pkgs $jammy_pkgs $focal_pkgs ;;
         23.04|22.10) apt_pkgs $1 $ubuntu_common_pkgs $lunar_kenetic_pkgs $jammy_pkgs ;;
         22.04)       apt_pkgs $1 $ubuntu_common_pkgs $jammy_pkgs ;;
