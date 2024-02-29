@@ -1019,11 +1019,12 @@ install_cuda() {
     fi
 
     if [[ "$nvidia_gpu_status" == "NVIDIA GPU not detected" ]]; then
-        printf "\n%s\n%s\n\n%s\n%s\n\n" \
-            "The CUDA SDK Toolkit was not detected and the latest version is: $cuda_latest_ver" \
-            "=========================================================================" \
-            "[1] Install the CUDA SDK Toolkit and add it to your PATH." \
-            "[2] Continue without installing. (Hardware acceleration will be turned off)"
+        echo
+        echo "The CUDA SDK Toolkit was not detected and the latest version is: $cuda_latest_ver"
+        echo "========================================================================="
+        echo "[1] Install the CUDA SDK Toolkit and add it to your PATH."
+        echo "[2] Continue without installing. (Hardware acceleration will be turned off)"
+        echo
         read -p "Your choices are (1 or 2): " choice
 
         case "$choice" in
@@ -1060,10 +1061,11 @@ install_cuda() {
         fi
 
         if [[ "$local_cuda_version" == "$remote_cuda_version" ]]; then
-            printf "\n%s\n\n%s\n%s\n\n" \
-                "Do you want to update/reinstall CUDA?" \
-                "[1] Yes" \
-                "[2] No"
+            echo
+            echo "Do you want to update/reinstall CUDA?"
+            echo "[1] Yes"
+            echo "[2] No"
+            echo
             read -p "Your choices are (1 or 2): " choice
 
             case "$choice" in
