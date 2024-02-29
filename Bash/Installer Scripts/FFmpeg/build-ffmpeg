@@ -143,7 +143,7 @@ warn() {
 
 exit_fn() {
     echo
-    echo -e "${GREEN}[INFO]${NC} Make sure to star this repository to show your support!"
+    echo -e "${GREEN}[INFO]${NC} Make sure to ${YELLOW}star${NC} this repository to show your support!"
     echo -e "${GREEN}[INFO]${NC} $web_repo"
     echo
     exit 0
@@ -415,8 +415,7 @@ github_repo() {
 
     [[ -n "$url_flag" ]] && url_flag=1
 
-    while [ $count -le $max_attempts ]
-    do
+    while [ $count -le $max_attempts ]; do
         if [[ "$url_flag" -eq 1 ]]; then
             curl_cmd=$(curl -sSL "https://github.com/xiph/rav1e/tags" | grep -Eo 'href="[^"]*v?[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz"' | head -n1)
         else
@@ -438,8 +437,7 @@ github_repo() {
     done
 
     # Deny installing a release candidate
-    while [[ $repo_version =~ $regex_str ]]
-    do
+    while [[ $repo_version =~ $regex_str ]]; do
         curl_cmd=$(curl -sSL "https://github.com/$repo/$url" | grep -o 'href="[^"]*\.tar\.gz"')
 
         # Extract the specific line
@@ -475,8 +473,7 @@ videolan_repo() {
     fi
 
     # Deny installing a release candidate
-    while [[ $repo_version =~ $regex_str ]]
-    do
+    while [[ $repo_version =~ $regex_str ]]; do
         if curl_cmd=$(curl -sS "https://code.videolan.org/api/v4/projects/$repo/repository/$url"); then
             repo_version=$(echo "$curl_cmd" | jq -r ".[$count].name" | sed -e 's/^v//')
         fi
@@ -499,8 +496,7 @@ gitlab_repo() {
     fi
 
     # Deny installing a release candidate
-    while [[ $repo_version =~ $regex_str ]]
-    do
+    while [[ $repo_version =~ $regex_str ]]; do
         if curl_cmd=$(curl -sS "https://gitlab.com/api/v4/projects/$repo/repository/$url"); then
             repo_version=$(echo "$curl_cmd" | jq -r ".[$count].name" | sed -e 's/^v//')
         fi
@@ -513,8 +509,7 @@ gitlab_freedesktop_repo() {
     local count=0
     repo_version=""
 
-    while true
-    do
+    while true; do
         if curl_cmd=$(curl -sS "https://gitlab.freedesktop.org/api/v4/projects/$repo/repository/tags"); then
             repo_version=$(echo "$curl_cmd" | jq -r ".[$count].name" | sed -e 's/^v//')
 
@@ -566,8 +561,7 @@ debian_salsa_repo() {
     fi
 
     # Deny installing a release candidate
-    while [[ $repo_version =~ $regex_str ]]
-    do
+    while [[ $repo_version =~ $regex_str ]]; do
         if curl_cmd=$(curl -sS "https://salsa.debian.org/api/v4/projects/$repo/repository/tags"); then
             repo_version=$(echo "$curl_cmd" | jq -r ".[$count].name" | sed -e 's/^v//')
         fi
@@ -698,8 +692,7 @@ usage() {
     echo
 }
 
-while (("$#" > 0))
-do
+while (("$#" > 0)); do
     case "$1" in
         -h | --help) usage
                      echo
@@ -1162,16 +1155,14 @@ apt_pkgs() {
     unavailable_packages=()
 
     # Loop through the array to find missing packages
-    for pkg in "${pkgs[@]}"
-    do
+    for pkg in "${pkgs[@]}"; do
         if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             missing_packages+=("$pkg")
         fi
     done
 
     # Check availability of missing packages and categorize them
-    for pkg in "${missing_packages[@]}"
-    do
+    for pkg in "${missing_packages[@]}"; do
         if apt-cache show "$pkg" >/dev/null 2>&1; then
             available_packages+=("$pkg")
         else
@@ -1339,8 +1330,7 @@ arch_os_ver_fn() {
         fi
     fi
 
-    for pkg in "${arch_pkgs[@]}"
-    do
+    for pkg in "${arch_pkgs[@]}"; do
         echo "Installing $pkg..."
         sudo pacman -Sq --needed --noconfirm $pkg 2>&1
     done
