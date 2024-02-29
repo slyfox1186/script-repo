@@ -1530,7 +1530,7 @@ box_out_banner_global "Installing Global Tools"
 
 # Alert the user that an AMD GPU was found without a Geforce GPU present
 if [[ "$gpu_flag" -eq 1 ]]; then
-    printf "\n%s\n" "AMD GPU detected without a GeForce GPU present."
+    printf "\n%s\n" "An AMD GPU was detected without a Nvidia GPU present."
 fi
 
 if build "m4" "latest"; then
