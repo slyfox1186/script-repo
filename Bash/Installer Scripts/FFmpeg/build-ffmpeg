@@ -127,7 +127,7 @@ source_flags_fn() {
     CC=gcc
     CXX=g++
     CFLAGS="-g -O3 -march=native"
-    CXXFLAGS="$CFLAGS"
+    CXXFLAGS="-g -O3 -march=native"
     EXTRALIBS="-ldl -lpthread -lm -lz"
     export CC CFLAGS CPPFLAGS CXX CXXFLAGS
 }
@@ -302,19 +302,21 @@ git_caller() {
     git_url="$1"
     repo_name="$2"
     recurse_flag=""
+
     if [[ "$3" == "recurse" ]]; then
         recurse_flag=1
     elif [[ "$3" == "ant" ]]; then
-        version=$(git_download "$git_url" "$repo_name" "ant")
+        version=$(git_clone "$git_url" "$repo_name" "ant")
     elif [[ "$3" == "av1" ]]; then
-        version=$(git_download "$git_url" "$repo_name" "av1")
+        version=$(git_clone "$git_url" "$repo_name" "av1")
     else
-        version=$(git_download "$git_url" "$repo_name")
+        version=$(git_clone "$git_url" "$repo_name")
     fi
+
     version="${version//Cloning completed: /}"
 }
 
-git_download() {
+git_clone() {
     local repo_url="$1"
     local repo_name="${2:-"${1##*/}"}"
     local repo_name="${repo_name//\./-}"
@@ -468,8 +470,8 @@ videolan_repo() {
 
     if curl_cmd=$(curl -sS "https://code.videolan.org/api/v4/projects/$repo/repository/$url"); then
         repo_version=$(echo "$curl_cmd" | jq -r ".[0].commit.id")
-        repo_short_version=$(echo "$curl_cmd" | jq -r ".[0].commit.short_id" | cut -c1-7)
-        repo_version1=$(echo "$curl_cmd" | jq -r ".[0].name" | sed -e 's/^v//')
+        repo_short_version_1=$(echo "$curl_cmd" | jq -r ".[0].commit.short_id" | cut -c1-7)
+        repo_version_1=$(echo "$curl_cmd" | jq -r ".[0].name" | sed -e 's/^v//')
     fi
 
     # Deny installing a release candidate
@@ -487,13 +489,13 @@ gitlab_repo() {
     local url="$2"
     local count=0
     repo_version=""
-    repo_version1=""
-    repo_short_version1=""
+    repo_version_1=""
+    repo_short_version_1=""
 
     if curl_cmd=$(curl -sS "https://gitlab.com/api/v4/projects/$repo/repository/$url"); then
         repo_version=$(echo "$curl_cmd" | jq -r ".[0].name" | sed -e 's/^v//')
-        repo_version1=$(echo "$curl_cmd" | jq -r ".[0].commit.id" | sed -e 's/^v//')
-        repo_short_version1=$(echo "$curl_cmd" | jq -r ".[0].commit.short_id" | sed -e 's/^VTM-//')
+        repo_version_1=$(echo "$curl_cmd" | jq -r ".[0].commit.id" | sed -e 's/^v//')
+        repo_short_version_1=$(echo "$curl_cmd" | jq -r ".[0].commit.short_id" | sed -e 's/^VTM-//')
     fi
 
     # Deny installing a release candidate
@@ -822,10 +824,10 @@ check_remote_cuda_version() {
     if [[ $content =~ $cuda_regex ]]; then
         local base_version=${BASH_REMATCH[1]}
         local update_version=${BASH_REMATCH[3]}
-        cuda_latest_ver="$base_version"
+        cuda_base_version="$base_version"
 
         # Append the update number if present
-        [[ -n "$update_version" ]] && cuda_latest_ver+=".$update_version"
+        [[ -n "$update_version" ]] && cuda_base_version+=".$update_version"
     fi
 }
 
@@ -889,7 +891,7 @@ gpu_arch_fn() {
                 4) gpu_arch="compute_86,code=sm_86" ;;
                 5) gpu_arch="compute_89,code=sm_89" ;;
                 6) gpu_arch="compute_90,code=sm_90" ;;
-                *)      fail "Unable to define \"\$gpu_arch\" in the function \"gpu_arch_fn\". Line: $LINENO" ;;
+                *) fail "Unable to define \"\$gpu_arch\" in the function \"gpu_arch_fn\". Line: $LINENO" ;;
             esac
         else
             fail "Failed to define \"\$gpu_type\". Line: $LINENO"
@@ -1297,7 +1299,7 @@ patch_ffmpeg_fn() {
 # Arch Linux function section
 apache_ant_fn() {
     if build "apache-ant" "git"; then
-        git_download "https://aur.archlinux.org/apache-ant-contrib.git" "apache-ant-AUR"
+        git_clone "https://aur.archlinux.org/apache-ant-contrib.git" "apache-ant-AUR"
         execute makepkg -sif --cleanbuild --noconfirm --needed
         build_done "apache-ant" "git"
     fi
@@ -1305,7 +1307,7 @@ apache_ant_fn() {
 
 librist_arch_fn() {
     if build "librist" "git"; then
-        git_download "https://aur.archlinux.org/librist.git" "librist-AUR"
+        git_clone "https://aur.archlinux.org/librist.git" "librist-AUR"
         execute makepkg -sif --cleanbuild --noconfirm --needed
         build_done "librist" "git"
     fi
@@ -1597,8 +1599,8 @@ if [[ "$OS" == "Arch" ]]; then
     librist_arch_fn
 else
     find_git_repo "816" "2" "T"
-    if build "librist" "$repo_version1"; then
-        download "https://code.videolan.org/rist/librist/-/archive/v$repo_version1/librist-v$repo_version1.tar.bz2" "librist-$repo_version1.tar.bz2"
+    if build "librist" "$repo_version_1"; then
+        download "https://code.videolan.org/rist/librist/-/archive/v$repo_version_1/librist-v$repo_version_1.tar.bz2" "librist-$repo_version_1.tar.bz2"
         execute meson setup build --prefix="$workspace" \
                                   --buildtype=release \
                                   --default-library=static \
@@ -1607,7 +1609,7 @@ else
                                   -Dtest=false
         execute ninja "-j$cpu_threads" -C build
         execute ninja -C build install
-        build_done "librist" "$repo_version1"
+        build_done "librist" "$repo_version_1"
     fi
 fi
 
@@ -1740,9 +1742,9 @@ ffmpeg_libraries+=("--enable-libaribb24")
 
 find_git_repo "7950" "4"
 repo_version="${repo_version#VER-}"
-repo_version1="${repo_version//-/.}"
-if build "freetype" "$repo_version1"; then
-    download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-$repo_version/freetype-VER-$repo_version.tar.bz2" "freetype-$repo_version1.tar.bz2"
+repo_version_1="${repo_version//-/.}"
+if build "freetype" "$repo_version_1"; then
+    download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-$repo_version/freetype-VER-$repo_version.tar.bz2" "freetype-$repo_version_1.tar.bz2"
     extracmds=("-D"{harfbuzz,png,bzip2,brotli,zlib,tests}"=disabled")
     execute ./autogen.sh
     execute meson setup build --prefix="$workspace" \
@@ -1752,7 +1754,7 @@ if build "freetype" "$repo_version1"; then
                               "${extracmds[@]}"
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    build_done "freetype" "$repo_version1"
+    build_done "freetype" "$repo_version_1"
 fi
 ffmpeg_libraries+=("--enable-libfreetype")
 
@@ -1798,7 +1800,7 @@ fi
 git_caller "https://github.com/fribidi/c2man.git" "c2man-git"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
-    git_download "$git_url"
+    git_clone "$git_url"
     execute ./Configure -desO \
                         -D bin="$workspace/bin" \
                         -D cc="/usr/bin/cc" \
@@ -1868,7 +1870,7 @@ fi
 git_caller "https://chromium.googlesource.com/webm/libwebp" "libwebp-git"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
-    git_download "$git_url"
+    git_clone "$git_url"
     execute autoreconf -fi
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
@@ -1955,7 +1957,7 @@ fi
 git_caller "https://github.com/KhronosGroup/OpenCL-SDK.git" "opencl-sdk-git" "recurse"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
-    git_download "$git_url"
+    git_clone "$git_url"
     execute cmake \
             -S . \
             -B build \
@@ -2015,7 +2017,7 @@ ffmpeg_libraries+=("--enable-libtesseract")
 git_caller "https://github.com/imageMagick/jpeg-turbo.git" "jpeg-turbo-git"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
-    git_download "$git_url"
+    git_clone "$git_url"
     execute cmake -S . \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
@@ -2031,7 +2033,7 @@ fi
 git_caller "https://github.com/m-ab-s/rubberband.git" "rubberband-git"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
-    git_download "$git_url"
+    git_clone "$git_url"
     execute make "-j$cpu_threads" PREFIX="$workspace" install-static
     build_done "$repo_name" "$version"
 fi
@@ -2056,7 +2058,7 @@ fi
 git_caller "https://github.com/lv2/lv2.git" "lv2-git"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
-    git_download "$git_url"
+    git_clone "$git_url"
     extracmds=("-D"{docs,tests}"=disabled")
     case "$VER" in
         10|11)      lv2_switch=enabled ;;
@@ -2139,9 +2141,9 @@ if build "zix" "0.4.2"; then
 fi
 
 find_git_repo "11853362" "3" "B"
-if build "sord" "$repo_short_version1"; then
+if build "sord" "$repo_short_version_1"; then
     CFLAGS+=" -I$workspace/include/serd-0"
-    download "https://gitlab.com/drobilla/sord/-/archive/$repo_version1/sord-$repo_version1.tar.bz2" "sord-$repo_short_version1.tar.bz2"
+    download "https://gitlab.com/drobilla/sord/-/archive/$repo_version_1/sord-$repo_version_1.tar.bz2" "sord-$repo_short_version_1.tar.bz2"
     extracmds=("-D"{docs,tests}"=disabled")
     execute meson setup build --prefix="$workspace" \
                               --buildtype=release \
@@ -2150,7 +2152,7 @@ if build "sord" "$repo_short_version1"; then
                               "${extracmds[@]}"
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    build_done "sord" "$repo_short_version1"
+    build_done "sord" "$repo_short_version_1"
 fi
 
 find_git_repo "11853194" "3" "T"
@@ -2185,7 +2187,7 @@ ffmpeg_libraries+=("--enable-lv2")
 git_caller "https://github.com/gypified/libmpg123.git" "libmpg123-git"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
-    git_download "$git_url"
+    git_clone "$git_url"
     execute rm -fr aclocal.m4
     execute aclocal --force -I m4
     execute autoconf -f -W all,no-obsolete
@@ -2229,7 +2231,7 @@ fi
 git_caller "https://github.com/jacklicn/cunit.git" "cunit-git"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
-    git_download "$git_url"
+    git_clone "$git_url"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$cpu_threads"
@@ -2257,7 +2259,7 @@ box_out_banner_audio "Installing Audio Tools"
 git_caller "https://github.com/libsdl-org/SDL.git" "sdl2-git"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
-    git_download "$git_url"
+    git_clone "$git_url"
     execute cmake -S . -B build \
                        -DCMAKE_INSTALL_PREFIX="$workspace" \
                        -DCMAKE_BUILD_TYPE=Release \
@@ -2288,7 +2290,7 @@ fi
 git_caller "https://gitlab.freedesktop.org/pulseaudio/pulseaudio.git" "pulseaudio-git"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
-    git_download "$git_url"
+    git_clone "$git_url"
     fix_pulse_meson_build_file
     extracmds=("-D"{daemon,doxygen,ipv6,man,tests}"=false")
     execute meson setup build --prefix="$workspace" \
@@ -2514,7 +2516,7 @@ box_out_banner_video "Installing Video Tools"
 git_caller "https://aomedia.googlesource.com/aom" "av1-git" "av1"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
-    git_download "$git_url"
+    git_clone "$git_url"
     mkdir -p "$packages/aom_build"
     cd "$packages/aom_build" || exit 1
     execute cmake -B build \
@@ -2576,7 +2578,7 @@ fi
 git_caller "https://github.com/ultravideo/kvazaar.git" "kvazaar-git"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
-    git_download "$git_url"
+    git_clone "$git_url"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" \
                         --{build,host}="$pc_type" \
@@ -2588,8 +2590,8 @@ fi
 ffmpeg_libraries+=("--enable-libkvazaar")
 
 find_git_repo "76" "2" "T"
-if build "libdvdread" "$repo_version1"; then
-    download "https://code.videolan.org/videolan/libdvdread/-/archive/$repo_version1/libdvdread-$repo_version1.tar.bz2"
+if build "libdvdread" "$repo_version_1"; then
+    download "https://code.videolan.org/videolan/libdvdread/-/archive/$repo_version_1/libdvdread-$repo_version_1.tar.bz2"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" \
                         --{build,host}="$pc_type" \
@@ -2597,19 +2599,19 @@ if build "libdvdread" "$repo_version1"; then
                         --disable-shared
     execute make "-j$cpu_threads"
     execute make install
-    build_done "libdvdread" "$repo_version1"
+    build_done "libdvdread" "$repo_version_1"
 fi
 
 find_git_repo "363" "2" "T"
-if build "udfread" "$repo_version1"; then
-    download "https://code.videolan.org/videolan/libudfread/-/archive/$repo_version1/libudfread-$repo_version1.tar.bz2"
+if build "udfread" "$repo_version_1"; then
+    download "https://code.videolan.org/videolan/libudfread/-/archive/$repo_version_1/libudfread-$repo_version_1.tar.bz2"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" \
                         --{build,host}="$pc_type" \
                         --disable-shared
     execute make "-j$cpu_threads"
     execute make install
-    build_done "udfread" "$repo_version1"
+    build_done "udfread" "$repo_version_1"
 fi
 
 if [[ "$OS" == "Arch" ]]; then
@@ -2619,7 +2621,7 @@ else
     git_caller "https://github.com/apache/ant.git" "ant-git" "ant"
     if build "$repo_name" "${version//\$ /}"; then
         echo "Cloning \"$repo_name\" saving version \"$version\""
-        git_download "$git_url"
+        git_clone "$git_url"
         chmod 777 -R "$workspace/ant"
         execute sh build.sh install-lite
         build_done "$repo_name" "$version"
@@ -2629,8 +2631,8 @@ fi
 # Ubuntu Jammy gives an error so use the APT version instead
 if [[ ! "$OS" == "Ubuntu" ]]; then
     find_git_repo "206" "2" "T"
-    if build "libbluray" "$repo_version1"; then
-        download "https://code.videolan.org/videolan/libbluray/-/archive/$repo_version1/$repo_version1.tar.gz" "libbluray-$repo_version1.tar.gz"
+    if build "libbluray" "$repo_version_1"; then
+        download "https://code.videolan.org/videolan/libbluray/-/archive/$repo_version_1/$repo_version_1.tar.gz" "libbluray-$repo_version_1.tar.gz"
         execute autoreconf -fi
         execute ./configure --prefix="$workspace" \
                             --{build,host}="$pc_type" \
@@ -2645,7 +2647,7 @@ if [[ ! "$OS" == "Ubuntu" ]]; then
                             --without-libxml2
         execute make "-j$cpu_threads"
         execute make install
-        build_done "libbluray" "$repo_version1"
+        build_done "libbluray" "$repo_version_1"
     fi
     ffmpeg_libraries+=("--enable-libbluray")
 fi
@@ -2730,7 +2732,7 @@ else
     git_caller "https://github.com/gpac/gpac.git" "gpac-git"
     if build "$repo_name" "${version//\$ /}"; then
         echo "Cloning \"$repo_name\" saving version \"$version\""
-        git_download "$git_url"
+        git_clone "$git_url"
         execute ./configure --prefix="$workspace" \
                                  --static-bin \
                                  --static-modules \
@@ -2770,9 +2772,9 @@ fi
 ffmpeg_libraries+=("--enable-libsvtav1")
 
 find_git_repo "536" "2" "B"
-repo_short_version="${repo_version::8}"
-if build "x264" "$repo_short_version"; then
-    download "https://code.videolan.org/videolan/x264/-/archive/$repo_version/x264-$repo_version.tar.bz2" "x264-$repo_short_version.tar.bz2"
+repo_short_version_1="${repo_version::8}"
+if build "x264" "$repo_short_version_1"; then
+    download "https://code.videolan.org/videolan/x264/-/archive/$repo_version/x264-$repo_version.tar.bz2" "x264-$repo_short_version_1.tar.bz2"
     execute ./configure --prefix="$workspace" \
                         --host="$pc_type" \
                         --bit-depth="all" \
@@ -2788,7 +2790,7 @@ if build "x264" "$repo_short_version"; then
     execute make "-j$cpu_threads"
     execute make install
     execute make install-lib-static
-    build_done "x264" "$repo_short_version"
+    build_done "x264" "$repo_short_version_1"
 fi
 ffmpeg_libraries+=("--enable-libx264")
 
@@ -2985,7 +2987,7 @@ ffmpeg_libraries+=("--enable-vapoursynth")
 git_caller "https://chromium.googlesource.com/codecs/libgav1" "libgav1-git"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
-    git_download "$git_url"
+    git_clone "$git_url"
     execute git clone -q -b "20220623.1" --depth 1 "https://github.com/abseil/abseil-cpp.git" "third_party/abseil-cpp"
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
@@ -3152,7 +3154,7 @@ fi
 git_caller "https://git.ffmpeg.org/ffmpeg.git" "ffmpeg-git"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
-    git_download "$git_url"
+    git_clone "$git_url"
 
     if [[ "$OS" == "Arch" ]]; then
         patch_ffmpeg_fn
