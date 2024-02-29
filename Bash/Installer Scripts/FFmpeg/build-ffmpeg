@@ -790,10 +790,6 @@ $workspace/share/pkgconfig:\
 "
 export PKG_CONFIG_PATH
 
-check_installed_cuda_version() {
-    cuda_version_test=$(cat /usr/local/cuda/version.json 2>/dev/null | jq -r '.cuda.version' 2>/dev/null)
-}
-
 check_amd_gpu() {
     if lshw -C display 2>&1 | grep -qEio "AMD|amdgpu"; then
         echo "AMD GPU detected"
@@ -817,10 +813,10 @@ check_remote_cuda_version() {
     if [[ $content =~ $cuda_regex ]]; then
         local base_version=${BASH_REMATCH[1]}
         local update_version=${BASH_REMATCH[3]}
-        cuda_base_version="$base_version"
+        remote_cuda_version_test="$base_version"
 
         # Append the update number if present
-        [[ -n "$update_version" ]] && cuda_base_version+=".$update_version"
+        [[ -n "$update_version" ]] && remote_cuda_version_test+=".$update_version"
     fi
 }
 
@@ -911,7 +907,7 @@ cuda_download() {
 
     read -p "Your choices are (1 to 8): " choice
 
-    local cuda_version_number="$cuda_base_version"
+    local cuda_version_number="$remote_cuda_version_test"
     local cuda_pin_url="https://developer.download.nvidia.com/compute/cuda/repos"
     local cuda_url="https://developer.download.nvidia.com/compute/cuda/$cuda_version_number"
     local distro
@@ -997,7 +993,6 @@ install_cuda() {
     local choice
 
     check_nvidia_gpu
-    check_installed_cuda_version
     check_remote_cuda_version
 
     echo "Checking GPU Status"
@@ -1005,32 +1000,65 @@ install_cuda() {
 
     amd_gpu_test=$(check_amd_gpu)
     nvidia_gpu_status="$is_nvidia_gpu_present"
-    cuda_version_test_results="$cuda_version_test"
+    remote_cuda_version="$remote_cuda_version_test"
+    local_cuda_version=$(cat /usr/local/cuda/version.json 2>/dev/null | jq -r '.cuda.version' 2>/dev/null)
 
     # Determine if the PC has an Nvidia GPU available
     if [[ "$nvidia_gpu_status" == "NVIDIA GPU detected" ]]; then
         echo "Nvidia GPU detected"
         echo "Determining if CUDA is installed..."
         # Determine the installed CUDA version if any
-        if [[ -n "$cuda_version_test_results" ]]; then
-            echo "The installed CUDA version is: $cuda_version_test_results"
+        if [[ -n "$remote_cuda_version" ]]; then
+            echo "The installed CUDA version is: $remote_cuda_version"
         else
             echo "CUDA is not installed"
         fi
-        echo "The latest CUDA version available is: $cuda_latest_ver"
+        echo "The latest CUDA version available is: $remote_cuda_version"
     else
         echo "Nvidia GPU not detected"
+    fi
+
+    if [[ -z "$nvidia_gpu_status" ]]; then
+            printf "\n%s\n%s\n\n%s\n%s\n\n" \
+                "The CUDA SDK Toolkit was not detected and the latest version is: $cuda_latest_ver" \
+                "=========================================================================" \
+                "[1] Install the CUDA SDK Toolkit and add it to your PATH." \
+                "[2] Continue without installing. (Hardware acceleration will be turned off)"
+            read -p "Your choices are (1 or 2): " choice
+
+            case "$choice" in
+                1)      cuda_download ;;
+                2)      return ;;
+                *)
+                        unset choice
+                        install_cuda
+                        ;;
+            esac
+
+            if [[ "$OS" == "Arch" ]]; then
+                find_nvcc=$(find /opt/ -type f -name "nvcc")
+                cuda_version_test=$($find_nvcc --version | sed -n "s/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p")
+                cuda_version_test+=".1"
+            else
+                cuda_version_test=$(cat '/usr/local/cuda/version.json' 2>&1 | jq -r '.cuda.version')
+            fi
+            cuda_version="$cuda_version_test"
+
+            if [[ -z "$cuda_version" ]]; then
+                fail "Unable to locate \"/usr/local/cuda/version.json\". Line: $LINENO"
+            else
+                export PATH="$PATH:$cuda_path"
+            fi
+
     fi
 
     if [[ "$nvidia_gpu_status" == "Nvidia GPU detected" ]] || [[ -n "$(grep -i microsoft /proc/version)" ]]; then
         get_os_version
         if [[ "$OS" == "Arch" ]]; then
             find_nvcc=$(find /opt/ -type f -name nvcc)
-        else
-            cuda_ver_test="$cuda_version_test_results"
         fi
 
-        if [[ "$cuda_ver_test" == "$cuda_latest_ver" ]]; then
+        if [[ "$local_cuda_version" == "$remote_cuda_version" ]]; then
             printf "\n%s\n\n%s\n%s\n\n" \
                 "Do you want to update/reinstall CUDA?" \
                 "[1] Yes" \
@@ -1052,37 +1080,8 @@ install_cuda() {
                         install_cuda
                         ;;
             esac
-        else
-            printf "\n%s\n%s\n\n%s\n%s\n\n" \
-                "The CUDA SDK Toolkit was not detected and the latest version is: $cuda_latest_ver" \
-                "=========================================================================" \
-                "[1] Install the CUDA SDK Toolkit and add it to your PATH." \
-                "[2] Continue without installing. (Hardware acceleration will be turned off)"
-            read -p "Your choices are (1 or 2): " choice
 
-            case "$choice" in
-                1)      cuda_download ;;
-                2)      return ;;
-                *)
-                        unset choice
-                        install_cuda
-                        ;;
-            esac
-
-            if [[ "$OS" == "Arch" ]]; then
-                find_nvcc=$(find /opt/ -type f -name "nvcc")
-                cuda_ver_test=$($find_nvcc --version | sed -n "s/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p")
-                cuda_ver_test+=".1"
-            else
-                cuda_ver_test=$(cat '/usr/local/cuda/version.json' 2>&1 | jq -r '.cuda.version')
-            fi
-            cuda_ver="$cuda_ver_test"
-
-            if [[ -z "$cuda_ver" ]]; then
-                fail "Unable to locate \"/usr/local/cuda/version.json\". Line: $LINENO"
-            else
-                export PATH="$PATH:$cuda_path"
-            fi
+            return 0
         fi
     else
         gpu_flag=1
@@ -2893,7 +2892,7 @@ fi
 
 # Get the Nvidia GPU architecture to build CUDA
 # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
-[[ -n "$cuda_version_test_results" ]] || [[ "$wsl_flag" == "yes_wsl" ]] && nvidia_architecture
+[[ -n "$remote_cuda_version" ]] || [[ "$wsl_flag" == "yes_wsl" ]] && nvidia_architecture
 
 if [[ "$cuda_compile_flag" -eq 1 ]]; then
     if [[ -n "$iscuda" ]]; then
