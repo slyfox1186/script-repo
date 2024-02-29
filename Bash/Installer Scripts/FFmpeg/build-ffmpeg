@@ -74,7 +74,6 @@ fi
 script_name="${0}"
 script_ver=3.4.8
 ffmpeg_release_version=n6.1.1
-cuda_pin_url=https://developer.download.nvidia.com/compute/cuda/repos
 cwd="$PWD/ffmpeg-build-script"
 packages="$cwd/packages"
 workspace="$cwd/workspace"
@@ -920,7 +919,6 @@ cuda_download() {
     echo
 
     read -p "Your choices are (1 to 8): " choice
-
     local cuda_version_number="$remote_cuda_version"
     local cuda_pin_url="https://developer.download.nvidia.com/compute/cuda/repos"
     local cuda_url="https://developer.download.nvidia.com/compute/cuda/$cuda_version_number"
