@@ -956,7 +956,7 @@ cuda_download() {
 check_nvidia_gpu() {
     # Check for NVIDIA GPU in native Linux
     if ! grep -qi microsoft /proc/version; then
-        if lspci | grep -i nvidia >/dev/null; then
+        if lspci | grep -i nvidia &>/dev/null; then
             is_nvidia_gpu_present="NVIDIA GPU detected"
         else
             is_nvidia_gpu_present="NVIDIA GPU not detected"
@@ -1022,7 +1022,7 @@ install_cuda() {
         echo "Nvidia GPU not detected"
     fi
 
-    if [[ -n "$nvidia_gpu_status" ]] || [[ -n "$(grep -i microsoft /proc/version)" ]]; then
+    if [[ "$nvidia_gpu_status" == "Nvidia GPU detected" ]] || [[ -n "$(grep -i microsoft /proc/version)" ]]; then
         get_os_version
         if [[ "$OS" == "Arch" ]]; then
             find_nvcc=$(find /opt/ -type f -name nvcc)
