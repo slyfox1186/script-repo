@@ -1497,11 +1497,11 @@ ant_path_fn() {
 
 # Check if the cuda folder exists to determine installation status
 case "$OS" in
-    Arch)   iscuda=$(find /opt/cuda* -type f -name 'nvcc' 2>/dev/null)
-            cuda_path=$(find /opt/cuda* -type f -name 'nvcc' 2>/dev/null | grep -Eo '^.*/bin?')
+    Arch)   iscuda=$(find /opt/cuda* -type f -name nvcc 2>/dev/null)
+            cuda_path=$(find /opt/cuda* -type f -name nvcc 2>/dev/null | grep -Eo '^.*/bin?')
             ;;
-    *)      iscuda=$(find /usr/local/cuda* -type f -name 'nvcc' 2>/dev/null)
-            cuda_path=$(find /usr/local/cuda* -type f -name 'nvcc' 2>/dev/null | grep -Eo '^.*/bin?')
+    *)      iscuda=$(find /usr/local/cuda* -type f -name nvcc 2>/dev/null)
+            cuda_path=$(find /usr/local/cuda* -type f -name nvcc 2>/dev/null | grep -Eo '^.*/bin?')
             ;;
 esac
 
