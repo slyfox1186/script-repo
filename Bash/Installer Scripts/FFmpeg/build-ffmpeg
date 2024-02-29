@@ -831,7 +831,7 @@ check_remote_cuda_version() {
     fi
 }
 
-gpu_arch_fn() {
+nvidia_architecture() {
     local gpu_name gpu_type
     cuda_compile_flag=0
 
@@ -880,18 +880,18 @@ gpu_arch_fn() {
             "NVIDIA GeForce RTX 4080")    gpu_type=5 ;;
             "NVIDIA GeForce RTX 4090")    gpu_type=5 ;;
             "NVIDIA H100")                gpu_type=6 ;;
-            *)                              fail "Unable to define \"\$gpu_name\" in the function \"gpu_arch_fn\". Line: $LINENO" ;;
+            *)                              fail "Unable to define the variable \"gpu_name\" in the function \"nvidia_architecture\". Line: $LINENO" ;;
         esac
 
         if [[ -n "$gpu_type" ]]; then
             case "$gpu_type" in
-                1) gpu_arch="compute_61,code=sm_61" ;;
-                2) gpu_arch="compute_70,code=sm_70" ;;
-                3) gpu_arch="compute_75,code=sm_75" ;;
-                4) gpu_arch="compute_86,code=sm_86" ;;
-                5) gpu_arch="compute_89,code=sm_89" ;;
-                6) gpu_arch="compute_90,code=sm_90" ;;
-                *) fail "Unable to define \"\$gpu_arch\" in the function \"gpu_arch_fn\". Line: $LINENO" ;;
+                1) nvidia_arch_type="compute_61,code=sm_61" ;;
+                2) nvidia_arch_type="compute_70,code=sm_70" ;;
+                3) nvidia_arch_type="compute_75,code=sm_75" ;;
+                4) nvidia_arch_type="compute_86,code=sm_86" ;;
+                5) nvidia_arch_type="compute_89,code=sm_89" ;;
+                6) nvidia_arch_type="compute_90,code=sm_90" ;;
+                *) fail "Unable to define the variable \"nvidia_arch_type\" in the function \"nvidia_architecture\". Line: $LINENO" ;;
             esac
         else
             fail "Failed to define \"\$gpu_type\". Line: $LINENO"
@@ -901,7 +901,7 @@ gpu_arch_fn() {
     fi
 }
 
-cuda_download_fn() {
+cuda_download() {
     echo
     echo "Pick your Linux distro from the list below:"
     echo "Supported architecture: x86_64"
@@ -935,7 +935,7 @@ cuda_download_fn() {
         6) distro="wsl-ubuntu"; pkg_ext="pin"; pin_file="wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin"; installer_path="local_installers/cuda-repo-wsl-ubuntu-12-3-local_${cuda_version_number}-545.23.08-1_amd64.deb" ;;
         7) git clone -q "https://gitlab.archlinux.org/archlinux/packaging/packages/cuda.git" && cd cuda && makepkg -sif -C --needed --noconfirm; return ;;
         8) return ;;
-        *) echo "Invalid choice. Please try again."; cuda_download_fn; return ;;
+        *) echo "Invalid choice. Please try again."; cuda_download; return ;;
     esac
 
     echo "Downloading CUDA SDK Toolkit - version $cuda_version_number"
@@ -960,7 +960,7 @@ cuda_download_fn() {
 }
 
 # Function to detect the environment and check for an NVIDIA GPU
-check_nvidia_gpu_fn() {
+check_nvidia_gpu() {
     # Check for NVIDIA GPU in native Linux
     if ! grep -qi microsoft /proc/version; then
         if lspci | grep -i nvidia >/dev/null; then
@@ -1000,10 +1000,10 @@ check_nvidia_gpu_fn() {
 }
 
 # REQUIRED GEFORCE CUDA DEVELOPMENT PACKAGES
-install_cuda_fn() {
+install_cuda() {
     local choice
 
-    check_nvidia_gpu_fn
+    check_nvidia_gpu
     check_installed_cuda_version
     check_remote_cuda_version
 
@@ -1046,7 +1046,7 @@ install_cuda_fn() {
 
             case "$choice" in
                 1)
-                        cuda_download_fn
+                        cuda_download
                         PATH="$PATH:$cuda_path"
                         export PATH
                         ;;
@@ -1056,7 +1056,7 @@ install_cuda_fn() {
                         ;;
                 *)
                         unset choice
-                        install_cuda_fn
+                        install_cuda
                         ;;
             esac
         else
@@ -1068,11 +1068,11 @@ install_cuda_fn() {
             read -p "Your choices are (1 or 2): " choice
 
             case "$choice" in
-                1)      cuda_download_fn ;;
+                1)      cuda_download ;;
                 2)      return ;;
                 *)
                         unset choice
-                        install_cuda_fn
+                        install_cuda
                         ;;
             esac
 
@@ -1097,7 +1097,7 @@ install_cuda_fn() {
 }
 
 # Required build packages
-pkgs_fn() {
+apt_pkgs() {
     local missing_pkg missing_packages pkg pkgs available_packages unavailable_packages
 
     openjdk_pkg=$(apt search --names-only '^openjdk-[0-9]+-jdk$' 2>/dev/null |
@@ -1369,10 +1369,19 @@ debian_os_version() {
              )
 
     case "$VER" in
-        msft)               pkgs_fn $debian_wsl_pkgs "${debian_pkgs[@]}" librist-dev ;;
-        12|trixie|sid)      pkgs_fn $1 "${debian_pkgs[@]}" librist-dev ;;
-        11)                 pkgs_fn $1 "${debian_pkgs[@]}" ;;
+        msft)               apt_pkgs $debian_wsl_pkgs "${debian_pkgs[@]}" librist-dev ;;
+        12|trixie|sid)      apt_pkgs $1 "${debian_pkgs[@]}" librist-dev ;;
+        11)                 apt_pkgs $1 "${debian_pkgs[@]}" ;;
         *)                  fail "Could not detect the Debian release version. Line: $LINENO" ;;
+    esac
+}
+
+ubuntu_msft() {
+    case "$OS" in
+        23.04) apt_pkgs $1 $ubuntu_common_pkgs $jammy_pkgs $ubuntu_wsl_pkgs ;;
+        22.04) apt_pkgs $1 $ubuntu_common_pkgs $jammy_pkgs $ubuntu_wsl_pkgs ;;
+        20.04) apt_pkgs $1 $ubuntu_common_pkgs $focal_pkgs $ubuntu_wsl_pkgs ;;
+        *)     fail "Faield to parse the Ubutnu MSFT version. Line: $LINENO"
     esac
 }
 
@@ -1391,11 +1400,12 @@ ubuntu_os_version() {
     mantic_pkgs="libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libhwy-dev libsrt-gnutls-dev libyuv-dev"
 
     case "$VER" in
-        23.10)          pkgs_fn $1 $mantic_pkgs $lunar_kenetic_pkgs $jammy_pkgs $focal_pkgs ;;
-        23.04|22.10)    pkgs_fn $1 $ubuntu_common_pkgs $lunar_kenetic_pkgs $jammy_pkgs ;;
-        22.04|msft)     pkgs_fn $1 $ubuntu_common_pkgs $ubuntu_wsl_pkgs $jammy_pkgs ;;
-        20.04)          pkgs_fn $1 $ubuntu_common_pkgs $ubuntu_wsl_pkgs $focal_pkgs ;;
-        *)              fail "Could not detect the Ubuntu release version. Line: $LINENO" ;;
+        msft)        ubuntu_msft
+        23.10)       apt_pkgs $1 $mantic_pkgs $lunar_kenetic_pkgs $jammy_pkgs $focal_pkgs ;;
+        23.04|22.10) apt_pkgs $1 $ubuntu_common_pkgs $lunar_kenetic_pkgs $jammy_pkgs ;;
+        22.04)       apt_pkgs $1 $ubuntu_common_pkgs $jammy_pkgs ;;
+        20.04)       apt_pkgs $1 $ubuntu_common_pkgs $focal_pkgs ;;
+        *)           fail "Could not detect the Ubuntu release version. Line: $LINENO" ;;
     esac
 }
 
@@ -1497,7 +1507,7 @@ case "$OS" in
 esac
 
 # Prompt the user to install the geforce cuda sdk-toolkit
-install_cuda_fn
+install_cuda
 
 # Update the ld linker search paths
 ldconfig
@@ -2886,7 +2896,7 @@ fi
 
 # Get the Nvidia GPU architecture to build CUDA
 # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
-[[ -n "$cuda_version_test_results" ]] || [[ "$wsl_flag" == "yes_wsl" ]] && gpu_arch_fn
+[[ -n "$cuda_version_test_results" ]] || [[ "$wsl_flag" == "yes_wsl" ]] && nvidia_architecture
 
 if [[ "$cuda_compile_flag" -eq 1 ]]; then
     if [[ -n "$iscuda" ]]; then
@@ -2914,7 +2924,7 @@ if [[ "$cuda_compile_flag" -eq 1 ]]; then
         if [[ -n "$LDEXEFLAGS" ]]; then
             ffmpeg_libraries+=("--enable-libnpp")
         fi
-        ffmpeg_libraries+=("--nvccflags=-gencode arch=$gpu_arch")
+        ffmpeg_libraries+=("--nvccflags=-gencode arch=$nvidia_arch_type")
     fi
 else
     alert_no_cuda=1
