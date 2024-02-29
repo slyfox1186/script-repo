@@ -1030,7 +1030,7 @@ install_cuda() {
             cuda_ver_test="$cuda_version_test_results"
         fi
 
-        if [[ -n "$cuda_ver_test" ]]; then
+        if [[ "$cuda_ver_test" == "$cuda_latest_ver" ]]; then
             printf "\n%s\n\n%s\n%s\n\n" \
                 "Do you want to update/reinstall CUDA?" \
                 "[1] Yes" \
