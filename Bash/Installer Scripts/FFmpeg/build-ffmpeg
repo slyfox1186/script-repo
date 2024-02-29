@@ -271,13 +271,13 @@ ensure_no_cargo_or_rustc_processes() {
 check_and_install_cargo_c() {
     if ! command -v cargo-cinstall &>/dev/null; then
         warn "cargo-c could not be found and will be installed..."
-        
+
         ensure_no_cargo_or_rustc_processes
-        
+
         # Perform cleanup only when it's safe
         cargo clean
         find "$HOME/.cargo/registry/index" -type f -name ".cargo-lock" -delete
-        
+
         if ! cargo install cargo-c; then
             fail "Failed to execute: cargo install cargo-c."
         fi
@@ -813,10 +813,10 @@ check_remote_cuda_version() {
     if [[ $content =~ $cuda_regex ]]; then
         local base_version=${BASH_REMATCH[1]}
         local update_version=${BASH_REMATCH[3]}
-        remote_cuda_version_test="$base_version"
+        remote_cuda_version="$base_version"
 
         # Append the update number if present
-        [[ -n "$update_version" ]] && remote_cuda_version_test+=".$update_version"
+        [[ -n "$update_version" ]] && remote_cuda_version+=".$update_version"
     fi
 }
 
@@ -929,7 +929,7 @@ cuda_download() {
 
     read -p "Your choices are (1 to 8): " choice
 
-    local cuda_version_number="$remote_cuda_version_test"
+    local cuda_version_number="$remote_cuda_version"
     local cuda_pin_url="https://developer.download.nvidia.com/compute/cuda/repos"
     local cuda_url="https://developer.download.nvidia.com/compute/cuda/$cuda_version_number"
     local distro installer_path pin_file pkg_ext
@@ -1012,21 +1012,18 @@ check_nvidia_gpu() {
 install_cuda() {
     local choice
 
-    check_nvidia_gpu
-    check_remote_cuda_version
-
     echo "Checking GPU Status"
     echo "========================================================"
 
     amd_gpu_test=$(check_amd_gpu)
-    nvidia_gpu_status="$is_nvidia_gpu_present"
-    remote_cuda_version="$remote_cuda_version_test"
-    local_cuda_version=$(cat /usr/local/cuda/version.json 2>/dev/null | jq -r '.cuda.version' 2>/dev/null)
+    check_nvidia_gpu
 
     # Determine if the PC has an Nvidia GPU available
-    if [[ "$nvidia_gpu_status" == "NVIDIA GPU detected" ]]; then
+    if [[ "$is_nvidia_gpu_present" == "NVIDIA GPU detected" ]]; then
         echo "Nvidia GPU detected"
         echo "Determining if CUDA is installed..."
+        check_remote_cuda_version
+        local_cuda_version=$(cat /usr/local/cuda/version.json 2>/dev/null | jq -r '.cuda.version' 2>/dev/null)
         # Determine the installed CUDA version if any
         if [[ -n "$remote_cuda_version" ]]; then
             echo "The installed CUDA version is: $remote_cuda_version"
@@ -1038,7 +1035,7 @@ install_cuda() {
         echo "Nvidia GPU not detected"
     fi
 
-    if [[ "$nvidia_gpu_status" == "NVIDIA GPU not detected" ]]; then
+    if [[ "$is_nvidia_gpu_present" == "NVIDIA GPU not detected" ]]; then
         echo
         echo "The CUDA SDK Toolkit was not detected and the latest version is: $cuda_latest_ver"
         echo "========================================================================="
@@ -1074,7 +1071,7 @@ install_cuda() {
         return 0
     fi
 
-    if [[ "$nvidia_gpu_status" == "Nvidia GPU detected" ]] || [[ -n "$(grep -i microsoft /proc/version)" ]]; then
+    if [[ "$is_nvidia_gpu_present" == "Nvidia GPU detected" ]] || [[ -n "$(grep -i microsoft /proc/version)" ]]; then
         get_os_version
         [[ "$OS" == "Arch" ]] && find_nvcc=$(find /opt/ -type f -name nvcc)
 
