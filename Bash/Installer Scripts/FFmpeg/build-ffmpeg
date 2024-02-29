@@ -603,7 +603,7 @@ find_git_repo() {
 execute() {
     echo "$ $*"
 
-    if [[ "$debug" = "ON" ]]; then
+    if [[ "$debug" == "ON" ]]; then
         if ! output=$("$@"); then
             notify-send -t 5000 "Failed to execute $*" 2>/dev/null
             fail "Failed to execute $*"
@@ -699,32 +699,33 @@ usage() {
 
 while (("$#" > 0)); do
     case "$1" in
-        -h | --help) usage
-                     echo
+        -h|--help) usage
+                   echo
                      exit 0
-                     ;;
-        --version)   printf "%s\n\n" "The script version is: $script_ver"
-                     exit 0
-                     ;;
-        -*)          if [[ "$1" == "--build" || "$1" =~ "-b" ]]; then
-                         bflag="-b"
-                     fi
-                     if [[ "$1" == "--cleanup" || "$1" =~ "-c" && ! "$1" =~ "--" ]]; then
-                         cflag="-c"
-                         cleanup
-                     fi
-                     if [[ "$1" == "--full-static" ]]; then
-                         LDEXEFLAGS="-static"
-                      fi
-                     if [[ "$2" == "--latest" || "$2" =~ "-l" ]]; then
-                         latest=true
-                     fi
-                     shift
-                     ;;
-             *)      usage
-                     echo
-                     exit 1
-                     ;;
+                   ;;
+        --version) echo "The script version is: $script_ver"
+                   echo
+                   exit 0
+                   ;;
+        -*)        if [[ "$1" == "--build" || "$1" =~ "-b" ]]; then
+                       bflag="-b"
+                   fi
+                   if [[ "$1" == "--cleanup" || "$1" =~ "-c" && ! "$1" =~ "--" ]]; then
+                       cflag="-c"
+                       cleanup
+                   fi
+                   if [[ "$1" == "--full-static" ]]; then
+                       LDEXEFLAGS="-static"
+                    fi
+                   if [[ "$2" == "--latest" || "$2" =~ "-l" ]]; then
+                       latest=true
+                   fi
+                   shift
+                   ;;
+        *)         usage
+                   echo
+                   exit 1
+                   ;;
     esac
 done
 
