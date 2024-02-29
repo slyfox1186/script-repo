@@ -317,14 +317,17 @@ check_ffmpeg_version() {
 git_caller() {
     git_url="$1"
     repo_name="$2"
+    third_flag="$3"
     recurse_flag=""
 
     if [[ "$3" == "recurse" ]]; then
         recurse_flag=1
     elif [[ "$3" == "ant" ]]; then
-        version=$(git_clone "$git_url" "$repo_name" "ant")
+        version=$(git_clone "$git_url" "$repo_name" "$third_flag")
     elif [[ "$3" == "av1" ]]; then
-        version=$(git_clone "$git_url" "$repo_name" "av1")
+        version=$(git_clone "$git_url" "$repo_name" "$third_flag")
+    elif [[ "$3" == "ffmpeg" ]]; then
+        version=$(git_clone "$git_url" "$repo_name" "$third_flag")
     else
         version=$(git_clone "$git_url" "$repo_name")
     fi
@@ -348,6 +351,17 @@ git_clone() {
                      sub(/^v/, "", tag);
                      if (tag !~ /\^\{\}$/) print tag
                   }' |
+                  sort -rV |
+                  head -n1
+              )
+    elif [[ "$repo_flag" == "ffmpeg" ]]; then
+        version=$(git ls-remote --tags https://git.ffmpeg.org/ffmpeg.git |
+                  awk -F/ '/\/n?[0-9]+\.[0-9]+(\.[0-9]+)?(\^\{\})?$/ {
+                  tag = $3;
+                  sub(/^[v]/, "", tag);
+                  print tag
+                  }' |
+                  grep -v '\^{}' |
                   sort -rV |
                   head -n1
               )
@@ -998,7 +1012,15 @@ check_nvidia_gpu() {
     fi
 }
 
-# REQUIRED GEFORCE CUDA DEVELOPMENT PACKAGES
+get_local_cuda_version() {
+    if [[ -f /usr/local/cuda/version.json ]]; then
+        echo $(cat /usr/local/cuda/version.json | jq -r '.cuda.version')
+    else
+        echo ""
+    fi
+}
+
+# Required Geforce CUDA development packages
 install_cuda() {
     local choice
 
@@ -1036,7 +1058,7 @@ install_cuda() {
 
         case "$choice" in
             1)      cuda_download ;;
-            2)      return ;;
+            2)      ;;
             *)
                     unset choice
                     install_cuda
@@ -1985,7 +2007,9 @@ if build "leptonica" "$repo_version"; then
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" \
                         --{build,host}="$pc_type" \
-                        --with-pic
+                        --with-pic \
+                        CFLAGS="$CLFAGS -fPIC" \
+                        CXXFLAGS="$CXXLFAGS -fPIC"
     execute make "-j$cpu_threads"
     execute make install
     build_done "leptonica" "$repo_version"
@@ -3136,10 +3160,10 @@ if [[ "$alert_no_cuda" -eq 1 ]]; then
 fi
 
 # Build FFmpeg from source using the latest git clone
-git_caller "https://git.ffmpeg.org/ffmpeg.git" "ffmpeg-git"
+git_caller "https://git.ffmpeg.org/ffmpeg.git" "ffmpeg-git" "ffmpeg"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
-    git_clone "$git_url"
+    git_clone "$git_url" "ffmpeg-git" "ffmpeg"
 
     if [[ "$OS" == "Arch" ]]; then
         patch_ffmpeg
