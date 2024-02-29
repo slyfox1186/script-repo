@@ -1018,38 +1018,39 @@ install_cuda() {
         echo "Nvidia GPU not detected"
     fi
 
-    if [[ -z "$nvidia_gpu_status" ]]; then
-            printf "\n%s\n%s\n\n%s\n%s\n\n" \
-                "The CUDA SDK Toolkit was not detected and the latest version is: $cuda_latest_ver" \
-                "=========================================================================" \
-                "[1] Install the CUDA SDK Toolkit and add it to your PATH." \
-                "[2] Continue without installing. (Hardware acceleration will be turned off)"
-            read -p "Your choices are (1 or 2): " choice
+    if [[ "$nvidia_gpu_status" == "NVIDIA GPU not detected" ]]; then
+        printf "\n%s\n%s\n\n%s\n%s\n\n" \
+            "The CUDA SDK Toolkit was not detected and the latest version is: $cuda_latest_ver" \
+            "=========================================================================" \
+            "[1] Install the CUDA SDK Toolkit and add it to your PATH." \
+            "[2] Continue without installing. (Hardware acceleration will be turned off)"
+        read -p "Your choices are (1 or 2): " choice
 
-            case "$choice" in
-                1)      cuda_download ;;
-                2)      return ;;
-                *)
-                        unset choice
-                        install_cuda
-                        ;;
-            esac
+        case "$choice" in
+            1)      cuda_download ;;
+            2)      return ;;
+            *)
+                    unset choice
+                    install_cuda
+                    ;;
+        esac
 
-            if [[ "$OS" == "Arch" ]]; then
-                find_nvcc=$(find /opt/ -type f -name "nvcc")
-                cuda_version_test=$($find_nvcc --version | sed -n "s/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p")
-                cuda_version_test+=".1"
-            else
-                cuda_version_test=$(cat '/usr/local/cuda/version.json' 2>&1 | jq -r '.cuda.version')
-            fi
-            cuda_version="$cuda_version_test"
+        if [[ "$OS" == "Arch" ]]; then
+            find_nvcc=$(find /opt/ -type f -name "nvcc")
+            cuda_version_test=$($find_nvcc --version | sed -n "s/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p")
+            cuda_version_test+=".1"
+        else
+            cuda_version_test=$(cat '/usr/local/cuda/version.json' 2>&1 | jq -r '.cuda.version')
+        fi
+        cuda_version="$cuda_version_test"
 
-            if [[ -z "$cuda_version" ]]; then
-                fail "Unable to locate \"/usr/local/cuda/version.json\". Line: $LINENO"
-            else
-                export PATH="$PATH:$cuda_path"
-            fi
+        if [[ -z "$cuda_version" ]]; then
+            fail "Unable to locate \"/usr/local/cuda/version.json\". Line: $LINENO"
+        else
+            export PATH="$PATH:$cuda_path"
+        fi
 
+        return 0
     fi
 
     if [[ "$nvidia_gpu_status" == "Nvidia GPU detected" ]] || [[ -n "$(grep -i microsoft /proc/version)" ]]; then
