@@ -74,17 +74,16 @@ fi
 # Define global variables
 script_name="${0}"
 script_ver=3.5.0
-ffmpeg_release_version=n6.1.1
+ffmpeg_current_version=n6.1.1
 cwd="$PWD/ffmpeg-build-script"
 packages="$cwd/packages"
 workspace="$cwd/workspace"
-install_dir=/usr/local
 NONFREE_AND_GPL=false
 LDEXEFLAGS=""
 CONFIGURE_OPTIONS=()
 LATEST=false
-regex_str='(rc|RC|master)+[0-9]*$' # Set the regex variable to check for release candidates
-debug=OFF
+GIT_REGEX='(rc|RC|master)+[0-9]*$' # Set the regex variable to exclude release candidates
+DEBUG=OFF
 
 # Pre-defined color variables
 RED='\033[0;31m'
@@ -194,8 +193,8 @@ show_versions() {
 
     local show_version=("ffmpeg" "ffprobe" "ffplay")
     for name in ${show_version[@]}; do
-        if [[ -f "$install_dir/bin/$name" ]]; then
-            "$install_dir/bin/$name" -version
+        if [[ -f "/usr/local/bin/$name" ]]; then
+            "/usr/local/bin/$name" -version
             echo
         fi
     done
@@ -312,6 +311,7 @@ check_ffmpeg_version() {
                               sort -rV |
                               head -n1
                           )
+    echo "$ffmpeg_git_version"
 }
 
 git_caller() {
@@ -455,7 +455,7 @@ github_repo() {
     done
 
     # Deny installing a release candidate
-    while [[ $repo_version =~ $regex_str ]]; do
+    while [[ $repo_version =~ $GIT_REGEX ]]; do
         curl_cmd=$(curl -sSL "https://github.com/$repo/$url" | grep -o 'href="[^"]*\.tar\.gz"')
 
         # Extract the specific line
@@ -491,7 +491,7 @@ videolan_repo() {
     fi
 
     # Deny installing a release candidate
-    while [[ $repo_version =~ $regex_str ]]; do
+    while [[ $repo_version =~ $GIT_REGEX ]]; do
         if curl_cmd=$(curl -sS "https://code.videolan.org/api/v4/projects/$repo/repository/$url"); then
             repo_version=$(echo "$curl_cmd" | jq -r ".[$count].name" | sed -e 's/^v//')
         fi
@@ -514,7 +514,7 @@ gitlab_repo() {
     fi
 
     # Deny installing a release candidate
-    while [[ $repo_version =~ $regex_str ]]; do
+    while [[ $repo_version =~ $GIT_REGEX ]]; do
         if curl_cmd=$(curl -sS "https://gitlab.com/api/v4/projects/$repo/repository/$url"); then
             repo_version=$(echo "$curl_cmd" | jq -r ".[$count].name" | sed -e 's/^v//')
         fi
@@ -532,7 +532,7 @@ gitlab_freedesktop_repo() {
             repo_version=$(echo "$curl_cmd" | jq -r ".[$count].name" | sed -e 's/^v//')
 
             # Check if repo_version contains "RC" and skip it
-            if [[ $repo_version =~ $regex_str ]]; then
+            if [[ $repo_version =~ $GIT_REGEX ]]; then
                 ((count++))
             else
                 break # Exit the loop when a non-RC version is found
@@ -557,7 +557,7 @@ gitlab_gnome_repo() {
     fi
 
     # Deny installing a release candidate
-    while [[ $repo_version =~ $regex_str ]]; do
+    while [[ $repo_version =~ $GIT_REGEX ]]; do
         if curl_cmd=$(curl -sS "https://gitlab.gnome.org/api/v4/projects/$repo/repository/tags"); then
             repo_version=$(echo "$curl_cmd" | jq -r ".[$count].name" | sed -e 's/^v//')
         fi
@@ -579,7 +579,7 @@ debian_salsa_repo() {
     fi
 
     # Deny installing a release candidate
-    while [[ $repo_version =~ $regex_str ]]; do
+    while [[ $repo_version =~ $GIT_REGEX ]]; do
         if curl_cmd=$(curl -sS "https://salsa.debian.org/api/v4/projects/$repo/repository/tags"); then
             repo_version=$(echo "$curl_cmd" | jq -r ".[$count].name" | sed -e 's/^v//')
         fi
@@ -616,7 +616,7 @@ find_git_repo() {
 execute() {
     echo "$ $*"
 
-    if [[ "$debug" == "ON" ]]; then
+    if [[ "$DEBUG" == "ON" ]]; then
         if ! output=$("$@"); then
             notify-send -t 5000 "Failed to execute $*" 2>/dev/null
             fail "Failed to execute $*"
@@ -3136,9 +3136,9 @@ cp -f "$workspace/include/objbase.h" "$workspace"
 
 # Get the latest FFmpeg version by parsing its repository
 check_ffmpeg_version "https://github.com/FFmpeg/FFmpeg.git" "3"
-ffmpeg_latest_version="$ffmpeg_git_version"
+ffmpeg_latest_version=$(check_ffmpeg_version)
 
-if [[ ! "$ffmpeg_release_version" == "$ffmpeg_latest_version" ]]; then
+if [[ ! "$ffmpeg_current_version" == "$ffmpeg_latest_version" ]]; then
     echo
     echo "The script detected a new release version of FFmpeg: $ffmpeg_git_version"
 fi
@@ -3152,13 +3152,11 @@ if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url" "ffmpeg-git" "ffmpeg"
 
-    if [[ "$OS" == "Arch" ]]; then
-        patch_ffmpeg
-    fi
+    [[ "$OS" == "Arch" ]] && patch_ffmpeg
 
     mkdir build
     cd build || exit 1
-    ../configure --prefix="$install_dir" \
+    ../configure --prefix=/usr/local \
                  --arch=$(uname -m) \
                  --cc="$CC" \
                  --cxx="$CXX" \
@@ -3199,6 +3197,7 @@ if build "$repo_name" "${version//\$ /}"; then
                  --strip=$(type -P strip)
     execute make "-j$cpu_threads"
     execute make install
+    build_done "$repo_name" "$version"
 fi
 
 # Execute the ldconfig command to ensure that all library changes are detected by ffmpeg
