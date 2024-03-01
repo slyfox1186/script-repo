@@ -1629,7 +1629,7 @@ else
                                   --buildtype=release \
                                   --default-library=static \
                                   --strip \
-                                  -Dstatic_analyze=false \
+                                  -Dbuilt_tools=false \
                                   -Dtest=false
         execute ninja "-j$cpu_threads" -C build
         execute ninja -C build install
@@ -2138,7 +2138,7 @@ fi
 find_git_repo "5048975" "3" "T"
 if build "serd" "$repo_version"; then
     download "https://gitlab.com/drobilla/serd/-/archive/v$repo_version/serd-v$repo_version.tar.bz2" "serd-$repo_version.tar.bz2"
-    extracmds=("-D"{docs,tests}"=disabled")
+    extracmds=("-D"{docs,html,man,man_html,singlehtml,tests,tools}"=disabled")
     execute meson setup build --prefix="$workspace" \
                               --buildtype=release \
                               --default-library=static \
@@ -2183,7 +2183,7 @@ find_git_repo "11853362" "3" "B"
 if build "sord" "$repo_short_version_1"; then
     CFLAGS+=" -I$workspace/include/serd-0"
     download "https://gitlab.com/drobilla/sord/-/archive/$repo_version_1/sord-$repo_version_1.tar.bz2" "sord-$repo_short_version_1.tar.bz2"
-    extracmds=("-D"{docs,tests}"=disabled")
+    extracmds=("-D"{docs,tests,tools}"=disabled")
     execute meson setup build --prefix="$workspace" \
                               --buildtype=release \
                               --default-library=static \
@@ -2197,7 +2197,7 @@ fi
 find_git_repo "11853194" "3" "T"
 if build "sratom" "$repo_version"; then
     download "https://gitlab.com/lv2/sratom/-/archive/v$repo_version/sratom-v$repo_version.tar.bz2" "sratom-$repo_version.tar.bz2"
-    extracmds=("-D"{docs,tests}"=disabled")
+    extracmds=("-D"{docs,html,singlehtml,tests}"=disabled")
     execute meson setup build --prefix="$workspace" \
                               --buildtype=release \
                               --default-library=static \
@@ -2211,7 +2211,7 @@ fi
 find_git_repo "11853176" "3" "T"
 if build "lilv" "$repo_version"; then
     download "https://gitlab.com/lv2/lilv/-/archive/v$repo_version/lilv-v$repo_version.tar.bz2" "lilv-$repo_version.tar.bz2"
-    extracmds=("-D"{docs,tests}"=disabled")
+    extracmds=("-D"{docs,html,singlehtml,tests,tools}"=disabled")
     execute meson setup build --prefix="$workspace" \
                               --buildtype=release \
                               --default-library=static \
