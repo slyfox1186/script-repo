@@ -117,10 +117,6 @@ fi
 MAKEFLAGS="-j$cpu_threads"
 export MAKEFLAGS
 
-echo
-echo "Utilizing $cpu_threads CPU threads"
-echo
-
 # Create output directories
 mkdir -p "$packages"
 
@@ -139,6 +135,10 @@ source_flags
 
 log() {
     echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+log_update() {
+    echo -e "${GREEN}[UPDATE]${NC} $1"
 }
 
 warn() {
@@ -165,6 +165,7 @@ fail() {
 cleanup() {
     local choice
 
+    echo
     echo "========================================================"
     echo "        Do you want to clean up the build files?        "
     echo "========================================================"
@@ -176,15 +177,15 @@ cleanup() {
     read -p "Your choices are (1 or 2): " choice
 
     case "$choice" in
-        1)      rm -fr "$cwd" ;;
-        2)      return ;;
-        *)      unset choice
-                cleanup
-                ;;
+        1) rm -fr "$cwd" ;;
+        2) return ;;
+        *) unset choice
+           cleanup
+           ;;
     esac
 }
 
-show_versions() {
+show_installed_versions() {
     echo
     echo "========================================================"
     echo "                     FFmpeg Version                     "
@@ -198,6 +199,18 @@ show_versions() {
             echo
         fi
     done
+}
+
+show_versions() {
+    local choice
+
+    echo
+    read -p "Do you want to print the installed FFmpeg & FFprobe versions? (y/n): " choice
+
+    case "$choice" in
+        yes|y) show_installed_versions ;;
+        no|n)  ;;
+    esac
 }
 
 download() {
@@ -279,7 +292,7 @@ check_and_install_cargo_c() {
         if ! cargo install cargo-c; then
             fail "Failed to execute: cargo install cargo-c."
         fi
-        log "cargo-c installation completed."
+        log_update "cargo-c installation completed."
     else
         log "cargo-c is already installed."
     fi
@@ -311,6 +324,7 @@ check_ffmpeg_version() {
                               sort -rV |
                               head -n1
                           )
+    echo "$ffmpeg_git_version"
 }
 
 git_caller() {
@@ -755,8 +769,11 @@ if [[ -z "$bflag" ]]; then
     exit 0
 fi
 
+echo
+log "Utilizing $cpu_threads CPU threads"
+
 if $NONFREE_AND_GPL; then
-    echo "With GPL and non-free codecs"
+    warn "With GPL and non-free codecs enabled"
     echo
 fi
 
@@ -1041,19 +1058,19 @@ install_cuda() {
 
     # Determine if the PC has an Nvidia GPU available
     if [[ "$is_nvidia_gpu_present" == "NVIDIA GPU detected" ]]; then
-        echo "Nvidia GPU detected"
-        echo "Determining if CUDA is installed..."
+        log "Nvidia GPU detected"
+        log "Determining if CUDA is installed..."
         check_remote_cuda_version
         local_cuda_version=$(cat /usr/local/cuda/version.json 2>/dev/null | jq -r '.cuda.version' 2>/dev/null)
         # Determine the installed CUDA version if any
         if [[ -n "$remote_cuda_version" ]]; then
-            echo "The installed CUDA version is: $remote_cuda_version"
+            log "The installed CUDA version is: $remote_cuda_version"
         else
-            echo "CUDA is not installed"
+            warn "CUDA is not installed"
         fi
-        echo "The latest CUDA version available is: $remote_cuda_version"
+        log "The latest CUDA version available is: $remote_cuda_version"
     else
-        echo "Nvidia GPU not detected"
+        warn "Nvidia GPU not detected"
     fi
 
     if [[ "$is_nvidia_gpu_present" == "NVIDIA GPU not detected" ]]; then
@@ -1066,12 +1083,11 @@ install_cuda() {
         read -p "Your choices are (1 or 2): " choice
 
         case "$choice" in
-            1)      cuda_download ;;
-            2)      ;;
-            *)
-                    unset choice
-                    install_cuda
-                    ;;
+            1) cuda_download ;;
+            2) ;;
+            *) unset choice
+               install_cuda
+               ;;
         esac
 
         if [[ "$OS" == "Arch" ]]; then
@@ -1200,16 +1216,16 @@ apt_pkgs() {
 
     # Print unavailable packages
     if [[ "${#unavailable_packages[@]}" -gt 0 ]]; then
-        echo "Unavailable packages: ${unavailable_packages[*]}"
+        warn "Unavailable packages: ${unavailable_packages[*]}"
     fi
 
     # Install available missing packages
     if [[ "${#available_packages[@]}" -gt 0 ]]; then
-        echo "Installing available missing packages: ${available_packages[*]}"
+        warn "Installing available missing packages: ${available_packages[*]}"
         apt install "${available_packages[@]}"
         echo
     else
-        echo "No missing packages to install or all missing packages are unavailable."
+        log "No missing packages to install or all missing packages are unavailable."
         echo
     fi
 }
@@ -1228,14 +1244,12 @@ x265_fix_libs() {
     x265_libs_trim=$(echo "$x265_libs" | sed "s:.*/::" | head -n1)
 
     case "$OS" in
-        Arch)
-                    cp -f "$x265_libs" "/usr/lib"
-                    ln -sf "/usr/lib/$x265_libs_trim" "/usr/lib/libx265.so"
-                    ;;
-        *)
-                    cp -f "$x265_libs" "/usr/lib/x86_64-linux-gnu"
-                    ln -sf "/usr/lib/x86_64-linux-gnu/$x265_libs_trim" "/usr/lib/x86_64-linux-gnu/libx265.so"
-                    ;;
+        Arch) cp -f "$x265_libs" "/usr/lib"
+              ln -sf "/usr/lib/$x265_libs_trim" "/usr/lib/libx265.so"
+              ;;
+        *)    cp -f "$x265_libs" "/usr/lib/x86_64-linux-gnu"
+              ln -sf "/usr/lib/x86_64-linux-gnu/$x265_libs_trim" "/usr/lib/x86_64-linux-gnu/libx265.so"
+              ;;
     esac
 }
 
@@ -1388,10 +1402,10 @@ debian_os_version() {
              )
 
     case "$VER" in
-        msft)               apt_pkgs $debian_wsl_pkgs "${debian_pkgs[@]}" librist-dev ;;
-        12|trixie|sid)      apt_pkgs $1 "${debian_pkgs[@]}" librist-dev ;;
-        11)                 apt_pkgs $1 "${debian_pkgs[@]}" ;;
-        *)                  fail "Could not detect the Debian release version. Line: $LINENO" ;;
+        msft)          apt_pkgs $debian_wsl_pkgs "${debian_pkgs[@]}" librist-dev ;;
+        12|trixie|sid) apt_pkgs $1 "${debian_pkgs[@]}" librist-dev ;;
+        11)            apt_pkgs $1 "${debian_pkgs[@]}" ;;
+        *)             fail "Could not detect the Debian release version. Line: $LINENO" ;;
     esac
 }
 
@@ -1410,26 +1424,29 @@ ubuntu_os_version() {
         ubuntu_wsl_pkgs="$1"
     fi
 
-    ubuntu_common_pkgs=(cppcheck libumfpack5 libsuitesparseconfig5 libcolamd2
-                        libcholmod3 libccolamd2 libcamd2 libamd2
-                    )
-    focal_pkgs=(libvmmalloc1 libvmmalloc-dev libdmalloc5 libcunit1-dev nvidia-utils-535
-                librust-jemalloc-sys-dev librust-malloc-buf-dev libsrt-doc libreadline-dev
-                libcunit1 libcunit1-doc libhwy-dev libsrt-gnutls-dev libyuv-dev
-            )
-    jammy_pkgs=(libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libmimalloc-dev
-                libtbbmalloc2 librust-jemalloc-sys-dev librust-malloc-buf-dev
-                liblz4-dev libsrt-doc libreadline-dev libpipewire-0.3-dev
-                libwayland-dev libdecor-0-dev libpsl-dev libacl1-dev
-            )
-    lunar_kenetic_pkgs=(libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev librist-dev
-                        libjxl-dev libhwy-dev libsrt-gnutls-dev libyuv-dev
-                    )
-    mantic_pkgs="libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libhwy-dev libsrt-gnutls-dev libyuv-dev"
-
+    local ubuntu_common_pkgs=(cppcheck libamd2 libcamd2 libccolamd2 libcholmod3
+                              libcolamd2 libsuitesparseconfig5 libumfpack5
+                          )  
+    local focal_pkgs=(libcunit1 libcunit1-dev libcunit1-doc libdmalloc5 libhwy-dev
+                      libreadline-dev librust-jemalloc-sys-dev librust-malloc-buf-dev
+                      libsrt-doc libsrt-gnutls-dev libvmmalloc-dev libvmmalloc1
+                      libyuv-dev nvidia-utils-535
+                 )
+    local jammy_pkgs=(libacl1-dev libdecor-0-dev liblz4-dev libmimalloc-dev
+                      libpipewire-0.3-dev libpsl-dev libreadline-dev
+                      librust-jemalloc-sys-dev librust-malloc-buf-dev
+                      libsrt-doc libsvtav1-dev libsvtav1dec-dev
+                      libsvtav1enc-dev libtbbmalloc2 libwayland-dev
+                 )
+    local lunar_kenetic_pkgs=(libhwy-dev libjxl-dev librist-dev libsrt-gnutls-dev
+                              libsvtav1-dev libsvtav1dec-dev libsvtav1enc-dev libyuv-dev
+                         )
+    local mantic_pkgs=(libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev
+                       libhwy-dev libsrt-gnutls-dev libyuv-dev
+                  )
     case "$VER" in
         msft)        ubuntu_msft ;;
-        23.10)       apt_pkgs $1 $mantic_pkgs "${lunar_kenetic_pkgs[@]}" "${jammy_pkgs[@]}" "${focal_pkgs[@]}" ;;
+        23.10)       apt_pkgs $1 "${mantic_pkgs[@]}" "${lunar_kenetic_pkgs[@]}" "${jammy_pkgs[@]}" "${focal_pkgs[@]}" ;;
         23.04|22.10) apt_pkgs $1 "${ubuntu_common_pkgs[@]}" "${lunar_kenetic_pkgs[@]}" "${jammy_pkgs[@]}" ;;
         22.04)       apt_pkgs $1 "${ubuntu_common_pkgs[@]}" "${jammy_pkgs[@]}" ;;
         20.04)       apt_pkgs $1 "${ubuntu_common_pkgs[@]}" "${focal_pkgs[@]}" ;;
@@ -1485,7 +1502,7 @@ get_wsl_version
 # Install required APT packages
     echo "Installing the required APT packages"
     echo "========================================================"
-    echo "Checking installation status of each package..."
+    log "Checking installation status of each package..."
 
 case "$OS" in
     Arch)       arch_os_ver ;;
@@ -1493,8 +1510,8 @@ case "$OS" in
     Ubuntu)     ubuntu_os_version "$nvidia_encode_version $nvidia_utils_version" ;;
     WSL2)       get_os_version
                 case "$OS" in
-                    Debian|n/a)     debian_os_version "$nvidia_encode_version $nvidia_utils_version ${wsl_common_pkgs[@]}" "$wsl_flag" ;;
-                    Ubuntu)         ubuntu_os_version "$nvidia_encode_version $nvidia_utils_version ${wsl_common_pkgs[@]}" "$wsl_flag" ;;
+                    Debian|n/a) debian_os_version "$nvidia_encode_version $nvidia_utils_version ${wsl_common_pkgs[@]}" "$wsl_flag" ;;
+                    Ubuntu)     ubuntu_os_version "$nvidia_encode_version $nvidia_utils_version ${wsl_common_pkgs[@]}" "$wsl_flag" ;;
                 esac
                 ;;
 esac
@@ -1504,12 +1521,12 @@ set_java_variables
 
 # Check if the cuda folder exists to determine installation status
 case "$OS" in
-    Arch)   iscuda=$(find /opt/cuda* -type f -name nvcc 2>/dev/null)
-            cuda_path=$(find /opt/cuda* -type f -name nvcc 2>/dev/null | grep -Eo '^.*/bin?')
-            ;;
-    *)      iscuda=$(find /usr/local/cuda* -type f -name nvcc 2>/dev/null)
-            cuda_path=$(find /usr/local/cuda* -type f -name nvcc 2>/dev/null | grep -Eo '^.*/bin?')
-            ;;
+    Arch) iscuda=$(find /opt/cuda* -type f -name nvcc 2>/dev/null)
+          cuda_path=$(find /opt/cuda* -type f -name nvcc 2>/dev/null | grep -Eo '^.*/bin?')
+          ;;
+    *)    iscuda=$(find /usr/local/cuda* -type f -name nvcc 2>/dev/null)
+          cuda_path=$(find /usr/local/cuda* -type f -name nvcc 2>/dev/null | grep -Eo '^.*/bin?')
+          ;;
 esac
 
 # Prompt the user to install the geforce cuda sdk-toolkit
@@ -1651,12 +1668,12 @@ if $NONFREE_AND_GPL; then
     fi
     CONFIGURE_OPTIONS+=("--enable-openssl")
 else
-    if build "gmp" "6.2.1"; then
-        download "https://ftp.gnu.org/gnu/gmp/gmp-6.2.1.tar.xz"
+    if build "gmp" "6.3.0"; then
+        download "https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz"
         execute ./configure --prefix="$workspace" --disable-shared --enable-static
         execute make "-j$cpu_threads"
         execute make install
-        build_done "gmp" "6.2.1"
+        build_done "gmp" "6.3.0"
     fi
 
     if build "nettle" "3.9.1"; then
@@ -2082,8 +2099,8 @@ if build "$repo_name" "${version//\$ /}"; then
     git_clone "$git_url"
     extracmds=("-D"{docs,tests}"=disabled")
     case "$VER" in
-        10|11)      lv2_switch=enabled ;;
-        *)          lv2_switch=disabled ;;
+        10|11) lv2_switch=enabled ;;
+        *)     lv2_switch=disabled ;;
     esac
 
     venv_path="$workspace/python_virtual_environment/lv2-git"
@@ -3133,13 +3150,28 @@ cp -f "$workspace/include/dxva2api.h" "/usr/include"
 curl -sSLo "$workspace/include/objbase.h" "https://raw.githubusercontent.com/wine-mirror/wine/master/include/objbase.h"
 cp -f "$workspace/include/objbase.h" "$workspace"
 
+# Check the last build version of ffmpeg if it exists to determine if an update has occured
+if [[ -f "$packages/ffmpeg-git.done" ]]; then
+    # Define a function to read the file content
+    read_file_contents() {
+        local file_path="$1"
+        if [ -f "$file_path" ]; then
+            # Read the content of the file into a variable
+            local content=$(cat "$file_path")
+            echo "$content"
+        fi
+    }
+
+    file_path="$packages/ffmpeg-git.done"
+    ffmpeg_current_version=$(read_file_contents "$file_path")
+fi
+
 # Get the latest FFmpeg version by parsing its repository
-check_ffmpeg_version "https://github.com/FFmpeg/FFmpeg.git" "3"
-ffmpeg_latest_version="$ffmpeg_git_version"
+ffmpeg_latest_version=$(check_ffmpeg_version "https://github.com/FFmpeg/FFmpeg.git")
 
 if [[ ! "$ffmpeg_current_version" == "$ffmpeg_latest_version" ]]; then
     echo
-    echo "The script detected a new release version of FFmpeg: $ffmpeg_git_version"
+    log_update "The script detected a new release version of FFmpeg: $ffmpeg_latest_version"
 fi
 
 # Clean the compilter flags before building FFmpeg
