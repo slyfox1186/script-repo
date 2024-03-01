@@ -1067,7 +1067,7 @@ install_cuda() {
         local_cuda_version=$(cat /usr/local/cuda/version.json 2>/dev/null | jq -r '.cuda.version' 2>/dev/null)
         # Determine the installed CUDA version if any
         if [[ -n "$remote_cuda_version" ]]; then
-            log "The installed CUDA version is: $remote_cuda_version"
+            log "The installed CUDA version is: $local_cuda_version"
         else
             warn "CUDA is not installed"
         fi
@@ -1076,7 +1076,11 @@ install_cuda() {
         warn "Nvidia GPU not detected"
     fi
 
-    if [[ "$is_nvidia_gpu_present" == "NVIDIA GPU not detected" ]]; then
+    if [[ "$amd_gpu_test" == "AMD GPU detected" ]] && [[ "$is_nvidia_gpu_present" == "NVIDIA GPU not detected" ]]; then
+        return 0
+    fi
+
+    if [[ "$is_nvidia_gpu_present" == "NVIDIA GPU detected" ]] && [[ -z "$local_cuda_version" ]]; then
         echo
         echo "The CUDA SDK Toolkit was not detected and the latest version is: $cuda_latest_ver"
         echo "========================================================================="
