@@ -2912,13 +2912,11 @@ fi
 
 if $NONFREE_AND_GPL; then
     if [[ -n "$iscuda" ]]; then
-        git_caller "https://git.videolan.org/git/ffmpeg/nv-codec-headers.git" "nv-codec-headers-git"
-        if build "$repo_name" "${version//\$ /}"; then
-            echo "Cloning \"$repo_name\" saving version \"$version\""
-            git_clone "$git_url"
+        if build "nv-codec-headers" "12.1.14.0"; then
+            download "https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.1.14.0/nv-codec-headers-12.1.14.0.tar.gz"
             execute make "-j$cpu_threads"
             execute make PREFIX="$workspace" install
-            build_done "$repo_name" "$version"
+            build_done "nv-codec-headers" "12.1.14.0"
         fi
 
         CONFIGURE_OPTIONS+=("--enable-"{cuda-nvcc,cuda-llvm,cuvid,nvdec,nvenc,ffnvcodec})
