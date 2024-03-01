@@ -1426,7 +1426,7 @@ ubuntu_os_version() {
 
     local ubuntu_common_pkgs=(cppcheck libamd2 libcamd2 libccolamd2 libcholmod3
                               libcolamd2 libsuitesparseconfig5 libumfpack5
-                          )  
+                          )
     local focal_pkgs=(libcunit1 libcunit1-dev libcunit1-doc libdmalloc5 libhwy-dev
                       libreadline-dev librust-jemalloc-sys-dev librust-malloc-buf-dev
                       libsrt-doc libsrt-gnutls-dev libvmmalloc-dev libvmmalloc1
@@ -1455,7 +1455,7 @@ ubuntu_os_version() {
 }
 
 # Test the OS and its version
-find_lsb_release=$(find /usr/bin/ -type f -name 'lsb_release')
+find_lsb_release=$(find /usr/bin/ -type f -name lsb_release)
 
 get_os_version() {
     if [[ -f /etc/os-release ]]; then
@@ -2097,7 +2097,6 @@ git_caller "https://github.com/lv2/lv2.git" "lv2-git"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url"
-    extracmds=("-D"{docs,tests}"=disabled")
     case "$VER" in
         10|11) lv2_switch=enabled ;;
         *)     lv2_switch=disabled ;;
@@ -2120,8 +2119,10 @@ if build "$repo_name" "${version//\$ /}"; then
                               --buildtype=release \
                               --default-library=static \
                               --strip \
+                              -Ddocs=disabled \
+                              -Donline_docs=false \
                               -Dplugins="$lv2_switch" \
-                              "${extracmds[@]}"
+                              -Dtests=disabled
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
     build_done "$repo_name" "$version"
