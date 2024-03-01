@@ -79,12 +79,10 @@ cwd="$PWD/ffmpeg-build-script"
 packages="$cwd/packages"
 workspace="$cwd/workspace"
 install_dir=/usr/local
-pc_type=x86_64-linux-gnu
-web_repo=https://github.com/slyfox1186/script-repo
 NONFREE_AND_GPL=false
 LDEXEFLAGS=""
-ffmpeg_libraries=()
-latest=false
+CONFIGURE_OPTIONS=()
+LATEST=false
 regex_str='(rc|RC|master)+[0-9]*$' # Set the regex variable to check for release candidates
 debug=OFF
 
@@ -151,7 +149,7 @@ warn() {
 exit_fn() {
     echo
     echo -e "${GREEN}[INFO]${NC} Make sure to ${YELLOW}star${NC} this repository to show your support!"
-    echo -e "${GREEN}[INFO]${NC} $web_repo"
+    echo -e "${GREEN}[INFO]${NC} https://github.com/slyfox1186/script-repo"
     echo
     exit 0
 }
@@ -160,7 +158,7 @@ fail() {
     echo
     echo -e "${RED}[ERROR]${NC} $1"
     echo
-    echo -e "${GREEN}[INFO]${NC} For help or to report a bug create an issue at: $web_repo/issues"
+    echo -e "${GREEN}[INFO]${NC} For help or to report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues"
     echo
     exit 1
 }
@@ -717,7 +715,7 @@ while (("$#" > 0)); do
     case "$1" in
         -h|--help) usage
                    echo
-                     exit 0
+                   exit 0
                    ;;
         --version) echo "The script version is: $script_ver"
                    echo
@@ -727,7 +725,7 @@ while (("$#" > 0)); do
                        bflag="-b"
                    fi
                    if [[ "$1" == "--enable-gpl-and-non-free" ]]; then
-                       ffmpeg_libraries+=("--enable-"{libsmbclient,libcdio,gpl,nonfree})
+                       CONFIGURE_OPTIONS+=("--enable-"{gpl,libsmbclient,libcdio,nonfree})
                        NONFREE_AND_GPL=true
                    fi
                    if [[ "$1" == "--cleanup" || "$1" =~ "-c" && ! "$1" =~ "--" ]]; then
@@ -736,9 +734,9 @@ while (("$#" > 0)); do
                    fi
                    if [[ "$1" == "--full-static" ]]; then
                        LDEXEFLAGS="-static"
-                    fi
+                   fi
                    if [[ "$2" == "--latest" || "$2" =~ "-l" ]]; then
-                       latest=true
+                       LATEST=true
                    fi
                    shift
                    ;;
@@ -1546,7 +1544,6 @@ fi
 if build "m4" "latest"; then
     download "https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz"
     execute ./configure --prefix="$workspace" \
-                        --{build,host,target}="$pc_type" \
                         --disable-nls \
                         --enable-c++ \
                         --enable-threads=posix
@@ -1558,9 +1555,7 @@ fi
 if build "autoconf" "latest"; then
     download "http://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz"
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type" \
-                        M4="$workspace/bin/m4"
+    execute ./configure --prefix="$workspace" M4="$workspace/bin/m4"
     execute make "-j$cpu_threads"
     execute make install
     build_done "autoconf" "latest"
@@ -1584,10 +1579,7 @@ else
     fi
     if build "libtool" "$lt_ver"; then
         download "https://ftp.gnu.org/gnu/libtool/libtool-$lt_ver.tar.xz"
-        execute ./configure --prefix="$workspace" \
-                            --{build,host}="$pc_type" \
-                            --with-pic \
-                            M4="$workspace/bin/m4"
+        execute ./configure --prefix="$workspace" --with-pic M4="$workspace/bin/m4"
         execute make "-j$cpu_threads"
         execute make install
         build_done "libtool" "$lt_ver"
@@ -1597,10 +1589,7 @@ fi
 if build "pkg-config" "0.29.2"; then
     download "https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz"
     execute autoconf
-    execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type" \
-                        --enable-silent-rules \
-                        --with-pc-path="$PKG_CONFIG_PATH"
+    execute ./configure --prefix="$workspace" --enable-silent-rules --with-pc-path="$PKG_CONFIG_PATH"
     execute make "-j$cpu_threads"
     execute make install
     build_done "pkg-config" "0.29.2"
@@ -1661,7 +1650,7 @@ if $NONFREE_AND_GPL; then
         execute make install_fips
         build_done "openssl" "$repo_version"
     fi
-    ffmpeg_libraries+=("--enable-openssl")
+    CONFIGURE_OPTIONS+=("--enable-openssl")
 else
     if build "gmp" "6.2.1"; then
         download "https://ftp.gnu.org/gnu/gmp/gmp-6.2.1.tar.xz"
@@ -1709,10 +1698,7 @@ if build "nasm" "$latest_nasm_version"; then
     find_latest_nasm_version
     download "https://www.nasm.us/pub/nasm/stable/nasm-$latest_nasm_version.tar.xz"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" \
-                        --{build,host,target}="$pc_type" \
-                        --disable-pedantic \
-                        --enable-ccache
+    execute ./configure --prefix="$workspace" --disable-pedantic --enable-ccache
     execute make "-j$cpu_threads"
     execute make install
     build_done "nasm" "$latest_nasm_version"
@@ -1742,7 +1728,7 @@ if [[ "$VER" != "18.04" ]]; then
         execute ninja -C build install
         build_done "libxml2" "$repo_version"
     fi
-    ffmpeg_libraries+=("--enable-libxml2")
+    CONFIGURE_OPTIONS+=("--enable-libxml2")
 fi
 
 find_git_repo "/glennrp/libpng" "1" "T"
@@ -1750,10 +1736,7 @@ if build "libpng" "$repo_version"; then
     download "https://github.com/glennrp/libpng/archive/refs/tags/v$repo_version.tar.gz" "libpng-$repo_version.tar.gz"
     execute autoupdate
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type" \
-                        --enable-hardware-optimizations=yes \
-                        --with-pic
+    execute ./configure --prefix="$workspace" --enable-hardware-optimizations=yes --with-pic
     execute make "-j$cpu_threads"
     execute make install-header-links install-library-links install
     build_done "libpng" "$repo_version"
@@ -1764,7 +1747,6 @@ if build "libtiff" "$repo_version"; then
     download "https://gitlab.com/libtiff/libtiff/-/archive/v$repo_version/libtiff-v$repo_version.tar.bz2" "libtiff-$repo_version.tar.bz2"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type" \
                         --disable-docs \
                         --disable-sphinx \
                         --disable-tests \
@@ -1780,15 +1762,12 @@ if $NONFREE_AND_GPL; then
     if build "aribb24" "$repo_version"; then
         download "https://github.com/nkoriyama/aribb24/archive/refs/tags/v$repo_version.tar.gz" "aribb24-$repo_version.tar.gz"
         execute autoreconf -fi
-        execute ./configure --prefix="$workspace" \
-                            --{build,host}="$pc_type" \
-                            --disable-shared \
-                            --with-pic
+        execute ./configure --prefix="$workspace" --disable-shared --with-pic
         execute make "-j$cpu_threads"
         execute make install
         build_done "aribb24" "$repo_version"
     fi
-    ffmpeg_libraries+=("--enable-libaribb24")
+    CONFIGURE_OPTIONS+=("--enable-libaribb24")
 fi
 
 find_git_repo "7950" "4"
@@ -1807,7 +1786,7 @@ if build "freetype" "$repo_version_1"; then
     execute ninja -C build install
     build_done "freetype" "$repo_version_1"
 fi
-ffmpeg_libraries+=("--enable-libfreetype")
+CONFIGURE_OPTIONS+=("--enable-libfreetype")
 
 find_git_repo "890" "4"
 if build "fontconfig" "$repo_version"; then
@@ -1818,7 +1797,6 @@ if build "fontconfig" "$repo_version"; then
     execute ./autogen.sh --noconf
     execute autoupdate
     execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type" \
                         "${extracmds[@]}" \
                         --enable-iconv \
                         --enable-static \
@@ -1828,7 +1806,7 @@ if build "fontconfig" "$repo_version"; then
     execute make install
     build_done "fontconfig" "$repo_version"
 fi
-ffmpeg_libraries+=("--enable-libfontconfig")
+CONFIGURE_OPTIONS+=("--enable-libfontconfig")
 
 # UBUNTU BIONIC FAILS TO BUILD XML2
 if [[ "$VER" != "18.04" ]]; then
@@ -1886,20 +1864,18 @@ if build "fribidi" "$repo_version"; then
     execute ninja -C build install
     build_done "fribidi" "$repo_version"
 fi
-ffmpeg_libraries+=("--enable-libfribidi")
+CONFIGURE_OPTIONS+=("--enable-libfribidi")
 
 find_git_repo "libass/libass" "1" "T"
 if build "libass" "$repo_version"; then
     download "https://github.com/libass/libass/archive/refs/tags/$repo_version.tar.gz" "libass-$repo_version.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type" \
-                        --disable-shared
+    execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     build_done "libass" "$repo_version"
 fi
-ffmpeg_libraries+=("--enable-libass")
+CONFIGURE_OPTIONS+=("--enable-libass")
 
 find_git_repo "freeglut/freeglut" "1" "T"
 if build "freeglut" "$repo_version"; then
@@ -1940,7 +1916,7 @@ if build "$repo_name" "${version//\$ /}"; then
     execute ninja -C build install
     build_done "$repo_name" "$version"
 fi
-ffmpeg_libraries+=("--enable-libwebp")
+CONFIGURE_OPTIONS+=("--enable-libwebp")
 
 find_git_repo "google/highway" "1" "T"
 if build "libhwy" "$repo_version"; then
@@ -1978,15 +1954,12 @@ find_git_repo "mm2/Little-CMS" "1" "T"
 if build "lcms2" "$repo_version"; then
     download "https://github.com/mm2/Little-CMS/archive/refs/tags/lcms$repo_version.tar.gz" "lcms2-$repo_version.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type" \
-                        --with-pic \
-                        --with-threaded
+    execute ./configure --prefix="$workspace" --with-pic --with-threaded
     execute make "-j$cpu_threads"
     execute make install
     build_done "lcms2" "$repo_version"
 fi
-ffmpeg_libraries+=("--enable-lcms2")
+CONFIGURE_OPTIONS+=("--enable-lcms2")
 
 find_git_repo "gflags/gflags" "1" "T"
 if build "gflags" "$repo_version"; then
@@ -2039,11 +2012,7 @@ repo_version="${repo_version//Leptonica version /}"
 if build "leptonica" "$repo_version"; then
     download "https://github.com/DanBloomberg/leptonica/archive/refs/tags/$repo_version.tar.gz" "leptonica-$repo_version.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type" \
-                        --with-pic \
-                        CFLAGS="$CLFAGS -fPIC" \
-                        CXXFLAGS="$CXXLFAGS -fPIC"
+    execute ./configure --prefix="$workspace" --with-pic
     execute make "-j$cpu_threads"
     execute make install
     build_done "leptonica" "$repo_version"
@@ -2054,7 +2023,6 @@ if build "tesseract" "$repo_version"; then
     download "https://github.com/tesseract-ocr/tesseract/archive/refs/tags/$repo_version.tar.gz" "tesseract-$repo_version.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type" \
                         --disable-doc \
                         --with-extra-includes="$workspace/include" \
                         --with-extra-libraries="$workspace/lib" \
@@ -2065,7 +2033,7 @@ if build "tesseract" "$repo_version"; then
     execute make install
     build_done "tesseract" "$repo_version"
 fi
-ffmpeg_libraries+=("--enable-libtesseract")
+CONFIGURE_OPTIONS+=("--enable-libtesseract")
 
 git_caller "https://github.com/imageMagick/jpeg-turbo.git" "jpeg-turbo-git"
 if build "$repo_name" "${version//\$ /}"; then
@@ -2091,7 +2059,7 @@ if $NONFREE_AND_GPL; then
         execute make "-j$cpu_threads" PREFIX="$workspace" install-static
         build_done "$repo_name" "$version"
     fi
-    ffmpeg_libraries+=("--enable-librubberband")
+    CONFIGURE_OPTIONS+=("--enable-librubberband")
 fi
 
 find_git_repo "c-ares/c-ares" "1" "T"
@@ -2101,7 +2069,6 @@ if build "c-ares" "$g_tag"; then
     download "https://github.com/c-ares/c-ares/archive/refs/tags/cares-$repo_version.tar.gz" "c-ares-$repo_version.tar.gz"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type" \
                         --disable-debug \
                         --disable-warnings \
                         --with-pic
@@ -2237,7 +2204,7 @@ if build "lilv" "$repo_version"; then
     execute ninja -C build install
     build_done "lilv" "$repo_version"
 fi
-ffmpeg_libraries+=("--enable-lv2")
+CONFIGURE_OPTIONS+=("--enable-lv2")
 
 git_caller "https://github.com/gypified/libmpg123.git" "libmpg123-git"
 if build "$repo_name" "${version//\$ /}"; then
@@ -2261,9 +2228,7 @@ find_git_repo "akheron/jansson" "1" "T"
 if build "jansson" "$repo_version"; then
     download "https://github.com/akheron/jansson/archive/refs/tags/v$repo_version.tar.gz" "jansson-$repo_version.tar.gz"
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type" \
-                        --disable-shared
+    execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     build_done "jansson" "$repo_version"
@@ -2333,7 +2298,6 @@ if build "libsndfile" "$repo_version"; then
     download "https://github.com/libsndfile/libsndfile/releases/download/$repo_version/libsndfile-$repo_version.tar.xz"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type" \
                         --enable-static \
                         --with-pic \
                         --with-pkgconfigdir="$workspace/lib/pkgconfig"
@@ -2358,7 +2322,7 @@ if build "$repo_name" "${version//\$ /}"; then
     libpulse_fix_libs "${version//\$ /}"
     build_done "$repo_name" "$version"
 fi
-ffmpeg_libraries+=("--enable-libpulse")
+CONFIGURE_OPTIONS+=("--enable-libpulse")
 
 find_git_repo "xiph/ogg" "1" "T"
 if build "libogg" "$repo_version"; then
@@ -2409,14 +2373,12 @@ if $NONFREE_AND_GPL; then
     if build "libfdk-aac" "2.0.3"; then
         download "https://phoenixnap.dl.sourceforge.net/project/opencore-amr/fdk-aac/fdk-aac-2.0.3.tar.gz" "libfdk-aac-2.0.3.tar.gz"
         execute ./autogen.sh
-        execute ./configure --prefix="$workspace" \
-                            --{build,host}="$pc_type" \
-                            --disable-shared
+        execute ./configure --prefix="$workspace" --disable-shared
         execute make "-j$cpu_threads"
         execute make install
         build_done "libfdk-aac" "2.0.3"
     fi
-    ffmpeg_libraries+=("--enable-libfdk-aac")
+    CONFIGURE_OPTIONS+=("--enable-libfdk-aac")
 fi
 
 find_git_repo "xiph/vorbis" "1" "T"
@@ -2434,7 +2396,7 @@ if build "vorbis" "$repo_version"; then
     execute ninja -C build install
     build_done "vorbis" "$repo_version"
 fi
-ffmpeg_libraries+=("--enable-libvorbis")
+CONFIGURE_OPTIONS+=("--enable-libvorbis")
 
 find_git_repo "xiph/opus" "1" "T"
 if build "opus" "$repo_version"; then
@@ -2450,7 +2412,7 @@ if build "opus" "$repo_version"; then
     execute ninja -C build install
     build_done "opus" "$repo_version"
 fi
-ffmpeg_libraries+=("--enable-libopus")
+CONFIGURE_OPTIONS+=("--enable-libopus")
 
 find_git_repo "hoene/libmysofa" "1" "T"
 if build "libmysofa" "$repo_version"; then
@@ -2465,7 +2427,7 @@ if build "libmysofa" "$repo_version"; then
     execute ninja -C build install
     build_done "libmysofa" "$repo_version"
 fi
-ffmpeg_libraries+=("--enable-libmysofa")
+CONFIGURE_OPTIONS+=("--enable-libmysofa")
 
 find_git_repo "webmproject/libvpx" "1" "T"
 if build "libvpx" "$repo_version"; then
@@ -2490,25 +2452,22 @@ if build "libvpx" "$repo_version"; then
     execute make install
     build_done "libvpx" "$repo_version"
 fi
-ffmpeg_libraries+=("--enable-libvpx")
+CONFIGURE_OPTIONS+=("--enable-libvpx")
 
 find_git_repo "8143" "6"
 repo_version="${repo_version//debian\//}"
-if build "opencore-amr" "${repo_version}"; then
-    download "https://salsa.debian.org/multimedia-team/opencore-amr/-/archive/debian/${repo_version}/opencore-amr-debian-${repo_version}.tar.bz2" "opencore-amr-${repo_version}.tar.bz2"
-    execute ./configure --prefix="$workspace" \
-                        --{build,host}="${pc_type}" \
-                        --disable-shared
+if build "opencore-amr" "$repo_version"; then
+    download "https://salsa.debian.org/multimedia-team/opencore-amr/-/archive/debian/$repo_version/opencore-amr-debian-$repo_version.tar.bz2" "opencore-amr-$repo_version.tar.bz2"
+    execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j${cpu_threads}"
     execute make install
-    build_done "opencore-amr" "${repo_version}"
+    build_done "opencore-amr" "$repo_version"
 fi
-ffmpeg_libraries+=("--enable-libopencore-"{amrnb,amrwb})
+CONFIGURE_OPTIONS+=("--enable-libopencore-"{amrnb,amrwb})
 
 if build "liblame" "3.100"; then
     download "https://zenlayer.dl.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz"
     execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type" \
                         --disable-shared \
                         --disable-gtktest \
                         --enable-nasm \
@@ -2517,7 +2476,7 @@ if build "liblame" "3.100"; then
     execute make install
     build_done "liblame" "3.100"
 fi
-ffmpeg_libraries+=("--enable-libmp3lame")
+CONFIGURE_OPTIONS+=("--enable-libmp3lame")
 
 find_git_repo "xiph/theora" "1" "T"
 if build "libtheora" "1.1.1"; then
@@ -2530,7 +2489,6 @@ if build "libtheora" "1.1.1"; then
     execute curl -sSLo "config.guess" "https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess"
     chmod +x config.guess
     execute ./configure --prefix="$workspace" \
-                        --{build,host,target}="$pc_type" \
                         --disable-examples \
                         --disable-oggtest \
                         --disable-sdltest \
@@ -2546,7 +2504,7 @@ if build "libtheora" "1.1.1"; then
     execute make install
     build_done "libtheora" "1.1.1"
 fi
-ffmpeg_libraries+=("--enable-libtheora")
+CONFIGURE_OPTIONS+=("--enable-libtheora")
 
 # Install video tools
 echo
@@ -2595,7 +2553,7 @@ if build "$repo_name" "${version//\$ /}"; then
     execute ninja -C build install
     build_done "$repo_name" "$version"
 fi
-ffmpeg_libraries+=("--enable-libaom")
+CONFIGURE_OPTIONS+=("--enable-libaom")
 
 # Rav1e fails to build on Ubuntu Bionic and Debian 11 Bullseye
 if [[ "$VER" != "18.04" ]] && [[ "$VER" != "11" ]]; then
@@ -2611,7 +2569,7 @@ if [[ "$VER" != "18.04" ]] && [[ "$VER" != "11" ]]; then
                                --release
         build_done "rav1e" "$repo_version"
     fi
-    ffmpeg_libraries+=("--enable-librav1e")
+    CONFIGURE_OPTIONS+=("--enable-librav1e")
 fi
 
 find_git_repo "AOMediaCodec/libavif" "1" "T"
@@ -2637,23 +2595,18 @@ if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type" \
-                        --disable-shared
+    execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     build_done "$repo_name" "$version"
 fi
-ffmpeg_libraries+=("--enable-libkvazaar")
+CONFIGURE_OPTIONS+=("--enable-libkvazaar")
 
 find_git_repo "76" "2" "T"
 if build "libdvdread" "$repo_version_1"; then
     download "https://code.videolan.org/videolan/libdvdread/-/archive/$repo_version_1/libdvdread-$repo_version_1.tar.bz2"
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type" \
-                        --disable-apidoc \
-                        --disable-shared
+    execute ./configure --prefix="$workspace" --disable-apidoc --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     build_done "libdvdread" "$repo_version_1"
@@ -2663,9 +2616,7 @@ find_git_repo "363" "2" "T"
 if build "udfread" "$repo_version_1"; then
     download "https://code.videolan.org/videolan/libudfread/-/archive/$repo_version_1/libudfread-$repo_version_1.tar.bz2"
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type" \
-                        --disable-shared
+    execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     build_done "udfread" "$repo_version_1"
@@ -2692,7 +2643,6 @@ if [[ ! "$OS" == "Ubuntu" ]]; then
         download "https://code.videolan.org/videolan/libbluray/-/archive/$repo_version_1/$repo_version_1.tar.gz" "libbluray-$repo_version_1.tar.gz"
         execute autoreconf -fi
         execute ./configure --prefix="$workspace" \
-                            --{build,host}="$pc_type" \
                             --disable-doxygen-doc \
                             --disable-doxygen-dot \
                             --disable-doxygen-html \
@@ -2706,7 +2656,7 @@ if [[ ! "$OS" == "Ubuntu" ]]; then
         execute make install
         build_done "libbluray" "$repo_version_1"
     fi
-    ffmpeg_libraries+=("--enable-libbluray")
+    CONFIGURE_OPTIONS+=("--enable-libbluray")
 fi
 
 find_git_repo "mediaarea/zenLib" "1" "T"
@@ -2714,9 +2664,7 @@ if build "zenlib" "$repo_version"; then
     download "https://github.com/MediaArea/ZenLib/archive/refs/tags/v$repo_version.tar.gz" "zenlib-$repo_version.tar.gz"
     cd Project/GNU/Library || exit 1
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type" \
-                        --disable-shared
+    execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     build_done "zenlib" "$repo_version"
@@ -2727,9 +2675,7 @@ if build "mediainfo-lib" "$repo_version"; then
     download "https://github.com/MediaArea/MediaInfoLib/archive/refs/tags/v$repo_version.tar.gz" "mediainfo-lib-$repo_version.tar.gz"
     cd "Project/GNU/Library" || exit 1
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type" \
-                        --disable-shared
+    execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     build_done "mediainfo-lib" "$repo_version"
@@ -2740,10 +2686,7 @@ if build "mediainfo-cli" "$repo_version"; then
     download "https://github.com/MediaArea/MediaInfo/archive/refs/tags/v$repo_version.tar.gz" "mediainfo-cli-$repo_version.tar.gz"
     cd Project/GNU/CLI || exit 1
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" \
-                        --{build,host}="$pc_type" \
-                        --enable-staticlibs \
-                        --disable-shared
+    execute ./configure --prefix="$workspace" --enable-staticlibs --disable-shared
     execute make "-j$cpu_threads"
     execute make install
     build_done "mediainfo-cli" "$repo_version"
@@ -2763,7 +2706,7 @@ if $NONFREE_AND_GPL; then
         execute ninja -C build install
         build_done "vid-stab" "$repo_version"
     fi
-    ffmpeg_libraries+=("--enable-libvidstab")
+    CONFIGURE_OPTIONS+=("--enable-libvidstab")
 fi
 
 if $NONFREE_AND_GPL; then
@@ -2780,7 +2723,7 @@ if $NONFREE_AND_GPL; then
         execute ninja -C build install
         build_done "frei0r" "$repo_version"
     fi
-    ffmpeg_libraries+=("--enable-frei0r")
+    CONFIGURE_OPTIONS+=("--enable-frei0r")
 fi
 
 if [[ "$OS" == "Arch" ]]; then
@@ -2830,7 +2773,7 @@ if build "svt-av1" "1.8.0"; then
     cp -f "Build/linux/SvtAv1Dec.pc" "$workspace/lib/pkgconfig"
     build_done "svt-av1" "1.8.0"
 fi
-ffmpeg_libraries+=("--enable-libsvtav1")
+CONFIGURE_OPTIONS+=("--enable-libsvtav1")
 
 if $NONFREE_AND_GPL; then
     find_git_repo "536" "2" "B"
@@ -2838,7 +2781,6 @@ if $NONFREE_AND_GPL; then
     if build "x264" "$repo_short_version_1"; then
         download "https://code.videolan.org/videolan/x264/-/archive/$repo_version/x264-$repo_version.tar.bz2" "x264-$repo_short_version_1.tar.bz2"
         execute ./configure --prefix="$workspace" \
-                            --host="$pc_type" \
                             --bit-depth=all \
                             --chroma-format=all \
                             --enable-debug \
@@ -2854,7 +2796,7 @@ if $NONFREE_AND_GPL; then
         execute make install-lib-static
         build_done "x264" "$repo_short_version_1"
     fi
-    ffmpeg_libraries+=("--enable-libx264")
+    CONFIGURE_OPTIONS+=("--enable-libx264")
 fi
 
 if $NONFREE_AND_GPL; then
@@ -2933,7 +2875,7 @@ EOF
 
         build_done "x265" "3.5"
     fi
-    ffmpeg_libraries+=("--enable-libx265")
+    CONFIGURE_OPTIONS+=("--enable-libx265")
 fi
 
 # Vaapi doesn"t work well with static links FFmpeg.
@@ -2943,7 +2885,7 @@ if [[ -z "$LDEXEFLAGS" ]]; then
         if build "vaapi" "1"; then
             build_done "vaapi" "1"
         fi
-        ffmpeg_libraries+=("--enable-vaapi")
+        CONFIGURE_OPTIONS+=("--enable-vaapi")
     fi
 fi
 
@@ -2968,16 +2910,16 @@ if $NONFREE_AND_GPL; then
             LDFLAGS+=" -L/usr/local/cuda/lib64"
         fi
 
-        ffmpeg_libraries+=("--enable-"{cuda-nvcc,cuda-llvm,cuvid,nvdec,nvenc,ffnvcodec})
+        CONFIGURE_OPTIONS+=("--enable-"{cuda-nvcc,cuda-llvm,cuvid,nvdec,nvenc,ffnvcodec})
 
         if [[ -n "$LDEXEFLAGS" ]]; then
-            ffmpeg_libraries+=("--enable-libnpp")
+            CONFIGURE_OPTIONS+=("--enable-libnpp")
         fi
 
         # Get the Nvidia GPU architecture to build CUDA
         # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
         nvidia_architecture
-        ffmpeg_libraries+=("--nvccflags=-gencode arch=$nvidia_arch_type")
+        CONFIGURE_OPTIONS+=("--nvccflags=-gencode arch=$nvidia_arch_type")
     fi
 fi
 
@@ -3004,7 +2946,7 @@ if $NONFREE_AND_GPL; then
         fi
         build_done "srt" "$repo_version"
     fi
-    ffmpeg_libraries+=("--enable-libsrt")
+    CONFIGURE_OPTIONS+=("--enable-libsrt")
 fi
 
 if $NONFREE_AND_GPL; then
@@ -3019,7 +2961,7 @@ if $NONFREE_AND_GPL; then
         execute make "-j$cpu_threads" -C build VersionGen install
         build_done "avisynth" "$repo_version"
     fi
-    ffmpeg_libraries+=("--enable-avisynth")
+    CONFIGURE_OPTIONS+=("--enable-avisynth")
 fi
 
 # find_git_repo "vapoursynth/vapoursynth" "1" "T"
@@ -3047,7 +2989,7 @@ if build "vapoursynth" "R65"; then
 
     build_done "vapoursynth" "R65"
 fi
-ffmpeg_libraries+=("--enable-vapoursynth")
+CONFIGURE_OPTIONS+=("--enable-vapoursynth")
 
 git_caller "https://chromium.googlesource.com/codecs/libgav1" "libgav1-git"
 if build "$repo_name" "${version//\$ /}"; then
@@ -3076,13 +3018,13 @@ if $NONFREE_AND_GPL; then
         download "https://salsa.debian.org/multimedia-team/xvidcore/-/archive/debian/2%25$repo_version/xvidcore-debian-2%25$repo_version.tar.bz2" "xvidcore-$repo_version.tar.bz2"
         cd "build/generic" || exit 1
         execute ./bootstrap.sh
-        execute ./configure --prefix="$workspace" --{build,host,target}="$pc_type"
+        execute ./configure --prefix="$workspace"
         execute make "-j$cpu_threads"
         [[ -f "$workspace/lib/libxvidcore.so" ]] && rm "$workspace/lib/libxvidcore.so" "$workspace/lib/libxvidcore.so.4"
         execute make install
         build_done "xvidcore" "$repo_version"
     fi
-    ffmpeg_libraries+=("--enable-libxvid")
+    CONFIGURE_OPTIONS+=("--enable-libxvid")
 fi
 
 # Image libraries
@@ -3162,7 +3104,7 @@ if build "openjpeg" "$repo_version"; then
     execute ninja -C build install
     build_done "openjpeg" "$repo_version"
 fi
-ffmpeg_libraries+=("--enable-libopenjpeg")
+CONFIGURE_OPTIONS+=("--enable-libopenjpeg")
 
 # Build FFmpeg
 echo
@@ -3225,7 +3167,7 @@ if build "$repo_name" "${version//\$ /}"; then
                  --disable-large-tests \
                  --disable-shared \
                  "$ladspa_switch" \
-                 "${ffmpeg_libraries[@]}" \
+                 "${CONFIGURE_OPTIONS[@]}" \
                  --enable-chromaprint \
                  --enable-libbs2b \
                  --enable-libcaca \
