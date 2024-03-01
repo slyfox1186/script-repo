@@ -205,7 +205,7 @@ show_versions() {
     local choice
 
     echo
-    read -p "Do you want to print the installed FFmpeg & FFprobe versions? (y/n): " choice
+    read -p "Do you want to print the installed FFmpeg & FFprobe versions? (yes/no): " choice
 
     case "$choice" in
         yes|y) show_installed_versions ;;
@@ -360,9 +360,9 @@ git_clone() {
     if [[ "$repo_flag" == "ant" ]]; then
         version=$(git ls-remote --tags "https://github.com/apache/ant.git" |
                   awk -F'/' '/\/v?[0-9]+\.[0-9]+(\.[0-9]+)?(\^\{\})?$/ {
-                     tag = $4;
-                     sub(/^v/, "", tag);
-                     if (tag !~ /\^\{\}$/) print tag
+                      tag = $4;
+                      sub(/^v/, "", tag);
+                      if (tag !~ /\^\{\}$/) print tag
                   }' |
                   sort -rV |
                   head -n1
@@ -370,14 +370,14 @@ git_clone() {
     elif [[ "$repo_flag" == "ffmpeg" ]]; then
         version=$(git ls-remote --tags https://git.ffmpeg.org/ffmpeg.git |
                   awk -F/ '/\/n?[0-9]+\.[0-9]+(\.[0-9]+)?(\^\{\})?$/ {
-                  tag = $3;
-                  sub(/^[v]/, "", tag);
-                  print tag
+                      tag = $3;
+                      sub(/^[v]/, "", tag);
+                      print tag
                   }' |
                   grep -v '\^{}' |
                   sort -rV |
                   head -n1
-              )
+             )
     else
         version=$(git ls-remote --tags "$repo_url" |
                   awk -F'/' '/\/v?[0-9]+\.[0-9]+(\.[0-9]+)?(-[0-9]+)?(\^\{\})?$/ {
@@ -388,21 +388,21 @@ git_clone() {
                   grep -v '\^{}' |
                   sort -rV |
                   head -n1
-              )
+             )
 
         # If no tags found, use the latest commit hash as the version
         if [[ -z "$version" ]]; then
             version=$(git ls-remote "$repo_url" |
                       grep "HEAD" |
                       awk '{print substr($1,1,7)}'
-                  )
+                 )
             if [[ -z "$version" ]]; then
                 version="unknown"
             fi
         fi
     fi
 
-    [[ -f "$packages/${repo_name}.done" ]] && store_prior_version=$(cat "$packages/${repo_name}.done")
+    [[ -f "$packages/$repo_name.done" ]] && store_prior_version=$(cat "$packages/$repo_name.done")
 
     if [[ ! "$version" == "$store_prior_version" ]]; then
         if [[ "$recurse_flag" -eq 1 ]]; then
@@ -448,7 +448,10 @@ github_repo() {
 
     while [ $count -le $max_attempts ]; do
         if [[ "$url_flag" -eq 1 ]]; then
-            curl_cmd=$(curl -sSL "https://github.com/xiph/rav1e/tags" | grep -Eo 'href="[^"]*v?[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz"' | head -n1)
+            curl_cmd=$(curl -sSL "https://github.com/xiph/rav1e/tags" |
+                       grep -Eo 'href="[^"]*v?[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz"' |
+                       head -n1
+                   )
         else
             curl_cmd=$(curl -sSL "https://github.com/$repo/$url" | grep -o 'href="[^"]*\.tar\.gz"')
         fi
@@ -602,28 +605,28 @@ debian_salsa_repo() {
 
 find_git_repo() {
     local url="$1"
-    local git_repo_type="$2"
+    local git_repo="$2"
     local url_action="$3"
 
-    case "$git_repo_type" in
+    case "$git_repo" in
         1) set_repo="github_repo" ;;
         2) set_repo="videolan_repo" ;;
         3) set_repo="gitlab_repo" ;;
         4) set_repo="gitlab_freedesktop_repo" ;;
         5) set_repo="gitlab_gnome_repo" ;;
         6) set_repo="debian_salsa_repo" ;;
-        *) fail "Could not detect the variable \"\$git_repo_type\" in the function \"find_git_repo\". Line: $LINENO"
+        *) fail "Could not detect the variable \"\$git_repo\" in the function \"find_git_repo\". Line: $LINENO"
     esac
 
     case "$url_action" in
-        B) set_action="branches" ;;
-        L) set_action="releases/latest" ;;
-        R) set_action="releases" ;;
-        T) set_action="tags" ;;
-        *) set_action="$3" ;;
+        B) set_type="branches" ;;
+        L) set_type="releases/latest" ;;
+        R) set_type="releases" ;;
+        T) set_type="tags" ;;
+        *) set_type="$3" ;;
     esac
 
-    "$set_repo" "$url" "$set_action" 2>/dev/null
+    "$set_repo" "$url" "$set_type" 2>/dev/null
 }
 
 execute() {
@@ -2764,6 +2767,7 @@ else
                                  --sdl-cfg="$workspace/include/SDL3"
         execute make "-j$cpu_threads"
         execute make install
+        execute cp -f bin/gcc/MP4Box /usr/local/
         build_done "$repo_name" "$version"
     fi
 fi
@@ -2908,23 +2912,13 @@ fi
 
 if $NONFREE_AND_GPL; then
     if [[ -n "$iscuda" ]]; then
-        if build "nv-codec-headers" "12.1.14.0"; then
-            download "https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.1.14.0/nv-codec-headers-12.1.14.0.tar.gz"
+        git_caller "https://git.videolan.org/git/ffmpeg/nv-codec-headers.git" "nv-codec-headers-git"
+        if build "$repo_name" "${version//\$ /}"; then
+            echo "Cloning \"$repo_name\" saving version \"$version\""
+            git_clone "$git_url"
             execute make "-j$cpu_threads"
             execute make PREFIX="$workspace" install
-            build_done "nv-codec-headers" "12.1.14.0"
-        fi
-
-        get_os_version
-
-        if [[ "$OS" == "Arch" ]]; then
-            PATH+=":/opt/cuda/bin"
-            export PATH
-            CFLAGS+=" -I/opt/cuda/include -I/opt/cuda/targets/x86_64-linux/include"
-            LDFLAGS+=" -L/opt/cuda/lib64 -L/opt/cuda/lib -L/opt/cuda/targets/x86_64-linux/lib"
-        else
-            CFLAGS+=" -I/usr/local/cuda/include"
-            LDFLAGS+=" -L/usr/local/cuda/lib64"
+            build_done "$repo_name" "$version"
         fi
 
         CONFIGURE_OPTIONS+=("--enable-"{cuda-nvcc,cuda-llvm,cuvid,nvdec,nvenc,ffnvcodec})
@@ -3008,6 +3002,21 @@ if build "vapoursynth" "R65"; then
 fi
 CONFIGURE_OPTIONS+=("--enable-vapoursynth")
 
+if $NONFREE_AND_GPL; then
+    find_git_repo "cyanreg/cyanrip" "1" "T"
+    if build "cyanrip" "$repo_version"; then
+        download "https://github.com/cyanreg/cyanrip/archive/refs/tags/v$repo_version.tar.gz" "cyanrip-$repo_version.tar.gz"
+        execute meson setup build --prefix="$workspace" \
+                                  --buildtype=release \
+                                  --default-library=static \
+                                  --strip
+        execute ninja "-j$cpu_threads" -C build
+        execute ninja -C build install
+        execute cp -f "$workspace/bin/cyanrip" /usr/local/
+        build_done "cyanrip" "$repo_version"
+    fi
+fi
+
 git_caller "https://chromium.googlesource.com/codecs/libgav1" "libgav1-git"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
@@ -3027,6 +3036,7 @@ if build "$repo_name" "${version//\$ /}"; then
     execute ninja -C build install
     build_done "$repo_name" "$version"
 fi
+git_caller "https://chromium.googlesource.com/codecs/libgav1" "libgav1-git"
 
 if $NONFREE_AND_GPL; then
     find_git_repo "8268" "6"
