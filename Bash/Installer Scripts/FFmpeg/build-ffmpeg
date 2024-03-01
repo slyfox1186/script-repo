@@ -311,7 +311,6 @@ check_ffmpeg_version() {
                               sort -rV |
                               head -n1
                           )
-    echo "$ffmpeg_git_version"
 }
 
 git_caller() {
@@ -3136,7 +3135,7 @@ cp -f "$workspace/include/objbase.h" "$workspace"
 
 # Get the latest FFmpeg version by parsing its repository
 check_ffmpeg_version "https://github.com/FFmpeg/FFmpeg.git" "3"
-ffmpeg_latest_version=$(check_ffmpeg_version)
+ffmpeg_latest_version="$ffmpeg_git_version"
 
 if [[ ! "$ffmpeg_current_version" == "$ffmpeg_latest_version" ]]; then
     echo
