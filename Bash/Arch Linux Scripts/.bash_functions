@@ -1022,8 +1022,15 @@ tar_xz_9()
 ## FFMPEG COMMANDS ##
 #####################
 
-ffr() { clear; bash "${1}" -b --latest --enable-gpl-and-non-free; }
-ffrv() { clear; bash -v "${1}" -b --latest --enable-gpl-and-non-free; }
+ffr() {
+    clear
+    sudo bash "$1" --build --enable-gpl-and-non-free --latest
+}
+
+ffrv() {
+    clear
+    sudo bash -v "$1" --build --enable-gpl-and-non-free --latest
+}
 
 ###################
 ## WRITE CACHING ##

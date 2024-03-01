@@ -1183,11 +1183,12 @@ tar_xz_9() {
 
 ffr() {
     clear
-    sudo bash "$1" --build --latest
+    sudo bash "$1" --build --enable-gpl-and-non-free --latest
 }
+
 ffrv() {
     clear
-    sudo bash -v "$1" --build --latest
+    sudo bash -v "$1" --build --enable-gpl-and-non-free --latest
 }
 
 ###################
