@@ -727,10 +727,7 @@ while (("$#" > 0)); do
                        bflag="-b"
                    fi
                    if [[ "$1" == "--enable-gpl-and-non-free" ]]; then
-                       CONFIGURE_OPTIONS+=("--enable-nonfree")
-                       CONFIGURE_OPTIONS+=("--enable-gpl")
-                       CONFIGURE_OPTIONS+=("--enable-libcdio")
-                       CONFIGURE_OPTIONS+=("--enable-libsmbclient")
+                       ffmpeg_libraries+=("--enable-"{libsmbclient,libcdio,gpl,nonfree})
                        NONFREE_AND_GPL=true
                    fi
                    if [[ "$1" == "--cleanup" || "$1" =~ "-c" && ! "$1" =~ "--" ]]; then
