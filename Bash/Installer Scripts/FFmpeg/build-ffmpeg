@@ -699,7 +699,7 @@ find_cuda_json_file() {
 # PRINT THE SCRIPT OPTIONS
 usage() {
     echo
-    echo "Usage: ./$script_name [options]"
+    echo "Usage: $script_name [options]"
     echo
     echo "Options:"
     echo "    -h, --help                       Display usage information"
@@ -709,7 +709,7 @@ usage() {
     echo "      --enable-gpl-and-non-free      Enable GPL and non-free codecs  - https://ffmpeg.org/legal.html"
     echo "    -l, --latest                     Force the script to build the latest version of dependencies if newer version is available"
     echo
-    echo "Example: ./$script_name --build --latest"
+    echo "Example: $script_name --build --latest"
     echo
 }
 
