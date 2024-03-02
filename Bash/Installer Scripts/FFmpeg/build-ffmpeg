@@ -1750,9 +1750,9 @@ if [[ "$VER" != "18.04" ]]; then
     CONFIGURE_OPTIONS+=("--enable-libxml2")
 fi
 
-find_git_repo "/glennrp/libpng" "1" "T"
+find_git_repo "pnggroup/libpng" "1" "T"
 if build "libpng" "$repo_version"; then
-    download "https://github.com/glennrp/libpng/archive/refs/tags/v$repo_version.tar.gz" "libpng-$repo_version.tar.gz"
+    download "https://github.com/pnggroup/libpng/archive/refs/tags/v1.6.43.tar.gz" "libpng-$repo_version.tar.gz"
     execute autoupdate
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" --enable-hardware-optimizations=yes --with-pic
