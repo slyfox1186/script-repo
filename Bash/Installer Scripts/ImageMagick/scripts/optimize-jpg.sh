@@ -5,12 +5,12 @@ usage() {
     echo "Usage: $0 [options]"
     echo
     echo "Options:"
-    echo "    -b, --backup                         Enable backup mode. Original images will be backed up before processing."
-    echo "    -d, --dir <path>                     Specify the working directory where images are located."
-    echo "    -h, --help                           Display this help message and exit."
+    echo "    -b, --backup                          Enable backup mode. Original images will be backed up before processing."
+    echo "    -d, --dir <path>                      Specify the working directory where images are located."
+    echo "    -h, --help                            Display this help message and exit."
     echo
     echo "Example:"
-    echo "    $0 --backup -d pictures   Process images in 'pictures' directory with backups of the originals."
+    echo "    $0 --backup -d pictures    Process images in 'pictures' directory with backups of the originals."
 }
 
 # Parse command-line options
