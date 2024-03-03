@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Function to retrieve the latest Git tag version from a repository
-get_latest_git_tag() {
+find_latest_git_tag() {
     local url="$1"
     local tags_url="${url/.git/}/tags"
     local tag_version
@@ -31,6 +31,6 @@ if [ -z "$1" ]; then
 fi
 
 repo_url="$1"
-latest_tag="$(get_latest_git_tag "$repo_url")"
+latest_tag="$(find_latest_git_tag "$repo_url")"
 
 echo "$latest_tag"
