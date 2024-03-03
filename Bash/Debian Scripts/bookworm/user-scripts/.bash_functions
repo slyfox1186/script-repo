@@ -1,5 +1,3 @@
-export user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-
 ######################################################################################
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 ######################################################################################
@@ -692,7 +690,7 @@ dlfs() {
     local f
     clear
     
-    wget --show-progress -U "$user_agent" -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/SlyFox1186%20Scripts/favorite-installer-scripts.txt'
+    wget --show-progress -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/SlyFox1186%20Scripts/favorite-installer-scripts.txt'
     
     scripts=(build-ffmpeg build-all-git-safer build-all-gnu-safer build-magick)
 
@@ -1799,8 +1797,8 @@ dl_clang() {
     if [ ! -d "$HOME/tmp" ]; then
         mkdir -p "$HOME/tmp"
     fi
-    wget --show-progress -U "$user_agent" -cqO "$HOME/tmp/build-clang-16" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-16'
-    wget --show-progress -U "$user_agent" -cqO "$HOME/tmp/build-clang-17" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-17'
+    wget --show-progress -cqO "$HOME/tmp/build-clang-16" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-16'
+    wget --show-progress -cqO "$HOME/tmp/build-clang-17" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-17'
     sudo chmod rwx "$HOME/tmp/build-clang-16" "$HOME/tmp/build-clang-17"
     sudo chown "$USER":"$USER" "$HOME/tmp/build-clang-16" "$HOME/tmp/build-clang-17"
     clear
