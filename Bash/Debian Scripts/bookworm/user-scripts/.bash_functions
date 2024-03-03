@@ -589,7 +589,7 @@ rmf() {
 ## IMAGEMAGICK ##
 #################
 
-# OPTIMIZE AND OVERWRITE THE ORIGINAL IMAGES
+# Optimize and overwrite the original images
 function imow() {
     if [[ ! -f /usr/local/bin/imow ]]; then
         local cwd="$PWD"
