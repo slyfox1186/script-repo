@@ -429,7 +429,12 @@ git_clone() {
     return 0
 }
 
-# Locate github release version numbers
+# Parse each git repoitory to find the latest release version number for each program
+gnu_repo() {
+    local url="$1"
+    version=$(curl -sS "$url" | grep -oP '[a-z]+-\K(([0-9\.]*[0-9]+)){2,}' | sort -rV | head -n1)
+}
+
 github_repo() {
     local repo="$1"
     local url="$2"
@@ -1067,7 +1072,7 @@ install_cuda() {
         local_cuda_version=$(cat /usr/local/cuda/version.json 2>/dev/null | jq -r '.cuda.version' 2>/dev/null)
         # Determine the installed CUDA version if any
         if [[ -n "$remote_cuda_version" ]]; then
-            log "The installed CUDA version is: $local_cuda_version"
+            log "The installed CUDA version is: $remote_cuda_version"
         else
             warn "CUDA is not installed"
         fi
@@ -1076,11 +1081,7 @@ install_cuda() {
         warn "Nvidia GPU not detected"
     fi
 
-    if [[ "$amd_gpu_test" == "AMD GPU detected" ]] && [[ "$is_nvidia_gpu_present" == "NVIDIA GPU not detected" ]]; then
-        return 0
-    fi
-
-    if [[ "$is_nvidia_gpu_present" == "NVIDIA GPU detected" ]] && [[ -z "$local_cuda_version" ]]; then
+    if [[ "$is_nvidia_gpu_present" == "NVIDIA GPU not detected" ]]; then
         echo
         echo "The CUDA SDK Toolkit was not detected and the latest version is: $cuda_latest_ver"
         echo "========================================================================="
@@ -1585,37 +1586,38 @@ if build "autoconf" "latest"; then
 fi
 
 if [[ "$OS" == "Arch" ]]; then
-    if build "libtool" "$lt_ver"; then
+    if build "libtool" "$version"; then
         pacman -Sq --needed --noconfirm libtool
-        build_done "libtool" "$lt_ver"
+        build_done "libtool" "$version"
     fi
 else
     get_wsl_version
     if [[ "$VER" = "WSL2" ]]; then
-        lt_ver=2.4.6
+        version=2.4.6
     else
         get_os_version
         case "$VER" in
-            12|23.10|23.04) lt_ver=2.4.7 ;;
-            *)              lt_ver=2.4.6 ;;
+            12|23.10|23.04) gnu_repo "https://ftp.gnu.org/gnu/libtool/" ;;
+            *)              version=2.4.6 ;;
         esac
     fi
-    if build "libtool" "$lt_ver"; then
-        download "https://ftp.gnu.org/gnu/libtool/libtool-$lt_ver.tar.xz"
+    if build "libtool" "$version"; then
+        download "https://ftp.gnu.org/gnu/libtool/libtool-$version.tar.xz"
         execute ./configure --prefix="$workspace" --with-pic M4="$workspace/bin/m4"
         execute make "-j$cpu_threads"
         execute make install
-        build_done "libtool" "$lt_ver"
+        build_done "libtool" "$version"
     fi
 fi
 
-if build "pkg-config" "0.29.2"; then
-    download "https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz"
+gnu_repo "https://pkgconfig.freedesktop.org/releases/"
+if build "pkg-config" "$version"; then
+    download "https://pkgconfig.freedesktop.org/releases/pkg-config-$version.tar.gz"
     execute autoconf
     execute ./configure --prefix="$workspace" --enable-silent-rules --with-pc-path="$PKG_CONFIG_PATH"
     execute make "-j$cpu_threads"
     execute make install
-    build_done "pkg-config" "0.29.2"
+    build_done "pkg-config" "$version"
 fi
 
 find_git_repo "mesonbuild/meson" "1" "T"
@@ -1675,31 +1677,29 @@ if $NONFREE_AND_GPL; then
     fi
     CONFIGURE_OPTIONS+=("--enable-openssl")
 else
-    if build "gmp" "6.3.0"; then
-        download "https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz"
+    gnu_repo "https://ftp.gnu.org/gnu/gmp/"
+    if build "gmp" "$version"; then
+        download "https://ftp.gnu.org/gnu/gmp/gmp-$version.tar.xz"
         execute ./configure --prefix="$workspace" --disable-shared --enable-static
         execute make "-j$cpu_threads"
         execute make install
-        build_done "gmp" "6.3.0"
+        build_done "gmp" "$version"
     fi
-
-    if build "nettle" "3.9.1"; then
-        download "https://ftp.gnu.org/gnu/nettle/nettle-3.9.1.tar.gz"
+    gnu_repo "https://ftp.gnu.org/gnu/nettle/"
+    if build "nettle" "$version"; then
+        download "https://ftp.gnu.org/gnu/nettle/nettle-$version.tar.gz"
         execute ./configure --prefix="$workspace" --disable-shared --enable-static --disable-openssl --disable-documentation --libdir="$workspace"/lib CPPFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS"
         execute make "-j$cpu_threads"
         execute make install
-        build_done "nettle" "3.9.1"
+        build_done "nettle" "$version"
     fi
-
-    if [[ ! $ARCH == "arm64" ]]; then
-    if build "gnutls" "3.8.2"; then
-        download "https://www.gnupg.org/ftp/gcrypt/gnutls/v3.8/gnutls-3.8.2.tar.xz"
+    gnu_repo "https://www.gnupg.org/ftp/gcrypt/gnutls/v3.8/"
+    if build "gnutls" "$version"; then
+        download "https://www.gnupg.org/ftp/gcrypt/gnutls/v3.8/gnutls-$version.tar.xz"
         execute ./configure --prefix="$workspace" --disable-shared --enable-static --disable-doc --disable-tools --disable-cxx --disable-tests --disable-gtk-doc-html --disable-libdane --disable-nls --enable-local-libopts --disable-guile --with-included-libtasn1 --with-included-unistring --without-p11-kit CPPFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS"
         execute make "-j$cpu_threads"
         execute make install
-        build_done "gnutls" "3.8.2"
-    fi
-    # CONFIGURE_OPTIONS+=("--enable-gmp" "--enable-gnutls")
+        build_done "gnutls" "$version"
     fi
 fi
 
