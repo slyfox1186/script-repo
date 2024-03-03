@@ -4,7 +4,7 @@
 # Improved the RegEx parsing which has allowed more results
 
 # Function to retrieve the latest Git tag version from a repository
-find_latest_git_tag() {
+find_latest_release_version() {
     local url="$1"
     local tags_url="${url/.git/}/tags"
     local tag_version
@@ -36,6 +36,6 @@ if [ -z "$1" ]; then
 fi
 
 url="$1"
-latest_tag="$(find_latest_git_tag "$url")"
+latest_tag="$(find_latest_release_version "$url")"
 
 echo "$latest_tag"
