@@ -93,8 +93,4 @@ export backup_mode
 num_jobs=$(nproc --all)
 echo "Starting image processing with $num_jobs parallel jobs..."
 
-if find . -maxdepth 1 -name "*.jpg" -type f | parallel --env backup_mode -j $num_jobs process_image; then
-    google_speech "Images successfully optimized."
-else
-    google_speech "Failed to optimize images."
-fi
+find . -maxdepth 1 -name "*.jpg" -type f | parallel --env backup_mode -j $num_jobs process_image
