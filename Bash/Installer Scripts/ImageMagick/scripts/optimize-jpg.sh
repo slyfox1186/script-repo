@@ -93,4 +93,4 @@ export backup_mode
 num_jobs=$(nproc --all)
 echo "Starting image processing with $num_jobs parallel jobs..."
 
-find ./ -maxdepth 1 -name "*.jpg" -type f | parallel --env backup_mode -j $num_jobs process_image
+find ./ -maxdepth 1 -type f -name "*.jpg" | parallel --env backup_mode -j $num_jobs process_image
