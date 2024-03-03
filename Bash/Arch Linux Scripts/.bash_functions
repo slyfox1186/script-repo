@@ -1,6 +1,3 @@
-#!/usr/bin/env bash
-# shellcheck disable=SC1091,SC2001,SC2162,SC2317
-
 export user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
 ######################################################################################
@@ -459,110 +456,22 @@ rmf()
 #################
 
 # OPTIMIZE AND OVERWRITE THE ORIGINAL IMAGES
-imow()
-{
-    local cnt_queue cnt_total dimensions fext missing_pkgs pip_lock random_dir tmp_file v_noslash pacman_pkgs
-
+imow() {
+    local cwd="$PWD"
+    local tmp_dir="$(mktemp -d)"
+    cd "$tmp_dir" || exit 1
+    curl -Lso imow "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
+    sudo mv imow "$cwd"
+    sudo rm -fr "$tmp_dir"
+    cd "$cwd" || exit 1
+    sudo chown "$USER":"$USER" imow
+    sudo chmod +rwx imow
     clear
-
-    # THE FILE EXTENSION TO SEARCH FOR (DO NOT INCLUDE A '.' WITH THE EXTENSION)
-    fext=jpg
-
-    #
-    # REQUIRED PACMAN PACKAGES
-    #
-
-    pacman_pkgs=(sox libsox)
-    for i in ${pacman_pkgs[@]}
-    do
-        missing_pkg="$(dpkg -l | grep "${i}")"
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
-        fi
-    done
-
-    if [ -n "${missing_pkgs}" ]; then
-        sudo pacman -S --needed --noconfirm ${missing_pkgs}
-        clear
-    fi
-    unset i missing_pkg missing_pkgs
-
-    #
-    # REQUIRED PIP PACKAGES
-    #
-
-    pip_lock="$(find /usr/lib/python3* -name EXTERNALLY-MANAGED)"
-    if [ -n "${pip_lock}" ]; then
-        sudo rm "${pip_lock}"
-    fi
-    if ! pip show google_speech &>/dev/null; then
-        pip install google_speech
-    fi
-
-    unset p pip_lock pip_pkgs missing_pkg missing_pkgs
-    # DELETE ANY USELESS ZONE IDENFIER FILES THAT SPAWN FROM COPYING A FILE FROM WINDOWS NTFS INTO A WSL DIRECTORY
-    find . -type f -name "*:Zone.Identifier" -delete 2>/dev/null
-
-    # GET THE FILE COUNT INSIDE THE DIRECTORY
-    cnt_queue=$(find . -maxdepth 2 -type f -iname "*.jpg" | wc -l)
-    cnt_total=$(find . -maxdepth 2 -type f -iname "*.jpg" | wc -l)
-    # GET THE UNMODIFIED PATH OF EACH MATCHING FILE
-
-    for i in ./*."${fext}"
-    do
-        cnt_queue=$(( cnt_queue-1 ))
-
-        cat <<EOT
-::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-File Path: ${PWD}
-
-Folder: $(basename "${PWD}")
-
-Total Files:    ${cnt_total}
-Files in queue: ${cnt_queue}
-
-Converting:  ${i}
-
- >> ${i%%.jpg}.mpc
-
-    >> ${i%%.jpg}.cache
-
-       >> ${i%%.jpg}-IM.jpg
-
-::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-EOT
-        echo
-        random_dir="$(mktemp -d)"
-        dimensions="$(identify -format '%wx%h' "${i}")"
-        convert "${i}" -monitor -filter Triangle -define filter:support=2 -thumbnail "${dimensions}" -strip \
-            -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize 136 -quality 82 -define jpeg:fancy-upsampling=off \
-            -auto-level -enhance -interlace none -colorspace sRGB "${random_dir}/${i%%.jpg}.mpc"
-
-
-        for file in "${random_dir}"/*.mpc
-        do
-            convert "${file}" -monitor "${file%%.mpc}.jpg"
-            tmp_file="$(echo "${file}" | sed 's:.*/::')"
-            mv "${file%%.mpc}.jpg" "${PWD}/${tmp_file%%.*}-IM.jpg"
-            rm -f "${PWD}/${tmp_file%%.*}.jpg"
-            for v in ${file}
-            do
-                v_noslash="${v%/}"
-                rm -fr "${v_noslash%/*}"
-            done
-        done
-    done
-
-    if [ "${?}" -eq '0' ]; then
-        google_speech 'Image conversion completed.' 2>/dev/null
-        exit 0
+    if bash imow; then
+        rm imow
     else
-        echo
-        google_speech 'Image conversion failed.' 2>/dev/null
-        echo
-        read -p 'Press enter to exit.'
-        exit 1
+        echo "Failed to execute imow"
+        return 1
     fi
 }
 
@@ -578,28 +487,11 @@ im50()
     done
 }
 
-imdl()
-{
-    local cwd tmp_dir user_agent
-    clear
-    cwd="${PWD}"
-    tmp_dir="$(mktemp -d)"
-    user_agent="${user_agent}"
-    cd "${tmp_dir}" || exit 1
-    curl -A "${user_agent}" -Lso 'imow' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-and-overwrite.sh'
-    sudo mv imow "${cwd}"
-    sudo rm -fr "${tmp_dir}"
-    cd "${cwd}" || exit 1
-    sudo chown "${USER}":"${USER}" imow
-    sudo chmod +rwx imow
-}
-
 ###########################
 ## SHOW NVME TEMPERATURE ##
 ###########################
 
-nvme_temp()
-{
+nvme_temp() {
     local n0 n1 n2
     clear
 
@@ -620,8 +512,7 @@ nvme_temp()
 ## REFRESH THUMBNAIL CACHE ##
 #############################
 
-rftn()
-{
+rftn() {
     clear
     sudo rm -fr "${HOME}"/.cache/thumbnails/*
     ls -al "${HOME}"/.cache/thumbnails
@@ -631,8 +522,7 @@ rftn()
 ## FFMPEG COMMANDS ##
 #####################
 
-ffdl()
-{
+ffdl() {
     clear
     curl -A "${user_agent}" -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
     bash 'ff.sh'
