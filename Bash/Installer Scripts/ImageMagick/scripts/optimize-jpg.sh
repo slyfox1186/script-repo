@@ -33,22 +33,6 @@ done
 echo "Backup mode: $backup_mode"
 echo "Working directory: $working_dir"
 
-# Check and install the google_speech Python module if not already installed
-if ! python3 -c "import google_speech" &>/dev/null; then
-    echo "google_speech module not found. Installing..."
-    pip install --user google_speech || { echo "Failed to install google_speech. Please install it manually."; exit 1; }
-else
-    echo "google_speech module is already installed."
-fi
-
-# Check if GNU parallel is installed
-if ! dpkg -s parallel &>/dev/null && ! which parallel &>/dev/null; then
-    echo "GNU parallel is not installed. Installing..."
-    sudo apt -y install parallel || { echo "Failed to install GNU parallel. Please install it manually."; exit 1; }
-else
-    echo "GNU parallel is already installed."
-fi
-
 # Change to the specified working directory
 cd "$working_dir" || { echo "Specified directory $working_dir does not exist. Exiting."; exit 1; }
 
