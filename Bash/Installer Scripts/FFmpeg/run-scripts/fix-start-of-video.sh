@@ -32,6 +32,9 @@ usage() {
     exit 1
 }
 
+# Remove log file
+[[ -f video-processing.log ]] && rm video-processing.log
+
 # Parse options
 TEMP=$(getopt -o f:i:a:p:ovh --long file:,input:,start:,end:,append:,prepend:,overwrite,verbose,help -n 'script.sh' -- "$@")
 if [ $? != 0 ]; then echo "Failed to parse options... exiting." >&2; exit 1; fi
@@ -131,12 +134,15 @@ for input_file in "${video_files[@]}"; do
         temp_output+=".$extension"
         command="ffmpeg -hide_banner $trim_start_cmd -y -i \"$input_file\" $trim_end_cmd -c copy \"$temp_output\""
         eval $command && mv "$temp_output" "$input_file"
-        echo -e "${GREEN}Successfully processed and overwritten $input_file${NC}"
+        echo -e "${GREEN}Successfully processed and overwritten $input_file${NC}\\n"
+        echo "$final_output" >> video-processing.log
     else
-        command="ffmpeg -hide_banner $trim_start_cmd -y -i \"$input_file\" $trim_end_cmd -c copy \"$final_output\""
+        command="ffpb -hide_banner $trim_start_cmd -y -i \"$input_file\" $trim_end_cmd -c copy \"$final_output\""
         eval $command
-        echo -e "${GREEN}Successfully processed $input_file into $final_output${NC}"
+        echo -e "${GREEN}Successfully processed $input_file into $final_output${NC}\\n"
+        echo "$final_output" >> video-processing.log
     fi
+    clear
 done
 
 echo -e "${GREEN}Processing completed.${NC}"
