@@ -68,8 +68,6 @@ else
     exit 1
 fi
 
-clear
-set -x
 for input_file in "${video_files[@]}"; do
     if [[ ! -f "$input_file" ]]; then
         echo -e "${RED}Error: The file $input_file does not exist.${NC}"
