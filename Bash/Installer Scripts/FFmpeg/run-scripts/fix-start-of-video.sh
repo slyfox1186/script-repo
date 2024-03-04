@@ -68,6 +68,8 @@ else
     exit 1
 fi
 
+clear
+set -x
 for input_file in "${video_files[@]}"; do
     if [[ ! -f "$input_file" ]]; then
         echo -e "${RED}Error: The file $input_file does not exist.${NC}"
@@ -81,18 +83,32 @@ for input_file in "${video_files[@]}"; do
     
     # Calculate start and end keyframe timestamps
     if [ $trim_start -gt 0 ]; then
-        formatted_start_time=$(ffprobe -v error -select_streams v -of csv=p=0 -show_entries frame=best_effort_timestamp_time -read_intervals $trim_start%+$trim_start -i "$input_file" | head -n 1)
+        formatted_start_time=$(ffprobe -v error -select_streams v -of csv=p=0 -show_entries frame=best_effort_timestamp_time -read_intervals $trim_start%+$trim_start -i "$input_file" | head -n1)
         if [ -z "$formatted_start_time" ]; then
             echo -e "${YELLOW}No keyframe found near start time $trim_start, using the exact time instead.${NC}"
             formatted_start_time=$trim_start
         fi
     else
-        formatted_start_time=0
+        length=1
+        count=1
+        trim_start=1
+        regex='[0-9]+\.[0-9]{6,}$'
+        formatted_start_time=$(ffprobe -v error -select_streams v -of csv=p=0 -show_entries frame=best_effort_timestamp_time -read_intervals $trim_start%+$trim_start -i "$input_file" | head -n1)
+        while true [ "$formatted_start_time" =~ $regex ]; do
+            if [[ "$length" -lt 6 ]]; then
+                trim_start="$count"
+                formatted_start_time=$(ffprobe -v error -select_streams v -of csv=p=0 -show_entries frame=best_effort_timestamp_time -read_intervals $trim_start%+$trim_start -i "$input_file" | head -n1)
+                ((count++))
+                ((length++))
+            else
+                break # Exit the loop when a non-RC version is found
+            fi
+        done
     fi
 
     if [ $trim_end -gt 0 ]; then
         target_end_time=$(echo "$total_duration - $trim_end" | bc)
-        formatted_end_time=$(ffprobe -v error -select_streams v -of csv=p=0 -show_entries frame=best_effort_timestamp_time -read_intervals -$trim_end%-$trim_end -i "$input_file" | tail -n 1)
+        formatted_end_time=$(ffprobe -v error -select_streams v -of csv=p=0 -show_entries frame=best_effort_timestamp_time -read_intervals -$trim_end%-$trim_end -i "$input_file" | sort -rV | head -n1)
         if [ -z "$formatted_end_time" ]; then
             echo -e "${YELLOW}No keyframe found near end time $trim_end, using the exact time instead.${NC}"
             formatted_end_time=$target_end_time
