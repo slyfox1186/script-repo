@@ -85,21 +85,10 @@ for input_file in "${video_files[@]}"; do
             formatted_start_time=$trim_start
         fi
     else
-        length=1
-        count=1
-        trim_start=3
-        regex='[0-9]+\.[0-9]{6,}$'
-        formatted_start_time=$(ffprobe -v error -select_streams v -of csv=p=0 -show_entries frame=best_effort_timestamp_time -read_intervals $trim_start%+$trim_start -i "$input_file" | head -n1)
-        while true [ "$formatted_start_time" =~ $regex ] && [ "$formatted_start_time" -ne 0.000000 ]; do
-            if [[ "$length" -lt 6 ]]; then
-                trim_start="$count"
-                formatted_start_time=$(ffprobe -v error -select_streams v -of csv=p=0 -show_entries frame=best_effort_timestamp_time -read_intervals $trim_start%+$trim_start -i "$input_file" | head -n1)
-                ((count++))
-                ((length++))
-            else
-                break # Exit the loop when a non-RC version is found
-            fi
-        done
+        formatted_start_time=$(ffprobe -v error -of default=noprint_wrappers=1:nokey=1 -select_streams v:0 -skip_frame nokey -show_frames -show_entries frame=pkt_dts_time "$input_file" |
+                               grep -E '^[0-9]+\.[0-9]+$' |
+                               head -n1
+                          )
     fi
 
     if [ $trim_end -gt 0 ]; then
