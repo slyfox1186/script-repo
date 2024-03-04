@@ -89,7 +89,7 @@ fi
 
 echo -e "${GREEN}[${count}/${total_count}] Processing: $filename${NC}"
 
-first_keyframe=$(ffprobe -v error -of default=noprint_wrappers=1:nokey=1 -select_streams v:0 -skip_frame nokey -show_frames -show_entries frame=pkt_dts_time -i "$filename" | head -n 1)
+first_keyframe=$(ffprobe -v error -of default=noprint_wrappers=1:nokey=1 -select_streams v:0 -skip_frame nokey -show_frames -show_entries frame=pkt_dts_time -i "$filename" | head -n1)
 formatted_keyframe=$(echo "$first_keyframe" | awk '{printf "%02d:%02d:%06.3f", $1/3600, ($1/60)%60, $1%60}')
 
 extension="${filename##*.}"
@@ -101,7 +101,7 @@ else
     final_output="${prepend_text}${base_name}${append_text}.${extension}"
 fi
 
-ffmpeg -hide_banner -y -i "$filename" -ss "$formatted_keyframe" -c copy -f mp4 "$temp_output"
+ffmpeg -hide_banner -y -i "$filename" -ss "$formatted_keyframe" -c copy "$temp_output"
 
 if [ $? -eq 0 ]; then
     mv "$temp_output" "${final_output:-$output}"
