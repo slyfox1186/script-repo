@@ -112,14 +112,29 @@ for input_file in "${video_files[@]}"; do
         final_output="$input_file"
     fi
 
-    [[ -n "$formatted_start_time" ]] && trim_start_cmd="-ss $formatted_start_time"
+    [[ -n "$formatted_start_time" ]] && trim_start_cmd="-ss \"$formatted_start_time\""
     [[ -n "$formatted_end_time" ]] && trim_end_cmd="-to \"$formatted_end_time\""
 
-    ffmpeg_command="ffmpeg -hide_banner $trim_start_cmd -y -i \"$input_file\" $trim_end_cmd -c copy \"$final_output\""
-    if eval $ffmpeg_command; then
-        echo -e "${GREEN}Successfully processed $input_file into $final_output${NC}"
+    # Prompt user before processing
+    if [ $verbose -eq 1 ]; then
+        read -p "Proceed with trimming? (y/n) " choice
+        echo    # Move to a new line
+        if [[ $choice != [Yy] ]]; then
+            echo -e "${YELLOW}Skipping $input_file based on user choice.${NC}"
+            continue
+        fi
+    fi
+
+    if [ $overwrite -eq 1 ]; then
+        temp_output=$(mktemp /tmp/ffmpeg.XXXXXX)
+        temp_output+=".$extension"
+        command="ffmpeg -hide_banner $trim_start_cmd -y -i \"$input_file\" $trim_end_cmd -c copy \"$temp_output\""
+        eval $command && mv "$temp_output" "$input_file"
+        echo -e "${GREEN}Successfully processed and overwritten $input_file${NC}"
     else
-        echo -e "${RED}Failed to process $input_file.${NC}"
+        command="ffmpeg -hide_banner $trim_start_cmd -y -i \"$input_file\" $trim_end_cmd -c copy \"$final_output\""
+        eval $command
+        echo -e "${GREEN}Successfully processed $input_file into $final_output${NC}"
     fi
 done
 
