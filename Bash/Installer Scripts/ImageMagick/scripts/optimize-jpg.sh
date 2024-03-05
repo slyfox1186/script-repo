@@ -81,7 +81,6 @@ process_image() {
     fi
 
     # Cleanup
-    set -x
     if [[ "$overwrite_mode" -eq 1 ]]; then
         rm -f "$infile"
     fi
