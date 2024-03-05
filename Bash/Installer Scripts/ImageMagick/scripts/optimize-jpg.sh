@@ -90,6 +90,7 @@ process_image() {
 
 export -f process_image
 export overwrite_mode
+export verbose_mode
 
 # Determine the number of parallel jobs
 num_jobs=$(nproc --all)
