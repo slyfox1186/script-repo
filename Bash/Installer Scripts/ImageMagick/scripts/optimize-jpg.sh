@@ -1,27 +1,36 @@
 #!/usr/bin/env bash
 
+# Enhanced image processing script with adjusted overwrite feature and two-step conversion
+
 # Define usage function
 usage() {
     echo "Usage: $0 [options]"
     echo
     echo "Options:"
-    echo "    -b, --backup                          Enable backup mode. Original images will be backed up before processing."
     echo "    -d, --dir <path>                      Specify the working directory where images are located."
+    echo "    -o, --overwrite                       Enable overwrite mode. Processed images will have '-IM' appended to their names."
+    echo "    -m, --optimize                        Enable image optimization for web."
+    echo "    -v, --verbose                         Enable verbose output."
     echo "    -h, --help                            Display this help message and exit."
     echo
     echo "Example:"
-    echo "    $0 --backup -d pictures    Process images in 'pictures' directory with backups of the originals."
+    echo "    $0 --overwrite --optimize -d pictures    Overwrite and optimize images in 'pictures' directory."
 }
 
-# Parse command-line options
-backup_mode=0
+# Initialize variables
+overwrite_mode=0
+optimize_mode=0
+verbose_mode=0
 working_dir="."
 
+# Parse command-line options
 while [ "$1" != "" ]; do
     case "$1" in
-        -b | --backup )     backup_mode=1 ;;
         -d | --dir )        shift
                             working_dir="$1" ;;
+        -o | --overwrite )  overwrite_mode=1 ;;
+        -m | --optimize )   optimize_mode=1 ;;
+        -v | --verbose )    verbose_mode=1 ;;
         -h | --help )       usage
                             exit ;;
         * )                 usage
@@ -30,7 +39,15 @@ while [ "$1" != "" ]; do
     shift
 done
 
-echo "Backup mode: $backup_mode"
+log() {
+    if [[ $verbose_mode -eq 1 ]]; then
+        echo "$@"
+    fi
+}
+
+echo "Overwrite mode: $overwrite_mode"
+echo "Optimize mode: $optimize_mode"
+echo "Verbose mode: $verbose_mode"
 echo "Working directory: $working_dir"
 
 # Change to the specified working directory
@@ -38,59 +55,43 @@ cd "$working_dir" || { echo "Specified directory $working_dir does not exist. Ex
 
 process_image() {
     local infile="$1"
-    local infile_name="${infile##*/}"
-    local base_name="${infile_name%%.jpg}"
-    local backup_name="${infile%.*}_1.jpg"
-
-    # Check if the output file already exists
     local outfile="${infile%.*}-IM.jpg"
-    if [[ -f "$outfile" ]]; then
-        echo "Output file $outfile already exists. Skipping..."
-        return 0
+
+    local convert_base_opts=(
+        -filter Triangle -define filter:support=2
+        -thumbnail "$(identify -ping -format '%wx%h' "$infile")"
+        -strip -unsharp 0.25x0.08+8.3+0.045 -dither None -posterize 136 -quality 82
+        -define jpeg:fancy-upsampling=off -auto-level -enhance -interlace none
+        -colorspace sRGB
+    )
+
+    if [[ $optimize_mode -eq 1 ]]; then
+        convert_base_opts+=(-sampling-factor 4:2:0)
+        convert_base_opts+=(-resize 800x800)
     fi
 
-    local temp_dir="/tmp/$base_name_$(date +%s%N)_mpc"
-    mkdir -p "$temp_dir"
-    echo
-    echo "Created temporary directory: $temp_dir"
-
-    local mpc_file="$temp_dir/$base_name.mpc"
-    local cache_file="$temp_dir/$base_name.cache"
-
-    echo "Processing: $infile"
-
-    if convert "$infile" \
-            -filter Triangle -define filter:support=2 \
-            -thumbnail $(identify -ping -format '%wx%h' "$infile") \
-            -strip -unsharp "0.25x0.08+8.3+0.045" -dither None -posterize 136 -quality 82 \
-            -define jpeg:fancy-upsampling=off -auto-level -enhance -interlace none \
-            -colorspace sRGB -sampling-factor 2x2 -limit area 0 "$mpc_file"; then
-        if [[ $backup_mode -eq 1 ]]; then
-            # Backup original file with new naming scheme
-            mv "$infile" "$backup_name"
-            echo "Backup created: $backup_name"
-        else
-            # Remove original file
-            rm "$infile"
+    # First attempt to process with full options
+    if ! convert "$infile" "${convert_base_opts[@]}" -sampling-factor 2x2 -limit area 0 "$outfile"; then
+        log "First attempt failed, retrying without '-sampling-factor 2x2 -limit area 0'..."
+        # Retry without the specific options if the first attempt fails
+        if ! convert "$infile" "${convert_base_opts[@]}" "$outfile"; then
+            log "Error: Second attempt failed as well."
+            return 1
         fi
-        convert "$mpc_file" "$outfile"
-        echo "Finished processing: $infile, output: $outfile"
-    else
-        echo "Error: Failed to process the file: $infile"
-        return 1
     fi
 
-    rm -r "$temp_dir"
-    echo "Cleaned up temporary directory: $temp_dir"
+    # Overwrite the original file if overwrite mode is enabled
+    if [[ $overwrite_mode -eq 1 ]]; then
+        mv "$outfile" "$infile"
+    fi
+
+    log "Finished processing: $infile, output: $outfile"
 }
 
-export -f process_image
+export -f process_image log
 
-# Explicitly export backup_mode to make it available to subprocesses
-export backup_mode
-
-# Determine the number of parallel jobs
+# Determine the number of parallel jobs and sort files numerically
 num_jobs=$(nproc --all)
 echo "Starting image processing with $num_jobs parallel jobs..."
 
-find ./ -maxdepth 1 -type f -name "*.jpg" | parallel --env backup_mode -j $num_jobs process_image
+find ./ -maxdepth 1 -type f -name "*.jpg" | sort -V | parallel -j "$num_jobs" process_image
