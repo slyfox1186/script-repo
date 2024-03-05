@@ -1,27 +1,29 @@
 #!/usr/bin/env bash
 
-# Enhanced image processing script with adjusted overwrite feature and two-step conversion
-
 # Define usage function
 usage() {
     echo "Usage: $0 [options]"
     echo
     echo "Options:"
     echo "    -d, --dir <path>                      Specify the working directory where images are located."
-    echo "    -o, --overwrite                       Enable overwrite mode. Processed images will have '-IM' appended to their names."
-    echo "    -m, --optimize                        Enable image optimization for web."
+    echo "    -o, --overwrite                       Enable overwrite mode. Original images will be overwritten."
     echo "    -v, --verbose                         Enable verbose output."
     echo "    -h, --help                            Display this help message and exit."
     echo
     echo "Example:"
-    echo "    $0 --overwrite --optimize -d pictures    Overwrite and optimize images in 'pictures' directory."
+    echo "    $0 --overwrite -d pictures            Directly overwrite and optimize images in 'pictures' directory."
 }
 
-# Initialize variables
+# Initialize script options
 overwrite_mode=0
-optimize_mode=0
 verbose_mode=0
 working_dir="."
+
+log() {
+    if [[ $verbose_mode -eq 1 ]]; then
+        echo "$@"
+    fi
+}
 
 # Parse command-line options
 while [ "$1" != "" ]; do
@@ -29,7 +31,6 @@ while [ "$1" != "" ]; do
         -d | --dir )        shift
                             working_dir="$1" ;;
         -o | --overwrite )  overwrite_mode=1 ;;
-        -m | --optimize )   optimize_mode=1 ;;
         -v | --verbose )    verbose_mode=1 ;;
         -h | --help )       usage
                             exit ;;
@@ -39,14 +40,7 @@ while [ "$1" != "" ]; do
     shift
 done
 
-log() {
-    if [[ $verbose_mode -eq 1 ]]; then
-        echo "$@"
-    fi
-}
-
 echo "Overwrite mode: $overwrite_mode"
-echo "Optimize mode: $optimize_mode"
 echo "Verbose mode: $verbose_mode"
 echo "Working directory: $working_dir"
 
@@ -54,8 +48,12 @@ echo "Working directory: $working_dir"
 cd "$working_dir" || { echo "Specified directory $working_dir does not exist. Exiting."; exit 1; }
 
 process_image() {
-    local infile="$1"
-    local outfile="${infile%.*}-IM.jpg"
+    infile="$1"
+    local base_name="${infile%.*}"
+    local extension="${infile##*.}"
+    local temp_dir=$(mktemp -d)
+    local mpc_file="$temp_dir/${base_name##*/}.mpc"
+    local outfile="${base_name}-IM.${extension}"
 
     local convert_base_opts=(
         -filter Triangle -define filter:support=2
@@ -65,33 +63,37 @@ process_image() {
         -colorspace sRGB
     )
 
-    if [[ $optimize_mode -eq 1 ]]; then
-        convert_base_opts+=(-sampling-factor 4:2:0)
-        convert_base_opts+=(-resize 800x800)
-    fi
-
     # First attempt to process with full options
-    if ! convert "$infile" "${convert_base_opts[@]}" -sampling-factor 2x2 -limit area 0 "$outfile"; then
-        log "First attempt failed, retrying without '-sampling-factor 2x2 -limit area 0'..."
+    if ! convert "$infile" "${convert_base_opts[@]}" -sampling-factor 2x2 -limit area 0 "$mpc_file"; then
+        [[ "$verbose_mode" -eq 1 ]] && log "First attempt failed, retrying without '-sampling-factor 2x2 -limit area 0'..."
         # Retry without the specific options if the first attempt fails
-        if ! convert "$infile" "${convert_base_opts[@]}" "$outfile"; then
-            log "Error: Second attempt failed as well."
+        if ! convert "$infile" "${convert_base_opts[@]}" "$mpc_file"; then
+            [[ "$verbose_mode" -eq 1 ]] && log "Error: Second attempt failed as well."
             return 1
         fi
     fi
 
-    # Overwrite the original file if overwrite mode is enabled
-    if [[ $overwrite_mode -eq 1 ]]; then
-        mv "$outfile" "$infile"
+    # Final convert from MPC to output image
+    if convert "$mpc_file" "$outfile"; then
+        echo "Processed: $outfile"
+    else
+        echo "Failed to process: $outfile"
     fi
 
-    log "Finished processing: $infile, output: $outfile"
+    # Cleanup
+    set -x
+    if [[ "$overwrite_mode" -eq 1 ]]; then
+        rm -f "$infile"
+    fi
+
+    rm -rf "$temp_dir"
 }
 
-export -f process_image log
+export -f process_image
+export overwrite_mode
 
-# Determine the number of parallel jobs and sort files numerically
+# Determine the number of parallel jobs
 num_jobs=$(nproc --all)
 echo "Starting image processing with $num_jobs parallel jobs..."
 
-find ./ -maxdepth 1 -type f -name "*.jpg" | sort -V | parallel -j "$num_jobs" process_image
+find "$working_dir" -maxdepth 1 -type f -name "*.jpg" | sort -V | parallel -j "$num_jobs" process_image
