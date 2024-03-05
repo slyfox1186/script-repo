@@ -64,7 +64,7 @@ process_image() {
             -thumbnail $(identify -ping -format '%wx%h' "$infile") \
             -strip -unsharp "0.25x0.08+8.3+0.045" -dither None -posterize 136 -quality 82 \
             -define jpeg:fancy-upsampling=off -auto-level -enhance -interlace none \
-            -colorspace sRGB -sampling-factor 2x2 "$mpc_file"; then
+            -colorspace sRGB -sampling-factor 2x2 -limit area 0 "$mpc_file"; then
         if [[ $backup_mode -eq 1 ]]; then
             # Backup original file with new naming scheme
             mv "$infile" "$backup_name"
