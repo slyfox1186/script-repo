@@ -591,17 +591,17 @@ rmf() {
 function imow() {
     if [[ ! -f /usr/local/bin/imow ]]; then
         local cwd="$PWD"
-        local dir=$(mktemp -d)
+        local dir="$(mktemp -d)"
         cd "$dir" || echo "Failed to cd into the tmp directory: $dir"; return 1
-        curl -Lso imow 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh'
+        curl -Lso imow "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
         sudo mv imow /usr/local/bin/imow
         sudo rm -fr "$dir"
         sudo chown "$USER":"$USER" /usr/local/bin/imow
         sudo chmod 777 /usr/local/bin/imow
     fi
     clear
-    if ! bash /usr/local/bin/imow --dir "$cwd"; then
-        echo "Failed to execute: /usr/local/bin/imow --dir $cwd"
+    if ! bash /usr/local/bin/imow --dir "$cwd" --overwrite; then
+        echo "Failed to execute: /usr/local/bin/imow --dir $cwd --overwrite"
         return 1
     fi
 }
