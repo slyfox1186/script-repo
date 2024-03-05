@@ -434,8 +434,8 @@ function imow() {
         sudo chmod 777 /usr/local/bin/imow
     fi
     clear
-    if ! bash /usr/local/bin/imow --dir "$cwd"; then
-        echo "Failed to execute: /usr/local/bin/imow --dir $cwd"
+    if ! bash /usr/local/bin/imow --dir "$cwd" --overwrite; then
+        echo "Failed to execute: /usr/local/bin/imow --dir $cwd --overwrite"
         return 1
     fi
 }
