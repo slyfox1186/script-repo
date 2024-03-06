@@ -3,18 +3,27 @@
 
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-17-gold
 ##  Purpose: Build LLVM Clang-17 with GOLD enabled
-##  Updated: 02.10.24
-##  Script version: 1.6
+##  Updated: 03.06.24
+##  Script version: 1.7
+
+log() {
+    echo "[LOG] $1"
+}
 
 fail_fn() {
-    printf "\n%s\n\n%s\n\n" "$1" "For help or to report a bug create an issue at: $web_repo/issues"
+    echo
+    echo "[ERROR] $1"
+    echo
+    echo "For help or to report a bug create an issue at: $web_repo/issues"
+    echo
     exit 1
 }
 
 # Function to check if running as root/sudo
 check_root() {
     if [ "$EUID" -ne 0 ]; then
-        printf "%s\n\n" "You must run this script with root/sudo privileges."
+        echo "You must run this script with root/sudo privileges."
+        echo
         exit 1
     fi
 }
@@ -30,8 +39,7 @@ install_required_packages() {
 
     local missing_packages=()
 
-    for pkg in "${pkgs[@]}"
-    do
+    for pkg in "${pkgs[@]}"; do
         if ! dpkg-query -W -f='${Status}' "$pkg" | grep -q "ok installed"; then
             missing_packages+=("$pkg")
         fi
@@ -41,17 +49,17 @@ install_required_packages() {
         apt update
         apt install "${missing_packages[@]}"
     else
-        echo "All required packages are already installed."
+        log "All required packages are already installed."
     fi
 }
 
 # Function to fix missing x265 library symlink
 fix_missing_x265_lib() {
-    local link_in='/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30'
-    local link_out='/usr/lib/x86_64-linux-gnu/libstdc++.so'
+    local link_in=$(find /usr/lib/x86_64-linux-gnu/ -type f -name 'libstdc++.so.6.0.*')
+    local link_out="/usr/lib/x86_64-linux-gnu/libstdc++.so"
 
     if [[ ! -f "$link_out" ]] && [[ -f "$link_in" ]]; then
-        ln -s "$link_in" "$link_out"
+        ln -sf "$link_in" "$link_out"
     fi
 }
 
@@ -59,22 +67,20 @@ find_highest_clang_version() {
     local clang_version
 
     # Check if a specific version is installed, in descending order of preference
-    for clang_version in 16 15 14 13
-    do
+    for clang_version in 16 15 14 13; do
         if command -v "clang-$clang_version" &>/dev/null; then
             CC="clang-$clang_version"
             CXX="clang++-$clang_version"
             return
         fi
     done
-    
+
     # If none of the specific versions are found, fall back to "clang" if it's installed
     if command -v clang &>/dev/null; then
         CC="clang"
         CXX="clang++"
     else
-        printf "%s\n\n" "Error: Clang is not installed."
-        exit 1
+        fail_fn "Clang is not installed."
     fi
 }
 
@@ -83,75 +89,44 @@ download_and_extract() {
     local url="$1"
     local target_dir="$2"
     local filename="${url##*/}"
-
+    clear
+    set -x
+    echo $filename
+    exit
     if [ -f "$target_dir/$filename" ]; then
-        echo "The file $filename is already downloaded."
+        log "The file $filename is already downloaded."
     else
-        echo "Downloading $url saving as $filename"
+        log "Downloading $url saving as $filename"
         wget --show-progress -cqO "$target_dir/$filename" "$url"
-        echo "Download completed"
-        
+        log "Download completed"
+
         if [[ "$filename" == *tar* ]]; then
             tar -zxf "$target_dir/$filename" -C "$target_dir/$filename" 2>&1
         else
             tar -zxf "$target_dir/$filename" -C "$target_dir/$filename" --strip-components 1 2>&1
         fi
-        echo "File extracted: $filename"
+        log "File extracted: $filename"
     fi
-}
-
-# Function to retrieve the latest Git tag version from a repository
-git_ver_fn() {
-    local cnt git_repo max_attempts
-
-    git_repo="$1"
-    cnt=1
-    max_attempts=10
-
-    if [[ -z "$git_repo" ]]; then
-        echo "Error: Git repository and URL are required."
-        return 1
-    fi
-
-    while [ $cnt -le $max_attempts ]
-    do
-        curl_cmd="$(curl -sSL "https://github.com/$git_repo/tags" | grep -o 'href="[^"]*\.tar\.gz"')"
-
-        # Extract the specific line
-        line="$(echo "$curl_cmd" | grep -o 'href="[^"]*\.tar\.gz"' | sed -n "${cnt}p")"
-
-        # Check if the line matches the pattern (version without 'RC'/'rc')
-        if echo "$line" | grep -qP '[v]*(\d+\.\d+(?:\.\d*){0,2})\.tar\.gz'; then
-            # Extract and print the version number
-            g_ver=$(echo "$line" | grep -oP '(\d+\.\d+(?:\.\d+){0,2})')
-            break
-        else
-            # Increment the cnt if no match is found
-            ((cnt++))
-        fi
-    done
 }
 
 # Function to build and install LLVM Clang-17
 build_and_install_llvm_clang() {
-    git_ver_fn 'llvm/llvm-project'
-    local llvm_version="$g_ver"
-    local llvm_url="https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-$llvm_version.tar.gz"
+    local llvm_url="https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-17.0.6.tar.gz"
 
     # Specify the directory where you want to extract the LLVM source code
     local llvm_code_dir="$workspace"
     local llvm_source_file_dir="$source_files_dir"
 
     # Check if the source file already exists or download it
-    local llvm_tar_url="https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-$llvm_version.tar.gz"
-    local llvm_tar_filename="$llvm_source_file_dir/llvmorg-$llvm_version.tar.gz"
+    local llvm_tar_url="https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-17.0.6.tar.gz"
+    local llvm_tar_filename="$llvm_source_file_dir/llvmorg-17.0.6.tar.gz"
 
     if [ -f "$llvm_tar_filename" ]; then
-        echo "The LLVM source file $llvm_tar_filename is already downloaded."
+        log "The LLVM source file $llvm_tar_filename is already downloaded."
     else
-        echo "Downloading LLVM source from $llvm_tar_url..."
+        log "Downloading LLVM source from $llvm_tar_url..."
         wget --show-progress -cqO "$llvm_tar_filename" "$llvm_tar_url"
-        echo "Download completed"
+        log "Download completed"
     fi
 
     # Extract the source file
@@ -161,17 +136,17 @@ build_and_install_llvm_clang() {
 
     # Check if the source directory exists or clone LLVM if not
     if [ ! -d "$llvm_code_dir" ]; then
-        echo "LLVM source directory not found. Cloning LLVM source..."
+        log "LLVM source directory not found. Cloning LLVM source..."
         download_and_extract "$llvm_url" "/tmp"
-        mv "/tmp/llvm-project-llvmorg-$llvm_version" "$llvm_code_dir"
-        echo "LLVM source code moved from /tmp to $llvm_code_dir"
+        mv "/tmp/llvm-project-llvmorg-17.0.6" "$llvm_code_dir"
+        log "LLVM source code moved from /tmp to $llvm_code_dir"
     fi
 
     mkdir -p "$workspace/build"
     cd "$workspace" || exit 1
 
     echo
-    if build 'llvm' "$llvm_version"; then
+    if build "llvm" "17.0.6"; then
         cmake -S llvm -B build \
               -DBENCHMARK_BUILD_32_BITS=OFF \
               -DBENCHMARK_DOWNLOAD_DEPENDENCIES=OFF \
@@ -192,12 +167,11 @@ build_and_install_llvm_clang() {
               -DCMAKE_BUILD_TYPE=Release \
               -DCMAKE_CXX_COMPILER="$CXX" \
               -DCMAKE_CXX_FLAGS="$CXXFLAGS" \
-              -DCMAKE_CXX_STANDARD=20 \
               -DCMAKE_C_COMPILER="$CC" \
               -DCMAKE_C_FLAGS="$CFLAGS" \
               -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS" \
               -DCMAKE_INSTALL_PREFIX="$install_dir" \
-              -DGOLD_EXECUTABLE="$(type -P ld.gold)" \
+              -DGOLD_EXECUTABLE=$(type -P ld.gold) \
               -DHAVE_STD_REGEX=ON \
               -DLLVM_ALLOW_PROBLEMATIC_CONFIGURATIONS=OFF \
               -DLLVM_APPEND_VC_REV=ON \
@@ -215,7 +189,6 @@ build_and_install_llvm_clang() {
               -DLLVM_BUILD_UTILS=ON \
               -DLLVM_BYE_LINK_INTO_TOOLS=OFF \
               -DLLVM_CCACHE_BUILD=ON \
-              -DLLVM_DEFAULT_TARGET_TRIPLE="$pc_type" \
               -DLLVM_DEPENDENCY_DEBUGGING=OFF \
               -DLLVM_DYLIB_COMPONENTS=all \
               -DLLVM_ENABLE_ASSERTIONS=OFF \
@@ -267,7 +240,6 @@ build_and_install_llvm_clang() {
               -DLLVM_FORCE_ENABLE_STATS=OFF \
               -DLLVM_FORCE_USE_OLD_TOOLCHAIN=OFF \
               -DLLVM_HAVE_TFLITE=OFF \
-              -DLLVM_HOST_TRIPLE="$pc_type" \
               -DLLVM_INCLUDE_BENCHMARKS=ON \
               -DLLVM_INCLUDE_DOCS=OFF \
               -DLLVM_INCLUDE_EXAMPLES=ON \
@@ -275,7 +247,7 @@ build_and_install_llvm_clang() {
               -DLLVM_INCLUDE_TESTS=OFF \
               -DLLVM_INCLUDE_TOOLS=ON \
               -DLLVM_INCLUDE_UTILS=ON \
-              -DLLVM_NATIVE_ARCH="$(uname -m)" \
+              -DLLVM_NATIVE_ARCH=$(uname -m) \
               -DLLVM_OMIT_DAGISEL_COMMENTS=ON \
               -DLLVM_OPTIMIZED_TABLEGEN=ON \
               -DLLVM_OPTIMIZE_SANITIZED_BUILDS=ON \
@@ -297,7 +269,6 @@ build_and_install_llvm_clang() {
               -DLLVM_TOOL_OPENMP_BUILD=OFF \
               -DLLVM_TOOL_POLLY_BUILD=OFF \
               -DLLVM_TOOL_PSTL_BUILD=OFF \
-              -DLLVM_UBSAN_FLAGS="-fsanitize=undefined -fno -sanitize=vptr,function -fno -sanitize -recover=all" \
               -DLLVM_UNREACHABLE_OPTIMIZE=ON \
               -DLLVM_USE_FOLDERS=ON \
               -DLLVM_USE_LINKER=gold \
@@ -306,30 +277,27 @@ build_and_install_llvm_clang() {
               -DPY_PYGMENTS_FOUND=ON \
               -DPY_PYGMENTS_LEXERS_C_CPP_FOUND=ON \
               -DPY_YAML_FOUND=ON \
-              -G Ninja -Wno-dev
+              -G Ninja
         echo
         if ! ninja "-j$(nproc --all)" -C build; then
-            fail_fn "Error: Failed to execute ninja -j$(nproc --all)"
+            fail_fn "Failed to execute ninja -j$(nproc --all)"
         fi
         echo
         if ! ninja -C build install; then
-            fail_fn "Error: Failed to execute ninja -C build install"
+            fail_fn "Failed to execute ninja -C build install"
         fi
     fi
 }
 
 # Function to show installed Clang version
 show_installed_clang_version() {
-    local clang_versions=(
-        clang-17 clang++-17 clang++
-    )
-    
-    echo "The installed clang versions are:"
-    
-    for clang_version in "${clang_versions[@]}"
-    do
+    local clang_versions=("clang-17" "clang++-17" "clang++")
+
+    log "The installed clang versions are:"
+
+    for clang_version in "${clang_versions[@]}"; do
         local clang_path="$install_dir/bin/$clang_version"
-        
+
         if [ -f "$clang_path" ]; then
             echo "$clang_version:"
             "$clang_path" --version
@@ -341,16 +309,17 @@ show_installed_clang_version() {
 # Function to prompt the user to clean up the build files
 cleanup_build_files() {
     local choice
-    echo "Do you want to remove the build files?"
+    echo
+    log "Do you want to remove the build files?"
+    echo
     echo "[1] Yes"
     echo "[2] No"
     read -p "Your choices are (1 or 2): " choice
 
     case "$choice" in
         1)  rm -fr "$workspace" ;;
-        2)  clear ;;
-        *)
-            unset choice
+        2)  ;;
+        *)  unset choice
             clear
             cleanup_build_files
             ;;
@@ -360,9 +329,9 @@ cleanup_build_files() {
 # Display exit message
 display_exit_message() {
     echo
-    echo "The script has completed."
-    echo "Make sure to star this repository to show your support:"
-    echo "$web_repo"
+    log "The script has completed."
+    log "Make sure to star this repository to show your support:"
+    log "$web_repo"
     exit 0
 }
 
@@ -387,10 +356,6 @@ build_done() {
     echo "$pkg_version" > "$workspace/$pkg_name.done"
 }
 
-# Main script starts here
-
-clear
-
 # Check if running as root/sudo
 check_root
 
@@ -398,12 +363,11 @@ check_root
 source_files_dir="$PWD/clang-17-build-script"
 workspace="$PWD/clang-17-build-script/workspace"
 install_dir="/usr/local"
-pc_type="x86_64-linux-gnu"
 web_repo="https://github.com/slyfox1186/script-repo"
 
 # Remove files from previous attempts to keep things clean
 if [ -d "$workspace" ]; then
-    echo "Removing files from previous attempts."
+    log "Removing files from previous attempts."
     rm -fr "$workspace"
 fi
 
@@ -412,10 +376,9 @@ mkdir -p "$workspace" "$source_files_dir"
 
 # Set the CC/CXX compilers & the compiler optimization flags
 CFLAGS="-g -O3 -pipe -march=native"
-CXXFLAGS="$CFLAGS"
-CPPFLAGS="-I/usr/local/include -I/usr/include"
-LDFLAGS="-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib -Wl,-rpath -Wl,/usr/local/lib -Wl,--as-needed"
-export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
+CXXFLAGS="-g -O3 -pipe -march=native"
+LDFLAGS="-Wl,-rpath -Wl,/usr/local/lib -Wl,--as-needed"
+export CC CFLAGS CXX CXXFLAGS LDFLAGS
 
 # Set the PATH variable
 PATH="\
@@ -444,6 +407,8 @@ PKG_CONFIG_PATH="\
 /lib/pkgconfig\
 "
 export PKG_CONFIG_PATH
+
+export -f log
 
 # Install required APT packages
 install_required_packages
