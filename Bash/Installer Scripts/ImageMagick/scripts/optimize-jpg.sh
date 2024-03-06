@@ -66,7 +66,7 @@ process_image() {
 
     # First attempt to process with full options
     if ! convert "$infile" "${convert_base_opts[@]}" -sampling-factor 2x2 -limit area 0 "$mpc_file"; then
-        [[ "$verbose_mode" -eq 1 ]] && log "First attempt failed, retrying without '-sampling-factor 2x2 -limit area 0'..."
+        [[ "$verbose_mode" -eq 1 ]] && log "Error: First attempt failed, retrying without '-sampling-factor 2x2 -limit area 0'..."
         # Retry without the specific options if the first attempt fails
         if ! convert "$infile" "${convert_base_opts[@]}" "$mpc_file"; then
             [[ "$verbose_mode" -eq 1 ]] && log "Error: Second attempt failed as well."
