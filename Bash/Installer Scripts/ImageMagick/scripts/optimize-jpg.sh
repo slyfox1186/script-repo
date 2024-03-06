@@ -54,6 +54,7 @@ process_image() {
     local temp_dir=$(mktemp -d)
     local mpc_file="$temp_dir/${base_name##*/}.mpc"
     local outfile="${base_name}-IM.${extension}"
+    local outfile_name="$(basename "${outfile}")" # Extract only the file name
 
     local convert_base_opts=(
         -filter Triangle -define filter:support=2
@@ -75,9 +76,9 @@ process_image() {
 
     # Final convert from MPC to output image
     if convert "$mpc_file" "$outfile"; then
-        echo "Processed: $outfile"
+        echo "Processed: $outfile_name"
     else
-        echo "Failed to process: $outfile"
+        echo "Failed to process: $outfile_name"
     fi
 
     # Cleanup
