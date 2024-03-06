@@ -24,8 +24,9 @@ print_banner() {
 install_missing_packages() {
     print_color green "Checking and installing missing packages..."
     local pkgs=(
-        autoconf automake binutils gcc make curl
-        tar lzip libticonv-dev gettext libpth-dev
+        autoconf automake autopoint binutils gcc
+        make curl tar lzip libticonv-dev gettext
+        libpth-dev
     )
     for pkg in "${pkgs[@]}"; do
         if ! dpkg -l | grep -qw $pkg &>/dev/null; then
