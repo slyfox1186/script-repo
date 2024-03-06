@@ -1,4 +1,26 @@
 #!/usr/bin/env bash
+clear
+
+# ANSI Color Codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
+# Logging functions
+log() {
+    if [[ $verbose_mode -eq 1 ]]; then
+        echo -e "${GREEN}[LOG]${NC} $1"
+    fi
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
 
 # Define usage function
 usage() {
@@ -29,11 +51,7 @@ target_format=""
 recursive_mode=0
 working_dir="."
 
-log() {
-    if [[ $verbose_mode -eq 1 ]]; then
-        echo "$@"
-    fi
-}
+log "Initialization complete."
 
 # Parse command-line options
 while [ "$1" != "" ]; do
@@ -57,6 +75,7 @@ while [ "$1" != "" ]; do
     shift
 done
 
+log "Script configuration:"
 log "Overwrite mode: $overwrite_mode"
 log "Verbose mode: $verbose_mode"
 log "Dry run: $dry_run"
@@ -69,8 +88,11 @@ log "Working directory: $working_dir"
 backup_image() {
     if [[ $backup_mode -eq 1 && $backup_dir != "" ]]; then
         mkdir -p "$backup_dir"
-        cp "$1" "$backup_dir"
-        log "Backed up: $1 to $backup_dir"
+        if cp "$1" "$backup_dir"; then
+            log "Backed up: $1 to $backup_dir"
+        else
+            log_warning "Failed to backup: $1 to $backup_dir"
+        fi
     fi
 }
 
@@ -80,13 +102,19 @@ process_image() {
     local extension="${infile##*.}"
     local temp_dir=$(mktemp -d)
     local outfile_name
-    if [[ $target_format != "" ]]; then
-        outfile_name="${base_name##*/}.${target_format}"
+    # Ensure outfile_name handles no extension correctly
+    if [[ "$infile" == *.* ]]; then
+        outfile_name="${base_name##*/}-IM.${target_format:-$extension}"
     else
-        outfile_name="${base_name##*/}.${extension}"
+        outfile_name="${infile}-IM"
     fi
-    local outfile="${base_name}-IM.${outfile_name##*.}"
     local mpc_file="$temp_dir/${outfile_name}.mpc"
+    local outfile
+    if [[ -n "$target_format" ]]; then
+        outfile="${base_name}-IM.${target_format}"
+    else
+        outfile="${base_name}-IM.${extension}"
+    fi
 
     if [[ $dry_run -eq 1 ]]; then
         log "Dry run: Processing $infile would generate $outfile"
@@ -95,29 +123,26 @@ process_image() {
 
     backup_image "$infile"
 
-    local convert_base_opts=(
-        -filter Triangle -define filter:support=2
-        -thumbnail "$(identify -ping -format '%wx%h' "$infile")"
-        -strip -unsharp 0.25x0.08+8.3+0.045 -dither None -posterize 136 -quality 82
-        -define jpeg:fancy-upsampling=off -auto-level -enhance -interlace none
-        -colorspace sRGB
-    )
-
+    # First attempt to process with full options
     if ! convert "$infile" "${convert_base_opts[@]}" -sampling-factor 2x2 -limit area 0 "$mpc_file"; then
-        [[ "$verbose_mode" -eq 1 ]] && log "Error: First attempt failed, retrying without '-sampling-factor 2x2 -limit area 0'..."
+        log_warning "Error: First attempt failed, retrying without '-sampling-factor 2x2 -limit area 0'..."
+        # Retry without the specific options if the first attempt fails
         if ! convert "$infile" "${convert_base_opts[@]}" "$mpc_file"; then
-            [[ "$verbose_mode" -eq 1 ]] && log "Error: Second attempt failed as well."
+            log_error "Error: Second attempt failed as well."
             return 1
         fi
     fi
 
+    # Final convert from MPC to output image
     if convert "$mpc_file" "$outfile"; then
-        echo "Processed: $outfile_name"
-        if [[ $overwrite_mode -eq 1 ]]; then
-            mv "$outfile" "$infile"
-        fi
+        log "Processed: $outfile"
     else
-        echo "Failed to process: $outfile_name"
+        log_error "Failed to process: $outfile"
+    fi
+
+    # Cleanup
+    if [[ "$overwrite_mode" -eq 1 ]]; then
+        rm -f "$infile"
     fi
 
     rm -fr "$temp_dir"
@@ -125,6 +150,8 @@ process_image() {
 
 export -f backup_image
 export -f log
+export -f log_warning
+export -f log_error
 export -f process_image
 export overwrite_mode
 export verbose_mode
@@ -132,13 +159,18 @@ export dry_run
 export backup_mode
 export backup_dir
 export target_format
+export recursive_mode
+export RED
+export GREEN
+export YELLOW
+export NC
 
 # Determine the number of parallel jobs
 num_jobs=$(nproc --all)
 log "Starting image processing with $num_jobs parallel jobs..."
 
 if [[ $recursive_mode -eq 1 ]]; then
-    find "$working_dir" -type f -name "*.jpg" | sort -V | parallel -j "$num_jobs" process_image
+    find "$working_dir" -type f \( -iname "*.jpg" -o -iname "*.jpeg" \) | sort -V | parallel -j "$num_jobs" process_image
 else
-    find "$working_dir" -maxdepth 1 -type f -name "*.jpg" | sort -V | parallel -j "$num_jobs" process_image
+    find "$working_dir" -maxdepth 1 -type f \( -iname "*.jpg" -o -iname "*.jpeg" \) | sort -V | parallel -j "$num_jobs" process_image
 fi
