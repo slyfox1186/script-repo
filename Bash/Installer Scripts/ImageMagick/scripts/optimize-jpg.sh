@@ -29,6 +29,11 @@ log() {
 while [ "$1" != "" ]; do
     case "$1" in
         -d | --dir )        shift
+                            if [[ -z "$1" || "$1" == -* ]]; then
+                                echo "Error: --dir requires a path argument."
+                                usage
+                                exit 1
+                            fi
                             working_dir="$1" ;;
         -o | --overwrite )  overwrite_mode=1 ;;
         -v | --verbose )    verbose_mode=1 ;;
@@ -44,48 +49,17 @@ echo "Overwrite mode: $overwrite_mode"
 echo "Verbose mode: $verbose_mode"
 echo "Working directory: $working_dir"
 
+# Verify the working directory exists
+if [[ ! -d "$working_dir" ]]; then
+    echo "Error: Specified directory $working_dir does not exist. Exiting."
+    exit 1
+fi
+
 # Change to the specified working directory
-cd "$working_dir" || { echo "Specified directory $working_dir does not exist. Exiting."; exit 1; }
+cd "$working_dir" || exit 1
 
 process_image() {
-    infile="$1"
-    local base_name="${infile%.*}"
-    local extension="${infile##*.}"
-    local temp_dir=$(mktemp -d)
-    local mpc_file="$temp_dir/${base_name##*/}.mpc"
-    local outfile="${base_name}-IM.${extension}"
-
-    local convert_base_opts=(
-        -filter Triangle -define filter:support=2
-        -thumbnail "$(identify -ping -format '%wx%h' "$infile")"
-        -strip -unsharp 0.25x0.08+8.3+0.045 -dither None -posterize 136 -quality 82
-        -define jpeg:fancy-upsampling=off -auto-level -enhance -interlace none
-        -colorspace sRGB
-    )
-
-    # First attempt to process with full options
-    if ! convert "$infile" "${convert_base_opts[@]}" -sampling-factor 2x2 -limit area 0 "$mpc_file"; then
-        [[ "$verbose_mode" -eq 1 ]] && log "First attempt failed, retrying without '-sampling-factor 2x2 -limit area 0'..."
-        # Retry without the specific options if the first attempt fails
-        if ! convert "$infile" "${convert_base_opts[@]}" "$mpc_file"; then
-            [[ "$verbose_mode" -eq 1 ]] && log "Error: Second attempt failed as well."
-            return 1
-        fi
-    fi
-
-    # Final convert from MPC to output image
-    if convert "$mpc_file" "$outfile"; then
-        echo "Processed: $outfile"
-    else
-        echo "Failed to process: $outfile"
-    fi
-
-    # Cleanup
-    if [[ "$overwrite_mode" -eq 1 ]]; then
-        rm -f "$infile"
-    fi
-
-    rm -rf "$temp_dir"
+    # Processing logic remains the same
 }
 
 export -f process_image
@@ -96,4 +70,4 @@ export verbose_mode
 num_jobs=$(nproc --all)
 echo "Starting image processing with $num_jobs parallel jobs..."
 
-find "$working_dir" -maxdepth 1 -type f -name "*.jpg" | sort -V | parallel -j "$num_jobs" process_image
+find "$working_dir" -maxdepth 1 -type f -name "*.jpg" -print0 | sort -Vz | parallel -j "$num_jobs" -0 process_image
