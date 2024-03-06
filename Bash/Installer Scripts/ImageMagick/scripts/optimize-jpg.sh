@@ -86,7 +86,7 @@ process_image() {
         rm -f "$infile"
     fi
 
-    rm -rf "$temp_dir"
+    rm -fr "$temp_dir"
 }
 
 export -f process_image
