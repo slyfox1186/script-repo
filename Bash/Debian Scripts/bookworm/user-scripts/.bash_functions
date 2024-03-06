@@ -588,39 +588,19 @@ rmf() {
 #################
 
 function imow() {
-    local script_url="https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
-    local script_path="/usr/local/bin/imow"
-
-    echo "Checking for imow script..."
-    if [[ ! -f $script_path ]]; then
-        echo "Script not found. Downloading and setting up..."
-        sudo curl -Ls "$script_url" -o "$script_path"
-        if [[ $? -ne 0 ]]; then
-            echo "Failed to download the script."
-            return 1
-        fi
-        sudo chmod +x "$script_path"
-        echo "Script installed successfully."
-    else
-        echo "Script already installed."
+    if [[ ! -f /usr/local/bin/imow ]]; then
+        local cwd="$PWD"
+        local dir="$(mktemp -d)"
+        cd "$dir" || echo "Failed to cd into the tmp directory: $dir"; return 1
+        curl -Lso imow "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
+        sudo mv imow /usr/local/bin/imow
+        sudo rm -fr "$dir"
+        sudo chown "$USER":"$USER" /usr/local/bin/imow
+        sudo chmod 777 /usr/local/bin/imow
     fi
-
-    # Debugging: Show the current directory
-    echo "Executing imow with the current directory: '$PWD'"
-
-    if [[ -d "$PWD" ]]; then
-        echo "Path is a directory, proceeding..."
-    elif [[ -f "$PWD" ]]; then
-        echo "Path is a file, please ensure a directory is specified."
-        return 1
-    else
-        echo "Path does not exist."
-        return 1
-    fi
-
-    # Execute the script with the current working directory
-    if ! $script_path --dir "$PWD" --overwrite; then
-        echo "Execution failed: $script_path --dir \"$PWD\" --overwrite"
+    clear
+    if ! bash /usr/local/bin/imow --dir "$cwd" --overwrite; then
+        echo "Failed to execute: /usr/local/bin/imow --dir $cwd --overwrite"
         return 1
     fi
 }
