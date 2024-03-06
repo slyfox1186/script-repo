@@ -424,7 +424,6 @@ rmf() {
 # Optimize and overwrite the original images
 function imow() {
     if [[ ! -f /usr/local/bin/imow.sh ]]; then
-        local cwd="$PWD"
         local dir="$(mktemp -d)"
         cd "$dir" || echo "Failed to cd into the tmp directory: $dir"; return 1
         curl -Lso imow.sh "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
@@ -434,8 +433,8 @@ function imow() {
         sudo chmod 777 /usr/local/bin/imow.sh
     fi
     clear
-    if ! bash /usr/local/bin/imow.sh --dir "$cwd" --overwrite; then
-        echo "Failed to execute: /usr/local/bin/imow.sh --dir $cwd --overwrite"
+    if ! bash /usr/local/bin/imow.sh --dir "$PWD" --overwrite; then
+        echo "Failed to execute: /usr/local/bin/imow.sh --dir $PWD --overwrite"
         return 1
     fi
 }
