@@ -94,6 +94,7 @@ export verbose_mode
 
 # Determine the number of parallel jobs
 num_jobs=$(nproc --all)
+echo
 echo "Starting image processing with $num_jobs parallel jobs..."
 
 find "$working_dir" -maxdepth 1 -type f -name "*.jpg" | sort -V | parallel -j "$num_jobs" process_image
