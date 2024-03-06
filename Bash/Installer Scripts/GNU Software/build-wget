@@ -75,7 +75,7 @@ build_libmetalink() {
     mkdir -p "$libmetalink_dir" && cd "$libmetalink_dir"
     curl -Lso "libmetalink.tar.xz" "https://github.com/metalink-dev/libmetalink/releases/download/release-0.1.3/libmetalink-0.1.3.tar.xz"
     tar -xf "libmetalink.tar.xz" --strip-components=1
-    ./configure --prefix="$install_dir" && make -j"$(nproc)" && make install || error "Failed to build libmetalink."
+    ./configure --prefix="$install_dir" && make "-j$(nproc)" && make install || error "Failed to build libmetalink."
     log "libmetalink built successfully."
 }
 
