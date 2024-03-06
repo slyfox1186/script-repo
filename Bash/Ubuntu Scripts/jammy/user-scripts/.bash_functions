@@ -591,22 +591,34 @@ rmf() {
 
 # Optimize and overwrite the original images
 function imow() {
+    local cwd="$PWD" # Define current working directory
+
     if [[ ! -f /usr/local/bin/imow ]]; then
-        local cwd="$PWD"
         local dir="$(mktemp -d)"
-        cd "$dir" || echo "Failed to cd into the tmp directory: $dir"; return 1
-        curl -Lso imow "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
-        sudo mv imow /usr/local/bin/imow
+        echo "Downloading the imow script..."
+        curl -Lso "$dir/imow" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
+
+        if [[ -f "$dir/imow" ]]; then
+            echo "Moving script to /usr/local/bin and setting permissions..."
+            sudo mv "$dir/imow" /usr/local/bin/imow
+            sudo chown root:root /usr/local/bin/imow
+            sudo chmod 755 /usr/local/bin/imow
+        else
+            echo "Failed to download the script. Exiting."
+            return 1
+        fi
+
         sudo rm -fr "$dir"
-        sudo chown "$USER":"$USER" /usr/local/bin/imow
-        sudo chmod 777 /usr/local/bin/imow
     fi
+
     clear
+    echo "Executing the imow script..."
     if ! bash /usr/local/bin/imow --dir "$cwd" --overwrite; then
         echo "Failed to execute: /usr/local/bin/imow --dir $cwd --overwrite"
         return 1
     fi
 }
+
 
 # DOWNSAMPLE IMAGE TO 50% OF THE ORIGINAL DIMENSIONS USING SHARPER SETTINGS
 im50() {
