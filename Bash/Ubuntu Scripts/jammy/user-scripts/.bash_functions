@@ -591,39 +591,39 @@ rmf() {
 
 # Optimize and overwrite the original images
 function imow() {
-    # Capture the current working directory
-    local cwd="$PWD"
+    local script_url="https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
+    local script_path="/usr/local/bin/imow"
 
-    # Check if the script exists in /usr/local/bin
-    if [[ ! -f /usr/local/bin/imow ]]; then
-        echo "imow script not found. Downloading..."
-        local dir=$(mktemp -d)
-        cd "$dir" || { echo "Failed to cd into temp directory: $dir"; return 1; }
-
-        # Download the script
-        curl -Lso imow "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
-        
-        # Move and setup the script only if the download was successful
-        if [[ -f imow ]]; then
-            echo "Setting up imow script..."
-            sudo mv imow /usr/local/bin/
-            sudo chown root:root /usr/local/bin/imow
-            sudo chmod 755 /usr/local/bin/imow
-            cd "$cwd" # Return to the original directory
-            sudo rm -rf "$dir" # Cleanup
-        else
-            echo "Download failed. Exiting."
-            cd "$cwd" # Return to the original directory if download fails
+    echo "Checking for imow script..."
+    if [[ ! -f $script_path ]]; then
+        echo "Script not found. Downloading and setting up..."
+        sudo curl -Ls "$script_url" -o "$script_path"
+        if [[ $? -ne 0 ]]; then
+            echo "Failed to download the script."
             return 1
         fi
+        sudo chmod +x "$script_path"
+        echo "Script installed successfully."
+    else
+        echo "Script already installed."
     fi
 
-    clear
-    echo "Executing imow with the current directory: $cwd"
-    
+    # Debugging: Show the current directory
+    echo "Executing imow with the current directory: '$PWD'"
+
+    if [[ -d "$PWD" ]]; then
+        echo "Path is a directory, proceeding..."
+    elif [[ -f "$PWD" ]]; then
+        echo "Path is a file, please ensure a directory is specified."
+        return 1
+    else
+        echo "Path does not exist."
+        return 1
+    fi
+
     # Execute the script with the current working directory
-    if ! /usr/local/bin/imow --dir "$cwd" --overwrite; then
-        echo "Failed to execute: /usr/local/bin/imow --dir $cwd --overwrite"
+    if ! $script_path --dir "$PWD" --overwrite; then
+        echo "Execution failed: $script_path --dir \"$PWD\" --overwrite"
         return 1
     fi
 }
