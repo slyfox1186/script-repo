@@ -47,13 +47,13 @@ process_image() {
     local extension="${infile##*.}"
     local temp_dir=$(mktemp -d)
     local mpc_file="$temp_dir/${base_name##*/}.mpc"
-    local outfile
+    local outfile="$PWD/${base_name##*/}.${extension}"
 
     # Set outfile based on overwrite mode
     if [[ $overwrite_mode -eq 1 ]]; then
-        outfile="${base_name}-IM.${extension}"
+        outfile="${PWD}/${base_name}-IM.${extension}"
     else
-        outfile="${base_name}-IM.${extension}"
+        outfile="${PWD}/${base_name}-IM.${extension}"
     fi
 
     # Execute convert command with attempt to include '-sampling-factor 2x2 -limit area 0'
@@ -77,17 +77,22 @@ process_image() {
     
     # Handle overwrite logic
     if [[ $overwrite_mode -eq 1 ]]; then
-        mv -f "$outfile" "$infile"
+        rm -f "$outfile"
         echo "Overwritten: $infile"
     else
         echo "Processed: $outfile"
     fi
+
+
 
     # Cleanup
     rm -rf "$temp_dir"
 }
 
 export -f process_image
+export cwd="$working_dir"
+export overwrite_mode
+export verbose_mode
 
 # Determine the number of parallel jobs
 num_jobs=$(nproc --all)
