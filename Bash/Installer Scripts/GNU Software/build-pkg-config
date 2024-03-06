@@ -78,7 +78,7 @@ exit_fn() {
 
 fail_fn() {
     echo
-    echo "$1"
+    echo "[ERROR] $1"
     echo "To report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues"
     echo
     exit 1
