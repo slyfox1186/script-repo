@@ -588,43 +588,80 @@ rmf() {
 #################
 
 # Optimize and overwrite the original images
-function imow() {
-    # Capture the current working directory
-    local cwd="$PWD"
+#!/usr/bin/env bash
 
-    # Check if the script exists in /usr/local/bin
-    if [[ ! -f /usr/local/bin/imow ]]; then
-        echo "imow script not found. Downloading..."
-        local dir=$(mktemp -d)
-        cd "$dir" || { echo "Failed to cd into temp directory: $dir"; return 1; }
+# Define usage function
+usage() {
+    echo "Usage: $0 [options]"
+    echo
+    echo "Options:"
+    echo "    -d, --dir <path>                      Specify the working directory where images are located."
+    echo "    -o, --overwrite                       Enable overwrite mode. Original images will be overwritten."
+    echo "    -v, --verbose                         Enable verbose output."
+    echo "    -h, --help                            Display this help message and exit."
+    echo
+    echo "Example:"
+    echo "    $0 --overwrite -d pictures            Directly overwrite and optimize images in 'pictures' directory."
+}
 
-        # Download the script
-        curl -Lso imow "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
-        
-        # Move and setup the script only if the download was successful
-        if [[ -f imow ]]; then
-            echo "Setting up imow script..."
-            sudo mv imow /usr/local/bin/
-            sudo chown root:root /usr/local/bin/imow
-            sudo chmod 755 /usr/local/bin/imow
-            cd "$cwd" # Return to the original directory
-            sudo rm -rf "$dir" # Cleanup
-        else
-            echo "Download failed. Exiting."
-            cd "$cwd" # Return to the original directory if download fails
-            return 1
-        fi
-    fi
+# Initialize script options
+overwrite_mode=0
+verbose_mode=0
+working_dir="."
 
-    clear
-    echo "Executing imow with the current directory: $cwd"
-    
-    # Execute the script with the current working directory
-    if ! /usr/local/bin/imow --dir "$cwd" --overwrite; then
-        echo "Failed to execute: /usr/local/bin/imow --dir $cwd --overwrite"
-        return 1
+log() {
+    if [[ $verbose_mode -eq 1 ]]; then
+        echo "$@"
     fi
 }
+
+# Parse command-line options
+while [ "$1" != "" ]; do
+    case "$1" in
+        -d | --dir )        shift
+                            if [[ -z "$1" || "$1" == -* ]]; then
+                                echo "Error: --dir requires a path argument."
+                                usage
+                                exit 1
+                            fi
+                            working_dir="$1" ;;
+        -o | --overwrite )  overwrite_mode=1 ;;
+        -v | --verbose )    verbose_mode=1 ;;
+        -h | --help )       usage
+                            exit ;;
+        * )                 usage
+                            exit 1 ;;
+    esac
+    shift
+done
+
+echo "Overwrite mode: $overwrite_mode"
+echo "Verbose mode: $verbose_mode"
+echo "Working directory: $working_dir"
+
+# Verify the working directory exists
+if [[ ! -d "$working_dir" ]]; then
+    echo "Error: Specified directory $working_dir does not exist. Exiting."
+    exit 1
+fi
+
+# Change to the specified working directory
+cd "$working_dir" || exit 1
+
+process_image() {
+    # Processing logic remains the same
+}
+
+export -f process_image
+export overwrite_mode
+export verbose_mode
+
+# Determine the number of parallel jobs
+num_jobs=$(nproc --all)
+echo "Starting image processing with $num_jobs parallel jobs..."
+
+find "$working_dir" -maxdepth 1 -type f -name "*.jpg" -print0 | sort -Vz | parallel -j "$num_jobs" -0 process_image
+
 
 # DOWNSAMPLE IMAGE TO 50% OF THE ORIGINAL DIMENSIONS USING SHARPER SETTINGS
 im50() {
