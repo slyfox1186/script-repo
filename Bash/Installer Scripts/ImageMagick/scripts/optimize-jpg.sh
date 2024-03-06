@@ -19,6 +19,12 @@ overwrite_mode=0
 verbose_mode=0
 working_dir="."
 
+log() {
+    if [[ $verbose_mode -eq 1 ]]; then
+        echo "$@"
+    fi
+}
+
 # Parse command-line options
 while [ "$1" != "" ]; do
     case "$1" in
@@ -42,55 +48,47 @@ echo "Working directory: $working_dir"
 cd "$working_dir" || { echo "Specified directory $working_dir does not exist. Exiting."; exit 1; }
 
 process_image() {
-    local infile="$1"
+    infile="$1"
     local base_name="${infile%.*}"
     local extension="${infile##*.}"
     local temp_dir=$(mktemp -d)
     local mpc_file="$temp_dir/${base_name##*/}.mpc"
-    local outfile="$PWD/${base_name##*/}.${extension}"
+    local outfile="${base_name}-IM.${extension}"
 
-    # Set outfile based on overwrite mode
-    if [[ $overwrite_mode -eq 1 ]]; then
-        outfile="${PWD}/${base_name}-IM.${extension}"
-    else
-        outfile="${PWD}/${base_name}-IM.${extension}"
-    fi
+    local convert_base_opts=(
+        -filter Triangle -define filter:support=2
+        -thumbnail "$(identify -ping -format '%wx%h' "$infile")"
+        -strip -unsharp 0.25x0.08+8.3+0.045 -dither None -posterize 136 -quality 82
+        -define jpeg:fancy-upsampling=off -auto-level -enhance -interlace none
+        -colorspace sRGB
+    )
 
-    # Execute convert command with attempt to include '-sampling-factor 2x2 -limit area 0'
-    if ! convert "$infile" \
-            -filter Triangle -define filter:support=2 \
-            -thumbnail $(identify -ping -format '%wx%h' "$infile") \
-            -strip -unsharp "0.25x0.08+8.3+0.045" -dither None -posterize 136 -quality 82 \
-            -define jpeg:fancy-upsampling=off -auto-level -enhance -interlace none \
-            -colorspace sRGB -sampling-factor 2x2 -limit area 0 "$mpc_file"; then
-        # Fallback convert without '-sampling-factor 2x2 -limit area 0' upon failure
-        convert "$infile" \
-                -filter Triangle -define filter:support=2 \
-                -thumbnail $(identify -ping -format '%wx%h' "$infile") \
-                -strip -unsharp "0.25x0.08+8.3+0.045" -dither None -posterize 136 -quality 82 \
-                -define jpeg:fancy-upsampling=off -auto-level -enhance -interlace none \
-                -colorspace sRGB "$mpc_file"
+    # First attempt to process with full options
+    if ! convert "$infile" "${convert_base_opts[@]}" -sampling-factor 2x2 -limit area 0 "$mpc_file"; then
+        [[ "$verbose_mode" -eq 1 ]] && log "First attempt failed, retrying without '-sampling-factor 2x2 -limit area 0'..."
+        # Retry without the specific options if the first attempt fails
+        if ! convert "$infile" "${convert_base_opts[@]}" "$mpc_file"; then
+            [[ "$verbose_mode" -eq 1 ]] && log "Error: Second attempt failed as well."
+            return 1
+        fi
     fi
 
     # Final convert from MPC to output image
-    convert "$mpc_file" "$outfile"
-    
-    # Handle overwrite logic
-    if [[ $overwrite_mode -eq 1 ]]; then
-        rm -f "$outfile"
-        echo "Overwritten: $infile"
-    else
+    if convert "$mpc_file" "$outfile"; then
         echo "Processed: $outfile"
+    else
+        echo "Failed to process: $outfile"
     fi
 
-
-
     # Cleanup
+    if [[ "$overwrite_mode" -eq 1 ]]; then
+        rm -f "$infile"
+    fi
+
     rm -rf "$temp_dir"
 }
 
 export -f process_image
-export cwd="$working_dir"
 export overwrite_mode
 export verbose_mode
 
