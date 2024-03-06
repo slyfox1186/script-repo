@@ -592,8 +592,7 @@ function imow() {
         local cwd="$PWD"
         local dir="$(mktemp -d)"
         cd "$dir" || echo "Failed to cd into the tmp directory: $dir"; return 1
-        curl -Lso imow "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
-        sudo mv imow /usr/local/bin/imow
+        sudo curl -Lso /usr/local/bin/imow "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
         sudo rm -fr "$dir"
         sudo chown "$USER":"$USER" /usr/local/bin/imow
         sudo chmod 777 /usr/local/bin/imow
