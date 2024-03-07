@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-clear
-
 cwd="$PWD/build-all-gnu-master"
 web_repo="https://github.com/slyfox1186/script-repo"
 
