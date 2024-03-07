@@ -135,6 +135,7 @@ compile_aria2() {
 
 # Cleanup the build environment
 cleanup() {
+    echo
     log "Cleaning up..."
     rm -fr "$build_dir"
     log "Cleanup completed."
