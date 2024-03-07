@@ -93,7 +93,7 @@ process_image() {
             || { log "Error: First attempt failed, retrying..."; convert "$infile" "${convert_opts[@]}" "$mpc_file"; } \
             || { log "Error: Second attempt failed."; return 1; }
             
-        convert "$mpc_file" "$outfile" && echo -ne "Processed: $outfile_name\r" || echo -ne "Failed to process: $outfile_name\r"
+        convert "$mpc_file" "$outfile" && echo "Processed: $outfile_name" || echo "Failed to process: $outfile_name"
         
         [[ $overwrite_mode -eq 1 ]] && rm -f "$infile"
         rm -fr "$temp_dir"
@@ -115,13 +115,8 @@ if [[ $recursive_mode -eq 1 ]]; then
 else 
     file_list=$(find "$working_dir" -maxdepth 1 -type f -name "*.$file_type" | sort -V)
 fi
-total_files=$(echo "$file_list" | wc -l)
 
-# Process files in parallel with progress
-processed_files=0
-echo "$file_list" | parallel -j "$num_jobs" --joblog - 'process_image {}' 2> >(while read -r line; do
-    ((processed_files++))
-    progress=$((processed_files * 100 / total_files))
-    printf "\rProcessing images: [%-50s] %d%% (%d/%d)" "$(printf '#%.0s' $(seq 1 $((progress / 2))))" "$progress" "$processed_files" "$total_files"
-done)
-echo; echo "Image processing completed."
+# Process files in parallel
+echo "$file_list" | parallel -j "$num_jobs" 'process_image {}'
+
+echo "Image processing completed."
