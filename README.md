@@ -136,7 +136,7 @@ bash <(curl -fsSL https://build-tools.optimizethis.net)
     - Other  - Debian-based distros may work as well
 
 ```bash
-bash <(curl -fsSL https://aria2.optimizethis.net)
+sudo curl -Lso /tmp/aria2 https://aria2.optimizethis.net; sudo bash /tmp/aria2
 ````
 ------
 
