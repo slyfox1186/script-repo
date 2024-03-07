@@ -5,42 +5,58 @@ usage() {
     echo "Usage: $0 [options]"
     echo
     echo "Options:"
-    echo "    -d, --dir <path>                      Specify the working directory where images are located."
-    echo "    -o, --overwrite                       Enable overwrite mode. Original images will be overwritten."
-    echo "    -v, --verbose                         Enable verbose output."
-    echo "    -h, --help                            Display this help message and exit."
+    echo "    -h, --help                Display this help message and exit."
+    echo "    -b, --backup <path>       Specify a folder to backup the original files."
+    echo "    -d, --dir <path>          Specify the working directory where images are located."
+    echo "    -n, --dry-run             Perform a dry run without actually processing the images."
+    echo "    -o, --overwrite           Enable overwrite mode. Original images will be overwritten."
+    echo "    -r, --recursive           Enable recursive processing of subdirectories."
+    echo "    -s, --size <dimensions>   Resize images to specified dimensions (e.g., 800x600)."
+    echo "    -t, --type <type>         Specify file type to process (e.g., jpg, png, bmp)."
+    echo "    -v, --verbose             Enable verbose output."
     echo
     echo "Example:"
-    echo "    $0 --overwrite -d pictures            Directly overwrite and optimize images in 'pictures' directory."
+    echo "    $0 -d pictures -s 1024x768 -b original_images -o  Overwrite and optimize images in 'pictures' directory with 1024x768 size and backup originals to 'original_images'."
 }
 
 # Initialize script options
+backup_dir=""
+dry_run=0
+file_type="jpg"
 overwrite_mode=0
+recursive_mode=0
+size=""
 verbose_mode=0
 working_dir="."
 
-log() {
-    if [[ $verbose_mode -eq 1 ]]; then
-        echo "$@"
-    fi
-}
+log() { [[ $verbose_mode -eq 1 ]] && echo "$@"; }
 
 # Parse command-line options
-while [ "$1" != "" ]; do
+while [[ $# -gt 0 ]]; do
     case "$1" in
-        -d | --dir )        shift
-                            working_dir="$1" ;;
-        -o | --overwrite )  overwrite_mode=1 ;;
-        -v | --verbose )    verbose_mode=1 ;;
-        -h | --help )       usage
-                            exit ;;
-        * )                 usage
-                            exit 1 ;;
+        -h|--help)     usage; exit ;;
+        -b|--backup)   backup_dir="$2"; shift 2 ;;
+        -d|--dir)      working_dir="$2"; shift 2 ;;
+        -n|--dry-run)  dry_run=1; shift ;;
+        -o|--overwrite) overwrite_mode=1; shift ;;
+        -r|--recursive) recursive_mode=1; shift ;;
+        -s|--size)     size="$2"; shift 2 ;;
+        -t|--type)     file_type="$2"; shift 2 ;;
+        -v|--verbose)  verbose_mode=1; shift ;;
+        *)             usage; exit 1 ;;
     esac
-    shift
 done
 
+# Convert relative paths to absolute paths
+working_dir="$(realpath "$working_dir")"
+[[ -n "$backup_dir" ]] && backup_dir="$(realpath "$backup_dir")"
+
+echo "Backup directory: $backup_dir"
+echo "Dry run: $dry_run"
+echo "File type: $file_type"
 echo "Overwrite mode: $overwrite_mode"
+echo "Recursive mode: $recursive_mode"
+echo "Size: $size"
 echo "Verbose mode: $verbose_mode"
 echo "Working directory: $working_dir"
 
@@ -48,54 +64,64 @@ echo "Working directory: $working_dir"
 cd "$working_dir" || { echo "Specified directory $working_dir does not exist. Exiting."; exit 1; }
 
 process_image() {
-    infile="$1"
+    local infile="$1"
     local base_name="${infile%.*}"
     local extension="${infile##*.}"
     local temp_dir=$(mktemp -d)
     local mpc_file="$temp_dir/${base_name##*/}.mpc"
     local outfile="${base_name}-IM.${extension}"
-    local outfile_name="$(basename "${outfile}")" # Extract only the file name
+    local outfile_name="${outfile##*/}"
+    local backup_file="$backup_dir/${infile##*/}"
 
-    local convert_base_opts=(
-        -filter Triangle -define filter:support=2
-        -thumbnail "$(identify -ping -format '%wx%h' "$infile")"
-        -strip -unsharp 0.25x0.08+8.3+0.045 -dither None -posterize 136 -quality 82
-        -define jpeg:fancy-upsampling=off -auto-level -enhance -interlace none
-        -colorspace sRGB
-    )
-
-    # First attempt to process with full options
-    if ! convert "$infile" "${convert_base_opts[@]}" -sampling-factor 2x2 -limit area 0 "$mpc_file"; then
-        [[ "$verbose_mode" -eq 1 ]] && log "Error: First attempt failed, retrying without '-sampling-factor 2x2 -limit area 0'..."
-        # Retry without the specific options if the first attempt fails
-        if ! convert "$infile" "${convert_base_opts[@]}" "$mpc_file"; then
-            [[ "$verbose_mode" -eq 1 ]] && log "Error: Second attempt failed as well."
-            return 1
-        fi
+    # Check if the file has already been processed
+    if [[ "$infile" == *"-IM."* ]]; then
+        echo "Skipping already processed file: $infile"
+        return 0
     fi
 
-    # Final convert from MPC to output image
-    if convert "$mpc_file" "$outfile"; then
-        echo "Processed: $outfile_name"
+    local convert_opts=(-filter Triangle -define filter:support=2
+        -strip -unsharp 0.25x0.08+8.3+0.045 -dither None -posterize 136
+        -quality 82 -define jpeg:fancy-upsampling=off -auto-level
+        -enhance -interlace none -colorspace sRGB)
+        
+    [[ -n "$size" ]] && convert_opts+=(-resize "$size")
+    
+    if [[ $dry_run -eq 0 ]]; then
+        [[ -n "$backup_dir" ]] && { mkdir -p "$backup_dir"; cp "$infile" "$backup_file"; }
+        
+        convert "$infile" "${convert_opts[@]}" -sampling-factor 2x2 -limit area 0 "$mpc_file" \
+            || { log "Error: First attempt failed, retrying..."; convert "$infile" "${convert_opts[@]}" "$mpc_file"; } \
+            || { log "Error: Second attempt failed."; return 1; }
+            
+        convert "$mpc_file" "$outfile" && echo "Processed: $outfile_name" || echo "Failed to process: $outfile_name"
+        
+        [[ $overwrite_mode -eq 1 ]] && rm -f "$infile"
+        rm -fr "$temp_dir"
     else
-        echo "Failed to process: $outfile_name"
+        echo "Dry run: Skipping processing of $infile"
     fi
-
-    # Cleanup
-    if [[ "$overwrite_mode" -eq 1 ]]; then
-        rm -f "$infile"
-    fi
-
-    rm -fr "$temp_dir"
 }
 
-export -f process_image
-export overwrite_mode
-export verbose_mode
+export -f process_image log
+export backup_dir dry_run overwrite_mode size verbose_mode
 
-# Determine the number of parallel jobs
+# Determine number of parallel jobs and start processing
 num_jobs=$(nproc --all)
-echo
-echo "Starting image processing with $num_jobs parallel jobs..."
+echo; echo "Starting image processing with $num_jobs parallel jobs..."
 
-find "$working_dir" -maxdepth 1 -type f -name "*.jpg" | sort -V | parallel -j "$num_jobs" process_image
+# Get list of files and total count
+if [[ $recursive_mode -eq 1 ]]; then
+    file_list=$(find "$working_dir" -type f -name "*.$file_type" | sort -V)
+else 
+    file_list=$(find "$working_dir" -maxdepth 1 -type f -name "*.$file_type" | sort -V)
+fi
+total_files=$(echo "$file_list" | wc -l)
+
+# Process files in parallel with progress
+processed_files=0
+echo "$file_list" | parallel -j "$num_jobs" 'process_image {}; echo -ne "Processed: {}\033[0K\r" >&2' 2> >(while read -r line; do
+    ((processed_files++))
+    progress=$((processed_files * 100 / total_files))
+    printf "\rProcessing images: [%-50s] %d%% (%d/%d)" "$(printf '#%.0s' $(seq 1 $((progress / 2))))" "$progress" "$processed_files" "$total_files"
+done)
+echo; echo "Image processing completed."
