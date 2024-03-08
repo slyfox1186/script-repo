@@ -66,7 +66,9 @@ install_deps() {
     log_msg "Installing dependencies..."
     if command -v apt-get >/dev/null 2>&1; then
         apt-get update
-        apt-get install -y --no-install-recommends autoconf automake binutils bison build-essential ccache curl flex gawk gcc g++ gnat libc6-dev libgmp-dev libmpc-dev libmpfr-dev libtool make patch texinfo zlib1g-dev
+        apt-get install -y --no-install-recommends autoconf automake binutils bison build-essential ccache curl flex \
+                                                   gawk gcc g++ gnat libc6-dev libgmp-dev libmpc-dev libmpfr-dev libtool \
+                                                   make patch texinfo zlib1g-dev
     elif command -v dnf >/dev/null 2>&1; then
         dnf install -y autoconf automake binutils bison ccache curl flex gawk gcc gcc-c++ gmp-devel gnat libtool make mpfr-devel patch texinfo zlib-devel
     elif command -v pacman >/dev/null 2>&1; then
