@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# Required Dependencies: imagemagick
+
 # Color and logging setup
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
