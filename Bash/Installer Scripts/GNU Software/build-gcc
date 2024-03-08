@@ -221,11 +221,8 @@ main() {
 
     set_env_vars
     install_deps
-
     select_versions
-
     create_symlinks
-
     cleanup
 
     log_msg "Build completed successfully!"
