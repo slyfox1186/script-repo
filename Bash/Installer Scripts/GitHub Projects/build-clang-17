@@ -314,6 +314,7 @@ cleanup_build_files() {
     echo
     echo "[1] Yes"
     echo "[2] No"
+    echo
     read -p "Your choices are (1 or 2): " choice
 
     case "$choice" in
