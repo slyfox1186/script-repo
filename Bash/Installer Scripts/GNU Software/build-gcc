@@ -52,7 +52,7 @@ fail_fn() {
 
 set_env_vars() {
     log_msg "Setting environment variables..."
-    export CC="ccache gcc"
+    export CC="ccache gnatgcc"
     export CXX="ccache g++"
     export CFLAGS="-O3 -pipe -fno-plt -march=native"
     export CXXFLAGS="-O3 -pipe -fno-plt -march=native"
