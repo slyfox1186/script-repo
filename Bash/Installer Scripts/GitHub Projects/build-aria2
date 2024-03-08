@@ -4,13 +4,16 @@ set -euo pipefail
 
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-aria2
 ##  Purpose: Build aria2 from source code
-##  Updated: 01.30.24
-##  Script version: 1.9
+##  Updated: 03.07.24
+##  Script version: 2.0
 ##  Features:
 ##            - Static build
 ##            - OpenSSL backend
 ##            - Increased the max connections from 16 to 128
 ##  Added:
+##         - Display a menu by passing -h or --help as arguments to the script
+##         - Build a service by passing an argument to the script
+##         - Builds everything in temporary directories in the /tmp folder and removes them when done
 ##         - Updated Aria2 to the latest version - 1.37.0
 ##         - If OpenSSL is manually installed using the build-openssl script then use its certs directory instead of the default.
 ##         - Build jemalloc from the latest source code
@@ -19,7 +22,7 @@ set -euo pipefail
 
 [[ $EUID -ne 0 ]] && { echo "This script must be run as root or with sudo."; exit 1; }
 
-script_ver="1.9"
+script_ver="2.0"
 echo "GitHub Script for building aria2 from source. Version: $script_ver"
 
 GREEN='\033[0;32m'
