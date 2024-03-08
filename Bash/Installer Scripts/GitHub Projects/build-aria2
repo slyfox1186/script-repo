@@ -35,7 +35,6 @@ display_help() {
     echo
     echo "Options:"
     echo "  -s, --service     Create aria2 service"
-    echo "  -w, --webui       Install webui-aria2"
     echo "  -h, --help        Display this help message and exit"
     echo
     exit 0
@@ -144,15 +143,6 @@ EOT
     echo
 }
 
-install_webui_aria2() {
-    local webui_aria2_dir="/var/www/html/webui-aria2"
-    log "Installing webui-aria2..."
-    sudo git clone https://github.com/ziahamza/webui-aria2.git "$webui_aria2_dir"
-    sudo chown -R www-data:www-data "$webui_aria2_dir"
-    log "webui-aria2 installed."
-    echo
-}
-
 cleanup() {
     log "Cleaning up..."
     rm -fr "$build_dir" "$temp_dir"
@@ -172,9 +162,6 @@ main() {
         case $arg in
             -s|--service)
                 create_aria2_service
-                ;;
-            -w|--webui)
-                install_webui_aria2
                 ;;
             *)
                 ;;
