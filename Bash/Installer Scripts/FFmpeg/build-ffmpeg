@@ -1499,11 +1499,9 @@ set_java_variables
 case "$OS" in
     Arch) iscuda=$(find /opt/cuda* -type f -name nvcc 2>/dev/null)
           cuda_path=$(find /opt/cuda* -type f -name nvcc 2>/dev/null | grep -Eo '^.*/bin?')
-          cuda_include_path=$(find /opt/cuda* -type f -name nvcc 2>/dev/null | sort -rV | head -n1 | grep -Eo '^.*/bin?' | sed 's/bin/include/')
           ;;
     *)    iscuda=$(find /usr/local/cuda* -type f -name nvcc 2>/dev/null | sort -rV | head -n1)
           cuda_path=$(find /usr/local/cuda* -type f -name nvcc 2>/dev/null | sort -rV | head -n1 | grep -Eo '^.*/bin?')
-          cuda_include_path=$(find /usr/local/cuda* -type f -name nvcc 2>/dev/null | sort -rV | head -n1 | grep -Eo '^.*/bin?' | sed 's/bin/include/')
           ;;
 esac
 
