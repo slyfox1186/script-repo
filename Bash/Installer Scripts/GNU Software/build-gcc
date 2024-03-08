@@ -135,14 +135,14 @@ build_gcc() {
 
 create_symlinks() {
     log_msg "Creating symlinks..."
-    local SYSTEM_ARCH=$(curl -sS 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD' | bash)
+    local TARGET=$(curl -sS 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD' | bash)
     
     # Define the array of files for which symlinks are to be created
     declare -a files=("c++" "gcc" "gcc-ar" "gcc-nm" "gcc-ranlib" "gfortran" "g++")
 
     # Iterate over each file in the array
     for file in "${files[@]}"; do
-        source_file="$install_prefix/gcc-$latest_version/bin/$SYSTEM_ARCH-$file"
+        source_file="$install_prefix/gcc-$latest_version/bin/$TARGET-$file"
         # Check if source file exists before creating a symlink
         if [[ -f "$source_file" ]]; then
             # Create a symbolic link in /usr/local/bin/ with the desired name
