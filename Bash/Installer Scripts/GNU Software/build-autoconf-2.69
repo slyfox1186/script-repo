@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build GNU Autoconf - v1.1 - 08.04.23
-# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf-2.69
 
 set -euo pipefail
 trap 'fail_fn "Error occurred on line ${LINENO}"' ERR
