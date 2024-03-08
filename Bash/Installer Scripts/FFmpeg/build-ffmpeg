@@ -2681,6 +2681,7 @@ if build "mediainfo-cli" "$repo_version"; then
     execute ./configure --prefix="$workspace" --enable-staticlibs --disable-shared
     execute make "-j$cpu_threads"
     execute make install
+    execute cp -f "$packages/mediainfo-cli-$repo_version/Project/GNU/CLI/mediainfo" /usr/local/bin/
     build_done "mediainfo-cli" "$repo_version"
 fi
 
