@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Build GNU Autoconf - v2.0 - 12.28.23
+# Build GNU Autoconf - v1.1 - 03.08.24
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf
 
 set -euo pipefail
 trap 'fail_fn "Error occurred on line ${LINENO}"' ERR
 
-version=2.0
+version=1.1
 program_name=autoconf
 archive_url=https://ftp.gnu.org/gnu/autoconf/"$program_name"-latest.tar.xz
 install_prefix=/usr/local
