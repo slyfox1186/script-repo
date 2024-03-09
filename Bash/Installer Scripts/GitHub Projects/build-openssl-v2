@@ -3,24 +3,24 @@
 usage() {
     echo "Usage: $0 [OPTIONS]"
     echo "Options:"
-    echo "  -v, --version <version>    Specify the OpenSSL version to install (default: latest 3.2.x)"
-    echo "  -p, --prefix <path>        Set the installation prefix (default: /usr/local/ssl)"
+    echo "  -6, --enable-ipv6          Enable IPv6 support (default: disabled)"
+    echo "  -h, --help                 Display this help message and exit"
     echo "  -j, --jobs <n>             Set the number of parallel jobs for compilation (default: number of CPU cores)"
     echo "  -k, --keep-build           Keep the build directory after installation"
-    echo "  -h, --help                 Display this help message and exit"
+    echo "  -p, --prefix <path>        Set the installation prefix (default: /usr/local/ssl)"
+    echo "  -v, --version <version>    Specify the OpenSSL version to install (default: latest 3.2.x)"
     exit 0
 }
 
 parse_arguments() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            -v|--version)
-                openssl_version="$2"
-                shift 2
+            -6|--enable-ipv6)
+                enable_ipv6=true
+                shift
                 ;;
-            -p|--prefix)
-                install_dir="$2"
-                shift 2
+            -h|--help)
+                usage
                 ;;
             -j|--jobs)
                 jobs="$2"
@@ -30,8 +30,13 @@ parse_arguments() {
                 keep_build=true
                 shift
                 ;;
-            -h|--help)
-                usage
+            -p|--prefix)
+                install_dir="$2"
+                shift 2
+                ;;
+            -v|--version)
+                openssl_version="$2"
+                shift 2
                 ;;
             *)
                 echo "Unknown option: $1"
@@ -74,32 +79,23 @@ install_required_packages() {
 }
 
 set_compiler_flags() {
-    export CC="clang" CXX="clang++"
-    local march
-    march=$(curl -sSL "https://get-gcc.optimizethis.net" | bash | tail -n1)
+    local -a include_dirs=("/usr/local/include" "/usr/local/include/x86_64-linux-gnu" "/usr/include/x86_64-linux-gnu" "/usr/include")
+    local -a lib_dirs=("/usr/local/lib64" "/usr/local/lib" "/usr/lib64" "/usr/lib")
 
-    if [[ -n "$march" ]]; then
-        echo "GCC architecture script sourced"
-        echo "Retrieved architecture: $march"
-    else
-        fail "Failed to source the script or retrieve the architecture."
-    fi
-
-    local -a include_dirs=("/usr/local/include" "/usr/include/x86_64-linux-gnu" "/usr/include")
-    local -a lib_dirs=("/usr/local/lib64" "/usr/local/lib" "/usr/lib64" "/usr/lib" "/lib64" "/lib")
-
-    local common_flags="-g -O3 -pipe -march=$march"
+    local common_flags="-g -O3 -pipe -march=native -fstack-protector-strong -D_FORTIFY_SOURCE=2"
     local include_flags="${include_dirs[@]/#/-I}"
     local lib_flags="${lib_dirs[@]/#/-L}"
 
+    export CC=clang
+    export CXX=clang++
     export CFLAGS="$common_flags"
     export CXXFLAGS="$CFLAGS"
     export CPPFLAGS="$include_flags"
-    export LDFLAGS="$lib_flags"
+    export LDFLAGS="$lib_flags -Wl,-z,relro,-z,now"
 }
 
 update_shared_library_cache() {
-    ldconfig "$install_dir/lib64"
+    ldconfig
 }
 
 add_openssl_to_path() {
@@ -130,7 +126,7 @@ download_openssl() {
     while [[ ! -f "$tar_file" && $retry_count -lt $max_retries ]]; do
         echo "Downloading OpenSSL $openssl_version... (Attempt $((retry_count + 1))/$max_retries)"
         echo
-        if wget --show-progress -q -O "$tar_file" "$openssl_url"; then
+        if wget --show-progress -cqO "$tar_file" "$openssl_url"; then
             echo
             break
         else
@@ -192,7 +188,7 @@ configure_openssl() {
     echo "Configuring OpenSSL..."
     local config_options=(
         linux-x86_64-clang
-        -DOPENSSL_USE_IPV6=0
+        -DOPENSSL_USE_IPV6=$([[ "$enable_ipv6" == true ]] && echo 1 || echo 0)
         -Wl,-rpath="$install_dir/lib64"
         -Wl,--enable-new-dtags
         --prefix="$install_dir"
@@ -211,7 +207,12 @@ configure_openssl() {
         enable-shared
         enable-threads
         enable-zlib
+        no-async
+        no-comp
+        no-dso
+        no-engine
         no-tests
+        no-weak-ssl-ciphers
     )
 
     if [[ "$openssl_version" =~ ^3\.2\. ]]; then
@@ -240,9 +241,18 @@ build_and_install_openssl() {
     openssl fipsinstall
 }
 
+post_installation_tasks() {
+    echo "Performing post-installation tasks..."
+    # Add any additional post-installation tasks here
+    # For example, generating OpenSSL certificates, setting up symlinks, etc.
+    echo "Post-installation tasks completed."
+    echo
+}
+
 main() {
     local cwd="/tmp/openssl-build"
     local install_dir="/usr/local/ssl"
+    local enable_ipv6=false
     local openssl_version
     local tar_file="$cwd/openssl.tar.gz"
     local src_dir
@@ -286,6 +296,7 @@ main() {
         add_openssl_to_path
         update_shared_library_cache
         create_pkgconfig_softlinks
+        post_installation_tasks
     else
         fail "OpenSSL source directory $src_dir does not exist. Line: $LINENO"
         exit 1
