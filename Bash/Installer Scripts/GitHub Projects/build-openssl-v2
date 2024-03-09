@@ -41,7 +41,7 @@ parse_arguments() {
     done
 }
 
-fail_fn() {
+fail() {
     printf "\n%s\nPlease report errors at: https://github.com/slyfox1186/script-repo/issues\n\n" "$1" >&2
     exit 1
 }
@@ -82,7 +82,7 @@ set_compiler_flags() {
         echo "GCC architecture script sourced"
         echo "Retrieved architecture: $march"
     else
-        fail_fn "Failed to source the script or retrieve the architecture."
+        fail "Failed to source the script or retrieve the architecture."
     fi
 
     local -a include_dirs=("/usr/local/include" "/usr/include/x86_64-linux-gnu" "/usr/include")
@@ -142,7 +142,7 @@ download_openssl() {
     done
 
     if [[ $retry_count -eq $max_retries ]]; then
-        fail_fn "Failed to download the tar file after $max_retries attempts. Line: $LINENO"
+        fail "Failed to download the tar file after $max_retries attempts. Line: $LINENO"
     fi
 }
 
@@ -225,17 +225,17 @@ configure_openssl() {
         echo "OpenSSL configuration completed successfully."
         echo
     else
-        fail_fn "OpenSSL configuration failed. Line: $LINENO"
+        fail "OpenSSL configuration failed. Line: $LINENO"
         exit 1
     fi
 }
 
 build_and_install_openssl() {
     echo "Compiling OpenSSL..."
-    make "-j${jobs:-$(nproc --all)}" || fail_fn "Failed to execute: make -j${jobs:-$(nproc --all)}. Line: $LINENO"
+    make "-j${jobs:-$(nproc --all)}" || fail "Failed to execute: make -j${jobs:-$(nproc --all)}. Line: $LINENO"
     echo
     echo "Installing OpenSSL..."
-    make install_sw install_fips || fail_fn "Failed to execute: make install_sw install_fips. Line: $LINENO"
+    make install_sw install_fips || fail "Failed to execute: make install_sw install_fips. Line: $LINENO"
     echo
     openssl fipsinstall
 }
@@ -259,7 +259,7 @@ main() {
     if [[ -z "$openssl_version" ]]; then
         openssl_version=$(curl -s https://www.openssl.org/source/ | grep -Po 'openssl-3\.2\.\d+' | head -n 1)
         if [[ -z "$openssl_version" ]]; then
-            fail_fn "Failed to detect the latest OpenSSL 3.2.x version. Line: $LINENO"
+            fail "Failed to detect the latest OpenSSL 3.2.x version. Line: $LINENO"
             exit 1
         fi
         openssl_version=${openssl_version#openssl-}  # Remove the "openssl-" prefix
@@ -278,7 +278,7 @@ main() {
 
     if [[ -d "$src_dir" ]]; then
         cd "$src_dir" || {
-            fail_fn "Failed to change directory to $src_dir. Line: $LINENO"
+            fail "Failed to change directory to $src_dir. Line: $LINENO"
             exit 1
         }
         configure_openssl
@@ -287,7 +287,7 @@ main() {
         update_shared_library_cache
         create_pkgconfig_softlinks
     else
-        fail_fn "OpenSSL source directory $src_dir does not exist. Line: $LINENO"
+        fail "OpenSSL source directory $src_dir does not exist. Line: $LINENO"
         exit 1
     fi
 
