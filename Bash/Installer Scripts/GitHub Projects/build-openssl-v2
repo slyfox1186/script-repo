@@ -190,7 +190,7 @@ main() {
 
     parse_arguments "$@"
 
-    openssl_version=${openssl_version:-$(curl -s https://www.openssl.org/source/ | grep -oE 'openssl-3\.2\.[0-9]+' | head -n 1)}
+    openssl_version=${openssl_version:-$(curl -s https://www.openssl.org/source/ | grep -Po 'openssl-3\.2\.\d+' | head -n1)}
     install_dir=${install_dir:-/usr/local/ssl}
     src_dir="$cwd/$openssl_version"
 
