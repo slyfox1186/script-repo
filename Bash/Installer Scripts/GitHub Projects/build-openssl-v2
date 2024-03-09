@@ -1,27 +1,53 @@
 #!/usr/bin/env bash
-#shellcheck disable=SC2155
 
-if [[ "$EUID" -ne 0 ]]; then
-    printf "%s\n\n" "You must run this script as root/sudo."
-    exit 1
-fi
+usage() {
+    echo "Usage: $0 [OPTIONS]"
+    echo "Options:"
+    echo "  -v, --version <version>    Specify the OpenSSL version to install (default: latest 3.2.x)"
+    echo "  -p, --prefix <path>        Set the installation prefix (default: /usr/local/ssl)"
+    echo "  -j, --jobs <n>             Set the number of parallel jobs for compilation (default: number of CPU cores)"
+    echo "  -k, --keep-build           Keep the build directory after installation"
+    echo "  -h, --help                 Display this help message and exit"
+    exit 0
+}
 
-# Define OpenSSL version and download URL
-openssl_version="$(curl -s https://www.openssl.org/source/ | grep -o 'openssl-3\.2\.[0-9]' | head -n 1)"
-openssl_url="https://www.openssl.org/source/$openssl_version.tar.gz"
-tar_file="$cwd/$openssl_version.tar.gz"
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -v|--version)
+                openssl_version="$2"
+                shift 2
+                ;;
+            -p|--prefix)
+                install_dir="$2"
+                shift 2
+                ;;
+            -j|--jobs)
+                jobs="$2"
+                shift 2
+                ;;
+            -k|--keep-build)
+                keep_build=true
+                shift
+                ;;
+            -h|--help)
+                usage
+                ;;
+            *)
+                echo "Unknown option: $1"
+                usage
+                ;;
+        esac
+    done
+}
 
 fail_fn() {
-    echo
-    echo "$1"
-    echo "Please report errors at: https://github.com/slyfox1186/script-repo/issues"
-    echo
+    printf "\n%s\nPlease report errors at: https://github.com/slyfox1186/script-repo/issues\n\n" "$1" >&2
     exit 1
 }
 
-# Function to install required packages
 install_required_packages() {
-    local pkgs=(
+    local -a pkgs=(
         autoconf autogen automake build-essential ca-certificates ccache
         checkinstall clang curl libc-ares-dev libcurl4-openssl-dev
         libdmalloc-dev libgcrypt20-dev libgmp-dev libgpg-error-dev
@@ -30,183 +56,161 @@ install_required_packages() {
         zlib1g-dev
     )
 
-    # Initialize arrays for missing, available, and unavailable packages
-    missing_packages=()
-    available_packages=()
-    unavailable_packages=()
-
-    # Loop through the array to find missing packages
-    for pkg in "${pkgs[@]}"
-    do
+    local -a missing_packages=()
+    for pkg in "${pkgs[@]}"; do
         if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             missing_packages+=("$pkg")
         fi
     done
 
-    # Check availability of missing packages and categorize them
-    for pkg in "${missing_packages[@]}"
-    do
-        if apt-cache show "$pkg" > /dev/null 2>&1; then
-            available_packages+=("$pkg")
-        else
-            unavailable_packages+=("$pkg")
-        fi
-    done
-
-    # Print unavailable packages
-    if [[ "${#unavailable_packages[@]}" -gt 0 ]]; then
-        echo "Unavailable packages: ${unavailable_packages[*]}"
-    fi
-
-    # Install available missing packages
-    if [[ "${#available_packages[@]}" -gt 0 ]]; then
-        echo "Installing available missing packages: ${available_packages[*]}"
-        sudo apt install "${available_packages[@]}"
+    if [[ "${#missing_packages[@]}" -gt 0 ]]; then
+        echo "Installing missing packages: ${missing_packages[*]}"
+        apt install -y "${missing_packages[@]}"
     else
-        printf "%s\n\n" "No missing packages to install or all missing packages are unavailable."
+        echo "No missing packages to install."
     fi
 }
 
 set_compiler_flags() {
     export CC="clang" CXX="clang++"
-    # Download the script and capture only the last line of the output
-    local march=$(curl -sSL "https://get-gcc.optimizethis.net" | bash | tail -n1)
+    local march
+    march=$(curl -sSL "https://get-gcc.optimizethis.net" | bash | tail -n1)
 
-    # Check if arch has a value
-    if [ -n "$march" ]; then
-        printf "\n%s\n%s\n" "GCC architechure script sourced" "=========================================="
+    if [[ -n "$march" ]]; then
+        echo "GCC architecture script sourced"
         echo "Retrieved architecture: $march"
     else
-        echo "Failed to source the script or retrieve the architecture."
-        exit 1
+        fail_fn "Failed to source the script or retrieve the architecture."
     fi
 
-    # Define directories
-    local include_dirs=("/usr/local/include" "/usr/include/x86_64-linux-gnu" "/usr/include")
+    local -a include_dirs=("/usr/local/include" "/usr/include/x86_64-linux-gnu" "/usr/include")
+    local -a lib_dirs=("/usr/local/lib64" "/usr/local/lib" "/usr/lib64" "/usr/lib" "/lib64" "/lib")
 
-    local lib_dirs=("/usr/local/lib64" "/usr/local/lib" "/usr/lib64" "/usr/lib" "/lib64" "/lib")
-
-    # Set compiler optimization flags
-    generate_flags() {
-        local flag_type="$1"
-        shift
-        printf " $flag_type%s" "$@"
-    }
-
-    # Generate flags
     local common_flags="-g -O3 -pipe -march=$march"
-    local include_flags="$(generate_flags -I "${include_dirs[@]}")"
-    local lib_flags="$(generate_flags -L "${lib_dirs[@]}")"
+    local include_flags="${include_dirs[@]/#/-I}"
+    local lib_flags="${lib_dirs[@]/#/-L}"
 
-    # Declare and set compiler flag variables
-    CFLAGS="$common_flags"
-    CXXFLAGS="$CFLAGS"
-    CPPFLAGS="$include_flags"
-    LDFLAGS="$lib_flags"
-
-    # Export the flags
-    export CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
+    export CFLAGS="$common_flags"
+    export CXXFLAGS="$CFLAGS"
+    export CPPFLAGS="$include_flags"
+    export LDFLAGS="$lib_flags"
 }
 
-# Function to update the shared library cache
 update_shared_library_cache() {
-    echo "Updating shared library cache..."
     ldconfig "$install_dir/lib64"
 }
 
-# Create a soft link to a directory that should be in PATH
 add_openssl_to_path() {
-    echo "Adding OpenSSL to PATH..."
-    [[ -f "/usr/local/bin/openssl" ]] && rm "/usr/local/bin/openssl"
-    ln -sf "$install_dir/bin/openssl" "/usr/local/bin"
+    local openssl_bin="/usr/local/bin/openssl"
+    if [[ -L "$openssl_bin" ]]; then
+        rm "$openssl_bin"
+    fi
+    ln -sf "$install_dir/bin/openssl" "$openssl_bin"
 }
 
-# Function to download OpenSSL
+create_pkgconfig_softlinks() {
+    local pkgconfig_dir="/usr/local/lib/pkgconfig"
+    local openssl_pkgconfig_dir="$install_dir/lib64/pkgconfig"
+
+    mkdir -p "$pkgconfig_dir"
+
+    for pc_file in "$openssl_pkgconfig_dir"/*.pc; do
+        local pc_filename=$(basename "$pc_file")
+        ln -sf "$pc_file" "$pkgconfig_dir/$pc_filename"
+    done
+}
+
 download_openssl() {
-    echo "Downloading OpenSSL..."
-    wget --show-progress -t 2 -cqO "$tar_file" "$openssl_url" || fail_fn "Failed to download the tar file. Line: $LINENO"
+    local openssl_url="https://www.openssl.org/source/$openssl_version.tar.gz"
+    if [[ ! -f "$tar_file" ]]; then
+        echo "Downloading OpenSSL $openssl_version..."
+        wget --show-progress -q -O "$tar_file" "$openssl_url" || fail_fn "Failed to download the tar file. Line: $LINENO"
+    else
+        echo "OpenSSL $openssl_version archive already exists, skipping download."
+    fi
 }
 
-# Function to extract the tarball
 extract_openssl() {
-    echo "Extracting OpenSSL..."
-    tar -xzf "$tar_file" -C "$cwd" --strip-components 1 || fail_fn "Failed to extract the tar file. Line: $LINENO"
+    if [[ -d "$src_dir" ]]; then
+        echo "OpenSSL $openssl_version source directory already exists, skipping extraction."
+    else
+        echo "Extracting OpenSSL $openssl_version..."
+        tar -xzf "$tar_file" -C "$cwd" || fail_fn "Failed to extract the tar file. Line: $LINENO"
+    fi
 }
 
-# Function to configure OpenSSL
 configure_openssl() {
     echo "Configuring OpenSSL..."
-    ../Configure linux-x86_64-clang \
-                 -DOPENSSL_USE_IPV6=0 \
-                 -Wl,-rpath="$install_dir/lib64" \
-                 -Wl,--enable-new-dtags \
-                 --prefix="$install_dir" \
-                 --openssldir="$install_dir" \
-                 --release \
-                 --with-zlib-include="/usr/include" \
-                 --with-zlib-lib="/usr/lib/x86_64-linux-gnu" \
-                 enable-brotli \
-                 enable-buildtest-c++ \
-                 enable-external-tests \
-                 enable-ec_nistp_64_gcc_128 \
-                 enable-egd \
-                 enable-fips \
-                 enable-pic \
-                 enable-rc5 \
-                 enable-sctp \
-                 enable-shared \
-                 enable-threads \
-                 enable-zlib \
-                 enable-zstd \
-                 no-tests
+    "$src_dir/Configure" linux-x86_64-clang \
+                         -DOPENSSL_USE_IPV6=0 \
+                         -Wl,-rpath="$install_dir/lib64" \
+                         -Wl,--enable-new-dtags \
+                         --prefix="$install_dir" \
+                         --openssldir="$install_dir" \
+                         --release \
+                         --with-zlib-include="/usr/include" \
+                         --with-zlib-lib="/usr/lib/x86_64-linux-gnu" \
+                         enable-brotli \
+                         enable-buildtest-c++ \
+                         enable-external-tests \
+                         enable-ec_nistp_64_gcc_128 \
+                         enable-egd \
+                         enable-fips \
+                         enable-pic \
+                         enable-rc5 \
+                         enable-sctp \
+                         enable-shared \
+                         enable-threads \
+                         enable-zlib \
+                         enable-zstd \
+                         no-tests
 }
 
-# Function to compile and install OpenSSL
 build_and_install_openssl() {
-    echo "Compiling and Installing OpenSSL..."
-    make "-j$(nproc --all)" || fail_fn "Failed to execute: make -j$(nproc --all). Line: $LINENO"
+    echo "Compiling OpenSSL..."
+    make -j"${jobs:-$(nproc --all)}" || fail_fn "Failed to execute: make -j${jobs:-$(nproc --all)}. Line: $LINENO"
     echo "Installing OpenSSL..."
     make install_sw install_fips || fail_fn "Failed to execute: make install_sw install_fips. Line: $LINENO"
     openssl fipsinstall
 }
 
-# Main script starts here
+main() {
+    local cwd="/tmp/openssl-build"
+    local install_dir="/usr/local/ssl"
+    local openssl_version
+    local tar_file="$cwd/openssl.tar.gz"
+    local src_dir
+    local jobs
+    local keep_build=false
 
-# Define global variables
-cwd="$PWD/openssl-build-script"
-install_dir="/usr/local/ssl"
+    if [[ "$EUID" -ne 0 ]]; then
+        printf "%s\n\n" "You must run this script as root/sudo."
+        exit 1
+    fi
 
-# Set compiler and optimization flags
-set_compiler_flags
+    parse_arguments "$@"
 
-# Create the output directory
-mkdir -p "$cwd/build"
+    openssl_version=${openssl_version:-$(curl -s https://www.openssl.org/source/ | grep -oE 'openssl-3\.2\.[0-9]+' | head -n 1)}
+    install_dir=${install_dir:-/usr/local/ssl}
+    src_dir="$cwd/$openssl_version"
 
-# Install required packages
-install_required_packages
+    set_compiler_flags
+    mkdir -p "$cwd"
+    install_required_packages
+    download_openssl
+    extract_openssl
+    cd "$src_dir" || exit 1
+    configure_openssl
+    build_and_install_openssl
+    add_openssl_to_path
+    update_shared_library_cache
+    create_pkgconfig_softlinks
 
-# Download OpenSSL
-download_openssl
+    if [[ $keep_build == false ]]; then
+        rm -fr "$cwd"
+    fi
 
-# Extract the tarball
-extract_openssl
+    echo -e "\nOpenSSL installation completed."
+}
 
-# Change to the extracted directory
-cd "$cwd/build" || exit 1
-
-# Configure OpenSSL
-configure_openssl
-
-# Compile and install OpenSSL
-build_and_install_openssl
-
-# Add OpenSSL to PATH
-add_openssl_to_path
-
-# Update the shared library cache
-update_shared_library_cache
-
-# Remove leftover files
-[[ -d "$cwd" ]] && rm -fr "$cwd"
-
-echo -e "\nOpenSSL installation completed."
+main "$@"
