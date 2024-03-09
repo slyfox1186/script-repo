@@ -66,8 +66,10 @@ install_required_packages() {
     if [[ "${#missing_packages[@]}" -gt 0 ]]; then
         echo "Installing missing packages: ${missing_packages[*]}"
         apt install -y "${missing_packages[@]}"
+        echo
     else
         echo "No missing packages to install."
+        echo
     fi
 }
 
@@ -84,7 +86,7 @@ set_compiler_flags() {
     fi
 
     local -a include_dirs=("/usr/local/include" "/usr/include/x86_64-linux-gnu" "/usr/include")
-    local -a lib_dirs=("/usr/local/lib64" "/usr/local/lib" "/usr/lib64" "/usr/lib")
+    local -a lib_dirs=("/usr/local/lib64" "/usr/local/lib" "/usr/lib64" "/usr/lib" "/lib64" "/lib")
 
     local common_flags="-g -O3 -pipe -march=$march"
     local include_flags="${include_dirs[@]/#/-I}"
@@ -121,56 +123,120 @@ create_pkgconfig_softlinks() {
 }
 
 download_openssl() {
-    local openssl_url="https://www.openssl.org/source/$openssl_version.tar.gz"
-    if [[ ! -f "$tar_file" ]]; then
-        echo "Downloading OpenSSL $openssl_version..."
-        wget --show-progress -q -O "$tar_file" "$openssl_url" || fail_fn "Failed to download the tar file. Line: $LINENO"
-    else
-        echo "OpenSSL $openssl_version archive already exists, skipping download."
+    local openssl_url="https://www.openssl.org/source/openssl-$openssl_version.tar.gz"
+    local max_retries=3
+    local retry_count=0
+
+    while [[ ! -f "$tar_file" && $retry_count -lt $max_retries ]]; do
+        echo "Downloading OpenSSL $openssl_version... (Attempt $((retry_count + 1))/$max_retries)"
+        echo
+        if wget --show-progress -q -O "$tar_file" "$openssl_url"; then
+            echo
+            break
+        else
+            echo "Download failed. Retrying in 5 seconds..."
+            echo
+            sleep 5
+            ((retry_count++))
+        fi
+    done
+
+    if [[ $retry_count -eq $max_retries ]]; then
+        fail_fn "Failed to download the tar file after $max_retries attempts. Line: $LINENO"
     fi
 }
 
 extract_openssl() {
     if [[ -d "$src_dir" ]]; then
+        echo
         echo "OpenSSL $openssl_version source directory already exists, skipping extraction."
+        echo
     else
-        echo "Extracting OpenSSL $openssl_version..."
-        tar -xzf "$tar_file" -C "$cwd" || fail_fn "Failed to extract the tar file. Line: $LINENO"
+        if [[ -f "$tar_file" ]]; then
+            echo "Verifying OpenSSL $openssl_version archive integrity..."
+            if gzip -t "$tar_file"; then
+                echo "Extracting OpenSSL $openssl_version..."
+                if tar -xzf "$tar_file" -C "$cwd"; then
+                    echo "Extraction completed successfully."
+                    echo
+                    local extracted_dir=$(basename "$(tar -tzf "$tar_file" | head -1 | cut -f1 -d"/")")
+                    if [[ "$extracted_dir" != "$openssl_version" ]]; then
+                        echo "Renaming extracted directory from $extracted_dir to $openssl_version..."
+                        mv "$cwd/$extracted_dir" "$src_dir"
+                        echo
+                    fi
+                else
+                    echo "Extraction failed. Removing the corrupted archive and retrying..."
+                    echo
+                    rm "$tar_file"
+                    download_openssl
+                    extract_openssl
+                fi
+            else
+                echo "OpenSSL $openssl_version archive is corrupted. Removing the archive and retrying..."
+                echo
+                rm "$tar_file"
+                download_openssl
+                extract_openssl
+            fi
+        else
+            echo "OpenSSL $openssl_version archive does not exist. Downloading..."
+            echo
+            download_openssl
+            extract_openssl
+        fi
     fi
 }
 
 configure_openssl() {
     echo "Configuring OpenSSL..."
-    "$src_dir/Configure" linux-x86_64-clang \
-                         -DOPENSSL_USE_IPV6=0 \
-                         -Wl,-rpath="$install_dir/lib64" \
-                         -Wl,--enable-new-dtags \
-                         --prefix="$install_dir" \
-                         --openssldir="$install_dir" \
-                         --release \
-                         --with-zlib-include="/usr/include" \
-                         --with-zlib-lib="/usr/lib/x86_64-linux-gnu" \
-                         enable-brotli \
-                         enable-buildtest-c++ \
-                         enable-external-tests \
-                         enable-ec_nistp_64_gcc_128 \
-                         enable-egd \
-                         enable-fips \
-                         enable-pic \
-                         enable-rc5 \
-                         enable-sctp \
-                         enable-shared \
-                         enable-threads \
-                         enable-zlib \
-                         enable-zstd \
-                         no-tests
+    local config_options=(
+        linux-x86_64-clang
+        -DOPENSSL_USE_IPV6=0
+        -Wl,-rpath="$install_dir/lib64"
+        -Wl,--enable-new-dtags
+        --prefix="$install_dir"
+        --openssldir="$install_dir"
+        --release
+        --with-zlib-include="/usr/include"
+        --with-zlib-lib="/usr/lib/x86_64-linux-gnu"
+        enable-buildtest-c++
+        enable-external-tests
+        enable-ec_nistp_64_gcc_128
+        enable-egd
+        enable-fips
+        enable-pic
+        enable-rc5
+        enable-sctp
+        enable-shared
+        enable-threads
+        enable-zlib
+        no-tests
+    )
+
+    if [[ "$openssl_version" =~ ^3\.2\. ]]; then
+        config_options+=(
+            enable-brotli
+            enable-zstd
+        )
+    fi
+
+    if "$src_dir/Configure" "${config_options[@]}"; then
+        echo "OpenSSL configuration completed successfully."
+        echo
+    else
+        fail_fn "OpenSSL configuration failed. Line: $LINENO"
+        exit 1
+    fi
 }
 
 build_and_install_openssl() {
     echo "Compiling OpenSSL..."
-    make -j"${jobs:-$(nproc --all)}" || fail_fn "Failed to execute: make -j${jobs:-$(nproc --all)}. Line: $LINENO"
+    make "-j${jobs:-$(nproc --all)}" || fail_fn "Failed to execute: make -j${jobs:-$(nproc --all)}. Line: $LINENO"
+    echo
     echo "Installing OpenSSL..."
     make install_sw install_fips || fail_fn "Failed to execute: make install_sw install_fips. Line: $LINENO"
+    echo
     openssl fipsinstall
 }
 
@@ -190,21 +256,40 @@ main() {
 
     parse_arguments "$@"
 
-    openssl_version=${openssl_version:-$(curl -s https://www.openssl.org/source/ | grep -Po 'openssl-3\.2\.\d+' | head -n1)}
+    if [[ -z "$openssl_version" ]]; then
+        openssl_version=$(curl -s https://www.openssl.org/source/ | grep -Po 'openssl-3\.2\.\d+' | head -n 1)
+        if [[ -z "$openssl_version" ]]; then
+            fail_fn "Failed to detect the latest OpenSSL 3.2.x version. Line: $LINENO"
+            exit 1
+        fi
+        openssl_version=${openssl_version#openssl-}  # Remove the "openssl-" prefix
+    fi
+
     install_dir=${install_dir:-/usr/local/ssl}
     src_dir="$cwd/$openssl_version"
 
+    echo
     set_compiler_flags
     mkdir -p "$cwd"
     install_required_packages
+    echo "Targeting OpenSSL version $openssl_version"
     download_openssl
     extract_openssl
-    cd "$src_dir" || exit 1
-    configure_openssl
-    build_and_install_openssl
-    add_openssl_to_path
-    update_shared_library_cache
-    create_pkgconfig_softlinks
+
+    if [[ -d "$src_dir" ]]; then
+        cd "$src_dir" || {
+            fail_fn "Failed to change directory to $src_dir. Line: $LINENO"
+            exit 1
+        }
+        configure_openssl
+        build_and_install_openssl
+        add_openssl_to_path
+        update_shared_library_cache
+        create_pkgconfig_softlinks
+    else
+        fail_fn "OpenSSL source directory $src_dir does not exist. Line: $LINENO"
+        exit 1
+    fi
 
     if [[ $keep_build == false ]]; then
         rm -fr "$cwd"
