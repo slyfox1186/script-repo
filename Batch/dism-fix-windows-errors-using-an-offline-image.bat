@@ -143,7 +143,6 @@ GOTO CONVERT_IMG
 :------------------------------------------------------------------------------------------------------------------------
 
 CLS & ECHO Converting: !INPUT!:Index:!USER_CHOICE! ^>^> !OUTPUT!
-ECHO=
 DISM /Export-Image /SourceImageFile:"!INPUT!" /SourceIndex:"!USER_CHOICE!" /DestinationImageFile:"!OUTPUT!" /Compress:recovery /CheckIntegrity
 GOTO REPAIR_WINDOWS
 
