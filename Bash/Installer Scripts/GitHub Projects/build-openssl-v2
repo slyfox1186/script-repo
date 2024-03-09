@@ -84,7 +84,7 @@ set_compiler_flags() {
     fi
 
     local -a include_dirs=("/usr/local/include" "/usr/include/x86_64-linux-gnu" "/usr/include")
-    local -a lib_dirs=("/usr/local/lib64" "/usr/local/lib" "/usr/lib64" "/usr/lib" "/lib64" "/lib")
+    local -a lib_dirs=("/usr/local/lib64" "/usr/local/lib" "/usr/lib64" "/usr/lib")
 
     local common_flags="-g -O3 -pipe -march=$march"
     local include_flags="${include_dirs[@]/#/-I}"
