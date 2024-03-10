@@ -2,7 +2,7 @@
 
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/Installer%20Scripts/GNU%20Software/build-curl-git
 ##  Purpose: Build cURL with OpenSSL backend
-##  Updated: 12.30.23
+##  Updated: 03.09.24
 ##  Script version: 1.1
 
 if [ "$EUID" -ne 0 ]; then
