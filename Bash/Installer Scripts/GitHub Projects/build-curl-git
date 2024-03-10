@@ -1,28 +1,16 @@
 #!/usr/bin/env bash
 
-######################################################################################################################################
-##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/Installer%20Scripts/GNU%20Software/build-curl-git
-##
 ##  Purpose: Build cURL with OpenSSL backend
-##
 ##  Updated: 12.30.23
-##
 ##  Script version: 1.1
-##
-######################################################################################################################################
 
-clear
-
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+if [ "$EUID" -ne 0 ]; then
+    printf "%s\n\n" 'You must run this script with root or sudo.'
     exit 1
 fi
 
-#
-# SET THE VARIABLES
-#
-
+# Set the variables
 script_ver=1.1
 archive_dir=curl-git
 git_url=https://github.com/curl/curl.git
@@ -40,18 +28,10 @@ printf "%s\n%s\n\n"                      \
     '==============================================='
 sleep 2
 
-#
-# CREATE OUTPUT DIRECTORY
-#
-
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
-
-#
-# SET THE C/CXX COMPILERS & SET THE COMPILER OPTIMIZATION FLAGS
-#
 
 CC=gcc
 CXX=g++
@@ -59,10 +39,6 @@ CFLAGS='-g -O3 -pipe -march=native'
 CXXFLAGS="${CFLAGS} -Wno-variadic-macros"
 CPPFLAGS='-I/usr/include/openssl -I/usr/local/include -I/usr/include/libxml2 -I/usr/include'
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS
-
-#
-# SET THE PATH VARIABLE
-#
 
 PATH="\
 /usr/lib/ccache:\
@@ -83,10 +59,6 @@ ${HOME}/.local/bin:\
 "
 export PATH
 
-#
-# SET THE PKG_CONFIG_PATH VARIABLE
-#
-
 PKG_CONFIG_PATH="\
 /usr/local/ssl/lib64/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
@@ -98,10 +70,6 @@ PKG_CONFIG_PATH="\
 /lib/pkgconfig\
 "
 export PKG_CONFIG_PATH
-
-#
-# CREATE FUNCTIONS
-#
 
 exit_fn() {
     printf "\n%s\n\n%s\n\n"                                       \
