@@ -83,7 +83,7 @@ bash <(curl -fsSL https://7z.optimizethis.net)
   - **Supported OS:**
     - Debian - 11/12
     - Ubuntu - (20/22/23).04
-    - Other  - Debian-based distros may work as well
+    - Other Debian-based distros may work as well
   
 ```bash
 bash <(curl -fsSL https://magick.optimizethis.net)
@@ -97,7 +97,7 @@ bash <(curl -fsSL https://magick.optimizethis.net)
   - **Supported OS:**
     - Debian - 11/12
     - Ubuntu - (20/22/23).04 / 23.04
-    - Other  - Debian-based distros may work as well
+    - Other Debian-based distros may work as well
 
 **With GPL and <ins>non-free</ins> libraries: https://ffmpeg.org/legal.html**
 ```bash
@@ -105,11 +105,23 @@ bash <(curl -fsSL https://build-ffmpeg.optimizethis.net) --build --latest
 ```
 ------
 
+## Install [OpenSSL](https://www.openssl.org/source/)
+  - **Supported OS:**
+    - Debian - 11/12
+    - Ubuntu - (20/22/23).04
+    - Other Debian-based distros may work as well
+
+```bash
+sudo curl -Lso /tmp/build-openssl.sh https://openssl.optimizethis.net
+sudo bash /tmp/build-openssl.sh
+````
+------
+
 ## Install [Rust](https://github.com/rust-lang/rust)
   - **Supported OS:**
     - Debian - 11/12
     - Ubuntu - (20/22/23).04
-    - Other  - Debian-based distros may work as well
+    - Other Debian-based distros may work as well
 
 ```bash
 bash <(curl -fsSL https://rust.optimizethis.net)
@@ -120,7 +132,7 @@ bash <(curl -fsSL https://rust.optimizethis.net)
   - **Supported OS:**
     - Debian - 11/12
     - Ubuntu - (20/22/23).04
-    - Other  - Debian-based distros may work as well
+    - Other Debian-based distros may work as well
 
 ```bash
 bash <(curl -fsSL https://build-tools.optimizethis.net)
@@ -133,7 +145,7 @@ bash <(curl -fsSL https://build-tools.optimizethis.net)
   - **Supported OS:**
     - Debian - 11/12
     - Ubuntu - (20/22/23).04
-    - Other  - Debian-based distros may work as well
+    - Other Debian-based distros may work as well
 
 ```bash
 sudo curl -Lso /tmp/aria2 https://aria2.optimizethis.net
@@ -206,7 +218,7 @@ bash <(curl -fsSL https://tilix.optimizethis.net)
   - **Supported OS:**
     - Debian - 11/12
     - Ubuntu - (20/22/23).04
-    - Other  - Debian-based distros may work as well
+    - Other Debian-based distros may work as well
 
 ```bash
 bash <(curl -fsSL https://python3.optimizethis.net)
@@ -217,7 +229,7 @@ bash <(curl -fsSL https://python3.optimizethis.net)
   - **Supported OS:**
     - Debian - 11/12
     - Ubuntu - (20/22/23).04
-    - Other  - Debian-based distros may work as well
+    - Other Debian-based distros may work as well
 
 ```bash
 bash <(curl -fsSL https://wsl2-kernel.optimizethis.net)
