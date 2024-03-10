@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
-
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-aria2
 ##  Purpose: Build aria2 from source code
 ##  Updated: 03.07.24
@@ -19,8 +17,6 @@ set -euo pipefail
 ##         - Build jemalloc from the latest source code
 ##         - RUNPATH to LDFLAGS
 ##  Fixed: Soft linking error
-
-[[ $EUID -ne 0 ]] && { echo "This script must be run as root or with sudo."; exit 1; }
 
 script_ver="2.0"
 echo "GitHub Script for building aria2 from source. Version: $script_ver"
@@ -43,6 +39,14 @@ display_help() {
     exit 0
 }
 
+set_compiler_options() {
+    CC="ccache gcc"
+    CXX="ccache g++"
+    CFLAGS="-g -O3 -pipe -march=native"
+    CXXFLAGS="-g -O3 -pipe -march=native"
+    export CC CFLAGS CXX CXXFLAGS
+}
+
 # Check if help argument is passed
 if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     display_help
@@ -52,7 +56,7 @@ install_packages() {
     local pkgs=(autoconf autoconf-archive autogen automake build-essential ca-certificates
                 ccache curl libssl-dev libtool libtool-bin m4 pkg-config zlib1g-dev)
     log "Attempting to install required packages..."
-    sudo apt install -y "${pkgs[@]}"
+    apt install -y "${pkgs[@]}"
     for pkg in "${pkgs[@]}"; do
         dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed" || handle_error "Failed to install: $pkg"
     done
@@ -113,11 +117,17 @@ compile_aria2() {
     cd "aria2-$aria2_version"
     sed -i "s/1, 16/1, 128/g" "src/OptionHandlerFactory.cc"
     PATH="$temp_dir/jemalloc/bin:$temp_dir/libgpg-error/bin:$PATH" \
-    ./configure --prefix=/usr/local --without-gnutls --with-openssl --with-ca-bundle=/etc/ssl/certs/ca-certificates.crt \
+    ./configure --prefix=/usr/local \
+                --enable-static \
+                --disable-shared \
+                --without-gnutls \
+                --with-openssl \
+                --with-ca-bundle=$(find /etc/ -type f -name ca-certificates.crt) \
                 --with-jemalloc="$temp_dir/jemalloc" \
                 LDFLAGS="-L$temp_dir/jemalloc/lib -L$temp_dir/libgpg-error/lib" \
                 CPPFLAGS="-I$temp_dir/jemalloc/include -I$temp_dir/libgpg-error/include"
-    make "-j$(nproc)" && sudo make install
+    make "-j$(nproc)" && \
+    make install
     cd ../
 }
 
@@ -125,7 +135,7 @@ create_aria2_service() {
     echo
     log "Creating aria2 service..."
     echo
-    sudo tee /etc/systemd/system/aria2.service > /dev/null <<EOT
+    tee /etc/systemd/system/aria2.service > /dev/null <<EOT
 [Unit]
 Description=Aria2 Service
 After=network.target
@@ -139,9 +149,9 @@ Restart=on-abort
 WantedBy=multi-user.target
 EOT
 
-    sudo systemctl daemon-reload
-    sudo systemctl enable aria2
-    sudo systemctl start aria2
+    systemctl daemon-reload
+    systemctl enable aria2
+    systemctl start aria2
     log "Aria2 service created and started."
     echo
 }
@@ -153,8 +163,15 @@ cleanup() {
 }
 
 main() {
+    if [[ "$EUID" -ne 0 ]]; then
+        echo "This script must be run as root or with sudo."
+        exit 1
+    fi
+
     log "Starting aria2 build process..."
     echo
+
+    set_compiler_options
     install_packages
     prepare_build_environment
     build_jemalloc
