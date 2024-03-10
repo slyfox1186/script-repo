@@ -27,7 +27,7 @@ printf "%s\n%s\n\n" \
 sleep 2
 
 if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
+    rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
@@ -93,7 +93,7 @@ cleanup_fn() {
     clear
 
     case "$choice" in
-        1) sudo rm -fr "$cwd";;
+        1) rm -fr "$cwd";;
         2) ;;
         *) unset choice
            clear
@@ -103,8 +103,8 @@ cleanup_fn() {
 }
 
 install_required_packages() {
-    local libgcc_ver="$(sudo apt list libgcc-* 2>/dev/null | grep -Eo 'libgcc-[0-9]*-dev' | uniq | head -n1)"
-    local libgtk_ver="$(sudo apt list libgtk-* 2>/dev/null | grep -Eo 'libgtk-[0-9]+-doc' | head -n1)"
+    local libgcc_ver="$(apt list libgcc-* 2>/dev/null | grep -Eo 'libgcc-[0-9]*-dev' | uniq | head -n1)"
+    local libgtk_ver="$(apt list libgtk-* 2>/dev/null | grep -Eo 'libgtk-[0-9]+-doc' | head -n1)"
     local pkgs=(
             apt-transport-https apt-utils autoconf autoconf-archive autogen automake autopoint autotools-dev
             build-essential bzip2 ca-certificates ccache clang cmake curl gfortran git google-perftools graphviz
@@ -142,12 +142,12 @@ if [ ! -f "$pem_out" ]; then
         'Download the latest security certificate' \
         '================================================'
     curl -Lso "$cwd/$pem_file" "https://curl.se/ca/$pem_file"
-    sudo cp -f "$cwd/$pem_file" "$pem_out"
+    cp -f "$cwd/$pem_file" "$pem_out"
 fi
 
 # Create output directory curl
 if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
+    rm -fr "$cwd/$archive_dir"
 fi
 
 # Download the archive file curl
@@ -155,7 +155,7 @@ git clone "$git_url" "$cwd/$archive_dir"
 
 # Update the system security certificates before installing curl
 if type -P 'update-ca-certificates' &>/dev/null; then
-    sudo update-ca-certificates
+    update-ca-certificates
 fi
 
 cd "$cwd/$archive_dir" || exit 1
@@ -184,8 +184,8 @@ if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute: make -j$(nproc --all). Line: $LINENO"
 fi
 echo
-if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install. Line: $LINENO"
+if ! make install; then
+    fail_fn "Failed to execute: make install. Line: $LINENO"
 fi
 
 # Prompt user to clean up files
