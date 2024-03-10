@@ -93,13 +93,12 @@ cleanup_fn() {
     clear
 
     case "$choice" in
-        1)      sudo rm -fr "$cwd";;
-        2)      return 0;;
-        *)
-                unset choice
-                clear
-                cleanup_fn
-                ;;
+        1) sudo rm -fr "$cwd";;
+        2) return 0;;
+        *) unset choice
+           clear
+           cleanup_fn
+           ;;
     esac
 }
 
