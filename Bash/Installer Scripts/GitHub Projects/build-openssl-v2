@@ -120,8 +120,11 @@ create_pkgconfig_softlinks() {
 
 download_openssl() {
     local openssl_url="https://www.openssl.org/source/openssl-$openssl_version.tar.gz"
+    local tar_file="$cwd/openssl-$openssl_version.tar.gz" # Updated to include version in filename
     local max_retries=3
     local retry_count=0
+
+    echo "Targeting tar file: $tar_file" # Debugging line, can be removed
 
     while [[ ! -f "$tar_file" && $retry_count -lt $max_retries ]]; do
         echo "Downloading OpenSSL $openssl_version... (Attempt $((retry_count + 1))/$max_retries)"
@@ -143,6 +146,8 @@ download_openssl() {
 }
 
 extract_openssl() {
+    local tar_file="$cwd/openssl-$openssl_version.tar.gz" # Ensure this matches the updated download path
+
     if [[ -d "$src_dir" ]]; then
         echo
         echo "OpenSSL $openssl_version source directory already exists, skipping extraction."
@@ -254,7 +259,7 @@ main() {
     local install_dir="/usr/local/ssl"
     local enable_ipv6=false
     local openssl_version
-    local tar_file="$cwd/openssl.tar.gz"
+    local tar_file="$cwd/openssl-${openssl_version}.tar.gz"
     local src_dir
     local jobs
     local keep_build=false
