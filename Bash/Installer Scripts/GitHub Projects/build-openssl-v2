@@ -82,7 +82,7 @@ set_compiler_flags() {
     local -a include_dirs=("/usr/local/include" "/usr/local/include/x86_64-linux-gnu" "/usr/include/x86_64-linux-gnu" "/usr/include")
     local -a lib_dirs=("/usr/local/lib64" "/usr/local/lib" "/usr/lib64" "/usr/lib")
 
-    local common_flags="-g -O3 -pipe -march=native -fstack-protector-strong -D_FORTIFY_SOURCE=2"
+    local common_flags="-g -O3 -pipe -fstack-protector-strong -D_FORTIFY_SOURCE=2"
     local include_flags="${include_dirs[@]/#/-I}"
     local lib_flags="${lib_dirs[@]/#/-L}"
 
