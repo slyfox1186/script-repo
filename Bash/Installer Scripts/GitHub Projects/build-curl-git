@@ -19,12 +19,10 @@ install_prefix=/usr/local
 pem_file=cacert.pem
 certs_dir='/etc/ssl/certs'
 pem_out="$certs_dir/$pem_file"
-pc_type=$(gcc -dumpmachine)
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
-printf "%s\n%s\n\n"                      \
-    "cURL Build Script - v${script_ver}" \
+printf "%s\n%s\n\n" \
+    "cURL Build Script - v$script_ver" \
     '==============================================='
 sleep 2
 
@@ -36,15 +34,15 @@ mkdir -p "$cwd"
 CC=gcc
 CXX=g++
 CFLAGS='-g -O3 -pipe -march=native'
-CXXFLAGS="${CFLAGS} -Wno-variadic-macros"
+CXXFLAGS="$CFLAGS -Wno-variadic-macros"
 CPPFLAGS='-I/usr/include/openssl -I/usr/local/include -I/usr/include/libxml2 -I/usr/include'
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS
 
 PATH="\
 /usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
+$HOME/perl5/bin:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/cuda/bin:\
 /usr/local/x86_64-linux-gnu/bin:\
@@ -52,10 +50,7 @@ ${HOME}/.local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
+/bin\
 "
 export PATH
 
@@ -72,7 +67,7 @@ PKG_CONFIG_PATH="\
 export PKG_CONFIG_PATH
 
 exit_fn() {
-    printf "\n%s\n\n%s\n\n"                                       \
+    printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         "$web_repo"
     exit 0
@@ -80,7 +75,7 @@ exit_fn() {
 
 fail_fn() {
     printf "\n%s\n\n%s\n\n" \
-        "$1"              \
+        "$1" \
         "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
@@ -88,16 +83,16 @@ fail_fn() {
 cleanup_fn() {
     local choice
 
-    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n"                \
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
         '============================================' \
         '  Do you want to clean up the build files?  ' \
         '============================================' \
-        '[1] Yes'                                      \
+        '[1] Yes' \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
     clear
 
-    case "${choice}" in
+    case "$choice" in
         1)      sudo rm -fr "$cwd";;
         2)      return 0;;
         *)
@@ -115,8 +110,8 @@ install_required_packages() {
             apt-transport-https apt-utils autoconf autoconf-archive autogen automake autopoint autotools-dev
             build-essential bzip2 ca-certificates ccache clang cmake curl gfortran git google-perftools graphviz
             jq lcov libaria2-0 libaria2-0-dev libc-ares-dev libcppunit-dev libcunit1-dev libcurl4 libcurl4-openssl-dev
-            libdmalloc-dev libec-dev libedit-dev libev-dev libevent-dev libexiv2-27 libexpat1-dev "${libgcc_ver}"
-            libgcrypt20-dev libgexiv2-2 libgimp2.0 libgmp3-dev libgpg-error-dev "${libgtk_ver}" libgpgme-dev libicu-dev
+            libdmalloc-dev libec-dev libedit-dev libev-dev libevent-dev libexiv2-27 libexpat1-dev "$libgcc_ver"
+            libgcrypt20-dev libgexiv2-2 libgimp2.0 libgmp3-dev libgpg-error-dev "$libgtk_ver" libgpgme-dev libicu-dev
             libjemalloc-dev libkrb5-3 libldap2-dev libldap-dev liblttng-ust-dev liblzma-dev libmbedtls-dev libnghttp2-dev
             libnghttp3-dev libntlm0-dev libparted-dev libpng-dev libpsl-dev librtmp-dev librust-bzip2-dev librust-openssl-dev
             libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev libtinfo5 libticonv-dev libtinfo-dev libtool libtool-bin
@@ -143,12 +138,12 @@ install_required_packages() {
 install_required_packages
 
 # Install certs from curl's official website
-if [ ! -f "${pem_out}" ]; then
+if [ ! -f "$pem_out" ]; then
     printf "%s\n%s\n\n" \
         'Download the latest security certificate' \
         '================================================'
-    curl -A "$user_agent" -Lso "$cwd/$pem_file" "https://curl.se/ca/$pem_file"
-    sudo cp -f "$cwd/$pem_file" "${pem_out}"
+    curl -Lso "$cwd/$pem_file" "https://curl.se/ca/$pem_file"
+    sudo cp -f "$cwd/$pem_file" "$pem_out"
 fi
 
 # Create output directory curl
@@ -157,7 +152,7 @@ if [ -d "$cwd/$archive_dir" ]; then
 fi
 
 # Download the archive file curl
-git clone "${git_url}" "$cwd/$archive_dir"
+git clone "$git_url" "$cwd/$archive_dir"
 
 # Update the system security certificates before installing curl
 if type -P 'update-ca-certificates' &>/dev/null; then
@@ -175,7 +170,7 @@ eopts+=('--enable-'{openssl-auto-load-config,optimize,pop3,progress-meter})
 eopts+=('--enable-'{proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static,telnet})
 eopts+=('--enable-'{tftp,threaded-resolver,tls-srp,unix-sockets,websockets})
 wopts=('--with-'{libssh2,nghttp2='/usr/include',nghttp3='/usr/include',openssl})
-wopts+=('--with-'{ca-bundle="${pem_out}",ca-fallback,ca-path="$certs_dir",secure-transport})
+wopts+=('--with-'{ca-bundle="$pem_out",ca-fallback,ca-path="$certs_dir",secure-transport})
 autoreconf -fi
 mkdir build
 cd build || exit 1
@@ -183,15 +178,15 @@ cd build || exit 1
             "${dopts[@]}" \
             "${eopts[@]}" \
             "${wopts[@]}" \
-            "${csuffix}"  \
-             CPPFLAGS="${CPPFLAGS}"
+            "$csuffix"  \
+             CPPFLAGS="$CPPFLAGS"
 echo
 if ! make "-j$(nproc --all)"; then
-    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
+    fail_fn "Failed to execute: make -j$(nproc --all). Line: $LINENO"
 fi
 echo
 if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
+    fail_fn "Failed to execute: sudo make install. Line: $LINENO"
 fi
 
 # Prompt user to clean up files
@@ -199,8 +194,8 @@ cleanup_fn
 
 # Show new version
 curl_ver="$(/usr/local/bin/curl --version | grep -Eo '^curl [0-9\.]+' | grep -Eo '[0-9\.]+')"
-clear
-printf "%s\n" "The updated cURL version is: ${curl_ver}"
+
+printf "\n%s\n" "The updated cURL version is: $curl_ver"
 sleep 3
 
 # Show exit message
