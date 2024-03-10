@@ -110,6 +110,14 @@ bash <(curl -fsSL https://build-ffmpeg.optimizethis.net) --build --latest
     - Debian - 11/12
     - Ubuntu - (20/22/23).04
     - Other Debian-based distros may work as well
+  - **Pass arguments to the script**
+    - -h|--help) : Display the help menu
+    - -6|--enable-ipv6) : Enables IPV6 (Default disabled)
+    - -j|--jobs) : Sets the number of parallel jobs to use
+    - -k|--keep-build) : Keep the build files after the script finishes
+    - -p|--prefix) : Set the prefix location to install the OpenSSL
+    - -v|--version) : Build other versions.
+      - To build OpenSSL version 3.1.5 pass this to the script: *build-openssl.sh -v 3.1.5*
 
 ```bash
 sudo curl -Lso /tmp/build-openssl.sh https://openssl.optimizethis.net
