@@ -66,7 +66,6 @@ done
 
 echo "Setup complete. The python virtual environment is ready to use."
 
-
 # CREATE AN OUTPUT FILE THAT CONTAINS ALL OF THE VIDEO PATHS AND USE IT TO LOOP THE CONTENTS
 tmp_list_dir="$(mktemp -d)"
 cat > "$tmp_list_dir/list.txt" <<'EOF'
