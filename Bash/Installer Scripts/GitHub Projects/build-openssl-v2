@@ -160,7 +160,7 @@ extract_openssl() {
                 if tar -xzf "$tar_file" -C "$cwd"; then
                     echo "Extraction completed successfully."
                     echo
-                    local extracted_dir=$(basename "$(tar -tzf "$tar_file" | head -1 | cut -f1 -d"/")")
+                    local extracted_dir=$(basename $(tar -tzf "$tar_file" | head -1 | cut -f1 -d"/"))
                     if [[ "$extracted_dir" != "$openssl_version" ]]; then
                         echo "Renaming extracted directory from $extracted_dir to $openssl_version..."
                         mv "$cwd/$extracted_dir" "$src_dir"
