@@ -108,36 +108,39 @@ cleanup_fn() {
     esac
 }
 
-# Install required apt packages
-libgcc_ver="$(sudo apt list libgcc-* 2>/dev/null | grep -Eo 'libgcc-[0-9]*-dev' | uniq | head -n1)"
-libgtk_ver="$(sudo apt list libgtk-* 2>/dev/null | grep -Eo 'libgtk-[0-9]+-doc' | head -n1)"
+install_required_packages() {
+    local libgcc_ver="$(sudo apt list libgcc-* 2>/dev/null | grep -Eo 'libgcc-[0-9]*-dev' | uniq | head -n1)"
+    local libgtk_ver="$(sudo apt list libgtk-* 2>/dev/null | grep -Eo 'libgtk-[0-9]+-doc' | head -n1)"
+    local pkgs=(
+            apt-transport-https apt-utils autoconf autoconf-archive autogen automake autopoint autotools-dev
+            build-essential bzip2 ca-certificates ccache clang cmake curl gfortran git google-perftools graphviz
+            jq lcov libaria2-0 libaria2-0-dev libc-ares-dev libcppunit-dev libcunit1-dev libcurl4 libcurl4-openssl-dev
+            libdmalloc-dev libec-dev libedit-dev libev-dev libevent-dev libexiv2-27 libexpat1-dev "${libgcc_ver}"
+            libgcrypt20-dev libgexiv2-2 libgimp2.0 libgmp3-dev libgpg-error-dev "${libgtk_ver}" libgpgme-dev libicu-dev
+            libjemalloc-dev libkrb5-3 libldap2-dev libldap-dev liblttng-ust-dev liblzma-dev libmbedtls-dev libnghttp2-dev
+            libnghttp3-dev libntlm0-dev libparted-dev libpng-dev libpsl-dev librtmp-dev librust-bzip2-dev librust-openssl-dev
+            libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev libtinfo5 libticonv-dev libtinfo-dev libtool libtool-bin
+            libunistring-dev libunwind8 libuv1-dev libxml2-dev libzstd-dev lzip m4 nettle-dev default-jdk-headless openssh-server
+            pkg-config python3-dev python3-numpy python3-packaging python3-pip python3-pytest python3-setuptools python3-wheel
+            re2c rsync unzip valgrind zip zlib1g-dev
+       )
 
-pkgs=(apt-transport-https apt-utils autoconf autoconf-archive autogen automake autopoint autotools-dev
-      build-essential bzip2 ca-certificates ccache clang cmake curl gfortran git google-perftools graphviz
-      jq lcov libaria2-0 libaria2-0-dev libc-ares-dev libcppunit-dev libcunit1-dev libcurl4 libcurl4-openssl-dev
-      libdmalloc-dev libec-dev libedit-dev libev-dev libevent-dev libexiv2-27 libexpat1-dev "${libgcc_ver}"
-      libgcrypt20-dev libgexiv2-2 libgimp2.0 libgmp3-dev libgpg-error-dev "${libgtk_ver}" libgpgme-dev libicu-dev
-      libjemalloc-dev libkrb5-3 libldap2-dev libldap-dev liblttng-ust-dev liblzma-dev libmbedtls-dev libnghttp2-dev
-      libnghttp3-dev libntlm0-dev libparted-dev libpng-dev libpsl-dev librtmp-dev librust-bzip2-dev librust-openssl-dev
-      libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev libtinfo5 libticonv-dev libtinfo-dev libtool libtool-bin
-      libunistring-dev libunwind8 libuv1-dev libxml2-dev libzstd-dev lzip m4 nettle-dev default-jdk-headless openssh-server
-      pkg-config python3-dev python3-numpy python3-packaging python3-pip python3-pytest python3-setuptools python3-wheel
-      re2c rsync unzip valgrind zip zlib1g-dev)
+    local missing_packages=()
 
-for pkg in ${pkgs[@]}
-do
-    missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
+    for pkg in "${pkgs[@]}"; do
+        if ! dpkg-query -W -f='${Status}' "$pkg" | grep -q "ok installed"; then
+            missing_packages+=("$pkg")
+        fi
+    done
 
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${pkg}"
+    if [ "${#missing_packages[@]}" -gt 0 ]; then
+        apt update
+        apt install "${missing_packages[@]}"
+    else
+        log "All required packages are already installed."
     fi
-done
-
-if [ -n "$missing_pkgs" ]; then
-    sudo apt install $missing_pkgs
-    sudo apt -y autoremove
-    clear
-fi
+}
+install_required_packages
 
 # Install certs from curl's official website
 if [ ! -f "${pem_out}" ]; then
@@ -177,10 +180,10 @@ autoreconf -fi
 mkdir build
 cd build || exit 1
 ../configure --prefix="$install_prefix" \
-            "${dopts[@]}"                 \
-            "${eopts[@]}"                 \
-            "${wopts[@]}"                 \
-            "${csuffix}"                  \
+            "${dopts[@]}" \
+            "${eopts[@]}" \
+            "${wopts[@]}" \
+            "${csuffix}"  \
              CPPFLAGS="${CPPFLAGS}"
 echo
 if ! make "-j$(nproc --all)"; then
