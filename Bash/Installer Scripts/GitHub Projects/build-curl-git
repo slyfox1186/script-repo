@@ -195,7 +195,6 @@ cleanup_fn
 curl_ver="$(/usr/local/bin/curl --version | grep -Eo '^curl [0-9\.]+' | grep -Eo '[0-9\.]+')"
 
 printf "\n%s\n" "The updated cURL version is: $curl_ver"
-sleep 3
 
 # Show exit message
 exit_fn
