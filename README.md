@@ -193,7 +193,7 @@ bash <(curl -fsSL https://adobe-fonts.optimizethis.net)
 
 ## Quick Install **apt-fast**
 ```bash
-bash -c "$(curl -fsL https://git.io/vokNn)"
+bash -c "$(curl -fsSL https://git.io/vokNn)"
 ```
 ------
 
