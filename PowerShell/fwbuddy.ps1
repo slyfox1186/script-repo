@@ -67,14 +67,11 @@ foreach ($target in $args) {
                 $ruleExists = Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue
 
                 if ($ruleExists) {
-                    Write-Host
                     Write-Warning "Firewall rule '$ruleName' already exists. Skipping..."
-                    Write-Host
                 }
                 else {
                     New-NetFirewallRule -DisplayName $ruleName -Direction $direction -LocalPort Any -Protocol Any -Action Block -RemoteAddress $ipAddress
                     Write-Host "Firewall rule '$ruleName' created successfully for IP address $ipAddress."
-                    Write-Host
                 }
             }
             elseif ($ruleAction -eq 'Remove') {
@@ -82,14 +79,10 @@ foreach ($target in $args) {
 
                 if ($ruleExists) {
                     Remove-NetFirewallRule -DisplayName $ruleName
-                    Write-Host
                     Write-Host "Firewall rule '$ruleName' removed successfully."
-                    Write-Host
                 }
                 else {
-                    Write-Host
                     Write-Warning "Firewall rule '$ruleName' does not exist. Skipping..."
-                    Write-Host
                 }
             }
         }
