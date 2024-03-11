@@ -81,7 +81,7 @@ build_libmetalink() {
 
 link_libmetalink() {
     if [[ ! -f /usr/local/lib/libmetalink.so.3 ]]; then
-        metalink_library_file=$(find /usr/local/lib/ -type f -name 'libmetalink.so.3*')
+        metalink_library_file=$(find /usr/local/lib/ -type f -name 'libmetalink.so.3*' | head -n1)
         if ! sudo ln -sf "$metalink_library_file" /usr/local/lib/libmetalink.so.3; then
             fail_fn "Failed to find or locate the libmetalink library 'so' file and create the required soft link. Line: $LINENO"
         fi
@@ -135,10 +135,13 @@ main() {
     parse_args "$@"
     check_dependencies
     build_libmetalink
-    link_libmetalink
     build_wget
+    link_libmetalink
     cleanup
     log "Wget build script completed successfully."
 }
 
 main "$@"
+
+# Register all new libraries.
+sudo ldconfig
