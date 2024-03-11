@@ -25,7 +25,6 @@ convert_to_mp4() {
     else
         echo "Conversion failed: $file_out"
     fi
-    clear
 }
 
 export -f convert_to_mp4
