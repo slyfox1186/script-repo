@@ -2274,14 +2274,13 @@ if build 'vulkan-headers' 'git'; then
 fi
 ffmpeg_libraries+=('--enable-libkvazaar')
 
-git_ver_fn '12072756' '3' 'B'
-if build 'decklink' '12.7'; then
-    download "https://github.com/slyfox1186/script-repo/raw/main/headers/Blackmagic-DeckLink-SDK-12.7.tar.xz" 'decklink-12.7.tar.xz'
+if build 'decklink' '12.8'; then
+    download "https://github.com/slyfox1186/ffmpeg-build-script/raw/main/headers/blackmagic-deckLink-sdk-12.8.tar.gz" 'decklink-12.8.tar.xz'
     for files in *.{h,cpp}
     do
         mv "${files}" "$workspace"/include
     done
-    build_done 'decklink' '12.7'
+    build_done 'decklink' '12.8'
 fi
 ffmpeg_libraries+=('--enable-decklink')
 

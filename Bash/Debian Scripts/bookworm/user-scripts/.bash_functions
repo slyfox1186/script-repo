@@ -1,5 +1,3 @@
-export user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-
 ######################################################################################
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 ######################################################################################
@@ -347,7 +345,7 @@ tome() {
     fi
 
     # Change ownership of the file to the current user
-    user="$(whoami)"
+    user=$(whoami)
     sudo chown "$user" "$1"
 
     # Verify if the ownership has been changed successfully
@@ -589,107 +587,20 @@ rmf() {
 ## IMAGEMAGICK ##
 #################
 
-# OPTIMIZE AND OVERWRITE THE ORIGINAL IMAGES
-imow() {
-    local apt_pkgs cnt_queue cnt_total dimensions fext missing_pkgs pip_lock random_dir tmp_file v_noslash
+function imow() {
+    if [[ ! -f /usr/local/bin/imow.sh ]]; then
+        local dir="$(mktemp -d)"
+        cd "$dir" || echo "Failed to cd into the tmp directory: $dir"; return 1
+        curl -Lso imow.sh "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
+        sudo mv imow.sh /usr/local/bin/imow.sh
+        sudo rm -fr "$dir"
+        sudo chown "$USER":"$USER" /usr/local/bin/imow.sh
+        sudo chmod 777 /usr/local/bin/imow.sh
+    fi
     clear
-
-    # THE FILE EXTENSION TO SEARCH FOR (DO NOT INCLUDE A '.' WITH THE EXTENSION)
-    fext=jpg
-
-    # REQUIRED APT PACKAGES
-    apt_pkgs=(sox libsox-dev)
-    for i in ${apt_pkgs[@]}
-    do
-        missing_pkg="$(dpkg -l | grep "$i")"
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" $i"
-        fi
-    done
-
-    if [ -n "${missing_pkgs}" ]; then
-        sudo apt -y install ${missing_pkgs}
-        sudo apt -y autoremove
-        clear
-    fi
-    unset apt_pkgs i missing_pkg missing_pkgs
-
-    #
-    # REQUIRED PIP PACKAGES
-    #
-
-    pip_lock="$(find /usr/lib/python3* -name EXTERNALLY-MANAGED)"
-    if [ -n "$pip_lock" ]; then
-        sudo rm "$pip_lock"
-    fi
-    if ! pip show google_speech &>/dev/null; then
-        pip install google_speech
-    fi
-
-    unset p pip_lock pip_pkgs missing_pkg missing_pkgs
-    # DELETE ANY USELESS ZONE IDENFIER FILES THAT SPAWN FROM COPYING A FILE FROM WINDOWS NTFS INTO A WSL DIRECTORY
-    find . -type f -name "*:Zone.Identifier" -delete 2>/dev/null
-
-    # GET THE FILE COUNT INSIDE THE DIRECTORY
-    cnt_queue=$(find . -maxdepth 2 -type f -iname "*.jpg" | wc -l)
-    cnt_total=$(find . -maxdepth 2 -type f -iname "*.jpg" | wc -l)
-    # GET THE UNMODIFIED PATH OF EACH MATCHING FILE
-
-    for i in ./*."$fext"
-    do
-        cnt_queue=$(( cnt_queue-1 ))
-
-        cat <<EOT
-::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-File Path: $PWD
-
-Folder: $(basename "$PWD")
-
-Total Files:    $cnt_total
-Files in queue: $cnt_queue
-
-Converting:  $i
-
- >> ${i%%.jpg}.mpc
-
-    >> ${i%%.jpg}.cache
-
-       >> ${i%%.jpg}-IM.jpg
-
-::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-EOT
-        echo
-        random_dir="$(mktemp -d)"
-        dimensions="$(identify -format '%wx%h' "$i")"
-        convert "$i" -monitor -filter Triangle -define filter:support=2 -thumbnail "$dimensions" -strip \
-            -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize 136 -quality 82 -define jpeg:fancy-upsampling=off \
-            -auto-level -enhance -interlace none -colorspace sRGB "$random_dir/${i%%.jpg}.mpc"
-
-
-        for file in "$random_dir"/*.mpc
-        do
-            convert "$file" -monitor "${file%%.mpc}.jpg"
-            tmp_file="$(echo "$file" | sed 's:.*/::')"
-            mv "${file%%.mpc}.jpg" "$PWD/${tmp_file%%.*}-IM.jpg"
-            rm -f "$PWD/${tmp_file%%.*}.jpg"
-            for v in $file
-            do
-                v_noslash="${v%/}"
-                rm -fr "${v_noslash%/*}"
-            done
-        done
-    done
-
-    if [ "$?" -eq '0' ]; then
-        google_speech 'Image conversion completed.' 2>/dev/null
-        exit 0
-    else
-        echo
-        google_speech 'Image conversion failed.' 2>/dev/null
-        echo
-        read -p 'Press enter to exit.'
-        exit 1
+    if ! bash /usr/local/bin/imow.sh --dir "$PWD" --overwrite; then
+        echo "Failed to execute: /usr/local/bin/imow.sh --dir $PWD --overwrite"
+        return 1
     fi
 }
 
@@ -704,26 +615,7 @@ im50() {
     done
 }
 
-imdl() {
-    local cwd tmp_dir
-
-    cwd="$PWD"
-    tmp_dir="$(mktemp -d)"
-
-    cd "$tmp_dir" || exit 1
-
-    curl -Lso imow "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
-
-    sudo mv imow "$cwd"
-    sudo rm -fr "$tmp_dir"
-
-    cd "${cwd}" || exit 1
-
-    sudo chown "$USER":"$USER" imow
-    sudo chmod +rwx imow
-}
-
-###########################
+##########################
 ## SHOW NVME TEMPERATURE ##
 ###########################
 
@@ -731,14 +623,14 @@ nvme_temp() {
     local n0 n1 n2
     clear
 
-    if [ -d '/dev/nvme0n1' ]; then
-        n0="$(sudo nvme smart-log /dev/nvme0n1)"
+    if [ -d "/dev/nvme0n1" ]; then
+        n0=$(sudo nvme smart-log /dev/nvme0n1)
     fi
-    if [ -d '/dev/nvme1n1' ]; then
-        n1="$(sudo nvme smart-log /dev/nvme0n1)"
+    if [ -d "/dev/nvme1n1" ]; then
+        n1=$(sudo nvme smart-log /dev/nvme0n1)
     fi
-    if [ -d '/dev/nvme2n1' ]; then
-        n2="$(sudo nvme smart-log /dev/nvme0n1)"
+    if [ -d "/dev/nvme2n1" ]; then
+        n2=$(sudo nvme smart-log /dev/nvme0n1)
     fi
 
     printf "%s\n\n%s\n\n%s\n\n%s\n\n" "nvme0n1: ${n0}" "nnvme1n1: ${n1}" "nnvme2n1: ${n2}"
@@ -784,19 +676,19 @@ cuda_purge() {
 
 ffdl() {
     clear
-    curl -A "$user_agent" -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
+    curl -m 10 -Lso 'ff.sh' 'https://ffdl.optimizethis.net'
     bash 'ff.sh'
     sudo rm 'ff.sh'
     clear; ls -1AhFv --color --group-directories-first
 }
 
-ffs() { curl -A "$user_agent" -m 10 -Lso 'ff' 'https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/build-ffmpeg'; }
+ffs() { curl -m 10 -Lso 'ff' 'https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/build-ffmpeg'; }
 
 dlfs() {
     local f
     clear
     
-    wget --show-progress -U "$user_agent" -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/SlyFox1186%20Scripts/favorite-installer-scripts.txt'
+    wget --show-progress -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/SlyFox1186%20Scripts/favorite-installer-scripts.txt'
     
     scripts=(build-ffmpeg build-all-git-safer build-all-gnu-safer build-magick)
 
@@ -876,9 +768,9 @@ listppas() {
     do
         grep -Po "(?<=^deb\s).*?(?=#|$)" "${apt}" | while read entry
         do
-            host="$(echo "${entry}" | cut -d/ -f3)"
-            user="$(echo "${entry}" | cut -d/ -f4)"
-            ppa="$(echo "${entry}" | cut -d/ -f5)"
+            host=$(echo "${entry}" | cut -d/ -f3)
+            user=$(echo "${entry}" | cut -d/ -f4)
+            ppa=$(echo "${entry}" | cut -d/ -f5)
             #echo sudo apt-add-repository ppa:$USER/${ppa}
             if [ "ppa.launchpad.net" = "${host}" ]; then
                 echo sudo apt-add-repository ppa:"$USER/${ppa}"
@@ -889,15 +781,6 @@ listppas() {
     done
 }
 
-#########################
-## NVIDIA-SMI COMMANDS ##
-#########################
-
-gpu_mon() {
-    clear
-    nvidia-smi dmon
-}
-
 ################################################################
 ## PRINT THE NAME OF THE DISTRIBUTION YOU ARE CURRENTLY USING ##
 ################################################################
@@ -906,12 +789,12 @@ my_os() {
     local name version
     clear
 
-    name="$(eval lsb_release -si 2>/dev/null)"
-    version="$(eval lsb_release -sr 2>/dev/null)"
+    name=$(eval lsb_release -si 2>/dev/null)
+    version=$(eval lsb_release -sr 2>/dev/null)
 
     clear
 
-    printf "%s\n\n" "Linux OS: $name ${version}"
+    printf "%s\n\n" "Linux OS: $name $version"
 }
 
 ##############################################
@@ -929,8 +812,8 @@ hw_mon() {
     fi
 
     # Add modprobe to system startup tasks if not already added
-    found="$(grep -o 'drivetemp' '/etc/modules')"
-    if [ -z "${found}" ]; then
+    found=$(grep -o drivetemp /etc/modules)
+    if [ -z "$found" ]; then
         echo 'drivetemp' | sudo tee -a '/etc/modules'
     else
         sudo modprobe drivetemp
@@ -1295,14 +1178,14 @@ set_default() {
 cnt_dir() {
     local keep_cnt
     clear
-    keep_cnt="$(find . -maxdepth 1 -type f | wc -l)"
+    keep_cnt=$(find . -maxdepth 1 -type f | wc -l)
     printf "%s %'d\n\n" "The total directory file count is (non-recursive):" "${keep_cnt}"
 }
 
 cnt_dirr() {
     local keep_cnt
     clear
-    keep_cnt="$(find . -type f | wc -l)"
+    keep_cnt=$(find . -type f | wc -l)
     printf "%s %'d\n\n" "The total directory file count is (recursive):" "${keep_cnt}"
 }
 
@@ -1314,7 +1197,7 @@ test_gcc() {
     local answer random_dir
     clear
 
-    random_dir="$(mktemp -d)"
+    random_dir=$(mktemp -d)
     
     # CREATE A TEMPORARY C FILE TO RUN OUR TESTS AGAINST
     cat > "$random_dir"/hello.c <<'EOF'
@@ -1341,7 +1224,7 @@ test_clang() {
     local answer random_dir
     clear
 
-    random_dir="$(mktemp -d)"
+    random_dir=$(mktemp -d)
     
     # CREATE A TEMPORARY C FILE TO RUN OUR TESTS AGAINST
     cat > "$random_dir"/hello.c <<'EOF'
@@ -1362,6 +1245,25 @@ EOF
         "$answer" -Q -v "$random_dir"/hello.c
     fi
     sudo rm -fr "$random_dir"
+}
+
+gcc_native() {
+    echo "Checking GCC default target..."
+    gcc -dumpmachine
+
+    echo "Checking GCC version..."
+    gcc --version
+
+    echo "Inspecting GCC verbose output for -march=native..."
+    # Create a temporary empty file
+    temp_source=$(mktemp /tmp/dummy_source.XXXXXX.c)
+    trap 'rm -f "$temp_source"' EXIT
+
+    # Using echo to create an empty file
+    echo "" > "$temp_source"
+
+    # Using GCC with -v to get verbose information, including the default march
+    gcc -march=native -v -E "$temp_source" 2>&1 | grep -- '-march='
 }
 
 ############################
@@ -1609,7 +1511,7 @@ jpgsize() {
     local random_dir size
     clear
 
-    random_dir="$(mktemp -d)"
+    random_dir=$(mktemp -d)
     read -p 'Enter the image size (units in MB): ' size
     find . -size +"${size}"M -type f -iname "*.jpg" > "$random_dir/img-sizes.txt"
     sed -i "s/^..//g" "$random_dir/img-sizes.txt"
@@ -1691,7 +1593,7 @@ gitdl() {
 cntf() {
     local folder_cnt
     clear
-    folder_cnt="$(ls -1 | wc -l)"
+    folder_cnt=$(ls -1 | wc -l)
     printf "%s\n" "There are ${folder_cnt} files in this folder"
 }
 
@@ -1735,7 +1637,7 @@ rsr() {
     printf "%s\n\n" 
     read -p 'Enter the source path: ' source
     read -p 'Enter the destination path: ' destination
-    modified_source="$(echo "${source}" | sed 's:/[^/]*$::')"'/./'"$(echo "${source}" | sed 's:.*/::')"
+    modified_source=$(echo "${source}" | sed 's:/[^/]*$::')"'/./'"$(echo "${source}" | sed 's:.*/::')
     clear
 
     rsync -aqvR --acls --perms --mkpath --info=progress2 "${modified_source}" "${destination}"
@@ -1758,7 +1660,7 @@ rsrd() {
     printf "%s\n\n" 
     read -p 'Enter the source path: ' source
     read -p 'Enter the destination path: ' destination
-    modified_source="$(echo "${source}" | sed 's:/[^/]*$::')"'/./'"$(echo "${source}" | sed 's:.*/::')"
+    modified_source=$(echo "${source}" | sed 's:/[^/]*$::')"'/./'"$(echo "${source}" | sed 's:.*/::')
     clear
 
     rsync -aqvR --acls --perms --mkpath --remove-source-files "${modified_source}" "${destination}"
@@ -1903,8 +1805,8 @@ dl_clang() {
     if [ ! -d "$HOME/tmp" ]; then
         mkdir -p "$HOME/tmp"
     fi
-    wget --show-progress -U "$user_agent" -cqO "$HOME/tmp/build-clang-16" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-16'
-    wget --show-progress -U "$user_agent" -cqO "$HOME/tmp/build-clang-17" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-17'
+    wget --show-progress -cqO "$HOME/tmp/build-clang-16" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-16'
+    wget --show-progress -cqO "$HOME/tmp/build-clang-17" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-17'
     sudo chmod rwx "$HOME/tmp/build-clang-16" "$HOME/tmp/build-clang-17"
     sudo chown "$USER":"$USER" "$HOME/tmp/build-clang-16" "$HOME/tmp/build-clang-17"
     clear
@@ -1918,7 +1820,7 @@ dl_clang() {
 pip_up() {
     local list_pkgs pkg
 
-    list_pkgs="$(pip list | awk '{print $1}')"
+    list_pkgs=$(pip list | awk '{print $1}')
     
     pip install --upgrade pip
     

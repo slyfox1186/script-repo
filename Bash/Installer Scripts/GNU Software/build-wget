@@ -23,7 +23,6 @@ fi
 script_ver="1.4"
 cwd="$PWD/wget-build-script"
 archive_dir="wget-latest"
-archive_url="https://ftp.gnu.org/gnu/wget/$archive_dir.tar.lz"
 install_dir="/usr/local"
 pc_type="$(uname -m)-linux-gnu"
 verbose=0
@@ -55,27 +54,19 @@ warn() {
 }
 
 check_dependencies() {
-    log "Checking for required dependencies..."
-    local dependencies=(autoconf automake bzip2 curl gfortran libcurl4-openssl-dev libexpat1-dev libgcrypt20-dev libgpgme-dev libssl-dev libunistring-dev pkg-config zlib1g-dev)
-    local to_install=()
-    for dep in "${dependencies[@]}"; do
-        if ! dpkg -l | grep -qw "$dep"; then
-            to_install+=("$dep")
-        fi
-    done
-    if [ ${#to_install[@]} -gt 0 ]; then
-        apt update
-        apt install -y "${to_install[@]}" || error "Failed to install dependencies."
-    fi
+    apt-get update
+    apt-get install autoconf automake bzip2 curl gfortran libcurl4-openssl-dev libexpat1-dev \
+                    libgcrypt20-dev libgpgme-dev libssl-dev libunistring-dev pkg-config zlib1g-dev
 }
 
 build_libmetalink() {
     log "Building libmetalink..."
     local libmetalink_dir="$cwd/libmetalink"
     mkdir -p "$libmetalink_dir" && cd "$libmetalink_dir"
-    curl -Lso "libmetalink.tar.xz" "https://github.com/metalink-dev/libmetalink/releases/download/release-0.1.3/libmetalink-0.1.3.tar.xz"
-    tar -xf "libmetalink.tar.xz" --strip-components=1
-    ./configure --prefix="$install_dir" && make -j"$(nproc)" && make install || error "Failed to build libmetalink."
+    curl -fsSL "https://github.com/metalink-dev/libmetalink/releases/download/release-0.1.3/libmetalink-0.1.3.tar.xz" | tar -Jxf - --strip-components 1
+    ./configure --prefix="$install_dir" || error "Failed to configure libmetalink."
+    make "-j$(nproc)" || error "Failed to build libmetalink."
+    make install || error "Failed to install libmetalink."
     log "libmetalink built successfully."
 }
 
@@ -83,8 +74,7 @@ build_wget() {
     log "Building wget from source..."
     local wget_dir="$cwd/wget"
     mkdir -p "$wget_dir" && cd "$wget_dir"
-    curl -Lso "$archive_dir.tar.lz" "$archive_url"
-    tar --lzip -xf "$archive_dir.tar.lz" --strip-components=1
+    curl -fsSL "https://ftp.gnu.org/gnu/wget/$archive_dir.tar.lz" | tar --lzip -xf - --strip-components=1
     ./configure --prefix="$install_dir" \
                 --with-ssl=openssl \
                 --with-libssl-prefix="$install_dir" \
@@ -92,8 +82,19 @@ build_wget() {
                 --with-libunistring-prefix=/usr \
                 --with-libcares \
                 --without-ipv6 \
-                --disable-nls && make -j"$(nproc)" && make install || error "Failed to build wget."
+                --disable-nls || error "Failed to configure wget."
+                make "-j$(nproc --all)" || error "Failed to build wget."
+                make install || error "Failed to install wget."
     log "wget built and installed successfully."
+}
+
+fix_libmetalink_libs() {
+    if [[ ! -f /usr/local/lib/libmetalink.so.3 ]]; then
+        metalink_library_file=$(find /usr/local/ -type f -name 'libmetalink.so.3*' | head -n1)
+        if ! sudo ln -sf "$metalink_library_file" /usr/local/lib/libmetalink.so.3; then
+            fail_fn "Failed to find or locate the libmetalink library 'so' file and create the required soft link. Line: $LINENO"
+        fi
+    fi
 }
 
 cleanup() {
@@ -127,8 +128,14 @@ main() {
     check_dependencies
     build_libmetalink
     build_wget
+    fix_libmetalink_libs
     cleanup
     log "Wget build script completed successfully."
 }
 
 main "$@"
+
+# Register all new libraries
+ldconfig
+
+echo "Script complete."

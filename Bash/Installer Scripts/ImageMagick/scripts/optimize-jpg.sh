@@ -5,112 +5,118 @@ usage() {
     echo "Usage: $0 [options]"
     echo
     echo "Options:"
-    echo "    -b, --backup                                     Enable backup mode. Original images will be backed up before processing."
-    echo "    -d, --dir <path>                                 Specify the working directory where images are located."
-    echo "    -h, --help                                       Display this help message and exit."
-    echo ""
+    echo "    -h, --help                Display this help message and exit."
+    echo "    -b, --backup <path>       Specify a folder to backup the original files."
+    echo "    -d, --dir <path>          Specify the working directory where images are located."
+    echo "    -n, --dry-run             Perform a dry run without actually processing the images."
+    echo "    -o, --overwrite           Enable overwrite mode. Original images will be overwritten."
+    echo "    -r, --recursive           Enable recursive processing of subdirectories."
+    echo "    -s, --size <dimensions>   Resize images to specified dimensions (e.g., 800x600)."
+    echo "    -t, --type <type>         Specify file type to process (e.g., jpg, png, bmp)."
+    echo "    -v, --verbose             Enable verbose output."
+    echo
     echo "Example:"
-    echo "    $0 --backup -d pictures               Process images in 'pictures' directory with backups of the originals."
+    echo "    $0 -d pictures -s 1024x768 -b original_images -o  Overwrite and optimize images in 'pictures' directory with 1024x768 size and backup originals to 'original_images'."
 }
 
-# Parse command-line options
-backup_mode=0
+# Initialize script options
+backup_dir=""
+dry_run=0
+file_type="jpg"
+overwrite_mode=0
+recursive_mode=0
+size=""
+verbose_mode=0
 working_dir="."
 
-while [ "$1" != "" ]; do
+log() { [[ $verbose_mode -eq 1 ]] && echo "$@"; }
+
+# Parse command-line options
+while [[ $# -gt 0 ]]; do
     case "$1" in
-        -b | --backup )     backup_mode=1 ;;
-        -d | --dir )        shift
-                            working_dir="$1" ;;
-        -h | --help )       usage
-                            exit ;;
-        * )                 usage
-                            exit 1 ;;
+        -h|--help)     usage; exit ;;
+        -b|--backup)   backup_dir="$2"; shift 2 ;;
+        -d|--dir)      working_dir="$2"; shift 2 ;;
+        -n|--dry-run)  dry_run=1; shift ;;
+        -o|--overwrite) overwrite_mode=1; shift ;;
+        -r|--recursive) recursive_mode=1; shift ;;
+        -s|--size)     size="$2"; shift 2 ;;
+        -t|--type)     file_type="$2"; shift 2 ;;
+        -v|--verbose)  verbose_mode=1; shift ;;
+        *)             usage; exit 1 ;;
     esac
-    shift
 done
 
-echo "Backup mode: $backup_mode"
+# Convert relative paths to absolute paths
+working_dir="$(realpath "$working_dir")"
+[[ -n "$backup_dir" ]] && backup_dir="$(realpath "$backup_dir")"
+
+echo "Backup directory: $backup_dir"
+echo "Dry run: $dry_run"
+echo "File type: $file_type"
+echo "Overwrite mode: $overwrite_mode"
+echo "Recursive mode: $recursive_mode"
+echo "Size: $size"
+echo "Verbose mode: $verbose_mode"
 echo "Working directory: $working_dir"
-
-# Check and install the google_speech Python module if not already installed
-if ! python3 -c "import google_speech" &>/dev/null; then
-    echo "google_speech module not found. Installing..."
-    pip install --user google_speech || { echo "Failed to install google_speech. Please install it manually."; exit 1; }
-else
-    echo "google_speech module is already installed."
-fi
-
-# Check if GNU parallel is installed
-if ! dpkg -s parallel &>/dev/null && ! which parallel &>/dev/null; then
-    echo "GNU parallel is not installed. Installing..."
-    sudo apt -y install parallel || { echo "Failed to install GNU parallel. Please install it manually."; exit 1; }
-else
-    echo "GNU parallel is already installed."
-fi
 
 # Change to the specified working directory
 cd "$working_dir" || { echo "Specified directory $working_dir does not exist. Exiting."; exit 1; }
 
 process_image() {
     local infile="$1"
-    local infile_name="${infile##*/}"
-    local base_name="${infile_name%%.jpg}"
-    local backup_name="${infile%.*}_1.jpg"
+    local base_name="${infile%.*}"
+    local extension="${infile##*.}"
+    local temp_dir=$(mktemp -d)
+    local mpc_file="$temp_dir/${base_name##*/}.mpc"
+    local outfile="${base_name}-IM.${extension}"
+    local outfile_name="${outfile##*/}"
+    local backup_file="$backup_dir/${infile##*/}"
 
-    # Check if the output file already exists
-    local outfile="${infile%.*}-IM.jpg"
-    if [[ -f "$outfile" ]]; then
-        echo "Output file $outfile already exists. Skipping..."
+    # Check if the file has already been processed
+    if [[ "$infile" == *"-IM."* ]]; then
+        echo "Skipping already processed file: $infile"
         return 0
     fi
 
-    local temp_dir="/tmp/$base_name_$(date +%s%N)_mpc"
-    mkdir -p "$temp_dir"
-    echo
-    echo "Created temporary directory: $temp_dir"
-
-    local mpc_file="$temp_dir/$base_name.mpc"
-    local cache_file="$temp_dir/$base_name.cache"
-
-    echo "Processing: $infile"
-
-    if convert "$infile" \
-            -filter Triangle -define filter:support=2 \
-            -thumbnail $(identify -ping -format '%wx%h' "$infile") \
-            -strip -unsharp "0.25x0.08+8.3+0.045" -dither None -posterize 136 -quality 82 \
-            -define jpeg:fancy-upsampling=off -auto-level -enhance -interlace none \
-            -colorspace sRGB "$mpc_file"; then
-        if [[ $backup_mode -eq 1 ]]; then
-            # Backup original file with new naming scheme
-            mv "$infile" "$backup_name"
-            echo "Backup created: $backup_name"
-        else
-            # Remove original file
-            rm "$infile"
-        fi
-        convert "$mpc_file" "$outfile"
-        echo "Finished processing: $infile, output: $outfile"
+    local convert_opts=(-filter Triangle -define filter:support=2
+        -strip -unsharp 0.25x0.08+8.3+0.045 -dither None -posterize 136
+        -quality 82 -define jpeg:fancy-upsampling=off -auto-level
+        -enhance -interlace none -colorspace sRGB)
+        
+    [[ -n "$size" ]] && convert_opts+=(-resize "$size")
+    
+    if [[ $dry_run -eq 0 ]]; then
+        [[ -n "$backup_dir" ]] && { mkdir -p "$backup_dir"; cp "$infile" "$backup_file"; }
+        
+        convert "$infile" "${convert_opts[@]}" -sampling-factor 2x2 -limit area 0 "$mpc_file" \
+            || { log "Error: First attempt failed, retrying..."; convert "$infile" "${convert_opts[@]}" "$mpc_file"; } \
+            || { log "Error: Second attempt failed."; return 1; }
+            
+        convert "$mpc_file" "$outfile" && echo "Processed: $outfile_name" || echo "Failed to process: $outfile_name"
+        
+        [[ $overwrite_mode -eq 1 ]] && rm -f "$infile"
+        rm -fr "$temp_dir"
     else
-        echo "Error: Failed to process the file: $infile"
-        return 1
+        echo "Dry run: Skipping processing of $infile"
     fi
-
-    rm -r "$temp_dir"
-    echo "Cleaned up temporary directory: $temp_dir"
 }
 
-export -f process_image
+export -f process_image log
+export backup_dir dry_run overwrite_mode size verbose_mode
 
-# Explicitly export backup_mode to make it available to subprocesses
-export backup_mode
-
-# Determine the number of parallel jobs
+# Determine number of parallel jobs and start processing
 num_jobs=$(nproc --all)
-echo "Starting image processing with $num_jobs parallel jobs..."
+echo; echo "Starting image processing with $num_jobs parallel jobs..."
 
-if find . -maxdepth 1 -name "*.jpg" -type f | parallel --env backup_mode -j $num_jobs process_image; then
-    google_speech "Images successfully optimized."
-else
-    google_speech "Failed to optimize images."
+# Get list of files and total count
+if [[ $recursive_mode -eq 1 ]]; then
+    file_list=$(find "$working_dir" -type f -name "*.$file_type" | sort -V)
+else 
+    file_list=$(find "$working_dir" -maxdepth 1 -type f -name "*.$file_type" | sort -V)
 fi
+
+# Process files in parallel
+echo "$file_list" | parallel -j "$num_jobs" 'process_image {}'
+
+echo "Image processing completed."

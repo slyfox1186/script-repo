@@ -144,3 +144,5 @@ ${HOME}/.local/bin:\
 /snap/bin\
 "
 export PATH
+
+sudo ln -sf /usr/lib/wsl/lib/libcuda.so.1.1 /usr/lib/wsl/lib/libcuda.so.1

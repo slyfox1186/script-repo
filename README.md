@@ -83,7 +83,7 @@ bash <(curl -fsSL https://7z.optimizethis.net)
   - **Supported OS:**
     - Debian - 11/12
     - Ubuntu - (20/22/23).04
-    - Other  - Debian-based distros may work as well
+    - Other Debian-based distros may work as well
   
 ```bash
 bash <(curl -fsSL https://magick.optimizethis.net)
@@ -97,7 +97,7 @@ bash <(curl -fsSL https://magick.optimizethis.net)
   - **Supported OS:**
     - Debian - 11/12
     - Ubuntu - (20/22/23).04 / 23.04
-    - Other  - Debian-based distros may work as well
+    - Other Debian-based distros may work as well
 
 **With GPL and <ins>non-free</ins> libraries: https://ffmpeg.org/legal.html**
 ```bash
@@ -105,11 +105,31 @@ bash <(curl -fsSL https://build-ffmpeg.optimizethis.net) --build --latest
 ```
 ------
 
+## Install [OpenSSL](https://www.openssl.org/source/)
+  - **Supported OS:**
+    - Debian - 11/12
+    - Ubuntu - (20/22/23).04
+    - Other Debian-based distros may work as well
+  - **Pass arguments to the script**
+    - -h|--help) : Display the help menu
+    - -6|--enable-ipv6) : Enables IPV6 (Default disabled)
+    - -j|--jobs) : Sets the number of parallel jobs to use
+    - -k|--keep-build) : Keep the build files after the script finishes
+    - -p|--prefix) : Set the prefix location to install the OpenSSL
+    - -v|--version) : Build other versions.
+      - To build OpenSSL version 3.1.5 pass this to the script: **build-openssl.sh -v 3.1.5**
+
+```bash
+curl -Lso build-openssl.sh https://openssl.optimizethis.net
+sudo bash build-openssl.sh
+````
+------
+
 ## Install [Rust](https://github.com/rust-lang/rust)
   - **Supported OS:**
     - Debian - 11/12
     - Ubuntu - (20/22/23).04
-    - Other  - Debian-based distros may work as well
+    - Other Debian-based distros may work as well
 
 ```bash
 bash <(curl -fsSL https://rust.optimizethis.net)
@@ -120,7 +140,7 @@ bash <(curl -fsSL https://rust.optimizethis.net)
   - **Supported OS:**
     - Debian - 11/12
     - Ubuntu - (20/22/23).04
-    - Other  - Debian-based distros may work as well
+    - Other Debian-based distros may work as well
 
 ```bash
 bash <(curl -fsSL https://build-tools.optimizethis.net)
@@ -133,10 +153,11 @@ bash <(curl -fsSL https://build-tools.optimizethis.net)
   - **Supported OS:**
     - Debian - 11/12
     - Ubuntu - (20/22/23).04
-    - Other  - Debian-based distros may work as well
+    - Other Debian-based distros may work as well
 
 ```bash
-bash <(curl -fsSL https://aria2.optimizethis.net)
+sudo curl -Lso /tmp/aria2 https://aria2.optimizethis.net
+sudo bash /tmp/aria2
 ````
 ------
 
@@ -172,7 +193,7 @@ bash <(curl -fsSL https://adobe-fonts.optimizethis.net)
 
 ## Quick Install **apt-fast**
 ```bash
-bash -c "$(curl -fsL https://git.io/vokNn)"
+bash -c "$(curl -fsSL https://git.io/vokNn)"
 ```
 ------
 
@@ -205,7 +226,7 @@ bash <(curl -fsSL https://tilix.optimizethis.net)
   - **Supported OS:**
     - Debian - 11/12
     - Ubuntu - (20/22/23).04
-    - Other  - Debian-based distros may work as well
+    - Other Debian-based distros may work as well
 
 ```bash
 bash <(curl -fsSL https://python3.optimizethis.net)
@@ -216,7 +237,7 @@ bash <(curl -fsSL https://python3.optimizethis.net)
   - **Supported OS:**
     - Debian - 11/12
     - Ubuntu - (20/22/23).04
-    - Other  - Debian-based distros may work as well
+    - Other Debian-based distros may work as well
 
 ```bash
 bash <(curl -fsSL https://wsl2-kernel.optimizethis.net)

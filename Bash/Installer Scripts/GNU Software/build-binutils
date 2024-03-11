@@ -1,122 +1,185 @@
 #!/usr/bin/env bash
 
-if [ "$EUID" -ne 0 ]; then
-        printf "%s\n\n" 'You must run this script with root/sudo.'
-        exit 1
-fi
+##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-binutils
+##  Purpose: build gnu binutils with GOLD enabled
+##  Updated: 03.08.24
+##  Script version: 1.1
+##  To create softlinks in the /usr/local/bin folder pass the argument -l to the script.
 
 # Color Codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-NC='\033[0m' # No Color
+YELLOW='\033[0;33m'
+NC='\033[0m'
 
 # Default Values
-PREFIX="/usr/local/binutils"
-TARGET="x86_64-elf"
-VERSION="2.38"
-BUILD_DIR="build-binutils"
+PROGRAM="binutils"
+VERSION="2.39"
+PREFIX="/usr/local/$PROGRAM-$VERSION"
+BUILD_DIR="/tmp/${PROGRAM}_build"
+LOG_FILE="/tmp/${PROGRAM}_install.log"
+VERBOSE=0
+LINK=0
+TEMP_DIR="/tmp/${PROGRAM}_temp"
 
-# Print Usage Information
 usage() {
-    echo -e "${GREEN}Usage:${NC} $0 [-v version] [-p prefix] [-t target] [-h]"
-    echo "    -v    Specify binutils version to download (default: $VERSION)"
+    echo -e "${GREEN}Usage:${NC} $0 [-v version] [-p prefix] [-l] [-V] [-L log_file] [-h]"
+    echo "    -v    Specify $PROGRAM version (default: $VERSION)"
     echo "    -p    Specify installation prefix (default: $PREFIX)"
-    echo "    -t    Specify target for binutils (default: $TARGET)"
-    echo "    -h    Display this help message and exit"
+    echo "    -l    Link binaries to /usr/local/bin"
+    echo "    -V    Enable verbose logging"
+    echo "    -L    Specify log file path (default: $LOG_FILE)"
+    echo "    -h    Display this help message"
 }
 
-# Print error messages
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1" >&2
+log() {
+    local level="$1"
+    local message="$2"
+    timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+    case "$level" in
+        INFO)
+            echo -e "${timestamp} [${GREEN}INFO${NC}] ${message}" | tee -a "$LOG_FILE"
+            [[ $VERBOSE -eq 1 ]] && echo -e "${timestamp} [${GREEN}INFO${NC}] ${message}"
+            ;;
+        WARN)
+            echo -e "${timestamp} [${YELLOW}WARN${NC}] ${message}" | tee -a "$LOG_FILE"
+            [[ $VERBOSE -eq 1 ]] && echo -e "${timestamp} [${YELLOW}WARN${NC}] ${message}"
+            ;;
+        ERROR)
+            echo -e "${timestamp} [${RED}ERROR${NC}] ${message}" | tee -a "$LOG_FILE"
+            [[ $VERBOSE -eq 1 ]] && echo -e "${timestamp} [${RED}ERROR${NC}] ${message}"
+            ;;
+    esac
 }
 
-# Print info messages
-print_info() {
-    echo -e "${GREEN}[INFO]${NC} $1"
-}
-
-# Parse Command Line Arguments
 parse_arguments() {
-    while getopts ":v:p:t:h" opt; do
+    while getopts ":v:p:lVL:h" opt; do
         case ${opt} in
-            v ) VERSION="$OPTARG"
-                    ;;
-            p ) PREFIX="$OPTARG"
-                    ;;
-            t ) TARGET="$OPTARG"
-                    ;;
-            h ) usage
-                    exit 0
-                    ;;
-            \? ) print_error "Invalid option: $OPTARG"
-                     exit 1
-                    ;;
-            : ) print_error "Option -$OPTARG requires an argument."
-                    exit 1
-                    ;;
+            v ) VERSION="$OPTARG" ;;
+            p ) PREFIX="/usr/local/$PROGRAM-$OPTARG" ;;
+            l ) LINK=1 ;;
+            V ) VERBOSE=1 ;;
+            L ) LOG_FILE="$OPTARG" ;;
+            h ) usage; exit 0 ;;
+            \? ) log "ERROR" "Invalid option: $OPTARG"; usage; exit 1 ;;
+            : ) log "ERROR" "Option -$OPTARG requires an argument."; usage; exit 1 ;;
         esac
     done
 }
 
-# Check for autoconf version
-check_autoconf() {
-    local ac_ver=$(autoconf --version 2>/dev/null | head -n1 | awk '{print $NF}')
-    if [[ "$ac_ver" != "2.69" ]]; then
-        print_info "Autoconf version 2.69 is not installed. Attempting to install..."
-        wget --show-progress -t 2 -cqO build-autoconf-2.69 "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf-2.69"
-        if bash build-autoconf-2.69; then
-            rm build-autoconf-2.69
-            print_info "Successfully installed autoconf version 2.69."
-        else
-            print_error "Failed to install autoconf version 2.69."
+check_dependencies() {
+    log "INFO" "Checking dependencies..."
+    local deps=(wget tar make gcc)
+    for dep in "${deps[@]}"; do
+        if ! command -v "$dep" &> /dev/null; then
+            log "ERROR" "Dependency not found: $dep"
             exit 1
         fi
+    done
+}
+
+install_autoconf() {
+    local ac_ver=$(autoconf --version 2>/dev/null | head -n1 | awk '{print $NF}')
+    if [[ "$ac_ver" != "2.69" ]]; then
+        log "INFO" "Installing autoconf 2.69..."
+
+        mkdir -p "$TEMP_DIR" && cd "$TEMP_DIR"
+        wget -nc -qO- "https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.gz" | tar xz
+        cd autoconf-2.69
+        ./configure --prefix="$TEMP_DIR/autoconf"
+        make -j$(nproc)
+        make install
+        export PATH="$TEMP_DIR/autoconf/bin:$PATH"
+
+        log "INFO" "Autoconf 2.69 installed."
     else
-        print_info "Autoconf version 2.69 is already installed."
+        log "INFO" "Autoconf 2.69 is already installed."
     fi
 }
 
-# Cleanup Function
+optimize_build() {
+    OS=$(uname -s)
+    ARCH=$(uname -m)
+    log "INFO" "Detected OS: $OS, Architecture: $ARCH"
+
+    case "$ARCH" in
+        x86_64)
+            TARGET="x86_64-elf"
+            ;;
+        aarch64)
+            TARGET="aarch64-elf"
+            ;;
+        *)
+            log "ERROR" "Unsupported architecture: $ARCH"
+            exit 1
+            ;;
+    esac
+
+    export CFLAGS="-O3 -march=native"
+}
+
 cleanup() {
-    read -p "Do you want to remove the build directory $BUILD_DIR? [Y/n] " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        rm -rf "$BUILD_DIR"
-        print_info "Build directory removed."
-    else
-        print_info "Build directory not removed."
-    fi
+    [[ $VERBOSE -eq 1 ]] && read -p "Remove build directory $BUILD_DIR? [Y/n] " -n 1 -r
+    [[ $VERBOSE -eq 1 ]] && echo
+    [[ $VERBOSE -eq 0 || $REPLY =~ ^[Yy]$ ]] && rm -rf "$BUILD_DIR"
+    [[ -d "$TEMP_DIR" ]] && rm -rf "$TEMP_DIR"
 }
 
-# Exit Function
-exit_fn() {
-    local exit_code=$1
-    cleanup
-    exit $exit_code
-}
+exit_fn() { cleanup; exit $1; }
 
-# Main Installation Function
 install_binutils() {
-    check_autoconf
-    mkdir -p $BUILD_DIR
-    cd $BUILD_DIR || exit_fn 1
-    wget "https://ftp.gnu.org/gnu/binutils/binutils-$VERSION.tar.xz"
-    tar xf "binutils-$VERSION.tar.xz"
-    mkdir build && cd build || exit_fn 1
-    ../binutils-$VERSION/configure --target=$TARGET --prefix=$PREFIX --with-sysroot --disable-nls --disable-werror
-    make
-    make install || exit_fn 1
-    print_info "Binutils version $VERSION installed successfully to $PREFIX."
+    check_dependencies
+    install_autoconf
+    optimize_build
+
+    mkdir -p "$BUILD_DIR" && cd "$BUILD_DIR"
+
+    if [[ ! -f "$PROGRAM-$VERSION.tar.xz" ]]; then
+        log "INFO" "Downloading $PROGRAM-$VERSION.tar.xz..."
+        wget --show-progress -qc "https://ftp.gnu.org/gnu/$PROGRAM/$PROGRAM-$VERSION.tar.xz"
+    fi
+
+    tar xf "$PROGRAM-$VERSION.tar.xz"
+
+    mkdir -p build && cd build
+
+    log "INFO" "Configuring $PROGRAM for $TARGET..."
+    "../$PROGRAM-$VERSION/configure" --target="$TARGET" --prefix="$PREFIX" --with-sysroot --disable-nls --disable-werror \
+        --enable-gold --enable-plugins --enable-lto --enable-threads --enable-64-bit-bfd
+
+    log "INFO" "Building $PROGRAM for $TARGET..."
+    make -j$(nproc)
+
+    log "INFO" "Installing $PROGRAM for $TARGET..."
+    sudo make install
+
+    log "INFO" "$PROGRAM $VERSION for $TARGET installed to $PREFIX."
+
     cd ../..
 }
 
-# Link the installed binaries (optional)
 link_binutils() {
-    sudo ln -sf "$install_dir"/bin/* /usr/local/bin/
+    log "INFO" "Linking $PROGRAM binaries to /usr/local/bin..."
+    for file in "$PREFIX/bin/$TARGET-"*; do
+        local binary=$(basename "$file")
+        local trimmed_binary=${binary#$TARGET-}
+        sudo ln -sf "$file" "/usr/local/bin/$trimmed_binary"
+    done
 }
 
-# Script Execution
 parse_arguments "$@"
 install_binutils
-link_binutils
+[[ $LINK -eq 1 ]] && link_binutils
+
+log "INFO" "Installation completed successfully."
+
+read -p "Do you want to remove the build directory $BUILD_DIR? [Y/n] " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    rm -rf "$BUILD_DIR"
+    log "INFO" "Build directory removed."
+else
+    log "INFO" "Build directory not removed."
+fi
+
 exit_fn 0
