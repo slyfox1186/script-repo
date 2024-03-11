@@ -1,8 +1,3 @@
-# Name: Firewall Buddy
-# Purpose: Quickly add or remove Windows firewall rules
-# Method: Pass an IP or domain to the script. Supports multiple arguments of both types.
-# GitHub: https://github.com/slyfox1186/script-repo/blob/main/PowerShell/fwbuddy.ps1
-
 # Check if the script is running with administrative privileges
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Error "This script must be run as an administrator. Please start PowerShell as an administrator and run the script again."
@@ -28,6 +23,7 @@ $ruleAction = switch ($action) {
 }
 
 # Prompt the user to select the type of firewall rule
+Write-Host
 $ruleType = Read-Host "Select the type of firewall rule:
 1. Inbound
 2. Outbound
@@ -71,11 +67,14 @@ foreach ($target in $args) {
                 $ruleExists = Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue
 
                 if ($ruleExists) {
+                    Write-Host
                     Write-Warning "Firewall rule '$ruleName' already exists. Skipping..."
+                    Write-Host
                 }
                 else {
                     New-NetFirewallRule -DisplayName $ruleName -Direction $direction -LocalPort Any -Protocol Any -Action Block -RemoteAddress $ipAddress
                     Write-Host "Firewall rule '$ruleName' created successfully for IP address $ipAddress."
+                    Write-Host
                 }
             }
             elseif ($ruleAction -eq 'Remove') {
@@ -83,10 +82,14 @@ foreach ($target in $args) {
 
                 if ($ruleExists) {
                     Remove-NetFirewallRule -DisplayName $ruleName
+                    Write-Host
                     Write-Host "Firewall rule '$ruleName' removed successfully."
+                    Write-Host
                 }
                 else {
+                    Write-Host
                     Write-Warning "Firewall rule '$ruleName' does not exist. Skipping..."
+                    Write-Host
                 }
             }
         }
