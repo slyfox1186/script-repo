@@ -144,4 +144,4 @@ main() {
 main "$@"
 
 # Register all new libraries
-sudo ldconfig
+ldconfig
