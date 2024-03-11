@@ -1,73 +1,49 @@
 #!/usr/bin/env bash
 
-###################################################################################################################################
-##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-pkg-config
-##
 ##  Purpose: build gnu pkg-config
-##
-##  Updated: 12.03.23
-##
-##  Script version: 1.4
-##
-###################################################################################################################################
+##  Updated: 03.06.24
+##  Script version: 1.5
 
-clear
-
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+if [ "$EUID" -ne 0 ]; then
+    echo "You must run this script with root/sudo."
+    echo
     exit 1
 fi
 
-#
-# SET THE VARIABLES
-#
-
-script_ver=1.4
+# Set the variables
+script_ver=1.5
 archive_dir=pkg-config-0.29.2
-archive_url=https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz
+archive_url="https://pkgconfig.freedesktop.org/releases/${archive_dir}.tar.gz"
 archive_ext="${archive_url//*.}"
-archive_name="$archive_dir.tar.${archive_ext}"
-cwd="$PWD"/pkg-config-build-script
+archive_name="$archive_dir.tar.$archive_ext"
+cwd="$PWD/pkg-config-build-script"
 install_dir=/usr
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/script-repo
 
-printf "%s\n%s\n\n" \
-    "pkg-config build script - v${script_ver}" \
-    '==============================================='
+echo "pkg-config build script - v$script_ver"
+echo "==============================================="
+echo
 sleep 2
 
-#
-# CREATE OUTPUT DIRECTORY
-#
-
+# Create output directory
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-#
-# SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
-#
-
+# Set the CC/CXX compilers & the compiler optimization flags
 CC=gcc
 CXX=g++
-CFLAGS='-g -O3 -pipe -march=native'
-CXXFLAGS="${CFLAGS}"
-CPPFLAGS="-I$install_dir/include -I$install_dir/include/x86_64-linux-gnu"
-LDFLAGS="-L$install_dir/lib64 -L$install_dir/lib -L$install_dir/lib/x86_64-linux-gnu"
-export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
+CFLAGS="-g -O3 -pipe -march=native"
+CXXFLAGS="-g -O3 -pipe -march=native"
+export CC CFLAGS CXX CXXFLAGS
 
-#
-# SET THE PATH VARIABLE
-#
-
+# Set the PATH variable
 PATH="\
 /usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
+$HOME/perl5/bin:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/cuda/bin:\
 /usr/local/x86_64-linux-gnu/bin:\
@@ -75,17 +51,11 @@ ${HOME}/.local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
+/bin\
 "
 export PATH
 
-#
-# SET THE PKG_CONFIG_PATH VARIABLE
-#
-
+# Set the PKG_CONFIG_PATH variable
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
@@ -97,65 +67,58 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-#
-# CREATE FUNCTIONS
-#
-
-exit_fn()
-{
-    printf "\n%s\n\n%s\n\n" \
-        'Make sure to star this repository to show your support!' \
-        "$web_repo"
+# Create functions
+exit_fn() {
+    echo
+    echo "Make sure to star this repository to show your support!"
+    echo "https://github.com/slyfox1186/script-repo"
+    echo
     exit 0
 }
 
-fail_fn()
-{
-    printf "\n%s\n\n%s\n\n" \
-        "$1" \
-        "To report a bug create an issue at: $web_repo/issues"
+fail_fn() {
+    echo
+    echo "[ERROR] $1"
+    echo "To report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues"
+    echo
     exit 1
 }
 
-cleanup_fn()
-{
+cleanup_fn() {
     local choice
-    clear
+    echo
+    echo "%s\n%s\n%s\n\n%s\n%s\n\n"
+    echo "============================================"
+    echo "  Do you want to clean up the build files?  "
+    echo "============================================"
+    echo "[1] Yes"
+    echo "[2] No"
+    echo
+    read -p "Your choices are (1 or 2): " choice
+    echo
 
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
-    clear
-
-    case "${choice}" in
-        1)      sudo rm -fr "$cwd";;
-        2)      echo;;
-        *)
-                unset choice
-                cleanup_fn
-                ;;
+    case "$choice" in
+        1) sudo rm -fr "$cwd";;
+        2) ;;
+        *) unset choice
+           cleanup_fn
+           ;;
     esac
 }
 
-#
-# INSTALL REQUIRED APT PACKAGES
-#
+# Install required APT packages
+pkgs=("$1" autoconf autoconf-archive autogen automake build-essential
+      ca-certificates ccache clang curl libaria2-0 libaria2-0-dev libc-ares-dev
+      libdmalloc-dev libgcrypt20-dev libgmp-dev libgnutls28-dev libgpg-error-dev
+      libjemalloc-dev libmbedtls-dev libnghttp2-dev librust-openssl-dev libsqlite3-dev
+      libssh2-1-dev libssh-dev libssl-dev libxml2-dev pkg-config zlib1g-dev
+)
 
-pkgs=("$1" autoconf autoconf-archive autogen automake build-essential ca-certificates ccache clang curl
-      libaria2-0 libaria2-0-dev libc-ares-dev libdmalloc-dev libgcrypt20-dev libgmp-dev libgnutls28-dev
-      libgpg-error-dev libjemalloc-dev libmbedtls-dev libnghttp2-dev librust-openssl-dev libsqlite3-dev
-      libssh2-1-dev libssh-dev libssl-dev libxml2-dev pkg-config zlib1g-dev)
+for pkg in ${pkgs[@]}; do
+    missing_pkg="$(sudo dpkg -l | grep -o $pkg)"
 
-for pkg in ${pkgs[@]}
-do
-    missing_pkg="$(sudo dpkg -l | grep -o ${pkg})"
-
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${pkg}"
+    if [ -z "$missing_pkg" ]; then
+        missing_pkgs+=" $pkg"
     fi
 done
 
@@ -163,55 +126,45 @@ if [ -n "$missing_pkgs" ]; then
     sudo apt install $missing_pkgs
 fi
 
-#
-# DOWNLOAD THE ARCHIVE FILE
-#
-
-if [ ! -f "$cwd/${archive_name}" ]; then
-    curl -A "$user_agent" -Lso "$cwd/${archive_name}" "${archive_url}"
+# Download the archive file
+if [ ! -f "$cwd/$archive_name" ]; then
+    curl -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
-#
-# CREATE OUTPUT DIRECTORY
-#
-
+# Create output directory
 if [ -d "$cwd/$archive_dir" ]; then
     sudo rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
-#
-# EXTRACT ARCHIVE FILES
-#
-
-if ! tar -zxf "$cwd/${archive_name}" -C "$cwd/$archive_dir" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: $cwd/${archive_name}"
+# Extract archive files
+if ! tar -zxf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
+    echo "Failed to extract: $cwd/$archive_name"
+    echo
     exit 1
 fi
 
-#
-# BUILD PROGRAM FROM SOURCE
-#
-
+# Build program from source
 cd "$cwd/$archive_dir" || exit 1
 autoconf
 cd build || exit 1
-../configure --prefix="$install_dir"           \
-             --enable-indirect-deps              \
-             --with-internal-glib                \
-             --with-pc-path="${PKG_CONFIG_PATH}" \
-             --with-pic                          \
-             PKG_CONFIG="$(type -P pkg-config)"
+../configure --prefix="$install_dir" \
+             --enable-indirect-deps \
+             --with-internal-glib \
+             --with-pc-path="$PKG_CONFIG_PATH" \
+             --with-pic \
+             PKG_CONFIG=$(type -P pkg-config)
 echo
 if ! make "-j$(nproc --all)"; then
-    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
+    fail_fn "make -j$(nproc --all). Line: $LINENO"
 fi
+echo
 if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
+    fail_fn "sudo make install. Line: $LINENO"
 fi
 
-# PROMPT USER TO CLEAN UP FILES
+# Prompt user to clean up files
 cleanup_fn
 
-# SHOW EXIT MESSAGE
+# Show exit message
 exit_fn

@@ -1,28 +1,16 @@
 #!/usr/bin/env bash
 
-######################################################################################################################################
-##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/Installer%20Scripts/GNU%20Software/build-curl-git
-##
 ##  Purpose: Build cURL with OpenSSL backend
-##
-##  Updated: 12.30.23
-##
+##  Updated: 03.09.24
 ##  Script version: 1.1
-##
-######################################################################################################################################
 
-clear
-
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+if [ "$EUID" -ne 0 ]; then
+    printf "%s\n\n" 'You must run this script with root or sudo.'
     exit 1
 fi
 
-#
-# SET THE VARIABLES
-#
-
+# Set the variables
 script_ver=1.1
 archive_dir=curl-git
 git_url=https://github.com/curl/curl.git
@@ -31,44 +19,30 @@ install_prefix=/usr/local
 pem_file=cacert.pem
 certs_dir='/etc/ssl/certs'
 pem_out="$certs_dir/$pem_file"
-pc_type=$(gcc -dumpmachine)
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
-printf "%s\n%s\n\n"                      \
-    "cURL Build Script - v${script_ver}" \
+printf "%s\n%s\n\n" \
+    "cURL Build Script - v$script_ver" \
     '==============================================='
 sleep 2
 
-#
-# CREATE OUTPUT DIRECTORY
-#
-
 if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
+    rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
-
-#
-# SET THE C/CXX COMPILERS & SET THE COMPILER OPTIMIZATION FLAGS
-#
 
 CC=gcc
 CXX=g++
 CFLAGS='-g -O3 -pipe -march=native'
-CXXFLAGS="${CFLAGS} -Wno-variadic-macros"
+CXXFLAGS="$CFLAGS -Wno-variadic-macros"
 CPPFLAGS='-I/usr/include/openssl -I/usr/local/include -I/usr/include/libxml2 -I/usr/include'
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS
 
-#
-# SET THE PATH VARIABLE
-#
-
 PATH="\
 /usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
+$HOME/perl5/bin:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/cuda/bin:\
 /usr/local/x86_64-linux-gnu/bin:\
@@ -76,18 +50,12 @@ ${HOME}/.local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
+/bin\
 "
 export PATH
 
-#
-# SET THE PKG_CONFIG_PATH VARIABLE
-#
-
 PKG_CONFIG_PATH="\
+/usr/local/ssl/lib64/pkgconfig:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib/pkgconfig:\
@@ -98,119 +66,97 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-#
-# CREATE FUNCTIONS
-#
-
-exit_fn()
-{
-    printf "\n%s\n\n%s\n\n"                                       \
+exit_fn() {
+    printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         "$web_repo"
     exit 0
 }
 
-fail_fn()
-{
+fail_fn() {
     printf "\n%s\n\n%s\n\n" \
-        "$1"              \
+        "$1" \
         "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
-cleanup_fn()
-{
+cleanup_fn() {
     local choice
 
-    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n"                \
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
         '============================================' \
         '  Do you want to clean up the build files?  ' \
         '============================================' \
-        '[1] Yes'                                      \
+        '[1] Yes' \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
     clear
 
-    case "${choice}" in
-        1)      sudo rm -fr "$cwd";;
-        2)      return 0;;
-        *)
-                unset choice
-                clear
-                cleanup_fn
-                ;;
+    case "$choice" in
+        1) rm -fr "$cwd";;
+        2) ;;
+        *) unset choice
+           clear
+           cleanup_fn
+           ;;
     esac
 }
 
-#
-# INSTALL REQUIRED APT PACKAGES
-#
+install_required_packages() {
+    local libgcc_ver="$(apt list libgcc-* 2>/dev/null | grep -Eo 'libgcc-[0-9]*-dev' | uniq | head -n1)"
+    local libgtk_ver="$(apt list libgtk-* 2>/dev/null | grep -Eo 'libgtk-[0-9]+-doc' | head -n1)"
+    local pkgs=(
+            apt-transport-https apt-utils autoconf autoconf-archive autogen automake autopoint autotools-dev
+            build-essential bzip2 ca-certificates ccache clang cmake curl gfortran git google-perftools graphviz
+            jq lcov libaria2-0 libaria2-0-dev libc-ares-dev libcppunit-dev libcunit1-dev libcurl4 libcurl4-openssl-dev
+            libdmalloc-dev libec-dev libedit-dev libev-dev libevent-dev libexiv2-27 libexpat1-dev "$libgcc_ver"
+            libgcrypt20-dev libgexiv2-2 libgimp2.0 libgmp3-dev libgpg-error-dev "$libgtk_ver" libgpgme-dev libicu-dev
+            libjemalloc-dev libkrb5-3 libldap2-dev libldap-dev liblttng-ust-dev liblzma-dev libmbedtls-dev libnghttp2-dev
+            libnghttp3-dev libntlm0-dev libparted-dev libpng-dev libpsl-dev librtmp-dev librust-bzip2-dev librust-openssl-dev
+            libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev libtinfo5 libticonv-dev libtinfo-dev libtool libtool-bin
+            libunistring-dev libunwind8 libuv1-dev libxml2-dev libzstd-dev lzip m4 nettle-dev default-jdk-headless openssh-server
+            pkg-config python3-dev python3-numpy python3-packaging python3-pip python3-pytest python3-setuptools python3-wheel
+            re2c rsync unzip valgrind zip zlib1g-dev
+       )
 
-libgcc_ver="$(sudo apt list libgcc-* 2>/dev/null | grep -Eo 'libgcc-[0-9]*-dev' | uniq | head -n1)"
-libgtk_ver="$(sudo apt list libgtk-* 2>/dev/null | grep -Eo 'libgtk-[0-9]+-doc' | head -n1)"
+    local missing_packages=()
 
-pkgs=(apt-transport-https apt-utils autoconf autoconf-archive autogen automake autopoint autotools-dev
-      build-essential bzip2 ca-certificates ccache clang cmake curl gfortran git google-perftools graphviz
-      jq lcov libaria2-0 libaria2-0-dev libc-ares-dev libcppunit-dev libcunit1-dev libcurl4 libcurl4-openssl-dev
-      libdmalloc-dev libec-dev libedit-dev libev-dev libevent-dev libexiv2-27 libexpat1-dev "${libgcc_ver}"
-      libgcrypt20-dev libgexiv2-2 libgimp2.0 libgmp3-dev libgpg-error-dev "${libgtk_ver}" libgpgme-dev libicu-dev
-      libjemalloc-dev libkrb5-3 libldap2-dev libldap-dev liblttng-ust-dev liblzma-dev libmbedtls-dev libnghttp2-dev
-      libnghttp3-dev libntlm0-dev libparted-dev libpng-dev libpsl-dev librtmp-dev librust-bzip2-dev librust-openssl-dev
-      libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev libtinfo5 libticonv-dev libtinfo-dev libtool libtool-bin
-      libunistring-dev libunwind8 libuv1-dev libxml2-dev libzstd-dev lzip m4 nettle-dev default-jdk-headless openssh-server
-      pkg-config python3-dev python3-numpy python3-packaging python3-pip python3-pytest python3-setuptools python3-wheel
-      re2c rsync unzip valgrind zip zlib1g-dev)
+    for pkg in "${pkgs[@]}"; do
+        if ! dpkg-query -W -f='${Status}' "$pkg" | grep -q "ok installed"; then
+            missing_packages+=("$pkg")
+        fi
+    done
 
-for pkg in ${pkgs[@]}
-do
-    missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
-
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${pkg}"
+    if [ "${#missing_packages[@]}" -gt 0 ]; then
+        apt update
+        apt install "${missing_packages[@]}"
+    else
+        log "All required packages are already installed."
     fi
-done
+}
+install_required_packages
 
-if [ -n "$missing_pkgs" ]; then
-    sudo apt install $missing_pkgs
-    sudo apt -y autoremove
-    clear
-fi
-
-#
-# INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
-#
-
-if [ ! -f "${pem_out}" ]; then
+# Install certs from curl's official website
+if [ ! -f "$pem_out" ]; then
     printf "%s\n%s\n\n" \
         'Download the latest security certificate' \
         '================================================'
-    curl -A "$user_agent" -Lso "$cwd/$pem_file" "https://curl.se/ca/$pem_file"
-    sudo cp -f "$cwd/$pem_file" "${pem_out}"
+    curl -Lso "$cwd/$pem_file" "https://curl.se/ca/$pem_file"
+    cp -f "$cwd/$pem_file" "$pem_out"
 fi
 
-#
-# CREATE OUTPUT DIRECTORY CURL
-#
-
+# Create output directory curl
 if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
+    rm -fr "$cwd/$archive_dir"
 fi
 
-#
-# DOWNLOAD THE ARCHIVE FILE CURL
-#
+# Download the archive file curl
+git clone "$git_url" "$cwd/$archive_dir"
 
-git clone "${git_url}" "$cwd/$archive_dir"
-
-# UPDATE THE SYSTEM SECURITY CERTIFICATES BEFORE INSTALLING CURL
+# Update the system security certificates before installing curl
 if type -P 'update-ca-certificates' &>/dev/null; then
-    sudo update-ca-certificates
+    update-ca-certificates
 fi
-
-#
-# DETERMINE IF HTTP3 SUPPORT IS ENABLED
-#
-
 
 cd "$cwd/$archive_dir" || exit 1
 dopts=('--disable-'{get-easy-options,shared,verbose,versioned-symbols})
@@ -222,34 +168,33 @@ eopts+=('--enable-'{mime,mqtt,netrc,ntlm,ntlm-wb='/usr/bin/ntlm_auth'})
 eopts+=('--enable-'{openssl-auto-load-config,optimize,pop3,progress-meter})
 eopts+=('--enable-'{proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static,telnet})
 eopts+=('--enable-'{tftp,threaded-resolver,tls-srp,unix-sockets,websockets})
-wopts=('--with-'{libssh2,nghttp2='/usr/include',nghttp3='/usr/include',openssl='/usr'})
-wopts+=('--with-'{ca-bundle="${pem_out}",ca-fallback,ca-path="$certs_dir",secure-transport})
+wopts=('--with-'{libssh2,nghttp2='/usr/include',nghttp3='/usr/include',openssl})
+wopts+=('--with-'{ca-bundle="$pem_out",ca-fallback,ca-path="$certs_dir",secure-transport})
 autoreconf -fi
 mkdir build
 cd build || exit 1
 ../configure --prefix="$install_prefix" \
-            "${dopts[@]}"                 \
-            "${eopts[@]}"                 \
-            "${wopts[@]}"                 \
-            "${csuffix}"                  \
-             CPPFLAGS="${CPPFLAGS}"
+            "${dopts[@]}" \
+            "${eopts[@]}" \
+            "${wopts[@]}" \
+            "$csuffix"  \
+             CPPFLAGS="$CPPFLAGS"
 echo
 if ! make "-j$(nproc --all)"; then
-    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
+    fail_fn "Failed to execute: make -j$(nproc --all). Line: $LINENO"
 fi
 echo
-if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
+if ! make install; then
+    fail_fn "Failed to execute: make install. Line: $LINENO"
 fi
 
-# PROMPT USER TO CLEAN UP FILES
+# Prompt user to clean up files
 cleanup_fn
 
-# SHOW NEW VERSION
+# Show new version
 curl_ver="$(/usr/local/bin/curl --version | grep -Eo '^curl [0-9\.]+' | grep -Eo '[0-9\.]+')"
-clear
-printf "%s\n" "The updated cURL version is: ${curl_ver}"
-sleep 3
 
-# SHOW EXIT MESSAGE
+printf "\n%s\n" "The updated cURL version is: $curl_ver"
+
+# Show exit message
 exit_fn
