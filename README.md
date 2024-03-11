@@ -120,8 +120,8 @@ bash <(curl -fsSL https://build-ffmpeg.optimizethis.net) --build --latest
       - To build OpenSSL version 3.1.5 pass this to the script: **build-openssl.sh -v 3.1.5**
 
 ```bash
-sudo curl -Lso /tmp/build-openssl.sh https://openssl.optimizethis.net
-sudo bash /tmp/build-openssl.sh
+curl -Lso build-openssl.sh https://openssl.optimizethis.net
+sudo bash build-openssl.sh
 ````
 ------
 
