@@ -101,7 +101,7 @@ build_wget() {
                 --with-libunistring-prefix=/usr \
                 --with-libcares \
                 --without-ipv6 \
-                --disable-nls && make -j"$(nproc)" && make install || error "Failed to build wget."
+                --disable-nls && make "-j$(nproc --all)" && make install || error "Failed to build wget."
     log "wget built and installed successfully."
 }
 
