@@ -1,3 +1,8 @@
+# Name: Firewall Buddy
+# Purpose: Quickly add or remove Windows firewall rules
+# Method: Pass an IP or domain to the script. Supports multiple arguments of all types.
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/PowerShell/fwbuddy.ps1
+
 # Check if the script is running with administrative privileges
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Error "This script must be run as an administrator. Please start PowerShell as an administrator and run the script again."
