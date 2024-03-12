@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+## GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-openssl-v2
+## Purpose: Build any version of OpenSSL. Defaults to the latest version 3.2.x
+## Features: Pass arguments to the script
+## Updated: 03.12.24
+
 usage() {
     echo "Usage: $0 [OPTIONS]"
     echo "Options:"
@@ -79,19 +84,13 @@ install_required_packages() {
 }
 
 set_compiler_flags() {
-    local -a include_dirs=("/usr/local/include" "/usr/local/include/x86_64-linux-gnu" "/usr/include/x86_64-linux-gnu" "/usr/include")
-    local -a lib_dirs=("/usr/local/lib64" "/usr/local/lib" "/usr/lib64" "/usr/lib")
-
     local common_flags="-g -O3 -pipe -fstack-protector-strong -D_FORTIFY_SOURCE=2"
-    local include_flags="${include_dirs[@]/#/-I}"
-    local lib_flags="${lib_dirs[@]/#/-L}"
 
     export CC=clang
     export CXX=clang++
     export CFLAGS="$common_flags"
     export CXXFLAGS="$CFLAGS"
-    export CPPFLAGS="$include_flags"
-    export LDFLAGS="$lib_flags -Wl,-z,relro,-z,now"
+    export LDFLAGS="-Wl,-z,relro,-z,now"
 }
 
 update_shared_library_cache() {
@@ -120,11 +119,11 @@ create_pkgconfig_softlinks() {
 
 download_openssl() {
     local openssl_url="https://www.openssl.org/source/openssl-$openssl_version.tar.gz"
-    local tar_file="$cwd/openssl-$openssl_version.tar.gz" # Updated to include version in filename
+    local tar_file="$cwd/openssl-$openssl_version.tar.gz"
     local max_retries=3
     local retry_count=0
 
-    echo "Targeting tar file: $tar_file" # Debugging line, can be removed
+    echo "Targeting tar file: $tar_file"
 
     while [[ ! -f "$tar_file" && $retry_count -lt $max_retries ]]; do
         echo "Downloading OpenSSL $openssl_version... (Attempt $((retry_count + 1))/$max_retries)"
@@ -146,7 +145,7 @@ download_openssl() {
 }
 
 extract_openssl() {
-    local tar_file="$cwd/openssl-$openssl_version.tar.gz" # Ensure this matches the updated download path
+    local tar_file="$cwd/openssl-$openssl_version.tar.gz"
 
     if [[ -d "$src_dir" ]]; then
         echo
@@ -201,14 +200,9 @@ configure_openssl() {
         --release
         --with-zlib-include="/usr/include"
         --with-zlib-lib="/usr/lib/x86_64-linux-gnu"
-        enable-buildtest-c++
-        enable-external-tests
         enable-ec_nistp_64_gcc_128
         enable-egd
-        enable-fips
         enable-pic
-        enable-rc5
-        enable-sctp
         enable-shared
         enable-threads
         enable-zlib
@@ -216,14 +210,13 @@ configure_openssl() {
         no-comp
         no-dso
         no-engine
-        no-tests
         no-weak-ssl-ciphers
     )
 
     if [[ "$openssl_version" =~ ^3\.2\. ]]; then
         config_options+=(
-            enable-brotli
-            enable-zstd
+            enable-ktls
+            enable-psk
         )
     fi
 
