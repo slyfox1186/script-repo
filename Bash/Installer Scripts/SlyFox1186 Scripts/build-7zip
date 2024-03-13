@@ -1,27 +1,73 @@
 #!/usr/bin/env bash
-clear
 
-# Purpose: Install the latest 7-zip package across multiple OS types.
-# Updated: 01.16.24
-# Script version: 1.4
+# Purpose: Install the latest 7-zip package across multiple Linux distributions.
+# Updated: 03-12-2024
+# Script version: 2.0
 
 # GitHub Repository
-web_repo='https://github.com/slyfox1186/script-repo'
+readonly WEB_REPO='https://github.com/slyfox1186/script-repo'
 
 # Set variables
-script_ver='1.4'
-version='7z2301'
-tar_file="$version.tar.xz"
-cwd="/home/jman/tmp/7zip-build-script"
-output_dir="$cwd/$version"
-install_dir='/usr/local/bin'
-user_agents=("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36" "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3" "User-Agent: curl/7.68.0")
+readonly SCRIPT_VER='2.0'
+readonly VERSION_7Z='7z2301'
+readonly TAR_FILE="${VERSION_7Z}.tar.xz"
+readonly CWD="/tmp/7zip-build-script"
+readonly OUTPUT_DIR="${CWD}/${VERSION_7Z}"
+readonly INSTALL_DIR='/usr/local/bin'
+
+# ANSI escape codes for colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Function to print colored messages
+print_message() {
+    local color=$1
+    local message=$2
+    
+    case $color in
+        red)    echo -e "${RED}$message${NC}";;
+        green)  echo -e "${GREEN}$message${NC}";;
+        yellow) echo -e "${YELLOW}$message${NC}";;
+        blue)   echo -e "${BLUE}$message${NC}";;
+        *)      echo -e "$message";;
+    esac
+}
+
+# Function to log messages
+log() {
+    local message=$1
+    echo
+    echo -e "${BLUE}[$(date '+%m-%d-%Y %I:%M:%S %p')] [INFO] $message${NC}"
+}
+
+# Function to log warnings
+warn() {
+    local message=$1
+    echo
+    echo -e "${YELLOW}[$(date '+%m-%d-%Y %I:%M:%S %p')] [WARN] $message${NC}"
+    echo
+}
+
+# Function to handle errors and exit
+fail() {
+    local message=$1
+    echo
+    print_message red "[$(date '+%m-%d-%Y %I:%M:%S %p')] [ERROR] $message"
+    echo
+    print_message yellow "Please create a support ticket at: ${WEB_REPO}/issues"
+    echo
+    exit 1
+}
 
 # Function to print 7-Zip version
-version_fn() {
+print_version() {
     local version_info
-    version_info="$("$install_dir/7z" | awk -F ' |\\(' '/7-Zip/{print $4; exit}')"
-    printf "\n7-Zip has been updated to version %s\n\n" "$version_info"
+    version_info="$("${INSTALL_DIR}/7z" | awk -F ' |\\(' '/7-Zip/{print $4; exit}')"
+    echo
+    print_message green "7-Zip has been updated to version ${version_info}"
 }
 
 # Function to print script banner
@@ -31,52 +77,137 @@ box_out_banner() {
     tput bold
     line="$(tput setaf 3)$line"
     space=${line//-/ }
-    echo " $line"
+    echo -e "\n $line"
     printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
     printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
     printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
-    echo " $line"
+    echo -e " $line\n"
     tput sgr 0
-}
-box_out_banner "7-Zip Install Script"
-
-# Function to handle errors
-fail_fn() {
-    echo -e "\n\n$1\n\nPlease create a support ticket at:\n$web_repo/issues"
-    exit 1
 }
 
 # Function to download the file with retries
 download_with_retry() {
-    local url="$1"
-    local dest="$2"
+    local url=$1
+    local dest=$2
     local max_attempts=3
     local attempt=1
-
+    
     while [ $attempt -le $max_attempts ]; do
-        wget -U "${user_agents[$((attempt-1))]}" -cqO "$dest" "$url" && return 0
+        wget --show-progress -cqO "$dest" "$url" && return 0
         ((attempt++))
-        sleep 2 # Wait for a few seconds before retrying
+        sleep 2
     done
-
+    
     return 1
 }
 
-# Check if wget is not installed and install it
-if ! command -v wget &>/dev/null; then
-    sudo apt install wget
-    sudo apt -y autoremove
-    clear
+# Function to detect the Linux distribution
+detect_distribution() {
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        OS=$ID
+    elif type lsb_release >/dev/null 2>&1; then
+        OS=$(lsb_release -si)
+    elif [ -f /etc/lsb-release ]; then
+        . /etc/lsb-release
+        OS=$DISTRIB_ID
+    elif [ -f /etc/redhat-release ]; then
+        OS=$(awk '{print $1}' /etc/redhat-release)
+    else
+        OS=$(uname -s)
+    fi
+    
+    OS=$(echo "$OS" | tr '[:upper:]' '[:lower:]')
+}
+
+# Function to install dependencies based on the Linux distribution
+install_dependencies() {
+    log "Installing dependencies..."
+    
+    case $OS in
+        ubuntu|debian|raspbian)
+            sudo apt update
+            sudo apt install -y wget tar
+            ;;
+        centos|fedora|rhel)
+            sudo yum install -y wget tar
+            ;;
+        arch|manjaro)
+            sudo pacman -Sy wget tar
+            ;;
+        opensuse)
+            sudo zypper install -y wget tar
+            ;;
+        *)
+            fail "Unsupported Linux distribution: $OS"
+            ;;
+    esac
+    
+    log "Dependencies installed successfully."
+}
+
+# Function to display the help menu
+display_help() {
+    echo
+    echo "Usage: $0 [OPTIONS]"
+    echo
+    echo "Options:"
+    echo "  -h, --help         Display this help menu"
+    echo "  -v, --version      Display the script version"
+    echo "  -u, --url <URL>    Specify a custom download URL"
+    echo "  -o, --output <DIR> Specify a custom output directory"
+    echo
+}
+
+# Parse command-line options
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -h|--help)
+            display_help
+            exit 0
+            ;;
+        -v|--version)
+            echo
+            echo "Script version: $SCRIPT_VER"
+            echo
+            exit 0
+            ;;
+        -u|--url)
+            CUSTOM_URL=$2
+            shift
+            ;;
+        -o|--output)
+            CUSTOM_OUTPUT_DIR=$2
+            shift
+            ;;
+        *)
+            warn "Unknown option: $1"
+            display_help
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+# Main script execution
+
+box_out_banner "7-Zip Install Script"
+
+detect_distribution
+
+# Check if wget and tar are installed and install them if missing
+if ! command -v wget &>/dev/null || ! command -v tar &>/dev/null; then
+    install_dependencies
 fi
 
 # Check if the '7zip-build-script' directory exists and delete it
-if [ -d "$cwd" ]; then
-    echo -e "\nDeleting existing '7zip-build-script' directory..."
-    sudo rm -fr "$cwd"
+if [ -d "$CWD" ]; then
+    log "Deleting existing '7zip-build-script' directory..."
+    sudo rm -fr "$CWD"
 fi
 
 # Create '7zip-build-script' directory
-mkdir -p "$cwd"
+mkdir -p "$CWD"
 
 # Detect PC architecture and set download URL
 case "$(uname -m)" in
@@ -84,33 +215,45 @@ case "$(uname -m)" in
     i386|i686)       url='linux-x86.tar.xz';;
     aarch64*|armv8*) url='linux-arm64.tar.xz';;
     arm|armv7*)      url='linux-arm.tar.xz';;
-    *)               fail_fn "Unrecognized architecture '$(uname -m)'";;
+    *)               fail "Unrecognized architecture '$(uname -m)'";;
 esac
 
+# Use custom download URL if provided
+if [[ -n $CUSTOM_URL ]]; then
+    url="$CUSTOM_URL"
+fi
+
 # Download the tar file with retries if missing
-if [ ! -f "$cwd/$tar_file" ]; then
-    download_with_retry "https://www.7-zip.org/a/${version}-${url}" "$cwd/$tar_file" || fail_fn "Failed to download the file"
+if [ ! -f "$CWD/$TAR_FILE" ]; then
+    download_with_retry "https://www.7-zip.org/a/${VERSION_7Z}-${url}" "$CWD/$TAR_FILE" || fail "Failed to download the file"
 fi
 
 # Extract files into directory '7z'
-mkdir -p "$output_dir"
-if [ ! -f "$cwd/$tar_file" ]; then
-    fail_fn "The script was unable to find the download file '$cwd/$tar_file'"
+mkdir -p "$OUTPUT_DIR"
+if [ ! -f "$CWD/$TAR_FILE" ]; then
+    fail "The script was unable to find the download file '$CWD/$TAR_FILE'"
 fi
 
-if ! tar -xf "$cwd/$tar_file" -C "$output_dir"; then
-    fail_fn "The script was unable to extract the archive: '$cwd/$tar_file'"
+if ! tar -xf "$CWD/$TAR_FILE" -C "$OUTPUT_DIR"; then
+    fail "The script was unable to extract the archive: '$CWD/$TAR_FILE'"
+fi
+
+# Use custom output directory if provided
+if [[ -n $CUSTOM_OUTPUT_DIR ]]; then
+    INSTALL_DIR="$CUSTOM_OUTPUT_DIR"
 fi
 
 # Copy the file to its destination or throw an error if the copying of the file fails
-if ! sudo cp -f "$cwd/$version/7zzs" "$install_dir/7z"; then
-    fail_fn "The script was unable to copy the static file '7zzs' to '$install_dir/7z'"
+if ! sudo cp -f "$CWD/$VERSION_7Z/7zzs" "$INSTALL_DIR/7z"; then
+    fail "The script was unable to copy the static file '7zzs' to '$INSTALL_DIR/7z'"
 else
-    sudo chmod 755 "$install_dir/7z"
+    sudo chmod 755 "$INSTALL_DIR/7z"
 fi
 
+log "7-Zip installation completed successfully."
+
 # Show the newly installed 7-Zip version
-version_fn
+print_version
 
 # Clean up the install files
-sudo rm -fr "$cwd"
+sudo rm -fr "$CWD"
