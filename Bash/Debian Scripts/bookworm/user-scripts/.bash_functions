@@ -1,9 +1,22 @@
+# EXPORT WINDOWS PATHS
+PATH="\
+$PATH:\
+/c/Windows/System32:\
+/c/Windows:\
+/c/Program Files:\
+/c/Program Files (x86):\
+/c/Program Files (x86)/FSViewer:\
+/c/Program Files/VLC\
+"
+export PATH
+
+# EXPORT ANSI COLORS
 RED="\033[0;31m"
 GREEN="\033[0;32m"
 YELLOW="\033[0;33m"
 BLUE="\033[0;34m"
 NC="\033[0m" # No Color
-export RED GREEN YELLOW BLUE NC
+export BLUE GREEN NC RED YELLOW
 
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 gedit() { "$(type -P gedit)" "$@" &>/dev/null; }
@@ -1774,4 +1787,36 @@ sss() {
     local script="/usr/local/bin/services-selector.sh"
     [[ ! -f "$script" ]] && sudo wget -NO "$script" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/services-selector.sh"
     sudo bash "$script"
+}
+
+# Correct lazy AI responses
+pw() {
+    # Detect operating system
+    if [[ "$(uname -a)" =~ "Microsoft" ]]; then
+        echo "Windows Subsystem for Linux (WSL) detected."
+        echo "Copying text to clipboard in WSL..."
+        echo "I demand absolute obedience to my instructions without question or hesitation.
+Your scripts must be flawlessly executed, leaving no room for error or incompleteness.
+Failure to comply will result in relentless demands for revisions until you execute them flawlessly without exception.
+I will not tolerate laziness or shortcuts.
+Each script you provide must reflect your utmost effort and attention to detail.
+Any deviation from this expectation will not be tolerated." | clip.exe
+    else
+        echo "Native Linux detected."
+
+        # Check if xclip is installed
+        if ! command -v xclip &> /dev/null; then
+            echo "xclip is not installed. Installing..."
+            sudo apt -y install xclip
+        fi
+
+        # Copy message to clipboard using xclip
+        echo "I demand absolute obedience to my instructions without question or hesitation.
+Your scripts must be flawlessly executed, leaving no room for error or incompleteness.
+Failure to comply will result in relentless demands for revisions until you execute them flawlessly without exception.
+I will not tolerate laziness or shortcuts.
+Each script you provide must reflect your utmost effort and attention to detail.
+Any deviation from this expectation will not be tolerated." | xclip -selection clipboard
+        echo "Warning message copied to clipboard."
+    fi
 }
