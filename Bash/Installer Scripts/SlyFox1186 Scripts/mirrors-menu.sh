@@ -2,66 +2,123 @@
 
 clear
 
-echo -e "Starting Linux Mirrors Script...\n"
+# Define color variables
+GREEN='\e[0;32m'
+CYAN='\e[0;36m'
+MAGENTA='\e[0;35m'
+RED='\033[0;31m'
+NC='\e[0m' # No Color
 
-# Define Color functions
-ColorGreen() { echo -ne "\e[32m${1}\e[0m"; }
-ColorBlue() { echo -ne "\e[34m${1}\e[0m"; }
+# Create a temporary directory for storing files
+dir=$(mktemp -d /tmp/mirrors-script-XXXXXX)
 
 # Function to download and execute mirrors script
 execute() {
-    local url="$1"
-    local output_file="$2"
-    curl -Lso "$output_file" "$url"
-    sudo bash "$output_file"
-    if [ -f "$output_file" ]; then
-        rm "$output_file"
+    local url=$1
+    local file=$2
+    if curl -Lso "$dir/$file" "$url"; then
+        if [[ -f "$dir/$file" ]]; then
+            if sudo bash "$dir/$file"; then
+                sudo rm -rf "$dir"
+                echo -e "${GREEN}[SUCCESS]${NC} Execution completed successfully.\\n"
+                exit 0
+            else
+                echo -e "${RED}[ERROR]${NC} Failed to execute: \"$file\"\\n"
+                read -p "Press any key to exit."
+                echo
+                sudo rm -rf "$dir"
+                exit 1
+            fi
+        else
+            echo -e "${RED}[ERROR]${NC} File not found: \"$file\"\\n"
+            read -p "Press any key to exit."
+            echo
+            sudo rm -rf "$dir"
+            exit 1
+        fi
+    else
+        echo -e "${RED}[ERROR]${NC} Failed to download: \"$file\"\\n"
+        read -p "Press any key to exit."
+        echo
+        sudo rm -rf "$dir"
+        exit 1
     fi
 }
 
 # Function to display the main menu
 main_menu() {
-    echo -e "$(ColorGreen '1)') Ubuntu\n$(ColorGreen '2)') Debian\n$(ColorGreen '3)') Raspberry Pi (Bookworm)\n$(ColorGreen '4)') Arch Linux\n$(ColorGreen '5)') Exit"
-    read -p "$(ColorBlue 'Choose an operating system: ')" answer
-    echo -e "\nYou selected option $answer."
-    clear
-    case "${answer}" in
-        1) 
-            echo -e "$(ColorGreen '1)') Ubuntu 23.04 - Lunar Lobster\n$(ColorGreen '2)') Ubuntu 22.04 - Jammy Jellyfish\n$(ColorGreen '3)') Ubuntu 20.04 - Focal Fossa\n$(ColorGreen '4)') Ubuntu 18.04 - Bionic Beaver\n$(ColorGreen '0)') Back"
-            read -p "$(ColorBlue 'Choose the Ubuntu release version: ')" answer
-            echo -e "\nYou selected option $answer."
-            clear
-            case "${answer}" in
-                1) execute 'https://lunar-mirrors.optimizethis.net' 'lunar-mirrors';;
-                2) execute 'https://jammy.optimizethis.net' 'jammy-mirrors';;
-                3) execute 'https://focal-mirrors.optimizethis.net' 'focal-mirrors';;
-                4) execute 'https://bionic-mirrors.optimizethis.net' 'bionic-mirrors';;
-                0) main_menu;;
-                *) unset answer; clear; main_menu;;
-            esac
-            ;;
-        2)
-            echo -e "$(ColorGreen '1)') Debian 11 - Bullseye\n$(ColorGreen '2)') Debian 12 - Bookworm\n$(ColorGreen '3)') Back"
-            read -p "$(ColorBlue 'Choose the Debian release version: ')" answer
-            echo -e "\nYou selected option $answer."
-            clear
-            case "${answer}" in
-                1) execute 'https://bullseye-mirrors.optimizethis.net' 'bullseye-mirrors';;
-                2) execute 'https://bookworm-mirrors.optimizethis.net' 'bookworm-mirrors';;
-                3) main_menu;;
-                *) unset answer; clear; main_menu;;
-            esac
-            ;;
-        3) execute 'https://raspi-mirrors.optimizethis.net' 'raspi-mirrors';;
-        4)
-            sudo mkdir -p /etc/pacman.d # Create the directory if it doesn't exist
-            execute 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Arch%20Linux%20Scripts/archlinux-mirrors.sh' 'archlinux-mirrors'
-            ;;
-        5) return 0;;
-        *) unset answer; clear; main_menu;;
-    esac
-    clear
+    local choice
+    while true; do
+        echo -e "Linux Mirrors Script...\\n"
+        echo -e "${GREEN}1)${NC} Ubuntu"
+        echo -e "${GREEN}2)${NC} Debian"
+        echo -e "${GREEN}3)${NC} Raspberry Pi (Bookworm)"
+        echo -e "${GREEN}4)${NC} Arch Linux"
+        echo -e "${GREEN}0)${NC} Exit"
+        echo
+        echo -en "${CYAN}Choose an operating system: ${NC}"
+        read -n 1 choice
+        clear
+        case "$choice" in
+            1) ubuntu_menu ;;
+            2) debian_menu ;;
+            3) execute "https://raspi-mirrors.optimizethis.net" "raspi-mirrors.sh" ;;
+            4) sudo mkdir -p "/etc/pacman.d"
+               execute "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Arch%20Linux%20Scripts/archlinux-mirrors.sh" "archlinux-mirrors.sh"
+               ;;
+            0)
+               rm -rf "$dir"
+               exit 0
+               ;;
+            *) clear
+               main_menu
+               ;;
+        esac
+    done
 }
 
-# Initial call to the main menu
+# Function to display the Ubuntu menu
+ubuntu_menu() {
+    local choice
+    echo -e "${GREEN}1)${NC} Ubuntu 23.04 - Lunar Lobster"
+    echo -e "${GREEN}2)${NC} Ubuntu 22.04 - Jammy Jellyfish"
+    echo -e "${GREEN}3)${NC} Ubuntu 20.04 - Focal Fossa"
+    echo -e "${GREEN}4)${NC} Ubuntu 18.04 - Bionic Beaver"
+    echo -e "${GREEN}0)${NC} Back"
+    echo
+    echo -en "${CYAN}Choose the Ubuntu release version: ${NC}"
+    read -n 1 choice
+    clear
+    case "$choice" in
+        1) execute "https://lunar-mirrors.optimizethis.net" "lunar-mirrors.sh" ;;
+        2) execute "https://jammy.optimizethis.net" "jammy-mirrors.sh" ;;
+        3) execute "https://focal-mirrors.optimizethis.net" "focal-mirrors.sh" ;;
+        4) execute "https://bionic-mirrors.optimizethis.net" "bionic-mirrors.sh" ;;
+        0) clear ;;
+        *) clear
+           ubuntu_menu
+           ;;
+    esac
+}
+
+# Function to display the Debian menu
+debian_menu() {
+    local choice
+    echo -e "${GREEN}1)${NC} Debian 11 (Bullseye)"
+    echo -e "${GREEN}2)${NC} Debian 12 (Bookworm)"
+    echo -e "${GREEN}0)${NC} Back"
+    echo
+    echo -en "${CYAN}Choose the Debian release version: "
+    read -n 1 choice
+    clear
+    case "$choice" in
+        1) execute "https://bullseye-mirrors.optimizethis.net" "bullseye-mirrors.sh" ;;
+        2) execute "https://bookworm-mirrors.optimizethis.net" "bookworm-mirrors.sh" ;;
+        0) clear ;;
+        *) clear
+           debian_menu
+           ;;
+    esac
+}
+
 main_menu
