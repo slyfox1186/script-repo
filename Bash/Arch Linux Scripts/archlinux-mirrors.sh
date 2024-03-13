@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
 
-clear
+script_path=$(readlink -f "${BASH_SOURCE[0]}")
+script_name=$(basename "$script_path")
 
-fname='/etc/pacman.conf'
-mlist='/etc/pacman.d/mirrorlist'
+config_list="/etc/pacman.conf"
+server_list="/etc/pacman.d/mirrorlist"
 
-# make a backup of the file
-if [ ! -f "$fname".bak ]; then
-    cp -f "$fname" "$fname".bak
+# Make a backup of the file
+if [[ ! -f "${config_list}.bak" ]]; then
+    cp -f "$config_list" "${config_list}.bak"
+fi
+if [[ ! -f "${server_list}.bak" ]]; then
+    cp -f "$server_list" "${server_list}.bak"
 fi
 
-cat > "$fname" <<'EOF'
+cat > "$config_list" <<'EOF'
 #
 # /etc/pacman.conf
 #
@@ -98,12 +102,7 @@ Include = /etc/pacman.d/mirrorlist
 #Include = /etc/pacman.d/mirrorlist
 EOF
 
-# make a backup of the file
-if [ ! -f "$mlist".bak ]; then
-    cp -f "$mlist" "$mlist".bak
-fi
-
-cat > "$mlist" <<'EOF'
+cat > "$server_list" <<'EOF'
 Server = https://forksystems.mm.fcix.net/archlinux/$repo/os/$arch
 Server = https://america.mirror.pkgbuild.com/$repo/os/$arch
 Server = https://arch.mirror.constant.com/$repo/os/$arch
@@ -126,22 +125,11 @@ Server = https://ftp.osuosl.org/pub/archlinux/$repo/os/$arch
 Server = https://mirrors.mit.edu/archlinux/$repo/os/$arch
 EOF
 
-# OPEN AN EDITOR TO VIEW THE CHANGES
-if type -P gnome-text-editor &>/dev/null; then
-    sudo gnome-text-editor "$fname" "$mlist"
-elif type -P gedit &>/dev/null; then
-    sudo gedit "$fname" "$mlist"
-elif type -P nano &>/dev/null; then
-    sudo nano "$fname" "$mlist"
-elif type -P vim &>/dev/null; then
-    sudo vim "$fname" "$mlist"
-elif type -P vi &>/dev/null; then
-    sudo vi "$fname" "$mlist"
+# Open an editor to view the changes
+if command -v nano &>/dev/null; then
+    sudo nano "$fname"
 else
-    printf "\n%s\n\n" "Could not find an EDITOR to open the files \"$fname\" or \"$mlist\""
-    exit 1
+    echo -e "\\nThe script failed to locate nano to open the file...\\n"
 fi
 
-if [[ "${0}" == 'archlinux-mirrors' ]]; then
-    sudo rm 'archlinux-mirrors'
-fi
+sudo rm "$script_name"
