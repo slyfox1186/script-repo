@@ -21,9 +21,7 @@ EOF
 if command -v nano &>/dev/null; then
     sudo nano "$fname"
 else
-    echo
-    echo "The script failed to locate nano to open the file..."
-    echo
+    echo -e "\\nThe script failed to locate nano to open the file...\\n"
 fi
 
 sudo rm "$script_name"
