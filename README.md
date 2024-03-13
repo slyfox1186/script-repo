@@ -57,7 +57,8 @@ bash <(curl -fsSL https://build-all-git.optimizethis.net)
 
 #### For native Linux systems (Windows WSL not working)
 ```bash
-bash <(curl -fsSL https://gcc.optimizethis.net)
+curl -Lso build-gcc.sh https://gcc.optimizethis.net
+clear; sudo bash build-gcc.sh
 ```
 ## Install [Clang-17](https://github.com/llvm/llvm-project)
   - **Automatically finds the latest release version and installs clang from source code.**
