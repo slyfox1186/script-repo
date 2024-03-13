@@ -89,23 +89,13 @@ box_out_banner() {
 }
 
 # Function to download the file with retries
-download_with_retry() {
+download() {
     local url="$1"
     local dest="$2"
-    local max_attempts=3
-    local attempt=1
 
-    log "Downloading files..."
-    while [[ "$attempt" -le "$max_attempts" ]]; do
-        if wget -cqO "$dest" "$url"; then
-            return 0
-        fi
-        warn "Attempt $attempt failed, retrying..."
-        ((attempt++))
-        sleep 2
-    done
-    fail "Failed to download the file after $max_attempts attempts."
-    return 1
+    if ! wget --show-progress -cqO "$dest" "$url"; then
+        fail "Failed to download the file. Please try again later."
+    fi
 }
 
 # Function to detect the operating system
@@ -261,7 +251,7 @@ mkdir -p "$output_dir"
 
 # Download the tar file with retries if missing
 if [[ ! -f "$WORKDIR/$tar_file" ]]; then
-    download_with_retry "$url" "$WORKDIR/$tar_file" || fail "Failed to download the file."
+    download "$url" "$WORKDIR/$tar_file" || fail "Failed to download the file."
 fi
 
 # Extract files into directory '7z'
