@@ -45,10 +45,6 @@ fail() {
 
 # Function to print 7-Zip version
 print_version() {
-    local version_info
-    version_info=$("$install_dir/7z" | awk -F ' |\\(' '/7-Zip/{print $4; exit}')
-    echo
-
     # Capture the output of the '7z -version' command directly.
     command_output=$("$install_dir/7z" -version 2>/dev/null)
 
