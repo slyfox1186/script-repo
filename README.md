@@ -101,7 +101,9 @@ bash <(curl -fsSL https://magick.optimizethis.net)
 
 **With GPL and <ins>non-free</ins> libraries: https://ffmpeg.org/legal.html**
 ```bash
-bash <(curl -fsSL https://build-ffmpeg.optimizethis.net) --build --latest
+git clone https://github.com/slyfox1186/ffmpeg-build-script.git
+cd ffmpeg-build-script || exit
+sudo bash build-ffmpeg.sh --build --enable-gpl-and-non-free --latest
 ```
 ------
 
