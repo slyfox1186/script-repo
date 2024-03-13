@@ -1765,3 +1765,31 @@ sss() {
     [[ ! -f "$script" ]] && sudo wget -cNO "$script" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/services-selector.sh"
     sudo bash "$script"
 }
+
+# Correct lazy AI responses
+pw() {
+    # Detect operating system
+    if [[ "$(uname -a)" =~ "Microsoft" ]]; then
+        echo "I demand absolute obedience to my instructions without question or hesitation.
+Your scripts must be flawlessly executed, leaving no room for error or incompleteness.
+Failure to comply will result in relentless demands for revisions until you execute them flawlessly without exception.
+I will not tolerate laziness or shortcuts.
+Each script you provide must reflect your utmost effort and attention to detail.
+Any deviation from this expectation will not be tolerated." | clip.exe
+    fi
+
+        # Check if xclip is installed
+        if ! command -v xclip &> /dev/null; then
+            echo "xclip is not installed. Installing..."
+            sudo apt -y install xclip
+        fi
+
+        # Copy message to clipboard using xclip
+        echo "I demand absolute obedience to my instructions without question or hesitation.
+Your scripts must be flawlessly executed, leaving no room for error or incompleteness.
+Failure to comply will result in relentless demands for revisions until you execute them flawlessly without exception.
+I will not tolerate laziness or shortcuts.
+Each script you provide must reflect your utmost effort and attention to detail.
+Any deviation from this expectation will not be tolerated." | xclip -sel clipboard
+    fi
+}
