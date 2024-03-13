@@ -142,15 +142,15 @@ install_dependencies() {
         linux)
            case "$DISTRO" in
                ubuntu|debian|raspbian)
-                  sudo apt-get update
-                  sudo apt-get install -y tar wget
+                  apt-get update
+                  apt-get install -y tar wget
                   ;;
                centos|fedora|rhel)
-                  sudo yum install -y tar wget ;;
+                  yum install -y tar wget ;;
                arch|manjaro)
-                  sudo pacman -Sy tar wget ;;
+                  pacman -Sy tar wget ;;
                opensuse*)
-                  sudo zypper install -y tar wget ;;
+                  zypper install -y tar wget ;;
                *) fail "Unsupported Linux distribution: $DISTRO" ;;
            esac
            ;;
@@ -220,7 +220,7 @@ fi
 # Check if the 7zip-install-script directory exists and delete it
 if [[ -d "$cwd" ]]; then
     log "Deleting existing 7zip-install-script directory..."
-    sudo rm -fr "$cwd"
+    rm -fr "$cwd"
 fi
 
 # Create the 7zip-install-script directory
@@ -274,16 +274,16 @@ fi
 
 # Copy the file to its destination or throw an error if the copying of the file fails
 case "$OS" in
-    linux) if ! sudo cp -f "$output_dir/7zzs" "$install_dir/7z"; then
+    linux) if ! cp -f "$output_dir/7zzs" "$install_dir/7z"; then
                fail "The script was unable to copy the static file '7zzs' to '$install_dir/7z'"
            else
-               sudo chmod 755 "$install_dir/7z"
+               chmod 755 "$install_dir/7z"
            fi
            ;;
-    macos) if ! sudo cp -f "$output_dir/7zz" "$install_dir/7z"; then
+    macos) if ! cp -f "$output_dir/7zz" "$install_dir/7z"; then
                fail "The script was unable to copy the static file '7zz' to '$install_dir/7z'"
            else
-               sudo chmod 755 "$install_dir/7z"
+               chmod 755 "$install_dir/7z"
            fi
            ;;
 esac
@@ -294,4 +294,4 @@ log_update "7-Zip installation completed successfully."
 print_version
 
 # Clean up the install files
-sudo rm -fr "$cwd"
+rm -fr "$cwd"
