@@ -5,6 +5,11 @@
 # Script version: 3.0
 # Added macOS: If errors occur create an issue at: https://github.com/slyfox1186/script-repo/issues
 
+if [[ "$EUID" -ne 0 ]]; then
+    echo "You must run this script with root or sudo."
+    exit 1
+fi
+
 # Set variables
 readonly script_version="3.0"
 readonly cwd="/tmp/7zip-install-script"
