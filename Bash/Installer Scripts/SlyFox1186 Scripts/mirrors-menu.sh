@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-clear
-
 # Define color variables
 GREEN='\e[0;32m'
 CYAN='\e[0;36m'
