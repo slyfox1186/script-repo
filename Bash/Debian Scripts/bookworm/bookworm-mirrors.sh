@@ -1,32 +1,27 @@
 #!/usr/bin/env bash
 
-clear
+script_path=$(readlink -f "${BASH_SOURCE[0]}")
+script_name=$(basename "$script_path")
 
-list=/etc/apt/sources.list
+fname="/etc/apt/sources.list"
 
-# Create a backup of the sources.list file
-if [ ! -f "${list}.bak" ]; then
-    sudo cp -f "${list}" "${list}.bak"
+# Make a backup of the file
+if [ ! -f "${fname}.bak" ]; then
+    cp -f "$fname" "${fname}.bak"
 fi
 
-cat > "${list}" <<'EOF'
+cat > "$fname" <<EOF
 deb https://security.debian.org/debian-security/ bookworm-security main contrib non-free non-free-firmware
 deb https://atl.mirrors.clouvider.net/debian/ bookworm main contrib non-free non-free-firmware
 deb https://atl.mirrors.clouvider.net/debian/ bookworm-updates main contrib non-free non-free-firmware
 deb https://atl.mirrors.clouvider.net/debian/ bookworm-backports main contrib non-free non-free-firmware
 EOF
 
-# Open the sources.list file for review
-if which gnome-text-editor &>/dev/null; then
-    sudo gnome-text-editor "${list}"
-elif which gedit &>/dev/null; then
-    sudo gedit "${list}"
-elif which nano &>/dev/null; then
-    sudo nano "${list}"
-elif which vim &>/dev/null; then
-    sudo vim "${list}"
-elif which vi &>/dev/null; then
-    sudo vi "${list}"
+# Open an editor to view the changes
+if command -v nano &>/dev/null; then
+    sudo nano "$fname"
 else
-    fail_fn 'Could not find an EDITOR to open the updated sources.list'
+    echo -e "\\nThe script failed to locate nano to open the file...\\n"
 fi
+
+sudo rm "$script_name"
