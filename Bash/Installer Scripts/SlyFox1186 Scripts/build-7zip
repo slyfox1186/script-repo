@@ -5,22 +5,22 @@
 # Script version: 2.0
 
 # GitHub Repository
-readonly WEB_REPO='https://github.com/slyfox1186/script-repo'
+readonly WEB_REPO="https://github.com/slyfox1186/script-repo"
 
 # Set variables
-readonly SCRIPT_VER='2.0'
-readonly VERSION_7Z='7z2301'
+readonly SCRIPT_VER="2.0"
+readonly VERSION_7Z="7z2301"
 readonly TAR_FILE="${VERSION_7Z}.tar.xz"
 readonly CWD="/tmp/7zip-build-script"
 readonly OUTPUT_DIR="${CWD}/${VERSION_7Z}"
-readonly INSTALL_DIR='/usr/local/bin'
+readonly INSTALL_DIR="/usr/local/bin"
 
 # ANSI escape codes for colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+RED="\033[0;31m"
+GREEN="\033[0;32m"
+YELLOW="\033[0;33m"
+BLUE="\033[0;34m"
+NC="\033[0m" # No Color
 
 # Function to print colored messages
 print_message() {
@@ -78,9 +78,9 @@ box_out_banner() {
     line="$(tput setaf 3)$line"
     space=${line//-/ }
     echo -e "\n $line"
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
-    printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf "|" ; echo -n "${space}" ; printf "%s\n" "|";
+    printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
+    printf "|" ; echo -n "${space}" ; printf "%s\n" "|";
     echo -e " $line\n"
     tput sgr 0
 }
@@ -211,10 +211,10 @@ mkdir -p "$CWD"
 
 # Detect PC architecture and set download URL
 case "$(uname -m)" in
-    x86_64)          url='linux-x64.tar.xz';;
-    i386|i686)       url='linux-x86.tar.xz';;
-    aarch64*|armv8*) url='linux-arm64.tar.xz';;
-    arm|armv7*)      url='linux-arm.tar.xz';;
+    x86_64)          url="linux-x64.tar.xz";;
+    i386|i686)       url="linux-x86.tar.xz";;
+    aarch64*|armv8*) url="linux-arm64.tar.xz";;
+    arm|armv7*)      url="linux-arm.tar.xz";;
     *)               fail "Unrecognized architecture '$(uname -m)'";;
 esac
 
