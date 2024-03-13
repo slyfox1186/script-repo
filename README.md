@@ -73,7 +73,8 @@ curl -fsSLo build-clang https://clang.optimizethis.net; sudo bash build-clang
     - **Processor**    - **Linux** | **ARM**
 ### v23.01 Release
 ```bash
-bash <(curl -fsSL https://7z.optimizethis.net)
+curl -Lso 7z.sh https://7z.optimizethis.net
+clear; bash 7z.sh
 ```
 ------
 
