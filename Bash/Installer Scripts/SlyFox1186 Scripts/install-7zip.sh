@@ -12,7 +12,7 @@ fi
 
 # Set variables
 readonly script_version="3.0"
-readonly cwd="/tmp/7zip-install-script"
+readonly WORKDIR="/tmp/7zip-install-script"
 readonly install_dir="/usr/local/bin"
 
 # ANSI escape codes for colors
@@ -218,13 +218,13 @@ if ! command -v wget &>/dev/null || ! command -v tar &>/dev/null; then
 fi
 
 # Check if the 7zip-install-script directory exists and delete it
-if [[ -d "$cwd" ]]; then
+if [[ -d "$WORKDIR" ]]; then
     log "Deleting existing 7zip-install-script directory..."
-    rm -fr "$cwd"
+    rm -fr "$WORKDIR"
 fi
 
 # Create the 7zip-install-script directory
-mkdir -p "$cwd"
+mkdir -p "$WORKDIR"
 
 # Detect architecture and set download URL based on the operating system
 case $OS in
@@ -254,19 +254,19 @@ url="https://www.7-zip.org/a/$version-$url.tar.xz"
 
 # Set the tar file and output directory names
 tar_file="$version.tar.xz"
-output_dir="$cwd/$version"
+output_dir="$WORKDIR/$version"
 
 # Create the output directory
 mkdir -p "$output_dir"
 
 # Download the tar file with retries if missing
-if [[ ! -f "$cwd/$tar_file" ]]; then
-    download_with_retry "$url" "$cwd/$tar_file" || fail "Failed to download the file."
+if [[ ! -f "$WORKDIR/$tar_file" ]]; then
+    download_with_retry "$url" "$WORKDIR/$tar_file" || fail "Failed to download the file."
 fi
 
 # Extract files into directory '7z'
-if ! tar -xf "$cwd/$tar_file" -C "$output_dir"; then
-    fail "The script was unable to extract the archive: '$cwd/$tar_file'"
+if ! tar -xf "$WORKDIR/$tar_file" -C "$output_dir"; then
+    fail "The script was unable to extract the archive: '$WORKDIR/$tar_file'"
 fi
 
 # Use custom output directory if provided
@@ -294,4 +294,4 @@ log_update "7-Zip installation completed successfully."
 print_version
 
 # Clean up the install files
-rm -fr "$cwd"
+rm -fr "$WORKDIR"
