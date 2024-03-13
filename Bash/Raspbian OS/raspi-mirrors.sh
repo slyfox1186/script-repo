@@ -30,9 +30,9 @@ EOF
 
 # Open an editor to view the changes
 if command -v nano &>/dev/null; then
-    sudo nano "$fname"
+    nano "$fname"
 else
     echo -e "\\nThe script failed to locate nano to open the file...\\n"
 fi
 
-sudo rm "$script_name"
+rm "$script_name"
