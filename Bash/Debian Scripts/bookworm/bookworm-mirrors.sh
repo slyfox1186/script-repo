@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+if [[ "$EUID" -ne 0 ]]; then
+    echo "You must run this script with root or sudo."
+    exit 1
+fi
+
 script_path=$(readlink -f "${BASH_SOURCE[0]}")
 script_name=$(basename "$script_path")
 
