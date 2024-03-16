@@ -2,8 +2,8 @@
 # shellcheck disable=SC2068,SC2162,SC2317 source=/dev/null
 
 ##  GitHub: https://github.com/slyfox1186/ffmpeg-build-script
-##  Script version: 3.5.2
-##  Updated: 03.10.24
+##  Script version: 3.5.3
+##  Updated: 03.16.24
 ##  Purpose: build ffmpeg from source code with addon development libraries
 ##           also compiled from source to help ensure the latest functionality
 ##  Supported Distros: Arch Linux
@@ -28,7 +28,7 @@ LDEXEFLAGS=""
 CONFIGURE_OPTIONS=()
 LATEST=false
 GIT_REGEX='(rc|RC|Rc|rC|alpha|beta)+[0-9]*$' # Set the regex variable to exclude release candidates
-DEBUG=OFF
+DEBUG=ON
 
 # Pre-defined color variables
 RED='\033[0;31m'
@@ -61,7 +61,7 @@ source_compiler_flags() {
     CFLAGS="-g -O3 -march=native"
     CXXFLAGS="-g -O3 -march=native"
     LDFLAGS="-L$workspace/lib64 -L$workspace/lib"
-    CPPFLAGS="-I$workspace/include"
+    CPPFLAGS="-I$workspace/include -I/usr/x86_64-linux-gnu/include"
     EXTRALIBS="-ldl -lpthread -lm -lz"
     export CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 }
@@ -141,7 +141,7 @@ prompt_ffmpeg_versions() {
 # Function to ensure no cargo or rustc processes are running
 ensure_no_cargo_or_rustc_processes() {
     local running_processes=$(pgrep -fl 'cargo|rustc')
-    if [ -n "$running_processes" ]; then
+    if [[ -n "$running_processes" ]]; then
         warn "Waiting for cargo or rustc processes to finish..."
         while pgrep -x cargo &>/dev/null || pgrep -x rustc &>/dev/null; do
             sleep 3
@@ -171,9 +171,16 @@ check_and_install_cargo_c() {
 }
 
 install_windows_hardware_acceleration() {
-    curl -fsSLo "$workspace/include/dxva2api.h" "https://download.videolan.org/pub/contrib/dxva2api.h"
     curl -fsSLo "$workspace/include/objbase.h" "https://raw.githubusercontent.com/wine-mirror/wine/master/include/objbase.h"
-    cp -f "$workspace/include/objbase.h" "$workspace/include/dxva2api.h" "/usr/include"
+    cp -f "$workspace/include/objbase.h" "$workspace"
+    curl -fsSLo "$workspace/include/dxva2api.h" "https://download.videolan.org/pub/contrib/dxva2api.h"
+    curl -fsSLo "$workspace/include/windows.h" "https://raw.githubusercontent.com/tpn/winsdk-10/master/Include/10.0.10240.0/um/Windows.h"
+    curl -fsSLo "$workspace/include/direct.h" "https://raw.githubusercontent.com/tpn/winsdk-10/master/Include/10.0.10240.0/km/crt/direct.h"
+    curl -fsSLo "$workspace/include/dxgidebug.h" "https://raw.githubusercontent.com/apitrace/dxsdk/master/Include/dxgidebug.h"
+    curl -fsSLo "$workspace/include/dxva.h" "https://raw.githubusercontent.com/nihon-tc/Rtest/master/header/Microsoft%20SDKs/Windows/v7.0A/Include/dxva.h"
+    curl -fsSLo "$workspace/include/intrin.h" "https://raw.githubusercontent.com/yuikns/intrin/master/intrin.h"
+    curl -fsSLo "$workspace/include/arm_neon.h" "https://raw.githubusercontent.com/gcc-mirror/gcc/master/gcc/config/arm/arm_neon.h"
+    curl -fsSLo "$workspace/include/conio.h" "https://raw.githubusercontent.com/zoelabbb/conio.h/master/conio.h"
 }
 
 install_rustc() {
@@ -579,15 +586,29 @@ compiler_flag=""
 
 while (("$#" > 0)); do
     case "$1" in
-        -h|--help) usage; exit 0 ;;
-        -v|--version) echo; log "The script version is: $SCRIPT_VERSION"; exit 0 ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -v|--version)
+            echo
+            log "The script version is: $SCRIPT_VERSION"
+            exit 0
+            ;;
         -n|--enable-gpl-and-non-free)
             CONFIGURE_OPTIONS+=("--enable-"{gpl,libsmbclient,libcdio,nonfree})
             NONFREE_AND_GPL=true
             ;;
-        -b|--build) bflag="-b" ;;
-        -c|--cleanup) cflag="-c"; cleanup ;;
-        -l|--latest) LATEST=true ;;
+        -b|--build)
+            bflag="-b"
+            ;;
+        -c|--cleanup)
+            cflag="-c"
+            cleanup
+            ;;
+        -l|--latest)
+            LATEST=true
+            ;;
         --compiler=gcc|--compiler=clang)
             compiler_flag="${1#*=}"
             shift
@@ -596,7 +617,10 @@ while (("$#" > 0)); do
             cpu_threads="$2"
             shift 2
             ;;
-        *) usage; exit 1 ;;
+        *)
+            usage
+            exit 1
+            ;;
     esac
     shift
 done
@@ -1013,14 +1037,13 @@ apt_pkgs() {
         libopencore-amrnb-dev libopencore-amrwb-dev libopencv-dev libopenmpt-dev libopus-dev libpango1.0-dev
         libperl-dev libplacebo-dev libpocketsphinx-dev libpsl-dev libpstoedit-dev libpulse-dev librabbitmq-dev
         libraqm-dev libraw-dev librsvg2-dev librtmp-dev librubberband-dev librust-gstreamer-base-sys-dev libserd-dev
-        libshine-dev libsmbclient-dev libsnappy-dev libsndfile1-dev libsndio-dev libsord-dev libsoxr-dev libspeex-dev
-        libsphinxbase-dev libsqlite3-dev libsratom-dev libssh-dev libssl-dev libsuitesparseconfig5 libsystemd-dev
-        libtalloc-dev libtheora-dev libticonv-dev libtool libtool-bin libtwolame-dev libudev-dev libumfpack5 libv4l-dev
-        libva-dev libvdpau-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev libvpx-dev libx11-dev libxcursor-dev
-        libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzimg-dev
-        libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev llvm lsb-release lshw lzma-dev m4 mesa-utils meson nasm
-        ninja-build pandoc python3 python3-pip python3-venv ragel re2c scons texi2html texinfo tk-dev unzip valgrind
-        wget xmlto zlib1g-dev libclang-16-dev
+        libshine-dev libsmbclient-dev libsnappy-dev libsndio-dev libsord-dev libsoxr-dev libspeex-dev libsphinxbase-dev
+        libsqlite3-dev libsratom-dev libssh-dev libssl-dev libsuitesparseconfig5 libsystemd-dev libtalloc-dev libtheora-dev
+        libticonv-dev libtool libtool-bin libtwolame-dev libudev-dev libumfpack5 libv4l-dev libva-dev libvdpau-dev
+        libvidstab-dev libvlccore-dev libvo-amrwbenc-dev libvpx-dev libx11-dev libxcursor-dev libxext-dev libxfixes-dev
+        libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzimg-dev libzmq3-dev libzstd-dev libzvbi-dev
+        libzzip-dev llvm lsb-release lshw lzma-dev m4 mesa-utils meson nasm ninja-build pandoc python3 python3-pip python3-venv
+        ragel re2c scons texi2html texinfo tk-dev unzip valgrind wget xmlto libclang-16-dev libsctp-dev
     )
 
     [[ "$OS" == "Debian" ]] && pkgs+=("nvidia-smi")
@@ -1072,7 +1095,7 @@ apt_pkgs() {
 
 fix_libstd_libs() {
     local libstdc_path=$(find /usr/lib/x86_64-linux-gnu/ -type f -name 'libstdc++.so.6.0.*' | sort -rV | head -n1)
-    if [[ -f "/usr/lib/x86_64-linux-gnu/libstdc++.so" ]] && [[ -f "$libstdc_path" ]]; then
+    if [[ ! -f "/usr/lib/x86_64-linux-gnu/libstdc++.so" ]] && [[ -f "$libstdc_path" ]]; then
         echo "$ ln -sf $libstdc_path /usr/lib/x86_64-linux-gnu/libstdc++.so"
         ln -sf "$libstdc_path" "/usr/lib/x86_64-linux-gnu/libstdc++.so"
     fi
@@ -2969,7 +2992,7 @@ fi
 
 # Get DXVA2 and other essential windows header files
 get_wsl_version
-if [[ "$wsl_flag=" == "yes_wsl" ]]; then
+if [[ "$wsl_flag" == "yes_wsl" ]]; then
     install_windows_hardware_acceleration
 fi
 
@@ -2978,7 +3001,7 @@ if [[ -f "$packages/ffmpeg-git.done" ]]; then
     # Define a function to read the file content
     read_file_contents() {
         local file_path="$1"
-        if [ -f "$file_path" ]; then
+        if [[ -f "$file_path" ]]; then
             # Read the content of the file into a variable
             local content=$(cat "$file_path")
             echo "$content"
