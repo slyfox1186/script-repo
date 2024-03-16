@@ -1,23 +1,18 @@
 #!/usr/bin/env bash
 
-clear
-
-if [ "${EUID}" -ne '0' ]; then
-    printf "%s\n\n" 'You must run this script with root/sudo permissions.'
-    exit 1
-fi
-
-#
 # WHEN INSTALLING OR UPDATING APT PACKAGE MANAGER SOMETIMES CUSTOM SOURCES.LIST MIRROS WILL THROW
 # ERRORS STATING THAT THE MIRROR URL IS MISSING IT'S SECURITY GPG KEY. THIS SCRIPT WILL QUICKLY HELP
 # YOU TO FIX THOSE ERRORS. JUST COPY THE KEY NAMES FROM THE TERMINAL AND PLACE THEM INSIDE THE KEYS
 # FUNCTION BELOW AND SEPARATE EACH KEY WITH A SINGLE SPACE. THEN RUN THIS SCRIPT USING THE SUDO BASH
 # COMMAND
-#
 
-keys=(112695A0E562B32A 54404762BBB6E853 112695A0E562B32A)
+if [ "$EUID" -ne 0 ]; then
+    echo "You must run this script with root or sudo."
+    exit 1
+fi
 
-for key in ${keys[@]}
-do
-    sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv ${key}
+keys=(112695A0E562B32A 54404762BBB6E853)
+
+for key in ${keys[@]}; do
+    apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv ${key}
 done
