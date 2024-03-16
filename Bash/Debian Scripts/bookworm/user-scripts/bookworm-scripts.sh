@@ -1,103 +1,52 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2068,SC2162
 
-clear
+# Define variables and arrays
+script_array=(".bashrc" ".bash_aliases" ".bash_functions")
+tf=$(mktemp)
+td=$(mktemp -d)
 
-#
-# DEFINE VARIABLES AND ARRAYS
-#
-
-random_dir="$(mktemp -d)"
-url='https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Debian%20Scripts/bookworm/user-scripts/bookworm-scripts.txt'
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-script_array=('.bashrc' '.bash_aliases' '.bash_functions')
-
-#
-# CREATE FUNCTIONS
-#
-
-fail_fn()
-{
-    printf "\n%s\n\n" "${1}"
+# Create functions
+fail() {
+    echo -e "\\n[ERROR] $1\\n"
+    read -p "Press enter to exit."
     exit 1
 }
 
-#
-# DOWNLAOD REQUIRED APT PACKAGES
-#
-
-if ! sudo dpkg -l | grep -o wget &>/dev/null; then
-    sudo apt -y install wget
+# Download the required apt packages if not already installed
+if ! dpkg -l | grep -o wget &>/dev/null; then
+    sudo apt-get -y install wget
     clear
 fi
 
-#
-# CD INTO A RANDOM FOLDER TO HOLD AND EXECUTE THE TEMP FILES
-#
+# Change into the temporary directory
+cd "$td" || exit 1
 
-cd "${random_dir}" || exit 1
+# Use 'cat' with a here-document to write multiline text to the temporary file
+cat > "$tf" <<'EOF'
+https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Debian%20Scripts/bookworm/user-scripts/.bashrc
+https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Debian%20Scripts/bookworm/user-scripts/.bash_aliases
+https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Debian%20Scripts/bookworm/user-scripts/.bash_functions
+EOF
 
-#
-# DOWNLOAD THE USER SCRIPTS FROM GITHUB
-#
+# Download the user scripts from GitHub
+wget -qN - -i "$tf"
 
-wget -U "${user_agent}" -qN - -i "${url}"
+# Delete all files except those that start with a "." or end with ".sh"
+find . ! \( -name ".*" -o -name "*.sh" \) -type f -delete 2>/dev/null
 
-#
-# DELETE ALL FILES EXCEPT THOSE THAT START WITH A "." OR END WITH ".sh"
-#
-
-find . ! \( -name '\.*' -o -name '*.sh' \) -type f -delete 2>/dev/null
-
-#
-# MOVE ".bashrc" TO THE USERS HOME FOLDER
-#
-
-for script in "${script_array[@]}"
-do
-    if ! mv -f "${script}" "${HOME}"; then
-        fail_fn "Failed to move all user scripts to: ${HOME}. Line ${LINENO}"
-    fi
-done
-unset script
-
-#
-# UPDATE THE OWNERSHIP OF EACH USER SCRIPT TO THE USER
-#
-
-for script in ${script_array[@]}
-do
-    if ! sudo chown "${USER}":"${USER}" "${HOME}/${script}"; then
-        fail_fn "Failed to update the file permissions for: ${script}. Line ${LINENO}"
-    fi
+# Move and update ownership of user scripts to the user's home folder
+for script in "${script_array[@]}"; do
+    cp -f "$script" "$HOME" || fail "Failed to move $script to $HOME. Line $LINENO"
+    chown "$USER":"$USER" "$HOME/$script" || fail "Failed to update permissions for $script. Line $LINENO"
 done
 
-#
-# OPEN EACH SCRIPT WITH AN EDITOR
-#
-
-cd "${HOME}" || exit 1
-for fname in ${script_array[@]}
-do
-    if which gnome-text-editor &>/dev/null; then
-        gnome-text-editor "${fname}"
-    elif which gedit &>/dev/null; then
-        gedit "${fname}"
-    elif which nano &>/dev/null; then
-        nano "${fname}"
-    elif which vim &>/dev/null; then
-        vim "${fname}"
-    elif which vi &>/dev/null; then
-        vi "${fname}"
-    else
-        fail_fn 'Could not find an EDITOR to open the user scripts.'
-    fi
+# Open each script with the nano editor
+cd "$HOME" || exit 1
+for script in "${script_array[@]}"; do
+    command -v nano &>/dev/null || fail "The script failed to open the newly installed scripts using the EDITOR \"nano\"."
+    nano "$script"
 done
 
-#
-# DELETE THE LEFTOVER TEMP FILES
-#
-
-if [ -d "${random_dir}" ]; then
-    sudo rm -fr "${random_dir}"
-fi
+# Cleanup the temp files
+sudo rm -fr "$td"

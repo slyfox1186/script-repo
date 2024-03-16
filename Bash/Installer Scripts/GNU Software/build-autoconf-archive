@@ -1,72 +1,42 @@
 #!/usr/bin/env bash
 
-###########################################################################################################
-##
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf-archive
-##
 ##  Purpose: build gnu autoconf-archive
-##
-##  Updated: 09.13.23
-##
-##  Script version: 1.0
-##
-###########################################################################################################
+##  Updated: 03.16.24
+##  Script version: 1.1
 
-clear
-
-if [ "${EUID}" -ne '0' ]; then
-    printf "%s\n\n" 'You must run this script with root/sudo.'
+if [ "$EUID" -ne 0 ]; then
+    echo "You must run this script with root or sudo."
     exit 1
 fi
 
-#
-# SET THE VARIABLES
-#
-
-script_ver=1.0
+# Set the variables
 archive_dir=autoconf-archive-2023.02.20
-archive_url=https://mirrors.sarata.com/gnu/autoconf-archive/$archive_dir.tar.xz
+archive_url=https://ftp.gnu.org/gnu/autoconf-archive/$archive_dir.tar.xz
 archive_ext="${archive_url//*.}"
-archive_name="$archive_dir.tar.${archive_ext}"
-cwd="$PWD"/autoconf-archive-build-script
+archive_name="$archive_dir.tar.$archive_ext"
+cwd="$PWD/autoconf-archive-build-script"
 install_dir=/usr/local
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/script-repo
 
-printf "%s\n%s\n\n" \
-    "autoconf-archive build script - v${script_ver}" \
-    '==============================================='
-
-#
-# CREATE OUTPUT DIRECTORY
-#
-
+# Create output directory
 if [ -d "$cwd" ]; then
     rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-#
-# SET THE C + CPP COMPILERS
-#
+# Set the C +CPP compilers & their compiler optimization flags
+CC="gcc"
+CXX="g++"
+CFLAGS="-g -O3 -pipe -march=native"
+CXXFLAGS="-g -O3 -pipe -march=native"
+export CC CFLAGS CXX CXXFLAGS
 
-export CC=gcc CXX=g++
-
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
-
-#
-# SET THE PATH VARIABLE
-#
-
+# Set the path variable
 PATH="\
 /usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
+$HOME/perl5/bin:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/cuda/bin:\
 /usr/local/x86_64-linux-gnu/bin:\
@@ -81,10 +51,7 @@ ${HOME}/.local/bin:\
 "
 export PATH
 
-#
-# SET THE PKG_CONFIG_PATH VARIABLE
-#
-
+# Set the PKG_CONFIG_PATH variable
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
@@ -100,117 +67,98 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-#
-# CREATE FUNCTIONS
-#
-
-exit_fn()
-{
-    printf "\n%s\n\n%s\n\n" \
-        'Make sure to star this repository to show your support!' \
-        "$web_repo"
+# Create functions
+exit_fn() {
+    echo
+    echo "Make sure to star this repository to show your support!"
+    echo "https://github.com/slyfox1186/script-repo"
     exit 0
 }
 
-fail_fn()
-{
-    printf "\n%s\n\n%s\n\n" \
-        "$1" \
-        "To report a bug create an issue at: $web_repo/issues"
+fail() {
+    echo
+    echo "$1"
+    echo "To report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
-cleanup_fn()
-{
+cleanup() {
     local choice
 
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
+        "============================================" \
+        "  Do you want to clean up the build files?  " \
+        "============================================" \
+        "[1] Yes" \
+        "[2] No"
+    read -p "Your choices are (1 or 2): " choice
 
     case "${choice}" in
-        1)      rm -fr "$cwd";;
-        2)      echo;;
-        *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
-                unset choice
-                clear
-                cleanup_fn
-                ;;
+        1) rm -fr "$cwd" ;;
+        2) ;;
+        *) unset choice
+           clear
+           cleanup
+           ;;
     esac
 }
 
-#
-# INSTALL REQUIRED APT PACKAGES
-#
-
-pkgs=(autoconf autoconf-archive autogen automake autopoint autotools-dev binutils
+# Install required apt packages
+pkgs=(
+      autoconf autoconf-archive autogen automake autopoint autotools-dev binutils
       bison build-essential bzip2 bzip2 ccache curl libc6-dev libpth-dev libtool
-      libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev yasm)
+      libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev yasm
+  )
 
-for i in ${pkgs[@]}
-do
-    missing_pkg="$(dpkg -l | grep -o "${i}")"
-
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+for pkg in ${pkgs[@]}; do
+    missing_pkg="$(dpkg -l | grep -o "$pkg")"
+    if [[ -z "$missing_pkg" ]]; then
+        missing_pkgs+="$pkg "
     fi
 done
 
-if [ -n "$missing_pkgs" ]; then
+if [[ -n "$missing_pkgs" ]]; then
     apt install $missing_pkgs
-    apt -y autoremove
     clear
 fi
 
-#
-# DOWNLOAD THE ARCHIVE FILE
-#
-
-if [ ! -f "$cwd/${archive_name}" ]; then
-    curl -A "$user_agent" -Lso "$cwd/${archive_name}" "${archive_url}"
+# Download the archive file
+if [[ ! -f "$cwd/$archive_name" ]]; then
+    curl  -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
-#
-# CREATE OUTPUT DIRECTORY
-#
-
-if [ -d "$cwd/$archive_dir" ]; then
+# Create the output directory
+if [[ -d "$cwd/$archive_dir" ]]; then
     rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
-#
-# EXTRACT ARCHIVE FILES
-#
-
-if ! tar -xf "$cwd/${archive_name}" -C "$cwd/$archive_dir" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: $cwd/${archive_name}"
+# Extract the archive files
+if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
+    echo "Failed to extract: $cwd/$archive_name"
     exit 1
 fi
 
-#
-# BUILD PROGRAM FROM SOURCE
-#
-
+# Build the program from source
 cd "$cwd/$archive_dir" || exit 1
 autoreconf -fi
 cd build || exit 1
 ../configure --prefix="$install_dir"
-make "-j$(nproc --all)"
-if ! make install; then
-    fail_fn "Failed to execute: make install:Line ${LINENO}"
+
+echo
+if ! make "-j$(nproc --all)"; then
+    fail "Failed to execute: make -j$(nproc --all). Line: $LINENO"
     exit 1
 fi
 
-# PROMPT USER TO CLEAN UP FILES
-cleanup_fn
+echo
+if ! make install; then
+    fail "Failed to execute: make install. Line: $LINENO"
+    exit 1
+fi
 
-# SHOW EXIT MESSAGE
+# Prompt user to clean up files
+cleanup
+
+# Show exit message
 exit_fn

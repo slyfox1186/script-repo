@@ -83,6 +83,7 @@ exit 1
 }
 
 cleanup_fn() {
+    echo
     read -p "Do you want to clean up the build files? [y/N] " choice
     case "$choice" in
         y|Y ) rm -fr "$cwd" ;;

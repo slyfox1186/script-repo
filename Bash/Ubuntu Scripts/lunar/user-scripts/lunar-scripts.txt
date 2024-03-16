@@ -1,3 +1,0 @@
-https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Ubuntu%20Scripts/lunar/user-scripts/.bash_aliases
-https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Ubuntu%20Scripts/lunar/user-scripts/.bash_functions
-https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Ubuntu%20Scripts/lunar/user-scripts/.bashrc

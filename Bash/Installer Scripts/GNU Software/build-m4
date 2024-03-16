@@ -99,7 +99,7 @@ cleanup_fn()
 {
     local choice
 
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
+    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
         "============================================" \
         "  Do you want to clean up the build files?  " \
         "============================================" \
