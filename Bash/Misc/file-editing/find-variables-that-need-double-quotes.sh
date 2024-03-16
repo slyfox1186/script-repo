@@ -34,15 +34,15 @@ while IFS= read -r line || [[ -n "$line" ]]; do
 done < "$input"
 
 if command -v batcat &>/dev/null; then
-    EDITOR="batcat"
+    VIEWER="batcat"
 elif command -v bat &>/dev/null; then
-    EDITOR="bat"
+    VIEWER="bat"
 else
-    EDITOR="cat"
+    VIEWER="cat"
 fi
 
 # Open the store file using the bat or cat command
-"$EDITOR" "$results"
+"$VIEWER" "$results"
 
 echo
 echo "Results stored in: $PWD/match_results.txt"
