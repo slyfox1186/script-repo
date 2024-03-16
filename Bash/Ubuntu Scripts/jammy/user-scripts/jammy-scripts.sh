@@ -13,8 +13,11 @@ fail() {
     exit 1
 }
 
-# Download the required apt packages
-sudo apt-get -y install wget
+# Download the required apt packages if not already installed
+if ! dpkg -l | grep -o wget &>/dev/null; then
+    sudo apt-get -y install wget
+    clear
+fi
 
 # Change into the temporary directory
 cd "$td" || exit 1
