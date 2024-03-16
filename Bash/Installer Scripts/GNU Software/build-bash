@@ -144,6 +144,7 @@ create_symlinks() {
 
 cleanup() {
     log_msg "Cleaning up..."
+    echo
     read -rp "Remove temporary build directory '$build_dir'? [y/N] " response
     if [[ $response =~ ^[Yy]$ ]]; then
         rm -rf "$build_dir"
