@@ -4,6 +4,8 @@
 # Define variables and arrays
 url="https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Debian%20Scripts/bookworm/user-scripts/bookworm-scripts.txt"
 script_array=(".bashrc" ".bash_aliases" ".bash_functions")
+tf=$(mktemp)
+td=$(mktemp -d)
 
 # Create functions
 fail() {
@@ -15,11 +17,18 @@ fail() {
 # Download the required apt packages
 sudo apt-get -y install wget
 
-# Create a temporary directory and change into it
-cd "$(mktemp -d)" || exit 1
+# Change into the temporary directory
+cd "$td" || exit 1
+
+# Use 'cat' with a here-document to write multiline text to the temporary file
+cat > "$tf" <<'EOF'
+https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Debian%20Scripts/bookworm/user-scripts/.bashrc
+https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Debian%20Scripts/bookworm/user-scripts/.bash_aliases
+https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Debian%20Scripts/bookworm/user-scripts/.bash_functions
+EOF
 
 # Download the user scripts from GitHub
-wget -qN - -i "$url"
+wget -qN - -i "$tf"
 
 # Delete all files except those that start with a "." or end with ".sh"
 find . ! \( -name ".*" -o -name "*.sh" \) -type f -delete 2>/dev/null
@@ -36,3 +45,6 @@ for script in "${script_array[@]}"; do
     command -v nano &>/dev/null || fail "The script failed to open the newly installed scripts using the EDITOR \"nano\"."
     nano "$script"
 done
+
+# Cleanup the temp files
+sudo rm -fr "$td"
