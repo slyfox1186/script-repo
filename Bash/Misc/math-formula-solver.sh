@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+if ! command -v bc &>/dev/null; then
+    echo "The bc command was not found. Please install bc to continue."
+    exit 1
+fi
+
 while true; do
     echo
     echo "Math Formula Solver"
