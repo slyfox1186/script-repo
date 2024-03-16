@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Github script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-glibc
+# Github script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-glibc.sh
 # Purpose: Build GNU glibc
 # Updated: 03.16.24
 # Script version: 2.6
@@ -20,6 +20,10 @@ archive_name="$archive_dir.tar.$archive_ext"
 working="/tmp/glibc-build-script"
 install_dir="/usr/local/$archive_dir"
 log_file="$working/build.log"
+
+CFLAGS="-g -O3 -pipe -march=native"
+CXXFLAGS="-g -O3 -pipe -march=native"
+export CFLAGS CXXFLAGS
 
 # Functions
 fail() {
