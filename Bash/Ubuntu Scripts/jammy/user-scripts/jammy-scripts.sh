@@ -2,7 +2,6 @@
 # shellcheck disable=SC2068,SC2162
 
 # Define variables and arrays
-url="https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Ubuntu%20Scripts/jammy/user-scripts/jammy-scripts.txt"
 script_array=(".bashrc" ".bash_aliases" ".bash_functions")
 tf=$(mktemp)
 td=$(mktemp -d)
