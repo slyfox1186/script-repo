@@ -8,7 +8,7 @@ fi
 
 # Define file paths
 input="$1"
-results="./match_results.txt"
+results="/tmp/match_results.txt"
 
 # Check file existence
 if [ ! -f "$input" ]; then
@@ -45,4 +45,4 @@ fi
 "$VIEWER" "$results"
 
 echo
-echo "Results stored in: $PWD/match_results.txt"
+echo "Results stored in: $results"
