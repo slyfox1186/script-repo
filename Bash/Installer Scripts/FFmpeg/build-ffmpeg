@@ -40,7 +40,7 @@ NC='\033[0m' # No Color
 echo
 box_out_banner() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+    line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line=$(tput setaf 3)$line
     space="${line//-/ }"
@@ -1070,8 +1070,8 @@ apt_pkgs() {
 }
 
 fix_libstd_libs() {
-    local libstdc_path=$(find /usr/lib/x86_64-linux-gnu/ -type f -name 'libstdc++.so.6.0.*' | head -n1)
-    if [[ ! -f "/usr/lib/x86_64-linux-gnu/libstdc++.so" ]] && [[ -f "$libstdc_path" ]]; then
+    local libstdc_path=$(find /usr/lib/x86_64-linux-gnu/ -type f -name 'libstdc++.so.6.0.*' | sort -rV | head -n1)
+    if [[ -f "/usr/lib/x86_64-linux-gnu/libstdc++.so" ]] && [[ -f "$libstdc_path" ]]; then
         echo "$ ln -sf $libstdc_path /usr/lib/x86_64-linux-gnu/libstdc++.so"
         ln -sf "$libstdc_path" "/usr/lib/x86_64-linux-gnu/libstdc++.so"
     fi
@@ -1225,11 +1225,19 @@ arch_os_ver() {
     setup_python_venv_and_install_packages "$venv_path" "${python_packages[@]}"
 }
 
+debian_msft() {
+    get_os_version
+    case "$VER" in
+        11) apt_pkgs "${debian_pkgs[@]}" "$debian_wsl_pkgs" ;;
+        12) apt_pkgs "${debian_pkgs[@]}" "$debian_wsl_pkgs" ;;
+        *)     fail "Failed to parse the Debian MSFT version. Line: $LINENO" ;;
+    esac
+}
 
 debian_os_version() {
     if [[ "$2" == "yes_wsl" ]]; then
         VER=msft
-        debian_wsl_pkgs="$1"
+        debian_wsl_pkgs=$3
     fi
 
     debian_pkgs=(cppcheck libnvidia-encode1 libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev
@@ -1238,49 +1246,49 @@ debian_os_version() {
                  libcamd2 libamd2 software-properties-common)
 
     case "$VER" in
-        msft)          apt_pkgs "$debian_wsl_pkgs" "${debian_pkgs[@]}" "librist-dev" ;;
-        12|trixie|sid) apt_pkgs "$1" "${debian_pkgs[@]}" "librist-dev" ;;
-        11)            apt_pkgs "$1" "${debian_pkgs[@]}" ;;
+        msft)          debian_msft ;;
+        12|trixie|sid) apt_pkgs $1 "${debian_pkgs[@]}" "librist-dev" ;;
+        11)            apt_pkgs $1 "${debian_pkgs[@]}" ;;
         *)             fail "Could not detect the Debian release version. Line: $LINENO" ;;
     esac
 }
 
 ubuntu_msft() {
-    case "$OS" in
-        23.04) apt_pkgs "$1" "${ubuntu_common_pkgs[@]}" "${jammy_pkgs[@]}" "$ubuntu_wsl_pkgs" ;;
-        22.04) apt_pkgs "$1" "${ubuntu_common_pkgs[@]}" "${jammy_pkgs[@]}" "$ubuntu_wsl_pkgs" ;;
-        20.04) apt_pkgs "$1" "${ubuntu_common_pkgs[@]}" "${focal_pkgs[@]}" "$ubuntu_wsl_pkgs" ;;
-        *)     fail "Faield to parse the Ubutnu MSFT version. Line: $LINENO" ;;
+    case "$VER" in
+        23.04) apt_pkgs "${ubuntu_common_pkgs[@]}" "${jammy_pkgs[@]}" "$ubuntu_wsl_pkgs" ;;
+        22.04) apt_pkgs "${ubuntu_common_pkgs[@]}" "${jammy_pkgs[@]}" "$ubuntu_wsl_pkgs" ;;
+        20.04) apt_pkgs "${ubuntu_common_pkgs[@]}" "${focal_pkgs[@]}" "$ubuntu_wsl_pkgs" ;;
+        *)     fail "Failed to parse the Ubutnu MSFT version. Line: $LINENO" ;;
     esac
 }
 
 ubuntu_os_version() {
     if [[ "$2" = "yes_wsl" ]]; then
-        VER="msft"
-        ubuntu_wsl_pkgs="$1"
+        VER=msft
+        ubuntu_wsl_pkgs=$3
     fi
 
-    local ubuntu_common_pkgs=(cppcheck libamd2 libcamd2 libccolamd2 libcholmod3
+    ubuntu_common_pkgs=(cppcheck libamd2 libcamd2 libccolamd2 libcholmod3
                               libcolamd2 libsuitesparseconfig5 libumfpack5)
-    local focal_pkgs=(libcunit1 libcunit1-dev libcunit1-doc libdmalloc5 libhwy-dev
+    focal_pkgs=(libcunit1 libcunit1-dev libcunit1-doc libdmalloc5 libhwy-dev
                       libreadline-dev librust-jemalloc-sys-dev librust-malloc-buf-dev
                       libsrt-doc libsrt-gnutls-dev libvmmalloc-dev libvmmalloc1
                       libyuv-dev nvidia-utils-535)
-    local jammy_pkgs=(libacl1-dev libdecor-0-dev liblz4-dev libmimalloc-dev
+    jammy_pkgs=(libacl1-dev libdecor-0-dev liblz4-dev libmimalloc-dev
                       libpipewire-0.3-dev libpsl-dev libreadline-dev
                       librust-jemalloc-sys-dev librust-malloc-buf-dev
                       libsrt-doc libsvtav1-dev libsvtav1dec-dev
                       libsvtav1enc-dev libtbbmalloc2 libwayland-dev)
-    local lunar_kenetic_pkgs=(libhwy-dev libjxl-dev librist-dev libsrt-gnutls-dev
+    lunar_kenetic_pkgs=(libhwy-dev libjxl-dev librist-dev libsrt-gnutls-dev
                               libsvtav1-dev libsvtav1dec-dev libsvtav1enc-dev libyuv-dev)
-    local mantic_pkgs=(libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev
+    mantic_pkgs=(libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev
                        libhwy-dev libsrt-gnutls-dev libyuv-dev)
     case "$VER" in
         msft)        ubuntu_msft ;;
-        23.10)       apt_pkgs "$1" "${mantic_pkgs[@]}" "${lunar_kenetic_pkgs[@]}" "${jammy_pkgs[@]}" "${focal_pkgs[@]}" ;;
-        23.04|22.10) apt_pkgs "$1" "${ubuntu_common_pkgs[@]}" "${lunar_kenetic_pkgs[@]}" "${jammy_pkgs[@]}" ;;
-        22.04)       apt_pkgs "$1" "${ubuntu_common_pkgs[@]}" "${jammy_pkgs[@]}" ;;
-        20.04)       apt_pkgs "$1" "${ubuntu_common_pkgs[@]}" "${focal_pkgs[@]}" ;;
+        23.10)       apt_pkgs $1 "${mantic_pkgs[@]}" "${lunar_kenetic_pkgs[@]}" "${jammy_pkgs[@]}" "${focal_pkgs[@]}" ;;
+        23.04|22.10) apt_pkgs $1 "${ubuntu_common_pkgs[@]}" "${lunar_kenetic_pkgs[@]}" "${jammy_pkgs[@]}" ;;
+        22.04)       apt_pkgs $1 "${ubuntu_common_pkgs[@]}" "${jammy_pkgs[@]}" ;;
+        20.04)       apt_pkgs $1 "${ubuntu_common_pkgs[@]}" "${focal_pkgs[@]}" ;;
         *)           fail "Could not detect the Ubuntu release version. Line: $LINENO" ;;
     esac
 }
@@ -1333,14 +1341,15 @@ get_wsl_version
     log "Checking installation status of each package..."
 
 case "$OS" in
+    WSL2)       get_os_version
+                case "$OS" in
+                    Debian|n/a) debian_os_version "$nvidia_encode_version $nvidia_utils_version" "$wsl_flag" "${wsl_common_pkgs[@]}" ;;
+                    Ubuntu)     ubuntu_os_version "$nvidia_encode_version $nvidia_utils_version" "$wsl_flag" "${wsl_common_pkgs[@]}" ;;
+                esac
+                ;;
     Arch)       arch_os_ver ;;
     Debian|n/a) debian_os_version "$nvidia_encode_version $nvidia_utils_version" ;;
     Ubuntu)     ubuntu_os_version "$nvidia_encode_version $nvidia_utils_version" ;;
-    WSL2)       case "$OS" in
-                    Debian|n/a) debian_os_version "$nvidia_encode_version $nvidia_utils_version ${wsl_common_pkgs[*]}" "$wsl_flag" ;;
-                    Ubuntu)     ubuntu_os_version "$nvidia_encode_version $nvidia_utils_version ${wsl_common_pkgs[*]}" "$wsl_flag" ;;
-                esac
-                ;;
 esac
 
 # Set the JAVA variables
@@ -1366,7 +1375,7 @@ ldconfig
 echo
 box_out_banner_global() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+    line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)$line"
     space="${line//-/ }"
@@ -2105,7 +2114,7 @@ fi
 echo
 box_out_banner_audio() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+    line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)$line"
     space="${line//-/ }"
@@ -2352,7 +2361,7 @@ CONFIGURE_OPTIONS+=("--enable-libtheora")
 echo
 box_out_banner_video() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+    line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)$line"
     space="${line//-/ }"
@@ -2859,7 +2868,7 @@ fi
 echo
 box_out_banner_images() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+    line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)$line"
     space="${line//-/ }"
@@ -2938,7 +2947,7 @@ CONFIGURE_OPTIONS+=("--enable-libopenjpeg")
 echo
 box_out_banner_ffmpeg() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+    line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)$line"
     space="${line//-/ }"
