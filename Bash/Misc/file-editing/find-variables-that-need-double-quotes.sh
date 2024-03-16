@@ -6,9 +6,6 @@ if [ "$#" -ne 1 ]; then
     exit 1
 fi
 
-# Create variables
-EDITOR=$(update-alternatives --display editor | grep -m1 'link currently points to' | sed 's/.*points to //')
-
 # Define file paths
 input="$1"
 results="./match_results.txt"
