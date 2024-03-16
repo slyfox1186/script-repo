@@ -96,7 +96,7 @@ mf() {
     if [[ -z "$1" ]]; then
         read -p "Enter FILE name: " file
         [[ ! -f "$file" ]] && touch "$file"
-        chmod 744 "$i"
+        chmod 744 "$file"
     else
         [[ ! -f "$1" ]] && touch "$1"
         chmod 744 "$1"
@@ -333,8 +333,8 @@ showpkgs() {
 
 # Pipe all development packages names to file
 getdev() {
-    apt-cache search dev | grep "\-dev" | cut -d " " -f1 | sort > "dev-packages.list"
-    gnome-text-editor "dev-packages.list"
+    apt-cache search dev | grep '\-dev' | cut -d " " -f1 | sort > dev-packages.list
+    gnome-text-editor dev-packages.list
 }
 
 ## SSH-KEYGEN ##
@@ -349,41 +349,41 @@ new_key() {
     clear
 
     printf "%s\n%s\n\\n" \
-        "[[i]] Choose the key bit size" \
-        "[[i]] Values encased in "()" are recommended"
+        "[i] Choose the key bit size" \
+        "[i] Values encased in \"()\" are recommended"
 
     if [[ "$type" == "rsa" ]]; then
-        printf "%s\n\\n" "[[i]] rsa: [[ 512 | 1024 | (2048) | 4096 ]]"
+        printf "%s\n\\n" "[i] rsa: [[ 512 | 1024 | (2048) | 4096 ]]"
     elif [[ "$type" == "dsa" ]]; then
-        printf "%s\n\\n" "[[i]] dsa: [[ (1024) | 2048 ]]"
+        printf "%s\n\\n" "[i] dsa: [[ (1024) | 2048 ]]"
     elif [[ "$type" == "ecdsa" ]]; then
-        printf "%s\n\\n" "[[i]] ecdsa: [[ (256) | 384 | 521 ]]"
+        printf "%s\n\\n" "[i] ecdsa: [[ (256) | 384 | 521 ]]"
     fi
 
     read -p "Your choice: " bits
     clear
 
     printf "%s\n%s\n\\n" \
-        "[[i]] Choose a password" \
-        "[[i]] For no password just press enter"
+        "[i] Choose a password" \
+        "[i] For no password just press enter"
     read -p "Your choice: " pass
     clear
 
-    printf "%s\n\\n" "[[i]] For no comment just press enter"
+    printf "%s\n\\n" "[i] For no comment just press enter"
     read -p "Your choice: " comment
     clear
 
-    printf "%s\n\\n" "[[i]] Enter the ssh key name"
+    printf "%s\n\\n" "[i] Enter the ssh key name"
     read -p "Your choice: " name
     clear
 
     printf "%s\n%s\n%s\n%s\n%s\n\\n" \
-        "[[i]] Your choices" \
-        "[[i]] Type: $type" \
-        "[[i]] bits: $bits" \
-        "[[i]] Password: $pass" \
-        "[[i]] comment: $comment" \
-        "[[i]] Key name: $name"
+        "[i] Your choices" \
+        "[i] Type: $type" \
+        "[i] bits: $bits" \
+        "[i] Password: $pass" \
+        "[i] comment: $comment" \
+        "[i] Key name: $name"
     read -p "Press enter to continue or ^c to exit"
     clear
 
@@ -547,9 +547,9 @@ nvme_temp() {
     fi
     echo "nvme0n1: $n0"
     echo
-    echo "nnvme1n1: $n1"
+    echo "nvme1n1: $n1"
     echo
-    echo "nnvme2n1: $n2"
+    echo "nvme2n1: $n2"
 }
 
 ## Refresh thumbnail cache
@@ -601,11 +601,10 @@ dlfs() {
 
     scripts=(build-ffmpeg build-all-git-safer build-all-gnu-safer build-magick)
 
-    for f in ${scripts[[@]]}
-    do
-        chown -R "$USER":"$USER" "$f"
-        chmod -R 744 "$PWD" "$f"
-        [[ "$f" == "build-all-git-safer" || "$f" == "build-all-gnu-safer" ]] && mv "$f" "${f%-safer}"
+    for file in ${scripts[@]}; do
+        chown -R "$USER":"$USER" "$file"
+        chmod -R 744 "$PWD" "$file"
+        [[ "$file" == "build-all-git-safer" || "$file" == "build-all-gnu-safer" ]] && mv "$file" "${file%-safer}"
         [[ -n "favorite-installer-scripts.txt" ]] && sudo rm "favorite-installer-scripts.txt"
     done
 
@@ -698,7 +697,8 @@ list_ppa() {
         read -p "Please enter the source folder path: " source
         read -p "Please enter the destination archive path (w/o extension): " output
         echo
-        [[ -f "$output.tar.xz" ]] && sudo rm "$output.tar.xz"
+        if [[ -f "$output.tar.xz" ]]; then
+            sudo rm "$output.tar.xz"
         fi
         7z a -ttar -so -an "$source" | 7z a -txz -mx9 -si "$output.tar.xz"
     fi
@@ -800,7 +800,9 @@ tar_gz() {
         echo
         read -p "Please enter the destination archive path (w/o extension): " output
         echo
-        [[ -f "$output.tar.gz" ]] && sudo rm "$output.tar.gz"
+        if [[ -f "$output.tar.gz" ]]; then
+            sudo rm "$output.tar.gz"
+        fi
         tar -cJf "$output.tar.gz" "$source"
     fi
 }
@@ -831,7 +833,9 @@ tar_xz_1() {
         read -p "Please enter the source folder path: " source
         read -p "Please enter the destination archive path (w/o extension): " output
         echo
-        [[ -f "$output.tar.xz" ]] && sudo rm "$output.tar.xz"
+        if [[ -f "$output.tar.xz" ]]; then
+            sudo rm "$output.tar.xz"
+        fi
         tar -cvJf - "$source" | xz -1 -c - > "$output.tar.xz"
     fi
 }
@@ -846,7 +850,9 @@ tar_xz_5() {
         echo
         read -p "Please enter the destination archive path (w/o extension): " output
         clear
-        [[ -f "$output.tar.xz" ]] && sudo rm "$output.tar.xz"
+        if [[ -f "$output.tar.xz" ]]; then
+            sudo rm "$output.tar.xz"
+        fi
         tar -cvJf - "$source" | xz -5 -c - > "$output.tar.xz"
     fi
 }
@@ -1029,7 +1035,7 @@ rm_deb() {
 tkapt() {
     local program
     local list=(apt apt-get aptitude dpkg)
-    for program in ${list[[@]]}; do
+    for program in ${list[@]}; do
         sudo killall -9 "$program" 2>/dev/null
     done
 }
@@ -1115,11 +1121,12 @@ tkan() {
 }
 
 ## UPDATE ICON CACHE ##
-icon pkgs
+update_icons() {
+    pkg pkgs
     pkgs=(gtk-update-icon-cache hicolor-icon-theme)
-    for i in ${pkgs[[@]]}; do
-        if ! sudo dpkg -l | grep "$icon"; then
-            sudo apt -y install $icon
+    for pkg in ${pkgs[@]}; do
+        if ! sudo dpkg -l | grep "$pkg"; then
+            sudo apt -y install $pkg
             echo
         fi
     done
@@ -1165,7 +1172,7 @@ adl() {
                --file-allocation=none \
                --no-file-allocation-limit=8M \
                --continue=true \
-               --out="$filename" \
+               --out="$file" \
                "$url"
     then
            google_speech "Download completed." 2>/dev/null
@@ -1361,7 +1368,7 @@ sc() {
         files="$@"
     fi
 
-    for file in ${files[[@]]}; do
+    for file in ${files[@]}; do
         box_out_banner() {
             input_char=$(echo "$@" | wc -c)
             line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
@@ -1497,8 +1504,7 @@ pip_up() {
 
     pip install --upgrade pip
 
-    for pkg in ${list_pkgs[[@]]}
-    do
+    for pkg in ${list_pkgs[@]}; do
         if [[ $pkg != wxPython ]]; then
             pip install --user --upgrade $pkg
         fi
@@ -1523,7 +1529,7 @@ bvar() {
     fi
 
     fext="${fname#*.}"
-    if [[ -n "$fext" ]]; then
+    if [[ -f "$fname" ]]; then
         fname+=".txt"
         mv "${fname_tmp}" "$fname"
     fi
@@ -1607,17 +1613,15 @@ drp() {
 }
 
 rm_curly() {
-    local content FILE transform_string
+    local content file transform_string
     # FUNCTION TO TRANSFORM THE STRING
-    transform_string()
-    {
+    transform_string() {
         content=$(cat "$1")
         echo "${content//\$\{/\$}" | sed "s/\}//g"
     }
 
     # LOOP OVER EACH ARGUMENT
-    for FILE in "$@"
-    do
+    for file in "$@"; do
         if [[ -f "$file" ]]; then
             # PERFORM THE TRANSFORMATION AND OVERWRITE THE FILE
             transform_string "$file" > "$file.tmp"
