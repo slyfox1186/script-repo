@@ -7,7 +7,7 @@ trap 'fail_fn "Error occurred on line ${LINENO}"' ERR
 version=2.0
 program_name=bash
 install_prefix=/usr/local
-build_dir=/tmp/"$program_name-$version-build"
+build_dir="/tmp/$program_name-$version-build"
 repo_url=https://github.com/slyfox1186/script-repo
 gnu_ftp="https://ftp.gnu.org/gnu/bash/"
 verbose=0
@@ -144,6 +144,7 @@ create_symlinks() {
 
 cleanup() {
     log_msg "Cleaning up..."
+    echo
     read -rp "Remove temporary build directory '$build_dir'? [y/N] " response
     if [[ $response =~ ^[Yy]$ ]]; then
         rm -rf "$build_dir"

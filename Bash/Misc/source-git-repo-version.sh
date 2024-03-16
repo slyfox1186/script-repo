@@ -4,19 +4,16 @@
 # Improved the RegEx parsing which has allowed more results
 
 # Function to retrieve the latest Git tag version from a repository
-find_latest_release_version() {
+get_latest_release_version() {
     local url="$1"
     local tags_url="${url/.git/}/tags"
-    local tag_version
 
     # Try fetching from the original URL
-    tag_version=$(curl -sSL "$url" | parse_version)
-    if [[ -z "$tag_version" ]]; then
+    latest_version=$(curl -fsSL "$url" | parse_version)
+    if [[ -z "$latest_version" ]]; then
         # If no version found, try the alternative URL
-        tag_version=$(curl -sSL "$tags_url" | parse_version)
+        latest_version=$(curl -fsSL "$tags_url" | parse_version)
     fi
-
-    echo "$tag_version"
 }
 
 parse_version() {
@@ -30,12 +27,12 @@ parse_version() {
 }
 
 # Check if a URL is provided as an url
-if [ -z "$1" ]; then
+if [[ -z "$1" ]]; then
     echo "Usage: $0 <url>"
     exit 1
 fi
 
-url="$1"
-latest_tag="$(find_latest_release_version "$url")"
+pass_url="$1"
+get_latest_release_version "$pass_url"
 
-echo "$latest_tag"
+echo "$latest_version"

@@ -1,55 +1,52 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2068,SC2162
 
-#
-# CREATE FUNCTIONS
-#
+# Define variables and arrays
+script_array=(".bashrc" ".bash_aliases" ".bash_functions")
+tf=$(mktemp)
+td=$(mktemp -d)
 
-fail_fn()
-{
-    printf "\n%s\n\n" "$1"
+# Create functions
+fail() {
+    echo -e "\\n[ERROR] $1\\n"
+    read -p "Press enter to exit."
     exit 1
 }
 
-# Create and cd into a random directory
-cd "$(mktemp --directory)" || exit 1
+# Download the required apt packages if not already installed
+if ! dpkg -l | grep -o wget &>/dev/null; then
+    sudo apt-get -y install wget
+    clear
+fi
+
+# Change into the temporary directory
+cd "$td" || exit 1
+
+# Use 'cat' with a here-document to write multiline text to the temporary file
+cat > "$tf" <<'EOF'
+https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Ubuntu%20Scripts/lunar/user-scripts/.bash_aliases
+https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Ubuntu%20Scripts/lunar/user-scripts/.bash_functions
+https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Ubuntu%20Scripts/lunar/user-scripts/.bashrc
+EOF
 
 # Download the user scripts from GitHub
-wget -qN - -i 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Ubuntu%20Scripts/lunar/user-scripts/lunar-scripts.txt'
+wget -qN - -i "$tf"
 
-# Delete all files except those that start with a '.' or end with '.sh'
-find . ! \( -name '\.*' -o -name '*.sh' \) -type f -delete 2>/dev/null
+# Delete all files except those that start with a "." or end with ".sh"
+find . ! \( -name ".*" -o -name "*.sh" \) -type f -delete 2>/dev/null
 
-# define script array
-script_array=(.bash_aliases .bash_functions .bashrc)
-
-# If the scripts exist, move each one to the users home directory
-for script in ${script_array[@]}
-do
-    if ! mv -f "$PWD/$script" "${HOME}"; then
-        fail_fn "Failed to move scripts to: ${HOME}"
-    fi
-    if ! sudo chown "$USER":"$USER" "${HOME}/$script"; then
-        fail_fn "Failed to update file permissions to: $USER:$USER"
-    fi
+# Move and update ownership of user scripts to the user's home folder
+for script in "${script_array[@]}"; do
+    cp -f "$script" "$HOME" || fail "Failed to move $script to $HOME. Line $LINENO"
+    chown "$USER":"$USER" "$HOME/$script" || fail "Failed to update permissions for $script. Line $LINENO"
 done
 
-# Open each script that is now in each user's home folder with an editor
-for i in ${script_array[@]}
-do
-    if which gnome-text-editor &>/dev/null; then
-        gnome-text-editor "${HOME}/$i"
-    elif which gedit &>/dev/null; then
-        gedit "${HOME}/$i"
-    elif which nano &>/dev/null; then
-        nano "${HOME}/$i"
-    elif which vim &>/dev/null; then
-        vi "${HOME}/$i"
-    else
-        fail_fn 'Could not find an EDITOR to open the files with.'
-    fi
+# Open each script with the nano editor
+cd "$HOME" || exit 1
+for script in "${script_array[@]}"; do
+    command -v nano &>/dev/null || fail "The script failed to open the newly installed scripts using the EDITOR \"nano\"."
+    nano "$script"
 done
 
-# Remove the installer script itself
-if [ -f 'scripts.sh' ]; then
-    sudo rm 'scripts.sh'
-fi
+# Cleanup the temp files
+sudo rm -fr "$td"
