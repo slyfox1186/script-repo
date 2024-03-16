@@ -992,14 +992,15 @@ apt_pkgs() {
     libcpp_pkg=$(find_latest_pkg_version 'libc++*' 'libc\+\+-[0-9\-]+-dev')
     libcppabi_pkg=$(find_latest_pkg_version 'libc++abi*' 'libc\+\+abi-[0-9]+-dev')
     libunwind_pkg=$(find_latest_pkg_version 'libunwind*' 'libunwind-[0-9]+-dev')
+    gcc_plugin_pkg=$(find_latest_pkg_version 'gcc-1*-plugin-dev'  'gcc-1[0-9]+-plugin-dev')
 
     # Define an array of apt package names
     pkgs=(
-        $1 $libcppabi_pkg $libcpp_pkg $libunwind_pkg $nvidia_utils $openjdk_pkg ant apt asciidoc autoconf autoconf-archive
-        automake autopoint binutils bison build-essential cargo cargo-c ccache checkinstall clang cmake curl doxygen
-        fcitx-libs-dev flex flite1-dev freeglut3-dev frei0r-plugins-dev gawk gcc gettext gimp-data git gnome-desktop-testing
-        gnustep-gui-runtime google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk
-        lib32stdc++6 libamd2 libasound2-dev libass-dev libaudio-dev libavfilter-dev libbabl-0.1-0 libbluray-dev
+        $1 $libcppabi_pkg $libcpp_pkg $libunwind_pkg $nvidia_utils $openjdk_pkg $gcc_plugin_pkg ant apt asciidoc autoconf
+        autoconf-archive automake autopoint binutils bison build-essential cargo cargo-c ccache checkinstall clang cmake
+        curl doxygen fcitx-libs-dev flex flite1-dev freeglut3-dev frei0r-plugins-dev gawk gcc gettext gimp-data git
+        gnome-desktop-testing gnustep-gui-runtime google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit
+        ladspa-sdk lib32stdc++6 libamd2 libasound2-dev libass-dev libaudio-dev libavfilter-dev libbabl-0.1-0 libbluray-dev
         libbpf-dev libbs2b-dev libbz2-dev libc6 libc6-dev libcaca-dev libcairo2-dev libcamd2 libccolamd2 libcdio-dev
         libcdio-paranoia-dev libcdparanoia-dev libcholmod3 libchromaprint-dev libcjson-dev libcodec2-dev libcolamd2
         libcrypto++-dev libcurl4-openssl-dev libdav1d-dev libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev
@@ -1019,7 +1020,7 @@ apt_pkgs() {
         libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzimg-dev
         libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev llvm lsb-release lshw lzma-dev m4 mesa-utils meson nasm
         ninja-build pandoc python3 python3-pip python3-venv ragel re2c scons texi2html texinfo tk-dev unzip valgrind
-        wget xmlto zlib1g-dev libclang-16-dev gcc-13-plugin-dev
+        wget xmlto zlib1g-dev libclang-16-dev
     )
 
     [[ "$OS" == "Debian" ]] && pkgs+=("nvidia-smi")
