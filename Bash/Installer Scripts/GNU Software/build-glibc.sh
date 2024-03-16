@@ -21,22 +21,28 @@ working="/tmp/glibc-build-script"
 install_dir="/usr/local/$archive_dir"
 log_file="$working/build.log"
 
-CFLAGS="-g -O3 -pipe -march=native"
-CXXFLAGS="-g -O3 -pipe -march=native"
-export CFLAGS CXXFLAGS
+# Optimization flags
+CPU_ARCH=$(lscpu | awk -F ': +' '/Architecture/ {print $NF}')
+CPU_CORES=$(nproc --all)
+CFLAGS="-O3 -march=$CPU_ARCH -mtune=native -pipe -fno-plt -fstack-protector-strong -fstack-clash-protection -fcf-protection"
+CXXFLAGS="$CFLAGS"
+LDFLAGS="-Wl,-O1 -Wl,--as-needed -Wl,--hash-style=gnu -Wl,-z,relro,-z,now"
 
 # Functions
 fail() {
+    mkdir -p "$(dirname "$log_file")"
     echo -e "${RED}[$(date +'%m.%d.%Y %T')] ERROR: $1${NC}" | tee -a "$log_file"
     echo -e "${RED}To report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues${NC}" | tee -a "$log_file"
     exit 1
 }
 
 warn() {
+    mkdir -p "$(dirname "$log_file")"
     echo -e "${YELLOW}[$(date +'%m.%d.%Y %T')] WARNING: $1${NC}" | tee -a "$log_file"
 }
 
 log() {
+    mkdir -p "$(dirname "$log_file")"
     echo -e "${GREEN}[$(date +'%m.%d.%Y %T')] $1${NC}" | tee -a "$log_file"
 }
 
@@ -75,7 +81,7 @@ detect_timezone() {
 
 install_dependencies() {
     log "Checking dependencies..."
-    dependencies=("autoconf" "autoconf-archive" "autogen" "automake" "build-essential" "ccache" "cmake" "curl" "git" "libltdl-dev")
+    dependencies=("autoconf" "autoconf-archive" "autogen" "automake" "build-essential" "ccache" "cmake" "curl" "git" "libltdl-dev" "perl" "python3" "texinfo")
     missing_deps=()
 
     for pkg in "${dependencies[@]}"; do
@@ -110,7 +116,9 @@ build_glibc() {
     log "Building glibc..."
 
     cd "$working/$archive_dir" || fail "Failed to change directory to $working/$archive_dir."
+
     autoreconf -fi
+
     mkdir -p build && cd build || fail "Failed to create and change to build directory."
 
     ../configure --prefix="$install_dir" \
@@ -120,24 +128,31 @@ build_glibc() {
                  --disable-werror \
                  --disable-debug \
                  --disable-nscd \
-                 --without-selinux
+                 --without-selinux \
+                 --enable-bind-now \
+                 --enable-multi-arch \
+                 --enable-static-pie \
+                 --with-pic \
+                 CFLAGS="$CFLAGS" \
+                 CXXFLAGS="$CXXFLAGS" \
+                 LDFLAGS="$LDFLAGS"
 
-    if ! make "-j$(nproc --all)"; then
+    if ! make "-j$CPU_CORES"; then
         fail "Failed to build glibc."
     fi
 
-    if ! make "-j$(nproc --all)" check; then
+    if ! make "-j$CPU_CORES" check; then
         warn "Some tests failed during the glibc build process."
     fi
 }
 
 install_glibc() {
     log "Installing glibc..."
-    if ! make "-j$(nproc --all)" install; then
+    if ! make "-j$CPU_CORES" install; then
         fail "Failed to install glibc."
     fi
 
-    if ! make "-j$(nproc --all)" localedata/install-locales; then
+    if ! make "-j$CPU_CORES" localedata/install-locales; then
         fail "Failed to install locale files."
     fi
 }
