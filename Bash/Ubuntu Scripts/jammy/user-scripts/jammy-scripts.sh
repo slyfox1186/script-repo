@@ -17,7 +17,7 @@ fail() {
 # Download the required apt packages
 sudo apt-get -y install wget
 
-# Create a temporary directory and change into it
+# Change into the temporary directory
 cd "$td" || exit 1
 
 # Use 'cat' with a here-document to write multiline text to the temporary file
