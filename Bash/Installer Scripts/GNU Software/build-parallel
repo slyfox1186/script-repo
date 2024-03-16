@@ -2,8 +2,8 @@
 
 # GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-parallel
 # Purpose: Build GNU parallel
-# Updated: 03.07.24
-# Script version: 2.0
+# Updated: 03.16.24
+# Script version: 2.1
 
 set -e  # Exit on error
 
@@ -30,7 +30,7 @@ echo "==============================================="
 rm -fr "$cwd"
 mkdir -p "$cwd"
 
-SET COMPILER FLAGS
+# SET COMPILER FLAGS
 CC=gcc
 CXX=g++
 CFLAGS="-g -O3 -pipe -march=native"
@@ -65,7 +65,7 @@ export PKG_CONFIG_PATH="\
 /lib/x86_64-linux-gnu/pkgconfig\
 "
 
-FUNCTIONS
+# FUNCTIONS
 exit_fn() {
     echo
     echo "\n%s\n\n%s\n\n"
