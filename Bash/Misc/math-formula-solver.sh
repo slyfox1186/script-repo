@@ -1,12 +1,5 @@
 #!/usr/bin/env bash
 
-if ! command -v bc &>/dev/null; then
-    echo "bc command not found. Installing bc..."
-    sudo apt-get -y install bc
-    echo "bc has been installed successfully."
-    echo
-fi
-
 while true; do
     echo
     echo "Math Formula Solver"
