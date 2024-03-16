@@ -28,7 +28,7 @@ LDEXEFLAGS=""
 CONFIGURE_OPTIONS=()
 LATEST=false
 GIT_REGEX='(rc|RC|Rc|rC|alpha|beta)+[0-9]*$' # Set the regex variable to exclude release candidates
-DEBUG=ON
+DEBUG=OFF
 
 # Pre-defined color variables
 RED='\033[0;31m'
