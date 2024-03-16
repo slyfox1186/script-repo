@@ -32,7 +32,7 @@ if [ -z "$1" ]; then
     exit 1
 fi
 
-url="$1"
-get_latest_release_version
+pass_url="$1"
+get_latest_release_version "$pass_url"
 
 echo "$latest_version"
