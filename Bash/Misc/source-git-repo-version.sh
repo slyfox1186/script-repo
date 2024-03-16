@@ -27,7 +27,7 @@ parse_version() {
 }
 
 # Check if a URL is provided as an url
-if [ -z "$1" ]; then
+if [[ -z "$1" ]]; then
     echo "Usage: $0 <url>"
     exit 1
 fi
