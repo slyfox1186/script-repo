@@ -52,10 +52,10 @@ show_usage() {
 
 create_symlinks() {
     log "Creating symbolic links..."
-    ln -sf "${install_dir}/bin"/* "/usr/local/bin"
-    ln -sf "${install_dir}/lib"/* "/usr/local/lib"
-    ln -sf "${install_dir}/lib64"/* "/usr/local/lib64"
-    ln -sf "${install_dir}/share"/* "/usr/local/share"
+    ln -sf "$install_dir/bin"/* "/usr/local/bin"
+    ln -sf "$install_dir/lib"/* "/usr/local/lib"
+    ln -sf "$install_dir/lib64"/* "/usr/local/lib64"
+    ln -sf "$install_dir/share"/* "/usr/local/share"
 }
 
 detect_timezone() {
