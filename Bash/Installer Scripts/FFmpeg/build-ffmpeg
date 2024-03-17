@@ -1,22 +1,16 @@
-#!/Usr/bin/env bash
-# Shellcheck disable=sc2068,sc2162,sc2317 source=/dev/null
+#!/usr/bin/env bash
+# shellcheck disable=SC2068,SC2162,SC2317 source=/dev/null
 
-<<<<<<< Updated upstream
 ##  GitHub: https://github.com/slyfox1186/ffmpeg-build-script
 ##  Script version: 3.5.3
 ##  Updated: 03.16.24
-=======
-##  Github: https://github.com/slyfox1186/ffmpeg-build-script
-##  Script version: 3.5.2
-##  Updated: 03.10.24
->>>>>>> Stashed changes
 ##  Purpose: build ffmpeg from source code with addon development libraries
-##           Also compiled from source to help ensure the latest functionality
-##  Supported distros: arch linux
+##           also compiled from source to help ensure the latest functionality
+##  Supported Distros: Arch Linux
 ##                     Debian 11|12
 ##                     Ubuntu (20|22|23).04 & 23.10
 ##  Supported architecture: x86_64
-##  Cuda sdk toolkit: updated to version 12.4.0
+##  CUDA SDK Toolkit: Updated to version 12.4.0
 
 if [[ "$EUID" -ne 0 ]]; then
     echo "You must run this script with root or sudo."
@@ -24,7 +18,7 @@ if [[ "$EUID" -ne 0 ]]; then
 fi
 
 # Define global variables
-SCRIPT_NAME="$0"
+SCRIPT_NAME="${0}"
 SCRIPT_VERSION=3.5.2
 CWD="$PWD/ffmpeg-build-script"
 packages="$CWD/packages"
@@ -40,7 +34,7 @@ DEBUG=OFF
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
-NC='\033[0m' # No color
+NC='\033[0m' # No Color
 
 # Print script banner
 echo
@@ -49,7 +43,7 @@ box_out_banner() {
     line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line=$(tput setaf 3)$line
-    space="$line//-/ "
+    space="${line//-/ }"
     echo " $line"
     printf "|" ; echo -n "$space" ; printf "%s\n" "|";
     printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
@@ -62,10 +56,10 @@ box_out_banner "FFmpeg Build Script - v$SCRIPT_VERSION"
 # Create output directories
 mkdir -p "$packages" "$workspace"
 
-# Set the cc/cpp compilers + customized compiler optimization flags
+# Set the CC/CPP compilers + customized compiler optimization flags
 source_compiler_flags() {
-    CFLAGS="-g -O3 -pipe -fno-plt -march=native"
-    CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
+    CFLAGS="-g -O3 -march=native"
+    CXXFLAGS="-g -O3 -march=native"
     LDFLAGS="-L$workspace/lib64 -L$workspace/lib"
     CPPFLAGS="-I$workspace/include -I/usr/x86_64-linux-gnu/include"
     EXTRALIBS="-ldl -lpthread -lm -lz"
@@ -74,30 +68,30 @@ source_compiler_flags() {
 source_compiler_flags
 
 log() {
-    echo -e "$GREEN[INFO]$NC $1"
+    echo -e "${GREEN}[INFO]${NC} $1"
 }
 
 log_update() {
-    echo -e "$GREEN[UPDATE]$NC $1"
+    echo -e "${GREEN}[UPDATE]${NC} $1"
 }
 
 warn() {
-    echo -e "$YELLOW[WARNING]$NC $1"
+    echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
 exit_fn() {
     echo
-    echo -e "$GREEN[INFO]$NC Make sure to $YELLOWstar$NC this repository to show your support!"
-    echo -e "$GREEN[INFO]$NC https://github.com/slyfox1186/script-repo"
+    echo -e "${GREEN}[INFO]${NC} Make sure to ${YELLOW}star${NC} this repository to show your support!"
+    echo -e "${GREEN}[INFO]${NC} https://github.com/slyfox1186/script-repo"
     echo
     exit 0
 }
 
 fail() {
     echo
-    echo -e "$RED[ERROR]$NC $1"
+    echo -e "${RED}[ERROR]${NC} $1"
     echo
-    echo -e "$GREEN[INFO]$NC For help or to report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues"
+    echo -e "${GREEN}[INFO]${NC} For help or to report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues"
     echo
     exit 1
 }
@@ -163,7 +157,7 @@ check_and_install_cargo_c() {
 
         ensure_no_cargo_or_rustc_processes
 
-# Perform cleanup only when it's safe
+        # Perform cleanup only when it's safe
         cargo clean
         find "$HOME/.cargo/registry/index" -type f -name ".cargo-lock" -delete
 
@@ -223,13 +217,13 @@ check_ffmpeg_version() {
 download() {
     download_path="$packages"
     download_url="$1"
-    download_file="$2:-"${1##*/"}"
+    download_file="${2:-"${1##*/}"}"
 
     if [[ "$download_file" =~ tar. ]]; then
-        output_directory="$download_file%.*"
-        output_directory="$3:-"${output_directory%.*"}"
+        output_directory="${download_file%.*}"
+        output_directory="${3:-"${output_directory%.*}"}"
     else
-        output_directory="$3:-"${download_file%.*"}"
+        output_directory="${3:-"${download_file%.*}"}"
     fi
 
     target_file="$download_path/$download_file"
@@ -282,18 +276,18 @@ if [[ "$3" == "recurse" ]]; then
 fi
 
 version=$(git_clone "$git_url" "$repo_name" "$third_flag")
-version="$version//Cloning completed: /"
+version="${version//Cloning completed: /}"
 }
 
 git_clone() {
     local repo_url="$1"
-    local repo_name="$2:-"${1##*/"}"
-    local repo_name="$repo_name//\./-"
+    local repo_name="${2:-"${1##*/}"}"
+    local repo_name="${repo_name//\./-}"
     local repo_flag="$3"
     local target_directory="$packages/$repo_name"
     local version
 
-# Try to get the latest tag
+    # Try to get the latest tag
     if [[ "$repo_flag" == "ant" ]]; then
         version=$(git ls-remote --tags "https://github.com/apache/ant.git" |
                   awk -F'/' '/\/v?[0-9]+\.[0-9]+(\.[0-9]+)?(\^\{\})?$/ {
@@ -323,7 +317,7 @@ git_clone() {
                   grep -v '\^{}' |
                   sort -rV |
                   head -n1)
-# If no tags found, use the latest commit hash as the version
+        # If no tags found, use the latest commit hash as the version
         if [[ -z "$version" ]]; then
             version=$(git ls-remote "$repo_url" |
                       grep "HEAD" |
@@ -343,7 +337,7 @@ git_clone() {
             target_directory="$download_path/$3"
         fi
         rm -fr "$target_directory" 2>/dev/null
-# Clone the repository
+        # Clone the repository
         if ! git clone --depth 1 $recurse -q "$repo_url" "$target_directory"; then
             echo
             warn "Failed to clone \"$target_directory\". Second attempt in 10 seconds..."
@@ -379,7 +373,7 @@ github_repo() {
     local max_attempts=10
 
     if [[ -z "$repo" || -z "$url" ]]; then
-        echo -e "$RED[ERROR]$NC Git repository and URL are required."
+        echo -e "${RED}[ERROR]${NC} Git repository and URL are required."
         return 1
     fi
 
@@ -394,34 +388,34 @@ github_repo() {
             curl_cmd=$(curl -fsSL "https://github.com/$repo/$url" | grep -o 'href="[^"]*\.tar\.gz"')
         fi
 
-# Extract the specific line
-        line=$(echo "$curl_cmd" | grep -o 'href="[^"]*\.tar\.gz"' | sed -n "$countp")
+        # Extract the specific line
+        line=$(echo "$curl_cmd" | grep -o 'href="[^"]*\.tar\.gz"' | sed -n "${count}p")
 
-# Check if the line matches the pattern (version without 'rc'/'rc')
+        # Check if the line matches the pattern (version without 'RC'/'rc')
         if echo "$line" | grep -qP '[v]*(\d+[\._]\d+(?:[\._]\d*){0,2})\.tar\.gz'; then
-# Extract and print the version number
+            # Extract and print the version number
             repo_version=$(echo "$line" | grep -oP '(\d+[\._]\d+(?:[\._]\d+){0,2})')
             break
         else
-# Increment the count if no match is found
+            # Increment the count if no match is found
             ((count++))
         fi
     done
 
-# Deny installing a release candidate
+    # Deny installing a release candidate
     while [[ $repo_version =~ $GIT_REGEX ]]; do
         curl_cmd=$(curl -fsSL "https://github.com/$repo/$url" | grep -o 'href="[^"]*\.tar\.gz"')
 
-# Extract the specific line
-        line=$(echo "$curl_cmd" | grep -o 'href="[^"]*\.tar\.gz"' | sed -n "$countp")
+        # Extract the specific line
+        line=$(echo "$curl_cmd" | grep -o 'href="[^"]*\.tar\.gz"' | sed -n "${count}p")
 
-# Check if the line matches the pattern (version without 'rc'/'rc')
+        # Check if the line matches the pattern (version without 'RC'/'rc')
         if echo "$line" | grep -qP '[v]*(\d+[\._]\d+(?:[\._]\d*){0,2})\.tar\.gz'; then
-# Extract and print the version number
+            # Extract and print the version number
             repo_version=$(echo "$line" | grep -oP '(\d+[\._]\d+(?:[\._]\d+){0,2})')
             break
         else
-# Increment the count if no match is found
+            # Increment the count if no match is found
             ((count++))
         fi
     done
@@ -448,7 +442,7 @@ fetch_repo_version() {
     local version=$(echo "$response" | jq -r ".[$count]$version_jq_filter")
 
     if [[ ! "$base_url" == 536 ]]; then
-# Loop through responses to exclude release candidates and find the first valid version
+        # Loop through responses to exclude Release candidates and find the first valid version
         while [[ $version =~ $GIT_REGEX ]]; do
             version=$(echo "$response" | jq -r ".[$count]$version_jq_filter")
             if [[ -z "$version" || "$version" == "null" ]]; then
@@ -461,8 +455,8 @@ fetch_repo_version() {
     local short_id=$(echo "$response" | jq -r ".[$count]$short_id_jq_filter")
     local commit_id=$(echo "$response" | jq -r ".[$count]$commit_id_jq_filter")
 
-# Remove leading 'v' from version
-    repo_version="$version#V"
+    # Remove leading 'v' from version
+    repo_version="${version#v}"
     repo_version_1="$commit_id"
     repo_short_version_1="$short_id"
 
@@ -511,7 +505,7 @@ execute() {
 
 build() {
     echo
-    echo -e "$GREENBuilding$NC $YELLOW$1$NC - $GREENversion $YELLOW$2$NC"
+    echo -e "${GREEN}Building${NC} ${YELLOW}$1${NC} - ${GREEN}version ${YELLOW}$2${NC}"
     echo "========================================================"
 
     if [[ -f "$packages/$1.done" ]]; then
@@ -553,7 +547,7 @@ setup_python_venv_and_install_packages() {
     echo "Activating the virtual environment..."
     source "$parse_path/bin/activate" || fail "Failed to activate virtual environment"
 
-    echo "Installing Python packages: $parse_package[*]..."
+    echo "Installing Python packages: ${parse_package[*]}..."
     pip install "${parse_package[@]}" || fail "Failed to install packages"
 
     echo "Deactivating the virtual environment..."
@@ -572,7 +566,7 @@ find_cuda_json_file() {
     echo "$locate_cuda_json_file"
 }
 
-# Print the script options
+# PRINT THE SCRIPT OPTIONS
 usage() {
     echo
     echo "Usage: $SCRIPT_NAME [options]"
@@ -622,7 +616,7 @@ while (("$#" > 0)); do
             LATEST=true
             ;;
         --compiler=gcc|--compiler=clang)
-            compiler_flag="$1#*="
+            compiler_flag="${1#*=}"
             shift
             ;;
         -j|--jobs)
@@ -638,7 +632,7 @@ while (("$#" > 0)); do
 done
 
 if [[ -z "$cpu_threads" ]]; then
-# Set the available cpu thread and core count for parallel processing (speeds up the build process)
+    # Set the available CPU thread and core count for parallel processing (speeds up the build process)
     if [[ -f /proc/cpuinfo ]]; then
         cpu_threads=$(grep --count ^processor /proc/cpuinfo)
     else
@@ -733,17 +727,17 @@ check_amd_gpu() {
 check_remote_cuda_version() {
     local url="https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html"
 
-# Use curl to fetch the html content of the page
+    # Use curl to fetch the HTML content of the page
     local content=$(curl -fsS "$url")
 
-# Parse the version directly from the fetched content
+    # Parse the version directly from the fetched content
     local cuda_regex='CUDA\ ([0-9]+\.[0-9]+)(\ Update\ ([0-9]+))?'
     if [[ $content =~ $cuda_regex ]]; then
-        local base_version=$BASH_REMATCH[1]
-        local update_version=$BASH_REMATCH[3]
+        local base_version=${BASH_REMATCH[1]}
+        local update_version=${BASH_REMATCH[3]}
         remote_cuda_version="$base_version"
 
-# Append the update number if present
+        # Append the update number if present
         if [[ -n "$update_version" ]]; then
             remote_cuda_version+=".$update_version"
         else
@@ -832,40 +826,40 @@ cuda_download() {
                 distro="debian10"
                 version="10-12-4"
                 pkg_ext="deb"
-                installer_path="local_installers/cuda-repo-debian$version-local_$cuda_version_number-550.54.14-1_amd64.deb"
+                installer_path="local_installers/cuda-repo-debian${version}-local_${cuda_version_number}-550.54.14-1_amd64.deb"
                 ;;
             "Debian 11")
                 distro="debian11"
                 version="11-12-4"
                 pkg_ext="deb"
-                installer_path="local_installers/cuda-repo-debian$version-local_$cuda_version_number-550.54.14-1_amd64.deb"
+                installer_path="local_installers/cuda-repo-debian${version}-local_${cuda_version_number}-550.54.14-1_amd64.deb"
                 ;;
             "Debian 12")
                 distro="debian12"
                 version="12-12-4"
                 pkg_ext="deb"
-                installer_path="local_installers/cuda-repo-debian$version-local_$cuda_version_number-550.54.14-1_amd64.deb"
+                installer_path="local_installers/cuda-repo-debian${version}-local_${cuda_version_number}-550.54.14-1_amd64.deb"
                 ;;
             "Ubuntu 20.04")
                 distro="ubuntu2004"
                 version="12-4"
                 pkg_ext="pin"
                 pin_file="$distro/x86_64/cuda-ubuntu2004.pin"
-                installer_path="local_installers/cuda-repo-$distro-$version-local_$cuda_version_number-550.54.14-1_amd64.deb"
+                installer_path="local_installers/cuda-repo-${distro}-${version}-local_${cuda_version_number}-550.54.14-1_amd64.deb"
                 ;;
             "Ubuntu 22.04")
                 distro="ubuntu2204"
                 version="12-4"
                 pkg_ext="pin"
                 pin_file="$distro/x86_64/cuda-ubuntu2204.pin"
-                installer_path="local_installers/cuda-repo-$distro-$version-local_$cuda_version_number-550.54.14-1_amd64.deb"
+                installer_path="local_installers/cuda-repo-${distro}-${version}-local_${cuda_version_number}-550.54.14-1_amd64.deb"
                 ;;
             "Ubuntu WSL")
                 distro="wsl-ubuntu"
                 version="12-4"
                 pkg_ext="pin"
                 pin_file="$distro/x86_64/cuda-wsl-ubuntu.pin"
-                installer_path="local_installers/cuda-repo-$distro-$version-local_$cuda_version_number-1_amd64.deb"
+                installer_path="local_installers/cuda-repo-${distro}-${version}-local_${cuda_version_number}-1_amd64.deb"
                 ;;
             "Arch Linux")
                 git clone -q "https://gitlab.archlinux.org/archlinux/packaging/packages/cuda.git" || fail "Failed to clone Arch Linux CUDA repository"
@@ -889,30 +883,30 @@ cuda_download() {
     mkdir -p "$packages/nvidia-cuda"
 
     if [[ "$distro" == debian* ]]; then
-        distro="$distro//[0-9][0-9]"
+        distro="${distro//[0-9][0-9]}"
     fi
 
     if [[ "$pkg_ext" == "deb" ]]; then
         package_name="$packages/nvidia-cuda/cuda-$distro-$cuda_version_number.$pkg_ext"
         wget --show-progress -cqO "$package_name" "$cuda_url/$installer_path"
         dpkg -i "$package_name"
-        cp -f /var/cuda-repo-$distro$version-local/cuda-*-keyring.gpg "/usr/share/keyrings/"
+        cp -f /var/cuda-repo-${distro}${version}-local/cuda-*-keyring.gpg "/usr/share/keyrings/"
         [[ "$distro" == "debian"* ]] && add-apt-repository -y contrib
     elif [[ "$pkg_ext" == "pin" ]]; then
         wget --show-progress -cqO "/etc/apt/preferences.d/cuda-repository-pin-600" "$cuda_pin_url/$pin_file"
         package_name="$packages/nvidia-cuda/cuda-$distro-$cuda_version_number.deb"
         wget --show-progress -cqO "$package_name" "$cuda_url/$installer_path"
         dpkg -i "$package_name"
-        cp -f /var/cuda-repo-$distro-12-4-local/cuda-*-keyring.gpg "/usr/share/keyrings/"
+        cp -f /var/cuda-repo-${distro}-12-4-local/cuda-*-keyring.gpg "/usr/share/keyrings/"
     fi
 
     apt-get update
     apt-get install cuda-toolkit-12-4
 }
 
-# Function to detect the environment and check for an nvidia gpu
+# Function to detect the environment and check for an NVIDIA GPU
 check_nvidia_gpu() {
-# Check for nvidia gpu in native linux
+    # Check for NVIDIA GPU in native Linux
     if ! grep -qi microsoft /proc/version; then
         if lspci | grep -i nvidia >/dev/null; then
             is_nvidia_gpu_present="NVIDIA GPU detected"
@@ -920,7 +914,7 @@ check_nvidia_gpu() {
             is_nvidia_gpu_present="NVIDIA GPU not detected"
         fi
     else
-# Wsl environment: define base directories
+        # WSL environment: Define base directories
         local c_drive_paths=("/mnt/c" "/c")
         local path_exists=0
         local found=0
@@ -930,7 +924,7 @@ check_nvidia_gpu() {
             if [[ -d "$dir/Windows/System32" ]]; then
                 path_exists=1
                 if [[ -f "$dir/Windows/System32/cmd.exe" ]]; then
-# Attempt to suppress unnecessary messages by redirecting stderr to null
+                    # Attempt to suppress unnecessary messages by redirecting stderr to null
                     gpu_info=$("$dir/Windows/System32/cmd.exe" /d /c "wmic path win32_VideoController get name | findstr /i nvidia" 2>/dev/null)
 
                     if [[ -n "$gpu_info" ]]; then
@@ -956,7 +950,7 @@ get_local_cuda_version() {
     fi
 }
 
-# Required geforce cuda development packages
+# Required Geforce CUDA development packages
 install_cuda() {
     local choice
 
@@ -1015,12 +1009,12 @@ apt_pkgs() {
     local pkg available_packages unavailable_packages
     local openjdk_pkg libcpp_pkg libcppabi_pkg libunwind_pkg
 
-# Function to find the latest version of a package by pattern
+    # Function to find the latest version of a package by pattern
     find_latest_pkg_version() {
         apt-cache search --names-only "$1" 2>/dev/null | awk '{print $1}' | grep -Eo "$2" | sort -rV | head -n1
     }
 
-# Use the function to find the latest versions of specific packages
+    # Use the function to find the latest versions of specific packages
     nvidia_utils=$(find_latest_pkg_version 'nvidia-utils-[0-9]+$' 'nvidia-utils-[0-9]+$')
     openjdk_pkg=$(find_latest_pkg_version '^openjdk-[0-9]+-jdk$' '^openjdk-[0-9]+-jdk')
     libcpp_pkg=$(find_latest_pkg_version 'libc++*' 'libc\+\+-[0-9\-]+-dev')
@@ -1028,7 +1022,7 @@ apt_pkgs() {
     libunwind_pkg=$(find_latest_pkg_version 'libunwind*' 'libunwind-[0-9]+-dev')
     gcc_plugin_pkg=$(find_latest_pkg_version 'gcc-1*-plugin-dev'  'gcc-1[0-9]+-plugin-dev')
 
-# Define an array of apt package names
+    # Define an array of apt package names
     pkgs=(
         $1 $libcppabi_pkg $libcpp_pkg $libunwind_pkg $nvidia_utils $openjdk_pkg $gcc_plugin_pkg ant apt asciidoc autoconf
         autoconf-archive automake autopoint binutils bison build-essential cargo cargo-c ccache checkinstall clang cmake
@@ -1057,21 +1051,21 @@ apt_pkgs() {
 
     [[ "$OS" == "Debian" ]] && pkgs+=("nvidia-smi")
 
-# Initialize arrays for missing, available, and unavailable packages
+    # Initialize arrays for missing, available, and unavailable packages
     missing_packages=()
     available_packages=()
     unavailable_packages=()
 
     log "Checking package installation status..."
 
-# Loop through the array to find missing packages
+    # Loop through the array to find missing packages
     for pkg in "${pkgs[@]}"; do
-        if ! dpkg-query -W -f='$Status' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             missing_packages+=("$pkg")
         fi
     done
 
-# Check availability of missing packages and categorize them
+    # Check availability of missing packages and categorize them
     for pkg in "${missing_packages[@]}"; do
         if apt-cache show "$pkg" >/dev/null 2>&1; then
             available_packages+=("$pkg")
@@ -1080,15 +1074,15 @@ apt_pkgs() {
         fi
     done
 
-# Print unavailable packages
-    if [[ "${#Unavailable_packages[@]}" -gt 0 ]]; then
+    # Print unavailable packages
+    if [[ "${#unavailable_packages[@]}" -gt 0 ]]; then
         echo
         warn "Unavailable packages:"
         printf "          %s\n" "${unavailable_packages[@]}"
     fi
 
-# Install available missing packages
-    if [[ "${#Available_packages[@]}" -gt 0 ]]; then
+    # Install available missing packages
+    if [[ "${#available_packages[@]}" -gt 0 ]]; then
         echo
         log "Installing available missing packages:"
         printf "       %s\n" "${available_packages[@]}"
@@ -1129,14 +1123,14 @@ fix_x265_libs() {
 fix_pulse_meson_build_file() {
     local file_path=meson.build
 
-# Replace the original pa_version_minor and pa_version_micro blocks
+    # Replace the original pa_version_minor and pa_version_micro blocks
     sed -i "/pa_version_major = version_split\[0\].split('v')\[0\]/a \\
 if version_split.length() > 1\\n  pa_version_minor = version_split[1]\\nelse\\n  pa_version_minor = '0'\\nendif" "$file_path"
 
     sed -i "/pa_version_minor = '0'/a \\
 \\nif version_split.length() > 2\\n  pa_version_micro = version_split[2]\\nelse\\n  pa_version_micro = '0'\\nendif" "$file_path"
 
-# Remove the original pa_version_minor and pa_version_micro lines
+    # Remove the original pa_version_minor and pa_version_micro lines
     sed -i '/pa_version_minor = version_split\[1\]/d' "$file_path"
     sed -i '/pa_version_micro = version_split\[2\]/d' "$file_path"
 }
@@ -1166,10 +1160,10 @@ libpulse_fix_libs() {
 }
 
 find_latest_nasm_version() {
-# Url of the nasm stable releases directory
+    # URL of the NASM stable releases directory
     local url="https://www.nasm.us/pub/nasm/stable/"
 
-# Fetch the html, extract links, sort them, and get the last one
+    # Fetch the HTML, extract links, sort them, and get the last one
     local latest_version=$(curl -fsS $url |
                            grep -oP 'nasm-\K[0-9]+\.[0-9]+\.[0-9]+(?=\.tar\.xz)' |
                            sort -rV |
@@ -1180,7 +1174,7 @@ find_latest_nasm_version() {
         return 1
     fi
 
-# Print the version and download link without additional messages
+    # Print the version and download link without additional messages
     echo "$latest_version"
 }
 
@@ -1201,7 +1195,7 @@ patch_ffmpeg() {
     execute patch -d "libavcodec/x86" -i "../../mathops.patch"
 }
 
-# Arch linux function section
+# Arch Linux function section
 apache_ant() {
     if build "apache-ant" "git"; then
         git_clone "https://aur.archlinux.org/apache-ant-contrib.git" "apache-ant-AUR"
@@ -1229,7 +1223,7 @@ arch_os_ver() {
                texlive-binextra tk valgrind webp-pixbuf-loader xterm
                yasm)
 
-# Check for pacman lock file and if pacman is running
+    # Check for Pacman lock file and if Pacman is running
     if [[ -f /var/lib/pacman/db.lck ]]; then
         echo "Pacman lock file found. Checking if Pacman is running..."
         while pgrep -x pacman >/dev/null; do
@@ -1248,13 +1242,13 @@ arch_os_ver() {
         pacman -Sq --needed --noconfirm $pkg 2>&1
     done
 
-# Set the path for the python virtual environment
+    # Set the path for the Python virtual environment
     local venv_path="$workspace/python_virtual_environment/arch_os"
 
-# Python packages to install
+    # Python packages to install
     local python_packages=(DateTime Sphinx wheel)
 
-# Call the function to setup python venv and install packages
+    # Call the function to setup Python venv and install packages
     setup_python_venv_and_install_packages "$venv_path" "${python_packages[@]}"
 }
 
@@ -1326,7 +1320,7 @@ ubuntu_os_version() {
     esac
 }
 
-# Test the os and its version
+# Test the OS and its version
 find_lsb_release=$(find /usr/bin/ -type f -name lsb_release)
 
 get_os_version() {
@@ -1356,7 +1350,7 @@ get_os_version() {
 }
 get_os_version
 
-# Check if running windows wsl2
+# Check if running Windows WSL2
 get_wsl_version() {
     if [[ $(grep -i "microsoft" /proc/version) ]]; then
         wsl_flag="yes_wsl"
@@ -1368,7 +1362,7 @@ get_wsl_version() {
 }
 get_wsl_version
 
-# Install required apt packages
+# Install required APT packages
     echo "Installing the required APT packages"
     echo "========================================================"
     log "Checking installation status of each package..."
@@ -1383,17 +1377,9 @@ case "$OS" in
     Arch)       arch_os_ver ;;
     Debian|n/a) debian_os_version "$nvidia_encode_version $nvidia_utils_version" ;;
     Ubuntu)     ubuntu_os_version "$nvidia_encode_version $nvidia_utils_version" ;;
-<<<<<<< Updated upstream
-=======
-    WSL2)       case "$OS" in
-                    Debian|n/a) debian_os_version "$nvidia_encode_version $nvidia_utils_version $wsl_common_pkgs[*]" "$wsl_flag" ;;
-                    Ubuntu)     ubuntu_os_version "$nvidia_encode_version $nvidia_utils_version $wsl_common_pkgs[*]" "$wsl_flag" ;;
-                esac
-                ;;
->>>>>>> Stashed changes
 esac
 
-# Set the java variables
+# Set the JAVA variables
 set_java_variables
 
 # Check if the cuda folder exists to determine installation status
@@ -1419,7 +1405,7 @@ box_out_banner_global() {
     line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)$line"
-    space="$line//-/ "
+    space="${line//-/ }"
     echo " $line"
     printf "|" ; echo -n "$space" ; printf "%s\n" "|";
     printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
@@ -1429,7 +1415,7 @@ box_out_banner_global() {
 }
 box_out_banner_global "Installing Global Tools"
 
-# Alert the user that an amd gpu was found without a geforce gpu present
+# Alert the user that an AMD GPU was found without a Geforce GPU present
 if [[ "$gpu_flag" -eq 1 ]]; then
     printf "\n%s\n" "An AMD GPU was detected without a Nvidia GPU present."
 fi
@@ -1597,13 +1583,13 @@ fi
 
 if build "giflib" "5.2.1"; then
     download "https://cfhcable.dl.sourceforge.net/project/giflib/giflib-5.2.1.tar.gz"
-# Parellel building not available for this library
+    # Parellel building not available for this library
     execute make
     execute make PREFIX="$workspace" install
     build_done "giflib" "5.2.1"
 fi
 
-# Ubuntu bionic fails to build xml2
+# UBUNTU BIONIC FAILS TO BUILD XML2
 if [[ "$VER" != "18.04" ]]; then
     find_git_repo "1665" "5" "T"
     if build "libxml2" "$repo_version"; then
@@ -1662,8 +1648,8 @@ if $NONFREE_AND_GPL; then
 fi
 
 find_git_repo "7950" "4"
-repo_version="$repo_version#Ver-"
-repo_version_1="$repo_version//-/."
+repo_version="${repo_version#VER-}"
+repo_version_1="${repo_version//-/.}"
 if build "freetype" "$repo_version_1"; then
     download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-$repo_version/freetype-VER-$repo_version.tar.bz2" "freetype-$repo_version_1.tar.bz2"
     extracmds=("-D"{harfbuzz,png,bzip2,brotli,zlib,tests}"=disabled")
@@ -1699,7 +1685,7 @@ if build "fontconfig" "$repo_version"; then
 fi
 CONFIGURE_OPTIONS+=("--enable-libfontconfig")
 
-# Ubuntu bionic fails to build xml2
+# UBUNTU BIONIC FAILS TO BUILD XML2
 if [[ "$VER" != "18.04" ]]; then
     find_git_repo "harfbuzz/harfbuzz" "1" "T"
     if build "harfbuzz" "$repo_version"; then
@@ -1718,7 +1704,7 @@ if [[ "$VER" != "18.04" ]]; then
 fi
 
 git_caller "https://github.com/fribidi/c2man.git" "c2man-git"
-if build "$repo_name" "$version//\$ /"; then
+if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url"
     execute ./Configure -desO \
@@ -1786,7 +1772,7 @@ if build "freeglut" "$repo_version"; then
 fi
 
 git_caller "https://chromium.googlesource.com/webm/libwebp" "libwebp-git"
-if build "$repo_name" "$version//\$ /"; then
+if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url"  "libwebp-git"
     execute autoreconf -fi
@@ -1870,7 +1856,7 @@ if build "gflags" "$repo_version"; then
 fi
 
 git_caller "https://github.com/KhronosGroup/OpenCL-SDK.git" "opencl-sdk-git" "recurse"
-if build "$repo_name" "$version//\$ /"; then
+if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url"
     execute cmake \
@@ -1898,39 +1884,8 @@ if build "$repo_name" "$version//\$ /"; then
     build_done "$repo_name" "$version"
 fi
 
-<<<<<<< Updated upstream
-=======
-find_git_repo "DanBloomberg/leptonica" "1" "T"
-repo_version="$repo_version//Leptonica version /"
-if build "leptonica" "$repo_version"; then
-    download "https://github.com/DanBloomberg/leptonica/archive/refs/tags/$repo_version.tar.gz" "leptonica-$repo_version.tar.gz"
-    execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --with-pic
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done "leptonica" "$repo_version"
-fi
-
-find_git_repo "tesseract-ocr/tesseract" "1" "T"
-if build "tesseract" "$repo_version"; then
-    download "https://github.com/tesseract-ocr/tesseract/archive/refs/tags/$repo_version.tar.gz" "tesseract-$repo_version.tar.gz"
-    execute ./autogen.sh
-    execute ./configure --prefix="$workspace" \
-                        --disable-doc \
-                        --with-extra-includes="$workspace/include" \
-                        --with-extra-libraries="$workspace/lib" \
-                        --with-pic \
-                        --without-archive \
-                        --without-curl
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done "tesseract" "$repo_version"
-fi
-CONFIGURE_OPTIONS+=("--enable-libtesseract")
-
->>>>>>> Stashed changes
 git_caller "https://github.com/imageMagick/jpeg-turbo.git" "jpeg-turbo-git"
-if build "$repo_name" "$version//\$ /"; then
+if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url"
     execute cmake -S . \
@@ -1947,7 +1902,7 @@ fi
 
 if $NONFREE_AND_GPL; then
     git_caller "https://github.com/m-ab-s/rubberband.git" "rubberband-git"
-    if build "$repo_name" "$version//\$ /"; then
+    if build "$repo_name" "${version//\$ /}"; then
         echo "Cloning \"$repo_name\" saving version \"$version\""
         git_clone "$git_url"
         execute make "-j$cpu_threads" PREFIX="$workspace" install-static
@@ -1957,8 +1912,8 @@ if $NONFREE_AND_GPL; then
 fi
 
 find_git_repo "c-ares/c-ares" "1" "T"
-repo_version="$repo_version//c-ares-/"
-g_tag="$repo_version//_/\."
+repo_version="${repo_version//c-ares-/}"
+g_tag="${repo_version//_/\.}"
 if build "c-ares" "$g_tag"; then
     download "https://github.com/c-ares/c-ares/archive/refs/tags/cares-$repo_version.tar.gz" "c-ares-$repo_version.tar.gz"
     execute autoreconf -fi
@@ -1973,7 +1928,7 @@ if build "c-ares" "$g_tag"; then
 fi
 
 git_caller "https://github.com/lv2/lv2.git" "lv2-git"
-if build "$repo_name" "$version//\$ /"; then
+if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url"
     case "$VER" in
@@ -1985,15 +1940,15 @@ if build "$repo_name" "$version//\$ /"; then
     venv_packages=("lxml" "Markdown" "Pygments" "rdflib")
     setup_python_venv_and_install_packages "$venv_path" "${venv_packages[@]}"
 
-# Set pythonpath to include the virtual environment's site-packages directory
+    # Set PYTHONPATH to include the virtual environment's site-packages directory
     PYTHONPATH="$venv_path/lib/python$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')/site-packages"
     export PYTHONPATH
 
-# Optionally, ensure the virtual environment's python is the first in path
+    # Optionally, ensure the virtual environment's Python is the first in PATH
     PATH="$venv_path/bin:$PATH"
     export PATH
 
-# Assuming the build process continues here with meson and ninja
+    # Assuming the build process continues here with Meson and Ninja
     execute meson setup build --prefix="$workspace" \
                               --buildtype=release \
                               --default-library=static \
@@ -2008,7 +1963,7 @@ if build "$repo_name" "$version//\$ /"; then
 fi
 
 find_git_repo "7131569" "3" "T"
-repo_version="$repo_version//waf-/"
+repo_version="${repo_version//waf-/}"
 if build "waflib" "$repo_version"; then
     download "https://gitlab.com/ita1024/waf/-/archive/waf-$repo_version/waf-waf-$repo_version.tar.bz2" "waflib-$repo_version.tar.bz2"
     build_done "waflib" "$repo_version"
@@ -2030,7 +1985,7 @@ if build "serd" "$repo_version"; then
 fi
 
 find_git_repo "pcre2project/pcre2" "1" "T"
-repo_version="$repo_version//2-/"
+repo_version="${repo_version//2-/}"
 target_url="https://github.com/PCRE2Project/pcre2/releases/download/pcre2-$tag_urls/pcre2-$tag_urls.tar.gz"
 if build "pcre2" "$repo_version"; then
     download "https://github.com/PCRE2Project/pcre2/archive/refs/tags/pcre2-$repo_version.tar.gz" "pcre2-$repo_version.tar.gz"
@@ -2103,7 +2058,7 @@ fi
 CONFIGURE_OPTIONS+=("--enable-lv2")
 
 git_caller "https://github.com/gypified/libmpg123.git" "libmpg123-git"
-if build "$repo_name" "$version//\$ /"; then
+if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url"
     execute rm -fr aclocal.m4
@@ -2145,7 +2100,7 @@ if build "jemalloc" "$repo_version"; then
 fi
 
 git_caller "https://github.com/jacklicn/cunit.git" "cunit-git"
-if build "$repo_name" "$version//\$ /"; then
+if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url"
     execute autoreconf -fi
@@ -2162,7 +2117,7 @@ box_out_banner_audio() {
     line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)$line"
-    space="$line//-/ "
+    space="${line//-/ }"
     echo " $line"
     printf "|" ; echo -n "$space" ; printf "%s\n" "|";
     printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
@@ -2173,7 +2128,7 @@ box_out_banner_audio() {
 box_out_banner_audio "Installing Audio Tools"
 
 git_caller "https://github.com/libsdl-org/SDL.git" "sdl2-git"
-if build "$repo_name" "$version//\$ /"; then
+if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url"
     execute cmake -S . -B build \
@@ -2203,7 +2158,7 @@ if build "libsndfile" "$repo_version"; then
 fi
 
 git_caller "https://gitlab.freedesktop.org/pulseaudio/pulseaudio.git" "pulseaudio-git"
-if build "$repo_name" "$version//\$ /"; then
+if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url"
     fix_pulse_meson_build_file
@@ -2215,7 +2170,7 @@ if build "$repo_name" "$version//\$ /"; then
                                "${extracmds[@]}"
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
-    libpulse_fix_libs "$version//\$ /"
+    libpulse_fix_libs "${version//\$ /}"
     build_done "$repo_name" "$version"
 fi
 CONFIGURE_OPTIONS+=("--enable-libpulse")
@@ -2328,7 +2283,7 @@ CONFIGURE_OPTIONS+=("--enable-libmysofa")
 find_git_repo "webmproject/libvpx" "1" "T"
 if build "libvpx" "$repo_version"; then
     download "https://github.com/webmproject/libvpx/archive/refs/tags/v$repo_version.tar.gz" "libvpx-$repo_version.tar.gz"
-    execute sed -i 's/#Include "\.\/vpx_tpl\.h"/#include ".\/vpx\/vpx_tpl.h"/' "vpx/vpx_ext_ratectrl.h"
+    execute sed -i 's/#include "\.\/vpx_tpl\.h"/#include ".\/vpx\/vpx_tpl.h"/' "vpx/vpx_ext_ratectrl.h"
     execute ./configure --prefix="$workspace" \
                         --as=yasm \
                         --disable-unit-tests \
@@ -2351,11 +2306,11 @@ fi
 CONFIGURE_OPTIONS+=("--enable-libvpx")
 
 find_git_repo "8143" "6"
-repo_version="$repo_version//debian\//"
+repo_version="${repo_version//debian\//}"
 if build "opencore-amr" "$repo_version"; then
     download "https://salsa.debian.org/multimedia-team/opencore-amr/-/archive/debian/$repo_version/opencore-amr-debian-$repo_version.tar.bz2" "opencore-amr-$repo_version.tar.bz2"
     execute ./configure --prefix="$workspace" --disable-shared
-    execute make "-j$cpu_threads"
+    execute make "-j${cpu_threads}"
     execute make install
     build_done "opencore-amr" "$repo_version"
 fi
@@ -2410,7 +2365,7 @@ box_out_banner_video() {
     line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)$line"
-    space="$line//-/ "
+    space="${line//-/ }"
     echo " $line"
     printf "|" ; echo -n "$space" ; printf "%s\n" "|";
     printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
@@ -2421,7 +2376,7 @@ box_out_banner_video() {
 box_out_banner_video "Installing Video Tools"
 
 git_caller "https://aomedia.googlesource.com/aom" "av1-git" "av1"
-if build "$repo_name" "$version//\$ /"; then
+if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url"
     execute cmake -B build \
@@ -2445,7 +2400,7 @@ if build "$repo_name" "$version//\$ /"; then
 fi
 CONFIGURE_OPTIONS+=("--enable-libaom")
 
-# Rav1e fails to build on ubuntu bionic and debian 11 bullseye
+# Rav1e fails to build on Ubuntu Bionic and Debian 11 Bullseye
 if [[ "$VER" != "18.04" ]] && [[ "$VER" != "11" ]]; then
     find_git_repo "xiph/rav1e" "1" "T" "enabled"
     if build "rav1e" "$repo_version"; then
@@ -2481,7 +2436,7 @@ if build "avif" "$repo_version"; then
 fi
 
 git_caller "https://github.com/ultravideo/kvazaar.git" "kvazaar-git"
-if build "$repo_name" "$version//\$ /"; then
+if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url"
     execute ./autogen.sh
@@ -2517,7 +2472,7 @@ if [[ "$OS" == "Arch" ]]; then
 else
     set_ant_path
     git_caller "https://github.com/apache/ant.git" "ant-git" "ant"
-    if build "$repo_name" "$version//\$ /"; then
+    if build "$repo_name" "${version//\$ /}"; then
         echo "Cloning \"$repo_name\" saving version \"$version\""
         git_clone "$git_url"
         chmod 777 -R "$workspace/ant"
@@ -2526,7 +2481,7 @@ else
     fi
 fi
 
-# Ubuntu jammy gives an error so use the apt version instead
+# Ubuntu Jammy gives an error so use the APT version instead
 if [[ ! "$OS" == "Ubuntu" ]]; then
     find_git_repo "206" "2" "T"
     if build "libbluray" "$repo_version"; then
@@ -2625,7 +2580,7 @@ if [[ "$OS" == "Arch" ]]; then
     fi
 else
     git_caller "https://github.com/gpac/gpac.git" "gpac-git"
-    if build "$repo_name" "$version//\$ /"; then
+    if build "$repo_name" "${version//\$ /}"; then
         echo "Cloning \"$repo_name\" saving version \"$version\""
         git_clone "$git_url"
         execute ./configure --prefix="$workspace" \
@@ -2761,7 +2716,7 @@ EOF
 
          [[ -n "$LDEXEFLAGS" ]] && sed -i.backup "s/lgcc_s/lgcc_eh/g" "$workspace/lib/pkgconfig/x265.pc"
 
-# Fix the x265 shared library issue
+        # FIX THE x265 SHARED LIBRARY ISSUE
         fix_x265_libs
 
         build_done "x265" "3.5"
@@ -2769,9 +2724,9 @@ EOF
     CONFIGURE_OPTIONS+=("--enable-libx265")
 fi
 
-# Vaapi doesn"t work well with static links ffmpeg.
+# Vaapi doesn"t work well with static links FFmpeg.
 if [[ -z "$LDEXEFLAGS" ]]; then
-# If the libva development sdk is installed, enable vaapi.
+    # If the libva development SDK is installed, enable vaapi.
     if library_exists "libva"; then
         if build "vaapi" "1"; then
             build_done "vaapi" "1"
@@ -2798,8 +2753,8 @@ if $NONFREE_AND_GPL; then
         PATH+=":$cuda_path"
         export PATH
 
-# Get the nvidia gpu architecture to build cuda
-# Https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
+        # Get the Nvidia GPU architecture to build CUDA
+        # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
         nvidia_architecture
         CONFIGURE_OPTIONS+=("--nvccflags=-gencode arch=$nvidia_arch_type")
     fi
@@ -2846,7 +2801,7 @@ if $NONFREE_AND_GPL; then
     CONFIGURE_OPTIONS+=("--enable-avisynth")
 fi
 
-# Find_git_repo "vapoursynth/vapoursynth" "1" "t"
+# find_git_repo "vapoursynth/vapoursynth" "1" "T"
 if build "vapoursynth" "R65"; then
     download "https://github.com/vapoursynth/vapoursynth/archive/refs/tags/R65.tar.gz" "vapoursynth-R65.tar.gz"
 
@@ -2854,19 +2809,19 @@ if build "vapoursynth" "R65"; then
     venv_packages=("Cython==0.29.36")
     setup_python_venv_and_install_packages "$venv_path" "${venv_packages[@]}"
 
-# Activate the virtual environment for the build process
+    # Activate the virtual environment for the build process
     source "$venv_path/bin/activate" || fail "Failed to re-activate virtual environment"
 
-# Explicitly set the python environment variable to the virtual environment's python
+    # Explicitly set the PYTHON environment variable to the virtual environment's Python
     export PYTHON="$venv_path/bin/python"
 
-# Assuming autogen, configure, make, and install steps for vapoursynth
+    # Assuming autogen, configure, make, and install steps for VapourSynth
     execute ./autogen.sh || fail "Failed to execute autogen.sh"
     execute ./configure --prefix="$workspace" --disable-shared || fail "Failed to configure"
     execute make -j"$cpu_threads" || fail "Failed to make"
     execute make install || fail "Failed to make install"
 
-# Deactivate the virtual environment after the build
+    # Deactivate the virtual environment after the build
     deactivate
 
     build_done "vapoursynth" "R65"
@@ -2874,7 +2829,7 @@ fi
 CONFIGURE_OPTIONS+=("--enable-vapoursynth")
 
 git_caller "https://chromium.googlesource.com/codecs/libgav1" "libgav1-git"
-if build "$repo_name" "$version//\$ /"; then
+if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url"
     execute git clone -q -b "20220623.1" --depth 1 "https://github.com/abseil/abseil-cpp.git" "third_party/abseil-cpp"
@@ -2896,7 +2851,7 @@ git_caller "https://chromium.googlesource.com/codecs/libgav1" "libgav1-git"
 
 if $NONFREE_AND_GPL; then
     find_git_repo "8268" "6"
-    repo_version="$repo_version//debian\/2%/"
+    repo_version="${repo_version//debian\/2%/}"
     if build "xvidcore" "$repo_version"; then
         download "https://salsa.debian.org/multimedia-team/xvidcore/-/archive/debian/2%25$repo_version/xvidcore-debian-2%25$repo_version.tar.bz2" "xvidcore-$repo_version.tar.bz2"
         cd "build/generic" || exit 1
@@ -2917,7 +2872,7 @@ box_out_banner_images() {
     line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)$line"
-    space="$line//-/ "
+    space="${line//-/ }"
     echo " $line"
     printf "|" ; echo -n "$space" ; printf "%s\n" "|";
     printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
@@ -2931,8 +2886,8 @@ find_git_repo "strukturag/libheif" "1" "T"
 if build "libheif" "$repo_version"; then
     download "https://github.com/strukturag/libheif/archive/refs/tags/v$repo_version.tar.gz" "libheif-$repo_version.tar.gz"
     source_compiler_flags
-    CFLAGS="-g -O3 -fno-lto -pipe -fno-plt -march=native"
-    CXXFLAGS="-g -O3 -fno-lto -pipe -fno-plt -march=native"
+    CFLAGS="-g -O3 -fno-lto -pipe -march=native"
+    CXXFLAGS="-g -O3 -fno-lto -pipe -march=native"
     export CFLAGS CXXFLAGS
     libde265_libs=$(find /usr/ -type f -name 'libde265.s*')
     if [[ -f "$libde265_libs" ]] && [[ ! -e "/usr/lib/x86_64-linux-gnu/libde265.so" ]]; then
@@ -2989,14 +2944,14 @@ if build "openjpeg" "$repo_version"; then
 fi
 CONFIGURE_OPTIONS+=("--enable-libopenjpeg")
 
-# Build ffmpeg
+# Build FFmpeg
 echo
 box_out_banner_ffmpeg() {
     input_char=$(echo "$@" | wc -c)
     line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)$line"
-    space="$line//-/ "
+    space="${line//-/ }"
     echo " $line"
     printf "|" ; echo -n "$space" ; printf "%s\n" "|";
     printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
@@ -3012,28 +2967,19 @@ else
     ladspa_switch="--enable-ladspa"
 fi
 
-# Get dxva2 and other essential windows header files
+# Get DXVA2 and other essential windows header files
 get_wsl_version
 if [[ "$wsl_flag" == "yes_wsl" ]]; then
     install_windows_hardware_acceleration
 fi
 
 # Check the last build version of ffmpeg if it exists to determine if an update has occured
-<<<<<<< Updated upstream
 if [[ -f "$packages/ffmpeg.done" ]]; then
     # Define a function to read the file content
     read_file_contents() {
         local file_path="$1"
         if [[ -f "$file_path" ]]; then
             # Read the content of the file into a variable
-=======
-if [[ -f "$packages/ffmpeg-git.done" ]]; then
-# Define a function to read the file content
-    read_file_contents() {
-        local file_path="$1"
-        if [ -f "$file_path" ]; then
-# Read the content of the file into a variable
->>>>>>> Stashed changes
             local content=$(cat "$file_path")
             echo "$content"
         fi
@@ -3043,7 +2989,6 @@ if [[ -f "$packages/ffmpeg-git.done" ]]; then
     ffmpeg_current_version=$(read_file_contents "$file_path")
 fi
 
-<<<<<<< Updated upstream
 # Update the compilter flags before building ffmpeg
 source_compiler_flags
 
@@ -3051,9 +2996,6 @@ source_compiler_flags
 [[ -z "$ffmpeg_current_version" ]] && ffmpeg_current_version="Not installed"
 
 # Get the latest FFmpeg version by parsing its repository
-=======
-# Get the latest ffmpeg version by parsing its repository
->>>>>>> Stashed changes
 ffmpeg_latest_version=$(check_ffmpeg_version "https://github.com/FFmpeg/FFmpeg.git")
 # Trim the front of the version number so the download link works
 ffmpeg_latest_version_trimmed="${ffmpeg_latest_version//n/}"
@@ -3062,21 +3004,9 @@ echo
 log_update "The current installed version of FFmpeg: $ffmpeg_current_version"
 log_update "The latest release version of FFmpeg: $ffmpeg_latest_version"
 
-<<<<<<< Updated upstream
 # Build FFmpeg from source using the latest git clone
 if build "ffmpeg" "$ffmpeg_latest_version"; then
     download "https://ffmpeg.org/releases/ffmpeg-$ffmpeg_latest_version_trimmed.tar.xz" "ffmpeg-$ffmpeg_latest_version.tar.xz"
-=======
-# Clean the compilter flags before building ffmpeg
-source_compiler_flags
-
-# Build ffmpeg from source using the latest git clone
-git_caller "https://git.ffmpeg.org/ffmpeg.git" "ffmpeg-git" "ffmpeg"
-if build "$repo_name" "$version//\$ /"; then
-    echo "Cloning \"$repo_name\" saving version \"$version\""
-    git_clone "$git_url" "ffmpeg-git" "ffmpeg"
-
->>>>>>> Stashed changes
     [[ "$OS" == "Arch" ]] && patch_ffmpeg
     mkdir build; cd build
     ../configure --prefix=/usr/local \
