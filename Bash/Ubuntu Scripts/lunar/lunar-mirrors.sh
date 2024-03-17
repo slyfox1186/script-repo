@@ -1,37 +1,33 @@
+
 #!/usr/bin/env bash
 
-clear
-
-list='/etc/apt/sources.list'
-
-# make a backup of the file
-if [ ! -f "$list.bak" ]; then
-    sudo cp -f "$list" "$list.bak"
-fi
-
-sudo cat > "$list" <<EOF
-deb http://security.ubuntu.com/ubuntu/ lunar-security main restricted universe multiverse
-deb https://mirror.enzu.com/ubuntu/ lunar-security main restricted universe multiverse
-deb https://mirror.enzu.com/ubuntu/ lunar main restricted universe multiverse
-deb https://mirror.enzu.com/ubuntu/ lunar-updates main restricted universe multiverse
-deb https://mirror.enzu.com/ubuntu/ lunar-backports main restricted universe multiverse
-EOF
-
-# OPEN AN EDITOR TO VIEW THE CHANGES
-if which gnome-text-editor &>/dev/null; then
-    sudo gnome-text-editor "$list"
-elif which gedit &>/dev/null; then
-    sudo gedit "$list"
-elif which nano &>/dev/null; then
-    sudo nano "$list"
-elif which vim &>/dev/null; then
-    sudo vim "$list"
-elif which vi &>/dev/null; then
-    sudo vi "$list"
-else
-    printf "\n%s\n\n" \
-        "Could not find an EDITOR to open: $list"
+if [[ "$EUID" -ne 0 ]]; then
+    echo "You must run this script with root or sudo."
     exit 1
 fi
 
-sudo rm "$0"
+fname="/etc/apt/sources.list"
+
+# Make a backup of the file
+if [[ ! -f "${fname}.bak" ]]; then
+    cp -f "$fname" "${fname}.bak"
+fi
+
+cat > "$fname" <<EOF
+deb https://atl.mirrors.clouvider.net/ubuntu/ lunar main restricted universe multiverse
+deb https://atl.mirrors.clouvider.net/ubuntu/ lunar-updates main restricted universe multiverse
+deb https://atl.mirrors.clouvider.net/ubuntu/ lunar-backports main restricted universe multiverse
+deb https://atl.mirrors.clouvider.net/ubuntu/ lunar-security main restricted universe multiverse
+EOF
+
+# Open an editor to view the changes
+if command -v nano &>/dev/null; then
+    nano "$fname"
+else
+    echo -e "\\nThe script failed to locate nano to open the file...\\n"
+fi
+
+script_path=$(readlink -f "${BASH_SOURCE[0]}")
+script_name=$(basename "$script_path")
+
+[[ -f "$script_name" ]] && rm "$script_name"
