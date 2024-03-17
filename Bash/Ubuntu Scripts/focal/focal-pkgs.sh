@@ -18,31 +18,29 @@
 clear
 
 # Verify the script has root access before continuing
-if [ "${EUID}" -ne '0' ]; then
+if [ "$EUID" -ne '0' ]; then
     echo 'You must run this script as root/sudo'
     echo
-    exec sudo bash "${0}" "${@}"
+    exec sudo bash "$0" "${@}"
 fi
 
 ######################
 ## FUNCTION SECTION ##
 ######################
 
-installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
+installed() { return $(dpkg-query -W -f '$Status\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
-exit_fn()
-{
+exit_fn() {
     printf "\\n%s\\n%s\\n\n%s\\n\n%s\\n\\n" \
     'Script complete!' \
     '====================' \
     'Make sure to star this repository to show your support!' \
     'https://github.com/slyfox1186/script-repo/'
-    # rm "${0}"
+    # rm "$0"
     exit 0
 }
 
-pkgs_fn()
-{
+pkgs_fn() {
     pkgs=(alien apt-file aptitude aria2 autoconf autogen automake bat binutils bison build-essential ccache ccdiff checkinstall clang \
           clang-tools cmake cmake-extras cmake-qt-gui colordiff cpu-checker curl cvs dbus dbus-x11 dconf-editor ddclient debhelper devscripts \
           dh-make disktype dos2unix dpkg-dev exfat-fuse f2fs-tools fakeroot flatpak flex g++ gawk gcc gcc-multilib gedit gedit-plugins \
@@ -58,15 +56,15 @@ pkgs_fn()
 
     for pkg in ${pkgs[@]}
     do
-        if ! installed "${pkg}"; then
-            missing_pkgs+=" ${pkg}"
+        if ! installed "$pkg"; then
+            missing_pkgs+=" $pkg"
         fi
     done
 
-    if [ -n "${missing_pkgs}" ]; then
-        for i in "${missing_pkgs}"
+    if [ -n "$missing_pkgs" ]; then
+        for i in "$missing_pkgs"
         do
-            apt -y install ${i}
+            apt -y install $i
         done
         echo
         echo '$ Any missing apt packages were installed'
@@ -76,8 +74,7 @@ pkgs_fn()
     fi
 }
 
-ppa_fn()
-{
+ppa_fn() {
     local i missing_pkgs pkg pkgs ppa_repo
 
     if [ ! -d '/etc/apt/sources.list.d' ]; then

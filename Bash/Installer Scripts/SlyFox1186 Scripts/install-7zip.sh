@@ -1,9 +1,9 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
-# Purpose: Install the latest 7-Zip package across multiple Linux distributions and macOS
+# Purpose: install the latest 7-zip package across multiple linux distributions and macos
 # Updated: 03-13-2024
 # Script version: 3.0
-# Added macOS: If errors occur create an issue at: https://github.com/slyfox1186/script-repo/issues
+# Added macos: if errors occur create an issue at: https://github.com/slyfox1186/script-repo/issues
 
 if [[ "$EUID" -ne 0 ]]; then
     echo "You must run this script with root or sudo."
@@ -15,56 +15,56 @@ readonly script_version="3.0"
 readonly WORKDIR="/tmp/7zip-install-script"
 readonly install_dir="/usr/local/bin"
 
-# ANSI escape codes for colors
+# Ansi escape codes for colors
 RED="\033[0;31m"
 GREEN="\033[0;32m"
 YELLOW="\033[0;33m"
 BLUE="\033[0;34m"
-NC="\033[0m" # No Color
+NC="\033[0m" # No color
 
 # Function to log messages
 log() {
-    echo -e "${GREEN}[INFO]${NC} $1"
+    echo -e "$GREEN[INFO]$NC $1"
 }
 
 log_update() {
-    echo -e "${GREEN}[UPDATE]${NC} $1"
+    echo -e "$GREEN[UPDATE]$NC $1"
 }
 
 # Function to log warnings
 warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
+    echo -e "$YELLOW[WARN]$NC $1"
 }
 
 # Function to handle errors and exit
 fail() {
-    echo -e "${RED}[ERROR]${NC} $1"
-    echo -e "${YELLOW}[WARN]${NC} Please create a support ticket at: https://github.com/slyfox1186/script-repo/issues"
+    echo -e "$RED[ERROR]$NC $1"
+    echo -e "$YELLOW[WARN]$NC Please create a support ticket at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
-# Function to print 7-Zip version
+# Function to print 7-zip version
 print_version() {
-    # Capture the output of the '7z -version' command directly.
+# Capture the output of the '7z -version' command directly.
     command_output=$("$install_dir/7z" -version 2>/dev/null)
 
-    # Initialize variables to hold version, architecture, and date information.
+# Initialize variables to hold version, architecture, and date information.
     version=""
     architecture=""
     date=""
 
-    # Extract version, architecture, and date from the command output.
+# Extract version, architecture, and date from the command output.
     while read -r line; do
         if [[ "$line" =~ 7-Zip\ \(z\)\ ([0-9]+\.[0-9]+)\ \((x64|x86|arm64)\) ]]; then
-            version="${BASH_REMATCH[1]}"
-            architecture="${BASH_REMATCH[2]}"
+            version="$BASH_REMATCH[1]"
+            architecture="$BASH_REMATCH[2]"
         fi
         if [[ "$line" =~ ([0-9]{4})-([0-9]{2})-([0-9]{2}) ]]; then
-            date="${BASH_REMATCH[2]}-${BASH_REMATCH[3]}-${BASH_REMATCH[1]}"
+            date="$BASH_REMATCH[2]-$BASH_REMATCH[3]-$BASH_REMATCH[1]"
         fi
     done <<< "$command_output"
 
-    # Format and print the output.
+# Format and print the output.
     formatted_output="7-Zip $version ($architecture) Igor Pavlov $date"
     echo "$formatted_output"
 }
@@ -72,14 +72,14 @@ print_version() {
 # Function to print script banner
 box_out_banner() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
+    line=$(for i in $(seq 0 $input_char); do printf '-'; done)
     tput bold
     line="$(tput setaf 3)$line"
-    space="${line//-/ }"
+    space="$line//-/ "
     echo -e "\n $line"
-    printf "|" ; echo -n "${space}" ; printf "%s\n" "|";
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
     printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
-    printf "|" ; echo -n "${space}" ; printf "%s\n" "|";
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
     echo -e " $line\n"
     tput sgr 0
 }
@@ -103,7 +103,7 @@ detect_os() {
     esac
 }
 
-# Function to detect the Linux distribution
+# Function to detect the linux distribution
 detect_distribution() {
     if [[ -f /etc/os-release ]]; then
         source /etc/os-release
@@ -164,7 +164,7 @@ display_help() {
 }
 
 # Parse command-line options
-while [[ "$#" -gt 0 ]]; do
+while [[ "$#" -Gt 0 ]]; do
     case "$1" in
         -h|--help)
            display_help
@@ -212,7 +212,7 @@ fi
 # Create the 7zip-install-script directory
 mkdir -p "$WORKDIR"
 
-# Detect architecture and set download URL based on the operating system
+# Detect architecture and set download url based on the operating system
 case $OS in
     linux)
         case "$(uname -m)" in
@@ -226,16 +226,16 @@ case $OS in
     macos) url="mac" ;;
 esac
 
-# Set the download URL based on the beta flag
+# Set the download url based on the beta flag
 if [[ "$beta" -eq 1 ]]; then
     version="7z2400"
 else
     version="7z2301"
 fi
 
-# Set the download URL
+# Set the download url
 url="https://www.7-zip.org/a/$version-$url.tar.xz"
-# Use a custom download URL if provided by the user
+# Use a custom download url if provided by the user
 [[ -n $custom_url ]] && url="$custom_url"
 
 # Set the tar file and output directory names
@@ -274,7 +274,7 @@ case "$OS" in
            ;;
 esac
 
-# Show the newly installed 7-Zip version
+# Show the newly installed 7-zip version
 echo
 log_update "7-Zip installation completed successfully."
 print_version

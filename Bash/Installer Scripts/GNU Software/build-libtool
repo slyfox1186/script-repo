@@ -1,10 +1,10 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
-# GitHub Script Information
-# Purpose: Build GNU libtool from source.
+# Github script information
+# Purpose: build gnu libtool from source.
 # Updated: 03.02.24
-# Script Version: 1.3
-# GitHub Repository: https://github.com/slyfox1186/script-repo
+# Script version: 1.3
+# Github repository: https://github.com/slyfox1186/script-repo
 
 # Ensure the script is run as root
 if [ "$EUID" -ne 0 ]; then
@@ -28,7 +28,7 @@ rm -fr "$cwd" && mkdir -p "$cwd"
 # Set environment variables for building
 export CC="gcc"
 export CXX="g++"
-export CFLAGS="-g -O3 -pipe -march=native"
+export CFLAGS="-g -O3 -pipe -fno-plt -march=native"
 export CXXFLAGS="$CFLAGS"
 
 # Install required packages

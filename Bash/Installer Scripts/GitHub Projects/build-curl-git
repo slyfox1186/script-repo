@@ -1,12 +1,12 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
-##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/Installer%20Scripts/GNU%20Software/build-curl-git
-##  Purpose: Build cURL with OpenSSL backend
+##  Github script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/installer%20scripts/gnu%20software/build-curl-git
+##  Purpose: build curl with openssl backend
 ##  Updated: 03.09.24
 ##  Script version: 1.1
 
 if [ "$EUID" -ne 0 ]; then
-    printf "%s\n\n" 'You must run this script with root or sudo.'
+    echo "You must run this script with root or sudo."
     exit 1
 fi
 
@@ -14,12 +14,11 @@ fi
 script_ver=1.1
 archive_dir=curl-git
 git_url=https://github.com/curl/curl.git
-cwd="$PWD"/curl-git-build-script
+cwd="$PWD/curl-git-build-script"
 install_prefix=/usr/local
 pem_file=cacert.pem
-certs_dir='/etc/ssl/certs'
+certs_dir="/etc/ssl/certs"
 pem_out="$certs_dir/$pem_file"
-web_repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
     "cURL Build Script - v$script_ver" \
@@ -33,7 +32,7 @@ mkdir -p "$cwd"
 
 CC=gcc
 CXX=g++
-CFLAGS='-g -O3 -pipe -march=native'
+CFLAGS='-g -O3 -pipe -fno-plt -march=native'
 CXXFLAGS="$CFLAGS -Wno-variadic-macros"
 CPPFLAGS='-I/usr/include/openssl -I/usr/local/include -I/usr/include/libxml2 -I/usr/include'
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS
@@ -69,14 +68,14 @@ export PKG_CONFIG_PATH
 exit_fn() {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
-        "$web_repo"
+        "https://github.com/slyfox1186/script-repo"
     exit 0
 }
 
 fail_fn() {
     printf "\n%s\n\n%s\n\n" \
         "$1" \
-        "To report a bug create an issue at: $web_repo/issues"
+        "To report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
@@ -122,12 +121,12 @@ install_required_packages() {
     local missing_packages=()
 
     for pkg in "${pkgs[@]}"; do
-        if ! dpkg-query -W -f='${Status}' "$pkg" | grep -q "ok installed"; then
+        if ! dpkg-query -W -f='$Status' "$pkg" | grep -q "ok installed"; then
             missing_packages+=("$pkg")
         fi
     done
 
-    if [ "${#missing_packages[@]}" -gt 0 ]; then
+    if [ "${#Missing_packages[@]}" -gt 0 ]; then
         apt update
         apt install "${missing_packages[@]}"
     else

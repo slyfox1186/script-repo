@@ -1,16 +1,16 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
 # Disable specific shellcheck warnings that are not applicable after optimizations
-# shellcheck disable=SC1091,SC2001,SC2068,SC2086,SC2155,SC2162,SC2317
+# Shellcheck disable=sc1091,sc2001,sc2068,sc2086,sc2155,sc2162,sc2317
 
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-python3
-##  Purpose: Install Python3 from the source code acquired from the official website: https://www.python.org/downloads
-##  Features: Static build, OpenSSL backend
+##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/github%20projects/build-python3
+##  Purpose: install python3 from the source code acquired from the official website: https://www.python.org/downloads
+##  Features: static build, openssl backend
 ##  Updated: 01.27.24
-##  Script version: 2.4 (Optimized and Corrected)
+##  Script version: 2.4 (optimized and corrected)
 
 if [[ "$EUID" -ne 0 ]]; then
-    printf "%s\n\n" "You must run this script with root/sudo."
+    echo "You must run this script with root or sudo."
     exit 1
 fi
 
@@ -56,13 +56,13 @@ cleanup_fn() {
 
 show_ver_fn() {
     save_ver="$(sudo find $install_dir -type f -name 'python3.12' | grep -Eo '[0-9\.]+$')"
-    printf "\n%s\n\n" "The installed Python3 version is: ${save_ver}"
+    printf "\n%s\n\n" "The installed Python3 version is: $save_ver"
     sleep 3
 }
 
 check_root() {
     if [ "$(id -u)" -ne 0 ]; then
-        echo 'You must run this script with root/sudo.'
+        echo "You must run this script with root or sudo."
         exit 1
     fi
 }
@@ -82,7 +82,7 @@ prepare_environment() {
 set_compiler_flags() {
     CC="gcc"
     CXX="g++"
-    CFLAGS="-g -O3 -pipe -march=native"
+    CFLAGS="-g -O3 -pipe -fno-plt -march=native"
     CXXFLAGS="$CFLAGS"
 
     export CC CFLAGS CXX CXXFLAGS
@@ -93,7 +93,7 @@ download_and_extract_python() {
         curl -Lso "$cwd/$python_version.tar.xz" "$archive_url"
     fi
     if [ -d "$cwd/$python_version" ]; then
-        rm -fr "$cwd/${python_version:?}"
+        rm -fr "$cwd/$python_version:?"
     fi
     mkdir -p "$cwd/$python_version/build"
 
@@ -111,12 +111,12 @@ install_required_packages() {
     )
 
     for pkg in "${pkgs[@]}"; do
-        if ! dpkg-query -W -f='${Status}' $pkg 2>/dev/null | grep -q "ok installed"; then
+        if ! dpkg-query -W -f='$Status' $pkg 2>/dev/null | grep -q "ok installed"; then
             missing_packages+=($pkg)
         fi
     done
 
-    if [ ${#missing_packages[@]} -gt 0 ]; then
+    if [ ${#Missing_packages[@]} -gt 0 ]; then
         apt install -y ${missing_packages[@]} || fail_fn "Failed to install required packages. Line: $LINENO"
     else
         echo "All required packages are already installed."

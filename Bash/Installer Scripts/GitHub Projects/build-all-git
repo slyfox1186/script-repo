@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
 clear
 
@@ -10,24 +10,21 @@ if [ ! -d "$cwd"/completed ]; then
     mkdir -p "$cwd"/completed
 fi
 
-exit_fn()
-{
+exit_fn() {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         "$web_repo"
     exit 0
 }
 
-fail_fn()
-{
+fail_fn() {
     printf "\n%s\n\n%s\n\n" \
         "$1" \
         "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
-cleanup_fn()
-{
+cleanup_fn() {
     local answer
 
     printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
@@ -38,8 +35,8 @@ cleanup_fn()
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
 
-    case "${answer}" in
-        1)      sudo rm -fr "$cwd" "${0}";;
+    case "$answer" in
+        1)      sudo rm -fr "$cwd" "$0";;
         2)      echo;;
         *)
                 printf "\n%s\n\n" 'Bad user input. Re-asking question...'
@@ -57,10 +54,10 @@ pkgs=(asciidoc autogen autoconf autoconf-archive automake binutils bison build-e
 
 for i in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+    missing_pkg="$(sudo dpkg -l | grep -o "$i")"
 
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+    if [ -z "$missing_pkg" ]; then
+        missing_pkgs+=" $i"
     fi
 done
 
@@ -70,8 +67,7 @@ if [ -n "$missing_pkgs" ]; then
     clear
 fi
 
-install_scripts_fn()
-{
+install_scripts_fn() {
     local i scripts
     clear
 
@@ -79,18 +75,17 @@ install_scripts_fn()
 
     for i in ${scripts[@]}
     do
-        if bash "${i}"; then
-            sudo find . -maxdepth 1 -type f -name "${i}" -exec mv {} completed \;
-            printf "\n%s\n\n" "Script finished: ${i}"
+        if bash "$i"; then
+            sudo find . -maxdepth 1 -type f -name "$i" -exec mv {} completed \;
+            printf "\n%s\n\n" "Script finished: $i"
         else
-            fail_fn "Failed to install: ${i}"
+            fail_fn "Failed to install: $i"
         fi
         sleep 2
     done
 }
 
-install_choice_fn()
-{
+install_choice_fn() {
     printf "%s\n\n%s\n\n%s\n%s\n\n" \
         'Do you want to install all of the scripts now?' \
         'You MUST manually remove any scripts you do not want to install before continuing.' \
@@ -98,7 +93,7 @@ install_choice_fn()
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
 
-    case "${answer}" in
+    case "$answer" in
         1)      install_scripts_fn;;
         2)      exit_fn;;
         *)
@@ -111,9 +106,7 @@ install_choice_fn()
     esac
 }
 
-#
-# DOWNLOAD ALL OF THE GIT-PROJECT SCRIPTS AND NUMBER THEM ASCENDING STARTING WITH ONE
-#
+# Download all of the git-project scripts and number them ascending starting with one
 
 cd "$cwd" || exit 1
 
@@ -123,13 +116,11 @@ cnt=0
 for script in ${scripts[@]}
 do
     let cnt=cnt+1
-    wget -U "$user_agent" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-${script}"
-    mv "build-${script}" "0$cnt-build-${script}"
+    wget -U "$user_agent" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-$script"
+    mv "build-$script" "0$cnt-build-$script"
 done
 
-#
-# RENAME ALL SCRIPTS THAT START WITH THE NUMBER 10 AND HIGHER SO THEY EXECUTE IN THE INTENDED ORDER
-#
+# Rename all scripts that start with the number 10 and higher so they execute in the intended order
 
 files=(openssl python3 terminator-terminal tools wsl2-kernel yasm zlib zstd)
 cnt=9
@@ -138,16 +129,16 @@ for i in 1
 do
     for file in ${files[@]}
     do
-        ((cnt++)) # << start counting here
-        mv "0$cnt-build-${file}" "$cnt-build-${file}" # << move the files, thus renaming them
+        ((cnt++)) # << Start counting here
+        mv "0$cnt-build-$file" "$cnt-build-$file" # << Move the files, thus renaming them
     done
 done
 
-# ASK THE USER IF THEY WANT TO INSTALL ALL OF THE SCRIPTS
+# Ask the user if they want to install all of the scripts
 install_choice_fn
 
-# CLEANUP THE FILES
+# Cleanup the files
 cleanup_fn
 
-# SHOW THE EXIT MESSAGE
+# Show the exit message
 exit_fn

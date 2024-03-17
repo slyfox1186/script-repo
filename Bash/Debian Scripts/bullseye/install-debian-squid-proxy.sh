@@ -78,8 +78,8 @@ SQUID_BLACKLIST='/etc/squid/sites.blacklist'
 DETECT_BROKEN_PCONN='off'
 
 # find which path exists
-if [ -f "${LIB1_SQUID}" ]; then BASIC_NCSA_AUTH="${LIB1_SQUID}"
-elif [ -f "${LIB2_SQUID}" ]; then BASIC_NCSA_AUTH="${LIB2_SQUID}"
+if [ -f "$LIB1_SQUID" ]; then BASIC_NCSA_AUTH="$LIB1_SQUID"
+elif [ -f "$LIB2_SQUID" ]; then BASIC_NCSA_AUTH="$LIB2_SQUID"
 else
     clear
     echo -e "File error: 'basic_ncsa_auth' was not found. Unable to set the required variable BASIC_NCSA_AUTH\\nPlease Fix...\\n"
@@ -88,7 +88,7 @@ else
 fi
 
 # CREATE SQUID.CONF FILE
-cat > "${SQUID_CONF}" <<EOF && echo -e "squid.conf was created successfully!" || echo -e "squid.conf failed to create!"
+cat > "$SQUID_CONF" <<EOF && echo -e "squid.conf was created successfully!" || echo -e "squid.conf failed to create!"
 #    WELCOME TO SQUID 5.2
 #    ----------------------------
 #
@@ -198,14 +198,14 @@ cat > "${SQUID_CONF}" <<EOF && echo -e "squid.conf was created successfully!" ||
 #
 #    The following SMP-related preprocessor macros can be used.
 #
-#    ${process_name} expands to the current Squid process "name"
+#    $process_name expands to the current Squid process "name"
 #    (e.g., squid1, squid2, or cache1).
 #
-#    ${process_number} expands to the current Squid process
+#    $process_number expands to the current Squid process
 #    identifier, which is an integer number (e.g., 1, 2, 3) unique
 #    across all Squid processes of the current service instance.
 #
-#    ${service_name} expands into the current Squid service instance
+#    $service_name expands into the current Squid service instance
 #    name identifier which is provided by -n on the command line.
 #
 #  Logformat Macros
@@ -257,7 +257,7 @@ cat > "${SQUID_CONF}" <<EOF && echo -e "squid.conf was created successfully!" ||
 #  TAG: dns_v4_first
 #    Remove this line. Squid no longer supports preferential treatment of DNS A records.
 #Default:
-dns_v4_first ${DNS_V4_FIRST}
+dns_v4_first $DNS_V4_FIRST
 
 #  TAG: cache_peer_domain
 #    Replace with dstdomain ACLs and cache_peer_access.
@@ -1444,8 +1444,8 @@ acl Safe_ports port 20000                       # pihole gui
 acl Safe_ports port 24500                       # ssh ubuntu-jammy
 acl Safe_ports port 25500                       # ssh qnas
 acl Safe_ports port 26500                       # ssh jmacbook
-acl whitelist dstdomain "${SQUID_WHITELIST}"    # site whitelist file
-acl blocked_sites dstdomain ${SQUID_BLACKLIST}  # site blacklist file
+acl whitelist dstdomain "$SQUID_WHITELIST"    # site whitelist file
+acl blocked_sites dstdomain $SQUID_BLACKLIST  # site blacklist file
 
 #  TAG: proxy_protocol_access
 #    Determine which client proxies can be trusted to provide correct
@@ -1647,7 +1647,7 @@ include /etc/squid/conf.d/*
 ##############################
 #
 
-auth_param basic program ${BASIC_NCSA_AUTH} ${SQUID_PASSWD}
+auth_param basic program $BASIC_NCSA_AUTH $SQUID_PASSWD
 auth_param basic children 5
 auth_param basic realm proxy
 acl authenticated proxy_auth REQUIRED
@@ -1667,24 +1667,24 @@ http_access deny all
 # This specifies the maximum buffer size of a client request.
 # It prevents squid eating too much memory when somebody uploads a large file.
 #
-client_request_buffer_max_size ${CLIENT_RQST_BFR_SIZE}
+client_request_buffer_max_size $CLIENT_RQST_BFR_SIZE
 
 # set dns nameserver addresses
-dns_nameservers ${SERVER_IP}
+dns_nameservers $SERVER_IP
 
 # Set the file size range the proxy will actively cache
-minimum_object_size ${MIN_OBJ_SIZE}
-maximum_object_size ${MAX_OBJ_SIZE}
-maximum_object_size_in_memory ${MAX_OBJ_SIZE_MEM}
+minimum_object_size $MIN_OBJ_SIZE
+maximum_object_size $MAX_OBJ_SIZE
+maximum_object_size_in_memory $MAX_OBJ_SIZE_MEM
 
-cache_swap_low ${CACHE_SWP_LOW}
-cache_swap_high ${CACHE_SWP_HIGH}
+cache_swap_low $CACHE_SWP_LOW
+cache_swap_high $CACHE_SWP_HIGH
 
 # always: Keep most recently fetched objects in memory (default)
-memory_cache_mode ${MEM_CACHE_MODE}
+memory_cache_mode $MEM_CACHE_MODE
 
 # Uncomment and adjust the following to add a disk cache directory.
-cache_dir ufs ${CACHE_DIR_SQUID} ${CACHE_DIR_SQUID_SIZE} 16 256
+cache_dir ufs $CACHE_DIR_SQUID $CACHE_DIR_SQUID_SIZE 16 256
 
 #
 ########################################
@@ -1710,10 +1710,10 @@ refresh_pattern .                                            0        20%     43
 #
 
 # Cache memory transit file allocation max size limit
-cache_mem ${CACHE_MEM}
+cache_mem $CACHE_MEM
 
 # set default squid proxy port
-http_port ${PORT_SQUID::4}
+http_port $PORT_SQUID::4
 
 # set visible hostname
 visible_hostname debian-bullseye
@@ -1721,10 +1721,10 @@ visible_hostname debian-bullseye
 # Some servers incorrectly signal the use of HTTP/1.0 persistent connections including on replies
 # not compatible, causing significant delays. Mostly happens on redirects. Enabling attempts to
 # detect broken replies and automatically assumes the reply is finished after a 10 second timeout.
-detect_broken_pconn ${DETECT_BROKEN_PCONN}
+detect_broken_pconn $DETECT_BROKEN_PCONN
 
 # SET DEFAULT USER/OWNER FOR SQUID
-cache_effective_user ${SQUID_USER}
+cache_effective_user $SQUID_USER
 
 http_accel_surrogate_remote on
 esi_parser expat
@@ -9309,16 +9309,16 @@ umask 022
 EOF
 
 # CREATE WHITELIST
-if [ ! -f "${SQUID_WHITELIST}" ]; then touch "${SQUID_WHITELIST}"; fi
-cat > "${SQUID_WHITELIST}" <<'EOF' && echo -e "The whitelist was created successfully!" || echo -e "The whitelist failed to create."
+if [ ! -f "$SQUID_WHITELIST" ]; then touch "$SQUID_WHITELIST"; fi
+cat > "$SQUID_WHITELIST" <<'EOF' && echo -e "The whitelist was created successfully!" || echo -e "The whitelist failed to create."
 <replace with your own list>
 site.com
 www.site.com
 EOF
 
 # CREATE BLACKLIST
-if [ -f "${SQUID_BLACKLIST}" ]; then touch "${SQUID_BLACKLIST}" ;fi
-cat > "${SQUID_BLACKLIST}" <<'EOF' && echo -e "The blacklist was created successfully!\\n" || echo -e "The blacklist failed to create.\\n"
+if [ -f "$SQUID_BLACKLIST" ]; then touch "$SQUID_BLACKLIST" ;fi
+cat > "$SQUID_BLACKLIST" <<'EOF' && echo -e "The blacklist was created successfully!\\n" || echo -e "The blacklist failed to create.\\n"
 <replace with your own list>
 .bytedance.com
 .tiktok.com
@@ -9326,10 +9326,10 @@ cat > "${SQUID_BLACKLIST}" <<'EOF' && echo -e "The blacklist was created success
 EOF
 
 # RUN HTPASSWD TO CREATE PASSWORD FOR USE
-if [ ! -f "${SQUID_PASSWD}" ]; then
-    htpasswd -c "${SQUID_PASSWD}" squid && echo -e "\\nThe squid passwd file was created successfully!" || echo -e "\\nThe squid passwd file failed to create."
+if [ ! -f "$SQUID_PASSWD" ]; then
+    htpasswd -c "$SQUID_PASSWD" squid && echo -e "\\nThe squid passwd file was created successfully!" || echo -e "\\nThe squid passwd file failed to create."
     echo
-    cat "${SQUID_PASSWD}"
+    cat "$SQUID_PASSWD"
     echo
 fi
 
@@ -9338,11 +9338,11 @@ echo '[1] Add firewalld rules'
 echo -e "[2] Skip\\n"
 read -p 'Enter a number: ' uChoice
 echo
-if [[ "${uChoice}" == "1" ]]; then
-    firewall-cmd --permanent --add-service={"${SVC01}","${SVC02}","${SVC03}","${SVC04}","${SVC05}"}
+if [[ "$uChoice" == "1" ]]; then
+    firewall-cmd --permanent --add-service={"$SVC01","$SVC02","$SVC03","$SVC04","$SVC05"}
     firewall-cmd --add-zone=squid-custom
     firewall-cmd --permanent --zone=squid-custom --add-interface=lo
-    firewall-cmd --permanent --zone=squid-custom --add-port={"${PORT_SQUID}","${PORT_PIHOLE}"}
+    firewall-cmd --permanent --zone=squid-custom --add-port={"$PORT_SQUID","$PORT_PIHOLE"}
     firewall-cmd --set-default-zone=squid-custom
     firewall-cmd --reload
     echo

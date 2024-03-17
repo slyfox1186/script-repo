@@ -1,12 +1,12 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
-##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-pkg-config
+##  Github script: https://github.com/slyfox1186/script-repo/edit/main/bash/installer%20scripts/gnu%20software/build-pkg-config
 ##  Purpose: build gnu pkg-config
 ##  Updated: 03.06.24
 ##  Script version: 1.5
 
 if [ "$EUID" -ne 0 ]; then
-    echo "You must run this script with root/sudo."
+    echo "You must run this script with root or sudo."
     echo
     exit 1
 fi
@@ -14,8 +14,8 @@ fi
 # Set the variables
 script_ver=1.5
 archive_dir=pkg-config-0.29.2
-archive_url="https://pkgconfig.freedesktop.org/releases/${archive_dir}.tar.gz"
-archive_ext="${archive_url//*.}"
+archive_url="https://pkgconfig.freedesktop.org/releases/$archive_dir.tar.gz"
+archive_ext="$archive_url//*."
 archive_name="$archive_dir.tar.$archive_ext"
 cwd="$PWD/pkg-config-build-script"
 install_dir=/usr
@@ -31,14 +31,14 @@ if [ -d "$cwd" ]; then
 fi
 mkdir -p "$cwd"
 
-# Set the CC/CXX compilers & the compiler optimization flags
+# Set the cc/cxx compilers & the compiler optimization flags
 CC=gcc
 CXX=g++
-CFLAGS="-g -O3 -pipe -march=native"
-CXXFLAGS="-g -O3 -pipe -march=native"
+CFLAGS="-g -O3 -pipe -fno-plt -march=native"
+CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
 export CC CFLAGS CXX CXXFLAGS
 
-# Set the PATH variable
+# Set the path variable
 PATH="\
 /usr/lib/ccache:\
 $HOME/perl5/bin:\
@@ -55,7 +55,7 @@ $HOME/.local/bin:\
 "
 export PATH
 
-# Set the PKG_CONFIG_PATH variable
+# Set the pkg_config_path variable
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
@@ -106,7 +106,7 @@ cleanup_fn() {
     esac
 }
 
-# Install required APT packages
+# Install required apt packages
 pkgs=("$1" autoconf autoconf-archive autogen automake build-essential
       ca-certificates ccache clang curl libaria2-0 libaria2-0-dev libc-ares-dev
       libdmalloc-dev libgcrypt20-dev libgmp-dev libgnutls28-dev libgpg-error-dev

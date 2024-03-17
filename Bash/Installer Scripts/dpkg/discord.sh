@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
 clear
 
@@ -12,11 +12,11 @@ sleep 2
 
 # Check for root/sudo and exit if detected
 if [ "$EUID" -eq 0 ]; then
-    echo "You must run this script WITHOUT root/sudo."
+    echo "You must run this script without root or sudo."
     exit 1
 fi
 
-# Install required APT packages if missing
+# Install required apt packages if missing
 required_pkgs=("curl" "wget")
 for pkg in "${required_pkgs[@]}"; do
     if ! dpkg -l | grep -q "^ii  $pkg "; then
@@ -24,12 +24,12 @@ for pkg in "${required_pkgs[@]}"; do
     fi
 done
 
-# Function to check the installed version of Discord
+# Function to check the installed version of discord
 get_installed_version() {
-    dpkg-query --showformat='${Version}' --show discord 2>/dev/null | grep -oP '0.0.\K\d+'
+    dpkg-query --showformat='$Version' --show discord 2>/dev/null | grep -oP '0.0.\K\d+'
 }
 
-# Function to download and install Discord
+# Function to download and install discord
 download_and_install_discord() {
     local current_ver="$1"
     local file_name="discord-0.0.$current_ver.deb"
@@ -49,7 +49,7 @@ download_and_install_discord() {
     fi
 }
 
-# Function to uninstall Discord
+# Function to uninstall discord
 uninstall_discord() {
     echo "Uninstalling Discord..."
     sudo apt-get remove -y discord

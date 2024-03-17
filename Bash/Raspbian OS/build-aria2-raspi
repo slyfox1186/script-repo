@@ -16,7 +16,7 @@
 clear
 
 if [ "$EUID" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    echo "You must run this script without root or sudo."
     exit 1
 fi
 
@@ -27,7 +27,7 @@ fi
 script_ver=1.1
 archive_dir=aria2-1.37.0
 archive_url=https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0.tar.gz
-archive_ext="${archive_url//*.}"
+archive_ext="$archive_url//*."
 cwd="$PWD"/aria2-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
@@ -55,30 +55,27 @@ export CC=gcc CXX=g++
 # SET COMPILER OPTIMIZATION FLAGS
 #
 
-export {CFLAGS,CXXFLAGS}='-g -O3 -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 
 #
 # CREATE FUNCTIONS
 #
 
-exit_fn()
-{
+exit_fn() {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         "$web_repo"
     exit 0
 }
 
-fail_fn()
-{
+fail_fn() {
     printf "\n%s\n\n%s\n\n" \
         "$1" \
         "To report a bug create an issue here: $web_repo/issues"
     exit 1
 }
 
-cleanup_fn()
-{
+cleanup_fn() {
     local choice
     
     unset archive_dir archive_ext archive_name archive_url CC CXX i missing_pkg missing_pkgs pc_type pem_target pkgs script_ver

@@ -1,11 +1,11 @@
-#!/usr/bin/env bash
-# shellcheck disable=SC2162,SC2317
+#!/Usr/bin/env bash
+# Shellcheck disable=sc2162,sc2317
 
 ###########################################################################################################
 ##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-libpng
+##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/github%20projects/build-libpng
 ##
-##  Purpose: Build GNU libpng
+##  Purpose: build gnu libpng
 ##
 ##  Updated: 08.31.23
 ##
@@ -15,14 +15,12 @@
 
 clear
 
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+if [ "$EUID" -eq '0' ]; then
+    echo "You must run this script without root or sudo."
     exit 1
 fi
 
-#
-# SET VARIABLES
-#
+# Set variables
 
 script_ver=1.1
 cwd="$PWD"/libpng-build-script
@@ -32,39 +30,31 @@ web_repo=https://github.com/slyfox1186/script-repo
 debug=OFF
 
 printf "\n%s\n%s\n\n" \
-    "libpng build script - v${script_ver}" \
+    "libpng build script - v$script_ver" \
     '==============================================='
 
-#
-# CREATE OUTPUT DIRECTORY
-#
+# Create output directory
 
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-#
-# SET THE C+CPP COMPILERS
-#
+# Set the c+cpp compilers
 
 export CC=gcc CXX=g++
 
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
+# Set compiler optimization flags
 
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 
-#
-# SET THE PATH VARIABLE
-#
+# Set the path variable
 
 PATH="\
 /usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
+$HOME/perl5/bin:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/cuda/bin:\
 /usr/local/x86_64-linux-gnu/bin:\
@@ -79,9 +69,7 @@ ${HOME}/.local/bin:\
 "
 export PATH
 
-#
-# SET THE PKG_CONFIG_PATH VARIABLE
-#
+# Set the pkg_config_path variable
 
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
@@ -98,28 +86,23 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-#
-# CREATE FUNCTIONS
-#
+# Create functions
 
-exit_fn()
-{
+exit_fn() {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         "$web_repo"
     exit 0
 }
 
-fail_fn()
-{
+fail_fn() {
     printf "\n%s\n\n%s\n\n" \
         "$1" \
         "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
-cleanup_fn()
-{
+cleanup_fn() {
     local choice
 
     printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
@@ -130,7 +113,7 @@ cleanup_fn()
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
 
-    case "${choice}" in
+    case "$choice" in
         1)      sudo rm -fr "$cwd";;
         2)      echo;;
         *)
@@ -144,8 +127,7 @@ cleanup_fn()
     esac
 }
 
-build()
-{
+build() {
     printf "\n%s\n%s\n" \
         "building $1 - version $2" \
         '===================================='
@@ -154,7 +136,7 @@ build()
         if grep -Fx "$2" "$cwd/$1.done" >/dev/null; then
             echo "$1 version $2 already built. Remove $cwd/$1.done lockfile to rebuild it."
             return 1
-        elif ${latest}; then
+        elif $latest; then
             echo "$1 is oudebugtdated and will be rebuilt using version $2"
             return 0
         else
@@ -165,48 +147,46 @@ build()
     return 0
 }
 
-execute()
-{
-    echo "$ ${*}"
+execute() {
+    echo "$ $*"
 
-    if [ "${debug}" = 'ON' ]; then
+    if [ "$debug" = 'ON' ]; then
         if ! output=$("$@"); then
-            notify-send 5000 "Failed to execute: ${*}"
-            fail_fn "Failed to execute: ${*}"
+            notify-send 5000 "Failed to execute: $*"
+            fail_fn "Failed to execute: $*"
         fi
     else
         if ! output=$("$@" 2>&1); then
-            notify-send 5000 "Failed to execute: ${*}"
-            fail_fn "Failed to execute: ${*}"
+            notify-send 5000 "Failed to execute: $*"
+            fail_fn "Failed to execute: $*"
         fi
     fi
 }
 
-download()
-{
+download() {
     dl_path="$cwd"
     dl_url="$1"
-    dl_file="${2:-"${1##*/}"}"
+    dl_file="$2:-"${1##*/"}"
 
     if [[ "$dl_file" =~ tar. ]]; then
-        output_dir="${dl_file%.*}"
-        output_dir="${3:-"${output_dir%.*}"}"
+        output_dir="$dl_file%.*"
+        output_dir="$3:-"${output_dir%.*"}"
     else
-        output_dir="${3:-"${dl_file%.*}"}"
+        output_dir="$3:-"${dl_file%.*"}"
     fi
 
     target_file="$dl_path/$dl_file"
     target_dir="$dl_path/$output_dir"
 
-    if [ -f "${target_file}" ]; then
+    if [ -f "$target_file" ]; then
         echo "The file \"$dl_file\" is already downloaded."
     else
-        echo "Downloading \"${dl_url}\" saving as \"$dl_file\""
-        if ! curl -A "$user_agent" -Lso "${target_file}" "${dl_url}"; then
+        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
+        if ! curl -A "$user_agent" -Lso "$target_file" "$dl_url"; then
             printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
-            if ! curl -A "$user_agent" -Lso "${target_file}" "${dl_url}"; then
-                fail_fn "The script failed to download \"$dl_file\" twice and will now exit:Line ${LINENO}"
+            if ! curl -A "$user_agent" -Lso "$target_file" "$dl_url"; then
+                fail_fn "The script failed to download \"$dl_file\" twice and will now exit:Line $LINENO"
             fi
         fi
         echo 'Download Completed'
@@ -219,38 +199,35 @@ download()
     mkdir -p "$target_dir"
 
     if [ -n "$3" ]; then
-        if ! tar -xf "${target_file}" -C "$target_dir" 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script:Line ${LINENO}"
+        if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
+            sudo rm "$target_file"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script:Line $LINENO"
         fi
     else
-        if ! tar -xf "${target_file}" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script:Line ${LINENO}"
+        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
+            sudo rm "$target_file"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script:Line $LINENO"
         fi
     fi
 
     printf "%s\n\n" "File extracted: $dl_file"
 
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir:Line ${LINENO}"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir:Line $LINENO"
 }
 
-#
-# INSTALL REQUIRED APT PACKAGES
-#
+# Install required apt packages
 
-pkgs_fn()
-{
+pkgs_fn() {
     pkgs=(asciidoc autogen automake binutils bison build-essential bzip2 ccache cmake
           curl libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev
           nasm ninja-build texinfo xmlto yasm zlib1g-dev)
 
     for i in ${pkgs[@]}
     do
-        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+        missing_pkg="$(sudo dpkg -l | grep -o "$i")"
     
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
+        if [ -z "$missing_pkg" ]; then
+            missing_pkgs+=" $i"
         fi
     done
     
@@ -263,15 +240,11 @@ pkgs_fn()
 
 build_done() { echo "$2" > "$cwd/$1.done"; }
 
-#
-# INSTALL APT PACKAGES
-#
+# Install apt packages
 
 pkgs_fn
 
-#
-# BUILD PROGRAM FROM SOURCE
-#
+# Build program from source
 
 if build 'libpng' '1.6.40'; then
     download 'https://github.com/glennrp/libpng/archive/refs/tags/v1.6.40.tar.gz' 'libpng-1.6.40.tar.gz'
@@ -284,7 +257,7 @@ if build 'libpng' '1.6.40'; then
                          --enable-unversioned-links               \
                          --with-binconfigs                        \
                          --with-pic                               \
-                         --with-pkgconfigdir="${PKG_CONFIG_PATH}" \
+                         --with-pkgconfigdir="$PKG_CONFIG_PATH" \
                          --with-zlib-prefix
     execute make "-j$(nproc --all)"
     execute sudo make install-header-links
@@ -294,8 +267,8 @@ if build 'libpng' '1.6.40'; then
     build_done 'libpng' '1.6.40'
 fi
 
-# PROMPT USER TO CLEAN UP FILES
+# Prompt user to clean up files
 cleanup_fn
 
-# SHOW EXIT MESSAGE
+# Show exit message
 exit_fn

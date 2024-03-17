@@ -1,29 +1,29 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-binutils
-##  Purpose: build gnu binutils with GOLD enabled
+##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/gnu%20software/build-binutils
+##  Purpose: build gnu binutils with gold enabled
 ##  Updated: 03.08.24
 ##  Script version: 1.1
 ##  To create softlinks in the /usr/local/bin folder pass the argument -l to the script.
 
-# Color Codes
+# Color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 NC='\033[0m'
 
-# Default Values
+# Default values
 PROGRAM="binutils"
 VERSION="2.39"
 PREFIX="/usr/local/$PROGRAM-$VERSION"
-BUILD_DIR="/tmp/${PROGRAM}_build"
-LOG_FILE="/tmp/${PROGRAM}_install.log"
+BUILD_DIR="/tmp/$PROGRAM_build"
+LOG_FILE="/tmp/$PROGRAM_install.log"
 VERBOSE=0
 LINK=0
-TEMP_DIR="/tmp/${PROGRAM}_temp"
+TEMP_DIR="/tmp/$PROGRAM_temp"
 
 usage() {
-    echo -e "${GREEN}Usage:${NC} $0 [-v version] [-p prefix] [-l] [-V] [-L log_file] [-h]"
+    echo -e "$GREENUsage:$NC $0 [-v version] [-p prefix] [-l] [-V] [-L log_file] [-h]"
     echo "    -v    Specify $PROGRAM version (default: $VERSION)"
     echo "    -p    Specify installation prefix (default: $PREFIX)"
     echo "    -l    Link binaries to /usr/local/bin"
@@ -38,23 +38,23 @@ log() {
     timestamp=$(date +"%Y-%m-%d %H:%M:%S")
     case "$level" in
         INFO)
-            echo -e "${timestamp} [${GREEN}INFO${NC}] ${message}" | tee -a "$LOG_FILE"
-            [[ $VERBOSE -eq 1 ]] && echo -e "${timestamp} [${GREEN}INFO${NC}] ${message}"
+            echo -e "$timestamp [$GREENINFO$NC] $message" | tee -a "$LOG_FILE"
+            [[ $VERBOSE -eq 1 ]] && echo -e "$timestamp [$GREENINFO$NC] $message"
             ;;
         WARN)
-            echo -e "${timestamp} [${YELLOW}WARN${NC}] ${message}" | tee -a "$LOG_FILE"
-            [[ $VERBOSE -eq 1 ]] && echo -e "${timestamp} [${YELLOW}WARN${NC}] ${message}"
+            echo -e "$timestamp [$YELLOWWARN$NC] $message" | tee -a "$LOG_FILE"
+            [[ $VERBOSE -eq 1 ]] && echo -e "$timestamp [$YELLOWWARN$NC] $message"
             ;;
         ERROR)
-            echo -e "${timestamp} [${RED}ERROR${NC}] ${message}" | tee -a "$LOG_FILE"
-            [[ $VERBOSE -eq 1 ]] && echo -e "${timestamp} [${RED}ERROR${NC}] ${message}"
+            echo -e "$timestamp [$REDERROR$NC] $message" | tee -a "$LOG_FILE"
+            [[ $VERBOSE -eq 1 ]] && echo -e "$timestamp [$REDERROR$NC] $message"
             ;;
     esac
 }
 
 parse_arguments() {
     while getopts ":v:p:lVL:h" opt; do
-        case ${opt} in
+        case $opt in
             v ) VERSION="$OPTARG" ;;
             p ) PREFIX="/usr/local/$PROGRAM-$OPTARG" ;;
             l ) LINK=1 ;;
@@ -115,7 +115,7 @@ optimize_build() {
             ;;
     esac
 
-    export CFLAGS="-O3 -march=native"
+    export CFLAGS="-O3 -pipe -fno-plt -march=native"
 }
 
 cleanup() {
@@ -162,7 +162,7 @@ link_binutils() {
     log "INFO" "Linking $PROGRAM binaries to /usr/local/bin..."
     for file in "$PREFIX/bin/$TARGET-"*; do
         local binary=$(basename "$file")
-        local trimmed_binary=${binary#$TARGET-}
+        local trimmed_binary=$binary#$Target-
         sudo ln -sf "$file" "/usr/local/bin/$trimmed_binary"
     done
 }

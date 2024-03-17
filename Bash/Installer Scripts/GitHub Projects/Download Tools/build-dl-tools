@@ -1,11 +1,11 @@
-#!/usr/bin/env bash
-# shellcheck disable=SC2016,SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
+#!/Usr/bin/env bash
+# Shellcheck disable=sc2016,sc2034,sc2046,sc2066,sc2068,sc2086,sc2162,sc2317
 
 ###################################################################################
 ##
-##  Install the latest curl, wget, and aria2c releases from GitHub
+##  Install the latest curl, wget, and aria2c releases from github
 ##
-##  Supported OS:
+##  Supported os:
 ##  - Debian - 10/11/12
 ##  - Ubuntu - (18/20/22).04
 ##
@@ -20,14 +20,12 @@
 
 clear
 
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+if [ "$EUID" -eq '0' ]; then
+    echo "You must run this script without root or sudo."
     exit 1
 fi
 
-#
-# SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
-#
+# Set the available cpu thread and core count for parallel processing (speeds up the build process)
 
 if [ -f '/proc/cpuinfo' ]; then
     cpu_threads="$(grep --count ^processor '/proc/cpuinfo')"
@@ -35,9 +33,7 @@ else
     cpu_threads="$(nproc --all)"
 fi
 
-#
-# SET THE VARIABLES
-#
+# Set the variables
 
 script_ver=1.2
 install_prefix=/usr/local
@@ -51,39 +47,33 @@ else
     cert_dir=/etc/ssl/certs
 fi
 pem_file=cacert.pem
-pem_out="${cert_dir}/$pem_file"
+pem_out="$cert_dir/$pem_file"
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 debug=OFF
 
-#
-# CREATE OUTPUT DIRECTORY
-#
+# Create output directory
 
 mkdir -p "$packages" "$workspace"
 
-#
-# SET THE CC/CXX COMPILERS & THE COMPILER OPTIMIZATION FLAGS
-#
+# Set the cc/cxx compilers & the compiler optimization flags
 
 CC=clang
 CXX=clang++
 LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
-CFLAGS='-g -O3 -pipe -march=native'
-CXXFLAGS="${CFLAGS}"
+CFLAGS='-g -O3 -pipe -fno-plt -march=native'
+CXXFLAGS="$CFLAGS"
 CPPFLAGS='-I/usr/local/include -I/usr/include'
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
-#
-# SET THE PATH VARIABLE
-#
+# Set the path variable
 
 PATH="\
 /usr/lib/ccache/bin:\
 /usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
+$HOME/perl5/bin:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/cuda/bin:\
 /usr/local/x86_64-linux-gnu/bin:\
@@ -98,9 +88,7 @@ ${HOME}/.local/bin:\
 "
 export PATH
 
-#
-# SET THE PKG_CONFIG_PATH VARIABLE
-#
+# Set the pkg_config_path variable
 
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
@@ -162,31 +150,27 @@ LD_LIBRARY_PATH="\
 /lib\
 "
 export LD_LIBRARY_PATH
-#
-# CREATE FUNCTIONS
-#
+# Create functions
 
-add_suffix_fn()
-{
+add_suffix_fn() {
     clear
     printf "%s\n\n" 'If desired you can leave the input blank'
     read -p 'Enter the suffix to add to WGET: ' wsuffix
     read -p 'Enter the suffix to add to cURL: ' csuffix
     read -p 'Enter the suffix to add to aria2c: ' asuffix
-    if [ -n "${wsuffix}" ]; then
-        wsuffix="--program-suffix=${wsuffix}"
+    if [ -n "$wsuffix" ]; then
+        wsuffix="--program-suffix=$wsuffix"
     fi
-    if [ -n "${csuffix}" ]; then
-        csuffix="--program-suffix=${csuffix}"
+    if [ -n "$csuffix" ]; then
+        csuffix="--program-suffix=$csuffix"
     fi
-    if [ -n "${asuffix}" ]; then
-        asuffix="--program-suffix=${asuffix}"
+    if [ -n "$asuffix" ]; then
+        asuffix="--program-suffix=$asuffix"
     fi
     clear
 }
 
-suffix_choice_fn()
-{
+suffix_choice_fn() {
     local choice
     clear
 
@@ -198,7 +182,7 @@ suffix_choice_fn()
     read -p 'Your choices are (1 or 2): ' choice
     clear
 
-    case "${choice}" in
+    case "$choice" in
         1)      add_suffix_fn;;
         2)      clear;;
         *)
@@ -209,24 +193,20 @@ suffix_choice_fn()
 }
 suffix_choice_fn
 
-#
-# PRINT BANNER
-#
+# Print banner
 
 printf "%s\n%s\n%s\n" \
-    "Download Tools Build Script - v${script_ver}" \
+    "Download Tools Build Script - v$script_ver" \
     '=========================================' \
-    "This script will utilize (${cpu_threads}) CPU threads for parallel processing to accelerate the build process."
+    "This script will utilize ($cpu_threads) CPU threads for parallel processing to accelerate the build process."
 
-#
-# CREATE GLOBAL VARIABLES
-#
+# Create global variables
 
 PATH="\
 /usr/lib/ccache:\
 $workspace/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
@@ -260,12 +240,9 @@ $workspace/share/pkgconfig:\
 "
 export PKG_CONFIG_PATH
 
-#
-# DEFINE FUNCTIONS
-#
+# Define functions
 
-fail_fn()
-{
+fail_fn() {
     printf "\n%s\n%s\n%s\n\n" \
         "$1" \
         'You can enable the script'\''s debugging feature by changing the variable "debug" to "ON"' \
@@ -273,16 +250,14 @@ fail_fn()
     exit 1
 }
 
-exit_fn()
-{
+exit_fn() {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         "$web_repo"
     exit 0
 }
 
-cleanup_fn()
-{
+cleanup_fn() {
     local choice
  
     printf "\n%s\n\n%s\n%s\n\n" \
@@ -292,7 +267,7 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' choice
     clear
 
-    case "${choice}" in
+    case "$choice" in
         1)      sudo rm -fr "$cwd";;
         2)      clear;;
         *)
@@ -302,64 +277,59 @@ cleanup_fn()
     esac
 }
 
-success_fn()
-{
+success_fn() {
     local a_ver c_ver w_ver
 
-    if [ -n "${wsuffix}" ]; then
-        w_ver="wget${wsuffix}"
+    if [ -n "$wsuffix" ]; then
+        w_ver="wget$wsuffix"
     else
         w_ver=wget
     fi
-    if [ -n "${csuffix}" ]; then
-        c_ver="curl${csuffix}"
+    if [ -n "$csuffix" ]; then
+        c_ver="curl$csuffix"
     else
         c_ver=curl
     fi
-    if [ -n "${asuffix}" ]; then
-        a_ver="aria2c${asuffix}"
+    if [ -n "$asuffix" ]; then
+        a_ver="aria2c$asuffix"
     else
         a_ver=aria2c
     fi
 
-    w_ver="$(${w_ver} --version | grep -Eo '[0-9\.]+' | sed -n 1p)"
-    c_ver="$(${c_ver} --version | grep -Eo '[0-9\.]+' | sed -n 1p)"
-    a_ver="$(${a_ver} --version | grep -Eo '[0-9\.]+$' | sed -n 1p)"
+    w_ver="$($w_ver --version | grep -Eo '[0-9\.]+' | sed -n 1p)"
+    c_ver="$($c_ver --version | grep -Eo '[0-9\.]+' | sed -n 1p)"
+    a_ver="$($a_ver --version | grep -Eo '[0-9\.]+$' | sed -n 1p)"
 
     printf "\n%s\n\n%s\n%s\n%s\n"     \
         "The updated versions are:" \
-        "aria2: ${a_ver}"           \
-        "curl:  ${c_ver}"           \
-        "wget:  ${w_ver}"
+        "aria2: $a_ver"           \
+        "curl:  $c_ver"           \
+        "wget:  $w_ver"
 }
 
-#
-# SCRAPE GITHUB WEBSITE FOR THE LATEST REPO VERSION
-#
+# Scrape github website for the latest repo version
 
-git_1_fn()
-{
+git_1_fn() {
     local curl_cmd github_repo github_url
 
     github_repo="$1"
     github_url="$2"
 
-    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url' 2>/dev/null)"
-        g_ver="${g_ver#cares-}"
-        g_ver="${g_ver#aria2 }"
-        g_ver="${g_ver#nghttp2 v}"
-        g_ver="${g_ver#nghttp3 v}"
-        g_ver="${g_ver#OpenSSL }"
-        g_ver="${g_ver#release-}"
-        g_ver="${g_ver#v}"
+        g_ver="$g_ver#Cares-"
+        g_ver="$g_ver#Aria2 "
+        g_ver="$g_ver#Nghttp2 v"
+        g_ver="$g_ver#Nghttp3 v"
+        g_ver="$g_ver#Openssl "
+        g_ver="$g_ver#Release-"
+        g_ver="$g_ver#V"
     fi
 
 }
 
-git_ver_fn()
-{
+git_ver_fn() {
     local v_flag v_url v_tag url_tag t_url
 
     v_url="$1"
@@ -367,58 +337,56 @@ git_ver_fn()
 
     if [ -n "$3" ]; then
         v_flag="$3"
-        case "${v_flag}" in
+        case "$v_flag" in
             T)      t_url=tags;;
             R)      t_url=releases;;
             *)      fail_fn 'Failed to pass "tags" and "releases" to the command: curl_cmd.';;
         esac
     fi
 
-    git_1_fn "${v_url}" "${t_url}" 2>/dev/null
+    git_1_fn "$v_url" "$t_url" 2>/dev/null
 }
 
-execute()
-{
-    echo "$ ${*}"
+execute() {
+    echo "$ $*"
 
-    if [ "${debug}" = 'ON' ]; then
+    if [ "$debug" = 'ON' ]; then
         if ! output=$("$@"); then
-            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
-            fail_fn "Failed to execute: ${*}"
+            notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
+            fail_fn "Failed to execute: $*"
         fi
     else
         if ! output=$("$@" 2>&1); then
-            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
-            fail_fn "Failed to execute: ${*}"
+            notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
+            fail_fn "Failed to execute: $*"
         fi
     fi
 }
 
-download()
-{
+download() {
     dl_path="$packages"
     dl_url="$1"
-    dl_file="${2:-"${1##*/}"}"
+    dl_file="$2:-"${1##*/"}"
 
     if [[ "$dl_file" =~ tar. ]]; then
-        output_dir="${dl_file%.*}"
-        output_dir="${3:-"${output_dir%.*}"}"
+        output_dir="$dl_file%.*"
+        output_dir="$3:-"${output_dir%.*"}"
     else
-        output_dir="${3:-"${dl_file%.*}"}"
+        output_dir="$3:-"${dl_file%.*"}"
     fi
 
     target_file="$dl_path/$dl_file"
     target_dir="$dl_path/$output_dir"
 
-    if [ -f "${target_file}" ]; then
+    if [ -f "$target_file" ]; then
         echo "The file \"$dl_file\" is already downloaded."
     else
-        echo "Downloading \"${dl_url}\" saving as \"$dl_file\""
-        if ! curl -A "$user_agent" -Lso "${target_file}" "${dl_url}"; then
+        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
+        if ! curl -A "$user_agent" -Lso "$target_file" "$dl_url"; then
             printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
-            if ! curl -A "$user_agent" -Lso "${target_file}" "${dl_url}"; then
-                fail_fn "The script failed to download \"$dl_file\" twice and will now exit. Line: ${LINENO}"
+            if ! curl -A "$user_agent" -Lso "$target_file" "$dl_url"; then
+                fail_fn "The script failed to download \"$dl_file\" twice and will now exit. Line: $LINENO"
             fi
         fi
         echo 'Download Completed'
@@ -430,30 +398,29 @@ download()
     mkdir -p "$target_dir"
 
     if [ -n "$3" ]; then
-        if ! tar -xf "${target_file}" -C "$target_dir" 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
+        if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
+            sudo rm "$target_file"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
         fi
     else
-        if ! tar -xf "${target_file}" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
+        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
+            sudo rm "$target_file"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
         fi
     fi
 
     printf "%s\n\n" "File extracted: $dl_file"
 
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: ${LINENO}"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: $LINENO"
 }
 
-download_git()
-{
+download_git() {
     local dl_path dl_url dl_file target_dir
 
     dl_path="$packages"
     dl_url="$1"
-    dl_file="${2:-"${1##*/}"}"
-    dl_file="${dl_file//\./-}"
+    dl_file="$2:-"${1##*/"}"
+    dl_file="$dl_file//\./-"
     target_dir="$dl_path/$dl_file"
 
     if [ -n "$3" ]; then
@@ -465,23 +432,22 @@ download_git()
         sudo rm -fr "$target_dir"
     fi
 
-    echo "Downloading ${dl_url} as $dl_file"
+    echo "Downloading $dl_url as $dl_file"
 
-    if ! git clone -q "${dl_url}" "$target_dir"; then
+    if ! git clone -q "$dl_url" "$target_dir"; then
         printf "\n%s\n\n" "The script failed to clone the directory \"$target_dir\" and will try again in 10 seconds..."
         sleep 10
-        if ! git clone -q "${dl_url}" "$target_dir"; then
-            fail_fn "The script failed to clone the directory \"$target_dir\" twice and will now exit the buildLine: ${LINENO}"
+        if ! git clone -q "$dl_url" "$target_dir"; then
+            fail_fn "The script failed to clone the directory \"$target_dir\" twice and will now exit the buildLine: $LINENO"
         fi
     else
         printf "%s\n\n" "Successfully cloned: $target_dir"
     fi
 
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: ${LINENO}"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: $LINENO"
 }
 
-build()
-{
+build() {
     printf "\n%s\n%s\n" \
         "building $1 - version $2" \
         '===================================='
@@ -499,22 +465,17 @@ build()
     return 0
 }
 
-build_done()
-{
+build_done() {
     echo "$2" > "$packages/$1.done"
 }
 
-installed()
-{
-    return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
+installed() {
+    return $(dpkg-query -W -f '$Status\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
 }
 
-#
-# INSTALL REQUIRED APT PACKAGES
-#
+# Install required apt packages
 
-pkgs_fn()
-{
+pkgs_fn() {
     local pkg pkgs missing_pkgs
 
     pkgs=("$1" apt-transport-https apt-utils autoconf autoconf-archive autogen automake
@@ -535,8 +496,8 @@ pkgs_fn()
 
     for pkg in ${pkgs[@]}
     do
-        if ! installed "${pkg}"; then
-            missing_pkgs+=" ${pkg}"
+        if ! installed "$pkg"; then
+            missing_pkgs+=" $pkg"
         fi
     done
 
@@ -553,9 +514,7 @@ pkgs_fn()
     fi
 }
 
-#
-# DETERMINE WHAT VERSION OF LINUX WE ARE ON
-#
+# Determine what version of linux we are on
 
 find_lsb_release="$(sudo find /usr -type f -name 'lsb_release')"
 
@@ -564,47 +523,41 @@ if [ -f /etc/os-release ]; then
     OS_TMP="$NAME"
     VER_TMP="$VERSION_ID"
     CODENAME="$VERSION_CODENAME"
-    OS="$(echo "${OS_TMP}" | awk '{print $1}')"
-    VER="$(echo "${VER_TMP}" | awk '{print $1}')"
-elif [ -n "${find_lsb_release}" ]; then
+    OS="$(echo "$OS_TMP" | awk '{print $1}')"
+    VER="$(echo "$VER_TMP" | awk '{print $1}')"
+elif [ -n "$find_lsb_release" ]; then
     OS="$(lsb_release -d | awk '{print $2}')"
     VER="$(lsb_release -r | awk '{print $2}')"
 else
-    fail_fn "Failed to define the \${OS} and/or \${VER} variables. Line: ${LINENO}"
+    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: $LINENO"
 fi
 
-#
-# TEST THE OS AND ITS VERSION
-#
+# Test the os and its version
 
-case "${OS}" in
+case "$OS" in
     Debian)     pkgs_fn;;
     Ubuntu)     pkgs_fn 'language-pack-en';;
-    *)          fail_fn "Could not detect the OS architecture. Line: ${LINENO}";;
+    *)          fail_fn "Could not detect the OS architecture. Line: $LINENO";;
 esac
 
-#
-# INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
-#
+# Install ca certs from curl's official website
 
-if [ ! -f "${pem_out}" ]; then
+if [ ! -f "$pem_out" ]; then
     printf "%s\n%s\n\n" \
         'Download the latest security certificate' \
         '================================================'
     curl -A "$user_agent" -Lso "$packages/$pem_file" "https://curl.se/ca/$pem_file"
-    sudo cp -f "$packages/$pem_file" "${pem_out}"
+    sudo cp -f "$packages/$pem_file" "$pem_out"
 fi
 
-#
-# BUILD LIBRARIES FROM SOURCE
-#
+# Build libraries from source
 
 
 if build 'pkg-config' '0.29.2'; then
     download "https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz"
     execute ./configure --prefix="$workspace" \
-                        --with-pc-path="${PKG_CONFIG_PATH}"
-    execute make "-j${cpu_threads}"
+                        --with-pc-path="$PKG_CONFIG_PATH"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'pkg-config' '0.29.2'
 fi
@@ -612,20 +565,20 @@ fi
 
 git_ver_fn 'madler/zlib' '1' 'T'
 if build 'zlib' "$g_ver"; then
-    download "${g_url}" "zlib-$g_ver.tar.gz"
+    download "$g_url" "zlib-$g_ver.tar.gz"
     execute ./configure --prefix="$workspace"
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'zlib' "$g_ver"
 fi
 
 git_ver_fn 'akheron/jansson' '1' 'T'
 if build 'jansson' "$g_ver"; then
-    download "${g_url}" "jansson-$g_ver.tar.gz"
+    download "$g_url" "jansson-$g_ver.tar.gz"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" \
                         --disable-shared
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'jansson' "$g_ver"
 fi
@@ -638,41 +591,41 @@ if build 'gsasl' '2.2.0'; then
                          --disable-year2038                    \
                          --with-libiconv-prefix="$workspace" \
                          --with-openssl=auto
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'gsasl' '2.2.0'
 fi
 
 git_ver_fn 'c-ares/c-ares' '1' 'R'
-g_ver="${g_ver//cares-/}"
-g_tag="${g_ver//\./_}"
+g_ver="$g_ver//cares-/"
+g_tag="$g_ver//\./_"
 if build 'c-ares' "$g_ver"; then
-    download "${g_url}" "c-ares-$g_ver.tar.gz"
+    download "$g_url" "c-ares-$g_ver.tar.gz"
     execute autoupdate
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" \
                          --disable-shared       \
                          --disable-warnings     \
-                         --enable-optimize="${CFLAGS}"
-    execute make "-j${cpu_threads}"
+                         --enable-optimize="$CFLAGS"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'c-ares' "$g_ver"
 fi
 
 git_ver_fn 'pcre2project/pcre2' '1' 'T'
 if build 'pcre2' "$g_ver"; then
-    download "${g_url}" "pcre2-$g_ver.tar.gz"
+    download "$g_url" "pcre2-$g_ver.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" \
                         --disable-shared
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'pcre2' "$g_ver"
 fi
 
 git_ver_fn 'jemalloc/jemalloc' '1' 'T'
 if build 'jemalloc' "$g_ver"; then
-    download "${g_url}" "jemalloc-$g_ver.tar.gz"
+    download "$g_url" "jemalloc-$g_ver.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace"  \
                          --disable-debug         \
@@ -685,7 +638,7 @@ if build 'jemalloc' "$g_ver"; then
                          --enable-autogen        \
                          --enable-static         \
                          --enable-xmalloc
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'jemalloc' "$g_ver"
 fi
@@ -699,14 +652,12 @@ if build 'brotli' '1.0.9'; then
                   -DBUILD_SHARED_LIBS=OFF               \
                   -DBUILD_TESTING=OFF                   \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'brotli' '1.0.9'
 fi
 
-#
-# BEGIN WGET BUILD
-#
+# Begin wget build
 
 if build 'wget' 'latest'; then
     download 'https://ftp.gnu.org/gnu/wget/wget-latest.tar.lz'
@@ -719,15 +670,13 @@ if build 'wget' 'latest'; then
                  --with-cares                \
                  --with-metalink             \
                  --with-openssl=auto         \
-                 --with-ssl=gnutls "${wsuffix}"
-    execute make "-j${cpu_threads}"
+                 --with-ssl=gnutls "$wsuffix"
+    execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'wget' 'latest'
 fi
 
-#
-# DETERMINE IF HTTP3 SUPPORT IS ENABLED
-#
+# Determine if http3 support is enabled
 
 git_ver_fn 'curl/curl' '1' 'R'
 if build 'curl' "$g_ver"; then
@@ -742,38 +691,36 @@ if build 'curl' "$g_ver"; then
     eopts+=('--enable-'{proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static,telnet})
     eopts+=('--enable-'{tftp,threaded-resolver,tls-srp,unix-sockets,websockets})
     wopts=('--with-'{gnutls='/usr/include',libssh2,nghttp2='/usr/include',nghttp3='/usr/include'})
-    wopts+=('--with-'{ca-bundle="${pem_out}",ca-fallback,ca-path="${cert_dir}",secure-transport})
+    wopts+=('--with-'{ca-bundle="$pem_out",ca-fallback,ca-path="$cert_dir",secure-transport})
     execute autoreconf -fi
     ./configure --prefix="$install_prefix" \
                 "${dopts[@]}"                \
                 "${eopts[@]}"                \
                 "${wopts[@]}"                \
-                "${csuffix}"                 \
+                "$csuffix"                 \
                  LIBS="$(pkg-config --libs libnghttp3)"
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'curl' "$g_ver"
 fi
 
-#
-# COMPILE ARIA2 FROM THE SOURCE CODE
-#
+# Compile aria2 from the source code
 
 git_ver_fn 'aria2/aria2' '1' 'T'
 if build 'aria2' '1.36.0'; then
     download 'https://github.com/aria2/aria2/releases/download/release-1.36.0/aria2-1.36.0.tar.xz'
-    # INCREASE THE MAX NUMBER OF CONNECTIONS FROM 16 TO 128
+# Increase the max number of connections from 16 to 128
     execute sed -i 's/1, 16/1, 128/g' 'src/OptionHandlerFactory.cc'
     mkdir build
     cd build || exit 1
     ../configure --prefix="$install_dir"               \
-                 --{build,host,target}="${pc_type}"      \
+                 --{build,host,target}="$pc_type"      \
                  --disable-nls                           \
                  --disable-shared                        \
                  --disable-werror                        \
                  --enable-libaria2                       \
                  --enable-static                         \
-                 --with-ca-bundle="${pem_out}"           \
+                 --with-ca-bundle="$pem_out"           \
                  --with-libgcrypt=/usr                   \
                  --with-libiconv-prefix=/usr             \
                  --with-libintl-prefix=/usr              \
@@ -783,25 +730,25 @@ if build 'aria2' '1.36.0'; then
                  --with-pic                              \
                  --without-gnutls                        \
                  ARIA2_STATIC=yes                        \
-                 CFLAGS="${CFLAGS}"                      \
-                 CXXFLAGS="${CXXFLAGS}"                  \
-                 CPPFLAGS="${CPPFLAGS}"                  \
+                 CFLAGS="$CFLAGS"                      \
+                 CXXFLAGS="$CXXFLAGS"                  \
+                 CPPFLAGS="$CPPFLAGS"                  \
                  EXPAT_LIBS="$(pkg-config --libs expat)" \
-                 LDFLAGS="${LDFLAGS}"                    \
+                 LDFLAGS="$LDFLAGS"                    \
                  LIBS="$(pkg-config --libs libuv) $(pkg-config --libs libgcrypt)"
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'aria2' '1.36.0'
 fi
 
-# LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE VERSION COMMANDS MIGHT NOT WORK
+# Ldconfig must be run next in order to update file changes or the version commands might not work
 sudo ldconfig 2>/dev/null
 
-# ALERT THE USER THAT THE BUILD HAS FINISHED
+# Alert the user that the build has finished
 success_fn
 
-# CLEANUP LEFTOVER FILES
+# Cleanup leftover files
 cleanup_fn
 
-# DISPLAY EXIT MESSAGE
+# Display exit message
 exit_fn

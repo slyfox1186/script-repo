@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
 # Function to display the help menu
 display_help() {
@@ -22,7 +22,7 @@ duration_seconds=1410
 log_file="resize.log"
 
 # Parse command line arguments
-while [[ "$#" -gt 0 ]]; do
+while [[ "$#" -Gt 0 ]]; do
     case $1 in
         -h|--help)
             display_help
@@ -70,9 +70,9 @@ prompt_for_value() {
     local default_value=$2
     local prompt_message=$3
 
-    if [[ -z "${!value_name}" ]]; then
+    if [[ -z "$!value_name" ]]; then
         read -p "$prompt_message [$default_value]: " user_input
-        eval "$value_name=${user_input:-$default_value}"
+        eval "$value_name=$user_input:-$default_value"
     fi
 }
 
@@ -106,13 +106,13 @@ fi
 get_video_stats() {
     video_file="$1"
 
-    # Get video size in megabytes
+# Get video size in megabytes
     size_mb=$(ffprobe -v error -show_entries format=size -of default=noprint_wrappers=1:nokey=1 "$video_file" | awk '{print $1 / 1024 / 1024}')
 
-    # Get audio bitrate in kbps
+# Get audio bitrate in kbps
     audio_bitrate=$(ffprobe -v error -select_streams a:0 -show_entries stream=bit_rate -of default=noprint_wrappers=1:nokey=1 "$video_file" | awk '{print int($1 / 1000)}')
 
-    # Get video bitrate in kbps
+# Get video bitrate in kbps
     video_bitrate=$(ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate -of default=noprint_wrappers=1:nokey=1 "$video_file" | awk '{print int($1 / 1000)}')
 
     echo "$size_mb $audio_bitrate $video_bitrate"
@@ -164,15 +164,15 @@ echo
 read -p "Do you want to proceed with the FFmpeg processing? (y/n): " confirmation
 
 if [[ $confirmation =~ ^[Yy]$ ]]; then
-    # Echo the FFmpeg command line
+# Echo the ffmpeg command line
     echo -e "\\nFFmpeg Command:\\n"
-    echo "ffmpeg -i \"$input_file\" -b:v ${target_video_bitrate_kbps}k -b:a ${audio_bitrate_kbps}k -t $duration_seconds \"$output_file\""
+    echo "ffmpeg -i \"$input_file\" -b:v $target_video_bitrate_kbpsk -b:a $audio_bitrate_kbpsk -t $duration_seconds \"$output_file\""
     echo
 
-    # Execute the FFmpeg command
+# Execute the ffmpeg command
     echo "Resizing video..."
     echo
-    ffmpeg -i "$input_file" -b:v ${target_video_bitrate_kbps}k -b:a ${audio_bitrate_kbps}k -t $duration_seconds "$output_file" 2>&1 | tee "$log_file"
+    ffmpeg -i "$input_file" -b:v $target_video_bitrate_kbpsk -b:a $audio_bitrate_kbpsk -t $duration_seconds "$output_file" 2>&1 | tee "$log_file"
     echo "Video resizing completed. Log file: $log_file"
 else
     echo "FFmpeg processing aborted."

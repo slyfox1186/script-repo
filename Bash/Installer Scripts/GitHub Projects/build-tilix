@@ -1,10 +1,10 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
 ##############################################################################################################################
 ##
-##  GitHub: HTTPS://GITHUB.COM/SLYFOX1186/SCRIPT-REPO/BLOB/MAIN/BASH/INSTALLER%20SCRIPTS/TILIX%20TERMINAL/BUILD-TILIX
+##  Github: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/tilix%20terminal/build-tilix
 ##
-##  Purpose: Compile the advanced Linux Terminal, Tilix, using source code from its official GitHub repository
+##  Purpose: compile the advanced linux terminal, tilix, using source code from its official github repository
 ##
 ##  Updated: 01.07.24
 ##
@@ -15,7 +15,7 @@
 clear
 
 if [ "$EUID" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+    echo "You must run this script without root or sudo."
     exit 1
 fi
 
@@ -28,38 +28,34 @@ web_repo=https://github.com/slyfox1186/script-repo
 mkdir -p "$cwd" "$HOME"/.config/tilix/schemes
 cd "$cwd" || exit 1
 
-#
-# PRINT SCRIPT BANNER
-#
+# Print script banner
 
-box_out_banner()
-{
+box_out_banner() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
+    line=$(for i in $(seq 0 $input_char); do printf '-'; done)
     tput bold
     line="$(tput setaf 3)$line"
-    space=${line//-/ }
+    space=$line//-/ 
     echo " $line"
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
     printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
     echo " $line"
     tput sgr 0
 }
-box_out_banner "Tilix Build Script - v${script_ver}"
+box_out_banner "Tilix Build Script - v$script_ver"
 
-exit_fn()
-{
+exit_fn() {
     printf "\n%s\n%s\n\n"                                         \
         'Make sure to star this repository to show your support!' \
         "$web_repo"
     exit 0
 }
 
-# FUNCTION TO GET THE LATEST VERSION OF TILIX FROM GITHUB RELEASES
+# Function to get the latest version of tilix from github releases
 get_latest_release_version() { curl -s 'https://github.com/gnunn1/tilix/releases' | grep -oP '/gnunn1/tilix/releases/tag/\K[^"]+' | head -1; }
 
-# INSTALL APT PACKAGES
+# Install apt packages
 packages=(autoconf autogen automake build-essential ccache curl gettext
           git gtk-doc-tools libgtk-3-dev libgtk-4-dev libgtkd-3-dev libhwy-dev
           libtool libtool-bin m4 ninja-build pkg-config python3-nautilus)
@@ -68,8 +64,7 @@ packages=(autoconf autogen automake build-essential ccache curl gettext
 to_install=()
 
 # Function to check if a package is installed
-is_installed()
-{
+is_installed() {
     dpkg -l "$1" &> /dev/null
     return $?
 }
@@ -83,21 +78,21 @@ do
 done
 
 # Install the packages if there are any to install
-if [ ${#to_install[@]} -ne 0 ]; then
-    echo "Installing packages: ${to_install[*]}"
+if [ ${#To_install[@]} -ne 0 ]; then
+    echo "Installing packages: $to_install[*]"
     sudo apt install "${to_install[@]}"
 else
     printf "\n%s\n\n" "All packages are already installed."
 fi
     
-# GET THE LATEST RELEASE VERSION OF TILIX
+# Get the latest release version of tilix
 version=$(get_latest_release_version)
 
-# DEFINE THE DOWNLOAD URL AND TAR FILE NAME FOR TILIX
+# Define the download url and tar file name for tilix
 download_url="https://github.com/gnunn1/tilix/archive/$version.tar.gz"
 tar_file="$program_name-$version.tar.gz"
 
-# DOWNLOAD THE SOURCE CODE FILES IF THEY ARE NOT ALREADY DOWNLOADED
+# Download the source code files if they are not already downloaded
 if [ ! -f "$tar_file" ]; then
     printf "%s\n\n" "Downloading Tilix version $version..."
     curl -L -o "$tar_file" "$download_url"
@@ -105,32 +100,32 @@ else
    echo "Tilix version $version already downloaded."
 fi
 
-# DELETE THE OUTPUT ARCHIVE IF IT ALREADY EXISTS
+# Delete the output archive if it already exists
 if [ -d "$program_name-$version" ]; then
-    echo "Removing existing directory ${program_name}-${version}..."
+    echo "Removing existing directory $program_name-$version..."
     rm -rf "$program_name-$version"
 fi
 
-# EXTRACT THE FILES
-printf "%s\n\n" "Extracting ${tar_file}..."
+# Extract the files
+printf "%s\n\n" "Extracting $tar_file..."
 if [ -d "$program_name-$version" ]; then
     rm -fr "$program_name-$version"
 fi
 mkdir "$program_name-$version"
 tar -zxf "$tar_file" -C "$program_name-$version" --strip-components 1
 
-# INSTALL THE LATEST DMD COMPILER
+# Install the latest dmd compiler
 echo 'Installing the latest DMD Compiler...'
 curl -fsS https://dlang.org/install.sh | bash -s dmd
 
-# CHANGE TO THE TILIX DIRECTORY
+# Change to the tilix directory
 cd "$program_name-$version"
 
-# BUILD THE TILIX EXECUTABLE
+# Build the tilix executable
 printf "%s\n\n" 'Building Tilix executable...'
 dub build --build=release
 
-# INSTALL TILIX
+# Install tilix
 printf "\n%s\n\n" 'Installing Tilix...'
 sudo ./install.sh
 
@@ -142,7 +137,7 @@ cp -f argonaut.json dracula.json "$HOME"/.config/tilix/schemes
 cd ../Themes-2 || exit 1
 cp -f neopolitan.json vibrant-ink.json "$HOME"/.config/tilix/schemes
 
-# MAKE TILIX THE DEFAULT TERMINAL
+# Make tilix the default terminal
 sudo update-alternatives --install /usr/bin/x-terminal-emulator x-terminal-emulator /usr/bin/tilix 50
 sudo rm -fr "$cwd"
 

@@ -12,7 +12,7 @@
 
 clear
 
-if [ "${EUID}" -ne '0' ]; then
+if [ "$EUID" -ne '0' ]; then
     printf "%s\n\n" 'You must run this script as root/sudo.'
     exit 1
 fi
@@ -21,16 +21,16 @@ pkgs=(gufw ufw unbound wget xclip)
 
 for pkg in ${pkgs[@]}
 do
-    missing_pkg="$(dpkg -l | grep -o "${pkg}")"
+    missing_pkg="$(dpkg -l | grep -o "$pkg")"
     
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${pkg}"
+    if [ -z "$missing_pkg" ]; then
+        missing_pkgs+=" $pkg"
     fi
 done
 
-if [ -n "${missing_pkgs}" ]; then
+if [ -n "$missing_pkgs" ]; then
     sudo apt update
-    sudo apt -y install ${missing_pkgs}
+    sudo apt -y install $missing_pkgs
     sudo apt autoclean
     clear
 fi
@@ -137,4 +137,4 @@ clear
 echo '127.0.0.1#5335' | xclip -i -rmlastnl -sel clip
 1
 pihole_ip="$(ip route get 1.2.3.4 | awk '{print $7}')"
-firefox "http://${pihole_ip}/admin/settings.php?tab=dns"
+firefox "http://$pihole_ip/admin/settings.php?tab=dns"

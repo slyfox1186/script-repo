@@ -1,6 +1,6 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf-archive
+##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/gnu%20software/build-autoconf-archive
 ##  Purpose: build gnu autoconf-archive
 ##  Updated: 03.16.24
 ##  Script version: 1.1
@@ -13,7 +13,7 @@ fi
 # Set the variables
 archive_dir=autoconf-archive-2023.02.20
 archive_url=https://ftp.gnu.org/gnu/autoconf-archive/$archive_dir.tar.xz
-archive_ext="${archive_url//*.}"
+archive_ext="$archive_url//*."
 archive_name="$archive_dir.tar.$archive_ext"
 cwd="$PWD/autoconf-archive-build-script"
 install_dir=/usr/local
@@ -24,11 +24,11 @@ if [ -d "$cwd" ]; then
 fi
 mkdir -p "$cwd"
 
-# Set the C +CPP compilers & their compiler optimization flags
+# Set the c +cpp compilers & their compiler optimization flags
 CC="gcc"
 CXX="g++"
-CFLAGS="-g -O3 -pipe -march=native"
-CXXFLAGS="-g -O3 -pipe -march=native"
+CFLAGS="-g -O3 -pipe -fno-plt -march=native"
+CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
 export CC CFLAGS CXX CXXFLAGS
 
 # Set the path variable
@@ -51,7 +51,7 @@ $HOME/.local/bin:\
 "
 export PATH
 
-# Set the PKG_CONFIG_PATH variable
+# Set the pkg_config_path variable
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
@@ -93,7 +93,7 @@ cleanup() {
         "[2] No"
     read -p "Your choices are (1 or 2): " choice
 
-    case "${choice}" in
+    case "$choice" in
         1) rm -fr "$cwd" ;;
         2) ;;
         *) unset choice

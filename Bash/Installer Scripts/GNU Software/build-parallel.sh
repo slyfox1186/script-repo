@@ -1,7 +1,7 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
-# GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-parallel
-# Purpose: Build GNU parallel
+# Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/gnu%20software/build-parallel
+# Purpose: build gnu parallel
 # Updated: 03.16.24
 # Script version: 2.1
 
@@ -9,15 +9,15 @@ set -e  # Exit on error
 
 if [ "$EUID" -ne 0 ]; then
     echo
-    echo "You must run this script with root/sudo."
+    echo "You must run this script with root or sudo."
     exit 1
 fi
 
-# SET THE VARIABLES
+# Set the variables
 script_ver=2.0
 archive_dir=parallel-latest
 archive_url=https://ftp.gnu.org/gnu/parallel/parallel-latest.tar.bz2
-archive_ext="${archive_url//*.}"
+archive_ext="$archive_url//*."
 archive_name="$archive_dir.tar.$archive_ext"
 cwd="$PWD/parallel-build-script"
 install_dir=/usr/local
@@ -26,17 +26,17 @@ web_repo=https://github.com/slyfox1186/script-repo
 echo "parallel build script - v$script_ver"
 echo "==============================================="
 
-# CREATE OUTPUT DIRECTORY
+# Create output directory
 rm -fr "$cwd"
 mkdir -p "$cwd"
 
-# SET COMPILER FLAGS
+# Set compiler flags
 CC=gcc
 CXX=g++
-CFLAGS="-g -O3 -pipe -march=native"
-CXXFLAGS="-g -O3 -pipe -march=native"
+CFLAGS="-g -O3 -pipe -fno-plt -march=native"
+CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
 
-# SET ENVIRONMENT VARIABLES
+# Set environment variables
 export PATH="\
 /usr/lib/ccache:\
 $HOME/perl5/bin:\
@@ -65,7 +65,7 @@ export PKG_CONFIG_PATH="\
 /lib/x86_64-linux-gnu/pkgconfig\
 "
 
-# FUNCTIONS
+# Functions
 exit_fn() {
     echo
     echo "\n%s\n\n%s\n\n"
@@ -91,7 +91,7 @@ cleanup_fn() {
     esac
 }
 
-# INSTALL DEPENDENCIES
+# Install dependencies
 pkgs=(
     "autoconf" "autoconf-archive" "autogen" "automake" "binutils" "bison"
     "build-essential" "bzip2" "ccache" "curl" "libc6-dev" "libpth-dev"
@@ -100,19 +100,19 @@ pkgs=(
 )
 apt install -y "${pkgs[@]}"
 
-# DOWNLOAD SOURCE
+# Download source
 curl -sSfLo "$cwd/$archive_name" "$archive_url"
 mkdir -p "$cwd/$archive_dir/build"
 tar -jxf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1
 
-# BUILD
+# Build
 cd "$cwd/$archive_dir/build" || exit 1
 ../configure --prefix "$install_dir"
 make "-j$(nproc --all)"
 make install
 
-# PROMPT CLEANUP
+# Prompt cleanup
 cleanup_fn
 
-# EXIT MESSAGE
+# Exit message
 exit_fn

@@ -6,7 +6,7 @@
 # Function to retrieve the latest Git tag version from a repository
 get_latest_release_version() {
     local url="$1"
-    local tags_url="${url/.git/}/tags"
+    local tags_url="$url/.git//tags"
 
     # Try fetching from the original URL
     latest_version=$(curl -fsSL "$url" | parse_version)

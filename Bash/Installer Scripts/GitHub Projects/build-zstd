@@ -1,29 +1,27 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-zstd
-##  Purpose: Build zstd compression software
-##  Features: Static and shared build
-##  Changed: Static build to both
+##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/github%20projects/build-zstd
+##  Purpose: build zstd compression software
+##  Features: static and shared build
+##  Changed: static build to both
 ##  Updated: 12.03.23
 ##  Script version: 1.2
 
 clear
 
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+if [ "$EUID" -eq '0' ]; then
+    echo "You must run this script without root or sudo."
     exit 1
 fi
 
-#
-# SET THE VARIABLES
-#
+# Set the variables
 
 script_ver=1.2
 archive_ver=1.5.5
 archive_dir="zstd-$archive_ver"
 archive_url="https://github.com/facebook/zstd/releases/download/v$archive_ver/$archive_dir.tar.gz"
-archive_ext="${archive_url//*.}"
-archive_name="$archive_dir.tar.${archive_ext}"
+archive_ext="$archive_url//*."
+archive_name="$archive_dir.tar.$archive_ext"
 install_dir=/usr/local
 cwd="$PWD"/zstd-build-script
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
@@ -33,30 +31,22 @@ printf "%s\n%s\n\n" \
     '==============================================='
 sleep 2
 
-#
-# CREATE OUTPUT DIRECTORY
-#
+# Create output directory
 
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-#
-# SET THE C+CPP COMPILERS
-#
+# Set the c+cpp compilers
 
 export CC=gcc CXX=g++
 
-#
-# EXPORT COMPILER OPTIMIZATION FLAGS
-#
+# Export compiler optimization flags
 
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 
-#
-# SET THE PATH VARIABLE
-#
+# Set the path variable
 
 PATH="\
 /usr/lib/ccache:\
@@ -77,9 +67,7 @@ $HOME/.local/bin:\
 "
 export PATH
 
-#
-# SET THE PKG_CONFIG_PATH VARIABLE
-#
+# Set the pkg_config_path variable
 
 PKG_CONFIG_PATH="\
 /usr/share/pkgconfig:\
@@ -91,12 +79,9 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-#
-# CREATE FUNCTIONS
-#
+# Create functions
 
-exit_fn()
-{
+exit_fn() {
     printf "\n%s\n\n%s\n%s\n\n" \
         'The script has completed' \
         'Make sure to star this repository to show your support!' \
@@ -104,8 +89,7 @@ exit_fn()
     exit 0
 }
 
-fail_fn()
-{
+fail_fn() {
     printf "\n\n%s\n\n%s\n\n%s\n\n" \
         "$1" \
         'Please create a support ticket so I can work on a fix.' \
@@ -113,8 +97,7 @@ fail_fn()
     exit 1
 }
 
-cleanup_fn()
-{
+cleanup_fn() {
     local choice
 
     printf "\n%s\n\n%s\n%s\n\n" \
@@ -124,8 +107,8 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' choice
     clear
 
-    case "${choice}" in
-        1)      sudo rm -fr "$cwd" "${0}";;
+    case "$choice" in
+        1)      sudo rm -fr "$cwd" "$0";;
         2)      return 0;;
         *)
                 unset choice
@@ -134,9 +117,7 @@ cleanup_fn()
     esac
 }
 
-#
-# INSTALL REQUIRED APT PACKAGES
-#
+# Install required apt packages
 
 pkgs=(autoconf autogen automake build-essential ccache clang cmake curl git libdmalloc-dev
       libjemalloc-dev liblz4-dev liblzma-dev libtool libtool-bin m4 meson ninja-build
@@ -157,34 +138,26 @@ if [ -n "$missing_pkgs" ]; then
     clear
 fi
 
-#
-# DOWNLOAD THE ARCHIVE FILE
-#
+# Download the archive file
 
 if [ ! -f "$cwd/$archive_name" ]; then
     wget --show-progress -cqO "$cwd/$archive_name" "$archive_url"
 fi
 
-#
-# CREATE THE OUTPUT DIRECTORY
-#
+# Create the output directory
 
 if [ -d "$cwd/$archive_dir" ]; then
     sudo rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir"
 
-#
-# EXTRACT THE ARCHIVE FILE
-#
+# Extract the archive file
 
 if ! tar -zxf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
     fail_fn "Failed to extract: $cwd/$archive_name"
 fi
 
-#
-# BUILD THE PROGRAM FROM SOURCE CODE
-#
+# Build the program from source code
 
 cd "$cwd/$archive_dir/build/meson" || exit 1
 meson setup build --prefix="$install_dir" \
@@ -209,8 +182,8 @@ fi
 [[ -f "/usr/local/lib/x86_64-linux-gnu/libzstd.so.1" ]] && sudo rm "/usr/local/lib/x86_64-linux-gnu/libzstd.so.1"
 [[ -f "/usr/local/lib/x86_64-linux-gnu/libzstd.so" ]] && sudo rm "/usr/local/lib/x86_64-linux-gnu/libzstd.so"
 
-# PROMPT USER TO CLEAN UP FILES
+# Prompt user to clean up files
 cleanup_fn
 
-# SHOW EXIT MESSAGE
+# Show exit message
 exit_fn

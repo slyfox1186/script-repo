@@ -30,4 +30,4 @@ else
     exit 1
 fi
 
-sudo rm "${0}"
+sudo rm "$0"

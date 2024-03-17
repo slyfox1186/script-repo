@@ -53,7 +53,7 @@ alias reboot-uefi='sudo systemctl reboot --firmware-setup'
 
 # enable color support of ls and also add handy aliases
 if [ -x '/usr/bin/dircolors' ]; then
-    test -r "${HOME}/.dircolors" && eval "$(dircolors -b "${HOME}"/.dircolors)" || eval "$(dircolors -b)"
+    test -r "$HOME/.dircolors" && eval "$(dircolors -b "$HOME"/.dircolors)" || eval "$(dircolors -b)"
         # file navigation
         alias ls='ls -1AhFSv --color=auto --group-directories-first'
         # grep commands
@@ -89,7 +89,7 @@ alias md='mkdir -p'
 alias mkdir='mkdir -p'
 
 # path commands
-alias psp='clear; echo -e ${PATH//:/\\n}'
+alias psp='clear; echo -e $PATH//:/\\n'
 
 # crontab commands
 alias crontab='crontab -e'
@@ -278,7 +278,7 @@ alias ffc='clear; ./configure --help'
 alias tsb='clear; timeshift --create'
 
 # SHOW GCC NATIVE COMMANDS
-alias show_gcc='clear; gcc-12 -march=native -E -v - </dev/null 2>&1 | grep cc1'
+alias show_gcc='clear; gcc-12 -pipe -fno-plt -march=native -E -v - </dev/null 2>&1 | grep cc1'
 
 # START VIRTUAL MACHINE
 alias svm='clear; sudo virt-manager'

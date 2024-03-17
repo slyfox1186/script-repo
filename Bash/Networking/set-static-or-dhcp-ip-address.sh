@@ -3,7 +3,7 @@
 
 clear
 
-if [ "${EUID}" -ne '0' ]; then
+if [ "$EUID" -ne '0' ]; then
     printf "%s\n\n" 'You must run this script as root/sudo.'
     exit 1
 fi
@@ -28,7 +28,7 @@ printf "%s\n\n%s\n%s\n\n" \
 read -p 'Your choices are (1 or 2): ' user_agreement
 clear
 
-case "${user_agreement}" in
+case "$user_agreement" in
     1)      clear;;
     2)
             clear
@@ -37,15 +37,14 @@ case "${user_agreement}" in
             ;;
 esac
 
-if [ ! -f "${fname}".bak ]; then
-    sudo cp "${fname}" "${fname}".bak
+if [ ! -f "$fname".bak ]; then
+    sudo cp "$fname" "$fname".bak
     printf "%s\n\n" 'The "interfaces" file was just backed up as: interfaces.bak. You can find it in the same folder as the original.'
     read -p 'Press enter to continue.'
     clear
 fi
 
-show_changes_fn()
-{
+show_changes_fn() {
     #
     # PRINT THE CONTENTS OF THE UPDATED INTERFACE FILE
     #
@@ -54,7 +53,7 @@ show_changes_fn()
     printf "%s\n\n%s\n\n"                                     \
         'The new "interfaces" file contents are shown below.' \
         '=================================================================================='
-    cat "${fname}"
+    cat "$fname"
 
     #
     # PRINT INSTRUCTIONS AND OTHER INFO TO THE USER
@@ -69,26 +68,25 @@ show_changes_fn()
     read -p 'Your choices are (1 or 2): ' enable_choice
     clear
 
-    case "${enable_choice}" in
+    case "$enable_choice" in
         1)
                 # BRING DOWN THE USER-CHOSEN NETWORK INTERFACE
-                sudo ifdown "${interface}"
+                sudo ifdown "$interface"
                 # CLEAR ANY CACHES THAT WOULD INTERFERE WITH THE IFUP COMMAND COMPLETING SUCCESSFULLY
-                sudo ip addr flush dev "${interface}" 2>&1
+                sudo ip addr flush dev "$interface" 2>&1
                 # BRING UP THE NETWORK
-                sudo ifup "${interface}"
+                sudo ifup "$interface"
                 ;;
         2)      exit 0;;
     esac
 }
 
-activate_static_fn()
-{
-    if [ -n "${1}" ]; then
-        add_ns="dns-nameservers ${1}"
+activate_static_fn() {
+    if [ -n "$1" ]; then
+        add_ns="dns-nameservers $1"
     fi
 
-    cat > "${fname}" <<EOF
+    cat > "$fname" <<EOF
 # This file describes the network interfaces available on your system
 # and how to activate them. For more information, see interfaces(5).
 
@@ -99,19 +97,18 @@ auto lo
 iface lo inet loopback
 
 # The primary network interface
-auto ${interface}
-iface ${interface} inet static
-    address ${address}
-    netmask ${netmask}
-    broadcast ${broadcast}
-    gateway ${gateway}
-    ${add_ns}
+auto $interface
+iface $interface inet static
+    address $address
+    netmask $netmask
+    broadcast $broadcast
+    gateway $gateway
+    $add_ns
 EOF
 }
 
-activate_dhcp_fn()
-{
-    cat > "${fname}" <<EOF
+activate_dhcp_fn() {
+    cat > "$fname" <<EOF
 # This file describes the network interfaces available on your system
 # and how to activate them. For more information, see interfaces(5).
 
@@ -122,13 +119,12 @@ auto lo
 iface lo inet loopback
 
 # The primary network interface
-auto ${interface}
-iface ${interface} inet dhcp
+auto $interface
+iface $interface inet dhcp
 EOF
 }
 
-choose_type_fn()
-{
+choose_type_fn() {
     printf "%s\n\n%s\n%s\n\n"                  \
         'Choose the type of network interface' \
         '[1] DHCP'                             \
@@ -136,7 +132,7 @@ choose_type_fn()
     read -p 'Your choices are (1 or 2): ' type_choice
     clear
 
-    case "${type_choice}" in
+    case "$type_choice" in
         1)
                 read -p 'Enter Network Interface: (eth0): '  interface
                 activate_dhcp_fn
@@ -165,16 +161,15 @@ read -p 'Enter Broadcast: (192.168.2.255): ' broadcast
 read -p 'Enter Gateway: (192.168.2.1): '     gateway
 clear
 
-set_namservers_fn()
-{
+set_namservers_fn() {
     printf "%s\n\n" 'You may enter (0 to 4) nameservers. To use no nameservers, input the number "0" when first prompted.'
-    while [ "${cnt}" -lt '4' ]
+    while [ "$cnt" -lt '4' ]
     do
         ((cnt++))
-        read -p "Enter Nameserver: (1.1.1.1): "  nameserver${cnt}
+        read -p "Enter Nameserver: (1.1.1.1): "  nameserver$cnt
         while true
         do
-            if [[ "${nameserver1}" == '0' ]]; then
+            if [[ "$nameserver1" == '0' ]]; then
                 unset nameserver1
                 clear
                 break 2
@@ -182,7 +177,7 @@ set_namservers_fn()
             clear
             read -p 'Enter another? yes/no: ' reply
             clear
-            case "${reply}" in
+            case "$reply" in
                 [yY][eE][sS]|[yY]|"")       break;;
                 [nN][oO]|[nN])              break 2;;
                 *)
@@ -197,22 +192,22 @@ set_namservers_fn()
 }
 set_namservers_fn
 
-case "${cnt}" in
-    1)      ns_cnt="${nameserver1}";;
-    2)      ns_cnt="${nameserver1} ${nameserver2}";;
-    3)      ns_cnt="${nameserver1} ${nameserver2} ${nameserver3}";;
-    4)      ns_cnt="${nameserver1} ${nameserver2} ${nameserver3} ${nameserver4}";;
+case "$cnt" in
+    1)      ns_cnt="$nameserver1";;
+    2)      ns_cnt="$nameserver1 $nameserver2";;
+    3)      ns_cnt="$nameserver1 $nameserver2 $nameserver3";;
+    4)      ns_cnt="$nameserver1 $nameserver2 $nameserver3 $nameserver4";;
 esac
 
 clear
 printf "%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n\n"   \
     'The pending values are shown below...' \
-    "Interface:         ${interface}"       \
-    "Static IP:         ${address}"         \
-    "Netmask:           ${netmask}"         \
-    "Broadcast:         ${broadcast}"       \
-    "Gateway:           ${gateway}"         \
-    "Nameserver:        ${ns_cnt}"
+    "Interface:         $interface"       \
+    "Static IP:         $address"         \
+    "Netmask:           $netmask"         \
+    "Broadcast:         $broadcast"       \
+    "Gateway:           $gateway"         \
+    "Nameserver:        $ns_cnt"
 
 printf "\n%s\n\n%s\n%s\n\n"                 \
     'Direct the script on what to do next.' \
@@ -221,8 +216,8 @@ printf "\n%s\n\n%s\n%s\n\n"                 \
 read -p 'Your choices are (1 or 2): ' choice
 clear
 
-case "${choice}" in
-    1)      activate_static_fn "${ns_cnt}";;
+case "$choice" in
+    1)      activate_static_fn "$ns_cnt";;
     2)      exit 0;;
     *)
             clear

@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
-# Recursively search and re-encode all found WMV files to MP4
+#!/Usr/bin/env bash
+# Recursively search and re-encode all found wmv files to mp4
 
 echo "Searching for .wmv files to convert to .mp4 with NVIDIA CUDA acceleration..."
 echo
@@ -7,16 +7,16 @@ echo
 # Define the conversion process as a function for clarity
 convert_to_mp4() {
     local file_in="$1"
-    local file_out="${file_in%.wmv}.mp4"
+    local file_out="$file_in%.wmv.mp4"
 
-    local filename_in="${file_in##*/}"
-    local filename_out="${file_out##*/}"
-    local folder_path="${file_in%/*}"
+    local filename_in="$file_in##*/"
+    local filename_out="$file_out##*/"
+    local folder_path="$file_in%/*"
 
     echo "Name in:  $filename_in"
     echo "Name out: $filename_out"
     echo
-    echo "CWD:      $PWD/${folder_path//.\//}"
+    echo "CWD:      $PWD/$folder_path//.\//"
     echo
 
     if ffpb -y -hide_banner -hwaccel cuda -hwaccel_output_format cuda -fflags '+genpts' -i "$file_in" -c:v h264_nvenc -preset slow -c:a libfdk_aac "$file_out"; then

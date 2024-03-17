@@ -51,7 +51,7 @@ ffind() {
     fi
 
     # Default to the current directory if fpath is empty
-    fpath=${fpath:-.}
+    fpath=$fpath:-.
 
     # Construct the find command based on the input
     find_cmd="find \"$fpath\" -iname \"$fname\""
@@ -73,19 +73,19 @@ untar() {
     local archive
 
     for archive in *.*; do
-        local ext="${archive##*.}"
+        local ext="$archive##*."
 
-        [[ ! -d "$PWD"/"${archive%%.*}" ]] && mkdir -p "$PWD/${archive%%.*}"
+        [[ ! -d "$PWD"/"$archive%%.*" ]] && mkdir -p "$PWD/$archive%%.*"
 
         unset flag
         case "$ext" in
-            7z|zip) 7z x -o./"${archive%%.*}" ./"$archive";;
+            7z|zip) 7z x -o./"$archive%%.*" ./"$archive";;
             bz2)    flag="jxf";;
             gz|tgz) flag="zxf";;
             xz|lz)  flag="xf";;
         esac
 
-        [[ -n "$flag" ]] && tar "$flag" ./"$archive" -C ./"${archive%%.*}" --strip-components 1
+        [[ -n "$flag" ]] && tar "$flag" ./"$archive" -C ./"$archive%%.*" --strip-components 1
     done
 }
 
@@ -124,12 +124,12 @@ mdir() {
 
 # Removed all duplicate lines: outputs to terminal
 rmd() {
-    awk '!seen[[${0}]]++' "$1"
+    awk '!seen[[$0]]++' "$1"
 }
 
 # Remove consecutive duplicate lines: outputs to terminal
 rmdc() {
-    awk 'f!=${0}&&f=${0}' "$1"
+    awk 'f!=$0&&f=$0' "$1"
 }
 
 # Remove all duplicate lines and removes trailing spaces before comparing: replaces the file
@@ -232,11 +232,11 @@ csearch() {
     local cache
 
     if [[ -n "$1" ]]; then
-        apt-cache search --names-only "${1}.*" | awk '{print $1}'
+        apt-cache search --names-only "$1.*" | awk '{print $1}'
     else
         read -p "Enter the string to search: " cache
         echo
-        apt-cache search --names-only "${cache}.*" | awk '{print $1}'
+        apt-cache search --names-only "$cache.*" | awk '{print $1}'
     fi
 }
 
@@ -390,14 +390,14 @@ new_key() {
     ssh-keygen -q -b "$bits" -t "$type" -N "$pass" -C "$comment" -f "$name"
 
     chmod 600 "$PWD/$name"
-    chmod 644 "$PWD/${name}.pub"
+    chmod 644 "$PWD/$name.pub"
     clear
 
     printf "%s\n\\n" "File: $PWD/$name"
     cat "$PWD/$name"
 
-    printf "\n%s\n\\n" "File: $PWD/${name}.pub"
-    cat "$PWD/${name}.pub"
+    printf "\n%s\n\\n" "File: $PWD/$name.pub"
+    cat "$PWD/$name.pub"
     echo
 }
 
@@ -530,7 +530,7 @@ im50() {
     local pic
 
     for pic in *.jpg; do
-        convert "$pic" -monitor -colorspace sRGB -filter LanczosRadius -distort Resize 50% -colorspace sRGB "${pic%.jpg}-50.jpg"
+        convert "$pic" -monitor -colorspace sRGB -filter LanczosRadius -distort Resize 50% -colorspace sRGB "$pic%.jpg-50.jpg"
     done
 }
 
@@ -604,7 +604,7 @@ dlfs() {
     for file in ${scripts[@]}; do
         chown -R "$USER":"$USER" "$file"
         chmod -R 744 "$PWD" "$file"
-        [[ "$file" == "build-all-git-safer" || "$file" == "build-all-gnu-safer" ]] && mv "$file" "${file%-safer}"
+        [[ "$file" == "build-all-git-safer" || "$file" == "build-all-gnu-safer" ]] && mv "$file" "$file%-safer"
         [[ -n "favorite-installer-scripts.txt" ]] && sudo rm "favorite-installer-scripts.txt"
     done
 
@@ -656,7 +656,7 @@ list_ppa() {
             local host=$(echo "$entry" | cut -d/ -f3)
             local user=$(echo "$entry" | cut -d/ -f4)
             local ppa=$(echo "$entry" | cut -d/ -f5)
-            #echo sudo apt-add-repository ppa:$USER/${ppa}
+            #echo sudo apt-add-repository ppa:$USER/$ppa
             if [[ "ppa.launchpad.net" = "$host" ]]; then
                 echo sudo apt-add-repository ppa:"$USER/$ppa"
             else
@@ -891,7 +891,7 @@ wcache() {
     echo
     read -p "Enter the drive id to turn off write caching (/dev/sdX w/o /dev/): " choice
 
-    sudo hdparm -W 0 /dev/"${choice}"
+    sudo hdparm -W 0 /dev/"$choice"
 }
 
 rmd() {
@@ -923,7 +923,7 @@ rmf() {
 
 ## LIST INSTALLED PACKAGES BY ORDER OF IMPORTANCE
 list_pkgs() {
-    dpkg-query -Wf '${Package;-40}${Priority}\n' | sort -b -k2,2 -k1,1
+    dpkg-query -Wf '$Package;-40$Priority\n' | sort -b -k2,2 -k1,1
 }
 
 ## FIX USER FOLDER PERMISSIONS up = user permissions
@@ -1006,7 +1006,7 @@ gcc_native() {
     echo "Checking GCC version..."
     gcc --version
 
-    echo "Inspecting GCC verbose output for -march=native..."
+    echo "Inspecting GCC verbose output for -pipe -fno-plt -march=native..."
     # Create a temporary empty file
     local temp_source=$(mktemp /tmp/dummy_source.XXXXXX.c)
     trap 'rm -f "$temp_source"' EXIT
@@ -1015,7 +1015,7 @@ gcc_native() {
     echo "" > "$temp_source"
 
     # Using GCC with -v to get verbose information, including the default march
-    gcc -march=native -v -E "$temp_source" 2>&1 | grep -- '-march='
+    gcc -pipe -fno-plt -march=native -v -E "$temp_source" 2>&1 | grep -- '-march='
 }
 
 ## UNINSTALL DEBIAN FILES ##
@@ -1239,7 +1239,7 @@ fsed() {
         rtext="$2"
     fi
 
-     sudo sed -i "s/${otext}/${rtext}/g" $(find . -maxdepth 1 -type f)
+     sudo sed -i "s/$otext/$rtext/g" $(find . -maxdepth 1 -type f)
 }
 
 ## CMAKE commands
@@ -1291,13 +1291,13 @@ countf() {
     local folder_count
     clear
     folder_count=$(ls -1 | wc -l)
-    printf "%s\\n" "There are ${folder_count} files in this folder"
+    printf "%s\\n" "There are $folder_count files in this folder"
 }
 
 ## RECURSIVELY UNZIP ZIP FILES AND NAME THE OUTPUT FOLDER THE SAME NAME AS THE ZIP FILE
 zipr() {
     clear
-    sudo find . -type f -iname "*.zip" -exec sh -c "unzip -o -d "${0%.*}" "$0"" "{}" \;
+    sudo find . -type f -iname "*.zip" -exec sh -c "unzip -o -d "$0%.*" "$0"" "{}" \;
     sudo find . -type f -iname "*.zip" -exec trash-put "{}" \;
 }
 
@@ -1371,10 +1371,10 @@ sc() {
     for file in ${files[@]}; do
         box_out_banner() {
             input_char=$(echo "$@" | wc -c)
-            line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+            line=$(for i in $(seq 0 $input_char); do printf "-"; done)
             tput bold
             line="$(tput setaf 3)$line"
-            space=${line//-/ }
+            space=$line//-/ 
             echo " $line"
             printf "|" ; echo -n "$space" ; printf "%s\\n" "|";
             printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\\n" " |";
@@ -1473,7 +1473,7 @@ show_rpath() {
     fi
 
     clear
-    sudo chrpath -l "$(type -p ${find_rpath})"
+    sudo chrpath -l "$(type -p $find_rpath)"
 }
 
 ######################################
@@ -1528,10 +1528,10 @@ bvar() {
         fname_tmp="$fname"
     fi
 
-    fext="${fname#*.}"
+    fext="$fname#*."
     if [[ -f "$fname" ]]; then
         fname+=".txt"
-        mv "${fname_tmp}" "$fname"
+        mv "$fname_tmp" "$fname"
     fi
 
     cat < "$fname" | sed -e "s/\(\$\)\([[A-Za-z0-9\_]]*\)/\1{\2}/g" -e "s/\(\$\)\({}\)/\1/g" -e "s/\(\$\)\({}\)\({\)/\1\3/g"
@@ -1542,20 +1542,20 @@ bvar() {
         "[[2]] Exit"
     read -p "Your choices are ( 1 or 2): " choice
     clear
-    case "${choice}" in
+    case "$choice" in
         1)
                 sed -i -e "s/\(\$\)\([[A-Za-z0-9\_]]*\)/\1{\2}/g" -i -e "s/\(\$\)\({}\)/\1/g" -i -e "s/\(\$\)\({}\)\({\)/\1\3/g" "$fname"
-                mv "$fname" "${fname_tmp}"
+                mv "$fname" "$fname_tmp"
                 clear
-                cat < "${fname_tmp}"
+                cat < "$fname_tmp"
                 ;;
         2)
-                mv "$fname" "${fname_tmp}"
+                mv "$fname" "$fname_tmp"
                 return 0
                 ;;
         *)
                 unset choice
-                bvar "${fname_tmp}"
+                bvar "$fname_tmp"
                 ;;
     esac
 }
@@ -1597,7 +1597,7 @@ drp() {
     read -p "Your choices are (1 to 4): " choice
     clear
 
-    case "${choice}" in
+    case "$choice" in
         1)      restart_policy="always" ;;
         2)      restart_policy="unless-stopped" ;;
         3)      restart_policy="on-failure" ;;
@@ -1609,7 +1609,7 @@ drp() {
                 ;;
     esac
 
-    docker update --restart="${restart_policy}"
+    docker update --restart="$restart_policy"
 }
 
 rm_curly() {
@@ -1617,7 +1617,7 @@ rm_curly() {
     # FUNCTION TO TRANSFORM THE STRING
     transform_string() {
         content=$(cat "$1")
-        echo "${content//\$\{/\$}" | sed "s/\}//g"
+        echo "$content//\$\{/\$" | sed "s/\}//g"
     }
 
     # LOOP OVER EACH ARGUMENT
@@ -1706,19 +1706,19 @@ check_port() {
         if [ -n "$pid" ] && [ -n "$name" ]; then
             process_found=true
             # Ensure protocol is only listed once per process
-            [[ "${pid_protocol_map[$pid,$name]}" != *"$protocol"* ]] && pid_protocol_map["$pid,$name"]+="$protocol "
+            [[ "$pid_protocol_map[$pid,$name]" != *"$protocol"* ]] && pid_protocol_map["$pid,$name"]+="$protocol "
         fi
     done < <(sudo lsof -i :"$port" -nP | grep -v "COMMAND")
 
     # Process information
     for key in "${!pid_protocol_map[@]}"; do
         IFS=',' read -r pid name <<< "$key"
-        protocol=${pid_protocol_map[$key]}
+        protocol=$pid_protocol_map[$key]
         # Removing trailing space
-        protocol="${protocol% }"
+        protocol="$protocol% "
 
         # Display process and protocol information
-        echo -e "Process: $name (PID: $pid) using ${protocol// /, }"
+        echo -e "Process: $name (PID: $pid) using $protocol// /, "
 
         if [[ $protocol == *"TCP"* && $protocol == *"UDP"* ]]; then
             echo -e "\\nBoth the TCP and UDP protocols are being used by the same process.\\n"
@@ -1770,17 +1770,17 @@ venv() {
     # Go into a folder containing source code and call venv to set up a python virtual environment.
     # Check if already activated
     if [[ "$VIRTUAL_ENV" != "" ]]; then
-        echo -e "\\n${YELLOW}Deactivating current virtual environment...${NC}\\n"
+        echo -e "\\n$YELLOWDeactivating current virtual environment...$NC\\n"
         deactivate
         return 0
     fi
     
     # Check if the venv directory exists
     if [[ -d "venv" ]]; then
-        echo -e "\\n${YELLOW}Activating virtual environment...${NC}\\n"
+        echo -e "\\n$YELLOWActivating virtual environment...$NC\\n"
         . venv/bin/activate
     else
-        echo -e "\\n${YELLOW}Creating and activating virtual environment...${NC}\\n"
+        echo -e "\\n$YELLOWCreating and activating virtual environment...$NC\\n"
         python3 -m venv venv
         . venv/bin/activate
     fi

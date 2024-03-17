@@ -2,8 +2,8 @@
 
 clear
 
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+if [ "$EUID" -eq '0' ]; then
+    echo "You must run this script without root or sudo."
     exit 1
 fi
 
@@ -11,7 +11,7 @@ fi
 # CHANGE THE WORKING DIRECTORY TO THE NAUTILUS SCRIPTS DIRECTORY
 #
 
-cd "${HOME}/.local/share/nautilus/scripts" || exit 1
+cd "$HOME/.local/share/nautilus/scripts" || exit 1
 
 #
 # DELETE ANY FOUND SCRIPTS
@@ -24,7 +24,7 @@ printf "%s\n\n%s\n%s\n\n" \
 read -p 'Your choices are (1 or 2): ' choice
 clear
 
-case "${choice}" in
+case "$choice" in
     1)    sudo rm *;
     2)    clear;
     *)
@@ -51,7 +51,7 @@ EOF
 cat > 'Empty Trash' <<'EOF'
 #!/usr/bin/env bash
 clear
-pushd "${HOME}"/.local/share/Trash/files || exit 1
+pushd "$HOME"/.local/share/Trash/files || exit 1
 sudo rm -fr *
 popd
 clear
@@ -81,7 +81,7 @@ else
 fi
 fpath="$PWD/$1"
 fname="$(basename "$fpath")"
-fext="${fname##*.}"
+fext="$fname##*."
 case "$fext" in
     sh)             tilix -w "$PWD" -e bash "$fname";;
     bak|log|txt)    tilix -w "$PWD" -e $editor "$fname";;

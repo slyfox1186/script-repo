@@ -1,17 +1,17 @@
-#!/usr/bin/env bash
-# shellcheck disable=SC2066,SC2068,SC2086,SC2162
+#!/Usr/bin/env bash
+# Shellcheck disable=sc2066,sc2068,sc2086,sc2162
 
-# SET THE PATH VARIABLE
+# Set the path variable
 if [ -d "$HOME/.local/bin" ]; then
     export PATH="$PATH:$HOME/.local/bin"
 fi
 
-# CREATE THE OUTPUT DIRECTORIES
+# Create the output directories
 if [ ! -d completed ] || [ ! -d original ]; then
     mkdir completed original
 fi
 
-# INSTALLL THE REQUIRED APT PACKAGES
+# Installl the required apt packages
 pkgs=(
     bc ffmpegthumbnailer ffmpegthumbs libffmpegthumbnailer4v5
     libsox-dev python3-pip sox trash-cli
@@ -21,7 +21,7 @@ missing_pkgs=""
 for pkg in ${pkgs[@]}
 do
     missing_pkg="$(sudo dpkg -l | grep -o "$pkg")"
-    if [ -z "${missing_pkg}" ]; then
+    if [ -z "$missing_pkg" ]; then
         missing_pkgs+=" $pkg"
     fi
 done
@@ -37,7 +37,7 @@ else
     printf "%s\n\n" "The required APT packages are already installed."
 fi
 
-# INSTALL THE REQUIRED PIP PACKAGES
+# Install the required pip packages
 pip_dir="$(mktemp -d)"
 echo "ffpb" > "$pip_dir"/requirements.txt
 echo "google_speech" >> "$pip_dir"/requirements.txt
@@ -47,7 +47,7 @@ if ! pip install --user -r "$pip_dir"/requirements.txt &>/dev/null; then
 fi
 sudo rm -fr "$pip_dir"
 
-# DELETE ANY FILES FROM PREVIOUS RUNS
+# Delete any files from previous runs
 del_this="$(du -ah --max-depth=1 | grep -Eo "[\/].*\(x265\)\.m(p4|kv)$" | grep -Eo "[A-Za-z0-9].*\(x265\)\.m(p4|kv)$")"
 
 if [ -n "$del_this" ]; then
@@ -70,7 +70,7 @@ if [ -n "$del_this" ]; then
     esac
 fi
 
-# MAKE SURE THERE ARE VIDEOS AVAILABLE TO CONVERT
+# Make sure there are videos available to convert
 vid_test="$(find ./ -maxdepth 1 -type f \( -iname \*.mp4 -o -iname \*.mkv \) | xargs -0n1 | head -n1)"
 
 if [ -z "$vid_test" ]; then
@@ -79,7 +79,7 @@ if [ -z "$vid_test" ]; then
     exit 0
 fi
 
-# CREATE A TEMPORARY OUTPUT FOLDER IN THE /TMP DIRECTORY
+# Create a temporary output folder in the /tmp directory
 ff_dir="$(mktemp -d)"
 
 for vid in *.{mp4,mkv}
@@ -89,31 +89,31 @@ do
         exit 0
     fi
 
-    # STORES THE CURRENT VIDEO WIDTH, ASPECT RATIO, PROFILE, BIT RATE, AND TOTAL DURATION IN VARIABLES FOR USE LATER IN THE FFMPEG COMMAND LINE
+# Stores the current video width, aspect ratio, profile, bit rate, and total duration in variables for use later in the ffmpeg command line
     aspect_ratio="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 -pretty "$vid" 2>/dev/null)"
     file_length="$(ffprobe -hide_banner -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$vid" 2>/dev/null)"
     max_rate="$(ffprobe -hide_banner -show_entries format=bit_rate -of default=nk=1:nw=1 -pretty "$vid" 2>/dev/null)"
     file_height="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 -pretty "$vid" 2>/dev/null)"
     file_width="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 -pretty "$vid" 2>/dev/null)"
 
-    # MODIFY VARS TO GET FILE INPUT AND OUTPUT NAMES
+# Modify vars to get file input and output names
     file_in="$vid"
-    fext="${file_in#*.}"
-    file_out="$ff_dir/${file_in%.*} (x265).${fext}"
+    fext="$file_in#*."
+    file_out="$ff_dir/$file_in%.* (x265).$fext"
 
-    # TRIM THE STRINGS
-    trim="${max_rate::-11}"
+# Trim the strings
+    trim="$max_rate::-11"
 
-    # GETS THE INPUT VIDEOS MAX DATARATE AND APPLIES LOGIC TO DETERMINE bitrate, bufsize, AND MAXRATE VARIABLES
+# Gets the input videos max datarate and applies logic to determine bitrate, bufsize, and maxrate variables
     trim="$(bc <<< "scale=2 ; $trim * 1000")"
     br="$(bc <<< "scale=2 ; $trim / 2")"
-    bitrate="${br::-3}"
+    bitrate="$br::-3"
     maxrate="$(( bitrate * 2 ))"
     bs="$(bc <<< "scale=2 ; $br * 2")"
-    bufsize="${bs::-3}"
-    length="$(( ${file_length::-7} / 60 ))"
+    bufsize="$bs::-3"
+    length="$(( $file_length::-7 / 60 ))"
 
-    # PRINT THE VIDEO STATS IN THE TERMINAL
+# Print the video stats in the terminal
     clear
     cat <<EOF
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -124,18 +124,18 @@ Input File:      $file_in
 Output File:     $file_out
 
 Aspect Ratio:    $aspect_ratio
-Dimensions:      ${file_width}x$file_height
+Dimensions:      $file_widthx$file_height
 
-Maxrate:         ${maxrate}k
-Bufsize:         ${bufsize}k
-Bitrate:         ${bitrate}k
+Maxrate:         $maxratek
+Bufsize:         $bufsizek
+Bitrate:         $bitratek
 
-Length:          ${length} mins
+Length:          $length mins
 
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 EOF
 
-    # EXECUTE FFPB
+# Execute ffpb
     echo
     if ffpb -y \
             -vsync 0 \
@@ -148,9 +148,9 @@ EOF
             -pix_fmt p010le \
             -rc:v vbr \
             -tune hq \
-            -b:v "${bitrate}k" \
-            -bufsize "${bitrate}k" \
-            -maxrate "${maxrate}k" \
+            -b:v "$bitratek" \
+            -bufsize "$bitratek" \
+            -maxrate "$maxratek" \
             -bf:v 3 \
             -g 250 \
             -b_ref_mode middle \
@@ -176,5 +176,5 @@ EOF
     clear
 done
 
-# REMOVE THE TEMPORARY DIRECTORY
+# Remove the temporary directory
 sudo rm -fr "$ff_dir"

@@ -1,8 +1,8 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
 ##################################################################################################################################
 ##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-boost
+##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/github%20projects/build-boost
 ##
 ##  Purpose: build libboost
 ##
@@ -14,14 +14,12 @@
 
 clear
 
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+if [ "$EUID" -eq '0' ]; then
+    echo "You must run this script without root or sudo."
     exit 1
 fi
 
-#
-# SET THE VARIABLES
-#
+# Set the variables
 
 script_ver=1.0
 archive_dir=b2-git
@@ -32,39 +30,31 @@ user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 web_repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
-    "libboost build script - v${script_ver}" \
+    "libboost build script - v$script_ver" \
     '==============================================='
 
-#
-# CREATE OUTPUT DIRECTORY
-#
+# Create output directory
 
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-#
-# SET THE C + CPP COMPILERS
-#
+# Set the c + cpp compilers
 
 export CC=gcc CXX=g++
 
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
+# Set compiler optimization flags
 
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 
-#
-# SET THE PATH VARIABLE
-#
+# Set the path variable
 
 PATH="\
 /usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
+$HOME/perl5/bin:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/cuda/bin:\
 /usr/local/x86_64-linux-gnu/bin:\
@@ -96,28 +86,23 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-#
-# CREATE FUNCTIONS
-#
+# Create functions
 
-exit_fn()
-{
+exit_fn() {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         "$web_repo"
     exit 0
 }
 
-fail_fn()
-{
+fail_fn() {
     printf "\n%s\n\n%s\n\n" \
         "$1" \
         "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
-cleanup_fn()
-{
+cleanup_fn() {
     local choice
 
     printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
@@ -128,7 +113,7 @@ cleanup_fn()
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
 
-    case "${choice}" in
+    case "$choice" in
         1)      sudo rm -fr "$cwd";;
         2)      echo;;
         *)
@@ -142,9 +127,7 @@ cleanup_fn()
     esac
 }
 
-#
-# INSTALL REQUIRED APT PACKAGES
-#
+# Install required apt packages
 
 pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache clang cmake
       curl git libclang-dev libtool libtool-bin llvm-dev lzip m4 nasm pkg-config zlib1g-dev yasm)
@@ -152,10 +135,10 @@ pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache
 
 for i in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+    missing_pkg="$(sudo dpkg -l | grep -o "$i")"
 
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+    if [ -z "$missing_pkg" ]; then
+        missing_pkgs+=" $i"
     fi
 done
 
@@ -165,32 +148,28 @@ if [ -n "$missing_pkgs" ]; then
     clear
 fi
 
-#
-# DOWNLOAD THE ARCHIVE FILE
-#
+# Download the archive file
 
 if [ -d "$cwd/$archive_dir" ]; then
     sudo rm -fr "$cwd/$archive_dir"
 fi
 
-git clone "${archive_url}" "$cwd/$archive_dir"
+git clone "$archive_url" "$cwd/$archive_dir"
 mkdir -p "$cwd/$archive_dir/build"
 
-#
-# BUILD PROGRAM FROM SOURCE
-#
+# Build program from source
 
 clear
 
 cd "$cwd/$archive_dir" || exit 1
 ./bootstrap.sh
 if ! sudo ./b2 install --prefix="$install_dir"; then
-    fail_fn "Failed to execute: ./b2 install --prefix=$install_dir:Line ${LINENO}"
+    fail_fn "Failed to execute: ./b2 install --prefix=$install_dir:Line $LINENO"
     exit 1
 fi
 
-# PROMPT USER TO CLEAN UP FILES
+# Prompt user to clean up files
 cleanup_fn
 
-# SHOW EXIT MESSAGE
+# Show exit message
 exit_fn

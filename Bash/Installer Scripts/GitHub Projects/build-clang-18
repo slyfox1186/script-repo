@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 #!/usr/bin/env bash
 # shellcheck disable=SC2162,SC2317
 
@@ -5,6 +6,15 @@
 ##  Purpose: Build LLVM Clang-18 with GOLD enabled
 ##  Updated: 03.16.24
 ##  Script version: 1.1
+=======
+#!/Usr/bin/env bash
+# Purpose: build llvm-18 for all linux versions
+
+# Variables
+LLVM_VERSION="llvmorg-18.1.0-rc3"
+CFLAGS="-g -O3 -pipe -fno-plt -march=native"
+CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
+>>>>>>> Stashed changes
 
 log() {
     echo "[LOG] $1"

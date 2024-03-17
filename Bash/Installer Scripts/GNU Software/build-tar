@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
 # Ensure the script is run as root
 if [[ $EUID -ne 0 ]]; then
@@ -13,11 +13,11 @@ gnu_ftp="https://ftp.gnu.org/gnu/tar/"
 declare -A colors=( [green]="\e[32m" [red]="\e[31m" [yellow]="\e[33m" [reset]="\e[0m" )
 
 print_color() {
-    echo -e "${colors[$1]}$2${colors[reset]}"
+    echo -e "$colors[$1]$2$colors[reset]"
 }
 
 print_banner() {
-    print_color green "Tar Install script - v${script_ver}"
+    print_color green "Tar Install script - v$script_ver"
     echo "============================================"
 }
 
@@ -71,8 +71,8 @@ build_and_install() {
                      --enable-gcc-warnings=no \
                      --with-libiconv-prefix=/usr/local \
                      --with-libintl-prefix=/usr \
-                     CFLAGS="-g -O3 -pipe -march=native" \
-                     CXXFLAGS="-g -O3 -pipe -march=native"
+                     CFLAGS="-g -O3 -pipe -fno-plt -march=native" \
+                     CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
     make "-j$(nproc --all)"
     make install
     print_color green "Installation completed successfully."
@@ -100,7 +100,7 @@ main() {
     download_and_extract
     build_and_install
     link_tar
-    # cleanup
+# Cleanup
 }
 
 main "$@"

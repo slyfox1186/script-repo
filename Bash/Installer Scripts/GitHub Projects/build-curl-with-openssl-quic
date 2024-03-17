@@ -1,13 +1,13 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
 #################################################################################################################################
 ##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/Installer%20Scripts/GNU%20Software/build-curl
+##  Github script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/installer%20scripts/gnu%20software/build-curl
 ##
-##  Purpose: Build cURL with OpenSSL QUIC enabled to support experimental HTTP3.
+##  Purpose: build curl with openssl quic enabled to support experimental http3.
 ##
-##  Important Info: This will install a custom version of OpenSSL that has been forked from the official branch and enables
-##                  QUIC protocol. So if you do not want to mess with installing OpenSSL then do not run this script!
+##  Important info: this will install a custom version of openssl that has been forked from the official branch and enables
+##                  Quic protocol. so if you do not want to mess with installing openssl then do not run this script!
 ##
 ##  Updated: 12.03.23
 ##
@@ -17,66 +17,58 @@
 
 clear
 
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+if [ "$EUID" -eq '0' ]; then
+    echo "You must run this script without root or sudo."
     exit 1
 fi
 
-#
-# SET THE VARIABLES
-#
+# Set the variables
 
 script_ver=1.0
 curl_ver=8.4.0
-archive_dir=${curl_ver}
-archive_dir1=${curl_ver//./_}
-archive_url=https://github.com/curl/curl/releases/download/curl-${archive_dir1}/curl-$archive_dir.tar.xz
-archive_ext="${archive_url//*.}"
-archive_name="$archive_dir.tar.${archive_ext}"
+archive_dir=$curl_ver
+archive_dir1=$curl_ver//./_
+archive_url=https://github.com/curl/curl/releases/download/curl-$archive_dir1/curl-$archive_dir.tar.xz
+archive_ext="$archive_url//*."
+archive_name="$archive_dir.tar.$archive_ext"
 cwd="$PWD"/curl-build-script
 install_dir=/usr/local
 cert_dir=/etc/ssl/certs
 pem_file=cacert.pem
-pem_out="${cert_dir}/$pem_file"
+pem_out="$cert_dir/$pem_file"
 pc_type=$(gcc -dumpmachine)
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
-printf "%s\n%s\n\n"                      \
-    "cURL Build Script - v${script_ver}" \
+printf "%s\n%s\n\n" \
+    "cURL Build Script - v$script_ver" \
     '==============================================='
 
-#
-# CREATE OUTPUT DIRECTORY
-#
+# Create output directory
 
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-#
-# SET THE C/CXX COMPILERS & SET THE COMPILER OPTIMIZATION FLAGS
-#
+# Set the c/cxx compilers & set the compiler optimization flags
 
 CC=gcc
 CXX=g++
-CFLAGS='-g -O3 -pipe -march=native -I/usr/local/include -I/usr/include'
-CXXFLAGS='-g -O3 -pipe -march=native'
+CFLAGS='-g -O3 -pipe -fno-plt -march=native -I/usr/local/include -I/usr/include'
+CXXFLAGS='-g -O3 -pipe -fno-plt -march=native'
 CPPFLAGS='-I/usr/include/libxml2 -I/usr/local/include/nghttp2 -I/usr/local/include/nghttp3'
 LDFLAGS='-Wl,-rpath,/usr/local/lib64'
 LIBS='-ldl -pthread -L/usr/lib/x86_64-linux-gnu -lnghttp3 -lcrypto -lssl -L/usr/local/lib -ljemalloc'
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS LIBS
 
-#
-# SET THE PATH VARIABLE
-#
+# Set the path variable
 
 PATH="\
 /usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
+$HOME/perl5/bin:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/cuda/bin:\
 /usr/local/x86_64-linux-gnu/bin:\
@@ -91,9 +83,7 @@ ${HOME}/.local/bin:\
 "
 export PATH
 
-#
-# SET THE PKG_CONFIG_PATH VARIABLE
-#
+# Set the pkg_config_path variable
 
 
 PKG_CONFIG_PATH="\
@@ -111,40 +101,35 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-#
-# CREATE FUNCTIONS
-#
+# Create functions
 
-exit_fn()
-{
-    printf "\n%s\n\n%s\n\n"                                       \
+exit_fn() {
+    printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         "$web_repo"
     exit 0
 }
 
-fail_fn()
-{
+fail_fn() {
     printf "\n%s\n\n%s\n\n" \
-        "$1"              \
+        "$1" \
         "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
-cleanup_fn()
-{
+cleanup_fn() {
     local choice
 
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n"                  \
+    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
         '============================================' \
         '  Do you want to clean up the build files?  ' \
         '============================================' \
-        '[1] Yes'                                      \
+        '[1] Yes' \
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
     clear
 
-    case "${choice}" in
+    case "$choice" in
         1)      sudo rm -fr "$cwd";;
         2)      return 0;;
         *)
@@ -155,9 +140,7 @@ cleanup_fn()
     esac
 }
 
-#
-# INSTALL REQUIRED APT PACKAGES
-#
+# Install required apt packages
 
 pkgs=(apt-transport-https apt-utils autoconf autoconf-archive autogen automake autopoint autotools-dev
       build-essential bzip2 ca-certificates ccache clang cmake curl gfortran git google-perftools graphviz
@@ -173,10 +156,10 @@ pkgs=(apt-transport-https apt-utils autoconf autoconf-archive autogen automake a
 
 for pkg in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
+    missing_pkg="$(sudo dpkg -l | grep -o "$pkg")"
 
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${pkg}"
+    if [ -z "$missing_pkg" ]; then
+        missing_pkgs+=" $pkg"
     fi
 done
 
@@ -186,101 +169,85 @@ if [ -n "$missing_pkgs" ]; then
     clear
 fi
 
-#
-# CREATE OUTPUT DIRECTORY OPENSSL-QUIC
-#
+# Create output directory openssl-quic
 
 if [ -d "$cwd/openssl-quic-3.1.4" ]; then
     sudo rm -fr "$cwd/openssl-quic-3.1.4"
 fi
 mkdir -p "$cwd/openssl-quic-3.1.4"
 
-#
-# DOWNLOAD THE ARCHIVE FILE OPENSSL-QUIC
-#
+# Download the archive file openssl-quic
 
 if [ ! -f "$cwd/openssl-quic-3.1.4.tar.gz" ]; then
     curl -A "$user_agent" -Lso "$cwd/openssl-quic-3.1.4.tar.gz" 'https://github.com/quictls/openssl/archive/refs/tags/openssl-3.1.4-quic1.tar.gz'
 fi
 
-#
-# EXTRACT THE ARCHIVE FILE OPENSSL-QUIC
-#
+# Extract the archive file openssl-quic
 
 if ! tar -zxf "$cwd/openssl-quic-3.1.4.tar.gz" -C "$cwd/openssl-quic-3.1.4" --strip-components 1; then
     fail_fn "Failed to extract: $cwd/openssl-quic-3.1.4.tar.gz"
 fi
 
-#
-# INSTALL OPENSSL-QUIC
-#
+# Install openssl-quic
 
-printf "%s\n%s\n\n"                    \
+printf "%s\n%s\n\n" \
     "Installing OpenSSL-QUIC - v3.1.4" \
     '==============================================='
 
 cd "$cwd/openssl-quic-3.1.4" || exit 1
-./config linux-x86_64                              \
-         --prefix="$install_dir"                 \
-         --openssldir="$install_dir"             \
-         -Wl,-rpath="$install_dir"/lib64         \
-         -Wl,--enable-new-dtags                    \
-         -DOPENSSL_USE_IPV6=0                      \
-         --release                                 \
-         --with-zlib-include=/usr/include          \
+./config linux-x86_64 \
+         --prefix="$install_dir" \
+         --openssldir="$install_dir" \
+         -Wl,-rpath="$install_dir"/lib64 \
+         -Wl,--enable-new-dtags \
+         -DOPENSSL_USE_IPV6=0 \
+         --release \
+         --with-zlib-include=/usr/include \
          --with-zlib-lib=/usr/lib/x86_64-linux-gnu \
-         enable-ec_nistp_64_gcc_128                \
-         enable-egd                                \
-         enable-fips                               \
-         enable-rc5                                \
-         enable-sctp                               \
-         enable-shared                             \
-         enable-threads                            \
-         enable-zlib                               \
+         enable-ec_nistp_64_gcc_128 \
+         enable-egd \
+         enable-fips \
+         enable-rc5 \
+         enable-sctp \
+         enable-shared \
+         enable-threads \
+         enable-zlib \
          no-tests
 sed -i 's/linux-x86_64/linux-x86_64-rpath/g' 'Makefile'
 echo
 if ! make "-j$(nproc --all)"; then
-    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
+    fail_fn "Failed to execute: make -j$(nproc --all). Line: $LINENO"
 fi
 echo
 if ! sudo make install_sw; then
-    fail_fn "Failed to execute: sudo make install_sw. Line: ${LINENO}"
+    fail_fn "Failed to execute: sudo make install_sw. Line: $LINENO"
 fi
 
-# UPDATE LDCONFIG LIBS FOR OPENSSL
+# Update ldconfig libs for openssl
 sudo ldconfig '/usr/local/lib64'
 
-#
-# CREATE OUTPUT DIRECTORY JEMALLOC
-#
+# Create output directory jemalloc
 
 if [ -d "$cwd/jemalloc-5.3.0" ]; then
     sudo rm -fr "$cwd/jemalloc-5.3.0"
 fi
 mkdir -p "$cwd/jemalloc-5.3.0/build"
 
-#
-# DOWNLOAD THE ARCHIVE FILE JEMALLOC
-#
+# Download the archive file jemalloc
 
 if [ ! -f "$cwd/jemalloc-5.3.0.tar.gz" ]; then
     curl -A "$user_agent" -Lso "$cwd/jemalloc-5.3.0.tar.gz" 'https://github.com/jemalloc/jemalloc/archive/refs/tags/5.3.0.tar.gz'
 fi
 
-#
-# EXTRACT THE ARCHIVE FILE JEMALLOC
-#
+# Extract the archive file jemalloc
 
 if ! tar -zxf "$cwd/jemalloc-5.3.0.tar.gz" -C "$cwd/jemalloc-5.3.0" --strip-components 1; then
     fail_fn "Failed to extract: $cwd/jemalloc-5.3.0.tar.gz"
 fi
 
-#
-# INSTALL JEMALLOC
-#
+# Install jemalloc
 
-printf "\n%s\n%s\n\n"              \
+printf "\n%s\n%s\n\n" \
     "Installing Jemalloc - v5.3.0" \
     '==============================================='
 
@@ -288,27 +255,25 @@ cd "$cwd/jemalloc-5.3.0" || exit 1
 ./autogen.sh
 cd build || exit 1
 ../configure --prefix="$install_dir" \
-             --disable-debug           \
-             --disable-doc             \
-             --disable-fill            \
-             --disable-log             \
-             --disable-prof            \
-             --disable-stats           \
-             --enable-autogen          \
-             --enable-static           \
+             --disable-debug \
+             --disable-doc \
+             --disable-fill \
+             --disable-log \
+             --disable-prof \
+             --disable-stats \
+             --enable-autogen \
+             --enable-static \
              --enable-xmalloc
 echo
 if ! make "-j$(nproc --all)"; then
-    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
+    fail_fn "Failed to execute: make -j$(nproc --all). Line: $LINENO"
 fi
 echo
 if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
+    fail_fn "Failed to execute: sudo make install. Line: $LINENO"
 fi
 
-#
-# CREATE OUTPUT DIRECTORY HTTP 2/3
-#
+# Create output directory http 2/3
 
 if [ -d "$cwd/ngtcp2-1.58.0" ]; then
     sudo rm -fr "$cwd/ngtcp2-1.58.0"
@@ -320,9 +285,7 @@ if [ -d "$cwd/nghttp3-1.1.0" ]; then
 fi
 mkdir -p "$cwd/nghttp3-1.1.0"
 
-#
-# DOWNLOAD THE ARCHIVE FILE HTTP 2/3
-#
+# Download the archive file http 2/3
 
 if [ ! -f "$cwd/nghttp3-1.1.0.tar.xz" ]; then
     curl -A "$user_agent" -Lso "$cwd/nghttp3-1.1.0.tar.xz" 'https://github.com/ngtcp2/nghttp3/releases/download/v1.1.0/nghttp3-1.1.0.tar.xz'
@@ -331,9 +294,7 @@ if [ ! -f "$cwd/ngtcp2-1.58.0.tar.xz" ]; then
     curl -A "$user_agent" -Lso "$cwd/ngtcp2-1.58.0.tar.xz" 'https://github.com/nghttp2/nghttp2/releases/download/v1.58.0/nghttp2-1.58.0.tar.xz'
 fi
 
-#
-# EXTRACT THE ARCHIVE FILE HTTP 2/3
-#
+# Extract the archive file http 2/3
 
 if ! tar -xf "$cwd/ngtcp2-1.58.0.tar.xz" -C "$cwd/ngtcp2-1.58.0" --strip-components 1; then
     fail_fn "Failed to extract: $cwd/ngtcp2-1.58.0.tar.xz"
@@ -342,218 +303,188 @@ if ! tar -xf "$cwd/nghttp3-1.1.0.tar.xz" -C "$cwd/nghttp3-1.1.0" --strip-compone
     fail_fn "Failed to extract: $cwd/nghttp3-1.1.0.tar.xz"
 fi
 
-#
-# INSTALL HTTP3
-#
+# Install http3
 
-printf "\n%s\n%s\n\n"           \
+printf "\n%s\n%s\n\n" \
     "Installing HTTP3 - v1.1.0" \
     '==============================================='
 
 cd "$cwd/nghttp3-1.1.0" || exit 1
 autoreconf -fi
-./configure --prefix="$install_dir"            \
-            --{build,host,target}="${pc_type}"   \
-            --enable-lib-only                    \
+./configure --prefix="$install_dir" \
+            --{build,host,target}="$pc_type" \
+            --enable-lib-only \
             --with-pic
 echo
 if ! make "-j$(nproc --all)"; then
-    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
+    fail_fn "Failed to execute: make -j$(nproc --all). Line: $LINENO"
 fi
 echo
 if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
+    fail_fn "Failed to execute: sudo make install. Line: $LINENO"
 fi
 
-#
-# CREATE OUTPUT DIRECTORY NGTCP2
-#
+# Create output directory ngtcp2
 
 if [ -d "$cwd/ngtcp2-1.1.0" ]; then
     sudo rm -fr "$cwd/ngtcp2-1.1.0"
 fi
 mkdir -p "$cwd/ngtcp2-1.1.0/build"
 
-#
-# DOWNLOAD THE ARCHIVE FILE NGTCP2
-#
+# Download the archive file ngtcp2
 
 if [ ! -f "$cwd/ngtcp2-1.1.0.tar.gz" ]; then
     curl -A "$user_agent" -Lso "$cwd/ngtcp2-1.1.0.tar.gz" 'https://github.com/ngtcp2/ngtcp2/releases/download/v1.1.0/ngtcp2-1.1.0.tar.xz'
 fi
 
-#
-# EXTRACT THE ARCHIVE FILE NGTCP2
-#
+# Extract the archive file ngtcp2
 
 if ! tar -xf "$cwd/ngtcp2-1.1.0.tar.gz" -C "$cwd/ngtcp2-1.1.0" --strip-components 1; then
     fail_fn "Failed to extract: $cwd/ngtcp2-1.1.0.tar.gz"
 fi
 
-#
-# INSTALL NGTCP2
-#
+# Install ngtcp2
 
-printf "\n%s\n%s\n\n"            \
+printf "\n%s\n%s\n\n" \
     "Installing ngtcp2 - v1.1.0" \
     '==============================================='
 
 cd "$cwd/ngtcp2-1.1.0" || exit 1
 ./autogen.sh
 cd build || exit 1
-../configure --prefix="$install_dir"         \
-            --{build,host,target}="${pc_type}" \
-            --enable-lib-only                  \
-            --with-pic                         \
-            --with-jemalloc                    \
-            --with-cunit                       \
-            --with-libnghttp3                  \
-            --with-libev                       \
+../configure --prefix="$install_dir" \
+            --{build,host,target}="$pc_type" \
+            --enable-lib-only \
+            --with-pic \
+            --with-jemalloc \
+            --with-cunit \
+            --with-libnghttp3 \
+            --with-libev \
             --with-openssl
 echo
 if ! make "-j$(nproc --all)"; then
-    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
+    fail_fn "Failed to execute: make -j$(nproc --all). Line: $LINENO"
 fi
 echo
 if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
+    fail_fn "Failed to execute: sudo make install. Line: $LINENO"
 fi
 
-#
-# INSTALL HTTP2
-#
+# Install http2
 
-printf "\n%s\n%s\n\n"            \
+printf "\n%s\n%s\n\n" \
     "Installing HTTP2 - v1.58.0" \
     '==============================================='
 
 cd "$cwd/ngtcp2-1.58.0" || exit 1
 autoreconf -fi
-./configure --prefix="$install_dir"          \
-            --{build,host,target}="${pc_type}" \
-            --disable-examples                 \
-            --enable-http3                     \
-            --enable-lib-only                  \
-            --with-libxml2                     \
-            --with-openssl                     \
-            --with-pic                         \
-            --with-jemalloc                    \
-            --with-libnghttp3                  \
-            --with-libngtcp2                   \
+./configure --prefix="$install_dir" \
+            --{build,host,target}="$pc_type" \
+            --disable-examples \
+            --enable-http3 \
+            --enable-lib-only \
+            --with-libxml2 \
+            --with-openssl \
+            --with-pic \
+            --with-jemalloc \
+            --with-libnghttp3 \
+            --with-libngtcp2 \
             --with-libbpf
 echo
 if ! make "-j$(nproc --all)"; then
-    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
+    fail_fn "Failed to execute: make -j$(nproc --all). Line: $LINENO"
 fi
 echo
 if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
+    fail_fn "Failed to execute: sudo make install. Line: $LINENO"
 fi
 
-#
-# CREATE OUTPUT DIRECTORY C-ARES
-#
+# Create output directory c-ares
 
 if [ -d "$cwd/c-ares-1.23.0" ]; then
     sudo rm -fr "$cwd/c-ares-1.23.0"
 fi
 mkdir -p "$cwd/c-ares-1.23.0/build"
 
-#
-# DOWNLOAD THE ARCHIVE FILE C-ARES
-#
+# Download the archive file c-ares
 
 if [ ! -f "$cwd/c-ares-1.23.0.tar.gz" ]; then
     curl -A "$user_agent" -Lso "$cwd/c-ares-1.23.0.tar.gz" 'https://github.com/c-ares/c-ares/archive/refs/tags/cares-1_23_0.tar.gz'
 fi
 
-#
-# EXTRACT THE ARCHIVE FILE C-ARES
-#
+# Extract the archive file c-ares
 
 if ! tar -zxf "$cwd/c-ares-1.23.0.tar.gz" -C "$cwd/c-ares-1.23.0" --strip-components 1; then
     fail_fn "Failed to extract: $cwd/c-ares-1.23.0.tar.gz"
 fi
 
-#
-# INSTALL C-ARES
-#
+# Install c-ares
 
-printf "\n%s\n%s\n\n"             \
+printf "\n%s\n%s\n\n" \
     "Installing c-ares - v1.23.0" \
     '==============================================='
 
 cd "$cwd/c-ares-1.23.0" || exit 1
 autoreconf -fi
 cd build || exit 1
-../configure --prefix="$install_dir"           \
-                     --{build,host}="${pc_type}" \
-                     --disable-debug             \
-                     --disable-warnings          \
+../configure --prefix="$install_dir" \
+                     --{build,host}="$pc_type" \
+                     --disable-debug \
+                     --disable-warnings \
                      --with-pic
 echo
 if ! make "-j$(nproc --all)"; then
-    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
+    fail_fn "Failed to execute: make -j$(nproc --all). Line: $LINENO"
 fi
 echo
 if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
+    fail_fn "Failed to execute: sudo make install. Line: $LINENO"
 fi
 
-#
-# CREATE OUTPUT DIRECTORY CURL
-#
+# Create output directory curl
 
 if [ -d "$cwd/$archive_dir" ]; then
     sudo rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
-#
-# DOWNLOAD THE ARCHIVE FILE CURL
-#
+# Download the archive file curl
 
-if [ ! -f "$cwd/${archive_name}" ]; then
-    curl -A "$user_agent" -Lso "$cwd/${archive_name}" "${archive_url}"
+if [ ! -f "$cwd/$archive_name" ]; then
+    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
-#
-# EXTRACT THE ARCHIVE FILE CURL
-#
+# Extract the archive file curl
 
-if ! tar -xf "$cwd/${archive_name}" -C "$cwd/$archive_dir" --strip-components 1; then
-    fail_fn "Failed to extract: $cwd/${archive_name}"
+if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
+    fail_fn "Failed to extract: $cwd/$archive_name"
 fi
 
-#
-# INSTALL CA CERTS FROM CURL'S OFFICIAL WEBSITE
-#
+# Install ca certs from curl's official website
 
-printf "\n%s\n%s\n\n"                                               \
+printf "\n%s\n%s\n\n" \
    'Install the latest security certificate from cURL'\''s website' \
    '==================================================================='
 
-# DOWNLOAD THE LATEST CACERT.PEM FILE FROM THE OFFICIAL CURL WEBSITE
+# Download the latest cacert.pem file from the official curl website
 if ! curl -A "$user_agent" -Lso "$cwd"/cacert.pem 'https://curl.se/ca/cacert.pem'; then
-    fail_fn "Failed to download the latest \"cacert.pem\" file. Line: ${LINENO}"
+    fail_fn "Failed to download the latest \"cacert.pem\" file. Line: $LINENO"
 fi
 
-# MOVE THE PEM FILE TO THE NEWLY CREATED CERTS DIRECTORY
-if sudo cp -f "$cwd"/cacert.pem "${cert_dir}"/cacert.pem; then
-    # COPY THE PEM FILE AS A CRT FILE IN THE SPECIAL CA-CERTIFICATES FOLDER SO THE COMMAND WILL FIND AND USE IT WHEN IT IS EXECUTED
-    sudo cp "${cert_dir}"/cacert.pem '/usr/local/share/ca-certificates/curl-cacert.crt'
+# Move the pem file to the newly created certs directory
+if sudo cp -f "$cwd"/cacert.pem "$cert_dir"/cacert.pem; then
+# Copy the pem file as a crt file in the special ca-certificates folder so the command will find and use it when it is executed
+    sudo cp "$cert_dir"/cacert.pem '/usr/local/share/ca-certificates/curl-cacert.crt'
 fi
 
-# UPDATE THE SECURITY CERTS THAT WERE MOVED FROM THE /etc/ssl/certs FOLDER
-cd "${cert_dir}" || exit 1
+# Update the security certs that were moved from the /etc/ssl/certs folder
+cd "$cert_dir" || exit 1
 sudo c_rehash .
 sudo update-ca-certificates
 
-#
-# BUILD CURL FROM SOURCE
-#
+# Build curl from source
 
-printf "\n%s\n%s\n\n"          \
+printf "\n%s\n%s\n\n" \
     "Installing cURL - v8.4.0" \
     '==============================================='
 
@@ -568,27 +499,27 @@ eopts+=('--enable-'{openssl-auto-load-config,optimize,pop3,progress-meter})
 eopts+=('--enable-'{proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static,telnet})
 eopts+=('--enable-'{tftp,threaded-resolver,tls-srp,unix-sockets,websockets})
 wopts=('--with-'{gnutls='/usr/include',libssh2,nghttp2='/usr/local/include',nghttp3='/usr/local/include'})
-wopts+=('--with-'{ca-bundle="${pem_out}",ca-fallback,ca-path="${cert_dir}",secure-transport})
+wopts+=('--with-'{ca-bundle="$pem_out",ca-fallback,ca-path="$cert_dir",secure-transport})
 
 autoreconf -fi
 cd build || exit 1
 ../configure --prefix="$install_dir" \
-            "${dopts[@]}"              \
-            "${eopts[@]}"              \
-            "${wopts[@]}"              \
-            "${csuffix}"
+            "${dopts[@]}" \
+            "${eopts[@]}" \
+            "${wopts[@]}" \
+            "$csuffix"
 if ! make "-j$(nproc --all)"; then
-    fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
+    fail_fn "Failed to execute: make -j$(nproc --all). Line: $LINENO"
     exit 1
 fi
 
 if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install. Line: ${LINENO}"
+    fail_fn "Failed to execute: sudo make install. Line: $LINENO"
     exit 1
 fi
 
-# PROMPT USER TO CLEAN UP FILES
+# Prompt user to clean up files
 cleanup_fn
 
-# SHOW EXIT MESSAGE
+# Show exit message
 exit_fn

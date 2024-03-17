@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 clear
 
 # Verbose logging function
@@ -17,11 +17,11 @@ TIMEZONE="US/Eastern"
 # Disk variables
 log "Setting up disk variables..."
 DISK="/dev/nvmeXn1" # Adjust as necessary
-DISK1="${DISK}p1"
-DISK2="${DISK}p2"
-DISK3="${DISK}p3"
+DISK1="$DISKp1"
+DISK2="$DISKp2"
+DISK3="$DISKp3"
 
-# Start Installation
+# Start installation
 log "Starting installation..."
 loadkeys us # Set keyboard layout
 log "Keyboard layout set."
@@ -31,27 +31,27 @@ log "System clock synchronized."
 # Disk partitioning with fdisk
 log "Partitioning disk $DISK..."
 (
-echo g     # Create a new empty GPT partition table
-echo n     # Add a new partition (EFI)
+echo g     # Create a new empty gpt partition table
+echo n     # Add a new partition (efi)
 echo 1     # Partition number
-echo       # First sector (Accept default: 1)
-echo +550M # Last sector (Accept default, +550M)
+echo       # First sector (accept default: 1)
+echo +550M # Last sector (accept default, +550m)
 echo t     # Change partition type
-echo 1     # Partition type EFI
-echo n     # Add a new partition (SWAP)
+echo 1     # Partition type efi
+echo n     # Add a new partition (swap)
 echo 2     # Partition number
-echo       # First sector (Accept default)
-echo +2G   # Last sector (Accept default, +2G)
+echo       # First sector (accept default)
+echo +2G   # Last sector (accept default, +2g)
 echo t     # Change partition type
 echo 2     # Select partition
-echo 19    # Partition type Linux swap
-echo n     # Add new partition (Linux filesystem)
+echo 19    # Partition type linux swap
+echo n     # Add new partition (linux filesystem)
 echo 3     # Partition number
-echo       # First sector (Accept default)
-echo       # Last sector (Accept default, remaining space)
+echo       # First sector (accept default)
+echo       # Last sector (accept default, remaining space)
 echo t     # Change partition type
 echo 3     # Select partition
-echo 23    # Partition type Linux root (x86_64)
+echo 23    # Partition type linux root (x86_64)
 echo w     # Write changes
 ) | fdisk $DISK
 
@@ -59,7 +59,7 @@ echo w     # Write changes
 log "Waiting for the disk to settle..."
 sleep 5
 
-# Making Filesystems
+# Making filesystems
 log "Creating filesystems..."
 mkfs.fat -F32 $DISK1
 mkswap $DISK2
@@ -113,7 +113,7 @@ echo "" >> /etc/sudoers
 echo "%wheel ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 log "Sudo privileges granted to the wheel group."
 
-# GRUB installation and configuration
+# Grub installation and configuration
 grub-install --target=x86_64-efi --bootloader-id=GRUB --efi-directory=/boot/efi
 grub-mkconfig -o /boot/grub/grub.cfg
 log "GRUB installed."

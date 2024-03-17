@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
 clear
 
@@ -10,7 +10,7 @@ RELEASE_API_URL="https://github.com/$REPO/tags"
 # Fetch the latest release data
 RELEASE_DATA=$(curl -s $RELEASE_API_URL)
 
-# Extract the tag name (version) and tarball URL
+# Extract the tag name (version) and tarball url
 TAG_NAME=$(echo $RELEASE_DATA | grep -oP "href=\"/$REPO/releases/tag/\K[^\"]+" | head -1 | sed 's/v//g')
 TARBALL_URL="https://codeload.github.com/$REPO/tar.gz/refs/tags/v$TAG_NAME"
 
@@ -39,7 +39,7 @@ tar -zxf "$NAME-$TAG_NAME-build-script.tar.gz" -C "$NAME-$TAG_NAME-build-script"
 cd "$NAME-$TAG_NAME-build-script" || exit 1
 
 # Installation commands (modify this according to the actual installation steps)
-# For Python packages, it's often as simple as:
+# For python packages, it's often as simple as:
 if ! python3 setup.py build; then
     printf "%s\n\n" 'Errors: python3 setup.py build'
     exit 1

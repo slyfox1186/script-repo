@@ -1,0 +1,74 @@
+#!/Usr/bin/env bash
+
+# This script builds and installs gnu core utilities from source.
+
+# Function to print messages in color
+print_color() {
+    case $1 in
+        green) echo -e "\033[0;32m$2\033[0m" ;;
+        red) echo -e "\033[0;31m$2\033[0m" ;;
+        *) echo "$2" ;;
+    esac
+}
+
+# Check for root privileges
+if [[ $EUID -ne 0 ]]; then
+    print_color red "This script must be run as root or with sudo."
+    exit 1
+fi
+
+# Function to install dependencies
+install_dependencies() {
+    print_color green "Installing necessary dependencies..."
+    if command -v apt > /dev/null; then
+        apt update
+        apt install -y wget build-essential autoconf autoconf-archive
+    elif command -v yum > /dev/null; then
+        yum install -y wget gcc make
+    else
+        print_color red "Unsupported package manager. Please install dependencies manually."
+        exit 1
+    fi
+}
+
+# Function to download and extract coreutils
+download_coreutils() {
+    print_color green "Downloading GNU Core Utilities..."
+    wget --show-progress -cq https://ftp.gnu.org/gnu/coreutils/coreutils-9.4.tar.xz
+    tar -xf coreutils-9.4.tar.xz
+    cd coreutils-9.4
+}
+
+# Function to configure, compile, and install coreutils
+build_and_install() {
+    print_color green "Running autoreconf..."
+    autoreconf -fi
+    print_color green "Configuring GNU Core Utilities..."
+    ./configure --prefix=/usr/local/coreutils \
+                --{build,host}=x86_64-linux-gnu \
+                --disable-nls \
+                --disable-gcc-warnings \
+                --enable-threads=posix \
+                --with-clang=system \
+                --with-openssl=auto \
+                --with-pic
+    print_color green "Compiling GNU Core Utilities... This may take a while."
+    make "-j$(nproc --all)"
+    print_color green "Installing GNU Core Utilities..."
+    make install
+    print_color green "GNU Core Utilities installed successfully."
+}
+
+# Link the installed binaries (optional)
+link_coretils() {
+    ln -sf /usr/local/coreutils/bin/* /usr/local/bin/
+}
+
+main() {
+    install_dependencies
+    download_coreutils
+    build_and_install
+    link_coretils
+}
+
+main "$@"

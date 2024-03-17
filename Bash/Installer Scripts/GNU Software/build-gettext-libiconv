@@ -1,6 +1,6 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
-# GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-gettext-libiconv
+# Github script: https://github.com/slyfox1186/script-repo/edit/main/bash/installer%20scripts/gnu%20software/build-gettext-libiconv
 # Purpose: build gnu gettext + libiconv
 # Updated: 08.31.23
 # Script version: 1.2
@@ -8,7 +8,7 @@
 set -e
 
 if [ "$EUID" -ne 0 ]; then
-    printf "%s\n\n" 'You must run this script with root/sudo.'
+    echo "You must run this script with root or sudo."
     exit 1
 fi
 
@@ -21,8 +21,8 @@ cwd="$PWD"/gettext-libiconv-build-script
 install_dir=/usr/local
 CC=gcc
 CXX=g++
-CFLAGS="-g -O3 -march=native"
-CXXFLAGS="-g -O3 -march=native"
+CFLAGS="-g -O3 -pipe -fno-plt -march=native"
+CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
 export CC CFLAGS CXX CXXFLAGS
 
 # Enhanced logging and error handling
@@ -39,7 +39,7 @@ error() {
 download_and_extract() {
     local archive_dir=$1
     local archive_url=$2
-    local archive_ext="${archive_url##*.}"
+    local archive_ext="$archive_url##*."
 
     mkdir -p "$cwd/$archive_dir" || error "Failed to create directory $cwd/$archive_dir"
     log "Downloading $archive_url..."

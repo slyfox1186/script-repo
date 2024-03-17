@@ -2,8 +2,8 @@
 
 clear
 
-if [ "${EUID}" -ne '0' ]; then
-    printf "%s\n\n" 'You must run this script with root/sudo.'
+if [ "$EUID" -ne '0' ]; then
+    echo "You must run this script with root or sudo."
     exit 1
 fi
 
@@ -41,7 +41,7 @@ echo 'nameserver 192.168.2.40' > '/etc/resolv.conf'
 # RESTART THE NETWORK SERVICE TO UPDATE THE CHANGES
 if ! sudo /etc/init.d/networking restart; then
     clear
-    printf "%s\n\n" "Failed to execute the command: sudo /etc/init.d/networking restart. Line: ${LINENO}"
+    printf "%s\n\n" "Failed to execute the command: sudo /etc/init.d/networking restart. Line: $LINENO"
     exit 1
 fi
 

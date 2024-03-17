@@ -1,8 +1,8 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
 ####################################################################################################################################################
 ##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/SlyFox1186%20Scripts/install-adobe-sans+pro+serif-fonts.sh
+##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/slyfox1186%20scripts/install-adobe-sans+pro+serif-fonts.sh
 ##
 ##  Purpose: install adobe-sans + adobe-pro fonts system wide
 ##
@@ -14,14 +14,12 @@
 
 clear
 
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+if [ "$EUID" -eq '0' ]; then
+    echo "You must run this script without root or sudo."
     exit 1
 fi
 
-#
-# SET THE VARIABLES
-#
+# Set the variables
 
 script_ver=1.1
 pro_url=https://github.com/adobe-fonts/source-code-pro/archive/refs/tags/2.042R-u/1.062R-i/1.026R-vf.tar.gz
@@ -37,136 +35,117 @@ install_dir_serif=/usr/local/share/fonts/adobe-serif
 user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
-# sudo rm -fr /usr/local/share/fonts/adobe-pro /usr/local/share/fonts/adobe-sans /usr/local/share/fonts/adobe-serif
+# Sudo rm -fr /usr/local/share/fonts/adobe-pro /usr/local/share/fonts/adobe-sans /usr/local/share/fonts/adobe-serif
 
-#
-# PRINT SCRIPT BANNER
-#
+# Print script banner
 
-box_out_banner_header()
-{
+box_out_banner_header() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+    line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)$line"
-    space=${line//-/ }
+    space=$line//-/ 
     echo " $line"
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
     printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
     echo " $line"
     tput sgr 0
 }
-box_out_banner_header "Installer Script - Adobe-Sans & Adobe-Pro Fonts - version ${script_ver}"
+box_out_banner_header "Installer Script - Adobe-Sans & Adobe-Pro Fonts - version $script_ver"
 
-printf "\n%s\n\n" "The script will utilize (${cpu_threads}) CPU threads for parallel processing to accelerate the build speed."
+printf "\n%s\n\n" "The script will utilize ($cpu_threads) CPU threads for parallel processing to accelerate the build speed."
 
-#
-# CREATE FUNCTIONS
-#
+# Create functions
 
-exit_fn()
-{
+exit_fn() {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         "$web_repo"
     exit 0
 }
 
-fail_fn()
-{
+fail_fn() {
     printf "\n%s\n\n%s\n\n" \
         "$1" \
         "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
-#
-# CREATE OR DELETE OLD OUTPUT DIRECTORIES FROM PREVIOUS RUNS
-#
+# Create or delete old output directories from previous runs
 
-if [ -d "${pro_dir}" ] && [ -d "${sans_dir}" ] && [ -d "${serif_dir}" ]; then
-    sudo rm -fr "${pro_dir}" "${sans_dir}" "${serif_dir}"
+if [ -d "$pro_dir" ] && [ -d "$sans_dir" ] && [ -d "$serif_dir" ]; then
+    sudo rm -fr "$pro_dir" "$sans_dir" "$serif_dir"
 fi
-mkdir -p "${pro_dir}" "${sans_dir}" "${serif_dir}"
+mkdir -p "$pro_dir" "$sans_dir" "$serif_dir"
 
-#
-# CREATE THE FONT OUTPUT DIRECTORIES
-#
+# Create the font output directories
 
-sudo mkdir -p "${install_dir_pro}" "${install_dir_sans}" "${install_dir_serif}" 2>/dev/null
+sudo mkdir -p "$install_dir_pro" "$install_dir_sans" "$install_dir_serif" 2>/dev/null
 
-#
-# DOWNLOAD THE ARCHIVE FILES
-#
+# Download the archive files
 
-if [ ! -f "${pro_dir}".tar.gz ]; then
-    if ! wget --show-progress -t 2 -cqO "${pro_dir}".tar.gz "${pro_url}"; then
-        fail_fn "Failed to download the archive file \"${pro_dir}.tar.gz\". Line: ${LINENO}"
+if [ ! -f "$pro_dir".tar.gz ]; then
+    if ! wget --show-progress -t 2 -cqO "$pro_dir".tar.gz "$pro_url"; then
+        fail_fn "Failed to download the archive file \"$pro_dir.tar.gz\". Line: $LINENO"
     fi
 fi
 
-if [ ! -f "${sans_dir}".tar.gz ]; then
-    if ! wget --show-progress -t 2 -cqO "${sans_dir}".tar.gz "${sans_url}"; then
-        fail_fn "Failed to download the archive file \"${sans_dir}.tar.gz\". Line: ${LINENO}"
+if [ ! -f "$sans_dir".tar.gz ]; then
+    if ! wget --show-progress -t 2 -cqO "$sans_dir".tar.gz "$sans_url"; then
+        fail_fn "Failed to download the archive file \"$sans_dir.tar.gz\". Line: $LINENO"
     fi
 fi
-if [ ! -f "${serif_dir}".tar.gz ]; then
-    if ! wget --show-progress -t 2 -cqO "${serif_dir}".tar.gz "${sans_url}"; then
-        fail_fn "Failed to download the archive file \"${serif_dir}.tar.gz\". Line: ${LINENO}"
+if [ ! -f "$serif_dir".tar.gz ]; then
+    if ! wget --show-progress -t 2 -cqO "$serif_dir".tar.gz "$sans_url"; then
+        fail_fn "Failed to download the archive file \"$serif_dir.tar.gz\". Line: $LINENO"
     fi
 fi
 echo
 
-#
-# EXTRACT THE ARCHIVE FILES
-#
+# Extract the archive files
 
-if ! tar -zxf "${pro_dir}".tar.gz -C "${pro_dir}" --strip-components 1; then
-    fail_fn "Failed to extract the archive \"${pro_dir}.tar.gz\". Line: ${LINENO}"
+if ! tar -zxf "$pro_dir".tar.gz -C "$pro_dir" --strip-components 1; then
+    fail_fn "Failed to extract the archive \"$pro_dir.tar.gz\". Line: $LINENO"
 fi
-if ! tar -zxf "${sans_dir}".tar.gz -C "${sans_dir}" --strip-components 1; then
-    fail_fn "Failed to extract the archive \"${sans_dir}.tar.gz\". Line: ${LINENO}"
+if ! tar -zxf "$sans_dir".tar.gz -C "$sans_dir" --strip-components 1; then
+    fail_fn "Failed to extract the archive \"$sans_dir.tar.gz\". Line: $LINENO"
 fi
-if ! tar -zxf "${serif_dir}".tar.gz -C "${serif_dir}" --strip-components 1; then
-    fail_fn "Failed to extract the archive \"${serif_dir}.tar.gz\". Line: ${LINENO}"
+if ! tar -zxf "$serif_dir".tar.gz -C "$serif_dir" --strip-components 1; then
+    fail_fn "Failed to extract the archive \"$serif_dir.tar.gz\". Line: $LINENO"
 fi
 echo
 
-#
-# FIND AND MOVE THE FONT FILES TO THE OUTPUT FOLDER
-#
+# Find and move the font files to the output folder
 
-cd "${pro_dir}" || exit 1
-sudo find . -type f -name '*.ttf' -exec sudo mv -f '{}' "${install_dir_pro}" \;
-sudo find . -type f -name '*.otf' -exec sudo mv -f '{}' "${install_dir_pro}" \;
-sudo find . -type f -name '*.woff' -exec sudo mv -f '{}' "${install_dir_pro}" \;
-cd "${sans_dir}" || exit 1
-sudo find . -type f -name '*.ttf' -exec sudo mv -f '{}' "${install_dir_sans}" \;
-sudo find . -type f -name '*.otf' -exec sudo mv -f '{}' "${install_dir_sans}" \;
-sudo find . -type f -name '*.woff' -exec sudo mv -f '{}' "${install_dir_sans}" \;
-cd "${serif_dir}" || exit 1
-sudo find . -type f -name '*.ttf' -exec sudo mv -f '{}' "${install_dir_serif}" \;
-sudo find . -type f -name '*.otf' -exec sudo mv -f '{}' "${install_dir_serif}" \;
-sudo find . -type f -name '*.woff' -exec sudo mv -f '{}' "${install_dir_serif}" \;
+cd "$pro_dir" || exit 1
+sudo find . -type f -name '*.ttf' -exec sudo mv -f '{}' "$install_dir_pro" \;
+sudo find . -type f -name '*.otf' -exec sudo mv -f '{}' "$install_dir_pro" \;
+sudo find . -type f -name '*.woff' -exec sudo mv -f '{}' "$install_dir_pro" \;
+cd "$sans_dir" || exit 1
+sudo find . -type f -name '*.ttf' -exec sudo mv -f '{}' "$install_dir_sans" \;
+sudo find . -type f -name '*.otf' -exec sudo mv -f '{}' "$install_dir_sans" \;
+sudo find . -type f -name '*.woff' -exec sudo mv -f '{}' "$install_dir_sans" \;
+cd "$serif_dir" || exit 1
+sudo find . -type f -name '*.ttf' -exec sudo mv -f '{}' "$install_dir_serif" \;
+sudo find . -type f -name '*.otf' -exec sudo mv -f '{}' "$install_dir_serif" \;
+sudo find . -type f -name '*.woff' -exec sudo mv -f '{}' "$install_dir_serif" \;
 echo
 
-#
-# MAKE SURE THERE THE FILES WERE MOVED SUCCESSFULLY AND THEN UPDATE THE FONT CACHE
-#
+# Make sure there the files were moved successfully and then update the font cache
 
-if [ "$(sudo find "${install_dir_pro}" -type f -name '*.*' | wc -l)" -lt '64' ]; then
-    fail_fn "The script failed to extract 64 total fonts to the adobe-pro directory. Line: ${LINENO}"
-elif [ "$(sudo find "${install_dir_sans}" -type f -name '*.*' | wc -l)" -lt '64' ]; then
-    fail_fn "The script failed to extract 64 total fonts to the adobe-pro directory. Line: ${LINENO}"
-elif [ "$(sudo find "${install_dir_serif}" -type f -name '*.*' | wc -l)" -lt '64' ]; then
-    fail_fn "The script failed to extract 64 total fonts to the adobe-pro directory. Line: ${LINENO}"
+if [ "$(sudo find "$install_dir_pro" -type f -name '*.*' | wc -l)" -lt 64 ]; then
+    fail_fn "The script failed to extract 64 total fonts to the adobe-pro directory. Line: $LINENO"
+elif [ "$(sudo find "$install_dir_sans" -type f -name '*.*' | wc -l)" -lt 64 ]; then
+    fail_fn "The script failed to extract 64 total fonts to the adobe-pro directory. Line: $LINENO"
+elif [ "$(sudo find "$install_dir_serif" -type f -name '*.*' | wc -l)" -lt 64 ]; then
+    fail_fn "The script failed to extract 64 total fonts to the adobe-pro directory. Line: $LINENO"
 else
     sudo fc-cache -fv
 fi
 
-# CLEANUP THE LEFTOVER BUILD FILES
+# Cleanup the leftover build files
 sudo rm -fr "$cwd"
 
-# SHOW THE EXIT MESSAGE
+# Show the exit message
 exit_fn

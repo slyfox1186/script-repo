@@ -1,9 +1,9 @@
-#!/usr/bin/env bash
-# shellcheck disable=SC1091,SC2000,SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
+#!/Usr/bin/env bash
+# Shellcheck disable=sc1091,sc2000,sc2034,sc2046,sc2066,sc2068,sc2086,sc2162,sc2317
 
 #############################################################################################################
 ##
-##  GitHub: https://github.com/slyfox1186/script-repo
+##  Github: https://github.com/slyfox1186/script-repo
 ##
 ##  Script version
 ##
@@ -15,92 +15,90 @@
 ##
 ##  Purpose:
 ##
-##    - Build FFmpeg from source code with addon development libraries also compiled from
-##      source to help ensure the latest functionality
+##    - Build ffmpeg from source code with addon development libraries also compiled from
+##      Source to help ensure the latest functionality
 ##
-##  Supported Distro:
+##  Supported distro:
 ##
-##    - Arch Linux
+##    - Arch linux
 ##    - Debian (11|12)
 ##    - Ubuntu (20|22|23).04
 ##
 ##  Supported architecture:
 ##
-##    - x86_64
+##    - X86_64
 ##
-##  Arch Linux notes
+##  Arch linux notes
 ##
-##    - Required pacman packages for ArchLinux
-##    - Updated the source code libraries to compile successfully using a partial mix of AUR (Arch User Repository)
-##    - Removed the AUR install of libbluray as it was not needed and can be done with the GitHub repository
+##    - Required pacman packages for archlinux
+##    - Updated the source code libraries to compile successfully using a partial mix of aur (arch user repository)
+##    - Removed the aur install of libbluray as it was not needed and can be done with the github repository
 ##
-##  GeForce CUDA SDK Toolkit notes
+##  Geforce cuda sdk toolkit notes
 ##
 ##    - Updated to version 12.3.0
 ##    - Reverted the nv-codec-headers to version n12.0.16.1 due to a 20% decrease in fps using x265 with nvenc cuda
-##    - If the cuda libraries are not installed (for Geforce graphics cards only) the user will be prompted
-##      by the script to install them so that hardware acceleration is enabled during the build
+##    - If the cuda libraries are not installed (for geforce graphics cards only) the user will be prompted
+##      By the script to install them so that hardware acceleration is enabled during the build
 ##
 ##  Updated
 ##
-##    - abseil library
-##    - aom/av1 library
-##    - libvpx library
-##    - rav1e library to version p20231024 (10.21.23)
-##    - x265 library
+##    - Abseil library
+##    - Aom/av1 library
+##    - Libvpx library
+##    - Rav1e library to version p20231024 (10.21.23)
+##    - X265 library
 ##
 ##  Added
 ##
-##    - Set the x265 libs to be built with clang because it gives better FPS output than when built with gcc
-##    - cUnit support library for libmysofa
+##    - Set the x265 libs to be built with clang because it gives better fps output than when built with gcc
+##    - Cunit support library for libmysofa
 ##    - Cyanrip software
 ##    - Cyanrip libcurl support library for
-##    - Debian 11 (Bullseye) support
-##    - Debian 12 (Bookworm) support
-##    - OpenCL and libpulse support libraries
-##    - Ubuntu 23.04 (Lunar) support
-##    - VapourSynth library support
-##    - Windows WSL2 support
-##    - NDI SDK for Linux Support
-##    - Vulkan Support
+##    - Debian 11 (bullseye) support
+##    - Debian 12 (bookworm) support
+##    - Opencl and libpulse support libraries
+##    - Ubuntu 23.04 (lunar) support
+##    - Vapoursynth library support
+##    - Windows wsl2 support
+##    - Ndi sdk for linux support
+##    - Vulkan support
 ##
 ##  Removed
 ##
-##    - python3 build code that became useless
-##    - removed support for Debian 10 (Buster)
-##    - removed support for Ubuntu 18.04 (Bionic)
+##    - Python3 build code that became useless
+##    - Removed support for debian 10 (buster)
+##    - Removed support for ubuntu 18.04 (bionic)
 ##
 ##  Fixed
 ##
-##    - gpac was missing a required .so file from libjpeg-turbo
-##    - the nvidia-smi command not being installed for Debian OS versions
-##    - gpac build issue due to the sdl2 library not being found in the workspace folder
-##    - libheif not building the specified plugins
-##    - the code that prompts the user to install the CUDA SDK ToolKit
-##    - a broken download url for the WSL version of the CUDA SDK ToolKit
-##    - APT package errors for Debian 11 Bullseye
+##    - Gpac was missing a required .so file from libjpeg-turbo
+##    - The nvidia-smi command not being installed for debian os versions
+##    - Gpac build issue due to the sdl2 library not being found in the workspace folder
+##    - Libheif not building the specified plugins
+##    - The code that prompts the user to install the cuda sdk toolkit
+##    - A broken download url for the wsl version of the cuda sdk toolkit
+##    - Apt package errors for debian 11 bullseye
 ##
 #############################################################################################################
 
-#
-# DEFINE GLOBAL VARIABLES
-#
+# Define global variables
 
-script_name="${0}"
+script_name="$0"
 script_ver=3.1.3
-# ffmpeg_ver=e531abaf3c41953618573bef9a2568f7644626b6
-# ffmpeg_sver="${ffmpeg_ver::7}"
-# ffmpeg_archive=ffmpeg-"${ffmpeg_sver}".tar.gz
-# ffmpeg_url=https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/"${ffmpeg_ver}".tar.gz
+# Ffmpeg_ver=e531abaf3c41953618573bef9a2568f7644626b6
+# Ffmpeg_sver="$ffmpeg_ver::7"
+# Ffmpeg_archive=ffmpeg-"$ffmpeg_sver".tar.gz
+# Ffmpeg_url=https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/"$ffmpeg_ver".tar.gz
 ###############################################################################
-# SNAPSHOT
-# ffmpeg_ver=963937e408fc68b5925f938a253cfff1d506f784
-# ffmpeg_sver="${ffmpeg_ver::7}"
-# ffmpeg_archive=ffmpeg-"${ffmpeg_sver}".tar.gz
-# ffmpeg_url=https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/"${ffmpeg_ver}".tar.gz
-# STABLE
-# ffmpeg_sver=5.1.3
-# ffmpeg_archive=https://www.ffmpeg.org/releases/ffmpeg-"${ffmpeg_sver}".tar.gz
+# Snapshot
+# Ffmpeg_ver=963937e408fc68b5925f938a253cfff1d506f784
+# Ffmpeg_sver="$ffmpeg_ver::7"
+# Ffmpeg_archive=ffmpeg-"$ffmpeg_sver".tar.gz
+# Ffmpeg_url=https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/"$ffmpeg_ver".tar.gz
+# Stable
+# Ffmpeg_sver=5.1.3
+# Ffmpeg_archive=https://www.ffmpeg.org/releases/ffmpeg-"$ffmpeg_sver".tar.gz
 ###############################################################################
 cuda_latest_ver=12.3.0
 cuda_url="https://developer.download.nvidia.com/compute/cuda/$cuda_latest_ver"
@@ -116,11 +114,9 @@ latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 curl_timeout=10
-debug=OFF # CHANGE THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+debug=OFF # Change the debug variable to "on" for help troubleshooting issues
 
-#
-# SET THE AVAILABLE CPU THREAD AND CORE COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
-#
+# Set the available cpu thread and core count for parallel processing (speeds up the build process)
 
 if [ -f '/proc/cpuinfo' ]; then
     cpu_threads="$(grep --count ^processor '/proc/cpuinfo')"
@@ -129,46 +125,38 @@ else
 fi
 export MAKEFLAGS="-j$(nproc --all)"
 
-#
-# PRINT SCRIPT BANNER
-#
+# Print script banner
 
 clear
-box_out_banner1()
-{
+box_out_banner1() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
+    line=$(for i in $(seq 0 $input_char); do printf '-'; done)
     tput bold
     line="$(tput setaf 3)$line"
-    space=${line//-/ }
+    space=$line//-/ 
     echo " $line"
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
     printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
     echo " $line"
     tput sgr 0
 }
-box_out_banner1 "FFmpeg Build Script - v${script_ver}"
-printf "\n%s\n\n" "The script will utilize (${cpu_threads}) CPU threads for parallel processing to accelerate the build speed."
+box_out_banner1 "FFmpeg Build Script - v$script_ver"
+printf "\n%s\n\n" "The script will utilize ($cpu_threads) CPU threads for parallel processing to accelerate the build speed."
 
-#
-# SET THE C & C++ COMPILERS TO THE HIGHEST VERSION INSTALLED
-#
+# Set the c & c++ compilers to the highest version installed
 
 export CC=gcc CXX=g++
 
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
+# Set compiler optimization flags
 
-source_flags_fn()
-{
+source_flags_fn() {
     EXTRALIBS="-ldl -lpthread -lm -lz -L/usr/lib/x86_64-linux-gnu -lcurl -lvulkan -L$workspace/lib -llcms2 -llcms2_threaded"
     EXTRALIBS+=" -lhwy -lbrotlidec -lbrotlienc -ltesseract -L/usr/local/cuda/targets/x86_64-linux/lib -lOpenCL"
-    CXXFLAGS='-g -O3 -march=native -DHWY_COMPILE_ONLY_SCALAR'
+    CXXFLAGS='-g -O3 -pipe -fno-plt -march=native -DHWY_COMPILE_ONLY_SCALAR'
     CFLAGS="-I$workspace/include -I$workspace/include/jxl -I$workspace/include/CL -I/usr/local/include -I/usr/include"
     CFLAGS+='-I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2 -I/usr/lib/x86_64-linux-gnu/pulseaudio -I/usr/include/openjpeg-2.5'
-    CFLAGS+=" -I/usr/include/vk_video -I/usr/include/vulkan ${CXXFLAGS}"
+    CFLAGS+=" -I/usr/include/vk_video -I/usr/include/vulkan $CXXFLAGS"
     CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -I/usr/include/openjpeg-2.5 -I/usr/include/flite"
     LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64"
     LDFLAGS+=' -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
@@ -176,34 +164,27 @@ source_flags_fn()
 }
 source_flags_fn
 
-#
-# CREATE THE OUTPUT DIRECTORIES
-#
+# Create the output directories
 
 mkdir -p "$packages"/nvidia-cuda "$workspace"/logs
 
-#
-# DEFINE FUNCTIONS
-#
+# Define functions
 
-exit_fn()
-{
+exit_fn() {
     printf "\n%s\n%s\n\n"                                         \
         'Make sure to star this repository to show your support!' \
         "$web_repo"
     exit 0
 }
 
-fail_fn()
-{
+fail_fn() {
     printf "\n%s\n\n%s\n\n" \
         "$1"              \
         "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
-cleanup_fn()
-{
+cleanup_fn() {
     local answer
 
     printf "\n%s\n%s\n%s\n\n%s\n%s\n"                  \
@@ -214,7 +195,7 @@ cleanup_fn()
         '[2] No'
     read -p 'Your choices are (1 or 2): ' answer
 
-    case "${answer}" in
+    case "$answer" in
         1)      sudo rm -fr "$cwd";;
         2)      echo;;
         *)
@@ -225,8 +206,7 @@ cleanup_fn()
     esac
 }
 
-ff_ver_fn()
-{
+ff_ver_fn() {
     printf "\n%s\n%s\n%s\n\n"                          \
         '============================================' \
         '               FFmpeg Version               ' \
@@ -235,31 +215,30 @@ ff_ver_fn()
     sleep 2
 }
 
-download()
-{
+download() {
     dl_path="$packages"
     dl_url="$1"
-    dl_file="${2:-"${1##*/}"}"
+    dl_file="$2:-"${1##*/"}"
 
     if [[ "$dl_file" =~ tar. ]]; then
-        output_dir="${dl_file%.*}"
-        output_dir="${3:-"${output_dir%.*}"}"
+        output_dir="$dl_file%.*"
+        output_dir="$3:-"${output_dir%.*"}"
     else
-        output_dir="${3:-"${dl_file%.*}"}"
+        output_dir="$3:-"${dl_file%.*"}"
     fi
 
     target_file="$dl_path/$dl_file"
     target_dir="$dl_path/$output_dir"
 
-    if [ -f "${target_file}" ]; then
+    if [ -f "$target_file" ]; then
         echo "The file \"$dl_file\" is already downloaded."
     else
-        echo "Downloading \"${dl_url}\" saving as \"$dl_file\""
-        if ! wget -U "$user_agent" -cqO "${target_file}" "${dl_url}"; then
+        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
+        if ! wget -U "$user_agent" -cqO "$target_file" "$dl_url"; then
             printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
-            if ! wget -U "$user_agent" -cqO "${target_file}" "${dl_url}"; then
-                fail_fn "The script failed to download \"$dl_file\" twice and will now exit. Line: ${LINENO}"
+            if ! wget -U "$user_agent" -cqO "$target_file" "$dl_url"; then
+                fail_fn "The script failed to download \"$dl_file\" twice and will now exit. Line: $LINENO"
             fi
         fi
         echo 'Download Completed'
@@ -271,30 +250,29 @@ download()
     mkdir -p "$target_dir"
 
     if [ -n "$3" ]; then
-        if ! tar -xf "${target_file}" -C "$target_dir" 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
+        if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
+            sudo rm "$target_file"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
         fi
     else
-        if ! tar -xf "${target_file}" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
+        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
+            sudo rm "$target_file"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
         fi
     fi
 
     printf "%s\n\n" "File extracted: $dl_file"
 
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: ${LINENO}"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: $LINENO"
 }
 
-download_git()
-{
+download_git() {
     local dl_path dl_url dl_file target_dir
 
     dl_path="$packages"
     dl_url="$1"
-    dl_file="${2:-"${1##*/}"}"
-    dl_file="${dl_file//\./-}"
+    dl_file="$2:-"${1##*/"}"
+    dl_file="$dl_file//\./-"
     target_dir="$dl_path/$dl_file"
 
     if [ -n "$3" ]; then
@@ -306,126 +284,117 @@ download_git()
         sudo rm -fr "$target_dir"
     fi
 
-    echo "Downloading ${dl_url} as $dl_file"
+    echo "Downloading $dl_url as $dl_file"
 
-    if ! git clone -q "${dl_url}" "$target_dir"; then
+    if ! git clone -q "$dl_url" "$target_dir"; then
         printf "\n%s\n\n" "The script failed to clone the directory \"$target_dir\" and will try again in 10 seconds..."
         sleep 10
-        if ! git clone -q "${dl_url}" "$target_dir"; then
-            fail_fn "The script failed to clone the directory \"$target_dir\" twice and will now exit the buildLine: ${LINENO}"
+        if ! git clone -q "$dl_url" "$target_dir"; then
+            fail_fn "The script failed to clone the directory \"$target_dir\" twice and will now exit the buildLine: $LINENO"
         fi
     else
         printf "%s\n\n" "Successfully cloned: $target_dir"
     fi
 
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: ${LINENO}"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: $LINENO"
 }
 
-# CREATE TXT FILES TO STORE VERSION NUMBERS TO AVOID UNNECESSARY API CALLS
+# Create txt files to store version numbers to avoid unnecessary api calls
 ver_file_tmp="$workspace"/latest-versions-tmp.txt
 ver_file="$workspace"/latest-versions.txt
 
-sed -i -e '/null-/d' -e '/null /d' -e '/-null/d' -e '/-$/d' "$ver_file_tmp" "${ver_file}" 2>/dev/null
+sed -i -e '/null-/d' -e '/null /d' -e '/-null/d' -e '/-$/d' "$ver_file_tmp" "$ver_file" 2>/dev/null
 
-if [ ! -f "$ver_file_tmp" ] || [ ! -f "${ver_file}" ]; then
-    touch "$ver_file_tmp" "${ver_file}" 2>/dev/null
+if [ ! -f "$ver_file_tmp" ] || [ ! -f "$ver_file" ]; then
+    touch "$ver_file_tmp" "$ver_file" 2>/dev/null
 fi
 
-#
-# PULL THE LATEST VERSIONS OF EACH PACKAGE FROM THE WEBSITE API
-#
+# Pull the latest versions of each package from the website api
 
-git_1_fn()
-{
+git_1_fn() {
     local curl_cmd github_repo github_url git_token
 
-    # SCRAPE GITHUB WEBSITE FOR THE LATEST REPO VERSION
+# Scrape github website for the latest repo version
     github_repo="$1"
     github_url="$2"
 
-    if curl_cmd="$(curl -A "$user_agent" -m "${curl_timeout}" -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl -A "$user_agent" -m "$curl_timeout" -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "$curl_cmd" | jq -r '.[1].name' 2>/dev/null)"
         g_ver2="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null)"
-        g_ver="${g_ver#cares-}"
-        g_ver="${g_ver#FAAC }"
-        g_ver="${g_ver#lcms}"
-        g_ver="${g_ver#OpenJPEG }"
-        g_ver="${g_ver#OpenSSL }"
-        g_ver="${g_ver#pcre}"
-        g_ver="${g_ver#pkgconf-}"
-        g_ver="${g_ver#release-}"
-        g_ver="${g_ver#Rust }"
-        g_ver="${g_ver//-snapshot/}"
-        g_ver="${g_ver#ver-}"
-        g_ver="${g_ver#v}"
-        g_ver1="${g_ver1#nasm-}"
-        g_ver1="${g_ver1#v}"
-        g_ver2="${g_ver2#v}"
+        g_ver="$g_ver#Cares-"
+        g_ver="$g_ver#Faac "
+        g_ver="$g_ver#Lcms"
+        g_ver="$g_ver#Openjpeg "
+        g_ver="$g_ver#Openssl "
+        g_ver="$g_ver#Pcre"
+        g_ver="$g_ver#Pkgconf-"
+        g_ver="$g_ver#Release-"
+        g_ver="$g_ver#Rust "
+        g_ver="$g_ver//-snapshot/"
+        g_ver="$g_ver#Ver-"
+        g_ver="$g_ver#V"
+        g_ver1="$g_ver1#Nasm-"
+        g_ver1="$g_ver1#V"
+        g_ver2="$g_ver2#V"
     fi
 
-    echo "${github_repo%/*}-$g_ver" >> "$ver_file_tmp"
-    awk '!NF || !seen[$0]++' "${latest_txt_tmp}" > "${ver_file}"
+    echo "$github_repo%/*-$g_ver" >> "$ver_file_tmp"
+    awk '!NF || !seen[$0]++' "$latest_txt_tmp" > "$ver_file"
 }
 
-git_2_fn()
-{
+git_2_fn() {
     repo="$1"
     url="$2"
-    if curl_cmd="$(curl -A "$user_agent" -m "${curl_timeout}" -sSL "https://code.videolan.org/api/v4/projects/${repo}/repository/${url}")"; then
+    if curl_cmd="$(curl -A "$user_agent" -m "$curl_timeout" -sSL "https://code.videolan.org/api/v4/projects/$repo/repository/$url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].commit.id')"
         g_sver="$(echo "$curl_cmd" | jq -r '.[0].commit.short_id')"
-        g_sver="${g_sver::7}"
+        g_sver="$g_sver::7"
         g_ver1="$(echo "$curl_cmd" | jq -r '.[0].name')"
-        g_ver1="${g_ver1#v}"
+        g_ver1="$g_ver1#V"
     fi
 }
 
-git_3_fn()
-{
+git_3_fn() {
     repo="$1"
     url="$2"
-    if curl_cmd="$(curl -A "$user_agent" -m "${curl_timeout}" -sSL "https://gitlab.com/api/v4/projects/${repo}/repository/${url}")"; then
+    if curl_cmd="$(curl -A "$user_agent" -m "$curl_timeout" -sSL "https://gitlab.com/api/v4/projects/$repo/repository/$url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
-        g_ver="${g_ver#v}"
+        g_ver="$g_ver#V"
         g_ver1="$(echo "$curl_cmd" | jq -r '.[0].commit.id')"
-        g_ver1="${g_ver1#v}"
+        g_ver1="$g_ver1#V"
         g_sver1="$(echo "$curl_cmd" | jq -r '.[0].commit.short_id')"
-        g_ver="${g_ver#VTM-}"
+        g_ver="$g_ver#Vtm-"
     fi
 }
 
-git_4_fn()
-{
+git_4_fn() {
     repo="$1"
-    if curl_cmd="$(curl -A "$user_agent" -m "${curl_timeout}" -sSL "https://gitlab.freedesktop.org/api/v4/projects/${repo}/repository/tags")"; then
+    if curl_cmd="$(curl -A "$user_agent" -m "$curl_timeout" -sSL "https://gitlab.freedesktop.org/api/v4/projects/$repo/repository/tags")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
-        g_ver="${g_ver#pkg-config-}"
-        g_ver="${g_ver#VER-}"
-        g_ver="${g_ver#v}"
+        g_ver="$g_ver#Pkg-config-"
+        g_ver="$g_ver#Ver-"
+        g_ver="$g_ver#V"
     fi
 }
 
-git_5_fn()
-{
+git_5_fn() {
     repo="$1"
-    if curl_cmd="$(curl -A "$user_agent" -m "${curl_timeout}" -sSL "https://gitlab.gnome.org/api/v4/projects/${repo}/repository/tags")"; then
+    if curl_cmd="$(curl -A "$user_agent" -m "$curl_timeout" -sSL "https://gitlab.gnome.org/api/v4/projects/$repo/repository/tags")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
-        g_ver="${g_ver#v}"
+        g_ver="$g_ver#V"
     fi
 }
 
-git_6_fn()
-{
+git_6_fn() {
     repo="$1"
-    if curl_cmd="$(curl -A "$user_agent" -m "${curl_timeout}" -sSL "https://salsa.debian.org/api/v4/projects/${repo}/repository/tags")"; then
+    if curl_cmd="$(curl -A "$user_agent" -m "$curl_timeout" -sSL "https://salsa.debian.org/api/v4/projects/$repo/repository/tags")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
-        g_ver="${g_ver#v}"
+        g_ver="$g_ver#V"
     fi
 }
 
-git_ver_fn()
-{
+git_ver_fn() {
     local t_flag u_flag v_flag v_tag v_url
 
     v_url="$1"
@@ -433,77 +402,73 @@ git_ver_fn()
 
     if [ -n "$3" ]; then
         v_flag="$3"
-        case "${v_flag}" in
+        case "$v_flag" in
                 B)      t_flag=branches;;
                 R)      t_flag=releases;;
                 T)      t_flag=tags;;
         esac
     fi
 
-    case "${v_tag}" in
+    case "$v_tag" in
             1)      u_flag=git_1_fn;;
             2)      u_flag=git_2_fn;;
             3)      u_flag=git_3_fn;;
             4)      u_flag=git_4_fn;;
             5)      u_flag=git_5_fn;;
             6)      u_flag=git_6_fn;;
-            *)      fail_fn "Could not detect the variable \"v_tag\" in the function \"git_ver_fn\". Line: ${LINENO}"
+            *)      fail_fn "Could not detect the variable \"v_tag\" in the function \"git_ver_fn\". Line: $LINENO"
     esac
 
-    "${u_flag}" "${v_url}" "${t_flag}" 2>/dev/null
+    "$u_flag" "$v_url" "$t_flag" 2>/dev/null
 }
 
-check_version()
-{
+check_version() {
     github_repo="$1"
     latest_txt_tmp="$ver_file_tmp"
-    latest_txt="${ver_file}"
+    latest_txt="$ver_file"
 
-    awk '!NF || !seen[$0]++' "${latest_txt_tmp}" > "${latest_txt}"
-    check_ver="$(grep -Eo "${github_repo#*/}-[0-9\.]+$" "${latest_txt}" | sort | head -n1)"
+    awk '!NF || !seen[$0]++' "$latest_txt_tmp" > "$latest_txt"
+    check_ver="$(grep -Eo "$github_repo#*/-[0-9\.]+$" "$latest_txt" | sort | head -n1)"
 
-    if [ -n "${check_ver}" ]; then
+    if [ -n "$check_ver" ]; then
         g_nocheck=0
     else
         g_nocheck=1
     fi
 }
 
-pre_check_ver()
-{
+pre_check_ver() {
     github_repo="$1"
     git_ver="$2"
     git_url_type="$3"
 
-    check_version "${github_repo}"
-    if [ "${g_nocheck}" -eq '1' ]; then
-        git_ver_fn "${github_repo}" "${git_ver}" "${git_url_type}"
-        g_ver="${g_ver##-*}"
-        g_ver2="${g_ver2##-*}"
+    check_version "$github_repo"
+    if [ "$g_nocheck" -eq '1' ]; then
+        git_ver_fn "$github_repo" "$git_ver" "$git_url_type"
+        g_ver="$g_ver##-*"
+        g_ver2="$g_ver2##-*"
     else
-        g_ver="${check_ver#*-}"
+        g_ver="$check_ver#*-"
     fi
 }
 
-execute()
-{
-    echo "$ ${*}"
+execute() {
+    echo "$ $*"
 
-    if [ "${debug}" = 'ON' ]; then
+    if [ "$debug" = 'ON' ]; then
         if ! output=$("$@"); then
-            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
-            fail_fn "Failed to execute: ${*}"
+            notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
+            fail_fn "Failed to execute: $*"
         fi
     else
         if ! output=$("$@" 2>&1); then
-            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
-            fail_fn "Failed to execute: ${*}"
+            notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
+            fail_fn "Failed to execute: $*"
         fi
     fi
 }
 
-build()
-{
+build() {
     printf "\n%s\n%s\n"                \
         "Building $1 - version $2" \
         '===================================='
@@ -512,7 +477,7 @@ build()
         if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
             echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
             return 1
-        elif "${latest}"; then
+        elif "$latest"; then
             echo "$1 is outdated and will be rebuilt using version $2"
             return 0
         else
@@ -525,26 +490,24 @@ build()
 
 build_done() { echo "$2" > "$packages/$1.done"; }
 
-installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
+installed() { return $(dpkg-query -W -f '$Status\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
-library_exists()
-{
+library_exists() {
     if ! [[ -x "$(pkg-config --exists --print-errors "$1" 2>&1 >/dev/null)" ]]; then
         return 1
     fi
     return 0
 }
 
-gpu_arch_fn()
-{
+gpu_arch_fn() {
     local is_wsl gpu_name gpu_type
 
     gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort -r | head -n 1)"
-    if [ "${gpu_name}" = 'name' ]; then
+    if [ "$gpu_name" = 'name' ]; then
         gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv | sort | head -n 1)"
     fi
 
-    case "${gpu_name}" in
+    case "$gpu_name" in
         'Quadro P2000')                 gpu_type=1;;
         'NVIDIA GeForce GT 1010')       gpu_type=1;;
         'NVIDIA GeForce GTX 1030')      gpu_type=1;;
@@ -584,28 +547,27 @@ gpu_arch_fn()
         'NVIDIA GeForce RTX 4080')      gpu_type=5;;
         'NVIDIA GeForce RTX 4090')      gpu_type=5;;
         'NVIDIA H100')                  gpu_type=6;;
-        *)                              fail_fn "Unable to define the variable \"gpu_name\" in the function \"gpu_arch_fn\". Line: ${LINENO}";;
+        *)                              fail_fn "Unable to define the variable \"gpu_name\" in the function \"gpu_arch_fn\". Line: $LINENO";;
     esac
 
-    if [ -n "${gpu_type}" ]; then
-        case "${gpu_type}" in
+    if [ -n "$gpu_type" ]; then
+        case "$gpu_type" in
             1)      gpu_arch='compute_61,code=sm_61';;
             2)      gpu_arch='compute_70,code=sm_70';;
             3)      gpu_arch='compute_75,code=sm_75';;
             4)      gpu_arch='compute_86,code=sm_86';;
             5)      gpu_arch='compute_89,code=sm_89';;
             6)      gpu_arch='compute_90,code=sm_90';;
-            *)      fail_fn "Unable to define the variable \"gpu_arch\" in the function \"gpu_arch_fn\". Line: ${LINENO}";;
+            *)      fail_fn "Unable to define the variable \"gpu_arch\" in the function \"gpu_arch_fn\". Line: $LINENO";;
         esac
     else
-        fail_fn "Failed to find the variable: gpu_type Line: ${LINENO}"
+        fail_fn "Failed to find the variable: gpu_type Line: $LINENO"
     fi
 }
 
-# PRINT THE OPTIONS AVAILABLE WHEN MANUALLY RUNNING THE SCRIPT
-usage()
-{
-    printf "%s\n\n" "Usage: ${script_name} [OPTIONS]"
+# Print the options available when manually running the script
+usage() {
+    printf "%s\n\n" "Usage: $script_name [OPTIONS]"
     echo 'Options:'
     echo '    -h, --help                                       Display usage information'
     echo '        --version                                    Display version information'
@@ -615,7 +577,7 @@ usage()
     echo
 }
 
-while ((${#} > 0))
+while (($# > 0))
 do
     case "$1" in
         -h | --help)
@@ -624,7 +586,7 @@ do
                 exit 0
                 ;;
         --version)
-                printf "%s\n\n" "The script version is: ${script_ver}"
+                printf "%s\n\n" "The script version is: $script_ver"
                 exit 0
                 ;;
         -*)
@@ -651,8 +613,8 @@ do
     esac
 done
 
-if [ -z "${bflag}" ]; then
-    if [ -z "${cflag}" ]; then
+if [ -z "$bflag" ]; then
+    if [ -z "$cflag" ]; then
         usage
         echo
         exit 1
@@ -660,26 +622,23 @@ if [ -z "${bflag}" ]; then
     exit 0
 fi
 
-if [ -n "${LDEXEFLAGS}" ]; then
+if [ -n "$LDEXEFLAGS" ]; then
     printf "%s\n\n" 'The script has been configured to run in full static mode.'
 fi
 
-#
-# SET THE PATH VARIABLE
-#
+# Set the path variable
 
 cuda_bin_path="$(sudo find /usr/local/ -type d -name 'cuda' | head -n1)"
 cuda_bin_path="$(sudo find /opt/ -type d -name 'cuda' | head -n1)"
 cuda_bin_path+='/bin'
 
-path_fn()
-{
+path_fn() {
 PATH="\
 /usr/lib/ccache/bin:\
 /usr/lib/ccache:\
-${cuda_bin_path}:\
+$cuda_bin_path:\
 $workspace/bin:\
-${HOME}/.local/bin:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
@@ -692,13 +651,12 @@ export PATH
 }
 path_fn
 
-path_clean_fn()
-{
+path_clean_fn() {
 PATH="\
 /usr/lib/ccache/bin:\
 /usr/lib/ccache:\
-${cuda_bin_path}:\
-${HOME}/.local/bin:\
+$cuda_bin_path:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
@@ -710,9 +668,7 @@ ${HOME}/.local/bin:\
 export PATH
 }
 
-#
-# SET THE PKG_CONFIG_PATH VARIABLE
-#
+# Set the pkg_config_path variable
 
 PKG_CONFIG_PATH="\
 $workspace/usr/lib/pkgconfig:\
@@ -736,8 +692,7 @@ $workspace/share/pkgconfig:\
 "
 export PKG_CONFIG_PATH
 
-cuda_download_fn()
-{
+cuda_download_fn() {
     local choice
     clear
 
@@ -759,7 +714,7 @@ cuda_download_fn()
         "Downloading CUDA SDK Toolkit - version $cuda_latest_ver" \
         '===================================================='
 
-    case "${choice}" in
+    case "$choice" in
         1)
             wget --show progress -U "$user_agent" -cqO "$packages/nvidia-cuda/cuda-buster-$cuda_latest_ver.deb" "$cuda_url/local_installers/cuda-repo-debian10-12-3-local_12.3.0-545.23.06-1_amd64.deb"
             sudo dpkg -i "$packages/nvidia-cuda/cuda-buster-$cuda_latest_ver.deb"
@@ -779,21 +734,21 @@ cuda_download_fn()
             sudo add-apt-repository -y contrib
             ;;
         4)
-            wget --show progress -U "$user_agent" -cqO "$packages/nvidia-cuda/cuda-ubuntu2004.pin" "${cuda_pin_url}/ubuntu2004/x86_64/cuda-ubuntu2004.pin"
+            wget --show progress -U "$user_agent" -cqO "$packages/nvidia-cuda/cuda-ubuntu2004.pin" "$cuda_pin_url/ubuntu2004/x86_64/cuda-ubuntu2004.pin"
             sudo mv "$packages/nvidia-cuda/cuda-ubuntu2004.pin" '/etc/apt/preferences.d/cuda-repository-pin-600'
             wget --show progress -U "$user_agent" -cqO "$packages/nvidia-cuda/cuda-focal-$cuda_latest_ver.deb" "$cuda_url/local_installers/cuda-repo-ubuntu2004-12-3-local_12.3.0-545.23.06-1_amd64.deb"
             sudo dpkg -i "$packages/nvidia-cuda/cuda-focal-$cuda_latest_ver.deb"
             sudo cp -f /var/cuda-repo-ubuntu2004-12-3-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             ;;
         5)
-            wget --show progress -U "$user_agent" -cqO "$packages/nvidia-cuda/cuda-ubuntu2204.pin" "${cuda_pin_url}/ubuntu2204/x86_64/cuda-ubuntu2204.pin"
+            wget --show progress -U "$user_agent" -cqO "$packages/nvidia-cuda/cuda-ubuntu2204.pin" "$cuda_pin_url/ubuntu2204/x86_64/cuda-ubuntu2204.pin"
             sudo mv "$packages/nvidia-cuda/cuda-ubuntu2204.pin" '/etc/apt/preferences.d/cuda-repository-pin-600'
             wget --show progress -U "$user_agent" -cqO "$packages/nvidia-cuda/cuda-jammy-$cuda_latest_ver.deb" "$cuda_url/local_installers/cuda-repo-ubuntu2204-12-3-local_12.3.0-545.23.06-1_amd64.deb"
             sudo dpkg -i "$packages/nvidia-cuda/cuda-jammy-$cuda_latest_ver.deb"
             sudo cp /var/cuda-repo-ubuntu2204-12-3-local/cuda-*-keyring.gpg '/usr/share/keyrings/'
             ;;
         6)
-            wget --show progress -U "$user_agent" -cqO "$packages/nvidia-cuda/cuda-wsl-ubuntu.pin" "${cuda_pin_url}/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin"
+            wget --show progress -U "$user_agent" -cqO "$packages/nvidia-cuda/cuda-wsl-ubuntu.pin" "$cuda_pin_url/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin"
             sudo mv "$packages/nvidia-cuda/cuda-wsl-ubuntu.pin" '/etc/apt/preferences.d/cuda-repository-pin-600'
             wget --show progress -U "$user_agent" -cqO "$packages/nvidia-cuda/cuda-wsl-$cuda_latest_ver.deb" "$cuda_url/local_installers/cuda-repo-wsl-ubuntu-12-3-local_12.3.0-1_amd64.deb"
             sudo dpkg -i "$packages/nvidia-cuda/cuda-wsl-$cuda_latest_ver.deb"
@@ -815,32 +770,29 @@ cuda_download_fn()
             ;;
     esac
 
-    # UPDATE THE APT PACKAGES THEN INSTALL THE CUDA-SDK-TOOLKIT
+# Update the apt packages then install the cuda-sdk-toolkit
     sudo apt update
     sudo apt install cuda-toolkit-12-3
     clear
 }
 
-#
-# REQUIRED GEFORCE CUDA DEVELOPMENT PACKAGES
-#
+# Required geforce cuda development packages
 
-install_cuda_fn()
-{
+install_cuda_fn() {
     local choice
     clear
 
-    if [[ "${OS}" == 'Arch' ]]; then
+    if [[ "$OS" == 'Arch' ]]; then
         cuda_ver_test="$(nvcc --version | sed -n 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')"
         cuda_ver_test+='.0'
     else
         cuda_ver_test="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
     fi
-    cuda_ver="${cuda_ver_test}"
+    cuda_ver="$cuda_ver_test"
 
-    if [ -n "${cuda_ver_test}" ]; then
+    if [ -n "$cuda_ver_test" ]; then
         printf "%s\n%s\n%s\n%s\n\n%s\n%s\n\n"                             \
-            "The installed CUDA SDK Toolkit version is: ${cuda_ver_test}" \
+            "The installed CUDA SDK Toolkit version is: $cuda_ver_test" \
             "The latest version available is: $cuda_latest_ver"         \
             '====================================================='       \
             'Do you want to update/reinstall it?'                         \
@@ -849,10 +801,10 @@ install_cuda_fn()
         read -p 'Your choices are (1 or 2): ' choice
         clear
 
-        case "${choice}" in
+        case "$choice" in
             1)      cuda_download_fn;;
             2)
-                    PATH="${PATH}:${cuda_path}"
+                    PATH="$PATH:$cuda_path"
                     export PATH
                     ;;
             *)
@@ -870,7 +822,7 @@ install_cuda_fn()
         read -p 'Your choices are (1 or 2): ' choice
         clear
 
-        case "${choice}" in
+        case "$choice" in
             1)      cuda_download_fn;;
             2)      echo;;
             *)
@@ -882,19 +834,16 @@ install_cuda_fn()
 
     cuda_ver="$(cat '/usr/local/cuda/version.json' 2>/dev/null | jq -r '.cuda.version')"
 
-    if [ -z "${cuda_ver}" ]; then
-        fail_fn "Unable to locate the file: /usr/local/cuda/version.json. Line: ${LINENO}"
+    if [ -z "$cuda_ver" ]; then
+        fail_fn "Unable to locate the file: /usr/local/cuda/version.json. Line: $LINENO"
     else
-        export PATH="${PATH}:${cuda_path}"
+        export PATH="$PATH:$cuda_path"
     fi
 }
 
-#
-# REQUIRED BUILD PACKAGES
-#
+# Required build packages
 
-pkgs_fn()
-{
+pkgs_fn() {
     local pkg pkgs missing_pkgs
 
     printf "%s\n%s\n"                          \
@@ -926,8 +875,8 @@ pkgs_fn()
 
     for pkg in ${pkgs[@]}
     do
-        if ! installed "${pkg}"; then
-            missing_pkgs+=" ${pkg}"
+        if ! installed "$pkg"; then
+            missing_pkgs+=" $pkg"
         fi
     done
 
@@ -937,30 +886,29 @@ pkgs_fn()
             clear
             echo 'The required APT packages were installed.'
         else
-            fail_fn "These required APT packages failed to install: $missing_pkgs. Line: ${LINENO}"
+            fail_fn "These required APT packages failed to install: $missing_pkgs. Line: $LINENO"
         fi
     else
         echo 'The required APT packages are already installed.'
     fi
 }
 
-x265_fix_libs_fn()
-{
+x265_fix_libs_fn() {
     x265_libs_208="$(find /usr/local/lib/ -type f -name 'libx265.so.208' -print | head -n1)"
     x265_libs_199="$(find "$workspace"/lib/ -type f -name 'libx265.so.199' -print  | head -n1)"
 
-    case "${OS}" in
-        Arch)       sudo cp -f "${x265_libs_208}" '/usr/lib';;
-        *)          sudo cp -f "${x265_libs_208}" '/usr/lib/x86_64-linux-gnu';;
+    case "$OS" in
+        Arch)       sudo cp -f "$x265_libs_208" '/usr/lib';;
+        *)          sudo cp -f "$x265_libs_208" '/usr/lib/x86_64-linux-gnu';;
     esac
 
-    if [ ! -f "${x265_libs_199}" ]; then
+    if [ ! -f "$x265_libs_199" ]; then
         if ! curl -A "$user_agent" -m 10 -Lso "$workspace/lib/libx265.so.199" 'https://github.com/slyfox1186/script-repo/raw/main/library-files/libx265.so.199'; then
-            fail_fn "The script was unable to download the required library file \"$workspace/lib/libx265.so.199\". Line: ${LINENO}"
+            fail_fn "The script was unable to download the required library file \"$workspace/lib/libx265.so.199\". Line: $LINENO"
         fi
     fi
 
-    case "${OS}" in
+    case "$OS" in
         Arch)
                 sudo cp -f "$workspace/lib/libx265.so.199" '/usr/lib'
                 sudo ln -sf '/usr/lib/libx265.so.199' '/usr/lib/libx265.so'
@@ -971,14 +919,13 @@ x265_fix_libs_fn()
     esac
 }
 
-libpulse_fix_libs_fn()
-{
+libpulse_fix_libs_fn() {
     local libpulse_lib libpulse_trim
 
     libpulse_lib="$(find "$workspace"/lib/ -type f -name 'libpulsecommon-*.so')"
     libpulse_trim="$(echo "$libpulse_lib" | sed 's:.*/::' | head -n1)"
 
-    if [[ "${OS}" == 'Arch' ]]; then
+    if [[ "$OS" == 'Arch' ]]; then
         if [ ! -d '/usr/lib/pulseaudio' ]; then
             sudo mkdir -p '/usr/lib/pulseaudio'
         fi
@@ -989,7 +936,7 @@ libpulse_fix_libs_fn()
     fi
 
     if [ -n "$libpulse_lib" ]; then
-        if [[ "${OS}" == 'Arch' ]]; then
+        if [[ "$OS" == 'Arch' ]]; then
             execute sudo cp -f "$libpulse_lib" '/usr/lib/pulseaudio'
             execute sudo ln -sf "/usr/lib/pulseaudio/$libpulse_trim" '/usr/lib'
         else
@@ -999,17 +946,16 @@ libpulse_fix_libs_fn()
     fi
 }
 
-ffmpeg_install_test()
-{
+ffmpeg_install_test() {
     local binaries i
 
     binaries=(ffmpeg ffplay ffprobe)
 
     for i in ${binaries[@]}
     do
-        if [ ! -f "$install_dir/bin/${i}" ]; then
+        if [ ! -f "$install_dir/bin/$i" ]; then
             printf "\n%s\n%s\n\n"                                                \
-                "Warning: Unable to locate the binary file: $install_dir/bin/${i}" \
+                "Warning: Unable to locate the binary file: $install_dir/bin/$i" \
                 'I have read online that this is a bug of some sort and people are unsure why it happens.'
             read -p 'You can press enter to continue, however, please be aware that it is missing.'
             echo
@@ -1017,94 +963,86 @@ ffmpeg_install_test()
     done
 }
 
-install_libjxl_fn()
-{
+install_libjxl_fn() {
     local i
 
     cd "$packages"/deb-files || exit 1
 
-    # INSTALL THE MAIN DEBIAN FILE FIRST BEFORE INSTALLING THE OTHERS
+# Install the main debian file first before installing the others
     printf "%s\n" '$ sudo dpkg -i libjxl_0.8.2_amd64.deb'
     if sudo dpkg -i 'libjxl_0.8.2_amd64.deb' &>/dev/null; then
         sudo rm 'libjxl_0.8.2_amd64.deb' &>/dev/null
     fi
 
-    # INSTALL THE REMAINING DEBIAN FILES
+# Install the remaining debian files
     for i in *.deb
     do
-        printf "%s\n" "\$ sudo dpkg -i ${i}"
-        sudo dpkg -i ./"${i}" &>/dev/null
+        printf "%s\n" "\$ sudo dpkg -i $i"
+        sudo dpkg -i ./"$i" &>/dev/null
     done
 }
 
-dl_libjxl_fn()
-{
+dl_libjxl_fn() {
     local url_base url_suffix
 
     url_base=https://github.com/libjxl/libjxl/releases/download/v0.8.2/jxl-debs-amd64
     url_suffix=v0.8.2.tar.gz
 
     if [ ! -f "$packages"/libjxl.tar.gz ]; then
-        case "${VER}" in
+        case "$VER" in
             '10')
-                        libjxl_download="${url_base}-debian-buster-${url_suffix}"
+                        libjxl_download="$url_base-debian-buster-$url_suffix"
                         libjxl_name='debian-buster'
                         ;;
             '11')
-                        libjxl_download="${url_base}-debian-bullseye-${url_suffix}"
+                        libjxl_download="$url_base-debian-bullseye-$url_suffix"
                         libjxl_name='debian-bullseye'
                         ;;
             '12')
-                        libjxl_download="${url_base}-debian-bookworm-${url_suffix}"
+                        libjxl_download="$url_base-debian-bookworm-$url_suffix"
                         libjxl_name='debian-bookworm'
                         ;;
             '18.04')
-                        libjxl_download="${url_base}-ubuntu-18.04-${url_suffix}"
+                        libjxl_download="$url_base-ubuntu-18.04-$url_suffix"
                         libjxl_name='ubuntu-18.04'
                         ;;
             '20.04')
-                        libjxl_download="${url_base}-ubuntu-20.04-${url_suffix}"
+                        libjxl_download="$url_base-ubuntu-20.04-$url_suffix"
                         libjxl_name='ubuntu-20.04'
                         ;;
             '22.04')
-                        libjxl_download="${url_base}-ubuntu-22.04-${url_suffix}"
+                        libjxl_download="$url_base-ubuntu-22.04-$url_suffix"
                         libjxl_name='ubuntu-22.04'
                         ;;           
             *)          echo;;
         esac
 
-        if ! curl -A "$user_agent" -Lso "$packages/${libjxl_name}.tar.gz" "${libjxl_download}"; then
-            fail_fn "Failed to download the libjxl archive: $packages/${libjxl_name}.tar.gz. Line: ${LINENO}"
+        if ! curl -A "$user_agent" -Lso "$packages/$libjxl_name.tar.gz" "$libjxl_download"; then
+            fail_fn "Failed to download the libjxl archive: $packages/$libjxl_name.tar.gz. Line: $LINENO"
         fi
 
         if [ ! -d "$packages"/deb-files ]; then
             mkdir -p "$packages"/deb-files
         fi
-        if ! tar -zxf "$packages/${libjxl_name}.tar.gz" -C "$packages"/deb-files --strip-components 1; then
-            fail_fn "Could not extract the libjxl archive $packages/${libjxl_name}.tar.gz. Line: ${LINENO}"
+        if ! tar -zxf "$packages/$libjxl_name.tar.gz" -C "$packages"/deb-files --strip-components 1; then
+            fail_fn "Could not extract the libjxl archive $packages/$libjxl_name.tar.gz. Line: $LINENO"
         fi
 
-        # INSTALL THE DOWNLOADED LIBJXL DEBIAN PACKAGES
-        install_libjxl_fn "${libjxl_name}"
+# Install the downloaded libjxl debian packages
+        install_libjxl_fn "$libjxl_name"
     fi
 }
 
-#
-# PATCH FUNCTIONS
-#
+# Patch functions
 
-patch_ffmpeg_fn()
-{
+patch_ffmpeg_fn() {
     execute curl -A "$user_agent" -Lso 'mathops.patch' 'https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/patches/mathops.patch'
     execute patch -d 'libavcodec/x86' -i '../../mathops.patch'
 }
 
-#
-# ARCHLINUX FUNCTION SECTION
-#
+# Archlinux function section
 
-ffmpeg_ndi_fn()
-{
+ffmpeg_ndi_fn() {
     cd "$packages" || exit 1
     if build 'FFMPEG-NDI-git' 'git'; then
         download_git 'https://github.com/lplassman/FFMPEG-NDI.git'
@@ -1112,8 +1050,7 @@ ffmpeg_ndi_fn()
     ffmpeg_libraries+=('--enable-libndi_newtek')
 }
 
-apache_ant_fn()
-{
+apache_ant_fn() {
     if build 'apache-ant' 'git'; then
         download_git 'https://aur.archlinux.org/apache-ant-contrib.git' 'apache-ant-AUR'
         execute makepkg -sif --cleanbuild --noconfirm --needed
@@ -1121,8 +1058,7 @@ apache_ant_fn()
     fi
 }
 
-librist_arch_fn()
-{
+librist_arch_fn() {
     if build 'librist' 'git'; then
         download_git 'https://aur.archlinux.org/librist.git' 'librist-AUR'
         execute makepkg -sif --cleanbuild --noconfirm --needed
@@ -1130,14 +1066,12 @@ librist_arch_fn()
     fi
 }
 
-wsl2_os_ver_fn()
-{
+wsl2_os_ver_fn() {
     wsl_common_pkgs="$1 libnvidia-encode1"
     pkgs_fn "nvidia-smi cppcheck libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils libyuv0 libsharp-dev libdmalloc5"
 }
 
-arch_os_ver_fn()
-{
+arch_os_ver_fn() {
     local arch_pkgs i
     clear
 
@@ -1146,23 +1080,22 @@ arch_os_ver_fn()
                libnghttp2 libwebp libyuv meson nasm ninja numactl opencv pd perl-datetime sudo texlive-basic
                texlive-binextra tk valgrind webp-pixbuf-loader xterm yasm)
 
-    # REMOVE ANY LOCKS ON PACMAN
+# Remove any locks on pacman
     if [ -f '/var/lib/pacman/db.lck' ]; then
         sudo rm '/var/lib/pacman/db.lck'
     fi
  
     for i in "${arch_pkgs[@]}"
     do
-        sudo pacman -Sq --needed --noconfirm ${i} 2>&1
+        sudo pacman -Sq --needed --noconfirm $i 2>&1
     done
 
-    # INSTALL REQUIRED PIP MODULES
+# Install required pip modules
     sudo pip install DateTime Sphinx wheel
     clear
 }
 
-debian_os_ver_fn()
-{
+debian_os_ver_fn() {
     if [[ "$2" = 'yes_wsl' ]]; then
         VER=msft
         debian_wsl_pkgs="$1"
@@ -1171,16 +1104,15 @@ debian_os_ver_fn()
     debian_pkgs="$1 cppcheck libnvidia-encode1 libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev"
     debian_pkgs+=' libyuv-utils libyuv0 libsharp-dev libdmalloc5'
 
-    case "${VER}" in
-        12|trixie|sid)      pkgs_fn "${debian_pkgs} librist-dev";;
-        11)                 pkgs_fn "${debian_pkgs}";;
-        msft)               pkgs_fn "${debian_wsl_pkgs} ${debian_pkgs} librist-dev";;
-        *)                  fail_fn "Could not detect the Debian version. Line: ${LINENO}";;
+    case "$VER" in
+        12|trixie|sid)      pkgs_fn "$debian_pkgs librist-dev";;
+        11)                 pkgs_fn "$debian_pkgs";;
+        msft)               pkgs_fn "$debian_wsl_pkgs $debian_pkgs librist-dev";;
+        *)                  fail_fn "Could not detect the Debian version. Line: $LINENO";;
     esac
 }
 
-ubuntu_os_ver_fn()
-{
+ubuntu_os_ver_fn() {
     if [[ "$2" = 'yes_wsl' ]]; then
         VER=msft
         ubuntu_wsl_pkgs="$1"
@@ -1193,17 +1125,15 @@ ubuntu_os_ver_fn()
     jammy_pkgs+=' libsrt-doc libreadline-dev libpipewire-0.3-dev libwayland-dev libdecor-0-dev nvidia-utils-545'
     lunar_kenetic_pkgs='librist-dev libjxl-dev nvidia-utils-545'
 
-    case "${VER}" in
-        23.04|22.10)        pkgs_fn "${ubuntu_common_pkgs} ${lunar_kenetic_pkgs} ${jammy_pkgs}";;
-        22.04|msft)         pkgs_fn "${ubuntu_common_pkgs} ${ubuntu_wsl_pkgs} ${jammy_pkgs}";;
-        20.04|msft)         pkgs_fn "${ubuntu_common_pkgs} ${ubuntu_wsl_pkgs} ${focal_pkgs}";;
-        *)                  fail_fn "Could not detect the Ubuntu version. Line: ${LINENO}";;
+    case "$VER" in
+        23.04|22.10)        pkgs_fn "$ubuntu_common_pkgs $lunar_kenetic_pkgs $jammy_pkgs";;
+        22.04|msft)         pkgs_fn "$ubuntu_common_pkgs $ubuntu_wsl_pkgs $jammy_pkgs";;
+        20.04|msft)         pkgs_fn "$ubuntu_common_pkgs $ubuntu_wsl_pkgs $focal_pkgs";;
+        *)                  fail_fn "Could not detect the Ubuntu version. Line: $LINENO";;
     esac
 }
 
-#
-# TEST THE OS AND ITS VERSION
-#
+# Test the os and its version
 
 find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
 
@@ -1212,71 +1142,62 @@ if [ -f '/etc/os-release' ]; then
     OS_TMP="$NAME"
     VER_TMP="$VERSION_ID"
     CODENAME="$VERSION_CODENAME"
-    OS="$(echo "${OS_TMP}" | awk '{print $1}')"
-    VER="$(echo "${VER_TMP}" | awk '{print $1}')"
-elif [ -n "${find_lsb_release}" ]; then
+    OS="$(echo "$OS_TMP" | awk '{print $1}')"
+    VER="$(echo "$VER_TMP" | awk '{print $1}')"
+elif [ -n "$find_lsb_release" ]; then
     OS="$(lsb_release -d | awk '{print $2}')"
     VER="$(lsb_release -r | awk '{print $2}')"
 else
-    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
+    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: $LINENO"
 fi
 
 nvidia_utils_var="$(sudo apt list nvidia-utils-* 2>&1 | grep -Eo '^nvidia-utils-5[34]+5' | sort -r | head -n1)"
 nvidia_encode_var="$(sudo apt list libnvidia-encode* 2>&1 | grep -Eo 'libnvidia-encode[1-]+[0-9]*$' | sort -r | head -n1)"
 
-#
-# CHECK IF RUNNING WINDOWS WSL2
-#
+# Check if running windows wsl2
 
 if [ "$(grep -i 'microsoft' '/proc/version')" ]; then
     wsl_switch='yes_wsl'
 fi
 
-if [ "${wsl_switch}" = 'yes_wsl' ]; then
+if [ "$wsl_switch" = 'yes_wsl' ]; then
     OS=WSL2
 fi
 
-#
-# INSTALL REQUIRED APT PACKAGES
-#
+# Install required apt packages
 
-case "${OS}" in
+case "$OS" in
     'Arch')             arch_os_ver_fn;;
-    'Debian'|'n/a')     debian_os_ver_fn "${nvidia_encode_var} ${nvidia_utils_var}";;
-    'Ubuntu')           ubuntu_os_ver_fn "${nvidia_encode_var} ${nvidia_utils_var}";;
+    'Debian'|'n/a')     debian_os_ver_fn "$nvidia_encode_var $nvidia_utils_var";;
+    'Ubuntu')           ubuntu_os_ver_fn "$nvidia_encode_var $nvidia_utils_var";;
     'WSL2')             
-                        case "${OS}" in
-                            'Debian'|'n/a')     debian_os_ver_fn "${nvidia_encode_var} ${nvidia_utils_var}" "${wsl_switch}";;
-                            'Ubuntu')           ubuntu_os_ver_fn "${nvidia_encode_var} ${nvidia_utils_var}" "${wsl_switch}";;
+                        case "$OS" in
+                            'Debian'|'n/a')     debian_os_ver_fn "$nvidia_encode_var $nvidia_utils_var" "$wsl_switch";;
+                            'Ubuntu')           ubuntu_os_ver_fn "$nvidia_encode_var $nvidia_utils_var" "$wsl_switch";;
                         esac
                         ;;
 esac
 
-#
-# SET JAVA VARIABLES
-#
+# Set java variables
 
 path_fn
 find_java="$(sudo find /usr/lib/jvm/ -type d -name 'java-*-openjdk*' | rev | sort | rev | head -n1)"
 java_config="$(sudo find /usr/lib/ -type f -name 'jni.h'  | rev | sort -r | rev | head -n1 | sed 's/\(^.*\)\/.*$/\1/')"
-export CPPFLAGS+=" -I${java_config}"
-export JDK_HOME="${find_java}"
-export JAVA_HOME="${find_java}"
-export PATH="${PATH}:${JAVA_HOME}/bin"
+export CPPFLAGS+=" -I$java_config"
+export JDK_HOME="$find_java"
+export JAVA_HOME="$find_java"
+export PATH="$PATH:$JAVA_HOME/bin"
 
-ant_path_fn()
-{
+ant_path_fn() {
     export ANT_HOME="$install_dir/ant"
     if [ ! -d "$install_dir/ant/bin" ] || [ ! -d "$install_dir/ant/lib" ]; then
         sudo mkdir -p "$install_dir/ant/bin" "$install_dir/ant/lib" 2>/dev/null
     fi
 }
 
-#
-# CHECK IF THE CUDA FOLDER EXISTS TO DETERMINE INSTALLATION STATUS
-#
+# Check if the cuda folder exists to determine installation status
 
-case "${OS}" in
+case "$OS" in
     'Arch')
             iscuda="$(sudo find /opt/cuda* -type f -name 'nvcc' 2>/dev/null)"
             cuda_path="$(sudo find /opt/cuda* -type f -name 'nvcc' 2>/dev/null | grep -Eo '^.*/bin?')"
@@ -1287,28 +1208,23 @@ case "${OS}" in
             ;;
 esac
 
-#
-# PROMPT THE USER TO INSTALL THE GEFORCE CUDA SDK-TOOLKIT
-#
+# Prompt the user to install the geforce cuda sdk-toolkit
 
 install_cuda_fn
 
-#
-# INSTALL THE GLOBAL TOOLS
-#
+# Install the global tools
 
 clear
-box_out_banner_global()
-{
+box_out_banner_global() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
+    line=$(for i in $(seq 0 $input_char); do printf '-'; done)
     tput bold
     line="$(tput setaf 3)$line"
-    space=${line//-/ }
+    space=$line//-/ 
     echo " $line"
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
     printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
     echo " $line"
     tput sgr 0
 }
@@ -1317,10 +1233,10 @@ box_out_banner_global 'Installing Global Tools'
 if build 'm4' 'latest'; then
     download 'https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz'
     execute ./configure --prefix=$install_dir            \
-                        --{build,host,target}="${pc_type}" \
+                        --{build,host,target}="$pc_type" \
                         --disable-nls                      \
                         --enable-c++
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'm4' 'latest'
 fi
@@ -1329,45 +1245,45 @@ if build 'autoconf' 'latest'; then
     download 'http://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz'
     execute autoreconf -fi
     execute ./configure --prefix=$install_dir     \
-                        --{build,host}="${pc_type}" \
+                        --{build,host}="$pc_type" \
                         M4=/usr/local/bin/m4
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'autoconf' 'latest'
 fi
 
-if [[ "${OS}" == 'Arch' ]]; then
-    if build 'libtool' "${lt_ver}"; then
+if [[ "$OS" == 'Arch' ]]; then
+    if build 'libtool' "$lt_ver"; then
         sudo pacman -S --noconfirm libtool
-        build_done 'libtool' "${lt_ver}"
+        build_done 'libtool' "$lt_ver"
     fi
 else
-    case "${VER}" in
+    case "$VER" in
         12|23.04)       lt_ver=2.4.7;;
         *)              lt_ver=2.4.6;;
     esac
-    if build 'libtool' "${lt_ver}"; then
-        download "https://ftp.gnu.org/gnu/libtool/libtool-${lt_ver}.tar.xz"
+    if build 'libtool' "$lt_ver"; then
+        download "https://ftp.gnu.org/gnu/libtool/libtool-$lt_ver.tar.xz"
         execute ./configure --prefix=$install_dir        \
-                            --{build,host}="${pc_type}" \
+                            --{build,host}="$pc_type" \
                             --with-pic                  \
                             M4=/usr/local/bin/m4
-        execute make "-j${cpu_threads}"
+        execute make "-j$cpu_threads"
         execute sudo make install
-        build_done 'libtool' "${lt_ver}"
+        build_done 'libtool' "$lt_ver"
     fi
 fi
 
 if build 'pkg-config' '0.29.2'; then
     download "https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz"
     execute ./configure --prefix=$install_dir\
-                        --with-pc-path="${PKG_CONFIG_PATH}"
-    execute make "-j${cpu_threads}"
+                        --with-pc-path="$PKG_CONFIG_PATH"
+    execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'pkg-config' '0.29.2'
 fi
 
-if [[ "${OS}" == 'Arch' ]]; then
+if [[ "$OS" == 'Arch' ]]; then
     librist_arch_fn
 else
     if build 'librist' 'git'; then
@@ -1378,8 +1294,8 @@ else
                                   --strip                  \
                                   -Dstatic_analyze=true    \
                                   -Dtest=false
-        execute ninja "-j${cpu_threads}" -C build
-        execute ninja "-j${cpu_threads}" -C build install
+        execute ninja "-j$cpu_threads" -C build
+        execute ninja "-j$cpu_threads" -C build install
         build_done 'librist' 'git'
     fi
 fi
@@ -1388,7 +1304,7 @@ pre_check_ver 'madler/zlib' '1' 'T'
 if build 'zlib' "$g_ver"; then
     download "https://github.com/madler/zlib/releases/download/v$g_ver/zlib-$g_ver.tar.gz"
     execute ./configure --prefix="$workspace"
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'zlib' "$g_ver"
 fi
@@ -1405,7 +1321,7 @@ if build 'openssl' '3.1.4'; then
                         --with-rand-seed=os                        \
                         --with-zlib-include="$workspace"/include \
                         --with-zlib-lib="$workspace"/lib
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute sudo make install_sw
     execute sudo make install_fips
     build_done 'openssl' '3.1.4'
@@ -1421,8 +1337,8 @@ if build 'yasm' "$g_ver"; then
                   -DCMAKE_BUILD_TYPE=Release            \
                   -DBUILD_SHARED_LIBS=OFF               \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'yasm' "$g_ver"
 fi
 
@@ -1430,24 +1346,24 @@ if build 'nasm' '2.16.01'; then
     download 'https://www.nasm.us/pub/nasm/stable/nasm-2.16.01.tar.xz'
     execute ./autogen.sh
     execute ./configure --prefix="$workspace"            \
-                        --{build,host,target}="${pc_type}" \
+                        --{build,host,target}="$pc_type" \
                         --disable-pedantic                 \
                         --enable-ccache
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'nasm' '2.16.01'
 fi
 
 if build 'giflib' '5.2.1'; then
     download 'https://cfhcable.dl.sourceforge.net/project/giflib/giflib-5.2.1.tar.gz'
-    # PARELLEL BUILDING NOT AVAILABLE FOR THIS LIBRARY
+# Parellel building not available for this library
     execute make
     execute make PREFIX="$workspace" install
     build_done 'giflib' '5.2.1'
 fi
 
-# UBUNTU BIONIC FAILS TO BUILD XML2
-if [ "${VER}" != '18.04' ]; then
+# Ubuntu bionic fails to build xml2
+if [ "$VER" != '18.04' ]; then
     git_ver_fn '1665' '5' 'T'
     if build 'xml2' "$g_ver"; then
         download "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v$g_ver/libxml2-v$g_ver.tar.bz2" "xml2-$g_ver.tar.bz2"
@@ -1458,14 +1374,14 @@ if [ "${VER}" != '18.04' ]; then
                       -DCMAKE_BUILD_TYPE=Release            \
                       -DBUILD_SHARED_LIBS=OFF               \
                       -G Ninja -Wno-dev
-        execute ninja "-j${cpu_threads}" -C build
-        execute ninja "-j${cpu_threads}" -C build install
+        execute ninja "-j$cpu_threads" -C build
+        execute ninja "-j$cpu_threads" -C build install
         build_done 'xml2' "$g_ver"
     fi
     ffmpeg_libraries+=('--enable-libxml2')
 fi
 
-# MANUALLY UPDATE THIS FROM TIME TO TIME ($g_ver returns = 1.7.0beta88)
+# Manually update this from time to time ($g_ver returns = 1.7.0beta88)
 if build 'libpng' '1.6.40'; then
     download 'https://github.com/glennrp/libpng/archive/refs/tags/v1.6.40.tar.gz' 'libpng-1.6.40.tar.gz'
     execute autoupdate
@@ -1473,7 +1389,7 @@ if build 'libpng' '1.6.40'; then
     execute ./configure --prefix="$workspace"             \
                         --enable-hardware-optimizations=yes \
                         --with-pic
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install-header-links
     execute make install-library-links
     execute make install
@@ -1485,13 +1401,13 @@ if build 'libtiff' "$g_ver"; then
     download "https://gitlab.com/libtiff/libtiff/-/archive/v$g_ver/libtiff-v$g_ver.tar.bz2" "libtiff-$g_ver.tar.bz2"
     execute ./autogen.sh
     execute ./configure --prefix=$install_dir        \
-                        --{build,host}="${pc_type}" \
+                        --{build,host}="$pc_type" \
                         --disable-docs              \
                         --disable-sphinx            \
                         --disable-tests             \
                         --enable-cxx                \
                         --with-pic
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'libtiff' "$g_ver"
 fi
@@ -1503,14 +1419,14 @@ if build 'aribb24' "$g_ver"; then
     execute ./configure --prefix="$workspace" \
                         --disable-shared        \
                         --with-pic
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'aribb24' "$g_ver"
 fi
 ffmpeg_libraries+=('--enable-libaribb24')
 
 git_ver_fn '7950' '4'
-g_ver1="${g_ver//-/.}"
+g_ver1="$g_ver//-/."
 if build 'freetype' "$g_ver1"; then
     download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-$g_ver/freetype-VER-$g_ver.tar.bz2" "freetype-$g_ver1.tar.bz2"
     extracmds=('-D'{harfbuzz,png,bzip2,brotli,zlib,tests}'=disabled')
@@ -1520,8 +1436,8 @@ if build 'freetype' "$g_ver1"; then
                               --default-library=static \
                               --strip                  \
                               "${extracmds[@]}"
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'freetype' "$g_ver1"
 fi
 ffmpeg_libraries+=('--enable-libfreetype')
@@ -1535,20 +1451,20 @@ if build 'fontconfig' "$g_ver"; then
     execute ./autogen.sh --noconf
     execute autoupdate
     execute ./configure --prefix="$workspace"     \
-                        --{build,host}="${pc_type}" \
+                        --{build,host}="$pc_type" \
                         "${extracmds[@]}"           \
                         --enable-iconv              \
                         --enable-static             \
                         --with-arch="$(uname -m)"   \
                         --with-libiconv-prefix=/usr
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'fontconfig' "$g_ver"
 fi
 ffmpeg_libraries+=('--enable-libfontconfig')
 
-# UBUNTU BIONIC FAILS TO BUILD XML2
-if [ "${VER}" != '18.04' ]; then
+# Ubuntu bionic fails to build xml2
+if [ "$VER" != '18.04' ]; then
     pre_check_ver 'harfbuzz/harfbuzz' '1' 'R'
     if build 'harfbuzz' "$g_ver"; then
         download "https://github.com/harfbuzz/harfbuzz/archive/refs/tags/$g_ver.tar.gz" "harfbuzz-$g_ver.tar.gz"
@@ -1559,8 +1475,8 @@ if [ "${VER}" != '18.04' ]; then
                               --default-library=static \
                               --strip                  \
                               "${extracmds[@]}"
-        execute ninja "-j${cpu_threads}" -C build
-        execute ninja "-j${cpu_threads}" -C build install
+        execute ninja "-j$cpu_threads" -C build
+        execute ninja "-j$cpu_threads" -C build install
         build_done 'harfbuzz' "$g_ver"
     fi
 fi
@@ -1576,14 +1492,14 @@ if build 'c2man' 'git'; then
                         -D gcc=/usr/bin/gcc                                                 \
                         -D gzip="$(type -P gzip)"                                           \
                         -D installmansrc="$workspace"/share/man                           \
-                        -D ldflags="${LDFLAGS}"                                             \
+                        -D ldflags="$LDFLAGS"                                             \
                         -D less="$(type -P less)"                                           \
                         -D libpth='/usr/lib64 /usr/lib /lib64 /lib'                         \
                         -D locincpth="$workspace/include /usr/local/include /usr/include" \
                         -D loclibpth="$workspace/lib /usr/local/lib64 /usr/local/lib"     \
                         -D make="$(type -P make)"                                           \
                         -D more="$(type -P more)"                                           \
-                        -D osname="${OS}"                                                   \
+                        -D osname="$OS"                                                   \
                         -D perl="$(type -P perl)"                                           \
                         -D prefix="$workspace"                                            \
                         -D privlib="$workspace"/lib/c2man                                 \
@@ -1598,7 +1514,7 @@ if build 'c2man' 'git'; then
                         -D vi="$(type -P vi)"                                               \
                         -D yacc="$(type -P yacc)"
     execute make depend
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'c2man' 'git'
 fi
@@ -1613,8 +1529,8 @@ if build 'fribidi' "$g_ver"; then
                               --default-library=static \
                               --strip                  \
                               "${extracmds[@]}"
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'fribidi' "$g_ver"
 fi
 ffmpeg_libraries+=('--enable-libfribidi')
@@ -1624,9 +1540,9 @@ if build 'libass' "$g_ver"; then
     download "https://github.com/libass/libass/archive/refs/tags/$g_ver.tar.gz" "libass-$g_ver.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace"     \
-                        --{build,host}="${pc_type}" \
+                        --{build,host}="$pc_type" \
                         --disable-shared
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'libass' "$g_ver"
 fi
@@ -1644,8 +1560,8 @@ if build 'freeglut' "$g_ver"; then
                   -DFREEGLUT_PRINT_ERRORS=OFF           \
                   -DFREEGLUT_PRINT_WARNINGS=OFF         \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'freeglut' "$g_ver"
 fi
 
@@ -1665,8 +1581,8 @@ if build 'libwebp' 'git'; then
                   -DWEBP_ENABLE_SWAP_16BIT_CSP=OFF          \
                   -DWEBP_LINK_STATIC=ON                     \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
-    execute sudo ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute sudo ninja "-j$cpu_threads" -C build install
     build_done 'libwebp' 'git'
 fi
 ffmpeg_libraries+=('--enable-libwebp')
@@ -1684,8 +1600,8 @@ if build 'libhwy' "$g_ver"; then
                   -DHWY_ENABLE_EXAMPLES=OFF                  \
                   -DHWY_FORCE_STATIC_LIBS=ON                 \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
-    execute sudo ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute sudo ninja "-j$cpu_threads" -C build install
     build_done 'libhwy' "$g_ver"
 fi
 
@@ -1698,8 +1614,8 @@ if build 'brotli' "$g_ver"; then
                   -DBUILD_SHARED_LIBS=ON            \
                   -DBUILD_TESTING=OFF               \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
-    execute sudo ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute sudo ninja "-j$cpu_threads" -C build install
     build_done 'brotli' "$g_ver"
 fi
 
@@ -1708,10 +1624,10 @@ if build 'lcms2' "$g_ver"; then
     download "https://github.com/mm2/Little-CMS/archive/refs/tags/lcms$g_ver.tar.gz" "lcms2-$g_ver.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace"     \
-                        --{build,host}="${pc_type}" \
+                        --{build,host}="$pc_type" \
                         --disable-shared            \
                         --with-threaded
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'lcms2' "$g_ver"
 fi
@@ -1729,12 +1645,12 @@ if build 'gflags' "$g_ver"; then
                   -DREGISTER_BUILD_DIR=ON               \
                   -DREGISTER_INSTALL_PREFIX=ON          \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'gflags' "$g_ver"
 fi
 
-if [[ "${OS}" == 'Arch' ]]; then
+if [[ "$OS" == 'Arch' ]]; then
     echo
 else
     if build 'libjxl' '0.8.2'; then
@@ -1742,8 +1658,8 @@ else
         build_done 'libjxl' '0.8.2'
     fi
 fi
-# libjxl has a bug in the decoder bit decoding and must be disabled on Arch Linux
-if [[ "${OS}" == 'Arch' ]]; then
+# Libjxl has a bug in the decoder bit decoding and must be disabled on arch linux
+if [[ "$OS" == 'Arch' ]]; then
     ffmpeg_libraries+=('--disable-libjxl')
 else
     ffmpeg_libraries+=('--enable-libjxl')
@@ -1758,8 +1674,8 @@ if build 'opencl-headers' "$g_ver"; then
                   -DOPENCL_HEADERS_BUILD_CXX_TESTS=OFF  \
                   -DBUILD_TESTING=OFF                   \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'opencl-headers' "$g_ver"
 fi
 ffmpeg_libraries+=('--enable-opencl')
@@ -1769,9 +1685,9 @@ if build 'leptonica' '1.83.1'; then
     download 'https://github.com/DanBloomberg/leptonica/archive/refs/tags/1.83.1.tar.gz' "leptonica-1.83.1.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix=$install_dir        \
-                        --{build,host}="${pc_type}" \
+                        --{build,host}="$pc_type" \
                         --with-pic
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'leptonica' '1.83.1'
 fi
@@ -1781,12 +1697,12 @@ if build 'tesseract' '5.3.2'; then
     download 'https://github.com/tesseract-ocr/tesseract/archive/refs/tags/5.3.2.tar.gz' 'tesseract-5.3.2.tar.gz'
     execute ./autogen.sh
     execute ./configure --prefix=$install_dir                         \
-                        --{build,host}="${pc_type}"                  \
+                        --{build,host}="$pc_type"                  \
                         --disable-doc                                \
                         --with-extra-includes="$workspace"/include \
                         --with-extra-libraries="$workspace"/lib    \
                         --with-pic
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'tesseract' '5.3.2'
 fi
@@ -1800,14 +1716,14 @@ if build 'jpeg-turbo' 'git'; then
                   -DENABLE_SHARED=ON                \
                   -DENABLE_STATIC=ON                \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}"
-    execute sudo ninja "-j${cpu_threads}" install
+    execute ninja "-j$cpu_threads"
+    execute sudo ninja "-j$cpu_threads" install
     build_done 'jpeg-turbo' 'git'
 fi
 
 if build 'rubberband' 'git'; then
     download_git 'https://github.com/m-ab-s/rubberband.git'
-    execute make "-j${cpu_threads}" PREFIX="$workspace" install-static
+    execute make "-j$cpu_threads" PREFIX="$workspace" install-static
     build_done 'rubberband' 'git'
 fi
 ffmpeg_libraries+=('--enable-librubberband')
@@ -1819,26 +1735,26 @@ if build 'zimg' "$g_ver"; then
     execute autoupdate
     execute autoreconf -fi
     execute ./configure --prefix="$workspace"     \
-                        --{build,host}="${pc_type}" \
+                        --{build,host}="$pc_type" \
                         --disable-shared
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'zimg' "$g_ver"
 fi
 ffmpeg_libraries+=('--enable-libzimg')
 
 pre_check_ver 'c-ares/c-ares' '1' 'R'
-g_ver="${g_ver//ares-/}"
-g_tag="${g_ver//\./_}"
+g_ver="$g_ver//ares-/"
+g_tag="$g_ver//\./_"
 if build 'c-ares' "$g_ver"; then
-    download "https://github.com/c-ares/c-ares/archive/refs/tags/cares-${g_tag}.tar.gz" "c-ares-$g_ver.tar.gz"
+    download "https://github.com/c-ares/c-ares/archive/refs/tags/cares-$g_tag.tar.gz" "c-ares-$g_ver.tar.gz"
     execute autoreconf -fi
     execute ./configure --prefix=$install_dir        \
-                        --{build,host}="${pc_type}" \
+                        --{build,host}="$pc_type" \
                         --disable-debug             \
                         --disable-warnings          \
                         --with-pic
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'c-ares' "$g_ver"
 fi
@@ -1846,28 +1762,28 @@ fi
 if build 'lv2' 'git'; then
     download_git 'https://github.com/lv2/lv2.git'
     extracmds=('-D'{docs,tests}'=disabled')
-    case "${VER}" in
+    case "$VER" in
         10|11)      pswitch=enabled;;
         *)          pswitch=disabled;;
     esac
     rm_pip_lock="$(sudo find /usr/lib/python3* -type f -name 'EXTERNALLY-MANAGED')"
-    if [ -n "${rm_pip_lock}" ]; then
-        sudo rm "${rm_pip_lock}"
+    if [ -n "$rm_pip_lock" ]; then
+        sudo rm "$rm_pip_lock"
     fi
     execute pip install lxml Markdown Pygments rdflib
     execute meson setup build --prefix="$workspace"  \
                               --buildtype=release      \
                               --default-library=static \
                               --strip                  \
-                              -Dplugins="${pswitch}"   \
+                              -Dplugins="$pswitch"   \
                               "${extracmds[@]}"
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'lv2' 'git'
 fi
 
 git_ver_fn '7131569' '3' 'T'
-g_ver="${g_ver//waf-/}"
+g_ver="$g_ver//waf-/"
 if build 'waflib' "$g_ver"; then
     download "https://gitlab.com/ita1024/waf/-/archive/waf-$g_ver/waf-waf-$g_ver.tar.bz2" "waflib-$g_ver.tar.bz2"
     build_done 'waflib' "$g_ver"
@@ -1883,8 +1799,8 @@ if build 'serd' "$g_ver"; then
                               --strip                  \
                               -Dstatic=true            \
                               "${extracmds[@]}"
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'serd' "$g_ver"
 fi
 
@@ -1896,7 +1812,7 @@ if build 'pcre2' "$g_ver"; then
                         --enable-jit            \
                         --enable-valgrind       \
                         --disable-shared
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'pcre2' "$g_ver"
 fi
@@ -1910,24 +1826,24 @@ if build 'zix' '0.4.0'; then
                               --default-library=static \
                               --strip                  \
                               "${extracmds[@]}"
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'zix' '0.4.0'
 fi
 
 git_ver_fn '11853362' '3' 'B'
-if build 'sord' "${g_sver1}"; then
+if build 'sord' "$g_sver1"; then
     CFLAGS+=" -I$workspace/include/serd-0"
-    download "https://gitlab.com/drobilla/sord/-/archive/$g_ver1/sord-$g_ver1.tar.bz2" "sord-${g_sver1}.tar.bz2"
+    download "https://gitlab.com/drobilla/sord/-/archive/$g_ver1/sord-$g_ver1.tar.bz2" "sord-$g_sver1.tar.bz2"
     extracmds=('-D'{docs,tests}'=disabled')
     execute meson setup build --prefix="$workspace"  \
                               --buildtype=release      \
                               --default-library=static \
                               --strip                  \
                               "${extracmds[@]}"
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
-    build_done 'sord' "${g_sver1}"
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
+    build_done 'sord' "$g_sver1"
 fi
 
 git_ver_fn '11853194' '3' 'T'
@@ -1939,8 +1855,8 @@ if build 'sratom' "$g_ver"; then
                               --default-library=static \
                               --strip                  \
                               "${extracmds[@]}"
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'sratom' "$g_ver"
 fi
 
@@ -1953,8 +1869,8 @@ if build 'lilv' "$g_ver"; then
                               --default-library=static \
                               --strip                  \
                               "${extracmds[@]}"
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'lilv' "$g_ver"
 fi
 CFLAGS+=" -I$workspace/include/lilv-0"
@@ -1971,7 +1887,7 @@ if build 'libmpg123' 'git'; then
     execute ./configure --prefix="$workspace" \
                         --enable-static         \
                         --with-cpu=x86-64
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'libmpg123' 'git'
 fi
@@ -1981,7 +1897,7 @@ if build 'jansson' "$g_ver"; then
     download "https://github.com/akheron/jansson/archive/refs/tags/v$g_ver.tar.gz" "jansson-$g_ver.tar.gz"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace"
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'jansson' "$g_ver"
 fi
@@ -1995,7 +1911,7 @@ if build 'jemalloc' "$g_ver"; then
     execute ./configure --prefix="$workspace" \
                         "${extracmds1[@]}"      \
                         "${extracmds2[@]}"
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'jemalloc' "$g_ver"
 fi
@@ -2005,27 +1921,24 @@ if build 'cunit' 'git'; then
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" \
                         --disable-shared
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'cunit' 'git'
 fi
 
-#
-# INSTALL AUDIO TOOLS
-#
+# Install audio tools
 
 echo
-box_out_banner_audio()
-{
+box_out_banner_audio() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
+    line=$(for i in $(seq 0 $input_char); do printf '-'; done)
     tput bold
     line="$(tput setaf 3)$line"
-    space=${line//-/ }
+    space=$line//-/ 
     echo " $line"
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
     printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
     echo " $line"
     tput sgr 0
 }
@@ -2041,8 +1954,8 @@ if build 'sdl2' 'git'; then
                        -DSDL_DISABLE_INSTALL_DOCS=ON         \
                        -DSDL_CCACHE=ON                       \
                        -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'sdl2' 'git'
 fi
 
@@ -2055,8 +1968,8 @@ if build 'libpulse' "$g_ver"; then
                               --default-library=static \
                               --strip                  \
                                "${extracmds[@]}"
-    execute ninja "-j${cpu_threads}" -C build
-    execute sudo ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute sudo ninja "-j$cpu_threads" -C build install
     libpulse_fix_libs_fn
     build_done 'libpulse' "$g_ver"
 fi
@@ -2074,8 +1987,8 @@ if build 'libogg' "$g_ver"; then
                   -DCPACK_BINARY_DEB=OFF            \
                   -DCPACK_SOURCE_ZIP=OFF            \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
-    execute sudo ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute sudo ninja "-j$cpu_threads" -C build install
     build_done 'libogg' "$g_ver"
 fi
 
@@ -2101,8 +2014,8 @@ if build 'libflac' "$g_ver"; then
                   -DBUILD_EXAMPLES=OFF                  \
                   -DBUILD_TESTING=OFF                   \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'libflac' "$g_ver"
 fi
 
@@ -2113,7 +2026,7 @@ if build 'libfdk-aac' '2.0.2'; then
     execute ./configure --prefix="$workspace" \
                         --disable-shared        \
                         --enable-static
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'libfdk-aac' '2.0.2'
 fi
@@ -2130,8 +2043,8 @@ if build 'vorbis' "$g_ver"; then
                   -DOGG_INCLUDE_DIR=/usr/local/include   \
                   -DOGG_LIBRARY=/usr/local/lib/libogg.so \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
-    execute sudo ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute sudo ninja "-j$cpu_threads" -C build install
     build_done 'vorbis' "$g_ver"
 fi
 ffmpeg_libraries+=('--enable-libvorbis')
@@ -2146,8 +2059,8 @@ if build 'opus' "$g_ver"; then
                   -DBUILD_SHARED_LIBS=OFF               \
                   -DCPACK_SOURCE_ZIP=OFF                \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'opus' "$g_ver"
 fi
 ffmpeg_libraries+=('--enable-libopus')
@@ -2161,8 +2074,8 @@ if build 'libmysofa' "$g_ver"; then
                   -DBUILD_SHARED_LIBS=OFF               \
                   -DBUILD_STATIC_LIBS=ON                \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'libmysofa' "$g_ver"
 fi
 ffmpeg_libraries+=('--enable-libmysofa')
@@ -2176,20 +2089,20 @@ if build 'vpx' "$g_ver"; then
                         --disable-shared        \
                         --disable-examples      \
                         --enable-vp9-highbitdepth
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'vpx' "$g_ver"
 fi
 ffmpeg_libraries+=('--enable-libvpx')
 
 git_ver_fn '8143' '6'
-g_ver="${g_ver//debian\//}"
+g_ver="$g_ver//debian\//"
 if build 'opencore-amr' "$g_ver"; then
     download "https://salsa.debian.org/multimedia-team/opencore-amr/-/archive/debian/$g_ver/opencore-amr-debian-$g_ver.tar.bz2" "opencore-amr-$g_ver.tar.bz2"
     execute ./configure --prefix="$workspace"     \
-                        --{build,host}="${pc_type}" \
+                        --{build,host}="$pc_type" \
                         --disable-shared
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'opencore-amr' "$g_ver"
 fi
@@ -2198,12 +2111,12 @@ ffmpeg_libraries+=('--enable-libopencore-amrnb' '--enable-libopencore-amrwb')
 if build 'liblame' '3.100'; then
     download 'https://zenlayer.dl.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz'
     execute ./configure --prefix="$workspace"     \
-                        --{build,host}="${pc_type}" \
+                        --{build,host}="$pc_type" \
                         --disable-shared            \
                         --disable-gtktest           \
                         --enable-nasm               \
                         --with-libiconv-prefix=/usr
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'liblame' '3.100'
 fi
@@ -2220,7 +2133,7 @@ if build 'libtheora' "$g_ver1"; then
     execute curl -A "$user_agent" -Lso config.guess https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess
     chmod +x config.guess
     execute ./configure --prefix=$install_dir                          \
-                        --{build,host,target}="${pc_type}"            \
+                        --{build,host,target}="$pc_type"            \
                         --disable-examples                            \
                         --disable-oggtest                             \
                         --disable-sdltest                             \
@@ -2232,28 +2145,25 @@ if build 'libtheora' "$g_ver1"; then
                         --with-vorbis-includes="$workspace"/include \
                         --with-vorbis-libraries="$workspace"/lib    \
                         --with-pic
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'libtheora' "$g_ver1"
 fi
 ffmpeg_libraries+=('--enable-libtheora')
 
-#
-# INSTALL VIDEO TOOLS
-#
+# Install video tools
 
 echo
-box_out_banner_video()
-{
+box_out_banner_video() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
+    line=$(for i in $(seq 0 $input_char); do printf '-'; done)
     tput bold
     line="$(tput setaf 3)$line"
-    space=${line//-/ }
+    space=$line//-/ 
     echo " $line"
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
     printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
     echo " $line"
     tput sgr 0
 }
@@ -2265,11 +2175,11 @@ if build 'vulkan-headers' 'git'; then
                   -DCMAKE_INSTALL_PREFIX="$workspace"        \
                   -DCMAKE_BUILD_TYPE=Release                   \
                   -DBUILD_TESTS=OFF                            \
-                  -DCMAKE_C_FLAGS='-g -O3 -pipe -march=native' \
+                  -DCMAKE_C_FLAGS='-g -O3 -pipe -fno-plt -march=native' \
                   -DCMAKE_STRIP="$(type -P strip)"             \
                   -G Ninja -Wno-devCMAKE_CXX_COMPILE
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'vulkan-headers' 'git'
 fi
 ffmpeg_libraries+=('--enable-libkvazaar')
@@ -2278,18 +2188,18 @@ if build 'decklink' '12.8'; then
     download "https://github.com/slyfox1186/ffmpeg-build-script/raw/main/headers/blackmagic-deckLink-sdk-12.8.tar.gz" 'decklink-12.8.tar.xz'
     for files in *.{h,cpp}
     do
-        mv "${files}" "$workspace"/include
+        mv "$files" "$workspace"/include
     done
     build_done 'decklink' '12.8'
 fi
 ffmpeg_libraries+=('--enable-decklink')
 
-# NEED TO UPDATE THIS REPO FROM TIME TO TIME MANUALLY
+# Need to update this repo from time to time manually
 aom_ver=6054fae218eda6e53e1e3b4f7ef0fff4877c7bf1
-# aom_ver=4783bb8b4ca42e15078225e3f58d246e13a93c28
-aom_sver="${aom_ver::7}"
-if build 'av1' "${aom_sver}"; then
-    download "https://aomedia.googlesource.com/aom/+archive/${aom_ver}.tar.gz" "av1-${aom_sver}.tar.gz" 'av1'
+# Aom_ver=4783bb8b4ca42e15078225e3f58d246e13a93c28
+aom_sver="$aom_ver::7"
+if build 'av1' "$aom_sver"; then
+    download "https://aomedia.googlesource.com/aom/+archive/$aom_ver.tar.gz" "av1-$aom_sver.tar.gz" 'av1'
     mkdir -p "$packages/aom_build"
     cd "$packages/aom_build" || exit 1
     execute cmake -B build                                \
@@ -2307,9 +2217,9 @@ if build 'av1' "${aom_sver}"; then
                   -DENABLE_TESTS=0                        \
                   -G Ninja -Wno-dev                       \
                   "$packages"/av1
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
-    build_done 'av1' "${aom_sver}"
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
+    build_done 'av1' "$aom_sver"
 fi
 ffmpeg_libraries+=('--enable-libaom')
 
@@ -2322,27 +2232,27 @@ if build 'dav1d' "$g_ver1"; then
                               --default-library=static \
                               --strip                  \
                                "${extracmds[@]}"
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'dav1d' "$g_ver1"
 fi
 ffmpeg_libraries+=('--enable-libdav1d')
 
-# RAV1E FAILS TO BUILD ON UBUNTU BIONIC AND DEBIAN 11 BULLSEYE
-if [ "${VER}" != '18.04' ] && [ "${VER}" != '11' ]; then
+# Rav1e fails to build on ubuntu bionic and debian 11 bullseye
+if [ "$VER" != '18.04' ] && [ "$VER" != '11' ]; then
     pre_check_ver 'xiph/rav1e' '1' 'T'
     if build 'rav1e' 'p20231024'; then
         get_rustc_ver="$(rustc --version | grep -Eo '[0-9\.]+' | head -n1)"
-        if [ "${get_rustc_ver}" != '1.73.0' ]; then
+        if [ "$get_rustc_ver" != '1.73.0' ]; then
             echo '$ Installing RustUp'
             curl -A "$user_agent" -sSf --proto '=https' --tlsv1.2 'https://sh.rustup.rs' | sh -s -- -y &>/dev/null
-            source "${HOME}"/.cargo/env
-            if [ -f "${HOME}"/.zshrc ]; then
-                source "${HOME}"/.zshrc
+            source "$HOME"/.cargo/env
+            if [ -f "$HOME"/.zshrc ]; then
+                source "$HOME"/.zshrc
             else
-                source "${HOME}"/.bashrc
+                source "$HOME"/.bashrc
             fi
-            rm -fr "${HOME}"/.cargo/registry/index/* "${HOME}"/.cargo/.package-cache
+            rm -fr "$HOME"/.cargo/registry/index/* "$HOME"/.cargo/.package-cache
         fi
         execute cargo install cargo-c
         download 'https://github.com/xiph/rav1e/archive/refs/tags/p20231024.tar.gz' 'rav1e-p20231024.tar.gz'
@@ -2368,8 +2278,8 @@ if build 'avif' "$g_ver"; then
                   -DAVIF_ENABLE_GTEST=OFF           \
                   -DAVIF_ENABLE_WERROR=OFF          \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
-    execute sudo ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute sudo ninja "-j$cpu_threads" -C build install
     build_done 'avif' "$g_ver"
 fi
 
@@ -2378,9 +2288,9 @@ if build 'kvazaar' "$g_ver"; then
     download_git 'https://github.com/ultravideo/kvazaar.git'
     execute ./autogen.sh
     execute ./configure --prefix="$workspace"     \
-                        --{build,host}="${pc_type}" \
+                        --{build,host}="$pc_type" \
                         --disable-shared
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'kvazaar' "$g_ver"
 fi
@@ -2391,10 +2301,10 @@ if build 'libdvdread' "$g_ver1"; then
     download "https://code.videolan.org/videolan/libdvdread/-/archive/$g_ver1/libdvdread-$g_ver1.tar.bz2"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace"     \
-                        --{build,host}="${pc_type}" \
+                        --{build,host}="$pc_type" \
                         --disable-apidoc            \
                         --disable-shared
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'libdvdread' "$g_ver1"
 fi
@@ -2404,9 +2314,9 @@ if build 'udfread' "$g_ver1"; then
     download "https://code.videolan.org/videolan/libudfread/-/archive/$g_ver1/libudfread-$g_ver1.tar.bz2"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace"     \
-                        --{build,host}="${pc_type}" \
+                        --{build,host}="$pc_type" \
                         --disable-shared
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'udfread' "$g_ver1"
 fi
@@ -2419,7 +2329,7 @@ if build 'ant' 'git'; then
     build_done 'ant' 'git'
 fi
 
-if [[ "${OS}" == 'Arch' ]]; then
+if [[ "$OS" == 'Arch' ]]; then
     apache_ant_fn
 fi
 
@@ -2428,12 +2338,12 @@ if build 'libbluray' "$g_ver1"; then
     download "https://code.videolan.org/videolan/libbluray/-/archive/$g_ver1/$g_ver1.tar.gz" "libbluray-$g_ver1.tar.gz"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace"     \
-                        --{build,host}="${pc_type}" \
+                        --{build,host}="$pc_type" \
                         --disable-examples          \
                         --disable-extra-warnings    \
                         --disable-shared            \
                         --without-libxml2
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'libbluray' "$g_ver1"
 fi
@@ -2445,9 +2355,9 @@ if build 'zenlib' "$g_ver"; then
     cd Project/GNU/Library || exit 1
     execute ./autogen.sh
     execute ./configure --prefix="$workspace"     \
-                        --{build,host}="${pc_type}" \
+                        --{build,host}="$pc_type" \
                         --disable-shared
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'zenlib' "$g_ver"
 fi
@@ -2458,9 +2368,9 @@ if build 'mediainfolib' "$g_ver"; then
     cd Project/GNU/Library || exit 1
     execute ./autogen.sh
     execute ./configure --prefix="$workspace"     \
-                        --{build,host}="${pc_type}" \
+                        --{build,host}="$pc_type" \
                         --disable-shared
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'mediainfolib' "$g_ver"
 fi
@@ -2471,10 +2381,10 @@ if build 'mediainfo-cli' "$g_ver"; then
     cd Project/GNU/CLI || exit 1
     execute ./autogen.sh
     execute ./configure --prefix="$workspace"     \
-                        --{build,host}="${pc_type}" \
+                        --{build,host}="$pc_type" \
                         --enable-staticlibs         \
                         --disable-shared
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'mediainfo-cli' "$g_ver"
 fi
@@ -2488,8 +2398,8 @@ if build 'vid-stab' "$g_ver"; then
                   -DBUILD_SHARED_LIBS=OFF               \
                   -DUSE_OMP=ON                          \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'vid-stab' "$g_ver"
 fi
 ffmpeg_libraries+=('--enable-libvidstab')
@@ -2503,24 +2413,24 @@ if build 'frei0r' "$g_ver"; then
                   -DBUILD_SHARED_LIBS=OFF               \
                   -DWITHOUT_OPENCV=OFF                  \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'frei0r' "$g_ver"
 fi
 ffmpeg_libraries+=('--enable-frei0r')
 
 pre_check_ver 'GPUOpen-LibrariesAndSDKs/AMF' '1' 'T'
 g_sver="$(echo "$g_ver" | sed -E 's/^\.//g')"
-if build 'amf' "${g_sver}"; then
-    download "https://github.com/GPUOpen-LibrariesAndSDKs/AMF/archive/refs/tags/v$g_ver.tar.gz" "amf-${g_sver}.tar.gz"
+if build 'amf' "$g_sver"; then
+    download "https://github.com/GPUOpen-LibrariesAndSDKs/AMF/archive/refs/tags/v$g_ver.tar.gz" "amf-$g_sver.tar.gz"
     execute rm -fr "$workspace"/include/AMF
     execute mkdir -p "$workspace"/include/AMF
-    execute cp -fr "$packages"/amf-"${g_sver}"/amf/public/include/* "$workspace"/include/AMF
-    build_done 'amf' "${g_sver}"
+    execute cp -fr "$packages"/amf-"$g_sver"/amf/public/include/* "$workspace"/include/AMF
+    build_done 'amf' "$g_sver"
 fi
 ffmpeg_libraries+=('--enable-amf')
 
-if [[ "${OS}" == 'Arch' ]]; then
+if [[ "$OS" == 'Arch' ]]; then
     pre_check_ver 'gpac/gpac' '1' 'T'
     if build 'gpac' "$g_ver"; then
         sudo pacman --noconfirm gpac
@@ -2536,13 +2446,13 @@ else
                                  --use-faad=local                      \
                                  --use-mad=local                       \
                                  --sdl-cfg="$workspace"/include/SDL3
-        execute sudo make "-j${cpu_threads}"
+        execute sudo make "-j$cpu_threads"
         execute sudo make install
         build_done 'gpac' "$g_ver"
     fi
 fi
 
-# VERSIONS >= 1.4.0 BREAKS FFMPEG DURING THE BUILD
+# Versions >= 1.4.0 breaks ffmpeg during the build
 git_ver_fn '24327400' '3' 'T'
 if build 'svt-av1' '1.4.0'; then
     download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v1.4.0/SVT-AV1-v1.4.0.tar.bz2' 'svt-av1-1.4.0.tar.bz2'
@@ -2558,8 +2468,8 @@ if build 'svt-av1' '1.4.0'; then
                        -DENABLE_NASM=ON                      \
                        -DNATIVE=ON                           \
                        -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C Build/linux
-    execute ninja "-j${cpu_threads}" -C Build/linux install
+    execute ninja "-j$cpu_threads" -C Build/linux
+    execute ninja "-j$cpu_threads" -C Build/linux install
     cp -f 'Build/linux/SvtAv1Enc.pc' "$workspace"/lib/pkgconfig
     cp -f 'Build/linux/SvtAv1Dec.pc' "$workspace"/lib/pkgconfig
     build_done 'svt-av1' '1.4.0'
@@ -2567,29 +2477,29 @@ fi
 ffmpeg_libraries+=('--enable-libsvtav1')
 
 git_ver_fn '536' '2' 'B'
-g_sver="${g_ver::8}"
-if build 'x264' "${g_sver}"; then
-    download "https://code.videolan.org/videolan/x264/-/archive/$g_ver/x264-$g_ver.tar.bz2" "x264-${g_sver}.tar.bz2"
+g_sver="$g_ver::8"
+if build 'x264' "$g_sver"; then
+    download "https://code.videolan.org/videolan/x264/-/archive/$g_ver/x264-$g_ver.tar.bz2" "x264-$g_sver.tar.bz2"
     execute ./configure --prefix="$workspace" \
                         --bit-depth=all         \
                         --chroma-format=all     \
                         --enable-gprof          \
                         --enable-static         \
                         --enable-strip
-    execute sudo make "-j${cpu_threads}"
+    execute sudo make "-j$cpu_threads"
     execute sudo make install
     execute sudo make install-lib-static
-    build_done 'x264' "${g_sver}"
+    build_done 'x264' "$g_sver"
 fi
 ffmpeg_libraries+=('--enable-libx264')
 
-# X265 GIVES BETTER FPS WHEN BUILT WITH CLANG
+# X265 gives better fps when built with clang
 export CC=clang CXX=clang++
-# ENTER A SNAPSHOT ID FOR X265
+# Enter a snapshot id for x265
 g_ver=8ee01d45b05cdbc9da89b884815257807a514bc8
-g_sver="${g_ver::7}"
-if build 'x265' "${g_sver}"; then
-    download "https://bitbucket.org/multicoreware/x265_git/get/$g_ver.tar.bz2" "x265-${g_sver}.tar.bz2"
+g_sver="$g_ver::7"
+if build 'x265' "$g_sver"; then
+    download "https://bitbucket.org/multicoreware/x265_git/get/$g_ver.tar.bz2" "x265-$g_sver.tar.bz2"
     cd build/linux || exit 1
     rm -fr {8,10,12}bit 2>/dev/null
     mkdir -p {8,10,12}bit
@@ -2604,7 +2514,7 @@ if build 'x265' "${g_sver}"; then
                   -DHIGH_BIT_DEPTH=ON               \
                   -DMAIN12=ON                       \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}"
+    execute ninja "-j$cpu_threads"
     echo '$ making 10bit binaries'
     cd ../10bit || exit 1
     execute cmake ../../../source                   \
@@ -2616,7 +2526,7 @@ if build 'x265' "${g_sver}"; then
                   -DEXPORT_C_API=OFF                \
                   -DHIGH_BIT_DEPTH=ON               \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}"
+    execute ninja "-j$cpu_threads"
     echo '$ making 8bit binaries'
     cd ../8bit || exit 1
     ln -sf ../10bit/libx265.a libx265_main10.a
@@ -2631,7 +2541,7 @@ if build 'x265' "${g_sver}"; then
                   -DLINKED_10BIT=ON                         \
                   -DLINKED_12BIT=ON                         \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}"
+    execute ninja "-j$cpu_threads"
 
     mv 'libx265.a' 'libx265_main.a'
 
@@ -2644,25 +2554,25 @@ SAVE
 END
 EOF
 
-    execute sudo ninja "-j${cpu_threads}" install
+    execute sudo ninja "-j$cpu_threads" install
 
-    if [ -n "${LDEXEFLAGS}" ]; then
+    if [ -n "$LDEXEFLAGS" ]; then
         sed -i.backup 's/lgcc_s/lgcc_eh/g' '/usr/local/lib/pkgconfig/x265.pc'
     fi
 
-    # FIX x265 SHARED LIB ISSUES
+# Fix x265 shared lib issues
     x265_fix_libs_fn
 
-    build_done 'x265' "${g_sver}"
+    build_done 'x265' "$g_sver"
 fi
 ffmpeg_libraries+=('--enable-libx265')
 
-# CHANGE THE COMPILERS BACK TO GCC FOR THE REST OF THE BUILD
+# Change the compilers back to gcc for the rest of the build
 export CC=gcc CXX=g++
 
-# Vaapi doesn't work well with static links FFmpeg.
-if [ -z "${LDEXEFLAGS}" ]; then
-    # If the libva development SDK is installed, enable vaapi.
+# Vaapi doesn't work well with static links ffmpeg.
+if [ -z "$LDEXEFLAGS" ]; then
+# If the libva development sdk is installed, enable vaapi.
     if library_exists 'libva'; then
         if build 'vaapi' '1'; then
             build_done 'vaapi' '1'
@@ -2671,15 +2581,15 @@ if [ -z "${LDEXEFLAGS}" ]; then
     fi
 fi
 
-if [ -n "${iscuda}" ]; then
+if [ -n "$iscuda" ]; then
     if build 'nv-codec-headers' '12.0.16.1'; then
         download 'https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.0.16.1/nv-codec-headers-12.0.16.1.tar.gz'
-        execute make "-j${cpu_threads}"
+        execute make "-j$cpu_threads"
         execute make PREFIX="$workspace" install
         build_done 'nv-codec-headers' '12.0.16.1'
     fi
 
-    if [[ "${OS}" == 'Arch' ]]; then
+    if [[ "$OS" == 'Arch' ]]; then
         export PATH+=':/opt/cuda/bin'
         CFLAGS+=' -I/opt/cuda/include -I/opt/cuda/targets/x86_64-linux/include'
         LDFLAGS+=' -L/opt/cuda/lib64 -L/opt/cuda/lib -L/opt/cuda/targets/x86_64-linux/lib'
@@ -2688,23 +2598,23 @@ if [ -n "${iscuda}" ]; then
         LDFLAGS+=' -L/usr/local/cuda/lib64'
     fi
 
-    if [ "${OS}" != 'Arch' ]; then
+    if [ "$OS" != 'Arch' ]; then
         if ! sudo dpkg -l | grep -o nvidia-smi &>/dev/null; then
             sudo apt install nvidia-smi &>/dev/null
         fi
     fi
 
-    # GET THE GPU ARCHITECTURE
-    # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
+# Get the gpu architecture
+# Https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
     gpu_arch_fn
 
     ffmpeg_libraries+=('--enable-'{cuda-nvcc,cuda-llvm,cuvid,nvdec,nvenc,ffnvcodec})
 
-    if [ -n "${LDEXEFLAGS}" ]; then
+    if [ -n "$LDEXEFLAGS" ]; then
         ffmpeg_libraries+=('--enable-libnpp')
     fi
 fi
-ffmpeg_libraries+=("--nvccflags=-gencode arch=${gpu_arch}")
+ffmpeg_libraries+=("--nvccflags=-gencode arch=$gpu_arch")
 
 pre_check_ver 'Haivision/srt' '1' 'R'
 if build 'srt' "$g_ver"; then
@@ -2721,9 +2631,9 @@ if build 'srt' "$g_ver"; then
                   -DENABLE_STATIC=ON                    \
                   -DUSE_STATIC_LIBSTDCXX=ON             \
                   -G Ninja -Wno-dev
-    execute ninja -C build "-j${cpu_threads}"
-    execute ninja -C build "-j${cpu_threads}" install
-    if [ -n "${LDEXEFLAGS}" ]; then
+    execute ninja -C build "-j$cpu_threads"
+    execute ninja -C build "-j$cpu_threads" install
+    if [ -n "$LDEXEFLAGS" ]; then
         sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "$workspace"/lib/pkgconfig/srt.pc
     fi
     build_done 'srt' "$g_ver"
@@ -2738,7 +2648,7 @@ if build 'avisynth' "$g_ver"; then
                   -DCMAKE_BUILD_TYPE=Release            \
                   -DBUILD_SHARED_LIBS=OFF               \
                   -DHEADERS_ONLY=OFF
-    execute make "-j${cpu_threads}" -C build VersionGen install
+    execute make "-j$cpu_threads" -C build VersionGen install
     build_done 'avisynth' "$g_ver"
 fi
 CFLAGS+=" -I$workspace/include/avisynth"
@@ -2751,13 +2661,13 @@ if build 'vapoursynth' "$g_ver"; then
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" \
                         --disable-shared
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'vapoursynth' "$g_ver"
 fi
 ffmpeg_libraries+=('--enable-vapoursynth')
 
-if [ "${VER}" != '22.04' ]; then
+if [ "$VER" != '22.04' ]; then
     pre_check_ver 'cyanreg/cyanrip' '1' 'T'
     if build 'cyanrip' "$g_ver"; then
         download "https://github.com/cyanreg/cyanrip/archive/refs/tags/v$g_ver.tar.gz" "cyanrip-$g_ver.tar.gz"
@@ -2765,8 +2675,8 @@ if [ "${VER}" != '22.04' ]; then
                                   --buildtype=release      \
                                   --default-library=static \
                                   --strip
-        execute ninja -C build "-j${cpu_threads}"
-        execute ninja -C build "-j${cpu_threads}" install
+        execute ninja -C build "-j$cpu_threads"
+        execute ninja -C build "-j$cpu_threads" install
         build_done 'cyanrip' "$g_ver"
     fi
 fi
@@ -2784,41 +2694,38 @@ if build 'libgav1' 'git'; then
                   -DCMAKE_INSTALL_SBINDIR=sbin          \
                   -DLIBGAV1_ENABLE_TESTS=OFF            \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     build_done 'libgav1' 'git'
 fi
 
 git_ver_fn '8268' '6'
-g_ver="${g_ver//debian\/2%/}"
+g_ver="$g_ver//debian\/2%/"
 if build 'xvidcore' "$g_ver"; then
     download "https://salsa.debian.org/multimedia-team/xvidcore/-/archive/debian/2%25$g_ver/xvidcore-debian-2%25$g_ver.tar.bz2" "xvidcore-$g_ver.tar.bz2"
     cd 'build/generic' || exit 1
     execute ./bootstrap.sh
     execute ./configure --prefix=$workspace \
-                        --{build,host,target}="${pc_type}"
-    execute make "-j${cpu_threads}"
+                        --{build,host,target}="$pc_type"
+    execute make "-j$cpu_threads"
     execute make install
     build_done 'xvidcore' "$g_ver"
 fi
 ffmpeg_libraries+=('--enable-libxvid')
 
-#
-# IMAGE LIBRARIES
-#
+# Image libraries
 
 echo
-box_out_banner_images()
-{
+box_out_banner_images() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
+    line=$(for i in $(seq 0 $input_char); do printf '-'; done)
     tput bold
     line="$(tput setaf 3)$line"
-    space=${line//-/ }
+    space=$line//-/ 
     echo " $line"
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
     printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
     echo " $line"
     tput sgr 0
 }
@@ -2827,10 +2734,10 @@ box_out_banner_images 'Installing Image Tools'
 pre_check_ver 'strukturag/libheif' '1' 'T'
 if build 'libheif' "$g_ver"; then
     download "https://github.com/strukturag/libheif/archive/refs/tags/v$g_ver.tar.gz" "libheif-$g_ver.tar.gz"
-    export {CFLAGS,CXXFLAGS}='-g -O3 -fno-lto -pipe -march=native'
+    export {CFLAGS,CXXFLAGS}='-g -O3 -fno-lto -pipe -fno-plt -march=native'
     libde265_libs="$(sudo find /usr -type f -name 'libde265.so')"
-    if [ -f "${libde265_libs}" ] && [ ! -f '/usr/lib/x86_64-linux-gnu/libde265.so' ]; then
-        sudo cp -f "${libde265_libs}" '/usr/lib/x86_64-linux-gnu'
+    if [ -f "$libde265_libs" ] && [ ! -f '/usr/lib/x86_64-linux-gnu/libde265.so' ]; then
+        sudo cp -f "$libde265_libs" '/usr/lib/x86_64-linux-gnu'
         sudo chmod 755 '/usr/lib/x86_64-linux-gnu/libde265.so'
     fi
     if [ -f "$workspace/lib/libdav1d.a" ] && [ ! -f "$workspace/lib/x86_64-linux-gnu/libdav1d.a" ]; then
@@ -2839,7 +2746,7 @@ if build 'libheif' "$g_ver"; then
         fi
         cp -f "$workspace/lib/libdav1d.a"  "$workspace/lib/x86_64-linux-gnu/libdav1d.a"
     fi
-    case "${VER}" in
+    case "$VER" in
         18.04|20.04)    pixbuf_switch='OFF';;
         *)              pixbuf_switch='ON';;
     esac
@@ -2859,7 +2766,7 @@ if build 'libheif' "$g_ver"; then
                   -DWITH_AOM_ENCODER=ON                                          \
                   -DWITH_DAV1D=ON                                                \
                   -DWITH_EXAMPLES=OFF                                            \
-                  -DWITH_GDK_PIXBUF="${pixbuf_switch}"                           \
+                  -DWITH_GDK_PIXBUF="$pixbuf_switch"                           \
                   -DWITH_LIBDE265=ON                                             \
                   -DWITH_LIBSHARPYUV=ON                                          \
                   -DWITH_REDUCED_VISIBILITY=OFF                                  \
@@ -2868,8 +2775,8 @@ if build 'libheif' "$g_ver"; then
                   -DX265_INCLUDE_DIR=/usr/local/include                          \
                   -DX265_LIBRARY=/usr/local/lib/libx265.so                       \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
-    execute ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute ninja "-j$cpu_threads" -C build install
     source_flags_fn
     build_done 'libheif' "$g_ver"
 fi
@@ -2883,40 +2790,37 @@ if build 'openjpeg' "$g_ver2"; then
                   -DBUILD_SHARED_LIBS=ON            \
                   -DBUILD_TESTING=OFF               \
                   -G Ninja -Wno-dev
-    execute ninja "-j${cpu_threads}" -C build
-    execute sudo ninja "-j${cpu_threads}" -C build install
+    execute ninja "-j$cpu_threads" -C build
+    execute sudo ninja "-j$cpu_threads" -C build install
     build_done 'openjpeg' "$g_ver2"
 fi
 ffmpeg_libraries+=('--enable-libopenjpeg')
 
-#
-# BUILD FFMPEG
-#
+# Build ffmpeg
 
 echo
-box_out_banner_ffmpeg()
-{
+box_out_banner_ffmpeg() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
+    line=$(for i in $(seq 0 $input_char); do printf '-'; done)
     tput bold
     line="$(tput setaf 3)$line"
-    space=${line//-/ }
+    space=$line//-/ 
     echo " $line"
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
     printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
     echo " $line"
     tput sgr 0
 }
 box_out_banner_ffmpeg 'Building FFmpeg'
 
-if [ -n "${ffmpeg_archive}" ]; then
-    ff_cmd="${ffmpeg_url} ${ffmpeg_archive}"
+if [ -n "$ffmpeg_archive" ]; then
+    ff_cmd="$ffmpeg_url $ffmpeg_archive"
 else
-    ff_cmd="${ffmpeg_url}"
+    ff_cmd="$ffmpeg_url"
 fi
 
-if [[ "${OS}" == 'Arch' ]]; then
+if [[ "$OS" == 'Arch' ]]; then
     ladspa_switch='--disable-ladspa'
 else
     ladspa_switch='--enable-ladspa'
@@ -2929,7 +2833,7 @@ sudo cp -f "$packages"/objbase.h /usr/local
 
 if build 'ffmpeg' 'git'; then
     download_git 'https://git.ffmpeg.org/ffmpeg.git'
-    if [[ "${OS}" == 'Arch' ]]; then
+    if [[ "$OS" == 'Arch' ]]; then
         patch_ffmpeg_fn
     fi
 
@@ -2940,8 +2844,8 @@ if build 'ffmpeg' 'git'; then
     read -p 'Please enter your GitHub e-mail address: ' gh_email
     read -p 'Please enter your GitHub username: ' gh_uname
     echo
-    git config user.email "${gh_email}"
-    git config --global user.name "${gh_uname}"
+    git config user.email "$gh_email"
+    git config --global user.name "$gh_uname"
     execute sudo git am "$packages"/FFMPEG-NDI-git/libndi.patch
     execute sudo cp "$packages"/FFMPEG-NDI-git/libavdevice/libndi_newtek_* libavdevice/
     execute sudo bash "$packages"/FFMPEG-NDI-git/preinstall.sh
@@ -2954,13 +2858,13 @@ if build 'ffmpeg' 'git'; then
     ../configure --prefix=$install_dir                     \
                  --arch="$(uname -m)"                        \
                  --cpu="$((cpu_threads / 2))"                \
-                 --cc="${CC}"                                \
-                 --cxx="${CXX}"                              \
+                 --cc="$CC"                                \
+                 --cxx="$CXX"                              \
                  --disable-debug                             \
                  --disable-doc                               \
                  --disable-large-tests                       \
                  --disable-shared                            \
-                 "${ladspa_switch}"                          \
+                 "$ladspa_switch"                          \
                  "${ffmpeg_libraries[@]}"                    \
                  --enable-chromaprint                        \
                  --enable-gpl                                \
@@ -2988,34 +2892,34 @@ if build 'ffmpeg' 'git'; then
                  --enable-static                             \
                  --enable-vulkan                             \
                  --enable-version3                           \
-                 --extra-cflags="${CFLAGS}"                  \
-                 --extra-cxxflags="${CXXFLAGS}"              \
-                 --extra-ldflags="${LDFLAGS}"                \
-                 --extra-ldexeflags="${LDEXEFLAGS}"          \
-                 --extra-libs="${EXTRALIBS}"                 \
+                 --extra-cflags="$CFLAGS"                  \
+                 --extra-cxxflags="$CXXFLAGS"              \
+                 --extra-ldflags="$LDFLAGS"                \
+                 --extra-ldexeflags="$LDEXEFLAGS"          \
+                 --extra-libs="$EXTRALIBS"                 \
                  --pkg-config-flags='--static'               \
                  --pkg-config=/usr/local/bin/pkg-config      \
                  --pkgconfigdir="$workspace"/lib/pkgconfig \
                  --strip="$(type -P strip)"
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute sudo make install
 fi
 
-# MAKE SURE ALL OF THE FILES WERE COMPILED CORRECTLY
+# Make sure all of the files were compiled correctly
 ffmpeg_install_test
 
-# EXECUTE THE LDCONFIG COMMAND TO ENSURE THAT ALL LIBRARY CHANGES ARE DETECTED BY FFMPEG
+# Execute the ldconfig command to ensure that all library changes are detected by ffmpeg
 sudo ldconfig 2>/dev/null
 
-# DISPLAY FFMPEG'S VERSION
+# Display ffmpeg's version
 if [ -f /usr/local/bin/ffmpeg ]; then
     ff_ver_fn
 else
-    fail_fn "Failed to find the binary file: $workspace/bin/ffmpeg. Line: ${LINENO}"
+    fail_fn "Failed to find the binary file: $workspace/bin/ffmpeg. Line: $LINENO"
 fi
 
-# PROMPT THE USER TO CLEAN UP THE BUILD FILES
+# Prompt the user to clean up the build files
 cleanup_fn
 
-# SHOW EXIT MESSAGE
+# Show exit message
 exit_fn

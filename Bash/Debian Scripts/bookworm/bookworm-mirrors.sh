@@ -5,11 +5,22 @@ if [[ "$EUID" -ne 0 ]]; then
     exit 1
 fi
 
+<<<<<<< Updated upstream
 fname="/etc/apt/sources.list"
 
 # Make a backup of the file
 if [[ ! -f "${fname}.bak" ]]; then
     cp -f "$fname" "${fname}.bak"
+=======
+script_path=$(readlink -f "$BASH_SOURCE[0]")
+script_name=$(basename "$script_path")
+
+fname="/etc/apt/sources.list"
+
+# Make a backup of the file
+if [[ ! -f "$list.bak" ]]; then
+    cp -f "$list" "$list.bak"
+>>>>>>> Stashed changes
 fi
 
 cat > "$fname" <<EOF

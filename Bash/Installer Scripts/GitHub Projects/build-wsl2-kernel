@@ -1,11 +1,11 @@
-#!/usr/bin/env bash
-# shellcheck disable=SC2162,SC2317
+#!/Usr/bin/env bash
+# Shellcheck disable=sc2162,sc2317
 
 ######################################################################################################################################
 ##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-wsl2-kernel
+##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/github%20projects/build-wsl2-kernel
 ##
-##  Purpose: Build Official WSL2 Kernels
+##  Purpose: build official wsl2 kernels
 ##
 ##  Updated: 12.30.23
 ##
@@ -13,17 +13,14 @@
 ##
 ######################################################################################################################################
 
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+if [ "$EUID" -eq '0' ]; then
+    echo "You must run this script without root or sudo."
     exit 1
 fi
 
-#
-# PROMPT THE USER TO CHOOSE THE KERNEL VERSION
-#
+# Prompt the user to choose the kernel version
 
-prompt_fn()
-{
+prompt_fn() {
     local answer
     clear
 
@@ -35,7 +32,7 @@ prompt_fn()
     read -p 'Your choices are (1 to 3): ' answer
     clear
 
-    case "${answer}" in
+    case "$answer" in
         1)      archive_url='https://github.com/microsoft/WSL2-Linux-Kernel/archive/refs/tags/linux-msft-wsl-5.15.137.3.tar.gz';;
         2)      archive_url='https://github.com/microsoft/WSL2-Linux-Kernel/archive/refs/tags/linux-msft-wsl-6.1.21.2.tar.gz';;
         3)      exit 0;;
@@ -47,46 +44,36 @@ prompt_fn()
 }
 prompt_fn
 
-#
-# SET VARIABLES
-#
+# Set variables
 
 script_ver=2.4
 cwd="$PWD"/wsl-build-script
-archive_ver="$(echo "${archive_url}" | sed 's/^.*\/.*-wsl-\(.*\)\.tar\.gz$/\1/')"
-archive_dir="$cwd/wsl-kernel-${archive_ver}"
-archive_ext="${archive_url//*.}"
-archive_name="$archive_dir.tar.${archive_ext}"
+archive_ver="$(echo "$archive_url" | sed 's/^.*\/.*-wsl-\(.*\)\.tar\.gz$/\1/')"
+archive_dir="$cwd/wsl-kernel-$archive_ver"
+archive_ext="$archive_url//*."
+archive_name="$archive_dir.tar.$archive_ext"
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
 printf "\n%s\n%s\n\n"                    \
-    "WSL2 Build Script - v${script_ver}" \
+    "WSL2 Build Script - v$script_ver" \
     '==============================================='
 
-#
-# CREATE OUTPUT DIRECTORY
-#
+# Create output directory
 
 if [ ! -d "$cwd" ]; then
     mkdir -p "$cwd"
 fi
 
-#
-# SET THE C + CXX COMPILERS
-#
+# Set the c + cxx compilers
 
 export CC=gcc CXX=g++
 
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
+# Set compiler optimization flags
 
-export {CFLAGS,CXXFLAGS}='-g -O2 -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O2 -pipe -fno-plt -march=native'
 
-#
-# SET PATH
-#
+# Set path
 
 PATH="\
 /usr/lib/ccache:\
@@ -102,12 +89,9 @@ $HOME/.local/bin:\
 "
 export PATH
 
-#
-# CREATE FUNCTIONS
-#
+# Create functions
 
-exit_fn()
-{
+exit_fn() {
     printf "\n%s\n\n%s\n%s\n\n"                                   \
         'The script has completed'                                \
         'Make sure to star this repository to show your support!' \
@@ -115,8 +99,7 @@ exit_fn()
     exit 0
 }
 
-fail_fn()
-{
+fail_fn() {
     printf "\n\n%s\n\n%s\n\n%s\n\n"                              \
         "$1"                                                   \
         'Please create a support ticket so I can work on a fix.' \
@@ -124,9 +107,7 @@ fail_fn()
     exit 1
 }
 
-#
-# INSTALL REQUIRED APT PACKAGES
-#
+# Install required apt packages
 
 pkgs=(autoconf autogen automake bc binutils bison build-essential ccache
       curl dbus-x11 dwarves flex git jq libelf-dev libperl-dev libssl-dev
@@ -135,10 +116,10 @@ pkgs=(autoconf autogen automake bc binutils bison build-essential ccache
 
 for i in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+    missing_pkg="$(sudo dpkg -l | grep -o "$i")"
 
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+    if [ -z "$missing_pkg" ]; then
+        missing_pkgs+=" $i"
     fi
 done
 
@@ -147,38 +128,30 @@ if [ -n "$missing_pkgs" ]; then
     clear
 fi
 
-#
-# DOWNLOAD THE ARCHIVE FILE
-#
+# Download the archive file
 
-if [ ! -f "${archive_name}" ]; then
+if [ ! -f "$archive_name" ]; then
     printf "%s\n\n" 'Downloading the source code from GitHub...'
-    wget --show-progress -t 2 -cqO "${archive_name}" "${archive_url}"
+    wget --show-progress -t 2 -cqO "$archive_name" "$archive_url"
 fi
 
-#
-# CREATE THE OUTPUT DIRECTORY
-#
+# Create the output directory
 
 if [ -d "$archive_dir" ]; then
     sudo rm -fr "$archive_dir"
 fi
 mkdir -p "$archive_dir"
 
-#
-# EXTRACT THE ARCHIVE FILES INTO THE OUTPUT DIRECTORY
-#
+# Extract the archive files into the output directory
 
-if ! tar -xf "${archive_name}" -C "$archive_dir" --strip-components 1; then
-    fail_fn "Failed to extract the archive files. Line: ${LINENO}"
+if ! tar -xf "$archive_name" -C "$archive_dir" --strip-components 1; then
+    fail_fn "Failed to extract the archive files. Line: $LINENO"
 fi
 
-#
-# BUILD PROGRAM FROM SOURCE
-#
+# Build program from source
 
 cd "$archive_dir" || exit 1
 echo 'yes' | make "-j$(nproc --all)" KCONFIG_CONFIG='Microsoft/config-wsl'
 
-# SHOW EXIT MESSAGE
+# Show exit message
 exit_fn

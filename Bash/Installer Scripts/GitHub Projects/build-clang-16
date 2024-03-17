@@ -1,21 +1,19 @@
-#!/usr/bin/env bash
-# shellcheck disable=SC2162,SC2317
+#!/Usr/bin/env bash
+# Shellcheck disable=sc2162,sc2317
 
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-16
-##  Purpose: Build LLVM-16
+##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/github%20projects/build-clang-16
+##  Purpose: build llvm-16
 ##  Updated: 01.30.24
 ##  Script version: 1.3
 
 clear
 
 if [ "$EUID" -ne 0 ]; then
-    printf "%s\n\n" "You must run this script with root/sudo."
+    echo "You must run this script with root or sudo."
     exit 1
 fi
 
-#
-# SET GLOBAL VARIABLES
-#
+# Set global variables
 
 script_ver="1.3"
 progname="$0"
@@ -23,27 +21,26 @@ cwd="$PWD/clang-16-build-script"
 install_prefix="/usr/local"
 pc_type="x86_64-linux-gnu"
 web_repo="https://github.com/slyfox1186/script-repo"
-debug="OFF" # CHANGE THIS VARIABLE TO "ON" FOR HELP WITH TROUBLESHOOTING UNEXPECTED ISSUES DURING THE BUILD
+debug="OFF" # Change this variable to "on" for help with troubleshooting unexpected issues during the build
 
-# CREATE OUTPUT DIRECTORIES
+# Create output directories
 mkdir -p "$cwd"
 
-# FIGURE OUT WHICH COMPILERS TO USE
+# Figure out which compilers to use
 export CC="clang" CXX="clang++"
 
-# SET COMPILER OPTIMIZATION FLAGS
+# Set compiler optimization flags
 export CXXFLAGS="$CFLAGS"
 
-# SET THE AVAILABLE CPU COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
+# Set the available cpu count for parallel processing (speeds up the build process)
 cpu_threads="$(grep --count ^processor /proc/cpuinfo 2>/dev/null || nproc --all)"
 
 export PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/sbin:/usr/local/cuda/bin:/usr/local/x86_64-linux-gnu/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/games:/usr/games:/snap/bin"
 
 export PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/share/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig:/lib64/pkgconfig:/lib/pkgconfig"
 
-# CREATE FUNCTIONS
-exit_fn()
-{
+# Create functions
+exit_fn() {
     printf "\n%s\n\n%s\n%s\n\n" \
         "The script has completed" \
         "Make sure to star this repository to show your support!" \
@@ -51,8 +48,7 @@ exit_fn()
     exit 0
 }
 
-fail_fn()
-{
+fail_fn() {
     printf "\n\n%s\n\n%s\n\n%s\n\n" \
         "$1" \
         "To report a bug please visit: " \
@@ -60,8 +56,7 @@ fail_fn()
     exit 1
 }
 
-cleanup_fn()
-{
+cleanup_fn() {
     local choice
 
     printf "%s\n\n%s\n%s\n\n" \
@@ -70,7 +65,7 @@ cleanup_fn()
         "[2] No"
     read -p "Your choices are (1 or 2): " choice
 
-    case "${choice}" in
+    case "$choice" in
         1)      sudo rm -fr "$cwd";;
         2)      clear;;
         *)
@@ -84,18 +79,16 @@ cleanup_fn()
     esac
 }
 
-create_soft_link_fn()
-{
+create_soft_link_fn() {
     clear
     if [ -f "$install_prefix"/bin/clang++ ] && [ ! -f "$install_prefix"/bin/clang++-16 ]; then
         if ! sudo ln -s "$install_prefix"/bin/clang++ "$install_prefix"/bin/clang++-16; then
-            printf "\n%s\n\n" "Failed to create the clang++ soft link. Line: ${LINENO}"
+            printf "\n%s\n\n" "Failed to create the clang++ soft link. Line: $LINENO"
         fi
     fi
 }
 
-show_ver_fn()
-{
+show_ver_fn() {
     printf "%s\n\n" "The installed clang version is:"
 
     if [ -f "$install_prefix"/bin/clang-16 ]; then
@@ -115,25 +108,23 @@ show_ver_fn()
     fi
 }
 
-execute()
-{
-    echo "$ ${*}"
+execute() {
+    echo "$ $*"
 
-    if [ "${debug}" = "ON" ]; then
+    if [ "$debug" = "ON" ]; then
         if ! output="$("$@")"; then
-            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
-            fail_fn "Failed to execute: ${*}"
+            notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
+            fail_fn "Failed to execute: $*"
         fi
     else
         if ! output="$("$@" 2>&1)"; then
-            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
-            fail_fn "Failed to execute: ${*}"
+            notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
+            fail_fn "Failed to execute: $*"
         fi
     fi
 }
 
-build()
-{
+build() {
     printf "\n%s\n%s\n" \
         "Building $1 - version $2" \
         "=========================================="
@@ -149,31 +140,30 @@ build()
 
 build_done() { echo "$2" > "$cwd/$1.done"; }
 
-download()
-{
+download() {
     dl_path="$cwd"
     dl_url="$1"
-    dl_file="${2:-"${1##*/}"}"
+    dl_file="$2:-"${1##*/"}"
 
     if [[ "$dl_file" =~ tar. ]]; then
-        output_dir="${dl_file%.*}"
-        output_dir="${3:-"${output_dir%.*}"}"
+        output_dir="$dl_file%.*"
+        output_dir="$3:-"${output_dir%.*"}"
     else
-        output_dir="${3:-"${dl_file%.*}"}"
+        output_dir="$3:-"${dl_file%.*"}"
     fi
 
     target_file="$dl_path/$dl_file"
     target_dir="$dl_path/$output_dir"
 
-    if [ -f "${target_file}" ]; then
+    if [ -f "$target_file" ]; then
         echo "The file \"$dl_file\" is already downloaded."
     else
-        echo "Downloading \"${dl_url}\" saving as \"$dl_file\""
-        if ! wget --show-progress -t 2 -cqO "${target_file}" "${dl_url}"; then
+        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
+        if ! wget --show-progress -t 2 -cqO "$target_file" "$dl_url"; then
             printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
-            if ! wget --show-progress -t 2 -cqO "${target_file}" "${dl_url}"; then
-                fail_fn "The script failed to download \"$dl_file\" twice and will now exit. Line: ${LINENO}"
+            if ! wget --show-progress -t 2 -cqO "$target_file" "$dl_url"; then
+                fail_fn "The script failed to download \"$dl_file\" twice and will now exit. Line: $LINENO"
             fi
         fi
         printf "\n%s\n\n" "Download completed"
@@ -186,54 +176,50 @@ download()
     mkdir -p "$target_dir"
 
     if [ -n "$3" ]; then
-        if ! tar -zxf "${target_file}" -C "$target_dir" 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
+        if ! tar -zxf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
+            sudo rm "$target_file"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
         fi
     else
-        if ! tar -zxf "${target_file}" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
+        if ! tar -zxf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
+            sudo rm "$target_file"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
         fi
     fi
 
     printf "%s\n\n" "File extracted: $dl_file"
 
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: ${LINENO}"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: $LINENO"
 }
 
-git_1_fn()
-{
+git_1_fn() {
     local curl_cmd github_repo github_url
 
     github_repo="$1"
     github_url="$2"
 
-    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r ".[1].name" 2>/dev/null)"
         g_url="$(echo "$curl_cmd" | jq -r ".[1].tarball_url" 2>/dev/null)"
-        g_ver="${g_ver#llvmorg-}"
+        g_ver="$g_ver#Llvmorg-"
     fi
 }
 
-git_ver_fn()
-{
+git_ver_fn() {
     local t_flag v_flag v_url
 
     v_url="$1"
     v_flag="$2"
 
-    case "${v_flag}" in
+    case "$v_flag" in
             R)      t_flag=releases;;
             T)      t_flag=tags;;
     esac
 
-    git_1_fn "${v_url}" "${t_flag}" 2>/dev/null
+    git_1_fn "$v_url" "$t_flag" 2>/dev/null
 }
 
-#
-# PRINT THE OPTIONS AVAILABLE WHEN MANUALLY RUNNING THE SCRIPT
-#
+# Print the options available when manually running the script
 
 pkgs=(
     autoconf autoconf-archive automake autopoint binutils binutils-dev bison
@@ -243,10 +229,10 @@ pkgs=(
 
 for i in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+    missing_pkg="$(sudo dpkg -l | grep -o "$i")"
 
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+    if [ -z "$missing_pkg" ]; then
+        missing_pkgs+=" $i"
     fi
 done
 
@@ -257,32 +243,27 @@ else
     printf "%s\n" "The APT packages are already installed"
 fi
 
-#
-# REFRESH LIBRARYS
-#
+# Refresh librarys
 
 sudo ldconfig 2>/dev/null
 
-#
-# BEGIN BUILDING CLANG
-#
+# Begin building clang
 
 clear
-box_out_banner()
-{
+box_out_banner() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+    line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)$line"
-    space=${line//-/ }
+    space=$line//-/ 
     echo " $line"
-    printf "|" ; echo -n "${space}" ; printf "%s\n" "|";
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
     printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
-    printf "|" ; echo -n "${space}" ; printf "%s\n" "|";
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
     echo " $line"
     tput sgr 0
 }
-box_out_banner "Clang Build Script - version ${script_ver}"
+box_out_banner "Clang Build Script - version $script_ver"
 
 if build "llvm" "16.0.6"; then
     download "https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.6/llvm-project-16.0.6.src.tar.xz" "llvm-16.0.6.tar.gz"
@@ -321,17 +302,17 @@ if build "llvm" "16.0.6"; then
     execute sudo ninja -C build install
 fi
 
-# LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE MAGICK COMMAND WILL NOT WORK
+# Ldconfig must be run next in order to update file changes or the magick command will not work
 sudo ldconfig 2>/dev/null
 
-# CREATE A SOFT LINK FROM CLANG++ TO CLANG++-16
+# Create a soft link from clang++ to clang++-16
 create_soft_link_fn
 
-# SHOW THE NEWLY INSTALLED MAGICK VERSION
+# Show the newly installed magick version
 show_ver_fn
 
-# PROMPT THE USER TO CLEAN UP THE BUILD FILES
+# Prompt the user to clean up the build files
 cleanup_fn
 
-# SHOW EXIT MESSAGE
+# Show exit message
 exit_fn
