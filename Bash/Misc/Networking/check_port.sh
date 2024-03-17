@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-# Find what process is using a specified port and prompt the user to kill the process
 
 check_port() {
     local choice kill_choice pid name protocol
@@ -18,7 +17,6 @@ check_port() {
 
     echo "Checking for processes using port $choice..."
 
-    # Improved process information retrieval using lsof for both TCP and UDP
     while IFS= read -r line; do
         pid=$(echo "$line" | awk '{print $2}')
         name=$(echo "$line" | awk '{print $1}')

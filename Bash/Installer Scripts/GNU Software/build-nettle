@@ -15,19 +15,7 @@ $HOME/.local/bin:\
 /usr/games:\
 /snap/bin\
 "
-export PATH#!/Usr/bin/env bash
 
-###########################################################################################################
-##
-##  Github script: https://github.com/slyfox1186/script-repo/edit/main/bash/installer%20scripts/gnu%20software/build-nettle
-##
-##  Purpose: build gnu nettle
-##
-##  Updated: 08.01.23
-##
-##  Script version: 1.1
-##
-###########################################################################################################
 
 clear
 
@@ -36,7 +24,6 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-# Set the variables
 
 script_ver=1.1
 archive_dir=nettle-3.9.1
@@ -52,22 +39,18 @@ printf "%s\n%s\n\n" \
     "nettle build script - v$script_ver" \
     '==============================================='
 
-# Create output directory
 
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-# Set the c + cpp compilers
 
 export CC=gcc CXX=g++
 
-# Set compiler optimization flags
 
 export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 
-# Set the path variable
 
 PATH="\
 /usr/lib/ccache:\
@@ -88,7 +71,6 @@ $HOME/.local/bin:\
 "
 export PATH
 
-# Set the pkg_config_path variable
 
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
@@ -105,7 +87,6 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-# Create functions
 
 exit_fn() {
     printf "\n%s\n\n%s\n\n" \
@@ -146,7 +127,6 @@ cleanup_fn() {
     esac
 }
 
-# Install required apt packages
 
 pkgs_fn() {
     pkgs=("$1" apt-transport-https apt-utils autoconf autoconf-archive autogen automake autopoint autotools-dev build-essential bzip2
@@ -176,27 +156,23 @@ pkgs_fn() {
     fi
 }
 
-# Download the archive file
 
 if [ ! -f "$cwd/$archive_name" ]; then
     curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
-# Create output directory
 
 if [ -d "$cwd/$archive_dir" ]; then
     sudo rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
-# Extract archive files
 
 if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
     printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
     exit 1
 fi
 
-# Build program from source
 
 include_dirs='/usr/local/include:/usr/include:/usr/lib/jvm/java-17-openjdk-amd64/include:/usr/lib/llvm-14/include'
 include_dirs+=':/usr/lib/gcc/x86_64-linux-gnu/12/include:/usr/lib/x86_64-linux-gnu/glib-2.0/include'
@@ -224,8 +200,6 @@ if ! sudo make install; then
     exit 1
 fi
 
-# Prompt user to clean up files
 cleanup_fn
 
-# Show exit message
 exit_fn

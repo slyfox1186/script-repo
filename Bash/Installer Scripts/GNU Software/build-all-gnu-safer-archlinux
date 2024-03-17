@@ -1,16 +1,5 @@
 #!/Usr/bin/env bash
 
-##################################################################################################################################################
-##
-##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/gnu%20software/build-all-gnu-safer-arch-script
-##
-##  Purpose: loops multiple build scripts to optimize efficiency. this is the safer of the two scripts.
-##
-##  Updated: 11.06.23
-##
-##  Script version: 1.0
-##
-##################################################################################################################################################
 
 clear
 
@@ -31,7 +20,6 @@ mkdir -p "$cwd"/completed "$cwd"/failed
 
 cd "$cwd" || exit 1
 
-# Print the script banner
 
 printf "%s\n%s\n\n"                                      \
     "Build All GNU Safer ArchLinux Script - version $script_ver" \
@@ -84,7 +72,6 @@ do
 done
 unset cnt script scripts
 
-# Rename files with numbers 10 and higher so they execute in the intended order
 scripts=(tar gawk grep nano wget)
 cnt=9
 
@@ -92,8 +79,6 @@ for i in 1
 do
     for script in ${scripts[@]}
     do
-        ((cnt++)) # << Start counting here
-        mv "0$cnt-build-$script" "$cnt-build-$script" 2>/dev/null # << Move the files, thus renaming them
     done
 done
 
@@ -108,8 +93,6 @@ do
     fi
 done
 
-# Cleanup leftover files
 sudo rm -fr "$cwd"
 
-# Display exit message
 exit_fn

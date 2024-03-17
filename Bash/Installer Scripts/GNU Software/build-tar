@@ -1,12 +1,10 @@
 #!/Usr/bin/env bash
 
-# Ensure the script is run as root
 if [[ $EUID -ne 0 ]]; then
     echo -e "\033[31mThis script must be run as root or with sudo.\033[0m"
     exit 1
 fi
 
-# Variables
 script_ver="1.0"
 cwd="$PWD/tar-install"
 gnu_ftp="https://ftp.gnu.org/gnu/tar/"
@@ -78,7 +76,6 @@ build_and_install() {
     print_color green "Installation completed successfully."
 }
 
-# Link the installed binaries (optional)
 link_tar() {
     print_color green "Creating softlink..."
     if ln -sf /usr/local/$archive_dir/bin/* /usr/local/bin/; then
@@ -100,7 +97,6 @@ main() {
     download_and_extract
     build_and_install
     link_tar
-# Cleanup
 }
 
 main "$@"

@@ -1,18 +1,5 @@
 #!/Usr/bin/env bash
 
-########################################################################################################################################
-##
-##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/github%20projects/build-zlib
-##
-##  Purpose: build zlib
-##
-##  Updated: 09.13.23
-##
-##  Added: -fpic to cflags & cxxflags to avoid other programs not compiling when attempting to use the libz.a file while linking
-##
-##  Script version: 1.2
-##
-########################################################################################################################################
 
 clear
 
@@ -21,7 +8,6 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-# Set variables
 
 script_ver=1.2
 install_dir=/usr/local
@@ -35,22 +21,18 @@ printf "\n%s\n%s\n\n" \
     "zlib build script - v$script_ver" \
     '==============================================='
 
-# Create output directory
 
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-# Set the c+cpp compilers
 
 export CC=gcc CXX=g++
 
-# Set compiler optimization flags
 
 export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 
-# Set the path variable
 
 PATH="\
 /usr/lib/ccache:\
@@ -71,7 +53,6 @@ $HOME/.local/bin:\
 "
 export PATH
 
-# Set the pkg_config_path variable
 
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
@@ -88,7 +69,6 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-# Create functions
 
 exit_fn() {
     printf "\n%s\n\n%s\n\n" \
@@ -165,7 +145,6 @@ execute() {
 download() {
     dl_path="$packages"
     dl_url="$1"
-    dl_file="$2:-"${1##*/"}"
 
     if [[ "$dl_file" =~ tar. ]]; then
         output_dir="$dl_file%.*"
@@ -221,13 +200,11 @@ download() {
 git_1_fn() {
     local curl_cmd github_repo github_url
 
-# Scrape github website for the latest repo version
     github_repo="$1"
     github_url="$2"
 
     if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
-        g_ver="$g_ver#V"
     fi
 }
 
@@ -248,7 +225,6 @@ git_ver_fn() {
 
 build_done() { echo "$2" > "$packages/$1.done"; }
 
-# Install required apt packages
 
 pkgs=(libtool autogen automake binutils bison build-essential bzip2 ccache curl
       libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev libtool
@@ -269,7 +245,6 @@ if [ -n "$missing_pkgs" ]; then
     clear
 fi
 
-# Build program from source
 
 git_ver_fn 'madler/zlib' 'T'
 if build 'zlib' "$g_ver"; then
@@ -286,8 +261,6 @@ if build 'zlib' "$g_ver"; then
     build_done 'zlib' "$g_ver"
 fi
 
-# Prompt user to clean up files
 cleanup_fn
 
-# Show exit message
 exit_fn

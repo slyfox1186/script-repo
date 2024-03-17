@@ -1,11 +1,6 @@
 #!/Usr/bin/env bash
 
-# Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/gnu%20software/build-parallel
-# Purpose: build gnu parallel
-# Updated: 03.16.24
-# Script version: 2.1
 
-set -e  # Exit on error
 
 if [ "$EUID" -ne 0 ]; then
     echo
@@ -13,7 +8,6 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Set the variables
 script_ver=2.0
 archive_dir=parallel-latest
 archive_url=https://ftp.gnu.org/gnu/parallel/parallel-latest.tar.bz2
@@ -26,17 +20,14 @@ web_repo=https://github.com/slyfox1186/script-repo
 echo "parallel build script - v$script_ver"
 echo "==============================================="
 
-# Create output directory
 rm -fr "$cwd"
 mkdir -p "$cwd"
 
-# Set compiler flags
 CC=gcc
 CXX=g++
 CFLAGS="-g -O3 -pipe -fno-plt -march=native"
 CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
 
-# Set environment variables
 export PATH="\
 /usr/lib/ccache:\
 $HOME/perl5/bin:\
@@ -65,7 +56,6 @@ export PKG_CONFIG_PATH="\
 /lib/x86_64-linux-gnu/pkgconfig\
 "
 
-# Functions
 exit_fn() {
     echo
     echo "\n%s\n\n%s\n\n"
@@ -91,7 +81,6 @@ cleanup_fn() {
     esac
 }
 
-# Install dependencies
 pkgs=(
     "autoconf" "autoconf-archive" "autogen" "automake" "binutils" "bison"
     "build-essential" "bzip2" "ccache" "curl" "libc6-dev" "libpth-dev"
@@ -100,19 +89,15 @@ pkgs=(
 )
 apt install -y "${pkgs[@]}"
 
-# Download source
 curl -sSfLo "$cwd/$archive_name" "$archive_url"
 mkdir -p "$cwd/$archive_dir/build"
 tar -jxf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1
 
-# Build
 cd "$cwd/$archive_dir/build" || exit 1
 ../configure --prefix "$install_dir"
 make "-j$(nproc --all)"
 make install
 
-# Prompt cleanup
 cleanup_fn
 
-# Exit message
 exit_fn

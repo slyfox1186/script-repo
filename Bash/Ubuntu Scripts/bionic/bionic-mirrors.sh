@@ -4,7 +4,6 @@ clear
 
 list='/etc/apt/sources.list'
 
-# make a backup of the file
 if [ ! -f "$list.bak" ]; then
     cp -f "$list" "$list.bak"
 fi
@@ -16,7 +15,6 @@ deb https://atl.mirrors.clouvider.net/ubuntu/ bionic-backports main restricted u
 deb http://security.ubuntu.com/ubuntu/ bionic-security main restricted universe multiverse
 EOF
 
-# OPEN AN EDITOR TO VIEW THE CHANGES
 if which gedit &>/dev/null; then
     sudo gedit "$list"
 elif which nano &>/dev/null; then

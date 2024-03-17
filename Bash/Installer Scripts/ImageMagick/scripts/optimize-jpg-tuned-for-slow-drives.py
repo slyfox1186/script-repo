@@ -1,7 +1,5 @@
 #!/Usr/bin/env python3
 
-# Warning: this will overwrite the original images!
-# You have been warned!
 
 import os
 import subprocess
@@ -16,7 +14,6 @@ def find_jpg_files(directory):
 
 def convert_image(image_path):
     output_path = image_path.parent / f"{image_path.stem}-IM.jpg"
-# Suppress all output from the convert command
     with open(os.devnull, 'wb') as devnull:
         subprocess.run([
             "convert", str(image_path),
@@ -39,7 +36,6 @@ def convert_image(image_path):
     return image_path.name
 
 def main():
-    directory = '.'  # Current directory
     files = list(find_jpg_files(directory))
     total_files = len(files)
 
@@ -56,10 +52,7 @@ def main():
             except Exception as e:
                 print(f"Error converting file {filename}: {e}")
 
-# Stagger file processing to reduce i/o load
-            time.sleep(0.5)  # Adjust the sleep time as needed
 
-# Update progress bar
             bar_length = 30
             filled_length = int(bar_length * index // total_files)
             bar = '█' * filled_length + '-' * (bar_length - filled_length)

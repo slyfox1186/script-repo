@@ -1,13 +1,6 @@
 #!/Usr/bin/env bash
 
-# Disable specific shellcheck warnings that are not applicable after optimizations
-# Shellcheck disable=sc1091,sc2001,sc2068,sc2086,sc2155,sc2162,sc2317
 
-##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/github%20projects/build-python3
-##  Purpose: install python3 from the source code acquired from the official website: https://www.python.org/downloads
-##  Features: static build, openssl backend
-##  Updated: 01.27.24
-##  Script version: 2.4 (optimized and corrected)
 
 if [[ "$EUID" -ne 0 ]]; then
     echo "You must run this script with root or sudo."
@@ -116,7 +109,6 @@ install_required_packages() {
         fi
     done
 
-    if [ ${#Missing_packages[@]} -gt 0 ]; then
         apt install -y ${missing_packages[@]} || fail_fn "Failed to install required packages. Line: $LINENO"
     else
         echo "All required packages are already installed."
@@ -143,7 +135,6 @@ build_python() {
     make altinstall || fail_fn "Failed to execute: make altinstall. Line: $LINENO"
 }
 
-# Main script execution
 check_root
 prepare_environment
 install_required_packages

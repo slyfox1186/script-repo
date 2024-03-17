@@ -8,7 +8,6 @@ fi
 <<<<<<< Updated upstream
 fname="/etc/apt/sources.list"
 
-# Make a backup of the file
 if [[ ! -f "$fname.bak" ]]; then
     cp -f "$fname" "$fname.bak"
 =======
@@ -17,7 +16,6 @@ script_name=$(basename "$script_path")
 
 fname="/etc/apt/sources.list"
 
-# Make a backup of the file
 if [[ ! -f "$list.bak" ]]; then
     cp -f "$list" "$list.bak"
 >>>>>>> Stashed changes
@@ -30,7 +28,6 @@ deb https://atl.mirrors.clouvider.net/ubuntu/ jammy-backports main restricted un
 deb http://security.ubuntu.com/ubuntu/ jammy-security main restricted universe multiverse
 EOF
 
-# Open an editor to view the changes
 if command -v nano &>/dev/null; then
     nano "$fname"
 else

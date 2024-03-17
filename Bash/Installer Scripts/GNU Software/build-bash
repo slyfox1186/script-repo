@@ -1,6 +1,4 @@
 #!/Usr/bin/env bash
-# Build gnu bash - v2.0 - 03.08.24
-# Github: https://github.com/slyfox1186/script-repo
 
 trap 'fail_fn "Error occurred on line $LINENO"' ERR
 
@@ -22,7 +20,6 @@ usage() {
 }
 
 parse_args() {
-    while [[ $# -Gt 0 ]]; do
         case "$1" in
             -p|--prefix)
                 install_prefix="$2"

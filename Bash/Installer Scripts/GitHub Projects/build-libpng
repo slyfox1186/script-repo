@@ -1,17 +1,5 @@
 #!/Usr/bin/env bash
-# Shellcheck disable=sc2162,sc2317
 
-###########################################################################################################
-##
-##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/github%20projects/build-libpng
-##
-##  Purpose: build gnu libpng
-##
-##  Updated: 08.31.23
-##
-##  Script version: 1.1
-##
-###########################################################################################################
 
 clear
 
@@ -20,7 +8,6 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-# Set variables
 
 script_ver=1.1
 cwd="$PWD"/libpng-build-script
@@ -33,22 +20,18 @@ printf "\n%s\n%s\n\n" \
     "libpng build script - v$script_ver" \
     '==============================================='
 
-# Create output directory
 
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-# Set the c+cpp compilers
 
 export CC=gcc CXX=g++
 
-# Set compiler optimization flags
 
 export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 
-# Set the path variable
 
 PATH="\
 /usr/lib/ccache:\
@@ -69,7 +52,6 @@ $HOME/.local/bin:\
 "
 export PATH
 
-# Set the pkg_config_path variable
 
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
@@ -86,7 +68,6 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-# Create functions
 
 exit_fn() {
     printf "\n%s\n\n%s\n\n" \
@@ -166,7 +147,6 @@ execute() {
 download() {
     dl_path="$cwd"
     dl_url="$1"
-    dl_file="$2:-"${1##*/"}"
 
     if [[ "$dl_file" =~ tar. ]]; then
         output_dir="$dl_file%.*"
@@ -215,7 +195,6 @@ download() {
     cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir:Line $LINENO"
 }
 
-# Install required apt packages
 
 pkgs_fn() {
     pkgs=(asciidoc autogen automake binutils bison build-essential bzip2 ccache cmake
@@ -240,11 +219,9 @@ pkgs_fn() {
 
 build_done() { echo "$2" > "$cwd/$1.done"; }
 
-# Install apt packages
 
 pkgs_fn
 
-# Build program from source
 
 if build 'libpng' '1.6.40'; then
     download 'https://github.com/glennrp/libpng/archive/refs/tags/v1.6.40.tar.gz' 'libpng-1.6.40.tar.gz'
@@ -267,8 +244,6 @@ if build 'libpng' '1.6.40'; then
     build_done 'libpng' '1.6.40'
 fi
 
-# Prompt user to clean up files
 cleanup_fn
 
-# Show exit message
 exit_fn

@@ -7,15 +7,9 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-#
-# CHANGE THE WORKING DIRECTORY TO THE NAUTILUS SCRIPTS DIRECTORY
-#
 
 cd "$HOME/.local/share/nautilus/scripts" || exit 1
 
-#
-# DELETE ANY FOUND SCRIPTS
-#
 
 printf "%s\n\n%s\n%s\n\n" \
     "Do you want to delete any scripts already in the Nautilus scripts folder?" \
@@ -34,9 +28,6 @@ case "$choice" in
           ;;
 esac
 
-#
-# CREATE OPEN NAUTILUS IN NEW WINDOW SCRIPT
-#
 
 cat > 'Open in New Window' <<'EOF'
 #!/usr/bin/env bash
@@ -44,9 +35,6 @@ clear
 nohup nautilus -w "$PWD/$1" >/dev/null 2>&1 &
 EOF
 
-#
-# CREATE EMPTY TRASH SCRIPT
-#
 
 cat > 'Empty Trash' <<'EOF'
 #!/usr/bin/env bash
@@ -58,9 +46,6 @@ clear
 ls -1AhFv --color --group-directories-first
 EOF
 
-#
-# CREATE OPEN WITH TILIX SCRIPT
-#
 
 cat > 'Open with Tilix' <<'EOF'
 #!/usr/bin/env bash
@@ -81,7 +66,6 @@ else
 fi
 fpath="$PWD/$1"
 fname="$(basename "$fpath")"
-fext="$fname##*."
 case "$fext" in
     sh)             tilix -w "$PWD" -e bash "$fname";;
     bak|log|txt)    tilix -w "$PWD" -e $editor "$fname";;
@@ -89,12 +73,10 @@ case "$fext" in
 esac
 EOF
 
-# SET FILE OWNERSHIP PERMISSIONS
 chown "$USER":"$USER" 'Open with Tilix'
 chown "$USER":"$USER" 'Empty Trash'
 chown "$USER":"$USER" 'Open in New Window'
 
-# SET FILE READ, WRITE, AND EXECUTE PERMISSIONS
 chmod +rwx 'Open with Tilix'
 chmod +rwx 'Empty Trash'
 chmod +rwx 'Open in New Window'

@@ -103,16 +103,9 @@ index 00000000..a013bc4e
 +   the GNU Lesser General Public License along with this program.  If
 +   not, see <http://www.gnu.org/licenses/>.  */
 +
-+#Ifdef have_config_h
-+# Include <config.h>
-+#Endif
 +
-+#Define backend		arc_
-+#Define reloc_prefix	r_arc_
-+#Include "libebl_cpu.h"
 +
 +/* This defines the common reloc hooks based on arc_reloc.def.  */
-+#Include "common-reloc.c"
 +
 +Ebl *
 +arc_init (Elf *elf __attribute__ ((unused)),
@@ -125,7 +118,6 @@ index 00000000..a013bc4e
 +  HOOK (eh, section_type_name);
 +
 +  /* /bld/gcc-stage2/arc-snps-linux-gnu/libgcc/libgcc.map.in
-+     #Define __libgcc_dwarf_frame_registers__.  */
 +  eh->frame_nregs = 146;
 +
 +  return eh;
@@ -256,17 +248,8 @@ index 00000000..e996c5d9
 +   the GNU Lesser General Public License along with this program.  If
 +   not, see <http://www.gnu.org/licenses/>.  */
 +
-+#Ifdef have_config_h
-+# Include <config.h>
-+#Endif
 +
-+#Include <assert.h>
-+#Include <elf.h>
-+#Include <stddef.h>
-+#Include <string.h>
 +
-+#Define backend arc_
-+#Include "libebl_cpu.h"
 +
 +
 +/* Check whether machine flags are valid.  */
@@ -328,132 +311,34 @@ index 02f80653..f2288f63 100644
    { csky_init, "elf_csky", "csky", 4, EM_CSKY, ELFCLASS32, ELFDATA2LSB },
 +  { arc_init, "elf_arc", "arc", 3, EM_ARCV2, ELFCLASS32, ELFDATA2LSB },
  };
- #Define nmachines (sizeof (machines) / sizeof (machines[0]))
  
 diff --git a/libelf/elf.h b/libelf/elf.h
 index 02a1b3f5..8428e3df 100644
 --- a/libelf/elf.h
 +++ b/libelf/elf.h
 @@ -4148,24 +4148,48 @@ enum
- #Define r_larch_gnu_vtinherit  57
- #Define r_larch_gnu_vtentry  58
  
 +/* ARC specific declarations.  */
 +
 +/* Processor specific flags for the Ehdr e_flags field.  */
-+#Define ef_arc_mach_msk     0x000000ff
-+#Define ef_arc_osabi_msk    0x00000f00
-+#Define ef_arc_all_msk      (ef_arc_mach_msk | ef_arc_osabi_msk)
 +
 +/* Various CPU types.  These numbers are exposed in the ELF header flags
 +   (e_flags field), and so must never change.  */
-+#Define e_arc_mach_arc600	0x00000002
-+#Define e_arc_mach_arc601	0x00000004
-+#Define e_arc_mach_arc700	0x00000003
-+#Define ef_arc_cpu_arcv2em      0x00000005
-+#Define ef_arc_cpu_arcv2hs      0x00000006
-+#Define ef_arc_cpu_arc64	0x00000007
 +
 +/* ARC Linux specific ABIs.  */
-+#Define e_arc_osabi_orig	0x00000000   /* must be 0 for back-compat.  */
-+#Define e_arc_osabi_v2		0x00000200
-+#Define e_arc_osabi_v3		0x00000300
-+#Define e_arc_osabi_v4		0x00000400
-+#Define e_arc_osabi_current	e_arc_osabi_v4
 +/* Leave bits 0xf0 alone in case we ever have more than 16 cpu types.  */
 +
 +/* Additional section types.  */
-+#Define sht_arc_attributes     0x70000001	/* section holds attributes.  */
  
  /* ARCompact/ARCv2 specific relocs.  */
--#Define r_arc_none		0x0
--#Define r_arc_8			0x1
--#Define r_arc_16		0x2
--#Define r_arc_24		0x3
--#Define r_arc_32		0x4
--#Define r_arc_b26		0x5
--#Define r_arc_b22_pcrel		0x6
--#Define r_arc_h30		0x7
--#Define r_arc_n8		0x8
--#Define r_arc_n16		0x9
--#Define r_arc_n24		0xa
--#Define r_arc_n32		0xb
--#Define r_arc_sda		0xc
--#Define r_arc_sectoff		0xd
--#Define r_arc_s21h_pcrel	0xe
--#Define r_arc_s21w_pcrel	0xf
-+#Define r_arc_none		0x00
-+#Define r_arc_8			0x01
-+#Define r_arc_16		0x02
-+#Define r_arc_24		0x03
-+#Define r_arc_32		0x04
 +
-+#Define r_arc_n8		0x08
-+#Define r_arc_n16		0x09
-+#Define r_arc_n24		0x0a
-+#Define r_arc_n32		0x0b
-+#Define r_arc_sda		0x0c
-+#Define r_arc_sectoff		0x0d
-+#Define r_arc_s21h_pcrel	0x0e
-+#Define r_arc_s21w_pcrel	0x0f
- #Define r_arc_s25h_pcrel	0x10
- #Define r_arc_s25w_pcrel	0x11
- #Define r_arc_sda32		0x12
 @@ -4182,29 +4206,24 @@ enum
- #Define r_arc_sectoff_me	0x1d
- #Define r_arc_sda32_me		0x1e
- #Define r_arc_w_me		0x1f
--#Define r_arc_h30_me		0x20
--#Define r_arc_sectoff_u8	0x21
--#Define r_arc_sectoff_s9	0x22
--#Define r_ac_sectoff_u8		0x23
--#Define r_ac_sectoff_u8_1	0x24
--#Define r_ac_sectoff_u8_2	0x25
--#Define r_ac_sectoff_s9		0x26
--#Define r_ac_sectoff_s9_1	0x27
--#Define r_ac_sectoff_s9_2	0x28
--#Define r_arc_sectoff_me_1	0x29
--#Define r_arc_sectoff_me_2	0x2a
--#Define r_arc_sectoff_1		0x2b
--#Define r_arc_sectoff_2		0x2c
 +
-+#Define r_arc_sda_12		0x2d
-+#Define r_arc_sda16_st2		0x30
-+#Define r_arc_32_pcrel		0x31
- #Define r_arc_pc32		0x32
- #Define r_arc_gotpc32		0x33
- #Define r_arc_plt32		0x34
- #Define r_arc_copy		0x35
- #Define r_arc_glob_dat		0x36
--#Define r_arc_jump_slot		0x37
-+#Define r_arc_jmp_slot		0x37
- #Define r_arc_relative		0x38
- #Define r_arc_gotoff		0x39
- #Define r_arc_gotpc		0x3a
- #Define r_arc_got32		0x3b
-+#Define r_arc_s21w_pcrel_plt	0x3c
-+#Define r_arc_s25h_pcrel_plt	0x3d
 +
-+#Define r_arc_jli_sectoff	0x3f
  
- #Define r_arc_tls_dtpmod	0x42
- #Define r_arc_tls_dtpoff	0x43
 @@ -4213,9 +4232,12 @@ enum
- #Define r_arc_tls_gd_ld	        0x46
- #Define r_arc_tls_gd_call	0x47
- #Define r_arc_tls_ie_got	0x48
--#Define r_arc_tls_dtpoff_s9	0x4a
--#Define r_arc_tls_le_s9		0x4a
--#Define r_arc_tls_le_32		0x4b
-+#Define r_arc_tls_dtpoff_s9	0x49
-+#Define r_arc_tls_le_s9		0x4a
-+#Define r_arc_tls_le_32		0x4b
-+#Define r_arc_s25w_pcrel_plt	0x4c
-+#Define r_arc_s21h_pcrel_plt	0x4d
-+#Define r_arc_nps_cmem16	0x4e
  
  /* OpenRISC 1000 specific relocs.  */
- #Define r_or1k_none		0
 diff --git a/src/elflint.c b/src/elflint.c
 index 565cffdc..71521d6a 100644
 --- a/src/elflint.c
@@ -465,7 +350,6 @@ index 565cffdc..71521d6a 100644
 -    EM_TILEGX, EM_TILEPRO, EM_AARCH64, EM_BPF, EM_RISCV, EM_CSKY
 +    EM_TILEGX, EM_TILEPRO, EM_AARCH64, EM_BPF, EM_RISCV, EM_CSKY, EM_ARC
    };
- #Define nvalid_e_machine \
    (sizeof (valid_e_machine) / sizeof (valid_e_machine[0]))
 -- 
 2.38.1

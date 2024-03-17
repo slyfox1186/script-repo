@@ -1,17 +1,5 @@
 #!/Usr/bin/env bash
-# Shellcheck disable=sc2162,sc2317
 
-#############################################################################################################
-##
-##  Install: terminator terminal
-##
-##  Github: https://github.com/slyfox1186/script-repo/edit/main/shell/installers/build-terminator-terminal
-##
-##  Updated: 08.09.23
-##
-##  Script version: 1.0
-##
-#############################################################################################################
 
 clear
 
@@ -20,7 +8,6 @@ if [ "$EUID" -eq 0 ]; then
     exit 1
 fi
 
-# Create script variables
 
 script_ver=1.0
 cwd="$PWD/terminator-build-script"
@@ -34,19 +21,15 @@ printf "\n%s\n%s\n\n" \
     "Terminator Build Script - v$script_ver" \
     '==============================================='
 
-# Create output directory
 
 mkdir -p "$cwd"
 
-# Set the c+cpp compilers
 
 export CC=gcc CXX=g++
 
-# Export compiler optimization flags
 
 export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 
-# Set the path variable
 
 PATH="\
 /usr/lib/ccache:\
@@ -67,7 +50,6 @@ $HOME/.local/bin:\
 "
 export PATH
 
-# Set the pkg_config_path variable
 
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
@@ -84,7 +66,6 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-# Create functions
 
 exit_fn() {
     printf "\n%s\n\n%s\n%s\n\n" \
@@ -127,7 +108,6 @@ cleanup_fn() {
     esac
 }
 
-# Install required apt packages
 
 pkgs=(autoconf autogen automake build-essential ca-certificates ccache clang curl libaria2-0 libaria2-0-dev
       libc-ares-dev libdmalloc-dev libgcrypt20-dev libgmp-dev libgnutls28-dev libgpg-error-dev libjemalloc-dev
@@ -151,26 +131,22 @@ if [ -n "$missing_pkgs" ]; then
     clear
 fi
 
-# Download the archive file
 if [ ! -f "$cwd/$archive_name" ]; then
     curl -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
-# Create output directory
 
 if [ -d "$cwd/$archive_dir" ]; then
     sudo rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir"
 
-# Extract archive files
 
 if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
     printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
     exit 1
 fi
 
-# Build program from source
 
 cd "$cwd/$archive_dir" || exit 1
 python3 setup.py build
@@ -191,10 +167,8 @@ if ! sudo python3 setup.py install --prefix="$install_dir" \
     exit 1
 fi
 
-# Cleanup files
 
 cleanup_fn
 
-# Show exit message
 
 exit_fn

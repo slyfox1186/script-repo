@@ -106,7 +106,6 @@ install_choice_fn() {
     esac
 }
 
-# Download all of the git-project scripts and number them ascending starting with one
 
 cd "$cwd" || exit 1
 
@@ -120,7 +119,6 @@ do
     mv "build-$script" "0$cnt-build-$script"
 done
 
-# Rename all scripts that start with the number 10 and higher so they execute in the intended order
 
 files=(openssl python3 terminator-terminal tools wsl2-kernel yasm zlib zstd)
 cnt=9
@@ -129,16 +127,11 @@ for i in 1
 do
     for file in ${files[@]}
     do
-        ((cnt++)) # << Start counting here
-        mv "0$cnt-build-$file" "$cnt-build-$file" # << Move the files, thus renaming them
     done
 done
 
-# Ask the user if they want to install all of the scripts
 install_choice_fn
 
-# Cleanup the files
 cleanup_fn
 
-# Show the exit message
 exit_fn

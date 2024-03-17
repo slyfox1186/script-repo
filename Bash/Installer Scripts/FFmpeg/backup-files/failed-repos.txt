@@ -1,4 +1,3 @@
-# These wont build correctly with ffmpeg... must figure it out...
 
 pre_check_ver 'OpenVisualCloud/SVT-VP9' '1' 'T'
 if build 'svtvp9' "$g_ver"; then
@@ -10,7 +9,6 @@ if build 'svtvp9' "$g_ver"; then
 fi
 ffmpeg_libraries+=('--enable-libsvtvp9')
 
-# These go in with ffmpeg's command line for vp9
 execute cp -f "$packages/svtvp9-0.3.0/ffmpeg_plugin/master-0001-Add-ability-for-ffmpeg-to-run-svt-vp9.patch" "$PWD"
 git apply --check --ignore-space-change --ignore-whitespace 'master-0001-Add-ability-for-ffmpeg-to-run-svt-vp9.patch'
 

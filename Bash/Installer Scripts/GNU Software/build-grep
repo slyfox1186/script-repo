@@ -1,9 +1,5 @@
 #!/Usr/bin/env bash
 
-##  Github script: https://github.com/slyfox1186/script-repo/edit/main/bash/installer%20scripts/gnu%20software/build-grep
-##  Purpose: build gnu grep
-##  Updated: 08.13.23
-##  Script version: 1.2
 
 clear
 
@@ -12,12 +8,10 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Set the variables
 
 script_ver="1.2"
 archive_dir="grep-3.11"
 archive_url="https://ftp.gnu.org/gnu/grep/grep-3.11.tar.xz"
-archive_ext="$archive_url##*."
 archive_name="$archive_dir.tar.$archive_ext"
 cwd="$PWD/grep-build-script"
 install_dir="/usr/local"
@@ -27,30 +21,24 @@ printf "%s\n%s\n\n" \
     "grep build script - v$script_ver" \
     "==============================================="
 
-# Create output directory
 
 if [ -d "$cwd" ]; then
     rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-# Set the c + cpp compilers
 
 export CC="gcc" CXX="g++"
 
-# Set compiler optimization flags
 
 export CFLAGS="-g -O3 -pipe -fno-plt -march=native" CXXFLAGS="$CFLAGS"
 
-# Set the path variable
 
 export PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/sbin:/usr/local/cuda/bin:/usr/local/x86_64-linux-gnu/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/games:/usr/games:/snap/bin"
 
-# Set the pkg_config_path variable
 
 export PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/share/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig:/lib64/pkgconfig:/lib/pkgconfig:/lib/x86_64-linux-gnu/pkgconfig"
 
-# Create functions
 
 exit_fn() {
     printf "\n%s\n\n%s\n\n" \
@@ -86,7 +74,6 @@ cleanup_fn() {
     esac
 }
 
-# Install required apt packages
 
 pkgs_fn() {
     local i missing_pkgs
@@ -102,34 +89,29 @@ pkgs_fn() {
         fi
     done
 
-    if [ "${#Missing_pkgs[@]}" -gt 0 ]; then
         apt install "${missing_pkgs[@]}"
         apt -y autoremove
         clear
     fi
 }
 
-# Download the archive file
 
 if [ ! -f "$cwd/$archive_name" ]; then
     curl -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
-# Create output directory
 
 if [ -d "$cwd/$archive_dir" ]; then
     rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
-# Extract archive files
 
 if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
     printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
     exit 1
 fi
 
-# Build program from source
 
 cd "$cwd/$archive_dir" || exit 1
 autoreconf -fi
@@ -153,8 +135,6 @@ if ! make install; then
     fail_fn "Failed to execute: make install. Line: $LINENO"
 fi
 
-# Prompt user to clean up files
 cleanup_fn
 
-# Show exit message
 exit_fn

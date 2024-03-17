@@ -2,10 +2,7 @@
 
 concat_video_segments() {
     local video_path=$1
-    local starts=("${@:2:$(($#/2))}") # first half of arguments are 'starts'
-    local stops=("${@:$(($#/2 + 2))}") # second half of arguments are 'stops'
 
-    local ext="$video_path##*."
     local output_name="$(basename "$video_path" ."$ext")-OUT.$ext"
     local tmp_dir=$(mktemp -d)
 
@@ -27,14 +24,10 @@ concat_video_segments() {
     echo "Concatenating to $output_name"
     ffmpeg -hide_banner -y -f concat -safe 0 -i "$concat_file" -c copy "$PWD/$output_name"
 
-# Clean up temporary files
     rm -r "$tmp_dir"
 }
 
 START_TIMES=(
-00:12:12 # Pair 01
-00:16:00 # Pair 02
-00:16:32 # Ect...
 00:19:36
 00:20:19
 00:23:48
@@ -43,9 +36,6 @@ START_TIMES=(
 00:29:18
 )
 STOP_TIMES=(
-00:14:51 # Pair 01
-00:16:28 # Pair 02
-00:17:12 # Ect...
 00:20:14
 00:20:42
 00:26:37
@@ -54,7 +44,5 @@ STOP_TIMES=(
 00:30:27
 )
 
-# Video path and start/stop times
-video_path='/path/to/video.mp4' # Replace with your actual video file path
 
 concat_video_segments "$video_path" "${START_TIMES[@]}" "${STOP_TIMES[@]}"

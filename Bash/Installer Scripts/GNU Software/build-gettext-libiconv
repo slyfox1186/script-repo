@@ -1,9 +1,5 @@
 #!/Usr/bin/env bash
 
-# Github script: https://github.com/slyfox1186/script-repo/edit/main/bash/installer%20scripts/gnu%20software/build-gettext-libiconv
-# Purpose: build gnu gettext + libiconv
-# Updated: 08.31.23
-# Script version: 1.2
 
 set -e
 
@@ -25,7 +21,6 @@ CFLAGS="-g -O3 -pipe -fno-plt -march=native"
 CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
 export CC CFLAGS CXX CXXFLAGS
 
-# Enhanced logging and error handling
 log() {
     echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')] $@"
 }
@@ -35,11 +30,9 @@ error() {
     exit 1
 }
 
-# Helper function to download and extract archives
 download_and_extract() {
     local archive_dir=$1
     local archive_url=$2
-    local archive_ext="$archive_url##*."
 
     mkdir -p "$cwd/$archive_dir" || error "Failed to create directory $cwd/$archive_dir"
     log "Downloading $archive_url..."
@@ -48,7 +41,6 @@ download_and_extract() {
     tar -xf "$cwd/$archive_dir.$archive_ext" -C "$cwd/$archive_dir" --strip-components 1 || error "Failed to extract $archive_dir.$archive_ext"
 }
 
-# Helper function for building and installing
 build_and_install() {
     local archive_dir=$1
     cd "$cwd/$archive_dir" || exit 1
@@ -67,7 +59,6 @@ build_and_install() {
     libtool --finish "$install_dir/lib" || error "Failed to finish libtool setup"
 }
 
-# Main script execution
 printf "%s\n%s\n\n"                                  \
     "gettext + libiconv build script - v$script_ver" \
     '==============================================='

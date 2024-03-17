@@ -24,5 +24,4 @@ cat > "file" <<'EOF'
 /lib
 EOF
 
-# Update the ld linker paths
 ldconfig

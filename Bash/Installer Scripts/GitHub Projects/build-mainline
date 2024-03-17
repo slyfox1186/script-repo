@@ -1,19 +1,5 @@
 #!/Usr/bin/env bash
-# Shellcheck disable=sc2162,sc2317
 
-#############################################################################
-##
-##  Install mainline from source code
-##
-##  Script: https://github.com/slyfox1186/script-repo/edit/main/bash/installer%20scripts/github%20projects/build-mainline
-##
-##  Github repo: https://github.com/bkw777/mainline/tree/master
-## 
-##  Updated: 10.03.23
-##
-##  Script version: 1.0
-##
-#############################################################################
 
 clear
 
@@ -22,7 +8,6 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-# Set variables
 
 script_ver=1.0
 parent_dir="$PWD"
@@ -33,21 +18,17 @@ printf "%s\n%s\n\n" \
     "OpenSSL Build Script - v$script_ver" \
     '==============================================='
 
-# Create output directory
 
 if [ ! -d "$cwd" ]; then
     mkdir -p "$cwd"
 fi
 
-# Set the c+cpp compilers
 
 export CC=gcc CXX=g++
 
-# Export compiler optimization flags
 
 export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 
-# Create functions
 
 exit_fn() {
     printf "\n%s\n\n%s\n\n" \
@@ -95,7 +76,6 @@ cleanup_fn() {
     esac
 }
 
-# Install required apt packages
 
 pkgs=(autoconf autoconf-archive autogen automake build-essential curl
       libtool libtool-bin git-all libgee-0.8-dev libvte-2.91-dev m4
@@ -116,7 +96,6 @@ if [ -n "$missing_pkgs" ]; then
 fi
 unset i missing_pkgs
 
-# Create archive output folder or clean existing
 if [ ! -d mainline ]; then
     git clone https://github.com/bkw777/mainline.git
 fi
@@ -126,7 +105,6 @@ cd mainline || exit 1
 ls -1A --color --group-directories-first
 echo
 
-# Install mainline
 make distclean
 if ! make "-j$(nproc --all)"; then
     fail_fn "The command \"make -j$(nproc --all)\" failed. Line: $LINENO"
@@ -136,8 +114,6 @@ if sudo make "-j$(nproc --all)" install; then
     fail_fn "The command \"sudo make -j$(nproc --all) install\" failed. Line: $LINENO"
 fi
 
-# Prompt user to clean up files
 cleanup_fn
 
-# Show exit message
 exit_fn

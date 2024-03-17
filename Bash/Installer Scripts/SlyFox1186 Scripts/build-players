@@ -1,15 +1,8 @@
 #!/Usr/bin/env bash
 
-## 1. vlc
-## 2. kodi
-## 3. smplayer
-## 4. gnome videos (totem)
-## 5. bomi
-## 6. exit
 
 clear
 
-# Functions
 
 exit_fn() {
     printf "\n%s\n\n%s\n\n" \

@@ -1,28 +1,20 @@
 #!/Usr/bin/env bash
 
-# Purpose: install the latest 7-zip package across multiple linux distributions and macos
-# Updated: 03-13-2024
-# Script version: 3.0
-# Added macos: if errors occur create an issue at: https://github.com/slyfox1186/script-repo/issues
 
 if [[ "$EUID" -ne 0 ]]; then
     echo "You must run this script with root or sudo."
     exit 1
 fi
 
-# Set variables
 readonly script_version="3.0"
 readonly WORKDIR="/tmp/7zip-install-script"
 readonly install_dir="/usr/local/bin"
 
-# Ansi escape codes for colors
 RED="\033[0;31m"
 GREEN="\033[0;32m"
 YELLOW="\033[0;33m"
 BLUE="\033[0;34m"
-NC="\033[0m" # No color
 
-# Function to log messages
 log() {
     echo -e "$GREEN[INFO]$NC $1"
 }
@@ -31,29 +23,23 @@ log_update() {
     echo -e "$GREEN[UPDATE]$NC $1"
 }
 
-# Function to log warnings
 warn() {
     echo -e "$YELLOW[WARN]$NC $1"
 }
 
-# Function to handle errors and exit
 fail() {
     echo -e "$RED[ERROR]$NC $1"
     echo -e "$YELLOW[WARN]$NC Please create a support ticket at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
-# Function to print 7-zip version
 print_version() {
-# Capture the output of the '7z -version' command directly.
     command_output=$("$install_dir/7z" -version 2>/dev/null)
 
-# Initialize variables to hold version, architecture, and date information.
     version=""
     architecture=""
     date=""
 
-# Extract version, architecture, and date from the command output.
     while read -r line; do
         if [[ "$line" =~ 7-Zip\ \(z\)\ ([0-9]+\.[0-9]+)\ \((x64|x86|arm64)\) ]]; then
             version="$BASH_REMATCH[1]"
@@ -64,12 +50,10 @@ print_version() {
         fi
     done <<< "$command_output"
 
-# Format and print the output.
     formatted_output="7-Zip $version ($architecture) Igor Pavlov $date"
     echo "$formatted_output"
 }
 
-# Function to print script banner
 box_out_banner() {
     input_char=$(echo "$@" | wc -c)
     line=$(for i in $(seq 0 $input_char); do printf '-'; done)
@@ -84,7 +68,6 @@ box_out_banner() {
     tput sgr 0
 }
 
-# Function to download the file with retries
 download() {
     local url="$1"
     local dest="$2"
@@ -94,7 +77,6 @@ download() {
     fi
 }
 
-# Function to detect the operating system
 detect_os() {
     case $(uname -s) in
         Linux*)  OS="linux";;
@@ -103,7 +85,6 @@ detect_os() {
     esac
 }
 
-# Function to detect the linux distribution
 detect_distribution() {
     if [[ -f /etc/os-release ]]; then
         source /etc/os-release
@@ -120,7 +101,6 @@ detect_distribution() {
     fi
 }
 
-# Function to install dependencies based on the operating system and distribution
 install_dependencies() {
     log "Installing dependencies..."
 
@@ -152,7 +132,6 @@ install_dependencies() {
     log_update "Dependencies installed successfully."
 }
 
-# Display the help menu
 display_help() {
     echo "Usage: $0 [OPTIONS]"
     echo "\nOptions:"
@@ -163,8 +142,6 @@ display_help() {
     echo "  -v, --version               Display the script version"
 }
 
-# Parse command-line options
-while [[ "$#" -Gt 0 ]]; do
     case "$1" in
         -h|--help)
            display_help
@@ -193,26 +170,21 @@ while [[ "$#" -Gt 0 ]]; do
     shift
 done
 
-# Main script execution starts here
 box_out_banner "7-Zip Install Script"
 detect_os
 detect_distribution
 
-# Check if wget and tar are installed and install them if missing
 if ! command -v wget &>/dev/null || ! command -v tar &>/dev/null; then
     install_dependencies
 fi
 
-# Check if the 7zip-install-script directory exists and delete it
 if [[ -d "$WORKDIR" ]]; then
     log "Deleting existing 7zip-install-script directory..."
     rm -fr "$WORKDIR"
 fi
 
-# Create the 7zip-install-script directory
 mkdir -p "$WORKDIR"
 
-# Detect architecture and set download url based on the operating system
 case $OS in
     linux)
         case "$(uname -m)" in
@@ -226,39 +198,30 @@ case $OS in
     macos) url="mac" ;;
 esac
 
-# Set the download url based on the beta flag
 if [[ "$beta" -eq 1 ]]; then
     version="7z2400"
 else
     version="7z2301"
 fi
 
-# Set the download url
 url="https://www.7-zip.org/a/$version-$url.tar.xz"
-# Use a custom download url if provided by the user
 [[ -n $custom_url ]] && url="$custom_url"
 
-# Set the tar file and output directory names
 tar_file="$version.tar.xz"
 output_dir="$WORKDIR/$version"
 
-# Create the output directory
 mkdir -p "$output_dir"
 
-# Download the tar file with retries if missing
 if [[ ! -f "$WORKDIR/$tar_file" ]]; then
     download "$url" "$WORKDIR/$tar_file" || fail "Failed to download the file."
 fi
 
-# Extract files into directory '7z'
 if ! tar -xf "$WORKDIR/$tar_file" -C "$output_dir"; then
     fail "The script was unable to extract the archive: '$WORKDIR/$tar_file'"
 fi
 
-# Use custom output directory if provided
 [[ -n $custom_output_dir ]] && install_dir="$custom_output_dir"
 
-# Copy the file to its destination or throw an error if the copying of the file fails
 case "$OS" in
     linux) if ! cp -f "$output_dir/7zzs" "$install_dir/7z"; then
                fail "The script was unable to copy the static file '7zzs' to '$install_dir/7z'"
@@ -274,10 +237,8 @@ case "$OS" in
            ;;
 esac
 
-# Show the newly installed 7-zip version
 echo
 log_update "7-Zip installation completed successfully."
 print_version
 
-# Clean up the install files
 rm -fr "$WORKDIR"

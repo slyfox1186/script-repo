@@ -1,30 +1,22 @@
 #!/usr/bin/env bash
 
-# Github script for building opencl sdk
-# Script version: 1.0
-# Updated: 01.08.24
-# Url: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/github%20projects/build-opencl-sdk
 
 clear
 
-# Check for root privileges
 if [[ $EUID -eq 0 ]]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
 
-# Set the script variables
 script_ver=1.0
 archive_dir=OpenCL-SDK
 archive_url='https://github.com/KhronosGroup/OpenCL-SDK.git'
 cwd="$PWD/opencl-sdk-build-script"
 install_dir=/usr/local
 
-# Set compiler variables
 export CC=gcc CXX=g++ CFLAGS='-O3 -pipe -fno-plt -fno-plt -march=native' CXXFLAGS="$CFLAGS"
 
 
-# Set path variable
 PATH="\
 /usr/lib/ccache:\
 $HOME/perl5/bin:\
@@ -43,7 +35,6 @@ $HOME/.local/bin:\
 "
 export PATH
 
-# Set pkg_config_path variable
 PKG_CONFIG_PATH="\
 /usr/share/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
@@ -54,7 +45,6 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-# Install required apt packages
 pkgs=(
       autoconf autoconf-archive autogen automake binutils bison build-essential bzip2 ccache
       curl install-info libc6-dev libglew-dev libtool libtool-bin libudev-dev libzstd-dev m4
@@ -72,13 +62,10 @@ if [ -n $missing_pkgs ]; then
     sudo apt install $missing_pkgs
 fi
 
-# Remove any leftover files from previous runs
 sudo rm -fr "$cwd/$archive_dir"
 
-# Clone the repository
 git clone --recursive "$archive_url" "$cwd/$archive_dir" || { echo "Clone failed"; exit 1; }
 
-# Build the sdk
 cd "$cwd" || exit 1
 cmake -S OpenCL-SDK -B build \
       -DCMAKE_INSTALL_PREFIX="$install_dir" \
@@ -107,12 +94,10 @@ if ! sudo ninja -C build install; then
     exit 1
 fi
 
-# Clean up files
 read -p "Do you want to remove build directories? (y/n): " choice
 case "$choice" in 
     [yY]|[yY][eE][sS])  sudo rm -fr "$cwd";;
     *)                  printf "\n%s\n\n" "Build directories retained.";;
 esac
 
-# Exit message
 printf "\n%s\n\n" "OpenCL SDK build process completed."

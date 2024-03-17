@@ -1,6 +1,5 @@
 #!/Usr/bin/env bash
 
-# Color variables for easier reading and logging
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -10,12 +9,7 @@ overwrite=0
 append_text="-trimmed"
 prepend_text=""
 file_list=""
-single_input_file="" # New variable for directly passed video file
-trim_start=0 # Duration to trim from the start in seconds
-trim_end=0 # Duration to trim from the end in seconds
-verbose=0 # Verbose flag added
 
-# Function to display usage
 usage() {
     echo -e "$GREENUsage: $0 [-f <file_list> | -i <input_file>] [--start <trim_start_seconds>] [--end <trim_end_seconds>] [--append <append_text>] [--prepend <prepend_text>] [--overwrite] [--verbose]$NC"
     echo
@@ -28,14 +22,11 @@ usage() {
     echo -e "  -a, --append           Specify text to append to the output file name. Ignored if --overwrite is used."
     echo -e "  -p, --prepend          Specify text to prepend to the output file name. Ignored if --overwrite is used."
     echo -e "  -o, --overwrite        Overwrite the input file instead of creating a new one."
-    echo -e "  -v, --verbose          Enable verbose output." # Verbose option described
     exit 1
 }
 
-# Remove log file
 [[ -f video-processing.log ]] && rm video-processing.log
 
-# Parse options
 TEMP=$(getopt -o f:i:a:p:ovh --long file:,input:,start:,end:,append:,prepend:,overwrite,verbose,help -n 'script.sh' -- "$@")
 if [ $? != 0 ]; then echo "Failed to parse options... exiting." >&2; exit 1; fi
 
@@ -50,14 +41,12 @@ while true; do
         -a | --append ) append_text="$2"; shift 2 ;;
         -p | --prepend ) prepend_text="$2"; shift 2 ;;
         -o | --overwrite ) overwrite=1; append_text=""; prepend_text=""; shift ;;
-        -v | --verbose ) verbose=1; shift ;; # Verbose option handled
         -h | --help ) usage; shift ;;
         -- ) shift; break ;;
         * ) break ;;
     esac
 done
 
-# Prepare video files array based on input method
 video_files=()
 if [[ -n "$single_input_file" ]]; then
     video_files+=("$single_input_file")
@@ -77,10 +66,8 @@ for input_file in "${video_files[@]}"; do
 
     echo -e "$GREENProcessing: $input_file$NC"
 
-# Calculate total video duration
     total_duration=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 -i "$input_file" | awk '{print $1}')
 
-# Calculate start and end keyframe timestamps
     if [ $trim_start -gt 0 ]; then
         formatted_start_time=$(ffprobe -v error -select_streams v -of csv=p=0 -show_entries frame=best_effort_timestamp_time -read_intervals $trim_start%+$trim_start -i "$input_file" | head -n1)
         if [ -z "$formatted_start_time" ]; then
@@ -110,7 +97,6 @@ for input_file in "${video_files[@]}"; do
     fi
 
     base_name="$input_file%.*"
-    extension="$input_file##*."
     final_output="$prepend_text$base_name$append_text.$extension"
     if [ $overwrite -eq 1 ]; then
         final_output="$input_file"
@@ -119,10 +105,8 @@ for input_file in "${video_files[@]}"; do
     [[ -n "$formatted_start_time" ]] && trim_start_cmd="-ss \"$formatted_start_time\""
     [[ -n "$formatted_end_time" ]] && trim_end_cmd="-to \"$formatted_end_time\""
 
-# Prompt user before processing
     if [ $verbose -eq 1 ]; then
         read -p "Proceed with trimming? (y/n) " choice
-        echo    # Move to a new line
         if [[ $choice != [Yy] ]]; then
             echo -e "$YELLOWSkipping $input_file based on user choice.$NC"
             continue

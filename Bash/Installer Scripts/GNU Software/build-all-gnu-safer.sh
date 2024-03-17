@@ -1,19 +1,13 @@
 #!/usr/bin/env bash
 
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-all-gnu-safer
-##  Purpose: Loops multiple build scripts to optimize efficiency. This is the safer of the two scripts.
-##  Updated: 03.17.24
-##  Script version: 1.3
 
 if [ "$EUID" -eq 0 ]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
 
-# Initialize the counter
 count=0
 
-# Print the script banner
 cwd="$PWD/build-gnu-safer-scripts"
 
 [[ -d "$cwd" ]] && sudo rm -fr "$cwd"
@@ -52,10 +46,8 @@ if [[ -n "$missing_pkgs" ]]; then
     sudo apt-get install $missing_pkgs
 fi
 
-# Add additional search paths to the ld library linker
 sudo bash -c 'bash <(curl -fsSL https://ld.optimizethis.net)'
 
-# Detect the PC architecture
 case $(uname -m) in
     x86_64)                     arch_ver="pkg-config" ;;
     aarch64*|armv8*|arm|armv7*) arch_ver="pkg-config-arm" ;;
@@ -93,8 +85,6 @@ if [ -d "$cwd/failed" ]; then
     exit_fn
 fi
 
-# Cleanup leftover files
 sudo rm -fr "$cwd"
 
-# Display exit message
 exit_fn

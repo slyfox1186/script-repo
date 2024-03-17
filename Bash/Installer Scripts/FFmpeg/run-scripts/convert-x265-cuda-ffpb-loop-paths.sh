@@ -1,12 +1,9 @@
 #!/Usr/bin/env bash
-# Shellcheck disable=sc2066,sc2068,sc2086,sc2162
 
-# Set the path variable
 if [ -d "$HOME/.local/bin" ]; then
     export PATH="$PATH:$HOME/.local/bin"
 fi
 
-# Installl the required apt packages
 pkgs=(
     ffmpegthumbnailer ffmpegthumbs libffmpegthumbnailer4v5
     libsox-dev python3-pip sox trash-cli
@@ -31,11 +28,8 @@ if [ -n "$missing_pkgs" ]; then
 fi
 clear
 
-# Install the required pip packages
-# Specify a permanent location for the virtual environment
 venv_dir="$HOME/my_venv"
 
-# Check if the virtual environment already exists
 if [ ! -d "$venv_dir" ]; then
     echo "Creating a virtual environment in $venv_dir"
     python3 -m venv "$venv_dir"
@@ -43,18 +37,14 @@ else
     echo "Using existing virtual environment in $venv_dir"
 fi
 
-# Activate the virtual environment
 source "$venv_dir/bin/activate"
 
-# Function to check if a package is installed
 is_package_installed() {
     pip list | grep "^$1 " > /dev/null
 }
 
-# List of required packages
 required_packages=(ffpb google_speech)
 
-# Iterate over the required packages and install if not already installed
 for pkg in "${required_packages[@]}"; do
     if is_package_installed "$pkg"; then
         echo "$pkg is already installed."
@@ -66,7 +56,6 @@ done
 
 echo "Setup complete. The python virtual environment is ready to use."
 
-# Create an output file that contains all of the video paths and use it to loop the contents
 tmp_list_dir="$(mktemp -d)"
 cat > "$tmp_list_dir/list.txt" <<'EOF'
 /path/to/video.mkv
@@ -75,19 +64,15 @@ EOF
 
 while read -u 9 video
 do
-# Stores the current video width, aspect ratio, profile, bit rate, and total duration in variables for use later in the ffmpeg command line
     aspect_ratio=$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 -pretty "$video" 2>/dev/null)
     length=$(ffprobe -hide_banner -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$video" 2>/dev/null)
     maxrate=$(ffprobe -hide_banner -show_entries format=bit_rate -of default=nk=1:nw=1 -pretty "$video" 2>/dev/null)
     height=$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 -pretty "$video" 2>/dev/null)
     width=$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 -pretty "$video" 2>/dev/null)
 
-# Modify vars to get file input and output names
     file_in="$video"
-    fext="$video#*."
     file_out="$video%.* (x265).$fext"
 
-# Gets the input videos max datarate and applies logic to determine bitrate, bufsize, and maxrate variables
     trim=$(bc <<< "scale=2 ; $maxrate::-11 * 1000")
     btr=$(bc <<< "scale=2 ; $trim / 2")
     bitrate="$btr::-3"
@@ -96,7 +81,6 @@ do
     bufsize="$bfs::-3"
     length=$(($length::-7 / 60))
 
-# Print the video stats in the terminal
     cat <<EOF
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 

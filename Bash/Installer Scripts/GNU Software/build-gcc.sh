@@ -1,10 +1,5 @@
 #!/usr/bin/env bash
 
-# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc.sh
-# Build GNU GCC
-# Versions available:  9|10|11|12|13
-# Features: Automatically sources the latest release of each version.
-# Updated: 03.17.2024
 
 set -eo pipefail
 
@@ -16,7 +11,6 @@ LDFLAGS=""
 version=""
 versions=()
 
-# ANSI color codes
 RED='\033[0;31m'
 GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
@@ -66,7 +60,6 @@ fail() {
 }
 
 parse_args() {
-    while [[ "$#" -gt 0 ]]; do
         case "$1" in
             -p|--prefix)
                 install_prefix="$2"
@@ -157,7 +150,6 @@ get_latest_version() {
 
 download() {
     local url="$1"
-    local filename="${url##*/}"
     if [[ ! -f "$build_dir/$filename" ]]; then
         log "Downloading $url"
         curl -fsSLo "$build_dir/$filename" "$url"
@@ -259,7 +251,6 @@ select_versions() {
     case "$choice" in
         1)
             echo -e "\\n$GREENSelect a single GCC version to install:$NC\n"
-            for ((i=0; i<${#versions[@]}; i++)); do
                 echo -e "$CYAN$((i+1)). GCC ${versions[i]}$NC"
             done
             echo
@@ -291,11 +282,9 @@ select_versions() {
             ;;
     esac
 
-    if [[ "${#selected_versions[@]}" -eq 0 ]]; then
         fail "No GCC versions selected."
     fi
 
-    # Install GCC's recommended version of autoconf (version 2.69)
     install_autoconf
 
     for version in "${selected_versions[@]}"; do

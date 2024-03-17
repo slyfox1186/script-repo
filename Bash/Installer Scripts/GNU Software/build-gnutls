@@ -15,19 +15,7 @@ $HOME/.local/bin:\
 /usr/games:\
 /snap/bin\
 "
-export PATH#!/Usr/bin/env bash
 
-###########################################################################################################
-##
-##  Github script: https://github.com/slyfox1186/script-repo/edit/main/bash/installer%20scripts/gnu%20software/build-gnutls
-##
-##  Purpose: build gnutls
-##
-##  Updated: 08.31.23
-##
-##  Script version: 1.0
-##
-###########################################################################################################
 
 clear
 
@@ -36,7 +24,6 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-# Set the variables
 
 script_ver=1.0
 archive_dir=guile-gnutls-4.0.0
@@ -52,22 +39,18 @@ printf "%s\n%s\n\n" \
     "gnutls build script - v$script_ver" \
     '==============================================='
 
-# Create the output directory
 
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-# Set the c + cpp compilers
 
 export CC=gcc CXX=g++
 
-# Set compiler optimization flags
 
 export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 
-# Set the path variable
 
 PATH="\
 /usr/lib/ccache:\
@@ -88,7 +71,6 @@ $HOME/.local/bin:\
 "
 export PATH
 
-# Set the pkg_config_path variable
 
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
@@ -105,7 +87,6 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-# Create the functions
 
 exit_fn() {
     printf "\n%s\n\n%s\n\n" \
@@ -146,7 +127,6 @@ cleanup_fn() {
     esac
 }
 
-# Install the required apt packages
 
 pkgs_fn() {
     pkgs=("$1" autoconf autoconf-archive autogen automake binutils build-essential ccache
@@ -169,27 +149,23 @@ pkgs_fn() {
     fi
 }
 
-# Download the archive file
 
 if [ ! -f "$cwd/$archive_name" ]; then
     curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
-# Create the output directory
 
 if [ -d "$cwd/$archive_dir" ]; then
     sudo rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
-# Extract the archive files
 
 if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
     printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
     exit 1
 fi
 
-# Build gnutls from it's source code
 
 cd "$cwd/$archive_dir" || exit 1
 autoreconf -fi
@@ -209,8 +185,6 @@ if ! sudo make install; then
     exit 1
 fi
 
-# Prompt the user to clean up the leftover files
 cleanup_fn
 
-# Show the exit message
 exit_fn

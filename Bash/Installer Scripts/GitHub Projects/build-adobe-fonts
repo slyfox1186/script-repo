@@ -1,16 +1,5 @@
 #!/Usr/bin/env bash
 
-####################################################################################################################################################
-##
-##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/slyfox1186%20scripts/install-adobe-sans+pro+serif-fonts.sh
-##
-##  Purpose: install adobe-sans + adobe-pro fonts system wide
-##
-##  Created: 10.10.23
-##
-##  Script version: 1.1
-##
-####################################################################################################################################################
 
 clear
 
@@ -19,7 +8,6 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-# Set the variables
 
 script_ver=1.1
 pro_url=https://github.com/adobe-fonts/source-code-pro/archive/refs/tags/2.042R-u/1.062R-i/1.026R-vf.tar.gz
@@ -35,9 +23,7 @@ install_dir_serif=/usr/local/share/fonts/adobe-serif
 user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
-# Sudo rm -fr /usr/local/share/fonts/adobe-pro /usr/local/share/fonts/adobe-sans /usr/local/share/fonts/adobe-serif
 
-# Print script banner
 
 box_out_banner_header() {
     input_char=$(echo "$@" | wc -c)
@@ -56,7 +42,6 @@ box_out_banner_header "Installer Script - Adobe-Sans & Adobe-Pro Fonts - version
 
 printf "\n%s\n\n" "The script will utilize ($cpu_threads) CPU threads for parallel processing to accelerate the build speed."
 
-# Create functions
 
 exit_fn() {
     printf "\n%s\n\n%s\n\n" \
@@ -72,18 +57,15 @@ fail_fn() {
     exit 1
 }
 
-# Create or delete old output directories from previous runs
 
 if [ -d "$pro_dir" ] && [ -d "$sans_dir" ] && [ -d "$serif_dir" ]; then
     sudo rm -fr "$pro_dir" "$sans_dir" "$serif_dir"
 fi
 mkdir -p "$pro_dir" "$sans_dir" "$serif_dir"
 
-# Create the font output directories
 
 sudo mkdir -p "$install_dir_pro" "$install_dir_sans" "$install_dir_serif" 2>/dev/null
 
-# Download the archive files
 
 if [ ! -f "$pro_dir".tar.gz ]; then
     if ! wget --show-progress -t 2 -cqO "$pro_dir".tar.gz "$pro_url"; then
@@ -103,7 +85,6 @@ if [ ! -f "$serif_dir".tar.gz ]; then
 fi
 echo
 
-# Extract the archive files
 
 if ! tar -zxf "$pro_dir".tar.gz -C "$pro_dir" --strip-components 1; then
     fail_fn "Failed to extract the archive \"$pro_dir.tar.gz\". Line: $LINENO"
@@ -116,7 +97,6 @@ if ! tar -zxf "$serif_dir".tar.gz -C "$serif_dir" --strip-components 1; then
 fi
 echo
 
-# Find and move the font files to the output folder
 
 cd "$pro_dir" || exit 1
 sudo find . -type f -name '*.ttf' -exec sudo mv -f '{}' "$install_dir_pro" \;
@@ -132,7 +112,6 @@ sudo find . -type f -name '*.otf' -exec sudo mv -f '{}' "$install_dir_serif" \;
 sudo find . -type f -name '*.woff' -exec sudo mv -f '{}' "$install_dir_serif" \;
 echo
 
-# Make sure there the files were moved successfully and then update the font cache
 
 if [ "$(sudo find "$install_dir_pro" -type f -name '*.*' | wc -l)" -lt 64 ]; then
     fail_fn "The script failed to extract 64 total fonts to the adobe-pro directory. Line: $LINENO"
@@ -144,8 +123,6 @@ else
     sudo fc-cache -fv
 fi
 
-# Cleanup the leftover build files
 sudo rm -fr "$cwd"
 
-# Show the exit message
 exit_fn

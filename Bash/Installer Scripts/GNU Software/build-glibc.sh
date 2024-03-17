@@ -1,34 +1,25 @@
 #!/Usr/bin/env bash
 
-# Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/gnu%20software/build-glibc.sh
-# Purpose: build gnu glibc
-# Updated: 03.16.24
-# Script version: 2.6
 
-# Ansi color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Variables
 archive_dir="glibc-2.39"
 archive_url="https://ftp.gnu.org/gnu/glibc/$archive_dir.tar.xz"
-archive_ext="$archive_url##*."
 archive_name="$archive_dir.tar.$archive_ext"
 working="/tmp/glibc-build-script"
 install_dir="/usr/local/$archive_dir"
 log_file="$working/build.log"
 
-# Optimization flags
 CPU_ARCH=$(lscpu | awk -F ': +' '/Architecture/ {print $NF}')
 CPU_CORES=$(nproc --all)
 CFLAGS="-O3 -march=$CPU_ARCH -mtune=native -pipe -fno-plt -fstack-protector-strong -fstack-clash-protection -fcf-protection"
 CXXFLAGS="$CFLAGS"
 LDFLAGS="-Wl,-O1 -Wl,--as-needed -Wl,--hash-style=gnu -Wl,-z,relro,-z,now"
 
-# Functions
 fail() {
     mkdir -p "$(dirname "$log_file")"
     echo -e "$RED[$(date +'%m.%d.%Y %T')] ERROR: $1$NC" | tee -a "$log_file"
@@ -90,7 +81,6 @@ install_dependencies() {
         fi
     done
 
-    if [[ ${#Missing_deps[@]} -gt 0 ]]; then
         log "Installing missing dependencies: $missing_deps[*]"
         if ! apt-get install -y "${missing_deps[@]}"; then
             fail "Failed to install dependencies."
@@ -167,8 +157,6 @@ update_system() {
 }
 
 main() {
-# Parse command-line arguments
-    while [[ $# -Gt 0 ]]; do
         case "$1" in
             -h|--help)
                 show_usage
@@ -190,41 +178,31 @@ main() {
         shift
     done
 
-# Check if running with root or sudo access
     if [[ "$EUID" -ne 0 ]]; then
         fail "This script must be run with root or sudo access."
     fi
 
-# Create output directory
     log "Creating output directory..."
     mkdir -p "$working"
 
-# Download archive file
     if [[ ! -f "$working/$archive_name" ]]; then
         download_archive
     else
         log "Archive file already exists: $working/$archive_name"
     fi
 
-# Extract archive files
     extract_archive
 
-# Install dependencies
     install_dependencies
 
-# Build glibc
     build_glibc
 
-# Install glibc
     install_glibc
 
-# Create symbolic links
     create_symlinks
 
-# Update system
     update_system
 
-# Clean up if requested
     if [[ "$cleanup_files" == true ]]; then
         cleanup
     fi

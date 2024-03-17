@@ -1,52 +1,18 @@
 #!/usr/bin/env bash
-#
 pushd "$PWD" || exit 1
-#
 clear
-#
-### Important script information below
-#
-### IP = server WAN on LAN address that hosts the Minecraft server
-#
-### PW = rcon password (set in server.properties)
-#
-### PORT = server default rcon port (change if needed and is set in server.properties)
-#
-### SCRIPT = the default server start script that comes with the server files you download
-###          from the Curseforge Desktop App (or you can google "Curseforge + the mod pack name")
-#
-### Download server files via Curseforge Desktop App
-#     1) Use the Curseforge app to install the mod of your choosing (requires overwolf.exe)
-#     2) Click the 3 dots in the mod's main menu and use the drop-down menu to select
-#        "Download Server Files"
-#     3) Transport the server files to the Linux (Debian) pc you want to run the server on
-#     4) Set the below variables as needed for this script to work successfully
-#
 IP=192.168.1.40
 PW=47j8a8&
 PORT=25575
 SCRIPT=start.sh
-#
-### Install the mcrcon package if not found
-### Use Git to download the repository and then install with the make command
-#
 if [ ! -f '/usr/local/bin/mcrcon' ]; then
     git clone 'https://github.com/Tiiffi/mcrcon.git'
     cd mcrcon || exit 1
     make "-j$(nproc)"
     sudo make install
 fi
-#
-### Install HTOP Process Monitor
-#
 if [ ! -f '/usr/bin/htop' ]; then sudo apt -y install htop; fi
-#
-### Install Screen package if not found
-#
 if [ ! -f '/usr/bin/screen' ]; then sudo apt -y install screen; fi
-#
-### Set color vars
-#
 BLUE="\033[34m"
 CYAN="\033[36m"
 GREEN="\033[32m"
@@ -54,25 +20,16 @@ MAGENTA="\033[35m"
 RED="\033[31m"
 RESET="\033[0m"
 YELLOW="\033[33m"
-#
-### Set color functions
-#
 greenprint() { printf "$GREEN%s$RESET\n" "$1"; }
 blueprint() { printf "$BLUE%s$RESET\n" "$1"; }
 redprint() { printf "$RED%s$RESET\n" "$1"; }
 yellowprint() { printf "$YELLOW%s$RESET\n" "$1"; }
 magentaprint() { printf "$MAGENTA%s$RESET\n" "$1"; }
 cyanprint() { printf "$CYAN%s$RESET\n" "$1"; }
-#
-### Set misc functions
-#
 fn_remindUser() { clear; echo 'Please input one of the available choices.'; }
 fn_exit() { clear; exit 0; }
 fn_fail() { clear; echo -e "\\n[i] Invalid input: Please try a different choice.\\n"; exit 1; }
 clear
-#
-### Fast stop server
-#
 fn_faststop_server() {
     echo -e "Server shutdown command executed... please wait.\\n"
     mcrcon -H $IP -P $PORT -p $PW -w 10 "say Server stopping!" save-all stop && \
@@ -82,9 +39,6 @@ fn_faststop_server() {
     sleep 3
     htop
 }
-#
-### Restart server
-#
 fn_restart_server() {
     echo -e "[i] Server restarting in 30 seconds...\\n    - Warning users to save their work within 30 seconds..."
     mcrcon -H $IP -P $PORT -p $PW -w 2 "say The server is restarting in 30 seconds!"
@@ -104,9 +58,6 @@ fn_restart_server() {
     sleep 3
     htop
 }
-#
-### Stop server
-#
 fn_stop_server() {
     mcrcon -H $IP -P $PORT -p $PW -w 2 "say The server is stopping in 30 seconds!"
     mcrcon -H $IP -P $PORT -p $PW -w 13 "say Please save all work!"
@@ -126,9 +77,6 @@ fn_stop_server() {
     sleep 3
     htop
 }
-#
-### Start server
-#
 fn_start_server() {
     local SCRIPT
     echo -e "[i] Executing command: screen -dmS mc ./$SCRIPT\\n    - Please wait for the server to completely load before reconnecting.\\n"
@@ -137,11 +85,6 @@ fn_start_server() {
     sleep 2
     htop
 }
-#
-### Start subemenu section
-#
-### submenu4
-#
 submenu4() {
     local i
     echo -e "$(cyanprint 'Fast Stop the server?')"
@@ -169,9 +112,6 @@ Make a choice: "
         ;;
     esac
 }
-#
-### submenu3
-#
 submenu3() {
     local i
     echo -e "$(cyanprint 'Restart the server?')"
@@ -199,9 +139,6 @@ Make a choice: "
         ;;
     esac
 }
-#
-### submenu2
-#
 submenu2() {
     local i
     echo -e "$(cyanprint 'Stop the server?')"
@@ -229,9 +166,6 @@ Make a choice: "
         ;;
     esac
 }
-#
-### submenu1
-#
 submenu1() {
     local i
     echo -e "$(cyanprint 'Start the server?')"
@@ -259,9 +193,6 @@ Make a choice: "
         ;;
     esac
 }
-#
-### Main Menu
-#
 mainmenu() {
     local i
     echo -e "$(magentaprint '[i] Minecraft Server Launcher')"
@@ -298,5 +229,4 @@ Make a choice: "
         ;;
     esac
 }
-#
 mainmenu

@@ -1,17 +1,5 @@
 #!/Usr/bin/env bash
-# Shellcheck disable=sc2162,sc2317
 
-###########################################################################################################
-##
-##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/github%20projects/build-clang-15
-##
-##  Purpose: build llvm-15
-##
-##  Updated: 10.12.23
-##
-##  Script version: 1.0
-##
-###########################################################################################################
 
 clear
 
@@ -20,7 +8,6 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-# Set global variables
 
 script_ver=1.0
 progname="$0"
@@ -29,24 +16,19 @@ install_prefix=/usr/local
 pc_type=$(gcc -dumpmachine)
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
-debug=OFF # Change this variable to "on" for help with troubleshooting unexpected issues during the build
 
-# Create output directories
 
 if [ ! -d "$cwd" ]; then
     mkdir -p "$cwd"
 fi
 
-# Figure out which compilers to use
 
 export CC=clang CXX=clang++
 
-# Set compiler optimization flags
 
 CFLAGS='-g -O3 -pipe -fno-plt -march=native'
 CXXFLAGS='-g -O3 -pipe -fno-plt -march=native'
 
-# Set the available cpu count for parallel processing (speeds up the build process)
 
 if [ -f /proc/cpuinfo ]; then
     cpu_threads="$(grep --count ^processor /proc/cpuinfo)"
@@ -87,7 +69,6 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-# Create functions
 
 exit_fn() {
     printf "\n%s\n\n%s\n%s\n\n"                                    \
@@ -192,7 +173,6 @@ build_done() { echo "$2" > "$cwd/$1.done"; }
 download() {
     dl_path="$cwd"
     dl_url="$1"
-    dl_file="$2:-"${1##*/"}"
 
     if [[ "$dl_file" =~ tar. ]]; then
         output_dir="$dl_file%.*"
@@ -250,7 +230,6 @@ git_1_fn() {
     if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[1].name' 2>/dev/null)"
         g_url="$(echo "$curl_cmd" | jq -r '.[1].tarball_url' 2>/dev/null)"
-        g_ver="$g_ver#Llvmorg-"
     fi
 }
 
@@ -268,7 +247,6 @@ git_ver_fn() {
     git_1_fn "$v_url" "$t_flag" 2>/dev/null
 }
 
-# Print the options available when manually running the script
 
 pkgs=(autoconf autoconf-archive automake autopoint binutils binutils-dev bison
       build-essential ccache clang cmake curl jq libc6 libc6-dev libedit-dev
@@ -290,11 +268,9 @@ else
     printf "%s\n" 'The APT packages are already installed'
 fi
 
-# Refresh librarys
 
 sudo ldconfig 2>/dev/null
 
-# Begin building clang
 
 clear
 box_out_banner() {
@@ -351,17 +327,12 @@ if build 'llvm' '15.0.7'; then
     execute sudo ninja "-j$cpu_threads" -C build install
 fi
 
-# Ldconfig must be run next in order to update file changes or the magick command will not work
 sudo ldconfig 2>/dev/null
 
-# Create a soft link from clang++ to clang++-15
 create_soft_link_fn
 
-# Show the newly installed magick version
 show_ver_fn
 
-# Prompt the user to clean up the build files
 cleanup_fn
 
-# Show exit message
 exit_fn

@@ -2,9 +2,6 @@
 
 clear
 
-######################
-## Create functions ##
-######################
 
 exit_success_fn() {
     echo
@@ -89,7 +86,6 @@ check_for_ssh_keys_fn() {
 
     local ANSWER
 
-# Verify that the ssh keys exist before continuing: '~/.ssh/id_rsa' and '~/.ssh/id_rsa.pub'
     if [ -f "$HOME"/.ssh/id_rsa ] && [ -f "$HOME"/.ssh/id_rsa.pub ]; then
         echo
         echo 'The ssh key pair files were found. No need to recreate.'
@@ -123,9 +119,6 @@ check_for_ssh_keys_fn() {
     fi
 }
 
-###############
-## Main menu ##
-###############
 
 main_menu_fn() {
     clear
@@ -142,7 +135,6 @@ main_menu_fn() {
     read -p 'Your choices (1 to 3): ' CHOICE
     echo
 
-# Case code
     case $CHOICE in
         1)
             check_for_ssh_keys_fn

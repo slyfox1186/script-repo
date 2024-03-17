@@ -5,11 +5,9 @@ imow() {
 
     clear
     
-# Required apt packages
     sudo apt-get -qq -y install libsox-dev sox
     clear
     
-# Required pip packages
     pip_lock="$(find /usr/lib/python3* -name 'EXTERNALLY-MANAGED')"
     if [ -n "$pip_lock" ]; then
         sudo rm "$pip_lock"
@@ -21,15 +19,12 @@ imow() {
     fi
     unset pip_lock test_pip
     
-# Delete any useless zone idenfier files that spawn from copying a file from windows ntfs into a wsl directory
     find . -type f -iname "*:Zone.Identifier" -delete 2>/dev/null
     
-# Get the unmodified path of each matching file
     if [ -d pics-convert ]; then
         cd pics-convert || exit 1
     fi
     
-# Get the file count inside the directory
     cnt_queue=$(find . -maxdepth 1 -type f -iname '*.jpg' | wc -l)
     cnt_total=$(find . -maxdepth 1 -type f -iname '*.jpg' | wc -l)
     

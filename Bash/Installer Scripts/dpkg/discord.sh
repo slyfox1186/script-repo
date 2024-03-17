@@ -2,7 +2,6 @@
 
 clear
 
-# Script variables
 script_ver=1.1
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 
@@ -10,13 +9,11 @@ echo "Discord Update Script - version $script_ver"
 echo "======================================================"
 sleep 2
 
-# Check for root/sudo and exit if detected
 if [ "$EUID" -eq 0 ]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
 
-# Install required apt packages if missing
 required_pkgs=("curl" "wget")
 for pkg in "${required_pkgs[@]}"; do
     if ! dpkg -l | grep -q "^ii  $pkg "; then
@@ -24,12 +21,10 @@ for pkg in "${required_pkgs[@]}"; do
     fi
 done
 
-# Function to check the installed version of discord
 get_installed_version() {
     dpkg-query --showformat='$Version' --show discord 2>/dev/null | grep -oP '0.0.\K\d+'
 }
 
-# Function to download and install discord
 download_and_install_discord() {
     local current_ver="$1"
     local file_name="discord-0.0.$current_ver.deb"
@@ -49,16 +44,13 @@ download_and_install_discord() {
     fi
 }
 
-# Function to uninstall discord
 uninstall_discord() {
     echo "Uninstalling Discord..."
     sudo apt-get remove -y discord
 }
 
-# Discover the latest version
 latest_ver=$(curl -s -A "$user_agent" "https://discord.com/api/download?platform=linux&format=deb" | grep -oP 'discord-0.0.\K\d+' | head -n1)
 
-# Main function
 main() {
     echo "Choose an option:"
     echo "1. Install latest Discord release"
@@ -78,5 +70,4 @@ main() {
     esac
 }
 
-# Execute the main function
 main

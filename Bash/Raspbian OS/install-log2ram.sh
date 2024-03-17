@@ -1,29 +1,23 @@
 #!/usr/bin/env bash
 
-# ANSI Color Codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
 
 <<<<<<< Updated upstream
-# Log Functions
 log() { echo -e "$GREEN[LOG]$NC $1"; }
 warn() { echo -e "$YELLOW[WARN]$NC $1"; }
 fail() { echo -e "$RED[FAIL]$NC $1"; exit 1; }
 
-# Check for root privileges
 if [[ "$EUID" -ne 0 ]]; then
     fail "This script must be run as root. Use sudo."
 =======
-# VERIFY THE SCRIPT HAS ROOT ACCESS BEFORE CONTINUING
 if [ "$EUID" -ne '0' ]; then
     printf "%s\n\n" 'You must run this script WITH root/sudo'
     exit 1
 >>>>>>> Stashed changes
 fi
 
-# Reboot prompt function
 prompt_reboot() {
     echo -e "Do you want to reboot now to apply changes? [y/N]"
     read -r choice
@@ -35,7 +29,6 @@ prompt_reboot() {
     fi
 }
 
-# Check and install apt pkgs
 check_and_install_pkgs() {
     local pkgs=(
                 autoconf autoconf-archive autogen
@@ -55,7 +48,6 @@ check_and_install_pkgs() {
     fi
 }
 
-# Install rsync from source
 install_rsync_from_source() {
     local rsync_url="https://github.com/WayneD/rsync/archive/refs/tags/v3.2.7.tar.gz"
     local rsync_dir="rsync-3.2.7"
@@ -78,7 +70,6 @@ install_rsync_from_source() {
     make install || fail "Failed to install rsync."
 }
 
-# log2ram configuration function
 configure_log2ram() {
     local config_file="/etc/log2ram.conf"
     [[ -f "$config_file" ]] || fail "log2ram configuration file not found."
@@ -95,7 +86,6 @@ if [ -f "$cfile" ]; then
     sed -i 's/LOG_DISK_SIZE=256M/LOG_DISK_SIZE=1024M/g' "$cfile"
 fi
 
-# FIND AN EDITOR TO OPEN THE CONF FILE
 if which gedit &>/dev/null; then
     gedit "$cfile"
 elif which nano &>/dev/null; then
@@ -107,14 +97,12 @@ elif which vi &>/dev/null; then
 fi
 >>>>>>> Stashed changes
 
-# Main installation function
 install_log2ram() {
     log "Starting log2ram installation..."
     apt-get update && apt-get upgrade -y || fail "Failed to update/upgrade system packages."
     check_and_install_pkgs
 
 <<<<<<< Updated upstream
-    # Download and install log2ram
     log "Downloading log2ram from GitHub..."
     wget -cqO log2ram.tar.gz https://github.com/azlux/log2ram/archive/master.tar.gz || fail "Failed to download log2ram."
 
@@ -127,14 +115,12 @@ install_log2ram() {
 
     install_rsync_from_source
 
-    # Configure log2ram
     configure_log2ram
 
     log "log2ram and rsync installations completed."
     prompt_reboot
 }
 
-# Execute the installation process
 install_log2ram
 =======
 case "$choice" in

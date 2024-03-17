@@ -1,6 +1,4 @@
 #!/Usr/bin/env bash
-# Build gcc - v5.2 - 03.08.24
-# Github: https://github.com/slyfox1186/script-repo
 
 version=5.2
 install_prefix=/usr/local
@@ -18,7 +16,6 @@ usage() {
 }
 
 parse_args() {
-    while [[ $# -Gt 0 ]]; do
         case "$1" in
             -p|--prefix)
                 install_prefix="$2"
@@ -118,7 +115,6 @@ build_gcc() {
 
     cd "$gcc_dir"
 
-# Run autoreconf and download prerequisites
     autoreconf -fi
     ./contrib/download_prerequisites
 
@@ -139,15 +135,11 @@ create_symlinks() {
     log_msg "Creating symlinks..."
     local TARGET=$(curl -sS 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD' | bash)
     
-# Define the array of files for which symlinks are to be created
     declare -a files=("c++" "gcc" "gcc-ar" "gcc-nm" "gcc-ranlib" "gfortran" "g++")
 
-# Iterate over each file in the array
     for file in "${files[@]}"; do
         source_file="$install_prefix/gcc-$latest_version/bin/$TARGET-$file"
-# Check if source file exists before creating a symlink
         if [[ -f "$source_file" ]]; then
-# Create a symbolic link in /usr/local/bin/ with the desired name
             ln -sfn "$source_file" "/usr/local/bin/$file"
             log_msg "Created symlink for $file in /usr/local/bin/"
         else
@@ -170,7 +162,6 @@ select_versions() {
 
     printf "\n%s\n\n" "Select the GCC versions to install (comma-separated):"
     printf "%s\n" "0. All versions"
-    for ((i=0; i<${#Versions[@]}; i++)); do
         printf "%d. GCC %s\n" $((i+1)) "$versions[i]"
     done
     echo
@@ -192,7 +183,6 @@ select_versions() {
         esac
     done
 
-    if [[ ${#Selected_versions[@]} -eq 0 ]]; then
         fail_fn "No GCC versions selected."
     fi
 

@@ -5,24 +5,18 @@ if [[ "$EUID" -ne 0 ]]; then
     exit 1
 fi
 
-# Function to log messages
 log() {
     echo "[LOG] $1"
 }
 
-# Function to log errors
 error() {
     echo "[ERROR] $1" >&2
 }
 
-# Github repository url for docker compose releases
 REPO_URL="https://github.com/docker/compose/releases"
 
-# Function to determine the correct docker compose binary for the system
 get_compose_filename() {
-# Detect os type and convert to lowercase
     os_type=$(uname -s | tr '[:upper:]' '[:lower:]')
-# Detect architecture and remove any unwanted characters
     arch_type=$(uname -m | tr -d '\n\r')
 
     case "$os_type" in
@@ -51,13 +45,11 @@ get_compose_filename() {
     echo "docker-compose-$os_type-$arch_type"
 }
 
-# Function to fetch and install the latest docker compose release
 fetch_and_install_docker_compose() {
     log "Fetching the latest release information from $REPO_URL..."
 
     local file_name=$(get_compose_filename)
 
-# Match the pattern and construct the download link
     local base_link=$(curl -sSL "$REPO_URL" | grep -oP "/docker/compose/releases/download/v[0-9.]+/" | head -1)
     local download_link="https://github.com$base_link$file_name"
     
@@ -100,11 +92,9 @@ fetch_and_install_docker_compose() {
     log "Docker Compose installed successfully."
 }
 
-# Check if curl is installed
 if ! command -v curl &> /dev/null; then
     echo "curl could not be found. Please install curl and run this script again."
     exit 1
 fi
 
-# Execute the function
 fetch_and_install_docker_compose

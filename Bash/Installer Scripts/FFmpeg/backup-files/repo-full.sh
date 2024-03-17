@@ -1,10 +1,8 @@
-# Pull the latest versions of each package from the website api
 curl_timeout='10'
 
 git_1_fn() {
     local github_repo github_url
 
-# Scrape github website for latest repo version
     github_repo="$1"
     github_url="$2"
     git_token=''
@@ -19,13 +17,7 @@ git_1_fn() {
         g_url="$(echo "$curl_cmd" | jq -r '.tarball_url')"
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
         g_deb_url="$(echo "$curl_cmd" | jq -r '.' | grep 'browser_download_url' | head -n1 | grep -Eo 'http.*b')"
-        g_ver="$g_ver#V"
         g_ver3="$(echo "$curl_cmd" | jq -r '.[3].name')"
-        g_ver3="$g_ver3#V"
-        g_ver="$g_ver#Openjpeg "
-        g_ver="$g_ver#Openssl "
-        g_ver="$g_ver#Pkgconf-"
-        g_ver="$g_ver#Lcms"
         g_deb_ver="$g_ver%-*"
         g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url')"
     fi
@@ -41,7 +33,6 @@ git_2_fn() {
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].commit.id')"
         g_sver="$(echo "$curl_cmd" | jq -r '.[0].commit.short_id')"
         g_ver1="$(echo "$curl_cmd" | jq -r '.[0].name')"
-        g_ver1="$g_ver1#V"
     fi
 }
 
@@ -50,10 +41,8 @@ git_3_fn() {
     gitlab_url="$2"
     if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.com/api/v4/projects/$gitlab_repo/repository/$gitlab_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
-        g_ver="$g_ver#V"
 
         g_ver1="$(echo "$curl_cmd" | jq -r '.[0].commit.id')"
-        g_ver1="$g_ver1#V"
         g_sver1="$(echo "$curl_cmd" | jq -r '.[0].commit.short_id')"
     fi
 }
@@ -77,7 +66,6 @@ git_6_fn() {
     gitlab_repo="$1"
     if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://gitlab.gnome.org/api/v4/projects/$gitlab_repo/repository/tags")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
-        g_ver="$g_ver#V"
     fi
 }
 
@@ -85,7 +73,6 @@ git_7_fn() {
     gitlab_repo="$1"
     if curl_cmd="$(curl -m "$curl_timeout" -sSL "https://git.archive.org/api/v4/projects/$gitlab_repo/repository/tags")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
-        g_ver="$g_ver#V"
     fi
 }
 
@@ -147,7 +134,6 @@ check_version() {
     latest_txt="$ver_file"
 
     awk '!NF || !seen[$0]++' "$latest_txt_tmp" > "$latest_txt"
-    check_ver="$(grep -Eo "$github_repo##*/-[0-9\.]+" "$latest_txt" | sort | head -n1)"
 
         if [ -n "$check_ver" ]; then
             g_nocheck='0'
@@ -164,10 +150,7 @@ pre_check_ver() {
     check_version "$github_repo"
     if [ "$g_nocheck" -eq '1' ]; then
         git_ver_fn "$github_repo" "$git_ver" "$git_url_type"
-        g_ver="$g_ver##*-"
-        g_ver3="$g_ver3##*-"
     else
-        g_ver="$check_ver##*-"
     fi
 }
 
