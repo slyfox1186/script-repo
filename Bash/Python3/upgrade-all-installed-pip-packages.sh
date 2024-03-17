@@ -1,15 +1,47 @@
 #!/usr/bin/env bash
 
-clear
+# Set the path for the virtual environment directory
+venv_dir="$HOME/python-venv"
 
-list_pkgs="$(pip list | awk '{print $1}')"
+# Create the virtual environment directory if it doesn't exist
+mkdir -p "$venv_dir"
 
-pip install --user --upgrade pip
+# Function to create or activate a virtual environment for a package
+activate_venv() {
+    local pkg="$1"
+    local venv_path="$venv_dir/$pkg"
 
-for p in ${list_pkgs[@]}
-do
-    if [ $p != wxPython ]; then
-        pip install --user --upgrade $p
+    if [ ! -d "$venv_path" ]; then
+        echo "Creating virtual environment for $pkg..."
+        python3 -m venv "$venv_path"
     fi
-    echo
+
+    echo "Activating virtual environment for $pkg..."
+    source "$venv_path/bin/activate"
+}
+
+# Function to deactivate the virtual environment
+deactivate_venv() {
+    echo "Deactivating virtual environment..."
+    deactivate
+}
+
+# Get the list of installed packages
+list_pkgs="$(pip list --format=columns | awk 'NR > 2 {print $1}')"
+
+# Iterate over each package
+for pkg in $list_pkgs; do
+    if [ "$pkg" != "wxPython" ]; then
+        activate_venv "$pkg"
+
+        echo "Upgrading $pkg..."
+        pip install --upgrade "$pkg"
+
+        deactivate_venv
+        echo
+    fi
 done
+
+# Upgrade pip outside of any virtual environment
+echo "Upgrading pip..."
+pip install --user --upgrade pip
