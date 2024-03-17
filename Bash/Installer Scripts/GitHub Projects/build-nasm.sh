@@ -1,58 +1,52 @@
-#!/Usr/bin/env bash
-# Shellcheck disable=sc2162,sc2317
+#!/usr/bin/env bash
+# shellcheck disable=SC2162,SC2317
 
-<<<<<<< Updated upstream:Bash/Installer Scripts/GitHub Projects/build-nasm.sh
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-nasm.sh
 ##  Purpose: Build NASM
-=======
-###########################################################################################################
-##
-##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/github%20projects/build-nasm
-##
-##  Purpose: build nasm
-##
->>>>>>> Stashed changes:Bash/Installer Scripts/GitHub Projects/build-nasm
 ##  Updated: 10.13.23
 ##  Script version: 1.0
 
-<<<<<<< Updated upstream:Bash/Installer Scripts/GitHub Projects/build-nasm.sh
 if [ "$EUID" -eq 0 ]; then
     printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
-=======
-clear
-
-if [ "$EUID" -eq '0' ]; then
-    echo "You must run this script without root or sudo."
->>>>>>> Stashed changes:Bash/Installer Scripts/GitHub Projects/build-nasm
     exit 1
 fi
 
-# Set global variables
+#
+# SET GLOBAL VARIABLES
+#
 
 script_ver=1.0
-progname="$0"
+progname="${0}"
 cwd="$PWD"/nasm-build-script
 install_prefix=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
-debug=OFF # Change this variable to "on" for help with troubleshooting unexpected issues during the build
+debug=OFF # CHANGE THIS VARIABLE TO "ON" FOR HELP WITH TROUBLESHOOTING UNEXPECTED ISSUES DURING THE BUILD
 
-# Create output directories
+#
+# CREATE OUTPUT DIRECTORIES
+#
 
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-# Figure out which compilers to use
+#
+# FIGURE OUT WHICH COMPILERS TO USE
+#
 
 export CC=gcc CXX=g++
 
-# Set compiler optimization flags
+#
+# SET COMPILER OPTIMIZATION FLAGS
+#
 
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
 
-# Set the available cpu count for parallel processing (speeds up the build process)
+#
+# SET THE AVAILABLE CPU COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
+#
 
 if [ -f /proc/cpuinfo ]; then
     cpu_threads="$(grep --count ^processor /proc/cpuinfo)"
@@ -62,9 +56,9 @@ fi
 
 PATH="\
 /usr/lib/ccache:\
-$HOME/perl5/bin:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
+${HOME}/perl5/bin:\
+${HOME}/.cargo/bin:\
+${HOME}/.local/bin:\
 /usr/local/sbin:\
 /usr/local/cuda/bin:\
 /usr/local/x86_64-linux-gnu/bin:\
@@ -93,9 +87,12 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-# Create functions
+#
+# CREATE FUNCTIONS
+#
 
-exit_fn() {
+exit_fn()
+{
     printf "\n%s\n\n%s\n%s\n\n"                                    \
         'The script has completed'                                \
         'Make sure to star this repository to show your support!' \
@@ -103,7 +100,8 @@ exit_fn() {
     exit 0
 }
 
-fail_fn() {
+fail_fn()
+{
     printf "\n\n%s\n\n%s\n\n%s\n\n"      \
         "$1"                           \
         'To report a bug please visit: ' \
@@ -111,7 +109,8 @@ fail_fn() {
     exit 1
 }
 
-cleanup_fn() {
+cleanup_fn()
+{
     local choice
 
     printf "%s\n\n%s\n%s\n\n"                    \
@@ -120,7 +119,7 @@ cleanup_fn() {
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
 
-    case "$choice" in
+    case "${choice}" in
         1)      sudo rm -fr "$cwd";;
         2)      clear;;
         *)
@@ -134,23 +133,25 @@ cleanup_fn() {
     esac
 }
 
-execute() {
-    echo "$ $*"
+execute()
+{
+    echo "$ ${*}"
 
-    if [ "$debug" = 'ON' ]; then
+    if [ "${debug}" = 'ON' ]; then
         if ! output="$("$@")"; then
-            notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
-            fail_fn "Failed to execute: $*"
+            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
+            fail_fn "Failed to execute: ${*}"
         fi
     else
         if ! output="$("$@" 2>&1)"; then
-            notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
-            fail_fn "Failed to execute: $*"
+            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
+            fail_fn "Failed to execute: ${*}"
         fi
     fi
 }
 
-build() {
+build()
+{
     printf "\n%s\n%s\n" \
         "Building $1 - version $2" \
         '=========================================='
@@ -166,30 +167,31 @@ build() {
 
 build_done() { echo "$2" > "$cwd/$1.done"; }
 
-download() {
+download()
+{
     dl_path="$cwd"
     dl_url="$1"
-    dl_file="$2:-"${1##*/"}"
+    dl_file="${2:-"${1##*/}"}"
 
     if [[ "$dl_file" =~ tar. ]]; then
-        output_dir="$dl_file%.*"
-        output_dir="$3:-"${output_dir%.*"}"
+        output_dir="${dl_file%.*}"
+        output_dir="${3:-"${output_dir%.*}"}"
     else
-        output_dir="$3:-"${dl_file%.*"}"
+        output_dir="${3:-"${dl_file%.*}"}"
     fi
 
     target_file="$dl_path/$dl_file"
     target_dir="$dl_path/$output_dir"
 
-    if [ -f "$target_file" ]; then
+    if [ -f "${target_file}" ]; then
         echo "The file \"$dl_file\" is already downloaded."
     else
-        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
-        if ! wget --show-progress -t 2 -cqO "$target_file" "$dl_url"; then
+        echo "Downloading \"${dl_url}\" saving as \"$dl_file\""
+        if ! wget --show-progress -t 2 -cqO "${target_file}" "${dl_url}"; then
             printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
-            if ! wget --show-progress -t 2 -cqO "$target_file" "$dl_url"; then
-                fail_fn "The script failed to download \"$dl_file\" twice and will now exit. Line: $LINENO"
+            if ! wget --show-progress -t 2 -cqO "${target_file}" "${dl_url}"; then
+                fail_fn "The script failed to download \"$dl_file\" twice and will now exit. Line: ${LINENO}"
             fi
         fi
         printf "\n%s\n\n" 'Download completed'
@@ -202,54 +204,54 @@ download() {
     mkdir -p "$target_dir"
 
     if [ -n "$3" ]; then
-        if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
-            sudo rm "$target_file"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
+        if ! tar -xf "${target_file}" -C "$target_dir" 2>/dev/null >/dev/null; then
+            sudo rm "${target_file}"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
         fi
     else
-        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-            sudo rm "$target_file"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
+        if ! tar -xf "${target_file}" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
+            sudo rm "${target_file}"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
         fi
     fi
 
     printf "%s\n\n" "File extracted: $dl_file"
 
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: $LINENO"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: ${LINENO}"
 }
 
-git_1_fn() {
+git_1_fn()
+{
     local curl_cmd github_repo github_url
 
     github_repo="$1"
     github_url="$2"
 
-<<<<<<< Updated upstream:Bash/Installer Scripts/GitHub Projects/build-nasm.sh
     if curl_cmd="$(curl -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
-=======
-    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
->>>>>>> Stashed changes:Bash/Installer Scripts/GitHub Projects/build-nasm
         g_ver="$(echo "$curl_cmd" | jq -r '.[1].name' 2>/dev/null)"
         g_url="$(echo "$curl_cmd" | jq -r '.[1].tarball_url' 2>/dev/null)"
-        g_ver="$g_ver#Llvmorg-"
+        g_ver="${g_ver#llvmorg-}"
     fi
 }
 
-git_ver_fn() {
+git_ver_fn()
+{
     local t_flag v_flag v_url
 
     v_url="$1"
     v_flag="$2"
 
-    case "$v_flag" in
+    case "${v_flag}" in
             R)      t_flag=releases;;
             T)      t_flag=tags;;
     esac
 
-    git_1_fn "$v_url" "$t_flag" 2>/dev/null
+    git_1_fn "${v_url}" "${t_flag}" 2>/dev/null
 }
 
-# Print the options available when manually running the script
+#
+# PRINT THE OPTIONS AVAILABLE WHEN MANUALLY RUNNING THE SCRIPT
+#
 
 pkgs=(autoconf autoconf-archive automake autopoint binutils binutils-dev bison
       build-essential ccache clang cmake curl jq libc6 libc6-dev libedit-dev
@@ -257,10 +259,10 @@ pkgs=(autoconf autoconf-archive automake autopoint binutils binutils-dev bison
 
 for i in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "$i")"
+    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
 
-    if [ -z "$missing_pkg" ]; then
-        missing_pkgs+=" $i"
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${i}"
     fi
 done
 
@@ -271,14 +273,17 @@ else
     printf "%s\n" 'The APT packages are already installed'
 fi
 
-# Begin building clang
+#
+# BEGIN BUILDING CLANG
+#
 
-box_out_banner() {
+box_out_banner()
+{
     input_char=$(echo "$@" | wc -c)
     line=$(for i in $(seq 0 $input_char); do printf '-'; done)
     tput bold
     line="$(tput setaf 3)$line"
-    space=$line//-/ 
+    space=${line//-/ }
     echo " $line"
     printf '|' ; echo -n "$space" ; printf "%s\n" '|';
     printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
@@ -292,17 +297,13 @@ if build 'nasm' '2.16.01'; then
     download 'https://www.nasm.us/pub/nasm/stable/nasm-2.16.01.tar.xz'
     execute ./autogen.sh
     execute ./configure --prefix=/usr/local                \
-<<<<<<< Updated upstream:Bash/Installer Scripts/GitHub Projects/build-nasm.sh
-=======
-                        --{build,host,target}="$pc_type" \
->>>>>>> Stashed changes:Bash/Installer Scripts/GitHub Projects/build-nasm
                         --enable-ccache
     execute make "-j$cpu_threads"
     execute sudo make install
 fi
 
-# Prompt the user to clean up the build files
+# PROMPT THE USER TO CLEAN UP THE BUILD FILES
 cleanup_fn
 
-# Show exit message
+# SHOW EXIT MESSAGE
 exit_fn
