@@ -60,13 +60,21 @@ install_dependencies() {
     fi
 }
 
-# Function to download and extract coreutils
+# Function to dynamically download and extract coreutils
 download_coreutils() {
-    log "Downloading GNU Core Utilities..."
-    if wget --show-progress -cqO "$working/coreutils-9.4.tar.xz" "https://ftp.gnu.org/gnu/coreutils/coreutils-9.4.tar.xz"; then
-    mkdir -p "coreutils-9.4/build"
-        tar -xf "$working/coreutils-9.4.tar.xz" -C "coreutils-9.4" --strip-components 1
-        cd "coreutils-9.4" || fail "Failed to enter the coreutils directory."
+    log "Fetching the latest version of GNU Core Utilities..."
+    local latest_version
+    latest_version=$(wget -qO- https://ftp.gnu.org/gnu/coreutils/ | grep -oP 'coreutils-\K[0-9.]+(?=\.tar\.xz)' | sort -V | tail -1)
+    if [[ -z "$latest_version" ]]; then
+        fail "Failed to fetch the latest version of GNU Core Utilities."
+    fi
+    local tarball="coreutils-${latest_version}.tar.xz"
+    local url="https://ftp.gnu.org/gnu/coreutils/$tarball"
+    log "Downloading GNU Core Utilities version $latest_version..."
+    if wget --show-progress -cqO "$working/$tarball" "$url"; then
+        mkdir -p "$working/coreutils-${latest_version}/build"
+        tar -xf "$working/$tarball" -C "$working/coreutils-${latest_version}" --strip-components=1
+        cd "$working/coreutils-${latest_version}" || fail "Failed to enter the coreutils directory."
     else
         fail "Failed to download GNU Core Utilities."
     fi
