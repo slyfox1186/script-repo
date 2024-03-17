@@ -1,74 +1,127 @@
 #!/usr/bin/env bash
 
-# This script builds and installs GNU Core Utilities from source.
+# ANSI color codes
+RED="\033[0;31m"
+GREEN="\033[0;32m"
+NC="\033[0m"
 
-# Function to print messages in color
-print_color() {
-    case $1 in
-        green) echo -e "\033[0;32m$2\033[0m" ;;
-        red) echo -e "\033[0;31m$2\033[0m" ;;
-        *) echo "$2" ;;
-    esac
+# Function to log messages
+log() {
+    echo -e "${GREEN}[INFO]${NC} $1"
 }
 
-# Check for root privileges
-if [[ $EUID -ne 0 ]]; then
-    print_color red "This script must be run as root or with sudo."
+# Function to display warnings
+warn() {
+    echo -e "${RED}[WARN]${NC} $1"
+}
+
+# Function to handle failures
+fail() {
+    echo -e "${RED}[ERROR]${NC} $1"
     exit 1
-fi
+}
+
+# Check if running as root or with sudo
+check_root() {
+    if [[ "$EUID" -eq 0 ]]; then
+        fail "This script must be run without root or with sudo."
+    fi
+}
+
+# Function to display help menu
+show_help() {
+    echo "Usage: $0 [option]"
+    echo "Options:"
+    echo "  -h, --help            Show this help message."
+    echo "  -i, --install         Install GNU Core Utilities."
+    echo "  -c, --check-dependencies Check for and install missing dependencies."
+    echo "  -l, --link-binaries   Link the installed binaries to /usr/local/bin."
+}
 
 # Function to install dependencies
 install_dependencies() {
-    print_color green "Installing necessary dependencies..."
-    if command -v apt > /dev/null; then
-        apt update
-        apt install -y wget build-essential autoconf autoconf-archive
-    elif command -v yum > /dev/null; then
-        yum install -y wget gcc make
+    log "Checking and installing necessary dependencies..."
+    local missing_packages=()
+    for package in wget build-essential autoconf autoconf-archive; do
+        if ! dpkg -l "$package" &>/dev/null; then
+            missing_packages+=("$package")
+        fi
+    done
+
+    if [[ ${#missing_packages[@]} -gt 0 ]]; then
+        if command -v apt-get >/dev/null; then
+            apt-get update
+            apt-get install -y "${missing_packages[@]}"
+        else
+            fail "Unsupported package manager. Please install dependencies manually."
+        fi
     else
-        print_color red "Unsupported package manager. Please install dependencies manually."
-        exit 1
+        log "All dependencies are already installed."
     fi
 }
 
 # Function to download and extract coreutils
 download_coreutils() {
-    print_color green "Downloading GNU Core Utilities..."
-    wget --show-progress -cq https://ftp.gnu.org/gnu/coreutils/coreutils-9.4.tar.xz
-    tar -xf coreutils-9.4.tar.xz
-    cd coreutils-9.4
+    log "Downloading GNU Core Utilities..."
+    if wget --show-progress -cqO "$working/coreutils-9.4.tar.xz" "https://ftp.gnu.org/gnu/coreutils/coreutils-9.4.tar.xz"; then
+    mkdir -p "coreutils-9.4/build"
+        tar -xf "$working/coreutils-9.4.tar.xz" -C "coreutils-9.4" --strip-components 1
+        cd "coreutils-9.4" || fail "Failed to enter the coreutils directory."
+    else
+        fail "Failed to download GNU Core Utilities."
+    fi
 }
 
 # Function to configure, compile, and install coreutils
 build_and_install() {
-    print_color green "Running autoreconf..."
+    log "Configuring, compiling, and installing GNU Core Utilities..."
     autoreconf -fi
-    print_color green "Configuring GNU Core Utilities..."
-    ./configure --prefix=/usr/local/coreutils \
-                --{build,host}=x86_64-linux-gnu \
-                --disable-nls \
-                --disable-gcc-warnings \
-                --enable-threads=posix \
-                --with-clang=system \
-                --with-openssl=auto \
-                --with-pic
-    print_color green "Compiling GNU Core Utilities... This may take a while."
+    cd build
+    ../configure --prefix=/usr/local/coreutils \
+                 --build=x86_64-linux-gnu \
+                 --host=x86_64-linux-gnu \
+                 --disable-nls \
+                 --disable-gcc-warnings \
+                 --enable-threads=posix
     make "-j$(nproc --all)"
-    print_color green "Installing GNU Core Utilities..."
-    make install
-    print_color green "GNU Core Utilities installed successfully."
+    sudo make install
+    log "GNU Core Utilities installed successfully." || fail "Build or install failed."
 }
 
-# Link the installed binaries (optional)
-link_coretils() {
-    ln -sf /usr/local/coreutils/bin/* /usr/local/bin/
+# Function to link installed binaries
+link_coreutils() {
+    log "Linking installed binaries to /usr/local/bin..."
+    sudo ln -sf /usr/local/coreutils/bin/* /usr/local/bin/ || warn "Failed to link binaries."
 }
 
+# Create variables
+cwd="$PWD"
+working="$cwd/build-coreutils-script"
+
+mkdir -p "$working"; cd "$working" || exit 1
+
+# Main function
 main() {
-    install_dependencies
-    download_coreutils
-    build_and_install
-    link_coretils
+    check_root
+    case "$1" in
+        -h|--help)
+            show_help
+            ;;
+        -i|--install)
+            install_dependencies
+            download_coreutils
+            build_and_install
+            ;;
+        -c|--check-dependencies)
+            install_dependencies
+            ;;
+        -l|--link-binaries)
+            link_coreutils
+            ;;
+        *)
+            show_help
+            ;;
+    esac
 }
 
 main "$@"
