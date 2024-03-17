@@ -8,10 +8,10 @@ fi
 
 count=0
 
-cwd="$PWD/build-gnu-safer-scripts"
+working="$PWD/build-gnu-safer-scripts"
 
-[[ -d "$cwd" ]] && sudo rm -fr "$cwd"
-mkdir -p "$cwd/completed"
+[[ -d "$working" ]] && sudo rm -fr "$working"
+mkdir -p "$working/completed"
 
 exit_fn() {
     echo
@@ -54,37 +54,37 @@ case $(uname -m) in
     *)                          fail "Unrecognized architecture: $(uname -m)" ;;
 esac
 
-cd "$cwd" || exit 1
+cd "$working" || exit 1
 
 scripts=(
-    "$arch_ver" "coreutils.sh" "m4" "autoconf-2.71" "autoconf-archive" "libtool" "bash"
-    "make" "sed" "tar" "gawk" "grep" "nano" "parallel.sh" "get"
+    "$arch_ver" coreutils.sh m4 autoconf-2.71 autoconf-archive libtool bash
+    make sed tar gawk grep nano parallel.sh get
 )
 
 for script in "${scripts[@]}"; do
     ((count++))
-    wget --show-progress -t 2 -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-$script"
+    wget --show-progress -t 2 -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-$script.sh"
     mv "build-$script" "$count-build-$script.sh" 2>/dev/null
 done
 
 for file in $(find ./ -maxdepth 1 -type f | sort -V | sed 's/\.\///g'); do
     if echo "1" | sudo bash "$file"; then
-        sudo mv "$file" "$cwd/completed"
+        sudo mv "$file" "$working/completed"
     else
-        if [ ! -d "$cwd/failed" ]; then
-            mkdir -p "$cwd/failed"
+        if [ ! -d "$working/failed" ]; then
+            mkdir -p "$working/failed"
         fi
-        sudo mv "$file" "$cwd/failed"
+        sudo mv "$file" "$working/failed"
     fi
 done
 
-if [ -d "$cwd/failed" ]; then
+if [ -d "$working/failed" ]; then
     echo "One of the scripts failed to build successfully."
     echo
-    echo "You can find the failed script at: $cwd/failed"
+    echo "You can find the failed script at: $working/failed"
     exit_fn
 fi
 
-sudo rm -fr "$cwd"
+sudo rm -fr "$working"
 
 exit_fn
