@@ -1,27 +1,22 @@
 #!/Usr/bin/env bash
 
-
-clear
-
 if [ "$EUID" -eq '0' ]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
 
-
 script_ver=1.0
 curl_ver=8.4.0
-archive_dir=$curl_ver
-archive_dir1=$curl_ver//./_
+archive_dir=${curl_ver}
+archive_dir1=${curl_ver//./_}
 archive_url=https://github.com/curl/curl/releases/download/curl-$archive_dir1/curl-$archive_dir.tar.xz
 archive_ext="$archive_url//*."
 archive_name="$archive_dir.tar.$archive_ext"
-cwd="$PWD"/curl-build-script
+working="$PWD/curl-build-script"
 install_dir=/usr/local
 cert_dir=/etc/ssl/certs
 pem_file=cacert.pem
 pem_out="$cert_dir/$pem_file"
-pc_type=$(gcc -dumpmachine)
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
@@ -30,10 +25,10 @@ printf "%s\n%s\n\n" \
     '==============================================='
 
 
-if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
+if [ -d "$working" ]; then
+    sudo rm -fr "$working"
 fi
-mkdir -p "$cwd"
+mkdir -p "$working"
 
 
 CC=gcc
@@ -110,7 +105,7 @@ cleanup_fn() {
     clear
 
     case "$choice" in
-        1)      sudo rm -fr "$cwd";;
+        1)      sudo rm -fr "$working";;
         2)      return 0;;
         *)
                 unset choice
@@ -149,19 +144,19 @@ if [ -n "$missing_pkgs" ]; then
 fi
 
 
-if [ -d "$cwd/openssl-quic-3.1.4" ]; then
-    sudo rm -fr "$cwd/openssl-quic-3.1.4"
+if [ -d "$working/openssl-quic-3.1.4" ]; then
+    sudo rm -fr "$working/openssl-quic-3.1.4"
 fi
-mkdir -p "$cwd/openssl-quic-3.1.4"
+mkdir -p "$working/openssl-quic-3.1.4"
 
 
-if [ ! -f "$cwd/openssl-quic-3.1.4.tar.gz" ]; then
-    curl -A "$user_agent" -Lso "$cwd/openssl-quic-3.1.4.tar.gz" 'https://github.com/quictls/openssl/archive/refs/tags/openssl-3.1.4-quic1.tar.gz'
+if [ ! -f "$working/openssl-quic-3.1.4.tar.gz" ]; then
+    curl -A "$user_agent" -Lso "$working/openssl-quic-3.1.4.tar.gz" 'https://github.com/quictls/openssl/archive/refs/tags/openssl-3.1.4-quic1.tar.gz'
 fi
 
 
-if ! tar -zxf "$cwd/openssl-quic-3.1.4.tar.gz" -C "$cwd/openssl-quic-3.1.4" --strip-components 1; then
-    fail_fn "Failed to extract: $cwd/openssl-quic-3.1.4.tar.gz"
+if ! tar -zxf "$working/openssl-quic-3.1.4.tar.gz" -C "$working/openssl-quic-3.1.4" --strip-components 1; then
+    fail_fn "Failed to extract: $working/openssl-quic-3.1.4.tar.gz"
 fi
 
 
@@ -169,7 +164,7 @@ printf "%s\n%s\n\n" \
     "Installing OpenSSL-QUIC - v3.1.4" \
     '==============================================='
 
-cd "$cwd/openssl-quic-3.1.4" || exit 1
+cd "$working/openssl-quic-3.1.4" || exit 1
 ./config linux-x86_64 \
          --prefix="$install_dir" \
          --openssldir="$install_dir" \
@@ -201,19 +196,19 @@ fi
 sudo ldconfig '/usr/local/lib64'
 
 
-if [ -d "$cwd/jemalloc-5.3.0" ]; then
-    sudo rm -fr "$cwd/jemalloc-5.3.0"
+if [ -d "$working/jemalloc-5.3.0" ]; then
+    sudo rm -fr "$working/jemalloc-5.3.0"
 fi
-mkdir -p "$cwd/jemalloc-5.3.0/build"
+mkdir -p "$working/jemalloc-5.3.0/build"
 
 
-if [ ! -f "$cwd/jemalloc-5.3.0.tar.gz" ]; then
-    curl -A "$user_agent" -Lso "$cwd/jemalloc-5.3.0.tar.gz" 'https://github.com/jemalloc/jemalloc/archive/refs/tags/5.3.0.tar.gz'
+if [ ! -f "$working/jemalloc-5.3.0.tar.gz" ]; then
+    curl -A "$user_agent" -Lso "$working/jemalloc-5.3.0.tar.gz" 'https://github.com/jemalloc/jemalloc/archive/refs/tags/5.3.0.tar.gz'
 fi
 
 
-if ! tar -zxf "$cwd/jemalloc-5.3.0.tar.gz" -C "$cwd/jemalloc-5.3.0" --strip-components 1; then
-    fail_fn "Failed to extract: $cwd/jemalloc-5.3.0.tar.gz"
+if ! tar -zxf "$working/jemalloc-5.3.0.tar.gz" -C "$working/jemalloc-5.3.0" --strip-components 1; then
+    fail_fn "Failed to extract: $working/jemalloc-5.3.0.tar.gz"
 fi
 
 
@@ -221,7 +216,7 @@ printf "\n%s\n%s\n\n" \
     "Installing Jemalloc - v5.3.0" \
     '==============================================='
 
-cd "$cwd/jemalloc-5.3.0" || exit 1
+cd "$working/jemalloc-5.3.0" || exit 1
 ./autogen.sh
 cd build || exit 1
 ../configure --prefix="$install_dir" \
@@ -244,30 +239,30 @@ if ! sudo make install; then
 fi
 
 
-if [ -d "$cwd/ngtcp2-1.58.0" ]; then
-    sudo rm -fr "$cwd/ngtcp2-1.58.0"
+if [ -d "$working/ngtcp2-1.58.0" ]; then
+    sudo rm -fr "$working/ngtcp2-1.58.0"
 fi
-mkdir -p "$cwd/ngtcp2-1.58.0"
+mkdir -p "$working/ngtcp2-1.58.0"
 
-if [ -d "$cwd/nghttp3-1.1.0" ]; then
-    sudo rm -fr "$cwd/nghttp3-1.1.0"
+if [ -d "$working/nghttp3-1.1.0" ]; then
+    sudo rm -fr "$working/nghttp3-1.1.0"
 fi
-mkdir -p "$cwd/nghttp3-1.1.0"
-
-
-if [ ! -f "$cwd/nghttp3-1.1.0.tar.xz" ]; then
-    curl -A "$user_agent" -Lso "$cwd/nghttp3-1.1.0.tar.xz" 'https://github.com/ngtcp2/nghttp3/releases/download/v1.1.0/nghttp3-1.1.0.tar.xz'
-fi
-if [ ! -f "$cwd/ngtcp2-1.58.0.tar.xz" ]; then
-    curl -A "$user_agent" -Lso "$cwd/ngtcp2-1.58.0.tar.xz" 'https://github.com/nghttp2/nghttp2/releases/download/v1.58.0/nghttp2-1.58.0.tar.xz'
-fi
+mkdir -p "$working/nghttp3-1.1.0"
 
 
-if ! tar -xf "$cwd/ngtcp2-1.58.0.tar.xz" -C "$cwd/ngtcp2-1.58.0" --strip-components 1; then
-    fail_fn "Failed to extract: $cwd/ngtcp2-1.58.0.tar.xz"
+if [ ! -f "$working/nghttp3-1.1.0.tar.xz" ]; then
+    curl -A "$user_agent" -Lso "$working/nghttp3-1.1.0.tar.xz" 'https://github.com/ngtcp2/nghttp3/releases/download/v1.1.0/nghttp3-1.1.0.tar.xz'
 fi
-if ! tar -xf "$cwd/nghttp3-1.1.0.tar.xz" -C "$cwd/nghttp3-1.1.0" --strip-components 1; then
-    fail_fn "Failed to extract: $cwd/nghttp3-1.1.0.tar.xz"
+if [ ! -f "$working/ngtcp2-1.58.0.tar.xz" ]; then
+    curl -A "$user_agent" -Lso "$working/ngtcp2-1.58.0.tar.xz" 'https://github.com/nghttp2/nghttp2/releases/download/v1.58.0/nghttp2-1.58.0.tar.xz'
+fi
+
+
+if ! tar -xf "$working/ngtcp2-1.58.0.tar.xz" -C "$working/ngtcp2-1.58.0" --strip-components 1; then
+    fail_fn "Failed to extract: $working/ngtcp2-1.58.0.tar.xz"
+fi
+if ! tar -xf "$working/nghttp3-1.1.0.tar.xz" -C "$working/nghttp3-1.1.0" --strip-components 1; then
+    fail_fn "Failed to extract: $working/nghttp3-1.1.0.tar.xz"
 fi
 
 
@@ -275,12 +270,9 @@ printf "\n%s\n%s\n\n" \
     "Installing HTTP3 - v1.1.0" \
     '==============================================='
 
-cd "$cwd/nghttp3-1.1.0" || exit 1
+cd "$working/nghttp3-1.1.0" || exit 1
 autoreconf -fi
-./configure --prefix="$install_dir" \
-            --{build,host,target}="$pc_type" \
-            --enable-lib-only \
-            --with-pic
+./configure --prefix="$install_dir" --enable-lib-only --with-pic
 echo
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute: make -j$(nproc --all). Line: $LINENO"
@@ -291,19 +283,19 @@ if ! sudo make install; then
 fi
 
 
-if [ -d "$cwd/ngtcp2-1.1.0" ]; then
-    sudo rm -fr "$cwd/ngtcp2-1.1.0"
+if [ -d "$working/ngtcp2-1.1.0" ]; then
+    sudo rm -fr "$working/ngtcp2-1.1.0"
 fi
-mkdir -p "$cwd/ngtcp2-1.1.0/build"
+mkdir -p "$working/ngtcp2-1.1.0/build"
 
 
-if [ ! -f "$cwd/ngtcp2-1.1.0.tar.gz" ]; then
-    curl -A "$user_agent" -Lso "$cwd/ngtcp2-1.1.0.tar.gz" 'https://github.com/ngtcp2/ngtcp2/releases/download/v1.1.0/ngtcp2-1.1.0.tar.xz'
+if [ ! -f "$working/ngtcp2-1.1.0.tar.gz" ]; then
+    curl -A "$user_agent" -Lso "$working/ngtcp2-1.1.0.tar.gz" 'https://github.com/ngtcp2/ngtcp2/releases/download/v1.1.0/ngtcp2-1.1.0.tar.xz'
 fi
 
 
-if ! tar -xf "$cwd/ngtcp2-1.1.0.tar.gz" -C "$cwd/ngtcp2-1.1.0" --strip-components 1; then
-    fail_fn "Failed to extract: $cwd/ngtcp2-1.1.0.tar.gz"
+if ! tar -xf "$working/ngtcp2-1.1.0.tar.gz" -C "$working/ngtcp2-1.1.0" --strip-components 1; then
+    fail_fn "Failed to extract: $working/ngtcp2-1.1.0.tar.gz"
 fi
 
 
@@ -311,7 +303,7 @@ printf "\n%s\n%s\n\n" \
     "Installing ngtcp2 - v1.1.0" \
     '==============================================='
 
-cd "$cwd/ngtcp2-1.1.0" || exit 1
+cd "$working/ngtcp2-1.1.0" || exit 1
 ./autogen.sh
 cd build || exit 1
 ../configure --prefix="$install_dir" \
@@ -337,7 +329,7 @@ printf "\n%s\n%s\n\n" \
     "Installing HTTP2 - v1.58.0" \
     '==============================================='
 
-cd "$cwd/ngtcp2-1.58.0" || exit 1
+cd "$working/ngtcp2-1.58.0" || exit 1
 autoreconf -fi
 ./configure --prefix="$install_dir" \
             --{build,host,target}="$pc_type" \
@@ -361,19 +353,19 @@ if ! sudo make install; then
 fi
 
 
-if [ -d "$cwd/c-ares-1.23.0" ]; then
-    sudo rm -fr "$cwd/c-ares-1.23.0"
+if [ -d "$working/c-ares-1.23.0" ]; then
+    sudo rm -fr "$working/c-ares-1.23.0"
 fi
-mkdir -p "$cwd/c-ares-1.23.0/build"
+mkdir -p "$working/c-ares-1.23.0/build"
 
 
-if [ ! -f "$cwd/c-ares-1.23.0.tar.gz" ]; then
-    curl -A "$user_agent" -Lso "$cwd/c-ares-1.23.0.tar.gz" 'https://github.com/c-ares/c-ares/archive/refs/tags/cares-1_23_0.tar.gz'
+if [ ! -f "$working/c-ares-1.23.0.tar.gz" ]; then
+    curl -A "$user_agent" -Lso "$working/c-ares-1.23.0.tar.gz" 'https://github.com/c-ares/c-ares/archive/refs/tags/cares-1_23_0.tar.gz'
 fi
 
 
-if ! tar -zxf "$cwd/c-ares-1.23.0.tar.gz" -C "$cwd/c-ares-1.23.0" --strip-components 1; then
-    fail_fn "Failed to extract: $cwd/c-ares-1.23.0.tar.gz"
+if ! tar -zxf "$working/c-ares-1.23.0.tar.gz" -C "$working/c-ares-1.23.0" --strip-components 1; then
+    fail_fn "Failed to extract: $working/c-ares-1.23.0.tar.gz"
 fi
 
 
@@ -381,7 +373,7 @@ printf "\n%s\n%s\n\n" \
     "Installing c-ares - v1.23.0" \
     '==============================================='
 
-cd "$cwd/c-ares-1.23.0" || exit 1
+cd "$working/c-ares-1.23.0" || exit 1
 autoreconf -fi
 cd build || exit 1
 ../configure --prefix="$install_dir" \
@@ -399,19 +391,19 @@ if ! sudo make install; then
 fi
 
 
-if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
+if [ -d "$working/$archive_dir" ]; then
+    sudo rm -fr "$working/$archive_dir"
 fi
-mkdir -p "$cwd/$archive_dir/build"
+mkdir -p "$working/$archive_dir/build"
 
 
-if [ ! -f "$cwd/$archive_name" ]; then
-    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
+if [ ! -f "$working/$archive_name" ]; then
+    curl -A "$user_agent" -Lso "$working/$archive_name" "$archive_url"
 fi
 
 
-if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
-    fail_fn "Failed to extract: $cwd/$archive_name"
+if ! tar -xf "$working/$archive_name" -C "$working/$archive_dir" --strip-components 1; then
+    fail_fn "Failed to extract: $working/$archive_name"
 fi
 
 
@@ -419,11 +411,11 @@ printf "\n%s\n%s\n\n" \
    'Install the latest security certificate from cURL'\''s website' \
    '==================================================================='
 
-if ! curl -A "$user_agent" -Lso "$cwd"/cacert.pem 'https://curl.se/ca/cacert.pem'; then
+if ! curl -A "$user_agent" -Lso "$working"/cacert.pem 'https://curl.se/ca/cacert.pem'; then
     fail_fn "Failed to download the latest \"cacert.pem\" file. Line: $LINENO"
 fi
 
-if sudo cp -f "$cwd"/cacert.pem "$cert_dir"/cacert.pem; then
+if sudo cp -f "$working"/cacert.pem "$cert_dir"/cacert.pem; then
     sudo cp "$cert_dir"/cacert.pem '/usr/local/share/ca-certificates/curl-cacert.crt'
 fi
 
@@ -436,7 +428,7 @@ printf "\n%s\n%s\n\n" \
     "Installing cURL - v8.4.0" \
     '==============================================='
 
-cd "$cwd/$archive_dir" || exit 1
+cd "$working/$archive_dir" || exit 1
 dopts=('--disable-'{get-easy-options,shared,verbose,versioned-symbols})
 eopts=('--enable-'{alt-svc,ares="$workspace",cookies})
 eopts+=('--enable-'{dict,dnsshuffle,doh,file,ftp,gopher})
