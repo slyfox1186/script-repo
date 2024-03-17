@@ -6,7 +6,7 @@
 # Features: Automatically sources the latest release of each version.
 # Updated: 03.17.2024
 
-set -eou pipefail
+set -eo pipefail
 
 build_dir="/tmp/gcc-build-script"
 workspace="$build_dir/workspace"
@@ -26,11 +26,11 @@ NC='\033[0m'
 usage() {
     echo "Usage: ./build-gcc.sh [OPTIONS]"
     echo "Options:"
-    printf "  %-25s %s\n" "-h, --help" "Show this help message"
-    printf "  %-25s %s\n" "-k, --keep-build-dir" "Keep the temporary build directory after completion"
-    printf "  %-25s %s\n" "-l, --log-file FILE" "Specify a log file for output"
     printf "  %-25s %s\n" "-p, --prefix DIR" "Set the installation prefix (default: /usr/local)"
     printf "  %-25s %s\n" "-v, --verbose" "Enable verbose logging"
+    printf "  %-25s %s\n" "-l, --log-file FILE" "Specify a log file for output"
+    printf "  %-25s %s\n" "-k, --keep-build-dir" "Keep the temporary build directory after completion"
+    printf "  %-25s %s\n" "-h, --help" "Show this help message"
     exit 0
 }
 
@@ -150,6 +150,11 @@ install_deps() {
     fi
 }
 
+get_latest_version() {
+    local major_version="$1"
+    curl -fsS "https://ftp.gnu.org/gnu/gcc/" | grep -Eo "gcc-$major_version\.[0-9]+\.[0-9]+" | sort -rV | head -n1 | cut -d- -f2
+}
+
 download() {
     local url="$1"
     local filename="${url##*/}"
@@ -161,31 +166,12 @@ download() {
     local extract_dir="${filename%.tar.xz}"
     if [[ ! -d "$build_dir/$extract_dir" ]]; then
         log "Extracting $filename"
-        if ! tar -xf "$build_dir/$filename" -C "$working"; then
+        if ! tar -xf "$build_dir/$filename" -C "$build_dir"; then
             fail "Failed to extract $filename"
         fi
     else
         log "Source directory $build_dir/$extract_dir already exists"
     fi
-}
-
-install_autoconf() {
-    log "Installing autoconf 2.69"
-    wget --show-progress -cqO "$build_dir/autoconf-2.69.tar.xz" "https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.xz"
-    mkdir -p "$build_dir/autoconf-2.69/build" "$workspace"
-    tar -xf "$build_dir/autoconf-2.69.tar.xz" -C "$build_dir/autoconf-2.69" --strip-components 1
-    cd "$build_dir/autoconf-2.69" || fail "Failed to change directory to $build_dir/autoconf-2.69. Line: $LINENO"
-    autoupdate
-    autoconf
-    cd build || fail "Failed to change directory to build. Line: $LINENO"
-    ../configure --prefix="$build_dir/workspace"
-    make "-j$(nproc --all)"
-    make install
-}
-
-get_latest_gcc_version() {
-    local major_version="$1"
-    curl -fsS "https://ftp.gnu.org/gnu/gcc/" | grep -Eo "gcc-$major_version\.[0-9]+\.[0-9]+" | sort -rV | head -n1 | cut -d- -f2
 }
 
 build_gcc() {
@@ -231,27 +217,38 @@ create_symlinks() {
     local target_dir="/usr/local/bin"
 
     local programs=(
-        c++ cpp g++ gcc gcc-ar gcc-nm gcc-ranlib
-        gcov gcov-dump gcov-tool gfortran gnat gnatbind
-        gnatchop gnatclean gnatkr gnatlink gnatls gnatmake
-        gnatname gnatprep lto-dump
+        "c++" "cpp" "g++" "gcc" "gcc-ar" "gcc-nm" "gcc-ranlib"
+        "gcov" "gcov-dump" "gcov-tool" "gfortran" "gnat" "gnatbind"
+        "gnatchop" "gnatclean" "gnatkr" "gnatlink" "gnatls" "gnatmake"
+        "gnatname" "gnatprep" "lto-dump"
     )
 
     for program in "${programs[@]}"; do
         local source_path="$bin_dir/$program"
-        if [[ -x "$source_path" ]]; then
-            local symlink_path="$target_dir/$program-$version"
+        if [[ -x "$source_path" && ! "$program" =~ ^pc-linux-gnu-gcc-|^pc-linux-gnu- ]]; then
+            local major_version="${version%%.*}"
+            local symlink_path="$target_dir/$program-$major_version"
             ln -sfn "$source_path" "$symlink_path"
             log "Created symlink: $symlink_path -> $source_path"
         fi
     done
 }
 
+cleanup() {
+    if [[ "$keep_build_dir" -ne 1 ]]; then
+        log "Cleaning up..."
+        rm -rf "$build_dir"
+        log "Removed temporary build directory: $build_dir"
+    else
+        log "Temporary build directory retained: $build_dir"
+    fi
+}
+
 select_versions() {
     local -a versions=(9 10 11 12 13)
     local -a selected_versions=()
 
-    echo -e "\\n${GREEN}Select the GCC version(s) to install:${NC}\\n"
+    echo -e "\\n${GREEN}Select the GCC version(s) to install:${NC}\n"
     echo -e "${CYAN}1. Single version${NC}"
     echo -e "${CYAN}2. All versions${NC}"
     echo -e "${CYAN}3. Custom versions${NC}"
@@ -261,7 +258,7 @@ select_versions() {
 
     case "$choice" in
         1)
-            echo -e "\\n${GREEN}Select a single GCC version to install:${NC}\\n"
+            echo -e "\\n${GREEN}Select a single GCC version to install:${NC}\n"
             for ((i=0; i<${#versions[@]}; i++)); do
                 echo -e "${CYAN}$((i+1)). GCC ${versions[i]}${NC}"
             done
@@ -302,7 +299,7 @@ select_versions() {
     install_autoconf
 
     for version in "${selected_versions[@]}"; do
-        latest_version=$(get_latest_gcc_version "$version")
+        latest_version=$(get_latest_version "$version")
         case "$version" in
             10)
                 build_gcc "$latest_version" "c,c++,fortran,objc,obj-c++,ada" "--enable-checking=release --with-arch-32=i686"
@@ -315,18 +312,22 @@ select_versions() {
     done
 }
 
-cleanup() {
-    if [[ "$keep_build_dir" -ne 1 ]]; then
-        log "Cleaning up..."
-        rm -rf "$build_dir"
-        log "Removed temporary build directory: $build_dir"
-    else
-        log "Temporary build directory retained: $build_dir"
-    fi
+install_autoconf() {
+    log "Installing autoconf 2.69"
+    curl -fsSLo "$build_dir/autoconf-2.69.tar.xz" "https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.xz"
+    mkdir -p "$build_dir/autoconf-2.69/build" "$workspace"
+    tar -xf "$build_dir/autoconf-2.69.tar.xz" -C "$build_dir/autoconf-2.69" --strip-components 1
+    cd "$build_dir/autoconf-2.69" || exit 1
+    autoupdate
+    autoconf
+    cd build || exit 1
+    ../configure --prefix="$build_dir/workspace"
+    make "-j$(nproc --all)"
+    make install
 }
 
 summary() {
-    echo -e "\\n${GREEN}Summary:${NC}\\n"
+    echo -e "\\n${GREEN}Summary:${NC}"
     echo -e "  Installed GCC version(s): ${CYAN}${selected_versions[*]}${NC}"
     echo -e "  Installation prefix: ${CYAN}$install_prefix${NC}"
     echo -e "  Build directory: ${CYAN}$build_dir${NC}"
@@ -354,7 +355,7 @@ main() {
     summary
 
     log "Build completed successfully!"
-    echo -e "${GREEN}Make sure to star this repository to show your support!${NC}"
+    echo -e "\\n${GREEN}Make sure to star this repository to show your support!${NC}"
     echo "https://github.com/slyfox1186/script-repo"
 }
 
