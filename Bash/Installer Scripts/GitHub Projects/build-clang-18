@@ -201,7 +201,7 @@ build_and_install_llvm_clang() {
               -DLLVM_ENABLE_WERROR=OFF \
               -DLLVM_ENABLE_Z3_SOLVER=OFF \
               -DLLVM_ENABLE_ZLIB=ON \
-              -DLLVM_ENABLE_ZSTD=OFF \
+              -DLLVM_ENABLE_ZSTD=ON \
               -DLLVM_EXAMPLEIRTRANSFORMS_LINK_INTO_TOOLS=OFF \
               -DLLVM_EXPORT_SYMBOLS_FOR_PLUGINS=OFF \
               -DLLVM_EXTERNALIZE_DEBUGINFO=OFF \
@@ -261,6 +261,7 @@ build_and_install_llvm_clang() {
 show_installed_clang_version() {
     local clang_versions=("clang-18" "clang++-18" "clang++")
 
+    echo
     log "The installed clang versions are:"
 
     for clang_version in "${clang_versions[@]}"; do
