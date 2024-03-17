@@ -1,21 +1,12 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2162,SC2317
 
-###########################################################################################################
-##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-nasm
-##
+##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-nasm.sh
 ##  Purpose: Build NASM
-##
 ##  Updated: 10.13.23
-##
 ##  Script version: 1.0
-##
-###########################################################################################################
 
-clear
-
-if [ "${EUID}" -eq '0' ]; then
+if [ "$EUID" -eq 0 ]; then
     printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
     exit 1
 fi
@@ -28,7 +19,6 @@ script_ver=1.0
 progname="${0}"
 cwd="$PWD"/nasm-build-script
 install_prefix=/usr/local
-pc_type=$(gcc -dumpmachine)
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 debug=OFF # CHANGE THIS VARIABLE TO "ON" FOR HELP WITH TROUBLESHOOTING UNEXPECTED ISSUES DURING THE BUILD
@@ -37,9 +27,10 @@ debug=OFF # CHANGE THIS VARIABLE TO "ON" FOR HELP WITH TROUBLESHOOTING UNEXPECTE
 # CREATE OUTPUT DIRECTORIES
 #
 
-if [ ! -d "$cwd" ]; then
-    mkdir -p "$cwd"
+if [ -d "$cwd" ]; then
+    sudo rm -fr "$cwd"
 fi
+mkdir -p "$cwd"
 
 #
 # FIGURE OUT WHICH COMPILERS TO USE
@@ -236,7 +227,7 @@ git_1_fn()
     github_repo="$1"
     github_url="$2"
 
-    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[1].name' 2>/dev/null)"
         g_url="$(echo "$curl_cmd" | jq -r '.[1].tarball_url' 2>/dev/null)"
         g_ver="${g_ver#llvmorg-}"
@@ -286,30 +277,28 @@ fi
 # BEGIN BUILDING CLANG
 #
 
-clear
 box_out_banner()
 {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
+    line=$(for i in $(seq 0 $input_char); do printf '-'; done)
     tput bold
     line="$(tput setaf 3)$line"
     space=${line//-/ }
     echo " $line"
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
     printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" ' |';
-    printf '|' ; echo -n "${space}" ; printf "%s\n" '|';
+    printf '|' ; echo -n "$space" ; printf "%s\n" '|';
     echo " $line"
     tput sgr 0
 }
-box_out_banner "Nasm Build Script - version ${script_ver}"
+box_out_banner "Nasm Build Script - version $script_ver"
 
 if build 'nasm' '2.16.01'; then
     download 'https://www.nasm.us/pub/nasm/stable/nasm-2.16.01.tar.xz'
     execute ./autogen.sh
     execute ./configure --prefix=/usr/local                \
-                        --{build,host,target}="${pc_type}" \
                         --enable-ccache
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute sudo make install
 fi
 
