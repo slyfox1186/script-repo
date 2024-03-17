@@ -20,9 +20,11 @@ foreach my $line (@lines) {
     # Correct previously incorrect conversion specifically for ${var:+($var)} pattern
     $line =~ s/\$(\w+):\+\(\$\1\)/\${$1:+(\$$1)}/g;
 
-    # Avoid converting complex expressions like ${var:+($var)}
-    # We now skip converting if it detects more than just a simple variable inside {}
-    $line =~ s/\$\{(\w+)\}/\$$1/g if $line !~ /\$\{\w+[:+?@]/;
+    # Refine the skipping logic to also exclude patterns like ${NAME//TEXT/TEXT}
+    unless ($line =~ /\$\{\w+[:+?@\/]/) {
+        # Perform replacements on simpler variable references
+        $line =~ s/\$\{(\w+)\}/\$$1/g;
+    }
 }
 
 # Write the modified content back to the file
@@ -30,4 +32,4 @@ open my $fh_out, '>', $file_path or die "Cannot write to file $file_path: $!";
 print $fh_out @lines;
 close $fh_out;
 
-print "Corrected and refined curly brackets surrounding variables handling.\n";
+print "Corrected and refined curly brackets surrounding variables handling, excluding specific patterns.\n";
