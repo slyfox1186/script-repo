@@ -2,18 +2,11 @@
 
 clear
 
-##########################################
-## Verify the script's permission level ##
-##########################################
-# Verify the script has root access before continuing
 if [ "$EUID" -eq '0' ]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
 
-#######################################
-## Prompt the user with instructions ##
-#######################################
 echo '[i] You must change the "custom variables" section of this script to match your needs before executing.'
 echo '[i] It is advised to leave the "static variables" as they are unless you have a good reason to do so.'
 echo
@@ -25,24 +18,15 @@ echo
 read -p 'Your choices are (1 or 2): '
 clear
 
-######################
-## Custom variables ##
-######################
 display_name='Nautilus'
 file_name='nautilus-root'
 file_path='/usr/bin/nautilus'
 file_icon='/usr/share/icons/Yaru/256x256@2x/apps/nautilus.png'
 
-######################
-## Static variables ##
-######################
 full_path="$HOME/Desktop/$file_name.desktop"
 terminal='false'
 version='1.0'
 
-#####################
-## Define funtions ##
-#####################
 
 exit_msg_fn() {
     echo '[i] Make sure to star this repository to keep me motivated to add more content!'
@@ -112,7 +96,6 @@ prompt_fn() {
     fi
 }
 
-# Create the file
 echo '[i] Creating the .desktop file.'
 sleep 2
 
@@ -127,8 +110,6 @@ Name=$display_name
 Icon=$file_icon
 EOF
 
-# Open the newly created file for inspection
-# Just close the editor if everything looks good
 echo
 echo '[i] Inspect the file and close the editor when done.'
 echo
@@ -137,7 +118,6 @@ echo
 clear
 editor_fn
 
-# Ask the user for permission to delete if required
 echo '[i] Do you want to delete the file and start over?'
 echo
 echo '[1] Yes'

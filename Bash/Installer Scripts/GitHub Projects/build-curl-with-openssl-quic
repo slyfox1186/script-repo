@@ -1,19 +1,5 @@
 #!/Usr/bin/env bash
 
-#################################################################################################################################
-##
-##  Github script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/installer%20scripts/gnu%20software/build-curl
-##
-##  Purpose: build curl with openssl quic enabled to support experimental http3.
-##
-##  Important info: this will install a custom version of openssl that has been forked from the official branch and enables
-##                  Quic protocol. so if you do not want to mess with installing openssl then do not run this script!
-##
-##  Updated: 12.03.23
-##
-##  Script version: 1.0
-##
-#################################################################################################################################
 
 clear
 
@@ -22,7 +8,6 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-# Set the variables
 
 script_ver=1.0
 curl_ver=8.4.0
@@ -44,14 +29,12 @@ printf "%s\n%s\n\n" \
     "cURL Build Script - v$script_ver" \
     '==============================================='
 
-# Create output directory
 
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-# Set the c/cxx compilers & set the compiler optimization flags
 
 CC=gcc
 CXX=g++
@@ -62,7 +45,6 @@ LDFLAGS='-Wl,-rpath,/usr/local/lib64'
 LIBS='-ldl -pthread -L/usr/lib/x86_64-linux-gnu -lnghttp3 -lcrypto -lssl -L/usr/local/lib -ljemalloc'
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS LIBS
 
-# Set the path variable
 
 PATH="\
 /usr/lib/ccache:\
@@ -83,7 +65,6 @@ $HOME/.local/bin:\
 "
 export PATH
 
-# Set the pkg_config_path variable
 
 
 PKG_CONFIG_PATH="\
@@ -101,7 +82,6 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-# Create functions
 
 exit_fn() {
     printf "\n%s\n\n%s\n\n" \
@@ -140,7 +120,6 @@ cleanup_fn() {
     esac
 }
 
-# Install required apt packages
 
 pkgs=(apt-transport-https apt-utils autoconf autoconf-archive autogen automake autopoint autotools-dev
       build-essential bzip2 ca-certificates ccache clang cmake curl gfortran git google-perftools graphviz
@@ -169,26 +148,22 @@ if [ -n "$missing_pkgs" ]; then
     clear
 fi
 
-# Create output directory openssl-quic
 
 if [ -d "$cwd/openssl-quic-3.1.4" ]; then
     sudo rm -fr "$cwd/openssl-quic-3.1.4"
 fi
 mkdir -p "$cwd/openssl-quic-3.1.4"
 
-# Download the archive file openssl-quic
 
 if [ ! -f "$cwd/openssl-quic-3.1.4.tar.gz" ]; then
     curl -A "$user_agent" -Lso "$cwd/openssl-quic-3.1.4.tar.gz" 'https://github.com/quictls/openssl/archive/refs/tags/openssl-3.1.4-quic1.tar.gz'
 fi
 
-# Extract the archive file openssl-quic
 
 if ! tar -zxf "$cwd/openssl-quic-3.1.4.tar.gz" -C "$cwd/openssl-quic-3.1.4" --strip-components 1; then
     fail_fn "Failed to extract: $cwd/openssl-quic-3.1.4.tar.gz"
 fi
 
-# Install openssl-quic
 
 printf "%s\n%s\n\n" \
     "Installing OpenSSL-QUIC - v3.1.4" \
@@ -223,29 +198,24 @@ if ! sudo make install_sw; then
     fail_fn "Failed to execute: sudo make install_sw. Line: $LINENO"
 fi
 
-# Update ldconfig libs for openssl
 sudo ldconfig '/usr/local/lib64'
 
-# Create output directory jemalloc
 
 if [ -d "$cwd/jemalloc-5.3.0" ]; then
     sudo rm -fr "$cwd/jemalloc-5.3.0"
 fi
 mkdir -p "$cwd/jemalloc-5.3.0/build"
 
-# Download the archive file jemalloc
 
 if [ ! -f "$cwd/jemalloc-5.3.0.tar.gz" ]; then
     curl -A "$user_agent" -Lso "$cwd/jemalloc-5.3.0.tar.gz" 'https://github.com/jemalloc/jemalloc/archive/refs/tags/5.3.0.tar.gz'
 fi
 
-# Extract the archive file jemalloc
 
 if ! tar -zxf "$cwd/jemalloc-5.3.0.tar.gz" -C "$cwd/jemalloc-5.3.0" --strip-components 1; then
     fail_fn "Failed to extract: $cwd/jemalloc-5.3.0.tar.gz"
 fi
 
-# Install jemalloc
 
 printf "\n%s\n%s\n\n" \
     "Installing Jemalloc - v5.3.0" \
@@ -273,7 +243,6 @@ if ! sudo make install; then
     fail_fn "Failed to execute: sudo make install. Line: $LINENO"
 fi
 
-# Create output directory http 2/3
 
 if [ -d "$cwd/ngtcp2-1.58.0" ]; then
     sudo rm -fr "$cwd/ngtcp2-1.58.0"
@@ -285,7 +254,6 @@ if [ -d "$cwd/nghttp3-1.1.0" ]; then
 fi
 mkdir -p "$cwd/nghttp3-1.1.0"
 
-# Download the archive file http 2/3
 
 if [ ! -f "$cwd/nghttp3-1.1.0.tar.xz" ]; then
     curl -A "$user_agent" -Lso "$cwd/nghttp3-1.1.0.tar.xz" 'https://github.com/ngtcp2/nghttp3/releases/download/v1.1.0/nghttp3-1.1.0.tar.xz'
@@ -294,7 +262,6 @@ if [ ! -f "$cwd/ngtcp2-1.58.0.tar.xz" ]; then
     curl -A "$user_agent" -Lso "$cwd/ngtcp2-1.58.0.tar.xz" 'https://github.com/nghttp2/nghttp2/releases/download/v1.58.0/nghttp2-1.58.0.tar.xz'
 fi
 
-# Extract the archive file http 2/3
 
 if ! tar -xf "$cwd/ngtcp2-1.58.0.tar.xz" -C "$cwd/ngtcp2-1.58.0" --strip-components 1; then
     fail_fn "Failed to extract: $cwd/ngtcp2-1.58.0.tar.xz"
@@ -303,7 +270,6 @@ if ! tar -xf "$cwd/nghttp3-1.1.0.tar.xz" -C "$cwd/nghttp3-1.1.0" --strip-compone
     fail_fn "Failed to extract: $cwd/nghttp3-1.1.0.tar.xz"
 fi
 
-# Install http3
 
 printf "\n%s\n%s\n\n" \
     "Installing HTTP3 - v1.1.0" \
@@ -324,26 +290,22 @@ if ! sudo make install; then
     fail_fn "Failed to execute: sudo make install. Line: $LINENO"
 fi
 
-# Create output directory ngtcp2
 
 if [ -d "$cwd/ngtcp2-1.1.0" ]; then
     sudo rm -fr "$cwd/ngtcp2-1.1.0"
 fi
 mkdir -p "$cwd/ngtcp2-1.1.0/build"
 
-# Download the archive file ngtcp2
 
 if [ ! -f "$cwd/ngtcp2-1.1.0.tar.gz" ]; then
     curl -A "$user_agent" -Lso "$cwd/ngtcp2-1.1.0.tar.gz" 'https://github.com/ngtcp2/ngtcp2/releases/download/v1.1.0/ngtcp2-1.1.0.tar.xz'
 fi
 
-# Extract the archive file ngtcp2
 
 if ! tar -xf "$cwd/ngtcp2-1.1.0.tar.gz" -C "$cwd/ngtcp2-1.1.0" --strip-components 1; then
     fail_fn "Failed to extract: $cwd/ngtcp2-1.1.0.tar.gz"
 fi
 
-# Install ngtcp2
 
 printf "\n%s\n%s\n\n" \
     "Installing ngtcp2 - v1.1.0" \
@@ -370,7 +332,6 @@ if ! sudo make install; then
     fail_fn "Failed to execute: sudo make install. Line: $LINENO"
 fi
 
-# Install http2
 
 printf "\n%s\n%s\n\n" \
     "Installing HTTP2 - v1.58.0" \
@@ -399,26 +360,22 @@ if ! sudo make install; then
     fail_fn "Failed to execute: sudo make install. Line: $LINENO"
 fi
 
-# Create output directory c-ares
 
 if [ -d "$cwd/c-ares-1.23.0" ]; then
     sudo rm -fr "$cwd/c-ares-1.23.0"
 fi
 mkdir -p "$cwd/c-ares-1.23.0/build"
 
-# Download the archive file c-ares
 
 if [ ! -f "$cwd/c-ares-1.23.0.tar.gz" ]; then
     curl -A "$user_agent" -Lso "$cwd/c-ares-1.23.0.tar.gz" 'https://github.com/c-ares/c-ares/archive/refs/tags/cares-1_23_0.tar.gz'
 fi
 
-# Extract the archive file c-ares
 
 if ! tar -zxf "$cwd/c-ares-1.23.0.tar.gz" -C "$cwd/c-ares-1.23.0" --strip-components 1; then
     fail_fn "Failed to extract: $cwd/c-ares-1.23.0.tar.gz"
 fi
 
-# Install c-ares
 
 printf "\n%s\n%s\n\n" \
     "Installing c-ares - v1.23.0" \
@@ -441,48 +398,39 @@ if ! sudo make install; then
     fail_fn "Failed to execute: sudo make install. Line: $LINENO"
 fi
 
-# Create output directory curl
 
 if [ -d "$cwd/$archive_dir" ]; then
     sudo rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
-# Download the archive file curl
 
 if [ ! -f "$cwd/$archive_name" ]; then
     curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
-# Extract the archive file curl
 
 if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
     fail_fn "Failed to extract: $cwd/$archive_name"
 fi
 
-# Install ca certs from curl's official website
 
 printf "\n%s\n%s\n\n" \
    'Install the latest security certificate from cURL'\''s website' \
    '==================================================================='
 
-# Download the latest cacert.pem file from the official curl website
 if ! curl -A "$user_agent" -Lso "$cwd"/cacert.pem 'https://curl.se/ca/cacert.pem'; then
     fail_fn "Failed to download the latest \"cacert.pem\" file. Line: $LINENO"
 fi
 
-# Move the pem file to the newly created certs directory
 if sudo cp -f "$cwd"/cacert.pem "$cert_dir"/cacert.pem; then
-# Copy the pem file as a crt file in the special ca-certificates folder so the command will find and use it when it is executed
     sudo cp "$cert_dir"/cacert.pem '/usr/local/share/ca-certificates/curl-cacert.crt'
 fi
 
-# Update the security certs that were moved from the /etc/ssl/certs folder
 cd "$cert_dir" || exit 1
 sudo c_rehash .
 sudo update-ca-certificates
 
-# Build curl from source
 
 printf "\n%s\n%s\n\n" \
     "Installing cURL - v8.4.0" \
@@ -518,8 +466,6 @@ if ! sudo make install; then
     exit 1
 fi
 
-# Prompt user to clean up files
 cleanup_fn
 
-# Show exit message
 exit_fn

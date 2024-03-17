@@ -1,16 +1,11 @@
 #!/Usr/bin/env bash
 
-##  Github script: https://github.com/slyfox1186/script-repo/edit/main/bash/installer%20scripts/gnu%20software/build-sed
-##  Purpose: build gnu sed
-##  Updated: 02.03.24
-##  Script version: 1.1
 
 if [ "$EUID" -ne 0 ]; then
     echo "You must run this script with root or sudo."
     exit 1
 fi
 
-# Set the variables
 
 script_ver=1.0
 archive_dir=sed-4.9
@@ -25,22 +20,18 @@ printf "%s\n%s\n\n" \
     "sed build script - v$script_ver" \
     '==============================================='
 
-# Create output directory
 
 if [ -d "$cwd" ]; then
     rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-# Set the c + cpp compilers
 
 export CC=gcc CXX=g++
 
-# Set compiler optimization flags
 
 export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 
-# Set the path variable
 
 PATH="\
 /usr/lib/ccache:\
@@ -61,7 +52,6 @@ $HOME/.local/bin:\
 "
 export PATH
 
-# Set the pkg_config_path variable
 
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
@@ -78,7 +68,6 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-# Create functions
 
 exit_fn() {
     printf "\n%s\n\n%s\n\n" \
@@ -115,7 +104,6 @@ cleanup_fn() {
     esac
 }
 
-# Install required apt packages
 
 pkgs_fn() {
     pkgs=(
@@ -140,24 +128,20 @@ pkgs_fn() {
     fi
 }
 
-# Download the archive file
 if [ ! -f "$cwd/$archive_name" ]; then
     curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
-# Create output directory
 if [ -d "$cwd/$archive_dir" ]; then
     rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
-# Extract archive files
 if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
     printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
     exit 1
 fi
 
-# Test if libiconv was installed by apt or manually
 if [ -f "/usr/local/bin/iconv" ]; then
     pkgs_fn
     iconv_prefix=/usr/local
@@ -169,7 +153,6 @@ else
     iconv_prefix=/usr
 fi
 
-# Build program from source
 cd "$cwd/$archive_dir" || exit 1
 cd build || exit 1
 ../configure --prefix="$install_dir" \
@@ -189,8 +172,6 @@ if ! make install; then
     exit 1
 fi
 
-# Prompt user to clean up files
 cleanup_fn
 
-# Show exit message
 exit_fn

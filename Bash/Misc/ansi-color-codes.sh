@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-# Color codes
 BLACK='\033[0;30m'
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -17,9 +16,7 @@ LIGHT_BLUE='\033[1;34m'
 LIGHT_PURPLE='\033[1;35m'
 LIGHT_CYAN='\033[1;36m'
 WHITE='\033[1;37m'
-NC='\033[0m' # No Color
 
-# Example of using colors
 echo -e "$GREENThis text is green.$NC"
 echo -e "$REDThis text is red.$NC"
 echo -e "$BLUEThis text is blue.$NC"

@@ -1,22 +1,5 @@
 #!/Usr/bin/env bash
-# Shellcheck disable=sc2016,sc2034,sc2046,sc2066,sc2068,sc2086,sc2162,sc2317
 
-###################################################################################
-##
-##  Install the latest curl, wget, and aria2c releases from github
-##
-##  Supported os:
-##  - Debian - 10/11/12
-##  - Ubuntu - (18/20/22).04
-##
-##  Updated: 11.26.23
-##
-##  Added: aria2c increased the max connections allowed from 16 to 128
-##  Added: the ability to specify suffixes before compiling
-##
-##  Script version: 1.2
-##
-###################################################################################
 
 clear
 
@@ -25,7 +8,6 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-# Set the available cpu thread and core count for parallel processing (speeds up the build process)
 
 if [ -f '/proc/cpuinfo' ]; then
     cpu_threads="$(grep --count ^processor '/proc/cpuinfo')"
@@ -33,7 +15,6 @@ else
     cpu_threads="$(nproc --all)"
 fi
 
-# Set the variables
 
 script_ver=1.2
 install_prefix=/usr/local
@@ -52,11 +33,9 @@ user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 web_repo=https://github.com/slyfox1186/script-repo
 debug=OFF
 
-# Create output directory
 
 mkdir -p "$packages" "$workspace"
 
-# Set the cc/cxx compilers & the compiler optimization flags
 
 CC=clang
 CXX=clang++
@@ -66,7 +45,6 @@ CXXFLAGS="$CFLAGS"
 CPPFLAGS='-I/usr/local/include -I/usr/include'
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
-# Set the path variable
 
 PATH="\
 /usr/lib/ccache/bin:\
@@ -88,7 +66,6 @@ $HOME/.local/bin:\
 "
 export PATH
 
-# Set the pkg_config_path variable
 
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
@@ -150,7 +127,6 @@ LD_LIBRARY_PATH="\
 /lib\
 "
 export LD_LIBRARY_PATH
-# Create functions
 
 add_suffix_fn() {
     clear
@@ -193,14 +169,12 @@ suffix_choice_fn() {
 }
 suffix_choice_fn
 
-# Print banner
 
 printf "%s\n%s\n%s\n" \
     "Download Tools Build Script - v$script_ver" \
     '=========================================' \
     "This script will utilize ($cpu_threads) CPU threads for parallel processing to accelerate the build process."
 
-# Create global variables
 
 PATH="\
 /usr/lib/ccache:\
@@ -240,7 +214,6 @@ $workspace/share/pkgconfig:\
 "
 export PKG_CONFIG_PATH
 
-# Define functions
 
 fail_fn() {
     printf "\n%s\n%s\n%s\n\n" \
@@ -307,7 +280,6 @@ success_fn() {
         "wget:  $w_ver"
 }
 
-# Scrape github website for the latest repo version
 
 git_1_fn() {
     local curl_cmd github_repo github_url
@@ -318,13 +290,6 @@ git_1_fn() {
     if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url' 2>/dev/null)"
-        g_ver="$g_ver#Cares-"
-        g_ver="$g_ver#Aria2 "
-        g_ver="$g_ver#Nghttp2 v"
-        g_ver="$g_ver#Nghttp3 v"
-        g_ver="$g_ver#Openssl "
-        g_ver="$g_ver#Release-"
-        g_ver="$g_ver#V"
     fi
 
 }
@@ -366,7 +331,6 @@ execute() {
 download() {
     dl_path="$packages"
     dl_url="$1"
-    dl_file="$2:-"${1##*/"}"
 
     if [[ "$dl_file" =~ tar. ]]; then
         output_dir="$dl_file%.*"
@@ -419,7 +383,6 @@ download_git() {
 
     dl_path="$packages"
     dl_url="$1"
-    dl_file="$2:-"${1##*/"}"
     dl_file="$dl_file//\./-"
     target_dir="$dl_path/$dl_file"
 
@@ -473,7 +436,6 @@ installed() {
     return $(dpkg-query -W -f '$Status\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
 }
 
-# Install required apt packages
 
 pkgs_fn() {
     local pkg pkgs missing_pkgs
@@ -514,7 +476,6 @@ pkgs_fn() {
     fi
 }
 
-# Determine what version of linux we are on
 
 find_lsb_release="$(sudo find /usr -type f -name 'lsb_release')"
 
@@ -532,7 +493,6 @@ else
     fail_fn "Failed to define the \$OS and/or \$VER variables. Line: $LINENO"
 fi
 
-# Test the os and its version
 
 case "$OS" in
     Debian)     pkgs_fn;;
@@ -540,7 +500,6 @@ case "$OS" in
     *)          fail_fn "Could not detect the OS architecture. Line: $LINENO";;
 esac
 
-# Install ca certs from curl's official website
 
 if [ ! -f "$pem_out" ]; then
     printf "%s\n%s\n\n" \
@@ -550,7 +509,6 @@ if [ ! -f "$pem_out" ]; then
     sudo cp -f "$packages/$pem_file" "$pem_out"
 fi
 
-# Build libraries from source
 
 
 if build 'pkg-config' '0.29.2'; then
@@ -657,7 +615,6 @@ if build 'brotli' '1.0.9'; then
     build_done 'brotli' '1.0.9'
 fi
 
-# Begin wget build
 
 if build 'wget' 'latest'; then
     download 'https://ftp.gnu.org/gnu/wget/wget-latest.tar.lz'
@@ -676,7 +633,6 @@ if build 'wget' 'latest'; then
     build_done 'wget' 'latest'
 fi
 
-# Determine if http3 support is enabled
 
 git_ver_fn 'curl/curl' '1' 'R'
 if build 'curl' "$g_ver"; then
@@ -704,12 +660,10 @@ if build 'curl' "$g_ver"; then
     build_done 'curl' "$g_ver"
 fi
 
-# Compile aria2 from the source code
 
 git_ver_fn 'aria2/aria2' '1' 'T'
 if build 'aria2' '1.36.0'; then
     download 'https://github.com/aria2/aria2/releases/download/release-1.36.0/aria2-1.36.0.tar.xz'
-# Increase the max number of connections from 16 to 128
     execute sed -i 's/1, 16/1, 128/g' 'src/OptionHandlerFactory.cc'
     mkdir build
     cd build || exit 1
@@ -741,14 +695,10 @@ if build 'aria2' '1.36.0'; then
     build_done 'aria2' '1.36.0'
 fi
 
-# Ldconfig must be run next in order to update file changes or the version commands might not work
 sudo ldconfig 2>/dev/null
 
-# Alert the user that the build has finished
 success_fn
 
-# Cleanup leftover files
 cleanup_fn
 
-# Display exit message
 exit_fn

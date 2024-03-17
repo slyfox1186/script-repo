@@ -1,11 +1,7 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1091,SC2001,SC2162,SC2317
 
 export user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
-######################################################################################
-## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
-######################################################################################
 
 gedit() { "$(type -P gedit)" "${@}" &>/dev/null; }
 geds() { sudo -Hu root "$(type -P gedit)" "${@}" &>/dev/null; }
@@ -13,9 +9,6 @@ geds() { sudo -Hu root "$(type -P gedit)" "${@}" &>/dev/null; }
 gted() { "$(type -P gted)" "${@}" &>/dev/null; }
 gteds() { sudo -Hu root "$(type -P gted)" "${@}" &>/dev/null; }
 
-################################################
-## GET THE OS AND ARCH OF THE ACTIVE COMPUTER ##
-################################################
 
 mypc() {
     local OS VER
@@ -30,9 +23,6 @@ mypc() {
         "Specific Version: $VER"
 }
 
-###################
-## FIND COMMANDS ##
-###################
 
 ffind() {
     local fname fpath ftype
@@ -58,9 +48,6 @@ ffind() {
      fi
 }
 
-######################
-## UNCOMPRESS FILES ##
-######################
 
 untar() {
     clear
@@ -68,7 +55,6 @@ untar() {
 
     for archive in *.*
     do
-        ext="$archive##*."
 
         [[ ! -d "$PWD"/"$archive%%.*" ]] && mkdir -p "$PWD"/"$archive%%.*"
 
@@ -84,9 +70,6 @@ untar() {
     done
 }
             
-##################
-## CREATE FILES ##
-##################
 
 mf() {
     local i
@@ -122,28 +105,18 @@ mdir() {
     clear; ls -1AvhFhFv --color --group-directories-first
 }
 
-##################
-## AWK COMMANDS ##
-##################
 
-# REMOVED ALL DUPLICATE LINES: OUTPUTS TO TERMINAL
 rmd() { clear; awk '!seen[$0]++' "$1"; }
 
-# REMOVE CONSECUTIVE DUPLICATE LINES: OUTPUTS TO TERMINAL
 rmdc() { clear; awk 'f!=$0&&f=$0' "$1"; }
 
-# REMOVE ALL DUPLICATE LINES AND REMOVES TRAILING SPACES BEFORE COMPARING: REPLACES THE file
 rmdf() {
     clear
     perl -i -lne 's/\s*$//; print if ! $x{$_}++' "$1"
     gted "$1"
 }
 
-###################
-## file COMMANDS ##
-###################
 
-# COPY file
 cpf() {
     clear
 
@@ -159,7 +132,6 @@ cpf() {
     clear; ls -1AvhFhFv --color --group-directories-first
 }
 
-# MOVE file
 mvf() {
     clear
 
@@ -175,18 +147,13 @@ mvf() {
     clear; ls -1AvhFhFv --color --group-directories-first
 }
 
-##################
-## APT COMMANDS ##
-##################
 
-# DOWNLOAD AN APT PACKAGE + ALL ITS DEPENDENCIES IN ONE GO
 aptdl() {
     clear
     wget -c "$(apt --print-uris -qq --reinstall install $1 2>/dev/null | cut -d''\''' -f2)"
     clear; ls -1AvhFhFv --color --group-directories-first
 }
 
-# CLEAN
 clean() {
     clear
     sudo apt -y autoremove
@@ -195,7 +162,6 @@ clean() {
     sudo apt -y purge
 }
 
-# UPDATE
 update() {
     clear
     sudo apt update
@@ -206,7 +172,6 @@ update() {
     sudo apt -y purge
 }
 
-# FIX BROKEN APT PACKAGES
 fix() {
     clear
     if [ -f /tmp/apt.lock ]; then
@@ -247,7 +212,6 @@ listd() {
     fi
 }
 
-# USE SUDO APT TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
 apts() {
     local search
     clear
@@ -261,7 +225,6 @@ apts() {
     fi
 }
 
-# USE APT CACHE TO SEARCH FOR ALL APT PACKAGES BY PASSING A NAME TO THE FUNCTION
 csearch() {
     clear
     local cache
@@ -275,7 +238,6 @@ csearch() {
     fi
 }
 
-# FIX MISSING GPNU KEYS USED TO UPDATE PACKAGES
 fix_key() {
     clear
 
@@ -291,18 +253,13 @@ fix_key() {
         url="$2"
     fi
 
-    curl -S# "$url" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/$file"
 
-    if curl -S# "$url" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/$file"; then
         echo 'The key was successfully added!'
     else
         echo 'The key FAILED to add!'
     fi
 }
 
-##########################
-# TAKE OWNERSHIP COMMAND #
-##########################
 toa() {
     clear
     sudo chown -R "$USER":"$USER" "$PWD"
@@ -310,18 +267,13 @@ toa() {
     clear; ls -1AvhFhFv --color --group-directories-first
 }
 
-#################
-# DPKG COMMANDS #
-#################
 
-## SHOW ALL INSTALLED PACKAGES
 showpkgs() {
     dpkg --get-selections |
     grep -v deinstall > "$HOME"/tmp/packages.list
     gted "$HOME"/tmp/packages.list
 }
 
-# PIPE ALL DEVELOPMENT PACKAGES NAMES TO file
 getdev() {
     apt-cache search dev |
     grep "\-dev" |
@@ -330,11 +282,7 @@ getdev() {
     gted 'dev-packages.list'
 }
 
-################
-## SSH-KEYGEN ##
-################
 
-# CREATE A NEW PRIVATE AND PUBLIC SSH KEY PAIR
 new_key() {
     clear
 
@@ -395,7 +343,6 @@ new_key() {
     echo
 }
 
-# EXPORT THE PUBLIC SSH KEY STORED INSIDE A PRIVATE SSH KEY
 keytopub() {
     clear; ls -1AvhFhFv --color --group-directories-first
 
@@ -420,18 +367,12 @@ keytopub() {
     unset "$opub"
 }
 
-# install colordiff package :)
 cdiff() { clear; colordiff "$1" "$2"; }
 
-# GZIP
 gzip() { clear; gzip -d "${@}"; }
 
-# get system time
 gettime() { clear; date +%r | cut -d " " -f1-2 | grep -E '^.*$'; }
 
-##################
-## SOURCE FILES ##
-##################
 
 sbrc() {
     clear
@@ -451,11 +392,7 @@ spro() {
     clear; ls -1AvhFhFv --color --group-directories-first
 }
 
-####################
-## ARIA2 COMMANDS ##
-####################
 
-# ARIA2 DAEMON IN THE BACKGROUND
 aria2_on() {
     clear
 
@@ -466,10 +403,8 @@ aria2_on() {
     fi
 }
 
-# STOP ARIA2 DAEMON
 aria2_off() { clear; killall aria2c; }
 
-# RUN ARIA2 AND DOWNLOAD FILES TO THE CURRENT FOLDER
 aria2() {
     clear
 
@@ -495,7 +430,6 @@ myip() {
         "WAN: $(curl -s 'https://checkip.amazonaws.com')"
 }
 
-# WGET COMMAND
 mywget() {
     clear; ls -1AvhFhFv --color --group-directories-first
 
@@ -512,11 +446,7 @@ mywget() {
     fi
 }
 
-################
-# RM COMMANDS ##
-################
 
-# RM DIRECTORY
 rmd() {
     clear
 
@@ -533,7 +463,6 @@ rmd() {
     fi
 }
 
-# RM FILE
 rmf() {
     clear
 
@@ -550,22 +479,14 @@ rmf() {
     fi
 }
 
-#################
-## IMAGEMAGICK ##
-#################
 
-# OPTIMIZE AND OVERWRITE THE ORIGINAL IMAGES
 imow() {
     local apt_pkgs cnt_queue cnt_total dimensions fext missing_pkgs pip_lock random_dir tmp_file v_noslash
 
     clear
 
-    # THE FILE EXTENSION TO SEARCH FOR (DO NOT INCLUDE A '.' WITH THE EXTENSION)
     fext=jpg
 
-    #
-    # REQUIRED APT PACKAGES
-    #
 
     apt_pkgs=(sox libsox-dev)
     for i in ${apt_pkgs[@]}
@@ -583,9 +504,6 @@ imow() {
     fi
     unset apt_pkgs i missing_pkg missing_pkgs
 
-    #
-    # REQUIRED PIP PACKAGES
-    #
 
     pip_lock="$(find /usr/lib/python3* -name EXTERNALLY-MANAGED)"
     if [ -n "$pip_lock" ]; then
@@ -596,13 +514,10 @@ imow() {
     fi
 
     unset p pip_lock pip_pkgs missing_pkg missing_pkgs
-    # DELETE ANY USELESS ZONE IDENFIER FILES THAT SPAWN FROM COPYING A FILE FROM WINDOWS NTFS INTO A WSL DIRECTORY
     find . -type f -name "*:Zone.Identifier" -delete 2>/dev/null
 
-    # GET THE FILE COUNT INSIDE THE DIRECTORY
     cnt_queue=$(find . -maxdepth 2 -type f -iname "*.jpg" | wc -l)
     cnt_total=$(find . -maxdepth 2 -type f -iname "*.jpg" | wc -l)
-    # GET THE UNMODIFIED PATH OF EACH MATCHING FILE
 
     for i in ./*."$fext"
     do
@@ -662,7 +577,6 @@ EOT
     fi
 }
 
-# DOWNSAMPLE IMAGE TO 50% OF THE ORIGINAL DIMENSIONS USING SHARPER SETTINGS
 im50() {
     clear
     local i
@@ -688,9 +602,6 @@ imdl() {
     sudo chmod +rwx imow
 }
 
-###########################
-## SHOW NVME TEMPERATURE ##
-###########################
 
 nvme_temp() {
     local n0 n1 n2
@@ -709,9 +620,6 @@ nvme_temp() {
     printf "%s\n\n%s\n\n%s\n\n%s\n\n" "nvme0n1: $n0" "nnvme1n1: $n1" "nnvme2n1: $n2"
 }
 
-#############################
-## REFRESH THUMBNAIL CACHE ##
-#############################
 
 rftn() {
     clear
@@ -719,9 +627,6 @@ rftn() {
     ls -al "$HOME"/.cache/thumbnails
 }
 
-#####################
-## FFMPEG COMMANDS ##
-#####################
 
 cuda_purge() {
     clear
@@ -779,9 +684,6 @@ dlfs() {
     ls -1AvhFhFv --color --group-directories-first
 }
 
-##############################
-## LIST LARGE FILES BY TYPE ##
-##############################
 
 large_files() {
     clear
@@ -804,9 +706,6 @@ large_files() {
     fi
 }
 
-###############
-## MEDIAINFO ##
-###############
 
 mi() {
     clear
@@ -824,17 +723,11 @@ mi() {
     fi
 }
 
-############
-## FFMPEG ##
-############
 
 cdff() { clear; cd "$HOME/tmp/ffmpeg-build" || exit 1; cl; }
 ffm() { clear; bash <(curl -sSL 'http://ffmpeg.optimizethis.net'); }
 ffp() { clear; bash <(curl -sSL 'http://ffpb.optimizethis.net'); }
 
-####################
-## LIST PPA REPOS ##
-####################
 
 listppas() {
     clear
@@ -843,12 +736,10 @@ listppas() {
 
     for apt in $(find /etc/apt/ -type f -name \*.list)
     do
-        grep -Po "(?<=^deb\s).*?(?=#|$)" "$apt" | while read entry
         do
             host="$(echo "$entry" | cut -d/ -f3)"
             user="$(echo "$entry" | cut -d/ -f4)"
             ppa="$(echo "$entry" | cut -d/ -f5)"
-            #echo sudo apt-add-repository ppa:$USER/$ppa
             if [ "ppa.launchpad.net" = "$host" ]; then
                 echo sudo apt-add-repository ppa:"$USER/$ppa"
             else
@@ -858,18 +749,12 @@ listppas() {
     done
 }
 
-#########################
-## NVIDIA-SMI COMMANDS ##
-#########################
 
 gpu_mon() {
     clear
     nvidia-smi dmon
 }
 
-################################################################
-## PRINT THE NAME OF THE DISTRIBUTION YOU ARE CURRENTLY USING ##
-################################################################
 
 my_os() {
     local name version
@@ -883,21 +768,16 @@ my_os() {
     printf "%s\n\n" "Linux OS: $name $version"
 }
 
-##############################################
-## MONITOR CPU AND MOTHERBOARD TEMPERATURES ##
-##############################################
 
 hw_mon() {
     clear
 
     local found
 
-    # install lm-sensors if not already
     if ! type -P lm-sensors &>/dev/null; then
         sudo apt -y install lm-sensors
     fi
 
-    # Add modprobe to system startup tasks if not already added
     found="$(grep -o 'drivetemp' '/etc/modules')"
     if [ -z "$found" ]; then
         echo 'drivetemp' | sudo tee -a '/etc/modules'
@@ -908,11 +788,7 @@ hw_mon() {
     sudo watch -n1 sensors
 }
 
-###################
-## 7ZIP COMMANDS ##
-###################
 
-# CREATE A GZ FILE WITH MAX COMPRESSION SETTINGS
 7z_gz() {
     local source output
     clear
@@ -934,7 +810,6 @@ hw_mon() {
     fi
 }
 
-# CREATE A XZ FILE WITH MAX COMPRESSION SETTINGS USING 7ZIP
 7z_xz() {
     local source output
     clear
@@ -956,7 +831,6 @@ hw_mon() {
     fi
 }
 
-# CREATE A 7ZIP FILE WITH MAX COMPRESSION SETTINGS
 
 7z_1() {
     local answer source output
@@ -1039,11 +913,7 @@ hw_mon() {
     esac
 }
 
-##################
-## TAR COMMANDS ##
-##################
 
-# CREATE A GZ FILE USING TAR COMMAND
 tar_gz() {
     local source output
     clear
@@ -1146,16 +1016,10 @@ tar_xz_9() {
     fi
 }
 
-#####################
-## FFMPEG COMMANDS ##
-#####################
 
 ffr() { clear; bash "$1" -b --latest --enable-gpl-and-non-free; }
 ffrv() { clear; bash -v "$1" -b --latest --enable-gpl-and-non-free; }
 
-###################
-## WRITE CACHING ##
-###################
 
 wcache() {
     clear
@@ -1206,16 +1070,13 @@ rmf() {
     ls -1AvhF --color --group-directories-first
 }
 
-## REMOVE BOM
 rmb() {
     sed -i '1s/^\xEF\xBB\xBF//' "$1"
 }
 
-## LIST INSTALLED PACKAGES BY ORDER OF IMPORTANCE
 
 list_pkgs() { clear; dpkg-query -Wf '$Package;-40$Priority\n' | sort -b -k2,2 -k1,1; }
 
-## FIX USER FOLDER PERMISSIONS up = user permissions
 
 fix_up() {
     find "$HOME"/.gnupg -type f -exec chmod 600 {} \;
@@ -1225,7 +1086,6 @@ fix_up() {
     find "$HOME"/.ssh/id_rsa -type f -exec chmod 600 {} \; 2>/dev/null
 }
 
-## SET DEFAULT PROGRAMS
 set_default() {
     local choice target name link importance
 
@@ -1258,7 +1118,6 @@ set_default() {
     esac
 }
 
-## COUNT FILES IN THE DIRECTORY
 cnt_dir() {
     local keep_cnt
     clear
@@ -1273,9 +1132,6 @@ cnt_dirr() {
     printf "%s %'d\n\n" "The total directory file count is (recursive):" "$keep_cnt"
 }
 
-######################
-## TEST GCC & CLANG ##
-######################
 
 test_gcc() {
     local answer random_dir
@@ -1283,9 +1139,7 @@ test_gcc() {
 
     random_dir="$(mktemp -d)"
     
-    # CREATE A TEMPORARY C FILE TO RUN OUR TESTS AGAINST
     cat > "$random_dir"/hello.c <<'EOF'
-#include <stdio.h>
 int main(void)
 {
    printf("Hello World!\n");
@@ -1310,9 +1164,7 @@ test_clang() {
 
     random_dir="$(mktemp -d)"
     
-    # CREATE A TEMPORARY C FILE TO RUN OUR TESTS AGAINST
     cat > "$random_dir"/hello.c <<'EOF'
-#include <stdio.h>
 int main(void)
 {
    printf("Hello World!\n");
@@ -1331,9 +1183,6 @@ EOF
     sudo rm -fr "$random_dir"
 }
 
-############################
-## UNINSTALL DEBIAN FILES ##
-############################
 
 rm_deb() {
     local fname
@@ -1348,9 +1197,6 @@ rm_deb() {
     fi
 }
 
-######################
-## KILLALL COMMANDS ##
-######################
 
 tkapt() {
     local i list
@@ -1376,9 +1222,6 @@ gc() {
     fi
 }
 
-####################
-## NOHUP COMMANDS ##
-####################
 
 nh() {
     clear
@@ -1406,7 +1249,6 @@ nhse() {
     exit
 }
 
-## NAUTILUS COMMANDS
 
 nopen() {
     clear
@@ -1423,9 +1265,6 @@ tkan() {
     exit
 }
 
-#######################
-## UPDATE ICON CACHE ##
-#######################
 
 up_icon() {
     local i pkgs
@@ -1444,15 +1283,11 @@ up_icon() {
     sudo gtk-update-icon-cache -f /usr/share/icons/hicolor
 }
 
-############
-## ARIA2C ##
-############
 
 adl() {
     local isWSL name url
     clear
 
-    # FIND OUT IF WSL OR NATIVE LINUX IS RUNNING BECAUSE WE HAVE TO CHANGE THE FILE ALLOCATION DEPENDING ON WHICH IS RUNNING
     isWSL="$(echo "$(uname -a)" | grep -o 'WSL2')"
     if [ -n "$isWSL" ]; then
         setalloc=prealloc
@@ -1540,9 +1375,6 @@ adlm() {
     clear; ls -1AvhFhFv --color --group-directories-first
 }
 
-####################
-## GET FILE SIZES ##
-####################
 
 big_files() {
     local cnt
@@ -1592,9 +1424,6 @@ jpgsize() {
     nohup gted "$random_dir/img-sizes.txt" &>/dev/null &
 }
 
-##################
-## SED COMMANDS ##
-##################
 
 fsed() {
     clear
@@ -1613,9 +1442,6 @@ fsed() {
      sudo sed -i "s/$otext/$rtext/g" $(find . -maxdepth 1 -type f)
 }
 
-####################
-## CMAKE COMMANDS ##
-####################
 
 cmf() {
     local rel_sdir
@@ -1634,9 +1460,6 @@ cmf() {
     ccmake $rel_sdir
 }
 
-##########################
-## SORT IMAGES BY WIDTH ##
-##########################
 
 jpgs() {
     clear
@@ -1645,9 +1468,6 @@ jpgs() {
     sudo rm /tmp/img-sizes.txt
 }
 
-######################################
-## DOWNLOAD IMPORTANT BUILD SCRIPTS ##
-######################################
 
 gitdl() {
     clear
@@ -1661,7 +1481,6 @@ gitdl() {
     ls -1AvhF --color --group-directories-first
 }
 
-# COUNT ITEMS IN THE CURRENT FOLDER W/O SUBDIRECTORIES INCLUDED
 cntf() {
     local folder_cnt
     clear
@@ -1669,16 +1488,12 @@ cntf() {
     printf "%s\n" "There are $folder_cnt files in this folder"
 }
 
-## RECURSIVELY UNZIP ZIP FILES AND NAME THE OUTPUT FOLDER THE SAME NAME AS THE ZIP FILE
 zipr() {
     clear
     sudo find . -type f -iname '*.zip' -exec sh -c 'unzip -o -d "$0%.*" "$0"' '{}' \;
     sudo find . -type f -iname '*.zip' -exec trash-put '{}' \;
 }
 
-###################################
-## FFPROBE LIST IMAGE DIMENSIONS ##
-###################################
 
 ffp() {
     clear
@@ -1688,17 +1503,11 @@ ffp() {
     sudo find "$PWD" -type f -iname '*.jpg' -exec bash -c "identify -format "%wx%h" \"{}\"; echo \" {}\"" > 00-pic-sizes.txt \;
 }
 
-####################
-## RSYNC COMMANDS ##
-####################
 
 rsr() {
     local destination modified_source source 
     clear
 
-    # you must add an extra folder that is a period '/./' between the full path to the source folder and the source folder itself
-    # or rsync will copy the files to the destination directory and it will be the full path of the source folder instead of the source
-    # folder and its subfiles only.
 
     printf "%s\n%s\n%s\n%s\n\n"                                                                    \
         'This rsync command will recursively copy the source folder to the chosen destination.'    \
@@ -1719,9 +1528,6 @@ rsrd() {
     local destination modified_source source 
     clear
 
-    # you must add an extra folder that is a period '/./' between the full path to the source folder and the source folder itself
-    # or rsync will copy the files to the destination directory and it will be the full path of the souce folder instead of the source
-    # folder and its subfiles only.
 
     printf "%s\n%s\n%s\n%s\n\n"                                                                    \
         'This rsync command will recursively copy the source folder to the chosen destination.'    \
@@ -1738,9 +1544,6 @@ rsrd() {
     rsync -aqvR --acls --perms --mkpath --remove-source-files "$modified_source" "$destination"
 }
 
-################
-## SHELLCHECK ##
-################
 
 sc() {
     local f fname input_char line space
@@ -1775,14 +1578,7 @@ sc() {
     done
 }
 
-###############
-## CLIPBOARD ##
-###############
 
-# COPY ANY TEXT. DOES NOT NEED TO BE IN QUOTES
-# EXAMPLE: ct This is so cool
-# OUTPUT WHEN PASTED: This is so cool
-# USAGE: cp <file name here>
 
 ct() {
     local pipe_this
@@ -1803,8 +1599,6 @@ ct() {
     clear
 }
 
-# COPY A FILE'S FULL PATH
-# USAGE: cp <file name here>
 
 cfp() {
     local pipe_this
@@ -1823,8 +1617,6 @@ cfp() {
     clear
 }
 
-# COPY THE CONTENT OF A FILE
-# USAGE: cf <file name here>
 
 cfc() {
     clear
@@ -1841,19 +1633,12 @@ cfc() {
     fi
 }
 
-########################
-## PKG-CONFIG COMMAND ##
-########################
 
-# SHOW THE PATHS PKG-CONFIG COMMAND SEARCHES BY DEFAULT
 pkg-config-path() {
     clear
     pkg-config --variable pc_path pkg-config | tr ':' '\n'
 }
 
-######################################
-## SHOW BINARY RUNPATH IF IT EXISTS ##
-######################################
 
 show_rpath() {
     local find_rpath
@@ -1869,9 +1654,6 @@ show_rpath() {
     sudo chrpath -l "$(type -p $find_rpath)"
 }
 
-######################################
-## DOWNLOAD CLANG INSTALLER SCRIPTS ##
-######################################
 
 dl_clang() {
     clear
@@ -1886,9 +1668,6 @@ dl_clang() {
     ls -1AvhF--color --group-directories-first
 }
 
-#################
-## PYTHON3 PIP ##
-#################
 
 pipup() {
     local pkg
@@ -1899,9 +1678,6 @@ pipup() {
     done
 }
 
-####################
-## REGEX COMMANDS ##
-####################
 
 bvar() {
     local choice fext flag fname
@@ -1915,7 +1691,6 @@ bvar() {
         fname_tmp="$fname"
     fi
 
-    fext="$fname#*."
     if [ -n "$fext" ]; then
         fname+='.txt'
         mv "$fname_tmp" "$fname"
@@ -1947,9 +1722,6 @@ bvar() {
     esac
 }
 
-##########################
-## SQUID PROXY COMMANDS ##
-##########################
 
 sqdc() {
     local choice
@@ -1977,9 +1749,6 @@ sqdc() {
     esac
 }
 
-###########################
-## CHANGE HOSTNAME OF PC ##
-###########################
 
 chostname() {
     local name
@@ -1999,18 +1768,15 @@ chostname() {
 
 rm_curly() {
     local content file transform_string
-    # FUNCTION TO TRANSFORM THE STRING
     transform_string()
     {
         content=$(cat "$1")
         echo "$content//\$\{/\$" | sed 's/\}//g'
     }
 
-    # LOOP OVER EACH ARGUMENT
     for file in "$@"
     do
         if [ -f "$file" ]; then
-            # PERFORM THE TRANSFORMATION AND OVERWRITE THE FILE
             transform_string "$file" > "$file.tmp"
             mv "$file.tmp" "$file"
             echo "Modified file: $file"

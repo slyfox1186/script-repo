@@ -1,32 +1,14 @@
 #!/usr/bin/env bash
 
-##########################################################
-##
-## GitHub: https://github.com/slyfox1186/script-repo
-##
-## Install Packages Lite Version
-##
-## A list of packages which I consider to be some of
-## the most useful when running Ubuntu. Aimed at
-## developers but useful for the casual user as well.
-##
-## If you think there should be modification of the list
-## Please create a support ticket under the Issues tab.
-##
-##########################################################
 
 clear
 
-# Verify the script has root access before continuing
 if [ "$EUID" -ne '0' ]; then
     echo 'You must run this script as root/sudo'
     echo
     exec sudo bash "$0" "${@}"
 fi
 
-######################
-## FUNCTION SECTION ##
-######################
 
 installed() { return $(dpkg-query -W -f '$Status\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
@@ -36,7 +18,6 @@ exit_fn() {
     '====================' \
     'Make sure to star this repository to show your support!' \
     'https://github.com/slyfox1186/script-repo/'
-    # rm "$0"
     exit 0
 }
 
@@ -112,7 +93,6 @@ ppa_fn() {
     fi
 }
 
-# call functions
 ppa_fn
 pkgs_fn
 exit_fn

@@ -1,8 +1,6 @@
 #!/Usr/bin/env bash
 
-# This script builds and installs gnu core utilities from source.
 
-# Function to print messages in color
 print_color() {
     case $1 in
         green) echo -e "\033[0;32m$2\033[0m" ;;
@@ -11,13 +9,11 @@ print_color() {
     esac
 }
 
-# Check for root privileges
 if [[ $EUID -ne 0 ]]; then
     print_color red "This script must be run as root or with sudo."
     exit 1
 fi
 
-# Function to install dependencies
 install_dependencies() {
     print_color green "Installing necessary dependencies..."
     if command -v apt > /dev/null; then
@@ -31,7 +27,6 @@ install_dependencies() {
     fi
 }
 
-# Function to download and extract coreutils
 download_coreutils() {
     print_color green "Downloading GNU Core Utilities..."
     wget --show-progress -cq https://ftp.gnu.org/gnu/coreutils/coreutils-9.4.tar.xz
@@ -39,7 +34,6 @@ download_coreutils() {
     cd coreutils-9.4
 }
 
-# Function to configure, compile, and install coreutils
 build_and_install() {
     print_color green "Running autoreconf..."
     autoreconf -fi
@@ -59,7 +53,6 @@ build_and_install() {
     print_color green "GNU Core Utilities installed successfully."
 }
 
-# Link the installed binaries (optional)
 link_coretils() {
     ln -sf /usr/local/coreutils/bin/* /usr/local/bin/
 }

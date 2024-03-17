@@ -1,17 +1,5 @@
 #!/Usr/bin/env bash
-# Shellcheck disable=sc2162,sc2317
 
-#################################################################################################################################
-##
-##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/github%20projects/build-python2
-##
-##  Purpose: install python2 - version 2.7.18
-##
-##  Updated: 10.26.23
-##
-##  Script version: 1.0
-##
-#################################################################################################################################
 
 clear
 
@@ -20,7 +8,6 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-# Set the script variables
 
 script_ver=1.0
 py_ver=2.7.18
@@ -34,24 +21,20 @@ pc_type=$(gcc -dumpmachine)
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
-# Start the python2 build
 
 printf "%s\n%s\n\n" \
     "Python2 Build Script -- version $script_ver" \
     '==============================================='
 
-# Create the output directory
 
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-# Set the c & cpp compilers
 
 export CC=gcc CXX=g++
 
-# Set the compiler optimization flags
 
 LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu'
 LDFLAGS+=' -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
@@ -59,7 +42,6 @@ CPPFLAGS='-I/usr/local/include -I/usr/include'
 CFLAGS='-g -O3 -pipe -fno-plt -march=native'
 CXXFLAGS='-g -O3 -pipe -fno-plt -march=native'
 
-# Set the path variable
 
 PATH="\
 /usr/lib/ccache:\
@@ -80,7 +62,6 @@ $HOME/.local/bin:\
 "
 export PATH
 
-# Set the pkg_config_path variable
 
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
@@ -97,7 +78,6 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-# Create functions
 
 exit_fn() {
     printf "\n%s\n\n%s\n%s\n\n"                                   \
@@ -173,7 +153,6 @@ pkgs_fn() {
     fi
 }
 
-# Install required apt packages
 
 install_libportal_fn() {
     if ! wget --show-progress -t 2 -cqO 'https://github.com/flatpak/libportal/releases/download/0.7.1/libportal-0.7.1.tar.xz'; then
@@ -205,7 +184,6 @@ debian_os_version() {
     esac
 }
 
-# Test the os and its version
 
 find_lsb_release="$(sudo find /usr -type f -name 'lsb_release')"
 
@@ -233,32 +211,27 @@ case "$OS" in
     *)                  fail_fn "Could not detect the OS architecture. Line: $LINENO";
 esac
 
-# Download the archive file
 
 if [ ! -f "$cwd/$archive_name" ]; then
     curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
-# Create the output directory
 
 if [ -d "$cwd/$archive_dir" ]; then
     sudo rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
-# Extract the archive files
 
 if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
     fail_fn "Failed to extract: $cwd/$archive_name. Line: $LINENO"
     exit 1
 fi
 
-# Store file paths in variables for use with the configure script
 
 libm_lib="$(sudo find /usr/lib/ -type f -name libm.so | head -n1)"
 libc_lib="$(sudo find /usr/lib/ -type f -name libc.so | head -n1)"
 
-# Build the program from source code
 
 cd "$cwd/$archive_dir/build" || exit 1
 ../configure --prefix="$install_dir"          \
@@ -321,11 +294,8 @@ optimize_prompt_fn() {
 }
 optimize_prompt_fn
 
-# Show the new version
 show_ver_fn
 
-# Prompt the user to clean up the build files
 cleanup_fn
 
-# Show the exit message
 exit_fn

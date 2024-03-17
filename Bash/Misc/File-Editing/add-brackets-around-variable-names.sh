@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
 
-# SCRIPT PURPOSE: PUT BRACKETS AROUND VARIABLES: $SOME_NAME >> $SOME_NAME
 
 if [ "$EUID" -eq '0' ]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
 
-# ENTER THE PATH TO THE FILE
 fname=a.txt
 
 sed -e 's/\(\$\)\([A-Za-z0-9\_]*\)/\1{\2}/g' "$fname"

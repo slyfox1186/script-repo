@@ -1,19 +1,5 @@
 #!/Usr/bin/env bash
-# Shellcheck source=/dev/null disable=sc2016,sc2034,sc2046,sc2066,sc2068,sc2086,sc2162,sc2317
 
-########################################################################
-##
-##  Install libhwy
-##
-##  Supported os:
-##               - Debian
-##               - Ubuntu
-##
-##  Updated: 10.14.23
-##
-##  Script version: 1.0
-##
-########################################################################
 
 clear
 
@@ -22,7 +8,6 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-# Set the variables
 
 script_ver=1.0
 install_prefix=/usr/local
@@ -34,11 +19,9 @@ user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 web_repo=https://github.com/slyfox1186/script-repo
 debug=OFF
 
-# Create output directories
 
 mkdir -p "$packages" "$workspace"
 
-# Get cpu core count for parallel processing
 
 if [ -f /proc/cpuinfo ]; then
     cpu_threads="$(grep --count ^processor /proc/cpuinfo)"
@@ -46,11 +29,9 @@ else
     cpu_threads="$(nproc --all)"
 fi
 
-# Set the c & c++ compilers
 
 export CC=gcc CXX=g++
 
-# Set compiler optimization flags
 
 CFLAGS='-g -O3 -pipe -fno-plt -march=native'
 CXXFLAGS="$CFLAGS"
@@ -60,14 +41,12 @@ LDFLAGS+=' -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib 
 MAKEFLAGS="-j$(nproc --all)"
 export CFLAGS CPPFLAGS CXXFLAGS LDFLAGS MAKEFLAGS
 
-# Print banner
 
 printf "%s\n%s\n%s\n" \
     "libhwy build script - v$script_ver" \
     '=========================================' \
     "This script will utilize ($cpu_threads) CPU threads for parallel processing to accelerate the build process."
 
-# Create global variables
 
 PATH="\
 /usr/lib/ccache:\
@@ -110,7 +89,6 @@ $workspace/share/pkgconfig:\
 "
 export PKG_CONFIG_PATH
 
-# Define functions
 
 fail_fn() {
     printf "\n%s\n%s\n%s\n\n" \
@@ -147,7 +125,6 @@ cleanup_fn() {
     esac
 }
 
-# Scrape github website for the latest repo version
 
 git_1_fn() {
     local curl_cmd github_repo github_url
@@ -184,7 +161,6 @@ execute() {
 download() {
     dl_path="$packages"
     dl_url="$1"
-    dl_file="$2:-"${1##*/"}"
 
     if [[ "$dl_file" =~ tar. ]]; then
         output_dir="$dl_file%.*"
@@ -237,7 +213,6 @@ download_git() {
 
     dl_path="$packages"
     dl_url="$1"
-    dl_file="$2:-"${1##*/"}"
     dl_file="$dl_file//\./-"
     target_dir="$dl_path/$dl_file"
 
@@ -307,7 +282,6 @@ else
     fail_fn "Failed to define the \$OS and/or \$VER variables. Line: $LINENO"
 fi
 
-# Install required apt/pacman packages
 
 pkgs_arch_fn() {
     pkgs=(autoconf autoconf-archive autogen automake xorg-util-macros autogen
@@ -336,7 +310,6 @@ pkgs_arch_fn() {
         sudo rm "$rm_pip_lock"
     fi
 
-# Install python pip packages
     pip uninstall -q -y setuptools 2>/dev/null
     sudo pip install -q --no-input setuptools 2>/dev/null
 }
@@ -377,7 +350,6 @@ else
     printf "%s\n" 'The required APT packages are already installed.'
 fi
 
-# Build libraries from source
 
 git_ver_fn 'google/highway' 'R'
 if build 'libhwy' "$g_ver"; then
@@ -398,11 +370,8 @@ if build 'libhwy' "$g_ver"; then
     build_done 'libhwy' "$g_ver"
 fi
 
-# Ldconfig must be run next in order to update file changes or the version commands might not work
 sudo ldconfig 2>/dev/null
 
-# Cleanup leftover files
 cleanup_fn
 
-# Display exit message
 exit_fn

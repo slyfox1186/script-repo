@@ -1,16 +1,11 @@
 #!/Usr/bin/env bash
 
-##  Github script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/installer%20scripts/gnu%20software/build-curl-git
-##  Purpose: build curl with openssl backend
-##  Updated: 03.09.24
-##  Script version: 1.1
 
 if [ "$EUID" -ne 0 ]; then
     echo "You must run this script with root or sudo."
     exit 1
 fi
 
-# Set the variables
 script_ver=1.1
 archive_dir=curl-git
 git_url=https://github.com/curl/curl.git
@@ -126,7 +121,6 @@ install_required_packages() {
         fi
     done
 
-    if [ "${#Missing_packages[@]}" -gt 0 ]; then
         apt update
         apt install "${missing_packages[@]}"
     else
@@ -135,7 +129,6 @@ install_required_packages() {
 }
 install_required_packages
 
-# Install certs from curl's official website
 if [ ! -f "$pem_out" ]; then
     printf "%s\n%s\n\n" \
         'Download the latest security certificate' \
@@ -144,15 +137,12 @@ if [ ! -f "$pem_out" ]; then
     cp -f "$cwd/$pem_file" "$pem_out"
 fi
 
-# Create output directory curl
 if [ -d "$cwd/$archive_dir" ]; then
     rm -fr "$cwd/$archive_dir"
 fi
 
-# Download the archive file curl
 git clone "$git_url" "$cwd/$archive_dir"
 
-# Update the system security certificates before installing curl
 if type -P 'update-ca-certificates' &>/dev/null; then
     update-ca-certificates
 fi
@@ -187,13 +177,10 @@ if ! make install; then
     fail_fn "Failed to execute: make install. Line: $LINENO"
 fi
 
-# Prompt user to clean up files
 cleanup_fn
 
-# Show new version
 curl_ver="$(/usr/local/bin/curl --version | grep -Eo '^curl [0-9\.]+' | grep -Eo '[0-9\.]+')"
 
 printf "\n%s\n" "The updated cURL version is: $curl_ver"
 
-# Show exit message
 exit_fn

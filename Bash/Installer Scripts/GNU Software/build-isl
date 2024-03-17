@@ -1,16 +1,5 @@
 #!/Usr/bin/env bash
 
-###########################################################################################################
-##
-##  Github script: https://github.com/slyfox1186/script-repo/edit/main/bash/installer%20scripts/gnu%20software/build-isl
-##
-##  Purpose: build gnu isl
-##
-##  Updated: 08.03.23
-##
-##  Script version: 1.0
-##
-###########################################################################################################
 
 clear
 
@@ -19,7 +8,6 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-# Set the variables
 
 script_ver=1.1
 archive_dir=isl-git
@@ -33,22 +21,18 @@ printf "%s\n%s\n\n" \
     "isl build script - v$script_ver" \
     '==============================================='
 
-# Create output directory
 
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-# Set the c + cpp compilers
 
 export CC=gcc CXX=g++
 
-# Set compiler optimization flags
 
 export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 
-# Set the path variable
 
 PATH="\
 /usr/lib/ccache:\
@@ -69,7 +53,6 @@ $HOME/.local/bin:\
 "
 export PATH
 
-# Set the pkg_config_path variable
 
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
@@ -86,7 +69,6 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-# Create functions
 
 exit_fn() {
     printf "\n%s\n\n%s\n\n" \
@@ -127,7 +109,6 @@ cleanup_fn() {
     esac
 }
 
-# Install required apt packages
 
 pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache clang cmake
       curl git libclang-dev libtool libtool-bin llvm-dev lzip m4 nasm pkg-config zlib1g-dev yasm)
@@ -149,7 +130,6 @@ if [ -n "$missing_pkgs" ]; then
     clear
 fi
 
-# Download the archive file
 
 if [ -d "$cwd/$archive_dir" ]; then
     sudo rm -fr "$cwd/$archive_dir"
@@ -158,7 +138,6 @@ fi
 git clone "$archive_url" "$cwd/$archive_dir"
 mkdir -p "$cwd/$archive_dir/build"
 
-# Build program from source
 
 clear
 
@@ -174,8 +153,6 @@ if ! sudo make install; then
     exit 1
 fi
 
-# Prompt user to clean up files
 cleanup_fn
 
-# Show exit message
 exit_fn

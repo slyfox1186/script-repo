@@ -1,18 +1,11 @@
 #!/Usr/bin/env bash
 
-##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/gnu%20software/build-binutils
-##  Purpose: build gnu binutils with gold enabled
-##  Updated: 03.08.24
-##  Script version: 1.1
-##  To create softlinks in the /usr/local/bin folder pass the argument -l to the script.
 
-# Color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 NC='\033[0m'
 
-# Default values
 PROGRAM="binutils"
 VERSION="2.39"
 PREFIX="/usr/local/$PROGRAM-$VERSION"
@@ -162,7 +155,6 @@ link_binutils() {
     log "INFO" "Linking $PROGRAM binaries to /usr/local/bin..."
     for file in "$PREFIX/bin/$TARGET-"*; do
         local binary=$(basename "$file")
-        local trimmed_binary=$binary#$Target-
         sudo ln -sf "$file" "/usr/local/bin/$trimmed_binary"
     done
 }

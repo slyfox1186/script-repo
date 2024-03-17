@@ -1,16 +1,12 @@
 #!/usr/bin/env bash
 
-# Define color variables
 GREEN='\e[0;32m'
 CYAN='\e[0;36m'
 MAGENTA='\e[0;35m'
 RED='\033[0;31m'
-NC='\e[0m' # No Color
 
-# Create a temporary directory for storing files
 dir=$(mktemp -d /tmp/mirrors-script-XXXXXX)
 
-# Function to download and execute mirrors script
 execute() {
     local url=$1
     local file=$2
@@ -43,7 +39,6 @@ execute() {
     fi
 }
 
-# Function to display the main menu
 main_menu() {
     local choice
     while true; do
@@ -75,7 +70,6 @@ main_menu() {
     done
 }
 
-# Function to display the ubuntu menu
 ubuntu_menu() {
     local choice
     echo -e "$GREEN1)$NC Ubuntu 23.04 - Lunar Lobster"
@@ -99,7 +93,6 @@ ubuntu_menu() {
     esac
 }
 
-# Function to display the debian menu
 debian_menu() {
     local choice
     echo -e "$GREEN1)$NC Debian 11 (Bullseye)"

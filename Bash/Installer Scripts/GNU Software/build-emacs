@@ -1,16 +1,5 @@
 #!/Usr/bin/env bash
 
-###########################################################################################################
-##
-##  Github script: https://github.com/slyfox1186/script-repo/edit/main/bash/installer%20scripts/gnu%20software/build-emacs
-##
-##  Purpose: build gnu emacs
-##
-##  Updated: 08.01.23
-##
-##  Script version: 1.1
-##
-###########################################################################################################
 
 clear
 
@@ -19,7 +8,6 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-# Set the variables
 
 script_ver=1.1
 archive_dir=emacs-29.1
@@ -35,22 +23,18 @@ printf "%s\n%s\n\n" \
     "emacs build script - v$script_ver" \
     '==============================================='
 
-# Create output directory
 
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-# Set the c + cpp compilers
 
 export CC=gcc CXX=g++
 
-# Set compiler optimization flags
 
 export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 
-# Set the path variable
 
 PATH="\
 /usr/lib/ccache:\
@@ -71,7 +55,6 @@ $HOME/.local/bin:\
 "
 export PATH
 
-# Set the pkg_config_path variable
 
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
@@ -88,7 +71,6 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-# Create functions
 
 exit_fn() {
     printf "\n%s\n\n%s\n\n" \
@@ -129,7 +111,6 @@ cleanup_fn() {
     esac
 }
 
-# Install required apt packages
 
 pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache make
       curl git guile-3.0-dev libdmalloc-dev libdmalloc5 libmpfr-dev libreadline-dev
@@ -150,27 +131,23 @@ if [ -n "$missing_pkgs" ]; then
     clear
 fi
 
-# Download the archive file
 
 if [ ! -f "$cwd/$archive_name" ]; then
     curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
-# Create output directory
 
 if [ -d "$cwd/$archive_dir" ]; then
     sudo rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
-# Extract archive files
 
 if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
     printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
     exit 1
 fi
 
-# Build program from source
 
 cd "$cwd/$archive_dir" || exit 1
 sed -i 's/-DPROFILING=1 -pg/-DPROFILING=0 -pg/g' configure.ac
@@ -183,8 +160,6 @@ if ! sudo make install; then
     exit 1
 fi
 
-# Prompt user to clean up files
 cleanup_fn
 
-# Show exit message
 exit_fn

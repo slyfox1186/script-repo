@@ -1,9 +1,5 @@
 #!/Usr/bin/env bash
 
-##  Github script: https://github.com/slyfox1186/script-repo/edit/main/bash/installer%20scripts/gnu%20software/build-pkg-config
-##  Purpose: build gnu pkg-config
-##  Updated: 03.06.24
-##  Script version: 1.5
 
 if [ "$EUID" -ne 0 ]; then
     echo "You must run this script with root or sudo."
@@ -11,7 +7,6 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Set the variables
 script_ver=1.5
 archive_dir=pkg-config-0.29.2
 archive_url="https://pkgconfig.freedesktop.org/releases/$archive_dir.tar.gz"
@@ -25,20 +20,17 @@ echo "==============================================="
 echo
 sleep 2
 
-# Create output directory
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-# Set the cc/cxx compilers & the compiler optimization flags
 CC=gcc
 CXX=g++
 CFLAGS="-g -O3 -pipe -fno-plt -march=native"
 CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
 export CC CFLAGS CXX CXXFLAGS
 
-# Set the path variable
 PATH="\
 /usr/lib/ccache:\
 $HOME/perl5/bin:\
@@ -55,7 +47,6 @@ $HOME/.local/bin:\
 "
 export PATH
 
-# Set the pkg_config_path variable
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
@@ -67,7 +58,6 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-# Create functions
 exit_fn() {
     echo
     echo "Make sure to star this repository to show your support!"
@@ -106,7 +96,6 @@ cleanup_fn() {
     esac
 }
 
-# Install required apt packages
 pkgs=("$1" autoconf autoconf-archive autogen automake build-essential
       ca-certificates ccache clang curl libaria2-0 libaria2-0-dev libc-ares-dev
       libdmalloc-dev libgcrypt20-dev libgmp-dev libgnutls28-dev libgpg-error-dev
@@ -126,25 +115,21 @@ if [ -n "$missing_pkgs" ]; then
     sudo apt install $missing_pkgs
 fi
 
-# Download the archive file
 if [ ! -f "$cwd/$archive_name" ]; then
     curl -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
-# Create output directory
 if [ -d "$cwd/$archive_dir" ]; then
     sudo rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
-# Extract archive files
 if ! tar -zxf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
     echo "Failed to extract: $cwd/$archive_name"
     echo
     exit 1
 fi
 
-# Build program from source
 cd "$cwd/$archive_dir" || exit 1
 autoconf
 cd build || exit 1
@@ -163,8 +148,6 @@ if ! sudo make install; then
     fail_fn "sudo make install. Line: $LINENO"
 fi
 
-# Prompt user to clean up files
 cleanup_fn
 
-# Show exit message
 exit_fn

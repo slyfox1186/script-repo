@@ -1,16 +1,5 @@
 #!/Usr/bin/env bash
 
-########################################################################################################################################
-##
-##  Github script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/installer%20scripts/gnu%20software/build-util-linux
-##
-##  Purpose: build gnu util-linux
-##
-##  Updated: 08.31.23
-##
-##  Script version: 1.1
-##
-########################################################################################################################################
 
 clear
 
@@ -19,7 +8,6 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-# Set the variables
 
 script_ver=1.1
 archive_dir=util-linux-2.39.2
@@ -35,22 +23,18 @@ printf "%s\n%s\n\n" \
     "util-linux build script - v$script_ver" \
     '==============================================='
 
-# Create output directory
 
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-# Set the c + cpp compilers
 
 export CC=gcc CXX=g++
 
-# Set compiler optimization flags
 
 export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 
-# Set the path variable
 
 PATH="\
 /usr/lib/ccache:\
@@ -71,7 +55,6 @@ $HOME/.local/bin:\
 "
 export PATH
 
-# Set the pkg_config_path variable
 
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
@@ -89,7 +72,6 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-# Create functions
 
 exit_fn() {
     printf "\n%s\n\n%s\n\n" \
@@ -132,7 +114,6 @@ cleanup_fn() {
 
 installed() { return $(dpkg-query -W -f '$Status\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
-# Install required apt packages
 
 pkgs=(asciidoc autoconf autoconf-archive autogen automake binutils bison
       build-essential bzip2 ccache curl libaudit-dev libc6-dev libintl-perl
@@ -161,27 +142,23 @@ else
     echo
 fi
 
-# Download the archive file
 
 if [ ! -f "$cwd/$archive_name" ]; then
     curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
-# Create output directory
 
 if [ -d "$cwd/$archive_dir" ]; then
     sudo rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
-# Extract archive files
 
 if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
     printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
     exit 1
 fi
 
-# Build program from source
 
 extralists=(blkid,fdisk,losetup,mount,nsenter,sfdisk,umount,unshare)
 
@@ -214,13 +191,10 @@ if ! sudo make install; then
     exit 1
 fi
 
-# Fix a bug where a shared lib is not found
 if [ -f /usr/local/lib/libmount.so.1 ]; then
     sudo ln -sf /usr/local/lib/libmount.so.1 /lib/x86_64-linux-gnu/
 fi
 
-# Prompt user to clean up files
 cleanup_fn
 
-# Show exit message
 exit_fn

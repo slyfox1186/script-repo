@@ -1,17 +1,5 @@
 #!/Usr/bin/env bash
-# Shellcheck disable=sc2162
 
-###########################################################################################################################
-##
-##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/gnu%20software/build-gzip
-##
-##  Purpose: build gnu gzip
-##
-##  Updated: 09.10.23
-##
-##  Script version: 1.0
-##
-###########################################################################################################################
 
 clear
 
@@ -20,7 +8,6 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-# Set the variables
 
 script_ver=1.0
 archive_dir=gzip-1.13
@@ -36,22 +23,18 @@ printf "%s\n%s\n\n" \
     "gzip build script - v$script_ver" \
     '==============================================='
 
-# Create output directory
 
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-# Set the c + cpp compilers
 
 export CC=gcc CXX=g++
 
-# Set compiler optimization flags
 
 export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 
-# Set the path variable
 
 PATH="\
 /usr/lib/ccache:\
@@ -72,7 +55,6 @@ $HOME/.local/bin:\
 "
 export PATH
 
-# Set the pkg_config_path variable
 
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
@@ -89,7 +71,6 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-# Create functions
 
 exit_fn() {
     printf "\n%s\n\n%s\n\n" \
@@ -130,7 +111,6 @@ cleanup_fn() {
     esac
 }
 
-# Install required apt packages
 
 
 pkgs=(autoconf autoconf-archive autogen automake binutils bison build-essential bzip2 ccache curl
@@ -152,27 +132,23 @@ if [ -n "$missing_pkgs" ]; then
 	clear
 fi
 
-# Download the archive file
 
 if [ ! -f "$cwd/$archive_name" ]; then
     curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
-# Create output directory
 
 if [ -d "$cwd/$archive_dir" ]; then
     sudo rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
-# Extract archive files
 
 if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
     printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
     exit 1
 fi
 
-# Build program from source
 
 cd "$cwd/$archive_dir" || exit 1
 autoreconf -fi
@@ -186,8 +162,6 @@ if ! sudo make install; then
     fail_fn "Failed to execute: sudo make install:Line $LINENO"
 fi
 
-# Prompt user to clean up files
 cleanup_fn
 
-# Show exit message
 exit_fn

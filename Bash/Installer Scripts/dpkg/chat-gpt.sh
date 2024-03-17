@@ -1,29 +1,22 @@
 #!/Usr/bin/env bash
 
-# Clear the terminal
 clear
 
-# Function to log messages
 log() {
     echo "[LOG] $1"
 }
 
-# Function to log errors
 error() {
     echo "[ERROR] $1" >&2
 }
 
-# Github repository url for chatgpt releases
 REPO_URL="https://github.com/lencx/ChatGPT/releases"
 
-# Function to fetch and install the latest debian release
 fetch_and_install_release() {
     log "Fetching the latest release information from $REPO_URL..."
 
-# Use curl to fetch the releases page
     local page_content=$(curl -sSL $REPO_URL)
 
-# Parse the page content to find the debian download link
     local latest_deb_link=$(echo "$page_content" | grep -oP '/lencx/ChatGPT/releases/download/v[0-9.]+/ChatGPT_[0-9.]+_linux_x86_64\.deb' | head -1)
 
     if [[ -z $latest_deb_link ]]; then
@@ -31,7 +24,6 @@ fetch_and_install_release() {
         return 1
     fi
 
-# Construct the complete download link
     local download_link="https://github.com$latest_deb_link"
     local version=$(echo $latest_deb_link | grep -oP 'ChatGPT_\K[0-9.]+(?=_linux_x86_64\.deb)')
 
@@ -69,7 +61,6 @@ fetch_and_install_release() {
     fi
 }
 
-# Function to uninstall the chatgpt debian package
 uninstall_chatgpt() {
     local file_name=$(ls ChatGPT_*.deb 2> /dev/null | head -1)
     if [[ -z $file_name ]]; then
@@ -94,7 +85,6 @@ uninstall_chatgpt() {
     fi
 }
 
-# Main function
 main() {
     echo "Choose an option:"
     echo "1. Install latest ChatGPT release"
@@ -108,5 +98,4 @@ main() {
     esac
 }
 
-# Execute the main function
 main

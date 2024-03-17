@@ -1,9 +1,5 @@
 #!/Usr/bin/env bash
 
-##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/gnu%20software/build-m4
-##  Purpose: build gnu m4
-##  Updated: 02.20.24
-##  Script version: 1.2
 
 clear
 
@@ -12,7 +8,6 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Set the variables
 
 script_ver=1.2
 archive_dir=m4-latest
@@ -27,20 +22,17 @@ printf "%s\n%s\n\n" \
     "m4 build script - v$script_ver" \
     "==============================================="
 
-# Create output directory
 if [ -d "$cwd" ]; then
     rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-# Set the c + cpp compilers and the compiler optimization flags
 CC=gcc
 CXX=g++
 CFLAGS="-g -O3 -pipe -fno-plt -march=native"
 CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
 export CC CFLAGS CXX CXXFLAGS
 
-# Set the path variable
 PATH="\
 /usr/lib/ccache:\
 $HOME/perl5/bin:\
@@ -60,7 +52,6 @@ $HOME/.local/bin:\
 "
 export PATH
 
-# Set the pkg_config_path variable
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
@@ -76,7 +67,6 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-# Create functions
 exit_fn() {
     printf "\n%s\n\n%s\n\n" \
         "Make sure to star this repository to show your support!" \
@@ -113,7 +103,6 @@ cleanup_fn() {
     esac
 }
 
-# Install required apt packages
 pkgs=(
     "autoconf" "autoconf-archive" "autogen" "automake" "binutils" "bison"
     "build-essential" "bzip2" "ccache" "curl" "libc6-dev" "libpth-dev"
@@ -135,24 +124,20 @@ if [ -n "$missing_pkgs" ]; then
     apt -y autoremove
 fi
 
-# Download the archive file
 if [ ! -f "$cwd/$archive_name" ]; then
     curl -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
-# Create output directory
 if [ -d "$cwd/$archive_dir" ]; then
     rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
-# Extract archive files
 if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
     printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
     exit 1
 fi
 
-# Build program from source
 cd "$cwd/$archive_dir/build" || exit 1
 ../configure --prefix="$install_dir" \
              --disable-nls \
@@ -166,8 +151,6 @@ if ! make install; then
     exit 1
 fi
 
-# Prompt user to clean up files
 cleanup_fn
 
-# Show exit message
 exit_fn

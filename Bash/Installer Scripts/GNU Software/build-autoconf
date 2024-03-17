@@ -1,6 +1,4 @@
 #!/Usr/bin/env bash
-# Build gnu autoconf - v1.1 - 03.08.24
-# Github: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/gnu%20software/build-autoconf
 
 set -euo pipefail
 trap 'fail_fn "Error occurred on line $LINENO"' ERR
@@ -23,7 +21,6 @@ usage() {
 }
 
 parse_args() {
-    while [[ $# -Gt 0 ]]; do
         case "$1" in
             -p|--prefix)
                 install_prefix="$2"

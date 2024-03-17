@@ -1,15 +1,5 @@
 #!/Usr/bin/env bash
 
-###########################################################################################################
-##
-##  Github script:
-##
-##  Purpose: build ffmpeg
-##  Updated: 08.14.23
-##
-##  Script version: 1.0
-##
-###########################################################################################################
 
 clear
 
@@ -18,7 +8,6 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-# Set variables
 
 script_ver=1.0
 archive_dir=ffmpeg-5.1.3
@@ -76,22 +65,18 @@ printf "\n%s\n%s\n\n" \
     "FFmpeg build script - v$script_ver" \
     '==============================================='
 
-# Create the output directories
 
 mkdir -p "$cwd" "$workspace"
 
-# Set the available cpu thread and core count for parallel processing (speeds up the build process)
 
 if [ -f /proc/cpuinfo ]; then
     cpu_threads="$(grep -c ^processor /proc/cpuinfo)"
 else
     cpu_threads="$(nproc --all)"
 fi
-# Set the c+cpp compilers
 
 export CC=gcc CXX=g++
 
-# Create functions
 
 exit_fn() {
     printf "\n%s\n\n%s\n\n" \
@@ -172,7 +157,6 @@ ff_ver_fn() {
     sleep 3
 }
 
-# Create functions
 
 exit_fn() {
     printf "\n%s\n\n%s\n\n" \
@@ -213,7 +197,6 @@ cleanup_fn() {
     esac
 }
 
-# Install required apt packages
 
 pkgs='ant apt asciidoc autoconf autoconf-archive automake autopoint binutils bison build-essential cargo ccache checkinstall clang cmake curl doxygen fcitx-libs-dev flex flite1-dev freeglut3-dev frei0r-plugins-dev gawk gettext git gnome-desktop-testing gnustep-gui-runtime google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk libasound2-dev libass-dev libaudio-dev libavfilter-dev libbluray-dev libbs2b-dev libbz2-dev libc6 libc6-dev libcaca-dev libcairo2-dev libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libchromaprint-dev libcrypto++-dev libcurl4-openssl-dev libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev libfdk-aac-dev libffi-dev libgbm-dev libgdbm-dev libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev libgnutls28-dev libgnutls30 libgoogle-perftools4 libgoogle-perftools-dev libgvc6 libibus-1.0-dev libiconv-hook-dev libintl-perl libjack-dev libjemalloc-dev libladspa-ocaml-dev libleptonica-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev libmatroska-dev libmodplug-dev libmp3lame-dev libmusicbrainz5-dev libmysofa-dev libncurses5-dev libncursesw5-dev libnuma1 libnuma-dev libopencore-amrnb-dev libopencore-amrwb-dev libopencv-dev libopenjp2-7-dev libopenmpt-dev libopus-dev libperl-dev libpstoedit-dev libpulse-dev libraqm-dev libraw-dev librsvg2-dev librubberband-dev libshine-dev libsmbclient-dev libsnappy-dev libsndio-dev libsoxr-dev libspeex-dev libsqlite3-dev libssl-dev libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libtalloc-dev libtheora-dev libtool libtool-bin libtwolame-dev libudev-dev libv4l-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev libvpx-dev libx11-dev libx264-dev libx265-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzstd-dev libzzip-dev lshw lzma-dev m4 meson nasm ninja-build openjdk-17-jdk-headless pandoc python3 python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip wget xmlto zlib1g-dev'
 
@@ -221,7 +204,6 @@ sudo apt -y install $pkgs
 sudo apt -y autoremove
 clear
 
-# Install nv-codec-headers to enable hardware acceleration
 
 curl -A "$user_agent" -Lso "$cwd"/nv-headers.tar.gz https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.0.16.0/nv-codec-headers-12.0.16.0.tar.gz
 mkdir -p "$cwd"/nv-headers
@@ -237,7 +219,6 @@ else
     fail_fn 'Failed to install the nv-codec-headers.'
 fi
 
-# Download the archive file
 
 archive_name="$archive_dir.tar.$archive_ext"
 
@@ -245,21 +226,18 @@ if [ ! -f "$cwd/$archive_name" ]; then
     curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
-# Create output directory
 
 if [ -d "$cwd/$archive_dir" ]; then
     sudo rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
-# Extract archive files
 
 if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
     printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
     exit 1
 fi
 
-# Build program from source
 
 cd "$cwd/$archive_dir/build" || exit 1
 ../configure                                                                       \
@@ -295,14 +273,10 @@ if [ -f /usr/lib/x86_64-linux-gnu/pulseaudio/libpulsecommon-16.1.so ]; then
     fi
 fi
 
-# Show the new ffmpeg version
 ff_ver_fn
 
-# Move the files to /usr/local/bin
 ff_move_fn
 
-# Prompt user to clean up files
 cleanup_fn
 
-# Show exit message
 exit_fn

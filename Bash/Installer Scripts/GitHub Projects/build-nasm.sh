@@ -1,19 +1,11 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2162,SC2317
 
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-nasm.sh
-##  Purpose: Build NASM
-##  Updated: 10.13.23
-##  Script version: 1.0
 
 if [ "$EUID" -eq 0 ]; then
     printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
     exit 1
 fi
 
-#
-# SET GLOBAL VARIABLES
-#
 
 script_ver=1.0
 progname="$0"
@@ -21,32 +13,19 @@ cwd="$PWD"/nasm-build-script
 install_prefix=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
-debug=OFF # CHANGE THIS VARIABLE TO "ON" FOR HELP WITH TROUBLESHOOTING UNEXPECTED ISSUES DURING THE BUILD
 
-#
-# CREATE OUTPUT DIRECTORIES
-#
 
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-#
-# FIGURE OUT WHICH COMPILERS TO USE
-#
 
 export CC=gcc CXX=g++
 
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
 
 export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
 
-#
-# SET THE AVAILABLE CPU COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
-#
 
 if [ -f /proc/cpuinfo ]; then
     cpu_threads="$(grep --count ^processor /proc/cpuinfo)"
@@ -87,9 +66,6 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-#
-# CREATE FUNCTIONS
-#
 
 exit_fn() {
     printf "\n%s\n\n%s\n%s\n\n"                                    \
@@ -165,7 +141,6 @@ build_done() { echo "$2" > "$cwd/$1.done"; }
 download() {
     dl_path="$cwd"
     dl_url="$1"
-    dl_file="${2:-"${1##*/}"}"
 
     if [[ "$dl_file" =~ tar. ]]; then
         output_dir="${dl_file%.*}"
@@ -223,7 +198,6 @@ git_1_fn() {
     if curl_cmd="$(curl -m 10 -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[1].name' 2>/dev/null)"
         g_url="$(echo "$curl_cmd" | jq -r '.[1].tarball_url' 2>/dev/null)"
-        g_ver="${g_ver#llvmorg-}"
     fi
 }
 
@@ -241,9 +215,6 @@ git_ver_fn() {
     git_1_fn "$v_url" "$t_flag" 2>/dev/null
 }
 
-#
-# PRINT THE OPTIONS AVAILABLE WHEN MANUALLY RUNNING THE SCRIPT
-#
 
 pkgs=(autoconf autoconf-archive automake autopoint binutils binutils-dev bison
       build-essential ccache clang cmake curl jq libc6 libc6-dev libedit-dev
@@ -265,9 +236,6 @@ else
     printf "%s\n" 'The APT packages are already installed'
 fi
 
-#
-# BEGIN BUILDING CLANG
-#
 
 box_out_banner() {
     input_char=$(echo "$@" | wc -c)
@@ -293,8 +261,6 @@ if build 'nasm' '2.16.01'; then
     execute sudo make install
 fi
 
-# PROMPT THE USER TO CLEAN UP THE BUILD FILES
 cleanup_fn
 
-# SHOW EXIT MESSAGE
 exit_fn

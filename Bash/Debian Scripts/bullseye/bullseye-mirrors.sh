@@ -4,7 +4,6 @@ clear
 
 list=/etc/apt/sources.list
 
-# make a backup of the file
 if [ ! -f "$list".bak ]; then
     sudo cp -f "$list" "$list".bak
 fi
@@ -16,7 +15,6 @@ deb http://atl.mirrors.clouvider.net/debian/ bullseye-updates main contrib non-f
 deb http://atl.mirrors.clouvider.net/debian/ bullseye-backports main contrib non-free
 EOF
 
-# OPEN AN EDITOR TO VIEW THE CHANGES
 if which gedit &>/dev/null; then
     sudo gedit "$list"
 elif which nano &>/dev/null; then

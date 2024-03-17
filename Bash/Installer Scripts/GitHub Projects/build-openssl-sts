@@ -1,19 +1,5 @@
 #!/Usr/bin/env bash
-# Shellcheck source=/dev/null disable=sc1003,sc2068,sc2086,sc2162
 
-####################################################################################
-##
-##  Purpose:
-##          - Install openssl (short term support) from the source code.
-##
-##  Script:
-##          - Updated: 11.28.23
-##          - Version: 1.3
-##
-##  Openssl:
-##          - Version: 1.1.1w
-##
-####################################################################################
 
 clear
 
@@ -22,7 +8,6 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-# Set variables
 
 script_ver=1.3
 archive_dir=openssl-1.1.1w
@@ -40,7 +25,6 @@ printf "%s\n%s\n\n"                              \
     "OpenSSL Lite Build Script - v$script_ver" \
     '==============================================='
 
-# Test the os and its version
 
 find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
 
@@ -54,14 +38,12 @@ else
     fail_fn "Failed to define the \$OS and/or \$VER variables. Line: $LINENO"
 fi
 
-# Create output directory
 
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-# Set the cc/cxx compilers & the compiler optimization flags
 
 CC=gcc
 CXX=g++
@@ -72,7 +54,6 @@ LDFLAGS="-Wl,-rpath=/usr/local/lib -Wl,--enable-new-dtags -ldl -L/usr/local/lib6
 LDFLAGS+=' -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
-# Set the path variable
 
 PATH="\
 /usr/lib/ccache:\
@@ -93,7 +74,6 @@ $HOME/.local/bin:\
 "
 export PATH
 
-# Set the pkg_config_path variable
 
 PKG_CONFIG_PATH="\
 /usr/share/pkgconfig:\
@@ -112,7 +92,6 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-# Create functions
 
 exit_fn() {
     printf "\n%s\n\n%s\n\n"                                         \
@@ -203,7 +182,6 @@ apt_pkgs_fn() {
     fi
 }
 
-# Install the required package manager packages
 
 case "$OS" in
     Arch)   pacman_pkgs_fn;;
@@ -211,26 +189,22 @@ case "$OS" in
 esac
 clear
 
-# Download the archive file
 
 if [ ! -f "$cwd/$archive_name" ]; then
     wget -U "$user_agent" -cqO "$cwd/$archive_name" "$archive_url"
 fi
 
-# Create output directory
 
 if [ -d "$cwd/$archive_dir" ]; then
     sudo rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
-# Extract archive files
 
 if ! tar -zxf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
     fail_fn "Failed to extract: $cwd/$archive_name"
 fi
 
-# Build program from source
 
 cd "$cwd/$archive_dir" || exit 1
 cd build || exit 1
@@ -254,7 +228,6 @@ cd build || exit 1
           no-ssl2                                   \
           no-tests
  
-# Modify the makefile using sed to activate the rpath feature of openssl
 
 sed -i 's/linux-x86_64/linux-x86_64-rpath/g' 'Makefile'
 
@@ -268,33 +241,27 @@ if ! sudo make install_sw; then
     fail_fn "Failed to execute: sudo make install_sw. Line: $LINENO"
 fi
 
-# If ubuntu is the current os then you must create a soft link for openssl to function
 case "$OS" in
     Ubuntu)     sudo ln -sf '/usr/lib64/libcrypto.so.3' "/lib/$install_dir/";;
 esac
 
-# Install ca certs from curl's official website
 
 printf "\n%s\n%s\n\n"                             \
    'Install the latest cURL security certificate' \
    '==================================================='
 
-# Create certs directory if missing
 if [ ! -d "$cert_dir" ]; then
     sudo mkdir -p "$cert_dir"
 fi
 
-# Download the latest cacert.pem file from the official curl website
 if ! curl -A "$user_agent" -Lso "$cwd"/cacert.pem 'https://curl.se/ca/cacert.pem'; then
     fail_fn "Failed to download the latest \"cacert.pem\" file. Line: $LINENO"
 fi
 
-# Move the pem file to the newly created certs directory
 if ! sudo mv "$cwd"/cacert.pem "$cert_dir"/cacert.pem; then
     fail_fn "Failed to move file: $cwd/cacert.pem >> $cert_dir/cacert.pem. Line: $LINENO"
 fi
 
-# Copy the pem file as a crt file in the special ca-certificates folder so the command will find and use it when it is executed
 if [[ "$OS" == 'Arch' ]]; then
     if ! sudo pacman -Qk | grep -o 'ca-certificates-utils' &>/dev/null; then
         sudo pacman -Sq --needed --noconfirm ca-certificates-utils
@@ -328,14 +295,12 @@ else
     sudo update-ca-certificates
 fi
 
-# Run ldconfig to update the linker library search path to include the openssl lib64 directory
 if ! curl -A "$user_agent" -Lso "$cwd/ld-linker-search-paths.sh" 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/ld-linker-search-paths.sh'; then
     printf "\n%s\n\n" "Failed to download: $cwd/ld-linker-search-paths.sh. Line: $LINENO"
     exit 1
 fi
 sudo bash "$cwd/ld-linker-search-paths.sh"
 
-# Add the new openssl bin to the user's ~/.bashrc file if not already present
 if ! grep -o '/usr/local/ssl/bin' "$HOME"/.bashrc &>/dev/null; then
     if grep -o '/usr/local/sbin:\\' "$HOME"/.bashrc &>/dev/null; then
         sed -i '\/usr\/local\/sbin:\\/i \/usr\/local\/ssl\/bin:\\' "$HOME"/.bashrc
@@ -344,11 +309,8 @@ if ! grep -o '/usr/local/ssl/bin' "$HOME"/.bashrc &>/dev/null; then
     fi
 fi
 
-# Prompt user to clean up files
 cleanup_fn
 
-# Display the update openssl stats
 display_stats_fn
 
-# Show exit message
 exit_fn

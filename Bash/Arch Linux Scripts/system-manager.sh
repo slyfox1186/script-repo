@@ -1,14 +1,11 @@
 #!/usr/bin/env bash
 
-# Color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 PURPLE='\033[0;35m'
-NC='\033[0m' # No Color
 
 fix_grub_errors() {
-    # Check if /boot/grub directory exists, if not, create it
     if [ ! -d "/boot/grub" ]; then
         box_out_banner "Creating /boot/grub directory"
         if sudo mkdir -p /boot/grub; then
@@ -17,10 +14,8 @@ fix_grub_errors() {
         fi
     fi
 
-    # Generate GRUB configuration
     sudo grub-mkconfig -o /boot/grub/grub.cfg
 
-    # Check if configuration generation was successful
     if [ $? -eq 0 ]; then
         echo "GRUB configuration has been successfully generated."
     else
@@ -29,7 +24,6 @@ fix_grub_errors() {
 }
 
 
-# Function definitions for each task
 update_system() {
     echo -e "$GREENUpdating system packages...$NC"
     if sudo pacman -Syu --noconfirm; then
@@ -245,7 +239,6 @@ enable_essential_services() {
     fi
 }
 
-# Interactive selection
 prompt_user_selection() {
     echo -e "Select the operations you want to perform.\\n\\nEnter their numbers separated by commas, or specify a range using a dash.\\nFor example: 1,3,5-7\\n\\nGrouped by purpose:\\n"
 
@@ -280,7 +273,6 @@ prompt_user_selection() {
     read -p "Your selection: " user_input
     echo
 
-    # Parsing user input
     IFS=',' read -ra ADDR <<< "$user_input"
     for i in "${ADDR[@]}"; do
         if [[ $i == *-* ]]; then

@@ -10,16 +10,10 @@ fi
 sudo apt -y install netplan.io
 clear
 
-#
-# SET SCRIPT VARIABLES
-#
 
 repo=https://github.com/slyfox1186/script-repo
 yfile=/etc/netplan/01-netcfg.yaml
 
-#
-# CREATE FUNCTIONS
-#
 
 exit_fn() {
     clear
@@ -39,7 +33,6 @@ fail_fn() {
 }
 
 apply_settings_fn() {
-    # EXECUTE NETPLAN AND APPLY THE SETTINGS
     if ! sudo netplan apply; then
         fail_fn 'The script failed to apply the settings.'
     fi
@@ -47,8 +40,6 @@ apply_settings_fn() {
 
 create_dhcp_yaml_fn() {
     sudo cat > "$yfile" <<EOF
-# This file describes the network interfaces available on your system
-# For more information, see netplan(5).
 network:
   version: 2
   renderer: networkd
@@ -57,21 +48,12 @@ network:
       dhcp4: yes
 EOF
 
-    # RASPBIAN BULLSEYE HAS A BUG WHERE TWO IP ADDRESSES WILL BE SHOWN WHEN RUNNING COMMAND 'ip a'
-    # THIS CHANGES THE DHCP CONFIG FILE AND SEEMS TO FIX THE ISSUE AFTER A REBOOT
-    sudo sed -Ei "s/^interface/#interface/g" /etc/dhcpcd.conf
-    sudo sed -Ei "s/^static ip_address=/#static ip_address=/g" /etc/dhcpcd.conf
-    sudo sed -Ei "s/^static routers=/#static routers=/g" /etc/dhcpcd.conf
-    sudo sed -Ei "s/^static domain_name_servers=/#static domain_name_servers=/g" /etc/dhcpcd.conf
 }
 
 create_static_yaml_fn() {
     local ip_address_sed
 
-# CREATE NETPLAN STATIC IP file
     sudo cat > "$yfile" <<EOF
-# This file describes the network interfaces available on your system
-# For more information, see netplan(5).
 network:
   version: 2
   renderer: networkd
@@ -84,14 +66,8 @@ network:
           addresses: [$dns_master]
 EOF
 
-    # RASPBIAN BULLSEYE HAS A BUG WHERE TWO IP ADDRESSES WILL BE SHOWN WHEN RUNNING COMMAND 'ip a'
-    # THIS CHANGES THE DHCP CONFIG FILE AND SEEMS TO FIX THE ISSUE AFTER A REBOOT
     ip_address_sed="$(echo "$ip_address" | sed 's/\//\\\//g')"
     dns_master_sed="$(echo "$dns_master" | sed 's/,//g')"
-    sudo sed -i "0,/^#interface $con_id/s//interface $con_id/" /etc/dhcpcd.conf
-    sudo sed -Ei "0,/^#static ip_address=(.*)$/s//static ip_address=$ip_address_sed/" /etc/dhcpcd.conf
-    sudo sed -Ei "0,/^#static routers=(.*)$/s//static routers=$gateway/" /etc/dhcpcd.conf
-    sudo sed -Ei "0,/^#static domain_name_servers=(.*)$/s//static domain_name_servers=$dns_master_sed/" /etc/dhcpcd.conf
 }
 
 sort_method_fn() {
@@ -109,7 +85,6 @@ set_dhcp_fn() {
 }
 
 set_static_fn() {
-    # PROMPT THE USER TO INPUT THE IP SETTINGS
     printf "%s\n\n" 'Please enter the desired IP settings.'
     read -p 'Connection Name (example: eth0): ' con_id
     read -p 'IPv4 Address (example: xxx.xxx.xxx.xxx/xx): ' ip_address
@@ -128,7 +103,6 @@ set_static_fn() {
     fi
 }
 
-# PROMPT THE USER TO CHOOSE STATIC OR DHCP
 printf "\n%s\n\n%s\n%s\n%s\n\n" \
     'Choose a configuration' \
     '[1] DHCP' \
@@ -150,7 +124,6 @@ case "$choice" in
 esac
 unset choice
 
-# ECHO THE CHOSEN OPTIONS
 cat <<EOF
 Connection: $con_id
 IP Address: $ip_address
@@ -161,7 +134,6 @@ DNS 3: $dns3
 Method: $dhcp_answer
 EOF
 
-# PROMPT USER TO CONTINUE
 printf "\n%s\n\n%s\n%s\n\n" \
     'Do you want to execute the script with the above configuration?' \
     '[1] Yes' \
@@ -178,5 +150,4 @@ case "$choice" in
     *)      fail_fn 'Bad user input.';;
 esac
 
-# SHOW EXIT MESSAGE
 exit_fn

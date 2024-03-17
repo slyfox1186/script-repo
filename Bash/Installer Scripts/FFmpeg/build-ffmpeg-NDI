@@ -1,105 +1,9 @@
 #!/Usr/bin/env bash
-# Shellcheck disable=sc1091,sc2000,sc2034,sc2046,sc2066,sc2068,sc2086,sc2162,sc2317
 
-#############################################################################################################
-##
-##  Github: https://github.com/slyfox1186/script-repo
-##
-##  Script version
-##
-##    - 3.1.3
-##
-##  Updated on
-##
-##    - 11.08.23
-##
-##  Purpose:
-##
-##    - Build ffmpeg from source code with addon development libraries also compiled from
-##      Source to help ensure the latest functionality
-##
-##  Supported distro:
-##
-##    - Arch linux
-##    - Debian (11|12)
-##    - Ubuntu (20|22|23).04
-##
-##  Supported architecture:
-##
-##    - X86_64
-##
-##  Arch linux notes
-##
-##    - Required pacman packages for archlinux
-##    - Updated the source code libraries to compile successfully using a partial mix of aur (arch user repository)
-##    - Removed the aur install of libbluray as it was not needed and can be done with the github repository
-##
-##  Geforce cuda sdk toolkit notes
-##
-##    - Updated to version 12.3.0
-##    - Reverted the nv-codec-headers to version n12.0.16.1 due to a 20% decrease in fps using x265 with nvenc cuda
-##    - If the cuda libraries are not installed (for geforce graphics cards only) the user will be prompted
-##      By the script to install them so that hardware acceleration is enabled during the build
-##
-##  Updated
-##
-##    - Abseil library
-##    - Aom/av1 library
-##    - Libvpx library
-##    - Rav1e library to version p20231024 (10.21.23)
-##    - X265 library
-##
-##  Added
-##
-##    - Set the x265 libs to be built with clang because it gives better fps output than when built with gcc
-##    - Cunit support library for libmysofa
-##    - Cyanrip software
-##    - Cyanrip libcurl support library for
-##    - Debian 11 (bullseye) support
-##    - Debian 12 (bookworm) support
-##    - Opencl and libpulse support libraries
-##    - Ubuntu 23.04 (lunar) support
-##    - Vapoursynth library support
-##    - Windows wsl2 support
-##    - Ndi sdk for linux support
-##    - Vulkan support
-##
-##  Removed
-##
-##    - Python3 build code that became useless
-##    - Removed support for debian 10 (buster)
-##    - Removed support for ubuntu 18.04 (bionic)
-##
-##  Fixed
-##
-##    - Gpac was missing a required .so file from libjpeg-turbo
-##    - The nvidia-smi command not being installed for debian os versions
-##    - Gpac build issue due to the sdl2 library not being found in the workspace folder
-##    - Libheif not building the specified plugins
-##    - The code that prompts the user to install the cuda sdk toolkit
-##    - A broken download url for the wsl version of the cuda sdk toolkit
-##    - Apt package errors for debian 11 bullseye
-##
-#############################################################################################################
 
-# Define global variables
 
 script_name="$0"
 script_ver=3.1.3
-# Ffmpeg_ver=e531abaf3c41953618573bef9a2568f7644626b6
-# Ffmpeg_sver="$ffmpeg_ver::7"
-# Ffmpeg_archive=ffmpeg-"$ffmpeg_sver".tar.gz
-# Ffmpeg_url=https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/"$ffmpeg_ver".tar.gz
-###############################################################################
-# Snapshot
-# Ffmpeg_ver=963937e408fc68b5925f938a253cfff1d506f784
-# Ffmpeg_sver="$ffmpeg_ver::7"
-# Ffmpeg_archive=ffmpeg-"$ffmpeg_sver".tar.gz
-# Ffmpeg_url=https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/"$ffmpeg_ver".tar.gz
-# Stable
-# Ffmpeg_sver=5.1.3
-# Ffmpeg_archive=https://www.ffmpeg.org/releases/ffmpeg-"$ffmpeg_sver".tar.gz
-###############################################################################
 cuda_latest_ver=12.3.0
 cuda_url="https://developer.download.nvidia.com/compute/cuda/$cuda_latest_ver"
 cuda_pin_url='https://developer.download.nvidia.com/compute/cuda/repos'
@@ -114,9 +18,7 @@ latest=false
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 curl_timeout=10
-debug=OFF # Change the debug variable to "on" for help troubleshooting issues
 
-# Set the available cpu thread and core count for parallel processing (speeds up the build process)
 
 if [ -f '/proc/cpuinfo' ]; then
     cpu_threads="$(grep --count ^processor '/proc/cpuinfo')"
@@ -125,7 +27,6 @@ else
 fi
 export MAKEFLAGS="-j$(nproc --all)"
 
-# Print script banner
 
 clear
 box_out_banner1() {
@@ -144,11 +45,9 @@ box_out_banner1() {
 box_out_banner1 "FFmpeg Build Script - v$script_ver"
 printf "\n%s\n\n" "The script will utilize ($cpu_threads) CPU threads for parallel processing to accelerate the build speed."
 
-# Set the c & c++ compilers to the highest version installed
 
 export CC=gcc CXX=g++
 
-# Set compiler optimization flags
 
 source_flags_fn() {
     EXTRALIBS="-ldl -lpthread -lm -lz -L/usr/lib/x86_64-linux-gnu -lcurl -lvulkan -L$workspace/lib -llcms2 -llcms2_threaded"
@@ -164,11 +63,9 @@ source_flags_fn() {
 }
 source_flags_fn
 
-# Create the output directories
 
 mkdir -p "$packages"/nvidia-cuda "$workspace"/logs
 
-# Define functions
 
 exit_fn() {
     printf "\n%s\n%s\n\n"                                         \
@@ -218,7 +115,6 @@ ff_ver_fn() {
 download() {
     dl_path="$packages"
     dl_url="$1"
-    dl_file="$2:-"${1##*/"}"
 
     if [[ "$dl_file" =~ tar. ]]; then
         output_dir="$dl_file%.*"
@@ -271,7 +167,6 @@ download_git() {
 
     dl_path="$packages"
     dl_url="$1"
-    dl_file="$2:-"${1##*/"}"
     dl_file="$dl_file//\./-"
     target_dir="$dl_path/$dl_file"
 
@@ -299,7 +194,6 @@ download_git() {
     cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: $LINENO"
 }
 
-# Create txt files to store version numbers to avoid unnecessary api calls
 ver_file_tmp="$workspace"/latest-versions-tmp.txt
 ver_file="$workspace"/latest-versions.txt
 
@@ -309,12 +203,10 @@ if [ ! -f "$ver_file_tmp" ] || [ ! -f "$ver_file" ]; then
     touch "$ver_file_tmp" "$ver_file" 2>/dev/null
 fi
 
-# Pull the latest versions of each package from the website api
 
 git_1_fn() {
     local curl_cmd github_repo github_url git_token
 
-# Scrape github website for the latest repo version
     github_repo="$1"
     github_url="$2"
 
@@ -322,21 +214,7 @@ git_1_fn() {
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_ver1="$(echo "$curl_cmd" | jq -r '.[1].name' 2>/dev/null)"
         g_ver2="$(echo "$curl_cmd" | jq -r '.[0].tag_name' 2>/dev/null)"
-        g_ver="$g_ver#Cares-"
-        g_ver="$g_ver#Faac "
-        g_ver="$g_ver#Lcms"
-        g_ver="$g_ver#Openjpeg "
-        g_ver="$g_ver#Openssl "
-        g_ver="$g_ver#Pcre"
-        g_ver="$g_ver#Pkgconf-"
-        g_ver="$g_ver#Release-"
-        g_ver="$g_ver#Rust "
         g_ver="$g_ver//-snapshot/"
-        g_ver="$g_ver#Ver-"
-        g_ver="$g_ver#V"
-        g_ver1="$g_ver1#Nasm-"
-        g_ver1="$g_ver1#V"
-        g_ver2="$g_ver2#V"
     fi
 
     echo "$github_repo%/*-$g_ver" >> "$ver_file_tmp"
@@ -351,7 +229,6 @@ git_2_fn() {
         g_sver="$(echo "$curl_cmd" | jq -r '.[0].commit.short_id')"
         g_sver="$g_sver::7"
         g_ver1="$(echo "$curl_cmd" | jq -r '.[0].name')"
-        g_ver1="$g_ver1#V"
     fi
 }
 
@@ -360,11 +237,8 @@ git_3_fn() {
     url="$2"
     if curl_cmd="$(curl -A "$user_agent" -m "$curl_timeout" -sSL "https://gitlab.com/api/v4/projects/$repo/repository/$url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
-        g_ver="$g_ver#V"
         g_ver1="$(echo "$curl_cmd" | jq -r '.[0].commit.id')"
-        g_ver1="$g_ver1#V"
         g_sver1="$(echo "$curl_cmd" | jq -r '.[0].commit.short_id')"
-        g_ver="$g_ver#Vtm-"
     fi
 }
 
@@ -372,9 +246,6 @@ git_4_fn() {
     repo="$1"
     if curl_cmd="$(curl -A "$user_agent" -m "$curl_timeout" -sSL "https://gitlab.freedesktop.org/api/v4/projects/$repo/repository/tags")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
-        g_ver="$g_ver#Pkg-config-"
-        g_ver="$g_ver#Ver-"
-        g_ver="$g_ver#V"
     fi
 }
 
@@ -382,7 +253,6 @@ git_5_fn() {
     repo="$1"
     if curl_cmd="$(curl -A "$user_agent" -m "$curl_timeout" -sSL "https://gitlab.gnome.org/api/v4/projects/$repo/repository/tags")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
-        g_ver="$g_ver#V"
     fi
 }
 
@@ -390,7 +260,6 @@ git_6_fn() {
     repo="$1"
     if curl_cmd="$(curl -A "$user_agent" -m "$curl_timeout" -sSL "https://salsa.debian.org/api/v4/projects/$repo/repository/tags")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name')"
-        g_ver="$g_ver#V"
     fi
 }
 
@@ -428,7 +297,6 @@ check_version() {
     latest_txt="$ver_file"
 
     awk '!NF || !seen[$0]++' "$latest_txt_tmp" > "$latest_txt"
-    check_ver="$(grep -Eo "$github_repo#*/-[0-9\.]+$" "$latest_txt" | sort | head -n1)"
 
     if [ -n "$check_ver" ]; then
         g_nocheck=0
@@ -445,10 +313,7 @@ pre_check_ver() {
     check_version "$github_repo"
     if [ "$g_nocheck" -eq '1' ]; then
         git_ver_fn "$github_repo" "$git_ver" "$git_url_type"
-        g_ver="$g_ver##-*"
-        g_ver2="$g_ver2##-*"
     else
-        g_ver="$check_ver#*-"
     fi
 }
 
@@ -565,7 +430,6 @@ gpu_arch_fn() {
     fi
 }
 
-# Print the options available when manually running the script
 usage() {
     printf "%s\n\n" "Usage: $script_name [OPTIONS]"
     echo 'Options:'
@@ -577,7 +441,6 @@ usage() {
     echo
 }
 
-while (($# > 0))
 do
     case "$1" in
         -h | --help)
@@ -626,7 +489,6 @@ if [ -n "$LDEXEFLAGS" ]; then
     printf "%s\n\n" 'The script has been configured to run in full static mode.'
 fi
 
-# Set the path variable
 
 cuda_bin_path="$(sudo find /usr/local/ -type d -name 'cuda' | head -n1)"
 cuda_bin_path="$(sudo find /opt/ -type d -name 'cuda' | head -n1)"
@@ -668,7 +530,6 @@ $HOME/.local/bin:\
 export PATH
 }
 
-# Set the pkg_config_path variable
 
 PKG_CONFIG_PATH="\
 $workspace/usr/lib/pkgconfig:\
@@ -770,13 +631,11 @@ cuda_download_fn() {
             ;;
     esac
 
-# Update the apt packages then install the cuda-sdk-toolkit
     sudo apt update
     sudo apt install cuda-toolkit-12-3
     clear
 }
 
-# Required geforce cuda development packages
 
 install_cuda_fn() {
     local choice
@@ -841,7 +700,6 @@ install_cuda_fn() {
     fi
 }
 
-# Required build packages
 
 pkgs_fn() {
     local pkg pkgs missing_pkgs
@@ -968,13 +826,11 @@ install_libjxl_fn() {
 
     cd "$packages"/deb-files || exit 1
 
-# Install the main debian file first before installing the others
     printf "%s\n" '$ sudo dpkg -i libjxl_0.8.2_amd64.deb'
     if sudo dpkg -i 'libjxl_0.8.2_amd64.deb' &>/dev/null; then
         sudo rm 'libjxl_0.8.2_amd64.deb' &>/dev/null
     fi
 
-# Install the remaining debian files
     for i in *.deb
     do
         printf "%s\n" "\$ sudo dpkg -i $i"
@@ -1028,19 +884,16 @@ dl_libjxl_fn() {
             fail_fn "Could not extract the libjxl archive $packages/$libjxl_name.tar.gz. Line: $LINENO"
         fi
 
-# Install the downloaded libjxl debian packages
         install_libjxl_fn "$libjxl_name"
     fi
 }
 
-# Patch functions
 
 patch_ffmpeg_fn() {
     execute curl -A "$user_agent" -Lso 'mathops.patch' 'https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/patches/mathops.patch'
     execute patch -d 'libavcodec/x86' -i '../../mathops.patch'
 }
 
-# Archlinux function section
 
 ffmpeg_ndi_fn() {
     cd "$packages" || exit 1
@@ -1080,7 +933,6 @@ arch_os_ver_fn() {
                libnghttp2 libwebp libyuv meson nasm ninja numactl opencv pd perl-datetime sudo texlive-basic
                texlive-binextra tk valgrind webp-pixbuf-loader xterm yasm)
 
-# Remove any locks on pacman
     if [ -f '/var/lib/pacman/db.lck' ]; then
         sudo rm '/var/lib/pacman/db.lck'
     fi
@@ -1090,7 +942,6 @@ arch_os_ver_fn() {
         sudo pacman -Sq --needed --noconfirm $i 2>&1
     done
 
-# Install required pip modules
     sudo pip install DateTime Sphinx wheel
     clear
 }
@@ -1133,7 +984,6 @@ ubuntu_os_ver_fn() {
     esac
 }
 
-# Test the os and its version
 
 find_lsb_release="$(sudo find /usr/bin/ -type f -name 'lsb_release')"
 
@@ -1154,7 +1004,6 @@ fi
 nvidia_utils_var="$(sudo apt list nvidia-utils-* 2>&1 | grep -Eo '^nvidia-utils-5[34]+5' | sort -r | head -n1)"
 nvidia_encode_var="$(sudo apt list libnvidia-encode* 2>&1 | grep -Eo 'libnvidia-encode[1-]+[0-9]*$' | sort -r | head -n1)"
 
-# Check if running windows wsl2
 
 if [ "$(grep -i 'microsoft' '/proc/version')" ]; then
     wsl_switch='yes_wsl'
@@ -1164,7 +1013,6 @@ if [ "$wsl_switch" = 'yes_wsl' ]; then
     OS=WSL2
 fi
 
-# Install required apt packages
 
 case "$OS" in
     'Arch')             arch_os_ver_fn;;
@@ -1178,7 +1026,6 @@ case "$OS" in
                         ;;
 esac
 
-# Set java variables
 
 path_fn
 find_java="$(sudo find /usr/lib/jvm/ -type d -name 'java-*-openjdk*' | rev | sort | rev | head -n1)"
@@ -1195,7 +1042,6 @@ ant_path_fn() {
     fi
 }
 
-# Check if the cuda folder exists to determine installation status
 
 case "$OS" in
     'Arch')
@@ -1208,11 +1054,9 @@ case "$OS" in
             ;;
 esac
 
-# Prompt the user to install the geforce cuda sdk-toolkit
 
 install_cuda_fn
 
-# Install the global tools
 
 clear
 box_out_banner_global() {
@@ -1356,13 +1200,11 @@ fi
 
 if build 'giflib' '5.2.1'; then
     download 'https://cfhcable.dl.sourceforge.net/project/giflib/giflib-5.2.1.tar.gz'
-# Parellel building not available for this library
     execute make
     execute make PREFIX="$workspace" install
     build_done 'giflib' '5.2.1'
 fi
 
-# Ubuntu bionic fails to build xml2
 if [ "$VER" != '18.04' ]; then
     git_ver_fn '1665' '5' 'T'
     if build 'xml2' "$g_ver"; then
@@ -1381,7 +1223,6 @@ if [ "$VER" != '18.04' ]; then
     ffmpeg_libraries+=('--enable-libxml2')
 fi
 
-# Manually update this from time to time ($g_ver returns = 1.7.0beta88)
 if build 'libpng' '1.6.40'; then
     download 'https://github.com/glennrp/libpng/archive/refs/tags/v1.6.40.tar.gz' 'libpng-1.6.40.tar.gz'
     execute autoupdate
@@ -1463,7 +1304,6 @@ if build 'fontconfig' "$g_ver"; then
 fi
 ffmpeg_libraries+=('--enable-libfontconfig')
 
-# Ubuntu bionic fails to build xml2
 if [ "$VER" != '18.04' ]; then
     pre_check_ver 'harfbuzz/harfbuzz' '1' 'R'
     if build 'harfbuzz' "$g_ver"; then
@@ -1658,7 +1498,6 @@ else
         build_done 'libjxl' '0.8.2'
     fi
 fi
-# Libjxl has a bug in the decoder bit decoding and must be disabled on arch linux
 if [[ "$OS" == 'Arch' ]]; then
     ffmpeg_libraries+=('--disable-libjxl')
 else
@@ -1926,7 +1765,6 @@ if build 'cunit' 'git'; then
     build_done 'cunit' 'git'
 fi
 
-# Install audio tools
 
 echo
 box_out_banner_audio() {
@@ -2151,7 +1989,6 @@ if build 'libtheora' "$g_ver1"; then
 fi
 ffmpeg_libraries+=('--enable-libtheora')
 
-# Install video tools
 
 echo
 box_out_banner_video() {
@@ -2194,9 +2031,7 @@ if build 'decklink' '12.8'; then
 fi
 ffmpeg_libraries+=('--enable-decklink')
 
-# Need to update this repo from time to time manually
 aom_ver=6054fae218eda6e53e1e3b4f7ef0fff4877c7bf1
-# Aom_ver=4783bb8b4ca42e15078225e3f58d246e13a93c28
 aom_sver="$aom_ver::7"
 if build 'av1' "$aom_sver"; then
     download "https://aomedia.googlesource.com/aom/+archive/$aom_ver.tar.gz" "av1-$aom_sver.tar.gz" 'av1'
@@ -2238,7 +2073,6 @@ if build 'dav1d' "$g_ver1"; then
 fi
 ffmpeg_libraries+=('--enable-libdav1d')
 
-# Rav1e fails to build on ubuntu bionic and debian 11 bullseye
 if [ "$VER" != '18.04' ] && [ "$VER" != '11' ]; then
     pre_check_ver 'xiph/rav1e' '1' 'T'
     if build 'rav1e' 'p20231024'; then
@@ -2452,7 +2286,6 @@ else
     fi
 fi
 
-# Versions >= 1.4.0 breaks ffmpeg during the build
 git_ver_fn '24327400' '3' 'T'
 if build 'svt-av1' '1.4.0'; then
     download 'https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v1.4.0/SVT-AV1-v1.4.0.tar.bz2' 'svt-av1-1.4.0.tar.bz2'
@@ -2493,9 +2326,7 @@ if build 'x264' "$g_sver"; then
 fi
 ffmpeg_libraries+=('--enable-libx264')
 
-# X265 gives better fps when built with clang
 export CC=clang CXX=clang++
-# Enter a snapshot id for x265
 g_ver=8ee01d45b05cdbc9da89b884815257807a514bc8
 g_sver="$g_ver::7"
 if build 'x265' "$g_sver"; then
@@ -2560,19 +2391,15 @@ EOF
         sed -i.backup 's/lgcc_s/lgcc_eh/g' '/usr/local/lib/pkgconfig/x265.pc'
     fi
 
-# Fix x265 shared lib issues
     x265_fix_libs_fn
 
     build_done 'x265' "$g_sver"
 fi
 ffmpeg_libraries+=('--enable-libx265')
 
-# Change the compilers back to gcc for the rest of the build
 export CC=gcc CXX=g++
 
-# Vaapi doesn't work well with static links ffmpeg.
 if [ -z "$LDEXEFLAGS" ]; then
-# If the libva development sdk is installed, enable vaapi.
     if library_exists 'libva'; then
         if build 'vaapi' '1'; then
             build_done 'vaapi' '1'
@@ -2604,8 +2431,6 @@ if [ -n "$iscuda" ]; then
         fi
     fi
 
-# Get the gpu architecture
-# Https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
     gpu_arch_fn
 
     ffmpeg_libraries+=('--enable-'{cuda-nvcc,cuda-llvm,cuvid,nvdec,nvenc,ffnvcodec})
@@ -2713,7 +2538,6 @@ if build 'xvidcore' "$g_ver"; then
 fi
 ffmpeg_libraries+=('--enable-libxvid')
 
-# Image libraries
 
 echo
 box_out_banner_images() {
@@ -2796,7 +2620,6 @@ if build 'openjpeg' "$g_ver2"; then
 fi
 ffmpeg_libraries+=('--enable-libopenjpeg')
 
-# Build ffmpeg
 
 echo
 box_out_banner_ffmpeg() {
@@ -2905,21 +2728,16 @@ if build 'ffmpeg' 'git'; then
     execute sudo make install
 fi
 
-# Make sure all of the files were compiled correctly
 ffmpeg_install_test
 
-# Execute the ldconfig command to ensure that all library changes are detected by ffmpeg
 sudo ldconfig 2>/dev/null
 
-# Display ffmpeg's version
 if [ -f /usr/local/bin/ffmpeg ]; then
     ff_ver_fn
 else
     fail_fn "Failed to find the binary file: $workspace/bin/ffmpeg. Line: $LINENO"
 fi
 
-# Prompt the user to clean up the build files
 cleanup_fn
 
-# Show exit message
 exit_fn

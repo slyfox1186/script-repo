@@ -56,7 +56,6 @@ do
     fi
 done
 
-if [ "${#Missing_pkgs[@]}" -ne 0 ]; then
     sudo apt install "${missing_pkgs[@]}"
     sudo apt -y autoremove
     clear
@@ -109,14 +108,10 @@ scripts=(
 for script in "${scripts[@]}"
 do
     wget --show-progress -cq "https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-$script"
-    mv "build-$script" "$(printf "%02d" "${#Scripts[@]}")-build-$script"
 done
 
-# Ask the user if they want to install all of the scripts
 install_choice_fn
 
-# Cleanup the files
 cleanup_fn
 
-# Show the exit message
 exit_fn

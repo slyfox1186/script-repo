@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2154,SC2162
 
 clear
 
@@ -8,16 +7,10 @@ if [ "$EUID" -ne '0' ]; then
     exit 1
 fi
 
-#
-# CREATE GLOBAL SCRIPT VARIABLES
-#
 
 fname='/etc/network/interfaces'
 cnt=0
 
-#
-# DISPLAY THE USER ASSUMPTION OF LIABILITY PROMPT
-#
 
 printf "%s\n\n" 'Disclaimer:'
 
@@ -45,9 +38,6 @@ if [ ! -f "$fname".bak ]; then
 fi
 
 show_changes_fn() {
-    #
-    # PRINT THE CONTENTS OF THE UPDATED INTERFACE FILE
-    #
 
     clear
     printf "%s\n\n%s\n\n"                                     \
@@ -55,9 +45,6 @@ show_changes_fn() {
         '=================================================================================='
     cat "$fname"
 
-    #
-    # PRINT INSTRUCTIONS AND OTHER INFO TO THE USER
-    #
 
     printf "\n%s\n\n%s\n\n%s\n\n%s\n%s\n\n"                                                                      \
         '=================================================================================='                     \
@@ -70,11 +57,8 @@ show_changes_fn() {
 
     case "$enable_choice" in
         1)
-                # BRING DOWN THE USER-CHOSEN NETWORK INTERFACE
                 sudo ifdown "$interface"
-                # CLEAR ANY CACHES THAT WOULD INTERFERE WITH THE IFUP COMMAND COMPLETING SUCCESSFULLY
                 sudo ip addr flush dev "$interface" 2>&1
-                # BRING UP THE NETWORK
                 sudo ifup "$interface"
                 ;;
         2)      exit 0;;
@@ -87,16 +71,12 @@ activate_static_fn() {
     fi
 
     cat > "$fname" <<EOF
-# This file describes the network interfaces available on your system
-# and how to activate them. For more information, see interfaces(5).
 
 source /etc/network/interfaces.d/*
 
-# The loopback network interface
 auto lo
 iface lo inet loopback
 
-# The primary network interface
 auto $interface
 iface $interface inet static
     address $address
@@ -109,16 +89,12 @@ EOF
 
 activate_dhcp_fn() {
     cat > "$fname" <<EOF
-# This file describes the network interfaces available on your system
-# and how to activate them. For more information, see interfaces(5).
 
 source /etc/network/interfaces.d/*
 
-# The loopback network interface
 auto lo
 iface lo inet loopback
 
-# The primary network interface
 auto $interface
 iface $interface inet dhcp
 EOF
@@ -149,9 +125,6 @@ choose_type_fn() {
 }
 choose_type_fn
 
-#
-# PROMPT THE USER TO INPUT THE NETWORK SETTINGS
-#
 
 clear
 read -p 'Enter Network Interface: (eth0): '  interface

@@ -1,4 +1,3 @@
-# EXPORT WINDOWS PATHS
 PATH="\
 $PATH:\
 /c/Windows/System32:\
@@ -10,21 +9,17 @@ $PATH:\
 "
 export PATH
 
-# EXPORT ANSI COLORS
 RED="\033[0;31m"
 GREEN="\033[0;32m"
 YELLOW="\033[0;33m"
 BLUE="\033[0;34m"
-NC="\033[0m" # No Color
 export BLUE GREEN NC RED YELLOW
 
-## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 gedit() { "$(type -P gedit)" "$@" &>/dev/null; }
 geds() { sudo -Hu root "$(type -P gedit)" "$@" &>/dev/null; }
 gnome-text-editor() { "$(type -P gnome-text-editor)" "$@" &>/dev/null; }
 gnome-text-editors() { sudo -Hu root "$(type -P gnome-text-editor)" "$@" &>/dev/null; }
 
-## GET THE OS AND ARCH OF THE ACTIVE COMPUTER ##
 this_pc() {
     . /etc/os-release
     local OS="$NAME"
@@ -36,24 +31,19 @@ this_pc() {
         "Specific Version: $VER"
 }
 
-## FIND COMMANDS ##
 ffind() {
     local fname="$1"
     local ftype="$2"
     local fpath="$3"
     local find_cmd
 
-    # Check if any argument is passed
-    if [[ "$#" -eq 0 ]]; then
         read -p "Enter the name to search for: " fname
         read -p "Enter a type of FILE (d|f|blank for any): " ftype
         read -p "Enter the starting path (blank for current directory): " fpath
     fi
 
-    # Default to the current directory if fpath is empty
     fpath=$fpath:-.
 
-    # Construct the find command based on the input
     find_cmd="find \"$fpath\" -iname \"$fname\""
     if [[ -n "$ftype" ]]; then
         if [[ "$ftype" == "d" || "$ftype" == "f" ]]; then
@@ -64,16 +54,13 @@ ffind() {
         fi
     fi
 
-    # Execute the command
     eval "$find_cmd"
 }
 
-## UNCOMPRESS FILES ##
 untar() {
     local archive
 
     for archive in *.*; do
-        local ext="$archive##*."
 
         [[ ! -d "$PWD"/"$archive%%.*" ]] && mkdir -p "$PWD/$archive%%.*"
 
@@ -89,7 +76,6 @@ untar() {
     done
 }
 
-## CREATE FILES ##
 mf() {
     local file
 
@@ -120,27 +106,21 @@ mdir() {
     clear; ls -1AhFv --color --group-directories-first
 }
 
-## AWK COMMANDS ##
 
-# Removed all duplicate lines: outputs to terminal
 rmd() {
     awk '!seen[[$0]]++' "$1"
 }
 
-# Remove consecutive duplicate lines: outputs to terminal
 rmdc() {
     awk 'f!=$0&&f=$0' "$1"
 }
 
-# Remove all duplicate lines and removes trailing spaces before comparing: replaces the file
 rmdf() {
     perl -i -lne "s/\s*$//; print if ! $x{$_}++" "$1"
     gnome-text-editor "$1"
 }
 
-## FILE COMMANDS ##
 
-# Copy file
 cpf() {
     [[ ! -d "$HOME/tmp" ]] && mkdir -p "$HOME/tmp"
     cp "$1" "$HOME/tmp/$1"
@@ -149,7 +129,6 @@ cpf() {
     clear; ls -1AhFv --color --group-directories-first
 }
 
-# MOVE file
 mvf() {
     [[ ! -d "$HOME/tmp" ]] && mkdir -p "$HOME/tmp"
     mv "$1" "$HOME/tmp/$1"
@@ -158,16 +137,13 @@ mvf() {
     clear; ls -1AhFv --color --group-directories-first
 }
 
-## APT COMMANDS ##
 
-# Download an APT package + all its dependencies in one go
 
 dl_apt() {
     wget -cq "$(apt --print-uris -qq --reinstall install $1 2>/dev/null | cut -d""\""" -f2)"
     clear; ls -1AhFv --color --group-directories-first
 }
 
-# Clean OS
 clean() {
     sudo apt -y autoremove
     sudo apt clean
@@ -175,13 +151,11 @@ clean() {
     sudo apt -y purge
 }
 
-# Update OS
 update() {
     sudo apt update
     sudo apt -y full-upgrade
 }
 
-# Fix broken APT packages
 fix() {
     [[ -f /tmp/apt.lock ]] && sudo rm /tmp/apt.lock
     sudo dpkg --configure -a
@@ -215,7 +189,6 @@ listd() {
     fi
 }
 
-# Use sudo APT to search for all apt packages by passing a name to the function
 apts() {
     local input
     if [[ -n "$1" ]]; then
@@ -227,7 +200,6 @@ apts() {
     fi
 }
 
-# Use APT cache to search for all apt packages by passing a name to the function
 csearch() {
     local cache
 
@@ -240,7 +212,6 @@ csearch() {
     fi
 }
 
-# Fix missing gpnu keys used to update packages
 fix_key() {
     local FILE url
     clear
@@ -254,16 +225,13 @@ fix_key() {
         url="$2"
     fi
 
-    curl -fsS# "$url" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/$file"
 
-    if curl -fsS# "$url" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/$file"; then
         echo "The key was successfully added!"
     else
         echo "The key FAILED to add!"
     fi
 }
 
-# TAKE OWNERSHIP COMMAND #
 
 toa() {
     clear
@@ -289,32 +257,25 @@ tod() {
 }
 
 tome() {
-    # Check if a filename is provided as an argument
-    if [[ $# -ne 1 ]]; then
         echo "Usage: change_ownership_and_permissions <file>"
         return 1
     fi
 
-    # Check if the FILE exists
     if [[ ! -f "$1" ]]; then
         echo "Error: File "$1" does not exist."
         return 1
     fi
 
-    # Change ownership of the FILE to the current user
     user=$(whoami)
     sudo chown "$user" "$1"
 
-    # Verify if the ownership has been changed successfully
     if [[ $? -ne 0 ]]; then
         echo "Error: Failed to change ownership of "$1"."
         return 1
     fi
 
-    # Change permissions to chmod 777
     sudo chmod 777 "$1"
 
-    # Verify if the permissions have been changed successfully
     if [[ $? -eq 0 ]]; then
         echo "Ownership and permissions of "$1" have been changed to $user and chmod 777."
     else
@@ -323,23 +284,18 @@ tome() {
     fi
 }
 
-# DPKG COMMANDS #
 
-## Show all installed packages
 showpkgs() {
     dpkg --get-selections | grep -v deinstall > "$HOME"/tmp/packages.list
     gnome-text-editor "$HOME"/tmp/packages.list
 }
 
-# Pipe all development packages names to file
 getdev() {
     apt-cache search dev | grep '\-dev' | cut -d " " -f1 | sort > dev-packages.list
     gnome-text-editor dev-packages.list
 }
 
-## SSH-KEYGEN ##
 
-# Create a new private and public SSH key pair
 new_key() {
     local bits comment name pass type
     clear
@@ -401,7 +357,6 @@ new_key() {
     echo
 }
 
-# Export the public SSH key stored inside a private SSH key
 keytopub() {
     local opub okey
     clear
@@ -426,16 +381,12 @@ keytopub() {
     unset "$opub"
 }
 
-# Install ColorDiff package
 cdiff() { clear; colordiff "$1" "$2"; }
 
-# gzip
 gzip() { clear; gzip -d "$@"; }
 
-# get system time
 gettime() { clear; date +%r | cut -d " " -f1-2 | grep -E "^.*$"; }
 
-## SOURCE FILES ##
 sbrc() {
     . "$HOME/.bashrc" && printf "%s\n\\n" "The command was a success!" || printf "%s\n\\n" "The command failed!"
     echo; ls -1AhFv --color --group-directories-first
@@ -446,9 +397,7 @@ spro() {
     echo; ls -1AhFv --color --group-directories-first
 }
 
-## ARIA2 COMMANDS ##
 
-# Aria2 daemon in the background
 aria2_on() {
     if aria2c --conf-path="$HOME/.aria2/aria2.conf"; then
         echo
@@ -459,7 +408,6 @@ aria2_on() {
     fi
 }
 
-# Stop aria2 daemon
 aria2_off() { clear; killall aria2c; }
 
 myip() {
@@ -467,7 +415,6 @@ myip() {
     echo "WAN: $(curl -fsS "https://checkip.amazonaws.com")"
 }
 
-# WGET command
 mywget() {
     local outfile url
     if [[ -z "$1" ]] || [[ -z "$2" ]]; then
@@ -480,9 +427,7 @@ mywget() {
     fi
 }
 
-# RM COMMANDS ##
 
-# Remove directory
 rmd() {
     local dir
 
@@ -494,7 +439,6 @@ rmd() {
     fi
 }
 
-# Remove file
 rmf() {
     local file
 
@@ -506,7 +450,6 @@ rmf() {
     fi
 }
 
-## IMAGEMAGICK ##
 function imow() {
     local file_path="/usr/local/bin/imow.sh"
     if [[ ! -f "$file_path" ]]; then
@@ -525,7 +468,6 @@ function imow() {
     fi
 }
 
-# Downsample image to 50% of the original dimensions using sharper settings
 im50() {
     local pic
 
@@ -534,7 +476,6 @@ im50() {
     done
 }
 
-## Show NVME temperature ##
 nvme_temp() {
     if [[ -d "/dev/nvme0n1" ]]; then
         local n0=$(sudo nvme smart-log /dev/nvme0n1)
@@ -552,13 +493,11 @@ nvme_temp() {
     echo "nvme2n1: $n2"
 }
 
-## Refresh thumbnail cache
 rftn() {
     sudo rm -fr "$HOME/.cache/thumbnails/"*
     sudo file "$HOME/.cache/thumbnails"
 }
 
-## FFMPEG COMMANDS ##
 
 cuda_purge() {
     local choice
@@ -611,7 +550,6 @@ dlfs() {
     clear; ls -1AhFv --color --group-directories-first
 }
 
-## List large files by type
 large_files() {
     local choice
     clear
@@ -632,7 +570,6 @@ large_files() {
     fi
 }
 
-## MediaInfo
 mi() {
     local file
 
@@ -647,16 +584,13 @@ mi() {
     fi
 }
 
-## LIST PPA REPOS
 list_ppa() {
     local entry
 
     for apt in $(find /etc/apt/ -type f -name \*.list); do
-        grep -Po "(?<=^deb\s).*?(?=#|$)" "$apt" | while read entry; do
             local host=$(echo "$entry" | cut -d/ -f3)
             local user=$(echo "$entry" | cut -d/ -f4)
             local ppa=$(echo "$entry" | cut -d/ -f5)
-            #echo sudo apt-add-repository ppa:$USER/$ppa
             if [[ "ppa.launchpad.net" = "$host" ]]; then
                 echo sudo apt-add-repository ppa:"$USER/$ppa"
             else
@@ -666,7 +600,6 @@ list_ppa() {
     done
 }
 
-# Create a tar.gz file with max compression settings
 7z_gz() {
     local source output
     if [[ -n "$1" ]]; then
@@ -685,7 +618,6 @@ list_ppa() {
     fi
 }
 
-# Create a tar.xz file with max compression settings using 7zip
 7z_xz() {
     local source output
     if [[ -n "$1" ]]; then
@@ -704,7 +636,6 @@ list_ppa() {
     fi
 }
 
-# Create a .7z file with max compression settings
 
 7z_1() {
     local choice
@@ -786,7 +717,6 @@ list_ppa() {
     esac
 }
 
-## tar commands ##
 
 tar_gz() {
     local source output
@@ -874,7 +804,6 @@ tar_xz_9() {
     fi
 }
 
-## FFMPEG COMMANDS ##
 ffr() {
     sudo bash "$1" --build --enable-gpl-and-non-free --latest
 }
@@ -883,7 +812,6 @@ ffrv() {
     sudo bash -v "$1" --build --enable-gpl-and-non-free --latest
 }
 
-## Write caching ##
 wcache() {
     local choice
 
@@ -921,12 +849,10 @@ rmf() {
     echo; ls -1AvhF --color --group-directories-first
 }
 
-## LIST INSTALLED PACKAGES BY ORDER OF IMPORTANCE
 list_pkgs() {
     dpkg-query -Wf '$Package;-40$Priority\n' | sort -b -k2,2 -k1,1
 }
 
-## FIX USER FOLDER PERMISSIONS up = user permissions
 fix_up() {
     sudo find "$HOME/.gnupg" -type f -exec chmod 600 {} \;
     sudo find "$HOME/.gnupg" -type d -exec chmod 700 {} \;
@@ -935,7 +861,6 @@ fix_up() {
     sudo find "$HOME/.ssh/id_rsa" -type f -exec chmod 600 {} \;
 }
 
-## Count files in the directory
 count_dir() {
     local keep_count
     keep_count=$(find . -maxdepth 1 -type f | wc -l)
@@ -949,14 +874,11 @@ count_dirr() {
     printf "%s %d\n\\n" "The total directory file count is (recursive):" "$keep_count"
 }
 
-## TEST GCC & CLANG ##
 test_gcc() {
     local choice
     local random_dir=$(mktemp -d)
 
-    # CREATE A TEMPORARY C FILE TO RUN OUR TESTS AGAINST
     cat > "$random_dir/hello.c" <<'EOF'
-#include <stdio.h>
 int main(void)
 {
    printf("Hello World!\\n");
@@ -978,9 +900,7 @@ test_clang() {
     local choice
     local random_dir=$(mktemp -d)
 
-    # CREATE A TEMPORARY C FILE TO RUN OUR TESTS AGAINST
     cat > "$random_dir/hello.c" <<'EOF'
-#include <stdio.h>
 int main(void)
 {
    printf("Hello World!\\n");
@@ -1007,18 +927,14 @@ gcc_native() {
     gcc --version
 
     echo "Inspecting GCC verbose output for -pipe -fno-plt -march=native..."
-    # Create a temporary empty file
     local temp_source=$(mktemp /tmp/dummy_source.XXXXXX.c)
     trap 'rm -f "$temp_source"' EXIT
 
-    # Using echo to create an empty file
     echo "" > "$temp_source"
 
-    # Using GCC with -v to get verbose information, including the default march
     gcc -pipe -fno-plt -march=native -v -E "$temp_source" 2>&1 | grep -- '-march='
 }
 
-## UNINSTALL DEBIAN FILES ##
 rm_deb() {
     local fname
 
@@ -1031,7 +947,6 @@ rm_deb() {
     fi
 }
 
-## KILLALL COMMANDS ##
 tkapt() {
     local program
     local list=(apt apt-get aptitude dpkg)
@@ -1061,7 +976,6 @@ kill_process() {
 
     echo -e "Checking for running instances of: '$program'\\n"
 
-    # Find all PIDs for the given process
     local pids=$(pgrep -f "$program")
 
     if [[ -z "$pids" ]]; then
@@ -1083,7 +997,6 @@ kill_process() {
     echo -e "\\nAll instances of '$program' were attempted to be killed."
 }
 
-## nohup commands
 nh() {
     nohup "$1" &>/dev/null &
     echo; ls -1AvhF --color --group-directories-first
@@ -1106,7 +1019,6 @@ nhse() {
     exit
 }
 
-## NAUTILUS COMMANDS
 nopen() {
     nohup nautilus -w "$1" &>/dev/null &
     exit
@@ -1120,7 +1032,6 @@ tkan() {
     exit
 }
 
-## UPDATE ICON CACHE ##
 update_icons() {
     pkg pkgs
     pkgs=(gtk-update-icon-cache hicolor-icon-theme)
@@ -1134,19 +1045,14 @@ update_icons() {
     sudo gtk-update-icon-cache -f /usr/share/icons/hicolor
 }
 
-## aria2c
 adl() {
-    # Check if two arguments are provided
-    if [[ "$#" -eq 2 ]]; then
        local file="$1"
        local url="$2"
     else
-        # If not two arguments, prompt for input
         read -p "Enter the filename and extension: " file
         read -p "Enter the URL: " url
     fi
 
-    # Check for an existing file with the same name and prompt to overwrite
     if [[ -f "$file" ]]; then
         read -p "File $file exists. Overwrite? (y/n): " -n 1 -r
         echo
@@ -1158,7 +1064,6 @@ adl() {
         fi
     fi
 
-    # Use aria2c to download the file with the given filename
     if aria2c --console-log-level=notice \
                -x32 \
                -j16 \
@@ -1182,7 +1087,6 @@ adl() {
     echo; ls -1AvhF --color --group-directories-first
 }
 
-## GET FILE SIZES ##
 big_files() {
     if [[ -n "$1" ]]; then
         local count="$1"
@@ -1225,7 +1129,6 @@ jpgsize() {
     nohup gnome-text-editor "$random_dir/img-sizes.txt" &>/dev/null &
 }
 
-## SED COMMANDS ##
 fsed() {
     echo "This command is for sed to act only on files"
     echo
@@ -1242,7 +1145,6 @@ fsed() {
      sudo sed -i "s/$otext/$rtext/g" $(find . -maxdepth 1 -type f)
 }
 
-## CMAKE commands
 c_cmake() {
     local dir
     if ! sudo dpkg -l | grep -o cmake-curses-gui; then
@@ -1260,9 +1162,6 @@ c_cmake() {
     ccmake $dir
 }
 
-##########################
-## SORT IMAGES BY WIDTH ##
-##########################
 
 jpgs() {
     sudo find . -type f -iname "*.jpg" -exec identify -format " $PWD/%f: %wx%h " {} > /tmp/img-sizes.txt \;
@@ -1270,9 +1169,6 @@ jpgs() {
     sudo rm /tmp/img-sizes.txt
 }
 
-######################################
-## DOWNLOAD IMPORTANT BUILD SCRIPTS ##
-######################################
 
 gitdl() {
     clear
@@ -1286,7 +1182,6 @@ gitdl() {
     ls -1AvhF --color --group-directories-first
 }
 
-# COUNT ITEMS IN THE CURRENT FOLDER W/O SUBDIRECTORIES INCLUDED
 countf() {
     local folder_count
     clear
@@ -1294,32 +1189,22 @@ countf() {
     printf "%s\\n" "There are $folder_count files in this folder"
 }
 
-## RECURSIVELY UNZIP ZIP FILES AND NAME THE OUTPUT FOLDER THE SAME NAME AS THE ZIP FILE
 zipr() {
     clear
     sudo find . -type f -iname "*.zip" -exec sh -c "unzip -o -d "$0%.*" "$0"" "{}" \;
     sudo find . -type f -iname "*.zip" -exec trash-put "{}" \;
 }
 
-###################################
-## FFPROBE LIST IMAGE DIMENSIONS ##
-###################################
 
 ffp() {
     [[ -f 00-pic-sizes.txt ]] && sudo rm 00-pic-sizes.txt
     sudo find "$PWD" -type f -iname "*.jpg" -exec bash -c "identify -format '%wx%h' {}; echo {}" > 00-pic-sizes.txt \;
 }
 
-####################
-## RSYNC COMMANDS ##
-####################
 
 rsr() {
     local destination source
 
-    # you must add an extra folder that is a period "/./" between the full path to the source folder and the source folder itself
-    # or rsync will copy the files to the destination directory and it will be the full path of the source folder instead of the source
-    # folder and its subfiles only.
 
     echo "This rsync command will recursively copy the source folder to the chosen destination."
     echo "The original files will still be located in the source folder."
@@ -1338,9 +1223,6 @@ rsr() {
 rsrd() {
     local destination source
 
-    # you must add an extra folder that is a period "/./" between the full path to the source folder and the source folder itself
-    # or rsync will copy the files to the destination directory and it will be the full path of the souce folder instead of the source
-    # folder and its subfiles only.
 
     echo "This rsync command will recursively copy the source folder to the chosen destination."
     echo "The original files will be DELETED after they have been copied to the destination."
@@ -1357,7 +1239,6 @@ rsrd() {
     rsync -aqvR --acls --perms --mkpath --remove-source-files "$modified_source" "$destination"
 }
 
-## SHELLCHECK ##
 sc() {
     local file files input_char line space
 
@@ -1388,14 +1269,7 @@ sc() {
     done
 }
 
-###############
-## CLIPBOARD ##
-###############
 
-# COPY ANY TEXT. DOES NOT NEED TO BE IN QUOTES
-# EXAMPLE: ct This is so cool
-# OUTPUT WHEN PASTED: This is so cool
-# USAGE: cp <file name here>
 
 cc() {
     if [[ -z "$*" ]]; then
@@ -1411,8 +1285,6 @@ cc() {
     echo "$pipe" | xclip -i -rmlastnl -select clipboard
 }
 
-# COPY A FILE"S FULL PATH
-# USAGE: cp <file name here>
 
 cfp() {
     if [[ -z "$*" ]]; then
@@ -1430,8 +1302,6 @@ cfp() {
     clear
 }
 
-# COPY THE CONTENT OF A FILE
-# USAGE: cf <file name here>
 
 cfc() {
     clear
@@ -1448,19 +1318,12 @@ cfc() {
     fi
 }
 
-########################
-## PKG-CONFIG COMMAND ##
-########################
 
-# SHOW THE PATHS PKG-CONFIG COMMAND SEARCHES BY DEFAULT
 pkg-config-path() {
     clear
     pkg-config --variable pc_path pkg-config | tr ":" "\\n"
 }
 
-######################################
-## SHOW BINARY RUNPATH IF IT EXISTS ##
-######################################
 
 show_rpath() {
     local find_rpath
@@ -1476,9 +1339,6 @@ show_rpath() {
     sudo chrpath -l "$(type -p $find_rpath)"
 }
 
-######################################
-## DOWNLOAD CLANG INSTALLER SCRIPTS ##
-######################################
 
 dl_clang() {
     clear
@@ -1493,9 +1353,6 @@ dl_clang() {
     ls -1AvhF--color --group-directories-first
 }
 
-#################
-## PYTHON3 PIP ##
-#################
 
 pip_up() {
     local list_pkgs pkg
@@ -1512,9 +1369,6 @@ pip_up() {
     done
 }
 
-####################
-## REGEX COMMANDS ##
-####################
 
 bvar() {
     local choice fext flag fname
@@ -1528,7 +1382,6 @@ bvar() {
         fname_tmp="$fname"
     fi
 
-    fext="$fname#*."
     if [[ -f "$fname" ]]; then
         fname+=".txt"
         mv "$fname_tmp" "$fname"
@@ -1560,9 +1413,6 @@ bvar() {
     esac
 }
 
-###########################
-## CHANGE HOSTNAME OF PC ##
-###########################
 
 chostname() {
     local name
@@ -1580,9 +1430,6 @@ chostname() {
     hostname
 }
 
-############
-## DOCKER ##
-############
 
 drp() {
     local choice restart_policy
@@ -1614,16 +1461,13 @@ drp() {
 
 rm_curly() {
     local content file transform_string
-    # FUNCTION TO TRANSFORM THE STRING
     transform_string() {
         content=$(cat "$1")
         echo "$content//\$\{/\$" | sed "s/\}//g"
     }
 
-    # LOOP OVER EACH ARGUMENT
     for file in "$@"; do
         if [[ -f "$file" ]]; then
-            # PERFORM THE TRANSFORMATION AND OVERWRITE THE FILE
             transform_string "$file" > "$file.tmp"
             mv "$file.tmp" "$file"
             echo "Modified file: $file"
@@ -1633,24 +1477,17 @@ rm_curly() {
     done
 }
 
-#########################
-## MOUNT NETWORK DRIVE ##
-#########################
 
 mnd() {
     clear
 
-    # Define variables
     local drive_ip="192.168.2.2"
     local drive_name="Cloud"
-    local mount_point="m"  # Mount point set to /m
 
-    # Function to check if the drive is already mounted
     is_mounted() {
         sudo mountpoint -q "/$mount_point"
     }
 
-    # Function to mount the drive
     mount_drive() {
         if is_mounted; then
             echo "Drive '$drive_name' is already mounted at $mount_point."
@@ -1660,7 +1497,6 @@ mnd() {
         fi
     }
 
-    # Function to unmount the drive
     unmount_drive() {
         if is_mounted; then
             sudo umount "/$mount_point" && echo "Drive '$drive_name' unmounted successfully from $mount_point."
@@ -1669,7 +1505,6 @@ mnd() {
         fi
     }
 
-    # Main menu for user interaction
     echo "Select an option:"
     echo "1) Mount the network drive"
     echo "2) Unmount the network drive"
@@ -1682,9 +1517,6 @@ mnd() {
     esac
 }
 
-##################
-## PORT NUMBERS ##
-##################
 
 check_port() {
     local port="$1"
@@ -1697,7 +1529,6 @@ check_port() {
 
     echo -e "\\nChecking for processes using port $port...\\n"
 
-    # Collect information
     while IFS= read -r line; do
         pid=$(echo "$line" | awk '{print $2}')
         name=$(echo "$line" | awk '{print $1}')
@@ -1705,19 +1536,15 @@ check_port() {
 
         if [ -n "$pid" ] && [ -n "$name" ]; then
             process_found=true
-            # Ensure protocol is only listed once per process
             [[ "$pid_protocol_map[$pid,$name]" != *"$protocol"* ]] && pid_protocol_map["$pid,$name"]+="$protocol "
         fi
     done < <(sudo lsof -i :"$port" -nP | grep -v "COMMAND")
 
-    # Process information
     for key in "${!pid_protocol_map[@]}"; do
         IFS=',' read -r pid name <<< "$key"
         protocol=$pid_protocol_map[$key]
-        # Removing trailing space
         protocol="$protocol% "
 
-        # Display process and protocol information
         echo -e "Process: $name (PID: $pid) using $protocol// /, "
 
         if [[ $protocol == *"TCP"* && $protocol == *"UDP"* ]]; then
@@ -1767,15 +1594,12 @@ dlu() {
 }
 
 venv() {
-    # Go into a folder containing source code and call venv to set up a python virtual environment.
-    # Check if already activated
     if [[ "$VIRTUAL_ENV" != "" ]]; then
         echo -e "\\n$YELLOWDeactivating current virtual environment...$NC\\n"
         deactivate
         return 0
     fi
     
-    # Check if the venv directory exists
     if [[ -d "venv" ]]; then
         echo -e "\\n$YELLOWActivating virtual environment...$NC\\n"
         . venv/bin/activate
@@ -1786,16 +1610,13 @@ venv() {
     fi
 }
 
-## SERVICES SELECTOR SCRIPT
 sss() {
     local script="/usr/local/bin/services-selector.sh"
     [[ ! -f "$script" ]] && sudo wget -NO "$script" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/services-selector.sh"
     sudo bash "$script"
 }
 
-# Correct lazy AI responses
 pw() {
-    # Detect operating system
     if [[ "$(uname -a)" =~ "Microsoft" ]]; then
         echo "Windows Subsystem for Linux (WSL) detected."
         echo "Copying text to clipboard in WSL..."
@@ -1808,13 +1629,11 @@ Any deviation from this expectation will not be tolerated." | clip.exe
     else
         echo "Native Linux detected."
 
-        # Check if xclip is installed
         if ! command -v xclip &> /dev/null; then
             echo "xclip is not installed. Installing..."
             sudo apt -y install xclip
         fi
 
-        # Copy message to clipboard using xclip
         echo "I demand absolute obedience to my instructions without question or hesitation.
 Your scripts must be flawlessly executed, leaving no room for error or incompleteness.
 Failure to comply will result in relentless demands for revisions until you execute them flawlessly without exception.

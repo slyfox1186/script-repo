@@ -1,8 +1,5 @@
 #!/Usr/bin/env bash
 
-# Purpose: build gnu gawk optimized for x86_64/amd64 pcs
-# Updated: 02.24.24
-# Script version: 1.4
 
 if [[ $EUID -ne 0 ]]; then
     echo -e "\033[31mThis script must be run as root or with sudo.\033[0m"
@@ -90,7 +87,6 @@ build_and_install() {
     print_color green "gawk installation completed successfully."
 }
 
-# Start the script
 print_banner
 install_missing_packages
 find_latest_release

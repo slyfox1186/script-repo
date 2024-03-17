@@ -7,23 +7,19 @@ filename="$ouput_dir/%(title)s.%(ext)s"
 ext='mp4'
 regex='\.txt$'
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-#User_agent='mozilla/5.0 (windows nt 10.0; win64; x64) applewebkit/537.36 (khtml, like gecko) chrome/121.0.0.0 safari/537.36 edg/120.0.2210.91'
 ff='/usr/local/bin/ffmpeg'
 format='bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4] / bv*+ba/b'
 logfile='yt-dlp.log'
 
-# Check if aria2c is installed
 if ! command -v aria2c &> /dev/null; then
     printf "%s\n\n" "aria2c could not be found, please install it first."
     exit 1
 fi
 
-# Delete leftover log files if they exist
 if [ -f 'yt-dlp.log' ]; then
     rm 'yt-dlp.log'
 fi
 
-# Check if the first argument passed ends in ".txt"
 if [[ $1 =~ $regex ]]; then
     yt-dlp --ffmpeg-location $ff           \
            --audio-quality 3               \

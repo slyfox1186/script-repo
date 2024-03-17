@@ -1,17 +1,5 @@
 #!/Usr/bin/env bash
-# Shellcheck disable=sc2162,sc2317
 
-###########################################################################################################
-##
-##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/github%20projects/build-libxml2
-##
-##  Purpose: build libxml2
-##
-##  Updated: 08.31.23
-##
-##  Script version: 1.1
-##
-###########################################################################################################
 
 clear
 
@@ -20,36 +8,30 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-# Set variables
 
 script_ver=1.1
 cwd="$PWD"/libxml2-build-script
 install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo='https://github.com/slyfox1186/script-repo'
-debug=OFF # Change the debug variable to "on" for help troubleshooting issues
 
 printf "%s\n%s\n\n" \
     "libxml2 build script - v$script_ver" \
     '==============================================='
 sleep 2
 
-# Create output directory
 
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-# Set the c+cpp compilers
 
 export CC=gcc CXX=g++
 
-# Set compiler optimization flags
 
 export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 
-# Set the path variable
 
 PATH="\
 /usr/lib/ccache:\
@@ -70,7 +52,6 @@ $HOME/.local/bin:\
 "
 export PATH
 
-# Set the pkg_config_path variable
 
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
@@ -87,7 +68,6 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-# Create functions
 
 exit_fn() {
     printf "\n%s\n\n%s\n\n"                                       \
@@ -161,7 +141,6 @@ execute() {
 download() {
     dl_path="$cwd"
     dl_url="$1"
-    dl_file="$2:-"${1##*/"}"
 
     if [[ "$dl_file" =~ tar. ]]; then
         output_dir="$dl_file%.*"
@@ -214,13 +193,11 @@ git_1_fn() {
     web_repo="$1"
     url="$2"
     if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://gitlab.gnome.org/api/v4/projects/$web_repo/repository/$url" | jq -r '.[0].name')"; then
-        g_ver="$curl_cmd#V"
     fi
 }
 
 build_done() { echo "$2" > "$cwd/$1.done"; }
 
-# Install required apt packages
 
 pkgs=(asciidoc autogen automake binutils bison build-essential bzip2 ccache cmake
       curl libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev
@@ -241,7 +218,6 @@ if [ -n "$missing_pkgs" ]; then
     clear
 fi
 
-# Build program from source
 
 git_1_fn '1665' 'tags'
 if build 'libxml2' "$g_ver"; then
@@ -267,8 +243,6 @@ if build 'libxml2' "$g_ver"; then
     build_done 'libxml2' "$g_ver"
 fi
 
-# Prompt user to clean up files
 cleanup_fn
 
-# Show exit message
 exit_fn

@@ -1,13 +1,9 @@
 #!/Usr/bin/env bash
 
-# Ffmpeg_video_dicer.sh
 
 concat_video_segments() {
     local video_path=$1
-    local start=("${@:2:$(($#/2))}") # first half of arguments are 'starts'
-    local stops=("${@:$(($#/2 + 2))}") # second half of arguments are 'stops'
 
-    local ext="$video_path##*."
     local output_name="$(basename "$video_path" ."$ext")-OUT.$ext"
     local tmp_dir=$(mktemp -d)
 
@@ -29,15 +25,10 @@ concat_video_segments() {
     echo "Concatenating to $output_name"
     ffmpeg -hide_banner -f concat -safe 0 -i "$concat_file" -c copy "$output_name"
 
-# Clean up temporary files
     rm -r "$tmp_dir"
 }
 
-# Video path and start/stop times
-video_path='/path/to/video.mp4' # Replace with your actual video file path
 
-# Each start variable on top corresponds with the stop variable directly below it.
-# Add additional matching start and stop times as needed.
 start=("00:02:00" "00:06:18")
 stops=("00:04:10" "00:07:12")
 

@@ -1,19 +1,5 @@
 #!/Usr/bin/env bash
-# Shellcheck disable=sc2016,sc2034,sc2046,sc2066,sc2068,sc2086,sc2162,sc2317
 
-########################################################################
-##
-##  Install libgcrypt lts + libgcrypt-error
-##
-##  Supported os:
-##  - Debian
-##  - Ubuntu
-##
-##  Updated: 10.14.23
-##
-##  Script version: 1.0
-##
-########################################################################
 
 clear
 
@@ -22,7 +8,6 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-# Set the variables
 
 script_ver=1.0
 install_prefix=/usr/local
@@ -34,11 +19,9 @@ user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 web_repo=https://github.com/slyfox1186/script-repo
 debug=OFF
 
-# Create output directories
 
 mkdir -p "$packages" "$workspace"
 
-# Get cpu core count for parallel processing
 
 if [ -f /proc/cpuinfo ]; then
     cpu_threads="$(grep --count ^processor /proc/cpuinfo)"
@@ -46,11 +29,9 @@ else
     cpu_threads="$(nproc --all)"
 fi
 
-# Set the c & c++ compilers
 
 export CC=gcc CXX=g++
 
-# Set compiler optimization flags
 
 export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include"
@@ -58,14 +39,12 @@ LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -
 LDFLAGS+=' -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 export CPPFLAGS LDFLAGS
 
-# Print banner
 
 printf "%s\n%s\n%s\n" \
     "libgcrypt build script - v$script_ver" \
     '=========================================' \
     "This script will utilize ($cpu_threads) CPU threads for parallel processing to accelerate the build process."
 
-# Create global variables
 
 PATH="\
 /usr/lib/ccache:\
@@ -108,7 +87,6 @@ $workspace/share/pkgconfig:\
 "
 export PKG_CONFIG_PATH
 
-# Define functions
 
 fail_fn() {
     printf "\n%s\n%s\n%s\n\n" \
@@ -145,7 +123,6 @@ cleanup_fn() {
     esac
 }
 
-# Scrape github website for the latest repo version
 
 git_1_fn() {
     local curl_cmd github_repo github_url
@@ -156,13 +133,6 @@ git_1_fn() {
     if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url' 2>/dev/null)"
-        g_ver="$g_ver#Cares-"
-        g_ver="$g_ver#Aria2 "
-        g_ver="$g_ver#Nghttp2 v"
-        g_ver="$g_ver#Nghttp3 v"
-        g_ver="$g_ver#Openssl "
-        g_ver="$g_ver#Release-"
-        g_ver="$g_ver#V"
     fi
 
 }
@@ -204,7 +174,6 @@ execute() {
 download() {
     dl_path="$packages"
     dl_url="$1"
-    dl_file="$2:-"${1##*/"}"
 
     if [[ "$dl_file" =~ tar. ]]; then
         output_dir="$dl_file%.*"
@@ -278,7 +247,6 @@ installed() {
     return $(dpkg-query -W -f '$Status\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
 }
 
-# Install required apt packages
 
 pkgs=(autoconf autoconf-archive autogen automake autotools-dev
       build-essential ccache curl libtool libtool-bin m4 pkg-config)
@@ -302,7 +270,6 @@ else
     printf "%s\n" 'The required APT packages are already installed.'
 fi
 
-# Build libraries from source
 
 if build 'libgpg-error' '1.47'; then
     download 'https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-1.47.tar.bz2' 'libgpg-error-1.47.tar.bz2'
@@ -338,11 +305,8 @@ if build 'libgcrypt' '1.8.10-LTS'; then
     build_done 'libgcrypt' '1.8.10-LTS'
 fi
 
-# Ldconfig must be run next in order to update file changes or the version commands might not work
 sudo ldconfig 2>/dev/null
 
-# Cleanup leftover files
 cleanup_fn
 
-# Display exit message
 exit_fn

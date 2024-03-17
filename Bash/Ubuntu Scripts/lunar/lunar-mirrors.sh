@@ -8,7 +8,6 @@ fi
 
 fname="/etc/apt/sources.list"
 
-# Make a backup of the file
 if [[ ! -f "$fname.bak" ]]; then
     cp -f "$fname" "$fname.bak"
 fi
@@ -20,7 +19,6 @@ deb https://atl.mirrors.clouvider.net/ubuntu/ lunar-backports main restricted un
 deb https://atl.mirrors.clouvider.net/ubuntu/ lunar-security main restricted universe multiverse
 EOF
 
-# Open an editor to view the changes
 if command -v nano &>/dev/null; then
     nano "$fname"
 else

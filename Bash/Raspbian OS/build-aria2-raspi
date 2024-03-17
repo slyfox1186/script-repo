@@ -1,17 +1,5 @@
 #!/usr/bin/env bash
 
-###########################################################################################################
-##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Pi-Hole/build-aria2-raspi
-##
-##  Purpose: Build aria2c with max connections changed from 16 to 128 on
-##           Raspberry Pi Debian Bullseye OS.
-##
-##  Updated: 08.01.23
-##
-##  Script version: 1.1
-##
-###########################################################################################################
 
 clear
 
@@ -20,9 +8,6 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-#
-# SET VARIABLES
-#
 
 script_ver=1.1
 archive_dir=aria2-1.37.0
@@ -37,29 +22,17 @@ printf "\n%s\n%s\n\n" \
     '======================================================'
 sleep 2
 
-#
-# CREATE OUTPUT DIRECTORY
-#
 
 if [ ! -d "$cwd" ]; then
     mkdir -p "$cwd"
 fi
 
-#
-# SET THE C+CPP COMPILERS
-#
 
 export CC=gcc CXX=g++
 
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
 
 export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 
-#
-# CREATE FUNCTIONS
-#
 
 exit_fn() {
     printf "\n%s\n\n%s\n\n" \
@@ -108,9 +81,6 @@ cleanup_fn() {
     esac
 }
 
-#
-# INSTALL REQUIRED APT cwd
-#
 
 pkgs=(autoconf autogen automake build-essential ca-certificates ccache clang curl libaria2-0 libaria2-0-dev
       libc-ares-dev libdmalloc-dev libgcrypt20-dev libgmp-dev libgnutls28-dev libgpg-error-dev libjemalloc-dev
@@ -132,17 +102,11 @@ if [ -n "$missing_pkgs" ]; then
     clear
 fi
 
-#
-# GET PC TYPE
-#
 
 curl -A "$user_agent" -Lso "$cwd/config.guess" 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
 chmod +x "$cwd/config.guess"
 pc_type="$(source "$cwd/config.guess")"
 
-#
-# DOWNLOAD THE ARCHIVE FILE
-#
 
 archive_name="$archive_dir.tar.$archive_ext"
 
@@ -150,30 +114,20 @@ if [ ! -f "$cwd/$archive_name" ]; then
     curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
-#
-# CREATE OUTPUT DIRECTORY
-#
 
 if [ -d "$cwd/$archive_dir" ]; then
     sudo rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
-#
-# EXTRACT ARCHIVE FILES
-#
 
 if ! tar -zxf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
     printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
     exit 1
 fi
 
-#
-# BUILD PROGRAM FROM SOURCE
-#
 
 cd "$cwd/$archive_dir" || exit 1
-# INCREASE THE MAX NUMBER OF CONNECTIONS FROM 16 TO 128
 sed -i 's/1, 16/1, 128/g' 'src/OptionHandlerFactory.cc'
 cd build || exit 1
 ../configure --prefix=/usr/local              \
@@ -199,17 +153,12 @@ if ! sudo make install; then
     exit 1
 fi
 
-#
-# CREATE SOFT LINKS
-#
 
 if [ -f /usr/local/bin/"$pc_type"-aria2c ]; then
     sudo ln -sf /usr/local/bin/"$pc_type"-aria2c /usr/local/bin/aria2c
     sudo chmod 755 /usr/local/bin/aria2c
 fi
 
-# PROMPT USER TO CLEAN UP FILES
 cleanup_fn
 
-# SHOW EXIT MESSAGE
 exit_fn

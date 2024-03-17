@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-# Function to display the help menu
 display_help() {
     echo "Usage: $0 [OPTIONS] [debian_release]"
     echo
@@ -21,7 +20,6 @@ display_help() {
     echo
 }
 
-# Default values for options
 arch="amd64"
 outfile="/etc/apt/sources.list"
 debian_release="stable"
@@ -30,10 +28,7 @@ use_nonfree=false
 use_ftp=false
 country=""
 debug=false
-tests=10 # Default number of hosts to test
 
-# Parse command-line arguments
-while [[ $# -gt 0 ]]; do
     case "$1" in
         -h|--help)
             display_help
@@ -83,7 +78,6 @@ if ! command -v netselect-apt &>/dev/null; then
     clear
 fi
 
-# Build the netselect-apt command with the specified options
 netselect_apt_cmd="netselect-apt"
 [[ "$include_sources" == true ]] && netselect_apt_cmd+=" -s"
 [[ "$use_nonfree" == true ]] && netselect_apt_cmd+=" -n"
@@ -92,17 +86,14 @@ netselect_apt_cmd="netselect-apt"
 [[ "$debug" == true ]] && netselect_apt_cmd+=" -d"
 netselect_apt_cmd+=" -o $outfile -a $arch -t $tests $debian_release"
 
-# Ensure netselect-apt is installed
 if ! command -v netselect-apt >/dev/null; then
     echo "netselect-apt is not installed. Please install netselect-apt."
     exit 1
 fi
 
-# Inform the user about the chosen options
 echo "Running netselect-apt with the following options:"
 echo "$netselect_apt_cmd"
 
-# Run netselect-apt with the constructed command
 eval "$netselect_apt_cmd"
 
 echo "netselect-apt has completed. Check $outfile for the selected mirror."

@@ -1,9 +1,5 @@
 #!/Usr/bin/env bash
 
-##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/gnu%20software/build-all-gnu-safer
-##  Purpose: loops multiple build scripts to optimize efficiency. this is the safer of the two scripts.
-##  Updated: 02.20.24
-##  Script version: 1.2
 
 clear
 
@@ -12,7 +8,6 @@ if [ "$EUID" -eq 0 ]; then
     exit 1
 fi
 
-# Print the script banner
 
 script_ver=1.2
 cwd="$PWD/build-all-gnu-safer-script"
@@ -59,11 +54,9 @@ if [ -n "$missing_pkgs" ]; then
     clear
 fi
 
-# Add additional search paths to the ld library linker
 
 sudo bash -c "bash <(curl -sSL https://ld-linker.optimizethis.net)"
 
-# Detect the pc architecture
 
 case "$(uname -m)" in
     x86_64)                        arch_ver="pkg-config" ;;
@@ -106,8 +99,6 @@ if [ -d "$cwd/failed" ]; then
     exit_fn
 fi
 
-# Cleanup leftover files
 sudo rm -fr "$cwd"
 
-# Display exit message
 exit_fn

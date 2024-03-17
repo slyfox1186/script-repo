@@ -9,7 +9,6 @@ fi
 <<<<<<< Updated upstream
 fname="/etc/apt/sources.list"
 
-# Make a backup of the file
 if [[ ! -f "$fname.bak" ]]; then
     cp -f "$fname" "$fname.bak"
 =======
@@ -18,7 +17,6 @@ script_name=$(basename "$script_path")
 
 fname="/etc/apt/sources.list"
 
-# Make a backup of the file
 if [ ! -f "$fname.bak" ]; then
     cp -f "$fname" "$fname.bak"
 >>>>>>> Stashed changes
@@ -29,14 +27,12 @@ deb http://atl.mirrors.clouvider.net/debian/ bookworm main contrib non-free non-
 deb http://atl.mirrors.clouvider.net/debian/ bookworm-updates main contrib non-free non-free-firmware
 deb http://atl.mirrors.clouvider.net/debian/ bookworm-backports main contrib non-free non-free-firmware
 
-# Official (Default)
 deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware
 deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware
 deb http://deb.debian.org/debian bookworm-backports main contrib non-free non-free-firmware
 deb http://deb.debian.org/debian-security/ bookworm-security main contrib non-free non-free-firmware
 EOF
 
-# Open an editor to view the changes
 if command -v nano &>/dev/null; then
     nano "$fname"
 else
