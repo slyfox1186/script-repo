@@ -1,3 +1,4 @@
+
 #!/usr/bin/env bash
 
 if [[ "$EUID" -ne 0 ]]; then
@@ -5,18 +6,14 @@ if [[ "$EUID" -ne 0 ]]; then
     exit 1
 fi
 
-script_path=$(readlink -f "${BASH_SOURCE[0]}")
-script_name=$(basename "$script_path")
-
 fname="/etc/apt/sources.list"
 
 # Make a backup of the file
-if [ ! -f "${fname}.bak" ]; then
+if [[ ! -f "${fname}.bak" ]]; then
     cp -f "$fname" "${fname}.bak"
 fi
 
 cat > "$fname" <<EOF
-# Atlanta, GA
 deb http://atl.mirrors.clouvider.net/debian/ bookworm main contrib non-free non-free-firmware
 deb http://atl.mirrors.clouvider.net/debian/ bookworm-updates main contrib non-free non-free-firmware
 deb http://atl.mirrors.clouvider.net/debian/ bookworm-backports main contrib non-free non-free-firmware
@@ -35,4 +32,7 @@ else
     echo -e "\\nThe script failed to locate nano to open the file...\\n"
 fi
 
-rm "$script_name"
+script_path=$(readlink -f "${BASH_SOURCE[0]}")
+script_name=$(basename "$script_path")
+
+[[ -f "$script_name" ]] && rm "$script_name"
