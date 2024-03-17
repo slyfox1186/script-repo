@@ -171,16 +171,22 @@ check_and_install_cargo_c() {
 }
 
 install_windows_hardware_acceleration() {
-    curl -fsSLo "$workspace/include/objbase.h" "https://raw.githubusercontent.com/wine-mirror/wine/master/include/objbase.h"
-    cp -f "$workspace/include/objbase.h" "$workspace"
-    curl -fsSLo "$workspace/include/dxva2api.h" "https://download.videolan.org/pub/contrib/dxva2api.h"
-    curl -fsSLo "$workspace/include/windows.h" "https://raw.githubusercontent.com/tpn/winsdk-10/master/Include/10.0.10240.0/um/Windows.h"
-    curl -fsSLo "$workspace/include/direct.h" "https://raw.githubusercontent.com/tpn/winsdk-10/master/Include/10.0.10240.0/km/crt/direct.h"
-    curl -fsSLo "$workspace/include/dxgidebug.h" "https://raw.githubusercontent.com/apitrace/dxsdk/master/Include/dxgidebug.h"
-    curl -fsSLo "$workspace/include/dxva.h" "https://raw.githubusercontent.com/nihon-tc/Rtest/master/header/Microsoft%20SDKs/Windows/v7.0A/Include/dxva.h"
-    curl -fsSLo "$workspace/include/intrin.h" "https://raw.githubusercontent.com/yuikns/intrin/master/intrin.h"
-    curl -fsSLo "$workspace/include/arm_neon.h" "https://raw.githubusercontent.com/gcc-mirror/gcc/master/gcc/config/arm/arm_neon.h"
-    curl -fsSLo "$workspace/include/conio.h" "https://raw.githubusercontent.com/zoelabbb/conio.h/master/conio.h"
+    local file
+    declare -A files=(
+        ["objbase.h"]="https://raw.githubusercontent.com/wine-mirror/wine/master/include/objbase.h"
+        ["dxva2api.h"]="https://download.videolan.org/pub/contrib/dxva2api.h"
+        ["windows.h"]="https://raw.githubusercontent.com/tpn/winsdk-10/master/Include/10.0.10240.0/um/Windows.h"
+        ["direct.h"]="https://raw.githubusercontent.com/tpn/winsdk-10/master/Include/10.0.10240.0/km/crt/direct.h"
+        ["dxgidebug.h"]="https://raw.githubusercontent.com/apitrace/dxsdk/master/Include/dxgidebug.h"
+        ["dxva.h"]="https://raw.githubusercontent.com/nihon-tc/Rtest/master/header/Microsoft%20SDKs/Windows/v7.0A/Include/dxva.h"
+        ["intrin.h"]="https://raw.githubusercontent.com/yuikns/intrin/master/intrin.h"
+        ["arm_neon.h"]="https://raw.githubusercontent.com/gcc-mirror/gcc/master/gcc/config/arm/arm_neon.h"
+        ["conio.h"]="https://raw.githubusercontent.com/zoelabbb/conio.h/master/conio.h"
+    )
+
+    for file in "${!files[@]}"; do
+        curl -fsSLo "$workspace/include/$file" "${files[$file]}"
+    done
 }
 
 install_rustc() {
@@ -695,17 +701,14 @@ $workspace/lib64/pkgconfig:\
 $workspace/lib/x86_64-linux-gnu/pkgconfig:\
 $workspace/lib/pkgconfig:\
 $workspace/share/pkgconfig:\
+/usr/local/lib64/x86_64-linux-gnu:\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/x86_64-linux-gnu/pkgconfig:\
 /usr/local/lib/pkgconfig:\
 /usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
 /usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig:\
-/lib/pkgconfig\
+/usr/lib/pkgconfig:\
+/usr/share/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -803,6 +806,7 @@ cuda_download() {
     local cuda_pin_url="https://developer.download.nvidia.com/compute/cuda/repos"
     local cuda_url="https://developer.download.nvidia.com/compute/cuda/$cuda_version_number"
 
+    echo
     echo "Pick your Linux version from the list below:"
     echo "Supported architecture: x86_64"
     echo
@@ -972,7 +976,7 @@ install_cuda() {
             echo
             read -p "Do you want to install the latest CUDA version? (y/n): " choice
             case "$choice" in
-                y|Y) cuda_download ;;
+                y|Y|"") cuda_download ;;
                 *) return 0 ;;
             esac
         elif [[ "$local_cuda_version" == "$remote_cuda_version" ]]; then
@@ -1022,24 +1026,23 @@ apt_pkgs() {
     pkgs=(
         $1 $libcppabi_pkg $libcpp_pkg $libunwind_pkg $nvidia_utils $openjdk_pkg $gcc_plugin_pkg ant apt asciidoc autoconf
         autoconf-archive automake autopoint binutils bison build-essential cargo cargo-c ccache checkinstall clang cmake
-        curl doxygen fcitx-libs-dev flex flite1-dev freeglut3-dev frei0r-plugins-dev gawk gcc gettext gimp-data git
-        gnome-desktop-testing gnustep-gui-runtime google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit
-        ladspa-sdk lib32stdc++6 libamd2 libasound2-dev libass-dev libaudio-dev libavfilter-dev libbabl-0.1-0 libbluray-dev
-        libbpf-dev libbs2b-dev libbz2-dev libc6 libc6-dev libcaca-dev libcairo2-dev libcamd2 libccolamd2 libcdio-dev
-        libcdio-paranoia-dev libcdparanoia-dev libcholmod3 libchromaprint-dev libcjson-dev libcodec2-dev libcolamd2
-        libcrypto++-dev libcurl4-openssl-dev libdav1d-dev libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev
-        libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev libgegl-0.4-0
-        libgegl-common libgimp2.0 libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev libgmock-dev
-        libgnutls28-dev libgnutls30 libgoogle-perftools-dev libgoogle-perftools4 libgsm1-dev libgtest-dev libgvc6
-        libibus-1.0-dev libiconv-hook-dev libintl-perl libjack-dev libjemalloc-dev libjxl-dev libladspa-ocaml-dev
-        libldap2-dev libleptonica-dev liblilv-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev libmatroska-dev
-        libmbedtls-dev libmetis5 libmfx-dev libmodplug-dev libmp3lame-dev libmusicbrainz5-dev libmysofa-dev libnuma-dev
-        libopencore-amrnb-dev libopencore-amrwb-dev libopencv-dev libopenmpt-dev libopus-dev libpango1.0-dev
-        libperl-dev libplacebo-dev libpocketsphinx-dev libpsl-dev libpstoedit-dev libpulse-dev librabbitmq-dev
-        libraqm-dev libraw-dev librsvg2-dev librtmp-dev librubberband-dev librust-gstreamer-base-sys-dev libserd-dev
+        curl doxygen fcitx-libs-dev flex flite1-dev frei0r-plugins-dev gawk gcc gettext gimp-data git gnome-desktop-testing
+        gnustep-gui-runtime google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk lib32stdc++6
+        libamd2 libasound2-dev libass-dev libaudio-dev libavfilter-dev libbabl-0.1-0 libbluray-dev libbpf-dev libbs2b-dev
+        libbz2-dev libc6 libc6-dev libcaca-dev libcairo2-dev libcamd2 libccolamd2 libcdio-dev libcdio-paranoia-dev
+        libcdparanoia-dev libcholmod3 libchromaprint-dev libcjson-dev libcodec2-dev libcolamd2 libcrypto++-dev
+        libcurl4-openssl-dev libdav1d-dev libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev libdrm-dev libdvbpsi-dev
+        libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev libgegl-0.4-0 libgegl-common libgimp2.0 libgl1-mesa-dev
+        libgles2-mesa-dev libglib2.0-dev libgme-dev libgmock-dev libgnutls28-dev libgnutls30 libgoogle-perftools-dev
+        libgoogle-perftools4 libgsm1-dev libgtest-dev libgvc6 libibus-1.0-dev libiconv-hook-dev libintl-perl libjack-dev
+        libjemalloc-dev libjxl-dev libladspa-ocaml-dev libldap2-dev libleptonica-dev liblilv-dev liblz-dev liblzma-dev
+        liblzo2-dev libmathic-dev libmatroska-dev libmbedtls-dev libmetis5 libmfx-dev libmodplug-dev libmp3lame-dev
+        libmusicbrainz5-dev libmysofa-dev libnuma-dev libopencore-amrnb-dev libopencore-amrwb-dev libopencv-dev libopenmpt-dev
+        libopus-dev libpango1.0-dev libperl-dev libplacebo-dev libpocketsphinx-dev libpsl-dev libpstoedit-dev libpulse-dev
+        librabbitmq-dev libraqm-dev libraw-dev librsvg2-dev librtmp-dev librubberband-dev librust-gstreamer-base-sys-dev libserd-dev
         libshine-dev libsmbclient-dev libsnappy-dev libsndio-dev libsord-dev libsoxr-dev libspeex-dev libsphinxbase-dev
-        libsqlite3-dev libsratom-dev libssh-dev libssl-dev libsuitesparseconfig5 libsystemd-dev libtalloc-dev libtheora-dev
-        libticonv-dev libtool libtool-bin libtwolame-dev libudev-dev libumfpack5 libv4l-dev libva-dev libvdpau-dev
+        libsqlite3-dev libsratom-dev libssh-dev libssl-dev libsuitesparseconfig5 libsystemd-dev libtalloc-dev libtesseract-dev
+        libtheora-dev libticonv-dev libtool libtool-bin libtwolame-dev libudev-dev libumfpack5 libv4l-dev libva-dev libvdpau-dev
         libvidstab-dev libvlccore-dev libvo-amrwbenc-dev libvpx-dev libx11-dev libxcursor-dev libxext-dev libxfixes-dev
         libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzimg-dev libzmq3-dev libzstd-dev libzvbi-dev
         libzzip-dev llvm lsb-release lshw lzma-dev m4 mesa-utils meson nasm ninja-build pandoc python3 python3-pip python3-venv
@@ -1104,7 +1107,7 @@ fix_libstd_libs() {
 fix_x265_libs() {
     local x265_libs x265_libs_trim
 
-    x265_libs=$(find "$workspace/lib/" -type f -name 'libx265.so.*')
+    x265_libs=$(find $workspace/lib/ -type f -name 'libx265.so.*')
     x265_libs_trim=$(echo "$x265_libs" | sed "s:.*/::" | head -n1)
 
     case "$OS" in
@@ -1428,13 +1431,13 @@ if build "m4" "latest"; then
     build_done "m4" "latest"
 fi
 
-if build "autoconf" "latest"; then
-    download "http://ftp.gnu.org/gnu/autoconf/autoconf-latest.tar.xz"
+if build "autoconf" "2.71"; then
+    download "https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.xz"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" M4="$workspace/bin/m4"
     execute make "-j$cpu_threads"
     execute make install
-    build_done "autoconf" "latest"
+    build_done "autoconf" "2.71"
 fi
 
 if [[ "$OS" == "Arch" ]]; then
@@ -1455,7 +1458,7 @@ else
     fi
     if build "libtool" "$version"; then
         download "https://ftp.gnu.org/gnu/libtool/libtool-$version.tar.xz"
-        execute ./configure --prefix="$workspace" --with-pic M4="$workspace/bin/m4"
+        execute ./configure --prefix="$workspace" --with-libiconv-prefix=/usr --with-pic M4="$workspace/bin/m4"
         execute make "-j$cpu_threads"
         execute make install
         build_done "libtool" "$version"
@@ -1562,7 +1565,7 @@ if build "yasm" "$repo_version"; then
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
                   -DBUILD_SHARED_LIBS=OFF \
-                  -G Ninja
+                  -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
     build_done "yasm" "$repo_version"
@@ -1636,7 +1639,7 @@ if $NONFREE_AND_GPL; then
     if build "aribb24" "$repo_version"; then
         download "https://github.com/nkoriyama/aribb24/archive/refs/tags/v$repo_version.tar.gz" "aribb24-$repo_version.tar.gz"
         execute autoreconf -fi
-        execute ./configure --prefix="$workspace" --disable-shared --with-pic
+        execute ./configure --prefix="$workspace" --disable-shared --enable-static
         execute make "-j$cpu_threads"
         execute make install
         build_done "aribb24" "$repo_version"
@@ -1762,7 +1765,7 @@ if build "freeglut" "$repo_version"; then
                   -DFREEGLUT_BUILD_STATIC_LIBS=ON \
                   -DFREEGLUT_PRINT_ERRORS=OFF \
                   -DFREEGLUT_PRINT_WARNINGS=OFF \
-                  -G Ninja
+                  -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
     build_done "freeglut" "$repo_version"
@@ -1771,7 +1774,7 @@ fi
 git_caller "https://chromium.googlesource.com/webm/libwebp" "libwebp-git"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
-    git_clone "$git_url"
+    git_clone "$git_url"  "libwebp-git"
     execute autoreconf -fi
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
@@ -1816,7 +1819,7 @@ if build "brotli" "$repo_version"; then
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
-                  -DBUILD_SHARED_LIBS=ON \
+                  -DBUILD_SHARED_LIBS=OFF \
                   -DBUILD_TESTING=OFF \
                   -G Ninja
     execute ninja "-j$cpu_threads" -C build
@@ -1828,7 +1831,7 @@ find_git_repo "mm2/Little-CMS" "1" "T"
 if build "lcms2" "$repo_version"; then
     download "https://github.com/mm2/Little-CMS/archive/refs/tags/lcms$repo_version.tar.gz" "lcms2-$repo_version.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --with-pic --with-threaded
+    execute ./configure --prefix="$workspace" --disable-shared --enable-static --with-threaded
     execute make "-j$cpu_threads"
     execute make install
     build_done "lcms2" "$repo_version"
@@ -1861,7 +1864,7 @@ if build "$repo_name" "${version//\$ /}"; then
             -B build \
             -DCMAKE_INSTALL_PREFIX="$workspace" \
             -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_SHARED_LIBS=ON \
+            -DBUILD_SHARED_LIBS=OFF \
             -DBUILD_TESTING=OFF \
             -DBUILD_DOCS=OFF \
             -DBUILD_EXAMPLES=OFF \
@@ -1870,7 +1873,7 @@ if build "$repo_name" "${version//\$ /}"; then
             -DCMAKE_C_FLAGS="$CFLAGS" \
             -DCMAKE_CXX_FLAGS="$CXXFLAGS" \
             -DOPENCL_HEADERS_BUILD_CXX_TESTS=OFF \
-            -DOPENCL_ICD_LOADER_BUILD_SHARED_LIBS=ON \
+            -DOPENCL_ICD_LOADER_BUILD_SHARED_LIBS=OFF \
             -DOPENCL_SDK_BUILD_OPENGL_SAMPLES=OFF \
             -DOPENCL_SDK_BUILD_SAMPLES=OFF \
             -DOPENCL_SDK_TEST_SAMPLES=OFF \
@@ -1881,34 +1884,6 @@ if build "$repo_name" "${version//\$ /}"; then
     build_done "$repo_name" "$version"
 fi
 
-find_git_repo "DanBloomberg/leptonica" "1" "T"
-repo_version="${repo_version//Leptonica version /}"
-if build "leptonica" "$repo_version"; then
-    download "https://github.com/DanBloomberg/leptonica/archive/refs/tags/$repo_version.tar.gz" "leptonica-$repo_version.tar.gz"
-    execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --with-pic
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done "leptonica" "$repo_version"
-fi
-
-find_git_repo "tesseract-ocr/tesseract" "1" "T"
-if build "tesseract" "$repo_version"; then
-    download "https://github.com/tesseract-ocr/tesseract/archive/refs/tags/$repo_version.tar.gz" "tesseract-$repo_version.tar.gz"
-    execute ./autogen.sh
-    execute ./configure --prefix="$workspace" \
-                        --disable-doc \
-                        --with-extra-includes="$workspace/include" \
-                        --with-extra-libraries="$workspace/lib" \
-                        --with-pic \
-                        --without-archive \
-                        --without-curl
-    execute make "-j$cpu_threads"
-    execute make install
-    build_done "tesseract" "$repo_version"
-fi
-CONFIGURE_OPTIONS+=("--enable-libtesseract")
-
 git_caller "https://github.com/imageMagick/jpeg-turbo.git" "jpeg-turbo-git"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
@@ -1916,11 +1891,12 @@ if build "$repo_name" "${version//\$ /}"; then
     execute cmake -S . \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
-                  -DENABLE_SHARED=ON \
+                  -DENABLE_SHARED=OFF \
                   -DENABLE_STATIC=ON \
                   -G Ninja
     execute ninja "-j$cpu_threads"
     execute ninja "-j$cpu_threads" install
+    build_done "$repo_name" "$version"
     build_done "$repo_name" "$version"
 fi
 
@@ -1944,7 +1920,8 @@ if build "c-ares" "$g_tag"; then
     execute ./configure --prefix="$workspace" \
                         --disable-debug \
                         --disable-warnings \
-                        --with-pic
+                        --disable-shared \
+                        --enable-static
     execute make "-j$cpu_threads"
     execute make install
     build_done "c-ares" "$g_tag"
@@ -2205,7 +2182,7 @@ if build "libogg" "$repo_version"; then
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
-                  -DBUILD_SHARED_LIBS=ON \
+                  -DBUILD_SHARED_LIBS=OFF \
                   -DBUILD_TESTING=OFF \
                   -DCPACK_BINARY_DEB=OFF \
                   -DCPACK_SOURCE_ZIP=OFF \
@@ -2262,7 +2239,7 @@ if build "vorbis" "$repo_version"; then
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
-                  -DBUILD_SHARED_LIBS=ON \
+                  -DBUILD_SHARED_LIBS=OFF \
                   -DOGG_INCLUDE_DIR="$workspace/include" \
                   -DOGG_LIBRARY="$workspace/lib/libogg.so" \
                   -G Ninja
@@ -2373,7 +2350,8 @@ if build "libtheora" "1.1.1"; then
                         --with-vorbis="$workspace" \
                         --with-vorbis-includes="$workspace/include" \
                         --with-vorbis-libraries="$workspace/lib" \
-                        --with-pic
+                        --disable-shared \
+                        --enable-static
     execute make "-j$cpu_threads"
     execute make install
     build_done "libtheora" "1.1.1"
@@ -2445,7 +2423,7 @@ if build "avif" "$repo_version"; then
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
-                  -DBUILD_SHARED_LIBS=ON \
+                  -DBUILD_SHARED_LIBS=OFF \
                   -DAVIF_CODEC_AOM=ON \
                   -DAVIF_CODEC_AOM_DECODE=ON \
                   -DAVIF_CODEC_AOM_ENCODE=ON \
@@ -2996,7 +2974,7 @@ if [[ "$wsl_flag" == "yes_wsl" ]]; then
 fi
 
 # Check the last build version of ffmpeg if it exists to determine if an update has occured
-if [[ -f "$packages/ffmpeg-git.done" ]]; then
+if [[ -f "$packages/ffmpeg.done" ]]; then
     # Define a function to read the file content
     read_file_contents() {
         local file_path="$1"
@@ -3007,32 +2985,29 @@ if [[ -f "$packages/ffmpeg-git.done" ]]; then
         fi
     }
 
-    file_path="$packages/ffmpeg-git.done"
+    file_path="$packages/ffmpeg.done"
     ffmpeg_current_version=$(read_file_contents "$file_path")
 fi
 
+# Update the compilter flags before building ffmpeg
+source_compiler_flags
+
+# If true, alert the user that no ffmpeg version is found
+[[ -z "$ffmpeg_current_version" ]] && ffmpeg_current_version="Not installed"
+
 # Get the latest FFmpeg version by parsing its repository
 ffmpeg_latest_version=$(check_ffmpeg_version "https://github.com/FFmpeg/FFmpeg.git")
-
-if [[ -z "$ffmpeg_current_version" ]]; then
-    ffmpeg_current_version="Not installed"
-fi
+# Trim the front of the version number so the download link works
+ffmpeg_latest_version_trimmed="${ffmpeg_latest_version//n/}"
 
 echo
 log_update "The current installed version of FFmpeg: $ffmpeg_current_version"
 log_update "The latest release version of FFmpeg: $ffmpeg_latest_version"
 
-# Clean the compilter flags before building FFmpeg
-source_compiler_flags
-
 # Build FFmpeg from source using the latest git clone
-git_caller "https://git.ffmpeg.org/ffmpeg.git" "ffmpeg-git" "ffmpeg"
-if build "$repo_name" "${version//\$ /}"; then
-    echo "Cloning \"$repo_name\" saving version \"$version\""
-    git_clone "$git_url" "ffmpeg-git" "ffmpeg"
-
+if build "ffmpeg" "$ffmpeg_latest_version"; then
+    download "https://ffmpeg.org/releases/ffmpeg-$ffmpeg_latest_version_trimmed.tar.xz" "ffmpeg-$ffmpeg_latest_version.tar.xz"
     [[ "$OS" == "Arch" ]] && patch_ffmpeg
-
     mkdir build; cd build
     ../configure --prefix=/usr/local \
                  --arch=$(uname -m) \
@@ -3075,11 +3050,11 @@ if build "$repo_name" "${version//\$ /}"; then
                  --strip=$(type -P strip)
     execute make "-j$cpu_threads"
     execute make install
-    build_done "$repo_name" "$version"
+    build_done "ffmpeg" "$ffmpeg_latest_version"
 fi
 
 # Execute the ldconfig command to ensure that all library changes are detected by ffmpeg
-ldconfig 2>/dev/null
+ldconfig
 
 # Display the version of each of the programs
 prompt_ffmpeg_versions
