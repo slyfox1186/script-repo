@@ -16,7 +16,7 @@ fi
 #
 
 script_ver=1.0
-progname="${0}"
+progname="$0"
 cwd="$PWD"/nasm-build-script
 install_prefix=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
@@ -56,9 +56,9 @@ fi
 
 PATH="\
 /usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
+$HOME/perl5/bin:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/cuda/bin:\
 /usr/local/x86_64-linux-gnu/bin:\
@@ -116,7 +116,7 @@ cleanup_fn() {
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
 
-    case "${choice}" in
+    case "$choice" in
         1)      sudo rm -fr "$cwd";;
         2)      clear;;
         *)
@@ -133,7 +133,7 @@ cleanup_fn() {
 execute() {
     echo "$ ${*}"
 
-    if [ "${debug}" = 'ON' ]; then
+    if [ "$debug" = 'ON' ]; then
         if ! output="$("$@")"; then
             notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
             fail_fn "Failed to execute: ${*}"
@@ -177,15 +177,15 @@ download() {
     target_file="$dl_path/$dl_file"
     target_dir="$dl_path/$output_dir"
 
-    if [ -f "${target_file}" ]; then
+    if [ -f "$target_file" ]; then
         echo "The file \"$dl_file\" is already downloaded."
     else
-        echo "Downloading \"${dl_url}\" saving as \"$dl_file\""
-        if ! wget --show-progress -t 2 -cqO "${target_file}" "${dl_url}"; then
+        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
+        if ! wget --show-progress -t 2 -cqO "$target_file" "$dl_url"; then
             printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
-            if ! wget --show-progress -t 2 -cqO "${target_file}" "${dl_url}"; then
-                fail_fn "The script failed to download \"$dl_file\" twice and will now exit. Line: ${LINENO}"
+            if ! wget --show-progress -t 2 -cqO "$target_file" "$dl_url"; then
+                fail_fn "The script failed to download \"$dl_file\" twice and will now exit. Line: $LINENO"
             fi
         fi
         printf "\n%s\n\n" 'Download completed'
@@ -198,20 +198,20 @@ download() {
     mkdir -p "$target_dir"
 
     if [ -n "$3" ]; then
-        if ! tar -xf "${target_file}" -C "$target_dir" 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
+        if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
+            sudo rm "$target_file"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
         fi
     else
-        if ! tar -xf "${target_file}" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
+        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
+            sudo rm "$target_file"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
         fi
     fi
 
     printf "%s\n\n" "File extracted: $dl_file"
 
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: ${LINENO}"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: $LINENO"
 }
 
 git_1_fn() {
@@ -220,7 +220,7 @@ git_1_fn() {
     github_repo="$1"
     github_url="$2"
 
-    if curl_cmd="$(curl -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl -m 10 -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[1].name' 2>/dev/null)"
         g_url="$(echo "$curl_cmd" | jq -r '.[1].tarball_url' 2>/dev/null)"
         g_ver="${g_ver#llvmorg-}"
@@ -233,12 +233,12 @@ git_ver_fn() {
     v_url="$1"
     v_flag="$2"
 
-    case "${v_flag}" in
+    case "$v_flag" in
             R)      t_flag=releases;;
             T)      t_flag=tags;;
     esac
 
-    git_1_fn "${v_url}" "${t_flag}" 2>/dev/null
+    git_1_fn "$v_url" "$t_flag" 2>/dev/null
 }
 
 #
@@ -251,10 +251,10 @@ pkgs=(autoconf autoconf-archive automake autopoint binutils binutils-dev bison
 
 for i in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+    missing_pkg="$(sudo dpkg -l | grep -o "$i")"
 
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+    if [ -z "$missing_pkg" ]; then
+        missing_pkgs+=" $i"
     fi
 done
 

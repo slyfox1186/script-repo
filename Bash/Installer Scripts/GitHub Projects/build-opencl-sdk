@@ -80,21 +80,21 @@ git clone --recursive "$archive_url" "$cwd/$archive_dir" || { echo "Clone failed
 
 # Build the sdk
 cd "$cwd" || exit 1
-cmake -S OpenCL-SDK -B build                   \
-      -DCMAKE_INSTALL_PREFIX="$install_dir"    \
-      -DCMAKE_BUILD_TYPE=Release               \
-      -DBUILD_SHARED_LIBS=ON                   \
-      -DBUILD_TESTING=OFF                      \
-      -DBUILD_DOCS=OFF                         \
-      -DBUILD_EXAMPLES=OFF                     \
-      -DOPENCL_SDK_BUILD_SAMPLES=ON            \
-      -DCMAKE_C_FLAGS="${CFLAGS}"              \
-      -DCMAKE_CXX_FLAGS="${CXXFLAGS}"          \
-      -DOPENCL_HEADERS_BUILD_CXX_TESTS=OFF     \
+cmake -S OpenCL-SDK -B build \
+      -DCMAKE_INSTALL_PREFIX="$install_dir" \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DBUILD_SHARED_LIBS=ON \
+      -DBUILD_TESTING=OFF \
+      -DBUILD_DOCS=OFF \
+      -DBUILD_EXAMPLES=OFF \
+      -DOPENCL_SDK_BUILD_SAMPLES=ON \
+      -DCMAKE_C_FLAGS="$CFLAGS" \
+      -DCMAKE_CXX_FLAGS="$CXXFLAGS" \
+      -DOPENCL_HEADERS_BUILD_CXX_TESTS=OFF \
       -DOPENCL_ICD_LOADER_BUILD_SHARED_LIBS=ON \
-      -DOPENCL_SDK_BUILD_OPENGL_SAMPLES=OFF    \
-      -DOPENCL_SDK_BUILD_SAMPLES=OFF           \
-      -DTHREADS_PREFER_PTHREAD_FLAG=ON         \
+      -DOPENCL_SDK_BUILD_OPENGL_SAMPLES=OFF \
+      -DOPENCL_SDK_BUILD_SAMPLES=OFF \
+      -DTHREADS_PREFER_PTHREAD_FLAG=ON \
       -G Ninja -Wno-dev
 
 if ! ninja "-j$(nproc --all)" -C build; then

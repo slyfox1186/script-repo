@@ -18,7 +18,7 @@ if [[ "$EUID" -ne 0 ]]; then
 fi
 
 # Define global variables
-SCRIPT_NAME="${0}"
+SCRIPT_NAME="$0"
 SCRIPT_VERSION=3.5.2
 CWD="$PWD/ffmpeg-build-script"
 packages="$CWD/packages"
@@ -68,30 +68,30 @@ source_compiler_flags() {
 source_compiler_flags
 
 log() {
-    echo -e "${GREEN}[INFO]${NC} $1"
+    echo -e "$GREEN[INFO]$NC $1"
 }
 
 log_update() {
-    echo -e "${GREEN}[UPDATE]${NC} $1"
+    echo -e "$GREEN[UPDATE]$NC $1"
 }
 
 warn() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
+    echo -e "$YELLOW[WARNING]$NC $1"
 }
 
 exit_fn() {
     echo
-    echo -e "${GREEN}[INFO]${NC} Make sure to ${YELLOW}star${NC} this repository to show your support!"
-    echo -e "${GREEN}[INFO]${NC} https://github.com/slyfox1186/script-repo"
+    echo -e "$GREEN[INFO]$NC Make sure to $YELLOWstar$NC this repository to show your support!"
+    echo -e "$GREEN[INFO]$NC https://github.com/slyfox1186/script-repo"
     echo
     exit 0
 }
 
 fail() {
     echo
-    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "$RED[ERROR]$NC $1"
     echo
-    echo -e "${GREEN}[INFO]${NC} For help or to report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues"
+    echo -e "$GREEN[INFO]$NC For help or to report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues"
     echo
     exit 1
 }
@@ -373,7 +373,7 @@ github_repo() {
     local max_attempts=10
 
     if [[ -z "$repo" || -z "$url" ]]; then
-        echo -e "${RED}[ERROR]${NC} Git repository and URL are required."
+        echo -e "$RED[ERROR]$NC Git repository and URL are required."
         return 1
     fi
 
@@ -389,7 +389,7 @@ github_repo() {
         fi
 
         # Extract the specific line
-        line=$(echo "$curl_cmd" | grep -o 'href="[^"]*\.tar\.gz"' | sed -n "${count}p")
+        line=$(echo "$curl_cmd" | grep -o 'href="[^"]*\.tar\.gz"' | sed -n "$countp")
 
         # Check if the line matches the pattern (version without 'RC'/'rc')
         if echo "$line" | grep -qP '[v]*(\d+[\._]\d+(?:[\._]\d*){0,2})\.tar\.gz'; then
@@ -407,7 +407,7 @@ github_repo() {
         curl_cmd=$(curl -fsSL "https://github.com/$repo/$url" | grep -o 'href="[^"]*\.tar\.gz"')
 
         # Extract the specific line
-        line=$(echo "$curl_cmd" | grep -o 'href="[^"]*\.tar\.gz"' | sed -n "${count}p")
+        line=$(echo "$curl_cmd" | grep -o 'href="[^"]*\.tar\.gz"' | sed -n "$countp")
 
         # Check if the line matches the pattern (version without 'RC'/'rc')
         if echo "$line" | grep -qP '[v]*(\d+[\._]\d+(?:[\._]\d*){0,2})\.tar\.gz'; then
@@ -505,7 +505,7 @@ execute() {
 
 build() {
     echo
-    echo -e "${GREEN}Building${NC} ${YELLOW}$1${NC} - ${GREEN}version ${YELLOW}$2${NC}"
+    echo -e "$GREENBuilding$NC $YELLOW$1$NC - $GREENversion $YELLOW$2$NC"
     echo "========================================================"
 
     if [[ -f "$packages/$1.done" ]]; then
@@ -826,40 +826,40 @@ cuda_download() {
                 distro="debian10"
                 version="10-12-4"
                 pkg_ext="deb"
-                installer_path="local_installers/cuda-repo-debian${version}-local_${cuda_version_number}-550.54.14-1_amd64.deb"
+                installer_path="local_installers/cuda-repo-debian$version-local_$cuda_version_number-550.54.14-1_amd64.deb"
                 ;;
             "Debian 11")
                 distro="debian11"
                 version="11-12-4"
                 pkg_ext="deb"
-                installer_path="local_installers/cuda-repo-debian${version}-local_${cuda_version_number}-550.54.14-1_amd64.deb"
+                installer_path="local_installers/cuda-repo-debian$version-local_$cuda_version_number-550.54.14-1_amd64.deb"
                 ;;
             "Debian 12")
                 distro="debian12"
                 version="12-12-4"
                 pkg_ext="deb"
-                installer_path="local_installers/cuda-repo-debian${version}-local_${cuda_version_number}-550.54.14-1_amd64.deb"
+                installer_path="local_installers/cuda-repo-debian$version-local_$cuda_version_number-550.54.14-1_amd64.deb"
                 ;;
             "Ubuntu 20.04")
                 distro="ubuntu2004"
                 version="12-4"
                 pkg_ext="pin"
                 pin_file="$distro/x86_64/cuda-ubuntu2004.pin"
-                installer_path="local_installers/cuda-repo-${distro}-${version}-local_${cuda_version_number}-550.54.14-1_amd64.deb"
+                installer_path="local_installers/cuda-repo-$distro-$version-local_$cuda_version_number-550.54.14-1_amd64.deb"
                 ;;
             "Ubuntu 22.04")
                 distro="ubuntu2204"
                 version="12-4"
                 pkg_ext="pin"
                 pin_file="$distro/x86_64/cuda-ubuntu2204.pin"
-                installer_path="local_installers/cuda-repo-${distro}-${version}-local_${cuda_version_number}-550.54.14-1_amd64.deb"
+                installer_path="local_installers/cuda-repo-$distro-$version-local_$cuda_version_number-550.54.14-1_amd64.deb"
                 ;;
             "Ubuntu WSL")
                 distro="wsl-ubuntu"
                 version="12-4"
                 pkg_ext="pin"
                 pin_file="$distro/x86_64/cuda-wsl-ubuntu.pin"
-                installer_path="local_installers/cuda-repo-${distro}-${version}-local_${cuda_version_number}-1_amd64.deb"
+                installer_path="local_installers/cuda-repo-$distro-$version-local_$cuda_version_number-1_amd64.deb"
                 ;;
             "Arch Linux")
                 git clone -q "https://gitlab.archlinux.org/archlinux/packaging/packages/cuda.git" || fail "Failed to clone Arch Linux CUDA repository"
@@ -890,14 +890,14 @@ cuda_download() {
         package_name="$packages/nvidia-cuda/cuda-$distro-$cuda_version_number.$pkg_ext"
         wget --show-progress -cqO "$package_name" "$cuda_url/$installer_path"
         dpkg -i "$package_name"
-        cp -f /var/cuda-repo-${distro}${version}-local/cuda-*-keyring.gpg "/usr/share/keyrings/"
+        cp -f /var/cuda-repo-$distro$version-local/cuda-*-keyring.gpg "/usr/share/keyrings/"
         [[ "$distro" == "debian"* ]] && add-apt-repository -y contrib
     elif [[ "$pkg_ext" == "pin" ]]; then
         wget --show-progress -cqO "/etc/apt/preferences.d/cuda-repository-pin-600" "$cuda_pin_url/$pin_file"
         package_name="$packages/nvidia-cuda/cuda-$distro-$cuda_version_number.deb"
         wget --show-progress -cqO "$package_name" "$cuda_url/$installer_path"
         dpkg -i "$package_name"
-        cp -f /var/cuda-repo-${distro}-12-4-local/cuda-*-keyring.gpg "/usr/share/keyrings/"
+        cp -f /var/cuda-repo-$distro-12-4-local/cuda-*-keyring.gpg "/usr/share/keyrings/"
     fi
 
     apt-get update
@@ -1060,7 +1060,7 @@ apt_pkgs() {
 
     # Loop through the array to find missing packages
     for pkg in "${pkgs[@]}"; do
-        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+        if ! dpkg-query -W -f='$Status' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             missing_packages+=("$pkg")
         fi
     done
@@ -2310,7 +2310,7 @@ repo_version="${repo_version//debian\//}"
 if build "opencore-amr" "$repo_version"; then
     download "https://salsa.debian.org/multimedia-team/opencore-amr/-/archive/debian/$repo_version/opencore-amr-debian-$repo_version.tar.bz2" "opencore-amr-$repo_version.tar.bz2"
     execute ./configure --prefix="$workspace" --disable-shared
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute make install
     build_done "opencore-amr" "$repo_version"
 fi
