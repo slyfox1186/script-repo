@@ -74,8 +74,8 @@ sudo bash build-clang.sh
     - **Processor**    - **Linux** | **ARM**
 ### v23.01 Release
 ```bash
-curl -fsSLo 7z.sh https://7zip.optimizethis.net
-bash 7z.sh
+curl -fsSLo install-7zip.sh https://7zip.optimizethis.net
+bash install-7zip.sh
 ```
 ------
 
