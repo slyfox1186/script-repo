@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
 # ANSI color codes
-RED="\033[0;31m"
 GREEN="\033[0;32m"
+RED="\033[0;31m"
+YELLOW="\033[0;33m"
 NC="\033[0m"
 
 # Function to log messages
@@ -12,7 +13,7 @@ log() {
 
 # Function to display warnings
 warn() {
-    echo -e "${RED}[WARN]${NC} $1"
+    echo -e "${YELLOW}[WARN]${NC} $1"
 }
 
 # Function to handle failures
@@ -24,7 +25,7 @@ fail() {
 # Check if running as root or with sudo
 check_root() {
     if [[ "$EUID" -eq 0 ]]; then
-        fail "This script must be run without root or with sudo."
+        fail "This script must be run without root privileges."
     fi
 }
 
@@ -33,9 +34,9 @@ show_help() {
     echo "Usage: $0 [option]"
     echo "Options:"
     echo "  -h, --help            Show this help message."
-    echo "  -i, --install         Install GNU Core Utilities."
-    echo "  -c, --check-dependencies Check for and install missing dependencies."
-    echo "  -l, --link-binaries   Link the installed binaries to /usr/local/bin."
+    echo "  -d,                   Check for and install missing dependencies."
+    echo "  -l,                   Link the installed binaries to /usr/local/bin."
+    echo "  -c,                   Cleanup the build directory and its contents."
 }
 
 # Function to install dependencies
@@ -60,7 +61,7 @@ install_dependencies() {
     fi
 }
 
-# Function to dynamically download and extract coreutils
+# Dynamically determines and downloads the latest version of GNU Core Utilities
 download_coreutils() {
     log "Fetching the latest version of GNU Core Utilities..."
     local latest_version
@@ -68,68 +69,116 @@ download_coreutils() {
     if [[ -z "$latest_version" ]]; then
         fail "Failed to fetch the latest version of GNU Core Utilities."
     fi
-    local tarball="coreutils-${latest_version}.tar.xz"
+    local tarball="coreutils-$latest_version.tar.xz"
     local url="https://ftp.gnu.org/gnu/coreutils/$tarball"
     log "Downloading GNU Core Utilities version $latest_version..."
     if wget --show-progress -cqO "$working/$tarball" "$url"; then
-        mkdir -p "$working/coreutils-${latest_version}/build"
-        tar -xf "$working/$tarball" -C "$working/coreutils-${latest_version}" --strip-components=1
-        cd "$working/coreutils-${latest_version}" || fail "Failed to enter the coreutils directory."
+        mkdir -p "$working/coreutils-$latest_version/build"
+        tar -xf "$working/$tarball" -C "$working/coreutils-$latest_version" --strip-components=1
+        cd "$working/coreutils-$latest_version" || fail "Failed to enter the coreutils directory."
     else
         fail "Failed to download GNU Core Utilities."
     fi
 }
 
-# Function to configure, compile, and install coreutils
+# Configures, compiles, and installs the downloaded version of Core Utilities
 build_and_install() {
+    local systemd_switch
     log "Configuring, compiling, and installing GNU Core Utilities..."
     autoreconf -fi
-    cd build
+    cd build || exit 1
+    # Determine if systemd is running
+    local test_systemd=$(stat /sbin/init | grep systemd)
+    if [[ -n "$test_systemd" ]]; then
+        systemd_switch="--enable-systemd"
+    else
+        systemd_switch="--disable-systemd"
+    fi
     ../configure --prefix=/usr/local/coreutils \
-                 --build=x86_64-linux-gnu \
-                 --host=x86_64-linux-gnu \
-                 --disable-nls \
-                 --disable-gcc-warnings \
-                 --enable-threads=posix
-    make "-j$(nproc --all)"
-    sudo make install
-    log "GNU Core Utilities installed successfully." || fail "Build or install failed."
+                 --disable-nls --disable-year2038 \
+                 --enable-gcc-warnings=no --enable-threads=posix \
+                 --with-libiconv-prefix=/usr --with-openssl=auto "$systemd_switch" || (
+                 fail "Configure script failed."
+             )
+    make "-j$(nproc --all)" || fail "Make -j$(nproc --all) failed."
+    sudo make install || fail "Make install failed."
+    log "GNU Core Utilities installed successfully."
 }
 
-# Function to link installed binaries
+# Links the installed binaries to a directory in the path
 link_coreutils() {
     log "Linking installed binaries to /usr/local/bin..."
-    sudo ln -sf /usr/local/coreutils/bin/* /usr/local/bin/ || warn "Failed to link binaries."
+    if ! sudo ln -sf /usr/local/coreutils/bin/* /usr/local/bin/; then
+        warn "Failed to link binaries."
+    else
+        log "Binaries linked successfully."
+    fi
 }
 
-# Create variables
+# Cleans up the build directory and its contents
+cleanup() {
+    log "Cleaning up the build directory and its contents..."
+    if ! sudo rm -fr "$working"; then
+        warn "Failed to clean up the build directory."
+    else
+        log "Cleanup completed successfully."
+    fi
+}
+
+# Main logic flow
+main() {
+    check_root
+
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            -d)
+                set_deps=true
+                ;;
+            -l)
+                set_links=true
+                ;;
+            -c)
+                set_cleanup=true
+                ;;
+            *)
+                # Unrecognized option
+                show_help
+                exit 1
+                ;;
+        esac
+        shift
+    done
+
+    # If no specific option is provided, proceed with these actions
+    if $set_deps; then
+        install_dependencies
+    fi
+
+    download_coreutils
+    build_and_install
+
+    if $set_links; then
+        link_coreutils
+    fi
+
+    if $set_cleanup; then
+        cleanup
+    fi
+}
+
+# Setup working directory and execute main function
 cwd="$PWD"
 working="$cwd/build-coreutils-script"
 
-mkdir -p "$working"; cd "$working" || exit 1
+set_deps=false
+set_links=false
+set_cleanup=false
 
-# Main function
-main() {
-    check_root
-    case "$1" in
-        -h|--help)
-            show_help
-            ;;
-        -i|--install)
-            install_dependencies
-            download_coreutils
-            build_and_install
-            ;;
-        -c|--check-dependencies)
-            install_dependencies
-            ;;
-        -l|--link-binaries)
-            link_coreutils
-            ;;
-        *)
-            show_help
-            ;;
-    esac
-}
+mkdir -p "$working"
+cd "$working" || exit 1
 
 main "$@"
