@@ -154,18 +154,18 @@ fi
 # Build program from source
 cd "$cwd/$archive_dir" || exit 1
 python3 setup.py build
-if ! sudo python3 setup.py install --prefix="$install_dir"                        \
-                                   --install-lib=/usr/local/lib                     \
-                                   --home="${HOME}"                                 \
-                                   --single-version-externally-managed              \
-                                   --record=install-files.txt                       \
-                                   --install-headers                                \
-                                   --install-scripts                                \
-                                   --install-data                                   \
-                                   --compile -optimize -O2                          \
-                                   --force                                          \
+if ! sudo python3 setup.py install --prefix="$install_dir" \
+                                   --install-lib=/usr/local/lib \
+                                   --home="${HOME}" \
+                                   --single-version-externally-managed \
+                                   --record=install-files.txt \
+                                   --install-headers \
+                                   --install-scripts \
+                                   --install-data \
+                                   --compile -optimize -O2 \
+                                   --force \
                                    --record "$cwd"/terminator-installed-files.txt \
-                                   --user                                           \
+                                   --user \
                                    --install-layout=unix; then
     fail_fn "Failed to execute: sudo python3 setup.py install:Line ${LINENO}"
     exit 1
