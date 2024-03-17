@@ -1,4 +1,4 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
 
 clear
@@ -13,7 +13,7 @@ script_ver=1.0
 jemalloc_ver=5.3.0
 archive_dir=jemalloc-$jemalloc_ver
 archive_url=https://github.com/jemalloc/jemalloc/archive/refs/tags/"$jemalloc_ver".tar.gz
-archive_ext="$archive_url//*."
+archive_ext="${archive_url//*.}"
 archive_name="$archive_dir.tar.$archive_ext"
 cwd="$PWD"/jemalloc-build-script
 install_dir=/usr/local
