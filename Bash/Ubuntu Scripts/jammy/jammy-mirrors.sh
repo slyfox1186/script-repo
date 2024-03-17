@@ -5,14 +5,11 @@ if [[ "$EUID" -ne 0 ]]; then
     exit 1
 fi
 
-script_path=$(readlink -f "${BASH_SOURCE[0]}")
-script_name=$(basename "$script_path")
-
 fname="/etc/apt/sources.list"
 
 # Make a backup of the file
-if [[ ! -f "${list}.bak" ]]; then
-    cp -f "$list" "${list}.bak"
+if [[ ! -f "${fname}.bak" ]]; then
+    cp -f "$fname" "${fname}.bak"
 fi
 
 cat > "$fname" <<EOF
@@ -29,4 +26,7 @@ else
     echo -e "\\nThe script failed to locate nano to open the file...\\n"
 fi
 
-rm "$script_name"
+script_path=$(readlink -f "${BASH_SOURCE[0]}")
+script_name=$(basename "$script_path")
+
+[[ -f "$script_name" ]] && rm "$script_name"
