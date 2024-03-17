@@ -958,7 +958,7 @@ if build "$repo_name" "${version//\$ /}"; then
                          --with-urw-base35-font-dir=/usr/share/fonts/type1/urw-base35 \
                          --with-utilities \
                          "$autotrace_switch" \
-                         CFLAGS="$CFLAGS -DCL_TARGET_OPENCL_VERSION=300"
+                         CFLAGS="$CFLAGS -fPIE -DCL_TARGET_OPENCL_VERSION=300"
     execute make "-j$cpu_threads"
     execute make install
 fi
