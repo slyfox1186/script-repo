@@ -63,7 +63,8 @@ sudo bash build-gcc.sh
 ## Install [Clang-17](https://github.com/llvm/llvm-project)
   - **Automatically finds the latest release version and installs clang from source code.**
 ```bash
-curl -fsSLo build-clang https://clang.optimizethis.net; sudo bash build-clang
+curl -fsSLo build-clang.sh https://clang.optimizethis.net
+sudo bash build-clang.sh
 ```
 ------
 
@@ -73,8 +74,8 @@ curl -fsSLo build-clang https://clang.optimizethis.net; sudo bash build-clang
     - **Processor**    - **Linux** | **ARM**
 ### v23.01 Release
 ```bash
-curl -fsSLo 7z.sh https://7z.optimizethis.net
-clear; bash 7z.sh
+curl -fsSLo 7z.sh https://7zip.optimizethis.net
+bash 7z.sh
 ```
 ------
 
