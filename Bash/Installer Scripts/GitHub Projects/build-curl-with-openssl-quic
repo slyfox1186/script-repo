@@ -7,7 +7,7 @@ fi
 
 script_ver=1.0
 curl_ver=8.4.0
-archive_dir=${curl_ver}
+archive_dir=$curl_ver
 archive_dir1=${curl_ver//./_}
 archive_url=https://github.com/curl/curl/releases/download/curl-$archive_dir1/curl-$archive_dir.tar.xz
 archive_ext="$archive_url//*."
