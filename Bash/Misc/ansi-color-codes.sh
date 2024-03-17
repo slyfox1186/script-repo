@@ -20,6 +20,6 @@ WHITE='\033[1;37m'
 NC='\033[0m' # No Color
 
 # Example of using colors
-echo -e "${GREEN}This text is green.${NC}"
-echo -e "${RED}This text is red.${NC}"
-echo -e "${BLUE}This text is blue.${NC}"
+echo -e "$GREENThis text is green.$NC"
+echo -e "$REDThis text is red.$NC"
+echo -e "$BLUEThis text is blue.$NC"

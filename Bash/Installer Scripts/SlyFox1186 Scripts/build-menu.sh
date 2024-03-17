@@ -1,52 +1,43 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
 clear
 
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 
-#
-# MENU COLOR FUNCTIONS
-#
+# Menu color functions
 
 green='\e[32m'
 blue='\e[34m'
 clear='\e[0m'
 
-ColorGreen() { echo -ne "${green}$1${clear}"; }
-ColorBlue() { echo -ne "${blue}$1${clear}"; }
+ColorGreen() { echo -ne "$green$1$clear"; }
+ColorBlue() { echo -ne "$blue$1$clear"; }
 
-#
-# SHOW SCRIPT BANNER
-#
+# Show script banner
 
-box_out_banner()
-{
+box_out_banner() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
+    line=$(for i in $(seq 0 $input_char); do printf '-'; done)
     tput bold
     line="$(tput setaf 3)$line"
-    space=${line//-/ }
+    space=$line//-/ 
     echo " $line"
-    printf '|'; echo -n "${space}"; printf "%s\n" '|';
+    printf '|'; echo -n "$space"; printf "%s\n" '|';
     printf '| ' ;tput setaf 4; echo -n "$@"; tput setaf 3; printf "%s\n" ' |';
-    printf '|'; echo -n "${space}"; printf "%s\n" '|';
+    printf '|'; echo -n "$space"; printf "%s\n" '|';
     echo " $line"
     tput sgr 0
 }
 box_out_banner 'Installer Script Menu'
 
-#
-# DOWNLOAD SCRIPTS
-#
+# Download scripts
 
 download() {
     local url="$1"
     bash <(curl -fsSL "$url")
 }
 
-#
-# DISPLAY THE MAIN MENU
-#
+# Display the main menu
 
 main_menu() {
     options=(
@@ -64,9 +55,9 @@ main_menu() {
     )
 
     counter=1
-    while [ $counter -le ${#options[@]} ]
+    while [ $counter -le ${#Options[@]} ]
     do
-        echo "$counter) ${options[counter-1]}"
+        echo "$counter) $options[counter-1]"
         ((counter++))
     done
 
@@ -89,9 +80,7 @@ main_menu() {
     esac
 }
 
-#
-# CUSTOM USER SCRIPTS MENU
-#
+# Custom user scripts menu
 
 custom_user_scripts() {
     options=(
@@ -101,8 +90,8 @@ custom_user_scripts() {
     )
 
     counter=1
-    while [ $counter -le ${#options[@]} ]; do
-        echo "$counter) ${options[counter-1]}"
+    while [ $counter -le ${#Options[@]} ]; do
+        echo "$counter) $options[counter-1]"
         ((counter++))
     done
 
@@ -117,9 +106,7 @@ custom_user_scripts() {
     esac
 }
 
-#
-# EXTRA MIRRORS MENU
-#
+# Extra mirrors menu
 
 extra_mirrors() {
     options=(
@@ -134,8 +121,8 @@ extra_mirrors() {
     )
 
     counter=1
-    while [ $counter -le ${#options[@]} ]; do
-        echo "$counter) ${options[counter-1]}"
+    while [ $counter -le ${#Options[@]} ]; do
+        echo "$counter) $options[counter-1]"
         ((counter++))
     done
 

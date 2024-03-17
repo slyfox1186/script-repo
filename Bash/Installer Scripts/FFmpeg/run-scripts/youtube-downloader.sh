@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
 clear
 
@@ -7,7 +7,7 @@ filename="$ouput_dir/%(title)s.%(ext)s"
 ext='mp4'
 regex='\.txt$'
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-#user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/120.0.2210.91'
+#User_agent='mozilla/5.0 (windows nt 10.0; win64; x64) applewebkit/537.36 (khtml, like gecko) chrome/121.0.0.0 safari/537.36 edg/120.0.2210.91'
 ff='/usr/local/bin/ffmpeg'
 format='bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4] / bv*+ba/b'
 logfile='yt-dlp.log'

@@ -1,6 +1,7 @@
-#!/usr/bin/env bash
-# shellcheck disable=SC1091,SC2000,SC2046,SC2066,SC2068,SC2086,SC2119,SC2162,SC2181,SC2206
+#!/Usr/bin/env bash
+# Shellcheck disable=sc1091,sc2000,sc2046,sc2066,sc2068,sc2086,sc2119,sc2162,sc2181,sc2206
 
+<<<<<<< Updated upstream
 ##  Script Version: 1.2
 ##  Updated: 03.16.24
 ##  GitHub: https://github.com/slyfox1186/imagemagick-build-script
@@ -9,48 +10,58 @@
 ##            reduce total file size, ect... The possibilities are vast
 ##  Method: The script will search GitHub for the latest released version and upon execution will import the
 ##            information into the script.
+=======
+##  Script version: 1.1
+##  Updated: 02.20.24
+##  Github: https://github.com/slyfox1186/imagemagick-build-script
+##  Purpose: build imagemagick 7 from the source code obtained from imagemagick's official github repository
+##  Function: imagemagick is the leading open-source command line image processor. it can blur, sharpen, warp,
+##            Reduce total file size, ect... the possibilities are vast
+##  Method: the script will search github for the latest released version and upon execution will import the
+##            Information into the script.
+>>>>>>> Stashed changes
 ##  Added:
-##          - Ubuntu OS support for versions, 22.04 23.04, 23.10, 24.04
-##          - Debian OS support for versions, 11 & 12
+##          - Ubuntu os support for versions, 22.04 23.04, 23.10, 24.04
+##          - Debian os support for versions, 11 & 12
 ##          - A browser user-agent string to the curl command
-##          - A CPPFLAGS variable to ImageMagick's configure script
-##          - A case command to determine the required libtool version based on the active OS
-##          - Autotrace for Ubuntu (18/20/22).04 and Debian 10/11
-##          - LCMS Support
-##          - Deja-Vu Fonts
-##          - APT package
+##          - A cppflags variable to imagemagick's configure script
+##          - A case command to determine the required libtool version based on the active os
+##          - Autotrace for ubuntu (18/20/22).04 and debian 10/11
+##          - Lcms support
+##          - Deja-vu fonts
+##          - Apt package
 ##  Fixed:
-##          - error with the pkg-config location when building ImageMagick
-##          - error in the variable PKG_CONFIG_PATH
+##          - Error with the pkg-config location when building imagemagick
+##          - Error in the variable pkg_config_path
 ##  Removed:
-##          - unnecessary commands in imagemagick's configure script
+##          - Unnecessary commands in imagemagick's configure script
 
 if [[ "$EUID" -ne 0 ]]; then
     echo "This script must be run with root/sudo"
     exit 1
 fi
 
-# SET GLOBAL VARIABLES
+# Set global variables
 script_ver=1.1
 cwd="$PWD/magick-build-script"
 packages="$cwd/packages"
 workspace="$cwd/workspace"
 regex_string='(rc|RC|Rc|rC|alpha|beta|master|pre)+[0-9]*$'
-debug=OFF # CHANGE THIS VARIABLE TO "ON" FOR HELP WITH TROUBLESHOOTING UNEXPECTED ISSUES DURING THE BUILD
+debug=OFF # Change this variable to "on" for help with troubleshooting unexpected issues during the build
 
 # Pre-defined color variables
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
-NC='\033[0m' # No Color
+NC='\033[0m' # No color
 
-# ANNOUNCE THE BUILD HAS BEGUN
+# Announce the build has begun
 box_out_banner_header() {
     input_char=$(echo "$@" | wc -c)
     line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)$line"
-    space="${line//-/ }"
+    space="$line//-/ "
     echo " $line"
     printf "|" ; echo -n "$space" ; printf "%s\n" "|";
     printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
@@ -60,24 +71,24 @@ box_out_banner_header() {
 }
 box_out_banner_header "ImageMagick Build Script v$script_ver"
 
-# CREATE OUTPUT DIRECTORIES
+# Create output directories
 mkdir -p "$packages" "$workspace"
 
-# SET THE COMPILERS TO USE AND THE COMPILER OPTIMIZATION FLAGS
+# Set the compilers to use and the compiler optimization flags
 CC=gcc
 CXX=g++
-CFLAGS="-g -O3 -pipe -march=native"
-CXXFLAGS="-g -O3 -pipe -march=native"
+CFLAGS="-g -O3 -pipe -fno-plt -march=native"
+CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
 export CC CFLAGS CXX CXXFLAGS
 
-# SET THE AVAILABLE CPU COUNT FOR PARALLEL PROCESSING (SPEEDS UP THE BUILD PROCESS)
+# Set the available cpu count for parallel processing (speeds up the build process)
 if [[ -f /proc/cpuinfo ]]; then
     cpu_threads=$(grep --count ^processor /proc/cpuinfo)
 else
     cpu_threads=$(nproc --all)
 fi
 
-# SET THE PATH
+# Set the path
 if [[ -d /usr/lib/ccache/bin ]]; then
     ccache_dir=/usr/lib/ccache/bin
 else
@@ -120,26 +131,26 @@ export PKG_CONFIG_PATH
 
 exit_fn() {
     echo
-    echo -e "${GREEN}[INFO]${NC} Make sure to ${YELLOW}star${NC} this repository to show your support!"
-    echo -e "${GREEN}[INFO]${NC} https://github.com/slyfox1186/script-repo"
+    echo -e "$GREEN[INFO]$NC Make sure to $YELLOWstar$NC this repository to show your support!"
+    echo -e "$GREEN[INFO]$NC https://github.com/slyfox1186/script-repo"
     echo
     exit 0
 }
 
 fail() {
     echo
-    echo -e "${RED}[ERROR]${NC} $1\\n"
-    echo -e "${GREEN}[INFO]${NC} For help or to report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues"
+    echo -e "$RED[ERROR]$NC $1\\n"
+    echo -e "$GREEN[INFO]$NC For help or to report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues"
     echo
     exit 1
 }
 
 log() {
-    echo -e "${GREEN}[INFO]${NC} $1"
+    echo -e "$GREEN[INFO]$NC $1"
 }
 
 warn() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
+    echo -e "$YELLOW[WARNING]$NC $1"
 }
 
 cleanup() {
@@ -183,7 +194,7 @@ execute() {
 
 build() {
     echo
-    echo -e "${GREEN}Building ${YELLOW}$1${NC} - ${GREEN}version ${YELLOW}$2${NC}"
+    echo -e "$GREENBuilding $YELLOW$1$NC - $GREENversion $YELLOW$2$NC"
     echo "=========================================="
 
     if [[ -f "$packages/$1.done" ]]; then
@@ -202,13 +213,13 @@ build_done() {
 download() {
     path="$packages"
     url="$1"
-    archive="${2:-"${1##*/}"}"
+    archive="$2:-"${1##*/"}"
 
     if [[ "$archive" =~ tar. ]]; then
-        output_dir="${archive%.*}"
-        output_dir="${3:-"${output_dir%.*}"}"
+        output_dir="$archive%.*"
+        output_dir="$3:-"${output_dir%.*"}"
     else
-        output_dir="${3:-"${archive%.*}"}"
+        output_dir="$3:-"${archive%.*"}"
     fi
 
     target_file="$path/$archive"
@@ -261,17 +272,17 @@ git_caller() {
 
     version=$(git_clone "$git_url" "$repo_name")
 
-    version="${version//Cloning completed: /}"
+    version="$version//Cloning completed: /"
 }
 
 git_clone() {
     local repo_url="$1"
-    local repo_name="${2:-"${1##*/}"}"
-    local repo_name="${repo_name//\./-}"
+    local repo_name="$2:-"${1##*/"}"
+    local repo_name="$repo_name//\./-"
     local target_directory="$packages/$repo_name"
     local version
 
-    # Try to get the latest tag
+# Try to get the latest tag
     version=$(git ls-remote --tags "$repo_url" |
               awk -F'/' '/\/v?[0-9]+\.[0-9]+(\.[0-9]+)?(-[0-9]+)?(\^\{\})?$/ {
                   tag = $3;
@@ -283,7 +294,7 @@ git_clone() {
               head -n1
          )
 
-    # If no tags found, use the latest commit hash as the version
+# If no tags found, use the latest commit hash as the version
     if [[ -z "$version" ]]; then
         version=$(git ls-remote "$repo_url" |
                   grep "HEAD" |
@@ -297,10 +308,10 @@ git_clone() {
     if [[ ! "$version" == "$store_prior_version" ]]; then
         [[ "$recurse_flag" -eq 1 ]] && recurse="--recursive"
         [[ -d "$target_directory" ]] && rm -fr "$target_directory"
-        # Clone the repository
+# Clone the repository
         if ! git clone --depth 1 $recurse -q "$repo_url" "$target_directory"; then
             echo
-            echo -e "${RED}[ERROR]${NC} Failed to clone \"$target_directory\". Second attempt in 10 seconds..."
+            echo -e "$RED[ERROR]$NC Failed to clone \"$target_directory\". Second attempt in 10 seconds..."
             echo
             sleep 10
             if ! git clone --depth 1 $recurse -q "$repo_url" "$target_directory"; then
@@ -333,9 +344,9 @@ github_repo() {
     local git_url="$2"
     version=""
 
-    # Fetch GitHub tags page
+# Fetch github tags page
     while [ $count -le 10 ]; do
-        # Apply case-insensitive matching for RC versions to exclude them
+# Apply case-insensitive matching for rc versions to exclude them
         version=$(curl -fsSL "https://github.com/$git_repo/$git_url" |
                   grep -oP 'href="[^"]*/tags/[^"]*\.tar\.gz"' |
                   grep -oP '\/tags\/\K(v?[\w.-]+?)(?=\.tar\.gz)' |
@@ -344,16 +355,16 @@ github_repo() {
                   sed 's/^v//'
              )
 
-        # Check if a non-RC version was found
+# Check if a non-rc version was found
         if [[ -n "$version" ]]; then
             break
         else
-            # Increment the count if no non-RC match is found
+# Increment the count if no non-rc match is found
             ((count++))
         fi
     done
 
-    # Handle case where no non-RC version is found after max attempts
+# Handle case where no non-rc version is found after max attempts
     [[ -z "$version" ]] && fail "No matching version found without RC/rc suffix."
 }
 
@@ -367,13 +378,13 @@ gitlab_freedesktop_repo() {
     do
         if curl_results=$(curl -m 10 -sSL "https://gitlab.freedesktop.org/api/v4/projects/$repo/repository/tags"); then
             version=$(echo "$curl_results" | jq -r ".[$count].name")
-            version="${version#v}"
+            version="$version#V"
 
-            # Check if version contains "RC" and skip it
+# Check if version contains "rc" and skip it
             if [[ $version =~ $regex_string ]]; then
                 ((count++))
             else
-                break # Exit the loop when a non-RC version is found
+                break # Exit the loop when a non-rc version is found
             fi
         else
             fail "Failed to fetch data from GitLab API."
@@ -393,10 +404,10 @@ gitlab_gnome_repo() {
 
     if curl_results=$(curl -sSL "https://gitlab.gnome.org/api/v4/projects/$repo/repository/$url"); then
         version=$(echo "$curl_results" | jq -r '.[0].name')
-        version="${version#v}"
+        version="$version#V"
     fi
 
-    # Deny installing a release candidate
+# Deny installing a release candidate
     while [ $version =~ $regex_string ]; do
         if curl_results=$(curl -sSL "https://gitlab.gnome.org/api/v4/projects/$repo/repository/$url"); then
             version=$(echo "$curl_results" | jq -r ".[$count].name" | sed 's/^v//')
@@ -440,20 +451,20 @@ apt_pkgs() {
         nasm ninja-build pkg-config python3-dev yasm zlib1g-dev php-dev
 )
 
-    # Initialize arrays for missing, available, and unavailable packages
+# Initialize arrays for missing, available, and unavailable packages
     missing_packages=()
     available_packages=()
     unavailable_packages=()
 
-    # Loop through the array to find missing packages
+# Loop through the array to find missing packages
     for pkg in "${pkgs[@]}"
     do
-        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+        if ! dpkg-query -W -f='$Status' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             missing_packages+=("$pkg")
         fi
     done
 
-    # Check availability of missing packages and categorize them
+# Check availability of missing packages and categorize them
     for pkg in "${missing_packages[@]}"
     do
         if apt-cache show "$pkg" >/dev/null 2>&1; then
@@ -463,11 +474,11 @@ apt_pkgs() {
         fi
     done
 
-    # Print unavailable packages
-    [[ "${#unavailable_packages[@]}" -gt 0 ]] && log "Unavailable packages: ${unavailable_packages[@]}"
+# Print unavailable packages
+    [[ "${#Unavailable_packages[@]}" -gt 0 ]] && log "unavailable packages: ${unavailable_packages[@]}"
 
-    # Install available missing packages
-    if [[ "${#available_packages[@]}" -gt 0 ]]; then
+# Install available missing packages
+    if [[ "${#Available_packages[@]}" -gt 0 ]]; then
         log "Installing available missing packages: ${available_packages[@]}"
         apt install "${available_packages[@]}"
     else
@@ -485,7 +496,7 @@ download_autotrace() {
 }
 
 set_autotrace() {
-    # enable/disable autotrace
+# Enable/disable autotrace
     case "$OS" in
         Ubuntu) download_autotrace
                 local flag=true
@@ -499,7 +510,7 @@ set_autotrace() {
     fi
 }
 
-# Install APT packages
+# Install apt packages
     echo
     echo "Installing required APT packages"
     echo "=========================================="
@@ -525,10 +536,10 @@ get_os_version() {
     fi
 }
 
-# GET THE OS NAME
+# Get the os name
 get_os_version
 
-# DISCOVER WHAT VERSION OF LINUX WE ARE RUNNING (DEBIAN OR UBUNTU)
+# Discover what version of linux we are running (debian or ubuntu)
 case "$OS" in
     Arch)   return ;;
     Debian) debian_version ;;
@@ -536,7 +547,7 @@ case "$OS" in
     *)      fail "Could not detect the OS architecture. Line: $LINENO" ;;
 esac
 
-# INSTALL OFFICIAL IMAGEMAGICK LIBS
+# Install official imagemagick libs
 find_git_repo "imagemagick/imagemagick" "1" "T"
 if build "magick-libs" "$version"; then
     if [[ ! -d "$packages/deb-files" ]]; then
@@ -551,7 +562,7 @@ if build "magick-libs" "$version"; then
     build_done "magick-libs" "$version"
 fi
 
-# INSTALL COMPOSER TO COMPILE GRAPHVIZ
+# Install composer to compile graphviz
 if [[ ! -f "/usr/bin/composer" ]]; then
     EXPECTED_CHECKSUM=$(php -r 'copy("https://composer.github.io/installer.sig", "php://stdout");')
     php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
@@ -568,7 +579,7 @@ if [[ ! -f "/usr/bin/composer" ]]; then
     rm "composer-setup.php"
 fi
 
-# BEGIN BUILDING FROM SOURCE CODE
+# Begin building from source code
 if build "m4" "latest"; then
     download "https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz"
     execute ./configure --prefix="$workspace" \
@@ -631,8 +642,13 @@ if build "libtiff" "$version"; then
 fi
 
 git_caller "https://github.com/imageMagick/jpeg-turbo.git" "jpeg-turbo-git"
+<<<<<<< Updated upstream
 if build "$repo_name" "${version//\$ /}"; then
     git_clone "$git_url" "$repo_name"
+=======
+if build "$repo_name" "$version//\$ /"; then
+    git_clone "$git_url"
+>>>>>>> Stashed changes
     execute cmake -S . \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
@@ -655,7 +671,7 @@ if build "$repo_name" "$version"; then
 fi
 
 find_git_repo "ArtifexSoftware/ghostpdl-downloads" "1" "T"
-modify_version="${version#gs}"
+modify_version="$version#Gs"
 modify_version=$(sed -r 's/(..)(..)(.)/\1.\2.\3/' <<< "$modify_version")
 if build "ghostscript" "$version"; then
     download "https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/$version/ghostscript-$modify_version.tar.xz" "ghostscript-$modify_version.tar.xz"
@@ -666,7 +682,7 @@ if build "ghostscript" "$version"; then
     build_done "ghostscript" "$version"
 fi
 
-get_os_version # Ubuntu throws an error if you don't install png12, however Debian works without issue.
+get_os_version # Ubuntu throws an error if you don't install png12, however debian works without issue.
 
 find_git_repo "pnggroup/libpng" "1" "T"
 [[ "$OS" == "Ubuntu" ]] && version="1.2.59"
@@ -680,8 +696,13 @@ if build "libpng" "$version"; then
 fi
 
 git_caller "https://chromium.googlesource.com/webm/libwebp" "libwebp-git"
+<<<<<<< Updated upstream
 if build "$repo_name" "${version//\$ /}"; then
     git_clone "$git_url" "$repo_name"
+=======
+if build "$repo_name" "$version//\$ /"; then
+    git_clone "$git_url"
+>>>>>>> Stashed changes
     execute autoreconf -fi
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
@@ -702,8 +723,8 @@ if build "$repo_name" "${version//\$ /}"; then
 fi
 
 find_git_repo "7950" "2"
-version="${version#VER-}"
-version1="${version//-/.}"
+version="$version#Ver-"
+version1="$version//-/."
 if build "freetype" "$version1"; then
     download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-$version/freetype-VER-$version.tar.bz2" "freetype-$version1.tar.bz2"
     extracmds=("-D"{harfbuzz,png,bzip2,brotli,zlib,tests}"=disabled")
@@ -757,8 +778,13 @@ if build "fontconfig" "$version"; then
 fi
 
 git_caller "https://github.com/fribidi/c2man.git" "c2man-git"
+<<<<<<< Updated upstream
 if build "$repo_name" "${version//\$ /}"; then
     git_clone "$git_url" "$repo_name"
+=======
+if build "$repo_name" "$version//\$ /"; then
+    git_clone "$git_url"
+>>>>>>> Stashed changes
     execute ./Configure -desO \
                         -D bin="$workspace/bin" \
                         -D cc="/usr/bin/cc" \
@@ -844,8 +870,13 @@ if build "jemalloc" "$version"; then
 fi
 
 git_caller "https://github.com/KhronosGroup/OpenCL-SDK.git" "opencl-sdk-git" "recurse"
+<<<<<<< Updated upstream
 if build "$repo_name" "${version//\$ /}"; then
     git_clone "$git_url" "$repo_name"
+=======
+if build "$repo_name" "$version//\$ /"; then
+    git_clone "$git_url"
+>>>>>>> Stashed changes
     execute cmake \
             -S . \
             -B build \
@@ -889,7 +920,7 @@ if build "openjpeg" "$version"; then
 fi
 
 find_git_repo "mm2/Little-CMS" "1" "T"
-version="${version//lcms/}"
+version="$version//lcms/"
 if build "lcms2" "$version"; then
     download "https://github.com/mm2/Little-CMS/archive/refs/tags/lcms$version.tar.gz" "lcms2-$version.tar.gz"
     execute ./autogen.sh
@@ -900,8 +931,13 @@ if build "lcms2" "$version"; then
 fi
 
 git_caller "https://github.com/dejavu-fonts/dejavu-fonts.git" "dejavu-fonts-git"
+<<<<<<< Updated upstream
 if build "$repo_name" "${version//\$ /}"; then
     git_clone "$git_url" "$repo_name"
+=======
+if build "$repo_name" "$version//\$ /"; then
+    git_clone "$git_url"
+>>>>>>> Stashed changes
     wget -cqP "resources" "http://www.unicode.org/Public/UNIDATA/UnicodeData.txt" "http://www.unicode.org/Public/UNIDATA/Blocks.txt"
     execute ln -sf "$fc_dir/fc-lang" "resources/fc-lang"
     execute make "-j$cpu_threads" full-ttf
@@ -917,7 +953,7 @@ box_out_banner_magick() {
     line=$(for i in $(seq 0 $input_char); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)$line"
-    space="${line//-/ }"
+    space="$line//-/ "
     echo " $line"
     printf "|" ; echo -n "$space" ; printf "%s\n" "|";
     printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
@@ -928,8 +964,13 @@ box_out_banner_magick() {
 box_out_banner_magick "Build ImageMagick"
 
 git_caller "https://github.com/imagemagick/imagemagick.git" "imagemagick-git"
+<<<<<<< Updated upstream
 if build "$repo_name" "${version//\$ /}"; then
     git_clone "$git_url" "$repo_name"
+=======
+if build "$repo_name" "$version//\$ /"; then
+    git_clone "$git_url"
+>>>>>>> Stashed changes
     execute autoreconf -fi
     mkdir build; cd build || exit 1
     execute ../configure --prefix=/usr/local \
@@ -963,14 +1004,14 @@ if build "$repo_name" "${version//\$ /}"; then
     execute make install
 fi
 
-# LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE MAGICK COMMAND WILL NOT WORK
+# Ldconfig must be run next in order to update file changes or the magick command will not work
 ldconfig /usr/local/lib
 
-# SHOW THE NEWLY INSTALLED MAGICK VERSION
+# Show the newly installed magick version
 show_version
 
-# PROMPT THE USER TO CLEAN UP THE BUILD FILES
+# Prompt the user to clean up the build files
 cleanup
 
-# SHOW EXIT MESSAGE
+# Show exit message
 exit_fn

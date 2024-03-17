@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
 clear
 
@@ -12,18 +12,18 @@ error() {
     echo "[ERROR] $1" >&2
 }
 
-# GitHub repository URL for Docker Compose releases
+# Github repository url for docker compose releases
 REPO_URL="https://github.com/docker/compose/releases"
 
-# Function to fetch and install the latest Docker Compose release
+# Function to fetch and install the latest docker compose release
 fetch_and_install_docker_compose() {
     log "Fetching the latest release information from $REPO_URL..."
 
     local page_content=$(curl -sSL $REPO_URL)
 
-    # Match the pattern and append '-linux-x86_64' to the URL
+# Match the pattern and append '-linux-x86_64' to the url
     local base_link=$(echo "$page_content" | grep -oP '/docker/compose/releases/download/v[0-9.]+/docker-compose' | head -1)
-    local download_link="https://github.com${base_link}-linux-x86_64"
+    local download_link="https://github.com$base_link-linux-x86_64"
 
     if [[ -z $base_link ]]; then
         error "Failed to find the latest Docker Compose release link."

@@ -1,10 +1,10 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
 #################################################################################################################################
 ##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/Installer%20Scripts/GNU%20Software/build-jq
+##  Github script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/installer%20scripts/gnu%20software/build-jq
 ##
-##  Purpose: Build jq
+##  Purpose: build jq
 ##
 ##  Updated: 12.04.23
 ##
@@ -14,46 +14,38 @@
 
 clear
 
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+if [ "$EUID" -eq '0' ]; then
+    echo "You must run this script without root or sudo."
     exit 1
 fi
 
-#
-# SET THE VARIABLES
-#
+# Set the variables
 
 script_ver=1.0
 jq_ver=1.7
-archive_dir="jq-${jq_ver}"
+archive_dir="jq-$jq_ver"
 archive_url="https://github.com/jqlang/jq/releases/download/jq-1.7/jq-linux-amd64"
 cwd="$PWD"/jq-build-script
 install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 
-#
-# CREATE OUTPUT DIRECTORY JEMALLOC
-#
+# Create output directory jemalloc
 
 if [ -d "$cwd/$archive_dir" ]; then
     sudo rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir"
 
-#
-# DOWNLOAD THE ARCHIVE FILE JEMALLOC
-#
+# Download the archive file jemalloc
 
 if [ ! -f "$cwd/$archive_dir" ]; then
-    wget -U "$user_agent" -cq "${archive_url}"
+    wget -U "$user_agent" -cq "$archive_url"
 fi
 
-#
-# INSTALL JEMALLOC
-#
+# Install jemalloc
 
 printf "\n%s\n%s\n\n"                        \
-    "Installing JQ - v${jq_ver}" \
+    "Installing JQ - v$jq_ver" \
     '==============================================='
 sleep 2
 

@@ -1,24 +1,24 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
 clear
 
-# YOU MUST RUN THE SCRIPT WITH ROOT/ADMIN PRIVILEGES
-# IF NOT RUN AS ROOT THE BELOW IF COMMAND WILL RESTART
-# THE SCRIPT WITH ROOT PERMISSIONS
-if [ "${EUID}" -ne '0' ]; then
+# You must run the script with root/admin privileges
+# If not run as root the below if command will restart
+# The script with root permissions
+if [ "$EUID" -ne '0' ]; then
     printf "%s\n\n" 'You must run this script as root/sudo'
     exit 1
 fi
 
-# YOU NEED TO CUSTOMIZE EACH VARIABLE BELOW WITH YOUR OWN VALUES TO OPTIMIZE SQUID'S PERFORMANCE
-# YOU CAN ADD, REMOVE, OR MODIFY THIS SCRIPT AS NEEDED
+# You need to customize each variable below with your own values to optimize squid's performance
+# You can add, remove, or modify this script as needed
 
-# CREATE REQUIRED DIRECTORIES
+# Create required directories
 if [ ! -d /etc/squid ]; then
     sudo mkdir -p /etc/squid
 fi
 
-# CHECK SQUID CURRENT STATUS
+# Check squid current status
 if ! systemctl status squid.service; then
     printf "%s\n\n%s\n\n" \
         'The squid service needs to be running to continue.'
@@ -37,1601 +37,1368 @@ else
     clear
 fi
 
-# SET DEFAULT USER/OWNER OF SQUID (THE UBUNTU AND DEBIAN DEFAULT IS PROXY)
+# Set default user/owner of squid (the ubuntu and debian default is proxy)
 squid_user=proxy
 hostname=homebridge
 
-# SET HOW LONG SQUID WAITS TO FULLY SHUTDOWN AFTER RECEIVING A SIGTERM COMMAND
-# THE NUMBERS MUST BE COMBINED WITH TIME UNITS OF MEASUREMENT AKA 'seconds, minutes, hours'
-# THE DEFAULT IS 30 SECONDS
+# Set how long squid waits to fully shutdown after receiving a sigterm command
+# The numbers must be combined with time units of measurement aka 'seconds, minutes, hours'
+# The default is 30 seconds
 sd_tout='5 seconds'
 
 # Disable persistent connections with servers while leaving
-# persistent connections with clients enabled to avoid connection
-# issues.
+# Persistent connections with clients enabled to avoid connection
+# Issues.
 client_pcons=on
 server_pcons=off
 
 ####################
-## CACHE SETTINGS ##
+## Cache settings ##
 ####################
 
-# SET CACHE DIRECTORY PATH
+# Set cache directory path
 cache_dir_squid=/var/spool/squid
-# CACHE DIR SQUID SIZE UNITS IN MB
+# Cache dir squid size units in mb
 cache_dir_squid_size=1000
 cache_swp_high=95
 cache_swp_low=90
-# MEMORY CACHE MODE options [ always | disk ]
+# Memory cache mode options [ always | disk ]
 mem_cache_mode=always
-# CACHE MEMORY TRANSIT FILE ALLOCATION MAX SIZE LIMIT (CAN BE INCREASED)
+# Cache memory transit file allocation max size limit (can be increased)
 cache_mem='512 MB'
 
-# LIMIT CLIENT REQUESTS BUFFER SIZE
+# Limit client requests buffer size
 client_rqst_bfr_size='512 KB'
 
-# FIREWALLD PROGRAM PORTS'
+# Firewalld program ports'
 squid_port=3128/tcp
 pihole_port=4711/tcp
 
-# FIREWALLD SERVICES (THIS SHOULD BE CONSIDERED AT HOME SETTINGS WHERE YOU TRUST THE COMPUTERS ACCESSIBLE TO YOUR NETWORK)
+# Firewalld services (this should be considered at home settings where you trust the computers accessible to your network)
 Fwld_01=dhcp
 Fwld_02=dhcpv6
 Fwld_03=dns
 Fwld_04=http
 Fwld_05=ssh
 
-# THE LAN IP ADDRESS OF YOUR DHCP/DNS NAMESERVER (USUALLY YOUR ROUTER'S IP ADDRESS)
+# The lan ip address of your dhcp/dns nameserver (usually your router's ip address)
 dns_server_ip=192.168.1.40
 
-# OBJECT SIZES
+# Object sizes
 min_obj_size='64 bytes'
 max_obj_size='1 MB'
 max_obj_size_mem='1 MB'
 
-# SQUID FILES
+# Squid files
 basic_ncsa_auth="$(sudo find /usr/lib -type f -name basic_ncsa_auth)"
 squid_config=/etc/squid/squid.conf
 squid_passwords=/etc/squid/passwords
 squid_whitelist=/etc/squid/whitelist.txt
 squid_blacklist=/etc/squid/blacklist.txt
 
-# DETECT BROKEN PCON SETTINGS
+# Detect broken pcon settings
 detect_broken_pconn=off
 
-# CREATE SQUID.CONF FILE
+# Create squid.conf file
 cat > "$squid_config" <<EOF
-#    WELCOME TO SQUID 5.2
+# Welcome to squid 5.2
 #    ----------------------------
-#
-#    This is the documentation for the Squid configuration file.
-#    This documentation can also be found online at:
-#        http://www.squid-cache.org/Doc/config/
-#
-#    You may wish to look at the Squid home page and wiki for the
-#    FAQ and other documentation:
-#        http://www.squid-cache.org/
-#        http://wiki.squid-cache.org/SquidFaq
-#        http://wiki.squid-cache.org/ConfigExamples
-#
-#    This documentation shows what the defaults for various directives
-#    happen to be.  If you don't need to change the default, you should
-#    leave the line out of your squid.conf in most cases.
-#
-#    In some cases "none" refers to no default setting at all,
-#    while in other cases it refers to the value of the option
-#    - the comments for that keyword indicate if this is the case.
-#
+# This is the documentation for the squid configuration file.
+# This documentation can also be found online at:
+# Http://www.squid-cache.org/doc/config/
+# You may wish to look at the squid home page and wiki for the
+# Faq and other documentation:
+# Http://www.squid-cache.org/
+# Http://wiki.squid-cache.org/squidfaq
+# Http://wiki.squid-cache.org/configexamples
+# This documentation shows what the defaults for various directives
+# Happen to be.  if you don't need to change the default, you should
+# Leave the line out of your squid.conf in most cases.
+# In some cases "none" refers to no default setting at all,
+# While in other cases it refers to the value of the option
+#    - The comments for that keyword indicate if this is the case.
 
-#  Configuration options can be included using the "include" directive.
-#  Include takes a list of files to include. Quoting and wildcards are
-#  supported.
-#
-#  For example,
-#
-#  include /path/to/included/file/squid.acl.config
-#
-#  Includes can be nested up to a hard-coded depth of 16 levels.
-#  This arbitrary restriction is to prevent recursive include references
-#  from causing Squid entering an infinite loop whilst trying to load
-#  configuration files.
-#
-#  Values with byte units
-#
-#    Squid accepts size units on some size-related directives. All
-#    such directives are documented with a default value displaying
-#    a unit.
-#
-#    Units accepted by Squid are:
-#        bytes - byte
-#        KB - Kilobyte (1024 bytes)
-#        MB - Megabyte
-#        GB - Gigabyte
-#
-#  Values with time units
-#
-#    Time-related directives marked with either "time-units" or
-#    "time-units-small" accept a time unit. The supported time units are:
-#
-#        nanosecond (time-units-small only)
-#        microsecond (time-units-small only)
-#        millisecond
-#        second
-#        minute
-#        hour
-#        day
-#        week
-#        fortnight
-#        month - 30 days
-#        year - 31557790080 milliseconds (just over 365 days)
-#        decade
-#
-#  Values with spaces, quotes, and other special characters
-#
-#    Squid supports directive parameters with spaces, quotes, and other
-#    special characters. Surround such parameters with "double quotes". Use
-#    the configuration_includes_quoted_values directive to enable or
-#    disable that support.
-#
-#    Squid supports reading configuration option parameters from external
-#    files using the syntax:
-#        parameters("/path/filename")
-#    For example:
-#        acl allowlist dstdomain parameters("/etc/squid/allowlist.txt")
-#
-#  Conditional configuration
-#
-#    If-statements can be used to make configuration directives
-#    depend on conditions:
-#
-#        if <CONDITION>
-#            ... regular configuration directives ...
-#        [else
-#            ... regular configuration directives ...]
-#        endif
-#
-#    The else part is optional. The keywords "if", "else", and "endif"
-#    must be typed on their own lines, as if they were regular
-#    configuration directives.
-#
-#    NOTE: An else-if condition is not supported.
-#
-#    These individual conditions types are supported:
-#
-#        true
-#        Always evaluates to true.
-#        false
-#        Always evaluates to false.
-#        <integer> = <integer>
-#            Equality comparison of two integer numbers.
-#
-#
-#  SMP-Related Macros
-#
-#    The following SMP-related preprocessor macros can be used.
-#
-#    $process_name expands to the current Squid process "name"
-#    (e.g., squid1, squid2, or cache1).
-#
-#    $process_number expands to the current Squid process
-#    identifier, which is an integer number (e.g., 1, 2, 3) unique
-#    across all Squid processes of the current service instance.
-#
-#    $service_name expands into the current Squid service instance
-#    name identifier which is provided by -n on the command line.
-#
-#  Logformat Macros
-#
-#    Logformat macros can be used in many places outside of the logformat
-#    directive. In theory, all of the logformat codes can be used as %macros,
-#    where they are supported. In practice, a %macro expands as a dash (-) when
-#    the transaction does not yet have enough information and a value is needed.
-#
-#    There is no definitive list of what tokens are available at the various
-#    stages of the transaction.
-#
-#    And some information may already be available to Squid but not yet
-#    committed where the macro expansion code can access it (report
-#    such instances!). The macro will be expanded into a single dash
-#    ('-') in such cases. Not all macros have been tested.
-#
+# Configuration options can be included using the "include" directive.
+# Include takes a list of files to include. quoting and wildcards are
+# Supported.
+# For example,
+# Include /path/to/included/file/squid.acl.config
+# Includes can be nested up to a hard-coded depth of 16 levels.
+# This arbitrary restriction is to prevent recursive include references
+# From causing squid entering an infinite loop whilst trying to load
+# Configuration files.
+# Values with byte units
+# Squid accepts size units on some size-related directives. all
+# Such directives are documented with a default value displaying
+# A unit.
+# Units accepted by squid are:
+# Bytes - byte
+# Kb - kilobyte (1024 bytes)
+# Mb - megabyte
+# Gb - gigabyte
+# Values with time units
+# Time-related directives marked with either "time-units" or
+#    "Time-units-small" accept a time unit. the supported time units are:
+# Nanosecond (time-units-small only)
+# Microsecond (time-units-small only)
+# Millisecond
+# Second
+# Minute
+# Hour
+# Day
+# Week
+# Fortnight
+# Month - 30 days
+# Year - 31557790080 milliseconds (just over 365 days)
+# Decade
+# Values with spaces, quotes, and other special characters
+# Squid supports directive parameters with spaces, quotes, and other
+# Special characters. surround such parameters with "double quotes". use
+# The configuration_includes_quoted_values directive to enable or
+# Disable that support.
+# Squid supports reading configuration option parameters from external
+# Files using the syntax:
+# Parameters("/path/filename")
+# For example:
+# Acl allowlist dstdomain parameters("/etc/squid/allowlist.txt")
+# Conditional configuration
+# If-statements can be used to make configuration directives
+# Depend on conditions:
+# If <condition>
+#            ... Regular configuration directives ...
+#        [Else
+#            ... Regular configuration directives ...]
+# Endif
+# The else part is optional. the keywords "if", "else", and "endif"
+# Must be typed on their own lines, as if they were regular
+# Configuration directives.
+# Note: an else-if condition is not supported.
+# These individual conditions types are supported:
+# True
+# Always evaluates to true.
+# False
+# Always evaluates to false.
+#        <Integer> = <integer>
+# Equality comparison of two integer numbers.
+# Smp-related macros
+# The following smp-related preprocessor macros can be used.
+# $Process_name expands to the current squid process "name"
+#    (E.g., squid1, squid2, or cache1).
+# $Process_number expands to the current squid process
+# Identifier, which is an integer number (e.g., 1, 2, 3) unique
+# Across all squid processes of the current service instance.
+# $Service_name expands into the current squid service instance
+# Name identifier which is provided by -n on the command line.
+# Logformat macros
+# Logformat macros can be used in many places outside of the logformat
+# Directive. in theory, all of the logformat codes can be used as %macros,
+# Where they are supported. in practice, a %macro expands as a dash (-) when
+# The transaction does not yet have enough information and a value is needed.
+# There is no definitive list of what tokens are available at the various
+# Stages of the transaction.
+# And some information may already be available to squid but not yet
+# Committed where the macro expansion code can access it (report
+# Such instances!). the macro will be expanded into a single dash
+#    ('-') In such cases. not all macros have been tested.
 
-#  TAG: broken_vary_encoding
-#    This option is not yet supported by Squid-3.
+# Tag: broken_vary_encoding
+# This option is not yet supported by squid-3.
 #Default:
-# none
+# None
 
-#  TAG: cache_vary
-#    This option is not yet supported by Squid-3.
+# Tag: cache_vary
+# This option is not yet supported by squid-3.
 #Default:
-# none
+# None
 
-#  TAG: error_map
-#    This option is not yet supported by Squid-3.
+# Tag: error_map
+# This option is not yet supported by squid-3.
 #Default:
-# none
+# None
 
-#  TAG: external_refresh_check
-#    This option is not yet supported by Squid-3.
+# Tag: external_refresh_check
+# This option is not yet supported by squid-3.
 #Default:
-# none
+# None
 
-#  TAG: location_rewrite_program
-#    This option is not yet supported by Squid-3.
+# Tag: location_rewrite_program
+# This option is not yet supported by squid-3.
 #Default:
-# none
+# None
 
-#  TAG: refresh_stale_hit
-#    This option is not yet supported by Squid-3.
+# Tag: refresh_stale_hit
+# This option is not yet supported by squid-3.
 #Default:
-# none
+# None
 
-#  TAG: dns_v4_first
-#    Remove this line. Squid no longer supports the preferential treatment of DNS A records.
+# Tag: dns_v4_first
+# Remove this line. squid no longer supports the preferential treatment of dns a records.
 #Default:
-#dns_v4_first
+#Dns_v4_first
 
-#  TAG: cache_peer_domain
-#    Replace with dstdomain ACLs and cache_peer_access.
+# Tag: cache_peer_domain
+# Replace with dstdomain acls and cache_peer_access.
 #Default:
-# none
+# None
 
-#  TAG: ie_refresh
-#    Remove this line. The behavior enabled by this is no longer needed.
+# Tag: ie_refresh
+# Remove this line. the behavior enabled by this is no longer needed.
 #Default:
-# none
+# None
 
-#  TAG: sslproxy_cafile
-#    Remove this line. Use tls_outgoing_options cafile= instead.
+# Tag: sslproxy_cafile
+# Remove this line. use tls_outgoing_options cafile= instead.
 #Default:
-# none
+# None
 
-#  TAG: sslproxy_capath
-#    Remove this line. Use tls_outgoing_options capath= instead.
+# Tag: sslproxy_capath
+# Remove this line. use tls_outgoing_options capath= instead.
 #Default:
-# none
+# None
 
-#  TAG: sslproxy_cipher
-#    Remove this line. Use tls_outgoing_options cipher= instead.
+# Tag: sslproxy_cipher
+# Remove this line. use tls_outgoing_options cipher= instead.
 #Default:
-# none
+# None
 
-#  TAG: sslproxy_client_certificate
-#    Remove this line. Use tls_outgoing_options cert= instead.
+# Tag: sslproxy_client_certificate
+# Remove this line. use tls_outgoing_options cert= instead.
 #Default:
-# none
+# None
 
-#  TAG: sslproxy_client_key
-#    Remove this line. Use tls_outgoing_options key= instead.
+# Tag: sslproxy_client_key
+# Remove this line. use tls_outgoing_options key= instead.
 #Default:
-# none
+# None
 
-#  TAG: sslproxy_flags
-#    Remove this line. Use tls_outgoing_options flags= instead.
+# Tag: sslproxy_flags
+# Remove this line. use tls_outgoing_options flags= instead.
 #Default:
-# none
+# None
 
-#  TAG: sslproxy_options
-#    Remove this line. Use tls_outgoing_options options= instead.
+# Tag: sslproxy_options
+# Remove this line. use tls_outgoing_options options= instead.
 #Default:
-# none
+# None
 
-#  TAG: sslproxy_version
-#    Remove this line. Use tls_outgoing_options options= instead.
+# Tag: sslproxy_version
+# Remove this line. use tls_outgoing_options options= instead.
 #Default:
-# none
+# None
 
-#  TAG: hierarchy_stoplist
-#    Remove this line. Use always_direct or cache_peer_access ACLs instead if you need to prevent cache_peer use.
+# Tag: hierarchy_stoplist
+# Remove this line. use always_direct or cache_peer_access acls instead if you need to prevent cache_peer use.
 #Default:
-# none
+# None
 
-#  TAG: log_access
-#    Remove this line. Use acls with access_log directives to control access logging
+# Tag: log_access
+# Remove this line. use acls with access_log directives to control access logging
 #Default:
-# none
+# None
 
-#  TAG: log_icap
-#    Remove this line. Use acls with icap_log directives to control icap logging
+# Tag: log_icap
+# Remove this line. use acls with icap_log directives to control icap logging
 #Default:
-# none
+# None
 
-#  TAG: ignore_ims_on_miss
-#    Remove this line. The HTTP/1.1 feature is now configured by 'cache_miss_revalidate'.
+# Tag: ignore_ims_on_miss
+# Remove this line. the http/1.1 feature is now configured by 'cache_miss_revalidate'.
 #Default:
-# none
+# None
 
-#  TAG: balance_on_multiple_ip
-#    Remove this line. Squid performs a 'Happy Eyeballs' algorithm, this multiple-IP algorithm is not longer relevant.
+# Tag: balance_on_multiple_ip
+# Remove this line. squid performs a 'happy eyeballs' algorithm, this multiple-ip algorithm is not longer relevant.
 #Default:
-# none
+# None
 
-#  TAG: chunked_request_body_max_size
-#    Remove this line. Squid is now HTTP/1.1 compliant.
+# Tag: chunked_request_body_max_size
+# Remove this line. squid is now http/1.1 compliant.
 #Default:
-# none
+# None
 
-#  TAG: dns_v4_fallback
-#    Remove this line. Squid performs a 'Happy Eyeballs' algorithm, the 'fallback' algorithm is no longer relevant.
+# Tag: dns_v4_fallback
+# Remove this line. squid performs a 'happy eyeballs' algorithm, the 'fallback' algorithm is no longer relevant.
 #Default:
-# none
+# None
 
-#  TAG: emulate_httpd_log
-#    Replace this with an access_log directive using the format 'common' or 'combined'.
+# Tag: emulate_httpd_log
+# Replace this with an access_log directive using the format 'common' or 'combined'.
 #Default:
-# none
+# None
 
-#  TAG: forward_log
-#    Use a regular access.log with ACL limiting it to MISS events.
+# Tag: forward_log
+# Use a regular access.log with acl limiting it to miss events.
 #Default:
-# none
+# None
 
-#  TAG: ftp_list_width
-#    Remove this line. Configure the FTP page display using the CSS controls in errorpages.css instead.
+# Tag: ftp_list_width
+# Remove this line. configure the ftp page display using the css controls in errorpages.css instead.
 #Default:
-# none
+# None
 
-#  TAG: ignore_expect_100
-#    Remove this line. The HTTP/1.1 feature is now fully supported by default.
+# Tag: ignore_expect_100
+# Remove this line. the http/1.1 feature is now fully supported by default.
 #Default:
-# none
+# None
 
-#  TAG: log_fqdn
-#    Remove this option from your config. To log FQDN use %>A in the log format.
+# Tag: log_fqdn
+# Remove this option from your config. to log fqdn use %>a in the log format.
 #Default:
-# log_fqdn on (depreciated/unusable)
+# Log_fqdn on (depreciated/unusable)
 
-#  TAG: log_ip_on_direct
-#    Remove this option from your config. To log server or peer names use %<A in the log format.
+# Tag: log_ip_on_direct
+# Remove this option from your config. to log server or peer names use %<a in the log format.
 #Default:
-# none
+# None
 
-#  TAG: maximum_single_addr_tries
-#    Replaced by connect_retries. The behavior has changed, please read the documentation before altering it.
+# Tag: maximum_single_addr_tries
+# Replaced by connect_retries. the behavior has changed, please read the documentation before altering it.
 #Default:
-# none
+# None
 
-#  TAG: referer_log
-#    Replace this with an access_log directive using the format 'referrer'.
+# Tag: referer_log
+# Replace this with an access_log directive using the format 'referrer'.
 #Default:
-# none
+# None
 
-#  TAG: update_headers
-#    Remove this line. The feature is supported by default in storage types where the update is implemented.
+# Tag: update_headers
+# Remove this line. the feature is supported by default in storage types where the update is implemented.
 #Default:
-# none
+# None
 
-#  TAG: url_rewrite_concurrency
-#    Remove this line. Set the 'concurrency=' option of url_rewrite_children instead.
+# Tag: url_rewrite_concurrency
+# Remove this line. set the 'concurrency=' option of url_rewrite_children instead.
 #Default:
-# none
+# None
 
-#  TAG: useragent_log
-#    Replace this with an access_log directive using the format 'useragent'.
+# Tag: useragent_log
+# Replace this with an access_log directive using the format 'useragent'.
 #Default:
-# none
+# None
 
-#  TAG: dns_testnames
-#    Remove this line. DNS is no longer tested on startup.
+# Tag: dns_testnames
+# Remove this line. dns is no longer tested on startup.
 #Default:
-# none
+# None
 
-#  TAG: extension_methods
-#    Remove this line. All valid methods for HTTP are accepted by default.
+# Tag: extension_methods
+# Remove this line. all valid methods for http are accepted by default.
 #Default:
-# none
+# None
 
-#  TAG: zero_buffers
+# Tag: zero_buffers
 #Default:
-# none
+# None
 
-#  TAG: incoming_rate
+# Tag: incoming_rate
 #Default:
-# none
+# None
 
-#  TAG: server_http11
-#    Remove this line. HTTP/1.1 is supported by default.
+# Tag: server_http11
+# Remove this line. http/1.1 is supported by default.
 #Default:
-# none
+# None
 
-#  TAG: upgrade_http0.9
-#    Remove this line. ICY/1.0 streaming protocol is supported by default.
+# Tag: upgrade_http0.9
+# Remove this line. icy/1.0 streaming protocol is supported by default.
 #Default:
-# none
+# None
 
-#  TAG: zph_local
-#    Alter these entries. Use the qos_flows directive instead.
+# Tag: zph_local
+# Alter these entries. use the qos_flows directive instead.
 #Default:
-# none
+# None
 
-#  TAG: header_access
-#    Since squid-3.0 replace with request_header_access or reply_header_access
-#    depending on whether you wish to match client requests or server replies.
+# Tag: header_access
+# Since squid-3.0 replace with request_header_access or reply_header_access
+# Depending on whether you wish to match client requests or server replies.
 #Default:
-# none
+# None
 
-#  TAG: httpd_accel_no_pmtu_disc
-#    Since squid-3.0 use the 'disable-pmtu-discovery' flag on http_port instead.
+# Tag: httpd_accel_no_pmtu_disc
+# Since squid-3.0 use the 'disable-pmtu-discovery' flag on http_port instead.
 #Default:
-# none
+# None
 
-#  TAG: wais_relay_host
-#    Replace this line with the 'cache_peer' configuration.
+# Tag: wais_relay_host
+# Replace this line with the 'cache_peer' configuration.
 #Default:
-# none
+# None
 
-#  TAG: wais_relay_port
-#    Replace this line with the 'cache_peer' configuration.
+# Tag: wais_relay_port
+# Replace this line with the 'cache_peer' configuration.
 #Default:
-# none
+# None
 
-# OPTIONS FOR SMP
+# Options for smp
 # -----------------------------------------------------------------------------
 
-#  TAG: workers
-#    Number of main Squid processes or "workers" to fork and maintain.
-#    0: "no daemon" mode, like running "squid -N ..."
-#    1: "no SMP" mode, start one main Squid process daemon (default)
-#    N: start N main Squid process daemons (i.e., SMP mode)
-#
-#    In SMP mode, each worker does nearly all that a single Squid daemon
-#    does (e.g., listen on http_port and forward HTTP requests).
+# Tag: workers
+# Number of main squid processes or "workers" to fork and maintain.
+# 0: "no daemon" mode, like running "squid -n ..."
+# 1: "no smp" mode, start one main squid process daemon (default)
+# N: start n main squid process daemons (i.e., smp mode)
+# In smp mode, each worker does nearly all that a single squid daemon
+# Does (e.g., listen on http_port and forward http requests).
 #Default:
-# SMP support disabled.
+# Smp support disabled.
 
-#  TAG: cpu_affinity_map
-#    Usage: cpu_affinity_map process_numbers=P1,P2,... cores=C1,C2,...
-#
-#    Sets 1:1 mapping between Squid processes and CPU cores. For example,
-#
-#        cpu_affinity_map process_numbers=1,2,3,4 cores=1,3,5,7
-#
-#    affects processes 1 through 4 only and places them on the first
-#    four even cores, starting with core #1.
-#
-#    CPU cores are numbered starting from 1. Requires support for
-#    sched_getaffinity(2) and sched_setaffinity(2) system calls.
-#
-#    Multiple cpu_affinity_map options are merged.
-#
-#    See also: workers
+# Tag: cpu_affinity_map
+# Usage: cpu_affinity_map process_numbers=p1,p2,... cores=c1,c2,...
+# Sets 1:1 mapping between squid processes and cpu cores. for example,
+# Cpu_affinity_map process_numbers=1,2,3,4 cores=1,3,5,7
+# Affects processes 1 through 4 only and places them on the first
+# Four even cores, starting with core #1.
+# Cpu cores are numbered starting from 1. requires support for
+# Sched_getaffinity(2) and sched_setaffinity(2) system calls.
+# Multiple cpu_affinity_map options are merged.
+# See also: workers
 #Default:
 # Let the operating system decide.
 
-#  TAG: shared_memory_locking    on|off
-#    Whether to ensure that all required shared memory is available by
-#    "locking" that shared memory into RAM when Squid starts. The
-#    alternative is faster startup time followed by slightly slower
-#    performance and, if not enough RAM is actually available during
-#    runtime, mysterious crashes.
-#
-#    SMP Squid uses many shared memory segments. These segments are
-#    brought into Squid memory space using an mmap(2) system call. During
-#    Squid startup, the mmap() call often succeeds regardless of whether
-#    the system has enough RAM. In general, Squid cannot tell whether the
-#    kernel applies this "optimistic" memory allocation policy (but
-#    popular modern kernels usually use it).
-#
-#    Later, if Squid attempts to actually access the mapped memory
-#    regions beyond what the kernel is willing to allocate, the
-#    "optimistic" kernel simply kills Squid kid with a SIGBUS signal.
-#    Some of the memory limits enforced by the kernel are currently
-#    poorly understood: We do not know how to detect and check them. This
-#    option ensures that the mapped memory will be available.
-#
-#    This option may have a positive performance side-effect: Locking
-#    memory at the start avoids runtime paging I/O. Paging slows Squid down.
-#
-#    Locking memory may require a large enough RLIMIT_memLOCK OS limit,
-#    CAP_IPC_LOCK capability, or equivalent.
+# Tag: shared_memory_locking    on|off
+# Whether to ensure that all required shared memory is available by
+#    "Locking" that shared memory into ram when squid starts. the
+# Alternative is faster startup time followed by slightly slower
+# Performance and, if not enough ram is actually available during
+# Runtime, mysterious crashes.
+# Smp squid uses many shared memory segments. these segments are
+# Brought into squid memory space using an mmap(2) system call. during
+# Squid startup, the mmap() call often succeeds regardless of whether
+# The system has enough ram. in general, squid cannot tell whether the
+# Kernel applies this "optimistic" memory allocation policy (but
+# Popular modern kernels usually use it).
+# Later, if squid attempts to actually access the mapped memory
+# Regions beyond what the kernel is willing to allocate, the
+#    "Optimistic" kernel simply kills squid kid with a sigbus signal.
+# Some of the memory limits enforced by the kernel are currently
+# Poorly understood: we do not know how to detect and check them. this
+# Option ensures that the mapped memory will be available.
+# This option may have a positive performance side-effect: locking
+# Memory at the start avoids runtime paging i/o. paging slows squid down.
+# Locking memory may require a large enough rlimit_memlock os limit,
+# Cap_ipc_lock capability, or equivalent.
 #Default:
-# shared_memory_locking off
+# Shared_memory_locking off
 
-#  TAG: hopeless_kid_revival_delay    time-units
-#    Normally, when a kid process dies, Squid immediately restarts the
-#    kid. A kid experiencing frequent deaths is marked as "hopeless" for
-#    the duration specified by this directive. Hopeless kids are not
-#    automatically restarted.
-#
-#    Currently, zero values are not supported because they result in
-#    misconfigured SMP Squid instances running forever, endlessly
-#    restarting each dying kid. To effectively disable hopeless kids
-#    revival, set the delay to a huge value (e.g., 1 year).
-#
-#    Reconfiguration also clears all hopeless kids designations, allowing
-#    for manual revival of hopeless kids.
+# Tag: hopeless_kid_revival_delay    time-units
+# Normally, when a kid process dies, squid immediately restarts the
+# Kid. a kid experiencing frequent deaths is marked as "hopeless" for
+# The duration specified by this directive. hopeless kids are not
+# Automatically restarted.
+# Currently, zero values are not supported because they result in
+# Misconfigured smp squid instances running forever, endlessly
+# Restarting each dying kid. to effectively disable hopeless kids
+# Revival, set the delay to a huge value (e.g., 1 year).
+# Reconfiguration also clears all hopeless kids designations, allowing
+# For manual revival of hopeless kids.
 #Default:
-# hopeless_kid_revival_delay 1 hour
+# Hopeless_kid_revival_delay 1 hour
 
-# OPTIONS FOR AUTHENTICATION
+# Options for authentication
 # -----------------------------------------------------------------------------
 
-#  TAG: auth_param
-#    This is used to define parameters for the various authentication
-#    schemes supported by Squid.
-#
-#        format: auth_param scheme parameter [setting]
-#
-#    The order in which authentication schemes are presented to the client is
-#    dependent on the order the scheme first appears in config file. IE
-#    has a bug (it's not RFC 2617 compliant) in that it will use the basic
-#    scheme if basic is the first entry presented, even if more secure
-#    schemes are presented. For now use the order in the recommended
-#    settings section below. If other browsers have difficulties (don't
-#    recognize the schemes offered even if you are using basic) either
-#    put basic first, or disable the other schemes (by commenting out their
-#    program entry).
-#
-#    Once an authentication scheme is fully configured, it can only be
-#    shutdown by shutting squid down and restarting. Changes can be made on
-#    the fly and activated with a reconfigure. I.E. You can change to a
-#    different helper, but not unconfigure the helper completely.
-#
-#    Please note that while this directive defines how Squid processes
-#    authentication it does not automatically activate authentication.
-#    To use authentication you must in addition make use of ACLs based
-#    on login name in http_access (proxy_auth, proxy_auth_regex or
-#    external with %LOGIN used in the format tag). The browser will be
-#    challenged for authentication on the first such acl encountered
-#    in http_access processing and will also be re-challenged for new
-#    login credentials if the request is being denied by a proxy_auth
-#    type acl.
-#
-#    WARNING: authentication can't be used in a transparently intercepting
-#    proxy as the client then thinks it is talking to an origin server and
-#    not the proxy. This is a limitation of bending the TCP/IP protocol to
-#    transparently intercepting port 80, not a limitation in Squid.
-#    Ports flagged 'transparent', 'intercept', or 'tproxy' have
-#    authentication disabled.
-#
-#    === Parameters common to all schemes. ===
-#
-#    "program" cmdline
-#        Specifies the command for the external authenticator.
-#
-#        By default, each authentication scheme is not used unless a
-#        program is specified.
-#
-#        See http://wiki.squid-cache.org/Features/AddonHelpers for
-#        more details on helper operations and creating your own.
-#
-#    "key_extras" format
-#        Specifies a string to be append to request line format for
-#        the authentication helper. "Quoted" format values may contain
-#        spaces and logformat %macros. In theory, any logformat %macro
-#        can be used. In practice, a %macro expands as a dash (-) if
-#        the helper request is sent before the required macro
-#        information is available to Squid.
-#
-#        By default, Squid uses request formats provided in
-#        scheme-specific examples below (search for %credentials).
-#
-#        The expanded key_extras value is added to the Squid credentials
-#        cache and, hence, will affect authentication. It can be used to
-#        autenticate different users with identical user names (e.g.,
-#        when user authentication depends on http_port).
-#
-#        Avoid adding frequently changing information to key_extras. For
-#        example, if you add user source IP, and it changes frequently
-#        in your environment, then max_user_ip ACL is going to treat
-#        every user+IP combination as a unique "user", breaking the ACL
-#        and wasting a lot of memory on those user records. It will also
-#        force users to authenticate from scratch whenever their IP
-#        changes.
-#
-#    "realm" string
-#        Specifies the protection scope (aka realm name) which is to be
-#        reported to the client for the authentication scheme. It is
-#        commonly part of the text the user will see when prompted for
-#        their username and password.
-#
-#        For Basic the default is "Squid proxy-caching web server".
-#        For Digest there is no default, this parameter is mandatory.
-#        For NTLM and Negotiate this parameter is ignored.
-#
-#    "children" numberofchildren [startup=N] [idle=N] [concurrency=N]
-#        [queue-size=N] [on-persistent-overload=action]
-#        [reservation-timeout=seconds]
-#
-#        The maximum number of authenticator processes to spawn. If
-#        you start too few Squid will have to wait for them to process
-#        a backlog of credential verifications, slowing it down. When
-#        password verifications are done via a (slow) network you are
-#        likely to need lots of authenticator processes.
-#
-#        The startup= and idle= options permit some skew in the exact
-#        amount run. A minimum of startup=N will begin during startup
-#        and reconfigure. Squid will start more in groups of up to
-#        idle=N in an attempt to meet traffic needs and to keep idle=N
-#        free above those traffic needs up to the maximum.
-#
-#        The concurrency= option sets the number of concurrent requests
-#        the helper can process.  The default of 0 is used for helpers
-#        who only supports one request at a time. Setting this to a
-#        number greater than 0 changes the protocol used to include a
-#        channel ID field first on the request/response line, allowing
-#        multiple requests to be sent to the same helper in parallel
-#        without waiting for the response.
-#
-#        Concurrency must not be set unless it's known the helper
-#        supports the input format with channel-ID fields.
-#
-#        The queue-size option sets the maximum number of queued
-#        requests. A request is queued when no existing child can
-#        accept it due to concurrency limit and no new child can be
-#        started due to numberofchildren limit. The default maximum is
-#        2*numberofchildren. Squid is allowed to temporarily exceed the
-#        configured maximum, marking the affected helper as
-#        "overloaded". If the helper overload lasts more than 3
-#        minutes, the action prescribed by the on-persistent-overload
-#        option applies.
-#
-#        The on-persistent-overload=action option specifies Squid
-#        reaction to a new helper request arriving when the helper
-#        has been overloaded for more that 3 minutes already. The number
-#        of queued requests determines whether the helper is overloaded
-#        (see the queue-size option).
-#
-#        Two actions are supported:
-#
-#          die    Squid worker quits. This is the default behavior.
-#
-#          ERR    Squid treats the helper request as if it was
-#            immediately submitted, and the helper immediately
-#            replied with an ERR response. This action has no effect
-#            on the already queued and in-progress helper requests.
-#
-#        NOTE: NTLM and Negotiate schemes do not support concurrency
-#            in the Squid code module even though some helpers can.
-#
-#        The reservation-timeout=seconds option allows NTLM and Negotiate
-#        helpers to forget about clients that abandon their in-progress
-#        connection authentication without closing the connection. The
-#        timeout is measured since the last helper response received by
-#        Squid for the client. Fractional seconds are not supported.
-#
-#        After the timeout, the helper will be used for other clients if
-#        there are no unreserved helpers available. In the latter case,
-#        the old client attempt to resume authentication will not be
-#        forwarded to the helper (and the client should open a new HTTP
-#        connection and retry authentication from scratch).
-#
-#        By default, reservations do not expire and clients that keep
-#        their connections open without completing authentication may
-#        exhaust all NTLM and Negotiate helpers.
-#
-#    "keep_alive" on|off
-#        If you experience problems with PUT/POST requests when using
-#        the NTLM or Negotiate schemes then you can try setting this
-#        to off. This will cause Squid to forcibly close the connection
-#        on the initial request where the browser asks which schemes
-#        are supported by the proxy.
-#
-#        For Basic and Digest this parameter is ignored.
-#
-#    "utf8" on|off
-#        Useful for sending credentials to authentication backends that
-#        expect UTF-8 encoding (e.g., LDAP).
-#
-#        When this option is enabled, Squid uses HTTP Accept-Language
-#        request header to guess the received credentials encoding
-#        (ISO-Latin-1, CP1251, or UTF-8) and then converts the first
-#        two encodings into UTF-8.
-#
-#        When this option is disabled and by default, Squid sends
-#        credentials in their original (i.e. received) encoding.
-#
-#        This parameter is only honored for Basic and Digest schemes.
-#        For Basic, the entire username:password credentials are
-#        checked and, if necessary, re-encoded. For Digest -- just the
-#        username component. For NTLM and Negotiate schemes, this
-#        parameter is ignored.
-#
-#
-#    === Example Configuration ===
-#
-#    This configuration displays the recommended authentication scheme
-#    order from most to least secure with recommended minimum configuration
-#    settings for each scheme:
-#
-##auth_param negotiate program <uncomment and complete this line to activate>
-##auth_param negotiate children 20 startup=0 idle=1
+# Tag: auth_param
+# This is used to define parameters for the various authentication
+# Schemes supported by squid.
+# Format: auth_param scheme parameter [setting]
+# The order in which authentication schemes are presented to the client is
+# Dependent on the order the scheme first appears in config file. ie
+# Has a bug (it's not rfc 2617 compliant) in that it will use the basic
+# Scheme if basic is the first entry presented, even if more secure
+# Schemes are presented. for now use the order in the recommended
+# Settings section below. if other browsers have difficulties (don't
+# Recognize the schemes offered even if you are using basic) either
+# Put basic first, or disable the other schemes (by commenting out their
+# Program entry).
+# Once an authentication scheme is fully configured, it can only be
+# Shutdown by shutting squid down and restarting. changes can be made on
+# The fly and activated with a reconfigure. i.e. you can change to a
+# Different helper, but not unconfigure the helper completely.
+# Please note that while this directive defines how squid processes
+# Authentication it does not automatically activate authentication.
+# To use authentication you must in addition make use of acls based
+# On login name in http_access (proxy_auth, proxy_auth_regex or
+# External with %login used in the format tag). the browser will be
+# Challenged for authentication on the first such acl encountered
+# In http_access processing and will also be re-challenged for new
+# Login credentials if the request is being denied by a proxy_auth
+# Type acl.
+# Warning: authentication can't be used in a transparently intercepting
+# Proxy as the client then thinks it is talking to an origin server and
+# Not the proxy. this is a limitation of bending the tcp/ip protocol to
+# Transparently intercepting port 80, not a limitation in squid.
+# Ports flagged 'transparent', 'intercept', or 'tproxy' have
+# Authentication disabled.
+# === Parameters common to all schemes. ===
+# "Program" cmdline
+# Specifies the command for the external authenticator.
+# By default, each authentication scheme is not used unless a
+# Program is specified.
+# See http://wiki.squid-cache.org/features/addonhelpers for
+# More details on helper operations and creating your own.
+# "Key_extras" format
+# Specifies a string to be append to request line format for
+# The authentication helper. "quoted" format values may contain
+# Spaces and logformat %macros. in theory, any logformat %macro
+# Can be used. in practice, a %macro expands as a dash (-) if
+# The helper request is sent before the required macro
+# Information is available to squid.
+# By default, squid uses request formats provided in
+# Scheme-specific examples below (search for %credentials).
+# The expanded key_extras value is added to the squid credentials
+# Cache and, hence, will affect authentication. it can be used to
+# Autenticate different users with identical user names (e.g.,
+# When user authentication depends on http_port).
+# Avoid adding frequently changing information to key_extras. for
+# Example, if you add user source ip, and it changes frequently
+# In your environment, then max_user_ip acl is going to treat
+# Every user+ip combination as a unique "user", breaking the acl
+# And wasting a lot of memory on those user records. it will also
+# Force users to authenticate from scratch whenever their ip
+# Changes.
+# "Realm" string
+# Specifies the protection scope (aka realm name) which is to be
+# Reported to the client for the authentication scheme. it is
+# Commonly part of the text the user will see when prompted for
+# Their username and password.
+# For basic the default is "squid proxy-caching web server".
+# For digest there is no default, this parameter is mandatory.
+# For ntlm and negotiate this parameter is ignored.
+# "Children" numberofchildren [startup=n] [idle=n] [concurrency=n]
+#        [Queue-size=n] [on-persistent-overload=action]
+#        [Reservation-timeout=seconds]
+# The maximum number of authenticator processes to spawn. if
+# You start too few squid will have to wait for them to process
+# A backlog of credential verifications, slowing it down. when
+# Password verifications are done via a (slow) network you are
+# Likely to need lots of authenticator processes.
+# The startup= and idle= options permit some skew in the exact
+# Amount run. a minimum of startup=n will begin during startup
+# And reconfigure. squid will start more in groups of up to
+# Idle=n in an attempt to meet traffic needs and to keep idle=n
+# Free above those traffic needs up to the maximum.
+# The concurrency= option sets the number of concurrent requests
+# The helper can process.  the default of 0 is used for helpers
+# Who only supports one request at a time. setting this to a
+# Number greater than 0 changes the protocol used to include a
+# Channel id field first on the request/response line, allowing
+# Multiple requests to be sent to the same helper in parallel
+# Without waiting for the response.
+# Concurrency must not be set unless it's known the helper
+# Supports the input format with channel-id fields.
+# The queue-size option sets the maximum number of queued
+# Requests. a request is queued when no existing child can
+# Accept it due to concurrency limit and no new child can be
+# Started due to numberofchildren limit. the default maximum is
+# 2*numberofchildren. squid is allowed to temporarily exceed the
+# Configured maximum, marking the affected helper as
+#        "Overloaded". if the helper overload lasts more than 3
+# Minutes, the action prescribed by the on-persistent-overload
+# Option applies.
+# The on-persistent-overload=action option specifies squid
+# Reaction to a new helper request arriving when the helper
+# Has been overloaded for more that 3 minutes already. the number
+# Of queued requests determines whether the helper is overloaded
+#        (See the queue-size option).
+# Two actions are supported:
+# Die    squid worker quits. this is the default behavior.
+# Err    squid treats the helper request as if it was
+# Immediately submitted, and the helper immediately
+# Replied with an err response. this action has no effect
+# On the already queued and in-progress helper requests.
+# Note: ntlm and negotiate schemes do not support concurrency
+# In the squid code module even though some helpers can.
+# The reservation-timeout=seconds option allows ntlm and negotiate
+# Helpers to forget about clients that abandon their in-progress
+# Connection authentication without closing the connection. the
+# Timeout is measured since the last helper response received by
+# Squid for the client. fractional seconds are not supported.
+# After the timeout, the helper will be used for other clients if
+# There are no unreserved helpers available. in the latter case,
+# The old client attempt to resume authentication will not be
+# Forwarded to the helper (and the client should open a new http
+# Connection and retry authentication from scratch).
+# By default, reservations do not expire and clients that keep
+# Their connections open without completing authentication may
+# Exhaust all ntlm and negotiate helpers.
+# "Keep_alive" on|off
+# If you experience problems with put/post requests when using
+# The ntlm or negotiate schemes then you can try setting this
+# To off. this will cause squid to forcibly close the connection
+# On the initial request where the browser asks which schemes
+# Are supported by the proxy.
+# For basic and digest this parameter is ignored.
+# "Utf8" on|off
+# Useful for sending credentials to authentication backends that
+# Expect utf-8 encoding (e.g., ldap).
+# When this option is enabled, squid uses http accept-language
+# Request header to guess the received credentials encoding
+#        (Iso-latin-1, cp1251, or utf-8) and then converts the first
+# Two encodings into utf-8.
+# When this option is disabled and by default, squid sends
+# Credentials in their original (i.e. received) encoding.
+# This parameter is only honored for basic and digest schemes.
+# For basic, the entire username:password credentials are
+# Checked and, if necessary, re-encoded. for digest -- just the
+# Username component. for ntlm and negotiate schemes, this
+# Parameter is ignored.
+#    === Example configuration ===
+# This configuration displays the recommended authentication scheme
+# Order from most to least secure with recommended minimum configuration
+# Settings for each scheme:
+##Auth_param negotiate program <uncomment and complete this line to activate>
+##Auth_param negotiate children 20 startup=0 idle=1
 ##
-##auth_param digest program <uncomment and complete this line to activate>
-##auth_param digest children 20 startup=0 idle=1
-##auth_param digest realm Squid proxy-caching web server
-##auth_param digest nonce_garbage_interval 5 minutes
-##auth_param digest nonce_max_duration 30 minutes
-##auth_param digest nonce_max_count 50
+##Auth_param digest program <uncomment and complete this line to activate>
+##Auth_param digest children 20 startup=0 idle=1
+##Auth_param digest realm squid proxy-caching web server
+##Auth_param digest nonce_garbage_interval 5 minutes
+##Auth_param digest nonce_max_duration 30 minutes
+##Auth_param digest nonce_max_count 50
 ##
-##auth_param ntlm program <uncomment and complete this line to activate>
-##auth_param ntlm children 20 startup=0 idle=1
+##Auth_param ntlm program <uncomment and complete this line to activate>
+##Auth_param ntlm children 20 startup=0 idle=1
 ##
-##auth_param basic program <uncomment and complete this line>
-##auth_param basic children 5 startup=5 idle=1
-##auth_param basic credentialsttl 2 hours
+##Auth_param basic program <uncomment and complete this line>
+##Auth_param basic children 5 startup=5 idle=1
+##Auth_param basic credentialsttl 2 hours
 #Default:
-# none
+# None
 
-#  TAG: authenticate_cache_garbage_interval
-#    The time period between garbage collection across the username cache.
-#    This is a trade-off between memory utilization (long intervals - say
-#    2 days) and CPU (short intervals - say 1 minute). Only change if you
-#    have good reason to.
+# Tag: authenticate_cache_garbage_interval
+# The time period between garbage collection across the username cache.
+# This is a trade-off between memory utilization (long intervals - say
+# 2 days) and cpu (short intervals - say 1 minute). only change if you
+# Have good reason to.
 #Default:
-# authenticate_cache_garbage_interval 1 hour
+# Authenticate_cache_garbage_interval 1 hour
 
-#  TAG: authenticate_ttl
-#    The time a user & their credentials stay in the logged in
-#    user cache since their last request. When the garbage
-#    interval passes, all user credentials that have passed their
-#    TTL are removed from memory.
+# Tag: authenticate_ttl
+# The time a user & their credentials stay in the logged in
+# User cache since their last request. when the garbage
+# Interval passes, all user credentials that have passed their
+# Ttl are removed from memory.
 #Default:
-# authenticate_ttl 1 hour
+# Authenticate_ttl 1 hour
 
-#  TAG: authenticate_ip_ttl
-#    If you use proxy authentication and the 'max_user_ip' ACL,
-#    this directive controls how long Squid remembers the IP
-#    addresses associated with each user.  Use a small value
-#    (e.g., 60 seconds) if your users might change addresses
-#    quickly, as is the case with dialup.   You might be safe
-#    using a larger value (e.g., 2 hours) in a corporate LAN
-#    environment with relatively static address assignments.
+# Tag: authenticate_ip_ttl
+# If you use proxy authentication and the 'max_user_ip' acl,
+# This directive controls how long squid remembers the ip
+# Addresses associated with each user.  use a small value
+#    (E.g., 60 seconds) if your users might change addresses
+# Quickly, as is the case with dialup.   you might be safe
+# Using a larger value (e.g., 2 hours) in a corporate lan
+# Environment with relatively static address assignments.
 #Default:
-# authenticate_ip_ttl 1 second
+# Authenticate_ip_ttl 1 second
 
-# ACCESS CONTROLS
+# Access controls
 # -----------------------------------------------------------------------------
 
-#  TAG: external_acl_type
-#    This option defines external acl classes using a helper program
-#    to look up the status
-#
-#      external_acl_type name [options] FORMAT /path/to/helper [helper arguments]
-#
-#    Options:
-#
-#      ttl=n        TTL in seconds for cached results (defaults to 3600
-#            for 1 hour)
-#
-#      negative_ttl=n
-#            TTL for cached negative lookups (default same
-#            as ttl)
-#
-#      grace=n    Percentage remaining of TTL where a refresh of a
-#            cached entry should be initiated without needing to
-#            wait for a new reply. (default is for no grace period)
-#
-#      cache=n    The maximum number of entries in the result cache. The
-#            default limit is 262144 entries.  Each cache entry usually
-#            consumes at least 256 bytes. Squid currently does not remove
-#            expired cache entries until the limit is reached, so a proxy
-#            will sooner or later reach the limit. The expanded FORMAT
-#            value is used as the cache key, so if the details in FORMAT
-#            are highly variable, a larger cache may be needed to produce
-#            reduction in helper load.
-#
-#      children-max=n
-#            Maximum number of acl helper processes spawned to service
-#            external acl lookups of this type. (default 5)
-#
-#      children-startup=n
-#            Minimum number of acl helper processes to spawn during
-#            startup and reconfigure to service external acl lookups
-#            of this type. (default 0)
-#
-#      children-idle=n
-#            Number of acl helper processes to keep ahead of traffic
-#            loads. Squid will spawn this many at once whenever load
-#            rises above the capabilities of existing processes.
-#            Up to the value of children-max. (default 1)
-#
-#      concurrency=n    concurrency level per process. Only used with helpers
-#            capable of processing more than one query at a time.
-#
-#      queue-size=N  The queue-size option sets the maximum number of
-#            queued requests. A request is queued when no existing
-#            helper can accept it due to concurrency limit and no
-#            new helper can be started due to children-max limit.
-#            If the queued requests exceed queue size, the acl is
-#            ignored. The default value is set to 2*children-max.
-#
-#      protocol=2.5    Compatibility mode for Squid-2.5 external acl helpers.
-#
-#      ipv4 / ipv6    IP protocol used to communicate with this helper.
-#            The default is to auto-detect IPv6 and use it when available.
-#
-#
-#    FORMAT is a series of %macro codes. See logformat directive for a full list
-#    of the accepted codes. Although note that at the time of any external ACL
-#    being tested data may not be available and thus some %macro expand to '-'.
-#
-#    In addition to the logformat codes; when processing external ACLs these
-#    additional macros are made available:
-#
-#      %ACL        The name of the ACL being tested.
-#
-#      %DATA        The ACL arguments specified in the referencing config
-#            'acl ... external' line, separated by spaces (an
-#            "argument string"). see acl external.
-#
-#            If there are no ACL arguments %DATA expands to '-'.
-#
-#            If you do not specify a DATA macro inside FORMAT,
-#            Squid automatically appends %DATA to your FORMAT.
-#            Note that Squid-3.x may expand %DATA to whitespace
-#            or nothing in this case.
-#
-#            By default, Squid applies URL-encoding to each ACL
-#            argument inside the argument string. If an explicit
-#            encoding modifier is used (e.g., %#DATA), then Squid
-#            encodes the whole argument string as a single token
-#            (e.g., with %#DATA, spaces between arguments become
+# Tag: external_acl_type
+# This option defines external acl classes using a helper program
+# To look up the status
+# External_acl_type name [options] format /path/to/helper [helper arguments]
+# Options:
+# Ttl=n        ttl in seconds for cached results (defaults to 3600
+# For 1 hour)
+# Negative_ttl=n
+# Ttl for cached negative lookups (default same
+# As ttl)
+# Grace=n    percentage remaining of ttl where a refresh of a
+# Cached entry should be initiated without needing to
+# Wait for a new reply. (default is for no grace period)
+# Cache=n    the maximum number of entries in the result cache. the
+# Default limit is 262144 entries.  each cache entry usually
+# Consumes at least 256 bytes. squid currently does not remove
+# Expired cache entries until the limit is reached, so a proxy
+# Will sooner or later reach the limit. the expanded format
+# Value is used as the cache key, so if the details in format
+# Are highly variable, a larger cache may be needed to produce
+# Reduction in helper load.
+# Children-max=n
+# Maximum number of acl helper processes spawned to service
+# External acl lookups of this type. (default 5)
+# Children-startup=n
+# Minimum number of acl helper processes to spawn during
+# Startup and reconfigure to service external acl lookups
+# Of this type. (default 0)
+# Children-idle=n
+# Number of acl helper processes to keep ahead of traffic
+# Loads. squid will spawn this many at once whenever load
+# Rises above the capabilities of existing processes.
+# Up to the value of children-max. (default 1)
+# Concurrency=n    concurrency level per process. only used with helpers
+# Capable of processing more than one query at a time.
+# Queue-size=n  the queue-size option sets the maximum number of
+# Queued requests. a request is queued when no existing
+# Helper can accept it due to concurrency limit and no
+# New helper can be started due to children-max limit.
+# If the queued requests exceed queue size, the acl is
+# Ignored. the default value is set to 2*children-max.
+# Protocol=2.5    compatibility mode for squid-2.5 external acl helpers.
+# Ipv4 / ipv6    ip protocol used to communicate with this helper.
+# The default is to auto-detect ipv6 and use it when available.
+# Format is a series of %macro codes. see logformat directive for a full list
+# Of the accepted codes. although note that at the time of any external acl
+# Being tested data may not be available and thus some %macro expand to '-'.
+# In addition to the logformat codes; when processing external acls these
+# Additional macros are made available:
+# %Acl        the name of the acl being tested.
+# %Data        the acl arguments specified in the referencing config
+#            'Acl ... external' line, separated by spaces (an
+#            "Argument string"). see acl external.
+# If there are no acl arguments %data expands to '-'.
+# If you do not specify a data macro inside format,
+# Squid automatically appends %data to your format.
+# Note that squid-3.x may expand %data to whitespace
+# Or nothing in this case.
+# By default, squid applies url-encoding to each acl
+# Argument inside the argument string. if an explicit
+# Encoding modifier is used (e.g., %#data), then squid
+# Encodes the whole argument string as a single token
+#            (E.g., with %#data, spaces between arguments become
 #            %20).
-#
-#    If SSL is enabled, the following formating codes become available:
-#
-#      %USER_CERT        SSL User certificate in PEM format
-#      %USER_CERTCHAIN    SSL User certificate chain in PEM format
-#      %USER_CERT_xx        SSL User certificate subject attribute xx
-#      %USER_CA_CERT_xx    SSL User certificate issuer attribute xx
-#
-#
-#    NOTE: all other format codes accepted by older Squid versions
-#        are deprecated.
-#
-#
-#    General request syntax:
-#
-#      [channel-ID] FORMAT-values
-#
-#
-#    FORMAT-values consists of transaction details expanded with
-#    whitespace separation per the config file FORMAT specification
-#    using the FORMAT macros listed above.
-#
-#    Request values sent to the helper are URL escaped to protect
-#    each value in requests against whitespaces.
-#
-#    If using protocol=2.5 then the request sent to the helper is not
-#    URL escaped to protect against whitespace.
-#
-#    NOTE: protocol=3.0 is deprecated as no longer necessary.
-#
-#    When using the concurrency= option the protocol is changed by
-#    introducing a query channel tag in front of the request/response.
-#    The query channel tag is a number between 0 and concurrency-1.
-#    This value must be echoed back unchanged to Squid as the first part
-#    of the response relating to its request.
-#
-#
-#    The helper receives lines expanded per the above format specification
-#    and for each input line returns 1 line starting with OK/ERR/BH result
-#    code and optionally followed by additional keywords with more details.
-#
-#
-#    General result syntax:
-#
-#      [channel-ID] result keyword=value ...
-#
-#    Result consists of one of the codes:
-#
-#      OK
-#        the ACL test produced a match.
-#
-#      ERR
-#        the ACL test does not produce a match.
-#
-#      BH
-#        An internal error occurred in the helper, preventing
-#        a result being identified.
-#
-#    The meaning of 'a match' is determined by your squid.conf
-#    access control configuration. See the Squid wiki for details.
-#
-#    Defined keywords:
-#
-#      user=        The users name (login)
-#
-#      password=    The users password (for login= cache_peer option)
-#
-#      message=    Message describing the reason for this response.
-#            Available as %o in error pages.
-#            Useful on (ERR and BH results).
-#
-#      tag=        Apply a tag to a request. Only sets a tag once,
-#            does not alter existing tags.
-#
-#      log=        String to be logged in access.log. Available as
-#            %ea in logformat specifications.
-#
-#      clt_conn_tag= Associates a TAG with the client TCP connection.
-#            Please see url_rewrite_program related documentation
-#            for this kv-pair.
-#
-#    Any keywords may be sent on any response whether OK, ERR or BH.
-#
-#    All response keyword values need to be a single token with URL
-#    escaping, or enclosed in double quotes (") and escaped using \ on
-#    any double quotes or \ characters within the value. The wrapping
-#    double quotes are removed before the value is interpreted by Squid.
-#    \r and \n are also replace by CR and LF.
-#
-#    Some example key values:
-#
-#        user=John%20Smith
-#        user="John Smith"
-#        user="J. \"Bob\" Smith"
+# If ssl is enabled, the following formating codes become available:
+# %User_cert        ssl user certificate in pem format
+#      %User_certchain    ssl user certificate chain in pem format
+#      %User_cert_xx        ssl user certificate subject attribute xx
+#      %User_ca_cert_xx    ssl user certificate issuer attribute xx
+# Note: all other format codes accepted by older squid versions
+# Are deprecated.
+# General request syntax:
+# [Channel-id] format-values
+# Format-values consists of transaction details expanded with
+# Whitespace separation per the config file format specification
+# Using the format macros listed above.
+# Request values sent to the helper are url escaped to protect
+# Each value in requests against whitespaces.
+# If using protocol=2.5 then the request sent to the helper is not
+# Url escaped to protect against whitespace.
+# Note: protocol=3.0 is deprecated as no longer necessary.
+# When using the concurrency= option the protocol is changed by
+# Introducing a query channel tag in front of the request/response.
+# The query channel tag is a number between 0 and concurrency-1.
+# This value must be echoed back unchanged to squid as the first part
+# Of the response relating to its request.
+# The helper receives lines expanded per the above format specification
+# And for each input line returns 1 line starting with ok/err/bh result
+# Code and optionally followed by additional keywords with more details.
+# General result syntax:
+# [Channel-id] result keyword=value ...
+# Result consists of one of the codes:
+# Ok
+# The acl test produced a match.
+# Err
+# The acl test does not produce a match.
+# Bh
+# An internal error occurred in the helper, preventing
+# A result being identified.
+# The meaning of 'a match' is determined by your squid.conf
+# Access control configuration. see the squid wiki for details.
+# Defined keywords:
+# User=        the users name (login)
+# Password=    the users password (for login= cache_peer option)
+# Message=    message describing the reason for this response.
+# Available as %o in error pages.
+# Useful on (err and bh results).
+# Tag=        apply a tag to a request. only sets a tag once,
+# Does not alter existing tags.
+# Log=        string to be logged in access.log. available as
+#            %Ea in logformat specifications.
+# Clt_conn_tag= associates a tag with the client tcp connection.
+# Please see url_rewrite_program related documentation
+# For this kv-pair.
+# Any keywords may be sent on any response whether ok, err or bh.
+# All response keyword values need to be a single token with url
+# Escaping, or enclosed in double quotes (") and escaped using \ on
+# Any double quotes or \ characters within the value. the wrapping
+# Double quotes are removed before the value is interpreted by squid.
+#    \R and \n are also replace by cr and lf.
+# Some example key values:
+# User=john%20smith
+# User="john smith"
+# User="j. \"bob\" smith"
 #Default:
-# none
+# None
 
-#  TAG: acl
-#    Defining an Access List
-#
-#    Every access list definition must begin with an aclname and acltype,
-#    followed by either type-specific arguments or a quoted filename that
-#    they are read from.
-#
-#       acl aclname acltype argument ...
-#       acl aclname acltype "file" ...
-#
-#    When using "file", the file should contain one item per line.
-#
-#
-#    ACL Options
-#
-#    Some acl types supports options which changes their default behaviour:
-#
-#    -i,+i    By default, regular expressions are CASE-SENSITIVE. To make them
-#        case-insensitive, use the -i option. To return case-sensitive
-#        use the +i option between patterns, or make a new ACL line
-#        without -i.
-#
-#    -n    Disable lookups and address type conversions.  If lookup or
-#        conversion is required because the parameter type (IP or
-#        domain name) does not match the message address type (domain
-#        name or IP), then the ACL would immediately declare a mismatch
-#        without any warnings or lookups.
-#
-#    -m[=delimiters]
-#        Perform a list membership test, interpreting values as
-#        comma-separated token lists and matching against individual
-#        tokens instead of whole values.
-#        The optional "delimiters" parameter specifies one or more
-#        alternative non-alphanumeric delimiter characters.
-#        non-alphanumeric delimiter characters.
-#
-#    --    Used to stop processing all options, in the case the first acl
-#        value has '-' character as first character (for example the '-'
-#        is a valid domain name)
-#
-#    Some acl types require suspending the current request in order
-#    to access some external data source.
-#    Those which do are marked with the tag [slow], those which
-#    don't are marked as [fast].
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl
-#    for further information
-#
-#    ***** ACL TYPES AVAILABLE *****
-#
-#    acl aclname src ip-address/mask ...    # clients IP address [fast]
-#    acl aclname src addr1-addr2/mask ...    # range of addresses [fast]
-#    acl aclname dst [-n] ip-address/mask ...    # URL host's IP address [slow]
-#    acl aclname localip ip-address/mask ... # IP address the client connected to [fast]
-#
-#if USE_squid_EUI
-#    acl aclname arp      mac-address ...
-#    acl aclname eui64    eui64-address ...
-#      # [fast]
-#      # MAC (EUI-48) and EUI-64 addresses use xx:xx:xx:xx:xx:xx notation.
+# Tag: acl
+# Defining an access list
+# Every access list definition must begin with an aclname and acltype,
+# Followed by either type-specific arguments or a quoted filename that
+# They are read from.
+# Acl aclname acltype argument ...
+# Acl aclname acltype "file" ...
+# When using "file", the file should contain one item per line.
+# Acl options
+# Some acl types supports options which changes their default behaviour:
+# -I,+i    by default, regular expressions are case-sensitive. to make them
+# Case-insensitive, use the -i option. to return case-sensitive
+# Use the +i option between patterns, or make a new acl line
+# Without -i.
+# -N    disable lookups and address type conversions.  if lookup or
+# Conversion is required because the parameter type (ip or
+# Domain name) does not match the message address type (domain
+# Name or ip), then the acl would immediately declare a mismatch
+# Without any warnings or lookups.
+# -M[=delimiters]
+# Perform a list membership test, interpreting values as
+# Comma-separated token lists and matching against individual
+# Tokens instead of whole values.
+# The optional "delimiters" parameter specifies one or more
+# Alternative non-alphanumeric delimiter characters.
+# Non-alphanumeric delimiter characters.
+# --    Used to stop processing all options, in the case the first acl
+# Value has '-' character as first character (for example the '-'
+# Is a valid domain name)
+# Some acl types require suspending the current request in order
+# To access some external data source.
+# Those which do are marked with the tag [slow], those which
+# Don't are marked as [fast].
+# See http://wiki.squid-cache.org/squidfaq/squidacl
+# For further information
+# ***** Acl types available *****
+# Acl aclname src ip-address/mask ...    # clients ip address [fast]
+# Acl aclname src addr1-addr2/mask ...    # range of addresses [fast]
+# Acl aclname dst [-n] ip-address/mask ...    # url host's ip address [slow]
+# Acl aclname localip ip-address/mask ... # ip address the client connected to [fast]
+#If use_squid_eui
+# Acl aclname arp      mac-address ...
+# Acl aclname eui64    eui64-address ...
+#      # [Fast]
+#      # Mac (eui-48) and eui-64 addresses use xx:xx:xx:xx:xx:xx notation.
 #      #
-#      # The 'arp' ACL code is not portable to all operating systems.
-#      # It works on Linux, Solaris, Windows, FreeBSD, and some other
-#      # BSD variants.
+#      # The 'arp' acl code is not portable to all operating systems.
+#      # It works on linux, solaris, windows, freebsd, and some other
+#      # Bsd variants.
 #      #
 #      # The eui_lookup directive is required to be 'on' (the default)
-#      # and Squid built with --enable-eui for MAC/EUI addresses to be
-#      # available for this ACL.
+#      # And squid built with --enable-eui for mac/eui addresses to be
+#      # Available for this acl.
 #      #
-#      # Squid can only determine the MAC/EUI address for IPv4
-#      # clients that are on the same subnet. If the client is on a
-#      # different subnet, then Squid cannot find out its address.
+#      # Squid can only determine the mac/eui address for ipv4
+#      # Clients that are on the same subnet. if the client is on a
+#      # Different subnet, then squid cannot find out its address.
 #      #
-#      # IPv6 protocol does not contain ARP. MAC/EUI is either
-#      # encoded directly in the IPv6 address or not available.
-#endif
-#    acl aclname clientside_mark mark[/mask] ...
-#      # matches CONNMARK of an accepted connection [fast]
-#      # DEPRECATED. Use the 'client_connection_mark' instead.
-#
-#    acl aclname client_connection_mark mark[/mask] ...
-#      # matches CONNMARK of an accepted connection [fast]
+#      # Ipv6 protocol does not contain arp. mac/eui is either
+#      # Encoded directly in the ipv6 address or not available.
+#Endif
+# Acl aclname clientside_mark mark[/mask] ...
+#      # Matches connmark of an accepted connection [fast]
+#      # Deprecated. use the 'client_connection_mark' instead.
+# Acl aclname client_connection_mark mark[/mask] ...
+#      # Matches connmark of an accepted connection [fast]
 #      #
-#      # mark and mask are unsigned integers (hex, octal, or decimal).
-#      # If multiple marks are given, then the ACL matches if at least
-#      # one mark matches.
+#      # Mark and mask are unsigned integers (hex, octal, or decimal).
+#      # If multiple marks are given, then the acl matches if at least
+#      # One mark matches.
 #      #
 #      # Uses netfilter-conntrack library.
-#      # Requires building Squid with --enable-linux-netfilter.
+#      # Requires building squid with --enable-linux-netfilter.
 #      #
-#      # The client, various intermediaries, and Squid itself may set
-#      # CONNMARK at various times. The last CONNMARK set wins. This ACL
-#      # checks the mark present on an accepted connection or set by
-#      # Squid afterwards, depending on the ACL check timing. This ACL
-#      # effectively ignores any mark set by other agents after Squid has
-#      # accepted the connection.
-#
-#    acl aclname srcdomain   .foo.com ...
-#      # reverse lookup, from client IP [slow]
-#    acl aclname dstdomain [-n] .foo.com ...
-#      # Destination server from URL [fast]
-#    acl aclname srcdom_regex [-i] \.foo\.com ...
-#      # regex matching client name [slow]
-#    acl aclname dstdom_regex [-n] [-i] \.foo\.com ...
-#      # regex matching server [fast]
+#      # The client, various intermediaries, and squid itself may set
+#      # Connmark at various times. the last connmark set wins. this acl
+#      # Checks the mark present on an accepted connection or set by
+#      # Squid afterwards, depending on the acl check timing. this acl
+#      # Effectively ignores any mark set by other agents after squid has
+#      # Accepted the connection.
+# Acl aclname srcdomain   .foo.com ...
+#      # Reverse lookup, from client ip [slow]
+# Acl aclname dstdomain [-n] .foo.com ...
+#      # Destination server from url [fast]
+# Acl aclname srcdom_regex [-i] \.foo\.com ...
+#      # Regex matching client name [slow]
+# Acl aclname dstdom_regex [-n] [-i] \.foo\.com ...
+#      # Regex matching server [fast]
 #      #
-#      # For dstdomain and dstdom_regex a reverse lookup is tried if a IP
-#      # based URL is used and no match is found. The name "none" is used
-#      # if the reverse lookup fails.
-#
-#    acl aclname src_as number ...
-#    acl aclname dst_as number ...
-#      # [fast]
-#      # Except for access control, AS numbers can be used for
-#      # routing of requests to specific caches. Here's an
-#      # example for routing all requests for AS#1241 and only
-#      # those to mycache.mydomain.net:
-#      # acl asexample dst_as 1241
-#      # cache_peer_access mycache.mydomain.net allow asexample
-#      # cache_peer_access mycache_mydomain.net deny all
-#
-#    acl aclname peername myPeer ...
-#    acl aclname peername_regex [-i] regex-pattern ...
-#      # [fast]
-#      # match against a named cache_peer entry
-#      # set unique name= on cache_peer lines for reliable use.
-#
-#    acl aclname time [day-abbrevs] [h1:m1-h2:m2]
-#      # [fast]
-#      #  day-abbrevs:
-#      #    S - Sunday
-#      #    M - Monday
-#      #    T - Tuesday
-#      #    W - Wednesday
-#      #    H - Thursday
-#      #    F - Friday
-#      #    A - Saturday
-#      #  h1:m1 must be less than h2:m2
-#
-#    acl aclname url_regex [-i] ^http:// ...
-#      # regex matching on whole URL [fast]
-#    acl aclname urllogin [-i] [^a-zA-Z0-9] ...
-#      # regex matching on URL login field
-#    acl aclname urlpath_regex [-i] \.gif$ ...
-#      # regex matching on URL path [fast]
-#
-#    acl aclname port 80 70 21 0-1024...   # destination TCP port [fast]
-#                                          # ranges are alloed
-#    acl aclname localport 3128 ...          # TCP port the client connected to [fast]
-#                                          # NP: for interception mode this is usually '80'
-#
-#    acl aclname myportname 3128 ...       # *_port name [fast]
-#
-#    acl aclname proto HTTP FTP ...        # request protocol [fast]
-#
-#    acl aclname method GET POST ...       # HTTP request method [fast]
-#
-#    acl aclname http_status 200 301 500- 400-403 ...
-#      # status code in reply [fast]
-#
-#    acl aclname browser [-i] regexp ...
-#      # pattern match on User-Agent header (see also req_header below) [fast]
-#
-#    acl aclname referer_regex [-i] regexp ...
-#      # pattern match on Referer header [fast]
+#      # For dstdomain and dstdom_regex a reverse lookup is tried if a ip
+#      # Based url is used and no match is found. the name "none" is used
+#      # If the reverse lookup fails.
+# Acl aclname src_as number ...
+# Acl aclname dst_as number ...
+#      # [Fast]
+#      # Except for access control, as numbers can be used for
+#      # Routing of requests to specific caches. here's an
+#      # Example for routing all requests for as#1241 and only
+#      # Those to mycache.mydomain.net:
+#      # Acl asexample dst_as 1241
+#      # Cache_peer_access mycache.mydomain.net allow asexample
+#      # Cache_peer_access mycache_mydomain.net deny all
+# Acl aclname peername mypeer ...
+# Acl aclname peername_regex [-i] regex-pattern ...
+#      # [Fast]
+#      # Match against a named cache_peer entry
+#      # Set unique name= on cache_peer lines for reliable use.
+# Acl aclname time [day-abbrevs] [h1:m1-h2:m2]
+#      # [Fast]
+#      #  Day-abbrevs:
+#      #    S - sunday
+#      #    M - monday
+#      #    T - tuesday
+#      #    W - wednesday
+#      #    H - thursday
+#      #    F - friday
+#      #    A - saturday
+#      #  H1:m1 must be less than h2:m2
+# Acl aclname url_regex [-i] ^http:// ...
+#      # Regex matching on whole url [fast]
+# Acl aclname urllogin [-i] [^a-za-z0-9] ...
+#      # Regex matching on url login field
+# Acl aclname urlpath_regex [-i] \.gif$ ...
+#      # Regex matching on url path [fast]
+# Acl aclname port 80 70 21 0-1024...   # destination tcp port [fast]
+#                                          # Ranges are alloed
+# Acl aclname localport 3128 ...          # tcp port the client connected to [fast]
+#                                          # Np: for interception mode this is usually '80'
+# Acl aclname myportname 3128 ...       # *_port name [fast]
+# Acl aclname proto http ftp ...        # request protocol [fast]
+# Acl aclname method get post ...       # http request method [fast]
+# Acl aclname http_status 200 301 500- 400-403 ...
+#      # Status code in reply [fast]
+# Acl aclname browser [-i] regexp ...
+#      # Pattern match on user-agent header (see also req_header below) [fast]
+# Acl aclname referer_regex [-i] regexp ...
+#      # Pattern match on referer header [fast]
 #      # Referer is highly unreliable, so use with care
-#
-#    acl aclname ident [-i] username ...
-#    acl aclname ident_regex [-i] pattern ...
-#      # string match on ident output [slow]
-#      # use REQUIRED to accept any non-null ident.
-#
-#    acl aclname proxy_auth [-i] username ...
-#    acl aclname proxy_auth_regex [-i] pattern ...
-#      # perform http authentication challenge to the client and match against
-#      # supplied credentials [slow]
+# Acl aclname ident [-i] username ...
+# Acl aclname ident_regex [-i] pattern ...
+#      # String match on ident output [slow]
+#      # Use required to accept any non-null ident.
+# Acl aclname proxy_auth [-i] username ...
+# Acl aclname proxy_auth_regex [-i] pattern ...
+#      # Perform http authentication challenge to the client and match against
+#      # Supplied credentials [slow]
 #      #
-#      # takes a list of allowed usernames.
-#      # use REQUIRED to accept any valid username.
+#      # Takes a list of allowed usernames.
+#      # Use required to accept any valid username.
 #      #
 #      # Will use proxy authentication in forward-proxy scenarios, and plain
-#      # http authenticaiton in reverse-proxy scenarios
+#      # Http authenticaiton in reverse-proxy scenarios
 #      #
-#      # NOTE: when a Proxy-Authentication header is sent but it is not
-#      # needed during ACL checking the username is NOT logged
-#      # in access.log.
+#      # Note: when a proxy-authentication header is sent but it is not
+#      # Needed during acl checking the username is not logged
+#      # In access.log.
 #      #
-#      # NOTE: proxy_auth requires a EXTERNAL authentication program
-#      # to check username/password combinations (see
-#      # auth_param directive).
+#      # Note: proxy_auth requires a external authentication program
+#      # To check username/password combinations (see
+#      # Auth_param directive).
 #      #
-#      # NOTE: proxy_auth can't be used in a transparent/intercepting proxy
-#      # as the browser needs to be configured for using a proxy in order
-#      # to respond to proxy authentication.
-#
-#    acl aclname snmp_community string ...
-#      # A community string to limit access to your SNMP Agent [fast]
+#      # Note: proxy_auth can't be used in a transparent/intercepting proxy
+#      # As the browser needs to be configured for using a proxy in order
+#      # To respond to proxy authentication.
+# Acl aclname snmp_community string ...
+#      # A community string to limit access to your snmp agent [fast]
 #      # Example:
 #      #
-#      #    acl snmppublic snmp_community public
-#
-#    acl aclname maxconn number
-#      # This will be matched when the client's IP address has
-#      # more than <number> TCP connections established. [fast]
-#      # NOTE: This only measures direct TCP links so X-Forwarded-For
-#      # indirect clients are not counted.
-#
-#    acl aclname max_user_ip [-s] number
+#      #    Acl snmppublic snmp_community public
+# Acl aclname maxconn number
+#      # This will be matched when the client's ip address has
+#      # More than <number> tcp connections established. [fast]
+#      # Note: this only measures direct tcp links so x-forwarded-for
+#      # Indirect clients are not counted.
+# Acl aclname max_user_ip [-s] number
 #      # This will be matched when the user attempts to log in from more
-#      # than <number> different ip addresses. The authenticate_ip_ttl
-#      # parameter controls the timeout on the ip entries. [fast]
+#      # Than <number> different ip addresses. the authenticate_ip_ttl
+#      # Parameter controls the timeout on the ip entries. [fast]
 #      # If -s is specified the limit is strict, denying browsing
-#      # from any further IP addresses until the ttl has expired. Without
-#      # -s Squid will just annoy the user by "randomly" denying requests.
-#      # (the counter is reset each time the limit is reached and a
-#      # request is denied)
-#      # NOTE: in acceleration mode or where there is mesh of child proxies,
-#      # clients may appear to come from multiple addresses if they are
-#      # going through proxy farms, so a limit of 1 may cause user problems.
-#
-#    acl aclname random probability
-#      # Pseudo-randomly match requests. Based on the probability given.
+#      # From any further ip addresses until the ttl has expired. without
+#      # -S squid will just annoy the user by "randomly" denying requests.
+#      # (The counter is reset each time the limit is reached and a
+#      # Request is denied)
+#      # Note: in acceleration mode or where there is mesh of child proxies,
+#      # Clients may appear to come from multiple addresses if they are
+#      # Going through proxy farms, so a limit of 1 may cause user problems.
+# Acl aclname random probability
+#      # Pseudo-randomly match requests. based on the probability given.
 #      # Probability may be written as a decimal (0.333), fraction (1/3)
-#      # or ratio of matches:non-matches (3:5).
-#
-#    acl aclname req_mime_type [-i] mime-type ...
-#      # regex match against the mime type of the request generated
-#      # by the client. Can be used to detect file upload or some
-#      # types HTTP tunneling requests [fast]
-#      # NOTE: This does NOT match the reply. You cannot use this
-#      # to match the returned file type.
-#
-#    acl aclname req_header header-name [-i] any\.regex\.here
-#      # regex match against any of the known request headers.  May be
-#      # thought of as a superset of "browser", "referer" and "mime-type"
-#      # ACL [fast]
-#
-#    acl aclname rep_mime_type [-i] mime-type ...
-#      # regex match against the mime type of the reply received by
-#      # squid. Can be used to detect file download or some
-#      # types HTTP tunneling requests. [fast]
-#      # NOTE: This has no effect in http_access rules. It only has
-#      # effect in rules that affect the reply data stream such as
-#      # http_reply_access.
-#
-#    acl aclname rep_header header-name [-i] any\.regex\.here
-#      # regex match against any of the known reply headers. May be
-#      # thought of as a superset of "browser", "referer" and "mime-type"
-#      # ACLs [fast]
-#
-#    acl aclname external class_name [arguments...]
-#      # external ACL lookup via a helper class defined by the
-#      # external_acl_type directive [slow]
-#
-#    acl aclname user_cert attribute values...
-#      # match against attributes in a user SSL certificate
-#      # attribute is one of DN/C/O/CN/L/ST or a numerical OID [fast]
-#
-#    acl aclname ca_cert attribute values...
-#      # match against attributes a users issuing CA SSL certificate
-#      # attribute is one of DN/C/O/CN/L/ST or a numerical OID  [fast]
-#
-#    acl aclname ext_user [-i] username ...
-#    acl aclname ext_user_regex [-i] pattern ...
-#      # string match on username returned by external acl helper [slow]
-#      # use REQUIRED to accept any non-null user name.
-#
-#    acl aclname tag tagvalue ...
-#      # string match on tag returned by external acl helper [fast]
-#      # DEPRECATED. Only the first tag will match with this ACL.
-#      # Use the 'note' ACL instead for handling multiple tag values.
-#
-#    acl aclname hier_code codename ...
-#      # string match against squid hierarchy code(s); [fast]
-#      #  e.g., DIRECT, PARENT_HIT, NONE, etc.
+#      # Or ratio of matches:non-matches (3:5).
+# Acl aclname req_mime_type [-i] mime-type ...
+#      # Regex match against the mime type of the request generated
+#      # By the client. can be used to detect file upload or some
+#      # Types http tunneling requests [fast]
+#      # Note: this does not match the reply. you cannot use this
+#      # To match the returned file type.
+# Acl aclname req_header header-name [-i] any\.regex\.here
+#      # Regex match against any of the known request headers.  may be
+#      # Thought of as a superset of "browser", "referer" and "mime-type"
+#      # Acl [fast]
+# Acl aclname rep_mime_type [-i] mime-type ...
+#      # Regex match against the mime type of the reply received by
+#      # Squid. can be used to detect file download or some
+#      # Types http tunneling requests. [fast]
+#      # Note: this has no effect in http_access rules. it only has
+#      # Effect in rules that affect the reply data stream such as
+#      # Http_reply_access.
+# Acl aclname rep_header header-name [-i] any\.regex\.here
+#      # Regex match against any of the known reply headers. may be
+#      # Thought of as a superset of "browser", "referer" and "mime-type"
+#      # Acls [fast]
+# Acl aclname external class_name [arguments...]
+#      # External acl lookup via a helper class defined by the
+#      # External_acl_type directive [slow]
+# Acl aclname user_cert attribute values...
+#      # Match against attributes in a user ssl certificate
+#      # Attribute is one of dn/c/o/cn/l/st or a numerical oid [fast]
+# Acl aclname ca_cert attribute values...
+#      # Match against attributes a users issuing ca ssl certificate
+#      # Attribute is one of dn/c/o/cn/l/st or a numerical oid  [fast]
+# Acl aclname ext_user [-i] username ...
+# Acl aclname ext_user_regex [-i] pattern ...
+#      # String match on username returned by external acl helper [slow]
+#      # Use required to accept any non-null user name.
+# Acl aclname tag tagvalue ...
+#      # String match on tag returned by external acl helper [fast]
+#      # Deprecated. only the first tag will match with this acl.
+#      # Use the 'note' acl instead for handling multiple tag values.
+# Acl aclname hier_code codename ...
+#      # String match against squid hierarchy code(s); [fast]
+#      #  E.g., direct, parent_hit, none, etc.
 #      #
-#      # NOTE: This has no effect in http_access rules. It only has
-#      # effect in rules that affect the reply data stream such as
-#      # http_reply_access.
-#
-#    acl aclname note [-m[=delimiters]] name [value ...]
-#      # match transaction annotation [fast]
+#      # Note: this has no effect in http_access rules. it only has
+#      # Effect in rules that affect the reply data stream such as
+#      # Http_reply_access.
+# Acl aclname note [-m[=delimiters]] name [value ...]
+#      # Match transaction annotation [fast]
 #      # Without values, matches any annotation with a given name.
 #      # With value(s), matches any annotation with a given name that
-#      # also has one of the given values.
+#      # Also has one of the given values.
 #      # If the -m flag is used, then the value of the named
-#      # annotation is interpreted as a list of tokens, and the ACL
-#      # matches individual name=token pairs rather than whole
-#      # name=value pairs. See "ACL Options" above for more info.
+#      # Annotation is interpreted as a list of tokens, and the acl
+#      # Matches individual name=token pairs rather than whole
+#      # Name=value pairs. see "acl options" above for more info.
 #      # Annotation sources include note and adaptation_meta directives
-#      # as well as helper and eCAP responses.
-#
-#    acl aclname annotate_transaction [-m[=delimiters]] key=value ...
-#    acl aclname annotate_transaction [-m[=delimiters]] key+=value ...
+#      # As well as helper and ecap responses.
+# Acl aclname annotate_transaction [-m[=delimiters]] key=value ...
+# Acl aclname annotate_transaction [-m[=delimiters]] key+=value ...
 #      # Always matches. [fast]
-#      # Used for its side effect: This ACL immediately adds a
-#      # key=value annotation to the current master transaction.
-#      # The added annotation can then be tested using note ACL and
-#      # logged (or sent to helpers) using %note format code.
+#      # Used for its side effect: this acl immediately adds a
+#      # Key=value annotation to the current master transaction.
+#      # The added annotation can then be tested using note acl and
+#      # Logged (or sent to helpers) using %note format code.
 #      #
 #      # Annotations can be specified using replacement and addition
-#      # formats. The key=value form replaces old same-key annotation
-#      # value(s). The key+=value form appends a new value to the old
-#      # same-key annotation. Both forms create a new key=value
-#      # annotation if no same-key annotation exists already. If
-#      # -m flag is used, then the value is interpreted as a list
-#      # and the annotation will contain key=token pair(s) instead of the
-#      # whole key=value pair.
+#      # Formats. the key=value form replaces old same-key annotation
+#      # Value(s). the key+=value form appends a new value to the old
+#      # Same-key annotation. both forms create a new key=value
+#      # Annotation if no same-key annotation exists already. if
+#      # -M flag is used, then the value is interpreted as a list
+#      # And the annotation will contain key=token pair(s) instead of the
+#      # Whole key=value pair.
 #      #
-#      # This ACL is especially useful for recording complex multi-step
-#      # ACL-driven decisions. For example, the following configuration
-#      # avoids logging transactions accepted after aclX matched:
+#      # This acl is especially useful for recording complex multi-step
+#      # Acl-driven decisions. for example, the following configuration
+#      # Avoids logging transactions accepted after aclx matched:
 #      #
-#      #  # First, mark transactions accepted after aclX matched
-#      #  acl markSpecial annotate_transaction special=true
-#      #  http_access allow acl001
+#      #  # First, mark transactions accepted after aclx matched
+#      #  Acl markspecial annotate_transaction special=true
+#      #  Http_access allow acl001
 #      #  ...
-#      #  http_access deny acl100
-#      #  http_access allow aclX markSpecial
+#      #  Http_access deny acl100
+#      #  Http_access allow aclx markspecial
 #      #
 #      #  # Second, do not log marked transactions:
-#      #  acl markedSpecial note special true
-#      #  access_log ... deny markedSpecial
+#      #  Acl markedspecial note special true
+#      #  Access_log ... deny markedspecial
 #      #
-#      #  # Note that the following would not have worked because aclX
-#      #  # alone does not determine whether the transaction was allowed:
-#      #  access_log ... deny aclX # Wrong!
+#      #  # Note that the following would not have worked because aclx
+#      #  # Alone does not determine whether the transaction was allowed:
+#      #  Access_log ... deny aclx # wrong!
 #      #
-#      # Warning: This ACL annotates the transaction even when negated
-#      # and even if subsequent ACLs fail to match. For example, the
-#      # following three rules will have exactly the same effect as far
-#      # as annotations set by the "mark" ACL are concerned:
+#      # Warning: this acl annotates the transaction even when negated
+#      # And even if subsequent acls fail to match. for example, the
+#      # Following three rules will have exactly the same effect as far
+#      # As annotations set by the "mark" acl are concerned:
 #      #
-#      #  some_directive acl1 ... mark # rule matches if mark is reached
-#      #  some_directive acl1 ... !mark     # rule never matches
-#      #  some_directive acl1 ... mark !all # rule never matches
-#
-#    acl aclname annotate_client [-m[=delimiters]] key=value ...
-#    acl aclname annotate_client [-m[=delimiters]] key+=value ...
+#      #  Some_directive acl1 ... mark # rule matches if mark is reached
+#      #  Some_directive acl1 ... !mark     # rule never matches
+#      #  Some_directive acl1 ... mark !all # rule never matches
+# Acl aclname annotate_client [-m[=delimiters]] key=value ...
+# Acl aclname annotate_client [-m[=delimiters]] key+=value ...
 #      #
 #      # Always matches. [fast]
-#      # Used for its side effect: This ACL immediately adds a
-#      # key=value annotation to the current client-to-Squid
-#      # connection. Connection annotations are propagated to the current
-#      # and all future master transactions on the annotated connection.
-#      # See the annotate_transaction ACL for details.
+#      # Used for its side effect: this acl immediately adds a
+#      # Key=value annotation to the current client-to-squid
+#      # Connection. connection annotations are propagated to the current
+#      # And all future master transactions on the annotated connection.
+#      # See the annotate_transaction acl for details.
 #      #
-#      # For example, the following configuration avoids rewriting URLs
-#      # of transactions bumped by SslBump:
+#      # For example, the following configuration avoids rewriting urls
+#      # Of transactions bumped by sslbump:
 #      #
 #      #  # First, mark bumped connections:
-#      #  acl markBumped annotate_client bumped=true
-#      #  ssl_bump peek acl1
-#      #  ssl_bump stare acl2
-#      #  ssl_bump bump acl3 markBumped
-#      #  ssl_bump splice all
+#      #  Acl markbumped annotate_client bumped=true
+#      #  Ssl_bump peek acl1
+#      #  Ssl_bump stare acl2
+#      #  Ssl_bump bump acl3 markbumped
+#      #  Ssl_bump splice all
 #      #
 #      #  # Second, do not send marked transactions to the redirector:
-#      #  acl markedBumped note bumped true
-#      #  url_rewrite_access deny markedBumped
+#      #  Acl markedbumped note bumped true
+#      #  Url_rewrite_access deny markedbumped
 #      #
 #      #  # Note that the following would not have worked because acl3 alone
-#      #  # does not determine whether the connection is going to be bumped:
-#      #  url_rewrite_access deny acl3 # Wrong!
-#
-#    acl aclname adaptation_service service ...
+#      #  # Does not determine whether the connection is going to be bumped:
+#      #  Url_rewrite_access deny acl3 # wrong!
+# Acl aclname adaptation_service service ...
 #      # Matches the name of any icap_service, ecap_service,
-#      # adaptation_service_set, or adaptation_service_chain that Squid
-#      # has used (or attempted to use) for the master transaction.
-#      # This ACL must be defined after the corresponding adaptation
-#      # service is named in squid.conf. This ACL is usable with
-#      # adaptation_meta because it starts matching immediately after
-#      # the service has been selected for adaptation.
-#
-#    acl aclname transaction_initiator initiator ...
+#      # Adaptation_service_set, or adaptation_service_chain that squid
+#      # Has used (or attempted to use) for the master transaction.
+#      # This acl must be defined after the corresponding adaptation
+#      # Service is named in squid.conf. this acl is usable with
+#      # Adaptation_meta because it starts matching immediately after
+#      # The service has been selected for adaptation.
+# Acl aclname transaction_initiator initiator ...
 #      # Matches transaction's initiator [fast]
 #      #
 #      # Supported initiators are:
-#      #  esi: matches transactions fetching ESI resources
-#      #  certificate-fetching: matches transactions fetching
-#      #     a missing intermediate TLS certificate
-#      #  cache-digest: matches transactions fetching Cache Digests
-#      #     from a cache_peer
-#      #  htcp: matches HTCP requests from peers
-#      #  icp: matches ICP requests to peers
-#      #  icmp: matches ICMP RTT database (NetDB) requests to peers
-#      #  asn: matches asns db requests
-#      #  internal: matches any of the above
-#      #  client: matches transactions containing an HTTP or FTP
-#      #     client request received at a Squid *_port
-#      #  all: matches any transaction, including internal transactions
-#      #     without a configurable initiator and hopefully rare
-#      #     transactions without a known-to-Squid initiator
+#      #  Esi: matches transactions fetching esi resources
+#      #  Certificate-fetching: matches transactions fetching
+#      #     A missing intermediate tls certificate
+#      #  Cache-digest: matches transactions fetching cache digests
+#      #     From a cache_peer
+#      #  Htcp: matches htcp requests from peers
+#      #  Icp: matches icp requests to peers
+#      #  Icmp: matches icmp rtt database (netdb) requests to peers
+#      #  Asn: matches asns db requests
+#      #  Internal: matches any of the above
+#      #  Client: matches transactions containing an http or ftp
+#      #     Client request received at a squid *_port
+#      #  All: matches any transaction, including internal transactions
+#      #     Without a configurable initiator and hopefully rare
+#      #     Transactions without a known-to-squid initiator
 #      #
-#      # Multiple initiators are ORed.
-#
-#    acl aclname has component
-#      # matches a transaction "component" [fast]
+#      # Multiple initiators are ored.
+# Acl aclname has component
+#      # Matches a transaction "component" [fast]
 #      #
 #      # Supported transaction components are:
-#      #  request: transaction has a request header (at least)
-#      #  response: transaction has a response header (at least)
-#      #  ALE: transaction has an internally-generated Access Log Entry
-#      #       structure; bugs notwithstanding, all transaction have it
+#      #  Request: transaction has a request header (at least)
+#      #  Response: transaction has a response header (at least)
+#      #  Ale: transaction has an internally-generated access log entry
+#      #       Structure; bugs notwithstanding, all transaction have it
 #      #
-#      # For example, the following configuration helps when dealing with HTTP
-#      # clients that close connections without sending a request header:
+#      # For example, the following configuration helps when dealing with http
+#      # Clients that close connections without sending a request header:
 #      #
-#      #  acl hasRequest has request
-#      #  acl logMe note important_transaction
-#      #  # avoid "logMe ACL is used in context without an HTTP request" warnings
-#      #  access_log ... logformat=detailed hasRequest logMe
-#      #  # log request-less transactions, instead of ignoring them
-#      #  access_log ... logformat=brief !hasRequest
+#      #  Acl hasrequest has request
+#      #  Acl logme note important_transaction
+#      #  # Avoid "logme acl is used in context without an http request" warnings
+#      #  Access_log ... logformat=detailed hasrequest logme
+#      #  # Log request-less transactions, instead of ignoring them
+#      #  Access_log ... logformat=brief !hasrequest
 #      #
 #      # Multiple components are not supported for one "acl" rule, but
-#      # can be specified (and are ORed) using multiple same-name rules:
+#      # Can be specified (and are ored) using multiple same-name rules:
 #      #
-#      #  # OK, this strange logging daemon needs request or response,
-#      #  # but can work without either a request or a response:
-#      #  acl hasWhatMyLoggingDaemonNeeds has request
-#      #  acl hasWhatMyLoggingDaemonNeeds has response
-#
-#acl aclname at_step step
-#      # match against the current request processing step [fast]
+#      #  # Ok, this strange logging daemon needs request or response,
+#      #  # But can work without either a request or a response:
+#      #  Acl haswhatmyloggingdaemonneeds has request
+#      #  Acl haswhatmyloggingdaemonneeds has response
+#Acl aclname at_step step
+#      # Match against the current request processing step [fast]
 #      # Valid steps are:
-#      #   GeneratingCONNECT: Generating HTTP CONNECT request headers
-#
-#    acl aclname any-of acl1 acl2 ...
-#      # match any one of the acls [fast or slow]
-#      # The first matching ACL stops further ACL evaluation.
+#      #   Generatingconnect: generating http connect request headers
+# Acl aclname any-of acl1 acl2 ...
+#      # Match any one of the acls [fast or slow]
+#      # The first matching acl stops further acl evaluation.
 #      #
-#      # ACLs from multiple any-of lines with the same name are ORed.
-#      # For example, A = (a1 or a2) or (a3 or a4) can be written as
-#      #   acl A any-of a1 a2
-#      #   acl A any-of a3 a4
+#      # Acls from multiple any-of lines with the same name are ored.
+#      # For example, a = (a1 or a2) or (a3 or a4) can be written as
+#      #   Acl a any-of a1 a2
+#      #   Acl a any-of a3 a4
 #      #
-#      # This group ACL is fast if all evaluated ACLs in the group are fast
-#      # and slow otherwise.
-#
-#    acl aclname all-of acl1 acl2 ...
-#      # match all of the acls [fast or slow]
-#      # The first mismatching ACL stops further ACL evaluation.
+#      # This group acl is fast if all evaluated acls in the group are fast
+#      # And slow otherwise.
+# Acl aclname all-of acl1 acl2 ...
+#      # Match all of the acls [fast or slow]
+#      # The first mismatching acl stops further acl evaluation.
 #      #
-#      # ACLs from multiple all-of lines with the same name are ORed.
-#      # For example, B = (b1 and b2) or (b3 and b4) can be written as
-#      #   acl B all-of b1 b2
-#      #   acl B all-of b3 b4
+#      # Acls from multiple all-of lines with the same name are ored.
+#      # For example, b = (b1 and b2) or (b3 and b4) can be written as
+#      #   Acl b all-of b1 b2
+#      #   Acl b all-of b3 b4
 #      #
-#      # This group ACL is fast if all evaluated ACLs in the group are fast
-#      # and slow otherwise.
-#
-#    Examples:
-#        acl macaddress arp 09:00:2b:23:45:67
-#        acl myexample dst_as 1241
-#        acl password proxy_auth REQUIRED
-#        acl fileupload req_mime_type -i ^multipart/form-data$
-#        acl javascript rep_mime_type -i ^application/x-javascript$
-#
+#      # This group acl is fast if all evaluated acls in the group are fast
+#      # And slow otherwise.
+# Examples:
+# Acl macaddress arp 09:00:2b:23:45:67
+# Acl myexample dst_as 1241
+# Acl password proxy_auth required
+# Acl fileupload req_mime_type -i ^multipart/form-data$
+# Acl javascript rep_mime_type -i ^application/x-javascript$
 #Default:
-# ACLs all, manager, localhost, to_localhost, and CONNECT are predefined.
-#
-#
+# Acls all, manager, localhost, to_localhost, and connect are predefined.
 # Recommended minimum configuration:
-#
 
 # Example rule allowing access from your local networks.
-# Adapt to list your (internal) IP networks from where browsing should be allowed.
+# Adapt to list your (internal) ip networks from where browsing should be allowed.
 
-acl localnet src 172.16.0.0/12                  # RFC 1918 local private network [LAN]
-acl localnet src 192.168.0.0/16                 # RFC 1918 local private network [LAN]
+acl localnet src 172.16.0.0/12                  # Rfc 1918 local private network [lan]
+acl localnet src 192.168.0.0/16                 # Rfc 1918 local private network [lan]
 
 acl SSL_ports port 443
 
-acl Safe_ports port 80                          # http
-acl Safe_ports port 21                          # ftp
-acl Safe_ports port 443                         # https
-acl Safe_ports port 70                          # gopher
-acl Safe_ports port 210                         # wais
-acl Safe_ports port 1025-65535                  # unregistered ports
-acl Safe_ports port 280                         # http-mgmt
-acl Safe_ports port 488                         # gss-http
-acl Safe_ports port 563                         # commonly used (at least at one time) for NNTP (USENET news transfer) over SSL
-acl Safe_ports port 591                         # filemaker
-acl Safe_ports port 777                         # multiling http
+acl Safe_ports port 80                          # Http
+acl Safe_ports port 21                          # Ftp
+acl Safe_ports port 443                         # Https
+acl Safe_ports port 70                          # Gopher
+acl Safe_ports port 210                         # Wais
+acl Safe_ports port 1025-65535                  # Unregistered ports
+acl Safe_ports port 280                         # Http-mgmt
+acl Safe_ports port 488                         # Gss-http
+acl Safe_ports port 563                         # Commonly used (at least at one time) for nntp (usenet news transfer) over ssl
+acl Safe_ports port 591                         # Filemaker
+acl Safe_ports port 777                         # Multiling http
 acl whitelist dstdomain $squid_whitelist
 acl blacklist dstdomain squid_blacklist
 
-# Set all connections in the following IP range to allow access to squid's cache
+# Set all connections in the following ip range to allow access to squid's cache
 
-#  TAG: proxy_protocol_access
-#    Determine which client proxies can be trusted to provide correct
-#    information regarding real client IP address using PROXY protocol.
-#
-#    Requests may pass through a chain of several other proxies
-#    before reaching us. The original source details may by sent in:
-#        * HTTP message Forwarded header, or
-#        * HTTP message X-Forwarded-For header, or
-#        * PROXY protocol connection header.
-#
-#    This directive is solely for validating new PROXY protocol
-#    connections received from a port flagged with require-proxy-header.
-#    It is checked only once after TCP connection setup.
-#
-#    A deny match results in TCP connection closure.
-#
-#    An allow match is required for Squid to permit the corresponding
-#    TCP connection, before Squid even looks for HTTP request headers.
-#    If there is an allow match, Squid starts using PROXY header information
-#    to determine the source address of the connection for all future ACL
-#    checks, logging, etc.
-#
-#    SECURITY CONSIDERATIONS:
-#
-#        Any host from which we accept client IP details can place
-#        incorrect information in the relevant header, and Squid
-#        will use the incorrect information as if it were the
-#        source address of the request.  This may enable remote
-#        hosts to bypass any access control restrictions that are
-#        based on the client's source addresses.
-#
-#    This clause only supports fast acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
+# Tag: proxy_protocol_access
+# Determine which client proxies can be trusted to provide correct
+# Information regarding real client ip address using proxy protocol.
+# Requests may pass through a chain of several other proxies
+# Before reaching us. the original source details may by sent in:
+#        * Http message forwarded header, or
+#        * Http message x-forwarded-for header, or
+#        * Proxy protocol connection header.
+# This directive is solely for validating new proxy protocol
+# Connections received from a port flagged with require-proxy-header.
+# It is checked only once after tcp connection setup.
+# A deny match results in tcp connection closure.
+# An allow match is required for squid to permit the corresponding
+# Tcp connection, before squid even looks for http request headers.
+# If there is an allow match, squid starts using proxy header information
+# To determine the source address of the connection for all future acl
+# Checks, logging, etc.
+# Security considerations:
+# Any host from which we accept client ip details can place
+# Incorrect information in the relevant header, and squid
+# Will use the incorrect information as if it were the
+# Source address of the request.  this may enable remote
+# Hosts to bypass any access control restrictions that are
+# Based on the client's source addresses.
+# This clause only supports fast acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
 #Default:
-# all TCP connections to ports with require-proxy-header will be denied
+# All tcp connections to ports with require-proxy-header will be denied
 
-#  TAG: follow_x_forwarded_for
-#    Determine which client proxies can be trusted to provide correct
-#    information regarding real client IP address.
-#
-#    Requests may pass through a chain of several other proxies
-#    before reaching us. The original source details may by sent in:
-#        * HTTP message Forwarded header, or
-#        * HTTP message X-Forwarded-For header, or
-#        * PROXY protocol connection header.
-#
-#    PROXY protocol connections are controlled by the proxy_protocol_access
-#    directive which is checked before this.
-#
-#    If a request reaches us from a source that is allowed by this
-#    directive, then we trust the information it provides regarding
-#    the IP of the client it received from (if any).
-#
-#    For the purpose of ACLs used in this directive the src ACL type always
-#    matches the address we are testing and srcdomain matches its rDNS.
-#
-#    On each HTTP request Squid checks for X-Forwarded-For header fields.
-#    If found the header values are iterated in reverse order and an allow
-#    match is required for Squid to continue on to the next value.
-#    The verification ends when a value receives a deny match, cannot be
-#    tested, or there are no more values to test.
-#    NOTE: Squid does not yet follow the Forwarded HTTP header.
-#
-#    The end result of this process is an IP address that we will
-#    refer to as the indirect client address.  This address may
-#    be treated as the client address for access control, ICAP, delay
-#    pools and logging, depending on the acl_uses_indirect_client,
-#    icap_uses_indirect_client, delay_pool_uses_indirect_client,
-#    log_uses_indirect_client and tproxy_uses_indirect_client options.
-#
-#    This clause only supports fast acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
-#
-#    SECURITY CONSIDERATIONS:
-#
-#        Any host from which we accept client IP details can place
-#        incorrect information in the relevant header, and Squid
-#        will use the incorrect information as if it were the
-#        source address of the request.  This may enable remote
-#        hosts to bypass any access control restrictions that are
-#        based on the client's source addresses.
-#
-#    For example:
-#
-#        acl localhost src 127.0.0.1
-#        acl my_other_proxy srcdomain .proxy.example.com
-#        follow_x_forwarded_for allow localhost
-#        follow_x_forwarded_for allow my_other_proxy
+# Tag: follow_x_forwarded_for
+# Determine which client proxies can be trusted to provide correct
+# Information regarding real client ip address.
+# Requests may pass through a chain of several other proxies
+# Before reaching us. the original source details may by sent in:
+#        * Http message forwarded header, or
+#        * Http message x-forwarded-for header, or
+#        * Proxy protocol connection header.
+# Proxy protocol connections are controlled by the proxy_protocol_access
+# Directive which is checked before this.
+# If a request reaches us from a source that is allowed by this
+# Directive, then we trust the information it provides regarding
+# The ip of the client it received from (if any).
+# For the purpose of acls used in this directive the src acl type always
+# Matches the address we are testing and srcdomain matches its rdns.
+# On each http request squid checks for x-forwarded-for header fields.
+# If found the header values are iterated in reverse order and an allow
+# Match is required for squid to continue on to the next value.
+# The verification ends when a value receives a deny match, cannot be
+# Tested, or there are no more values to test.
+# Note: squid does not yet follow the forwarded http header.
+# The end result of this process is an ip address that we will
+# Refer to as the indirect client address.  this address may
+# Be treated as the client address for access control, icap, delay
+# Pools and logging, depending on the acl_uses_indirect_client,
+# Icap_uses_indirect_client, delay_pool_uses_indirect_client,
+# Log_uses_indirect_client and tproxy_uses_indirect_client options.
+# This clause only supports fast acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
+# Security considerations:
+# Any host from which we accept client ip details can place
+# Incorrect information in the relevant header, and squid
+# Will use the incorrect information as if it were the
+# Source address of the request.  this may enable remote
+# Hosts to bypass any access control restrictions that are
+# Based on the client's source addresses.
+# For example:
+# Acl localhost src 127.0.0.1
+# Acl my_other_proxy srcdomain .proxy.example.com
+# Follow_x_forwarded_for allow localhost
+# Follow_x_forwarded_for allow my_other_proxy
 #Default:
-# X-Forwarded-For header will be ignored.
+# X-forwarded-for header will be ignored.
 
-#  TAG: acl_uses_indirect_client    on|off
-#    Controls whether the indirect client address
-#    (see follow_x_forwarded_for) is used instead of the
-#    direct client address in acl matching.
-#
-#    NOTE: maxconn ACL considers direct TCP links and indirect
-#          clients will always have zero. So no match.
+# Tag: acl_uses_indirect_client    on|off
+# Controls whether the indirect client address
+#    (See follow_x_forwarded_for) is used instead of the
+# Direct client address in acl matching.
+# Note: maxconn acl considers direct tcp links and indirect
+# Clients will always have zero. so no match.
 #Default:
-# acl_uses_indirect_client on
+# Acl_uses_indirect_client on
 
-#  TAG: delay_pool_uses_indirect_client    on|off
-#    Controls whether the indirect client address
-#    (see follow_x_forwarded_for) is used instead of the
-#    direct client address in delay pools.
+# Tag: delay_pool_uses_indirect_client    on|off
+# Controls whether the indirect client address
+#    (See follow_x_forwarded_for) is used instead of the
+# Direct client address in delay pools.
 #Default:
-# delay_pool_uses_indirect_client on
+# Delay_pool_uses_indirect_client on
 
-#  TAG: log_uses_indirect_client    on|off
-#    Controls whether the indirect client address
-#    (see follow_x_forwarded_for) is used instead of the
-#    direct client address in the access log.
+# Tag: log_uses_indirect_client    on|off
+# Controls whether the indirect client address
+#    (See follow_x_forwarded_for) is used instead of the
+# Direct client address in the access log.
 #Default:
-# log_uses_indirect_client on
+# Log_uses_indirect_client on
 
-#  TAG: tproxy_uses_indirect_client    on|off
-#    Controls whether the indirect client address
-#    (see follow_x_forwarded_for) is used instead of the
-#    direct client address when spoofing the outgoing client.
-#
-#    This has no effect on requests arriving in non-tproxy
-#    mode ports.
-#
-#    SECURITY WARNING: Usage of this option is dangerous
-#    and should not be used trivially. Correct configuration
-#    of follow_x_forwarded_for with a limited set of trusted
-#    sources is required to prevent abuse of your proxy.
+# Tag: tproxy_uses_indirect_client    on|off
+# Controls whether the indirect client address
+#    (See follow_x_forwarded_for) is used instead of the
+# Direct client address when spoofing the outgoing client.
+# This has no effect on requests arriving in non-tproxy
+# Mode ports.
+# Security warning: usage of this option is dangerous
+# And should not be used trivially. correct configuration
+# Of follow_x_forwarded_for with a limited set of trusted
+# Sources is required to prevent abuse of your proxy.
 #Default:
-# tproxy_uses_indirect_client off
+# Tproxy_uses_indirect_client off
 
-#  TAG: spoof_client_ip
-#    Control client IP address spoofing of TPROXY traffic based on
-#    defined access lists.
-#
-#    spoof_client_ip allow|deny [!]aclname ...
-#
-#    If there are no "spoof_client_ip" lines present, the default
-#    is to "allow" spoofing of any suitable request.
-#
-#    Note that the cache_peer "no-tproxy" option overrides this ACL.
-#
-#    This clause supports fast acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
+# Tag: spoof_client_ip
+# Control client ip address spoofing of tproxy traffic based on
+# Defined access lists.
+# Spoof_client_ip allow|deny [!]aclname ...
+# If there are no "spoof_client_ip" lines present, the default
+# Is to "allow" spoofing of any suitable request.
+# Note that the cache_peer "no-tproxy" option overrides this acl.
+# This clause supports fast acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
 #Default:
-# Allow spoofing on all TPROXY traffic.
+# Allow spoofing on all tproxy traffic.
 
-#  TAG: http_access
-#    Allowing or Denying access based on defined access lists
-#
-#    To allow or deny a message received on an HTTP, HTTPS, or FTP port:
-#    http_access allow|deny [!]aclname ...
-#
-#    NOTE on default values:
-#
-#    If there are no "access" lines present, the default is to deny
-#    the request.
-#
-#    If none of the "access" lines cause a match, the default is the
-#    opposite of the last line in the list.  If the last line was
-#    deny, the default is allow.  Conversely, if the last line
-#    is allow, the default will be deny.  For these reasons, it is a
-#    good idea to have an "deny all" entry at the end of your access
-#    lists to avoid potential confusion.
-#
-#    This clause supports both fast and slow acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
-#
+# Tag: http_access
+# Allowing or denying access based on defined access lists
+# To allow or deny a message received on an http, https, or ftp port:
+# Http_access allow|deny [!]aclname ...
+# Note on default values:
+# If there are no "access" lines present, the default is to deny
+# The request.
+# If none of the "access" lines cause a match, the default is the
+# Opposite of the last line in the list.  if the last line was
+# Deny, the default is allow.  conversely, if the last line
+# Is allow, the default will be deny.  for these reasons, it is a
+# Good idea to have an "deny all" entry at the end of your access
+# Lists to avoid potential confusion.
+# This clause supports both fast and slow acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
 #Default:
 # Deny, unless rules exist in squid.conf.
-#
 
-#
-# Recommended minimum Access Permission configuration:
-#
+# Recommended minimum access permission configuration:
 # Deny requests to certain unsafe ports
 http_access deny !Safe_ports
 
-# Allow CONNECT to other than secure SSL ports
+# Allow connect to other than secure ssl ports
 http_access allow !SSL_ports
 
 # Only allow cachemgr access from localhost
@@ -1639,19 +1406,17 @@ http_access allow localhost manager
 http_access deny manager
 
 # We strongly recommend the following be uncommented to protect innocent
-# web applications running on the proxy server who think the only
-# one who can access services on "localhost" is a local user
+# Web applications running on the proxy server who think the only
+# One who can access services on "localhost" is a local user
 http_access deny to_localhost
 
-#
-# INSERT YOUR OWN RULE(S) HERE TO ALLOW ACCESS FROM YOUR CLIENTS
-#
+# Insert your own rule(s) here to allow access from your clients
 include /etc/squid/conf.d/*
 
 ##
 ##
 ##############################
-## START OF CUSTOM COMMANDS ##
+## Start of custom commands ##
 ##############################
 ##
 ##
@@ -1664,7 +1429,7 @@ acl authenticated proxy_auth REQUIRED
 acl github dstdomain .github.com
 cache deny github
 
-# Adapt localnet in the ACL section to list your (internal) IP networks from where browsing should be allowed
+# Adapt localnet in the acl section to list your (internal) ip networks from where browsing should be allowed
 http_access deny !authenticated
 http_access allow localnet
 http_access allow localhost
@@ -1674,13 +1439,11 @@ http_access allow whitelist
 http_access deny blacklist
 http_access deny all
 
-#
 # This specifies the maximum buffer size of a client request.
 # It prevents squid eating too much memory when somebody uploads a large file.
-#
 client_request_buffer_max_size $client_rqst_bfr_size
 
-# set dns nameserver addresses
+# Set dns nameserver addresses
 dns_nameservers $dns_server_ip
 
 # Set the file size range the proxy will actively cache
@@ -1691,23 +1454,19 @@ maximum_object_size_in_memory $max_obj_size_mem
 cache_swap_low $cache_swp_low
 cache_swap_high $cache_swp_high
 
-# always: Keep most recently fetched objects in memory (default)
+# Always: keep most recently fetched objects in memory (default)
 memory_cache_mode $mem_cache_mode
 
 # Uncomment and adjust the following to add a disk cache directory.
 cache_dir ufs $cache_dir_squid $cache_dir_squid_size 16 256
 
-#
 ########################################
 ## Your custom refresh_patterns below ##
 ########################################
-#
 refresh_pattern \/master$                                    0         0%        0  refresh-ims
-#
 ####################################
-## default refresh_patterns below ##
+## Default refresh_patterns below ##
 ####################################
-#
 refresh_pattern ^ftp:                                     1440        20%    10080
 refresh_pattern ^gopher:                                  1440         0%     1440
 refresh_pattern -i (/cgi-bin/|\?)                            0         0%        0
@@ -1715,7613 +1474,6252 @@ refresh_pattern \/(Packages|Sources)(|\.bz2|\.gz|\.xz)$      0         0%       
 refresh_pattern \/Release(|\.gpg)$                           0         0%        0  refresh-ims
 refresh_pattern \/InRelease$                                 0         0%        0  refresh-ims
 refresh_pattern \/(Translation-.*)(|\.bz2|\.gz|\.xz)$        0         0%        0  refresh-ims
-# example pattern for deb packages
+# Example pattern for deb packages
 refresh_pattern (\.deb|\.udeb)$                         129600       100%   129600
 refresh_pattern .                                            0        20%     4320
-#
 
 # Cache memory transit file allocation max size limit
 cache_mem $cache_mem
 
-# set default squid proxy port
+# Set default squid proxy port
 http_port 3128
 
-# set visible hostname
+# Set visible hostname
 visible_hostname $hostname
 
-# Some servers incorrectly signal the use of HTTP/1.0 persistent connections including on replies
-# not compatible, causing significant delays. Mostly happens on redirects. Enabling attempts to
-# detect broken replies and automatically assumes the reply is finished after a 10 second timeout.
+# Some servers incorrectly signal the use of http/1.0 persistent connections including on replies
+# Not compatible, causing significant delays. mostly happens on redirects. enabling attempts to
+# Detect broken replies and automatically assumes the reply is finished after a 10 second timeout.
 detect_broken_pconn $detect_broken_pconn
 client_persistent_connections $client_pcons
 server_persistent_connections $server_pcons
 
-# SET DEFAULT USER/OWNER FOR SQUID
+# Set default user/owner for squid
 cache_effective_user $squid_user
 
 http_accel_surrogate_remote on
 esi_parser expat
 
-# SET HOW LONG SQUID WAITS DURING SHUTDOWN, DEFAULT IS 30 SECONDS
+# Set how long squid waits during shutdown, default is 30 seconds
 shutdown_lifetime $sd_tout
 
 ##
 ############################
-## END OF CUSTOM COMMANDS ##
+## End of custom commands ##
 ############################
 ##
 
-#  TAG: adapted_http_access
-#    Allowing or Denying access based on defined access lists
-#
-#    Essentially identical to http_access, but runs after redirectors
-#    and ICAP/eCAP adaptation. Allowing access control based on their
-#    output.
-#
-#    If not set then only http_access is used.
+# Tag: adapted_http_access
+# Allowing or denying access based on defined access lists
+# Essentially identical to http_access, but runs after redirectors
+# And icap/ecap adaptation. allowing access control based on their
+# Output.
+# If not set then only http_access is used.
 #Default:
 # Allow, unless rules exist in squid.conf.
 
-#  TAG: http_reply_access
-#    Allow replies to client requests. This is complementary to http_access.
-#
-#    http_reply_access allow|deny [!] aclname ...
-#
-#    NOTE: if there are no access lines present, the default is to allow
-#    all replies.
-#
-#    If none of the access lines cause a match the opposite of the
-#    last line will apply. Thus it is good practice to end the rules
-#    with an "allow all" or "deny all" entry.
-#
-#    This clause supports both fast and slow acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
+# Tag: http_reply_access
+# Allow replies to client requests. this is complementary to http_access.
+# Http_reply_access allow|deny [!] aclname ...
+# Note: if there are no access lines present, the default is to allow
+# All replies.
+# If none of the access lines cause a match the opposite of the
+# Last line will apply. thus it is good practice to end the rules
+# With an "allow all" or "deny all" entry.
+# This clause supports both fast and slow acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
 #Default:
 # Allow, unless rules exist in squid.conf.
 
-#  TAG: icp_access
-#    Allowing or Denying access to the ICP port based on defined
-#    access lists
-#
-#    icp_access  allow|deny [!]aclname ...
-#
-#    NOTE: The default if no icp_access lines are present is to
-#    deny all traffic. This default may cause problems with peers
-#    using ICP.
-#
-#    This clause only supports fast acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
-#
-## Allow ICP queries from local networks only
-##icp_access allow localnet
-##icp_access deny all
+# Tag: icp_access
+# Allowing or denying access to the icp port based on defined
+# Access lists
+# Icp_access  allow|deny [!]aclname ...
+# Note: the default if no icp_access lines are present is to
+# Deny all traffic. this default may cause problems with peers
+# Using icp.
+# This clause only supports fast acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
+## Allow icp queries from local networks only
+##Icp_access allow localnet
+##Icp_access deny all
 #Default:
 # Deny, unless rules exist in squid.conf.
 
-#  TAG: htcp_access
-#    Allowing or Denying access to the HTCP port based on defined
-#    access lists
-#
-#    htcp_access  allow|deny [!]aclname ...
-#
-#    See also htcp_clr_access for details on access control for
-#    cache purge (CLR) HTCP messages.
-#
-#    NOTE: The default if no htcp_access lines are present is to
-#    deny all traffic. This default may cause problems with peers
-#    using the htcp option.
-#
-#    This clause only supports fast acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
-#
-## Allow HTCP queries from local networks only
-##htcp_access allow localnet
-##htcp_access deny all
+# Tag: htcp_access
+# Allowing or denying access to the htcp port based on defined
+# Access lists
+# Htcp_access  allow|deny [!]aclname ...
+# See also htcp_clr_access for details on access control for
+# Cache purge (clr) htcp messages.
+# Note: the default if no htcp_access lines are present is to
+# Deny all traffic. this default may cause problems with peers
+# Using the htcp option.
+# This clause only supports fast acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
+## Allow htcp queries from local networks only
+##Htcp_access allow localnet
+##Htcp_access deny all
 #Default:
 # Deny, unless rules exist in squid.conf.
 
-#  TAG: htcp_clr_access
-#    Allowing or Denying access to purge content using HTCP based
-#    on defined access lists.
-#    See htcp_access for details on general HTCP access control.
-#
-#    htcp_clr_access  allow|deny [!]aclname ...
-#
-#    This clause only supports fast acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
-#
-## Allow HTCP CLR requests from trusted peers
-#acl htcp_clr_peer src 192.0.2.2 2001:DB8::2
-#htcp_clr_access allow htcp_clr_peer
-#htcp_clr_access deny all
+# Tag: htcp_clr_access
+# Allowing or denying access to purge content using htcp based
+# On defined access lists.
+# See htcp_access for details on general htcp access control.
+# Htcp_clr_access  allow|deny [!]aclname ...
+# This clause only supports fast acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
+## Allow htcp clr requests from trusted peers
+#Acl htcp_clr_peer src 192.0.2.2 2001:db8::2
+#Htcp_clr_access allow htcp_clr_peer
+#Htcp_clr_access deny all
 #Default:
 # Deny, unless rules exist in squid.conf.
 
-#  TAG: miss_access
-#    Determines whether network access is permitted when satisfying a request.
-#
-#    For example;
-#        to force your neighbors to use you as a sibling instead of
-#        a parent.
-#
-#        acl localclients src 192.0.2.0/24 2001:DB8::a:0/64
-#        miss_access deny  !localclients
-#        miss_access allow all
-#
-#    This means only your local clients are allowed to fetch relayed/MISS
-#    replies from the network and all other clients can only fetch cached
-#    objects (HITs).
-#
-#    The default for this setting allows all clients who passed the
-#    http_access rules to relay via this proxy.
-#
-#    This clause only supports fast acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
+# Tag: miss_access
+# Determines whether network access is permitted when satisfying a request.
+# For example;
+# To force your neighbors to use you as a sibling instead of
+# A parent.
+# Acl localclients src 192.0.2.0/24 2001:db8::a:0/64
+# Miss_access deny  !localclients
+# Miss_access allow all
+# This means only your local clients are allowed to fetch relayed/miss
+# Replies from the network and all other clients can only fetch cached
+# Objects (hits).
+# The default for this setting allows all clients who passed the
+# Http_access rules to relay via this proxy.
+# This clause only supports fast acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
 #Default:
 # Allow, unless rules exist in squid.conf.
 
-#  TAG: ident_lookup_access
-#    A list of ACL elements which, if matched, cause an ident
-#    (RFC 931) lookup to be performed for this request.  For
-#    example, you might choose to always perform ident lookups
-#    for your main multi-user Unix boxes, but not for your Macs
-#    and PCs.  By default, ident lookups are not performed for
-#    any requests.
-#
-#    To enable ident lookups for specific client addresses, you
-#    can follow this example:
-#
-#    acl ident_aware_hosts src 198.168.1.0/24
-#    ident_lookup_access allow ident_aware_hosts
-#    ident_lookup_access deny all
-#
-#    Only src type ACL checks are fully supported.  A srcdomain
-#    ACL might work at times, but it will not always provide
-#    the correct result.
-#
-#    This clause only supports fast acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
+# Tag: ident_lookup_access
+# A list of acl elements which, if matched, cause an ident
+#    (Rfc 931) lookup to be performed for this request.  for
+# Example, you might choose to always perform ident lookups
+# For your main multi-user unix boxes, but not for your macs
+# And pcs.  by default, ident lookups are not performed for
+# Any requests.
+# To enable ident lookups for specific client addresses, you
+# Can follow this example:
+# Acl ident_aware_hosts src 198.168.1.0/24
+# Ident_lookup_access allow ident_aware_hosts
+# Ident_lookup_access deny all
+# Only src type acl checks are fully supported.  a srcdomain
+# Acl might work at times, but it will not always provide
+# The correct result.
+# This clause only supports fast acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
 #Default:
-# Unless rules exist in squid.conf, IDENT is not fetched.
+# Unless rules exist in squid.conf, ident is not fetched.
 
-#  TAG: reply_body_max_size    size [acl acl...]
-#    This option specifies the maximum size of a reply body. It can be
-#    used to prevent users from downloading very large files, such as
-#    MP3's and movies. When the reply headers are received, the
-#    reply_body_max_size lines are processed, and the first line where
-#    all (if any) listed ACLs are true is used as the maximum body size
-#    for this reply.
-#
-#    This size is checked twice. First when we get the reply headers,
-#    we check the content-length value.  If the content length value exists
-#    and is larger than the allowed size, the request is denied and the
-#    user receives an error message that says "the request or reply
-#    is too large." If there is no content-length, and the reply
-#    size exceeds this limit, the client's connection is just closed
-#    and they will receive a partial reply.
-#
-#    WARNING: downstream caches probably can not detect a partial reply
-#    if there is no content-length header, so they will cache
-#    partial responses and give them out as hits.  You should NOT
-#    use this option if you have downstream caches.
-#
-#    WARNING: A maximum size smaller than the size of squid's error messages
-#    will cause an infinite loop and crash squid. Ensure that the smallest
-#    non-zero value you use is greater that the maximum header size plus
-#    the size of your largest error page.
-#
-#    If you set this parameter none (the default), there will be
-#    no limit imposed.
-#
-#    Configuration Format is:
-#        reply_body_max_size SIZE UNITS [acl ...]
-#    ie.
-#        reply_body_max_size 10 MB
-#
+# Tag: reply_body_max_size    size [acl acl...]
+# This option specifies the maximum size of a reply body. it can be
+# Used to prevent users from downloading very large files, such as
+# Mp3's and movies. when the reply headers are received, the
+# Reply_body_max_size lines are processed, and the first line where
+# All (if any) listed acls are true is used as the maximum body size
+# For this reply.
+# This size is checked twice. first when we get the reply headers,
+# We check the content-length value.  if the content length value exists
+# And is larger than the allowed size, the request is denied and the
+# User receives an error message that says "the request or reply
+# Is too large." if there is no content-length, and the reply
+# Size exceeds this limit, the client's connection is just closed
+# And they will receive a partial reply.
+# Warning: downstream caches probably can not detect a partial reply
+# If there is no content-length header, so they will cache
+# Partial responses and give them out as hits.  you should not
+# Use this option if you have downstream caches.
+# Warning: a maximum size smaller than the size of squid's error messages
+# Will cause an infinite loop and crash squid. ensure that the smallest
+# Non-zero value you use is greater that the maximum header size plus
+# The size of your largest error page.
+# If you set this parameter none (the default), there will be
+# No limit imposed.
+# Configuration format is:
+# Reply_body_max_size size units [acl ...]
+# Ie.
+# Reply_body_max_size 10 mb
 #Default:
 # No limit is applied.
 
-#  TAG: on_unsupported_protocol
-#    Determines Squid behavior when encountering strange requests at the
-#    beginning of an accepted TCP connection or the beginning of a bumped
-#    CONNECT tunnel. Controlling Squid reaction to unexpected traffic is
-#    especially useful in interception environments where Squid is likely
-#    to see connections for unsupported protocols that Squid should either
-#    terminate or tunnel at TCP level.
-#
-#        on_unsupported_protocol <action> [!]acl ...
-#
-#    The first matching action wins. Only fast ACLs are supported.
-#
-#    Supported actions are:
-#
-#    tunnel: Establish a TCP connection with the intended server and
-#        blindly shovel TCP packets between the client and server.
-#
-#    respond: Respond with an error message, using the transfer protocol
-#        for the Squid port that received the request (e.g., HTTP
-#        for connections intercepted at the http_port). This is the
-#        default.
-#
-#    Squid expects the following traffic patterns:
-#
-#      http_port: a plain HTTP request
-#      https_port: SSL/TLS handshake followed by an [encrypted] HTTP request
-#      ftp_port: a plain FTP command (no on_unsupported_protocol support yet!)
-#      CONNECT tunnel on http_port: same as https_port
-#      CONNECT tunnel on https_port: same as https_port
-#
-#    Currently, this directive has effect on intercepted connections and
-#    bumped tunnels only. Other cases are not supported because Squid
-#    cannot know the intended destination of other traffic.
-#
-#    For example:
-#      # define what Squid errors indicate receiving non-HTTP traffic:
-#      acl foreignProtocol squid_error ERR_PROTOCOL_UNKNOWN ERR_TOO_BIG
-#      # define what Squid errors indicate receiving nothing:
-#      acl serverTalksFirstProtocol squid_error ERR_REQUEST_START_TIMEOUT
-#      # tunnel everything that does not look like HTTP:
-#          on_unsupported_protocol tunnel foreignProtocol
-#      # tunnel if we think the client waits for the server to talk first:
-#      on_unsupported_protocol tunnel serverTalksFirstProtocol
-#      # in all other error cases, just send an HTTP "error page" response:
-#      on_unsupported_protocol respond all
-#
-#    See also: squid_error ACL
+# Tag: on_unsupported_protocol
+# Determines squid behavior when encountering strange requests at the
+# Beginning of an accepted tcp connection or the beginning of a bumped
+# Connect tunnel. controlling squid reaction to unexpected traffic is
+# Especially useful in interception environments where squid is likely
+# To see connections for unsupported protocols that squid should either
+# Terminate or tunnel at tcp level.
+# On_unsupported_protocol <action> [!]acl ...
+# The first matching action wins. only fast acls are supported.
+# Supported actions are:
+# Tunnel: establish a tcp connection with the intended server and
+# Blindly shovel tcp packets between the client and server.
+# Respond: respond with an error message, using the transfer protocol
+# For the squid port that received the request (e.g., http
+# For connections intercepted at the http_port). this is the
+# Default.
+# Squid expects the following traffic patterns:
+# Http_port: a plain http request
+# Https_port: ssl/tls handshake followed by an [encrypted] http request
+# Ftp_port: a plain ftp command (no on_unsupported_protocol support yet!)
+# Connect tunnel on http_port: same as https_port
+# Connect tunnel on https_port: same as https_port
+# Currently, this directive has effect on intercepted connections and
+# Bumped tunnels only. other cases are not supported because squid
+# Cannot know the intended destination of other traffic.
+# For example:
+#      # Define what squid errors indicate receiving non-http traffic:
+# Acl foreignprotocol squid_error err_protocol_unknown err_too_big
+#      # Define what squid errors indicate receiving nothing:
+# Acl servertalksfirstprotocol squid_error err_request_start_timeout
+#      # Tunnel everything that does not look like http:
+# On_unsupported_protocol tunnel foreignprotocol
+#      # Tunnel if we think the client waits for the server to talk first:
+# On_unsupported_protocol tunnel servertalksfirstprotocol
+#      # In all other error cases, just send an http "error page" response:
+# On_unsupported_protocol respond all
+# See also: squid_error acl
 #Default:
 # Respond with an error message to unidentifiable traffic
 
-#  TAG: auth_schemes
-#    Use this directive to customize authentication schemes presence and
-#    order in Squid's Unauthorized and Authentication Required responses.
-#
-#        auth_schemes scheme1,scheme2,... [!]aclname ...
-#
-#    where schemeN is the name of one of the authentication schemes
-#    configured using auth_param directives. At least one scheme name is
-#    required. Multiple scheme names are separated by commas. Either
-#    avoid whitespace or quote the entire schemes list.
-#
-#    A special "ALL" scheme name expands to all auth_param-configured
-#    schemes in their configuration order. This directive cannot be used
-#    to configure Squid to offer no authentication schemes at all.
-#
-#    The first matching auth_schemes rule determines the schemes order
-#    for the current Authentication Required transaction. Note that the
-#    future response is not yet available during auth_schemes evaluation.
-#
-#    If this directive is not used or none of its rules match, then Squid
-#    responds with all configured authentication schemes in the order of
-#    auth_param directives in the configuration file.
-#
-#    This directive does not determine when authentication is used or
-#    how each authentication scheme authenticates clients.
-#
-#    The following example sends basic and negotiate authentication
-#    schemes, in that order, when requesting authentication of HTTP
-#    requests matching the isIE ACL (not shown) while sending all
-#    auth_param schemes in their configuration order to other clients:
-#
-#        auth_schemes basic,negotiate isIE
-#        auth_schemes ALL all # explicit default
-#
-#    This directive supports fast ACLs only.
-#
-#    See also: auth_param.
+# Tag: auth_schemes
+# Use this directive to customize authentication schemes presence and
+# Order in squid's unauthorized and authentication required responses.
+# Auth_schemes scheme1,scheme2,... [!]aclname ...
+# Where schemen is the name of one of the authentication schemes
+# Configured using auth_param directives. at least one scheme name is
+# Required. multiple scheme names are separated by commas. either
+# Avoid whitespace or quote the entire schemes list.
+# A special "all" scheme name expands to all auth_param-configured
+# Schemes in their configuration order. this directive cannot be used
+# To configure squid to offer no authentication schemes at all.
+# The first matching auth_schemes rule determines the schemes order
+# For the current authentication required transaction. note that the
+# Future response is not yet available during auth_schemes evaluation.
+# If this directive is not used or none of its rules match, then squid
+# Responds with all configured authentication schemes in the order of
+# Auth_param directives in the configuration file.
+# This directive does not determine when authentication is used or
+# How each authentication scheme authenticates clients.
+# The following example sends basic and negotiate authentication
+# Schemes, in that order, when requesting authentication of http
+# Requests matching the isie acl (not shown) while sending all
+# Auth_param schemes in their configuration order to other clients:
+# Auth_schemes basic,negotiate isie
+# Auth_schemes all all # explicit default
+# This directive supports fast acls only.
+# See also: auth_param.
 #Default:
-# use all auth_param schemes in their configuration order
+# Use all auth_param schemes in their configuration order
 
-# NETWORK OPTIONS
+# Network options
 # -----------------------------------------------------------------------------
 
-#  TAG: http_port
-#    Usage:    port [mode] [options]
-#        hostname:port [mode] [options]
-#        1.2.3.4:port [mode] [options]
-#
-#    The socket addresses where Squid will listen for HTTP client
-#    requests.  You may specify multiple socket addresses.
-#    There are three forms: port alone, hostname with port, and
-#    IP address with port.  If you specify a hostname or IP
-#    address, Squid binds the socket to that specific
-#    address. Most likely, you do not need to bind to a specific
-#    address, so you can use the port number alone.
-#
-#    If you are running Squid in accelerator mode, you
-#    probably want to listen on port 80 also, or instead.
-#
-#    The -a command line option may be used to specify additional
-#    port(s) where Squid listens for proxy request. Such ports will
-#    be plain proxy ports with no options.
-#
-#    You may specify multiple socket addresses on multiple lines.
-#
-#    Modes:
-#
-#       intercept    Support for IP-Layer NAT interception delivering
-#            traffic to this Squid port.
-#            NP: disables authentication on the port.
-#
-#       tproxy    Support Linux TPROXY (or BSD divert-to) with spoofing
-#            of outgoing connections using the client IP address.
-#            NP: disables authentication on the port.
-#
-#       accel    Accelerator / reverse proxy mode
-#
-#       ssl-bump    For each CONNECT request allowed by ssl_bump ACLs,
-#            establish secure connection with the client and with
-#            the server, decrypt HTTPS messages as they pass through
-#            Squid, and treat them as unencrypted HTTP messages,
-#            becoming the man-in-the-middle.
-#
-#            The ssl_bump option is required to fully enable
-#            bumping of CONNECT requests.
-#
-#    Omitting the mode flag causes default forward proxy mode to be used.
-#
-#
-#    Accelerator Mode Options:
-#
-#       defaultsite=domainname
-#            What to use for the Host: header if it is not present
-#            in a request. Determines what site (not origin server)
-#            accelerators should consider the default.
-#
-#       no-vhost    Disable using HTTP/1.1 Host header for virtual domain support.
-#
-#       protocol=    Protocol to reconstruct accelerated and intercepted
-#            requests with. Defaults to HTTP/1.1 for http_port and
-#            HTTPS/1.1 for https_port.
-#            When an unsupported value is configured Squid will
-#            produce a FATAL error.
-#            Values: HTTP or HTTP/1.1, HTTPS or HTTPS/1.1
-#
-#       vport    Virtual host port support. Using the http_port number
-#            instead of the port passed on Host: headers.
-#
-#       vport=NN    Virtual host port support. Using the specified port
-#            number instead of the port passed on Host: headers.
-#
-#       act-as-origin
-#            Act as if this Squid is the origin server.
-#            This currently means generate new Date: and Expires:
-#            headers on HIT instead of adding Age:.
-#
-#       ignore-cc    Ignore request Cache-Control headers.
-#
-#            WARNING: This option violates HTTP specifications if
-#            used in non-accelerator setups.
-#
-#       allow-direct    Allow direct forwarding in accelerator mode. Normally
-#            accelerated requests are denied direct forwarding as if
-#            never_direct was used.
-#
-#            WARNING: this option opens accelerator mode to security
-#            vulnerabilities usually only affecting in interception
-#            mode. Make sure to protect forwarding with suitable
-#            http_access rules when using this.
-#
-#
-#    SSL Bump Mode Options:
-#        In addition to these options ssl-bump requires TLS/SSL options.
-#
-#       generate-host-certificates[=<on|off>]
-#            Dynamically create SSL server certificates for the
-#            destination hosts of bumped CONNECT requests.When
-#            enabled, the cert and key options are used to sign
-#            generated certificates. Otherwise generated
-#            certificate will be selfsigned.
-#            If there is a CA certificate lifetime of the generated
-#            certificate equals lifetime of the CA certificate. If
-#            generated certificate is selfsigned lifetime is three
-#            years.
-#            This option is enabled by default when ssl-bump is used.
-#            See the ssl-bump option above for more information.
-#
-#       dynamic_cert_mem_cache_size=SIZE
-#            Approximate total RAM size spent on cached generated
-#            certificates. If set to zero, caching is disabled. The
-#            default value is 4MB.
-#
-#    TLS / SSL Options:
-#
-#       tls-cert=    Path to file containing an X.509 certificate (PEM format)
-#            to be used in the TLS handshake ServerHello.
-#
-#            If this certificate is constrained by KeyUsage TLS
-#            feature it must allow HTTP server usage, along with
-#            any additional restrictions imposed by your choice
-#            of options= settings.
-#
-#            When OpenSSL is used this file may also contain a
-#            chain of intermediate CA certificates to send in the
-#            TLS handshake.
-#
-#            When GnuTLS is used this option (and any paired
-#            tls-key= option) may be repeated to load multiple
-#            certificates for different domains.
-#
-#            Also, when generate-host-certificates=on is configured
-#            the first tls-cert= option must be a CA certificate
-#            capable of signing the automatically generated
-#            certificates.
-#
-#       tls-key=    Path to a file containing private key file (PEM format)
-#            for the previous tls-cert= option.
-#
-#            If tls-key= is not specified tls-cert= is assumed to
-#            reference a PEM file containing both the certificate
-#            and private key.
-#
-#       cipher=    Colon separated list of supported ciphers.
-#            NOTE: some ciphers such as EDH ciphers depend on
-#                  additional settings. If those settings are
-#                  omitted the ciphers may be silently ignored
-#                  by the OpenSSL library.
-#
-#       options=    Various SSL implementation options. The most important
-#            being:
-#
-#                NO_SSLv3    Disallow the use of SSLv3
-#
-#                NO_TLSv1    Disallow the use of TLSv1.0
-#
-#                NO_TLSv1_1  Disallow the use of TLSv1.1
-#
-#                NO_TLSv1_2  Disallow the use of TLSv1.2
-#
-#                SINGLE_DH_USE
-#                      Always create a new key when using
-#                      temporary/ephemeral DH key exchanges
-#
-#                SINGLE_ECDH_USE
-#                      Enable ephemeral ECDH key exchange.
-#                      The adopted curve should be specified
-#                      using the tls-dh option.
-#
-#                NO_TICKET
-#                      Disable use of RFC5077 session tickets.
-#                      Some servers may have problems
-#                      understanding the TLS extension due
-#                      to ambiguous specification in RFC4507.
-#
-#                ALL       Enable various bug workarounds
-#                      suggested as "harmless" by OpenSSL
-#                      Be warned that this reduces SSL/TLS
-#                      strength to some attacks.
-#
-#            See the OpenSSL SSL_CTX_set_options documentation for a
-#            more complete list.
-#
-#       clientca=    File containing the list of CAs to use when
-#            requesting a client certificate.
-#
-#       tls-cafile=    PEM file containing CA certificates to use when verifying
-#            client certificates. If not configured clientca will be
-#            used. May be repeated to load multiple files.
-#
-#       capath=    Directory containing additional CA certificates
-#            and CRL lists to use when verifying client certificates.
-#            Requires OpenSSL or LibreSSL.
-#
-#       crlfile=    File of additional CRL lists to use when verifying
-#            the client certificate, in addition to CRLs stored in
-#            the capath. Implies VERIFY_CRL flag below.
-#
-#       tls-dh=[curve:]file
-#            File containing DH parameters for temporary/ephemeral DH key
-#            exchanges, optionally prefixed by a curve for ephemeral ECDH
-#            key exchanges.
-#            See OpenSSL documentation for details on how to create the
-#            DH parameter file. Supported curves for ECDH can be listed
-#            using the "openssl ecparam -list_curves" command.
-#            WARNING: EDH and EECDH ciphers will be silently disabled if
-#                 this option is not set.
-#
-#       sslflags=    Various flags modifying the use of SSL:
-#                DELAYED_AUTH
-#                Don't request client certificates
-#                immediately, but wait until acl processing
-#                requires a certificate (not yet implemented).
-#                CONDITIONAL_AUTH
-#                Request a client certificate during the TLS
-#                handshake, but ignore certificate absence in
-#                the TLS client Hello. If the client does
-#                supply a certificate, it is validated.
-#                NO_SESSION_REUSE
-#                Don't allow for session reuse. Each connection
-#                will result in a new SSL session.
-#                VERIFY_CRL
-#                Verify CRL lists when accepting client
-#                certificates.
-#                VERIFY_CRL_ALL
-#                Verify CRL lists for all certificates in the
-#                client certificate chain.
-#
-#       tls-default-ca[=off]
-#            Whether to use the system Trusted CAs. Default is OFF.
-#
-#       tls-no-npn    Do not use the TLS NPN extension to advertise HTTP/1.1.
-#
-#       sslcontext=    SSL session ID context identifier.
-#
-#    Other Options:
-#
-#       connection-auth[=on|off]
-#                    use connection-auth=off to tell Squid to prevent
-#                    forwarding Microsoft connection oriented authentication
-#            (NTLM, Negotiate and Kerberos)
-#
-#       disable-pmtu-discovery=
-#            Control Path-MTU discovery usage:
-#                off        lets OS decide on what to do (default).
-#                transparent    disable PMTU discovery when transparent
-#                    support is enabled.
-#                always    disable always PMTU discovery.
-#
-#            In many setups of transparently intercepting proxies
-#            Path-MTU discovery can not work on traffic towards the
-#            clients. This is the case when the intercepting device
-#            does not fully track connections and fails to forward
-#            ICMP must fragment messages to the cache server. If you
-#            have such setup and experience that certain clients
-#            sporadically hang or never complete requests set
-#            disable-pmtu-discovery option to 'transparent'.
-#
-#       name=    Specifies a internal name for the port. Defaults to
-#            the port specification (port or addr:port)
-#
-#       tcpkeepalive[=idle,interval,timeout]
-#            Enable TCP keepalive probes of idle connections.
-#            In seconds; idle is the initial time before TCP starts
-#            probing the connection, interval how often to probe, and
-#            timeout the time before giving up.
-#
-#       require-proxy-header
-#            Require PROXY protocol version 1 or 2 connections.
-#            The proxy_protocol_access is required to permit
-#            downstream proxies which can be trusted.
-#
-#       worker-queues
-#            Ask TCP stack to maintain a dedicated listening queue
-#            for each worker accepting requests at this port.
-#            Requires TCP stack that supports the SO_REUSEPORT socket
-#            option.
-#
-#            SECURITY WARNING: Enabling worker-specific queues
-#            allows any process running as Squid's effective user to
-#            easily accept requests destined to this port.
-#
-#    If you run Squid on a dual-homed machine with an internal
-#    and an external interface we recommend you to specify the
-#    internal address:port in http_port. This way Squid will only be
-#    visible on the internal address.
-#
-#
+# Tag: http_port
+# Usage:    port [mode] [options]
+# Hostname:port [mode] [options]
+# 1.2.3.4:port [mode] [options]
+# The socket addresses where squid will listen for http client
+# Requests.  you may specify multiple socket addresses.
+# There are three forms: port alone, hostname with port, and
+# Ip address with port.  if you specify a hostname or ip
+# Address, squid binds the socket to that specific
+# Address. most likely, you do not need to bind to a specific
+# Address, so you can use the port number alone.
+# If you are running squid in accelerator mode, you
+# Probably want to listen on port 80 also, or instead.
+# The -a command line option may be used to specify additional
+# Port(s) where squid listens for proxy request. such ports will
+# Be plain proxy ports with no options.
+# You may specify multiple socket addresses on multiple lines.
+# Modes:
+# Intercept    support for ip-layer nat interception delivering
+# Traffic to this squid port.
+# Np: disables authentication on the port.
+# Tproxy    support linux tproxy (or bsd divert-to) with spoofing
+# Of outgoing connections using the client ip address.
+# Np: disables authentication on the port.
+# Accel    accelerator / reverse proxy mode
+# Ssl-bump    for each connect request allowed by ssl_bump acls,
+# Establish secure connection with the client and with
+# The server, decrypt https messages as they pass through
+# Squid, and treat them as unencrypted http messages,
+# Becoming the man-in-the-middle.
+# The ssl_bump option is required to fully enable
+# Bumping of connect requests.
+# Omitting the mode flag causes default forward proxy mode to be used.
+# Accelerator mode options:
+# Defaultsite=domainname
+# What to use for the host: header if it is not present
+# In a request. determines what site (not origin server)
+# Accelerators should consider the default.
+# No-vhost    disable using http/1.1 host header for virtual domain support.
+# Protocol=    protocol to reconstruct accelerated and intercepted
+# Requests with. defaults to http/1.1 for http_port and
+# Https/1.1 for https_port.
+# When an unsupported value is configured squid will
+# Produce a fatal error.
+# Values: http or http/1.1, https or https/1.1
+# Vport    virtual host port support. using the http_port number
+# Instead of the port passed on host: headers.
+# Vport=nn    virtual host port support. using the specified port
+# Number instead of the port passed on host: headers.
+# Act-as-origin
+# Act as if this squid is the origin server.
+# This currently means generate new date: and expires:
+# Headers on hit instead of adding age:.
+# Ignore-cc    ignore request cache-control headers.
+# Warning: this option violates http specifications if
+# Used in non-accelerator setups.
+# Allow-direct    allow direct forwarding in accelerator mode. normally
+# Accelerated requests are denied direct forwarding as if
+# Never_direct was used.
+# Warning: this option opens accelerator mode to security
+# Vulnerabilities usually only affecting in interception
+# Mode. make sure to protect forwarding with suitable
+# Http_access rules when using this.
+# Ssl bump mode options:
+# In addition to these options ssl-bump requires tls/ssl options.
+# Generate-host-certificates[=<on|off>]
+# Dynamically create ssl server certificates for the
+# Destination hosts of bumped connect requests.when
+# Enabled, the cert and key options are used to sign
+# Generated certificates. otherwise generated
+# Certificate will be selfsigned.
+# If there is a ca certificate lifetime of the generated
+# Certificate equals lifetime of the ca certificate. if
+# Generated certificate is selfsigned lifetime is three
+# Years.
+# This option is enabled by default when ssl-bump is used.
+# See the ssl-bump option above for more information.
+# Dynamic_cert_mem_cache_size=size
+# Approximate total ram size spent on cached generated
+# Certificates. if set to zero, caching is disabled. the
+# Default value is 4mb.
+# Tls / ssl options:
+# Tls-cert=    path to file containing an x.509 certificate (pem format)
+# To be used in the tls handshake serverhello.
+# If this certificate is constrained by keyusage tls
+# Feature it must allow http server usage, along with
+# Any additional restrictions imposed by your choice
+# Of options= settings.
+# When openssl is used this file may also contain a
+# Chain of intermediate ca certificates to send in the
+# Tls handshake.
+# When gnutls is used this option (and any paired
+# Tls-key= option) may be repeated to load multiple
+# Certificates for different domains.
+# Also, when generate-host-certificates=on is configured
+# The first tls-cert= option must be a ca certificate
+# Capable of signing the automatically generated
+# Certificates.
+# Tls-key=    path to a file containing private key file (pem format)
+# For the previous tls-cert= option.
+# If tls-key= is not specified tls-cert= is assumed to
+# Reference a pem file containing both the certificate
+# And private key.
+# Cipher=    colon separated list of supported ciphers.
+# Note: some ciphers such as edh ciphers depend on
+# Additional settings. if those settings are
+# Omitted the ciphers may be silently ignored
+# By the openssl library.
+# Options=    various ssl implementation options. the most important
+# Being:
+# No_sslv3    disallow the use of sslv3
+# No_tlsv1    disallow the use of tlsv1.0
+# No_tlsv1_1  disallow the use of tlsv1.1
+# No_tlsv1_2  disallow the use of tlsv1.2
+# Single_dh_use
+# Always create a new key when using
+# Temporary/ephemeral dh key exchanges
+# Single_ecdh_use
+# Enable ephemeral ecdh key exchange.
+# The adopted curve should be specified
+# Using the tls-dh option.
+# No_ticket
+# Disable use of rfc5077 session tickets.
+# Some servers may have problems
+# Understanding the tls extension due
+# To ambiguous specification in rfc4507.
+# All       enable various bug workarounds
+# Suggested as "harmless" by openssl
+# Be warned that this reduces ssl/tls
+# Strength to some attacks.
+# See the openssl ssl_ctx_set_options documentation for a
+# More complete list.
+# Clientca=    file containing the list of cas to use when
+# Requesting a client certificate.
+# Tls-cafile=    pem file containing ca certificates to use when verifying
+# Client certificates. if not configured clientca will be
+# Used. may be repeated to load multiple files.
+# Capath=    directory containing additional ca certificates
+# And crl lists to use when verifying client certificates.
+# Requires openssl or libressl.
+# Crlfile=    file of additional crl lists to use when verifying
+# The client certificate, in addition to crls stored in
+# The capath. implies verify_crl flag below.
+# Tls-dh=[curve:]file
+# File containing dh parameters for temporary/ephemeral dh key
+# Exchanges, optionally prefixed by a curve for ephemeral ecdh
+# Key exchanges.
+# See openssl documentation for details on how to create the
+# Dh parameter file. supported curves for ecdh can be listed
+# Using the "openssl ecparam -list_curves" command.
+# Warning: edh and eecdh ciphers will be silently disabled if
+# This option is not set.
+# Sslflags=    various flags modifying the use of ssl:
+# Delayed_auth
+# Don't request client certificates
+# Immediately, but wait until acl processing
+# Requires a certificate (not yet implemented).
+# Conditional_auth
+# Request a client certificate during the tls
+# Handshake, but ignore certificate absence in
+# The tls client hello. if the client does
+# Supply a certificate, it is validated.
+# No_session_reuse
+# Don't allow for session reuse. each connection
+# Will result in a new ssl session.
+# Verify_crl
+# Verify crl lists when accepting client
+# Certificates.
+# Verify_crl_all
+# Verify crl lists for all certificates in the
+# Client certificate chain.
+# Tls-default-ca[=off]
+# Whether to use the system trusted cas. default is off.
+# Tls-no-npn    do not use the tls npn extension to advertise http/1.1.
+# Sslcontext=    ssl session id context identifier.
+# Other options:
+# Connection-auth[=on|off]
+# Use connection-auth=off to tell squid to prevent
+# Forwarding microsoft connection oriented authentication
+#            (Ntlm, negotiate and kerberos)
+# Disable-pmtu-discovery=
+# Control path-mtu discovery usage:
+# Off        lets os decide on what to do (default).
+# Transparent    disable pmtu discovery when transparent
+# Support is enabled.
+# Always    disable always pmtu discovery.
+# In many setups of transparently intercepting proxies
+# Path-mtu discovery can not work on traffic towards the
+# Clients. this is the case when the intercepting device
+# Does not fully track connections and fails to forward
+# Icmp must fragment messages to the cache server. if you
+# Have such setup and experience that certain clients
+# Sporadically hang or never complete requests set
+# Disable-pmtu-discovery option to 'transparent'.
+# Name=    specifies a internal name for the port. defaults to
+# The port specification (port or addr:port)
+# Tcpkeepalive[=idle,interval,timeout]
+# Enable tcp keepalive probes of idle connections.
+# In seconds; idle is the initial time before tcp starts
+# Probing the connection, interval how often to probe, and
+# Timeout the time before giving up.
+# Require-proxy-header
+# Require proxy protocol version 1 or 2 connections.
+# The proxy_protocol_access is required to permit
+# Downstream proxies which can be trusted.
+# Worker-queues
+# Ask tcp stack to maintain a dedicated listening queue
+# For each worker accepting requests at this port.
+# Requires tcp stack that supports the so_reuseport socket
+# Option.
+# Security warning: enabling worker-specific queues
+# Allows any process running as squid's effective user to
+# Easily accept requests destined to this port.
+# If you run squid on a dual-homed machine with an internal
+# And an external interface we recommend you to specify the
+# Internal address:port in http_port. this way squid will only be
+# Visible on the internal address.
 
 # Squid normally listens to port 3128
-#
 
-#  TAG: https_port
-#    Usage:  [ip:]port [mode] tls-cert=certificate.pem [options]
-#
-#    The socket address where Squid will listen for client requests made
-#    over TLS or SSL connections. Commonly referred to as HTTPS.
-#
-#    This is most useful for situations where you are running squid in
-#    accelerator mode and you want to do the TLS work at the accelerator
-#    level.
-#
-#    You may specify multiple socket addresses on multiple lines,
-#    each with their own certificate and/or options.
-#
-#    The tls-cert= option is mandatory on HTTPS ports.
-#
-#    See http_port for a list of modes and options.
+# Tag: https_port
+# Usage:  [ip:]port [mode] tls-cert=certificate.pem [options]
+# The socket address where squid will listen for client requests made
+# Over tls or ssl connections. commonly referred to as https.
+# This is most useful for situations where you are running squid in
+# Accelerator mode and you want to do the tls work at the accelerator
+# Level.
+# You may specify multiple socket addresses on multiple lines,
+# Each with their own certificate and/or options.
+# The tls-cert= option is mandatory on https ports.
+# See http_port for a list of modes and options.
 #Default:
-# none
+# None
 
-#  TAG: ftp_port
-#    Enables Native FTP proxy by specifying the socket address where Squid
-#    listens for FTP client requests. See http_port directive for various
-#    ways to specify the listening address and mode.
-#
-#    Usage: ftp_port address [mode] [options]
-#
-#    WARNING: This is a new, experimental, complex feature that has seen
-#    limited production exposure. Some Squid modules (e.g., caching) do not
-#    currently work with native FTP proxying, and many features have not
-#    even been tested for compatibility. Test well before deploying!
-#
-#    Native FTP proxying differs substantially from proxying HTTP requests
-#    with ftp:// URIs because Squid works as an FTP server and receives
-#    actual FTP commands (rather than HTTP requests with FTP URLs).
-#
-#    Native FTP commands accepted at ftp_port are internally converted or
-#    wrapped into HTTP-like messages. The same happens to Native FTP
-#    responses received from FTP origin servers. Those HTTP-like messages
-#    are shoveled through regular access control and adaptation layers
-#    between the FTP client and the FTP origin server. This allows Squid to
-#    examine, adapt, block, and log FTP exchanges. Squid reuses most HTTP
-#    mechanisms when shoveling wrapped FTP messages. For example,
-#    http_access and adaptation_access directives are used.
-#
-#    Modes:
-#
-#       intercept    Same as http_port intercept. The FTP origin address is
-#            determined based on the intended destination of the
-#            intercepted connection.
-#
-#       tproxy    Support Linux TPROXY for spoofing outgoing
-#            connections using the client IP address.
-#            NP: disables authentication and maybe IPv6 on the port.
-#
-#    By default (i.e., without an explicit mode option), Squid extracts the
-#    FTP origin address from the login@origin parameter of the FTP USER
-#    command. Many popular FTP clients support such native FTP proxying.
-#
-#    Options:
-#
-#       name=token    Specifies an internal name for the port. Defaults to
-#            the port address. Usable with myportname ACL.
-#
-#       ftp-track-dirs
-#            Enables tracking of FTP directories by injecting extra
-#            PWD commands and adjusting Request-URI (in wrapping
-#            HTTP requests) to reflect the current FTP server
-#            directory. Tracking is disabled by default.
-#
-#       protocol=FTP    Protocol to reconstruct accelerated and intercepted
-#            requests with. Defaults to FTP. No other accepted
-#            values have been tested with. An unsupported value
-#            results in a FATAL error. Accepted values are FTP,
-#            HTTP (or HTTP/1.1), and HTTPS (or HTTPS/1.1).
-#
-#    Other http_port modes and options that are not specific to HTTP and
-#    HTTPS may also work.
+# Tag: ftp_port
+# Enables native ftp proxy by specifying the socket address where squid
+# Listens for ftp client requests. see http_port directive for various
+# Ways to specify the listening address and mode.
+# Usage: ftp_port address [mode] [options]
+# Warning: this is a new, experimental, complex feature that has seen
+# Limited production exposure. some squid modules (e.g., caching) do not
+# Currently work with native ftp proxying, and many features have not
+# Even been tested for compatibility. test well before deploying!
+# Native ftp proxying differs substantially from proxying http requests
+# With ftp:// uris because squid works as an ftp server and receives
+# Actual ftp commands (rather than http requests with ftp urls).
+# Native ftp commands accepted at ftp_port are internally converted or
+# Wrapped into http-like messages. the same happens to native ftp
+# Responses received from ftp origin servers. those http-like messages
+# Are shoveled through regular access control and adaptation layers
+# Between the ftp client and the ftp origin server. this allows squid to
+# Examine, adapt, block, and log ftp exchanges. squid reuses most http
+# Mechanisms when shoveling wrapped ftp messages. for example,
+# Http_access and adaptation_access directives are used.
+# Modes:
+# Intercept    same as http_port intercept. the ftp origin address is
+# Determined based on the intended destination of the
+# Intercepted connection.
+# Tproxy    support linux tproxy for spoofing outgoing
+# Connections using the client ip address.
+# Np: disables authentication and maybe ipv6 on the port.
+# By default (i.e., without an explicit mode option), squid extracts the
+# Ftp origin address from the login@origin parameter of the ftp user
+# Command. many popular ftp clients support such native ftp proxying.
+# Options:
+# Name=token    specifies an internal name for the port. defaults to
+# The port address. usable with myportname acl.
+# Ftp-track-dirs
+# Enables tracking of ftp directories by injecting extra
+# Pwd commands and adjusting request-uri (in wrapping
+# Http requests) to reflect the current ftp server
+# Directory. tracking is disabled by default.
+# Protocol=ftp    protocol to reconstruct accelerated and intercepted
+# Requests with. defaults to ftp. no other accepted
+# Values have been tested with. an unsupported value
+# Results in a fatal error. accepted values are ftp,
+# Http (or http/1.1), and https (or https/1.1).
+# Other http_port modes and options that are not specific to http and
+# Https may also work.
 #Default:
-# none
+# None
 
-#  TAG: tcp_outgoing_tos
-#    Allows you to select a TOS/Diffserv value for packets outgoing
-#    on the server side, based on an ACL.
-#
-#    tcp_outgoing_tos ds-field [!]aclname ...
-#
-#    Example where normal_service_net uses the TOS value 0x00
-#    and good_service_net uses 0x20
-#
-#    acl normal_service_net src 10.0.0.0/24
-#    acl good_service_net src 10.0.1.0/24
-#    tcp_outgoing_tos 0x00 normal_service_net
-#    tcp_outgoing_tos 0x20 good_service_net
-#
-#    TOS/DSCP values really only have local significance - so you should
-#    know what you're specifying. For more information, see RFC2474,
-#    RFC2475, and RFC3260.
-#
-#    The TOS/DSCP byte must be exactly that - a octet value  0 - 255, or
-#    "default" to use whatever default your host has.
-#    Note that only multiples of 4 are usable as the two rightmost bits have
-#    been redefined for use by ECN (RFC 3168 section 23.1).
-#    The squid parser will enforce this by masking away the ECN bits.
-#
-#    Processing proceeds in the order specified, and stops at first fully
-#    matching line.
-#
-#    Only fast ACLs are supported.
+# Tag: tcp_outgoing_tos
+# Allows you to select a tos/diffserv value for packets outgoing
+# On the server side, based on an acl.
+# Tcp_outgoing_tos ds-field [!]aclname ...
+# Example where normal_service_net uses the tos value 0x00
+# And good_service_net uses 0x20
+# Acl normal_service_net src 10.0.0.0/24
+# Acl good_service_net src 10.0.1.0/24
+# Tcp_outgoing_tos 0x00 normal_service_net
+# Tcp_outgoing_tos 0x20 good_service_net
+# Tos/dscp values really only have local significance - so you should
+# Know what you're specifying. for more information, see rfc2474,
+# Rfc2475, and rfc3260.
+# The tos/dscp byte must be exactly that - a octet value  0 - 255, or
+#    "Default" to use whatever default your host has.
+# Note that only multiples of 4 are usable as the two rightmost bits have
+# Been redefined for use by ecn (rfc 3168 section 23.1).
+# The squid parser will enforce this by masking away the ecn bits.
+# Processing proceeds in the order specified, and stops at first fully
+# Matching line.
+# Only fast acls are supported.
 #Default:
-# none
+# None
 
-#  TAG: clientside_tos
-#    Allows you to select a TOS/DSCP value for packets being transmitted
-#    on the client-side, based on an ACL.
-#
-#    clientside_tos ds-field [!]aclname ...
-#
-#    Example where normal_service_net uses the TOS value 0x00
-#    and good_service_net uses 0x20
-#
-#    acl normal_service_net src 10.0.0.0/24
-#    acl good_service_net src 10.0.1.0/24
-#    clientside_tos 0x00 normal_service_net
-#    clientside_tos 0x20 good_service_net
-#
-#    Note: This feature is incompatible with qos_flows. Any TOS values set here
-#    will be overwritten by TOS values in qos_flows.
-#
-#    The TOS/DSCP byte must be exactly that - a octet value  0 - 255, or
-#    "default" to use whatever default your host has.
-#    Note that only multiples of 4 are usable as the two rightmost bits have
-#    been redefined for use by ECN (RFC 3168 section 23.1).
-#    The squid parser will enforce this by masking away the ECN bits.
-#
-#    This clause only supports fast acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
+# Tag: clientside_tos
+# Allows you to select a tos/dscp value for packets being transmitted
+# On the client-side, based on an acl.
+# Clientside_tos ds-field [!]aclname ...
+# Example where normal_service_net uses the tos value 0x00
+# And good_service_net uses 0x20
+# Acl normal_service_net src 10.0.0.0/24
+# Acl good_service_net src 10.0.1.0/24
+# Clientside_tos 0x00 normal_service_net
+# Clientside_tos 0x20 good_service_net
+# Note: this feature is incompatible with qos_flows. any tos values set here
+# Will be overwritten by tos values in qos_flows.
+# The tos/dscp byte must be exactly that - a octet value  0 - 255, or
+#    "Default" to use whatever default your host has.
+# Note that only multiples of 4 are usable as the two rightmost bits have
+# Been redefined for use by ecn (rfc 3168 section 23.1).
+# The squid parser will enforce this by masking away the ecn bits.
+# This clause only supports fast acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
 #Default:
-# none
+# None
 
-#  TAG: tcp_outgoing_mark
-# Note: This option is only available if Squid is rebuilt with the
-#       Packet MARK (Linux)
-#
-#    Allows you to apply a Netfilter mark value to outgoing packets
-#    on the server side, based on an ACL.
-#
-#    tcp_outgoing_mark mark-value [!]aclname ...
-#
-#    Example where normal_service_net uses the mark value 0x00
-#    and good_service_net uses 0x20
-#
-#    acl normal_service_net src 10.0.0.0/24
-#    acl good_service_net src 10.0.1.0/24
-#    tcp_outgoing_mark 0x00 normal_service_net
-#    tcp_outgoing_mark 0x20 good_service_net
-#
-#    Only fast ACLs are supported.
+# Tag: tcp_outgoing_mark
+# Note: this option is only available if squid is rebuilt with the
+# Packet mark (linux)
+# Allows you to apply a netfilter mark value to outgoing packets
+# On the server side, based on an acl.
+# Tcp_outgoing_mark mark-value [!]aclname ...
+# Example where normal_service_net uses the mark value 0x00
+# And good_service_net uses 0x20
+# Acl normal_service_net src 10.0.0.0/24
+# Acl good_service_net src 10.0.1.0/24
+# Tcp_outgoing_mark 0x00 normal_service_net
+# Tcp_outgoing_mark 0x20 good_service_net
+# Only fast acls are supported.
 #Default:
-# none
+# None
 
-#  TAG: mark_client_packet
-# Note: This option is only available if Squid is rebuilt with the
-#       Packet MARK (Linux)
-#
-#    Allows you to apply a Netfilter MARK value to packets being transmitted
-#    on the client-side, based on an ACL.
-#
-#    mark_client_packet mark-value [!]aclname ...
-#
-#    Example where normal_service_net uses the MARK value 0x00
-#    and good_service_net uses 0x20
-#
-#    acl normal_service_net src 10.0.0.0/24
-#    acl good_service_net src 10.0.1.0/24
-#    mark_client_packet 0x00 normal_service_net
-#    mark_client_packet 0x20 good_service_net
-#
-#    Note: This feature is incompatible with qos_flows. Any mark values set here
-#    will be overwritten by mark values in qos_flows.
-#
-#    This clause only supports fast acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
+# Tag: mark_client_packet
+# Note: this option is only available if squid is rebuilt with the
+# Packet mark (linux)
+# Allows you to apply a netfilter mark value to packets being transmitted
+# On the client-side, based on an acl.
+# Mark_client_packet mark-value [!]aclname ...
+# Example where normal_service_net uses the mark value 0x00
+# And good_service_net uses 0x20
+# Acl normal_service_net src 10.0.0.0/24
+# Acl good_service_net src 10.0.1.0/24
+# Mark_client_packet 0x00 normal_service_net
+# Mark_client_packet 0x20 good_service_net
+# Note: this feature is incompatible with qos_flows. any mark values set here
+# Will be overwritten by mark values in qos_flows.
+# This clause only supports fast acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
 #Default:
-# none
+# None
 
-#  TAG: mark_client_connection
-# Note: This option is only available if Squid is rebuilt with the
-#       Packet MARK (Linux)
-#
-#    Allows you to apply a Netfilter CONNMARK value to a connection
-#    on the client-side, based on an ACL.
-#
-#    mark_client_connection mark-value[/mask] [!]aclname ...
-#
-#    The mark-value and mask are unsigned integers (hex, octal, or decimal).
-#    The mask may be used to preserve marking previously set by other agents
-#    (e.g., iptables).
-#
-#    A matching rule replaces the CONNMARK value. If a mask is also
-#    specified, then the masked bits of the original value are zeroed, and
-#    the configured mark-value is ORed with that adjusted value.
-#    For example, applying a mark-value 0xAB/0xF to 0x5F CONNMARK, results
-#    in a 0xFB marking (rather than a 0xAB or 0x5B).
-#
-#    This directive semantics is similar to iptables --set-mark rather than
-#    --set-xmark functionality.
-#
-#    The directive does not interfere with qos_flows (which uses packet MARKs,
-#    not CONNMARKs).
-#
-#    Example where squid marks intercepted FTP connections:
-#
-#    acl proto_ftp proto FTP
-#    mark_client_connection 0x200/0xff00 proto_ftp
-#
-#    This clause only supports fast acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
+# Tag: mark_client_connection
+# Note: this option is only available if squid is rebuilt with the
+# Packet mark (linux)
+# Allows you to apply a netfilter connmark value to a connection
+# On the client-side, based on an acl.
+# Mark_client_connection mark-value[/mask] [!]aclname ...
+# The mark-value and mask are unsigned integers (hex, octal, or decimal).
+# The mask may be used to preserve marking previously set by other agents
+#    (E.g., iptables).
+# A matching rule replaces the connmark value. if a mask is also
+# Specified, then the masked bits of the original value are zeroed, and
+# The configured mark-value is ored with that adjusted value.
+# For example, applying a mark-value 0xab/0xf to 0x5f connmark, results
+# In a 0xfb marking (rather than a 0xab or 0x5b).
+# This directive semantics is similar to iptables --set-mark rather than
+#    --Set-xmark functionality.
+# The directive does not interfere with qos_flows (which uses packet marks,
+# Not connmarks).
+# Example where squid marks intercepted ftp connections:
+# Acl proto_ftp proto ftp
+# Mark_client_connection 0x200/0xff00 proto_ftp
+# This clause only supports fast acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
 #Default:
-# none
+# None
 
-#  TAG: qos_flows
-#    Allows you to select a TOS/DSCP value to mark outgoing
-#    connections to the client, based on where the reply was sourced.
-#    For platforms using netfilter, allows you to set a netfilter mark
-#    value instead of, or in addition to, a TOS value.
-#
-#    By default this functionality is disabled. To enable it with the default
-#    settings simply use "qos_flows mark" or "qos_flows tos". Default
-#    settings will result in the netfilter mark or TOS value being copied
-#    from the upstream connection to the client. Note that it is the connection
-#    CONNMARK value not the packet MARK value that is copied.
-#
-#    It is not currently possible to copy the mark or TOS value from the
-#    client to the upstream connection request.
-#
-#    TOS values really only have local significance - so you should
-#    know what you're specifying. For more information, see RFC2474,
-#    RFC2475, and RFC3260.
-#
-#    The TOS/DSCP byte must be exactly that - a octet value  0 - 255.
-#    Note that only multiples of 4 are usable as the two rightmost bits have
-#    been redefined for use by ECN (RFC 3168 section 23.1).
-#    The squid parser will enforce this by masking away the ECN bits.
-#
-#    Mark values can be any unsigned 32-bit integer value.
-#
-#    This setting is configured by setting the following values:
-#
-#    tos|mark                Whether to set TOS or netfilter mark values
-#
-#    local-hit=0xFF        Value to mark local cache hits.
-#
-#    sibling-hit=0xFF    Value to mark hits from sibling peers.
-#
-#    parent-hit=0xFF        Value to mark hits from parent peers.
-#
-#    miss=0xFF[/mask]    Value to mark cache misses. Takes precedence
-#                over the preserve-miss feature (see below), unless
-#                mask is specified, in which case only the bits
-#                specified in the mask are written.
-#
-#    The TOS variant of the following features are only possible on Linux
-#    and require your kernel to be patched with the TOS preserving ZPH
-#    patch, available from http://zph.bratcheda.org
-#    No patch is needed to preserve the netfilter mark, which will work
-#    with all variants of netfilter.
-#
-#    disable-preserve-miss
-#        This option disables the preservation of the TOS or netfilter
-#        mark. By default, the existing TOS or netfilter mark value of
-#        the response coming from the remote server will be retained
-#        and masked with miss-mark.
-#        NOTE: in the case of a netfilter mark, the mark must be set on
-#        the connection (using the CONNMARK target) not on the packet
-#        (MARK target).
-#
-#    miss-mask=0xFF
-#        Allows you to mask certain bits in the TOS or mark value
-#        received from the remote server, before copying the value to
-#        the TOS sent towards clients.
-#        Default for tos: 0xFF (TOS from server is not changed).
-#        Default for mark: 0xFFFFFFFF (mark from server is not changed).
-#
-#    All of these features require the --enable-zph-qos compilation flag
-#    (enabled by default). Netfilter marking also requires the
-#    libnetfilter_conntrack libraries (--with-netfilter-conntrack) and
-#    libcap 2.09+ (--with-libcap).
-#
+# Tag: qos_flows
+# Allows you to select a tos/dscp value to mark outgoing
+# Connections to the client, based on where the reply was sourced.
+# For platforms using netfilter, allows you to set a netfilter mark
+# Value instead of, or in addition to, a tos value.
+# By default this functionality is disabled. to enable it with the default
+# Settings simply use "qos_flows mark" or "qos_flows tos". default
+# Settings will result in the netfilter mark or tos value being copied
+# From the upstream connection to the client. note that it is the connection
+# Connmark value not the packet mark value that is copied.
+# It is not currently possible to copy the mark or tos value from the
+# Client to the upstream connection request.
+# Tos values really only have local significance - so you should
+# Know what you're specifying. for more information, see rfc2474,
+# Rfc2475, and rfc3260.
+# The tos/dscp byte must be exactly that - a octet value  0 - 255.
+# Note that only multiples of 4 are usable as the two rightmost bits have
+# Been redefined for use by ecn (rfc 3168 section 23.1).
+# The squid parser will enforce this by masking away the ecn bits.
+# Mark values can be any unsigned 32-bit integer value.
+# This setting is configured by setting the following values:
+# Tos|mark                whether to set tos or netfilter mark values
+# Local-hit=0xff        value to mark local cache hits.
+# Sibling-hit=0xff    value to mark hits from sibling peers.
+# Parent-hit=0xff        value to mark hits from parent peers.
+# Miss=0xff[/mask]    value to mark cache misses. takes precedence
+# Over the preserve-miss feature (see below), unless
+# Mask is specified, in which case only the bits
+# Specified in the mask are written.
+# The tos variant of the following features are only possible on linux
+# And require your kernel to be patched with the tos preserving zph
+# Patch, available from http://zph.bratcheda.org
+# No patch is needed to preserve the netfilter mark, which will work
+# With all variants of netfilter.
+# Disable-preserve-miss
+# This option disables the preservation of the tos or netfilter
+# Mark. by default, the existing tos or netfilter mark value of
+# The response coming from the remote server will be retained
+# And masked with miss-mark.
+# Note: in the case of a netfilter mark, the mark must be set on
+# The connection (using the connmark target) not on the packet
+#        (Mark target).
+# Miss-mask=0xff
+# Allows you to mask certain bits in the tos or mark value
+# Received from the remote server, before copying the value to
+# The tos sent towards clients.
+# Default for tos: 0xff (tos from server is not changed).
+# Default for mark: 0xffffffff (mark from server is not changed).
+# All of these features require the --enable-zph-qos compilation flag
+#    (Enabled by default). netfilter marking also requires the
+# Libnetfilter_conntrack libraries (--with-netfilter-conntrack) and
+# Libcap 2.09+ (--with-libcap).
 #Default:
-# none
+# None
 
-#  TAG: tcp_outgoing_address
-#    Allows you to map requests to different outgoing IP addresses
-#    based on the username or source address of the user making
-#    the request.
-#
-#    tcp_outgoing_address ipaddr [[!]aclname] ...
-#
-#    For example;
-#        Forwarding clients with dedicated IPs for certain subnets.
-#
-#      acl normal_service_net src 10.0.0.0/24
-#      acl good_service_net src 10.0.2.0/24
-#
-#      tcp_outgoing_address 2001:db8::c001 good_service_net
-#      tcp_outgoing_address 10.1.0.2 good_service_net
-#
-#      tcp_outgoing_address 2001:db8::beef normal_service_net
-#      tcp_outgoing_address 10.1.0.1 normal_service_net
-#
-#      tcp_outgoing_address 2001:db8::1
-#      tcp_outgoing_address 10.1.0.3
-#
-#    Processing proceeds in the order specified, and stops at first fully
-#    matching line.
-#
-#    Squid will add an implicit IP version test to each line.
-#    Requests going to IPv4 websites will use the outgoing 10.1.0.* addresses.
-#    Requests going to IPv6 websites will use the outgoing 2001:db8:* addresses.
-#
-#
-#    NOTE: The use of this directive using client dependent ACLs is
-#    incompatible with the use of server side persistent connections. To
-#    ensure correct results it is best to set server_persistent_connections
-#    to off when using this directive in such configurations.
-#
-#    NOTE: The use of this directive to set a local IP on outgoing TCP links
-#    is incompatible with using TPROXY to set client IP out outbound TCP links.
-#    When needing to contact peers use the no-tproxy cache_peer option and the
-#    client_dst_passthru directive re-enable normal forwarding such as this.
-#
-#    This clause only supports fast acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
+# Tag: tcp_outgoing_address
+# Allows you to map requests to different outgoing ip addresses
+# Based on the username or source address of the user making
+# The request.
+# Tcp_outgoing_address ipaddr [[!]aclname] ...
+# For example;
+# Forwarding clients with dedicated ips for certain subnets.
+# Acl normal_service_net src 10.0.0.0/24
+# Acl good_service_net src 10.0.2.0/24
+# Tcp_outgoing_address 2001:db8::c001 good_service_net
+# Tcp_outgoing_address 10.1.0.2 good_service_net
+# Tcp_outgoing_address 2001:db8::beef normal_service_net
+# Tcp_outgoing_address 10.1.0.1 normal_service_net
+# Tcp_outgoing_address 2001:db8::1
+# Tcp_outgoing_address 10.1.0.3
+# Processing proceeds in the order specified, and stops at first fully
+# Matching line.
+# Squid will add an implicit ip version test to each line.
+# Requests going to ipv4 websites will use the outgoing 10.1.0.* addresses.
+# Requests going to ipv6 websites will use the outgoing 2001:db8:* addresses.
+# Note: the use of this directive using client dependent acls is
+# Incompatible with the use of server side persistent connections. to
+# Ensure correct results it is best to set server_persistent_connections
+# To off when using this directive in such configurations.
+# Note: the use of this directive to set a local ip on outgoing tcp links
+# Is incompatible with using tproxy to set client ip out outbound tcp links.
+# When needing to contact peers use the no-tproxy cache_peer option and the
+# Client_dst_passthru directive re-enable normal forwarding such as this.
+# This clause only supports fast acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
 #Default:
 # Address selection is performed by the operating system.
 
-#  TAG: host_verify_strict
-#    Regardless of this option setting, when dealing with intercepted
-#    traffic, Squid always verifies that the destination IP address matches
-#    the Host header domain or IP (called 'authority form URL').
-#
-#    This enforcement is performed to satisfy a MUST-level requirement in
-#    RFC 2616 section 14.23: "The Host field value MUST represent the naming
-#    authority of the origin server or gateway given by the original URL".
-#
-#    When set to ON:
-#        Squid always responds with an HTTP 409 (Conflict) error
-#        page and logs a security warning if there is no match.
-#
-#        Squid verifies that the destination IP address matches
-#        the Host header for forward-proxy and reverse-proxy traffic
-#        as well. For those traffic types, Squid also enables the
-#        following checks, comparing the corresponding Host header
-#        and Request-URI components:
-#
-#         * The host names (domain or IP) must be identical,
-#           but valueless or missing Host header disables all checks.
-#           For the two host names to match, both must be either IP
-#           or FQDN.
-#
-#         * Port numbers must be identical, but if a port is missing
-#           the scheme-default port is assumed.
-#
-#
-#    When set to OFF (the default):
-#        Squid allows suspicious requests to continue but logs a
-#        security warning and blocks caching of the response.
-#
-#         * Forward-proxy traffic is not checked at all.
-#
-#         * Reverse-proxy traffic is not checked at all.
-#
-#         * Intercepted traffic which passes verification is handled
-#           according to client_dst_passthru.
-#
-#         * Intercepted requests which fail verification are sent
-#           to the client original destination instead of DIRECT.
-#           This overrides 'client_dst_passthru off'.
-#
-#        For now suspicious intercepted CONNECT requests are always
-#        responded to with an HTTP 409 (Conflict) error page.
-#
-#
-#    SECURITY NOTE:
-#
-#    As described in CVE-2009-0801 when the Host: header alone is used
-#    to determine the destination of a request it becomes trivial for
-#    malicious scripts on remote websites to bypass browser same-origin
-#    security policy and sandboxing protections.
-#
-#    The cause of this is that such applets are allowed to perform their
-#    own HTTP stack, in which case the same-origin policy of the browser
-#    sandbox only verifies that the applet tries to contact the same IP
-#    as from where it was loaded at the IP level. The Host: header may
-#    be different from the connected IP and approved origin.
-#
+# Tag: host_verify_strict
+# Regardless of this option setting, when dealing with intercepted
+# Traffic, squid always verifies that the destination ip address matches
+# The host header domain or ip (called 'authority form url').
+# This enforcement is performed to satisfy a must-level requirement in
+# Rfc 2616 section 14.23: "the host field value must represent the naming
+# Authority of the origin server or gateway given by the original url".
+# When set to on:
+# Squid always responds with an http 409 (conflict) error
+# Page and logs a security warning if there is no match.
+# Squid verifies that the destination ip address matches
+# The host header for forward-proxy and reverse-proxy traffic
+# As well. for those traffic types, squid also enables the
+# Following checks, comparing the corresponding host header
+# And request-uri components:
+# * The host names (domain or ip) must be identical,
+# But valueless or missing host header disables all checks.
+# For the two host names to match, both must be either ip
+# Or fqdn.
+# * Port numbers must be identical, but if a port is missing
+# The scheme-default port is assumed.
+# When set to off (the default):
+# Squid allows suspicious requests to continue but logs a
+# Security warning and blocks caching of the response.
+# * Forward-proxy traffic is not checked at all.
+# * Reverse-proxy traffic is not checked at all.
+# * Intercepted traffic which passes verification is handled
+# According to client_dst_passthru.
+# * Intercepted requests which fail verification are sent
+# To the client original destination instead of direct.
+# This overrides 'client_dst_passthru off'.
+# For now suspicious intercepted connect requests are always
+# Responded to with an http 409 (conflict) error page.
+# Security note:
+# As described in cve-2009-0801 when the host: header alone is used
+# To determine the destination of a request it becomes trivial for
+# Malicious scripts on remote websites to bypass browser same-origin
+# Security policy and sandboxing protections.
+# The cause of this is that such applets are allowed to perform their
+# Own http stack, in which case the same-origin policy of the browser
+# Sandbox only verifies that the applet tries to contact the same ip
+# As from where it was loaded at the ip level. the host: header may
+# Be different from the connected ip and approved origin.
 #Default:
-# host_verify_strict off
+# Host_verify_strict off
 
-#  TAG: client_dst_passthru
-#    With NAT or TPROXY intercepted traffic Squid may pass the request
-#    directly to the original client destination IP or seek a faster
-#    source using the HTTP Host header.
-#
-#    Using Host to locate alternative servers can provide faster
-#    connectivity with a range of failure recovery options.
-#    But can also lead to connectivity trouble when the client and
-#    server are attempting stateful interactions unaware of the proxy.
-#
-#    This option (on by default) prevents alternative DNS entries being
-#    located to send intercepted traffic DIRECT to an origin server.
-#    The clients original destination IP and port will be used instead.
-#
-#    Regardless of this option setting, when dealing with intercepted
-#    traffic Squid will verify the Host: header and any traffic which
-#    fails Host verification will be treated as if this option were ON.
-#
-#    see host_verify_strict for details on the verification process.
+# Tag: client_dst_passthru
+# With nat or tproxy intercepted traffic squid may pass the request
+# Directly to the original client destination ip or seek a faster
+# Source using the http host header.
+# Using host to locate alternative servers can provide faster
+# Connectivity with a range of failure recovery options.
+# But can also lead to connectivity trouble when the client and
+# Server are attempting stateful interactions unaware of the proxy.
+# This option (on by default) prevents alternative dns entries being
+# Located to send intercepted traffic direct to an origin server.
+# The clients original destination ip and port will be used instead.
+# Regardless of this option setting, when dealing with intercepted
+# Traffic squid will verify the host: header and any traffic which
+# Fails host verification will be treated as if this option were on.
+# See host_verify_strict for details on the verification process.
 #Default:
-# client_dst_passthru on
+# Client_dst_passthru on
 
-# TLS OPTIONS
+# Tls options
 # -----------------------------------------------------------------------------
 
-#  TAG: tls_outgoing_options
-#    disable        Do not support https:// URLs.
-#
-#    cert=/path/to/client/certificate
-#            A client X.509 certificate to use when connecting.
-#
-#    key=/path/to/client/private_key
-#            The private key corresponding to the cert= above.
-#
-#            If key= is not specified cert= is assumed to
-#            reference a PEM file containing both the certificate
-#            and private key.
-#
-#    cipher=...    The list of valid TLS ciphers to use.
-#
-#    min-version=1.N
-#            The minimum TLS protocol version to permit.
-#            To control SSLv3 use the options= parameter.
-#            Supported Values: 1.0 (default), 1.1, 1.2, 1.3
-#
-#    options=...    Specify various TLS/SSL implementation options.
-#
-#            OpenSSL options most important are:
-#
-#                NO_SSLv3    Disallow the use of SSLv3
-#
-#                SINGLE_DH_USE
-#                      Always create a new key when using
-#                      temporary/ephemeral DH key exchanges
-#
-#                NO_TICKET
-#                      Disable use of RFC5077 session tickets.
-#                      Some servers may have problems
-#                      understanding the TLS extension due
-#                      to ambiguous specification in RFC4507.
-#
-#                ALL       Enable various bug workarounds
-#                      suggested as "harmless" by OpenSSL
-#                      Be warned that this reduces SSL/TLS
-#                      strength to some attacks.
-#
-#                See the OpenSSL SSL_CTX_set_options documentation
-#                for a more complete list.
-#
-#            GnuTLS options most important are:
-#
-#                %NO_TICKETS
-#                      Disable use of RFC5077 session tickets.
-#                      Some servers may have problems
-#                      understanding the TLS extension due
-#                      to ambiguous specification in RFC4507.
-#
-#                See the GnuTLS Priority Strings documentation
-#                for a more complete list.
-#                http://www.gnutls.org/manual/gnutls.html#Priority-Strings
-#
-#
-#    cafile=        PEM file containing CA certificates to use when verifying
-#            the peer certificate. May be repeated to load multiple files.
-#
-#    capath=        A directory containing additional CA certificates to
-#            use when verifying the peer certificate.
-#            Requires OpenSSL or LibreSSL.
-#
-#    crlfile=...     A certificate revocation list file to use when
-#            verifying the peer certificate.
-#
-#    flags=...    Specify various flags modifying the TLS implementation:
-#
-#            DONT_VERIFY_PEER
-#                Accept certificates even if they fail to
-#                verify.
-#            DONT_VERIFY_DOMAIN
-#                Don't verify the peer certificate
-#                matches the server name
-#
-#    default-ca[=off]
-#            Whether to use the system Trusted CAs. Default is ON.
-#
-#    domain=     The peer name as advertised in its certificate.
-#            Used for verifying the correctness of the received peer
-#            certificate. If not specified the peer hostname will be
-#            used.
+# Tag: tls_outgoing_options
+# Disable        do not support https:// urls.
+# Cert=/path/to/client/certificate
+# A client x.509 certificate to use when connecting.
+# Key=/path/to/client/private_key
+# The private key corresponding to the cert= above.
+# If key= is not specified cert= is assumed to
+# Reference a pem file containing both the certificate
+# And private key.
+# Cipher=...    the list of valid tls ciphers to use.
+# Min-version=1.n
+# The minimum tls protocol version to permit.
+# To control sslv3 use the options= parameter.
+# Supported values: 1.0 (default), 1.1, 1.2, 1.3
+# Options=...    specify various tls/ssl implementation options.
+# Openssl options most important are:
+# No_sslv3    disallow the use of sslv3
+# Single_dh_use
+# Always create a new key when using
+# Temporary/ephemeral dh key exchanges
+# No_ticket
+# Disable use of rfc5077 session tickets.
+# Some servers may have problems
+# Understanding the tls extension due
+# To ambiguous specification in rfc4507.
+# All       enable various bug workarounds
+# Suggested as "harmless" by openssl
+# Be warned that this reduces ssl/tls
+# Strength to some attacks.
+# See the openssl ssl_ctx_set_options documentation
+# For a more complete list.
+# Gnutls options most important are:
+# %No_tickets
+# Disable use of rfc5077 session tickets.
+# Some servers may have problems
+# Understanding the tls extension due
+# To ambiguous specification in rfc4507.
+# See the gnutls priority strings documentation
+# For a more complete list.
+# Http://www.gnutls.org/manual/gnutls.html#priority-strings
+# Cafile=        pem file containing ca certificates to use when verifying
+# The peer certificate. may be repeated to load multiple files.
+# Capath=        a directory containing additional ca certificates to
+# Use when verifying the peer certificate.
+# Requires openssl or libressl.
+# Crlfile=...     a certificate revocation list file to use when
+# Verifying the peer certificate.
+# Flags=...    specify various flags modifying the tls implementation:
+# Dont_verify_peer
+# Accept certificates even if they fail to
+# Verify.
+# Dont_verify_domain
+# Don't verify the peer certificate
+# Matches the server name
+# Default-ca[=off]
+# Whether to use the system trusted cas. default is on.
+# Domain=     the peer name as advertised in its certificate.
+# Used for verifying the correctness of the received peer
+# Certificate. if not specified the peer hostname will be
+# Used.
 #Default:
-# tls_outgoing_options min-version=1.0
+# Tls_outgoing_options min-version=1.0
 
-# SSL OPTIONS
+# Ssl options
 # -----------------------------------------------------------------------------
 
-#  TAG: ssl_unclean_shutdown
-# Note: This option is only available if Squid is rebuilt with the
-#       --with-openssl
-#
-#    Some browsers (especially MSIE) bugs out on SSL shutdown
-#    messages.
+# Tag: ssl_unclean_shutdown
+# Note: this option is only available if squid is rebuilt with the
+#       --With-openssl
+# Some browsers (especially msie) bugs out on ssl shutdown
+# Messages.
 #Default:
-# ssl_unclean_shutdown off
+# Ssl_unclean_shutdown off
 
-#  TAG: ssl_engine
-# Note: This option is only available if Squid is rebuilt with the
-#       --with-openssl
-#
-#    The OpenSSL engine to use. You will need to set this if you
-#    would like to use hardware SSL acceleration for example.
-#
-#    Note: OpenSSL 3.0 and newer do not provide Engine support.
+# Tag: ssl_engine
+# Note: this option is only available if squid is rebuilt with the
+#       --With-openssl
+# The openssl engine to use. you will need to set this if you
+# Would like to use hardware ssl acceleration for example.
+# Note: openssl 3.0 and newer do not provide engine support.
 #Default:
-# none
+# None
 
-#  TAG: sslproxy_session_ttl
-# Note: This option is only available if Squid is rebuilt with the
-#       --with-openssl
-#
-#    Sets the timeout value for SSL sessions
+# Tag: sslproxy_session_ttl
+# Note: this option is only available if squid is rebuilt with the
+#       --With-openssl
+# Sets the timeout value for ssl sessions
 #Default:
-# sslproxy_session_ttl 300
+# Sslproxy_session_ttl 300
 
-#  TAG: sslproxy_session_cache_size
-# Note: This option is only available if Squid is rebuilt with the
-#       --with-openssl
-#
-#        Sets the cache size to use for ssl session
+# Tag: sslproxy_session_cache_size
+# Note: this option is only available if squid is rebuilt with the
+#       --With-openssl
+# Sets the cache size to use for ssl session
 #Default:
-# sslproxy_session_cache_size 2 MB
+# Sslproxy_session_cache_size 2 mb
 
-#  TAG: sslproxy_foreign_intermediate_certs
-# Note: This option is only available if Squid is rebuilt with the
-#       --with-openssl
-#
-#    Many origin servers fail to send their full server certificate
-#    chain for verification, assuming the client already has or can
-#    easily locate any missing intermediate certificates.
-#
-#    Squid uses the certificates from the specified file to fill in
-#    these missing chains when trying to validate origin server
-#    certificate chains.
-#
-#    The file is expected to contain zero or more PEM-encoded
-#    intermediate certificates. These certificates are not treated
-#    as trusted root certificates, and any self-signed certificate in
-#    this file will be ignored.
+# Tag: sslproxy_foreign_intermediate_certs
+# Note: this option is only available if squid is rebuilt with the
+#       --With-openssl
+# Many origin servers fail to send their full server certificate
+# Chain for verification, assuming the client already has or can
+# Easily locate any missing intermediate certificates.
+# Squid uses the certificates from the specified file to fill in
+# These missing chains when trying to validate origin server
+# Certificate chains.
+# The file is expected to contain zero or more pem-encoded
+# Intermediate certificates. these certificates are not treated
+# As trusted root certificates, and any self-signed certificate in
+# This file will be ignored.
 #Default:
-# none
+# None
 
-#  TAG: sslproxy_cert_sign_hash
-# Note: This option is only available if Squid is rebuilt with the
-#       --with-openssl
-#
-#    Sets the hashing algorithm to use when signing generated certificates.
-#    Valid algorithm names depend on the OpenSSL library used. The following
-#    names are usually available: sha1, sha256, sha512, and md5. Please see
-#    your OpenSSL library manual for the available hashes. By default, Squids
-#    that support this option use sha256 hashes.
-#
-#    Squid does not forcefully purge cached certificates that were generated
-#    with an algorithm other than the currently configured one. They remain
-#    in the cache, subject to the regular cache eviction policy, and become
-#    useful if the algorithm changes again.
+# Tag: sslproxy_cert_sign_hash
+# Note: this option is only available if squid is rebuilt with the
+#       --With-openssl
+# Sets the hashing algorithm to use when signing generated certificates.
+# Valid algorithm names depend on the openssl library used. the following
+# Names are usually available: sha1, sha256, sha512, and md5. please see
+# Your openssl library manual for the available hashes. by default, squids
+# That support this option use sha256 hashes.
+# Squid does not forcefully purge cached certificates that were generated
+# With an algorithm other than the currently configured one. they remain
+# In the cache, subject to the regular cache eviction policy, and become
+# Useful if the algorithm changes again.
 #Default:
-# none
+# None
 
-#  TAG: ssl_bump
-# Note: This option is only available if Squid is rebuilt with the
-#       --with-openssl
-#
-#    This option is consulted when a CONNECT request is received on
-#    an http_port (or a new connection is intercepted at an
-#    https_port), provided that port was configured with an ssl-bump
-#    flag. The subsequent data on the connection is either treated as
-#    HTTPS and decrypted OR tunneled at TCP level without decryption,
-#    depending on the first matching bumping "action".
-#
-#    ssl_bump <action> [!]acl ...
-#
-#    The following bumping actions are currently supported:
-#
-#        splice
-#        Become a TCP tunnel without decrypting proxied traffic.
-#        This is the default action.
-#
-#        bump
-#        When used on step SslBump1, establishes a secure connection
-#        with the client first, then connect to the server.
-#        When used on step SslBump2 or SslBump3, establishes a secure
-#        connection with the server and, using a mimicked server
-#        certificate, with the client.
-#
-#        peek
-#        Receive client (step SslBump1) or server (step SslBump2)
-#        certificate while preserving the possibility of splicing the
-#        connection. Peeking at the server certificate (during step 2)
-#        usually precludes bumping of the connection at step 3.
-#
-#        stare
-#        Receive client (step SslBump1) or server (step SslBump2)
-#        certificate while preserving the possibility of bumping the
-#        connection. Staring at the server certificate (during step 2)
-#        usually precludes splicing of the connection at step 3.
-#
-#        terminate
-#        Close client and server connections.
-#
-#    Backward compatibility actions available at step SslBump1:
-#
-#        client-first
-#        Bump the connection. Establish a secure connection with the
-#        client first, then connect to the server. This old mode does
-#        not allow Squid to mimic server SSL certificate and does not
-#        work with intercepted SSL connections.
-#
-#        server-first
-#        Bump the connection. Establish a secure connection with the
-#        server first, then establish a secure connection with the
-#        client, using a mimicked server certificate. Works with both
-#        CONNECT requests and intercepted SSL connections, but does
-#        not allow to make decisions based on SSL handshake info.
-#
-#        peek-and-splice
-#        Decide whether to bump or splice the connection based on
-#        client-to-squid and server-to-squid SSL hello messages.
-#        XXX: Remove.
-#
-#        none
-#        Same as the "splice" action.
-#
-#    All ssl_bump rules are evaluated at each of the supported bumping
-#    steps.  Rules with actions that are impossible at the current step are
-#    ignored. The first matching ssl_bump action wins and is applied at the
-#    end of the current step. If no rules match, the splice action is used.
-#    See the at_step ACL for a list of the supported SslBump steps.
-#
-#    This clause supports both fast and slow acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
-#
-#    See also: http_port ssl-bump, https_port ssl-bump, and acl at_step.
-#
-#
-#    # Example: Bump all TLS connections except those originating from
-#    # localhost or those going to example.com.
-#
-#    acl broken_sites ssl::server_name .example.com
-#    ssl_bump splice localhost
-#    ssl_bump splice broken_sites
-#    ssl_bump bump all
+# Tag: ssl_bump
+# Note: this option is only available if squid is rebuilt with the
+#       --With-openssl
+# This option is consulted when a connect request is received on
+# An http_port (or a new connection is intercepted at an
+# Https_port), provided that port was configured with an ssl-bump
+# Flag. the subsequent data on the connection is either treated as
+# Https and decrypted or tunneled at tcp level without decryption,
+# Depending on the first matching bumping "action".
+# Ssl_bump <action> [!]acl ...
+# The following bumping actions are currently supported:
+# Splice
+# Become a tcp tunnel without decrypting proxied traffic.
+# This is the default action.
+# Bump
+# When used on step sslbump1, establishes a secure connection
+# With the client first, then connect to the server.
+# When used on step sslbump2 or sslbump3, establishes a secure
+# Connection with the server and, using a mimicked server
+# Certificate, with the client.
+# Peek
+# Receive client (step sslbump1) or server (step sslbump2)
+# Certificate while preserving the possibility of splicing the
+# Connection. peeking at the server certificate (during step 2)
+# Usually precludes bumping of the connection at step 3.
+# Stare
+# Receive client (step sslbump1) or server (step sslbump2)
+# Certificate while preserving the possibility of bumping the
+# Connection. staring at the server certificate (during step 2)
+# Usually precludes splicing of the connection at step 3.
+# Terminate
+# Close client and server connections.
+# Backward compatibility actions available at step sslbump1:
+# Client-first
+# Bump the connection. establish a secure connection with the
+# Client first, then connect to the server. this old mode does
+# Not allow squid to mimic server ssl certificate and does not
+# Work with intercepted ssl connections.
+# Server-first
+# Bump the connection. establish a secure connection with the
+# Server first, then establish a secure connection with the
+# Client, using a mimicked server certificate. works with both
+# Connect requests and intercepted ssl connections, but does
+# Not allow to make decisions based on ssl handshake info.
+# Peek-and-splice
+# Decide whether to bump or splice the connection based on
+# Client-to-squid and server-to-squid ssl hello messages.
+# Xxx: remove.
+# None
+# Same as the "splice" action.
+# All ssl_bump rules are evaluated at each of the supported bumping
+# Steps.  rules with actions that are impossible at the current step are
+# Ignored. the first matching ssl_bump action wins and is applied at the
+# End of the current step. if no rules match, the splice action is used.
+# See the at_step acl for a list of the supported sslbump steps.
+# This clause supports both fast and slow acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
+# See also: http_port ssl-bump, https_port ssl-bump, and acl at_step.
+#    # Example: bump all tls connections except those originating from
+#    # Localhost or those going to example.com.
+# Acl broken_sites ssl::server_name .example.com
+# Ssl_bump splice localhost
+# Ssl_bump splice broken_sites
+# Ssl_bump bump all
 #Default:
-# Become a TCP tunnel without decrypting proxied traffic.
+# Become a tcp tunnel without decrypting proxied traffic.
 
-#  TAG: sslproxy_cert_error
-# Note: This option is only available if Squid is rebuilt with the
-#       --with-openssl
-#
-#    Use this ACL to bypass server certificate validation errors.
-#
-#    For example, the following lines will bypass all validation errors
-#    when talking to servers for example.com. All other
-#    validation errors will result in ERR_SECURE_CONNECT_FAIL error.
-#
-#        acl BrokenButTrustedServers dstdomain example.com
-#        sslproxy_cert_error allow BrokenButTrustedServers
-#        sslproxy_cert_error deny all
-#
-#    This clause only supports fast acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
-#    Using slow acl types may result in server crashes
-#
-#    Without this option, all server certificate validation errors
-#    terminate the transaction to protect Squid and the client.
-#
-#    squid_X509_V_ERR_INFINITE_VALIDATION error cannot be bypassed
-#    but should not happen unless your OpenSSL library is buggy.
-#
-#    SECURITY WARNING:
-#        Bypassing validation errors is dangerous because an
-#        error usually implies that the server cannot be trusted
-#        and the connection may be insecure.
-#
-#    See also: sslproxy_flags and DONT_VERIFY_PEER.
+# Tag: sslproxy_cert_error
+# Note: this option is only available if squid is rebuilt with the
+#       --With-openssl
+# Use this acl to bypass server certificate validation errors.
+# For example, the following lines will bypass all validation errors
+# When talking to servers for example.com. all other
+# Validation errors will result in err_secure_connect_fail error.
+# Acl brokenbuttrustedservers dstdomain example.com
+# Sslproxy_cert_error allow brokenbuttrustedservers
+# Sslproxy_cert_error deny all
+# This clause only supports fast acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
+# Using slow acl types may result in server crashes
+# Without this option, all server certificate validation errors
+# Terminate the transaction to protect squid and the client.
+# Squid_x509_v_err_infinite_validation error cannot be bypassed
+# But should not happen unless your openssl library is buggy.
+# Security warning:
+# Bypassing validation errors is dangerous because an
+# Error usually implies that the server cannot be trusted
+# And the connection may be insecure.
+# See also: sslproxy_flags and dont_verify_peer.
 #Default:
 # Server certificate errors terminate the transaction.
 
-#  TAG: sslproxy_cert_sign
-# Note: This option is only available if Squid is rebuilt with the
-#       --with-openssl
-#
-#
-#        sslproxy_cert_sign <signing algorithm> acl ...
-#
-#        The following certificate signing algorithms are supported:
-#
-#       signTrusted
-#        Sign using the configured CA certificate which is usually
-#        placed in and trusted by end-user browsers. This is the
-#        default for trusted origin server certificates.
-#
-#       signUntrusted
-#        Sign to guarantee an X509_V_ERR_CERT_UNTRUSTED browser error.
-#        This is the default for untrusted origin server certificates
-#        that are not self-signed (see ssl::certUntrusted).
-#
-#       signSelf
-#        Sign using a self-signed certificate with the right CN to
-#        generate a X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT error in the
-#        browser. This is the default for self-signed origin server
-#        certificates (see ssl::certSelfSigned).
-#
-#    This clause only supports fast acl types.
-#
-#    When sslproxy_cert_sign acl(s) match, Squid uses the corresponding
-#    signing algorithm to generate the certificate and ignores all
-#    subsequent sslproxy_cert_sign options (the first match wins). If no
-#    acl(s) match, the default signing algorithm is determined by errors
-#    detected when obtaining and validating the origin server certificate.
-#
-#    WARNING: squid_X509_V_ERR_DOMAIN_MISMATCH and ssl:certDomainMismatch can
-#    be used with sslproxy_cert_adapt, but if and only if Squid is bumping a
-#    CONNECT request that carries a domain name. In all other cases (CONNECT
-#    to an IP address or an intercepted SSL connection), Squid cannot detect
-#    the domain mismatch at certificate generation time when
-#    bump-server-first is used.
+# Tag: sslproxy_cert_sign
+# Note: this option is only available if squid is rebuilt with the
+#       --With-openssl
+# Sslproxy_cert_sign <signing algorithm> acl ...
+# The following certificate signing algorithms are supported:
+# Signtrusted
+# Sign using the configured ca certificate which is usually
+# Placed in and trusted by end-user browsers. this is the
+# Default for trusted origin server certificates.
+# Signuntrusted
+# Sign to guarantee an x509_v_err_cert_untrusted browser error.
+# This is the default for untrusted origin server certificates
+# That are not self-signed (see ssl::certuntrusted).
+# Signself
+# Sign using a self-signed certificate with the right cn to
+# Generate a x509_v_err_depth_zero_self_signed_cert error in the
+# Browser. this is the default for self-signed origin server
+# Certificates (see ssl::certselfsigned).
+# This clause only supports fast acl types.
+# When sslproxy_cert_sign acl(s) match, squid uses the corresponding
+# Signing algorithm to generate the certificate and ignores all
+# Subsequent sslproxy_cert_sign options (the first match wins). if no
+# Acl(s) match, the default signing algorithm is determined by errors
+# Detected when obtaining and validating the origin server certificate.
+# Warning: squid_x509_v_err_domain_mismatch and ssl:certdomainmismatch can
+# Be used with sslproxy_cert_adapt, but if and only if squid is bumping a
+# Connect request that carries a domain name. in all other cases (connect
+# To an ip address or an intercepted ssl connection), squid cannot detect
+# The domain mismatch at certificate generation time when
+# Bump-server-first is used.
 #Default:
-# none
+# None
 
-#  TAG: sslproxy_cert_adapt
-# Note: This option is only available if Squid is rebuilt with the
-#       --with-openssl
-#
-#
-#    sslproxy_cert_adapt <adaptation algorithm> acl ...
-#
-#    The following certificate adaptation algorithms are supported:
-#
-#       setValidAfter
-#        Sets the "Not After" property to the "Not After" property of
-#        the CA certificate used to sign generated certificates.
-#
-#       setValidBefore
-#        Sets the "Not Before" property to the "Not Before" property of
-#        the CA certificate used to sign generated certificates.
-#
-#       setCommonName or setCommonName{CN}
-#        Sets Subject.CN property to the host name specified as a
-#        CN parameter or, if no explicit CN parameter was specified,
-#        extracted from the CONNECT request. It is a misconfiguration
-#        to use setCommonName without an explicit parameter for
-#        intercepted or tproxied SSL connections.
-#
-#    This clause only supports fast acl types.
-#
-#    Squid first groups sslproxy_cert_adapt options by adaptation algorithm.
-#    Within a group, when sslproxy_cert_adapt acl(s) match, Squid uses the
-#    corresponding adaptation algorithm to generate the certificate and
-#    ignores all subsequent sslproxy_cert_adapt options in that algorithm's
-#    group (i.e., the first match wins within each algorithm group). If no
-#    acl(s) match, the default mimicking action takes place.
-#
-#    WARNING: squid_X509_V_ERR_DOMAIN_MISMATCH and ssl:certDomainMismatch can
-#    be used with sslproxy_cert_adapt, but if and only if Squid is bumping a
-#    CONNECT request that carries a domain name. In all other cases (CONNECT
-#    to an IP address or an intercepted SSL connection), Squid cannot detect
-#    the domain mismatch at certificate generation time when
-#    bump-server-first is used.
+# Tag: sslproxy_cert_adapt
+# Note: this option is only available if squid is rebuilt with the
+#       --With-openssl
+# Sslproxy_cert_adapt <adaptation algorithm> acl ...
+# The following certificate adaptation algorithms are supported:
+# Setvalidafter
+# Sets the "not after" property to the "not after" property of
+# The ca certificate used to sign generated certificates.
+# Setvalidbefore
+# Sets the "not before" property to the "not before" property of
+# The ca certificate used to sign generated certificates.
+# Setcommonname or setcommonname{cn}
+# Sets subject.cn property to the host name specified as a
+# Cn parameter or, if no explicit cn parameter was specified,
+# Extracted from the connect request. it is a misconfiguration
+# To use setcommonname without an explicit parameter for
+# Intercepted or tproxied ssl connections.
+# This clause only supports fast acl types.
+# Squid first groups sslproxy_cert_adapt options by adaptation algorithm.
+# Within a group, when sslproxy_cert_adapt acl(s) match, squid uses the
+# Corresponding adaptation algorithm to generate the certificate and
+# Ignores all subsequent sslproxy_cert_adapt options in that algorithm's
+# Group (i.e., the first match wins within each algorithm group). if no
+# Acl(s) match, the default mimicking action takes place.
+# Warning: squid_x509_v_err_domain_mismatch and ssl:certdomainmismatch can
+# Be used with sslproxy_cert_adapt, but if and only if squid is bumping a
+# Connect request that carries a domain name. in all other cases (connect
+# To an ip address or an intercepted ssl connection), squid cannot detect
+# The domain mismatch at certificate generation time when
+# Bump-server-first is used.
 #Default:
-# none
+# None
 
-#  TAG: sslpassword_program
-# Note: This option is only available if Squid is rebuilt with the
-#       --with-openssl
-#
-#    Specify a program used for entering SSL key passphrases
-#    when using encrypted SSL certificate keys. If not specified
-#    keys must either be unencrypted, or Squid started with the -N
-#    option to allow it to query interactively for the passphrase.
-#
-#    The key file name is given as argument to the program allowing
-#    selection of the right password if you have multiple encrypted
-#    keys.
+# Tag: sslpassword_program
+# Note: this option is only available if squid is rebuilt with the
+#       --With-openssl
+# Specify a program used for entering ssl key passphrases
+# When using encrypted ssl certificate keys. if not specified
+# Keys must either be unencrypted, or squid started with the -n
+# Option to allow it to query interactively for the passphrase.
+# The key file name is given as argument to the program allowing
+# Selection of the right password if you have multiple encrypted
+# Keys.
 #Default:
-# none
+# None
 
-# OPTIONS RELATING TO EXTERNAL SSL_CRTD
+# Options relating to external ssl_crtd
 # -----------------------------------------------------------------------------
 
-#  TAG: sslcrtd_program
-# Note: This option is only available if Squid is rebuilt with the
-#       --enable-ssl-crtd
-#
-#    Specify the location and options of the executable for certificate
-#    generator.
-#
-#    /usr/lib/squid/security_file_certgen program can use a disk cache to improve response
-#    times on repeated requests. To enable caching, specify -s and -M
-#    parameters. If those parameters are not given, the program generates
-#    a new certificate on every request.
-#
-#    For more information use:
-#        /usr/lib/squid/security_file_certgen -h
+# Tag: sslcrtd_program
+# Note: this option is only available if squid is rebuilt with the
+#       --Enable-ssl-crtd
+# Specify the location and options of the executable for certificate
+# Generator.
+# /Usr/lib/squid/security_file_certgen program can use a disk cache to improve response
+# Times on repeated requests. to enable caching, specify -s and -m
+# Parameters. if those parameters are not given, the program generates
+# A new certificate on every request.
+# For more information use:
+#        /Usr/lib/squid/security_file_certgen -h
 #Default:
-# sslcrtd_program /usr/lib/squid/security_file_certgen -s /var/spool/squid/ssl_db -M 4MB
+# Sslcrtd_program /usr/lib/squid/security_file_certgen -s /var/spool/squid/ssl_db -m 4mb
 
-#  TAG: sslcrtd_children
-# Note: This option is only available if Squid is rebuilt with the
-#       --enable-ssl-crtd
-#
-#    Specifies the maximum number of certificate generation processes that
-#    Squid may spawn (numberofchildren) and several related options. Using
-#    too few of these helper processes (a.k.a. "helpers") creates request
-#    queues. Using too many helpers wastes your system resources. Squid
-#    does not support spawning more than 32 helpers.
-#
-#    Usage: numberofchildren [option]...
-#
-#    The startup= and idle= options allow some measure of skew in your
-#    tuning.
-#
-#        startup=N
-#
-#    Sets the minimum number of processes to spawn when Squid
-#    starts or reconfigures. When set to zero the first request will
-#    cause spawning of the first child process to handle it.
-#
-#    Starting too few children temporary slows Squid under load while it
-#    tries to spawn enough additional processes to cope with traffic.
-#
-#        idle=N
-#
-#    Sets a minimum of how many processes Squid is to try and keep available
-#    at all times. When traffic begins to rise above what the existing
-#    processes can handle this many more will be spawned up to the maximum
-#    configured. A minimum setting of 1 is required.
-#
-#        queue-size=N
-#
-#    Sets the maximum number of queued requests. A request is queued when
-#    no existing child is idle and no new child can be started due to
-#    numberofchildren limit. If the queued requests exceed queue size for
-#    more than 3 minutes squid aborts its operation. The default value is
-#    set to 2*numberofchildren.
-#
-#    You must have at least one ssl_crtd process.
+# Tag: sslcrtd_children
+# Note: this option is only available if squid is rebuilt with the
+#       --Enable-ssl-crtd
+# Specifies the maximum number of certificate generation processes that
+# Squid may spawn (numberofchildren) and several related options. using
+# Too few of these helper processes (a.k.a. "helpers") creates request
+# Queues. using too many helpers wastes your system resources. squid
+# Does not support spawning more than 32 helpers.
+# Usage: numberofchildren [option]...
+# The startup= and idle= options allow some measure of skew in your
+# Tuning.
+# Startup=n
+# Sets the minimum number of processes to spawn when squid
+# Starts or reconfigures. when set to zero the first request will
+# Cause spawning of the first child process to handle it.
+# Starting too few children temporary slows squid under load while it
+# Tries to spawn enough additional processes to cope with traffic.
+# Idle=n
+# Sets a minimum of how many processes squid is to try and keep available
+# At all times. when traffic begins to rise above what the existing
+# Processes can handle this many more will be spawned up to the maximum
+# Configured. a minimum setting of 1 is required.
+# Queue-size=n
+# Sets the maximum number of queued requests. a request is queued when
+# No existing child is idle and no new child can be started due to
+# Numberofchildren limit. if the queued requests exceed queue size for
+# More than 3 minutes squid aborts its operation. the default value is
+# Set to 2*numberofchildren.
+# You must have at least one ssl_crtd process.
 #Default:
-# sslcrtd_children 32 startup=5 idle=1
+# Sslcrtd_children 32 startup=5 idle=1
 
-#  TAG: sslcrtvalidator_program
-# Note: This option is only available if Squid is rebuilt with the
-#       --with-openssl
-#
-#    Specify the location and options of the executable for ssl_crt_validator
-#    process.
-#
-#    Usage:  sslcrtvalidator_program [ttl=n] [cache=n] path ...
-#
-#    Options:
-#      ttl=n         TTL in seconds for cached results. The default is 60 secs
-#      cache=n       limit the result cache size. The default value is 2048
+# Tag: sslcrtvalidator_program
+# Note: this option is only available if squid is rebuilt with the
+#       --With-openssl
+# Specify the location and options of the executable for ssl_crt_validator
+# Process.
+# Usage:  sslcrtvalidator_program [ttl=n] [cache=n] path ...
+# Options:
+# Ttl=n         ttl in seconds for cached results. the default is 60 secs
+# Cache=n       limit the result cache size. the default value is 2048
 #Default:
-# none
+# None
 
-#  TAG: sslcrtvalidator_children
-# Note: This option is only available if Squid is rebuilt with the
-#       --with-openssl
-#
-#    Specifies the maximum number of certificate validation processes that
-#    Squid may spawn (numberofchildren) and several related options. Using
-#    too few of these helper processes (a.k.a. "helpers") creates request
-#    queues. Using too many helpers wastes your system resources. Squid
-#    does not support spawning more than 32 helpers.
-#
-#    Usage: numberofchildren [option]...
-#
-#    The startup= and idle= options allow some measure of skew in your
-#    tuning.
-#
-#        startup=N
-#
-#    Sets the minimum number of processes to spawn when Squid
-#    starts or reconfigures. When set to zero the first request will
-#    cause spawning of the first child process to handle it.
-#
-#    Starting too few children temporary slows Squid under load while it
-#    tries to spawn enough additional processes to cope with traffic.
-#
-#        idle=N
-#
-#    Sets a minimum of how many processes Squid is to try and keep available
-#    at all times. When traffic begins to rise above what the existing
-#    processes can handle this many more will be spawned up to the maximum
-#    configured. A minimum setting of 1 is required.
-#
-#        concurrency=
-#
-#    The number of requests each certificate validator helper can handle in
-#    parallel. A value of 0 indicates the certficate validator does not
-#    support concurrency. Defaults to 1.
-#
-#    When this directive is set to a value >= 1 then the protocol
-#    used to communicate with the helper is modified to include
-#    a request ID in front of the request/response. The request
-#    ID from the request must be echoed back with the response
-#    to that request.
-#
-#        queue-size=N
-#
-#    Sets the maximum number of queued requests. A request is queued when
-#    no existing child can accept it due to concurrency limit and no new
-#    child can be started due to numberofchildren limit. If the queued
-#    requests exceed queue size for more than 3 minutes squid aborts its
-#    operation. The default value is set to 2*numberofchildren.
-#
-#    You must have at least one ssl_crt_validator process.
+# Tag: sslcrtvalidator_children
+# Note: this option is only available if squid is rebuilt with the
+#       --With-openssl
+# Specifies the maximum number of certificate validation processes that
+# Squid may spawn (numberofchildren) and several related options. using
+# Too few of these helper processes (a.k.a. "helpers") creates request
+# Queues. using too many helpers wastes your system resources. squid
+# Does not support spawning more than 32 helpers.
+# Usage: numberofchildren [option]...
+# The startup= and idle= options allow some measure of skew in your
+# Tuning.
+# Startup=n
+# Sets the minimum number of processes to spawn when squid
+# Starts or reconfigures. when set to zero the first request will
+# Cause spawning of the first child process to handle it.
+# Starting too few children temporary slows squid under load while it
+# Tries to spawn enough additional processes to cope with traffic.
+# Idle=n
+# Sets a minimum of how many processes squid is to try and keep available
+# At all times. when traffic begins to rise above what the existing
+# Processes can handle this many more will be spawned up to the maximum
+# Configured. a minimum setting of 1 is required.
+# Concurrency=
+# The number of requests each certificate validator helper can handle in
+# Parallel. a value of 0 indicates the certficate validator does not
+# Support concurrency. defaults to 1.
+# When this directive is set to a value >= 1 then the protocol
+# Used to communicate with the helper is modified to include
+# A request id in front of the request/response. the request
+# Id from the request must be echoed back with the response
+# To that request.
+# Queue-size=n
+# Sets the maximum number of queued requests. a request is queued when
+# No existing child can accept it due to concurrency limit and no new
+# Child can be started due to numberofchildren limit. if the queued
+# Requests exceed queue size for more than 3 minutes squid aborts its
+# Operation. the default value is set to 2*numberofchildren.
+# You must have at least one ssl_crt_validator process.
 #Default:
-# sslcrtvalidator_children 32 startup=5 idle=1 concurrency=1
+# Sslcrtvalidator_children 32 startup=5 idle=1 concurrency=1
 
-# OPTIONS WHICH AFFECT THE NEIGHBOR SELECTION ALGORITHM
+# Options which affect the neighbor selection algorithm
 # -----------------------------------------------------------------------------
 
-#  TAG: cache_peer
-#    To specify other caches in a hierarchy, use the format:
-#
-#        cache_peer hostname type http-port icp-port [options]
-#
-#    For example,
-#
-#    #                                        proxy  icp
-#    #          hostname             type     port   port  options
+# Tag: cache_peer
+# To specify other caches in a hierarchy, use the format:
+# Cache_peer hostname type http-port icp-port [options]
+# For example,
+# #                                        Proxy  icp
+#    #          Hostname             type     port   port  options
 #    #          -------------------- -------- ----- -----  -----------
-#    cache_peer parent.foo.net       parent    3128  3130  default
-#    cache_peer sib1.foo.net         sibling   3128  3130  proxy-only
-#    cache_peer sib2.foo.net         sibling   3128  3130  proxy-only
-#    cache_peer example.com          parent    80       0  default
-#    cache_peer cdn.example.com      sibling   3128     0
-#
-#          type:    either 'parent', 'sibling', or 'multicast'.
-#
-#    proxy-port:    The port number where the peer accept HTTP requests.
-#            For other Squid proxies this is usually 3128
-#            For web servers this is usually 80
-#
-#      icp-port:    Used for querying neighbor caches about objects.
-#            Set to 0 if the peer does not support ICP or HTCP.
-#            See ICP and HTCP options below for additional details.
-#
-#
-#    ==== ICP OPTIONS ====
-#
-#    You MUST also set icp_port and icp_access explicitly when using these options.
-#    The defaults will prevent peer traffic using ICP.
-#
-#
-#    no-query    Disable ICP queries to this neighbor.
-#
-#    multicast-responder
-#            Indicates the named peer is a member of a multicast group.
-#            ICP queries will not be sent directly to the peer, but ICP
-#            replies will be accepted from it.
-#
-#    closest-only    Indicates that, for ICP_OP_MISS replies, we'll only forward
-#            CLOSEST_PARENT_MISSes and never FIRST_PARENT_MISSes.
-#
-#    background-ping
-#            To only send ICP queries to this neighbor infrequently.
-#            This is used to keep the neighbor round trip time updated
-#            and is usually used in conjunction with weighted-round-robin.
-#
-#
-#    ==== HTCP OPTIONS ====
-#
-#    You MUST also set htcp_port and htcp_access explicitly when using these options.
-#    The defaults will prevent peer traffic using HTCP.
-#
-#
-#    htcp        Send HTCP, instead of ICP, queries to the neighbor.
-#            You probably also want to set the "icp-port" to 4827
-#            instead of 3130. This directive accepts a comma separated
-#            list of options described below.
-#
-#    htcp=oldsquid    Send HTCP to old Squid versions (2.5 or earlier).
-#
-#    htcp=no-clr    Send HTCP to the neighbor but without
-#            sending any CLR requests.  This cannot be used with
-#            only-clr.
-#
-#    htcp=only-clr    Send HTCP to the neighbor but ONLY CLR requests.
-#            This cannot be used with no-clr.
-#
-#    htcp=no-purge-clr
-#            Send HTCP to the neighbor including CLRs but only when
-#            they do not result from PURGE requests.
-#
-#    htcp=forward-clr
-#            Forward any HTCP CLR requests this proxy receives to the peer.
-#
-#
-#    ==== PEER SELECTION METHODS ====
-#
-#    The default peer selection method is ICP, with the first responding peer
-#    being used as source. These options can be used for better load balancing.
-#
-#
-#    default        This is a parent cache which can be used as a "last-resort"
-#            if a peer cannot be located by any of the peer-selection methods.
-#            If specified more than once, only the first is used.
-#
-#    round-robin    Load-Balance parents which should be used in a round-robin
-#            fashion in the absence of any ICP queries.
-#            weight=N can be used to add bias.
-#
-#    weighted-round-robin
-#            Load-Balance parents which should be used in a round-robin
-#            fashion with the frequency of each parent being based on the
-#            round trip time. Closer parents are used more often.
-#            Usually used for background-ping parents.
-#            weight=N can be used to add bias.
-#
-#    carp        Load-Balance parents which should be used as a CARP array.
-#            The requests will be distributed among the parents based on the
-#            CARP load balancing hash function based on their weight.
-#
-#    userhash    Load-balance parents based on the client proxy_auth or ident username.
-#
-#    sourcehash    Load-balance parents based on the client source IP.
-#
-#    multicast-siblings
-#            To be used only for cache peers of type "multicast".
-#            ALL members of this multicast group have "sibling"
-#            relationship with it, not "parent".  This is to a multicast
-#            group when the requested object would be fetched only from
-#            a "parent" cache, anyway.  It's useful, e.g., when
-#            configuring a pool of redundant Squid proxies, being
-#            members of the same multicast group.
-#
-#
-#    ==== PEER SELECTION OPTIONS ====
-#
-#    weight=N    use to affect the selection of a peer during any weighted
-#            peer-selection mechanisms.
-#            The weight must be an integer; default is 1,
-#            larger weights are favored more.
-#            This option does not affect parent selection if a peering
-#            protocol is not in use.
-#
-#    basetime=N    Specify a base amount to be subtracted from round trip
-#            times of parents.
-#            It is subtracted before division by weight in calculating
-#            which parent to fectch from. If the rtt is less than the
-#            base time the rtt is set to a minimal value.
-#
-#    ttl=N        Specify a TTL to use when sending multicast ICP queries
-#            to this address.
-#            Only useful when sending to a multicast group.
-#            Because we don't accept ICP replies from random
-#            hosts, you must configure other group members as
-#            peers with the 'multicast-responder' option.
-#
-#    no-delay    To prevent access to this neighbor from influencing the
-#            delay pools.
-#
-#    digest-url=URL    Tell Squid to fetch the cache digest (if digests are
-#            enabled) for this host from the specified URL rather
-#            than the Squid default location.
-#
-#
-#    ==== CARP OPTIONS ====
-#
-#    carp-key=key-specification
-#            use a different key than the full URL to hash against the peer.
-#            the key-specification is a comma-separated list of the keywords
-#            scheme, host, port, path, params
-#            Order is not important.
-#
-#    ==== ACCELERATOR / REVERSE-PROXY OPTIONS ====
-#
-#    originserver    Causes this parent to be contacted as an origin server.
-#            Meant to be used in accelerator setups when the peer
-#            is a web server.
-#
-#    forceddomain=name
-#            Set the Host header of requests forwarded to this peer.
-#            Useful in accelerator setups where the server (peer)
-#            expects a certain domain name but clients may request
-#            others. ie example.com or www.example.com
-#
-#    no-digest    Disable request of cache digests.
-#
-#    no-netdb-exchange
-#            Disables requesting ICMP RTT database (NetDB).
-#
-#
-#    ==== AUTHENTICATION OPTIONS ====
-#
-#    login=user:password
-#            If this is a personal/workgroup proxy and your parent
-#            requires proxy authentication.
-#
-#            Note: The string can include URL escapes (i.e. %20 for
-#            spaces). This also means % must be written as %%.
-#
-#    login=PASSTHRU
-#            Send login details received from client to this peer.
-#            Both Proxy- and WWW-Authorization headers are passed
-#            without alteration to the peer.
-#            Authentication is not required by Squid for this to work.
-#
-#            Note: This will pass any form of authentication but
-#            only Basic auth will work through a proxy unless the
-#            connection-auth options are also used.
-#
-#    login=PASS    Send login details received from client to this peer.
-#            Authentication is not required by this option.
-#
-#            If there are no client-provided authentication headers
-#            to pass on, but username and password are available
-#            from an external ACL user= and password= result tags
-#            they may be sent instead.
-#
-#            Note: To combine this with proxy_auth both proxies must
-#            share the same user database as HTTP only allows for
-#            a single login (one for proxy, one for origin server).
-#            Also be warned this will expose your users proxy
-#            password to the peer. USE WITH CAUTION
-#
-#    login=*:password
-#            Send the username to the upstream cache, but with a
-#            fixed password. This is meant to be used when the peer
-#            is in another administrative domain, but it is still
-#            needed to identify each user.
-#            The star can optionally be followed by some extra
-#            information which is added to the username. This can
-#            be used to identify this proxy to the peer, similar to
-#            the login=username:password option above.
-#
-#    login=NEGOTIATE
-#            If this is a personal/workgroup proxy and your parent
-#            requires a secure proxy authentication.
-#            The first principal from the default keytab or defined by
-#            the environment variable KRB5_KTNAME will be used.
-#
-#            WARNING: The connection may transmit requests from multiple
-#            clients. Negotiate often assumes end-to-end authentication
-#            and a single-client. Which is not strictly true here.
-#
-#    login=NEGOTIATE:principal_name
-#            If this is a personal/workgroup proxy and your parent
-#            requires a secure proxy authentication.
-#            The principal principal_name from the default keytab or
-#            defined by the environment variable KRB5_KTNAME will be
-#            used.
-#
-#            WARNING: The connection may transmit requests from multiple
-#            clients. Negotiate often assumes end-to-end authentication
-#            and a single-client. Which is not strictly true here.
-#
-#    connection-auth=on|off
-#            Tell Squid that this peer does or not support Microsoft
-#            connection oriented authentication, and any such
-#            challenges received from there should be ignored.
-#            Default is auto to automatically determine the status
-#            of the peer.
-#
-#    auth-no-keytab
-#            Do not use a keytab to authenticate to a peer when
-#            login=NEGOTIATE is specified. Let the GSSAPI
-#            implementation determine which already existing
-#            credentials cache to use instead.
-#
-#
-#    ==== SSL / HTTPS / TLS OPTIONS ====
-#
-#    tls        Encrypt connections to this peer with TLS.
-#
-#    sslcert=/path/to/ssl/certificate
-#            A client X.509 certificate to use when connecting to
-#            this peer.
-#
-#    sslkey=/path/to/ssl/key
-#            The private key corresponding to sslcert above.
-#
-#            If sslkey= is not specified sslcert= is assumed to
-#            reference a PEM file containing both the certificate
-#            and private key.
-#
-#    Notes:
-#
-#    On Debian/Ubuntu systems a default snakeoil certificate is
-#    available in /etc/ssl and users can set:
-#
-#        sslcert=/etc/ssl/certs/ssl-cert-snakeoil.pem
-#
-#    and
-#
-#        sslkey=/etc/ssl/private/ssl-cert-snakeoil.key
-#
-#    for testing.
-#
-#    sslcipher=...    The list of valid SSL ciphers to use when connecting
-#            to this peer.
-#
-#    tls-min-version=1.N
-#            The minimum TLS protocol version to permit. To control
-#            SSLv3 use the tls-options= parameter.
-#            Supported Values: 1.0 (default), 1.1, 1.2
-#
-#    tls-options=...    Specify various TLS implementation options.
-#
-#            OpenSSL options most important are:
-#
-#                NO_SSLv3    Disallow the use of SSLv3
-#
-#                SINGLE_DH_USE
-#                      Always create a new key when using
-#                      temporary/ephemeral DH key exchanges
-#
-#                NO_TICKET
-#                      Disable use of RFC5077 session tickets.
-#                      Some servers may have problems
-#                      understanding the TLS extension due
-#                      to ambiguous specification in RFC4507.
-#
-#                ALL       Enable various bug workarounds
-#                      suggested as "harmless" by OpenSSL
-#                      Be warned that this reduces SSL/TLS
-#                      strength to some attacks.
-#
-#            See the OpenSSL SSL_CTX_set_options documentation for a
-#            more complete list.
-#
-#            GnuTLS options most important are:
-#
-#                %NO_TICKETS
-#                      Disable use of RFC5077 session tickets.
-#                      Some servers may have problems
-#                      understanding the TLS extension due
-#                      to ambiguous specification in RFC4507.
-#
-#                See the GnuTLS Priority Strings documentation
-#                for a more complete list.
-#                http://www.gnutls.org/manual/gnutls.html#Priority-Strings
-#
-#    tls-cafile=    PEM file containing CA certificates to use when verifying
-#            the peer certificate. May be repeated to load multiple files.
-#
-#    sslcapath=...    A directory containing additional CA certificates to
-#            use when verifying the peer certificate.
-#            Requires OpenSSL or LibreSSL.
-#
-#    sslcrlfile=...     A certificate revocation list file to use when
-#            verifying the peer certificate.
-#
-#    sslflags=...    Specify various flags modifying the SSL implementation:
-#
-#            DONT_VERIFY_PEER
-#                Accept certificates even if they fail to
-#                verify.
-#
-#            DONT_VERIFY_DOMAIN
-#                Don't verify the peer certificate
-#                matches the server name
-#
-#    ssldomain=     The peer name as advertised in it's certificate.
-#            Used for verifying the correctness of the received peer
-#            certificate. If not specified the peer hostname will be
-#            used.
-#
-#    front-end-https[=off|on|auto]
-#            Enable the "Front-End-Https: On" header needed when
-#            using Squid as a SSL frontend in front of Microsoft OWA.
-#            See MS KB document Q307347 for details on this header.
-#            If set to auto the header will only be added if the
-#            request is forwarded as a https:// URL.
-#
-#    tls-default-ca[=off]
-#            Whether to use the system Trusted CAs. Default is ON.
-#
-#    tls-no-npn    Do not use the TLS NPN extension to advertise HTTP/1.1.
-#
-#    ==== GENERAL OPTIONS ====
-#
-#    connect-timeout=N
-#            A peer-specific connect timeout.
-#            Also see the peer_connect_timeout directive.
-#
-#    connect-fail-limit=N
-#            How many times connecting to a peer must fail before
-#            it is marked as down. Standby connection failures
-#            count towards this limit. Default is 10.
-#
-#    allow-miss    Disable Squid's use of only-if-cached when forwarding
-#            requests to siblings. This is primarily useful when
-#            icp_hit_stale is used by the sibling. Excessive use
-#            of this option may result in forwarding loops. One way
-#            to prevent peering loops when using this option, is to
-#            deny cache peer usage on requests from a peer:
-#            acl fromPeer ...
-#            cache_peer_access peerName deny fromPeer
-#
-#    max-conn=N     Limit the number of concurrent connections the Squid
-#            may open to this peer, including already opened idle
-#            and standby connections. There is no peer-specific
-#            connection limit by default.
-#
-#            A peer exceeding the limit is not used for new
-#            requests unless a standby connection is available.
-#
-#            max-conn currently works poorly with idle persistent
-#            connections: When a peer reaches its max-conn limit,
-#            and there are idle persistent connections to the peer,
-#            the peer may not be selected because the limiting code
-#            does not know whether Squid can reuse those idle
-#            connections.
-#
-#    standby=N    Maintain a pool of N "hot standby" connections to an
-#            UP peer, available for requests when no idle
-#            persistent connection is available (or safe) to use.
-#            By default and with zero N, no such pool is maintained.
-#            N must not exceed the max-conn limit (if any).
-#
-#            At start or after reconfiguration, Squid opens new TCP
-#            standby connections until there are N connections
-#            available and then replenishes the standby pool as
-#            opened connections are used up for requests. A used
-#            connection never goes back to the standby pool, but
-#            may go to the regular idle persistent connection pool
-#            shared by all peers and origin servers.
-#
-#            Squid never opens multiple new standby connections
-#            concurrently.  This one-at-a-time approach minimizes
-#            flooding-like effect on peers. Furthermore, just a few
-#            standby connections should be sufficient in most cases
-#            to supply most new requests with a ready-to-use
-#            connection.
-#
-#            Standby connections obey server_idle_pconn_timeout.
-#            For the feature to work as intended, the peer must be
-#            configured to accept and keep them open longer than
-#            the idle timeout at the connecting Squid, to minimize
-#            race conditions typical to idle used persistent
-#            connections. Default request_timeout and
-#            server_idle_pconn_timeout values ensure such a
-#            configuration.
-#
-#    name=xxx    Unique name for the peer.
-#            Required if you have multiple peers on the same host
-#            but different ports.
-#            This name can be used in cache_peer_access and similar
-#            directives to identify the peer.
-#            Can be used by outgoing access controls through the
-#            peername ACL type.
-#
-#    no-tproxy    Do not use the client-spoof TPROXY support when forwarding
-#            requests to this peer. Use normal address selection instead.
-#            This overrides the spoof_client_ip ACL.
-#
-#    proxy-only    objects fetched from the peer will not be stored locally.
-#
+# Cache_peer parent.foo.net       parent    3128  3130  default
+# Cache_peer sib1.foo.net         sibling   3128  3130  proxy-only
+# Cache_peer sib2.foo.net         sibling   3128  3130  proxy-only
+# Cache_peer example.com          parent    80       0  default
+# Cache_peer cdn.example.com      sibling   3128     0
+# Type:    either 'parent', 'sibling', or 'multicast'.
+# Proxy-port:    the port number where the peer accept http requests.
+# For other squid proxies this is usually 3128
+# For web servers this is usually 80
+# Icp-port:    used for querying neighbor caches about objects.
+# Set to 0 if the peer does not support icp or htcp.
+# See icp and htcp options below for additional details.
+#    ==== Icp options ====
+# You must also set icp_port and icp_access explicitly when using these options.
+# The defaults will prevent peer traffic using icp.
+# No-query    disable icp queries to this neighbor.
+# Multicast-responder
+# Indicates the named peer is a member of a multicast group.
+# Icp queries will not be sent directly to the peer, but icp
+# Replies will be accepted from it.
+# Closest-only    indicates that, for icp_op_miss replies, we'll only forward
+# Closest_parent_misses and never first_parent_misses.
+# Background-ping
+# To only send icp queries to this neighbor infrequently.
+# This is used to keep the neighbor round trip time updated
+# And is usually used in conjunction with weighted-round-robin.
+#    ==== Htcp options ====
+# You must also set htcp_port and htcp_access explicitly when using these options.
+# The defaults will prevent peer traffic using htcp.
+# Htcp        send htcp, instead of icp, queries to the neighbor.
+# You probably also want to set the "icp-port" to 4827
+# Instead of 3130. this directive accepts a comma separated
+# List of options described below.
+# Htcp=oldsquid    send htcp to old squid versions (2.5 or earlier).
+# Htcp=no-clr    send htcp to the neighbor but without
+# Sending any clr requests.  this cannot be used with
+# Only-clr.
+# Htcp=only-clr    send htcp to the neighbor but only clr requests.
+# This cannot be used with no-clr.
+# Htcp=no-purge-clr
+# Send htcp to the neighbor including clrs but only when
+# They do not result from purge requests.
+# Htcp=forward-clr
+# Forward any htcp clr requests this proxy receives to the peer.
+#    ==== Peer selection methods ====
+# The default peer selection method is icp, with the first responding peer
+# Being used as source. these options can be used for better load balancing.
+# Default        this is a parent cache which can be used as a "last-resort"
+# If a peer cannot be located by any of the peer-selection methods.
+# If specified more than once, only the first is used.
+# Round-robin    load-balance parents which should be used in a round-robin
+# Fashion in the absence of any icp queries.
+# Weight=n can be used to add bias.
+# Weighted-round-robin
+# Load-balance parents which should be used in a round-robin
+# Fashion with the frequency of each parent being based on the
+# Round trip time. closer parents are used more often.
+# Usually used for background-ping parents.
+# Weight=n can be used to add bias.
+# Carp        load-balance parents which should be used as a carp array.
+# The requests will be distributed among the parents based on the
+# Carp load balancing hash function based on their weight.
+# Userhash    load-balance parents based on the client proxy_auth or ident username.
+# Sourcehash    load-balance parents based on the client source ip.
+# Multicast-siblings
+# To be used only for cache peers of type "multicast".
+# All members of this multicast group have "sibling"
+# Relationship with it, not "parent".  this is to a multicast
+# Group when the requested object would be fetched only from
+# A "parent" cache, anyway.  it's useful, e.g., when
+# Configuring a pool of redundant squid proxies, being
+# Members of the same multicast group.
+#    ==== Peer selection options ====
+# Weight=n    use to affect the selection of a peer during any weighted
+# Peer-selection mechanisms.
+# The weight must be an integer; default is 1,
+# Larger weights are favored more.
+# This option does not affect parent selection if a peering
+# Protocol is not in use.
+# Basetime=n    specify a base amount to be subtracted from round trip
+# Times of parents.
+# It is subtracted before division by weight in calculating
+# Which parent to fectch from. if the rtt is less than the
+# Base time the rtt is set to a minimal value.
+# Ttl=n        specify a ttl to use when sending multicast icp queries
+# To this address.
+# Only useful when sending to a multicast group.
+# Because we don't accept icp replies from random
+# Hosts, you must configure other group members as
+# Peers with the 'multicast-responder' option.
+# No-delay    to prevent access to this neighbor from influencing the
+# Delay pools.
+# Digest-url=url    tell squid to fetch the cache digest (if digests are
+# Enabled) for this host from the specified url rather
+# Than the squid default location.
+#    ==== Carp options ====
+# Carp-key=key-specification
+# Use a different key than the full url to hash against the peer.
+# The key-specification is a comma-separated list of the keywords
+# Scheme, host, port, path, params
+# Order is not important.
+# ==== Accelerator / reverse-proxy options ====
+# Originserver    causes this parent to be contacted as an origin server.
+# Meant to be used in accelerator setups when the peer
+# Is a web server.
+# Forceddomain=name
+# Set the host header of requests forwarded to this peer.
+# Useful in accelerator setups where the server (peer)
+# Expects a certain domain name but clients may request
+# Others. ie example.com or www.example.com
+# No-digest    disable request of cache digests.
+# No-netdb-exchange
+# Disables requesting icmp rtt database (netdb).
+#    ==== Authentication options ====
+# Login=user:password
+# If this is a personal/workgroup proxy and your parent
+# Requires proxy authentication.
+# Note: the string can include url escapes (i.e. %20 for
+# Spaces). this also means % must be written as %%.
+# Login=passthru
+# Send login details received from client to this peer.
+# Both proxy- and www-authorization headers are passed
+# Without alteration to the peer.
+# Authentication is not required by squid for this to work.
+# Note: this will pass any form of authentication but
+# Only basic auth will work through a proxy unless the
+# Connection-auth options are also used.
+# Login=pass    send login details received from client to this peer.
+# Authentication is not required by this option.
+# If there are no client-provided authentication headers
+# To pass on, but username and password are available
+# From an external acl user= and password= result tags
+# They may be sent instead.
+# Note: to combine this with proxy_auth both proxies must
+# Share the same user database as http only allows for
+# A single login (one for proxy, one for origin server).
+# Also be warned this will expose your users proxy
+# Password to the peer. use with caution
+# Login=*:password
+# Send the username to the upstream cache, but with a
+# Fixed password. this is meant to be used when the peer
+# Is in another administrative domain, but it is still
+# Needed to identify each user.
+# The star can optionally be followed by some extra
+# Information which is added to the username. this can
+# Be used to identify this proxy to the peer, similar to
+# The login=username:password option above.
+# Login=negotiate
+# If this is a personal/workgroup proxy and your parent
+# Requires a secure proxy authentication.
+# The first principal from the default keytab or defined by
+# The environment variable krb5_ktname will be used.
+# Warning: the connection may transmit requests from multiple
+# Clients. negotiate often assumes end-to-end authentication
+# And a single-client. which is not strictly true here.
+# Login=negotiate:principal_name
+# If this is a personal/workgroup proxy and your parent
+# Requires a secure proxy authentication.
+# The principal principal_name from the default keytab or
+# Defined by the environment variable krb5_ktname will be
+# Used.
+# Warning: the connection may transmit requests from multiple
+# Clients. negotiate often assumes end-to-end authentication
+# And a single-client. which is not strictly true here.
+# Connection-auth=on|off
+# Tell squid that this peer does or not support microsoft
+# Connection oriented authentication, and any such
+# Challenges received from there should be ignored.
+# Default is auto to automatically determine the status
+# Of the peer.
+# Auth-no-keytab
+# Do not use a keytab to authenticate to a peer when
+# Login=negotiate is specified. let the gssapi
+# Implementation determine which already existing
+# Credentials cache to use instead.
+#    ==== Ssl / https / tls options ====
+# Tls        encrypt connections to this peer with tls.
+# Sslcert=/path/to/ssl/certificate
+# A client x.509 certificate to use when connecting to
+# This peer.
+# Sslkey=/path/to/ssl/key
+# The private key corresponding to sslcert above.
+# If sslkey= is not specified sslcert= is assumed to
+# Reference a pem file containing both the certificate
+# And private key.
+# Notes:
+# On debian/ubuntu systems a default snakeoil certificate is
+# Available in /etc/ssl and users can set:
+# Sslcert=/etc/ssl/certs/ssl-cert-snakeoil.pem
+# And
+# Sslkey=/etc/ssl/private/ssl-cert-snakeoil.key
+# For testing.
+# Sslcipher=...    the list of valid ssl ciphers to use when connecting
+# To this peer.
+# Tls-min-version=1.n
+# The minimum tls protocol version to permit. to control
+# Sslv3 use the tls-options= parameter.
+# Supported values: 1.0 (default), 1.1, 1.2
+# Tls-options=...    specify various tls implementation options.
+# Openssl options most important are:
+# No_sslv3    disallow the use of sslv3
+# Single_dh_use
+# Always create a new key when using
+# Temporary/ephemeral dh key exchanges
+# No_ticket
+# Disable use of rfc5077 session tickets.
+# Some servers may have problems
+# Understanding the tls extension due
+# To ambiguous specification in rfc4507.
+# All       enable various bug workarounds
+# Suggested as "harmless" by openssl
+# Be warned that this reduces ssl/tls
+# Strength to some attacks.
+# See the openssl ssl_ctx_set_options documentation for a
+# More complete list.
+# Gnutls options most important are:
+# %No_tickets
+# Disable use of rfc5077 session tickets.
+# Some servers may have problems
+# Understanding the tls extension due
+# To ambiguous specification in rfc4507.
+# See the gnutls priority strings documentation
+# For a more complete list.
+# Http://www.gnutls.org/manual/gnutls.html#priority-strings
+# Tls-cafile=    pem file containing ca certificates to use when verifying
+# The peer certificate. may be repeated to load multiple files.
+# Sslcapath=...    a directory containing additional ca certificates to
+# Use when verifying the peer certificate.
+# Requires openssl or libressl.
+# Sslcrlfile=...     a certificate revocation list file to use when
+# Verifying the peer certificate.
+# Sslflags=...    specify various flags modifying the ssl implementation:
+# Dont_verify_peer
+# Accept certificates even if they fail to
+# Verify.
+# Dont_verify_domain
+# Don't verify the peer certificate
+# Matches the server name
+# Ssldomain=     the peer name as advertised in it's certificate.
+# Used for verifying the correctness of the received peer
+# Certificate. if not specified the peer hostname will be
+# Used.
+# Front-end-https[=off|on|auto]
+# Enable the "front-end-https: on" header needed when
+# Using squid as a ssl frontend in front of microsoft owa.
+# See ms kb document q307347 for details on this header.
+# If set to auto the header will only be added if the
+# Request is forwarded as a https:// url.
+# Tls-default-ca[=off]
+# Whether to use the system trusted cas. default is on.
+# Tls-no-npn    do not use the tls npn extension to advertise http/1.1.
+# ==== General options ====
+# Connect-timeout=n
+# A peer-specific connect timeout.
+# Also see the peer_connect_timeout directive.
+# Connect-fail-limit=n
+# How many times connecting to a peer must fail before
+# It is marked as down. standby connection failures
+# Count towards this limit. default is 10.
+# Allow-miss    disable squid's use of only-if-cached when forwarding
+# Requests to siblings. this is primarily useful when
+# Icp_hit_stale is used by the sibling. excessive use
+# Of this option may result in forwarding loops. one way
+# To prevent peering loops when using this option, is to
+# Deny cache peer usage on requests from a peer:
+# Acl frompeer ...
+# Cache_peer_access peername deny frompeer
+# Max-conn=n     limit the number of concurrent connections the squid
+# May open to this peer, including already opened idle
+# And standby connections. there is no peer-specific
+# Connection limit by default.
+# A peer exceeding the limit is not used for new
+# Requests unless a standby connection is available.
+# Max-conn currently works poorly with idle persistent
+# Connections: when a peer reaches its max-conn limit,
+# And there are idle persistent connections to the peer,
+# The peer may not be selected because the limiting code
+# Does not know whether squid can reuse those idle
+# Connections.
+# Standby=n    maintain a pool of n "hot standby" connections to an
+# Up peer, available for requests when no idle
+# Persistent connection is available (or safe) to use.
+# By default and with zero n, no such pool is maintained.
+# N must not exceed the max-conn limit (if any).
+# At start or after reconfiguration, squid opens new tcp
+# Standby connections until there are n connections
+# Available and then replenishes the standby pool as
+# Opened connections are used up for requests. a used
+# Connection never goes back to the standby pool, but
+# May go to the regular idle persistent connection pool
+# Shared by all peers and origin servers.
+# Squid never opens multiple new standby connections
+# Concurrently.  this one-at-a-time approach minimizes
+# Flooding-like effect on peers. furthermore, just a few
+# Standby connections should be sufficient in most cases
+# To supply most new requests with a ready-to-use
+# Connection.
+# Standby connections obey server_idle_pconn_timeout.
+# For the feature to work as intended, the peer must be
+# Configured to accept and keep them open longer than
+# The idle timeout at the connecting squid, to minimize
+# Race conditions typical to idle used persistent
+# Connections. default request_timeout and
+# Server_idle_pconn_timeout values ensure such a
+# Configuration.
+# Name=xxx    unique name for the peer.
+# Required if you have multiple peers on the same host
+# But different ports.
+# This name can be used in cache_peer_access and similar
+# Directives to identify the peer.
+# Can be used by outgoing access controls through the
+# Peername acl type.
+# No-tproxy    do not use the client-spoof tproxy support when forwarding
+# Requests to this peer. use normal address selection instead.
+# This overrides the spoof_client_ip acl.
+# Proxy-only    objects fetched from the peer will not be stored locally.
 #Default:
-# none
+# None
 
-#  TAG: cache_peer_access
-#    Restricts usage of cache_peer proxies.
-#
-#    Usage:
-#        cache_peer_access peer-name allow|deny [!]aclname ...
-#
-#    For the required peer-name parameter, use either the value of the
-#    cache_peer name=value parameter or, if name=value is missing, the
-#    cache_peer hostname parameter.
-#
-#    This directive narrows down the selection of peering candidates, but
-#    does not determine the order in which the selected candidates are
-#    contacted. That order is determined by the peer selection algorithms
-#    (see PEER SELECTION sections in the cache_peer documentation).
-#
-#    If a deny rule matches, the corresponding peer will not be contacted
-#    for the current transaction -- Squid will not send ICP queries and
-#    will not forward HTTP requests to that peer. An allow match leaves
-#    the corresponding peer in the selection. The first match for a given
-#    peer wins for that peer.
-#
-#    The relative order of cache_peer_access directives for the same peer
-#    matters. The relative order of any two cache_peer_access directives
-#    for different peers does not matter. To ease interpretation, it is a
-#    good idea to group cache_peer_access directives for the same peer
-#    together.
-#
-#    A single cache_peer_access directive may be evaluated multiple times
-#    for a given transaction because individual peer selection algorithms
-#    may check it independently from each other. These redundant checks
-#    may be optimized away in future Squid versions.
-#
-#    This clause only supports fast acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
-#
+# Tag: cache_peer_access
+# Restricts usage of cache_peer proxies.
+# Usage:
+# Cache_peer_access peer-name allow|deny [!]aclname ...
+# For the required peer-name parameter, use either the value of the
+# Cache_peer name=value parameter or, if name=value is missing, the
+# Cache_peer hostname parameter.
+# This directive narrows down the selection of peering candidates, but
+# Does not determine the order in which the selected candidates are
+# Contacted. that order is determined by the peer selection algorithms
+#    (See peer selection sections in the cache_peer documentation).
+# If a deny rule matches, the corresponding peer will not be contacted
+# For the current transaction -- squid will not send icp queries and
+# Will not forward http requests to that peer. an allow match leaves
+# The corresponding peer in the selection. the first match for a given
+# Peer wins for that peer.
+# The relative order of cache_peer_access directives for the same peer
+# Matters. the relative order of any two cache_peer_access directives
+# For different peers does not matter. to ease interpretation, it is a
+# Good idea to group cache_peer_access directives for the same peer
+# Together.
+# A single cache_peer_access directive may be evaluated multiple times
+# For a given transaction because individual peer selection algorithms
+# May check it independently from each other. these redundant checks
+# May be optimized away in future squid versions.
+# This clause only supports fast acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
 #Default:
 # No peer usage restrictions.
 
-#  TAG: neighbor_type_domain
-#    Modify the cache_peer neighbor type when passing requests
-#    about specific domains to the peer.
-#
-#    Usage:
-#         neighbor_type_domain neighbor parent|sibling domain domain ...
-#
-#    For example:
-#        cache_peer foo.example.com parent 3128 3130
-#        neighbor_type_domain foo.example.com sibling .au .de
-#
-#    The above configuration treats all requests to foo.example.com as a
-#    parent proxy unless the request is for a .au or .de ccTLD domain name.
+# Tag: neighbor_type_domain
+# Modify the cache_peer neighbor type when passing requests
+# About specific domains to the peer.
+# Usage:
+# Neighbor_type_domain neighbor parent|sibling domain domain ...
+# For example:
+# Cache_peer foo.example.com parent 3128 3130
+# Neighbor_type_domain foo.example.com sibling .au .de
+# The above configuration treats all requests to foo.example.com as a
+# Parent proxy unless the request is for a .au or .de cctld domain name.
 #Default:
 # The peer type from cache_peer directive is used for all requests to that peer.
 
-#  TAG: dead_peer_timeout    (seconds)
-#    This controls how long Squid waits to declare a peer cache
-#    as "dead."  If there are no ICP replies received in this
-#    amount of time, Squid will declare the peer dead and not
-#    expect to receive any further ICP replies.  However, it
-#    continues to send ICP queries, and will mark the peer as
-#    alive upon receipt of the first subsequent ICP reply.
-#
-#    This timeout also affects when Squid expects to receive ICP
-#    replies from peers.  If more than 'dead_peer' seconds have
-#    passed since the last ICP reply was received, Squid will not
-#    expect to receive an ICP reply on the next query.  Thus, if
-#    your time between requests is greater than this timeout, you
-#    will see a lot of requests sent DIRECT to origin servers
-#    instead of to your parents.
+# Tag: dead_peer_timeout    (seconds)
+# This controls how long squid waits to declare a peer cache
+# As "dead."  if there are no icp replies received in this
+# Amount of time, squid will declare the peer dead and not
+# Expect to receive any further icp replies.  however, it
+# Continues to send icp queries, and will mark the peer as
+# Alive upon receipt of the first subsequent icp reply.
+# This timeout also affects when squid expects to receive icp
+# Replies from peers.  if more than 'dead_peer' seconds have
+# Passed since the last icp reply was received, squid will not
+# Expect to receive an icp reply on the next query.  thus, if
+# Your time between requests is greater than this timeout, you
+# Will see a lot of requests sent direct to origin servers
+# Instead of to your parents.
 #Default:
-# dead_peer_timeout 10 seconds
+# Dead_peer_timeout 10 seconds
 
-#  TAG: forward_max_tries
-#    Limits the number of attempts to forward the request.
-#
-#    For the purpose of this limit, Squid counts all high-level request
-#    forwarding attempts, including any same-destination retries after
-#    certain persistent connection failures and any attempts to use a
-#    different peer. However, low-level connection reopening attempts
-#    (enabled using connect_retries) are not counted.
-#
-#    See also: forward_timeout and connect_retries.
+# Tag: forward_max_tries
+# Limits the number of attempts to forward the request.
+# For the purpose of this limit, squid counts all high-level request
+# Forwarding attempts, including any same-destination retries after
+# Certain persistent connection failures and any attempts to use a
+# Different peer. however, low-level connection reopening attempts
+#    (Enabled using connect_retries) are not counted.
+# See also: forward_timeout and connect_retries.
 #Default:
-# forward_max_tries 25
+# Forward_max_tries 25
 
-# MEMORY CACHE OPTIONS
+# Memory cache options
 # -----------------------------------------------------------------------------
 
-#  TAG: cache_mem    (bytes)
-#    NOTE: THIS PARAMETER DOES NOT SPECIFY THE MAXIMUM PROCESS SIZE.
-#    IT ONLY PLACES A LIMIT ON HOW MUCH ADDITIONAL MEMORY SQUID WILL
-#    USE AS A MEMORY CACHE OF OBJECTS. SQUID USES MEMORY FOR OTHER
-#    THINGS AS WELL. SEE THE SQUID FAQ SECTION 8 FOR DETAILS.
-#
-#    'cache_mem' specifies the ideal amount of memory to be used
-#    for:
-#        * In-Transit objects
-#        * Hot Objects
-#        * Negative-Cached objects
-#
-#    Data for these objects are stored in 4 KB blocks.  This
-#    parameter specifies the ideal upper limit on the total size of
-#    4 KB blocks allocated.  In-Transit objects take the highest
-#    priority.
-#
-#    In-transit objects have priority over the others.  When
-#    additional space is needed for incoming data, negative-cached
-#    and hot objects will be released.  In other words, the
-#    negative-cached and hot objects will fill up any unused space
-#    not needed for in-transit objects.
-#
-#    If circumstances require, this limit will be exceeded.
-#    Specifically, if your incoming request rate requires more than
-#    'cache_mem' of memory to hold in-transit objects, Squid will
-#    exceed this limit to satisfy the new requests.  When the load
-#    decreases, blocks will be freed until the high-water mark is
-#    reached.  Thereafter, blocks will be used to store hot
-#    objects.
-#
-#    If shared memory caching is enabled, Squid does not use the shared
-#    cache space for in-transit objects, but they still consume as much
-#    local memory as they need. For more details about the shared memory
-#    cache, see memory_cache_shared.
+# Tag: cache_mem    (bytes)
+# Note: this parameter does not specify the maximum process size.
+# It only places a limit on how much additional memory squid will
+# Use as a memory cache of objects. squid uses memory for other
+# Things as well. see the squid faq section 8 for details.
+# 'Cache_mem' specifies the ideal amount of memory to be used
+# For:
+#        * In-transit objects
+#        * Hot objects
+#        * Negative-cached objects
+# Data for these objects are stored in 4 kb blocks.  this
+# Parameter specifies the ideal upper limit on the total size of
+# 4 kb blocks allocated.  in-transit objects take the highest
+# Priority.
+# In-transit objects have priority over the others.  when
+# Additional space is needed for incoming data, negative-cached
+# And hot objects will be released.  in other words, the
+# Negative-cached and hot objects will fill up any unused space
+# Not needed for in-transit objects.
+# If circumstances require, this limit will be exceeded.
+# Specifically, if your incoming request rate requires more than
+#    'Cache_mem' of memory to hold in-transit objects, squid will
+# Exceed this limit to satisfy the new requests.  when the load
+# Decreases, blocks will be freed until the high-water mark is
+# Reached.  thereafter, blocks will be used to store hot
+# Objects.
+# If shared memory caching is enabled, squid does not use the shared
+# Cache space for in-transit objects, but they still consume as much
+# Local memory as they need. for more details about the shared memory
+# Cache, see memory_cache_shared.
 #Default:
-# cache_mem 256 MB
+# Cache_mem 256 mb
 
-#  TAG: maximum_object_size_in_memory    (bytes)
-#    Objects greater than this size will not be attempted to kept in
-#    the memory cache. This should be set high enough to keep objects
-#    accessed frequently in memory to improve performance whilst low
-#    enough to keep larger objects from hoarding cache_mem.
+# Tag: maximum_object_size_in_memory    (bytes)
+# Objects greater than this size will not be attempted to kept in
+# The memory cache. this should be set high enough to keep objects
+# Accessed frequently in memory to improve performance whilst low
+# Enough to keep larger objects from hoarding cache_mem.
 #Default:
-# maximum_object_size_in_memory 768 KB
+# Maximum_object_size_in_memory 768 kb
 
-#  TAG: memory_cache_shared    on|off
-#    Controls whether the memory cache is shared among SMP workers.
-#
-#    The shared memory cache is meant to occupy cache_mem bytes and replace
-#    the non-shared memory cache, although some entities may still be
-#    cached locally by workers for now (e.g., internal and in-transit
-#    objects may be served from a local memory cache even if shared memory
-#    caching is enabled).
-#
-#    By default, the memory cache is shared if and only if all of the
-#    following conditions are satisfied: Squid runs in SMP mode with
-#    multiple workers, cache_mem is positive, and Squid environment
-#    supports required IPC primitives (e.g., POSIX shared memory segments
-#    and GCC-style atomic operations).
-#
-#    To avoid blocking locks, shared memory uses opportunistic algorithms
-#    that do not guarantee that every cachable entity that could have been
-#    shared among SMP workers will actually be shared.
+# Tag: memory_cache_shared    on|off
+# Controls whether the memory cache is shared among smp workers.
+# The shared memory cache is meant to occupy cache_mem bytes and replace
+# The non-shared memory cache, although some entities may still be
+# Cached locally by workers for now (e.g., internal and in-transit
+# Objects may be served from a local memory cache even if shared memory
+# Caching is enabled).
+# By default, the memory cache is shared if and only if all of the
+# Following conditions are satisfied: squid runs in smp mode with
+# Multiple workers, cache_mem is positive, and squid environment
+# Supports required ipc primitives (e.g., posix shared memory segments
+# And gcc-style atomic operations).
+# To avoid blocking locks, shared memory uses opportunistic algorithms
+# That do not guarantee that every cachable entity that could have been
+# Shared among smp workers will actually be shared.
 #Default:
-# "on" where supported if doing memory caching with multiple SMP workers.
+# "On" where supported if doing memory caching with multiple smp workers.
 
-#  TAG: memory_cache_mode disk
-#    Controls which objects to keep in the memory cache (cache_mem)
-#
-#    always    Keep most recently fetched objects in memory (default)
-#
-#    disk    Only disk cache hits are kept in memory, which means
-#        an object must first be cached on disk and then hit
-#        a second time before cached in memory.
-#
-#    network    Only objects fetched from network is kept in memory
+# Tag: memory_cache_mode disk
+# Controls which objects to keep in the memory cache (cache_mem)
+# Always    keep most recently fetched objects in memory (default)
+# Disk    only disk cache hits are kept in memory, which means
+# An object must first be cached on disk and then hit
+# A second time before cached in memory.
+# Network    only objects fetched from network is kept in memory
 #Default:
 # Keep the most recently fetched objects in memory
 
-#  TAG: memory_replacement_policy
-#    The memory replacement policy parameter determines which
-#    objects are purged from memory when memory space is needed.
-#
-#    See cache_replacement_policy for details on algorithms.
+# Tag: memory_replacement_policy
+# The memory replacement policy parameter determines which
+# Objects are purged from memory when memory space is needed.
+# See cache_replacement_policy for details on algorithms.
 #Default:
-# memory_replacement_policy lru
+# Memory_replacement_policy lru
 
-# DISK CACHE OPTIONS
+# Disk cache options
 # -----------------------------------------------------------------------------
 
-#  TAG: cache_replacement_policy
-#    The cache replacement policy parameter determines which
-#    objects are evicted (replaced) when disk space is needed.
-#
-#        lru       : Squid's original list based LRU policy
-#        heap GDSF : Greedy-Dual Size Frequency
-#        heap LFUDA: Least Frequently Used with Dynamic Aging
-#        heap LRU  : LRU policy implemented using a heap
-#
-#    Applies to any cache_dir lines listed below this directive.
-#
-#    The LRU policies keeps recently referenced objects.
-#
-#    The heap GDSF policy optimizes object hit rate by keeping smaller
-#    popular objects in cache so it has a better chance of getting a
-#    hit.  It achieves a lower byte hit rate than LFUDA though since
-#    it evicts larger (possibly popular) objects.
-#
-#    The heap LFUDA policy keeps popular objects in cache regardless of
-#    their size and thus optimizes byte hit rate at the expense of
-#    hit rate since one large, popular object will prevent many
-#    smaller, slightly less popular objects from being cached.
-#
-#    Both policies utilize a dynamic aging mechanism that prevents
-#    cache pollution that can otherwise occur with frequency-based
-#    replacement policies.
-#
-#    NOTE: if using the LFUDA replacement policy you should increase
-#    the value of maximum_object_size above its default of 4 MB to
-#    to maximize the potential byte hit rate improvement of LFUDA.
-#
-#    For more information about the GDSF and LFUDA cache replacement
-#    policies see http://www.hpl.hp.com/techreports/1999/HPL-1999-69.html
-#    and http://fog.hpl.external.hp.com/techreports/98/HPL-98-173.html.
+# Tag: cache_replacement_policy
+# The cache replacement policy parameter determines which
+# Objects are evicted (replaced) when disk space is needed.
+# Lru       : squid's original list based lru policy
+# Heap gdsf : greedy-dual size frequency
+# Heap lfuda: least frequently used with dynamic aging
+# Heap lru  : lru policy implemented using a heap
+# Applies to any cache_dir lines listed below this directive.
+# The lru policies keeps recently referenced objects.
+# The heap gdsf policy optimizes object hit rate by keeping smaller
+# Popular objects in cache so it has a better chance of getting a
+# Hit.  it achieves a lower byte hit rate than lfuda though since
+# It evicts larger (possibly popular) objects.
+# The heap lfuda policy keeps popular objects in cache regardless of
+# Their size and thus optimizes byte hit rate at the expense of
+# Hit rate since one large, popular object will prevent many
+# Smaller, slightly less popular objects from being cached.
+# Both policies utilize a dynamic aging mechanism that prevents
+# Cache pollution that can otherwise occur with frequency-based
+# Replacement policies.
+# Note: if using the lfuda replacement policy you should increase
+# The value of maximum_object_size above its default of 4 mb to
+# To maximize the potential byte hit rate improvement of lfuda.
+# For more information about the gdsf and lfuda cache replacement
+# Policies see http://www.hpl.hp.com/techreports/1999/hpl-1999-69.html
+# And http://fog.hpl.external.hp.com/techreports/98/hpl-98-173.html.
 #Default:
-# cache_replacement_policy lru
+# Cache_replacement_policy lru
 
-#  TAG: minimum_object_size    (bytes)
-#    Objects smaller than this size will NOT be saved on disk.  The
-#    value is specified in bytes, and the default is 0 KB, which
-#    means all responses can be stored.
+# Tag: minimum_object_size    (bytes)
+# Objects smaller than this size will not be saved on disk.  the
+# Value is specified in bytes, and the default is 0 kb, which
+# Means all responses can be stored.
 #Default:
-# no limit
+# No limit
 
-#  TAG: maximum_object_size    (bytes)
-#    Set the default value for max-size parameter on any cache_dir.
-#    The value is specified in bytes, and the default is 4 MB.
-#
-#    If you wish to get a high BYTES hit ratio, you should probably
-#    increase this (one 32 MB object hit counts for 3200 10KB
-#    hits).
-#
-#    If you wish to increase hit ratio more than you want to
-#    save bandwidth you should leave this low.
-#
-#    NOTE: if using the LFUDA replacement policy you should increase
-#    this value to maximize the byte hit rate improvement of LFUDA!
-#    See cache_replacement_policy for a discussion of this policy.
+# Tag: maximum_object_size    (bytes)
+# Set the default value for max-size parameter on any cache_dir.
+# The value is specified in bytes, and the default is 4 mb.
+# If you wish to get a high bytes hit ratio, you should probably
+# Increase this (one 32 mb object hit counts for 3200 10kb
+# Hits).
+# If you wish to increase hit ratio more than you want to
+# Save bandwidth you should leave this low.
+# Note: if using the lfuda replacement policy you should increase
+# This value to maximize the byte hit rate improvement of lfuda!
+# See cache_replacement_policy for a discussion of this policy.
 #Default:
-# maximum_object_size 4 MB
+# Maximum_object_size 4 mb
 
-#  TAG: cache_dir
-#    Format:
-#        cache_dir Type Directory-Name Fs-specific-data [options]
-#
-#    You can specify multiple cache_dir lines to spread the
-#    cache among different disk partitions.
-#
-#    Type specifies the kind of storage system to use. Only "ufs"
-#    is built by default. To enable any of the other storage systems
-#    see the --enable-storeio configure option.
-#
-#    'Directory' is a top-level directory where cache swap
-#    files will be stored.  If you want to use an entire disk
-#    for caching, this can be the mount-point directory.
-#    The directory must exist and be writable by the Squid
-#    process.  Squid will NOT create this directory for you.
-#
-#    In SMP configurations, cache_dir must not precede the workers option
-#    and should use configuration macros or conditionals to give each
-#    worker interested in disk caching a dedicated cache directory.
-#
-#
+# Tag: cache_dir
+# Format:
+# Cache_dir type directory-name fs-specific-data [options]
+# You can specify multiple cache_dir lines to spread the
+# Cache among different disk partitions.
+# Type specifies the kind of storage system to use. only "ufs"
+# Is built by default. to enable any of the other storage systems
+# See the --enable-storeio configure option.
+# 'Directory' is a top-level directory where cache swap
+# Files will be stored.  if you want to use an entire disk
+# For caching, this can be the mount-point directory.
+# The directory must exist and be writable by the squid
+# Process.  squid will not create this directory for you.
+# In smp configurations, cache_dir must not precede the workers option
+# And should use configuration macros or conditionals to give each
+# Worker interested in disk caching a dedicated cache directory.
 #    ====  The ufs store type  ====
-#
-#    "ufs" is the old well-known Squid storage format that has always
-#    been there.
-#
-#    Usage:
-#        cache_dir ufs Directory-Name Mbytes L1 L2 [options]
-#
-#    'Mbytes' is the amount of disk space (MB) to use under this
-#    directory.  The default is 100 MB.  Change this to suit your
-#    configuration.  Do NOT put the size of your disk drive here.
-#    Instead, if you want Squid to use the entire disk drive,
-#    subtract 20% and use that value.
-#
-#    'L1' is the number of first-level subdirectories which
-#    will be created under the 'Directory'.  The default is 16.
-#
-#    'L2' is the number of second-level subdirectories which
-#    will be created under each first-level directory.  The default
-#    is 256.
-#
-#
+# "Ufs" is the old well-known squid storage format that has always
+# Been there.
+# Usage:
+# Cache_dir ufs directory-name mbytes l1 l2 [options]
+# 'Mbytes' is the amount of disk space (mb) to use under this
+# Directory.  the default is 100 mb.  change this to suit your
+# Configuration.  do not put the size of your disk drive here.
+# Instead, if you want squid to use the entire disk drive,
+# Subtract 20% and use that value.
+# 'L1' is the number of first-level subdirectories which
+# Will be created under the 'directory'.  the default is 16.
+# 'L2' is the number of second-level subdirectories which
+# Will be created under each first-level directory.  the default
+# Is 256.
 #    ====  The aufs store type  ====
-#
-#    "aufs" uses the same storage format as "ufs", utilizing
-#    POSIX-threads to avoid blocking the main Squid process on
-#    disk-I/O. This was formerly known in Squid as async-io.
-#
-#    Usage:
-#        cache_dir aufs Directory-Name Mbytes L1 L2 [options]
-#
-#    see argument descriptions under ufs above
-#
-#
+# "Aufs" uses the same storage format as "ufs", utilizing
+# Posix-threads to avoid blocking the main squid process on
+# Disk-i/o. this was formerly known in squid as async-io.
+# Usage:
+# Cache_dir aufs directory-name mbytes l1 l2 [options]
+# See argument descriptions under ufs above
 #    ====  The diskd store type  ====
-#
-#    "diskd" uses the same storage format as "ufs", utilizing a
-#    separate process to avoid blocking the main Squid process on
-#    disk-I/O.
-#
-#    Usage:
-#        cache_dir diskd Directory-Name Mbytes L1 L2 [options] [Q1=n] [Q2=n]
-#
-#    see argument descriptions under ufs above
-#
-#    Q1 specifies the number of unacknowledged I/O requests when Squid
-#    stops opening new files. If this many messages are in the queues,
-#    Squid won't open new files. Default is 64
-#
-#    Q2 specifies the number of unacknowledged messages when Squid
-#    starts blocking.  If this many messages are in the queues,
-#    Squid blocks until it receives some replies. Default is 72
-#
-#    When Q1 < Q2 (the default), the cache directory is optimized
-#    for lower response time at the expense of a decrease in hit
-#    ratio.  If Q1 > Q2, the cache directory is optimized for
-#    higher hit ratio at the expense of an increase in response
-#    time.
-#
-#
+# "Diskd" uses the same storage format as "ufs", utilizing a
+# Separate process to avoid blocking the main squid process on
+# Disk-i/o.
+# Usage:
+# Cache_dir diskd directory-name mbytes l1 l2 [options] [q1=n] [q2=n]
+# See argument descriptions under ufs above
+# Q1 specifies the number of unacknowledged i/o requests when squid
+# Stops opening new files. if this many messages are in the queues,
+# Squid won't open new files. default is 64
+# Q2 specifies the number of unacknowledged messages when squid
+# Starts blocking.  if this many messages are in the queues,
+# Squid blocks until it receives some replies. default is 72
+# When q1 < q2 (the default), the cache directory is optimized
+# For lower response time at the expense of a decrease in hit
+# Ratio.  if q1 > q2, the cache directory is optimized for
+# Higher hit ratio at the expense of an increase in response
+# Time.
 #    ====  The rock store type  ====
-#
-#    Usage:
-#        cache_dir rock Directory-Name Mbytes [options]
-#
-#    The Rock Store type is a database-style storage. All cached
-#    entries are stored in a "database" file, using fixed-size slots.
-#    A single entry occupies one or more slots.
-#
-#    If possible, Squid using Rock Store creates a dedicated kid
-#    process called "disker" to avoid blocking Squid worker(s) on disk
-#    I/O. One disker kid is created for each rock cache_dir.  Diskers
-#    are created only when Squid, running in daemon mode, has support
-#    for the IpcIo disk I/O module.
-#
-#    swap-timeout=msec: Squid will not start writing a miss to or
-#    reading a hit from disk if it estimates that the swap operation
-#    will take more than the specified number of milliseconds. By
-#    default and when set to zero, disables the disk I/O time limit
-#    enforcement. Ignored when using blocking I/O module because
-#    blocking synchronous I/O does not allow Squid to estimate the
-#    expected swap wait time.
-#
-#    max-swap-rate=swaps/sec: Artificially limits disk access using
-#    the specified I/O rate limit. Swap out requests that
-#    would cause the average I/O rate to exceed the limit are
-#    delayed. Individual swap in requests (i.e., hits or reads) are
-#    not delayed, but they do contribute to measured swap rate and
-#    since they are placed in the same FIFO queue as swap out
-#    requests, they may wait longer if max-swap-rate is smaller.
-#    This is necessary on file systems that buffer "too
-#    many" writes and then start blocking Squid and other processes
-#    while committing those writes to disk.  Usually used together
-#    with swap-timeout to avoid excessive delays and queue overflows
-#    when disk demand exceeds available disk "bandwidth". By default
-#    and when set to zero, disables the disk I/O rate limit
-#    enforcement. Currently supported by IpcIo module only.
-#
-#    slot-size=bytes: The size of a database "record" used for
-#    storing cached responses. A cached response occupies at least
-#    one slot and all database I/O is done using individual slots so
-#    increasing this parameter leads to more disk space waste while
-#    decreasing it leads to more disk I/O overheads. Should be a
-#    multiple of your operating system I/O page size. Defaults to
-#    16KBytes. A housekeeping header is stored with each slot and
-#    smaller slot-sizes will be rejected. The header is smaller than
-#    100 bytes.
-#
-#
-#    ==== COMMON OPTIONS ====
-#
-#    no-store    no new objects should be stored to this cache_dir.
-#
-#    min-size=n    the minimum object size in bytes this cache_dir
-#            will accept.  It's used to restrict a cache_dir
-#            to only store large objects (e.g. AUFS) while
-#            other stores are optimized for smaller objects
-#            (e.g. Rock).
-#            Defaults to 0.
-#
-#    max-size=n    the maximum object size in bytes this cache_dir
-#            supports.
-#            The value in maximum_object_size directive sets
-#            the default unless more specific details are
-#            available (ie a small store capacity).
-#
-#    Note: To make optimal use of the max-size limits you should order
-#    the cache_dir lines with the smallest max-size value first.
-#
+# Usage:
+# Cache_dir rock directory-name mbytes [options]
+# The rock store type is a database-style storage. all cached
+# Entries are stored in a "database" file, using fixed-size slots.
+# A single entry occupies one or more slots.
+# If possible, squid using rock store creates a dedicated kid
+# Process called "disker" to avoid blocking squid worker(s) on disk
+# I/o. one disker kid is created for each rock cache_dir.  diskers
+# Are created only when squid, running in daemon mode, has support
+# For the ipcio disk i/o module.
+# Swap-timeout=msec: squid will not start writing a miss to or
+# Reading a hit from disk if it estimates that the swap operation
+# Will take more than the specified number of milliseconds. by
+# Default and when set to zero, disables the disk i/o time limit
+# Enforcement. ignored when using blocking i/o module because
+# Blocking synchronous i/o does not allow squid to estimate the
+# Expected swap wait time.
+# Max-swap-rate=swaps/sec: artificially limits disk access using
+# The specified i/o rate limit. swap out requests that
+# Would cause the average i/o rate to exceed the limit are
+# Delayed. individual swap in requests (i.e., hits or reads) are
+# Not delayed, but they do contribute to measured swap rate and
+# Since they are placed in the same fifo queue as swap out
+# Requests, they may wait longer if max-swap-rate is smaller.
+# This is necessary on file systems that buffer "too
+# Many" writes and then start blocking squid and other processes
+# While committing those writes to disk.  usually used together
+# With swap-timeout to avoid excessive delays and queue overflows
+# When disk demand exceeds available disk "bandwidth". by default
+# And when set to zero, disables the disk i/o rate limit
+# Enforcement. currently supported by ipcio module only.
+# Slot-size=bytes: the size of a database "record" used for
+# Storing cached responses. a cached response occupies at least
+# One slot and all database i/o is done using individual slots so
+# Increasing this parameter leads to more disk space waste while
+# Decreasing it leads to more disk i/o overheads. should be a
+# Multiple of your operating system i/o page size. defaults to
+# 16kbytes. a housekeeping header is stored with each slot and
+# Smaller slot-sizes will be rejected. the header is smaller than
+# 100 bytes.
+#    ==== Common options ====
+# No-store    no new objects should be stored to this cache_dir.
+# Min-size=n    the minimum object size in bytes this cache_dir
+# Will accept.  it's used to restrict a cache_dir
+# To only store large objects (e.g. aufs) while
+# Other stores are optimized for smaller objects
+#            (E.g. rock).
+# Defaults to 0.
+# Max-size=n    the maximum object size in bytes this cache_dir
+# Supports.
+# The value in maximum_object_size directive sets
+# The default unless more specific details are
+# Available (ie a small store capacity).
+# Note: to make optimal use of the max-size limits you should order
+# The cache_dir lines with the smallest max-size value first.
 #Default:
-# No disk cache. Store cache ojects only in memory.
-#
-#  TAG: store_dir_select_algorithm
-#    How Squid selects which cache_dir to use when the response
-#    object will fit into more than one.
-#
-#    Regardless of which algorithm is used the cache_dir min-size
-#    and max-size parameters are obeyed. As such they can affect
-#    the selection algorithm by limiting the set of considered
-#    cache_dir.
-#
-#    Algorithms:
-#
-#        least-load
-#
-#    This algorithm is suited to caches with similar cache_dir
-#    sizes and disk speeds.
-#
-#    The disk with the least I/O pending is selected.
-#    When there are multiple disks with the same I/O load ranking
-#    the cache_dir with most available capacity is selected.
-#
-#    When a mix of cache_dir sizes are configured the faster disks
-#    have a naturally lower I/O loading and larger disks have more
-#    capacity. So space used to store objects and data throughput
-#    may be very unbalanced towards larger disks.
-#
-#
-#        round-robin
-#
-#    This algorithm is suited to caches with unequal cache_dir
-#    disk sizes.
-#
-#    Each cache_dir is selected in a rotation. The next suitable
-#    cache_dir is used.
-#
-#    Available cache_dir capacity is only considered in relation
-#    to whether the object will fit and meets the min-size and
-#    max-size parameters.
-#
-#    Disk I/O loading is only considered to prevent overload on slow
-#    disks. This algorithm does not spread objects by size, so any
-#    I/O loading per-disk may appear very unbalanced and volatile.
-#
-#    If several cache_dirs use similar min-size, max-size, or other
-#    limits to to reject certain responses, then do not group such
-#    cache_dir lines together, to avoid round-robin selection bias
-#    towards the first cache_dir after the group. Instead, interleave
-#    cache_dir lines from different groups. For example:
-#
-#        store_dir_select_algorithm round-robin
-#        cache_dir rock /hdd1 ... min-size=100000
-#        cache_dir rock /ssd1 ... max-size=99999
-#        cache_dir rock /hdd2 ... min-size=100000
-#        cache_dir rock /ssd2 ... max-size=99999
-#        cache_dir rock /hdd3 ... min-size=100000
-#        cache_dir rock /ssd3 ... max-size=99999
+# No disk cache. store cache ojects only in memory.
+# Tag: store_dir_select_algorithm
+# How squid selects which cache_dir to use when the response
+# Object will fit into more than one.
+# Regardless of which algorithm is used the cache_dir min-size
+# And max-size parameters are obeyed. as such they can affect
+# The selection algorithm by limiting the set of considered
+# Cache_dir.
+# Algorithms:
+# Least-load
+# This algorithm is suited to caches with similar cache_dir
+# Sizes and disk speeds.
+# The disk with the least i/o pending is selected.
+# When there are multiple disks with the same i/o load ranking
+# The cache_dir with most available capacity is selected.
+# When a mix of cache_dir sizes are configured the faster disks
+# Have a naturally lower i/o loading and larger disks have more
+# Capacity. so space used to store objects and data throughput
+# May be very unbalanced towards larger disks.
+# Round-robin
+# This algorithm is suited to caches with unequal cache_dir
+# Disk sizes.
+# Each cache_dir is selected in a rotation. the next suitable
+# Cache_dir is used.
+# Available cache_dir capacity is only considered in relation
+# To whether the object will fit and meets the min-size and
+# Max-size parameters.
+# Disk i/o loading is only considered to prevent overload on slow
+# Disks. this algorithm does not spread objects by size, so any
+# I/o loading per-disk may appear very unbalanced and volatile.
+# If several cache_dirs use similar min-size, max-size, or other
+# Limits to to reject certain responses, then do not group such
+# Cache_dir lines together, to avoid round-robin selection bias
+# Towards the first cache_dir after the group. instead, interleave
+# Cache_dir lines from different groups. for example:
+# Store_dir_select_algorithm round-robin
+# Cache_dir rock /hdd1 ... min-size=100000
+# Cache_dir rock /ssd1 ... max-size=99999
+# Cache_dir rock /hdd2 ... min-size=100000
+# Cache_dir rock /ssd2 ... max-size=99999
+# Cache_dir rock /hdd3 ... min-size=100000
+# Cache_dir rock /ssd3 ... max-size=99999
 #Default:
-# store_dir_select_algorithm least-load
+# Store_dir_select_algorithm least-load
 
-#  TAG: max_open_disk_fds
-#    To avoid having disk as the I/O bottleneck Squid can optionally
-#    bypass the on-disk cache if more than this amount of disk file
-#    descriptors are open.
-#
-#    A value of 0 indicates no limit.
+# Tag: max_open_disk_fds
+# To avoid having disk as the i/o bottleneck squid can optionally
+# Bypass the on-disk cache if more than this amount of disk file
+# Descriptors are open.
+# A value of 0 indicates no limit.
 #Default:
-# no limit
+# No limit
 
-#  TAG: cache_swap_low    (percent, 0-100)
-#    The low-water mark for AUFS/UFS/diskd cache object eviction by
-#    the cache_replacement_policy algorithm.
-#
-#    Removal begins when the swap (disk) usage of a cache_dir is
-#    above this low-water mark and attempts to maintain utilization
-#    near the low-water mark.
-#
-#    As swap utilization increases towards the high-water mark set
-#    by cache_swap_high object eviction becomes more agressive.
-#
-#    The value difference in percentages between low- and high-water
-#    marks represent an eviction rate of 300 objects per second and
-#    the rate continues to scale in agressiveness by multiples of
-#    this above the high-water mark.
-#
-#    Defaults are 90% and 95%. If you have a large cache, 5% could be
-#    hundreds of MB. If this is the case you may wish to set these
-#    numbers closer together.
-#
-#    See also cache_swap_high and cache_replacement_policy
+# Tag: cache_swap_low    (percent, 0-100)
+# The low-water mark for aufs/ufs/diskd cache object eviction by
+# The cache_replacement_policy algorithm.
+# Removal begins when the swap (disk) usage of a cache_dir is
+# Above this low-water mark and attempts to maintain utilization
+# Near the low-water mark.
+# As swap utilization increases towards the high-water mark set
+# By cache_swap_high object eviction becomes more agressive.
+# The value difference in percentages between low- and high-water
+# Marks represent an eviction rate of 300 objects per second and
+# The rate continues to scale in agressiveness by multiples of
+# This above the high-water mark.
+# Defaults are 90% and 95%. if you have a large cache, 5% could be
+# Hundreds of mb. if this is the case you may wish to set these
+# Numbers closer together.
+# See also cache_swap_high and cache_replacement_policy
 #Default:
-# cache_swap_low 90
+# Cache_swap_low 90
 
-#  TAG: cache_swap_high    (percent, 0-100)
-#    The high-water mark for AUFS/UFS/diskd cache object eviction by
-#    the cache_replacement_policy algorithm.
-#
-#    Removal begins when the swap (disk) usage of a cache_dir is
-#    above the low-water mark set by cache_swap_low and attempts to
-#    maintain utilization near the low-water mark.
-#
-#    As swap utilization increases towards this high-water mark object
-#    eviction becomes more agressive.
-#
-#    The value difference in percentages between low- and high-water
-#    marks represent an eviction rate of 300 objects per second and
-#    the rate continues to scale in agressiveness by multiples of
-#    this above the high-water mark.
-#
-#    Defaults are 90% and 95%. If you have a large cache, 5% could be
-#    hundreds of MB. If this is the case you may wish to set these
-#    numbers closer together.
-#
-#    See also cache_swap_low and cache_replacement_policy
+# Tag: cache_swap_high    (percent, 0-100)
+# The high-water mark for aufs/ufs/diskd cache object eviction by
+# The cache_replacement_policy algorithm.
+# Removal begins when the swap (disk) usage of a cache_dir is
+# Above the low-water mark set by cache_swap_low and attempts to
+# Maintain utilization near the low-water mark.
+# As swap utilization increases towards this high-water mark object
+# Eviction becomes more agressive.
+# The value difference in percentages between low- and high-water
+# Marks represent an eviction rate of 300 objects per second and
+# The rate continues to scale in agressiveness by multiples of
+# This above the high-water mark.
+# Defaults are 90% and 95%. if you have a large cache, 5% could be
+# Hundreds of mb. if this is the case you may wish to set these
+# Numbers closer together.
+# See also cache_swap_low and cache_replacement_policy
 #Default:
-# cache_swap_high 95
+# Cache_swap_high 95
 
-# LOGFILE OPTIONS
+# Logfile options
 # -----------------------------------------------------------------------------
 
-#  TAG: logformat
-#    Usage:
-#
-#    logformat <name> <format specification>
-#
-#    Defines an access log format.
-#
-#    The <format specification> is a string with embedded % format codes
-#
-#    % format codes all follow the same basic structure where all
-#    components but the formatcode are optional and usually unnecessary,
-#    especially when dealing with common codes.
-#
-#        % [encoding] [-] [[0]width] [{arg}] formatcode [{arg}]
-#
-#        encoding escapes or otherwise protects "special" characters:
-#
-#            "    Quoted string encoding where quote(") and
-#                backslash(\) characters are \-escaped while
-#                CR, LF, and TAB characters are encoded as \r,
-#                \n, and \t two-character sequences.
-#
-#            [    Custom Squid encoding where percent(%), square
-#                brackets([]), backslash(\) and characters with
-#                codes outside of [32,126] range are %-encoded.
-#                SP is not encoded. Used by log_mime_hdrs.
-#
-#            #    URL encoding (a.k.a. percent-encoding) where
-#                all URL unsafe and control characters (per RFC
-#                1738) are %-encoded.
-#
-#            /    Shell-like encoding where quote(") and
-#                backslash(\) characters are \-escaped while CR
-#                and LF characters are encoded as \r and \n
-#                two-character sequences. Values containing SP
-#                character(s) are surrounded by quotes(").
-#
-#            '    Raw/as-is encoding with no escaping/quoting.
-#
-#            Default encoding: When no explicit encoding is
-#            specified, each %code determines its own encoding.
-#            Most %codes use raw/as-is encoding, but some codes use
-#            a so called "pass-through URL encoding" where all URL
-#            unsafe and control characters (per RFC 1738) are
-#            %-encoded, but the percent character(%) is left as is.
-#
-#        -    left aligned
-#
-#        width    minimum and/or maximum field width:
-#                [width_min][.width_max]
-#            When minimum starts with 0, the field is zero-padded.
-#            String values exceeding maximum width are truncated.
-#
-#        {arg}    argument such as header name etc. This field may be
-#            placed before or after the token, but not both at once.
-#
-#    Format codes:
-#
-#        %    a literal % character
-#        sn    Unique sequence number per log line entry
-#        err_code    The ID of an error response served by Squid or
-#                a similar internal error identifier.
-#        err_detail  Additional err_code-dependent error information.
-#        note    The annotation specified by the argument. Also
-#            logs the adaptation meta headers set by the
-#            adaptation_meta configuration parameter.
-#            If no argument given all annotations logged.
-#            The argument may include a separator to use with
-#            annotation values:
-#                            name[:separator]
-#            By default, multiple note values are separated with ","
-#            and multiple notes are separated with "\r\n".
-#            When logging named notes with %{name}note, the
-#            explicitly configured separator is used between note
-#            values. When logging all notes with %note, the
-#            explicitly configured separator is used between
-#            individual notes. There is currently no way to
-#            specify both value and notes separators when logging
-#            all notes with %note.
-#        master_xaction  The master transaction identifier is an unsigned
-#            integer. These IDs are guaranteed to monotonically
-#            increase within a single worker process lifetime, with
-#            higher values corresponding to transactions that were
-#            accepted or initiated later. Due to current implementation
-#            deficiencies, some IDs are skipped (i.e. never logged).
-#            Concurrent workers and restarted workers use similar,
-#            overlapping sequences of master transaction IDs.
-#
-#    Connection related format codes:
-#
-#        >a    Client source IP address
-#        >A    Client FQDN
-#        >p    Client source port
-#        >eui    Client source EUI (MAC address, EUI-48 or EUI-64 identifier)
-#        >la    Local IP address the client connected to
-#        >lp    Local port number the client connected to
-#        >qos    Client connection TOS/DSCP value set by Squid
-#        >nfmark Client connection netfilter packet MARK set by Squid
-#
-#        la    Local listening IP address the client connection was connected to.
-#        lp    Local listening port number the client connection was connected to.
-#
-#        <a    Server IP address of the last server or peer connection
-#        <A    Server FQDN or peer name
-#        <p    Server port number of the last server or peer connection
-#        <la    Local IP address of the last server or peer connection
-#        <lp     Local port number of the last server or peer connection
-#        <qos    Server connection TOS/DSCP value set by Squid
-#        <nfmark Server connection netfilter packet MARK set by Squid
-#
-#        >handshake Raw client handshake
-#            Initial client bytes received by Squid on a newly
-#            accepted TCP connection or inside a just established
-#            CONNECT tunnel. Squid stops accumulating handshake
-#            bytes as soon as the handshake parser succeeds or
-#            fails (determining whether the client is using the
-#            expected protocol).
-#
-#            For HTTP clients, the handshake is the request line.
-#            For TLS clients, the handshake consists of all TLS
-#            records up to and including the TLS record that
-#            contains the last byte of the first ClientHello
-#            message. For clients using an unsupported protocol,
-#            this field contains the bytes received by Squid at the
-#            time of the handshake parsing failure.
-#
-#            See the on_unsupported_protocol directive for more
-#            information on Squid handshake traffic expectations.
-#
-#            Current support is limited to these contexts:
-#            - http_port connections, but only when the
-#              on_unsupported_protocol directive is in use.
-#            - https_port connections (and CONNECT tunnels) that
-#              are subject to the ssl_bump peek or stare action.
-#
-#            To protect binary handshake data, this field is always
-#            base64-encoded (RFC 4648 Section 4). If logformat
-#            field encoding is configured, that encoding is applied
-#            on top of base64. Otherwise, the computed base64 value
-#            is recorded as is.
-#
-#    Time related format codes:
-#
-#        ts    Seconds since epoch
-#        tu    subsecond time (milliseconds)
-#        tl    Local time. Optional strftime format argument
-#                default %d/%b/%Y:%H:%M:%S %z
-#        tg    GMT time. Optional strftime format argument
-#                default %d/%b/%Y:%H:%M:%S %z
-#        tr    Response time (milliseconds)
-#        dt    Total time spent making DNS lookups (milliseconds)
-#        tS    Approximate master transaction start time in
-#            <full seconds since epoch>.<fractional seconds> format.
-#            Currently, Squid considers the master transaction
-#            started when a complete HTTP request header initiating
-#            the transaction is received from the client. This is
-#            the same value that Squid uses to calculate transaction
-#            response time when logging %tr to access.log. Currently,
-#            Squid uses millisecond resolution for %tS values,
-#            similar to the default access.log "current time" field
-#            (%ts.%03tu).
-#
-#    Access Control related format codes:
-#
-#        et    Tag returned by external acl
-#        ea    Log string returned by external acl
-#        un    User name (any available)
-#        ul    User name from authentication
-#        ue    User name from external acl helper
-#        ui    User name from ident
-#        un    A user name. Expands to the first available name
-#            from the following list of information sources:
-#            - authenticated user name, like %ul
-#            - user name supplied by an external ACL, like %ue
-#            - SSL client name, like %us
-#            - ident user name, like %ui
-#        credentials Client credentials. The exact meaning depends on
-#            the authentication scheme: For Basic authentication,
-#            it is the password; for Digest, the realm sent by the
-#            client; for NTLM and Negotiate, the client challenge
-#            or client credentials prefixed with "YR " or "KK ".
-#
-#    HTTP related format codes:
-#
-#        REQUEST
-#
-#        [http::]rm    Request method (GET/POST etc)
-#        [http::]>rm    Request method from client
-#        [http::]<rm    Request method sent to server or peer
-#
-#        [http::]ru    Request URL received (or computed) and sanitized
-#
-#                Logs request URI received from the client, a
-#                request adaptation service, or a request
-#                redirector (whichever was applied last).
-#
-#                Computed URLs are URIs of internally generated
-#                requests and various "error:..." URIs.
-#
-#                Honors strip_query_terms and uri_whitespace.
-#
-#                This field is not encoded by default. Encoding
-#                this field using variants of %-encoding will
-#                clash with uri_whitespace modifications that
-#                also use %-encoding.
-#
-#        [http::]>ru    Request URL received from the client (or computed)
-#
-#                Computed URLs are URIs of internally generated
-#                requests and various "error:..." URIs.
-#
-#                Unlike %ru, this request URI is not affected
-#                by request adaptation, URL rewriting services,
-#                and strip_query_terms.
-#
-#                Honors uri_whitespace.
-#
-#                This field is using pass-through URL encoding
-#                by default. Encoding this field using other
-#                variants of %-encoding will clash with
-#                uri_whitespace modifications that also use
-#                %-encoding.
-#
-#        [http::]<ru    Request URL sent to server or peer
-#        [http::]>rs    Request URL scheme from client
-#        [http::]<rs    Request URL scheme sent to server or peer
-#        [http::]>rd    Request URL domain from client
-#        [http::]<rd    Request URL domain sent to server or peer
-#        [http::]>rP    Request URL port from client
-#        [http::]<rP    Request URL port sent to server or peer
-#        [http::]rp    Request URL path excluding hostname
-#        [http::]>rp    Request URL path excluding hostname from client
-#        [http::]<rp    Request URL path excluding hostname sent to server or peer
-#        [http::]rv    Request protocol version
-#        [http::]>rv    Request protocol version from client
-#        [http::]<rv    Request protocol version sent to server or peer
-#
-#        [http::]>h    Original received request header.
-#                Usually differs from the request header sent by
-#                Squid, although most fields are often preserved.
-#                Accepts optional header field name/value filter
-#                argument using name[:[separator]element] format.
-#        [http::]>ha    Received request header after adaptation and
-#                redirection (pre-cache REQMOD vectoring point).
-#                Usually differs from the request header sent by
-#                Squid, although most fields are often preserved.
-#                Optional header name argument as for >h
-#
-#        RESPONSE
-#
-#        [http::]<Hs    HTTP status code received from the next hop
-#        [http::]>Hs    HTTP status code sent to the client
-#
-#        [http::]<h    Reply header. Optional header name argument
-#                as for >h
-#
-#        [http::]mt    MIME content type
-#
-#
-#        SIZE COUNTERS
-#
-#        [http::]st    Total size of request + reply traffic with client
-#        [http::]>st    Total size of request received from client.
-#                Excluding chunked encoding bytes.
-#        [http::]<st    Total size of reply sent to client (after adaptation)
-#
-#        [http::]>sh    Size of request headers received from client
-#        [http::]<sh    Size of reply headers sent to client (after adaptation)
-#
-#        [http::]<sH    Reply high offset sent
-#        [http::]<sS    Upstream object size
-#
-#        [http::]<bs    Number of HTTP-equivalent message body bytes
-#                received from the next hop, excluding chunked
-#                transfer encoding and control messages.
-#                Generated FTP/Gopher listings are treated as
-#                received bodies.
-#
-#        TIMING
-#
-#        [http::]<pt    Peer response time in milliseconds. The timer starts
-#                when the last request byte is sent to the next hop
-#                and stops when the last response byte is received.
-#        [http::]<tt    Total time in milliseconds. The timer
-#                starts with the first connect request (or write I/O)
-#                sent to the first selected peer. The timer stops
-#                with the last I/O with the last peer.
-#
-#    Squid handling related format codes:
-#
-#        Ss    Squid request status (TCP_MISS etc)
-#        Sh    Squid hierarchy status (DEFAULT_PARENT etc)
-#
-#    SSL-related format codes:
-#
-#        ssl::bump_mode    SslBump decision for the transaction:
-#
-#                For CONNECT requests that initiated bumping of
-#                a connection and for any request received on
-#                an already bumped connection, Squid logs the
-#                corresponding SslBump mode ("splice", "bump",
-#                "peek", "stare", "terminate", "server-first"
-#                or "client-first"). See the ssl_bump option
-#                for more information about these modes.
-#
-#                A "none" token is logged for requests that
-#                triggered "ssl_bump" ACL evaluation matching
-#                a "none" rule.
-#
-#                In all other cases, a single dash ("-") is
-#                logged.
-#
-#        ssl::>sni    SSL client SNI sent to Squid.
-#
-#        ssl::>cert_subject
-#                The Subject field of the received client
-#                SSL certificate or a dash ('-') if Squid has
-#                received an invalid/malformed certificate or
-#                no certificate at all. Consider encoding the
-#                logged value because Subject often has spaces.
-#
-#        ssl::>cert_issuer
-#                The Issuer field of the received client
-#                SSL certificate or a dash ('-') if Squid has
-#                received an invalid/malformed certificate or
-#                no certificate at all. Consider encoding the
-#                logged value because Issuer often has spaces.
-#
-#        ssl::<cert_subject
-#                The Subject field of the received server
-#                TLS certificate or a dash ('-') if this is
-#                not available. Consider encoding the logged
-#                value because Subject often has spaces.
-#
-#        ssl::<cert_issuer
-#                The Issuer field of the received server
-#                TLS certificate or a dash ('-') if this is
-#                not available. Consider encoding the logged
-#                value because Issuer often has spaces.
-#
-#        ssl::<cert
-#                The received server x509 certificate in PEM
-#                format, including BEGIN and END lines (or a
-#                dash ('-') if the certificate is unavailable).
-#
-#                WARNING: Large certificates will exceed the
-#                current 8KB access.log record limit, resulting
-#                in truncated records. Such truncation usually
-#                happens in the middle of a record field. The
-#                limit applies to all access logging modules.
-#
-#                The logged certificate may have failed
-#                validation and may not be trusted by Squid.
-#                This field does not include any intermediate
-#                certificates that may have been received from
-#                the server or fetched during certificate
-#                validation process.
-#
-#                Currently, Squid only collects server
-#                certificates during step3 of SslBump
-#                processing; connections that were not subject
-#                to ssl_bump rules or that did not match a peek
-#                or stare rule at step2 will not have the
-#                server certificate information.
-#
-#                This field is using pass-through URL encoding
-#                by default.
-#
-#        ssl::<cert_errors
-#                The list of certificate validation errors
-#                detected by Squid (including OpenSSL and
-#                certificate validation helper components). The
-#                errors are listed in the discovery order. By
-#                default, the error codes are separated by ':'.
-#                Accepts an optional separator argument.
-#
-#        %ssl::>negotiated_version The negotiated TLS version of the
-#                client connection.
-#
-#        %ssl::<negotiated_version The negotiated TLS version of the
-#                last server or peer connection.
-#
-#        %ssl::>received_hello_version The TLS version of the Hello
-#                message received from TLS client.
-#
-#        %ssl::<received_hello_version The TLS version of the Hello
-#                message received from TLS server.
-#
-#        %ssl::>received_supported_version The maximum TLS version
-#                supported by the TLS client.
-#
-#        %ssl::<received_supported_version The maximum TLS version
-#                supported by the TLS server.
-#
-#        %ssl::>negotiated_cipher The negotiated cipher of the
-#                client connection.
-#
-#        %ssl::<negotiated_cipher The negotiated cipher of the
-#                last server or peer connection.
-#
-#    If ICAP is enabled, the following code becomes available (as
-#    well as ICAP log codes documented with the icap_log option):
-#
-#        icap::tt        Total ICAP processing time for the HTTP
-#                transaction. The timer ticks when ICAP
-#                ACLs are checked and when ICAP
-#                transaction is in progress.
-#
-#    If adaptation is enabled the following codes become available:
-#
-#        adapt::<last_h    The header of the last ICAP response or
-#                meta-information from the last eCAP
-#                transaction related to the HTTP transaction.
-#                Like <h, accepts an optional header name
-#                argument.
-#
-#        adapt::sum_trs Summed adaptation transaction response
-#                times recorded as a comma-separated list in
-#                the order of transaction start time. Each time
-#                value is recorded as an integer number,
-#                representing response time of one or more
-#                adaptation (ICAP or eCAP) transaction in
-#                milliseconds.  When a failed transaction is
-#                being retried or repeated, its time is not
-#                logged individually but added to the
-#                replacement (next) transaction. See also:
-#                adapt::all_trs.
-#
-#        adapt::all_trs All adaptation transaction response times.
-#                Same as adaptation_strs but response times of
-#                individual transactions are never added
-#                together. Instead, all transaction response
-#                times are recorded individually.
-#
-#    You can prefix adapt::*_trs format codes with adaptation
-#    service name in curly braces to record response time(s) specific
-#    to that service. For example: %{my_service}adapt::sum_trs
-#
-#    Format codes related to the PROXY protocol:
-#
-#        proxy_protocol::>h PROXY protocol header, including optional TLVs.
-#
-#                Supports the same field and element reporting/extraction logic
-#                as %http::>h. For configuration and reporting purposes, Squid
-#                maps each PROXY TLV to an HTTP header field: the TLV type
-#                (configured as a decimal integer) is the field name, and the
-#                TLV value is the field value. All TLVs of "LOCAL" connections
-#                (in PROXY protocol terminology) are currently skipped/ignored.
-#
-#                Squid also maps the following standard PROXY protocol header
-#                blocks to pseudo HTTP headers (their names use PROXY
-#                terminology and start with a colon, following HTTP tradition
-#                for pseudo headers): :command, :version, :src_addr, :dst_addr,
-#                :src_port, and :dst_port.
-#
-#                Without optional parameters, this logformat code logs
-#                pseudo headers and TLVs.
-#
-#                This format code uses pass-through URL encoding by default.
-#
-#                Example:
-#                    # relay custom PROXY TLV #224 to adaptation services
-#                    adaptation_meta Client-Foo "%proxy_protocol::>h{224}
-#
-#                See also: %http::>h
-#
-#    The default formats available (which do not need re-defining) are:
-#
-#logformat squid      %ts.%03tu %6tr %>a %Ss/%03>Hs %<st %rm %ru %[un %Sh/%<a %mt
-#logformat common     %>a %[ui %[un [%tl] "%rm %ru HTTP/%rv" %>Hs %<st %Ss:%Sh
-#logformat combined   %>a %[ui %[un [%tl] "%rm %ru HTTP/%rv" %>Hs %<st "%{Referer}>h" "%{User-Agent}>h" %Ss:%Sh
-#logformat referrer   %ts.%03tu %>a %{Referer}>h %ru
-#logformat useragent  %>a [%tl] "%{User-Agent}>h"
-#
-#    NOTE: When the log_mime_hdrs directive is set to ON.
-#        The squid, common and combined formats have a safely encoded copy
-#        of the mime headers appended to each line within a pair of brackets.
-#
-#    NOTE: The common and combined formats are not quite true to the Apache definition.
-#        The logs from Squid contain an extra status and hierarchy code appended.
-#
+# Tag: logformat
+# Usage:
+# Logformat <name> <format specification>
+# Defines an access log format.
+# The <format specification> is a string with embedded % format codes
+# % Format codes all follow the same basic structure where all
+# Components but the formatcode are optional and usually unnecessary,
+# Especially when dealing with common codes.
+# % [Encoding] [-] [[0]width] [{arg}] formatcode [{arg}]
+# Encoding escapes or otherwise protects "special" characters:
+# "    Quoted string encoding where quote(") and
+# Backslash(\) characters are \-escaped while
+# Cr, lf, and tab characters are encoded as \r,
+#                \N, and \t two-character sequences.
+# [    Custom squid encoding where percent(%), square
+# Brackets([]), backslash(\) and characters with
+# Codes outside of [32,126] range are %-encoded.
+# Sp is not encoded. used by log_mime_hdrs.
+# #    Url encoding (a.k.a. percent-encoding) where
+# All url unsafe and control characters (per rfc
+# 1738) are %-encoded.
+# /    Shell-like encoding where quote(") and
+# Backslash(\) characters are \-escaped while cr
+# And lf characters are encoded as \r and \n
+# Two-character sequences. values containing sp
+# Character(s) are surrounded by quotes(").
+# '    Raw/as-is encoding with no escaping/quoting.
+# Default encoding: when no explicit encoding is
+# Specified, each %code determines its own encoding.
+# Most %codes use raw/as-is encoding, but some codes use
+# A so called "pass-through url encoding" where all url
+# Unsafe and control characters (per rfc 1738) are
+#            %-Encoded, but the percent character(%) is left as is.
+# -    Left aligned
+# Width    minimum and/or maximum field width:
+#                [Width_min][.width_max]
+# When minimum starts with 0, the field is zero-padded.
+# String values exceeding maximum width are truncated.
+# {Arg}    argument such as header name etc. this field may be
+# Placed before or after the token, but not both at once.
+# Format codes:
+# %    A literal % character
+# Sn    unique sequence number per log line entry
+# Err_code    the id of an error response served by squid or
+# A similar internal error identifier.
+# Err_detail  additional err_code-dependent error information.
+# Note    the annotation specified by the argument. also
+# Logs the adaptation meta headers set by the
+# Adaptation_meta configuration parameter.
+# If no argument given all annotations logged.
+# The argument may include a separator to use with
+# Annotation values:
+# Name[:separator]
+# By default, multiple note values are separated with ","
+# And multiple notes are separated with "\r\n".
+# When logging named notes with %{name}note, the
+# Explicitly configured separator is used between note
+# Values. when logging all notes with %note, the
+# Explicitly configured separator is used between
+# Individual notes. there is currently no way to
+# Specify both value and notes separators when logging
+# All notes with %note.
+# Master_xaction  the master transaction identifier is an unsigned
+# Integer. these ids are guaranteed to monotonically
+# Increase within a single worker process lifetime, with
+# Higher values corresponding to transactions that were
+# Accepted or initiated later. due to current implementation
+# Deficiencies, some ids are skipped (i.e. never logged).
+# Concurrent workers and restarted workers use similar,
+# Overlapping sequences of master transaction ids.
+# Connection related format codes:
+# >A    client source ip address
+#        >A    client fqdn
+#        >P    client source port
+#        >Eui    client source eui (mac address, eui-48 or eui-64 identifier)
+#        >La    local ip address the client connected to
+#        >Lp    local port number the client connected to
+#        >Qos    client connection tos/dscp value set by squid
+#        >Nfmark client connection netfilter packet mark set by squid
+# La    local listening ip address the client connection was connected to.
+# Lp    local listening port number the client connection was connected to.
+# <A    server ip address of the last server or peer connection
+#        <A    server fqdn or peer name
+#        <P    server port number of the last server or peer connection
+#        <La    local ip address of the last server or peer connection
+#        <Lp     local port number of the last server or peer connection
+#        <Qos    server connection tos/dscp value set by squid
+#        <Nfmark server connection netfilter packet mark set by squid
+# >Handshake raw client handshake
+# Initial client bytes received by squid on a newly
+# Accepted tcp connection or inside a just established
+# Connect tunnel. squid stops accumulating handshake
+# Bytes as soon as the handshake parser succeeds or
+# Fails (determining whether the client is using the
+# Expected protocol).
+# For http clients, the handshake is the request line.
+# For tls clients, the handshake consists of all tls
+# Records up to and including the tls record that
+# Contains the last byte of the first clienthello
+# Message. for clients using an unsupported protocol,
+# This field contains the bytes received by squid at the
+# Time of the handshake parsing failure.
+# See the on_unsupported_protocol directive for more
+# Information on squid handshake traffic expectations.
+# Current support is limited to these contexts:
+#            - Http_port connections, but only when the
+# On_unsupported_protocol directive is in use.
+#            - Https_port connections (and connect tunnels) that
+# Are subject to the ssl_bump peek or stare action.
+# To protect binary handshake data, this field is always
+# Base64-encoded (rfc 4648 section 4). if logformat
+# Field encoding is configured, that encoding is applied
+# On top of base64. otherwise, the computed base64 value
+# Is recorded as is.
+# Time related format codes:
+# Ts    seconds since epoch
+# Tu    subsecond time (milliseconds)
+# Tl    local time. optional strftime format argument
+# Default %d/%b/%y:%h:%m:%s %z
+# Tg    gmt time. optional strftime format argument
+# Default %d/%b/%y:%h:%m:%s %z
+# Tr    response time (milliseconds)
+# Dt    total time spent making dns lookups (milliseconds)
+# Ts    approximate master transaction start time in
+#            <Full seconds since epoch>.<fractional seconds> format.
+# Currently, squid considers the master transaction
+# Started when a complete http request header initiating
+# The transaction is received from the client. this is
+# The same value that squid uses to calculate transaction
+# Response time when logging %tr to access.log. currently,
+# Squid uses millisecond resolution for %ts values,
+# Similar to the default access.log "current time" field
+#            (%Ts.%03tu).
+# Access control related format codes:
+# Et    tag returned by external acl
+# Ea    log string returned by external acl
+# Un    user name (any available)
+# Ul    user name from authentication
+# Ue    user name from external acl helper
+# Ui    user name from ident
+# Un    a user name. expands to the first available name
+# From the following list of information sources:
+#            - Authenticated user name, like %ul
+#            - User name supplied by an external acl, like %ue
+#            - Ssl client name, like %us
+#            - Ident user name, like %ui
+# Credentials client credentials. the exact meaning depends on
+# The authentication scheme: for basic authentication,
+# It is the password; for digest, the realm sent by the
+# Client; for ntlm and negotiate, the client challenge
+# Or client credentials prefixed with "yr " or "kk ".
+# Http related format codes:
+# Request
+# [Http::]rm    request method (get/post etc)
+#        [Http::]>rm    request method from client
+#        [Http::]<rm    request method sent to server or peer
+# [Http::]ru    request url received (or computed) and sanitized
+# Logs request uri received from the client, a
+# Request adaptation service, or a request
+# Redirector (whichever was applied last).
+# Computed urls are uris of internally generated
+# Requests and various "error:..." uris.
+# Honors strip_query_terms and uri_whitespace.
+# This field is not encoded by default. encoding
+# This field using variants of %-encoding will
+# Clash with uri_whitespace modifications that
+# Also use %-encoding.
+# [Http::]>ru    request url received from the client (or computed)
+# Computed urls are uris of internally generated
+# Requests and various "error:..." uris.
+# Unlike %ru, this request uri is not affected
+# By request adaptation, url rewriting services,
+# And strip_query_terms.
+# Honors uri_whitespace.
+# This field is using pass-through url encoding
+# By default. encoding this field using other
+# Variants of %-encoding will clash with
+# Uri_whitespace modifications that also use
+#                %-Encoding.
+# [Http::]<ru    request url sent to server or peer
+#        [Http::]>rs    request url scheme from client
+#        [Http::]<rs    request url scheme sent to server or peer
+#        [Http::]>rd    request url domain from client
+#        [Http::]<rd    request url domain sent to server or peer
+#        [Http::]>rp    request url port from client
+#        [Http::]<rp    request url port sent to server or peer
+#        [Http::]rp    request url path excluding hostname
+#        [Http::]>rp    request url path excluding hostname from client
+#        [Http::]<rp    request url path excluding hostname sent to server or peer
+#        [Http::]rv    request protocol version
+#        [Http::]>rv    request protocol version from client
+#        [Http::]<rv    request protocol version sent to server or peer
+# [Http::]>h    original received request header.
+# Usually differs from the request header sent by
+# Squid, although most fields are often preserved.
+# Accepts optional header field name/value filter
+# Argument using name[:[separator]element] format.
+#        [Http::]>ha    received request header after adaptation and
+# Redirection (pre-cache reqmod vectoring point).
+# Usually differs from the request header sent by
+# Squid, although most fields are often preserved.
+# Optional header name argument as for >h
+# Response
+# [Http::]<hs    http status code received from the next hop
+#        [Http::]>hs    http status code sent to the client
+# [Http::]<h    reply header. optional header name argument
+# As for >h
+# [Http::]mt    mime content type
+# Size counters
+# [Http::]st    total size of request + reply traffic with client
+#        [Http::]>st    total size of request received from client.
+# Excluding chunked encoding bytes.
+#        [Http::]<st    total size of reply sent to client (after adaptation)
+# [Http::]>sh    size of request headers received from client
+#        [Http::]<sh    size of reply headers sent to client (after adaptation)
+# [Http::]<sh    reply high offset sent
+#        [Http::]<ss    upstream object size
+# [Http::]<bs    number of http-equivalent message body bytes
+# Received from the next hop, excluding chunked
+# Transfer encoding and control messages.
+# Generated ftp/gopher listings are treated as
+# Received bodies.
+# Timing
+# [Http::]<pt    peer response time in milliseconds. the timer starts
+# When the last request byte is sent to the next hop
+# And stops when the last response byte is received.
+#        [Http::]<tt    total time in milliseconds. the timer
+# Starts with the first connect request (or write i/o)
+# Sent to the first selected peer. the timer stops
+# With the last i/o with the last peer.
+# Squid handling related format codes:
+# Ss    squid request status (tcp_miss etc)
+# Sh    squid hierarchy status (default_parent etc)
+# Ssl-related format codes:
+# Ssl::bump_mode    sslbump decision for the transaction:
+# For connect requests that initiated bumping of
+# A connection and for any request received on
+# An already bumped connection, squid logs the
+# Corresponding sslbump mode ("splice", "bump",
+#                "Peek", "stare", "terminate", "server-first"
+# Or "client-first"). see the ssl_bump option
+# For more information about these modes.
+# A "none" token is logged for requests that
+# Triggered "ssl_bump" acl evaluation matching
+# A "none" rule.
+# In all other cases, a single dash ("-") is
+# Logged.
+# Ssl::>sni    ssl client sni sent to squid.
+# Ssl::>cert_subject
+# The subject field of the received client
+# Ssl certificate or a dash ('-') if squid has
+# Received an invalid/malformed certificate or
+# No certificate at all. consider encoding the
+# Logged value because subject often has spaces.
+# Ssl::>cert_issuer
+# The issuer field of the received client
+# Ssl certificate or a dash ('-') if squid has
+# Received an invalid/malformed certificate or
+# No certificate at all. consider encoding the
+# Logged value because issuer often has spaces.
+# Ssl::<cert_subject
+# The subject field of the received server
+# Tls certificate or a dash ('-') if this is
+# Not available. consider encoding the logged
+# Value because subject often has spaces.
+# Ssl::<cert_issuer
+# The issuer field of the received server
+# Tls certificate or a dash ('-') if this is
+# Not available. consider encoding the logged
+# Value because issuer often has spaces.
+# Ssl::<cert
+# The received server x509 certificate in pem
+# Format, including begin and end lines (or a
+# Dash ('-') if the certificate is unavailable).
+# Warning: large certificates will exceed the
+# Current 8kb access.log record limit, resulting
+# In truncated records. such truncation usually
+# Happens in the middle of a record field. the
+# Limit applies to all access logging modules.
+# The logged certificate may have failed
+# Validation and may not be trusted by squid.
+# This field does not include any intermediate
+# Certificates that may have been received from
+# The server or fetched during certificate
+# Validation process.
+# Currently, squid only collects server
+# Certificates during step3 of sslbump
+# Processing; connections that were not subject
+# To ssl_bump rules or that did not match a peek
+# Or stare rule at step2 will not have the
+# Server certificate information.
+# This field is using pass-through url encoding
+# By default.
+# Ssl::<cert_errors
+# The list of certificate validation errors
+# Detected by squid (including openssl and
+# Certificate validation helper components). the
+# Errors are listed in the discovery order. by
+# Default, the error codes are separated by ':'.
+# Accepts an optional separator argument.
+# %Ssl::>negotiated_version the negotiated tls version of the
+# Client connection.
+# %Ssl::<negotiated_version the negotiated tls version of the
+# Last server or peer connection.
+# %Ssl::>received_hello_version the tls version of the hello
+# Message received from tls client.
+# %Ssl::<received_hello_version the tls version of the hello
+# Message received from tls server.
+# %Ssl::>received_supported_version the maximum tls version
+# Supported by the tls client.
+# %Ssl::<received_supported_version the maximum tls version
+# Supported by the tls server.
+# %Ssl::>negotiated_cipher the negotiated cipher of the
+# Client connection.
+# %Ssl::<negotiated_cipher the negotiated cipher of the
+# Last server or peer connection.
+# If icap is enabled, the following code becomes available (as
+# Well as icap log codes documented with the icap_log option):
+# Icap::tt        total icap processing time for the http
+# Transaction. the timer ticks when icap
+# Acls are checked and when icap
+# Transaction is in progress.
+# If adaptation is enabled the following codes become available:
+# Adapt::<last_h    the header of the last icap response or
+# Meta-information from the last ecap
+# Transaction related to the http transaction.
+# Like <h, accepts an optional header name
+# Argument.
+# Adapt::sum_trs summed adaptation transaction response
+# Times recorded as a comma-separated list in
+# The order of transaction start time. each time
+# Value is recorded as an integer number,
+# Representing response time of one or more
+# Adaptation (icap or ecap) transaction in
+# Milliseconds.  when a failed transaction is
+# Being retried or repeated, its time is not
+# Logged individually but added to the
+# Replacement (next) transaction. see also:
+# Adapt::all_trs.
+# Adapt::all_trs all adaptation transaction response times.
+# Same as adaptation_strs but response times of
+# Individual transactions are never added
+# Together. instead, all transaction response
+# Times are recorded individually.
+# You can prefix adapt::*_trs format codes with adaptation
+# Service name in curly braces to record response time(s) specific
+# To that service. for example: %{my_service}adapt::sum_trs
+# Format codes related to the proxy protocol:
+# Proxy_protocol::>h proxy protocol header, including optional tlvs.
+# Supports the same field and element reporting/extraction logic
+# As %http::>h. for configuration and reporting purposes, squid
+# Maps each proxy tlv to an http header field: the tlv type
+#                (Configured as a decimal integer) is the field name, and the
+# Tlv value is the field value. all tlvs of "local" connections
+#                (In proxy protocol terminology) are currently skipped/ignored.
+# Squid also maps the following standard proxy protocol header
+# Blocks to pseudo http headers (their names use proxy
+# Terminology and start with a colon, following http tradition
+# For pseudo headers): :command, :version, :src_addr, :dst_addr,
+#                :Src_port, and :dst_port.
+# Without optional parameters, this logformat code logs
+# Pseudo headers and tlvs.
+# This format code uses pass-through url encoding by default.
+# Example:
+#                    # Relay custom proxy tlv #224 to adaptation services
+# Adaptation_meta client-foo "%proxy_protocol::>h{224}
+# See also: %http::>h
+# The default formats available (which do not need re-defining) are:
+#Logformat squid      %ts.%03tu %6tr %>a %ss/%03>hs %<st %rm %ru %[un %sh/%<a %mt
+#Logformat common     %>a %[ui %[un [%tl] "%rm %ru http/%rv" %>hs %<st %ss:%sh
+#Logformat combined   %>a %[ui %[un [%tl] "%rm %ru http/%rv" %>hs %<st "%{referer}>h" "%{user-agent}>h" %ss:%sh
+#Logformat referrer   %ts.%03tu %>a %{referer}>h %ru
+#Logformat useragent  %>a [%tl] "%{user-agent}>h"
+# Note: when the log_mime_hdrs directive is set to on.
+# The squid, common and combined formats have a safely encoded copy
+# Of the mime headers appended to each line within a pair of brackets.
+# Note: the common and combined formats are not quite true to the apache definition.
+# The logs from squid contain an extra status and hierarchy code appended.
 #Default:
 # The format definitions squid, common, combined, referrer, useragent are built in.
 
-#  TAG: access_log
-#    Configures whether and how Squid logs HTTP and ICP transactions.
-#    If access logging is enabled, a single line is logged for every
-#    matching HTTP or ICP request. The recommended directive formats are:
-#
-#    access_log <module>:<place> [option ...] [acl acl ...]
-#    access_log none [acl acl ...]
-#
-#    The following directive format is accepted but may be deprecated:
-#    access_log <module>:<place> [<logformat name> [acl acl ...]]
-#
-#        In most cases, the first ACL name must not contain the '=' character
-#    and should not be equal to an existing logformat name. You can always
-#    start with an 'all' ACL to work around those restrictions.
-#
-#    Will log to the specified module:place using the specified format (which
-#    must be defined in a logformat directive) those entries which match
-#    ALL the acl's specified (which must be defined in acl clauses).
-#    If no acl is specified, all requests will be logged to this destination.
-#
-#    ===== Available options for the recommended directive format =====
-#
-#    logformat=name        Names log line format (either built-in or
-#                defined by a logformat directive). Defaults
-#                to 'squid'.
-#
-#    buffer-size=64KB    Defines approximate buffering limit for log
-#                records (see buffered_logs).  Squid should not
-#                keep more than the specified size and, hence,
-#                should flush records before the buffer becomes
-#                full to avoid overflows under normal
-#                conditions (the exact flushing algorithm is
-#                module-dependent though).  The on-error option
-#                controls overflow handling.
-#
-#    on-error=die|drop    Defines action on unrecoverable errors. The
-#                'drop' action ignores (i.e., does not log)
-#                affected log records. The default 'die' action
-#                kills the affected worker. The drop action
-#                support has not been tested for modules other
-#                than tcp.
-#
-#    rotate=N        Specifies the number of log file rotations to
-#                make when you run 'squid -k rotate'. The default
-#                is to obey the logfile_rotate directive. Setting
-#                rotate=0 will disable the file name rotation,
-#                but the log files are still closed and re-opened.
-#                This will enable you to rename the logfiles
-#                yourself just before sending the rotate signal.
-#                Only supported by the stdio module.
-#
-#    ===== Modules Currently available =====
-#
-#    none    Do not log any requests matching these ACL.
-#        Do not specify Place or logformat name.
-#
-#    stdio    Write each log line to disk immediately at the completion of
-#        each request.
-#        Place: the filename and path to be written.
-#
-#    daemon    Very similar to stdio. But instead of writing to disk the log
-#        line is passed to a daemon helper for asychronous handling instead.
-#        Place: varies depending on the daemon.
-#
-#        log_file_daemon Place: the file name and path to be written.
-#
-#    syslog    To log each request via syslog facility.
-#        Place: The syslog facility and priority level for these entries.
-#        Place Format:  facility.priority
-#
-#        where facility could be any of:
-#            authpriv, daemon, local0 ... local7 or user.
-#
-#        And priority could be any of:
-#            err, warning, notice, info, debug.
-#
-#    udp    To send each log line as text data to a UDP receiver.
-#        Place: The destination host name or IP and port.
-#        Place Format:   //host:port
-#
-#    tcp    To send each log line as text data to a TCP receiver.
-#        Lines may be accumulated before sending (see buffered_logs).
-#        Place: The destination host name or IP and port.
-#        Place Format:   //host:port
-#
-#    Default:
-#        access_log daemon:/var/log/squid/access.log squid
+# Tag: access_log
+# Configures whether and how squid logs http and icp transactions.
+# If access logging is enabled, a single line is logged for every
+# Matching http or icp request. the recommended directive formats are:
+# Access_log <module>:<place> [option ...] [acl acl ...]
+# Access_log none [acl acl ...]
+# The following directive format is accepted but may be deprecated:
+# Access_log <module>:<place> [<logformat name> [acl acl ...]]
+# In most cases, the first acl name must not contain the '=' character
+# And should not be equal to an existing logformat name. you can always
+# Start with an 'all' acl to work around those restrictions.
+# Will log to the specified module:place using the specified format (which
+# Must be defined in a logformat directive) those entries which match
+# All the acl's specified (which must be defined in acl clauses).
+# If no acl is specified, all requests will be logged to this destination.
+# ===== Available options for the recommended directive format =====
+# Logformat=name        names log line format (either built-in or
+# Defined by a logformat directive). defaults
+# To 'squid'.
+# Buffer-size=64kb    defines approximate buffering limit for log
+# Records (see buffered_logs).  squid should not
+# Keep more than the specified size and, hence,
+# Should flush records before the buffer becomes
+# Full to avoid overflows under normal
+# Conditions (the exact flushing algorithm is
+# Module-dependent though).  the on-error option
+# Controls overflow handling.
+# On-error=die|drop    defines action on unrecoverable errors. the
+#                'Drop' action ignores (i.e., does not log)
+# Affected log records. the default 'die' action
+# Kills the affected worker. the drop action
+# Support has not been tested for modules other
+# Than tcp.
+# Rotate=n        specifies the number of log file rotations to
+# Make when you run 'squid -k rotate'. the default
+# Is to obey the logfile_rotate directive. setting
+# Rotate=0 will disable the file name rotation,
+# But the log files are still closed and re-opened.
+# This will enable you to rename the logfiles
+# Yourself just before sending the rotate signal.
+# Only supported by the stdio module.
+# ===== Modules currently available =====
+# None    do not log any requests matching these acl.
+# Do not specify place or logformat name.
+# Stdio    write each log line to disk immediately at the completion of
+# Each request.
+# Place: the filename and path to be written.
+# Daemon    very similar to stdio. but instead of writing to disk the log
+# Line is passed to a daemon helper for asychronous handling instead.
+# Place: varies depending on the daemon.
+# Log_file_daemon place: the file name and path to be written.
+# Syslog    to log each request via syslog facility.
+# Place: the syslog facility and priority level for these entries.
+# Place format:  facility.priority
+# Where facility could be any of:
+# Authpriv, daemon, local0 ... local7 or user.
+# And priority could be any of:
+# Err, warning, notice, info, debug.
+# Udp    to send each log line as text data to a udp receiver.
+# Place: the destination host name or ip and port.
+# Place format:   //host:port
+# Tcp    to send each log line as text data to a tcp receiver.
+# Lines may be accumulated before sending (see buffered_logs).
+# Place: the destination host name or ip and port.
+# Place format:   //host:port
+# Default:
+# Access_log daemon:/var/log/squid/access.log squid
 #Default:
-# access_log daemon:/var/log/squid/access.log squid
+# Access_log daemon:/var/log/squid/access.log squid
 
-#  TAG: icap_log
-#    ICAP log files record ICAP transaction summaries, one line per
-#    transaction.
-#
-#    The icap_log option format is:
-#    icap_log <filepath> [<logformat name> [acl acl ...]]
-#    icap_log none [acl acl ...]]
-#
-#    Please see access_log option documentation for details. The two
-#    kinds of logs share the overall configuration approach and many
-#    features.
-#
-#    ICAP processing of a single HTTP message or transaction may
-#    require multiple ICAP transactions.  In such cases, multiple
-#    ICAP transaction log lines will correspond to a single access
-#    log line.
-#
-#    ICAP log supports many access.log logformat %codes. In ICAP context,
-#    HTTP message-related %codes are applied to the HTTP message embedded
-#    in an ICAP message. Logformat "%http::>..." codes are used for HTTP
-#    messages embedded in ICAP requests while "%http::<..." codes are used
-#    for HTTP messages embedded in ICAP responses. For example:
-#
-#        http::>h    To-be-adapted HTTP message headers sent by Squid to
-#                the ICAP service. For REQMOD transactions, these are
-#                HTTP request headers. For RESPMOD, these are HTTP
-#                response headers, but Squid currently cannot log them
-#                (i.e., %http::>h will expand to "-" for RESPMOD).
-#
-#        http::<h    Adapted HTTP message headers sent by the ICAP
-#                service to Squid (i.e., HTTP request headers in regular
-#                REQMOD; HTTP response headers in RESPMOD and during
-#                request satisfaction in REQMOD).
-#
-#    ICAP OPTIONS transactions do not embed HTTP messages.
-#
-#    Several logformat codes below deal with ICAP message bodies. An ICAP
-#    message body, if any, typically includes a complete HTTP message
-#    (required HTTP headers plus optional HTTP message body). When
-#    computing HTTP message body size for these logformat codes, Squid
-#    either includes or excludes chunked encoding overheads; see
-#    code-specific documentation for details.
-#
-#    For Secure ICAP services, all size-related information is currently
-#    computed before/after TLS encryption/decryption, as if TLS was not
-#    in use at all.
-#
-#    The following format codes are also available for ICAP logs:
-#
-#        icap::<A    ICAP server IP address. Similar to <A.
-#
-#        icap::<service_name    ICAP service name from the icap_service
-#                option in Squid configuration file.
-#
-#        icap::ru    ICAP Request-URI. Similar to ru.
-#
-#        icap::rm    ICAP request method (REQMOD, RESPMOD, or
-#                OPTIONS). Similar to existing rm.
-#
-#        icap::>st    The total size of the ICAP request sent to the ICAP
-#                server (ICAP headers + ICAP body), including chunking
-#                metadata (if any).
-#
-#        icap::<st    The total size of the ICAP response received from the
-#                ICAP server (ICAP headers + ICAP body), including
-#                chunking metadata (if any).
-#
-#        icap::<bs    The size of the ICAP response body received from the
-#                ICAP server, excluding chunking metadata (if any).
-#
-#        icap::tr     Transaction response time (in
-#                milliseconds).  The timer starts when
-#                the ICAP transaction is created and
-#                stops when the transaction is completed.
-#                Similar to tr.
-#
-#        icap::tio    Transaction I/O time (in milliseconds). The
-#                timer starts when the first ICAP request
-#                byte is scheduled for sending. The timers
-#                stops when the last byte of the ICAP response
-#                is received.
-#
-#        icap::to     Transaction outcome: ICAP_ERR* for all
-#                transaction errors, ICAP_OPT for OPTION
-#                transactions, ICAP_ECHO for 204
-#                responses, ICAP_MOD for message
-#                modification, and ICAP_SAT for request
-#                satisfaction. Similar to Ss.
-#
-#        icap::Hs    ICAP response status code. Similar to Hs.
-#
-#        icap::>h    ICAP request header(s). Similar to >h.
-#
-#        icap::<h    ICAP response header(s). Similar to <h.
-#
-#    The default ICAP log format, which can be used without an explicit
-#    definition, is called icap_squid:
-#
-#logformat icap_squid %ts.%03tu %6icap::tr %>A %icap::to/%03icap::Hs %icap::<st %icap::rm %icap::ru %un -/%icap::<A -
-#
-#    See also: logformat and %adapt::<last_h
+# Tag: icap_log
+# Icap log files record icap transaction summaries, one line per
+# Transaction.
+# The icap_log option format is:
+# Icap_log <filepath> [<logformat name> [acl acl ...]]
+# Icap_log none [acl acl ...]]
+# Please see access_log option documentation for details. the two
+# Kinds of logs share the overall configuration approach and many
+# Features.
+# Icap processing of a single http message or transaction may
+# Require multiple icap transactions.  in such cases, multiple
+# Icap transaction log lines will correspond to a single access
+# Log line.
+# Icap log supports many access.log logformat %codes. in icap context,
+# Http message-related %codes are applied to the http message embedded
+# In an icap message. logformat "%http::>..." codes are used for http
+# Messages embedded in icap requests while "%http::<..." codes are used
+# For http messages embedded in icap responses. for example:
+# Http::>h    to-be-adapted http message headers sent by squid to
+# The icap service. for reqmod transactions, these are
+# Http request headers. for respmod, these are http
+# Response headers, but squid currently cannot log them
+#                (I.e., %http::>h will expand to "-" for respmod).
+# Http::<h    adapted http message headers sent by the icap
+# Service to squid (i.e., http request headers in regular
+# Reqmod; http response headers in respmod and during
+# Request satisfaction in reqmod).
+# Icap options transactions do not embed http messages.
+# Several logformat codes below deal with icap message bodies. an icap
+# Message body, if any, typically includes a complete http message
+#    (Required http headers plus optional http message body). when
+# Computing http message body size for these logformat codes, squid
+# Either includes or excludes chunked encoding overheads; see
+# Code-specific documentation for details.
+# For secure icap services, all size-related information is currently
+# Computed before/after tls encryption/decryption, as if tls was not
+# In use at all.
+# The following format codes are also available for icap logs:
+# Icap::<a    icap server ip address. similar to <a.
+# Icap::<service_name    icap service name from the icap_service
+# Option in squid configuration file.
+# Icap::ru    icap request-uri. similar to ru.
+# Icap::rm    icap request method (reqmod, respmod, or
+# Options). similar to existing rm.
+# Icap::>st    the total size of the icap request sent to the icap
+# Server (icap headers + icap body), including chunking
+# Metadata (if any).
+# Icap::<st    the total size of the icap response received from the
+# Icap server (icap headers + icap body), including
+# Chunking metadata (if any).
+# Icap::<bs    the size of the icap response body received from the
+# Icap server, excluding chunking metadata (if any).
+# Icap::tr     transaction response time (in
+# Milliseconds).  the timer starts when
+# The icap transaction is created and
+# Stops when the transaction is completed.
+# Similar to tr.
+# Icap::tio    transaction i/o time (in milliseconds). the
+# Timer starts when the first icap request
+# Byte is scheduled for sending. the timers
+# Stops when the last byte of the icap response
+# Is received.
+# Icap::to     transaction outcome: icap_err* for all
+# Transaction errors, icap_opt for option
+# Transactions, icap_echo for 204
+# Responses, icap_mod for message
+# Modification, and icap_sat for request
+# Satisfaction. similar to ss.
+# Icap::hs    icap response status code. similar to hs.
+# Icap::>h    icap request header(s). similar to >h.
+# Icap::<h    icap response header(s). similar to <h.
+# The default icap log format, which can be used without an explicit
+# Definition, is called icap_squid:
+#Logformat icap_squid %ts.%03tu %6icap::tr %>a %icap::to/%03icap::hs %icap::<st %icap::rm %icap::ru %un -/%icap::<a -
+# See also: logformat and %adapt::<last_h
 #Default:
-# none
+# None
 
-#  TAG: logfile_daemon
-#    Specify the path to the logfile-writing daemon. This daemon is
-#    used to write the access and store logs, if configured.
-#
-#    Squid sends a number of commands to the log daemon:
-#      L<data>\n - logfile data
-#      R\n - rotate file
-#      T\n - truncate file
-#      O\n - reopen file
-#      F\n - flush file
-#      r<n>\n - set rotate count to <n>
-#      b<n>\n - 1 = buffer output, 0 = don't buffer output
-#
-#    No responses is expected.
+# Tag: logfile_daemon
+# Specify the path to the logfile-writing daemon. this daemon is
+# Used to write the access and store logs, if configured.
+# Squid sends a number of commands to the log daemon:
+# L<data>\n - logfile data
+# R\n - rotate file
+# T\n - truncate file
+# O\n - reopen file
+# F\n - flush file
+# R<n>\n - set rotate count to <n>
+# B<n>\n - 1 = buffer output, 0 = don't buffer output
+# No responses is expected.
 #Default:
-# logfile_daemon /usr/lib/squid/log_file_daemon
+# Logfile_daemon /usr/lib/squid/log_file_daemon
 
-#  TAG: stats_collection    allow|deny acl acl...
-#    This options allows you to control which requests gets accounted
-#    in performance counters.
-#
-#    This clause only supports fast acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
+# Tag: stats_collection    allow|deny acl acl...
+# This options allows you to control which requests gets accounted
+# In performance counters.
+# This clause only supports fast acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
 #Default:
 # Allow logging for all transactions.
 
-#  TAG: cache_store_log
-#    Logs the activities of the storage manager.  Shows which
-#    objects are ejected from the cache, and which objects are
-#    saved and for how long.
-#    There are not really utilities to analyze this data, so you can safely
-#    disable it (the default).
-#
-#    Store log uses modular logging outputs. See access_log for the list
-#    of modules supported.
-#
-#    Example:
-#        cache_store_log stdio:/var/log/squid/store.log
-#        cache_store_log daemon:/var/log/squid/store.log
+# Tag: cache_store_log
+# Logs the activities of the storage manager.  shows which
+# Objects are ejected from the cache, and which objects are
+# Saved and for how long.
+# There are not really utilities to analyze this data, so you can safely
+# Disable it (the default).
+# Store log uses modular logging outputs. see access_log for the list
+# Of modules supported.
+# Example:
+# Cache_store_log stdio:/var/log/squid/store.log
+# Cache_store_log daemon:/var/log/squid/store.log
 #Default:
-# none
+# None
 
-#  TAG: cache_swap_state
-#    Location for the cache "swap.state" file. This index file holds
-#    the metadata of objects saved on disk.  It is used to rebuild
-#    the cache during startup.  Normally this file resides in each
-#    'cache_dir' directory, but you may specify an alternate
-#    pathname here.  Note you must give a full filename, not just
-#    a directory. Since this is the index for the whole object
-#    list you CANNOT periodically rotate it!
-#
-#    If %s can be used in the file name it will be replaced with a
-#    a representation of the cache_dir name where each / is replaced
-#    with '.'. This is needed to allow adding/removing cache_dir
-#    lines when cache_swap_log is being used.
-#
-#    If have more than one 'cache_dir', and %s is not used in the name
-#    these swap logs will have names such as:
-#
-#        cache_swap_log.00
-#        cache_swap_log.01
-#        cache_swap_log.02
-#
-#    The numbered extension (which is added automatically)
-#    corresponds to the order of the 'cache_dir' lines in this
-#    configuration file.  If you change the order of the 'cache_dir'
-#    lines in this file, these index files will NOT correspond to
-#    the correct 'cache_dir' entry (unless you manually rename
-#    them).  We recommend you do NOT use this option.  It is
-#    better to keep these index files in each 'cache_dir' directory.
+# Tag: cache_swap_state
+# Location for the cache "swap.state" file. this index file holds
+# The metadata of objects saved on disk.  it is used to rebuild
+# The cache during startup.  normally this file resides in each
+#    'Cache_dir' directory, but you may specify an alternate
+# Pathname here.  note you must give a full filename, not just
+# A directory. since this is the index for the whole object
+# List you cannot periodically rotate it!
+# If %s can be used in the file name it will be replaced with a
+# A representation of the cache_dir name where each / is replaced
+# With '.'. this is needed to allow adding/removing cache_dir
+# Lines when cache_swap_log is being used.
+# If have more than one 'cache_dir', and %s is not used in the name
+# These swap logs will have names such as:
+# Cache_swap_log.00
+# Cache_swap_log.01
+# Cache_swap_log.02
+# The numbered extension (which is added automatically)
+# Corresponds to the order of the 'cache_dir' lines in this
+# Configuration file.  if you change the order of the 'cache_dir'
+# Lines in this file, these index files will not correspond to
+# The correct 'cache_dir' entry (unless you manually rename
+# Them).  we recommend you do not use this option.  it is
+# Better to keep these index files in each 'cache_dir' directory.
 #Default:
 # Store the journal inside its cache_dir
 
-#  TAG: logfile_rotate
-#    Specifies the default number of logfile rotations to make when you
-#    type 'squid -k rotate'. The default is 10, which will rotate
-#    with extensions 0 through 9. Setting logfile_rotate to 0 will
-#    disable the file name rotation, but the logfiles are still closed
-#    and re-opened. This will enable you to rename the logfiles
-#    yourself just before sending the rotate signal.
-#
-#    Note, from Squid-3.1 this option is only a default for cache.log,
-#    that log can be rotated separately by using debug_options.
-#
-#    Note, from Squid-4 this option is only a default for access.log
-#    recorded by stdio: module. Those logs can be rotated separately by
-#    using the rotate=N option on their access_log directive.
-#
-#    Note, the 'squid -k rotate' command normally sends a USR1
-#    signal to the running squid process.  In certain situations
-#    (e.g. on Linux with Async I/O), USR1 is used for other
-#    purposes, so -k rotate uses another signal.  It is best to get
-#    in the habit of using 'squid -k rotate' instead of 'kill -USR1
-#    <pid>'.
-#
-#    Note, for Debian/Linux the default of logfile_rotate is
-#    zero, since it includes external logfile-rotation methods.
+# Tag: logfile_rotate
+# Specifies the default number of logfile rotations to make when you
+# Type 'squid -k rotate'. the default is 10, which will rotate
+# With extensions 0 through 9. setting logfile_rotate to 0 will
+# Disable the file name rotation, but the logfiles are still closed
+# And re-opened. this will enable you to rename the logfiles
+# Yourself just before sending the rotate signal.
+# Note, from squid-3.1 this option is only a default for cache.log,
+# That log can be rotated separately by using debug_options.
+# Note, from squid-4 this option is only a default for access.log
+# Recorded by stdio: module. those logs can be rotated separately by
+# Using the rotate=n option on their access_log directive.
+# Note, the 'squid -k rotate' command normally sends a usr1
+# Signal to the running squid process.  in certain situations
+#    (E.g. on linux with async i/o), usr1 is used for other
+# Purposes, so -k rotate uses another signal.  it is best to get
+# In the habit of using 'squid -k rotate' instead of 'kill -usr1
+#    <Pid>'.
+# Note, for debian/linux the default of logfile_rotate is
+# Zero, since it includes external logfile-rotation methods.
 #Default:
-# logfile_rotate 0
+# Logfile_rotate 0
 
-#  TAG: mime_table
-#    Path to Squid's icon configuration file.
-#
-#    You shouldn't need to change this, but the default file contains
-#    examples and formatting information if you do.
+# Tag: mime_table
+# Path to squid's icon configuration file.
+# You shouldn't need to change this, but the default file contains
+# Examples and formatting information if you do.
 #Default:
-# mime_table /usr/share/squid/mime.conf
+# Mime_table /usr/share/squid/mime.conf
 
-#  TAG: log_mime_hdrs    on|off
-#    The Cache can record both the request and the response MIME
-#    headers for each HTTP transaction.  The headers are encoded
-#    safely and will appear as two bracketed fields at the end of
-#    the access log (for either the native or httpd-emulated log
-#    formats).  To enable this logging set log_mime_hdrs to 'on'.
+# Tag: log_mime_hdrs    on|off
+# The cache can record both the request and the response mime
+# Headers for each http transaction.  the headers are encoded
+# Safely and will appear as two bracketed fields at the end of
+# The access log (for either the native or httpd-emulated log
+# Formats).  to enable this logging set log_mime_hdrs to 'on'.
 #Default:
-# log_mime_hdrs off
+# Log_mime_hdrs off
 
-#  TAG: pid_filename
-#    A filename to write the process-id to.  To disable, enter "none".
+# Tag: pid_filename
+# A filename to write the process-id to.  to disable, enter "none".
 #Default:
-# pid_filename /run/squid.pid
+# Pid_filename /run/squid.pid
 
-#  TAG: client_netmask
-#    A netmask for client addresses in logfiles and cachemgr output.
-#    Change this to protect the privacy of your cache clients.
-#    A netmask of 255.255.255.0 will log all IP's in that range with
-#    the last digit set to '0'.
+# Tag: client_netmask
+# A netmask for client addresses in logfiles and cachemgr output.
+# Change this to protect the privacy of your cache clients.
+# A netmask of 255.255.255.0 will log all ip's in that range with
+# The last digit set to '0'.
 #Default:
-# Log full client IP address
+# Log full client ip address
 
-#  TAG: strip_query_terms
-#    By default, Squid strips query terms from requested URLs before
-#    logging.  This protects your user's privacy and reduces log size.
-#
-#    When investigating HIT/MISS or other caching behaviour you
-#    will need to disable this to see the full URL used by Squid.
+# Tag: strip_query_terms
+# By default, squid strips query terms from requested urls before
+# Logging.  this protects your user's privacy and reduces log size.
+# When investigating hit/miss or other caching behaviour you
+# Will need to disable this to see the full url used by squid.
 #Default:
-# strip_query_terms on
+# Strip_query_terms on
 
-#  TAG: buffered_logs    on|off
-#    Whether to write/send access_log records ASAP or accumulate them and
-#    then write/send them in larger chunks. Buffering may improve
-#    performance because it decreases the number of I/Os. However,
-#    buffering increases the delay before log records become available to
-#    the final recipient (e.g., a disk file or logging daemon) and,
-#    hence, increases the risk of log records loss.
-#
-#    Note that even when buffered_logs are off, Squid may have to buffer
-#    records if it cannot write/send them immediately due to pending I/Os
-#    (e.g., the I/O writing the previous log record) or connectivity loss.
-#
-#    Currently honored by 'daemon' and 'tcp' access_log modules only.
+# Tag: buffered_logs    on|off
+# Whether to write/send access_log records asap or accumulate them and
+# Then write/send them in larger chunks. buffering may improve
+# Performance because it decreases the number of i/os. however,
+# Buffering increases the delay before log records become available to
+# The final recipient (e.g., a disk file or logging daemon) and,
+# Hence, increases the risk of log records loss.
+# Note that even when buffered_logs are off, squid may have to buffer
+# Records if it cannot write/send them immediately due to pending i/os
+#    (E.g., the i/o writing the previous log record) or connectivity loss.
+# Currently honored by 'daemon' and 'tcp' access_log modules only.
 #Default:
-# buffered_logs off
+# Buffered_logs off
 
-#  TAG: netdb_filename
-#    Where Squid stores it's netdb journal.
-#    When enabled this journal preserves netdb state between restarts.
-#
-#    To disable, enter "none".
+# Tag: netdb_filename
+# Where squid stores it's netdb journal.
+# When enabled this journal preserves netdb state between restarts.
+# To disable, enter "none".
 #Default:
-# netdb_filename stdio:/var/spool/squid/netdb.state
+# Netdb_filename stdio:/var/spool/squid/netdb.state
 
-# OPTIONS FOR TROUBLESHOOTING
+# Options for troubleshooting
 # -----------------------------------------------------------------------------
 
-#  TAG: cache_log
-#    Squid administrative logging file.
-#
-#    This is where general information about Squid behavior goes. You can
-#    increase the amount of data logged to this file and how often it is
-#    rotated with "debug_options"
+# Tag: cache_log
+# Squid administrative logging file.
+# This is where general information about squid behavior goes. you can
+# Increase the amount of data logged to this file and how often it is
+# Rotated with "debug_options"
 #Default:
-# cache_log /var/log/squid/cache.log
+# Cache_log /var/log/squid/cache.log
 
-#  TAG: debug_options
-#    Logging options are set as section,level where each source file
-#    is assigned a unique section.  Lower levels result in less
-#    output,  Full debugging (level 9) can result in a very large
-#    log file, so be careful.
-#
-#    The magic word "ALL" sets debugging levels for all sections.
-#    The default is to run with "ALL,1" to record important warnings.
-#
-#    The rotate=N option can be used to keep more or less of these logs
-#    than would otherwise be kept by logfile_rotate.
-#    For most uses a single log should be enough to monitor current
-#    events affecting Squid.
+# Tag: debug_options
+# Logging options are set as section,level where each source file
+# Is assigned a unique section.  lower levels result in less
+# Output,  full debugging (level 9) can result in a very large
+# Log file, so be careful.
+# The magic word "all" sets debugging levels for all sections.
+# The default is to run with "all,1" to record important warnings.
+# The rotate=n option can be used to keep more or less of these logs
+# Than would otherwise be kept by logfile_rotate.
+# For most uses a single log should be enough to monitor current
+# Events affecting squid.
 #Default:
 # Log all critical and important messages.
 
-#  TAG: coredump_dir
-#    By default Squid leaves core files in the directory from where
-#    it was started. If you set 'coredump_dir' to a directory
-#    that exists, Squid will chdir() to that directory at startup
-#    and coredump files will be left there.
-#
+# Tag: coredump_dir
+# By default squid leaves core files in the directory from where
+# It was started. if you set 'coredump_dir' to a directory
+# That exists, squid will chdir() to that directory at startup
+# And coredump files will be left there.
 #Default:
-# Use the directory from where Squid was started.
-#
+# Use the directory from where squid was started.
 
 # Leave coredumps in the first cache dir
 coredump_dir /var/spool/squid
 
-# OPTIONS FOR FTP GATEWAYING
+# Options for ftp gatewaying
 # -----------------------------------------------------------------------------
 
-#  TAG: ftp_user
-#    If you want the anonymous login password to be more informative
-#    (and enable the use of picky FTP servers), set this to something
-#    reasonable for your domain, like wwwuser@somewhere.net
-#
-#    The reason why this is domainless by default is the
-#    request can be made on the behalf of a user in any domain,
-#    depending on how the cache is used.
-#    Some FTP server also validate the email address is valid
-#    (for example perl.com).
+# Tag: ftp_user
+# If you want the anonymous login password to be more informative
+#    (And enable the use of picky ftp servers), set this to something
+# Reasonable for your domain, like wwwuser@somewhere.net
+# The reason why this is domainless by default is the
+# Request can be made on the behalf of a user in any domain,
+# Depending on how the cache is used.
+# Some ftp server also validate the email address is valid
+#    (For example perl.com).
 #Default:
-# ftp_user Squid@
+# Ftp_user squid@
 
-#  TAG: ftp_passive
-#    If your firewall does not allow Squid to use passive
-#    connections, turn off this option.
-#
-#    Use of ftp_epsv_all option requires this to be ON.
+# Tag: ftp_passive
+# If your firewall does not allow squid to use passive
+# Connections, turn off this option.
+# Use of ftp_epsv_all option requires this to be on.
 #Default:
-# ftp_passive on
+# Ftp_passive on
 
-#  TAG: ftp_epsv_all
-#    FTP Protocol extensions permit the use of a special "EPSV ALL" command.
-#
-#    NATs may be able to put the connection on a "fast path" through the
-#    translator, as the EPRT command will never be used and therefore,
-#    translation of the data portion of the segments will never be needed.
-#
-#    When a client only expects to do two-way FTP transfers this may be
-#    useful.
-#    If squid finds that it must do a three-way FTP transfer after issuing
-#    an EPSV ALL command, the FTP session will fail.
-#
-#    If you have any doubts about this option do not use it.
-#    Squid will nicely attempt all other connection methods.
-#
-#    Requires ftp_passive to be ON (default) for any effect.
+# Tag: ftp_epsv_all
+# Ftp protocol extensions permit the use of a special "epsv all" command.
+# Nats may be able to put the connection on a "fast path" through the
+# Translator, as the eprt command will never be used and therefore,
+# Translation of the data portion of the segments will never be needed.
+# When a client only expects to do two-way ftp transfers this may be
+# Useful.
+# If squid finds that it must do a three-way ftp transfer after issuing
+# An epsv all command, the ftp session will fail.
+# If you have any doubts about this option do not use it.
+# Squid will nicely attempt all other connection methods.
+# Requires ftp_passive to be on (default) for any effect.
 #Default:
-# ftp_epsv_all off
+# Ftp_epsv_all off
 
-#  TAG: ftp_epsv
-#    FTP Protocol extensions permit the use of a special "EPSV" command.
-#
-#    NATs may be able to put the connection on a "fast path" through the
-#    translator using EPSV, as the EPRT command will never be used
-#    and therefore, translation of the data portion of the segments
-#    will never be needed.
-#
-#    EPSV is often required to interoperate with FTP servers on IPv6
-#    networks. On the other hand, it may break some IPv4 servers.
-#
-#    By default, EPSV may try EPSV with any FTP server. To fine tune
-#    that decision, you may restrict EPSV to certain clients or servers
-#    using ACLs:
-#
-#        ftp_epsv allow|deny al1 acl2 ...
-#
-#    WARNING: Disabling EPSV may cause problems with external NAT and IPv6.
-#
-#    Only fast ACLs are supported.
-#    Requires ftp_passive to be ON (default) for any effect.
+# Tag: ftp_epsv
+# Ftp protocol extensions permit the use of a special "epsv" command.
+# Nats may be able to put the connection on a "fast path" through the
+# Translator using epsv, as the eprt command will never be used
+# And therefore, translation of the data portion of the segments
+# Will never be needed.
+# Epsv is often required to interoperate with ftp servers on ipv6
+# Networks. on the other hand, it may break some ipv4 servers.
+# By default, epsv may try epsv with any ftp server. to fine tune
+# That decision, you may restrict epsv to certain clients or servers
+# Using acls:
+# Ftp_epsv allow|deny al1 acl2 ...
+# Warning: disabling epsv may cause problems with external nat and ipv6.
+# Only fast acls are supported.
+# Requires ftp_passive to be on (default) for any effect.
 #Default:
-# none
+# None
 
-#  TAG: ftp_eprt
-#    FTP Protocol extensions permit the use of a special "EPRT" command.
-#
-#    This extension provides a protocol neutral alternative to the
-#    IPv4-only PORT command. When supported it enables active FTP data
-#    channels over IPv6 and efficient NAT handling.
-#
-#    Turning this OFF will prevent EPRT being attempted and will skip
-#    straight to using PORT for IPv4 servers.
-#
-#    Some devices are known to not handle this extension correctly and
-#    may result in crashes. Devices which suport EPRT enough to fail
-#    cleanly will result in Squid attempting PORT anyway. This directive
-#    should only be disabled when EPRT results in device failures.
-#
-#    WARNING: Doing so will convert Squid back to the old behavior with all
-#    the related problems with external NAT devices/layers and IPv4-only FTP.
+# Tag: ftp_eprt
+# Ftp protocol extensions permit the use of a special "eprt" command.
+# This extension provides a protocol neutral alternative to the
+# Ipv4-only port command. when supported it enables active ftp data
+# Channels over ipv6 and efficient nat handling.
+# Turning this off will prevent eprt being attempted and will skip
+# Straight to using port for ipv4 servers.
+# Some devices are known to not handle this extension correctly and
+# May result in crashes. devices which suport eprt enough to fail
+# Cleanly will result in squid attempting port anyway. this directive
+# Should only be disabled when eprt results in device failures.
+# Warning: doing so will convert squid back to the old behavior with all
+# The related problems with external nat devices/layers and ipv4-only ftp.
 #Default:
-# ftp_eprt on
+# Ftp_eprt on
 
-#  TAG: ftp_sanitycheck
-#    For security and data integrity reasons Squid by default performs
-#    sanity checks of the addresses of FTP data connections ensure the
-#    data connection is to the requested server. If you need to allow
-#    FTP connections to servers using another IP address for the data
-#    connection turn this off.
+# Tag: ftp_sanitycheck
+# For security and data integrity reasons squid by default performs
+# Sanity checks of the addresses of ftp data connections ensure the
+# Data connection is to the requested server. if you need to allow
+# Ftp connections to servers using another ip address for the data
+# Connection turn this off.
 #Default:
-# ftp_sanitycheck on
+# Ftp_sanitycheck on
 
-#  TAG: ftp_telnet_protocol
-#    The FTP protocol is officially defined to use the telnet protocol
-#    as transport channel for the control connection. However, many
-#    implementations are broken and does not respect this aspect of
-#    the FTP protocol.
-#
-#    If you have trouble accessing files with ASCII code 255 in the
-#    path or similar problems involving this ASCII code you can
-#    try setting this directive to off. If that helps, report to the
-#    operator of the FTP server in question that their FTP server
-#    is broken and does not follow the FTP standard.
+# Tag: ftp_telnet_protocol
+# The ftp protocol is officially defined to use the telnet protocol
+# As transport channel for the control connection. however, many
+# Implementations are broken and does not respect this aspect of
+# The ftp protocol.
+# If you have trouble accessing files with ascii code 255 in the
+# Path or similar problems involving this ascii code you can
+# Try setting this directive to off. if that helps, report to the
+# Operator of the ftp server in question that their ftp server
+# Is broken and does not follow the ftp standard.
 #Default:
-# ftp_telnet_protocol on
+# Ftp_telnet_protocol on
 
-# OPTIONS FOR EXTERNAL SUPPORT PROGRAMS
+# Options for external support programs
 # -----------------------------------------------------------------------------
 
-#  TAG: diskd_program
-#    Specify the location of the diskd executable.
-#    Note this is only useful if you have compiled in
-#    diskd as one of the store io modules.
+# Tag: diskd_program
+# Specify the location of the diskd executable.
+# Note this is only useful if you have compiled in
+# Diskd as one of the store io modules.
 #Default:
-# diskd_program /usr/lib/squid/diskd
+# Diskd_program /usr/lib/squid/diskd
 
-#  TAG: unlinkd_program
-#    Specify the location of the executable for file deletion process.
+# Tag: unlinkd_program
+# Specify the location of the executable for file deletion process.
 #Default:
-# unlinkd_program /usr/lib/squid/unlinkd
+# Unlinkd_program /usr/lib/squid/unlinkd
 
-#  TAG: pinger_program
-#    Specify the location of the executable for the pinger process.
+# Tag: pinger_program
+# Specify the location of the executable for the pinger process.
 #Default:
-# pinger_program /usr/lib/squid/pinger
+# Pinger_program /usr/lib/squid/pinger
 
-#  TAG: pinger_enable
-#    Control whether the pinger is active at run-time.
-#    Enables turning ICMP pinger on and off with a simple
-#    squid -k reconfigure.
+# Tag: pinger_enable
+# Control whether the pinger is active at run-time.
+# Enables turning icmp pinger on and off with a simple
+# Squid -k reconfigure.
 #Default:
-# pinger_enable on
+# Pinger_enable on
 
-# OPTIONS FOR URL REWRITING
+# Options for url rewriting
 # -----------------------------------------------------------------------------
 
-#  TAG: url_rewrite_program
-#    The name and command line parameters of an admin-provided executable
-#    for redirecting clients or adjusting/replacing client request URLs.
-#
-#    This helper is consulted after the received request is cleared by
-#    http_access and adapted using eICAP/ICAP services (if any). If the
-#    helper does not redirect the client, Squid checks adapted_http_access
-#    and may consult the cache or forward the request to the next hop.
-#
-#
-#    For each request, the helper gets one line in the following format:
-#
-#      [channel-ID <SP>] request-URL [<SP> extras] <NL>
-#
-#    Use url_rewrite_extras to configure what Squid sends as 'extras'.
-#
-#
-#    The helper must reply to each query using a single line:
-#
-#      [channel-ID <SP>] result [<SP> kv-pairs] <NL>
-#
-#    The result section must match exactly one of the following outcomes:
-#
-#      OK [status=30N] url="..."
-#
-#        Redirect the client to a URL supplied in the 'url' parameter.
-#        Optional 'status' specifies the status code to send to the
-#        client in Squid's HTTP redirect response. It must be one of
-#        the standard HTTP redirect status codes: 301, 302, 303, 307,
-#        or 308. When no specific status is requested, Squid uses 302.
-#
-#      OK rewrite-url="..."
-#
-#        Replace the current request URL with the one supplied in the
-#        'rewrite-url' parameter. Squid fetches the resource specified
-#        by the new URL and forwards the received response (or its
-#        cached copy) to the client.
-#
-#        WARNING: Avoid rewriting URLs! When possible, redirect the
-#        client using an "OK url=..." helper response instead.
-#        Rewriting URLs may create inconsistent requests and/or break
-#        synchronization between internal client and origin server
-#        states, especially when URLs or other message parts contain
-#        snippets of that state. For example, Squid does not adjust
-#        Location headers and embedded URLs after the helper rewrites
-#        the request URL.
-#
-#      OK
-#        Keep the client request intact.
-#
-#      ERR
-#        Keep the client request intact.
-#
-#      BH [message="..."]
-#        A helper problem that should be reported to the Squid admin
-#        via a level-1 cache.log message. The 'message' parameter is
-#        reserved for specifying the log message.
-#
-#    In addition to the kv-pairs mentioned above, Squid also understands
-#    the following optional kv-pairs in URL rewriter responses:
-#
-#      clt_conn_tag=TAG
-#        Associates a TAG with the client TCP connection.
-#
-#        The clt_conn_tag=TAG pair is treated as a regular transaction
-#        annotation for the current request and also annotates future
-#        requests on the same client connection. A helper may update
-#        the TAG during subsequent requests by returning a new kv-pair.
-#
-#
-#    Helper messages contain the channel-ID part if and only if the
-#    url_rewrite_children directive specifies positive concurrency. As a
-#    channel-ID value, Squid sends a number between 0 and concurrency-1.
-#    The helper must echo back the received channel-ID in its response.
-#
-#    By default, Squid does not use a URL rewriter.
+# Tag: url_rewrite_program
+# The name and command line parameters of an admin-provided executable
+# For redirecting clients or adjusting/replacing client request urls.
+# This helper is consulted after the received request is cleared by
+# Http_access and adapted using eicap/icap services (if any). if the
+# Helper does not redirect the client, squid checks adapted_http_access
+# And may consult the cache or forward the request to the next hop.
+# For each request, the helper gets one line in the following format:
+# [Channel-id <sp>] request-url [<sp> extras] <nl>
+# Use url_rewrite_extras to configure what squid sends as 'extras'.
+# The helper must reply to each query using a single line:
+# [Channel-id <sp>] result [<sp> kv-pairs] <nl>
+# The result section must match exactly one of the following outcomes:
+# Ok [status=30n] url="..."
+# Redirect the client to a url supplied in the 'url' parameter.
+# Optional 'status' specifies the status code to send to the
+# Client in squid's http redirect response. it must be one of
+# The standard http redirect status codes: 301, 302, 303, 307,
+# Or 308. when no specific status is requested, squid uses 302.
+# Ok rewrite-url="..."
+# Replace the current request url with the one supplied in the
+#        'Rewrite-url' parameter. squid fetches the resource specified
+# By the new url and forwards the received response (or its
+# Cached copy) to the client.
+# Warning: avoid rewriting urls! when possible, redirect the
+# Client using an "ok url=..." helper response instead.
+# Rewriting urls may create inconsistent requests and/or break
+# Synchronization between internal client and origin server
+# States, especially when urls or other message parts contain
+# Snippets of that state. for example, squid does not adjust
+# Location headers and embedded urls after the helper rewrites
+# The request url.
+# Ok
+# Keep the client request intact.
+# Err
+# Keep the client request intact.
+# Bh [message="..."]
+# A helper problem that should be reported to the squid admin
+# Via a level-1 cache.log message. the 'message' parameter is
+# Reserved for specifying the log message.
+# In addition to the kv-pairs mentioned above, squid also understands
+# The following optional kv-pairs in url rewriter responses:
+# Clt_conn_tag=tag
+# Associates a tag with the client tcp connection.
+# The clt_conn_tag=tag pair is treated as a regular transaction
+# Annotation for the current request and also annotates future
+# Requests on the same client connection. a helper may update
+# The tag during subsequent requests by returning a new kv-pair.
+# Helper messages contain the channel-id part if and only if the
+# Url_rewrite_children directive specifies positive concurrency. as a
+# Channel-id value, squid sends a number between 0 and concurrency-1.
+# The helper must echo back the received channel-id in its response.
+# By default, squid does not use a url rewriter.
 #Default:
-# none
+# None
 
-#  TAG: url_rewrite_children
-#    Specifies the maximum number of redirector processes that Squid may
-#    spawn (numberofchildren) and several related options. Using too few of
-#    these helper processes (a.k.a. "helpers") creates request queues.
-#    Using too many helpers wastes your system resources.
-#
-#    Usage: numberofchildren [option]...
-#
-#    The startup= and idle= options allow some measure of skew in your
-#    tuning.
-#
-#        startup=
-#
-#    Sets a minimum of how many processes are to be spawned when Squid
-#    starts or reconfigures. When set to zero the first request will
-#    cause spawning of the first child process to handle it.
-#
-#    Starting too few will cause an initial slowdown in traffic as Squid
-#    attempts to simultaneously spawn enough processes to cope.
-#
-#        idle=
-#
-#    Sets a minimum of how many processes Squid is to try and keep available
-#    at all times. When traffic begins to rise above what the existing
-#    processes can handle this many more will be spawned up to the maximum
-#    configured. A minimum setting of 1 is required.
-#
-#        concurrency=
-#
-#    The number of requests each redirector helper can handle in
-#    parallel. Defaults to 0 which indicates the redirector
-#    is a old-style single threaded redirector.
-#
-#    When this directive is set to a value >= 1 then the protocol
-#    used to communicate with the helper is modified to include
-#    an ID in front of the request/response. The ID from the request
-#    must be echoed back with the response to that request.
-#
-#        queue-size=N
-#
-#    Sets the maximum number of queued requests. A request is queued when
-#    no existing child can accept it due to concurrency limit and no new
-#    child can be started due to numberofchildren limit. The default
-#    maximum is zero if url_rewrite_bypass is enabled and
-#    2*numberofchildren otherwise. If the queued requests exceed queue size
-#    and redirector_bypass configuration option is set, then redirector is
-#    bypassed. Otherwise, Squid is allowed to temporarily exceed the
-#    configured maximum, marking the affected helper as "overloaded". If
-#    the helper overload lasts more than 3 minutes, the action prescribed
-#    by the on-persistent-overload option applies.
-#
-#        on-persistent-overload=action
-#
-#    Specifies Squid reaction to a new helper request arriving when the helper
-#    has been overloaded for more that 3 minutes already. The number of queued
-#    requests determines whether the helper is overloaded (see the queue-size
-#    option).
-#
-#    Two actions are supported:
-#
-#      die    Squid worker quits. This is the default behavior.
-#
-#      ERR    Squid treats the helper request as if it was
-#        immediately submitted, and the helper immediately
-#        replied with an ERR response. This action has no effect
-#        on the already queued and in-progress helper requests.
+# Tag: url_rewrite_children
+# Specifies the maximum number of redirector processes that squid may
+# Spawn (numberofchildren) and several related options. using too few of
+# These helper processes (a.k.a. "helpers") creates request queues.
+# Using too many helpers wastes your system resources.
+# Usage: numberofchildren [option]...
+# The startup= and idle= options allow some measure of skew in your
+# Tuning.
+# Startup=
+# Sets a minimum of how many processes are to be spawned when squid
+# Starts or reconfigures. when set to zero the first request will
+# Cause spawning of the first child process to handle it.
+# Starting too few will cause an initial slowdown in traffic as squid
+# Attempts to simultaneously spawn enough processes to cope.
+# Idle=
+# Sets a minimum of how many processes squid is to try and keep available
+# At all times. when traffic begins to rise above what the existing
+# Processes can handle this many more will be spawned up to the maximum
+# Configured. a minimum setting of 1 is required.
+# Concurrency=
+# The number of requests each redirector helper can handle in
+# Parallel. defaults to 0 which indicates the redirector
+# Is a old-style single threaded redirector.
+# When this directive is set to a value >= 1 then the protocol
+# Used to communicate with the helper is modified to include
+# An id in front of the request/response. the id from the request
+# Must be echoed back with the response to that request.
+# Queue-size=n
+# Sets the maximum number of queued requests. a request is queued when
+# No existing child can accept it due to concurrency limit and no new
+# Child can be started due to numberofchildren limit. the default
+# Maximum is zero if url_rewrite_bypass is enabled and
+# 2*numberofchildren otherwise. if the queued requests exceed queue size
+# And redirector_bypass configuration option is set, then redirector is
+# Bypassed. otherwise, squid is allowed to temporarily exceed the
+# Configured maximum, marking the affected helper as "overloaded". if
+# The helper overload lasts more than 3 minutes, the action prescribed
+# By the on-persistent-overload option applies.
+# On-persistent-overload=action
+# Specifies squid reaction to a new helper request arriving when the helper
+# Has been overloaded for more that 3 minutes already. the number of queued
+# Requests determines whether the helper is overloaded (see the queue-size
+# Option).
+# Two actions are supported:
+# Die    squid worker quits. this is the default behavior.
+# Err    squid treats the helper request as if it was
+# Immediately submitted, and the helper immediately
+# Replied with an err response. this action has no effect
+# On the already queued and in-progress helper requests.
 #Default:
-# url_rewrite_children 20 startup=0 idle=1 concurrency=0
+# Url_rewrite_children 20 startup=0 idle=1 concurrency=0
 
-#  TAG: url_rewrite_host_header
-#    To preserve same-origin security policies in browsers and
-#    prevent Host: header forgery by redirectors Squid rewrites
-#    any Host: header in redirected requests.
-#
-#    If you are running an accelerator this may not be a wanted
-#    effect of a redirector. This directive enables you disable
-#    Host: alteration in reverse-proxy traffic.
-#
-#    WARNING: Entries are cached on the result of the URL rewriting
-#    process, so be careful if you have domain-virtual hosts.
-#
-#    WARNING: Squid and other software verifies the URL and Host
-#    are matching, so be careful not to relay through other proxies
-#    or inspecting firewalls with this disabled.
+# Tag: url_rewrite_host_header
+# To preserve same-origin security policies in browsers and
+# Prevent host: header forgery by redirectors squid rewrites
+# Any host: header in redirected requests.
+# If you are running an accelerator this may not be a wanted
+# Effect of a redirector. this directive enables you disable
+# Host: alteration in reverse-proxy traffic.
+# Warning: entries are cached on the result of the url rewriting
+# Process, so be careful if you have domain-virtual hosts.
+# Warning: squid and other software verifies the url and host
+# Are matching, so be careful not to relay through other proxies
+# Or inspecting firewalls with this disabled.
 #Default:
-# url_rewrite_host_header on
+# Url_rewrite_host_header on
 
-#  TAG: url_rewrite_access
-#    If defined, this access list specifies which requests are
-#    sent to the redirector processes.
-#
-#    This clause supports both fast and slow acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
+# Tag: url_rewrite_access
+# If defined, this access list specifies which requests are
+# Sent to the redirector processes.
+# This clause supports both fast and slow acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
 #Default:
 # Allow, unless rules exist in squid.conf.
 
-#  TAG: url_rewrite_bypass
-#    When this is 'on', a request will not go through the
-#    redirector if all the helpers are busy. If this is 'off' and the
-#    redirector queue grows too large, the action is prescribed by the
-#    on-persistent-overload option. You should only enable this if the
-#    redirectors are not critical to your caching system. If you use
-#    redirectors for access control, and you enable this option,
-#    users may have access to pages they should not
-#    be allowed to request.
-#
-#    Enabling this option sets the default url_rewrite_children queue-size
-#    option value to 0.
+# Tag: url_rewrite_bypass
+# When this is 'on', a request will not go through the
+# Redirector if all the helpers are busy. if this is 'off' and the
+# Redirector queue grows too large, the action is prescribed by the
+# On-persistent-overload option. you should only enable this if the
+# Redirectors are not critical to your caching system. if you use
+# Redirectors for access control, and you enable this option,
+# Users may have access to pages they should not
+# Be allowed to request.
+# Enabling this option sets the default url_rewrite_children queue-size
+# Option value to 0.
 #Default:
-# url_rewrite_bypass off
+# Url_rewrite_bypass off
 
-#  TAG: url_rewrite_extras
-#    Specifies a string to be append to request line format for the
-#    rewriter helper. "Quoted" format values may contain spaces and
-#    logformat %macros. In theory, any logformat %macro can be used.
-#    In practice, a %macro expands as a dash (-) if the helper request is
-#    sent before the required macro information is available to Squid.
+# Tag: url_rewrite_extras
+# Specifies a string to be append to request line format for the
+# Rewriter helper. "quoted" format values may contain spaces and
+# Logformat %macros. in theory, any logformat %macro can be used.
+# In practice, a %macro expands as a dash (-) if the helper request is
+# Sent before the required macro information is available to squid.
 #Default:
-# url_rewrite_extras "%>a/%>A %un %>rm myip=%la myport=%lp"
+# Url_rewrite_extras "%>a/%>a %un %>rm myip=%la myport=%lp"
 
-#  TAG: url_rewrite_timeout
-#    Squid times active requests to redirector. The timeout value and Squid
-#    reaction to a timed out request are configurable using the following
-#    format:
-#
-#    url_rewrite_timeout timeout time-units on_timeout=<action> [response=<quoted-response>]
-#
-#    supported timeout actions:
-#        fail    Squid return a ERR_GATEWAY_FAILURE error page
-#
-#        bypass    Do not re-write the URL
-#
-#        retry    Send the lookup to the helper again
-#
-#        use_configured_response
-#            Use the <quoted-response> as helper response
+# Tag: url_rewrite_timeout
+# Squid times active requests to redirector. the timeout value and squid
+# Reaction to a timed out request are configurable using the following
+# Format:
+# Url_rewrite_timeout timeout time-units on_timeout=<action> [response=<quoted-response>]
+# Supported timeout actions:
+# Fail    squid return a err_gateway_failure error page
+# Bypass    do not re-write the url
+# Retry    send the lookup to the helper again
+# Use_configured_response
+# Use the <quoted-response> as helper response
 #Default:
 # Squid waits for the helper response forever
 
-# OPTIONS FOR STORE ID
+# Options for store id
 # -----------------------------------------------------------------------------
 
-#  TAG: store_id_program
-#    Specify the location of the executable StoreID helper to use.
-#    Since they can perform almost any function there isn't one included.
-#
-#    For each requested URL, the helper will receive one line with the format
-#
-#      [channel-ID <SP>] URL [<SP> extras]<NL>
-#
-#
-#    After processing the request the helper must reply using the following format:
-#
-#      [channel-ID <SP>] result [<SP> kv-pairs]
-#
-#    The result code can be:
-#
-#      OK store-id="..."
-#        Use the StoreID supplied in 'store-id='.
-#
-#      ERR
-#        The default is to use HTTP request URL as the store ID.
-#
-#      BH
-#        An internal error occurred in the helper, preventing
-#        a result being identified.
-#
-#    In addition to the above kv-pairs Squid also understands the following
-#    optional kv-pairs received from URL rewriters:
-#      clt_conn_tag=TAG
-#        Associates a TAG with the client TCP connection.
-#        Please see url_rewrite_program related documentation for this
-#        kv-pair
-#
-#    Helper programs should be prepared to receive and possibly ignore
-#    additional whitespace-separated tokens on each input line.
-#
-#    When using the concurrency= option the protocol is changed by
-#    introducing a query channel tag in front of the request/response.
-#    The query channel tag is a number between 0 and concurrency-1.
-#    This value must be echoed back unchanged to Squid as the first part
-#    of the response relating to its request.
-#
-#    NOTE: when using StoreID refresh_pattern will apply to the StoreID
-#          returned from the helper and not the URL.
-#
-#    WARNING: Wrong StoreID value returned by a careless helper may result
-#             in the wrong cached response returned to the user.
-#
-#    By default, a StoreID helper is not used.
+# Tag: store_id_program
+# Specify the location of the executable storeid helper to use.
+# Since they can perform almost any function there isn't one included.
+# For each requested url, the helper will receive one line with the format
+# [Channel-id <sp>] url [<sp> extras]<nl>
+# After processing the request the helper must reply using the following format:
+# [Channel-id <sp>] result [<sp> kv-pairs]
+# The result code can be:
+# Ok store-id="..."
+# Use the storeid supplied in 'store-id='.
+# Err
+# The default is to use http request url as the store id.
+# Bh
+# An internal error occurred in the helper, preventing
+# A result being identified.
+# In addition to the above kv-pairs squid also understands the following
+# Optional kv-pairs received from url rewriters:
+# Clt_conn_tag=tag
+# Associates a tag with the client tcp connection.
+# Please see url_rewrite_program related documentation for this
+# Kv-pair
+# Helper programs should be prepared to receive and possibly ignore
+# Additional whitespace-separated tokens on each input line.
+# When using the concurrency= option the protocol is changed by
+# Introducing a query channel tag in front of the request/response.
+# The query channel tag is a number between 0 and concurrency-1.
+# This value must be echoed back unchanged to squid as the first part
+# Of the response relating to its request.
+# Note: when using storeid refresh_pattern will apply to the storeid
+# Returned from the helper and not the url.
+# Warning: wrong storeid value returned by a careless helper may result
+# In the wrong cached response returned to the user.
+# By default, a storeid helper is not used.
 #Default:
-# none
+# None
 
-#  TAG: store_id_extras
-#        Specifies a string to be append to request line format for the
-#        StoreId helper. "Quoted" format values may contain spaces and
-#        logformat %macros. In theory, any logformat %macro can be used.
-#        In practice, a %macro expands as a dash (-) if the helper request is
-#        sent before the required macro information is available to Squid.
+# Tag: store_id_extras
+# Specifies a string to be append to request line format for the
+# Storeid helper. "quoted" format values may contain spaces and
+# Logformat %macros. in theory, any logformat %macro can be used.
+# In practice, a %macro expands as a dash (-) if the helper request is
+# Sent before the required macro information is available to squid.
 #Default:
-# store_id_extras "%>a/%>A %un %>rm myip=%la myport=%lp"
+# Store_id_extras "%>a/%>a %un %>rm myip=%la myport=%lp"
 
-#  TAG: store_id_children
-#    Specifies the maximum number of StoreID helper processes that Squid
-#    may spawn (numberofchildren) and several related options. Using
-#    too few of these helper processes (a.k.a. "helpers") creates request
-#    queues. Using too many helpers wastes your system resources.
-#
-#    Usage: numberofchildren [option]...
-#
-#    The startup= and idle= options allow some measure of skew in your
-#    tuning.
-#
-#        startup=
-#
-#    Sets a minimum of how many processes are to be spawned when Squid
-#    starts or reconfigures. When set to zero the first request will
-#    cause spawning of the first child process to handle it.
-#
-#    Starting too few will cause an initial slowdown in traffic as Squid
-#    attempts to simultaneously spawn enough processes to cope.
-#
-#        idle=
-#
-#    Sets a minimum of how many processes Squid is to try and keep available
-#    at all times. When traffic begins to rise above what the existing
-#    processes can handle this many more will be spawned up to the maximum
-#    configured. A minimum setting of 1 is required.
-#
-#        concurrency=
-#
-#    The number of requests each storeID helper can handle in
-#    parallel. Defaults to 0 which indicates the helper
-#    is a old-style single threaded program.
-#
-#    When this directive is set to a value >= 1 then the protocol
-#    used to communicate with the helper is modified to include
-#    an ID in front of the request/response. The ID from the request
-#    must be echoed back with the response to that request.
-#
-#        queue-size=N
-#
-#    Sets the maximum number of queued requests to N. A request is queued
-#    when no existing child can accept it due to concurrency limit and no
-#    new child can be started due to numberofchildren limit. The default
-#    maximum is 2*numberofchildren. If the queued requests exceed queue
-#    size and redirector_bypass configuration option is set, then
-#    redirector is bypassed. Otherwise, Squid is allowed to temporarily
-#    exceed the configured maximum, marking the affected helper as
-#    "overloaded". If the helper overload lasts more than 3 minutes, the
-#    action prescribed by the on-persistent-overload option applies.
-#
-#        on-persistent-overload=action
-#
-#    Specifies Squid reaction to a new helper request arriving when the helper
-#    has been overloaded for more that 3 minutes already. The number of queued
-#    requests determines whether the helper is overloaded (see the queue-size
-#    option).
-#
-#    Two actions are supported:
-#
-#      die    Squid worker quits. This is the default behavior.
-#
-#      ERR    Squid treats the helper request as if it was
-#        immediately submitted, and the helper immediately
-#        replied with an ERR response. This action has no effect
-#        on the already queued and in-progress helper requests.
+# Tag: store_id_children
+# Specifies the maximum number of storeid helper processes that squid
+# May spawn (numberofchildren) and several related options. using
+# Too few of these helper processes (a.k.a. "helpers") creates request
+# Queues. using too many helpers wastes your system resources.
+# Usage: numberofchildren [option]...
+# The startup= and idle= options allow some measure of skew in your
+# Tuning.
+# Startup=
+# Sets a minimum of how many processes are to be spawned when squid
+# Starts or reconfigures. when set to zero the first request will
+# Cause spawning of the first child process to handle it.
+# Starting too few will cause an initial slowdown in traffic as squid
+# Attempts to simultaneously spawn enough processes to cope.
+# Idle=
+# Sets a minimum of how many processes squid is to try and keep available
+# At all times. when traffic begins to rise above what the existing
+# Processes can handle this many more will be spawned up to the maximum
+# Configured. a minimum setting of 1 is required.
+# Concurrency=
+# The number of requests each storeid helper can handle in
+# Parallel. defaults to 0 which indicates the helper
+# Is a old-style single threaded program.
+# When this directive is set to a value >= 1 then the protocol
+# Used to communicate with the helper is modified to include
+# An id in front of the request/response. the id from the request
+# Must be echoed back with the response to that request.
+# Queue-size=n
+# Sets the maximum number of queued requests to n. a request is queued
+# When no existing child can accept it due to concurrency limit and no
+# New child can be started due to numberofchildren limit. the default
+# Maximum is 2*numberofchildren. if the queued requests exceed queue
+# Size and redirector_bypass configuration option is set, then
+# Redirector is bypassed. otherwise, squid is allowed to temporarily
+# Exceed the configured maximum, marking the affected helper as
+#    "Overloaded". if the helper overload lasts more than 3 minutes, the
+# Action prescribed by the on-persistent-overload option applies.
+# On-persistent-overload=action
+# Specifies squid reaction to a new helper request arriving when the helper
+# Has been overloaded for more that 3 minutes already. the number of queued
+# Requests determines whether the helper is overloaded (see the queue-size
+# Option).
+# Two actions are supported:
+# Die    squid worker quits. this is the default behavior.
+# Err    squid treats the helper request as if it was
+# Immediately submitted, and the helper immediately
+# Replied with an err response. this action has no effect
+# On the already queued and in-progress helper requests.
 #Default:
-# store_id_children 20 startup=0 idle=1 concurrency=0
+# Store_id_children 20 startup=0 idle=1 concurrency=0
 
-#  TAG: store_id_access
-#    If defined, this access list specifies which requests are
-#    sent to the StoreID processes.  By default all requests
-#    are sent.
-#
-#    This clause supports both fast and slow acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
+# Tag: store_id_access
+# If defined, this access list specifies which requests are
+# Sent to the storeid processes.  by default all requests
+# Are sent.
+# This clause supports both fast and slow acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
 #Default:
 # Allow, unless rules exist in squid.conf.
 
-#  TAG: store_id_bypass
-#    When this is 'on', a request will not go through the
-#    helper if all helpers are busy. If this is 'off' and the helper
-#    queue grows too large, the action is prescribed by the
-#    on-persistent-overload option. You should only enable this if the
-#    helpers are not critical to your caching system. If you use
-#    helpers for critical caching components, and you enable this
-#    option,    users may not get objects from cache.
-#    This options sets default queue-size option of the store_id_children
-#    to 0.
+# Tag: store_id_bypass
+# When this is 'on', a request will not go through the
+# Helper if all helpers are busy. if this is 'off' and the helper
+# Queue grows too large, the action is prescribed by the
+# On-persistent-overload option. you should only enable this if the
+# Helpers are not critical to your caching system. if you use
+# Helpers for critical caching components, and you enable this
+# Option,    users may not get objects from cache.
+# This options sets default queue-size option of the store_id_children
+# To 0.
 #Default:
-# store_id_bypass on
+# Store_id_bypass on
 
-# OPTIONS FOR TUNING THE CACHE
+# Options for tuning the cache
 # -----------------------------------------------------------------------------
 
-#  TAG: cache
-#    Requests denied by this directive will not be served from the cache
-#    and their responses will not be stored in the cache. This directive
-#    has no effect on other transactions and on already cached responses.
-#
-#    This clause supports both fast and slow acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
-#
-#    This and the two other similar caching directives listed below are
-#    checked at different transaction processing stages, have different
-#    access to response information, affect different cache operations,
-#    and differ in slow ACLs support:
-#
-#    * cache: Checked before Squid makes a hit/miss determination.
-#        No access to reply information!
-#        Denies both serving a hit and storing a miss.
-#        Supports both fast and slow ACLs.
-#    * send_hit: Checked after a hit was detected.
-#        Has access to reply (hit) information.
-#        Denies serving a hit only.
-#        Supports fast ACLs only.
-#    * store_miss: Checked before storing a cachable miss.
-#        Has access to reply (miss) information.
-#        Denies storing a miss only.
-#        Supports fast ACLs only.
-#
-#    If you are not sure which of the three directives to use, apply the
-#    following decision logic:
-#
-#    * If your ACL(s) are of slow type _and_ need response info, redesign.
-#      Squid does not support that particular combination at this time.
-#        Otherwise:
-#    * If your directive ACL(s) are of slow type, use "cache"; and/or
-#    * if your directive ACL(s) need no response info, use "cache".
-#        Otherwise:
+# Tag: cache
+# Requests denied by this directive will not be served from the cache
+# And their responses will not be stored in the cache. this directive
+# Has no effect on other transactions and on already cached responses.
+# This clause supports both fast and slow acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
+# This and the two other similar caching directives listed below are
+# Checked at different transaction processing stages, have different
+# Access to response information, affect different cache operations,
+# And differ in slow acls support:
+# * Cache: checked before squid makes a hit/miss determination.
+# No access to reply information!
+# Denies both serving a hit and storing a miss.
+# Supports both fast and slow acls.
+#    * Send_hit: checked after a hit was detected.
+# Has access to reply (hit) information.
+# Denies serving a hit only.
+# Supports fast acls only.
+#    * Store_miss: checked before storing a cachable miss.
+# Has access to reply (miss) information.
+# Denies storing a miss only.
+# Supports fast acls only.
+# If you are not sure which of the three directives to use, apply the
+# Following decision logic:
+# * If your acl(s) are of slow type _and_ need response info, redesign.
+# Squid does not support that particular combination at this time.
+# Otherwise:
+#    * If your directive acl(s) are of slow type, use "cache"; and/or
+#    * If your directive acl(s) need no response info, use "cache".
+# Otherwise:
 #    * If you do not want the response cached, use store_miss; and/or
-#    * if you do not want a hit on a cached response, use send_hit.
+#    * If you do not want a hit on a cached response, use send_hit.
 #Default:
 # By default, this directive is unused and has no effect.
 
-#  TAG: send_hit
-#    Responses denied by this directive will not be served from the cache
-#    (but may still be cached, see store_miss). This directive has no
-#    effect on the responses it allows and on the cached objects.
-#
-#    Please see the "cache" directive for a summary of differences among
-#    store_miss, send_hit, and cache directives.
-#
-#    Unlike the "cache" directive, send_hit only supports fast acl
-#    types.  See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
-#
-#    For example:
-#
-#        # apply custom Store ID mapping to some URLs
-#        acl MapMe dstdomain .c.example.com
-#        store_id_program ...
-#        store_id_access allow MapMe
-#
-#        # but prevent caching of special responses
-#        # such as 302 redirects that cause StoreID loops
-#        acl Ordinary http_status 200-299
-#        store_miss deny MapMe !Ordinary
-#
-#        # and do not serve any previously stored special responses
-#        # from the cache (in case they were already cached before
-#        # the above store_miss rule was in effect).
-#        send_hit deny MapMe !Ordinary
+# Tag: send_hit
+# Responses denied by this directive will not be served from the cache
+#    (But may still be cached, see store_miss). this directive has no
+# Effect on the responses it allows and on the cached objects.
+# Please see the "cache" directive for a summary of differences among
+# Store_miss, send_hit, and cache directives.
+# Unlike the "cache" directive, send_hit only supports fast acl
+# Types.  see http://wiki.squid-cache.org/squidfaq/squidacl for details.
+# For example:
+# # Apply custom store id mapping to some urls
+# Acl mapme dstdomain .c.example.com
+# Store_id_program ...
+# Store_id_access allow mapme
+# # But prevent caching of special responses
+#        # Such as 302 redirects that cause storeid loops
+# Acl ordinary http_status 200-299
+# Store_miss deny mapme !ordinary
+# # And do not serve any previously stored special responses
+#        # From the cache (in case they were already cached before
+#        # The above store_miss rule was in effect).
+# Send_hit deny mapme !ordinary
 #Default:
 # By default, this directive is unused and has no effect.
 
-#  TAG: store_miss
-#    Responses denied by this directive will not be cached (but may still
-#    be served from the cache, see send_hit). This directive has no
-#    effect on the responses it allows and on the already cached responses.
-#
-#    Please see the "cache" directive for a summary of differences among
-#    store_miss, send_hit, and cache directives. See the
-#    send_hit directive for a usage example.
-#
-#    Unlike the "cache" directive, store_miss only supports fast acl
-#    types.  See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
+# Tag: store_miss
+# Responses denied by this directive will not be cached (but may still
+# Be served from the cache, see send_hit). this directive has no
+# Effect on the responses it allows and on the already cached responses.
+# Please see the "cache" directive for a summary of differences among
+# Store_miss, send_hit, and cache directives. see the
+# Send_hit directive for a usage example.
+# Unlike the "cache" directive, store_miss only supports fast acl
+# Types.  see http://wiki.squid-cache.org/squidfaq/squidacl for details.
 #Default:
 # By default, this directive is unused and has no effect.
 
-#  TAG: max_stale    time-units
-#    This option puts an upper limit on how stale content Squid
-#    will serve from the cache if cache validation fails.
-#    Can be overriden by the refresh_pattern max-stale option.
+# Tag: max_stale    time-units
+# This option puts an upper limit on how stale content squid
+# Will serve from the cache if cache validation fails.
+# Can be overriden by the refresh_pattern max-stale option.
 #Default:
-# max_stale 1 week
+# Max_stale 1 week
 
-#  TAG: refresh_pattern
-#    usage: refresh_pattern [-i] regex min percent max [options]
-#
-#    By default, regular expressions are CASE-SENSITIVE.  To make
-#    them case-insensitive, use the -i option.
-#
-#    'Min' is the time (in minutes) an object without an explicit
-#    expiry time should be considered fresh. The recommended
-#    value is 0, any higher values may cause dynamic applications
-#    to be erroneously cached unless the application designer
-#    has taken the appropriate actions.
-#
-#    'Percent' is a percentage of the objects age (time since last
-#    modification age) an object without explicit expiry time
-#    will be considered fresh.
-#
-#    'Max' is an upper limit on how long objects without an explicit
-#    expiry time will be considered fresh. The value is also used
-#    to form Cache-Control: max-age header for a request sent from
-#    Squid to origin/parent.
-#
-#    options: override-expire
-#         override-lastmod
-#         reload-into-ims
-#         ignore-reload
-#         ignore-no-store
-#         ignore-private
-#         max-stale=NN
-#         refresh-ims
-#         store-stale
-#
-#        override-expire enforces min age even if the server
-#        sent an explicit expiry time (e.g., with the
-#        Expires: header or Cache-Control: max-age). Doing this
-#        VIOLATES the HTTP standard.  Enabling this feature
-#        could make you liable for problems which it causes.
-#
-#        Note: override-expire does not enforce staleness - it only extends
-#        freshness / min. If the server returns a Expires time which
-#        is longer than your max time, Squid will still consider
-#        the object fresh for that period of time.
-#
-#        override-lastmod enforces min age even on objects
-#        that were modified recently.
-#
-#        reload-into-ims changes a client no-cache or ``reload''
-#        request for a cached entry into a conditional request using
-#        If-Modified-Since and/or If-None-Match headers, provided the
-#        cached entry has a Last-Modified and/or a strong ETag header.
-#        Doing this VIOLATES the HTTP standard. Enabling this feature
-#        could make you liable for problems which it causes.
-#
-#        ignore-reload ignores a client no-cache or ``reload''
-#        header. Doing this VIOLATES the HTTP standard. Enabling
-#        this feature could make you liable for problems which
-#        it causes.
-#
-#        ignore-no-store ignores any ``Cache-control: no-store''
-#        headers received from a server. Doing this VIOLATES
-#        the HTTP standard. Enabling this feature could make you
-#        liable for problems which it causes.
-#
-#        ignore-private ignores any ``Cache-control: private''
-#        headers received from a server. Doing this VIOLATES
-#        the HTTP standard. Enabling this feature could make you
-#        liable for problems which it causes.
-#
-#        refresh-ims causes squid to contact the origin server
-#        when a client issues an If-Modified-Since request. This
-#        ensures that the client will receive an updated version
-#        if one is available.
-#
-#        store-stale stores responses even if they don't have explicit
-#        freshness or a validator (i.e., Last-Modified or an ETag)
-#        present, or if they're already stale. By default, Squid will
-#        not cache such responses because they usually can't be
-#        reused. Note that such responses will be stale by default.
-#
-#        max-stale=NN provide a maximum staleness factor. Squid won't
-#        serve objects more stale than this even if it failed to
-#        validate the object. Default: use the max_stale global limit.
-#
-#    Basically a cached object is:
-#
-#        FRESH if expire > now, else STALE
-#        STALE if age > max
-#        FRESH if lm-factor < percent, else STALE
-#        FRESH if age < min
-#        else STALE
-#
-#    The refresh_pattern lines are checked in the order listed here.
-#    The first entry which matches is used.  If none of the entries
-#    match the default will be used.
-#
-#    Note, you must uncomment all the default lines if you want
-#    to change one. The default setting is only active if none is
-#    used.
-#
-#
+# Tag: refresh_pattern
+# Usage: refresh_pattern [-i] regex min percent max [options]
+# By default, regular expressions are case-sensitive.  to make
+# Them case-insensitive, use the -i option.
+# 'Min' is the time (in minutes) an object without an explicit
+# Expiry time should be considered fresh. the recommended
+# Value is 0, any higher values may cause dynamic applications
+# To be erroneously cached unless the application designer
+# Has taken the appropriate actions.
+# 'Percent' is a percentage of the objects age (time since last
+# Modification age) an object without explicit expiry time
+# Will be considered fresh.
+# 'Max' is an upper limit on how long objects without an explicit
+# Expiry time will be considered fresh. the value is also used
+# To form cache-control: max-age header for a request sent from
+# Squid to origin/parent.
+# Options: override-expire
+# Override-lastmod
+# Reload-into-ims
+# Ignore-reload
+# Ignore-no-store
+# Ignore-private
+# Max-stale=nn
+# Refresh-ims
+# Store-stale
+# Override-expire enforces min age even if the server
+# Sent an explicit expiry time (e.g., with the
+# Expires: header or cache-control: max-age). doing this
+# Violates the http standard.  enabling this feature
+# Could make you liable for problems which it causes.
+# Note: override-expire does not enforce staleness - it only extends
+# Freshness / min. if the server returns a expires time which
+# Is longer than your max time, squid will still consider
+# The object fresh for that period of time.
+# Override-lastmod enforces min age even on objects
+# That were modified recently.
+# Reload-into-ims changes a client no-cache or ``reload''
+# Request for a cached entry into a conditional request using
+# If-modified-since and/or if-none-match headers, provided the
+# Cached entry has a last-modified and/or a strong etag header.
+# Doing this violates the http standard. enabling this feature
+# Could make you liable for problems which it causes.
+# Ignore-reload ignores a client no-cache or ``reload''
+# Header. doing this violates the http standard. enabling
+# This feature could make you liable for problems which
+# It causes.
+# Ignore-no-store ignores any ``cache-control: no-store''
+# Headers received from a server. doing this violates
+# The http standard. enabling this feature could make you
+# Liable for problems which it causes.
+# Ignore-private ignores any ``cache-control: private''
+# Headers received from a server. doing this violates
+# The http standard. enabling this feature could make you
+# Liable for problems which it causes.
+# Refresh-ims causes squid to contact the origin server
+# When a client issues an if-modified-since request. this
+# Ensures that the client will receive an updated version
+# If one is available.
+# Store-stale stores responses even if they don't have explicit
+# Freshness or a validator (i.e., last-modified or an etag)
+# Present, or if they're already stale. by default, squid will
+# Not cache such responses because they usually can't be
+# Reused. note that such responses will be stale by default.
+# Max-stale=nn provide a maximum staleness factor. squid won't
+# Serve objects more stale than this even if it failed to
+# Validate the object. default: use the max_stale global limit.
+# Basically a cached object is:
+# Fresh if expire > now, else stale
+# Stale if age > max
+# Fresh if lm-factor < percent, else stale
+# Fresh if age < min
+# Else stale
+# The refresh_pattern lines are checked in the order listed here.
+# The first entry which matches is used.  if none of the entries
+# Match the default will be used.
+# Note, you must uncomment all the default lines if you want
+# To change one. the default setting is only active if none is
+# Used.
 
-#  TAG: quick_abort_min    (KB)
+# Tag: quick_abort_min    (kb)
 #Default:
-# quick_abort_min 16 KB
+# Quick_abort_min 16 kb
 
-#  TAG: quick_abort_max    (KB)
+# Tag: quick_abort_max    (kb)
 #Default:
-# quick_abort_max 16 KB
+# Quick_abort_max 16 kb
 
-#  TAG: quick_abort_pct    (percent)
-#    The cache by default continues downloading aborted requests
-#    which are almost completed (less than 16 KB remaining). This
-#    may be undesirable on slow (e.g. SLIP) links and/or very busy
-#    caches.  Impatient users may tie up file descriptors and
-#    bandwidth by repeatedly requesting and immediately aborting
-#    downloads.
-#
-#    When the user aborts a request, Squid will check the
-#    quick_abort values to the amount of data transferred until
-#    then.
-#
-#    If the transfer has less than 'quick_abort_min' KB remaining,
-#    it will finish the retrieval.
-#
-#    If the transfer has more than 'quick_abort_max' KB remaining,
-#    it will abort the retrieval.
-#
-#    If more than 'quick_abort_pct' of the transfer has completed,
-#    it will finish the retrieval.
-#
-#    If you do not want any retrieval to continue after the client
-#    has aborted, set both 'quick_abort_min' and 'quick_abort_max'
-#    to '0 KB'.
-#
-#    If you want retrievals to always continue if they are being
-#    cached set 'quick_abort_min' to '-1 KB'.
+# Tag: quick_abort_pct    (percent)
+# The cache by default continues downloading aborted requests
+# Which are almost completed (less than 16 kb remaining). this
+# May be undesirable on slow (e.g. slip) links and/or very busy
+# Caches.  impatient users may tie up file descriptors and
+# Bandwidth by repeatedly requesting and immediately aborting
+# Downloads.
+# When the user aborts a request, squid will check the
+# Quick_abort values to the amount of data transferred until
+# Then.
+# If the transfer has less than 'quick_abort_min' kb remaining,
+# It will finish the retrieval.
+# If the transfer has more than 'quick_abort_max' kb remaining,
+# It will abort the retrieval.
+# If more than 'quick_abort_pct' of the transfer has completed,
+# It will finish the retrieval.
+# If you do not want any retrieval to continue after the client
+# Has aborted, set both 'quick_abort_min' and 'quick_abort_max'
+# To '0 kb'.
+# If you want retrievals to always continue if they are being
+# Cached set 'quick_abort_min' to '-1 kb'.
 #Default:
-# quick_abort_pct 95
+# Quick_abort_pct 95
 
-#  TAG: read_ahead_gap    buffer-size
-#    The amount of data the cache will buffer ahead of what has been
-#    sent to the client when retrieving an object from another server.
+# Tag: read_ahead_gap    buffer-size
+# The amount of data the cache will buffer ahead of what has been
+# Sent to the client when retrieving an object from another server.
 #Default:
-# read_ahead_gap 16 KB
+# Read_ahead_gap 16 kb
 
-#  TAG: negative_ttl    time-units
-#    Set the Default Time-to-Live (TTL) for failed requests.
-#    Certain types of failures (such as "connection refused" and
-#    "404 Not Found") are able to be negatively-cached for a short time.
-#    Modern web servers should provide Expires: header, however if they
-#    do not this can provide a minimum TTL.
-#    The default is not to cache errors with unknown expiry details.
-#
-#    Note that this is different from negative caching of DNS lookups.
-#
-#    WARNING: Doing this VIOLATES the HTTP standard.  Enabling
-#    this feature could make you liable for problems which it
-#    causes.
+# Tag: negative_ttl    time-units
+# Set the default time-to-live (ttl) for failed requests.
+# Certain types of failures (such as "connection refused" and
+#    "404 not found") are able to be negatively-cached for a short time.
+# Modern web servers should provide expires: header, however if they
+# Do not this can provide a minimum ttl.
+# The default is not to cache errors with unknown expiry details.
+# Note that this is different from negative caching of dns lookups.
+# Warning: doing this violates the http standard.  enabling
+# This feature could make you liable for problems which it
+# Causes.
 #Default:
-# negative_ttl 0 seconds
+# Negative_ttl 0 seconds
 
-#  TAG: positive_dns_ttl    time-units
-#    Upper limit on how long Squid will cache positive DNS responses.
-#    Default is 6 hours (360 minutes). This directive must be set
-#    larger than negative_dns_ttl.
+# Tag: positive_dns_ttl    time-units
+# Upper limit on how long squid will cache positive dns responses.
+# Default is 6 hours (360 minutes). this directive must be set
+# Larger than negative_dns_ttl.
 #Default:
-# positive_dns_ttl 6 hours
+# Positive_dns_ttl 6 hours
 
-#  TAG: negative_dns_ttl    time-units
-#    Time-to-Live (TTL) for negative caching of failed DNS lookups.
-#    This also sets the lower cache limit on positive lookups.
-#    Minimum value is 1 second, and it is not recommendable to go
-#    much below 10 seconds.
+# Tag: negative_dns_ttl    time-units
+# Time-to-live (ttl) for negative caching of failed dns lookups.
+# This also sets the lower cache limit on positive lookups.
+# Minimum value is 1 second, and it is not recommendable to go
+# Much below 10 seconds.
 #Default:
-# negative_dns_ttl 1 minutes
+# Negative_dns_ttl 1 minutes
 
-#  TAG: range_offset_limit    size [acl acl...]
-#    usage: (size) [units] [[!]aclname]
-#
-#    Sets an upper limit on how far (number of bytes) into the file
-#    a Range request    may be to cause Squid to prefetch the whole file.
-#    If beyond this limit, Squid forwards the Range request as it is and
-#    the result is NOT cached.
-#
-#    This is to stop a far ahead range request (lets say start at 17MB)
-#    from making Squid fetch the whole object up to that point before
-#    sending anything to the client.
-#
-#    Multiple range_offset_limit lines may be specified, and they will
-#    be searched from top to bottom on each request until a match is found.
-#    The first match found will be used.  If no line matches a request, the
-#    default limit of 0 bytes will be used.
-#
-#    'size' is the limit specified as a number of units.
-#
-#    'units' specifies whether to use bytes, KB, MB, etc.
-#    If no units are specified bytes are assumed.
-#
-#    A size of 0 causes Squid to never fetch more than the
-#    client requested. (default)
-#
-#    A size of 'none' causes Squid to always fetch the object from the
-#    beginning so it may cache the result. (2.0 style)
-#
-#    'aclname' is the name of a defined ACL.
-#
-#    NP: Using 'none' as the byte value here will override any quick_abort settings
-#        that may otherwise apply to the range request. The range request will
-#        be fully fetched from start to finish regardless of the client
-#        actions. This affects bandwidth usage.
+# Tag: range_offset_limit    size [acl acl...]
+# Usage: (size) [units] [[!]aclname]
+# Sets an upper limit on how far (number of bytes) into the file
+# A range request    may be to cause squid to prefetch the whole file.
+# If beyond this limit, squid forwards the range request as it is and
+# The result is not cached.
+# This is to stop a far ahead range request (lets say start at 17mb)
+# From making squid fetch the whole object up to that point before
+# Sending anything to the client.
+# Multiple range_offset_limit lines may be specified, and they will
+# Be searched from top to bottom on each request until a match is found.
+# The first match found will be used.  if no line matches a request, the
+# Default limit of 0 bytes will be used.
+# 'Size' is the limit specified as a number of units.
+# 'Units' specifies whether to use bytes, kb, mb, etc.
+# If no units are specified bytes are assumed.
+# A size of 0 causes squid to never fetch more than the
+# Client requested. (default)
+# A size of 'none' causes squid to always fetch the object from the
+# Beginning so it may cache the result. (2.0 style)
+# 'Aclname' is the name of a defined acl.
+# Np: using 'none' as the byte value here will override any quick_abort settings
+# That may otherwise apply to the range request. the range request will
+# Be fully fetched from start to finish regardless of the client
+# Actions. this affects bandwidth usage.
 #Default:
-# none
+# None
 
-#  TAG: minimum_expiry_time    (seconds)
-#    The minimum caching time according to (Expires - Date)
-#    headers Squid honors if the object can't be revalidated.
-#    The default is 60 seconds.
-#
-#    In reverse proxy environments it might be desirable to honor
-#    shorter object lifetimes. It is most likely better to make
-#    your server return a meaningful Last-Modified header however.
-#
-#    In ESI environments where page fragments often have short
-#    lifetimes, this will often be best set to 0.
+# Tag: minimum_expiry_time    (seconds)
+# The minimum caching time according to (expires - date)
+# Headers squid honors if the object can't be revalidated.
+# The default is 60 seconds.
+# In reverse proxy environments it might be desirable to honor
+# Shorter object lifetimes. it is most likely better to make
+# Your server return a meaningful last-modified header however.
+# In esi environments where page fragments often have short
+# Lifetimes, this will often be best set to 0.
 #Default:
-# minimum_expiry_time 60 seconds
+# Minimum_expiry_time 60 seconds
 
-#  TAG: store_avg_object_size    (bytes)
-#    Average object size, used to estimate number of objects your
-#    cache can hold.  The default is 13 KB.
-#
-#    This is used to pre-seed the cache index memory allocation to
-#    reduce expensive reallocate operations while handling clients
-#    traffic. Too-large values may result in memory allocation during
-#    peak traffic, too-small values will result in wasted memory.
-#
-#    Check the cache manager 'info' report metrics for the real
-#    object sizes seen by your Squid before tuning this.
+# Tag: store_avg_object_size    (bytes)
+# Average object size, used to estimate number of objects your
+# Cache can hold.  the default is 13 kb.
+# This is used to pre-seed the cache index memory allocation to
+# Reduce expensive reallocate operations while handling clients
+# Traffic. too-large values may result in memory allocation during
+# Peak traffic, too-small values will result in wasted memory.
+# Check the cache manager 'info' report metrics for the real
+# Object sizes seen by your squid before tuning this.
 #Default:
-# store_avg_object_size 13 KB
+# Store_avg_object_size 13 kb
 
-#  TAG: store_objects_per_bucket
-#    Target number of objects per bucket in the store hash table.
-#    Lowering this value increases the total number of buckets and
-#    also the storage maintenance rate.  The default is 20.
+# Tag: store_objects_per_bucket
+# Target number of objects per bucket in the store hash table.
+# Lowering this value increases the total number of buckets and
+# Also the storage maintenance rate.  the default is 20.
 #Default:
-# store_objects_per_bucket 20
+# Store_objects_per_bucket 20
 
-# HTTP OPTIONS
+# Http options
 # -----------------------------------------------------------------------------
 
-#  TAG: request_header_max_size    (KB)
-#    This specifies the maximum size for HTTP headers in a request.
-#    Request headers are usually relatively small (about 512 bytes).
-#    Placing a limit on the request header size will catch certain
-#    bugs (for example with persistent connections) and possibly
-#    buffer-overflow or denial-of-service attacks.
+# Tag: request_header_max_size    (kb)
+# This specifies the maximum size for http headers in a request.
+# Request headers are usually relatively small (about 512 bytes).
+# Placing a limit on the request header size will catch certain
+# Bugs (for example with persistent connections) and possibly
+# Buffer-overflow or denial-of-service attacks.
 #Default:
-# request_header_max_size 64 KB
+# Request_header_max_size 64 kb
 
-#  TAG: reply_header_max_size    (KB)
-#    This specifies the maximum size for HTTP headers in a reply.
-#    Reply headers are usually relatively small (about 512 bytes).
-#    Placing a limit on the reply header size will catch certain
-#    bugs (for example with persistent connections) and possibly
-#    buffer-overflow or denial-of-service attacks.
+# Tag: reply_header_max_size    (kb)
+# This specifies the maximum size for http headers in a reply.
+# Reply headers are usually relatively small (about 512 bytes).
+# Placing a limit on the reply header size will catch certain
+# Bugs (for example with persistent connections) and possibly
+# Buffer-overflow or denial-of-service attacks.
 #Default:
-# reply_header_max_size 64 KB
+# Reply_header_max_size 64 kb
 
-#  TAG: request_body_max_size    (bytes)
-#    This specifies the maximum size for an HTTP request body.
-#    In other words, the maximum size of a PUT/POST request.
-#    A user who attempts to send a request with a body larger
-#    than this limit receives an "Invalid Request" error message.
-#    If you set this parameter to a zero (the default), there will
-#    be no limit imposed.
-#
-#    See also client_request_buffer_max_size for an alternative
-#    limitation on client uploads which can be configured.
+# Tag: request_body_max_size    (bytes)
+# This specifies the maximum size for an http request body.
+# In other words, the maximum size of a put/post request.
+# A user who attempts to send a request with a body larger
+# Than this limit receives an "invalid request" error message.
+# If you set this parameter to a zero (the default), there will
+# Be no limit imposed.
+# See also client_request_buffer_max_size for an alternative
+# Limitation on client uploads which can be configured.
 #Default:
 # No limit.
 
-#  TAG: client_request_buffer_max_size    (bytes)
-#    This specifies the maximum buffer size of a client request.
-#    It prevents squid eating too much memory when somebody uploads
-#    a large file.
+# Tag: client_request_buffer_max_size    (bytes)
+# This specifies the maximum buffer size of a client request.
+# It prevents squid eating too much memory when somebody uploads
+# A large file.
 #Default:
-# client_request_buffer_max_size 512 KB
+# Client_request_buffer_max_size 512 kb
 
-#  TAG: broken_posts
-#    A list of ACL elements which, if matched, causes Squid to send
-#    an extra CRLF pair after the body of a PUT/POST request.
-#
-#    Some HTTP servers has broken implementations of PUT/POST,
-#    and rely on an extra CRLF pair sent by some WWW clients.
-#
-#    Quote from RFC2616 section 4.1 on this matter:
-#
-#      Note: certain buggy HTTP/1.0 client implementations generate an
-#      extra CRLF's after a POST request. To restate what is explicitly
-#      forbidden by the BNF, an HTTP/1.1 client must not preface or follow
-#      a request with an extra CRLF.
-#
-#    This clause only supports fast acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
-#
+# Tag: broken_posts
+# A list of acl elements which, if matched, causes squid to send
+# An extra crlf pair after the body of a put/post request.
+# Some http servers has broken implementations of put/post,
+# And rely on an extra crlf pair sent by some www clients.
+# Quote from rfc2616 section 4.1 on this matter:
+# Note: certain buggy http/1.0 client implementations generate an
+# Extra crlf's after a post request. to restate what is explicitly
+# Forbidden by the bnf, an http/1.1 client must not preface or follow
+# A request with an extra crlf.
+# This clause only supports fast acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
 #Example:
-# acl buggy_server url_regex ^http://....
-# broken_posts allow buggy_server
+# Acl buggy_server url_regex ^http://....
+# Broken_posts allow buggy_server
 #Default:
-# Obey RFC 2616.
+# Obey rfc 2616.
 
-#  TAG: adaptation_uses_indirect_client    on|off
-#    Controls whether the indirect client IP address (instead of the direct
-#    client IP address) is passed to adaptation services.
-#
-#    See also: follow_x_forwarded_for adaptation_send_client_ip
+# Tag: adaptation_uses_indirect_client    on|off
+# Controls whether the indirect client ip address (instead of the direct
+# Client ip address) is passed to adaptation services.
+# See also: follow_x_forwarded_for adaptation_send_client_ip
 #Default:
-# adaptation_uses_indirect_client on
+# Adaptation_uses_indirect_client on
 
-#  TAG: via    on|off
-#    If set (default), Squid will include a Via header in requests and
-#    replies as required by RFC2616.
+# Tag: via    on|off
+# If set (default), squid will include a via header in requests and
+# Replies as required by rfc2616.
 #Default:
-# via on
+# Via on
 
-#  TAG: vary_ignore_expire    on|off
-#    Many HTTP servers supporting Vary gives such objects
-#    immediate expiry time with no cache-control header
-#    when requested by a HTTP/1.0 client. This option
-#    enables Squid to ignore such expiry times until
-#    HTTP/1.1 is fully implemented.
-#
-#    WARNING: If turned on this may eventually cause some
-#    varying objects not intended for caching to get cached.
+# Tag: vary_ignore_expire    on|off
+# Many http servers supporting vary gives such objects
+# Immediate expiry time with no cache-control header
+# When requested by a http/1.0 client. this option
+# Enables squid to ignore such expiry times until
+# Http/1.1 is fully implemented.
+# Warning: if turned on this may eventually cause some
+# Varying objects not intended for caching to get cached.
 #Default:
-# vary_ignore_expire off
+# Vary_ignore_expire off
 
-#  TAG: request_entities
-#    Squid defaults to deny GET and HEAD requests with request entities,
-#    as the meaning of such requests are undefined in the HTTP standard
-#    even if not explicitly forbidden.
-#
-#    Set this directive to on if you have clients which insists
-#    on sending request entities in GET or HEAD requests. But be warned
-#    that there is server software (both proxies and web servers) which
-#    can fail to properly process this kind of request which may make you
-#    vulnerable to cache pollution attacks if enabled.
+# Tag: request_entities
+# Squid defaults to deny get and head requests with request entities,
+# As the meaning of such requests are undefined in the http standard
+# Even if not explicitly forbidden.
+# Set this directive to on if you have clients which insists
+# On sending request entities in get or head requests. but be warned
+# That there is server software (both proxies and web servers) which
+# Can fail to properly process this kind of request which may make you
+# Vulnerable to cache pollution attacks if enabled.
 #Default:
-# request_entities off
+# Request_entities off
 
-#  TAG: request_header_access
-#    Usage: request_header_access header_name allow|deny [!]aclname ...
-#
-#    WARNING: Doing this VIOLATES the HTTP standard.  Enabling
-#    this feature could make you liable for problems which it
-#    causes.
-#
-#    This option replaces the old 'anonymize_headers' and the
-#    older 'http_anonymizer' option with something that is much
-#    more configurable. A list of ACLs for each header name allows
-#    removal of specific header fields under specific conditions.
-#
-#    This option only applies to outgoing HTTP request headers (i.e.,
-#    headers sent by Squid to the next HTTP hop such as a cache peer
-#    or an origin server). The option has no effect during cache hit
-#    detection. The equivalent adaptation vectoring point in ICAP
-#    terminology is post-cache REQMOD.
-#
-#    The option is applied to individual outgoing request header
-#    fields. For each request header field F, Squid uses the first
-#    qualifying sets of request_header_access rules:
-#
-#        1. Rules with header_name equal to F's name.
-#        2. Rules with header_name 'Other', provided F's name is not
-#           on the hard-coded list of commonly used HTTP header names.
-#        3. Rules with header_name 'All'.
-#
-#    Within that qualifying rule set, rule ACLs are checked as usual.
-#    If ACLs of an "allow" rule match, the header field is allowed to
-#    go through as is. If ACLs of a "deny" rule match, the header is
-#    removed and request_header_replace is then checked to identify
-#    if the removed header has a replacement. If no rules within the
-#    set have matching ACLs, the header field is left as is.
-#
-#    For example, to achieve the same behavior as the old
-#    'http_anonymizer standard' option, you should use:
-#
-#        request_header_access From deny all
-#        request_header_access Referer deny all
-#        request_header_access User-Agent deny all
-#
-#    Or, to reproduce the old 'http_anonymizer paranoid' feature
-#    you should use:
-#
-#        request_header_access Authorization allow all
-#        request_header_access Proxy-Authorization allow all
-#        request_header_access Cache-Control allow all
-#        request_header_access Content-Length allow all
-#        request_header_access Content-Type allow all
-#        request_header_access Date allow all
-#        request_header_access Host allow all
-#        request_header_access If-Modified-Since allow all
-#        request_header_access Pragma allow all
-#        request_header_access Accept allow all
-#        request_header_access Accept-Charset allow all
-#        request_header_access Accept-Encoding allow all
-#        request_header_access Accept-Language allow all
-#        request_header_access Connection allow all
-#        request_header_access All deny all
-#
-#    HTTP reply headers are controlled with the reply_header_access directive.
-#
-#    By default, all headers are allowed (no anonymizing is performed).
+# Tag: request_header_access
+# Usage: request_header_access header_name allow|deny [!]aclname ...
+# Warning: doing this violates the http standard.  enabling
+# This feature could make you liable for problems which it
+# Causes.
+# This option replaces the old 'anonymize_headers' and the
+# Older 'http_anonymizer' option with something that is much
+# More configurable. a list of acls for each header name allows
+# Removal of specific header fields under specific conditions.
+# This option only applies to outgoing http request headers (i.e.,
+# Headers sent by squid to the next http hop such as a cache peer
+# Or an origin server). the option has no effect during cache hit
+# Detection. the equivalent adaptation vectoring point in icap
+# Terminology is post-cache reqmod.
+# The option is applied to individual outgoing request header
+# Fields. for each request header field f, squid uses the first
+# Qualifying sets of request_header_access rules:
+# 1. rules with header_name equal to f's name.
+# 2. rules with header_name 'other', provided f's name is not
+# On the hard-coded list of commonly used http header names.
+# 3. rules with header_name 'all'.
+# Within that qualifying rule set, rule acls are checked as usual.
+# If acls of an "allow" rule match, the header field is allowed to
+# Go through as is. if acls of a "deny" rule match, the header is
+# Removed and request_header_replace is then checked to identify
+# If the removed header has a replacement. if no rules within the
+# Set have matching acls, the header field is left as is.
+# For example, to achieve the same behavior as the old
+#    'Http_anonymizer standard' option, you should use:
+# Request_header_access from deny all
+# Request_header_access referer deny all
+# Request_header_access user-agent deny all
+# Or, to reproduce the old 'http_anonymizer paranoid' feature
+# You should use:
+# Request_header_access authorization allow all
+# Request_header_access proxy-authorization allow all
+# Request_header_access cache-control allow all
+# Request_header_access content-length allow all
+# Request_header_access content-type allow all
+# Request_header_access date allow all
+# Request_header_access host allow all
+# Request_header_access if-modified-since allow all
+# Request_header_access pragma allow all
+# Request_header_access accept allow all
+# Request_header_access accept-charset allow all
+# Request_header_access accept-encoding allow all
+# Request_header_access accept-language allow all
+# Request_header_access connection allow all
+# Request_header_access all deny all
+# Http reply headers are controlled with the reply_header_access directive.
+# By default, all headers are allowed (no anonymizing is performed).
 #Default:
 # No limits.
 
-#  TAG: reply_header_access
-#    Usage: reply_header_access header_name allow|deny [!]aclname ...
-#
-#    WARNING: Doing this VIOLATES the HTTP standard.  Enabling
-#    this feature could make you liable for problems which it
-#    causes.
-#
-#    This option only applies to reply headers, i.e., from the
-#    server to the client.
-#
-#    This is the same as request_header_access, but in the other
-#    direction. Please see request_header_access for detailed
-#    documentation.
-#
-#    For example, to achieve the same behavior as the old
-#    'http_anonymizer standard' option, you should use:
-#
-#        reply_header_access Server deny all
-#        reply_header_access WWW-Authenticate deny all
-#        reply_header_access Link deny all
-#
-#    Or, to reproduce the old 'http_anonymizer paranoid' feature
-#    you should use:
-#
-#        reply_header_access Allow allow all
-#        reply_header_access WWW-Authenticate allow all
-#        reply_header_access Proxy-Authenticate allow all
-#        reply_header_access Cache-Control allow all
-#        reply_header_access Content-Encoding allow all
-#        reply_header_access Content-Length allow all
-#        reply_header_access Content-Type allow all
-#        reply_header_access Date allow all
-#        reply_header_access Expires allow all
-#        reply_header_access Last-Modified allow all
-#        reply_header_access Location allow all
-#        reply_header_access Pragma allow all
-#        reply_header_access Content-Language allow all
-#        reply_header_access Retry-After allow all
-#        reply_header_access Title allow all
-#        reply_header_access Content-Disposition allow all
-#        reply_header_access Connection allow all
-#        reply_header_access All deny all
-#
-#    HTTP request headers are controlled with the request_header_access directive.
-#
-#    By default, all headers are allowed (no anonymizing is
-#    performed).
+# Tag: reply_header_access
+# Usage: reply_header_access header_name allow|deny [!]aclname ...
+# Warning: doing this violates the http standard.  enabling
+# This feature could make you liable for problems which it
+# Causes.
+# This option only applies to reply headers, i.e., from the
+# Server to the client.
+# This is the same as request_header_access, but in the other
+# Direction. please see request_header_access for detailed
+# Documentation.
+# For example, to achieve the same behavior as the old
+#    'Http_anonymizer standard' option, you should use:
+# Reply_header_access server deny all
+# Reply_header_access www-authenticate deny all
+# Reply_header_access link deny all
+# Or, to reproduce the old 'http_anonymizer paranoid' feature
+# You should use:
+# Reply_header_access allow allow all
+# Reply_header_access www-authenticate allow all
+# Reply_header_access proxy-authenticate allow all
+# Reply_header_access cache-control allow all
+# Reply_header_access content-encoding allow all
+# Reply_header_access content-length allow all
+# Reply_header_access content-type allow all
+# Reply_header_access date allow all
+# Reply_header_access expires allow all
+# Reply_header_access last-modified allow all
+# Reply_header_access location allow all
+# Reply_header_access pragma allow all
+# Reply_header_access content-language allow all
+# Reply_header_access retry-after allow all
+# Reply_header_access title allow all
+# Reply_header_access content-disposition allow all
+# Reply_header_access connection allow all
+# Reply_header_access all deny all
+# Http request headers are controlled with the request_header_access directive.
+# By default, all headers are allowed (no anonymizing is
+# Performed).
 #Default:
 # No limits.
 
-#  TAG: request_header_replace
-#    Usage:   request_header_replace header_name message
-#    Example: request_header_replace User-Agent Nutscrape/1.0 (CP/M; 8-bit)
-#
-#    This option allows you to change the contents of headers
-#    denied with request_header_access above, by replacing them
-#    with some fixed string.
-#
-#    This only applies to request headers, not reply headers.
-#
-#    By default, headers are removed if denied.
+# Tag: request_header_replace
+# Usage:   request_header_replace header_name message
+# Example: request_header_replace user-agent nutscrape/1.0 (cp/m; 8-bit)
+# This option allows you to change the contents of headers
+# Denied with request_header_access above, by replacing them
+# With some fixed string.
+# This only applies to request headers, not reply headers.
+# By default, headers are removed if denied.
 #Default:
-# none
+# None
 
-#  TAG: reply_header_replace
-#        Usage:   reply_header_replace header_name message
-#        Example: reply_header_replace Server Foo/1.0
-#
-#        This option allows you to change the contents of headers
-#        denied with reply_header_access above, by replacing them
-#        with some fixed string.
-#
-#        This only applies to reply headers, not request headers.
-#
-#        By default, headers are removed if denied.
+# Tag: reply_header_replace
+# Usage:   reply_header_replace header_name message
+# Example: reply_header_replace server foo/1.0
+# This option allows you to change the contents of headers
+# Denied with reply_header_access above, by replacing them
+# With some fixed string.
+# This only applies to reply headers, not request headers.
+# By default, headers are removed if denied.
 #Default:
-# none
+# None
 
-#  TAG: request_header_add
-#    Usage:   request_header_add field-name field-value [ acl ... ]
-#    Example: request_header_add X-Client-CA "CA=%ssl::>cert_issuer" all
-#
-#    This option adds header fields to outgoing HTTP requests (i.e.,
-#    request headers sent by Squid to the next HTTP hop such as a
-#    cache peer or an origin server). The option has no effect during
-#    cache hit detection. The equivalent adaptation vectoring point
-#    in ICAP terminology is post-cache REQMOD.
-#
-#    Field-name is a token specifying an HTTP header name. If a
-#    standard HTTP header name is used, Squid does not check whether
-#    the new header conflicts with any existing headers or violates
-#    HTTP rules. If the request to be modified already contains a
-#    field with the same name, the old field is preserved but the
-#    header field values are not merged.
-#
-#    Field-value is either a token or a quoted string. If quoted
-#    string format is used, then the surrounding quotes are removed
-#    while escape sequences and %macros are processed.
-#
-#    One or more Squid ACLs may be specified to restrict header
-#    injection to matching requests. As always in squid.conf, all
-#    ACLs in the ACL list must be satisfied for the insertion to
-#    happen. The request_header_add supports fast ACLs only.
-#
-#    See also: reply_header_add.
+# Tag: request_header_add
+# Usage:   request_header_add field-name field-value [ acl ... ]
+# Example: request_header_add x-client-ca "ca=%ssl::>cert_issuer" all
+# This option adds header fields to outgoing http requests (i.e.,
+# Request headers sent by squid to the next http hop such as a
+# Cache peer or an origin server). the option has no effect during
+# Cache hit detection. the equivalent adaptation vectoring point
+# In icap terminology is post-cache reqmod.
+# Field-name is a token specifying an http header name. if a
+# Standard http header name is used, squid does not check whether
+# The new header conflicts with any existing headers or violates
+# Http rules. if the request to be modified already contains a
+# Field with the same name, the old field is preserved but the
+# Header field values are not merged.
+# Field-value is either a token or a quoted string. if quoted
+# String format is used, then the surrounding quotes are removed
+# While escape sequences and %macros are processed.
+# One or more squid acls may be specified to restrict header
+# Injection to matching requests. as always in squid.conf, all
+# Acls in the acl list must be satisfied for the insertion to
+# Happen. the request_header_add supports fast acls only.
+# See also: reply_header_add.
 #Default:
-# none
+# None
 
-#  TAG: reply_header_add
-#    Usage:   reply_header_add field-name field-value [ acl ... ]
-#    Example: reply_header_add X-Client-CA "CA=%ssl::>cert_issuer" all
-#
-#    This option adds header fields to outgoing HTTP responses (i.e., response
-#    headers delivered by Squid to the client). This option has no effect on
-#    cache hit detection. The equivalent adaptation vectoring point in
-#    ICAP terminology is post-cache RESPMOD. This option does not apply to
-#    successful CONNECT replies.
-#
-#    Field-name is a token specifying an HTTP header name. If a
-#    standard HTTP header name is used, Squid does not check whether
-#    the new header conflicts with any existing headers or violates
-#    HTTP rules. If the response to be modified already contains a
-#    field with the same name, the old field is preserved but the
-#    header field values are not merged.
-#
-#    Field-value is either a token or a quoted string. If quoted
-#    string format is used, then the surrounding quotes are removed
-#    while escape sequences and %macros are processed.
-#
-#    One or more Squid ACLs may be specified to restrict header
-#    injection to matching responses. As always in squid.conf, all
-#    ACLs in the ACL list must be satisfied for the insertion to
-#    happen. The reply_header_add option supports fast ACLs only.
-#
-#    See also: request_header_add.
+# Tag: reply_header_add
+# Usage:   reply_header_add field-name field-value [ acl ... ]
+# Example: reply_header_add x-client-ca "ca=%ssl::>cert_issuer" all
+# This option adds header fields to outgoing http responses (i.e., response
+# Headers delivered by squid to the client). this option has no effect on
+# Cache hit detection. the equivalent adaptation vectoring point in
+# Icap terminology is post-cache respmod. this option does not apply to
+# Successful connect replies.
+# Field-name is a token specifying an http header name. if a
+# Standard http header name is used, squid does not check whether
+# The new header conflicts with any existing headers or violates
+# Http rules. if the response to be modified already contains a
+# Field with the same name, the old field is preserved but the
+# Header field values are not merged.
+# Field-value is either a token or a quoted string. if quoted
+# String format is used, then the surrounding quotes are removed
+# While escape sequences and %macros are processed.
+# One or more squid acls may be specified to restrict header
+# Injection to matching responses. as always in squid.conf, all
+# Acls in the acl list must be satisfied for the insertion to
+# Happen. the reply_header_add option supports fast acls only.
+# See also: request_header_add.
 #Default:
-# none
+# None
 
-#  TAG: note
-#    This option used to log custom information about the master
-#    transaction. For example, an admin may configure Squid to log
-#    which "user group" the transaction belongs to, where "user group"
-#    will be determined based on a set of ACLs and not [just]
-#    authentication information.
-#    Values of key/value pairs can be logged using %{key}note macros:
-#
-#        note key value acl ...
-#        logformat myFormat ... %{key}note ...
-#
-#    This clause only supports fast acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
+# Tag: note
+# This option used to log custom information about the master
+# Transaction. for example, an admin may configure squid to log
+# Which "user group" the transaction belongs to, where "user group"
+# Will be determined based on a set of acls and not [just]
+# Authentication information.
+# Values of key/value pairs can be logged using %{key}note macros:
+# Note key value acl ...
+# Logformat myformat ... %{key}note ...
+# This clause only supports fast acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
 #Default:
-# none
+# None
 
-#  TAG: relaxed_header_parser    on|off|warn
-#    In the default "on" setting Squid accepts certain forms
-#    of non-compliant HTTP messages where it is unambiguous
-#    what the sending application intended even if the message
-#    is not correctly formatted. The messages is then normalized
-#    to the correct form when forwarded by Squid.
-#
-#    If set to "warn" then a warning will be emitted in cache.log
-#    each time such HTTP error is encountered.
-#
-#    If set to "off" then such HTTP errors will cause the request
-#    or response to be rejected.
+# Tag: relaxed_header_parser    on|off|warn
+# In the default "on" setting squid accepts certain forms
+# Of non-compliant http messages where it is unambiguous
+# What the sending application intended even if the message
+# Is not correctly formatted. the messages is then normalized
+# To the correct form when forwarded by squid.
+# If set to "warn" then a warning will be emitted in cache.log
+# Each time such http error is encountered.
+# If set to "off" then such http errors will cause the request
+# Or response to be rejected.
 #Default:
-# relaxed_header_parser on
+# Relaxed_header_parser on
 
-#  TAG: collapsed_forwarding    (on|off)
-#       This option controls whether Squid is allowed to merge multiple
-#       potentially cachable requests for the same URI before Squid knows
-#       whether the response is going to be cachable.
-#
-#       When enabled, instead of forwarding each concurrent request for
-#       the same URL, Squid just sends the first of them. The other, so
-#       called "collapsed" requests, wait for the response to the first
-#       request and, if it happens to be cachable, use that response.
-#       Here, "concurrent requests" means "received after the first
-#       request headers were parsed and before the corresponding response
-#       headers were parsed".
-#
-#       This feature is disabled by default: enabling collapsed
-#       forwarding needlessly delays forwarding requests that look
-#       cachable (when they are collapsed) but then need to be forwarded
-#       individually anyway because they end up being for uncachable
-#       content. However, in some cases, such as acceleration of highly
-#       cachable content with periodic or grouped expiration times, the
-#       gains from collapsing [large volumes of simultaneous refresh
-#       requests] outweigh losses from such delays.
-#
-#       Squid collapses two kinds of requests: regular client requests
-#       received on one of the listening ports and internal "cache
-#       revalidation" requests which are triggered by those regular
-#       requests hitting a stale cached object. Revalidation collapsing
-#       is currently disabled for Squid instances containing SMP-aware
-#       disk or memory caches and for Vary-controlled cached objects.
+# Tag: collapsed_forwarding    (on|off)
+# This option controls whether squid is allowed to merge multiple
+# Potentially cachable requests for the same uri before squid knows
+# Whether the response is going to be cachable.
+# When enabled, instead of forwarding each concurrent request for
+# The same url, squid just sends the first of them. the other, so
+# Called "collapsed" requests, wait for the response to the first
+# Request and, if it happens to be cachable, use that response.
+# Here, "concurrent requests" means "received after the first
+# Request headers were parsed and before the corresponding response
+# Headers were parsed".
+# This feature is disabled by default: enabling collapsed
+# Forwarding needlessly delays forwarding requests that look
+# Cachable (when they are collapsed) but then need to be forwarded
+# Individually anyway because they end up being for uncachable
+# Content. however, in some cases, such as acceleration of highly
+# Cachable content with periodic or grouped expiration times, the
+# Gains from collapsing [large volumes of simultaneous refresh
+# Requests] outweigh losses from such delays.
+# Squid collapses two kinds of requests: regular client requests
+# Received on one of the listening ports and internal "cache
+# Revalidation" requests which are triggered by those regular
+# Requests hitting a stale cached object. revalidation collapsing
+# Is currently disabled for squid instances containing smp-aware
+# Disk or memory caches and for vary-controlled cached objects.
 #Default:
-# collapsed_forwarding off
+# Collapsed_forwarding off
 
-#  TAG: collapsed_forwarding_access
-#    Use this directive to restrict collapsed forwarding to a subset of
-#    eligible requests. The directive is checked for regular HTTP
-#    requests, internal revalidation requests, and HTCP/ICP requests.
-#
-#        collapsed_forwarding_access allow|deny [!]aclname ...
-#
-#    This directive cannot force collapsing. It has no effect on
-#    collapsing unless collapsed_forwarding is 'on', and all other
-#    collapsing preconditions are satisfied.
-#
-#    * A denied request will not collapse, and future transactions will
-#      not collapse on it (even if they are allowed to collapse).
-#
-#    * An allowed request may collapse, or future transactions may
-#      collapse on it (provided they are allowed to collapse).
-#
-#    This directive is evaluated before receiving HTTP response headers
-#    and without access to Squid-to-peer connection (if any).
-#
-#    Only fast ACLs are supported.
-#
-#    See also: collapsed_forwarding.
+# Tag: collapsed_forwarding_access
+# Use this directive to restrict collapsed forwarding to a subset of
+# Eligible requests. the directive is checked for regular http
+# Requests, internal revalidation requests, and htcp/icp requests.
+# Collapsed_forwarding_access allow|deny [!]aclname ...
+# This directive cannot force collapsing. it has no effect on
+# Collapsing unless collapsed_forwarding is 'on', and all other
+# Collapsing preconditions are satisfied.
+# * A denied request will not collapse, and future transactions will
+# Not collapse on it (even if they are allowed to collapse).
+# * An allowed request may collapse, or future transactions may
+# Collapse on it (provided they are allowed to collapse).
+# This directive is evaluated before receiving http response headers
+# And without access to squid-to-peer connection (if any).
+# Only fast acls are supported.
+# See also: collapsed_forwarding.
 #Default:
 # Requests may be collapsed if collapsed_forwarding is on.
 
-#  TAG: shared_transient_entries_limit    (number of entries)
-#    This directive limits the size of a table used for sharing current
-#    transaction information among SMP workers. A table entry stores meta
-#    information about a single cache entry being delivered to Squid
-#    client(s) by one or more SMP workers. A single table entry consumes
-#    less than 128 shared memory bytes.
-#
-#    The limit should be significantly larger than the number of
-#    concurrent non-collapsed cachable responses leaving Squid. For a
-#    cache that handles less than 5000 concurrent requests, the default
-#    setting of 16384 should be plenty.
-#
-#    Using excessively large values wastes shared memory. Limiting the
-#    table size too much results in hash collisions, leading to lower hit
-#    ratio and missed SMP request collapsing opportunities: Transactions
-#    left without a table entry cannot cache their responses and are
-#    invisible to other concurrent requests for the same resource.
-#
-#    A zero limit is allowed but unsupported. A positive small limit
-#    lowers hit ratio, but zero limit disables a lot of essential
-#    synchronization among SMP workers, leading to HTTP violations (e.g.,
-#    stale hit responses). It also disables shared collapsed forwarding:
-#    A worker becomes unable to collapse its requests on transactions in
-#    other workers, resulting in more trips to the origin server and more
-#    cache thrashing.
+# Tag: shared_transient_entries_limit    (number of entries)
+# This directive limits the size of a table used for sharing current
+# Transaction information among smp workers. a table entry stores meta
+# Information about a single cache entry being delivered to squid
+# Client(s) by one or more smp workers. a single table entry consumes
+# Less than 128 shared memory bytes.
+# The limit should be significantly larger than the number of
+# Concurrent non-collapsed cachable responses leaving squid. for a
+# Cache that handles less than 5000 concurrent requests, the default
+# Setting of 16384 should be plenty.
+# Using excessively large values wastes shared memory. limiting the
+# Table size too much results in hash collisions, leading to lower hit
+# Ratio and missed smp request collapsing opportunities: transactions
+# Left without a table entry cannot cache their responses and are
+# Invisible to other concurrent requests for the same resource.
+# A zero limit is allowed but unsupported. a positive small limit
+# Lowers hit ratio, but zero limit disables a lot of essential
+# Synchronization among smp workers, leading to http violations (e.g.,
+# Stale hit responses). it also disables shared collapsed forwarding:
+# A worker becomes unable to collapse its requests on transactions in
+# Other workers, resulting in more trips to the origin server and more
+# Cache thrashing.
 #Default:
-# shared_transient_entries_limit 16384
+# Shared_transient_entries_limit 16384
 
-# TIMEOUTS
+# Timeouts
 # -----------------------------------------------------------------------------
 
-#  TAG: forward_timeout    time-units
-#    This parameter specifies how long Squid should at most attempt in
-#    finding a forwarding path for the request before giving up.
+# Tag: forward_timeout    time-units
+# This parameter specifies how long squid should at most attempt in
+# Finding a forwarding path for the request before giving up.
 #Default:
-# forward_timeout 4 minutes
+# Forward_timeout 4 minutes
 
-#  TAG: connect_timeout    time-units
-#    This parameter specifies how long to wait for the TCP connect to
-#    the requested server or peer to complete before Squid should
-#    attempt to find another path where to forward the request.
+# Tag: connect_timeout    time-units
+# This parameter specifies how long to wait for the tcp connect to
+# The requested server or peer to complete before squid should
+# Attempt to find another path where to forward the request.
 #Default:
-# connect_timeout 1 minute
+# Connect_timeout 1 minute
 
-#  TAG: peer_connect_timeout    time-units
-#    This parameter specifies how long to wait for a pending TCP
-#    connection to a peer cache.  The default is 30 seconds.   You
-#    may also set different timeout values for individual neighbors
-#    with the 'connect-timeout' option on a 'cache_peer' line.
+# Tag: peer_connect_timeout    time-units
+# This parameter specifies how long to wait for a pending tcp
+# Connection to a peer cache.  the default is 30 seconds.   you
+# May also set different timeout values for individual neighbors
+# With the 'connect-timeout' option on a 'cache_peer' line.
 #Default:
-# peer_connect_timeout 30 seconds
+# Peer_connect_timeout 30 seconds
 
-#  TAG: read_timeout    time-units
-#    Applied on peer server connections.
-#
-#    After each successful read(), the timeout will be extended by this
-#    amount.  If no data is read again after this amount of time,
-#    the request is aborted and logged with ERR_READ_TIMEOUT.
-#
-#    The default is 15 minutes.
+# Tag: read_timeout    time-units
+# Applied on peer server connections.
+# After each successful read(), the timeout will be extended by this
+# Amount.  if no data is read again after this amount of time,
+# The request is aborted and logged with err_read_timeout.
+# The default is 15 minutes.
 #Default:
-# read_timeout 15 minutes
+# Read_timeout 15 minutes
 
-#  TAG: write_timeout    time-units
-#    This timeout is tracked for all connections that have data
-#    available for writing and are waiting for the socket to become
-#    ready. After each successful write, the timeout is extended by
-#    the configured amount. If Squid has data to write but the
-#    connection is not ready for the configured duration, the
-#    transaction associated with the connection is terminated. The
-#    default is 15 minutes.
+# Tag: write_timeout    time-units
+# This timeout is tracked for all connections that have data
+# Available for writing and are waiting for the socket to become
+# Ready. after each successful write, the timeout is extended by
+# The configured amount. if squid has data to write but the
+# Connection is not ready for the configured duration, the
+# Transaction associated with the connection is terminated. the
+# Default is 15 minutes.
 #Default:
-# write_timeout 15 minutes
+# Write_timeout 15 minutes
 
-#  TAG: request_timeout
-#    How long to wait for complete HTTP request headers after initial
-#    connection establishment.
+# Tag: request_timeout
+# How long to wait for complete http request headers after initial
+# Connection establishment.
 #Default:
-# request_timeout 5 minutes
+# Request_timeout 5 minutes
 
-#  TAG: request_start_timeout
-#    How long to wait for the first request byte after initial
-#    connection establishment.
+# Tag: request_start_timeout
+# How long to wait for the first request byte after initial
+# Connection establishment.
 #Default:
-# request_start_timeout 5 minutes
+# Request_start_timeout 5 minutes
 
-#  TAG: client_idle_pconn_timeout
-#    How long to wait for the next HTTP request on a persistent
-#    client connection after the previous request completes.
+# Tag: client_idle_pconn_timeout
+# How long to wait for the next http request on a persistent
+# Client connection after the previous request completes.
 #Default:
-# client_idle_pconn_timeout 2 minutes
+# Client_idle_pconn_timeout 2 minutes
 
-#  TAG: ftp_client_idle_timeout
-#    How long to wait for an FTP request on a connection to Squid ftp_port.
-#    Many FTP clients do not deal with idle connection closures well,
-#    necessitating a longer default timeout than client_idle_pconn_timeout
-#    used for incoming HTTP requests.
+# Tag: ftp_client_idle_timeout
+# How long to wait for an ftp request on a connection to squid ftp_port.
+# Many ftp clients do not deal with idle connection closures well,
+# Necessitating a longer default timeout than client_idle_pconn_timeout
+# Used for incoming http requests.
 #Default:
-# ftp_client_idle_timeout 30 minutes
+# Ftp_client_idle_timeout 30 minutes
 
-#  TAG: client_lifetime    time-units
-#    The maximum amount of time a client (browser) is allowed to
-#    remain connected to the cache process.  This protects the Cache
-#    from having a lot of sockets (and hence file descriptors) tied up
-#    in a CLOSE_WAIT state from remote clients that go away without
-#    properly shutting down (either because of a network failure or
-#    because of a poor client implementation).  The default is one
-#    day, 1440 minutes.
-#
-#    NOTE:  The default value is intended to be much larger than any
-#    client would ever need to be connected to your cache.  You
-#    should probably change client_lifetime only as a last resort.
-#    If you seem to have many client connections tying up
-#    filedescriptors, we recommend first tuning the read_timeout,
-#    request_timeout, persistent_request_timeout and quick_abort values.
+# Tag: client_lifetime    time-units
+# The maximum amount of time a client (browser) is allowed to
+# Remain connected to the cache process.  this protects the cache
+# From having a lot of sockets (and hence file descriptors) tied up
+# In a close_wait state from remote clients that go away without
+# Properly shutting down (either because of a network failure or
+# Because of a poor client implementation).  the default is one
+# Day, 1440 minutes.
+# Note:  the default value is intended to be much larger than any
+# Client would ever need to be connected to your cache.  you
+# Should probably change client_lifetime only as a last resort.
+# If you seem to have many client connections tying up
+# Filedescriptors, we recommend first tuning the read_timeout,
+# Request_timeout, persistent_request_timeout and quick_abort values.
 #Default:
-# client_lifetime 1 day
+# Client_lifetime 1 day
 
-#  TAG: pconn_lifetime    time-units
-#    Desired maximum lifetime of a persistent connection.
-#    When set, Squid will close a now-idle persistent connection that
-#    exceeded configured lifetime instead of moving the connection into
-#    the idle connection pool (or equivalent). No effect on ongoing/active
-#    transactions. Connection lifetime is the time period from the
-#    connection acceptance or opening time until "now".
-#
-#    This limit is useful in environments with long-lived connections
-#    where Squid configuration or environmental factors change during a
-#    single connection lifetime. If unrestricted, some connections may
-#    last for hours and even days, ignoring those changes that should
-#    have affected their behavior or their existence.
-#
-#    Currently, a new lifetime value supplied via Squid reconfiguration
-#    has no effect on already idle connections unless they become busy.
-#
-#    When set to '0' this limit is not used.
+# Tag: pconn_lifetime    time-units
+# Desired maximum lifetime of a persistent connection.
+# When set, squid will close a now-idle persistent connection that
+# Exceeded configured lifetime instead of moving the connection into
+# The idle connection pool (or equivalent). no effect on ongoing/active
+# Transactions. connection lifetime is the time period from the
+# Connection acceptance or opening time until "now".
+# This limit is useful in environments with long-lived connections
+# Where squid configuration or environmental factors change during a
+# Single connection lifetime. if unrestricted, some connections may
+# Last for hours and even days, ignoring those changes that should
+# Have affected their behavior or their existence.
+# Currently, a new lifetime value supplied via squid reconfiguration
+# Has no effect on already idle connections unless they become busy.
+# When set to '0' this limit is not used.
 #Default:
-# pconn_lifetime 0 seconds
+# Pconn_lifetime 0 seconds
 
-#  TAG: half_closed_clients
-#    Some clients may shutdown the sending side of their TCP
-#    connections, while leaving their receiving sides open.    Sometimes,
-#    Squid can not tell the difference between a half-closed and a
-#    fully-closed TCP connection.
-#
-#    By default, Squid will immediately close client connections when
-#    read(2) returns "no more data to read."
-#
-#    Change this option to 'on' and Squid will keep open connections
-#    until a read(2) or write(2) on the socket returns an error.
-#    This may show some benefits for reverse proxies. But if not
-#    it is recommended to leave OFF.
+# Tag: half_closed_clients
+# Some clients may shutdown the sending side of their tcp
+# Connections, while leaving their receiving sides open.    sometimes,
+# Squid can not tell the difference between a half-closed and a
+# Fully-closed tcp connection.
+# By default, squid will immediately close client connections when
+# Read(2) returns "no more data to read."
+# Change this option to 'on' and squid will keep open connections
+# Until a read(2) or write(2) on the socket returns an error.
+# This may show some benefits for reverse proxies. but if not
+# It is recommended to leave off.
 #Default:
-# half_closed_clients off
+# Half_closed_clients off
 
-#  TAG: server_idle_pconn_timeout
-#    Timeout for idle persistent connections to servers and other
-#    proxies.
+# Tag: server_idle_pconn_timeout
+# Timeout for idle persistent connections to servers and other
+# Proxies.
 #Default:
-# server_idle_pconn_timeout 1 minute
+# Server_idle_pconn_timeout 1 minute
 
-#  TAG: ident_timeout
-#    Maximum time to wait for IDENT lookups to complete.
-#
-#    If this is too high, and you enabled IDENT lookups from untrusted
-#    users, you might be susceptible to denial-of-service by having
-#    many ident requests going at once.
+# Tag: ident_timeout
+# Maximum time to wait for ident lookups to complete.
+# If this is too high, and you enabled ident lookups from untrusted
+# Users, you might be susceptible to denial-of-service by having
+# Many ident requests going at once.
 #Default:
-# ident_timeout 10 seconds
+# Ident_timeout 10 seconds
 
-#  TAG: shutdown_lifetime    time-units
-#    When SIGTERM or SIGHUP is received, the cache is put into
-#    "shutdown pending" mode until all active sockets are closed.
-#    This value is the lifetime to set for all open descriptors
-#    during shutdown mode.  Any active clients after this many
-#    seconds will receive a 'timeout' message.
+# Tag: shutdown_lifetime    time-units
+# When sigterm or sighup is received, the cache is put into
+#    "Shutdown pending" mode until all active sockets are closed.
+# This value is the lifetime to set for all open descriptors
+# During shutdown mode.  any active clients after this many
+# Seconds will receive a 'timeout' message.
 #Default:
-# shutdown_lifetime 30
+# Shutdown_lifetime 30
 
-# ADMINISTRATIVE PARAMETERS
+# Administrative parameters
 # -----------------------------------------------------------------------------
 
-#  TAG: cache_mgr
-#    Email-address of local cache manager who will receive
-#    mail if the cache dies.  The default is "webmaster".
+# Tag: cache_mgr
+# Email-address of local cache manager who will receive
+# Mail if the cache dies.  the default is "webmaster".
 #Default:
-# cache_mgr webmaster
+# Cache_mgr webmaster
 
-#  TAG: mail_from
-#    From: email-address for mail sent when the cache dies.
-#    The default is to use 'squid@unique_hostname'.
-#
-#    See also: unique_hostname directive.
+# Tag: mail_from
+# From: email-address for mail sent when the cache dies.
+# The default is to use 'squid@unique_hostname'.
+# See also: unique_hostname directive.
 #Default:
-# none
+# None
 
-#  TAG: mail_program
-#    Email program used to send mail if the cache dies.
-#    The default is "mail". The specified program must comply
-#    with the standard Unix mail syntax:
-#      mail-program recipient < mailfile
-#
-#    Optional command line options can be specified.
+# Tag: mail_program
+# Email program used to send mail if the cache dies.
+# The default is "mail". the specified program must comply
+# With the standard unix mail syntax:
+# Mail-program recipient < mailfile
+# Optional command line options can be specified.
 #Default:
-# mail_program mail
+# Mail_program mail
 
-#  TAG: cache_effective_user
-#    If you start Squid as root, it will change its effective/real
-#    UID/GID to the user specified below.  The default is to change
-#    to UID of proxy.
-#    see also; cache_effective_group
+# Tag: cache_effective_user
+# If you start squid as root, it will change its effective/real
+# Uid/gid to the user specified below.  the default is to change
+# To uid of proxy.
+# See also; cache_effective_group
 #Default:
-# cache_effective_user proxy
+# Cache_effective_user proxy
 
-#  TAG: cache_effective_group
-#    Squid sets the GID to the effective user's default group ID
-#    (taken from the password file) and supplementary group list
-#    from the groups membership.
-#
-#    If you want Squid to run with a specific GID regardless of
-#    the group memberships of the effective user then set this
-#    to the group (or GID) you want Squid to run as. When set
-#    all other group privileges of the effective user are ignored
-#    and only this GID is effective. If Squid is not started as
-#    root the user starting Squid MUST be member of the specified
-#    group.
-#
-#    This option is not recommended by the Squid Team.
-#    Our preference is for administrators to configure a secure
-#    user account for squid with UID/GID matching system policies.
+# Tag: cache_effective_group
+# Squid sets the gid to the effective user's default group id
+#    (Taken from the password file) and supplementary group list
+# From the groups membership.
+# If you want squid to run with a specific gid regardless of
+# The group memberships of the effective user then set this
+# To the group (or gid) you want squid to run as. when set
+# All other group privileges of the effective user are ignored
+# And only this gid is effective. if squid is not started as
+# Root the user starting squid must be member of the specified
+# Group.
+# This option is not recommended by the squid team.
+# Our preference is for administrators to configure a secure
+# User account for squid with uid/gid matching system policies.
 #Default:
 # Use system group memberships of the cache_effective_user account
 
-#  TAG: httpd_suppress_version_string    on|off
-#    Suppress Squid version string info in HTTP headers and HTML error pages.
+# Tag: httpd_suppress_version_string    on|off
+# Suppress squid version string info in http headers and html error pages.
 #Default:
-# httpd_suppress_version_string off
+# Httpd_suppress_version_string off
 
-#  TAG: visible_hostname
-#    If you want to present a special hostname in error messages, etc,
-#    define this.  Otherwise, the return value of gethostname()
-#    will be used. If you have multiple caches in a cluster and
-#    get errors about IP-forwarding you must set them to have individual
-#    names with this setting.
+# Tag: visible_hostname
+# If you want to present a special hostname in error messages, etc,
+# Define this.  otherwise, the return value of gethostname()
+# Will be used. if you have multiple caches in a cluster and
+# Get errors about ip-forwarding you must set them to have individual
+# Names with this setting.
 #Default:
-# visible_hostname debian-bullseye
+# Visible_hostname debian-bullseye
 
-#  TAG: unique_hostname
-#    If you want to have multiple machines with the same
-#    'visible_hostname' you must give each machine a different
-#    'unique_hostname' so forwarding loops can be detected.
+# Tag: unique_hostname
+# If you want to have multiple machines with the same
+#    'Visible_hostname' you must give each machine a different
+#    'Unique_hostname' so forwarding loops can be detected.
 #Default:
 # Copy the value from visible_hostname
 
-#  TAG: hostname_aliases
-#    A list of other DNS names your cache has.
+# Tag: hostname_aliases
+# A list of other dns names your cache has.
 #Default:
-# none
+# None
 
-#  TAG: umask
-#    Minimum umask which should be enforced while the proxy
-#    is running, in addition to the umask set at startup.
-#
-#    For a traditional octal representation of umasks, start
-#        your value with 0.
+# Tag: umask
+# Minimum umask which should be enforced while the proxy
+# Is running, in addition to the umask set at startup.
+# For a traditional octal representation of umasks, start
+# Your value with 0.
 #Default:
 umask 022
 
-# OPTIONS FOR THE CACHE REGISTRATION SERVICE
+# Options for the cache registration service
 # -----------------------------------------------------------------------------
-#
-#    This section contains parameters for the (optional) cache
-#    announcement service.  This service is provided to help
-#    cache administrators locate one another in order to join or
-#    create cache hierarchies.
-#
-#    An 'announcement' message is sent (via UDP) to the registration
-#    service by Squid.  By default, the announcement message is NOT
-#    SENT unless you enable it with 'announce_period' below.
-#
-#    The announcement message includes your hostname, plus the
-#    following information from this configuration file:
-#
-#        http_port
-#        icp_port
-#        cache_mgr
-#
-#    All current information is processed regularly and made
-#    available on the Web at http://www.ircache.net/Cache/Tracker/.
+# This section contains parameters for the (optional) cache
+# Announcement service.  this service is provided to help
+# Cache administrators locate one another in order to join or
+# Create cache hierarchies.
+# An 'announcement' message is sent (via udp) to the registration
+# Service by squid.  by default, the announcement message is not
+# Sent unless you enable it with 'announce_period' below.
+# The announcement message includes your hostname, plus the
+# Following information from this configuration file:
+# Http_port
+# Icp_port
+# Cache_mgr
+# All current information is processed regularly and made
+# Available on the web at http://www.ircache.net/cache/tracker/.
 
-#  TAG: announce_period
-#    This is how frequently to send cache announcements.
-#
-#    To enable announcing your cache, just set an announce period.
-#
-#    Example:
-#        announce_period 1 day
+# Tag: announce_period
+# This is how frequently to send cache announcements.
+# To enable announcing your cache, just set an announce period.
+# Example:
+# Announce_period 1 day
 #Default:
 # Announcement messages disabled.
 
-#  TAG: announce_host
-#    Set the hostname where announce registration messages will be sent.
-#
-#    See also announce_port and announce_file
+# Tag: announce_host
+# Set the hostname where announce registration messages will be sent.
+# See also announce_port and announce_file
 #Default:
-# announce_host tracker.ircache.net
+# Announce_host tracker.ircache.net
 
-#  TAG: announce_file
-#    The contents of this file will be included in the announce
-#    registration messages.
+# Tag: announce_file
+# The contents of this file will be included in the announce
+# Registration messages.
 #Default:
-# none
+# None
 
-#  TAG: announce_port
-#    Set the port where announce registration messages will be sent.
-#
-#    See also announce_host and announce_file
+# Tag: announce_port
+# Set the port where announce registration messages will be sent.
+# See also announce_host and announce_file
 #Default:
-# announce_port 3131
+# Announce_port 3131
 
-# HTTPD-ACCELERATOR OPTIONS
+# Httpd-accelerator options
 # -----------------------------------------------------------------------------
 
-#  TAG: httpd_accel_surrogate_id
-#    Surrogates (http://www.esi.org/architecture_spec_1.0.html)
-#    need an identification token to allow control targeting. Because
-#    a farm of surrogates may all perform the same tasks, they may share
-#    an identification token.
-#
-#    When the surrogate is a reverse-proxy, this ID is also
-#    used as cdn-id for CDN-Loop detection (RFC 8586).
+# Tag: httpd_accel_surrogate_id
+# Surrogates (http://www.esi.org/architecture_spec_1.0.html)
+# Need an identification token to allow control targeting. because
+# A farm of surrogates may all perform the same tasks, they may share
+# An identification token.
+# When the surrogate is a reverse-proxy, this id is also
+# Used as cdn-id for cdn-loop detection (rfc 8586).
 #Default:
-# visible_hostname is used if no specific ID is set.
+# Visible_hostname is used if no specific id is set.
 
-#  TAG: http_accel_surrogate_remote    on|off
-#    Remote surrogates (such as those in a CDN) honour the header
-#    "Surrogate-Control: no-store-remote".
-#
-#    Set this to on to have squid behave as a remote surrogate.
+# Tag: http_accel_surrogate_remote    on|off
+# Remote surrogates (such as those in a cdn) honour the header
+#    "Surrogate-control: no-store-remote".
+# Set this to on to have squid behave as a remote surrogate.
 #Default:
-# http_accel_surrogate_remote off
+# Http_accel_surrogate_remote off
 
-#  TAG: esi_parser    libxml2|expat
-#    Selects the XML parsing library to use when interpreting responses with
-#    Edge Side Includes.
-#
-#    To disable ESI handling completely, ./configure Squid with --disable-esi.
+# Tag: esi_parser    libxml2|expat
+# Selects the xml parsing library to use when interpreting responses with
+# Edge side includes.
+# To disable esi handling completely, ./configure squid with --disable-esi.
 #Default:
 # Selects libxml2 if available at ./configure time or libexpat otherwise.
 
-# DELAY POOL PARAMETERS
+# Delay pool parameters
 # -----------------------------------------------------------------------------
 
-#  TAG: delay_pools
-#    This represents the number of delay pools to be used.  For example,
-#    if you have one class 2 delay pool and one class 3 delays pool, you
-#    have a total of 2 delay pools.
-#
-#    See also delay_parameters, delay_class, delay_access for pool
-#    configuration details.
+# Tag: delay_pools
+# This represents the number of delay pools to be used.  for example,
+# If you have one class 2 delay pool and one class 3 delays pool, you
+# Have a total of 2 delay pools.
+# See also delay_parameters, delay_class, delay_access for pool
+# Configuration details.
 #Default:
-# delay_pools 0
+# Delay_pools 0
 
-#  TAG: delay_class
-#    This defines the class of each delay pool.  There must be exactly one
-#    delay_class line for each delay pool.  For example, to define two
-#    delay pools, one of class 2 and one of class 3, the settings above
-#    and here would be:
-#
-#    Example:
-#        delay_pools 4      # 4 delay pools
-#        delay_class 1 2    # pool 1 is a class 2 pool
-#        delay_class 2 3    # pool 2 is a class 3 pool
-#        delay_class 3 4    # pool 3 is a class 4 pool
-#        delay_class 4 5    # pool 4 is a class 5 pool
-#
-#    The delay pool classes are:
-#
-#        class 1        Everything is limited by a single aggregate
-#                bucket.
-#
-#        class 2     Everything is limited by a single aggregate
-#                bucket as well as an "individual" bucket chosen
-#                from bits 25 through 32 of the IPv4 address.
-#
-#        class 3        Everything is limited by a single aggregate
-#                bucket as well as a "network" bucket chosen
-#                from bits 17 through 24 of the IP address and a
-#                "individual" bucket chosen from bits 17 through
-#                32 of the IPv4 address.
-#
-#        class 4        Everything in a class 3 delay pool, with an
-#                additional limit on a per user basis. This
-#                only takes effect if the username is established
-#                in advance - by forcing authentication in your
-#                http_access rules.
-#
-#        class 5        Requests are grouped according their tag (see
-#                external_acl's tag= reply).
-#
-#
-#    Each pool also requires a delay_parameters directive to configure the pool size
-#    and speed limits used whenever the pool is applied to a request. Along with
-#    a set of delay_access directives to determine when it is used.
-#
-#    NOTE: If an IP address is a.b.c.d
-#        -> bits 25 through 32 are "d"
-#        -> bits 17 through 24 are "c"
-#        -> bits 17 through 32 are "c * 256 + d"
-#
-#    NOTE-2: Due to the use of bitmasks in class 2,3,4 pools they only apply to
-#        IPv4 traffic. Class 1 and 5 pools may be used with IPv6 traffic.
-#
-#    This clause only supports fast acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
-#
-#    See also delay_parameters and delay_access.
+# Tag: delay_class
+# This defines the class of each delay pool.  there must be exactly one
+# Delay_class line for each delay pool.  for example, to define two
+# Delay pools, one of class 2 and one of class 3, the settings above
+# And here would be:
+# Example:
+# Delay_pools 4      # 4 delay pools
+# Delay_class 1 2    # pool 1 is a class 2 pool
+# Delay_class 2 3    # pool 2 is a class 3 pool
+# Delay_class 3 4    # pool 3 is a class 4 pool
+# Delay_class 4 5    # pool 4 is a class 5 pool
+# The delay pool classes are:
+# Class 1        everything is limited by a single aggregate
+# Bucket.
+# Class 2     everything is limited by a single aggregate
+# Bucket as well as an "individual" bucket chosen
+# From bits 25 through 32 of the ipv4 address.
+# Class 3        everything is limited by a single aggregate
+# Bucket as well as a "network" bucket chosen
+# From bits 17 through 24 of the ip address and a
+#                "Individual" bucket chosen from bits 17 through
+# 32 of the ipv4 address.
+# Class 4        everything in a class 3 delay pool, with an
+# Additional limit on a per user basis. this
+# Only takes effect if the username is established
+# In advance - by forcing authentication in your
+# Http_access rules.
+# Class 5        requests are grouped according their tag (see
+# External_acl's tag= reply).
+# Each pool also requires a delay_parameters directive to configure the pool size
+# And speed limits used whenever the pool is applied to a request. along with
+# A set of delay_access directives to determine when it is used.
+# Note: if an ip address is a.b.c.d
+#        -> Bits 25 through 32 are "d"
+#        -> Bits 17 through 24 are "c"
+#        -> Bits 17 through 32 are "c * 256 + d"
+# Note-2: due to the use of bitmasks in class 2,3,4 pools they only apply to
+# Ipv4 traffic. class 1 and 5 pools may be used with ipv6 traffic.
+# This clause only supports fast acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
+# See also delay_parameters and delay_access.
 #Default:
-# none
+# None
 
-#  TAG: delay_access
-#    This is used to determine which delay pool a request falls into.
-#
-#    delay_access is sorted per pool and the matching starts with pool 1,
-#    then pool 2, ..., and finally pool N. The first delay pool where the
-#    request is allowed is selected for the request. If it does not allow
-#    the request to any pool then the request is not delayed (default).
-#
-#    For example, if you want some_big_clients in delay
-#    pool 1 and lotsa_little_clients in delay pool 2:
-#
-#        delay_access 1 allow some_big_clients
-#        delay_access 1 deny all
-#        delay_access 2 allow lotsa_little_clients
-#        delay_access 2 deny all
-#        delay_access 3 allow authenticated_clients
-#
-#    See also delay_parameters and delay_class.
-#
+# Tag: delay_access
+# This is used to determine which delay pool a request falls into.
+# Delay_access is sorted per pool and the matching starts with pool 1,
+# Then pool 2, ..., and finally pool n. the first delay pool where the
+# Request is allowed is selected for the request. if it does not allow
+# The request to any pool then the request is not delayed (default).
+# For example, if you want some_big_clients in delay
+# Pool 1 and lotsa_little_clients in delay pool 2:
+# Delay_access 1 allow some_big_clients
+# Delay_access 1 deny all
+# Delay_access 2 allow lotsa_little_clients
+# Delay_access 2 deny all
+# Delay_access 3 allow authenticated_clients
+# See also delay_parameters and delay_class.
 #Default:
 # Deny using the pool, unless allow rules exist in squid.conf for the pool.
 
-#  TAG: delay_parameters
-#    This defines the parameters for a delay pool.  Each delay pool has
-#    a number of "buckets" associated with it, as explained in the
-#    description of delay_class.
-#
-#    For a class 1 delay pool, the syntax is:
-#        delay_class pool 1
-#        delay_parameters pool aggregate
-#
-#    For a class 2 delay pool:
-#        delay_class pool 2
-#        delay_parameters pool aggregate individual
-#
-#    For a class 3 delay pool:
-#        delay_class pool 3
-#        delay_parameters pool aggregate network individual
-#
-#    For a class 4 delay pool:
-#        delay_class pool 4
-#        delay_parameters pool aggregate network individual user
-#
-#    For a class 5 delay pool:
-#        delay_class pool 5
-#        delay_parameters pool tagrate
-#
-#    The option variables are:
-#
-#        pool        a pool number - ie, a number between 1 and the
-#                number specified in delay_pools as used in
-#                delay_class lines.
-#
-#        aggregate    the speed limit parameters for the aggregate bucket
-#                (class 1, 2, 3).
-#
-#        individual    the speed limit parameters for the individual
-#                buckets (class 2, 3).
-#
-#        network        the speed limit parameters for the network buckets
-#                (class 3).
-#
-#        user        the speed limit parameters for the user buckets
-#                (class 4).
-#
-#        tagrate        the speed limit parameters for the tag buckets
-#                (class 5).
-#
-#    A pair of delay parameters is written restore/maximum, where restore is
-#    the number of bytes (not bits - modem and network speeds are usually
-#    quoted in bits) per second placed into the bucket, and maximum is the
-#    maximum number of bytes which can be in the bucket at any time.
-#
-#    There must be one delay_parameters line for each delay pool.
-#
-#
-#    For example, if delay pool number 1 is a class 2 delay pool as in the
-#    above example, and is being used to strictly limit each host to 64Kbit/sec
-#    (plus overheads), with no overall limit, the line is:
-#
-#        delay_parameters 1 none 8000/8000
-#
-#    Note that 8 x 8K Byte/sec -> 64K bit/sec.
-#
-#    Note that the word 'none' is used to represent no limit.
-#
-#
-#    And, if delay pool number 2 is a class 3 delay pool as in the above
-#    example, and you want to limit it to a total of 256Kbit/sec (strict limit)
-#    with each 8-bit network permitted 64Kbit/sec (strict limit) and each
-#    individual host permitted 4800bit/sec with a bucket maximum size of 64Kbits
-#    to permit a decent web page to be downloaded at a decent speed
-#    (if the network is not being limited due to overuse) but slow down
-#    large downloads more significantly:
-#
-#        delay_parameters 2 32000/32000 8000/8000 600/8000
-#
-#    Note that 8 x  32K Byte/sec ->  256K bit/sec.
-#          8 x   8K Byte/sec ->   64K bit/sec.
-#          8 x 600  Byte/sec -> 4800  bit/sec.
-#
-#
-#    Finally, for a class 4 delay pool as in the example - each user will
-#    be limited to 128Kbits/sec no matter how many workstations they are logged into.:
-#
-#        delay_parameters 4 32000/32000 8000/8000 600/64000 16000/16000
-#
-#
-#    See also delay_class and delay_access.
-#
+# Tag: delay_parameters
+# This defines the parameters for a delay pool.  each delay pool has
+# A number of "buckets" associated with it, as explained in the
+# Description of delay_class.
+# For a class 1 delay pool, the syntax is:
+# Delay_class pool 1
+# Delay_parameters pool aggregate
+# For a class 2 delay pool:
+# Delay_class pool 2
+# Delay_parameters pool aggregate individual
+# For a class 3 delay pool:
+# Delay_class pool 3
+# Delay_parameters pool aggregate network individual
+# For a class 4 delay pool:
+# Delay_class pool 4
+# Delay_parameters pool aggregate network individual user
+# For a class 5 delay pool:
+# Delay_class pool 5
+# Delay_parameters pool tagrate
+# The option variables are:
+# Pool        a pool number - ie, a number between 1 and the
+# Number specified in delay_pools as used in
+# Delay_class lines.
+# Aggregate    the speed limit parameters for the aggregate bucket
+#                (Class 1, 2, 3).
+# Individual    the speed limit parameters for the individual
+# Buckets (class 2, 3).
+# Network        the speed limit parameters for the network buckets
+#                (Class 3).
+# User        the speed limit parameters for the user buckets
+#                (Class 4).
+# Tagrate        the speed limit parameters for the tag buckets
+#                (Class 5).
+# A pair of delay parameters is written restore/maximum, where restore is
+# The number of bytes (not bits - modem and network speeds are usually
+# Quoted in bits) per second placed into the bucket, and maximum is the
+# Maximum number of bytes which can be in the bucket at any time.
+# There must be one delay_parameters line for each delay pool.
+# For example, if delay pool number 1 is a class 2 delay pool as in the
+# Above example, and is being used to strictly limit each host to 64kbit/sec
+#    (Plus overheads), with no overall limit, the line is:
+# Delay_parameters 1 none 8000/8000
+# Note that 8 x 8k byte/sec -> 64k bit/sec.
+# Note that the word 'none' is used to represent no limit.
+# And, if delay pool number 2 is a class 3 delay pool as in the above
+# Example, and you want to limit it to a total of 256kbit/sec (strict limit)
+# With each 8-bit network permitted 64kbit/sec (strict limit) and each
+# Individual host permitted 4800bit/sec with a bucket maximum size of 64kbits
+# To permit a decent web page to be downloaded at a decent speed
+#    (If the network is not being limited due to overuse) but slow down
+# Large downloads more significantly:
+# Delay_parameters 2 32000/32000 8000/8000 600/8000
+# Note that 8 x  32k byte/sec ->  256k bit/sec.
+# 8 x   8k byte/sec ->   64k bit/sec.
+# 8 x 600  byte/sec -> 4800  bit/sec.
+# Finally, for a class 4 delay pool as in the example - each user will
+# Be limited to 128kbits/sec no matter how many workstations they are logged into.:
+# Delay_parameters 4 32000/32000 8000/8000 600/64000 16000/16000
+# See also delay_class and delay_access.
 #Default:
-# none
+# None
 
-#  TAG: delay_initial_bucket_level    (percent, 0-100)
-#    The initial bucket percentage is used to determine how much is put
-#    in each bucket when squid starts, is reconfigured, or first notices
-#    a host accessing it (in class 2 and class 3, individual hosts and
-#    networks only have buckets associated with them once they have been
-#    "seen" by squid).
+# Tag: delay_initial_bucket_level    (percent, 0-100)
+# The initial bucket percentage is used to determine how much is put
+# In each bucket when squid starts, is reconfigured, or first notices
+# A host accessing it (in class 2 and class 3, individual hosts and
+# Networks only have buckets associated with them once they have been
+#    "Seen" by squid).
 #Default:
-# delay_initial_bucket_level 50
+# Delay_initial_bucket_level 50
 
-# CLIENT DELAY POOL PARAMETERS
+# Client delay pool parameters
 # -----------------------------------------------------------------------------
 
-#  TAG: client_delay_pools
-#    This option specifies the number of client delay pools used. It must
-#    preceed other client_delay_* options.
-#
-#    Example:
-#        client_delay_pools 2
-#
-#    See also client_delay_parameters and client_delay_access.
+# Tag: client_delay_pools
+# This option specifies the number of client delay pools used. it must
+# Preceed other client_delay_* options.
+# Example:
+# Client_delay_pools 2
+# See also client_delay_parameters and client_delay_access.
 #Default:
-# client_delay_pools 0
+# Client_delay_pools 0
 
-#  TAG: client_delay_initial_bucket_level    (percent, 0-no_limit)
-#    This option determines the initial bucket size as a percentage of
-#    max_bucket_size from client_delay_parameters. Buckets are created
-#    at the time of the "first" connection from the matching IP. Idle
-#    buckets are periodically deleted up.
-#
-#    You can specify more than 100 percent but note that such "oversized"
-#    buckets are not refilled until their size goes down to max_bucket_size
-#    from client_delay_parameters.
-#
-#    Example:
-#        client_delay_initial_bucket_level 50
+# Tag: client_delay_initial_bucket_level    (percent, 0-no_limit)
+# This option determines the initial bucket size as a percentage of
+# Max_bucket_size from client_delay_parameters. buckets are created
+# At the time of the "first" connection from the matching ip. idle
+# Buckets are periodically deleted up.
+# You can specify more than 100 percent but note that such "oversized"
+# Buckets are not refilled until their size goes down to max_bucket_size
+# From client_delay_parameters.
+# Example:
+# Client_delay_initial_bucket_level 50
 #Default:
-# client_delay_initial_bucket_level 50
+# Client_delay_initial_bucket_level 50
 
-#  TAG: client_delay_parameters
-#
-#    This option configures client-side bandwidth limits using the
-#    following format:
-#
-#        client_delay_parameters pool speed_limit max_bucket_size
-#
-#    pool is an integer ID used for client_delay_access matching.
-#
-#    speed_limit is bytes added to the bucket per second.
-#
-#    max_bucket_size is the maximum size of a bucket, enforced after any
-#    speed_limit additions.
-#
-#    Please see the delay_parameters option for more information and
-#    examples.
-#
-#    Example:
-#        client_delay_parameters 1 1024 2048
-#        client_delay_parameters 2 51200 16384
-#
-#    See also client_delay_access.
-#
+# Tag: client_delay_parameters
+# This option configures client-side bandwidth limits using the
+# Following format:
+# Client_delay_parameters pool speed_limit max_bucket_size
+# Pool is an integer id used for client_delay_access matching.
+# Speed_limit is bytes added to the bucket per second.
+# Max_bucket_size is the maximum size of a bucket, enforced after any
+# Speed_limit additions.
+# Please see the delay_parameters option for more information and
+# Examples.
+# Example:
+# Client_delay_parameters 1 1024 2048
+# Client_delay_parameters 2 51200 16384
+# See also client_delay_access.
 #Default:
-# none
+# None
 
-#  TAG: client_delay_access
-#    This option determines the client-side delay pool for the
-#    request:
-#
-#        client_delay_access pool_ID allow|deny acl_name
-#
-#    All client_delay_access options are checked in their pool ID
-#    order, starting with pool 1. The first checked pool with allowed
-#    request is selected for the request. If no ACL matches or there
-#    are no client_delay_access options, the request bandwidth is not
-#    limited.
-#
-#    The ACL-selected pool is then used to find the
-#    client_delay_parameters for the request. Client-side pools are
-#    not used to aggregate clients. Clients are always aggregated
-#    based on their source IP addresses (one bucket per source IP).
-#
-#    This clause only supports fast acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
-#    Additionally, only the client TCP connection details are available.
-#    ACLs testing HTTP properties will not work.
-#
-#    Please see delay_access for more examples.
-#
-#    Example:
-#        client_delay_access 1 allow low_rate_network
-#        client_delay_access 2 allow vips_network
-#
-#
-#    See also client_delay_parameters and client_delay_pools.
+# Tag: client_delay_access
+# This option determines the client-side delay pool for the
+# Request:
+# Client_delay_access pool_id allow|deny acl_name
+# All client_delay_access options are checked in their pool id
+# Order, starting with pool 1. the first checked pool with allowed
+# Request is selected for the request. if no acl matches or there
+# Are no client_delay_access options, the request bandwidth is not
+# Limited.
+# The acl-selected pool is then used to find the
+# Client_delay_parameters for the request. client-side pools are
+# Not used to aggregate clients. clients are always aggregated
+# Based on their source ip addresses (one bucket per source ip).
+# This clause only supports fast acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
+# Additionally, only the client tcp connection details are available.
+# Acls testing http properties will not work.
+# Please see delay_access for more examples.
+# Example:
+# Client_delay_access 1 allow low_rate_network
+# Client_delay_access 2 allow vips_network
+# See also client_delay_parameters and client_delay_pools.
 #Default:
 # Deny use of the pool, unless allow rules exist in squid.conf for the pool.
 
-#  TAG: response_delay_pool
-#    This option configures client response bandwidth limits using the
-#    following format:
-#
-#    response_delay_pool name [option=value] ...
-#
-#    name    the response delay pool name
-#
-#    available options:
-#
-#        individual-restore    The speed limit of an individual
-#                    bucket(bytes/s). To be used in conjunction
-#                    with 'individual-maximum'.
-#
-#        individual-maximum    The maximum number of bytes which can
-#                    be placed into the individual bucket. To be used
-#                    in conjunction with 'individual-restore'.
-#
-#        aggregate-restore    The speed limit for the aggregate
-#                    bucket(bytes/s). To be used in conjunction with
-#                    'aggregate-maximum'.
-#
-#        aggregate-maximum    The maximum number of bytes which can
-#                       be placed into the aggregate bucket. To be used
-#                    in conjunction with 'aggregate-restore'.
-#
-#        initial-bucket-level    The initial bucket size as a percentage
-#                    of individual-maximum.
-#
-#    Individual and(or) aggregate bucket options may not be specified,
-#       meaning no individual and(or) aggregate speed limitation.
-#    See also response_delay_pool_access and delay_parameters for
-#    terminology details.
+# Tag: response_delay_pool
+# This option configures client response bandwidth limits using the
+# Following format:
+# Response_delay_pool name [option=value] ...
+# Name    the response delay pool name
+# Available options:
+# Individual-restore    the speed limit of an individual
+# Bucket(bytes/s). to be used in conjunction
+# With 'individual-maximum'.
+# Individual-maximum    the maximum number of bytes which can
+# Be placed into the individual bucket. to be used
+# In conjunction with 'individual-restore'.
+# Aggregate-restore    the speed limit for the aggregate
+# Bucket(bytes/s). to be used in conjunction with
+#                    'Aggregate-maximum'.
+# Aggregate-maximum    the maximum number of bytes which can
+# Be placed into the aggregate bucket. to be used
+# In conjunction with 'aggregate-restore'.
+# Initial-bucket-level    the initial bucket size as a percentage
+# Of individual-maximum.
+# Individual and(or) aggregate bucket options may not be specified,
+# Meaning no individual and(or) aggregate speed limitation.
+# See also response_delay_pool_access and delay_parameters for
+# Terminology details.
 #Default:
-# none
+# None
 
-#  TAG: response_delay_pool_access
-#    Determines whether a specific named response delay pool is used
-#    for the transaction. The syntax for this directive is:
-#
-#    response_delay_pool_access pool_name allow|deny acl_name
-#
-#    All response_delay_pool_access options are checked in the order
-#    they appear in this configuration file. The first rule with a
-#    matching ACL wins. If (and only if) an "allow" rule won, Squid
-#    assigns the response to the corresponding named delay pool.
+# Tag: response_delay_pool_access
+# Determines whether a specific named response delay pool is used
+# For the transaction. the syntax for this directive is:
+# Response_delay_pool_access pool_name allow|deny acl_name
+# All response_delay_pool_access options are checked in the order
+# They appear in this configuration file. the first rule with a
+# Matching acl wins. if (and only if) an "allow" rule won, squid
+# Assigns the response to the corresponding named delay pool.
 #Default:
 # Deny use of the pool, unless allow rules exist in squid.conf for the pool.
 
-# WCCPv1 AND WCCPv2 CONFIGURATION OPTIONS
+# Wccpv1 and wccpv2 configuration options
 # -----------------------------------------------------------------------------
 
-#  TAG: wccp_router
-#    Use this option to define your WCCP ``home'' router for
-#    Squid.
-#
-#    wccp_router supports a single WCCP(v1) router
-#
-#    wccp2_router supports multiple WCCPv2 routers
-#
-#    only one of the two may be used at the same time and defines
-#    which version of WCCP to use.
+# Tag: wccp_router
+# Use this option to define your wccp ``home'' router for
+# Squid.
+# Wccp_router supports a single wccp(v1) router
+# Wccp2_router supports multiple wccpv2 routers
+# Only one of the two may be used at the same time and defines
+# Which version of wccp to use.
 #Default:
-# WCCP disabled.
+# Wccp disabled.
 
-#  TAG: wccp2_router
-#    Use this option to define your WCCP ``home'' router for
-#    Squid.
-#
-#    wccp_router supports a single WCCP(v1) router
-#
-#    wccp2_router supports multiple WCCPv2 routers
-#
-#    only one of the two may be used at the same time and defines
-#    which version of WCCP to use.
+# Tag: wccp2_router
+# Use this option to define your wccp ``home'' router for
+# Squid.
+# Wccp_router supports a single wccp(v1) router
+# Wccp2_router supports multiple wccpv2 routers
+# Only one of the two may be used at the same time and defines
+# Which version of wccp to use.
 #Default:
-# WCCPv2 disabled.
+# Wccpv2 disabled.
 
-#  TAG: wccp_version
-#    This directive is only relevant if you need to set up WCCP(v1)
-#    to some very old and end-of-life Cisco routers. In all other
-#    setups it must be left unset or at the default setting.
-#    It defines an internal version in the WCCP(v1) protocol,
-#    with version 4 being the officially documented protocol.
-#
-#    According to some users, Cisco IOS 11.2 and earlier only
-#    support WCCP version 3.  If you're using that or an earlier
-#    version of IOS, you may need to change this value to 3, otherwise
-#    do not specify this parameter.
+# Tag: wccp_version
+# This directive is only relevant if you need to set up wccp(v1)
+# To some very old and end-of-life cisco routers. in all other
+# Setups it must be left unset or at the default setting.
+# It defines an internal version in the wccp(v1) protocol,
+# With version 4 being the officially documented protocol.
+# According to some users, cisco ios 11.2 and earlier only
+# Support wccp version 3.  if you're using that or an earlier
+# Version of ios, you may need to change this value to 3, otherwise
+# Do not specify this parameter.
 #Default:
-# wccp_version 4
+# Wccp_version 4
 
-#  TAG: wccp2_rebuild_wait
-#    If this is enabled Squid will wait for the cache dir rebuild to finish
-#    before sending the first wccp2 HereIAm packet
+# Tag: wccp2_rebuild_wait
+# If this is enabled squid will wait for the cache dir rebuild to finish
+# Before sending the first wccp2 hereiam packet
 #Default:
-# wccp2_rebuild_wait on
+# Wccp2_rebuild_wait on
 
-#  TAG: wccp2_forwarding_method
-#    WCCP2 allows the setting of forwarding methods between the
-#    router/switch and the cache.  Valid values are as follows:
-#
-#    gre - GRE encapsulation (forward the packet in a GRE/WCCP tunnel)
-#    l2  - L2 redirect (forward the packet using Layer 2/MAC rewriting)
-#
-#    Currently (as of IOS 12.4) cisco routers only support GRE.
-#    Cisco switches only support the L2 redirect assignment method.
+# Tag: wccp2_forwarding_method
+# Wccp2 allows the setting of forwarding methods between the
+# Router/switch and the cache.  valid values are as follows:
+# Gre - gre encapsulation (forward the packet in a gre/wccp tunnel)
+# L2  - l2 redirect (forward the packet using layer 2/mac rewriting)
+# Currently (as of ios 12.4) cisco routers only support gre.
+# Cisco switches only support the l2 redirect assignment method.
 #Default:
-# wccp2_forwarding_method gre
+# Wccp2_forwarding_method gre
 
-#  TAG: wccp2_return_method
-#    WCCP2 allows the setting of return methods between the
-#    router/switch and the cache for packets that the cache
-#    decides not to handle.  Valid values are as follows:
-#
-#    gre - GRE encapsulation (forward the packet in a GRE/WCCP tunnel)
-#    l2  - L2 redirect (forward the packet using Layer 2/MAC rewriting)
-#
-#    Currently (as of IOS 12.4) cisco routers only support GRE.
-#    Cisco switches only support the L2 redirect assignment.
-#
-#    If the "ip wccp redirect exclude in" command has been
-#    enabled on the cache interface, then it is still safe for
-#    the proxy server to use a l2 redirect method even if this
-#    option is set to GRE.
+# Tag: wccp2_return_method
+# Wccp2 allows the setting of return methods between the
+# Router/switch and the cache for packets that the cache
+# Decides not to handle.  valid values are as follows:
+# Gre - gre encapsulation (forward the packet in a gre/wccp tunnel)
+# L2  - l2 redirect (forward the packet using layer 2/mac rewriting)
+# Currently (as of ios 12.4) cisco routers only support gre.
+# Cisco switches only support the l2 redirect assignment.
+# If the "ip wccp redirect exclude in" command has been
+# Enabled on the cache interface, then it is still safe for
+# The proxy server to use a l2 redirect method even if this
+# Option is set to gre.
 #Default:
-# wccp2_return_method gre
+# Wccp2_return_method gre
 
-#  TAG: wccp2_assignment_method
-#    WCCP2 allows the setting of methods to assign the WCCP hash
-#    Valid values are as follows:
-#
-#    hash - Hash assignment
-#    mask - Mask assignment
-#
-#    As a general rule, cisco routers support the hash assignment method
-#    and cisco switches support the mask assignment method.
+# Tag: wccp2_assignment_method
+# Wccp2 allows the setting of methods to assign the wccp hash
+# Valid values are as follows:
+# Hash - hash assignment
+# Mask - mask assignment
+# As a general rule, cisco routers support the hash assignment method
+# And cisco switches support the mask assignment method.
 #Default:
-# wccp2_assignment_method hash
+# Wccp2_assignment_method hash
 
-#  TAG: wccp2_service
-#    WCCP2 allows for multiple traffic services. There are two
-#    types: "standard" and "dynamic". The standard type defines
-#    one service id - http (id 0). The dynamic service ids can be from
-#    51 to 255 inclusive.  In order to use a dynamic service id
-#    one must define the type of traffic to be redirected; this is done
-#    using the wccp2_service_info option.
-#
-#    The "standard" type does not require a wccp2_service_info option,
-#    just specifying the service id will suffice.
-#
-#    MD5 service authentication can be enabled by adding
-#    "password=<password>" to the end of this service declaration.
-#
-#    Examples:
-#
-#    wccp2_service standard 0    # for the 'web-cache' standard service
-#    wccp2_service dynamic 80    # a dynamic service type which will be
-#                    # fleshed out with subsequent options.
-#    wccp2_service standard 0 password=foo
+# Tag: wccp2_service
+# Wccp2 allows for multiple traffic services. there are two
+# Types: "standard" and "dynamic". the standard type defines
+# One service id - http (id 0). the dynamic service ids can be from
+# 51 to 255 inclusive.  in order to use a dynamic service id
+# One must define the type of traffic to be redirected; this is done
+# Using the wccp2_service_info option.
+# The "standard" type does not require a wccp2_service_info option,
+# Just specifying the service id will suffice.
+# Md5 service authentication can be enabled by adding
+#    "Password=<password>" to the end of this service declaration.
+# Examples:
+# Wccp2_service standard 0    # for the 'web-cache' standard service
+# Wccp2_service dynamic 80    # a dynamic service type which will be
+#                    # Fleshed out with subsequent options.
+# Wccp2_service standard 0 password=foo
 #Default:
 # Use the 'web-cache' standard service.
 
-#  TAG: wccp2_service_info
-#    Dynamic WCCPv2 services require further information to define the
-#    traffic you wish to have diverted.
-#
-#    The format is:
-#
-#    wccp2_service_info <id> protocol=<protocol> flags=<flag>,<flag>..
-#        priority=<priority> ports=<port>,<port>..
-#
-#    The relevant WCCPv2 flags:
-#    + src_ip_hash, dst_ip_hash
-#    + source_port_hash, dst_port_hash
-#    + src_ip_alt_hash, dst_ip_alt_hash
-#    + src_port_alt_hash, dst_port_alt_hash
-#    + ports_source
-#
-#    The port list can be one to eight entries.
-#
-#    Example:
-#
-#    wccp2_service_info 80 protocol=tcp flags=src_ip_hash,ports_source
-#        priority=240 ports=80
-#
-#    Note: the service id must have been defined by a previous
-#    'wccp2_service dynamic <id>' entry.
+# Tag: wccp2_service_info
+# Dynamic wccpv2 services require further information to define the
+# Traffic you wish to have diverted.
+# The format is:
+# Wccp2_service_info <id> protocol=<protocol> flags=<flag>,<flag>..
+# Priority=<priority> ports=<port>,<port>..
+# The relevant wccpv2 flags:
+#    + Src_ip_hash, dst_ip_hash
+#    + Source_port_hash, dst_port_hash
+#    + Src_ip_alt_hash, dst_ip_alt_hash
+#    + Src_port_alt_hash, dst_port_alt_hash
+#    + Ports_source
+# The port list can be one to eight entries.
+# Example:
+# Wccp2_service_info 80 protocol=tcp flags=src_ip_hash,ports_source
+# Priority=240 ports=80
+# Note: the service id must have been defined by a previous
+#    'Wccp2_service dynamic <id>' entry.
 #Default:
-# none
+# None
 
-#  TAG: wccp2_weight
-#    Each cache server gets assigned a set of the destination
-#    hash proportional to their weight.
+# Tag: wccp2_weight
+# Each cache server gets assigned a set of the destination
+# Hash proportional to their weight.
 #Default:
-# wccp2_weight 10000
+# Wccp2_weight 10000
 
-#  TAG: wccp_address
-#    Use this option if you require WCCP(v1) to use a specific
-#    interface address.
-#
-#    The default behavior is to not bind to any specific address.
+# Tag: wccp_address
+# Use this option if you require wccp(v1) to use a specific
+# Interface address.
+# The default behavior is to not bind to any specific address.
 #Default:
 # Address selected by the operating system.
 
-#  TAG: wccp2_address
-#    Use this option if you require WCCPv2 to use a specific
-#    interface address.
-#
-#    The default behavior is to not bind to any specific address.
+# Tag: wccp2_address
+# Use this option if you require wccpv2 to use a specific
+# Interface address.
+# The default behavior is to not bind to any specific address.
 #Default:
 # Address selected by the operating system.
 
-# PERSISTENT CONNECTION HANDLING
+# Persistent connection handling
 # -----------------------------------------------------------------------------
-#
-# Also see "pconn_timeout" in the TIMEOUTS section
+# Also see "pconn_timeout" in the timeouts section
 
-#  TAG: client_persistent_connections
-#    Persistent connection support for clients.
-#    Squid uses persistent connections (when allowed). You can use
-#    this option to disable persistent connections with clients.
+# Tag: client_persistent_connections
+# Persistent connection support for clients.
+# Squid uses persistent connections (when allowed). you can use
+# This option to disable persistent connections with clients.
 #Default:
-# client_persistent_connections on
+# Client_persistent_connections on
 
-#  TAG: server_persistent_connections
-#    Persistent connection support for servers.
-#    Squid uses persistent connections (when allowed). You can use
-#    this option to disable persistent connections with servers.
+# Tag: server_persistent_connections
+# Persistent connection support for servers.
+# Squid uses persistent connections (when allowed). you can use
+# This option to disable persistent connections with servers.
 #Default:
-# server_persistent_connections on
+# Server_persistent_connections on
 
-#  TAG: persistent_connection_after_error
-#    With this directive the use of persistent connections after
-#    HTTP errors can be disabled. Useful if you have clients
-#    who fail to handle errors on persistent connections proper.
+# Tag: persistent_connection_after_error
+# With this directive the use of persistent connections after
+# Http errors can be disabled. useful if you have clients
+# Who fail to handle errors on persistent connections proper.
 #Default:
-# persistent_connection_after_error on
+# Persistent_connection_after_error on
 
-#  TAG: detect_broken_pconn
-#    Some servers have been found to incorrectly signal the use
-#    of HTTP/1.0 persistent connections even on replies not
-#    compatible, causing significant delays. This server problem
-#    has mostly been seen on redirects.
-#
-#    By enabling this directive Squid attempts to detect such
-#    broken replies and automatically assume the reply is finished
-#    after 10 seconds timeout.
+# Tag: detect_broken_pconn
+# Some servers have been found to incorrectly signal the use
+# Of http/1.0 persistent connections even on replies not
+# Compatible, causing significant delays. this server problem
+# Has mostly been seen on redirects.
+# By enabling this directive squid attempts to detect such
+# Broken replies and automatically assume the reply is finished
+# After 10 seconds timeout.
 #Default:
-# detect_broken_pconn off
+# Detect_broken_pconn off
 
-# CACHE DIGEST OPTIONS
+# Cache digest options
 # -----------------------------------------------------------------------------
 
-#  TAG: digest_generation
-#    This controls whether the server will generate a Cache Digest
-#    of its contents.  By default, Cache Digest generation is
-#    enabled if Squid is compiled with --enable-cache-digests defined.
+# Tag: digest_generation
+# This controls whether the server will generate a cache digest
+# Of its contents.  by default, cache digest generation is
+# Enabled if squid is compiled with --enable-cache-digests defined.
 #Default:
-# digest_generation on
+# Digest_generation on
 
-#  TAG: digest_bits_per_entry
-#    This is the number of bits of the server's Cache Digest which
-#    will be associated with the Digest entry for a given HTTP
-#    Method and URL (public key) combination.  The default is 5.
+# Tag: digest_bits_per_entry
+# This is the number of bits of the server's cache digest which
+# Will be associated with the digest entry for a given http
+# Method and url (public key) combination.  the default is 5.
 #Default:
-# digest_bits_per_entry 5
+# Digest_bits_per_entry 5
 
-#  TAG: digest_rebuild_period    (seconds)
-#    This is the wait time between Cache Digest rebuilds.
+# Tag: digest_rebuild_period    (seconds)
+# This is the wait time between cache digest rebuilds.
 #Default:
-# digest_rebuild_period 1 hour
+# Digest_rebuild_period 1 hour
 
-#  TAG: digest_rewrite_period    (seconds)
-#    This is the wait time between Cache Digest writes to
-#    disk.
+# Tag: digest_rewrite_period    (seconds)
+# This is the wait time between cache digest writes to
+# Disk.
 #Default:
-# digest_rewrite_period 1 hour
+# Digest_rewrite_period 1 hour
 
-#  TAG: digest_swapout_chunk_size    (bytes)
-#    This is the number of bytes of the Cache Digest to write to
-#    disk at a time.  It defaults to 4096 bytes (4KB), the Squid
-#    default swap page.
+# Tag: digest_swapout_chunk_size    (bytes)
+# This is the number of bytes of the cache digest to write to
+# Disk at a time.  it defaults to 4096 bytes (4kb), the squid
+# Default swap page.
 #Default:
-# digest_swapout_chunk_size 4096 bytes
+# Digest_swapout_chunk_size 4096 bytes
 
-#  TAG: digest_rebuild_chunk_percentage    (percent, 0-100)
-#    This is the percentage of the Cache Digest to be scanned at a
-#    time.  By default it is set to 10% of the Cache Digest.
+# Tag: digest_rebuild_chunk_percentage    (percent, 0-100)
+# This is the percentage of the cache digest to be scanned at a
+# Time.  by default it is set to 10% of the cache digest.
 #Default:
-# digest_rebuild_chunk_percentage 10
+# Digest_rebuild_chunk_percentage 10
 
-# SNMP OPTIONS
+# Snmp options
 # -----------------------------------------------------------------------------
 
-#  TAG: snmp_port
-#    The port number where Squid listens for SNMP requests. To enable
-#    SNMP support set this to a suitable port number. Port number
-#    3401 is often used for the Squid SNMP agent. By default it's
-#    set to "0" (disabled)
-#
-#    Example:
-#        snmp_port 3401
+# Tag: snmp_port
+# The port number where squid listens for snmp requests. to enable
+# Snmp support set this to a suitable port number. port number
+# 3401 is often used for the squid snmp agent. by default it's
+# Set to "0" (disabled)
+# Example:
+# Snmp_port 3401
 #Default:
-# SNMP disabled.
+# Snmp disabled.
 
-#  TAG: snmp_access
-#    Allowing or denying access to the SNMP port.
-#
-#    All access to the agent is denied by default.
-#    usage:
-#
-#    snmp_access allow|deny [!]aclname ...
-#
-#    This clause only supports fast acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
-#
+# Tag: snmp_access
+# Allowing or denying access to the snmp port.
+# All access to the agent is denied by default.
+# Usage:
+# Snmp_access allow|deny [!]aclname ...
+# This clause only supports fast acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
 #Example:
-# snmp_access allow snmppublic localhost
-# snmp_access deny all
+# Snmp_access allow snmppublic localhost
+# Snmp_access deny all
 #Default:
 # Deny, unless rules exist in squid.conf.
 
-#  TAG: snmp_incoming_address
-#    Just like 'udp_incoming_address', but for the SNMP port.
-#
-#    snmp_incoming_address    is used for the SNMP socket receiving
-#                messages from SNMP agents.
-#
-#    The default snmp_incoming_address is to listen on all
-#    available network interfaces.
+# Tag: snmp_incoming_address
+# Just like 'udp_incoming_address', but for the snmp port.
+# Snmp_incoming_address    is used for the snmp socket receiving
+# Messages from snmp agents.
+# The default snmp_incoming_address is to listen on all
+# Available network interfaces.
 #Default:
-# Accept SNMP packets from all machine interfaces.
+# Accept snmp packets from all machine interfaces.
 
-#  TAG: snmp_outgoing_address
-#    Just like 'udp_outgoing_address', but for the SNMP port.
-#
-#    snmp_outgoing_address    is used for SNMP packets returned to SNMP
-#                agents.
-#
-#    If snmp_outgoing_address is not set it will use the same socket
-#    as snmp_incoming_address. Only change this if you want to have
-#    SNMP replies sent using another address than where this Squid
-#    listens for SNMP queries.
-#
-#    NOTE, snmp_incoming_address and snmp_outgoing_address can not have
-#    the same value since they both use the same port.
+# Tag: snmp_outgoing_address
+# Just like 'udp_outgoing_address', but for the snmp port.
+# Snmp_outgoing_address    is used for snmp packets returned to snmp
+# Agents.
+# If snmp_outgoing_address is not set it will use the same socket
+# As snmp_incoming_address. only change this if you want to have
+# Snmp replies sent using another address than where this squid
+# Listens for snmp queries.
+# Note, snmp_incoming_address and snmp_outgoing_address can not have
+# The same value since they both use the same port.
 #Default:
 # Use snmp_incoming_address or an address selected by the operating system.
 
-# ICP OPTIONS
+# Icp options
 # -----------------------------------------------------------------------------
 
-#  TAG: icp_port
-#    The port number where Squid sends and receives ICP queries to
-#    and from neighbor caches.  The standard UDP port for ICP is 3130.
-#
-#    Example:
-#        icp_port 3130
+# Tag: icp_port
+# The port number where squid sends and receives icp queries to
+# And from neighbor caches.  the standard udp port for icp is 3130.
+# Example:
+# Icp_port 3130
 #Default:
-# ICP disabled.
+# Icp disabled.
 
-#  TAG: htcp_port
-#    The port number where Squid sends and receives HTCP queries to
-#    and from neighbor caches.  To turn it on you want to set it to
-#    4827.
-#
-#    Example:
-#        htcp_port 4827
+# Tag: htcp_port
+# The port number where squid sends and receives htcp queries to
+# And from neighbor caches.  to turn it on you want to set it to
+# 4827.
+# Example:
+# Htcp_port 4827
 #Default:
-# HTCP disabled.
+# Htcp disabled.
 
-#  TAG: log_icp_queries    on|off
-#    If set, ICP queries are logged to access.log. You may wish
-#    do disable this if your ICP load is VERY high to speed things
-#    up or to simplify log analysis.
+# Tag: log_icp_queries    on|off
+# If set, icp queries are logged to access.log. you may wish
+# Do disable this if your icp load is very high to speed things
+# Up or to simplify log analysis.
 #Default:
-# log_icp_queries on
+# Log_icp_queries on
 
-#  TAG: udp_incoming_address
-#    udp_incoming_address    is used for UDP packets received from other
-#                caches.
-#
-#    The default behavior is to not bind to any specific address.
-#
-#    Only change this if you want to have all UDP queries received on
-#    a specific interface/address.
-#
-#    NOTE: udp_incoming_address is used by the ICP, HTCP, and DNS
-#    modules. Altering it will affect all of them in the same manner.
-#
-#    see also; udp_outgoing_address
-#
-#    NOTE, udp_incoming_address and udp_outgoing_address can not
-#    have the same value since they both use the same port.
+# Tag: udp_incoming_address
+# Udp_incoming_address    is used for udp packets received from other
+# Caches.
+# The default behavior is to not bind to any specific address.
+# Only change this if you want to have all udp queries received on
+# A specific interface/address.
+# Note: udp_incoming_address is used by the icp, htcp, and dns
+# Modules. altering it will affect all of them in the same manner.
+# See also; udp_outgoing_address
+# Note, udp_incoming_address and udp_outgoing_address can not
+# Have the same value since they both use the same port.
 #Default:
 # Accept packets from all machine interfaces.
 
-#  TAG: udp_outgoing_address
-#    udp_outgoing_address    is used for UDP packets sent out to other
-#                caches.
-#
-#    The default behavior is to not bind to any specific address.
-#
-#    Instead it will use the same socket as udp_incoming_address.
-#    Only change this if you want to have UDP queries sent using another
-#    address than where this Squid listens for UDP queries from other
-#    caches.
-#
-#    NOTE: udp_outgoing_address is used by the ICP, HTCP, and DNS
-#    modules. Altering it will affect all of them in the same manner.
-#
-#    see also; udp_incoming_address
-#
-#    NOTE, udp_incoming_address and udp_outgoing_address can not
-#    have the same value since they both use the same port.
+# Tag: udp_outgoing_address
+# Udp_outgoing_address    is used for udp packets sent out to other
+# Caches.
+# The default behavior is to not bind to any specific address.
+# Instead it will use the same socket as udp_incoming_address.
+# Only change this if you want to have udp queries sent using another
+# Address than where this squid listens for udp queries from other
+# Caches.
+# Note: udp_outgoing_address is used by the icp, htcp, and dns
+# Modules. altering it will affect all of them in the same manner.
+# See also; udp_incoming_address
+# Note, udp_incoming_address and udp_outgoing_address can not
+# Have the same value since they both use the same port.
 #Default:
 # Use udp_incoming_address or an address selected by the operating system.
 
-#  TAG: icp_hit_stale    on|off
-#    If you want to return ICP_HIT for stale cache objects, set this
-#    option to 'on'.  If you have sibling relationships with caches
-#    in other administrative domains, this should be 'off'.  If you only
-#    have sibling relationships with caches under your control,
-#    it is probably okay to set this to 'on'.
-#    If set to 'on', your siblings should use the option "allow-miss"
-#    on their cache_peer lines for connecting to you.
+# Tag: icp_hit_stale    on|off
+# If you want to return icp_hit for stale cache objects, set this
+# Option to 'on'.  if you have sibling relationships with caches
+# In other administrative domains, this should be 'off'.  if you only
+# Have sibling relationships with caches under your control,
+# It is probably okay to set this to 'on'.
+# If set to 'on', your siblings should use the option "allow-miss"
+# On their cache_peer lines for connecting to you.
 #Default:
-# icp_hit_stale off
+# Icp_hit_stale off
 
-#  TAG: minimum_direct_hops
-#    If using the ICMP pinging stuff, do direct fetches for sites
-#    which are no more than this many hops away.
+# Tag: minimum_direct_hops
+# If using the icmp pinging stuff, do direct fetches for sites
+# Which are no more than this many hops away.
 #Default:
-# minimum_direct_hops 4
+# Minimum_direct_hops 4
 
-#  TAG: minimum_direct_rtt    (msec)
-#    If using the ICMP pinging stuff, do direct fetches for sites
-#    which are no more than this many rtt milliseconds away.
+# Tag: minimum_direct_rtt    (msec)
+# If using the icmp pinging stuff, do direct fetches for sites
+# Which are no more than this many rtt milliseconds away.
 #Default:
-# minimum_direct_rtt 400
+# Minimum_direct_rtt 400
 
-#  TAG: netdb_low
-#    The low water mark for the ICMP measurement database.
-#
-#    Note: high watermark controlled by netdb_high directive.
-#
-#    These watermarks are counts, not percents.  The defaults are
-#    (low) 900 and (high) 1000.  When the high water mark is
-#    reached, database entries will be deleted until the low
-#    mark is reached.
+# Tag: netdb_low
+# The low water mark for the icmp measurement database.
+# Note: high watermark controlled by netdb_high directive.
+# These watermarks are counts, not percents.  the defaults are
+#    (Low) 900 and (high) 1000.  when the high water mark is
+# Reached, database entries will be deleted until the low
+# Mark is reached.
 #Default:
-# netdb_low 900
+# Netdb_low 900
 
-#  TAG: netdb_high
-#    The high water mark for the ICMP measurement database.
-#
-#    Note: low watermark controlled by netdb_low directive.
-#
-#    These watermarks are counts, not percents.  The defaults are
-#    (low) 900 and (high) 1000.  When the high water mark is
-#    reached, database entries will be deleted until the low
-#    mark is reached.
+# Tag: netdb_high
+# The high water mark for the icmp measurement database.
+# Note: low watermark controlled by netdb_low directive.
+# These watermarks are counts, not percents.  the defaults are
+#    (Low) 900 and (high) 1000.  when the high water mark is
+# Reached, database entries will be deleted until the low
+# Mark is reached.
 #Default:
-# netdb_high 1000
+# Netdb_high 1000
 
-#  TAG: netdb_ping_period
-#    The minimum period for measuring a site.  There will be at
-#    least this much delay between successive pings to the same
-#    network.  The default is five minutes.
+# Tag: netdb_ping_period
+# The minimum period for measuring a site.  there will be at
+# Least this much delay between successive pings to the same
+# Network.  the default is five minutes.
 #Default:
-# netdb_ping_period 5 minutes
+# Netdb_ping_period 5 minutes
 
-#  TAG: query_icmp    on|off
-#    If you want to ask your peers to include ICMP data in their ICP
-#    replies, enable this option.
-#
-#    If your peer has configured Squid (during compilation) with
-#    '--enable-icmp' that peer will send ICMP pings to origin server
-#    sites of the URLs it receives.  If you enable this option the
-#    ICP replies from that peer will include the ICMP data (if available).
-#    Then, when choosing a parent cache, Squid will choose the parent with
-#    the minimal RTT to the origin server.  When this happens, the
-#    hierarchy field of the access.log will be
-#    "CLOSEST_PARENT_MISS".  This option is off by default.
+# Tag: query_icmp    on|off
+# If you want to ask your peers to include icmp data in their icp
+# Replies, enable this option.
+# If your peer has configured squid (during compilation) with
+#    '--Enable-icmp' that peer will send icmp pings to origin server
+# Sites of the urls it receives.  if you enable this option the
+# Icp replies from that peer will include the icmp data (if available).
+# Then, when choosing a parent cache, squid will choose the parent with
+# The minimal rtt to the origin server.  when this happens, the
+# Hierarchy field of the access.log will be
+#    "Closest_parent_miss".  this option is off by default.
 #Default:
-# query_icmp off
+# Query_icmp off
 
-#  TAG: test_reachability    on|off
-#    When this is 'on', ICP MISS replies will be ICP_MISS_NOFETCH
-#    instead of ICP_MISS if the target host is NOT in the ICMP
-#    database, or has a zero RTT.
+# Tag: test_reachability    on|off
+# When this is 'on', icp miss replies will be icp_miss_nofetch
+# Instead of icp_miss if the target host is not in the icmp
+# Database, or has a zero rtt.
 #Default:
-# test_reachability off
+# Test_reachability off
 
-#  TAG: icp_query_timeout    (msec)
-#    Normally Squid will automatically determine an optimal ICP
-#    query timeout value based on the round-trip-time of recent ICP
-#    queries.  If you want to override the value determined by
-#    Squid, set this 'icp_query_timeout' to a non-zero value.  This
-#    value is specified in MILLISECONDS, so, to use a 2-second
-#    timeout (the old default), you would write:
-#
-#        icp_query_timeout 2000
+# Tag: icp_query_timeout    (msec)
+# Normally squid will automatically determine an optimal icp
+# Query timeout value based on the round-trip-time of recent icp
+# Queries.  if you want to override the value determined by
+# Squid, set this 'icp_query_timeout' to a non-zero value.  this
+# Value is specified in milliseconds, so, to use a 2-second
+# Timeout (the old default), you would write:
+# Icp_query_timeout 2000
 #Default:
 # Dynamic detection.
 
-#  TAG: maximum_icp_query_timeout    (msec)
-#    Normally the ICP query timeout is determined dynamically.  But
-#    sometimes it can lead to very large values (say 5 seconds).
-#    Use this option to put an upper limit on the dynamic timeout
-#    value.  Do NOT use this option to always use a fixed (instead
-#    of a dynamic) timeout value. To set a fixed timeout see the
-#    'icp_query_timeout' directive.
+# Tag: maximum_icp_query_timeout    (msec)
+# Normally the icp query timeout is determined dynamically.  but
+# Sometimes it can lead to very large values (say 5 seconds).
+# Use this option to put an upper limit on the dynamic timeout
+# Value.  do not use this option to always use a fixed (instead
+# Of a dynamic) timeout value. to set a fixed timeout see the
+#    'Icp_query_timeout' directive.
 #Default:
-# maximum_icp_query_timeout 2000
+# Maximum_icp_query_timeout 2000
 
-#  TAG: minimum_icp_query_timeout    (msec)
-#    Normally the ICP query timeout is determined dynamically.  But
-#    sometimes it can lead to very small timeouts, even lower than
-#    the normal latency variance on your link due to traffic.
-#    Use this option to put an lower limit on the dynamic timeout
-#    value.  Do NOT use this option to always use a fixed (instead
-#    of a dynamic) timeout value. To set a fixed timeout see the
-#    'icp_query_timeout' directive.
+# Tag: minimum_icp_query_timeout    (msec)
+# Normally the icp query timeout is determined dynamically.  but
+# Sometimes it can lead to very small timeouts, even lower than
+# The normal latency variance on your link due to traffic.
+# Use this option to put an lower limit on the dynamic timeout
+# Value.  do not use this option to always use a fixed (instead
+# Of a dynamic) timeout value. to set a fixed timeout see the
+#    'Icp_query_timeout' directive.
 #Default:
-# minimum_icp_query_timeout 5
+# Minimum_icp_query_timeout 5
 
-#  TAG: background_ping_rate    time-units
-#    Controls how often the ICP pings are sent to siblings that
-#    have background-ping set.
+# Tag: background_ping_rate    time-units
+# Controls how often the icp pings are sent to siblings that
+# Have background-ping set.
 #Default:
-# background_ping_rate 10 seconds
+# Background_ping_rate 10 seconds
 
-# MULTICAST ICP OPTIONS
+# Multicast icp options
 # -----------------------------------------------------------------------------
 
-#  TAG: mcast_groups
-#    This tag specifies a list of multicast groups which your server
-#    should join to receive multicasted ICP queries.
-#
-#    NOTE!  Be very careful what you put here!  Be sure you
-#    understand the difference between an ICP _query_ and an ICP
-#    _reply_.  This option is to be set only if you want to RECEIVE
-#    multicast queries.  Do NOT set this option to SEND multicast
-#    ICP (use cache_peer for that).  ICP replies are always sent via
-#    unicast, so this option does not affect whether or not you will
-#    receive replies from multicast group members.
-#
-#    You must be very careful to NOT use a multicast address which
-#    is already in use by another group of caches.
-#
-#    If you are unsure about multicast, please read the Multicast
-#    chapter in the Squid FAQ (http://www.squid-cache.org/FAQ/).
-#
-#    Usage: mcast_groups 239.128.16.128 224.0.1.20
-#
-#    By default, Squid doesn't listen on any multicast groups.
+# Tag: mcast_groups
+# This tag specifies a list of multicast groups which your server
+# Should join to receive multicasted icp queries.
+# Note!  be very careful what you put here!  be sure you
+# Understand the difference between an icp _query_ and an icp
+# _reply_.  this option is to be set only if you want to receive
+# Multicast queries.  do not set this option to send multicast
+# Icp (use cache_peer for that).  icp replies are always sent via
+# Unicast, so this option does not affect whether or not you will
+# Receive replies from multicast group members.
+# You must be very careful to not use a multicast address which
+# Is already in use by another group of caches.
+# If you are unsure about multicast, please read the multicast
+# Chapter in the squid faq (http://www.squid-cache.org/faq/).
+# Usage: mcast_groups 239.128.16.128 224.0.1.20
+# By default, squid doesn't listen on any multicast groups.
 #Default:
-# none
+# None
 
-#  TAG: mcast_miss_addr
-# Note: This option is only available if Squid is rebuilt with the
-#       -DMULTICAST_MISS_STREAM define
-#
-#    If you enable this option, every "cache miss" URL will
-#    be sent out on the specified multicast address.
-#
-#    Do not enable this option unless you are are absolutely
-#    certain you understand what you are doing.
+# Tag: mcast_miss_addr
+# Note: this option is only available if squid is rebuilt with the
+#       -Dmulticast_miss_stream define
+# If you enable this option, every "cache miss" url will
+# Be sent out on the specified multicast address.
+# Do not enable this option unless you are are absolutely
+# Certain you understand what you are doing.
 #Default:
-# disabled.
+# Disabled.
 
-#  TAG: mcast_miss_ttl
-# Note: This option is only available if Squid is rebuilt with the
-#       -DMULTICAST_MISS_STREAM define
-#
-#    This is the time-to-live value for packets multicasted
-#    when multicasting off cache miss URLs is enabled.  By
-#    default this is set to 'site scope', i.e. 16.
+# Tag: mcast_miss_ttl
+# Note: this option is only available if squid is rebuilt with the
+#       -Dmulticast_miss_stream define
+# This is the time-to-live value for packets multicasted
+# When multicasting off cache miss urls is enabled.  by
+# Default this is set to 'site scope', i.e. 16.
 #Default:
-# mcast_miss_ttl 16
+# Mcast_miss_ttl 16
 
-#  TAG: mcast_miss_port
-# Note: This option is only available if Squid is rebuilt with the
-#       -DMULTICAST_MISS_STREAM define
-#
-#    This is the port number to be used in conjunction with
-#    'mcast_miss_addr'.
+# Tag: mcast_miss_port
+# Note: this option is only available if squid is rebuilt with the
+#       -Dmulticast_miss_stream define
+# This is the port number to be used in conjunction with
+#    'Mcast_miss_addr'.
 #Default:
-# mcast_miss_port 3135
+# Mcast_miss_port 3135
 
-#  TAG: mcast_miss_encode_key
-# Note: This option is only available if Squid is rebuilt with the
-#       -DMULTICAST_MISS_STREAM define
-#
-#    The URLs that are sent in the multicast miss stream are
-#    encrypted.  This is the encryption key.
+# Tag: mcast_miss_encode_key
+# Note: this option is only available if squid is rebuilt with the
+#       -Dmulticast_miss_stream define
+# The urls that are sent in the multicast miss stream are
+# Encrypted.  this is the encryption key.
 #Default:
-# mcast_miss_encode_key XXXXXXXXXXXXXXXX
+# Mcast_miss_encode_key xxxxxxxxxxxxxxxx
 
-#  TAG: mcast_icp_query_timeout    (msec)
-#    For multicast peers, Squid regularly sends out ICP "probes" to
-#    count how many other peers are listening on the given multicast
-#    address.  This value specifies how long Squid should wait to
-#    count all the replies.  The default is 2000 msec, or 2
-#    seconds.
+# Tag: mcast_icp_query_timeout    (msec)
+# For multicast peers, squid regularly sends out icp "probes" to
+# Count how many other peers are listening on the given multicast
+# Address.  this value specifies how long squid should wait to
+# Count all the replies.  the default is 2000 msec, or 2
+# Seconds.
 #Default:
-# mcast_icp_query_timeout 2000
+# Mcast_icp_query_timeout 2000
 
-# INTERNAL ICON OPTIONS
+# Internal icon options
 # -----------------------------------------------------------------------------
 
-#  TAG: icon_directory
-#    Where the icons are stored. These are normally kept in
-#    /usr/share/squid/icons
+# Tag: icon_directory
+# Where the icons are stored. these are normally kept in
+#    /Usr/share/squid/icons
 #Default:
-# icon_directory /usr/share/squid/icons
+# Icon_directory /usr/share/squid/icons
 
-#  TAG: global_internal_static
-#    This directive controls is Squid should intercept all requests for
-#    /squid-internal-static/ no matter which host the URL is requesting
-#    (default on setting), or if nothing special should be done for
-#    such URLs (off setting). The purpose of this directive is to make
-#    icons etc work better in complex cache hierarchies where it may
-#    not always be possible for all corners in the cache mesh to reach
-#    the server generating a directory listing.
+# Tag: global_internal_static
+# This directive controls is squid should intercept all requests for
+#    /Squid-internal-static/ no matter which host the url is requesting
+#    (Default on setting), or if nothing special should be done for
+# Such urls (off setting). the purpose of this directive is to make
+# Icons etc work better in complex cache hierarchies where it may
+# Not always be possible for all corners in the cache mesh to reach
+# The server generating a directory listing.
 #Default:
-# global_internal_static on
+# Global_internal_static on
 
-#  TAG: short_icon_urls
-#    If this is enabled Squid will use short URLs for icons.
-#    If disabled it will revert to the old behavior of including
-#    it's own name and port in the URL.
-#
-#    If you run a complex cache hierarchy with a mix of Squid and
-#    other proxies you may need to disable this directive.
+# Tag: short_icon_urls
+# If this is enabled squid will use short urls for icons.
+# If disabled it will revert to the old behavior of including
+# It's own name and port in the url.
+# If you run a complex cache hierarchy with a mix of squid and
+# Other proxies you may need to disable this directive.
 #Default:
-# short_icon_urls on
+# Short_icon_urls on
 
-# ERROR PAGE OPTIONS
+# Error page options
 # -----------------------------------------------------------------------------
 
-#  TAG: error_directory
-#    If you wish to create your own versions of the default
-#    error files to customize them to suit your company copy
-#    the error/template files to another directory and point
-#    this tag at them.
-#
-#    WARNING: This option will disable multi-language support
-#             on error pages if used.
-#
-#    The squid developers are interested in making squid available in
-#    a wide variety of languages. If you are making translations for a
-#    language that Squid does not currently provide please consider
-#    contributing your translation back to the project.
-#    http://wiki.squid-cache.org/Translations
-#
-#    The squid developers working on translations are happy to supply drop-in
-#    translated error files in exchange for any new language contributions.
+# Tag: error_directory
+# If you wish to create your own versions of the default
+# Error files to customize them to suit your company copy
+# The error/template files to another directory and point
+# This tag at them.
+# Warning: this option will disable multi-language support
+# On error pages if used.
+# The squid developers are interested in making squid available in
+# A wide variety of languages. if you are making translations for a
+# Language that squid does not currently provide please consider
+# Contributing your translation back to the project.
+# Http://wiki.squid-cache.org/translations
+# The squid developers working on translations are happy to supply drop-in
+# Translated error files in exchange for any new language contributions.
 #Default:
 # Send error pages in the clients preferred language
 
-#  TAG: error_default_language
-#    Set the default language which squid will send error pages in
-#    if no existing translation matches the clients language
-#    preferences.
-#
-#    If unset (default) generic English will be used.
-#
-#    The squid developers are interested in making squid available in
-#    a wide variety of languages. If you are interested in making
-#    translations for any language see the squid wiki for details.
-#    http://wiki.squid-cache.org/Translations
+# Tag: error_default_language
+# Set the default language which squid will send error pages in
+# If no existing translation matches the clients language
+# Preferences.
+# If unset (default) generic english will be used.
+# The squid developers are interested in making squid available in
+# A wide variety of languages. if you are interested in making
+# Translations for any language see the squid wiki for details.
+# Http://wiki.squid-cache.org/translations
 #Default:
-# Generate English language pages.
+# Generate english language pages.
 
-#  TAG: error_log_languages
-#    Log to cache.log what languages users are attempting to
-#    auto-negotiate for translations.
-#
-#    Successful negotiations are not logged. Only failures
-#    have meaning to indicate that Squid may need an upgrade
-#    of its error page translations.
+# Tag: error_log_languages
+# Log to cache.log what languages users are attempting to
+# Auto-negotiate for translations.
+# Successful negotiations are not logged. only failures
+# Have meaning to indicate that squid may need an upgrade
+# Of its error page translations.
 #Default:
-# error_log_languages on
+# Error_log_languages on
 
-#  TAG: err_page_stylesheet
-#    CSS Stylesheet to pattern the display of Squid default error pages.
-#
-#    For information on CSS see http://www.w3.org/Style/CSS/
+# Tag: err_page_stylesheet
+# Css stylesheet to pattern the display of squid default error pages.
+# For information on css see http://www.w3.org/style/css/
 #Default:
-# err_page_stylesheet /etc/squid/errorpage.css
+# Err_page_stylesheet /etc/squid/errorpage.css
 
-#  TAG: err_html_text
-#    HTML text to include in error messages.  Make this a "mailto"
-#    URL to your admin address, or maybe just a link to your
-#    organizations Web page.
-#
-#    To include this in your error messages, you must rewrite
-#    the error template files (found in the "errors" directory).
-#    Wherever you want the 'err_html_text' line to appear,
-#    insert a %L tag in the error template file.
+# Tag: err_html_text
+# Html text to include in error messages.  make this a "mailto"
+# Url to your admin address, or maybe just a link to your
+# Organizations web page.
+# To include this in your error messages, you must rewrite
+# The error template files (found in the "errors" directory).
+# Wherever you want the 'err_html_text' line to appear,
+# Insert a %l tag in the error template file.
 #Default:
-# none
+# None
 
-#  TAG: email_err_data    on|off
-#    If enabled, information about the occurred error will be
-#    included in the mailto links of the ERR pages (if %W is set)
-#    so that the email body contains the data.
-#    Syntax is <A HREF="mailto:%w%W">%w</A>
+# Tag: email_err_data    on|off
+# If enabled, information about the occurred error will be
+# Included in the mailto links of the err pages (if %w is set)
+# So that the email body contains the data.
+# Syntax is <a href="mailto:%w%w">%w</a>
 #Default:
-# email_err_data on
+# Email_err_data on
 
-#  TAG: deny_info
-#    Usage:   deny_info err_page_name acl
-#    or       deny_info http://... acl
-#    or       deny_info TCP_RESET acl
-#
-#    This can be used to return a ERR_ page for requests which
-#    do not pass the 'http_access' rules.  Squid remembers the last
-#    acl it evaluated in http_access, and if a 'deny_info' line exists
-#    for that ACL Squid returns a corresponding error page.
-#
-#    The acl is typically the last acl on the http_access deny line which
-#    denied access. The exceptions to this rule are:
-#    - When Squid needs to request authentication credentials. It's then
-#      the first authentication related acl encountered
-#    - When none of the http_access lines matches. It's then the last
-#      acl processed on the last http_access line.
+# Tag: deny_info
+# Usage:   deny_info err_page_name acl
+# Or       deny_info http://... acl
+# Or       deny_info tcp_reset acl
+# This can be used to return a err_ page for requests which
+# Do not pass the 'http_access' rules.  squid remembers the last
+# Acl it evaluated in http_access, and if a 'deny_info' line exists
+# For that acl squid returns a corresponding error page.
+# The acl is typically the last acl on the http_access deny line which
+# Denied access. the exceptions to this rule are:
+#    - When squid needs to request authentication credentials. it's then
+# The first authentication related acl encountered
+#    - When none of the http_access lines matches. it's then the last
+# Acl processed on the last http_access line.
 #    - When the decision to deny access was made by an adaptation service,
-#      the acl name is the corresponding eCAP or ICAP service_name.
-#
-#    NP: If providing your own custom error pages with error_directory
-#        you may also specify them by your custom file name:
-#        Example: deny_info ERR_CUSTOM_ACCESS_DENIED bad_guys
-#
-#    By defaut Squid will send "403 Forbidden". A different 4xx or 5xx
-#    may be specified by prefixing the file name with the code and a colon.
-#    e.g. 404:ERR_CUSTOM_ACCESS_DENIED
-#
-#    Alternatively you can tell Squid to reset the TCP connection
-#    by specifying TCP_RESET.
-#
-#    Or you can specify an error URL or URL pattern. The browsers will
-#    get redirected to the specified URL after formatting tags have
-#    been replaced. Redirect will be done with 302 or 307 according to
-#    HTTP/1.1 specs. A different 3xx code may be specified by prefixing
-#    the URL. e.g. 303:http://example.com/
-#
-#    URL FORMAT TAGS:
-#        %a    - username (if available. Password NOT included)
-#        %A    - Local listening IP address the client connection was connected to
-#        %B    - FTP path URL
-#        %e    - Error number
-#        %E    - Error description
-#        %h    - Squid hostname
-#        %H    - Request domain name
-#        %i    - Client IP Address
-#        %M    - Request Method
-#        %O    - Unescaped message result from external ACL helper
-#        %o    - Message result from external ACL helper
-#        %p    - Request Port number
-#        %P    - Request Protocol name
-#        %R    - Request URL path
-#        %T    - Timestamp in RFC 1123 format
-#        %U    - Full canonical URL from client
-#              (HTTPS URLs terminate with *)
-#        %u    - Full canonical URL from client
-#        %w    - Admin email from squid.conf
-#        %x    - Error name
+# The acl name is the corresponding ecap or icap service_name.
+# Np: if providing your own custom error pages with error_directory
+# You may also specify them by your custom file name:
+# Example: deny_info err_custom_access_denied bad_guys
+# By defaut squid will send "403 forbidden". a different 4xx or 5xx
+# May be specified by prefixing the file name with the code and a colon.
+# E.g. 404:err_custom_access_denied
+# Alternatively you can tell squid to reset the tcp connection
+# By specifying tcp_reset.
+# Or you can specify an error url or url pattern. the browsers will
+# Get redirected to the specified url after formatting tags have
+# Been replaced. redirect will be done with 302 or 307 according to
+# Http/1.1 specs. a different 3xx code may be specified by prefixing
+# The url. e.g. 303:http://example.com/
+# Url format tags:
+#        %A    - username (if available. password not included)
+#        %A    - local listening ip address the client connection was connected to
+#        %B    - ftp path url
+#        %E    - error number
+#        %E    - error description
+#        %H    - squid hostname
+#        %H    - request domain name
+#        %I    - client ip address
+#        %M    - request method
+#        %O    - unescaped message result from external acl helper
+#        %O    - message result from external acl helper
+#        %P    - request port number
+#        %P    - request protocol name
+#        %R    - request url path
+#        %T    - timestamp in rfc 1123 format
+#        %U    - full canonical url from client
+#              (Https urls terminate with *)
+#        %U    - full canonical url from client
+#        %W    - admin email from squid.conf
+#        %X    - error name
 #        %%    - Literal percent (%) code
-#
 #Default:
-# none
+# None
 
-# OPTIONS INFLUENCING REQUEST FORWARDING
+# Options influencing request forwarding
 # -----------------------------------------------------------------------------
 
-#  TAG: nonhierarchical_direct
-#    By default, Squid will send any non-hierarchical requests
-#    (not cacheable request type) direct to origin servers.
-#
-#    When this is set to "off", Squid will prefer to send these
-#    requests to parents.
-#
-#    Note that in most configurations, by turning this off you will only
-#    add latency to these request without any improvement in global hit
-#    ratio.
-#
-#    This option only sets a preference. If the parent is unavailable a
-#    direct connection to the origin server may still be attempted. To
-#    completely prevent direct connections use never_direct.
+# Tag: nonhierarchical_direct
+# By default, squid will send any non-hierarchical requests
+#    (Not cacheable request type) direct to origin servers.
+# When this is set to "off", squid will prefer to send these
+# Requests to parents.
+# Note that in most configurations, by turning this off you will only
+# Add latency to these request without any improvement in global hit
+# Ratio.
+# This option only sets a preference. if the parent is unavailable a
+# Direct connection to the origin server may still be attempted. to
+# Completely prevent direct connections use never_direct.
 #Default:
-# nonhierarchical_direct on
+# Nonhierarchical_direct on
 
-#  TAG: prefer_direct
-#    Normally Squid tries to use parents for most requests. If you for some
-#    reason like it to first try going direct and only use a parent if
-#    going direct fails set this to on.
-#
-#    By combining nonhierarchical_direct off and prefer_direct on you
-#    can set up Squid to use a parent as a backup path if going direct
-#    fails.
-#
-#    Note: If you want Squid to use parents for all requests see
-#    the never_direct directive. prefer_direct only modifies how Squid
-#    acts on cacheable requests.
+# Tag: prefer_direct
+# Normally squid tries to use parents for most requests. if you for some
+# Reason like it to first try going direct and only use a parent if
+# Going direct fails set this to on.
+# By combining nonhierarchical_direct off and prefer_direct on you
+# Can set up squid to use a parent as a backup path if going direct
+# Fails.
+# Note: if you want squid to use parents for all requests see
+# The never_direct directive. prefer_direct only modifies how squid
+# Acts on cacheable requests.
 #Default:
-# prefer_direct off
+# Prefer_direct off
 
-#  TAG: cache_miss_revalidate    on|off
-#    RFC 7232 defines a conditional request mechanism to prevent
-#    response objects being unnecessarily transferred over the network.
-#    If that mechanism is used by the client and a cache MISS occurs
-#    it can prevent new cache entries being created.
-#
-#    This option determines whether Squid on cache MISS will pass the
-#    client revalidation request to the server or tries to fetch new
-#    content for caching. It can be useful while the cache is mostly
-#    empty to more quickly have the cache populated by generating
-#    non-conditional GETs.
-#
-#    When set to 'on' (default), Squid will pass all client If-* headers
-#    to the server. This permits server responses without a cacheable
-#    payload to be delivered and on MISS no new cache entry is created.
-#
-#    When set to 'off' and if the request is cacheable, Squid will
-#    remove the clients If-Modified-Since and If-None-Match headers from
-#    the request sent to the server. This requests a 200 status response
-#    from the server to create a new cache entry with.
+# Tag: cache_miss_revalidate    on|off
+# Rfc 7232 defines a conditional request mechanism to prevent
+# Response objects being unnecessarily transferred over the network.
+# If that mechanism is used by the client and a cache miss occurs
+# It can prevent new cache entries being created.
+# This option determines whether squid on cache miss will pass the
+# Client revalidation request to the server or tries to fetch new
+# Content for caching. it can be useful while the cache is mostly
+# Empty to more quickly have the cache populated by generating
+# Non-conditional gets.
+# When set to 'on' (default), squid will pass all client if-* headers
+# To the server. this permits server responses without a cacheable
+# Payload to be delivered and on miss no new cache entry is created.
+# When set to 'off' and if the request is cacheable, squid will
+# Remove the clients if-modified-since and if-none-match headers from
+# The request sent to the server. this requests a 200 status response
+# From the server to create a new cache entry with.
 #Default:
-# cache_miss_revalidate on
+# Cache_miss_revalidate on
 
-#  TAG: always_direct
-#    Usage: always_direct allow|deny [!]aclname ...
-#
-#    Here you can use ACL elements to specify requests which should
-#    ALWAYS be forwarded by Squid to the origin servers without using
-#    any peers.  For example, to always directly forward requests for
-#    local servers ignoring any parents or siblings you may have use
-#    something like:
-#
-#        acl local-servers dstdomain my.domain.net
-#        always_direct allow local-servers
-#
-#    To always forward FTP requests directly, use
-#
-#        acl FTP proto FTP
-#        always_direct allow FTP
-#
-#    NOTE: There is a similar, but opposite option named
-#    'never_direct'.  You need to be aware that "always_direct deny
-#    foo" is NOT the same thing as "never_direct allow foo".  You
-#    may need to use a deny rule to exclude a more-specific case of
-#    some other rule.  Example:
-#
-#        acl local-external dstdomain external.foo.net
-#        acl local-servers dstdomain  .foo.net
-#        always_direct deny local-external
-#        always_direct allow local-servers
-#
-#    NOTE: If your goal is to make the client forward the request
-#    directly to the origin server bypassing Squid then this needs
-#    to be done in the client configuration. Squid configuration
-#    can only tell Squid how Squid should fetch the object.
-#
-#    NOTE: This directive is not related to caching. The replies
-#    is cached as usual even if you use always_direct. To not cache
-#    the replies see the 'cache' directive.
-#
-#    This clause supports both fast and slow acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
+# Tag: always_direct
+# Usage: always_direct allow|deny [!]aclname ...
+# Here you can use acl elements to specify requests which should
+# Always be forwarded by squid to the origin servers without using
+# Any peers.  for example, to always directly forward requests for
+# Local servers ignoring any parents or siblings you may have use
+# Something like:
+# Acl local-servers dstdomain my.domain.net
+# Always_direct allow local-servers
+# To always forward ftp requests directly, use
+# Acl ftp proto ftp
+# Always_direct allow ftp
+# Note: there is a similar, but opposite option named
+#    'Never_direct'.  you need to be aware that "always_direct deny
+# Foo" is not the same thing as "never_direct allow foo".  you
+# May need to use a deny rule to exclude a more-specific case of
+# Some other rule.  example:
+# Acl local-external dstdomain external.foo.net
+# Acl local-servers dstdomain  .foo.net
+# Always_direct deny local-external
+# Always_direct allow local-servers
+# Note: if your goal is to make the client forward the request
+# Directly to the origin server bypassing squid then this needs
+# To be done in the client configuration. squid configuration
+# Can only tell squid how squid should fetch the object.
+# Note: this directive is not related to caching. the replies
+# Is cached as usual even if you use always_direct. to not cache
+# The replies see the 'cache' directive.
+# This clause supports both fast and slow acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
 #Default:
 # Prevent any cache_peer being used for this request.
 
-#  TAG: never_direct
-#    Usage: never_direct allow|deny [!]aclname ...
-#
-#    never_direct is the opposite of always_direct.  Please read
-#    the description for always_direct if you have not already.
-#
-#    With 'never_direct' you can use ACL elements to specify
-#    requests which should NEVER be forwarded directly to origin
-#    servers.  For example, to force the use of a proxy for all
-#    requests, except those in your local domain use something like:
-#
-#        acl local-servers dstdomain .foo.net
-#        never_direct deny local-servers
-#        never_direct allow all
-#
-#    or if Squid is inside a firewall and there are local intranet
-#    servers inside the firewall use something like:
-#
-#        acl local-intranet dstdomain .foo.net
-#        acl local-external dstdomain external.foo.net
-#        always_direct deny local-external
-#        always_direct allow local-intranet
-#        never_direct allow all
-#
-#    This clause supports both fast and slow acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
+# Tag: never_direct
+# Usage: never_direct allow|deny [!]aclname ...
+# Never_direct is the opposite of always_direct.  please read
+# The description for always_direct if you have not already.
+# With 'never_direct' you can use acl elements to specify
+# Requests which should never be forwarded directly to origin
+# Servers.  for example, to force the use of a proxy for all
+# Requests, except those in your local domain use something like:
+# Acl local-servers dstdomain .foo.net
+# Never_direct deny local-servers
+# Never_direct allow all
+# Or if squid is inside a firewall and there are local intranet
+# Servers inside the firewall use something like:
+# Acl local-intranet dstdomain .foo.net
+# Acl local-external dstdomain external.foo.net
+# Always_direct deny local-external
+# Always_direct allow local-intranet
+# Never_direct allow all
+# This clause supports both fast and slow acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
 #Default:
-# Allow DNS results to be used for this request.
+# Allow dns results to be used for this request.
 
-# ADVANCED NETWORKING OPTIONS
+# Advanced networking options
 # -----------------------------------------------------------------------------
 
-#  TAG: incoming_udp_average
-#    Heavy voodoo here.  I can't even believe you are reading this.
-#    Are you crazy?  Don't even think about adjusting these unless
-#    you understand the algorithms in comm_select.c first!
+# Tag: incoming_udp_average
+# Heavy voodoo here.  i can't even believe you are reading this.
+# Are you crazy?  don't even think about adjusting these unless
+# You understand the algorithms in comm_select.c first!
 #Default:
-# incoming_udp_average 6
+# Incoming_udp_average 6
 
-#  TAG: incoming_tcp_average
-#    Heavy voodoo here.  I can't even believe you are reading this.
-#    Are you crazy?  Don't even think about adjusting these unless
-#    you understand the algorithms in comm_select.c first!
+# Tag: incoming_tcp_average
+# Heavy voodoo here.  i can't even believe you are reading this.
+# Are you crazy?  don't even think about adjusting these unless
+# You understand the algorithms in comm_select.c first!
 #Default:
-# incoming_tcp_average 4
+# Incoming_tcp_average 4
 
-#  TAG: incoming_dns_average
-#    Heavy voodoo here.  I can't even believe you are reading this.
-#    Are you crazy?  Don't even think about adjusting these unless
-#    you understand the algorithms in comm_select.c first!
+# Tag: incoming_dns_average
+# Heavy voodoo here.  i can't even believe you are reading this.
+# Are you crazy?  don't even think about adjusting these unless
+# You understand the algorithms in comm_select.c first!
 #Default:
-# incoming_dns_average 4
+# Incoming_dns_average 4
 
-#  TAG: min_udp_poll_cnt
-#    Heavy voodoo here.  I can't even believe you are reading this.
-#    Are you crazy?  Don't even think about adjusting these unless
-#    you understand the algorithms in comm_select.c first!
+# Tag: min_udp_poll_cnt
+# Heavy voodoo here.  i can't even believe you are reading this.
+# Are you crazy?  don't even think about adjusting these unless
+# You understand the algorithms in comm_select.c first!
 #Default:
-# min_udp_poll_cnt 8
+# Min_udp_poll_cnt 8
 
-#  TAG: min_dns_poll_cnt
-#    Heavy voodoo here.  I can't even believe you are reading this.
-#    Are you crazy?  Don't even think about adjusting these unless
-#    you understand the algorithms in comm_select.c first!
+# Tag: min_dns_poll_cnt
+# Heavy voodoo here.  i can't even believe you are reading this.
+# Are you crazy?  don't even think about adjusting these unless
+# You understand the algorithms in comm_select.c first!
 #Default:
-# min_dns_poll_cnt 8
+# Min_dns_poll_cnt 8
 
-#  TAG: min_tcp_poll_cnt
-#    Heavy voodoo here.  I can't even believe you are reading this.
-#    Are you crazy?  Don't even think about adjusting these unless
-#    you understand the algorithms in comm_select.c first!
+# Tag: min_tcp_poll_cnt
+# Heavy voodoo here.  i can't even believe you are reading this.
+# Are you crazy?  don't even think about adjusting these unless
+# You understand the algorithms in comm_select.c first!
 #Default:
-# min_tcp_poll_cnt 8
+# Min_tcp_poll_cnt 8
 
-#  TAG: accept_filter
-#    FreeBSD:
-#
-#    The name of an accept(2) filter to install on Squid's
-#    listen socket(s).  This feature is perhaps specific to
-#    FreeBSD and requires support in the kernel.
-#
-#    The 'httpready' filter delays delivering new connections
-#    to Squid until a full HTTP request has been received.
-#    See the accf_http(9) man page for details.
-#
-#    The 'dataready' filter delays delivering new connections
-#    to Squid until there is some data to process.
-#    See the accf_dataready(9) man page for details.
-#
-#    Linux:
-#
-#    The 'data' filter delays delivering of new connections
-#    to Squid until there is some data to process by TCP_ACCEPT_DEFER.
-#    You may optionally specify a number of seconds to wait by
-#    'data=N' where N is the number of seconds. Defaults to 30
-#    if not specified.  See the tcp(7) man page for details.
-#EXAMPLE:
-## FreeBSD
-#accept_filter httpready
+# Tag: accept_filter
+# Freebsd:
+# The name of an accept(2) filter to install on squid's
+# Listen socket(s).  this feature is perhaps specific to
+# Freebsd and requires support in the kernel.
+# The 'httpready' filter delays delivering new connections
+# To squid until a full http request has been received.
+# See the accf_http(9) man page for details.
+# The 'dataready' filter delays delivering new connections
+# To squid until there is some data to process.
+# See the accf_dataready(9) man page for details.
+# Linux:
+# The 'data' filter delays delivering of new connections
+# To squid until there is some data to process by tcp_accept_defer.
+# You may optionally specify a number of seconds to wait by
+#    'Data=n' where n is the number of seconds. defaults to 30
+# If not specified.  see the tcp(7) man page for details.
+#Example:
+## Freebsd
+#Accept_filter httpready
 ## Linux
-#accept_filter data
+#Accept_filter data
 #Default:
-# none
+# None
 
-#  TAG: client_ip_max_connections
-#    Set an absolute limit on the number of connections a single
-#    client IP can use. Any more than this and Squid will begin to drop
-#    new connections from the client until it closes some links.
-#
-#    Note that this is a global limit. It affects all HTTP, HTCP, Gopher and FTP
-#    connections from the client. For finer control use the ACL access controls.
-#
-#    Requires client_db to be enabled (the default).
-#
-#    WARNING: This may noticably slow down traffic received via external proxies
-#    or NAT devices and cause them to rebound error messages back to their clients.
+# Tag: client_ip_max_connections
+# Set an absolute limit on the number of connections a single
+# Client ip can use. any more than this and squid will begin to drop
+# New connections from the client until it closes some links.
+# Note that this is a global limit. it affects all http, htcp, gopher and ftp
+# Connections from the client. for finer control use the acl access controls.
+# Requires client_db to be enabled (the default).
+# Warning: this may noticably slow down traffic received via external proxies
+# Or nat devices and cause them to rebound error messages back to their clients.
 #Default:
 # No limit.
 
-#  TAG: tcp_recv_bufsize    (bytes)
-#    Size of receive buffer to set for TCP sockets.  Probably just
-#    as easy to change your kernel's default.
-#    Omit from squid.conf to use the default buffer size.
+# Tag: tcp_recv_bufsize    (bytes)
+# Size of receive buffer to set for tcp sockets.  probably just
+# As easy to change your kernel's default.
+# Omit from squid.conf to use the default buffer size.
 #Default:
-# Use operating system TCP defaults.
+# Use operating system tcp defaults.
 
-# ICAP OPTIONS
+# Icap options
 # -----------------------------------------------------------------------------
 
-#  TAG: icap_enable    on|off
-#    If you want to enable the ICAP module support, set this to on.
+# Tag: icap_enable    on|off
+# If you want to enable the icap module support, set this to on.
 #Default:
-# icap_enable off
+# Icap_enable off
 
-#  TAG: icap_connect_timeout
-#    This parameter specifies how long to wait for the TCP connect to
-#    the requested ICAP server to complete before giving up and either
-#    terminating the HTTP transaction or bypassing the failure.
-#
-#    The default for optional services is peer_connect_timeout.
-#    The default for essential services is connect_timeout.
-#    If this option is explicitly set, its value applies to all services.
+# Tag: icap_connect_timeout
+# This parameter specifies how long to wait for the tcp connect to
+# The requested icap server to complete before giving up and either
+# Terminating the http transaction or bypassing the failure.
+# The default for optional services is peer_connect_timeout.
+# The default for essential services is connect_timeout.
+# If this option is explicitly set, its value applies to all services.
 #Default:
-# none
+# None
 
-#  TAG: icap_io_timeout    time-units
-#    This parameter specifies how long to wait for an I/O activity on
-#    an established, active ICAP connection before giving up and
-#    either terminating the HTTP transaction or bypassing the
-#    failure.
+# Tag: icap_io_timeout    time-units
+# This parameter specifies how long to wait for an i/o activity on
+# An established, active icap connection before giving up and
+# Either terminating the http transaction or bypassing the
+# Failure.
 #Default:
 # Use read_timeout.
 
-#  TAG: icap_service_failure_limit    limit [in memory-depth time-units]
-#    The limit specifies the number of failures that Squid tolerates
-#    when establishing a new TCP connection with an ICAP service. If
-#    the number of failures exceeds the limit, the ICAP service is
-#    not used for new ICAP requests until it is time to refresh its
-#    OPTIONS.
-#
-#    A negative value disables the limit. Without the limit, an ICAP
-#    service will not be considered down due to connectivity failures
-#    between ICAP OPTIONS requests.
-#
-#    Squid forgets ICAP service failures older than the specified
-#    value of memory-depth. The memory fading algorithm
-#    is approximate because Squid does not remember individual
-#    errors but groups them instead, splitting the option
-#    value into ten time slots of equal length.
-#
-#    When memory-depth is 0 and by default this option has no
-#    effect on service failure expiration.
-#
-#    Squid always forgets failures when updating service settings
-#    using an ICAP OPTIONS transaction, regardless of this option
-#    setting.
-#
-#    For example,
-#        # suspend service usage after 10 failures in 5 seconds:
-#        icap_service_failure_limit 10 in 5 seconds
+# Tag: icap_service_failure_limit    limit [in memory-depth time-units]
+# The limit specifies the number of failures that squid tolerates
+# When establishing a new tcp connection with an icap service. if
+# The number of failures exceeds the limit, the icap service is
+# Not used for new icap requests until it is time to refresh its
+# Options.
+# A negative value disables the limit. without the limit, an icap
+# Service will not be considered down due to connectivity failures
+# Between icap options requests.
+# Squid forgets icap service failures older than the specified
+# Value of memory-depth. the memory fading algorithm
+# Is approximate because squid does not remember individual
+# Errors but groups them instead, splitting the option
+# Value into ten time slots of equal length.
+# When memory-depth is 0 and by default this option has no
+# Effect on service failure expiration.
+# Squid always forgets failures when updating service settings
+# Using an icap options transaction, regardless of this option
+# Setting.
+# For example,
+#        # Suspend service usage after 10 failures in 5 seconds:
+# Icap_service_failure_limit 10 in 5 seconds
 #Default:
-# icap_service_failure_limit 10
+# Icap_service_failure_limit 10
 
-#  TAG: icap_service_revival_delay
-#    The delay specifies the number of seconds to wait after an ICAP
-#    OPTIONS request failure before requesting the options again. The
-#    failed ICAP service is considered "down" until fresh OPTIONS are
-#    fetched.
-#
-#    The actual delay cannot be smaller than the hardcoded minimum
-#    delay of 30 seconds.
+# Tag: icap_service_revival_delay
+# The delay specifies the number of seconds to wait after an icap
+# Options request failure before requesting the options again. the
+# Failed icap service is considered "down" until fresh options are
+# Fetched.
+# The actual delay cannot be smaller than the hardcoded minimum
+# Delay of 30 seconds.
 #Default:
-# icap_service_revival_delay 180
+# Icap_service_revival_delay 180
 
-#  TAG: icap_preview_enable    on|off
-#    The ICAP Preview feature allows the ICAP server to handle the
-#    HTTP message by looking only at the beginning of the message body
-#    or even without receiving the body at all. In some environments,
-#    previews greatly speedup ICAP processing.
-#
-#    During an ICAP OPTIONS transaction, the server may tell    Squid what
-#    HTTP messages should be previewed and how big the preview should be.
-#    Squid will not use Preview if the server did not request one.
-#
-#    To disable ICAP Preview for all ICAP services, regardless of
-#    individual ICAP server OPTIONS responses, set this option to "off".
+# Tag: icap_preview_enable    on|off
+# The icap preview feature allows the icap server to handle the
+# Http message by looking only at the beginning of the message body
+# Or even without receiving the body at all. in some environments,
+# Previews greatly speedup icap processing.
+# During an icap options transaction, the server may tell    squid what
+# Http messages should be previewed and how big the preview should be.
+# Squid will not use preview if the server did not request one.
+# To disable icap preview for all icap services, regardless of
+# Individual icap server options responses, set this option to "off".
 #Example:
-#icap_preview_enable off
+#Icap_preview_enable off
 #Default:
-# icap_preview_enable on
+# Icap_preview_enable on
 
-#  TAG: icap_preview_size
-#    The default size of preview data to be sent to the ICAP server.
-#    This value might be overwritten on a per server basis by OPTIONS requests.
+# Tag: icap_preview_size
+# The default size of preview data to be sent to the icap server.
+# This value might be overwritten on a per server basis by options requests.
 #Default:
 # No preview sent.
 
-#  TAG: icap_206_enable    on|off
-#    206 (Partial Content) responses is an ICAP extension that allows the
-#    ICAP agents to optionally combine adapted and original HTTP message
-#    content. The decision to combine is postponed until the end of the
-#    ICAP response. Squid supports Partial Content extension by default.
-#
-#    Activation of the Partial Content extension is negotiated with each
-#    ICAP service during OPTIONS exchange. Most ICAP servers should handle
-#    negotation correctly even if they do not support the extension, but
-#    some might fail. To disable Partial Content support for all ICAP
-#    services and to avoid any negotiation, set this option to "off".
-#
-#    Example:
-#        icap_206_enable off
+# Tag: icap_206_enable    on|off
+# 206 (partial content) responses is an icap extension that allows the
+# Icap agents to optionally combine adapted and original http message
+# Content. the decision to combine is postponed until the end of the
+# Icap response. squid supports partial content extension by default.
+# Activation of the partial content extension is negotiated with each
+# Icap service during options exchange. most icap servers should handle
+# Negotation correctly even if they do not support the extension, but
+# Some might fail. to disable partial content support for all icap
+# Services and to avoid any negotiation, set this option to "off".
+# Example:
+# Icap_206_enable off
 #Default:
-# icap_206_enable on
+# Icap_206_enable on
 
-#  TAG: icap_default_options_ttl
-#    The default TTL value for ICAP OPTIONS responses that don't have
-#    an Options-TTL header.
+# Tag: icap_default_options_ttl
+# The default ttl value for icap options responses that don't have
+# An options-ttl header.
 #Default:
-# icap_default_options_ttl 60
+# Icap_default_options_ttl 60
 
-#  TAG: icap_persistent_connections    on|off
-#    Whether or not Squid should use persistent connections to
-#    an ICAP server.
+# Tag: icap_persistent_connections    on|off
+# Whether or not squid should use persistent connections to
+# An icap server.
 #Default:
-# icap_persistent_connections on
+# Icap_persistent_connections on
 
-#  TAG: adaptation_send_client_ip    on|off
-#    If enabled, Squid shares HTTP client IP information with adaptation
-#    services. For ICAP, Squid adds the X-Client-IP header to ICAP requests.
-#    For eCAP, Squid sets the libecap::metaClientIp transaction option.
-#
-#    See also: adaptation_uses_indirect_client
+# Tag: adaptation_send_client_ip    on|off
+# If enabled, squid shares http client ip information with adaptation
+# Services. for icap, squid adds the x-client-ip header to icap requests.
+# For ecap, squid sets the libecap::metaclientip transaction option.
+# See also: adaptation_uses_indirect_client
 #Default:
-# adaptation_send_client_ip off
+# Adaptation_send_client_ip off
 
-#  TAG: adaptation_send_username    on|off
-#    This sends authenticated HTTP client username (if available) to
-#    the adaptation service.
-#
-#    For ICAP, the username value is encoded based on the
-#    icap_client_username_encode option and is sent using the header
-#    specified by the icap_client_username_header option.
+# Tag: adaptation_send_username    on|off
+# This sends authenticated http client username (if available) to
+# The adaptation service.
+# For icap, the username value is encoded based on the
+# Icap_client_username_encode option and is sent using the header
+# Specified by the icap_client_username_header option.
 #Default:
-# adaptation_send_username off
+# Adaptation_send_username off
 
-#  TAG: icap_client_username_header
-#    ICAP request header name to use for adaptation_send_username.
+# Tag: icap_client_username_header
+# Icap request header name to use for adaptation_send_username.
 #Default:
-# icap_client_username_header X-Client-Username
+# Icap_client_username_header x-client-username
 
-#  TAG: icap_client_username_encode    on|off
-#    Whether to base64 encode the authenticated client username.
+# Tag: icap_client_username_encode    on|off
+# Whether to base64 encode the authenticated client username.
 #Default:
-# icap_client_username_encode off
+# Icap_client_username_encode off
 
-#  TAG: icap_service
-#    Defines a single ICAP service using the following format:
-#
-#    icap_service id vectoring_point uri [option ...]
-#
-#    id: ID
-#        an opaque identifier or name which is used to direct traffic to
-#        this specific service. Must be unique among all adaptation
-#        services in squid.conf.
-#
-#    vectoring_point: reqmod_precache|reqmod_postcache|respmod_precache|respmod_postcache
-#        This specifies at which point of transaction processing the
-#        ICAP service should be activated. *_postcache vectoring points
-#        are not yet supported.
-#
-#    uri: icap://servername:port/servicepath
-#        ICAP server and service location.
-#         icaps://servername:port/servicepath
-#        The "icap:" URI scheme is used for traditional ICAP server and
-#        service location (default port is 1344, connections are not
-#        encrypted). The "icaps:" URI scheme is for Secure ICAP
-#        services that use SSL/TLS-encrypted ICAP connections (by
-#        default, on port 11344).
-#
-#    ICAP does not allow a single service to handle both REQMOD and RESPMOD
-#    transactions. Squid does not enforce that requirement. You can specify
-#    services with the same service_url and different vectoring_points. You
-#    can even specify multiple identical services as long as their
-#    service_names differ.
-#
-#    To activate a service, use the adaptation_access directive. To group
-#    services, use adaptation_service_chain and adaptation_service_set.
-#
-#    Service options are separated by white space. ICAP services support
-#    the following name=value options:
-#
-#    bypass=on|off|1|0
-#        If set to 'on' or '1', the ICAP service is treated as
-#        optional. If the service cannot be reached or malfunctions,
-#        Squid will try to ignore any errors and process the message as
-#        if the service was not enabled. No all ICAP errors can be
-#        bypassed.  If set to 0, the ICAP service is treated as
-#        essential and all ICAP errors will result in an error page
-#        returned to the HTTP client.
-#
-#        Bypass is off by default: services are treated as essential.
-#
-#    routing=on|off|1|0
-#        If set to 'on' or '1', the ICAP service is allowed to
-#        dynamically change the current message adaptation plan by
-#        returning a chain of services to be used next. The services
-#        are specified using the X-Next-Services ICAP response header
-#        value, formatted as a comma-separated list of service names.
-#        Each named service should be configured in squid.conf. Other
-#        services are ignored. An empty X-Next-Services value results
-#        in an empty plan which ends the current adaptation.
-#
-#        Dynamic adaptation plan may cross or cover multiple supported
-#        vectoring points in their natural processing order.
-#
-#        Routing is not allowed by default: the ICAP X-Next-Services
-#        response header is ignored.
-#
-#    ipv6=on|off
-#        Only has effect on split-stack systems. The default on those systems
-#        is to use IPv4-only connections. When set to 'on' this option will
-#        make Squid use IPv6-only connections to contact this ICAP service.
-#
-#    on-overload=block|bypass|wait|force
-#        If the service Max-Connections limit has been reached, do
-#        one of the following for each new ICAP transaction:
-#          * block:  send an HTTP error response to the client
-#          * bypass: ignore the "over-connected" ICAP service
-#          * wait:   wait (in a FIFO queue) for an ICAP connection slot
-#          * force:  proceed, ignoring the Max-Connections limit
-#
-#        In SMP mode with N workers, each worker assumes the service
-#        connection limit is Max-Connections/N, even though not all
-#        workers may use a given service.
-#
-#        The default value is "bypass" if service is bypassable,
-#        otherwise it is set to "wait".
-#
-#
-#    max-conn=number
-#        Use the given number as the Max-Connections limit, regardless
-#        of the Max-Connections value given by the service, if any.
-#
-#    connection-encryption=on|off
-#        Determines the ICAP service effect on the connections_encrypted
-#        ACL.
-#
-#        The default is "on" for Secure ICAP services (i.e., those
-#        with the icaps:// service URIs scheme) and "off" for plain ICAP
-#        services.
-#
-#        Does not affect ICAP connections (e.g., does not turn Secure
-#        ICAP on or off).
-#
-#    ==== ICAPS / TLS OPTIONS ====
-#
-#    These options are used for Secure ICAP (icaps://....) services only.
-#
-#    tls-cert=/path/to/ssl/certificate
-#            A client X.509 certificate to use when connecting to
-#            this ICAP server.
-#
-#    tls-key=/path/to/ssl/key
-#            The private key corresponding to the previous
-#            tls-cert= option.
-#
-#            If tls-key= is not specified tls-cert= is assumed to
-#            reference a PEM file containing both the certificate
-#            and private key.
-#
-#    tls-cipher=...    The list of valid TLS/SSL ciphers to use when connecting
-#            to this icap server.
-#
-#    tls-min-version=1.N
-#            The minimum TLS protocol version to permit. To control
-#            SSLv3 use the tls-options= parameter.
-#            Supported Values: 1.0 (default), 1.1, 1.2
-#
-#    tls-options=...    Specify various OpenSSL library options:
-#
-#                NO_SSLv3    Disallow the use of SSLv3
-#
-#                SINGLE_DH_USE
-#                      Always create a new key when using
-#                      temporary/ephemeral DH key exchanges
-#
-#                ALL       Enable various bug workarounds
-#                      suggested as "harmless" by OpenSSL
-#                      Be warned that this reduces SSL/TLS
-#                      strength to some attacks.
-#
-#            See the OpenSSL SSL_CTX_set_options documentation for a
-#            more complete list. Options relevant only to SSLv2 are
-#            not supported.
-#
-#    tls-cafile=    PEM file containing CA certificates to use when verifying
-#            the icap server certificate.
-#            Use to specify intermediate CA certificate(s) if not sent
-#            by the server. Or the full CA chain for the server when
-#            using the tls-default-ca=off flag.
-#            May be repeated to load multiple files.
-#
-#    tls-capath=...    A directory containing additional CA certificates to
-#            use when verifying the icap server certificate.
-#            Requires OpenSSL or LibreSSL.
-#
-#    tls-crlfile=...    A certificate revocation list file to use when
-#            verifying the icap server certificate.
-#
-#    tls-flags=...    Specify various flags modifying the Squid TLS implementation:
-#
-#            DONT_VERIFY_PEER
-#                Accept certificates even if they fail to
-#                verify.
-#            DONT_VERIFY_DOMAIN
-#                Don't verify the icap server certificate
-#                matches the server name
-#
-#    tls-default-ca[=off]
-#            Whether to use the system Trusted CAs. Default is ON.
-#
-#    tls-domain=    The icap server name as advertised in it's certificate.
-#            Used for verifying the correctness of the received icap
-#            server certificate. If not specified the icap server
-#            hostname extracted from ICAP URI will be used.
-#
-#    Older icap_service format without optional named parameters is
-#    deprecated but supported for backward compatibility.
-#
+# Tag: icap_service
+# Defines a single icap service using the following format:
+# Icap_service id vectoring_point uri [option ...]
+# Id: id
+# An opaque identifier or name which is used to direct traffic to
+# This specific service. must be unique among all adaptation
+# Services in squid.conf.
+# Vectoring_point: reqmod_precache|reqmod_postcache|respmod_precache|respmod_postcache
+# This specifies at which point of transaction processing the
+# Icap service should be activated. *_postcache vectoring points
+# Are not yet supported.
+# Uri: icap://servername:port/servicepath
+# Icap server and service location.
+# Icaps://servername:port/servicepath
+# The "icap:" uri scheme is used for traditional icap server and
+# Service location (default port is 1344, connections are not
+# Encrypted). the "icaps:" uri scheme is for secure icap
+# Services that use ssl/tls-encrypted icap connections (by
+# Default, on port 11344).
+# Icap does not allow a single service to handle both reqmod and respmod
+# Transactions. squid does not enforce that requirement. you can specify
+# Services with the same service_url and different vectoring_points. you
+# Can even specify multiple identical services as long as their
+# Service_names differ.
+# To activate a service, use the adaptation_access directive. to group
+# Services, use adaptation_service_chain and adaptation_service_set.
+# Service options are separated by white space. icap services support
+# The following name=value options:
+# Bypass=on|off|1|0
+# If set to 'on' or '1', the icap service is treated as
+# Optional. if the service cannot be reached or malfunctions,
+# Squid will try to ignore any errors and process the message as
+# If the service was not enabled. no all icap errors can be
+# Bypassed.  if set to 0, the icap service is treated as
+# Essential and all icap errors will result in an error page
+# Returned to the http client.
+# Bypass is off by default: services are treated as essential.
+# Routing=on|off|1|0
+# If set to 'on' or '1', the icap service is allowed to
+# Dynamically change the current message adaptation plan by
+# Returning a chain of services to be used next. the services
+# Are specified using the x-next-services icap response header
+# Value, formatted as a comma-separated list of service names.
+# Each named service should be configured in squid.conf. other
+# Services are ignored. an empty x-next-services value results
+# In an empty plan which ends the current adaptation.
+# Dynamic adaptation plan may cross or cover multiple supported
+# Vectoring points in their natural processing order.
+# Routing is not allowed by default: the icap x-next-services
+# Response header is ignored.
+# Ipv6=on|off
+# Only has effect on split-stack systems. the default on those systems
+# Is to use ipv4-only connections. when set to 'on' this option will
+# Make squid use ipv6-only connections to contact this icap service.
+# On-overload=block|bypass|wait|force
+# If the service max-connections limit has been reached, do
+# One of the following for each new icap transaction:
+#          * Block:  send an http error response to the client
+#          * Bypass: ignore the "over-connected" icap service
+#          * Wait:   wait (in a fifo queue) for an icap connection slot
+#          * Force:  proceed, ignoring the max-connections limit
+# In smp mode with n workers, each worker assumes the service
+# Connection limit is max-connections/n, even though not all
+# Workers may use a given service.
+# The default value is "bypass" if service is bypassable,
+# Otherwise it is set to "wait".
+# Max-conn=number
+# Use the given number as the max-connections limit, regardless
+# Of the max-connections value given by the service, if any.
+# Connection-encryption=on|off
+# Determines the icap service effect on the connections_encrypted
+# Acl.
+# The default is "on" for secure icap services (i.e., those
+# With the icaps:// service uris scheme) and "off" for plain icap
+# Services.
+# Does not affect icap connections (e.g., does not turn secure
+# Icap on or off).
+# ==== Icaps / tls options ====
+# These options are used for secure icap (icaps://....) services only.
+# Tls-cert=/path/to/ssl/certificate
+# A client x.509 certificate to use when connecting to
+# This icap server.
+# Tls-key=/path/to/ssl/key
+# The private key corresponding to the previous
+# Tls-cert= option.
+# If tls-key= is not specified tls-cert= is assumed to
+# Reference a pem file containing both the certificate
+# And private key.
+# Tls-cipher=...    the list of valid tls/ssl ciphers to use when connecting
+# To this icap server.
+# Tls-min-version=1.n
+# The minimum tls protocol version to permit. to control
+# Sslv3 use the tls-options= parameter.
+# Supported values: 1.0 (default), 1.1, 1.2
+# Tls-options=...    specify various openssl library options:
+# No_sslv3    disallow the use of sslv3
+# Single_dh_use
+# Always create a new key when using
+# Temporary/ephemeral dh key exchanges
+# All       enable various bug workarounds
+# Suggested as "harmless" by openssl
+# Be warned that this reduces ssl/tls
+# Strength to some attacks.
+# See the openssl ssl_ctx_set_options documentation for a
+# More complete list. options relevant only to sslv2 are
+# Not supported.
+# Tls-cafile=    pem file containing ca certificates to use when verifying
+# The icap server certificate.
+# Use to specify intermediate ca certificate(s) if not sent
+# By the server. or the full ca chain for the server when
+# Using the tls-default-ca=off flag.
+# May be repeated to load multiple files.
+# Tls-capath=...    a directory containing additional ca certificates to
+# Use when verifying the icap server certificate.
+# Requires openssl or libressl.
+# Tls-crlfile=...    a certificate revocation list file to use when
+# Verifying the icap server certificate.
+# Tls-flags=...    specify various flags modifying the squid tls implementation:
+# Dont_verify_peer
+# Accept certificates even if they fail to
+# Verify.
+# Dont_verify_domain
+# Don't verify the icap server certificate
+# Matches the server name
+# Tls-default-ca[=off]
+# Whether to use the system trusted cas. default is on.
+# Tls-domain=    the icap server name as advertised in it's certificate.
+# Used for verifying the correctness of the received icap
+# Server certificate. if not specified the icap server
+# Hostname extracted from icap uri will be used.
+# Older icap_service format without optional named parameters is
+# Deprecated but supported for backward compatibility.
 #Example:
-#icap_service svcBlocker reqmod_precache icap://icap1.mydomain.net:1344/reqmod bypass=0
-#icap_service svcLogger reqmod_precache icaps://icap2.mydomain.net:11344/reqmod routing=on
+#Icap_service svcblocker reqmod_precache icap://icap1.mydomain.net:1344/reqmod bypass=0
+#Icap_service svclogger reqmod_precache icaps://icap2.mydomain.net:11344/reqmod routing=on
 #Default:
-# none
+# None
 
-#  TAG: icap_class
-#    This deprecated option was documented to define an ICAP service
-#    chain, even though it actually defined a set of similar, redundant
-#    services, and the chains were not supported.
-#
-#    To define a set of redundant services, please use the
-#    adaptation_service_set directive. For service chains, use
-#    adaptation_service_chain.
+# Tag: icap_class
+# This deprecated option was documented to define an icap service
+# Chain, even though it actually defined a set of similar, redundant
+# Services, and the chains were not supported.
+# To define a set of redundant services, please use the
+# Adaptation_service_set directive. for service chains, use
+# Adaptation_service_chain.
 #Default:
-# none
+# None
 
-#  TAG: icap_access
-#    This option is deprecated. Please use adaptation_access, which
-#    has the same ICAP functionality, but comes with better
-#    documentation, and eCAP support.
+# Tag: icap_access
+# This option is deprecated. please use adaptation_access, which
+# Has the same icap functionality, but comes with better
+# Documentation, and ecap support.
 #Default:
-# none
+# None
 
-# eCAP OPTIONS
+# Ecap options
 # -----------------------------------------------------------------------------
 
-#  TAG: ecap_enable    on|off
-#    Controls whether eCAP support is enabled.
+# Tag: ecap_enable    on|off
+# Controls whether ecap support is enabled.
 #Default:
-# ecap_enable off
+# Ecap_enable off
 
-#  TAG: ecap_service
-#    Defines a single eCAP service
-#
-#    ecap_service id vectoring_point uri [option ...]
-#
-#        id: ID
-#        an opaque identifier or name which is used to direct traffic to
-#        this specific service. Must be unique among all adaptation
-#        services in squid.conf.
-#
-#    vectoring_point: reqmod_precache|reqmod_postcache|respmod_precache|respmod_postcache
-#        This specifies at which point of transaction processing the
-#        eCAP service should be activated. *_postcache vectoring points
-#        are not yet supported.
-#
-#    uri: ecap://vendor/service_name?custom&cgi=style&parameters=optional
-#        Squid uses the eCAP service URI to match this configuration
-#        line with one of the dynamically loaded services. Each loaded
-#        eCAP service must have a unique URI. Obtain the right URI from
-#        the service provider.
-#
-#    To activate a service, use the adaptation_access directive. To group
-#    services, use adaptation_service_chain and adaptation_service_set.
-#
-#    Service options are separated by white space. eCAP services support
-#    the following name=value options:
-#
-#    bypass=on|off|1|0
-#        If set to 'on' or '1', the eCAP service is treated as optional.
-#        If the service cannot be reached or malfunctions, Squid will try
-#        to ignore any errors and process the message as if the service
-#        was not enabled. No all eCAP errors can be bypassed.
-#        If set to 'off' or '0', the eCAP service is treated as essential
-#        and all eCAP errors will result in an error page returned to the
-#        HTTP client.
-#
-#                Bypass is off by default: services are treated as essential.
-#
-#    routing=on|off|1|0
-#        If set to 'on' or '1', the eCAP service is allowed to
-#        dynamically change the current message adaptation plan by
-#        returning a chain of services to be used next.
-#
-#        Dynamic adaptation plan may cross or cover multiple supported
-#        vectoring points in their natural processing order.
-#
-#        Routing is not allowed by default.
-#
-#    connection-encryption=on|off
-#        Determines the eCAP service effect on the connections_encrypted
-#        ACL.
-#
-#        Defaults to "on", which does not taint the master transaction
-#        w.r.t. that ACL.
-#
-#        Does not affect eCAP API calls.
-#
-#    Older ecap_service format without optional named parameters is
-#    deprecated but supported for backward compatibility.
-#
-#
+# Tag: ecap_service
+# Defines a single ecap service
+# Ecap_service id vectoring_point uri [option ...]
+# Id: id
+# An opaque identifier or name which is used to direct traffic to
+# This specific service. must be unique among all adaptation
+# Services in squid.conf.
+# Vectoring_point: reqmod_precache|reqmod_postcache|respmod_precache|respmod_postcache
+# This specifies at which point of transaction processing the
+# Ecap service should be activated. *_postcache vectoring points
+# Are not yet supported.
+# Uri: ecap://vendor/service_name?custom&cgi=style&parameters=optional
+# Squid uses the ecap service uri to match this configuration
+# Line with one of the dynamically loaded services. each loaded
+# Ecap service must have a unique uri. obtain the right uri from
+# The service provider.
+# To activate a service, use the adaptation_access directive. to group
+# Services, use adaptation_service_chain and adaptation_service_set.
+# Service options are separated by white space. ecap services support
+# The following name=value options:
+# Bypass=on|off|1|0
+# If set to 'on' or '1', the ecap service is treated as optional.
+# If the service cannot be reached or malfunctions, squid will try
+# To ignore any errors and process the message as if the service
+# Was not enabled. no all ecap errors can be bypassed.
+# If set to 'off' or '0', the ecap service is treated as essential
+# And all ecap errors will result in an error page returned to the
+# Http client.
+# Bypass is off by default: services are treated as essential.
+# Routing=on|off|1|0
+# If set to 'on' or '1', the ecap service is allowed to
+# Dynamically change the current message adaptation plan by
+# Returning a chain of services to be used next.
+# Dynamic adaptation plan may cross or cover multiple supported
+# Vectoring points in their natural processing order.
+# Routing is not allowed by default.
+# Connection-encryption=on|off
+# Determines the ecap service effect on the connections_encrypted
+# Acl.
+# Defaults to "on", which does not taint the master transaction
+# W.r.t. that acl.
+# Does not affect ecap api calls.
+# Older ecap_service format without optional named parameters is
+# Deprecated but supported for backward compatibility.
 #Example:
-#ecap_service s1 reqmod_precache ecap://filters.R.us/leakDetector?on_error=block bypass=off
-#ecap_service s2 respmod_precache ecap://filters.R.us/virusFilter config=/etc/vf.cfg bypass=on
+#Ecap_service s1 reqmod_precache ecap://filters.r.us/leakdetector?on_error=block bypass=off
+#Ecap_service s2 respmod_precache ecap://filters.r.us/virusfilter config=/etc/vf.cfg bypass=on
 #Default:
-# none
+# None
 
-#  TAG: loadable_modules
-#    Instructs Squid to load the specified dynamic module(s) or activate
-#    preloaded module(s).
+# Tag: loadable_modules
+# Instructs squid to load the specified dynamic module(s) or activate
+# Preloaded module(s).
 #Example:
-#loadable_modules /usr/lib/MinimalAdapter.so
+#Loadable_modules /usr/lib/minimaladapter.so
 #Default:
-# none
+# None
 
-# MESSAGE ADAPTATION OPTIONS
+# Message adaptation options
 # -----------------------------------------------------------------------------
 
-#  TAG: adaptation_service_set
-#
-#    Configures an ordered set of similar, redundant services. This is
-#    useful when hot standby or backup adaptation servers are available.
-#
-#        adaptation_service_set set_name service_name1 service_name2 ...
-#
-#     The named services are used in the set declaration order. The first
-#    applicable adaptation service from the set is used first. The next
-#    applicable service is tried if and only if the transaction with the
-#    previous service fails and the message waiting to be adapted is still
-#    intact.
-#
-#    When adaptation starts, broken services are ignored as if they were
-#    not a part of the set. A broken service is a down optional service.
-#
-#    The services in a set must be attached to the same vectoring point
-#    (e.g., pre-cache) and use the same adaptation method (e.g., REQMOD).
-#
-#    If all services in a set are optional then adaptation failures are
-#    bypassable. If all services in the set are essential, then a
-#    transaction failure with one service may still be retried using
-#    another service from the set, but when all services fail, the master
-#    transaction fails as well.
-#
-#    A set may contain a mix of optional and essential services, but that
-#    is likely to lead to surprising results because broken services become
-#    ignored (see above), making previously bypassable failures fatal.
-#    Technically, it is the bypassability of the last failed service that
-#    matters.
-#
-#    See also: adaptation_access adaptation_service_chain
-#
+# Tag: adaptation_service_set
+# Configures an ordered set of similar, redundant services. this is
+# Useful when hot standby or backup adaptation servers are available.
+# Adaptation_service_set set_name service_name1 service_name2 ...
+# The named services are used in the set declaration order. the first
+# Applicable adaptation service from the set is used first. the next
+# Applicable service is tried if and only if the transaction with the
+# Previous service fails and the message waiting to be adapted is still
+# Intact.
+# When adaptation starts, broken services are ignored as if they were
+# Not a part of the set. a broken service is a down optional service.
+# The services in a set must be attached to the same vectoring point
+#    (E.g., pre-cache) and use the same adaptation method (e.g., reqmod).
+# If all services in a set are optional then adaptation failures are
+# Bypassable. if all services in the set are essential, then a
+# Transaction failure with one service may still be retried using
+# Another service from the set, but when all services fail, the master
+# Transaction fails as well.
+# A set may contain a mix of optional and essential services, but that
+# Is likely to lead to surprising results because broken services become
+# Ignored (see above), making previously bypassable failures fatal.
+# Technically, it is the bypassability of the last failed service that
+# Matters.
+# See also: adaptation_access adaptation_service_chain
 #Example:
-#adaptation_service_set svcBlocker urlFilterPrimary urlFilterBackup
-#adaptation service_set svcLogger loggerLocal loggerRemote
+#Adaptation_service_set svcblocker urlfilterprimary urlfilterbackup
+#Adaptation service_set svclogger loggerlocal loggerremote
 #Default:
-# none
+# None
 
-#  TAG: adaptation_service_chain
-#
-#    Configures a list of complementary services that will be applied
-#    one-by-one, forming an adaptation chain or pipeline. This is useful
-#    when Squid must perform different adaptations on the same message.
-#
-#        adaptation_service_chain chain_name service_name1 svc_name2 ...
-#
-#     The named services are used in the chain declaration order. The first
-#    applicable adaptation service from the chain is used first. The next
-#    applicable service is applied to the successful adaptation results of
-#    the previous service in the chain.
-#
-#    When adaptation starts, broken services are ignored as if they were
-#    not a part of the chain. A broken service is a down optional service.
-#
-#    Request satisfaction terminates the adaptation chain because Squid
-#    does not currently allow declaration of RESPMOD services at the
-#    "reqmod_precache" vectoring point (see icap_service or ecap_service).
-#
-#    The services in a chain must be attached to the same vectoring point
-#    (e.g., pre-cache) and use the same adaptation method (e.g., REQMOD).
-#
-#    A chain may contain a mix of optional and essential services. If an
-#    essential adaptation fails (or the failure cannot be bypassed for
-#    other reasons), the master transaction fails. Otherwise, the failure
-#    is bypassed as if the failed adaptation service was not in the chain.
-#
-#    See also: adaptation_access adaptation_service_set
-#
+# Tag: adaptation_service_chain
+# Configures a list of complementary services that will be applied
+# One-by-one, forming an adaptation chain or pipeline. this is useful
+# When squid must perform different adaptations on the same message.
+# Adaptation_service_chain chain_name service_name1 svc_name2 ...
+# The named services are used in the chain declaration order. the first
+# Applicable adaptation service from the chain is used first. the next
+# Applicable service is applied to the successful adaptation results of
+# The previous service in the chain.
+# When adaptation starts, broken services are ignored as if they were
+# Not a part of the chain. a broken service is a down optional service.
+# Request satisfaction terminates the adaptation chain because squid
+# Does not currently allow declaration of respmod services at the
+#    "Reqmod_precache" vectoring point (see icap_service or ecap_service).
+# The services in a chain must be attached to the same vectoring point
+#    (E.g., pre-cache) and use the same adaptation method (e.g., reqmod).
+# A chain may contain a mix of optional and essential services. if an
+# Essential adaptation fails (or the failure cannot be bypassed for
+# Other reasons), the master transaction fails. otherwise, the failure
+# Is bypassed as if the failed adaptation service was not in the chain.
+# See also: adaptation_access adaptation_service_set
 #Example:
-#adaptation_service_chain svcRequest requestLogger urlFilter leakDetector
+#Adaptation_service_chain svcrequest requestlogger urlfilter leakdetector
 #Default:
-# none
+# None
 
-#  TAG: adaptation_access
-#    Sends an HTTP transaction to an ICAP or eCAP adaptation    service.
-#
-#    adaptation_access service_name allow|deny [!]aclname...
-#    adaptation_access set_name     allow|deny [!]aclname...
-#
-#    At each supported vectoring point, the adaptation_access
-#    statements are processed in the order they appear in this
-#    configuration file. Statements pointing to the following services
-#    are ignored (i.e., skipped without checking their ACL):
-#
-#        - services serving different vectoring points
-#        - "broken-but-bypassable" services
-#        - "up" services configured to ignore such transactions
-#              (e.g., based on the ICAP Transfer-Ignore header).
-#
-#        When a set_name is used, all services in the set are checked
-#    using the same rules, to find the first applicable one. See
-#    adaptation_service_set for details.
-#
-#    If an access list is checked and there is a match, the
-#    processing stops: For an "allow" rule, the corresponding
-#    adaptation service is used for the transaction. For a "deny"
-#    rule, no adaptation service is activated.
-#
-#    It is currently not possible to apply more than one adaptation
-#    service at the same vectoring point to the same HTTP transaction.
-#
-#        See also: icap_service and ecap_service
-#
+# Tag: adaptation_access
+# Sends an http transaction to an icap or ecap adaptation    service.
+# Adaptation_access service_name allow|deny [!]aclname...
+# Adaptation_access set_name     allow|deny [!]aclname...
+# At each supported vectoring point, the adaptation_access
+# Statements are processed in the order they appear in this
+# Configuration file. statements pointing to the following services
+# Are ignored (i.e., skipped without checking their acl):
+# - Services serving different vectoring points
+#        - "Broken-but-bypassable" services
+#        - "Up" services configured to ignore such transactions
+#              (E.g., based on the icap transfer-ignore header).
+# When a set_name is used, all services in the set are checked
+# Using the same rules, to find the first applicable one. see
+# Adaptation_service_set for details.
+# If an access list is checked and there is a match, the
+# Processing stops: for an "allow" rule, the corresponding
+# Adaptation service is used for the transaction. for a "deny"
+# Rule, no adaptation service is activated.
+# It is currently not possible to apply more than one adaptation
+# Service at the same vectoring point to the same http transaction.
+# See also: icap_service and ecap_service
 #Example:
-#adaptation_access service_1 allow all
+#Adaptation_access service_1 allow all
 #Default:
 # Allow, unless rules exist in squid.conf.
 
-#  TAG: adaptation_service_iteration_limit
-#    Limits the number of iterations allowed when applying adaptation
-#    services to a message. If your longest adaptation set or chain
-#    may have more than 16 services, increase the limit beyond its
-#    default value of 16. If detecting infinite iteration loops sooner
-#    is critical, make the iteration limit match the actual number
-#    of services in your longest adaptation set or chain.
-#
-#    Infinite adaptation loops are most likely with routing services.
-#
-#    See also: icap_service routing=1
+# Tag: adaptation_service_iteration_limit
+# Limits the number of iterations allowed when applying adaptation
+# Services to a message. if your longest adaptation set or chain
+# May have more than 16 services, increase the limit beyond its
+# Default value of 16. if detecting infinite iteration loops sooner
+# Is critical, make the iteration limit match the actual number
+# Of services in your longest adaptation set or chain.
+# Infinite adaptation loops are most likely with routing services.
+# See also: icap_service routing=1
 #Default:
-# adaptation_service_iteration_limit 16
+# Adaptation_service_iteration_limit 16
 
-#  TAG: adaptation_masterx_shared_names
-#    For each master transaction (i.e., the HTTP request and response
-#    sequence, including all related ICAP and eCAP exchanges), Squid
-#    maintains a table of metadata. The table entries are (name, value)
-#    pairs shared among eCAP and ICAP exchanges. The table is destroyed
-#    with the master transaction.
-#
-#    This option specifies the table entry names that Squid must accept
-#    from and forward to the adaptation transactions.
-#
-#    An ICAP REQMOD or RESPMOD transaction may set an entry in the
-#    shared table by returning an ICAP header field with a name
-#    specified in adaptation_masterx_shared_names.
-#
-#    An eCAP REQMOD or RESPMOD transaction may set an entry in the
-#    shared table by implementing the libecap::visitEachOption() API
-#    to provide an option with a name specified in
-#    adaptation_masterx_shared_names.
-#
-#    Squid will store and forward the set entry to subsequent adaptation
-#    transactions within the same master transaction scope.
-#
-#    Only one shared entry name is supported at this time.
-#
+# Tag: adaptation_masterx_shared_names
+# For each master transaction (i.e., the http request and response
+# Sequence, including all related icap and ecap exchanges), squid
+# Maintains a table of metadata. the table entries are (name, value)
+# Pairs shared among ecap and icap exchanges. the table is destroyed
+# With the master transaction.
+# This option specifies the table entry names that squid must accept
+# From and forward to the adaptation transactions.
+# An icap reqmod or respmod transaction may set an entry in the
+# Shared table by returning an icap header field with a name
+# Specified in adaptation_masterx_shared_names.
+# An ecap reqmod or respmod transaction may set an entry in the
+# Shared table by implementing the libecap::visiteachoption() api
+# To provide an option with a name specified in
+# Adaptation_masterx_shared_names.
+# Squid will store and forward the set entry to subsequent adaptation
+# Transactions within the same master transaction scope.
+# Only one shared entry name is supported at this time.
 #Example:
-## share authentication information among ICAP services
-#adaptation_masterx_shared_names X-Subscriber-ID
+## Share authentication information among icap services
+#Adaptation_masterx_shared_names x-subscriber-id
 #Default:
-# none
+# None
 
-#  TAG: adaptation_meta
-#    This option allows Squid administrator to add custom ICAP request
-#    headers or eCAP options to Squid ICAP requests or eCAP transactions.
-#    Use it to pass custom authentication tokens and other
-#    transaction-state related meta information to an ICAP/eCAP service.
-#
-#    The addition of a meta header is ACL-driven:
-#        adaptation_meta name value [!]aclname ...
-#
-#    Processing for a given header name stops after the first ACL list match.
-#    Thus, it is impossible to add two headers with the same name. If no ACL
-#    lists match for a given header name, no such header is added. For
-#    example:
-#
-#        # do not debug transactions except for those that need debugging
-#        adaptation_meta X-Debug 1 needs_debugging
-#
-#        # log all transactions except for those that must remain secret
-#        adaptation_meta X-Log 1 !keep_secret
-#
-#        # mark transactions from users in the "G 1" group
-#        adaptation_meta X-Authenticated-Groups "G 1" authed_as_G1
-#
-#    The "value" parameter may be a regular squid.conf token or a "double
-#    quoted string". Within the quoted string, use backslash (\) to escape
-#    any character, which is currently only useful for escaping backslashes
-#    and double quotes. For example,
-#        "this string has one backslash (\\) and two \"quotes\""
-#
-#    Used adaptation_meta header values may be logged via %note
-#    logformat code. If multiple adaptation_meta headers with the same name
-#    are used during master transaction lifetime, the header values are
-#    logged in the order they were used and duplicate values are ignored
-#    (only the first repeated value will be logged).
+# Tag: adaptation_meta
+# This option allows squid administrator to add custom icap request
+# Headers or ecap options to squid icap requests or ecap transactions.
+# Use it to pass custom authentication tokens and other
+# Transaction-state related meta information to an icap/ecap service.
+# The addition of a meta header is acl-driven:
+# Adaptation_meta name value [!]aclname ...
+# Processing for a given header name stops after the first acl list match.
+# Thus, it is impossible to add two headers with the same name. if no acl
+# Lists match for a given header name, no such header is added. for
+# Example:
+# # Do not debug transactions except for those that need debugging
+# Adaptation_meta x-debug 1 needs_debugging
+# # Log all transactions except for those that must remain secret
+# Adaptation_meta x-log 1 !keep_secret
+# # Mark transactions from users in the "g 1" group
+# Adaptation_meta x-authenticated-groups "g 1" authed_as_g1
+# The "value" parameter may be a regular squid.conf token or a "double
+# Quoted string". within the quoted string, use backslash (\) to escape
+# Any character, which is currently only useful for escaping backslashes
+# And double quotes. for example,
+#        "This string has one backslash (\\) and two \"quotes\""
+# Used adaptation_meta header values may be logged via %note
+# Logformat code. if multiple adaptation_meta headers with the same name
+# Are used during master transaction lifetime, the header values are
+# Logged in the order they were used and duplicate values are ignored
+#    (Only the first repeated value will be logged).
 #Default:
-# none
+# None
 
-#  TAG: icap_retry
-#    This ACL determines which retriable ICAP transactions are
-#    retried. Transactions that received a complete ICAP response
-#    and did not have to consume or produce HTTP bodies to receive
-#    that response are usually retriable.
-#
-#    icap_retry allow|deny [!]aclname ...
-#
-#    Squid automatically retries some ICAP I/O timeouts and errors
-#    due to persistent connection race conditions.
-#
-#    See also: icap_retry_limit
+# Tag: icap_retry
+# This acl determines which retriable icap transactions are
+# Retried. transactions that received a complete icap response
+# And did not have to consume or produce http bodies to receive
+# That response are usually retriable.
+# Icap_retry allow|deny [!]aclname ...
+# Squid automatically retries some icap i/o timeouts and errors
+# Due to persistent connection race conditions.
+# See also: icap_retry_limit
 #Default:
-# icap_retry deny all
+# Icap_retry deny all
 
-#  TAG: icap_retry_limit
-#    Limits the number of retries allowed.
-#
-#    Communication errors due to persistent connection race
-#    conditions are unavoidable, automatically retried, and do not
-#    count against this limit.
-#
-#    See also: icap_retry
+# Tag: icap_retry_limit
+# Limits the number of retries allowed.
+# Communication errors due to persistent connection race
+# Conditions are unavoidable, automatically retried, and do not
+# Count against this limit.
+# See also: icap_retry
 #Default:
 # No retries are allowed.
 
-# DNS OPTIONS
+# Dns options
 # -----------------------------------------------------------------------------
 
-#  TAG: check_hostnames
-#    For security and stability reasons Squid can check
-#    hostnames for Internet standard RFC compliance. If you want
-#    Squid to perform these checks turn this directive on.
+# Tag: check_hostnames
+# For security and stability reasons squid can check
+# Hostnames for internet standard rfc compliance. if you want
+# Squid to perform these checks turn this directive on.
 #Default:
-# check_hostnames off
+# Check_hostnames off
 
-#  TAG: allow_underscore
-#    Underscore characters is not strictly allowed in Internet hostnames
-#    but nevertheless used by many sites. Set this to off if you want
-#    Squid to be strict about the standard.
-#    This check is performed only when check_hostnames is set to on.
+# Tag: allow_underscore
+# Underscore characters is not strictly allowed in internet hostnames
+# But nevertheless used by many sites. set this to off if you want
+# Squid to be strict about the standard.
+# This check is performed only when check_hostnames is set to on.
 #Default:
-# allow_underscore on
+# Allow_underscore on
 
-#  TAG: dns_retransmit_interval
-#    Initial retransmit interval for DNS queries. The interval is
-#    doubled each time all configured DNS servers have been tried.
+# Tag: dns_retransmit_interval
+# Initial retransmit interval for dns queries. the interval is
+# Doubled each time all configured dns servers have been tried.
 #Default:
-# dns_retransmit_interval 5 seconds
+# Dns_retransmit_interval 5 seconds
 
-#  TAG: dns_timeout
-#    DNS Query timeout. If no response is received to a DNS query
-#    within this time all DNS servers for the queried domain
-#    are assumed to be unavailable.
+# Tag: dns_timeout
+# Dns query timeout. if no response is received to a dns query
+# Within this time all dns servers for the queried domain
+# Are assumed to be unavailable.
 #Default:
-# dns_timeout 30 seconds
+# Dns_timeout 30 seconds
 
-#  TAG: dns_packet_max
-#    Maximum number of bytes packet size to advertise via EDNS.
-#    Set to "none" to disable EDNS large packet support.
-#
-#    For legacy reasons DNS UDP replies will default to 512 bytes which
-#    is too small for many responses. EDNS provides a means for Squid to
-#    negotiate receiving larger responses back immediately without having
-#    to failover with repeat requests. Responses larger than this limit
-#    will retain the old behaviour of failover to TCP DNS.
-#
-#    Squid has no real fixed limit internally, but allowing packet sizes
-#    over 1500 bytes requires network jumbogram support and is usually not
-#    necessary.
-#
-#    WARNING: The RFC also indicates that some older resolvers will reply
-#    with failure of the whole request if the extension is added. Some
-#    resolvers have already been identified which will reply with mangled
-#    EDNS response on occasion. Usually in response to many-KB jumbogram
-#    sizes being advertised by Squid.
-#    Squid will currently treat these both as an unable-to-resolve domain
-#    even if it would be resolvable without EDNS.
+# Tag: dns_packet_max
+# Maximum number of bytes packet size to advertise via edns.
+# Set to "none" to disable edns large packet support.
+# For legacy reasons dns udp replies will default to 512 bytes which
+# Is too small for many responses. edns provides a means for squid to
+# Negotiate receiving larger responses back immediately without having
+# To failover with repeat requests. responses larger than this limit
+# Will retain the old behaviour of failover to tcp dns.
+# Squid has no real fixed limit internally, but allowing packet sizes
+# Over 1500 bytes requires network jumbogram support and is usually not
+# Necessary.
+# Warning: the rfc also indicates that some older resolvers will reply
+# With failure of the whole request if the extension is added. some
+# Resolvers have already been identified which will reply with mangled
+# Edns response on occasion. usually in response to many-kb jumbogram
+# Sizes being advertised by squid.
+# Squid will currently treat these both as an unable-to-resolve domain
+# Even if it would be resolvable without edns.
 #Default:
-# EDNS disabled
+# Edns disabled
 
-#  TAG: dns_defnames    on|off
-#    Normally the RES_DEFNAMES resolver option is disabled
-#    (see res_init(3)).  This prevents caches in a hierarchy
-#    from interpreting single-component hostnames locally.  To allow
-#    Squid to handle single-component names, enable this option.
+# Tag: dns_defnames    on|off
+# Normally the res_defnames resolver option is disabled
+#    (See res_init(3)).  this prevents caches in a hierarchy
+# From interpreting single-component hostnames locally.  to allow
+# Squid to handle single-component names, enable this option.
 #Default:
 # Search for single-label domain names is disabled.
 
-#  TAG: dns_multicast_local    on|off
-#    When set to on, Squid sends multicast DNS lookups on the local
-#    network for domains ending in .local and .arpa.
-#    This enables local servers and devices to be contacted in an
-#    ad-hoc or zero-configuration network environment.
+# Tag: dns_multicast_local    on|off
+# When set to on, squid sends multicast dns lookups on the local
+# Network for domains ending in .local and .arpa.
+# This enables local servers and devices to be contacted in an
+# Ad-hoc or zero-configuration network environment.
 #Default:
 # Search for .local and .arpa names is disabled.
 
-#  TAG: dns_nameservers
-#    Use this if you want to specify a list of DNS name servers
-#    (IP addresses) to use instead of those given in your
-#    /etc/resolv.conf file.
-#
-#    On Windows platforms, if no value is specified here or in
-#    the /etc/resolv.conf file, the list of DNS name servers are
-#    taken from the Windows registry, both static and dynamic DHCP
-#    configurations are supported.
-#
-#    Example: dns_nameservers 10.0.0.1 192.172.0.4
+# Tag: dns_nameservers
+# Use this if you want to specify a list of dns name servers
+#    (Ip addresses) to use instead of those given in your
+#    /Etc/resolv.conf file.
+# On windows platforms, if no value is specified here or in
+# The /etc/resolv.conf file, the list of dns name servers are
+# Taken from the windows registry, both static and dynamic dhcp
+# Configurations are supported.
+# Example: dns_nameservers 10.0.0.1 192.172.0.4
 #Default:
 # Use operating system definitions
 
-#  TAG: hosts_file
-#    Location of the host-local IP name-address associations
-#    database. Most Operating Systems have such a file on different
-#    default locations:
-#    - Un*X & Linux:    /etc/hosts
-#    - Windows NT/2000: %SystemRoot%\system32\drivers\etc\hosts
-#               (%SystemRoot% value install default is c:\winnt)
-#    - Windows XP/2003: %SystemRoot%\system32\drivers\etc\hosts
-#               (%SystemRoot% value install default is c:\windows)
-#    - Windows 9x/Me:   %windir%\hosts
-#               (%windir% value is usually c:\windows)
+# Tag: hosts_file
+# Location of the host-local ip name-address associations
+# Database. most operating systems have such a file on different
+# Default locations:
+#    - Un*x & linux:    /etc/hosts
+#    - Windows nt/2000: %systemroot%\system32\drivers\etc\hosts
+#               (%Systemroot% value install default is c:\winnt)
+#    - Windows xp/2003: %systemroot%\system32\drivers\etc\hosts
+#               (%Systemroot% value install default is c:\windows)
+#    - Windows 9x/me:   %windir%\hosts
+#               (%Windir% value is usually c:\windows)
 #    - Cygwin:       /etc/hosts
-#
-#    The file contains newline-separated definitions, in the
-#    form ip_address_in_dotted_form name [name ...] names are
-#    whitespace-separated. Lines beginning with an hash (#)
-#    character are comments.
-#
-#    The file is checked at startup and upon configuration.
-#    If set to 'none', it won't be checked.
-#    If append_domain is used, that domain will be added to
-#    domain-local (i.e. not containing any dot character) host
-#    definitions.
+# The file contains newline-separated definitions, in the
+# Form ip_address_in_dotted_form name [name ...] names are
+# Whitespace-separated. lines beginning with an hash (#)
+# Character are comments.
+# The file is checked at startup and upon configuration.
+# If set to 'none', it won't be checked.
+# If append_domain is used, that domain will be added to
+# Domain-local (i.e. not containing any dot character) host
+# Definitions.
 #Default:
-# hosts_file /etc/hosts
+# Hosts_file /etc/hosts
 
-#  TAG: append_domain
-#    Appends local domain name to hostnames without any dots in
-#    them.  append_domain must begin with a period.
-#
-#    Be warned there are now Internet names with no dots in
-#    them using only top-domain names, so setting this may
-#    cause some Internet sites to become unavailable.
-#
+# Tag: append_domain
+# Appends local domain name to hostnames without any dots in
+# Them.  append_domain must begin with a period.
+# Be warned there are now internet names with no dots in
+# Them using only top-domain names, so setting this may
+# Cause some internet sites to become unavailable.
 #Example:
-# append_domain .yourdomain.com
+# Append_domain .yourdomain.com
 #Default:
 # Use operating system definitions
 
-#  TAG: ignore_unknown_nameservers
-#    By default Squid checks that DNS responses are received
-#    from the same IP addresses they are sent to.  If they
-#    don't match, Squid ignores the response and writes a warning
-#    message to cache.log.  You can allow responses from unknown
-#    nameservers by setting this option to 'off'.
+# Tag: ignore_unknown_nameservers
+# By default squid checks that dns responses are received
+# From the same ip addresses they are sent to.  if they
+# Don't match, squid ignores the response and writes a warning
+# Message to cache.log.  you can allow responses from unknown
+# Nameservers by setting this option to 'off'.
 #Default:
-# ignore_unknown_nameservers on
+# Ignore_unknown_nameservers on
 
-#  TAG: ipcache_size    (number of entries)
-#    Maximum number of DNS IP cache entries.
+# Tag: ipcache_size    (number of entries)
+# Maximum number of dns ip cache entries.
 #Default:
-# ipcache_size 1024
+# Ipcache_size 1024
 
-#  TAG: ipcache_low    (percent)
+# Tag: ipcache_low    (percent)
 #Default:
-# ipcache_low 90
+# Ipcache_low 90
 
-#  TAG: ipcache_high    (percent)
-#    The size, low-, and high-water marks for the IP cache.
+# Tag: ipcache_high    (percent)
+# The size, low-, and high-water marks for the ip cache.
 #Default:
-# ipcache_high 95
+# Ipcache_high 95
 
-#  TAG: fqdncache_size    (number of entries)
-#    Maximum number of FQDN cache entries.
+# Tag: fqdncache_size    (number of entries)
+# Maximum number of fqdn cache entries.
 #Default:
-# fqdncache_size 1024
+# Fqdncache_size 1024
 
-# MISCELLANEOUS
+# Miscellaneous
 # -----------------------------------------------------------------------------
 
-#  TAG: configuration_includes_quoted_values    on|off
-#    If set, Squid will recognize each "quoted string" after a configuration
-#    directive as a single parameter. The quotes are stripped before the
-#    parameter value is interpreted or used.
-#    See "Values with spaces, quotes, and other special characters"
-#    section for more details.
+# Tag: configuration_includes_quoted_values    on|off
+# If set, squid will recognize each "quoted string" after a configuration
+# Directive as a single parameter. the quotes are stripped before the
+# Parameter value is interpreted or used.
+# See "values with spaces, quotes, and other special characters"
+# Section for more details.
 #Default:
-# configuration_includes_quoted_values off
+# Configuration_includes_quoted_values off
 
-#  TAG: memory_pools    on|off
-#    If set, Squid will keep pools of allocated (but unused) memory
-#    available for future use.  If memory is a premium on your
-#    system and you believe your malloc library outperforms Squid
-#    routines, disable this.
+# Tag: memory_pools    on|off
+# If set, squid will keep pools of allocated (but unused) memory
+# Available for future use.  if memory is a premium on your
+# System and you believe your malloc library outperforms squid
+# Routines, disable this.
 #Default:
-# memory_pools on
+# Memory_pools on
 
-#  TAG: memory_pools_limit    (bytes)
-#    Used only with memory_pools on:
-#    memory_pools_limit 50 MB
-#
-#    If set to a non-zero value, Squid will keep at most the specified
-#    limit of allocated (but unused) memory in memory pools. All free()
-#    requests that exceed this limit will be handled by your malloc
-#    library. Squid does not pre-allocate any memory, just safe-keeps
-#    objects that otherwise would be free()d. Thus, it is safe to set
-#    memory_pools_limit to a reasonably high value even if your
-#    configuration will use less memory.
-#
-#    If set to none, Squid will keep all memory it can. That is, there
-#    will be no limit on the total amount of memory used for safe-keeping.
-#
-#    To disable memory allocation optimization, do not set
-#    memory_pools_limit to 0 or none. Set memory_pools to "off" instead.
-#
-#    An overhead for maintaining memory pools is not taken into account
-#    when the limit is checked. This overhead is close to four bytes per
-#    object kept. However, pools may actually _save_ memory because of
-#    reduced memory thrashing in your malloc library.
+# Tag: memory_pools_limit    (bytes)
+# Used only with memory_pools on:
+# Memory_pools_limit 50 mb
+# If set to a non-zero value, squid will keep at most the specified
+# Limit of allocated (but unused) memory in memory pools. all free()
+# Requests that exceed this limit will be handled by your malloc
+# Library. squid does not pre-allocate any memory, just safe-keeps
+# Objects that otherwise would be free()d. thus, it is safe to set
+# Memory_pools_limit to a reasonably high value even if your
+# Configuration will use less memory.
+# If set to none, squid will keep all memory it can. that is, there
+# Will be no limit on the total amount of memory used for safe-keeping.
+# To disable memory allocation optimization, do not set
+# Memory_pools_limit to 0 or none. set memory_pools to "off" instead.
+# An overhead for maintaining memory pools is not taken into account
+# When the limit is checked. this overhead is close to four bytes per
+# Object kept. however, pools may actually _save_ memory because of
+# Reduced memory thrashing in your malloc library.
 #Default:
-# memory_pools_limit 5 MB
+# Memory_pools_limit 5 mb
 
-#  TAG: forwarded_for    on|off|transparent|truncate|delete
-#    If set to "on", Squid will append your client's IP address
-#    in the HTTP requests it forwards. By default it looks like:
-#
-#        X-Forwarded-For: 192.1.2.3
-#
-#    If set to "off", it will appear as
-#
-#        X-Forwarded-For: unknown
-#
-#    If set to "transparent", Squid will not alter the
-#    X-Forwarded-For header in any way.
-#
-#    If set to "delete", Squid will delete the entire
-#    X-Forwarded-For header.
-#
-#    If set to "truncate", Squid will remove all existing
-#    X-Forwarded-For entries, and place the client IP as the sole entry.
+# Tag: forwarded_for    on|off|transparent|truncate|delete
+# If set to "on", squid will append your client's ip address
+# In the http requests it forwards. by default it looks like:
+# X-forwarded-for: 192.1.2.3
+# If set to "off", it will appear as
+# X-forwarded-for: unknown
+# If set to "transparent", squid will not alter the
+# X-forwarded-for header in any way.
+# If set to "delete", squid will delete the entire
+# X-forwarded-for header.
+# If set to "truncate", squid will remove all existing
+# X-forwarded-for entries, and place the client ip as the sole entry.
 #Default:
-# forwarded_for on
+# Forwarded_for on
 
-#  TAG: cachemgr_passwd
-#    Specify passwords for cachemgr operations.
-#
-#    Usage: cachemgr_passwd password action action ...
-#
-#    Some valid actions are (see cache manager menu for a full list):
-#        5min
-#        60min
-#        asndb
-#        authenticator
-#        cbdata
-#        client_list
-#        comm_incoming
-#        config *
-#        counters
-#        delay
-#        digest_stats
-#        dns
-#        events
-#        filedescriptors
-#        fqdncache
-#        histograms
-#        http_headers
-#        info
-#        io
-#        ipcache
-#        mem
-#        menu
-#        netdb
-#        non_peers
-#        objects
-#        offline_toggle *
-#        pconn
-#        peer_select
-#        reconfigure *
-#        redirector
-#        refresh
-#        server_list
-#        shutdown *
-#        store_digest
-#        storedir
-#        utilization
-#        via_headers
-#        vm_objects
-#
-#    * Indicates actions which will not be performed without a
-#      valid password, others can be performed if not listed here.
-#
-#    To disable an action, set the password to "disable".
-#    To allow performing an action without a password, set the
-#    password to "none".
-#
-#    Use the keyword "all" to set the same password for all actions.
-#
+# Tag: cachemgr_passwd
+# Specify passwords for cachemgr operations.
+# Usage: cachemgr_passwd password action action ...
+# Some valid actions are (see cache manager menu for a full list):
+# 5min
+# 60min
+# Asndb
+# Authenticator
+# Cbdata
+# Client_list
+# Comm_incoming
+# Config *
+# Counters
+# Delay
+# Digest_stats
+# Dns
+# Events
+# Filedescriptors
+# Fqdncache
+# Histograms
+# Http_headers
+# Info
+# Io
+# Ipcache
+# Mem
+# Menu
+# Netdb
+# Non_peers
+# Objects
+# Offline_toggle *
+# Pconn
+# Peer_select
+# Reconfigure *
+# Redirector
+# Refresh
+# Server_list
+# Shutdown *
+# Store_digest
+# Storedir
+# Utilization
+# Via_headers
+# Vm_objects
+# * Indicates actions which will not be performed without a
+# Valid password, others can be performed if not listed here.
+# To disable an action, set the password to "disable".
+# To allow performing an action without a password, set the
+# Password to "none".
+# Use the keyword "all" to set the same password for all actions.
 #Example:
-# cachemgr_passwd secret shutdown
-# cachemgr_passwd lesssssssecret info stats/objects
-# cachemgr_passwd disable all
+# Cachemgr_passwd secret shutdown
+# Cachemgr_passwd lesssssssecret info stats/objects
+# Cachemgr_passwd disable all
 #Default:
-# No password. Actions which require password are denied.
+# No password. actions which require password are denied.
 
-#  TAG: client_db    on|off
-#    If you want to disable collecting per-client statistics,
-#    turn off client_db here.
+# Tag: client_db    on|off
+# If you want to disable collecting per-client statistics,
+# Turn off client_db here.
 #Default:
-# client_db on
+# Client_db on
 
-#  TAG: refresh_all_ims    on|off
-#    When you enable this option, squid will always check
-#    the origin server for an update when a client sends an
-#    If-Modified-Since request.  Many browsers use IMS
-#    requests when the user requests a reload, and this
-#    ensures those clients receive the latest version.
-#
-#    By default (off), squid may return a Not Modified response
-#    based on the age of the cached version.
+# Tag: refresh_all_ims    on|off
+# When you enable this option, squid will always check
+# The origin server for an update when a client sends an
+# If-modified-since request.  many browsers use ims
+# Requests when the user requests a reload, and this
+# Ensures those clients receive the latest version.
+# By default (off), squid may return a not modified response
+# Based on the age of the cached version.
 #Default:
-# refresh_all_ims off
+# Refresh_all_ims off
 
-#  TAG: reload_into_ims    on|off
-#    When you enable this option, client no-cache or ``reload''
-#    requests will be changed to If-Modified-Since requests.
-#    Doing this VIOLATES the HTTP standard.  Enabling this
-#    feature could make you liable for problems which it
-#    causes.
-#
-#    see also refresh_pattern for a more selective approach.
+# Tag: reload_into_ims    on|off
+# When you enable this option, client no-cache or ``reload''
+# Requests will be changed to if-modified-since requests.
+# Doing this violates the http standard.  enabling this
+# Feature could make you liable for problems which it
+# Causes.
+# See also refresh_pattern for a more selective approach.
 #Default:
-# reload_into_ims off
+# Reload_into_ims off
 
-#  TAG: connect_retries
-#    Limits the number of reopening attempts when establishing a single
-#    TCP connection. All these attempts must still complete before the
-#    applicable connection opening timeout expires.
-#
-#    By default and when connect_retries is set to zero, Squid does not
-#    retry failed connection opening attempts.
-#
-#    The (not recommended) maximum is 10 tries. An attempt to configure a
-#    higher value results in the value of 10 being used (with a warning).
-#
-#    Squid may open connections to retry various high-level forwarding
-#    failures. For an outside observer, that activity may look like a
-#    low-level connection reopening attempt, but those high-level retries
-#    are governed by forward_max_tries instead.
-#
-#    See also: connect_timeout, forward_timeout, icap_connect_timeout,
-#    ident_timeout, and forward_max_tries.
+# Tag: connect_retries
+# Limits the number of reopening attempts when establishing a single
+# Tcp connection. all these attempts must still complete before the
+# Applicable connection opening timeout expires.
+# By default and when connect_retries is set to zero, squid does not
+# Retry failed connection opening attempts.
+# The (not recommended) maximum is 10 tries. an attempt to configure a
+# Higher value results in the value of 10 being used (with a warning).
+# Squid may open connections to retry various high-level forwarding
+# Failures. for an outside observer, that activity may look like a
+# Low-level connection reopening attempt, but those high-level retries
+# Are governed by forward_max_tries instead.
+# See also: connect_timeout, forward_timeout, icap_connect_timeout,
+# Ident_timeout, and forward_max_tries.
 #Default:
 # Do not retry failed connections.
 
-#  TAG: retry_on_error
-#    If set to ON Squid will automatically retry requests when
-#    receiving an error response with status 403 (Forbidden),
-#    500 (Internal Error), 501 or 503 (Service not available).
-#    Status 502 and 504 (Gateway errors) are always retried.
-#
-#    This is mainly useful if you are in a complex cache hierarchy to
-#    work around access control errors.
-#
-#    NOTE: This retry will attempt to find another working destination.
-#    Which is different from the server which just failed.
+# Tag: retry_on_error
+# If set to on squid will automatically retry requests when
+# Receiving an error response with status 403 (forbidden),
+# 500 (internal error), 501 or 503 (service not available).
+# Status 502 and 504 (gateway errors) are always retried.
+# This is mainly useful if you are in a complex cache hierarchy to
+# Work around access control errors.
+# Note: this retry will attempt to find another working destination.
+# Which is different from the server which just failed.
 #Default:
-# retry_on_error off
+# Retry_on_error off
 
-#  TAG: as_whois_server
-#    WHOIS server to query for AS numbers.  NOTE: AS numbers are
-#    queried only when Squid starts up, not for every request.
+# Tag: as_whois_server
+# Whois server to query for as numbers.  note: as numbers are
+# Queried only when squid starts up, not for every request.
 #Default:
-# as_whois_server whois.ra.net
+# As_whois_server whois.ra.net
 
-#  TAG: offline_mode
-#    Enable this option and Squid will never try to validate cached
-#    objects.
+# Tag: offline_mode
+# Enable this option and squid will never try to validate cached
+# Objects.
 #Default:
-# offline_mode off
+# Offline_mode off
 
-#  TAG: uri_whitespace
-#    What to do with requests that have whitespace characters in the
-#    URI.  Options:
-#
-#    strip:  The whitespace characters are stripped out of the URL.
-#        This is the behavior recommended by RFC2396 and RFC3986
-#        for tolerant handling of generic URI.
-#        NOTE: This is one difference between generic URI and HTTP URLs.
-#
-#    deny:   The request is denied.  The user receives an "Invalid
-#        Request" message.
-#        This is the behaviour recommended by RFC2616 for safe
-#        handling of HTTP request URL.
-#
-#    allow:  The request is allowed and the URI is not changed.  The
-#        whitespace characters remain in the URI.  Note the
-#        whitespace is passed to redirector processes if they
-#        are in use.
-#        Note this may be considered a violation of RFC2616
-#        request parsing where whitespace is prohibited in the
-#        URL field.
-#
-#    encode:    The request is allowed and the whitespace characters are
-#        encoded according to RFC1738.
-#
-#    chop:    The request is allowed and the URI is chopped at the
-#        first whitespace.
-#
-#
-#    NOTE the current Squid implementation of encode and chop violates
-#    RFC2616 by not using a 301 redirect after altering the URL.
+# Tag: uri_whitespace
+# What to do with requests that have whitespace characters in the
+# Uri.  options:
+# Strip:  the whitespace characters are stripped out of the url.
+# This is the behavior recommended by rfc2396 and rfc3986
+# For tolerant handling of generic uri.
+# Note: this is one difference between generic uri and http urls.
+# Deny:   the request is denied.  the user receives an "invalid
+# Request" message.
+# This is the behaviour recommended by rfc2616 for safe
+# Handling of http request url.
+# Allow:  the request is allowed and the uri is not changed.  the
+# Whitespace characters remain in the uri.  note the
+# Whitespace is passed to redirector processes if they
+# Are in use.
+# Note this may be considered a violation of rfc2616
+# Request parsing where whitespace is prohibited in the
+# Url field.
+# Encode:    the request is allowed and the whitespace characters are
+# Encoded according to rfc1738.
+# Chop:    the request is allowed and the uri is chopped at the
+# First whitespace.
+# Note the current squid implementation of encode and chop violates
+# Rfc2616 by not using a 301 redirect after altering the url.
 #Default:
-# uri_whitespace strip
+# Uri_whitespace strip
 
-#  TAG: chroot
-#    Specifies a directory where Squid should do a chroot() while
-#    initializing.  This also causes Squid to fully drop root
-#    privileges after initializing.  This means, for example, if you
-#    use a HTTP port less than 1024 and try to reconfigure, you may
-#    get an error saying that Squid can not open the port.
+# Tag: chroot
+# Specifies a directory where squid should do a chroot() while
+# Initializing.  this also causes squid to fully drop root
+# Privileges after initializing.  this means, for example, if you
+# Use a http port less than 1024 and try to reconfigure, you may
+# Get an error saying that squid can not open the port.
 #Default:
-# none
+# None
 
-#  TAG: pipeline_prefetch
-#    HTTP clients may send a pipeline of 1+N requests to Squid using a
-#    single connection, without waiting for Squid to respond to the first
-#    of those requests. This option limits the number of concurrent
-#    requests Squid will try to handle in parallel. If set to N, Squid
-#    will try to receive and process up to 1+N requests on the same
-#    connection concurrently.
-#
-#    Defaults to 0 (off) for bandwidth management and access logging
-#    reasons.
-#
-#    NOTE: pipelining requires persistent connections to clients.
-#
-#    WARNING: pipelining breaks NTLM and Negotiate/Kerberos authentication.
+# Tag: pipeline_prefetch
+# Http clients may send a pipeline of 1+n requests to squid using a
+# Single connection, without waiting for squid to respond to the first
+# Of those requests. this option limits the number of concurrent
+# Requests squid will try to handle in parallel. if set to n, squid
+# Will try to receive and process up to 1+n requests on the same
+# Connection concurrently.
+# Defaults to 0 (off) for bandwidth management and access logging
+# Reasons.
+# Note: pipelining requires persistent connections to clients.
+# Warning: pipelining breaks ntlm and negotiate/kerberos authentication.
 #Default:
 # Do not pre-parse pipelined requests.
 
-#  TAG: high_response_time_warning    (msec)
-#    If the one-minute median response time exceeds this value,
-#    Squid prints a WARNING with debug level 0 to get the
-#    administrators attention.  The value is in milliseconds.
+# Tag: high_response_time_warning    (msec)
+# If the one-minute median response time exceeds this value,
+# Squid prints a warning with debug level 0 to get the
+# Administrators attention.  the value is in milliseconds.
 #Default:
-# disabled.
+# Disabled.
 
-#  TAG: high_page_fault_warning
-#    If the one-minute average page fault rate exceeds this
-#    value, Squid prints a WARNING with debug level 0 to get
-#    the administrators attention.  The value is in page faults
-#    per second.
+# Tag: high_page_fault_warning
+# If the one-minute average page fault rate exceeds this
+# Value, squid prints a warning with debug level 0 to get
+# The administrators attention.  the value is in page faults
+# Per second.
 #Default:
-# disabled.
+# Disabled.
 
-#  TAG: high_memory_warning
-# Note: This option is only available if Squid is rebuilt with the
-#       GNU Malloc with mstats()
-#
-#    If the memory usage (as determined by gnumalloc, if available and used)
-#    exceeds    this amount, Squid prints a WARNING with debug level 0 to get
-#    the administrators attention.
+# Tag: high_memory_warning
+# Note: this option is only available if squid is rebuilt with the
+# Gnu malloc with mstats()
+# If the memory usage (as determined by gnumalloc, if available and used)
+# Exceeds    this amount, squid prints a warning with debug level 0 to get
+# The administrators attention.
 #Default:
-# disabled.
+# Disabled.
 
-#  TAG: sleep_after_fork    (microseconds)
-#    When this is set to a non-zero value, the main Squid process
-#    sleeps the specified number of microseconds after a fork()
-#    system call. This sleep may help the situation where your
-#    system reports fork() failures due to lack of (virtual)
-#    memory. Note, however, if you have a lot of child
-#    processes, these sleep delays will add up and your
-#    Squid will not service requests for some amount of time
-#    until all the child processes have been started.
-#    On Windows value less then 1000 (1 milliseconds) are
-#    rounded to 1000.
+# Tag: sleep_after_fork    (microseconds)
+# When this is set to a non-zero value, the main squid process
+# Sleeps the specified number of microseconds after a fork()
+# System call. this sleep may help the situation where your
+# System reports fork() failures due to lack of (virtual)
+# Memory. note, however, if you have a lot of child
+# Processes, these sleep delays will add up and your
+# Squid will not service requests for some amount of time
+# Until all the child processes have been started.
+# On windows value less then 1000 (1 milliseconds) are
+# Rounded to 1000.
 #Default:
-# sleep_after_fork 0
+# Sleep_after_fork 0
 
-#  TAG: windows_ipaddrchangemonitor    on|off
-# Note: This option is only available if Squid is rebuilt with the
-#       MS Windows
-#
-#    On Windows Squid by default will monitor IP address changes and will
-#    reconfigure itself after any detected event. This is very useful for
-#    proxies connected to internet with dial-up interfaces.
-#    In some cases (a Proxy server acting as VPN gateway is one) it could be
-#    desiderable to disable this behaviour setting this to 'off'.
-#    Note: after changing this, Squid service must be restarted.
+# Tag: windows_ipaddrchangemonitor    on|off
+# Note: this option is only available if squid is rebuilt with the
+# Ms windows
+# On windows squid by default will monitor ip address changes and will
+# Reconfigure itself after any detected event. this is very useful for
+# Proxies connected to internet with dial-up interfaces.
+# In some cases (a proxy server acting as vpn gateway is one) it could be
+# Desiderable to disable this behaviour setting this to 'off'.
+# Note: after changing this, squid service must be restarted.
 #Default:
-# windows_ipaddrchangemonitor on
+# Windows_ipaddrchangemonitor on
 
-#  TAG: eui_lookup
-#    Whether to lookup the EUI or MAC address of a connected client.
+# Tag: eui_lookup
+# Whether to lookup the eui or mac address of a connected client.
 #Default:
-# eui_lookup on
+# Eui_lookup on
 
-#  TAG: max_filedescriptors
-#    Set the maximum number of filedescriptors, either below the
-#    operating system default or up to the hard limit.
-#
-#    Remove from squid.conf to inherit the current ulimit soft
-#    limit setting.
-#
-#    Note: Changing this requires a restart of Squid. Also
-#    not all I/O types supports large values (eg on Windows).
+# Tag: max_filedescriptors
+# Set the maximum number of filedescriptors, either below the
+# Operating system default or up to the hard limit.
+# Remove from squid.conf to inherit the current ulimit soft
+# Limit setting.
+# Note: changing this requires a restart of squid. also
+# Not all i/o types supports large values (eg on windows).
 #Default:
 # Use operating system soft limit set by ulimit.
 
-#  TAG: force_request_body_continuation
-#    This option controls how Squid handles data upload requests from HTTP
-#    and FTP agents that require a "Please Continue" control message response
-#    to actually send the request body to Squid. It is mostly useful in
-#    adaptation environments.
-#
-#    When Squid receives an HTTP request with an "Expect: 100-continue"
-#    header or an FTP upload command (e.g., STOR), Squid normally sends the
-#    request headers or FTP command information to an adaptation service (or
-#    peer) and waits for a response. Most adaptation services (and some
-#    broken peers) may not respond to Squid at that stage because they may
-#    decide to wait for the HTTP request body or FTP data transfer. However,
-#    that request body or data transfer may never come because Squid has not
-#    responded with the HTTP 100 or FTP 150 (Please Continue) control message
-#    to the request sender yet!
-#
-#    An allow match tells Squid to respond with the HTTP 100 or FTP 150
-#    (Please Continue) control message on its own, before forwarding the
-#    request to an adaptation service or peer. Such a response usually forces
-#    the request sender to proceed with sending the body. A deny match tells
-#    Squid to delay that control response until the origin server confirms
-#    that the request body is needed. Delaying is the default behavior.
+# Tag: force_request_body_continuation
+# This option controls how squid handles data upload requests from http
+# And ftp agents that require a "please continue" control message response
+# To actually send the request body to squid. it is mostly useful in
+# Adaptation environments.
+# When squid receives an http request with an "expect: 100-continue"
+# Header or an ftp upload command (e.g., stor), squid normally sends the
+# Request headers or ftp command information to an adaptation service (or
+# Peer) and waits for a response. most adaptation services (and some
+# Broken peers) may not respond to squid at that stage because they may
+# Decide to wait for the http request body or ftp data transfer. however,
+# That request body or data transfer may never come because squid has not
+# Responded with the http 100 or ftp 150 (please continue) control message
+# To the request sender yet!
+# An allow match tells squid to respond with the http 100 or ftp 150
+#    (Please continue) control message on its own, before forwarding the
+# Request to an adaptation service or peer. such a response usually forces
+# The request sender to proceed with sending the body. a deny match tells
+# Squid to delay that control response until the origin server confirms
+# That the request body is needed. delaying is the default behavior.
 #Default:
 # Deny, unless rules exist in squid.conf.
 
-#  TAG: http_upgrade_request_protocols
-#    Controls client-initiated and server-confirmed switching from HTTP to
-#    another protocol (or to several protocols) using HTTP Upgrade mechanism
-#    defined in RFC 7230 Section 6.7. Squid itself does not understand the
-#    protocols being upgraded to and participates in the upgraded
-#    communication only as a dumb TCP proxy. Admins should not allow
-#    upgrading to protocols that require a more meaningful proxy
-#    participation.
-#
-#    Usage: http_upgrade_request_protocols <protocol> allow|deny [!]acl ...
-#
-#    The required "protocol" parameter is either an all-caps word OTHER or an
-#    explicit protocol name (e.g. "WebSocket") optionally followed by a slash
-#    and a version token (e.g. "HTTP/3"). Explicit protocol names and
-#    versions are case sensitive.
-#
-#    When an HTTP client sends an Upgrade request header, Squid iterates over
-#    the client-offered protocols and, for each protocol P (with an optional
-#    version V), evaluates the first non-empty set of
-#    http_upgrade_request_protocols rules (if any) from the following list:
-#
-#        * All rules with an explicit protocol name equal to P.
-#        * All rules that use OTHER instead of a protocol name.
-#
-#    In other words, rules using OTHER are considered for protocol P if and
-#    only if there are no rules mentioning P by name.
-#
-#    If both of the above sets are empty, then Squid removes protocol P from
-#    the Upgrade offer.
-#
-#    If the client sent a versioned protocol offer P/X, then explicit rules
-#    referring to the same-name but different-version protocol P/Y are
-#    declared inapplicable. Inapplicable rules are not evaluated (i.e. are
-#    ignored). However, inapplicable rules still belong to the first set of
-#    rules for P.
-#
-#    Within the applicable rule subset, individual rules are evaluated in
-#    their configuration order. If all ACLs of an applicable "allow" rule
-#    match, then the protocol offered by the client is forwarded to the next
-#    hop as is. If all ACLs of an applicable "deny" rule match, then the
-#    offer is dropped. If no applicable rules have matching ACLs, then the
-#    offer is also dropped. The first matching rule also ends rules
-#    evaluation for the offered protocol.
-#
-#    If all client-offered protocols are removed, then Squid forwards the
-#    client request without the Upgrade header. Squid never sends an empty
-#    Upgrade request header.
-#
-#    An Upgrade request header with a value violating HTTP syntax is dropped
-#    and ignored without an attempt to use extractable individual protocol
-#    offers.
-#
-#    Upon receiving an HTTP 101 (Switching Protocols) control message, Squid
-#    checks that the server listed at least one protocol name and sent a
-#    Connection:upgrade response header. Squid does not understand individual
-#    protocol naming and versioning concepts enough to implement stricter
-#    checks, but an admin can restrict HTTP 101 (Switching Protocols)
-#    responses further using http_reply_access. Responses denied by
-#    http_reply_access rules and responses flagged by the internal Upgrade
-#    checks result in HTTP 502 (Bad Gateway) ERR_INVALID_RESP errors and
-#    Squid-to-server connection closures.
-#
-#    If Squid sends an Upgrade request header, and the next hop (e.g., the
-#    origin server) responds with an acceptable HTTP 101 (Switching
-#    Protocols), then Squid forwards that message to the client and becomes
-#    a TCP tunnel.
-#
-#    The presence of an Upgrade request header alone does not preclude cache
-#    lookups. In other words, an Upgrade request might be satisfied from the
-#    cache, using regular HTTP caching rules.
-#
-#    This clause only supports fast acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
-#
-#    Each of the following groups of configuration lines represents a
-#    separate configuration example:
-#
-#    # never upgrade to protocol Foo; all others are OK
-#    http_upgrade_request_protocols Foo deny all
-#    http_upgrade_request_protocols OTHER allow all
-#
-#    # Only allow upgrades to the protocol Bar (except for its first version)
-#    http_upgrade_request_protocols Bar/1 deny all
-#    http_upgrade_request_protocols Bar allow all
-#    http_upgrade_request_protocols OTHER deny all # this rule is optional
-#
-#    # Only allow upgrades to protocol Baz, and only if Baz is the only offer
-#    acl UpgradeHeaderHasMultipleOffers ...
-#    http_upgrade_request_protocols Baz deny UpgradeHeaderHasMultipleOffers
-#    http_upgrade_request_protocols Baz allow all
+# Tag: http_upgrade_request_protocols
+# Controls client-initiated and server-confirmed switching from http to
+# Another protocol (or to several protocols) using http upgrade mechanism
+# Defined in rfc 7230 section 6.7. squid itself does not understand the
+# Protocols being upgraded to and participates in the upgraded
+# Communication only as a dumb tcp proxy. admins should not allow
+# Upgrading to protocols that require a more meaningful proxy
+# Participation.
+# Usage: http_upgrade_request_protocols <protocol> allow|deny [!]acl ...
+# The required "protocol" parameter is either an all-caps word other or an
+# Explicit protocol name (e.g. "websocket") optionally followed by a slash
+# And a version token (e.g. "http/3"). explicit protocol names and
+# Versions are case sensitive.
+# When an http client sends an upgrade request header, squid iterates over
+# The client-offered protocols and, for each protocol p (with an optional
+# Version v), evaluates the first non-empty set of
+# Http_upgrade_request_protocols rules (if any) from the following list:
+# * All rules with an explicit protocol name equal to p.
+#        * All rules that use other instead of a protocol name.
+# In other words, rules using other are considered for protocol p if and
+# Only if there are no rules mentioning p by name.
+# If both of the above sets are empty, then squid removes protocol p from
+# The upgrade offer.
+# If the client sent a versioned protocol offer p/x, then explicit rules
+# Referring to the same-name but different-version protocol p/y are
+# Declared inapplicable. inapplicable rules are not evaluated (i.e. are
+# Ignored). however, inapplicable rules still belong to the first set of
+# Rules for p.
+# Within the applicable rule subset, individual rules are evaluated in
+# Their configuration order. if all acls of an applicable "allow" rule
+# Match, then the protocol offered by the client is forwarded to the next
+# Hop as is. if all acls of an applicable "deny" rule match, then the
+# Offer is dropped. if no applicable rules have matching acls, then the
+# Offer is also dropped. the first matching rule also ends rules
+# Evaluation for the offered protocol.
+# If all client-offered protocols are removed, then squid forwards the
+# Client request without the upgrade header. squid never sends an empty
+# Upgrade request header.
+# An upgrade request header with a value violating http syntax is dropped
+# And ignored without an attempt to use extractable individual protocol
+# Offers.
+# Upon receiving an http 101 (switching protocols) control message, squid
+# Checks that the server listed at least one protocol name and sent a
+# Connection:upgrade response header. squid does not understand individual
+# Protocol naming and versioning concepts enough to implement stricter
+# Checks, but an admin can restrict http 101 (switching protocols)
+# Responses further using http_reply_access. responses denied by
+# Http_reply_access rules and responses flagged by the internal upgrade
+# Checks result in http 502 (bad gateway) err_invalid_resp errors and
+# Squid-to-server connection closures.
+# If squid sends an upgrade request header, and the next hop (e.g., the
+# Origin server) responds with an acceptable http 101 (switching
+# Protocols), then squid forwards that message to the client and becomes
+# A tcp tunnel.
+# The presence of an upgrade request header alone does not preclude cache
+# Lookups. in other words, an upgrade request might be satisfied from the
+# Cache, using regular http caching rules.
+# This clause only supports fast acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
+# Each of the following groups of configuration lines represents a
+# Separate configuration example:
+# # Never upgrade to protocol foo; all others are ok
+# Http_upgrade_request_protocols foo deny all
+# Http_upgrade_request_protocols other allow all
+# # Only allow upgrades to the protocol bar (except for its first version)
+# Http_upgrade_request_protocols bar/1 deny all
+# Http_upgrade_request_protocols bar allow all
+# Http_upgrade_request_protocols other deny all # this rule is optional
+# # Only allow upgrades to protocol baz, and only if baz is the only offer
+# Acl upgradeheaderhasmultipleoffers ...
+# Http_upgrade_request_protocols baz deny upgradeheaderhasmultipleoffers
+# Http_upgrade_request_protocols baz allow all
 #Default:
 # Upgrade header dropped, effectively blocking an upgrade attempt.
 
-#  TAG: server_pconn_for_nonretriable
-#    This option provides fine-grained control over a persistent connection
-#    reuse when forwarding HTTP requests that Squid cannot retry. It is useful
-#    in environments where opening new connections is very expensive
-#    (e.g., all connections are secured with TLS with complex client and server
-#    certificate validation) and race conditions associated with persistent
-#    connections are very rare and/or only cause minor problems.
-#
-#    HTTP prohibits retrying unsafe and non-idempotent requests (e.g., POST).
-#    Squid limitations also prohibit retrying all requests with bodies (e.g., PUT).
-#    By default, when forwarding such "risky" requests, Squid opens a new
-#    connection to the server or cache_peer, even if there is an idle persistent
-#    connection available. When Squid is configured to risk sending a non-retriable
-#    request on a previously used persistent connection, and the server closes
-#    the connection before seeing that risky request, the user gets an error response
-#    from Squid. In most cases, that error response will be HTTP 502 (Bad Gateway)
-#    with ERR_ZERO_SIZE_OBJECT or ERR_WRITE_ERROR (peer connection reset) error detail.
-#
-#    If an allow rule matches, Squid reuses an available idle persistent connection
-#    (if any) for the request that Squid cannot retry. If a deny rule matches, then
-#    Squid opens a new connection for the request that Squid cannot retry.
-#
-#    This option does not affect requests that Squid can retry. They will reuse idle
-#    persistent connections (if any).
-#
-#    This clause only supports fast acl types.
-#    See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
-#
-#    Example:
-#        acl SpeedIsWorthTheRisk method POST
-#        server_pconn_for_nonretriable allow SpeedIsWorthTheRisk
+# Tag: server_pconn_for_nonretriable
+# This option provides fine-grained control over a persistent connection
+# Reuse when forwarding http requests that squid cannot retry. it is useful
+# In environments where opening new connections is very expensive
+#    (E.g., all connections are secured with tls with complex client and server
+# Certificate validation) and race conditions associated with persistent
+# Connections are very rare and/or only cause minor problems.
+# Http prohibits retrying unsafe and non-idempotent requests (e.g., post).
+# Squid limitations also prohibit retrying all requests with bodies (e.g., put).
+# By default, when forwarding such "risky" requests, squid opens a new
+# Connection to the server or cache_peer, even if there is an idle persistent
+# Connection available. when squid is configured to risk sending a non-retriable
+# Request on a previously used persistent connection, and the server closes
+# The connection before seeing that risky request, the user gets an error response
+# From squid. in most cases, that error response will be http 502 (bad gateway)
+# With err_zero_size_object or err_write_error (peer connection reset) error detail.
+# If an allow rule matches, squid reuses an available idle persistent connection
+#    (If any) for the request that squid cannot retry. if a deny rule matches, then
+# Squid opens a new connection for the request that squid cannot retry.
+# This option does not affect requests that squid can retry. they will reuse idle
+# Persistent connections (if any).
+# This clause only supports fast acl types.
+# See http://wiki.squid-cache.org/squidfaq/squidacl for details.
+# Example:
+# Acl speedisworththerisk method post
+# Server_pconn_for_nonretriable allow speedisworththerisk
 #Default:
-# Open new connections for forwarding requests Squid cannot retry safely.
+# Open new connections for forwarding requests squid cannot retry safely.
 
-#  TAG: happy_eyeballs_connect_timeout    (msec)
-#    This Happy Eyeballs (RFC 8305) tuning directive specifies the minimum
-#    delay between opening a primary to-server connection and opening a
-#    spare to-server connection for the same master transaction. This delay
-#    is similar to the Connection Attempt Delay in RFC 8305, but it is only
-#    applied to the first spare connection attempt. Subsequent spare
-#    connection attempts to use happy_eyeballs_connect_gap, and primary
-#    connection attempts are not artificially delayed at all.
-#
-#    Terminology: The "primary" and "spare" designations are determined by
-#    the order of DNS answers received by Squid: If Squid DNS AAAA query
-#    was answered first, then primary connections are connections to IPv6
-#    peer addresses (while spare connections use IPv4 addresses).
-#    Similarly, if Squid DNS A query was answered first, then primary
-#    connections are connections to IPv4 peer addresses (while spare
-#    connections use IPv6 addresses).
-#
-#    Shorter happy_eyeballs_connect_timeout values reduce master
-#    transaction response time, potentially improving user-perceived
-#    response times (i.e., making user eyeballs happier). Longer delays
-#    reduce both concurrent connection level and server bombardment with
-#    connection requests, potentially improving overall Squid performance
-#    and reducing the chance of being blocked by servers for opening too
-#    many unused connections.
-#
-#    RFC 8305 prohibits happy_eyeballs_connect_timeout values smaller than
-#    10 (milliseconds) to "avoid congestion collapse in the presence of
-#    high packet-loss rates".
-#
-#    The following Happy Eyeballs directives place additional connection
-#    opening restrictions: happy_eyeballs_connect_gap and
-#    happy_eyeballs_connect_limit.
+# Tag: happy_eyeballs_connect_timeout    (msec)
+# This happy eyeballs (rfc 8305) tuning directive specifies the minimum
+# Delay between opening a primary to-server connection and opening a
+# Spare to-server connection for the same master transaction. this delay
+# Is similar to the connection attempt delay in rfc 8305, but it is only
+# Applied to the first spare connection attempt. subsequent spare
+# Connection attempts to use happy_eyeballs_connect_gap, and primary
+# Connection attempts are not artificially delayed at all.
+# Terminology: the "primary" and "spare" designations are determined by
+# The order of dns answers received by squid: if squid dns aaaa query
+# Was answered first, then primary connections are connections to ipv6
+# Peer addresses (while spare connections use ipv4 addresses).
+# Similarly, if squid dns a query was answered first, then primary
+# Connections are connections to ipv4 peer addresses (while spare
+# Connections use ipv6 addresses).
+# Shorter happy_eyeballs_connect_timeout values reduce master
+# Transaction response time, potentially improving user-perceived
+# Response times (i.e., making user eyeballs happier). longer delays
+# Reduce both concurrent connection level and server bombardment with
+# Connection requests, potentially improving overall squid performance
+# And reducing the chance of being blocked by servers for opening too
+# Many unused connections.
+# Rfc 8305 prohibits happy_eyeballs_connect_timeout values smaller than
+# 10 (milliseconds) to "avoid congestion collapse in the presence of
+# High packet-loss rates".
+# The following happy eyeballs directives place additional connection
+# Opening restrictions: happy_eyeballs_connect_gap and
+# Happy_eyeballs_connect_limit.
 #Default:
-# happy_eyeballs_connect_timeout 250
+# Happy_eyeballs_connect_timeout 250
 
-#  TAG: happy_eyeballs_connect_gap    (msec)
-#    This Happy Eyeballs (RFC 8305) tuning directive specifies the
-#    minimum delay between opening spare to-server connections (to any
-#    server; i.e. across all concurrent master transactions in a Squid
-#    instance). Each SMP worker currently multiplies the configured gap
-#    by the total number of workers so that the combined spare connection
-#    opening rate of a Squid instance obeys the configured limit. The
-#    workers do not coordinate connection openings yet; a microburst
-#    of spare connection openings may violate the configured gap.
-#
-#    This directive has similar trade-offs as
-#    happy_eyeballs_connect_timeout, but its focus is on limiting traffic
-#    amplification effects for Squid as a whole, while
-#    happy_eyeballs_connect_timeout works on an individual master
-#    transaction level.
-#
-#    The following Happy Eyeballs directives place additional connection
-#    opening restrictions: happy_eyeballs_connect_timeout and
-#    happy_eyeballs_connect_limit. See the former for related terminology.
+# Tag: happy_eyeballs_connect_gap    (msec)
+# This happy eyeballs (rfc 8305) tuning directive specifies the
+# Minimum delay between opening spare to-server connections (to any
+# Server; i.e. across all concurrent master transactions in a squid
+# Instance). each smp worker currently multiplies the configured gap
+# By the total number of workers so that the combined spare connection
+# Opening rate of a squid instance obeys the configured limit. the
+# Workers do not coordinate connection openings yet; a microburst
+# Of spare connection openings may violate the configured gap.
+# This directive has similar trade-offs as
+# Happy_eyeballs_connect_timeout, but its focus is on limiting traffic
+# Amplification effects for squid as a whole, while
+# Happy_eyeballs_connect_timeout works on an individual master
+# Transaction level.
+# The following happy eyeballs directives place additional connection
+# Opening restrictions: happy_eyeballs_connect_timeout and
+# Happy_eyeballs_connect_limit. see the former for related terminology.
 #Default:
-# no artificial delays between spare attempts
+# No artificial delays between spare attempts
 
-#  TAG: happy_eyeballs_connect_limit
-#    This Happy Eyeballs (RFC 8305) tuning directive specifies the
-#    maximum number of spare to-server connections (to any server; i.e.
-#    across all concurrent master transactions in a Squid instance).
-#    Each SMP worker gets an equal share of the total limit. However,
-#    the workers do not share the actual connection counts yet, so one
-#    (busier) worker cannot "borrow" spare connection slots from another
-#    (less loaded) worker.
-#
-#    Setting this limit to zero disables concurrent use of primary and
-#    spare TCP connections: Spare connection attempts are made only after
-#    all primary attempts fail. However, Squid would still use the
-#    DNS-related optimizations of the Happy Eyeballs approach.
-#
-#    This directive has similar trade-offs as happy_eyeballs_connect_gap,
-#    but its focus is on limiting Squid overheads, while
-#    happy_eyeballs_connect_gap focuses on the origin server and peer
-#    overheads.
-#
-#    The following Happy Eyeballs directives place additional connection
-#    opening restrictions: happy_eyeballs_connect_timeout and
-#    happy_eyeballs_connect_gap. See the former for related terminology.
+# Tag: happy_eyeballs_connect_limit
+# This happy eyeballs (rfc 8305) tuning directive specifies the
+# Maximum number of spare to-server connections (to any server; i.e.
+# Across all concurrent master transactions in a squid instance).
+# Each smp worker gets an equal share of the total limit. however,
+# The workers do not share the actual connection counts yet, so one
+#    (Busier) worker cannot "borrow" spare connection slots from another
+#    (Less loaded) worker.
+# Setting this limit to zero disables concurrent use of primary and
+# Spare tcp connections: spare connection attempts are made only after
+# All primary attempts fail. however, squid would still use the
+# Dns-related optimizations of the happy eyeballs approach.
+# This directive has similar trade-offs as happy_eyeballs_connect_gap,
+# But its focus is on limiting squid overheads, while
+# Happy_eyeballs_connect_gap focuses on the origin server and peer
+# Overheads.
+# The following happy eyeballs directives place additional connection
+# Opening restrictions: happy_eyeballs_connect_timeout and
+# Happy_eyeballs_connect_gap. see the former for related terminology.
 #Default:
-# no artificial limit on the number of concurrent spare attempts
+# No artificial limit on the number of concurrent spare attempts
 EOF
 
 cat > "$squid_whitelist" <<EOF
@@ -9337,13 +7735,13 @@ cat > "$squid_blacklist" <<EOF
 EOF
 
 # Install apache2-utils if required so the user can create
-# create a password for the user profile that controls the squid proxy
+# Create a password for the user profile that controls the squid proxy
 if ! which htpasswd; then
     sudo apt -y install apache2-utils
     clear
 fi
 
-# RUN HTPASSWD TO CREATE A PASSWORD FILE FOR THE USER ACCOUNT THAT OWNS THE SQUID PROXY SERVER
+# Run htpasswd to create a password file for the user account that owns the squid proxy server
 if [ ! -f "$squid_passwords" ]; then
     if ! htpasswd -c "$squid_passwords" squid; then
         printf "\n%s\n\n" 'The squid passwd file failed to create.'
@@ -9355,14 +7753,14 @@ if [ ! -f "$squid_passwords" ]; then
     "$(type -P cat)" "$squid_passwords"
 fi
 
-# FIREWALL SETTINGS
+# Firewall settings
 printf "\n%s\n%s\n\n" \
     '[1] Add IPTables and UFW firewall rules' \
     '[2] Skip'
 read -p 'Enter a number: ' choice
 clear
 
-case "${choice}" in
+case "$choice" in
     1)
             printf "%s\n%s\n\n" \
                 'Installing IPTABLES Firewall Rules' \
@@ -9398,14 +7796,14 @@ case "${choice}" in
             ;;
 esac
 
-# CONFIGURE SQUID TO USE THE SQUID.CONF FILE CREATED/UPDATED BY THIS SCRIPT
+# Configure squid to use the squid.conf file created/updated by this script
 sudo squid -k reconfigure
 
-# RESTART SQUID TO ENSURE ALL SETTINGS HAVE BEEN APPLIED
+# Restart squid to ensure all settings have been applied
 sudo service squid restart
 clear
 
-# RUN A TEST TO CHECK IF THE PROXY IS FILTERING REQUESTS
+# Run a test to check if the proxy is filtering requests
 if ! which squidclient &>/dev/null; then
     sudo apt -y install squidclient
 fi

@@ -22,12 +22,12 @@ EOF
 process_file_path() {
     local file_path=$1
 
-    echo -e "${CYAN}Processing file${YELLOW}: ${PURPLE}$file_path${NC}"
+    echo -e "$CYANProcessing file$YELLOW: $PURPLE$file_path$NC"
 
     if sudo mv "$file_path" "$OUPUT_FOLDER"; then
-        echo -e "${GREEN}[LOG]${NC} Command executed successfully\\n"
+        echo -e "$GREEN[LOG]$NC Command executed successfully\\n"
     else
-        echo -e "${RED}[ERROR]${NC} Failed to execute command\\n" >&2
+        echo -e "$RED[ERROR]$NC Failed to execute command\\n" >&2
     fi
 }
 

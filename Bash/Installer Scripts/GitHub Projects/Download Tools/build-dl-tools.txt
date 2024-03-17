@@ -1,6 +1,6 @@
 # List of libraries activated during build
 
-# cURL #
+# Curl #
 
 alt-svc
 c-ares
@@ -59,7 +59,7 @@ verbose
 versioned-symbols
 websockets
 
-# WGET #
+# Wget #
 
 c-ares
 metalink

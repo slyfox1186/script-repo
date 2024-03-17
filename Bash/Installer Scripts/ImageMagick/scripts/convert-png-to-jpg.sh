@@ -1,6 +1,6 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
-# https://github.com/slyfox1186/script-repo/new/main/Bash/Installer%20Scripts/ImageMagick/scripts
+# Https://github.com/slyfox1186/script-repo/new/main/bash/installer%20scripts/imagemagick/scripts
 # Convert png into jpg
 # Updated: 01.27.24
 

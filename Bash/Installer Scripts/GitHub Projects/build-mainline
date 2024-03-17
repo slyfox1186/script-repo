@@ -1,13 +1,13 @@
-#!/usr/bin/env bash
-# shellcheck disable=SC2162,SC2317
+#!/Usr/bin/env bash
+# Shellcheck disable=sc2162,sc2317
 
 #############################################################################
 ##
-##  Install Mainline from source code
+##  Install mainline from source code
 ##
-##  Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GitHub%20Projects/build-mainline
+##  Script: https://github.com/slyfox1186/script-repo/edit/main/bash/installer%20scripts/github%20projects/build-mainline
 ##
-##  GitHub Repo: https://github.com/bkw777/mainline/tree/master
+##  Github repo: https://github.com/bkw777/mainline/tree/master
 ## 
 ##  Updated: 10.03.23
 ##
@@ -17,58 +17,46 @@
 
 clear
 
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+if [ "$EUID" -eq '0' ]; then
+    echo "You must run this script without root or sudo."
     exit 1
 fi
 
-#
-# SET VARIABLES
-#
+# Set variables
 
 script_ver=1.0
 parent_dir="$PWD"
-cwd="${parent_dir}"/mainline-build-script
+cwd="$parent_dir"/mainline-build-script
 web_repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
-    "OpenSSL Build Script - v${script_ver}" \
+    "OpenSSL Build Script - v$script_ver" \
     '==============================================='
 
-#
-# CREATE OUTPUT DIRECTORY
-#
+# Create output directory
 
 if [ ! -d "$cwd" ]; then
     mkdir -p "$cwd"
 fi
 
-#
-# SET THE C+CPP COMPILERS
-#
+# Set the c+cpp compilers
 
 export CC=gcc CXX=g++
 
-#
-# EXPORT COMPILER OPTIMIZATION FLAGS
-#
+# Export compiler optimization flags
 
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 
-#
-# CREATE FUNCTIONS
-#
+# Create functions
 
-exit_fn()
-{
+exit_fn() {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         "$web_repo"
     exit 0
 }
 
-fail_fn()
-{
+fail_fn() {
     printf "\n\n%s\n\n%s\n\n%s\n\n" \
         "$1" \
         'To report a bug please create an issue at:' \
@@ -76,8 +64,7 @@ fail_fn()
     exit 1
 }
 
-cleanup_fn()
-{
+cleanup_fn() {
     local choice
 
     printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
@@ -88,10 +75,10 @@ cleanup_fn()
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
 
-    case "${choice}" in
+    case "$choice" in
         1)
                 sudo rm -fr "$cwd"
-                cd "${parent_dir}" || exit 1
+                cd "$parent_dir" || exit 1
                 if [ -f "$pem_file" ]; then
                     sudo rm "$pem_file"
                 fi
@@ -108,9 +95,7 @@ cleanup_fn()
     esac
 }
 
-#
-# INSTALL REQUIRED APT PACKAGES
-#
+# Install required apt packages
 
 pkgs=(autoconf autoconf-archive autogen automake build-essential curl
       libtool libtool-bin git-all libgee-0.8-dev libvte-2.91-dev m4
@@ -118,10 +103,10 @@ pkgs=(autoconf autoconf-archive autogen automake build-essential curl
 
 for i in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+    missing_pkg="$(sudo dpkg -l | grep -o "$i")"
 
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+    if [ -z "$missing_pkg" ]; then
+        missing_pkgs+=" $i"
     fi
 done
 
@@ -131,7 +116,7 @@ if [ -n "$missing_pkgs" ]; then
 fi
 unset i missing_pkgs
 
-# CREATE ARCHIVE OUTPUT FOLDER OR CLEAN EXISTING
+# Create archive output folder or clean existing
 if [ ! -d mainline ]; then
     git clone https://github.com/bkw777/mainline.git
 fi
@@ -141,18 +126,18 @@ cd mainline || exit 1
 ls -1A --color --group-directories-first
 echo
 
-# INSTALL MAINLINE
+# Install mainline
 make distclean
 if ! make "-j$(nproc --all)"; then
-    fail_fn "The command \"make -j$(nproc --all)\" failed. Line: ${LINENO}"
+    fail_fn "The command \"make -j$(nproc --all)\" failed. Line: $LINENO"
 fi
 
 if sudo make "-j$(nproc --all)" install; then
-    fail_fn "The command \"sudo make -j$(nproc --all) install\" failed. Line: ${LINENO}"
+    fail_fn "The command \"sudo make -j$(nproc --all) install\" failed. Line: $LINENO"
 fi
 
-# PROMPT USER TO CLEAN UP FILES
+# Prompt user to clean up files
 cleanup_fn
 
-# SHOW EXIT MESSAGE
+# Show exit message
 exit_fn

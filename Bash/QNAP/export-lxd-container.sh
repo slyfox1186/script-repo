@@ -24,28 +24,28 @@ time="$(date "+%m.%d.%Y_%I.%M.%S.%p")"
 clear
 
 # Display THE AVAILABLE PACKAGES FOR EXPORT
-printf "%s\n" "${green}"
+printf "%s\n" "$green"
 lxc list
 
 # Display the current working directory
-printf "\n%s\n" "${cyan}Current Working Directory:${ec} ${red}$PWD${ec}"
+printf "\n%s\n" "$cyanCurrent Working Directory:$ec $red$PWD$ec"
 
 # prompt user for input
-read -p "${orange}Enter the ${blue}input ${orange}container name:${ec} " cname
-read -p "${orange}Enter the ${blue}output ${orange}file name ${red}(${cyan}date ${orange}and ${cyan}extension ${orange}will be ${cyan}appended${red})${ec}:" oname
+read -p "$orangeEnter the $blueinput $orangecontainer name:$ec " cname
+read -p "$orangeEnter the $blueoutput $orangefile name $red($cyandate $orangeand $cyanextension $orangewill be $cyanappended$red)$ec:" oname
 clear
 
 # Display the user's choices before executing
-printf "%s\n" "${white}Input: ${green}${cname}${ec}"
-printf "%s\n" "${white}Output: ${green}${folder}/${oname}-${time}.tar.gz${ec}"
+printf "%s\n" "$whiteInput: $green$cname$ec"
+printf "%s\n" "$whiteOutput: $green$folder/$oname-$time.tar.gz$ec"
 
 # Prompt user to continue
-printf "%s\n" "${red}Important ${yellow}!${red}: ${red}You have 30 seconds to exit by pressing ${yellow}^Z${ec}"
+printf "%s\n" "$redImportant $yellow!$red: $redYou have 30 seconds to exit by pressing $yellow^Z$ec"
 read -t 30 -p 'Press Enter to continue...'
 clear
 
 # Display command line used
-printf "%s\n" "${cyan}Executing: ${green}lxc export ${purple}\"${cname}\" \"${folder}/${oname}-${time}.tar.gz\" ${orange}--optimized-storage -v${ec}"
+printf "%s\n" "$cyanExecuting: $greenlxc export $purple\"$cname\" \"$folder/$oname-$time.tar.gz\" $orange--optimized-storage -v$ec"
 
 # Compressed mode
-lxc export "${cname}" "${folder}/${oname}-${time}.tar.gz" --optimized-storage -v
+lxc export "$cname" "$folder/$oname-$time.tar.gz" --optimized-storage -v

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
 # Color variables for easier reading and logging
 RED='\033[0;31m'
@@ -17,7 +17,7 @@ verbose=0 # Verbose flag added
 
 # Function to display usage
 usage() {
-    echo -e "${GREEN}Usage: $0 [-f <file_list> | -i <input_file>] [--start <trim_start_seconds>] [--end <trim_end_seconds>] [--append <append_text>] [--prepend <prepend_text>] [--overwrite] [--verbose]${NC}"
+    echo -e "$GREENUsage: $0 [-f <file_list> | -i <input_file>] [--start <trim_start_seconds>] [--end <trim_end_seconds>] [--append <append_text>] [--prepend <prepend_text>] [--overwrite] [--verbose]$NC"
     echo
     echo -e "Options:"
     echo -e "  -h, --help             Display this help message."
@@ -64,27 +64,27 @@ if [[ -n "$single_input_file" ]]; then
 elif [[ -n "$file_list" && -f "$file_list" ]]; then
     mapfile -t video_files < "$file_list"
 else
-    echo -e "${RED}Error: No input video or file list provided, or file does not exist.${NC}"
+    echo -e "$REDError: No input video or file list provided, or file does not exist.$NC"
     usage
     exit 1
 fi
 
 for input_file in "${video_files[@]}"; do
     if [[ ! -f "$input_file" ]]; then
-        echo -e "${RED}Error: The file $input_file does not exist.${NC}"
+        echo -e "$REDError: The file $input_file does not exist.$NC"
         continue
     fi
 
-    echo -e "${GREEN}Processing: $input_file${NC}"
+    echo -e "$GREENProcessing: $input_file$NC"
 
-    # Calculate total video duration
+# Calculate total video duration
     total_duration=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 -i "$input_file" | awk '{print $1}')
 
-    # Calculate start and end keyframe timestamps
+# Calculate start and end keyframe timestamps
     if [ $trim_start -gt 0 ]; then
         formatted_start_time=$(ffprobe -v error -select_streams v -of csv=p=0 -show_entries frame=best_effort_timestamp_time -read_intervals $trim_start%+$trim_start -i "$input_file" | head -n1)
         if [ -z "$formatted_start_time" ]; then
-            echo -e "${YELLOW}No keyframe found near start time $trim_start, using the exact time instead.${NC}"
+            echo -e "$YELLOWNo keyframe found near start time $trim_start, using the exact time instead.$NC"
             formatted_start_time=$trim_start
         fi
     else
@@ -98,7 +98,7 @@ for input_file in "${video_files[@]}"; do
         target_end_time=$(echo "$total_duration - $trim_end" | bc)
         formatted_end_time=$(ffprobe -v error -select_streams v -of csv=p=0 -show_entries frame=best_effort_timestamp_time -read_intervals -$trim_end%-$trim_end -i "$input_file" | sort -rV | head -n1)
         if [ -z "$formatted_end_time" ]; then
-            echo -e "${YELLOW}No keyframe found near end time $trim_end, using the exact time instead.${NC}"
+            echo -e "$YELLOWNo keyframe found near end time $trim_end, using the exact time instead.$NC"
             formatted_end_time=$target_end_time
         fi
     else
@@ -106,12 +106,12 @@ for input_file in "${video_files[@]}"; do
     fi
 
     if [ $verbose -eq 1 ]; then
-        echo -e "${YELLOW}Trimming from $formatted_start_time to $formatted_end_time.${NC}"
+        echo -e "$YELLOWTrimming from $formatted_start_time to $formatted_end_time.$NC"
     fi
 
-    base_name="${input_file%.*}"
-    extension="${input_file##*.}"
-    final_output="${prepend_text}${base_name}${append_text}.${extension}"
+    base_name="$input_file%.*"
+    extension="$input_file##*."
+    final_output="$prepend_text$base_name$append_text.$extension"
     if [ $overwrite -eq 1 ]; then
         final_output="$input_file"
     fi
@@ -119,12 +119,12 @@ for input_file in "${video_files[@]}"; do
     [[ -n "$formatted_start_time" ]] && trim_start_cmd="-ss \"$formatted_start_time\""
     [[ -n "$formatted_end_time" ]] && trim_end_cmd="-to \"$formatted_end_time\""
 
-    # Prompt user before processing
+# Prompt user before processing
     if [ $verbose -eq 1 ]; then
         read -p "Proceed with trimming? (y/n) " choice
         echo    # Move to a new line
         if [[ $choice != [Yy] ]]; then
-            echo -e "${YELLOW}Skipping $input_file based on user choice.${NC}"
+            echo -e "$YELLOWSkipping $input_file based on user choice.$NC"
             continue
         fi
     fi
@@ -134,15 +134,15 @@ for input_file in "${video_files[@]}"; do
         temp_output+=".$extension"
         command="ffmpeg -hide_banner $trim_start_cmd -y -i \"$input_file\" $trim_end_cmd -c copy \"$temp_output\""
         eval $command && mv "$temp_output" "$input_file"
-        echo -e "${GREEN}Successfully processed and overwritten $input_file${NC}\\n"
+        echo -e "$GREENSuccessfully processed and overwritten $input_file$NC\\n"
         echo "$final_output" >> video-processing.log
     else
         command="ffpb -hide_banner $trim_start_cmd -y -i \"$input_file\" $trim_end_cmd -c copy \"$final_output\""
         eval $command
-        echo -e "${GREEN}Successfully processed $input_file into $final_output${NC}\\n"
+        echo -e "$GREENSuccessfully processed $input_file into $final_output$NC\\n"
         echo "$final_output" >> video-processing.log
     fi
     clear
 done
 
-echo -e "${GREEN}Processing completed.${NC}"
+echo -e "$GREENProcessing completed.$NC"

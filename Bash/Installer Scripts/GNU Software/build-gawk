@@ -1,6 +1,6 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
-# Purpose: Build GNU gawk optimized for x86_64/amd64 PCs
+# Purpose: build gnu gawk optimized for x86_64/amd64 pcs
 # Updated: 02.24.24
 # Script version: 1.4
 
@@ -24,7 +24,7 @@ print_color() {
 }
 
 print_banner() {
-    print_color green "gawk build script - v${script_ver}"
+    print_color green "gawk build script - v$script_ver"
     echo "==============================================="
 }
 
@@ -65,8 +65,8 @@ find_latest_release() {
         print_color red "Failed to find the latest gawk release. Exiting..."
         exit 1
     fi
-    archive_url="${gnu_ftp}${latest_release}"
-    archive_name="${latest_release}"
+    archive_url="$gnu_ftp$latest_release"
+    archive_name="$latest_release"
     archive_dir=$(echo $latest_release | sed 's/.tar.lz//')
 }
 
@@ -84,7 +84,7 @@ download_and_extract() {
 build_and_install() {
     print_color green "Building and installing gawk..."
     cd "$archive_dir/build" || exit 1
-    ./configure --prefix=/usr/local/gawk CFLAGS="-g -O3 -pipe -march=native" --build=x86_64-linux-gnu --host=x86_64-linux-gnu || handle_failure
+    ./configure --prefix=/usr/local/gawk CFLAGS="-g -O3 -pipe -fno-plt -march=native" --build=x86_64-linux-gnu --host=x86_64-linux-gnu || handle_failure
     make "-j$(nproc)" || handle_failure
     make install || handle_failure
     print_color green "gawk installation completed successfully."

@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
+#!/Usr/bin/env python3
 
-# WARNING: This will overwrite your files!
+# Warning: this will overwrite your files!
 
 import os
 import subprocess

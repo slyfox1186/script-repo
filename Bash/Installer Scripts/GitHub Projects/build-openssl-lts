@@ -1,13 +1,13 @@
-#!/usr/bin/env bash
-# shellcheck disable=SC2068,SC2086,SC2162,SC2317
+#!/Usr/bin/env bash
+# Shellcheck disable=sc2068,sc2086,sc2162,sc2317
 
-# Purpose: Build the latest stable release of OpenSSL from the official website's source code
+# Purpose: build the latest stable release of openssl from the official website's source code
 # Enabled features: fips, rc5, shared, tfo, threads, zlib
 # Version: 2.1
 
 # Check for root/and exit if detected
 if [ "$EUID" -ne 0 ]; then
-    printf "%s\n\n" "You must run this script with root/sudo."
+    echo "You must run this script with root or sudo."
     exit 1
 fi
 
@@ -51,14 +51,14 @@ cleanup_fn() {
     esac
 }
 
-# Function to display the OpenSSL version
+# Function to display the openssl version
 show_ver_fn() {
     clear
     show_ver="$(/usr/local/ssl/bin/openssl version -a | grep -Eo "[0-9\.]?+" | head -n1)"
     printf "%s\n" "The updated OpenSSL version is: $show_ver"
 }
 
-# Function to install required packages on Arch Linux
+# Function to install required packages on arch linux
 pkgs_arch_fn() {
     local missing_pkgs
 
@@ -81,7 +81,7 @@ pkgs_arch_fn() {
     fi
 }
 
-# Function to install required packages on Debian/Ubuntu
+# Function to install required packages on debian/ubuntu
 pkgs_fn() {
     local missing_packages available_packages unavailable_packages
 
@@ -94,20 +94,20 @@ pkgs_fn() {
         zlib1g-dev
     )
 
-    # Initialize arrays for missing, available, and unavailable packages
+# Initialize arrays for missing, available, and unavailable packages
     missing_packages=()
     available_packages=()
     unavailable_packages=()
 
-    # Loop through the array to find missing packages
+# Loop through the array to find missing packages
     for pkg in "${pkgs[@]}"
     do
-        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+        if ! dpkg-query -W -f='$Status' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             missing_packages+=("$pkg")
         fi
     done
 
-    # Check availability of missing packages and categorize them
+# Check availability of missing packages and categorize them
     for pkg in "${missing_packages[@]}"
     do
         if apt-cache show "$pkg" > /dev/null 2>&1; then
@@ -117,14 +117,14 @@ pkgs_fn() {
         fi
     done
 
-    # Print unavailable packages
-    if [[ "${#unavailable_packages[@]}" -gt 0 ]]; then
-        echo "Unavailable packages: ${unavailable_packages[*]}"
+# Print unavailable packages
+    if [[ "${#Unavailable_packages[@]}" -gt 0 ]]; then
+        echo "Unavailable packages: $unavailable_packages[*]"
     fi
 
-    # Install available missing packages
-    if [[ "${#available_packages[@]}" -gt 0 ]]; then
-        echo "Installing available missing packages: ${available_packages[*]}"
+# Install available missing packages
+    if [[ "${#Available_packages[@]}" -gt 0 ]]; then
+        echo "Installing available missing packages: $available_packages[*]"
         apt install "${available_packages[@]}"
     else
         printf "%s\n\n" "No missing packages to install or all missing packages are unavailable."
@@ -163,7 +163,7 @@ add_to_path() {
     ln -sf "/usr/local/ssl/bin/openssl" "/usr/local/bin"
 }
 
-# Function to configure and build OpenSSL
+# Function to configure and build openssl
 build_openssl() {
     cd "$1" || exit 1
     ../Configure linux-x86_64-clang \
@@ -198,7 +198,7 @@ build_openssl() {
     fi
 }
 
-# Function to install CA certificates from cURL's website
+# Function to install ca certificates from curl's website
 install_ca_certs() {
     printf "\n%s\n%s\n\n" \
         "Install the latest security certificate from cURL's website" \
@@ -232,7 +232,7 @@ update_ldconfig() {
 script_ver="2.1"
 openssl_ver="$(curl -s https://www.openssl.org/source/ | grep -o "openssl-3.1\.[4-9]\{1,2\}" | head -n 1)"
 archive_url="https://www.openssl.org/source/$openssl_ver.tar.gz"
-archive_ext="${archive_url//*./}"
+archive_ext="$archive_url//*./"
 archive_name="$openssl_ver.tar.$archive_ext"
 cwd="$PWD/openssl-build-script"
 install_dir="/usr/local/ssl"
@@ -248,7 +248,7 @@ sleep 2
 # Create output directory
 create_dir "$cwd"
 
-# Detect OS and version
+# Detect os and version
 find_lsb_release="$(find /usr/bin/ -type f -name "lsb_release")"
 
 if [ -f "/etc/os-release" ]; then
@@ -261,7 +261,7 @@ else
     fail_fn "Failed to define the \$OS and/or \$VER variables. Line: $LINENO"
 fi
 
-# If Ubuntu is the current OS, softlink for OpenSSL to function
+# If ubuntu is the current os, softlink for openssl to function
 ubuntu_os_ver() {
     ln -sf "/usr/lib64/libcrypto.so.3" "/usr/lib64/libcrypto.so"
 }
@@ -270,7 +270,7 @@ case "$OS" in
     Ubuntu) ubuntu_os_ver ;;
 esac
 
-# Install required packages based on OS
+# Install required packages based on os
 if [[ "$OS" == "Arch" ]]; then
     pkgs_arch_fn
 else
@@ -286,22 +286,22 @@ create_dir "$cwd/$openssl_ver/build"
 # Extract archive files
 extract_archive "$cwd/$archive_name" "$cwd/$openssl_ver"
 
-# Build OpenSSL from source
+# Build openssl from source
 build_openssl "$cwd/$openssl_ver/build"
 
-# Install CA certificates from cURL's website
+# Install ca certificates from curl's website
 install_ca_certs
 
 # Update linker library search path
 update_ldconfig
 
-# Add OpenSSL bin to user's ~/.bashrc file
+# Add openssl bin to user's ~/.bashrc file
 add_to_path
 
 # Prompt user to clean up files
 cleanup_fn
 
-# Display updated OpenSSL version
+# Display updated openssl version
 show_ver_fn
 
 # Exit with message

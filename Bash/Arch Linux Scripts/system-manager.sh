@@ -31,162 +31,162 @@ fix_grub_errors() {
 
 # Function definitions for each task
 update_system() {
-    echo -e "${GREEN}Updating system packages...${NC}"
+    echo -e "$GREENUpdating system packages...$NC"
     if sudo pacman -Syu --noconfirm; then
-        echo -e "${GREEN}[SUCCESS]${NC} System packages updated.${NC}"
+        echo -e "$GREEN[SUCCESS]$NC System packages updated.$NC"
     else
-        echo -e "${RED}[ERROR]${NC} Failed to update system packages.${NC}"
+        echo -e "$RED[ERROR]$NC Failed to update system packages.$NC"
     fi
 }
 
 clean_package_cache() {
-    echo -e "${GREEN}Cleaning package cache...${NC}"
+    echo -e "$GREENCleaning package cache...$NC"
     if sudo pacman -Sc --noconfirm; then
-        echo -e "${GREEN}[SUCCESS]${NC} Package cache cleaned.${NC}"
+        echo -e "$GREEN[SUCCESS]$NC Package cache cleaned.$NC"
     else
-        echo -e "${RED}[ERROR]${NC} Failed to clean the package cache.${NC}"
+        echo -e "$RED[ERROR]$NC Failed to clean the package cache.$NC"
     fi
 }
 
 update_mirror_list() {
-    echo -e "${GREEN}Updating mirror list...${NC}"
+    echo -e "$GREENUpdating mirror list...$NC"
     if sudo reflector --latest 5 --sort rate --save /etc/pacman.d/mirrorlist; then
-        echo -e "${GREEN}[SUCCESS]${NC} Mirror list updated.${NC}"
+        echo -e "$GREEN[SUCCESS]$NC Mirror list updated.$NC"
     else
-        echo -e "${RED}[ERROR]${NC} Failed to update the mirror list.${NC}"
+        echo -e "$RED[ERROR]$NC Failed to update the mirror list.$NC"
     fi
 }
 
 update_aur_packages() {
-    echo -e "${GREEN}Checking for yay AUR helper...${NC}"
+    echo -e "$GREENChecking for yay AUR helper...$NC"
     if ! command -v yay &>/dev/null; then
-        echo -e "${RED}[ERROR]${NC} yay AUR helper not found. Please install yay to update AUR packages.${NC}"
+        echo -e "$RED[ERROR]$NC yay AUR helper not found. Please install yay to update AUR packages.$NC"
         echo -e "You can install yay by following these steps:"
-        echo -e "${YELLOW}git clone https://aur.archlinux.org/yay.git${NC}"
-        echo -e "${YELLOW}cd yay${NC}"
-        echo -e "${YELLOW}makepkg -si${NC}"
+        echo -e "$YELLOWgit clone https://aur.archlinux.org/yay.git$NC"
+        echo -e "$YELLOWcd yay$NC"
+        echo -e "$YELLOWmakepkg -si$NC"
         return 1
     fi
-    echo -e "${GREEN}Updating AUR packages...${NC}"
+    echo -e "$GREENUpdating AUR packages...$NC"
     if yay -Syu --noconfirm; then
-        echo -e "${GREEN}[SUCCESS]${NC} AUR packages updated.${NC}"
+        echo -e "$GREEN[SUCCESS]$NC AUR packages updated.$NC"
     else
-        echo -e "${RED}[ERROR]${NC} Failed to update the AUR packages.${NC}"
+        echo -e "$RED[ERROR]$NC Failed to update the AUR packages.$NC"
     fi
 }
 
 update_grub_configuration() {
-    echo -e "${GREEN}Updating GRUB configuration...${NC}"
+    echo -e "$GREENUpdating GRUB configuration...$NC"
     if ! command -v grub-mkconfig &>/dev/null; then
-        echo -e "${RED}[ERROR]${NC} You must install the \"grub\" package to update GRUB.${NC}"
+        echo -e "$RED[ERROR]$NC You must install the \"grub\" package to update GRUB.$NC"
         echo -e "You can install grub by following these steps:"
-        echo -e "${YELLOW}sudo pacman -Syu --noconfirm grub${NC}"
+        echo -e "$YELLOWsudo pacman -Syu --noconfirm grub$NC"
         return 1
     fi
     if sudo grub-mkconfig -o /boot/grub/grub.cfg; then
-        echo -e "${GREEN}[SUCCESS]${NC} GRUB configuration updated.${NC}"
+        echo -e "$GREEN[SUCCESS]$NC GRUB configuration updated.$NC"
     else
-        echo -e "${RED}[ERROR]${NC} Failed to update the GRUB configuration.${NC}"
-        echo "${YELLOW}[INFO]${NC} Attempting to fix the problem..."
+        echo -e "$RED[ERROR]$NC Failed to update the GRUB configuration.$NC"
+        echo "$YELLOW[INFO]$NC Attempting to fix the problem..."
         fix_grub_errors
     fi
 }
 
 check_and_apply_firmware_updates() {
-    echo -e "${GREEN}Checking and applying firmware updates...${NC}"
+    echo -e "$GREENChecking and applying firmware updates...$NC"
     if ! command -v fwupdmgr &>/dev/null; then
-        echo -e "${RED}[ERROR]${NC} You must install the \"fwupd\" package to apply firmware updates.${NC}"
+        echo -e "$RED[ERROR]$NC You must install the \"fwupd\" package to apply firmware updates.$NC"
         echo -e "You can install fwupd by following these steps:"
-        echo -e "${YELLOW}sudo pacman -Syu --noconfirm fwupd${NC}"
+        echo -e "$YELLOWsudo pacman -Syu --noconfirm fwupd$NC"
         return 1
     fi
     if sudo fwupdmgr get-updates && sudo fwupdmgr update; then
-        echo -e "${GREEN}[SUCCESS]${NC} firmware updates applied.${NC}"
+        echo -e "$GREEN[SUCCESS]$NC firmware updates applied.$NC"
     else
-        echo -e "${RED}[ERROR]${NC} Failed to update the firmware.${NC}"
+        echo -e "$RED[ERROR]$NC Failed to update the firmware.$NC"
     fi
 }
 
 fix_pacman_keys() {
-    echo -e "${YELLOW}Fixing pacman keys...${NC}"
+    echo -e "$YELLOWFixing pacman keys...$NC"
     if sudo pacman-key --init && \
         sudo pacman-key --populate archlinux && \
         sudo pacman-key --refresh-keys
     then
-        echo -e "${GREEN}[SUCCESS]${NC} Fixed pacman keys.${NC}"
+        echo -e "$GREEN[SUCCESS]$NC Fixed pacman keys.$NC"
     else
-        echo -e "${RED}[ERROR]${NC} Failed to update the firmware.${NC}"
+        echo -e "$RED[ERROR]$NC Failed to update the firmware.$NC"
     fi
 }
 
 check_filesystem() {
-    echo -e "${YELLOW}Checking filesystem...${NC}"
+    echo -e "$YELLOWChecking filesystem...$NC"
     if sudo fsck -A; then
-        echo -e "${GREEN}[SUCCESS]${NC} Checked the filesystem.${NC}"
+        echo -e "$GREEN[SUCCESS]$NC Checked the filesystem.$NC"
     else
-        echo -e "${RED}[ERROR]${NC} Failed to check the filesystem.${NC}"
+        echo -e "$RED[ERROR]$NC Failed to check the filesystem.$NC"
     fi
 }
 
 fix_network() {
-    echo -e "${YELLOW}Fixing network issues...${NC}"
+    echo -e "$YELLOWFixing network issues...$NC"
     if ! command -v fwupdmgr &>/dev/null; then
-        echo -e "${RED}[ERROR]${NC} You must install the \"networkmanager\" package to apply firmware updates.${NC}"
+        echo -e "$RED[ERROR]$NC You must install the \"networkmanager\" package to apply firmware updates.$NC"
         echo -e "You can install networkmanager by following these steps:"
-        echo -e "${YELLOW}sudo pacman -Sy${NC}"
-        echo -e "${YELLOW}sudo pacman -Sy networkmanager --noconfirm${NC}"
+        echo -e "$YELLOWsudo pacman -Sy$NC"
+        echo -e "$YELLOWsudo pacman -Sy networkmanager --noconfirm$NC"
         return 1
     fi
     if sudo systemctl restart NetworkManager; then
-        echo -e "${GREEN}[SUCCESS]${NC} Fixed network issues.${NC}"
+        echo -e "$GREEN[SUCCESS]$NC Fixed network issues.$NC"
     else
-        echo -e "${RED}[ERROR]${NC} Failed to fix network issues.${NC}"
+        echo -e "$RED[ERROR]$NC Failed to fix network issues.$NC"
     fi
 }
 
 repair_grub_bootloader() {
-    echo -e "${YELLOW}Repairing GRUB bootloader...${NC}"
+    echo -e "$YELLOWRepairing GRUB bootloader...$NC"
     if sudo grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB && \
     sudo grub-mkconfig -o /boot/grub/grub.cfg
     then
-        echo -e "${GREEN}[SUCCESS]${NC} Repaired the GRUB bootloader.${NC}"
+        echo -e "$GREEN[SUCCESS]$NC Repaired the GRUB bootloader.$NC"
     else
-        echo -e "${RED}[ERROR]${NC} Failed to fix network issues.${NC}"
+        echo -e "$RED[ERROR]$NC Failed to fix network issues.$NC"
     fi
 }
 
 check_hardware_issues() {
     if ! command -v lshw &>/dev/null; then
-        echo -e "${RED}[ERROR]${NC} You must install the \"lshw\" package to apply firmware updates.${NC}"
+        echo -e "$RED[ERROR]$NC You must install the \"lshw\" package to apply firmware updates.$NC"
         echo -e "You can install lshw by following these steps:"
-        echo -e "${YELLOW}sudo pacman -Sy${NC}"
-        echo -e "${YELLOW}sudo pacman -Sy lshw --noconfirmy${NC}"
+        echo -e "$YELLOWsudo pacman -Sy$NC"
+        echo -e "$YELLOWsudo pacman -Sy lshw --noconfirmy$NC"
         return 1
     fi
-    echo -e "${YELLOW}Checking for hardware issues...${NC}"
+    echo -e "$YELLOWChecking for hardware issues...$NC"
     if sudo lshw -short; then
-        echo -e "${GREEN}[SUCCESS]${NC} Hardware check complete.${NC}"
+        echo -e "$GREEN[SUCCESS]$NC Hardware check complete.$NC"
     else
-        echo -e "${RED}[ERROR]${NC} Failed to check for hardware issues.${NC}"
+        echo -e "$RED[ERROR]$NC Failed to check for hardware issues.$NC"
     fi
 }
 
 restart_failed_systemd_services() {
-    echo -e "${YELLOW}Restarting failed systemd services...${NC}"
+    echo -e "$YELLOWRestarting failed systemd services...$NC"
     local failed_services=$(systemctl --failed --no-legend | awk '{print $1}')
     if for service in $failed_services; do
         echo "Restarting failed service: $service"
         sudo systemctl restart "$service"
     done
     then
-        echo -e "${GREEN}[SUCCESS]${NC} Systemd services restarted.${NC}"
+        echo -e "$GREEN[SUCCESS]$NC Systemd services restarted.$NC"
     else
-        echo -e "${RED}[ERROR]${NC} Failed to restart systemd.${NC}"
+        echo -e "$RED[ERROR]$NC Failed to restart systemd.$NC"
     fi
 }
 
 check_orphaned_packages() {
-    echo -e "${RED}Checking for orphaned packages...${NC}"
+    echo -e "$REDChecking for orphaned packages...$NC"
     orphaned_packages=$(pacman -Qdtq)
     if [[ -z $orphaned_packages ]]; then
         echo "No orphaned packages found."
@@ -197,16 +197,16 @@ check_orphaned_packages() {
 }
 
 check_failed_systemd_services() {
-    echo -e "${RED}Checking for failed systemd services...${NC}"
+    echo -e "$REDChecking for failed systemd services...$NC"
     if systemctl --failed; then
-        echo -e "${GREEN}[SUCCESS]${NC} Systemd failed services check complete.${NC}"
+        echo -e "$GREEN[SUCCESS]$NC Systemd failed services check complete.$NC"
     else
-        echo -e "${RED}[ERROR]${NC} Failed to check failed systemd services.${NC}"
+        echo -e "$RED[ERROR]$NC Failed to check failed systemd services.$NC"
     fi
 }
 
 system_health_report() {
-    echo -e "${RED}Generating system health report...${NC}"
+    echo -e "$REDGenerating system health report...$NC"
     echo "Disk Usage:"
     df -h
     echo "Memory Usage:"
@@ -216,32 +216,32 @@ system_health_report() {
 }
 
 check_disk_space() {
-    echo -e "${RED}Checking disk space...${NC}"
+    echo -e "$REDChecking disk space...$NC"
     df -h
 }
 
 check_cpu_usage() {
-    echo -e "${RED}Checking CPU usage...${NC}"
+    echo -e "$REDChecking CPU usage...$NC"
     top -n 1 | head -n 10
 }
 
 backup_important_directories() {
-    echo -e "${GREEN}Backing up important directories...${NC}"
+    echo -e "$GREENBacking up important directories...$NC"
     if tar czvf "$HOME/backup-$(date +%Y-%m-%d).tar.gz" "$HOME/Documents" "$HOME/Pictures" "$HOME/Videos"; then
-        echo -e "${GREEN}[SUCCESS]${NC} Systemd failed services check complete.${NC}"
+        echo -e "$GREEN[SUCCESS]$NC Systemd failed services check complete.$NC"
     else
-        echo -e "${RED}[ERROR]${NC} Failed to check failed systemd services.${NC}"
+        echo -e "$RED[ERROR]$NC Failed to check failed systemd services.$NC"
     fi
 }
 
 enable_essential_services() {
-    echo -e "${YELLOW}Enabling essential services...${NC}"
+    echo -e "$YELLOWEnabling essential services...$NC"
     if sudo systemctl enable NetworkManager && \
     sudo systemctl enable bluetooth
     then
-        echo -e "${GREEN}[SUCCESS]${NC} Systemd services restarted.${NC}"
+        echo -e "$GREEN[SUCCESS]$NC Systemd services restarted.$NC"
     else
-        echo -e "${RED}[ERROR]${NC} Failed to restart systemd.${NC}"
+        echo -e "$RED[ERROR]$NC Failed to restart systemd.$NC"
     fi
 }
 
@@ -249,7 +249,7 @@ enable_essential_services() {
 prompt_user_selection() {
     echo -e "Select the operations you want to perform.\\n\\nEnter their numbers separated by commas, or specify a range using a dash.\\nFor example: 1,3,5-7\\n\\nGrouped by purpose:\\n"
 
-    echo -e "${GREEN}System Updates and Maintenance:${NC}"
+    echo -e "$GREENSystem Updates and Maintenance:$NC"
     echo "1. Update System"
     echo "2. Clean Package Cache"
     echo "3. Update Mirror List"
@@ -257,7 +257,7 @@ prompt_user_selection() {
     echo "5. Update Grub Configuration"
     echo "6. Check and Apply Firmware Updates"
 
-    echo -e "\\n${YELLOW}Troubleshooting and Repairs:${NC}"
+    echo -e "\\n$YELLOWTroubleshooting and Repairs:$NC"
     echo "7. Fix Pacman Keys"
     echo "8. Check Filesystem"
     echo "9. Fix Network"
@@ -265,17 +265,17 @@ prompt_user_selection() {
     echo "11. Check Hardware Issues"
     echo "12. Restart Failed Systemd Services"
 
-    echo -e "\\n${RED}System Health and Reports:${NC}"
+    echo -e "\\n$REDSystem Health and Reports:$NC"
     echo "13. Check Orphaned Packages"
     echo "14. Check Failed Systemd Services"
     echo "15. System Health Report"
     echo "16. Check Disk Space"
     echo "17. Check CPU Usage"
 
-    echo -e "\\n${GREEN}Backup and Recovery:${NC}"
+    echo -e "\\n$GREENBackup and Recovery:$NC"
     echo "18. Backup Important Directories"
 
-    echo -e "\\n${PURPLE}Service Management:${NC}"
+    echo -e "\\n$PURPLEService Management:$NC"
     echo -e "19. Enable Essential Services\\n"
     read -p "Your selection: " user_input
     echo
@@ -285,7 +285,7 @@ prompt_user_selection() {
     for i in "${ADDR[@]}"; do
         if [[ $i == *-* ]]; then
             IFS='-' read -ra RANGE <<< "$i"
-            for (( j=${RANGE[0]}; j<=${RANGE[1]}; j++ )); do
+            for (( j=$RANGE[0]; j<=$RANGE[1]; j++ )); do
                 run_operation $j
             done
         else

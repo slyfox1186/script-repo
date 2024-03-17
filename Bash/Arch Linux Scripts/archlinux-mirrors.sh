@@ -5,15 +5,21 @@ if [[ "$EUID" -ne 0 ]]; then
     exit 1
 fi
 
+<<<<<<< Updated upstream
+=======
+script_path=$(readlink -f "$BASH_SOURCE[0]")
+script_name=$(basename "$script_path")
+
+>>>>>>> Stashed changes
 config_list="/etc/pacman.conf"
 server_list="/etc/pacman.d/mirrorlist"
 
 # Make a backup of the file
-if [[ ! -f "${config_list}.bak" ]]; then
-    cp -f "$config_list" "${config_list}.bak"
+if [[ ! -f "$config_list.bak" ]]; then
+    cp -f "$config_list" "$config_list.bak"
 fi
-if [[ ! -f "${server_list}.bak" ]]; then
-    cp -f "$server_list" "${server_list}.bak"
+if [[ ! -f "$server_list.bak" ]]; then
+    cp -f "$server_list" "$server_list.bak"
 fi
 
 cat > "$config_list" <<'EOF'

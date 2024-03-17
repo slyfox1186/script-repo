@@ -22,5 +22,5 @@ prompt_user() {
 }
 
 for i in ${store_paths[@]}; do
-    echo "$PWD/${i:2}"
+    echo "$PWD/$i:2"
 done

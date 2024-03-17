@@ -14,5 +14,5 @@ fi
 keys=(112695A0E562B32A 54404762BBB6E853)
 
 for key in ${keys[@]}; do
-    apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv ${key}
+    apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv $key
 done

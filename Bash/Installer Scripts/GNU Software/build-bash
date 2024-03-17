@@ -1,8 +1,8 @@
-#!/usr/bin/env bash
-# Build GNU Bash - v2.0 - 03.08.24
-# GitHub: https://github.com/slyfox1186/script-repo
+#!/Usr/bin/env bash
+# Build gnu bash - v2.0 - 03.08.24
+# Github: https://github.com/slyfox1186/script-repo
 
-trap 'fail_fn "Error occurred on line ${LINENO}"' ERR
+trap 'fail_fn "Error occurred on line $LINENO"' ERR
 
 version=2.0
 program_name=bash
@@ -22,7 +22,7 @@ usage() {
 }
 
 parse_args() {
-    while [[ $# -gt 0 ]]; do
+    while [[ $# -Gt 0 ]]; do
         case "$1" in
             -p|--prefix)
                 install_prefix="$2"
@@ -77,8 +77,8 @@ find_latest_release() {
     if [[ -z $latest_tarball ]]; then
         fail_fn "Failed to find the latest release."
     fi
-    archive_url="${gnu_ftp}${latest_tarball}"
-    archive_name="${latest_tarball}"
+    archive_url="$gnu_ftp$latest_tarball"
+    archive_name="$latest_tarball"
     program_version=$(echo "$latest_tarball" | sed -n 's/bash-\([0-9.]*\)\.tar\.gz/\1/p')
 }
 

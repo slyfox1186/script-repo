@@ -6,6 +6,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+<<<<<<< Updated upstream
 # Log Functions
 log() { echo -e "${GREEN}[LOG]${NC} $1"; }
 warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
@@ -14,6 +15,12 @@ fail() { echo -e "${RED}[FAIL]${NC} $1"; exit 1; }
 # Check for root privileges
 if [[ "$EUID" -ne 0 ]]; then
     fail "This script must be run as root. Use sudo."
+=======
+# VERIFY THE SCRIPT HAS ROOT ACCESS BEFORE CONTINUING
+if [ "$EUID" -ne '0' ]; then
+    printf "%s\n\n" 'You must run this script WITH root/sudo'
+    exit 1
+>>>>>>> Stashed changes
 fi
 
 # Reboot prompt function
@@ -76,11 +83,29 @@ configure_log2ram() {
     local config_file="/etc/log2ram.conf"
     [[ -f "$config_file" ]] || fail "log2ram configuration file not found."
 
+<<<<<<< Updated upstream
     log "Configuring log2ram..."
     sed -i 's/SIZE=40M/SIZE=1024M/g; s/LOG_DISK_SIZE=256M/LOG_DISK_SIZE=2048M/g' "$config_file" || warn "Failed to update log2ram configuration."
 
     log "Configuration updated: SIZE=512M, LOG_DISK_SIZE=1024M"
 }
+=======
+if [ -f "$cfile" ]; then
+    sed -i 's/SIZE=40M/SIZE=512M/g' "$cfile"
+    sed -i 's/LOG_DISK_SIZE=256M/LOG_DISK_SIZE=1024M/g' "$cfile"
+fi
+
+# FIND AN EDITOR TO OPEN THE CONF FILE
+if which gedit &>/dev/null; then
+    gedit "$cfile"
+elif which nano &>/dev/null; then
+    nano "$cfile"
+elif which vim &>/dev/null; then
+    vim "$cfile"
+elif which vi &>/dev/null; then
+    vi "$cfile"
+fi
+>>>>>>> Stashed changes
 
 # Main installation function
 install_log2ram() {
@@ -88,6 +113,7 @@ install_log2ram() {
     apt-get update && apt-get upgrade -y || fail "Failed to update/upgrade system packages."
     check_and_install_pkgs
 
+<<<<<<< Updated upstream
     # Download and install log2ram
     log "Downloading log2ram from GitHub..."
     wget -cqO log2ram.tar.gz https://github.com/azlux/log2ram/archive/master.tar.gz || fail "Failed to download log2ram."
@@ -110,3 +136,14 @@ install_log2ram() {
 
 # Execute the installation process
 install_log2ram
+=======
+case "$choice" in
+    1)      sudo reboot;;
+    2)      exit 0;;
+    *)
+            clear
+            printf "%s\n\n" 'Bad user input.'
+            exit 1
+            ;;
+esac
+>>>>>>> Stashed changes

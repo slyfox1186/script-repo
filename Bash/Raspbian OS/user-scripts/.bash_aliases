@@ -46,7 +46,7 @@ alias shutdown='sudo shutdown -h now'
 
 # enable color support of ls and also add handy aliases
 if [ -x '/usr/bin/dircolors' ]; then
-    test -r "${HOME}/.dircolors" && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+    test -r "$HOME/.dircolors" && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
         # file navigation
         alias ls='ls -1AhFSv --color=always --group-directories-first'
         # grep commands

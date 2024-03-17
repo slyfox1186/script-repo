@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-pushd "${PWD}" || exit 1
+pushd "$PWD" || exit 1
 #
 clear
 #
@@ -57,12 +57,12 @@ YELLOW="\033[33m"
 #
 ### Set color functions
 #
-greenprint() { printf "${GREEN}%s${RESET}\n" "$1"; }
-blueprint() { printf "${BLUE}%s${RESET}\n" "$1"; }
-redprint() { printf "${RED}%s${RESET}\n" "$1"; }
-yellowprint() { printf "${YELLOW}%s${RESET}\n" "$1"; }
-magentaprint() { printf "${MAGENTA}%s${RESET}\n" "$1"; }
-cyanprint() { printf "${CYAN}%s${RESET}\n" "$1"; }
+greenprint() { printf "$GREEN%s$RESET\n" "$1"; }
+blueprint() { printf "$BLUE%s$RESET\n" "$1"; }
+redprint() { printf "$RED%s$RESET\n" "$1"; }
+yellowprint() { printf "$YELLOW%s$RESET\n" "$1"; }
+magentaprint() { printf "$MAGENTA%s$RESET\n" "$1"; }
+cyanprint() { printf "$CYAN%s$RESET\n" "$1"; }
 #
 ### Set misc functions
 #
@@ -73,10 +73,9 @@ clear
 #
 ### Fast stop server
 #
-fn_faststop_server()
-{
+fn_faststop_server() {
     echo -e "Server shutdown command executed... please wait.\\n"
-    mcrcon -H ${IP} -P ${PORT} -p ${PW} -w 10 "say Server stopping!" save-all stop && \
+    mcrcon -H $IP -P $PORT -p $PW -w 10 "say Server stopping!" save-all stop && \
     sudo killall java && \
     echo -e "[i] The server has stopped.\\n"
     echo
@@ -86,22 +85,21 @@ fn_faststop_server()
 #
 ### Restart server
 #
-fn_restart_server()
-{
+fn_restart_server() {
     echo -e "[i] Server restarting in 30 seconds...\\n    - Warning users to save their work within 30 seconds..."
-    mcrcon -H ${IP} -P ${PORT} -p ${PW} -w 2 "say The server is restarting in 30 seconds!"
-    mcrcon -H ${IP} -P ${PORT} -p ${PW} -w 13 "say Please save all work!"
+    mcrcon -H $IP -P $PORT -p $PW -w 2 "say The server is restarting in 30 seconds!"
+    mcrcon -H $IP -P $PORT -p $PW -w 13 "say Please save all work!"
     echo -e "[i] Server restarting in 15 seconds...\\n    - Warning users to save their work within 15 seconds..."
-    mcrcon -H ${IP} -P ${PORT} -p ${PW} -w 2 "say The server is restarting in 15 seconds!"
-    mcrcon -H ${IP} -P ${PORT} -p ${PW} -w 8 "say Please save all work NOW!"
+    mcrcon -H $IP -P $PORT -p $PW -w 2 "say The server is restarting in 15 seconds!"
+    mcrcon -H $IP -P $PORT -p $PW -w 8 "say Please save all work NOW!"
     echo -e "[i] Server restarting in  5 seconds...\\n    - Warning users to save their work within 5 seconds..."
-    mcrcon -H ${IP} -P ${PORT} -p ${PW} -w 1 "say The server is restarting in 5 seconds!"
-    mcrcon -H ${IP} -P ${PORT} -p ${PW} -w 4 "say Please save all work NOW!"
+    mcrcon -H $IP -P $PORT -p $PW -w 1 "say The server is restarting in 5 seconds!"
+    mcrcon -H $IP -P $PORT -p $PW -w 4 "say Please save all work NOW!"
     echo -e "[i] Server restarting...\\n"
-    mcrcon -H ${IP} -P ${PORT} -p ${PW} -w 10 "say Server restarting!" save-all stop && \
+    mcrcon -H $IP -P $PORT -p $PW -w 10 "say Server restarting!" save-all stop && \
     sudo killall java && \
-    echo -e "[i] Executing command: screen -dmS mc ./"${SCRIPT}"\\n    - Please wait for the server to completely load before reconnecting.\\n"
-    screen -dmS mc ./"${SCRIPT}"
+    echo -e "[i] Executing command: screen -dmS mc ./"$SCRIPT"\\n    - Please wait for the server to completely load before reconnecting.\\n"
+    screen -dmS mc ./"$SCRIPT"
     echo
     sleep 3
     htop
@@ -109,20 +107,19 @@ fn_restart_server()
 #
 ### Stop server
 #
-fn_stop_server()
-{
-    mcrcon -H ${IP} -P ${PORT} -p ${PW} -w 2 "say The server is stopping in 30 seconds!"
-    mcrcon -H ${IP} -P ${PORT} -p ${PW} -w 13 "say Please save all work!"
+fn_stop_server() {
+    mcrcon -H $IP -P $PORT -p $PW -w 2 "say The server is stopping in 30 seconds!"
+    mcrcon -H $IP -P $PORT -p $PW -w 13 "say Please save all work!"
     echo -e "[i] Server stopping in 30 seconds...\\n    - Warning users to save their work within 30 seconds..." && \
     echo -e "[i] Warning users to save their work within 30 seconds..."
     echo -e "[i] Server stopping in 15 seconds...\\n    - Warning users to save their work within 15 seconds..."
-    mcrcon -H ${IP} -P ${PORT} -p ${PW} -w 2 "say The server is stopping in 15 seconds!"
-    mcrcon -H ${IP} -P ${PORT} -p ${PW} -w 8 "say Please save all work NOW!"
+    mcrcon -H $IP -P $PORT -p $PW -w 2 "say The server is stopping in 15 seconds!"
+    mcrcon -H $IP -P $PORT -p $PW -w 8 "say Please save all work NOW!"
     echo -e "[i] Server stopping in  5 seconds...\\n    - Warning users to save their work within 5 seconds..."
-    mcrcon -H ${IP} -P ${PORT} -p ${PW} -w 1 "say The server is stopping in 5 seconds!"
-    mcrcon -H ${IP} -P ${PORT} -p ${PW} -w 4 "say Please save all work NOW!"
+    mcrcon -H $IP -P $PORT -p $PW -w 1 "say The server is stopping in 5 seconds!"
+    mcrcon -H $IP -P $PORT -p $PW -w 4 "say Please save all work NOW!"
     echo -e "[i] Server stopping..."
-    mcrcon -H ${IP} -P ${PORT} -p ${PW} -w 10 "say Server stopping!" save-all stop && \
+    mcrcon -H $IP -P $PORT -p $PW -w 10 "say Server stopping!" save-all stop && \
     sudo killall java && \
     echo -e "[i] The server has stopped.\\n"
     echo
@@ -132,11 +129,10 @@ fn_stop_server()
 #
 ### Start server
 #
-fn_start_server()
-{
+fn_start_server() {
     local SCRIPT
-    echo -e "[i] Executing command: screen -dmS mc ./${SCRIPT}\\n    - Please wait for the server to completely load before reconnecting.\\n"
-    screen -dmS mc ./"${SCRIPT}"
+    echo -e "[i] Executing command: screen -dmS mc ./$SCRIPT\\n    - Please wait for the server to completely load before reconnecting.\\n"
+    screen -dmS mc ./"$SCRIPT"
     echo
     sleep 2
     htop
@@ -146,8 +142,7 @@ fn_start_server()
 #
 ### submenu4
 #
-submenu4()
-{
+submenu4() {
     local i
     echo -e "$(cyanprint 'Fast Stop the server?')"
 echo -ne "
@@ -156,7 +151,7 @@ $(magentaprint '2)') No
 $(redprint '3)') Exit
 Make a choice: "
     read -r i
-    case ${i} in
+    case $i in
     1)
         clear
         fn_faststop_server
@@ -177,8 +172,7 @@ Make a choice: "
 #
 ### submenu3
 #
-submenu3()
-{
+submenu3() {
     local i
     echo -e "$(cyanprint 'Restart the server?')"
     echo -ne "
@@ -187,7 +181,7 @@ $(magentaprint '2)') No
 $(redprint '3)') Exit
 Make a choice: "
     read -r i
-    case ${i} in
+    case $i in
     1)
         clear
         fn_restart_server
@@ -208,8 +202,7 @@ Make a choice: "
 #
 ### submenu2
 #
-submenu2()
-{
+submenu2() {
     local i
     echo -e "$(cyanprint 'Stop the server?')"
     echo -ne "
@@ -218,7 +211,7 @@ $(magentaprint '2)') No
 $(redprint '3)') Exit
 Make a choice: "
     read -r i
-    case ${i} in
+    case $i in
     1)
         clear
         fn_stop_server
@@ -239,8 +232,7 @@ Make a choice: "
 #
 ### submenu1
 #
-submenu1()
-{
+submenu1() {
     local i
     echo -e "$(cyanprint 'Start the server?')"
     echo -ne "
@@ -249,7 +241,7 @@ $(magentaprint '2)') No
 $(redprint '3)') Exit
 Make a choice: "
     read -r i
-    case ${i} in
+    case $i in
     1)
         clear
         fn_start_server
@@ -270,8 +262,7 @@ Make a choice: "
 #
 ### Main Menu
 #
-mainmenu()
-{
+mainmenu() {
     local i
     echo -e "$(magentaprint '[i] Minecraft Server Launcher')"
     echo -ne "
@@ -282,7 +273,7 @@ $(cyanprint '4)') Fast Stop Server
 $(magentaprint '5)') Exit
 Make a choice: "
     read -r i
-    case ${i} in
+    case $i in
     1)
         clear
         submenu1

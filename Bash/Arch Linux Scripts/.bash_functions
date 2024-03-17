@@ -17,12 +17,12 @@ mypc() {
     
     . /etc/os-release
     OS="$name"
-    VER="${VERSION_ID}"
+    VER="$VERSION_ID"
 
     clear
     printf "%s\n%s\n\n" \
-        "Operating System: ${OS}" \
-        "Specific Version: ${VER}"
+        "Operating System: $OS" \
+        "Specific Version: $VER"
 }
 
 ###################
@@ -40,16 +40,16 @@ ffind() {
     read -p 'Enter the starting path: ' fpath
     clear
 
-    if [ -n "$fname" ] && [ -z "${ftype}" ] && [ -z "${fpath}" ]; then
+    if [ -n "$fname" ] && [ -z "$ftype" ] && [ -z "$fpath" ]; then
         sudo find . -iname "$fname" | while read line; do echo "$line"; done
-    elif [ -n "$fname" ] && [ -z "${ftype}" ] && [ -n "${fpath}" ]; then
-        sudo find "${fpath}" -iname "$fname" | while read line; do echo "$line"; done
-    elif [ -n "$fname" ] && [ -n "${ftype}" ] && [ -n "${fpath}" ]; then
-        sudo find "${fpath}" -type "${ftype}" -iname "$fname" | while read line; do echo "$line"; done
-    elif [ -n "$fname" ] && [ -z "${ftype}" ] && [ "${fpath}" ]; then
+    elif [ -n "$fname" ] && [ -z "$ftype" ] && [ -n "$fpath" ]; then
+        sudo find "$fpath" -iname "$fname" | while read line; do echo "$line"; done
+    elif [ -n "$fname" ] && [ -n "$ftype" ] && [ -n "$fpath" ]; then
+        sudo find "$fpath" -type "$ftype" -iname "$fname" | while read line; do echo "$line"; done
+    elif [ -n "$fname" ] && [ -z "$ftype" ] && [ "$fpath" ]; then
         sudo find . -iname "$fname" | while read line; do echo "$line"; done
-    elif [ -n "$fname" ] && [ -n "${ftype}" ] && [ "${fpath}" = '.' ]; then
-        sudo find . -type "${ftype}" -iname "$fname" | while read line; do echo "$line"; done
+    elif [ -n "$fname" ] && [ -n "$ftype" ] && [ "$fpath" = '.' ]; then
+        sudo find . -type "$ftype" -iname "$fname" | while read line; do echo "$line"; done
      fi
 }
 
@@ -63,19 +63,19 @@ untar() {
 
     for archive in *.*
     do
-        ext="${archive##*.}"
+        ext="$archive##*."
 
-        [[ ! -d "$PWD"/"${archive%%.*}" ]] && mkdir -p "$PWD"/"${archive%%.*}"
+        [[ ! -d "$PWD"/"$archive%%.*" ]] && mkdir -p "$PWD"/"$archive%%.*"
 
         unset flag
-        case "${ext}" in
-            7z|zip) 7z x -o./"${archive%%.*}" ./"${archive}";;
+        case "$ext" in
+            7z|zip) 7z x -o./"$archive%%.*" ./"$archive";;
             bz2)    flag='jxf';;
             gz|tgz) flag='zxf';;
             xz|lz)  flag='xf';;
         esac
 
-        [ -n "${flag}" ] && tar ${flag} ./"${archive}" -C ./"${archive%%.*}" --strip-components 1
+        [ -n "$flag" ] && tar $flag ./"$archive" -C ./"$archive%%.*" --strip-components 1
     done
 }
             
@@ -122,10 +122,10 @@ mdir() {
 ##################
 
 # REMOVED ALL DUPLICATE LINES: OUTPUTS TO TERMINAL
-rmd() { clear; awk '!seen[${0}]++' "$1"; }
+rmd() { clear; awk '!seen[$0]++' "$1"; }
 
 # REMOVE CONSECUTIVE DUPLICATE LINES: OUTPUTS TO TERMINAL
-rmdc() { clear; awk 'f!=${0}&&f=${0}' "$1"; }
+rmdc() { clear; awk 'f!=$0&&f=$0' "$1"; }
 
 # REMOVE ALL DUPLICATE LINES AND REMOVES TRAILING SPACES BEFORE COMPARING: REPLACES THE file
 rmdf() {
@@ -225,11 +225,11 @@ new_key() {
     echo '[i] Choose the key bit size'
     echo '[i] Values encased in() are recommended'
 
-    if [[ "${type}" == 'rsa' ]]; then
+    if [[ "$type" == 'rsa' ]]; then
         echo -e "[i] rsa: [ 512 | 1024 | (2048) | 4096 ]\\n"
-    elif [[ "${type}" == 'dsa' ]]; then
+    elif [[ "$type" == 'dsa' ]]; then
         echo -e "[i] dsa: [ (1024) | 2048 ]\\n"
-    elif [[ "${type}" == 'ecdsa' ]]; then
+    elif [[ "$type" == 'ecdsa' ]]; then
         echo -e "[i] ecdsa: [ (256) | 384 | 521 ]\\n"
     fi
 
@@ -251,15 +251,15 @@ new_key() {
     clear
 
     echo -e "[i] Your choices\\n"
-    echo -e "[i] Type: ${type}"
-    echo -e "[i] bits: ${bits}"
-    echo -e "[i] Password: ${pass}"
-    echo -e "[i] comment: ${comment}"
+    echo -e "[i] Type: $type"
+    echo -e "[i] bits: $bits"
+    echo -e "[i] Password: $pass"
+    echo -e "[i] comment: $comment"
     echo -e "[i] Key name: $name\\n"
     read -p 'Press enter to continue or ^c to exit'
     clear
 
-    ssh-keygen -q -b "${bits}" -t "${type}" -N "${pass}" -C "${comment}" -f "$name"
+    ssh-keygen -q -b "$bits" -t "$type" -N "$pass" -C "$comment" -f "$name"
 
     chmod 600 "$PWD/$name"
     chmod 644 "$PWD/$name".pub
@@ -274,8 +274,7 @@ new_key() {
 }
 
 # EXPORT THE PUBLIC SSH KEY STORED INSIDE A PRIVATE SSH KEY
-keytopub()
-{
+keytopub() {
     clear; ls -1AhFv --color --group-directories-first
 
     local opub okey
@@ -284,19 +283,19 @@ keytopub()
     read -p 'Private key: ' okey
     read -p 'Public key: ' opub
     clear
-    if [ -f "${okey}" ]; then
-        chmod 600 "${okey}"
+    if [ -f "$okey" ]; then
+        chmod 600 "$okey"
     else
-        echo -e "Warning: file missing = ${okey}\\n"
+        echo -e "Warning: file missing = $okey\\n"
         read -p 'Press Enter to exit.'
         exit 1
     fi
-    ssh-keygen -b '4096' -y -f "${okey}" > "${opub}"
-    chmod 644 "${opub}"
-    cp "${opub}" "$HOME"/.ssh/authorized_keys
+    ssh-keygen -b '4096' -y -f "$okey" > "$opub"
+    chmod 644 "$opub"
+    cp "$opub" "$HOME"/.ssh/authorized_keys
     chmod 600 "$HOME"/.ssh/authorized_keys
-    unset "${okey}"
-    unset "${opub}"
+    unset "$okey"
+    unset "$opub"
 }
 
 # install colordiff package :)
@@ -364,7 +363,7 @@ aria2() {
         link="$2"
     fi
 
-    aria2c --out="${file}" "${link}"
+    aria2c --out="$file" "$link"
 }
 
 myip() {
@@ -468,7 +467,7 @@ nvme_temp() {
         n2="$(sudo nvme smart-log /dev/nvme0n1)"
     fi
 
-    printf "%s\n\n%s\n\n%s\n\n%s\n\n" "nvme0n1: ${n0}" "nnvme1n1: ${n1}" "nnvme2n1: ${n2}"
+    printf "%s\n\n%s\n\n%s\n\n%s\n\n" "nvme0n1: $n0" "nnvme1n1: $n1" "nnvme2n1: $n2"
 }
 
 #############################
@@ -510,7 +509,7 @@ dlfs() {
     do
         chown -R "$USER":"$USER" "$f"
         chmod -R 744 "$PWD" "$f"
-        [[ "$f" == 'build-all-git-safer' || "$f" == 'build-all-gnu-safer' ]] && mv "$f" "${f%-safer}"
+        [[ "$f" == 'build-all-git-safer' || "$f" == 'build-all-gnu-safer' ]] && mv "$f" "$f%-safer"
         [[ -n favorite-installer-scripts.txt ]] && sudo rm favorite-installer-scripts.txt
     done
     
@@ -597,7 +596,7 @@ hw_mon() {
     fi
     # Add modprobe to system startup tasks if not already added
     found=$(grep -o drivetemp  /etc/modules)
-    if [ -z "${found}" ]; then
+    if [ -z "$found" ]; then
         echo drivetemp | sudo tee -a /etc/modules
     else
         sudo modprobe drivetemp
@@ -873,12 +872,12 @@ rmd() {
 
     local dirs
 
-    if [ -z "${*}" ]; then
+    if [ -z "$*" ]; then
         clear; ls -1AvhF --color --group-directories-first
         echo
         read -p 'Enter the directory path(s) to delete: ' dirs
      else
-        dirs="${*}"
+        dirs="$*"
     fi
 
     sudo rm -fr "$dirs"
@@ -889,15 +888,15 @@ rmd() {
 rmf() {
     local files
 
-    if [ -z "${*}" ]; then
+    if [ -z "$*" ]; then
         clear; ls -1AvhF --color --group-directories-first
         echo
         read -p 'Enter the file path(s) to delete: ' files
      else
-        files="${*}"
+        files="$*"
     fi
 
-    sudo rm "${files}"
+    sudo rm "$files"
     echo
     ls -1AvhF --color --group-directories-first
 }
@@ -909,7 +908,7 @@ rmb() {
 
 ## LIST INSTALLED PACKAGES BY ORDER OF IMPORTANCE
 
-list_pkgs() { clear; dpkg-query -Wf '${Package;-40}${Priority}\n' | sort -b -k2,2 -k1,1; }
+list_pkgs() { clear; dpkg-query -Wf '$Package;-40$Priority\n' | sort -b -k2,2 -k1,1; }
 
 ## FIX USER FOLDER PERMISSIONS up = user permissions
 
@@ -939,7 +938,7 @@ set_default() {
     clear
 
     printf "%s\n\n%s\n\n%s\n%s\n\n" \
-        "You have chosen: sudo update-alternatives --install ${target} $name ${link} $namemportance" \
+        "You have chosen: sudo update-alternatives --install $target $name $link $namemportance" \
         "Would you like to continue?" \
         "[1] Yes" \
         "[2] No"
@@ -948,7 +947,7 @@ set_default() {
     clear
 
     case "$choice" in
-        1)      sudo update-alternatives --install "${target}" "$name" "${link}" "$namemportance";;
+        1)      sudo update-alternatives --install "$target" "$name" "$link" "$namemportance";;
         2)      return 0;;
         *)      return 0;;
     esac
@@ -959,14 +958,14 @@ count_dir() {
     local keep_count
     clear
     keep_count="$(find . -maxdepth 1 -type f | wc -l)"
-    printf "%s %'d\n\n" "The total directory file count is (non-recursive):" "${keep_count}"
+    printf "%s %'d\n\n" "The total directory file count is (non-recursive):" "$keep_count"
 }
 
 count_dirr() {
     local keep_count
     clear
     keep_count="$(find . -type f | wc -l)"
-    printf "%s %'d\n\n" "The total directory file count is (recursive):" "${keep_count}"
+    printf "%s %'d\n\n" "The total directory file count is (recursive):" "$keep_count"
 }
 
 ######################
@@ -1034,7 +1033,7 @@ gcc_native() {
     echo "Checking GCC version..."
     gcc --version
 
-    echo "Inspecting GCC verbose output for -march=native..."
+    echo "Inspecting GCC verbose output for -pipe -fno-plt -march=native..."
     # Create a temporary empty file
     temp_source=$(mktemp /tmp/dummy_source.XXXXXX.c)
     trap 'rm -f "$temp_source"' EXIT
@@ -1043,7 +1042,7 @@ gcc_native() {
     echo "" > "$temp_source"
 
     # Using GCC with -v to get verbose information, including the default march
-    gcc -march=native -v -E "$temp_source" 2>&1 | grep -- '-march='
+    gcc -pipe -fno-plt -march=native -v -E "$temp_source" 2>&1 | grep -- '-march='
 }
 
 ############################
@@ -1091,8 +1090,7 @@ gc() {
 ## NOHUP COMMANDS ##
 ####################
 
-nh()
-{
+nh() {
     nohup "$1" &>/dev/null &
     cl
 }
@@ -1129,7 +1127,7 @@ tkan() {
     parent_dir="$PWD"
     killall -9 nautilus
     sleep 1
-    nohup nautilus -w "${parent_dir}" &>/dev/null &
+    nohup nautilus -w "$parent_dir" &>/dev/null &
     exit
 }
 
@@ -1212,7 +1210,7 @@ adl() {
               --auto-file-renaming=false \
               --min-split-size=8M \
               --disk-cache=64M \
-              --file-allocation=${setalloc} \
+              --file-allocation=$setalloc \
               --no-file-allocation-limit=8M \
               --continue=true \
               --out="$filename" \
@@ -1270,7 +1268,7 @@ jpgsize() {
 
     random_dir="$(mktemp -d)"
     read -p "Enter the image size (units in MB): " size
-    find . -size +"${size}"M -type f -iname "*.jpg" > "$random_dir/img-sizes.txt"
+    find . -size +"$size"M -type f -iname "*.jpg" > "$random_dir/img-sizes.txt"
     sed -i "s/^..//g" "$random_dir/img-sizes.txt"
     sed -i "s|^|$PWD\/|g" "$random_dir/img-sizes.txt"
     echo
@@ -1313,8 +1311,8 @@ cmf() {
         rel_sdir="$1"
     fi
 
-    cmake ${rel_sdir} -B build -G Ninja -Wno-dev
-    ccmake ${rel_sdir}
+    cmake $rel_sdir -B build -G Ninja -Wno-dev
+    ccmake $rel_sdir
 }
 
 ##########################
@@ -1348,12 +1346,12 @@ countf() {
     local folder_count
     clear
     folder_count="$(ls -1 | wc -l)"
-    printf "%s\n" "There are ${folder_count} files in this folder"
+    printf "%s\n" "There are $folder_count files in this folder"
 }
 
 ## RECURSIVELY UNZIP ZIP FILES AND NAME THE OUTPUT FOLDER THE SAME NAME AS THE ZIP FILE
 zipr() {
-    sudo find . -type f -iname "*.zip" -exec sh -c 'unzip -o -d "${0%.*}" "$0"' '{}' \;
+    sudo find . -type f -iname "*.zip" -exec sh -c 'unzip -o -d "$0%.*" "$0"' '{}' \;
     sudo find . -type f -iname "*.zip" -exec trash-put '{}' \;
 }
 
@@ -1414,7 +1412,7 @@ rsrd() {
     read -p "Enter the destination path: " destination
     modified_source="$(echo "$source" | sed 's:/[^/]*$::')"'/./'"$(echo "$source" | sed 's:.*/::')"
     echo
-    rsync -aqvR --acls --perms --mkpath --remove-source-files "${modified_source}" "${destination}"
+    rsync -aqvR --acls --perms --mkpath --remove-source-files "$modified_source" "$destination"
 }
 
 ################
@@ -1437,10 +1435,10 @@ sc() {
         box_out_banner()
         {
             input_char=$(echo "$@" | wc -c)
-            line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+            line=$(for i in $(seq 0 $input_char); do printf "-"; done)
             tput bold
             line="$(tput setaf 3)$line"
-            space=${line//-/ }
+            space=$line//-/ 
             echo " $line"
             printf "|" ; echo -n "$space" ; printf "%s\n" "|";
             printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
@@ -1476,7 +1474,7 @@ ct() {
         pipe_this="$@"
     fi
 
-    echo "${pipe_this}" | xclip -i -rmlastnl -sel clip
+    echo "$pipe_this" | xclip -i -rmlastnl -sel clip
     clear
 }
 
@@ -1590,8 +1588,8 @@ bvar() {
         fname_tmp="$fname"
     fi
 
-    fext="${fname#*.}"
-    if [ -n "${fext}" ]; then
+    fext="$fname#*."
+    if [ -n "$fext" ]; then
         fname+=".txt"
         mv "$fname_tmp" "$fname"
     fi
@@ -1673,7 +1671,7 @@ rm_curly() {
     transform_string()
     {
         content=$(cat "$1")
-        echo "${content//\$\{/\$}" | sed 's/\}//g'
+        echo "$content//\$\{/\$" | sed 's/\}//g'
     }
 
     # LOOP OVER EACH ARGUMENT
@@ -1714,19 +1712,19 @@ check_port() {
         if [ -n "$pid" ] && [ -n "$name" ]; then
             process_found=true
             # Ensure protocol is only listed once per process
-            [[ "${pid_protocol_map[$pid,$name]}" != *"$protocol"* ]] && pid_protocol_map["$pid,$name"]+="$protocol "
+            [[ "$pid_protocol_map[$pid,$name]" != *"$protocol"* ]] && pid_protocol_map["$pid,$name"]+="$protocol "
         fi
     done < <(sudo lsof -i :"$port" -nP | grep -v "COMMAND")
 
     # Process information
     for key in "${!pid_protocol_map[@]}"; do
         IFS=',' read -r pid name <<< "$key"
-        protocol=${pid_protocol_map[$key]}
+        protocol=$pid_protocol_map[$key]
         # Removing trailing space
-        protocol=${protocol% }
+        protocol=$protocol% 
 
         # Display process and protocol information
-        echo -e "Process: $name (PID: $pid) using ${protocol// /, }"
+        echo -e "Process: $name (PID: $pid) using $protocol// /, "
 
         if [[ $protocol == *"TCP"* && $protocol == *"UDP"* ]]; then
             echo -e "\nBoth the TCP and UDP protocols are being used by the same process.\n"

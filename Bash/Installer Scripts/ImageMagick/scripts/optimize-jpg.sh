@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
 # Define usage function
 usage() {
@@ -32,7 +32,7 @@ working_dir="."
 log() { [[ $verbose_mode -eq 1 ]] && echo "$@"; }
 
 # Parse command-line options
-while [[ $# -gt 0 ]]; do
+while [[ $# -Gt 0 ]]; do
     case "$1" in
         -h|--help)     usage; exit ;;
         -b|--backup)   backup_dir="$2"; shift 2 ;;
@@ -65,15 +65,15 @@ cd "$working_dir" || { echo "Specified directory $working_dir does not exist. Ex
 
 process_image() {
     local infile="$1"
-    local base_name="${infile%.*}"
-    local extension="${infile##*.}"
+    local base_name="$infile%.*"
+    local extension="$infile##*."
     local temp_dir=$(mktemp -d)
-    local mpc_file="$temp_dir/${base_name##*/}.mpc"
-    local outfile="${base_name}-IM.${extension}"
-    local outfile_name="${outfile##*/}"
-    local backup_file="$backup_dir/${infile##*/}"
+    local mpc_file="$temp_dir/$base_name##*/.Mpc"
+    local outfile="$base_name-IM.$extension"
+    local outfile_name="$outfile##*/"
+    local backup_file="$backup_dir/$infile##*/"
 
-    # Check if the file has already been processed
+# Check if the file has already been processed
     if [[ "$infile" == *"-IM."* ]]; then
         echo "Skipping already processed file: $infile"
         return 0

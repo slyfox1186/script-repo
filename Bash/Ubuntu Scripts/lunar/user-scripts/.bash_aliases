@@ -49,7 +49,7 @@ alias reboot-uefi='sudo systemctl reboot --firmware-setup'
 
 # enable color support of ls and also add handy aliases
 if [ -x '/usr/bin/dircolors' ]; then
-    test -r "${HOME}/.dircolors" && eval "$(dircolors -b ${HOME}/.dircolors)" || eval "$(dircolors -b)"
+    test -r "$HOME/.dircolors" && eval "$(dircolors -b $HOME/.dircolors)" || eval "$(dircolors -b)"
         # file navigation
         alias ls='ls -1AhFSv --color=auto --group-directories-first'
         # grep commands
@@ -84,7 +84,7 @@ alias md='mkdir -p'
 alias mkdir='mkdir -p'
 
 # path commands
-alias psp='clear; echo -e ${PATH//:/\\n}'
+alias psp='clear; echo -e $PATH//:/\\n'
 
 # mount commands
 alias mount='mount |column -t'
@@ -230,7 +230,7 @@ alias psarch='clear; dpkg --print-architecture'
 alias psusb='lsblk -a | sort > ~/usb.txt'
 
 # remove bom
-alias rmb="sed -i '1s/^\xEF\xBB\xBF//' ${1}"
+alias rmb="sed -i '1s/^\xEF\xBB\xBF//' $1"
 
 # get system architechture
 alias showarch='dpkg --print-architecture'

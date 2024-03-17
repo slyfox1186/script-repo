@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
 RUST_SRC_DIR="rust-build-script"
 

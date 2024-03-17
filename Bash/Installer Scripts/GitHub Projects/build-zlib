@@ -1,14 +1,14 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
 ########################################################################################################################################
 ##
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-zlib
+##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/github%20projects/build-zlib
 ##
-##  Purpose: Build zlib
+##  Purpose: build zlib
 ##
 ##  Updated: 09.13.23
 ##
-##  Added: -fPIC to CFLAGS & CXXFLAGS to avoid other programs not compiling when attempting to use the libz.a file while linking
+##  Added: -fpic to cflags & cxxflags to avoid other programs not compiling when attempting to use the libz.a file while linking
 ##
 ##  Script version: 1.2
 ##
@@ -16,14 +16,12 @@
 
 clear
 
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+if [ "$EUID" -eq '0' ]; then
+    echo "You must run this script without root or sudo."
     exit 1
 fi
 
-#
-# SET VARIABLES
-#
+# Set variables
 
 script_ver=1.2
 install_dir=/usr/local
@@ -34,39 +32,31 @@ web_repo=https://github.com/slyfox1186/script-repo
 debug=OFF
 
 printf "\n%s\n%s\n\n" \
-    "zlib build script - v${script_ver}" \
+    "zlib build script - v$script_ver" \
     '==============================================='
 
-#
-# CREATE OUTPUT DIRECTORY
-#
+# Create output directory
 
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
-#
-# SET THE C+CPP COMPILERS
-#
+# Set the c+cpp compilers
 
 export CC=gcc CXX=g++
 
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
+# Set compiler optimization flags
 
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 
-#
-# SET THE PATH VARIABLE
-#
+# Set the path variable
 
 PATH="\
 /usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
+$HOME/perl5/bin:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/cuda/bin:\
 /usr/local/x86_64-linux-gnu/bin:\
@@ -81,9 +71,7 @@ ${HOME}/.local/bin:\
 "
 export PATH
 
-#
-# SET THE PKG_CONFIG_PATH VARIABLE
-#
+# Set the pkg_config_path variable
 
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
@@ -100,28 +88,23 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-#
-# CREATE FUNCTIONS
-#
+# Create functions
 
-exit_fn()
-{
+exit_fn() {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         "$web_repo"
     exit 0
 }
 
-fail_fn()
-{
+fail_fn() {
     printf "\n%s\n\n%s\n\n" \
         "$1" \
         "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
-cleanup_fn()
-{
+cleanup_fn() {
     local choice
 
     printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
@@ -132,7 +115,7 @@ cleanup_fn()
         '[2] No'
     read -p 'Your choices are (1 or 2): ' choice
 
-    case "${choice}" in
+    case "$choice" in
         1)      sudo rm -fr "$cwd";;
         2)      echo;;
         *)
@@ -146,8 +129,7 @@ cleanup_fn()
     esac
 }
 
-build()
-{
+build() {
     printf "\n%s\n%s\n" \
         "building $1 - version $2" \
         '===================================='
@@ -164,34 +146,32 @@ build()
     return 0
 }
 
-execute()
-{
-    echo "$ ${*}"
+execute() {
+    echo "$ $*"
 
-    if [ "${debug}" = 'ON' ]; then
+    if [ "$debug" = 'ON' ]; then
         if ! output=$("$@"); then
-            notify-send 5000 "Failed to execute: ${*}"
-            fail_fn "Failed to execute: ${*}"
+            notify-send 5000 "Failed to execute: $*"
+            fail_fn "Failed to execute: $*"
         fi
     else
         if ! output=$("$@" 2>&1); then
-            notify-send 5000 "Failed to execute: ${*}"
-            fail_fn "Failed to execute: ${*}"
+            notify-send 5000 "Failed to execute: $*"
+            fail_fn "Failed to execute: $*"
         fi
     fi
 }
 
-download()
-{
+download() {
     dl_path="$packages"
     dl_url="$1"
-    dl_file="${2:-"${1##*/}"}"
+    dl_file="$2:-"${1##*/"}"
 
     if [[ "$dl_file" =~ tar. ]]; then
-        output_dir="${dl_file%.*}"
-        output_dir="${3:-"${output_dir%.*}"}"
+        output_dir="$dl_file%.*"
+        output_dir="$3:-"${output_dir%.*"}"
     else
-        output_dir="${3:-"${dl_file%.*}"}"
+        output_dir="$3:-"${dl_file%.*"}"
     fi
 
     target_file="$dl_path/$dl_file"
@@ -202,15 +182,15 @@ download()
     fi
     cd "$dl_path" || exit 1
 
-    if [ -f "${target_file}" ]; then
+    if [ -f "$target_file" ]; then
         echo "The file \"$dl_file\" is already downloaded."
     else
-        echo "Downloading \"${dl_url}\" saving as \"$dl_file\""
-        if ! curl -A "$user_agent" -Lso "$dl_file" "${dl_url}"; then
+        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
+        if ! curl -A "$user_agent" -Lso "$dl_file" "$dl_url"; then
             printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
-            if ! curl -A "$user_agent" -Lso "$dl_file" "${dl_url}"; then
-                fail_fn "The script failed to download \"$dl_file\" twice and will now exit:Line ${LINENO}"
+            if ! curl -A "$user_agent" -Lso "$dl_file" "$dl_url"; then
+                fail_fn "The script failed to download \"$dl_file\" twice and will now exit:Line $LINENO"
             fi
         fi
         echo 'Download Completed'
@@ -224,55 +204,51 @@ download()
     if [ -n "$3" ]; then
         if ! tar -xf "$dl_file" -C "$target_dir" 2>/dev/null >/dev/null; then
             sudo rm "$dl_file"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script:Line ${LINENO}"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script:Line $LINENO"
         fi
     else
         if ! tar -xf "$dl_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
             sudo rm "$dl_file"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script:Line ${LINENO}"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script:Line $LINENO"
         fi
     fi
 
     printf "%s\n\n" "File extracted: $dl_file"
 
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir:Line ${LINENO}"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir:Line $LINENO"
 }
 
-git_1_fn()
-{
+git_1_fn() {
     local curl_cmd github_repo github_url
 
-    # SCRAPE GITHUB WEBSITE FOR THE LATEST REPO VERSION
+# Scrape github website for the latest repo version
     github_repo="$1"
     github_url="$2"
 
-    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
-        g_ver="${g_ver#v}"
+        g_ver="$g_ver#V"
     fi
 }
 
-git_ver_fn()
-{
+git_ver_fn() {
     local t_flag v_tag v_url
 
     v_url="$1"
     v_flag="$2"
 
-    case "${v_flag}" in
+    case "$v_flag" in
             B)      t_flag=branches;;
             R)      t_flag=releases;;
             T)      t_flag=tags;;
     esac
 
-    git_1_fn "${v_url}" "${t_flag}" 2>/dev/null
+    git_1_fn "$v_url" "$t_flag" 2>/dev/null
 }
 
 build_done() { echo "$2" > "$packages/$1.done"; }
 
-#
-# INSTALL REQUIRED APT PACKAGES
-#
+# Install required apt packages
 
 pkgs=(libtool autogen automake binutils bison build-essential bzip2 ccache curl
       libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev libtool
@@ -280,10 +256,10 @@ pkgs=(libtool autogen automake binutils bison build-essential bzip2 ccache curl
 
 for i in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+    missing_pkg="$(sudo dpkg -l | grep -o "$i")"
 
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+    if [ -z "$missing_pkg" ]; then
+        missing_pkgs+=" $i"
     fi
 done
 
@@ -293,9 +269,7 @@ if [ -n "$missing_pkgs" ]; then
     clear
 fi
 
-#
-# BUILD PROGRAM FROM SOURCE
-#
+# Build program from source
 
 git_ver_fn 'madler/zlib' 'T'
 if build 'zlib' "$g_ver"; then
@@ -312,8 +286,8 @@ if build 'zlib' "$g_ver"; then
     build_done 'zlib' "$g_ver"
 fi
 
-# PROMPT USER TO CLEAN UP FILES
+# Prompt user to clean up files
 cleanup_fn
 
-# SHOW EXIT MESSAGE
+# Show exit message
 exit_fn

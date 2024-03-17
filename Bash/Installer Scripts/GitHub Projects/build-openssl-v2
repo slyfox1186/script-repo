@@ -1,8 +1,8 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
-## GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-openssl-v2
-## Purpose: Build any version of OpenSSL. Defaults to the latest version 3.2.x
-## Features: Pass arguments to the script
+## Github: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/github%20projects/build-openssl-v2
+## Purpose: build any version of openssl. defaults to the latest version 3.2.x
+## Features: pass arguments to the script
 ## Updated: 03.12.24
 
 usage() {
@@ -18,7 +18,7 @@ usage() {
 }
 
 parse_arguments() {
-    while [[ $# -gt 0 ]]; do
+    while [[ $# -Gt 0 ]]; do
         case "$1" in
             -6|--enable-ipv6)
                 enable_ipv6=true
@@ -68,13 +68,13 @@ install_required_packages() {
 
     local -a missing_packages=()
     for pkg in "${pkgs[@]}"; do
-        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+        if ! dpkg-query -W -f='$Status' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             missing_packages+=("$pkg")
         fi
     done
 
-    if [[ "${#missing_packages[@]}" -gt 0 ]]; then
-        echo "Installing missing packages: ${missing_packages[*]}"
+    if [[ "${#Missing_packages[@]}" -gt 0 ]]; then
+        echo "Installing missing packages: $missing_packages[*]"
         apt install -y "${missing_packages[@]}"
         echo
     else
@@ -84,7 +84,7 @@ install_required_packages() {
 }
 
 set_compiler_flags() {
-    local common_flags="-g -O3 -pipe -fstack-protector-strong -D_FORTIFY_SOURCE=2"
+    local common_flags="-g -O3 -pipe -fno-plt -fstack-protector-strong -D_FORTIFY_SOURCE=2"
 
     export CC=clang
     export CXX=clang++
@@ -231,7 +231,7 @@ configure_openssl() {
 
 build_and_install_openssl() {
     echo "Compiling OpenSSL..."
-    make "-j${jobs:-$(nproc --all)}" || fail "Failed to execute: make -j${jobs:-$(nproc --all)}. Line: $LINENO"
+    make "-j$jobs:-$(nproc --all)" || fail "Failed to execute: make -j$jobs:-$(nproc --all). Line: $LINENO"
     echo
     echo "Installing OpenSSL..."
     make install_sw install_fips || fail "Failed to execute: make install_sw install_fips. Line: $LINENO"
@@ -241,8 +241,8 @@ build_and_install_openssl() {
 
 post_installation_tasks() {
     echo "Performing post-installation tasks..."
-    # Add any additional post-installation tasks here
-    # For example, generating OpenSSL certificates, setting up symlinks, etc.
+# Add any additional post-installation tasks here
+# For example, generating openssl certificates, setting up symlinks, etc.
     echo "Post-installation tasks completed."
     echo
 }
@@ -252,7 +252,7 @@ main() {
     local install_dir="/usr/local/ssl"
     local enable_ipv6=false
     local openssl_version
-    local tar_file="$cwd/openssl-${openssl_version}.tar.gz"
+    local tar_file="$cwd/openssl-$openssl_version.tar.gz"
     local src_dir
     local jobs
     local keep_build=false
@@ -270,10 +270,10 @@ main() {
             fail "Failed to detect the latest OpenSSL 3.2.x version. Line: $LINENO"
             exit 1
         fi
-        openssl_version=${openssl_version#openssl-}  # Remove the "openssl-" prefix
+        openssl_version=$openssl_version#Openssl-  # remove the "openssl-" prefix
     fi
 
-    install_dir=${install_dir:-/usr/local/ssl}
+    install_dir=$install_dir:-/usr/local/ssl
     src_dir="$cwd/$openssl_version"
 
     echo

@@ -1,11 +1,11 @@
-#!/usr/bin/env bash
-# shellcheck disable=SC2016,SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
+#!/Usr/bin/env bash
+# Shellcheck disable=sc2016,sc2034,sc2046,sc2066,sc2068,sc2086,sc2162,sc2317
 
 ########################################################################
 ##
-##  Install libgcrypt LTS + libgcrypt-error
+##  Install libgcrypt lts + libgcrypt-error
 ##
-##  Supported OS:
+##  Supported os:
 ##  - Debian
 ##  - Ubuntu
 ##
@@ -17,14 +17,12 @@
 
 clear
 
-if [ "${EUID}" -eq '0' ]; then
-    printf "%s\n\n" 'You must run this script WITHOUT root/sudo.'
+if [ "$EUID" -eq '0' ]; then
+    echo "You must run this script without root or sudo."
     exit 1
 fi
 
-#
-# SET THE VARIABLES
-#
+# Set the variables
 
 script_ver=1.0
 install_prefix=/usr/local
@@ -36,15 +34,11 @@ user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 web_repo=https://github.com/slyfox1186/script-repo
 debug=OFF
 
-#
-# CREATE OUTPUT DIRECTORIES
-#
+# Create output directories
 
 mkdir -p "$packages" "$workspace"
 
-#
-# GET CPU CORE COUNT FOR PARALLEL PROCESSING
-#
+# Get cpu core count for parallel processing
 
 if [ -f /proc/cpuinfo ]; then
     cpu_threads="$(grep --count ^processor /proc/cpuinfo)"
@@ -52,40 +46,32 @@ else
     cpu_threads="$(nproc --all)"
 fi
 
-#
-# SET THE C & C++ COMPILERS
-#
+# Set the c & c++ compilers
 
 export CC=gcc CXX=g++
 
-#
-# SET COMPILER OPTIMIZATION FLAGS
-#
+# Set compiler optimization flags
 
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include"
 LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64"
 LDFLAGS+=' -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 export CPPFLAGS LDFLAGS
 
-#
-# PRINT BANNER
-#
+# Print banner
 
 printf "%s\n%s\n%s\n" \
-    "libgcrypt build script - v${script_ver}" \
+    "libgcrypt build script - v$script_ver" \
     '=========================================' \
-    "This script will utilize (${cpu_threads}) CPU threads for parallel processing to accelerate the build process."
+    "This script will utilize ($cpu_threads) CPU threads for parallel processing to accelerate the build process."
 
-#
-# CREATE GLOBAL VARIABLES
-#
+# Create global variables
 
 PATH="\
 /usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
+$HOME/perl5/bin:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/cuda/bin:\
 /usr/local/x86_64-linux-gnu/bin:\
@@ -122,12 +108,9 @@ $workspace/share/pkgconfig:\
 "
 export PKG_CONFIG_PATH
 
-#
-# DEFINE FUNCTIONS
-#
+# Define functions
 
-fail_fn()
-{
+fail_fn() {
     printf "\n%s\n%s\n%s\n\n" \
         "$1" \
         'You can enable the script'\''s debugging feature by changing the variable "debug" to "ON"' \
@@ -135,16 +118,14 @@ fail_fn()
     exit 1
 }
 
-exit_fn()
-{
+exit_fn() {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         "$web_repo"
     exit 0
 }
 
-cleanup_fn()
-{
+cleanup_fn() {
     local choice
  
     printf "\n%s\n\n%s\n%s\n\n" \
@@ -154,7 +135,7 @@ cleanup_fn()
     read -p 'Your choices are (1 or 2): ' choice
     clear
 
-    case "${choice}" in
+    case "$choice" in
         1)      sudo rm -fr "$cwd";;
         2)      clear;;
         *)
@@ -164,33 +145,29 @@ cleanup_fn()
     esac
 }
 
-#
-# SCRAPE GITHUB WEBSITE FOR THE LATEST REPO VERSION
-#
+# Scrape github website for the latest repo version
 
-git_1_fn()
-{
+git_1_fn() {
     local curl_cmd github_repo github_url
 
     github_repo="$1"
     github_url="$2"
 
-    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
+    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
         g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url' 2>/dev/null)"
-        g_ver="${g_ver#cares-}"
-        g_ver="${g_ver#aria2 }"
-        g_ver="${g_ver#nghttp2 v}"
-        g_ver="${g_ver#nghttp3 v}"
-        g_ver="${g_ver#OpenSSL }"
-        g_ver="${g_ver#release-}"
-        g_ver="${g_ver#v}"
+        g_ver="$g_ver#Cares-"
+        g_ver="$g_ver#Aria2 "
+        g_ver="$g_ver#Nghttp2 v"
+        g_ver="$g_ver#Nghttp3 v"
+        g_ver="$g_ver#Openssl "
+        g_ver="$g_ver#Release-"
+        g_ver="$g_ver#V"
     fi
 
 }
 
-git_ver_fn()
-{
+git_ver_fn() {
     local v_flag v_url v_tag url_tag t_url
 
     v_url="$1"
@@ -198,58 +175,56 @@ git_ver_fn()
 
     if [ -n "$3" ]; then
         v_flag="$3"
-        case "${v_flag}" in
+        case "$v_flag" in
             T)      t_url=tags;;
             R)      t_url=releases;;
             *)      fail_fn 'Failed to pass "tags" and "releases" to the command: curl_cmd.';;
         esac
     fi
 
-    git_1_fn "${v_url}" "${t_url}" 2>/dev/null
+    git_1_fn "$v_url" "$t_url" 2>/dev/null
 }
 
-execute()
-{
-    echo "$ ${*}"
+execute() {
+    echo "$ $*"
 
-    if [ "${debug}" = 'ON' ]; then
+    if [ "$debug" = 'ON' ]; then
         if ! output=$("$@"); then
-            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
-            fail_fn "Failed to execute: ${*}"
+            notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
+            fail_fn "Failed to execute: $*"
         fi
     else
         if ! output=$("$@" 2>&1); then
-            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
-            fail_fn "Failed to execute: ${*}"
+            notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
+            fail_fn "Failed to execute: $*"
         fi
     fi
 }
 
-download()
-{
+download() {
     dl_path="$packages"
     dl_url="$1"
-    dl_file="${2:-"${1##*/}"}"
+    dl_file="$2:-"${1##*/"}"
 
     if [[ "$dl_file" =~ tar. ]]; then
-        output_dir="${dl_file%.*}"
-        output_dir="${3:-"${output_dir%.*}"}"
+        output_dir="$dl_file%.*"
+        output_dir="$3:-"${output_dir%.*"}"
     else
-        output_dir="${3:-"${dl_file%.*}"}"
+        output_dir="$3:-"${dl_file%.*"}"
     fi
 
     target_file="$dl_path/$dl_file"
     target_dir="$dl_path/$output_dir"
 
-    if [ -f "${target_file}" ]; then
+    if [ -f "$target_file" ]; then
         echo "The file \"$dl_file\" is already downloaded."
     else
-        echo "Downloading \"${dl_url}\" saving as \"$dl_file\""
-        if ! wget -U "$user_agent" -cqO "${target_file}" "${dl_url}"; then
+        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
+        if ! wget -U "$user_agent" -cqO "$target_file" "$dl_url"; then
             printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
-            if ! wget -U "$user_agent" -cqO "${target_file}" "${dl_url}"; then
-                fail_fn "The script failed to download \"$dl_file\" twice and will now exit. Line: ${LINENO}"
+            if ! wget -U "$user_agent" -cqO "$target_file" "$dl_url"; then
+                fail_fn "The script failed to download \"$dl_file\" twice and will now exit. Line: $LINENO"
             fi
         fi
         echo 'Download Completed'
@@ -261,24 +236,23 @@ download()
     mkdir -p "$target_dir"
 
     if [ -n "$3" ]; then
-        if ! tar -xf "${target_file}" -C "$target_dir" 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
+        if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
+            sudo rm "$target_file"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
         fi
     else
-        if ! tar -xf "${target_file}" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
+        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
+            sudo rm "$target_file"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
         fi
     fi
 
     printf "%s\n\n" "File extracted: $dl_file"
 
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: ${LINENO}"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: $LINENO"
 }
 
-build()
-{
+build() {
     printf "\n%s\n%s\n" \
         "building $1 - version $2" \
         '===================================='
@@ -296,27 +270,23 @@ build()
     return 0
 }
 
-build_done()
-{
+build_done() {
     echo "$2" > "$packages/$1.done"
 }
 
-installed()
-{
-    return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
+installed() {
+    return $(dpkg-query -W -f '$Status\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
 }
 
-#
-# INSTALL REQUIRED APT PACKAGES
-#
+# Install required apt packages
 
 pkgs=(autoconf autoconf-archive autogen automake autotools-dev
       build-essential ccache curl libtool libtool-bin m4 pkg-config)
 
 for pkg in ${pkgs[@]}
 do
-    if ! installed "${pkg}"; then
-        missing_pkgs+=" ${pkg}"
+    if ! installed "$pkg"; then
+        missing_pkgs+=" $pkg"
     fi
 done
 
@@ -332,15 +302,13 @@ else
     printf "%s\n" 'The required APT packages are already installed.'
 fi
 
-#
-# BUILD LIBRARIES FROM SOURCE
-#
+# Build libraries from source
 
 if build 'libgpg-error' '1.47'; then
     download 'https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-1.47.tar.bz2' 'libgpg-error-1.47.tar.bz2'
     execute ./autogen.sh
     execute ./configure --prefix="$install_prefix" \
-                        --{build,host}="${pc_type}"  \
+                        --{build,host}="$pc_type"  \
                         --disable-doc                \
                         --disable-nls                \
                         --disable-tests              \
@@ -351,7 +319,7 @@ if build 'libgpg-error' '1.47'; then
                         --with-libiconv-prefix=/usr  \
                         --with-libintl-prefix=/usr   \
                         --with-pic
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute sudo make install
     execute sudo cp -f 'src/gpg-error-config' "$install_prefix"/bin
     build_done 'libgpg-error' '1.47'
@@ -361,20 +329,20 @@ if build 'libgcrypt' '1.8.10-LTS'; then
     download 'https://gnupg.org/ftp/gcrypt/libgcrypt/libgcrypt-1.8.10.tar.bz2' 'libgcrypt-1.8.10-LTS.tar.bz2'
     execute ./autogen.sh
     ./configure --prefix="$install_prefix"                   \
-                --{build,host}="${pc_type}"                    \
+                --{build,host}="$pc_type"                    \
                 --enable-static                                \
                 --with-libgpg-error-prefix="$install_prefix" \
                 --with-pic
-    execute make "-j${cpu_threads}"
+    execute make "-j$cpu_threads"
     execute sudo make install
     build_done 'libgcrypt' '1.8.10-LTS'
 fi
 
-# LDCONFIG MUST BE RUN NEXT IN ORDER TO UPDATE FILE CHANGES OR THE VERSION COMMANDS MIGHT NOT WORK
+# Ldconfig must be run next in order to update file changes or the version commands might not work
 sudo ldconfig 2>/dev/null
 
-# CLEANUP LEFTOVER FILES
+# Cleanup leftover files
 cleanup_fn
 
-# DISPLAY EXIT MESSAGE
+# Display exit message
 exit_fn

@@ -18,8 +18,8 @@
 clear
 
 # Verify the script has root access before continuing
-if [ "${EUID}" -eq '0' ]; then
-    echo 'You must run this script WITHOUT root/sudo.'
+if [ "$EUID" -eq '0' ]; then
+    echo "You must run this script without root or sudo."
     echo
     exit 1
 fi
@@ -40,10 +40,9 @@ fi
 ## FUNCTION SECTION ##
 ######################
 
-installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
+installed() { return $(dpkg-query -W -f '$Status\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
-exit_fn()
-{
+exit_fn() {
     printf "\n%s\n\n%s\n\n" \
         '[i] Make sure to star this repository to show your support!' \
         '[i] https://github.com/slyfox1186/script-repo/'
@@ -52,8 +51,7 @@ exit_fn()
 
 install_other_fn() { curl -Ssf 'https://dlang.org/install.sh' | bash -s dmd; }
 
-install_apt_fn()
-{
+install_apt_fn() {
     pkgs=(alien apt-file aptitude aria2 autoconf autoconf-archive autogen automake bat binutils bison
           build-essential ccache ccdiff checkinstall clang cmake cmake-extras cmake-qt-gui colordiff cpu-checker
           curl cvs dbus-x11 dconf-editor ddclient debhelper devscripts dh-make disktype dos2unix dpkg-dev
@@ -90,8 +88,7 @@ install_apt_fn()
     fi
 }
 
-install_ppa_fn()
-{
+install_ppa_fn() {
     local i missing_pkgs pkg pkgs ppa_repo
 
     if [ ! -d '/etc/apt/sources.list.d' ]; then

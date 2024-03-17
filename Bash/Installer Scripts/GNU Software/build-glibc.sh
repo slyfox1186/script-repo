@@ -1,11 +1,11 @@
-#!/usr/bin/env bash
+#!/Usr/bin/env bash
 
-# Github script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-glibc.sh
-# Purpose: Build GNU glibc
+# Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/gnu%20software/build-glibc.sh
+# Purpose: build gnu glibc
 # Updated: 03.16.24
 # Script version: 2.6
 
-# ANSI color codes
+# Ansi color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -15,7 +15,7 @@ NC='\033[0m'
 # Variables
 archive_dir="glibc-2.39"
 archive_url="https://ftp.gnu.org/gnu/glibc/$archive_dir.tar.xz"
-archive_ext="${archive_url##*.}"
+archive_ext="$archive_url##*."
 archive_name="$archive_dir.tar.$archive_ext"
 working="/tmp/glibc-build-script"
 install_dir="/usr/local/$archive_dir"
@@ -31,19 +31,19 @@ LDFLAGS="-Wl,-O1 -Wl,--as-needed -Wl,--hash-style=gnu -Wl,-z,relro,-z,now"
 # Functions
 fail() {
     mkdir -p "$(dirname "$log_file")"
-    echo -e "${RED}[$(date +'%m.%d.%Y %T')] ERROR: $1${NC}" | tee -a "$log_file"
-    echo -e "${RED}To report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues${NC}" | tee -a "$log_file"
+    echo -e "$RED[$(date +'%m.%d.%Y %T')] ERROR: $1$NC" | tee -a "$log_file"
+    echo -e "$REDTo report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues$NC" | tee -a "$log_file"
     exit 1
 }
 
 warn() {
     mkdir -p "$(dirname "$log_file")"
-    echo -e "${YELLOW}[$(date +'%m.%d.%Y %T')] WARNING: $1${NC}" | tee -a "$log_file"
+    echo -e "$YELLOW[$(date +'%m.%d.%Y %T')] WARNING: $1$NC" | tee -a "$log_file"
 }
 
 log() {
     mkdir -p "$(dirname "$log_file")"
-    echo -e "${GREEN}[$(date +'%m.%d.%Y %T')] $1${NC}" | tee -a "$log_file"
+    echo -e "$GREEN[$(date +'%m.%d.%Y %T')] $1$NC" | tee -a "$log_file"
 }
 
 cleanup() {
@@ -85,13 +85,13 @@ install_dependencies() {
     missing_deps=()
 
     for pkg in "${dependencies[@]}"; do
-        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+        if ! dpkg-query -W -f='$Status' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             missing_deps+=("$pkg")
         fi
     done
 
-    if [[ ${#missing_deps[@]} -gt 0 ]]; then
-        log "Installing missing dependencies: ${missing_deps[*]}"
+    if [[ ${#Missing_deps[@]} -gt 0 ]]; then
+        log "Installing missing dependencies: $missing_deps[*]"
         if ! apt-get install -y "${missing_deps[@]}"; then
             fail "Failed to install dependencies."
         fi
@@ -167,8 +167,8 @@ update_system() {
 }
 
 main() {
-    # Parse command-line arguments
-    while [[ $# -gt 0 ]]; do
+# Parse command-line arguments
+    while [[ $# -Gt 0 ]]; do
         case "$1" in
             -h|--help)
                 show_usage
@@ -190,41 +190,41 @@ main() {
         shift
     done
 
-    # Check if running with root or sudo access
+# Check if running with root or sudo access
     if [[ "$EUID" -ne 0 ]]; then
         fail "This script must be run with root or sudo access."
     fi
 
-    # Create output directory
+# Create output directory
     log "Creating output directory..."
     mkdir -p "$working"
 
-    # Download archive file
+# Download archive file
     if [[ ! -f "$working/$archive_name" ]]; then
         download_archive
     else
         log "Archive file already exists: $working/$archive_name"
     fi
 
-    # Extract archive files
+# Extract archive files
     extract_archive
 
-    # Install dependencies
+# Install dependencies
     install_dependencies
 
-    # Build glibc
+# Build glibc
     build_glibc
 
-    # Install glibc
+# Install glibc
     install_glibc
 
-    # Create symbolic links
+# Create symbolic links
     create_symlinks
 
-    # Update system
+# Update system
     update_system
 
-    # Clean up if requested
+# Clean up if requested
     if [[ "$cleanup_files" == true ]]; then
         cleanup
     fi
