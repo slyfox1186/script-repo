@@ -89,10 +89,7 @@ download_and_extract() {
     local url="$1"
     local target_dir="$2"
     local filename="${url##*/}"
-    clear
-    set -x
-    echo $filename
-    exit
+
     if [ -f "$target_dir/$filename" ]; then
         log "The file $filename is already downloaded."
     else
