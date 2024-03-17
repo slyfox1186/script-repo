@@ -5,9 +5,6 @@ if [[ "$EUID" -ne 0 ]]; then
     exit 1
 fi
 
-script_path=$(readlink -f "${BASH_SOURCE[0]}")
-script_name=$(basename "$script_path")
-
 config_list="/etc/pacman.conf"
 server_list="/etc/pacman.d/mirrorlist"
 
@@ -137,4 +134,7 @@ else
     echo -e "\\nThe script failed to locate nano to open the file...\\n"
 fi
 
-rm "$script_name"
+script_path=$(readlink -f "${BASH_SOURCE[0]}")
+script_name=$(basename "$script_path")
+
+[[ -f "$script_name" ]] && rm "$script_name"
