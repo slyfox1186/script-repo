@@ -38,7 +38,7 @@ log() {
     local message="$1"
     local timestamp=$(date +'%m.%d.%Y %I:%M:%S %p')
     if [[ "$verbose" -eq 1 ]]; then
-        echo -e "\\n${GREEN}[INFO]${NC} $timestamp $message\\n"
+        echo -e "\\n$GREEN[INFO]$NC $timestamp $message\\n"
     fi
     if [[ -n "$log_file" ]]; then
         echo "$timestamp $message" >> "$log_file"
@@ -48,7 +48,7 @@ log() {
 warn() {
     local message="$1"
     local timestamp=$(date +'%m.%d.%Y %I:%M:%S %p')
-    echo -e "${YELLOW}[WARN]${NC} $timestamp $message"
+    echo -e "$YELLOW[WARN]$NC $timestamp $message"
     if [[ -n "$log_file" ]]; then
         echo "$timestamp WARNING: $message" >> "$log_file"
     fi
@@ -57,7 +57,7 @@ warn() {
 fail() {
     local message="$1"
     local timestamp=$(date +'%m.%d.%Y %I:%M:%S %p')
-    echo -e "${RED}[ERROR]${NC} $timestamp $message"
+    echo -e "$RED[ERROR]$NC $timestamp $message"
     if [[ -n "$log_file" ]]; then
         echo "$timestamp ERROR: $message" >> "$log_file"
     fi
@@ -248,19 +248,19 @@ select_versions() {
     local -a versions=(9 10 11 12 13)
     local -a selected_versions=()
 
-    echo -e "\\n${GREEN}Select the GCC version(s) to install:${NC}\n"
-    echo -e "${CYAN}1. Single version${NC}"
-    echo -e "${CYAN}2. All versions${NC}"
-    echo -e "${CYAN}3. Custom versions${NC}"
+    echo -e "\\n$GREENSelect the GCC version(s) to install:$NC\n"
+    echo -e "$CYAN1. Single version$NC"
+    echo -e "$CYAN2. All versions$NC"
+    echo -e "$CYAN3. Custom versions$NC"
 
     echo
     read -p "Enter your choice: " choice
 
     case "$choice" in
         1)
-            echo -e "\\n${GREEN}Select a single GCC version to install:${NC}\n"
+            echo -e "\\n$GREENSelect a single GCC version to install:$NC\n"
             for ((i=0; i<${#versions[@]}; i++)); do
-                echo -e "${CYAN}$((i+1)). GCC ${versions[i]}${NC}"
+                echo -e "$CYAN$((i+1)). GCC ${versions[i]}$NC"
             done
             echo
             read -p "Enter your choice: " single_choice
@@ -327,12 +327,12 @@ install_autoconf() {
 }
 
 summary() {
-    echo -e "\\n${GREEN}Summary:${NC}"
-    echo -e "  Installed GCC version(s): ${CYAN}${selected_versions[*]}${NC}"
-    echo -e "  Installation prefix: ${CYAN}$install_prefix${NC}"
-    echo -e "  Build directory: ${CYAN}$build_dir${NC}"
-    echo -e "  Temporary build directory retained: ${CYAN}$([[ "$keep_build_dir" -eq 1 ]] && echo "Yes" || echo "No")${NC}"
-    echo -e "  Log file: ${CYAN}$log_file${NC}"
+    echo -e "\\n$GREENSummary:$NC"
+    echo -e "  Installed GCC version(s): $CYAN${selected_versions[*]}$NC"
+    echo -e "  Installation prefix: $CYAN$install_prefix$NC"
+    echo -e "  Build directory: $CYAN$build_dir$NC"
+    echo -e "  Temporary build directory retained: $CYAN$([[ "$keep_build_dir" -eq 1 ]] && echo "Yes" || echo "No")$NC"
+    echo -e "  Log file: $CYAN$log_file$NC"
 }
 
 main() {
@@ -355,7 +355,7 @@ main() {
     summary
 
     log "Build completed successfully!"
-    echo -e "\\n${GREEN}Make sure to star this repository to show your support!${NC}"
+    echo -e "\\n$GREENMake sure to star this repository to show your support!$NC"
     echo "https://github.com/slyfox1186/script-repo"
 }
 

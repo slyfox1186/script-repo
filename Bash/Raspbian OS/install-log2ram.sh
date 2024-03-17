@@ -8,9 +8,9 @@ NC='\033[0m' # No Color
 
 <<<<<<< Updated upstream
 # Log Functions
-log() { echo -e "${GREEN}[LOG]${NC} $1"; }
-warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-fail() { echo -e "${RED}[FAIL]${NC} $1"; exit 1; }
+log() { echo -e "$GREEN[LOG]$NC $1"; }
+warn() { echo -e "$YELLOW[WARN]$NC $1"; }
+fail() { echo -e "$RED[FAIL]$NC $1"; exit 1; }
 
 # Check for root privileges
 if [[ "$EUID" -ne 0 ]]; then

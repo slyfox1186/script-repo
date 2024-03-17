@@ -14,17 +14,17 @@ NC="\033[0m"
 
 # Function to log messages
 log() {
-    echo -e "${GREEN}[INFO]${NC} $1"
+    echo -e "$GREEN[INFO]$NC $1"
 }
 
 # Function to display warnings
 warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
+    echo -e "$YELLOW[WARN]$NC $1"
 }
 
 # Function to handle failures
 fail() {
-    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "$RED[ERROR]$NC $1"
     exit 1
 }
 

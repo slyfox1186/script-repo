@@ -9,8 +9,8 @@ fi
 fname="/etc/apt/sources.list"
 
 # Make a backup of the file
-if [[ ! -f "${fname}.bak" ]]; then
-    cp -f "$fname" "${fname}.bak"
+if [[ ! -f "$fname.bak" ]]; then
+    cp -f "$fname" "$fname.bak"
 fi
 
 cat > "$fname" <<EOF

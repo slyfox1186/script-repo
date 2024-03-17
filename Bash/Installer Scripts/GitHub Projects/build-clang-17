@@ -40,7 +40,7 @@ install_required_packages() {
     local missing_packages=()
 
     for pkg in "${pkgs[@]}"; do
-        if ! dpkg-query -W -f='${Status}' "$pkg" | grep -q "ok installed"; then
+        if ! dpkg-query -W -f='$Status' "$pkg" | grep -q "ok installed"; then
             missing_packages+=("$pkg")
         fi
     done
