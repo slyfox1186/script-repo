@@ -57,7 +57,7 @@ bash <(curl -fsSL https://build-all-git.optimizethis.net)
 
 #### For native Linux systems (Windows WSL not working)
 ```bash
-curl -Lso build-gcc.sh https://gcc.optimizethis.net
+curl -fsSLo build-gcc.sh https://gcc.optimizethis.net
 sudo bash build-gcc.sh
 ```
 ## Install [Clang-17](https://github.com/llvm/llvm-project)
@@ -73,7 +73,7 @@ curl -fsSLo build-clang https://clang.optimizethis.net; sudo bash build-clang
     - **Processor**    - **Linux** | **ARM**
 ### v23.01 Release
 ```bash
-curl -Lso 7z.sh https://7z.optimizethis.net
+curl -fsSLo 7z.sh https://7z.optimizethis.net
 clear; bash 7z.sh
 ```
 ------
@@ -124,7 +124,7 @@ sudo bash build-ffmpeg.sh --build --enable-gpl-and-non-free --latest
       - To build OpenSSL version 3.1.5 pass this to the script: **build-openssl.sh -v 3.1.5**
 
 ```bash
-curl -Lso build-openssl.sh https://openssl.optimizethis.net
+curl -fsSLo build-openssl.sh https://openssl.optimizethis.net
 sudo bash build-openssl.sh
 ````
 ------
@@ -160,7 +160,7 @@ bash <(curl -fsSL https://build-tools.optimizethis.net)
     - Other Debian-based distros may work as well
 
 ```bash
-sudo curl -Lso /tmp/aria2 https://aria2.optimizethis.net
+sudo curl -fsSLo /tmp/aria2 https://aria2.optimizethis.net
 sudo bash /tmp/aria2
 ````
 ------
@@ -250,7 +250,7 @@ bash <(curl -fsSL https://wsl2-kernel.optimizethis.net)
 
 ## Install [Squid Proxy Server](http://www.squid-cache.org/) for home use
 ```bash
-curl -Lso squid.sh https://squid-proxy.optimizethis.net; sudo bash squid.sh
+curl -fsSLo squid.sh https://squid-proxy.optimizethis.net; sudo bash squid.sh
 ```
 ------
 
@@ -288,5 +288,5 @@ bash <(curl -fsSL https://gparted.optimizethis.net)
       2. **Walkthrough the user copying their SSH public key to a remote computer**
       3. **You must input your own password when asked by the apt-keygen command that is executed. This is to keep your security strong!**
 ```bash
-curl -Lso ssh-keys.sh https://ssh-keys.optimizethis.net; sudo bash ssh-keys.sh
+curl -fsSLo ssh-keys.sh https://ssh-keys.optimizethis.net; sudo bash ssh-keys.sh
 ```
