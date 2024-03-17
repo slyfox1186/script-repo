@@ -2,10 +2,8 @@
 
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-all-gnu-safer
 ##  Purpose: Loops multiple build scripts to optimize efficiency. This is the safer of the two scripts.
-##  Updated: 02.20.24
-##  Script version: 1.2
-
-clear
+##  Updated: 03.17.24
+##  Script version: 1.3
 
 if [ "$EUID" -eq 0 ]; then
     printf "%s\n\n" "You must run this script without root/sudo."
