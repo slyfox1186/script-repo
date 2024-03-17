@@ -89,7 +89,8 @@ sudo bash install-7zip.sh
     - Other Debian-based distros may work as well
   
 ```bash
-bash <(curl -fsSL https://imagick.optimizethis.net)
+curl -fsSLo build-magick.sh https://imagick.optimizethis.net
+sudo bash build-magick.sh
 ```
 ------
 
