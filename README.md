@@ -75,7 +75,7 @@ sudo bash build-clang.sh
 ### v23.01 Release
 ```bash
 curl -fsSLo install-7zip.sh https://7zip.optimizethis.net
-bash install-7zip.sh
+sudo bash install-7zip.sh
 ```
 ------
 
