@@ -150,11 +150,6 @@ install_deps() {
     fi
 }
 
-get_latest_version() {
-    local major_version="$1"
-    curl -fsS "https://ftp.gnu.org/gnu/gcc/" | grep -Eo "gcc-$major_version\.[0-9]+\.[0-9]+" | sort -rV | head -n1 | cut -d- -f2
-}
-
 download() {
     local url="$1"
     local filename="${url##*/}"
@@ -166,12 +161,31 @@ download() {
     local extract_dir="${filename%.tar.xz}"
     if [[ ! -d "$build_dir/$extract_dir" ]]; then
         log "Extracting $filename"
-        if ! tar -xf "$build_dir/$filename" -C "$build_dir"; then
+        if ! tar -xf "$build_dir/$filename" -C "$working"; then
             fail "Failed to extract $filename"
         fi
     else
         log "Source directory $build_dir/$extract_dir already exists"
     fi
+}
+
+install_autoconf() {
+    log "Installing autoconf 2.69"
+    wget --show-progress -cqO "$build_dir/autoconf-2.69.tar.xz" "https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.xz"
+    mkdir -p "$build_dir/autoconf-2.69/build" "$workspace"
+    tar -xf "$build_dir/autoconf-2.69.tar.xz" -C "$build_dir/autoconf-2.69" --strip-components 1
+    cd "$build_dir/autoconf-2.69" || fail "Failed to change directory to $build_dir/autoconf-2.69. Line: $LINENO"
+    autoupdate
+    autoconf
+    cd build || fail "Failed to change directory to build. Line: $LINENO"
+    ../configure --prefix="$build_dir/workspace"
+    make "-j$(nproc --all)"
+    make install
+}
+
+get_latest_gcc_version() {
+    local major_version="$1"
+    curl -fsS "https://ftp.gnu.org/gnu/gcc/" | grep -Eo "gcc-$major_version\.[0-9]+\.[0-9]+" | sort -rV | head -n1 | cut -d- -f2
 }
 
 build_gcc() {
@@ -233,21 +247,11 @@ create_symlinks() {
     done
 }
 
-cleanup() {
-    if [[ "$keep_build_dir" -ne 1 ]]; then
-        log "Cleaning up..."
-        rm -rf "$build_dir"
-        log "Removed temporary build directory: $build_dir"
-    else
-        log "Temporary build directory retained: $build_dir"
-    fi
-}
-
 select_versions() {
     local -a versions=(9 10 11 12 13)
     local -a selected_versions=()
 
-    echo -e "\n${GREEN}Select the GCC version(s) to install:${NC}\n"
+    echo -e "\\n${GREEN}Select the GCC version(s) to install:${NC}\\n"
     echo -e "${CYAN}1. Single version${NC}"
     echo -e "${CYAN}2. All versions${NC}"
     echo -e "${CYAN}3. Custom versions${NC}"
@@ -257,7 +261,7 @@ select_versions() {
 
     case "$choice" in
         1)
-            echo -e "\n${GREEN}Select a single GCC version to install:${NC}\n"
+            echo -e "\\n${GREEN}Select a single GCC version to install:${NC}\\n"
             for ((i=0; i<${#versions[@]}; i++)); do
                 echo -e "${CYAN}$((i+1)). GCC ${versions[i]}${NC}"
             done
@@ -298,7 +302,7 @@ select_versions() {
     install_autoconf
 
     for version in "${selected_versions[@]}"; do
-        latest_version=$(get_latest_version "$version")
+        latest_version=$(get_latest_gcc_version "$version")
         case "$version" in
             10)
                 build_gcc "$latest_version" "c,c++,fortran,objc,obj-c++,ada" "--enable-checking=release --with-arch-32=i686"
@@ -311,22 +315,18 @@ select_versions() {
     done
 }
 
-install_autoconf() {
-    log "Installing autoconf 2.69"
-    wget --show-progress -cqO "$build_dir/autoconf-2.69.tar.xz" "https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.xz"
-    mkdir -p "$build_dir/autoconf-2.69/build" "$workspace"
-    tar -xf "$build_dir/autoconf-2.69.tar.xz" -C "$build_dir/autoconf-2.69" --strip-components 1
-    cd "$build_dir/autoconf-2.69" || fail "Failed to change directory to $build_dir/autoconf-2.69. Line: $LINENO"
-    autoupdate
-    autoconf
-    cd build || fail "Failed to change directory to build. Line: $LINENO"
-    ../configure --prefix="$build_dir/workspace"
-    make "-j$(nproc --all)"
-    make install
+cleanup() {
+    if [[ "$keep_build_dir" -ne 1 ]]; then
+        log "Cleaning up..."
+        rm -rf "$build_dir"
+        log "Removed temporary build directory: $build_dir"
+    else
+        log "Temporary build directory retained: $build_dir"
+    fi
 }
 
 summary() {
-    echo -e "\n${GREEN}Summary:${NC}"
+    echo -e "\\n${GREEN}Summary:${NC}\\n"
     echo -e "  Installed GCC version(s): ${CYAN}${selected_versions[*]}${NC}"
     echo -e "  Installation prefix: ${CYAN}$install_prefix${NC}"
     echo -e "  Build directory: ${CYAN}$build_dir${NC}"
