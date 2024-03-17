@@ -141,20 +141,10 @@ main() {
                 show_help
                 exit 0
                 ;;
-            -d)
-                set_deps=true
-                ;;
-            -l)
-                set_links=true
-                ;;
-            -c)
-                set_cleanup=true
-                ;;
-            *)
-                # Unrecognized option
-                show_help
-                exit 1
-                ;;
+            -d) set_deps=true ;;
+            -l) set_links=true ;;
+            -c) set_cleanup=true ;;
+             *) show_help; exit 1 ;;
         esac
         shift
     done
