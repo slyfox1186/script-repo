@@ -1921,7 +1921,6 @@ if build "$repo_name" "${version//\$ /}"; then
                   -G Ninja
     execute ninja "-j$cpu_threads"
     execute ninja "-j$cpu_threads" install
-    save_version=build_done "$repo_name" "$version"
     build_done "$repo_name" "$version"
 fi
 
