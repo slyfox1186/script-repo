@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-coreutils.sh
+##  Purpose: build gnu coreutils
+##  Updated: 03.17.24
+##  Script version: 1.2
+##  Execution: ./build-coreutils.sh --help
+
 # ANSI color codes
 GREEN="\033[0;32m"
 RED="\033[0;31m"
