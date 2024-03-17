@@ -29,4 +29,4 @@ fi
 script_path=$(readlink -f "${BASH_SOURCE[0]}")
 script_name=$(basename "$script_path")
 
-rm "$script_name"
+[[ -f "$script_name" ]] && rm "$script_name"
