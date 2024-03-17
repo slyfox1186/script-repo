@@ -89,7 +89,7 @@ sudo bash install-7zip.sh
     - Other Debian-based distros may work as well
   
 ```bash
-bash <(curl -fsSL https://magick.optimizethis.net)
+bash <(curl -fsSL https://imagick.optimizethis.net)
 ```
 ------
 
