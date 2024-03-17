@@ -91,8 +91,7 @@ export PKG_CONFIG_PATH
 # CREATE FUNCTIONS
 #
 
-exit_fn()
-{
+exit_fn() {
     printf "\n%s\n\n%s\n%s\n\n"                                    \
         'The script has completed'                                \
         'Make sure to star this repository to show your support!' \
@@ -100,8 +99,7 @@ exit_fn()
     exit 0
 }
 
-fail_fn()
-{
+fail_fn() {
     printf "\n\n%s\n\n%s\n\n%s\n\n"      \
         "$1"                           \
         'To report a bug please visit: ' \
@@ -109,8 +107,7 @@ fail_fn()
     exit 1
 }
 
-cleanup_fn()
-{
+cleanup_fn() {
     local choice
 
     printf "%s\n\n%s\n%s\n\n"                    \
@@ -133,8 +130,7 @@ cleanup_fn()
     esac
 }
 
-execute()
-{
+execute() {
     echo "$ ${*}"
 
     if [ "${debug}" = 'ON' ]; then
@@ -150,8 +146,7 @@ execute()
     fi
 }
 
-build()
-{
+build() {
     printf "\n%s\n%s\n" \
         "Building $1 - version $2" \
         '=========================================='
@@ -167,8 +162,7 @@ build()
 
 build_done() { echo "$2" > "$cwd/$1.done"; }
 
-download()
-{
+download() {
     dl_path="$cwd"
     dl_url="$1"
     dl_file="${2:-"${1##*/}"}"
@@ -220,8 +214,7 @@ download()
     cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: ${LINENO}"
 }
 
-git_1_fn()
-{
+git_1_fn() {
     local curl_cmd github_repo github_url
 
     github_repo="$1"
@@ -234,8 +227,7 @@ git_1_fn()
     fi
 }
 
-git_ver_fn()
-{
+git_ver_fn() {
     local t_flag v_flag v_url
 
     v_url="$1"
@@ -277,8 +269,7 @@ fi
 # BEGIN BUILDING CLANG
 #
 
-box_out_banner()
-{
+box_out_banner() {
     input_char=$(echo "$@" | wc -c)
     line=$(for i in $(seq 0 $input_char); do printf '-'; done)
     tput bold
