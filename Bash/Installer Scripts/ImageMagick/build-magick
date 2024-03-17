@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1091,SC2000,SC2046,SC2066,SC2068,SC2086,SC2119,SC2162,SC2181,SC2206
 
-##  Script Version: 1.1
-##  Updated: 02.20.24
+##  Script Version: 1.2
+##  Updated: 03.16.24
 ##  GitHub: https://github.com/slyfox1186/imagemagick-build-script
 ##  Purpose: Build ImageMagick 7 from the source code obtained from ImageMagick's official GitHub repository
 ##  Function: ImageMagick is the leading open-source command line image processor. It can blur, sharpen, warp,
@@ -632,7 +632,7 @@ fi
 
 git_caller "https://github.com/imageMagick/jpeg-turbo.git" "jpeg-turbo-git"
 if build "$repo_name" "${version//\$ /}"; then
-    git_clone "$git_url"
+    git_clone "$git_url" "$repo_name"
     execute cmake -S . \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
@@ -646,7 +646,7 @@ fi
 
 git_caller "https://github.com/imageMagick/libfpx.git" "libfpx-git"
 if build "$repo_name" "$version"; then
-    git_clone "$git_url"
+    git_clone "$git_url" "$repo_name"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" --with-pic
     execute make "-j$cpu_threads"
@@ -681,7 +681,7 @@ fi
 
 git_caller "https://chromium.googlesource.com/webm/libwebp" "libwebp-git"
 if build "$repo_name" "${version//\$ /}"; then
-    git_clone "$git_url"
+    git_clone "$git_url" "$repo_name"
     execute autoreconf -fi
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
@@ -758,7 +758,7 @@ fi
 
 git_caller "https://github.com/fribidi/c2man.git" "c2man-git"
 if build "$repo_name" "${version//\$ /}"; then
-    git_clone "$git_url"
+    git_clone "$git_url" "$repo_name"
     execute ./Configure -desO \
                         -D bin="$workspace/bin" \
                         -D cc="/usr/bin/cc" \
@@ -845,7 +845,7 @@ fi
 
 git_caller "https://github.com/KhronosGroup/OpenCL-SDK.git" "opencl-sdk-git" "recurse"
 if build "$repo_name" "${version//\$ /}"; then
-    git_clone "$git_url"
+    git_clone "$git_url" "$repo_name"
     execute cmake \
             -S . \
             -B build \
@@ -901,7 +901,7 @@ fi
 
 git_caller "https://github.com/dejavu-fonts/dejavu-fonts.git" "dejavu-fonts-git"
 if build "$repo_name" "${version//\$ /}"; then
-    git_clone "$git_url"
+    git_clone "$git_url" "$repo_name"
     wget -cqP "resources" "http://www.unicode.org/Public/UNIDATA/UnicodeData.txt" "http://www.unicode.org/Public/UNIDATA/Blocks.txt"
     execute ln -sf "$fc_dir/fc-lang" "resources/fc-lang"
     execute make "-j$cpu_threads" full-ttf
@@ -929,7 +929,7 @@ box_out_banner_magick "Build ImageMagick"
 
 git_caller "https://github.com/imagemagick/imagemagick.git" "imagemagick-git"
 if build "$repo_name" "${version//\$ /}"; then
-    git_clone "$git_url"
+    git_clone "$git_url" "$repo_name"
     execute autoreconf -fi
     mkdir build; cd build || exit 1
     execute ../configure --prefix=/usr/local \
