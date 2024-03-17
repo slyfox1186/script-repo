@@ -1,13 +1,8 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 # Shellcheck disable=sc2162,sc2317
 
-<<<<<<< Updated upstream
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-17
+##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-17-gold
 ##  Purpose: Build LLVM Clang-17 with GOLD enabled
-=======
-##  Github script: https://github.com/slyfox1186/script-repo/blob/main/bash/installer%20scripts/github%20projects/build-clang-17-gold
-##  Purpose: build llvm clang-17 with gold enabled
->>>>>>> Stashed changes
 ##  Updated: 03.06.24
 ##  Script version: 1.7
 
@@ -45,7 +40,7 @@ install_required_packages() {
     local missing_packages=()
 
     for pkg in "${pkgs[@]}"; do
-        if ! dpkg-query -W -f='$Status' "$pkg" | grep -q "ok installed"; then
+        if ! dpkg-query -W -f='${Status}' "$pkg" | grep -q "ok installed"; then
             missing_packages+=("$pkg")
         fi
     done
@@ -93,16 +88,11 @@ find_highest_clang_version() {
 download_and_extract() {
     local url="$1"
     local target_dir="$2"
-<<<<<<< Updated upstream
     local filename="${url##*/}"
-
-=======
-    local filename="$url##*/"
     clear
     set -x
     echo $filename
     exit
->>>>>>> Stashed changes
     if [ -f "$target_dir/$filename" ]; then
         log "The file $filename is already downloaded."
     else
