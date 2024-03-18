@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-all-gnu-safer
+##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-all-gnu-safer.sh
 ##  Purpose: Loops multiple build scripts to optimize efficiency. This is the safer of the two scripts.
 ##  Updated: 03.17.24
 ##  Script version: 1.3
