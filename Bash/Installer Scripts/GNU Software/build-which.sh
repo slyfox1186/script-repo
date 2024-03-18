@@ -5,7 +5,7 @@
 ##  Updated: 12.10.23
 ##  Script version: 1.0
 
-if [ "$EUID" -eq 0 ]; then
+if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
@@ -83,10 +83,10 @@ cleanup_fn() {
     echo "============================================"
     echo "  Do you want to clean up the build files?  "
     echo "============================================"
-    echo '[1] Yes'
-    echo '[2] No'
+    echo "[[1]] Yes"
+    echo "[[2]] No"
     echo
-    read -p 'Your choices are (1 or 2): ' choice
+    read -p "Your choices are (1 or 2): " choice
 
     case "$choice" in
         1) sudo rm -fr "$cwd" ;;
@@ -103,25 +103,25 @@ pkgs=(autoconf autoconf-archive autogen automake autopoint autotools-dev binutil
       bison build-essential bzip2 bzip2 ccache curl libc6-dev libpth-dev libtool
       libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev yasm)
 
-for pkg in ${pkgs[@]}; do
+for pkg in ${pkgs[[@]]}; do
     missing_pkg="$(sudo dpkg -l | grep -o "$pkg")"
 
-    if [ -z "$missing_pkg" ]; then
+    if [[ -z "$missing_pkg" ]]; then
         missing_pkgs+=" $pkg"
     fi
 done
 
-if [ -n "$missing_pkgs" ]; then
+if [[ -n "$missing_pkgs" ]]; then
     sudo apt install $missing_pkgs
 fi
 
 # DOWNLOAD THE ARCHIVE FILE
-if [ ! -f "$cwd/$archive_name" ]; then
+if [[ ! -f "$cwd/$archive_name" ]]; then
     curl -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
 # CREATE OUTPUT DIRECTORY
-if [ -d "$cwd/$archive_dir" ]; then
+if [[ -d "$cwd/$archive_dir" ]]; then
     sudo rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
