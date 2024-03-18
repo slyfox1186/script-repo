@@ -127,7 +127,7 @@ fi
 mkdir -p "$cwd/$archive_dir/build"
 
 # EXTRACT ARCHIVE FILES
-if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
+if ! tar -zxf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
     printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
     exit 1
 fi
