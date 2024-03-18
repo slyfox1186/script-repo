@@ -1,15 +1,25 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
+# GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/Installer%20Scripts/GNU%20Software/build-wget
+# Purpose: Build GNU Wget from source code
+# Features: +cares +digest +gpgme +https -ipv6 +iri +large-file +metalink -nls +ntlm +opie +psl +ssl/openssl
+# Updated: 01.30.24
+# Script version: 1.4
+# Added: libmetalink-dev library files
 
+# Terminal colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
 
+# Ensure running as root
 if [ "$EUID" -ne 0 ]; then
-    echo -e "$REDThis script must be run as root. Exiting.$NC" >&2
+    echo -e "${RED}This script must be run as root. Exiting.${NC}" >&2
     exit 1
 fi
 
+# Script variables
 script_ver="1.4"
 cwd="$PWD/wget-build-script"
 archive_dir="wget-latest"
@@ -17,6 +27,7 @@ install_dir="/usr/local"
 pc_type="$(uname -m)-linux-gnu"
 verbose=0
 
+# Function definitions
 display_help() {
     echo "Usage: $0 [OPTION]..."
     echo -e "\nOptions:"
@@ -29,17 +40,17 @@ display_help() {
 
 log() {
     if [[ $verbose -eq 1 ]]; then
-        echo -e "$GREEN[INFO]$NC $1"
+        echo -e "${GREEN}[INFO]${NC} $1"
     fi
 }
 
 error() {
-    echo -e "$RED[ERROR]$NC $1" >&2
+    echo -e "${RED}[ERROR]${NC} $1" >&2
     exit 1
 }
 
 warn() {
-    echo -e "$YELLOW[WARN]$NC $1"
+    echo -e "${YELLOW}[WARN]${NC} $1"
 }
 
 check_dependencies() {
@@ -92,7 +103,9 @@ cleanup() {
     log "Cleanup complete."
 }
 
+# Parse command line arguments
 parse_args() {
+    while (( "$#" )); do
         case "$1" in
             -v|--verbose)
                 verbose=1
@@ -109,6 +122,7 @@ parse_args() {
     done
 }
 
+# Main execution flow
 main() {
     parse_args "$@"
     check_dependencies
@@ -121,6 +135,7 @@ main() {
 
 main "$@"
 
+# Register all new libraries
 ldconfig
 
 echo "Script complete."
