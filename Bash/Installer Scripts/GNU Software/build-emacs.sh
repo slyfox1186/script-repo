@@ -13,7 +13,6 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Variables
-SCRIPT_VER="2.0"
 PROGRAM="emacs"
 VERSION="29.1"
 ARCHIVE_DIR="${PROGRAM}-${VERSION}"
