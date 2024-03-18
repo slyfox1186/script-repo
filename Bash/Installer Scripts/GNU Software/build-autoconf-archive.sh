@@ -1,4 +1,3 @@
-
 #!/usr/bin/env bash
 
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf-archive
@@ -120,7 +119,6 @@ done
 
 if [[ -n "$missing_pkgs" ]]; then
     apt install $missing_pkgs
-    clear
 fi
 
 # Download the archive file
@@ -149,13 +147,11 @@ cd build || exit 1
 echo
 if ! make "-j$(nproc --all)"; then
     fail "Failed to execute: make -j$(nproc --all). Line: $LINENO"
-    exit 1
 fi
 
 echo
 if ! make install; then
     fail "Failed to execute: make install. Line: $LINENO"
-    exit 1
 fi
 
 # Prompt user to clean up files
