@@ -1,7 +1,10 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
-set -euo pipefail
-trap 'fail_fn "Error occurred on line $LINENO"' ERR
+# Build GNU Automake - v1.1 - 03.08.24
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-automake.sh
+
+set -eo pipefail
+trap 'fail_fn "Error occurred on line ${LINENO}"' ERR
 
 version=1.1
 program_name=automake
@@ -22,6 +25,7 @@ usage() {
 }
 
 parse_args() {
+    while [[ $# -gt 0 ]]; do
         case "$1" in
             -p|--prefix)
                 install_prefix="$2"
@@ -138,7 +142,7 @@ main() {
     parse_args "$@"
 
     if [[ $EUID -ne 0 ]]; then
-        fail_fn "You must run this script with root or sudo."
+        fail_fn "You must run this script with root/sudo."
     fi
 
     if [[ -d "$build_dir" ]]; then
