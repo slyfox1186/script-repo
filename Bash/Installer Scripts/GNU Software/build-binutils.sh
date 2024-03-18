@@ -1,22 +1,29 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
+##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-binutils.sh
+##  Purpose: build gnu binutils with GOLD enabled
+##  Updated: 03.08.24
+##  Script version: 1.1
+##  To create softlinks in the /usr/local/bin folder pass the argument -l to the script.
 
+# Color Codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 NC='\033[0m'
 
+# Default Values
 PROGRAM="binutils"
 VERSION="2.39"
 PREFIX="/usr/local/$PROGRAM-$VERSION"
-BUILD_DIR="/tmp/$PROGRAM_build"
-LOG_FILE="/tmp/$PROGRAM_install.log"
+BUILD_DIR="/tmp/${PROGRAM}_build"
+LOG_FILE="/tmp/${PROGRAM}_install.log"
 VERBOSE=0
 LINK=0
-TEMP_DIR="/tmp/$PROGRAM_temp"
+TEMP_DIR="/tmp/${PROGRAM}_temp"
 
 usage() {
-    echo -e "$GREENUsage:$NC $0 [-v version] [-p prefix] [-l] [-V] [-L log_file] [-h]"
+    echo -e "${GREEN}Usage:${NC} $0 [-v version] [-p prefix] [-l] [-V] [-L log_file] [-h]"
     echo "    -v    Specify $PROGRAM version (default: $VERSION)"
     echo "    -p    Specify installation prefix (default: $PREFIX)"
     echo "    -l    Link binaries to /usr/local/bin"
@@ -31,23 +38,23 @@ log() {
     timestamp=$(date +"%Y-%m-%d %H:%M:%S")
     case "$level" in
         INFO)
-            echo -e "$timestamp [$GREENINFO$NC] $message" | tee -a "$LOG_FILE"
-            [[ $VERBOSE -eq 1 ]] && echo -e "$timestamp [$GREENINFO$NC] $message"
+            echo -e "${timestamp} [${GREEN}INFO${NC}] ${message}" | tee -a "$LOG_FILE"
+            [[ $VERBOSE -eq 1 ]] && echo -e "${timestamp} [${GREEN}INFO${NC}] ${message}"
             ;;
         WARN)
-            echo -e "$timestamp [$YELLOWWARN$NC] $message" | tee -a "$LOG_FILE"
-            [[ $VERBOSE -eq 1 ]] && echo -e "$timestamp [$YELLOWWARN$NC] $message"
+            echo -e "${timestamp} [${YELLOW}WARN${NC}] ${message}" | tee -a "$LOG_FILE"
+            [[ $VERBOSE -eq 1 ]] && echo -e "${timestamp} [${YELLOW}WARN${NC}] ${message}"
             ;;
         ERROR)
-            echo -e "$timestamp [$REDERROR$NC] $message" | tee -a "$LOG_FILE"
-            [[ $VERBOSE -eq 1 ]] && echo -e "$timestamp [$REDERROR$NC] $message"
+            echo -e "${timestamp} [${RED}ERROR${NC}] ${message}" | tee -a "$LOG_FILE"
+            [[ $VERBOSE -eq 1 ]] && echo -e "${timestamp} [${RED}ERROR${NC}] ${message}"
             ;;
     esac
 }
 
 parse_arguments() {
     while getopts ":v:p:lVL:h" opt; do
-        case $opt in
+        case ${opt} in
             v ) VERSION="$OPTARG" ;;
             p ) PREFIX="/usr/local/$PROGRAM-$OPTARG" ;;
             l ) LINK=1 ;;
@@ -80,7 +87,7 @@ install_autoconf() {
         wget -nc -qO- "https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.gz" | tar xz
         cd autoconf-2.69
         ./configure --prefix="$TEMP_DIR/autoconf"
-        make -j$(nproc)
+        make "-j$(nproc --all)"
         make install
         export PATH="$TEMP_DIR/autoconf/bin:$PATH"
 
@@ -96,19 +103,16 @@ optimize_build() {
     log "INFO" "Detected OS: $OS, Architecture: $ARCH"
 
     case "$ARCH" in
-        x86_64)
-            TARGET="x86_64-elf"
-            ;;
-        aarch64)
-            TARGET="aarch64-elf"
-            ;;
-        *)
-            log "ERROR" "Unsupported architecture: $ARCH"
-            exit 1
-            ;;
+        x86_64)  TARGET="x86_64-elf" ;;
+        aarch64) TARGET="aarch64-elf" ;;
+        *)       log "ERROR" "Unsupported architecture: $ARCH"; exit 1 ;;
     esac
 
-    export CFLAGS="-O3 -pipe -fno-plt -march=native"
+    CC="gcc"
+    CXX="g++"
+    CFLAGS="-O3 -pipe -march=native"
+    CXXFLAGS="-O3 -pipe -march=native"
+    export CC CFLAGS CXX CXXFLAGS
 }
 
 cleanup() {
@@ -141,7 +145,7 @@ install_binutils() {
         --enable-gold --enable-plugins --enable-lto --enable-threads --enable-64-bit-bfd
 
     log "INFO" "Building $PROGRAM for $TARGET..."
-    make -j$(nproc)
+    make "-j$(nproc --all)"
 
     log "INFO" "Installing $PROGRAM for $TARGET..."
     sudo make install
@@ -155,6 +159,7 @@ link_binutils() {
     log "INFO" "Linking $PROGRAM binaries to /usr/local/bin..."
     for file in "$PREFIX/bin/$TARGET-"*; do
         local binary=$(basename "$file")
+        local trimmed_binary=${binary#$TARGET-}
         sudo ln -sf "$file" "/usr/local/bin/$trimmed_binary"
     done
 }
