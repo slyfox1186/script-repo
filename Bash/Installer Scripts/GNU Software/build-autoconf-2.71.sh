@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
-# Build GNU Autoconf - v1.1 - 03.08.24
-# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf-2.71
 
-set -euo pipefail
-trap 'fail_fn "Error occurred on line ${LINENO}"' ERR
+# Build GNU Autoconf - v1.1 - 03.08.24
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf-2.71.sh
+
+set -eo pipefail
+trap 'fail_fn "Error occurred on line: $LINENO".' ERR
 
 version=1.1
 program_name=autoconf
 program_version=2.71
-archive_url=https://ftp.gnu.org/gnu/autoconf/"$program_name-$program_version".tar.xz
+archive_url="https://ftp.gnu.org/gnu/autoconf/$program_name-$program_version.tar.xz"
 install_prefix=/usr/local
-build_dir=/tmp/"$program_name-$version-build"
-repo_url=https://github.com/slyfox1186/script-repo
+build_dir="/tmp/$program_name-$version-build"
 verbose=0
 
 usage() {
-    printf "%s\n" "Usage: ./build-autoconf.sh [OPTIONS]"
-    printf "%s\n" "Options:"
+    echo "Usage: ./build-autoconf.sh [OPTIONS]"
+    echo "Options:"
     printf "  %-25s %s\n" "-p, --prefix DIR" "Set the installation prefix (default: $install_prefix)"
     printf "  %-25s %s\n" "-v, --verbose" "Enable verbose logging"
     printf "  %-25s %s\n" "-h, --help" "Show this help message"
@@ -24,7 +24,7 @@ usage() {
 }
 
 parse_args() {
-    while [[ $# -gt 0 ]]; do
+    while [[ "$#" -gt 0 ]]; do
         case "$1" in
             -p|--prefix)
                 install_prefix="$2"
@@ -46,24 +46,24 @@ parse_args() {
 
 log_msg() {
     if [[ $verbose -eq 1 ]]; then
-        printf "%s\n" "$1"
+        echo "$1"
     fi
 }
 
 fail_fn() {
-    printf "%s\n" "$1"
-    printf "%s\n" "To report a bug create an issue at: $repo_url/issues"
+    echo "$1"
+    echo "To report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
 install_deps() {
     log_msg "Installing dependencies..."
-    if command -v apt-get >/dev/null 2>&1; then
+    if command -v apt-get &>/dev/null; then
         apt-get update
         apt-get install -y autoconf autoconf-archive autogen automake autopoint autotools-dev binutils bison build-essential bzip2 ccache curl libc6-dev libpth-dev libtool libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev yasm
-    elif command -v dnf >/dev/null 2>&1; then
+    elif command -v dnf &>/dev/null; then
         dnf install -y autoconf autoconf-archive autogen automake autopoint autotools-dev binutils bison bzip2 ccache curl gcc gcc-c++ kernel-devel libpth-devel libtool libtool-ltdl-devel lzip lzma-devel m4 make nasm perl-Thread-Queue tar texinfo xz yasm zlib-devel
-    elif command -v pacman >/dev/null 2>&1; then
+    elif command -v pacman &>/dev/null; then
         pacman -Sy --noconfirm autoconf autoconf-archive autogen automake autopoint binutils bison bzip2 ccache curl gcc libtool lzip lzma m4 make nasm texinfo xz yasm zlib
     else
         fail_fn "Unsupported package manager. Please install the required dependencies manually."
@@ -106,7 +106,7 @@ configure_build() {
 
 compile_build() {
     log_msg "Compiling..."
-    make -j"$(nproc)"
+    make "-j$(nproc --all)"
 }
 
 install_build() {
@@ -133,13 +133,11 @@ cleanup() {
 main() {
     parse_args "$@"
 
-    if [[ $EUID -ne 0 ]]; then
+    if [[ "$EUID" -ne 0 ]]; then
         fail_fn "You must run this script with root/sudo."
     fi
 
-    if [[ -d "$build_dir" ]]; then
-        rm -rf "$build_dir"
-    fi
+    [[ -d "$build_dir" ]] && rm -rf "$build_dir"
     mkdir -p "$build_dir"
 
     install_deps
@@ -154,7 +152,7 @@ main() {
 
     log_msg "Build completed successfully!"
     log_msg "Make sure to star this repository to show your support!"
-    log_msg "$repo_url"
+    log_msg "https://github.com/slyfox1186/script-repo"
 }
 
 main "$@"
