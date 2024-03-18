@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc.sh
+# Build GNU GCC
+# Versions available:  9|10|11|12|13
+# Features: Automatically sources the latest release of each version.
+# Updated: 03.17.2024
 
 set -eo pipefail
 
@@ -11,6 +16,7 @@ LDFLAGS=""
 version=""
 versions=()
 
+# ANSI color codes
 RED='\033[0;31m'
 GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
@@ -32,7 +38,7 @@ log() {
     local message="$1"
     local timestamp=$(date +'%m.%d.%Y %I:%M:%S %p')
     if [[ "$verbose" -eq 1 ]]; then
-        echo -e "\\n$GREEN[INFO]$NC $timestamp $message\\n"
+        echo -e "\\n${GREEN}[INFO]${NC} $timestamp $message\\n"
     fi
     if [[ -n "$log_file" ]]; then
         echo "$timestamp $message" >> "$log_file"
@@ -42,7 +48,7 @@ log() {
 warn() {
     local message="$1"
     local timestamp=$(date +'%m.%d.%Y %I:%M:%S %p')
-    echo -e "$YELLOW[WARN]$NC $timestamp $message"
+    echo -e "${YELLOW}[WARN]${NC} $timestamp $message"
     if [[ -n "$log_file" ]]; then
         echo "$timestamp WARNING: $message" >> "$log_file"
     fi
@@ -51,7 +57,7 @@ warn() {
 fail() {
     local message="$1"
     local timestamp=$(date +'%m.%d.%Y %I:%M:%S %p')
-    echo -e "$RED[ERROR]$NC $timestamp $message"
+    echo -e "${RED}[ERROR]${NC} $timestamp $message"
     if [[ -n "$log_file" ]]; then
         echo "$timestamp ERROR: $message" >> "$log_file"
     fi
@@ -60,6 +66,7 @@ fail() {
 }
 
 parse_args() {
+    while [[ "$#" -gt 0 ]]; do
         case "$1" in
             -p|--prefix)
                 install_prefix="$2"
@@ -150,6 +157,7 @@ get_latest_version() {
 
 download() {
     local url="$1"
+    local filename="${url##*/}"
     if [[ ! -f "$build_dir/$filename" ]]; then
         log "Downloading $url"
         curl -fsSLo "$build_dir/$filename" "$url"
@@ -240,18 +248,19 @@ select_versions() {
     local -a versions=(9 10 11 12 13)
     local -a selected_versions=()
 
-    echo -e "\\n$GREENSelect the GCC version(s) to install:$NC\n"
-    echo -e "$CYAN1. Single version$NC"
-    echo -e "$CYAN2. All versions$NC"
-    echo -e "$CYAN3. Custom versions$NC"
+    echo -e "\\n${GREEN}Select the GCC version(s) to install:${NC}\n"
+    echo -e "${CYAN}1. Single version${NC}"
+    echo -e "${CYAN}2. All versions${NC}"
+    echo -e "${CYAN}3. Custom versions${NC}"
 
     echo
     read -p "Enter your choice: " choice
 
     case "$choice" in
         1)
-            echo -e "\\n$GREENSelect a single GCC version to install:$NC\n"
-                echo -e "$CYAN$((i+1)). GCC ${versions[i]}$NC"
+            echo -e "\\n${GREEN}Select a single GCC version to install:${NC}\n"
+            for ((i=0; i<${#versions[@]}; i++)); do
+                echo -e "${CYAN}$((i+1)). GCC ${versions[i]}${NC}"
             done
             echo
             read -p "Enter your choice: " single_choice
@@ -282,9 +291,11 @@ select_versions() {
             ;;
     esac
 
+    if [[ "${#selected_versions[@]}" -eq 0 ]]; then
         fail "No GCC versions selected."
     fi
 
+    # Install GCC's recommended version of autoconf (version 2.69)
     install_autoconf
 
     for version in "${selected_versions[@]}"; do
@@ -316,12 +327,12 @@ install_autoconf() {
 }
 
 summary() {
-    echo -e "\\n$GREENSummary:$NC"
-    echo -e "  Installed GCC version(s): $CYAN${selected_versions[*]}$NC"
-    echo -e "  Installation prefix: $CYAN$install_prefix$NC"
-    echo -e "  Build directory: $CYAN$build_dir$NC"
-    echo -e "  Temporary build directory retained: $CYAN$([[ "$keep_build_dir" -eq 1 ]] && echo "Yes" || echo "No")$NC"
-    echo -e "  Log file: $CYAN$log_file$NC"
+    echo -e "\\n${GREEN}Summary:${NC}"
+    echo -e "  Installed GCC version(s): ${CYAN}${selected_versions[*]}${NC}"
+    echo -e "  Installation prefix: ${CYAN}$install_prefix${NC}"
+    echo -e "  Build directory: ${CYAN}$build_dir${NC}"
+    echo -e "  Temporary build directory retained: ${CYAN}$([[ "$keep_build_dir" -eq 1 ]] && echo "Yes" || echo "No")${NC}"
+    echo -e "  Log file: ${CYAN}$log_file${NC}"
 }
 
 main() {
@@ -344,7 +355,7 @@ main() {
     summary
 
     log "Build completed successfully!"
-    echo -e "\\n$GREENMake sure to star this repository to show your support!$NC"
+    echo -e "\\n${GREEN}Make sure to star this repository to show your support!${NC}"
     echo "https://github.com/slyfox1186/script-repo"
 }
 
