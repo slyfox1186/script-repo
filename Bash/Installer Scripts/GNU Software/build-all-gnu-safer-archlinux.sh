@@ -4,7 +4,7 @@
 # Purpose: Loops multiple build scripts to optimize efficiency. This is the safer of the two scripts.
 # Version: 2.0
 # Updated: 01.16.2024 09:05:15 PM
-# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-all-gnu-safer-arch-script
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-all-gnu-safer-archlinux.sh
 
 # Define color variables
 RED='\033[0;31m'
