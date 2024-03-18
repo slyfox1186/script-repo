@@ -113,8 +113,6 @@ done
 
 if [ -n "$missing_pkgs" ]; then
     sudo apt install $missing_pkgs
-    sudo apt -y autoremove
-    clear
 fi
 
 # DOWNLOAD THE ARCHIVE FILE
