@@ -111,7 +111,7 @@ scripts=(
 
 for script in "${scripts[@]}"; do
     log "Downloading build script: $script"
-    if ! wget -U "$user_agent" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-${script}"; then
+    if ! wget --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-${script}"; then
         fail "Failed to download build script: $script"
     fi
 done
