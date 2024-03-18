@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
-# Build GNU Bash - v2.0 - 03.08.24
-# GitHub: https://github.com/slyfox1186/script-repo
+# Build GNU Bash
+# Updated: 03.08.24
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-bash.sh
 
-trap 'fail_fn "Error occurred on line: $LINENO"' ERR
+trap 'fail_fn "Error occurred on line: $LINENO".' ERR
 
 version=2.0
 program_name=bash
@@ -12,9 +13,13 @@ build_dir="/tmp/$program_name-$version-build"
 gnu_ftp="https://ftp.gnu.org/gnu/bash/"
 verbose=0
 
+GREEN='\033[32m'
+RED='\033[31m'
+RESET='\033[0m'
+
 usage() {
-    printf "%s\n" "Usage: ./build-bash.sh [OPTIONS]"
-    printf "%s\n" "Options:"
+    echo "Usage: ./build-bash.sh [OPTIONS]"
+    echo "Options:"
     printf "  %-25s %s\n" "-p, --prefix DIR" "Set the installation prefix (default: $install_prefix)"
     printf "  %-25s %s\n" "-v, --verbose" "Enable verbose logging"
     printf "  %-25s %s\n" "-h, --help" "Show this help message"
@@ -42,12 +47,12 @@ parse_args() {
 
 log_msg() {
     if [[ "$verbose" -eq 1 ]]; then
-        printf "\033[32m%s\033[0m\n" "$1"
+        printf "${GREEN}%s${RESET}\n" "$1"
     fi
 }
 
 fail_fn() {
-    printf "\033[31m%s\033[0m\n" "$1"
+    printf "${RED}%s${RESET}\n" "$1"
     echo "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
@@ -55,14 +60,14 @@ fail_fn() {
 install_deps() {
     log_msg "Checking and installing missing packages..."
     local pkgs=(autoconf automake binutils gcc make curl tar lzip libticonv-dev gettext libpth-dev)
-    if command -v apt-get >/dev/null 2>&1; then
+    if command -v apt-get &>/dev/null; then
         apt-get update
         apt-get install -y --no-install-recommends "${pkgs[@]}"
-    elif command -v dnf >/dev/null 2>&1; then
+    elif command -v dnf &>/dev/null; then
         dnf install -y "${pkgs[@]}"
-    elif command -v zypper >/dev/null 2>&1; then
+    elif command -v zypper &>/dev/null; then
         zypper install -y "${pkgs[@]}"
-    elif command -v pacman >/dev/null 2>&1; then
+    elif command -v pacman &>/dev/null; then
         pacman -Sy --noconfirm --needed "${pkgs[@]}"
     else
         fail_fn "Unsupported package manager. Please install the required dependencies manually."
