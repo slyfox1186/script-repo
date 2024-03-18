@@ -1,4 +1,4 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
 cwd="$PWD/build-all-gnu-master"
 web_repo="https://github.com/slyfox1186/script-repo"
@@ -33,7 +33,7 @@ cleanup_fn() {
     read -p "Your choices are (1 or 2): " answer
 
     case "$answer" in
-        1)  sudo rm -fr "$cwd" "$0" ;;
+        1)  sudo rm -fr "$cwd" "${0}" ;;
         2)  echo ;;
         *)  printf "\n%s\n\n" "Bad user input. Re-asking question..."
             sleep 3
@@ -56,6 +56,7 @@ do
     fi
 done
 
+if [ "${#missing_pkgs[@]}" -ne 0 ]; then
     sudo apt install "${missing_pkgs[@]}"
     sudo apt -y autoremove
     clear
@@ -107,11 +108,15 @@ scripts=(
 
 for script in "${scripts[@]}"
 do
-    wget --show-progress -cq "https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-$script"
+    wget --show-progress -cq "https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-${script}"
+    mv "build-${script}" "$(printf "%02d" "${#scripts[@]}")-build-${script}"
 done
 
+# ASK THE USER IF THEY WANT TO INSTALL ALL OF THE SCRIPTS
 install_choice_fn
 
+# CLEANUP THE FILES
 cleanup_fn
 
+# SHOW THE EXIT MESSAGE
 exit_fn
