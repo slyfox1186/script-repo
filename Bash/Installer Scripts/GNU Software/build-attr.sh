@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-attr
+##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-attr.sh
 ##  Purpose: build gnu attr
 ##  Updated: 03.18.24
 ##  Script version: 1.1
