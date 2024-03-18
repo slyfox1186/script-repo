@@ -4,7 +4,7 @@
 # Updated: 03.08.24
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-bash.sh
 
-trap 'fail_fn "Error occurred on line: $LINENO".' ERR
+trap 'fail "Error occurred on line: $LINENO".' ERR
 
 version=2.0
 program_name=bash
@@ -40,7 +40,7 @@ parse_args() {
             -h|--help)
                 usage
                 ;;
-            *)  fail_fn "Unknown option: $1. Use -h or --help for usage information." ;;
+            *)  fail "Unknown option: $1. Use -h or --help for usage information." ;;
         esac
     done
 }
@@ -51,7 +51,7 @@ log_msg() {
     fi
 }
 
-fail_fn() {
+fail() {
     printf "${RED}%s${RESET}\n" "$1"
     echo "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
@@ -70,7 +70,7 @@ install_deps() {
     elif command -v pacman &>/dev/null; then
         pacman -Sy --noconfirm --needed "${pkgs[@]}"
     else
-        fail_fn "Unsupported package manager. Please install the required dependencies manually."
+        fail "Unsupported package manager. Please install the required dependencies manually."
     fi
 }
 
@@ -78,7 +78,7 @@ find_latest_release() {
     log_msg "Finding the latest release..."
     local latest_tarball=$(curl -fsS "$gnu_ftp" | grep 'bash-[0-9].*\.tar\.gz' | grep -v ".sig" | sed -n 's/.*href="\([^"]*\).*/\1/p' | sort -rV | head -n1)
     if [[ -z $latest_tarball ]]; then
-        fail_fn "Failed to find the latest release."
+        fail "Failed to find the latest release."
     fi
     archive_url="${gnu_ftp}${latest_tarball}"
     archive_name="${latest_tarball}"
@@ -158,7 +158,7 @@ main() {
     parse_args "$@"
 
     if [[ "$EUID" -ne 0 ]]; then
-        fail_fn "This script must be run as root or with sudo."
+        fail "This script must be run as root or with sudo."
     fi
 
     [[ -d "$build_dir" ]] && rm -rf "$build_dir"
