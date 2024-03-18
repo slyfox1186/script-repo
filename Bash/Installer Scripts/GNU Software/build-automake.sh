@@ -4,15 +4,14 @@
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-automake.sh
 
 set -eo pipefail
-trap 'fail_fn "Error occurred on line ${LINENO}"' ERR
+trap 'fail "Error occurred on line: $LINENO"' ERR
 
-version=1.1
+version="1.1"
 program_name=automake
-program_version=1.16.5
-archive_url=https://ftp.gnu.org/gnu/automake/"$program_name-$program_version".tar.xz
+program_version="1.16.5"
+archive_url="https://ftp.gnu.org/gnu/automake/$program_name-$program_version.tar.xz"
 install_prefix=/usr/local
-build_dir=/tmp/"$program_name-$version-build"
-repo_url=https://github.com/slyfox1186/script-repo
+build_dir="/tmp/$program_name-$version-build"
 verbose=0
 
 usage() {
@@ -25,7 +24,7 @@ usage() {
 }
 
 parse_args() {
-    while [[ $# -gt 0 ]]; do
+    while [[ "$#" -gt 0 ]]; do
         case "$1" in
             -p|--prefix)
                 install_prefix="$2"
@@ -39,21 +38,21 @@ parse_args() {
                 usage
                 ;;
             *)
-                fail_fn "Unknown option: $1. Use -h or --help for usage information."
+                fail "Unknown option: $1. Use -h or --help for usage information."
                 ;;
         esac
     done
 }
 
 log_msg() {
-    if [[ $verbose -eq 1 ]]; then
-        printf "%s\n" "$1"
+    if [[ "$verbose" -eq 1 ]]; then
+        echo "$1"
     fi
 }
 
-fail_fn() {
-    printf "%s\n" "$1"
-    printf "%s\n" "To report a bug create an issue at: $repo_url/issues"
+fail() {
+    echo "$1"
+    echo "To report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
@@ -67,7 +66,7 @@ install_deps() {
     elif command -v pacman >/dev/null 2>&1; then
         pacman -Sy --noconfirm --needed autoconf autoconf-archive autogen automake gettext binutils bison bzip2 ccache curl gcc libtool m4 make nasm texinfo xz yasm zlib
     else
-        fail_fn "Unsupported package manager. Please install the required dependencies manually."
+        fail "Unsupported package manager. Please install the required dependencies manually."
     fi
 }
 
@@ -109,7 +108,7 @@ configure_build() {
 
 compile_build() {
     log_msg "Compiling..."
-    make -j"$(nproc)"
+    make "-j$(nproc --all)"
 }
 
 install_build() {
@@ -119,7 +118,7 @@ install_build() {
 
 create_symlinks() {
     log_msg "Creating symlinks..."
-    for file in "$install_prefix/$program_name"/bin/*; do
+    for file in "$install_prefix/$program_name/bin/"*; do
         ln -sfn "$file" "$install_prefix/bin/$(basename "$file" | sed 's/^\w*-//')"
     done
 }
@@ -141,13 +140,11 @@ cleanup() {
 main() {
     parse_args "$@"
 
-    if [[ $EUID -ne 0 ]]; then
-        fail_fn "You must run this script with root/sudo."
+    if [[ "$EUID" -ne 0 ]]; then
+        fail "You must run this script with root or sudo."
     fi
 
-    if [[ -d "$build_dir" ]]; then
-        rm -rf "$build_dir"
-    fi
+    [[ -d "$build_dir" ]] &&  rm -rf "$build_dir"
     mkdir -p "$build_dir"
 
     install_deps
@@ -163,7 +160,7 @@ main() {
 
     log_msg "Build completed successfully!"
     log_msg "Make sure to star this repository to show your support!"
-    log_msg "$repo_url"
+    log_msg "https://github.com/slyfox1186/script-repo"
 }
 
 main "$@"
