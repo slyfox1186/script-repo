@@ -1,165 +1,189 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
+##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-emacs
+##  Purpose: Build GNU Emacs from source
+##  Updated: 03.18.2024 09:20:00 PM
+##  Script version: 2.0
 
-clear
+# Color Codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
 
-if [ "$EUID" -eq '0' ]; then
-    echo "You must run this script without root or sudo."
-    exit 1
-fi
+# Variables
+SCRIPT_VER="2.0"
+PROGRAM="emacs"
+VERSION="29.1"
+ARCHIVE_DIR="${PROGRAM}-${VERSION}"
+ARCHIVE_URL="https://ftp.gnu.org/gnu/${PROGRAM}/${ARCHIVE_DIR}.tar.xz"
+ARCHIVE_EXT="${ARCHIVE_URL##*.}"
+ARCHIVE_NAME="${ARCHIVE_DIR}.tar.${ARCHIVE_EXT}"
+CWD="${PWD}/${PROGRAM}-build-script"
+INSTALL_DIR="/usr/local/${PROGRAM}-${VERSION}"
 
-
-script_ver=1.1
-archive_dir=emacs-29.1
-archive_url=https://ftp.gnu.org/gnu/emacs/emacs-29.1.tar.xz
-archive_ext="$archive_url//*."
-archive_name="$archive_dir.tar.$archive_ext"
-cwd="$PWD"/emacs-build-script
-install_dir=/usr/local
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/script-repo
-
-printf "%s\n%s\n\n" \
-    "emacs build script - v$script_ver" \
-    '==============================================='
-
-
-if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
-fi
-mkdir -p "$cwd"
-
-
-export CC=gcc CXX=g++
-
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
-
-
-PATH="\
-/usr/lib/ccache:\
-$HOME/perl5/bin:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
-
-
-PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
-"
-export PKG_CONFIG_PATH
-
-
-exit_fn() {
-    printf "\n%s\n\n%s\n\n" \
-        'Make sure to star this repository to show your support!' \
-        "$web_repo"
-    exit 0
-}
-
-fail_fn() {
-    printf "\n%s\n\n%s\n\n" \
-        "$1" \
-        "To report a bug create an issue at: $web_repo/issues"
+fail() {
+    echo -e "${RED}[FAIL] $1${NC}" | tee -a "$LOG_FILE"
     exit 1
 }
 
-cleanup_fn() {
+warn() {
+    echo -e "${YELLOW}[WARN] $1${NC}" | tee -a "$LOG_FILE"
+}
+
+log() {
+    echo -e "${GREEN}[INFO] $1${NC}" | tee -a "$LOG_FILE"
+}
+
+debug() {
+    if [[ $VERBOSE -eq 1 ]]; then
+        echo -e "${BLUE}[DEBUG] $1${NC}" | tee -a "$LOG_FILE"
+    fi
+}
+
+usage() {
+    echo -e "${GREEN}Usage:${NC} $0 [OPTIONS]"
+    echo " -v    Specify ${PROGRAM} version (default: ${VERSION})"
+    echo " -p    Specify installation prefix (default: ${INSTALL_DIR})"
+    echo " -V    Enable verbose logging"
+    echo " -h    Display this help message"
+}
+
+parse_arguments() {
+    while getopts ":v:p:Vh" opt; do
+        case $opt in
+            v) VERSION="$OPTARG" ;;
+            p) INSTALL_DIR="$OPTARG" ;;
+            V) VERBOSE=1 ;;
+            h) usage; exit 0 ;;
+            \?) fail "Invalid option: $OPTARG" ;;
+            :) fail "Option -$OPTARG requires an argument." ;;
+        esac
+    done
+}
+
+set_env_vars() {
+    log "Setting environment variables..."
+    export CC="ccache gcc"
+    export CXX="ccache g++"
+    export CFLAGS="-O3 -pipe -fno-plt -march=native"
+    export CXXFLAGS="-O3 -pipe -fno-plt -march=native"
+    export CPPFLAGS="-D_FORTIFY_SOURCE=2"
+    export LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,${INSTALL_DIR}/lib"
+    export PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    export PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/lib64/pkgconfig:/lib/pkgconfig"
+}
+
+check_dependencies() {
+    log "Checking dependencies..."
+    local pkg_mgr
+
+    if command -v apt-get &>/dev/null; then
+        pkg_mgr="apt-get"
+    elif command -v dnf &>/dev/null; then
+        pkg_mgr="dnf"
+    elif command -v yum &>/dev/null; then
+        pkg_mgr="yum"
+    else
+        fail "Unsupported package manager. Please install the required dependencies manually."
+    fi
+
+    local pkgs=(
+        autoconf autoconf-archive autogen automake binutils build-essential ccache
+        curl git guile-3.0-dev libdmalloc-dev libdmalloc5 libmpfr-dev libreadline-dev
+        libtool libtool-bin libgif-dev lzip m4 nasm ninja-build texinfo zlib1g-dev yasm
+    )
+
+    local missing_pkgs=()
+    for pkg in "${pkgs[@]}"; do
+        if ! command -v "$pkg" &>/dev/null; then
+            missing_pkgs+=("$pkg")
+        fi
+    done
+
+    if [[ ${#missing_pkgs[@]} -ne 0 ]]; then
+        warn "The following dependencies are missing: ${missing_pkgs[*]}"
+        log "Installing missing dependencies..."
+        sudo "$pkg_mgr" install -y "${missing_pkgs[@]}"
+    fi
+}
+
+cleanup() {
     local choice
 
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
+    echo
+    echo "============================================"
+    echo "  Do you want to clean up the build files?  "
+    echo "============================================"
+    echo "[1] Yes"
+    echo "[2] No"
+    echo
+    read -p 'Your choice (1 or 2): ' choice
 
     case "$choice" in
-        1)      sudo rm -fr "$cwd";;
-        2)      echo;;
-        *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
-                unset choice
-                clear
-                cleanup_fn
-                ;;
+        1) sudo rm -rf "$CWD" ;;
+        2) ;;
+        *) unset choice; cleanup ;;
     esac
 }
 
-
-pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache make
-      curl git guile-3.0-dev libdmalloc-dev libdmalloc5 libmpfr-dev libreadline-dev
-      libtool libtool-bin libgif-dev lzip m4 nasm  ninja-build texinfo zlib1g-dev yasm)
-
-for i in ${pkgs[@]}
-do
-    missing_pkg="$(sudo dpkg -l | grep -o "$i")"
-
-    if [ -z "$missing_pkg" ]; then
-        missing_pkgs+=" $i"
+build_emacs() {
+    if [[ "$EUID" -eq 0 ]]; then
+        fail "You must run this script without root or sudo."
     fi
-done
 
-if [ -n "$missing_pkgs" ]; then
-    sudo apt install $missing_pkgs
-    sudo apt -y autoremove
-    clear
-fi
+    [[ -d "$CWD" ]] && sudo rm -rf "$CWD"
+    mkdir -p "$CWD"
 
+    set_env_vars
+    check_dependencies
 
-if [ ! -f "$cwd/$archive_name" ]; then
-    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
-fi
+    if [[ ! -f "$CWD/$ARCHIVE_NAME" ]]; then
+        log "Downloading $ARCHIVE_NAME..."
+        curl -Lso "$CWD/$ARCHIVE_NAME" "$ARCHIVE_URL"
+    fi
 
+    [[ -d "$CWD/$ARCHIVE_DIR" ]] && sudo rm -rf "$CWD/$ARCHIVE_DIR"
+    mkdir -p "$CWD/$ARCHIVE_DIR/build"
 
-if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
-fi
-mkdir -p "$cwd/$archive_dir/build"
+    if ! tar -xf "$CWD/$ARCHIVE_NAME" -C "$CWD/$ARCHIVE_DIR" --strip-components 1; then
+        fail "Failed to extract: $CWD/$ARCHIVE_NAME"
+    fi
 
+    cd "$CWD/$ARCHIVE_DIR" || exit 1
+    sed -i 's/-DPROFILING=1 -pg/-DPROFILING=0 -pg/g' configure.ac
+    autoreconf -fi
 
-if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
-    exit 1
-fi
+    cd build || exit 1
+    ../configure --prefix="$INSTALL_DIR"
 
+    if ! make "-j$(nproc --all)"; then
+        fail "Failed to execute: make -j$(nproc --all). Line: $LINENO"
+    fi
 
-cd "$cwd/$archive_dir" || exit 1
-sed -i 's/-DPROFILING=1 -pg/-DPROFILING=0 -pg/g' configure.ac
-autoreconf -fi
-cd build || exit 1
-../configure --prefix="$install_dir"
-make "-j$(nproc --all)"
-if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install:Line $LINENO"
-    exit 1
-fi
+    if ! sudo make install; then
+        fail "Failed to execute: sudo make install. Line: $LINENO"
+    fi
 
-cleanup_fn
+    log "$PROGRAM $VERSION has been installed to $INSTALL_DIR"
+}
 
-exit_fn
+link_binaries() {
+    log "Linking $PROGRAM binaries to /usr/local/bin..."
+    for file in "${INSTALL_DIR}/bin/"*; do
+        local binary="${file##*/}"
+        sudo ln -sf "$file" "/usr/local/bin/$binary"
+    done
+}
+
+parse_arguments "$@"
+build_emacs
+link_binaries
+
+log "Installation completed successfully."
+
+cleanup
+
+log "Make sure to star this repository to show your support!"
+log "https://github.com/slyfox1186/script-repo"
