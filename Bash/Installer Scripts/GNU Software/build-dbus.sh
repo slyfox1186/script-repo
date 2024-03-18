@@ -1,41 +1,40 @@
 #!/Usr/bin/env bash
 
+##  Github script: https://github.com/slyfox1186/script-repo/edit/main/bash/installer%20scripts/gnu%20software/build-dbus
+##  Purpose: build gnu dbus
+##  Updated: 11.06.23
+##  Script version: 1.2
 
-clear
-
-if [ "$EUID" -eq '0' ]; then
+if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
 
-
+# Set the variables
 script_ver=1.2
 archive_dir=dbus-1.15.8
-archive_url=https://dbus.freedesktop.org/releases/dbus/"$archive_dir".tar.xz
-archive_ext="$archive_url//*."
+archive_url="https://dbus.freedesktop.org/releases/dbus/$archive_dir.tar.xz"
+archive_ext="${archive_url//*./}"
 archive_name="$archive_dir.tar.$archive_ext"
-cwd="$PWD"/dbus-build-script
+cwd="$PWD/dbus-build-script"
 install_dir=/usr/local
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/script-repo
 
-printf "%s\n%s\n\n" \
-    "dbus build script - v$script_ver" \
-    '==============================================='
+echo "dbus build script version $script_ver"
+echo "==============================================="
+echo
 
-
-if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
-fi
+# Create output directory
+[[ -d "$cwd" ]] && sudo rm -fr "$cwd"
 mkdir -p "$cwd"
 
+# Set the c + cpp compilers
+CC="gcc"
+CXX="g++"
+CFLAGS="-g -O3 -pipe -fno-plt -march=native"
+CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
+export CC CFLAGS CXX CXXFLAGS
 
-export CC=gcc CXX=g++
-
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
-
-
+# Set the path variable
 PATH="\
 /usr/lib/ccache:\
 $HOME/perl5/bin:\
@@ -48,14 +47,11 @@ $HOME/.local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
+/bin\
 "
 export PATH
 
-
+# Set the pkg_config_path variable
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
@@ -71,109 +67,103 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-
+# Create functions
 exit_fn() {
-    printf "\n%s\n\n%s\n\n" \
-        'Make sure to star this repository to show your support!' \
-        "$web_repo"
+    echo
+    echo "Make sure to star this repository to show your support!"
+    echo "https://github.com/slyfox1186/script-repo"
     exit 0
 }
 
-fail_fn() {
-    printf "\n%s\n\n%s\n\n" \
-        "$1" \
-        "To report a bug create an issue at: $web_repo/issues"
+fail() {
+    echo
+    echo "$1"
+    echo "To report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
-cleanup_fn() {
+cleanup() {
     local choice
 
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
+    echo
+    echo "============================================"
+    echo "  Do you want to clean up the build files?  "
+    echo "============================================"
+    echo 
+    echo "[[1]] Yes"
+    echo "[[2]] No"
+    echo
+    read -p "Your choices are (1 or 2): " choice
 
     case "$choice" in
-        1)      sudo rm -fr "$cwd";;
-        2)      echo;;
-        *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
-                unset choice
-                clear
-                cleanup_fn
-                ;;
+        1) sudo rm -fr "$cwd" ;;
+        2) ;;
+        *) unset choice; cleanup ;;
     esac
 }
 
-
+# Install required apt packages
 pkgs=(apparmor apparmor-utils autoconf autoconf-archive autogen automake autopoint autotools-dev
       build-essential bzip2 ccache curl git libapparmor-dev libaudit-dev libglib2.0-dev libintl-perl
       librust-polling-dev libsystemd-dev libtool libtool-bin libx11-dev lzip pkg-config valgrind
       zlib1g-dev)
 
-for i in ${pkgs[@]}
+for pkg in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "$i")"
+    missing_pkg="$(sudo dpkg -l | grep -o "$pkg")"
 
-    if [ -z "$missing_pkg" ]; then
-        missing_pkgs+=" $i"
+    if [[ -z "$missing_pkg" ]]; then
+        missing_pkgs+=" $pkg"
     fi
 done
 
-if [ -n "$missing_pkgs" ]; then
+if [[ -n "$missing_pkgs" ]]; then
     sudo apt install $missing_pkgs
-    sudo apt -y autoremove
-    clear
 fi
 
-
-if [ ! -f "$cwd/$archive_name" ]; then
-    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
+# Download the archive file
+if [[ ! -f "$cwd/$archive_name" ]]; then
+    curl -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
-
-if [ -d "$cwd/$archive_dir" ]; then
+# Create output directory
+if [[ -d "$cwd/$archive_dir" ]]; then
     sudo rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
-
+# Extract archive files
 if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
-    exit 1
+    fail "Failed to extract: $cwd/$archive_name"
 fi
 
-
+# Build program from source
 cd "$cwd/$archive_dir" || exit 1
 cd build || exit 1
-../configure --prefix="$install_dir"          \
-             --{build,host}=x86_64-linux-gnu    \
-             --enable-apparmor                  \
-             --enable-code-coverage             \
-             --enable-epoll                     \
-             --enable-inotify                   \
-             --enable-qt-help=auto              \
-             --enable-selinux                   \
-             --enable-systemd                   \
-             --enable-tests                     \
-             --enable-user-session              \
-             --enable-x11-autolaunch            \
-             --with-pic                         \
-             --with-valgrind                    \
-             PKG_CONFIG="$(type -P pkg-config)" \
+../configure --prefix="$install_dir" \
+             --enable-apparmor \
+             --enable-code-coverage \
+             --enable-epoll \
+             --enable-inotify \
+             --enable-qt-help=auto \
+             --enable-selinux \
+             --enable-systemd \
+             --enable-tests \
+             --enable-user-session \
+             --enable-x11-autolaunch \
+             --with-pic \
+             --with-valgrind \
              PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
-make "-j$(nproc --all)"
-if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install:Line $LINENO"
-    exit 1
+if ! make "-j$(nproc --all)"; then
+    fail "Failed to execute: make -j$(nproc --all). Line: $LINENO"
 fi
 
-cleanup_fn
+if ! sudo make install; then
+    fail "Failed to execute: sudo make install. Line: $LINENO"
+fi
 
+# Prompt user to clean up files
+cleanup
+
+# Show exit message
 exit_fn
