@@ -1,12 +1,14 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
-trap 'fail_fn "Error occurred on line $LINENO"' ERR
+# Build GNU Bash - v2.0 - 03.08.24
+# GitHub: https://github.com/slyfox1186/script-repo
+
+trap 'fail_fn "Error occurred on line: $LINENO"' ERR
 
 version=2.0
 program_name=bash
 install_prefix=/usr/local
 build_dir="/tmp/$program_name-$version-build"
-repo_url=https://github.com/slyfox1186/script-repo
 gnu_ftp="https://ftp.gnu.org/gnu/bash/"
 verbose=0
 
@@ -20,6 +22,7 @@ usage() {
 }
 
 parse_args() {
+    while [[ "$#" -gt 0 ]]; do
         case "$1" in
             -p|--prefix)
                 install_prefix="$2"
@@ -32,22 +35,20 @@ parse_args() {
             -h|--help)
                 usage
                 ;;
-            *)
-                fail_fn "Unknown option: $1. Use -h or --help for usage information."
-                ;;
+            *)  fail_fn "Unknown option: $1. Use -h or --help for usage information." ;;
         esac
     done
 }
 
 log_msg() {
-    if [[ $verbose -eq 1 ]]; then
-        printf "\e[32m%s\e[0m\n" "$1"
+    if [[ "$verbose" -eq 1 ]]; then
+        printf "\033[32m%s\033[0m\n" "$1"
     fi
 }
 
 fail_fn() {
-    printf "\e[31m%s\e[0m\n" "$1"
-    printf "%s\n" "To report a bug, create an issue at: $repo_url/issues"
+    printf "\033[31m%s\033[0m\n" "$1"
+    echo "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
@@ -70,19 +71,19 @@ install_deps() {
 
 find_latest_release() {
     log_msg "Finding the latest release..."
-    local latest_tarball=$(curl -s "$gnu_ftp" | grep 'bash-[0-9].*\.tar\.gz' | grep -v '.sig' | sed -n 's/.*href="\([^"]*\).*/\1/p' | sort -V | tail -n1)
+    local latest_tarball=$(curl -fsS "$gnu_ftp" | grep 'bash-[0-9].*\.tar\.gz' | grep -v ".sig" | sed -n 's/.*href="\([^"]*\).*/\1/p' | sort -rV | head -n1)
     if [[ -z $latest_tarball ]]; then
         fail_fn "Failed to find the latest release."
     fi
-    archive_url="$gnu_ftp$latest_tarball"
-    archive_name="$latest_tarball"
+    archive_url="${gnu_ftp}${latest_tarball}"
+    archive_name="${latest_tarball}"
     program_version=$(echo "$latest_tarball" | sed -n 's/bash-\([0-9.]*\)\.tar\.gz/\1/p')
 }
 
 download_archive() {
     log_msg "Downloading archive..."
     if [[ ! -f "$build_dir/$archive_name" ]]; then
-        curl -fsSL "$archive_url" -o "$build_dir/$archive_name"
+        curl -fsSLo "$build_dir/$archive_name" "$archive_url"
     fi
 }
 
@@ -124,7 +125,7 @@ configure_build() {
 
 compile_build() {
     log_msg "Compiling..."
-    make -j"$(nproc)"
+    make "-j$(nproc --all)"
 }
 
 install_build() {
@@ -151,13 +152,11 @@ cleanup() {
 main() {
     parse_args "$@"
 
-    if [[ $EUID -ne 0 ]]; then
+    if [[ "$EUID" -ne 0 ]]; then
         fail_fn "This script must be run as root or with sudo."
     fi
 
-    if [[ -d "$build_dir" ]]; then
-        rm -rf "$build_dir"
-    fi
+    [[ -d "$build_dir" ]] && rm -rf "$build_dir"
     mkdir -p "$build_dir"
 
     install_deps
@@ -173,7 +172,7 @@ main() {
 
     log_msg "Build completed successfully."
     log_msg "Make sure to star this repository to show your support!"
-    log_msg "$repo_url"
+    log_msg "https://github.com/slyfox1186/script-repo"
 }
 
 main "$@"
