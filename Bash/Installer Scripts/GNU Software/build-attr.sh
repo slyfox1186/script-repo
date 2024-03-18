@@ -75,14 +75,14 @@ exit_fn() {
     exit 0
 }
 
-fail_fn() {
+fail() {
     echo
     echo "$1"
     echo "To report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
-cleanup_fn() {
+cleanup() {
     local choice
 
     echo
@@ -100,7 +100,7 @@ cleanup_fn() {
         2) ;;
         *) unset choice
            clear
-           cleanup_fn
+           cleanup
            ;;
     esac
 }
@@ -121,8 +121,6 @@ done
 
 if [[ -n "$missing_pkgs" ]]; then
     sudo apt install $missing_pkgs
-    sudo apt -y autoremove
-    clear
 fi
 
 # Download the archive file
@@ -145,15 +143,15 @@ cd build || exit 1
 ../configure --prefix="$install_dir" --disable-nls -with-pic
 echo
 if ! make "-j$(nproc --all)"; then
-    fail_fn "Failed to execute: make -j$(nproc --all). Line: $LINENO"
+    fail "Failed to execute: make -j$(nproc --all). Line: $LINENO"
 fi
 echo
 if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install. Line: $LINENO"
+    fail "Failed to execute: sudo make install. Line: $LINENO"
 fi
 
 # Prompt user to clean up files
-cleanup_fn
+cleanup
 
 # Show exit message
 exit_fn
