@@ -1,29 +1,38 @@
-#!/Usr/bin/env bash
 
+#!/usr/bin/env bash
+
+##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf-archive
+##  Purpose: build gnu autoconf-archive
+##  Updated: 03.16.24
+##  Script version: 1.1
 
 if [ "$EUID" -ne 0 ]; then
     echo "You must run this script with root or sudo."
     exit 1
 fi
 
+# Set the variables
 archive_dir=autoconf-archive-2023.02.20
 archive_url=https://ftp.gnu.org/gnu/autoconf-archive/$archive_dir.tar.xz
-archive_ext="$archive_url//*."
+archive_ext="${archive_url//*.}"
 archive_name="$archive_dir.tar.$archive_ext"
 cwd="$PWD/autoconf-archive-build-script"
 install_dir=/usr/local
 
+# Create output directory
 if [ -d "$cwd" ]; then
     rm -fr "$cwd"
 fi
 mkdir -p "$cwd"
 
+# Set the C +CPP compilers & their compiler optimization flags
 CC="gcc"
 CXX="g++"
-CFLAGS="-g -O3 -pipe -fno-plt -march=native"
-CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
+CFLAGS="-g -O3 -pipe -march=native"
+CXXFLAGS="-g -O3 -pipe -march=native"
 export CC CFLAGS CXX CXXFLAGS
 
+# Set the path variable
 PATH="\
 /usr/lib/ccache:\
 $HOME/perl5/bin:\
@@ -43,6 +52,7 @@ $HOME/.local/bin:\
 "
 export PATH
 
+# Set the PKG_CONFIG_PATH variable
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
@@ -58,6 +68,7 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
+# Create functions
 exit_fn() {
     echo
     echo "Make sure to star this repository to show your support!"
@@ -83,7 +94,7 @@ cleanup() {
         "[2] No"
     read -p "Your choices are (1 or 2): " choice
 
-    case "$choice" in
+    case "${choice}" in
         1) rm -fr "$cwd" ;;
         2) ;;
         *) unset choice
@@ -93,6 +104,7 @@ cleanup() {
     esac
 }
 
+# Install required apt packages
 pkgs=(
       autoconf autoconf-archive autogen automake autopoint autotools-dev binutils
       bison build-essential bzip2 bzip2 ccache curl libc6-dev libpth-dev libtool
@@ -111,20 +123,24 @@ if [[ -n "$missing_pkgs" ]]; then
     clear
 fi
 
+# Download the archive file
 if [[ ! -f "$cwd/$archive_name" ]]; then
     curl  -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
+# Create the output directory
 if [[ -d "$cwd/$archive_dir" ]]; then
     rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir/build"
 
+# Extract the archive files
 if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
     echo "Failed to extract: $cwd/$archive_name"
     exit 1
 fi
 
+# Build the program from source
 cd "$cwd/$archive_dir" || exit 1
 autoreconf -fi
 cd build || exit 1
@@ -142,6 +158,8 @@ if ! make install; then
     exit 1
 fi
 
+# Prompt user to clean up files
 cleanup
 
+# Show exit message
 exit_fn
