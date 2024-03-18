@@ -126,7 +126,7 @@ sudo bash build-ffmpeg.sh --build --enable-gpl-and-non-free --latest
       - To build OpenSSL version 3.1.5 pass this to the script: **build-openssl.sh -v 3.1.5**
 
 ```bash
-curl -fsSLo build-openssl.sh https://openssl.optimizethis.net
+curl -fsSLo build-openssl.sh https://ossl.optimizethis.net
 sudo bash build-openssl.sh
 ````
 ------
