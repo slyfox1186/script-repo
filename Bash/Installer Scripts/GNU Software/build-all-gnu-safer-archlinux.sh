@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 #
 # Script: build-all-gnu-safer-archlinux.sh
 # Purpose: Loops multiple build scripts to optimize efficiency. This is the safer of the two scripts.
