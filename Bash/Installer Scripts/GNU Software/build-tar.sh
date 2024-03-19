@@ -1,102 +1,142 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
-if [[ $EUID -ne 0 ]]; then
-    echo -e "\033[31mThis script must be run as root or with sudo.\033[0m"
-    exit 1
-fi
+##  Github Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-nano
+##  Purpose: build gnu nano
+##  Updated: 08.03.23
+##  Script version: 2.0
 
-script_ver="1.0"
-cwd="$PWD/tar-install"
+set -eo pipefail
+
+# Set color variables
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m'
+
+# Set variables
+script_ver="1.1"
+cwd="$PWD/tar-build-script"
 gnu_ftp="https://ftp.gnu.org/gnu/tar/"
-declare -A colors=( [green]="\e[32m" [red]="\e[31m" [yellow]="\e[33m" [reset]="\e[0m" )
 
-print_color() {
-    echo -e "$colors[$1]$2$colors[reset]"
+# Create logging functions
+log() {
+    echo -e "${GREEN}[INFO] $1${NC}"
 }
 
-print_banner() {
-    print_color green "Tar Install script - v$script_ver"
-    echo "============================================"
+warn() {
+    echo -e "${YELLOW}[WARNING] $1${NC}"
 }
 
-install_missing_packages() {
-    print_color green "Checking and installing missing packages..."
-    local pkgs=(
-        autoconf automake autopoint binutils gcc
-        make curl tar lzip libticonv-dev gettext
-        libpth-dev
-    )
-    for pkg in "${pkgs[@]}"; do
-        if ! dpkg -l | grep -qw $pkg &>/dev/null; then
-            apt install -y $pkg || yum install -y $pkg || zypper install -y $pkg || pacman -Sy $pkg
+fail() {
+    echo -e "${RED}[ERROR] $1${NC}"
+    echo "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
+    exit 1
+}
+
+# Check if running as root or with sudo
+check_root() {
+    if [[ "$EUID" -eq 0 ]]; then
+        fail "This script must be run without root or sudo."
+    fi
+}
+
+# Display script information
+display_info() {
+    echo -e "${GREEN}============================================${NC}"
+    echo -e "${GREEN}         Tar Install script - v$script_ver"
+    echo -e "${GREEN}============================================${NC}"
+    echo
+}
+
+# Set compiler and optimization flags
+set_compiler_flags() {
+    CC="gcc"
+    CXX="g++"
+    CFLAGS="-g -O3 -pipe -fno-plt -march=native"
+    CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
+    LDFLAGS="-Wl,-rpath,/usr/local/$archive_dir/lib"
+    export CC CXX CFLAGS CXXFLAGS LDFLAGS
+}
+
+# Install missing packages
+install_dependencies() {
+    log "Checking and installing missing packages..."
+    pkgs="autoconf automake autopoint binutils gcc make curl tar xz-utils libintl-perl libintl-xs-perl"
+    missing_pkgs=""
+    for pkg in $pkgs; do
+        if ! dpkg -s "$pkg" &> /dev/null; then
+            missing_pkgs+=" $pkg"
         fi
     done
-}
-
-find_latest_tar_tarball() {
-    print_color green "Finding the latest release..."
-    local latest_tar_tarball=$(
-                                curl -s "$gnu_ftp" |
-                                grep 'tar-[0-9].*\.tar\.gz' |
-                                grep -v '.sig' | sed -n 's/.*href="\([^"]*\).*/\1/p' |
-                                sort -V |
-                                tail -n1
-                            )
-    if [[ -z $latest_tar_tarball ]]; then
-        print_color red "Failed to find the latest release. Exiting..."
-        exit 1
+    if [[ -n "$missing_pkgs" ]]; then
+        sudo apt-get install $missing_pkgs
     fi
-    archive_url="$gnu_ftp$latest_tar_tarball"
-    archive_name="$latest_tar_tarball"
-    archive_dir=$(echo $latest_tar_tarball | sed 's/.tar.gz//')
 }
 
+# Find the latest tar tarball
+find_latest_tar_version() {
+    log "Finding the latest release..."
+    latest_tar_version=$(curl -fsS "$gnu_ftp" | grep -oP 'tar-\K[0-9]+\.[0-9]+\.tar\.xz' | sort -rV | head -n1)
+    if [[ -z "$latest_tar_version" ]]; then
+        fail "Failed to find the latest release."
+    fi
+    archive_url="${gnu_ftp}tar-$latest_tar_version"
+    archive_name="tar-$latest_tar_version"
+    archive_dir="tar-${latest_tar_version%.tar.xz}"
+}
+
+# Download and extract the archive
 download_and_extract() {
-    print_color green "Downloading and extracting..."
-    mkdir -p "$cwd/$archive_dir" && cd "$cwd"
-    wget --show-progress -cqO "$archive_name" "$archive_url"
-    tar -zxf "$archive_name" -C "$cwd/$archive_dir" --strip-components 1
+    log "Downloading and extracting..."
+    mkdir -p "$cwd/$archive_dir"
+    wget --show-progress -cqO "$cwd/$archive_name" "$archive_url"
+    tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1
 }
 
+# Build and install
 build_and_install() {
-    print_color green "Building and installing..."
+    log "Building and installing..."
+    echo
     cd "$cwd/$archive_dir"
+    set_compiler_flags
     autoreconf -fi
-    export FORCE_UNSAFE_CONFIGURE=1
-    ./configure --prefix=/usr/local/$archive_dir \
-                     --disable-nls \
-                     --enable-backup-scripts \
-                     --enable-gcc-warnings=no \
-                     --with-libiconv-prefix=/usr/local \
-                     --with-libintl-prefix=/usr \
-                     CFLAGS="-g -O3 -pipe -fno-plt -march=native" \
-                     CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
-    make "-j$(nproc --all)"
-    make install
-    print_color green "Installation completed successfully."
+    ./configure --prefix="/usr/local/$archive_dir" \
+                --disable-nls \
+                --enable-backup-scripts \
+                --enable-gcc-warnings=no
+    make "-j$(nproc --all)" || fail "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
+    sudo make install || fail "Failed to execute: sudo make install. Line: ${LINENO}"
+    echo
+    log "Installation completed successfully."
 }
 
-link_tar() {
-    print_color green "Creating softlink..."
-    if ln -sf /usr/local/$archive_dir/bin/* /usr/local/bin/; then
-        print_color green "Softlink created successfully."
-    else
-        print_color red "Softlink failed to create."
-    fi
+# Create soft links
+create_soft_links() {
+    log "Creating soft links..."
+    sudo ln -sf "/usr/local/$archive_dir/bin/tar" "/usr/local/bin/tar"
 }
 
+# Cleanup
 cleanup() {
-    print_color yellow "Cleaning up..."
-    rm -rf "$cwd"
+    warn "Cleaning up..."
+    sudo rm -rf "$cwd"
 }
 
+# Main script
 main() {
-    print_banner
-    install_missing_packages
-    find_latest_tar_tarball
+    check_root
+    display_info
+    install_dependencies
+    find_latest_tar_version
     download_and_extract
     build_and_install
-    link_tar
+    echo
+    create_soft_links
+    echo
+    cleanup
+    echo
+    log "Make sure to star this repository to show your support!"
+    log "https://github.com/slyfox1186/script-repo"
 }
 
-main "$@"
+main
