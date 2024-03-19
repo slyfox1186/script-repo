@@ -1,93 +1,96 @@
+# $HOME/.bashrc: executed by bash(1) for non-login shells.
+# see /usr/share/doc/bash/examples/startup-files (in the package bash-doc) for examples
 
-case $- in
+# If not running interactively, don't do anything
+case "$-" in
     *i*) ;;
       *) return ;;
 esac
 
+# Don't put duplicate lines or lines starting with space in the history.
 HISTCONTROL=ignoreboth
 
+# Append to the history file, don't overwrite it
 shopt -s histappend
 
+# For setting history length see HISTSIZE and HISTFILESIZE in bash(1)
 HISTSIZE=10000
 HISTFILESIZE=20000
 
+# Check the window size after each command and, if necessary,
+# update the values of LINES and COLUMNS.
 shopt -s checkwinsize
 
+# If set, the pattern "**" used in a pathname expansion context will
+# match all files and zero or more directories and subdirectories.
 shopt -s globstar
 
+# Make less more friendly for non-text input files, see lesspipe(1)
 [[ -x "/usr/bin/lesspipe" ]] && eval $(SHELL=/bin/sh lesspipe)
 
-<<<<<<< Updated upstream
+# Set variable identifying the chroot you work in (used in the prompt below)
 if [[ -z "${debian_chroot:-}" ]] && [[ -r "/etc/debian_chroot" ]]; then
-=======
-if [ -z "$debian_chroot:-" ] && [ -r '/etc/debian_chroot' ]; then
->>>>>>> Stashed changes
     debian_chroot=$(cat '/etc/debian_chroot')
 fi
 
+# Set a fancy prompt (non-color, unless we know we "want" color)
 case "$TERM" in
-<<<<<<< Updated upstream
     xterm-color|*-256color) color_prompt=yes ;;
-=======
-    xterm-color|*-256color) color_prompt=yes;;
->>>>>>> Stashed changes
 esac
 
+# Uncomment for a colored prompt, if the terminal has the capability; turned
+# off by default to not distract the user: the focus in a terminal window
+# should be on the output of commands, not on the prompt
 force_color_prompt=yes
 
-<<<<<<< Updated upstream
 if [[ -n "$force_color_prompt" ]]; then
     if [[ -x /usr/bin/tput ]] && tput setaf 1 >&/dev/null; then
-    color_prompt=yes
-=======
-if [ -n "$force_color_prompt" ]; then
-    if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
-	color_prompt=yes
->>>>>>> Stashed changes
+        # We have color support; assume it's compliant with Ecma-48 (ISO/IEC-6429)
+        # Lack of such support is extremely rare, and such a case would tend to support setf rather than setaf.
+        color_prompt=yes
     else
-    color_prompt=""
+        color_prompt=""
     fi
 fi
 
-<<<<<<< Updated upstream
 if [[ "$color_prompt" = yes ]]; then
     PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
-=======
-if [ "$color_prompt" = yes ]; then
-    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
->>>>>>> Stashed changes
 else
     PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
 fi
 unset color_prompt force_color_prompt
 
+# If this is an xterm set the title to user@host:dir
 case "$TERM" in
-<<<<<<< Updated upstream
-    xterm*|rxvt*)
-        PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1" ;;
-    *)  ;;
-=======
-xterm*|rxvt*)
-    PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
-    ;;
-*)
-    ;;
->>>>>>> Stashed changes
+    xterm*|rxvt*) PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1" ;;
+               *) ;;
 esac
 
+# Enable color support of ls and also add handy aliases
 if [[ -x "/usr/bin/dircolors" ]]; then
-    test -r "$HOME/.dircolors" && eval $(dircolors -b "$HOME/.dircolors") || eval $(dircolors -b)
+    if test -r "$HOME/.dircolors"; then
+        eval $(dircolors -b "$HOME/.dircolors")
+    else
+        eval $(dircolors -b)
+    fi
     alias ls="ls --color=always --group-directories-first"
     alias grep="grep --color=always"
 fi
 
+# Colored GCC warnings and errors
 GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
 
+# Alias definitions.
+# You may want to put all your additions into a separate file like
+# $HOME/.bash_aliases, instead of adding them here directly.
+# See /usr/share/doc/bash-doc/examples in the bash-doc package.
 
 if [[ -f "$HOME/.bash_aliases" ]]; then
     . "$HOME/.bash_aliases"
 fi
 
+# You don't need to enable this, if it's already enabled in
+# /etc/bash.bashrc and /etc/profile sources /etc/bash.bashrc
 if ! shopt -oq posix; then
   if [ -f "/usr/share/bash-completion/bash_completion" ]; then
     . "/usr/share/bash-completion/bash_completion"
@@ -96,6 +99,9 @@ if ! shopt -oq posix; then
   fi
 fi
 
+####################
+## CUSTOM SECTION ##
+####################
 
 if [[ -f "$HOME/.bash_functions" ]]; then
     . "$HOME/.bash_functions"
@@ -108,12 +114,12 @@ fi
 threads=$(nproc --all)
 cpus=$((threads / 2))
 lan=$(ip route get 1.2.3.4 | awk '{print $7}')
-wan=$(curl -s 'https://checkip.amazonaws.com')
+wan=$(curl -fsS "https://checkip.amazonaws.com")
 PS1='\n\[\e[38;5;227m\]\w\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38;5;117m\]\h\[\e[97;1m\]\\$\[\e[0m\]'
 PYTHONUTF8=1
-SHELL="/usr/bin/env bash"
 export cpus lan PS1 PYTHONUTF8 SHELL threads wan
 
+# Set the script's path variable
 PATH="\
 /usr/lib/ccache:\
 $HOME/perl5/bin:\
@@ -137,8 +143,7 @@ $HOME/.local/bin:\
 "
 export PATH
 
-if [ ! -f "/usr/lib/wsl/lib/libcuda.so.1.1" ] && [ -f "/usr/lib/wsl/lib/libcuda.so.1" ]; then
-    sudo ln -sf /usr/lib/wsl/lib/libcuda.so.1 /usr/lib/wsl/lib/libcuda.so.1.1
+# Fix annoying error message in WSL Linux
+if [ -f "/usr/lib/wsl/lib/libcuda.so.1.1" ] && [ ! -L "/usr/lib/wsl/lib/libcuda.so.1" ]; then
+    sudo ln -sf "/usr/lib/wsl/lib/libcuda.so.1" "/usr/lib/wsl/lib/libcuda.so.1.1"
 fi
-
-PATH="$PATH:$GOROOT/bin"
