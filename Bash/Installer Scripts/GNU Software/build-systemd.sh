@@ -1,183 +1,188 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
+# Set color variables
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m'
 
-clear
+# Set variables
+script_ver="1.2"
+archive_dir="systemd-v255"
+archive_url="https://github.com/systemd/systemd/archive/refs/tags/v255.tar.gz"
+archive_name="${archive_dir}.tar.${archive_url##*.}"
+cwd="$PWD/systemd-build-script"
+install_dir="/usr/local/$archive_dir"
 
-if [ "$EUID" -eq '0' ]; then
-    echo "You must run this script without root or sudo."
+# Create logging functions
+log() {
+    echo -e "${GREEN}[INFO] $1${NC}"
+}
+
+warn() {
+    echo -e "${YELLOW}[WARNING] $1${NC}"
+}
+
+fail() {
+    echo
+    echo -e "${RED}[ERROR] $1${NC}"
+    echo "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
-fi
+}
 
+# Check if running as root or with sudo
+check_root() {
+    if [[ "$EUID" -eq 0 ]]; then
+        fail "You must run this script without root or sudo."
+    fi
+}
 
-script_ver=1.2
-archive_dir=systemd-253
-archive_url=https://github.com/systemd/systemd/archive/refs/tags/v253.tar.gz
-archive_ext="$archive_url//*."
-archive_name="$archive_dir.tar.$archive_ext"
-cwd="$PWD"/systemd-build-script
-install_dir=/usr/local
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/script-repo
+# Display script information
+display_info() {
+    log "Systemd build script version $script_ver"
+    echo "==============================================="
+    echo
+}
 
-printf "%s\n%s\n\n" \
-    "systemd build script - v$script_ver" \
-    '==============================================='
+# Set compiler and optimization flags
+set_compiler_flags() {
+    CC="gcc"
+    CXX="g++"
+    CFLAGS="-g -O3 -pipe -fno-plt -march=native"
+    CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
+    CPPFLAGS="-D_FORTIFY_SOURCE=2"
+    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir/lib"
+    export CC CXX CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
+}
 
+# Set the path variables
+set_path_variables() {
+    PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/sbin:/usr/local/cuda/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
+    LD_LIBRARY_PATH="/usr/local/lib64:/usr/local/lib:/usr/lib64:/usr/lib:/lib64:/lib:/usr/local/cuda-12.2/nvvm/lib64"
+    export PATH PKG_CONFIG_PATH LD_LIBRARY_PATH
+}
 
-if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
-fi
-mkdir -p "$cwd"
-
-
-export CC=gcc CXX=g++
-
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
-
-
-PATH="\
-/usr/lib/ccache:\
-$HOME/perl5/bin:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
-
-
-PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
-"
-export PKG_CONFIG_PATH
-
-
-LD_LIBRARY_PATH="\
-/usr/local/lib64:\
-/usr/local/lib:\
-/usr/lib64:\
-/usr/lib:\
-/lib64:\
-/lib:\
-/usr/local/cuda-12.2/nvvm/lib64\
-"
-export LD_LIBRARY_PATH
-
-
+# Show exit message
 exit_fn() {
-    printf "\n%s\n\n%s\n\n" \
-        'Make sure to star this repository to show your support!' \
-        "$web_repo"
+    echo
+    log "Make sure to star this repository to show your support!"
+    log "https://github.com/slyfox1186/script-repo"
     exit 0
 }
 
-fail_fn() {
-    printf "\n%s\n\n%s\n\n" \
-        "$1" \
-        "To report a bug create an issue at: $web_repo/issues"
-    exit 1
-}
-
-cleanup_fn() {
+# Prompt user to clean up files
+cleanup() {
     local choice
 
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
+    echo
+    echo -e "${GREEN}============================================${NC}"
+    echo -e "  ${YELLOW}Do you want to clean up the build files?${NC}  "
+    echo -e "${GREEN}============================================${NC}"
+    echo
+    echo "[1] Yes"
+    echo "[2] No"
+    echo
+    read -p "Your choice (1 or 2): " choice
 
     case "$choice" in
-        1)      sudo rm -fr "$cwd";;
-        2)      echo;;
-        *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
-                unset choice
-                clear
-                cleanup_fn
-                ;;
+        1) sudo rm -fr "$cwd";;
+        2) ;;
+        *) unset choice
+           cleanup
+           ;;
     esac
 }
 
+# Install required apt packages
+install_dependencies() {
+    pkgs=(autoconf automake build-essential clang cmake curl git gperf libacl1-dev
+          libapparmor-dev libaudit-dev libblkid-dev libbpf-dev libbz2-dev libcap-dev
+          libcryptsetup-dev libcurl4-openssl-dev libdbus-1-dev libfdisk-dev libfido2-dev
+          libglib2.0-dev libgnutls28-dev libkmod-dev liblz4-dev libmicrohttpd-dev libmount-dev
+          libp11-kit-dev libpam0g-dev libpolkit-gobject-1-dev libpwquality-dev libqrencode-dev
+          libseccomp-dev libssl-dev libtss2-dev libxkbcommon-dev meson ninja-build openssl
+          python3 python3-jinja2 python3-pyparsing xsltproc libnghttp2-dev libssh2-1-dev
+          libzstd-dev libiptc-dev libxen-dev libzip-dev bzip2 libbpf-dev libelf-dev)
 
-pkgs=("$1" autoconf autoconf-archive autogen automake binutils bpftool build-essential ccache clang cmake curl git gnu-efi golang-gir-gio-2.0-dev golang-gir-gobject-2.0-dev
-      gperf jekyll kexec-tools libacl1-dev libapparmor-dev libaudit-dev libbinutils libblkid-dev libblkid1 libbpf-dev libbz2-dev libcap-dev
-      libcryptsetup-dev libcryptsetup12 libcurl4-openssl-dev libdbus-1-dev libdrpm-dev libdw-dev libfdisk-dev libfido2-dev libglib2.0-dev
-      libgnutls28-dev libidn11-dev libidn2-0-dev libidn2-dev libiptc-dev libkrb5-dev libkmod-dev liblz4-dev libmicrohttpd-dev libmount-dev libnacl-dev libnss-myhostname
-      libp11-kit-dev libpam0g-dev libpolkit-gobject-1-dev libpwquality-dev libqrencode-dev libquota-perl libquotient-dev librpm-dev librust-pam-dev
-      librust-quote-dev libseccomp-dev libssl-dev libtss2-dev libsystemd-dev libtool libtool-bin libxen-dev libxkbcommon-dev m4 meson nasm ninja-build
-      openssl python3 python3-evdev python3-jinja2 python3-pyparsing quota strace valgrind xsltproc yasm)
+    missing_pkgs=""
+    for pkg in ${pkgs[@]}; do
+        if ! dpkg -s "$pkg" &> /dev/null; then
+            missing_pkgs+=" $pkg"
+        fi
+    done
 
-for i in ${pkgs[@]}
-do
-    missing_pkg="$(sudo dpkg -l | grep -o "$i")"
-
-    if [ -z "$missing_pkg" ]; then
-        missing_pkgs+=" $i"
+    if [[ -n "$missing_pkgs" ]]; then
+        sudo apt-get update
+        sudo apt-get install $missing_pkgs
     fi
-done
-unset i
+}
 
-if [ -n "$missing_pkgs" ]; then
-    sudo apt install $missing_pkgs
-    sudo apt -y autoremove
-    clear
-fi
+# Download the archive file
+download_archive() {
+    if [[ ! -f "$cwd/$archive_name" ]]; then
+        curl -Lso "$cwd/$archive_name" "$archive_url"
+    fi
+}
 
+# Extract archive files
+extract_archive() {
+    if ! tar -zxf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
+        fail "Failed to extract: $cwd/$archive_name"
+    fi
+}
 
-if [ ! -f "$cwd/$archive_name" ]; then
-    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
-fi
+# Build program from source
+build_program() {
+    cd "$cwd/$archive_dir" || fail "Failed to change directory to: $cwd/$archive_dir"
+    set_compiler_flags
+    set_path_variables
+    meson setup build --prefix="$install_dir" \
+                      --buildtype=release \
+                      --default-library=static \
+                      --pkg-config-path="$PKG_CONFIG_PATH" \
+                      --strip \
+                      -Dbacklight=true \
+                      -Db_lto=true \
+                      -Db_lto_threads=$(nproc --all) \
+                      -Ddefault-user-shell=$(type -P bash) \
+                      -Ddns-over-tls=auto \
+                      -Defi=true \
+                      -Dhibernate=false \
+                      -Dhwdb=true \
+                      -Dinstall-tests=true \
+                      -Dldconfig=true \
+                      -Drfkill=true \
+                      -Dtests=unsafe \
+                      -Dtranslations=false \
+                      -Duser-path="$USER" \
+                      -Dzstd=enabled \
+                      -Dc_args="-O3 -pipe -fno-plt -fPIC -fPIE -march=native" \
+                      -Dcpp_args="-O3 -pipe -fno-plt -fPIC -fPIE -march=native"
+    make "-j$(nproc --all)" || fail "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
+    if ! sudo make install; then
+        fail "Failed to execute: sudo make install. Line: ${LINENO}"
+    fi
+}
 
+# Create soft links
+create_soft_links() {
+    sudo ln -sf "$install_dir"/bin/* "/usr/local/bin/"
+}
 
-if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
-fi
-mkdir -p "$cwd/$archive_dir/build"
+# Main script
+main_menu() {
+    check_root
+    display_info
+    install_dependencies
+    [[ -d "$cwd/$archive_dir" ]] && sudo rm -fr "$cwd/$archive_dir"
+    mkdir -p "$cwd/$archive_dir/build"
+    download_archive
+    extract_archive
+    build_program
+    create_soft_links
+    cleanup
+    exit_fn
+}
 
-
-if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
-    exit 1
-fi
-
-
-cd "$cwd/$archive_dir" || exit 1
-meson setup build --prefix="$install_dir" \
-                  --buildtype=release       \
-                  --default-library=both    \
-                  --strip                   \
-                  -Dzstd=true
-make "-j$(nproc --all)"
-if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install:Line $LINENO"
-    exit 1
-fi
-
-cleanup_fn
-
-exit_fn
+main_menu
