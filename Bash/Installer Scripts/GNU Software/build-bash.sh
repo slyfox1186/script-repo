@@ -99,14 +99,15 @@ extract_archive() {
 
 set_env_vars() {
     log_msg "Setting environment variables..."
-    export CC="ccache gcc"
-    export CXX="ccache g++"
-    export CFLAGS="-O3 -pipe -fno-plt -march=native"
-    export CXXFLAGS="-O3 -pipe -fno-plt -march=native"
-    export CPPFLAGS="-D_FORTIFY_SOURCE=2"
-    export LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_prefix/$program_name-$program_version/lib"
-    export PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-    export PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/lib64/pkgconfig:/lib/pkgconfig"
+    CC="ccache gcc"
+    CXX="ccache g++"
+    CFLAGS="-O3 -pipe -fno-plt -march=native"
+    CXXFLAGS="-O3 -pipe -fno-plt -march=native"
+    CPPFLAGS="-D_FORTIFY_SOURCE=2"
+    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_prefix/$program_name-$program_version/lib"
+    PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/lib64/pkgconfig:/lib/pkgconfig"
+    export CC CFLAGS CXX CXXFLAGS CPPFLAGS LDFLAGS PATH PKG_CONFIG_PATH
 }
 
 configure_build() {
