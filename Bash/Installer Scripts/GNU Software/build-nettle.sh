@@ -1,205 +1,192 @@
-PATH="\
-/usr/lib/ccache:\
-$HOME/perl5/bin:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
+#!/usr/bin/env bash
 
+##  Github Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-nettle
+##  Purpose: build gnu nettle
+##  Updated: 08.01.23
+##  Script version: 2.0
 
-clear
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
 
-if [ "$EUID" -eq '0' ]; then
-    echo "You must run this script without root or sudo."
-    exit 1
-fi
-
-
-script_ver=1.1
-archive_dir=nettle-3.9.1
-archive_url=https://ftp.gnu.org/gnu/nettle/nettle-3.9.1.tar.gz
-archive_ext="$archive_url//*."
+# Variables
+script_ver="2.0"
+archive_dir="nettle-3.9.1"
+archive_url="https://ftp.gnu.org/gnu/nettle/nettle-3.9.1.tar.gz"
+archive_ext="${archive_url##*.}"
 archive_name="$archive_dir.tar.$archive_ext"
-cwd="$PWD"/nettle-build-script
-install_dir=/usr/local
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/script-repo
+cwd="$PWD/nettle-build-script"
+install_dir="/usr/local/$archive_dir"
 
-printf "%s\n%s\n\n" \
-    "nettle build script - v$script_ver" \
-    '==============================================='
-
-
-if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
-fi
-mkdir -p "$cwd"
-
-
-export CC=gcc CXX=g++
-
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
-
-
-PATH="\
-/usr/lib/ccache:\
-$HOME/perl5/bin:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
-
-
-PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
-"
-export PKG_CONFIG_PATH
-
-
-exit_fn() {
-    printf "\n%s\n\n%s\n\n" \
-        'Make sure to star this repository to show your support!' \
-        "$web_repo"
-    exit 0
+# Functions
+log() {
+    echo -e "${GREEN}[INFO] $1${NC}"
 }
 
-fail_fn() {
-    printf "\n%s\n\n%s\n\n" \
-        "$1" \
-        "To report a bug create an issue at: $web_repo/issues"
+warn() {
+    echo -e "${YELLOW}[WARNING] $1${NC}"
+}
+
+fail() {
+    echo -e "${RED}[ERROR] $1${NC}"
+    warn "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
-cleanup_fn() {
-    local choice
-
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
-
-    case "$choice" in
-        1)      sudo rm -fr "$cwd";;
-        2)      echo;;
-        *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
-                unset choice
-                clear
-                cleanup_fn
-                ;;
-    esac
-}
-
-
-pkgs_fn() {
-    pkgs=("$1" apt-transport-https apt-utils autoconf autoconf-archive autogen automake autopoint autotools-dev build-essential bzip2
-          ca-certificates ccache clang cmake curl gfortran git google-perftools graphviz jq lcov libaria2-0 libaria2-0-dev
-          libc-ares-dev libcppunit-dev libcunit1-dev libcurl4 libcurl4-openssl-dev libdmalloc-dev libec-dev libedit-dev
-          libev-dev libevent-dev libexiv2-27 libexpat1-dev libgcc-12-dev libgcrypt20-dev libgexiv2-2 libgimp2.0 libgmp3-dev
-          libgpg-error-dev libgtk-4-doc libgpgme-dev libicu-dev libjemalloc-dev libkrb5-3 libldap2-dev libldap-dev liblttng-ust-dev
-          liblzma-dev libmbedtls-dev libnghttp2-dev libntlm0-dev libparted-dev libpng-dev libpsl-dev librtmp-dev librust-bzip2-dev
-          librust-openssl-dev libsqlite3-dev libssh2-1-dev libssh-dev libssl-dev libtinfo5 libticonv-dev libtinfo-dev libtool
-          libtool-bin libunistring-dev libunwind8 libuv1-dev libxml2-dev libzstd-dev m4 nettle-dev default-jdk-headless
-          openssh-server pkg-config python3-dev python3-numpy python3-packaging python3-pip python3-pytest python3-setuptools
-          python3-wheel re2c rsync unzip valgrind zip zlib1g-dev)
-
-    for i in ${pkgs[@]}
-    do
-        missing_pkg="$(sudo dpkg -l | grep -o "$i")"
-
-        if [ -z "$missing_pkg" ]; then
-            missing_pkgs+=" $i"
-        fi
-    done
-
-    if [ -n "$missing_pkgs" ]; then
-        sudo apt install $missing_pkgs
-        sudo apt -y autoremove
-        clear
+cleanup() {
+    if sudo rm -fr "$cwd"; then
+        log "The build files were removed successfully."
+    else
+        warn "The build files failed to remove."
     fi
 }
 
+install_dependencies() {
+    log "Installing dependencies..."
+    local pkgs=(autoconf autoconf-archive autogen automake
+                build-essential ccache curl gcovr git libtool
+                m4 zlib1g-dev)
+    local missing_pkgs=()
 
-if [ ! -f "$cwd/$archive_name" ]; then
-    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
+    for pkg in "${pkgs[@]}"; do
+        if ! dpkg -s "$pkg" >/dev/null 2>&1; then
+            missing_pkgs+=("$pkg")
+        fi
+    done
+
+    if [ ${#missing_pkgs[@]} -gt 0 ]; then
+        sudo apt-get update
+        sudo apt-get install "${missing_pkgs[@]}"
+    fi
+}
+
+show_usage() {
+    echo "Usage: $0 [OPTIONS]"
+    echo "Build GNU nettle from source."
+    echo
+    echo "Options:"
+    echo "  -h, --help       Show this help message and exit"
+    echo "  -c, --cleanup    Clean up build files after installation"
+    echo "  -v, --verbose    Enable verbose output"
+    echo "  -s, --silent     Run silently (no output)"
+}
+
+# Check if running as root
+if [ "$EUID" -eq 0 ]; then
+    fail "You must run this script without root or sudo."
 fi
 
+# Parse command-line options
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help)
+            show_usage
+            exit 0
+            ;;
+        -c|--cleanup)
+            cleanup_files=true
+            ;;
+        -v|--verbose)
+            verbose=true
+            ;;
+        -s|--silent)
+            silent=true
+            ;;
+        *)
+            warn "Unknown option: $1"
+            show_usage
+            exit 1
+            ;;
+    esac
+    shift
+done
 
-if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
+# Print banner
+if [ "$silent" != true ]; then
+    log "nettle build script - v${script_ver}"
+    log "======================================="
+fi
+
+# Set compiler and flags
+CC="gcc"
+CXX="g++"
+CFLAGS="-g -O3 -pipe -fno-plt -march=native"
+CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
+export CC CFLAGS CXX CXXFLAGS
+
+# Set PATH and PKG_CONFIG_PATH
+PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/sbin:\
+/usr/local/cuda/bin:/usr/local/x86_64-linux-gnu/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:\
+/usr/local/games:/usr/games:/snap/bin"
+export PATH
+
+PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/share/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/share/pkgconfig:/lib64/pkgconfig:/lib/pkgconfig:/lib/x86_64-linux-gnu/pkgconfig"
+export PKG_CONFIG_PATH
+
+# Install dependencies
+install_dependencies
+
+# Create working directory
+if [ "$verbose" = true ]; then
+    log "Creating working directory..."
+fi
+mkdir -p "$cwd"
+
+# Download archive
+if [ ! -f "$cwd/$archive_name" ]; then
+    if [ "$verbose" = true ]; then
+        log "Downloading $archive_url..."
+    fi
+    curl -Lso "$cwd/$archive_name" "$archive_url"
+else
+    if [ "$verbose" = true ]; then
+        log "Archive already exists: $cwd/$archive_name"
+    fi
+fi
+
+# Extract archive
+if [ "$verbose" = true ]; then
+    log "Extracting archive..."
 fi
 mkdir -p "$cwd/$archive_dir/build"
+tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1 || fail "Failed to extract archive"
 
-
-if ! tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: $cwd/$archive_name"
-    exit 1
-fi
-
-
-include_dirs='/usr/local/include:/usr/include:/usr/lib/jvm/java-17-openjdk-amd64/include:/usr/lib/llvm-14/include'
-include_dirs+=':/usr/lib/gcc/x86_64-linux-gnu/12/include:/usr/lib/x86_64-linux-gnu/glib-2.0/include'
-include_dirs+=':/usr/lib/x86_64-linux-gnu/dbus-1.0/include:/usr/src/linux-headers-6.1.0-10-common/include'
-include_dirs+=':/usr/src/linux-headers-6.1.0-10-amd64/include:/usr/src/linux-headers-6.1.0-10-amd64/arch/x86/include'
-include_dirs+=':/usr/lib/python3/dist-packages/numpy/core/include:/usr/local/cuda-12.2/targets/x86_64-linux/include'
-include_dirs+=':/usr/local/cuda-12.2/targets/x86_64-linux/include/cuda/std/detail/libcxx/include'
-include_dirs+=':/usr/local/cuda-12.2/compute-sanitizer/include:/usr/local/cuda-12.2/nvvm/include'
-include_dirs+=':/usr/include/boost/fusion/include'
-lib_dirs='/usr/local/lib:/usr/lib64:/usr/lib:/usr/local/cuda-12.2/nvvm/lib64:/usr/local/cuda-12.2/extras/Debugger/lib64'
-lib_dirs+=':/usr/i686-w64-mingw32/lib:/usr/lib/xen-4.17/lib:/usr/lib/llvm-14/lib:/usr/x86_64-linux-gnu/lib'
-lib_dirs+=':/usr/x86_64-w64-mingw32/lib:/usr/share/lintian/lib:/usr/share/gitk/lib:/usr/share/texinfo/lib:/usr/share/git-gui/lib'
-
-cd "$cwd/$archive_dir" || exit 1
+# Build and install
+cd "$cwd/$archive_dir" || fail "Failed to change directory to $cwd/$archive_dir"
 autoreconf -fi
-cd build || exit 1
-../configure --prefix="$install_dir"             \
-             --disable-documentation               \
-             --with-lib-path="$lib_dirs"         \
-             --with-include-path="$include_dirs" \
-             CPPFLAGS='-I/usr/local/include -I/usr/include'
-make "-j$(nproc --all)"
-if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install:Line $LINENO"
-    exit 1
+cd build || fail "Failed to change directory to build"
+
+../configure --prefix="$install_dir" --disable-documentation --enable-gcov
+
+if [ "$verbose" = true ]; then
+    log "Building and installing nettle..."
+    make "-j$(nproc --all)" || fail "Failed to build nettle"
+else
+    make "-j$(nproc --all)" >/dev/null 2>&1 || fail "Failed to build nettle"
 fi
 
-cleanup_fn
+sudo make install >/dev/null 2>&1 || fail "Failed to install nettle"
 
-exit_fn
+# Create symlinks
+if [ "$verbose" = true ]; then
+    log "Creating symlinks..."
+fi
+for file in "$install_dir"/bin/*; do
+    filename=$(basename "$file")
+    linkname=${filename#*-}
+    sudo ln -sf "$file" "/usr/local/bin/$linkname" || warn "Failed to create symlink for $filename"
+done
+
+# Cleanup if requested
+if [ "$cleanup_files" = true ]; then
+    cleanup
+fi
+
+if [ "$silent" != true ]; then
+    log "nettle build script completed successfully!"
+    log "Make sure to star this repository to show your support: https://github.com/slyfox1186/script-repo"
+fi
