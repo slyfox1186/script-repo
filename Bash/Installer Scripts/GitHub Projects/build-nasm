@@ -3,11 +3,11 @@
 
 ###########################################################################################################
 ##
-##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-clang-15
+##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-nasm
 ##
-##  Purpose: Build LLVM-15
+##  Purpose: Build NASM
 ##
-##  Updated: 10.12.23
+##  Updated: 10.13.23
 ##
 ##  Script version: 1.0
 ##
@@ -24,7 +24,7 @@ fi
 
 script_ver=1.0
 progname="${0}"
-cwd="$PWD"/clang-15-build-script
+cwd="$PWD"/nasm-build-script
 install_prefix=/usr/local
 pc_type=$(gcc -dumpmachine)
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
@@ -39,12 +39,11 @@ fi
 
 # Figure out which compilers to use
 
-export CC=clang CXX=clang++
+export CC=gcc CXX=g++
 
 # Set compiler optimization flags
 
-CFLAGS='-g -O3 -pipe -fno-plt -march=native'
-CXXFLAGS='-g -O3 -pipe -fno-plt -march=native'
+export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 
 # Set the available cpu count for parallel processing (speeds up the build process)
 
@@ -129,37 +128,6 @@ cleanup_fn()
                 cleanup_fn
                 ;;
     esac
-}
-
-create_soft_link_fn()
-{
-    clear
-    if [ -f "$install_prefix"/bin/clang++ ] && [ ! -f "$install_prefix"/bin/clang++-15 ]; then
-        if ! sudo ln -s "$install_prefix"/bin/clang++ "$install_prefix"/bin/clang++-15; then
-            printf "\n%s\n\n" "Failed to create the clang++ soft link. Line: ${LINENO}"
-        fi
-    fi
-}
-
-show_ver_fn()
-{
-    printf "%s\n\n" 'The installed clang version is:'
-
-    if [ -f "$install_prefix"/bin/clang-15 ]; then
-        printf "%s\n" 'clang-15:'
-        "$install_prefix"/bin/clang-15 --version
-        echo
-    fi
-
-    if [ -f "$install_prefix"/bin/clang++-15 ]; then
-        printf "%s\n" 'clang++-15:'
-        "$install_prefix"/bin/clang++-15 --version
-        echo
-    elif [ -f "$install_prefix"/bin/clang++ ]; then
-        printf "%s\n" 'clang-++:'
-        "$install_prefix"/bin/clang++ --version
-        echo
-    fi
 }
 
 execute()
@@ -300,10 +268,6 @@ else
     printf "%s\n" 'The APT packages are already installed'
 fi
 
-# Refresh librarys
-
-sudo ldconfig 2>/dev/null
-
 # Begin building clang
 
 clear
@@ -321,55 +285,17 @@ box_out_banner()
     echo " $line"
     tput sgr 0
 }
-box_out_banner "Clang Build Script - version ${script_ver}"
+box_out_banner "Nasm Build Script - version ${script_ver}"
 
-if build 'llvm' '15.0.7'; then
-    download 'https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.7/llvm-project-15.0.7.src.tar.xz' 'llvm-15.0.7.tar.gz'
-    project_pkgs='clang;clang-tools-extra'
-    runtime_pkgs='libcxx;libcxxabi;libunwind;compiler-rt'
-    cmake -S llvm -B build                           \
-          -DCMAKE_INSTALL_PREFIX="$install_prefix" \
-          -DCMAKE_BUILD_TYPE=Release                 \
-          -DBUILD_SHARED_LIBS=OFF                    \
-          -DBENCHMARK_DOWNLOAD_DEPENDENCIES=ON       \
-          -DBENCHMARK_ENABLE_TESTING=ON              \
-          -DBENCHMARK_INSTALL_DOCS=OFF               \
-          -DCLANG_INCLUDE_DOCS=OFF                   \
-          -DCMAKE_C_COMPILER="${CC}"                 \
-          -DCMAKE_C_FLAGS="${CFLAGS}"                \
-          -DCMAKE_CXX_COMPILER="${CXX}"              \
-          -DCMAKE_CXX_STANDARD=17                    \
-          -DLLVM_BUILD_BENCHMARKS=OFF                \
-          -DLLVM_BUILD_RUNTIME=ON                    \
-          -DLLVM_BUILD_RUNTIMES=ON                   \
-          -DLLVM_CCACHE_BUILD=ON                     \
-          -DLLVM_ENABLE_CURL=ON                      \
-          -DLLVM_ENABLE_LTO=OFF                      \
-          -DLLVM_ENABLE_OCAMLDOC=OFF                 \
-          -DLLVM_ENABLE_PIC=ON                       \
-          -DLLVM_ENABLE_PROJECTS="${project_pkgs}"   \
-          -DLLVM_ENABLE_RUNTIMES="${runtime_pkgs}"   \
-          -DLLVM_ENABLE_WARNINGS=OFF                 \
-          -DLLVM_HOST_TRIPLE="${pc_type}"            \
-          -DLLVM_INCLUDE_DOCS=OFF                    \
-          -DLLVM_INCLUDE_EXAMPLES=OFF                \
-          -DLLVM_INCLUDE_TESTS=OFF                   \
-          -DLLVM_TARGET_ARCH=HOST                    \
-          -DLLVM_TOOL_CLANG_BUILD=ON                 \
-          -G Ninja -Wno-dev
-    echo
-    ninja "-j${cpu_threads}" -C build
-    execute sudo ninja "-j${cpu_threads}" -C build install
+if build 'nasm' '2.16.01'; then
+    download 'https://www.nasm.us/pub/nasm/stable/nasm-2.16.01.tar.xz'
+    execute ./autogen.sh
+    execute ./configure --prefix=/usr/local                \
+                        --{build,host,target}="${pc_type}" \
+                        --enable-ccache
+    execute make "-j${cpu_threads}"
+    execute sudo make install
 fi
-
-# Ldconfig must be run next in order to update file changes or the magick command will not work
-sudo ldconfig 2>/dev/null
-
-# Create a soft link from clang++ to clang++-15
-create_soft_link_fn
-
-# Show the newly installed magick version
-show_ver_fn
 
 # Prompt the user to clean up the build files
 cleanup_fn

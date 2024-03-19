@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
+# Purpose: build llvm-18 for all linux versions
 
+# Variables
 LLVM_VERSION="llvmorg-18.1.0-rc3"
 CFLAGS="-g -O3 -pipe -fno-plt -march=native"
 CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"

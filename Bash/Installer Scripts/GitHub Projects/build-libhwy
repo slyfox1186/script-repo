@@ -1,13 +1,28 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
+# Shellcheck source=/dev/null disable=sc2016,sc2034,sc2046,sc2066,sc2068,sc2086,sc2162,sc2317
 
+########################################################################
+##
+##  Install libhwy
+##
+##  Supported OS:
+##               - debian
+##               - ubuntu
+##
+##  Updated: 10.14.23
+##
+##  Script version: 1.0
+##
+########################################################################
 
 clear
 
-if [ "$EUID" -eq '0' ]; then
+if [ "${EUID}" -eq '0' ]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
 
+# Set the variables
 
 script_ver=1.0
 install_prefix=/usr/local
@@ -19,9 +34,11 @@ user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 web_repo=https://github.com/slyfox1186/script-repo
 debug=OFF
 
+# Create output directories
 
 mkdir -p "$packages" "$workspace"
 
+# Get cpu core count for parallel processing
 
 if [ -f /proc/cpuinfo ]; then
     cpu_threads="$(grep --count ^processor /proc/cpuinfo)"
@@ -29,30 +46,34 @@ else
     cpu_threads="$(nproc --all)"
 fi
 
+# Set the c & c++ compilers
 
 export CC=gcc CXX=g++
 
+# Set compiler optimization flags
 
 CFLAGS='-g -O3 -pipe -fno-plt -march=native'
-CXXFLAGS="$CFLAGS"
+CXXFLAGS="${CFLAGS}"
 CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include"
 LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64"
 LDFLAGS+=' -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
 MAKEFLAGS="-j$(nproc --all)"
 export CFLAGS CPPFLAGS CXXFLAGS LDFLAGS MAKEFLAGS
 
+# Print banner
 
 printf "%s\n%s\n%s\n" \
-    "libhwy build script - v$script_ver" \
+    "libhwy build script - v${script_ver}" \
     '=========================================' \
-    "This script will utilize ($cpu_threads) CPU threads for parallel processing to accelerate the build process."
+    "This script will utilize (${cpu_threads}) CPU threads for parallel processing to accelerate the build process."
 
+# Create global variables
 
 PATH="\
 /usr/lib/ccache:\
-$HOME/perl5/bin:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
+${HOME}/perl5/bin:\
+${HOME}/.cargo/bin:\
+${HOME}/.local/bin:\
 /usr/local/sbin:\
 /usr/local/cuda/bin:\
 /usr/local/x86_64-linux-gnu/bin:\
@@ -89,8 +110,10 @@ $workspace/share/pkgconfig:\
 "
 export PKG_CONFIG_PATH
 
+# Define functions
 
-fail_fn() {
+fail_fn()
+{
     printf "\n%s\n%s\n%s\n\n" \
         "$1" \
         'You can enable the script'\''s debugging feature by changing the variable "debug" to "ON"' \
@@ -98,14 +121,16 @@ fail_fn() {
     exit 1
 }
 
-exit_fn() {
+exit_fn()
+{
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         "$web_repo"
     exit 0
 }
 
-cleanup_fn() {
+cleanup_fn()
+{
     local choice
  
     printf "\n%s\n\n%s\n%s\n\n" \
@@ -115,7 +140,7 @@ cleanup_fn() {
     read -p 'Your choices are (1 or 2): ' choice
     clear
 
-    case "$choice" in
+    case "${choice}" in
         1)      sudo rm -fr "$cwd";;
         2)      clear;;
         *)
@@ -125,62 +150,68 @@ cleanup_fn() {
     esac
 }
 
+# Scrape github website for the latest repo version
 
-git_1_fn() {
+git_1_fn()
+{
     local curl_cmd github_repo github_url
 
     github_repo="$1"
     github_url="$2"
 
-    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/$github_repo/$github_url")"; then
+    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
         g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
     fi
 
 }
 
-git_ver_fn() {
+git_ver_fn()
+{
     git_1_fn "$1" 'releases' 2>/dev/null
 }
 
-execute() {
-    echo "$ $*"
+execute()
+{
+    echo "$ ${*}"
 
-    if [ "$debug" = 'ON' ]; then
+    if [ "${debug}" = 'ON' ]; then
         if ! output=$("$@"); then
-            notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
-            fail_fn "Failed to execute: $*"
+            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
+            fail_fn "Failed to execute: ${*}"
         fi
     else
         if ! output=$("$@" 2>&1); then
-            notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
-            fail_fn "Failed to execute: $*"
+            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
+            fail_fn "Failed to execute: ${*}"
         fi
     fi
 }
 
-download() {
+download()
+{
     dl_path="$packages"
     dl_url="$1"
+    dl_file="${2:-"${1##*/}"}"
 
     if [[ "$dl_file" =~ tar. ]]; then
-        output_dir="$dl_file%.*"
-        output_dir="$3:-"${output_dir%.*"}"
+        output_dir="${dl_file%.*}"
+        output_dir="${3:-"${output_dir%.*}"}"
     else
-        output_dir="$3:-"${dl_file%.*"}"
+        output_dir="${3:-"${dl_file%.*}"}"
     fi
 
     target_file="$dl_path/$dl_file"
     target_dir="$dl_path/$output_dir"
 
-    if [ -f "$target_file" ]; then
+    if [ -f "${target_file}" ]; then
         echo "The file \"$dl_file\" is already downloaded."
     else
-        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
-        if ! wget -U "$user_agent" -cqO "$target_file" "$dl_url"; then
+        echo "Downloading \"${dl_url}\" saving as \"$dl_file\""
+        if ! wget -U "$user_agent" -cqO "${target_file}" "${dl_url}"; then
             printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
-            if ! wget -U "$user_agent" -cqO "$target_file" "$dl_url"; then
-                fail_fn "The script failed to download \"$dl_file\" twice and will now exit. Line: $LINENO"
+            if ! wget -U "$user_agent" -cqO "${target_file}" "${dl_url}"; then
+                fail_fn "The script failed to download \"$dl_file\" twice and will now exit. Line: ${LINENO}"
             fi
         fi
         echo 'Download Completed'
@@ -192,28 +223,30 @@ download() {
     mkdir -p "$target_dir"
 
     if [ -n "$3" ]; then
-        if ! tar -zxf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
-            sudo rm "$target_file"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
+        if ! tar -zxf "${target_file}" -C "$target_dir" 2>/dev/null >/dev/null; then
+            sudo rm "${target_file}"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
         fi
     else
-        if ! tar -zxf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-            sudo rm "$target_file"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
+        if ! tar -zxf "${target_file}" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
+            sudo rm "${target_file}"
+            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
         fi
     fi
 
     printf "%s\n\n" "File extracted: $dl_file"
 
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: $LINENO"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: ${LINENO}"
 }
 
-download_git() {
+download_git()
+{
     local dl_path dl_url dl_file target_dir
 
     dl_path="$packages"
     dl_url="$1"
-    dl_file="$dl_file//\./-"
+    dl_file="${2:-"${1##*/}"}"
+    dl_file="${dl_file//\./-}"
     target_dir="$dl_path/$dl_file"
 
     if [ -n "$3" ]; then
@@ -225,22 +258,23 @@ download_git() {
         sudo rm -fr "$target_dir"
     fi
 
-    echo "Downloading $dl_url as $dl_file"
+    echo "Downloading ${dl_url} as $dl_file"
 
-    if ! git clone -q "$dl_url" "$target_dir"; then
+    if ! git clone -q "${dl_url}" "$target_dir"; then
         printf "\n%s\n\n" "The script failed to clone the directory \"$target_dir\" and will try again in 10 seconds..."
         sleep 10
-        if ! git clone -q "$dl_url" "$target_dir"; then
-            fail_fn "The script failed to clone the directory \"$target_dir\" twice and will now exit the buildLine: $LINENO"
+        if ! git clone -q "${dl_url}" "$target_dir"; then
+            fail_fn "The script failed to clone the directory \"$target_dir\" twice and will now exit the buildLine: ${LINENO}"
         fi
     else
         printf "%s\n\n" "Successfully cloned: $target_dir"
     fi
 
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: $LINENO"
+    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: ${LINENO}"
 }
 
-build() {
+build()
+{
     printf "\n%s\n%s\n" \
         "building $1 - version $2" \
         '===================================='
@@ -258,12 +292,14 @@ build() {
     return 0
 }
 
-build_done() {
+build_done()
+{
     echo "$2" > "$packages/$1.done"
 }
 
-installed() {
-    return $(dpkg-query -W -f '$Status\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
+installed()
+{
+    return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
 }
 
 find_lsb_release="$(sudo find /usr -type f -name 'lsb_release')"
@@ -273,17 +309,19 @@ if [ -f /etc/os-release ]; then
     OS_TMP="$NAME"
     VER_TMP="$VERSION_ID"
     CODENAME="$VERSION_CODENAME"
-    OS="$(echo "$OS_TMP" | awk '{print $1}')"
-    VER="$(echo "$VER_TMP" | awk '{print $1}')"
-elif [ -n "$find_lsb_release" ]; then
+    OS="$(echo "${OS_TMP}" | awk '{print $1}')"
+    VER="$(echo "${VER_TMP}" | awk '{print $1}')"
+elif [ -n "${find_lsb_release}" ]; then
     OS="$(lsb_release -d | awk '{print $2}')"
     VER="$(lsb_release -r | awk '{print $2}')"
 else
-    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: $LINENO"
+    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: ${LINENO}"
 fi
 
+# Install required apt/pacman packages
 
-pkgs_arch_fn() {
+pkgs_arch_fn()
+{
     pkgs=(autoconf autoconf-archive autogen automake xorg-util-macros autogen
           base-devel ccache cmake curl git gtest jq libtool m4 ninja openssl
           pkg-config python python-pip python-setuptools qt6-base)
@@ -294,10 +332,10 @@ pkgs_arch_fn() {
 
     for i in ${pkgs[@]}
     do
-        missing_pkg="$(sudo pacman -Qi | grep -o "$i")"
+        missing_pkg="$(sudo pacman -Qi | grep -o "${i}")"
 
-        if [ -z "$missing_pkg" ]; then
-            missing_pkgs+=" $i"
+        if [ -z "${missing_pkg}" ]; then
+            missing_pkgs+=" ${i}"
         fi
     done
 
@@ -306,23 +344,25 @@ pkgs_arch_fn() {
     fi
 
     rm_pip_lock="$(sudo find /usr/lib/python3* -type f -name 'EXTERNALLY-MANAGED')"
-    if [ -n "$rm_pip_lock" ]; then
-        sudo rm "$rm_pip_lock"
+    if [ -n "${rm_pip_lock}" ]; then
+        sudo rm "${rm_pip_lock}"
     fi
 
+# Install python pip packages
     pip uninstall -q -y setuptools 2>/dev/null
     sudo pip install -q --no-input setuptools 2>/dev/null
 }
 
-pkgs_fn() {
+pkgs_fn()
+{
     pkgs=(autoconf autoconf-archive autogen automake autotools-dev
           build-essential ccache cmake curl libgtest-dev libtool
           libtool-bin m4 ninja-build pkg-config)
 
     for pkg in ${pkgs[@]}
     do
-        if ! installed "$pkg"; then
-            missing_pkgs+=" $pkg"
+        if ! installed "${pkg}"; then
+            missing_pkgs+=" ${pkg}"
         fi
     done
 
@@ -333,7 +373,7 @@ pkgs_fn() {
     fi
 }
 
-case "$OS" in
+case "${OS}" in
     Arch)   pkgs_arch_fn;;
     *)      pkgs_fn;;
 esac
@@ -350,6 +390,7 @@ else
     printf "%s\n" 'The required APT packages are already installed.'
 fi
 
+# Build libraries from source
 
 git_ver_fn 'google/highway' 'R'
 if build 'libhwy' "$g_ver"; then
@@ -365,13 +406,16 @@ if build 'libhwy' "$g_ver"; then
                   -DHWY_ENABLE_EXAMPLES=OFF \
                   -DHWY_FORCE_STATIC_LIBS=ON \
                   -G Ninja -Wno-dev
-    execute ninja "-j$cpu_threads"
+    execute ninja "-j${cpu_threads}"
     execute sudo ninja install
     build_done 'libhwy' "$g_ver"
 fi
 
+# Ldconfig must be run next in order to update file changes or the version commands might not work
 sudo ldconfig 2>/dev/null
 
+# Cleanup leftover files
 cleanup_fn
 
+# Display exit message
 exit_fn
