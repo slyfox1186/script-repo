@@ -117,7 +117,7 @@ lan=$(ip route get 1.2.3.4 | awk '{print $7}')
 wan=$(curl -fsS "https://checkip.amazonaws.com")
 PS1='\n\[\e[38;5;227m\]\w\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38;5;117m\]\h\[\e[97;1m\]\\$\[\e[0m\]'
 PYTHONUTF8=1
-export cpus lan PS1 PYTHONUTF8 SHELL threads wan
+export cpus lan PS1 PYTHONUTF8 threads wan
 
 # Set the script's path variable
 PATH="\
