@@ -1,27 +1,32 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
+# Purpose: Build GNU gawk optimized for x86_64/amd64 PCs
+# Updated: 02.24.24
+# Script version: 2.0
 
-if [[ $EUID -ne 0 ]]; then
-    echo -e "\033[31mThis script must be run as root or with sudo.\033[0m"
-    exit 1
-fi
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'
 
-script_ver="1.4"
+# Variables
+script_ver="2.0"
 cwd="$PWD/gawk-build-script"
-install_dir="/usr/local"
+install_dir="/usr/local/gawk"
 web_repo="https://github.com/slyfox1186/script-repo"
 gnu_ftp="https://ftp.gnu.org/gnu/gawk/"
 
+# Functions
 print_color() {
     case $1 in
-        green) echo -e "\033[0;32m$2\033[0m" ;;
-        red) echo -e "\033[0;31m$2\033[0m" ;;
+        green) echo -e "${GREEN}$2${NC}" ;;
+        red) echo -e "${RED}$2${NC}" ;;
         *) echo "$2" ;;
     esac
 }
 
 print_banner() {
-    print_color green "gawk build script - v$script_ver"
+    print_color green "gawk build script - v${script_ver}"
     echo "==============================================="
 }
 
@@ -38,20 +43,40 @@ handle_failure() {
 
 install_missing_packages() {
     print_color green "Checking and installing missing packages..."
-    if command -v apt > /dev/null; then
-        pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl git libtool libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev yasm)
-        apt update
-        for pkg in "${pkgs[@]}"; do
-            if ! dpkg -l | grep -qw $pkg; then
-                apt install -y $pkg
-            fi
-        done
-    elif command -v yum > /dev/null; then
-        yum install -y autoconf automake binutils gcc gcc-c++ make
-    else
-        print_color red "Unsupported package manager. Please install dependencies manually."
-        exit 1
-    fi
+
+    declare -A pkg_managers
+    pkg_managers["/etc/redhat-release"]=yum
+    pkg_managers["/etc/arch-release"]=pacman
+    pkg_managers["/etc/gentoo-release"]=emerge
+    pkg_managers["/etc/SuSE-release"]=zypper
+    pkg_managers["/etc/debian_version"]=apt-get
+
+    for file in "${!pkg_managers[@]}"; do
+        if [[ -f $file ]]; then
+            pkg_manager=${pkg_managers[$file]}
+            break
+        fi
+    done
+
+    case $pkg_manager in
+        apt-get)
+            pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl git libtool libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev yasm)
+            apt-get update
+            for pkg in "${pkgs[@]}"; do
+                if ! dpkg -l | grep -qw $pkg; then
+                    apt-get install -y $pkg
+                fi
+            done
+            ;;
+        yum)
+            pkgs=(autoconf automake binutils gcc gcc-c++ make)
+            yum install -y "${pkgs[@]}"
+            ;;
+        *)
+            print_color red "Unsupported package manager. Please install dependencies manually."
+            exit 1
+            ;;
+    esac
 }
 
 find_latest_release() {
@@ -62,9 +87,9 @@ find_latest_release() {
         print_color red "Failed to find the latest gawk release. Exiting..."
         exit 1
     fi
-    archive_url="$gnu_ftp$latest_release"
-    archive_name="$latest_release"
-    archive_dir=$(echo $latest_release | sed 's/.tar.lz//')
+    archive_url="${gnu_ftp}${latest_release}"
+    archive_name="${latest_release}"
+    archive_dir="${latest_release%.tar.lz}"
 }
 
 download_and_extract() {
@@ -81,11 +106,22 @@ download_and_extract() {
 build_and_install() {
     print_color green "Building and installing gawk..."
     cd "$archive_dir/build" || exit 1
-    ./configure --prefix=/usr/local/gawk CFLAGS="-g -O3 -pipe -fno-plt -march=native" --build=x86_64-linux-gnu --host=x86_64-linux-gnu || handle_failure
+    ./configure --prefix="$install_dir" CFLAGS="-g -O3 -pipe -march=native" --build=x86_64-linux-gnu --host=x86_64-linux-gnu || handle_failure
     make "-j$(nproc)" || handle_failure
     make install || handle_failure
+
+    # Create symlinks
+    ln -sf "$install_dir/bin/gawk" "/usr/local/bin/gawk"
+    ln -sf "$install_dir/bin/gawk-${archive_dir#*-}" "/usr/local/bin/gawk-${archive_dir#*-}"
+
     print_color green "gawk installation completed successfully."
 }
+
+# Start the script
+if [[ $EUID -ne 0 ]]; then
+    print_color red "This script must be run as root or with sudo."
+    exit 1
+fi
 
 print_banner
 install_missing_packages
