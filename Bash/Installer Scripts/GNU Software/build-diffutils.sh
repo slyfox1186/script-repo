@@ -67,7 +67,7 @@ export PKG_CONFIG_PATH
 exit_fn() {
     echo
     echo "Make sure to star this repository to show your support!" \
-    echo "$https://github.com/slyfox1186/script-repo"
+    echo "https://github.com/slyfox1186/script-repo"
     exit 0
 }
 

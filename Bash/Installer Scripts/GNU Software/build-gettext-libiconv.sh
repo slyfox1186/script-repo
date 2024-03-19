@@ -28,15 +28,15 @@ export CC CFLAGS CXX CXXFLAGS
 
 # Enhanced logging and error handling
 log() {
-    echo -e "${GREEN}[$(date +'%Y-%m-%dT%H:%M:%S%z')]${NC} $@"
+    echo -e "${GREEN}[$(date +'%Y-%m-%dT%H:%M:%S%z')]${NC} $*"
 }
 
 warn() {
-    echo -e "${YELLOW}[$(date +'%Y-%m-%dT%H:%M:%S%z')] Warning:${NC} $@"
+    echo -e "${YELLOW}[$(date +'%Y-%m-%dT%H:%M:%S%z')] Warning:${NC} $*"
 }
 
 error() {
-    echo -e "${RED}[$(date +'%Y-%m-%dT%H:%M:%S%z')] Error:${NC} $@" >&2
+    echo -e "${RED}[$(date +'%Y-%m-%dT%H:%M:%S%z')] Error:${NC} $*" >&2
     echo -e "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }

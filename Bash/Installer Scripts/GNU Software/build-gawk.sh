@@ -13,7 +13,6 @@ NC='\033[0m'
 script_ver="2.0"
 cwd="$PWD/gawk-build-script"
 install_dir="/usr/local/gawk"
-web_repo="https://github.com/slyfox1186/script-repo"
 gnu_ftp="https://ftp.gnu.org/gnu/gawk/"
 
 # Functions
@@ -26,7 +25,7 @@ print_color() {
 }
 
 print_banner() {
-    print_color green "gawk build script - v${script_ver}"
+    print_color green "gawk build script - v$script_ver"
     echo "==============================================="
 }
 
