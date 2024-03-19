@@ -1,29 +1,39 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
+# Purpose: Build GNU pkg-config from source
+# Updated: 03.06.24
+# Script version: 1.5
 
-if [ "$EUID" -ne 0 ]; then
-    echo "You must run this script with root or sudo."
-    echo
+set -euo pipefail
+
+# ANSI color codes for logging
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
+# Log functions
+log() {
+    echo -e "${GREEN}[INFO] $1${NC}"
+}
+warn() {
+    echo -e "${YELLOW}[WARNING] $1${NC}"
+}
+fail() {
+    echo -e "${RED}[ERROR] $1${NC}"
     exit 1
+}
+
+# Check if the script is run as root
+if [[ "$EUID" -eq 0 ]]; then
+    fail "This script should not be run as root or with sudo."
 fi
 
-script_ver=1.5
-archive_dir=pkg-config-0.29.2
-archive_url="https://pkgconfig.freedesktop.org/releases/$archive_dir.tar.gz"
-archive_ext="$archive_url//*."
-archive_name="$archive_dir.tar.$archive_ext"
-cwd="$PWD/pkg-config-build-script"
-install_dir=/usr
-
-echo "pkg-config build script - v$script_ver"
-echo "==============================================="
-echo
-sleep 2
-
-if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
-fi
-mkdir -p "$cwd"
+PROGRAM_NAME="pkg-config"
+VERSION="0.29.2"
+CWD="$PWD"
+BUILD_DIR="$CWD/pkg-config-build"
+INSTALL_DIR="/usr/local/$PROGRAM_NAME-$VERSION"
 
 CC=gcc
 CXX=g++
@@ -58,96 +68,76 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-exit_fn() {
-    echo
-    echo "Make sure to star this repository to show your support!"
-    echo "https://github.com/slyfox1186/script-repo"
-    echo
-    exit 0
+# Dependencies required to build pkg-config
+DEPENDENCIES=(autoconf autoconf-archive autogen automake build-essential
+              ca-certificates ccache clang curl libssl-dev zlib1g-dev)
+
+# Function to check and install missing dependencies
+install_dependencies() {
+    local to_install=()
+    for dep in "${DEPENDENCIES[@]}"; do
+        if ! dpkg -l | grep -qw "$dep"; then
+            to_install+=("$dep")
+        fi
+    done
+    if [ "${#to_install[@]}" -gt 0 ]; then
+        log "Installing missing dependencies: ${to_install[*]}"
+        sudo apt-get update && sudo apt-get install -y "${to_install[@]}"
+    else
+        log "All dependencies are satisfied."
+    fi
 }
 
-fail_fn() {
+# Function for cleanup
+cleanup() {
     echo
-    echo "[ERROR] $1"
-    echo "To report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues"
-    echo
-    exit 1
-}
-
-cleanup_fn() {
-    local choice
-    echo
-    echo "%s\n%s\n%s\n\n%s\n%s\n\n"
-    echo "============================================"
-    echo "  Do you want to clean up the build files?  "
-    echo "============================================"
-    echo "[1] Yes"
-    echo "[2] No"
-    echo
-    read -p "Your choices are (1 or 2): " choice
-    echo
-
-    case "$choice" in
-        1) sudo rm -fr "$cwd";;
-        2) ;;
-        *) unset choice
-           cleanup_fn
-           ;;
+    read -p "Do you want to clean up the build files? [y/N] " response
+    case "$response" in
+        [yY]*|"") rm -rf "$BUILD_DIR"
+                  echo
+                  log "Cleanup completed."
+                  ;;
+        [nN]*|*) echo
+                 log "Cleanup skipped."
+                 ;;
     esac
 }
 
-pkgs=("$1" autoconf autoconf-archive autogen automake build-essential
-      ca-certificates ccache clang curl libaria2-0 libaria2-0-dev libc-ares-dev
-      libdmalloc-dev libgcrypt20-dev libgmp-dev libgnutls28-dev libgpg-error-dev
-      libjemalloc-dev libmbedtls-dev libnghttp2-dev librust-openssl-dev libsqlite3-dev
-      libssh2-1-dev libssh-dev libssl-dev libxml2-dev pkg-config zlib1g-dev
-)
+# Main function to build pkg-config
+build_pkg_config() {
+    local archive_url="https://pkgconfig.freedesktop.org/releases/pkg-config-$VERSION.tar.gz"
 
-for pkg in ${pkgs[@]}; do
-    missing_pkg="$(sudo dpkg -l | grep -o $pkg)"
+    # Download and extract source
+    mkdir -p "$BUILD_DIR/pkg-config-$VERSION/build"
+    curl -Lso "$BUILD_DIR/pkg-config-$VERSION.tar.gz" "$archive_url"
+    tar -zxf "$BUILD_DIR/pkg-config-$VERSION.tar.gz" -C "$BUILD_DIR/pkg-config-$VERSION" --strip-components 1
+    cd "$BUILD_DIR/pkg-config-$VERSION" || exit 1
 
-    if [ -z "$missing_pkg" ]; then
-        missing_pkgs+=" $pkg"
-    fi
-done
+    # Build and install
+    autoconf
+    cd build || exit 1
+    ../configure --prefix="$INSTALL_DIR" \
+                 --enable-indirect-deps \
+                 --with-internal-glib \
+                 --with-pc-path="$PKG_CONFIG_PATH" \
+                 --with-pic \
+                 PKG_CONFIG=$(type -P pkg-config)
+    make "-j$(nproc)"
+    sudo make install
 
-if [ -n "$missing_pkgs" ]; then
-    sudo apt install $missing_pkgs
+    # Create symbolic links in /usr/local/bin
+    find "$INSTALL_DIR/bin" -type f -exec sudo ln -sf {} /usr/local/bin \;
+}
+
+log "Starting build of GNU pkg-config $VERSION"
+
+# Ensure the script is not run with sudo
+if [ "$(id -u)" -eq 0 ]; then
+    fail "Do not run this script as root. Use normal user privileges."
 fi
 
-if [ ! -f "$cwd/$archive_name" ]; then
-    curl -Lso "$cwd/$archive_name" "$archive_url"
-fi
+install_dependencies
+build_pkg_config
+cleanup
 
-if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
-fi
-mkdir -p "$cwd/$archive_dir/build"
-
-if ! tar -zxf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
-    echo "Failed to extract: $cwd/$archive_name"
-    echo
-    exit 1
-fi
-
-cd "$cwd/$archive_dir" || exit 1
-autoconf
-cd build || exit 1
-../configure --prefix="$install_dir" \
-             --enable-indirect-deps \
-             --with-internal-glib \
-             --with-pc-path="$PKG_CONFIG_PATH" \
-             --with-pic \
-             PKG_CONFIG=$(type -P pkg-config)
-echo
-if ! make "-j$(nproc --all)"; then
-    fail_fn "make -j$(nproc --all). Line: $LINENO"
-fi
-echo
-if ! sudo make install; then
-    fail_fn "sudo make install. Line: $LINENO"
-fi
-
-cleanup_fn
-
-exit_fn
+log "GNU pkg-config $VERSION has been successfully built and installed."
