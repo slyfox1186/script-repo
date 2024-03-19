@@ -13,7 +13,6 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Variables
-script_ver="3.0"
 archive_dir="glibc-2.39"
 archive_url="https://ftp.gnu.org/gnu/glibc/$archive_dir.tar.xz"
 archive_ext="${archive_url##*.}"
@@ -128,10 +127,9 @@ build_glibc() {
 
     autoreconf -fi
 
-    mkdir -p build && cd build || fail "Failed to create and change to build directory."
+    mkdir -p build && cd build
 
     ../configure --prefix="$install_dir" \
-                 --enable-kernel="$linux_short_version" \
                  --enable-stack-protector=strong \
                  --enable-stackguard-randomization \
                  --disable-werror \
