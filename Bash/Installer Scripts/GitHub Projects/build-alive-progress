@@ -1,13 +1,16 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
 clear
 
+# Repository details
 NAME=alive-progress
 REPO="rsalmei/alive-progress"
 RELEASE_API_URL="https://github.com/$REPO/tags"
 
+# Fetch the latest release data
 RELEASE_DATA=$(curl -s $RELEASE_API_URL)
 
+# Extract the tag name (version) and tarball url
 TAG_NAME=$(echo $RELEASE_DATA | grep -oP "href=\"/$REPO/releases/tag/\K[^\"]+" | head -1 | sed 's/v//g')
 TARBALL_URL="https://codeload.github.com/$REPO/tar.gz/refs/tags/v$TAG_NAME"
 
@@ -16,8 +19,10 @@ get_latest_release_version() {
     echo "$latest_release_tag"
 }
 
+# Install alive-progress using pip
 pip install --user alive-progress
 
+# Confirm installation
 if pip show alive-progress > /dev/null; then
     echo "alive-progress successfully installed."
 else
@@ -26,11 +31,15 @@ fi
 
 mkdir -p "$NAME-$TAG_NAME-build-script"
 
+# Download and extract the latest release
 curl -Lso "$NAME-$TAG_NAME-build-script.tar.gz" $TARBALL_URL
 tar -zxf "$NAME-$TAG_NAME-build-script.tar.gz" -C "$NAME-$TAG_NAME-build-script" --strip-components 1
 
+# Change to the extracted directory (modify this according to the actual directory structure)
 cd "$NAME-$TAG_NAME-build-script" || exit 1
 
+# Installation commands (modify this according to the actual installation steps)
+# For python packages, it's often as simple as:
 if ! python3 setup.py build; then
     printf "%s\n\n" 'Errors: python3 setup.py build'
     exit 1
@@ -40,6 +49,7 @@ if ! pip install --user .; then
     exit 1
 fi
 
+# Clean up
 cd ../
 sudo rm -rf "$NAME-$TAG_NAME-build-script"
 sudo rm "$NAME-$TAG_NAME-build-script.tar.gz"

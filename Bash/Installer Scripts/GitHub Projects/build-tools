@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2162,SC2317
+# Shellcheck disable=sc2162,sc2317
 
-##  GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-tools
+##  Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-tools
 ##  Purpose: Install the latest versions of: CMake, Ninja, Meson, & Golang
 ##  Updated: 02.16.24
 ##  Added: Automatic version check for Golang.
 
 if [ "$EUID" -eq 0 ]; then
-    printf "%s\n\n" "You must run this script WITHOUT root/sudo"
+    printf "%s\n\n" "You must run this script without root or sudo.
     exit 1
 fi
 
@@ -23,20 +23,20 @@ debug=OFF # Change the debug variable to "ON" for help troubleshooting issues
 printf "%s\n%s\n" "Build-tools script: v$script_ver" "===================================="
 sleep 2
 
-# Get CPU core count for parallel processing
+# Get cpu core count for parallel processing
 cpu_threads=$(grep -c ^processor '/proc/cpuinfo' 2>/dev/null || nproc --all)
 
-# CREATE OUTPUT DIRECTORIES
+# Create output directories
 mkdir -p "$cwd"
 
-# Set the CC/CXX compilers & the compiler optimization flags
+# Set the cc/cxx compilers & the compiler optimization flags
 CC=gcc
 CXX=g++
-CFLAGS="-g -O3 -pipe -march=native"
+CFLAGS="-g -O3 -pipe -fno-plt -march=native"
 CXXFLAGS="$CFLAGS"
 export CC CXX CFLAGS CXXFLAGS
 
-# Set the PATH variable
+# Set the path variable
 PATH="\
 /usr/lib/ccache:\
 $HOME/perl5/bin:\
@@ -53,7 +53,7 @@ $HOME/.local/bin:\
 "
 export PATH
 
-# Set the PKG_CONFIG_PATH variable
+# Set the pkg_config_path variable
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
@@ -201,7 +201,7 @@ build() {
 
 build_done() { echo "$2" > "$cwd/$1.done"; }
 
-# INSTALL REQUIRED APT/PACMAN PACKAGES
+# Install required apt/pacman packages
 pkgs_arch_fn() {
     pkgs_arch=(
         autoconf automake autogen bluez-qt5 base-devel ccache cmake curl
@@ -209,7 +209,7 @@ pkgs_arch_fn() {
         qt6-base
     )
 
-    # Remove any locks on pacman
+# Remove any locks on pacman
     [ -f "/var/lib/pacman/db.lck" ] && sudo rm "/var/lib/pacman/db.lck"
 
     for i in ${pkgs_arch[@]}
@@ -227,7 +227,7 @@ pkgs_arch_fn() {
 
     [ -n "$(sudo find /usr/lib/python3* -type f -name 'EXTERNALLY-MANAGED')" ] && sudo rm "$rm_pip_lock"
 
-    # Install python pip packages
+# Install python pip packages
     pip install -q --user --no-input requests setuptools wheel
 }
 
@@ -238,12 +238,12 @@ pkgs_fn() {
         qtbase5-dev
     )
 
-    # Initialize arrays for missing, available, and unavailable packages
+# Initialize arrays for missing, available, and unavailable packages
     missing_packages=()
     available_packages=()
     unavailable_packages=()
 
-    # Loop through the array to find missing packages
+# Loop through the array to find missing packages
     for pkg in "${pkgs[@]}"
     do
         if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
@@ -251,7 +251,7 @@ pkgs_fn() {
         fi
     done
 
-    # Check availability of missing packages and categorize them
+# Check availability of missing packages and categorize them
     for pkg in "${missing_packages[@]}"
     do
         if apt-cache show "$pkg" > /dev/null 2>&1; then
@@ -261,13 +261,13 @@ pkgs_fn() {
         fi
     done
 
-    # Print unavailable packages
-    if [ "${#unavailable_packages[@]}" -gt 0 ]; then
+# Print unavailable packages
+    if [ "${#Unavailable_packages[@]}" -gt 0 ]; then
         echo "Unavailable packages: ${unavailable_packages[*]}"
     fi
 
-    # Install available missing packages
-    if [ "${#available_packages[@]}" -gt 0 ]; then
+# Install available missing packages
+    if [ "${#Available_packages[@]}" -gt 0 ]; then
         echo "Installing available missing packages: ${available_packages[*]}"
         sudo apt install "${available_packages[@]}"
     else
@@ -275,12 +275,12 @@ pkgs_fn() {
     fi
 }
 
-# Function to find the latest release version of GoLang
+# Function to find the latest release version of golang
 find_latest_golang_version() {
-    # Use curl to fetch the HTML content and grep to find lines with download links
+# Use curl to fetch the html content and grep to find lines with download links
     local versions=$(curl -s https://go.dev/dl/ | grep -oP 'go[0-9]+\.[0-9]+\.[0-9]+\.linux-amd64.tar.gz' | sort -Vr | uniq | head -n 1)
 
-    # Extract and print the version number
+# Extract and print the version number
     local latest_version=$(echo $versions | awk -F. '{print $1"."$2"."$3}' | sed 's/go//g' | sed 's/.linux-amd64.tar.gz//g')
     
     echo "$latest_version"
@@ -290,31 +290,31 @@ find_latest_golang_version() {
 latest_version=$(find_latest_golang_version)
 
 git_1_fn() {
-    # Initial cnt
+# Initial cnt
     local cnt curl_cmd git_repo
     git_repo="$1"
     cnt=1
 
-    # Loop until the condition is met or a maximum limit is reached
+# Loop until the condition is met or a maximum limit is reached
     while [ $cnt -le 10 ]
     do
         curl_cmd="$(curl -sSL "https://github.com/$git_repo/tags")"
 
-        # Extract the specific line
+# Extract the specific line
         line=$(echo "$curl_cmd" | grep -o 'href="[^"]*\.tar\.gz"' | sed -n "${cnt}p")
 
-        # Check if the line matches the pattern (version without 'RC'/'rc')
+# Check if the line matches the pattern (version without 'rc'/'rc')
         if echo "$line" | grep -qP '[v]*(\d+\.\d+(?:\.\d*){0,2})\.tar\.gz'; then
-            # Extract and print the version number
+# Extract and print the version number
             g_ver=$(echo "$line" | grep -oP '(\d+\.\d+(?:\.\d+){0,2})')
             break
         else
-            # Increment the cnt if no match is found
+# Increment the cnt if no match is found
             ((cnt++))
         fi
     done
 
-    # Check if a version was found
+# Check if a version was found
     if [ $cnt -gt 10 ]; then
         fail_fn "No matching version found without RC/rc suffix."
     fi
@@ -340,7 +340,7 @@ add_go_path_command_to_bashrc() {
 # Function to extract the first word from a string
 get_first_word() { echo "$1" | awk '{print $1}'; }
 
-# Try to detect the OS using /etc/os-release, fall back to lsb_release if available
+# Try to detect the os using /etc/os-release, fall back to lsb_release if available
 if [ -f /etc/os-release ]; then
     . /etc/os-release
     OS=$(get_first_word "$NAME")
@@ -392,7 +392,7 @@ if [ -d  "$install_dir/go" ]; then
     sudo rm -fr "$install_dir/go"
 fi
 
-# Install Golang
+# Install golang
 if [[ "$OS" == "Arch" ]]; then
     sudo pacman -Sq --needed --noconfirm go
 else
@@ -409,7 +409,7 @@ else
     source "$HOME/.bashrc"
 fi
 
-# ldconfig must be run next in order to update file changes
+# Ldconfig must be run next in order to update file changes
 sudo ldconfig 2>/dev/null
 
 # Show the newly installed version of each package

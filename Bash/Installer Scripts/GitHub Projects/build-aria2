@@ -1,5 +1,22 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
+##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-aria2
+##  Purpose: Build aria2 from source code
+##  Updated: 03.07.24
+##  Script version: 2.0
+##  Features:
+##            - static build
+##            - openssl backend
+##            - increased the max connections from 16 to 128
+##  Added:
+##         - display a menu by passing -h or --help as arguments to the script
+##         - build a service by passing an argument to the script
+##         - builds everything in temporary directories in the /tmp folder and removes them when done
+##         - updated Aria2 to the latest version - 1.37.0
+##         - if OpenSSL is manually installed using the build-openssl script then use its certs directory instead of the default.
+##         - build jemalloc from the latest source code
+##         - runpath to LDFLAGS
+##  Fixed: Soft linking error
 
 script_ver="2.0"
 echo "GitHub Script for building aria2 from source. Version: $script_ver"
@@ -8,8 +25,8 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-log() { echo -e "$GREEN[LOG]$NC $(date +'%Y-%m-%d %H:%M:%S') - $*"; }
-handle_error() { echo -e "$RED[ERROR]$NC $(date +'%Y-%m-%d %H:%M:%S') - $*"; exit 1; }
+log() { echo -e "${GREEN}[LOG]${NC} $(date +'%Y-%m-%d %H:%M:%S') - $*"; }
+handle_error() { echo -e "${RED}[ERROR]${NC} $(date +'%Y-%m-%d %H:%M:%S') - $*"; exit 1; }
 
 display_help() {
     echo "Usage: $0 [OPTION]..."
@@ -30,6 +47,7 @@ set_compiler_options() {
     export CC CFLAGS CXX CXXFLAGS
 }
 
+# Check if help argument is passed
 if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     display_help
 fi
@@ -40,7 +58,7 @@ install_packages() {
     log "Attempting to install required packages..."
     apt install -y "${pkgs[@]}"
     for pkg in "${pkgs[@]}"; do
-        dpkg-query -W -f='$Status' "$pkg" 2>/dev/null | grep -q "ok installed" || handle_error "Failed to install: $pkg"
+        dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed" || handle_error "Failed to install: $pkg"
     done
     echo
     log "Installation of required packages completed."
@@ -83,7 +101,7 @@ build_libgpg_error() {
     local libgpg_error_version=$(libgpg_latest_release_version "https://gnupg.org/ftp/gcrypt/libgpg-error/")
     local libgpg_error_url="https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-$libgpg_error_version.tar.bz2"
     curl -Ls "$libgpg_error_url" | tar -xj
-    cd "libgpg-error-$libgpg_error_version"
+    cd "libgpg-error-${libgpg_error_version}"
     ./configure --prefix="$temp_dir/libgpg-error"
     make "-j$(nproc)" && make install
     cd ../

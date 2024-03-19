@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2162,SC2317
 
+##  GitHub Script: https://github.com/slyfox1186/wsl2-kernel-build-script/blob/main/build-kernel
+##  Purpose: Build Official WSL2 Kernels
+##  Updated: 03.17.2024
+##  Script version: 3.0
 
 show_help() {
     echo "Usage: $(basename "$0") [options]"
@@ -14,6 +19,7 @@ kernel_version=""
 version_type=""
 version_specified="false"
 
+while [ "$#" -gt 0 ]; do
     case "$1" in
         -h|--help)
             show_help
@@ -38,6 +44,7 @@ if [[ "$EUID" -ne 0 ]]; then
     exit 1
 fi
 
+# Prompting the user for input if no version specified
 if ! $version_specified; then
     while true; do
         echo "Choose the WSL2 kernel version to download and install:"
@@ -73,17 +80,23 @@ if ! $version_specified; then
     done
 fi
 
+# Ensure the directory for 'vmlinux' is prepared.
 if [[ -z "$output_directory" ]]; then
+    script_dir="$PWD" # Use current directory if no output directory is specified
 else
     script_dir="$output_directory"
+    mkdir -p "$script_dir" # Create output directory if it does not exist
 fi
 
+parent="/tmp/wsl2-build-script" # parent parent directory
 working="$parent/working"
 error_log="$parent/error.log"
 
+# Create the parent parent directory and the build directory within it
 mkdir -p "$parent"
 cd "$parent" || exit 1
 
+# Set compiler optimizations
 CC="gcc"
 CXX="g++"
 CFLAGS="-g -O3 -pipe -march=native"
@@ -91,6 +104,7 @@ CXXFLAGS="-g -O3 -pipe -march=native"
 export CC CXX CFLAGS CXXFLAGS
 
 announce_options() {
+    # Announce options after all inputs have been processed
     echo "Final script configuration:"
     echo "Specific version specified: $version_specified"
     if $version_specified; then
@@ -111,7 +125,7 @@ install_required_packages() {
     )
 
     for pkg in "${pkgs[@]}"; do
-        if ! dpkg-query -W -f='$Status' "$pkg" 2>/dev/null | grep -qo "ok installed"; then
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -qo "ok installed"; then
             missing_packages+="$pkg "
         fi
     done
@@ -187,8 +201,10 @@ install_kernel() {
 
     echo -e "Successfully downloaded the source code file \"$version\"\\n"
 
+    # Remove any leftover files from previous runs
     [[ -d "$working" ]] && rm -fr "$working"
 
+    # Ge the working directory ready
     mkdir -p "$working"
 
     if ! tar -zxf "$parent/$version.tar.gz" -C "$working" --strip-components 1; then

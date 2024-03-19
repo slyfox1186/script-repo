@@ -1,13 +1,28 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
+############################################################################################################################################
+##
+##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-all-git-safer
+##
+##  Purpose: Loops multiple build scripts and installs them.
+##
+##  Disclaimer: This is the safer of the two scripts offered in the "GitHub Projects" folder. This is because this script is less likely
+##              To experience unexpected bugs of various types of severity. When the code gets updated, eventually unintentional bugs will
+##              Happen, and you will unfortunately one day be there to experience it.... guaranteed.
+##
+##  Updated: 11.26.23
+##
+##  Script version: 1.1
+##
+############################################################################################################################################
 
-if [ "$EUID" -eq '0' ]; then
+if [ "${EUID}" -eq '0' ]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
 
-printf "%s\n%s\n\n" \
-    "Build All Git Safer Script - version $script_ver" \
+printf "%s\n%s\n\n"                                      \
+    "Build All Git Safer Script - version ${script_ver}" \
     '===================================================='
 sleep 2
 
@@ -16,6 +31,7 @@ cwd="$PWD"/build-all-git-safer-script
 web_repo=https://github.com/slyfox1186/script-repo
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 
+# Create output directories
 
 if [ -d "$cwd" ]; then
     sudo rm -fr "$cwd"
@@ -24,21 +40,25 @@ mkdir -p "$cwd"/completed
 
 cd "$cwd" || exit 1
 
+# Set functions
 
-exit_fn() {
-    printf "\n%s\n\n%s\n\n" \
+exit_fn()
+{
+    printf "\n%s\n\n%s\n\n"                                       \
         'Make sure to star this repository to show your support!' \
         "$web_repo"
     exit 0
 }
 
-fail_fn() {
+fail_fn()
+{
     printf "\n%s\n\n%s\n\n" \
-        "$1" \
+        "$1"              \
         "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
+# Install required apt packages
 
 pkgs=(asciidoc autoconf autoconf-archive autogen automake binutils bison
       build-essential bzip2 ccache cmake curl libtool libtool-bin lzip m4
@@ -46,10 +66,10 @@ pkgs=(asciidoc autoconf autoconf-archive autogen automake binutils bison
 
 for pkg in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "$pkg")"
+    missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
 
-    if [ -z "$missing_pkg" ]; then
-        missing_pkgs+=" $pkg"
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${pkg}"
     fi
 done
 
@@ -58,40 +78,46 @@ if [ -n "$missing_pkgs" ]; then
     sudo apt -y autoremove
 fi
 
+# Add additional search paths to the ld library linker
 
 sudo bash -c 'bash <(curl -sSL https://ld-linker.optimizethis.net)'
 
+# Download scripts
 
 scripts=(adobe-fonts curl tools aria2 zlib zstd git jq libxml2 nasm yasm python3)
 
 for script in ${scripts[@]}
 do
     ((cnt++))
-    wget --show-progress -t 2 -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-$script"
-    mv "build-$script" "$cnt-build-$script.sh" 2>/dev/null
+    wget --show-progress -t 2 -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-${script}"
+    mv "build-${script}" "$cnt-build-${script}.sh" 2>/dev/null
 done
 
+# Loop and execute the scripts in numerical order
 
 for f in $(find ./ -maxdepth 1 -type f | sort -V | sed 's/\.\///g')
 do
-    if echo '1' | bash "$f"; then
-        mv "$f" "$cwd"/completed
+    if echo '1' | bash "${f}"; then
+        mv "${f}" "$cwd"/completed
     else
         if [ ! -d "$cwd"/failed ]; then
             mkdir -p "$cwd"/failed
         fi
-        mv "$f" "$cwd"/failed
+        mv "${f}" "$cwd"/failed
     fi
 done
 
+# If a script failed during the loop, alert the user and do not delte the file so the user can tell which one it was
 
 if [ -d "$cwd"/failed ]; then
-    printf "%s\n\n%s\n\n" \
+    printf "%s\n\n%s\n\n"                                  \
         'One of the scripts failed to build successfully.' \
         "You can find the failed script at: $cwd/failed"
     exit_fn
 fi
 
+# Cleanup leftover files
 sudo rm -fr "$cwd"
 
+# Display exit message
 exit_fn

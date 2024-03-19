@@ -1,36 +1,51 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
+#################################################################################################################################
+##
+##  Github Script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/Installer%20Scripts/GNU%20Software/build-jq
+##
+##  Purpose: Build jq
+##
+##  Updated: 12.04.23
+##
+##  Script version: 1.0
+##
+#################################################################################################################################
 
 clear
 
-if [ "$EUID" -eq '0' ]; then
+if [ "${EUID}" -eq '0' ]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
 
+# Set the variables
 
 script_ver=1.0
 jq_ver=1.7
-archive_dir="jq-$jq_ver"
+archive_dir="jq-${jq_ver}"
 archive_url="https://github.com/jqlang/jq/releases/download/jq-1.7/jq-linux-amd64"
 cwd="$PWD"/jq-build-script
 install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 
+# Create output directory jemalloc
 
 if [ -d "$cwd/$archive_dir" ]; then
     sudo rm -fr "$cwd/$archive_dir"
 fi
 mkdir -p "$cwd/$archive_dir"
 
+# Download the archive file jemalloc
 
 if [ ! -f "$cwd/$archive_dir" ]; then
-    wget -U "$user_agent" -cq "$archive_url"
+    wget -U "$user_agent" -cq "${archive_url}"
 fi
 
+# Install jemalloc
 
 printf "\n%s\n%s\n\n"                        \
-    "Installing JQ - v$jq_ver" \
+    "Installing JQ - v${jq_ver}" \
     '==============================================='
 sleep 2
 
