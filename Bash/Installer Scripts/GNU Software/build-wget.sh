@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/Installer%20Scripts/GNU%20Software/build-wget
-# Purpose: Build GNU Wget from source code
+# Github script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/installer%20scripts/gnu%20software/build-wget
+# Purpose: build gnu wget from source code
 # Features: +cares +digest +gpgme +https -ipv6 +iri +large-file +metalink -nls +ntlm +opie +psl +ssl/openssl
 # Updated: 01.30.24
 # Script version: 1.4
@@ -11,7 +11,7 @@
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 # Ensure running as root
 if [ "$EUID" -ne 0 ]; then
@@ -20,26 +20,26 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # Script variables
-script_ver="1.4"
 cwd="$PWD/wget-build-script"
 archive_dir="wget-latest"
 install_dir="/usr/local"
-pc_type="$(uname -m)-linux-gnu"
 verbose=0
 
 # Function definitions
 display_help() {
-    echo "Usage: $0 [OPTION]..."
-    echo -e "\nOptions:"
-    echo -e "  -v, --verbose\t\tEnable verbose logging."
-    echo -e "  -h, --help\t\tDisplay this help message and exit."
-    echo -e "\nExample:"
-    echo -e "  $0 --verbose"
+    echo "Usage: ${0} [OPTION]..."
+    echo
+    echo "Options:"
+    echo "  -v, --verbose       Enable verbose logging."
+    echo "  -h, --help          Display this help message and exit."
+    echo
+    echo "Example:"
+    echo "  ${0} --verbose"
     exit 0
 }
 
 log() {
-    if [[ $verbose -eq 1 ]]; then
+    if [[ "$verbose" -eq 1 ]]; then
         echo -e "${GREEN}[INFO]${NC} $1"
     fi
 }
@@ -57,6 +57,14 @@ check_dependencies() {
     apt-get update
     apt-get install autoconf automake bzip2 curl gfortran libcurl4-openssl-dev libexpat1-dev \
                     libgcrypt20-dev libgpgme-dev libssl-dev libunistring-dev pkg-config zlib1g-dev
+}
+
+source_flags() {
+    CC=gcc
+    CXX=g++
+    CFLAGS="-g -O3 -pipe -fno-plt -march=native"
+    CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
+    export CC CFLAGS CXX CXXFLAGS
 }
 
 build_libmetalink() {
@@ -126,6 +134,7 @@ parse_args() {
 main() {
     parse_args "$@"
     check_dependencies
+    source_flags
     build_libmetalink
     build_wget
     fix_libmetalink_libs
