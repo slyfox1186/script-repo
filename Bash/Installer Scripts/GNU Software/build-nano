@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 
-########################################################################################################################################
+###########################################################################################################
 ##
-##  Github Script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/Installer%20Scripts/GNU%20Software/build-util-linux
+##  Github Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-nano
 ##
-##  Purpose: build gnu util-linux
+##  Purpose: build gnu nano
 ##
-##  Updated: 08.31.23
+##  Updated: 08.03.23
 ##
-##  Script version: 1.1
+##  Script version: 1.0
 ##
-########################################################################################################################################
+###########################################################################################################
 
 clear
 
@@ -21,18 +21,18 @@ fi
 
 # Set the variables
 
-script_ver=1.1
-archive_dir=util-linux-2.39.2
-archive_url=https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.39/$archive_dir.tar.xz
+script_ver=1.0
+archive_dir=nano-7.2
+archive_url=https://ftp.gnu.org/gnu/nano/nano-7.2.tar.xz
 archive_ext="${archive_url//*.}"
 archive_name="$archive_dir.tar.${archive_ext}"
-cwd="$PWD"/util-linux-build-script
-install_dir=/usr
+cwd="$PWD"/nano-build-script
+install_dir=/usr/local
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
 printf "%s\n%s\n\n" \
-    "util-linux build script - v${script_ver}" \
+    "nano build script - v${script_ver}" \
     '==============================================='
 
 # Create output directory
@@ -84,8 +84,7 @@ PKG_CONFIG_PATH="\
 /usr/share/pkgconfig:\
 /lib64/pkgconfig:\
 /lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/dbus-1.0/debug-build/lib/pkgconfig\
+/lib/x86_64-linux-gnu/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
@@ -133,35 +132,25 @@ cleanup_fn()
     esac
 }
 
-installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
-
 # Install required apt packages
 
-pkgs=(asciidoc autoconf autoconf-archive autogen automake binutils bison
-      build-essential bzip2 ccache curl libaudit-dev libc6-dev libintl-perl
-      libpth-dev libselinux1-dev libticonv-dev libtool libtool-bin lzip
-      lzma-dev m4 nasm po4a texinfo yasm zlib1g-dev)
+pkgs=("$1" autoconf autoconf-archive autogen automake binutils bison build-essential bzip2 ccache curl
+      libc6-dev libintl-perl libpth-dev libticonv-dev libtool libtool-bin lzip lzma-dev m4 nasm texinfo
+      zlib1g-dev yasm)
 
-for pkg in ${pkgs[@]}
+for i in ${pkgs[@]}
 do
-    if ! installed "${pkg}"; then
-        missing_pkgs+=" ${pkg}"
+    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+
+    if [ -z "${missing_pkg}" ]; then
+        missing_pkgs+=" ${i}"
     fi
 done
 
 if [ -n "$missing_pkgs" ]; then
+    sudo apt install $missing_pkgs
+    sudo apt -y autoremove
     clear
-    echo '$ Installing missing packages'
-    echo
-    for i in "$missing_pkgs"
-        do
-            if ! sudo apt install ${i}; then
-                fail_fn "Failed to install the APT packages:Line ${LINENO}"
-            fi
-        done
-else
-    echo '$ The packages are already installed.'
-    echo
 fi
 
 # Download the archive file
@@ -186,40 +175,23 @@ fi
 
 # Build program from source
 
-extralists=(blkid,fdisk,losetup,mount,nsenter,sfdisk,umount,unshare)
-
 cd "$cwd/$archive_dir" || exit 1
-export AL_OPTS='-I/usr/share/aclocal'
-./autogen.sh
+autoreconf -fi
 cd build || exit 1
-../configure --prefix="$install_dir"                               \
-             --{build,host}=x86_64-linux-gnu                         \
-             --disable-nls                                           \
-             --disable-werror                                        \
-             --enable-line                                           \
-             --enable-newgrp                                         \
-             --enable-static-programs="${extralists[@]}"             \
-             --enable-ubsan                                          \
-             --enable-usrdir-path                                    \
-             --enable-write                                          \
-             --with-audit                                            \
-             --with-libiconv-prefix=/usr                             \
-             --with-libintl-prefix=/usr                              \
-             --with-pic                                              \
-             --with-pkgconfigdir=/usr/lib/x86_64-linux-gnu/pkgconfig \
-             --with-selinux                                          \
-             --with-systemdsystemunitdir=/usr                        \
-             PKG_CONFIG="$(type -P pkg-config)"                      \
+../configure --prefix="$install_dir"          \
+             --{build,host}=x86_64-linux-gnu    \
+             --disable-nls                      \
+             --enable-threads=posix             \
+             --enable-utf8                      \
+             --enable-year2038                  \
+             --with-libiconv-prefix=/usr        \
+             --with-libintl-prefix=/usr         \
+             PKG_CONFIG="$(type -P pkg-config)" \
              PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
 make "-j$(nproc --all)"
 if ! sudo make install; then
     fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
     exit 1
-fi
-
-# Fix a bug where a shared lib is not found
-if [ -f /usr/local/lib/libmount.so.1 ]; then
-    sudo ln -sf /usr/local/lib/libmount.so.1 /lib/x86_64-linux-gnu/
 fi
 
 # Prompt user to clean up files
