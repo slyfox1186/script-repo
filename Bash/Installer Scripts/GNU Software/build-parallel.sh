@@ -1,103 +1,105 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
+# Purpose: Build GNU Parallel from source code
+# Updated: 03.16.24
+# Script version: 2.1
+# Optimizations: Efficiency, readability, functionality, error handling, best practices
 
+set -euo pipefail
 
-if [ "$EUID" -ne 0 ]; then
-    echo
-    echo "You must run this script with root or sudo."
+# ANSI color codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
+# Log functions
+log() { echo -e "${GREEN}[INFO] Bash${NC} $*"; }
+warn() { echo -e "${YELLOW}[WARNING] Bash${NC} $*"; }
+fail() {
+    echo -e "${RED}[ERROR] Bash${NC} $*"
     exit 1
+}
+
+# Verify the script is not run as root
+if [[ "$EUID" -eq 0 ]]; then
+    fail "Do not run this script as root. Use sudo for necessary commands."
 fi
 
-script_ver=2.0
-archive_dir=parallel-latest
-archive_url=https://ftp.gnu.org/gnu/parallel/parallel-latest.tar.bz2
-archive_ext="$archive_url//*."
-archive_name="$archive_dir.tar.$archive_ext"
-cwd="$PWD/parallel-build-script"
-install_dir=/usr/local
-web_repo=https://github.com/slyfox1186/script-repo
+# Dependencies
+DEPENDENCIES=(
+    autoconf autoconf-archive autogen automake binutils bison
+    build-essential bzip2 ccache curl libc6-dev libpth-dev
+    libtool libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev
+    yasm
+)
 
-echo "parallel build script - v$script_ver"
-echo "==============================================="
-
-rm -fr "$cwd"
-mkdir -p "$cwd"
-
-CC=gcc
-CXX=g++
-CFLAGS="-g -O3 -pipe -fno-plt -march=native"
-CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
-
-export PATH="\
-/usr/lib/ccache:\
-$HOME/perl5/bin:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin\
-"
-
-export PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
-"
-
-exit_fn() {
-    echo
-    echo "\n%s\n\n%s\n\n"
-    echo "Make sure to star this repository to show your support!"
-    echo "$web_repo"
-    echo
+# Check and install missing dependencies
+check_dependencies() {
+    local missing_deps=()
+    for dep in "${DEPENDENCIES[@]}"; do
+        if ! dpkg -l "$dep" &>/dev/null; then
+            missing_deps+=("$dep")
+        fi
+    done
+    if [ ${#missing_deps[@]} -ne 0 ]; then
+        log "Installing missing dependencies: ${missing_deps[*]}"
+        sudo apt-get update
+        sudo apt-get install -y "${missing_deps[@]}"
+    else
+        log "All dependencies are satisfied."
+    fi
 }
 
-fail_fn() {
-    echo
-    echo "Error: $1"
-    echo "To report a bug create an issue at: $web_repo/issues"
-    echo
-exit 1
-}
+# Variables
+PROGRAM_NAME="parallel"
+DOWNLOAD_VERSION="latest"
+INSTALL_DIR_VERSION="20240222"
+ARCHIVE_URL="https://ftp.gnu.org/gnu/parallel/${PROGRAM_NAME}-${DOWNLOAD_VERSION}.tar.bz2"
+CWD="$PWD/${PROGRAM_NAME}-build-script"
+INSTALL_DIR="/usr/local/${PROGRAM_NAME}-${INSTALL_DIR_VERSION}"
 
-cleanup_fn() {
+# Cleanup function
+cleanup() {
     echo
-    read -p "Do you want to clean up the build files? [y/N] " choice
+    read -r -p "Do you want to clean up the build files? [y/N] " choice
     case "$choice" in
-        y|Y ) rm -fr "$cwd" ;;
-        * ) ;;
+        [yY]*|"") rm -fr "$CWD"; echo; log "Cleanup completed." ;;
+        * ) log "Cleanup skipped." ;;
     esac
 }
 
-pkgs=(
-    "autoconf" "autoconf-archive" "autogen" "automake" "binutils" "bison"
-    "build-essential" "bzip2" "ccache" "curl" "libc6-dev" "libpth-dev"
-    "libtool" "libtool-bin" "lzip" "lzma-dev" "m4" "nasm" "texinfo" "zlib1g-dev"
-    "yasm"
-)
-apt install -y "${pkgs[@]}"
+# Exit function
+exit_fn() {
+    echo
+    log "Build process completed."
+    log "Make sure to star the repository to show your support: https://github.com/slyfox1186/script-repo"
+}
 
-curl -sSfLo "$cwd/$archive_name" "$archive_url"
-mkdir -p "$cwd/$archive_dir/build"
-tar -jxf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1
+# Main script
+main() {
+    check_dependencies
+    log "Building GNU ${PROGRAM_NAME} from source."
+    echo
 
-cd "$cwd/$archive_dir/build" || exit 1
-../configure --prefix "$install_dir"
-make "-j$(nproc --all)"
-make install
+    # Create build directory
+    mkdir -p "$CWD"
+    cd "$CWD" || exit 1
 
-cleanup_fn
+    # Download and extract source
+    curl -sSfLo "${PROGRAM_NAME}.tar.bz2" "$ARCHIVE_URL"
+    tar -jxf "${PROGRAM_NAME}.tar.bz2" --strip-components 1
 
-exit_fn
+    # Build process
+    ./configure --prefix="$INSTALL_DIR"
+    make "-j$(nproc)"
+    sudo make install
+
+    # Create symbolic links
+    find "$INSTALL_DIR/bin" -type f -exec sudo ln -s {} /usr/local/bin \;
+
+    cleanup
+    exit_fn
+}
+
+main "$@"
