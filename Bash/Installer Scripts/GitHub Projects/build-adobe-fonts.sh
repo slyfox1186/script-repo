@@ -2,8 +2,8 @@
 
 ## GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-adobe-fonts.sh
 ## Purpose: Install Adobe Sans, Pro, and Serif fonts system-wide
-## Created: 10.10.23
-## Script version: 1.2
+## Created: 03.19.24
+## Script version: 1.3
 
 set -eo pipefail
 
@@ -32,7 +32,7 @@ if [[ "$EUID" == 0 ]]; then
 fi
 
 # Set the variables
-script_ver=1.2
+script_ver=1.3
 pro_url="https://github.com/adobe-fonts/source-code-pro/archive/refs/tags/2.042R-u/1.062R-i/1.026R-vf.tar.gz"
 sans_url="https://github.com/adobe-fonts/source-sans/archive/refs/tags/3.052.tar.gz"
 serif_url="https://github.com/adobe-fonts/source-serif/archive/refs/tags/4.005.tar.gz"
