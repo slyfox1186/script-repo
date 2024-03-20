@@ -1,6 +1,6 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
-
+# Function to display the usage instructions
 usage() {
     echo "Usage: $0 [OPTIONS]"
     echo "Options:"
@@ -13,7 +13,9 @@ usage() {
     exit 0
 }
 
+# Function to parse command-line arguments
 parse_arguments() {
+    while [[ "$#" -gt 0 ]]; do
         case "$1" in
             -6|--enable-ipv6)
                 enable_ipv6=true
@@ -46,11 +48,13 @@ parse_arguments() {
     done
 }
 
+# Function to handle failure and display an error message
 fail() {
     printf "\n%s\nPlease report errors at: https://github.com/slyfox1186/script-repo/issues\n\n" "$1" >&2
     exit 1
 }
 
+# Function to install required packages
 install_required_packages() {
     local -a pkgs=(
         autoconf autogen automake build-essential ca-certificates ccache
@@ -68,8 +72,9 @@ install_required_packages() {
         fi
     done
 
-        echo "Installing missing packages: $missing_packages[*]"
-        apt install -y "${missing_packages[@]}"
+    if [[ "${#missing_packages[@]}" -gt 0 ]]; then
+        echo "Installing missing packages: ${missing_packages[*]}"
+        apt-get install "${missing_packages[@]}"
         echo
     else
         echo "No missing packages to install."
@@ -77,6 +82,7 @@ install_required_packages() {
     fi
 }
 
+# Function to set compiler flags
 set_compiler_flags() {
     local common_flags="-g -O3 -pipe -fno-plt -fstack-protector-strong -D_FORTIFY_SOURCE=2"
 
@@ -87,18 +93,22 @@ set_compiler_flags() {
     export LDFLAGS="-Wl,-z,relro,-z,now"
 }
 
+# Function to update the shared library cache
 update_shared_library_cache() {
+    ldconfig "$install_dir/lib64"
     ldconfig
 }
 
+# Function to add OpenSSL to the system path
 add_openssl_to_path() {
     local openssl_bin="/usr/local/bin/openssl"
-    if [[ -L "$openssl_bin" ]]; then
+    if [[ -e "$openssl_bin" ]]; then
         rm "$openssl_bin"
     fi
     ln -sf "$install_dir/bin/openssl" "$openssl_bin"
 }
 
+# Function to create softlinks for pkgconfig files
 create_pkgconfig_softlinks() {
     local pkgconfig_dir="/usr/local/lib/pkgconfig"
     local openssl_pkgconfig_dir="$install_dir/lib64/pkgconfig"
@@ -106,11 +116,14 @@ create_pkgconfig_softlinks() {
     mkdir -p "$pkgconfig_dir"
 
     for pc_file in "$openssl_pkgconfig_dir"/*.pc; do
-        local pc_filename=$(basename "$pc_file")
-        ln -sf "$pc_file" "$pkgconfig_dir/$pc_filename"
+        if [[ -e "$pc_file" ]]; then
+            local pc_filename=$(basename "$pc_file")
+            ln -sf "$pc_file" "$pkgconfig_dir/$pc_filename"
+        fi
     done
 }
 
+# Function to download OpenSSL
 download_openssl() {
     local openssl_url="https://www.openssl.org/source/openssl-$openssl_version.tar.gz"
     local tar_file="$cwd/openssl-$openssl_version.tar.gz"
@@ -138,6 +151,7 @@ download_openssl() {
     fi
 }
 
+# Function to extract OpenSSL
 extract_openssl() {
     local tar_file="$cwd/openssl-$openssl_version.tar.gz"
 
@@ -182,18 +196,19 @@ extract_openssl() {
     fi
 }
 
+# Function to configure OpenSSL
 configure_openssl() {
     echo "Configuring OpenSSL..."
     local config_options=(
         linux-x86_64-clang
-        -DOPENSSL_USE_IPV6=$([[ "$enable_ipv6" == true ]] && echo 1 || echo 0)
-        -Wl,-rpath="$install_dir/lib64"
-        -Wl,--enable-new-dtags
-        --prefix="$install_dir"
-        --openssldir="$install_dir"
+        "-DOPENSSL_USE_IPV6=$([[ "$enable_ipv6" == true ]] && echo 1 || echo 0)"
+        "-Wl,-rpath=$install_dir/lib64"
+        "-Wl,--enable-new-dtags"
+        "--prefix=$install_dir"
+        "--openssldir=$install_dir"
         --release
-        --with-zlib-include="/usr/include"
-        --with-zlib-lib="/usr/lib/x86_64-linux-gnu"
+        "--with-zlib-include=/usr/include"
+        "--with-zlib-lib=/usr/lib/x86_64-linux-gnu"
         enable-ec_nistp_64_gcc_128
         enable-egd
         enable-pic
@@ -219,13 +234,13 @@ configure_openssl() {
         echo
     else
         fail "OpenSSL configuration failed. Line: $LINENO"
-        exit 1
     fi
 }
 
+# Function to build and install OpenSSL
 build_and_install_openssl() {
     echo "Compiling OpenSSL..."
-    make "-j$jobs:-$(nproc --all)" || fail "Failed to execute: make -j$jobs:-$(nproc --all). Line: $LINENO"
+    make "-j${jobs:-$(nproc --all)}" || fail "Failed to execute: make -j${jobs:-$(nproc --all)}. Line: $LINENO"
     echo
     echo "Installing OpenSSL..."
     make install_sw install_fips || fail "Failed to execute: make install_sw install_fips. Line: $LINENO"
@@ -233,12 +248,14 @@ build_and_install_openssl() {
     openssl fipsinstall
 }
 
+# Function to perform post-installation tasks
 post_installation_tasks() {
     echo "Performing post-installation tasks..."
     echo "Post-installation tasks completed."
     echo
 }
 
+# Main function
 main() {
     local cwd="/tmp/openssl-build"
     local install_dir="/usr/local/ssl"
@@ -257,14 +274,13 @@ main() {
     parse_arguments "$@"
 
     if [[ -z "$openssl_version" ]]; then
-        openssl_version=$(curl -s https://www.openssl.org/source/ | grep -Po 'openssl-3\.2\.\d+' | head -n 1)
+        openssl_version=$(curl -s https://www.openssl.org/source/ | grep -Po 'openssl-3\.2\.\d+\.tar\.gz' | head -n 1 | sed 's/openssl-//;s/\.tar\.gz//')
         if [[ -z "$openssl_version" ]]; then
             fail "Failed to detect the latest OpenSSL 3.2.x version. Line: $LINENO"
-            exit 1
         fi
     fi
 
-    install_dir=$install_dir:-/usr/local/ssl
+    install_dir=${install_dir:-/usr/local/ssl}
     src_dir="$cwd/$openssl_version"
 
     echo
@@ -278,7 +294,6 @@ main() {
     if [[ -d "$src_dir" ]]; then
         cd "$src_dir" || {
             fail "Failed to change directory to $src_dir. Line: $LINENO"
-            exit 1
         }
         configure_openssl
         build_and_install_openssl
@@ -288,7 +303,6 @@ main() {
         post_installation_tasks
     else
         fail "OpenSSL source directory $src_dir does not exist. Line: $LINENO"
-        exit 1
     fi
 
     if [[ $keep_build == false ]]; then
