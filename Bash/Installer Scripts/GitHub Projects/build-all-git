@@ -1,149 +1,136 @@
 #!/usr/bin/env bash
 
-clear
-
-cwd="$PWD"/build-all-git-master
-web_repo=https://github.com/slyfox1186/script-repo
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
+cwd="$PWD/build-all-git-master"
 
 if [ ! -d "$cwd"/completed ]; then
     mkdir -p "$cwd"/completed
 fi
 
-exit_fn()
-{
+exit_fn() {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
-        "$web_repo"
+        "https://github.com/slyfox1186/script-repo"
     exit 0
 }
 
-fail_fn()
-{
-    printf "\n%s\n\n%s\n\n" \
-        "$1" \
-        "To report a bug create an issue at: $web_repo/issues"
+fail() {
+    echo
+    echo "[ERROR] $1"
+    echo "To report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues"
+    echo
     exit 1
 }
 
-cleanup_fn()
-{
-    local answer
+cleanup() {
+    local choice
 
-    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' answer
+    echo
+    echo "============================================"
+    echo "  Do you want to clean up the build files?  "
+    echo "============================================"
+    echo
+    echo "[1] Yes"
+    echo "[2] No"
+    echo
+    read -p 'Your choices are (1 or 2): ' choice
+    echo
 
-    case "${answer}" in
-        1)      sudo rm -fr "$cwd" "${0}";;
-        2)      echo;;
-        *)
-                printf "\n%s\n\n" 'Bad user input. Re-asking question...'
-                sleep 3
-                unset answer
-                clear
-                cleanup_fn
-                ;;
+    case "${choice}" in
+        1) sudo rm -fr "$cwd" "$0" ;;
+        2) ;;
+        *) unset choice
+           cleanup
+           ;;
     esac
 }
 
-pkgs=(asciidoc autogen autoconf autoconf-archive automake binutils bison build-essential bzip2 ccache cmake
-      curl libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev m4 meson nasm ninja-build
+pkgs=(asciidoc autogen autoconf autoconf-archive automake binutils bison
+      build-essential bzip2 ccache cmake curl libc6-dev libintl-perl
+      libpth-dev libtool libtool-bin lzip lzma-dev m4 meson nasm ninja-build
       texinfo xmlto yasm zlib1g-dev)
 
-for i in ${pkgs[@]}
+for pkg in ${pkgs[@]}
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+    missing_pkg="$(sudo dpkg -l | grep -o "$pkg")"
 
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+    if [ -z "$missing_pkg" ]; then
+        missing_pkgs+="$pkg "
     fi
 done
 
 if [ -n "$missing_pkgs" ]; then
-    sudo apt install $missing_pkgs
-    sudo apt -y autoremove
-    clear
+    sudo apt-get update
+    sudo apt-get install $missing_pkgs
+    echo
 fi
 
-install_scripts_fn()
-{
-    local i scripts
-    clear
+install_scripts() {
+    local script scripts
 
-    scripts="$(sudo find . -maxdepth 1 -type f -name '*' | sed 's/^..//g' | sort)"
+    scripts="$(sudo find ./ -maxdepth 1 -type f | sort -V)"
 
-    for i in ${scripts[@]}
-    do
-        if bash "${i}"; then
-            sudo find . -maxdepth 1 -type f -name "${i}" -exec mv {} completed \;
-            printf "\n%s\n\n" "Script finished: ${i}"
+    for script in ${scripts[@]}; do
+        if bash "$script"; then
+            sudo find ./ -maxdepth 1 -type f -name "$script" -exec mv {} completed \;
+            echo
+            echo "Successfully completed $script"
+            echo
         else
-            fail_fn "Failed to install: ${i}"
+            fail "Failed to install $script"
         fi
         sleep 2
     done
 }
 
-install_choice_fn()
-{
-    printf "%s\n\n%s\n\n%s\n%s\n\n" \
-        'Do you want to install all of the scripts now?' \
-        'You MUST manually remove any scripts you do not want to install before continuing.' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' answer
+install_choice() {
+    echo
+    echo "Do you want to install all of the scripts now?"
+    echo "You MUST manually remove any scripts you do not want to install before continuing."
+    echo "[1] Yes"
+    echo "[2] No"
+    echo
+    read -p 'Your choices are (1 or 2): ' choice
+    echo
 
-    case "${answer}" in
-        1)      install_scripts_fn;;
-        2)      exit_fn;;
-        *)
-                printf "%s\n\n" 'Bad user input... Resetting script.'
-                sleep 3
-                unset answer
-                clear
-                install_choice_fn
-                ;;
+    case "$choice" in
+        1) install_scripts ;;
+        2) ;;
+        *) unset choice
+           install_choice
+           ;;
     esac
 }
 
 # Download all of the git-project scripts and number them ascending starting with one
-
 cd "$cwd" || exit 1
 
-scripts=(aria2 brotli clang-16 clang-18 garbage-collector git libpng libxml2 nasm openssl python3 terminator-terminal tools wsl2-kernel yasm zlib zstd)
-cnt=0
+scripts=(aria2 brotli clang-16 garbage-collector git libpng
+         libxml2 nasm openssl python3 wsl2-kernel yasm zlib
+         zstd)
+count=0
 
-for script in ${scripts[@]}
-do
-    let cnt=cnt+1
-    wget -U "$user_agent" --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-${script}"
-    mv "build-${script}" "0$cnt-build-${script}"
+for script in ${scripts[@]}; do
+    ((count++))
+    wget --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-${script}.sh"
+    mv "build-${script}" "0$count-build-${script}"
 done
 
 # Rename all scripts that start with the number 10 and higher so they execute in the intended order
-
 files=(openssl python3 terminator-terminal tools wsl2-kernel yasm zlib zstd)
-cnt=9
+count=9
 
-for i in 1
-do
-    for file in ${files[@]}
-    do
-        ((cnt++)) # << start counting here
-        mv "0$cnt-build-${file}" "$cnt-build-${file}" # << move the files, thus renaming them
+for i in 1; do
+    for file in ${files[@]}; do
+        ((count++)) # << start counting here
+        mv "0$count-build-${file}" "$count-build-${file}" # << move the files, thus renaming them
     done
 done
 
 # Ask the user if they want to install all of the scripts
-install_choice_fn
+install_choice
 
 # Cleanup the files
-cleanup_fn
+cleanup
 
 # Show the exit message
 exit_fn
