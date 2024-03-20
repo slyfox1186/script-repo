@@ -2,42 +2,74 @@
 
 # Define foreground color codes
 FG_COLORS=(
-    "30"  # Black
-    "31"  # Red
-    "32"  # Green
-    "33"  # Yellow
-    "34"  # Blue
-    "35"  # Magenta
-    "36"  # Cyan
-    "37"  # White
-    "90"  # Light Black
-    "91"  # Light Red
-    "92"  # Light Green
-    "93"  # Light Yellow
-    "94"  # Light Blue
-    "95"  # Light Magenta
-    "96"  # Light Cyan
-    "97"  # Light White
+    "30"   # Black
+    "31"   # Red
+    "32"   # Green
+    "33"   # Yellow
+    "34"   # Blue
+    "35"   # Magenta
+    "36"   # Cyan
+    "37"   # White
+    "90"   # Light Black
+    "91"   # Light Red
+    "92"   # Light Green
+    "93"   # Light Yellow
+    "94"   # Light Blue
+    "95"   # Light Magenta
+    "96"   # Light Cyan
+    "97"   # Light White
+    "1;30" # Bold Black
+    "1;31" # Bold Red
+    "1;32" # Bold Green
+    "1;33" # Bold Yellow
+    "1;34" # Bold Blue
+    "1;35" # Bold Magenta
+    "1;36" # Bold Cyan
+    "1;37" # Bold White
+    "1;90" # Bold Light Black
+    "1;91" # Bold Light Red
+    "1;92" # Bold Light Green
+    "1;93" # Bold Light Yellow
+    "1;94" # Bold Light Blue
+    "1;95" # Bold Light Magenta
+    "1;96" # Bold Light Cyan
+    "1;97" # Bold Light White
 )
 
 # Define background color codes
 BG_COLORS=(
-    "40"  # Black (native)
-    "41"  # Red
-    "42"  # Green
-    "43"  # Yellow
-    "44"  # Blue
-    "45"  # Magenta
-    "46"  # Cyan
-    "47"  # White
-    "100" # Light Black
-    "101" # Light Red
-    "102" # Light Green
-    "103" # Light Yellow
-    "104" # Light Blue
-    "105" # Light Magenta
-    "106" # Light Cyan
-    "107" # Light White
+    "40"   # Black (native)
+    "41"   # Red
+    "42"   # Green
+    "43"   # Yellow
+    "44"   # Blue
+    "45"   # Magenta
+    "46"   # Cyan
+    "47"   # White
+    "100"  # Light Black
+    "101"  # Light Red
+    "102"  # Light Green
+    "103"  # Light Yellow
+    "104"  # Light Blue
+    "105"  # Light Magenta
+    "106"  # Light Cyan
+    "107"  # Light White
+    "1;40"   # Bold Black (native)
+    "1;41"   # Bold Red
+    "1;42"   # Bold Green
+    "1;43"   # Bold Yellow
+    "1;44"   # Bold Blue
+    "1;45"   # Bold Magenta
+    "1;46"   # Bold Cyan
+    "1;47"   # Bold White
+    "1;100"  # Bold Light Black
+    "1;101"  # Bold Light Red
+    "1;102"  # Bold Light Green
+    "1;103"  # Bold Light Yellow
+    "1;104"  # Bold Light Blue
+    "1;105"  # Bold Light Magenta
+    "1;106"  # Bold Light Cyan
+    "1;107"  # Bold Light White
 )
 
 # Function to display color combinations
@@ -52,34 +84,45 @@ display_help() {
     echo "Usage: $(basename "$0") [OPTIONS]"
     echo "Options:"
     echo "  -h, --help          Display this help menu"
-    echo "  -f, --foreground    Specify the foreground color code (30-37, 90-97)"
-    echo "  -b, --background    Specify the background color code (40-47, 100-107)"
+    echo "  -f, --foreground    Specify the foreground color code (30-37, 90-97, 1;30-1;37)"
+    echo "  -b, --background    Specify the background color code (40-47, 100-107, 1;40-1;47, 1;100-1;107)"
     exit 0
 }
+
+# Parse command-line arguments
+while getopts ":hf:b:" opt; do
+    case $opt in
+        h)
+            display_help
+            ;;
+        f)
+            fg_arg="$OPTARG"
+            ;;
+        b)
+            bg_arg="$OPTARG"
+            ;;
+        :)
+            echo "Option -$OPTARG requires an argument."
+            exit 1
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG"
+            exit 1
+            ;;
+    esac
+done
 
 # Check if help option is passed
 if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     display_help
 fi
 
-# Check if arguments are provided
-if [ "$#" -eq 4 ]; then
-    if [[ "$1" == "-f" || "$1" == "--foreground" ]] && [[ "$3" == "-b" || "$3" == "--background" ]]; then
-        fg_arg="$2"
-        bg_arg="$4"
-        
-        # Validate foreground and background color arguments
-        if [[ " ${FG_COLORS[*]} " == *" $fg_arg "* ]] && [[ " ${BG_COLORS[*]} " == *" $bg_arg "* ]]; then
-            display_color_combinations "$fg_arg" "$bg_arg"
-        else
-            echo "Invalid foreground or background color."
-            exit 1
-        fi
-    else
-        echo "Invalid arguments. Use -h or --help for usage information."
-        exit 1
-    fi
-else
+#!/usr/bin/env bash
+
+# ... (rest of the script remains the same)
+
+# Check if both foreground and background arguments are provided
+if [[ -z $fg_arg ]] || [[ -z $bg_arg ]]; then
     # Prompt user for choice if no arguments are provided
     echo "Choose display mode:"
     echo
@@ -99,8 +142,16 @@ else
     elif [[ $choice == "2" ]]; then
         # Loop through each foreground color with non-native background colors
         for fg_color_code in "${FG_COLORS[@]}"; do
-            # Loop through each background color
-            for bg_color_code in "${BG_COLORS[@]}"; do
+            echo "Type: STANDARD"
+            # Loop through standard background colors
+            for bg_color_code in "${BG_COLORS[@]::16}"; do
+                # Print colored text
+                display_color_combinations "$fg_color_code" "$bg_color_code"
+            done
+            echo
+            echo "Type: BOLD"
+            # Loop through bold background colors
+            for bg_color_code in "${BG_COLORS[@]:16}"; do
                 # Print colored text
                 display_color_combinations "$fg_color_code" "$bg_color_code"
             done
@@ -108,6 +159,14 @@ else
         done
     else
         echo "Invalid choice. Please enter either 1 or 2."
+        exit 1
+    fi
+else
+    # Validate foreground and background color arguments
+    if [[ " ${FG_COLORS[@]} " =~ " $fg_arg " ]] && [[ " ${BG_COLORS[@]} " =~ " $bg_arg " ]]; then
+        display_color_combinations "$fg_arg" "$bg_arg"
+    else
+        echo "Invalid foreground or background color."
         exit 1
     fi
 fi
