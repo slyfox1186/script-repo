@@ -36,16 +36,16 @@ display_help() {
     echo
     echo "Options:"
     echo
-    echo "  -h, --help               Display this help menu"
-    echo "  -c, --color              Enable color output"
-    echo "  -d, --directory <dir>    Specify the working directory (default: current directory)"
-    echo "  -e, --exclusions <codes> Specify additional exclusion codes (comma-separated)"
-    echo "  -i, --install            Install shellcheck if not already installed"
-    echo "  -m, --move-files <dir>   Move files with no errors to the specified directory (full path required)"
-    echo "  -o, --output <file>      Specify the output file for shellcheck results"
-    echo "  -r, --recursive          Enable recursive searching"
-    echo "  -s, --summary            Show a summary of the shellcheck results"
-    echo "  -v, --verbose            Enable verbose output"
+    echo "  -h, --help                   Display this help menu"
+    echo "  -c, --color                  Enable color output"
+    echo "  -d, --directory <dir>        Specify the working directory (default: current directory)"
+    echo "  -e, --exclusions <codes>     Specify additional exclusion codes (comma-separated)"
+    echo "  -i, --install                Install shellcheck if not already installed"
+    echo "  -m, --move-files <dir>       Move files with no errors to the specified directory (full path required)"
+    echo "  -o, --output <file>          Specify the output file for shellcheck results"
+    echo "  -r, --recursive              Enable recursive searching"
+    echo "  -s, --summary                Show a summary of the shellcheck results"
+    echo "  -v, --verbose                Enable verbose output"
 }
 
 # Function to install shellcheck based on the package manager
