@@ -33,17 +33,19 @@ colored_echo() {
 # Function to display the help menu
 display_help() {
     echo "Usage: $0 [OPTIONS]"
+    echo
     echo "Options:"
-    echo "  -d, --directory <dir>    Specify the working directory (default: current directory)"
-    echo "  -r, --recursive          Enable recursive searching"
-    echo "  -v, --verbose            Enable verbose output"
-    echo "  -o, --output <file>      Specify the output file for shellcheck results"
-    echo "  -i, --install            Install shellcheck if not already installed"
-    echo "  -e, --exclusions <codes> Specify additional exclusion codes (comma-separated)"
-    echo "  -m, --move-files <dir>   Move files with no errors to the specified directory (full path required)"
-    echo "  -s, --summary            Show a summary of the shellcheck results"
-    echo "  -c, --color              Enable color output"
+    echo
     echo "  -h, --help               Display this help menu"
+    echo "  -c, --color              Enable color output"
+    echo "  -d, --directory <dir>    Specify the working directory (default: current directory)"
+    echo "  -e, --exclusions <codes> Specify additional exclusion codes (comma-separated)"
+    echo "  -i, --install            Install shellcheck if not already installed"
+    echo "  -m, --move-files <dir>   Move files with no errors to the specified directory (full path required)"
+    echo "  -o, --output <file>      Specify the output file for shellcheck results"
+    echo "  -r, --recursive          Enable recursive searching"
+    echo "  -s, --summary            Show a summary of the shellcheck results"
+    echo "  -v, --verbose            Enable verbose output"
 }
 
 # Function to install shellcheck based on the package manager
@@ -240,30 +242,18 @@ if [[ "$show_summary" = true ]]; then
     echo "Summary:"
     echo "Total files checked: $total_files"
     
-    if [[ ${#error_files[@]} -gt 0 ]]; then
-        colored_echo "$RED" "Files with errors: ${#error_files[@]}"
-        for file in "${error_files[@]}"; do
-            echo "  - $file"
-        done
-    else
-        colored_echo "$GREEN" "Files with errors: 0"
-    fi
+    colored_echo "$RED" "Files with errors: ${#error_files[@]}"
+    for file in "${error_files[@]}"; do
+        echo "  - $file"
+    done
     
-    if [[ ${#warning_files[@]} -gt 0 ]]; then
-        colored_echo "$YELLOW" "Files with warnings: ${#warning_files[@]}"
-        for file in "${warning_files[@]}"; do
-            echo "  - $file"
-        done
-    else
-        colored_echo "$GREEN" "Files with warnings: 0"
-    fi
+    colored_echo "$YELLOW" "Files with warnings: ${#warning_files[@]}"
+    for file in "${warning_files[@]}"; do
+        echo "  - $file"
+    done
     
-    if [[ ${#no_error_files[@]} -gt 0 ]]; then
-        colored_echo "$GREEN" "Files with no errors: ${#no_error_files[@]}"
-        for file in "${no_error_files[@]}"; do
-            echo "  - $file"
-        done
-    else
-        colored_echo "$GREEN" "Files with no errors: 0"
-    fi
+    colored_echo "$GREEN" "Files with no errors: ${#no_error_files[@]}"
+    for file in "${no_error_files[@]}"; do
+        echo "  - $file"
+    done
 fi
