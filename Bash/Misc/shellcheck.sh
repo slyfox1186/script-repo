@@ -264,6 +264,6 @@ if [[ "$show_summary" = true ]]; then
             echo "  - $file"
         done
     else
-        colored_echo "$RED" "Files with no errors: 0"
+        colored_echo "$GREEN" "Files with no errors: 0"
     fi
 fi
