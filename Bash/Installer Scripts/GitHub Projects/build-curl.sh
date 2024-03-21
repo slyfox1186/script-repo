@@ -123,12 +123,12 @@ pkgs_fn() {
     done
 
 # Print unavailable packages
-    if [[ "${#Unavailable_packages[@]}" -gt 0 ]]; then
+    if [[ "${#unavailable_packages[@]}" -gt 0 ]]; then
         echo "Unavailable packages: ${unavailable_packages[*]}"
     fi
 
 # Install available missing packages
-    if [[ "${#Available_packages[@]}" -gt 0 ]]; then
+    if [[ "${#available_packages[@]}" -gt 0 ]]; then
         echo "Installing available missing packages: ${available_packages[*]}"
         sudo apt install "${available_packages[@]}"
     else
