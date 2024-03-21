@@ -239,7 +239,31 @@ if [[ "$show_summary" = true ]]; then
     echo
     echo "Summary:"
     echo "Total files checked: $total_files"
-    colored_echo "$RED" "Files with errors: ${#error_files[@]}"
-    colored_echo "$YELLOW" "Files with warnings: ${#warning_files[@]}"
-    colored_echo "$GREEN" "Files with no errors: ${#no_error_files[@]}"
+    
+    if [[ ${#error_files[@]} -gt 0 ]]; then
+        colored_echo "$RED" "Files with errors: ${#error_files[@]}"
+        for file in "${error_files[@]}"; do
+            echo "  - $file"
+        done
+    else
+        colored_echo "$GREEN" "Files with errors: 0"
+    fi
+    
+    if [[ ${#warning_files[@]} -gt 0 ]]; then
+        colored_echo "$YELLOW" "Files with warnings: ${#warning_files[@]}"
+        for file in "${warning_files[@]}"; do
+            echo "  - $file"
+        done
+    else
+        colored_echo "$GREEN" "Files with warnings: 0"
+    fi
+    
+    if [[ ${#no_error_files[@]} -gt 0 ]]; then
+        colored_echo "$GREEN" "Files with no errors: ${#no_error_files[@]}"
+        for file in "${no_error_files[@]}"; do
+            echo "  - $file"
+        done
+    else
+        colored_echo "$RED" "Files with no errors: 0"
+    fi
 fi
