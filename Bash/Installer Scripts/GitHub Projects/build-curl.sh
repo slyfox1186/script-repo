@@ -25,15 +25,18 @@ log() {
 
 # Define program variables
 program="curl"
+cwd="$PWD/curl-build-script"
 version=$(curl -s "https://github.com/curl/curl/tags" | grep -oP 'curl-[0-9]+_[0-9]+_[0-9]+' | head -n1)
 formatted_version=$(echo "$version" | sed "s/curl-//" | sed "s/_/\./g")
 download_url="https://github.com/curl/curl/archive/refs/tags/${version}.tar.gz"
-tar_file="${program}-${formatted_version}.tar.gz"
-extract_dir="${program}-${formatted_version}"
+tar_file="$cwd/${program}-${formatted_version}.tar.gz"
+extract_dir="$cwd/${program}-${formatted_version}"
 install_dir="/usr/local/${program}-${formatted_version}"
 certs_dir="/etc/ssl/certs"
 pem_file="cacert.pem"
 pem_out="$certs_dir/$pem_file"
+
+mkdir -p "$cwd"
 
 # Define environment variables
 set_env_vars() {
@@ -125,9 +128,9 @@ build_and_install() {
 
     # Run the configure script
     ../configure --prefix="$install_dir" \
-                "${dopts[@]}"           \
-                "${eopts[@]}"           \
-                "${wopts[@]}"           \
+                "${dopts[@]}" \
+                "${eopts[@]}" \
+                "${wopts[@]}" \
                 CPPFLAGS="$CPPFLAGS" || fail "Configuration failed"
 
     log "Compiling $program"
@@ -148,8 +151,7 @@ display_version() {
 
 # Cleanup
 cleanup() {
-    cd ../..
-    sudo rm -fr "$extract_dir"
+    sudo rm -fr "$cwd"
     log "$program installation completed successfully"
 }
 
