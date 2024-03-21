@@ -105,16 +105,16 @@ pkgs_fn() {
     unavailable_packages=()
 
 # Loop through the array to find missing packages
-    for pkg in "${pkgs[@]}"
-    do
+    for pkg in "${pkgs[@]}"; do
+      
         if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             missing_packages+=("$pkg")
         fi
     done
 
 # Check availability of missing packages and categorize them
-    for pkg in "${missing_packages[@]}"
-    do
+    for pkg in "${missing_packages[@]}"; do
+      
         if apt-cache show "$pkg" > /dev/null 2>&1; then
             available_packages+=("$pkg")
         else
