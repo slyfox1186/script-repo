@@ -86,7 +86,7 @@ exit_fn()
     printf "\n%s\n\n%s\n%s\n\n" \
         'The script has completed' \
         'Make sure to star this repository to show your support!' \
-        "$web_repo"
+        "https://github.com/slyfox1186/script-repo"
     exit 0
 }
 
@@ -95,7 +95,7 @@ fail_fn()
     printf "\n\n%s\n\n%s\n\n%s\n\n" \
         "$1" \
         'Please create a support ticket so I can work on a fix.' \
-        "$web_repo/issues"
+        "https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
