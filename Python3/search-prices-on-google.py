@@ -7,13 +7,22 @@ import os
 import random
 import re
 import requests
+import string
 import subprocess
 import sys
 import time
 from bs4 import BeautifulSoup
-from urllib.parse import quote_plus, urlparse  # Importing urlparse
+from urllib.parse import quote_plus, urlparse
 from termcolor import colored
 from nltk.stem import WordNetLemmatizer
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium_stealth import stealth
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 
 # Uncomment these lines if nltk resources haven't been downloaded yet
 # nltk.download('wordnet')
@@ -22,7 +31,9 @@ from nltk.stem import WordNetLemmatizer
 lemmatizer = WordNetLemmatizer()
 
 # Configuration Variables
-BROWSER = 'chrome.exe'  # Adjust based on your environment. Use full path if needed.
+BROWSER = 'chromium'  # Adjust based on your environment. Use full path if needed.
+## This can be used in Windows WSL like the below comment:
+## BROWSER = 'chrome.exe'  # Adjust based on your environment. Use full path if needed.
 
 DESIRED_WORDS = [
     'walmart.com',
@@ -37,7 +48,7 @@ EXCLUDE_WORDS = [
     'offer',
     'sponsor',
     'review',
-    'where-to-buy'
+    '.online'
 ]
 
 # Define color variables for customization
@@ -49,7 +60,7 @@ FETCHING_URL_COLOR = 'yellow'
 FETCHING_URL_BG_COLOR = None
 FETCHING_URL_LINK_COLOR = 'cyan'
 FETCHING_URL_LINK_BG_COLOR = None
-PARSING_RESULTS_COLOR = 'yellow'
+PARSING_RESULTS_COLOR = 'cyan'
 RESULTS_FOUND_COLOR = 'green'
 NO_RESULTS_COLOR = 'red'
 RESULT_NUMBER_COLOR = 'yellow'
@@ -81,13 +92,70 @@ def clear_screen():
     """Clears the console screen."""
     os.system('cls' if os.name == 'nt' else 'clear')
 
+def fetch_url_headless(url):
+    """Fetches content from URL using a headless Chrome browser."""
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+
+    user_agent = random.choice(USER_AGENTS)
+    chrome_options.add_argument(f"user-agent={user_agent}")
+
+    driver = webdriver.Chrome(options=chrome_options)
+
+    stealth(driver,
+            languages=["en-US", "en"],
+            vendor="Google Inc.",
+            platform="Win32",
+            webgl_vendor="Intel Inc.",
+            renderer="Intel Iris OpenGL Engine",
+            fix_hairline=True,
+            )
+
+    driver.get(url)
+
+    time.sleep(random.uniform(1, 3))
+
+    html_content = driver.page_source
+
+    scroll_and_type(driver)
+
+    driver.quit()
+    return html_content
+
 def fetch_url(url):
     """Fetches content from URL using requests with progress updates."""
-    headers = {'User-Agent': random.choice(USER_AGENTS)}
-    response = requests.get(url, headers=headers)
     logger.info(colored("Fetching URL: ", FETCHING_URL_COLOR, 'on_' + FETCHING_URL_BG_COLOR if FETCHING_URL_BG_COLOR else None) + colored(url, FETCHING_URL_LINK_COLOR))
-    time.sleep(random.uniform(1, 3))  # Random delay to mimic human behavior
-    return response.text
+    response_html = fetch_url_headless(url)
+    return response_html
+
+def scroll_and_type(driver):
+    """Performs random scrolling actions to mimic human behavior."""
+    for _ in range(random.randint(1, 3)):
+        scroll_amount = random.uniform(-0.5, 0.5)
+        driver.execute_script("window.scrollBy(0, window.innerHeight * arguments[0]);", scroll_amount)
+        time.sleep(random.uniform(0.5, 1.5))
+
+def scroll_and_type(driver):
+    """Performs random scrolling and typing actions to mimic human behavior."""
+    for _ in range(random.randint(1, 3)):
+        scroll_amount = random.uniform(-0.5, 0.5)
+        driver.execute_script("window.scrollBy(0, window.innerHeight * arguments[0]);", scroll_amount)
+        time.sleep(random.uniform(0.5, 1.5))
+
+    try:
+        search_box = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.NAME, "q"))
+        )
+        random_text = ''.join(random.choices(string.ascii_letters + string.digits, k=random.randint(5, 15)))
+        search_box.send_keys(random_text)
+        search_box.send_keys(Keys.ENTER)
+        time.sleep(random.uniform(1, 3))
+    except (NoSuchElementException, TimeoutException):
+        pass
 
 def parse_results(response, query):
     logger.info(colored("Parsing search results...", PARSING_RESULTS_COLOR))
@@ -95,15 +163,18 @@ def parse_results(response, query):
     search_results = soup.find_all("div", class_="yuRUbf")
     results = []
 
+    lemmatized_exclude_words = [lemmatizer.lemmatize(word.lower()) for word in EXCLUDE_WORDS]
+
     for result in search_results:
         link_elem = result.find("a")
         if link_elem:
             url = link_elem.get("href")
-            parsed_url = urlparse(url)  # Parse the URL
+            parsed_url = urlparse(url)
             title_elem = result.find("h3")
             title = title_elem.text.strip() if title_elem else ""
             full_text = title.lower() + " " + url.lower()
             lemmatized_text = [lemmatizer.lemmatize(word) for word in nltk.word_tokenize(full_text)]
+
             if parsed_url.netloc and "google" not in parsed_url.netloc:
                 title_elem = result.find("h3")
                 title = title_elem.text.strip() if title_elem else ""
@@ -119,27 +190,31 @@ def parse_results(response, query):
                 contains_desired_word = any(lemmatizer.lemmatize(desired_word) in lemmatized_text for desired_word in DESIRED_WORDS)
 
                 # Check against excluded words
-                if any(excluded_word in lemmatized_words for excluded_word in [lemmatizer.lemmatize(word) for word in EXCLUDE_WORDS]):
-                    continue  # Exclude this result
+                if not any(excluded_word in lemmatized_words for excluded_word in lemmatized_exclude_words):
+                    price_text = result.parent.parent.parent.get_text()
+                    price_matches = re.findall(r'\$\d+(?:,\d{3})*\.?\d*', price_text)
 
-                price_text = result.parent.parent.parent.get_text()
-                price_matches = re.findall(r'\$\d+(?:,\d{3})*\.?\d*', price_text)
+                    if price_matches:
+                        price = price_matches[0].replace(',', '')
+                        if price.endswith('.'):
+                            price += '00'
+                        elif '.' not in price:
+                            price += '.00'
+                        else:
+                            dollars, cents = price.split('.')
+                            if len(cents) == 1:
+                                price += '0'
 
-                if price_matches:
-                    price = price_matches[0].replace(',', '')
-                    if price.endswith('.'):
-                        price += '00'
-                    elif '.' not in price:
-                        price += '.00'
+                        try:
+                            price_float = float(price.replace('$', ''))
+                        except ValueError:
+                            continue  # Skip this result if the price cannot be converted to float
+
+                        # Check if price is within the specified range
+                        if MINIMUM_PRICE <= price_float <= MAXIMUM_PRICE:
+                            results.append((title, url, price, contains_desired_word))
                     else:
-                        dollars, cents = price.split('.')
-                        if len(cents) == 1:
-                            price += '0'
-                else:
-                    # Skip adding this result if price is not available
-                    continue
-
-                results.append((title, url, price, contains_desired_word))
+                        price = "N/A"
 
     logger.info(colored(f"Found {len(results)} relevant results.", RESULTS_FOUND_COLOR))
     return results
@@ -159,12 +234,19 @@ def search_google(query, desired_results=25):
     results = []
     start = 0
     max_results = 300
+    num_results_options = [50, 100, 150]  # List of numbers to randomly select from
+    prev_num_results = None  # Variable to keep track of the previously used num_results
+
     while len(results) < desired_results and start < max_results:
+        # Randomly select the number of results to fetch, ensuring it's different from the previous iteration
+        num_results = random.choice([num for num in num_results_options if num != prev_num_results])
+        prev_num_results = num_results  # Update the previous num_results
+
         encoded_query = quote_plus(query)
-        url = f"https://www.google.com/search?q={encoded_query}&num=100&start={start}"
+        url = f"https://www.google.com/search?q={encoded_query}&num={num_results}&start={start}"
         response = fetch_url(url)
         results.extend(parse_results(response, query))
-        start += 100
+        start += num_results
 
     if len(results) == 0:
         suggestion = get_spelling_suggestion(response)
@@ -176,7 +258,12 @@ def search_google(query, desired_results=25):
         else:
             logger.info(colored("No results found.", NO_RESULTS_COLOR))
 
+    # Sort results based on prioritized words and price, excluding results with no price
     results.sort(key=lambda x: (not x[3], float(x[2].replace("$", "").replace(",", "")) if x[2] != "N/A" else float('inf')))
+
+    # Filter out results with "N/A" prices
+    results = [result for result in results if result[2] != "N/A"]
+
     return results[:desired_results]
 
 def write_results_to_file(results, filepath):
@@ -240,7 +327,10 @@ def handle_selection(choice, results, show_output_option):
         filepath = input(colored("Enter the output file path: ", WRITING_RESULTS_COLOR))
         write_results_to_file(results, filepath)
         logger.info(colored(f"Results written to {filepath}", RESULTS_WRITTEN_COLOR))
-        sys.exit(0)  # Exit after writing results to file
+        # Clear the screen and re-display the menu
+        clear_screen()
+        choice = display_menu(results, show_output_option)
+        handle_selection(choice, results, show_output_option)
     else:
         indices = []
         for part in choice.split(','):
@@ -262,15 +352,14 @@ def handle_selection(choice, results, show_output_option):
 def main():
     parser = argparse.ArgumentParser(description="Search Google and fetch results with prices.")
     parser.add_argument("query", type=str, help="Search query")
+    parser.add_argument("-o", "--output", type=str, help="Output file path for search results", default="")
+    parser.add_argument("-min", "--min-price", type=float, help="Minimum price for results (default: 0)", default=0)
+    parser.add_argument("-max", "--max-price", type=float, help="Maximum price for results (default: infinity)", default=float('inf'))
     args = parser.parse_args()
 
-    results = search_google(args.query)
-    choice = display_menu(results, True)
-    handle_selection(choice, results, True)
-    parser = argparse.ArgumentParser(description="Search Google and fetch results with prices.")
-    parser.add_argument("query", type=str, help="Search query")
-    parser.add_argument("-o", "--output", type=str, help="Output file path for search results", default="")
-    args = parser.parse_args()
+    global MINIMUM_PRICE, MAXIMUM_PRICE
+    MINIMUM_PRICE = args.min_price
+    MAXIMUM_PRICE = args.max_price
 
     results = search_google(args.query)
     show_output_option = not bool(args.output)
