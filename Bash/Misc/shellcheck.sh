@@ -12,7 +12,7 @@ show_summary=false
 color_output=false
 
 # Shellcheck exclusion codes set in the script
-script_exclusions="SC2001,SC2034,SC2046,SC2068,SC2086,SC2115,SC2155,SC2162,SC2164,SC2295"
+script_exclusions=""
 
 # Colors for output
 RED='\033[0;31m'
