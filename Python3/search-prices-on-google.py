@@ -51,6 +51,10 @@ EXCLUDE_WORDS = [
     '.online'
 ]
 
+# Added variables for minimum and maximum price
+MINIMUM_PRICE = 2000
+MAXIMUM_PRICE = float('inf')
+
 # Define color variables for customization
 SEARCH_STARTING_COLOR = 'yellow'
 SEARCH_STARTING_BG_COLOR = None
