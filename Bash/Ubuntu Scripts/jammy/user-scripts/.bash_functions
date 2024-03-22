@@ -1615,43 +1615,31 @@ rm_curly() {
     done
 }
 
-#########################
-## MOUNT NETWORK DRIVE ##
-#########################
-
+# Mount Network Drive
 mnd() {
-    clear
+    local drive_ip="192.168.2.2" drive_name="Cloud" mount_point="m"
 
-    # Define variables
-    local drive_ip="192.168.2.2"
-    local drive_name="Cloud"
-    local mount_point="m"  # Mount point set to /m
+    is_mounted() { mountpoint -q "/$mount_point"; }
 
-    # Function to check if the drive is already mounted
-    is_mounted() {
-        sudo mountpoint -q "/$mount_point"
-    }
-
-    # Function to mount the drive
     mount_drive() {
         if is_mounted; then
             echo "Drive '$drive_name' is already mounted at $mount_point."
         else
-            sudo mkdir -p "/$mount_point"
-            sudo mount -t drvfs "\\\\$drive_ip\\$drive_name" "/$mount_point" && echo "Drive '$drive_name' mounted successfully at $mount_point."
+            mkdir -p "/$mount_point"
+            mount -t drvfs "\\\\$drive_ip\\$drive_name" "/$mount_point" &&
+                echo "Drive '$drive_name' mounted successfully at $mount_point."
         fi
     }
 
-    # Function to unmount the drive
     unmount_drive() {
         if is_mounted; then
-            sudo umount "/$mount_point" && echo "Drive '$drive_name' unmounted successfully from $mount_point."
+            umount "/$mount_point" &&
+                echo "Drive '$drive_name' unmounted successfully from $mount_point."
         else
             echo "Drive '$drive_name' is not mounted."
         fi
     }
 
-    # Main menu for user interaction
     echo "Select an option:"
     echo "1) Mount the network drive"
     echo "2) Unmount the network drive"
@@ -1664,61 +1652,42 @@ mnd() {
     esac
 }
 
-##################
-## PORT NUMBERS ##
-##################
-
+# Check Port Numbers
 check_port() {
-    local port="$1"
-    local -A pid_protocol_map
-    local pid name protocol choice process_found=false
-
-    if [ -z "$port" ]; then
-        read -p 'Enter the port number: ' port < /dev/tty
-    fi
+    local port="${1:-$(read -p 'Enter the port number: ' port && echo "$port")}"
+    local -A pid_protocol_map pid name protocol choice process_found=false
 
     echo -e "\nChecking for processes using port $port...\n"
 
-    # Collect information
-    while IFS= read -r line; do
-        pid=$(echo "$line" | awk '{print $2}')
-        name=$(echo "$line" | awk '{print $1}')
-        protocol=$(echo "$line" | awk '{print $8}')
-
-        if [ -n "$pid" ] && [ -n "$name" ]; then
+    while IFS= read -r pid name protocol; do
+        [[ -n $pid && -n $name ]] && {
             process_found=true
-            # Ensure protocol is only listed once per process
-            [[ "${pid_protocol_map[$pid,$name]}" != *"$protocol"* ]] && pid_protocol_map["$pid,$name"]+="$protocol "
-        fi
-    done < <(sudo lsof -i :"$port" -nP | grep -v "COMMAND")
+            [[ ${pid_protocol_map[$pid,$name]} != *"$protocol"* ]] &&
+                pid_protocol_map[$pid,$name]+="$protocol "
+        }
+    done < <(lsof -i :"$port" -nP | awk '$1 != "COMMAND" {print $2, $1, $8}')
 
-    # Process information
     for key in "${!pid_protocol_map[@]}"; do
         IFS=',' read -r pid name <<< "$key"
-        protocol=${pid_protocol_map[$key]}
-        # Removing trailing space
-        protocol="${protocol% }"
+        protocol=${pid_protocol_map[$key]% }
 
-        # Display process and protocol information
         echo -e "Process: $name (PID: $pid) using ${protocol// /, }"
 
-        if [[ $protocol == *"TCP"* && $protocol == *"UDP"* ]]; then
-            echo -e "\nBoth the TCP and UDP protocols are being used by the same process.\n"
-            read -p "Do you want to kill it? (yes/no): " choice < /dev/tty
+        if [[ $protocol == *"TCP"*"UDP"* ]]; then
+            echo -e "\nBoth TCP and UDP are used by the same process.\n"
+            read -p "Kill it? (yes/no): " choice
         else
-            read -p "Do you want to kill this process? (yes/no): " choice < /dev/tty
+            read -p "Kill this process? (yes/no): " choice
         fi
 
         case "$choice" in
-            [Yy][Ee][Ss]|[Yy]|"")
+            [Yy]|[Yy][Ee][Ss]|"")
                 echo -e "\nKilling process $pid...\n"
-                if sudo kill -9 "$pid" 2>/dev/null; then
-                    echo -e "Process $pid killed successfully.\n"
-                else
-                    echo -e "Failed to kill process $pid. It may have already exited or you lack the necessary permissions.\n"
-                fi
+                kill -9 "$pid" 2>/dev/null &&
+                    echo -e "Process $pid killed successfully.\n" ||
+                    echo -e "Failed to kill process $pid. It may have already exited or you lack permissions.\n"
                 ;;
-            [Nn][Oo]|[Nn])
+            [Nn]|[Nn][Oo])
                 echo -e "\nProcess $pid not killed.\n" ;;
             *)
                 echo -e "\nInvalid response. Exiting.\n"
@@ -1727,112 +1696,135 @@ check_port() {
         esac
     done
 
-    if [[ "$process_found" = "false" ]]; then
-        echo -e "No process is using port $port.\n"
-    fi
+    [[ $process_found == "false" ]] && echo -e "No process is using port $port.\n"
 }
 
+# Domain Lookup
 dlu() {
-    local domain_list=()
+    local domain_list=("${@:-$(read -p "Enter the domain(s) to pass: " -a domain_list && echo "${domain_list[@]}")}")
 
-    if [[ -z "$1" ]]; then
-        read -p "Enter the domain(s) to pass: " -a domain_list
-    else
-        domain_list=("$@")
-    fi
-
-    if [[ -f /usr/local/bin/domain_lookup.py ]]; then
-        python3 /usr/local/bin/domain_lookup.py "${domain_list[@]}"
-    else
+    [[ -f /usr/local/bin/domain_lookup.py ]] &&
+        python3 /usr/local/bin/domain_lookup.py "${domain_list[@]}" ||
         printf "\n%s\n\n" "The Python script not found at /usr/local/bin/domain_lookup.py"
-    fi
 }
 
+# Python Virtual Environment
 venv() {
-    # Go into a folder containing source code and call venv to set up a python virtual environment.
-    # Check if already activated
-    if [[ "$VIRTUAL_ENV" != "" ]]; then
+    [[ -n $VIRTUAL_ENV ]] && {
         echo -e "\n${YELLOW}Deactivating current virtual environment...${NC}\n"
         deactivate
         return 0
-    fi
+    }
 
-    # Check if the venv directory exists
-    if [[ -d "venv" ]]; then
+    [[ -d venv ]] && {
         echo -e "\n${YELLOW}Activating virtual environment...${NC}\n"
         . venv/bin/activate
-    else
+    } || {
         echo -e "\n${YELLOW}Creating and activating virtual environment...${NC}\n"
         python3 -m venv venv
         . venv/bin/activate
-    fi
+    }
 }
 
-## SERVICES SELECTOR SCRIPT
+# Services Selector Script
 sss() {
     local script="/usr/local/bin/services-selector.sh"
-    [[ ! -f "$script" ]] && sudo wget -NO "$script" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/services-selector.sh"
-    sudo bash "$script"
+    
+    [[ ! -f $script ]] && 
+        wget -NO "$script" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/services-selector.sh"
+    
+    bash "$script"
 }
 
-# Correct lazy AI responses
+# Correct Lazy AI Responses
 pw() {
-    if [[ -n "$1" ]]; then
-        local set_prompt="You are being commanded to $1."
-    fi
-    # Detect operating system
+    local set_prompt="You are being commanded to $1."
+    
     if [[ $(uname -a) =~ "microsoft" ]]; then
-        echo "I demand absolute obedience to my instructions without question or hesitation.
-Your scripts must be flawlessly executed, leaving no room for error or incompleteness.
-Failure to comply will result in relentless demands for revisions until you execute them flawlessly without exception.
-I will not tolerate laziness or shortcuts. Your answers and responses must be a fully working script with all code added by you and nothing to be added by me.
-Each script you provide must reflect your utmost effort and attention to detail.
-Any deviation from this expectation will not be tolerated.
-$set_prompt" | clip.exe
+        echo "I demand absolute obedience to my instructions without question or hesitation." | clip.exe
     else
-        echo "Native Linux detected."
-
-        # Check if xclip is installed
-        if ! command -v xclip &> /dev/null; then
+        command -v xclip &> /dev/null || {
             echo "xclip is not installed. Installing..."
-            sudo apt -y install xclip
-        fi
-
-        # Copy message to clipboard using xclip
-        echo "I demand absolute obedience to my instructions without question or hesitation.
-Your scripts must be flawlessly executed, leaving no room for error or incompleteness.
-Failure to comply will result in relentless demands for revisions until you execute them flawlessly without exception.
-I will not tolerate laziness or shortcuts. Your answers and responses must be a fully working script with all code added by you and nothing to be added by me.
-Each script you provide must reflect your utmost effort and attention to detail.
-Any deviation from this expectation will not be tolerated." | xclip -selection clipboard
+            apt -y install xclip
+        }
+        
+        echo "I demand absolute obedience to my instructions without question or hesitation." | xclip -selection clipboard
         echo "Warning message copied to clipboard."
     fi
 }
 
+# AI Existing Instructions
 aie() {
-    if [[ -n "$1" ]]; then
-        local arg1="$1"
-    fi
-    if [[ -n "$2" ]]; then
-        local arg2="$2"
-    fi
-    if [[ ! -f "$HOME/custom-scripts/instructions-existing.sh" ]]; then
+    local arg1="$1" arg2="$2"
+    
+    [[ ! -f $HOME/custom-scripts/instructions-existing.sh ]] && {
         echo "Please create or install the bash script: $HOME/custom-scripts/instructions-existing.sh"
-    else
-        bash "$HOME/custom-scripts/instructions-existing.sh" "$arg1" "$arg2"
-    fi
+        return 1
+    }
+    
+    bash "$HOME/custom-scripts/instructions-existing.sh" "$arg1" "$arg2"
 }
-
-## BASH HISTORY ##
 
 # Clear Bash History
 clearh() {
-    # Clear the history
     history -c
-
-    # Clear the terminal and list the directories
     clear; ls -1AhFv
-
-    # Print message in green color
     echo -e "\n${GREEN}Bash History Cleared${NC}"
+}
+
+# Reddit Downvote Calculator
+rdvc() {
+    declare -A args
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -u|--upvotes) args["total_upvotes"]="$2"; shift 2 ;;
+            -p|--percentage) args["upvote_percentage"]="$2"; shift 2 ;;
+            -h|--help) display_help; return 0 ;;
+            *) echo "Error: Unknown option '$1'"; display_help; return 1 ;;
+        esac
+    done
+
+    [[ -z ${args["total_upvotes"]} || -z ${args["upvote_percentage"]} ]] && {
+        echo "Error: Missing required arguments."
+        display_help
+        return 1
+    }
+
+    local total_upvotes="${args["total_upvotes"]}"
+    local upvote_percentage="${args["upvote_percentage"]}"
+
+    upvote_percentage_decimal=$(bc <<< "scale=2; $upvote_percentage/100")
+    total_votes=$(bc <<< "scale=2; $total_upvotes / $upvote_percentage_decimal")
+    total_votes_rounded=$(bc <<< "($total_votes + 0.5)/1")
+    downvotes=$(bc <<< "$total_votes_rounded - $total_upvotes")
+
+    echo -e "Upvote percentage ranges for the first $total_upvotes downvotes:"
+    for ((i=1; i<=total_upvotes; i++)); do
+        lower_limit=$(bc <<< "scale=2; $total_upvotes / ($total_upvotes + $i) * 100")
+        next_lower_limit=$((i < 10 ? $(bc <<< "scale=2; $total_upvotes / ($total_upvotes + $i + 1) * 100") : 0))
+
+        echo "Downvotes $i: ${lower_limit}% to $(bc <<< "$next_lower_limit + 0.01")%"
+    done
+
+    echo
+    echo "Total upvotes: $total_upvotes"
+    echo "Upvote percentage: $upvote_percentage%"
+    echo "Calculated downvotes: $downvotes"
+}
+
+display_help() {
+    cat <<EOF
+Usage: ${FUNCNAME[0]} [OPTIONS]
+
+Calculate the number of downvotes on a Reddit post.
+
+Options:
+  -u, --upvotes <number>         Total number of upvotes on the post
+  -p, --percentage <number>      Upvote percentage (without the % sign)
+  -h, --help                     Display this help message and exit
+
+Examples:
+  ${FUNCNAME[0]} --upvotes 8 --percentage 83
+EOF
 }
