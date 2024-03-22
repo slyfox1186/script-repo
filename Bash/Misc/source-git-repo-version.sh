@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# This script will return the latest release version of a GitHub repository.
+# Example: ./source-git-repo-version.sh "https://github.com/rust-lang/rust.git"
+# Returns: 1.77.0 
+
 # Set variables
 first_match='href="[^"]*/[a-z]*/tag(s)?([a-z/]*)/[a-z.-]*[0-9][0-9._]+[a-zA-Z0-9.-]*"'
 second_match='[0-9][0-9._]+[a-zA-Z0-9.-]*'
