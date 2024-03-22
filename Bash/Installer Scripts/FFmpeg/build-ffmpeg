@@ -59,8 +59,8 @@ mkdir -p "$packages" "$workspace"
 
 # Set the CC/CPP compilers + customized compiler optimization flags
 source_compiler_flags() {
-    CFLAGS="-g -O3 -march=native"
-    CXXFLAGS="-g -O3 -march=native"
+    CFLAGS="-g -O3 -fno-lto -pipe -fPIE -fPIC -march=native"
+    CXXFLAGS="-g -O3 -fno-lto -pipe -fPIE -fPIC -march=native"
     LDFLAGS="-L$workspace/lib64 -L$workspace/lib"
     CPPFLAGS="-I$workspace/include -I/usr/x86_64-linux-gnu/include"
     EXTRALIBS="-ldl -lpthread -lm -lz"
@@ -2614,7 +2614,7 @@ if "$NONFREE_AND_GPL"; then
                             --enable-pic \
                             --enable-static \
                             --enable-strip \
-                            CFLAGS="$CFLAGS -fPIC" \
+                            CFLAGS="$CFLAGS" \
                             CXXFLAGS="$CXXFLAGS"
         execute make "-j$threads"
         execute make install
@@ -2865,8 +2865,8 @@ find_git_repo "strukturag/libheif" "1" "T"
 if build "libheif" "$repo_version"; then
     download "https://github.com/strukturag/libheif/archive/refs/tags/v$repo_version.tar.gz" "libheif-$repo_version.tar.gz"
     source_compiler_flags
-    CFLAGS="-g -O3 -fPIE -fPIC -fno-lto -pipe -march=native"
-    CXXFLAGS="-g -O3 -fPIE -fPIC -fno-lto -pipe -march=native"
+    CFLAGS="-g -O3 -fno-lto -pipe -fPIE -fPIC -march=native"
+    CXXFLAGS="-g -O3 -fno-lto -fPIE -fPIC -pipe -march=native"
     export CFLAGS CXXFLAGS
     libde265_libs=$(find /usr/ -type f -name 'libde265.s*')
     if [[ -f "$libde265_libs" ]] && [[ ! -e "/usr/lib/x86_64-linux-gnu/libde265.so" ]]; then
