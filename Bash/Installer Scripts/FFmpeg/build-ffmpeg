@@ -2404,7 +2404,7 @@ if [[ "$VER" != "18.04" ]] && [[ "$VER" != "11" ]]; then
     if build "rav1e" "$repo_version"; then
         install_rustc
         check_and_install_cargo_c
-        download "https://github.com/xiph/rav1e/archive/refs/tags/v$repo_version.tar.gz" "rav1e-$repo_version.tar.gz"
+        download "https://github.com/xiph/rav1e/archive/refs/tags/$repo_version.tar.gz" "rav1e-$repo_version.tar.gz"
         rm -fr "$HOME/.cargo/registry/index/"* "$HOME/.cargo/.package-cache"
         execute cargo cinstall --prefix="$workspace" \
                                --library-type=staticlib \
