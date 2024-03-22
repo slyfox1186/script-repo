@@ -381,13 +381,16 @@ github_repo() {
         error "Git repository and URL are required."
     fi
 
-    [[ -n "$url_flag" ]] && url_flag=1
-
     while [ $count -le $max_attempts ]; do
         if [[ "$url_flag" -eq 1 ]]; then
-            curl_cmd=$(curl -fsSL "https://github.com/xiph/rav1e/tags" |
-                       grep -Eo 'href="[^"]*v?[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz"' |
-                       head -n1)
+            curl_cmd=$(curl -fsSL "https://github.com/xiph/rav1e/tags/" |
+                       grep -Eo 'p[0-9]+\.tar\.gz' | sed s'/\.tar\.gz//g' | head -n1)
+            repo_version="$curl_cmd"
+            if [[ -n "$repo_version" ]]; then
+                return 0
+            else
+                continue
+            fi
         else
             curl_cmd=$(curl -fsSL "https://github.com/$repo/$url" | grep -o 'href="[^"]*\.tar\.gz"')
         fi
@@ -471,6 +474,16 @@ find_git_repo() {
     local url="$1"
     local git_repo="$2"
     local url_action="$3"
+    local url_flag="$4"
+
+    case "$url_flag" in
+        enabled)
+            set_url_flag=1
+            ;;
+        *)
+            set_url_flag=0
+            ;;
+    esac
 
     case "$url_action" in
         B) set_type="branches" ;;
@@ -488,7 +501,7 @@ find_git_repo() {
         *) fail "Unsupported repository type in the function \"find_git_repo\". Line: $LINENO" ;;
     esac
 
-    "$set_repo" "$url" "$set_type" 2>/dev/null
+    "$set_repo" "$url" "$set_type" "$set_url_flag" 2>/dev/null
 }
 
 execute() {
