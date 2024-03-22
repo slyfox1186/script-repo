@@ -1,59 +1,64 @@
 #!/usr/bin/env bash
-# Shellcheck disable=sc2162,sc2317
+# shellcheck disable=SC2162,SC2317
 
-##################################################################################################################################
-##
-##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-brotli
-##
+##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-brotli.sh
 ##  Purpose: Build GNU BROTLI
-##
-##  Updated: 11.06.23
-##
-##  Script version: 1.2
-##
-##################################################################################################################################
-
-clear
-
-if [ "${EUID}" -eq '0' ]; then
-    echo "You must run this script without root or sudo."
-    exit 1
-fi
+##  Updated: 03.22.24
+##  Script version: 1.3
 
 # Set variables
+cwd="$PWD/brotli-build-script"
+debug="OFF"
+script_version=1.2
 
-script_ver=1.2
-cwd="$PWD"/brotli-build-script
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/script-repo
-debug=OFF
+# Set color variables
+RED='\033[[0;31m'
+GREEN='\033[[0;32m'
+YELLOW='\033[[0;33m'
+NC='\033[[0m'
 
-printf "%s\n%s\n\n"                        \
-    "brotli build script - v${script_ver}" \
-    '==============================================='
+# Create logging functions
+log() {
+    echo -e "${GREEN}[[INFO]]${NC} $1"
+}
+
+warn() {
+    echo -e "${YELLOW}[[WARNING]]${NC} $1"
+}
+
+fail() {
+    echo -e "${RED}[[ERROR]]${NC} $1"
+    echo
+    echo "To report a bug create an issue at: "
+    echo "https://github.com/slyfox1186/script-repo/issues"
+    echo
+    exit 1
+}
 
 # Create output directory
-
-if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
-fi
-mkdir -p "$cwd"
-
-# Set the c+cpp compilers
-
-export CC=gcc CXX=g++
+create_dir() {
+    [[ -d "$cwd" ]] && sudo rm -fr "$cwd"
+    mkdir -p "$cwd"
+}
 
 # Set compiler optimization flags
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
+set_flags() {
+    CC="gcc"
+    CXX="g++"
+    CFLAGS="-g -O3 -pipe -fno-plt -march=native"
+    CPPFLAGS="-D_FORTIFY_SOURCE=2"
+    CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
+    LDFLAGS="-Wl,-rpath,/usr/local/brotli-${version}/lib"
+    export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
+}
 
 # Set the path variable
-
-PATH="\
+set_path() {
+    PATH="
 /usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
+$HOME/perl5/bin:\
+$HOME/.cargo/bin:\
+$HOME/.local/bin:\
 /usr/local/sbin:\
 /usr/local/cuda/bin:\
 /usr/local/x86_64-linux-gnu/bin:\
@@ -61,16 +66,14 @@ ${HOME}/.local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
+/bin\
 "
-export PATH
+    export PATH
+}
 
 # Set the pkg_config_path variable
-
-PKG_CONFIG_PATH="\
+set_pkg_config_path() {
+    PKG_CONFIG_PATH="
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
 /usr/local/lib/usr/local/pkgconfig:\
@@ -81,194 +84,238 @@ PKG_CONFIG_PATH="\
 /usr/share/pkgconfig:\
 /lib64/pkgconfig:\
 /lib/pkgconfig:\
-/lib/usr/local/pkgconfig\
+/lib/usr/local/pkgconfig
 "
-export PKG_CONFIG_PATH
+    export PKG_CONFIG_PATH
+}
 
-# Create functions
-
-exit_fn()
-{
-    printf "\n%s\n\n%s\n\n"                                       \
-        'Make sure to star this repository to show your support!' \
-        "$web_repo"
+# Exit function
+exit_fn() {
+    log "Make sure to star this repository to show your support!"
+    log "https://github.com/slyfox1186/script-repo"
     exit 0
 }
 
-fail_fn()
-{
-    printf "\n%s\n\n%s\n\n" \
-        "$1"              \
-        "To report a bug create an issue at: $web_repo/issues"
-    exit 1
-}
-
-cleanup_fn()
-{
-    local choice
-
-    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n"                \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes'                                      \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
-    clear
-
-    case "${choice}" in
-        1)      sudo rm -fr "$cwd" "${0}";;
-        2)      echo;;
-        *)
-                unset choice
-                clear
-                cleanup_fn
+# Cleanup function
+cleanup_fn() {
+    while true; do
+        echo
+        echo "============================================"
+        echo "  Do you want to clean up the build files?  "
+        echo "============================================"
+        echo
+        echo "[[1]] Yes"
+        echo "[[2]] No"
+        echo
+        read -rp "Your choices are (1 or 2): " choice
+        case "$choice" in
+            1)
+                sudo rm -fr "$cwd" "$0"
+                break
                 ;;
-    esac
+            2)
+                break
+                ;;
+            *)
+                warn "Invalid choice. Please try again."
+                ;;
+        esac
+    done
 }
 
-build()
-{
-    printf "\n%s\n%s\n" \
-        "building $1 - version $2" \
-        '===================================='
+# Build function
+build() {
+    log "Building $1 - version $2"
+    echo
 
-    if [ -f "$cwd/$1.done" ]; then
+    if [[ -f "$cwd/$1.done" ]]; then
         if grep -Fx "$2" "$cwd/$1.done" >/dev/null; then
-            echo "$1 version $2 already built. Remove $cwd/$1.done lockfile to rebuild it."
+            log "$1 version $2 already built. Remove $cwd/$1.done lockfile to rebuild it."
             return 1
         else
-            echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $cwd/$1.done lockfile."
+            warn "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $cwd/$1.done lockfile."
             return 1
         fi
     fi
     return 0
 }
 
-execute()
-{
-    echo "$ ${*}"
+# Execute function
+execute() {
+    log "$ $*"
 
-    if [ "${debug}" = 'ON' ]; then
+    if [[ "$debug" = "ON" ]]; then
         if ! output=$("$@"); then
-            notify-send 5000 "Failed to execute: ${*}" 2>/dev/null
-            fail_fn "Failed to execute: ${*}"
+            fail "Failed to execute: $*"
         fi
     else
         if ! output=$("$@" 2>&1); then
-            notify-send 5000 "Failed to execute: ${*}" 2>/dev/null
-            fail_fn "Failed to execute: ${*}"
+            fail "Failed to execute: $*"
         fi
     fi
 }
 
-download()
-{
+# Download function
+download() {
     dl_path="$cwd"
     dl_url="$1"
-    dl_file="${2:-"${1##*/}"}"
+    dl_file="${2:-${dl_url##*/}}"
 
     if [[ "$dl_file" =~ tar. ]]; then
         output_dir="${dl_file%.*}"
-        output_dir="${3:-"${output_dir%.*}"}"
+        output_dir="${3:-${output_dir%.*}}"
     else
-        output_dir="${3:-"${dl_file%.*}"}"
+        output_dir="${3:-${dl_file%.*}}"
     fi
 
     target_file="$dl_path/$dl_file"
     target_dir="$dl_path/$output_dir"
 
-    if [ -f "${target_file}" ]; then
-        echo "The file \"$dl_file\" is already downloaded."
+    if [[ -f "$target_file" ]]; then
+        log "The file \"$dl_file\" is already downloaded."
+        echo
     else
-        echo "Downloading \"${dl_url}\" saving as \"$dl_file\""
-        if ! curl -A "$user_agent" -Lso "${target_file}" "${dl_url}"; then
-            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
+        log "Downloading \"$dl_url\" saving as \"$dl_file\""
+        if ! curl -Lso "$target_file" "$dl_url"; then
+            warn "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
-            if ! curl -A "$user_agent" -Lso "${target_file}" "${dl_url}"; then
-                fail_fn "The script failed to download \"$dl_file\" twice and will now exit:Line ${LINENO}"
+            if ! curl -Lso "$target_file" "$dl_url"; then
+                fail "The script failed to download \"$dl_file\" twice and will now exit:Line $LINENO"
             fi
         fi
-        echo 'Download Completed'
+        log "Download Completed"
+        echo
     fi
 
-    if [ -d "$target_dir" ]; then
+    if [[ -d "$target_dir" ]]; then
         sudo rm -fr "$target_dir"
     fi
 
     mkdir -p "$target_dir"
 
-    if [ -n "$3" ]; then
-        if ! tar -xf "${target_file}" -C "$target_dir" 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
+    if [[ -n "$3" ]]; then
+        if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
+            sudo rm "$target_file"
+            fail "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
         fi
     else
-        if ! tar -xf "${target_file}" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
+        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
+            sudo rm "$target_file"
+            fail "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
         fi
     fi
 
-    printf "%s\n\n" "File extracted: $dl_file"
+    log "File extracted: $dl_file"
+    echo
 
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: ${LINENO}"
+    cd "$target_dir" || fail "Unable to change the working directory to: $target_dir. Line: $LINENO"
 }
 
-git_1_fn()
-{
-    local curl_cmd github_repo github_url
+parse_release_version() {
+    curl -fsSL "https://gitver.optimizethis.net" | bash -s "$1"
+}
 
-# Scrape github website for the latest repo version
-    github_repo="$1"
-    github_url="$2"
+# Get latest release version from GitHub
+get_latest_release() {
+    version=$(parse_release_version "https://github.com/google/brotli.git")
+    local url="https://github.com/google/brotli/archive/refs/tags/v$version.tar.gz"
+    curl -Lso "brotli-$version.tar.gz" "$url"
+}
 
-    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
-        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
-        g_ver="${g_ver#V}"
+# Mark build as done
+build_done() {
+    echo "$2" > "$cwd/$1.done"
+}
+
+# Check and install dependencies
+check_dependencies() {
+    pkgs=(asciidoc binutils bison build-essential cmake curl ninja-build)
+
+    missing_pkgs=()
+    for pkg in ${pkgs[[@]]}; do
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+            missing_pkgs+=("$pkg")
+        fi
+    done
+
+    if [[ ${#missing_pkgs[[@]]} -gt 0 ]]; then
+        sudo apt-get install -y "${missing_pkgs[[@]]}"
+        sudo apt-get autoremove -y
     fi
 }
 
-build_done() { echo "$2" > "$cwd/$1.done"; }
+# Display help menu
+display_help() {
+    echo "Usage: $0 [[options]]"
+    echo
+    echo "Options:"
+    echo "  -h, --help         Display this help menu"
+    echo "  -l, --latest       Force rebuild of the program even if already built"
+    echo "  -d, --debug        Enable debug mode for more verbose output"
+    echo "  -i, --install      Install the program (default)"
+    echo
+    echo "Description:"
+    echo "  This script builds the Brotli compression library from source."
+    echo "  It downloads the latest release, compiles it with optimized flags,"
+    echo "  and installs it to /usr/local/brotli-VERSION."
+    echo
+    echo "  The script checks for dependencies and installs any missing packages."
+    echo "  It also sets up the necessary environment variables and paths."
+    echo
+    echo "  By default, the script will not rebuild Brotli if it has already been built."
+    echo "  Use the --latest flag to force a rebuild, or remove the lockfile in $cwd/brotli.done."
+    echo
+    echo "Examples:"
+    echo "  $0 --latest"
+    exit 0
+}
 
-# Install required apt packages
-
-pkgs=(asciidoc autogen automake binutils bison build-essential bzip2 ccache cmake
-      curl libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev
-      nasm ninja-build texinfo xmlto yasm zlib1g-dev)
-
-for i in ${pkgs[@]}
-do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
-    fi
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -d|--debug)
+            debug="ON"
+            ;;
+        -h|--help)
+            display_help
+            ;;
+        *)
+            warn "Unknown argument: $1"
+            display_help
+            ;;
+    esac
+    shift
 done
 
-if [ -n "$missing_pkgs" ]; then
-    sudo apt install $missing_pkgs
-    sudo apt -y autoremove
-    clear
+# Main script
+if [[ "$EUID" -eq 0 ]]; then
+    fail "You must run this script without root or sudo."
 fi
 
-# Build program from source
+log "Brotli build script - v$script_version"
+log "========================================"
+echo
 
-git_1_fn 'google/brotli' 'tags' 2>/dev/null
-if build 'brotli' "$g_ver"; then
-    download "https://github.com/google/brotli/archive/refs/tags/v$g_ver.tar.gz" "brotli-$g_ver.tar.gz"
-    execute cmake -B build                          \
-                  -DCMAKE_INSTALL_PREFIX=/usr/local \
-                  -DCMAKE_BUILD_TYPE=Release        \
-                  -DBUILD_SHARED_LIBS=ON            \
-                  -DBUILD_TESTING=OFF               \
+create_dir
+check_dependencies
+set_flags
+set_path
+set_pkg_config_path
+
+get_latest_release
+if build "brotli" "$version"; then
+    download "https://github.com/google/brotli/archive/refs/tags/v$version.tar.gz" "brotli-$version.tar.gz"
+    execute cmake -B build \
+                  -DCMAKE_INSTALL_PREFIX="/usr/local/brotli-$version" \
+                  -DCMAKE_BUILD_TYPE=Release \
+                  -DBUILD_SHARED_LIBS=ON \
+                  -DBUILD_TESTING=OFF \
                   -G Ninja -Wno-dev
-    execute ninja "-j$(nproc --all)" -C build
+    execute sudo ninja "-j$(nproc --all)" -C build
     execute sudo ninja "-j$(nproc --all)" -C build install
+    execute sudo ln -sf "/usr/local/brotli-$version/bin/"{brotli,brotli-decompressor} /usr/local/bin/
+    build_done "brotli" "$version"
 fi
 
-# Prompt user to clean up files
 cleanup_fn
-
-# Show exit message
 exit_fn
