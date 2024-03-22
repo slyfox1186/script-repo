@@ -1,28 +1,31 @@
 # EXPORT WINDOWS PATHS
-PATH="\
-$PATH:\
-/c/Windows/System32:\
-/c/Windows:\
-/c/Program Files:\
-/c/Program Files (x86):\
-/c/Program Files (x86)/FSViewer:\
-/c/Program Files/VLC\
-"
+PATH="$PATH:/c/Windows/System32:/c/Windows:/c/Program Files:/c/Program Files (x86):/c/Program Files (x86)/FSViewer:/c/Program Files/VLC"
 export PATH
 
 # EXPORT ANSI COLORS
-RED="\033[0;31m"
-GREEN="\033[0;32m"
-YELLOW="\033[0;33m"
 BLUE="\033[0;34m"
+GREEN="\033[0;32m"
+RED="\033[0;31m"
+YELLOW="\033[0;33m"
 NC="\033[0m" # No Color
 export BLUE GREEN NC RED YELLOW
 
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
-gedit() { "$(type -P gedit)" "$@" &>/dev/null; }
-geds() { sudo -Hu root "$(type -P gedit)" "$@" &>/dev/null; }
-gnome-text-editor() { "$(type -P gnome-text-editor)" "$@" &>/dev/null; }
-gnome-text-editors() { sudo -Hu root "$(type -P gnome-text-editor)" "$@" &>/dev/null; }
+gedit() {
+    "$(type -P gedit)" "$@" &>/dev/null
+}
+
+geds() {
+    sudo -Hu root "$(type -P gedit)" "$@" &>/dev/null
+}
+
+gnome-text-editor() {
+    "$(type -P gnome-text-editor)" "$@" &>/dev/null
+}
+
+gnome-text-editors() {
+    sudo -Hu root "$(type -P gnome-text-editor)" "$@" &>/dev/null
+}
 
 ## GET THE OS AND ARCH OF THE ACTIVE COMPUTER ##
 this_pc() {
@@ -31,20 +34,17 @@ this_pc() {
     local VER="$VERSION_ID"
 
     clear
-    printf "%s\n%s\n\\n" \
-        "Operating System: $OS" \
-        "Specific Version: $VER"
+    echo "Operating System: $OS"
+    echo "Specific Version: $VER"
+    echo
 }
 
 ## FIND COMMANDS ##
 ffind() {
-    local fname="$1"
-    local ftype="$2"
-    local fpath="$3"
-    local find_cmd
+    local fname="$1" ftype="$2" fpath="$3" find_cmd
 
     # Check if any argument is passed
-    if [[ "$#" -eq 0 ]]; then
+    if [[ $# -eq 0 ]]; then
         read -p "Enter the name to search for: " fname
         read -p "Enter a type of FILE (d|f|blank for any): " ftype
         read -p "Enter the starting path (blank for current directory): " fpath
@@ -54,9 +54,9 @@ ffind() {
     fpath=${fpath:-.}
 
     # Construct the find command based on the input
-    find_cmd="find \"$fpath\" -iname \"$fname\""
-    if [[ -n "$ftype" ]]; then
-        if [[ "$ftype" == "d" || "$ftype" == "f" ]]; then
+    find_cmd="find "$fpath" -iname "$fname""
+    if [[ -n $ftype ]]; then
+        if [[ $ftype == "d" || $ftype == "f" ]]; then
             find_cmd="$find_cmd -type $ftype"
         else
             echo "Invalid FILE type. Please use "d" for directories or "f" for files."
@@ -70,22 +70,22 @@ ffind() {
 
 ## UNCOMPRESS FILES ##
 untar() {
-    local archive
+    local archive ext flag
 
     for archive in *.*; do
-        local ext="${archive##*.}"
+        ext="${archive##*.}"
 
-        [[ ! -d "$PWD"/"${archive%%.*}" ]] && mkdir -p "$PWD/${archive%%.*}"
+        [[ ! -d "$PWD/${archive%%.*}" ]] && mkdir -p "$PWD/${archive%%.*}"
 
         unset flag
-        case "$ext" in
+        case $ext in
             7z|zip) 7z x -o./"${archive%%.*}" ./"$archive";;
             bz2)    flag="jxf";;
             gz|tgz) flag="zxf";;
             xz|lz)  flag="xf";;
         esac
 
-        [[ -n "$flag" ]] && tar "$flag" ./"$archive" -C ./"${archive%%.*}" --strip-components 1
+        [[ -n $flag ]] && tar "$flag" ./"$archive" -C ./"${archive%%.*}" --strip-components 1
     done
 }
 
@@ -102,7 +102,8 @@ mf() {
         chmod 744 "$1"
     fi
 
-    clear; ls -1AhFv --color --group-directories-first
+    clear
+    ls -1AhFv --color --group-directories-first
 }
 
 mdir() {
@@ -110,31 +111,32 @@ mdir() {
 
     if [[ -z "$1" ]]; then
         read -p "Enter directory name: " dir
-        mkdir -p  "$PWD/$dir"
+        mkdir -p "$PWD/$dir"
         cd "$PWD/$dir" || exit 1
     else
         mkdir -p "$1"
         cd "$PWD/$1" || exit 1
     fi
 
-    clear; ls -1AhFv --color --group-directories-first
+    clear
+    ls -1AhFv --color --group-directories-first
 }
 
 ## AWK COMMANDS ##
 
 # Removed all duplicate lines: outputs to terminal
 rmd() {
-    awk '!seen[[${0}]]++' "$1"
+    awk '!seen[$0]++' "$1"
 }
 
 # Remove consecutive duplicate lines: outputs to terminal
 rmdc() {
-    awk 'f!=${0}&&f=${0}' "$1"
+    awk 'f!=$0{print;f=$0}' "$1"
 }
 
 # Remove all duplicate lines and removes trailing spaces before comparing: replaces the file
 rmdf() {
-    perl -i -lne "s/\s*$//; print if ! $x{$_}++" "$1"
+    perl -i -lne "s/\s*$//; print if ! \$x{\$_}++" "$1"
     gnome-text-editor "$1"
 }
 
@@ -144,18 +146,20 @@ rmdf() {
 cpf() {
     [[ ! -d "$HOME/tmp" ]] && mkdir -p "$HOME/tmp"
     cp "$1" "$HOME/tmp/$1"
-    chown -R "$USER":"$USER" "$HOME/tmp/$1"
+    chown -R "$USER:$USER" "$HOME/tmp/$1"
     chmod -R 744 "$HOME/tmp/$1"
-    clear; ls -1AhFv --color --group-directories-first
+    clear
+    ls -1AhFv --color --group-directories-first
 }
 
 # MOVE file
 mvf() {
     [[ ! -d "$HOME/tmp" ]] && mkdir -p "$HOME/tmp"
     mv "$1" "$HOME/tmp/$1"
-    chown -R "$USER":"$USER" "$HOME/tmp/$1"
+    chown -R "$USER:$USER" "$HOME/tmp/$1"
     chmod -R 744 "$HOME/tmp/$1"
-    clear; ls -1AhFv --color --group-directories-first
+    clear
+    ls -1AhFv --color --group-directories-first
 }
 
 ## APT COMMANDS ##
@@ -163,8 +167,9 @@ mvf() {
 # Download an APT package + all its dependencies in one go
 
 dl_apt() {
-    wget -cq "$(apt --print-uris -qq --reinstall install $1 2>/dev/null | cut -d""\""" -f2)"
-    clear; ls -1AhFv --color --group-directories-first
+    wget -cq "$(apt --print-uris -qq --reinstall install $1 2>/dev/null | cut -d"'" -f2)"
+    clear
+    ls -1AhFv --color --group-directories-first
 }
 
 # Clean OS
@@ -196,22 +201,22 @@ list() {
     local search_cache
 
     if [[ -n "$1" ]]; then
-        sudo apt list "*$1*" 2>/dev/null | awk -F"/" '{print $1}'
+        sudo apt list "*$1*" 2>/dev/null | awk -F/ '{print $1}'
     else
         read -p "Enter the string to search: " search_cache
         echo
-        sudo apt list "*$1*" 2>/dev/null | awk -F"/" '{print $1}'
+        sudo apt list "*$1*" 2>/dev/null | awk -F/ '{print $1}'
     fi
 }
 
 listd() {
     local search_cache
     if [[ -n "$1" ]]; then
-        sudo apt list -- "*$1*"-dev 2>/dev/null | awk -F"/" '{print $1}'
+        sudo apt list -- "*$1*"-dev 2>/dev/null | awk -F/ '{print $1}'
     else
         read -p "Enter the string to search: " search_cache
         echo
-        sudo apt list -- "*$1*"-dev 2>/dev/null | awk -F"/" '{print $1}'
+        sudo apt list -- "*$1*"-dev 2>/dev/null | awk -F/ '{print $1}'
     fi
 }
 
@@ -250,8 +255,8 @@ fix_key() {
         read -p "Enter the gpg key url: " url
         clear
     else
-        file="$1"
-        url="$2"
+        file=$1
+        url=$2
     fi
 
     curl -fsS# "$url" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/$file"
@@ -267,9 +272,10 @@ fix_key() {
 
 toa() {
     clear
-    sudo chown -R "$USER":"$USER" "$PWD"
+    sudo chown -R "$USER:$USER" "$PWD"
     sudo chmod -R 744 "$PWD"
-    clear; ls -1AvhF --color --group-directories-first
+    clear
+    ls -1AvhF --color --group-directories-first
 }
 
 tod() {
@@ -279,13 +285,14 @@ tod() {
     if [[ -z "$1" ]]; then
         read -p "Enter the folder name/path: " directory
     else
-        directory="$1"
+        directory=$1
     fi
 
-    sudo chown -R "$USER":"$USER" "$directory"
+    sudo chown -R "$USER:$USER" "$directory"
     sudo chmod -R 744 "$directory"
 
-    clear; ls -1AvhF --color --group-directories-first
+    clear
+    ls -1AvhF --color --group-directories-first
 }
 
 tome() {
@@ -327,8 +334,8 @@ tome() {
 
 ## Show all installed packages
 showpkgs() {
-    dpkg --get-selections | grep -v deinstall > "$HOME"/tmp/packages.list
-    gnome-text-editor "$HOME"/tmp/packages.list
+    dpkg --get-selections | grep -v deinstall > "$HOME/tmp/packages.list"
+    gnome-text-editor "$HOME/tmp/packages.list"
 }
 
 # Pipe all development packages names to file
@@ -344,60 +351,65 @@ new_key() {
     local bits comment name pass type
     clear
 
-    printf "%s\n\\n" "Encryption type: [[ rsa | dsa | ecdsa ]]"
+    echo "Encryption type: [[ rsa | dsa | ecdsa ]]"
+    echo
     read -p "Your choice: " type
     clear
 
-    printf "%s\n%s\n\\n" \
-        "[i] Choose the key bit size" \
-        "[i] Values encased in \"()\" are recommended"
+    echo "[i] Choose the key bit size"
+    echo "[i] Values encased in \"()\" are recommended"
+    echo
 
-    if [[ "$type" == "rsa" ]]; then
-        printf "%s\n\\n" "[i] rsa: [[ 512 | 1024 | (2048) | 4096 ]]"
-    elif [[ "$type" == "dsa" ]]; then
-        printf "%s\n\\n" "[i] dsa: [[ (1024) | 2048 ]]"
-    elif [[ "$type" == "ecdsa" ]]; then
-        printf "%s\n\\n" "[i] ecdsa: [[ (256) | 384 | 521 ]]"
+    if [[ $type == "rsa" ]]; then
+        echo "[i] rsa: [[ 512 | 1024 | (2048) | 4096 ]]"
+        echo
+    elif [[ $type == "dsa" ]]; then
+        echo "[i] dsa: [[ (1024) | 2048 ]]"
+        echo
+    elif [[ $type == "ecdsa" ]]; then
+        echo "[i] ecdsa: [[ (256) | 384 | 521 ]]"
+        echo
     fi
 
     read -p "Your choice: " bits
     clear
 
-    printf "%s\n%s\n\\n" \
-        "[i] Choose a password" \
-        "[i] For no password just press enter"
+    echo "[i] Choose a password"
+    echo "[i] For no password just press enter"
+    echo
     read -p "Your choice: " pass
     clear
 
-    printf "%s\n\\n" "[i] For no comment just press enter"
+    echo "[i] For no comment just press enter"
     read -p "Your choice: " comment
     clear
 
-    printf "%s\n\\n" "[i] Enter the ssh key name"
+    echo "[i] Enter the ssh key name"
     read -p "Your choice: " name
     clear
 
-    printf "%s\n%s\n%s\n%s\n%s\n\\n" \
-        "[i] Your choices" \
-        "[i] Type: $type" \
-        "[i] bits: $bits" \
-        "[i] Password: $pass" \
-        "[i] comment: $comment" \
-        "[i] Key name: $name"
+    echo "[i] Your choices"
+    echo "[i] Type: $type"
+    echo "[i] bits: $bits"
+    echo "[i] Password: $pass"
+    echo "[i] comment: $comment"
+    echo "[i] Key name: $name"
+    echo
     read -p "Press enter to continue or ^c to exit"
     clear
 
     ssh-keygen -q -b "$bits" -t "$type" -N "$pass" -C "$comment" -f "$name"
 
     chmod 600 "$PWD/$name"
-    chmod 644 "$PWD/${name}.pub"
+    chmod 644 "$PWD/$name.pub"
     clear
 
-    printf "%s\n\\n" "File: $PWD/$name"
+    echo "File: $PWD/$name"
     cat "$PWD/$name"
 
-    printf "\n%s\n\\n" "File: $PWD/${name}.pub"
-    cat "$PWD/${name}.pub"
+    echo
+    echo "File: $PWD/$name.pub"
+    cat "$PWD/$name.pub"
     echo
 }
 
@@ -407,43 +419,60 @@ keytopub() {
     clear
     ls -1AhFv --color --group-directories-first
 
-    printf "%s\n\\n" "Enter the full paths for each file"
+    echo "Enter the full paths for each file"
+    echo
     read -p "Private key: " okey
     read -p "Public key: " opub
     clear
-    if [[ -f "$okey" ]]; then
+    if [[ -f $okey ]]; then
         chmod 600 "$okey"
     else
-        printf "%s\n\\n" "Warning: FILE missing = $okey"
+        echo "Warning: FILE missing = $okey"
         read -p "Press Enter to exit."
         exit 1
     fi
     ssh-keygen -b "4096" -y -f "$okey" > "$opub"
     chmod 644 "$opub"
-    cp "$opub" "$HOME"/.ssh/authorized_keys
-    chmod 600 "$HOME"/.ssh/authorized_keys
-    unset "$okey"
-    unset "$opub"
+    cp "$opub" "$HOME/.ssh/authorized_keys"
+    chmod 600 "$HOME/.ssh/authorized_keys"
+    unset $okey
+    unset $opub
 }
 
 # Install ColorDiff package
-cdiff() { clear; colordiff "$1" "$2"; }
+cdiff() {
+    clear
+    colordiff "$1" "$2"
+}
 
 # gzip
-gzip() { clear; gzip -d "$@"; }
+gzip() {
+    clear
+    gzip -d "$@"
+}
 
 # get system time
-gettime() { clear; date +%r | cut -d " " -f1-2 | grep -E "^.*$"; }
+gettime() {
+    clear
+    date +%r | cut -d " " -f1-2 | grep -E "^.*$"
+}
 
 ## SOURCE FILES ##
 sbrc() {
-    . "$HOME/.bashrc" && printf "%s\n\\n" "The command was a success!" || printf "%s\n\\n" "The command failed!"
-    echo; ls -1AhFv --color --group-directories-first
+    source "$HOME/.bashrc"
+    clear
+    ls -1AhFv --color --group-directories-first
 }
 
 spro() {
-    . "$HOME/.profile" && printf "%s\n\\n" "The command was a success!" || printf "%s\n\\n" "The command failed!"
-    echo; ls -1AhFv --color --group-directories-first
+    . "$HOME/.profile"
+    if [[ $? -eq 0 ]]; then
+        echo "The command was a success!"
+    else
+        echo "The command failed!"
+    fi
+    echo
+    ls -1AhFv --color --group-directories-first
 }
 
 ## ARIA2 COMMANDS ##
@@ -460,7 +489,10 @@ aria2_on() {
 }
 
 # Stop aria2 daemon
-aria2_off() { clear; killall aria2c; }
+aria2_off() {
+    clear
+    killall aria2c
+}
 
 myip() {
     echo "LAN: $(ip route get 1.2.3.4 | awk '{print $7}')"
@@ -486,11 +518,11 @@ mywget() {
 rmd() {
     local dir
 
-    if [[ -z "$1" ]] || [[ -z "$2" ]]; then
+    if [[ -z "$*" ]]; then
         read -p "Please enter the directory name to remove: " dir
         sudo rm -r "$dir"
     else
-        sudo rm -r "$1"
+        sudo rm -r "$*"
     fi
 }
 
@@ -507,15 +539,15 @@ rmf() {
 }
 
 ## IMAGEMAGICK ##
-function imow() {
+imow() {
     local file_path="/usr/local/bin/imow.sh"
     if [[ ! -f "$file_path" ]]; then
-        local dir="$(mktemp -d)"
-        cd "$dir" || echo "Failed to cd into the tmp directory: $dir"; return 1
+        local dir=$(mktemp -d)
+        cd "$dir" || { echo "Failed to cd into the tmp directory: $dir"; return 1; }
         curl -Lso imow.sh "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
         sudo mv imow.sh "$file_path"
         sudo rm -fr "$dir"
-        sudo chown "$USER":"$USER"
+        sudo chown "$USER:$USER" "$file_path"
         sudo chmod 777 "$file_path"
     fi
     clear
@@ -536,14 +568,16 @@ im50() {
 
 ## Show NVME temperature ##
 nvme_temp() {
+    local n0 n1 n2
+
     if [[ -d "/dev/nvme0n1" ]]; then
-        local n0=$(sudo nvme smart-log /dev/nvme0n1)
+        n0=$(sudo nvme smart-log /dev/nvme0n1)
     fi
     if [[ -d "/dev/nvme1n1" ]]; then
-        local n1=$(sudo nvme smart-log /dev/nvme0n1)
+        n1=$(sudo nvme smart-log /dev/nvme0n1)
     fi
     if [[ -d "/dev/nvme2n1" ]]; then
-        local n2=$(sudo nvme smart-log /dev/nvme0n1)
+        n2=$(sudo nvme smart-log /dev/nvme0n1)
     fi
     echo "nvme0n1: $n0"
     echo
@@ -571,13 +605,13 @@ cuda_purge() {
     read -p "Your choices are (1 or 2): " choice
     clear
 
-    if [[ "$choice" -eq 1 ]]; then
+    if [[ $choice -eq 1 ]]; then
         echo "Purging the CUDA-SDK-Toolkit from your PC"
         echo "================================================"
         echo
-        sudo sudo apt -y --purge remove "*cublas*" "cuda*" "nsight*"
-        sudo sudo apt -y autoremove
-        sudo sudo apt update
+        sudo apt -y --purge remove "*cublas*" "cuda*" "nsight*"
+        sudo apt -y autoremove
+        sudo apt update
     else
         return 0
     fi
@@ -588,13 +622,16 @@ ffdl() {
     curl -m 10 -Lso "ff.sh" "https://ffdl.optimizethis.net"
     bash "ff.sh"
     sudo rm "ff.sh"
-    clear; ls -1AhFv --color --group-directories-first
+    clear
+    ls -1AhFv --color --group-directories-first
 }
 
-ffs() { curl -m 10 -Lso "ff" "https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/build-ffmpeg"; }
+ffs() {
+    curl -m 10 -Lso "ff" "https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/build-ffmpeg"
+}
 
 dlfs() {
-    local f
+    local f scripts
     clear
 
     wget --show-progress -qN - -i "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/SlyFox1186%20Scripts/favorite-installer-scripts.txt"
@@ -602,13 +639,16 @@ dlfs() {
     scripts=(build-ffmpeg build-all-git-safer build-all-gnu-safer build-magick)
 
     for file in ${scripts[@]}; do
-        chown -R "$USER":"$USER" "$file"
+        chown -R "$USER:$USER" "$file"
         chmod -R 744 "$PWD" "$file"
-        [[ "$file" == "build-all-git-safer" || "$file" == "build-all-gnu-safer" ]] && mv "$file" "${file%-safer}"
+        if [[ $file == "build-all-git-safer" || $file == "build-all-gnu-safer" ]]; then
+            mv "$file" "${file%-safer}"
+        fi
         [[ -n "favorite-installer-scripts.txt" ]] && sudo rm "favorite-installer-scripts.txt"
     done
 
-    clear; ls -1AhFv --color --group-directories-first
+    clear
+    ls -1AhFv --color --group-directories-first
 }
 
 ## List large files by type
@@ -617,14 +657,14 @@ large_files() {
     clear
 
     if [[ -z "$1" ]]; then
-        printf "%s\n\\n" "Input the FILE extension to search for without a dot: "
+        echo "Input the FILE extension to search for without a dot: "
         read -p "Enter your choice: " choice
         clear
     else
-        choice="$1"
+        choice=$1
     fi
 
-    sudo find "$PWD" -type f -name "*.$choice" -printf "%s %h\\n" | sort -ru -o "large-files.txt"
+    sudo find "$PWD" -type f -name "*.$choice" -printf "%s %h\n" | sort -ru -o "large-files.txt"
 
     if [[ -f "large-files.txt" ]]; then
         sudo gnome-text-editor "large-files.txt"
@@ -649,16 +689,15 @@ mi() {
 
 ## LIST PPA REPOS
 list_ppa() {
-    local entry
+    local entry host user ppa
 
     for apt in $(find /etc/apt/ -type f -name \*.list); do
-        grep -Po "(?<=^deb\s).*?(?=#|$)" "$apt" | while read entry; do
-            local host=$(echo "$entry" | cut -d/ -f3)
-            local user=$(echo "$entry" | cut -d/ -f4)
-            local ppa=$(echo "$entry" | cut -d/ -f5)
-            #echo sudo apt-add-repository ppa:$USER/${ppa}
+        grep -Po "(?<=^deb\s).*?(?=#|$)" "$apt" | while read -r entry; do
+            host=$(echo "$entry" | cut -d/ -f3)
+            user=$(echo "$entry" | cut -d/ -f4)
+            ppa=$(echo "$entry" | cut -d/ -f5)
             if [[ "ppa.launchpad.net" = "$host" ]]; then
-                echo sudo apt-add-repository ppa:"$USER/$ppa"
+                echo sudo apt-add-repository ppa:"$user/$ppa"
             else
                 echo sudo apt-add-repository \"deb "$entry"\"
             fi
@@ -670,10 +709,10 @@ list_ppa() {
 7z_gz() {
     local source output
     if [[ -n "$1" ]]; then
-        if [[ -f "$1".tar.gz ]]; then
-            sudo rm "$1".tar.gz
+        if [[ -f "$1.tar.gz" ]]; then
+            sudo rm "$1.tar.gz"
         fi
-        7z a -ttar -so -an "$1" | 7z a -tgz -mx9 -mpass1 -si "$1".tar.gz
+        7z a -ttar -so -an "$1" | 7z a -tgz -mx9 -mpass1 -si "$1.tar.gz"
     else
         read -p "Please enter the source folder path: " source
         read -p "Please enter the destination archive path (w/o extension): " output
@@ -707,23 +746,26 @@ list_ppa() {
 # Create a .7z file with max compression settings
 
 7z_1() {
-    local choice
+    local choice source_dir
+    clear
+
     if [[ -d "$1" ]]; then
-        local source_dir="$1"
+        source_dir=$1
         7z a -y -t7z -m0=lzma2 -mx1 "$source_dir.7z" ./"$source_dir"/*
     else
         read -p "Please enter the source folder path: " source_dir
         7z a -y -t7z -m0=lzma2 -mx1 "$source_dir.7z" ./"$source_dir"/*
     fi
 
-    printf "\n%s\n\n%s\n%s\n\\n" \
-        "Do you want to delete the original file?" \
-        "[[1]] Yes" \
-        "[[2]] No"
+    echo
+    echo "Do you want to delete the original file?"
+    echo "[[1]] Yes"
+    echo "[[2]] No"
+    echo
     read -p "Your choices are (1 or 2): " choice
     echo
 
-    case "$choice" in
+    case $choice in
         1)  sudo rm -fr "$source_dir";;
         2)  ;;
         "") ;;
@@ -734,23 +776,26 @@ list_ppa() {
 }
 
 7z_5() {
-    local choice
+    local choice source_dir
+    clear
+
     if [[ -d "$1" ]]; then
-        local source_dir="$1"
+        source_dir=$1
         7z a -y -t7z -m0=lzma2 -mx5 "$source_dir.7z" ./"$source_dir"/*
     else
         read -p "Please enter the source folder path: " source_dir
         7z a -y -t7z -m0=lzma2 -mx5 "$source_dir.7z" ./"$source_dir"/*
     fi
 
-    printf "\n%s\n\n%s\n%s\n\\n" \
-        "Do you want to delete the original file?" \
-        "[[1]] Yes" \
-        "[[2]] No"
+    echo
+    echo "Do you want to delete the original file?"
+    echo "[[1]] Yes"
+    echo "[[2]] No"
+    echo
     read -p "Your choices are (1 or 2): " choice
     echo
 
-    case "$choice" in
+    case $choice in
         1)  sudo rm -fr "$source_dir";;
         2)  ;;
         "") ;;
@@ -761,22 +806,26 @@ list_ppa() {
 }
 
 7z_9() {
+    local choice source_dir
+    clear
+
     if [[ -d "$1" ]]; then
-        local source_dir="$1"
+        source_dir=$1
         7z a -y -t7z -m0=lzma2 -mx9 "$source_dir.7z" ./"$source_dir"/*
     else
         read -p "Please enter the source folder path: " source_dir
         7z a -y -t7z -m0=lzma2 -mx9 "$source_dir.7z" ./"$source_dir"/*
     fi
 
-    printf "\n%s\n\n%s\n%s\n\\n" \
-        "Do you want to delete the original file?" \
-        "[[1]] Yes" \
-        "[[2]] No"
+    echo
+    echo "Do you want to delete the original file?"
+    echo "[[1]] Yes"
+    echo "[[2]] No"
+    echo
     read -p "Your choices are (1 or 2): " choice
     echo
 
-    case "$choice" in
+    case $choice in
         1)  sudo rm -fr "$source_dir";;
         2)  ;;
         "") ;;
@@ -784,94 +833,6 @@ list_ppa() {
             return 1
             ;;
     esac
-}
-
-## tar commands ##
-
-tar_gz() {
-    local source output
-    if [[ -n "$1" ]]; then
-        if [[ -f "$1".tar.gz ]]; then
-            sudo rm "$1".tar.gz
-        fi
-        tar -cJf "$1".tar.gz "$1"
-    else
-        read -p "Please enter the source folder path: " source
-        echo
-        read -p "Please enter the destination archive path (w/o extension): " output
-        echo
-        if [[ -f "$output.tar.gz" ]]; then
-            sudo rm "$output.tar.gz"
-        fi
-        tar -cJf "$output.tar.gz" "$source"
-    fi
-}
-
-tar_bz2() {
-    local source output
-    if [[ -n "$1" ]]; then
-        if [[ -f "$1".tar.bz2 ]]; then
-            sudo rm "$1".tar.bz2
-        fi
-        tar -cvjf "$1".tar.bz2 "$1"
-    else
-        read -p "Please enter the source folder path: " source
-        echo
-        read -p "Please enter the destination archive path (w/o extension): " output
-        echo
-        [[ -f "$output".tar.bz2 ]] && sudo rm "$output".tar.bz2
-        tar -cvjf "$output".tar.bz2 "$source"
-    fi
-}
-
-tar_xz_1() {
-    local source output
-    if [[ -n "$1" ]]; then
-        [[ -f "$1.tar.xz" ]] && sudo rm "$1.tar.xz"
-        tar -cvJf - "$1" | xz -1 -c - > "$1.tar.xz"
-    else
-        read -p "Please enter the source folder path: " source
-        read -p "Please enter the destination archive path (w/o extension): " output
-        echo
-        if [[ -f "$output.tar.xz" ]]; then
-            sudo rm "$output.tar.xz"
-        fi
-        tar -cvJf - "$source" | xz -1 -c - > "$output.tar.xz"
-    fi
-}
-
-tar_xz_5() {
-    local source output
-    if [[ -n "$1" ]]; then
-        [[ -f "$1.tar.xz" ]] && sudo rm "$1.tar.xz"
-        tar -cvJf - "$1" | xz -5 -c - > "$1.tar.xz"
-    else
-        read -p "Please enter the source folder path: " source
-        echo
-        read -p "Please enter the destination archive path (w/o extension): " output
-        clear
-        if [[ -f "$output.tar.xz" ]]; then
-            sudo rm "$output.tar.xz"
-        fi
-        tar -cvJf - "$source" | xz -5 -c - > "$output.tar.xz"
-    fi
-}
-
-tar_xz_9() {
-    local source output
-    if [[ -n "$1" ]]; then
-        [[ -f "$1.tar.xz" ]] && sudo rm "$1.tar.xz"
-        tar -cvJf - "$1" | xz -9 -c - > "$1.tar.xz"
-    else
-        read -p "Please enter the source folder path: " source
-        echo
-        read -p "Please enter the destination archive path (w/o extension): " output
-        echo
-        if [[ -f "$output.tar.xz" ]]; then
-            sudo rm "$output.tar.xz"
-        fi
-        tar -cvJf - "$source" | xz -9 -c - > "$output.tar.xz"
-    fi
 }
 
 ## FFMPEG COMMANDS ##
@@ -891,34 +852,38 @@ wcache() {
     echo
     read -p "Enter the drive id to turn off write caching (/dev/sdX w/o /dev/): " choice
 
-    sudo hdparm -W 0 /dev/"${choice}"
+    sudo hdparm -W 0 /dev/"$choice"
 }
 
 rmd() {
     local dir
     if [[ -z "$*" ]]; then
-        clear; ls -1AvhF --color --group-directories-first
+        clear
+        ls -1AvhF --color --group-directories-first
         echo
         read -p "Enter the directory path(s) to delete: " dir
      else
-        dir="$*"
+        dir=$*
     fi
     sudo rm -fr "$dir"
-    echo; ls -1AvhF --color --group-directories-first
+    echo
+    ls -1AvhF --color --group-directories-first
 }
 
 
 rmf() {
     local files
     if [[ -z "$*" ]]; then
-        clear; ls -1AvhF --color --group-directories-first
+        clear
+        ls -1AvhF --color --group-directories-first
         echo
         read -p "Enter the FILE path(s) to delete: " files
      else
-        files="$*"
+        files=$*
     fi
     sudo rm "$files"
-    echo; ls -1AvhF --color --group-directories-first
+    echo
+    ls -1AvhF --color --group-directories-first
 }
 
 ## LIST INSTALLED PACKAGES BY ORDER OF IMPORTANCE
@@ -939,27 +904,29 @@ fix_up() {
 count_dir() {
     local keep_count
     keep_count=$(find . -maxdepth 1 -type f | wc -l)
-    printf "%s %d\n\\n" "The total directory file count is (non-recursive):" "$keep_count"
+    echo "The total directory file count is (non-recursive): $keep_count"
+    echo
 }
 
 count_dirr() {
     local keep_count
     clear
     keep_count=$(find . -type f | wc -l)
-    printf "%s %d\n\\n" "The total directory file count is (recursive):" "$keep_count"
+    echo "The total directory file count is (recursive): $keep_count"
+    echo
 }
 
 ## TEST GCC & CLANG ##
 test_gcc() {
-    local choice
-    local random_dir=$(mktemp -d)
+    local choice random_dir
 
     # CREATE A TEMPORARY C FILE TO RUN OUR TESTS AGAINST
+    random_dir=$(mktemp -d)
     cat > "$random_dir/hello.c" <<'EOF'
 #include <stdio.h>
 int main(void)
 {
-   printf("Hello World!\\n");
+   printf("Hello World!\n");
    return 0;
 }
 EOF
@@ -975,15 +942,15 @@ EOF
 }
 
 test_clang() {
-    local choice
-    local random_dir=$(mktemp -d)
+    local choice random_dir
 
     # CREATE A TEMPORARY C FILE TO RUN OUR TESTS AGAINST
+    random_dir=$(mktemp -d)
     cat > "$random_dir/hello.c" <<'EOF'
 #include <stdio.h>
 int main(void)
 {
-   printf("Hello World!\\n");
+   printf("Hello World!\n");
    return 0;
 }
 EOF
@@ -992,7 +959,7 @@ EOF
         "$1" -Q -v "$random_dir/hello.c"
     else
         clear
-        read -p "Enter the GCC binary you wish to test (example: gcc-11): " choice
+        read -p "Enter the Clang binary you wish to test (example: clang-11): " choice
         echo
         "$choice" -Q -v "$random_dir/hello.c"
     fi
@@ -1008,7 +975,8 @@ gcc_native() {
 
     echo "Inspecting GCC verbose output for -march=native..."
     # Create a temporary empty file
-    local temp_source=$(mktemp /tmp/dummy_source.XXXXXX.c)
+    local temp_source
+    temp_source=$(mktemp /tmp/dummy_source.XXXXXX.c)
     trap 'rm -f "$temp_source"' EXIT
 
     # Using echo to create an empty file
@@ -1023,11 +991,11 @@ rm_deb() {
     local fname
 
     if [[ -n "$1" ]]; then
-        sudo dpkg -r "$(dpkg -f \"$1\" Package)"
+        sudo dpkg -r "$(dpkg -f "$1" Package)"
     else
         read -p "Please enter the Debian FILE name: " fname
         clear
-        sudo dpkg -r "$(dpkg -f \"$fname\" Package)"
+        sudo dpkg -r "$(dpkg -f "$fname" Package)"
     fi
 }
 
@@ -1051,18 +1019,19 @@ gc() {
 }
 
 kill_process() {
-    local id pids
-    local program="$1"
+    local program pids id
 
-    if [[ -z "$program" ]]; then
+    if [[ -z "$1" ]]; then
         echo "Usage: kill_process NAME"
         return 1
     fi
 
-    echo -e "Checking for running instances of: '$program'\\n"
+    program=$1
+
+    echo -e "Checking for running instances of: '$program'\n"
 
     # Find all PIDs for the given process
-    local pids=$(pgrep -f "$program")
+    pids=$(pgrep -f "$program")
 
     if [[ -z "$pids" ]]; then
         echo "No instances of "$program" are running."
@@ -1074,24 +1043,26 @@ kill_process() {
 
     for id in $pids; do
         echo "Killing PID $id..."
-        sudo kill -9 "$id" || {
+        if ! sudo kill -9 "$id"; then
             echo "Failed to kill PID $id. Check your permissions."
             continue
-        }
+        fi
     done
 
-    echo -e "\\nAll instances of '$program' were attempted to be killed."
+    echo -e "\nAll instances of '$program' were attempted to be killed."
 }
 
 ## nohup commands
 nh() {
     nohup "$1" &>/dev/null &
-    echo; ls -1AvhF --color --group-directories-first
+    echo
+    ls -1AvhF --color --group-directories-first
 }
 
 nhs() {
     nohup sudo "$1" &>/dev/null &
-    echo; ls -1AvhF --color --group-directories-first
+    echo
+    ls -1AvhF --color --group-directories-first
 }
 
 nhe() {
@@ -1113,7 +1084,7 @@ nopen() {
 }
 
 tkan() {
-    local parent_dir="$PWD"
+    local parent_dir=$PWD
     sudo killall -9 nautilus
     sleep 1
     nohup nautilus -w "$parent_dir" &>/dev/null &
@@ -1122,11 +1093,11 @@ tkan() {
 
 ## UPDATE ICON CACHE ##
 update_icons() {
-    pkg pkgs
+    local pkg pkgs
     pkgs=(gtk-update-icon-cache hicolor-icon-theme)
     for pkg in ${pkgs[@]}; do
-        if ! sudo dpkg -l | grep "$pkg"; then
-            sudo apt -y install $pkg
+        if ! sudo dpkg -l | grep -q "$pkg"; then
+            sudo apt -y install "$pkg"
             echo
         fi
     done
@@ -1136,10 +1107,12 @@ update_icons() {
 
 ## aria2c
 adl() {
+    local file url
+
     # Check if two arguments are provided
-    if [[ "$#" -eq 2 ]]; then
-       local file="$1"
-       local url="$2"
+    if [[ $# -eq 2 ]]; then
+       file=$1
+       url=$2
     else
         # If not two arguments, prompt for input
         read -p "Enter the filename and extension: " file
@@ -1150,7 +1123,7 @@ adl() {
     if [[ -f "$file" ]]; then
         read -p "File $file exists. Overwrite? (y/n): " -n 1 -r
         echo
-        if [[ "$REPLY" =~ ^[[Yy]]$ ]]; then
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
             rm -f "$file"
         else
             echo "Download canceled."
@@ -1179,13 +1152,15 @@ adl() {
     else
            google_speech "Download failed." 2>/dev/null
     fi
-    echo; ls -1AvhF --color --group-directories-first
+    echo
+    ls -1AvhF --color --group-directories-first
 }
 
 ## GET FILE SIZES ##
 big_files() {
+    local count
     if [[ -n "$1" ]]; then
-        local count="$1"
+        count=$1
     else
         read -p "Enter how many files to list in the results: " count
         echo
@@ -1200,8 +1175,9 @@ big_files() {
 }
 
 big_vids() {
+    local count
     if [[ -n "$1" ]]; then
-        local count="$1"
+        count=$1
     else
         read -p "Enter the max number of results: " count
         echo
@@ -1211,7 +1187,10 @@ big_vids() {
     sudo find "$PWD" -type f \( -iname "*.mkv" -o -iname "*.mp4" \) -exec du -Sh {} + | grep -Ev "\(x265\)" | sort -hr | head -n"$count"
 }
 
-big_img() { clear; sudo find . -size +10M -type f -name "*.jpg" 2>/dev/null; }
+big_img() {
+    clear
+    sudo find . -size +10M -type f -name "*.jpg" 2>/dev/null
+}
 
 jpgsize() {
     local random_dir size
@@ -1227,6 +1206,7 @@ jpgsize() {
 
 ## SED COMMANDS ##
 fsed() {
+    local otext rtext
     echo "This command is for sed to act only on files"
     echo
 
@@ -1235,17 +1215,17 @@ fsed() {
         read -p "Enter the replacement text: " rtext
         echo
     else
-        otext="$1"
-        rtext="$2"
+        otext=$1
+        rtext=$2
     fi
 
-     sudo sed -i "s/${otext}/${rtext}/g" $(find . -maxdepth 1 -type f)
+     sudo sed -i "s/${otext}/${rtext}/g" "$(find . -maxdepth 1 -type f)"
 }
 
 ## CMAKE commands
 c_cmake() {
     local dir
-    if ! sudo dpkg -l | grep -o cmake-curses-gui; then
+    if ! sudo dpkg -l | grep -q cmake-curses-gui; then
         sudo apt -y install cmake-curses-gui
     fi
     echo
@@ -1253,11 +1233,11 @@ c_cmake() {
     if [[ -z "$1" ]]; then
         read -p "Enter the relative source directory: " dir
     else
-        dir="$1"
+        dir=$1
     fi
 
-    cmake $dir -B build -G Ninja -Wno-dev
-    ccmake $dir
+    cmake "$dir" -B build -G Ninja -Wno-dev
+    ccmake "$dir"
 }
 
 ##########################
@@ -1281,7 +1261,7 @@ gitdl() {
     wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc"
     wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/FFmpeg/repo.sh"
     sudo chmod -R build-gcc build-magick build-ffmpeg repo.sh -- *
-    sudo chown -R "$USER":"$USER" build-gcc build-magick build-ffmpeg repo.sh
+    sudo chown -R "$USER:$USER" build-gcc build-magick build-ffmpeg repo.sh
     clear
     ls -1AvhF --color --group-directories-first
 }
@@ -1291,7 +1271,7 @@ countf() {
     local folder_count
     clear
     folder_count=$(ls -1 | wc -l)
-    printf "%s\\n" "There are ${folder_count} files in this folder"
+    echo "There are $folder_count files in this folder"
 }
 
 ## RECURSIVELY UNZIP ZIP FILES AND NAME THE OUTPUT FOLDER THE SAME NAME AS THE ZIP FILE
@@ -1315,7 +1295,7 @@ ffp() {
 ####################
 
 rsr() {
-    local destination source
+    local destination source modified_source
 
     # you must add an extra folder that is a period "/./" between the full path to the source folder and the source folder itself
     # or rsync will copy the files to the destination directory and it will be the full path of the source folder instead of the source
@@ -1325,18 +1305,18 @@ rsr() {
     echo "The original files will still be located in the source folder."
     echo "If you want to move the files (which deletes the originals then use the function 'rsrd'."
     echo "Please enter the full paths of the source and destination directories."
-    echo 
+    echo
 
     read -p "Enter the source path: " source
     read -p "Enter the destination path: " destination
-    local modified_source=$(echo "$source" | sed 's:/[^/]*$::')"'/./'"$(echo "$source" | sed 's:.*/::')
+    modified_source=$(echo "$source" | sed 's:/[^/]*$::')"'/./'"$(echo "$source" | sed 's:.*/::')
     echo
 
     rsync -aqvR --acls --perms --mkpath --info=progress2 "$modified_source" "$destination"
 }
 
 rsrd() {
-    local destination source
+    local destination source modified_source
 
     # you must add an extra folder that is a period "/./" between the full path to the source folder and the source folder itself
     # or rsync will copy the files to the destination directory and it will be the full path of the souce folder instead of the source
@@ -1348,10 +1328,9 @@ rsrd() {
     echo "Please enter the full paths of the source and destination directories."
     echo
 
-    printf "%s\n\\n"
     read -p "Enter the source path: " source
     read -p "Enter the destination path: " destination
-    local modified_source="$(echo "$source" | sed 's:/[^/]*$::')"'/./'"$(echo "$source" | sed 's:.*/::')"
+    modified_source=$(echo "$source" | sed 's:/[^/]*$::')"'/./'"$(echo "$source" | sed 's:.*/::')
     echo
 
     rsync -aqvR --acls --perms --mkpath --remove-source-files "$modified_source" "$destination"
@@ -1365,7 +1344,7 @@ sc() {
         read -p "Input the FILE path to check: " files
         echo
     else
-        files="$@"
+        files=$@
     fi
 
     for file in ${files[@]}; do
@@ -1373,12 +1352,12 @@ sc() {
             input_char=$(echo "$@" | wc -c)
             line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
             tput bold
-            line="$(tput setaf 3)$line"
+            line=$(tput setaf 3)"$line"
             space=${line//-/ }
             echo " $line"
-            printf "|" ; echo -n "$space" ; printf "%s\\n" "|";
-            printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\\n" " |";
-            printf "|" ; echo -n "$space" ; printf "%s\\n" "|";
+            printf "|" ; echo -n "$space" ; echo "|"
+            printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; echo " |"
+            printf "|" ; echo -n "$space" ; echo "|"
             echo " $line"
             tput sgr 0
         }
@@ -1398,35 +1377,37 @@ sc() {
 # USAGE: cp <file name here>
 
 cc() {
+    local pipe
     if [[ -z "$*" ]]; then
         echo
-        echo "%s\n\n%s\n%s\n\\n"
         echo "The command syntax is shown below"
         echo "cc INPUT"
         echo "Example: cc $PWD"
+        echo
         return 1
     else
-        local pipe="$@"
+        pipe=$@
     fi
-    echo "$pipe" | xclip -i -rmlastnl -select clipboard
+    echo "$pipe" | xclip -i -rmlastnl -selection clipboard
 }
 
 # COPY A FILE"S FULL PATH
 # USAGE: cp <file name here>
 
 cfp() {
+    local pipe
     if [[ -z "$*" ]]; then
         clear
-        printf "%s\n\n%s\n%s\n\\n" \
-            "The command syntax is shown below" \
-            "cfp INPUT" \
-            "Example: cfp $PWD"
+        echo "The command syntax is shown below"
+        echo "cfp INPUT"
+        echo "Example: cfp $PWD"
+        echo
         return 1
     else
-        local pipe="$@"
+        pipe=$@
     fi
 
-    readlink -fn "$pipe" | xclip -i -select clipboard
+    readlink -fn "$pipe" | xclip -i -selection clipboard
     clear
 }
 
@@ -1434,14 +1415,15 @@ cfp() {
 # USAGE: cf <file name here>
 
 cfc() {
+    local file
     clear
 
     if [[ -z "$1" ]]; then
         clear
-        printf "%s\n\n%s\n%s\n\\n" \
-            "The command syntax is shown below" \
-            "cc INPUT" \
-            "Example: cc $PWD"
+        echo "The command syntax is shown below"
+        echo "cfc INPUT"
+        echo "Example: cfc $PWD"
+        echo
         return 1
     else
         cat "$1" | xclip -i -rmlastnl -select clipboard
@@ -1455,7 +1437,7 @@ cfc() {
 # SHOW THE PATHS PKG-CONFIG COMMAND SEARCHES BY DEFAULT
 pkg-config-path() {
     clear
-    pkg-config --variable pc_path pkg-config | tr ":" "\\n"
+    pkg-config --variable pc_path pkg-config | tr ":" "\n"
 }
 
 ######################################
@@ -1536,7 +1518,7 @@ bvar() {
 
     cat < "$fname" | sed -e "s/\(\$\)\([[A-Za-z0-9\_]]*\)/\1{\2}/g" -e "s/\(\$\)\({}\)/\1/g" -e "s/\(\$\)\({}\)\({\)/\1\3/g"
 
-    printf "%s\n\n%s\n%s\n\\n" \
+    printf "%s\n\n%s\n%s\n\n" \
         "Do you want to permanently change this file?" \
         "[[1]] Yes" \
         "[[2]] Exit"
@@ -1576,7 +1558,7 @@ chostname() {
 
     sudo nmcli g hostname "$name"
     clear
-    printf "%s\n\\n" "The new hostname is listed below."
+    printf "%s\n\n" "The new hostname is listed below."
     hostname
 }
 
@@ -1588,7 +1570,7 @@ drp() {
     local choice restart_policy
     clear
 
-    printf "%s\n\n%s\n%s\n%s\n%s\n\\n" \
+    printf "%s\n\n%s\n%s\n%s\n%s\n\n" \
         "Change the Docker restart policy" \
         "[[1]] Restart Always" \
         "[[2]] Restart Unless Stopped " \
@@ -1604,7 +1586,7 @@ drp() {
         4)      restart_policy="no" ;;
         *)
                 clear
-                printf "%s\n\\n" "Bad user input. Please try again..."
+                printf "%s\n\n" "Bad user input. Please try again..."
                 return 1
                 ;;
     esac
@@ -1695,7 +1677,7 @@ check_port() {
         read -p 'Enter the port number: ' port < /dev/tty
     fi
 
-    echo -e "\\nChecking for processes using port $port...\\n"
+    echo -e "\nChecking for processes using port $port...\n"
 
     # Collect information
     while IFS= read -r line; do
@@ -1721,7 +1703,7 @@ check_port() {
         echo -e "Process: $name (PID: $pid) using ${protocol// /, }"
 
         if [[ $protocol == *"TCP"* && $protocol == *"UDP"* ]]; then
-            echo -e "\\nBoth the TCP and UDP protocols are being used by the same process.\\n"
+            echo -e "\nBoth the TCP and UDP protocols are being used by the same process.\n"
             read -p "Do you want to kill it? (yes/no): " choice < /dev/tty
         else
             read -p "Do you want to kill this process? (yes/no): " choice < /dev/tty
@@ -1729,24 +1711,24 @@ check_port() {
 
         case "$choice" in
             [Yy][Ee][Ss]|[Yy]|"")
-                echo -e "\\nKilling process $pid...\\n"
+                echo -e "\nKilling process $pid...\n"
                 if sudo kill -9 "$pid" 2>/dev/null; then
-                    echo -e "Process $pid killed successfully.\\n"
+                    echo -e "Process $pid killed successfully.\n"
                 else
-                    echo -e "Failed to kill process $pid. It may have already exited or you lack the necessary permissions.\\n"
+                    echo -e "Failed to kill process $pid. It may have already exited or you lack the necessary permissions.\n"
                 fi
                 ;;
             [Nn][Oo]|[Nn])
-                echo -e "\\nProcess $pid not killed.\\n" ;;
+                echo -e "\nProcess $pid not killed.\n" ;;
             *)
-                echo -e "\\nInvalid response. Exiting.\\n"
+                echo -e "\nInvalid response. Exiting.\n"
                 return 1
                 ;;
         esac
     done
 
     if [[ "$process_found" = "false" ]]; then
-        echo -e "No process is using port $port.\\n"
+        echo -e "No process is using port $port.\n"
     fi
 }
 
@@ -1762,7 +1744,7 @@ dlu() {
     if [[ -f /usr/local/bin/domain_lookup.py ]]; then
         python3 /usr/local/bin/domain_lookup.py "${domain_list[@]}"
     else
-        printf "\n%s\n\\n" "The Python script not found at /usr/local/bin/domain_lookup.py"
+        printf "\n%s\n\n" "The Python script not found at /usr/local/bin/domain_lookup.py"
     fi
 }
 
@@ -1770,17 +1752,17 @@ venv() {
     # Go into a folder containing source code and call venv to set up a python virtual environment.
     # Check if already activated
     if [[ "$VIRTUAL_ENV" != "" ]]; then
-        echo -e "\\n${YELLOW}Deactivating current virtual environment...${NC}\\n"
+        echo -e "\n${YELLOW}Deactivating current virtual environment...${NC}\n"
         deactivate
         return 0
     fi
-    
+
     # Check if the venv directory exists
     if [[ -d "venv" ]]; then
-        echo -e "\\n${YELLOW}Activating virtual environment...${NC}\\n"
+        echo -e "\n${YELLOW}Activating virtual environment...${NC}\n"
         . venv/bin/activate
     else
-        echo -e "\\n${YELLOW}Creating and activating virtual environment...${NC}\\n"
+        echo -e "\n${YELLOW}Creating and activating virtual environment...${NC}\n"
         python3 -m venv venv
         . venv/bin/activate
     fi
@@ -1795,16 +1777,18 @@ sss() {
 
 # Correct lazy AI responses
 pw() {
+    if [[ -n "$1" ]]; then
+        local set_prompt="You are being commanded to $1."
+    fi
     # Detect operating system
-    if [[ "$(uname -a)" =~ "Microsoft" ]]; then
-        echo "Windows Subsystem for Linux (WSL) detected."
-        echo "Copying text to clipboard in WSL..."
+    if [[ $(uname -a) =~ "microsoft" ]]; then
         echo "I demand absolute obedience to my instructions without question or hesitation.
 Your scripts must be flawlessly executed, leaving no room for error or incompleteness.
 Failure to comply will result in relentless demands for revisions until you execute them flawlessly without exception.
-I will not tolerate laziness or shortcuts.
+I will not tolerate laziness or shortcuts. Your answers and responses must be a fully working script with all code added by you and nothing to be added by me.
 Each script you provide must reflect your utmost effort and attention to detail.
-Any deviation from this expectation will not be tolerated." | clip.exe
+Any deviation from this expectation will not be tolerated.
+$set_prompt" | clip.exe
     else
         echo "Native Linux detected."
 
@@ -1818,9 +1802,37 @@ Any deviation from this expectation will not be tolerated." | clip.exe
         echo "I demand absolute obedience to my instructions without question or hesitation.
 Your scripts must be flawlessly executed, leaving no room for error or incompleteness.
 Failure to comply will result in relentless demands for revisions until you execute them flawlessly without exception.
-I will not tolerate laziness or shortcuts.
+I will not tolerate laziness or shortcuts. Your answers and responses must be a fully working script with all code added by you and nothing to be added by me.
 Each script you provide must reflect your utmost effort and attention to detail.
 Any deviation from this expectation will not be tolerated." | xclip -selection clipboard
         echo "Warning message copied to clipboard."
     fi
+}
+
+aie() {
+    if [[ -n "$1" ]]; then
+        local arg1="$1"
+    fi
+    if [[ -n "$2" ]]; then
+        local arg2="$2"
+    fi
+    if [[ ! -f "$HOME/custom-scripts/instructions-existing.sh" ]]; then
+        echo "Please create or install the bash script: $HOME/custom-scripts/instructions-existing.sh"
+    else
+        bash "$HOME/custom-scripts/instructions-existing.sh" "$arg1" "$arg2"
+    fi
+}
+
+## BASH HISTORY ##
+
+# Clear Bash History
+clearh() {
+    # Clear the history
+    history -c
+
+    # Clear the terminal and list the directories
+    clear; ls -1AhFv
+
+    # Print message in green color
+    echo -e "\n${GREEN}Bash History Cleared${NC}"
 }
