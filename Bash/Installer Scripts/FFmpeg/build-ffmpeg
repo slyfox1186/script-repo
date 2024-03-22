@@ -366,8 +366,7 @@ gnu_repo() {
     local url="$1"
     version=$(curl -fsS "$url" |
               grep -oP '[a-z]+-\K(([0-9\.]*[0-9]+)){2,}' |
-              sort -rV |
-              head -n1)
+              sort -rV | head -n1)
 }
 
 github_repo() {
