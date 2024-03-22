@@ -4,9 +4,18 @@
 total_upvotes=""
 upvote_percentage=""
 
+# ANSI color codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
 # Function to display help menu
 display_help() {
-        cat <<EOF
+    cat <<EOF
 Usage: ${0##*/} [OPTIONS]
 
 Calculate the number of downvotes on a Reddit post.
@@ -39,7 +48,7 @@ while [[ "$#" -gt 0 ]]; do
             exit 0
             ;;
         *)
-            echo "Unknown option: $1"
+            echo -e "${RED}Unknown option: $1${NC}"
             display_help
             exit 1
             ;;
@@ -48,7 +57,7 @@ done
 
 # Check if required options are provided
 if [[ -z "$total_upvotes" ]] || [[ -z "$upvote_percentage" ]]; then
-    echo "Error: Missing required arguments."
+    echo -e "${RED}Error: Missing required arguments.${NC}"
     display_help
     exit 1
 fi
@@ -59,9 +68,8 @@ total_votes=$(echo "scale=2; $total_upvotes / $upvote_percentage_decimal" | bc)
 total_votes_rounded=$(echo "($total_votes + 0.5)/1" | bc)
 downvotes=$(echo "$total_votes_rounded - $total_upvotes" | bc)
 
-
 # Calculate and display percentage ranges for the first 10 downvotes
-echo "Upvote percentage ranges for the first $total_upvotes downvotes:"
+echo -e "${CYAN}Upvote percentage ranges for the first $total_upvotes downvotes:${NC}"
 for i in $(seq 1 "$total_upvotes"); do
     # Calculating the lower percentage limit for the current number of downvotes
     lower_limit=$(echo "scale=2; $total_upvotes / ($total_upvotes + $i) * 100" | bc)
@@ -74,11 +82,11 @@ for i in $(seq 1 "$total_upvotes"); do
     fi
 
     # Display the percentage range
-    echo "Downvotes $i: ${lower_limit}% to $(echo "$next_lower_limit + 0.01" | bc)%"
+    echo -e "${YELLOW}Downvotes $i${CYAN}:${NC} ${MAGENTA}${lower_limit}%${NC} ${YELLOW}to${NC} ${MAGENTA}$(echo "$next_lower_limit + 0.01" | bc)%${NC}"
 done
 
 # Output the result
 echo
-echo "Total upvotes: $total_upvotes"
-echo "Upvote percentage: $upvote_percentage%"
-echo "Calculated downvotes: $downvotes"
+echo -e "${YELLOW}Total upvotes${CYAN}:${NC} $total_upvotes"
+echo -e "${GREEN}Upvote percentage${CYAN}:${NC} $upvote_percentage%"
+echo -e "${RED}Calculated downvotes${CYAN}:${NC} $downvotes"
