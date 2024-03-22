@@ -23,10 +23,10 @@ SCRIPT_VERSION=3.5.2
 CWD="$PWD/ffmpeg-build-script"
 packages="$CWD/packages"
 workspace="$CWD/workspace"
-NONFREE_AND_GPL=false
+NONFREE_AND_GPL="false"
 LDEXEFLAGS=""
 CONFIGURE_OPTIONS=()
-LATEST=false
+LATEST="false"
 GIT_REGEX='(rc|RC|Rc|rC|alpha|beta)+[0-9]*$' # Set the regex variable to exclude release candidates
 DEBUG=OFF
 
@@ -578,22 +578,22 @@ usage() {
     echo "Usage: $SCRIPT_NAME [options]"
     echo
     echo "Options:"
-    echo "    -h, --help                       Display usage information"
-    echo "    -v, --version                    Display the current script version"
-    echo "    -c, --cleanup                    Remove all working dirs"
-    echo "    -b, --build                      Starts the build process"
-    echo "    -n, --enable-gpl-and-non-free    Enable GPL and non-free codecs - https://ffmpeg.org/legal.html"
-    echo "    -l, --latest                     Force the script to build the latest version of dependencies if newer version is available"
-    echo "    --compiler=gcc|clang             Set the default CC and CXX compiler (default: gcc)"
-    echo "    -j, --jobs <num>                 Set the number of CPU threads for parallel processing"
+    echo "  -h, --help                       Display usage information"
+    echo "  -v, --version                    Display the current script version"
+    echo "  -c, --cleanup                    Remove all working dirs"
+    echo "  -b, --build                      Starts the build process"
+    echo "  -n, --enable-gpl-and-non-free    Enable GPL and non-free codecs - https://ffmpeg.org/legal.html"
+    echo "  -l, --latest                     Force the script to build the latest version of dependencies if newer version is available"
+    echo "      --compiler=<gcc|clang>       Set the default CC and CXX compiler (default: gcc)"
+    echo "  -j, --jobs <num>                 Set the number of CPU threads for parallel processing"
     echo
     echo "Example: bash $SCRIPT_NAME --build --compiler=clang -j 8"
     echo
 }
 
 CONFIGURE_OPTIONS=()
-NONFREE_AND_GPL=false
-LATEST=false
+NONFREE_AND_GPL="false"
+LATEST="false"
 compiler_flag=""
 
 while (("$#" > 0)); do
@@ -609,7 +609,7 @@ while (("$#" > 0)); do
             ;;
         -n|--enable-gpl-and-non-free)
             CONFIGURE_OPTIONS+=("--enable-"{gpl,libsmbclient,libcdio,nonfree})
-            NONFREE_AND_GPL=true
+            NONFREE_AND_GPL="true"
             ;;
         -b|--build)
             bflag="-b"
@@ -619,7 +619,7 @@ while (("$#" > 0)); do
             cleanup
             ;;
         -l|--latest)
-            LATEST=true
+            LATEST="true"
             ;;
         --compiler=gcc|--compiler=clang)
             compiler_flag="${1#*=}"
@@ -671,7 +671,7 @@ fi
 echo
 log "Utilizing $cpu_threads CPU threads"
 
-if $NONFREE_AND_GPL; then
+if "$NONFREE_AND_GPL"; then
     warn "With GPL and non-free codecs enabled"
     echo
 fi
@@ -681,22 +681,25 @@ if [[ -n "$LDEXEFLAGS" ]]; then
 fi
 
 # Set the path variable
-if find /usr/local/ -maxdepth 1 -name cuda >/dev/null | head -n1; then
-    cuda_bin_path=$(find /usr/local/ -maxdepth 1 -name "cuda" >/dev/null | head -n1)
-    cuda_bin_path+=/bin
-elif find /opt/ -maxdepth 1 -name cuda 2>/dev/null | head -n1; then
-    cuda_bin_path=$(find /opt/ -maxdepth 1 -name "cuda" 2>/dev/null | head -n1)
-    cuda_bin_path+=/bin
+if find /usr/local/ -maxdepth 1 -type l -name "cuda" 2>/dev/null | head -n1; then
+    cuda_bin_path=$(find /usr/local/ -maxdepth 1 -type l -name "cuda" 2>/dev/null | head -n1)
+    cuda_bin_path+="/bin"
+elif find /opt/ -maxdepth 1 -type l -name "cuda" 2>/dev/null | head -n1; then
+    cuda_bin_path=$(find /opt/ -maxdepth 1 -type l -name "cuda" 2>/dev/null | head -n1)
+    cuda_bin_path+="/bin"
+else
+    warn "The \$cuda_bin_path variable was not set. Line: $LINENO"
 fi
 
 if [[ -d /usr/lib/ccache/bin ]]; then
-    set_ccache_dir=/usr/lib/ccache/bin
+    ccache_dir="/usr/lib/ccache/bin"
 else
-    set_ccache_dir=/usr/lib/ccache
+    ccache_dir="/usr/lib/ccache"
 fi
 
 source_path() {
-    PATH="$set_ccache_dir:$cuda_bin_path:$workspace/bin:$HOME/.local/bin:/usr/local/ant/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    PATH="$ccache_dir:$cuda_bin_path:$workspace/bin:$HOME/.local/bin:/usr/local/ant/bin"
+    PATH+=":/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
     export PATH
 }
 source_path
@@ -719,11 +722,11 @@ $workspace/share/pkgconfig:\
 export PKG_CONFIG_PATH
 
 check_amd_gpu() {
-    if lshw -C display 2>&1 | grep -qEio "AMD|amdgpu"; then
+    if lshw -C display 2>&1 | grep -Eioq "amdgpu|amd"; then
         echo "AMD GPU detected"
-    elif dpkg -l 2>&1 | grep -qi "amdgpu"; then
+    elif dpkg -l 2>&1 | grep -iq "amdgpu"; then
         echo "AMD GPU detected"
-    elif lspci 2>&1 | grep -i "AMD"; then
+    elif lspci 2>&1 | grep -i "amd"; then
         echo "AMD GPU detected"
     else
         echo "No AMD GPU detected"
@@ -1491,8 +1494,8 @@ else
                                   --buildtype=release \
                                   --default-library=static \
                                   --strip \
-                                  -Dbuilt_tools=false \
-                                  -Dtest=false
+                                  -Dbuilt_tools="false" \
+                                  -Dtest="false"
         execute ninja "-j$cpu_threads" -C build
         execute ninja -C build install
         build_done "librist" "$repo_version"
@@ -1509,7 +1512,7 @@ if build "zlib" "$repo_version"; then
 fi
 
 
-if $NONFREE_AND_GPL; then
+if "$NONFREE_AND_GPL"; then
     get_openssl_version
     if build "openssl" "$repo_version"; then
         download "https://www.openssl.org/source/openssl-$repo_version.tar.gz"
@@ -1632,7 +1635,7 @@ if build "libtiff" "$repo_version"; then
     build_done "libtiff" "$repo_version"
 fi
 
-if $NONFREE_AND_GPL; then
+if "$NONFREE_AND_GPL"; then
     find_git_repo "nkoriyama/aribb24" "1" "T"
     if build "aribb24" "$repo_version"; then
         download "https://github.com/nkoriyama/aribb24/archive/refs/tags/v$repo_version.tar.gz" "aribb24-$repo_version.tar.gz"
@@ -1728,7 +1731,7 @@ fi
 find_git_repo "fribidi/fribidi" "1" "T"
 if build "fribidi" "$repo_version"; then
     download "https://github.com/fribidi/fribidi/archive/refs/tags/v$repo_version.tar.gz" "fribidi-$repo_version.tar.gz"
-    extracmds=("-D"{docs,tests}"=false")
+    extracmds=("-D"{docs,tests}"="false"")
     execute autoreconf -fi
     execute meson setup build --prefix="$workspace" \
                               --buildtype=release \
@@ -1898,7 +1901,7 @@ if build "$repo_name" "${version//\$ /}"; then
     build_done "$repo_name" "$version"
 fi
 
-if $NONFREE_AND_GPL; then
+if "$NONFREE_AND_GPL"; then
     git_caller "https://github.com/m-ab-s/rubberband.git" "rubberband-git"
     if build "$repo_name" "${version//\$ /}"; then
         echo "Cloning \"$repo_name\" saving version \"$version\""
@@ -1952,7 +1955,7 @@ if build "$repo_name" "${version//\$ /}"; then
                               --default-library=static \
                               --strip \
                               -Ddocs=disabled \
-                              -Donline_docs=false \
+                              -Donline_docs="false" \
                               -Dplugins="$lv2_switch" \
                               -Dtests=disabled
     execute ninja "-j$cpu_threads" -C build
@@ -1975,7 +1978,7 @@ if build "serd" "$repo_version"; then
                               --buildtype=release \
                               --default-library=static \
                               --strip \
-                              -Dstatic=true \
+                              -Dstatic="true" \
                               "${extracmds[@]}"
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
@@ -2160,7 +2163,7 @@ if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url"
     fix_pulse_meson_build_file
-    extracmds=("-D"{daemon,doxygen,ipv6,man,tests}"=false")
+    extracmds=("-D"{daemon,doxygen,ipv6,man,tests}"="false"")
     execute meson setup build --prefix="$workspace" \
                               --buildtype=release \
                               --default-library=static \
@@ -2217,7 +2220,7 @@ if build "libflac" "$repo_version"; then
     build_done "libflac" "$repo_version"
 fi
 
-if $NONFREE_AND_GPL; then
+if "$NONFREE_AND_GPL"; then
     find_git_repo "mstorsjo/fdk-aac" "1" "T"
     if build "libfdk-aac" "2.0.3"; then
         download "https://phoenixnap.dl.sourceforge.net/project/opencore-amr/fdk-aac/fdk-aac-2.0.3.tar.gz" "libfdk-aac-2.0.3.tar.gz"
@@ -2536,7 +2539,7 @@ if build "mediainfo-cli" "$repo_version"; then
     build_done "mediainfo-cli" "$repo_version"
 fi
 
-if $NONFREE_AND_GPL; then
+if "$NONFREE_AND_GPL"; then
     find_git_repo "georgmartius/vid.stab" "1" "T"
     if build "vid-stab" "$repo_version"; then
         download "https://github.com/georgmartius/vid.stab/archive/refs/tags/v$repo_version.tar.gz" "vid-stab-$repo_version.tar.gz"
@@ -2553,7 +2556,7 @@ if $NONFREE_AND_GPL; then
     CONFIGURE_OPTIONS+=("--enable-libvidstab")
 fi
 
-if $NONFREE_AND_GPL; then
+if "$NONFREE_AND_GPL"; then
     find_git_repo "dyne/frei0r" "1" "T"
     if build "frei0r" "$repo_version"; then
         download "https://github.com/dyne/frei0r/archive/refs/tags/v$repo_version.tar.gz" "frei0r-$repo_version.tar.gz"
@@ -2620,7 +2623,7 @@ if build "svt-av1" "1.8.0"; then
 fi
 CONFIGURE_OPTIONS+=("--enable-libsvtav1")
 
-if $NONFREE_AND_GPL; then
+if "$NONFREE_AND_GPL"; then
     find_git_repo "536" "2" "B"
     if build "x264" "$repo_short_version_1"; then
         download "https://code.videolan.org/videolan/x264/-/archive/$repo_version_1/x264-$repo_version_1.tar.bz2" "x264-$repo_short_version_1.tar.bz2"
@@ -2643,7 +2646,7 @@ if $NONFREE_AND_GPL; then
     CONFIGURE_OPTIONS+=("--enable-libx264")
 fi
 
-if $NONFREE_AND_GPL; then
+if "$NONFREE_AND_GPL"; then
     if build "x265" "3.5"; then
         download "https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz" "x265-3.5.tar.gz"
         fix_libstd_libs
@@ -2733,7 +2736,7 @@ if [[ -z "$LDEXEFLAGS" ]]; then
     fi
 fi
 
-if $NONFREE_AND_GPL; then
+if "$NONFREE_AND_GPL"; then
     if [[ -n "$iscuda" ]]; then
         if build "nv-codec-headers" "12.1.14.0"; then
             download "https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.1.14.0/nv-codec-headers-12.1.14.0.tar.gz"
@@ -2758,7 +2761,7 @@ if $NONFREE_AND_GPL; then
     fi
 fi
 
-if $NONFREE_AND_GPL; then
+if "$NONFREE_AND_GPL"; then
     find_git_repo "Haivision/srt" "1" "T"
     if build "srt" "$repo_version"; then
         download "https://github.com/Haivision/srt/archive/refs/tags/v$repo_version.tar.gz" "srt-$repo_version.tar.gz"
@@ -2784,7 +2787,7 @@ if $NONFREE_AND_GPL; then
     CONFIGURE_OPTIONS+=("--enable-libsrt")
 fi
 
-if $NONFREE_AND_GPL; then
+if "$NONFREE_AND_GPL"; then
     find_git_repo "avisynth/avisynthplus" "1" "T"
     if build "avisynth" "$repo_version"; then
         download "https://github.com/AviSynth/AviSynthPlus/archive/refs/tags/v$repo_version.tar.gz" "avisynth-$repo_version.tar.gz"
@@ -2847,7 +2850,7 @@ if build "$repo_name" "${version//\$ /}"; then
 fi
 git_caller "https://chromium.googlesource.com/codecs/libgav1" "libgav1-git"
 
-if $NONFREE_AND_GPL; then
+if "$NONFREE_AND_GPL"; then
     find_git_repo "8268" "6"
     repo_version="${repo_version//debian\/2%/}"
     if build "xvidcore" "$repo_version"; then
