@@ -204,7 +204,9 @@ install_rustc() {
         echo "Installing RustUp"
         curl -fsS --proto '=https' --tlsv1.2 https://sh.rustup.rs | sh -s -- --default-toolchain stable -y &>/dev/null
         source "$HOME/.cargo/env"
-        if ! source "$HOME/.zshrc"; then
+        if [[ -f "$HOME/.zshrc" ]]; then
+            source "$HOME/.zshrc"
+        else
             source "$HOME/.bashrc"
         fi
     fi
