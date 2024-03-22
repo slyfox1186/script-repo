@@ -23,8 +23,7 @@ archive_url="https://github.com/facebook/zstd/releases/download/v$archive_ver/$a
 archive_ext="${archive_url//*.}"
 archive_name="$archive_dir.tar.${archive_ext}"
 install_dir=/usr/local
-cwd="$PWD"/zstd-build-script
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
+cwd="$PWD/zstd-build-script"
 
 printf "%s\n%s\n\n" \
     "ZStd Build Script - v$script_ver" \
