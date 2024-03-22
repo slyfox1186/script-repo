@@ -1,4 +1,4 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
 clear
 
@@ -15,8 +15,8 @@ clear
 
 file='/etc/default/grub'
 
-if [ ! "$file" ]; then
-    echo "The main file: $file was not found."
+if [ ! "${file}" ]; then
+    echo "The main file: ${file} was not found."
     echo
     exit 1
 fi
@@ -29,15 +29,15 @@ read -p 'Your choices are ( 1 to 3): ' i
 
 clear
 
-if [[ "$i" -eq '1'  ]]; then sed -i 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="3"/g' "$file"
-elif [[ "$i" -eq '2'  ]]; then sed -i 's/GRUB_CMDLINE_LINUX="3"/GRUB_CMDLINE_LINUX=""/g' "$file"
-elif [[ "$i" -eq '3'  ]]; then clear; \ls -1AhFv --group-directories-first --color; exit
+if [[ "${i}" -eq '1'  ]]; then sed -i 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="3"/g' "${file}"
+elif [[ "${i}" -eq '2'  ]]; then sed -i 's/GRUB_CMDLINE_LINUX="3"/GRUB_CMDLINE_LINUX=""/g' "${file}"
+elif [[ "${i}" -eq '3'  ]]; then clear; \ls -1AhFv --group-directories-first --color; exit
 else
     echo 'Input error: enter a number (1 to 3)'
     echo
     read -p 'Press enter to start over or Ctrl+Z to exit: '
     clear
-    bash "$0"
+    bash "${0}"
 fi
 
 clear

@@ -1,5 +1,6 @@
-#!/Usr/bin/env python3
+#!/usr/bin/env python3
 
+# Warning: this will overwrite your files!
 
 import os
 import subprocess
@@ -36,10 +37,12 @@ def convert_image(image_path):
     return image_path.name
 
 def main():
+    directory = '.'  # Current directory
     files = find_jpg_files(directory)
     total_files = len(files)
 
     print("Starting image conversion...")
+    num_processes = 36  # Set to use 36 logical cores
 
     with ProcessPoolExecutor(max_workers=num_processes) as executor:
         for index, future in enumerate(as_completed([executor.submit(convert_image, file) for file in files]), start=1):

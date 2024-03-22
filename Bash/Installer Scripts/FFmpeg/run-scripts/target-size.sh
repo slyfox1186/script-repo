@@ -1,5 +1,6 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
+# Function to display the help menu
 display_help() {
     echo "Usage: $0 [options]"
     echo "Options:"
@@ -13,12 +14,15 @@ display_help() {
     echo "  -l, --log-file       Log file path (default: resize.log)"
 }
 
+# Default values
 target_size_mb=1500
 original_size_mb=2480
 audio_bitrate_kbps=128
 duration_seconds=1410
 log_file="resize.log"
 
+# Parse command line arguments
+while [[ "$#" -gt 0 ]]; do
     case $1 in
         -h|--help)
             display_help
@@ -60,20 +64,23 @@ log_file="resize.log"
     esac
 done
 
+# Function to prompt for a value if not provided
 prompt_for_value() {
     local value_name=$1
     local default_value=$2
     local prompt_message=$3
 
-    if [[ -z "$!value_name" ]]; then
+    if [[ -z "${!value_name}" ]]; then
         read -p "$prompt_message [$default_value]: " user_input
-        eval "$value_name=$user_input:-$default_value"
+        eval "$value_name=${user_input:-$default_value}"
     fi
 }
 
+# Prompt for missing values
 prompt_for_value "input_file" "" "Enter the input video path"
 prompt_for_value "output_file" "" "Enter the output video path"
 
+# Display confirmed values
 echo "Confirmed Values:"
 echo "  Input File: $input_file"
 echo "  Output File: $output_file"
@@ -84,6 +91,7 @@ echo "  Duration (seconds): $duration_seconds"
 echo "  Log File: $log_file"
 echo
 
+# Validation checks
 if [[ ! -f "$input_file" ]]; then
     echo "Input file does not exist: $input_file"
     exit 1
@@ -94,32 +102,42 @@ if [[ $target_size_mb -le 0 || $original_size_mb -le 0 || $audio_bitrate_kbps -l
     exit 1
 fi
 
+# Function to get video stats
 get_video_stats() {
     video_file="$1"
 
+# Get video size in megabytes
     size_mb=$(ffprobe -v error -show_entries format=size -of default=noprint_wrappers=1:nokey=1 "$video_file" | awk '{print $1 / 1024 / 1024}')
 
+# Get audio bitrate in kbps
     audio_bitrate=$(ffprobe -v error -select_streams a:0 -show_entries stream=bit_rate -of default=noprint_wrappers=1:nokey=1 "$video_file" | awk '{print int($1 / 1000)}')
 
+# Get video bitrate in kbps
     video_bitrate=$(ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate -of default=noprint_wrappers=1:nokey=1 "$video_file" | awk '{print int($1 / 1000)}')
 
     echo "$size_mb $audio_bitrate $video_bitrate"
 }
 
+# Get input video stats
 read size_mb audio_bitrate video_bitrate <<< $(get_video_stats "$input_file")
 
+# Calculate target video bitrate based on input video stats and target size
 total_bitrate_kbps=$((audio_bitrate + video_bitrate))
 target_total_bitrate_kbps=$(echo "scale=0; $total_bitrate_kbps * $target_size_mb / $size_mb" | bc)
 target_video_bitrate_kbps=$(echo "$target_total_bitrate_kbps - $audio_bitrate_kbps" | bc)
 
+# Ensure target video bitrate is not negative
 if [[ $(echo "$target_video_bitrate_kbps < 0" | bc -l) -eq 1 ]]; then
     echo "Calculated video bitrate is negative. Adjusting to minimum feasible value."
+    target_video_bitrate_kbps=1 # Set to a minimum feasible value to avoid negative bitrate
 fi
 
+# Calculate resized video stats
 resized_size_mb=$target_size_mb
 resized_audio_bitrate_kbps=$audio_bitrate_kbps
 resized_video_bitrate_kbps=$target_video_bitrate_kbps
 
+# Display comparison of video stats
 echo "Input Video Stats:"
 echo "  Size: $size_mb MB"
 echo "  Audio Bitrate: $audio_bitrate kbps"
@@ -131,6 +149,7 @@ echo "  Audio Bitrate: $resized_audio_bitrate_kbps kbps"
 echo "  Video Bitrate: $resized_video_bitrate_kbps kbps"
 echo
 
+# Calculate percentage differences
 size_diff_percent=$(echo "scale=2; (($resized_size_mb - $size_mb) / $size_mb) * 100" | bc)
 audio_bitrate_diff_percent=$(echo "scale=2; (($resized_audio_bitrate_kbps - $audio_bitrate) / $audio_bitrate) * 100" | bc)
 video_bitrate_diff_percent=$(echo "scale=2; (($resized_video_bitrate_kbps - $video_bitrate) / $video_bitrate) * 100" | bc)
@@ -141,16 +160,19 @@ echo "  Audio Bitrate: $audio_bitrate_diff_percent%"
 echo "  Video Bitrate: $video_bitrate_diff_percent%"
 echo
 
+# Prompt user for confirmation
 read -p "Do you want to proceed with the FFmpeg processing? (y/n): " confirmation
 
 if [[ $confirmation =~ ^[Yy]$ ]]; then
+# Echo the ffmpeg command line
     echo -e "\\nFFmpeg Command:\\n"
-    echo "ffmpeg -i \"$input_file\" -b:v $target_video_bitrate_kbpsk -b:a $audio_bitrate_kbpsk -t $duration_seconds \"$output_file\""
+    echo "ffmpeg -i \"$input_file\" -b:v ${target_video_bitrate_kbps}k -b:a ${audio_bitrate_kbps}k -t $duration_seconds \"$output_file\""
     echo
 
+# Execute the ffmpeg command
     echo "Resizing video..."
     echo
-    ffmpeg -i "$input_file" -b:v $target_video_bitrate_kbpsk -b:a $audio_bitrate_kbpsk -t $duration_seconds "$output_file" 2>&1 | tee "$log_file"
+    ffmpeg -i "$input_file" -b:v ${target_video_bitrate_kbps}k -b:a ${audio_bitrate_kbps}k -t $duration_seconds "$output_file" 2>&1 | tee "$log_file"
     echo "Video resizing completed. Log file: $log_file"
 else
     echo "FFmpeg processing aborted."

@@ -1,15 +1,20 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
 clear
 
+######################
+## Create FUNCTIONS ##
+######################
 
-exit_success_fn() {
+exit_success_fn()
+{
     echo
     echo 'The script has finished.'
     exit
 }
 
-exit_fail_ssh_copy_fn() {
+exit_fail_ssh_copy_fn()
+{
     echo
     echo 'The script failed to succesfully copy the ssh key file to the remote pc.'
     echo
@@ -20,7 +25,8 @@ exit_fail_ssh_copy_fn() {
     exit 1
 }
 
-exit_fail_ssh_keygen_fn() {
+exit_fail_ssh_keygen_fn()
+{
     echo 'Failed to create the ssh key pair.'
     echo
     echo 'Please check your script code and user input for errors.'
@@ -30,7 +36,9 @@ exit_fail_ssh_keygen_fn() {
     exit 1
 }
 
-create_ssh_keypair_fn() {
+create_ssh_keypair_fn()
+{
+
     clear
 
     echo 'User input is required to create the new ssh key pair.'
@@ -41,20 +49,21 @@ create_ssh_keypair_fn() {
     echo
     read -p 'Enter the type ( dsa | rsa ): ' SSH_TYPE
     echo
-    read -p "Enter a comment ( $USER@$(uname -n) ): " SSH_COMMENT
+    read -p "Enter a comment ( ${USER}@$(uname -n) ): " SSH_COMMENT
     echo
-    read -p "Enter the full output file path ( $HOME/.ssh/id_rsa ): " SSH_DIR
+    read -p "Enter the full output file path ( ${HOME}/.ssh/id_rsa ): " SSH_DIR
     echo
-    ssh-keygen -b "$SSH_BITS" -t "$SSH_TYPE" -C "$SSH_COMMENT" -f "$SSH_DIR"
+    ssh-keygen -b "${SSH_BITS}" -t "${SSH_TYPE}" -C "${SSH_COMMENT}" -f "${SSH_DIR}"
 
-    if [ $? -ne '0' ]; then
+    if [ ${?} -ne '0' ]; then
         exit_fail_ssh_keygen_fn
     fi
 
     main_menu_fn
 }
 
-copy_ssh_key_fn() {
+copy_ssh_key_fn()
+{
     clear
 
     local SSH_IP SSH_PORT SSH_USER
@@ -69,24 +78,26 @@ copy_ssh_key_fn() {
     read -p 'IP Address ( 192.168.1.2 | 10.0.1.0 ): ' SSH_IP
     echo
 
-    ssh-copy-id -p "$SSH_PORT" -i "$HOME/.ssh/id_rsa.pub" "$SSH_USER"@"$SSH_IP"
+    ssh-copy-id -p "${SSH_PORT}" -i "${HOME}/.ssh/id_rsa.pub" "${SSH_USER}"@"${SSH_IP}"
     echo
     read -p 'Press enter to continue.'
     clear
 
-    if [ $? -ne '0' ]; then
+    if [ ${?} -ne '0' ]; then
         exit_fail_ssh_copy_fn
     fi
 
     main_menu_fn
 }
 
-check_for_ssh_keys_fn() {
+check_for_ssh_keys_fn()
+{
     clear
 
     local ANSWER
 
-    if [ -f "$HOME"/.ssh/id_rsa ] && [ -f "$HOME"/.ssh/id_rsa.pub ]; then
+# Verify that the ssh keys exist before continuing: '~/.ssh/id_rsa' and '~/.ssh/id_rsa.pub'
+    if [ -f "${HOME}"/.ssh/id_rsa ] && [ -f "${HOME}"/.ssh/id_rsa.pub ]; then
         echo
         echo 'The ssh key pair files were found. No need to recreate.'
         echo
@@ -96,7 +107,7 @@ check_for_ssh_keys_fn() {
         clear
         return 0
     else
-        printf "The ssh key pairs are missing:\n\n%s\n%s\n" "$HOME"/.ssh/id_rsa "$HOME"/.ssh/id_rsa.pub
+        printf "The ssh key pairs are missing:\n\n%s\n%s\n" "${HOME}"/.ssh/id_rsa "${HOME}"/.ssh/id_rsa.pub
         echo
         echo '============================================='
         echo
@@ -111,16 +122,21 @@ check_for_ssh_keys_fn() {
         echo
         read -p 'You choices are (1 to 3): ' ANSWER
         clear
-        if [ "$ANSWER" -eq '1' ]; then
+        if [ "${ANSWER}" -eq '1' ]; then
             create_ssh_keypair_fn
-        elif [ "$ANSWER" -eq '2' ] || [ "$ANSWER" -eq '3' ]; then
+        elif [ "${ANSWER}" -eq '2' ] || [ "${ANSWER}" -eq '3' ]; then
             main_menu_fn
         fi
     fi
 }
 
+###############
+## Main Menu ##
+###############
 
-main_menu_fn() {
+main_menu_fn()
+{
+
     clear
 
     local CHOICE
@@ -135,7 +151,8 @@ main_menu_fn() {
     read -p 'Your choices (1 to 3): ' CHOICE
     echo
 
-    case $CHOICE in
+# Case code
+    case ${CHOICE} in
         1)
             check_for_ssh_keys_fn
             main_menu_fn
