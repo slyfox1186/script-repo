@@ -1897,18 +1897,19 @@ fi
 
 find_git_repo "c-ares/c-ares" "1" "T"
 repo_version="${repo_version//c-ares-/}"
-g_tag="${repo_version//_/\.}"
-if build "c-ares" "$g_tag"; then
-    download "https://github.com/c-ares/c-ares/archive/refs/tags/cares-$repo_version.tar.gz" "c-ares-$repo_version.tar.gz"
+repo_version_trim="${repo_version//_/\.}"
+if build "c-ares" "$repo_version_trim"; then
+    download "https://github.com/c-ares/c-ares/archive/refs/tags/cares-$repo_version.tar.gz" "c-ares-$repo_version_trim.tar.gz"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" \
                         --disable-debug \
                         --disable-warnings \
                         --disable-shared \
-                        --enable-static
+                        --enable-static \
+                        --with-pic
     execute make "-j$threads"
     execute make install
-    build_done "c-ares" "$g_tag"
+    build_done "c-ares" "$repo_version_trim"
 fi
 
 git_caller "https://github.com/lv2/lv2.git" "lv2-git"
@@ -2864,8 +2865,8 @@ find_git_repo "strukturag/libheif" "1" "T"
 if build "libheif" "$repo_version"; then
     download "https://github.com/strukturag/libheif/archive/refs/tags/v$repo_version.tar.gz" "libheif-$repo_version.tar.gz"
     source_compiler_flags
-    CFLAGS="-g -O3 -fno-lto -pipe -march=native"
-    CXXFLAGS="-g -O3 -fno-lto -pipe -march=native"
+    CFLAGS="-g -O3 -fPIE -fPIC -fno-lto -pipe -march=native"
+    CXXFLAGS="-g -O3 -fPIE -fPIC -fno-lto -pipe -march=native"
     export CFLAGS CXXFLAGS
     libde265_libs=$(find /usr/ -type f -name 'libde265.s*')
     if [[ -f "$libde265_libs" ]] && [[ ! -e "/usr/lib/x86_64-linux-gnu/libde265.so" ]]; then
