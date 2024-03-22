@@ -4,7 +4,7 @@ What you were trying to accomplish
 The problem you encountered
   - Below is the tail end of the file `config.log`
   - Please notice the line `cc1: error: bad value ('16') for '-march=' switch`
-  - It thinks `-pipe -fno-plt -march=native` is `-march=16`
+  - It thinks `-pipe -fno-plt -fno-plt -march=native` is `-march=16`
 
 ```
 zlib_decoder='yes'
@@ -42,4 +42,4 @@ The exact command line you were using (e.g., "ffmpeg -i input.mov -an -vcodec fo
 
 Sufficient information, including any required input files, to reproduce the bug and confirm a potential fix.
 
-I don't know what to say. It is a bonafide bug. It should be using `-pipe -fno-plt -march=native` and instead the code uses `-march=16`
+I don't know what to say. It is a bonafide bug. It should be using `-pipe -fno-plt -fno-plt -march=native` and instead the code uses `-march=16`

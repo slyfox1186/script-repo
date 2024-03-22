@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 
+# Define color variables
 GREEN='\e[0;32m'
 CYAN='\e[0;36m'
 MAGENTA='\e[0;35m'
 RED='\033[0;31m'
+NC='\e[0m' # No Color
 
+# Create a temporary directory for storing files
 dir=$(mktemp -d /tmp/mirrors-script-XXXXXX)
 
+# Function to download and execute mirrors script
 execute() {
     local url=$1
     local file=$2
@@ -14,24 +18,24 @@ execute() {
         if [[ -f "$dir/$file" ]]; then
             if sudo bash "$dir/$file"; then
                 sudo rm -rf "$dir"
-                echo -e "$GREEN[SUCCESS]$NC Execution completed successfully.\\n"
+                echo -e "${GREEN}[SUCCESS]${NC} Execution completed successfully.\\n"
                 exit 0
             else
-                echo -e "$RED[ERROR]$NC Failed to execute: \"$file\"\\n"
+                echo -e "${RED}[ERROR]${NC} Failed to execute: \"$file\"\\n"
                 read -p "Press any key to exit."
                 echo
                 sudo rm -rf "$dir"
                 exit 1
             fi
         else
-            echo -e "$RED[ERROR]$NC File not found: \"$file\"\\n"
+            echo -e "${RED}[ERROR]${NC} File not found: \"$file\"\\n"
             read -p "Press any key to exit."
             echo
             sudo rm -rf "$dir"
             exit 1
         fi
     else
-        echo -e "$RED[ERROR]$NC Failed to download: \"$file\"\\n"
+        echo -e "${RED}[ERROR]${NC} Failed to download: \"$file\"\\n"
         read -p "Press any key to exit."
         echo
         sudo rm -rf "$dir"
@@ -39,17 +43,18 @@ execute() {
     fi
 }
 
+# Function to display the main menu
 main_menu() {
     local choice
     while true; do
         echo -e "Linux Mirrors Script...\\n"
-        echo -e "$GREEN1)$NC Ubuntu"
-        echo -e "$GREEN2)$NC Debian"
-        echo -e "$GREEN3)$NC Raspberry Pi (Bookworm)"
-        echo -e "$GREEN4)$NC Arch Linux"
-        echo -e "$GREEN0)$NC Exit"
+        echo -e "${GREEN}1)${NC} Ubuntu"
+        echo -e "${GREEN}2)${NC} Debian"
+        echo -e "${GREEN}3)${NC} Raspberry Pi (Bookworm)"
+        echo -e "${GREEN}4)${NC} Arch Linux"
+        echo -e "${GREEN}0)${NC} Exit"
         echo
-        echo -en "$CYANChoose an operating system: $NC"
+        echo -en "${CYAN}Choose an operating system: ${NC}"
         read -n 1 choice
         clear
         case "$choice" in
@@ -70,15 +75,16 @@ main_menu() {
     done
 }
 
+# Function to display the ubuntu menu
 ubuntu_menu() {
     local choice
-    echo -e "$GREEN1)$NC Ubuntu 23.04 - Lunar Lobster"
-    echo -e "$GREEN2)$NC Ubuntu 22.04 - Jammy Jellyfish"
-    echo -e "$GREEN3)$NC Ubuntu 20.04 - Focal Fossa"
-    echo -e "$GREEN4)$NC Ubuntu 18.04 - Bionic Beaver"
-    echo -e "$GREEN0)$NC Back"
+    echo -e "${GREEN}1)${NC} Ubuntu 23.04 - Lunar Lobster"
+    echo -e "${GREEN}2)${NC} Ubuntu 22.04 - Jammy Jellyfish"
+    echo -e "${GREEN}3)${NC} Ubuntu 20.04 - Focal Fossa"
+    echo -e "${GREEN}4)${NC} Ubuntu 18.04 - Bionic Beaver"
+    echo -e "${GREEN}0)${NC} Back"
     echo
-    echo -en "$CYANChoose the Ubuntu release version: $NC"
+    echo -en "${CYAN}Choose the Ubuntu release version: ${NC}"
     read -n 1 choice
     clear
     case "$choice" in
@@ -93,13 +99,14 @@ ubuntu_menu() {
     esac
 }
 
+# Function to display the debian menu
 debian_menu() {
     local choice
-    echo -e "$GREEN1)$NC Debian 11 (Bullseye)"
-    echo -e "$GREEN2)$NC Debian 12 (Bookworm)"
-    echo -e "$GREEN0)$NC Back"
+    echo -e "${GREEN}1)${NC} Debian 11 (Bullseye)"
+    echo -e "${GREEN}2)${NC} Debian 12 (Bookworm)"
+    echo -e "${GREEN}0)${NC} Back"
     echo
-    echo -en "$CYANChoose the Debian release version: "
+    echo -en "${CYAN}Choose the Debian release version: "
     read -n 1 choice
     clear
     case "$choice" in

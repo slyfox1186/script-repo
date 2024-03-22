@@ -1,17 +1,26 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
+## 1. VLC
+## 2. Kodi
+## 3. SMPlayer
+## 4. GNOME Videos (Totem)
+## 5. Bomi
+## 6. Exit
 
 clear
 
+# Functions
 
-exit_fn() {
+exit_fn()
+{
     printf "\n%s\n\n%s\n\n" \
         'Please star this repository to show your support!' \
         'https://github.com/slyfox1186/script-repo'
     return 0
 }
 
-fail_fn() {
+fail_fn()
+{
     printf "\n%s\n\n%s\n\n%s\n\n" \
         "$1" \
         'If you think this is a bug please fill out a report.' \
@@ -19,7 +28,8 @@ fail_fn() {
     return 1
 }
 
-success_fn() {
+success_fn()
+{
     clear
     echo "$1 was succesfully installed."
     exit_fn

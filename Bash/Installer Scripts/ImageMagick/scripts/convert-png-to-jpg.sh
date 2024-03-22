@@ -1,5 +1,8 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
+# Https://github.com/slyfox1186/script-repo/new/main/bash/installer%20scripts/imagemagick/scripts
+# Convert png into jpg
+# Updated: 01.27.24
 
 mkdir "output"
 

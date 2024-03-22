@@ -1,22 +1,26 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
+# Shellcheck disable=sc2001,sc2034,sc2162
 
+# Create the color variables
 GREEN="\033[0;32m"
 BLUE="\033[0;34m"
 NC="\033[0m"
 
+# Menu color functions
 ColorGreen() {
-    echo -ne "$GREEN$1$NC"
+    echo -ne "${GREEN}$1${NC}"
 }
 ColorBlue() {
-    echo -ne "$BLUE$1$NC"
+    echo -ne "${BLUE}$1${NC}"
 }
 
+# Show the script banner
 box_out_banner() {
     input_char=$(echo "$@" | wc -c)
     line=$(for i in $(seq 0 "$input_char"); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)$line"
-    space=$line//-/ 
+    space=${line//-/ }
     echo " $line"
     printf "|" ; echo -n "$space" ; printf "%s\n" "|";
     printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
@@ -26,6 +30,7 @@ box_out_banner() {
 }
 box_out_banner "Install User Scripts"
 
+# Display the main menu
 main_menu() {
     local choice
 echo -ne "
