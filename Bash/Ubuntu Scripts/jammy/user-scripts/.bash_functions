@@ -1479,19 +1479,23 @@ dl_clang() {
 ## PYTHON3 PIP ##
 #################
 
-pip_up() {
-    local list_pkgs pkg
+pipu() {
+    local file
 
-    list_pkgs=$(pip list | awk '{print $1}')
+    # Create a temporary file
+    file=$(mktemp)
 
-    pip install --upgrade pip
+    # Store the requirements in the temporary file
+    pip freeze > "$file"
 
-    for pkg in ${list_pkgs[@]}; do
-        if [[ $pkg != wxPython ]]; then
-            pip install --user --upgrade $pkg
-        fi
-        echo
-    done
+    # Install packages using the temporary requirements file
+    if ! pip install --upgrade -r "$file"; then
+        clear
+        pip install --break-system-packages --upgrade -r "$file"
+    fi
+
+    # Delete the temporary file
+    rm "$file"
 }
 
 ####################
