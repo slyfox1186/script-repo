@@ -1338,33 +1338,62 @@ rsrd() {
 
 ## SHELLCHECK ##
 sc() {
-    local file files input_char line space
+    local opts=() # Array to hold options for shellcheck
+    local file="" # Variable to hold the file name
+    local collecting_args=false
 
-    if [[ -z "$*" ]]; then
-        read -p "Input the FILE path to check: " files
-        echo
-    else
-        files=$@
+    # Loop through all arguments
+    while [[ "$#" -gt 0 ]]; do
+        if $collecting_args; then
+            opts+=("$1")
+            collecting_args=false
+        else
+            case "$1" in
+                -e)
+                    opts+=("$1")
+                    collecting_args=true
+                    ;;
+                -*)
+                    opts+=("$1")
+                    ;;
+                *)
+                    file="$1"
+                    break
+                    ;;
+            esac
+        fi
+        shift
+    done
+
+    # Function to print a box around text
+    box_out_banner() {
+        input_char=$(echo "$@" | wc -c)
+        line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+        tput bold
+        line=$(tput setaf 3)"$line"
+        space=${line//-/ }
+        echo " $line"
+        printf "|" ; echo -n "$space" ; echo "|"
+        printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; echo " |"
+        printf "|" ; echo -n "$space" ; echo "|"
+        echo " $line"
+        tput sgr 0
+    }
+
+    if [[ -z "$file" ]]; then
+        echo "No file specified for parsing."
+        return 1
     fi
 
-    for file in ${files[@]}; do
-        box_out_banner() {
-            input_char=$(echo "$@" | wc -c)
-            line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
-            tput bold
-            line=$(tput setaf 3)"$line"
-            space=${line//-/ }
-            echo " $line"
-            printf "|" ; echo -n "$space" ; echo "|"
-            printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; echo " |"
-            printf "|" ; echo -n "$space" ; echo "|"
-            echo " $line"
-            tput sgr 0
-        }
+    if [[ -f "$file" ]]; then
         box_out_banner "Parsing: $file"
-        shellcheck --color=always -x --severity=warning --source-path="$PATH:$HOME/tmp:/etc:/usr/local/lib64:/usr/local/lib:/usr/local64:/usr/lib:/lib64:/lib:/lib32" "$file"
+        # Pass all collected options and the file name to shellcheck
+        shellcheck --color=always "${opts[@]}" "$file"
         echo
-    done
+    else
+        echo "File '$file' not found!"
+        return 1
+    fi
 }
 
 ###############
