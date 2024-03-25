@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -x
 
 # An example config file is located at: https://github.com/slyfox1186/script-repo/blob/main/Bash/Arch%20Linux%20Scripts/pacman-mirror-update.conf
 
