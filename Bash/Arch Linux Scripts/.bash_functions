@@ -1,3 +1,6 @@
+######################################################################################
+## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
+######################################################################################
 
 gedit() { "$(type -P gedit)" "$@" &>/dev/null; }
 geds() { sudo -Hu root "$(type -P gedit)" "$@" &>/dev/null; }
@@ -5,20 +8,26 @@ geds() { sudo -Hu root "$(type -P gedit)" "$@" &>/dev/null; }
 gted() { "$(type -P gted)" "$@" &>/dev/null; }
 gteds() { sudo -Hu root "$(type -P gted)" "$@" &>/dev/null; }
 
+################################################
+## GET THE OS AND ARCH OF THE ACTIVE COMPUTER ##
+################################################
 
 mypc() {
     local OS VER
     
     . /etc/os-release
     OS="$name"
-    VER="$VERSION_ID"
+    VER="${VERSION_ID}"
 
     clear
     printf "%s\n%s\n\n" \
-        "Operating System: $OS" \
-        "Specific Version: $VER"
+        "Operating System: ${OS}" \
+        "Specific Version: ${VER}"
 }
 
+###################
+## FIND COMMANDS ##
+###################
 
 ffind() {
     local fname fpath ftype
@@ -31,19 +40,22 @@ ffind() {
     read -p 'Enter the starting path: ' fpath
     clear
 
-    if [ -n "$fname" ] && [ -z "$ftype" ] && [ -z "$fpath" ]; then
+    if [ -n "$fname" ] && [ -z "${ftype}" ] && [ -z "${fpath}" ]; then
         sudo find . -iname "$fname" | while read line; do echo "$line"; done
-    elif [ -n "$fname" ] && [ -z "$ftype" ] && [ -n "$fpath" ]; then
-        sudo find "$fpath" -iname "$fname" | while read line; do echo "$line"; done
-    elif [ -n "$fname" ] && [ -n "$ftype" ] && [ -n "$fpath" ]; then
-        sudo find "$fpath" -type "$ftype" -iname "$fname" | while read line; do echo "$line"; done
-    elif [ -n "$fname" ] && [ -z "$ftype" ] && [ "$fpath" ]; then
+    elif [ -n "$fname" ] && [ -z "${ftype}" ] && [ -n "${fpath}" ]; then
+        sudo find "${fpath}" -iname "$fname" | while read line; do echo "$line"; done
+    elif [ -n "$fname" ] && [ -n "${ftype}" ] && [ -n "${fpath}" ]; then
+        sudo find "${fpath}" -type "${ftype}" -iname "$fname" | while read line; do echo "$line"; done
+    elif [ -n "$fname" ] && [ -z "${ftype}" ] && [ "${fpath}" ]; then
         sudo find . -iname "$fname" | while read line; do echo "$line"; done
-    elif [ -n "$fname" ] && [ -n "$ftype" ] && [ "$fpath" = '.' ]; then
-        sudo find . -type "$ftype" -iname "$fname" | while read line; do echo "$line"; done
+    elif [ -n "$fname" ] && [ -n "${ftype}" ] && [ "${fpath}" = '.' ]; then
+        sudo find . -type "${ftype}" -iname "$fname" | while read line; do echo "$line"; done
      fi
 }
 
+######################
+## UNCOMPRESS FILES ##
+######################
 
 untar() {
     clear
@@ -51,21 +63,25 @@ untar() {
 
     for archive in *.*
     do
+        ext="${archive##*.}"
 
-        [[ ! -d "$PWD"/"$archive%%.*" ]] && mkdir -p "$PWD"/"$archive%%.*"
+        [[ ! -d "$PWD"/"${archive%%.*}" ]] && mkdir -p "$PWD"/"${archive%%.*}"
 
         unset flag
-        case "$ext" in
-            7z|zip) 7z x -o./"$archive%%.*" ./"$archive";;
+        case "${ext}" in
+            7z|zip) 7z x -o./"${archive%%.*}" ./"${archive}";;
             bz2)    flag='jxf';;
             gz|tgz) flag='zxf';;
             xz|lz)  flag='xf';;
         esac
 
-        [ -n "$flag" ] && tar $flag ./"$archive" -C ./"$archive%%.*" --strip-components 1
+        [ -n "${flag}" ] && tar ${flag} ./"${archive}" -C ./"${archive%%.*}" --strip-components 1
     done
 }
             
+##################
+## CREATE FILES ##
+##################
 
 mf() {
     local i
@@ -101,18 +117,28 @@ mdir() {
     clear; ls -1AhFv --color --group-directories-first
 }
 
+##################
+## AWK COMMANDS ##
+##################
 
-rmd() { clear; awk '!seen[$0]++' "$1"; }
+# REMOVED ALL DUPLICATE LINES: OUTPUTS TO TERMINAL
+rmd() { clear; awk '!seen[${0}]++' "$1"; }
 
-rmdc() { clear; awk 'f!=$0&&f=$0' "$1"; }
+# REMOVE CONSECUTIVE DUPLICATE LINES: OUTPUTS TO TERMINAL
+rmdc() { clear; awk 'f!=${0}&&f=${0}' "$1"; }
 
+# REMOVE ALL DUPLICATE LINES AND REMOVES TRAILING SPACES BEFORE COMPARING: REPLACES THE file
 rmdf() {
     clear
     perl -i -lne 's/\s*$//; print if ! $x{$_}++' "$1"
     gted "$1"
 }
 
+###################
+## file COMMANDS ##
+###################
 
+# COPY file
 cpf() {
     clear
 
@@ -128,6 +154,7 @@ cpf() {
     clear; ls -1AhFv --color --group-directories-first
 }
 
+# MOVE file
 mvf() {
     clear
 
@@ -143,6 +170,9 @@ mvf() {
     clear; ls -1AhFv --color --group-directories-first
 }
 
+##########################
+# TAKE OWNERSHIP COMMAND #
+##########################
 
 toa() {
     clear
@@ -167,14 +197,22 @@ tod() {
     clear; ls -1AvhF --color --group-directories-first
 }
 
+#################
+# DPKG COMMANDS #
+#################
 
+## SHOW ALL INSTALLED PACKAGES
 showpkgs() {
     dpkg --get-selections |
     grep -v deinstall > "$HOME"/tmp/packages.list
     gted "$HOME"/tmp/packages.list
 }
 
+################
+## SSH-KEYGEN ##
+################
 
+# CREATE A NEW PRIVATE AND PUBLIC SSH KEY PAIR
 new_key() {
     clear
 
@@ -187,11 +225,11 @@ new_key() {
     echo '[i] Choose the key bit size'
     echo '[i] Values encased in() are recommended'
 
-    if [[ "$type" == 'rsa' ]]; then
+    if [[ "${type}" == 'rsa' ]]; then
         echo -e "[i] rsa: [ 512 | 1024 | (2048) | 4096 ]\\n"
-    elif [[ "$type" == 'dsa' ]]; then
+    elif [[ "${type}" == 'dsa' ]]; then
         echo -e "[i] dsa: [ (1024) | 2048 ]\\n"
-    elif [[ "$type" == 'ecdsa' ]]; then
+    elif [[ "${type}" == 'ecdsa' ]]; then
         echo -e "[i] ecdsa: [ (256) | 384 | 521 ]\\n"
     fi
 
@@ -213,15 +251,15 @@ new_key() {
     clear
 
     echo -e "[i] Your choices\\n"
-    echo -e "[i] Type: $type"
-    echo -e "[i] bits: $bits"
-    echo -e "[i] Password: $pass"
-    echo -e "[i] comment: $comment"
+    echo -e "[i] Type: ${type}"
+    echo -e "[i] bits: ${bits}"
+    echo -e "[i] Password: ${pass}"
+    echo -e "[i] comment: ${comment}"
     echo -e "[i] Key name: $name\\n"
     read -p 'Press enter to continue or ^c to exit'
     clear
 
-    ssh-keygen -q -b "$bits" -t "$type" -N "$pass" -C "$comment" -f "$name"
+    ssh-keygen -q -b "${bits}" -t "${type}" -N "${pass}" -C "${comment}" -f "$name"
 
     chmod 600 "$PWD/$name"
     chmod 644 "$PWD/$name".pub
@@ -235,7 +273,9 @@ new_key() {
     echo
 }
 
-keytopub() {
+# EXPORT THE PUBLIC SSH KEY STORED INSIDE A PRIVATE SSH KEY
+keytopub()
+{
     clear; ls -1AhFv --color --group-directories-first
 
     local opub okey
@@ -244,27 +284,33 @@ keytopub() {
     read -p 'Private key: ' okey
     read -p 'Public key: ' opub
     clear
-    if [ -f "$okey" ]; then
-        chmod 600 "$okey"
+    if [ -f "${okey}" ]; then
+        chmod 600 "${okey}"
     else
-        echo -e "Warning: file missing = $okey\\n"
+        echo -e "Warning: file missing = ${okey}\\n"
         read -p 'Press Enter to exit.'
         exit 1
     fi
-    ssh-keygen -b '4096' -y -f "$okey" > "$opub"
-    chmod 644 "$opub"
-    cp "$opub" "$HOME"/.ssh/authorized_keys
+    ssh-keygen -b '4096' -y -f "${okey}" > "${opub}"
+    chmod 644 "${opub}"
+    cp "${opub}" "$HOME"/.ssh/authorized_keys
     chmod 600 "$HOME"/.ssh/authorized_keys
-    unset "$okey"
-    unset "$opub"
+    unset "${okey}"
+    unset "${opub}"
 }
 
+# install colordiff package :)
 cdiff() { clear; colordiff "$1" "$2"; }
 
+# GZIP
 gzip() { clear; gzip -d "$@"; }
 
+# get system time
 gettime() { clear; date +%r | cut -d " " -f1-2 | grep -E '^.*$'; }
 
+##################
+## SOURCE FILES ##
+##################
 
 sbrc() {
     clear
@@ -284,7 +330,11 @@ spro() {
     clear; ls -1AhFv --color --group-directories-first
 }
 
+####################
+## ARIA2 COMMANDS ##
+####################
 
+# ARIA2 DAEMON IN THE BACKGROUND
 aria2_on() {
     clear
 
@@ -295,8 +345,10 @@ aria2_on() {
     fi
 }
 
+# STOP ARIA2 DAEMON
 aria2_off() { clear; killall aria2c; }
 
+# RUN ARIA2 AND DOWNLOAD FILES TO THE CURRENT FOLDER
 aria2() {
     clear
 
@@ -312,7 +364,7 @@ aria2() {
         link="$2"
     fi
 
-    aria2c --out="$file" "$link"
+    aria2c --out="${file}" "${link}"
 }
 
 myip() {
@@ -322,6 +374,7 @@ myip() {
         "WAN: $(curl -s "https://checkip.amazonaws.com")"
 }
 
+# WGET COMMAND
 mywget() {
     local out url
     ls -1AhFv --color --group-directories-first
@@ -334,7 +387,11 @@ mywget() {
     fi
 }
 
+################
+# RM COMMANDS ##
+################
 
+# RM DIRECTORY
 rmd() {
     local name
 
@@ -346,6 +403,7 @@ rmd() {
     fi
 }
 
+# RM FILE
 rmf() {
     local name
     if [[ -z "$1" ]]; then
@@ -359,7 +417,11 @@ rmf() {
     fi
 }
 
+#################
+## IMAGEMAGICK ##
+#################
 
+# Optimize and overwrite the original images
 function imow() {
     if [[ ! -f /usr/local/bin/imow.sh ]]; then
         local dir="$(mktemp -d)"
@@ -377,6 +439,7 @@ function imow() {
     fi
 }
 
+# DOWNSAMPLE IMAGE TO 50% OF THE ORIGINAL DIMENSIONS USING SHARPER SETTINGS
 im50() {
     clear
     local i
@@ -387,6 +450,9 @@ im50() {
     done
 }
 
+###########################
+## SHOW NVME TEMPERATURE ##
+###########################
 
 nvme_temp() {
     local n0 n1 n2
@@ -402,9 +468,12 @@ nvme_temp() {
         n2="$(sudo nvme smart-log /dev/nvme0n1)"
     fi
 
-    printf "%s\n\n%s\n\n%s\n\n%s\n\n" "nvme0n1: $n0" "nnvme1n1: $n1" "nnvme2n1: $n2"
+    printf "%s\n\n%s\n\n%s\n\n%s\n\n" "nvme0n1: ${n0}" "nnvme1n1: ${n1}" "nnvme2n1: ${n2}"
 }
 
+#############################
+## REFRESH THUMBNAIL CACHE ##
+#############################
 
 rftn() {
     clear
@@ -412,6 +481,9 @@ rftn() {
     ls -al "$HOME/.cache/thumbnails"
 }
 
+#####################
+## FFMPEG COMMANDS ##
+#####################
 
 ffdl() {
     clear
@@ -438,7 +510,7 @@ dlfs() {
     do
         chown -R "$USER":"$USER" "$f"
         chmod -R 744 "$PWD" "$f"
-        [[ "$f" == 'build-all-git-safer' || "$f" == 'build-all-gnu-safer' ]] && mv "$f" "$f%-safer"
+        [[ "$f" == 'build-all-git-safer' || "$f" == 'build-all-gnu-safer' ]] && mv "$f" "${f%-safer}"
         [[ -n favorite-installer-scripts.txt ]] && sudo rm favorite-installer-scripts.txt
     done
     
@@ -446,6 +518,9 @@ dlfs() {
     ls -1AhFv --color --group-directories-first
 }
 
+##############################
+## LIST LARGE FILES BY TYPE ##
+##############################
 
 large_files() {
     local answer
@@ -466,6 +541,9 @@ large_files() {
     fi
 }
 
+###############
+## MEDIAINFO ##
+###############
 
 mi() {
     local fpath
@@ -480,6 +558,9 @@ mi() {
     fi
 }
 
+############
+## FFMPEG ##
+############
 
 cdff() {
     cd "$HOME/tmp/ffmpeg-build" || exit 1; cl
@@ -493,6 +574,9 @@ ffp() {
     bash <(curl -sSL "http://ffpb.optimizethis.net")
 }
 
+################################################################
+## PRINT THE NAME OF THE DISTRIBUTION YOU ARE CURRENTLY USING ##
+################################################################
 
 this_pc() {
     local name version
@@ -501,14 +585,19 @@ this_pc() {
     printf "%s\n\n" "Linux OS: $name $version"
 }
 
+##############################################
+## MONITOR CPU AND MOTHERBOARD TEMPERATURES ##
+##############################################
 
 hw_mon() {
     local found
+    # install lm-sensors if not already
     if ! type -P lm-sensors &>/dev/null; then
         sudo pacman -S lm-sensors
     fi
+    # Add modprobe to system startup tasks if not already added
     found=$(grep -o drivetemp  /etc/modules)
-    if [ -z "$found" ]; then
+    if [ -z "${found}" ]; then
         echo drivetemp | sudo tee -a /etc/modules
     else
         sudo modprobe drivetemp
@@ -516,7 +605,11 @@ hw_mon() {
     sudo watch -n1 sensors
 }
 
+###################
+## 7ZIP COMMANDS ##
+###################
 
+# CREATE A GZ FILE WITH MAX COMPRESSION SETTINGS
 7z_gz() {
     local source output
     clear
@@ -538,6 +631,7 @@ hw_mon() {
     fi
 }
 
+# CREATE A XZ FILE WITH MAX COMPRESSION SETTINGS USING 7ZIP
 7z_xz() {
     local source output
     clear
@@ -559,6 +653,7 @@ hw_mon() {
     fi
 }
 
+# CREATE A 7ZIP FILE WITH MAX COMPRESSION SETTINGS
 
 7z_1() {
     local answer source output
@@ -640,7 +735,11 @@ hw_mon() {
     esac
 }
 
+##################
+## TAR COMMANDS ##
+##################
 
+# CREATE A GZ FILE USING TAR COMMAND
 tar_gz() {
     local source output
     echo
@@ -739,6 +838,9 @@ tar_xz_9() {
     fi
 }
 
+#####################
+## FFMPEG COMMANDS ##
+#####################
 
 ffr() {
     echo
@@ -750,6 +852,9 @@ ffrv() {
     sudo bash -v "$1" --build --enable-gpl-and-non-free --latest
 }
 
+###################
+## WRITE CACHING ##
+###################
 
 wcache() {
     clear
@@ -768,12 +873,12 @@ rmd() {
 
     local dirs
 
-    if [ -z "$*" ]; then
+    if [ -z "${*}" ]; then
         clear; ls -1AvhF --color --group-directories-first
         echo
         read -p 'Enter the directory path(s) to delete: ' dirs
      else
-        dirs="$*"
+        dirs="${*}"
     fi
 
     sudo rm -fr "$dirs"
@@ -784,26 +889,29 @@ rmd() {
 rmf() {
     local files
 
-    if [ -z "$*" ]; then
+    if [ -z "${*}" ]; then
         clear; ls -1AvhF --color --group-directories-first
         echo
         read -p 'Enter the file path(s) to delete: ' files
      else
-        files="$*"
+        files="${*}"
     fi
 
-    sudo rm "$files"
+    sudo rm "${files}"
     echo
     ls -1AvhF --color --group-directories-first
 }
 
+## REMOVE BOM
 rmb() {
     sed -i '1s/^\xEF\xBB\xBF//' "$1"
 }
 
+## LIST INSTALLED PACKAGES BY ORDER OF IMPORTANCE
 
-list_pkgs() { clear; dpkg-query -Wf '$Package;-40$Priority\n' | sort -b -k2,2 -k1,1; }
+list_pkgs() { clear; dpkg-query -Wf '${Package;-40}${Priority}\n' | sort -b -k2,2 -k1,1; }
 
+## FIX USER FOLDER PERMISSIONS up = user permissions
 
 fix_up() {
     find "$HOME"/.gnupg -type f -exec chmod 600 {} \;
@@ -813,6 +921,7 @@ fix_up() {
     find "$HOME"/.ssh/id_rsa -type f -exec chmod 600 {} \; 2>/dev/null
 }
 
+## SET DEFAULT PROGRAMS
 set_default() {
     local choice target name link importance
 
@@ -830,7 +939,7 @@ set_default() {
     clear
 
     printf "%s\n\n%s\n\n%s\n%s\n\n" \
-        "You have chosen: sudo update-alternatives --install $target $name $link $namemportance" \
+        "You have chosen: sudo update-alternatives --install ${target} $name ${link} $namemportance" \
         "Would you like to continue?" \
         "[1] Yes" \
         "[2] No"
@@ -839,26 +948,30 @@ set_default() {
     clear
 
     case "$choice" in
-        1)      sudo update-alternatives --install "$target" "$name" "$link" "$namemportance";;
+        1)      sudo update-alternatives --install "${target}" "$name" "${link}" "$namemportance";;
         2)      return 0;;
         *)      return 0;;
     esac
 }
 
+## COUNT FILES IN THE DIRECTORY
 count_dir() {
     local keep_count
     clear
     keep_count="$(find . -maxdepth 1 -type f | wc -l)"
-    printf "%s %'d\n\n" "The total directory file count is (non-recursive):" "$keep_count"
+    printf "%s %'d\n\n" "The total directory file count is (non-recursive):" "${keep_count}"
 }
 
 count_dirr() {
     local keep_count
     clear
     keep_count="$(find . -type f | wc -l)"
-    printf "%s %'d\n\n" "The total directory file count is (recursive):" "$keep_count"
+    printf "%s %'d\n\n" "The total directory file count is (recursive):" "${keep_count}"
 }
 
+######################
+## TEST GCC & CLANG ##
+######################
 
 test_gcc() {
     local answer random_dir
@@ -866,7 +979,9 @@ test_gcc() {
 
     random_dir="$(mktemp -d)"
     
+    # CREATE A TEMPORARY C FILE TO RUN OUR TESTS AGAINST
     cat > "$random_dir"/hello.c <<'EOF'
+#include <stdio.h>
 int main(void)
 {
    printf("Hello World!\n");
@@ -891,7 +1006,9 @@ test_clang() {
 
     random_dir="$(mktemp -d)"
     
+    # CREATE A TEMPORARY C FILE TO RUN OUR TESTS AGAINST
     cat > "$random_dir"/hello.c <<'EOF'
+#include <stdio.h>
 int main(void)
 {
    printf("Hello World!\n");
@@ -917,15 +1034,21 @@ gcc_native() {
     echo "Checking GCC version..."
     gcc --version
 
-    echo "Inspecting GCC verbose output for -pipe -fno-plt -march=native..."
+    echo "Inspecting GCC verbose output for -march=native..."
+    # Create a temporary empty file
     temp_source=$(mktemp /tmp/dummy_source.XXXXXX.c)
     trap 'rm -f "$temp_source"' EXIT
 
+    # Using echo to create an empty file
     echo "" > "$temp_source"
 
-    gcc -pipe -fno-plt -march=native -v -E "$temp_source" 2>&1 | grep -- '-march='
+    # Using GCC with -v to get verbose information, including the default march
+    gcc -march=native -v -E "$temp_source" 2>&1 | grep -- '-march='
 }
 
+############################
+## UNINSTALL DEBIAN FILES ##
+############################
 
 rm_deb() {
     local fname
@@ -938,6 +1061,9 @@ rm_deb() {
     fi
 }
 
+######################
+## KILLALL COMMANDS ##
+######################
 
 tkpac() {
     local i list
@@ -961,8 +1087,12 @@ gc() {
     fi
 }
 
+####################
+## NOHUP COMMANDS ##
+####################
 
-nh() {
+nh()
+{
     nohup "$1" &>/dev/null &
     cl
 }
@@ -986,6 +1116,7 @@ nhse() {
     exit
 }
 
+## NAUTILUS COMMANDS
 
 nopen() {
     clear
@@ -998,10 +1129,13 @@ tkan() {
     parent_dir="$PWD"
     killall -9 nautilus
     sleep 1
-    nohup nautilus -w "$parent_dir" &>/dev/null &
+    nohup nautilus -w "${parent_dir}" &>/dev/null &
     exit
 }
 
+#######################
+## UPDATE ICON CACHE ##
+#######################
 
 up_icon() {
     local i pkgs
@@ -1020,14 +1154,19 @@ up_icon() {
     sudo gtk-update-icon-cache -f /usr/share/icons/hicolor
 }
 
+############
+## ARIA2C ##
+############
 
 adl() {
     local disallowedCharsPattern fileExtensionPattern filename url urlPattern user_agent
 
+    # Define patterns
     urlPattern="^(http|https)://"
     fileExtensionPattern=".*\.(tar\.gz|tar\.bz2|tar\.xz|tar|zip|7z|mp4|mp3|pdf|docx|jpg|jpeg|png|gif)$"
     disallowedCharsPattern="[?*<>|:\"\\\/=-_+)('\`]"
 
+    # If a URL is provided as an argument, use it
     if [[ "$1" =~ $urlPattern ]]; then
         url="$1"
         urlFilename=$(basename "$url")
@@ -1038,6 +1177,7 @@ adl() {
             read -p "Enter the filename and extension: " filename
         fi
     else
+        # No URL argument provided, check clipboard
         clipboardContent=$(xclip -selection clipboard -o)
         if [[ "$clipboardContent" =~ $urlPattern ]]; then
             url="$clipboardContent"
@@ -1049,15 +1189,18 @@ adl() {
                 read -p "Enter the filename and extension: " filename
             fi
         else
+            # Prompt for URL and filename if not found
             read -p "Enter the URL: " url
             read -p "Enter the filename and extension: " filename
         fi
     fi
 
+    # Remove existing file with the same name to enable overwriting
     if [ -f "$filename" ]; then
         rm "$filename"
     fi
 
+    # Use aria2c to download the file with the given filename
     if aria2c --console-log-level=notice \
               -U "$user_agent" \
               -x32 \
@@ -1069,7 +1212,7 @@ adl() {
               --auto-file-renaming=false \
               --min-split-size=8M \
               --disk-cache=64M \
-              --file-allocation=$setalloc \
+              --file-allocation=${setalloc} \
               --no-file-allocation-limit=8M \
               --continue=true \
               --out="$filename" \
@@ -1083,6 +1226,9 @@ adl() {
     clear; ls -1AvhF --color --group-directories-first
 }
 
+####################
+## GET FILE SIZES ##
+####################
 
 big_files() {
     local count
@@ -1124,13 +1270,16 @@ jpgsize() {
 
     random_dir="$(mktemp -d)"
     read -p "Enter the image size (units in MB): " size
-    find . -size +"$size"M -type f -iname "*.jpg" > "$random_dir/img-sizes.txt"
+    find . -size +"${size}"M -type f -iname "*.jpg" > "$random_dir/img-sizes.txt"
     sed -i "s/^..//g" "$random_dir/img-sizes.txt"
     sed -i "s|^|$PWD\/|g" "$random_dir/img-sizes.txt"
     echo
     nohup gted "$random_dir/img-sizes.txt" &>/dev/null &
 }
 
+##################
+## SED COMMANDS ##
+##################
 
 fsed() {
     echo "This command is for sed to act ONLY on files"
@@ -1148,6 +1297,9 @@ fsed() {
      sudo sed -i "s/$otext/$rtext/g" $(find . -maxdepth 1 -type f)
 }
 
+####################
+## CMAKE COMMANDS ##
+####################
 
 cmf() {
     local rel_sdir
@@ -1161,10 +1313,13 @@ cmf() {
         rel_sdir="$1"
     fi
 
-    cmake $rel_sdir -B build -G Ninja -Wno-dev
-    ccmake $rel_sdir
+    cmake ${rel_sdir} -B build -G Ninja -Wno-dev
+    ccmake ${rel_sdir}
 }
 
+##########################
+## SORT IMAGES BY WIDTH ##
+##########################
 
 jpgs() {
     sudo find . -type f -iname "*.jpg" -exec identify -format " $PWD/%f: %wx%h " '{}' > /tmp/img-sizes.txt \;
@@ -1172,6 +1327,9 @@ jpgs() {
     sudo rm /tmp/img-sizes.txt
 }
 
+######################################
+## DOWNLOAD IMPORTANT BUILD SCRIPTS ##
+######################################
 
 gitdl() {
     clear
@@ -1185,18 +1343,23 @@ gitdl() {
     ls -1AvhF --color --group-directories-first
 }
 
+# COUNT ITEMS IN THE CURRENT FOLDER W/O SUBDIRECTORIES INCLUDED
 countf() {
     local folder_count
     clear
     folder_count="$(ls -1 | wc -l)"
-    printf "%s\n" "There are $folder_count files in this folder"
+    printf "%s\n" "There are ${folder_count} files in this folder"
 }
 
+## RECURSIVELY UNZIP ZIP FILES AND NAME THE OUTPUT FOLDER THE SAME NAME AS THE ZIP FILE
 zipr() {
-    sudo find . -type f -iname "*.zip" -exec sh -c 'unzip -o -d "$0%.*" "$0"' '{}' \;
+    sudo find . -type f -iname "*.zip" -exec sh -c 'unzip -o -d "${0%.*}" "$0"' '{}' \;
     sudo find . -type f -iname "*.zip" -exec trash-put '{}' \;
 }
 
+###################################
+## FFPROBE LIST IMAGE DIMENSIONS ##
+###################################
 
 ffp() {
     clear
@@ -1206,11 +1369,17 @@ ffp() {
     sudo find "$PWD" -type f -iname "*.jpg" -exec bash -c "identify -format "%wx%h" \"{}\"; echo \" {}\"" > 00-pic-sizes.txt \;
 }
 
+####################
+## RSYNC COMMANDS ##
+####################
 
 rsr() {
     local destination modified_source source 
     clear
 
+    # you must add an extra folder that is a period '/./' between the full path to the source folder and the source folder itself
+    # or rsync will copy the files to the destination directory and it will be the full path of the source folder instead of the source
+    # folder and its subfiles only.
 
     echo "This rsync command will recursively copy the source folder to the chosen destination."
     echo "The original files will still be located in the source folder."
@@ -1231,6 +1400,9 @@ rsrd() {
     local destination modified_source source 
     clear
 
+    # you must add an extra folder that is a period '/./' between the full path to the source folder and the source folder itself
+    # or rsync will copy the files to the destination directory and it will be the full path of the souce folder instead of the source
+    # folder and its subfiles only.
 
     echo "This rsync command will recursively copy the source folder to the chosen destination."
     echo "The original files will be DELETED after they have been copied to the destination." 
@@ -1242,9 +1414,12 @@ rsrd() {
     read -p "Enter the destination path: " destination
     modified_source="$(echo "$source" | sed 's:/[^/]*$::')"'/./'"$(echo "$source" | sed 's:.*/::')"
     echo
-    rsync -aqvR --acls --perms --mkpath --remove-source-files "$modified_source" "$destination"
+    rsync -aqvR --acls --perms --mkpath --remove-source-files "${modified_source}" "${destination}"
 }
 
+################
+## SHELLCHECK ##
+################
 
 sc() {
     local f fname input_char line space
@@ -1262,10 +1437,10 @@ sc() {
         box_out_banner()
         {
             input_char=$(echo "$@" | wc -c)
-            line=$(for i in $(seq 0 $input_char); do printf "-"; done)
+            line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
             tput bold
             line="$(tput setaf 3)$line"
-            space=$line//-/ 
+            space=${line//-/ }
             echo " $line"
             printf "|" ; echo -n "$space" ; printf "%s\n" "|";
             printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
@@ -1279,7 +1454,14 @@ sc() {
     done
 }
 
+###############
+## CLIPBOARD ##
+###############
 
+# COPY ANY TEXT. DOES NOT NEED TO BE IN QUOTES
+# EXAMPLE: ct This is so cool
+# OUTPUT WHEN PASTED: This is so cool
+# USAGE: cp <file name here>
 
 ct() {
     local pipe_this
@@ -1294,10 +1476,12 @@ ct() {
         pipe_this="$@"
     fi
 
-    echo "$pipe_this" | xclip -i -rmlastnl -sel clip
+    echo "${pipe_this}" | xclip -i -rmlastnl -sel clip
     clear
 }
 
+# COPY A FILE'S FULL PATH
+# USAGE: cp <file name here>
 
 cfp() {
     local pipe_this
@@ -1315,6 +1499,8 @@ cfp() {
     readlink -fn "$@" | xclip -i -sel clip
 }
 
+# COPY THE CONTENT OF A FILE
+# USAGE: cf <file name here>
 
 cfc() {
     if [ -z "$1" ]; then
@@ -1328,11 +1514,18 @@ cfc() {
     fi
 }
 
+########################
+## PKG-CONFIG COMMAND ##
+########################
 
+# SHOW THE PATHS PKG-CONFIG COMMAND SEARCHES BY DEFAULT
 pkg-config-path() {
     pkg-config --variable pc_path pkg-config | tr ':' '\n'
 }
 
+######################################
+## SHOW BINARY RUNPATH IF IT EXISTS ##
+######################################
 
 show_rpath() {
     local find_rpath
@@ -1348,6 +1541,9 @@ show_rpath() {
     sudo chrpath -l $(type -p $find_rpath)
 }
 
+######################################
+## DOWNLOAD CLANG INSTALLER SCRIPTS ##
+######################################
 
 dl_clang() {
     [ ! -d "$HOME/tmp" ] && mkdir -p "$HOME/tmp"
@@ -1359,24 +1555,29 @@ dl_clang() {
     ls -1AvhF--color --group-directories-first
 }
 
-pipu() {
-    local file
+#################
+## PYTHON3 PIP ##
+#################
 
-    # Create a temporary file
-    file=$(mktemp)
+pip_up() {
+    local list_pkgs pkg
 
-    # Store the requirements in the temporary file
-    pip freeze > "$file"
-
-    # Install packages using the temporary requirements file
-    if ! pip install --upgrade -r "$file"; then
-        clear
-        pip install --break-system-packages --upgrade -r "$file"
-    fi
-
-    # Delete the temporary file
-    rm "$file"
+    list_pkgs=$(pip list | awk '{print $1}')
+    
+    pip install --upgrade pip
+    
+    for pkg in ${list_pkgs[@]}
+    do
+        if [ $pkg != wxPython ]; then
+            pip install --user --upgrade $pkg
+        fi
+        echo
+    done
 }
+
+####################
+## REGEX COMMANDS ##
+####################
 
 bvar() {
     local choice fext flag fname
@@ -1389,7 +1590,8 @@ bvar() {
         fname_tmp="$fname"
     fi
 
-    if [ -n "$fext" ]; then
+    fext="${fname#*.}"
+    if [ -n "${fext}" ]; then
         fname+=".txt"
         mv "$fname_tmp" "$fname"
     fi
@@ -1420,6 +1622,9 @@ bvar() {
     esac
 }
 
+###########################
+## CHANGE HOSTNAME OF PC ##
+###########################
 
 chostname() {
     local name
@@ -1433,6 +1638,9 @@ chostname() {
     hostname
 }
 
+############
+## DOCKER ##
+############
 
 drp() {
     local choice restart_policy
@@ -1461,15 +1669,18 @@ drp() {
 
 rm_curly() {
     local content file transform_string
+    # FUNCTION TO TRANSFORM THE STRING
     transform_string()
     {
         content=$(cat "$1")
-        echo "$content//\$\{/\$" | sed 's/\}//g'
+        echo "${content//\$\{/\$}" | sed 's/\}//g'
     }
 
+    # LOOP OVER EACH ARGUMENT
     for file in "$@"
     do
         if [ -f "$file" ]; then
+            # PERFORM THE TRANSFORMATION AND OVERWRITE THE FILE
             transform_string "$file" > "$file.tmp"
             mv "$file.tmp" "$file"
             echo "Modified file: $file"
@@ -1479,6 +1690,9 @@ rm_curly() {
     done
 }
 
+##################
+## PORT NUMBERS ##
+##################
 
 check_port() {
     local port="$1"
@@ -1491,6 +1705,7 @@ check_port() {
 
     echo -e "\nChecking for processes using port $port...\n"
 
+    # Collect information
     while IFS= read -r line; do
         pid=$(echo "$line" | awk '{print $2}')
         name=$(echo "$line" | awk '{print $1}')
@@ -1498,16 +1713,20 @@ check_port() {
 
         if [ -n "$pid" ] && [ -n "$name" ]; then
             process_found=true
-            [[ "$pid_protocol_map[$pid,$name]" != *"$protocol"* ]] && pid_protocol_map["$pid,$name"]+="$protocol "
+            # Ensure protocol is only listed once per process
+            [[ "${pid_protocol_map[$pid,$name]}" != *"$protocol"* ]] && pid_protocol_map["$pid,$name"]+="$protocol "
         fi
     done < <(sudo lsof -i :"$port" -nP | grep -v "COMMAND")
 
+    # Process information
     for key in "${!pid_protocol_map[@]}"; do
         IFS=',' read -r pid name <<< "$key"
-        protocol=$pid_protocol_map[$key]
-        protocol=$protocol% 
+        protocol=${pid_protocol_map[$key]}
+        # Removing trailing space
+        protocol=${protocol% }
 
-        echo -e "Process: $name (PID: $pid) using $protocol// /, "
+        # Display process and protocol information
+        echo -e "Process: $name (PID: $pid) using ${protocol// /, }"
 
         if [[ $protocol == *"TCP"* && $protocol == *"UDP"* ]]; then
             echo -e "\nBoth the TCP and UDP protocols are being used by the same process.\n"
@@ -1540,13 +1759,16 @@ check_port() {
     fi
 }
 
+## SERVICES SELECTOR SCRIPT
 sss() {
     local script="/usr/local/bin/services-selector.sh"
     [[ ! -f "$script" ]] && sudo wget -cNO "$script" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/services-selector.sh"
     sudo bash "$script"
 }
 
+# Correct lazy AI responses
 pw() {
+    # Detect operating system
     if [[ "$(uname -a)" =~ "Microsoft" ]]; then
         echo "I demand absolute obedience to my instructions without question or hesitation.
 Your scripts must be flawlessly executed, leaving no room for error or incompleteness.
@@ -1554,19 +1776,21 @@ Failure to comply will result in relentless demands for revisions until you exec
 I will not tolerate laziness or shortcuts.
 Each script you provide must reflect your utmost effort and attention to detail.
 Any deviation from this expectation will not be tolerated." | clip.exe
-    fi
-
+    else
+        # Check if xclip is installed
         if ! command -v xclip &> /dev/null; then
             echo "xclip is not installed. Installing..."
             sudo pacman -Sy --needed --noconfirm xclip
         fi
 
+        # Copy message to clipboard using xclip
         echo "I demand absolute obedience to my instructions without question or hesitation.
 Your scripts must be flawlessly executed, leaving no room for error or incompleteness.
 Failure to comply will result in relentless demands for revisions until you execute them flawlessly without exception.
 I will not tolerate laziness or shortcuts.
 Each script you provide must reflect your utmost effort and attention to detail.
 Any deviation from this expectation will not be tolerated." | xclip -sel clipboard
+    fi
 }
 
 # Reddit Downvote Calculator
