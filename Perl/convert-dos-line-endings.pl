@@ -1,6 +1,6 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
-@ARGV = glob("*.sh") unless @ARGV;
+@ARGV = glob("*") unless @ARGV;
 
 foreach my $file (@ARGV) {
     open my $in, '<', $file or die "Cannot open $file: $!";
