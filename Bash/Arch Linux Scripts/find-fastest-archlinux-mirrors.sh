@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-
-# Example Config File = https://github.com/slyfox1186/script-repo/blob/main/Bash/Arch%20Linux%20Scripts/pacman-mirror-update.conf
+# Example config file = https://github.com/slyfox1186/script-repo/blob/main/Bash/Arch%20Linux%20Scripts/pacman-mirror-update.conf
 
 #######################################
 # Description: Update Pacman mirrorlist and create a systemd service to run periodically.
@@ -274,7 +273,7 @@ After=network.target
 
 [Service]
 Type=oneshot
-ExecStart=$script_location
+ExecStart=$script_location -m $num_mirrors -p $protocol -l $log_file -f $frequency $(if [[ -n $exclude_mirrors ]]; then echo "-e $exclude_mirrors"; fi) $(if [[ -n $country ]]; then echo "-c $country"; fi) $(if "$verbose"; then echo "-v"; fi)
 
 [Install]
 WantedBy=multi-user.target
@@ -286,7 +285,7 @@ EOF
 Description=Run Pacman Mirror Update $frequency
 
 [Timer]
-OnCalendar=daily
+OnCalendar=$frequency
 Persistent=true
 
 [Install]
