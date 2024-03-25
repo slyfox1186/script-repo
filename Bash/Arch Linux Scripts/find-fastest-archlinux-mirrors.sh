@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+if [[ "$EUID" -ne 0 ]]; then
+    echo "You must run this script with root or sudo."
+    exit 1
+fi
+
 # Function to display the help menu
 display_help() {
   echo "Usage: $0 [OPTIONS]"
@@ -66,14 +71,14 @@ done
 script_location="/opt/pacman-mirror-update/update_mirrorlist.sh"
 
 # Create the directory if it doesn't exist
-sudo mkdir -p "$(dirname "$script_location")"
+mkdir -p "$(dirname "$script_location")"
 
 # Copy the script to the safe location
-sudo cp "$0" "$script_location"
+cp "$0" "$script_location"
 
 if ! $create_service_only; then
   # Update the mirrorlist
-  reflector_cmd="sudo reflector --latest $num_mirrors --sort rate --save /etc/pacman.d/mirrorlist"
+  reflector_cmd="reflector --latest $num_mirrors --sort rate --save /etc/pacman.d/mirrorlist"
   
   if $verbose; then
     reflector_cmd+=" --verbose"
@@ -86,19 +91,19 @@ if ! $create_service_only; then
   eval "$reflector_cmd"
 
   # Backup the original mirrorlist
-  sudo cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
+  cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
 
   # Get the top 5 fastest mirrors
   top_mirrors=$(sed -n '1,5p' /etc/pacman.d/mirrorlist)
 
   # Create a new mirrorlist with only the top 5 mirrors
-  echo "$top_mirrors" | sudo tee /etc/pacman.d/mirrorlist > /dev/null
+  echo "$top_mirrors" | tee /etc/pacman.d/mirrorlist > /dev/null
 
   echo "Updated pacman mirrorlist with the top 5 fastest mirrors."
 fi
 
 # Create the systemd service file
-sudo tee /etc/systemd/system/pacman-mirror-update.service > /dev/null <<EOF
+tee /etc/systemd/system/pacman-mirror-update.service > /dev/null <<EOF
 [Unit]
 Description=Update Pacman Mirrorlist
 After=network.target
@@ -112,7 +117,7 @@ WantedBy=multi-user.target
 EOF
 
 # Create the systemd timer file
-sudo tee /etc/systemd/system/pacman-mirror-update.timer > /dev/null <<EOF
+tee /etc/systemd/system/pacman-mirror-update.timer > /dev/null <<EOF
 [Unit]
 Description=Run Pacman Mirror Update $frequency
 
@@ -125,9 +130,9 @@ WantedBy=timers.target
 EOF
 
 # Reload the systemd configuration
-sudo systemctl daemon-reload
+systemctl daemon-reload
 
 # Enable and start the timer
-sudo systemctl enable --now pacman-mirror-update.timer
+systemctl enable --now pacman-mirror-update.timer
 
 echo "Created and enabled the pacman-mirror-update service and timer with frequency: $frequency"
