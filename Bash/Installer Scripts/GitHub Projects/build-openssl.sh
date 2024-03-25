@@ -37,7 +37,7 @@ parse_arguments() {
                 shift 2
                 ;;
             -v|--version)
-                openssl_version="$2"
+                version="$2"
                 shift 2
                 ;;
             *)
@@ -50,19 +50,21 @@ parse_arguments() {
 
 # Function to handle failure and display an error message
 fail() {
-    printf "\n%s\nPlease report errors at: https://github.com/slyfox1186/script-repo/issues\n\n" "$1" >&2
+    echo
+    echo "$1"
+    echo "Please report errors at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
 # Function to install required packages
 install_required_packages() {
     local -a pkgs=(
-        autoconf autogen automake build-essential ca-certificates ccache
+        autoconf autogen automake build-essential ca-certificates
         checkinstall clang curl libc-ares-dev libcurl4-openssl-dev
         libdmalloc-dev libgcrypt20-dev libgmp-dev libgpg-error-dev
         libjemalloc-dev libmbedtls-dev libsctp-dev libssh2-1-dev
-        libssh-dev libssl-dev libtool libtool-bin libxml2-dev m4 perl
-        zlib1g-dev
+        libssh-dev libssl-dev libtool libtool-bin libxml2-dev m4
+        ccache perl zlib1g-dev
     )
 
     local -a missing_packages=()
@@ -86,16 +88,16 @@ install_required_packages() {
 set_compiler_flags() {
     local common_flags="-g -O3 -pipe -fno-plt -fstack-protector-strong -D_FORTIFY_SOURCE=2"
 
-    export CC=clang
-    export CXX=clang++
-    export CFLAGS="$common_flags"
-    export CXXFLAGS="$CFLAGS"
-    export LDFLAGS="-Wl,-z,relro,-z,now"
+    CC="clang"
+    CXX="clang++"
+    CFLAGS="$common_flags"
+    CXXFLAGS="$CFLAGS"
+    LDFLAGS="-Wl,-z,relro,-z,now"
+    export CC CFLAGS CXX CXXFLAGS LDFLAGS
 }
 
 # Function to update the shared library cache
 update_shared_library_cache() {
-    ldconfig "$install_dir/lib64"
     ldconfig
 }
 
@@ -125,15 +127,15 @@ create_pkgconfig_softlinks() {
 
 # Function to download OpenSSL
 download_openssl() {
-    local openssl_url="https://www.openssl.org/source/openssl-$openssl_version.tar.gz"
-    local tar_file="$cwd/openssl-$openssl_version.tar.gz"
+    local openssl_url="https://www.openssl.org/source/openssl-$version.tar.gz"
+    local tar_file="$cwd/openssl-$version.tar.gz"
     local max_retries=3
     local retry_count=0
 
     echo "Targeting tar file: $tar_file"
 
-    while [[ ! -f "$tar_file" && $retry_count -lt $max_retries ]]; do
-        echo "Downloading OpenSSL $openssl_version... (Attempt $((retry_count + 1))/$max_retries)"
+    while [[ ! -f "$tar_file" ]] && [[ $retry_count -lt $max_retries ]]; do
+        echo "Downloading OpenSSL $version... (Attempt $((retry_count + 1))/$max_retries)"
         echo
         if wget --show-progress -cqO "$tar_file" "$openssl_url"; then
             echo
@@ -153,23 +155,23 @@ download_openssl() {
 
 # Function to extract OpenSSL
 extract_openssl() {
-    local tar_file="$cwd/openssl-$openssl_version.tar.gz"
+    local tar_file="$cwd/openssl-$version.tar.gz"
 
     if [[ -d "$src_dir" ]]; then
         echo
-        echo "OpenSSL $openssl_version source directory already exists, skipping extraction."
+        echo "OpenSSL $version source directory already exists, skipping extraction."
         echo
     else
         if [[ -f "$tar_file" ]]; then
-            echo "Verifying OpenSSL $openssl_version archive integrity..."
+            echo "Verifying OpenSSL $version archive integrity..."
             if gzip -t "$tar_file"; then
-                echo "Extracting OpenSSL $openssl_version..."
+                echo "Extracting OpenSSL $version..."
                 if tar -xzf "$tar_file" -C "$cwd"; then
                     echo "Extraction completed successfully."
                     echo
                     local extracted_dir=$(basename $(tar -tzf "$tar_file" | head -1 | cut -f1 -d"/"))
-                    if [[ "$extracted_dir" != "$openssl_version" ]]; then
-                        echo "Renaming extracted directory from $extracted_dir to $openssl_version..."
+                    if [[ "$extracted_dir" != "$version" ]]; then
+                        echo "Renaming extracted directory from $extracted_dir to $version..."
                         mv "$cwd/$extracted_dir" "$src_dir"
                         echo
                     fi
@@ -181,14 +183,14 @@ extract_openssl() {
                     extract_openssl
                 fi
             else
-                echo "OpenSSL $openssl_version archive is corrupted. Removing the archive and retrying..."
+                echo "OpenSSL $version archive is corrupted. Removing the archive and retrying..."
                 echo
                 rm "$tar_file"
                 download_openssl
                 extract_openssl
             fi
         else
-            echo "OpenSSL $openssl_version archive does not exist. Downloading..."
+            echo "OpenSSL $version archive does not exist. Downloading..."
             echo
             download_openssl
             extract_openssl
@@ -200,33 +202,30 @@ extract_openssl() {
 configure_openssl() {
     echo "Configuring OpenSSL..."
     local config_options=(
-        linux-x86_64-clang
+        "linux-x86_64-clang"
         "-DOPENSSL_USE_IPV6=$([[ "$enable_ipv6" == true ]] && echo 1 || echo 0)"
         "-Wl,-rpath=$install_dir/lib64"
         "-Wl,--enable-new-dtags"
         "--prefix=$install_dir"
         "--openssldir=$install_dir"
-        --release
+        "--release"
         "--with-zlib-include=/usr/include"
         "--with-zlib-lib=/usr/lib/x86_64-linux-gnu"
-        enable-ec_nistp_64_gcc_128
-        enable-egd
-        enable-pic
-        enable-shared
-        enable-threads
-        enable-zlib
-        no-async
-        no-comp
-        no-dso
-        no-engine
-        no-weak-ssl-ciphers
+        "enable-ec_nistp_64_gcc_128"
+        "enable-egd"
+        "enable-pic"
+        "enable-shared"
+        "enable-threads"
+        "enable-zlib"
+        "no-async"
+        "no-comp"
+        "no-dso"
+        "no-engine"
+        "no-weak-ssl-ciphers"
     )
 
-    if [[ "$openssl_version" =~ ^3\.2\. ]]; then
-        config_options+=(
-            enable-ktls
-            enable-psk
-        )
+    if [[ "$version" =~ ^3\.2\. ]]; then
+        config_options+=("enable-"{ktls,psk})
     fi
 
     if "$src_dir/Configure" "${config_options[@]}"; then
@@ -257,44 +256,41 @@ post_installation_tasks() {
 
 # Main function
 main() {
-    local cwd="/tmp/openssl-build"
-    local install_dir="/usr/local/ssl"
+    local temp_dir=$(mktemp -d)
+    local cwd="$temp_dir/openssl-build"
+    local install_dir=/usr/local/ssl
     local enable_ipv6=false
-    local openssl_version
-    local tar_file="$cwd/openssl-$openssl_version.tar.gz"
+    local version
+    local tar_file="$cwd/openssl-$version.tar.gz"
     local src_dir
     local jobs
     local keep_build=false
 
     if [[ "$EUID" -ne 0 ]]; then
-        printf "%s\n\n" "You must run this script as root/sudo."
+        echo "You must run this script as root or with sudo."
         exit 1
     fi
 
     parse_arguments "$@"
 
-    if [[ -z "$openssl_version" ]]; then
-        openssl_version=$(curl -s https://www.openssl.org/source/ | grep -Po 'openssl-3\.2\.\d+\.tar\.gz' | head -n 1 | sed 's/openssl-//;s/\.tar\.gz//')
-        if [[ -z "$openssl_version" ]]; then
-            fail "Failed to detect the latest OpenSSL 3.2.x version. Line: $LINENO"
-        fi
+    if [[ -z "$version" ]]; then
+        version=$(curl -fsS "https://www.openssl.org/source/" | grep -oP 'openssl-3\.2\.\d+\.tar\.gz' | head -n1 | sed 's/openssl-//;s/\.tar\.gz//')
+        [[ -z "$version" ]] && fail "Failed to detect the latest OpenSSL 3.2.x version. Line: $LINENO"
     fi
 
-    install_dir=${install_dir:-/usr/local/ssl}
-    src_dir="$cwd/$openssl_version"
+    install_dir="${install_dir:-/usr/local/ssl}"
+    src_dir="$cwd/$version"
 
     echo
     set_compiler_flags
     mkdir -p "$cwd"
     install_required_packages
-    echo "Targeting OpenSSL version $openssl_version"
+    echo "Targeting OpenSSL version $version"
     download_openssl
     extract_openssl
 
     if [[ -d "$src_dir" ]]; then
-        cd "$src_dir" || {
-            fail "Failed to change directory to $src_dir. Line: $LINENO"
-        }
+        cd "$src_dir" || fail "Failed to change directory to $src_dir. Line: $LINENO"
         configure_openssl
         build_and_install_openssl
         add_openssl_to_path
@@ -305,11 +301,10 @@ main() {
         fail "OpenSSL source directory $src_dir does not exist. Line: $LINENO"
     fi
 
-    if [[ $keep_build == false ]]; then
-        rm -fr "$cwd"
-    fi
+    [[ "$keep_build" == "false" ]] && rm -fr "$cwd"
 
-    echo -e "\nOpenSSL installation completed."
+    echo
+    echo "OpenSSL installation completed."
 }
 
 main "$@"
