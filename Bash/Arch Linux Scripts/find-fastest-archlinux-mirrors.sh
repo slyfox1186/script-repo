@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
+set -x
 
 # Config file: https://github.com/slyfox1186/script-repo/blob/main/Bash/Arch%20Linux%20Scripts/pacman-mirror-update.conf
-
 if [[ "$EUID" -ne 0 ]]; then
     echo "You must run this script with root or sudo."
     exit 1
@@ -37,7 +37,7 @@ display_help() {
 }
 
 # Parse command-line arguments
-config_file="/etc/pacman-mirror-update.conf"
+config_file=""
 frequency="weekly"
 create_service_only=false
 num_mirrors=200
@@ -45,12 +45,12 @@ top_mirrors=5
 verbose=false
 protocol="https"
 log_file="/var/log/pacman-mirror-update.log"
-exclude_mirrors=""
-country=""
+country=
+exclude_mirrors=
 dry_run=false
 email=""
 
-while [[ $# -gt 0 ]]; do
+while [[ "$#" -gt 0 ]]; do
     case "$1" in
         -f|--frequency)
             frequency="$2"
@@ -112,47 +112,51 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Read configuration file if it exists
-if [[ -f "$config_file" ]]; then
-    while read -r line; do
-        if [[ "$line" =~ ^[^#]*= ]]; then
-            option_name="${line%%=*}"
-            option_value="${line#*=}"
-            case "$option_name" in
-                frequency)
-                    frequency="$option_value"
-                    ;;
-                num_mirrors)
-                    num_mirrors="$option_value"
-                    ;;
-                top_mirrors)
-                    top_mirrors="$option_value"
-                    ;;
-                verbose)
-                    if [[ "$option_value" == "true" ]]; then
-                        verbose=true
-                    else
-                        verbose=false
-                    fi
-                    ;;
-                protocol)
-                    protocol="$option_value"
-                    ;;
-                log_file)
-                    log_file="$option_value"
-                    ;;
-                exclude_mirrors)
-                    exclude_mirrors="$option_value"
-                    ;;
-                country)
-                    country="$option_value"
-                    ;;
-                email)
-                    email="$option_value"
-                    ;;
-            esac
-        fi
-    done < "$config_file"
+# Read configuration file if it exists and was specified
+if [[ -n "$config_file" ]]; then
+    if [[ -f "$config_file" ]]; then
+        while read -r line; do
+            if [[ "$line" =~ ^[^#]*= ]]; then
+                option_name="${line%%=*}"
+                option_value="${line#*=}"
+                option_value="${option_value%\"}"  # Remove trailing double quote
+                option_value="${option_value#\"}"  # Remove leading double quote
+                case "$option_name" in
+                    frequency)
+                        frequency="$option_value"
+                        ;;
+                    num_mirrors)
+                        num_mirrors="$option_value"
+                        ;;
+                    top_mirrors)
+                        top_mirrors="$option_value"
+                        ;;
+                    verbose)
+                        if [[ "$option_value" == "true" ]]; then
+                            verbose="true"
+                        else
+                            verbose="false"
+                        fi
+                        ;;
+                    protocol)
+                        protocol="$option_value"
+                        ;;
+                    log_file)
+                        log_file="$option_value"
+                        ;;
+                    exclude_mirrors)
+                        exclude_mirrors="$option_value"
+                        ;;
+                    country)
+                        country="$option_value"
+                        ;;
+                    email)
+                        email="$option_value"
+                        ;;
+                esac
+            fi
+        done < "$config_file"
+    fi
 fi
 
 # Set the safe location for the script
@@ -176,23 +180,23 @@ log() {
 if ! $create_service_only; then
     # Update the mirrorlist
     reflector_cmd="reflector --latest $num_mirrors --sort rate --save /etc/pacman.d/mirrorlist"
-    
+
     if $verbose; then
         reflector_cmd+=" --verbose"
     fi
-    
+
     if [[ "$protocol" != "both" ]]; then
         reflector_cmd+=" --protocol $protocol"
     fi
-    
+
     if [[ -n "$exclude_mirrors" ]]; then
-        reflector_cmd+=" --exclude '$exclude_mirrors'"
+        reflector_cmd+=" --exclude $exclude_mirrors"
     fi
-    
+
     if [[ -n "$country" ]]; then
-        reflector_cmd+=" --country '$country'"
+        reflector_cmd+=" --country $country"
     fi
-    
+
     if $dry_run; then
         log "Dry run: $reflector_cmd"
     else
@@ -203,18 +207,21 @@ if ! $create_service_only; then
             exit 1
         else
             log "Mirrorlist updated successfully."
-            
+
             if ! $dry_run; then
                 # Backup the original mirrorlist
                 cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
                 log "Original mirrorlist backed up."
-        
+
                 # Get the top N fastest mirrors
                 top_mirrors_list=$(sed -n "1,${top_mirrors}p" /etc/pacman.d/mirrorlist)
-        
+
                 # Create a new mirrorlist with only the top N mirrors
-                echo "$top_mirrors_list" | tee /etc/pacman.d/mirrorlist > /dev/null
-                log "Updated pacman mirrorlist with the top $top_mirrors fastest mirrors."
+                echo "$top_mirrors_list" | tee /etc/pacman.d/mirrorlist.top >/dev/null
+
+                # Move the updated mirrorlist to the original location
+                mv /etc/pacman.d/mirrorlist.top /etc/pacman.d/mirrorlist
+                log "Updated pacman mirrorlist with the top $top_mirrors fastest"
             fi
         fi
     fi
@@ -222,7 +229,7 @@ fi
 
 if ! $dry_run; then
     # Create the systemd service file
-    tee /etc/systemd/system/pacman-mirror-update.service > /dev/null <<EOF
+    tee /etc/systemd/system/pacman-mirror-update.service >/dev/null <<EOF
 [Unit]
 Description=Update Pacman Mirrorlist
 After=network.target
@@ -236,7 +243,7 @@ WantedBy=multi-user.target
 EOF
 
     # Create the systemd timer file
-    tee /etc/systemd/system/pacman-mirror-update.timer > /dev/null <<EOF
+    tee /etc/systemd/system/pacman-mirror-update.timer >/dev/null <<EOF
 [Unit]
 Description=Run Pacman Mirror Update $frequency
 
