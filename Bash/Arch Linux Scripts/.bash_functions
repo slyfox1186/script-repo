@@ -1558,7 +1558,7 @@ Any deviation from this expectation will not be tolerated." | clip.exe
 
         if ! command -v xclip &> /dev/null; then
             echo "xclip is not installed. Installing..."
-            sudo apt -y install xclip
+            sudo pacman -Sy --needed --noconfirm xclip
         fi
 
         echo "I demand absolute obedience to my instructions without question or hesitation.
@@ -1567,7 +1567,6 @@ Failure to comply will result in relentless demands for revisions until you exec
 I will not tolerate laziness or shortcuts.
 Each script you provide must reflect your utmost effort and attention to detail.
 Any deviation from this expectation will not be tolerated." | xclip -sel clipboard
-    fi
 }
 
 # Reddit Downvote Calculator
