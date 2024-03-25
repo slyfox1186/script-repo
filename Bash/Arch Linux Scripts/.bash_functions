@@ -1359,23 +1359,24 @@ dl_clang() {
     ls -1AvhF--color --group-directories-first
 }
 
+pipu() {
+    local file
 
-pip_up() {
-    local list_pkgs pkg
+    # Create a temporary file
+    file=$(mktemp)
 
-    list_pkgs=$(pip list | awk '{print $1}')
-    
-    pip install --upgrade pip
-    
-    for pkg in ${list_pkgs[@]}
-    do
-        if [ $pkg != wxPython ]; then
-            pip install --user --upgrade $pkg
-        fi
-        echo
-    done
+    # Store the requirements in the temporary file
+    pip freeze > "$file"
+
+    # Install packages using the temporary requirements file
+    if ! pip install --upgrade -r "$file"; then
+        clear
+        pip install --break-system-packages --upgrade -r "$file"
+    fi
+
+    # Delete the temporary file
+    rm "$file"
 }
-
 
 bvar() {
     local choice fext flag fname
