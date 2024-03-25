@@ -1,14 +1,32 @@
 #!/usr/bin/env bash
 
+##########################################################
+##
+## GitHub: https://github.com/slyfox1186/script-repo
+##
+## Install Packages Lite Version
+##
+## A list of packages which I consider to be some of
+## the most useful when running Ubuntu. Aimed at
+## developers but useful for the casual user as well.
+##
+## If you think there should be modification of the list
+## Please create a support ticket under the Issues tab.
+##
+##########################################################
 
 clear
 
-if [ "$EUID" -eq '0' ]; then
-    echo "You must run this script without root or sudo."
+# Verify the script has root access before continuing
+if [ "${EUID}" -eq '0' ]; then
+    echo 'You must run this script WITHOUT root/sudo.'
     echo
     exit 1
 fi
 
+##
+## DEFINE THE APT PACKAGE INSTALLER TO BE USED  
+##
 
 if which 'apt-fast' &>/dev/null; then
     exec_apt='apt-fast'
@@ -18,10 +36,14 @@ else
     exec_apt='apt'
 fi
 
+######################
+## FUNCTION SECTION ##
+######################
 
-installed() { return $(dpkg-query -W -f '$Status\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
+installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
 
-exit_fn() {
+exit_fn()
+{
     printf "\n%s\n\n%s\n\n" \
         '[i] Make sure to star this repository to show your support!' \
         '[i] https://github.com/slyfox1186/script-repo/'
@@ -30,7 +52,8 @@ exit_fn() {
 
 install_other_fn() { curl -Ssf 'https://dlang.org/install.sh' | bash -s dmd; }
 
-install_apt_fn() {
+install_apt_fn()
+{
     pkgs=(alien apt-file aptitude aria2 autoconf autoconf-archive autogen automake bat binutils bison
           build-essential ccache ccdiff checkinstall clang cmake cmake-extras cmake-qt-gui colordiff cpu-checker
           curl cvs dbus-x11 dconf-editor ddclient debhelper devscripts dh-make disktype dos2unix dpkg-dev
@@ -67,7 +90,8 @@ install_apt_fn() {
     fi
 }
 
-install_ppa_fn() {
+install_ppa_fn()
+{
     local i missing_pkgs pkg pkgs ppa_repo
 
     if [ ! -d '/etc/apt/sources.list.d' ]; then
@@ -107,10 +131,14 @@ install_ppa_fn() {
     fi
 }
 
+# install missing ppa repositories
 install_ppa_fn
 
+# install missing apt packages
 install_apt_fn
 
+# intall deb files
 install_other_fn
 
+# show exit message
 exit_fn
