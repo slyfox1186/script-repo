@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Config file: 
+# Config file: https://github.com/slyfox1186/script-repo/blob/main/Bash/Arch%20Linux%20Scripts/pacman-mirror-update.conf
 
 if [[ "$EUID" -ne 0 ]]; then
     echo "You must run this script with root or sudo."
