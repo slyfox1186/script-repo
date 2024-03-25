@@ -1,86 +1,85 @@
 #!/usr/bin/env bash
-# Shellcheck disable=sc2066,sc2068,sc2086,sc2162
+# Shellcheck disable=SC2066,SC2068,SC2086,SC2162
 
-# Set the path variable
+# Set the PATH variable
 if [ -d "$HOME/.local/bin" ]; then
-    export PATH="$PATH:$HOME/.local/bin"
+    export PATH="$HOME/.local/bin:$PATH"
 fi
+
+fail() {
+    echo "[ERROR] $1"
+    exit 1
+}
 
 # Create the output directories
-if [ ! -d completed ] || [ ! -d original ]; then
-    mkdir completed original
-fi
+mkdir -p "completed" "original"
 
-# Installl the required apt packages
-pkgs=(
-    bc ffmpegthumbnailer ffmpegthumbs libffmpegthumbnailer4v5
-    libsox-dev python3-pip sox trash-cli
-)
-
-missing_pkgs=""
-for pkg in ${pkgs[@]}
-do
-    missing_pkg="$(sudo dpkg -l | grep -o "$pkg")"
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" $pkg"
+# Install required packages
+if command -v apt-get >/dev/null 2>&1; then
+    # Debian-based distributions
+    apt_packages=("bc" "ffmpegthumbnailer" "libffmpegthumbnailer-data" "libsox-fmt-all" "python3-pip" "sox" "trash-cli")
+    pip_packages=("ffpb" "google_speech")
+    missing_apt_pkgs=$(comm -23 <(apt-mark showmanual | sort -u) <(printf '%s\n' "${apt_packages[@]}" | sort -u))
+    if [ -n "$missing_apt_pkgs" ]; then
+        echo "Installing: $missing_apt_pkgs"
+        echo
+        sudo apt-get install -y $missing_apt_pkgs || fail "Failed to install required packages."
     fi
-done
-
-if [ -n "$missing_pkgs" ]; then
-    printf "%s\n\n" "$ Installing: $missing_pkgs"
-    if ! sudo apt -y install $missing_pkgs; then
-        fail_fn "Failed to install the required APT packages: $missing_pkgs"
-    else
-        printf "\n%s\n\n" "The required APT packages were successfully installed!"
+elif command -v pacman >/dev/null 2>&1; then
+    # Arch Linux
+    pacman_packages=("bc" "ffmpegthumbnailer" "libffmpegthumbnailer" "python-pip" "sox" "trash-cli")
+    pip_packages=("ffpb" "google_speech")
+    missing_pacman_pkgs=$(comm -23 <(pacman -Qqe | sort -u) <(printf '%s\n' "${pacman_packages[@]}" | sort -u))
+    if [ -n "$missing_pacman_pkgs" ]; then
+        echo "Installing: $missing_pacman_pkgs"
+        echo
+        sudo pacman -S --noconfirm --needed $missing_pacman_pkgs || fail "Failed to install required packages."
     fi
 else
-    printf "%s\n\n" "The required APT packages are already installed."
-fi
-
-# Install the required pip packages
-pip_dir="$(mktemp -d)"
-echo "ffpb" > "$pip_dir"/requirements.txt
-echo "google_speech" >> "$pip_dir"/requirements.txt
-if ! pip install --user -r "$pip_dir"/requirements.txt &>/dev/null; then
-    printf "%s\n\n" "Failed to install the pip packages."
+    echo "Unsupported package manager. Please install the required packages manually."
     exit 1
 fi
-sudo rm -fr "$pip_dir"
+
+pip install --break-system-packages --upgrade pip
+pip install --break-system-packages --upgrade "${pip_packages[@]}"
 
 # Delete any files from previous runs
-del_this="$(du -ah --max-depth=1 | grep -Eo "[\/].*\(x265\)\.m(p4|kv)$" | grep -Eo "[A-Za-z0-9].*\(x265\)\.m(p4|kv)$")"
+del_this=$(du -ah --max-depth=1 | grep -oP '/.*\(x265\)\.m(p4|kv)$' | grep -oP '[a-zA-Z0-9]+.*\(x265\)\.m(p4|kv)$')
 
 if [ -n "$del_this" ]; then
-    printf "%s\n\n%s\n%s\n%s\n\n" \
-        "Do you want to delete this video before continuing?: $del_this" \
-        "[1] Yes" \
-        "[2] No" \
-        "[3] Exit"
+    echo
+    echo "Do you want to delete this video before continuing?: $del_this"
+    echo "[1] Yes"
+    echo "[2] No"
+    echo "[3] Exit"
+    echo
     read -p "Your choices are (1 to 3): " choice
+    clear
 
     case "$choice" in
-        1)      rm "$del_this"; clear;;
-        2)      clear;;
-        3)      exit 0;;
-        *)
-                clear
-                printf "%s\n\n" "Bad user input."
-                exit 1
-                ;;
+        1) rm -f "$del_this"
+           clear
+           ;;
+        2) ;;
+        3) exit 0 ;;
+        *) echo
+           echo "Bad user input."
+           exit 1
+           ;;
     esac
 fi
 
 # Make sure there are videos available to convert
-vid_test="$(find ./ -maxdepth 1 -type f \( -iname \*.mp4 -o -iname \*.mkv \) | xargs -0n1 | head -n1)"
+vid_test=$(find ./ -maxdepth 1 -type f \( -iname \*.mp4 -o -iname \*.mkv \) | xargs -0n1 | head -n1)
 
 if [ -z "$vid_test" ]; then
-    google_speech "No videos were located. Please add some to the script"\""s directory and try again." 2>/dev/null
+    google_speech "No videos were located. Please add some to the script's directory and try again." 2>/dev/null
     clear
     exit 0
 fi
 
 # Create a temporary output folder in the /tmp directory
-ff_dir="$(mktemp -d)"
+ff_dir=$(mktemp -d)
 
 for vid in *.{mp4,mkv}
 do
@@ -90,28 +89,28 @@ do
     fi
 
 # Stores the current video width, aspect ratio, profile, bit rate, and total duration in variables for use later in the ffmpeg command line
-    aspect_ratio="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 -pretty "$vid" 2>/dev/null)"
-    file_length="$(ffprobe -hide_banner -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$vid" 2>/dev/null)"
-    max_rate="$(ffprobe -hide_banner -show_entries format=bit_rate -of default=nk=1:nw=1 -pretty "$vid" 2>/dev/null)"
-    file_height="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 -pretty "$vid" 2>/dev/null)"
-    file_width="$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 -pretty "$vid" 2>/dev/null)"
+    aspect_ratio=$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 -pretty "$vid" 2>/dev/null)
+    file_length=$(ffprobe -hide_banner -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$vid" 2>/dev/null)
+    max_rate=$(ffprobe -hide_banner -show_entries format=bit_rate -of default=nk=1:nw=1 -pretty "$vid" 2>/dev/null)
+    file_height=$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 -pretty "$vid" 2>/dev/null)
+    file_width=$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 -pretty "$vid" 2>/dev/null)
 
 # Modify vars to get file input and output names
     file_in="$vid"
     fext="${file_in#*.}"
-    file_out="$ff_dir/${file_in%.*} (x265).${fext}"
+    file_out="$ff_dir/${file_in%.*} (x265).$fext"
 
 # Trim the strings
-    trim="${max_rate::-11}"
+    trim=${max_rate::-11}
 
 # Gets the input videos max datarate and applies logic to determine bitrate, bufsize, and maxrate variables
-    trim="$(bc <<< "scale=2 ; $trim * 1000")"
-    br="$(bc <<< "scale=2 ; $trim / 2")"
+    trim=$(bc <<< "scale=2 ; $trim * 1000")
+    br=$(bc <<< "scale=2 ; $trim / 2")
     bitrate="${br::-3}"
-    maxrate="$(( bitrate * 2 ))"
-    bs="$(bc <<< "scale=2 ; $br * 2")"
+    maxrate=$(( bitrate * 2 ))
+    bs=$(bc <<< "scale=2 ; $br * 2")
     bufsize="${bs::-3}"
-    length="$(( ${file_length::-7} / 60 ))"
+    length=$(( ${file_length::-7} / 60 ))
 
 # Print the video stats in the terminal
     clear
@@ -163,8 +162,8 @@ EOF
             "$file_out"; then
         google_speech "Video conversion completed." 2>/dev/null
         if [ -f "$file_out" ]; then
-            mv "$file_in" "$PWD"/original
-            mv "$file_out" "$PWD"/completed
+            mv "$file_in" "$PWD/original"
+            mv "$file_out" "$PWD/completed"
         fi
     else
         google_speech "Video conversion failed." 2>/dev/null
