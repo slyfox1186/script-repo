@@ -57,7 +57,7 @@ cleanup() {
 }
 
 show_ver_fn() {
-    save_ver="$(sudo find /usr/local/ -type f -name "python3.12" | grep -oP '[0-9\.]+$' | xargs -I{} echo python{})"
+    save_ver="$(sudo find $install_dir/ -type f -name "python3.12" | grep -oP '[0-9\.]+$' | xargs -I{} echo python{})"
     printf "\n%s\n" "The newly installed version is: $save_ver"
 }
 
