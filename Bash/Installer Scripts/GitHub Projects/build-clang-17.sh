@@ -6,15 +6,24 @@
 ##  Updated: 03.06.24
 ##  Script version: 1.7
 
+# ANSI color codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
 log() {
-    echo "[LOG] $1"
+    echo -e "${BLUE}[LOG]${NC} $1"
 }
 
 fail_fn() {
     echo
-    echo "[ERROR] $1"
+    echo -e "${RED}[ERROR]${NC} $1"
     echo
-    echo "For help or to report a bug create an issue at: $web_repo/issues"
+    echo -e "For help or to report a bug create an issue at: ${YELLOW}$web_repo/issues${NC}"
     echo
     exit 1
 }
@@ -22,7 +31,7 @@ fail_fn() {
 # Function to check if running as root/sudo
 check_root() {
     if [ "$EUID" -ne 0 ]; then
-        echo "You must run this script with root or sudo.privileges."
+        echo -e "${RED}You must run this script with root or sudo privileges.${NC}"
         echo
         exit 1
     fi
@@ -45,7 +54,7 @@ install_required_packages() {
         fi
     done
 
-    if [ "${#Missing_packages[@]}" -gt 0 ]; then
+    if [ "${#missing_packages[@]}" -gt 0 ]; then
         apt update
         apt install "${missing_packages[@]}"
     else
@@ -66,7 +75,7 @@ fix_missing_x265_lib() {
 find_highest_clang_version() {
     local clang_version
 
-# Check if a specific version is installed, in descending order of preference
+    # Check if a specific version is installed, in descending order of preference
     for clang_version in 16 15 14 13; do
         if command -v "clang-$clang_version" &>/dev/null; then
             CC="clang-$clang_version"
@@ -75,7 +84,7 @@ find_highest_clang_version() {
         fi
     done
 
-# If none of the specific versions are found, fall back to "clang" if it's installed
+    # If none of the specific versions are found, fall back to "clang" if it's installed
     if command -v clang &>/dev/null; then
         CC="clang"
         CXX="clang++"
@@ -89,10 +98,7 @@ download_and_extract() {
     local url="$1"
     local target_dir="$2"
     local filename="${url##*/}"
-    clear
-    set -x
-    echo $filename
-    exit
+
     if [ -f "$target_dir/$filename" ]; then
         log "The file $filename is already downloaded."
     else
@@ -101,9 +107,9 @@ download_and_extract() {
         log "Download completed"
 
         if [[ "$filename" == *tar* ]]; then
-            tar -zxf "$target_dir/$filename" -C "$target_dir/$filename" 2>&1
+            tar -zxf "$target_dir/$filename" -C "$target_dir" 2>&1
         else
-            tar -zxf "$target_dir/$filename" -C "$target_dir/$filename" --strip-components 1 2>&1
+            tar -zxf "$target_dir/$filename" -C "$target_dir" --strip-components 1 2>&1
         fi
         log "File extracted: $filename"
     fi
@@ -113,41 +119,30 @@ download_and_extract() {
 build_and_install_llvm_clang() {
     local llvm_url="https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-17.0.6.tar.gz"
 
-# Specify the directory where you want to extract the llvm source code
+    # Specify the directory where you want to extract the llvm source code
     local llvm_code_dir="$workspace"
     local llvm_source_file_dir="$source_files_dir"
 
-# Check if the source file already exists or download it
+    # Check if the source file already exists or download it
     local llvm_tar_url="https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-17.0.6.tar.gz"
     local llvm_tar_filename="$llvm_source_file_dir/llvmorg-17.0.6.tar.gz"
 
-    if [ -f "$llvm_tar_filename" ]; then
-        log "The LLVM source file $llvm_tar_filename is already downloaded."
-    else
-        log "Downloading LLVM source from $llvm_tar_url..."
-        wget --show-progress -cqO "$llvm_tar_filename" "$llvm_tar_url"
-        log "Download completed"
-    fi
+    log "Downloading LLVM source from $llvm_tar_url..."
+    wget --show-progress -cqO "$llvm_tar_filename" "$llvm_tar_url"
+    log "Download completed"
 
-# Extract the source file
-    echo "Extracting LLVM source to $llvm_code_dir..."
+    # Extract the source file
+    echo -e "${GREEN}Extracting LLVM source to $llvm_code_dir...${NC}"
     tar -zxf "$llvm_tar_filename" -C "$llvm_code_dir" --strip-components 1
-    echo "LLVM source code extracted to $llvm_code_dir"
-
-# Check if the source directory exists or clone llvm if not
-    if [ ! -d "$llvm_code_dir" ]; then
-        log "LLVM source directory not found. Cloning LLVM source..."
-        download_and_extract "$llvm_url" "/tmp"
-        mv "/tmp/llvm-project-llvmorg-17.0.6" "$llvm_code_dir"
-        log "LLVM source code moved from /tmp to $llvm_code_dir"
-    fi
+    echo -e "${GREEN}LLVM source code extracted to $llvm_code_dir${NC}"
 
     mkdir -p "$workspace/build"
     cd "$workspace" || exit 1
 
     echo
     if build "llvm" "17.0.6"; then
-        cmake -S llvm -B build \
+        cmake -S llvm \
+              -B build \
               -DBENCHMARK_BUILD_32_BITS=OFF \
               -DBENCHMARK_DOWNLOAD_DEPENDENCIES=OFF \
               -DBENCHMARK_ENABLE_ASSEMBLY_TESTS=OFF \
@@ -163,7 +158,7 @@ build_and_install_llvm_clang() {
               -DBENCHMARK_INSTALL_DOCS=OFF \
               -DBENCHMARK_USE_BUNDLED_GTEST=OFF \
               -DBENCHMARK_USE_LIBCXX=OFF \
-              -DBUILD_SHARED_LIBS=OFF \
+              -DBUILD_SHARED_LIBS=ON \
               -DCMAKE_BUILD_TYPE=Release \
               -DCMAKE_CXX_COMPILER="$CXX" \
               -DCMAKE_CXX_FLAGS="$CXXFLAGS" \
@@ -198,7 +193,7 @@ build_and_install_llvm_clang() {
               -DLLVM_ENABLE_CRASH_OVERRIDES=ON \
               -DLLVM_ENABLE_CURL=ON \
               -DLLVM_ENABLE_DAGISEL_COV=OFF \
-              -DLLVM_ENABLE_DOXYGEN=ON \
+              -DLLVM_ENABLE_DOXYGEN=OFF \
               -DLLVM_ENABLE_DUMP=OFF \
               -DLLVM_ENABLE_EH=OFF \
               -DLLVM_ENABLE_EXPENSIVE_CHECKS=OFF \
@@ -228,21 +223,21 @@ build_and_install_llvm_clang() {
               -DLLVM_ENABLE_STRICT_FIXED_SIZE_VECTORS=OFF \
               -DLLVM_ENABLE_TERMINFO=ON \
               -DLLVM_ENABLE_THREADS=ON \
-              -DLLVM_ENABLE_UNWIND_TABLES=ON \
+              -DLLVM_ENABLE_UNWIND_TABLES=OFF \
               -DLLVM_ENABLE_WARNINGS=OFF \
               -DLLVM_ENABLE_WERROR=OFF \
               -DLLVM_ENABLE_Z3_SOLVER=OFF \
               -DLLVM_ENABLE_ZLIB=ON \
-              -DLLVM_ENABLE_ZSTD=OFF \
+              -DLLVM_ENABLE_ZSTD=ON \
               -DLLVM_EXAMPLEIRTRANSFORMS_LINK_INTO_TOOLS=OFF \
               -DLLVM_EXPORT_SYMBOLS_FOR_PLUGINS=OFF \
               -DLLVM_EXTERNALIZE_DEBUGINFO=OFF \
               -DLLVM_FORCE_ENABLE_STATS=OFF \
               -DLLVM_FORCE_USE_OLD_TOOLCHAIN=OFF \
               -DLLVM_HAVE_TFLITE=OFF \
-              -DLLVM_INCLUDE_BENCHMARKS=ON \
+              -DLLVM_INCLUDE_BENCHMARKS=OFF \
               -DLLVM_INCLUDE_DOCS=OFF \
-              -DLLVM_INCLUDE_EXAMPLES=ON \
+              -DLLVM_INCLUDE_EXAMPLES=OFF \
               -DLLVM_INCLUDE_RUNTIMES=ON \
               -DLLVM_INCLUDE_TESTS=OFF \
               -DLLVM_INCLUDE_TOOLS=ON \
@@ -262,7 +257,7 @@ build_and_install_llvm_clang() {
               -DLLVM_TOOL_LIBCXXABI_BUILD=OFF \
               -DLLVM_TOOL_LIBCXX_BUILD=OFF \
               -DLLVM_TOOL_LIBC_BUILD=OFF \
-              -DLLVM_TOOL_LIBUNWIND_BUILD=ON \
+              -DLLVM_TOOL_LIBUNWIND_BUILD=OFF \
               -DLLVM_TOOL_LLDB_BUILD=OFF \
               -DLLVM_TOOL_LLD_BUILD=OFF \
               -DLLVM_TOOL_MLIR_BUILD=OFF \
@@ -277,7 +272,7 @@ build_and_install_llvm_clang() {
               -DPY_PYGMENTS_FOUND=ON \
               -DPY_PYGMENTS_LEXERS_C_CPP_FOUND=ON \
               -DPY_YAML_FOUND=ON \
-              -G Ninja
+              -G Ninja -Wno-dev
         echo
         if ! ninja "-j$(nproc --all)" -C build; then
             fail_fn "Failed to execute ninja -j$(nproc --all)"
@@ -286,6 +281,7 @@ build_and_install_llvm_clang() {
         if ! ninja -C build install; then
             fail_fn "Failed to execute ninja -C build install"
         fi
+        build_done "llvm" "17.0.6"
     fi
 }
 
@@ -299,7 +295,7 @@ show_installed_clang_version() {
         local clang_path="$install_dir/bin/$clang_version"
 
         if [ -f "$clang_path" ]; then
-            echo "$clang_version:"
+            echo -e "${CYAN}$clang_version:${NC}"
             "$clang_path" --version
             echo
         fi
@@ -312,8 +308,8 @@ cleanup_build_files() {
     echo
     log "Do you want to remove the build files?"
     echo
-    echo "[1] Yes"
-    echo "[2] No"
+    echo -e "${GREEN}[1] Yes${NC}"
+    echo -e "${RED}[2] No${NC}"
     echo
     read -p "Your choices are (1 or 2): " choice
 
@@ -332,7 +328,7 @@ display_exit_message() {
     echo
     log "The script has completed."
     log "Make sure to star this repository to show your support:"
-    log "$web_repo"
+    echo -e "${YELLOW}$web_repo${NC}"
     exit 0
 }
 
@@ -343,7 +339,7 @@ build() {
 
     if [ -f "$workspace/$pkg_name.done" ]; then
         if grep -Fx "$pkg_version" "$workspace/$pkg_name.done" >/dev/null; then
-            echo "$pkg_name version $pkg_version already built. Remove $workspace/$pkg_name.done lockfile to rebuild it."
+            echo -e "${MAGENTA}$pkg_name version $pkg_version already built. Remove $workspace/$pkg_name.done lockfile to rebuild it.${NC}"
             return 1
         fi
     fi
@@ -367,7 +363,7 @@ install_dir="/usr/local"
 web_repo="https://github.com/slyfox1186/script-repo"
 
 # Remove files from previous attempts to keep things clean
-if [ -d "$workspace" ]; then
+if [[ -d "$workspace" ]]; then
     log "Removing files from previous attempts."
     rm -fr "$workspace"
 fi
@@ -400,12 +396,13 @@ export PATH
 
 # Set the pkg_config_path variable
 PKG_CONFIG_PATH="\
-/usr/share/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
-/lib/pkgconfig\
+/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/share/pkgconfig\
 "
 export PKG_CONFIG_PATH
 
