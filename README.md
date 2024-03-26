@@ -95,7 +95,7 @@ cd ffmpeg-build-script || exit 1
 sudo bash build-ffmpeg.sh --build --enable-gpl-and-non-free --latest
 ```
 
-### Install OpenSSL Latest Version
+### Install [OpenSSL](https://www.openssl.org/source/) Latest Version
 Supports building different OpenSSL versions with various configuration options.
 - **Supported OS:** Debian 11/12, Ubuntu 20.04/22.04/23.04, and possibly other Debian-based distros.
 ```bash
@@ -103,12 +103,12 @@ curl -LSso build-openssl.sh https://ossl.optimizethis.net
 sudo bash build-openssl.sh
 ```
 
-### Install Rust Programming Language
+### Install [Rust](https://github.com/rust-lang/rust) Programming Language
 ```bash
 bash <(curl -fsSL https://rust.optimizethis.net)
 ```
 
-### Install Essential Build Tools: CMake, Ninja, Meson, and Golang
+### Install Essential Build Tools: [CMake](https://gitlab.kitware.com/cmake/cmake), [Ninja](https://github.com/ninja-build/ninja), [Meson](https://github.com/mesonbuild/meson), and [Golang](https://go.dev/dl/)
 ```bash
 curl -LSso build-tools.sh https://build-tools.optimizethis.net
 sudo bash build-tools.sh
