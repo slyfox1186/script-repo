@@ -1790,14 +1790,13 @@ rdvc() {
     echo -e "Upvote percentage ranges for the first $total_upvotes downvotes:"
     for ((i=1; i<=total_upvotes; i++)); do
         lower_limit=$(bc <<< "scale=2; $total_upvotes / ($total_upvotes + $i) * 100")
-        if [[ $i -lt 10 ]]; then
+        if [[ $i -lt $total_upvotes ]]; then
             next_lower_limit=$(bc <<< "scale=2; $total_upvotes / ($total_upvotes + $i + 1) * 100")
+            next_lower_limit_adjusted=$(bc <<< "scale=2; $next_lower_limit + 0.01")
+            echo "Downvotes $i: ${lower_limit}% to $next_lower_limit_adjusted%"
         else
-            next_lower_limit=0
+            echo "Downvotes $i: ${lower_limit}% and lower"
         fi
-
-        next_lower_limit_adjusted=$(bc <<< "scale=2; $next_lower_limit + 0.01")
-        echo "Downvotes $i: ${lower_limit}% to $next_lower_limit_adjusted%"
     done
 
     echo
