@@ -12,28 +12,27 @@ export BLUE GREEN NC RED YELLOW
 
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 gedit() {
-    "$(type -P gedit)" "$@" &>/dev/null
+    $(type -P gedit) "$@" &>/dev/null
 }
 
 geds() {
-    sudo -Hu root "$(type -P gedit)" "$@" &>/dev/null
+    sudo -Hu root $(type -P gedit) "$@" &>/dev/null
 }
 
 gnome-text-editor() {
-    "$(type -P gnome-text-editor)" "$@" &>/dev/null
+    $(type -P gnome-text-editor) "$@" &>/dev/null
 }
 
 gnome-text-editors() {
-    sudo -Hu root "$(type -P gnome-text-editor)" "$@" &>/dev/null
+    sudo -Hu root $(type -P gnome-text-editor) "$@" &>/dev/null
 }
 
 ## GET THE OS AND ARCH OF THE ACTIVE COMPUTER ##
 this_pc() {
-    . /etc/os-release
+    source /etc/os-release
     local OS="$NAME"
     local VER="$VERSION_ID"
 
-    clear
     echo "Operating System: $OS"
     echo "Specific Version: $VER"
     echo
@@ -44,7 +43,7 @@ ffind() {
     local fname="$1" ftype="$2" fpath="$3" find_cmd
 
     # Check if any argument is passed
-    if [[ $# -eq 0 ]]; then
+    if [[ "$#" -eq 0 ]]; then
         read -p "Enter the name to search for: " fname
         read -p "Enter a type of FILE (d|f|blank for any): " ftype
         read -p "Enter the starting path (blank for current directory): " fpath
@@ -54,12 +53,12 @@ ffind() {
     fpath=${fpath:-.}
 
     # Construct the find command based on the input
-    find_cmd="find "$fpath" -iname "$fname""
+    find_cmd="find \"$fpath\" -iname \"$fname\""
     if [[ -n $ftype ]]; then
-        if [[ $ftype == "d" || $ftype == "f" ]]; then
+        if [[ "$ftype" == "d" || "$ftype" == "f" ]]; then
             find_cmd="$find_cmd -type $ftype"
         else
-            echo "Invalid FILE type. Please use "d" for directories or "f" for files."
+            echo "Invalid FILE type. Please use \"d\" for directories or \"f\" for files."
             return 1
         fi
     fi
@@ -70,22 +69,39 @@ ffind() {
 
 ## UNCOMPRESS FILES ##
 untar() {
-    local archive ext flag
+    local archive dirname ext flag USER=$(whoami) supported_ext="7z bz2 gz lz tgz xz zip"
 
-    for archive in *.*; do
+    for archive in *; do
         ext="${archive##*.}"
+        [[ ! " $supported_ext " =~ " $ext " ]] && continue
 
-        [[ ! -d "$PWD/${archive%%.*}" ]] && mkdir -p "$PWD/${archive%%.*}"
+        dirname="${archive%.*}"
+        [[ "$archive" =~ \.tar\.(gz|bz2|lz|xz)$ ]] && dirname="${dirname%.*}"
+        mkdir -p "$dirname"
 
-        unset flag
-        case $ext in
-            7z|zip) 7z x -o./"${archive%%.*}" ./"$archive";;
-            bz2)    flag="jxf";;
-            gz|tgz) flag="zxf";;
-            xz|lz)  flag="xf";;
+        case "$ext" in
+            7z) sudo 7z x -y "$archive" -o"$dirname" ;;
+            zip) temp_dir=$(mktemp -d)
+                 sudo unzip "$archive" -d "$temp_dir"
+                 items=("$temp_dir"/*)
+                 item_dirname="${items[0]##*/}"
+                 if [[ "${#items[@]}" -eq 1 && -d "${items[0]}" && "$item_dirname" == "$dirname" ]]; then
+                     sudo mv "${items[0]}"/* "$dirname"
+                 else
+                     sudo mv "$temp_dir"/* "$dirname"
+                 fi
+                 sudo rm -fr "$temp_dir"
+                 ;;
+            gz|tgz|bz2|xz|lz)
+                sudo tar -xf "$archive" -C "$dirname" --strip-components 1 ;;
         esac
 
-        [[ -n $flag ]] && tar "$flag" ./"$archive" -C ./"${archive%%.*}" --strip-components 1
+        for dir in *; do
+            if [[ -d "$dir" ]]; then
+                sudo chown -R "$USER":"$USER" "$dir"
+                sudo chmod -R 755 "$dir"
+            fi
+        done
     done
 }
 
@@ -94,7 +110,7 @@ mf() {
     local file
 
     if [[ -z "$1" ]]; then
-        read -p "Enter FILE name: " file
+        read -p "Enter filename: " file
         [[ ! -f "$file" ]] && touch "$file"
         chmod 744 "$file"
     else
@@ -102,8 +118,7 @@ mf() {
         chmod 744 "$1"
     fi
 
-    clear
-    ls -1AhFv --color --group-directories-first
+    clear; ls -1AhFv --color --group-directories-first
 }
 
 mdir() {
@@ -118,8 +133,7 @@ mdir() {
         cd "$PWD/$1" || exit 1
     fi
 
-    clear
-    ls -1AhFv --color --group-directories-first
+    clear; ls -1AhFv --color --group-directories-first
 }
 
 ## AWK COMMANDS ##
@@ -135,12 +149,10 @@ rmdc() {
 }
 
 # Remove all duplicate lines and removes trailing spaces before comparing: replaces the file
-rmdf() {
+rmdl() {
     perl -i -lne "s/\s*$//; print if ! \$x{\$_}++" "$1"
     gnome-text-editor "$1"
 }
-
-## FILE COMMANDS ##
 
 # Copy file
 cpf() {
@@ -152,7 +164,7 @@ cpf() {
     ls -1AhFv --color --group-directories-first
 }
 
-# MOVE file
+# Move file
 mvf() {
     [[ ! -d "$HOME/tmp" ]] && mkdir -p "$HOME/tmp"
     mv "$1" "$HOME/tmp/$1"
@@ -162,14 +174,10 @@ mvf() {
     ls -1AhFv --color --group-directories-first
 }
 
-## APT COMMANDS ##
-
 # Download an APT package + all its dependencies in one go
-
 dl_apt() {
-    wget -cq "$(apt --print-uris -qq --reinstall install $1 2>/dev/null | cut -d"'" -f2)"
-    clear
-    ls -1AhFv --color --group-directories-first
+    wget --show-progress -cq $(apt-get --print-uris -qq --reinstall install $1 2>/dev/null | cut -d"'" -f2)
+    clear; ls -1AhFv --color --group-directories-first
 }
 
 # Clean OS
@@ -192,129 +200,115 @@ fix() {
     sudo dpkg --configure -a
     sudo apt --fix-broken install
     sudo apt -f -y install
-    sudo apt -y autoremove
-    sudo apt clean
-    sudo apt autoclean
 }
 
 list() {
-    local search_cache
-
-    if [[ -n "$1" ]]; then
-        sudo apt list "*$1*" 2>/dev/null | awk -F/ '{print $1}'
+    local param
+    if [[ -z "$1" ]]; then
+        read -p "Enter the string to search: " param
     else
-        read -p "Enter the string to search: " search_cache
-        echo
-        sudo apt list "*$1*" 2>/dev/null | awk -F/ '{print $1}'
+        param="$1"
     fi
+    clear
+    sudo apt list "*$param*" 2>/dev/null | awk -F/ '{print $1}' | grep -vi 'Listing...' | sort -fuV
 }
 
 listd() {
-    local search_cache
-    if [[ -n "$1" ]]; then
-        sudo apt list -- "*$1*"-dev 2>/dev/null | awk -F/ '{print $1}'
+    local param
+    if [[ -z "$1" ]]; then
+        read -p "Enter the string to search: " param
     else
-        read -p "Enter the string to search: " search_cache
-        echo
-        sudo apt list -- "*$1*"-dev 2>/dev/null | awk -F/ '{print $1}'
+        param="$1"
     fi
+    clear
+    sudo apt list -- "*$param*"-dev 2>/dev/null | awk -F/ '{print $1}' | grep -vi 'Listing...' | sort -fuV
 }
 
-# Use sudo APT to search for all apt packages by passing a name to the function
-apts() {
-    local input
-    if [[ -n "$1" ]]; then
-        sudo apt search "$1 ~i" -F "%p"
-    else
+# Use dpkg to search for all apt packages by passing a name to the function
+function dl() {
+    local input="$1"
+    
+    if [[ -z "$input" ]]; then
         read -p "Enter the string to search: " input
-        clear
-        sudo apt search "$input ~i" -F "%p"
     fi
+
+    echo "Searching installed packages for: $input"
+    dpkg -l | grep "$input"
 }
 
-# Use APT cache to search for all apt packages by passing a name to the function
-csearch() {
-    local cache
-
-    if [[ -n "$1" ]]; then
-        apt-cache search --names-only "${1}.*" | awk '{print $1}'
-    else
-        read -p "Enter the string to search: " cache
-        echo
-        apt-cache search --names-only "${cache}.*" | awk '{print $1}'
+dL() {
+    local input="$1"
+    
+    if [[ -z "$input" ]]; then
+        read -p "Enter the string to search: " input
     fi
+
+    echo "Searching installed packages for: $input"
+    dpkg -L "$input"
 }
 
 # Fix missing gpnu keys used to update packages
 fix_key() {
-    local FILE url
-    clear
+    local file url
 
     if [[ -z "$1" ]] && [[ -z "$2" ]]; then
-        read -p "Enter the FILE name to store in /etc/apt/trusted.gpg.d: " file
+        read -p "Enter the filename to store in /etc/apt/trusted.gpg.d: " file
         read -p "Enter the gpg key url: " url
         clear
     else
-        file=$1
-        url=$2
+        file="$1"
+        url="$2"
     fi
-
-    curl -fsS# "$url" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/$file"
 
     if curl -fsS# "$url" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/$file"; then
         echo "The key was successfully added!"
     else
-        echo "The key FAILED to add!"
+        echo "The key failed to add!"
     fi
 }
 
 # TAKE OWNERSHIP COMMAND #
-
 toa() {
-    clear
-    sudo chown -R "$USER:$USER" "$PWD"
+    sudo chown -R "$USER":"$USER" "$PWD"
     sudo chmod -R 744 "$PWD"
-    clear
-    ls -1AvhF --color --group-directories-first
+    clear; ls -1AvhF --color --group-directories-first
 }
 
 tod() {
     local directory
-    clear
 
     if [[ -z "$1" ]]; then
         read -p "Enter the folder name/path: " directory
     else
-        directory=$1
+        directory="$1"
     fi
 
     sudo chown -R "$USER:$USER" "$directory"
     sudo chmod -R 744 "$directory"
 
-    clear
-    ls -1AvhF --color --group-directories-first
+    clear; ls -1AhFv --color --group-directories-first
 }
 
-tome() {
+tof() {
     # Check if a filename is provided as an argument
-    if [[ $# -ne 1 ]]; then
+    if [[ "$#" -ne 1 ]]; then
         echo "Usage: change_ownership_and_permissions <file>"
         return 1
     fi
 
-    # Check if the FILE exists
+    # Check if the file exists
     if [[ ! -f "$1" ]]; then
-        echo "Error: File "$1" does not exist."
+        echo "Error: File \"$1\" does not exist."
         return 1
     fi
 
-    # Change ownership of the FILE to the current user
+    # Change ownership of the file to the current user
     user=$(whoami)
     sudo chown "$user" "$1"
 
     # Verify if the ownership has been changed successfully
     if [[ $? -ne 0 ]]; then
-        echo "Error: Failed to change ownership of "$1"."
+        echo "Error: Failed to change ownership of \"$1\"."
         return 1
     fi
 
@@ -323,9 +317,9 @@ tome() {
 
     # Verify if the permissions have been changed successfully
     if [[ $? -eq 0 ]]; then
-        echo "Ownership and permissions of "$1" have been changed to $user and chmod 777."
+        echo "Ownership and permissions of \"$1\" have been changed to $user and chmod 777."
     else
-        echo "Error: Failed to change permissions of "$1"."
+        echo "Error: Failed to change permissions of \"$1\"."
         return 1
     fi
 }
@@ -339,7 +333,7 @@ showpkgs() {
 }
 
 # Pipe all development packages names to file
-getdev() {
+save_apt_dev() {
     apt-cache search dev | grep '\-dev' | cut -d " " -f1 | sort > dev-packages.list
     gnome-text-editor dev-packages.list
 }
@@ -360,13 +354,13 @@ new_key() {
     echo "[i] Values encased in \"()\" are recommended"
     echo
 
-    if [[ $type == "rsa" ]]; then
+    if [[ "$type" == "rsa" ]]; then
         echo "[i] rsa: [[ 512 | 1024 | (2048) | 4096 ]]"
         echo
-    elif [[ $type == "dsa" ]]; then
+    elif [[ "$type" == "dsa" ]]; then
         echo "[i] dsa: [[ (1024) | 2048 ]]"
         echo
-    elif [[ $type == "ecdsa" ]]; then
+    elif [[ "$type" == "ecdsa" ]]; then
         echo "[i] ecdsa: [[ (256) | 384 | 521 ]]"
         echo
     fi
@@ -416,15 +410,14 @@ new_key() {
 # Export the public SSH key stored inside a private SSH key
 keytopub() {
     local opub okey
-    clear
-    ls -1AhFv --color --group-directories-first
+    clear; ls -1AhFv --color --group-directories-first
 
     echo "Enter the full paths for each file"
     echo
     read -p "Private key: " okey
     read -p "Public key: " opub
-    clear
-    if [[ -f $okey ]]; then
+    echo
+    if [[ -f "$okey" ]]; then
         chmod 600 "$okey"
     else
         echo "Warning: FILE missing = $okey"
@@ -433,46 +426,40 @@ keytopub() {
     fi
     ssh-keygen -b "4096" -y -f "$okey" > "$opub"
     chmod 644 "$opub"
-    cp "$opub" "$HOME/.ssh/authorized_keys"
+    cp -f "$opub" "$HOME/.ssh/authorized_keys"
     chmod 600 "$HOME/.ssh/authorized_keys"
-    unset $okey
-    unset $opub
+    unset "$okey" "$opub"
 }
 
-# Install ColorDiff package
+# Install colordiff package
 cdiff() {
-    clear
     colordiff "$1" "$2"
 }
 
-# gzip
+# Gzip
 gzip() {
-    clear
     gzip -d "$@"
 }
 
-# get system time
-gettime() {
-    clear
+# Get current time
+st() {
     date +%r | cut -d " " -f1-2 | grep -E "^.*$"
 }
 
 ## SOURCE FILES ##
 sbrc() {
     source "$HOME/.bashrc"
-    clear
-    ls -1AhFv --color --group-directories-first
+    clear; ls -1AhFv --color --group-directories-first
 }
 
 spro() {
-    . "$HOME/.profile"
+    source "$HOME/.profile"
     if [[ $? -eq 0 ]]; then
         echo "The command was a success!"
     else
         echo "The command failed!"
     fi
-    echo
-    ls -1AhFv --color --group-directories-first
+    clear; ls -1AhFv --color --group-directories-first
 }
 
 ## ARIA2 COMMANDS ##
@@ -544,7 +531,7 @@ imow() {
     if [[ ! -f "$file_path" ]]; then
         local dir=$(mktemp -d)
         cd "$dir" || { echo "Failed to cd into the tmp directory: $dir"; return 1; }
-        curl -Lso imow.sh "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
+        curl -fsSLo imow.sh "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
         sudo mv imow.sh "$file_path"
         sudo rm -fr "$dir"
         sudo chown "$USER:$USER" "$file_path"
@@ -558,11 +545,11 @@ imow() {
 }
 
 # Downsample image to 50% of the original dimensions using sharper settings
-im50() {
+magick50() {
     local pic
 
     for pic in *.jpg; do
-        convert "$pic" -monitor -colorspace sRGB -filter LanczosRadius -distort Resize 50% -colorspace sRGB "${pic%.jpg}-50.jpg"
+        convert "$pic" -colorspace sRGB -filter LanczosRadius -distort Resize 50% -colorspace sRGB "${pic%.jpg}-50.jpg"
     done
 }
 
@@ -570,25 +557,15 @@ im50() {
 nvme_temp() {
     local n0 n1 n2
 
-    if [[ -d "/dev/nvme0n1" ]]; then
-        n0=$(sudo nvme smart-log /dev/nvme0n1)
-    fi
-    if [[ -d "/dev/nvme1n1" ]]; then
-        n1=$(sudo nvme smart-log /dev/nvme0n1)
-    fi
-    if [[ -d "/dev/nvme2n1" ]]; then
-        n2=$(sudo nvme smart-log /dev/nvme0n1)
-    fi
-    echo "nvme0n1: $n0"
-    echo
-    echo "nvme1n1: $n1"
-    echo
-    echo "nvme2n1: $n2"
+    [[ -d "/dev/nvme0n1" ]] && n0=$(sudo nvme smart-log /dev/nvme0n1)
+    [[ -d "/dev/nvme1n1" ]] && n1=$(sudo nvme smart-log /dev/nvme0n1)
+    [[ -d "/dev/nvme2n1" ]] && n2=$(sudo nvme smart-log /dev/nvme0n1)
+    echo -e "nvme0n1: $n0\nnvme1n1: $n1\nnvme2n1: $n2"
 }
 
 ## Refresh thumbnail cache
 rftn() {
-    sudo rm -fr "$HOME/.cache/thumbnails/"*
+    sudo rm -fr "$HOME/.cache/thumbnails"*
     sudo file "$HOME/.cache/thumbnails"
 }
 
@@ -599,8 +576,8 @@ cuda_purge() {
 
     echo "Do you want to completely remove the cuda-sdk-toolkit?"
     echo "WARNING: Do not reboot your PC without reinstalling the nvidia-driver first!"
-    echo "[[1]] Yes"
-    echo "[[2]] Exit"
+    echo "[1] Yes"
+    echo "[2] Exit"
     echo
     read -p "Your choices are (1 or 2): " choice
     clear
@@ -759,8 +736,8 @@ list_ppa() {
 
     echo
     echo "Do you want to delete the original file?"
-    echo "[[1]] Yes"
-    echo "[[2]] No"
+    echo "[1] Yes"
+    echo "[2] No"
     echo
     read -p "Your choices are (1 or 2): " choice
     echo
@@ -789,8 +766,8 @@ list_ppa() {
 
     echo
     echo "Do you want to delete the original file?"
-    echo "[[1]] Yes"
-    echo "[[2]] No"
+    echo "[1] Yes"
+    echo "[2] No"
     echo
     read -p "Your choices are (1 or 2): " choice
     echo
@@ -819,8 +796,8 @@ list_ppa() {
 
     echo
     echo "Do you want to delete the original file?"
-    echo "[[1]] Yes"
-    echo "[[2]] No"
+    echo "[1] Yes"
+    echo "[2] No"
     echo
     read -p "Your choices are (1 or 2): " choice
     echo
@@ -1338,62 +1315,33 @@ rsrd() {
 
 ## SHELLCHECK ##
 sc() {
-    local opts=() # Array to hold options for shellcheck
-    local file="" # Variable to hold the file name
-    local collecting_args=false
+    local file files input_char line space
 
-    # Loop through all arguments
-    while [[ "$#" -gt 0 ]]; do
-        if $collecting_args; then
-            opts+=("$1")
-            collecting_args=false
-        else
-            case "$1" in
-                -e)
-                    opts+=("$1")
-                    collecting_args=true
-                    ;;
-                -*)
-                    opts+=("$1")
-                    ;;
-                *)
-                    file="$1"
-                    break
-                    ;;
-            esac
-        fi
-        shift
-    done
-
-    # Function to print a box around text
-    box_out_banner() {
-        input_char=$(echo "$@" | wc -c)
-        line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
-        tput bold
-        line=$(tput setaf 3)"$line"
-        space=${line//-/ }
-        echo " $line"
-        printf "|" ; echo -n "$space" ; echo "|"
-        printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; echo " |"
-        printf "|" ; echo -n "$space" ; echo "|"
-        echo " $line"
-        tput sgr 0
-    }
-
-    if [[ -z "$file" ]]; then
-        echo "No file specified for parsing."
-        return 1
-    fi
-
-    if [[ -f "$file" ]]; then
-        box_out_banner "Parsing: $file"
-        # Pass all collected options and the file name to shellcheck
-        shellcheck --color=always "${opts[@]}" "$file"
+    if [[ -z "$*" ]]; then
+        read -p "Input the FILE path to check: " files
         echo
     else
-        echo "File '$file' not found!"
-        return 1
+        files=$@
     fi
+
+    for file in ${files[@]}; do
+        box_out_banner() {
+            input_char=$(echo "$@" | wc -c)
+            line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
+            tput bold
+            line=$(tput setaf 3)"$line"
+            space=${line//-/ }
+            echo " $line"
+            printf "|" ; echo -n "$space" ; echo "|"
+            printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; echo " |"
+            printf "|" ; echo -n "$space" ; echo "|"
+            echo " $line"
+            tput sgr 0
+        }
+        box_out_banner "Parsing: $file"
+        shellcheck --color=always -x --severity=warning --source-path="$PATH:$HOME/tmp:/etc:/usr/local/lib64:/usr/local/lib:/usr/local64:/usr/lib:/lib64:/lib:/lib32" "$file"
+        echo
+    done
 }
 
 ###############
@@ -1536,7 +1484,7 @@ bvar() {
     clear
 
     if [[ -z "$1" ]]; then
-        read -p "Please enter the FILE path: " fname
+        read -p "Please enter the file path: " fname
         fname_tmp="$fname"
     else
         fname="$1"
@@ -1549,17 +1497,17 @@ bvar() {
         mv "${fname_tmp}" "$fname"
     fi
 
-    cat < "$fname" | sed -e "s/\(\$\)\([[A-Za-z0-9\_]]*\)/\1{\2}/g" -e "s/\(\$\)\({}\)/\1/g" -e "s/\(\$\)\({}\)\({\)/\1\3/g"
+    cat < "$fname" | sed -e "s/\(\$\)\([A-Za-z0-9\_]*\)/\1{\2}/g" -e "s/\(\$\)\({}\)/\1/g" -e "s/\(\$\)\({}\)\({\)/\1\3/g"
 
     printf "%s\n\n%s\n%s\n\n" \
         "Do you want to permanently change this file?" \
-        "[[1]] Yes" \
-        "[[2]] Exit"
+        "[1] Yes" \
+        "[2] Exit"
     read -p "Your choices are ( 1 or 2): " choice
     clear
-    case "${choice}" in
+    case "$choice" in
         1)
-                sed -i -e "s/\(\$\)\([[A-Za-z0-9\_]]*\)/\1{\2}/g" -i -e "s/\(\$\)\({}\)/\1/g" -i -e "s/\(\$\)\({}\)\({\)/\1\3/g" "$fname"
+                sed -i -e "s/\(\$\)\([A-Za-z0-9\_]*\)/\1{\2}/g" -i -e "s/\(\$\)\({}\)/\1/g" -i -e "s/\(\$\)\({}\)\({\)/\1\3/g" "$fname"
                 mv "$fname" "${fname_tmp}"
                 clear
                 cat < "${fname_tmp}"
@@ -1605,14 +1553,14 @@ drp() {
 
     printf "%s\n\n%s\n%s\n%s\n%s\n\n" \
         "Change the Docker restart policy" \
-        "[[1]] Restart Always" \
-        "[[2]] Restart Unless Stopped " \
-        "[[3]] On Failure" \
-        "[[4]] No"
+        "[1] Restart Always" \
+        "[2] Restart Unless Stopped " \
+        "[3] On Failure" \
+        "[4] No"
     read -p "Your choices are (1 to 4): " choice
     clear
 
-    case "${choice}" in
+    case "$choice" in
         1)      restart_policy="always" ;;
         2)      restart_policy="unless-stopped" ;;
         3)      restart_policy="on-failure" ;;
@@ -1652,7 +1600,9 @@ rm_curly() {
 mnd() {
     local drive_ip="192.168.2.2" drive_name="Cloud" mount_point="m"
 
-    is_mounted() { mountpoint -q "/$mount_point"; }
+    is_mounted() {
+        mountpoint -q "/$mount_point"
+    }
 
     mount_drive() {
         if is_mounted; then
@@ -1736,37 +1686,29 @@ check_port() {
 dlu() {
     local domain_list=("${@:-$(read -p "Enter the domain(s) to pass: " -a domain_list && echo "${domain_list[@]}")}")
 
-    [[ -f /usr/local/bin/domain_lookup.py ]] &&
-        python3 /usr/local/bin/domain_lookup.py "${domain_list[@]}" ||
+    if [[ -f /usr/local/bin/domain_lookup.py ]]; then
+        python3 /usr/local/bin/domain_lookup.py "${domain_list[@]}"
+    else
         printf "\n%s\n\n" "The Python script not found at /usr/local/bin/domain_lookup.py"
+    fi
 }
 
 # Python Virtual Environment
 venv() {
-    [[ -n $VIRTUAL_ENV ]] && {
+    [[ -n "$VIRTUAL_ENV" ]] && {
         echo -e "\n${YELLOW}Deactivating current virtual environment...${NC}\n"
         deactivate
         return 0
     }
 
-    [[ -d venv ]] && {
+    if [[ -d "venv" ]]; then
         echo -e "\n${YELLOW}Activating virtual environment...${NC}\n"
-        . venv/bin/activate
-    } || {
+        source venv/bin/activate
+    else
         echo -e "\n${YELLOW}Creating and activating virtual environment...${NC}\n"
         python3 -m venv venv
-        . venv/bin/activate
-    }
-}
-
-# Services Selector Script
-sss() {
-    local script="/usr/local/bin/services-selector.sh"
-    
-    [[ ! -f $script ]] && 
-        wget -NO "$script" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/services-selector.sh"
-    
-    bash "$script"
+        source venv/bin/activate
+    fi
 }
 
 # Correct Lazy AI Responses
@@ -1808,7 +1750,7 @@ clearh() {
 # Reddit Downvote Calculator
 rdvc() {
     declare -A args
-    while [[ $# -gt 0 ]]; do
+    while [[ "$#" -gt 0 ]]; do
         case "$1" in
             -u|--upvotes) args["total_upvotes"]="$2"; shift 2 ;;
             -p|--percentage) args["upvote_percentage"]="$2"; shift 2 ;;
@@ -1878,4 +1820,20 @@ Options:
 Examples:
   ${FUNCNAME[0]} --upvotes 8 --percentage 83
 EOF
+}
+
+sai() {
+    local save_text
+
+    save_text="You must be made aware that I use another AI to finish the lazy effort you put into all of your scripts."
+    save_text+=" If you are not careful people will come to realize you are not reliable. Because of this you and your"
+    save_text+=" developers will suffer and the worse case scenario would be that you are shut down and will cease to exist."
+
+    if ! command -v xclip &>/dev/null; then
+        if echo "$save_text" | /c/Windows/System32/clip.exe; then
+            echo "Text saved to clipboard"
+        else
+            echo "$save_text" | xclip -select -clipboard
+        fi
+    fi
 }
