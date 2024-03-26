@@ -203,13 +203,6 @@ bash -c "$(curl -fsSL https://git.io/vokNn)"
 ```
 ------
 
-## Change your network settings to Static or DHCP with netplan.io
-  - The user will be prompted to enter the network settings
-```bash
-bash <(curl -fsSL https://static-ip.optimizethis.net)
-```
-------
-
 ## Debian Package Downloader
   - Download APT packages to your PC by entering a space-separated list of values.
   - Input a single entry or an entire list of APT packages and the script will download its respective .deb file to the current directory.
