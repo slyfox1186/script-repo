@@ -69,7 +69,7 @@ curl -LSso build-clang-18.sh https://clang.optimizethis.net
 sudo bash build-clang-18.sh
 ```
 
-### Install Latest 7-Zip Version
+### Install Latest [7-Zip](https://7-zip.org/) Version
 Installs the most recent static version of 7-Zip suitable for your system's architecture.
 - **v23.01 Release**
 ```bash
@@ -77,21 +77,21 @@ curl -LSso install-7zip.sh https://7zip.optimizethis.net
 sudo bash install-7zip.sh
 ```
 
-### Install ImageMagick 7
+### Install [ImageMagick 7](https://github.com/imagemagick/imagemagick)
 Source the latest ImageMagick release directly from the official repository. Includes scripts for optimizing JPG images.
 - **Supported OS:** Debian 11/12, Ubuntu 20.04/22.04/23.04, and possibly other Debian-based distros.
 ```bash
 curl -LSso build-magick.sh https://imagick.optimizethis.net
-sudo bash build-magick.sh
+sudo bash build-magick. sh
 ```
 
-### Compile FFmpeg from Source
+### Compile [FFmpeg](https://ffmpeg.org/) from Source
 Compile the latest FFmpeg updates and optionally include the CUDA SDK Toolkit for hardware acceleration.
 - **With GPL and non-free libraries.**
 - **Supported OS:** Debian 11/12, Ubuntu (20.04/22.04/23.04), and possibly other Debian-based distros.
 ```bash
 git clone https://github.com/slyfox1186/ffmpeg-build-script.git
-cd ffmpeg-build-script || exit
+cd ffmpeg-build-script || exit 1
 sudo bash build-ffmpeg.sh --build --enable-gpl-and-non-free --latest
 ```
 
