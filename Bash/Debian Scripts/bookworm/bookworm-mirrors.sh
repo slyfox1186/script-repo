@@ -5,20 +5,14 @@ if [[ "$EUID" -ne 0 ]]; then
     exit 1
 fi
 
-<<<<<<< Updated upstream
-fname="/etc/apt/sources.list"
-
-if [[ ! -f "$fname.bak" ]]; then
-    cp -f "$fname" "$fname.bak"
-=======
-script_path=$(readlink -f "$BASH_SOURCE[0]")
+script_path=$(readlink -f "${BASH_SOURCE[0]}")
 script_name=$(basename "$script_path")
 
 fname="/etc/apt/sources.list"
 
-if [[ ! -f "$list.bak" ]]; then
-    cp -f "$list" "$list.bak"
->>>>>>> Stashed changes
+# Make a backup of the file
+if [[ ! -f "${list}.bak" ]]; then
+    cp -f "$list" "${list}.bak"
 fi
 
 cat > "$fname" <<EOF
@@ -28,13 +22,11 @@ deb https://atl.mirrors.clouvider.net/debian/ bookworm-updates main contrib non-
 deb https://atl.mirrors.clouvider.net/debian/ bookworm-backports main contrib non-free non-free-firmware
 EOF
 
+# Open an editor to view the changes
 if command -v nano &>/dev/null; then
     nano "$fname"
 else
     echo -e "\\nThe script failed to locate nano to open the file...\\n"
 fi
 
-script_path=$(readlink -f "${BASH_SOURCE[0]}")
-script_name=$(basename "$script_path")
-
-[[ -f "$script_name" ]] && rm "$script_name"
+rm "$script_name"
