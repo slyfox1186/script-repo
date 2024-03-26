@@ -9,10 +9,10 @@ REQUIREMENTS_FILE="$MASTER_FOLDER/requirements.txt"
 
 # Define an array of pip package names
 pip_packages=(
-    "async-lru" "async-openai" "async-timeout" "attrs" "avro" "Babel" "backoff" "bcrypt" "beautifulsoup4"
-    "colorama" "ffpb" "Flask" "fuzzywuzzy" "google-speech" "jsonschema" "nltk" "openai" "python-dateutil"
-    "python-dotenv" "python-Levenshtein" "python-whois" "regex" "requests" "setuptools" "termcolor" "wheel"
-    "whois"
+    async-lru async-openai async-timeout attrs avro Babel backoff bcrypt beautifulsoup4
+    colorama ffpb Flask fuzzywuzzy google-speech jsonschema nltk openai python-dateutil
+    python-dotenv python-Levenshtein python-whois regex requests setuptools termcolor wheel
+    whois
 )
 
 # Function to install specific packages
