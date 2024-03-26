@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-clear
-
 pkgs=(alien aptitude aria2 autoconf autoconf-archive autogen automake bat binutils bison build-essential
       ccdiff clang clang-tools cmake cmake-extras colordiff curl dbus dbus-x11 dconf-cli dconf-editor ddclient
       desktopfolder disktype dos2unix exfat-fuse exfatprogs f2fs-tools flatpak flex g++-multilib gawk gcc-multilib
