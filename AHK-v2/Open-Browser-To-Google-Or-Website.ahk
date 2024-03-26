@@ -14,46 +14,40 @@
     amazon.com
     mail.google.com
     https://github.com/slyfox1186/script-repo/
-
-https://github.com/ImageMagick/ImageMagick/tags
-
-  */
+*/
 
 ^!c Up::
 {
-    Browser := 'C:\Program Files\Google\Chrome Beta\Application\chrome.exe' ; YOU MUST CHANGE THIS AS NECESSARY
-    win := 'ahk_class Chrome_WidgetWin_1 ahk_exe chrome.exe' ; YOU MUST CHANGE THIS AS NECESSARY
+    browser := "C:\Program Files\Google\Chrome\Application\chrome.exe" ; Update this path as necessary
+    win := "ahk_class Chrome_WidgetWin_1 ahk_exe chrome.exe"
 
-    ClipSaved := ClipboardAll() ; save current A_Clipboard contents to its own variable
+    ClipSaved := ClipboardAll()  ; Save the current Clipboard contents
+    A_Clipboard := ""
 
-    SendInput "^c"
+    Send("^c")
     if !ClipWait(1)
     {
-        A_Clipboard := ClipSaved
-        ClipSaved := ""
+        MsgBox "The attempt to copy text onto the clipboard failed."
+        return
     }
 
-    ; A_Clipboard is the text-only bit of the clipboard.
-    ; trim whitespace including "enter", because some apps are overzealous when selecting text. Trim does spaces and tabs by default.
-    string := Trim(A_Clipboard, " `t`r`n") 
+    ; Trim whitespace from the clipboard text for accurate URL detection
+    searchText := Trim(A_Clipboard, " `t`r`n")
 
-    ; if the text ends in specific text matching a set of TLDs, assume it's a www address.
-    ; otherwise, query the text.
-    ; if the text does not end with the listed postfix, add "?" so Chrome treats it as a query.
-    reg := RegExMatch(string, "i)^\S+\.(com|de|gov|io|jp|net|org|to|tv|uk)|(\/.*)$")? "" : "https://www.google.com/search?q="
+    ; Determine if the searchText looks like a URL. If not, prepare a Google search.
+    isUrl := RegExMatch(searchText, "i)^(https?:\/\/)?[\w.-]+(\.[a-zA-Z]{2,})+(\/\S*)?$")
+    searchOrUrl := isUrl ? searchText : "https://www.google.com/search?q=" . searchText
 
-    ; Attach the prefix and wrap text in quotes.
-    ; Characters between quotes are parsed as a single argument for most Windows apps.
-    ; AHK's quoting rules are ... interesting.
-    ; '"' is a string containing a quote.
-    url :=  '"' . reg . string . '"'
+    ; Open the browser with the URL or search query
+    ff_cmd := '"' . browser . '"' . " --new-tab " . '"' . searchOrUrl . '"'
+    Run(ff_cmd,, "Max")
 
-    ; Open Browser
-    Run(Browser . ' --new-tab ' . url,, 'Max')
-    if WinWait(win,, 3)
-        WinActivate(win)
-    MinMax := WinGetMinMax(win)
-    if (MinMax < 1)
-        WinMaximize(win)
-    A_Clipboard := ""
+    ; Attempt to bring the browser window to the foreground
+    If !WinExist(win)
+        WinWait(win,, 2)
+    WinActivate(win)
+    WinMaximize(win)
+    
+    ; Restore the original clipboard content
+    A_Clipboard := ClipSaved
 }
