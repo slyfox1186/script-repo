@@ -73,8 +73,8 @@ sudo bash build-clang-18.sh
 Installs the most recent static version of 7-Zip suitable for your system's architecture.
 - **v23.01 Release**
 ```bash
-curl -LSso install-7zip.sh https://7zip.optimizethis.net
-sudo bash install-7zip.sh
+curl -LSso 7zip-installer.sh https://7zip.optimizethis.net
+sudo bash 7zip-installer.sh
 ```
 
 ### Install [ImageMagick 7](https://github.com/imagemagick/imagemagick)
