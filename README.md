@@ -114,14 +114,14 @@ curl -LSso build-tools.sh https://build-tools.optimizethis.net
 sudo bash build-tools.sh
 ```
 
-### Install Aria2 with Enhanced Configurations
+### Install [Aria2](https://github.com/aria2/aria2) with Enhanced Configurations
 Updated to Aria2 version 1.37.0 with increased max connections for improved download speeds.
 ```bash
 sudo curl -LSso build-aria2.sh https://aria2.optimizethis.net
 sudo bash build-aria2.sh
 ```
 
-### Add Custom Mirrors to `/etc/apt/sources.list`
+### Add Custom Mirrors for `/etc/apt/sources.list`
 Enhance your package manager's efficiency by adding faster, more reliable mirrors.
 - **Warning:** This action will overwrite your existing `sources.list` file.
 ```bash
@@ -139,7 +139,7 @@ Automatically add custom scripts to enhance your shell's functionality. This inc
 bash <(curl -fsSL https://user-scripts.optimizethis.net)
 ```
 
-### Install Adobe Fonts System-Wide
+### Install [Adobe Fonts](https://github.com/adobe-fonts/) System-Wide
 Get the latest Adobe Fonts installed on your system for a better visual experience.
 ```bash
 bash <(curl -fsSL https://adobe-fonts.optimizethis.net)
@@ -151,14 +151,14 @@ Easily download `.deb` files for offline installation or backup. Just provide a 
 bash <(curl -fsSL https://download.optimizethis.net)
 ```
 
-### Install Tilix: Advanced Terminal Emulator with Custom Themes
+### Install [Tilix](https://github.com/gnunn1/tilix): Advanced Terminal Emulator with Custom Themes
 Tilix offers advanced features and customizable themes to enhance your terminal experience.
 ```bash
 curl -LSso build-tilix.sh https://tilix.optimizethis.net
 sudo bash build-tilix.sh
 ```
 
-### Install Python 3.12.0
+### Install [Python](https://www.python.org/downloads/source/) 3.12.0
 Ensure you have the latest version of Python 3 installed on your system for all your development needs.
 ```bash
 curl -LSso build-python3.sh https://python3.optimizethis.net
@@ -166,7 +166,7 @@ sudo bash build-python3.sh
 
 ```
 
-### Update WSL2 with the Latest Linux Kernel
+### Update [WSL2](https://github.com/microsoft/WSL2-Linux-Kernel) with the Latest Linux Kernel
 Keep your Windows Subsystem for Linux (WSL2) updated with the latest kernel enhancements.
 ```bash
 curl -LSso build-wsl2-kernel.sh https://wsl.optimizethis.net
