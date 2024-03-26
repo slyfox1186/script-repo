@@ -47,7 +47,7 @@ Automatically build all GitHub project scripts in one go:
 bash <(curl -fsSL https://build-all-git.optimizethis.net)
 ```
 
-### Install GCC Latest Version
+### Install [GCC](https://ftp.gnu.org/gnu/gcc/?C=M;O=D) Latest Version
 Directly source and install the latest GCC versions from the official GitHub repository. Note: Intended for personal/testing use only. Check the top of the script for build results.
 - **Supported OS:** Ubuntu (20.04/22.04/23.04), Debian 11/12, and possibly other Debian-based distros.
 ```bash
@@ -55,11 +55,18 @@ curl -LSso build-gcc.sh https://gcc.optimizethis.net
 sudo bash build-gcc.sh
 ```
 
-### Install Latest Clang-17 Release
+### Install Latest [Clang-17](https://github.com/llvm/llvm-project) Release
 Automatically finds and installs the latest Clang release from source.
 ```bash
-curl -LSso build-clang.sh https://clang.optimizethis.net
-sudo bash build-clang.sh
+curl -LSso build-clang-17.sh https://clang.optimizethis.net
+sudo bash build-clang-17.sh
+```
+
+### Install Latest [Clang-18](https://github.com/llvm/llvm-project) Release
+Automatically finds and installs the latest Clang release from source.
+```bash
+curl -LSso build-clang-18.sh https://clang.optimizethis.net
+sudo bash build-clang-18.sh
 ```
 
 ### Install Latest 7-Zip Version
