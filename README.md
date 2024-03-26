@@ -173,13 +173,6 @@ curl -LSso build-wsl2-kernel.sh https://wsl.optimizethis.net
 sudo bash build-wsl2-kernel.sh
 ```
 
-### Install Squid Proxy Server for Home Use
-Set up a Squid Proxy Server on your home network for caching, filtering, and enhanced privacy.
-```bash
-curl -LSso build-squid.sh https://squid-proxy.optimizethis.net
-sudo bash build-squid.sh
-```
-
 ### Media Player Installations
 Choose from a selection of popular media players and install them with ease.
 ```bash
