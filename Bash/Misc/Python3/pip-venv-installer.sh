@@ -6,7 +6,7 @@ VENV_NAME="myenv"
 VENV_PATH="$MASTER_FOLDER/$VENV_NAME"
 REQUIREMENTS_FILE="$VENV_PATH/requirements.txt"
 
-# Default pip packages
+# Set your default pip packages
 pip_packages=(
     async-lru async-openai async-timeout attrs avro Babel backoff bcrypt beautifulsoup4
     colorama ffpb Flask fuzzywuzzy google-speech jsonschema nltk openai python-dateutil
