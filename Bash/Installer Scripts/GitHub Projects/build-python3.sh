@@ -150,7 +150,7 @@ install_required_packages() {
     done
 
     if [[ ${#Missing_packages[@]} -gt 0 ]]; then
-        apt install -y ${missing_packages[@]} || fail "Failed to install required packages. Line: $LINENO"
+        apt-get install ${missing_packages[@]} || fail "Failed to install required packages. Line: $LINENO"
     else
         echo "All required packages are already installed."
     fi
