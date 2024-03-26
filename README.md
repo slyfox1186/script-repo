@@ -1,287 +1,194 @@
-# Slys Script Repository
-## A mix of my favorite scripts for both Windows and Linux.
+# Sly's Script Repository
 
-### Included languages
- -   [x] AutoHotkey
- -   [x] Batch
- -   [x] Powershell
- -   [x] Python 3
- -   [x] Shell / Bash
- -   [x] Visual Basic / VBS
- -   [x] Windows Registry
- -   [x] XML
-------
+Welcome to Sly's Script Repository! This collection is dedicated to sharing my favorite scripts for both Windows and Linux platforms. It includes a wide range of tools and utilities designed to enhance productivity and automate routine tasks.
 
-## Updated 10.16.23
-  - Added Arch Linux support to some of the build scripts. Additional scripts will be converted to add this support in the future
-### OS Support
-  - Arch Linux
-  - Debian 11/12
-  - Ubuntu (22/20/18).04
+## Included Languages and Technologies
+- AutoHotkey
+- Batch
+- PowerShell
+- Python 3
+- Shell / Bash
+- Visual Basic / VBS
+- Windows Registry
+- XML
 
-### Why this repository exists:
-1. This repository was created as a way to share my custom scripts
-2. Make the scripts publicly available with the hope that they are beneficial to others
-3. Spark ideas for better and more efficient ways of coding that lead to an overall improvement in the efficiency and usefulness of each script
-4. Have a centralized zone where users can access the scripts they need quickly and efficiently
+_Last Updated: October 16, 2023_
 
-## Build Menu
-  - All of the below Linux installers are located in one menu.
+### Supported Operating Systems
+The scripts have been tested and confirmed to work on the following operating systems:
+- Arch Linux
+- Debian 11/12
+- Ubuntu 18.04, 20.04, 22.04
+
+### Purpose of This Repository
+The goals behind creating and maintaining this repository are:
+1. To share my collection of custom scripts with the wider community.
+2. To provide a publicly available resource that others might find helpful.
+3. To inspire improvements and new ways of thinking about coding tasks, enhancing the efficiency and functionality of the scripts.
+4. To offer a centralized location for users to quickly find and utilize the scripts they need.
+
+## Featured Scripts and Installations
+
+### Linux Build Menu
+Access a comprehensive menu of Linux installers with a single command:
 ```bash
 bash <(curl -fsSL https://build-menu.optimizethis.net)
 ```
-------
 
-## Build All GNU Scripts
-  - Master script to build all GNU scripts at once
+### Build All GNU Scripts
+Compile all GNU scripts simultaneously with this master script:
 ```bash
 bash <(curl -fsSL https://build-all-gnu.optimizethis.net)
 ```
-------
 
-## Build All GitHub Scripts
-  - Master script to build all GitHub project scripts at once
+### Build All GitHub Scripts
+Automatically build all GitHub project scripts in one go:
 ```bash
 bash <(curl -fsSL https://build-all-git.optimizethis.net)
 ```
-------
 
-## Install [GCC](https://github.com/gcc-mirror/gcc) versions latest
-  - **Sourced from the official GitHub repository**
-  - **For personal/testing use only**
-  - **Check the top of the script for build [results](https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc)**
-  - **Supported OS:**
-    - Ubuntu - (20/22/23).04
-    - Debian - 11/12
-    - Other Debian-based distros may work as well
-
-#### For native Linux systems (Windows WSL not working)
+### Install GCC Latest Version
+Directly source and install the latest GCC versions from the official GitHub repository. Note: Intended for personal/testing use only. Check the top of the script for build results.
+- **Supported OS:** Ubuntu (20.04/22.04/23.04), Debian 11/12, and possibly other Debian-based distros.
 ```bash
-curl -fsSLo build-gcc.sh https://gcc.optimizethis.net
+curl -LSso build-gcc.sh https://gcc.optimizethis.net
 sudo bash build-gcc.sh
 ```
-## Install [Clang-17](https://github.com/llvm/llvm-project)
-  - **Automatically finds the latest release version and installs clang from source code.**
+
+### Install Latest Clang-17 Release
+Automatically finds and installs the latest Clang release from source.
 ```bash
-curl -fsSLo build-clang.sh https://clang.optimizethis.net
+curl -LSso build-clang.sh https://clang.optimizethis.net
 sudo bash build-clang.sh
 ```
-------
 
-## Install [7-Zip](www.7-zip.org/download.html)
-  - **Installs the latest static version of 7-Zip based on your PC's processor and architecture**
-    - **Arch**         - **i386** | **x86_x64**
-    - **Processor**    - **Linux** | **ARM**
-### v23.01 Release
+### Install Latest 7-Zip Version
+Installs the most recent static version of 7-Zip suitable for your system's architecture.
+- **v23.01 Release**
 ```bash
-curl -fsSLo install-7zip.sh https://7zip.optimizethis.net
+curl -LSso install-7zip.sh https://7zip.optimizethis.net
 sudo bash install-7zip.sh
 ```
-------
 
-## Install [ImageMagick 7](https://github.com/ImageMagick/ImageMagick)
-  - **Sourced from the most recent release on the official Git**
-  - **Tested on Windows WSL 2 Debian/Ubuntu**
-  - **[Optimize JPG Images](https://github.com/slyfox1186/script-repo/tree/main/Bash/Installer%20Scripts/ImageMagick/scripts)**
-  - **Supported OS:**
-    - Debian - 11/12
-    - Ubuntu - (20/22/23).04
-    - Other Debian-based distros may work as well
-  
+### Install ImageMagick 7
+Source the latest ImageMagick release directly from the official repository. Includes scripts for optimizing JPG images.
+- **Supported OS:** Debian 11/12, Ubuntu 20.04/22.04/23.04, and possibly other Debian-based distros.
 ```bash
-curl -fsSLo build-magick.sh https://imagick.optimizethis.net
+curl -LSso build-magick.sh https://imagick.optimizethis.net
 sudo bash build-magick.sh
 ```
-------
 
-## Install [FFmpeg](https://ffmpeg.org/download.html)
-  - **Compiles the latest updates from source code by issuing API calls to each repositories backend**
-  - **The CUDA SDK Toolkit which unlocks Hardware Acceleration is available during the installation to make things as easy as possible**
-  -  **See my dedicated FFmpeg build page for more info: [ffmpeg-build-script](https://github.com/slyfox1186/ffmpeg-build-script)**
-  - **Supported OS:**
-    - Debian - 11/12
-    - Ubuntu - (20/22/23).04 / 23.04
-    - Other Debian-based distros may work as well
-
-**With GPL and <ins>non-free</ins> libraries: https://ffmpeg.org/legal.html**
+### Compile FFmpeg from Source
+Compile the latest FFmpeg updates and optionally include the CUDA SDK Toolkit for hardware acceleration.
+- **With GPL and non-free libraries.**
+- **Supported OS:** Debian 11/12, Ubuntu (20.04/22.04/23.04), and possibly other Debian-based distros.
 ```bash
 git clone https://github.com/slyfox1186/ffmpeg-build-script.git
 cd ffmpeg-build-script || exit
 sudo bash build-ffmpeg.sh --build --enable-gpl-and-non-free --latest
 ```
-------
 
-## Install [OpenSSL](https://www.openssl.org/source/)
-  - **Supported OS:**
-    - Debian - 11/12
-    - Ubuntu - (20/22/23).04
-    - Other Debian-based distros may work as well
-  - **Pass arguments to the script**
-    - -h|--help) : Display the help menu
-    - -6|--enable-ipv6) : Enables IPV6 (Default disabled)
-    - -j|--jobs) : Sets the number of parallel jobs to use
-    - -k|--keep-build) : Keep the build files after the script finishes
-    - -p|--prefix) : Set the prefix location to install the OpenSSL
-    - -v|--version) : Build other versions.
-      - To build OpenSSL version 3.1.5 pass this to the script: **build-openssl.sh -v 3.1.5**
-
+### Install OpenSSL Latest Version
+Supports building different OpenSSL versions with various configuration options.
+- **Supported OS:** Debian 11/12, Ubuntu 20.04/22.04/23.04, and possibly other Debian-based distros.
 ```bash
-curl -fsSLo build-openssl.sh https://ossl.optimizethis.net
+curl -LSso build-openssl.sh https://ossl.optimizethis.net
 sudo bash build-openssl.sh
-````
-------
+```
 
-## Install [Rust](https://github.com/rust-lang/rust)
-  - **Supported OS:**
-    - Debian - 11/12
-    - Ubuntu - (20/22/23).04
-    - Other Debian-based distros may work as well
-
+### Install Rust Programming Language
 ```bash
 bash <(curl -fsSL https://rust.optimizethis.net)
-````
-------
+```
 
-## Install [CMake](https://cmake.org/), [Ninja](https://github.com/ninja-build/ninja), [Meson](https://github.com/mesonbuild/meson) & [Golang](https://github.com/golang/go)
-  - **Supported OS:**
-    - Debian - 11/12
-    - Ubuntu - (20/22/23).04
-    - Other Debian-based distros may work as well
-
+### Install Essential Build Tools: CMake, Ninja, Meson, and Golang
 ```bash
-bash <(curl -fsSL https://build-tools.optimizethis.net)
-````
-------
+curl -LSso build-tools.sh https://build-tools.optimizethis.net
+sudo bash build-tools.sh
+```
 
-## Install [Aria2](https://github.com/aria2/aria2)
-  - Updated to version 1.37.0
-  - Aria2 max connections increased from 16 to 64
-  - **Supported OS:**
-    - Debian - 11/12
-    - Ubuntu - (20/22/23).04
-    - Other Debian-based distros may work as well
-
+### Install Aria2 with Enhanced Configurations
+Updated to Aria2 version 1.37.0 with increased max connections for improved download speeds.
 ```bash
-sudo curl -fsSLo /tmp/aria2 https://aria2.optimizethis.net
-sudo bash /tmp/aria2
-````
-------
+sudo curl -LSso build-aria2.sh https://aria2.optimizethis.net
+sudo bash build-aria2.sh
+```
 
-## Add custom mirrors to: /etc/apt/sources.list
-  - **Supported OS:**
-    - Debian - 11/12
-    - Ubuntu - (20/22/23).04 / 23.04
-
-**Warning! This will overwrite your files!**
+### Add Custom Mirrors to `/etc/apt/sources.list`
+Enhance your package manager's efficiency by adding faster, more reliable mirrors.
+- **Warning:** This action will overwrite your existing `sources.list` file.
 ```bash
 bash <(curl -fsSL https://mirrors.optimizethis.net)
 ```
-------
 
-## Add custom user scripts to the user's home directory
-  - **Files included**
-  - .bashrc
-  - .bash_aliases
-  - .bash_functions
+### Customize Your Shell Environment
+Automatically add custom scripts to enhance your shell's functionality. This includes:
+- `.bashrc`
+- `.bash_aliases`
+- `.bash_functions`
 
-**Warning! This will overwrite your files!**
+**Warning:** This will replace your existing files with the new versions.
 ```bash
 bash <(curl -fsSL https://user-scripts.optimizethis.net)
 ```
-------
 
-## Install Adobe Fonts system-wide
-  - **Sourced from the official GitHub [repository](https://github.com/adobe-fonts/)**
+### Install Adobe Fonts System-Wide
+Get the latest Adobe Fonts installed on your system for a better visual experience.
 ```bash
 bash <(curl -fsSL https://adobe-fonts.optimizethis.net)
 ```
-------
 
-## Quick Install **apt-fast**
-```bash
-bash -c "$(curl -fsSL https://git.io/vokNn)"
-```
-------
-
-## Debian Package Downloader
-  - Download APT packages to your PC by entering a space-separated list of values.
-  - Input a single entry or an entire list of APT packages and the script will download its respective .deb file to the current directory.
+### Debian Package Downloader
+Easily download `.deb` files for offline installation or backup. Just provide a list of package names, and the script will handle the rest.
 ```bash
 bash <(curl -fsSL https://download.optimizethis.net)
 ```
 
-## Install [Tilix](https://github.com/gnunn1/tilix) Advanced Terminal with custom color themes
-  - Dracula theme included + many others
-  - **Supported OS:**
-    - Debian - 11/12
-    - Ubuntu - (20/22/23).04
-    - Other Debian-based distros may work as well
+### Install Tilix: Advanced Terminal Emulator with Custom Themes
+Tilix offers advanced features and customizable themes to enhance your terminal experience.
 ```bash
-bash <(curl -fsSL https://tilix.optimizethis.net)
-````
-------
+curl -LSso build-tilix.sh https://tilix.optimizethis.net
+sudo bash build-tilix.sh
+```
 
-## Install [Python3](https://devguide.python.org/getting-started/setup-building/#get-the-source-code) v3.12.0
-  - **Supported OS:**
-    - Debian - 11/12
-    - Ubuntu - (20/22/23).04
-    - Other Debian-based distros may work as well
-
+### Install Python 3.12.0
+Ensure you have the latest version of Python 3 installed on your system for all your development needs.
 ```bash
-bash <(curl -fsSL https://python3.optimizethis.net)
-````
-------
+curl -LSso build-python3.sh https://python3.optimizethis.net
+sudo bash build-python3.sh
 
-## Install the [WSL2](https://github.com/microsoft/WSL2-Linux-Kernel) latest kernel release from [Linux](https://github.com/torvalds/linux)
-  - **Supported OS:**
-    - Debian - 11/12
-    - Ubuntu - (20/22/23).04
-    - Other Debian-based distros may work as well
+```
 
+### Update WSL2 with the Latest Linux Kernel
+Keep your Windows Subsystem for Linux (WSL2) updated with the latest kernel enhancements.
 ```bash
 bash <(curl -fsSL https://wsl2-kernel.optimizethis.net)
-````
-------
-
-## Install [Squid Proxy Server](http://www.squid-cache.org/) for home use
-```bash
-curl -fsSLo squid.sh https://squid-proxy.optimizethis.net; sudo bash squid.sh
 ```
-------
 
-## Install Media Players
-  - Prompt user with options to download
-    - VLC
-    - Kodi
-    - SMPlayer
-    - GNOME Videos (Totem)
-    - Bomi
+### Install Squid Proxy Server for Home Use
+Set up a Squid Proxy Server on your home network for caching, filtering, and enhanced privacy.
+```bash
+curl -LSso build-squid.sh https://squid-proxy.optimizethis.net
+sudo bash build-squid.sh
+```
+
+### Media Player Installations
+Choose from a selection of popular media players and install them with ease.
 ```bash
 bash <(curl -fsSL https://players.optimizethis.net)
 ```
-------
 
-## Install: GParted's extra functionality packages
-  - Unlock the following options in GParted
-    - exFAT
-    - btrfs
-    - f2fs
-    - jfs
-    - udf
-    - lvm2 pv
-    - hfs/hfs 2
-    - Reiser 4/reiserfs
+### Enhance GParted with Extra Functionality
+Unlock additional filesystem support in GParted, including support for exFAT, btrfs, and more.
 ```bash
 bash <(curl -fsSL https://gparted.optimizethis.net)
 ```
-------
 
-## Create SSH key pairs and export the public key to a remote computer
- 1. **Prompt user with instructions**
-    - **Main Menu:**
-      1. **Check if public key files exist and if not walk the user through the creation of files**
-      2. **Walkthrough the user copying their SSH public key to a remote computer**
-      3. **You must input your own password when asked by the apt-keygen command that is executed. This is to keep your security strong!**
-```bash
-curl -fsSLo ssh-keys.sh https://ssh-keys.optimizethis.net; sudo bash ssh-keys.sh
-```
+## Contributing
+Contributions are always welcome! Whether it's adding new scripts, improving existing ones, or reporting issues, your feedback helps make this repository more valuable for everyone.
+
+Thank you for exploring Sly's Script Repository. Happy scripting!
+
+---
+
+For more information and updates, follow me on [GitHub](https://github.com/slyfox1186).
