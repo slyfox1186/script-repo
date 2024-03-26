@@ -169,7 +169,8 @@ sudo bash build-python3.sh
 ### Update WSL2 with the Latest Linux Kernel
 Keep your Windows Subsystem for Linux (WSL2) updated with the latest kernel enhancements.
 ```bash
-bash <(curl -fsSL https://wsl2-kernel.optimizethis.net)
+curl -LSso build-wsl2-kernel.sh https://wsl.optimizethis.net
+sudo bash build-wsl2-kernel.sh
 ```
 
 ### Install Squid Proxy Server for Home Use
