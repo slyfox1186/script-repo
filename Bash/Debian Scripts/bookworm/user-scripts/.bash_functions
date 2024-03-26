@@ -210,7 +210,7 @@ list() {
         param="$1"
     fi
     clear
-    sudo apt list "*$param*" 2>/dev/null | awk -F/ '{print $1}' | grep -vi 'Listing...' | sort -fuV
+    sudo apt list -- "*$param*" 2>/dev/null | awk -F'/' '{print $1}' | grep -Eiv '\-dev|Listing' | sort -fuV
 }
 
 listd() {
@@ -221,7 +221,7 @@ listd() {
         param="$1"
     fi
     clear
-    sudo apt list -- "*$param*"-dev 2>/dev/null | awk -F/ '{print $1}' | grep -vi 'Listing...' | sort -fuV
+    sudo apt list -- "*$param*-dev*" 2>/dev/null | awk -F'/' '{print $1}' | sort -fuV
 }
 
 # Use dpkg to search for all apt packages by passing a name to the function
