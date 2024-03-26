@@ -71,7 +71,8 @@ sudo bash build-clang-18.sh
 
 ### Install Latest [7-Zip](https://7-zip.org/) Version
 Installs the most recent static version of 7-Zip suitable for your system's architecture.
-- **v23.01 Release**
+  - Pass `--release` to install the latest stable release **v23.01**
+  - Pass `--beta` to install the latest beta release **v24.03**
 ```bash
 curl -LSso 7zip-installer.sh https://7zip.optimizethis.net
 sudo bash 7zip-installer.sh
