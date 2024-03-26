@@ -15,16 +15,14 @@ pkgs=(alien aptitude aria2 autoconf autoconf-archive autogen automake bat binuti
       rpm ruby-all-dev shellcheck slack snapd sqlite3 synaptic texinfo tk-dev trash-cli tty-share udftools unzip uuid-dev wget
       xclip xfsprogs xsel)
 
-for pkg in ${pkgs[@]}
-do
+for pkg in ${pkgs[@]}; do
     if ! sudo dpkg | grep "$pkg" &>/dev/null; then
         missing_pkgs+=" $pkg"
     fi
 done
 
 if [ -n "$missing_pkgs" ]; then
-    if sudo apt -y install $missing_pkgs; then
-        sudo apt -y autoremove
+    if sudo apt install $missing_pkgs; then
         printf "\n%s\n\n" 'The APT packages were successfully installed.'
     else
         echo
