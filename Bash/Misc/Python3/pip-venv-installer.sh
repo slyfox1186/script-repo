@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 
-# Help Menu: ./pip-virtual-installer.sh -h
-
-# Define the master folder path
+# Constants
 MASTER_FOLDER="$HOME/python-venv"
 VENV_NAME="myenv"
-REQUIREMENTS_FILE="$MASTER_FOLDER/requirements.txt"
+VENV_PATH="$MASTER_FOLDER/$VENV_NAME"
+REQUIREMENTS_FILE="$VENV_PATH/requirements.txt"
 
-# Define an array of pip package names
+# Default pip packages
 pip_packages=(
     async-lru async-openai async-timeout attrs avro Babel backoff bcrypt beautifulsoup4
     colorama ffpb Flask fuzzywuzzy google-speech jsonschema nltk openai python-dateutil
@@ -15,180 +14,144 @@ pip_packages=(
     whois
 )
 
-# Function to install specific packages
-install_specific_packages() {
-    activate_venv
-    for package in "${@}"; do
-        pip install "$package"
-    done
-    deactivate_venv
-}
-
-# Function to upgrade specific packages
-upgrade_specific_packages() {
-    activate_venv
-    for package in "${@}"; do
-        pip install --upgrade "$package"
-    done
-    deactivate_venv
-}
-
-# Function to remove specific packages
-remove_specific_packages() {
-    activate_venv
-    for package in "${@}"; do
-        pip uninstall -y "$package"
-    done
-    deactivate_venv
-}
-
-# Function to activate the virtual environment
+# Activate the virtual environment
 activate_venv() {
-    source "$MASTER_FOLDER/$VENV_NAME/bin/activate"
+    source "$VENV_PATH/bin/activate"
 }
 
-# Function to deactivate the virtual environment
+# Deactivate the virtual environment
 deactivate_venv() {
-    deactivate
+    deactivate &>/dev/null
 }
 
-# Function to install packages from requirements.txt or default pip_packages array
+# Install or update packages from requirements.txt or default array
 install_packages() {
     pip install --upgrade pip
-
     if [[ -f "$REQUIREMENTS_FILE" ]]; then
         pip install -r "$REQUIREMENTS_FILE"
     else
-        printf "%s\n" "${pip_packages[@]}" > "$REQUIREMENTS_FILE"
-        pip install -r "$REQUIREMENTS_FILE"
+        printf "%s\n" "${pip_packages[@]}" | pip install -r /dev/stdin
     fi
 }
 
-# Function to import packages from pip freeze
-import_packages() {
-    if [[ -d "$MASTER_FOLDER/$VENV_NAME" ]]; then
-        printf "\n%s\n\n" "Importing packages from pip freeze..."
-        activate_venv
-        pip freeze | awk -F'=' '{print $1}' > "$REQUIREMENTS_FILE"
-        printf "\n%s\n\n" "Packages imported successfully and stored in $REQUIREMENTS_FILE."
-        deactivate_venv
-    else
-        printf "\n%s\n\n" "Virtual environment does not exist. Create one using the -c or --create option."
-    fi
-}
-
-# Function to create a virtual environment and install packages
-create_venv() {
-    echo "Creating Python virtual environment..."
-    mkdir -p "$MASTER_FOLDER"
-    python3 -m venv "$MASTER_FOLDER/$VENV_NAME"
-
-    echo "Activating virtual environment..."
+# Handle specific packages (install, upgrade, remove)
+handle_specific_packages() {
+    local operation=$1; shift
     activate_venv
+    for package in "$@"; do
+        case "$operation" in
+            install) pip install "$package" ;;
+            upgrade) pip install --upgrade "$package" ;;
+            remove) pip uninstall -y "$package" ;;
+        esac
+    done
+    deactivate_venv
+}
 
-    echo "Installing pip packages..."
+# Create the virtual environment and install default or specified packages
+create_venv() {
+    echo "Creating Python virtual environment at $VENV_PATH..."
+    mkdir -p "$VENV_PATH" && python3 -m venv "$VENV_PATH"
+    activate_venv
     install_packages
-
     echo "Installation completed."
     deactivate_venv
 }
 
-# Function to update virtual environment
+# Update the virtual environment with new or updated packages
 update_venv() {
-    if [[ -d "$MASTER_FOLDER/$VENV_NAME" ]]; then
-        printf "\n%s\n\n" "Updating Python virtual environment..."
-        activate_venv
-        install_packages
-        printf "\n%s\n\n" "Update completed."
-        deactivate_venv
-    else
-        printf "\n%s\n\n" "Virtual environment does not exist. Creating one now..."
-        create_venv
-    fi
+    [[ -d "$VENV_PATH" ]] || { echo "Virtual environment does not exist, creating..."; create_venv; return; }
+    echo "Updating Python virtual environment at $VENV_PATH..."
+    activate_venv
+    install_packages
+    echo "Update completed."
+    deactivate_venv
 }
 
-# Function to delete virtual environment
+# Delete the virtual environment
 delete_venv() {
-    printf "\n%s\n\n" "Deleting Python virtual environment..."
-    rm -rf "$MASTER_FOLDER/$VENV_NAME"
-    printf "\n%s\n\n" "Deletion completed."
-    [[ -f "$REQUIREMENTS_FILE" ]] && rm -f "$REQUIREMENTS_FILE"
+    echo "Deleting Python virtual environment at $VENV_PATH..."
+    rm -rf "$VENV_PATH"
+    echo "Deletion completed."
 }
 
-# Function to list installed packages
+# List installed packages in the virtual environment
 list_packages() {
-    if [[ -d "$MASTER_FOLDER/$VENV_NAME" ]]; then
-        printf "\n%s\n\n" "Listing installed packages in the virtual environment..."
+    [[ -d "$VENV_PATH" ]] || { echo "Virtual environment does not exist."; return; }
+    activate_venv
+    pip list
+    deactivate_venv
+}
+
+# Import packages from pip freeze
+import_packages() {
+    if [[ -d "$VENV_PATH" ]]; then
+        echo "Importing packages from pip freeze into $REQUIREMENTS_FILE..."
         activate_venv
-        pip list
+        pip freeze | awk -F'=' '{print $1}' > "$REQUIREMENTS_FILE"
+        echo "Packages imported successfully and stored in $REQUIREMENTS_FILE."
         deactivate_venv
     else
-        printf "\n%s\n\n" "Virtual environment does not exist. Create one using the -c or --create option."
+        echo "Virtual environment does not exist. Create one using the -c or --create option."
     fi
 }
 
-# Function to display help
-display_help() {
-    echo "Usage: $0 [OPTIONS]"
-    echo
-    echo "Options:"
-    echo
-    echo "  -h, --help                 Display this help message."
-    echo "  -l, --list                 List the installed packages in the virtual environment."
-    echo "  -i, --import               Import packages from pip freeze into the requirements.txt file."
-    echo "  -c, --create               Create a new Python virtual environment."
-    echo "  -u, --update               Update the existing Python virtual environment."
-    echo "  -d, --delete               Delete the Python virtual environment."
-    echo "  -a, --add PACKAGES         Install specific packages (comma-separated) in the virtual environment."
-    echo "  -U, --upgrade PACKAGES     Upgrade specific packages (comma-separated) in the virtual environment."
-    echo "  -r, --remove PACKAGES      Remove specific packages (comma-separated) from the virtual environment."
-    echo
-    echo "Examples: ./$0 --help"
-    echo "Examples: ./$0 --create"
-    echo "Examples: ./$0 -i && ./$0 -U setuptools,wheel"
+# Add the virtual environment's bin folder to the user's PATH
+add_to_path() {
+    local bashrc_file="$HOME/.bashrc"
+    local path_entry="export PATH=\"$VENV_PATH/bin:\$PATH\""
+
+    if grep -q "$path_entry" "$bashrc_file"; then
+        echo "Virtual environment's bin folder is already in PATH."
+    else
+        echo "Adding virtual environment's bin folder to PATH..."
+        echo "$path_entry" >> "$bashrc_file"
+        source "$bashrc_file"
+        echo "Virtual environment's bin folder has been added to PATH."
+    fi
 }
 
-# Handling arguments
-while [[ $# -gt 0 ]]; do
+# Display help
+display_help() {
+    cat << EOF
+Usage: $0 [OPTIONS]
+
+Options:
+  -h, --help                 Display this help message.
+  -l, --list                 List installed packages in the virtual environment.
+  -i, --import               Import packages from pip freeze into the requirements.txt file.
+  -c, --create               Create a new Python virtual environment.
+  -u, --update               Update the existing Python virtual environment.
+  -d, --delete               Delete the Python virtual environment.
+  -a, --add PACKAGES         Install specific packages (space-separated) in the virtual environment.
+  -U, --upgrade PACKAGES     Upgrade specific packages (space-separated) in the virtual environment.
+  -r, --remove PACKAGES      Remove specific packages (space-separated) from the virtual environment.
+  -p, --path                 Add the virtual environment's bin folder to the user's PATH.
+
+Examples:
+  $0 --help
+  $0 --create
+  $0 --path
+EOF
+}
+
+# Parse command-line options
+while [[ "$#" -gt 0 ]]; do
     case "$1" in
-        -h|--help)
-            display_help
-            exit 0
-            ;;
-        -c|--create)
-            create_venv
-            ;;
-        -u|--update)
-            update_venv
-            ;;
-        -d|--delete)
-            delete_venv
-            ;;
-        -l|--list)
-            list_packages
-            ;;
-        -i|--import)
-            import_packages
-            ;;
-        -a|--add)
-            IFS=',' read -ra PACKAGES <<< "$2"
-            install_specific_packages "${PACKAGES[@]}"
-            shift
-            ;;
-        -U|--upgrade)
-            IFS=',' read -ra PACKAGES <<< "$2"
-            upgrade_specific_packages "${PACKAGES[@]}"
-            shift
-            ;;
-        -r|--remove)
-            IFS=',' read -ra PACKAGES <<< "$2"
-            remove_specific_packages "${PACKAGES[@]}"
-            shift
-            ;;
-        *)
-            echo "Invalid option: $1. Use -h for help."
-            exit 1
-            ;;
+        -h|--help) display_help; exit 0 ;;
+        -c|--create) create_venv; exit 0 ;;
+        -u|--update) update_venv; exit 0 ;;
+        -d|--delete) delete_venv; exit 0 ;;
+        -l|--list) list_packages; exit 0 ;;
+        -i|--import) import_packages; exit 0 ;;
+        -a|--add) shift; handle_specific_packages install "$@"; exit 0 ;;
+        -U|--upgrade) shift; handle_specific_packages upgrade "$@"; exit 0 ;;
+        -r|--remove) shift; handle_specific_packages remove "$@"; exit 0 ;;
+        -p|--path) add_to_path; exit 0 ;;
+        *) echo "Invalid option: $1" >&2; display_help; exit 1 ;;
     esac
     shift
 done
+
+# If no arguments provided, show help
+display_help
