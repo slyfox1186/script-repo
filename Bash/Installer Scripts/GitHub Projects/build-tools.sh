@@ -7,7 +7,7 @@
 ##  Added: Automatic version check for Golang.
 
 if [ "$EUID" -eq 0 ]; then
-    printf "%s\n\n" "You must run this script without root or sudo.
+    printf "%s\n\n" "You must run this script without root or sudo."
     exit 1
 fi
 
@@ -30,8 +30,8 @@ cpu_threads=$(grep -c ^processor '/proc/cpuinfo' 2>/dev/null || nproc --all)
 mkdir -p "$cwd"
 
 # Set the cc/cxx compilers & the compiler optimization flags
-CC=gcc
-CXX=g++
+CC="gcc"
+CXX="g++"
 CFLAGS="-g -O3 -pipe -fno-plt -march=native"
 CXXFLAGS="$CFLAGS"
 export CC CXX CFLAGS CXXFLAGS
@@ -212,20 +212,17 @@ pkgs_arch_fn() {
 # Remove any locks on pacman
     [ -f "/var/lib/pacman/db.lck" ] && sudo rm "/var/lib/pacman/db.lck"
 
-    for i in ${pkgs_arch[@]}
-    do
-        missing_pkg="$(sudo pacman -Qi | grep -o "$i")"
+    for pkg in ${pkgs_arch[@]}; do
+        missing_pkg="$(sudo pacman -Qi | grep -o "$pkg")"
 
-        if [ -z "$missing_pkg" ]; then
-            missing_pkgs+=" $i"
+        if [[ -z "$missing_pkg" ]]; then
+            missing_pkgs+="$pkg "
         fi
     done
 
-    if [ -n "$missing_pkgs" ]; then
-         sudo pacman -Sq --needed --noconfirm $missing_pkgs
-    fi
+    [[ -n "$missing_pkgs" ]] && sudo pacman -Sq --needed --noconfirm $missing_pkgs
 
-    [ -n "$(sudo find /usr/lib/python3* -type f -name 'EXTERNALLY-MANAGED')" ] && sudo rm "$rm_pip_lock"
+    [[ -n "$(sudo find /usr/lib/python3* -type f -name 'EXTERNALLY-MANAGED')" ]] && sudo rm "$rm_pip_lock"
 
 # Install python pip packages
     pip install -q --user --no-input requests setuptools wheel
@@ -278,7 +275,7 @@ pkgs_fn() {
 # Function to find the latest release version of golang
 find_latest_golang_version() {
 # Use curl to fetch the html content and grep to find lines with download links
-    local versions=$(curl -s https://go.dev/dl/ | grep -oP 'go[0-9]+\.[0-9]+\.[0-9]+\.linux-amd64.tar.gz' | sort -Vr | uniq | head -n 1)
+    local versions=$(curl -fsS https://go.dev/dl/ | grep -oP 'go[0-9]+\.[0-9]+\.[0-9]+\.linux-amd64.tar.gz' | sort -rV | uniq | head -n1)
 
 # Extract and print the version number
     local latest_version=$(echo $versions | awk -F. '{print $1"."$2"."$3}' | sed 's/go//g' | sed 's/.linux-amd64.tar.gz//g')
@@ -298,7 +295,7 @@ git_1_fn() {
 # Loop until the condition is met or a maximum limit is reached
     while [ $cnt -le 10 ]
     do
-        curl_cmd="$(curl -sSL "https://github.com/$git_repo/tags")"
+        curl_cmd="$(curl -fsSL "https://github.com/$git_repo/tags")"
 
 # Extract the specific line
         line=$(echo "$curl_cmd" | grep -o 'href="[^"]*\.tar\.gz"' | sed -n "${cnt}p")
@@ -410,7 +407,7 @@ else
 fi
 
 # Ldconfig must be run next in order to update file changes
-sudo ldconfig 2>/dev/null
+sudo ldconfig
 
 # Show the newly installed version of each package
 show_versions_fn
