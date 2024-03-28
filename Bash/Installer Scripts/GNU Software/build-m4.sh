@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-m4
+##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-m4.sh
 ##  Purpose: build gnu m4
 ##  Updated: 02.20.24
 ##  Script version: 2.0
