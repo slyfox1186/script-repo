@@ -1,0 +1,355 @@
+==========================================
+   elfutils 0.187: tests/test-suite.log
+==========================================
+
+.. contents:: :depth: 2
+
+FAIL: run-backtrace-native-core.sh
+==================================
+
+backtrace: No modules recognized in core file
+backtrace-child-core.8740: no main
+rmdir: failed to remove 'test-8732': Directory not empty
+FAIL run-backtrace-native-core.sh (exit status: 1)
+
+FAIL: run-backtrace-native-core-biarch.sh
+=========================================
+
+backtrace: No modules recognized in core file
+backtrace-child-biarch-core.8763: no main
+rmdir: failed to remove 'test-8755': Directory not empty
+FAIL run-backtrace-native-core-biarch.sh (exit status: 1)
+
+SKIP: run-lfs-symbols.sh
+========================
+
+LFS testing is irrelevant on this system
+SKIP run-lfs-symbols.sh (exit status: 77)
+
+Signed-off-by: Shahab Vahedi <shahab@synopsys.com>
+---
+ backends/Makefile.am    |  7 +++-
+ backends/arc_init.c     | 55 ++++++++++++++++++++++++++
+ backends/arc_reloc.def  | 87 ++++++++++++++++++++++++++++++++++++++++
+ backends/arc_symbol.c   | 81 +++++++++++++++++++++++++++++++++++++
+ libebl/eblopenbackend.c |  2 +
+ libelf/elf.h            | 88 +++++++++++++++++++++++++----------------
+ src/elflint.c           |  2 +-
+ 7 files changed, 286 insertions(+), 36 deletions(-)
+ create mode 100644 backends/arc_init.c
+ create mode 100644 backends/arc_reloc.def
+ create mode 100644 backends/arc_symbol.c
+
+diff --git a/backends/Makefile.am b/backends/Makefile.am
+index 9566377f..7f8e47a0 100644
+--- a/backends/Makefile.am
++++ b/backends/Makefile.am
+@@ -37,7 +37,7 @@ AM_CPPFLAGS += -I$(top_srcdir)/libebl -I$(top_srcdir)/libasm \
+ noinst_LIBRARIES = libebl_backends.a libebl_backends_pic.a
+ 
+ modules = i386 sh x86_64 ia64 alpha arm aarch64 sparc ppc ppc64 s390 \
+-	  m68k bpf riscv csky
++	  m68k bpf riscv csky arc
+ 
+ i386_SRCS = i386_init.c i386_symbol.c i386_corenote.c i386_cfi.c \
+ 	    i386_retval.c i386_regs.c i386_auxv.c \
+@@ -96,11 +96,14 @@ riscv_SRCS = riscv_init.c riscv_symbol.c riscv_cfi.c riscv_regs.c \
+ csky_SRCS = csky_attrs.c csky_init.c csky_symbol.c csky_cfi.c \
+ 	    csky_regs.c csky_initreg.c csky_corenote.c
+ 
++arc_SRCS = arc_init.c arc_symbol.c
++
+ libebl_backends_a_SOURCES = $(i386_SRCS) $(sh_SRCS) $(x86_64_SRCS) \
+ 			    $(ia64_SRCS) $(alpha_SRCS) $(arm_SRCS) \
+ 			    $(aarch64_SRCS) $(sparc_SRCS) $(ppc_SRCS) \
+ 			    $(ppc64_SRCS) $(s390_SRCS) \
+-			    $(m68k_SRCS) $(bpf_SRCS) $(riscv_SRCS) $(csky_SRCS)
++			    $(m68k_SRCS) $(bpf_SRCS) $(riscv_SRCS) \
++			    $(csky_SRCS) $(arc_SRCS)
+ 
+ libebl_backends_pic_a_SOURCES =
+ am_libebl_backends_pic_a_OBJECTS = $(libebl_backends_a_SOURCES:.c=.os)
+diff --git a/backends/arc_init.c b/backends/arc_init.c
+new file mode 100644
+index 00000000..a013bc4e
+--- /dev/null
++++ b/backends/arc_init.c
+@@ -0,0 +1,55 @@
++/* Initialization of ARC specific backend library.
++   Copyright (C) 2022 Synopsys Inc.
++   This file is part of elfutils.
++
++   This file is free software; you can redistribute it and/or modify
++   it under the terms of either
++
++     * the GNU Lesser General Public License as published by the Free
++       Software Foundation; either version 3 of the License, or (at
++       your option) any later version
++
++   or
++
++     * the GNU General Public License as published by the Free
++       Software Foundation; either version 2 of the License, or (at
++       your option) any later version
++
++   or both in parallel, as here.
++
++   elfutils is distributed in the hope that it will be useful, but
++   WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   General Public License for more details.
++
++   You should have received copies of the GNU General Public License and
++   the GNU Lesser General Public License along with this program.  If
++   not, see <http://www.gnu.org/licenses/>.  */
++
++
++
++/* This defines the common reloc hooks based on arc_reloc.def.  */
++
++Ebl *
++arc_init (Elf *elf __attribute__ ((unused)),
++	  GElf_Half machine __attribute__ ((unused)),
++	  Ebl *eh)
++{
++  arc_init_reloc (eh);
++  HOOK (eh, machine_flag_check);
++  HOOK (eh, reloc_simple_type);
++  HOOK (eh, section_type_name);
++
++  /* /bld/gcc-stage2/arc-snps-linux-gnu/libgcc/libgcc.map.in
++  eh->frame_nregs = 146;
++
++  return eh;
++}
+diff --git a/backends/arc_reloc.def b/backends/arc_reloc.def
+new file mode 100644
+index 00000000..dfa30629
+--- /dev/null
++++ b/backends/arc_reloc.def
+@@ -0,0 +1,87 @@
++/* List the relocation types for ARC.  -*- C -*-
++   This file is part of elfutils.
++
++   This file is free software; you can redistribute it and/or modify
++   it under the terms of either
++
++     * the GNU Lesser General Public License as published by the Free
++       Software Foundation; either version 3 of the License, or (at
++       your option) any later version
++
++   or
++
++     * the GNU General Public License as published by the Free
++       Software Foundation; either version 2 of the License, or (at
++       your option) any later version
++
++   or both in parallel, as here.
++
++   elfutils is distributed in the hope that it will be useful, but
++   WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   General Public License for more details.
++
++   You should have received copies of the GNU General Public License and
++   the GNU Lesser General Public License along with this program.  If
++   not, see <http://www.gnu.org/licenses/>.  */
++
++/*	    NAME,		REL|EXEC|DYN	*/
++
++RELOC_TYPE (NONE,		EXEC|DYN)
++RELOC_TYPE (8,			REL|EXEC|DYN)
++RELOC_TYPE (16,			REL|EXEC|DYN)
++RELOC_TYPE (24,			REL|EXEC|DYN)
++RELOC_TYPE (32,			REL|EXEC|DYN)
++RELOC_TYPE (N8,			REL|EXEC|DYN)
++RELOC_TYPE (N16,		REL|EXEC|DYN)
++RELOC_TYPE (N24,		REL|EXEC|DYN)
++RELOC_TYPE (N32,		REL|EXEC|DYN)
++RELOC_TYPE (SDA,		REL)
++RELOC_TYPE (SECTOFF,		REL)
++RELOC_TYPE (S21H_PCREL,		REL)
++RELOC_TYPE (S21W_PCREL,		REL)
++RELOC_TYPE (S25H_PCREL,		REL)
++RELOC_TYPE (S25W_PCREL,		REL)
++RELOC_TYPE (SDA32,		REL)
++RELOC_TYPE (SDA_LDST,		REL)
++RELOC_TYPE (SDA_LDST1,		REL)
++RELOC_TYPE (SDA_LDST2,		REL)
++RELOC_TYPE (SDA16_LD,		REL)
++RELOC_TYPE (SDA16_LD1,		REL)
++RELOC_TYPE (SDA16_LD2,		REL)
++RELOC_TYPE (S13_PCREL,		REL)
++RELOC_TYPE (W,			REL)
++RELOC_TYPE (32_ME,		REL)
++RELOC_TYPE (N32_ME,		REL)
++RELOC_TYPE (SECTOFF_ME,		REL)
++RELOC_TYPE (SDA32_ME,		REL)
++RELOC_TYPE (W_ME,		REL)
++RELOC_TYPE (SDA_12,		REL)
++RELOC_TYPE (SDA16_ST2,		REL)
++RELOC_TYPE (32_PCREL,		REL)
++RELOC_TYPE (PC32,		REL)
++RELOC_TYPE (GOTPC32,		REL)
++RELOC_TYPE (PLT32,		REL)
++RELOC_TYPE (COPY,		EXEC|DYN)
++RELOC_TYPE (GLOB_DAT,		EXEC|DYN)
++RELOC_TYPE (JMP_SLOT,		EXEC|DYN)
++RELOC_TYPE (RELATIVE,		EXEC|DYN)
++RELOC_TYPE (GOTOFF,		REL)
++RELOC_TYPE (GOTPC,		REL)
++RELOC_TYPE (GOT32,		REL)
++RELOC_TYPE (S21W_PCREL_PLT,	REL)
++RELOC_TYPE (S25H_PCREL_PLT,	REL)
++RELOC_TYPE (JLI_SECTOFF,	REL)
++RELOC_TYPE (TLS_DTPMOD,		REL)
++RELOC_TYPE (TLS_DTPOFF,		REL)
++RELOC_TYPE (TLS_TPOFF,		REL)
++RELOC_TYPE (TLS_GD_GOT,		REL)
++RELOC_TYPE (TLS_GD_LD,		REL)
++RELOC_TYPE (TLS_GD_CALL,	REL)
++RELOC_TYPE (TLS_IE_GOT,		REL)
++RELOC_TYPE (TLS_DTPOFF_S9,	REL)
++RELOC_TYPE (TLS_LE_S9,		REL)
++RELOC_TYPE (TLS_LE_32,		REL)
++RELOC_TYPE (S25W_PCREL_PLT,	REL)
++RELOC_TYPE (S21H_PCREL_PLT,	REL)
++RELOC_TYPE (NPS_CMEM16,		REL)
+diff --git a/backends/arc_symbol.c b/backends/arc_symbol.c
+new file mode 100644
+index 00000000..e996c5d9
+--- /dev/null
++++ b/backends/arc_symbol.c
+@@ -0,0 +1,81 @@
++/* ARC specific symbolic name handling.
++   This file is part of elfutils.
++
++   This file is free software; you can redistribute it and/or modify
++   it under the terms of either
++
++     * the GNU Lesser General Public License as published by the Free
++       Software Foundation; either version 3 of the License, or (at
++       your option) any later version
++
++   or
++
++     * the GNU General Public License as published by the Free
++       Software Foundation; either version 2 of the License, or (at
++       your option) any later version
++
++   or both in parallel, as here.
++
++   elfutils is distributed in the hope that it will be useful, but
++   WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   General Public License for more details.
++
++   You should have received copies of the GNU General Public License and
++   the GNU Lesser General Public License along with this program.  If
++   not, see <http://www.gnu.org/licenses/>.  */
++
++
++
++
++
++/* Check whether machine flags are valid.  */
++bool
++arc_machine_flag_check (GElf_Word flags)
++{
++  return ((flags &~ EF_ARC_ALL_MSK) == 0);
++}
++
++/* Check for the simple reloc types.  */
++Elf_Type
++arc_reloc_simple_type (Ebl *ebl __attribute__ ((unused)), int type,
++		       int *addsub __attribute ((unused)))
++{
++  switch (type)
++    {
++    case R_ARC_32:
++      return ELF_T_WORD;
++    case R_ARC_16:
++      return ELF_T_HALF;
++    case R_ARC_8:
++      return ELF_T_BYTE;
++    default:
++      return ELF_T_NUM;
++    }
++}
++
++/* Return symbolic representation of section type.  */
++const char *
++arc_section_type_name (int type,
++		       char *buf __attribute__ ((unused)),
++		       size_t len __attribute__ ((unused)))
++{
++  switch (type)
++    {
++    case SHT_ARC_ATTRIBUTES:
++      return "ARC_ATTRIBUTES";
++    default:
++      break;
++    }
++
++  return NULL;
++}
+diff --git a/libebl/eblopenbackend.c b/libebl/eblopenbackend.c
+index 02f80653..f2288f63 100644
+--- a/libebl/eblopenbackend.c
++++ b/libebl/eblopenbackend.c
+@@ -55,6 +55,7 @@ Ebl *m68k_init (Elf *, GElf_Half, Ebl *);
+ Ebl *bpf_init (Elf *, GElf_Half, Ebl *);
+ Ebl *riscv_init (Elf *, GElf_Half, Ebl *);
+ Ebl *csky_init (Elf *, GElf_Half, Ebl *);
++Ebl *arc_init (Elf *, GElf_Half, Ebl *);
+ 
+ /* This table should contain the complete list of architectures as far
+    as the ELF specification is concerned.  */
+@@ -150,6 +151,7 @@ static const struct
+   { riscv_init, "elf_riscv", "riscv", 5, EM_RISCV, ELFCLASS64, ELFDATA2LSB },
+   { riscv_init, "elf_riscv", "riscv", 5, EM_RISCV, ELFCLASS32, ELFDATA2LSB },
+   { csky_init, "elf_csky", "csky", 4, EM_CSKY, ELFCLASS32, ELFDATA2LSB },
++  { arc_init, "elf_arc", "arc", 3, EM_ARCV2, ELFCLASS32, ELFDATA2LSB },
+ };
+ 
+diff --git a/libelf/elf.h b/libelf/elf.h
+index 02a1b3f5..8428e3df 100644
+--- a/libelf/elf.h
++++ b/libelf/elf.h
+@@ -4148,24 +4148,48 @@ enum
+ 
++/* ARC specific declarations.  */
++
++/* Processor specific flags for the Ehdr e_flags field.  */
++
++/* Various CPU types.  These numbers are exposed in the ELF header flags
++   (e_flags field), and so must never change.  */
++
++/* ARC Linux specific ABIs.  */
++/* Leave bits 0xf0 alone in case we ever have more than 16 cpu types.  */
++
++/* Additional section types.  */
+ 
+ /* ARCompact/ARCv2 specific relocs.  */
++
+@@ -4182,29 +4206,24 @@ enum
++
++
+ 
+@@ -4213,9 +4232,12 @@ enum
+ 
+ /* OpenRISC 1000 specific relocs.  */
+diff --git a/src/elflint.c b/src/elflint.c
+index 565cffdc..71521d6a 100644
+--- a/src/elflint.c
++++ b/src/elflint.c
+@@ -329,7 +329,7 @@ static const int valid_e_machine[] =
+     EM_CRIS, EM_JAVELIN, EM_FIREPATH, EM_ZSP, EM_MMIX, EM_HUANY, EM_PRISM,
+     EM_AVR, EM_FR30, EM_D10V, EM_D30V, EM_V850, EM_M32R, EM_MN10300,
+     EM_MN10200, EM_PJ, EM_OPENRISC, EM_ARC_A5, EM_XTENSA, EM_ALPHA,
+-    EM_TILEGX, EM_TILEPRO, EM_AARCH64, EM_BPF, EM_RISCV, EM_CSKY
++    EM_TILEGX, EM_TILEPRO, EM_AARCH64, EM_BPF, EM_RISCV, EM_CSKY, EM_ARC
+   };
+   (sizeof (valid_e_machine) / sizeof (valid_e_machine[0]))
+-- 
+2.38.1
