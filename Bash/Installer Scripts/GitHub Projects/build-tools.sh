@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2162,SC2317
 
-##  Script Name: build-tools.sh
-##  GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-tools
+##  GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-tools.sh
 ##  Purpose: Install the latest versions of: CMake, Ninja, Meson, & Golang
 ##  Updated: 03.28.24
 
