@@ -3,7 +3,7 @@
 
 ##  GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-tools.sh
 ##  Purpose: Install the latest versions of: CMake, Ninja, Meson, & Golang
-##  Updated: 03.28.24
+##  Updated: 04.04.24
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -222,26 +222,25 @@ arch_pkgs() {
 }
 
 apt_pkgs() {
-
     pkgs=(
         autoconf autoconf-archive automake autogen build-essential
         ccache cmake curl git libssl-dev libtool m4 python3 python3-pip
         qtbase5-dev
     )
-    
+
     missing_packages=()
-    for pkg in ${pkgs[@]}; do
-        if ! dpkg-query -W -f='${Status}' "$pkg" &>/dev/null | grep -q "ok installed"; then
+    for pkg in "${pkgs[@]}"; do
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "install ok installed"; then
             missing_packages+=("$pkg")
         fi  
     done
-    
+
     if [[ "${#missing_packages[@]}" -gt 0 ]]; then
         log "Installing missing packages: ${missing_packages[*]}"
-        apt-get update
-        apt-get install "${missing_packages[@]}"
+        sudo apt-get update
+        sudo apt-get install -y "${missing_packages[@]}"
     else
-        log "The requried apt packages are already installed."
+        log "The required apt packages are already installed."
     fi
 }
 
@@ -330,7 +329,9 @@ else
     if build "meson" "$version"; then  
         download "https://github.com/mesonbuild/meson/archive/refs/tags/$version.tar.gz" "meson-$version.tar.gz"
         execute python3 setup.py build
-        execute python3 setup.py install --prefix="/usr"
+        execute python3 setup.py install --prefix="/usr/local/meson-$version"
+        execute pip install -e .
+        execute ln -sf "/usr/local/meson-$version/bin/meson" /usr/local/bin/
         build_done "meson" "$version"
     fi
 fi
