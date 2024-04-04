@@ -104,7 +104,7 @@ $HOME/.local/bin:\
 set_compiler_flags() {
     CC="gcc"
     CXX="g++"
-    CFLAGS="-g -O3 -pipe -fno-plt -march=native"
+    CFLAGS="-O2 -mtune=native"
     CXXFLAGS="$CFLAGS"
     CPPFLAGS="-D_FORTIFY_SOURCE=2"
     export CC CFLAGS CXX CXXFLAGS CPPFLAGS
