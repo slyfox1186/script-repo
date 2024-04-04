@@ -329,8 +329,7 @@ else
     if build "meson" "$version"; then  
         download "https://github.com/mesonbuild/meson/archive/refs/tags/$version.tar.gz" "meson-$version.tar.gz"
         execute python3 setup.py build
-        execute python3 setup.py install --prefix="/usr/local/meson-$version"
-        ln -sf "/usr/local/meson-$version/bin/meson" "/usr/local/bin/meson"
+        execute python3 setup.py install --prefix="/usr"
         build_done "meson" "$version"
     fi
 fi
