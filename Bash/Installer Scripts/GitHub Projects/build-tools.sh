@@ -293,8 +293,7 @@ git_1_fn() {
     cnt=1
 
 # Loop until the condition is met or a maximum limit is reached
-    while [ $cnt -le 10 ]
-    do
+    while [[ $cnt -le 10 ]]; do
         curl_cmd="$(curl -fsSL "https://github.com/$git_repo/tags")"
 
 # Extract the specific line
