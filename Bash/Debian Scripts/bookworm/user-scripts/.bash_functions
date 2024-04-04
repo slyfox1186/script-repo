@@ -1095,7 +1095,7 @@ adl() {
     if aria2c --console-log-level=error \
         -x32 \
         -j5 \
-        --split=20 \
+        --split=32 \
         --allow-overwrite=true \
         --allow-piece-length-change=true \
         --always-resume=true \
