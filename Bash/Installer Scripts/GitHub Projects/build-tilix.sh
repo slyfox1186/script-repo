@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
+set -x
 
 ##  Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-tilix.sh
 ##  Purpose: Compile the advanced Linux Terminal, Tilix, using source code from its official GitHub repository
-##  Updated: 03.26.24
-##  Version: 1.4
+##  Updated: 04.04.24
+##  Version: 1.5
 
-if [[ "$EUID" -ne 0 ]]; then
-    echo "You must run this script with root or sudo."
+if [[ "$EUID" -eq 0 ]]; then
+    echo "You must run this script without using root or sudo."
     exit 1
 fi
 
@@ -61,16 +62,17 @@ is_installed() {
 }
 
 # Check each package and add to the install list if not installed
-for pkg in "${packages[@]}"; do
+for pkg in ${packages[@]}; do
     if ! is_installed "$pkg"; then
         to_install+=("$pkg")
     fi
 done
 
 # Install the packages if there are any to install
-if [[ "${#To_install[@]}" -ne 0 ]]; then
+if [[ "${#to_install[@]}" -ne 0 ]]; then
     echo "Installing packages: ${to_install[*]}"
-    apt install "${to_install[@]}"
+    sudo apt-get update
+    sudo apt-get install "${to_install[@]}"
 else
     printf "\n%s\n\n" "All packages are already installed."
 fi
@@ -85,7 +87,7 @@ tar_file="$program_name-$version.tar.gz"
 # Download the source code files if they are not already downloaded
 if [[ ! -f "$tar_file" ]]; then
     printf "%s\n\n" "Downloading Tilix version $version..."
-    curl -Lso "$tar_file" "$download_url"
+    curl -LSso "$tar_file" "$download_url"
 else
    echo "Tilix version $version already downloaded."
 fi
@@ -93,13 +95,13 @@ fi
 # Delete the output archive if it already exists
 if [[ -d "$program_name-$version" ]]; then
     echo "Removing existing directory ${program_name}-${version}..."
-    rm -fr "$program_name-$version"
+    sudo rm -fr "$program_name-$version"
 fi
 
 # Extract the files
 printf "%s\n\n" "Extracting $tar_file..."
 if [[ -d "$program_name-$version" ]]; then
-    rm -fr "$program_name-$version"
+    sudo rm -fr "$program_name-$version"
 fi
 mkdir "$program_name-$version"
 tar -zxf "$tar_file" -C "$program_name-$version" --strip-components 1
@@ -107,6 +109,15 @@ tar -zxf "$tar_file" -C "$program_name-$version" --strip-components 1
 # Install the latest DMD compiler
 echo "Installing the latest DMD Compiler..."
 curl -fsS "https://dlang.org/install.sh" | bash -s dmd
+
+# Activate the DMD environment
+dmd_path=$(find "$HOME/dlang" -maxdepth 1 -type d -name 'dmd-*' | sort -Vr | head -n1)
+if [[ -n "$dmd_path" && -f "$dmd_path/activate" ]]; then
+    source "$dmd_path/activate"
+else
+    echo "Failed to find the DMD activation script."
+    exit 1
+fi
 
 # Change to the tilix directory
 cd "$program_name-$version"
@@ -118,7 +129,7 @@ dub build --build=release
 
 # Install tilix
 printf "\n%s\n\n" "Installing Tilix..."
-if ./install.sh; then
+if sudo sh install.sh; then
     printf "\n%s\n\n" "Tilix was successfully installed."
 else
     echo "Tilix failed to install."
@@ -134,7 +145,23 @@ cd "../Themes-2" || exit 1
 cp -f "neopolitan.json" "vibrant-ink.json" "$HOME/.config/tilix/schemes"
 
 # Make tilix the default terminal
-update-alternatives --install /usr/bin/x-terminal-emulator x-terminal-emulator /usr/bin/tilix 50
+sudo update-alternatives --install /usr/bin/x-terminal-emulator x-terminal-emulator /usr/bin/tilix 50
 
-rm -fr "$cwd"
+# REMOVE OPEN WITH GNOME-TERMINAL CONTEXT MENU ENTRY
+if ! sudo killall -9 nautilus; then
+    echo "Failed to execute the command \"sudo killall -9 nautilus\""
+    echo
+    read -p "Press enter to continue."
+else
+    sudo apt -y remove --purge nautilus-extension-gnome-terminal
+    sudo apt -y autoremove
+fi
+
+# Re-open nautilus to the parent script directory
+nautilus -w "$cwd"
+
+# CLEANUP FILES
+sudo rm -fr "$cwd"
+
+# SHOW EXIT MESSAGE
 exit_fn
