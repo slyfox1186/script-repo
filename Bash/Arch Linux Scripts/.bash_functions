@@ -1159,71 +1159,35 @@ up_icon() {
 ############
 
 adl() {
-    local disallowedCharsPattern fileExtensionPattern filename url urlPattern user_agent
+    if [[ "$#" -ne 2 ]]; then
+        echo "Error: Two arguments are required: output file and download URL"
+        return 1
+    fi
 
-    # Define patterns
-    urlPattern="^(http|https)://"
-    fileExtensionPattern=".*\.(tar\.gz|tar\.bz2|tar\.xz|tar|zip|7z|mp4|mp3|pdf|docx|jpg|jpeg|png|gif)$"
-    disallowedCharsPattern="[?*<>|:\"\\\/=-_+)('\`]"
+    local file="$1"
+    local url="$2"
 
-    # If a URL is provided as an argument, use it
-    if [[ "$1" =~ $urlPattern ]]; then
-        url="$1"
-        urlFilename=$(basename "$url")
-
-        if [[ "$urlFilename" =~ $fileExtensionPattern ]] && ! [[ "$urlFilename" =~ $disallowedCharsPattern ]]; then
-            filename="$urlFilename"
-        else
-            read -p "Enter the filename and extension: " filename
-        fi
+    if aria2c --console-log-level=error \
+        -x32 \
+        -j5 \
+        --split=32 \
+        --allow-overwrite=true \
+        --allow-piece-length-change=true \
+        --always-resume=true \
+        --auto-file-renaming=false \
+        --min-split-size=8M \
+        --disk-cache=64M \
+        --file-allocation=none \
+        --no-file-allocation-limit=8M \
+        --continue=true \
+        --out="$file" \
+        "$url"; then
+        google_speech "Download completed." 2>/dev/null
     else
-        # No URL argument provided, check clipboard
-        clipboardContent=$(xclip -selection clipboard -o)
-        if [[ "$clipboardContent" =~ $urlPattern ]]; then
-            url="$clipboardContent"
-            urlFilename=$(basename "$url")
-
-            if [[ "$urlFilename" =~ $fileExtensionPattern ]] && ! [[ "$urlFilename" =~ $disallowedCharsPattern ]]; then
-                filename="$urlFilename"
-            else
-                read -p "Enter the filename and extension: " filename
-            fi
-        else
-            # Prompt for URL and filename if not found
-            read -p "Enter the URL: " url
-            read -p "Enter the filename and extension: " filename
-        fi
+        google_speech "Download failed." 2>/dev/null
     fi
 
-    # Remove existing file with the same name to enable overwriting
-    if [ -f "$filename" ]; then
-        rm "$filename"
-    fi
-
-    # Use aria2c to download the file with the given filename
-    if aria2c --console-log-level=notice \
-              -U "$user_agent" \
-              -x32 \
-              -j16 \
-              --split=32 \
-              --allow-overwrite=true \
-              --allow-piece-length-change=true \
-              --always-resume=true \
-              --auto-file-renaming=false \
-              --min-split-size=8M \
-              --disk-cache=64M \
-              --file-allocation=${setalloc} \
-              --no-file-allocation-limit=8M \
-              --continue=true \
-              --out="$filename" \
-              "$url"
-    then
-           google_speech 'Download completed.' 2>/dev/null
-    else
-           google_speech 'Download failed.' 2>/dev/null
-    fi
-
-    clear; ls -1AvhF --color --group-directories-first
+    clear; ls -1AhFv --color --group-directories-first
 }
 
 ####################
