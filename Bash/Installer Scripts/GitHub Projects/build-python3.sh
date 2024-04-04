@@ -17,7 +17,7 @@ fi
 script_ver=2.4
 python_version=3.12.2
 archive_url="https://www.python.org/ftp/python/$python_version/Python-$python_version.tar.xz"
-install_dir="/usr/local"
+install_dir="/usr/local/python3-$python_version"
 cwd="$PWD/python3-build-script"
 openssl_prefix=$(dirname $(readlink -f $(type -P openssl)))
 
@@ -123,7 +123,7 @@ fi
 
 download_and_extract_python() {
     if [[ ! -f "$cwd/$python_version.tar.xz" ]]; then
-        curl -Lso "$cwd/$python_version.tar.xz" "$archive_url"
+        curl -LSso "$cwd/$python_version.tar.xz" "$archive_url"
     fi
     if [[ -d "$cwd/$python_version" ]]; then
         rm -fr "$cwd/${python_version:?}"
@@ -156,6 +156,21 @@ install_required_packages() {
     fi
 }
 
+create_symlinks() {
+    echo "Creating symlinks for essential programs"
+    echo "========================================="
+    local bin_dir="$install_dir/bin"
+    local programs=("python3" "pip3" "idle3" "pydoc3" "python3-config")
+
+    for program in ${programs[@]}; do
+        ln -sf "$bin_dir/$program" "/usr/local/bin/$program"
+    done
+}
+
+create_user_site() {
+    mkdir -p "$HOME/.local/lib/python3.12/site-packages"
+}
+
 build_python() {
     echo
     echo "Build Python3 - v$python_version"
@@ -176,7 +191,7 @@ build_python() {
                  --with-valgrind || fail "Configuration failed. Line: $LINENO"
 
     make "-j$(nproc --all)" || fail "Failed to execute: make -j$(nproc --all). Line: $LINENO"
-    make altinstall || fail "Failed to execute: make altinstall. Line: $LINENO"
+    make install || fail "Failed to execute: make altinstall. Line: $LINENO"
 }
 
 # Main script execution
@@ -186,6 +201,8 @@ install_required_packages
 set_compiler_flags
 download_and_extract_python
 build_python
+create_symlinks
+create_user_site
 show_ver_fn
 cleanup
 exit_fn
