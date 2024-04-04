@@ -226,6 +226,7 @@ apt_pkgs() {
     pkgs=(
         autoconf autoconf-archive automake autogen build-essential
         ccache cmake curl git libssl-dev libtool m4 python3 python3-pip
+        qtbase5-dev
     )
     
     missing_packages=()
