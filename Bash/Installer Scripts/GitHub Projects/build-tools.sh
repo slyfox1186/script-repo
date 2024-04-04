@@ -1,42 +1,58 @@
 #!/usr/bin/env bash
-# Shellcheck disable=sc2162,sc2317
+# shellcheck disable=SC2162,SC2317
 
-##  Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-tools
+##  GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-tools.sh
 ##  Purpose: Install the latest versions of: CMake, Ninja, Meson, & Golang
-##  Updated: 02.16.24
-##  Added: Automatic version check for Golang.
+##  Updated: 03.28.24
 
-if [ "$EUID" -eq 0 ]; then
-    printf "%s\n\n" "You must run this script without root or sudo."
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+log() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+warn() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+fail() {
+    echo -e "${RED}[ERROR]${NC} $1"
+    echo
+    echo "To report a bug please create an issue at:"
+    echo "https://github.com/slyfox1186/script-repo/issues"
+    echo
     exit 1
+}
+
+if [[ "$EUID" -ne 0 ]]; then
+    fail "You must run this script as root or with sudo."
 fi
 
-# Create script variables
-script_ver=2.8
+script_ver=3.0
 cwd="$PWD/build-tools-script"
-install_dir="/usr/local"
 web_repo="https://github.com/slyfox1186/script-repo"
 latest=false
-debug=OFF # Change the debug variable to "ON" for help troubleshooting issues
+debug=OFF
+cpu_threads=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || nproc --all)
 
-# Print script banner
-printf "%s\n%s\n" "Build-tools script: v$script_ver" "===================================="
-sleep 2
+echo -e "${GREEN}Build-tools script ${YELLOW}version $script_ver${NC}"
+echo "===================================="
 
-# Get cpu core count for parallel processing
-cpu_threads=$(grep -c ^processor '/proc/cpuinfo' 2>/dev/null || nproc --all)
-
-# Create output directories
 mkdir -p "$cwd"
 
-# Set the cc/cxx compilers & the compiler optimization flags
-CC="gcc"
-CXX="g++"
-CFLAGS="-g -O3 -pipe -fno-plt -march=native"
-CXXFLAGS="$CFLAGS"
-export CC CXX CFLAGS CXXFLAGS
+set_compiler_flags() {
+    CC="gcc"
+    CXX="g++"
+    CFLAGS="-g -O3 -pipe -fno-plt -march=native"
+    CPPFLAGS="-I/usr/local/include"
+    CXXFLAGS="$CFLAGS"
+    LDFLAGS="-L/usr/local/lib -Wl,-rpath,/usr/local/lib"
+    export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
+}
+set_compiler_flags
 
-# Set the path variable
 PATH="\
 /usr/lib/ccache:\
 $HOME/perl5/bin:\
@@ -53,7 +69,6 @@ $HOME/.local/bin:\
 "
 export PATH
 
-# Set the pkg_config_path variable
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
@@ -64,68 +79,53 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-# Create functions
 exit_fn() {
-    printf "\n%s\n\n%s\n%s\n\n" "The script has completed" "Make sure to star this repository to show your support!" "$web_repo"
+    echo
+    log "The script has completed"
+    echo
+    echo -e "${GREEN}Make sure to ${YELLOW}star ${GREEN}this repository to show your support!${NC}"
+    log "$web_repo"
+    echo
     exit 0
 }
 
-fail_fn() {
-    echo "Error: $1"
+cleanup() {
     echo
-    echo "To report a bug please create an issue at:"
-    echo "$web_repo/issues"
-    echo
-    exit 1
-}
-
-cleanup_fn() {
-    local choice
-    echo
-    echo "Do you want to remove the build files?"
-    echo
-    echo "[1] Yes"
-    echo "[2] No"
-    echo
-    read -p "Your choices are (1 or 2): " choice
+    read -p "Do you want to remove the build files? (yes/no): " choice
 
     case "$choice" in
-        1) sudo rm -fr "$cwd" ;;
-        2) return 0 ;;
+        [yY][eE][sS]*|[yY]*|"")
+            rm -fr "$cwd"
+            ;;
+        [nN][oO]*|[nN]*)
+            ;;
         *) unset choice
-           clear
-           cleanup_fn
+           cleanup
            ;;
     esac
 }
 
-show_versions_fn() {
-    local show_cmake_ver show_ninja_ver show_meson_ver show_go_ver
-
-    show_cmake_ver=$(cmake --version | sed -e 's/cmake version //g' -e 's/CMake suite maintained and supported by Kitware (kitware.com\/cmake).//g' | xargs -n1)
-    show_ninja_ver=$(ninja --version)
-    show_meson_ver=$(meson --version)
-    show_go_ver=$(go version | grep -Eo '[0-9\.]+ | xargs -n1')
-
-    printf "\n%s\n\n" "The updated versions are:"
-    echo "CMake:  $show_cmake_ver"
-    echo "Ninja:  $show_ninja_ver"
-    echo "Meson:  $show_meson_ver"
-    echo "GoLang: $show_go_ver"
+show_versions() {
+    echo
+    log "The updated versions are:"
+    echo
+    echo "CMake:  $(cmake --version | sed -e 's/cmake version //g' -e 's/CMake suite maintained and supported by Kitware (kitware.com\/cmake).//g' | xargs -n1)"
+    echo "Ninja:  $(ninja --version)"  
+    echo "Meson:  $(meson --version)"
+    echo "GoLang: $(go version | grep -Eo '[0-9\.]+ | xargs -n1')"
 }
 
 execute() {
     echo "$ $*"
-
-    if [ "$debug" = "ON" ]; then
+    if [[ "$debug" = "ON" ]]; then
         if ! output="$("$@")"; then
             notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
-            fail_fn "Failed to execute: $*"
+            fail "Failed to execute: $*"
         fi
-    else
+    else 
         if ! output="$("$@" 2>&1)"; then
             notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
-            fail_fn "Failed to execute: $*"
+            fail "Failed to execute: $*"  
         fi
     fi
 }
@@ -133,58 +133,51 @@ execute() {
 download() {
     dl_path="$cwd"
     dl_url="$1"
-    dl_file="${2:-"${1##*/}"}"
-
-    if [[ "$dl_file" =~ tar. ]]; then
-        output_dir="${dl_file%.*}"
-        output_dir="${3:-"${output_dir%.*}"}"
-    else
-        output_dir="${3:-"${dl_file%.*}"}"
-    fi
-
+    dl_file="${2:-${1##*/}}"
+    output_dir="${dl_file%.*}"
+    output_dir="${3:-${output_dir%.*}}"
     target_file="$dl_path/$dl_file"
     target_dir="$dl_path/$output_dir"
-
-    if [ -f "$target_file" ]; then
-        echo "The file \"$dl_file\" is already downloaded."
+    
+    if [[ -f "$target_file" ]]; then
+        warn "The file $dl_file is already downloaded."
     else
-        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
-        if ! curl -Lso "$target_file" "$dl_url"; then
-            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
+        log "Downloading $dl_url saving as $dl_file"
+        if ! curl -LSso "$target_file" "$dl_url"; then
+            echo
+            warn "The script failed to download $dl_file and will try again in 10 seconds..."
             sleep 10
-            if ! curl -Lso "$target_file" "$dl_url"; then
-                fail_fn "The script failed to download \"$dl_file\" twice and will now exit:Line $LINENO"
+            if ! curl -LSso "$target_file" "$dl_url"; then
+                fail "The script failed to download $dl_file twice and will now exit: Line $LINENO"
             fi
         fi
-        echo "Download Completed"
+        log "Download Completed"
     fi
 
-    if [ -d "$target_dir" ]; then
-        sudo rm -fr "$target_dir"
-    fi
+    [[ -d "$target_dir" ]] && rm -fr "$target_dir"
     mkdir -p "$target_dir"
-
-    if [ -n "$3" ]; then
-        if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
-            sudo rm "$target_file"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
+    
+    if [[ -n "$3" ]]; then
+        if ! tar -xf "$target_file" -C "$target_dir" 2>&1; then
+            rm "$target_file"
+            fail "The script failed to extract $dl_file so it was deleted. Please re-run the script. Line: $LINENO"
         fi
     else
-        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-            sudo rm "$target_file"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
+        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>&1; then
+            rm "$target_file" 
+            fail "The script failed to extract $dl_file so it was deleted. Please re-run the script. Line: $LINENO"
         fi
     fi
-
-    printf "%s\n\n" "File extracted: $dl_file"
-
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: $LINENO"
+    
+    log "File extracted: $dl_file"
+    cd "$target_dir" || fail "Unable to change the working directory to: $target_dir. Line: $LINENO"
 }
 
 build() {
-    printf "\n%s\n%s\n" "Building $1 - version $2" "===================================="
-
-    if [ -f "$cwd/$1.done" ]; then
+    echo
+    echo "Building $1 - version $2"
+    echo "===================================="
+    if [[ -f "$cwd/$1.done" ]]; then
         if grep -Fx "$2" "$cwd/$1.done" >/dev/null; then
             echo "$1 version $2 already built. Remove $cwd/$1.done lockfile to rebuild it."
             return 1
@@ -193,226 +186,187 @@ build() {
             return 0
         else
             echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $cwd/$1.done lockfile."
-            return 1
+            return 1    
         fi
     fi
-    return 0
+    return 0 
 }
 
-build_done() { echo "$2" > "$cwd/$1.done"; }
+build_done() {
+    echo "$2" > "$cwd/$1.done"
+}
 
-# Install required apt/pacman packages
-pkgs_arch_fn() {
-    pkgs_arch=(
-        autoconf automake autogen bluez-qt5 base-devel ccache cmake curl
-        git libnghttp2 libnghttp3 openssl python python-pip qt5-base
-        qt6-base
+arch_pkgs() {
+
+    pkgs=(
+        autoconf automake autogen bluez-qt5 base-devel
+        ccache cmake curl git openssl python python-pip
     )
-
-# Remove any locks on pacman
-    [ -f "/var/lib/pacman/db.lck" ] && sudo rm "/var/lib/pacman/db.lck"
-
-    for pkg in ${pkgs_arch[@]}; do
-        missing_pkg="$(sudo pacman -Qi | grep -o "$pkg")"
-
-        if [[ -z "$missing_pkg" ]]; then
+    
+    [[ -f "/var/lib/pacman/db.lck" ]] && rm -f "/var/lib/pacman/db.lck"
+    
+    for pkg in "${pkgs[@]}"; do
+        if ! pacman -Qi "$pkg" &>/dev/null; then
             missing_pkgs+="$pkg "
         fi
     done
-
-    [[ -n "$missing_pkgs" ]] && sudo pacman -Sq --needed --noconfirm $missing_pkgs
-
-    [[ -n "$(sudo find /usr/lib/python3* -type f -name 'EXTERNALLY-MANAGED')" ]] && sudo rm "$rm_pip_lock"
-
-# Install python pip packages
-    pip install -q --user --no-input requests setuptools wheel
-}
-
-pkgs_fn() {
-    pkgs=(
-        autoconf autoconf-archive automake autogen build-essential ccache
-        cmake curl git libssl-dev libtool libtool-bin m4 python3 python3-pip
-        qtbase5-dev
-    )
-
-# Initialize arrays for missing, available, and unavailable packages
-    missing_packages=()
-    available_packages=()
-    unavailable_packages=()
-
-# Loop through the array to find missing packages
-    for pkg in "${pkgs[@]}"
-    do
-        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
-            missing_packages+=("$pkg")
-        fi
-    done
-
-# Check availability of missing packages and categorize them
-    for pkg in "${missing_packages[@]}"
-    do
-        if apt-cache show "$pkg" > /dev/null 2>&1; then
-            available_packages+=("$pkg")
-        else
-            unavailable_packages+=("$pkg")
-        fi
-    done
-
-# Print unavailable packages
-    if [ "${#Unavailable_packages[@]}" -gt 0 ]; then
-        echo "Unavailable packages: ${unavailable_packages[*]}"
-    fi
-
-# Install available missing packages
-    if [ "${#Available_packages[@]}" -gt 0 ]; then
-        echo "Installing available missing packages: ${available_packages[*]}"
-        sudo apt install "${available_packages[@]}"
-    else
-        echo "No missing packages to install or all missing packages are unavailable."
-    fi
-}
-
-# Function to find the latest release version of golang
-find_latest_golang_version() {
-# Use curl to fetch the html content and grep to find lines with download links
-    local versions=$(curl -fsS https://go.dev/dl/ | grep -oP 'go[0-9]+\.[0-9]+\.[0-9]+\.linux-amd64.tar.gz' | sort -rV | uniq | head -n1)
-
-# Extract and print the version number
-    local latest_version=$(echo $versions | awk -F. '{print $1"."$2"."$3}' | sed 's/go//g' | sed 's/.linux-amd64.tar.gz//g')
     
-    echo "$latest_version"
+    [[ -n "$missing_pkgs" ]] && pacman -Sq --needed --noconfirm $missing_pkgs
+
+    pip_lock=$(find /usr/lib/python3* -type f -name 'EXTERNALLY-MANAGED')
+    if [[ -n "$pip_lock" ]]; then
+        pip install --user --break-system-packages --no-input requests setuptools wheel
+    else
+        pip install --user --no-input requests setuptools wheel
+    fi
 }
 
-# Call the function and store its output in a variable
-latest_version=$(find_latest_golang_version)
+apt_pkgs() {
 
-git_1_fn() {
-# Initial cnt
-    local cnt curl_cmd git_repo
-    git_repo="$1"
-    cnt=1
+    pkgs=(
+        autoconf autoconf-archive automake autogen build-essential
+        ccache cmake curl git libssl-dev libtool m4 python3 python3-pip
+    )
+    
+    missing_packages=()
+    for pkg in ${pkgs[@]}; do
+        if ! dpkg-query -W -f='${Status}' "$pkg" &>/dev/null | grep -q "ok installed"; then
+            missing_packages+=("$pkg")
+        fi  
+    done
+    
+    if [[ "${#missing_packages[@]}" -gt 0 ]]; then
+        log "Installing missing packages: ${missing_packages[*]}"
+        apt-get update
+        apt-get install "${missing_packages[@]}"
+    else
+        log "The requried apt packages are already installed."
+    fi
+}
 
-# Loop until the condition is met or a maximum limit is reached
-    while [[ $cnt -le 10 ]]; do
-        curl_cmd="$(curl -fsSL "https://github.com/$git_repo/tags")"
+search_for_golang_version() {
+    curl -fsS "https://go.dev/dl/" | grep -oP 'go[0-9]+\.[0-9]+\.[0-9]+\.*\.tar\.gz' |
+    sort -rV | head -n1 | awk -F'.' '{print $1"."$2"."$3}' | sed 's/go//g' |
+    sed 's/.linux-amd64.tar.gz//g'  
+}
+version=$(search_for_golang_version)
 
-# Extract the specific line
-        line=$(echo "$curl_cmd" | grep -o 'href="[^"]*\.tar\.gz"' | sed -n "${cnt}p")
-
-# Check if the line matches the pattern (version without 'rc'/'rc')
-        if echo "$line" | grep -qP '[v]*(\d+\.\d+(?:\.\d*){0,2})\.tar\.gz'; then
-# Extract and print the version number
-            g_ver=$(echo "$line" | grep -oP '(\d+\.\d+(?:\.\d+){0,2})')
+git_repo() {
+    local count=1
+    while [[ $count -le 10 ]]; do
+        local line=$(curl -fsS "https://github.com/$1/tags/" | grep -oP 'href="[^"]*\.tar\.gz"' | sed -n "${count}p")
+        if echo "$line" | grep -oPq 'v?(\d+\.\d+(?:\.\d*){0,2})\.tar\.gz'; then
+            version=$(echo "$line" | grep -oP '(\d+\.\d+(?:\.\d+){0,2})')
             break
         else
-# Increment the cnt if no match is found
-            ((cnt++))
+            ((count++))
         fi
     done
-
-# Check if a version was found
-    if [ $cnt -gt 10 ]; then
-        fail_fn "No matching version found without RC/rc suffix."
-    fi
+    [[ $count -gt 10 ]] && fail "No matching version found without RC/rc suffix."
 }
 
-add_go_path_command_to_bashrc() {
-    local command='PATH="$PATH:$GOROOT/bin"'
+add_go_path_to_bashrc() {
     local bashrc="$HOME/.bashrc"
-
-    echo "Checking if command is already in .bashrc file..."
-    if grep -Fq "$command" "$bashrc"; then
-        echo "Command already exists in .bashrc. No action taken."
-    else
-        echo "Adding command to .bashrc file..."
-        if echo "$command" >> "$bashrc"; then
-            echo "Command added to .bashrc successfully."
+    
+    log "Checking if command is already in .bashrc file..."
+    if grep -Fq 'PATH="$PATH:$GOROOT/bin"' "$bashrc"; then
+        log "Command already exists in .bashrc. No action taken."
+    else  
+        log "Adding command to .bashrc file..."
+        if echo 'PATH="$PATH:$GOROOT/bin"' >> "$bashrc"; then
+            log "Command added to .bashrc successfully."
         else
-            echo "Failed to add GOROOT to the USER's PATH!"
+            fail "Failed to add GOROOT to the USER's PATH!"
         fi
     fi
 }
 
-# Function to extract the first word from a string
-get_first_word() { echo "$1" | awk '{print $1}'; }
+get_first_word() {
+    echo "$1" | awk '{print $1}'
+}
 
-# Try to detect the os using /etc/os-release, fall back to lsb_release if available
-if [ -f /etc/os-release ]; then
+if [[ -f /etc/os-release ]]; then
     . /etc/os-release
-    OS=$(get_first_word "$NAME")
+    OS=$(get_first_word "$NAME")  
 elif lsb_release -d &>/dev/null; then
     OS=$(lsb_release -d | awk '{print $2}')
 else
-    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: $LINENO"
+    fail "Failed to define the \$OS and/or \$VER variables. Line: $LINENO"
 fi
 
 case "$OS" in
-    Arch)   pkgs_arch_fn ;;
-    *)      pkgs_fn ;;
+    Arch) arch_pkgs ;;
+    *) apt_pkgs ;;  
 esac
 
-# Check if the latest release is a "rc" aka release candidate and if so go back to the previous stable release
-git_1_fn "Kitware/CMake"
-if build "cmake" "$g_ver"; then
-    download "https://github.com/Kitware/CMake/archive/refs/tags/v$g_ver.tar.gz" "cmake-$g_ver.tar.gz"
-    execute ./bootstrap --prefix="$install_dir" --enable-ccache --parallel="$(nproc --all)" --qt-gui
+git_repo "Kitware/CMake"
+if build "cmake" "$version"; then
+    download "https://github.com/Kitware/CMake/archive/refs/tags/v$version.tar.gz" "cmake-$version.tar.gz"
+    execute ./bootstrap --prefix="/usr/local/cmake-$version" --enable-ccache --parallel="$cpu_threads" --qt-gui
     execute make "-j$cpu_threads"
-    execute sudo make install
-    build_done "cmake" "$g_ver"
+    execute make install
+    execute ln -sf "/usr/local/cmake-$version/bin/cmake" "/usr/local/bin/cmake"
+    build_done "cmake" "$version"
 fi
 
-git_1_fn "ninja-build/ninja"
-if build "ninja" "$g_ver"; then
-    download "https://github.com/ninja-build/ninja/archive/refs/tags/v$g_ver.tar.gz" "ninja-$g_ver.tar.gz"
-    re2c_path="$(type -P re2c)"
-    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$install_dir" -DCMAKE_BUILD_TYPE=Release -DRE2C="$re2c_path" -DBUILD_TESTING=OFF -Wno-dev
+git_repo "ninja-build/ninja"  
+if build "ninja" "$version"; then
+    download "https://github.com/ninja-build/ninja/archive/refs/tags/v$version.tar.gz" "ninja-$version.tar.gz"
+    re2c_path="$(command -v re2c)"
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX="/usr/local/ninja-$version" \
+                  -DCMAKE_BUILD_TYPE=Release -DRE2C="$re2c_path" -DBUILD_TESTING=OFF \
+                  -Wno-dev
     execute make "-j$cpu_threads" -C build
-    execute sudo make -C build install
-    build_done "ninja" "$g_ver"
+    execute make -C build install
+    execute ln -sf "/usr/local/ninja-$version/bin/ninja" "/usr/local/bin/ninja"
+    build_done "ninja" "$version"  
 fi
 
 if [[ "$OS" == "Arch" ]]; then
-    sudo pacman -Sq --needed --noconfirm meson 2>&1
+    pacman -Sq --needed --noconfirm meson
 else
-    git_1_fn "mesonbuild/meson"
-    if build "meson" "$g_ver"; then
-        download "https://github.com/mesonbuild/meson/archive/refs/tags/$g_ver.tar.gz" "meson-$g_ver.tar.gz"
+    git_repo "mesonbuild/meson"
+    if build "meson" "$version"; then  
+        download "https://github.com/mesonbuild/meson/archive/refs/tags/$version.tar.gz" "meson-$version.tar.gz"
         execute python3 setup.py build
-        execute sudo python3 setup.py install --prefix="$install_dir"
-        build_done "meson" "$g_ver"
+        execute python3 setup.py install --prefix="/usr/local/meson-$version"
+        ln -sf "/usr/local/meson-$version/bin/meson" "/usr/local/bin/meson"
+        build_done "meson" "$version"
     fi
 fi
 
-# Remove leftover files from previous runs
-if [ -d  "$install_dir/go" ]; then
-    sudo rm -fr "$install_dir/go"
-fi
+[[ -d "/usr/local/go" ]] && rm -fr "/usr/local/go"
 
-# Install golang
-if [[ "$OS" == "Arch" ]]; then
-    sudo pacman -Sq --needed --noconfirm go
-else
-    if build "golang" "$latest_version"; then
-        download "https://go.dev/dl/go${latest_version}.linux-amd64.tar.gz" "golang-${latest_version}.tar.gz"
-        execute sudo cp -f "bin/go" "bin/gofmt" "$install_dir/bin"
-        build_done "golang" "$latest_version"
-    fi
-    sudo mkdir -p "$install_dir/go"
-    GOROOT="$install_dir/go"
+retrieve_golang_version() {
+    local parse_go_url=$(curl -fsS https://go.dev/dl/ | grep -oP 'go[0-9]+\.[0-9]+\.[0-9]+\.linux-amd64.tar.gz' | sort -rV | uniq | head -n1)
+    local latest_version=$(echo "$parse_go_url" | awk -F'.' '{print $1"."$2"."$3}' | sed 's/go//g' | sed 's/.linux-amd64.tar.gz//g')
+
+    echo "$latest_version"
+}
+
+setup_gopath() {
+    GOROOT="/usr/local/golang-$version"
     PATH="$PATH:$GOROOT/bin"
     export GOROOT PATH
-    add_go_path_command_to_bashrc
+    add_go_path_to_bashrc
     source "$HOME/.bashrc"
+}
+
+version=$(retrieve_golang_version)
+
+if [[ "$OS" == "Arch" ]]; then
+    pacman -Sq --needed --noconfirm go
+else
+    if build "golang" "$version"; then
+        download "https://go.dev/dl/go$version.linux-amd64.tar.gz" "golang-$version.tar.gz"
+        mkdir -p "/usr/local/golang-$version/bin"
+        execute cp -f "bin/go" "bin/gofmt" "/usr/local/golang-$version/bin"
+        build_done "golang" "$version"
+    fi
+    setup_gopath
 fi
 
-# Ldconfig must be run next in order to update file changes
-sudo ldconfig
-
-# Show the newly installed version of each package
-show_versions_fn
-
-# Prompt the user to clean up the build files
-cleanup_fn
-
-# Show the exit message
+ldconfig
+show_versions
+cleanup
 exit_fn
