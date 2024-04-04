@@ -117,7 +117,7 @@ build_llvm_clang() {
     log "LLVM source code extracted to $workspace"
     echo
 
-    local system_triplet=$(curl -fsSL "https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess" | bash)
+    local system_triplet=$(curl -fsS "https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess" | bash)
 
     cd "$workspace" || fail "Failed to change directory to $workspace"
 
