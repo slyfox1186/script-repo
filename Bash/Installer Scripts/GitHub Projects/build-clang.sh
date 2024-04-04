@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 
-# Script to build LLVM Clang-18 with GOLD enabled
+# Script to build LLVM Clang
 # Updated: 04.04.24
 # Script version: 2.0
 # Added multiple script arguments including the ability to set the version of Clang to install.
+
+set -euo pipefail
 
 # ANSI color codes
 RED='\033[0;31m'
@@ -33,8 +35,8 @@ log() {
 }
 
 check_root() {
-    if [[ "$EUID" -eq 0 ]]; then
-        fail "You must not run this script as root or with sudo."
+    if [[ "$EUID" -ne 0 ]]; then
+        fail "You must run this script as root or with sudo."
     fi
 }
 
@@ -42,8 +44,9 @@ install_required_packages() {
     local pkgs=(
         autoconf autoconf-archive automake autopoint binutils binutils-dev
         build-essential ccache cmake curl doxygen jq libc6-dev libedit-dev
-        librust-atomic-dev libtool libxml2-dev libzstd-dev m4 ninja-build
-        zlib1g-dev
+        libffi-dev libgmp-dev libomp-dev libpfm4-dev librust-atomic-dev
+        libtool libxml2-dev libzstd-dev m4 ninja-build python3-dev rsync
+        swig zlib1g-dev
     )
 
     local missing_packages=()
@@ -54,8 +57,8 @@ install_required_packages() {
     done
 
     if [[ "${#missing_packages[@]}" -gt 0 ]]; then
-        sudo apt-get update
-        sudo apt-get install "${missing_packages[@]}"
+        apt-get update
+        apt-get install "${missing_packages[@]}"
     else
         log "All required packages are already installed."
         echo
@@ -71,7 +74,7 @@ set_highest_clang_version() {
     local highest_version=${available_versions[0]}
     if ! dpkg-query -W -f='${Status}' "$highest_version" 2>/dev/null | grep -q "ok installed"; then
         log "Installing $highest_version..."
-        sudo apt-get -y install "$highest_version"
+        apt-get -y install "$highest_version"
     fi
 
     CC="${highest_version}"
@@ -157,7 +160,7 @@ build_llvm_clang() {
     ninja "-j$(nproc --all)" -C build || fail "Failed to execute ninja -j$(nproc --all)"
     echo
     log "Installing Clang with Ninja"
-    sudo ninja -C build install || fail "Failed to execute sudo ninja -C build install"
+    ninja -C build install || fail "Failed to execute ninja -C build install"
 }
 
 create_symlinks() {
@@ -172,12 +175,12 @@ create_symlinks() {
 
     for tool in ${tools[@]}; do
         if [[ "$tool" == "clang++-$llvm_version_trim" ]]; then
-            sudo ln -sf "$install_prefix/bin/clang++" "/usr/local/bin/$tool"
+            ln -sf "$install_prefix/bin/clang++" "/usr/local/bin/$tool"
         else
-            sudo ln -sf "$install_prefix/bin/$tool" "/usr/local/bin/$tool"
+            ln -sf "$install_prefix/bin/$tool" "/usr/local/bin/$tool"
             local non_versioned_tool="${tool%-*}"
             if [[ ! "$tool" == "$non_versioned_tool" ]]; then
-                sudo ln -sf "$install_prefix/bin/$tool" "/usr/local/bin/$non_versioned_tool"
+                ln -sf "$install_prefix/bin/$tool" "/usr/local/bin/$non_versioned_tool"
             fi
         fi
     done
@@ -200,22 +203,20 @@ display_help() {
     echo "Usage: $0 [OPTIONS]"
     echo
     echo "Options:"
-    echo "  -h, --help          Display this help message"
-    echo "  -c, --cleanup       Remove build files after installation"
-    echo "  -v, --version <ver> Specify a custom version of Clang to download and build"
-    echo "  -l, --list          List available LLVM versions"
+    echo "  -h, --help             Display this help message"
+    echo "  -c, --cleanup          Remove build files after installation"
+    echo "  -l, --list             List available LLVM versions"
+    echo "  -v, --version <ver>    Specify a custom version of Clang to download and build"
     echo
     echo "Description:"
-    echo "  This script builds LLVM Clang with GOLD enabled from source code."
-    echo "  It downloads the source code, installs required dependencies, and"
-    echo "  compiles the program with optimized settings."
+    echo "  This script builds LLVM Clang from source code."
+    echo "  It downloads the source code, installs the required"
+    echo "  dependencies, and compiles the program with optimized settings."
     echo
     echo "Examples:"
-    echo "  $0                     # Build the latest LLVM Clang with default settings"
-    echo "  $0 -c                  # Build the latest LLVM Clang and clean up the build files"
-    echo "  $0 -v 17.0.6           # Build LLVM Clang version 17.0.6"
-    echo "  $0 -c -v 17.0.6        # Build LLVM Clang version 17.0.6 and clean up the build files"
-    echo "  $0 -l                  # List available LLVM versions"
+    echo "  $0                 # Build the latest release version of LLVM Clang available"
+    echo "  $0 -c -v 17.0.6    # Build LLVM Clang version 17.0.6 and then clean up the build files"
+    echo "  $0 -l              # List available LLVM versions"
     echo
     exit 0
 }
@@ -253,7 +254,7 @@ main() {
     cwd="$PWD/llvm-build-script"
     workspace="$cwd/workspace"
 
-    [[ -d "$workspace" ]] && sudo rm -fr "$workspace"
+    [[ -d "$workspace" ]] && rm -fr "$workspace"
     mkdir -p "$workspace/build"
 
     check_root
