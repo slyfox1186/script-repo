@@ -1084,53 +1084,35 @@ update_icons() {
 
 ## aria2c
 adl() {
-    local file url
+    if [[ "$#" -ne 2 ]]; then
+        echo "Error: Two arguments are required: output file and download URL"
+        return 1
+    fi
 
-    # Check if two arguments are provided
-    if [[ $# -eq 2 ]]; then
-       file=$1
-       url=$2
+    local file="$1"
+    local url="$2"
+
+    if aria2c --console-log-level=error \
+        -x32 \
+        -j5 \
+        --split=20 \
+        --allow-overwrite=true \
+        --allow-piece-length-change=true \
+        --always-resume=true \
+        --auto-file-renaming=false \
+        --min-split-size=8M \
+        --disk-cache=64M \
+        --file-allocation=none \
+        --no-file-allocation-limit=8M \
+        --continue=true \
+        --out="$file" \
+        "$url"; then
+        google_speech "Download completed." 2>/dev/null
     else
-        # If not two arguments, prompt for input
-        read -p "Enter the filename and extension: " file
-        read -p "Enter the URL: " url
+        google_speech "Download failed." 2>/dev/null
     fi
 
-    # Check for an existing file with the same name and prompt to overwrite
-    if [[ -f "$file" ]]; then
-        read -p "File $file exists. Overwrite? (y/n): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            rm -f "$file"
-        else
-            echo "Download canceled."
-            return 1
-        fi
-    fi
-
-    # Use aria2c to download the file with the given filename
-    if aria2c --console-log-level=notice \
-               -x32 \
-               -j16 \
-               --split=32 \
-               --allow-overwrite=true \
-               --allow-piece-length-change=true \
-               --always-resume=true \
-               --auto-file-renaming=false \
-               --min-split-size=8M \
-               --disk-cache=64M \
-               --file-allocation=none \
-               --no-file-allocation-limit=8M \
-               --continue=true \
-               --out="$file" \
-               "$url"
-    then
-           google_speech "Download completed." 2>/dev/null
-    else
-           google_speech "Download failed." 2>/dev/null
-    fi
-    echo
-    ls -1AvhF --color --group-directories-first
+    clear; ls -1AhFv --color --group-directories-first
 }
 
 ## GET FILE SIZES ##
