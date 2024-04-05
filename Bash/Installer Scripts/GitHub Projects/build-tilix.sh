@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -x
 
 ##  Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-tilix.sh
 ##  Purpose: Compile the advanced Linux Terminal, Tilix, using source code from its official GitHub repository
