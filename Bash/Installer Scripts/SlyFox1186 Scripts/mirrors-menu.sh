@@ -10,69 +10,69 @@ NC='\e[0m' # No Color
 # Create a temporary directory for storing files
 dir=$(mktemp -d /tmp/mirrors-script-XXXXXX)
 
-# Function to download and execute mirrors script
-execute() {
-    local url=$1
-    local file=$2
+execute_arch() {
+    local arch_flags="$1"
     if curl -Lso "$dir/$file" "$url"; then
         if [[ -f "$dir/$file" ]]; then
-            if sudo bash "$dir/$file"; then
+            if sudo bash "$dir/$file" $arch_flags; then
                 sudo rm -rf "$dir"
-                echo -e "${GREEN}[SUCCESS]${NC} Execution completed successfully.\\n"
+                echo -e "${GREEN}[SUCCESS]${NC} Execution completed successfully.\n"
                 exit 0
             else
-                echo -e "${RED}[ERROR]${NC} Failed to execute: \"$file\"\\n"
+                echo -e "${RED}[ERROR]${NC} Failed to execute: \"$file $flag\"\n"
                 read -p "Press any key to exit."
-                echo
                 sudo rm -rf "$dir"
                 exit 1
             fi
         else
-            echo -e "${RED}[ERROR]${NC} File not found: \"$file\"\\n"
+            echo -e "${RED}[ERROR]${NC} File not found: \"$file\"\n"
             read -p "Press any key to exit."
-            echo
             sudo rm -rf "$dir"
             exit 1
         fi
     else
-        echo -e "${RED}[ERROR]${NC} Failed to download: \"$file\"\\n"
+        echo -e "${RED}[ERROR]${NC} Failed to download: \"$file\"\n"
         read -p "Press any key to exit."
-        echo
         sudo rm -rf "$dir"
         exit 1
     fi
 }
 
-# Function to display the main menu
-main_menu() {
-    local choice
-    while true; do
-        echo -e "Linux Mirrors Script...\\n"
-        echo -e "${GREEN}1)${NC} Ubuntu"
-        echo -e "${GREEN}2)${NC} Debian"
-        echo -e "${GREEN}3)${NC} Raspberry Pi (Bookworm)"
-        echo -e "${GREEN}4)${NC} Arch Linux"
-        echo -e "${GREEN}0)${NC} Exit"
-        echo
-        echo -en "${CYAN}Choose an operating system: ${NC}"
-        read -n 1 choice
-        clear
-        case "$choice" in
-            1) ubuntu_menu ;;
-            2) debian_menu ;;
-            3) execute "https://raspi-mirrors.optimizethis.net" "raspi-mirrors.sh" ;;
-            4) sudo mkdir -p "/etc/pacman.d"
-               execute "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Arch%20Linux%20Scripts/archlinux-mirrors.sh" "archlinux-mirrors.sh"
-               ;;
-            0)
-               rm -rf "$dir"
-               exit 0
-               ;;
-            *) clear
-               main_menu
-               ;;
-        esac
-    done
+# Function to download and execute mirrors script
+execute() {
+    local url=$1
+    local file=$2
+    local flag=$3
+    
+    if [[ "$flag" == "arch" ]]; then
+        flag_args="-m 30 -f daily -c US"
+        execute_arch "$flag_args"
+    fi
+
+    if curl -Lso "$dir/$file" "$url"; then
+        if [[ -f "$dir/$file" ]]; then
+            if sudo bash "$dir/$file $flag"; then
+                sudo rm -rf "$dir"
+                echo -e "${GREEN}[SUCCESS]${NC} Execution completed successfully.\n"
+                exit 0
+            else
+                echo -e "${RED}[ERROR]${NC} Failed to execute: \"$file $flag\"\n"
+                read -p "Press any key to exit."
+                sudo rm -rf "$dir"
+                exit 1
+            fi
+        else
+            echo -e "${RED}[ERROR]${NC} File not found: \"$file\"\n"
+            read -p "Press any key to exit."
+            sudo rm -rf "$dir"
+            exit 1
+        fi
+    else
+        echo -e "${RED}[ERROR]${NC} Failed to download: \"$file\"\n"
+        read -p "Press any key to exit."
+        sudo rm -rf "$dir"
+        exit 1
+    fi
 }
 
 # Function to display the ubuntu menu
@@ -117,6 +117,37 @@ debian_menu() {
            debian_menu
            ;;
     esac
+}
+
+# Function to display the main menu
+main_menu() {
+    local choice
+    while true; do
+        echo -e "Linux Mirrors Script...\n"
+        echo -e "${GREEN}1)${NC} Ubuntu"
+        echo -e "${GREEN}2)${NC} Debian"
+        echo -e "${GREEN}3)${NC} Raspberry Pi (Bookworm)"
+        echo -e "${GREEN}4)${NC} Arch Linux"
+        echo -e "${GREEN}0)${NC} Exit"
+        echo
+        echo -en "${CYAN}Choose an operating system: ${NC}"
+        read -n 1 choice
+        clear
+        case "$choice" in
+            1) ubuntu_menu ;;
+            2) debian_menu ;;
+            3) execute "https://raspi-mirrors.optimizethis.net" "raspi-mirrors.sh" ;;
+            4) sudo mkdir -p "/etc/pacman.d"
+               execute "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Arch%20Linux%20Scripts/update_mirrorlist.sh" "update_mirrorlist.sh" "arch"
+               ;;
+            0) rm -rf "$dir"
+               exit 0
+               ;;
+            *) clear
+               main_menu
+               ;;
+        esac
+    done
 }
 
 main_menu
