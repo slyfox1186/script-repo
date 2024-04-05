@@ -12,23 +12,20 @@ dir=$(mktemp -d /tmp/mirrors-script-XXXXXX)
 execute() {
     local url=$1
     local file=$2
-    local flag=$3
+    local flag_args=""
     
-    if [[ "$flag" == "arch" ]]; then
+    if [[ "$3" == "arch" ]]; then
         flag_args="-m 30 -f daily -c US"
-        file="$file $flag_args"
-    elif [[ -n "$flag" ]]; then
-        file="$file $flag"
     fi
 
     if curl -Lso "$dir/$file" "$url"; then
         if [[ -f "$dir/$file" ]]; then
-            if sudo bash "$dir/$file"; then
+            if sudo bash "$dir/$file" $flag_args; then
                 sudo rm -rf "$dir"
                 echo -e "${GREEN}[SUCCESS]${NC} Execution completed successfully.\n"
                 exit 0
             else
-                echo -e "${RED}[ERROR]${NC} Failed to execute: \"$file\"\n"
+                echo -e "${RED}[ERROR]${NC} Failed to execute: \"$file $flag_args\"\n"
             fi
         else
             echo -e "${RED}[ERROR]${NC} File not found: \"$file\"\n"
