@@ -81,29 +81,26 @@ fi
 # Create a temporary output folder in the /tmp directory
 ff_dir=$(mktemp -d)
 
-for vid in *.{mp4,mkv}
-do
+for vid in *.{mp4,mkv}; do
     vid_test="$(find ./ -maxdepth 1 -type f \( -iname \*.mp4 -o -iname \*.mkv \) | xargs -0n1 | head -n1)"
-    if [ -z "$vid_test" ]; then
-        exit 0
-    fi
+    [[ -z "$vid_test" ]] && exit 0
 
-# Stores the current video width, aspect ratio, profile, bit rate, and total duration in variables for use later in the ffmpeg command line
+    # Stores the current video width, aspect ratio, profile, bit rate, and total duration in variables for use later in the ffmpeg command line
     aspect_ratio=$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 -pretty "$vid" 2>/dev/null)
     file_length=$(ffprobe -hide_banner -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$vid" 2>/dev/null)
     max_rate=$(ffprobe -hide_banner -show_entries format=bit_rate -of default=nk=1:nw=1 -pretty "$vid" 2>/dev/null)
     file_height=$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 -pretty "$vid" 2>/dev/null)
     file_width=$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 -pretty "$vid" 2>/dev/null)
 
-# Modify vars to get file input and output names
+    # Modify vars to get file input and output names
     file_in="$vid"
     fext="${file_in#*.}"
     file_out="$ff_dir/${file_in%.*} (x265).$fext"
 
-# Trim the strings
+    # Trim the strings
     trim=${max_rate::-11}
 
-# Gets the input videos max datarate and applies logic to determine bitrate, bufsize, and maxrate variables
+    # Gets the input videos max datarate and applies logic to determine bitrate, bufsize, and maxrate variables
     trim=$(bc <<< "scale=2 ; $trim * 1000")
     br=$(bc <<< "scale=2 ; $trim / 2")
     bitrate="${br::-3}"
@@ -112,7 +109,7 @@ do
     bufsize="${bs::-3}"
     length=$(( ${file_length::-7} / 60 ))
 
-# Print the video stats in the terminal
+    # Print the video stats in the terminal
     clear
     cat <<EOF
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -161,7 +158,7 @@ EOF
             -c:a copy \
             "$file_out"; then
         google_speech "Video conversion completed." 2>/dev/null
-        if [ -f "$file_out" ]; then
+        if [[ -f "$file_out" ]]; then
             mv "$file_in" "$PWD/original"
             mv "$file_out" "$PWD/completed"
         fi
