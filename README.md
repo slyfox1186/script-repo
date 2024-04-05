@@ -149,7 +149,7 @@ bash <(curl -fsSL https://adobe-fonts.optimizethis.net)
 ### Debian Package Downloader
 Easily download `.deb` files for offline installation or backup. Just provide a list of package names, and the script will handle the rest.
 ```bash
-bash <(curl -fsSL https://download.optimizethis.net)
+bash <(curl -fsSL https://download.optimizethis.net) <pkg_name>
 ```
 
 ### Install [Tilix](https://github.com/gnunn1/tilix): Advanced Terminal Emulator with Custom Themes
