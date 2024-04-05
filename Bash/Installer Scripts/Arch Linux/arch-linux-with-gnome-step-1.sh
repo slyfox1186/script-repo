@@ -73,7 +73,7 @@ mount --mkdir $DISK1 /mnt/boot/efi
 
 # Install essential packages
 log "Installing essential packages..."
-pacstrap -K /mnt base efibootmgr grub linux linux-headers linux-firmware nano networkmanager nvidia
+pacstrap -K /mnt base efibootmgr grub linux linux-headers linux-firmware nano networkmanager nvidia sudo
 
 # Generate fstab
 log "Generating fstab..."
