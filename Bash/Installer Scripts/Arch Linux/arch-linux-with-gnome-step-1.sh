@@ -73,7 +73,7 @@ mount --mkdir $DISK1 /mnt/boot/efi
 
 # Install essential packages
 log "Installing essential packages..."
-pacstrap -K /mnt base efibootmgr grub linux linux-headers linux-firmware networkmanager
+pacstrap -K /mnt base efibootmgr grub linux linux-headers linux-firmware nano networkmanager nvidia
 
 # Generate fstab
 log "Generating fstab..."
@@ -124,7 +124,7 @@ fi
 cp -f /boot/efi/EFI/GRUB/grubx64.efi /boot/efi/EFI/BOOT/BOOTX64.EFI
 log "GRUB bootloader copied to EFI directory."
 
-echo 'bcf boot add 1 fs0:\EFI\GRUB\grubx64.efi "Arch Linux Bootloader"' > /boot/efi/startup.nsh
+echo 'bcf boot add 1 fs0:\EFI\GRUB\grubx64.efi "Arch Linux Bootloader"' > /boot/efi/startup.sh
 echo 'exit' >> /boot/efi/startup.sh
 log "UEFI startup script created."
 
