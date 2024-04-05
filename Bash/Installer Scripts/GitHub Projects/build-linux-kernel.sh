@@ -10,20 +10,21 @@ handle_error() {
 display_help() {
     echo "Usage: $0 [OPTIONS]"
     echo
-    echo "Automates the process of downloading, configuring, building, and installing the Linux kernel."
+    echo "Automates the process of downloading, configuring, building, and installing the Linux kernel version of your choice."
     echo
     echo "Options:"
-    echo "  -v, --version VERSION    Specify the kernel version to install (e.g., 5.15.0)"
-    echo "  -c, --config CONFIG      Specify the kernel configuration file to use"
-    echo "  -m, --menuconfig         Run 'make menuconfig' for manual kernel configuration"
-    echo "  -h, --help               Display this help menu"
+    echo
+    echo "  -h, --help                 Display this help menu"
+    echo "  -v, --version <num>        Specify the kernel version to install (e.g., 5.15.0)"
+    echo "  -c, --config <file>      Specify the kernel configuration file to use"
+    echo "  -m, --menuconfig           Run 'make menuconfig' for manual kernel configuration"
     echo
     echo "If no options are provided, the script will download and install the latest stable kernel version."
 }
 
 # Parse command line arguments
 while [[ "$#" -gt 0 ]]; do
-    case $1 in
+    case "$1" in
         -v|--version)
             KERNEL_VERSION="$2"
             shift 2
