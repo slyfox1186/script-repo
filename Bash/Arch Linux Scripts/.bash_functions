@@ -422,21 +422,12 @@ rmf() {
 #################
 
 # Optimize and overwrite the original images
-function imow() {
-    if [[ ! -f /usr/local/bin/imow.sh ]]; then
-        local dir="$(mktemp -d)"
-        cd "$dir" || echo "Failed to cd into the tmp directory: $dir"; return 1
-        curl -Lso imow.sh "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
-        sudo mv imow.sh /usr/local/bin/imow.sh
-        sudo rm -fr "$dir"
-        sudo chown "$USER":"$USER" /usr/local/bin/imow.sh
-        sudo chmod 777 /usr/local/bin/imow.sh
-    fi
-    clear
-    if ! bash /usr/local/bin/imow.sh --dir "$PWD" --overwrite; then
-        echo "Failed to execute: /usr/local/bin/imow.sh --dir $PWD --overwrite"
-        return 1
-    fi
+imow() {
+    wget -cqO "optimize-jpg.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
+    sudo chmod +x "optimize-jpg.sh"
+
+    ./optimize-jpg.sh --dir "$PWD" --overwrite
+    [[ -f "optimize-jpg.sh" ]] && sudo rm "optimize-jpg.sh"
 }
 
 # DOWNSAMPLE IMAGE TO 50% OF THE ORIGINAL DIMENSIONS USING SHARPER SETTINGS
