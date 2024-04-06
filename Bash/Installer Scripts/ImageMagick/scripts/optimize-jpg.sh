@@ -89,7 +89,7 @@ process_image() {
     if [[ $dry_run -eq 0 ]]; then
         [[ -n "$backup_dir" ]] && { mkdir -p "$backup_dir"; cp "$infile" "$backup_file"; }
         
-        convert "$infile" "${convert_opts[@]}" -sampling-factor 2x2 -limit area 0 "$mpc_file" \
+        convert "$infile" "${convert_opts[@]}" -sampling-factor 2x2 -limit memory 0 -limit disk 0 -limit area 0 "$mpc_file" \
             || { log "Error: First attempt failed, retrying..."; convert "$infile" "${convert_opts[@]}" "$mpc_file"; } \
             || { log "Error: Second attempt failed."; return 1; }
             
