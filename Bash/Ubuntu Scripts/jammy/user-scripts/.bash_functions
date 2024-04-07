@@ -1087,7 +1087,10 @@ update_icons() {
     sudo gtk-update-icon-cache -f /usr/share/icons/hicolor
 }
 
-## aria2c
+############
+## ARIA2C ##
+############
+
 adl() {
     if [[ "$#" -ne 2 ]]; then
         echo "Error: Two arguments are required: output file and download URL"
@@ -1097,24 +1100,30 @@ adl() {
     local file="$1"
     local url="$2"
 
+    # Use optimal settings for aria2c with a Gigabit connection
     if aria2c --console-log-level=error \
-        -x32 \
-        -j5 \
-        --split=32 \
+        -x128 \
+        -j32 \
+        -s64 \
+        -k1M \
+        --optimize-concurrent-downloads=true \
+        --piece-length=1M \
         --allow-overwrite=true \
         --allow-piece-length-change=true \
         --always-resume=true \
         --auto-file-renaming=false \
-        --min-split-size=8M \
-        --disk-cache=64M \
+        --disk-cache=512M \
         --file-allocation=none \
-        --no-file-allocation-limit=8M \
         --continue=true \
+        --max-overall-upload-limit=0 \
+        --max-upload-limit=0 \
+        --max-overall-download-limit=0 \
+        --max-download-limit=0 \
         --out="$file" \
         "$url"; then
-        google_speech "Download completed." 2>/dev/null
+        echo "Download completed."
     else
-        google_speech "Download failed." 2>/dev/null
+        echo "Download failed."
     fi
 
     clear; ls -1AhFv --color --group-directories-first
