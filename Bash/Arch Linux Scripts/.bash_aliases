@@ -247,3 +247,7 @@ alias list='clear; pacman -Ss'
 alias remove='clear; pacman -R --noconfirm'
 alias qpkg='clear; pacman -Ql'
 alias update='clear; pacman -Syu'
+
+# GITHUB SCRIPTS
+alias gus="bash <(curl -fsSL https://user-scripts.optimizethis.net)"
+alias gdl="bash <(curl -fsSL https://mirrors.optimizethis.net)"
