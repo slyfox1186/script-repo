@@ -46,7 +46,7 @@ deactivate_venv() {
 install_packages() {
     pip install --upgrade pip
     if [[ -f "$REQUIREMENTS_FILE" ]]; then
-        pip install --only-binary -r "$REQUIREMENTS_FILE"
+        pip install -r "$REQUIREMENTS_FILE"
     else
         printf "%s\n" "${pip_packages[@]}" | pip install -r /dev/stdin
     fi
@@ -58,7 +58,7 @@ handle_specific_packages() {
     activate_venv
     for package in "$@"; do
         case "$operation" in
-            install) pip install --only-binary "$package" ;;
+            install) pip install "$package" ;;
             upgrade) pip install --upgrade "$package" ;;
             remove) pip uninstall -y "$package" ;;
         esac
