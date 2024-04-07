@@ -2,32 +2,36 @@
 # shellcheck disable=SC2068,SC2162,SC2317 source=/dev/null
 
 # GitHub: https://github.com/slyfox1186/ffmpeg-build-script
-# Script version: 3.5.5
-# Updated: 03.24.24
+# Script version: 3.5.7
+# Updated: 04.03.24
 # Purpose: build ffmpeg from source code with addon development libraries
 #          also compiled from source to help ensure the latest functionality
 # Supported Distros: Arch Linux
 #                    Debian 11|12
 #                    Ubuntu (20|22|23).04 & 23.10
 # Supported architecture: x86_64
-# CUDA SDK Toolkit: Updated to version 12.4.0
+# CUDA SDK Toolkit: Updated to version 12.4.1
 
 if [[ "$EUID" -ne 0 ]]; then
-    echo "You must run this script with root or sudo."
+    echo "You must run this script as root or with sudo."
     exit 1
 fi
 
 # Define global variables
 SCRIPT_NAME="${0}"
-SCRIPT_VERSION=3.5.2
+SCRIPT_VERSION="3.5.7"
 CWD="$PWD/ffmpeg-build-script"
+mkdir -p "$CWD" && cd "$CWD"
+if [[ "$PWD" =~ ffmpeg-build-script\/ffmpeg-build-script ]]; then
+    clear
+    cd ../
+    sudo rm -fr ffmpeg-build-script
+    CWD="$PWD"
+fi
 packages="$CWD/packages"
 workspace="$CWD/workspace"
-NONFREE_AND_GPL="false"
-LDEXEFLAGS=""
-CONFIGURE_OPTIONS=()
-LATEST="false"
-GIT_REGEX='(rc|RC|Rc|rC|alpha|beta|early|init|next|pending|pre|rc|tentative)+[0-9]*$' # Set the regex variable to exclude release candidates
+# Set a regex string to match and then exclude any found release candidate versions of a program. Utilize stable releases only.
+GIT_REGEX='(Rc|rc|rC|RC|alpha|beta|early|init|next|pending|pre|rc|tentative)+[0-9]*$'
 DEBUG=OFF
 
 # Pre-defined color variables
@@ -192,7 +196,7 @@ install_windows_hardware_acceleration() {
     )
 
     for file in "${!files[@]}"; do
-        curl -fsSLo "$workspace/include/$file" "${files[$file]}"
+        curl -LSso "$workspace/include/$file" "${files[$file]}"
     done
 }
 
@@ -218,7 +222,7 @@ check_ffmpeg_version() {
     ffmpeg_git_version=$(git ls-remote --tags "$ffmpeg_repo" |
                          awk -F'/' '/n[0-9]+(\.[0-9]+)*(-dev)?$/ {print $3}' |
                          grep -Ev '\-dev' |
-                         sort -rV |
+                         sort -ruV |
                          head -n1)
     echo "$ffmpeg_git_version"
 }
@@ -242,12 +246,12 @@ download() {
         echo "$download_file is already downloaded."
     else
         echo "Downloading \"$download_url\" saving as \"$download_file\""
-        if ! curl -fsSLo "$target_file" "$download_url"; then
+        if ! curl -LSso "$target_file" "$download_url"; then
             echo
             warn "Failed to download \"$download_file\". Second attempt in 10 seconds..."
             echo
             sleep 10
-            if ! curl -fsSLo "$target_file" "$download_url"; then
+            if ! curl -LSso "$target_file" "$download_url"; then
                 fail "Failed to download \"$download_file\". Exiting... Line: $LINENO"
             fi
         fi
@@ -304,7 +308,7 @@ git_clone() {
                       sub(/^v/, "", tag);
                       if (tag !~ /\^\{\}$/) print tag
                   }' |
-                  sort -rV |
+                  sort -ruV |
                   head -n1)
     elif [[ "$repo_flag" == "ffmpeg" ]]; then
         version=$(git ls-remote --tags "https://git.ffmpeg.org/ffmpeg.git" |
@@ -314,7 +318,7 @@ git_clone() {
                       print tag
                   }' |
                   grep -v '\^{}' |
-                  sort -rV |
+                  sort -ruV |
                   head -n1)
     else
         version=$(git ls-remote --tags "$repo_url" |
@@ -324,7 +328,7 @@ git_clone() {
                       print tag
                   }' |
                   grep -v '\^{}' |
-                  sort -rV |
+                  sort -ruV |
                   head -n1)
         # If no tags found, use the latest commit hash as the version
         if [[ -z "$version" ]]; then
@@ -368,7 +372,7 @@ gnu_repo() {
     local url="$1"
     version=$(curl -fsS "$url" |
               grep -oP '[a-z]+-\K(([0-9\.]*[0-9]+)){2,}' |
-              sort -rV | head -n1)
+              sort -ruV | head -n1)
 }
 
 github_repo() {
@@ -412,7 +416,7 @@ github_repo() {
     done
 
     # Deny installing a release candidate
-    while [[ $repo_version =~ $GIT_REGEX ]]; do
+    while [[ "$repo_version" =~ $GIT_REGEX ]]; do
         curl_cmd=$(curl -fsSL "https://github.com/$repo/$url" | grep -o 'href="[^"]*\.tar\.gz"')
 
         # Extract the specific line
@@ -452,7 +456,7 @@ fetch_repo_version() {
 
     if [[ ! "$base_url" == 536 ]]; then
         # Loop through responses to exclude any release candidates and return the first valid release version
-        while [[ $version =~ $GIT_REGEX ]]; do
+        while [[ "$version" =~ $GIT_REGEX ]]; do
             version=$(echo "$response" | jq -r ".[$count]$version_jq_filter")
             if [[ -z "$version" ]] || [[ "$version" == "null" ]]; then
                 fail "No suitable release version found in the function \"fetch_repo_version\". Line: $LINENO"
@@ -604,10 +608,11 @@ usage() {
     echo
 }
 
+COMPILER_FLAG=""
 CONFIGURE_OPTIONS=()
-NONFREE_AND_GPL="false"
 LATEST="false"
-compiler_flag=""
+LDEXEFLAGS=""
+NONFREE_AND_GPL="false"
 
 while (("$#" > 0)); do
     case "$1" in
@@ -660,10 +665,10 @@ if [[ -z "$threads" ]]; then
 fi
 MAKEFLAGS="-j$threads"
 
-if [[ -z "$compiler_flag" ]] || [[ "$compiler_flag" == "gcc" ]]; then
+if [[ -z "$COMPILER_FLAG" ]] || [[ "$COMPILER_FLAG" == "gcc" ]]; then
     CC="gcc"
     CXX="g++"
-elif [[ "$compiler_flag" == "clang" ]]; then
+elif [[ "$COMPILER_FLAG" == "clang" ]]; then
     CC="clang"
     CXX="clang++"
 else
@@ -742,7 +747,7 @@ check_remote_cuda_version() {
 
     # Parse the version directly from the fetched content
     local cuda_regex='CUDA\ ([0-9]+\.[0-9]+)(\ Update\ ([0-9]+))?'
-    if [[ $html =~ $cuda_regex ]]; then
+    if [[ "$html" =~ $cuda_regex ]]; then
         local base_version="${BASH_REMATCH[1]}"
         local update_version="${BASH_REMATCH[3]}"
         remote_cuda_version="$base_version"
@@ -759,10 +764,10 @@ check_remote_cuda_version() {
 set_java_variables() {
     source_path
     locate_java=$(find /usr/lib/jvm/ -type d -name "java-*-openjdk*" |
-                  sort -rV |
+                  sort -ruV |
                   head -n1)
     java_include=$(find /usr/lib/jvm/ -type f -name "javac" |
-                   sort -rV |
+                   sort -ruV |
                    head -n1 |
                    xargs dirname |
                    sed 's/bin/include/')
@@ -830,46 +835,49 @@ cuda_download() {
         "Arch Linux"
         "Exit"
     )
+
+    version_serial="12.4.1-550.54.15-1"
     select choice in "${options[@]}"; do
         case "$choice" in
             "Debian 10")
                 distro="debian10"
                 version="10-12-4"
                 pkg_ext="deb"
-                installer_path="local_installers/cuda-repo-debian${version}-local_${cuda_version_number}-550.54.14-1_amd64.deb"
+                installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb"
                 ;;
             "Debian 11")
                 distro="debian11"
                 version="11-12-4"
                 pkg_ext="deb"
-                installer_path="local_installers/cuda-repo-debian${version}-local_${cuda_version_number}-550.54.14-1_amd64.deb"
+                installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb"
                 ;;
             "Debian 12")
                 distro="debian12"
                 version="12-12-4"
                 pkg_ext="deb"
-                installer_path="local_installers/cuda-repo-debian${version}-local_${cuda_version_number}-550.54.14-1_amd64.deb"
+                installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb"
                 ;;
             "Ubuntu 20.04")
                 distro="ubuntu2004"
                 version="12-4"
                 pkg_ext="pin"
                 pin_file="$distro/x86_64/cuda-ubuntu2004.pin"
-                installer_path="local_installers/cuda-repo-${distro}-${version}-local_${cuda_version_number}-550.54.14-1_amd64.deb"
+                installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb"
                 ;;
             "Ubuntu 22.04")
                 distro="ubuntu2204"
                 version="12-4"
                 pkg_ext="pin"
                 pin_file="$distro/x86_64/cuda-ubuntu2204.pin"
-                installer_path="local_installers/cuda-repo-${distro}-${version}-local_${cuda_version_number}-550.54.14-1_amd64.deb"
+                installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb"
                 ;;
             "Ubuntu WSL")
                 distro="wsl-ubuntu"
                 version="12-4"
+                version_ext="12.4.1-1"
                 pkg_ext="pin"
                 pin_file="$distro/x86_64/cuda-wsl-ubuntu.pin"
-                installer_path="local_installers/cuda-repo-${distro}-${version}-local_${cuda_version_number}-1_amd64.deb"
+                installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_ext}_amd64.deb"
                 ;;
             "Arch Linux")
                 git clone -q "https://gitlab.archlinux.org/archlinux/packaging/packages/cuda.git" || fail "Failed to clone Arch Linux CUDA repository"
@@ -946,9 +954,9 @@ check_nvidia_gpu() {
             fi
         done
 
-        if [[ $path_exists -eq 0 ]]; then
+        if [[ "$path_exists" -eq 0 ]]; then
             is_nvidia_gpu_present="C drive paths '/mnt/c/' and '/c/' do not exist."
-        elif [[ $found -eq 0 ]]; then
+        elif [[ "$found" -eq 0 ]]; then
             is_nvidia_gpu_present="NVIDIA GPU not detected"
         fi
     fi
@@ -1028,7 +1036,7 @@ apt_pkgs() {
 
     # Function to find the latest version of a package by pattern
     find_latest_pkg_version() {
-        apt-cache search --names-only "$1" 2>/dev/null | awk '{print $1}' | grep -Eo "$2" | sort -rV | head -n1
+        apt-cache search --names-only "$1" 2>/dev/null | awk '{print $1}' | grep -Eo "$2" | sort -ruV | head -n1
     }
 
     # Use the function to find the latest versions of specific packages
@@ -1063,7 +1071,7 @@ apt_pkgs() {
         libvidstab-dev libvlccore-dev libvo-amrwbenc-dev libvpx-dev libx11-dev libxcursor-dev libxext-dev libxfixes-dev
         libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzimg-dev libzmq3-dev libzstd-dev libzvbi-dev
         libzzip-dev llvm lsb-release lshw lzma-dev m4 mesa-utils meson nasm ninja-build pandoc python3 python3-pip python3-venv
-        ragel re2c scons texi2html texinfo tk-dev unzip valgrind wget xmlto libclang-16-dev libsctp-dev
+        ragel re2c scons texi2html texinfo tk-dev unzip valgrind wget xmlto libsctp-dev
     )
 
     [[ "$OS" == "Debian" ]] && pkgs+=("nvidia-smi")
@@ -1114,7 +1122,7 @@ apt_pkgs() {
 }
 
 fix_libstd_libs() {
-    local libstdc_path=$(find /usr/lib/x86_64-linux-gnu/ -type f -name 'libstdc++.so.6.0.*' | sort -rV | head -n1)
+    local libstdc_path=$(find /usr/lib/x86_64-linux-gnu/ -type f -name 'libstdc++.so.6.0.*' | sort -ruV | head -n1)
     if [[ ! -f "/usr/lib/x86_64-linux-gnu/libstdc++.so" ]] && [[ -f "$libstdc_path" ]]; then
         echo "$ ln -sf $libstdc_path /usr/lib/x86_64-linux-gnu/libstdc++.so"
         ln -sf "$libstdc_path" "/usr/lib/x86_64-linux-gnu/libstdc++.so"
@@ -1122,12 +1130,12 @@ fix_libstd_libs() {
 }
 
 fix_x265_libs() {
-    local x265_libs=$(find $workspace/lib/ -type f -name 'libx265.so.*')
+    local x265_libs=$(find $workspace/lib/ -type f -name 'libx265.so.*' | sort -rV | head -n1)
     local x265_libs_trim=$(echo "$x265_libs" | sed "s:.*/::" | head -n1)
 
     case "$OS" in
         Arch)
-            cp -f "$x265_libs" "/usr/lib"
+            cp -f "$x265_libs" "/usr/lib/$x265_libs_trim"
             ln -sf "/usr/lib/$x265_libs_trim" "/usr/lib/libx265.so"
             ;;
         *)
@@ -1177,7 +1185,7 @@ libpulse_fix_libs() {
 find_latest_nasm_version() {
     local latest_version=$(curl -fsS "https://www.nasm.us/pub/nasm/stable/" |
                            grep -oP 'nasm-\K[0-9]+\.[0-9]+\.[0-9]+(?=\.tar\.xz)' |
-                           sort -rV |
+                           sort -ruV |
                            head -n1)
 
     if [[ -z "$latest_version" ]]; then
@@ -1194,14 +1202,14 @@ latest_nasm_version=$(find_latest_nasm_version)
 get_openssl_version() {
     repo_version=$(curl -fsS "https://www.openssl.org/source/" |
                    grep -oP 'openssl-3.1.[0-9]+.tar.gz' |
-                   sort -rV |
+                   sort -ruV |
                    head -n1 |
                    grep -oP '3.1.[0-9]+')
 }
 
 # Patch functions
 patch_ffmpeg() {
-    execute curl -fsSLo "mathops.patch" "https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/patches/mathops.patch"
+    execute curl -LSso "mathops.patch" "https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/patches/mathops.patch"
     execute patch -d "libavcodec/x86" -i "../../mathops.patch"
 }
 
@@ -1280,7 +1288,7 @@ debian_os_version() {
     debian_pkgs=(cppcheck libnvidia-encode1 libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev
                  libyuv-utils libyuv0 libhwy-dev libsrt-gnutls-dev libyuv-dev libsharp-dev
                  libdmalloc5 libumfpack5 libsuitesparseconfig5 libcolamd2 libcholmod3 libccolamd2
-                 libcamd2 libamd2 software-properties-common)
+                 libcamd2 libamd2 software-properties-common libclang-16-dev)
 
     case "$VER" in
         msft)          debian_msft ;;
@@ -1309,8 +1317,8 @@ ubuntu_os_version() {
     ubuntu_common_pkgs="cppcheck libamd2 libcamd2 libccolamd2 libcholmod3 libcolamd2 libsuitesparseconfig5 libumfpack5"
     focal_pkgs="libcunit1 libcunit1-dev libcunit1-doc libdmalloc5 libhwy-dev libreadline-dev librust-jemalloc-sys-dev librust-malloc-buf-dev"
     focal_pkgs+=" libsrt-doc libsrt-gnutls-dev libvmmalloc-dev libvmmalloc1 libyuv-dev nvidia-utils-535"
-    jammy_pkgs="libacl1-dev libdecor-0-dev liblz4-dev libmimalloc-dev libpipewire-0.3-dev libpsl-dev libreadline-devlibrust-jemalloc-sys-dev"
-    jammy_pkgs+=" librust-malloc-buf-devlibsrt-doc libsvtav1-dev libsvtav1dec-devlibsvtav1enc-dev libtbbmalloc libwayland-dev"
+    jammy_pkgs="libacl1-dev libdecor-0-dev liblz4-dev libmimalloc-dev libpipewire-0.3-dev libpsl-dev libreadline-dev librust-jemalloc-sys-dev"
+    jammy_pkgs+=" librust-malloc-buf-dev libsrt-doc libsvtav1-dev libsvtav1dec-dev libsvtav1enc-dev libtbbmalloc2 libwayland-dev libclang1-15"
     lunar_kenetic_pkgs="libhwy-dev libjxl-dev librist-dev libsrt-gnutls-dev libsvtav1-dev libsvtav1dec-dev libsvtav1enc-dev libyuv-dev"
     mantic_pkgs="libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libhwy-dev libsrt-gnutls-dev libyuv-dev"
     case "$VER" in
@@ -1342,11 +1350,11 @@ get_os_version() {
 
     nvidia_utils_version=$(apt list nvidia-utils-* 2>/dev/null |
                            grep -Eo '^nvidia-utils-[0-9]{3}' |
-                           sort -rV | uniq | head -n1)
+                           sort -ruV | uniq | head -n1)
 
     nvidia_encode_version=$(apt list libnvidia-encode* 2>&1 |
                             grep -Eo 'libnvidia-encode-[0-9]{3}' |
-                            sort -rV | head -n1)
+                            sort -ruV | head -n1)
 }
 get_os_version
 
@@ -1386,8 +1394,8 @@ case "$OS" in
     Arch) iscuda=$(find /opt/cuda/ -type f -name nvcc 2>/dev/null)
           cuda_path=$(find /opt/cuda/ -type f -name nvcc 2>/dev/null | grep -Eo '^.*/bin?')
           ;;
-    *)    iscuda=$(find /usr/local/cuda* -type f -name nvcc 2>/dev/null | sort -rV | head -n1)
-          cuda_path=$(find /usr/local/cuda* -type f -name nvcc 2>/dev/null | sort -rV | head -n1 | grep -Eo '^.*/bin?')
+    *)    iscuda=$(find /usr/local/cuda* -type f -name nvcc 2>/dev/null | sort -ruV | head -n1)
+          cuda_path=$(find /usr/local/cuda* -type f -name nvcc 2>/dev/null | sort -ruV | head -n1 | grep -Eo '^.*/bin?')
           ;;
 esac
 
@@ -1397,7 +1405,10 @@ install_cuda
 # Update the ld linker search paths
 ldconfig
 
+#
 # Install the global tools
+#
+
 echo
 box_out_banner_global() {
     input_char=$(echo "$@" | wc -c)
@@ -1602,7 +1613,7 @@ if [[ "$VER" != "18.04" ]]; then
                       -DCMAKE_INSTALL_PREFIX="$workspace" \
                       -DCMAKE_BUILD_TYPE=Release \
                       -DBUILD_SHARED_LIBS=OFF \
-                      -G Ninja
+                      -G Ninja -Wno-dev
         execute ninja "-j$threads" -C build
         execute ninja -C build install
         build_done "libxml2" "$repo_version"
@@ -1791,7 +1802,7 @@ if build "$repo_name" "${version//\$ /}"; then
                   -DWEBP_BUILD_VWEBP=OFF \
                   -DWEBP_ENABLE_SWAP_16BIT_CSP=OFF \
                   -DWEBP_LINK_STATIC=ON \
-                  -G Ninja
+                  -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
     build_done "$repo_name" "$version"
@@ -1810,7 +1821,7 @@ if build "libhwy" "$repo_version"; then
                   -DBUILD_TESTING=OFF \
                   -DHWY_ENABLE_EXAMPLES=OFF \
                   -DHWY_FORCE_STATIC_LIBS=ON \
-                  -G Ninja
+                  -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
     build_done "libhwy" "$repo_version"
@@ -1824,7 +1835,7 @@ if build "brotli" "$repo_version"; then
                   -DCMAKE_BUILD_TYPE=Release \
                   -DBUILD_SHARED_LIBS=OFF \
                   -DBUILD_TESTING=OFF \
-                  -G Ninja
+                  -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
     build_done "brotli" "$repo_version"
@@ -1852,7 +1863,7 @@ if build "gflags" "$repo_version"; then
                   -DINSTALL_HEADERS=ON \
                   -DREGISTER_BUILD_DIR=ON \
                   -DREGISTER_INSTALL_PREFIX=ON \
-                  -G Ninja
+                  -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
     build_done "gflags" "$repo_version"
@@ -1881,7 +1892,7 @@ if build "$repo_name" "${version//\$ /}"; then
             -DOPENCL_SDK_BUILD_SAMPLES=OFF \
             -DOPENCL_SDK_TEST_SAMPLES=OFF \
             -DTHREADS_PREFER_PTHREAD_FLAG=ON \
-            -G Ninja
+            -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
     build_done "$repo_name" "$version"
@@ -1897,7 +1908,7 @@ if build "$repo_name" "${version//\$ /}"; then
                   -DCMAKE_BUILD_TYPE=Release \
                   -DENABLE_SHARED=OFF \
                   -DENABLE_STATIC=ON \
-                  -G Ninja
+                  -G Ninja -Wno-dev
     execute ninja "-j$threads"
     execute ninja "-j$threads" install
     build_done "$repo_name" "$version"
@@ -2115,7 +2126,10 @@ if build "$repo_name" "${version//\$ /}"; then
     build_done "$repo_name" "$version"
 fi
 
+#
 # Install audio tools
+#
+
 echo
 box_out_banner_audio() {
     input_char=$(echo "$@" | wc -c)
@@ -2143,7 +2157,7 @@ if build "$repo_name" "${version//\$ /}"; then
                        -DSDL_ALSA_SHARED=OFF \
                        -DSDL_DISABLE_INSTALL_DOCS=ON \
                        -DSDL_CCACHE=ON \
-                       -G Ninja
+                       -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
     build_done "$repo_name" "$version"
@@ -2191,7 +2205,7 @@ if build "libogg" "$repo_version"; then
                   -DBUILD_TESTING=OFF \
                   -DCPACK_BINARY_DEB=OFF \
                   -DCPACK_SOURCE_ZIP=OFF \
-                  -G Ninja
+                  -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
     build_done "libogg" "$repo_version"
@@ -2218,7 +2232,7 @@ if build "libflac" "$repo_version"; then
                   -DBUILD_DOCS=OFF \
                   -DBUILD_EXAMPLES=OFF \
                   -DBUILD_TESTING=OFF \
-                  -G Ninja
+                  -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
     build_done "libflac" "$repo_version"
@@ -2247,7 +2261,7 @@ if build "vorbis" "$repo_version"; then
                   -DBUILD_SHARED_LIBS=OFF \
                   -DOGG_INCLUDE_DIR="$workspace/include" \
                   -DOGG_LIBRARY="$workspace/lib/libogg.so" \
-                  -G Ninja
+                  -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
     build_done "vorbis" "$repo_version"
@@ -2263,7 +2277,7 @@ if build "opus" "$repo_version"; then
                   -DCMAKE_BUILD_TYPE=Release \
                   -DBUILD_SHARED_LIBS=OFF \
                   -DCPACK_SOURCE_ZIP=OFF \
-                  -G Ninja
+                  -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
     build_done "opus" "$repo_version"
@@ -2278,7 +2292,7 @@ if build "libmysofa" "$repo_version"; then
                   -DCMAKE_BUILD_TYPE=Release \
                   -DBUILD_SHARED_LIBS=OFF \
                   -DBUILD_STATIC_LIBS=ON \
-                  -G Ninja
+                  -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
     build_done "libmysofa" "$repo_version"
@@ -2322,7 +2336,7 @@ fi
 CONFIGURE_OPTIONS+=("--enable-libopencore-"{amrnb,amrwb})
 
 if build "liblame" "3.100"; then
-    download "https://zenlayer.dl.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz"
+    download "https://master.dl.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz?viasf=1" "liblame-3.100.tar.gz"
     execute ./configure --prefix="$workspace" \
                         --disable-shared \
                         --disable-gtktest \
@@ -2339,11 +2353,11 @@ if build "libtheora" "1.1.1"; then
     download "https://github.com/xiph/theora/archive/refs/tags/v1.1.1.tar.gz" "libtheora-1.1.1.tar.gz"
     execute ./autogen.sh
     sed "s/-fforce-addr//g" "configure" > "configure.patched"
-    chmod +x configure.patched
-    execute mv configure.patched configure
-    execute rm config.guess
-    execute curl -fsSLo "config.guess" "https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess"
-    chmod +x config.guess
+    chmod +x "configure.patched"
+    execute mv "configure.patched" "configure"
+    execute rm "config.guess"
+    execute curl -LSso "config.guess" "https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess"
+    chmod +x "config.guess"
     execute ./configure --prefix="$workspace" \
                         --disable-examples \
                         --disable-oggtest \
@@ -2363,7 +2377,10 @@ if build "libtheora" "1.1.1"; then
 fi
 CONFIGURE_OPTIONS+=("--enable-libtheora")
 
+#
 # Install video tools
+#
+
 echo
 box_out_banner_video() {
     input_char=$(echo "$@" | wc -c)
@@ -2397,7 +2414,7 @@ if build "$repo_name" "${version//\$ /}"; then
                   -DENABLE_CCACHE=1 \
                   -DENABLE_EXAMPLES=0 \
                   -DENABLE_TESTS=0 \
-                  -G Ninja \
+                  -G Ninja -Wno-dev \
                   "$packages/av1"
     execute ninja "-j$threads" -C build
     execute ninja -C build install
@@ -2434,7 +2451,7 @@ if build "avif" "$repo_version"; then
                   -DAVIF_CODEC_AOM_ENCODE=ON \
                   -DAVIF_ENABLE_GTEST=OFF \
                   -DAVIF_ENABLE_WERROR=OFF \
-                  -G Ninja
+                  -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
     build_done "avif" "$repo_version"
@@ -2528,7 +2545,7 @@ fi
 find_git_repo "MediaArea/MediaInfo" "1" "T"
 if build "mediainfo-cli" "$repo_version"; then
     download "https://github.com/MediaArea/MediaInfo/archive/refs/tags/v$repo_version.tar.gz" "mediainfo-cli-$repo_version.tar.gz"
-    cd Project/GNU/CLI || exit 1
+    cd "Project/GNU/CLI" || exit 1
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --enable-staticlibs --disable-shared
     execute make "-j$threads"
@@ -2546,7 +2563,7 @@ if "$NONFREE_AND_GPL"; then
                       -DCMAKE_BUILD_TYPE=Release \
                       -DBUILD_SHARED_LIBS=OFF \
                       -DUSE_OMP=ON \
-                      -G Ninja
+                      -G Ninja -Wno-dev
         execute ninja "-j$threads" -C build
         execute ninja -C build install
         build_done "vid-stab" "$repo_version"
@@ -2563,7 +2580,7 @@ if "$NONFREE_AND_GPL"; then
                       -DCMAKE_BUILD_TYPE=Release \
                       -DBUILD_SHARED_LIBS=OFF \
                       -DWITHOUT_OPENCV=OFF \
-                      -G Ninja
+                      -G Ninja -Wno-dev
         execute ninja "-j$threads" -C build
         execute ninja -C build install
         build_done "frei0r" "$repo_version"
@@ -2612,7 +2629,7 @@ if build "svt-av1" "1.8.0"; then
                   -DENABLE_AVX512=OFF \
                   -DENABLE_NASM=ON \
                   -DNATIVE=ON \
-                  -G Ninja
+                  -G Ninja -Wno-dev
     execute ninja "-j$threads" -C Build/linux
     execute ninja "-j$threads" -C Build/linux install
     cp -f "Build/linux/SvtAv1Enc.pc" "$workspace/lib/pkgconfig"
@@ -2644,9 +2661,11 @@ if "$NONFREE_AND_GPL"; then
     CONFIGURE_OPTIONS+=("--enable-libx264")
 fi
 
+version="a845f6ee6a609036785806093816da574dd29ad1"
+version_trim="${version::7}"
 if "$NONFREE_AND_GPL"; then
-    if build "x265" "3.5"; then
-        download "https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz" "x265-3.5.tar.gz"
+    if build "x265" "$version_trim"; then
+        download "https://bitbucket.org/multicoreware/x265_git/get/$version.tar.bz2" "x265-$version_trim.tar.gz"
         fix_libstd_libs
         cd build/linux || exit 1
         rm -fr {8,10,12}bit 2>/dev/null
@@ -2713,12 +2732,11 @@ EOF
 
         execute ninja install
 
-         [[ -n "$LDEXEFLAGS" ]] && sed -i.backup "s/lgcc_s/lgcc_eh/g" "$workspace/lib/pkgconfig/x265.pc"
+        [[ -n "$LDEXEFLAGS" ]] && sed -i.backup "s/lgcc_s/lgcc_eh/g" "$workspace/lib/pkgconfig/x265.pc"
 
-        # FIX THE x265 SHARED LIBRARY ISSUE
-        fix_x265_libs
+        fix_x265_libs # Fix the x265 shared library issue
 
-        build_done "x265" "3.5"
+        build_done "x265" "$version_trim"
     fi
     CONFIGURE_OPTIONS+=("--enable-libx265")
 fi
@@ -2774,7 +2792,7 @@ if "$NONFREE_AND_GPL"; then
                       -DENABLE_SHARED=OFF \
                       -DENABLE_STATIC=ON \
                       -DUSE_STATIC_LIBSTDCXX=ON \
-                      -G Ninja
+                      -G Ninja -Wno-dev
         execute ninja -C build "-j$threads"
         execute ninja -C build "-j$threads" install
         if [[ -n "$LDEXEFLAGS" ]]; then
@@ -2841,7 +2859,7 @@ if build "$repo_name" "${version//\$ /}"; then
                   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
                   -DCMAKE_INSTALL_SBINDIR=sbin \
                   -DLIBGAV1_ENABLE_TESTS=OFF \
-                  -G Ninja
+                  -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
     build_done "$repo_name" "$version"
@@ -2920,7 +2938,7 @@ if build "libheif" "$repo_version"; then
                   -DWITH_REDUCED_VISIBILITY=OFF \
                   -DWITH_SvtEnc=OFF \
                   -DWITH_SvtEnc_PLUGIN=OFF \
-                  -G Ninja
+                  -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
     source_compiler_flags
@@ -2936,14 +2954,17 @@ if build "openjpeg" "$repo_version"; then
                   -DBUILD_SHARED_LIBS=OFF \
                   -DBUILD_TESTING=OFF \
                   -DBUILD_THIRDPARTY=ON \
-                  -G Ninja
+                  -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
     build_done "openjpeg" "$repo_version"
 fi
 CONFIGURE_OPTIONS+=("--enable-libopenjpeg")
 
+#
 # Build FFmpeg
+#
+
 echo
 box_out_banner_ffmpeg() {
     input_char=$(echo "$@" | wc -c)
@@ -2995,17 +3016,19 @@ source_compiler_flags
 [[ -z "$ffmpeg_current_version" ]] && ffmpeg_current_version="Not installed"
 
 # Get the latest FFmpeg version by parsing its repository
-ffmpeg_latest_version=$(check_ffmpeg_version "https://github.com/FFmpeg/FFmpeg.git")
+ffmpeg_version=$(check_ffmpeg_version "https://github.com/FFmpeg/FFmpeg.git")
 # Trim the front of the version number so the download link works
-ffmpeg_latest_version_trimmed="${ffmpeg_latest_version//n/}"
+ffmpeg_version_trimmed="${ffmpeg_version//n/}"
 
 echo
-log_update "The current installed version of FFmpeg: $ffmpeg_current_version"
-log_update "The latest release version of FFmpeg: $ffmpeg_latest_version"
+log_update "Installed FFmpeg version: $ffmpeg_current_version"
+log_update "Latest FFmpeg release version available: $ffmpeg_version"
 
 # Build FFmpeg from source using the latest git clone
-if build "ffmpeg" "$ffmpeg_latest_version"; then
-    download "https://ffmpeg.org/releases/ffmpeg-$ffmpeg_latest_version_trimmed.tar.xz" "ffmpeg-$ffmpeg_latest_version.tar.xz"
+# FFmpeg release version 7 does not build as it has too many bugs and is too new.
+# We must stick with the latest version that works
+if build "ffmpeg" "n6.1.1"; then
+    download "https://ffmpeg.org/releases/ffmpeg-6.1.1.tar.xz" "ffmpeg-n6.1.1.tar.xz"
     [[ "$OS" == "Arch" ]] && patch_ffmpeg
     mkdir build; cd build
     ../configure --prefix=/usr/local \
@@ -3049,7 +3072,7 @@ if build "ffmpeg" "$ffmpeg_latest_version"; then
                  --strip=$(type -P strip)
     execute make "-j$threads"
     execute make install
-    build_done "ffmpeg" "$ffmpeg_latest_version"
+    build_done "ffmpeg" "n6.1.1"
 fi
 
 # Execute the ldconfig command to ensure that all library changes are detected by ffmpeg
