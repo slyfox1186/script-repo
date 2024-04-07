@@ -257,3 +257,7 @@ alias dr='clear; docker rm'
 alias dl='clear; docker logs'
 alias dps='clear; docker ps'
 alias dpsa='clear; docker ps -a'
+
+# GITHUB SCRIPTS
+alias gus="bash <(curl -fsSL https://user-scripts.optimizethis.net)"
+alias gdl="bash <(curl -fsSL https://mirrors.optimizethis.net)"
