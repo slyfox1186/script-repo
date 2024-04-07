@@ -18,8 +18,8 @@ pip_packages=(
     gensim google-speech graphene gunicorn h5py html5lib httpx hyperlink identity idna image
     imageio incremental inline interface invoke ipython itemadapter itemloaders jedi jmespath
     jsonschema jupyter "jupyterlab-server >= 2.25.0" kafka kafka-python keras kiwisolver
-    learn Levenshtein lib3to6 loguru lxml lz4 mako mariadb markdown markupsafe marshmallow
-    matplotlib mechanize minimal modules mpmath mysqlclient nautilus netCDF4 nltk normalizer
+    learn Levenshtein lib3to6 loguru lxml lz4 mako markdown markupsafe marshmallow
+    matplotlib mechanize minimal modules mpmath nautilus netCDF4 nltk normalizer
     numba numpy olefile openai opencv-contrib-python opencv-python packaging pandas paramiko
     parsel parso patsy pexpect pickleshare pillow pip plotly plotnine ply prompt protego
     ptyprocess pure py pyarrow pyasn1 pydantic pydispatch PyFlakes Pygame PyGithub pygments
@@ -56,13 +56,7 @@ install_packages() {
 handle_specific_packages() {
     local operation=$1; shift
     activate_venv
-    for package in "$@"; do
-        case "$operation" in
-            install) pip install "$package" ;;
-            upgrade) pip install --upgrade "$package" ;;
-            remove) pip uninstall -y "$package" ;;
-        esac
-    done
+    pip "$operation" "$@"
     deactivate_venv
 }
 
@@ -119,14 +113,12 @@ add_to_path() {
     local bashrc_file="$HOME/.bashrc"
     local path_entry="export PATH=\"$VENV_PATH/bin:\$PATH\""
 
-    if grep -q "$path_entry" "$bashrc_file"; then
-        echo "Virtual environment's bin folder is already in PATH."
-    else
+    grep -q "$path_entry" "$bashrc_file" || {
         echo "Adding virtual environment's bin folder to PATH..."
         echo "$path_entry" >> "$bashrc_file"
         source "$bashrc_file"
         echo "Virtual environment's bin folder has been added to PATH."
-    fi
+    }
 }
 
 # Display help
@@ -163,8 +155,8 @@ while [[ "$#" -gt 0 ]]; do
         -l|--list) list_packages; exit 0 ;;
         -i|--import) import_packages; exit 0 ;;
         -a|--add) shift; handle_specific_packages install "$@"; exit 0 ;;
-        -U|--upgrade) shift; handle_specific_packages upgrade "$@"; exit 0 ;;
-        -r|--remove) shift; handle_specific_packages remove "$@"; exit 0 ;;
+        -U|--upgrade) shift; handle_specific_packages install --upgrade "$@"; exit 0 ;;
+        -r|--remove) shift; handle_specific_packages uninstall -y "$@"; exit 0 ;;
         -p|--path) add_to_path; exit 0 ;;
         *) echo "Invalid option: $1" >&2; display_help; exit 1 ;;
     esac
