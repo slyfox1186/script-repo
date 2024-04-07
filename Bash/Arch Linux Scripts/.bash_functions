@@ -1208,6 +1208,8 @@ adl() {
     else
         echo "Download failed."
     fi
+
+    clear; ls -1AhFv --color --group-directories-first
 }
 
 ####################
