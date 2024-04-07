@@ -8,6 +8,7 @@ usage() {
     echo "    -h, --help                Display this help message and exit."
     echo "    -b, --backup <path>       Specify a folder to backup the original files."
     echo "    -d, --dir <path>          Specify the working directory where images are located."
+    echo "    -m, --max-jobs <number>   Set the maximum number of parallel image processing jobs (default: 10)."
     echo "    -n, --dry-run             Perform a dry run without actually processing the images."
     echo "    -o, --overwrite           Enable overwrite mode. Original images will be overwritten."
     echo "    -r, --recursive           Enable recursive processing of subdirectories."
@@ -16,13 +17,14 @@ usage() {
     echo "    -v, --verbose             Enable verbose output."
     echo
     echo "Example:"
-    echo "    $0 -d pictures -s 1024x768 -b original_images -o  Overwrite and optimize images in 'pictures' directory with 1024x768 size and backup originals to 'original_images'."
+    echo "    $0 -d pictures -s 1024x768 -b original_images -o -m 5  Overwrite and optimize images in 'pictures' directory with 1024x768 size, backup originals to 'original_images', and process a maximum of 5 images at a time."
 }
 
 # Initialize script options
 backup_dir=""
 dry_run=0
 file_type="jpg"
+max_jobs=10
 overwrite_mode=0
 recursive_mode=0
 size=""
@@ -34,16 +36,17 @@ log() { [[ $verbose_mode -eq 1 ]] && echo "$@"; }
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        -h|--help)     usage; exit ;;
-        -b|--backup)   backup_dir="$2"; shift 2 ;;
-        -d|--dir)      working_dir="$2"; shift 2 ;;
-        -n|--dry-run)  dry_run=1; shift ;;
+        -h|--help)      usage; exit ;;
+        -b|--backup)    backup_dir="$2"; shift 2 ;;
+        -d|--dir)       working_dir="$2"; shift 2 ;;
+        -m|--max-jobs)  max_jobs="$2"; shift 2 ;;
+        -n|--dry-run)   dry_run=1; shift ;;
         -o|--overwrite) overwrite_mode=1; shift ;;
         -r|--recursive) recursive_mode=1; shift ;;
-        -s|--size)     size="$2"; shift 2 ;;
-        -t|--type)     file_type="$2"; shift 2 ;;
-        -v|--verbose)  verbose_mode=1; shift ;;
-        *)             usage; exit 1 ;;
+        -s|--size)      size="$2"; shift 2 ;;
+        -t|--type)      file_type="$2"; shift 2 ;;
+        -v|--verbose)   verbose_mode=1; shift ;;
+        *)              usage; exit 1 ;;
     esac
 done
 
@@ -54,6 +57,7 @@ working_dir="$(realpath "$working_dir")"
 echo "Backup directory: $backup_dir"
 echo "Dry run: $dry_run"
 echo "File type: $file_type"
+echo "Max parallel jobs: $max_jobs"
 echo "Overwrite mode: $overwrite_mode"
 echo "Recursive mode: $recursive_mode"
 echo "Size: $size"
@@ -73,7 +77,7 @@ process_image() {
     local outfile_name="${outfile##*/}"
     local backup_file="$backup_dir/${infile##*/}"
 
-# Check if the file has already been processed
+    # Check if the file has already been processed
     if [[ "$infile" == *"-IM."* ]]; then
         echo "Skipping already processed file: $infile"
         return 0
@@ -83,18 +87,18 @@ process_image() {
         -strip -unsharp 0.25x0.08+8.3+0.045 -dither None -posterize 136
         -quality 82 -define jpeg:fancy-upsampling=off -auto-level
         -enhance -interlace none -colorspace sRGB)
-        
+
     [[ -n "$size" ]] && convert_opts+=(-resize "$size")
-    
+
     if [[ $dry_run -eq 0 ]]; then
         [[ -n "$backup_dir" ]] && { mkdir -p "$backup_dir"; cp "$infile" "$backup_file"; }
-        
+
         convert "$infile" "${convert_opts[@]}" -sampling-factor 2x2 -limit memory 0 -limit disk 0 -limit area 0 "$mpc_file" \
             || { log "Error: First attempt failed, retrying..."; convert "$infile" "${convert_opts[@]}" "$mpc_file"; } \
             || { log "Error: Second attempt failed."; return 1; }
-            
+
         convert "$mpc_file" "$outfile" && echo "Processed: $outfile_name" || echo "Failed to process: $outfile_name"
-        
+
         [[ $overwrite_mode -eq 1 ]] && rm -f "$infile"
         rm -fr "$temp_dir"
     else
@@ -107,16 +111,16 @@ export backup_dir dry_run overwrite_mode size verbose_mode
 
 # Determine number of parallel jobs and start processing
 num_jobs=$(nproc --all)
-echo; echo "Starting image processing with $num_jobs parallel jobs..."
+echo; echo "Starting image processing with $num_jobs parallel jobs (max $max_jobs at a time)..."
 
 # Get list of files and total count
 if [[ $recursive_mode -eq 1 ]]; then
     file_list=$(find "$working_dir" -type f -name "*.$file_type" | sort -V)
-else 
+else
     file_list=$(find "$working_dir" -maxdepth 1 -type f -name "*.$file_type" | sort -V)
 fi
 
-# Process files in parallel
-echo "$file_list" | parallel -j "$num_jobs" 'process_image {}'
+# Process files in parallel with the specified limit
+echo "$file_list" | parallel --jobs "$num_jobs" --max-args "$max_jobs" 'process_image {}'
 
 echo "Image processing completed."
