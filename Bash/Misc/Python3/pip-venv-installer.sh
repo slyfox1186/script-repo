@@ -8,14 +8,28 @@ REQUIREMENTS_FILE="$VENV_PATH/requirements.txt"
 
 # Set your default pip packages
 pip_packages=(
-    ansible async-lru async-openai async-timeout attrs avro azure-core Babel backoff
-    bcrypt beautifulsoup4 boto3 celery colorama cryptography dash django django-rest-framework
-    elasticsearch fabric fastapi ffpb flask Flask flask-restful fuzzywuzzy gensim
-    google-cloud-storage google-speech jsonschema jupyter kafka-python keras lxml matplotlib
-    nltk notebook numpy openai opencv-python pandas paramiko pillow plotly plotnine pygame
-    pyqt5 pytest pytest-django python-dateutil python-dotenv python-Levenshtein python-whois
-    pytorch pyyaml rabbitmq redis regex requests scikit-learn scipy scrapy seaborn setuptools
-    spacy sqlalchemy streamlit tabulate tensorflow termcolor tornado twisted wheel whois wxpython
+    aiohttp altair ansible appdirs argparse arviz asgiref asttokens async async-lru
+    async-openai async-timeout attr attrs automat avro Babel backcall backoff bcrypt
+    beautifulsoup4 beniget boto3 brotli bs4 celery certifi cffi chardet click colorama
+    constantly contourpy contrib cryptography cssselect cycler Cython "dash >= 2.15.0"
+    dask data dbus2any decorator distro distutils644 django django-rest-framework docker
+    docker-py elasticsearch eval executing fabric fastapi fastecdsa fastparquet feedparser
+    ffpb file filelock "Flask >= 3.0.0" flask-restful folium fonttools fs fuzzywuzzy gast
+    gensim google-speech graphene gunicorn h5py html5lib httpx hyperlink identity idna image
+    imageio incremental inline interface invoke ipython itemadapter itemloaders jedi jmespath
+    jsonschema jupyter "jupyterlab-server >= 2.25.0" kafka kafka-python keras kiwisolver
+    learn Levenshtein lib3to6 loguru lxml lz4 mako mariadb markdown markupsafe marshmallow
+    matplotlib mechanize minimal modules mpmath mysqlclient nautilus netCDF4 nltk normalizer
+    numba numpy olefile openai opencv-contrib-python opencv-python packaging pandas paramiko
+    parsel parso patsy pexpect pickleshare pillow pip plotly plotnine ply prompt protego
+    ptyprocess pure py pyarrow pyasn1 pydantic pydispatch PyFlakes Pygame PyGithub pygments
+    pymc3 PyOpenGL pyparsing pyppeteer pyproj pyproject pyproject_hooks pyqt5 pyquery pytesseract
+    PyTest pytest pytest-django python-dotenv python-Levenshtein python-whois pythran pyyaml
+    queuelib rabbitmq rasterio redis regex requests requests-html rich scikit-image scikit-learn
+    scipy scrapy seaborn "selenium >= 4.18.0" service setuptools shapely six soupsieve spacy
+    speech sqlalchemy sqlparse starlette statsmodels storage streamlit sympy tabulate tensorflow
+    termcolor terminaltables timeout tk tldextract toml tornado traitlets twisted tz ufolib2
+    urllib3 uvicorn venv_dependencies virtualenv w3lib wcwidth webencodings wheel whl whois
 )
 
 # Activate the virtual environment
@@ -32,7 +46,7 @@ deactivate_venv() {
 install_packages() {
     pip install --upgrade pip
     if [[ -f "$REQUIREMENTS_FILE" ]]; then
-        pip install -r "$REQUIREMENTS_FILE"
+        pip install --only-binary -r "$REQUIREMENTS_FILE"
     else
         printf "%s\n" "${pip_packages[@]}" | pip install -r /dev/stdin
     fi
@@ -44,7 +58,7 @@ handle_specific_packages() {
     activate_venv
     for package in "$@"; do
         case "$operation" in
-            install) pip install "$package" ;;
+            install) pip install --only-binary "$package" ;;
             upgrade) pip install --upgrade "$package" ;;
             remove) pip uninstall -y "$package" ;;
         esac
