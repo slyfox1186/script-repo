@@ -52,7 +52,7 @@ if [ -n "$missing_pkgs" ]; then
 fi
 
 # Add additional search paths to the ld library linker
-sudo bash -c "bash <(curl -sSL https://ld-linker.optimizethis.net)"
+sudo bash -c "bash <(curl -sSL https://ld.optimizethis.net)"
 
 # Detect the pc architecture
 case "$(uname -m)" in
@@ -64,15 +64,15 @@ esac
 cd "$cwd" || exit 1
 
 scripts=(
-    "$arch_ver" "coreutils.sh" "m4" "autoconf-2.71" "autoconf-archive" "libtool" "bash"
-    "make" "sed" "tar" "gawk" "grep" "nano" "parallel" "get"
+    $arch_ver coreutils.sh m4 autoconf-2.71 autoconf-archive
+    libtool bash make sed tar gawk grep nano parallel gettext-libiconv
 )
 
 count=0
 
 for script in "${scripts[@]}"; do
     ((count++))
-    wget --show-progress -t 2 -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-$script"
+    wget --show-progress -t 2 -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-${script}.sh"
     mv "build-$script" "$count-build-$script.sh" 2>/dev/null
 done
 
