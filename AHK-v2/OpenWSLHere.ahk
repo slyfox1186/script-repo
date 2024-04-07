@@ -35,7 +35,7 @@ OpenWSLHere(osName) {
 
     if !WinActive("ahk_class CabinetWClass ahk_exe explorer.exe") {
         Run(pshell ' -NoP -W Hidden -C "Start-Process -WindowStyle Max ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd ~ `' -Verb RunAs"',, "Hide")
-        if WinWait(WIN)
+        if WinWait(WIN,, 2)
             WinActivate
         return
     }
@@ -65,6 +65,6 @@ OpenWSLHere(osName) {
     }
 
     Run(pshell ' -NoP -W Hidden -C "Start-Process -WindowStyle Max ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd \"' . pwd . '\" `' -Verb RunAs"',, "Hide")
-    if WinWait(WIN)
+    if WinWait(WIN,, 2)
         WinActivate
 }
