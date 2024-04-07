@@ -647,83 +647,108 @@ hw_mon() {
 # CREATE A 7ZIP FILE WITH MAX COMPRESSION SETTINGS
 
 7z_1() {
-    local answer source output
-    clear
+  local choice source_dir archive_name
 
-    if [ -d "$1" ]; then
-        source_dir="$1"
-        7z a -y -t7z -m0=lzma2 -mx1 "$source_dir".7z ./"$source_dir"/*
-    else
-        read -p "Please enter the source folder path: " source_dir
-        7z a -y -t7z -m0=lzma2 -mx1 "$source_dir".7z ./"$source_dir"/*
-    fi
+  clear
 
-    printf "\n%s\n\n%s\n%s\n\n" \
-        "Do you want to delete the original file?" \
-        "[1] Yes" \
-        "[2] No"
-    read -p "Your choices are (1 or 2): " answer
-    clear
+  if [[ -d "$1" ]]; then
+    source_dir="$1"
+  else
+    read -p "Please enter the source folder path: " source_dir
+  fi
 
-    case "$answer" in
-        1)      sudo rm -fr "$source_dir";;
-        2)      clear;;
-        "")     clear;;
-        *)      printf "\n%s\n\n" "Bad user input...";;
-    esac
+  if [[ ! -d "$source_dir" ]]; then
+    echo "Invalid directory path: $source_dir"
+    return 1
+  fi
+
+  archive_name="${source_dir##*/}.7z"
+
+  7z a -y -t7z -m0=lzma2 -mx1 "$archive_name" "$source_dir"/*
+
+  echo
+  echo "Do you want to delete the original directory?"
+  echo "[1] Yes"
+  echo "[2] No"
+  echo
+  read -p "Your choice is (1 or 2): " choice
+  echo
+
+  case $choice in
+    1) rm -fr "$source_dir" && echo "Original directory deleted." ;;
+    2|"") echo "Original directory not deleted." ;;
+    *) echo "Bad user input. Original directory not deleted." ;;
+  esac
 }
 
 7z_5() {
-    local answer source output
-    clear
+  local choice source_dir archive_name
 
-    if [ -d "$1" ]; then
-        source_dir="$1"
-        7z a -y -t7z -m0=lzma2 -mx5 "$source_dir".7z ./"$source_dir"/*
-    else
-        read -p "Please enter the source folder path: " source_dir
-        7z a -y -t7z -m0=lzma2 -mx5 "$source_dir".7z ./"$source_dir"/*
-    fi
+  clear
 
-    printf "\n%s\n\n%s\n%s\n\n" \
-        "Do you want to delete the original file?" \
-        "[1] Yes" \
-        "[2] No"
-    read -p "Your choices are (1 or 2): " answer
-    clear
+  if [[ -d "$1" ]]; then
+    source_dir="$1"
+  else
+    read -p "Please enter the source folder path: " source_dir
+  fi
 
-    case "$answer" in
-        1)      sudo rm -fr "$source_dir";;
-        2)      clear;;
-        "")     clear;;
-        *)      printf "\n%s\n\n" "Bad user input...";;
-    esac
+  if [[ ! -d "$source_dir" ]]; then
+    echo "Invalid directory path: $source_dir"
+    return 1
+  fi
+
+  archive_name="${source_dir##*/}.7z"
+
+  7z a -y -t7z -m0=lzma2 -mx5 "$archive_name" "$source_dir"/*
+
+  echo
+  echo "Do you want to delete the original directory?"
+  echo "[1] Yes"
+  echo "[2] No"
+  echo
+  read -p "Your choice is (1 or 2): " choice
+  echo
+
+  case $choice in
+    1) rm -fr "$source_dir" && echo "Original directory deleted." ;;
+    2|"") echo "Original directory not deleted." ;;
+    *) echo "Bad user input. Original directory not deleted." ;;
+  esac
 }
 
 7z_9() {
-    local answer source output
-    echo
-    if [ -d "$1" ]; then
-        source_dir="$1"
-        7z a -y -t7z -m0=lzma2 -mx9 "$source_dir".7z ./"$source_dir"/*
-    else
-        read -p "Please enter the source folder path: " source_dir
-        7z a -y -t7z -m0=lzma2 -mx9 "$source_dir".7z ./"$source_dir"/*
-    fi
+  local choice source_dir archive_name
 
-    printf "\n%s\n\n%s\n%s\n\n" \
-        "Do you want to delete the original file?" \
-        "[1] Yes" \
-        "[2] No"
-    read -p "Your choices are (1 or 2): " answer
-    echo
+  clear
 
-    case "$answer" in
-        1)      sudo rm -fr "$source_dir";;
-        2)      clear;;
-        '')     clear;;
-        *)      printf "\n%s\n\n" "Bad user input...";;
-    esac
+  if [[ -d "$1" ]]; then
+    source_dir="$1"
+  else
+    read -p "Please enter the source folder path: " source_dir
+  fi
+
+  if [[ ! -d "$source_dir" ]]; then
+    echo "Invalid directory path: $source_dir"
+    return 1
+  fi
+
+  archive_name="${source_dir##*/}.7z"
+
+  7z a -y -t7z -m0=lzma2 -mx9 "$archive_name" "$source_dir"/*
+
+  echo
+  echo "Do you want to delete the original directory?"
+  echo "[1] Yes"
+  echo "[2] No"
+  echo
+  read -p "Your choice is (1 or 2): " choice
+  echo
+
+  case $choice in
+    1) rm -fr "$source_dir" && echo "Original directory deleted." ;;
+    2|"") echo "Original directory not deleted." ;;
+    *) echo "Bad user input. Original directory not deleted." ;;
+  esac
 }
 
 ##################
