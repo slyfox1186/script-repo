@@ -8,10 +8,14 @@ REQUIREMENTS_FILE="$VENV_PATH/requirements.txt"
 
 # Set your default pip packages
 pip_packages=(
-    async-lru async-openai async-timeout attrs avro Babel backoff bcrypt beautifulsoup4
-    colorama ffpb Flask fuzzywuzzy google-speech jsonschema nltk openai python-dateutil
-    python-dotenv python-Levenshtein python-whois regex requests setuptools termcolor wheel
-    whois
+    ansible async-lru async-openai async-timeout attrs avro azure-core Babel backoff
+    bcrypt beautifulsoup4 boto3 celery colorama cryptography dash django django-rest-framework
+    elasticsearch fabric fastapi ffpb flask Flask flask-restful fuzzywuzzy gensim
+    google-cloud-storage google-speech jsonschema jupyter kafka-python keras lxml matplotlib
+    nltk notebook numpy openai opencv-python pandas paramiko pillow plotly plotnine pygame
+    pyqt5 pytest pytest-django python-dateutil python-dotenv python-Levenshtein python-whois
+    pytorch pyyaml rabbitmq redis regex requests scikit-learn scipy scrapy seaborn setuptools
+    spacy sqlalchemy streamlit tabulate tensorflow termcolor tornado twisted wheel whois wxpython
 )
 
 # Activate the virtual environment
