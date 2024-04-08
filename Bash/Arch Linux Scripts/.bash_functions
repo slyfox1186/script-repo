@@ -1,12 +1,27 @@
-######################################################################################
+# EXPORT ANSI COLORS
+BLUE="\033[0;34m"
+GREEN="\033[0;32m"
+RED="\033[0;31m"
+YELLOW="\033[0;33m"
+NC="\033[0m" # No Color
+export BLUE GREEN NC RED YELLOW
+
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
-######################################################################################
+gedit() {
+    eval $(type -P gedit) "$@" &>/dev/null
+}
 
-gedit() { "$(type -P gedit)" "$@" &>/dev/null; }
-geds() { sudo -Hu root "$(type -P gedit)" "$@" &>/dev/null; }
+geds() {
+    sudo -Hu root $(type -P gedit) "$@" &>/dev/null
+}
 
-gted() { "$(type -P gted)" "$@" &>/dev/null; }
-gteds() { sudo -Hu root "$(type -P gted)" "$@" &>/dev/null; }
+gnome-text-editor() {
+    eval $(type -P gnome-text-editor) "$@" &>/dev/null
+}
+
+gnome-text-editors() {
+    sudo -Hu root $(type -P gnome-text-editor) "$@" &>/dev/null
+}
 
 ################################################
 ## GET THE OS AND ARCH OF THE ACTIVE COMPUTER ##
