@@ -12,12 +12,11 @@ OpenWSLHere(osName) {
     ; This asks if the current active window is explorer.exe and if it's not then open Windows Terminal to the $HOME (~) path of the user.
     if !WinActive("ahk_class CabinetWClass ahk_exe explorer.exe") { ; Check if the active window is not Windows File Explorer
         Run(pshell ' -NoP -W H -C "Start-Process -WindowStyle Max ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd ~ `' -Verb RunAs"',, "Hide") ; Open a new Windows Terminal tab with the specified Linux distribution and navigate to the user's HOME directory
-        if WinWait(win,, 2) { ; Wait for the Windows Terminal window to appear
-            WinActivate ; Bring the Windows Terminal window to the foreground
-        } else {
-            WinActivate ; Activate the currently active window if the Windows Terminal window doesn't appear
-        }
-        return ; Exit the function which stops the script from continuing to run the rest of the code below
+        if WinWait(win,, 2) ; Wait for the Windows Terminal window to appear
+            WinActivate(win) ; Bring the Windows Terminal window to the foreground
+        else
+            WinActivate("A") ; Activate the currently active window if the Windows Terminal window doesn't appear
+    return
     }
 
     hwnd := WinExist("A") ; Get the handle of the currently active window and store it in the hwnd variable
@@ -29,7 +28,7 @@ OpenWSLHere(osName) {
         if (win.hwnd = hwnd) { ; Check if the window handle matches the currently active window handle
             if (activeTab) { ; Check if an active tab was previously detected
                 shellBrowser := ComObjQuery(win, "{4C96BE40-915C-11CF-99D3-00AA004AE837}", "{000214E2-0000-0000-C000-000000000046}") ; Query the shell browser interface
-                if !shellBrowser ; If the shell browser interface is not available
+                if (!shellBrowser) ; If the shell browser interface is not available
                     continue ; Move to the next iteration of the loop
                 ComCall(3, shellBrowser, "uint*", &currentTab:=0) ; Get the handle of the current tab
                 if (currentTab != activeTab) ; Check if the current tab handle is different from the active tab handle
@@ -46,8 +45,7 @@ OpenWSLHere(osName) {
 
     Run(pshell ' -NoP -W H -C "Start-Process -WindowStyle Max ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd \"' . pwd . '\" `' -Verb RunAs"',, "Hide") ; Open a new Windows Terminal tab with the specified Linux distribution and navigate to the retrieved folder path
     if WinWait(win,, 2) ; Wait for the Windows Terminal window to appear
-        WinActivate ; Bring the Windows Terminal window to the foreground
-    } else {
-        WinActivate ; Activate the currently active window if the Windows Terminal window doesn't appear
-    }
+        WinActivate(win) ; Bring the Windows Terminal window to the foreground
+    else
+        WinActivate("A") ; Activate the currently active window if the Windows Terminal window doesn't appear
 }
