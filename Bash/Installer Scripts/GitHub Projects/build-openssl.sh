@@ -86,7 +86,7 @@ install_required_packages() {
 
 # Function to set compiler flags
 set_compiler_flags() {
-    local common_flags="-g -O3 -pipe -fno-plt -fstack-protector-strong -D_FORTIFY_SOURCE=2"
+    local common_flags="-O2 -pipe -fstack-protector-strong -D_FORTIFY_SOURCE=2"
 
     CC="clang"
     CXX="clang++"
