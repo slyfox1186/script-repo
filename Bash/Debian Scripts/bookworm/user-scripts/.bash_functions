@@ -1868,3 +1868,21 @@ sai() {
         fi
     fi
 }
+
+bat() {
+    if [[ -z "$1" ]]; then
+        read -p "Enter the file path: " filename
+    else
+        filename="$1"
+    fi
+    batcat "$filename"
+}
+
+batn() {
+    if [[ -z "$1" ]]; then
+        read -p "Enter the file path: " filename
+    else
+        filename="$1"
+    fi
+    batcat -n "$filename"
+}
