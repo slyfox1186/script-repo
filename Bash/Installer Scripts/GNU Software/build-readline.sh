@@ -5,8 +5,6 @@
 #  Updated: 03.19.24
 #  Script version: 1.2
 
-set -euo pipefail
-
 # Set color variables
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -51,8 +49,8 @@ echo
 # Set the C and C++ compilers
 CC="gcc"
 CXX="g++"
-CFLAGS="-g -O3 -pipe -fno-plt -march=native"
-CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
+CFLAGS="-O2 -pipe -march=native -mtune=native"
+CXXFLAGS="$CFLAGS"
 export CC CFLAGS CXX CXXFLAGS
 
 # Set the path variable
@@ -65,8 +63,9 @@ export PKG_CONFIG_PATH
 
 # Create functions
 exit_fn() {
+    echo
     log "Make sure to star this repository to show your support!"
-    log "${web_repo}"
+    log "https://github.com/slyfox1186/script-repo"
     exit 0
 }
 
@@ -76,8 +75,10 @@ cleanup() {
     echo -e "\n${GREEN}============================================${NC}"
     echo -e "  ${YELLOW}Do you want to clean up the build files?${NC}  "
     echo -e "${GREEN}============================================${NC}"
+    echo
     echo "[1] Yes"
     echo "[2] No"
+    echo
     read -p "Your choice (1 or 2): " choice
 
     case "${choice}" in
@@ -121,7 +122,8 @@ fi
 
 # Build program from source
 cd "$cwd/$archive_dir" || fail "Failed to change directory to: $cwd/$archive_dir"
-autoconf
+autoupdate
+autoreconf -fi
 cd build || fail "Failed to change directory to: $cwd/$archive_dir/build"
 ../configure --prefix="$install_dir" \
              --disable-install-examples \
