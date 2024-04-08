@@ -7,20 +7,6 @@ fi
 
 [[ ! -d /etc/squid ]] && mkdir -p "/etc/squid"
 
-if ! systemctl status squid.service; then
-    echo "The squid service needs to be running to continue."
-    echo "The script will attempt to start squid now... please be patient."
-    service squid start
-fi
-if ! service squid start; then
-    echo "The script was unable to start the squid service. You should manually change any errors"
-    echo "in the squid.conf file which is usually located in \"/etc/squid/squid.conf\""
-    exit 1
-else
-    clear
-    echo "Started Squid"
-fi
-
 create_squid_user() {
     echo "Creating user 'squid'..."
     if ! useradd -m squid; then
@@ -28,7 +14,7 @@ create_squid_user() {
         exit 1
     else
         echo "User 'squid' created successfully."
-        
+
         echo "Adding user 'squid' to group 'root'..."
         if ! usermod -aG root squid; then
             echo "Failed to add user 'squid' to group 'root'."
@@ -48,11 +34,12 @@ fi
 
 squid_user=squid
 
+squid_conf="/etc/squid/squid.conf"
 squid_passwords="/etc/squid/passwords"
 squid_whitelist="/etc/squid/whitelist.txt"
 squid_blacklist="/etc/squid/blacklist.txt"
 
-cat > "/etc/squid/squid.conf" <<EOF
+cat > $squid_conf <<EOF
 acl localnet src 172.16.0.0/12                  # RFC 1918 local private network [LAN]
 acl localnet src 192.168.0.0/16                 # RFC 1918 local private network [LAN]
 acl localhost src 127.0.0.1/255.255.255.255
@@ -94,7 +81,7 @@ maximum_object_size_in_memory 1 MB
 
 cache_swap_low 90
 cache_swap_high 95
-cache_mem=512 MB
+cache_mem 512 MB
 
 memory_cache_mode always
 
@@ -193,9 +180,8 @@ case "$choice" in
         ;;
 esac
 
-squid -k reconfigure
+sudo systemctl restart squid
 service squid enable
-service squid restart
 
 if ! command -v squidclient &>/dev/null; then
     apt -y install squidclient
