@@ -117,7 +117,8 @@ lan=$(ip route get 1.2.3.4 | awk '{print $7}')
 wan=$(curl -fsS "https://checkip.amazonaws.com")
 PS1='\n\[\e[38;5;227m\]\w\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38;5;117m\]\h\[\e[97;1m\]\\$\[\e[0m\]'
 PYTHONUTF8=1
-export cpus lan PS1 PYTHONUTF8 threads wan
+MAGICK_THREAD_LIMIT=16
+export cpus lan PS1 PYTHONUTF8 threads wan MAGICK_THREAD_LIMIT
 
 # Set the script's path variable
 PATH="\
@@ -147,5 +148,3 @@ export PATH
 if [ -f "/usr/lib/wsl/lib/libcuda.so.1.1" ] && [ ! -L "/usr/lib/wsl/lib/libcuda.so.1" ]; then
     sudo ln -sf "/usr/lib/wsl/lib/libcuda.so.1" "/usr/lib/wsl/lib/libcuda.so.1.1"
 fi
-
-export MAGICK_THREAD_LIMIT=16
