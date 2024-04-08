@@ -147,3 +147,5 @@ export PATH
 if [ -f "/usr/lib/wsl/lib/libcuda.so.1.1" ] && [ ! -L "/usr/lib/wsl/lib/libcuda.so.1" ]; then
     sudo ln -sf "/usr/lib/wsl/lib/libcuda.so.1" "/usr/lib/wsl/lib/libcuda.so.1.1"
 fi
+
+export MAGICK_THREAD_LIMIT=16
