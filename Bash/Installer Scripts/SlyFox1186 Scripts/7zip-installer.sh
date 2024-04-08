@@ -36,13 +36,13 @@ log_update() {
 
 # Function to log warnings
 warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
+    echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
 # Function to handle errors and exit
 fail() {
     echo -e "${RED}[ERROR]${NC} $1"
-    echo -e "${YELLOW}[WARN]${NC} Please create a support ticket at: https://github.com/slyfox1186/script-repo/issues"
+    echo -e "${YELLOW}[WARNING]${NC} Please create a support ticket at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
