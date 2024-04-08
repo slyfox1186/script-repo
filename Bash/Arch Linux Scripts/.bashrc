@@ -11,20 +11,9 @@ esac
 # See bash(1) for more options
 HISTCONTROL=ignoreboth
 
-# Append to the history file, don't overwrite it
-shopt -s histappend
-
 # For setting history length see HISTSIZE and HISTFILESIZE in bash(1)
 HISTSIZE=10000
 HISTFILESIZE=20000
-
-# check the window size after each command and, if necessary,
-# update the values of LINES and COLUMNS.
-shopt -s checkwinsize
-
-# If set, the pattern "**" used in a pathname expansion context will
-# match all files and zero or more directories and subdirectories.
-shopt -s globstar
 
 # make less more friendly for non-text input files, see lesspipe(1)
 [[ -x '/usr/bin/lesspipe' ]] && eval "$(SHELL=/bin/sh lesspipe)"
@@ -94,16 +83,6 @@ if [[ -f "$HOME/.bash_aliases" ]]; then
     source "$HOME/.bash_aliases"
 fi
 
-# You don't need to enable this, if it's already enabled in /etc/bash.bashrc and /etc/profile
-# sources /etc/bash.bashrc
-if ! shopt -oq posix; then
-  if [[ -f /usr/share/bash-completion/bash_completion ]]; then
-    source /usr/share/bash-completion/bash_completion
-  elif [[ -f /etc/bash_completion ]]; then
-    source /etc/bash_completion
-  fi
-fi
-
 ####################
 ## CUSTOM SECTION ##
 ####################
@@ -122,7 +101,8 @@ lan=$(ip route get 1.2.3.4 | awk '{print $7}')
 wan=$(curl -s 'https://checkip.amazonaws.com')
 PS1='\n\[\e[38;5;227m\]\w\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38;5;117m\]\h\[\e[97;1m\]\\$\[\e[0m\]'
 PYTHONUTF8=1
-export cpus lan PS1 PYTHONUTF8 threads wan
+MAGICK_THREAD_LIMIT=16
+export cpus lan PS1 PYTHONUTF8 threads wan MAGICK_THREAD_LIMIT
 
 # SET THE SCRIPT'S PATH VARIABLE
 PATH="\
