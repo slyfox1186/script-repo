@@ -12,7 +12,7 @@ export BLUE GREEN NC RED YELLOW
 
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 gedit() {
-    $(type -P gedit) "$@" &>/dev/null
+    eval $(type -P gedit) "$@" &>/dev/null
 }
 
 geds() {
@@ -20,7 +20,7 @@ geds() {
 }
 
 gnome-text-editor() {
-    $(type -P gnome-text-editor) "$@" &>/dev/null
+    eval $(type -P gnome-text-editor) "$@" &>/dev/null
 }
 
 gnome-text-editors() {
