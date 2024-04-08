@@ -1,24 +1,3 @@
-/*____________________________________________________________________________________
-    OpenWSLHere.ahk
-
-    GitHub:
-    - https://github.com/slyfox1186/script-repo/blob/main/AHK-v2/OpenWSLHere.ahk
-
-    Pastebin:
-    - https://pastebin.com/u/slyfox1186
-
-    Purpose:
-    - This will open Windows' WSL terminal to the active file explorer folder or if no active explorer window is found, ~
-
-    Updated:
-    - 04.07.24
-
-    Big Update:
-        Combined all major versions of Windows WSL OS's into a single function greatly reducing
-        the size of the overall code, and adding the ability to choose the OS you wish to use.
-
-*/
-
 ; Set the Hotkeys to call the function and pass the name of the desired Linux distro to the function
 !w Up::OpenWSLHere("Debian") ; Opens Debian in Windows Terminal
 ^!w Up::OpenWSLHere("Ubuntu") ; Opens Ubuntu in Windows Terminal
