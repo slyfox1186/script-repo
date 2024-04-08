@@ -31,10 +31,12 @@ OpenWSLHere(osName) {
 
     if !WinActive("ahk_class CabinetWClass ahk_exe explorer.exe") {
         Run(pshell ' -NoP -W H -C "Start-Process -WindowStyle Max ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd ~ `' -Verb RunAs"',, "Hide")
-        if WinWait(win,, 2) {
-            WinActivate
-            return
-        }
+        if WinWait(win,, 2)
+            WinActivate(win)
+        else
+            WinActivate("A")
+    return
+    }
 
     hwnd := WinExist("A")
     winObj := ComObject("Shell.Application").Windows
@@ -45,7 +47,7 @@ OpenWSLHere(osName) {
         if (win.hwnd = hwnd) {
             if (activeTab) {
                 shellBrowser := ComObjQuery(win, "{4C96BE40-915C-11CF-99D3-00AA004AE837}", "{000214E2-0000-0000-C000-000000000046}")
-                if !shellBrowser
+                if (!shellBrowser)
                     continue
                 ComCall(3, shellBrowser, "uint*", &currentTab:=0)
                 if (currentTab != activeTab)
@@ -62,5 +64,7 @@ OpenWSLHere(osName) {
 
     Run(pshell ' -NoP -W H -C "Start-Process -WindowStyle Max ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd \"' . pwd . '\" `' -Verb RunAs"',, "Hide")
     if WinWait(win,, 2)
-        WinActivate
+        WinActivate(win)
+    else
+        WinActivate("A")
 }
