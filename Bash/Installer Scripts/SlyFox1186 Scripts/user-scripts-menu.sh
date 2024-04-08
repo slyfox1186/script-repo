@@ -3,15 +3,16 @@
 
 # Create the color variables
 GREEN="\033[0;32m"
-BLUE="\033[0;34m"
+YELLOW='\033[0;33m'
 NC="\033[0m"
 
 # Menu color functions
 ColorGreen() {
     echo -ne "${GREEN}$1${NC}"
 }
+
 ColorBlue() {
-    echo -ne "${BLUE}$1${NC}"
+    echo -ne "${YELLOW}$1${NC}"
 }
 
 # Show the script banner
@@ -28,33 +29,34 @@ box_out_banner() {
     echo " $line"
     tput sgr 0
 }
-box_out_banner "Install User Scripts"
+box_out_banner "User Scripts Installer"
 
 # Display the main menu
 main_menu() {
     local choice
 echo -ne "
-$(ColorGreen '1)') Debian 10/11/12
+$(ColorGreen '1)') Ubuntu 24.04
 $(ColorGreen '2)') Ubuntu (18/20/22).04
-$(ColorGreen '3)') Ubuntu 23.04
+$(ColorGreen '3)') Debian 10/11/12
 $(ColorGreen '4)') Arch Linux
 $(ColorGreen '5)') Raspberry Pi
 $(ColorGreen '0)') Exit
-$(ColorBlue 'Choose the operating system:') "
+$(ColorBlue 'Choose your operating system:') "
     read -r choice
     clear
 
     case "$choice" in
-        1) bash <(curl -fsSL "https://bookworm-scripts.optimizethis.net") ;;
+        1) bash <(curl -fsSL "https://noble-scripts.optimizethis.net") ;;
         2) bash <(curl -fsSL "https://jammy-scripts.optimizethis.net") ;;
-        3) bash <(curl -fsSL "https://lunar-scripts.optimizethis.net") ;;
+        3) bash <(curl -fsSL "https://bookworm-scripts.optimizethis.net") ;;
         4) bash <(curl -fsSL "https://arch-scripts.optimizethis.net") ;;
         5) bash <(curl -fsSL "https://raspi-scripts.optimizethis.net") ;;
         0) return 0 ;;
         *) unset choice
-           echo
+           clear
            main_menu
            ;;
     esac
 }
+
 main_menu
