@@ -6,7 +6,7 @@
 
 trap 'fail "Error occurred on line: $LINENO".' ERR
 
-version=2.0
+version=5.2.15
 program_name=bash
 install_prefix=/usr/local
 build_dir="/tmp/$program_name-$version-build"
