@@ -7,7 +7,7 @@
 set -eo pipefail
 trap 'echo "Error occurred at line: $LINENO"; exit 1' ERR
 
-default_program_version="2.69" # Default version
+default_program_version="2.71" # Default version
 program_name="autoconf"
 install_prefix="/usr/local"
 verbose=0
