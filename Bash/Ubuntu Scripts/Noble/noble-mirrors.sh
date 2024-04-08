@@ -8,7 +8,7 @@ fi
 file_old="/etc/apt/sources.list"
 file="/etc/apt/sources.list.d/ubuntu.sources"
 
-mv "$file_old" "${file_old}.bak"
+[[ -f "$file_old" ]] && mv "$file_old" "${file_old}.bak"
 
 cat > $file <<'EOF'
 Types: deb
