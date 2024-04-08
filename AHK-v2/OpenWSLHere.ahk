@@ -25,16 +25,16 @@
 
 OpenWSLHere(osName) {
     static wt := "C:\Users\" A_UserName "\AppData\Local\Microsoft\WindowsApps\wt.exe"
-    static wsl := "C:\Windows\System32\wsl.exe"
+    static wsl := A_WinDir . "\System32\wsl.exe"
     static win := "ahk_class CASCADIA_HOSTING_WINDOW_CLASS ahk_exe WindowsTerminal.exe"
-    static pshell := FileExist("C:\Program Files\PowerShell\7\pwsh.exe") ? "C:\Program Files\PowerShell\7\pwsh.exe" : "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+    static pshell := FileExist(A_ProgramFiles . "\PowerShell\7\pwsh.exe") ? A_ProgramFiles . "\PowerShell\7\pwsh.exe" : A_WinDir . "\System32\WindowsPowerShell\v1.0\powershell.exe"
 
     if !WinActive("ahk_class CabinetWClass ahk_exe explorer.exe") {
-        Run(pshell ' -NoP -W Hidden -C "Start-Process -WindowStyle Max ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd ~ `' -Verb RunAs"',, "Hide")
-        if WinWait(win,, 2)
+        Run(pshell ' -NoP -W H -C "Start-Process -WindowStyle Max ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd ~ `' -Verb RunAs"',, "Hide")
+        if WinWait(win,, 2) {
             WinActivate
-        return
-    }
+            return
+        }
 
     hwnd := WinExist("A")
     winObj := ComObject("Shell.Application").Windows
@@ -60,7 +60,7 @@ OpenWSLHere(osName) {
         }
     }
 
-    Run(pshell ' -NoP -W Hidden -C "Start-Process -WindowStyle Max ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd \"' . pwd . '\" `' -Verb RunAs"',, "Hide")
+    Run(pshell ' -NoP -W H -C "Start-Process -WindowStyle Max ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd \"' . pwd . '\" `' -Verb RunAs"',, "Hide")
     if WinWait(win,, 2)
         WinActivate
 }
