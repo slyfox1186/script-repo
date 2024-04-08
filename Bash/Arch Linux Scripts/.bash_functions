@@ -423,11 +423,41 @@ rmf() {
 
 # Optimize and overwrite the original images
 imow() {
-    wget -cqO "optimize-jpg.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
-    sudo chmod +x "optimize-jpg.sh"
+  # Function to replace lines in the policy.xml file
+  replace_lines() {
+    local policy_file="$1"
+    local temp_file=$(mktemp)
 
-    ./optimize-jpg.sh --dir "$PWD" --overwrite
-    [[ -f "optimize-jpg.sh" ]] && sudo rm "optimize-jpg.sh"
+    grep -v '<!-- <policy domain="resource" name="thread".*/>-->' "$policy_file" | sed '/<policy domain="resource" name="thread"/i \  <policy domain="resource" name="thread" value="32"/>' > "$temp_file"
+    grep -v '<!-- <policy domain="resource" name="file".*/>-->' "$temp_file" | sed '/<policy domain="resource" name="file"/i \  <policy domain="resource" name="file" value="999999"/>' > "$temp_file.tmp" && mv "$temp_file.tmp" "$temp_file"
+    grep -v '<!-- <policy domain="resource" name="memory".*/>-->' "$temp_file" | sed '/<policy domain="resource" name="memory"/i \  <policy domain="resource" name="memory" value="32GiB"/>' > "$temp_file.tmp" && mv "$temp_file.tmp" "$temp_file"
+    grep -v '<!-- <policy domain="resource" name="map".*/>-->' "$temp_file" | sed '/<policy domain="resource" name="map"/i \  <policy domain="resource" name="map" value="32GiB"/>' > "$temp_file.tmp" && mv "$temp_file.tmp" "$temp_file"
+    grep -v '<!-- <policy domain="resource" name="area".*/>-->' "$temp_file" | sed '/<policy domain="resource" name="area"/i \  <policy domain="resource" name="area" value="16GiB"/>' > "$temp_file.tmp" && mv "$temp_file.tmp" "$temp_file"
+    grep -v '<!-- <policy domain="resource" name="disk".*/>-->' "$temp_file" | sed '/<policy domain="resource" name="disk"/i \  <policy domain="resource" name="disk" value="999GiB"/>' > "$temp_file.tmp" && mv "$temp_file.tmp" "$temp_file"
+    grep -v '<!-- <policy domain="resource" name="width".*/>-->' "$temp_file" | sed '/<policy domain="resource" name="width"/i \  <policy domain="resource" name="width" value="64KP"/>' > "$temp_file.tmp" && mv "$temp_file.tmp" "$temp_file"
+    grep -v '<!-- <policy domain="resource" name="height".*/>-->' "$temp_file" | sed '/<policy domain="resource" name="height"/i \  <policy domain="resource" name="height" value="64KP"/>' > "$temp_file.tmp" && mv "$temp_file.tmp" "$temp_file"
+
+    mv "$temp_file" "$policy_file"
+  }
+
+  # Find the policy.xml file dynamically in /usr/local and /usr
+  policy_file=$(find /usr/local /usr -type f -path "*/etc/ImageMagick-7/policy.xml" -print -quit)
+
+  if [ -n "$policy_file" ]; then
+    replace_lines "$policy_file"
+    echo "Lines replaced successfully in $policy_file"
+  else
+    echo "policy.xml file not found in /usr/local or /usr"
+    return 1
+  fi
+
+  wget -cqO "optimize-jpg.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
+
+  sudo chmod +x "optimize-jpg.sh"
+
+  LD_PRELOAD=libtcmalloc.so; ./optimize-jpg.sh --dir "$PWD" --overwrite
+
+  [[ -f "optimize-jpg.sh" ]] && sudo rm "optimize-jpg.sh"
 }
 
 # DOWNSAMPLE IMAGE TO 50% OF THE ORIGINAL DIMENSIONS USING SHARPER SETTINGS
