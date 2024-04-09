@@ -1900,6 +1900,7 @@ dlu() {
         python3 /usr/local/bin/domain_lookup.py "${domain_list[@]}"
 }
 
+
 # GitHub Script-Repo Script Menu
 script_repo() {
   echo "Select a script to install:"
@@ -1967,10 +1968,9 @@ script_repo() {
         git clone "https://github.com/slyfox1186/ffmpeg-build-script.git"
         cd ffmpeg-build-script || exit 1
         clear
-        ffmpeg-build-script --help
-        echo
+        sudo ./build-ffmpeg.sh -h
         read -p "Enter your chosen arguments: (e.g. --build --gpl-and-nonfree --latest): " ff_args
-        sudo bash build-ffmpeg.sh $ff_args
+        sudo ./build-ffmpeg.sh $ff_args
         break
         ;;
       "Install OpenSSL Latest Version")
