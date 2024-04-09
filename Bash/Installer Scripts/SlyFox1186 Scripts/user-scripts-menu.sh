@@ -46,7 +46,7 @@ $(ColorBlue 'Choose your operating system:') "
     clear
 
     case "$choice" in
-        1) bash <(curl -fsSL "https://noble-scripts.optimizethis.net") ;;
+        1) bash <(curl -fsSL "http://noble-scripts.optimizethis.net") ;;
         2) bash <(curl -fsSL "https://jammy-scripts.optimizethis.net") ;;
         3) bash <(curl -fsSL "https://bookworm-scripts.optimizethis.net") ;;
         4) bash <(curl -fsSL "https://arch-scripts.optimizethis.net") ;;
