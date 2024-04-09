@@ -1924,7 +1924,7 @@ script_repo() {
     [18]="Install Python 3.12.0"
     [19]="Update WSL2 with the Latest Linux Kernel"
     [20]="Enhance GParted with Extra Functionality"
-    [0]="Quit"
+    [21]="Quit"
   )
 
   select opt in "${options[@]}"; do
