@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Shellcheck disable=SC2066,SC2068,SC2086,SC2162
 
-set -x
-
 # Set the PATH variable
 if [ -d "$HOME/.local/bin" ]; then
     export PATH="$HOME/.local/bin:$PATH"
