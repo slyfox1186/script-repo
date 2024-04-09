@@ -25,6 +25,7 @@ alias netplan='sudo netplan'
 alias nordvpn='sudo nordvpn'
 alias passwd='sudo passwd'
 alias pacman='sudo pacman'
+alias reflector='sudo reflector'
 alias rpm='sudo rpm'
 alias service='sudo service'
 alias snap='sudo snap'
@@ -251,3 +252,6 @@ alias update='clear; pacman -Syu'
 # GITHUB SCRIPTS
 alias gus="bash <(curl -fsSL https://user-scripts.optimizethis.net)"
 alias gdl="bash <(curl -fsSL https://mirrors.optimizethis.net)"
+
+# REFLECTOR MIRROR SPEED TESTER
+alias rr='reflector --verbose -l 200 -n 5 -p https --latest 50 --sort rate --country US --save /etc/pacman.d/mirrorlist'
