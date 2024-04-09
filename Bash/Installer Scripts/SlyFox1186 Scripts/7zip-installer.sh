@@ -1,28 +1,21 @@
 #!/usr/bin/env bash
 
 # Purpose: install the latest 7-zip package across multiple linux distributions and macos
-# Updated: 03-26-2024
-# Script version: 3.2
+# Updated: 04-08-2024
+# Script version: 3.3
 # Optimized code
-
-if [[ "$EUID" -ne 0 ]]; then
-    echo "You must run this script with root or sudo."
-    exit 1
-fi
 
 random=$(mkdtemp -d)
 
 # Set variables
-readonly script_version="3.2"
-readonly working="$random/7zip-install-script"
+readonly script_version="3.3"
+readonly working="$PWD/7zip-install-script"
 readonly install_dir="/usr/local/bin"
 
 # Ansi escape codes for colors
-CYAN='\033[0;36m'
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Function to log messages
@@ -90,7 +83,7 @@ detect_os_distro() {
     else
         OS="linux"
         if [[ -f /etc/os-release ]]; then
-            source /etc/os-release
+            . /etc/os-release
             DISTRO="$ID"
         elif command -v lsb_release >/dev/null 2>&1; then
             DISTRO=$(lsb_release -si | tr '[:upper:]' '[:lower:]')
@@ -110,17 +103,17 @@ install_dependencies() {
         linux)
             case "$DISTRO" in
                 ubuntu|debian|raspbian)
-                    apt-get update
-                    apt-get install -y tar wget
+                    sudo apt update
+                    sudo apt install tar wget
                     ;;
                 centos|fedora|rhel)
-                    yum install -y tar wget
+                    sudo yum install tar wget
                     ;;
                 arch|manjaro)
-                    pacman -Sy --needed --noconfirm tar wget
+                    sudo pacman -S --needed tar wget
                     ;;
                 opensuse*)
-                    zypper install -y tar wget
+                    sudo zypper install tar wget
                     ;;
                 *)
                     fail "Unsupported Linux distribution: $DISTRO"
@@ -143,37 +136,80 @@ install_dependencies() {
 
 # Function to display the help menu
 display_help() {
+    echo "Script: 7-Zip Install Script"
+    echo "Version: $script_version"
+    echo "Purpose: This script installs the latest 7-Zip package across multiple Linux distributions and macOS."
+    echo
     echo "Usage: $0 [OPTIONS]"
     echo
     echo "Options:"
-    echo "  -h, --help      Display this help menu"
-    echo "  -b, --beta      Download and install the beta version of 7-Zip"
-    echo "  -r, --release   Download and install the release version of 7-Zip (default)"
-    echo "  -v, --version   Display the script version"
+    echo "  -h, --help         Display this help menu"
+    echo "  -nc, --no-cleanup  Do not clean up the install files after the script has finished"
+    echo "  -v, --version      Display the script version"
+    echo
+    echo "Examples:"
+    echo "  Install 7-Zip (stable version) and clean up install files:"
+    echo "    $0"
+    echo
+    echo "  Install 7-Zip (beta version) and keep install files:"
+    echo "    $0 -nc"
+    echo
+    echo "  Display the script version:"
+    echo "    $0 -v"
+    echo
+    echo "  Display this help menu:"
+    echo "    $0 -h"
 }
 
 # Parse command-line options
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
-        -h|--help)    display_help; exit 0 ;;
-        -b|--beta)    version="7z2403" ;;
-        -r|--release) version="7z2301" ;;
-        -v|--version) log "Script version: $script_version"; exit 0 ;;
-        *)            warn "Unknown option: $1"; display_help ;;
+        -h|--help)
+            display_help
+            exit 0
+            ;;
+        -nc|--no-cleanup)
+            no_cleanup=true
+            ;;
+        -v|--version)
+            log "Script version: $script_version"
+            exit 0
+            ;;
+        *)  warn "Unknown option: $1"
+            display_help
+            exit 1
+            ;;
     esac
     shift
 done
-
-[[ -z "$version" ]] && version="7z2301"
 
 box_out_banner "7-Zip Install Script"
 detect_os_distro
 
 # Check if wget and tar are installed and install them if missing
-command -v wget &>/dev/null || command -v tar &>/dev/null || install_dependencies
+if ! command -v wget &>/dev/null || ! command -v tar &>/dev/null; then
+    install_dependencies
+fi
+
+# Prompt user to choose between stable or beta version
+echo "Choose the version of 7-Zip to install:"
+echo
+echo "[1] Stable version (v2301)"
+echo "[2] Beta version (v2403)"
+echo
+read -p "Your choices are ( 1 or 2): " choice
+
+case "$choice" in
+    1) version="7z2301" ;;
+    2) version="7z2403" ;;
+    *) fail "Invalid choice. Please enter 1 or 2." ;;
+esac
 
 # Clean up existing installation directory
-[[ -d "$working" ]] && { log "Deleting existing 7zip-install-script directory..."; rm -fr "$working"; }
+if [[ -d "$working" ]]; then
+    log "Deleting existing 7zip-install-script directory..."
+    rm -fr "$working"
+fi
 
 # Create the installation directory
 mkdir -p "$working"
@@ -192,8 +228,8 @@ case "$OS" in
     macos) url="https://www.7-zip.org/a/${version}-mac.tar.xz" ;;
 esac
 
-tar_file="$version.tar.xz"
-output_dir="$working/$version"
+tar_file="7zip-$version.tar.xz"
+output_dir="$working/7zip-$version"
 mkdir -p "$output_dir"
 
 [[ ! -f "$working/$tar_file" ]] && download "$url" "$working/$tar_file"
@@ -204,12 +240,12 @@ fi
 
 case "$OS" in
     linux)
-        cp -f "$output_dir/7zzs" "$install_dir/7z" || fail "The script was unable to copy the static file '7zzs' to '$install_dir/7z'"
-        chmod 755 "$install_dir/7z"
+        sudo cp -f "$output_dir/7zzs" "$install_dir/7z" || fail "The script was unable to copy the static file '7zzs' to '$install_dir/7z'"
+        sudo chmod 755 "$install_dir/7z"
         ;;
     macos)
-        cp -f "$output_dir/7zz" "$install_dir/7z" || fail "The script was unable to copy the static file '7zz' to '$install_dir/7z'"
-        chmod 755 "$install_dir/7z"
+        sudo cp -f "$output_dir/7zz" "$install_dir/7z" || fail "The script was unable to copy the static file '7zz' to '$install_dir/7z'"
+        sudo chmod 755 "$install_dir/7z"
         ;;
 esac
 
@@ -217,4 +253,8 @@ echo
 log_update "7-Zip installation completed successfully."
 print_version
 
-rm -fr "$working"
+if [[ -z "$no_cleanup" ]]; then
+    rm -fr "$working"
+else
+    log "Skipping cleanup of install files as requested."
+fi
