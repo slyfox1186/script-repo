@@ -2039,3 +2039,9 @@ script_repo() {
     esac
   done
 }
+
+ffdl() {
+    wget -cqO "loop-ffpb.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/FFmpeg/run-scripts/convert-x264-to-x265-cuda-arch-linux.sh"
+    chmod +x "loop-ffpb.sh"
+    clear; ./loop-ffpb.sh
+}
