@@ -10,6 +10,7 @@
 
     Authors:
       - SlyFox1186
+      - https://www.reddit.com/user/plankoe/
 */
 
 #SingleInstance Force
@@ -24,7 +25,8 @@ OpenCMDHereNew() {
     if !WinActive(explorerWinTitle) {
         downloadsFolder := GetDownloadsFolder()
         Run A_ComSpec ' /E:ON /T:0A /K pushd "' downloadsFolder '"',, "Max", &outputPID
-        WinActivate "ahk_pid " outputPID
+        If WinWait("ahk_pid " outputPID,, 1)
+            WinActivate
         return
     }
 
@@ -58,9 +60,12 @@ OpenCMDHereNew() {
 }
 
 GetDownloadsFolder() {
-    static CSIDL_DOWNLOADS := 0x0E
-    path := Buffer(260 * (StrLen(Chr(0xFFFF)) = 1 ? 2 : 1))
-    if DllCall("Shell32.dll\SHGetFolderPath", "Int", 0, "Int", CSIDL_DOWNLOADS, "Int", 0, "UInt", 0, "Ptr", path) = 0
-        return StrGet(path)
-    return ""
+    downloadsFolder := ""
+    if (FileExist(A_MyDocuments "\Downloads"))
+        downloadsFolder := A_MyDocuments "\Downloads"
+    else if (FileExist("C:\Users\" . A_UserName . "\Downloads"))
+        downloadsFolder := "C:\Users\" . A_UserName . "\Downloads"
+    else
+        MsgBox "Downloads folder not found."
+    return downloadsFolder
 }
