@@ -55,7 +55,7 @@ curl -LSso build-gcc.sh https://gcc.optimizethis.net
 sudo bash build-gcc.sh
 ```
 
-### Install Latest [Clang-18](https://github.com/llvm/llvm-project) Release
+### Install Latest [Clang](https://github.com/llvm/llvm-project) Release
 Automatically finds and installs the latest Clang release from source.
 ```bash
 curl -LSso build-clang.sh https://build-clang.optimizethis.net
