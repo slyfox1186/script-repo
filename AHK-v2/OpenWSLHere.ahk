@@ -16,7 +16,6 @@
     Big Update:
         Combined all major versions of Windows WSL OS's into a single function greatly reducing
         the size of the overall code, and adding the ability to choose the OS you wish to use.
-
 */
 
 !w Up::OpenWSLHere("Debian")
