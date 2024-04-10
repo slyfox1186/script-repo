@@ -1,22 +1,9 @@
 #!/usr/bin/env bash
 
-##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-aria2
+##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-aria2.sh
 ##  Purpose: Build aria2 from source code
 ##  Updated: 04.10.24
 ##  Script version: 2.1
-##  Features:
-##            - static build
-##            - openssl backend
-##            - increased the max connections from 16 to 128
-##  Added:
-##         - display a menu by passing -h or --help as arguments to the script
-##         - build a service by passing an argument to the script
-##         - builds everything in temporary directories in the /tmp folder and removes them when done
-##         - updated Aria2 to the latest version - 1.37.0
-##         - if OpenSSL is manually installed using the build-openssl script then use its certs directory instead of the default.
-##         - build jemalloc from the latest source code
-##         - runpath to LDFLAGS
-##  Fixed: Soft linking error
 
 script_ver="2.1"
 echo "GitHub Script for building aria2 from source. Version: $script_ver"
