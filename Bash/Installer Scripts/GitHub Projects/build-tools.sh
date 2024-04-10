@@ -4,6 +4,7 @@
 ##  GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-tools.sh
 ##  Purpose: Install the latest versions of: CMake, Ninja, Meson, & Golang
 ##  Updated: 04.04.24
+##  Script Version: 3.1
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -26,15 +27,15 @@ fail() {
     exit 1
 }
 
-if [[ "$EUID" -ne 0 ]]; then
-    fail "You must run this script as root or with sudo."
+if [[ "$EUID" -eq 0 ]]; then
+    fail "You must run this script without root or with sudo."
 fi
 
-script_ver=3.0
+script_ver=3.1
 cwd="$PWD/build-tools-script"
 web_repo="https://github.com/slyfox1186/script-repo"
-latest=false
-debug=OFF
+latest="false"
+debug="OFF"
 cpu_threads=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || nproc --all)
 
 echo -e "${GREEN}Build-tools script ${YELLOW}version $script_ver${NC}"
@@ -325,15 +326,7 @@ fi
 if [[ "$OS" == "Arch" ]]; then
     pacman -Sq --needed --noconfirm meson
 else
-    git_repo "mesonbuild/meson"
-    if build "meson" "$version"; then  
-        download "https://github.com/mesonbuild/meson/archive/refs/tags/$version.tar.gz" "meson-$version.tar.gz"
-        execute python3 setup.py build
-        execute python3 setup.py install --prefix="/usr/local/meson-$version"
-        execute pip install -e .
-        execute ln -sf "/usr/local/meson-$version/bin/meson" /usr/local/bin/
-        build_done "meson" "$version"
-    fi
+    sudo apt -y install meson
 fi
 
 [[ -d "/usr/local/go" ]] && rm -fr "/usr/local/go"
