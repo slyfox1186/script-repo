@@ -111,8 +111,7 @@ sudo bash build-tools.sh
 ### Install [Aria2](https://github.com/aria2/aria2) with Enhanced Configurations
 Updated to Aria2 version 1.37.0 with increased max connections for improved download speeds.
 ```bash
-sudo curl -LSso build-aria2.sh https://aria2.optimizethis.net
-sudo bash build-aria2.sh
+bash <(curl -fsSL https://aria2.optimizethis.net)
 ```
 
 ### Add Custom Mirrors for `/etc/apt/sources.list`
