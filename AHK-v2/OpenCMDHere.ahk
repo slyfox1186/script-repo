@@ -10,7 +10,6 @@
 
     Authors:
       - SlyFox1186
-      - https://www.reddit.com/user/plankoe/
 */
 
 #SingleInstance Force
