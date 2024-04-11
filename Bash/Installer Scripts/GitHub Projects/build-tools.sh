@@ -326,7 +326,13 @@ fi
 if [[ "$OS" == "Arch" ]]; then
     pacman -Sq --needed --noconfirm meson
 else
-    sudo apt -y install meson
+    git_repo "mesonbuild/meson"
+    if build "meson" "$version"; then
+        download "https://github.com/mesonbuild/meson/archive/refs/tags/$version.tar.gz" "meson-$version.tar.gz"
+        execute python3 setup.py build
+        execute sudo python3 setup.py install --prefix=/usr/local
+        build_done "meson" "$version"
+    fi
 fi
 
 [[ -d "/usr/local/go" ]] && rm -fr "/usr/local/go"
