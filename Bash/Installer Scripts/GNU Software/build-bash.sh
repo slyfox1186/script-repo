@@ -47,15 +47,18 @@ parse_args() {
     done
 }
 
+# Enhanced logging and error handling
 log() {
-    if [[ "$verbose" -eq 1 ]]; then
-        echo -e "${GREEN}[INFO]${NC} $1"
-    fi
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+warn() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
 fail() {
-    printf "${RED}[ERROR]${NC} $1"
-    echo "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
+    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
