@@ -2045,3 +2045,45 @@ ffdl() {
     chmod +x "loop-ffpb.sh"
     clear; ./loop-ffpb.sh
 }
+
+venv() {
+    local choice arg random_dir
+    random_dir=$(mktemp -d)
+    wget -cqO "$random_dir/pip-venv-installer.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/Python3/pip-venv-installer.sh"
+
+    case "$#" in
+        0)
+            printf "\n%s\%s\%s\%s\%s\%s\%s\%s\%s\%s\n\n" \
+                "[h]elp" \
+                "[l]ist" \
+                "[i]mport" \
+                "[c]reate" \
+                "[u]pdate" \
+                "[d]elete" \
+                "[a]dd" \
+                "[U]pgrade" \
+                "[r]emove" \
+                "[p]ath"
+            read -p "Choose a letter: " choice
+            case "$choice" in
+                h) arg="-h" ;;
+                l) arg="-l" ;;
+                i) arg="-i" ;;
+                c) arg="-c" ;;
+                u) arg="-u" ;;
+                d) arg="-d" ;;
+                a|U|r)
+                    read -p "Enter package names (space-separated): " pkgs
+                    arg="-$choice $pkgs"
+                    ;;
+                p) arg="-p" ;;
+                *) clear && venv ;;
+            esac
+            ;;
+        *)
+            arg="$@"
+            ;;
+    esac
+
+    bash "$random_dir/pip-venv-installer.sh" $arg
+}
