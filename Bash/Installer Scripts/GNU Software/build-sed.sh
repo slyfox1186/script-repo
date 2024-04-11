@@ -29,10 +29,6 @@ log() {
     echo -e "${GREEN}[INFO] $1${NC}"
 }
 
-warn() {
-    echo -e "${YELLOW}[WARNING] $1${NC}"
-}
-
 fail() {
     echo -e "${RED}[ERROR] $1${NC}"
     echo "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
@@ -76,30 +72,23 @@ exit_fn() {
 
 cleanup() {
     local choice
-
     echo
-    echo -e "${GREEN}============================================${NC}"
-    echo -e "  ${YELLOW}Do you want to clean up the build files?${NC}  "
-    echo -e "${GREEN}============================================${NC}"
-    echo
-    echo "[1] Yes"
-    echo "[2] No"
-    echo
-    read -p "Your choice (1 or 2): " choice
-
-    case "$choice" in
-        1) sudo rm -fr "$cwd";;
-        2) ;;
-        *) unset choice
-           cleanup
-           ;;
+    read -p "Remove temporary build directory '$cwd'? [y/N] " response
+    case "$response" in
+        [yY]*|"")
+        sudo rm -rf "$cwd"
+        log_msg "Build directory removed."
+        ;;
+        [nN]*) ;;
     esac
 }
 
 # Install required apt packages
-pkgs=(autoconf autoconf-archive autogen automake autopoint autotools-dev build-essential bzip2
-      ccache curl git libaudit-dev libintl-perl libticonv-dev libtool libtool-bin lzip pkg-config
-      valgrind zlib1g-dev librust-polling-dev)
+pkgs=(
+    autoconf autoconf-archive autogen automake autopoint autotools-dev build-essential bzip2
+    ccache curl git libaudit-dev libintl-perl libticonv-dev libtool libtool-bin lzip pkg-config
+    valgrind zlib1g-dev librust-polling-dev
+)
 
 missing_pkgs=""
 for pkg in "${pkgs[@]}"; do
