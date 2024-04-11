@@ -65,24 +65,25 @@ if ! sudo make install; then
      exit 1
 fi
 
-# Cleanup build files
-echo
-read -p "Do you want to clean up the build files? [y/N]: " choice
-case "$choice" in
-    [yY]*|[yY][eE][sS]*|"")
-        echo "Cleaning up..."
-        sudo rm -fr "$cwd"
+# Cleanup resources  
+cleanup() {
+    local choice
+    echo
+    read -p "Remove temporary build directory '$cwd'? [y/N] " response
+    case "$response" in
+        [yY]*|"")
+        sudo rm -rf "$cwd"
+        log_msg "Build directory removed."
         ;;
-    [nN]*|[nN][oO]*)
-        ;;
-    *)
-        echo "Bad user choice. Files not deleted."
-        ;;
-fi
+        [nN]*) ;;
+    esac
+}
 
 # Completion message
 echo
 echo "libtool has been successfully built and installed."
+echo
+cleanup
 echo
 echo "Thank you for using this script. For more tools and scripts, visit our GitHub repository:"
 echo "https://github.com/slyfox1186/script-repo"
