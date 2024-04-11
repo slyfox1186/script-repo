@@ -1,45 +1,66 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2066,SC2068,SC2086,SC2162
 
-# Set the path variable
-[[ -d "$HOME/.local/bin" ]] && export PATH="$PATH:$HOME/.local/bin"
+# Log functions
+log() {
+    echo "[INFO] $1"
+}
 
-# Create an output file that contains all of the video paths and use it to loop the contents
-temp_file=$(mktemp)
-cat > "$temp_file" <<'EOF'
-/path/to/video.mp4
+fail() {
+    echo "[ERROR] $1"
+    exit 1
+}
+
+# Check for required dependencies before proceeding
+check_dependencies() {
+    local missing_dependencies=()
+    for dependency in ffpb bc sed; do
+        if ! command -v "$dependency" &>/dev/null; then
+            missing_dependencies+=("$dependency")
+        fi
+    done
+    if [ ${#missing_dependencies[@]} -ne 0 ]; then
+        echo "Missing dependencies: ${missing_dependencies[*]}. Please install them."
+        exit 1
+    fi
+}
+
+# Main video conversion function
+convert_videos() {
+    local temp_file=$(mktemp)
+
+    # Create an output file that contains all of the video paths
+    cat > "$temp_file" <<EOF
 /path/to/video.mkv
+/path/to/video.mp4
 EOF
 
-while read -u 9 video; do
-    # Stores the current video width, aspect ratio, profile, bit rate, and total duration in variables for use later in the ffmpeg command line
-    aspect_ratio=$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 -pretty "$video" 2>/dev/null)
-    length=$(ffprobe -hide_banner -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$video" 2>/dev/null)
-    maxrate=$(ffprobe -hide_banner -show_entries format=bit_rate -of default=nk=1:nw=1 -pretty "$video" 2>/dev/null)
-    height=$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 -pretty "$video" 2>/dev/null)
-    width=$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 -pretty "$video" 2>/dev/null)
+    while read -u 9 video; do
+        local aspect_ratio=$(ffprobe -v error -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 "$video")
+        local length=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$video")
+        local maxrate=$(ffprobe -v error -show_entries format=bit_rate -of default=nk=1:nw=1 "$video")
+        local height=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 "$video")
+        local width=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 "$video")
 
-    # Modify vars to get file input and output names
-    file_in="$video"
-    fext="${video#*.}"
-    file_out="${video%.*} (x265).$fext"
+        local file_out="${video%.*} (x265).${video##*.}"
 
-    # Gets the input videos max datarate and applies logic to determine bitrate, bufsize, and maxrate variables
-    trim=$(bc <<< "scale=2 ; ${maxrate::-11} * 1000")
-    btr=$(bc <<< "scale=2 ; $trim / 2")
-    bitrate="${btr::-3}"
-    maxrate=$((bitrate * 3))
-    bfs=$(bc <<< "scale=2 ; $btr * 2")
-    bufsize="${bfs::-3}"
-    length=$((${length::-7} / 60))
+        # Using bc for floating-point arithmetic
+        local trim=$(echo "scale=2; $maxrate / 1000" | bc)
+        local bitrate=$(echo "scale=2; $trim / 2" | bc)
+        # Converting bitrate to integer for compatibility with ffmpeg options
+        bitrate=$(printf "%.0f" "$bitrate")
+        maxrate=$((bitrate * 3))
+        local bufsize=$((bitrate * 2))
+        length=$(printf "%.0f" "$length")
+        length=$((length / 60))
 
-    # Print the video stats in the terminal
-    cat <<EOF
+        # Print video stats in the terminal
+        cat <<EOF
+
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-Working Dir:     $PWD
+Working Dir:     $(pwd)
 
-Input File:      $file_in
+Input File:      $video
 Output File:     $file_out
 
 Aspect Ratio:    $aspect_ratio
@@ -52,41 +73,27 @@ Bitrate:         ${bitrate}k
 Length:          $length mins
 
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
 EOF
 
-    echo
-    if ffpb -y \
-            -vsync 0 \
-            -hide_banner \
-            -hwaccel_output_format cuda \
-            -i "$file_in" \
-            -c:v hevc_nvenc \
-            -preset medium \
-            -profile main10 \
-            -pix_fmt p010le \
-            -rc:v vbr \
-            -tune hq \
-            -b:v "${bitrate}k" \
-            -bufsize "${bitrate}k" \
-            -maxrate "${maxrate}k" \
-            -bf:v 3 \
-            -g 250 \
-            -b_ref_mode middle \
-            -qmin 0 \
-            -temporal-aq 1 \
-            -rc-lookahead 20 \
-            -i_qfactor 0.75 \
-            -b_qfactor 1.1 \
-            -c:a copy \
-            "$file_out"; then
-        google_speech "Video conversion completed." 2>/dev/null
-        [[ -f "$file_out" ]] && sudo rm "$file_in"
+        log "Converting $video"
+        
+        if ffpb -y -vsync 0 -hide_banner -hwaccel_output_format cuda \
+                -i "$video" -c:v hevc_nvenc -preset medium -profile main10 \
+                -pix_fmt p010le -rc:v vbr -tune hq -b:v "${bitrate}k" \
+                -bufsize "${bufsize}k" -maxrate "${maxrate}k" -bf:v 3 -g 250 \
+                -b_ref_mode middle -qmin 0 -temporal-aq 1 -rc-lookahead 20 \
+                -i_qfactor 0.75 -b_qfactor 1.1 -c:a copy "$file_out"; then
+            log "Video conversion completed: $file_out"
+            rm "$video"
+            sed -i "\|^$video\$|d" "$temp_file"
+        else
+            fail "Video conversion failed for: $video"
+        fi
+    done 9< "$temp_file"
+    rm "$temp_file"
+}
 
-        # Remove the successfully encoded video's file path from the temporary file
-        sed -i "\|^$video\$|d" "$temp_file"
-    else
-        google_speech "Video conversion failed." 2>/dev/null
-        exit 1
-    fi
-    clear
-done 9< "$temp_file"
+# Check dependencies and start the video conversion process
+check_dependencies
+convert_videos
