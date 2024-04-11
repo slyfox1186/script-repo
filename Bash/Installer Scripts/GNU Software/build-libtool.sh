@@ -67,10 +67,17 @@ fi
 
 # Cleanup build files
 echo
-read -p "Do you want to clean up the build files? [Y/n]: " choice
-if [[ "$choice" =~ ^(yes|y| ) ]] || [[ -z "$choice" ]]; then
-    echo "Cleaning up..."
-    sudo rm -fr "$cwd"
+read -p "Do you want to clean up the build files? [y/N]: " choice
+case "$choice" in
+    [yY]*|[yY][eE][sS]*|"")
+        echo "Cleaning up..."
+        sudo rm -fr "$cwd"
+        ;;
+    [nN]*|[nN][oO]*)
+        ;;
+    *)
+        echo "Bad user choice. Files not deleted."
+        ;;
 fi
 
 # Completion message
