@@ -20,20 +20,19 @@ archive_ext="${archive_url##*.}"
 archive_name="$archive_dir.tar.$archive_ext"
 cwd="$PWD/m4-build-script"
 install_dir="/usr/local/m4-latest"
-web_repo="https://github.com/slyfox1186/script-repo"
 
 # Functions
 log() {
-    echo -e "${GREEN}[INFO] $1${NC}"
+    echo -e "${GREEN}[INFO]${NC} $1"
 }
 
 warn() {
-    echo -e "${YELLOW}[WARNING] $1${NC}"
+    echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
 fail() {
-    echo -e "${RED}[ERROR] $1${NC}"
-    echo -e "${RED}To report a bug, create an issue at: $web_repo/issues${NC}"
+    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "${RED}To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues${NC}"
     exit 1
 }
 
@@ -42,16 +41,17 @@ cleanup() {
     echo -e "${BLUE}============================================${NC}"
     echo -e "${BLUE}  Do you want to clean up the build files?  ${NC}"
     echo -e "${BLUE}============================================${NC}"
+    echo
     echo -e "[1] Yes"
     echo -e "[2] No"
+    echo
     read -p "Your choice (1 or 2): " choice
 
     case "$choice" in
-        1) sudo rm -fr "$cwd";;
-        2) log "Skipping cleanup.";;
-        *)
-            warn "Invalid choice. Skipping cleanup."
-            ;;
+        1) sudo rm -fr "$cwd" ;;
+        2) log "Skipping cleanup." ;;
+        *) warn "Invalid choice. Skipping cleanup."
+           ;;
     esac
 }
 
@@ -64,7 +64,7 @@ install_dependencies() {
     local missing_pkgs=()
 
     for pkg in "${pkgs[@]}"; do
-        if ! dpkg -s "$pkg" >/dev/null 2>&1; then
+        if ! dpkg -s "$pkg"; then
             missing_pkgs+=("$pkg")
         fi
     done
@@ -82,7 +82,6 @@ show_usage() {
     echo
     echo "Options:"
     echo "  -h, --help       Show this help message and exit"
-    echo "  -c, --cleanup    Clean up build files after installation"
     echo "  -v, --verbose    Enable verbose output"
     echo "  -s, --silent     Run silently (no output)"
 }
@@ -98,9 +97,6 @@ while [[ $# -gt 0 ]]; do
         -h|--help)
             show_usage
             exit 0
-            ;;
-        -c|--cleanup)
-            cleanup_files=true
             ;;
         -v|--verbose)
             verbose=true
@@ -188,7 +184,7 @@ else
                  --disable-gcc-warnings \
                  --enable-c++ \
                  --enable-threads=posix \
-                 --with-dmalloc >/dev/null 2>&1
+                 --with-dmalloc
     make "-j$(nproc --all)" || fail "Failed to build m4"
     sudo make install || fail "Failed to install m4"
 fi
@@ -204,11 +200,9 @@ for file in "$install_dir"/bin/*; do
 done
 
 # Cleanup if requested
-if [ "$cleanup_files" = true ]; then
-    cleanup
-fi
+cleanup
 
 if [ "$silent" != true ]; then
     log "m4 build script completed successfully!"
-    log "Make sure to star this repository to show your support: $web_repo"
+    log "Make sure to star this repository to show your support: https://github.com/slyfox1186/script-repo"
 fi
