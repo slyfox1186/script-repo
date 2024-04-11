@@ -63,11 +63,11 @@ install_deps() {
     log "Checking and installing missing packages..."
     local apt_pkgs arch_pkgs
     apt_pkgs=(
-            autoconf autoconf-archive binutils build-essential
+            autoconf autoconf-archive binutils build-essential ccache
             curl gettext libpth-dev libticonv-dev libtool lzip m4 tar
         )
     arch_pkgs=(
-            autoconf autoconf-archive binutils base-devel
+            autoconf autoconf-archive binutils base-devel ccache
             curl gettext npth libiconv libtool lzip m4 tar
         )
     if command -v apt &>/dev/null; then
