@@ -5,8 +5,6 @@
 ##  Updated: 08.03.23
 ##  Script version: 2.0
 
-set -eo pipefail
-
 # Set color variables
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -20,15 +18,15 @@ gnu_ftp="https://ftp.gnu.org/gnu/tar/"
 
 # Create logging functions
 log() {
-    echo -e "${GREEN}[INFO] $1${NC}"
+    echo -e "${GREEN}[INFO]${NC} $1"
 }
 
 warn() {
-    echo -e "${YELLOW}[WARNING] $1${NC}"
+    echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
 fail() {
-    echo -e "${RED}[ERROR] $1${NC}"
+    echo -e "${RED}[ERROR]${NC} $1"
     echo "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
@@ -50,10 +48,10 @@ display_info() {
 
 # Set compiler and optimization flags
 set_compiler_flags() {
-    CC="gcc"
-    CXX="g++"
-    CFLAGS="-g -O3 -pipe -fno-plt -march=native"
-    CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
+    CC="ccache gcc"
+    CXX="ccache g++"
+    CFLAGS="-O2 -pipe -fno-plt -march=native -mtune=native"
+    CXXFLAGS="$CFLAGS"
     LDFLAGS="-Wl,-rpath,/usr/local/$archive_dir/lib"
     export CC CXX CFLAGS CXXFLAGS LDFLAGS
 }
