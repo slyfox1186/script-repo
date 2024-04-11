@@ -2129,43 +2129,4 @@ venv() {
     bash "$random_dir/pip-venv-installer.sh" $arg
 }
 
-function pss() {
-    if [ $# -eq 0 ]; then
-        echo -e "\e[31mPlease provide a package name as an argument.\e[0m"
-        return 1
-    fi
 
-    package_name="$1"
-
-    output=$(sudo pacman -Ss "$package_name")
-
-    while IFS= read -r line; do
-        if [[ $line == core/* ]]; then
-            repo=$(echo "$line" | cut -d'/' -f1)
-            pkg_name=$(echo "$line" | cut -d'/' -f2 | cut -d' ' -f1)
-            version=$(echo "$line" | cut -d' ' -f2)
-            rest=$(echo "$line" | cut -d' ' -f3-)
-
-            colored_repo="\e[32m$repo/\e[0m"
-            colored_pkg_name="\e[36m$pkg_name\e[0m"
-            colored_version=$(echo "$version" | sed -E "s/([0-9]+)\.([0-9]+)\.([0-9]+)-([0-9]*)/\\e[31m\1\\e[0m\\.\\e[31m\2\\e[0m\\.\\e[31m\3\\e[0m-\\e[31m\4\\e[0m/")
-            colored_rest="$rest"
-
-            echo -e "$colored_repo$colored_pkg_name $colored_version $colored_rest"
-        elif [[ $line == extra/* ]]; then
-            repo=$(echo "$line" | cut -d'/' -f1)
-            pkg_name=$(echo "$line" | cut -d'/' -f2 | cut -d' ' -f1)
-            version=$(echo "$line" | cut -d' ' -f2)
-            rest=$(echo "$line" | cut -d' ' -f3-)
-
-            colored_repo="\e[35m$repo/\e[0m"
-            colored_pkg_name="\e[33m$pkg_name\e[0m"
-            colored_version=$(echo "$version" | sed -E "s/([0-9]+|)\.([0-9]+)\.([0-9]+)-([0-9]*)/\\e[31m\1\\e[0m\\.\\e[31m\2\\e[0m\\.\\e[31m\3\\e[0m-\\e[31m\4\\e[0m/")
-            colored_rest=$(echo "$rest" | sed -E "s/\((.*?)\)/\\e[36m(\\e[33m\1\\e[36m)/")
-
-            echo -e "$colored_repo$colored_pkg_name $colored_version $colored_rest"
-        else
-            echo "$line"
-        fi
-    done <<< "$output"
-}
