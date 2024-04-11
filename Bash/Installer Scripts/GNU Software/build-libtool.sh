@@ -5,7 +5,7 @@
 # Updated: 03.02.24
 # Script version: 1.3
 # Github repository: https://github.com/slyfox1186/script-repo
-
+set -x
 # Ensure the script is run as root
 if [ "$EUID" -eq 0 ]; then
     echo "This script must be run without root or with sudo."
@@ -43,18 +43,18 @@ sudo apt install autoconf autoconf-archive autogen automake build-essential ccac
 
 # Download libtool archive
 echo "Downloading libtool archive..."
-if [ ! -f "$cwd/$archive_dir.tar.xz" ]; then
-    curl -Lso "$cwd/$archive_dir.tar.xz" "$archive_url" || echo "Failed to download libtool archive."; exit 1
+if [[ ! -f "$cwd/$archive_dir.tar.xz" ]]; then
+    curl -Lso "$cwd/$archive_dir.tar.xz" "$archive_url"
 fi
 
 # Extract the archive
 echo "Extracting archive..."
 mkdir -p "$cwd/$archive_dir/build"
-tar -xf "$cwd/$archive_dir.tar.xz" -C "$cwd/$archive_dir" --strip-components=1 || echo "Failed to extract libtool archive."; exit 1
+tar -xf "$cwd/$archive_dir.tar.xz" -C "$cwd/$archive_dir" --strip-components=1
 
 # Build libtool from source
 echo "Building libtool from source..."
-cd "$cwd/$archive_dir/build" || exit 1
+cd "$cwd/$archive_dir/build"
 ../configure --prefix="/usr/local" --enable-ltdl-install
 if ! make "-j$(nproc --all)"; then
      echo "Failed to build and install libtool. Line: $LINENO"
