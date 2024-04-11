@@ -5,8 +5,6 @@
 ##  Updated: 04.11.24
 ##  Script version: 2.1
 
-set -eo pipefail
-
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'

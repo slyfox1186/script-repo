@@ -5,8 +5,6 @@
 # Script version: 2.6
 # Optimizations: Efficiency, readability, functionality, error handling, best practices
 
-set -euo pipefail
-
 # ANSI color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
