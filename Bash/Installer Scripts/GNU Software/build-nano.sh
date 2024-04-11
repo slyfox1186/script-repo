@@ -38,13 +38,16 @@ fail() {
 }
 
 cleanup() {
-    if sudo rm -fr "$cwd"; then
-        echo
-        log "The build files were removed successfully."
-    else
-        echo
-        log "The build files failed to remove."
-    fi
+    local choice
+    echo
+    read -p "Remove temporary build directory '$cwd'? [y/N] " response
+    case "$response" in
+        [yY]*|"")
+        sudo rm -rf "$cwd"
+        log_msg "Build directory removed."
+        ;;
+        [nN]*) ;;
+    esac
 }
 
 install_dependencies() {
