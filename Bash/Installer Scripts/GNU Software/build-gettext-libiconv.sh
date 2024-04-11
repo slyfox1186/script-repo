@@ -5,12 +5,11 @@
 # Updated: 08.31.23
 # Script version: 2.0
 
-set -e
+set -eo pipefail
 
 # Define color codes
 GREEN='\033[0;32m'
 RED='\033[0;31m'
-YELLOW='\033[1;33m'
 NC='\033[0m'
 
 script_ver="2.0"
@@ -29,17 +28,27 @@ export CC CXX CFLAGS CXXFLAGS
 
 # Enhanced logging and error handling
 log() {
-    echo -e "${GREEN}[$(date +'%Y-%m-%dT%H:%M:%S%z')]${NC} $*"
+    echo -e "${GREEN}[INFO]${NC} $1"
 }
 
-warn() {
-    echo -e "${YELLOW}[$(date +'%Y-%m-%dT%H:%M:%S%z')] Warning:${NC} $*"
-}
-
-error() {
-    echo -e "${RED}[$(date +'%Y-%m-%dT%H:%M:%S%z')] Error:${NC} $*" >&2
+fail() {
+    echo -e "${RED}[ERROR]${NC} $1"
     echo -e "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
+}
+
+# Cleanup resources  
+cleanup() {
+    log "Removing leftover files"
+    echo
+    read -p "Remove temporary build directory '$build_dir'? [y/N] " response
+    case "$response" in
+        [yY]*|"")
+        sudo rm -rf "$cwd"
+        log "Build directory removed."
+        ;;
+        [nN]*) ;;
+    esac
 }
 
 # Helper function to download and extract archives
@@ -113,9 +122,8 @@ build_and_install "$archive_dir1"
 download_and_extract "$archive_dir2" "$archive_url2"
 build_and_install "$archive_dir2"
 
-echo
-log "Removing leftover files"
-sudo rm -fr "$cwd"
+# Cleaup files
+cleanup
 
 echo
 log "Build and installation completed successfully!"
