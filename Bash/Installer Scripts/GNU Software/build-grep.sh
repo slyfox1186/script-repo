@@ -159,13 +159,13 @@ install_build() {
     sudo make install
 }
 
-# Cleanup resources  
 cleanup() {
+    local choice
     echo
-    read -p "Remove temporary build directory '$build_dir'? [y/N] " response
+    read -p "Remove temporary build directory '$cwd'? [y/N] " response
     case "$response" in
         [yY]*|"")
-        sudo rm -rf "$build_dir"
+        sudo rm -rf "$cwd"
         log_msg "Build directory removed."
         ;;
         [nN]*) ;;
