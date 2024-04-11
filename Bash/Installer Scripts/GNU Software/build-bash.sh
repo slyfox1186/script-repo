@@ -164,14 +164,17 @@ create_symlinks() {
     done
 }
 
+# Cleanup resources  
 cleanup() {
-    local response
-    log "Cleaning up..."
     echo
     read -p "Remove temporary build directory '$build_dir'? [y/N] " response
-    if [[ "$response" =~ ^[Yy]$ ]]; then
+    case "$response" in
+        [yY]*|"")
         sudo rm -rf "$build_dir"
-    fi
+        log_msg "Build directory removed."
+        ;;
+        [nN]*) ;;
+    esac
 }
 
 main() {
