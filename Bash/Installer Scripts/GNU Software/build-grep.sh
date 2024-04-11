@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-grep
+##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/grep/Installer%20Scripts/GNU%20Software/build-grep.sh
 ##  Purpose: build gnu grep
-##  Updated: 08.13.23
-##  Script version: 2.0
+##  Updated: 04.11.24
+##  Script version: 2.1
 
 # Colors
 RED='\033[0;31m'
@@ -11,161 +11,190 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-# Variables
-script_ver="2.0"
-archive_dir="grep-3.11"
-archive_url="https://ftp.gnu.org/gnu/grep/grep-3.11.tar.xz"
-archive_ext="${archive_url##*.}"
-archive_name="$archive_dir.tar.$archive_ext"
-cwd="$PWD/grep-build-script"
-install_dir="/usr/local/$archive_dir"
-web_repo="https://github.com/slyfox1186/script-repo"
+trap 'fail "Error occurred on line: $LINENO".' ERR
 
-# Functions
-log() {
-    echo -e "${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')] $1${NC}"
+version="3.11"
+program_name="grep"
+install_dir="/usr/local"
+build_dir="/tmp/$program_name-$version-build"
+workspace="$build_dir/workspace"
+gnu_ftp="https://ftp.gnu.org/gnu/grep/"
+verbose=0
+
+GREEN='\033[32m'
+RED='\033[31m'
+RESET='\033[0m'
+
+usage() {
+    echo "Usage: ./build-grep.sh [OPTIONS]"
+    echo "Options:"
+    printf "  %-25s %s\n" "-p, --prefix DIR" "Set the installation prefix (default: $install_dir)"
+    printf "  %-25s %s\n" "-v, --verbose" "Enable verbose logging"
+    printf "  %-25s %s\n" "-h, --help" "Show this help message"
+    exit 0
 }
 
-warn() {
-    echo -e "${YELLOW}[$(date +'%Y-%m-%d %H:%M:%S')] WARNING: $1${NC}"
-}
-
-fail() {
-    echo -e "${RED}[$(date +'%Y-%m-%d %H:%M:%S')] ERROR: $1${NC}"
-    echo -e "${RED}To report a bug create an issue at: $web_repo/issues${NC}"
-    exit 1
-}
-
-cleanup() {
-    local answer
-    echo -e "\n${YELLOW}============================================${NC}"
-    echo -e "${YELLOW}  Do you want to clean up the build files?  ${NC}"
-    echo -e "${YELLOW}============================================${NC}"
-    echo -e "[1] Yes"
-    echo -e "[2] No"
-    read -p "Your choice (1 or 2): " answer
-
-    case "$answer" in
-        1) rm -fr "$cwd";;
-        2) log "Skipping cleanup.";;
-        *)
-            warn "Invalid choice. Skipping cleanup."
-            ;;
-    esac
-}
-
-install_dependencies() {
-    log "Installing dependencies..."
-    local pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl git libgmp-dev libintl-perl libmpfr-dev libreadline-dev libsigsegv-dev libticonv-dev libtool libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev yasm)
-    local missing_pkgs=()
-
-    for pkg in "${pkgs[@]}"; do
-        if ! dpkg -s "$pkg" >/dev/null 2>&1; then
-            missing_pkgs+=("$pkg")
-        fi
+parse_args() {
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+            -p|--prefix)
+                install_dir="$2"
+                shift 2
+                ;;
+            -v|--verbose)
+                verbose=1
+                shift
+                ;;
+            -h|--help)
+                usage
+                ;;
+            *)  fail "Unknown option: $1. Use -h or --help for usage information." ;;
+        esac
     done
+}
 
-    if [ ${#missing_pkgs[@]} -gt 0 ]; then
-        apt-get update
-        apt-get install -y ${missing_pkgs[@]}
-        apt-get -y autoremove
+log() {
+    if [[ "$verbose" -eq 1 ]]; then
+        echo -e "${GREEN}[INFO]${NC} $1"
     fi
 }
 
-# Check if running as root
-if [ "$EUID" -ne 0 ]; then
-    fail "You must run this script with root/sudo."
-fi
+fail() {
+    printf "${RED}[ERROR]${NC} $1"
+    echo "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
+    exit 1
+}
 
-# Print banner
-log "grep build script - v$script_ver"
-echo -e "${GREEN}===============================================${NC}"
+install_deps() {
+    log "Checking and installing missing packages..."
+    local apt_pkgs arch_pkgs
+    apt_pkgs=(
+            autoconf autoconf-archive binutils build-essential ccache cmake curl
+            libgmp-dev libintl-perl libmpfr-dev libreadline-dev libsigsegv-dev
+            gettext libticonv-dev libtool m4 texinfo
+        )
+    arch_pkgs=(
+            autoconf autoconf-archive binutils base-devel ccache curl gmp
+            perl mpfr readline libsigsegv gettext libiconv libtool m4 tar
+        )
+    if command -v apt &>/dev/null; then
+        sudo apt update
+        sudo apt -y install "${apt_pkgs[@]}"
+    elif command -v dnf &>/dev/null; then
+        sudo dnf install -y "${apt_pkgs[@]}"
+    elif command -v zypper &>/dev/null; then
+        sudo zypper install -y "${apt_pkgs[@]}"
+    elif command -v pacman &>/dev/null; then
+        sudo pacman -Syu
+        sudo pacman -Sy --needed --noconfirm "${arch_pkgs[@]}"
+    else
+        fail "Unsupported package manager. Please install the required dependencies manually."
+    fi
+}
 
-# Install dependencies
-install_dependencies
+find_latest_release() {
+    log "Finding the latest release..."
+    local tarball=$(curl -fsS "$gnu_ftp" | grep -oP 'grep-[0-9\.]*\.tar\.gz' | sort -rV | head -n1)
+    if [[ -z "$tarball" ]]; then
+        fail "Failed to find the latest release."
+    fi
+    archive_url="${gnu_ftp}${tarball}"
+    archive_name="${tarball}"
+    version=$(echo "$tarball" | grep -oP '[0-9.]{3,4}')
+}
 
-# Create working directory
-log "Creating working directory..."
-mkdir -p "$cwd"
+download_archive() {
+    log "Downloading archive..."
+    if [[ ! -f "$build_dir/$archive_name" ]]; then
+        curl -LSso "$build_dir/$archive_name" "$archive_url"
+    fi
+}
 
-# Set compiler and flags
-CC="gcc"
-CXX="g++"
-CFLAGS="-O3 -pipe -fno-plt -march=native"
-CXXFLAGS="-O3 -pipe -fno-plt -march=native"
-export CC CFLAGS CXX CXXFLAGS
+extract_archive() {
+    echo
+    log "Extracting archive..."
+    tar -zxf "$build_dir/$archive_name" -C "$workspace" --strip-components 1
+}
 
-# Set PATH and PKG_CONFIG_PATH
-PATH="\
-/usr/lib/ccache:\
-$HOME/perl5/bin:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:/sbin:\
-/bin\
-"
-export PATH
+set_env_vars() {
+    echo
+    log "Setting environment variables..."
+    CC="ccache gcc"
+    CXX="ccache g++"
+    CFLAGS="-O2 -pipe -fno-plt -march=native -mtune=native -D_FORTIFY_SOURCE=2"
+    CXXFLAGS="$CFLAGS"
+    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir/$program_name-$version/lib"
+    PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/lib64/pkgconfig:/lib/pkgconfig"
+    export CC CFLAGS CXX CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
+}
 
-PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/share/pkgconfig\
-"
-export PKG_CONFIG_PATH
+configure_build() {
+    echo
+    log "Configuring build..."
+    cd "$workspace" || exit 1
+    autoreconf -fi
+    cd build || exit 1
+    echo
+    log "Configuring..."
+    echo
+    ../configure --prefix="$install_dir" \
+                 --disable-nls \
+                 --enable-gcc-warnings=no \
+                 --enable-threads=posix \
+                 --with-libsigsegv \
+                 --with-libsigsegv-prefix=/usr \
+                 --with-libiconv-prefix=/usr \
+                 --with-libintl-prefix=/usr
+}
 
+compile_build() {
+    echo
+    log "Compiling..."
+    make "-j$(nproc --all)"
+}
 
-# Download archive
-if [ ! -f "$cwd/$archive_name" ]; then
-    log "Downloading $archive_url..."
-    curl -Lso "$cwd/$archive_name" "$archive_url"
-else
-    log "Archive already exists: $cwd/$archive_name"
-fi
+install_build() {
+    echo
+    log "Installing..."
+    sudo make install
+}
 
-# Extract archive
-log "Extracting archive..."
-mkdir -p "$cwd/$archive_dir/build"
-tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1 || fail "Failed to extract: $cwd/$archive_name"
+cleanup() {
+    local response
+    log "Cleaning up..."
+    echo
+    read -p "Remove temporary build directory '$build_dir'? [y/N] " response
+    if [[ "$response" =~ ^[Yy]$ ]]; then
+        sudo rm -rf "$build_dir"
+    fi
+}
 
-# Build and install
-log "Building and installing grep..."
-cd "$cwd/$archive_dir" || fail "Failed to change directory to $cwd/$archive_dir"
-autoreconf -fi
-cd build || fail "Failed to change directory to build"
+main() {
+    parse_args "$@"
 
-../configure --prefix="$install_dir" \
-             --disable-nls \
-             --enable-gcc-warnings=no \
-             --enable-threads=posix \
-             --with-libsigsegv \
-             --with-libsigsegv-prefix=/usr \
-             --with-libiconv-prefix=/usr \
-             --with-libintl-prefix=/usr \
-             PKG_CONFIG="$(command -v pkg-config)" \
-             PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
+    if [[ "$EUID" -eq 0 ]]; then
+        fail "This script must be without run root or with sudo."
+    fi
 
-make "-j$(nproc --all)" || fail "Failed to build grep"
-make install || fail "Failed to install grep"
+    [[ -d "$workspace" ]] && sudo rm -rf "$workspace"
+    mkdir -p "$workspace/build"
 
-# Create symlinks
-log "Creating symlinks..."
-for file in "$install_dir"/bin/*; do
-    filename=$(basename "$file")
-    linkname=${filename#*-}
-    ln -sf "$file" "/usr/local/bin/$linkname" || warn "Failed to create symlink for $filename"
-done
+    install_deps
+    find_latest_release
+    download_archive
+    extract_archive
+    set_env_vars
+    configure_build
+    compile_build
+    install_build
+    cleanup
 
-# Cleanup
-cleanup
+    echo
+    log "Build completed successfully."
+    echo
+    log "Make sure to star this repository to show your support!"
+    log "https://github.com/slyfox1186/script-repo"
+}
 
-log "grep build script completed successfully!"
-log "Make sure to star this repository to show your support!"
-log "$web_repo"
+main "$@"
