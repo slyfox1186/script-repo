@@ -306,7 +306,7 @@ if build "cmake" "$version"; then
     execute ./bootstrap --prefix="/usr/local/cmake-$version" --enable-ccache --parallel="$cpu_threads" --qt-gui
     execute make "-j$cpu_threads"
     execute sudo make install
-    execute ln -sf "/usr/local/cmake-$version/bin/cmake" "/usr/local/bin/cmake"
+    execute sudo ln -sf "/usr/local/cmake-$version/bin/cmake" "/usr/local/bin/cmake"
     build_done "cmake" "$version"
 fi
 
@@ -319,7 +319,7 @@ if build "ninja" "$version"; then
                   -Wno-dev
     execute make "-j$cpu_threads" -C build
     execute sudo make -C build install
-    execute ln -sf "/usr/local/ninja-$version/bin/ninja" "/usr/local/bin/ninja"
+    execute sudo ln -sf "/usr/local/ninja-$version/bin/ninja" "/usr/local/bin/ninja"
     build_done "ninja" "$version"  
 fi
 
