@@ -38,20 +38,14 @@ fail() {
 
 cleanup() {
     local choice
-    echo -e "${BLUE}============================================${NC}"
-    echo -e "${BLUE}  Do you want to clean up the build files?  ${NC}"
-    echo -e "${BLUE}============================================${NC}"
     echo
-    echo -e "[1] Yes"
-    echo -e "[2] No"
-    echo
-    read -p "Your choice (1 or 2): " choice
-
-    case "$choice" in
-        1) sudo rm -fr "$cwd" ;;
-        2) log "Skipping cleanup." ;;
-        *) warn "Invalid choice. Skipping cleanup."
-           ;;
+    read -p "Remove temporary build directory '$cwd'? [y/N] " response
+    case "$response" in
+        [yY]*|"")
+        sudo rm -rf "$cwd"
+        log_msg "Build directory removed."
+        ;;
+        [nN]*) ;;
     esac
 }
 
