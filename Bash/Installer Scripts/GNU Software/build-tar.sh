@@ -118,8 +118,16 @@ create_soft_links() {
 
 # Cleanup
 cleanup() {
-    warn "Cleaning up..."
-    sudo rm -rf "$cwd"
+    local choice
+    echo
+    read -p "Remove temporary build directory '$cwd'? [y/N] " response
+    case "$response" in
+        [yY]*|"")
+        sudo rm -rf "$cwd"
+        log_msg "Build directory removed."
+        ;;
+        [nN]*) ;;
+    esac
 }
 
 # Main script

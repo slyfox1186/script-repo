@@ -10,40 +10,61 @@
 
     Authors:
       - SlyFox1186
-      - https://www.reddit.com/user/plankoe/
 */
 
-!c up::OpenCMDHereNew()
+#SingleInstance Force
+SetWorkingDir A_ScriptDir
 
-OpenCMDHereNew()
-{
-    win1 := 'ahk_class CabinetWClass ahk_exe explorer.exe'
-    win2 := 'ahk_class ConsoleWindowClass ahk_exe cmd.exe'
-    if !WinActive(win1)
-    {
-        Run(A_ComSpec ' /E:ON /T:0A /K pushd C:\Users\' . A_UserName . "\Downloads",, "Max", &OutputVarPID)
-        if WinWait('ahk_pid ' OutputVarPID)
-            WinActivate('ahk_pid ' OutputVarPID)
+!c::OpenCMDHereNew()
+
+OpenCMDHereNew() {
+    explorerWinTitle := "ahk_class CabinetWClass ahk_exe explorer.exe"
+    cmdWinTitle := "ahk_class ConsoleWindowClass ahk_exe cmd.exe"
+
+    if !WinActive(explorerWinTitle) {
+        downloadsFolder := GetDownloadsFolder()
+        Run A_ComSpec ' /E:ON /T:0A /K pushd "' downloadsFolder '"',, "Max", &outputPID
+        If WinWait("ahk_pid " outputPID,, 1)
+            WinActivate
         return
     }
-    hwnd := WinExist('A')
-    winObj := ComObject('Shell.Application').Windows
-    try activeTab := ControlGetHwnd('ShellTabWindowClass1', hwnd)
-    for win in winObj
-    {
-        if win.hwnd != hwnd
-            continue
-        if IsSet(activeTab)
-        {
-            shellBrowser := ComObjQuery(win, '{000214E2-0000-0000-C000-000000000046}', '{000214E2-0000-0000-C000-000000000046}')
-            ComCall(3, shellBrowser, 'uint*', &thisTab:=0)
-            if thisTab != activeTab
-                continue
+
+    winObj := ComObject("Shell.Application").Windows
+    activeHwnd := WinExist("A")
+    activeTab := ControlGetHwnd("ShellTabWindowClass1", activeHwnd)
+
+    for win in winObj {
+        if (win.hwnd = activeHwnd) {
+            if IsSet(activeTab) {
+                try {
+                    shellBrowser := ComObjQuery(win, "{000214E2-0000-0000-C000-000000000046}")
+                    thisTab := 0
+                    ComCall(3, shellBrowser, "Ptr", &thisTab)
+                    if (thisTab != activeTab)
+                        continue
+                } catch {
+                    ; Fallback to using the active window's path
+                    pwd := '"' win.Document.Folder.Self.Path '"'
+                    break
+                }
+            }
+            pwd := '"' win.Document.Folder.Self.Path '"'
+            break
         }
-        pwd := '"' win.Document.Folder.Self.Path '"'
-        break
     }
-    Run(A_ComSpec ' /E:ON /T:0A /K pushd ' . pwd,, "Max", &OutputVarPID)
-    if WinWait('ahk_pid ' OutputVarPID)
-        WinActivate('ahk_pid ' OutputVarPID)
+
+    Run A_ComSpec ' /E:ON /T:0A /K pushd ' pwd,, "Max", &winPID
+    if WinWait("ahk_pid " winPID,, 1)
+        WinActivate
+}
+
+GetDownloadsFolder() {
+    downloadsFolder := ""
+    if (FileExist(A_MyDocuments "\Downloads"))
+        downloadsFolder := A_MyDocuments "\Downloads"
+    else if (FileExist("C:\Users\" . A_UserName . "\Downloads"))
+        downloadsFolder := "C:\Users\" . A_UserName . "\Downloads"
+    else
+        MsgBox "Downloads folder not found."
+    return downloadsFolder
 }

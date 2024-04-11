@@ -12,7 +12,7 @@ export BLUE GREEN NC RED YELLOW
 
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 gedit() {
-    $(type -P gedit) "$@" &>/dev/null
+    eval $(type -P gedit) "$@" &>/dev/null
 }
 
 geds() {
@@ -20,7 +20,7 @@ geds() {
 }
 
 gnome-text-editor() {
-    $(type -P gnome-text-editor) "$@" &>/dev/null
+    eval $(type -P gnome-text-editor) "$@" &>/dev/null
 }
 
 gnome-text-editors() {
@@ -527,21 +527,47 @@ rmf() {
 
 ## IMAGEMAGICK ##
 imow() {
-    local file_path="/usr/local/bin/imow.sh"
-    if [[ ! -f "$file_path" ]]; then
-        local dir=$(mktemp -d)
-        cd "$dir" || { echo "Failed to cd into the tmp directory: $dir"; return 1; }
-        curl -fsSLo imow.sh "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
-        sudo mv imow.sh "$file_path"
-        sudo rm -fr "$dir"
-        sudo chown "$USER:$USER" "$file_path"
-        sudo chmod 777 "$file_path"
-    fi
-    clear
-    if ! bash "$file_path" --dir "$PWD" --overwrite; then
-        echo "Failed to execute: $file_path --dir $PWD --overwrite"
+    # Function to replace lines in the policy.xml file
+    replace_lines() {
+        local policy_file="$1"
+        local temp_file=$(mktemp)
+
+        sudo grep -v '<!-- <policy domain="resource" name="thread".*/>-->' "$policy_file" | sudo sed '/<policy domain="resource" name="thread"/i \
+            <policy domain="resource" name="thread" value="32"/>' > "$temp_file"
+        sudo grep -v '<!-- <policy domain="resource" name="file".*/>-->' "$temp_file" | sudo sed '/<policy domain="resource" name="file"/i \
+            <policy domain="resource" name="file" value="999999"/>' > "$temp_file.tmp" && mv "$temp_file.tmp" "$temp_file"
+        sudo grep -v '<!-- <policy domain="resource" name="memory".*/>-->' "$temp_file" | sudo sed '/<policy domain="resource" name="memory"/i \
+            <policy domain="resource" name="memory" value="32GiB"/>' > "$temp_file.tmp" && mv "$temp_file.tmp" "$temp_file"
+        sudo grep -v '<!-- <policy domain="resource" name="map".*/>-->' "$temp_file" | sudo sed '/<policy domain="resource" name="map"/i \
+            <policy domain="resource" name="map" value="32GiB"/>' > "$temp_file.tmp" && mv "$temp_file.tmp" "$temp_file"
+        sudo grep -v '<!-- <policy domain="resource" name="area".*/>-->' "$temp_file" | sudo sed '/<policy domain="resource" name="area"/i \
+            <policy domain="resource" name="area" value="16GiB"/>' > "$temp_file.tmp" && mv "$temp_file.tmp" "$temp_file"
+        sudo grep -v '<!-- <policy domain="resource" name="disk".*/>-->' "$temp_file" | sudo sed '/<policy domain="resource" name="disk"/i \
+            <policy domain="resource" name="disk" value="999GiB"/>' > "$temp_file.tmp" && mv "$temp_file.tmp" "$temp_file"
+        sudo grep -v '<!-- <policy domain="resource" name="width".*/>-->' "$temp_file" | sudo sed '/<policy domain="resource" name="width"/i \
+            <policy domain="resource" name="width" value="64KP"/>' > "$temp_file.tmp" && mv "$temp_file.tmp" "$temp_file"
+        sudo grep -v '<!-- <policy domain="resource" name="height".*/>-->' "$temp_file" | sudo sed '/<policy domain="resource" name="height"/i \
+            <policy domain="resource" name="height" value="64KP"/>' > "$temp_file.tmp" && mv "$temp_file.tmp" "$temp_file"
+
+        sudo mv "$temp_file" "$policy_file"
+    }
+
+    # Find the policy.xml file dynamically in /usr/local and /usr
+    policy_file=$(find /usr/local /usr -type f -path "*/etc/ImageMagick-7/policy.xml" -print -quit)
+
+    if [ -n "$policy_file" ]; then
+        replace_lines "$policy_file"
+        echo "Lines replaced successfully in $policy_file"
+    else
+        echo "policy.xml file not found in /usr/local or /usr"
         return 1
     fi
+
+    wget -cqO "optimize-jpg.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
+    sudo chmod +x "optimize-jpg.sh"
+    LD_PRELOAD=libtcmalloc.so; ./optimize-jpg.sh --dir "$PWD" --overwrite
+
+    [[ -f "optimize-jpg.sh" ]] && sudo rm "optimize-jpg.sh"
 }
 
 # Downsample image to 50% of the original dimensions using sharper settings
@@ -723,93 +749,108 @@ list_ppa() {
 # Create a .7z file with max compression settings
 
 7z_1() {
-    local choice source_dir
-    clear
+  local choice source_dir archive_name
 
-    if [[ -d "$1" ]]; then
-        source_dir=$1
-        7z a -y -t7z -m0=lzma2 -mx1 "$source_dir.7z" ./"$source_dir"/*
-    else
-        read -p "Please enter the source folder path: " source_dir
-        7z a -y -t7z -m0=lzma2 -mx1 "$source_dir.7z" ./"$source_dir"/*
-    fi
+  clear
 
-    echo
-    echo "Do you want to delete the original file?"
-    echo "[1] Yes"
-    echo "[2] No"
-    echo
-    read -p "Your choices are (1 or 2): " choice
-    echo
+  if [[ -d "$1" ]]; then
+    source_dir="$1"
+  else
+    read -p "Please enter the source folder path: " source_dir
+  fi
 
-    case $choice in
-        1)  sudo rm -fr "$source_dir";;
-        2)  ;;
-        "") ;;
-        *)  echo "Bad user input."
-            return 1
-            ;;
-    esac
+  if [[ ! -d "$source_dir" ]]; then
+    echo "Invalid directory path: $source_dir"
+    return 1
+  fi
+
+  archive_name="${source_dir##*/}.7z"
+
+  7z a -y -t7z -m0=lzma2 -mx1 "$archive_name" "$source_dir"/*
+
+  echo
+  echo "Do you want to delete the original directory?"
+  echo "[1] Yes"
+  echo "[2] No"
+  echo
+  read -p "Your choice is (1 or 2): " choice
+  echo
+
+  case $choice in
+    1) rm -fr "$source_dir" && echo "Original directory deleted." ;;
+    2|"") echo "Original directory not deleted." ;;
+    *) echo "Bad user input. Original directory not deleted." ;;
+  esac
 }
 
 7z_5() {
-    local choice source_dir
-    clear
+  local choice source_dir archive_name
 
-    if [[ -d "$1" ]]; then
-        source_dir=$1
-        7z a -y -t7z -m0=lzma2 -mx5 "$source_dir.7z" ./"$source_dir"/*
-    else
-        read -p "Please enter the source folder path: " source_dir
-        7z a -y -t7z -m0=lzma2 -mx5 "$source_dir.7z" ./"$source_dir"/*
-    fi
+  clear
 
-    echo
-    echo "Do you want to delete the original file?"
-    echo "[1] Yes"
-    echo "[2] No"
-    echo
-    read -p "Your choices are (1 or 2): " choice
-    echo
+  if [[ -d "$1" ]]; then
+    source_dir="$1"
+  else
+    read -p "Please enter the source folder path: " source_dir
+  fi
 
-    case $choice in
-        1)  sudo rm -fr "$source_dir";;
-        2)  ;;
-        "") ;;
-        *)  echo "Bad user input."
-            return 1
-            ;;
-    esac
+  if [[ ! -d "$source_dir" ]]; then
+    echo "Invalid directory path: $source_dir"
+    return 1
+  fi
+
+  archive_name="${source_dir##*/}.7z"
+
+  7z a -y -t7z -m0=lzma2 -mx5 "$archive_name" "$source_dir"/*
+
+  echo
+  echo "Do you want to delete the original directory?"
+  echo "[1] Yes"
+  echo "[2] No"
+  echo
+  read -p "Your choice is (1 or 2): " choice
+  echo
+
+  case $choice in
+    1) rm -fr "$source_dir" && echo "Original directory deleted." ;;
+    2|"") echo "Original directory not deleted." ;;
+    *) echo "Bad user input. Original directory not deleted." ;;
+  esac
 }
 
 7z_9() {
-    local choice source_dir
-    clear
+  local choice source_dir archive_name
 
-    if [[ -d "$1" ]]; then
-        source_dir=$1
-        7z a -y -t7z -m0=lzma2 -mx9 "$source_dir.7z" ./"$source_dir"/*
-    else
-        read -p "Please enter the source folder path: " source_dir
-        7z a -y -t7z -m0=lzma2 -mx9 "$source_dir.7z" ./"$source_dir"/*
-    fi
+  clear
 
-    echo
-    echo "Do you want to delete the original file?"
-    echo "[1] Yes"
-    echo "[2] No"
-    echo
-    read -p "Your choices are (1 or 2): " choice
-    echo
+  if [[ -d "$1" ]]; then
+    source_dir="$1"
+  else
+    read -p "Please enter the source folder path: " source_dir
+  fi
 
-    case $choice in
-        1)  sudo rm -fr "$source_dir";;
-        2)  ;;
-        "") ;;
-        *)  echo "Bad user input."
-            return 1
-            ;;
-    esac
+  if [[ ! -d "$source_dir" ]]; then
+    echo "Invalid directory path: $source_dir"
+    return 1
+  fi
+
+  archive_name="${source_dir##*/}.7z"
+
+  7z a -y -t7z -m0=lzma2 -mx9 "$archive_name" "$source_dir"/*
+
+  echo
+  echo "Do you want to delete the original directory?"
+  echo "[1] Yes"
+  echo "[2] No"
+  echo
+  read -p "Your choice is (1 or 2): " choice
+  echo
+
+  case $choice in
+    1) rm -fr "$source_dir" && echo "Original directory deleted." ;;
+    2|"") echo "Original directory not deleted." ;;
+    *) echo "Bad user input. Original directory not deleted." ;;
+  esac
 }
 
 ## FFMPEG COMMANDS ##
@@ -1082,7 +1123,10 @@ update_icons() {
     sudo gtk-update-icon-cache -f /usr/share/icons/hicolor
 }
 
-## aria2c
+############
+## ARIA2C ##
+############
+
 adl() {
     if [[ "$#" -ne 2 ]]; then
         echo "Error: Two arguments are required: output file and download URL"
@@ -1092,24 +1136,30 @@ adl() {
     local file="$1"
     local url="$2"
 
+    # Use optimal settings for aria2c with a Gigabit connection
     if aria2c --console-log-level=error \
-        -x32 \
-        -j5 \
-        --split=32 \
+        -x128 \
+        -j32 \
+        -s64 \
+        -k1M \
+        --optimize-concurrent-downloads=true \
+        --piece-length=1M \
         --allow-overwrite=true \
         --allow-piece-length-change=true \
         --always-resume=true \
         --auto-file-renaming=false \
-        --min-split-size=8M \
-        --disk-cache=64M \
+        --disk-cache=512M \
         --file-allocation=none \
-        --no-file-allocation-limit=8M \
         --continue=true \
+        --max-overall-upload-limit=0 \
+        --max-upload-limit=0 \
+        --max-overall-download-limit=0 \
+        --max-download-limit=0 \
         --out="$file" \
         "$url"; then
-        google_speech "Download completed." 2>/dev/null
+        echo "Download completed."
     else
-        google_speech "Download failed." 2>/dev/null
+        echo "Download failed."
     fi
 
     clear; ls -1AhFv --color --group-directories-first
@@ -1668,29 +1718,54 @@ check_port() {
 dlu() {
     local domain_list=("${@:-$(read -p "Enter the domain(s) to pass: " -a domain_list && echo "${domain_list[@]}")}")
 
-    if [[ -f /usr/local/bin/domain_lookup.py ]]; then
-        python3 /usr/local/bin/domain_lookup.py "${domain_list[@]}"
-    else
-        printf "\n%s\n\n" "The Python script not found at /usr/local/bin/domain_lookup.py"
+    if [[ ! -f /usr/local/bin/domain_lookup.py ]]; then
+        sudo wget -cqO /usr/local/bin/domain_lookup.py "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Python3/domain_lookup.py"
+        sudo chmod +x /usr/local/bin/domain_lookup.py
     fi
+        python3 /usr/local/bin/domain_lookup.py "${domain_list[@]}"
 }
 
 # Python Virtual Environment
 venv() {
-    [[ -n "$VIRTUAL_ENV" ]] && {
-        echo -e "\n${YELLOW}Deactivating current virtual environment...${NC}\n"
-        deactivate
-        return 0
-    }
+    local choice arg random_dir
+    random_dir=$(mktemp -d)
+    wget -cqO "$random_dir/pip-venv-installer.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/Python3/pip-venv-installer.sh"
 
-    if [[ -d "venv" ]]; then
-        echo -e "\n${YELLOW}Activating virtual environment...${NC}\n"
-        source venv/bin/activate
-    else
-        echo -e "\n${YELLOW}Creating and activating virtual environment...${NC}\n"
-        python3 -m venv venv
-        source venv/bin/activate
-    fi
+    case "$#" in
+        0)
+            printf "\n%s\%s\%s\%s\%s\%s\%s\%s\%s\%s\n\n" \
+                "[h]elp" \
+                "[l]ist" \
+                "[i]mport" \
+                "[c]reate" \
+                "[u]pdate" \
+                "[d]elete" \
+                "[a]dd" \
+                "[U]pgrade" \
+                "[r]emove" \
+                "[p]ath"
+            read -p "Choose a letter: " choice
+            case "$choice" in
+                h) arg="-h" ;;
+                l) arg="-l" ;;
+                i) arg="-i" ;;
+                c) arg="-c" ;;
+                u) arg="-u" ;;
+                d) arg="-d" ;;
+                a|U|r)
+                    read -p "Enter package names (space-separated): " pkgs
+                    arg="-$choice $pkgs"
+                    ;;
+                p) arg="-p" ;;
+                *) clear && venv ;;
+            esac
+            ;;
+        *)
+            arg="$@"
+            ;;
+    esac
+
+    bash "$random_dir/pip-venv-installer.sh" $arg
 }
 
 # Correct Lazy AI Responses
@@ -1817,4 +1892,144 @@ sai() {
             echo "$save_text" | xclip -select -clipboard
         fi
     fi
+}
+
+
+# GitHub Script-Repo Script Menu
+script_repo() {
+  echo "Select a script to install:"
+  options=(
+    [1]="Linux Build Menu"
+    [2]="Build All GNU Scripts"
+    [3]="Build All GitHub Scripts"
+    [4]="Install GCC Latest Version"
+    [5]="Install Clang"
+    [6]="Install Latest 7-Zip Version"
+    [7]="Install ImageMagick 7"
+    [8]="Compile FFmpeg from Source"
+    [9]="Install OpenSSL Latest Version"
+    [10]="Install Rust Programming Language"
+    [11]="Install Essential Build Tools"
+    [12]="Install Aria2 with Enhanced Configurations"
+    [13]="Add Custom Mirrors for /etc/apt/sources.list"
+    [14]="Customize Your Shell Environment"
+    [15]="Install Adobe Fonts System-Wide"
+    [16]="Debian Package Downloader"
+    [17]="Install Tilix"
+    [18]="Install Python 3.12.0"
+    [19]="Update WSL2 with the Latest Linux Kernel"
+    [20]="Enhance GParted with Extra Functionality"
+    [21]="Quit"
+  )
+
+  select opt in "${options[@]}"; do
+    case $opt in
+      "Linux Build Menu")
+        bash <(curl -fsSL "https://build-menu.optimizethis.net")
+        break
+        ;;
+      "Build All GNU Scripts")
+        bash <(curl -fsSL "https://build-all-gnu.optimizethis.net")
+        break
+        ;;
+      "Build All GitHub Scripts")
+        bash <(curl -fsSL "https://build-all-git.optimizethis.net")
+        break
+        ;;
+      "Install GCC Latest Version")
+        curl -LSso build-gcc.sh "https://gcc.optimizethis.net"
+        sudo bash build-gcc.sh
+        break
+        ;;
+      "Install Clang")
+        curl -LSso build-clang.sh "https://build-clang.optimizethis.net"
+        sudo bash build-clang.sh --help
+        echo
+        read -p "Enter your chosen arguments: (e.g. -c -v 17.0.6): " clang_args
+        sudo bash build-ffmpeg.sh $clang_args
+        break
+        ;;
+      "Install Latest 7-Zip Version")
+        bash <(curl -fsSL "https://7z.optimizethis.net")
+        break
+        ;;
+      "Install ImageMagick 7")
+        curl -LSso build-magick.sh "https://imagick.optimizethis.net"
+        sudo bash build-magick.sh
+        break
+        ;;
+      "Compile FFmpeg from Source")
+        git clone "https://github.com/slyfox1186/ffmpeg-build-script.git"
+        cd ffmpeg-build-script || exit 1
+        clear
+        sudo ./build-ffmpeg.sh -h
+        read -p "Enter your chosen arguments: (e.g. --build --gpl-and-nonfree --latest): " ff_args
+        sudo ./build-ffmpeg.sh $ff_args
+        break
+        ;;
+      "Install OpenSSL Latest Version")
+        curl -LSso build-openssl.sh "https://ossl.optimizethis.net"
+        echo
+        read -p "Enter arguments for OpenSSL (e.g., '-v 3.1.5'): " openssl_args
+        sudo bash build-openssl.sh $openssl_args
+        break
+        ;;
+      "Install Rust Programming Language")
+        bash <(curl -fsSL "https://rust.optimizethis.net")
+        break
+        ;;
+      "Install Essential Build Tools")
+        curl -LSso build-tools.sh "https://build-tools.optimizethis.net"
+        sudo bash build-tools.sh
+        break
+        ;;
+      "Install Aria2 with Enhanced Configurations")
+        sudo curl -LSso build-aria2.sh "https://aria2.optimizethis.net"
+        sudo bash build-aria2.sh
+        break
+        ;;
+      "Add Custom Mirrors for /etc/apt/sources.list")
+        bash <(curl -fsSL "https://mirrors.optimizethis.net")
+        break
+        ;;
+      "Customize Your Shell Environment")
+        bash <(curl -fsSL "https://user-scripts.optimizethis.net")
+        break
+        ;;
+      "Install Adobe Fonts System-Wide")
+        bash <(curl -fsSL "https://adobe-fonts.optimizethis.net")
+        break
+        ;;
+      "Debian Package Downloader")
+        curl -LSso debian-package-downloader.sh "https://download.optimizethis.net"
+        echo
+        read -p "Enter an apt package name (e.g., clang-15): " deb_pkg_args
+        sudo bash debian-package-downloader.sh $deb_pkg_args
+        break
+        ;;
+      "Install Tilix")
+        curl -LSso build-tilix.sh "https://tilix.optimizethis.net"
+        sudo bash build-tilix.sh
+        break
+        ;;
+      "Install Python 3.12.0")
+        curl -LSso build-python3.sh "https://python3.optimizethis.net"
+        sudo bash build-python3.sh
+        break
+        ;;
+      "Update WSL2 with the Latest Linux Kernel")
+        curl -LSso build-wsl2-kernel.sh "https://wsl.optimizethis.net"
+        sudo bash build-wsl2-kernel.sh
+        break
+        ;;
+      "Enhance GParted with Extra Functionality")
+        bash <(curl -fsSL "https://gparted.optimizethis.net")
+        break
+        ;;
+      "Quit")
+        break
+        ;;
+      *) echo "Invalid option $REPLY";;
+    esac
+  done
 }
