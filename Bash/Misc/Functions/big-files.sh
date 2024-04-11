@@ -60,3 +60,5 @@ big_files() {
         }
     ' | head -n"$count"
 }
+
+big_files 5
