@@ -53,15 +53,14 @@ parse_args() {
     done
 }
 
+# Enhanced logging and error handling
 log() {
-    if [[ "$verbose" -eq 1 ]]; then
-        echo -e "${GREEN}[INFO]${NC} $1"
-    fi
+    echo -e "${GREEN}[INFO]${NC} $1"
 }
 
 fail() {
-    printf "${RED}[ERROR]${NC} $1"
-    echo "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
+    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
@@ -160,14 +159,17 @@ install_build() {
     sudo make install
 }
 
+# Cleanup resources  
 cleanup() {
-    local response
-    log "Cleaning up..."
     echo
     read -p "Remove temporary build directory '$build_dir'? [y/N] " response
-    if [[ "$response" =~ ^[Yy]$ ]]; then
+    case "$response" in
+        [yY]*|"")
         sudo rm -rf "$build_dir"
-    fi
+        log_msg "Build directory removed."
+        ;;
+        [nN]*) ;;
+    esac
 }
 
 main() {
