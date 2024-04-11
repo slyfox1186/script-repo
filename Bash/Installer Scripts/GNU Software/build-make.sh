@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 ##  Github Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-make
 ##  Purpose: build gnu make
-##  Updated: 08.01.23
-##  Script version: 2.0
+##  Updated: 04.11.24
+##  Script version: 2.1
 
 # Colors
 RED='\033[0;31m'
@@ -13,27 +15,28 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Variables
-script_ver="2.0"
+script_ver="2.1"
 archive_dir="make-4.4.1"
 archive_url="https://ftp.gnu.org/gnu/make/make-4.4.1.tar.lz"
 archive_ext="${archive_url##*.}"
 archive_name="$archive_dir.tar.$archive_ext"
 cwd="$PWD/make-build-script"
 install_dir="/usr/local/$archive_dir"
-web_repo="https://github.com/slyfox1186/script-repo"
+cleanup_files="false"
+make_version=""
 
 # Functions
 log() {
-    echo -e "${GREEN}$1${NC}"
+    echo -e "${GREEN}[INFO]${NC} $1"
 }
 
 warn() {
-    echo -e "${YELLOW}WARNING: $1${NC}"
+    echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
 fail() {
-    echo -e "${RED}ERROR: $1${NC}"
-    echo -e "${RED}To report a bug, create an issue at: $web_repo/issues${NC}"
+    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "${GREEN}[INFO]${NC} To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
@@ -57,53 +60,52 @@ cleanup() {
 
 install_dependencies() {
     log "Installing dependencies..."
-    local pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl git guile-3.0-dev libdmalloc-dev libdmalloc5 libgmp-dev libintl-perl libmpfr-dev libreadline-dev libsigsegv-dev libticonv-dev libtool libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev yasm)
+    local pkgs=(
+            autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl git
+            guile-3.0-dev libgmp-dev libtool libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev yasm
+        )
+
     local missing_pkgs=()
 
     for pkg in "${pkgs[@]}"; do
-        if ! dpkg -s "$pkg" >/dev/null 2>&1; then
+        if ! dpkg -s "$pkg"; then
             missing_pkgs+=("$pkg")
         fi
     done
 
     if [ ${#missing_pkgs[@]} -gt 0 ]; then
-        apt-get update
-        apt-get install -y "${missing_pkgs[@]}"
-        apt-get -y autoremove
+        sudo apt-get update
+        sudo apt-get install -y "${missing_pkgs[@]}"
+        sudo apt-get -y autoremove
     fi
 }
 
 show_usage() {
-    echo "Usage: $0 [OPTIONS]"
+    echo "Usage: ${0##*/} [OPTIONS]"
     echo "Build GNU Make from source."
     echo
     echo "Options:"
     echo "  -h, --help       Show this help message and exit"
     echo "  -c, --cleanup    Clean up build files after installation"
-    echo "  -v, --verbose    Enable verbose output"
-    echo "  -s, --silent     Run silently (no output)"
+    echo "  -v, --version    Specify the version of make to build (default: 4.4.1)"
+    echo
+    echo "Example:"
+    echo "  $0 -v 4.3 -c"
 }
 
-# Check if running as root
-if [ "$EUID" -ne 0 ]; then
-    fail "You must run this script with root or sudo."
-fi
-
 # Parse command-line options
-while [[ $# -gt 0 ]]; do
+while [[ "$#" -gt 0 ]]; do
     case "$1" in
         -h|--help)
             show_usage
             exit 0
             ;;
         -c|--cleanup)
-            cleanup_files=true
+            cleanup_files="true"
             ;;
-        -v|--verbose)
-            verbose=true
-            ;;
-        -s|--silent)
-            silent=true
+        -v|--version)
+            shift
+            make_version="$1"
             ;;
         *)
             warn "Unknown option: $1"
@@ -114,16 +116,21 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
-# Print banner
-if [ "$silent" != true ]; then
-    log "make build script - v${script_ver}"
-    log "======================================="
+# Update variables based on make version
+if [ -n "$make_version" ]; then
+    archive_dir="make-$make_version"
+    archive_url="https://ftp.gnu.org/gnu/make/make-$make_version.tar.lz"
+    archive_name="$archive_dir.tar.$archive_ext"
+    install_dir="/usr/local/$archive_dir"
 fi
 
 # Set compiler and flags
-export CC=gcc CXX=g++
-export CFLAGS="-g -O3 -pipe -fno-plt -march=native"
-export CXXFLAGS="$CFLAGS"
+CC="ccache gcc"
+CXX="ccache g++"
+CFLAGS="-O2 -pipe -fno-plt -march=native -mtune=native -D_FORTIFY_SOURCE=2"
+CXXFLAGS="$CFLAGS"
+LDFLAGS="-Wl,-rpath=/usr/local/lib64:/usr/local/lib"
+export CC CXX CFLAGS CXXFLAGS LDFLAGS
 
 # Set PATH and PKG_CONFIG_PATH
 PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/sbin:\
@@ -140,76 +147,44 @@ export PKG_CONFIG_PATH
 install_dependencies
 
 # Create working directory
-if [ "$verbose" = true ]; then
-    log "Creating working directory..."
-fi
-mkdir -p "$cwd"
+mkdir -p "$cwd/$archive_dir/build"
 
 # Download archive
 if [ ! -f "$cwd/$archive_name" ]; then
-    if [ "$verbose" = true ]; then
-        log "Downloading $archive_url..."
-    fi
-    curl -Lso "$cwd/$archive_name" "$archive_url"
+    curl -LSso "$cwd/$archive_name" "$archive_url"
 else
-    if [ "$verbose" = true ]; then
-        log "Archive already exists: $cwd/$archive_name"
-    fi
+    log "Archive already exists: $cwd/$archive_name"
 fi
 
 # Extract archive
-if [ "$verbose" = true ]; then
-    log "Extracting archive..."
-fi
-mkdir -p "$cwd/$archive_dir/build"
 tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1 || fail "Failed to extract archive"
 
 # Build and install
 cd "$cwd/$archive_dir" || fail "Failed to change directory to $cwd/$archive_dir"
 autoreconf -fi -I /usr/share/aclocal
 cd build || fail "Failed to change directory to build"
-
-if [ "$verbose" = true ]; then
-    log "Building and installing make..."
-    ../configure --prefix="$install_dir" \
-                 --disable-nls \
-                 --enable-year2038 \
-                 --with-dmalloc \
-                 --with-libsigsegv-prefix=/usr \
-                 --with-libiconv-prefix=/usr \
-                 --with-libintl-prefix=/usr \
-                 PKG_CONFIG="$(command -v pkg-config)"
-    make "-j$(nproc --all)" || fail "Failed to build make"
-    make install || fail "Failed to install make"
-else
-    ../configure --prefix="$install_dir" \
-                 --disable-nls \
-                 --enable-year2038 \
-                 --with-dmalloc \
-                 --with-libsigsegv-prefix=/usr \
-                 --with-libiconv-prefix=/usr \
-                 --with-libintl-prefix=/usr \
-                 PKG_CONFIG="$(command -v pkg-config)" >/dev/null 2>&1
-    make "-j$(nproc --all)" >/dev/null 2>&1 || fail "Failed to build make"
-    make install >/dev/null 2>&1 || fail "Failed to install make"
-fi
+../configure --prefix="$install_dir" \
+             --disable-nls \
+             --enable-year2038 \
+             --with-dmalloc \
+             --with-libsigsegv-prefix=/usr \
+             --with-libiconv-prefix=/usr \
+             --with-libintl-prefix=/usr \
+             PKG_CONFIG="$(type -P pkg-config)"
+make "-j$(nproc --all)" || fail "Failed to build make"
+sudo make install || fail "Failed to install make"
 
 # Create symlinks
-if [ "$verbose" = true ]; then
-    log "Creating symlinks..."
-fi
-for file in "$install_dir"/bin/*; do
-    filename=$(basename "$file")
-    linkname=${filename#*-}
-    ln -sf "$file" "/usr/local/bin/$linkname" || warn "Failed to create symlink for $filename"
+for dir in bin include; do
+    for file in "$install_dir"/$dir/*; do
+        filename="${file##*/}"
+        sudo ln -sf "$file" "/usr/local/$dir/$filename" || warn "Failed to create symlink for $filename"
+    done
 done
 
 # Cleanup if requested
-if [ "$cleanup_files" = true ]; then
-    cleanup
-fi
+[[ "$cleanup_files" = "true" ]] && cleanup
 
-if [ "$silent" != true ]; then
-    log "make build script completed successfully!"
-    log "Make sure to star this repository to show your support: $web_repo"
-fi
+echo
+log "make build script completed successfully!"
+log "Make sure to star this repository to show your support: https://github.com/slyfox1186/script-repo"
