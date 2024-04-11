@@ -16,8 +16,8 @@ trap 'fail "Error occurred on line: $LINENO".' ERR
 version="3.11"
 program_name="grep"
 install_dir="/usr/local"
-build_dir="/tmp/$program_name-$version-build"
-workspace="$build_dir/workspace"
+cwd="/tmp/$program_name-$version-build"
+workspace="$cwd/workspace"
 gnu_ftp="https://ftp.gnu.org/gnu/grep/"
 verbose=0
 
