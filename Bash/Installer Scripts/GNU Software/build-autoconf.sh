@@ -50,15 +50,15 @@ parse_args() {
 
 # Enhanced logging and error handling
 log() {
-    echo -e "${GREEN}[$(date +'%Y-%m-%dT%H:%M:%S%z')]${NC} $*"
+    echo -e "${GREEN}[INFO]${NC} $1"
 }
 
 warn() {
-    echo -e "${YELLOW}[$(date +'%Y-%m-%dT%H:%M:%S%z')] Warning:${NC} $*"
+    echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
-error() {
-    echo -e "${RED}[$(date +'%Y-%m-%dT%H:%M:%S%z')] Error:${NC} $*" >&2
+fail() {
+    echo -e "${RED}[ERROR]${NC} $1"
     echo -e "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
