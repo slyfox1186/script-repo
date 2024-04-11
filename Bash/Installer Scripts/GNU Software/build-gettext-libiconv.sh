@@ -13,18 +13,21 @@ RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-script_ver=2.0
-archive_dir1=libiconv-1.17
-archive_dir2=gettext-0.22.5
-archive_url1=https://ftp.gnu.org/gnu/libiconv/$archive_dir1.tar.gz
-archive_url2=https://ftp.gnu.org/gnu/gettext/$archive_dir2.tar.lz
-cwd="$PWD"/gettext-libiconv-build-script
-install_dir="/usr/local/gettext-0.22.5"
-CC=gcc
-CXX=g++
-CFLAGS="-g -O3 -march=native"
-CXXFLAGS="-g -O3 -march=native"
-export CC CFLAGS CXX CXXFLAGS
+script_ver="2.0"
+archive_dir1="libiconv-1.17"
+archive_dir2="gettext-0.22.5"
+archive_url1="https://ftp.gnu.org/gnu/libiconv/$archive_dir1.tar.gz"
+archive_url2="https://ftp.gnu.org/gnu/gettext/$archive_dir2.tar.lz"
+cwd="$PWD/gettext-libiconv-build-script"
+install_dir1="/usr/local/libiconv-1.17"
+install_dir2="/usr/local/gettext-0.22.5"
+CC="ccache gcc"
+CXX="ccache g++"
+CFLAGS="-O2 -march=native -mtune=native -D_FORTIFY_SOURCE=2"
+CXXFLAGS="$CFLAGS"
+LDFLAGS1="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir1/lib"
+LDFLAGS2="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir2/lib"
+export CC CXX CFLAGS CXXFLAGS
 
 # Enhanced logging and error handling
 log() {
@@ -64,12 +67,13 @@ download_and_extract() {
 # Helper function for building and installing
 build_and_install() {
     local archive_dir=$1
+    local LDFLAGS=$2
     cd "$cwd/$archive_dir" || exit 1
     mkdir -p build
     cd build || exit 1
 
     log "Configuring $archive_dir..."
-    if ! ../configure --prefix="$install_dir/$archive_dir" --enable-static --with-pic; then
+    if ! ../configure --prefix="$install_dir/$archive_dir" --enable-static --with-pic "$LDFLAGS"; then
         error "Failed to configure $archive_dir"
     fi
 
@@ -79,11 +83,11 @@ build_and_install() {
     fi
 
     log "Installing $archive_dir..."
-    if ! make install; then
+    if ! sudo make install; then
         error "Failed to run make install"
     fi
 
-    if ! libtool --finish "$install_dir/$archive_dir/lib"; then
+    if ! sudo libtool --finish "$install_dir/$archive_dir/lib"; then
         error "Failed to finish libtool setup"
     fi
 
@@ -93,22 +97,28 @@ build_and_install() {
         filename=$(basename "$file")
         local linkname
         linkname=${filename#*-}
-        ln -sf "$file" "/usr/local/bin/$linkname" || warn "Failed to create symlink for $filename"
+        sudo ln -sf "$file" "/usr/local/bin/$linkname" || warn "Failed to create symlink for $filename"
     done
 }
 
 # Main script execution
-if [ "$EUID" -ne 0 ]; then
-    error "You must run this script with root/sudo."
+if [ "$EUID" -eq 0 ]; then
+    error "You must run this script without root or with sudo."
 fi
 
 log "gettext + libiconv build script - v$script_ver"
 echo "==============================================="
 
 download_and_extract "$archive_dir1" "$archive_url1"
-build_and_install "$archive_dir1"
+build_and_install "$archive_dir1" "$LDFLAGS1"
 
 download_and_extract "$archive_dir2" "$archive_url2"
-build_and_install "$archive_dir2"
+build_and_install "$archive_dir2" "$LDFLAGS2"
 
+echo
+log "Removing leftover files"
+sudo rm -fr "$cwd"
+
+echo
 log "Build and installation completed successfully!"
+
