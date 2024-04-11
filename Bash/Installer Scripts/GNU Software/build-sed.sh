@@ -40,8 +40,8 @@ fail() {
 }
 
 # Check if running as root or with sudo
-if [[ "$EUID" -ne 0 ]]; then
-    fail "You must run this script with root or sudo."
+if [[ "$EUID" -eq 0 ]]; then
+    fail "You must run this script without root or with sudo."
 fi
 
 echo
@@ -53,11 +53,10 @@ echo
 # Set the C and C++ compilers
 CC="gcc"
 CXX="g++"
-CFLAGS="-O3 -pipe -fno-plt -march=native"
-CXXFLAGS="-O3 -pipe -fno-plt -march=native"
-CPPFLAGS="-D_FORTIFY_SOURCE=2"
-LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,${install_dir}/lib"
-export CC CFLAGS CPPFLAGS CXX CXXFLAGS LDFLAGS
+CFLAGS="-O3 -pipe -fno-plt -march=native -mtune=native -D_FORTIFY_SOURCE=2"
+CXXFLAGS="$CFLAGS"
+LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir/lib"
+export CC CFLAGS CXX CXXFLAGS LDFLAGS
 
 # Set the path variable
 PATH="/usr/lib/ccache:${HOME}/perl5/bin:${HOME}/.cargo/bin:${HOME}/.local/bin:/usr/local/sbin:/usr/local/cuda/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -110,7 +109,7 @@ for pkg in "${pkgs[@]}"; do
 done
 
 if [[ -n "$missing_pkgs" ]]; then
-    sudo apt-get install $missing_pkgs
+    sudo apt install $missing_pkgs
 fi
 
 # Download the archive file
