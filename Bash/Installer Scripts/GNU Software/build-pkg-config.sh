@@ -29,16 +29,16 @@ if [[ "$EUID" -eq 0 ]]; then
     fail "This script should not be run as root or with sudo."
 fi
 
-PROGRAM_NAME="pkg-config"
-VERSION="0.29.2"
-CWD="$PWD"
-BUILD_DIR="$CWD/pkg-config-build"
-INSTALL_DIR="/usr/local/$PROGRAM_NAME-$VERSION"
+program_name="pkg-config"
+version="0.29.2"
+cwd="$PWD/pkg-config-build"
+working="$cwd/working"
+install_dir="/usr/local/$program_name-$version"
 
-CC=gcc
-CXX=g++
-CFLAGS="-g -O3 -pipe -fno-plt -march=native"
-CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
+CC="ccache gcc"
+CXX="ccache g++"
+CFLAGS="-O2 -pipe -fno-plt -march=native -mtune=native"
+CXXFLAGS="$CFLAGS"
 export CC CFLAGS CXX CXXFLAGS
 
 PATH="\
@@ -68,14 +68,16 @@ PKG_CONFIG_PATH="\
 "
 export PKG_CONFIG_PATH
 
-# Dependencies required to build pkg-config
-DEPENDENCIES=(autoconf autoconf-archive autogen automake build-essential
-              ca-certificates ccache clang curl libssl-dev zlib1g-dev)
+# dependencies required to build pkg-config
+dependencies=(
+        autoconf autoconf-archive autogen automake build-essential
+        ca-certificates ccache clang curl libssl-dev zlib1g-dev
+    )
 
 # Function to check and install missing dependencies
 install_dependencies() {
     local to_install=()
-    for dep in "${DEPENDENCIES[@]}"; do
+    for dep in "${dependencies[@]}"; do
         if ! dpkg -l | grep -qw "$dep"; then
             to_install+=("$dep")
         fi
@@ -88,56 +90,53 @@ install_dependencies() {
     fi
 }
 
-# Function for cleanup
 cleanup() {
+    local choice
     echo
-    read -p "Do you want to clean up the build files? [y/N] " response
+    read -p "Remove temporary build directory '$cwd'? [y/N] " response
     case "$response" in
-        [yY]*|"") rm -rf "$BUILD_DIR"
-                  echo
-                  log "Cleanup completed."
-                  ;;
-        [nN]*|*) echo
-                 log "Cleanup skipped."
-                 ;;
+        [yY]*|"")
+        sudo rm -rf "$cwd"
+        log_msg "Build directory removed."
+        ;;
+        [nN]*) ;;
     esac
 }
 
 # Main function to build pkg-config
 build_pkg_config() {
-    local archive_url="https://pkgconfig.freedesktop.org/releases/pkg-config-$VERSION.tar.gz"
+    local archive_url="https://pkgconfig.freedesktop.org/releases/pkg-config-$version.tar.gz"
 
     # Download and extract source
-    mkdir -p "$BUILD_DIR/pkg-config-$VERSION/build"
-    curl -Lso "$BUILD_DIR/pkg-config-$VERSION.tar.gz" "$archive_url"
-    tar -zxf "$BUILD_DIR/pkg-config-$VERSION.tar.gz" -C "$BUILD_DIR/pkg-config-$VERSION" --strip-components 1
-    cd "$BUILD_DIR/pkg-config-$VERSION" || exit 1
+    mkdir -p "$working/pkg-config-$version/build"
+    curl -Lso "$working/pkg-config-$version.tar.gz" "$archive_url"
+    tar -zxf "$working/pkg-config-$version.tar.gz" -C "$working/pkg-config-$version" --strip-components 1
+    cd "$working/pkg-config-$version" || exit 1
 
     # Build and install
     autoconf
     cd build || exit 1
-    ../configure --prefix="$INSTALL_DIR" \
+    ../configure --prefix="$install_dir" \
                  --enable-indirect-deps \
                  --with-internal-glib \
                  --with-pc-path="$PKG_CONFIG_PATH" \
-                 --with-pic \
-                 PKG_CONFIG=$(type -P pkg-config)
+                 --with-pic
     make "-j$(nproc)"
     sudo make install
 
     # Create symbolic links in /usr/local/bin
-    find "$INSTALL_DIR/bin" -type f -exec sudo ln -sf {} /usr/local/bin \;
+    find "$install_dir/bin" -type f -exec sudo ln -sf {} /usr/local/bin \;
 }
 
-log "Starting build of GNU pkg-config $VERSION"
+log "Starting build of GNU pkg-config $version"
 
 # Ensure the script is not run with sudo
-if [ "$(id -u)" -eq 0 ]; then
-    fail "Do not run this script as root. Use normal user privileges."
+if [[ "$EUID" -eq 0 ]]; then
+    fail "You must run this script without root or with sudo."
 fi
 
 install_dependencies
 build_pkg_config
 cleanup
 
-log "GNU pkg-config $VERSION has been successfully built and installed."
+log "GNU pkg-config $version has been successfully built and installed."
