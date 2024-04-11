@@ -59,17 +59,19 @@ install_missing_packages() {
 
     case $pkg_manager in
         apt-get)
-            pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl git libtool libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev yasm)
-            apt-get update
+            pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache
+                  cmake curl git libtool libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev
+                  yasm)
+            sudo apt update
             for pkg in "${pkgs[@]}"; do
                 if ! dpkg -l | grep -qw $pkg; then
-                    apt-get install -y $pkg
+                    sudo apt -y install $pkg
                 fi
             done
             ;;
         yum)
             pkgs=(autoconf automake binutils gcc gcc-c++ make)
-            yum install -y "${pkgs[@]}"
+            sudo yum install -y "${pkgs[@]}"
             ;;
         *)
             print_color red "Unsupported package manager. Please install dependencies manually."
@@ -81,7 +83,7 @@ install_missing_packages() {
 find_latest_release() {
     clear
     print_color green "Finding the latest gawk release..."
-    latest_release=$(curl -sL $gnu_ftp | grep tar.lz | grep -v '.sig' | sed -n 's/.*href="\([^"]*\).*/\1/p' | sort -V | tail -n 1)
+    latest_release=$(curl -sL $gnu_ftp | grep tar.lz | grep -v '.sig' | sed -n 's/.*href="\([^"]*\).*/\1/p' | sort -rV | head -n1)
     if [[ -z $latest_release ]]; then
         print_color red "Failed to find the latest gawk release. Exiting..."
         exit 1
@@ -107,18 +109,18 @@ build_and_install() {
     cd "$archive_dir/build" || exit 1
     ./configure --prefix="$install_dir" CFLAGS="-g -O3 -pipe -march=native" --build=x86_64-linux-gnu --host=x86_64-linux-gnu || handle_failure
     make "-j$(nproc)" || handle_failure
-    make install || handle_failure
+    sudo make install || handle_failure
 
     # Create symlinks
-    ln -sf "$install_dir/bin/gawk" "/usr/local/bin/gawk"
-    ln -sf "$install_dir/bin/gawk-${archive_dir#*-}" "/usr/local/bin/gawk-${archive_dir#*-}"
+    sudo ln -sf "$install_dir/bin/gawk" "/usr/local/bin/gawk"
+    sudo ln -sf "$install_dir/bin/gawk-${archive_dir#*-}" "/usr/local/bin/gawk-${archive_dir#*-}"
 
     print_color green "gawk installation completed successfully."
 }
 
 # Start the script
-if [[ $EUID -ne 0 ]]; then
-    print_color red "This script must be run as root or with sudo."
+if [[ $EUID -eq 0 ]]; then
+    print_color red "This script must be run with root or with sudo."
     exit 1
 fi
 
