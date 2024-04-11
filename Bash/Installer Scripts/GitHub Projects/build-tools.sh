@@ -96,7 +96,7 @@ cleanup() {
 
     case "$choice" in
         [yY][eE][sS]*|[yY]*|"")
-            rm -fr "$cwd"
+            sudo rm -fr "$cwd"
             ;;
         [nN][oO]*|[nN]*)
             ;;
@@ -207,7 +207,7 @@ arch_pkgs() {
     [[ -f "/var/lib/pacman/db.lck" ]] && rm -f "/var/lib/pacman/db.lck"
     
     for pkg in "${pkgs[@]}"; do
-        if ! pacman -Qi "$pkg" &>/dev/null; then
+        if ! sudo pacman -Qi "$pkg" &>/dev/null; then
             missing_pkgs+="$pkg "
         fi
     done
@@ -238,8 +238,8 @@ apt_pkgs() {
 
     if [[ "${#missing_packages[@]}" -gt 0 ]]; then
         log "Installing missing packages: ${missing_packages[*]}"
-        sudo apt-get update
-        sudo apt-get install -y "${missing_packages[@]}"
+        sudo apt update
+        sudo apt install -y "${missing_packages[@]}"
     else
         log "The required apt packages are already installed."
     fi
@@ -305,7 +305,7 @@ if build "cmake" "$version"; then
     download "https://github.com/Kitware/CMake/archive/refs/tags/v$version.tar.gz" "cmake-$version.tar.gz"
     execute ./bootstrap --prefix="/usr/local/cmake-$version" --enable-ccache --parallel="$cpu_threads" --qt-gui
     execute make "-j$cpu_threads"
-    execute make install
+    execute sudo make install
     execute ln -sf "/usr/local/cmake-$version/bin/cmake" "/usr/local/bin/cmake"
     build_done "cmake" "$version"
 fi
@@ -318,7 +318,7 @@ if build "ninja" "$version"; then
                   -DCMAKE_BUILD_TYPE=Release -DRE2C="$re2c_path" -DBUILD_TESTING=OFF \
                   -Wno-dev
     execute make "-j$cpu_threads" -C build
-    execute make -C build install
+    execute sudo make -C build install
     execute ln -sf "/usr/local/ninja-$version/bin/ninja" "/usr/local/bin/ninja"
     build_done "ninja" "$version"  
 fi
@@ -353,14 +353,14 @@ if [[ "$OS" == "Arch" ]]; then
 else
     if build "golang" "$version"; then
         download "https://go.dev/dl/go$version.linux-amd64.tar.gz" "golang-$version.tar.gz"
-        mkdir -p "/usr/local/golang-$version/bin"
-        execute cp -f "bin/go" "bin/gofmt" "/usr/local/golang-$version/bin"
+        sudo mkdir -p "/usr/local/golang-$version/bin"
+        execute sudo cp -f "bin/go" "bin/gofmt" "/usr/local/golang-$version/bin"
         build_done "golang" "$version"
     fi
     setup_gopath
 fi
 
-ldconfig
+sudo ldconfig
 show_versions
 cleanup
 exit_fn
