@@ -15,33 +15,44 @@ cwd="$PWD/gawk-build-script"
 install_dir="/usr/local/gawk"
 gnu_ftp="https://ftp.gnu.org/gnu/gawk/"
 
-# Functions
-print_color() {
-    case $1 in
-        green) echo -e "${GREEN}$2${NC}" ;;
-        red) echo -e "${RED}$2${NC}" ;;
-        *) echo "$2" ;;
-    esac
+# Enhanced logging and error handling
+log() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+fail() {
+    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
+    exit 1
 }
 
 print_banner() {
-    print_color green "gawk build script - v$script_ver"
-    echo "==============================================="
+    log "==============================================="
+    log "      gawk build script - v$script_ver"
+    log "==============================================="
 }
 
+# Cleanup resources  
 cleanup() {
-    print_color green "Cleaning up..."
-    rm -fr "$cwd"
+    echo
+    read -p "Remove temporary build directory '$build_dir'? [y/N] " response
+    case "$response" in
+        [yY]*|"")
+        sudo rm -rf "$cwd"
+        log "Build directory removed."
+        ;;
+        [nN]*) ;;
+    esac
 }
 
 handle_failure() {
-    print_color red "\nAn error occurred. Exiting..."
-    cleanup
+    fail "An error occurred. Exiting..."
+    sudo rm -fr "$cwd"
     exit 1
 }
 
 install_missing_packages() {
-    print_color green "Checking and installing missing packages..."
+    log "Checking and installing missing packages..."
 
     declare -A pkg_managers
     pkg_managers["/etc/redhat-release"]=yum
@@ -74,7 +85,7 @@ install_missing_packages() {
             sudo yum install -y "${pkgs[@]}"
             ;;
         *)
-            print_color red "Unsupported package manager. Please install dependencies manually."
+            fail "Unsupported package manager. Please install dependencies manually."
             exit 1
             ;;
     esac
@@ -82,10 +93,10 @@ install_missing_packages() {
 
 find_latest_release() {
     clear
-    print_color green "Finding the latest gawk release..."
+    log "Finding the latest gawk release..."
     latest_release=$(curl -sL $gnu_ftp | grep tar.lz | grep -v '.sig' | sed -n 's/.*href="\([^"]*\).*/\1/p' | sort -rV | head -n1)
     if [[ -z $latest_release ]]; then
-        print_color red "Failed to find the latest gawk release. Exiting..."
+        fail "Failed to find the latest gawk release. Exiting..."
         exit 1
     fi
     archive_url="${gnu_ftp}${latest_release}"
@@ -94,7 +105,7 @@ find_latest_release() {
 }
 
 download_and_extract() {
-    print_color green "Downloading and extracting gawk..."
+    log "Downloading and extracting gawk..."
     mkdir -p "$cwd"
     cd "$cwd" || exit
     if [[ ! -f $archive_name ]]; then
@@ -105,7 +116,7 @@ download_and_extract() {
 }
 
 build_and_install() {
-    print_color green "Building and installing gawk..."
+    log "Building and installing gawk..."
     cd "$archive_dir/build" || exit 1
     ./configure --prefix="$install_dir" CFLAGS="-g -O3 -pipe -march=native" --build=x86_64-linux-gnu --host=x86_64-linux-gnu || handle_failure
     make "-j$(nproc)" || handle_failure
@@ -115,12 +126,12 @@ build_and_install() {
     sudo ln -sf "$install_dir/bin/gawk" "/usr/local/bin/gawk"
     sudo ln -sf "$install_dir/bin/gawk-${archive_dir#*-}" "/usr/local/bin/gawk-${archive_dir#*-}"
 
-    print_color green "gawk installation completed successfully."
+    log "gawk installation completed successfully."
 }
 
 # Start the script
 if [[ $EUID -eq 0 ]]; then
-    print_color red "This script must be run with root or with sudo."
+    fail "This script must be run with root or with sudo."
     exit 1
 fi
 
