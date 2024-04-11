@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Build GNU Bash
-# Updated: 03.08.24
+# Updated: 04.11.24
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-bash.sh
 
 set -o pipefail
