@@ -48,16 +48,24 @@ parse_args() {
     build_dir="/tmp/${program_name}-${program_version}-build"
 }
 
-# Simplify logging based on verbosity
-log_msg() {
-    if [[ $verbose -eq 1 ]]; then
-        echo "$@"
-    fi
+# Enhanced logging and error handling
+log() {
+    echo -e "${GREEN}[$(date +'%Y-%m-%dT%H:%M:%S%z')]${NC} $*"
+}
+
+warn() {
+    echo -e "${YELLOW}[$(date +'%Y-%m-%dT%H:%M:%S%z')] Warning:${NC} $*"
+}
+
+error() {
+    echo -e "${RED}[$(date +'%Y-%m-%dT%H:%M:%S%z')] Error:${NC} $*" >&2
+    echo -e "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
+    exit 1
 }
 
 # Install dependencies
 install_deps() {
-    log_msg "Installing dependencies..."
+    log "Installing dependencies..."
     if command -v apt-get &>/dev/null; then
         sudo apt update
         sudo apt install autoconf-archive autogen automake autopoint autotools-dev binutils bison build-essential bzip2 ccache curl libtool libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev yasm
@@ -75,33 +83,33 @@ install_deps() {
 prepare_build() {
     [[ -d "$build_dir" ]] && rm -rf "$build_dir"
     mkdir -p "$build_dir"
-    log_msg "Preparing build directory at $build_dir"
+    log "Preparing build directory at $build_dir"
 }
 
 # Download and extract source archive
 download_and_extract() {
     local archive_url="https://ftp.gnu.org/gnu/autoconf/${program_name}-${program_version}.tar.xz"
     local archive_name="${program_name}-${program_version}.tar.xz"
-    log_msg "Downloading $archive_url"
+    log "Downloading $archive_url"
     curl -fsSL "$archive_url" -o "$build_dir/$archive_name" 
-    log_msg "Extracting archive..."
+    log "Extracting archive..."
     tar -xf "$build_dir/$archive_name" -C "$build_dir" --strip-components 1
 }
 
 # Configure, build, and install
 build_and_install() {
     cd "$build_dir"
-    log_msg "Configuring build..."
+    log "Configuring build..."
     ./configure --prefix="$install_prefix/${program_name}-${program_version}"  
-    log_msg "Compiling..."
+    log "Compiling..."
     make "-j$(nproc --all)"
-    log_msg "Installing..."
+    log "Installing..."
     sudo make install
 }
 
 # Create symlinks in a common bin directory
 create_symlinks() {
-    log_msg "Creating symlinks..."
+    log "Creating symlinks..."
     for file in "$install_prefix/${program_name}-${program_version}"/bin/*; do
         base_name=$(basename "$file" | sed 's/-[0-9].*$//') # Trim extra versioning if present
         sudo ln -sfn "$file" "/usr/local/bin/$base_name"
@@ -115,7 +123,7 @@ cleanup() {
     case "$response" in
         [yY]*|"")
         sudo rm -rf "$build_dir"
-        log_msg "Build directory removed."
+        log "Build directory removed."
         ;;
         [nN]*) ;;
     esac
@@ -133,8 +141,8 @@ main() {
     build_and_install
     create_symlinks
     cleanup
-    log_msg "Autoconf $program_version build completed successfully!"
-    log_msg "https://github.com/slyfox1186/script-repo"
+    log "Autoconf $program_version build completed successfully!"
+    log "https://github.com/slyfox1186/script-repo"
 }
 
 main "$@"
