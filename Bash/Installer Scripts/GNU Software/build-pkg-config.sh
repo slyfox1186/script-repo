@@ -4,8 +4,6 @@
 # Updated: 03.06.24
 # Script version: 1.5
 
-set -euo pipefail
-
 # ANSI color codes for logging
 RED='\033[0;31m'
 GREEN='\033[0;32m'
