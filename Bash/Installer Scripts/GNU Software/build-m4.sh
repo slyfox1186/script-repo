@@ -47,7 +47,7 @@ cleanup() {
     read -p "Your choice (1 or 2): " choice
 
     case "$choice" in
-        1) rm -fr "$cwd";;
+        1) sudo rm -fr "$cwd";;
         2) log "Skipping cleanup.";;
         *)
             warn "Invalid choice. Skipping cleanup."
@@ -57,7 +57,10 @@ cleanup() {
 
 install_dependencies() {
     log "Installing dependencies..."
-    local pkgs=(autoconf autoconf-archive autogen automake binutils bison build-essential bzip2 ccache curl libc6-dev libpth-dev libtool libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev yasm)
+    local pkgs=(
+            autoconf autoconf-archive autogen automake binutils bison build-essential bzip2
+            ccache curl libc6-dev libpth-dev libtool libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev yasm
+        )
     local missing_pkgs=()
 
     for pkg in "${pkgs[@]}"; do
@@ -67,9 +70,9 @@ install_dependencies() {
     done
 
     if [ ${#missing_pkgs[@]} -gt 0 ]; then
-        apt-get update
-        apt-get install -y "${missing_pkgs[@]}"
-        apt-get -y autoremove
+        sudo apt update
+        sudo apt install -y "${missing_pkgs[@]}"
+        sudo apt -y autoremove
     fi
 }
 
@@ -85,8 +88,8 @@ show_usage() {
 }
 
 # Check if running as root
-if [ "$EUID" -ne 0 ]; then
-    fail "You must run this script with root or sudo."
+if [ "$EUID" -eq 0 ]; then
+    fail "You must run this script without root or with sudo."
 fi
 
 # Parse command-line options
@@ -121,10 +124,10 @@ if [ "$silent" != true ]; then
 fi
 
 # Set compiler and flags
-CC=gcc
-CXX=g++
-CFLAGS="-g -O3 -pipe -fno-plt -march=native"
-CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
+CC="ccache gcc"
+CXX="ccache g++"
+CFLAGS="-O2 -pipe -fno-plt -march=native -mtune=native"
+CXXFLAGS="$CFLAGS"
 export CC CFLAGS CXX CXXFLAGS
 
 # Set PATH and PKG_CONFIG_PATH
@@ -178,7 +181,7 @@ if [ "$verbose" = true ]; then
                  --with-dmalloc
     make "-j$(nproc --all)" || fail "Failed to build m4"
     log "Installing m4..."
-    make install || fail "Failed to install m4"
+    sudo make install || fail "Failed to install m4"
 else
     ../configure --prefix="$install_dir" \
                  --disable-nls \
@@ -186,8 +189,8 @@ else
                  --enable-c++ \
                  --enable-threads=posix \
                  --with-dmalloc >/dev/null 2>&1
-    make "-j$(nproc --all)" >/dev/null 2>&1 || fail "Failed to build m4"
-    make install >/dev/null 2>&1 || fail "Failed to install m4"
+    make "-j$(nproc --all)" || fail "Failed to build m4"
+    sudo make install || fail "Failed to install m4"
 fi
 
 # Create symlinks
