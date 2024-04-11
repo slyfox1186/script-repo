@@ -61,7 +61,8 @@ install_dependencies() {
     log "Installing dependencies..."
     local pkgs=(
             autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl git
-            guile-3.0-dev libgmp-dev libtool libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev yasm
+            guile-3.0-dev libdmalloc-dev libgmp-dev libtool libtool-bin lzip m4 nasm ninja-build texinfo
+            zlib1g-dev yasm
         )
 
     local missing_pkgs=()
