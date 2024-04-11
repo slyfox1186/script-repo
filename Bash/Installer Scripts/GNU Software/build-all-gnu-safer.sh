@@ -77,7 +77,7 @@ for script in "${scripts[@]}"; do
 done
 
 for f in $(find ./ -maxdepth 1 -type f | sort -V | sed 's/\.\///g'); do
-    if echo "1" | sudo bash "$f"; then
+    if echo "1" | bash "$f"; then
         sudo mv "$f" "$cwd/completed"
     else
         if [ ! -d "$cwd/failed" ]; then
