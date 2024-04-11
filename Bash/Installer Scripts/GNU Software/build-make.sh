@@ -22,7 +22,6 @@ archive_ext="${archive_url##*.}"
 archive_name="$archive_dir.tar.$archive_ext"
 cwd="$PWD/make-build-script"
 install_dir="/usr/local/$archive_dir"
-cleanup_files="false"
 make_version=""
 
 # Functions
@@ -45,16 +44,16 @@ cleanup() {
     echo -e "${BLUE}============================================${NC}"
     echo -e "${BLUE}  Do you want to clean up the build files?  ${NC}"
     echo -e "${BLUE}============================================${NC}"
+    echo
     echo -e "[1] Yes"
     echo -e "[2] No"
+    echo
     read -p "Your choice (1 or 2): " choice
 
     case "$choice" in
-        1) rm -fr "$cwd";;
-        2) log "Skipping cleanup.";;
-        *)
-            warn "Invalid choice. Skipping cleanup."
-            ;;
+        1) sudo rm -fr "$cwd" ;;
+        2) log "Skipping cleanup." ;;
+        *) warn "Invalid choice. Skipping cleanup." ;;
     esac
 }
 
@@ -86,7 +85,6 @@ show_usage() {
     echo
     echo "Options:"
     echo "  -h, --help       Show this help message and exit"
-    echo "  -c, --cleanup    Clean up build files after installation"
     echo "  -v, --version    Specify the version of make to build (default: 4.4.1)"
     echo
     echo "Example:"
@@ -99,9 +97,6 @@ while [[ "$#" -gt 0 ]]; do
         -h|--help)
             show_usage
             exit 0
-            ;;
-        -c|--cleanup)
-            cleanup_files="true"
             ;;
         -v|--version)
             shift
@@ -182,8 +177,8 @@ for dir in bin include; do
     done
 done
 
-# Cleanup if requested
-[[ "$cleanup_files" = "true" ]] && cleanup
+# Cleanup files
+cleanup
 
 echo
 log "make build script completed successfully!"
