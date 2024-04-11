@@ -90,7 +90,7 @@ process_image() {
         [[ -n "$backup_dir" ]] && { mkdir -p "$backup_dir"; cp "$infile" "$backup_file"; }
         
         convert "$infile" "${convert_opts[@]}" -sampling-factor 2x2 -limit area 0 "$mpc_file" \
-            || { log "Error: First attempt failed, retrying..."; convert "$infile" "${convert_opts[@]}" "$mpc_file"; } \
+            || { log "Error: First attempt failed, retrying..."; convert "$infile" "${convert_opts[@]}" -limit area 0 "$mpc_file"; } \
             || { log "Error: Second attempt failed."; return 1; }
             
         convert "$mpc_file" "$outfile" && echo "Processed: $outfile_name" || echo "Failed to process: $outfile_name"

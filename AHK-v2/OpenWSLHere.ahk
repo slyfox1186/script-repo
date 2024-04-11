@@ -2,84 +2,68 @@
     OpenWSLHere.ahk
 
     GitHub:
-    - https://github.com/slyfox1186
+    - https://github.com/slyfox1186/script-repo/blob/main/AHK-v2/OpenWSLHere.ahk
 
     Pastebin:
     - https://pastebin.com/u/slyfox1186
-    
+
     Purpose:
     - This will open Windows' WSL terminal to the active file explorer folder or if no active explorer window is found, ~
 
-    Instructions:
-    - You need to replace the below variable 'osName' with the wsl distribution of your choosing.
-    - To find the available distros run 'wsl.exe -l --all' using PowerShell to get a list of available options
-
     Updated:
-    - 01.04.24
+    - 04.07.24
 
     Big Update:
-    - Greatly improved the code. When explorer.exe has multiple tabs per window, it will
-      open the correct tab the hotkey is trigged on instead of just activating the far left tab.
-
+        Combined all major versions of Windows WSL OS's into a single function greatly reducing
+        the size of the overall code, and adding the ability to choose the OS you wish to use.
 */
 
-!w Up::OpenWSLHere()
+!w Up::OpenWSLHere("Debian")
+^!w Up::OpenWSLHere("Ubuntu")
+^!+w Up::OpenWSLHere("Arch")
 
-OpenWSLHere()
-{
-    osName := "Ubuntu"
-    Static wt := "C:\Users\" . A_UserName . "\AppData\Local\Microsoft\WindowsApps\wt.exe"
-    Static wsl := "C:\Windows\System32\wsl.exe"
-    Static win := "ahk_class CASCADIA_HOSTING_WINDOW_CLASS ahk_exe WindowsTerminal.exe"
-    if FileExist("C:\Program Files\PowerShell\7\pwsh.exe")
-        pshell := "C:\Program Files\PowerShell\7\pwsh.exe"
-    else
-        pshell := "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+OpenWSLHere(osName) {
+    static wt := "C:\Users\" A_UserName "\AppData\Local\Microsoft\WindowsApps\wt.exe"
+    static wsl := A_WinDir . "\System32\wsl.exe"
+    static win := "ahk_class CASCADIA_HOSTING_WINDOW_CLASS ahk_exe WindowsTerminal.exe"
+    static pshell := FileExist(A_ProgramFiles . "\PowerShell\7\pwsh.exe") ? A_ProgramFiles . "\PowerShell\7\pwsh.exe" : A_WinDir . "\System32\WindowsPowerShell\v1.0\powershell.exe"
 
-    if !WinActive("ahk_class CabinetWClass ahk_exe explorer.exe")
-    {
-        Run(pshell ' -NoP -W Hidden -C "Start-Process -WindowStyle Max ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd ~ `' -Verb RunAs"',, "Hide")
-        if WinWait(win)
+    if !WinActive("ahk_class CabinetWClass ahk_exe explorer.exe") {
+        Run(pshell ' -NoP -W H -C "Start-Process -WindowStyle Max ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd ~ `' -Verb RunAs"',, "Hide")
+        if WinWait(win,, 2)
             WinActivate(win)
-        return
+        else
+            WinActivate("A")
+    return
     }
+
     hwnd := WinExist("A")
     winObj := ComObject("Shell.Application").Windows
     try activeTab := ControlGetHwnd("ShellTabWindowClass1", hwnd)
 
-    for win in winObj
-    {
-        if win.hwnd != hwnd
-            continue
-        if IsSet(activeTab)
-        {
-            shellBrowser := ComObjQuery(win, "{000214E2-0000-0000-C000-000000000046}", "{000214E2-0000-0000-C000-000000000046}")
-            ComCall(3, shellBrowser, 'uint*', &thisTab:=0)
-            if thisTab != activeTab
-                continue
-        }
-        pwd := '"' win.Document.Folder.Self.Path '"'
-        pwd := StrReplace(pwd, "'", "''")
-        pwd := StrReplace(pwd, "\\wsl.localhost", "")
-        RegExMatch(pwd, "Arch|Debian|Ubuntu-22\.04|Ubuntu-20\.04|Ubuntu-18\.04|Ubuntu", &OSDir)
-        try
-        {
-            osName := OSDir[]
-            pwd := StrReplace(pwd, "\Arch", "")
-            pwd := StrReplace(pwd, "\Debian", "")
-            pwd := StrReplace(pwd, "\Ubuntu-22.04", "")
-            pwd := StrReplace(pwd, "\Ubuntu-20.04", "")
-            pwd := StrReplace(pwd, "\Ubuntu-18.04", "")
-            pwd := StrReplace(pwd, "\Ubuntu", "")
+    winObj := ComObject("Shell.Application").Windows
+    for win in winObj {
+        if (win.hwnd = hwnd) {
+            if (activeTab) {
+                shellBrowser := ComObjQuery(win, "{4C96BE40-915C-11CF-99D3-00AA004AE837}", "{000214E2-0000-0000-C000-000000000046}")
+                if (!shellBrowser)
+                    continue
+                ComCall(3, shellBrowser, "uint*", &currentTab:=0)
+                if (currentTab != activeTab)
+                    continue
+            }
+            pwd := win.Document.Folder.Self.Path
+            pwd := StrReplace(pwd, "'", "''")
+            pwd := StrReplace(pwd, "\\wsl.localhost", "")
+            pwd := RegExReplace(pwd, "\\(Arch|Debian|Ubuntu)", "/")
             pwd := StrReplace(pwd, "\", "/")
+            break
         }
-        catch
-            pwd := StrReplace(pwd, "\", "/")
-        break
     }
 
-    Run(pshell ' -NoP -W Hidden -C "Start-Process -WindowStyle Max ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd \"' . pwd . '\" `' -Verb RunAs"',, "Hide")
-    if WinWait(win)
+    Run(pshell ' -NoP -W H -C "Start-Process -WindowStyle Max ' . wt . ' -Args `'-w new-tab ' . wsl . ' -d ' . osName . ' --cd \"' . pwd . '\" `' -Verb RunAs"',, "Hide")
+    if WinWait(win,, 2)
         WinActivate(win)
-    Return
+    else
+        WinActivate("A")
 }

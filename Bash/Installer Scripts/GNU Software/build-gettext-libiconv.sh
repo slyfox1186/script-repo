@@ -5,40 +5,50 @@
 # Updated: 08.31.23
 # Script version: 2.0
 
-set -e
+set -eo pipefail
 
 # Define color codes
 GREEN='\033[0;32m'
 RED='\033[0;31m'
-YELLOW='\033[1;33m'
 NC='\033[0m'
 
-script_ver=2.0
-archive_dir1=libiconv-1.17
-archive_dir2=gettext-0.22.5
-archive_url1=https://ftp.gnu.org/gnu/libiconv/$archive_dir1.tar.gz
-archive_url2=https://ftp.gnu.org/gnu/gettext/$archive_dir2.tar.lz
-cwd="$PWD"/gettext-libiconv-build-script
-install_dir="/usr/local/gettext-0.22.5"
-CC=gcc
-CXX=g++
-CFLAGS="-g -O3 -march=native"
-CXXFLAGS="-g -O3 -march=native"
-export CC CFLAGS CXX CXXFLAGS
+script_ver="2.0"
+archive_dir1="libiconv-1.17"
+archive_dir2="gettext-0.22.5"
+archive_url1="https://ftp.gnu.org/gnu/libiconv/$archive_dir1.tar.gz"
+archive_url2="https://ftp.gnu.org/gnu/gettext/$archive_dir2.tar.lz"
+cwd="$PWD/gettext-libiconv-build-script"
+install_dir1="/usr/local/libiconv-1.17"
+install_dir2="/usr/local/gettext-0.22.5"
+CC="ccache gcc"
+CXX="ccache g++"
+CFLAGS="-O2 -march=native -mtune=native -D_FORTIFY_SOURCE=2"
+CXXFLAGS="$CFLAGS"
+export CC CXX CFLAGS CXXFLAGS
 
 # Enhanced logging and error handling
 log() {
-    echo -e "${GREEN}[$(date +'%Y-%m-%dT%H:%M:%S%z')]${NC} $*"
+    echo -e "${GREEN}[INFO]${NC} $1"
 }
 
-warn() {
-    echo -e "${YELLOW}[$(date +'%Y-%m-%dT%H:%M:%S%z')] Warning:${NC} $*"
-}
-
-error() {
-    echo -e "${RED}[$(date +'%Y-%m-%dT%H:%M:%S%z')] Error:${NC} $*" >&2
+fail() {
+    echo -e "${RED}[ERROR]${NC} $1"
     echo -e "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
+}
+
+# Cleanup resources  
+cleanup() {
+    log "Removing leftover files"
+    echo
+    read -p "Remove temporary build directory '$build_dir'? [y/N] " response
+    case "$response" in
+        [yY]*|"")
+        sudo rm -rf "$cwd"
+        log "Build directory removed."
+        ;;
+        [nN]*) ;;
+    esac
 }
 
 # Helper function to download and extract archives
@@ -50,7 +60,7 @@ download_and_extract() {
     mkdir -p "$cwd/$archive_dir" || error "Failed to create directory $cwd/$archive_dir"
     log "Downloading $archive_url..."
 
-    if ! curl -L "$archive_url" -o "$cwd/$archive_dir.$archive_ext"; then
+    if ! curl -LSso "$cwd/$archive_dir.$archive_ext" "$archive_url"; then
         error "Failed to download $archive_url"
     fi
 
@@ -64,12 +74,13 @@ download_and_extract() {
 # Helper function for building and installing
 build_and_install() {
     local archive_dir=$1
+    local LDFLAGS=$2
     cd "$cwd/$archive_dir" || exit 1
     mkdir -p build
     cd build || exit 1
 
     log "Configuring $archive_dir..."
-    if ! ../configure --prefix="$install_dir/$archive_dir" --enable-static --with-pic; then
+    if ! ../configure --prefix="$install_dir/$archive_dir" --enable-static --with-pic "$LDFLAGS"; then
         error "Failed to configure $archive_dir"
     fi
 
@@ -79,11 +90,11 @@ build_and_install() {
     fi
 
     log "Installing $archive_dir..."
-    if ! make install; then
+    if ! sudo make install; then
         error "Failed to run make install"
     fi
 
-    if ! libtool --finish "$install_dir/$archive_dir/lib"; then
+    if ! sudo libtool --finish "$install_dir/$archive_dir/lib"; then
         error "Failed to finish libtool setup"
     fi
 
@@ -93,13 +104,13 @@ build_and_install() {
         filename=$(basename "$file")
         local linkname
         linkname=${filename#*-}
-        ln -sf "$file" "/usr/local/bin/$linkname" || warn "Failed to create symlink for $filename"
+        sudo ln -sf "$file" "/usr/local/bin/$linkname" || warn "Failed to create symlink for $filename"
     done
 }
 
 # Main script execution
-if [ "$EUID" -ne 0 ]; then
-    error "You must run this script with root/sudo."
+if [ "$EUID" -eq 0 ]; then
+    error "You must run this script without root or with sudo."
 fi
 
 log "gettext + libiconv build script - v$script_ver"
@@ -111,4 +122,9 @@ build_and_install "$archive_dir1"
 download_and_extract "$archive_dir2" "$archive_url2"
 build_and_install "$archive_dir2"
 
+# Cleaup files
+cleanup
+
+echo
 log "Build and installation completed successfully!"
+

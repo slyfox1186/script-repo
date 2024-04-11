@@ -5,8 +5,8 @@
 ##  Updated: 03.16.24
 ##  Script version: 1.1
 
-if [[ "$EUID" -ne 0 ]]; then
-    echo "You must run this script with root or sudo."
+if [[ "$EUID" -eq 0 ]]; then
+    echo "You must run this script without root or with sudo."
     exit 1
 fi
 
@@ -19,14 +19,14 @@ cwd="$PWD/autoconf-archive-build-script"
 install_dir=/usr/local
 
 # Create output directory
-[[ -d "$cwd" ]] && rm -fr "$cwd"
+[[ -d "$cwd" ]] && sudo rm -fr "$cwd"
 mkdir -p "$cwd"
 
 # Set the C +CPP compilers & their compiler optimization flags
 CC="gcc"
 CXX="g++"
-CFLAGS="-g -O3 -pipe -fno-plt -march=native"
-CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
+CFLAGS="-O3 -pipe -fno-plt -march=native -mtune=native"
+CXXFLAGS="$CFLAGS"
 export CC CFLAGS CXX CXXFLAGS
 
 # Set the path variable
@@ -77,23 +77,14 @@ fail() {
 
 cleanup() {
     local choice
-
     echo
-    echo "============================================"
-    echo "  Do you want to clean up the build files?  "
-    echo "============================================"
-    echo "[[1]] Yes"
-    echo "[[2]] No"
-    echo
-    read -p "Your choices are (1 or 2): " choice
-
-    case "$choice" in
-        1) rm -fr "$cwd" ;;
-        2) ;;
-        *) unset choice
-           clear
-           cleanup
-           ;;
+    read -p "Remove temporary build directory '$cwd'? [y/N] " response
+    case "$response" in
+        [yY]*|"")
+        sudo rm -rf "$cwd"
+        log_msg "Build directory removed."
+        ;;
+        [nN]*) ;;
     esac
 }
 
@@ -112,7 +103,7 @@ for pkg in ${pkgs[@]}; do
 done
 
 if [[ -n "$missing_pkgs" ]]; then
-    apt install $missing_pkgs
+    sudo apt install $missing_pkgs
 fi
 
 # Download the archive file
@@ -140,7 +131,7 @@ if ! make "-j$(nproc --all)"; then
     fail "Failed to execute: make -j$(nproc --all). Line: $LINENO"
 fi
 echo
-if ! make install; then
+if ! sudo make install; then
     fail "Failed to execute: make install. Line: $LINENO"
 fi
 

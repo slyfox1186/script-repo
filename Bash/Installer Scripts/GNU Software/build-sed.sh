@@ -29,10 +29,6 @@ log() {
     echo -e "${GREEN}[INFO] $1${NC}"
 }
 
-warn() {
-    echo -e "${YELLOW}[WARNING] $1${NC}"
-}
-
 fail() {
     echo -e "${RED}[ERROR] $1${NC}"
     echo "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
@@ -40,8 +36,8 @@ fail() {
 }
 
 # Check if running as root or with sudo
-if [[ "$EUID" -ne 0 ]]; then
-    fail "You must run this script with root or sudo."
+if [[ "$EUID" -eq 0 ]]; then
+    fail "You must run this script without root or with sudo."
 fi
 
 echo
@@ -53,11 +49,10 @@ echo
 # Set the C and C++ compilers
 CC="gcc"
 CXX="g++"
-CFLAGS="-O3 -pipe -fno-plt -march=native"
-CXXFLAGS="-O3 -pipe -fno-plt -march=native"
-CPPFLAGS="-D_FORTIFY_SOURCE=2"
-LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,${install_dir}/lib"
-export CC CFLAGS CPPFLAGS CXX CXXFLAGS LDFLAGS
+CFLAGS="-O3 -pipe -fno-plt -march=native -mtune=native -D_FORTIFY_SOURCE=2"
+CXXFLAGS="$CFLAGS"
+LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir/lib"
+export CC CFLAGS CXX CXXFLAGS LDFLAGS
 
 # Set the path variable
 PATH="/usr/lib/ccache:${HOME}/perl5/bin:${HOME}/.cargo/bin:${HOME}/.local/bin:/usr/local/sbin:/usr/local/cuda/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -77,30 +72,23 @@ exit_fn() {
 
 cleanup() {
     local choice
-
     echo
-    echo -e "${GREEN}============================================${NC}"
-    echo -e "  ${YELLOW}Do you want to clean up the build files?${NC}  "
-    echo -e "${GREEN}============================================${NC}"
-    echo
-    echo "[1] Yes"
-    echo "[2] No"
-    echo
-    read -p "Your choice (1 or 2): " choice
-
-    case "$choice" in
-        1) sudo rm -fr "$cwd";;
-        2) ;;
-        *) unset choice
-           cleanup
-           ;;
+    read -p "Remove temporary build directory '$cwd'? [y/N] " response
+    case "$response" in
+        [yY]*|"")
+        sudo rm -rf "$cwd"
+        log_msg "Build directory removed."
+        ;;
+        [nN]*) ;;
     esac
 }
 
 # Install required apt packages
-pkgs=(autoconf autoconf-archive autogen automake autopoint autotools-dev build-essential bzip2
-      ccache curl git libaudit-dev libintl-perl libticonv-dev libtool libtool-bin lzip pkg-config
-      valgrind zlib1g-dev librust-polling-dev)
+pkgs=(
+    autoconf autoconf-archive autogen automake autopoint autotools-dev build-essential bzip2
+    ccache curl git libaudit-dev libintl-perl libticonv-dev libtool libtool-bin lzip pkg-config
+    valgrind zlib1g-dev librust-polling-dev
+)
 
 missing_pkgs=""
 for pkg in "${pkgs[@]}"; do
@@ -110,7 +98,7 @@ for pkg in "${pkgs[@]}"; do
 done
 
 if [[ -n "$missing_pkgs" ]]; then
-    sudo apt-get install $missing_pkgs
+    sudo apt install $missing_pkgs
 fi
 
 # Download the archive file

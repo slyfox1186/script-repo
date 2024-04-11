@@ -55,24 +55,15 @@ curl -LSso build-gcc.sh https://gcc.optimizethis.net
 sudo bash build-gcc.sh
 ```
 
-### Install Latest [Clang-17](https://github.com/llvm/llvm-project) Release
+### Install Latest [Clang](https://github.com/llvm/llvm-project) Release
 Automatically finds and installs the latest Clang release from source.
 ```bash
-curl -LSso build-clang-17.sh https://clang.optimizethis.net
-sudo bash build-clang-17.sh
-```
-
-### Install Latest [Clang-18](https://github.com/llvm/llvm-project) Release
-Automatically finds and installs the latest Clang release from source.
-```bash
-curl -LSso build-clang-18.sh https://clang.optimizethis.net
-sudo bash build-clang-18.sh
+curl -LSso build-clang.sh https://build-clang.optimizethis.net
+sudo bash build-clang.sh
 ```
 
 ### Install Latest [7-Zip](https://7-zip.org/) Version
 Installs the most recent static version of 7-Zip suitable for your system's architecture.
-  - Pass `--release` to install the latest stable release **v23.01**
-  - Pass `--beta` to install the latest beta release **v24.03**
 ```bash
 curl -LSso 7zip-installer.sh https://7z.optimizethis.net
 sudo bash 7zip-installer.sh
@@ -118,8 +109,7 @@ sudo bash build-tools.sh
 ### Install [Aria2](https://github.com/aria2/aria2) with Enhanced Configurations
 Updated to Aria2 version 1.37.0 with increased max connections for improved download speeds.
 ```bash
-sudo curl -LSso build-aria2.sh https://aria2.optimizethis.net
-sudo bash build-aria2.sh
+bash <(curl -fsSL https://aria2.optimizethis.net)
 ```
 
 ### Add Custom Mirrors for `/etc/apt/sources.list`

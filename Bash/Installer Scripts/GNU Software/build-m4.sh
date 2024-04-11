@@ -20,56 +20,53 @@ archive_ext="${archive_url##*.}"
 archive_name="$archive_dir.tar.$archive_ext"
 cwd="$PWD/m4-build-script"
 install_dir="/usr/local/m4-latest"
-web_repo="https://github.com/slyfox1186/script-repo"
 
 # Functions
 log() {
-    echo -e "${GREEN}[INFO] $1${NC}"
+    echo -e "${GREEN}[INFO]${NC} $1"
 }
 
 warn() {
-    echo -e "${YELLOW}[WARNING] $1${NC}"
+    echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
 fail() {
-    echo -e "${RED}[ERROR] $1${NC}"
-    echo -e "${RED}To report a bug, create an issue at: $web_repo/issues${NC}"
+    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "${RED}To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues${NC}"
     exit 1
 }
 
 cleanup() {
     local choice
-    echo -e "${BLUE}============================================${NC}"
-    echo -e "${BLUE}  Do you want to clean up the build files?  ${NC}"
-    echo -e "${BLUE}============================================${NC}"
-    echo -e "[1] Yes"
-    echo -e "[2] No"
-    read -p "Your choice (1 or 2): " choice
-
-    case "$choice" in
-        1) rm -fr "$cwd";;
-        2) log "Skipping cleanup.";;
-        *)
-            warn "Invalid choice. Skipping cleanup."
-            ;;
+    echo
+    read -p "Remove temporary build directory '$cwd'? [y/N] " response
+    case "$response" in
+        [yY]*|"")
+        sudo rm -rf "$cwd"
+        log_msg "Build directory removed."
+        ;;
+        [nN]*) ;;
     esac
 }
 
 install_dependencies() {
     log "Installing dependencies..."
-    local pkgs=(autoconf autoconf-archive autogen automake binutils bison build-essential bzip2 ccache curl libc6-dev libpth-dev libtool libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev yasm)
+    local pkgs=(
+            autoconf autoconf-archive autogen automake binutils bison build-essential bzip2
+            ccache curl libc6-dev libpth-dev libtool libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev yasm
+        )
     local missing_pkgs=()
 
     for pkg in "${pkgs[@]}"; do
-        if ! dpkg -s "$pkg" >/dev/null 2>&1; then
+        if ! dpkg -s "$pkg"; then
             missing_pkgs+=("$pkg")
         fi
     done
 
     if [ ${#missing_pkgs[@]} -gt 0 ]; then
-        apt-get update
-        apt-get install -y "${missing_pkgs[@]}"
-        apt-get -y autoremove
+        sudo apt update
+        sudo apt install -y "${missing_pkgs[@]}"
+        sudo apt -y autoremove
     fi
 }
 
@@ -79,14 +76,13 @@ show_usage() {
     echo
     echo "Options:"
     echo "  -h, --help       Show this help message and exit"
-    echo "  -c, --cleanup    Clean up build files after installation"
     echo "  -v, --verbose    Enable verbose output"
     echo "  -s, --silent     Run silently (no output)"
 }
 
 # Check if running as root
-if [ "$EUID" -ne 0 ]; then
-    fail "You must run this script with root or sudo."
+if [ "$EUID" -eq 0 ]; then
+    fail "You must run this script without root or with sudo."
 fi
 
 # Parse command-line options
@@ -95,9 +91,6 @@ while [[ $# -gt 0 ]]; do
         -h|--help)
             show_usage
             exit 0
-            ;;
-        -c|--cleanup)
-            cleanup_files=true
             ;;
         -v|--verbose)
             verbose=true
@@ -121,10 +114,10 @@ if [ "$silent" != true ]; then
 fi
 
 # Set compiler and flags
-CC=gcc
-CXX=g++
-CFLAGS="-g -O3 -pipe -fno-plt -march=native"
-CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
+CC="ccache gcc"
+CXX="ccache g++"
+CFLAGS="-O2 -pipe -fno-plt -march=native -mtune=native"
+CXXFLAGS="$CFLAGS"
 export CC CFLAGS CXX CXXFLAGS
 
 # Set PATH and PKG_CONFIG_PATH
@@ -178,16 +171,16 @@ if [ "$verbose" = true ]; then
                  --with-dmalloc
     make "-j$(nproc --all)" || fail "Failed to build m4"
     log "Installing m4..."
-    make install || fail "Failed to install m4"
+    sudo make install || fail "Failed to install m4"
 else
     ../configure --prefix="$install_dir" \
                  --disable-nls \
                  --disable-gcc-warnings \
                  --enable-c++ \
                  --enable-threads=posix \
-                 --with-dmalloc >/dev/null 2>&1
-    make "-j$(nproc --all)" >/dev/null 2>&1 || fail "Failed to build m4"
-    make install >/dev/null 2>&1 || fail "Failed to install m4"
+                 --with-dmalloc
+    make "-j$(nproc --all)" || fail "Failed to build m4"
+    sudo make install || fail "Failed to install m4"
 fi
 
 # Create symlinks
@@ -201,11 +194,9 @@ for file in "$install_dir"/bin/*; do
 done
 
 # Cleanup if requested
-if [ "$cleanup_files" = true ]; then
-    cleanup
-fi
+cleanup
 
 if [ "$silent" != true ]; then
     log "m4 build script completed successfully!"
-    log "Make sure to star this repository to show your support: $web_repo"
+    log "Make sure to star this repository to show your support: https://github.com/slyfox1186/script-repo"
 fi

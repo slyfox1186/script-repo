@@ -11,16 +11,16 @@ NC='\033[0m'
 
 # Define logging functions
 fail() {
-    echo -e "${RED}[ERROR] Bash: $1${NC}"
+    echo -e "${RED}[ERROR]${NC} $1"
     exit 1
 }
 
 warn() {
-    echo -e "${YELLOW}[WARNING] Bash: $1${NC}"
+    echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
 log() {
-    echo -e "${GREEN}[INFO] Bash: $1${NC}"
+    echo -e "${GREEN}[INFO]${NC} $1"
 }
 
 # Define program variables
@@ -35,17 +35,18 @@ install_dir="/usr/local/${program}-${formatted_version}"
 certs_dir="/etc/ssl/certs"
 pem_file="cacert.pem"
 pem_out="$certs_dir/$pem_file"
+cleanup_flag="false"
 
 mkdir -p "$cwd"
 
 # Define environment variables
 set_env_vars() {
-    CC=gcc
-    CXX=g++
-    CFLAGS="-g -O3 -pipe -fno-plt -march=native"
-    CPPFLAGS="-I/usr/include/openssl -I/usr/local/include -I/usr/include/libxml2 -I/usr/include"
+    CC="gcc"
+    CXX="g++"
+    CFLAGS="-O2 -pipe -march=native -mtune=native -fstack-protector-strong"
     CXXFLAGS="$CFLAGS"
-    LDFLAGS="-Wl,-rpath,$install_dir/lib"
+    CPPFLAGS="-I/usr/include/openssl -I/usr/local/include -I/usr/include/libxml2 -I/usr/include -D_FORTIFY_SOURCE=2"
+    LDFLAGS="-Wl,-rpath,$install_dir/lib -Wl,-z,relro,-z,now"
     PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/pkgconfig:/lib/pkgconfig"
     export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS PKG_CONFIG_PATH
 }
@@ -65,7 +66,7 @@ install_deps() {
         fi
     done
 
-    if [ ${#missing_pkgs[@]} -gt 0 ]; then
+    if [[ ${#missing_pkgs[@]} -gt 0 ]]; then
         log "Installing missing dependencies: ${missing_pkgs[*]}"
         sudo apt-get install -y "${missing_pkgs[@]}"
     else
@@ -75,14 +76,14 @@ install_deps() {
 
 # Download and extract the source code
 get_source() {
-    if [ ! -f "$tar_file" ]; then
+    if [[ ! -f "$tar_file" ]]; then
         log "Downloading $program version $formatted_version"
         wget "$download_url" -O "$tar_file"
     else
         log "The tar file $tar_file already exists, skipping download"
     fi
 
-    if [ -d "$extract_dir" ]; then
+    if [[ -d "$extract_dir" ]]; then
         log "Removing existing directory $extract_dir"
         rm -rf "$extract_dir"
     fi
@@ -98,7 +99,7 @@ get_source() {
 
 # Install ca certs from curl's official website
 install_ca_certs() {
-    if [ ! -f "$pem_out" ]; then
+    if [[ ! -f "$pem_out" ]]; then
         curl -Lso "$pem_file" "https://curl.se/ca/$pem_file"
         sudo cp -f "$pem_file" "$pem_out"
     fi
@@ -164,7 +165,7 @@ usage() {
 }
 
 parse_args() {
-    while [[ $# -gt 0 ]]; do
+    while [[ "$#" -gt 0 ]]; do
         case "$1" in
             -h|--help)
                 usage
@@ -175,8 +176,7 @@ parse_args() {
                 exit 0
                 ;;
             -c|--cleanup)
-                cleanup
-                exit 0
+                cleanup_flag="true"
                 ;;
             *)
                 warn "Unknown argument: $1"
@@ -190,7 +190,7 @@ parse_args() {
 
 # Main script
 main() {
-    if [ "${EUID:-$(id -u)}" -eq 0 ]; then
+    if [[ "$EUID" -eq 0 ]]; then
         fail "You must run this script without root or sudo."
     fi
 
@@ -201,7 +201,7 @@ main() {
     install_ca_certs
     build_and_install
     display_version
-    cleanup
+    [[ "$cleanup_flag" == "true" ]] && cleanup
 }
 
 main "$@"

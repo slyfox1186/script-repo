@@ -36,7 +36,6 @@ display_help() {
     echo "Options:"
     echo "  -v, --version <version>   Specify the version of GNU Parallel to install"
     echo "  -l, --latest              Install the latest version of GNU Parallel"
-    echo "  -c, --cleanup             Automatically clean up the build files after installation"
     echo "  -h, --help                Display this help menu"
     echo
     echo "This script builds and installs GNU Parallel from source code."
@@ -60,10 +59,6 @@ parse_arguments() {
                 ;;
             -l|--latest)
                 DOWNLOAD_VERSION="latest"
-                shift
-                ;;
-            -c|--cleanup)
-                CLEANUP=true
                 shift
                 ;;
             -h|--help)
@@ -101,24 +96,17 @@ check_dependencies() {
     fi
 }
 
-# Cleanup function
 cleanup() {
-    if [[ "$CLEANUP" == true ]]; then
-        sudo rm -fr "$CWD"
-        echo
-        log "Cleanup completed."
-    else
-        echo
-        read -p "Do you want to clean up the build files? (yes/no) " choice
-        case "$choice" in
-            [yY]*|[yY][eE][sS]*|"")
-                sudo rm -fr "$CWD"
-                echo
-                log "Cleanup completed."
-                ;;
-            * ) log "Cleanup skipped." ;;
-        esac
-    fi
+    local choice
+    echo
+    read -p "Remove temporary build directory '$cwd'? [y/N] " response
+    case "$response" in
+        [yY]*|"")
+        sudo rm -rf "$cwd"
+        log_msg "Build directory removed."
+        ;;
+        [nN]*) ;;
+    esac
 }
 
 # Exit function
@@ -131,8 +119,8 @@ exit_fn() {
 # Download and extract source code
 download_and_extract() {
     # Create build directory
-    mkdir -p "$CWD"
-    cd "$CWD" || exit 1
+    mkdir -p "$cwd"
+    cd "$cwd" || exit 1
 
     # Download the source code files
     if [[ "$DOWNLOAD_VERSION" == "latest" ]]; then
@@ -176,9 +164,9 @@ main() {
 PROGRAM_NAME="parallel"
 [[ -z ${DOWNLOAD_VERSION+x} ]] && DOWNLOAD_VERSION="20240322"
 ARCHIVE_URL="https://ftp.gnu.org/gnu/parallel/$PROGRAM_NAME-$DOWNLOAD_VERSION.tar.bz2"
-CWD="$PWD/$PROGRAM_NAME-build-script"
+cwd="$PWD/$PROGRAM_NAME-build-script"
 INSTALL_DIR="/usr/local/$PROGRAM_NAME-$DOWNLOAD_VERSION"
-CLEANUP=false
+CLEANUP="false"
 
 # Dependencies
 DEPENDENCIES=(
