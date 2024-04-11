@@ -3,13 +3,14 @@
 # Build GNU Bash
 # Updated: 04.11.24
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-bash.sh
+# Script Version: 2.0
 
-set -o pipefail
+trap 'fail "Error occurred on line: $LINENO".' ERR
 
-version=5.2.15
-program_name=bash
-install_dir="/usr/local/${program_name}-${version}"
-build_dir="${PWD}/${program_name}-${version}-build-script"
+version="5.2.15"
+program_name="bash"
+install_dir="/usr/local"
+build_dir="/tmp/$program_name-$version-build"
 workspace="$build_dir/workspace"
 gnu_ftp="https://ftp.gnu.org/gnu/bash/"
 verbose=0
@@ -19,27 +20,22 @@ RED='\033[31m'
 RESET='\033[0m'
 
 usage() {
-    echo "Usage: $0 [OPTIONS]"
-    echo "Build and install GNU Bash from source."
-    echo
+    echo "Usage: ./build-bash.sh [OPTIONS]"
     echo "Options:"
-    printf "  %-25s %s\n" "-v VERSION, --version VERSION" "Set the version of Bash to build (default: ${version})"
-    printf "  %-25s %s\n" "-V, --verbose" "Enable verbose logging"
+    printf "  %-25s %s\n" "-p, --prefix DIR" "Set the installation prefix (default: $install_dir)"
+    printf "  %-25s %s\n" "-v, --verbose" "Enable verbose logging"
     printf "  %-25s %s\n" "-h, --help" "Show this help message"
-    echo
-    echo "Example:"
-    echo "$0 -v 5.2.15"
     exit 0
 }
 
 parse_args() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-            -v|--version)
-                version="$2"
+            -p|--prefix)
+                install_dir="$2"
                 shift 2
                 ;;
-            -V|--verbose)
+            -v|--verbose)
                 verbose=1
                 shift
                 ;;
@@ -51,80 +47,90 @@ parse_args() {
     done
 }
 
-log_msg() {
+log() {
     if [[ "$verbose" -eq 1 ]]; then
-        printf "${GREEN}[INFO] %s${RESET}\n" "$1"
+        echo -e "${GREEN}[INFO]${NC} $1"
     fi
 }
 
 fail() {
-    printf "${RED}[ERROR] %s${RESET}\n" "$1" >&2
-    echo "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues" >&2
+    printf "${RED}[ERROR]${NC} $1"
+    echo "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
 install_deps() {
-    log_msg "Checking and installing missing packages..."
-    local pkgs=(autoconf automake binutils gcc make curl tar lzip libticonv-dev gettext libpth-dev)
-    if command -v sudo &>/dev/null; then
-        if command -v apt &>/dev/null; then
-            sudo apt update
-            sudo apt install -y --no-install-recommends "${pkgs[@]}"
-        elif command -v dnf &>/dev/null; then
-            sudo dnf install -y "${pkgs[@]}"
-        elif command -v zypper &>/dev/null; then
-            sudo zypper install -y "${pkgs[@]}"
-        elif command -v pacman &>/dev/null; then
-            sudo pacman -Sy --noconfirm --needed "${pkgs[@]}"
-        else
-            fail "Unsupported package manager. Please install the required dependencies manually."
-        fi
+    log "Checking and installing missing packages..."
+    local apt_pkgs arch_pkgs
+    apt_pkgs=(
+            autoconf autoconf-archive binutils build-essential
+            curl gettext libpth-dev libticonv-dev libtool lzip m4 tar
+        )
+    arch_pkgs=(
+            autoconf autoconf-archive binutils base-devel
+            curl gettext npth libiconv libtool lzip m4 tar
+        )
+    if command -v apt &>/dev/null; then
+        sudo apt update
+        sudo apt -y install "${apt_pkgs[@]}"
+    elif command -v dnf &>/dev/null; then
+        sudo dnf install -y "${apt_pkgs[@]}"
+    elif command -v zypper &>/dev/null; then
+        sudo zypper install -y "${apt_pkgs[@]}"
+    elif command -v pacman &>/dev/null; then
+        sudo pacman -Syu
+        sudo pacman -Sy --needed --noconfirm "${arch_pkgs[@]}"
     else
-        fail "sudo is required to install dependencies. Please install sudo or run the script with root privileges."
+        fail "Unsupported package manager. Please install the required dependencies manually."
     fi
 }
 
 find_latest_release() {
-    log_msg "Finding the latest release..."
-    local latest_tarball
-    latest_tarball=$(curl -fsS "$gnu_ftp" | grep -oP "bash-[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz" | sort -rV | head -n1)
-    if [[ -z "$latest_tarball" ]]; then
-        fail "Failed to find the specified release: ${version}."
+    log "Finding the latest release..."
+    local tarball=$(curl -fsS "$gnu_ftp" | grep -oP 'bash-[0-9\.]*\.tar\.gz' | sort -rV | head -n1)
+    if [[ -z "$tarball" ]]; then
+        fail "Failed to find the latest release."
     fi
-    archive_url="${gnu_ftp}${latest_tarball}"
-    archive_name="${latest_tarball}"
+    archive_url="${gnu_ftp}${tarball}"
+    archive_name="${tarball}"
+    version=$(echo "$tarball" | grep -oP 'bash-[0-9.]{5,6}')
 }
 
 download_archive() {
-    log_msg "Downloading archive..."
-    if [[ ! -f "${build_dir}/${archive_name}" ]]; then
-        curl -LSso "${build_dir}/${archive_name}" "$archive_url"
+    log "Downloading archive..."
+    if [[ ! -f "$build_dir/$archive_name" ]]; then
+        curl -LSso "$build_dir/$archive_name" "$archive_url"
     fi
 }
 
 extract_archive() {
-    log_msg "Extracting archive..."
-    tar -zxf "${build_dir}/${archive_name}" -C "$workspace" --strip-components 1
+    echo
+    log "Extracting archive..."
+    tar -zxf "$build_dir/$archive_name" -C "$workspace" --strip-components 1
 }
 
 set_env_vars() {
-    log_msg "Setting environment variables..."
+    echo
+    log "Setting environment variables..."
     CC="ccache gcc"
     CXX="ccache g++"
     CFLAGS="-O2 -pipe -fno-plt -march=native -mtune=native -D_FORTIFY_SOURCE=2"
     CXXFLAGS="$CFLAGS"
-    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,${install_dir}/lib"
+    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir/$program_name-$version/lib"
     PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
     PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/lib64/pkgconfig:/lib/pkgconfig"
     export CC CFLAGS CXX CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
 }
 
 configure_build() {
-    log_msg "Configuring build..."
-    cd "$workspace"
+    echo
+    log "Configuring build..."
+    cd "$workspace" || exit 1
     autoreconf -fi
-    mkdir -p build && cd build
-    ../configure --prefix="$install_dir" \
+    cd build || exit 1
+    echo
+    log "Configuring..."
+    ../configure --prefix="$install_dir/$program_name-$version" \
                  --disable-nls \
                  --disable-profiling \
                  --enable-brace-expansion \
@@ -139,35 +145,31 @@ configure_build() {
 }
 
 compile_build() {
-    log_msg "Compiling..."
+    echo
+    log "Compiling..."
     make "-j$(nproc --all)"
 }
 
 install_build() {
-    log_msg "Installing..."
-    if command -v sudo &>/dev/null; then
-        sudo make install
-    else
-        fail "sudo is required to install the program. Please install sudo or run the script with root privileges."
-    fi
+    echo
+    log "Installing..."
+    sudo make install
 }
 
 create_symlinks() {
-    log_msg "Creating symlinks..."
-    for dir in "${install_dir}"/{bin,include,lib,lib/pkgconfig,share}; do
-        for file in "${install_dir}/${dir}"/*; do
-            if [[ -e $file ]]; then
-                sudo ln -sfn "$file" "/usr/local/${dir}/${file##*/}"
-            fi
-        done
+    echo
+    log "Creating symlinks..."
+    for file in "$install_dir/$program_name-$version"/bin/*; do
+        sudo ln -sfn "$file" "$install_dir/bin/$(basename "$file" | sed 's/^\w*-//')"
     done
 }
 
 cleanup() {
-    log_msg "Cleaning up..."
+    local response
+    log "Cleaning up..."
     echo
-    read -rp "Remove temporary build directory '${build_dir}'? [y/N] " response
-    if [[ $response =~ ^[Yy]$ ]]; then
+    read -p "Remove temporary build directory '$build_dir'? [y/N] " response
+    if [[ "$response" =~ ^[Yy]$ ]]; then
         sudo rm -rf "$build_dir"
     fi
 }
@@ -175,6 +177,11 @@ cleanup() {
 main() {
     parse_args "$@"
 
+    if [[ "$EUID" -eq 0 ]]; then
+        fail "This script must be without run root or with sudo."
+    fi
+
+    [[ -d "$workspace" ]] && sudo rm -rf "$workspace"
     mkdir -p "$workspace/build"
 
     install_deps
@@ -189,9 +196,10 @@ main() {
     cleanup
 
     echo
-    log_msg "Build completed successfully."
-    log_msg "Make sure to star this repository to show your support!"
-    log_msg "https://github.com/slyfox1186/script-repo"
+    log "Build completed successfully."
+    echo
+    log "Make sure to star this repository to show your support!"
+    log "https://github.com/slyfox1186/script-repo"
 }
 
 main "$@"
