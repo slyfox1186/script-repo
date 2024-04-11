@@ -38,6 +38,9 @@ while getopts ":hv:p:" opt; do
     esac
 done
 
+# Install requried apt pacakges if not already
+sudo apt -y install autoconf autoconf-archive build-essential ccache curl libtool m4
+
 # Find the latest version number if not manually specified
 if [ -z "$version" ]; then
     version=$(curl -fsS "https://github.com/gperftools/gperftools/tags/" | grep -oP '(?<=gperftools-)[0-9]+.[0-9]+' | sort -rV | head -n1)
@@ -78,9 +81,12 @@ fi
 cd "working" || exit 1
 
 # Set compiler flags for optimization and hardening
-export CFLAGS="-O2 -march=native -mtune=native -fstack-protector-strong -D_FORTIFY_SOURCE=2"
-export CXXFLAGS="$CFLAGS"
-export LDFLAGS="-Wl,-O1 -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,-rpath,$prefix/lib"
+CC="ccache gcc"
+CXX="ccache g++"
+CFLAGS="-O2 -march=native -mtune=native -fstack-protector-strong -D_FORTIFY_SOURCE=2"
+CXXFLAGS="$CFLAGS"
+LDFLAGS="-Wl,-O1 -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,-rpath,$prefix/lib"
+export CC CXX CFLAGS CXXFLAGS LDFLAGS
 
 # Configure, build, and install gperftools
 echo
@@ -91,10 +97,16 @@ cd build
 make "-j$(nproc --all)"
 sudo make install
 
-# Create symlinks in /usr/local/bin
+# Create symlinks in /usr/local
 echo
-echo "Creating symlinks in /usr/local/bin..."
+echo "Creating symlinks in /usr/local..."
 sudo ln -sf "$prefix/bin/"* "/usr/local/bin/"
+sudo ln -sf "$prefix/lib/"*.so* "/usr/local/lib/"
+sudo ln -sf "$prefix/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
+sudo ln -sf "$prefix/include/gperftools/"* "/usr/local/include/gperftools/"
+sudo ln -sf "$prefix/share/doc/gperftools/"* "/usr/local/share/doc/gperftools/"
+sudo ln -sf "$prefix/share/man/man1/"* "/usr/local/share/man/man1/"
+sudo ln -sf "$prefix/share/man/man3/"* "/usr/local/share/man/man3/"
 
 # Clean up the build files
 echo
@@ -102,6 +114,9 @@ echo "Cleaning up build files..."
 cd "$cwd"
 sudo rm -fr "$cwd"
 
+# Update linker libraries
+sudo ldconfig
+
 echo
 echo "gperftools $version has been successfully installed to $prefix"
-echo "Symlinks have been created in /usr/local/bin"
+echo "Symlinks have been created in /usr/local"
