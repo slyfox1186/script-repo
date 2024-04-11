@@ -464,7 +464,7 @@ imow() {
     }
 
     # Find the policy.xml file dynamically in /usr/local and /usr
-    policy_file=$(find /usr/local /usr -type f -path "*/etc/ImageMagick-7/policy.xml" -print -quit)
+    policy_file=$(find /usr/local /usr /etc -type f -path "*/etc/ImageMagick-7/policy.xml" -print -quit)
 
     if [ -n "$policy_file" ]; then
         replace_lines "$policy_file"
