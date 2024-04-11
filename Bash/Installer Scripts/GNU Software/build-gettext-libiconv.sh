@@ -25,8 +25,6 @@ CC="ccache gcc"
 CXX="ccache g++"
 CFLAGS="-O2 -march=native -mtune=native -D_FORTIFY_SOURCE=2"
 CXXFLAGS="$CFLAGS"
-LDFLAGS1="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir1/lib"
-LDFLAGS2="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir2/lib"
 export CC CXX CFLAGS CXXFLAGS
 
 # Enhanced logging and error handling
@@ -53,7 +51,7 @@ download_and_extract() {
     mkdir -p "$cwd/$archive_dir" || error "Failed to create directory $cwd/$archive_dir"
     log "Downloading $archive_url..."
 
-    if ! curl -L "$archive_url" -o "$cwd/$archive_dir.$archive_ext"; then
+    if ! curl -LSso "$cwd/$archive_dir.$archive_ext" "$archive_url"; then
         error "Failed to download $archive_url"
     fi
 
@@ -110,10 +108,10 @@ log "gettext + libiconv build script - v$script_ver"
 echo "==============================================="
 
 download_and_extract "$archive_dir1" "$archive_url1"
-build_and_install "$archive_dir1" "$LDFLAGS1"
+build_and_install "$archive_dir1"
 
 download_and_extract "$archive_dir2" "$archive_url2"
-build_and_install "$archive_dir2" "$LDFLAGS2"
+build_and_install "$archive_dir2"
 
 echo
 log "Removing leftover files"
