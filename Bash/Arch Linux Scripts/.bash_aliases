@@ -254,4 +254,5 @@ alias gus="bash <(curl -fsSL https://user-scripts.optimizethis.net)"
 alias gdl="bash <(curl -fsSL https://mirrors.optimizethis.net)"
 
 # REFLECTOR MIRROR SPEED TESTER
-alias rr='reflector --verbose -l 200 -n 5 -p https --latest 50 --sort rate --country US --save /etc/pacman.d/mirrorlist'
+alias rl='reflector --verbose -l 200 -n 5 -p https --latest 50 --sort rate --country US --save /etc/pacman.d/mirrorlist'
+alias rf='reflector --verbose -f 200 -n 5 -p https --latest 50 --sort rate --country US --save /etc/pacman.d/mirrorlist'
