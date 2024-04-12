@@ -25,15 +25,14 @@ REQUIRED_PKGS=(cmake gettext hwinfo libarchive-dev libgtkmm-3.0-dev libssl-dev n
 
 # Define compiler flags
 set_compiler_flags() {
-    export CC="gcc"
-    export CXX="g++"
-    export CFLAGS="-O2 -mtune=native"
-    export CPPFLAGS="$CFLAGS"
+    export CC="ccache gcc"
+    export CXX="ccache g++"
+    export CFLAGS="-O2 -fno-plt -pipe -march=native -mtune=native"
     export CXXFLAGS="$CFLAGS"
     export LDFLAGS="-Wl,-rpath=$INSTALL_PREFIX/lib"
 }
 
-# Check if script is run with root or sudo
+# Check if the script is run with root or sudo
 if [[ "$EUID" -eq 0 ]]; then
     fail "You must run this script without using root or sudo."
 fi
@@ -50,7 +49,7 @@ display_help() {
     echo "  -i, --install         Install grub-customizer (default)"
     echo "  -u, --uninstall       Uninstall grub-customizer"
     echo
-    echo "  Example: $0 --gui -c        # Installs grub-customizer, opens it's GUI Window, and then cleans up the leftover build files"
+    echo "  Example: $0 --gui -c        # Installs grub-customizer, opens its GUI Window, and then cleans up the leftover build files"
     echo "  Example: $0 -u --cleanup    # Uninstalls grub-customizer, and then cleans up the leftover build files"
 }
 
@@ -88,7 +87,7 @@ done
 # Set default installation mode
 INSTALL_MODE="${INSTALL_MODE:-install}"
 
-# Check if grub-customizer is already installed
+# Check if the grub-customizer is already installed
 if command -v grub-customizer &>/dev/null; then
     if [[ "$INSTALL_MODE" == "install" ]]; then
         warn "grub-customizer is already installed."
@@ -127,7 +126,7 @@ WORKSPACE="/tmp/grub-customizer"
 
 if [[ "$INSTALL_MODE" == "install" ]]; then
     log "Building grub-customizer..."
-    rm -rf "$WORKSPACE"
+    rm -fr "$WORKSPACE"
     git clone "https://git.launchpad.net/grub-customizer" "$WORKSPACE"
     cd "$WORKSPACE"
 
@@ -157,7 +156,7 @@ if [[ "$INSTALL_MODE" == "install" ]]; then
 else
     log "Uninstalling grub-customizer..."
     sudo ninja -C "$WORKSPACE/build" uninstall
-    sudo rm -rf "$INSTALL_PREFIX"
+    sudo rm -fr "$INSTALL_PREFIX"
     sudo rm -f "/usr/local/bin/grub-customizer"
     log "grub-customizer has been uninstalled successfully."
 fi
@@ -173,7 +172,7 @@ fi
 # Cleanup
 if [[ "$CLEANUP" == "true" ]]; then
     log "Cleaning up build files and temporary workspace..."
-    rm -rf "$WORKSPACE"
+    rm -fr "$WORKSPACE"
 fi
 
 echo
