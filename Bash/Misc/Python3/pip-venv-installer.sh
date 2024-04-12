@@ -14,7 +14,7 @@ pip_packages=(
     constantly contourpy contrib cryptography cssselect cycler Cython "dash >= 2.15.0"
     dask data dbus2any decorator distro distutils644 django django-rest-framework docker
     docker-py elasticsearch eval executing fabric fastapi fastparquet feedparser
-    ffpb file filelock "Flask >= 3.0.0" flask-restful folium fonttools fs fuzzywuzzy gast
+    ffpb filelock "Flask >= 3.0.0" flask-restful folium fonttools fs fuzzywuzzy gast
     gensim google-speech graphene gunicorn h5py html5lib httpx hyperlink identity idna image
     imageio incremental inline interface invoke ipython itemadapter itemloaders jedi jmespath
     jsonschema jupyter "jupyterlab-server >= 2.25.0" kafka kafka-python keras kiwisolver
