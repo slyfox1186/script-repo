@@ -90,7 +90,7 @@ exit_fn() {
     echo
     exit 0
 }
-exit_fn
+
 fail() {
     echo
     echo -e "${RED}[ERROR]${NC} $1"
