@@ -86,11 +86,11 @@ warn() {
 exit_fn() {
     echo
     echo -e "${GREEN}[INFO]${NC} Make sure to ${YELLOW}star${NC} this repository to show your support!"
-    echo -e "${GREEN}[INFO] ${CYAN}https://github.com/slyfox1186/script-repo${NC}"
+    echo -e "${GREEN}[INFO]${NC} https://github.com/slyfox1186/script-repo"
     echo
     exit 0
 }
-
+exit_fn
 fail() {
     echo
     echo -e "${RED}[ERROR]${NC} $1"
