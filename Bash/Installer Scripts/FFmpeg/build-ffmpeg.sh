@@ -976,6 +976,7 @@ fix_libvmaf_libs() {
     [[ ! -d "/usr/local/include/libvmaf" ]] && mkdir -p "/usr/local/include/libvmaf"
     cp -f "$workspace/include/libvmaf"/* "/usr/local/include/libvmaf/"
     cp -f "$workspace/lib/x86_64-linux-gnu/pkgconfig/libvmaf.pc" "/usr/local/lib/x86_64-linux-gnu/pkgconfig/libvmaf.pc"
+    cp -f "$workspace/bin/vmaf" "/usr/local/bin/vmaf"
     cp -f "$workspace/lib/x86_64-linux-gnu/libvmaf.so.3.0.0" "/usr/local/lib/x86_64-linux-gnu/libvmaf.so.3.0.0"
     ln -s "/usr/local/lib/x86_64-linux-gnu/libvmaf.so.3.0.0" "/usr/local/lib/x86_64-linux-gnu/libvmaf.so.3"
     ln -s "/usr/local/lib/x86_64-linux-gnu/libvmaf.so.3" "/usr/local/lib/x86_64-linux-gnu/libvmaf.so"
