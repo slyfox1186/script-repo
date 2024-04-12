@@ -145,6 +145,6 @@ $HOME/.local/bin:\
 export PATH
 
 # Fix annoying error message in WSL Linux
-if [ -f "/usr/lib/wsl/lib/libcuda.so.1.1" ] && [ ! -L "/usr/lib/wsl/lib/libcuda.so.1" ]; then
-    sudo ln -sf "/usr/lib/wsl/lib/libcuda.so.1" "/usr/lib/wsl/lib/libcuda.so.1.1"
+if [[ -f /usr/lib/wsl/lib/libcuda.so.1.1 ]] && [[ ! -L /usr/lib/wsl/lib/libcuda.so.1 ]]; then
+    sudo ln -sf /usr/lib/wsl/lib/libcuda.so.1.1 /usr/lib/wsl/lib/libcuda.so.1
 fi
